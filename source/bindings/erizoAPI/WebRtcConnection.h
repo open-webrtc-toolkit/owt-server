@@ -54,6 +54,12 @@ class WebRtcConnection : public node::ObjectWrap, erizo::WebRtcConnectionEventLi
    * Returns true if the SDP was received correctly.
    */
   static void setRemoteSdp(const v8::FunctionCallbackInfo<v8::Value>& args);
+  /**
+     * Add new remote candidate (from remote peer).
+     * @param sdp The candidate in SDP format.
+     * @return true if the SDP was received correctly.
+     */
+  static void addRemoteCandidate(const v8::FunctionCallbackInfo<v8::Value>& args);
   /*
    * Obtains the local SDP.
    * Returns the SDP as a string.
