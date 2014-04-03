@@ -36,6 +36,7 @@ enum IceState {
 class NiceConnectionListener {
 public:
 	virtual void onNiceData(unsigned int component_id, char* data, int len, NiceConnection* conn)=0;
+	virtual void onCandidate(const CandidateInfo &candidate, NiceConnection *conn)=0;
 	virtual void updateIceState(IceState state, NiceConnection *conn)=0;
 };
 
@@ -87,7 +88,21 @@ public:
 	 * @return true if successfull.
 	 */
 	void gatheringDone(uint stream_id);
-
+	/**
+	 * Sets a local ICE Candidates. Called by C Nice functions.
+	 * @param candidate info to look for
+	 */
+	void getCandidate(uint stream_id, uint component_id, const std::string &foundation);
+	/**
+	 * Sets the associated Listener.
+	 * @param connection Pointer to the NiceConnectionListener.
+	 */
+	void setNiceListener(NiceConnectionListener *listener);
+    /**
+     * Gets the associated Listener.
+     * @param connection Pointer to the NiceConnectionListener.
+     */
+    NiceConnectionListener* getNiceListener();
 	/**
 	 * Sends data via the ICE Connection.
 	 * @param buf Pointer to the data buffer.

@@ -6,8 +6,6 @@
 
 #include "WebRtcConnection.h"
 #include "DtlsTransport.h"
-#include "SdesTransport.h"
-
 #include "SdpInfo.h"
 #include <rtputils.h>
 
@@ -140,19 +138,6 @@ namespace erizo {
         if (audioTransportNeeded) {
           audioTransport_ = new DtlsTransport(AUDIO_TYPE, "audio", false, remoteSdp_.isRtcpMux, this, stunServer_, stunPort_, minPort_, maxPort_, certFile_, keyFile_, privatePasswd_);
         }
-      } else {
-        // SDES
-        std::vector<CryptoInfo> crypto_remote = remoteSdp_.getCryptoInfos();
-        for (unsigned int it = 0; it < crypto_remote.size(); it++) {
-          CryptoInfo cryptemp = crypto_remote[it];
-          if (cryptemp.mediaType == VIDEO_TYPE
-              && !cryptemp.cipherSuite.compare("AES_CM_128_HMAC_SHA1_80")) {
-            videoTransport_ = new SdesTransport(VIDEO_TYPE, "video", bundle_, remoteSdp_.isRtcpMux, &cryptemp, this, stunServer_, stunPort_, minPort_, maxPort_);
-          } else if (audioTransportNeeded && cryptemp.mediaType == AUDIO_TYPE
-              && !cryptemp.cipherSuite.compare("AES_CM_128_HMAC_SHA1_80")) {
-            audioTransport_ = new SdesTransport(AUDIO_TYPE, "audio", false, remoteSdp_.isRtcpMux, &cryptemp, this, stunServer_, stunPort_, minPort_, maxPort_);
-          }
-        }
       }
 
       // In case both audio and video transports are needed, we need to start
@@ -165,6 +150,17 @@ namespace erizo {
     }
 
     return true;
+  }
+
+  bool WebRtcConnection::addRemoteCandidate(const std::string &mid, const std::string &sdp) {
+    // TODO Check type of transport.
+    SdpInfo tempSdp;
+    tempSdp.initWithSdp(sdp);
+    if (mid == "audio" && !bundle_) {
+      audioTransport_->setRemoteCandidates(tempSdp.getCandidateInfos());
+    } else {
+      videoTransport_->setRemoteCandidates(tempSdp.getCandidateInfos());
+    }
   }
 
   std::string WebRtcConnection::getLocalSdp() {
@@ -207,6 +203,39 @@ namespace erizo {
 
   bool WebRtcConnection::acceptNACK() {
     return nackEnabled_ && remoteSdp_.supportNACK();
+  }
+
+  std::string WebRtcConnection::getJSONCandidate(const std::string& mid, const std::string& sdp) {
+    std::map <std::string, std::string> object;
+    object["sdpMid"] = mid;
+    object["sdp"] = sdp;
+
+    std::ostringstream theString;
+    theString << "{";
+    for (std::map<std::string, std::string>::iterator it=object.begin(); it!=object.end(); ++it){
+      theString << "\"" << it->first << "\":\"" << it->second << "\"";
+      if (++it != object.end()){
+        theString << ",\n";
+      }
+      --it;
+    }
+    theString << "\n}";
+    return theString.str();
+  }
+
+  void WebRtcConnection::onCandidate(const std::string& sdp, Transport *transport) {
+    if (connEventListener_ != NULL) {
+      if (!bundle_) {
+        std::string object = this->getJSONCandidate(transport->transport_name, sdp);
+        connEventListener_->notifyEvent(CONN_CANDIDATE, object);
+      } else {
+        std::string object = this->getJSONCandidate("audio", sdp);
+        connEventListener_->notifyEvent(CONN_CANDIDATE, object);
+        std::string object2 = this->getJSONCandidate("video", sdp);
+        connEventListener_->notifyEvent(CONN_CANDIDATE, object2);
+      }
+      
+    }
   }
 
   int WebRtcConnection::deliverAudioData(char* buf, int len) {
@@ -441,10 +470,10 @@ namespace erizo {
         (audioTransport_ == NULL || audioTransport_->getTransportState() == TRANSPORT_STARTED) &&
         (videoTransport_ == NULL || videoTransport_->getTransportState() == TRANSPORT_STARTED)) {
       if (videoTransport_ != NULL) {
-        videoTransport_->setRemoteCandidates(remoteSdp_.getCandidateInfos());
+        // videoTransport_->setRemoteCandidates(remoteSdp_.getCandidateInfos());
       }
       if (audioTransport_ != NULL) {
-        audioTransport_->setRemoteCandidates(remoteSdp_.getCandidateInfos());
+        // audioTransport_->setRemoteCandidates(remoteSdp_.getCandidateInfos());
       }
       temp = CONN_STARTED;
     }

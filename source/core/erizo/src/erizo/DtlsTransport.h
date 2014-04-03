@@ -23,6 +23,7 @@ namespace erizo {
     static bool isDtlsPacket(const char* buf, int len);
     void start();
     void onNiceData(unsigned int component_id, char* data, int len, NiceConnection* nice);
+    void onCandidate(const CandidateInfo &candidate, NiceConnection *conn);
     void write(char* data, int len);
     void writeDtls(dtls::DtlsSocketContext *ctx, const unsigned char* data, unsigned int len);
     void onHandshakeCompleted(dtls::DtlsSocketContext *ctx, std::string clientKey, std::string serverKey, std::string srtp_profile);

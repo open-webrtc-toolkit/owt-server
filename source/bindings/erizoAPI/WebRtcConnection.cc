@@ -109,6 +109,24 @@ void WebRtcConnection::setRemoteSdp(const FunctionCallbackInfo<Value>& args) {
   args.GetReturnValue().Set(Boolean::New(isolate, r));
 }
 
+void WebRtcConnection::addRemoteCandidate(const FunctionCallbackInfo<Value>& args) {
+  Isolate* isolate = Isolate::GetCurrent();
+  HandleScope scope(isolate);
+
+  WebRtcConnection* obj = ObjectWrap::Unwrap<WebRtcConnection>(args.Holder());
+  erizo::WebRtcConnection *me = obj->me;
+
+  String::Utf8Value param(args[0]->ToString());
+  std::string mid = std::string(*param);
+
+  String::Utf8Value param2(args[1]->ToString());
+  std::string sdp = std::string(*param2);
+
+  bool r = me->addRemoteCandidate(mid, sdp);
+
+  args.GetReturnValue().Set(Boolean::New(isolate, r));
+}
+
 void WebRtcConnection::getLocalSdp(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);

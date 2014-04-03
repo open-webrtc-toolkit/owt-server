@@ -29,11 +29,19 @@ namespace erizo {
     nicecon->queueData(component_id, reinterpret_cast<char*> (buf), static_cast<unsigned int> (len));
   }
 
+  void cb_new_candidate(NiceAgent *agent, guint stream_id, guint component_id, gchar *foundation,
+      gpointer user_data) {
+
+    NiceConnection *conn = (NiceConnection*) user_data;
+    std::string found(foundation);
+    conn->getCandidate(stream_id, component_id, found);
+  }
+
   void cb_candidate_gathering_done(NiceAgent *agent, guint stream_id,
       gpointer user_data) {
 
     NiceConnection *conn = (NiceConnection*) user_data;
-    conn->gatheringDone(stream_id);
+    //conn->gatheringDone(stream_id);
   }
 
   void cb_component_state_changed(NiceAgent *agent, guint stream_id,
@@ -224,10 +232,12 @@ namespace erizo {
     // Connect the signals
     g_signal_connect( G_OBJECT( agent_ ), "candidate-gathering-done",
         G_CALLBACK( cb_candidate_gathering_done ), this);
-    g_signal_connect( G_OBJECT( agent_ ), "component-state-changed",
-        G_CALLBACK( cb_component_state_changed ), this);
     g_signal_connect( G_OBJECT( agent_ ), "new-selected-pair",
         G_CALLBACK( cb_new_selected_pair ), this);
+    g_signal_connect( G_OBJECT( agent_ ), "component-state-changed",
+        G_CALLBACK( cb_component_state_changed ), this);
+    g_signal_connect( G_OBJECT( agent_ ), "new-candidate",
+        G_CALLBACK( cb_new_candidate ), this);
 
     // Create a new stream and start gathering candidates
     ELOG_DEBUG("Adding Stream... Number of components %d", iceComponents_);
@@ -340,82 +350,99 @@ namespace erizo {
     return true;
   }
 
-
-  void NiceConnection::gatheringDone(uint stream_id) {
-    if (this->checkIceState() >= NICE_FINISHED) {
-      ELOG_DEBUG("gathering Done after FINISHED");
-      nice_agent_remove_stream (agent_,1);
-      return;
-    }
-    ELOG_DEBUG("Gathering Done %p", this);
+  void NiceConnection::getCandidate(uint stream_id, uint component_id, const std::string &foundation) {
     int currentCompId = 1;
-    GSList* lcands = nice_agent_get_local_candidates(agent_, stream_id, currentCompId++);
+    GSList* lcands = nice_agent_get_local_candidates(agent_, stream_id, component_id);
+    NiceCandidate *cand;
+    GSList* iterator;
     gchar *ufrag = NULL, *upass = NULL;
     nice_agent_get_local_credentials(agent_, stream_id, &ufrag, &upass);
+
+    //  ELOG_DEBUG("gathering done %u",stream_id);
+    //ELOG_DEBUG("Candidates---------------------------------------------------->");
     while (lcands != NULL) {
-      for (GSList* iterator = lcands; iterator; iterator = iterator->next) {
-        char address[NICE_ADDRESS_STRING_LEN], baseAddress[NICE_ADDRESS_STRING_LEN];
-        NiceCandidate *cand = (NiceCandidate*) iterator->data;
-        nice_address_to_string(&cand->addr, address);
-        nice_address_to_string(&cand->base_addr, baseAddress);
-        if (strstr(address, ":") != NULL) {
-          ELOG_DEBUG("Ignoring IPV6 candidate %s %p", address, this);
-          continue;
-        }
+      for (iterator = lcands; iterator; iterator = iterator->next) {
+        cand = (NiceCandidate*) iterator->data;
+        if (cand->component_id == component_id && cand->foundation == foundation) {
+          char address[40], baseAddress[40];
+          nice_address_to_string(&cand->addr, address);
+          nice_address_to_string(&cand->base_addr, baseAddress);
+          if (strstr(address, ":") != NULL) {
+            ELOG_DEBUG("Ignoring IPV6 candidate %s", address);
+            continue;
+          }
+          //      ELOG_DEBUG("foundation %s", cand->foundation);
+          //      ELOG_DEBUG("compid %u", cand->component_id);
+          //      ELOG_DEBUG("stream_id %u", cand->stream_id);
+          //      ELOG_DEBUG("priority %u", cand->priority);
+          //      ELOG_DEBUG("username %s", cand->username);
+          //      ELOG_DEBUG("password %s", cand->password);
+          CandidateInfo cand_info;
+          cand_info.componentId = cand->component_id;
+          cand_info.foundation = cand->foundation;
+          cand_info.priority = cand->priority;
+          cand_info.hostAddress = std::string(address);
+          cand_info.hostPort = nice_address_get_port(&cand->addr);
+          cand_info.mediaType = mediaType;
 
-        CandidateInfo cand_info;
-        cand_info.componentId = cand->component_id;
-        cand_info.foundation = cand->foundation;
-        cand_info.priority = cand->priority;
-        cand_info.hostAddress = std::string(address);
-        cand_info.hostPort = nice_address_get_port(&cand->addr);
-        cand_info.mediaType = mediaType;
+          /*
+           *   NICE_CANDIDATE_TYPE_HOST,
+           *    NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE,
+           *    NICE_CANDIDATE_TYPE_PEER_REFLEXIVE,
+           *    NICE_CANDIDATE_TYPE_RELAYED,
+           */
+          switch (cand->type) {
+            case NICE_CANDIDATE_TYPE_HOST:
+              cand_info.hostType = HOST;
+              break;
+            case NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE:
+              cand_info.hostType = SRFLX;
+              cand_info.rAddress = std::string(baseAddress);
+              cand_info.rPort = nice_address_get_port(&cand->base_addr);
+              break;
+            case NICE_CANDIDATE_TYPE_PEER_REFLEXIVE:
+              cand_info.hostType = PRFLX;
+              break;
+            case NICE_CANDIDATE_TYPE_RELAYED:
+              char turnAddres[40];
+              ELOG_DEBUG("TURN LOCAL CANDIDATE");
+              nice_address_to_string(&cand->turn->server,turnAddres);
+              ELOG_DEBUG("address %s", address);
+              ELOG_DEBUG("baseAddress %s", baseAddress);
+              ELOG_DEBUG("stream_id %u", cand->stream_id);
+              ELOG_DEBUG("priority %u", cand->priority);
+              ELOG_DEBUG("TURN ADDRESS %s", turnAddres);
+             
+              cand_info.hostType = RELAY;
+              cand_info.rAddress = std::string(baseAddress);
+              cand_info.rPort = nice_address_get_port(&cand->base_addr);
 
-        /*
-         *   NICE_CANDIDATE_TYPE_HOST,
-         * 	  NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE,
-         *	  NICE_CANDIDATE_TYPE_PEER_REFLEXIVE,
-         * 	  NICE_CANDIDATE_TYPE_RELAYED,
-         */
-        switch (cand->type) {
-          case NICE_CANDIDATE_TYPE_HOST:
-            cand_info.hostType = HOST;
-            break;
-          case NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE:
-            cand_info.hostType = SRFLX;
-            cand_info.rAddress = std::string(baseAddress);
-            cand_info.rPort = nice_address_get_port(&cand->base_addr);
-            break;
-          case NICE_CANDIDATE_TYPE_PEER_REFLEXIVE:
-            cand_info.hostType = PRFLX;
-            break;
-          case NICE_CANDIDATE_TYPE_RELAYED:
-            char turnAddres[NICE_ADDRESS_STRING_LEN];
-            ELOG_DEBUG("TURN LOCAL CANDIDATE");
-            nice_address_to_string(&cand->turn->server,turnAddres);
-        		ELOG_DEBUG("address %s", address);
-        		ELOG_DEBUG("baseAddress %s", baseAddress);
-        		ELOG_DEBUG("stream_id %u", cand->stream_id);
-        		ELOG_DEBUG("priority %u", cand->priority);
-        		ELOG_DEBUG("TURN ADDRESS %s", turnAddres);
-           
-            cand_info.hostType = RELAY;
-            cand_info.rAddress = std::string(baseAddress);
-            cand_info.rPort = nice_address_get_port(&cand->base_addr);
-            break;
-          default:
-            break;
+              break;
+            default:
+              break;
+          }
+          cand_info.netProtocol = "udp";
+          cand_info.transProtocol = std::string(*transportName.get());
+
+          cand_info.username = std::string(ufrag);
+
+          cand_info.password = std::string(upass);
+          /*
+             if (cand->username)
+             cand_info.username = std::string(cand->username);
+             else
+             cand_info.username = std::string("(null)");
+
+             if (cand->password)
+             cand_info.password = std::string(cand->password);
+             else
+             cand_info.password = std::string("(null)");
+             */
+
+          localCandidates->push_back(cand_info);
+          this->getNiceListener()->onCandidate(cand_info, this);
         }
-        cand_info.netProtocol = "udp";
-        cand_info.transProtocol = std::string(*transportName.get());
-        cand_info.username = std::string(ufrag);
-        cand_info.password = std::string(upass);
-        localCandidates->push_back(cand_info);
       }
-      // for nice_agent_get_local_candidates,  the caller owns the returned GSList as well as the candidates contained within it.
-      // let's free everything in the list, as well as the list.
-      g_slist_free_full(lcands, (GDestroyNotify)&nice_candidate_free);
-      lcands = nice_agent_get_local_candidates(agent_, stream_id, currentCompId++);
     }
     // According to libnice, this is how these must be free'd
     g_free(ufrag);
@@ -428,6 +455,19 @@ namespace erizo {
       exit(0);
     }
     updateIceState(NICE_CANDIDATES_GATHERED);
+  }
+
+
+  void NiceConnection::gatheringDone(uint stream_id) {
+   
+  }
+
+  void NiceConnection::setNiceListener(NiceConnectionListener *listener) {
+    this->listener_ = listener;
+  }
+
+  NiceConnectionListener* NiceConnection::getNiceListener() {
+    return this->listener_;
   }
 
   void NiceConnection::updateComponentState(unsigned int compId, IceState state) {
