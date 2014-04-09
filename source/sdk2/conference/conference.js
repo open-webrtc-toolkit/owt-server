@@ -30,7 +30,7 @@ Woogeen.ConferenceClient = (function () {
       that.browser = 'internet-explorer';
     } else if (window.navigator.appVersion.match(/Chrome\/([\w\W]*?)\./)[1] >= 26) {
       // Google Chrome Stable.
-      that = Erizo.ChromeStableStack(spec);
+      that = Erizo.ChromeJSEPStack(spec);
       that.browser = 'chrome-stable';
     } else {
       // None.
@@ -400,6 +400,14 @@ conference.join(token, function(response) {...}, function(error) {...});
         self.socket.on('error', function (err) {
           safeCall(onFailure, err || 'connection_error');
         });
+
+        self.socket.on('signaling_message', function (arg) {
+          var stream = self.localStreams[arg.streamId];
+          console.log('SOCKE SID', arg.mess);
+          if (stream) {
+            stream.pc.processSignalingMessage(arg.mess);
+          }
+        });
       }
 
       try {
@@ -415,10 +423,13 @@ conference.join(token, function(response) {...}, function(error) {...});
             self.conferenceId = resp.id;
             self.p2p = resp.p2p;
             that.state = CONNECTED;
-            var streams = resp.streams.map(function (st) {
-              self.remoteStreams[st.id] = createRemoteStream(st);
-              return self.remoteStreams[st.id];
-            });
+            var streams = [];
+            if (resp.streams) {
+              streams = resp.streams.map(function (st) {
+                self.remoteStreams[st.id] = createRemoteStream(st);
+                return self.remoteStreams[st.id];
+              });
+            }
             return safeCall(onSuccess, {streams: streams, users: resp.users});
           }
           return safeCall(onFailure, resp||'response error');
@@ -632,6 +643,85 @@ conference.publish(localStream, {maxVideoBW: 300}, function (st) {
       if (options.maxVideoBW > self.connSettings.maxVideoBW) {
         options.maxVideoBW = self.connSettings.maxVideoBW;
       }
+
+      opt.state = 'erizo';
+      sendSdp(self.socket, 'publish', opt, undefined, function (answer, id) {
+        if (answer === 'error') {
+          return safeCall(onFailure, id);
+        }
+        if (answer === 'timeout') {
+          return safeCall(onFailure, answer);
+        }
+        // stream.room = that;
+
+        stream.channel = createChannel({
+          callback: function (message) {
+            console.log("Sending message", message);
+            sendSdp(self.socket, 'signaling_message', {streamId: id, msg: message}, function () {});
+          },
+          video: stream.hasVideo(),
+          audio: stream.hasAudio(),
+          iceServers: self.getIceServers(),
+          stunServerUrl: self.connSettings.stun,
+          turnServer: self.connSettings.turn,
+          maxAudioBW: options.maxAudioBW,
+          maxVideoBW: options.maxVideoBW,
+          videoCodec: options.videoCodec
+        });
+
+        var onChannelReady = function () {
+          stream.id = function () {
+            return id;
+          };
+          self.localStreams[id] = stream;
+          stream.signalOnPlayAudio = function (onSuccess, onFailure) {
+            sendCtrlPayload(self.socket, 'audio-out-on', id, onSuccess, onFailure);
+          };
+          stream.signalOnPauseAudio = function (onSuccess, onFailure) {
+            sendCtrlPayload(self.socket, 'audio-out-off', id, onSuccess, onFailure);
+          };
+          stream.signalOnPlayVideo = function (onSuccess, onFailure) {
+            sendCtrlPayload(self.socket, 'video-out-on', id, onSuccess, onFailure);
+          };
+          stream.signalOnPauseVideo = function (onSuccess, onFailure) {
+            sendCtrlPayload(self.socket, 'video-out-off', id, onSuccess, onFailure);
+          };
+          stream.unpublish = function (onSuccess, onFailure) {
+            self.unpublish(stream, onSuccess, onFailure);
+          };
+          safeCall(onSuccess, stream);
+          onChannelReady = function () {};
+          onChannelFailed = function () {};
+        };
+        var onChannelFailed = function () {
+          sendMsg(self.socket, 'unpublish', id, function () {}, function () {}); // FIXME: still need this?
+          stream.channel.close();
+          stream.channel = undefined;
+          safeCall(onFailure, 'peer connection failed');
+          onChannelReady = function () {};
+          onChannelFailed = function () {};
+        };
+        stream.channel.oniceconnectionstatechange = function (state) {
+          switch (state) {
+          case 'completed': // chrome
+          case 'connected': // firefox
+            onChannelReady();
+            break;
+          case 'checking':
+          case 'closed':
+            break;
+          case 'failed':
+            onChannelFailed();
+            break;
+          default:
+            L.Logger.warning('unknown ice connection state:', state);
+          }
+        };
+
+        stream.channel.createOffer();
+        stream.channel.addStream(stream.mediaStream);
+      });
+/*
       stream.channel = createChannel({
         callback: function (offer) {
           opt.state = 'offer';
@@ -704,6 +794,7 @@ conference.publish(localStream, {maxVideoBW: 300}, function (st) {
         videoCodec: options.videoCodec
       });
       stream.channel.addStream(stream.mediaStream);
+*/
     } else {
       return safeCall(onFailure, 'already published');
     }
@@ -866,6 +957,82 @@ conference.subscribe(remoteStream, function (st) {
       return safeCall(onFailure, 'no audio or video to subscribe.');
     }
 
+    sendSdp(self.socket, 'subscribe', {
+      streamId: stream.id(),
+      audio: stream.hasAudio() && (options.audio !== false),
+      video: stream.hasVideo() && options.video
+    }, function (answer, errText) {
+      if (answer === 'error' || answer === 'timeout') {
+        return safeCall(onFailure, errText || answer);
+      }
+
+      stream.channel = createChannel({
+        callback: function (message) {
+          sendSdp(self.socket, 'signaling_message', {
+            streamId: stream.id(),
+            msg: message
+          }, function () {});
+        },
+        audio: stream.hasAudio() && (options.audio !== false),
+        video: stream.hasVideo() && (options.video !== false),
+        iceServers: self.getIceServers(),
+        stunServerUrl: self.connSettings.stun,
+        turnServer: self.connSettings.turn,
+        videoCodec: options.videoCodec
+      });
+
+      stream.channel.onaddstream = function (evt) {
+        stream.mediaStream = evt.stream;
+        if (navigator.appVersion.indexOf('Trident') > -1) {
+          stream.pcid = evt.pcid;
+        }
+      };
+      var onChannelReady = function () {
+        stream.signalOnPlayAudio = function (onSuccess, onFailure) {
+          sendCtrlPayload(self.socket, 'audio-in-on', stream.id(), onSuccess, onFailure);
+        };
+        stream.signalOnPauseAudio = function (onSuccess, onFailure) {
+          sendCtrlPayload(self.socket, 'audio-in-off', stream.id(), onSuccess, onFailure);
+        };
+        stream.signalOnPlayVideo = function (onSuccess, onFailure) {
+          sendCtrlPayload(self.socket, 'video-in-on', stream.id(), onSuccess, onFailure);
+        };
+        stream.signalOnPauseVideo = function (onSuccess, onFailure) {
+          sendCtrlPayload(self.socket, 'video-in-off', stream.id(), onSuccess, onFailure);
+        };
+        safeCall(onSuccess, stream);
+        onChannelReady = function () {};
+        onChannelFailed = function () {};
+      };
+      var onChannelFailed = function () {
+        sendMsg(self.socket, 'unsubscribe', stream.id(), function () {}, function () {});
+        stream.close();
+        stream.signalOnPlayAudio = undefined;
+        stream.signalOnPauseAudio = undefined;
+        stream.signalOnPlayVideo = undefined;
+        stream.signalOnPauseVideo = undefined;
+        safeCall(onFailure, 'peer connection failed');
+        onChannelReady = function () {};
+        onChannelFailed = function () {};
+      };
+      stream.channel.oniceconnectionstatechange = function (state) {
+        switch (state) {
+        case 'completed': // chrome
+        case 'connected': // firefox
+          onChannelReady();
+          break;
+        case 'checking':
+        case 'closed':
+          break;
+        case 'failed':
+          onChannelFailed();
+          break;
+        default:
+          L.Logger.warning('unknown ice connection state:', state);
+        }
+      };
+    });
+/*
     stream.channel = createChannel({
       callback: function (offer) {
         if (JSON.parse(offer).messageType !== 'OFFER') {return;} // filter out 'sendOK'
@@ -947,6 +1114,7 @@ conference.subscribe(remoteStream, function (st) {
         L.Logger.warning('unknown ice connection state:', state);
       }
     };
+*/
   };
 
 /**

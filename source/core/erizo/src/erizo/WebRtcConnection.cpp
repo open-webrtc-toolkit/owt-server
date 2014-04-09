@@ -208,7 +208,7 @@ namespace erizo {
   std::string WebRtcConnection::getJSONCandidate(const std::string& mid, const std::string& sdp) {
     std::map <std::string, std::string> object;
     object["sdpMid"] = mid;
-    object["sdp"] = sdp;
+    object["candidate"] = sdp;
 
     std::ostringstream theString;
     theString << "{";
