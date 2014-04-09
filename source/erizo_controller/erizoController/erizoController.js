@@ -767,6 +767,11 @@ var listen = function () {
             });
         });
 
+        socket.on('signaling_message', function (msg) {
+            socket.room.controller.processSignaling(msg.streamId, socket.id, msg.msg);
+        });
+
+
         //Gets 'publish' messages on the socket in order to add new stream to the room.
         socket.on('publish', function (options, sdp, callback) {
             var id, st;
@@ -822,6 +827,53 @@ var listen = function () {
                     sendMsgToRoom(socket.room, 'onAddStream', st.getPublicStream());
                     safeCall(callback, 'success', id);
                 });
+            } else if (options.state === 'erizo') {
+                logger.info("New publisher");
+                id = socket.id;
+                var mixer = socket.room.mixer;
+                var hasScreen = false;
+                var unmix = options.unmix;
+                if (options.video && options.video.device === 'screen') {
+                    hasScreen = true;
+                    id = id.slice(0, -8) + '_SCREEN_';
+                    unmix = true;
+                }
+
+                if (socket.streams.indexOf(id) !== -1) {
+                    return safeCall(callback, 'error', 'already published');
+                }
+
+                if (socket.room.config) {
+                    if (socket.room.config.publishLimit >= 0 &&
+                        socket.room.controller.publisherNum() >= socket.room.config.publishLimit) {
+                        return safeCall(callback, 'error', 'max publishers');
+                    }
+                }
+
+                if (GLOBAL.config.erizoController.sendStats) {
+                    var timeStamp = new Date();
+                    rpc.callRpc('stats_handler', 'event', [{room: socket.room.id, user: socket.id, type: 'publish', stream: id, timestamp: timeStamp.getTime()}]);
+                }
+
+                socket.room.controller.addPublisher(id, mixer, unmix, function (signMess) {
+                    if (signMess.type === 'initializing') {
+                        safeCall(callback, undefined, id);
+                        st = new ST.Stream({id: id, audio: options.audio, video: options.video, attributes: options.attributes, from: socket.id});
+                        socket.room.streams[id] = st;
+                        sendMsgToRoom(socket.room, 'onAddStream', socket.room.streams[id].getPublicStream());
+                        return;
+                    }
+
+                    if (signMess.type === 'candidate') {
+                        signMess.candidate = signMess.candidate.replace(privateRegexp, publicIP);
+                    }
+
+                    console.log(';;;;;;;;;;;;;;; VOY ', signMess);
+                    socket.emit('signaling_message', {mess: signMess, streamId: id});
+                });
+
+                socket.streams.push(id);
+/*
             } else if (options.state !== 'data' && !socket.room.p2p) {
                 if (options.state === 'offer' && socket.state === 'sleeping') {
                     id = socket.id;
@@ -876,6 +928,7 @@ var listen = function () {
                     socket.streams.push(id);
                 } else if (options.state === 'ok' && socket.state === 'waitingOk') {
                 }
+*/
             } else if (options.state === 'p2pSignaling') {
                 io.sockets.to(options.subsSocket).emit('onPublishP2P', {sdp: sdp, streamId: options.streamId}, function(answer) {
                     safeCall(callback, answer);
@@ -931,12 +984,14 @@ var listen = function () {
                             options.video = true;
                         }
                     }
-                    socket.room.controller.addSubscriber(socket.id, options.streamId, options.audio, options.video, sdp, function (answer, errText) {
-                        answer = answer.replace(privateRegexp, publicIP);
-                        safeCall(callback, answer, errText);
-                    }, function() {
-                        log.info('Subscriber added');
+                    socket.room.controller.addSubscriber(socket.id, options.streamId, options.audio, options.video, function (signMess, errText) {
+                        if (signMess.type === 'candidate') {
+                            signMess.candidate = signMess.candidate.replace(privateRegexp, publicIP);
+                        }
+                        socket.emit('signaling_message', {mess: signMess, streamId: options.streamId});
                     });
+                    log.info('Subscriber added');
+                    safeCall(callback, '');
                 }
             } else {
                 safeCall(callback, undefined);
