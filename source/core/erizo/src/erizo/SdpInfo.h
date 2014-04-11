@@ -129,7 +129,7 @@ public:
      * @param sdp An string with the SDP.
      * @return true if success
      */
-    bool initWithSdp(const std::string& sdp);
+    bool initWithSdp(const std::string& sdp, const std::string& media);
     /**
      * Adds a new candidate.
      * @param info The CandidateInfo containing the new candidate
@@ -184,6 +184,10 @@ public:
      * @return The external video payload type
      */
     int getVideoExternalPT(int internalPT);
+
+    void setCredentials(const std::string username, const std::string password);
+
+    void getCredentials(std::string *username, std::string *password);
 
     RtpMap* getCodecByName(const std::string codecName, const unsigned int clockRate);
 
@@ -262,7 +266,7 @@ public:
     std::vector<BundleTag> bundleTags;
 
 private:
-    bool processSdp(const std::string& sdp);
+    bool processSdp(const std::string& sdp, const std::string& media);
     bool processCandidate(std::vector<std::string>& pieces, MediaType mediaType);
     void gen_random(char* s, int len);
     std::vector<CandidateInfo> candidateVector_;

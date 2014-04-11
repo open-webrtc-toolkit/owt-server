@@ -180,8 +180,8 @@ namespace erizo {
   SdpInfo::~SdpInfo() {
   }
 
-  bool SdpInfo::initWithSdp(const std::string& sdp) {
-    processSdp(sdp);
+  bool SdpInfo::initWithSdp(const std::string& sdp, const std::string& media) {
+    processSdp(sdp, media);
     return true;
   }
   void SdpInfo::addCandidate(const CandidateInfo& info) {
@@ -191,6 +191,16 @@ namespace erizo {
 
   void SdpInfo::addCrypto(const CryptoInfo& info) {
     cryptoVector_.push_back(info);
+  }
+
+  void SdpInfo::setCredentials(const std::string username, const std::string password) {
+    iceUsername_ = std::string(username);
+    icePassword_ = std::string(password);
+  }
+
+  void SdpInfo::getCredentials(std::string *username, std::string *password) {
+    *username = std::string(iceUsername_);
+    *password = std::string(icePassword_);
   }
 
   std::string SdpInfo::getSdp() {
@@ -220,6 +230,7 @@ namespace erizo {
       sdp << "a=msid-semantic: WMS "<< msidtemp << endl;
      }
     //candidates audio
+/*
     bool printedAudio = false, printedVideo = false;
 
     for (unsigned int it = 0; it < candidateVector_.size(); it++) {
@@ -286,7 +297,22 @@ namespace erizo {
       }
     }
     //crypto audio
+*/
+    bool printedAudio = false, printedVideo = false;
+
     if (printedAudio) {
+      sdp << "m=audio 1 RTP/" << (profile==SAVPF?"SAVPF ":"AVPF ");// << "103 104 0 8 106 105 13 126\n"
+      for (std::list<RtpMap>::iterator it = payloadVector_.begin(); it != payloadVector_.end(); ++it){
+        const RtpMap& payload_info = *it;
+        if (payload_info.mediaType == AUDIO_TYPE && payload_info.enable)
+          sdp << payload_info.payloadType <<" ";
+      }
+      sdp << "\n"
+          << "c=IN IP4 0.0.0.0" << endl;
+      if (isRtcpMux) {
+        sdp << "a=rtcp:1 IN IP4 0.0.0.0" << endl;
+      }
+
       sdp << "a=ice-ufrag:" << iceUsername_ << endl;
       sdp << "a=ice-pwd:" << icePassword_ << endl;
       //sdp << "a=ice-options:google-ice" << endl;
@@ -352,7 +378,7 @@ namespace erizo {
         "a=ssrc:"<< audioSsrc << " label:" << msidtemp <<"a0"<<endl;
 
     }
-
+/*
     for (unsigned int it = 0; it < candidateVector_.size(); it++) {
       const CandidateInfo& cand = candidateVector_[it];
       std::string hostType_str;
@@ -413,7 +439,21 @@ namespace erizo {
       }
     }
     //crypto video
+*/
     if (printedVideo) {
+      sdp << "m=video 1 RTP/" << (profile==SAVPF?"SAVPF ":"AVPF "); //<<  "100 101 102 103\n"
+
+      for (std::list<RtpMap>::iterator it = payloadVector_.begin(); it != payloadVector_.end(); ++it){
+        const RtpMap& payload_info = *it;
+        if (payload_info.mediaType == VIDEO_TYPE && payload_info.enable)
+          sdp << payload_info.payloadType <<" ";
+      }
+
+      sdp << "\n" << "c=IN IP4 0.0.0.0" << endl;
+      if (isRtcpMux) {
+        sdp << "a=rtcp:1 IN IP4 0.0.0.0" << endl;
+      }
+
       sdp << "a=ice-ufrag:" << iceUsername_ << endl;
       sdp << "a=ice-pwd:" << icePassword_ << endl;
       //sdp << "a=ice-options:google-ice" << endl;
@@ -605,7 +645,7 @@ namespace erizo {
     return found;
   }
 
-  bool SdpInfo::processSdp(const std::string& sdp) {
+  bool SdpInfo::processSdp(const std::string& sdp, const std::string& media) {
 
     std::string line;
     std::istringstream iss(sdp);
@@ -614,6 +654,11 @@ namespace erizo {
     bool nextLineRetrieved = false;
 
     MediaType mtype = OTHER;
+    if (media == "audio") {
+      mtype = AUDIO_TYPE;
+    } else if (media == "video") {
+      mtype = VIDEO_TYPE;
+    }
 
     while (nextLineRetrieved || std::getline(iss, line)) {
       nextLineRetrieved = false;
@@ -722,13 +767,13 @@ namespace erizo {
                    crypinfo.mediaType);
       }
       if (isUser != std::string::npos) {
-        std::vector<std::string> parts = stringutil::splitOneOf(line, ":", 1);
+        std::vector<std::string> parts = stringutil::splitOneOf(stringutil::splitOneOf(line, ":", 1)[1], "\r", 1);
         // FIXME add error checking
         iceUsername_ = parts[1];
         ELOG_DEBUG("ICE username: %s", iceUsername_.c_str());
       }
       if (isPass != std::string::npos) {
-        std::vector<std::string> parts = stringutil::splitOneOf(line, ":", 1);
+        std::vector<std::string> parts = stringutil::splitOneOf(stringutil::splitOneOf(line, ":", 1)[1], "\r", 1);
         // FIXME add error checking
         icePassword_ = parts[1];
         ELOG_DEBUG("ICE password: %s", icePassword_.c_str());

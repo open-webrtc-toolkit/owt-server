@@ -94,6 +94,8 @@ exports.ErizoJSController = function () {
         }
     };
 
+    var CONN_INITIAL = 101, CONN_STARTED = 102, CONN_READY = 103, CONN_FINISHED = 104, CONN_CANDIDATE = 201, CONN_SDP = 202, CONN_FAILED = 500;
+
     /*
      * Given a WebRtcConnection waits for the state READY for ask it to send a FIR packet to its publisher.
      */
@@ -102,7 +104,7 @@ exports.ErizoJSController = function () {
         if (publishers[to] !== undefined) {
             var intervarId = setInterval(function () {
               if (publishers[to]!==undefined){
-                if (wrtc.getCurrentState() >= 103 && publishers[to].muxer.getPublisherState() >= 103) {
+                if (wrtc.getCurrentState() >= CONN_READY && publishers[to].muxer.getPublisherState() >= CONN_READY) {
                     publishers[to].muxer.sendFIR();
                     clearInterval(intervarId);
                 }
@@ -140,7 +142,7 @@ exports.ErizoJSController = function () {
             rpc.callRpc('stats_handler', 'event', [{pub: id_pub, subs: id_sub, type: 'connection_status', status: newStatus, timestamp:timeStamp.getTime()}]);
           }
 
-          if (newStatus === 104) { // Connection Finished
+          if (newStatus === CONN_FINISHED) { // Connection Finished
             terminated = true;
           }
           // if (newStatus === 102 && !sdpDelivered) {
@@ -154,20 +156,19 @@ exports.ErizoJSController = function () {
           //   callback('onReady');
           // }
 
-          if (newStatus == 101) {
+          if (newStatus == CONN_INITIAL) {
             callback('callback', {type: 'started'});
 
-          } else if (newStatus == 202) {
-            //console.log('111111111111111111 ', wrtc.getLocalSdp());
+          } else if (newStatus == CONN_SDP) {
+            logger.debug('Sending SDP', mess);
             callback('callback', {type: 'answer', sdp: mess});
 
-          } else if (newStatus == 201) {
+          } else if (newStatus == CONN_CANDIDATE) {
             callback('callback', {type: 'candidate', candidate: mess});
-          } else if (newStatus == 102) {
-            callback('callback', {type: 'answer', sdp: wrtc.getLocalSdp()});
+          } else if (newStatus == CONN_STARTED) {
           }
 
-          if (newStatus === 103) { // Connection Ready
+          if (newStatus === CONN_READY) { // Connection Ready
             // Perform the additional work for publishers.
             if (id_mixer && (unmix !== true)) {
               var mixer = publishers[id_mixer] ? publishers[id_mixer].muxer : undefined;
