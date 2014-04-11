@@ -828,7 +828,7 @@ var listen = function () {
                     safeCall(callback, 'success', id);
                 });
             } else if (options.state === 'erizo') {
-                logger.info("New publisher");
+                log.info("New publisher");
                 id = socket.id;
                 var mixer = socket.room.mixer;
                 var hasScreen = false;
@@ -985,13 +985,19 @@ var listen = function () {
                         }
                     }
                     socket.room.controller.addSubscriber(socket.id, options.streamId, options.audio, options.video, function (signMess, errText) {
+                        if (signMess.type === 'initializing') {
+                            log.info("Initializing subscriber");
+                            safeCall(callback, 'initializing');
+                            return;
+                        }
+
                         if (signMess.type === 'candidate') {
                             signMess.candidate = signMess.candidate.replace(privateRegexp, publicIP);
                         }
-                        socket.emit('signaling_message', {mess: signMess, streamId: options.streamId});
+                        socket.emit('signaling_message', {mess: signMess, peerId: options.streamId});
                     });
                     log.info('Subscriber added');
-                    safeCall(callback, '');
+                    // safeCall(callback, '');
                 }
             } else {
                 safeCall(callback, undefined);

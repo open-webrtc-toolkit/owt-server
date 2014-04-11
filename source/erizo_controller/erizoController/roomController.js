@@ -273,8 +273,6 @@ exports.RoomController = function (spec) {
 
             log.info('Adding publisher peer_id', publisher_id);
 
-            sdp = unescapeSdp(sdp);
-
             // We create a new ErizoJS with the publisher_id.
             createErizoJS(publisher_id, mixer_id, function () {
                 // then we call its addPublisher method.
@@ -323,7 +321,9 @@ exports.RoomController = function (spec) {
             var args = [subscriber_id, publisher_id, audio, video];
 
             // rpc.callRpc(getErizoQueue(publisher_id), "addSubscriber", args, {callback: callback, onReady: onReady});
-            rpc.callRpc(getErizoQueue(publisher_id), "addSubscriber", args, {callback: callback});
+            rpc.callRpc(getErizoQueue(publisher_id), "addSubscriber", args, {callback: function (msg) {
+                callback(msg);
+            }});
 
             // Track subscriber locally
             subscribers[publisher_id].push(subscriber_id);

@@ -402,7 +402,13 @@ conference.join(token, function(response) {...}, function(error) {...});
         });
 
         self.socket.on('signaling_message', function (arg) {
-          var stream = self.localStreams[arg.streamId];
+          var stream;
+          if (arg.peerId) {
+            stream = that.remoteStreams[arg.peerId];
+          } else {
+            stream = that.localStreams[arg.streamId];
+          }
+
           console.log('SOCKE SID', arg.mess);
           if (stream) {
             stream.pc.processSignalingMessage(arg.mess);
@@ -657,7 +663,7 @@ conference.publish(localStream, {maxVideoBW: 300}, function (st) {
         stream.channel = createChannel({
           callback: function (message) {
             console.log("Sending message", message);
-            sendSdp(self.socket, 'signaling_message', {streamId: id, msg: message}, function () {});
+            sendSdp(self.socket, 'signaling_message', {streamId: id, msg: message}, undefined, function () {});
           },
           video: stream.hasVideo(),
           audio: stream.hasAudio(),
@@ -718,8 +724,8 @@ conference.publish(localStream, {maxVideoBW: 300}, function (st) {
           }
         };
 
-        stream.channel.createOffer();
         stream.channel.addStream(stream.mediaStream);
+        stream.channel.createOffer();
       });
 /*
       stream.channel = createChannel({
@@ -961,7 +967,7 @@ conference.subscribe(remoteStream, function (st) {
       streamId: stream.id(),
       audio: stream.hasAudio() && (options.audio !== false),
       video: stream.hasVideo() && options.video
-    }, function (answer, errText) {
+    }, undefined, function (answer, errText) {
       if (answer === 'error' || answer === 'timeout') {
         return safeCall(onFailure, errText || answer);
       }
@@ -971,7 +977,7 @@ conference.subscribe(remoteStream, function (st) {
           sendSdp(self.socket, 'signaling_message', {
             streamId: stream.id(),
             msg: message
-          }, function () {});
+          }, undefined, function () {});
         },
         audio: stream.hasAudio() && (options.audio !== false),
         video: stream.hasVideo() && (options.video !== false),
