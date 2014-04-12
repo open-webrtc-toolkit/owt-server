@@ -18,7 +18,8 @@ DEFINE_LOGGER(Resender, "Resender");
 
 Resender::Resender(boost::shared_ptr<NiceConnection> nice, unsigned int comp, const unsigned char* data, unsigned int len) : 
   nice_(nice), comp_(comp), data_(data),len_(len), timer(service) {
-  }
+  sent_ = 0;
+}
 
 Resender::~Resender() {
   ELOG_DEBUG("Resender destructor");
@@ -32,9 +33,11 @@ Resender::~Resender() {
 
 void Resender::cancel() {
   timer.cancel();
+  sent_ = 1;
 }
 
 void Resender::start() {
+  sent_ = 0;
   timer.cancel();
   if (thread_.get()!=NULL) {
     ELOG_ERROR("Starting Resender, joining thread to terminate");
@@ -50,15 +53,25 @@ void Resender::run() {
   service.run();
 }
 
+int Resender::getStatus() {
+  return sent_;
+}
+
 void Resender::resend(const boost::system::error_code& ec) {  
   if (ec == boost::asio::error::operation_aborted) {
     ELOG_DEBUG("%s - Cancelled", nice_->transportName->c_str());
     return;
   }
-
-  ELOG_WARN("%s - Resending DTLS message to %d", nice_->transportName->c_str(), comp_);
-  nice_->sendData(comp_, data_, len_);
-  ELOG_WARN("%s - Resent", nice_->transportName->c_str());
+  
+  if (nice_ != NULL) {
+    ELOG_WARN("%s - Resending DTLS message to %d", nice_->transportName->c_str(), comp_);
+    int val = nice_->sendData(comp_, data_, len_);
+    if (val < 0) {
+       sent_ = -1;
+    } else {
+       sent_ = 2;
+    }
+  }
 }
 
 DtlsTransport::DtlsTransport(MediaType med, const std::string &transport_name, bool bundle, bool rtcp_mux, TransportListener *transportListener, const std::string &stunServer, int stunPort, int minPort, int maxPort, const std::string& certFile, const std::string& keyFile, const std::string& privatePasswd):Transport(med, transport_name, bundle, rtcp_mux, transportListener, stunServer, stunPort, minPort, maxPort) {
@@ -299,12 +312,12 @@ void DtlsTransport::updateIceState(IceState state, NiceConnection *conn) {
     updateTransportState(TRANSPORT_FAILED);
   }
   if (state == NICE_READY) {
-    ELOG_INFO("%s - Nice ready", transport_name.c_str());
-    if (dtlsRtp && !dtlsRtp->started) {
-      ELOG_INFO("%s - DTLSRTP Start", transport_name.c_str());
+    ELOG_DEBUG("%s - Nice ready", transport_name.c_str());
+    if (dtlsRtp && (!dtlsRtp->started || rtpResender->getStatus() < 0)) {
+      ELOG_DEBUG("%s - DTLSRTP Start", transport_name.c_str());
       dtlsRtp->start();
     }
-    if (dtlsRtcp != NULL && !dtlsRtcp->started) {
+    if (dtlsRtcp != NULL && (!dtlsRtcp->started || rtcpResender->getStatus() < 0)) {
       ELOG_DEBUG("%s - DTLSRTCP Start", transport_name.c_str());
       dtlsRtcp->start();
     }
