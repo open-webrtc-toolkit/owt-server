@@ -25,7 +25,7 @@ extern "C"
 #include <boost/thread/mutex.hpp>
 #include <boost/shared_ptr.hpp>
 
-#include "logger.h"
+#include <logger.h>
 
 const int SRTP_MASTER_KEY_KEY_LEN = 16;
 const int SRTP_MASTER_KEY_SALT_LEN = 14;
@@ -139,7 +139,6 @@ class DtlsSocket
       // Internals
       boost::shared_ptr<DtlsSocketContext> mSocketContext;
       DtlsFactory* mFactory;
-      DtlsTimer *mReadTimer;  // Timer used during handshake process
 
       // OpenSSL context data
       SSL *mSsl;
@@ -168,6 +167,7 @@ class DtlsSocketContext
       DtlsSocketContext();
       virtual ~DtlsSocketContext();
       void start();
+      void stop();
       void read(const unsigned char* data, unsigned int len);
       void write(const unsigned char* data, unsigned int len);
       void handshakeCompleted();

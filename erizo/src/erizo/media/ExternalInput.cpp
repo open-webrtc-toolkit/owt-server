@@ -162,7 +162,7 @@ namespace erizo {
   }
 
 
-  void ExternalInput::receiveRtpData(unsigned char*rtpdata, int len) {
+  void ExternalInput::receiveRtpData(char* rtpdata, int len, DataType type, uint32_t streamId) {
     if (videoSink_!=NULL){
       memcpy(sendVideoBuffer_, rtpdata, len);
       videoSink_->deliverVideoData(sendVideoBuffer_, len);

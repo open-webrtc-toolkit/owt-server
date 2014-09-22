@@ -12,7 +12,7 @@
 
 #include "MediaDefinitions.h"
 #include "SdpInfo.h"
-#include "logger.h"
+#include <logger.h>
 
 typedef struct _NiceAgent NiceAgent;
 typedef struct _GMainLoop GMainLoop;
@@ -55,17 +55,17 @@ public:
 	/**
 	 * The transport name
 	 */
-  boost::scoped_ptr<std::string> transportName;
+	boost::scoped_ptr<std::string> transportName;
 	/**
 	 * The Obtained local candidates.
 	 */
-  boost::shared_ptr<std::vector<CandidateInfo> > localCandidates;
+	boost::shared_ptr<std::vector<CandidateInfo> > localCandidates;
 
 	/**
 	 * Constructs a new NiceConnection.
 	 * @param med The MediaType of the connection.
 	 * @param transportName The name of the transport protocol. Was used when WebRTC used video_rtp instead of just rtp.
-   * @param iceComponents Number of ice components pero connection. Default is 1 (rtcp-mux).
+	 * @param iceComponents Number of ice components pero connection. Default is 1 (rtcp-mux).
 	 */
 	NiceConnection(MediaType med, const std::string &transportName, NiceConnectionListener* listener, unsigned int iceComponents=1,
 		const std::string& stunServer = "", int stunPort = 3478, int minPort = 0, int maxPort = 65535);
@@ -98,30 +98,30 @@ public:
 
 
 	void updateIceState(IceState state);
-  IceState checkIceState();
+	IceState checkIceState();
 	void updateComponentState(unsigned int compId, IceState state);
 
-  void queueData(unsigned int component_id, char* buf, int len);
+	void queueData(unsigned int component_id, char* buf, int len);
 
-  packetPtr getPacket();
-  void close();
+	packetPtr getPacket();
+	void close();
 
 private:
 	void init();
 	NiceAgent* agent_;
 	NiceConnectionListener* listener_;
-  std::queue<packetPtr> niceQueue_;
+	std::queue<packetPtr> niceQueue_;
 	GMainLoop* loop_;
 	GMainContext* context_;
 	boost::thread m_Thread_;
 	IceState iceState_;
 	boost::mutex queueMutex_, agentMutex_;
-  boost::recursive_mutex stateMutex_;
+	boost::recursive_mutex stateMutex_;
 	boost::condition_variable cond_;
-  unsigned int iceComponents_;
-  std::map <unsigned int, IceState> comp_state_list_;
+	unsigned int iceComponents_;
+	std::map <unsigned int, IceState> comp_state_list_;
 	std::string stunServer_;
-  bool running_;
+	bool running_;
 	int stunPort_, minPort_, maxPort_;
 };
 

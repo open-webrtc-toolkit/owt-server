@@ -6,7 +6,7 @@
 #define VIDEOCODEC_H_
 
 #include "Codecs.h"
-#include "logger.h"
+#include <logger.h>
 
 extern "C" {
 #ifndef INT64_C

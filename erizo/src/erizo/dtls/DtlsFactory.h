@@ -9,7 +9,7 @@
 #include <boost/shared_ptr.hpp>
 #include "DtlsTimer.h"
 #include <openssl/evp.h>
-#include "logger.h"
+#include <logger.h>
 typedef struct x509_st X509;
 typedef struct ssl_ctx_st SSL_CTX;
 typedef struct evp_pkey_st EVP_PKEY;
@@ -27,7 +27,7 @@ class DtlsFactory
    public:
      enum PacketType { rtp, dtls, stun, unknown};
 
-     DtlsFactory();
+     DtlsFactory(const std::string& certFile, const std::string& keyFile, const std::string& privatePasswd);
 
      // Note: this orphans any DtlsSockets you were stupid enough
      // not to free
@@ -57,22 +57,21 @@ class DtlsFactory
      // Examines the first few bits of a packet to determine its type: rtp, dtls, stun or unknown
      static PacketType demuxPacket(const unsigned char *buf, unsigned int len);
 
-     static DtlsFactory* GetInstance() {
-        static DtlsFactory INSTANCE;
+     static DtlsFactory* GetInstance(const std::string& certFile, const std::string& keyFile, const std::string& privatePasswd) {
+        static DtlsFactory INSTANCE(certFile, keyFile, privatePasswd);
         return &INSTANCE;
      }
 
      static X509 *mCert;
      static EVP_PKEY *privkey;
 
-     static void Init();
+     static void Init(const std::string& certFile, const std::string& keyFile, const std::string& privatePasswd);
 
 private:
      friend class DtlsSocket;
      // Creates a DTLS SSL Context and enables srtp extension, also sets the private and public key cert
 
      SSL_CTX* mContext;
-     EVP_MD_CTX* ctx_;
      std::auto_ptr<DtlsTimerContext> mTimerContext;
 
 

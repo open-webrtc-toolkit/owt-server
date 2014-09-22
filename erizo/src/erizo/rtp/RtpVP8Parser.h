@@ -1,7 +1,7 @@
 #ifndef RTPVP8PARSER_H_
 #define RTPVP8PARSER_H_
 
-#include "logger.h"
+#include <logger.h>
 
 namespace erizo {
 
@@ -25,7 +25,7 @@ typedef struct {
 	int keyIdx;
 	int frameWidth;
 	int frameHeight;
-  FrameTypes frameType;
+	FrameTypes frameType;
 
 	const unsigned char* data;
 	unsigned int dataLength;
@@ -34,9 +34,10 @@ typedef struct {
 class RtpVP8Parser {
 	DECLARE_LOGGER();
 public:
+	static void parseVP8(unsigned char* data, int datalength, RTPPayloadVP8* parsedVP8);
+
 	RtpVP8Parser();
 	virtual ~RtpVP8Parser();
-	erizo::RTPPayloadVP8* parseVP8(unsigned char* data, int datalength);
 };
 
 } /* namespace erizo */

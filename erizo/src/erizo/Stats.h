@@ -11,7 +11,7 @@
 #include <boost/thread.hpp>
 
 #include "logger.h"
-#include "rtp/RtpHeaders.h"
+#include "rtputils.h"
 
 namespace erizo{
 
@@ -47,7 +47,7 @@ namespace erizo{
     int currentIterations_;
     bool runningStats_;
 
-    void processRtcpPacket(RtcpHeader* chead);
+    void processRtcpPacket(RTCPHeader* chead);
 
     int getPacketsLost(unsigned int ssrc){
       return static_cast<int>(theStats_[ssrc]["packetsLost"]);

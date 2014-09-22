@@ -10,7 +10,7 @@
 #include "../MediaDefinitions.h"
 #include "codecs/Codecs.h"
 #include "codecs/VideoCodec.h"
-#include "logger.h"
+#include <logger.h>
 
 extern "C" {
 #include <libavcodec/avcodec.h>
@@ -29,16 +29,6 @@ struct RTPInfo {
 
 enum ProcessorType {
 	RTP_ONLY, AVF, PACKAGE_ONLY
-};
-
-enum DataType {
-	VIDEO, AUDIO
-};
-
-struct RawDataPacket {
-	unsigned char* data;
-	int length;
-	DataType type;
 };
 
 struct MediaInfo {
@@ -63,24 +53,6 @@ struct MediaInfo {
 //	OutputProcessor* output;
 //};
 
-class RawDataReceiver {
-public:
-	virtual void receiveRawData(RawDataPacket& packet) = 0;
-	virtual ~RawDataReceiver() {
-	}
-	;
-};
-
-class RTPDataReceiver {
-public:
-	virtual void receiveRtpData(unsigned char* rtpdata, int len) = 0;
-	virtual ~RTPDataReceiver() {
-	}
-	;
-};
-
-class RTPSink;
-
 class InputProcessor: public MediaSink {
 	DECLARE_LOGGER();
 public:
@@ -89,6 +61,8 @@ public:
 
 	int init(const MediaInfo& info, RawDataReceiver* receiver);
 
+	int deliverAudioData(char* buf, int len);
+	int deliverVideoData(char* buf, int len);
 
 	int unpackageVideo(unsigned char* inBuff, int inBuffLen,
             unsigned char* outBuff, int* gotFrame);
@@ -136,14 +110,10 @@ private:
 
 	RawDataReceiver* rawReceiver_;
 
-	erizo::RtpVP8Parser pars;
-
 	bool initAudioDecoder();
 
 	bool initAudioUnpackager();
 	bool initVideoUnpackager();
-	int deliverAudioData_(char* buf, int len);
-	int deliverVideoData_(char* buf, int len);
 
 	int decodeAudio(unsigned char* inBuff, int inBuffLen,
 			unsigned char* outBuff);
@@ -199,12 +169,9 @@ private:
 	AVOutputFormat* aOutputFormat;
 
 	RTPInfo* vRTPInfo_;
-	RTPSink* sink_;
 
 	AVFormatContext* vOutputFormatContext;
 	AVOutputFormat* vOutputFormat;
-
-	RtpVP8Parser pars;
 
 	bool initAudioCoder();
 

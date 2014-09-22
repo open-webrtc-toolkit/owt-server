@@ -1,9 +1,10 @@
 #include <string>
 
-#include "MediaProcessor.h"
-#include "../rtp/RtpVP8Fragmenter.h"
-#include "../rtp/RtpHeaders.h"
+#include <rtputils.h>
 #include "codecs/VideoCodec.h"
+#include "rtp/RtpVP8Fragmenter.h"
+
+#include "MediaProcessor.h"
 
 extern "C" {
 #include <libavutil/mathematics.h>
@@ -61,7 +62,7 @@ namespace erizo {
     return 0;
   }
 
-  int InputProcessor::deliverAudioData_(char* buf, int len) {
+  int InputProcessor::deliverAudioData(char* buf, int len) {
     if (audioDecoder && audioUnpackager) {
       ELOG_DEBUG("Decoding audio");
       int unp = unpackageAudio((unsigned char*) buf, len,
@@ -77,7 +78,7 @@ namespace erizo {
     }
     return 0;
   }
-  int InputProcessor::deliverVideoData_(char* buf, int len) {
+  int InputProcessor::deliverVideoData(char* buf, int len) {
     if (videoUnpackager && videoDecoder) {
       int ret = unpackageVideo(reinterpret_cast<unsigned char*>(buf), len, unpackagedBufferPtr_, &gotUnpackagedFrame_);
       if (ret < 0)
@@ -244,12 +245,12 @@ namespace erizo {
   }
 
   int InputProcessor::unpackageAudio(unsigned char* inBuff, int inBuffLen, unsigned char* outBuff) {
-    int l = inBuffLen - RtpHeader::MIN_SIZE;
+    int l = inBuffLen - RTPHeader::MIN_SIZE;
     if (l < 0){
       ELOG_ERROR ("Error unpackaging audio");
       return 0;
     }
-    memcpy(outBuff, &inBuff[RtpHeader::MIN_SIZE], l);
+    memcpy(outBuff, &inBuff[RTPHeader::MIN_SIZE], l);
 
     return l;
   }
@@ -263,7 +264,7 @@ namespace erizo {
 
     int inBuffOffset = 0;
     *gotFrame = 0;
-    RtpHeader* head = reinterpret_cast<RtpHeader*>(inBuff);
+    RTPHeader* head = reinterpret_cast<RTPHeader*>(inBuff);
     if (head->getPayloadType() != 100) {
       return -1;
     }
@@ -271,13 +272,14 @@ namespace erizo {
     int l = inBuffLen - head->getHeaderLength();
     inBuffOffset+=head->getHeaderLength();
 
-    erizo::RTPPayloadVP8* parsed = pars.parseVP8((unsigned char*) &inBuff[inBuffOffset], l);
-    memcpy(outBuff, parsed->data, parsed->dataLength);
+    erizo::RTPPayloadVP8 parsed;
+    RtpVP8Parser::parseVP8(
+        (unsigned char*) &inBuff[inBuffOffset], l, &parsed);
+    memcpy(outBuff, parsed.data, parsed.dataLength);
     if (head->getMarker()) {
       *gotFrame = 1;
     }
-    int ret = parsed->dataLength;
-    delete parsed;
+    int ret = parsed.dataLength;
     return ret;
   }
 
@@ -452,7 +454,7 @@ namespace erizo {
     gettimeofday(&time, NULL);
     long millis = (time.tv_sec * 1000) + (time.tv_usec / 1000);
 
-    RtpHeader head;
+    RTPHeader head;
     head.setSeqNumber(audioSeqnum_++);
 //    head.setTimestamp(millis*8);
     head.setMarker(1);
@@ -497,7 +499,7 @@ namespace erizo {
     do {
       outlen = 0;
       frag.getPacket(outBuff, &outlen, &lastFrame);
-      RtpHeader rtpHeader;
+      RTPHeader rtpHeader;
       rtpHeader.setMarker(lastFrame?1:0);
       rtpHeader.setSeqNumber(seqnum_++);
       if (pts==0){
@@ -512,8 +514,7 @@ namespace erizo {
       memcpy(&rtpBuffer_[rtpHeader.getHeaderLength()],outBuff, outlen);
 
       int l = outlen + rtpHeader.getHeaderLength();
-      //			sink_->sendData(rtpBuffer_, l);
-      rtpReceiver_->receiveRtpData(rtpBuffer_, l);
+      rtpReceiver_->receiveRtpData(reinterpret_cast<char*>(rtpBuffer_), l);
     } while (!lastFrame);
 
     return 0;

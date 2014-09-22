@@ -34,6 +34,9 @@ DtlsSocketContext::DtlsSocketContext() {
 }
 
 DtlsSocketContext::~DtlsSocketContext(){
+}
+
+void DtlsSocketContext::stop() {
   delete mSocket;
   mSocket = NULL;
 }
@@ -87,14 +90,18 @@ void DtlsSocketContext::handshakeCompleted()
     memcpy ( sKey + keys->serverMasterKeyLen, keys->serverMasterSalt, keys->serverMasterSaltLen );
 
 
-    std::string clientKey = g_base64_encode((const guchar*)cKey, keys->clientMasterKeyLen + keys->clientMasterSaltLen);
-    std::string serverKey = g_base64_encode((const guchar*)sKey, keys->serverMasterKeyLen + keys->serverMasterSaltLen);
+    gchar* clientKeyRaw = g_base64_encode((const guchar*)cKey, keys->clientMasterKeyLen + keys->clientMasterSaltLen);
+    gchar* serverKeyRaw = g_base64_encode((const guchar*)sKey, keys->serverMasterKeyLen + keys->serverMasterSaltLen);
+    std::string clientKey = clientKeyRaw;
+    std::string serverKey = serverKeyRaw;
 
     ELOG_DEBUG("ClientKey: %s", clientKey.c_str());
     ELOG_DEBUG("ServerKey: %s", serverKey.c_str());
 
     free(cKey);
     free(sKey);
+    g_free(clientKeyRaw);
+    g_free(serverKeyRaw);
     delete keys;
 
     srtp_profile=mSocket->getSrtpProfile();

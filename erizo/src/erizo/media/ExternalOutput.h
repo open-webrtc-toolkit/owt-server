@@ -5,7 +5,7 @@
 #include "rtp/RtpPacketQueue.h"
 #include "MediaProcessor.h"
 #include "boost/thread.hpp"
-#include "logger.h"
+#include <logger.h>
 
 extern "C" {
 #include <libavcodec/avcodec.h>
@@ -26,9 +26,11 @@ enum vp8SearchState {
 class ExternalOutput : public MediaSink, public RawDataReceiver, public FeedbackSource {
     DECLARE_LOGGER();
 public:
-    ExternalOutput(const std::string& outputUrl);
+    DLL_PUBLIC ExternalOutput(const std::string& outputUrl);
     virtual ~ExternalOutput();
-    bool init();
+    DLL_PUBLIC bool init();
+    int deliverAudioData(char* buf, int len);
+    int deliverVideoData(char* buf, int len);
     void receiveRawData(RawDataPacket& packet);
 
 private:
@@ -87,8 +89,6 @@ private:
     int sendFirPacket();
     void queueData(char* buffer, int length, packetType type);
     void sendLoop();
-    int deliverAudioData_(char* buf, int len);
-    int deliverVideoData_(char* buf, int len);
     void writeAudioData(char* buf, int len);
     void writeVideoData(char* buf, int len);
 };

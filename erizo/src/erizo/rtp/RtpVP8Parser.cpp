@@ -156,10 +156,10 @@ namespace erizo {
     return parsedBytes;
   }
 
-  RTPPayloadVP8* RtpVP8Parser::parseVP8(unsigned char* data,
-      int dataLength) {
+  void RtpVP8Parser::parseVP8(unsigned char* data,
+      int dataLength, RTPPayloadVP8* parsedVP8) {
     //ELOG_DEBUG("Parsing VP8 %d bytes", dataLength);
-    RTPPayloadVP8* vp8 = new RTPPayloadVP8; // = &parsedPacket.info.VP8;
+    RTPPayloadVP8* vp8 = parsedVP8;
     const unsigned char* dataPtr = data;
 
     // Parse mandatory first byte of payload descriptor
@@ -172,7 +172,7 @@ namespace erizo {
 
     if (vp8->partitionID > 8) {
       // Weak check for corrupt data: PartID MUST NOT be larger than 8.
-      return vp8;
+      return;
     }
 
     // Advance dataPtr and decrease remaining payload size
@@ -182,7 +182,7 @@ namespace erizo {
     if (extension) {
       const int parsedBytes = ParseVP8Extension(vp8, dataPtr, dataLength);
       if (parsedBytes < 0)
-        return vp8;
+        return;
       dataPtr += parsedBytes;
       dataLength -= parsedBytes;
       //ELOG_DEBUG("Parsed bytes in extension %d", parsedBytes);
@@ -190,7 +190,7 @@ namespace erizo {
 
     if (dataLength <= 0) {
       ELOG_DEBUG("Error parsing VP8 payload descriptor; payload too short");
-      return vp8;
+      return;
     }
 
     // Read P bit from payload header (only at beginning of first partition)
@@ -209,7 +209,7 @@ namespace erizo {
     vp8->data = dataPtr;
     vp8->dataLength = (unsigned int) dataLength;
 
-    return vp8;
+    return;
   }
 }
 

@@ -432,7 +432,6 @@ namespace erizo {
         cand_info.transProtocol = std::string(*transportName.get());
 
         cand_info.username = std::string(ufrag);
-
         cand_info.password = std::string(upass);
         /*
            if (cand->username)
