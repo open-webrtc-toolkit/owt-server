@@ -9,7 +9,7 @@ CURRENT_DIR=`pwd`
 DB_DIR="$BUILD_DIR"/db
 
 install_nuve(){
-  cd $ROOT/nuve
+  cd $ROOT/source/nuve
   ./installNuve.sh
   cd $CURRENT_DIR
 }

@@ -1,6 +1,6 @@
 /*global require, console, setInterval, clearInterval, exports*/
 var rpc = require('./rpc/rpc');
-var config = require('./../../licode_config');
+var config = require('./../../../licode_config');
 var logger = require('./logger').logger;
 
 // Logger
