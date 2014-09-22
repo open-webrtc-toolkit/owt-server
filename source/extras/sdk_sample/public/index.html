@@ -1,0 +1,217 @@
+<!DOCTYPE html><html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>WebRTC Gateway Basic Example</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="vendor/jquery-latest.js"></script>
+    <link rel="stylesheet" href="vendor/bootstrap.min.css">
+    <script src="vendor/bootstrap.min.js"></script>
+    <script type="text/javascript" src="vendor/pnotify.custom.min.js"></script>
+    <link href="vendor/pnotify.custom.min.css" media="all" rel="stylesheet" type="text/css" />
+    <script type="text/javascript" src="/erizoclient.js"></script>
+    <script type="text/javascript" src="/erizoclient.ui.js"></script>
+    <script type="text/javascript" src="/webrtc.js"></script>
+  <style type="text/css">
+  .vivid {
+    padding-left: 0px;
+    padding-right: 0px;
+    margin-left: 10px;
+    margin-right: 10px;
+    margin-top: 10px;
+    margin-bottom: 10px;
+  }
+  </style>
+<style type="text/css">
+
+#style-overwrite {
+  border-top-left-radius: 0px;
+  border-top-right-radius: 0px;
+  border-bottom-left-radius: 95px;
+  border-bottom-right-radius: 95px;
+  background-color: #231F20;
+  color: white;
+}
+
+#style-overwrite:before{
+  content: url('./raw/left.svg');
+  position: absolute;
+  left: -100px;
+  top: 0px;
+}
+
+#style-overwrite:after{
+  content: url('./raw/right.svg');
+  position: absolute;
+  left: calc(100% + 0px);
+  top: 0px;
+}
+
+#style-overwrite2 {
+  background-color: #231F20;
+  border-radius: 50px;
+}
+
+#webrtc-title {
+  position: relative;
+  top: 25px;
+  font-family: Helvetica, Arial;
+  font-size: 50px;
+  margin-left: 50px;
+}
+
+#powered-by {
+  position: relative;
+  margin-top: 20px;
+  left: 80%;
+  font-family: Helvetica, Arial;
+  font-size: 14px;
+}
+
+#sample-video-container {
+  position: absolute;
+  top: 450px;
+  left: 50px;
+  width: calc(100% - 100px);
+}
+
+.sample-video-elem {
+  /*float: left;*/
+  background-color: #808080;
+  border: 8px solid rgba(58, 75, 159, 0.65);
+  border-radius: 8px;
+  box-shadow: 0px 0px 10px 0px rgba(0, 0, 0, 0.4);
+}
+
+.sample-video-elem-local {
+  border: 8px solid rgba(255, 121, 68, 0.65);
+}
+</style>
+</head>
+  <body style="background-color: #374A6B">
+    <div class="container">
+      <div class="row clearfix" id="launcher">
+        <div class="col-md-12 column" id="style-overwrite">
+          <div class="jumbotron" id="style-overwrite2">
+            <div>
+              <img src="raw/logo.png" width="250"><span id="webrtc-title">WebRTC Conference Call</span><br>
+              <div id="powered-by">
+                  <span>Powered by &nbsp;&nbsp;</span><img src="raw/intel.png" width="80">
+              </div>
+            </div>
+            <div  class="col-lg-4">
+              <div class="input-group">
+                <input type="text" class="form-control" id="avs_ip" placeholder="AVS Address">
+              </div>
+              <div class="row clearfix" style="display:none">
+                <div class="col-md-6 column" id="chat-control">
+                  <div class="btn-group">
+                    <a class="btn btn-warning dropdown-toggle" data-toggle="dropdown">
+                      Chat Control<span class="caret"></span>
+                    </a>
+                    <ul class="dropdown-menu">
+                      <li align='left'><a href="#" id="publish">publish</a></li>
+                      <li align='left'><a href="#" id="unpublish">unpublish</a></li>
+                      <li align='left'><a href="#" id="subscribe">subscribe</a></li>
+                      <li align='left'><a href="#" id="unsubscribe">unsubscribe</a></li>
+                      <li class="divider"></li>
+                      <li align='left'><a href="#" id="stream_close">close local stream</a></li>
+                      <li align='left'><a href="#" id="stream_init">init local stream</a></li>
+                      <li align='left'><a href="#" id="stream_show">show local stream</a></li>
+                      <li align='left'><a href="#" id="stream_hide">hide local stream</a></li>
+                      <li class="divider"></li>
+                      <li align='left'><a href="#" id="connect">connect</a></li>
+                      <li align='left'><a href="#" id="disconnect">disconnect</a></li>
+                    </ul>
+                  </div>
+                </div>
+                <div class="col-md-6 column" id="media-control">
+                  <div class="btn-group">
+                    <a class="btn btn-primary dropdown-toggle" data-toggle="dropdown">
+                      Media Control<span class="caret"></span>
+                    </a>
+                    <ul class="dropdown-menu">
+                      <li align='left'><a href="#" id="video-out-on">video-out-on</a></li>
+                      <li align='left'><a href="#" id="video-out-off">video-out-off</a></li>
+                      <li align='left'><a href="#" id="audio-out-on">audio-out-on</a></li>
+                      <li align='left'><a href="#" id="audio-out-off">audio-out-off</a></li>
+                      <li class="divider"></li>
+                      <li align='left'><a href="#" id="video-in-on">video-in-on</a></li>
+                      <li align='left'><a href="#" id="video-in-off">video-in-off</a></li>
+                      <li align='left'><a href="#" id="audio-in-on">audio-in-on</a></li>
+                      <li align='left'><a href="#" id="audio-in-off">audio-in-off</a></li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-lg-4">
+              <div class="input-group">
+                <input type="text" class="form-control" id="gateway_ip" placeholder="Gateway Address">
+              </div>
+              <div id="message-control" style="display:none">
+                <div class="btn-group">
+                  <div class="col-xs-4 row">
+                    <input type="text" class="form-control" id="msg-receiver" placeholder="target Id">
+                  </div>
+                  <span class="input-group-btn">
+                    <button type="button" class="btn btn-info" id="sendmessage">send msg</button>
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div class="col-lg-4">
+              <div id="broadcast-control" style="display:none">
+                <div class="btn-group">
+                  <button type="button" class="btn btn-success" id="broadcast">broadcast</button>
+                </div>
+              </div>
+              <div class="input-group">
+                <input type="text" class="form-control" id="oovoo_id" placeholder="ooVoo ID">
+                <div class="input-group-btn">
+                  <button type="button" id="joinroom" class="btn btn-default dropdown-toggle" data-toggle="dropdown">Join Room <span class="caret"></span></button>
+                  <ul class="dropdown-menu pull-right">
+                    <li><a href="#">VGA</a></li>
+                    <li><a href="#">HD720p</a></li>
+                    <li><a href="#">SIF</a></li>
+                    <li><a href="#">Unspecified</a></li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="row clearfix">
+        <div class="col-md-12 column" id="gVideo">
+          <div class="col-md-1 column vivid sample-video-elem sample-video-elem-local" style="display:none"><div id="localVideo"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      L.Logger.setLogLevel(L.Logger.INFO);
+      PNotify.prototype.options.styling = "bootstrap2";
+      var gWidth = $('#launcher .column').width();
+      $('button#joinroom').parent().find('li').click(function(evt){
+        evt.preventDefault();
+        var gateway = $('input#gateway_ip').val();
+        var targetId = $('input#oovoo_id').val();
+        var resolution = $(evt.currentTarget).find('a').text();
+        $('div#gVideo').width(gWidth);
+        $('div#gVideo').height(gWidth/4*3);
+        joinConference(gateway, targetId, gWidth, resolution);
+        $('#launcher div.input-group').hide();
+        ["unpublish", "publish", "unsubscribe", "subscribe", "connect", "disconnect", "stream_close", "stream_init", "stream_show", "stream_hide"].map(function (current, index, array) {
+          $('#chat-control #'+current).click(chat_controller);
+        });
+        ["video-out-on", "video-out-off", "audio-out-on", "audio-out-off", "video-in-on", "video-in-off", "audio-in-on", "audio-in-off"].map(function (current, index, array) {
+          $('#media-control #'+current).click(chat_controller);
+        });
+        $('#message-control #sendmessage').click(chat_controller);
+        $('#broadcast-control #broadcast').click(chat_controller);
+        $('#chat-control').parent().show();
+        $('#message-control').show();
+        $('#broadcast-control').show();
+      });
+    </script>
+</body></html>

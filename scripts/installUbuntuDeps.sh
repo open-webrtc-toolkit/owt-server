@@ -49,7 +49,7 @@ install_apt_deps(){
   sudo add-apt-repository ppa:chris-lea/node.js
   sudo apt-get update
   sudo apt-get install git make gcc g++ libssl-dev cmake libglib2.0-dev pkg-config nodejs libboost-regex-dev libboost-thread-dev libboost-system-dev liblog4cxx10-dev rabbitmq-server mongodb openjdk-6-jre curl libboost-test-dev
-  sudo npm install -g node-gyp
+  sudo -E npm install -g --loglevel error node-gyp grunt-cli underscore
   sudo chown -R `whoami` ~/.npm ~/tmp/
 }
 
@@ -124,6 +124,7 @@ install_mediadeps_nogpl(){
     tar -zxvf libav-9.13.tar.gz
     cd libav-9.13
     PKG_CONFIG_PATH=${PREFIX_DIR}/lib/pkgconfig ./configure --prefix=$PREFIX_DIR --enable-shared --enable-libvpx --enable-libopus
+
     make -s V=0
     make install
     cd $CURRENT_DIR
@@ -135,13 +136,12 @@ install_mediadeps_nogpl(){
 
 install_libsrtp(){
   cd $ROOT/third_party/srtp
-  CFLAGS="-fPIC" ./configure --prefix=$PREFIX_DIR
+  ./configure --prefix=$PREFIX_DIR
   make -s V=0
   make uninstall
   make install
   cd $CURRENT_DIR
 }
-
 
 cleanup(){  
   if [ -d $LIB_DIR ]; then
@@ -187,3 +187,7 @@ if [ "$CLEANUP" = "true" ]; then
   echo "Cleaning up..."
   cleanup
 fi
+
+pause "Installing Gateway dependencies...  [press Enter]"
+cd $PATHNAME
+./installGatewayDeps.sh

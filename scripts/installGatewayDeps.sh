@@ -1,0 +1,90 @@
+#!/bin/bash
+SCRIPT=`pwd`/$0
+FILENAME=`basename $SCRIPT`
+PATHNAME=`dirname $SCRIPT`
+ROOT=$PATHNAME/..
+BUILD_DIR=$ROOT/build
+CURRENT_DIR=`pwd`
+
+LIB_DIR=$BUILD_DIR/libdeps
+PREFIX_DIR=$LIB_DIR/build/
+
+pause() {
+  read -p "$*"
+}
+
+install_webrtc(){
+  cd $ROOT/third_party/webrtc
+  if [ -d webrtc ]; then
+    rm -rf webrtc
+  fi
+  echo "Downloading WebRTC source code..."
+  svn checkout -q http://webrtc.googlecode.com/svn/branches/3.52/webrtc
+  echo "Done."
+  patch -p0 < ./webrtc-3.52-build.patch
+  patch -p0 < ./webrtc-3.52-source.patch
+  ./build.sh
+  cd $CURRENT_DIR
+}
+
+install_libuv() {
+  local UV_SRC="https://github.com/joyent/libuv/archive/v0.10.26.tar.gz"
+  local UV_DST="libuv-0.10.26.tar.gz"
+  cd $ROOT/third_party
+  [[ ! -s ${UV_DST} ]] && wget -c ${UV_SRC} -O ${UV_DST}
+  tar xf ${UV_DST}
+  cd libuv-0.10.26 && make
+  local symbol=$(readelf -d ./libuv.so | grep soname | sed 's/.*\[\(.*\)\]/\1/g')
+  ln -s libuv.so ${symbol}
+}
+
+install_oovoosdk(){
+  mkdir -p $PREFIX_DIR/lib
+  if uname -a | grep [Uu]buntu -q -s; then
+    cp -av $ROOT/third_party/liboovoosdk-ubuntu.so $PREFIX_DIR/lib/liboovoosdk.so
+  else
+    cp -av $ROOT/third_party/liboovoosdk-el.so $PREFIX_DIR/lib/liboovoosdk.so
+  fi
+}
+
+install_tcmalloc(){
+  if [ -d $LIB_DIR ]; then
+    cd $LIB_DIR
+    curl -O http://gperftools.googlecode.com/files/gperftools-2.1.tar.gz
+    tar -zxf gperftools-2.1.tar.gz
+    cd gperftools-2.1
+    ./configure --prefix=$PREFIX_DIR --disable-cpu-profiler --disable-heap-profiler --disable-heap-checker --disable-debugalloc
+    make -s V=0
+    make install
+    cd $CURRENT_DIR
+  else
+    mkdir -p $LIB_DIR
+    install_tcmalloc
+  fi
+}
+
+mkdir -p $PREFIX_DIR
+
+read -p "Installing webrtc library? [Yes/no]" yn
+case $yn in
+  [Nn]* ) ;;
+  [Yy]* ) install_webrtc;;
+  * ) install_webrtc;;
+esac
+
+pause "Installing ooVoo SDK library...  [press Enter]"
+install_oovoosdk
+
+read -p "Building libuv? [Yes/no]" yn
+case $yn in
+  [Nn]* ) ;;
+  [Yy]* ) install_libuv;;
+  * ) install_libuv;;
+esac
+
+read -p "Installing tcmalloc library? [No/yes]" yn
+case $yn in
+  [Yy]* ) install_tcmalloc;;
+  [Nn]* ) ;;
+  * ) ;;
+esac

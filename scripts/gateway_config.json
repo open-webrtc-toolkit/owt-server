@@ -1,0 +1,53 @@
+{
+  "gateway": {
+    "_comment": "Gateway signaling server configuration",
+    "publicIP": "",
+    "port": 80,
+    "sport": 443,
+    "defaultVideoBW": 300,
+    "maxVideoBW": 2048,
+    "stunServerUrl": "",
+    "turnServer": {
+      "url": "",
+      "username": "",
+      "password": ""
+    },
+    "certificate": {
+      "cert": "../cert/cert.pem",
+      "key": "../cert/key.pem",
+      "passphrase": "private password",
+      "ca": ""
+    }
+  },
+  "core": {
+    "_comment": "Gateway media server configuration",
+    "stunserver": "",
+    "stunport": 0,
+    "minport": 0,
+    "maxport": 0,
+    "certificate": {
+      "cert": "../cert/cert.pem",
+      "key": "../cert/key.pem",
+      "passphrase": "private password"
+    },
+    "red": false,
+    "fec": false,
+    "nack_sender": true,
+    "nack_receiver": true
+  },
+  "oovoo": {
+    "_comment": "ooVoo specific configuration",
+    "codecCapability": "ac=g711"
+  },
+  "roles": {
+    "_comment": "roles to be used by services",
+    "presenter": [
+      "publish",
+      "subscribe",
+      "record"
+    ],
+    "viewer": [
+      "subscribe"
+    ]
+  }
+}
