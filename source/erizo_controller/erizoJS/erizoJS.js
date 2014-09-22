@@ -1,6 +1,6 @@
 /*global require, logger. setInterval, clearInterval, Buffer, exports*/
 var Getopt = require('node-getopt');
-var config = require('./../../licode_config');
+var config = require('./../../../licode_config');
 
 GLOBAL.config = config || {};
 GLOBAL.config.erizo = GLOBAL.config.erizo || {};

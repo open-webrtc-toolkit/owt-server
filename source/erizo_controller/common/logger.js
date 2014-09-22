@@ -1,5 +1,5 @@
 var log4js = require('log4js'); 
-var config = require('./../../licode_config');
+var config = require('./../../../licode_config');
 
 GLOBAL.config.logger = GLOBAL.config.logger || {};
 

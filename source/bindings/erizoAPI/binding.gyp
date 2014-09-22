@@ -3,7 +3,7 @@
   {
     'target_name': 'addon',
       'sources': [ 'addon.cc', 'WebRtcConnection.cc', 'OneToManyProcessor.cc', 'ExternalInput.cc', 'ExternalOutput.cc' ],
-      'include_dirs' : ['$(ERIZO_HOME)/../common', '$(ERIZO_HOME)/src/erizo', '$(ERIZO_HOME)/../build/libdeps/build/include'],
+      'include_dirs' : ['$(ERIZO_HOME)/../common', '$(ERIZO_HOME)/src/erizo', '$(ERIZO_HOME)/../../../build/libdeps/build/include'],
       'libraries': ['-L$(ERIZO_HOME)/build/erizo', '-lerizo'],
       'conditions': [
         [ 'OS=="mac"', {
