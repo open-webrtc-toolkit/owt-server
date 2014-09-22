@@ -15,6 +15,7 @@
 
 #include <openssl/bn.h>
 #include <openssl/srtp.h>
+#include <openssl/pem.h>
 
 #include "DtlsFactory.h"
 #include "DtlsSocket.h"
@@ -124,7 +125,51 @@ int SSLVerifyCallback(int ok, X509_STORE_CTX* store) {
 
 static const int KEY_LENGTH = 1024;
 
-int createCert (const string& pAor, int expireDays, int keyLen, X509*& outCert, EVP_PKEY*& outKey )
+int loadCert(const std::string& certFileName, const std::string& keyFileName, const std::string& privatePasswd, X509*& cert, EVP_PKEY*& key) {
+  FILE* certFile = NULL;
+  FILE* keyFile = NULL;
+  keyFile = fopen(keyFileName.c_str(), "r");
+  if (keyFile == NULL) {
+    return 0;
+  }
+  certFile = fopen(certFileName.c_str(), "r");
+  if (certFile == NULL) {
+    fclose(keyFile);
+    return 0;
+  }
+  key = PEM_read_PrivateKey(keyFile, NULL, NULL, (void*)privatePasswd.c_str());
+  cert = PEM_read_X509(certFile, NULL, NULL, NULL);
+  fclose(keyFile);
+  fclose(certFile);
+  ELOG_DEBUG2(sslLogger, "Static Key & Cert loaded!");
+  return 1;
+}
+
+int saveCert(X509*& cert, EVP_PKEY*& key, const std::string& privatePasswd) {
+  FILE* certFile = fopen("static_cert.pem", "w+");
+  if (certFile == NULL) {
+    return 0;
+  }
+  if(!PEM_write_X509(certFile, cert)) {
+    ELOG_DEBUG2(sslLogger, "Write to cert file failed!");
+    fclose(certFile);
+    return 0;
+  }
+  fclose(certFile);
+  FILE* keyFile = fopen("static_key.pem", "w+");
+  if (keyFile == NULL) {
+    return 0;
+  }
+  if (!PEM_write_PrivateKey(keyFile, key, EVP_aes_256_cbc(), (unsigned char*)privatePasswd.c_str(), privatePasswd.length(), NULL, NULL)) {
+    ELOG_DEBUG2(sslLogger, "Write to key file failed!");
+    fclose(keyFile);
+    return 0;
+  }
+  fclose(keyFile);
+  return 1;
+}
+
+int createCert(const string& pAor, int expireDays, int keyLen, X509*& outCert, EVP_PKEY*& outKey, const std::string& privatePasswd)
 {
    std::ostringstream info;
    info << "Generating new user cert for" << pAor;
@@ -205,24 +250,28 @@ int createCert (const string& pAor, int expireDays, int keyLen, X509*& outCert, 
 
    outCert = cert;
    outKey = privkey;
+   if (!saveCert(cert, privkey, privatePasswd)) {
+    ELOG_DEBUG2(sslLogger, "Error in saveCert()");
+   }
    return ret;
 }
 
-void DtlsFactory::Init() {
+void DtlsFactory::Init(const std::string& certFile, const std::string& keyFile, const std::string& privatePasswd) {
   if (DtlsFactory::mCert == NULL) {
     SSL_library_init();
     SSL_load_error_strings();
     ERR_load_crypto_strings();
     //  srtp_init();
-
-    createCert("sip:licode@lynckia.com",365,1024,DtlsFactory::mCert,DtlsFactory::privkey);
+    if (!loadCert(certFile, keyFile, privatePasswd, DtlsFactory::mCert, DtlsFactory::privkey)) {
+      createCert("sip:webrtc@intel.com",365,1024,DtlsFactory::mCert,DtlsFactory::privkey,privatePasswd);
+    }
   }
 
 }
 
-DtlsFactory::DtlsFactory()
+DtlsFactory::DtlsFactory(const std::string& certFile, const std::string& keyFile, const std::string& privatePasswd)
 {
-    DtlsFactory::Init();
+    DtlsFactory::Init(certFile, keyFile, privatePasswd);
 
     mTimerContext = std::auto_ptr<TestTimerContext>(new TestTimerContext());
 
@@ -260,7 +309,6 @@ DtlsFactory::DtlsFactory()
 DtlsFactory::~DtlsFactory()
 {
    SSL_CTX_free(mContext);
-   EVP_MD_CTX_cleanup(ctx_);
 }
 
 

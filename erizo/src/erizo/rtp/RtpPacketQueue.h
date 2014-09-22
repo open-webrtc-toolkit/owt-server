@@ -4,7 +4,7 @@
 #include <list>
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/mutex.hpp>
-#include "logger.h"
+#include <logger.h>
 
 namespace erizo{
 //forward declaration

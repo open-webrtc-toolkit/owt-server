@@ -4,7 +4,6 @@
 #include <node.h>
 #include <WebRtcConnection.h>
 #include "MediaDefinitions.h"
-#include "OneToManyProcessor.h"
 
 
 /*
@@ -46,6 +45,12 @@ class WebRtcConnection : public node::ObjectWrap, erizo::WebRtcConnectionEventLi
    * Returns true if the candidates are gathered.
    */
   static v8::Handle<v8::Value> init(const v8::Arguments& args);  
+  /*
+   * Gets the initialization state of the WebRtcConnection.
+   * The initialization work may include configuring some SDP parameters.
+   * Returns true if the connection is initialized.
+   */
+  static v8::Handle<v8::Value> isInitialized(const v8::Arguments& args);  
   /*
    * Sets the SDP of the remote peer.
    * Param: the SDP.

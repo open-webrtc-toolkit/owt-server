@@ -43,7 +43,6 @@ int dummy_cb(int d, X509_STORE_CTX *x)
 DtlsSocket::DtlsSocket(boost::shared_ptr<DtlsSocketContext> socketContext, DtlsFactory* factory, enum SocketType type):
    mSocketContext(socketContext),
    mFactory(factory),
-   mReadTimer(0),
    mSocketType(type),
    mHandshakeCompleted(false)
 {
@@ -56,20 +55,6 @@ DtlsSocket::DtlsSocket(boost::shared_ptr<DtlsSocketContext> socketContext, DtlsF
    mSsl->ctx = mFactory->mContext;
    mSsl->session_ctx = mFactory->mContext;
 
-   switch(type)
-   {
-   case Client:
-      SSL_set_connect_state(mSsl);
-      //SSL_set_mode(mSsl, SSL_MODE_ENABLE_PARTIAL_WRITE |
-      //         SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
-      break;
-   case Server:
-      SSL_set_accept_state(mSsl);
-      SSL_set_verify(mSsl,SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT, dummy_cb);
-      break;
-   default:
-      assert(0);
-   }
    BIO* memBIO1 = BIO_new(BIO_s_mem());
    mInBio=BIO_new(BIO_f_dwrap());
    BIO_push(mInBio,memBIO1);
@@ -79,14 +64,29 @@ DtlsSocket::DtlsSocket(boost::shared_ptr<DtlsSocketContext> socketContext, DtlsF
    BIO_push(mOutBio,memBIO2);
 
    SSL_set_bio(mSsl,mInBio,mOutBio);
-   SSL_accept(mSsl);
+
+   switch(type)
+   {
+   case Client:
+      SSL_set_connect_state(mSsl);
+      //SSL_set_mode(mSsl, SSL_MODE_ENABLE_PARTIAL_WRITE |
+      //         SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
+      SSL_connect(mSsl);
+      break;
+   case Server:
+      SSL_set_accept_state(mSsl);
+      SSL_set_verify(mSsl,SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT, dummy_cb);
+      SSL_accept(mSsl);
+      break;
+   default:
+      assert(0);
+   }
+
    ELOG_DEBUG("Dtls Socket created");
 }
 
 DtlsSocket::~DtlsSocket()
 {
-   if(mReadTimer) mReadTimer->invalidate();
-
    // Properly shutdown the socket and free it - note: this also free's the BIO's
    if (mSsl != NULL) {
       SSL_shutdown(mSsl);
@@ -94,20 +94,12 @@ DtlsSocket::~DtlsSocket()
       mSsl = NULL;
    }
 
-   // Ownership of the factory is basically transferred to DtlsSocket.
-   delete mFactory;
-   mFactory = NULL;
-
 }
 
 void
 DtlsSocket::expired(DtlsSocketTimer* timer)
 {
    forceRetransmit();
-   //delete timer;
-
-   //assert(timer == mReadTimer);
-   //mReadTimer = 0;
 }
 
 void
@@ -176,8 +168,6 @@ DtlsSocket::doHandshakeIteration()
    case SSL_ERROR_NONE:
       mHandshakeCompleted = true;
       mSocketContext->handshakeCompleted();
-      if(mReadTimer) mReadTimer->invalidate();
-      mReadTimer = 0;
       break;
    case SSL_ERROR_WANT_READ:
       // There are two cases here:
@@ -191,9 +181,6 @@ DtlsSocket::doHandshakeIteration()
       // something or a retransmit so we need to reset the timer
       if(outBioLen)
       {
-         if(mReadTimer) mReadTimer->invalidate();
-         mReadTimer=new DtlsSocketTimer(0,this);
-         mFactory->mTimerContext->addTimer(mReadTimer,getReadTimeout());
       }
 
       break;

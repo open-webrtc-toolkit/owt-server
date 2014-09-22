@@ -39,7 +39,7 @@ void RtpVP8Fragmenter::calculatePackets() {
 		newFragment.position = currentPos;
 		if (currentPos == 0)
 			newFragment.first = true;
-		newFragment.size = remaining > MAX_SIZE - 1 ? MAX_SIZE - 1 : remaining;
+		newFragment.size = remaining > maxlength_ - 1 ? maxlength_ - 1 : remaining;
 //		ELOG_DEBUG("New fragment size %u, position %u", newFragment.size,
 //				newFragment.position);
 		currentPos += newFragment.size;

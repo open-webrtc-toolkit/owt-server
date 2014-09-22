@@ -19,6 +19,7 @@ void WebRtcConnection::Init(Handle<Object> target) {
   // Prototype
   tpl->PrototypeTemplate()->Set(String::NewSymbol("close"), FunctionTemplate::New(close)->GetFunction());
   tpl->PrototypeTemplate()->Set(String::NewSymbol("init"), FunctionTemplate::New(init)->GetFunction());
+  tpl->PrototypeTemplate()->Set(String::NewSymbol("isInitialized"), FunctionTemplate::New(isInitialized)->GetFunction());
   tpl->PrototypeTemplate()->Set(String::NewSymbol("setRemoteSdp"), FunctionTemplate::New(setRemoteSdp)->GetFunction());
   tpl->PrototypeTemplate()->Set(String::NewSymbol("getLocalSdp"), FunctionTemplate::New(getLocalSdp)->GetFunction());
   tpl->PrototypeTemplate()->Set(String::NewSymbol("setAudioReceiver"), FunctionTemplate::New(setAudioReceiver)->GetFunction());
@@ -40,7 +41,7 @@ void WebRtcConnection::Init(Handle<Object> target) {
 
 Handle<Value> WebRtcConnection::New(const Arguments& args) {
   HandleScope scope;
-  if (args.Length()<4){
+  if (args.Length()<13){
     ThrowException(Exception::TypeError(String::New("Wrong number of arguments")));
     return args.This();
   }
@@ -48,13 +49,30 @@ Handle<Value> WebRtcConnection::New(const Arguments& args) {
 
   bool a = (args[0]->ToBoolean())->BooleanValue();
   bool v = (args[1]->ToBoolean())->BooleanValue();
-  String::Utf8Value param(args[2]->ToString());
-  std::string stunServer = std::string(*param);
+  String::Utf8Value param2(args[2]->ToString());
+  std::string stunServer = std::string(*param2);
   int stunPort = args[3]->IntegerValue();
   int minPort = args[4]->IntegerValue();
   int maxPort = args[5]->IntegerValue();
+  String::Utf8Value param6(args[6]->ToString());
+  std::string certFile = std::string(*param6);
+  String::Utf8Value param7(args[7]->ToString());
+  std::string keyFile = std::string(*param7);
+  String::Utf8Value param8(args[8]->ToString());
+  std::string privatePass = std::string(*param8);
+
+  bool red = (args[9]->ToBoolean())->BooleanValue();
+  bool fec = (args[10]->ToBoolean())->BooleanValue();
+  bool nackSender = (args[11]->ToBoolean())->BooleanValue();
+  bool nackRecv = (args[12]->ToBoolean())->BooleanValue();
+
+  uint32_t qos = (red << erizo::QOS_SUPPORT_RED_SHIFT) |
+                 (fec << erizo::QOS_SUPPORT_FEC_SHIFT) |
+                 (nackSender << erizo::QOS_SUPPORT_NACK_SENDER_SHIFT) |
+                 (nackRecv << erizo::QOS_SUPPORT_NACK_RECEIVER_SHIFT);
+
   WebRtcConnection* obj = new WebRtcConnection();
-  obj->me = new erizo::WebRtcConnection(a, v, stunServer,stunPort,minPort,maxPort);
+  obj->me = new erizo::WebRtcConnection(a, v, stunServer,stunPort,minPort,maxPort, certFile, keyFile, privatePass, qos);
   obj->me->setWebRtcConnectionEventListener(obj);
   obj->Wrap(args.This());
   uv_async_init(uv_default_loop(), &obj->async_, &WebRtcConnection::eventsCallback); 
@@ -85,6 +103,17 @@ Handle<Value> WebRtcConnection::init(const Arguments& args) {
 
   bool r = me->init();
   obj->eventCallback_ = Persistent<Function>::New(Local<Function>::Cast(args[0]));
+
+  return scope.Close(Boolean::New(r));
+}
+
+Handle<Value> WebRtcConnection::isInitialized(const Arguments& args) {
+  HandleScope scope;
+
+  WebRtcConnection* obj = ObjectWrap::Unwrap<WebRtcConnection>(args.This());
+  erizo::WebRtcConnection *me = obj->me;
+
+  bool r = me->isInitialized();
 
   return scope.Close(Boolean::New(r));
 }

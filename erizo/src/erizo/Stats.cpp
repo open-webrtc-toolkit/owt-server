@@ -25,25 +25,38 @@ namespace erizo {
     int totalLength = 0;
     do{
       movingBuf+=rtcpLength;
-      RtcpHeader *chead= reinterpret_cast<RtcpHeader*>(movingBuf);
-      rtcpLength= (ntohs(chead->length)+1)*4;      
+      RTCPHeader *chead= reinterpret_cast<RTCPHeader*>(movingBuf);
+      rtcpLength= (chead->getLength()+1)*4;      
       totalLength+= rtcpLength;
       this->processRtcpPacket(chead);
     } while(totalLength<length);
   }
   
-  void Stats::processRtcpPacket(RtcpHeader* chead) {    
+  void Stats::processRtcpPacket(RTCPHeader* chead) {    
     unsigned int ssrc = chead->getSSRC();
-//    ELOG_DEBUG("RTCP Packet: PT %d, SSRC %u,  block count %d ",chead->packettype,chead->getSSRC(), chead->getBlockCount()); 
-    if (chead->packettype == RTCP_Receiver_PT){
-      addFragmentLost (chead->getFractionLost(), ssrc);
-      setPacketsLost (chead->getLostPackets(), ssrc);
-      setJitter (chead->getJitter(), ssrc);
-    }else if (chead->packettype == RTCP_Sender_PT){
-      setRtcpPacketSent(chead->getPacketsSent(), ssrc);
-      setRtcpBytesSent(chead->getOctetsSent(), ssrc);
-    }else if (chead->packettype == 206){
-      //ELOG_DEBUG("REMB packet mantissa %u, exp %u", chead->getBrMantis(), chead->getBrExp());
+    uint8_t packetType = chead->getPacketType();
+    uint32_t rtcpLength= (chead->getLength()+1)*4;      
+    ELOG_DEBUG("RTCP Packet: PT %d, SSRC %u, RC/FMT %d ", packetType, ssrc, chead->getRCOrFMT()); 
+    if (packetType == RTCP_Receiver_PT){
+      char* movingBuf = reinterpret_cast<char*>(chead);
+      // NEED to consider multiple report blocks in a single RTCP RR!
+      uint32_t blockOffset = sizeof(RTCPHeader);
+      while (blockOffset < rtcpLength) {
+          ReportBlock* report = reinterpret_cast<ReportBlock*>(movingBuf + blockOffset);
+          uint32_t sourceSSRC = report->getSourceSSRC();
+          // TODO: This "add" fraction lost is totally WRONG, or MEANINGLESS!
+          addFragmentLost(report->getFractionLost(), sourceSSRC);
+          setPacketsLost(report->getCumulativeLost(), sourceSSRC);
+          setJitter(report->getJitter(), sourceSSRC);
+          blockOffset += sizeof(ReportBlock);
+      }
+
+    }else if (packetType == RTCP_Sender_PT){
+      SenderReport* sr = reinterpret_cast<SenderReport*>(chead);
+      setRtcpPacketSent(sr->getPacketCount(), ssrc);
+      setRtcpBytesSent(sr->getOctetCount(), ssrc);
+    }else if (packetType == 206){
+      // ELOG_DEBUG("REMB packet mantissa %u, exp %u", chead->getBrMantis(), chead->getBrExp());
     }
   }
  

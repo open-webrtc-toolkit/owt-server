@@ -8,7 +8,7 @@
 #include "NiceConnection.h"
 #include "SrtpChannel.h"
 
-#include "rtp/RtpHeaders.h"
+#include <rtputils.h>
 
 using namespace erizo;
 using namespace std;
@@ -42,7 +42,6 @@ SdesTransport::SdesTransport(MediaType med, const std::string &transport_name, b
     cryptoRemote_ = *remoteCrypto;
 
     nice_.reset(new NiceConnection(med, transport_name, this, comps,  stunServer, stunPort, minPort, maxPort));
-    nice_->start();
 }
 
 SdesTransport::~SdesTransport() {
@@ -50,6 +49,10 @@ SdesTransport::~SdesTransport() {
     delete srtcp_; srtcp_ = NULL;
     free(protectBuf_); protectBuf_ = NULL;
     free(unprotectBuf_); unprotectBuf_ = NULL;
+}
+
+void SdesTransport::start() {
+    nice_->start();
 }
 
 void SdesTransport::onNiceData(unsigned int component_id, char* data, int len, NiceConnection* nice) {
@@ -64,8 +67,12 @@ void SdesTransport::onNiceData(unsigned int component_id, char* data, int len, N
         srtp = srtcp_;
       }
 
-      RtcpHeader *chead = reinterpret_cast<RtcpHeader*> (unprotectBuf_);
-      if (chead->isRtcp()){
+      RTCPHeader *chead = reinterpret_cast<RTCPHeader*> (unprotectBuf_);
+      uint8_t packetType = chead->getPacketType();
+      if (packetType == RTCP_Sender_PT ||
+          packetType == RTCP_Receiver_PT ||
+          packetType == RTCP_PS_Feedback_PT||
+          packetType == RTCP_RTP_Feedback_PT){
         if(srtp->unprotectRtcp(unprotectBuf_, &length)<0)
           return;
       } else {
@@ -87,10 +94,12 @@ void SdesTransport::write(char* data, int len) {
 
     if (this->getTransportState() == TRANSPORT_READY) {
       memcpy(protectBuf_, data, len);
+
       int comp = 1;
-      RtcpHeader *chead = reinterpret_cast<RtcpHeader*> (protectBuf_);
-      if (chead->packettype == RTCP_Sender_PT || chead->packettype == RTCP_Receiver_PT || chead->packettype == RTCP_PS_Feedback_PT
-          || chead->packettype == RTCP_RTP_Feedback_PT) {
+      RTCPHeader *chead = reinterpret_cast<RTCPHeader*> (protectBuf_);
+      uint8_t packetType = chead->getPacketType();
+      if (packetType == RTCP_Sender_PT || packetType == RTCP_Receiver_PT || packetType == RTCP_PS_Feedback_PT
+          || packetType == RTCP_RTP_Feedback_PT) {
         if (!rtcp_mux_) {
           comp = 2;
         }

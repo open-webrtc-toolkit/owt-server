@@ -9,7 +9,7 @@
 #include <vector>
 #include <map>
 
-#include "logger.h"
+#include <logger.h>
 
 namespace erizo {
 /**
@@ -89,7 +89,16 @@ struct RtpMap {
   unsigned int clockRate;
   MediaType mediaType;
   unsigned int channels;
+  bool enable;
 };
+
+enum StreamDirection {
+  UNSPECIFIED,
+  RECVONLY,
+  SENDONLY,
+  SENDRECV
+};
+
 /**
  * Contains the information of a single SDP.
  * Used to parse and generate SDPs
@@ -143,7 +152,14 @@ public:
 
     bool supportCodecByName(const std::string codecName, const unsigned int clockRate);
 
+    int forceCodecSupportByName(const std::string codecName, const unsigned int clockRate, MediaType mediaType);
+
     bool supportPayloadType(const int payloadType);
+
+    bool supportNACK() { return nackEnabled; }
+    void setNACKSupport(bool enable) { nackEnabled = enable; }
+    bool setREDSupport(bool enable);
+    bool setFECSupport(bool enable);
 
     /**
      * The audio and video SSRCs for this particular SDP.
@@ -161,6 +177,18 @@ public:
     * Has video
     */
     bool hasVideo;
+    /**
+    * Has NACK support
+    */
+    bool nackEnabled;
+    /**
+    * Video direction
+    */
+    StreamDirection videoDirection;
+    /**
+    * Audio direction
+    */
+    StreamDirection audioDirection;
     /**
     * Is there rtcp muxing
     */

@@ -6,8 +6,8 @@
 #include "SrtpChannel.h"
 
 #include "dtls/DtlsFactory.h"
-#include "rtp/RtpHeaders.h"
-//#include "rtputils.h"
+
+#include <rtputils.h>
 
 using namespace erizo;
 using namespace std;
@@ -61,7 +61,7 @@ void Resender::resend(const boost::system::error_code& ec) {
   ELOG_WARN("%s - Resent", nice_->transportName->c_str());
 }
 
-DtlsTransport::DtlsTransport(MediaType med, const std::string &transport_name, bool bundle, bool rtcp_mux, TransportListener *transportListener, const std::string &stunServer, int stunPort, int minPort, int maxPort):Transport(med, transport_name, bundle, rtcp_mux, transportListener, stunServer, stunPort, minPort, maxPort) {
+DtlsTransport::DtlsTransport(MediaType med, const std::string &transport_name, bool bundle, bool rtcp_mux, TransportListener *transportListener, const std::string &stunServer, int stunPort, int minPort, int maxPort, const std::string& certFile, const std::string& keyFile, const std::string& privatePasswd):Transport(med, transport_name, bundle, rtcp_mux, transportListener, stunServer, stunPort, minPort, maxPort) {
   ELOG_DEBUG( "Initializing DtlsTransport" );
   updateTransportState(TRANSPORT_INITIAL);
 
@@ -69,41 +69,48 @@ DtlsTransport::DtlsTransport(MediaType med, const std::string &transport_name, b
   readyRtcp = false;
   running_ = false;
 
+  dtlsFactory_.reset(new DtlsFactory(certFile, keyFile, privatePasswd));
   dtlsRtp.reset(new DtlsSocketContext());
 
-  // TODO the ownership of classes here is....really awkward. Basically, the DtlsFactory created here ends up being owned the the created client
-  // which is in charge of nuking it.  All of the session state is tracked in the DtlsSocketContext.
-  //
-  // A much more sane architecture would be simply having the client _be_ the context.
-  (new DtlsFactory())->createClient(dtlsRtp);
+  dtlsFactory_->createClient(dtlsRtp);
   dtlsRtp->setDtlsReceiver(this);
 
   int comps = 1;
   if (!rtcp_mux) {
     comps = 2;
     dtlsRtcp.reset(new DtlsSocketContext());
-    (new DtlsFactory())->createClient(dtlsRtcp);
+    dtlsFactory_->createClient(dtlsRtcp);
     dtlsRtcp->setDtlsReceiver(this);
   }
   bundle_ = bundle;
   nice_.reset(new NiceConnection(med, transport_name, this, comps, stunServer, stunPort, minPort, maxPort));
-  nice_->start();
-  running_ =true;
-  getNice_Thread_ = boost::thread(&DtlsTransport::getNiceDataLoop, this);
-
 }
 
 DtlsTransport::~DtlsTransport() {
   ELOG_DEBUG("DtlsTransport destructor");
   running_ = false;
   nice_->close();
+
   ELOG_DEBUG("Join thread getNice");
   getNice_Thread_.join();
+
   ELOG_DEBUG("writeMutex");
   boost::mutex::scoped_lock lockw(writeMutex_);
   ELOG_DEBUG("sessionMutex");
   boost::mutex::scoped_lock locks(sessionMutex_);
   ELOG_DEBUG("DTLSTransport destructor END");
+
+  if (dtlsRtp != NULL)
+    dtlsRtp->stop();
+  if (dtlsRtcp != NULL)
+    dtlsRtcp->stop();
+}
+
+void DtlsTransport::start() {
+  nice_->start();
+  running_ =true;
+  getNice_Thread_ = boost::thread(&DtlsTransport::getNiceDataLoop, this);
+
 }
 
 void DtlsTransport::onNiceData(unsigned int component_id, char* data, int len, NiceConnection* nice) {
@@ -130,8 +137,12 @@ void DtlsTransport::onNiceData(unsigned int component_id, char* data, int len, N
       srtp = srtcp_.get();
     }
     if (srtp != NULL){
-      RtcpHeader *chead = reinterpret_cast<RtcpHeader*> (unprotectBuf_);
-      if (chead->isRtcp()){
+      RTCPHeader *chead = reinterpret_cast<RTCPHeader*> (unprotectBuf_);
+      uint8_t packetType = chead->getPacketType();
+      if (packetType == RTCP_Sender_PT || 
+          packetType == RTCP_Receiver_PT || 
+          packetType == RTCP_PS_Feedback_PT||
+          packetType == RTCP_RTP_Feedback_PT){
         if(srtp->unprotectRtcp(unprotectBuf_, &length)<0){
           return;
         }
@@ -162,8 +173,9 @@ void DtlsTransport::write(char* data, int len) {
   if (this->getTransportState() == TRANSPORT_READY) {
     memcpy(protectBuf_, data, len);
     int comp = 1;
-    RtcpHeader *chead = reinterpret_cast<RtcpHeader*> (protectBuf_);
-    if (chead->isRtcp()) {
+    RTCPHeader *chead = reinterpret_cast<RTCPHeader*> (protectBuf_);
+    uint8_t packetType = chead->getPacketType();
+    if (packetType == RTCP_Sender_PT || packetType == RTCP_Receiver_PT || packetType == RTCP_PS_Feedback_PT || packetType == RTCP_RTP_Feedback_PT) {
       if (!rtcp_mux_) {
         comp = 2;
       }

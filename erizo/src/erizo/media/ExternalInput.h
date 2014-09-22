@@ -8,7 +8,7 @@
 #include "codecs/VideoCodec.h"
 #include "MediaProcessor.h"
 #include "boost/thread.hpp"
-#include "logger.h"
+#include <logger.h>
 
 extern "C" {
 #include <libavcodec/avcodec.h>
@@ -22,10 +22,10 @@ namespace erizo{
   class ExternalInput : public MediaSource, public RTPDataReceiver {
       DECLARE_LOGGER();
     public:
-      ExternalInput (const std::string& inputUrl);
+      DLL_PUBLIC ExternalInput (const std::string& inputUrl);
       virtual ~ExternalInput();
-      int init();
-      void receiveRtpData(unsigned char* rtpdata, int len);
+      DLL_PUBLIC int init();
+      void receiveRtpData(char* rtpdata, int len, DataType type = VIDEO, uint32_t streamId = 0);
       int sendFirPacket();
 
 

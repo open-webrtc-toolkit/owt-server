@@ -46,6 +46,20 @@ public:
 	 */
 	void removeSubscriber(const std::string& peerId);
 
+	int deliverAudioData(char* buf, int len){
+	    boost::mutex::scoped_lock myMonitor_;
+	    return this->deliverAudioData_(buf, len);
+ 	}
+
+	int deliverVideoData(char* buf, int len){
+	    boost::mutex::scoped_lock myMonitor_;
+	    return this->deliverVideoData_(buf, len);
+	}
+
+	int deliverFeedback(char* buf, int len){
+	    boost::mutex::scoped_lock myMonitor_;
+	    return this->deliverFeedback_(buf,len);
+	}
 
 private:
   typedef boost::shared_ptr<MediaSink> sink_ptr;
@@ -54,6 +68,7 @@ private:
 	unsigned int sentPackets_;
   std::string rtcpReceiverPeerId_;
   FeedbackSink* feedbackSink_;
+  boost::mutex myMonitor_;
 	
   int deliverAudioData_(char* buf, int len);
 	int deliverVideoData_(char* buf, int len);

@@ -62,10 +62,10 @@ int SrtpChannel::protectRtp(char* buffer, int *len) {
     if (val == 0) {
         return 0;
     } else {
-        RtcpHeader* head = reinterpret_cast<RtcpHeader*>(buffer);
-        RtpHeader* headrtp = reinterpret_cast<RtpHeader*>(buffer);
+        RTCPHeader* head = reinterpret_cast<RTCPHeader*>(buffer);
+        RTPHeader* headrtp = reinterpret_cast<RTPHeader*>(buffer);
 
-        ELOG_WARN("Error SrtpChannel::protectRtp %u packettype %d pt %d seqnum %u", val,head->packettype, headrtp->payloadtype, headrtp->seqnum);
+        ELOG_WARN("Error SrtpChannel::protectRtp %u packettype %d pt %d seqnum %u", val,head->getPacketType(), headrtp->getPayloadType(), headrtp->getSeqNumber());
         return -1;
     }
 }
@@ -78,10 +78,10 @@ int SrtpChannel::unprotectRtp(char* buffer, int *len) {
     if (val == 0) {
         return 0;
     } else {
-      RtcpHeader* head = reinterpret_cast<RtcpHeader*>(buffer);
-      RtpHeader* headrtp = reinterpret_cast<RtpHeader*>(buffer);
-      ELOG_WARN("Error SrtpChannel::unprotectRtp %u packettype %d pt %d", val,head->packettype, headrtp->payloadtype);
-      return -1;
+        RTCPHeader* head = reinterpret_cast<RTCPHeader*>(buffer);
+        RTPHeader* headrtp = reinterpret_cast<RTPHeader*>(buffer);
+        ELOG_WARN("Error SrtpChannel::unprotectRtp %u packettype %d pt %d", val,head->getPacketType(), headrtp->getPayloadType());
+        return -1;
     }
 }
 
@@ -91,8 +91,8 @@ int SrtpChannel::protectRtcp(char* buffer, int *len) {
     if (val == 0) {
         return 0;
     } else {
-        RtcpHeader* head = reinterpret_cast<RtcpHeader*>(buffer);
-        ELOG_WARN("Error SrtpChannel::protectRtcp %upackettype %d ", val, head->packettype);
+        RTCPHeader* head = reinterpret_cast<RTCPHeader*>(buffer);
+        ELOG_WARN("Error SrtpChannel::protectRtcp %upackettype %d ", val, head->getPacketType());
         return -1;
     }
 }
@@ -144,6 +144,7 @@ bool SrtpChannel::configureSrtpSession(srtp_t *session, const char* key,
     if (res!=0){
       ELOG_ERROR("Failed to create srtp session with %s, %d", octet_string_hex_string(akey, 16), res);
     }
+    g_free(akey);
     return res!=0? false:true;
 }
 

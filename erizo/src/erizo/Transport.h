@@ -30,6 +30,7 @@ namespace erizo {
       {
       }
       virtual ~Transport(){}
+      virtual void start() = 0;
       virtual void updateIceState(IceState state, NiceConnection *conn) = 0;
       virtual void onNiceData(unsigned int component_id, char* data, int len, NiceConnection* nice) = 0;
       virtual void write(char* data, int len) = 0;

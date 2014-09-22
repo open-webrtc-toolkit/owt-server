@@ -4,144 +4,122 @@
 
 #ifndef MEDIADEFINITIONS_H_
 #define MEDIADEFINITIONS_H_
-#include <boost/thread/mutex.hpp>
+
+#include <string>
+
+#include <Compiler.h>
 
 namespace erizo{
 
 class NiceConnection;
 
 enum packetType{
-    VIDEO_PACKET,
-    AUDIO_PACKET,
-    OTHER_PACKET
-};
-
-struct dataPacket{
-    int comp;
-    char data[1500];
-    int length;
-    packetType type;
-};
-
-class Monitor {
-protected:
-    boost::mutex myMonitor_;
-};
-
-class FeedbackSink: public virtual Monitor{
-public:
-    virtual ~FeedbackSink() {}
-    int deliverFeedback(char* buf, int len){
-        boost::mutex::scoped_lock myMonitor_;
-        return this->deliverFeedback_(buf,len);
-    }
-private:
-    virtual int deliverFeedback_(char* buf, int len)=0;
-};
-
-
-class FeedbackSource: public virtual Monitor{
-protected:
-    FeedbackSink* fbSink_;
-public:
-    void setFeedbackSink(FeedbackSink* sink) {
-        boost::mutex::scoped_lock myMonitor_;
-        fbSink_ = sink;
-    }
+  VIDEO_PACKET,
+  AUDIO_PACKET,
+  OTHER_PACKET    
 };
 
 /*
- * A MediaSink
+ * The maximum size of a data packet is 1472:
+ * (1500 (MTU) - 20 (IP header) - 8 (UDP header))
+ * We should not cross this boundary either forwarding a packet (which is
+ * guaranteed by the protocol) or sending a packet produced by ourselves (which
+ * we should take care of).
  */
-class MediaSink: public virtual Monitor{
-protected:
-    //SSRCs received by the SINK
-    unsigned int audioSinkSSRC_;
-    unsigned int videoSinkSSRC_;
-    //Is it able to provide Feedback
-    FeedbackSource* sinkfbSource_;
-public:
-    int deliverAudioData(char* buf, int len){
-        boost::mutex::scoped_lock myMonitor_;
-        return this->deliverAudioData_(buf, len);
-    }
-    int deliverVideoData(char* buf, int len){
-        boost::mutex::scoped_lock myMonitor_;
-        return this->deliverVideoData_(buf, len);
-    }
-    unsigned int getVideoSinkSSRC (){
-        boost::mutex::scoped_lock myMonitor_;
-        return videoSinkSSRC_;
-    }
-    void setVideoSinkSSRC (unsigned int ssrc){
-        boost::mutex::scoped_lock myMonitor_;
-        videoSinkSSRC_ = ssrc;
-    }
-    unsigned int getAudioSinkSSRC (){
-        boost::mutex::scoped_lock myMonitor_;
-        return audioSinkSSRC_;
-    }
-    void setAudioSinkSSRC (unsigned int ssrc){
-        boost::mutex::scoped_lock myMonitor_;
-        audioSinkSSRC_ = ssrc;
-    }
-    FeedbackSource* getFeedbackSource(){
-        boost::mutex::scoped_lock myMonitor_;
-        return sinkfbSource_;
-    }
-    MediaSink() : audioSinkSSRC_(0), videoSinkSSRC_(0), sinkfbSource_(NULL) {}
-    virtual ~MediaSink() {}
-private:
-    virtual int deliverAudioData_(char* buf, int len)=0;
-    virtual int deliverVideoData_(char* buf, int len)=0;
+static const int MAX_DATA_PACKET_SIZE = 1472;
 
+struct dataPacket{
+  int comp;
+  char data[MAX_DATA_PACKET_SIZE];
+  int length;
+  packetType type;
 };
 
+class FeedbackSink{
+public:
+  virtual ~FeedbackSink() = 0;
+  virtual int deliverFeedback(char* buf, int len)=0;
+  // Is it able to sink the NACK feedback
+  virtual bool acceptNACK() { return false; }
+};
+
+inline FeedbackSink::~FeedbackSink() {}
+
+class FeedbackSource{
+protected:
+  FeedbackSink* fbSink_;
+public:
+  void setFeedbackSink(FeedbackSink* sink) {
+    fbSink_ = sink;
+  };
+};
+
+/*
+ * A MediaSink 
+ */
+class MediaSink{
+protected:
+  //SSRCs received by the SINK
+  unsigned int audioSinkSSRC_;
+  unsigned int videoSinkSSRC_;
+  //Is it able to provide Feedback
+  FeedbackSource* sinkfbSource_;
+public:
+  virtual int deliverAudioData(char* buf, int len)=0;
+  virtual int deliverVideoData(char* buf, int len)=0;
+  unsigned int getVideoSinkSSRC (){return videoSinkSSRC_;};
+  void setVideoSinkSSRC (unsigned int ssrc){videoSinkSSRC_ = ssrc;};
+  unsigned int getAudioSinkSSRC (){return audioSinkSSRC_;};
+  void setAudioSinkSSRC (unsigned int ssrc){audioSinkSSRC_ = ssrc;};
+  FeedbackSource* getFeedbackSource(){
+    return sinkfbSource_;
+  };  
+  virtual void audioReady() { }
+  virtual void videoReady() { }
+  // Is it able to sink the encapsulated RTP data (like RED)
+  virtual bool acceptEncapsulatedRTPData() { return false; }
+  // Is it able to sink the FEC packet
+  virtual bool acceptFEC() { return false; }
+  // Is it able to sink the re-sent packet (response to NACK)
+  virtual bool acceptResentData() { return false; }
+  MediaSink() : audioSinkSSRC_(0), videoSinkSSRC_(0), sinkfbSource_(nullptr) {}
+  virtual ~MediaSink() = 0; 
+};
+
+inline MediaSink::~MediaSink() {}
 
 /**
  * A MediaSource is any class that produces audio or video data.
  */
-class MediaSource: public virtual Monitor{
+class MediaSource{
 protected: 
-    //SSRCs coming from the source
-    unsigned int videoSourceSSRC_;
-    unsigned int audioSourceSSRC_;
-    MediaSink* videoSink_;
-    MediaSink* audioSink_;
-    //can it accept feedback
-    FeedbackSink* sourcefbSink_;
+  //SSRCs coming from the source
+  unsigned int videoSourceSSRC_;
+  unsigned int audioSourceSSRC_;
+  MediaSink* videoSink_;
+  MediaSink* audioSink_;
+  //can it accept feedback
+  FeedbackSink* sourcefbSink_;
 public:
-    void setAudioSink(MediaSink* audioSink){
-        boost::mutex::scoped_lock myMonitor_;
-        this->audioSink_ = audioSink;
-    }
-    void setVideoSink(MediaSink* videoSink){
-        boost::mutex::scoped_lock myMonitor_;
-        this->videoSink_ = videoSink;
-    }
+  DLL_PUBLIC void setAudioSink(MediaSink* audioSink){
+    this->audioSink_ = audioSink;
+  };
+  DLL_PUBLIC void setVideoSink(MediaSink* videoSink){
+    this->videoSink_ = videoSink;
+  };
 
-    FeedbackSink* getFeedbackSink(){
-        boost::mutex::scoped_lock myMonitor_;
-        return sourcefbSink_;
-    }
-    virtual int sendFirPacket()=0;
-    unsigned int getVideoSourceSSRC (){
-        boost::mutex::scoped_lock myMonitor_;
-        return videoSourceSSRC_;
-    }
-    void setVideoSourceSSRC (unsigned int ssrc){
-        boost::mutex::scoped_lock myMonitor_;
-        videoSourceSSRC_ = ssrc;
-    }
-    unsigned int getAudioSourceSSRC (){
-        boost::mutex::scoped_lock myMonitor_;
-        return audioSourceSSRC_;
-    }
-    void setAudioSourceSSRC (unsigned int ssrc){
-        boost::mutex::scoped_lock myMonitor_;
-        audioSourceSSRC_ = ssrc;
-    }
-    virtual ~MediaSource(){}
+  FeedbackSink* getFeedbackSink(){
+    return sourcefbSink_;
+  };
+  virtual int sendFirPacket()=0;
+  virtual int setVideoCodec(const std::string& codecName, unsigned int clockRate){return -1;};
+  virtual int setAudioCodec(const std::string& codecName, unsigned int clockRate){return -1;};
+  virtual void setInitialized(bool){};
+  unsigned int getVideoSourceSSRC (){return videoSourceSSRC_;};
+  void setVideoSourceSSRC (unsigned int ssrc){videoSourceSSRC_ = ssrc;};
+  unsigned int getAudioSourceSSRC (){return audioSourceSSRC_;};
+  void setAudioSourceSSRC (unsigned int ssrc){audioSourceSSRC_ = ssrc;};
+  virtual ~MediaSource(){};
 };
 
 /**
@@ -149,8 +127,34 @@ public:
  */
 class NiceReceiver{
 public:
-    virtual int receiveNiceData(char* buf, int len, NiceConnection* nice)=0;
-    virtual ~NiceReceiver(){}
+  virtual int receiveNiceData(char* buf, int len, NiceConnection* nice)=0;
+  virtual ~NiceReceiver(){};
+};
+
+enum DataType {
+  VIDEO, AUDIO
+};
+
+struct RawDataPacket {
+  unsigned char* data;
+  int length;
+  DataType type;
+};
+
+class RawDataReceiver {
+public:
+  virtual void receiveRawData(RawDataPacket& packet) = 0;
+  virtual ~RawDataReceiver() {
+  }
+  ;
+};
+
+class RTPDataReceiver {
+public:
+  virtual void receiveRtpData(char* rtpdata, int len, DataType type = VIDEO, uint32_t streamId = 0) = 0;
+  virtual ~RTPDataReceiver() {
+  }
+  ;
 };
 
 } /* namespace erizo */

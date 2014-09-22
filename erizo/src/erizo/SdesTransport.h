@@ -4,7 +4,7 @@
 #include <string.h>
 #include "NiceConnection.h"
 #include "Transport.h"
-#include "logger.h"
+#include <logger.h>
 
 namespace erizo {
   class SrtpChannel;
@@ -15,6 +15,7 @@ namespace erizo {
     SdesTransport(MediaType med, const std::string &transport_name, bool bundle, bool rtcp_mux, CryptoInfo *remoteCrypto, TransportListener *transportListener, const std::string &stunServer, int stunPort, int minPort, int maxPort);
     virtual ~SdesTransport();
     void connectionStateChanged(IceState newState);
+    void start();
     void onNiceData(unsigned int component_id, char* data, int len, NiceConnection* nice);
     void write(char* data, int len);
     void updateIceState(IceState state, NiceConnection *conn);

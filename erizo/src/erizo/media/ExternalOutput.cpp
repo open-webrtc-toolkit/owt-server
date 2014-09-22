@@ -1,14 +1,13 @@
-#include <sys/time.h>
-
 #include "ExternalOutput.h"
 #include "../WebRtcConnection.h"
-#include "../rtp/RtpHeaders.h"
 #include "../rtp/RtpVP8Parser.h"
+#include <rtputils.h>
+#include <sys/time.h>
 
 namespace erizo {
 #define FIR_INTERVAL_MS 4000
 
-  DEFINE_LOGGER(ExternalOutput, "media.ExternalOutput");
+DEFINE_LOGGER(ExternalOutput, "media.ExternalOutput");
 
 // We'll allow our audioQueue to be significantly larger than our video queue
 // This is safe because A) audio is a lot smaller, so it isn't a big deal to hold on to a lot of it and
@@ -94,7 +93,7 @@ void ExternalOutput::receiveRawData(RawDataPacket& /*packet*/){
 
 
 void ExternalOutput::writeAudioData(char* buf, int len){
-    RtpHeader* head = reinterpret_cast<RtpHeader*>(buf);
+    RTPHeader* head = reinterpret_cast<RTPHeader*>(buf);
     uint16_t currentAudioSequenceNumber = head->getSeqNumber();
     if (currentAudioSequenceNumber != lastAudioSequenceNumber_ + 1) {
         // Something screwy.  We should always see sequence numbers incrementing monotonically.
@@ -152,7 +151,7 @@ void ExternalOutput::writeAudioData(char* buf, int len){
 }
 
 void ExternalOutput::writeVideoData(char* buf, int len){
-    RtpHeader* head = reinterpret_cast<RtpHeader*>(buf);
+    RTPHeader* head = reinterpret_cast<RTPHeader*>(buf);
 
     uint16_t currentVideoSeqNumber = head->getSeqNumber();
     if (currentVideoSeqNumber != lastVideoSequenceNumber_ + 1) {
@@ -169,12 +168,12 @@ void ExternalOutput::writeVideoData(char* buf, int len){
     if (head->getPayloadType() == RED_90000_PT) {
         int totalLength = head->getHeaderLength();
         int rtpHeaderLength = totalLength;
-        RedHeader *redhead = reinterpret_cast<RedHeader*>(buf + totalLength);
+        redheader *redhead = (redheader*) (buf + totalLength);
 //        ELOG_DEBUG("Received RED packet, payloadType: %d ", redhead->payloadtype);
         if (redhead->payloadtype == VP8_90000_PT) {
             while (redhead->follow) {
                 totalLength += redhead->getLength() + 4; // RED header
-                redhead = reinterpret_cast<RedHeader*>(buf + totalLength);
+                redhead = (redheader*) (buf + totalLength);
             }
 
             // Copy RTP header
@@ -183,7 +182,7 @@ void ExternalOutput::writeVideoData(char* buf, int len){
             // a normal RED header, but minus the timestamp and block-length fields for a total length of one octet.
             memcpy(deliverMediaBuffer_ + rtpHeaderLength, buf + totalLength + 1, len - totalLength - 1);
             // Copy payload type
-            head = reinterpret_cast<RtpHeader*>(deliverMediaBuffer_);
+            head = reinterpret_cast<RTPHeader*>(deliverMediaBuffer_);
             head->setPayloadType(redhead->payloadtype);
             buf = reinterpret_cast<char*>(deliverMediaBuffer_);
             len = len - 1 - totalLength + rtpHeaderLength;
@@ -194,8 +193,9 @@ void ExternalOutput::writeVideoData(char* buf, int len){
         firstVideoTimestamp_ = head->getTimestamp();
     }
 
-    RtpVP8Parser parser;
-    erizo::RTPPayloadVP8* payload = parser.parseVP8(reinterpret_cast<unsigned char*>(buf + head->getHeaderLength()), len - head->getHeaderLength());
+    erizo::RTPPayloadVP8 parsed;
+    RtpVP8Parser::parseVP8(reinterpret_cast<unsigned char*>(buf + head->getHeaderLength()), len - head->getHeaderLength(), &parsed);
+    erizo::RTPPayloadVP8* payload = &parsed;
 
     bool endOfFrame = (head->getMarker() > 0);
     bool startOfFrame = payload->beginningOfPartition;
@@ -261,8 +261,6 @@ void ExternalOutput::writeVideoData(char* buf, int len){
         break;
     }
 
-    delete payload;
-
     //ELOG_DEBUG("Parsed VP8 payload, endOfFrame: %d, startOfFrame: %d, partitionId: %d", endOfFrame, startOfFrame, partitionId);
 
     this->initContext();
@@ -303,12 +301,12 @@ void ExternalOutput::writeVideoData(char* buf, int len){
     }
 }
 
-int ExternalOutput::deliverAudioData_(char* buf, int len) {
+int ExternalOutput::deliverAudioData(char* buf, int len) {
     this->queueData(buf,len,AUDIO_PACKET);
     return 0;
 }
 
-int ExternalOutput::deliverVideoData_(char* buf, int len) {
+int ExternalOutput::deliverVideoData(char* buf, int len) {
     this->queueData(buf,len,VIDEO_PACKET);
     return 0;
 }
@@ -375,14 +373,14 @@ void ExternalOutput::queueData(char* buffer, int length, packetType type){
     if (!recording_) {
         return;
     }
-
-    RtcpHeader *head = reinterpret_cast<RtcpHeader*>(buffer);
-    if (head->isRtcp()){
+    RTCPHeader* head = reinterpret_cast<RTCPHeader*>(buffer);
+    uint8_t packetType = head->getPacketType();
+    if (packetType == RTCP_Sender_PT || packetType == RTCP_Receiver_PT || packetType == RTCP_PS_Feedback_PT || packetType == RTCP_RTP_Feedback_PT) {
         return;
     }
 
     // if this packet has any padding, strip it off so we don't have to deal with it downstream.
-    RtpHeader* h = reinterpret_cast<RtpHeader*>(buffer);
+    RTPHeader* h = reinterpret_cast<RTPHeader*>(buffer);
     if (h->hasPadding()) {
         uint8_t paddingCount = (uint8_t) buffer[length - 1];    // padding count is in the last byte of the payload, and includes itself.
         //ELOG_DEBUG("Padding byte set, old length: %d, new length: %d", length, length - paddingCount);

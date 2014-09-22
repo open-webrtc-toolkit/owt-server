@@ -8,7 +8,7 @@
 #include "dtls/DtlsSocket.h"
 #include "NiceConnection.h"
 #include "Transport.h"
-#include "logger.h"
+#include <logger.h>
 
 namespace erizo {
   class SrtpChannel;
@@ -16,11 +16,12 @@ namespace erizo {
   class DtlsTransport : dtls::DtlsReceiver, public Transport {
     DECLARE_LOGGER();
     public:
-    DtlsTransport(MediaType med, const std::string &transport_name, bool bundle, bool rtcp_mux, TransportListener *transportListener, const std::string &stunServer, int stunPort, int minPort, int maxPort);
+    DtlsTransport(MediaType med, const std::string &transport_name, bool bundle, bool rtcp_mux, TransportListener *transportListener, const std::string &stunServer, int stunPort, int minPort, int maxPort, const std::string& certFile, const std::string& keyFile, const std::string& privatePasswd);
     virtual ~DtlsTransport();
     void connectionStateChanged(IceState newState);
     std::string getMyFingerprint();
     static bool isDtlsPacket(const char* buf, int len);
+    void start();
     void onNiceData(unsigned int component_id, char* data, int len, NiceConnection* nice);
     void write(char* data, int len);
     void writeDtls(dtls::DtlsSocketContext *ctx, const unsigned char* data, unsigned int len);
@@ -38,6 +39,7 @@ namespace erizo {
     bool bundle_;
     bool running_;
     boost::scoped_ptr<Resender> rtcpResender, rtpResender;
+    boost::scoped_ptr<dtls::DtlsFactory> dtlsFactory_;
     boost::thread getNice_Thread_;
     void getNiceDataLoop();
     packetPtr p_;
