@@ -301,12 +301,12 @@ void ExternalOutput::writeVideoData(char* buf, int len){
     }
 }
 
-int ExternalOutput::deliverAudioData(char* buf, int len) {
+int ExternalOutput::deliverAudioData(char* buf, int len, MediaSource*) {
     this->queueData(buf,len,AUDIO_PACKET);
     return 0;
 }
 
-int ExternalOutput::deliverVideoData(char* buf, int len) {
+int ExternalOutput::deliverVideoData(char* buf, int len, MediaSource*) {
     this->queueData(buf,len,VIDEO_PACKET);
     return 0;
 }

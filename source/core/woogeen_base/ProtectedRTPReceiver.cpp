@@ -133,7 +133,7 @@ void ProtectedRTPReceiver::updateLostSequenceNumbers(uint16_t currentReceived, u
     }
 }
 
-int ProtectedRTPReceiver::deliverAudioData(char* buf, int len)
+int ProtectedRTPReceiver::deliverAudioData(char* buf, int len, MediaSource*)
 {
     if (m_rtpHeaderParser->IsRtcp(reinterpret_cast<uint8_t*>(buf), len)) {
         processRtcpData(buf, len, true);
@@ -153,7 +153,7 @@ int ProtectedRTPReceiver::deliverAudioData(char* buf, int len)
     return 0;
 }
 
-int ProtectedRTPReceiver::deliverVideoData(char* buf, int len)
+int ProtectedRTPReceiver::deliverVideoData(char* buf, int len, MediaSource*)
 {
     if (m_rtpHeaderParser->IsRtcp(reinterpret_cast<uint8_t*>(buf), len)) {
         processRtcpData(buf, len, false);

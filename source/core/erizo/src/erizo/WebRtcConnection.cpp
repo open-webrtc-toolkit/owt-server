@@ -207,7 +207,7 @@ namespace erizo {
     return nackEnabled_ && remoteSdp_.supportNACK();
   }
 
-  int WebRtcConnection::deliverAudioData(char* buf, int len) {
+  int WebRtcConnection::deliverAudioData(char* buf, int len, MediaSource*) {
     writeSsrc(buf, len, this->getAudioSinkSSRC());
     if (bundle_){
       if (videoTransport_ != NULL) {
@@ -223,7 +223,7 @@ namespace erizo {
     return len;
   }
 
-  int WebRtcConnection::deliverVideoData(char* buf, int len) {
+  int WebRtcConnection::deliverVideoData(char* buf, int len, MediaSource*) {
     RTPHeader* head = (RTPHeader*) buf;
     writeSsrc(buf, len, this->getVideoSinkSSRC());
     if (videoTransport_ != NULL) {
@@ -332,9 +332,9 @@ namespace erizo {
       if (bundle_) {
         // Deliver data
         if (recvSSRC==this->getVideoSourceSSRC() || recvSSRC==this->getVideoSinkSSRC()) {
-          videoSink_->deliverVideoData(buf, length);
+          videoSink_->deliverVideoData(buf, length, this);
         } else if (recvSSRC==this->getAudioSourceSSRC() || recvSSRC==this->getAudioSinkSSRC()) {
-          audioSink_->deliverAudioData(buf, length);
+          audioSink_->deliverAudioData(buf, length, this);
         } else {
           ELOG_ERROR("Unknown SSRC %u, localVideo %u, remoteVideo %u, ignoring", recvSSRC, this->getVideoSourceSSRC(), this->getVideoSinkSSRC());
         }
@@ -348,7 +348,7 @@ namespace erizo {
               audioSink_->audioReady();
             //this->updateState(TRANSPORT_READY, transport);
           }
-          audioSink_->deliverAudioData(buf, length);
+          audioSink_->deliverAudioData(buf, length, this);
         }
       } else if (transport->mediaType == VIDEO_TYPE) {
         if (videoSink_ != NULL) {
@@ -361,7 +361,7 @@ namespace erizo {
             //this->updateState(TRANSPORT_READY, transport);
           }
 
-          videoSink_->deliverVideoData(buf, length);
+          videoSink_->deliverVideoData(buf, length, this);
         }
       }
     }
