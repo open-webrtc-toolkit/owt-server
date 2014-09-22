@@ -1,5 +1,5 @@
 var N = require('../nuve/nuveClient/dist/nuve'),
-	config = require('../licode_config');
+	config = require('../../licode_config');
 
  var TIMEOUT=10000,
      ROOM_NAME="myTestRoom";
