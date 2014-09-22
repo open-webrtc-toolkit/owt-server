@@ -11,7 +11,7 @@ project (OOVOO_GATEWAY)
 
 set(OOVOO_GATEWAY_VERSION_MAJOR 0)
 set(OOVOO_GATEWAY_VERSION_MINOR 1)
-set(CMAKE_CXX_FLAGS "-g -Wall -std=c++0x -fvisibility=hidden -fvisibility-inlines-hidden")
+set(CMAKE_CXX_FLAGS "-O3 -DNDEBUG -g -Wall -std=c++0x -fvisibility=hidden -fvisibility-inlines-hidden")
 
 # TODO: Make a clean interface for the woogeen_base module so that we don't need
 # to add such misc. ugly include paths.

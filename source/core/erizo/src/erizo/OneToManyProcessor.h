@@ -46,14 +46,14 @@ public:
 	 */
 	void removeSubscriber(const std::string& peerId);
 
-	int deliverAudioData(char* buf, int len){
+	int deliverAudioData(char* buf, int len, MediaSource* from){
 	    boost::mutex::scoped_lock myMonitor_;
-	    return this->deliverAudioData_(buf, len);
+	    return this->deliverAudioData_(buf, len, from);
  	}
 
-	int deliverVideoData(char* buf, int len){
+	int deliverVideoData(char* buf, int len, MediaSource* from){
 	    boost::mutex::scoped_lock myMonitor_;
-	    return this->deliverVideoData_(buf, len);
+	    return this->deliverVideoData_(buf, len, from);
 	}
 
 	int deliverFeedback(char* buf, int len){
@@ -70,8 +70,8 @@ private:
   FeedbackSink* feedbackSink_;
   boost::mutex myMonitor_;
 	
-  int deliverAudioData_(char* buf, int len);
-	int deliverVideoData_(char* buf, int len);
+  int deliverAudioData_(char* buf, int len, MediaSource*);
+	int deliverVideoData_(char* buf, int len, MediaSource*);
   int deliverFeedback_(char* buf, int len);
   void closeAll();
 };

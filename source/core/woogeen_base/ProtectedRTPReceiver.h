@@ -44,8 +44,8 @@ public:
     ~ProtectedRTPReceiver();
 
     // Implement the MediaSink interfaces.
-    int deliverAudioData(char*, int len);
-    int deliverVideoData(char*, int len);
+    int deliverAudioData(char*, int len, erizo::MediaSource* from = nullptr);
+    int deliverVideoData(char*, int len, erizo::MediaSource* from = nullptr);
     bool acceptEncapsulatedRTPData() { return true; }
     bool acceptFEC() { return true; }
     bool acceptResentData() { return false; }

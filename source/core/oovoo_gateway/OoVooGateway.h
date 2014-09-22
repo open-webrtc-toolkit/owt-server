@@ -82,8 +82,8 @@ public:
     /**
      * Implements MediaSink interfaces
      */
-    int deliverAudioData(char*, int len);
-    int deliverVideoData(char*, int len);
+    int deliverAudioData(char*, int len, erizo::MediaSource*);
+    int deliverVideoData(char*, int len, erizo::MediaSource*);
     void audioReady();
     void videoReady();
     bool acceptEncapsulatedRTPData();

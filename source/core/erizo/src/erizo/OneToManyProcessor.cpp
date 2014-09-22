@@ -20,7 +20,7 @@ namespace erizo {
     this->closeAll();
   }
 
-  int OneToManyProcessor::deliverAudioData_(char* buf, int len) {
+  int OneToManyProcessor::deliverAudioData_(char* buf, int len, MediaSource*) {
  //   ELOG_DEBUG ("OneToManyProcessor deliverAudio");
     if (subscribers.empty() || len <= 0)
       return 0;
@@ -33,7 +33,7 @@ namespace erizo {
     return 0;
   }
 
-  int OneToManyProcessor::deliverVideoData_(char* buf, int len) {
+  int OneToManyProcessor::deliverVideoData_(char* buf, int len, MediaSource*) {
     if (subscribers.empty() || len <= 0)
       return 0;
 
