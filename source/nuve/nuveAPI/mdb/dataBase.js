@@ -1,5 +1,5 @@
 /*global require, exports*/
-var config = require('./../../../licode_config');
+var config = require('./../../../../licode_config');
 
 var logger = require('./../logger').logger;
 
