@@ -176,7 +176,7 @@ exports.ErizoJSController = function (spec) {
             log.info("Adding publisher peer_id ", from);
 
             var muxer = new addon.OneToManyProcessor(),
-                wrtc = new addon.WebRtcConnection(true, true, GLOBAL.config.erizo.stunserver, GLOBAL.config.erizo.stunport, GLOBAL.config.erizo.minport, GLOBAL.config.erizo.maxport, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
+                wrtc = new addon.WebRtcConnection(true, true, GLOBAL.config.erizo.stunserver, GLOBAL.config.erizo.stunport, GLOBAL.config.erizo.minport, GLOBAL.config.erizo.maxport, undefined, undefined, undefined, true, true, true, true);
 
             publishers[from] = muxer;
             subscribers[from] = [];
@@ -206,7 +206,7 @@ exports.ErizoJSController = function (spec) {
 
             log.info("Adding subscriber from ", from, 'to ', to, 'audio', audio, 'video', video);
 
-            var wrtc = new addon.WebRtcConnection(audio, video, GLOBAL.config.erizo.stunserver, GLOBAL.config.erizo.stunport, GLOBAL.config.erizo.minport, GLOBAL.config.erizo.maxport, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
+            var wrtc = new addon.WebRtcConnection(audio, video, GLOBAL.config.erizo.stunserver, GLOBAL.config.erizo.stunport, GLOBAL.config.erizo.minport, GLOBAL.config.erizo.maxport, undefined, undefined, undefined, true, true, true, true);
 
             subscribers[to].push(from);
             publishers[to].addSubscriber(wrtc, from);
