@@ -18,8 +18,8 @@
  * and approved by Intel in writing.
  */
 
-#ifndef WOOGEENTRANSPORT_H_
-#define WOOGEENTRANSPORT_H_
+#ifndef WoogeenTransport_h
+#define WoogeenTransport_h
 
 #include <MediaDefinitions.h>
 #include <webrtc/common_types.h>
@@ -28,15 +28,15 @@ namespace woogeen_base {
 
 class WoogeenTransport: public webrtc::Transport {
 public:
-	WoogeenTransport(erizo::MediaSink* sink);
-	virtual ~WoogeenTransport();
+    WoogeenTransport(erizo::MediaSink*);
+    virtual ~WoogeenTransport();
 
-    virtual int SendPacket(int channel, const void *data, int len);
-    virtual int SendRTCPPacket(int channel, const void *data, int len);
+    virtual int SendPacket(int channel, const void* data, int len);
+    virtual int SendRTCPPacket(int channel, const void* data, int len);
 
 private:
     erizo::MediaSink* sink_;
 };
 
 }
-#endif /* WOOGEENTRANSPORT_H_ */
+#endif /* WoogeenTransport_h */
