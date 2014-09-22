@@ -17,7 +17,7 @@ module.exports = function(config) {
       'erizo-test.js',
       '../erizo_controller/erizoClient/dist/erizo.js',
       '../nuve/nuveClient/build/nuve.js',
-      '../licode_config.js'
+      '../../licode_config.js'
     ],
 
 
