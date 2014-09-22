@@ -14,7 +14,7 @@ pause() {
 }
 
 install_erizo(){
-  cd $ROOT/erizo
+  cd $ROOT/source/core/erizo
   ./generateProject.sh
   ./buildProject.sh
   export ERIZO_HOME=`pwd`
@@ -22,13 +22,13 @@ install_erizo(){
 }
 
 install_erizo_api(){
-  cd $ROOT/erizoAPI
+  cd $ROOT/source/bindings/erizoAPI
   ./build.sh
   cd $CURRENT_DIR
 }
 
 install_erizo_controller(){
-  cd $ROOT/erizo_controller
+  cd $ROOT/source/erizo_controller
   ./installErizo_controller.sh
   cd $CURRENT_DIR
 }

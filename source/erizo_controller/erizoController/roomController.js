@@ -1,6 +1,6 @@
 /*global require, exports, console, setInterval, clearInterval*/
 
-var addon = require('./../../erizoAPI/build/Release/addon');
+var addon = require('./../../bindings/erizoAPI/build/Release/addon');
 var logger = require('./../common/logger').logger;
 
 // Logger

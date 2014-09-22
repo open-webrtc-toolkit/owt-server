@@ -7,7 +7,7 @@ ROOT=$PATHNAME/..
 BUILD_DIR=$ROOT/build
 CURRENT_DIR=`pwd`
 DB_DIR="$BUILD_DIR"/db
-EXTRAS=$ROOT/extras
+EXTRAS=$ROOT/source/extras
 
 cd $EXTRAS/basic_example
 
