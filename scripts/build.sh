@@ -11,7 +11,8 @@ usage() {
   echo "Usage:"
   echo "    --release (default)                 build in release mode"
   echo "    --debug                             build in debug mode"
-  echo "    --runtime                           build runtime library & addon"
+  echo "    --gateway                           build runtime library & addon"
+  echo "    --mcu                               build runtime library & addon"
   echo "    --sdk                               build erizo.js"
   echo "    --all                               build all components"
   echo "    --help                              print this help"
@@ -26,7 +27,8 @@ if [[ $# -eq 0 ]];then
   exit 1
 fi
 
-BUILD_RUNTIME=false
+BUILD_GATEWAY_RUNTIME=false
+BUILD_MCU_RUNTIME=false
 BUILD_SDK_CLIENT=false
 BUILDTYPE="Release"
 BUILD_ROOT="${ROOT}/build"
@@ -42,11 +44,15 @@ while [[ $# -gt 0 ]]; do
       BUILDTYPE="Debug"
       ;;
     *(-)all )
-      BUILD_RUNTIME=true
+      BUILD_GATEWAY_RUNTIME=true
+      BUILD_MCU_RUNTIME=true
       BUILD_SDK_CLIENT=true
       ;;
-    *(-)runtime )
-      BUILD_RUNTIME=true
+    *(-)gateway )
+      BUILD_GATEWAY_RUNTIME=true
+      ;;
+    *(-)mcu )
+      BUILD_MCU_RUNTIME=true
       ;;
     *(-)sdk )
       BUILD_SDK_CLIENT=true
@@ -62,9 +68,20 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 
+build_gateway_runtime() {
+  CMAKE_ADDITIONAL_OPTIONS="-DCOMPILE_OOVOO_GATEWAY=ON"
+  RUNTIME_ADDON_SRC_DIR="${SOURCE}/bindings"
+  build_runtime
+}
+
 build_mcu_runtime() {
+  CMAKE_ADDITIONAL_OPTIONS="-DCOMPILE_MCU=ON"
+  RUNTIME_ADDON_SRC_DIR="${SOURCE}/bindings/mcu"
+  build_runtime
+}
+
+build_runtime() {
   local RUNTIME_LIB_SRC_DIR="${SOURCE}/core"
-  local RUNTIME_ADDON_SRC_DIR="${SOURCE}/bindings"
 
   local CCOMPILER=${DEPS_ROOT}/bin/gcc
   local CXXCOMPILER=${DEPS_ROOT}/bin/g++
@@ -75,13 +92,13 @@ build_mcu_runtime() {
   if ! uname -a | grep [Uu]buntu -q -s; then
     cd "${RUNTIME_LIB_SRC_DIR}/build"
     if [[ -x $CCOMPILER && -x $CXXCOMPILER ]]; then
-      LD_LIBRARY_PATH=${DEPS_ROOT}/lib:$LD_LIBRARY_PATH PKG_CONFIG_PATH=${DEPS_ROOT}/lib/pkgconfig:$PKG_CONFIG_PATH BOOST_ROOT=${DEPS_ROOT} CC=$CCOMPILER CXX=$CXXCOMPILER cmake -DCMAKE_BUILD_TYPE=${BUILDTYPE} ..
+      LD_LIBRARY_PATH=${DEPS_ROOT}/lib:$LD_LIBRARY_PATH PKG_CONFIG_PATH=${DEPS_ROOT}/lib/pkgconfig:$PKG_CONFIG_PATH BOOST_ROOT=${DEPS_ROOT} CC=$CCOMPILER CXX=$CXXCOMPILER cmake -DCMAKE_BUILD_TYPE=${BUILDTYPE} $CMAKE_ADDITIONAL_OPTIONS ..
     else
-      LD_LIBRARY_PATH=${DEPS_ROOT}/lib:$LD_LIBRARY_PATH PKG_CONFIG_PATH=${DEPS_ROOT}/lib/pkgconfig:$PKG_CONFIG_PATH BOOST_ROOT=${DEPS_ROOT} cmake -DCMAKE_BUILD_TYPE=${BUILDTYPE} ..
+      LD_LIBRARY_PATH=${DEPS_ROOT}/lib:$LD_LIBRARY_PATH PKG_CONFIG_PATH=${DEPS_ROOT}/lib/pkgconfig:$PKG_CONFIG_PATH BOOST_ROOT=${DEPS_ROOT} cmake -DCMAKE_BUILD_TYPE=${BUILDTYPE} $CMAKE_ADDITIONAL_OPTIONS ..
     fi
     LD_LIBRARY_PATH=${DEPS_ROOT}/lib:$LD_LIBRARY_PATH make
   else
-    cd "${RUNTIME_LIB_SRC_DIR}/build" && cmake -DCMAKE_BUILD_TYPE=${BUILDTYPE} .. && make
+    cd "${RUNTIME_LIB_SRC_DIR}/build" && cmake -DCMAKE_BUILD_TYPE=${BUILDTYPE} ${CMAKE_ADDITIONAL_OPTIONS} .. && make
   fi
   # runtime addon
   if hash node-gyp 2>/dev/null; then
@@ -152,7 +169,11 @@ build() {
   local DONE=0
   mkdir -p "${BUILD_ROOT}/sdk"
   # Job
-  if ${BUILD_RUNTIME} ; then
+  if ${BUILD_GATEWAY_RUNTIME} ; then
+    build_gateway_runtime
+    ((DONE++))
+  fi
+  if ${BUILD_MCU_RUNTIME} ; then
     build_mcu_runtime
     ((DONE++))
   fi

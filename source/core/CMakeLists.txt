@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 2.8)
 
 project (GATEWAY_ALL)
-set (COMPILE_OOVOO_GATEWAY ON)
-set (COMPILE_MCU ON)
+option (COMPILE_OOVOO_GATEWAY OFF)
+option (COMPILE_MCU OFF)
 
 include_directories("${GATEWAY_ALL_SOURCES}common")
 add_subdirectory("${GATEWAY_ALL_SOURCES}erizo/src")
