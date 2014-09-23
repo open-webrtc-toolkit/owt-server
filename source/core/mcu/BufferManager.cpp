@@ -55,7 +55,7 @@ webrtc::I420VideoFrame* BufferManager::getFreeBuffer()
         return buffer;
     else {
         ELOG_DEBUG("freeQ is empty")
-        return nulltpr;
+        return nullptr;
     }
 }
 

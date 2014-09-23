@@ -20,6 +20,7 @@
 
 #ifndef BufferManager_h
 #define BufferManager_h
+
 #include <boost/lockfree/queue.hpp>
 #include <logger.h>
 
