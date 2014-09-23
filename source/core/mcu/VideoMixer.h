@@ -102,7 +102,7 @@ public:
     void closeAll();
 
     int assignSlot(erizo::MediaSource* pub) {
-        for (int i = 0; i < puberSlotMap_.size(); i++) {
+        for (uint32_t i = 0; i < puberSlotMap_.size(); i++) {
             if (puberSlotMap_[i] == NULL) {
                 puberSlotMap_[i] = pub;
                 return i;
@@ -119,7 +119,7 @@ public:
     // find the slot number for the corresponding puber
     // return -1 if not found
     int getSlot(erizo::MediaSource* pub) {
-        for (int i = 0; i < puberSlotMap_.size(); i++) {
+        for (uint32_t i = 0; i < puberSlotMap_.size(); i++) {
             if (puberSlotMap_[i] == pub)
                 return i;
         }
