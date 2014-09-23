@@ -134,7 +134,7 @@ bool VCMInputProcessor::init(BufferManager*  bufferManager)
       return false;
     }
 
-    bool result = setReceiveVideoCodec(video_codec);
+    setReceiveVideoCodec(video_codec);
 
     if (video_codec.codecType != kVideoCodecRED &&
         video_codec.codecType != kVideoCodecULPFEC) {
@@ -212,7 +212,6 @@ void VCMInputProcessor::receiveRtpData(char* rtp_packet, int rtp_packet_length, 
         return;
     }
     int payload_length = rtp_packet_length - header.headerLength;
-    int64_t arrival_time_ms = TickTime::MillisecondTimestamp();
     header.payload_type_frequency = kVideoPayloadTypeFrequency;
     bool in_order = false; /*IsPacketInOrder(header)*/;
     rtp_payload_registry_->SetIncomingPayloadType(header);
@@ -221,7 +220,7 @@ void VCMInputProcessor::receiveRtpData(char* rtp_packet, int rtp_packet_length, 
        return;
     }
     rtp_receiver_->IncomingRtpPacket(header, reinterpret_cast<uint8_t*>(rtp_packet + header.headerLength) , payload_length,
-        payload_specific, false);
+        payload_specific, in_order);
 }
 
 DEFINE_LOGGER(VCMOutputProcessor, "media.VCMOutputProcessor");
