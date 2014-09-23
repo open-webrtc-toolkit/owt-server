@@ -72,38 +72,16 @@ build_mcu_runtime() {
   # rm -fr "${RUNTIME_LIB_SRC_DIR}/build"
   mkdir -p "${RUNTIME_LIB_SRC_DIR}/build"
   # runtime lib
-  if [[ ${BUILDTYPE} == "Release" ]]; then
-    local ERIZO_CMAKEFILE="${RUNTIME_LIB_SRC_DIR}/erizo/src/erizo/CMakeLists.txt"
-    sed -i.origin 's/\(set(CMAKE_CXX_FLAGS "\)/\1-O3 -DNDEBUG /g' "${ERIZO_CMAKEFILE}"
-    local WOOGEEN_BASE_CMAKEFILE="${RUNTIME_LIB_SRC_DIR}/woogeen_base/CMakeLists.txt"
-    sed -i.origin 's/\(set(CMAKE_CXX_FLAGS "\)/\1-O3 -DNDEBUG /g' "${WOOGEEN_BASE_CMAKEFILE}"
-    local OOVOO_GATEWAY_CMAKEFILE="${RUNTIME_LIB_SRC_DIR}/oovoo_gateway/CMakeLists.txt"
-    sed -i.origin 's/\(set(CMAKE_CXX_FLAGS "\)/\1-O3 -DNDEBUG /g' "${OOVOO_GATEWAY_CMAKEFILE}"
-    if ! uname -a | grep [Uu]buntu -q -s; then
-      cd "${RUNTIME_LIB_SRC_DIR}/build"
-      if [[ -x $CCOMPILER && -x $CXXCOMPILER ]]; then
-        LD_LIBRARY_PATH=${DEPS_ROOT}/lib:$LD_LIBRARY_PATH PKG_CONFIG_PATH=${DEPS_ROOT}/lib/pkgconfig:$PKG_CONFIG_PATH BOOST_ROOT=${DEPS_ROOT} CC=$CCOMPILER CXX=$CXXCOMPILER cmake ..
-      else
-        LD_LIBRARY_PATH=${DEPS_ROOT}/lib:$LD_LIBRARY_PATH PKG_CONFIG_PATH=${DEPS_ROOT}/lib/pkgconfig:$PKG_CONFIG_PATH BOOST_ROOT=${DEPS_ROOT} cmake ..
-      fi
-      LD_LIBRARY_PATH=${DEPS_ROOT}/lib:$LD_LIBRARY_PATH make
+  if ! uname -a | grep [Uu]buntu -q -s; then
+    cd "${RUNTIME_LIB_SRC_DIR}/build"
+    if [[ -x $CCOMPILER && -x $CXXCOMPILER ]]; then
+      LD_LIBRARY_PATH=${DEPS_ROOT}/lib:$LD_LIBRARY_PATH PKG_CONFIG_PATH=${DEPS_ROOT}/lib/pkgconfig:$PKG_CONFIG_PATH BOOST_ROOT=${DEPS_ROOT} CC=$CCOMPILER CXX=$CXXCOMPILER cmake -DCMAKE_BUILD_TYPE=${BUILDTYPE} ..
     else
-      cd "${RUNTIME_LIB_SRC_DIR}/build" && cmake .. && make
+      LD_LIBRARY_PATH=${DEPS_ROOT}/lib:$LD_LIBRARY_PATH PKG_CONFIG_PATH=${DEPS_ROOT}/lib/pkgconfig:$PKG_CONFIG_PATH BOOST_ROOT=${DEPS_ROOT} cmake -DCMAKE_BUILD_TYPE=${BUILDTYPE} ..
     fi
-    mv "${ERIZO_CMAKEFILE}.origin" "${ERIZO_CMAKEFILE}" # revert to original
-    mv "${WOOGEEN_BASE_CMAKEFILE}.origin" "${WOOGEEN_BASE_CMAKEFILE}" # revert to original
-    mv "${OOVOO_GATEWAY_CMAKEFILE}.origin" "${OOVOO_GATEWAY_CMAKEFILE}" # revert to original
+    LD_LIBRARY_PATH=${DEPS_ROOT}/lib:$LD_LIBRARY_PATH make
   else
-    if ! uname -a | grep [Uu]buntu -q -s; then
-      cd "${RUNTIME_LIB_SRC_DIR}/build"
-      if [[ -x $CCOMPILER && -x $CXXCOMPILER ]]; then
-        LD_LIBRARY_PATH=${DEPS_ROOT}/lib:$LD_LIBRARY_PATH PKG_CONFIG_PATH=${DEPS_ROOT}/lib/pkgconfig:$PKG_CONFIG_PATH BOOST_ROOT=${DEPS_ROOT} CC=$CCOMPILER CXX=$CXXCOMPILER cmake ..
-      else
-        LD_LIBRARY_PATH=${DEPS_ROOT}/lib:$LD_LIBRARY_PATH PKG_CONFIG_PATH=${DEPS_ROOT}/lib/pkgconfig:$PKG_CONFIG_PATH BOOST_ROOT=${DEPS_ROOT} cmake ..
-      fi
-    else
-      cd "${RUNTIME_LIB_SRC_DIR}/build" && cmake .. && make
-    fi
+    cd "${RUNTIME_LIB_SRC_DIR}/build" && cmake -DCMAKE_BUILD_TYPE=${BUILDTYPE} .. && make
   fi
   # runtime addon
   if hash node-gyp 2>/dev/null; then
