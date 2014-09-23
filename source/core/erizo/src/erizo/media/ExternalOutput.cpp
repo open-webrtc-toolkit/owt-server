@@ -14,7 +14,7 @@ DEFINE_LOGGER(ExternalOutput, "media.ExternalOutput");
 // B) our audio sample rate is typically 20 msec packets; video is anywhere from 33 to 100 msec (30 to 10 fps)
 // Allowing the audio queue to hold more will help prevent loss of data when the video framerate is low.
 ExternalOutput::ExternalOutput(const std::string& outputUrl) : audioQueue_(600, 60), videoQueue_(120, 60), inited_(false), video_stream_(NULL), audio_stream_(NULL),
-    firstVideoTimestamp_(-1), firstAudioTimestamp_(-1), vp8SearchState_(lookingForStart), firstDataReceived_(-1), videoOffsetMsec_(-1), audioOffsetMsec_(-1)
+    firstVideoTimestamp_(-1), firstAudioTimestamp_(-1), firstDataReceived_(-1), videoOffsetMsec_(-1), audioOffsetMsec_(-1), vp8SearchState_(lookingForStart)
 {
     ELOG_DEBUG("Creating output to %s", outputUrl.c_str());
 
