@@ -21,7 +21,16 @@
 #ifndef BufferManager_h
 #define BufferManager_h
 
+#include <boost/version.hpp>
+
+#if ((BOOST_VERSION / 100 % 1000) < 53)
+#define BOOST_LOCKFREE_QUEUE 0
+#include <SharedQueue.h>
+#else
+#define BOOST_LOCKFREE_QUEUE 1
 #include <boost/lockfree/queue.hpp>
+#endif
+
 #include <logger.h>
 
 /**
@@ -83,7 +92,11 @@ private:
     }
 
     // frames in freeQ can be used to copy decoded frame data by the decoder thread
+#if BOOST_LOCKFREE_QUEUE
     boost::lockfree::queue<webrtc::I420VideoFrame*, boost::lockfree::capacity<SLOT_SIZE*2>> freeQ_;
+#else
+    SharedQueue<webrtc::I420VideoFrame*> freeQ_;
+#endif
     // frames in the busyQ is ready for composition by the encoder thread
     volatile webrtc::I420VideoFrame* busyQ_[SLOT_SIZE];
 };
