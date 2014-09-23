@@ -24,7 +24,7 @@ namespace woogeen_base {
 
 WoogeenTransport::WoogeenTransport(erizo::MediaSink* sink)
 {
-    sink_ = sink;
+    m_sink = sink;
 }
 
 WoogeenTransport::~WoogeenTransport()
@@ -34,7 +34,7 @@ WoogeenTransport::~WoogeenTransport()
 
 int WoogeenTransport::SendPacket(int channel, const void* data, int len)
 {
-    sink_->deliverVideoData(reinterpret_cast<char*>(const_cast<void*>(data)), len);
+    m_sink->deliverVideoData(reinterpret_cast<char*>(const_cast<void*>(data)), len);
     return len; // return 0 will tell rtp_sender not able to send the packet, thus impact bitrate update
 }
 
