@@ -35,7 +35,7 @@ public:
     virtual int SendRTCPPacket(int channel, const void* data, int len);
 
 private:
-    erizo::MediaSink* sink_;
+    erizo::MediaSink* m_sink;
 };
 
 }
