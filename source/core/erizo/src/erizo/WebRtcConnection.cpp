@@ -135,7 +135,9 @@ namespace erizo {
     localSdp_.audioSsrc = this->getAudioSinkSSRC();
 
     this->setVideoSourceSSRC(remoteSdp_.videoSsrc);
+    this->thisStats_.setVideoSourceSSRC(this->getVideoSourceSSRC());
     this->setAudioSourceSSRC(remoteSdp_.audioSsrc);
+    this->thisStats_.setAudioSourceSSRC(this->getAudioSourceSSRC());
 
     if (!remoteSdp_.supportPayloadType(RED_90000_PT))
       deliverMediaBuffer_.reset(new char[3000]);
