@@ -42,7 +42,7 @@ BufferManager::BufferManager()
 
 BufferManager::~BufferManager()
 {
-    webrtc::I420VideoFrame* buffer;
+    webrtc::I420VideoFrame* buffer = nullptr;
     while (freeQ_.pop(buffer))
         delete buffer;
     ELOG_DEBUG("BufferManager destroyed")
@@ -68,7 +68,7 @@ void BufferManager::releaseBuffer(webrtc::I420VideoFrame* frame)
 webrtc::I420VideoFrame* BufferManager::getBusyBuffer(int slot)
 {
     assert (slot <= SLOT_SIZE);
-    webrtc::I420VideoFrame* busyFrame = BufferManager::exchange((volatile uint64_t*)&(busyQ_[slot]), 0);
+    webrtc::I420VideoFrame* busyFrame = reinterpret_cast<webrtc::I420VideoFrame*>(BufferManager::exchange((volatile uint64_t*)&(busyQ_[slot]), 0));
     ELOG_DEBUG("getBusyBuffer: busyQ[%d] is 0x%p, busyFrame is 0x%p", slot, busyQ_[slot], busyFrame);
     return busyFrame;
 }
@@ -77,7 +77,7 @@ webrtc::I420VideoFrame* BufferManager::returnBusyBuffer(
     webrtc::I420VideoFrame* frame, int slot)
 {
     assert (slot <= SLOT_SIZE);
-    webrtc::I420VideoFrame* busyFrame = BufferManager::cmpexchange((volatile uint64_t*)&(busyQ_[slot]), frame, 0);
+    webrtc::I420VideoFrame* busyFrame = reinterpret_cast<webrtc::I420VideoFrame*>(BufferManager::cmpexchange((volatile uint64_t*)&(busyQ_[slot]), reinterpret_cast<uint64_t>(frame), 0));
     ELOG_DEBUG("after returnBusyBuffer: busyQ[%d] is 0x%p, busyFrame is 0x%p", slot, busyQ_[slot], busyFrame);
     return busyFrame;
 }
@@ -86,7 +86,7 @@ webrtc::I420VideoFrame* BufferManager::postFreeBuffer(webrtc::I420VideoFrame* fr
 {
     assert (slot <= SLOT_SIZE);
     ELOG_DEBUG("Posting buffer to slot %d", slot);
-    webrtc::I420VideoFrame* busyFrame = BufferManager::exchange((volatile uint64_t*)&(busyQ_[slot]), frame);
+    webrtc::I420VideoFrame* busyFrame = reinterpret_cast<webrtc::I420VideoFrame*>(BufferManager::exchange((volatile uint64_t*)&(busyQ_[slot]), reinterpret_cast<uint64_t>(frame)));
     ELOG_DEBUG("after postFreeBuffer: busyQ[%d] is 0x%p,  busyFrame is 0x%p", slot, busyQ_[slot], busyFrame);
     return busyFrame;
 }
