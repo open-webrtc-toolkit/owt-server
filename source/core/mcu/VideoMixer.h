@@ -54,8 +54,8 @@ class VideoMixer : public erizo::MediaSink, public erizo::MediaSource {
     DECLARE_LOGGER();
 
 public:
-    VideoMixer();
-    virtual ~VideoMixer();
+    DLL_PUBLIC VideoMixer();
+    DLL_PUBLIC virtual ~VideoMixer();
     virtual bool init();
     /**
      * Add a Publisher.
@@ -63,20 +63,20 @@ public:
      * decoding the incoming streams into I420Frames
      * @param webRtcConn The WebRtcConnection of the Publisher
      */
-    void addPublisher(erizo::MediaSource* puber);
+    DLL_PUBLIC void addPublisher(erizo::MediaSource* puber);
     /**
      * Sets the subscriber
      * @param webRtcConn The WebRtcConnection of the subscriber
      * @param peerId An unique Id for the subscriber
      */
-    void addSubscriber(erizo::MediaSink* suber, const std::string& peerId);
+    DLL_PUBLIC void addSubscriber(erizo::MediaSink* suber, const std::string& peerId);
     /**
      * Eliminates the subscriber
      * @param puber
      */
-    void removeSubscriber(const std::string& peerId);
+    DLL_PUBLIC void removeSubscriber(const std::string& peerId);
 
-    void removePublisher(erizo::MediaSource* puber);
+    DLL_PUBLIC void removePublisher(erizo::MediaSource* puber);
 
     /**
      * called by WebRtcConnections' onTransportData. This VideoMixer
