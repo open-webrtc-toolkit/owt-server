@@ -1,0 +1,73 @@
+@TEMPLATE encoder_tmpl.c
+VP8 Set Reference Frame
+=======================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ INTRODUCTION
+This is an example demonstrating how to overwrite the VP8 encoder's
+internal reference frame. In the sample we set the last frame to the
+current frame. If this is done at a cut scene it will avoid a keyframe.
+This technique could be used to bounce between two cameras.
+
+Note that the decoder would also have to set the reference frame to the
+same value on the same frame, or the video will become corrupt.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ INTRODUCTION
+
+
+Usage
+-----
+This example adds a single argument to the `simple_encoder` example,
+which specifies the frame number to update the reference frame on.
+The parameter is parsed as follows:
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ USAGE
+if(argc!=6)
+    die("Usage: %s <width> <height> <infile> <outfile> <frame>\n",
+        argv[0]);
+
+    update_frame_num = atoi(argv[5]);
+    if(!update_frame_num)
+        die("Couldn't parse frame number '%s'\n", argv[5]);
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ USAGE
+
+
+Extra Variables
+---------------
+This example maintains the frame number passed on the command line
+in the `update_frame_num` variable:
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ TWOPASS_VARS
+int                  update_frame_num = 0;
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ TWOPASS_VARS
+
+
+Configuration
+-------------
+
+The reference frame is updated on the frame specified on the command
+line.
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ENCODE_FRAME
+frame_avail = read_frame(infile, &raw);
+
+if(frame_cnt + 1 == update_frame_num) {
+    vpx_ref_frame_t ref;
+
+    ref.frame_type = VP8_LAST_FRAME;
+    ref.img        = raw;
+
+    if(vpx_codec_control(&codec, VP8_SET_REFERENCE, &ref))
+        die_codec(&codec, "Failed to set reference frame");
+}
+
+if(vpx_codec_encode(&codec, frame_avail? &raw : NULL, frame_cnt,
+                    1, flags, VPX_DL_REALTIME))
+    die_codec(&codec, "Failed to encode frame");
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ENCODE_FRAME
+
+
+Observing The Effects
+---------------------
+Use the `simple_encoder` example to encode a sample with a cut scene.
+Determine the frame number of the cut scene by looking for a generated
+key-frame (indicated by a 'K'). Supply that frame number as an argument
+to this example, and observe that no key-frame is generated.

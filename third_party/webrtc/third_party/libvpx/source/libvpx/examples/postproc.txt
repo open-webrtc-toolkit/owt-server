@@ -1,0 +1,67 @@
+@TEMPLATE decoder_tmpl.c
+Postprocessing Decoder
+======================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ INTRODUCTION
+This example adds postprocessing to the simple decoder loop.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ INTRODUCTION
+
+
+Initializing Postprocessing
+---------------------------
+You must inform the codec that you might request postprocessing at
+initialization time. This is done by passing the VPX_CODEC_USE_POSTPROC
+flag to `vpx_codec_dec_init`. If the codec does not support
+postprocessing, this call will return VPX_CODEC_INCAPABLE. For
+demonstration purposes, we also fall back to default initialization if
+the codec does not provide support.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ DEC_INIT
+/* Initialize codec */
+res = vpx_codec_dec_init(&codec, interface, NULL,
+                         VPX_CODEC_USE_POSTPROC);
+if(res == VPX_CODEC_INCAPABLE) {
+    printf("NOTICE: Postproc not supported by %s\n",
+           vpx_codec_iface_name(interface));
+    res = vpx_codec_dec_init(&codec, interface, NULL, flags);
+}
+if(res)
+    die_codec(&codec, "Failed to initialize decoder");
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ DEC_INIT
+
+
+Using Adaptive Postprocessing
+-----------------------------
+VP6 provides "adaptive postprocessing." It will automatically select the
+best postprocessing filter on a frame by frame basis based on the amount
+of time remaining before the user's specified deadline expires. The
+special value 0 indicates that the codec should take as long as
+necessary to provide the best quality frame. This example gives the
+codec 15ms (15000us) to return a frame. Remember that this is a soft
+deadline, and the codec may exceed it doing its regular processing. In
+these cases, no additional postprocessing will be done.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ DECODE
+/* Decode the frame with 15ms deadline */
+if(vpx_codec_decode(&codec, frame, frame_sz, NULL, 15000))
+    die_codec(&codec, "Failed to decode frame");
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ DECODE
+
+
+Codec Specific Postprocessing Controls
+--------------------------------------
+Some codecs provide fine grained controls over their built-in
+postprocessors. VP8 is one example. The following sample code toggles
+postprocessing on and off every 15 frames.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ PRE_DECODE
+#if CONFIG_VP9_DECODER
+if(frame_cnt%30 == 1) {
+    vp8_postproc_cfg_t  pp = {0, 0, 0};
+
+    if(vpx_codec_control(&codec, VP8_SET_POSTPROC, &pp))
+        die_codec(&codec, "Failed to turn off postproc");
+} else if(frame_cnt%30 == 16) {
+    vp8_postproc_cfg_t  pp = {VP8_DEBLOCK | VP8_DEMACROBLOCK | VP8_MFQE, 4, 0};
+
+    if(vpx_codec_control(&codec, VP8_SET_POSTPROC, &pp))
+        die_codec(&codec, "Failed to turn on postproc");
+};
+#endif
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ PRE_DECODE

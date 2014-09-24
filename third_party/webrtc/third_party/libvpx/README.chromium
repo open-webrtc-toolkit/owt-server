@@ -1,0 +1,66 @@
+Name: libvpx
+URL: http://www.webmproject.org
+Version: v1.2.0
+License: BSD
+License File: source/libvpx/LICENSE
+Security Critical: yes
+
+Date: Thursday January 31 2013
+Branch: master
+Commit: 226c57e4fa3c99081f2892c4f149318955ba230b
+
+Description:
+Contains the sources used to compile libvpx binaries used by Google Chrome and
+Chromium.
+
+The libvpx source is from webmproject.org:
+  git://review.webmproject.org/libvpx
+
+Notes on updating libvpx source code.
+
+Please follow these steps to update libvpx source code:
+
+1. Update libvpx source tree. Look for "Current Head: <hash>" output to update
+   README.chromium. Look for "git log from upstream: <git log>" output to add
+   to the commit message.
+
+   ./update_libvpx.sh [branch name]
+
+2. Generate updated .gypi and config files.
+
+   ./generate_gypi.sh
+
+3. Update this README with any Version, Date, Branch, and Commit changes. The
+   version is in the file source/config/vpx_version.h
+
+4. Commit the changes in root (I.e README & .gypi files), source/libvpx, and
+   source/config directories. The commit message should look like this:
+   libvpx: Pull from upstream
+
+   Current HEAD: <hash>
+
+   git log from upstream:
+   a6b2070 <git commit message 1>
+   08dabbc <git commit message 2>
+   c29fb02 <git commit message 3>
+
+Tools needed to build libvpx:
+
+- generate_gypi.sh
+
+Generate config and .gypi files that contain the source list for each platform.
+Configuration for the build is taken from vpx_config.h for each platform.
+
+- lint_config.sh
+
+A tool to verify vpx_config.h and vpx_config.asm are matched. This also
+prints the final configuration after checking.
+
+- unpack_lib_posix.sh
+
+Unpack a static library of .a type. This tool takes a list of possible
+locations of the library file and extract the content.
+
+- copy_obj.sh
+
+A copy utility from a list of candidate locations.

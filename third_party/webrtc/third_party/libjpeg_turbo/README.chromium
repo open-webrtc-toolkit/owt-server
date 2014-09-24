@@ -1,0 +1,27 @@
+Name: libjpeg-turbo
+URL: http://sourceforge.net/projects/libjpeg-turbo/
+Version: 1.2.80
+License: Custom license
+License File: LICENSE.txt
+Security Critical: yes
+
+Description:
+This consists of three components:
+* A partial copy of libjpeg-turbo 1.2.80 (r856);
+* A build file (libjpeg.gyp), and;
+* Patched header files used by Chromium.
+
+This libjpeg-turbo can replace our libjpeg-6b without any modifications in the
+Chromium code.
+
+Same as our copy of libjpeg-6b, this libjpeg-turbo also added a new file
+jpeglibmangler.h and included it from jpeglib.h that changes the names of all
+externally visible functions to chromium_* so that we can avoid conflicts that
+arise when system libraries attempt to use our libjpeg. Also, we applied the
+following changes which are not merged to upstream:
+* Added the 'private_extern' flags on Mac (or the 'hidden' flags on Linux) to
+  all the global symbols in '.asm' files to prevent making them external ones.
+* Supported motion-JPEG frames that do not have DHT markers.
+* Fixed valgrind errors.
+The 'google.patch' file represents our changes from the original
+libjpeg-turbo-1.2.
