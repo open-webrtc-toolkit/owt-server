@@ -22,6 +22,7 @@
 #define BufferManager_h
 
 #include <boost/version.hpp>
+#include <Compiler.h>
 
 #if ((BOOST_VERSION / 100 % 1000) < 53)
 #define BOOST_LOCKFREE_QUEUE 0
