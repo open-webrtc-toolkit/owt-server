@@ -1,0 +1,96 @@
+@TEMPLATE decoder_tmpl.c
+Simple Decoder
+==============
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ INTRODUCTION
+This is an example of a simple decoder loop. It takes an input file
+containing the compressed data (in IVF format), passes it through the
+decoder, and writes the decompressed frames to disk. Other decoder
+examples build upon this one.
+
+The details of the IVF format have been elided from this example for
+simplicity of presentation, as IVF files will not generally be used by
+your application. In general, an IVF file consists of a file header,
+followed by a variable number of frames. Each frame consists of a frame
+header followed by a variable length payload. The length of the payload
+is specified in the first four bytes of the frame header. The payload is
+the raw compressed data.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ INTRODUCTION
+
+
+Standard Includes
+-----------------
+For decoders, you only have to include `vpx_decoder.h` and then any
+header files for the specific codecs you use. In this case, we're using
+vp8. The `VPX_CODEC_DISABLE_COMPAT` macro can be defined to ensure
+strict compliance with the latest SDK by disabling some backwards
+compatibility features. Defining this macro is encouraged.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ DEC_INCLUDES
+@DEFAULT
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ DEC_INCLUDES
+
+
+Initializing The Codec
+----------------------
+The decoder is initialized by the following code. This is an example for
+the VP8 decoder, but the code is analogous for all algorithms. Replace
+`vpx_codec_vp8_dx()` with a pointer to the interface exposed by the
+algorithm you want to use. The `cfg` argument is left as NULL in this
+example, because we want the algorithm to determine the stream
+configuration (width/height) and allocate memory automatically. This
+parameter is generally only used if you need to preallocate memory,
+particularly in External Memory Allocation mode.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ DEC_INIT
+@DEFAULT
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ DEC_INIT
+
+
+Decoding A Frame
+----------------
+Once the frame has been read into memory, it is decoded using the
+`vpx_codec_decode` function. The call takes a pointer to the data
+(`frame`) and the length of the data (`frame_sz`). No application data
+is associated with the frame in this example, so the `user_priv`
+parameter is NULL. The `deadline` parameter is left at zero for this
+example. This parameter is generally only used when doing adaptive
+postprocessing.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ DECODE
+@DEFAULT
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ DECODE
+
+Codecs may produce a variable number of output frames for every call to
+`vpx_codec_decode`. These frames are retrieved by the
+`vpx_codec_get_frame` iterator function. The iterator variable `iter` is
+initialized to NULL each time `vpx_codec_decode` is called.
+`vpx_codec_get_frame` is called in a loop, returning a pointer to a
+decoded image or NULL to indicate the end of list.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ GET_FRAME
+@DEFAULT
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ GET_FRAME
+
+
+Processing The Decoded Data
+---------------------------
+In this example, we simply write the encoded data to disk. It is
+important to honor the image's `stride` values.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ PROCESS_DX
+@DEFAULT
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ PROCESS_DX
+
+
+Cleanup
+-------
+The `vpx_codec_destroy` call frees any memory allocated by the codec.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ DESTROY
+@DEFAULT
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ DESTROY
+
+
+Error Handling
+--------------
+This example does not special case any error return codes. If there was
+an error, a descriptive message is printed and the program exits. With
+few exeptions, vpx_codec functions return an enumerated error status,
+with the value `0` indicating success.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ DIE_CODEC
+@DEFAULT
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ DIE_CODEC
