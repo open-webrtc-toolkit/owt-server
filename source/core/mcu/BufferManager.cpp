@@ -50,7 +50,7 @@ BufferManager::~BufferManager()
 
 webrtc::I420VideoFrame* BufferManager::getFreeBuffer()
 {
-    webrtc::I420VideoFrame* buffer;
+    webrtc::I420VideoFrame* buffer = nullptr;
     if (freeQ_.pop(buffer))
         return buffer;
     else {
