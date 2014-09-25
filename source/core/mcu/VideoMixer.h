@@ -42,6 +42,7 @@ class WebRtcConnection;
 
 namespace mcu {
 
+class ACMOutputProcessor;
 class BufferManager;
 class VCMOutputProcessor;
 

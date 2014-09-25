@@ -72,7 +72,7 @@ bool VideoMixer::init()
 
   }
 
-  int VideoMixer::deliverAudioData_(char* buf, int len, MediaSource* from) 
+  int VideoMixer::deliverAudioData(char* buf, int len, MediaSource* from) 
 {
     ProtectedRTPReceiver* receiver = publishers_[from];
     if (receiver == NULL)
@@ -104,8 +104,8 @@ void VideoMixer::addPublisher(MediaSource* puber)
     int index = assignSlot(puber);
     ELOG_DEBUG("addPublisher - assigned slot is %d", index);
     if (publishers_[puber] == NULL) {
-        op_->updateMaxSlot(maxSlot());
-        boost::shared_ptr<VCMInputProcessor> ip(new VCMInputProcessor(index, op_));
+        vop_->updateMaxSlot(maxSlot());
+        boost::shared_ptr<VCMInputProcessor> ip(new VCMInputProcessor(index, vop_));
         ip->init(bufferManager_);
 	ACMInputProcessor* aip = new ACMInputProcessor(index);
 	aip->Init(aop_);

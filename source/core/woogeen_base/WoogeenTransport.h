@@ -26,28 +26,28 @@
 
 namespace woogeen_base {
 
-class WoogeenVideoTransport: public webrtc::Transport {
+class WoogeenVideoTransport : public webrtc::Transport {
 public:
-	WoogeenVideoTransport(erizo::MediaSink* sink);
-	virtual ~WoogeenVideoTransport();
+    WoogeenVideoTransport(erizo::MediaSink*);
+    virtual ~WoogeenVideoTransport();
 
-    virtual int SendPacket(int channel, const void *data, int len);
-    virtual int SendRTCPPacket(int channel, const void *data, int len);
+    virtual int SendPacket(int channel, const void* data, int len);
+    virtual int SendRTCPPacket(int channel, const void* data, int len);
 
 private:
-    erizo::MediaSink* sink_;
+    erizo::MediaSink* m_sink;
 };
 
-class WoogeenAudioTransport: public webrtc::Transport {
+class WoogeenAudioTransport : public webrtc::Transport {
 public:
-	WoogeenAudioTransport(erizo::MediaSink* sink);
-	virtual ~WoogeenAudioTransport();
+    WoogeenAudioTransport(erizo::MediaSink*);
+    virtual ~WoogeenAudioTransport();
 
-    virtual int SendPacket(int channel, const void *data, int len);
-    virtual int SendRTCPPacket(int channel, const void *data, int len);
+    virtual int SendPacket(int channel, const void* data, int len);
+    virtual int SendRTCPPacket(int channel, const void* data, int len);
 
 private:
-    erizo::MediaSink* sink_;
+    erizo::MediaSink* m_sink;
 };
 
 }

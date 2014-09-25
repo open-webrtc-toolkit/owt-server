@@ -7,9 +7,12 @@
 
 #include "ACMMediaProcessor.h"
 
+#include <webrtc/voice_engine/include/voe_errors.h>
 
+using namespace erizo;
+using namespace webrtc;
 
-namespace erizo {
+namespace mcu {
 DEFINE_LOGGER(ACMInputProcessor, "media.ACMInputProcessor");
 
 ACMInputProcessor::ACMInputProcessor(int32_t channelId) : rtp_header_parser_(RtpHeaderParser::Create()),
@@ -209,7 +212,7 @@ int32_t ACMInputProcessor::Init(ACMOutputProcessor* aop) {
 
 }
 
-void ACMInputProcessor::receiveRtpData(unsigned char* rtpdata, int len,
+void ACMInputProcessor::receiveRtpData(char* rtpdata, int len,
 		erizo::DataType type, uint32_t streamId) {
 	  WEBRTC_TRACE(kTraceStream, kTraceVoice, VoEId(_channelId,_channelId),
 	               "Channel::ReceivedRTPPacket()");
@@ -471,15 +474,13 @@ int ACMInputProcessor::SetInitialPlayoutDelay(int delay_ms) {
 	      (delay_ms > kVoiceEngineMaxMinPlayoutDelayMs))
 	  {
 		WEBRTC_TRACE(kTraceInfo, kTraceVoice, VoEId(_channelId,_channelId),
-	        VE_INVALID_ARGUMENT, kTraceError,
-	        "SetInitialPlayoutDelay() invalid min delay");
+	        "SetInitialPlayoutDelay() invalid min delay (error %d)", VE_INVALID_ARGUMENT);
 	    return -1;
 	  }
 	  if (audio_coding_->SetInitialPlayoutDelay(delay_ms) != 0)
 	  {
 		WEBRTC_TRACE(kTraceInfo, kTraceVoice, VoEId(_channelId,_channelId),
-	        VE_AUDIO_CODING_MODULE_ERROR, kTraceError,
-	        "SetInitialPlayoutDelay() failed to set min playout delay");
+	        "SetInitialPlayoutDelay() failed to set min playout delay (error %d)", VE_AUDIO_CODING_MODULE_ERROR);
 	    return -1;
 	  }
 	  return 0;
@@ -488,21 +489,19 @@ int ACMInputProcessor::SetInitialPlayoutDelay(int delay_ms) {
 
 int ACMInputProcessor::SetMinimumPlayoutDelay(int delayMs) {
 
-	WEBRTC_TRACE(kTraceInfo, kTraceVoice, VoEId(_instanceId,_channelId),
+	WEBRTC_TRACE(kTraceInfo, kTraceVoice, VoEId(_channelId,_channelId),
                  "Channel::SetMinimumPlayoutDelay()");
     if ((delayMs < kVoiceEngineMinMinPlayoutDelayMs) ||
         (delayMs > kVoiceEngineMaxMinPlayoutDelayMs))
     {
 		WEBRTC_TRACE(kTraceInfo, kTraceVoice, VoEId(_channelId,_channelId),
-            VE_INVALID_ARGUMENT, kTraceError,
-            "SetMinimumPlayoutDelay() invalid min delay");
+            "SetMinimumPlayoutDelay() invalid min delay (error %d)", VE_INVALID_ARGUMENT);
         return -1;
     }
     if (audio_coding_->SetMinimumPlayoutDelay(delayMs) != 0)
     {
 		WEBRTC_TRACE(kTraceInfo, kTraceVoice, VoEId(_channelId,_channelId),
-            VE_AUDIO_CODING_MODULE_ERROR, kTraceError,
-            "SetMinimumPlayoutDelay() failed to set min playout delay");
+            "SetMinimumPlayoutDelay() failed to set min playout delay (error %d)", VE_AUDIO_CODING_MODULE_ERROR);
         return -1;
     }
     return 0;
@@ -513,18 +512,21 @@ void ACMInputProcessor::UpdatePlayoutTimestamp(bool rtcp) {
   uint32_t playout_timestamp = 0;
 
   if (audio_coding_->PlayoutTimestamp(&playout_timestamp) == -1)  {
-    WEBRTC_TRACE(kTraceWarning, kTraceVoice, VoEId(_instanceId,_channelId),
+    WEBRTC_TRACE(kTraceWarning, kTraceVoice, VoEId(_channelId,_channelId),
                  "Channel::UpdatePlayoutTimestamp() failed to read playout"
                  " timestamp from the ACM");
+#if 0
     _engineStatisticsPtr->SetLastError(
         VE_CANNOT_RETRIEVE_VALUE, kTraceError,
         "UpdatePlayoutTimestamp() failed to retrieve timestamp");
+#endif
     return;
   }
 
   uint16_t delay_ms = 0;
+#if 0
   if (_audioDeviceModulePtr->PlayoutDelay(&delay_ms) == -1) {
-    WEBRTC_TRACE(kTraceWarning, kTraceVoice, VoEId(_instanceId,_channelId),
+    WEBRTC_TRACE(kTraceWarning, kTraceVoice, VoEId(_channelId,_channelId),
                  "Channel::UpdatePlayoutTimestamp() failed to read playout"
                  " delay from the ADM");
     _engineStatisticsPtr->SetLastError(
@@ -532,6 +534,7 @@ void ACMInputProcessor::UpdatePlayoutTimestamp(bool rtcp) {
         "UpdatePlayoutTimestamp() failed to retrieve playout delay");
     return;
   }
+#endif
 
   int32_t playout_frequency = audio_coding_->PlayoutFrequency();
   CodecInst current_recive_codec;
@@ -548,7 +551,7 @@ void ACMInputProcessor::UpdatePlayoutTimestamp(bool rtcp) {
   // Remove the playout delay.
   playout_timestamp -= (delay_ms * (playout_frequency / 1000));
 
-  WEBRTC_TRACE(kTraceStream, kTraceVoice, VoEId(_instanceId,_channelId),
+  WEBRTC_TRACE(kTraceStream, kTraceVoice, VoEId(_channelId,_channelId),
                "Channel::UpdatePlayoutTimestamp() => playoutTimestamp = %lu",
                playout_timestamp);
 
@@ -562,17 +565,19 @@ void ACMInputProcessor::UpdatePlayoutTimestamp(bool rtcp) {
 
 
 int ACMInputProcessor::GetPlayoutTimestamp(unsigned int& timestamp) {
-	WEBRTC_TRACE(kTraceInfo, kTraceVoice, VoEId(_instanceId,_channelId),
+	WEBRTC_TRACE(kTraceInfo, kTraceVoice, VoEId(_channelId,_channelId),
 	               "Channel::GetPlayoutTimestamp()");
 	  if (playout_timestamp_rtp_ == 0)  {
+#if 0
 	    _engineStatisticsPtr->SetLastError(
 	        VE_CANNOT_RETRIEVE_VALUE, kTraceError,
 	        "GetPlayoutTimestamp() failed to retrieve timestamp");
+#endif
 	    return -1;
 	  }
 	  timestamp = playout_timestamp_rtp_;
 	  WEBRTC_TRACE(kTraceStateInfo, kTraceVoice,
-	               VoEId(_instanceId,_channelId),
+	               VoEId(_channelId,_channelId),
 	               "GetPlayoutTimestamp() => timestamp=%u", timestamp);
 	  return 0;
 
@@ -591,9 +596,11 @@ int ACMInputProcessor::SetInitTimestamp(unsigned int timestamp) {
 #endif
     if (_rtpRtcpModule->SetStartTimestamp(timestamp) != 0)
     {
+#if 0
         _engineStatisticsPtr->SetLastError(
             VE_RTP_RTCP_MODULE_ERROR, kTraceError,
             "SetInitTimestamp() failed to set timestamp");
+#endif
         return -1;
     }
     return 0;
@@ -614,9 +621,11 @@ int ACMInputProcessor::SetInitSequenceNumber(short sequenceNumber) {
 #endif
     if (_rtpRtcpModule->SetSequenceNumber(sequenceNumber) != 0)
     {
+#if 0
         _engineStatisticsPtr->SetLastError(
             VE_RTP_RTCP_MODULE_ERROR, kTraceError,
             "SetInitSequenceNumber() failed to set sequence number");
+#endif
         return -1;
     }
     return 0;
@@ -726,9 +735,10 @@ int32_t ACMInputProcessor::NeededFrequency(const int32_t id) {
 DEFINE_LOGGER(ACMOutputProcessor, "media.ACMOutputProcessor");
 ACMOutputProcessor::ACMOutputProcessor(uint32_t instanceId, webrtc::Transport* transport):
 		amixer_(AudioConferenceMixer::Create(instanceId)),
+		apm_(NULL),
+		instanceId_(instanceId),
 	    audio_coding_(AudioCodingModule::Create(
-	    		instanceId)),
-		instanceId_(instanceId), apm_(NULL)	{
+	    		instanceId)) {
 
     WEBRTC_TRACE(kTraceMemory, kTraceVoice, instanceId,
                  "OutputMixer::OutputMixer() - ctor");
@@ -887,6 +897,7 @@ int32_t ACMOutputProcessor::SendData(FrameType frame_type, uint8_t payload_type,
         return -1;
     }
 
+    return 0;
 }
 
 void ACMOutputProcessor::NewMixedAudio(const int32_t id,
@@ -905,6 +916,7 @@ int32_t ACMOutputProcessor::MixActiveChannels(const boost::system::error_code& e
     } else {
         ELOG_INFO("ACMOutputProcessor timer error: %s", ec.message().c_str());
     }
+    return 0;
 }
 
 void ACMOutputProcessor::PlayNotification(int32_t id, uint32_t durationMs)
@@ -1051,4 +1063,4 @@ int ACMOutputProcessor::StopRecordingPlayout()
 }
 
 
-} /* namespace erizo */
+} /* namespace mcu */

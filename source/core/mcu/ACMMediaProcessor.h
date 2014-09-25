@@ -36,11 +36,11 @@
 
 using namespace webrtc;
 
-namespace erizo {
+namespace mcu {
 
 class ACMOutputProcessor;
 
-class ACMInputProcessor :public RTPDataReceiver,
+class ACMInputProcessor : public erizo::RTPDataReceiver,
 						 public RtpData,
 						 public RtpFeedback,
 						 public RtcpFeedback,
@@ -52,7 +52,7 @@ public:
 	ACMInputProcessor(int32_t channelId);
 	virtual ~ACMInputProcessor();
     int32_t Init(ACMOutputProcessor* aop);
-	virtual void receiveRtpData(unsigned char* rtpdata, int len, erizo::DataType type = VIDEO, uint32_t streamId = 0);
+	virtual void receiveRtpData(char* rtpdata, int len, erizo::DataType type = erizo::VIDEO, uint32_t streamId = 0);
     virtual int32_t GetAudioFrame(const int32_t id, AudioFrame& audioFrame);
     // This function specifies the sampling frequency needed for the AudioFrame
     // for future GetAudioFrame(..) calls.
@@ -94,7 +94,6 @@ public:
     virtual void ResetStatistics(uint32_t ssrc);
 
     void UpdatePacketDelay(uint32_t rtp_timestamp,  uint16_t sequence_number);
-    void UpdatePlayoutTimestamp(bool rtcp);
 
     // VoEVideoSync
     bool GetDelayEstimate(int* jitter_buffer_delay_ms,
@@ -274,5 +273,5 @@ private:
 
 
 };
-} /* namespace erizo */
+} /* namespace mcu */
 #endif /* ACMMEDIAPROCESSOR_H_ */
