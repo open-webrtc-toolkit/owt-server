@@ -78,6 +78,10 @@ build_mcu_runtime() {
   CMAKE_ADDITIONAL_OPTIONS="-DCOMPILE_MCU=ON"
   RUNTIME_ADDON_SRC_DIR="${SOURCE}/bindings/mcu"
   build_runtime
+
+  cd $ROOT/source/erizo_controller
+  ./installErizo_controller.sh
+  cd $this
 }
 
 build_runtime() {
