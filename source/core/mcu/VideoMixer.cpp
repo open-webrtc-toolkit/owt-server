@@ -22,6 +22,7 @@
 
 #include "BufferManager.h"
 #include "VCMMediaProcessor.h"
+#include "ACMMediaProcessor.h"
 #include <ProtectedRTPReceiver.h>
 #include <ProtectedRTPSender.h>
 #include <WebRtcConnection.h>
@@ -45,9 +46,11 @@ VideoMixer::VideoMixer()
 VideoMixer::~VideoMixer()
 {
     delete bufferManager_;
-    delete transport_;
+    delete videoTransport_;
+    delete audioTransport_;
     delete subscriber_;
-    delete op_;
+    delete aop_;
+    delete vop_;
 }
 
 /**
@@ -58,18 +61,25 @@ bool VideoMixer::init()
     bufferManager_ = new BufferManager();
     subscriber_ = new erizo::OneToManyProcessor();
     subscriber_->setPublisher(this);
-    transport_ = new WoogeenTransport(subscriber_);
-    op_ = new VCMOutputProcessor();
-    op_->init(transport_, bufferManager_, this);
+    videoTransport_ = new WoogeenVideoTransport(subscriber_);
+    vop_ = new VCMOutputProcessor();
+    vop_->init(videoTransport_, bufferManager_, this);
+
+    audioTransport_ = new WoogeenAudioTransport(subscriber_);
+    aop_ = new ACMOutputProcessor(1, audioTransport_);
 
     return true;
-}
 
-int VideoMixer::deliverAudioData(char* buf, int len, MediaSource* from)
+  }
+
+  int VideoMixer::deliverAudioData_(char* buf, int len, MediaSource* from) 
 {
-    //    ELOG_DEBUG("m.videoCodec.bitrate %d\n", m.videoCodec.bitRate);
+    ProtectedRTPReceiver* receiver = publishers_[from];
+    if (receiver == NULL)
+        return 0;		// Is this possible when remove publisher is called while media stream still comes in?
+    receiver->deliverAudioData(buf, len);
     return 0;
-}
+  }
 
 /**
  * use vcm to decode/compose/encode the streams, and then deliver to all subscribers
@@ -97,9 +107,13 @@ void VideoMixer::addPublisher(MediaSource* puber)
         op_->updateMaxSlot(maxSlot());
         boost::shared_ptr<VCMInputProcessor> ip(new VCMInputProcessor(index, op_));
         ip->init(bufferManager_);
+	ACMInputProcessor* aip = new ACMInputProcessor(index);
+	aip->Init(aop_);
+	ip->setAudioInputProcessor(aip);
         ProtectedRTPReceiver* protectedRTPReceiver = new ProtectedRTPReceiver(ip);
         publishers_[puber] = protectedRTPReceiver;
-        // publishers_.insert(std::pair<MediaSource*, woogeen_base::ProtectedRTPReceiver*>(puber, protectedRTPReceiver));
+        //add to audio mixer
+         aop_->SetMixabilityStatus(*aip, true);
     } else {
         assert (!"new publisher added with InputProcessor still available");    // should not go there
     }
