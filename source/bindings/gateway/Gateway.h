@@ -21,10 +21,10 @@
 #ifndef GATEWAY_H
 #define GATEWAY_H
 
-#include "erizoAPI/ExternalInput.h"
-#include "erizoAPI/ExternalOutput.h"
-#include "erizoAPI/MediaDefinitions.h"
-#include "erizoAPI/WebRtcConnection.h"
+#include "../erizoAPI/ExternalInput.h"
+#include "../erizoAPI/ExternalOutput.h"
+#include "../erizoAPI/MediaDefinitions.h"
+#include "../erizoAPI/WebRtcConnection.h"
 
 #include <Gateway.h>
 #include <node.h>

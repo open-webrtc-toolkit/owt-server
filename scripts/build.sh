@@ -70,7 +70,7 @@ done
 
 build_gateway_runtime() {
   CMAKE_ADDITIONAL_OPTIONS="-DCOMPILE_OOVOO_GATEWAY=ON"
-  RUNTIME_ADDON_SRC_DIR="${SOURCE}/bindings"
+  RUNTIME_ADDON_SRC_DIR="${SOURCE}/bindings/gateway"
   build_runtime
 }
 

@@ -1,6 +1,6 @@
 /*global require, exports, console, setInterval, clearInterval*/
 
-var addon = require('./../bindings/build/Release/addon');
+var addon = require('./../bindings/gateway/build/Release/addon');
 var config = require('./../etc/gateway_config');
 var logger = require('./util/logger').logger;
 
