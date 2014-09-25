@@ -1,6 +1,12 @@
 /*global require, exports, , setInterval, clearInterval*/
 
-var addon = require('./../../bindings/erizoAPI/build/Release/addon');
+var addon;
+if (GLOBAL.config.erizo.mixer) {
+    addon = require('./../../bindings/mcu/build/Release/addon');
+} else {
+    addon = require('./../../bindings/erizoAPI/build/Release/addon');
+}
+
 var logger = require('./../common/logger').logger;
 var rpc = require('./../common/rpc');
 
@@ -11,6 +17,7 @@ exports.ErizoJSController = function (spec) {
     "use strict";
 
     var that = {},
+        muxer,
         // {id: array of subscribers}
         subscribers = {},
         // {id: OneToManyProcessor}
@@ -27,6 +34,11 @@ exports.ErizoJSController = function (spec) {
         getSdp,
         getRoap;
 
+    that.init = function () {
+        if (GLOBAL.config.erizo.mixer) {
+            muxer = new addon.ManyToManyTranscoder();
+        }
+    };
 
     /*
      * Given a WebRtcConnection waits for the state READY for ask it to send a FIR packet to its publisher.
@@ -123,8 +135,10 @@ exports.ErizoJSController = function (spec) {
 
             log.info("Adding external input peer_id ", from);
 
-            var muxer = new addon.OneToManyProcessor(),
-                ei = new addon.ExternalInput(url);
+            if (!GLOBAL.config.erizo.mixer) {
+                muxer = new addon.OneToManyProcessor();
+            }
+            var ei = new addon.ExternalInput(url);
 
             publishers[from] = muxer;
             subscribers[from] = [];
@@ -175,15 +189,19 @@ exports.ErizoJSController = function (spec) {
 
             log.info("Adding publisher peer_id ", from);
 
-            var muxer = new addon.OneToManyProcessor(),
-                wrtc = new addon.WebRtcConnection(true, true, GLOBAL.config.erizo.stunserver, GLOBAL.config.erizo.stunport, GLOBAL.config.erizo.minport, GLOBAL.config.erizo.maxport, undefined, undefined, undefined, true, true, true, true);
+            var wrtc = new addon.WebRtcConnection(true, true, GLOBAL.config.erizo.stunserver, GLOBAL.config.erizo.stunport, GLOBAL.config.erizo.minport, GLOBAL.config.erizo.maxport, undefined, undefined, undefined, true, true, true, true);
+            if (!GLOBAL.config.erizo.mixer) {
+                muxer = new addon.OneToManyProcessor();
+                muxer.setPublisher(wrtc);
+            } else {
+                muxer.addPublisher(wrtc);
+            }
 
             publishers[from] = muxer;
             subscribers[from] = [];
 
             wrtc.setAudioReceiver(muxer);
             wrtc.setVideoReceiver(muxer);
-            muxer.setPublisher(wrtc);
 
             initWebRtcConnection(wrtc, sdp, callback, from);
 

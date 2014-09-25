@@ -8,6 +8,7 @@ GLOBAL.config.erizo.stunserver = GLOBAL.config.erizo.stunserver || '';
 GLOBAL.config.erizo.stunport = GLOBAL.config.erizo.stunport || 0;
 GLOBAL.config.erizo.minport = GLOBAL.config.erizo.minport || 0;
 GLOBAL.config.erizo.maxport = GLOBAL.config.erizo.maxport || 0;
+GLOBAL.config.erizo.mixer = GLOBAL.config.erizo.mixer || false;
 
 // Parse command line arguments
 var getopt = new Getopt([
@@ -59,6 +60,7 @@ var controller = require('./erizoJSController');
 var log = logger.getLogger("ErizoJS");
 
 var ejsController = controller.ErizoJSController();
+ejsController.init();
 
 ejsController.keepAlive = function(callback) {
     log.debug("KeepAlive from ErizoController");

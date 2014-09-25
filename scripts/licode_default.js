@@ -100,6 +100,9 @@ config.erizo.stunport = 0; // default value: 0
 config.erizo.minport = 0; // default value: 0
 config.erizo.maxport = 0; // default value: 0
 
+// If true, the streams from different clients in a room will be mixed by the media server.
+config.erizo.mixer = false;
+
 /***** END *****/
 // Following lines are always needed.
 var module = module || {};
