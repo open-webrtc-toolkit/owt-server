@@ -38,6 +38,7 @@ DEFINE_LOGGER(VideoMixer, "media.mixers.VideoMixer");
 
 VideoMixer::VideoMixer()
 {
+    sourcefbSink_ = nullptr;
     this->setVideoSourceSSRC(55543);
     this->setAudioSourceSSRC(44444);
     this->init();
