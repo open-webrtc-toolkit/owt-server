@@ -91,8 +91,8 @@ private:
     RemoteBitrateEstimator* remote_bitrate_estimator_;
 
     RTPDataReceiver* aip_;	// the audio input processor pairing with this video input processor
-    erizo::VCMOutputProcessor* op_;
-    erizo::BufferManager*  bufferManager_;	//owned by mixer
+    VCMOutputProcessor* op_;
+    BufferManager* bufferManager_;	//owned by mixer
 
     scoped_ptr<DebugRecorder> recorder_;
 };
