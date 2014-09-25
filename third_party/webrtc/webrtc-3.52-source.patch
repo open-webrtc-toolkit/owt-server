@@ -1,66 +1,7 @@
-Index: webrtc/modules/rtp_rtcp/source/forward_error_correction.h
+Index: src/webrtc/modules/rtp_rtcp/source/producer_fec.h
 ===================================================================
---- webrtc/modules/rtp_rtcp/source/forward_error_correction.h	(revision 5877)
-+++ webrtc/modules/rtp_rtcp/source/forward_error_correction.h	(working copy)
-@@ -66,6 +66,10 @@
-     uint16_t seq_num;
-   };
- 
-+  class SentPacket : public Packet, public SortablePacket {
-+  };
-+
-+
-   // The received list parameter of #DecodeFEC() must reference structs of this
-   // type. The last_media_pkt_in_frame is not required to be used for correct
-   // recovery, but will reduce delay by allowing #DecodeFEC() to pre-emptively
-@@ -114,6 +118,7 @@
-   };
- 
-   typedef std::list<Packet*> PacketList;
-+  typedef std::list<SentPacket*> SentPacketList;
-   typedef std::list<ReceivedPacket*> ReceivedPacketList;
-   typedef std::list<RecoveredPacket*> RecoveredPacketList;
- 
-@@ -158,7 +163,7 @@
-    *
-    * \return 0 on success, -1 on failure.
-    */
--  int32_t GenerateFEC(const PacketList& media_packet_list,
-+  int32_t GenerateFEC(const SentPacketList& media_packet_list,
-                       uint8_t protection_factor, int num_important_packets,
-                       bool use_unequal_protection, FecMaskType fec_mask_type,
-                       PacketList* fec_packet_list);
-@@ -210,7 +215,7 @@
-  private:
-   typedef std::list<FecPacket*> FecPacketList;
- 
--  void GenerateFecUlpHeaders(const PacketList& media_packet_list,
-+  void GenerateFecUlpHeaders(const SentPacketList& media_packet_list,
-                              uint8_t* packet_mask, bool l_bit,
-                              int num_fec_packets);
- 
-@@ -220,7 +225,7 @@
-   // Returns the number of bits used for one row of the new packet mask.
-   // Requires that |packet_mask| has at least 6 * |num_fec_packets| bytes
-   // allocated.
--  int InsertZerosInBitMasks(const PacketList& media_packets,
-+  int InsertZerosInBitMasks(const SentPacketList& media_packets,
-                             uint8_t* packet_mask, int num_mask_bytes,
-                             int num_fec_packets);
- 
-@@ -245,7 +250,7 @@
-                          int num_fec_packets, int new_bit_index,
-                          int old_bit_index);
- 
--  void GenerateFecBitStrings(const PacketList& media_packet_list,
-+  void GenerateFecBitStrings(const SentPacketList& media_packet_list,
-                              uint8_t* packet_mask, int num_fec_packets,
-                              bool l_bit);
- 
-Index: webrtc/modules/rtp_rtcp/source/producer_fec.h
-===================================================================
---- webrtc/modules/rtp_rtcp/source/producer_fec.h	(revision 5877)
-+++ webrtc/modules/rtp_rtcp/source/producer_fec.h	(working copy)
+--- src/webrtc/modules/rtp_rtcp/source/producer_fec.h	(revision 7301)
++++ src/webrtc/modules/rtp_rtcp/source/producer_fec.h	(working copy)
 @@ -69,7 +69,7 @@
    void DeletePackets();
    int Overhead() const;
@@ -70,10 +11,10 @@ Index: webrtc/modules/rtp_rtcp/source/producer_fec.h
    std::list<ForwardErrorCorrection::Packet*> fec_packets_;
    int num_frames_;
    bool incomplete_frame_;
-Index: webrtc/modules/rtp_rtcp/source/forward_error_correction.cc
+Index: src/webrtc/modules/rtp_rtcp/source/forward_error_correction.cc
 ===================================================================
---- webrtc/modules/rtp_rtcp/source/forward_error_correction.cc	(revision 5877)
-+++ webrtc/modules/rtp_rtcp/source/forward_error_correction.cc	(working copy)
+--- src/webrtc/modules/rtp_rtcp/source/forward_error_correction.cc	(revision 7301)
++++ src/webrtc/modules/rtp_rtcp/source/forward_error_correction.cc	(working copy)
 @@ -106,12 +106,10 @@
  //   |                     FEC Level 0 Payload                       |
  //   |                                                               |
@@ -156,10 +97,10 @@ Index: webrtc/modules/rtp_rtcp/source/forward_error_correction.cc
    Packet* media_packet = *media_list_it;
    assert(media_packet != NULL);
    int num_maskBytes = l_bit ? kMaskSizeLBitSet : kMaskSizeLBitClear;
-Index: webrtc/modules/rtp_rtcp/source/producer_fec.cc
+Index: src/webrtc/modules/rtp_rtcp/source/producer_fec.cc
 ===================================================================
---- webrtc/modules/rtp_rtcp/source/producer_fec.cc	(revision 5877)
-+++ webrtc/modules/rtp_rtcp/source/producer_fec.cc	(working copy)
+--- src/webrtc/modules/rtp_rtcp/source/producer_fec.cc	(revision 7301)
++++ src/webrtc/modules/rtp_rtcp/source/producer_fec.cc	(working copy)
 @@ -144,9 +144,11 @@
    const bool marker_bit = (data_buffer[1] & kRtpMarkerBitMask) ? true : false;
    if (media_packets_fec_.size() < ForwardErrorCorrection::kMaxMediaPackets) {
@@ -198,3 +139,62 @@ Index: webrtc/modules/rtp_rtcp/source/producer_fec.cc
      if (fec_packets_.empty()) {
        num_frames_ = 0;
        DeletePackets();
+Index: src/webrtc/modules/rtp_rtcp/source/forward_error_correction.h
+===================================================================
+--- src/webrtc/modules/rtp_rtcp/source/forward_error_correction.h	(revision 7301)
++++ src/webrtc/modules/rtp_rtcp/source/forward_error_correction.h	(working copy)
+@@ -66,6 +66,10 @@
+     uint16_t seq_num;
+   };
+ 
++  class SentPacket : public Packet, public SortablePacket {
++  };
++
++
+   // The received list parameter of #DecodeFEC() must reference structs of this
+   // type. The last_media_pkt_in_frame is not required to be used for correct
+   // recovery, but will reduce delay by allowing #DecodeFEC() to pre-emptively
+@@ -114,6 +118,7 @@
+   };
+ 
+   typedef std::list<Packet*> PacketList;
++  typedef std::list<SentPacket*> SentPacketList;
+   typedef std::list<ReceivedPacket*> ReceivedPacketList;
+   typedef std::list<RecoveredPacket*> RecoveredPacketList;
+ 
+@@ -158,7 +163,7 @@
+    *
+    * \return 0 on success, -1 on failure.
+    */
+-  int32_t GenerateFEC(const PacketList& media_packet_list,
++  int32_t GenerateFEC(const SentPacketList& media_packet_list,
+                       uint8_t protection_factor, int num_important_packets,
+                       bool use_unequal_protection, FecMaskType fec_mask_type,
+                       PacketList* fec_packet_list);
+@@ -210,7 +215,7 @@
+  private:
+   typedef std::list<FecPacket*> FecPacketList;
+ 
+-  void GenerateFecUlpHeaders(const PacketList& media_packet_list,
++  void GenerateFecUlpHeaders(const SentPacketList& media_packet_list,
+                              uint8_t* packet_mask, bool l_bit,
+                              int num_fec_packets);
+ 
+@@ -220,7 +225,7 @@
+   // Returns the number of bits used for one row of the new packet mask.
+   // Requires that |packet_mask| has at least 6 * |num_fec_packets| bytes
+   // allocated.
+-  int InsertZerosInBitMasks(const PacketList& media_packets,
++  int InsertZerosInBitMasks(const SentPacketList& media_packets,
+                             uint8_t* packet_mask, int num_mask_bytes,
+                             int num_fec_packets);
+ 
+@@ -245,7 +250,7 @@
+                          int num_fec_packets, int new_bit_index,
+                          int old_bit_index);
+ 
+-  void GenerateFecBitStrings(const PacketList& media_packet_list,
++  void GenerateFecBitStrings(const SentPacketList& media_packet_list,
+                              uint8_t* packet_mask, int num_fec_packets,
+                              bool l_bit);
+ 
