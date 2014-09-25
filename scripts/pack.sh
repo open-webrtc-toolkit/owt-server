@@ -64,10 +64,10 @@ pack_mcu() {
   local LIBOOVOOGATEWAY="${SOURCE}/core/build/oovoo_gateway/liboovoo_gateway.so"
   [[ -s ${LIBOOVOOGATEWAY} ]] && cp -av ${LIBOOVOOGATEWAY} ${WOOGEEN_DIST}/lib
   # bindings
-  local GATEWAY_ADDON="${SOURCE}/bindings/build/Release/addon.node"
+  local GATEWAY_ADDON="${SOURCE}/bindings/gateway/build/Release/addon.node"
   [[ -s ${GATEWAY_ADDON} ]] && \
-  mkdir -p ${WOOGEEN_DIST}/bindings/build/Release && \
-  cp -av ${GATEWAY_ADDON} ${WOOGEEN_DIST}/bindings/build/Release
+  mkdir -p ${WOOGEEN_DIST}/bindings/gateway/build/Release && \
+  cp -av ${GATEWAY_ADDON} ${WOOGEEN_DIST}/bindings/gateway/build/Release
   # gateway
   mkdir -p ${WOOGEEN_DIST}/gateway/util
   cp -av ${SOURCE}/gateway/oovoo_gateway.js ${WOOGEEN_DIST}/gateway/
@@ -190,7 +190,7 @@ pack_node() {
 
   mkdir -p ${WOOGEEN_DIST}/lib/node
   ln -s ../../etc/gateway_config.json ${WOOGEEN_DIST}/lib/node/
-  mv ${WOOGEEN_DIST}/bindings/build/Release/addon.node ${WOOGEEN_DIST}/lib/node/
+  mv ${WOOGEEN_DIST}/bindings/gateway/build/Release/addon.node ${WOOGEEN_DIST}/lib/node/
   mv ${WOOGEEN_DIST}/node_modules/* ${WOOGEEN_DIST}/lib/node/
 
   rm -rf ${WOOGEEN_DIST}/gateway

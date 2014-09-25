@@ -2,9 +2,9 @@
 #define BUILDING_NODE_EXTENSION
 #endif
 #include <node.h>
-#include "erizoAPI/ExternalInput.h"
-#include "erizoAPI/ExternalOutput.h"
-#include "erizoAPI/WebRtcConnection.h"
+#include "../erizoAPI/ExternalInput.h"
+#include "../erizoAPI/ExternalOutput.h"
+#include "../erizoAPI/WebRtcConnection.h"
 #include "Gateway.h"
 
 using namespace v8;
