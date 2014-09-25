@@ -15,14 +15,18 @@ pause() {
 
 install_webrtc(){
   cd $ROOT/third_party/webrtc
-  if [ -d webrtc ]; then
-    rm -rf webrtc
+  git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
+  PATH=$ROOT/third_party/webrtc/depot_tools:$PATH
+  if [ -d src ]; then
+    rm -rf src
   fi
   echo "Downloading WebRTC source code..."
-  svn checkout -q http://webrtc.googlecode.com/svn/branches/3.52/webrtc
+  # svn checkout -q http://webrtc.googlecode.com/svn/branches/3.52/webrtc
+  gclient sync --nohooks
   echo "Done."
   patch -p0 < ./webrtc-3.52-build.patch
   patch -p0 < ./webrtc-3.52-source.patch
+  patch -p0 < ./opus-build.patch
   ./build.sh
   cd $CURRENT_DIR
 }
