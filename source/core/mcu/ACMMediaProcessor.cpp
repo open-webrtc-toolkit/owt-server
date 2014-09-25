@@ -210,7 +210,7 @@ int32_t ACMInputProcessor::Init(ACMOutputProcessor* aop) {
 }
 
 void ACMInputProcessor::receiveRtpData(unsigned char* rtpdata, int len,
-		DataType type, uint32_t streamId) {
+		erizo::DataType type, uint32_t streamId) {
 	  WEBRTC_TRACE(kTraceStream, kTraceVoice, VoEId(_channelId,_channelId),
 	               "Channel::ReceivedRTPPacket()");
 
