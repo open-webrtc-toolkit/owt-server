@@ -32,7 +32,8 @@
 namespace woogeen_base {
 class ProtectedRTPReceiver;
 class ProtectedRTPSender;
-class WoogeenTransport;
+class WoogeenVideoTransport;
+class WoogeenAudioTransport;
 }
 
 namespace erizo {
@@ -130,8 +131,10 @@ private:
     erizo::OneToManyProcessor* subscriber_;
     std::map<erizo::MediaSource*, woogeen_base::ProtectedRTPReceiver*> publishers_;
     std::vector<erizo::MediaSource*> puberSlotMap_;    // each publisher will be allocated one index
-    VCMOutputProcessor* op_;
-    woogeen_base::WoogeenTransport* transport_;
+    VCMOutputProcessor* vop_;
+    ACMOutputProcessor* aop_;
+    woogeen_base::WoogeenVideoTransport* videoTransport_;
+    woogeen_base::WoogeenAudioTransport* audioTransport_;
     BufferManager* bufferManager_;
 };
 

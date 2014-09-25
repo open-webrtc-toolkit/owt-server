@@ -206,6 +206,12 @@ bool VCMInputProcessor::setReceiveVideoCodec(const VideoCodec& video_codec)
 
 void VCMInputProcessor::receiveRtpData(char* rtp_packet, int rtp_packet_length, erizo::DataType type , uint32_t streamId)
 {
+    if (type == AUDIO) {
+	if(aip_ != NULL) {
+        	aip_->receiveRtpData(rtp_packet, rtp_packet_length, AUDIO, streamId);
+	}
+	return;
+     }
     RTPHeader header;
     if (!rtp_header_parser_->Parse(reinterpret_cast<uint8_t*>(rtp_packet), rtp_packet_length, &header)) {
         ELOG_DEBUG("Incoming packet: Invalid RTP header");
@@ -478,6 +484,12 @@ bool VCMOutputProcessor::layoutFrames()
         }
     }
 
+    composedFrame_->set_render_time_ms(TickTime::MillisecondTimestamp());
+    const int kMsToRtpTimestamp = 90;
+    const uint32_t time_stamp =
+        kMsToRtpTimestamp *
+        static_cast<uint32_t>(composedFrame_->render_time_ms());
+    composedFrame_->set_timestamp(time_stamp);
     vcm_->AddVideoFrame(*composedFrame_);
 #elif SCALE_BY_INPUT
 //    CriticalSectionScoped cs(layoutLock_.get());

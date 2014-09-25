@@ -22,25 +22,41 @@
 
 namespace woogeen_base {
 
-WoogeenTransport::WoogeenTransport(erizo::MediaSink* sink)
-{
-    m_sink = sink;
+WoogeenVideoTransport::WoogeenVideoTransport(erizo::MediaSink* sink) {
+	sink_ = sink;
 }
 
-WoogeenTransport::~WoogeenTransport()
-{
-    // TODO Auto-generated destructor stub
+WoogeenVideoTransport::~WoogeenVideoTransport() {
+	// TODO Auto-generated destructor stub
 }
 
-int WoogeenTransport::SendPacket(int channel, const void* data, int len)
-{
-    m_sink->deliverVideoData(reinterpret_cast<char*>(const_cast<void*>(data)), len);
-    return len; // return 0 will tell rtp_sender not able to send the packet, thus impact bitrate update
+int WoogeenVideoTransport::SendPacket(int channel, const void *data, int len) {
+	sink_->deliverVideoData(data, len);
+	return len;	//return 0 will tell rtp_sender not able to send the packet, thus impact bitrate update
 }
 
-int WoogeenTransport::SendRTCPPacket(int channel, const void* data, int len)
-{
-    return 0;
+
+int WoogeenVideoTransport::SendRTCPPacket(int channel, const void *data, int len) {
+
+	return 0;
 }
 
+WoogeenAudioTransport::WoogeenAudioTransport(erizo::MediaSink* sink) {
+	sink_ = sink;
+}
+
+WoogeenAudioTransport::~WoogeenAudioTransport() {
+	// TODO Auto-generated destructor stub
+}
+
+int WoogeenAudioTransport::SendPacket(int channel, const void *data, int len) {
+	sink_->deliverAudioData(data, len);
+	return len;	//return 0 will tell rtp_sender not able to send the packet, thus impact bitrate update
+}
+
+
+int WoogeenAudioTransport::SendRTCPPacket(int channel, const void *data, int len) {
+
+	return 0;
+}
 }
