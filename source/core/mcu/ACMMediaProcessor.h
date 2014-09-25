@@ -52,7 +52,7 @@ public:
 	ACMInputProcessor(int32_t channelId);
 	virtual ~ACMInputProcessor();
     int32_t Init(ACMOutputProcessor* aop);
-	virtual void receiveRtpData(unsigned char* rtpdata, int len, DataType type = VIDEO, uint32_t streamId = 0);
+	virtual void receiveRtpData(unsigned char* rtpdata, int len, erizo::DataType type = VIDEO, uint32_t streamId = 0);
     virtual int32_t GetAudioFrame(const int32_t id, AudioFrame& audioFrame);
     // This function specifies the sampling frequency needed for the AudioFrame
     // for future GetAudioFrame(..) calls.
