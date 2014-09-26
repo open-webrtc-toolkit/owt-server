@@ -22,8 +22,8 @@
 
 namespace woogeen_base {
 
-WoogeenVideoTransport::WoogeenVideoTransport(erizo::MediaSink* sink)
-    : m_sink(sink)
+WoogeenVideoTransport::WoogeenVideoTransport(erizo::RTPDataReceiver* receiver)
+    : m_receiver(receiver)
 {
 }
 
@@ -34,7 +34,7 @@ WoogeenVideoTransport::~WoogeenVideoTransport()
 
 int WoogeenVideoTransport::SendPacket(int channel, const void* data, int len)
 {
-    m_sink->deliverVideoData(reinterpret_cast<char*>(const_cast<void*>(data)), len);
+    m_receiver->receiveRtpData(reinterpret_cast<char*>(const_cast<void*>(data)), len, erizo::VIDEO, channel);
     return len;    //return 0 will tell rtp_sender not able to send the packet, thus impact bitrate update
 }
 
@@ -44,8 +44,8 @@ int WoogeenVideoTransport::SendRTCPPacket(int channel, const void* data, int len
     return 0;
 }
 
-WoogeenAudioTransport::WoogeenAudioTransport(erizo::MediaSink* sink)
-    : m_sink(sink)
+WoogeenAudioTransport::WoogeenAudioTransport(erizo::RTPDataReceiver* receiver)
+    : m_receiver(receiver)
 {
 }
 
@@ -56,7 +56,7 @@ WoogeenAudioTransport::~WoogeenAudioTransport()
 
 int WoogeenAudioTransport::SendPacket(int channel, const void* data, int len)
 {
-    m_sink->deliverAudioData(reinterpret_cast<char*>(const_cast<void*>(data)), len);
+    m_receiver->receiveRtpData(reinterpret_cast<char*>(const_cast<void*>(data)), len, erizo::AUDIO, channel);
     return len;    //return 0 will tell rtp_sender not able to send the packet, thus impact bitrate update
 }
 
