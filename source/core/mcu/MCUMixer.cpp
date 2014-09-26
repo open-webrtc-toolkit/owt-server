@@ -65,10 +65,10 @@ bool MCUMixer::init()
 
   int MCUMixer::deliverAudioData(char* buf, int len, MediaSource* from) 
 {
-    ProtectedRTPReceiver* receiver = publishers_[from];
-    if (receiver == NULL)
-        return 0;		// Is this possible when remove publisher is called while media stream still comes in?
-    receiver->deliverAudioData(buf, len);
+    std::map<erizo::MediaSource*, boost::shared_ptr<woogeen_base::ProtectedRTPReceiver>>::iterator it = publishers_.find(from);
+    if (it != publishers_.end() && it->second)
+        return it->second->deliverAudioData(buf, len);
+
     return 0;
   }
 
@@ -79,11 +79,10 @@ bool MCUMixer::init()
  */
 int MCUMixer::deliverVideoData(char* buf, int len, MediaSource* from)
 {
-    ProtectedRTPReceiver* receiver = publishers_[from];
-    if (receiver == NULL)
-        return 0;        // Is this possible when remove publisher is called while media stream still comes in?
+    std::map<erizo::MediaSource*, boost::shared_ptr<woogeen_base::ProtectedRTPReceiver>>::iterator it = publishers_.find(from);
+    if (it != publishers_.end() && it->second)
+        return it->second->deliverVideoData(buf, len);
 
-    receiver->deliverVideoData(buf, len);
     return 0;
 }
 
@@ -121,19 +120,19 @@ void MCUMixer::addPublisher(MediaSource* puber)
 {
     int index = assignSlot(puber);
     ELOG_DEBUG("addPublisher - assigned slot is %d", index);
-    if (publishers_[puber] == NULL) {
+    std::map<erizo::MediaSource*, boost::shared_ptr<woogeen_base::ProtectedRTPReceiver>>::iterator it = publishers_.find(puber);
+    if (it == publishers_.end() || !it->second) {
         vop_->updateMaxSlot(maxSlot());
         boost::shared_ptr<VCMInputProcessor> ip(new VCMInputProcessor(index, vop_.get()));
         ip->init(bufferManager_.get());
 	ACMInputProcessor* aip = new ACMInputProcessor(index);
 	aip->Init(aop_.get());
 	ip->setAudioInputProcessor(aip);
-        ProtectedRTPReceiver* protectedRTPReceiver = new ProtectedRTPReceiver(ip);
-        publishers_[puber] = protectedRTPReceiver;
+        publishers_[puber].reset(new ProtectedRTPReceiver(ip));
         //add to audio mixer
         aop_->SetMixabilityStatus(*aip, true);
     } else {
-        assert (!"new publisher added with InputProcessor still available");    // should not go there
+        assert("new publisher added with InputProcessor still available");    // should not go there
     }
 }
 
@@ -161,12 +160,12 @@ void MCUMixer::removeSubscriber(const std::string& peerId)
 
 void MCUMixer::removePublisher(MediaSource* puber)
 {
-    if (publishers_[puber]) {
+    std::map<erizo::MediaSource*, boost::shared_ptr<woogeen_base::ProtectedRTPReceiver>>::iterator it = publishers_.find(puber);
+    if (it != publishers_.end()) {
         int index = getSlot(puber);
         assert(index >= 0);
         puberSlotMap_[index] = NULL;
-        delete publishers_[puber];
-        publishers_.erase(puber);
+        publishers_.erase(it);
     }
 }
 
