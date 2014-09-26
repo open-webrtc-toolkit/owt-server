@@ -18,8 +18,8 @@
  * and approved by Intel in writing.
  */
 
-#ifndef VideoMixer_h
-#define VideoMixer_h
+#ifndef MCUMixer_h
+#define MCUMixer_h
 
 #include <boost/asio.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
@@ -54,12 +54,12 @@ public:
  * Represents a Many to Many connection.
  * Receives media from several publishers, mixed into one stream and retransmits it to every subscriber.
  */
-class VideoMixer : public erizo::MediaSink, public erizo::RTPDataReceiver {
+class MCUMixer : public erizo::MediaSink, public erizo::RTPDataReceiver {
     DECLARE_LOGGER();
 
 public:
-    DLL_PUBLIC VideoMixer();
-    DLL_PUBLIC virtual ~VideoMixer();
+    DLL_PUBLIC MCUMixer();
+    DLL_PUBLIC virtual ~MCUMixer();
     /**
      * Add a Publisher.
      * Each publisher will be served by a InputProcessor, which is responsible for
@@ -82,13 +82,13 @@ public:
     DLL_PUBLIC void removePublisher(erizo::MediaSource* puber);
 
     /**
-     * called by WebRtcConnections' onTransportData. This VideoMixer
+     * called by WebRtcConnections' onTransportData. This MCUMixer
      * will be set as the MediaSink of all the WebRtcConnections in the
      * same room
      */
     virtual int deliverAudioData(char* buf, int len, erizo::MediaSource* from);
     /**
-     * called by WebRtcConnections' onTransportData. This VideoMixer
+     * called by WebRtcConnections' onTransportData. This MCUMixer
      * will be set as the MediaSink of all the WebRtcConnections in the
      * same room
      */
@@ -144,4 +144,4 @@ private:
 };
 
 } /* namespace mcu */
-#endif /* VideoMixer_h */
+#endif /* MCUMixer_h */

@@ -18,7 +18,7 @@
  * and approved by Intel in writing.
  */
 
-#include "VideoMixer.h"
+#include "MCUMixer.h"
 
 #include "BufferManager.h"
 #include "VCMMediaProcessor.h"
@@ -33,14 +33,14 @@ using namespace erizo;
 
 namespace mcu {
 
-DEFINE_LOGGER(VideoMixer, "media.mixers.VideoMixer");
+DEFINE_LOGGER(MCUMixer, "mcu.MCUMixer");
 
-VideoMixer::VideoMixer()
+MCUMixer::MCUMixer()
 {
     this->init();
 }
 
-VideoMixer::~VideoMixer()
+MCUMixer::~MCUMixer()
 {
     closeAll();
     delete bufferManager_;
@@ -51,9 +51,9 @@ VideoMixer::~VideoMixer()
 }
 
 /**
- * init could be used for reset the state of this VideoMixer
+ * init could be used for reset the state of this MCUMixer
  */
-bool VideoMixer::init()
+bool MCUMixer::init()
 {
     feedback_.reset(new DummyFeedbackSink());
     bufferManager_ = new BufferManager();
@@ -68,7 +68,7 @@ bool VideoMixer::init()
 
   }
 
-  int VideoMixer::deliverAudioData(char* buf, int len, MediaSource* from) 
+  int MCUMixer::deliverAudioData(char* buf, int len, MediaSource* from) 
 {
     ProtectedRTPReceiver* receiver = publishers_[from];
     if (receiver == NULL)
@@ -82,7 +82,7 @@ bool VideoMixer::init()
  * multiple publishers may call to this method simultaneously from different threads.
  * the incoming buffer is a rtp packet
  */
-int VideoMixer::deliverVideoData(char* buf, int len, MediaSource* from)
+int MCUMixer::deliverVideoData(char* buf, int len, MediaSource* from)
 {
     ProtectedRTPReceiver* receiver = publishers_[from];
     if (receiver == NULL)
@@ -92,7 +92,7 @@ int VideoMixer::deliverVideoData(char* buf, int len, MediaSource* from)
     return 0;
 }
 
-void VideoMixer::receiveRtpData(char* buf, int len, erizo::DataType type, uint32_t streamId)
+void MCUMixer::receiveRtpData(char* buf, int len, erizo::DataType type, uint32_t streamId)
 {
     if (subscribers_.empty() || len <= 0)
         return;
@@ -122,7 +122,7 @@ void VideoMixer::receiveRtpData(char* buf, int len, erizo::DataType type, uint32
 /**
  * Attach a new InputStream to the Transcoder
  */
-void VideoMixer::addPublisher(MediaSource* puber)
+void MCUMixer::addPublisher(MediaSource* puber)
 {
     int index = assignSlot(puber);
     ELOG_DEBUG("addPublisher - assigned slot is %d", index);
@@ -142,7 +142,7 @@ void VideoMixer::addPublisher(MediaSource* puber)
     }
 }
 
-void VideoMixer::addSubscriber(MediaSink* suber, const std::string& peerId)
+void MCUMixer::addSubscriber(MediaSink* suber, const std::string& peerId)
 {
     ELOG_DEBUG("Adding subscriber: videoSinkSSRC is %d", suber->getVideoSinkSSRC());
     boost::mutex::scoped_lock lock(myMonitor_);
@@ -155,7 +155,7 @@ void VideoMixer::addSubscriber(MediaSink* suber, const std::string& peerId)
     subscribers_[peerId] = boost::shared_ptr<MediaSink>(suber);
 }
 
-void VideoMixer::removeSubscriber(const std::string& peerId)
+void MCUMixer::removeSubscriber(const std::string& peerId)
 {
     ELOG_DEBUG("removing subscriber: peerId is %s",   peerId.c_str());
     boost::mutex::scoped_lock lock(myMonitor_);
@@ -164,7 +164,7 @@ void VideoMixer::removeSubscriber(const std::string& peerId)
     }
 }
 
-void VideoMixer::removePublisher(MediaSource* puber)
+void MCUMixer::removePublisher(MediaSource* puber)
 {
     if (publishers_[puber]) {
         int index = getSlot(puber);
@@ -175,7 +175,7 @@ void VideoMixer::removePublisher(MediaSource* puber)
     }
 }
 
-void VideoMixer::closeAll()
+void MCUMixer::closeAll()
 {
     boost::unique_lock<boost::mutex> lock(myMonitor_);
     ELOG_DEBUG ("Mixer closeAll");
