@@ -43,11 +43,6 @@ MCUMixer::MCUMixer()
 MCUMixer::~MCUMixer()
 {
     closeAll();
-    delete bufferManager_;
-    delete videoTransport_;
-    delete audioTransport_;
-    delete aop_;
-    delete vop_;
 }
 
 /**
@@ -56,13 +51,13 @@ MCUMixer::~MCUMixer()
 bool MCUMixer::init()
 {
     feedback_.reset(new DummyFeedbackSink());
-    bufferManager_ = new BufferManager();
-    videoTransport_ = new WoogeenVideoTransport(this);
-    vop_ = new VCMOutputProcessor();
-    vop_->init(videoTransport_, bufferManager_);
+    bufferManager_.reset(new BufferManager());
+    videoTransport_.reset(new WoogeenVideoTransport(this));
+    vop_.reset(new VCMOutputProcessor());
+    vop_->init(videoTransport_.get(), bufferManager_.get());
 
-    audioTransport_ = new WoogeenAudioTransport(this);
-    aop_ = new ACMOutputProcessor(1, audioTransport_);
+    audioTransport_.reset(new WoogeenAudioTransport(this));
+    aop_.reset(new ACMOutputProcessor(1, audioTransport_.get()));
 
     return true;
 
@@ -128,15 +123,15 @@ void MCUMixer::addPublisher(MediaSource* puber)
     ELOG_DEBUG("addPublisher - assigned slot is %d", index);
     if (publishers_[puber] == NULL) {
         vop_->updateMaxSlot(maxSlot());
-        boost::shared_ptr<VCMInputProcessor> ip(new VCMInputProcessor(index, vop_));
-        ip->init(bufferManager_);
+        boost::shared_ptr<VCMInputProcessor> ip(new VCMInputProcessor(index, vop_.get()));
+        ip->init(bufferManager_.get());
 	ACMInputProcessor* aip = new ACMInputProcessor(index);
-	aip->Init(aop_);
+	aip->Init(aop_.get());
 	ip->setAudioInputProcessor(aip);
         ProtectedRTPReceiver* protectedRTPReceiver = new ProtectedRTPReceiver(ip);
         publishers_[puber] = protectedRTPReceiver;
         //add to audio mixer
-         aop_->SetMixabilityStatus(*aip, true);
+        aop_->SetMixabilityStatus(*aip, true);
     } else {
         assert (!"new publisher added with InputProcessor still available");    // should not go there
     }
