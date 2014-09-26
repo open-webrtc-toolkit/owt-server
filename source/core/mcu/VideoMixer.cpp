@@ -38,18 +38,15 @@ DEFINE_LOGGER(VideoMixer, "media.mixers.VideoMixer");
 
 VideoMixer::VideoMixer()
 {
-    sourcefbSink_ = nullptr;
-    this->setVideoSourceSSRC(55543);
-    this->setAudioSourceSSRC(44444);
     this->init();
 }
 
 VideoMixer::~VideoMixer()
 {
+    closeAll();
     delete bufferManager_;
     delete videoTransport_;
     delete audioTransport_;
-    delete subscriber_;
     delete aop_;
     delete vop_;
 }
@@ -59,14 +56,13 @@ VideoMixer::~VideoMixer()
  */
 bool VideoMixer::init()
 {
+    feedback_.reset(new DummyFeedbackSink());
     bufferManager_ = new BufferManager();
-    subscriber_ = new erizo::OneToManyProcessor();
-    subscriber_->setPublisher(this);
-    videoTransport_ = new WoogeenVideoTransport(subscriber_);
+    videoTransport_ = new WoogeenVideoTransport(this);
     vop_ = new VCMOutputProcessor();
     vop_->init(videoTransport_, bufferManager_);
 
-    audioTransport_ = new WoogeenAudioTransport(subscriber_);
+    audioTransport_ = new WoogeenAudioTransport(this);
     aop_ = new ACMOutputProcessor(1, audioTransport_);
 
     return true;
@@ -97,6 +93,33 @@ int VideoMixer::deliverVideoData(char* buf, int len, MediaSource* from)
     return 0;
 }
 
+void VideoMixer::receiveRtpData(char* buf, int len, erizo::DataType type, uint32_t streamId)
+{
+    if (subscribers_.empty() || len <= 0)
+        return;
+
+    std::map<std::string, boost::shared_ptr<MediaSink>>::iterator it;
+    boost::unique_lock<boost::mutex> lock(myMonitor_);
+    switch (type) {
+    case erizo::AUDIO: {
+        for (it = subscribers_.begin(); it != subscribers_.end(); ++it) {
+            if ((*it).second != NULL)
+                (*it).second->deliverAudioData(buf, len);
+        }
+        break;
+    }
+    case erizo::VIDEO: {
+        for (it = subscribers_.begin(); it != subscribers_.end(); ++it) {
+            if ((*it).second != NULL)
+                (*it).second->deliverVideoData(buf, len);
+        }
+        break;
+    }
+    default:
+        break;
+    }
+}
+
 /**
  * Attach a new InputStream to the Transcoder
  */
@@ -120,19 +143,26 @@ void VideoMixer::addPublisher(MediaSource* puber)
     }
 }
 
-/**
- * Attach a new OutputStream to the OneToManyProcessor
- */
 void VideoMixer::addSubscriber(MediaSink* suber, const std::string& peerId)
 {
     ELOG_DEBUG("Adding subscriber: videoSinkSSRC is %d", suber->getVideoSinkSSRC());
-    subscriber_->addSubscriber(suber, peerId);
+    boost::mutex::scoped_lock lock(myMonitor_);
+    FeedbackSource* fbsource = suber->getFeedbackSource();
+
+    if (fbsource!=NULL){
+      ELOG_DEBUG("adding fbsource");
+      fbsource->setFeedbackSink(feedback_.get());
+    }
+    subscribers_[peerId] = boost::shared_ptr<MediaSink>(suber);
 }
 
 void VideoMixer::removeSubscriber(const std::string& peerId)
 {
     ELOG_DEBUG("removing subscriber: peerId is %s",   peerId.c_str());
-    subscriber_->removeSubscriber(peerId);
+    boost::mutex::scoped_lock lock(myMonitor_);
+    if (subscribers_.find(peerId) != subscribers_.end()) {
+      subscribers_.erase(peerId);
+    }
 }
 
 void VideoMixer::removePublisher(MediaSource* puber)
@@ -152,6 +182,24 @@ void VideoMixer::closeSink()
 
 void VideoMixer::closeAll()
 {
+    boost::unique_lock<boost::mutex> lock(myMonitor_);
+    ELOG_DEBUG ("Mixer closeAll");
+    std::map<std::string, boost::shared_ptr<MediaSink>>::iterator it = subscribers_.begin();
+    while (it != subscribers_.end()) {
+      if ((*it).second != NULL) {
+        FeedbackSource* fbsource = (*it).second->getFeedbackSource();
+        if (fbsource!=NULL){
+          fbsource->setFeedbackSink(NULL);
+        }
+      }
+      subscribers_.erase(it++);
+    }
+    lock.unlock();
+    lock.lock();
+    subscribers_.clear();
+    // TODO: publishers
+    ELOG_DEBUG ("ClosedAll media in this Mixer");
+
 }
 
 }/* namespace mcu */

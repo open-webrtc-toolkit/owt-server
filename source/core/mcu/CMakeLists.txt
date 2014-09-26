@@ -29,4 +29,8 @@ add_library(mcu SHARED ${MCU_SOURCES})
 find_library(WEBRTC webrtc HINTS "${WEBRTC_DIRS}")
 test_lib(${WEBRTC})
 
-target_link_libraries(mcu ${EXTRA_LIBS} ${WEBRTC})
+# VPX
+find_library(VPX vpx)
+test_lib(${VPX})
+
+target_link_libraries(mcu ${EXTRA_LIBS} ${WEBRTC} ${VPX})

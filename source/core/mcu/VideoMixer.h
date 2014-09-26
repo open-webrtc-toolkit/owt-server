@@ -23,10 +23,11 @@
 
 #include <boost/asio.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/shared_ptr.hpp>
+#include <boost/thread/mutex.hpp>
 #include <logger.h>
 #include <map>
 #include <MediaDefinitions.h>
-#include <OneToManyProcessor.h>
 #include <vector>
 
 namespace woogeen_base {
@@ -46,13 +47,18 @@ class ACMOutputProcessor;
 class BufferManager;
 class VCMOutputProcessor;
 
+class DummyFeedbackSink : public erizo::FeedbackSink {
+public:
+    DummyFeedbackSink() { }
+    virtual ~DummyFeedbackSink() { }
+    virtual int deliverFeedback(char* buf, int len) { return 0; }
+};
+
 /**
  * Represents a Many to Many connection.
  * Receives media from several publishers, mixed into one stream and retransmits it to every subscriber.
- * By design,a subscriber could be another OneToManyProcessor, which can be used to implement many to many
- * use cases.
  */
-class VideoMixer : public erizo::MediaSink, public erizo::MediaSource {
+class VideoMixer : public erizo::MediaSink, public erizo::RTPDataReceiver {
     DECLARE_LOGGER();
 
 public:
@@ -85,16 +91,18 @@ public:
      * will be set as the MediaSink of all the WebRtcConnections in the
      * same room
      */
-    virtual int deliverAudioData(char* buf, int len, MediaSource* from);
+    virtual int deliverAudioData(char* buf, int len, erizo::MediaSource* from);
     /**
      * called by WebRtcConnections' onTransportData. This VideoMixer
      * will be set as the MediaSink of all the WebRtcConnections in the
      * same room
      */
-    virtual int deliverVideoData(char* buf, int len, MediaSource* from);
+    virtual int deliverVideoData(char* buf, int len, erizo::MediaSource* from);
 
-    // implement MediaSource
-    virtual int sendFirPacket() { return 0; }
+    /**
+     * Implements RTPDataReceiver interfaces
+     */
+    void receiveRtpData(char*, int len, erizo::DataType, uint32_t streamId);
 
     void closeSink();
 
@@ -129,7 +137,8 @@ public:
     }
 
 private:
-    erizo::OneToManyProcessor* subscriber_;
+    boost::mutex myMonitor_;
+    std::map<std::string, boost::shared_ptr<MediaSink>> subscribers_;
     std::map<erizo::MediaSource*, woogeen_base::ProtectedRTPReceiver*> publishers_;
     std::vector<erizo::MediaSource*> puberSlotMap_;    // each publisher will be allocated one index
     VCMOutputProcessor* vop_;
@@ -137,6 +146,7 @@ private:
     woogeen_base::WoogeenVideoTransport* videoTransport_;
     woogeen_base::WoogeenAudioTransport* audioTransport_;
     BufferManager* bufferManager_;
+    boost::shared_ptr<erizo::FeedbackSink> feedback_;
 };
 
 } /* namespace mcu */
