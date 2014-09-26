@@ -60,7 +60,6 @@ class VideoMixer : public erizo::MediaSink, public erizo::RTPDataReceiver {
 public:
     DLL_PUBLIC VideoMixer();
     DLL_PUBLIC virtual ~VideoMixer();
-    virtual bool init();
     /**
      * Add a Publisher.
      * Each publisher will be served by a InputProcessor, which is responsible for
@@ -100,8 +99,8 @@ public:
      */
     void receiveRtpData(char*, int len, erizo::DataType, uint32_t streamId);
 
-    void closeSink();
-
+private:
+    bool init();
     /**
      * Closes all the subscribers and the publisher, the object is useless after this
      */
@@ -132,7 +131,6 @@ public:
         return -1;
     }
 
-private:
     boost::mutex myMonitor_;
     std::map<std::string, boost::shared_ptr<MediaSink>> subscribers_;
     std::map<erizo::MediaSource*, woogeen_base::ProtectedRTPReceiver*> publishers_;

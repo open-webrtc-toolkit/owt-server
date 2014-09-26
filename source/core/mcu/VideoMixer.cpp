@@ -175,10 +175,6 @@ void VideoMixer::removePublisher(MediaSource* puber)
     }
 }
 
-void VideoMixer::closeSink()
-{ 
-}
-
 void VideoMixer::closeAll()
 {
     boost::unique_lock<boost::mutex> lock(myMonitor_);
