@@ -23,7 +23,7 @@
 #endif
 #include "node.h"
 #include "ManyToManyTranscoder.h"
-#include <VideoMixer.h>
+#include <MCUMixer.h>
 
 using namespace v8;
 
@@ -53,7 +53,7 @@ Handle<Value> ManyToManyTranscoder::New(const Arguments& args) {
 	  HandleScope scope;
 
 	  ManyToManyTranscoder* obj = new ManyToManyTranscoder();
-	  obj->me = new mcu::VideoMixer();
+	  obj->me = new mcu::MCUMixer();
 
 	  obj->Wrap(args.This());
 
@@ -65,7 +65,7 @@ Handle<Value> ManyToManyTranscoder::close(const Arguments& args) {
 	HandleScope scope;
 
 	ManyToManyTranscoder* obj = ObjectWrap::Unwrap<ManyToManyTranscoder>(args.This());
-	mcu::VideoMixer *me = obj->me;
+	mcu::MCUMixer *me = obj->me;
 	delete me;
 
 	return scope.Close(Null());
@@ -76,7 +76,7 @@ Handle<Value> ManyToManyTranscoder::addPublisher(
 		const Arguments& args) {
 	HandleScope scope;
 	ManyToManyTranscoder* obj = ObjectWrap::Unwrap<ManyToManyTranscoder>(args.This());
-	mcu::VideoMixer *me = (mcu::VideoMixer*)obj->me;
+	mcu::MCUMixer *me = (mcu::MCUMixer*)obj->me;
 
 	WebRtcConnection* param = ObjectWrap::Unwrap<WebRtcConnection>(args[0]->ToObject());
 	erizo::WebRtcConnection* wr = (erizo::WebRtcConnection*)param->me;
@@ -91,7 +91,7 @@ Handle<Value> ManyToManyTranscoder::removePublisher(
 		const Arguments& args) {
 	HandleScope scope;
 	ManyToManyTranscoder* obj = ObjectWrap::Unwrap<ManyToManyTranscoder>(args.This());
-	mcu::VideoMixer *me = (mcu::VideoMixer*)obj->me;
+	mcu::MCUMixer *me = (mcu::MCUMixer*)obj->me;
 
 	WebRtcConnection* param = ObjectWrap::Unwrap<WebRtcConnection>(args[0]->ToObject());
 	erizo::WebRtcConnection* wr = (erizo::WebRtcConnection*)param->me;
@@ -106,7 +106,7 @@ Handle<Value> ManyToManyTranscoder::addSubscriber(
 		const Arguments& args) {
 	HandleScope scope;
 	ManyToManyTranscoder* obj = ObjectWrap::Unwrap<ManyToManyTranscoder>(args.This());
-	mcu::VideoMixer *me = (mcu::VideoMixer*)obj->me;
+	mcu::MCUMixer *me = (mcu::MCUMixer*)obj->me;
 
 	WebRtcConnection* param = ObjectWrap::Unwrap<WebRtcConnection>(args[0]->ToObject());
 	erizo::WebRtcConnection* wr = (erizo::WebRtcConnection*)param->me;
@@ -129,7 +129,7 @@ Handle<Value> ManyToManyTranscoder::removeSubscriber(
 		const Arguments& args) {
 	HandleScope scope;
 	ManyToManyTranscoder* obj = ObjectWrap::Unwrap<ManyToManyTranscoder>(args.This());
-	mcu::VideoMixer *me = (mcu::VideoMixer*)obj->me;
+	mcu::MCUMixer *me = (mcu::MCUMixer*)obj->me;
 
 	// get the param
 	v8::String::Utf8Value param1(args[0]->ToString());
