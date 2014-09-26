@@ -32,7 +32,6 @@
 #include <webrtc/system_wrappers/interface/trace.h>
 
 using namespace webrtc;
-using namespace woogeen_base;
 using namespace erizo;
 
 namespace mcu {
@@ -243,7 +242,7 @@ VCMOutputProcessor::VCMOutputProcessor():layoutLock_(CriticalSectionWrapper::Cre
     composedFrame_ = NULL;
     encodingThread_.reset();
     timer_.reset();
-    videoMixer_ = NULL;
+    maxSlot_ = 0;
 
     // recorder_->Start("/home/qzhang8/webrtc/webrtc.frame.i420");
     recorder_.reset(new DebugRecorder());
@@ -261,9 +260,8 @@ VCMOutputProcessor::~VCMOutputProcessor()
         VideoCodingModule::Destroy(vcm_), vcm_ = NULL;
 }
 
-bool VCMOutputProcessor::init(webrtc::Transport* transport, BufferManager* bufferManager, VideoMixer* videoMixer)
+bool VCMOutputProcessor::init(webrtc::Transport* transport, BufferManager* bufferManager)
 {
-    videoMixer_ = videoMixer;
     bufferManager_ = bufferManager;
     vcm_ = VideoCodingModule::Create(2);
     if (vcm_) {
@@ -350,6 +348,7 @@ bool VCMOutputProcessor::setSendVideoCodec(const VideoCodec& video_codec)
 void VCMOutputProcessor::updateMaxSlot(int newMaxSlot)
 {
 //    CriticalSectionScoped cs(layoutLock_.get());
+    maxSlot_ = newMaxSlot;
     Layout layout;
     if (newMaxSlot == 1) {
         layout.div_factor_ = 1;
@@ -420,7 +419,7 @@ bool VCMOutputProcessor::layoutFrames()
 {
 #if SCALE_BY_OUTPUT
     webrtc::I420VideoFrame* target = composedFrame_;
-    for (int input = 0; input < videoMixer_->maxSlot(); input++) {
+    for (int input = 0; input < maxSlot_; input++) {
         if ((input == 0) && !(layout_ == layoutNew_)) {
             // commit new layout config at the beginning of each iteration
             layout_ = layoutNew_;
@@ -494,7 +493,7 @@ bool VCMOutputProcessor::layoutFrames()
 #elif SCALE_BY_INPUT
 //    CriticalSectionScoped cs(layoutLock_.get());
     webrtc::I420VideoFrame* target = composedFrame_;
-    for (int input = 0; input < videoMixer_->maxSlot(); input++) {
+    for (int input = 0; input < maxSlot_; input++) {
         if (input == 0) {
             // commit new layout config at the beginning of each iteration
             layout_ = layoutNew_;
