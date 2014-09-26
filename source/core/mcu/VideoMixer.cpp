@@ -25,7 +25,6 @@
 #include "ACMMediaProcessor.h"
 #include <ProtectedRTPReceiver.h>
 #include <ProtectedRTPSender.h>
-#include <WebRtcConnection.h>
 #include <WoogeenTransport.h>
 
 using namespace webrtc;
