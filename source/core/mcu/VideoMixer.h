@@ -37,10 +37,6 @@ class WoogeenVideoTransport;
 class WoogeenAudioTransport;
 }
 
-namespace erizo {
-class WebRtcConnection;
-}
-
 namespace mcu {
 
 class ACMOutputProcessor;
@@ -69,12 +65,12 @@ public:
      * Add a Publisher.
      * Each publisher will be served by a InputProcessor, which is responsible for
      * decoding the incoming streams into I420Frames
-     * @param webRtcConn The WebRtcConnection of the Publisher
+     * @param puber The MediaSource as the Publisher
      */
     DLL_PUBLIC void addPublisher(erizo::MediaSource* puber);
     /**
      * Sets the subscriber
-     * @param webRtcConn The WebRtcConnection of the subscriber
+     * @param suber The MediaSink as the subscriber
      * @param peerId An unique Id for the subscriber
      */
     DLL_PUBLIC void addSubscriber(erizo::MediaSink* suber, const std::string& peerId);
