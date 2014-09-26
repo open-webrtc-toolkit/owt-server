@@ -64,7 +64,7 @@ bool VideoMixer::init()
     subscriber_->setPublisher(this);
     videoTransport_ = new WoogeenVideoTransport(subscriber_);
     vop_ = new VCMOutputProcessor();
-    vop_->init(videoTransport_, bufferManager_, this);
+    vop_->init(videoTransport_, bufferManager_);
 
     audioTransport_ = new WoogeenAudioTransport(subscriber_);
     aop_ = new ACMOutputProcessor(1, audioTransport_);

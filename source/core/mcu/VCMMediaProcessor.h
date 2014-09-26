@@ -22,7 +22,6 @@
 #define VCMMediaProcessor_h
 
 #include "BufferManager.h"
-#include "VideoMixer.h"
 
 #include <boost/asio.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
@@ -107,7 +106,7 @@ class VCMOutputProcessor : public webrtc::VCMPacketizationCallback,
 public:
     VCMOutputProcessor();
     ~VCMOutputProcessor();
-    bool init(webrtc::Transport*, BufferManager*, VideoMixer*);
+    bool init(webrtc::Transport*, BufferManager*);
     void close();
 
     void updateMaxSlot(int newMaxSlot);
@@ -157,7 +156,7 @@ private:
     Layout layoutNew_; // new layout config if any;
     bool layoutFrames();
 
-    VideoMixer* videoMixer_; //reference to the owning mixer
+    int maxSlot_;
     webrtc::VideoCodingModule* vcm_;
     webrtc::VideoProcessingModule* vpm_;
 
