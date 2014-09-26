@@ -135,11 +135,11 @@ private:
     std::map<std::string, boost::shared_ptr<MediaSink>> subscribers_;
     std::map<erizo::MediaSource*, woogeen_base::ProtectedRTPReceiver*> publishers_;
     std::vector<erizo::MediaSource*> puberSlotMap_;    // each publisher will be allocated one index
-    VCMOutputProcessor* vop_;
-    ACMOutputProcessor* aop_;
-    woogeen_base::WoogeenVideoTransport* videoTransport_;
-    woogeen_base::WoogeenAudioTransport* audioTransport_;
-    BufferManager* bufferManager_;
+    boost::shared_ptr<VCMOutputProcessor> vop_;
+    boost::shared_ptr<ACMOutputProcessor> aop_;
+    boost::shared_ptr<woogeen_base::WoogeenVideoTransport> videoTransport_;
+    boost::shared_ptr<woogeen_base::WoogeenAudioTransport> audioTransport_;
+    boost::shared_ptr<BufferManager> bufferManager_;
     boost::shared_ptr<erizo::FeedbackSink> feedback_;
 };
 
