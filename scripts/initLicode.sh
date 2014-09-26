@@ -20,7 +20,7 @@ cd $ROOT/source/nuve
 
 sleep 5
 
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$ROOT/source/core/erizo/build/erizo:$ROOT/source/core/erizo:$ROOT/build/libdeps/build/lib:$ROOT/source/core/build/mcu
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$ROOT/source/core/erizo/build/erizo:$ROOT/source/core/build/erizo/src/erizo:$ROOT/build/libdeps/build/lib:$ROOT/source/core/build/mcu
 export ERIZO_HOME=$ROOT/source/core/erizo/
 
 cd $ROOT/source/erizo_controller
