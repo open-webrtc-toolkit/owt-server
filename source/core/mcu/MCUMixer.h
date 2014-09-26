@@ -133,7 +133,7 @@ private:
 
     boost::mutex myMonitor_;
     std::map<std::string, boost::shared_ptr<MediaSink>> subscribers_;
-    std::map<erizo::MediaSource*, woogeen_base::ProtectedRTPReceiver*> publishers_;
+    std::map<erizo::MediaSource*, boost::shared_ptr<woogeen_base::ProtectedRTPReceiver>> publishers_;
     std::vector<erizo::MediaSource*> puberSlotMap_;    // each publisher will be allocated one index
     boost::shared_ptr<VCMOutputProcessor> vop_;
     boost::shared_ptr<ACMOutputProcessor> aop_;
