@@ -50,14 +50,14 @@ MCUMixer::~MCUMixer()
  */
 bool MCUMixer::init()
 {
-    feedback_.reset(new DummyFeedbackSink());
-    bufferManager_.reset(new BufferManager());
-    videoTransport_.reset(new WoogeenVideoTransport(this));
-    vop_.reset(new VCMOutputProcessor());
-    vop_->init(videoTransport_.get(), bufferManager_.get());
+    m_feedback.reset(new DummyFeedbackSink());
+    m_bufferManager.reset(new BufferManager());
+    m_videoTransport.reset(new WoogeenVideoTransport(this));
+    m_vcmOutputProcessor.reset(new VCMOutputProcessor());
+    m_vcmOutputProcessor->init(m_videoTransport.get(), m_bufferManager.get());
 
-    audioTransport_.reset(new WoogeenAudioTransport(this));
-    aop_.reset(new ACMOutputProcessor(1, audioTransport_.get()));
+    m_audioTransport.reset(new WoogeenAudioTransport(this));
+    m_acmOutputProcessor.reset(new ACMOutputProcessor(1, m_audioTransport.get()));
 
     return true;
 
@@ -65,8 +65,8 @@ bool MCUMixer::init()
 
   int MCUMixer::deliverAudioData(char* buf, int len, MediaSource* from) 
 {
-    std::map<erizo::MediaSource*, boost::shared_ptr<woogeen_base::ProtectedRTPReceiver>>::iterator it = publishers_.find(from);
-    if (it != publishers_.end() && it->second)
+    std::map<erizo::MediaSource*, boost::shared_ptr<woogeen_base::ProtectedRTPReceiver>>::iterator it = m_publishers.find(from);
+    if (it != m_publishers.end() && it->second)
         return it->second->deliverAudioData(buf, len);
 
     return 0;
@@ -79,8 +79,8 @@ bool MCUMixer::init()
  */
 int MCUMixer::deliverVideoData(char* buf, int len, MediaSource* from)
 {
-    std::map<erizo::MediaSource*, boost::shared_ptr<woogeen_base::ProtectedRTPReceiver>>::iterator it = publishers_.find(from);
-    if (it != publishers_.end() && it->second)
+    std::map<erizo::MediaSource*, boost::shared_ptr<woogeen_base::ProtectedRTPReceiver>>::iterator it = m_publishers.find(from);
+    if (it != m_publishers.end() && it->second)
         return it->second->deliverVideoData(buf, len);
 
     return 0;
@@ -88,21 +88,21 @@ int MCUMixer::deliverVideoData(char* buf, int len, MediaSource* from)
 
 void MCUMixer::receiveRtpData(char* buf, int len, erizo::DataType type, uint32_t streamId)
 {
-    if (subscribers_.empty() || len <= 0)
+    if (m_subscribers.empty() || len <= 0)
         return;
 
     std::map<std::string, boost::shared_ptr<MediaSink>>::iterator it;
-    boost::unique_lock<boost::mutex> lock(myMonitor_);
+    boost::unique_lock<boost::mutex> lock(m_subscriberMutex);
     switch (type) {
     case erizo::AUDIO: {
-        for (it = subscribers_.begin(); it != subscribers_.end(); ++it) {
+        for (it = m_subscribers.begin(); it != m_subscribers.end(); ++it) {
             if ((*it).second != NULL)
                 (*it).second->deliverAudioData(buf, len);
         }
         break;
     }
     case erizo::VIDEO: {
-        for (it = subscribers_.begin(); it != subscribers_.end(); ++it) {
+        for (it = m_subscribers.begin(); it != m_subscribers.end(); ++it) {
             if ((*it).second != NULL)
                 (*it).second->deliverVideoData(buf, len);
         }
@@ -120,17 +120,17 @@ void MCUMixer::addPublisher(MediaSource* puber)
 {
     int index = assignSlot(puber);
     ELOG_DEBUG("addPublisher - assigned slot is %d", index);
-    std::map<erizo::MediaSource*, boost::shared_ptr<woogeen_base::ProtectedRTPReceiver>>::iterator it = publishers_.find(puber);
-    if (it == publishers_.end() || !it->second) {
-        vop_->updateMaxSlot(maxSlot());
-        boost::shared_ptr<VCMInputProcessor> ip(new VCMInputProcessor(index, vop_.get()));
-        ip->init(bufferManager_.get());
+    std::map<erizo::MediaSource*, boost::shared_ptr<woogeen_base::ProtectedRTPReceiver>>::iterator it = m_publishers.find(puber);
+    if (it == m_publishers.end() || !it->second) {
+        m_vcmOutputProcessor->updateMaxSlot(maxSlot());
+        boost::shared_ptr<VCMInputProcessor> ip(new VCMInputProcessor(index, m_vcmOutputProcessor.get()));
+        ip->init(m_bufferManager.get());
 	ACMInputProcessor* aip = new ACMInputProcessor(index);
-	aip->Init(aop_.get());
+	aip->Init(m_acmOutputProcessor.get());
 	ip->setAudioInputProcessor(aip);
-        publishers_[puber].reset(new ProtectedRTPReceiver(ip));
+        m_publishers[puber].reset(new ProtectedRTPReceiver(ip));
         //add to audio mixer
-        aop_->SetMixabilityStatus(*aip, true);
+        m_acmOutputProcessor->SetMixabilityStatus(*aip, true);
     } else {
         assert("new publisher added with InputProcessor still available");    // should not go there
     }
@@ -139,53 +139,53 @@ void MCUMixer::addPublisher(MediaSource* puber)
 void MCUMixer::addSubscriber(MediaSink* suber, const std::string& peerId)
 {
     ELOG_DEBUG("Adding subscriber: videoSinkSSRC is %d", suber->getVideoSinkSSRC());
-    boost::mutex::scoped_lock lock(myMonitor_);
+    boost::mutex::scoped_lock lock(m_subscriberMutex);
     FeedbackSource* fbsource = suber->getFeedbackSource();
 
     if (fbsource!=NULL){
       ELOG_DEBUG("adding fbsource");
-      fbsource->setFeedbackSink(feedback_.get());
+      fbsource->setFeedbackSink(m_feedback.get());
     }
-    subscribers_[peerId] = boost::shared_ptr<MediaSink>(suber);
+    m_subscribers[peerId] = boost::shared_ptr<MediaSink>(suber);
 }
 
 void MCUMixer::removeSubscriber(const std::string& peerId)
 {
     ELOG_DEBUG("removing subscriber: peerId is %s",   peerId.c_str());
-    boost::mutex::scoped_lock lock(myMonitor_);
-    if (subscribers_.find(peerId) != subscribers_.end()) {
-      subscribers_.erase(peerId);
+    boost::mutex::scoped_lock lock(m_subscriberMutex);
+    if (m_subscribers.find(peerId) != m_subscribers.end()) {
+      m_subscribers.erase(peerId);
     }
 }
 
 void MCUMixer::removePublisher(MediaSource* puber)
 {
-    std::map<erizo::MediaSource*, boost::shared_ptr<woogeen_base::ProtectedRTPReceiver>>::iterator it = publishers_.find(puber);
-    if (it != publishers_.end()) {
+    std::map<erizo::MediaSource*, boost::shared_ptr<woogeen_base::ProtectedRTPReceiver>>::iterator it = m_publishers.find(puber);
+    if (it != m_publishers.end()) {
         int index = getSlot(puber);
         assert(index >= 0);
-        puberSlotMap_[index] = NULL;
-        publishers_.erase(it);
+        m_publisherSlotMap[index] = NULL;
+        m_publishers.erase(it);
     }
 }
 
 void MCUMixer::closeAll()
 {
-    boost::unique_lock<boost::mutex> lock(myMonitor_);
+    boost::unique_lock<boost::mutex> lock(m_subscriberMutex);
     ELOG_DEBUG ("Mixer closeAll");
-    std::map<std::string, boost::shared_ptr<MediaSink>>::iterator it = subscribers_.begin();
-    while (it != subscribers_.end()) {
+    std::map<std::string, boost::shared_ptr<MediaSink>>::iterator it = m_subscribers.begin();
+    while (it != m_subscribers.end()) {
       if ((*it).second != NULL) {
         FeedbackSource* fbsource = (*it).second->getFeedbackSource();
         if (fbsource!=NULL){
           fbsource->setFeedbackSink(NULL);
         }
       }
-      subscribers_.erase(it++);
+      m_subscribers.erase(it++);
     }
     lock.unlock();
     lock.lock();
-    subscribers_.clear();
+    m_subscribers.clear();
     // TODO: publishers
     ELOG_DEBUG ("ClosedAll media in this Mixer");
 
