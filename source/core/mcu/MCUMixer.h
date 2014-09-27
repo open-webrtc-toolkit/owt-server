@@ -66,33 +66,33 @@ public:
      * decoding the incoming streams into I420Frames
      * @param puber The MediaSource as the Publisher
      */
-    DLL_PUBLIC void addPublisher(erizo::MediaSource* puber);
+    DLL_PUBLIC void addPublisher(erizo::MediaSource*);
     /**
      * Sets the subscriber
      * @param suber The MediaSink as the subscriber
      * @param peerId An unique Id for the subscriber
      */
-    DLL_PUBLIC void addSubscriber(erizo::MediaSink* suber, const std::string& peerId);
+    DLL_PUBLIC void addSubscriber(erizo::MediaSink*, const std::string& peerId);
     /**
      * Eliminates the subscriber
      * @param puber
      */
     DLL_PUBLIC void removeSubscriber(const std::string& peerId);
 
-    DLL_PUBLIC void removePublisher(erizo::MediaSource* puber);
+    DLL_PUBLIC void removePublisher(erizo::MediaSource*);
 
     /**
      * called by WebRtcConnections' onTransportData. This MCUMixer
      * will be set as the MediaSink of all the WebRtcConnections in the
      * same room
      */
-    virtual int deliverAudioData(char* buf, int len, erizo::MediaSource* from);
+    virtual int deliverAudioData(char* buf, int len, erizo::MediaSource*);
     /**
      * called by WebRtcConnections' onTransportData. This MCUMixer
      * will be set as the MediaSink of all the WebRtcConnections in the
      * same room
      */
-    virtual int deliverVideoData(char* buf, int len, erizo::MediaSource* from);
+    virtual int deliverVideoData(char* buf, int len, erizo::MediaSource*);
 
     /**
      * Implements RTPDataReceiver interfaces
@@ -106,14 +106,14 @@ private:
      */
     void closeAll();
 
-    int assignSlot(erizo::MediaSource* pub) {
+    int assignSlot(erizo::MediaSource* publisher) {
         for (uint32_t i = 0; i < m_publisherSlotMap.size(); i++) {
             if (m_publisherSlotMap[i] == NULL) {
-                m_publisherSlotMap[i] = pub;
+                m_publisherSlotMap[i] = publisher;
                 return i;
             }
         }
-        m_publisherSlotMap.push_back(pub);
+        m_publisherSlotMap.push_back(publisher);
         return m_publisherSlotMap.size() - 1;
     }
 
@@ -123,9 +123,9 @@ private:
 
     // find the slot number for the corresponding puber
     // return -1 if not found
-    int getSlot(erizo::MediaSource* pub) {
+    int getSlot(erizo::MediaSource* publisher) {
         for (uint32_t i = 0; i < m_publisherSlotMap.size(); i++) {
-            if (m_publisherSlotMap[i] == pub)
+            if (m_publisherSlotMap[i] == publisher)
                 return i;
         }
         return -1;
