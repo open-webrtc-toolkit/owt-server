@@ -107,40 +107,40 @@ private:
     void closeAll();
 
     int assignSlot(erizo::MediaSource* pub) {
-        for (uint32_t i = 0; i < puberSlotMap_.size(); i++) {
-            if (puberSlotMap_[i] == NULL) {
-                puberSlotMap_[i] = pub;
+        for (uint32_t i = 0; i < m_publisherSlotMap.size(); i++) {
+            if (m_publisherSlotMap[i] == NULL) {
+                m_publisherSlotMap[i] = pub;
                 return i;
             }
         }
-        puberSlotMap_.push_back(pub);
-        return puberSlotMap_.size() - 1;
+        m_publisherSlotMap.push_back(pub);
+        return m_publisherSlotMap.size() - 1;
     }
 
     int maxSlot() {
-        return puberSlotMap_.size();
+        return m_publisherSlotMap.size();
     }
 
     // find the slot number for the corresponding puber
     // return -1 if not found
     int getSlot(erizo::MediaSource* pub) {
-        for (uint32_t i = 0; i < puberSlotMap_.size(); i++) {
-            if (puberSlotMap_[i] == pub)
+        for (uint32_t i = 0; i < m_publisherSlotMap.size(); i++) {
+            if (m_publisherSlotMap[i] == pub)
                 return i;
         }
         return -1;
     }
 
-    boost::mutex myMonitor_;
-    std::map<std::string, boost::shared_ptr<MediaSink>> subscribers_;
-    std::map<erizo::MediaSource*, boost::shared_ptr<woogeen_base::ProtectedRTPReceiver>> publishers_;
-    std::vector<erizo::MediaSource*> puberSlotMap_;    // each publisher will be allocated one index
-    boost::shared_ptr<VCMOutputProcessor> vop_;
-    boost::shared_ptr<ACMOutputProcessor> aop_;
-    boost::shared_ptr<woogeen_base::WoogeenVideoTransport> videoTransport_;
-    boost::shared_ptr<woogeen_base::WoogeenAudioTransport> audioTransport_;
-    boost::shared_ptr<BufferManager> bufferManager_;
-    boost::shared_ptr<erizo::FeedbackSink> feedback_;
+    boost::mutex m_subscriberMutex;
+    std::map<std::string, boost::shared_ptr<MediaSink>> m_subscribers;
+    std::map<erizo::MediaSource*, boost::shared_ptr<woogeen_base::ProtectedRTPReceiver>> m_publishers;
+    std::vector<erizo::MediaSource*> m_publisherSlotMap;    // each publisher will be allocated one index
+    boost::shared_ptr<VCMOutputProcessor> m_vcmOutputProcessor;
+    boost::shared_ptr<ACMOutputProcessor> m_acmOutputProcessor;
+    boost::shared_ptr<woogeen_base::WoogeenVideoTransport> m_videoTransport;
+    boost::shared_ptr<woogeen_base::WoogeenAudioTransport> m_audioTransport;
+    boost::shared_ptr<BufferManager> m_bufferManager;
+    boost::shared_ptr<erizo::FeedbackSink> m_feedback;
 };
 
 } /* namespace mcu */
