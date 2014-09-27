@@ -106,30 +106,11 @@ private:
      */
     void closeAll();
 
-    int assignSlot(erizo::MediaSource* publisher) {
-        for (uint32_t i = 0; i < m_publisherSlotMap.size(); i++) {
-            if (m_publisherSlotMap[i] == NULL) {
-                m_publisherSlotMap[i] = publisher;
-                return i;
-            }
-        }
-        m_publisherSlotMap.push_back(publisher);
-        return m_publisherSlotMap.size() - 1;
-    }
-
-    int maxSlot() {
-        return m_publisherSlotMap.size();
-    }
-
+    int assignSlot(erizo::MediaSource*);
+    int maxSlot();
     // find the slot number for the corresponding puber
     // return -1 if not found
-    int getSlot(erizo::MediaSource* publisher) {
-        for (uint32_t i = 0; i < m_publisherSlotMap.size(); i++) {
-            if (m_publisherSlotMap[i] == publisher)
-                return i;
-        }
-        return -1;
-    }
+    int getSlot(erizo::MediaSource*);
 
     boost::mutex m_subscriberMutex;
     std::map<std::string, boost::shared_ptr<MediaSink>> m_subscribers;
@@ -142,6 +123,32 @@ private:
     boost::shared_ptr<BufferManager> m_bufferManager;
     boost::shared_ptr<erizo::FeedbackSink> m_feedback;
 };
+
+inline int MCUMixer::assignSlot(erizo::MediaSource* publisher)
+{
+    for (uint32_t i = 0; i < m_publisherSlotMap.size(); i++) {
+        if (m_publisherSlotMap[i] == NULL) {
+            m_publisherSlotMap[i] = publisher;
+            return i;
+        }
+    }
+    m_publisherSlotMap.push_back(publisher);
+    return m_publisherSlotMap.size() - 1;
+}
+
+inline int MCUMixer::maxSlot()
+{
+    return m_publisherSlotMap.size();
+}
+
+inline int MCUMixer::getSlot(erizo::MediaSource* publisher)
+{
+    for (uint32_t i = 0; i < m_publisherSlotMap.size(); i++) {
+        if (m_publisherSlotMap[i] == publisher)
+            return i;
+    }
+    return -1;
+}
 
 } /* namespace mcu */
 #endif /* MCUMixer_h */

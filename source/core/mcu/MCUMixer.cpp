@@ -63,14 +63,14 @@ bool MCUMixer::init()
 
   }
 
-  int MCUMixer::deliverAudioData(char* buf, int len, MediaSource* from) 
+int MCUMixer::deliverAudioData(char* buf, int len, MediaSource* from) 
 {
     std::map<erizo::MediaSource*, boost::shared_ptr<woogeen_base::ProtectedRTPReceiver>>::iterator it = m_publishers.find(from);
     if (it != m_publishers.end() && it->second)
         return it->second->deliverAudioData(buf, len);
 
     return 0;
-  }
+}
 
 /**
  * use vcm to decode/compose/encode the streams, and then deliver to all subscribers
