@@ -96,14 +96,14 @@ void MCUMixer::receiveRtpData(char* buf, int len, erizo::DataType type, uint32_t
     switch (type) {
     case erizo::AUDIO: {
         for (it = m_subscribers.begin(); it != m_subscribers.end(); ++it) {
-            if ((*it).second != NULL)
+            if ((*it).second)
                 (*it).second->deliverAudioData(buf, len);
         }
         break;
     }
     case erizo::VIDEO: {
         for (it = m_subscribers.begin(); it != m_subscribers.end(); ++it) {
-            if ((*it).second != NULL)
+            if ((*it).second)
                 (*it).second->deliverVideoData(buf, len);
         }
         break;
@@ -142,7 +142,7 @@ void MCUMixer::addSubscriber(MediaSink* subscriber, const std::string& peerId)
     boost::mutex::scoped_lock lock(m_subscriberMutex);
     FeedbackSource* fbsource = subscriber->getFeedbackSource();
 
-    if (fbsource!=NULL){
+    if (fbsource) {
       ELOG_DEBUG("adding fbsource");
       fbsource->setFeedbackSink(m_feedback.get());
     }
@@ -165,7 +165,7 @@ void MCUMixer::removePublisher(MediaSource* publisher)
     if (it != m_publishers.end()) {
         int index = getSlot(publisher);
         assert(index >= 0);
-        m_publisherSlotMap[index] = NULL;
+        m_publisherSlotMap[index] = nullptr;
         m_publishers.erase(it);
     }
 }
@@ -176,10 +176,10 @@ void MCUMixer::closeAll()
     ELOG_DEBUG ("Mixer closeAll");
     std::map<std::string, boost::shared_ptr<MediaSink>>::iterator it = m_subscribers.begin();
     while (it != m_subscribers.end()) {
-      if ((*it).second != NULL) {
+      if ((*it).second) {
         FeedbackSource* fbsource = (*it).second->getFeedbackSource();
-        if (fbsource!=NULL){
-          fbsource->setFeedbackSink(NULL);
+        if (fbsource) {
+          fbsource->setFeedbackSink(nullptr);
         }
       }
       m_subscribers.erase(it++);

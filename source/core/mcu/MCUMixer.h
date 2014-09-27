@@ -127,7 +127,7 @@ private:
 inline int MCUMixer::assignSlot(erizo::MediaSource* publisher)
 {
     for (uint32_t i = 0; i < m_publisherSlotMap.size(); i++) {
-        if (m_publisherSlotMap[i] == NULL) {
+        if (!m_publisherSlotMap[i]) {
             m_publisherSlotMap[i] = publisher;
             return i;
         }
