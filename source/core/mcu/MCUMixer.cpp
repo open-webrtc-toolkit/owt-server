@@ -153,8 +153,9 @@ void MCUMixer::removeSubscriber(const std::string& peerId)
 {
     ELOG_DEBUG("removing subscriber: peerId is %s",   peerId.c_str());
     boost::mutex::scoped_lock lock(m_subscriberMutex);
-    if (m_subscribers.find(peerId) != m_subscribers.end()) {
-      m_subscribers.erase(peerId);
+    std::map<std::string, boost::shared_ptr<MediaSink>>::iterator it = m_subscribers.find(peerId);
+    if (it != m_subscribers.end()) {
+      m_subscribers.erase(it);
     }
 }
 
