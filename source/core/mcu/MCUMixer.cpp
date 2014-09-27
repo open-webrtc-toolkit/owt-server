@@ -122,14 +122,15 @@ void MCUMixer::addPublisher(MediaSource* publisher)
     std::map<erizo::MediaSource*, PublishDataSink>::iterator it = m_publishDataSinks.find(publisher);
     if (it == m_publishDataSinks.end() || !(it->second.audioSink || it->second.videoSink)) {
         m_vcmOutputProcessor->updateMaxSlot(maxSlot());
-        boost::shared_ptr<VCMInputProcessor> ip(new VCMInputProcessor(index, m_vcmOutputProcessor.get()));
-        ip->init(m_bufferManager.get());
-        ACMInputProcessor* aip = new ACMInputProcessor(index);
-        aip->Init(m_acmOutputProcessor.get());
-        ip->setAudioInputProcessor(aip);
-        m_publishDataSinks[publisher].videoSink.reset(new ProtectedRTPReceiver(ip));
-        //add to audio mixer
-        m_acmOutputProcessor->SetMixabilityStatus(*aip, true);
+
+        boost::shared_ptr<VCMInputProcessor> videoReceiver(new VCMInputProcessor(index, m_vcmOutputProcessor.get()));
+        videoReceiver->init(m_bufferManager.get());
+        boost::shared_ptr<ACMInputProcessor> audioReceiver(new ACMInputProcessor(index));
+        audioReceiver->Init(m_acmOutputProcessor.get());
+        m_acmOutputProcessor->SetMixabilityStatus(*audioReceiver, true);
+
+        m_publishDataSinks[publisher].videoSink.reset(new ProtectedRTPReceiver(videoReceiver));
+        m_publishDataSinks[publisher].audioSink.reset(new ProtectedRTPReceiver(audioReceiver));
     } else
         assert("new publisher added with InputProcessor still available");    // should not go there
 }
