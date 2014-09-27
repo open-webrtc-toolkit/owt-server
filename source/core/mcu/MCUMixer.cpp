@@ -125,9 +125,9 @@ void MCUMixer::addPublisher(MediaSource* publisher)
         m_vcmOutputProcessor->updateMaxSlot(maxSlot());
         boost::shared_ptr<VCMInputProcessor> ip(new VCMInputProcessor(index, m_vcmOutputProcessor.get()));
         ip->init(m_bufferManager.get());
-	ACMInputProcessor* aip = new ACMInputProcessor(index);
-	aip->Init(m_acmOutputProcessor.get());
-	ip->setAudioInputProcessor(aip);
+        ACMInputProcessor* aip = new ACMInputProcessor(index);
+        aip->Init(m_acmOutputProcessor.get());
+        ip->setAudioInputProcessor(aip);
         m_publishers[publisher].reset(new ProtectedRTPReceiver(ip));
         //add to audio mixer
         m_acmOutputProcessor->SetMixabilityStatus(*aip, true);
