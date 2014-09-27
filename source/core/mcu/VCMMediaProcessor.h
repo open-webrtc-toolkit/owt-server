@@ -60,9 +60,6 @@ public:
     virtual ~VCMInputProcessor();
     bool init(BufferManager*);
     void close();
-    void setAudioInputProcessor(RTPDataReceiver* aip){
-	aip_ = aip;
-    }
     // called by the timer to decode the next available frame
     static void DecoderFunc(webrtc::VideoCodingModule* vcm,
         const boost::system::error_code& /*e*/,
@@ -89,7 +86,6 @@ private:
     scoped_ptr<RtpRtcp> rtp_rtcp_;
     RemoteBitrateEstimator* remote_bitrate_estimator_;
 
-    RTPDataReceiver* aip_;	// the audio input processor pairing with this video input processor
     VCMOutputProcessor* op_;
     BufferManager* bufferManager_;	//owned by mixer
 
