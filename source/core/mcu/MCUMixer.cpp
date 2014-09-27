@@ -37,7 +37,7 @@ DEFINE_LOGGER(MCUMixer, "mcu.MCUMixer");
 
 MCUMixer::MCUMixer()
 {
-    this->init();
+    init();
 }
 
 MCUMixer::~MCUMixer()
@@ -60,8 +60,7 @@ bool MCUMixer::init()
     m_acmOutputProcessor.reset(new ACMOutputProcessor(1, m_audioTransport.get()));
 
     return true;
-
-  }
+}
 
 int MCUMixer::deliverAudioData(char* buf, int len, MediaSource* from) 
 {
@@ -131,21 +130,21 @@ void MCUMixer::addPublisher(MediaSource* publisher)
         m_publishers[publisher].reset(new ProtectedRTPReceiver(ip));
         //add to audio mixer
         m_acmOutputProcessor->SetMixabilityStatus(*aip, true);
-    } else {
+    } else
         assert("new publisher added with InputProcessor still available");    // should not go there
-    }
 }
 
 void MCUMixer::addSubscriber(MediaSink* subscriber, const std::string& peerId)
 {
     ELOG_DEBUG("Adding subscriber: videoSinkSSRC is %d", subscriber->getVideoSinkSSRC());
-    boost::mutex::scoped_lock lock(m_subscriberMutex);
-    FeedbackSource* fbsource = subscriber->getFeedbackSource();
 
+    FeedbackSource* fbsource = subscriber->getFeedbackSource();
     if (fbsource) {
-      ELOG_DEBUG("adding fbsource");
-      fbsource->setFeedbackSink(m_feedback.get());
+        ELOG_DEBUG("adding fbsource");
+        fbsource->setFeedbackSink(m_feedback.get());
     }
+
+    boost::mutex::scoped_lock lock(m_subscriberMutex);
     m_subscribers[peerId] = boost::shared_ptr<MediaSink>(subscriber);
 }
 
@@ -154,9 +153,8 @@ void MCUMixer::removeSubscriber(const std::string& peerId)
     ELOG_DEBUG("removing subscriber: peerId is %s",   peerId.c_str());
     boost::mutex::scoped_lock lock(m_subscriberMutex);
     std::map<std::string, boost::shared_ptr<MediaSink>>::iterator it = m_subscribers.find(peerId);
-    if (it != m_subscribers.end()) {
-      m_subscribers.erase(it);
-    }
+    if (it != m_subscribers.end())
+        m_subscribers.erase(it);
 }
 
 void MCUMixer::removePublisher(MediaSource* publisher)
@@ -176,20 +174,18 @@ void MCUMixer::closeAll()
     ELOG_DEBUG ("Mixer closeAll");
     std::map<std::string, boost::shared_ptr<MediaSink>>::iterator it = m_subscribers.begin();
     while (it != m_subscribers.end()) {
-      if ((*it).second) {
-        FeedbackSource* fbsource = (*it).second->getFeedbackSource();
-        if (fbsource) {
-          fbsource->setFeedbackSink(nullptr);
+        if ((*it).second) {
+            FeedbackSource* fbsource = (*it).second->getFeedbackSource();
+            if (fbsource)
+                fbsource->setFeedbackSink(nullptr);
         }
-      }
-      m_subscribers.erase(it++);
+        m_subscribers.erase(it++);
     }
     lock.unlock();
     lock.lock();
     m_subscribers.clear();
     // TODO: publishers
     ELOG_DEBUG ("ClosedAll media in this Mixer");
-
 }
 
 }/* namespace mcu */
