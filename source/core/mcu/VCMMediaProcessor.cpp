@@ -205,12 +205,8 @@ bool VCMInputProcessor::setReceiveVideoCodec(const VideoCodec& video_codec)
 
 void VCMInputProcessor::receiveRtpData(char* rtp_packet, int rtp_packet_length, erizo::DataType type , uint32_t streamId)
 {
-    if (type == AUDIO) {
-	if(aip_ != NULL) {
-        	aip_->receiveRtpData(rtp_packet, rtp_packet_length, AUDIO, streamId);
-	}
-	return;
-     }
+    assert(type == erizo::VIDEO);
+
     RTPHeader header;
     if (!rtp_header_parser_->Parse(reinterpret_cast<uint8_t*>(rtp_packet), rtp_packet_length, &header)) {
         ELOG_DEBUG("Incoming packet: Invalid RTP header");
