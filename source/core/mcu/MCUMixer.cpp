@@ -116,11 +116,11 @@ void MCUMixer::receiveRtpData(char* buf, int len, erizo::DataType type, uint32_t
 /**
  * Attach a new InputStream to the Transcoder
  */
-void MCUMixer::addPublisher(MediaSource* puber)
+void MCUMixer::addPublisher(MediaSource* publisher)
 {
-    int index = assignSlot(puber);
+    int index = assignSlot(publisher);
     ELOG_DEBUG("addPublisher - assigned slot is %d", index);
-    std::map<erizo::MediaSource*, boost::shared_ptr<woogeen_base::ProtectedRTPReceiver>>::iterator it = m_publishers.find(puber);
+    std::map<erizo::MediaSource*, boost::shared_ptr<woogeen_base::ProtectedRTPReceiver>>::iterator it = m_publishers.find(publisher);
     if (it == m_publishers.end() || !it->second) {
         m_vcmOutputProcessor->updateMaxSlot(maxSlot());
         boost::shared_ptr<VCMInputProcessor> ip(new VCMInputProcessor(index, m_vcmOutputProcessor.get()));
@@ -128,7 +128,7 @@ void MCUMixer::addPublisher(MediaSource* puber)
 	ACMInputProcessor* aip = new ACMInputProcessor(index);
 	aip->Init(m_acmOutputProcessor.get());
 	ip->setAudioInputProcessor(aip);
-        m_publishers[puber].reset(new ProtectedRTPReceiver(ip));
+        m_publishers[publisher].reset(new ProtectedRTPReceiver(ip));
         //add to audio mixer
         m_acmOutputProcessor->SetMixabilityStatus(*aip, true);
     } else {
@@ -136,17 +136,17 @@ void MCUMixer::addPublisher(MediaSource* puber)
     }
 }
 
-void MCUMixer::addSubscriber(MediaSink* suber, const std::string& peerId)
+void MCUMixer::addSubscriber(MediaSink* subscriber, const std::string& peerId)
 {
-    ELOG_DEBUG("Adding subscriber: videoSinkSSRC is %d", suber->getVideoSinkSSRC());
+    ELOG_DEBUG("Adding subscriber: videoSinkSSRC is %d", subscriber->getVideoSinkSSRC());
     boost::mutex::scoped_lock lock(m_subscriberMutex);
-    FeedbackSource* fbsource = suber->getFeedbackSource();
+    FeedbackSource* fbsource = subscriber->getFeedbackSource();
 
     if (fbsource!=NULL){
       ELOG_DEBUG("adding fbsource");
       fbsource->setFeedbackSink(m_feedback.get());
     }
-    m_subscribers[peerId] = boost::shared_ptr<MediaSink>(suber);
+    m_subscribers[peerId] = boost::shared_ptr<MediaSink>(subscriber);
 }
 
 void MCUMixer::removeSubscriber(const std::string& peerId)
@@ -158,11 +158,11 @@ void MCUMixer::removeSubscriber(const std::string& peerId)
     }
 }
 
-void MCUMixer::removePublisher(MediaSource* puber)
+void MCUMixer::removePublisher(MediaSource* publisher)
 {
-    std::map<erizo::MediaSource*, boost::shared_ptr<woogeen_base::ProtectedRTPReceiver>>::iterator it = m_publishers.find(puber);
+    std::map<erizo::MediaSource*, boost::shared_ptr<woogeen_base::ProtectedRTPReceiver>>::iterator it = m_publishers.find(publisher);
     if (it != m_publishers.end()) {
-        int index = getSlot(puber);
+        int index = getSlot(publisher);
         assert(index >= 0);
         m_publisherSlotMap[index] = NULL;
         m_publishers.erase(it);
