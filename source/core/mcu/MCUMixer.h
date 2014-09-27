@@ -29,8 +29,6 @@
 #include <vector>
 
 namespace woogeen_base {
-class ProtectedRTPReceiver;
-class ProtectedRTPSender;
 class WoogeenVideoTransport;
 class WoogeenAudioTransport;
 }
@@ -98,6 +96,11 @@ public:
     void receiveRtpData(char*, int len, erizo::DataType, uint32_t streamId);
 
 private:
+    struct PublishDataSink {
+        boost::shared_ptr<erizo::MediaSink> audioSink;
+        boost::shared_ptr<erizo::MediaSink> videoSink;
+    };
+
     bool init();
     /**
      * Closes all the subscribers and the publisher, the object is useless after this
@@ -111,8 +114,8 @@ private:
     int getSlot(erizo::MediaSource*);
 
     boost::mutex m_subscriberMutex;
-    std::map<std::string, boost::shared_ptr<MediaSink>> m_subscribers;
-    std::map<erizo::MediaSource*, boost::shared_ptr<woogeen_base::ProtectedRTPReceiver>> m_publishers;
+    std::map<std::string, boost::shared_ptr<erizo::MediaSink>> m_subscribers;
+    std::map<erizo::MediaSource*, PublishDataSink> m_publishDataSinks;
     std::vector<erizo::MediaSource*> m_publisherSlotMap;    // each publisher will be allocated one index
     boost::shared_ptr<VCMOutputProcessor> m_vcmOutputProcessor;
     boost::shared_ptr<ACMOutputProcessor> m_acmOutputProcessor;
