@@ -21,8 +21,6 @@
 #ifndef MCUMixer_h
 #define MCUMixer_h
 
-#include <boost/asio.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/mutex.hpp>
 #include <logger.h>
