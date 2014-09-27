@@ -64,18 +64,18 @@ public:
      * Add a Publisher.
      * Each publisher will be served by a InputProcessor, which is responsible for
      * decoding the incoming streams into I420Frames
-     * @param puber The MediaSource as the Publisher
+     * @param publisher The MediaSource as the Publisher
      */
     DLL_PUBLIC void addPublisher(erizo::MediaSource*);
     /**
      * Sets the subscriber
-     * @param suber The MediaSink as the subscriber
+     * @param subscriber The MediaSink as the subscriber
      * @param peerId An unique Id for the subscriber
      */
     DLL_PUBLIC void addSubscriber(erizo::MediaSink*, const std::string& peerId);
     /**
      * Eliminates the subscriber
-     * @param puber
+     * @param peerId An unique Id for the subscriber
      */
     DLL_PUBLIC void removeSubscriber(const std::string& peerId);
 
@@ -108,7 +108,7 @@ private:
 
     int assignSlot(erizo::MediaSource*);
     int maxSlot();
-    // find the slot number for the corresponding puber
+    // find the slot number for the corresponding publisher
     // return -1 if not found
     int getSlot(erizo::MediaSource*);
 
