@@ -67,9 +67,9 @@ bool MCUMixer::init()
 
 int MCUMixer::deliverAudioData(char* buf, int len, MediaSource* from) 
 {
-    std::map<erizo::MediaSource*, PublishDataSink>::iterator it = m_publishDataSinks.find(from);
-    if (it != m_publishDataSinks.end() && it->second.audioSink)
-        return it->second.audioSink->deliverAudioData(buf, len);
+    std::map<erizo::MediaSource*, boost::shared_ptr<erizo::MediaSink>>::iterator it = m_sinksForPublishers.find(from);
+    if (it != m_sinksForPublishers.end() && it->second)
+        return it->second->deliverAudioData(buf, len);
 
     return 0;
 }
@@ -81,9 +81,9 @@ int MCUMixer::deliverAudioData(char* buf, int len, MediaSource* from)
  */
 int MCUMixer::deliverVideoData(char* buf, int len, MediaSource* from)
 {
-    std::map<erizo::MediaSource*, PublishDataSink>::iterator it = m_publishDataSinks.find(from);
-    if (it != m_publishDataSinks.end() && it->second.videoSink)
-        return it->second.videoSink->deliverVideoData(buf, len);
+    std::map<erizo::MediaSource*, boost::shared_ptr<erizo::MediaSink>>::iterator it = m_sinksForPublishers.find(from);
+    if (it != m_sinksForPublishers.end() && it->second)
+        return it->second->deliverVideoData(buf, len);
 
     return 0;
 }
@@ -122,19 +122,20 @@ void MCUMixer::addPublisher(MediaSource* publisher)
 {
     int index = assignSlot(publisher);
     ELOG_DEBUG("addPublisher - assigned slot is %d", index);
-    std::map<erizo::MediaSource*, PublishDataSink>::iterator it = m_publishDataSinks.find(publisher);
-    if (it == m_publishDataSinks.end() || !(it->second.audioSink || it->second.videoSink)) {
+    std::map<erizo::MediaSource*, boost::shared_ptr<erizo::MediaSink>>::iterator it = m_sinksForPublishers.find(publisher);
+    if (it == m_sinksForPublishers.end() || !it->second) {
         m_vcmOutputProcessor->updateMaxSlot(maxSlot());
 
-        boost::shared_ptr<VCMInputProcessor> videoReceiver(new VCMInputProcessor(index, m_vcmOutputProcessor.get()));
-        videoReceiver->init(m_bufferManager.get(), m_taskRunner.get());
-        boost::shared_ptr<ACMInputProcessor> audioReceiver(new ACMInputProcessor(index));
-        audioReceiver->Init(m_acmOutputProcessor.get());
-        videoReceiver->bindAudioInputProcessor(audioReceiver.get());
-        m_acmOutputProcessor->SetMixabilityStatus(*audioReceiver, true);
+        boost::shared_ptr<VCMInputProcessor> videoInputProcessor(new VCMInputProcessor(index, m_vcmOutputProcessor.get()));
+        videoInputProcessor->init(m_bufferManager.get(), m_taskRunner.get());
+        boost::shared_ptr<ACMInputProcessor> audioInputProcessor(new ACMInputProcessor(index));
+        audioInputProcessor->Init(m_acmOutputProcessor.get());
+        videoInputProcessor->bindAudioInputProcessor(audioInputProcessor.get());
+        m_acmOutputProcessor->SetMixabilityStatus(*audioInputProcessor, true);
 
-        m_publishDataSinks[publisher].videoSink.reset(new ProtectedRTPReceiver(videoReceiver));
-        m_publishDataSinks[publisher].audioSink.reset(new ProtectedRTPReceiver(audioReceiver));
+        boost::shared_ptr<ProtectedRTPReceiver> videoReceiver(new ProtectedRTPReceiver(videoInputProcessor));
+        boost::shared_ptr<ProtectedRTPReceiver> audioReceiver(new ProtectedRTPReceiver(audioInputProcessor));
+        m_sinksForPublishers[publisher].reset(new SeparateMediaSink(audioReceiver, videoReceiver));
     } else
         assert("new publisher added with InputProcessor still available");    // should not go there
 }
@@ -164,12 +165,12 @@ void MCUMixer::removeSubscriber(const std::string& peerId)
 
 void MCUMixer::removePublisher(MediaSource* publisher)
 {
-    std::map<erizo::MediaSource*, PublishDataSink>::iterator it = m_publishDataSinks.find(publisher);
-    if (it != m_publishDataSinks.end()) {
+    std::map<erizo::MediaSource*, boost::shared_ptr<erizo::MediaSink>>::iterator it = m_sinksForPublishers.find(publisher);
+    if (it != m_sinksForPublishers.end()) {
         int index = getSlot(publisher);
         assert(index >= 0);
         m_publisherSlotMap[index] = nullptr;
-        m_publishDataSinks.erase(it);
+        m_sinksForPublishers.erase(it);
     }
 }
 
