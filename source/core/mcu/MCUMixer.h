@@ -38,6 +38,7 @@ namespace mcu {
 class ACMOutputProcessor;
 class BufferManager;
 class VCMOutputProcessor;
+class AVSyncTaskRunner;
 
 class DummyFeedbackSink : public erizo::FeedbackSink {
 public:
@@ -95,6 +96,10 @@ public:
      */
     void receiveRtpData(char*, int len, erizo::DataType, uint32_t streamId);
 
+    AVSyncTaskRunner* getTaskRunner() {
+    	return m_taskRunner.get();
+    }
+
 private:
     struct PublishDataSink {
         boost::shared_ptr<erizo::MediaSink> audioSink;
@@ -123,6 +128,7 @@ private:
     boost::shared_ptr<woogeen_base::WoogeenAudioTransport> m_audioTransport;
     boost::shared_ptr<BufferManager> m_bufferManager;
     boost::shared_ptr<erizo::FeedbackSink> m_feedback;
+    boost::shared_ptr<AVSyncTaskRunner> m_taskRunner;
 };
 
 inline int MCUMixer::assignSlot(erizo::MediaSource* publisher)

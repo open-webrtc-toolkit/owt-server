@@ -19,6 +19,10 @@
  */
 
 #include "VCMMediaProcessor.h"
+#include "ACMMediaProcessor.h"
+#include "AVSyncModule.h"
+#include "AVSyncTaskRunner.h"
+
 
 #include <boost/bind.hpp>
 #include <string.h>
@@ -104,17 +108,23 @@ VCMInputProcessor::VCMInputProcessor(int index, VCMOutputProcessor* op)
 
 VCMInputProcessor::~VCMInputProcessor()
 {
-    if (vcm_)
+    if (taskRunner_) {
+    	taskRunner_->unregisterModule(avSync_);
+        delete(avSync_);
+    }
+	if (vcm_)
         VideoCodingModule::Destroy(vcm_), vcm_ = NULL;
 }
 
-bool VCMInputProcessor::init(BufferManager*  bufferManager)
+bool VCMInputProcessor::init(BufferManager*  bufferManager, AVSyncTaskRunner* taskRunner)
 {
     Trace::CreateTrace();
     Trace::SetTraceFile("webrtc.trace.txt");
     Trace::set_level_filter(webrtc::kTraceAll);
 
     bufferManager_ = bufferManager;
+    taskRunner_ = taskRunner;
+
     vcm_ = VideoCodingModule::Create(index_);
     if (vcm_) {
         vcm_->InitializeReceiver();
@@ -126,6 +136,12 @@ bool VCMInputProcessor::init(BufferManager*  bufferManager)
     rtp_payload_registry_.reset(new RTPPayloadRegistry(index_, RTPPayloadStrategy::CreateStrategy(false)));
     rtp_receiver_.reset(RtpReceiver::CreateVideoReceiver(index_, Clock::GetRealTimeClock(), this, NULL,
                                 rtp_payload_registry_.get()));
+
+    RtpRtcp::Configuration configuration;
+    configuration.id = 002;
+    configuration.audio = false;  // Video.
+    rtp_rtcp_.reset(RtpRtcp::CreateRtpRtcp(configuration));
+
 
     //register codec
     VideoCodec video_codec;
@@ -142,6 +158,8 @@ bool VCMInputProcessor::init(BufferManager*  bufferManager)
         return true;
       }
     }
+
+    avSync_ = new AVSyncModule(vcm_, this);
     recorder_.reset(new DebugRecorder());
     recorder_->Start("/home/qzhang8/webrtc/webrtc.frame.i420");
     return true;
@@ -152,16 +170,13 @@ void VCMInputProcessor::close() {
     Trace::ReturnTrace();
 }
 
-void VCMInputProcessor::DecoderFunc(webrtc::VideoCodingModule* vcm,
-    const boost::system::error_code& /*e*/,
-    boost::asio::deadline_timer* t)
-{
-    vcm->Decode(0);
-    t->expires_at(t->expires_at() + boost::posix_time::milliseconds(33));
-    t->async_wait(boost::bind(&VCMInputProcessor::DecoderFunc, vcm,
-    boost::asio::placeholders::error, t));
+void VCMInputProcessor::bindAudioInputProcessor(ACMInputProcessor* aip) {
+	aip_ = aip;
+	if (avSync_) {
+		avSync_->ConfigureSync(aip_, rtp_rtcp_.get(), rtp_receiver_.get());
+        taskRunner_->registerModule(avSync_);
+	}
 }
-
 /**
  * implements webrtc::VCMReceiveCallback
  */

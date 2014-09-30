@@ -14,6 +14,7 @@
 #include "webrtc/modules/interface/module_common_types.h"
 #include "webrtc/voice_engine/voice_engine_defines.h"	//for some const definitions
 #include "webrtc/video_engine/overuse_frame_detector.h"	//for some const definitions
+#include "webrtc/voice_engine/include/voe_errors.h"    //for some const definitions
 #include "webrtc/modules/audio_coding/main/interface/audio_coding_module.h"
 #include "webrtc/modules/audio_processing/include/audio_processing.h"
 #include "webrtc/modules/audio_conference_mixer/interface/audio_conference_mixer.h"
@@ -51,6 +52,7 @@ class ACMInputProcessor : public erizo::RTPDataReceiver,
 public:
 	ACMInputProcessor(int32_t channelId);
 	virtual ~ACMInputProcessor();
+    int32_t channelId() { return _channelId;}
     int32_t Init(ACMOutputProcessor* aop);
 	virtual void receiveRtpData(char* rtpdata, int len, erizo::DataType type = erizo::VIDEO, uint32_t streamId = 0);
     virtual int32_t GetAudioFrame(const int32_t id, AudioFrame& audioFrame);

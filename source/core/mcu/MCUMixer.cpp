@@ -23,6 +23,7 @@
 #include "BufferManager.h"
 #include "VCMMediaProcessor.h"
 #include "ACMMediaProcessor.h"
+#include "AVSyncTaskRunner.h"
 #include <ProtectedRTPReceiver.h>
 #include <ProtectedRTPSender.h>
 #include <WoogeenTransport.h>
@@ -58,6 +59,8 @@ bool MCUMixer::init()
 
     m_audioTransport.reset(new WoogeenAudioTransport(this));
     m_acmOutputProcessor.reset(new ACMOutputProcessor(1, m_audioTransport.get()));
+    m_taskRunner.reset(new AVSyncTaskRunner(1000));
+    m_taskRunner->start();
 
     return true;
 }
@@ -124,9 +127,10 @@ void MCUMixer::addPublisher(MediaSource* publisher)
         m_vcmOutputProcessor->updateMaxSlot(maxSlot());
 
         boost::shared_ptr<VCMInputProcessor> videoReceiver(new VCMInputProcessor(index, m_vcmOutputProcessor.get()));
-        videoReceiver->init(m_bufferManager.get());
+        videoReceiver->init(m_bufferManager.get(), m_taskRunner.get());
         boost::shared_ptr<ACMInputProcessor> audioReceiver(new ACMInputProcessor(index));
         audioReceiver->Init(m_acmOutputProcessor.get());
+        videoReceiver->bindAudioInputProcessor(audioReceiver.get());
         m_acmOutputProcessor->SetMixabilityStatus(*audioReceiver, true);
 
         m_publishDataSinks[publisher].videoSink.reset(new ProtectedRTPReceiver(videoReceiver));
@@ -173,6 +177,7 @@ void MCUMixer::closeAll()
 {
     boost::unique_lock<boost::mutex> lock(m_subscriberMutex);
     ELOG_DEBUG ("Mixer closeAll");
+    m_taskRunner->stop();
     std::map<std::string, boost::shared_ptr<MediaSink>>::iterator it = m_subscribers.begin();
     while (it != m_subscribers.end()) {
         if ((*it).second) {
