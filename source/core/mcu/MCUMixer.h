@@ -28,9 +28,8 @@
 #include <MediaDefinitions.h>
 #include <vector>
 
-namespace woogeen_base {
-class WoogeenVideoTransport;
-class WoogeenAudioTransport;
+namespace webrtc {
+class Transport;
 }
 
 namespace mcu {
@@ -119,8 +118,8 @@ private:
     std::vector<erizo::MediaSource*> m_publisherSlotMap;    // each publisher will be allocated one index
     boost::shared_ptr<VCMOutputProcessor> m_vcmOutputProcessor;
     boost::shared_ptr<ACMOutputProcessor> m_acmOutputProcessor;
-    boost::shared_ptr<woogeen_base::WoogeenVideoTransport> m_videoTransport;
-    boost::shared_ptr<woogeen_base::WoogeenAudioTransport> m_audioTransport;
+    boost::shared_ptr<webrtc::Transport> m_videoTransport;
+    boost::shared_ptr<webrtc::Transport> m_audioTransport;
     boost::shared_ptr<BufferManager> m_bufferManager;
     boost::shared_ptr<erizo::FeedbackSink> m_feedback;
     boost::shared_ptr<AVSyncTaskRunner> m_taskRunner;

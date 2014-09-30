@@ -53,11 +53,11 @@ bool MCUMixer::init()
 {
     m_feedback.reset(new DummyFeedbackSink());
     m_bufferManager.reset(new BufferManager());
-    m_videoTransport.reset(new WoogeenVideoTransport(this));
+    m_videoTransport.reset(new WoogeenTransport<erizo::VIDEO>(this));
     m_vcmOutputProcessor.reset(new VCMOutputProcessor());
     m_vcmOutputProcessor->init(m_videoTransport.get(), m_bufferManager.get());
 
-    m_audioTransport.reset(new WoogeenAudioTransport(this));
+    m_audioTransport.reset(new WoogeenTransport<erizo::AUDIO>(this));
     m_acmOutputProcessor.reset(new ACMOutputProcessor(1, m_audioTransport.get()));
     m_taskRunner.reset(new AVSyncTaskRunner(1000));
     m_taskRunner->start();
