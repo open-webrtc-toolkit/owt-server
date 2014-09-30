@@ -218,7 +218,7 @@ void ACMInputProcessor::receiveRtpData(char* rtpdata, int len,
 	               "Channel::ReceivedRTPPacket()");
 
 	  // Store playout timestamp for the received RTP packet
-	//  UpdatePlayoutTimestamp(false);
+	  UpdatePlayoutTimestamp(false);
 
 	  const uint8_t* received_packet = reinterpret_cast<const uint8_t*>(rtpdata);
 	  RTPHeader header;
@@ -299,11 +299,12 @@ int32_t ACMInputProcessor::OnReceivedPayloadData(const uint8_t* payloadData,
             "Channel::OnReceivedPayloadData() unable to push data to the ACM");
         return -1;
     }
-#if 0
+
     // Update the packet delay.
     UpdatePacketDelay(rtpHeader->header.timestamp,
                       rtpHeader->header.sequenceNumber);
 
+#if 0
     uint16_t round_trip_time = 0;
     _rtpRtcpModule->RTT(rtp_receiver_->SSRC(), &round_trip_time,
                         NULL, NULL, NULL);
@@ -662,7 +663,7 @@ int32_t ACMInputProcessor::ReceivedRTCPPacket(const int8_t* data, int32_t length
   WEBRTC_TRACE(kTraceStream, kTraceVoice, VoEId(_channelId,_channelId),
                "Channel::ReceivedRTCPPacket()");
   // Store playout timestamp for the received RTCP packet
- // UpdatePlayoutTimestamp(true);
+  UpdatePlayoutTimestamp(true);
 
 
   // Deliver RTCP packet to RTP/RTCP module for parsing

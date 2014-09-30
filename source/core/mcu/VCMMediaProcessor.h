@@ -49,7 +49,10 @@ namespace mcu {
  * served by one VCMInputProcessor.
  * This class more or less is working as the vie_receiver class
  */
+class ACMInputProcessor;
 class VCMOutputProcessor;
+class AVSyncModule;
+class AVSyncTaskRunner;
 class DebugRecorder;
 
 class VCMInputProcessor : public erizo::RTPDataReceiver,
@@ -60,12 +63,8 @@ class VCMInputProcessor : public erizo::RTPDataReceiver,
 public:
     VCMInputProcessor(int index, VCMOutputProcessor*);
     virtual ~VCMInputProcessor();
-    bool init(BufferManager*);
+    bool init(BufferManager*, AVSyncTaskRunner* taskRunner);
     void close();
-    // called by the timer to decode the next available frame
-    static void DecoderFunc(webrtc::VideoCodingModule* vcm,
-        const boost::system::error_code& /*e*/,
-        boost::asio::deadline_timer* t);
 
     virtual int32_t FrameToRender(webrtc::I420VideoFrame& videoFrame);
     virtual void receiveRtpData(char* rtpdata, int len, erizo::DataType type = erizo::VIDEO, uint32_t streamId = 0);
@@ -76,6 +75,11 @@ public:
 
     virtual bool OnRecoveredPacket(const uint8_t* packet, int packet_length) { return false; }
     bool setReceiveVideoCodec(const VideoCodec& video_codec);
+    AVSyncModule* getAVSyncModule() { return avSync_;}
+    int channelId() {return index_;}
+    //for AVSync
+    void bindAudioInputProcessor(ACMInputProcessor* aip);
+
 
 private:
     int index_; //the index number of this publisher
@@ -88,8 +92,11 @@ private:
     scoped_ptr<RtpRtcp> rtp_rtcp_;
     RemoteBitrateEstimator* remote_bitrate_estimator_;
 
+    ACMInputProcessor* aip_;
     VCMOutputProcessor* op_;
     BufferManager* bufferManager_;	//owned by mixer
+    AVSyncModule*  avSync_;
+    AVSyncTaskRunner* taskRunner_;	//owned by mixer
 
     scoped_ptr<DebugRecorder> recorder_;
 };
