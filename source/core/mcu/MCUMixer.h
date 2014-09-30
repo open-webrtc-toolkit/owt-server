@@ -101,11 +101,6 @@ public:
     }
 
 private:
-    struct PublishDataSink {
-        boost::shared_ptr<erizo::MediaSink> audioSink;
-        boost::shared_ptr<erizo::MediaSink> videoSink;
-    };
-
     bool init();
     /**
      * Closes all the subscribers and the publisher, the object is useless after this
@@ -120,7 +115,7 @@ private:
 
     boost::mutex m_subscriberMutex;
     std::map<std::string, boost::shared_ptr<erizo::MediaSink>> m_subscribers;
-    std::map<erizo::MediaSource*, PublishDataSink> m_publishDataSinks;
+    std::map<erizo::MediaSource*, boost::shared_ptr<erizo::MediaSink>> m_sinksForPublishers;
     std::vector<erizo::MediaSource*> m_publisherSlotMap;    // each publisher will be allocated one index
     boost::shared_ptr<VCMOutputProcessor> m_vcmOutputProcessor;
     boost::shared_ptr<ACMOutputProcessor> m_acmOutputProcessor;
@@ -129,6 +124,18 @@ private:
     boost::shared_ptr<BufferManager> m_bufferManager;
     boost::shared_ptr<erizo::FeedbackSink> m_feedback;
     boost::shared_ptr<AVSyncTaskRunner> m_taskRunner;
+};
+
+class SeparateMediaSink : public erizo::MediaSink {
+public:
+    SeparateMediaSink(boost::shared_ptr<erizo::MediaSink> audioSink, boost::shared_ptr<erizo::MediaSink> videoSink);
+
+    virtual int deliverAudioData(char* buf, int len, erizo::MediaSource* from = nullptr);
+    virtual int deliverVideoData(char* buf, int len, erizo::MediaSource* from = nullptr);
+
+private:
+    boost::shared_ptr<erizo::MediaSink> m_audioSink;
+    boost::shared_ptr<erizo::MediaSink> m_videoSink;
 };
 
 inline int MCUMixer::assignSlot(erizo::MediaSource* publisher)
@@ -155,6 +162,22 @@ inline int MCUMixer::getSlot(erizo::MediaSource* publisher)
             return i;
     }
     return -1;
+}
+
+SeparateMediaSink::SeparateMediaSink(boost::shared_ptr<erizo::MediaSink> audioSink, boost::shared_ptr<erizo::MediaSink> videoSink)
+    : m_audioSink(audioSink)
+    , m_videoSink(videoSink)
+{
+}
+
+inline int SeparateMediaSink::deliverAudioData(char* buf, int len, erizo::MediaSource* from)
+{
+    return m_audioSink ? m_audioSink->deliverAudioData(buf, len, from) : 0;
+}
+
+inline int SeparateMediaSink::deliverVideoData(char* buf, int len, erizo::MediaSource* from)
+{
+    return m_videoSink ? m_videoSink->deliverVideoData(buf, len ,from) : 0;
 }
 
 } /* namespace mcu */
