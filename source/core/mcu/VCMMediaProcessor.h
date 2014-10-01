@@ -36,7 +36,6 @@
 #include <webrtc/modules/rtp_rtcp/interface/rtp_rtcp.h>
 #include <webrtc/modules/video_coding/main/interface/video_coding.h>
 #include <webrtc/modules/video_processing/main/interface/video_processing.h>
-#include <webrtc/system_wrappers/interface/scoped_ptr.h>
 #include <webrtc/system_wrappers/interface/thread_wrapper.h>
 
 using namespace webrtc;
@@ -93,10 +92,10 @@ public:
 private:
     int index_; //the index number of this publisher
     VideoCodingModule* vcm_;
-    scoped_ptr<RtpHeaderParser> rtp_header_parser_;
-    scoped_ptr<RTPPayloadRegistry> rtp_payload_registry_;
-    scoped_ptr<RtpReceiver> rtp_receiver_;
-    scoped_ptr<RtpRtcp> rtp_rtcp_;
+    boost::scoped_ptr<RtpHeaderParser> rtp_header_parser_;
+    boost::scoped_ptr<RTPPayloadRegistry> rtp_payload_registry_;
+    boost::scoped_ptr<RtpReceiver> rtp_receiver_;
+    boost::scoped_ptr<RtpRtcp> rtp_rtcp_;
 
     ACMInputProcessor* aip_;
     InputFrameCallback* frameReadyCB_;
@@ -104,7 +103,7 @@ private:
     AVSyncModule*  avSync_;
     AVSyncTaskRunner* taskRunner_;	//owned by mixer
 
-    scoped_ptr<DebugRecorder> recorder_;
+    boost::scoped_ptr<DebugRecorder> recorder_;
 };
 
 /**
@@ -170,13 +169,13 @@ private:
     int maxSlot_;
     Layout layout_; // current layout config;
     Layout layoutNew_; // new layout config if any;
-    scoped_ptr<CriticalSectionWrapper> layoutLock_;
+    boost::scoped_ptr<CriticalSectionWrapper> layoutLock_;
     bool layoutFrames();
 
     webrtc::VideoCodingModule* vcm_;
     webrtc::VideoProcessingModule* vpm_;
-    scoped_ptr<RtpRtcp> default_rtp_rtcp_;
-    scoped_ptr<DebugRecorder> recorder_;
+    boost::scoped_ptr<RtpRtcp> default_rtp_rtcp_;
+    boost::scoped_ptr<DebugRecorder> recorder_;
     bool recordStarted_;
 
     /*
