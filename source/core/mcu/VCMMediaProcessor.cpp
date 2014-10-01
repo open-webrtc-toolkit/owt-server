@@ -177,9 +177,7 @@ void VCMInputProcessor::bindAudioInputProcessor(ACMInputProcessor* aip) {
         taskRunner_->registerModule(avSync_);
 	}
 }
-/**
- * implements webrtc::VCMReceiveCallback
- */
+
 int32_t VCMInputProcessor::FrameToRender(I420VideoFrame& videoFrame)
 {
     ELOG_DEBUG("Got decoded frame from %d\n", index_);

@@ -67,23 +67,28 @@ class VCMInputProcessor : public erizo::RTPDataReceiver,
 public:
     VCMInputProcessor(int index);
     virtual ~VCMInputProcessor();
-    bool init(BufferManager*, InputFrameCallback*, AVSyncTaskRunner* taskRunner);
-    void close();
 
-    virtual int32_t FrameToRender(webrtc::I420VideoFrame& videoFrame);
-    virtual void receiveRtpData(char* rtpdata, int len, erizo::DataType type = erizo::VIDEO, uint32_t streamId = 0);
+    // Implements the webrtc::VCMReceiveCallback interface.
+    virtual int32_t FrameToRender(webrtc::I420VideoFrame&);
+
+    // Implements the webrtc::RtpData interfaces.
     virtual int32_t OnReceivedPayloadData(
         const uint8_t* payloadData,
         const uint16_t payloadSize,
-        const WebRtcRTPHeader* rtpHeader);
+        const WebRtcRTPHeader*);
 
     virtual bool OnRecoveredPacket(const uint8_t* packet, int packet_length) { return false; }
-    bool setReceiveVideoCodec(const VideoCodec& video_codec);
-    AVSyncModule* getAVSyncModule() { return avSync_;}
-    int channelId() {return index_;}
-    //for AVSync
-    void bindAudioInputProcessor(ACMInputProcessor* aip);
 
+    // Implements the erizo::RTPDataReceiver interface.
+    virtual void receiveRtpData(char* rtpdata, int len, erizo::DataType type = erizo::VIDEO, uint32_t streamId = 0);
+
+    bool init(BufferManager*, InputFrameCallback*, AVSyncTaskRunner*);
+    void close();
+
+    bool setReceiveVideoCodec(const VideoCodec&);
+    void bindAudioInputProcessor(ACMInputProcessor*);
+    AVSyncModule* avSyncModule() { return avSync_; }
+    int channelId() { return index_;}
 
 private:
     int index_; //the index number of this publisher
@@ -113,6 +118,7 @@ class VCMOutputProcessor : public webrtc::VCMPacketizationCallback,
 public:
     VCMOutputProcessor(int id);
     ~VCMOutputProcessor();
+
     bool init(webrtc::Transport*, BufferManager*);
     void close();
 
@@ -128,9 +134,7 @@ public:
      */
     virtual void handleInputFrame(webrtc::I420VideoFrame& frame, int index);
 
-    /**
-     * implements VCMPacketizationCallback
-     */
+    // Implements VCMPacketizationCallback.
     virtual int32_t SendData(
         webrtc::FrameType frameType,
         uint8_t payloadType,
@@ -151,8 +155,8 @@ public:
 
 private:
     struct Layout{
-        unsigned int subWidth_: 12; //assuming max is 4096
-        unsigned int subHeight_:12; //assuming max is 2160
+        unsigned int subWidth_: 12; // assuming max is 4096
+        unsigned int subHeight_: 12; // assuming max is 2160
         unsigned int div_factor_: 3; // max is 4
         bool operator==(const Layout& rhs) {
             return (this->div_factor_ == rhs.div_factor_)
@@ -162,32 +166,30 @@ private:
     };
 
     int id_;
-    Layout layout_; // current layout config;
-    Layout layoutNew_; // new layout config if any;
-    bool layoutFrames();
 
     int maxSlot_;
+    Layout layout_; // current layout config;
+    Layout layoutNew_; // new layout config if any;
+    scoped_ptr<CriticalSectionWrapper> layoutLock_;
+    bool layoutFrames();
+
     webrtc::VideoCodingModule* vcm_;
     webrtc::VideoProcessingModule* vpm_;
-
-    boost::scoped_ptr<boost::thread> encodingThread_;
-    boost::asio::io_service io_service_;
-    boost::scoped_ptr<boost::asio::deadline_timer> timer_;
-
-    scoped_ptr<CriticalSectionWrapper> layoutLock_;
     scoped_ptr<RtpRtcp> default_rtp_rtcp_;
-
     scoped_ptr<DebugRecorder> recorder_;
+    bool recordStarted_;
 
     /*
      * Each incoming channel will store the decoded frame in this array, and the encoding
      * thread will scan this array and compose the frames into one frame
      */
-    BufferManager* bufferManager_; //owned by mixer
-    webrtc::I420VideoFrame*  composedFrame_;
-    webrtc::I420VideoFrame*  mockFrame_;
+    BufferManager* bufferManager_; // owned by mixer
+    webrtc::I420VideoFrame* composedFrame_;
+    webrtc::I420VideoFrame* mockFrame_;
 
-    bool recordStarted_;
+    boost::scoped_ptr<boost::thread> encodingThread_;
+    boost::asio::io_service io_service_;
+    boost::scoped_ptr<boost::asio::deadline_timer> timer_;
 };
 
 }
