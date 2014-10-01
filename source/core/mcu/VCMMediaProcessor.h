@@ -109,7 +109,7 @@ class VCMOutputProcessor : public webrtc::VCMPacketizationCallback,
                            public webrtc::VCMProtectionCallback {
     DECLARE_LOGGER();
 public:
-    VCMOutputProcessor();
+    VCMOutputProcessor(int id);
     ~VCMOutputProcessor();
     bool init(webrtc::Transport*, BufferManager*);
     void close();
@@ -157,6 +157,7 @@ private:
         }
     };
 
+    int id_;
     Layout layout_; // current layout config;
     Layout layoutNew_; // new layout config if any;
     bool layoutFrames();

@@ -36,6 +36,8 @@ namespace mcu {
 
 DEFINE_LOGGER(MCUMixer, "mcu.MCUMixer");
 
+static const int MIXED_VIDEO_STREAM_ID = 2;
+
 MCUMixer::MCUMixer()
 {
     init();
@@ -54,7 +56,7 @@ bool MCUMixer::init()
     m_feedback.reset(new DummyFeedbackSink());
     m_bufferManager.reset(new BufferManager());
     m_videoTransport.reset(new WoogeenTransport<erizo::VIDEO>(this));
-    m_vcmOutputProcessor.reset(new VCMOutputProcessor());
+    m_vcmOutputProcessor.reset(new VCMOutputProcessor(MIXED_VIDEO_STREAM_ID));
     m_vcmOutputProcessor->init(m_videoTransport.get(), m_bufferManager.get());
 
     m_audioTransport.reset(new WoogeenTransport<erizo::AUDIO>(this));

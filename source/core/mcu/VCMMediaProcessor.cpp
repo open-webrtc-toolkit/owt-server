@@ -241,7 +241,9 @@ void VCMInputProcessor::receiveRtpData(char* rtp_packet, int rtp_packet_length, 
 
 DEFINE_LOGGER(VCMOutputProcessor, "media.VCMOutputProcessor");
 
-VCMOutputProcessor::VCMOutputProcessor():layoutLock_(CriticalSectionWrapper::CreateCriticalSection())
+VCMOutputProcessor::VCMOutputProcessor(int id)
+    : id_(id)
+    , layoutLock_(CriticalSectionWrapper::CreateCriticalSection())
 {
     vcm_ = NULL;
     vpm_ = NULL;
@@ -274,7 +276,7 @@ VCMOutputProcessor::~VCMOutputProcessor()
 bool VCMOutputProcessor::init(webrtc::Transport* transport, BufferManager* bufferManager)
 {
     bufferManager_ = bufferManager;
-    vcm_ = VideoCodingModule::Create(2);
+    vcm_ = VideoCodingModule::Create(id_);
     if (vcm_) {
         vcm_->InitializeSender();
         vcm_->RegisterTransportCallback(this);
@@ -283,12 +285,12 @@ bool VCMOutputProcessor::init(webrtc::Transport* transport, BufferManager* buffe
     } else
         return false;
 
-    vpm_ = VideoProcessingModule::Create(2);
+    vpm_ = VideoProcessingModule::Create(id_);
     vpm_->SetInputFrameResampleMode(webrtc::kFastRescaling);
     //vpm_->SetTargetResolution(640, 480, 30);
 
     RtpRtcp::Configuration configuration;
-    configuration.id = 002;
+    configuration.id = id_;
     configuration.outgoing_transport = transport;
     configuration.audio = false;  // Video.
     default_rtp_rtcp_.reset(RtpRtcp::CreateRtpRtcp(configuration));
