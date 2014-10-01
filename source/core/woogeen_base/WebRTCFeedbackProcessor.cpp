@@ -57,13 +57,15 @@ void WebRTCFeedbackProcessor::initVideoFeedbackReactor(uint32_t streamId, uint32
 {
     boost::lock_guard<boost::shared_mutex> lock(m_feedbackMutex);
     m_videoSSRC = ssrc;
-    m_videoRTPSender = rtpSender;
     m_iFrameCallback = iFrameCallback;
-    m_bitrateObserver.reset(new VideoFeedbackReactor(streamId, rtpSender));
-    m_bitrateController.reset(webrtc::BitrateController::CreateBitrateController(m_clock, true));
-    m_bandwidthObserver.reset(m_bitrateController->CreateRtcpBandwidthObserver());
-    // TODO: Adjust the bitrate settings according to the Gateway settings.
-    m_bitrateController->SetBitrateObserver(m_bitrateObserver.get(), 300 * 1000, 0, 2048 * 1000);
+    m_videoRTPSender = rtpSender;
+    if (rtpSender) {
+        m_bitrateObserver.reset(new VideoFeedbackReactor(streamId, rtpSender));
+        m_bitrateController.reset(webrtc::BitrateController::CreateBitrateController(m_clock, true));
+        m_bandwidthObserver.reset(m_bitrateController->CreateRtcpBandwidthObserver());
+        // TODO: Adjust the bitrate settings according to the Gateway settings.
+        m_bitrateController->SetBitrateObserver(m_bitrateObserver.get(), 300 * 1000, 0, 2048 * 1000);
+    }
 }
 
 void WebRTCFeedbackProcessor::initAudioFeedbackReactor(uint32_t streamId, uint32_t ssrc, boost::shared_ptr<ProtectedRTPSender> rtpSender)
@@ -86,6 +88,7 @@ void WebRTCFeedbackProcessor::resetVideoFeedbackReactor()
     m_bitrateObserver.reset();
     m_bitrateController.reset();
     m_bandwidthObserver.reset();
+    m_iFrameCallback.reset();
     m_videoSSRC = 0;
 }
 
