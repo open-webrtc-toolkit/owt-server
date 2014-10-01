@@ -99,10 +99,9 @@ class DebugRecorder {
 
 DEFINE_LOGGER(VCMInputProcessor, "media.VCMInputProcessor");
 
-VCMInputProcessor::VCMInputProcessor(int index, VCMOutputProcessor* op)
+VCMInputProcessor::VCMInputProcessor(int index)
 {
     vcm_ = NULL;
-    op_ = op;
     index_ = index;
 }
 
@@ -116,13 +115,14 @@ VCMInputProcessor::~VCMInputProcessor()
         VideoCodingModule::Destroy(vcm_), vcm_ = NULL;
 }
 
-bool VCMInputProcessor::init(BufferManager*  bufferManager, AVSyncTaskRunner* taskRunner)
+bool VCMInputProcessor::init(BufferManager* bufferManager, InputFrameCallback* frameReadyCB, AVSyncTaskRunner* taskRunner)
 {
     Trace::CreateTrace();
     Trace::SetTraceFile("webrtc.trace.txt");
     Trace::set_level_filter(webrtc::kTraceAll);
 
     bufferManager_ = bufferManager;
+    frameReadyCB_ = frameReadyCB;
     taskRunner_ = taskRunner;
 
     vcm_ = VideoCodingModule::Create(index_);
@@ -183,7 +183,7 @@ void VCMInputProcessor::bindAudioInputProcessor(ACMInputProcessor* aip) {
 int32_t VCMInputProcessor::FrameToRender(I420VideoFrame& videoFrame)
 {
     ELOG_DEBUG("Got decoded frame from %d\n", index_);
-    op_->updateFrame(videoFrame, index_);
+    frameReadyCB_->handleInputFrame(videoFrame, index_);
     return 0;
 }
 
@@ -391,7 +391,7 @@ void VCMOutputProcessor::updateMaxSlot(int newMaxSlot)
  * one particular publisher with index
  */
 bool posted = false;
-void VCMOutputProcessor::updateFrame(webrtc::I420VideoFrame& frame, int index)
+void VCMOutputProcessor::handleInputFrame(webrtc::I420VideoFrame& frame, int index)
 {
 #if SCALE_BY_OUTPUT
     I420VideoFrame* freeFrame = bufferManager_->getFreeBuffer();
@@ -401,7 +401,7 @@ void VCMOutputProcessor::updateFrame(webrtc::I420VideoFrame& frame, int index)
         freeFrame->CopyFrame(frame);
         I420VideoFrame* busyFrame = bufferManager_->postFreeBuffer(freeFrame, index);
         if (busyFrame) {
-            ELOG_DEBUG("updateFrame: returning busy frame, index is %d", index);
+            ELOG_DEBUG("handleInputFrame: returning busy frame, index is %d", index);
             bufferManager_->releaseBuffer(busyFrame);
         }
         posted = true;

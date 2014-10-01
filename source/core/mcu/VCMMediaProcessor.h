@@ -50,10 +50,14 @@ namespace mcu {
  * This class more or less is working as the vie_receiver class
  */
 class ACMInputProcessor;
-class VCMOutputProcessor;
 class AVSyncModule;
 class AVSyncTaskRunner;
 class DebugRecorder;
+
+class InputFrameCallback {
+public:
+    virtual void handleInputFrame(webrtc::I420VideoFrame&, int index) = 0;
+};
 
 class VCMInputProcessor : public erizo::RTPDataReceiver,
                           public RtpData,
@@ -61,9 +65,9 @@ class VCMInputProcessor : public erizo::RTPDataReceiver,
     DECLARE_LOGGER();
 
 public:
-    VCMInputProcessor(int index, VCMOutputProcessor*);
+    VCMInputProcessor(int index);
     virtual ~VCMInputProcessor();
-    bool init(BufferManager*, AVSyncTaskRunner* taskRunner);
+    bool init(BufferManager*, InputFrameCallback*, AVSyncTaskRunner* taskRunner);
     void close();
 
     virtual int32_t FrameToRender(webrtc::I420VideoFrame& videoFrame);
@@ -93,7 +97,7 @@ private:
     RemoteBitrateEstimator* remote_bitrate_estimator_;
 
     ACMInputProcessor* aip_;
-    VCMOutputProcessor* op_;
+    InputFrameCallback* frameReadyCB_;
     BufferManager* bufferManager_;	//owned by mixer
     AVSyncModule*  avSync_;
     AVSyncTaskRunner* taskRunner_;	//owned by mixer
@@ -106,7 +110,8 @@ private:
  * for example, media layout mixing
  */
 class VCMOutputProcessor : public webrtc::VCMPacketizationCallback,
-                           public webrtc::VCMProtectionCallback {
+                           public webrtc::VCMProtectionCallback,
+                           public InputFrameCallback {
     DECLARE_LOGGER();
 public:
     VCMOutputProcessor(int id);
@@ -120,10 +125,11 @@ public:
 
     void layoutTimerHandler(const boost::system::error_code& ec);
     /**
-     * this should be called whenever a new frame is decoded from
+     * Implements InputFrameCallback.
+     * This should be called whenever a new frame is decoded from
      * one particular publisher with index
      */
-    virtual void updateFrame(webrtc::I420VideoFrame& frame, int index);
+    virtual void handleInputFrame(webrtc::I420VideoFrame& frame, int index);
 
     /**
      * implements VCMPacketizationCallback
