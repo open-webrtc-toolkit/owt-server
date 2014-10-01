@@ -144,8 +144,8 @@ void MCUMixer::addPublisher(MediaSource* publisher)
     if (it == m_sinksForPublishers.end() || !it->second) {
         m_vcmOutputProcessor->updateMaxSlot(maxSlot());
 
-        boost::shared_ptr<VCMInputProcessor> videoInputProcessor(new VCMInputProcessor(index, m_vcmOutputProcessor.get()));
-        videoInputProcessor->init(m_bufferManager.get(), m_taskRunner.get());
+        boost::shared_ptr<VCMInputProcessor> videoInputProcessor(new VCMInputProcessor(index));
+        videoInputProcessor->init(m_bufferManager.get(), m_vcmOutputProcessor.get(), m_taskRunner.get());
         boost::shared_ptr<ACMInputProcessor> audioInputProcessor(new ACMInputProcessor(index));
         audioInputProcessor->Init(m_acmOutputProcessor.get());
         videoInputProcessor->bindAudioInputProcessor(audioInputProcessor.get());
