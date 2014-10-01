@@ -53,11 +53,12 @@ void WebRTCFeedbackProcessor::reset()
     m_lastHighSeqNumbers.clear();
 }
 
-void WebRTCFeedbackProcessor::initVideoFeedbackReactor(uint32_t streamId, uint32_t ssrc, boost::shared_ptr<ProtectedRTPSender> rtpSender)
+void WebRTCFeedbackProcessor::initVideoFeedbackReactor(uint32_t streamId, uint32_t ssrc, boost::shared_ptr<ProtectedRTPSender> rtpSender, boost::shared_ptr<IntraFrameCallback> iFrameCallback)
 {
     boost::lock_guard<boost::shared_mutex> lock(m_feedbackMutex);
     m_videoSSRC = ssrc;
     m_videoRTPSender = rtpSender;
+    m_iFrameCallback = iFrameCallback;
     m_bitrateObserver.reset(new VideoFeedbackReactor(streamId, rtpSender));
     m_bitrateController.reset(webrtc::BitrateController::CreateBitrateController(m_clock, true));
     m_bandwidthObserver.reset(m_bitrateController->CreateRtcpBandwidthObserver());
@@ -147,6 +148,18 @@ int WebRTCFeedbackProcessor::deliverFeedback(char* buf, int len)
             }
             break;
         }
+        case RTCP_PS_Feedback_PT: {
+            switch (chead->getRCOrFMT()) {
+            case 1: // PLI
+                handlePLI(chead, rtcpLength);
+                break; 
+            case 4: // FIR
+                handleFIR(chead, rtcpLength);
+                break; 
+            default:
+                break;
+            }
+        }
         default:
             break;
         }
@@ -231,6 +244,18 @@ void WebRTCFeedbackProcessor::handleNACK(RTCPHeader* chead, uint32_t rtcpLength)
             itemOffset += sizeof(GenericNACK);
         }
     }
+}
+
+void WebRTCFeedbackProcessor::handleFIR(RTCPHeader*, uint32_t)
+{
+    if (m_iFrameCallback)
+        m_iFrameCallback->handleIntraFrameRequest();
+}
+
+void WebRTCFeedbackProcessor::handlePLI(RTCPHeader*, uint32_t)
+{
+    if (m_iFrameCallback)
+        m_iFrameCallback->handleIntraFrameRequest();
 }
 
 uint32_t WebRTCFeedbackProcessor::calculateRTT(uint32_t lsr, uint32_t dlsr)

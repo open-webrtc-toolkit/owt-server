@@ -828,7 +828,7 @@ void OoVooGateway::onInboundStreamCreate(uint32_t userId, uint32_t streamId, boo
                 rtpSender->setNACKStatus(sub[0]->acceptResentData());
                 // The video feedback reactor needs to know the video sender's SSRC
                 // to filter out the video specific browser receiver reports.
-                it->second->initVideoFeedbackReactor(streamId, sub[0]->getVideoSinkSSRC(), rtpSender);
+                it->second->initVideoFeedbackReactor(streamId, sub[0]->getVideoSinkSSRC(), rtpSender, boost::shared_ptr<IntraFrameCallback>());
             } else
                 it->second->initAudioFeedbackReactor(streamId, sub[0]->getAudioSinkSSRC(), rtpSender);
         }
