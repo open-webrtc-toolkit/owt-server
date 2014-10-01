@@ -40,6 +40,13 @@ typedef struct {
     uint32_t aggregatedFracLost;
 } PacketLossInfo;
 
+class IntraFrameCallback {
+public:
+    // TODO: Different kinds of Intra Frame requests may need different handlings,
+    // e.g., PLI and FIR.
+    virtual void handleIntraFrameRequest() = 0;
+};
+
 class WebRTCFeedbackProcessor : public erizo::FeedbackSink {
     DECLARE_LOGGER();
 public:
@@ -51,8 +58,8 @@ public:
 
     void reset();
 
-    void initVideoFeedbackReactor(uint32_t streamId, uint32_t ssrc, boost::shared_ptr<ProtectedRTPSender> rtpSender);
-    void initAudioFeedbackReactor(uint32_t streamId, uint32_t ssrc, boost::shared_ptr<ProtectedRTPSender> rtpSender);
+    void initVideoFeedbackReactor(uint32_t streamId, uint32_t ssrc, boost::shared_ptr<ProtectedRTPSender>, boost::shared_ptr<IntraFrameCallback>);
+    void initAudioFeedbackReactor(uint32_t streamId, uint32_t ssrc, boost::shared_ptr<ProtectedRTPSender>);
     void resetVideoFeedbackReactor();
     void resetAudioFeedbackReactor();
 
@@ -68,6 +75,8 @@ public:
 private:
     void handleReceiverReport(RTCPHeader*, uint32_t rtcpLength);
     void handleNACK(RTCPHeader*, uint32_t rtcpLength);
+    void handlePLI(RTCPHeader*, uint32_t rtcpLength);
+    void handleFIR(RTCPHeader*, uint32_t rtcpLength);
     uint32_t calculateRTT(uint32_t lsr, uint32_t dlsr);
     void updatePacketLoss(ReportBlock*);
 
@@ -79,6 +88,7 @@ private:
     boost::shared_mutex m_lossMutex;
 
     boost::shared_ptr<ProtectedRTPSender> m_videoRTPSender;
+    boost::shared_ptr<IntraFrameCallback> m_iFrameCallback;
     boost::shared_ptr<ProtectedRTPSender> m_audioRTPSender;
     boost::scoped_ptr<webrtc::BitrateObserver> m_bitrateObserver;
     boost::scoped_ptr<webrtc::BitrateController> m_bitrateController;
