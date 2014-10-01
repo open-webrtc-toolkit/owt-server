@@ -26,6 +26,7 @@
 #include "AVSyncTaskRunner.h"
 #include <ProtectedRTPReceiver.h>
 #include <ProtectedRTPSender.h>
+#include <WebRTCFeedbackProcessor.h>
 #include <WoogeenTransport.h>
 
 using namespace webrtc;
@@ -34,9 +35,25 @@ using namespace erizo;
 
 namespace mcu {
 
-DEFINE_LOGGER(MCUMixer, "mcu.MCUMixer");
+class MCUIntraFrameCallback : public woogeen_base::IntraFrameCallback {
+public:
+    MCUIntraFrameCallback(boost::shared_ptr<VCMOutputProcessor> vcmOutputProcessor)
+        : m_vcmOutputProcessor(vcmOutputProcessor)
+    {
+    }
+
+    virtual void handleIntraFrameRequest()
+    {
+        m_vcmOutputProcessor->onRequestIFrame();
+    }
+
+private:
+    boost::shared_ptr<VCMOutputProcessor> m_vcmOutputProcessor;
+};
 
 static const int MIXED_VIDEO_STREAM_ID = 2;
+
+DEFINE_LOGGER(MCUMixer, "mcu.MCUMixer");
 
 MCUMixer::MCUMixer()
 {
@@ -53,7 +70,6 @@ MCUMixer::~MCUMixer()
  */
 bool MCUMixer::init()
 {
-    m_feedback.reset(new DummyFeedbackSink());
     m_bufferManager.reset(new BufferManager());
     m_videoTransport.reset(new WoogeenTransport<erizo::VIDEO>(this));
     m_vcmOutputProcessor.reset(new VCMOutputProcessor(MIXED_VIDEO_STREAM_ID));
@@ -145,6 +161,17 @@ void MCUMixer::addPublisher(MediaSource* publisher)
 void MCUMixer::addSubscriber(MediaSink* subscriber, const std::string& peerId)
 {
     ELOG_DEBUG("Adding subscriber: videoSinkSSRC is %d", subscriber->getVideoSinkSSRC());
+
+    // Lazily create the feedback sink only if there're subscribers added, because only with
+    // subscribers are there chances for us to receive feedback.
+    // Currently all of the subscribers shared one feedback sink because the feedback will
+    // be sent to the VCMOutputProcessor which is a single instance shared by all the subscribers.
+    if (!m_feedback) {
+        WebRTCFeedbackProcessor* feedback = new woogeen_base::WebRTCFeedbackProcessor(0);
+        boost::shared_ptr<woogeen_base::IntraFrameCallback> intraFrameCallback(new MCUIntraFrameCallback(m_vcmOutputProcessor));
+        feedback->initVideoFeedbackReactor(MIXED_VIDEO_STREAM_ID, subscriber->getVideoSinkSSRC(), boost::shared_ptr<woogeen_base::ProtectedRTPSender>(), intraFrameCallback);
+        m_feedback.reset(feedback);
+    }
 
     FeedbackSource* fbsource = subscriber->getFeedbackSource();
     if (fbsource) {

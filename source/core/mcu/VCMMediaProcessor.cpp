@@ -358,6 +358,11 @@ bool VCMOutputProcessor::setSendVideoCodec(const VideoCodec& video_codec)
     return true;
 }
 
+void VCMOutputProcessor::onRequestIFrame()
+{
+    vcm_->IntraFrameRequest(0);
+}
+
 void VCMOutputProcessor::updateMaxSlot(int newMaxSlot)
 {
 //    CriticalSectionScoped cs(layoutLock_.get());

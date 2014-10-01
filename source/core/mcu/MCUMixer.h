@@ -39,13 +39,6 @@ class BufferManager;
 class VCMOutputProcessor;
 class AVSyncTaskRunner;
 
-class DummyFeedbackSink : public erizo::FeedbackSink {
-public:
-    DummyFeedbackSink() { }
-    virtual ~DummyFeedbackSink() { }
-    virtual int deliverFeedback(char* buf, int len) { return 0; }
-};
-
 /**
  * Represents a Many to Many connection.
  * Receives media from several publishers, mixed into one stream and retransmits it to every subscriber.

@@ -116,6 +116,7 @@ public:
 
     void updateMaxSlot(int newMaxSlot);
     bool setSendVideoCodec(const VideoCodec& video_codec);
+    void onRequestIFrame();
 
     void layoutTimerHandler(const boost::system::error_code& ec);
     /**
