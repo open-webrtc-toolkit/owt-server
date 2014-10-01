@@ -91,10 +91,7 @@ private:
     scoped_ptr<RtpHeaderParser> rtp_header_parser_;
     scoped_ptr<RTPPayloadRegistry> rtp_payload_registry_;
     scoped_ptr<RtpReceiver> rtp_receiver_;
-    scoped_ptr<ReceiveStatistics> rtp_receive_statistics_;
-    scoped_ptr<FecReceiver> fec_receiver_;
     scoped_ptr<RtpRtcp> rtp_rtcp_;
-    RemoteBitrateEstimator* remote_bitrate_estimator_;
 
     ACMInputProcessor* aip_;
     InputFrameCallback* frameReadyCB_;
