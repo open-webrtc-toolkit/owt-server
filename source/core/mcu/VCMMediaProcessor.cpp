@@ -107,11 +107,10 @@ VCMInputProcessor::VCMInputProcessor(int index)
 
 VCMInputProcessor::~VCMInputProcessor()
 {
-    if (taskRunner_) {
-    	taskRunner_->unregisterModule(avSync_);
-        delete(avSync_);
-    }
-	if (vcm_)
+    if (taskRunner_)
+        taskRunner_->unregisterModule(avSync_.get());
+
+    if (vcm_)
         VideoCodingModule::Destroy(vcm_), vcm_ = NULL;
 }
 
@@ -159,7 +158,7 @@ bool VCMInputProcessor::init(BufferManager* bufferManager, InputFrameCallback* f
       }
     }
 
-    avSync_ = new AVSyncModule(vcm_, this);
+    avSync_.reset(new AVSyncModule(vcm_, this));
     recorder_.reset(new DebugRecorder());
     recorder_->Start("/home/qzhang8/webrtc/webrtc.frame.i420");
     return true;
@@ -170,12 +169,13 @@ void VCMInputProcessor::close() {
     Trace::ReturnTrace();
 }
 
-void VCMInputProcessor::bindAudioInputProcessor(ACMInputProcessor* aip) {
-	aip_ = aip;
-	if (avSync_) {
-		avSync_->ConfigureSync(aip_, rtp_rtcp_.get(), rtp_receiver_.get());
-        taskRunner_->registerModule(avSync_);
-	}
+void VCMInputProcessor::bindAudioInputProcessor(ACMInputProcessor* aip)
+{
+    aip_ = aip;
+    if (avSync_) {
+        avSync_->ConfigureSync(aip_, rtp_rtcp_.get(), rtp_receiver_.get());
+        taskRunner_->registerModule(avSync_.get());
+    }
 }
 
 int32_t VCMInputProcessor::FrameToRender(I420VideoFrame& videoFrame)

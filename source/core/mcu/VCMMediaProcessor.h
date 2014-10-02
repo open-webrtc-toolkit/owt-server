@@ -86,7 +86,6 @@ public:
 
     bool setReceiveVideoCodec(const VideoCodec&);
     void bindAudioInputProcessor(ACMInputProcessor*);
-    AVSyncModule* avSyncModule() { return avSync_; }
     int channelId() { return index_;}
 
 private:
@@ -96,11 +95,11 @@ private:
     boost::scoped_ptr<RTPPayloadRegistry> rtp_payload_registry_;
     boost::scoped_ptr<RtpReceiver> rtp_receiver_;
     boost::scoped_ptr<RtpRtcp> rtp_rtcp_;
+    boost::scoped_ptr<AVSyncModule> avSync_;
 
     ACMInputProcessor* aip_;
     InputFrameCallback* frameReadyCB_;
     BufferManager* bufferManager_;	//owned by mixer
-    AVSyncModule*  avSync_;
     AVSyncTaskRunner* taskRunner_;	//owned by mixer
 
     boost::scoped_ptr<DebugRecorder> recorder_;
