@@ -114,7 +114,7 @@ VCMInputProcessor::~VCMInputProcessor()
         VideoCodingModule::Destroy(vcm_), vcm_ = NULL;
 }
 
-bool VCMInputProcessor::init(BufferManager* bufferManager, InputFrameCallback* frameReadyCB, AVSyncTaskRunner* taskRunner)
+bool VCMInputProcessor::init(boost::shared_ptr<BufferManager> bufferManager, boost::shared_ptr<InputFrameCallback> frameReadyCB, boost::shared_ptr<AVSyncTaskRunner> taskRunner)
 {
     Trace::CreateTrace();
     Trace::SetTraceFile("webrtc.trace.txt");
@@ -169,7 +169,7 @@ void VCMInputProcessor::close() {
     Trace::ReturnTrace();
 }
 
-void VCMInputProcessor::bindAudioInputProcessor(ACMInputProcessor* aip)
+void VCMInputProcessor::bindAudioInputProcessor(boost::shared_ptr<ACMInputProcessor> aip)
 {
     aip_ = aip;
     if (avSync_) {
@@ -249,7 +249,6 @@ VCMOutputProcessor::VCMOutputProcessor(int id)
     layout_.subHeight_ = 480;
     layout_.div_factor_ = 1;
     layoutNew_ = layout_;
-    bufferManager_= NULL;
     composedFrame_ = NULL;
     encodingThread_.reset();
     timer_.reset();
@@ -271,7 +270,7 @@ VCMOutputProcessor::~VCMOutputProcessor()
         VideoCodingModule::Destroy(vcm_), vcm_ = NULL;
 }
 
-bool VCMOutputProcessor::init(webrtc::Transport* transport, BufferManager* bufferManager)
+bool VCMOutputProcessor::init(webrtc::Transport* transport, boost::shared_ptr<BufferManager> bufferManager)
 {
     bufferManager_ = bufferManager;
     vcm_ = VideoCodingModule::Create(id_);

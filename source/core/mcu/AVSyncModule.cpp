@@ -51,7 +51,6 @@ AVSyncModule::AVSyncModule(webrtc::VideoCodingModule* vcm,
 		int videoChannelId) {
 	vcm_ = vcm;
 	videoChannelId_ = videoChannelId;
-	acmInput_ = NULL;
 	video_receiver_ = NULL;
 	video_rtp_rtcp_ = NULL;
 }
@@ -60,7 +59,7 @@ AVSyncModule::~AVSyncModule() {
 	// TODO Auto-generated destructor stub
 }
 
-int AVSyncModule::ConfigureSync(ACMInputProcessor* acmInput,
+int AVSyncModule::ConfigureSync(boost::shared_ptr<ACMInputProcessor> acmInput,
 		webrtc::RtpRtcp* video_rtcp_module,
 		webrtc::RtpReceiver* video_receiver) {
 	acmInput_ = acmInput;

@@ -93,7 +93,7 @@ ACMInputProcessor::~ACMInputProcessor() {
 
 }
 
-int32_t ACMInputProcessor::init(ACMOutputProcessor* aop) {
+int32_t ACMInputProcessor::init(boost::shared_ptr<ACMOutputProcessor> aop) {
     WEBRTC_TRACE(kTraceInfo, kTraceVoice, VoEId(_channelId,_channelId),
                  "ACMInputProcessor::Init()");
     aop_ = aop;
