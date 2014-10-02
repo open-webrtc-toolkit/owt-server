@@ -88,10 +88,6 @@ public:
      */
     void receiveRtpData(char*, int len, erizo::DataType, uint32_t streamId);
 
-    AVSyncTaskRunner* getTaskRunner() {
-    	return m_taskRunner.get();
-    }
-
 private:
     bool init();
     /**
