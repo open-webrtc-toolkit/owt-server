@@ -93,7 +93,7 @@ ACMInputProcessor::~ACMInputProcessor() {
 
 }
 
-int32_t ACMInputProcessor::Init(ACMOutputProcessor* aop) {
+int32_t ACMInputProcessor::init(ACMOutputProcessor* aop) {
     WEBRTC_TRACE(kTraceInfo, kTraceVoice, VoEId(_channelId,_channelId),
                  "ACMInputProcessor::Init()");
     aop_ = aop;
@@ -208,6 +208,7 @@ int32_t ACMInputProcessor::Init(ACMOutputProcessor* aop) {
       return -1;
     }
 
+    aop_->SetMixabilityStatus(*this, true);
     return 0;
 
 }
