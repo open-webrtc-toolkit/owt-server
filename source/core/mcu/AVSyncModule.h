@@ -28,13 +28,12 @@ using namespace webrtc;
 
 namespace mcu {
 
-class VCMInputProcessor;
 class ACMInputProcessor;
 
 class AVSyncModule: public webrtc::Module {
 public:
 	AVSyncModule(webrtc::VideoCodingModule* vcm,
-            	VCMInputProcessor* vcmInput);
+            	int videoChannelId);
 	virtual ~AVSyncModule();
 
 	int ConfigureSync(ACMInputProcessor* acmInput,
@@ -52,7 +51,7 @@ public:
 private:
 	scoped_ptr<CriticalSectionWrapper> data_cs_;
 	VideoCodingModule* vcm_;
-	VCMInputProcessor* vcmInput_;
+        int videoChannelId_;
 	RtpReceiver* video_receiver_;
 	RtpRtcp* video_rtp_rtcp_;
 	ACMInputProcessor* acmInput_;

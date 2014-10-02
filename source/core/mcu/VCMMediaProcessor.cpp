@@ -158,7 +158,7 @@ bool VCMInputProcessor::init(BufferManager* bufferManager, InputFrameCallback* f
       }
     }
 
-    avSync_.reset(new AVSyncModule(vcm_, this));
+    avSync_.reset(new AVSyncModule(vcm_, index_));
     recorder_.reset(new DebugRecorder());
     recorder_->Start("/home/qzhang8/webrtc/webrtc.frame.i420");
     return true;
