@@ -575,11 +575,11 @@ namespace erizo {
   void WebRtcConnection::sendLoop() {
     boost::unique_lock<boost::mutex> lock(receiveMediaMutex_);
 
-    while (sending_ == true) {
+    while (sending_) {
 
       while (sendQueue_.size() == 0) {
         cond_.wait(lock);
-        if (sending_ == false) {
+        if (!sending_) {
           return;
         }
       }
