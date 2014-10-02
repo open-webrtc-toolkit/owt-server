@@ -73,7 +73,7 @@ bool MCUMixer::init()
     m_bufferManager.reset(new BufferManager());
     m_videoTransport.reset(new WoogeenTransport<erizo::VIDEO>(this));
     m_vcmOutputProcessor.reset(new VCMOutputProcessor(MIXED_VIDEO_STREAM_ID));
-    m_vcmOutputProcessor->init(m_videoTransport.get(), m_bufferManager.get());
+    m_vcmOutputProcessor->init(m_videoTransport.get(), m_bufferManager);
 
     m_audioTransport.reset(new WoogeenTransport<erizo::AUDIO>(this));
     m_acmOutputProcessor.reset(new ACMOutputProcessor(1, m_audioTransport.get()));
@@ -146,12 +146,12 @@ void MCUMixer::addPublisher(MediaSource* publisher)
         m_vcmOutputProcessor->updateMaxSlot(maxSlot());
 
         boost::shared_ptr<ACMInputProcessor> audioInputProcessor(new ACMInputProcessor(index));
-        audioInputProcessor->init(m_acmOutputProcessor.get());
+        audioInputProcessor->init(m_acmOutputProcessor);
 
         boost::shared_ptr<VCMInputProcessor> videoInputProcessor(new VCMInputProcessor(index));
-        videoInputProcessor->init(m_bufferManager.get(), m_vcmOutputProcessor.get(), m_taskRunner.get());
+        videoInputProcessor->init(m_bufferManager, m_vcmOutputProcessor, m_taskRunner);
         // TODO: Needs a simpler and cleaner relationship among the video/audio input/output processors.
-        videoInputProcessor->bindAudioInputProcessor(audioInputProcessor.get());
+        videoInputProcessor->bindAudioInputProcessor(audioInputProcessor);
 
         boost::shared_ptr<ProtectedRTPReceiver> videoReceiver(new ProtectedRTPReceiver(videoInputProcessor));
         boost::shared_ptr<ProtectedRTPReceiver> audioReceiver(new ProtectedRTPReceiver(audioInputProcessor));

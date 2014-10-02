@@ -8,9 +8,10 @@
 #ifndef AVSYNCMODULE_H_
 #define AVSYNCMODULE_H_
 
+#include <boost/scoped_ptr.hpp>
+#include <boost/shared_ptr.hpp>
 #include "stream_synchronization.h"
 #include "webrtc/modules/interface/module.h"
-#include "webrtc/system_wrappers/interface/scoped_ptr.h"
 #include "webrtc/system_wrappers/interface/tick_util.h"
 
 
@@ -36,7 +37,7 @@ public:
             	int videoChannelId);
 	virtual ~AVSyncModule();
 
-	int ConfigureSync(ACMInputProcessor* acmInput,
+	int ConfigureSync(boost::shared_ptr<ACMInputProcessor> acmInput,
 			webrtc::RtpRtcp* video_rtcp_module,
 			webrtc::RtpReceiver* video_receiver);
 
@@ -49,14 +50,14 @@ public:
 	virtual int32_t Process();
 
 private:
-	scoped_ptr<CriticalSectionWrapper> data_cs_;
+	boost::scoped_ptr<CriticalSectionWrapper> data_cs_;
 	VideoCodingModule* vcm_;
         int videoChannelId_;
 	RtpReceiver* video_receiver_;
 	RtpRtcp* video_rtp_rtcp_;
-	ACMInputProcessor* acmInput_;
+	boost::shared_ptr<ACMInputProcessor> acmInput_;
 	TickTime last_sync_time_;
-	scoped_ptr<StreamSynchronization> sync_;
+	boost::scoped_ptr<StreamSynchronization> sync_;
 	StreamSynchronization::Measurements audio_measurement_;
 	StreamSynchronization::Measurements video_measurement_;
 };

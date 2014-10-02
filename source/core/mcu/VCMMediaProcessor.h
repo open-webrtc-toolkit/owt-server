@@ -81,11 +81,11 @@ public:
     // Implements the erizo::RTPDataReceiver interface.
     virtual void receiveRtpData(char* rtpdata, int len, erizo::DataType type = erizo::VIDEO, uint32_t streamId = 0);
 
-    bool init(BufferManager*, InputFrameCallback*, AVSyncTaskRunner*);
+    bool init(boost::shared_ptr<BufferManager>, boost::shared_ptr<InputFrameCallback>, boost::shared_ptr<AVSyncTaskRunner>);
     void close();
 
     bool setReceiveVideoCodec(const VideoCodec&);
-    void bindAudioInputProcessor(ACMInputProcessor*);
+    void bindAudioInputProcessor(boost::shared_ptr<ACMInputProcessor>);
     int channelId() { return index_;}
 
 private:
@@ -97,10 +97,10 @@ private:
     boost::scoped_ptr<RtpRtcp> rtp_rtcp_;
     boost::scoped_ptr<AVSyncModule> avSync_;
 
-    ACMInputProcessor* aip_;
-    InputFrameCallback* frameReadyCB_;
-    BufferManager* bufferManager_;	//owned by mixer
-    AVSyncTaskRunner* taskRunner_;	//owned by mixer
+    boost::shared_ptr<ACMInputProcessor> aip_;
+    boost::shared_ptr<InputFrameCallback> frameReadyCB_;
+    boost::shared_ptr<BufferManager> bufferManager_;
+    boost::shared_ptr<AVSyncTaskRunner> taskRunner_;
 
     boost::scoped_ptr<DebugRecorder> recorder_;
 };
@@ -117,7 +117,7 @@ public:
     VCMOutputProcessor(int id);
     ~VCMOutputProcessor();
 
-    bool init(webrtc::Transport*, BufferManager*);
+    bool init(webrtc::Transport*, boost::shared_ptr<BufferManager>);
     void close();
 
     void updateMaxSlot(int newMaxSlot);
@@ -181,7 +181,7 @@ private:
      * Each incoming channel will store the decoded frame in this array, and the encoding
      * thread will scan this array and compose the frames into one frame
      */
-    BufferManager* bufferManager_; // owned by mixer
+    boost::shared_ptr<BufferManager> bufferManager_;
     webrtc::I420VideoFrame* composedFrame_;
     webrtc::I420VideoFrame* mockFrame_;
 

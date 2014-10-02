@@ -32,6 +32,7 @@
 #include <boost/bind.hpp>
 #include <boost/thread.hpp>
 #include <boost/scoped_ptr.hpp>
+#include <boost/shared_ptr.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 
 
@@ -53,7 +54,7 @@ public:
 	ACMInputProcessor(int32_t channelId);
 	virtual ~ACMInputProcessor();
     int32_t channelId() { return _channelId;}
-    int32_t init(ACMOutputProcessor* aop);
+    int32_t init(boost::shared_ptr<ACMOutputProcessor> aop);
 	virtual void receiveRtpData(char* rtpdata, int len, erizo::DataType type = erizo::VIDEO, uint32_t streamId = 0);
     virtual int32_t GetAudioFrame(const int32_t id, AudioFrame& audioFrame);
     // This function specifies the sampling frequency needed for the AudioFrame
@@ -166,7 +167,7 @@ private:
     bool _rxAgcIsEnabled;
     bool _rxNsIsEnabled;
     bool restored_packet_in_use_;
-    ACMOutputProcessor* aop_;
+    boost::shared_ptr<ACMOutputProcessor> aop_;
 
 };
 
