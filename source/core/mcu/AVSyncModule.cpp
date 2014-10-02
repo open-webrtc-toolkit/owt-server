@@ -7,7 +7,7 @@
 
 #include "AVSyncModule.h"
 #include "ACMMediaProcessor.h"
-#include "VCMMediaProcessor.h"
+#include <webrtc/modules/video_coding/main/interface/video_coding.h>
 #include "webrtc/system_wrappers/interface/trace.h"
 
 
@@ -48,9 +48,9 @@ int UpdateMeasurements(StreamSynchronization::Measurements* stream,
 }
 
 AVSyncModule::AVSyncModule(webrtc::VideoCodingModule* vcm,
-		VCMInputProcessor* vcmInput) {
+		int videoChannelId) {
 	vcm_ = vcm;
-	vcmInput_ = vcmInput;
+	videoChannelId_ = videoChannelId;
 	acmInput_ = NULL;
 	video_receiver_ = NULL;
 	video_rtp_rtcp_ = NULL;
@@ -66,14 +66,14 @@ int AVSyncModule::ConfigureSync(ACMInputProcessor* acmInput,
 	acmInput_ = acmInput;
 	video_rtp_rtcp_ = video_rtcp_module;
 	video_receiver_ = video_receiver;
-	sync_.reset(new StreamSynchronization(acmInput_->channelId(), vcmInput_->channelId()));
+	sync_.reset(new StreamSynchronization(acmInput_->channelId(), videoChannelId_));
 	return 0;
 }
 
 int AVSyncModule::SetTargetBufferingDelay(int target_delay_ms) {
 
 	if (!acmInput_) {
-	    WEBRTC_TRACE(webrtc::kTraceInfo, webrtc::kTraceVideo, vcmInput_->channelId(),
+	    WEBRTC_TRACE(webrtc::kTraceInfo, webrtc::kTraceVideo, videoChannelId_,
 	                 "voe_sync_interface_ NULL, can't set playout delay.");
 	    return -1;
 	  }
@@ -96,7 +96,7 @@ int32_t AVSyncModule::Process() {
 	  last_sync_time_ = TickTime::Now();
 
 	  const int current_video_delay_ms = vcm_->Delay();
-	  WEBRTC_TRACE(webrtc::kTraceInfo, webrtc::kTraceVideo, vcmInput_->channelId(),
+	  WEBRTC_TRACE(webrtc::kTraceInfo, webrtc::kTraceVideo, videoChannelId_,
 	               "Video delay (JB + decoder) is %d ms", current_video_delay_ms);
 
 	  if (acmInput_->channelId() == -1) {
@@ -111,7 +111,7 @@ int32_t AVSyncModule::Process() {
 	                                            &playout_buffer_delay_ms) != 0) {
 	    // Could not get VoE delay value, probably not a valid channel Id or
 	    // the channel have not received enough packets.
-	    WEBRTC_TRACE(webrtc::kTraceStream, webrtc::kTraceVideo, vcmInput_->channelId(),
+	    WEBRTC_TRACE(webrtc::kTraceStream, webrtc::kTraceVideo, videoChannelId_,
 	                 "%s: VE_GetDelayEstimate error for voice_channel %d",
 	                 __FUNCTION__, acmInput_->channelId());
 	    return 0;
@@ -144,11 +144,11 @@ int32_t AVSyncModule::Process() {
 	    return 0;
 	  }
 
-	  WEBRTC_TRACE(webrtc::kTraceDebug, webrtc::kTraceVideo, vcmInput_->channelId(),
+	  WEBRTC_TRACE(webrtc::kTraceDebug, webrtc::kTraceVideo, videoChannelId_,
 			  "SyncCurrentVideoDelay", current_video_delay_ms);
-	  WEBRTC_TRACE(webrtc::kTraceDebug, webrtc::kTraceVideo, vcmInput_->channelId(),
+	  WEBRTC_TRACE(webrtc::kTraceDebug, webrtc::kTraceVideo, videoChannelId_,
 			  "SyncCurrentAudioDelay", current_audio_delay_ms);
-	  WEBRTC_TRACE(webrtc::kTraceDebug, webrtc::kTraceVideo, vcmInput_->channelId(),
+	  WEBRTC_TRACE(webrtc::kTraceDebug, webrtc::kTraceVideo, videoChannelId_,
 			  "SyncRelativeDelay", relative_delay_ms);
 	  int target_audio_delay_ms = 0;
 	  int target_video_delay_ms = current_video_delay_ms;
@@ -161,13 +161,13 @@ int32_t AVSyncModule::Process() {
 	    return 0;
 	  }
 
-	  WEBRTC_TRACE(webrtc::kTraceInfo, webrtc::kTraceVideo, vcmInput_->channelId(),
+	  WEBRTC_TRACE(webrtc::kTraceInfo, webrtc::kTraceVideo, videoChannelId_,
 	               "Set delay current(a=%d v=%d rel=%d) target(a=%d v=%d)",
 	               current_audio_delay_ms, current_video_delay_ms,
 	               relative_delay_ms,
 	               target_audio_delay_ms, target_video_delay_ms);
 	  if (acmInput_->SetMinimumPlayoutDelay(target_audio_delay_ms) == -1) {
-	    WEBRTC_TRACE(webrtc::kTraceDebug, webrtc::kTraceVideo, vcmInput_->channelId(),
+	    WEBRTC_TRACE(webrtc::kTraceDebug, webrtc::kTraceVideo, videoChannelId_,
 	                 "Error setting voice delay");
 	  }
 	  vcm_->SetMinimumPlayoutDelay(target_video_delay_ms);
