@@ -89,7 +89,6 @@ void DtlsSocketContext::handshakeCompleted()
     memcpy ( sKey, keys->serverMasterKey, keys->serverMasterKeyLen );
     memcpy ( sKey + keys->serverMasterKeyLen, keys->serverMasterSalt, keys->serverMasterSaltLen );
 
-
     gchar* clientKeyRaw = g_base64_encode((const guchar*)cKey, keys->clientMasterKeyLen + keys->clientMasterSaltLen);
     gchar* serverKeyRaw = g_base64_encode((const guchar*)sKey, keys->serverMasterKeyLen + keys->serverMasterSaltLen);
     std::string clientKey = clientKeyRaw;
