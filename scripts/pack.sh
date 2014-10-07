@@ -74,8 +74,8 @@ pack_mcu() {
   cp -av ${SOURCE}/gateway/controller.js ${WOOGEEN_DIST}/gateway/
   cp -av ${SOURCE}/gateway/oovoo_heartbeat.js ${WOOGEEN_DIST}/gateway/
   cp -av ${SOURCE}/gateway/util/logger.js ${WOOGEEN_DIST}/gateway/util/
-  cp -av ${SOURCE}/gateway/util/permission.js ${WOOGEEN_DIST}/gateway/util/
-  cp -av ${SOURCE}/gateway/util/Stream.js ${WOOGEEN_DIST}/gateway/util/
+  cp -av ${SOURCE}/erizo_controller/erizoController/permission.js ${WOOGEEN_DIST}/gateway/util/
+  cp -av ${SOURCE}/erizo_controller/erizoController/Stream.js ${WOOGEEN_DIST}/gateway/util/
   if ${ENCRYPT} ; then
     if ! hash uglifyjs 2>/dev/null; then
       if hash npm 2>/dev/null; then
