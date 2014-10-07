@@ -68,9 +68,6 @@ namespace erizo {
     videoTransport_=NULL;
     delete audioTransport_;
     audioTransport_= NULL;
-    boost::mutex::scoped_lock lock(receiveMediaMutex_);
-    boost::mutex::scoped_lock lock2(writeMutex_);
-    boost::mutex::scoped_lock lock3(updateStateMutex_);
     videoSink_ = NULL;
     audioSink_ = NULL;
     fbSink_ = NULL;
