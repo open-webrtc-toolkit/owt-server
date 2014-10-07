@@ -1,4 +1,4 @@
-/*global require, exports, console, setInterval, clearInterval*/
+/*global require, exports, console*/
 
 var addon = require('./../bindings/gateway/build/Release/addon');
 var config = require('./../etc/gateway_config');
@@ -30,38 +30,27 @@ exports = module.exports = function () {
      * Given a WebRtcConnection waits for the state CANDIDATES_GATHERED for set remote SDP. 
      */
     initWebRtcConnection = function (wrtc, sdp, callback, onReady) {
-        wrtc.init();
-
-        var roap = sdp,
-            remoteSdp = getSdp(roap);
-
-        wrtc.setRemoteSdp(remoteSdp);
-
-        var sdpDelivered = false;
-
-        var intervarId = setInterval(function () {
-            if (gateway === undefined) {
-                clearInterval(intervarId);
-                return;
-            }
-            var state = wrtc.getCurrentState(), localSdp, answer;
-            if (state == 102 && wrtc.isInitialized() && !sdpDelivered) {
+        wrtc.init(function (newStatus) {
+            var localSdp, answer;
+            logger.info("webrtc Addon status: " + newStatus);
+            if (newStatus === 102 && !sdpDelivered) {
                 localSdp = wrtc.getLocalSdp();
-
                 answer = getRoap(localSdp, roap);
                 callback(answer);
                 sdpDelivered = true;
             }
-            if (state == 103) {
-                // This state can only be reached after SDP negotiation
+            if (newStatus === 103) {
                 if (onReady != undefined) {
                     onReady();
                 }
             }
-            if (state >= 103) {
-                clearInterval(intervarId);
-            }
-        }, INTERVAL_TIME_SDP);
+        });
+
+        var roap = sdp,
+            remoteSdp = getSdp(roap);
+        wrtc.setRemoteSdp(remoteSdp);
+
+        var sdpDelivered = false;
     };
 
     /*
