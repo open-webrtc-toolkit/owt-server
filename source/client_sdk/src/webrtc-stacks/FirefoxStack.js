@@ -13,9 +13,26 @@ Erizo.FirefoxStack = function (spec) {
         "iceServers": []
     };
 
-    if (spec.stunServerUrl) {
-        that.pc_config.iceServers.push({"url": spec.stunServerUrl});
-    } 
+    // currently firefox does not support turn
+    if (spec.iceServers instanceof Array) {
+        spec.iceServers.map(function (server) {
+            if (server.url.indexOf('stun:') === 0) {
+                that.pc_config.iceServers.push({"url": server.url});
+            }
+        });
+    } else {
+        if (spec.stunServerUrl) {
+            if (spec.stunServerUrl instanceof Array) {
+                spec.stunServerUrl.map(function (url) {
+                    if (typeof url === 'string' && url !== '') {
+                        that.pc_config.iceServers.push({"url": url});
+                    }
+                });
+            } else if (typeof spec.stunServerUrl === 'string' && spec.stunServerUrl !== '') {
+                that.pc_config.iceServers.push({"url": spec.stunServerUrl});
+            }
+        }
+    }
 
     if (spec.audio === undefined) {
         spec.audio = true;
