@@ -12,12 +12,40 @@ Erizo.ChromeStableStack = function (spec) {
 
     that.con = {'optional': [{'DtlsSrtpKeyAgreement': true}]};
 
-    if (spec.stunServerUrl) {
-        that.pc_config.iceServers.push({"url": spec.stunServerUrl});
-    }
+    if (spec.iceServers instanceof Array) {
+        that.pc_config.iceServers = spec.iceServers;
+    } else {
+        if (spec.stunServerUrl) {
+            if (spec.stunServerUrl instanceof Array) {
+                spec.stunServerUrl.map(function (url) {
+                    if (typeof url === 'string' && url !== '') {
+                        that.pc_config.iceServers.push({"url": url});
+                    }
+                });
+            } else if (typeof spec.stunServerUrl === 'string' && spec.stunServerUrl !== '') {
+                that.pc_config.iceServers.push({"url": spec.stunServerUrl});
+            }
+        }
 
-    if ((spec.turnServer || {}).url) {
-        that.pc_config.iceServers.push({"username": spec.turnServer.username, "credential": spec.turnServer.password, "url": spec.turnServer.url});
+        if (spec.turnServer) {
+            if (spec.turnServer instanceof Array) {
+                spec.turnServer.map(function (turn) {
+                    if (typeof turn.url === 'string' && turn.url !== '') {
+                        that.pc_config.iceServers.push({
+                            "username": turn.username,
+                            "credential": turn.password,
+                            "url": turn.url
+                        });
+                    }
+                });
+            } else if (typeof spec.turnServer.url === 'string' && spec.turnServer.url !== '') {
+                that.pc_config.iceServers.push({
+                    "username": spec.turnServer.username,
+                    "credential": spec.turnServer.password,
+                    "url": spec.turnServer.url
+                });
+            }
+        }
     }
 
     if (spec.audio === undefined) {
