@@ -48,6 +48,7 @@ namespace mcu {
  * served by one VCMInputProcessor.
  * This class more or less is working as the vie_receiver class
  */
+class VPMPool;
 class ACMInputProcessor;
 class AVSyncModule;
 class AVSyncTaskRunner;
@@ -151,7 +152,7 @@ public:
         uint32_t* sent_nack_rate_bps,
         uint32_t* sent_fec_rate_bps);
 
-private:
+
     struct Layout{
         unsigned int subWidth_: 12; // assuming max is 4096
         unsigned int subHeight_: 12; // assuming max is 2160
@@ -163,6 +164,7 @@ private:
         }
     };
 
+private:
     int id_;
 
     int maxSlot_;
@@ -172,7 +174,7 @@ private:
     bool layoutFrames();
 
     webrtc::VideoCodingModule* vcm_;
-    webrtc::VideoProcessingModule* vpm_;
+    boost::scoped_ptr<VPMPool> vpmPool_;
     boost::scoped_ptr<RtpRtcp> default_rtp_rtcp_;
     boost::scoped_ptr<DebugRecorder> recorder_;
     bool recordStarted_;
@@ -181,6 +183,8 @@ private:
      * Each incoming channel will store the decoded frame in this array, and the encoding
      * thread will scan this array and compose the frames into one frame
      */
+    // Delta used for translating between NTP and internal timestamps.
+    int64_t delta_ntp_internal_ms_;
     boost::shared_ptr<BufferManager> bufferManager_;
     webrtc::I420VideoFrame* composedFrame_;
     webrtc::I420VideoFrame* mockFrame_;
@@ -188,6 +192,20 @@ private:
     boost::scoped_ptr<boost::thread> encodingThread_;
     boost::asio::io_service io_service_;
     boost::scoped_ptr<boost::asio::deadline_timer> timer_;
+};
+
+/**
+ * manages a pool of VPM for preprocessing the incoming I420 frame
+ */
+class VPMPool {
+public:
+	VPMPool(unsigned int size);
+	~VPMPool();
+	VideoProcessingModule* get(unsigned int slot);
+	void update(VCMOutputProcessor::Layout& layout);
+private:
+	VideoProcessingModule** vpms_;
+	unsigned int size_;
 };
 
 }
