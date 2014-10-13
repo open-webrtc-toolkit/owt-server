@@ -153,7 +153,7 @@ bool VCMInputProcessor::init(boost::shared_ptr<BufferManager> bufferManager, boo
     if (video_codec.codecType != kVideoCodecRED &&
         video_codec.codecType != kVideoCodecULPFEC) {
       // Register codec type with VCM, but do not register RED or ULPFEC.
-      if (vcm_->RegisterReceiveCodec(&video_codec, 1, false) != VCM_OK) {
+      if (vcm_->RegisterReceiveCodec(&video_codec, 1, true) != VCM_OK) {
         return true;
       }
     }
@@ -220,14 +220,14 @@ void VCMInputProcessor::receiveRtpData(char* rtp_packet, int rtp_packet_length, 
 {
     assert(type == erizo::VIDEO);
 
-    RTPHeader header;
+    webrtc::RTPHeader header;
     if (!rtp_header_parser_->Parse(reinterpret_cast<uint8_t*>(rtp_packet), rtp_packet_length, &header)) {
         ELOG_DEBUG("Incoming packet: Invalid RTP header");
         return;
     }
     int payload_length = rtp_packet_length - header.headerLength;
     header.payload_type_frequency = kVideoPayloadTypeFrequency;
-    bool in_order = false; /*IsPacketInOrder(header)*/;
+    bool in_order = true; /*IsPacketInOrder(header)*/;
     rtp_payload_registry_->SetIncomingPayloadType(header);
     PayloadUnion payload_specific;
     if (!rtp_payload_registry_->GetPayloadSpecifics(header.payloadType, &payload_specific)) {
@@ -237,6 +237,39 @@ void VCMInputProcessor::receiveRtpData(char* rtp_packet, int rtp_packet_length, 
         payload_specific, in_order);
 }
 
+#define SLOT_SIZE 16
+
+VPMPool::VPMPool(unsigned int size) {
+	size_ = size;
+	vpms_ = new VideoProcessingModule*[size];
+	memset(vpms_, 0, sizeof(VideoProcessingModule*)*size);
+}
+
+VPMPool::~VPMPool() {
+	for (unsigned int i = 0; i < size_; i++) {
+		if (vpms_[i])
+			VideoProcessingModule::Destroy(vpms_[i]);
+	}
+	delete []vpms_;
+}
+
+VideoProcessingModule* VPMPool::get(unsigned int slot) {
+	assert (slot < size_);
+	if(vpms_[slot] == nullptr) {
+		VideoProcessingModule* vpm = VideoProcessingModule::Create(slot);
+	    vpm->SetInputFrameResampleMode(webrtc::kFastRescaling);
+		vpms_[slot] = vpm;
+	}
+	return vpms_[slot];
+}
+
+void VPMPool::update(VCMOutputProcessor::Layout& layout) {
+	for (unsigned int i = 0; i < size_; i++) {
+		if (vpms_[i])
+			vpms_[i]->SetTargetResolution(layout.subWidth_, layout.subHeight_, 30);
+	}
+
+}
 DEFINE_LOGGER(VCMOutputProcessor, "media.VCMOutputProcessor");
 
 VCMOutputProcessor::VCMOutputProcessor(int id)
@@ -244,7 +277,6 @@ VCMOutputProcessor::VCMOutputProcessor(int id)
     , layoutLock_(CriticalSectionWrapper::CreateCriticalSection())
 {
     vcm_ = NULL;
-    vpm_ = NULL;
     layout_.subWidth_ = 640;
     layout_.subHeight_ = 480;
     layout_.div_factor_ = 1;
@@ -254,6 +286,8 @@ VCMOutputProcessor::VCMOutputProcessor(int id)
     timer_.reset();
     maxSlot_ = 0;
 
+    delta_ntp_internal_ms_ = Clock::GetRealTimeClock()->CurrentNtpInMilliseconds() -
+              	  	  	  	  TickTime::MillisecondTimestamp();
     // recorder_->Start("/home/qzhang8/webrtc/webrtc.frame.i420");
     recorder_.reset(new DebugRecorder());
     recordStarted_= false;
@@ -264,8 +298,6 @@ VCMOutputProcessor::~VCMOutputProcessor()
 {
     recorder_->Stop();
     this->close();
-    if (vpm_)
-        VideoProcessingModule::Destroy(vpm_), vpm_= NULL;
     if (vcm_)
         VideoCodingModule::Destroy(vcm_), vcm_ = NULL;
 }
@@ -282,10 +314,7 @@ bool VCMOutputProcessor::init(webrtc::Transport* transport, boost::shared_ptr<Bu
     } else
         return false;
 
-    vpm_ = VideoProcessingModule::Create(id_);
-    vpm_->SetInputFrameResampleMode(webrtc::kFastRescaling);
-    //vpm_->SetTargetResolution(640, 480, 30);
-
+    vpmPool_.reset(new VPMPool(SLOT_SIZE));
     RtpRtcp::Configuration configuration;
     configuration.id = id_;
     configuration.outgoing_transport = transport;
@@ -293,19 +322,15 @@ bool VCMOutputProcessor::init(webrtc::Transport* transport, boost::shared_ptr<Bu
     default_rtp_rtcp_.reset(RtpRtcp::CreateRtpRtcp(configuration));
 
     VideoCodec video_codec;
-    if (VideoCodingModule::Codec(webrtc::kVideoCodecVP8, &video_codec) != VCM_OK) {
-      return false;
+    if (vcm_->Codec(kVideoCodecVP8, &video_codec) == VCM_OK) {
+        video_codec.width = 640;
+        video_codec.height = 480;
+        default_rtp_rtcp_->RegisterSendPayload(video_codec);
+        vcm_->RegisterSendCodec(&video_codec, 1,
+        		default_rtp_rtcp_->MaxDataPayloadLength());
+    } else {
+      assert(false);
     }
-    video_codec.width = 640;
-    video_codec.height = 480;
-    if (vcm_->RegisterSendCodec(&video_codec, 1,
-                               default_rtp_rtcp_->MaxDataPayloadLength()) != 0) {
-        return false;
-    }
-    if (default_rtp_rtcp_->RegisterSendPayload(video_codec) != 0) {
-        return false;
-    }
-
     composedFrame_ = new webrtc::I420VideoFrame();
     composedFrame_->CreateEmptyFrame(640, 480,
                                      640, 640/2, 640/2);
@@ -362,7 +387,6 @@ void VCMOutputProcessor::onRequestIFrame()
 
 void VCMOutputProcessor::updateMaxSlot(int newMaxSlot)
 {
-//    CriticalSectionScoped cs(layoutLock_.get());
     maxSlot_ = newMaxSlot;
     Layout layout;
     if (newMaxSlot == 1) {
@@ -378,11 +402,11 @@ void VCMOutputProcessor::updateMaxSlot(int newMaxSlot)
 
     layoutNew_ = layout;    //atomic
 
-    vpm_->SetTargetResolution(layoutNew_.subWidth_, layoutNew_.subHeight_, 30);
     ELOG_DEBUG("div_factor is changed to %d,  subWidth is %d, subHeight is %d", layoutNew_.div_factor_, layoutNew_.subWidth_, layoutNew_.subHeight_);
 }
 #define SCALE_BY_OUTPUT 1
 #define SCALE_BY_INPUT 0
+#define DEBUG_RECORDING 0
 /**
  * this should be called whenever a new frame is decoded from
  * one particular publisher with index
@@ -438,7 +462,8 @@ bool VCMOutputProcessor::layoutFrames()
         if ((input == 0) && !(layout_ == layoutNew_)) {
             // commit new layout config at the beginning of each iteration
             layout_ = layoutNew_;
-            vpm_->SetTargetResolution(layout_.subWidth_, layout_.subHeight_, 30);
+            vpmPool_->update(layout_);
+
         }
         unsigned int offset_width = (input%layout_.div_factor_) * layout_.subWidth_;
         unsigned int offset_height = (input/layout_.div_factor_) * layout_.subHeight_;
@@ -463,7 +488,7 @@ bool VCMOutputProcessor::layoutFrames()
         // do the scale first
         else {
             I420VideoFrame* processedFrame;
-            int ret = vpm_->PreprocessFrame(*sub_image, &processedFrame);
+            int ret = vpmPool_->get(input)->PreprocessFrame(*sub_image, &processedFrame);
             if (ret == VPM_OK && processedFrame == NULL) {
                 // do nothing
             } else if (ret == VPM_OK && processedFrame != NULL) {
@@ -492,13 +517,15 @@ bool VCMOutputProcessor::layoutFrames()
             ELOG_DEBUG("releasing busyFrame[%d]", input);
         }
 
+#if DEBUG_RECORDING
         if (recordStarted_ == false) {
             vcm_->StartDebugRecording("/home/qzhang8/webrtc/encoded.frame.i420");
             recordStarted_ = true;
         }
+#endif
     }
 
-    composedFrame_->set_render_time_ms(TickTime::MillisecondTimestamp());
+    composedFrame_->set_render_time_ms(TickTime::MillisecondTimestamp() - delta_ntp_internal_ms_);
     const int kMsToRtpTimestamp = 90;
     const uint32_t time_stamp =
         kMsToRtpTimestamp *
