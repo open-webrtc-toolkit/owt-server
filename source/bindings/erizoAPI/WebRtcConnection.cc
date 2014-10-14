@@ -227,6 +227,9 @@ void WebRtcConnection::statsCallback(uv_async_t *handle){
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
   WebRtcConnection* obj = (WebRtcConnection*)handle->data;
+  if (!obj)
+    return;
+  boost::mutex::scoped_lock lock(obj->statsMutex);
 
   Local<Value> args[] = {String::NewFromUtf8(isolate, obj->statsMsg.c_str())};
   if (obj->hasCallback_) 
