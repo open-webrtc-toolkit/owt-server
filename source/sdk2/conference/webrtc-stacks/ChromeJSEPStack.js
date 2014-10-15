@@ -64,6 +64,7 @@ Erizo.ChromeJSEPStack = function (spec) {
 
     that.peerConnection.onicecandidate =  function (event) {
         if (event.candidate) {
+            event.candidate.candidate ="a="+event.candidate.candidate;
 
             spec.callback({type:'candidate', candidate: event.candidate});
 
@@ -149,6 +150,8 @@ Erizo.ChromeJSEPStack = function (spec) {
         } else if (msg.type === 'candidate') {
             try {
                 var obj = JSON.parse(msg.candidate);
+                obj.candidate = obj.candidate.replace(/a=/g, "");
+                obj.sdpMLineIndex = parseInt(obj.sdpMLineIndex, 10);
                 var candidate = new RTCIceCandidate(obj);
                 if (spec.remoteDescriptionSet) {
                     that.peerConnection.addIceCandidate(candidate);
