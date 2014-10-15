@@ -1,4 +1,4 @@
-/*global window, console, navigator, module*/
+/*global window, console, navigator, module, chrome*/
 
 Erizo.sessionId = 103;
 
