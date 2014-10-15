@@ -30,7 +30,7 @@ Woogeen.ConferenceClient = (function () {
       that.browser = 'internet-explorer';
     } else if (window.navigator.appVersion.match(/Chrome\/([\w\W]*?)\./)[1] >= 26) {
       // Google Chrome Stable.
-      that = Erizo.ChromeJSEPStack(spec);
+      that = Erizo.ChromeStableStack(spec);
       that.browser = 'chrome-stable';
     } else {
       // None.
