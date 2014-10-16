@@ -37,7 +37,6 @@ namespace erizo {
     boost::mutex writeMutex_,sessionMutex_;
     boost::scoped_ptr<SrtpChannel> srtp_, srtcp_;
     bool readyRtp, readyRtcp;
-    bool bundle_;
     bool running_;
     boost::scoped_ptr<Resender> rtcpResender, rtpResender;
     boost::scoped_ptr<dtls::DtlsFactory> dtlsFactory_;
