@@ -176,7 +176,6 @@ Erizo.FirefoxStack = function (spec) {
                 obj.candidate = obj.candidate.replace(/ udp /g, " UDP ");
                 obj.sdpMLineIndex = parseInt(obj.sdpMLineIndex, 10);
                 var candidate = new RTCIceCandidate(obj);
-                console.log("Test", candidate); 
                 if (spec.remoteDescriptionSet) {
                     that.peerConnection.addIceCandidate(candidate);
                 } else {
