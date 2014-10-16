@@ -13,7 +13,8 @@ namespace erizo {
   DEFINE_LOGGER(WebRtcConnection, "WebRtcConnection");
 
   WebRtcConnection::WebRtcConnection(bool audioEnabled, bool videoEnabled, bool h264Enabled, const std::string &stunServer, int stunPort, int minPort,
-      int maxPort, const std::string& certFile, const std::string& keyFile, const std::string& privatePasswd, uint32_t qos) {
+      int maxPort, const std::string& certFile, const std::string& keyFile, const std::string& privatePasswd, uint32_t qos, WebRtcConnectionEventListener* listener)
+  : connEventListener_(listener) {
 
     ELOG_WARN("WebRtcConnection constructor stunserver %s stunPort %d minPort %d maxPort %d\n", stunServer.c_str(), stunPort, minPort, maxPort);
     sequenceNumberFIR_ = 0;
@@ -26,7 +27,6 @@ namespace erizo {
     sourcefbSink_ = this;
     sinkfbSource_ = this;
     globalState_ = CONN_INITIAL;
-    connEventListener_ = NULL;
     videoTransport_ = NULL;
     audioTransport_ = NULL;
 
@@ -148,6 +148,21 @@ namespace erizo {
       if (audioTransport_ != NULL)
         audioTransport_->start();
     }
+
+   ELOG_INFO("Getting SDP answer");
+   std::string object = this->getLocalSdp();
+   ELOG_INFO("Sending SDP answer");
+   ELOG_INFO("Sent");
+    if (!remoteSdp_.getCandidateInfos().empty()){
+      if (videoTransport_ != NULL) {
+        videoTransport_->setRemoteCandidates(remoteSdp_.getCandidateInfos());
+      }
+      if (audioTransport_ != NULL) {
+        audioTransport_->setRemoteCandidates(remoteSdp_.getCandidateInfos());
+      }
+    }
+   if (connEventListener_)
+     connEventListener_->notifyEvent(CONN_SDP, object);
 
     return true;
   }
@@ -472,12 +487,6 @@ namespace erizo {
     if (state == TRANSPORT_STARTED &&
         (audioTransport_ == NULL || audioTransport_->getTransportState() == TRANSPORT_STARTED) &&
         (videoTransport_ == NULL || videoTransport_->getTransportState() == TRANSPORT_STARTED)) {
-      if (videoTransport_ != NULL) {
-        // videoTransport_->setRemoteCandidates(remoteSdp_.getCandidateInfos());
-      }
-      if (audioTransport_ != NULL) {
-        // audioTransport_->setRemoteCandidates(remoteSdp_.getCandidateInfos());
-      }
       temp = CONN_STARTED;
     }
 
@@ -519,11 +528,6 @@ namespace erizo {
       connEventListener_->notifyEvent(globalState_);
 
     if (globalState_ == CONN_STARTED && connEventListener_ != NULL) {
-      ELOG_INFO("Getting SDP answer");
-      std::string object = this->getLocalSdp();
-      ELOG_INFO("Sending SDP answer");
-      connEventListener_->notifyEvent(CONN_SDP, object);
-      ELOG_INFO("Sent");
     }
   }
 
