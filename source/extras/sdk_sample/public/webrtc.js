@@ -254,7 +254,7 @@ function bindPlayer(stream) {
 var makeAuth = function (targetId, callback) {
   var authMsg = {
     "payload": {
-      "avs_ip": "shwde9302.ccr.corp.intel.com",
+      "avs_ip": "yzha176-desk.ccr.corp.intel.com",
       "avs_port": "443",
       "app_id": "",
       "app_token": "",
