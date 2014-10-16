@@ -138,6 +138,7 @@ private:
 	NiceAgent* agent_;
 	NiceConnectionListener* listener_;
 	std::queue<packetPtr> niceQueue_;
+    unsigned int candsDelivered_;
 	GMainContext* context_;
 	boost::thread m_Thread_;
 	IceState iceState_;
