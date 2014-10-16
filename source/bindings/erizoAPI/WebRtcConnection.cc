@@ -65,8 +65,7 @@ void WebRtcConnection::New(const FunctionCallbackInfo<Value>& args) {
                  (nackRecv << erizo::QOS_SUPPORT_NACK_RECEIVER_SHIFT);
 
   WebRtcConnection* obj = new WebRtcConnection();
-  obj->me = new erizo::WebRtcConnection(a, v, h, stunServer,stunPort,minPort,maxPort, certFile, keyFile, privatePass, qos);
-  obj->me->setWebRtcConnectionEventListener(obj);
+  obj->me = new erizo::WebRtcConnection(a, v, h, stunServer,stunPort,minPort,maxPort, certFile, keyFile, privatePass, qos, obj);
   obj->Wrap(args.This());
   uv_async_init(uv_default_loop(), &obj->async_, &WebRtcConnection::eventsCallback); 
   uv_async_init(uv_default_loop(), &obj->asyncStats_, &WebRtcConnection::statsCallback); 

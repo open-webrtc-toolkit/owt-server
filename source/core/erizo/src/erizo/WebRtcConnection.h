@@ -64,7 +64,7 @@ public:
      * Constructor.
      * Constructs an empty WebRTCConnection without any configuration.
      */
-    DLL_PUBLIC WebRtcConnection(bool audioEnabled, bool videoEnabled, bool h264Enabled, const std::string &stunServer, int stunPort, int minPort, int maxPort, const std::string& certFile, const std::string& keyFile, const std::string& privatePasswd, uint32_t qos);
+    DLL_PUBLIC WebRtcConnection(bool audioEnabled, bool videoEnabled, bool h264Enabled, const std::string &stunServer, int stunPort, int minPort, int maxPort, const std::string& certFile, const std::string& keyFile, const std::string& privatePasswd, uint32_t qos, WebRtcConnectionEventListener* listener);
     /**
      * Destructor.
      */
