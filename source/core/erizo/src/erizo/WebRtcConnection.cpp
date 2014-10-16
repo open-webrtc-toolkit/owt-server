@@ -149,10 +149,7 @@ namespace erizo {
         audioTransport_->start();
     }
 
-   ELOG_INFO("Getting SDP answer");
-   std::string object = this->getLocalSdp();
-   ELOG_INFO("Sending SDP answer");
-   ELOG_INFO("Sent");
+    std::string object = this->getLocalSdp();
     if (!remoteSdp_.getCandidateInfos().empty()){
       if (videoTransport_ != NULL) {
         videoTransport_->setRemoteCandidates(remoteSdp_.getCandidateInfos());
@@ -161,8 +158,8 @@ namespace erizo {
         audioTransport_->setRemoteCandidates(remoteSdp_.getCandidateInfos());
       }
     }
-   if (connEventListener_)
-     connEventListener_->notifyEvent(CONN_SDP, object);
+    if (connEventListener_)
+      connEventListener_->notifyEvent(CONN_SDP, object);
 
     return true;
   }
@@ -174,11 +171,13 @@ namespace erizo {
     remoteSdp_.getCredentials(&username, &password);
     tempSdp.setCredentials(username, password);
     tempSdp.initWithSdp(sdp, mid);
+    bool res = false;
     if (mid == "audio" && !bundle_) {
-      audioTransport_->setRemoteCandidates(tempSdp.getCandidateInfos());
+      res = audioTransport_->setRemoteCandidates(tempSdp.getCandidateInfos());
     } else {
-      videoTransport_->setRemoteCandidates(tempSdp.getCandidateInfos());
+      res = videoTransport_->setRemoteCandidates(tempSdp.getCandidateInfos());
     }
+    return res;
   }
 
   std::string WebRtcConnection::getLocalSdp() {
@@ -466,6 +465,7 @@ namespace erizo {
     WebRTCEvent temp = globalState_;
     ELOG_INFO("Update Transport State %s to %d", transport->transport_name.c_str(), state);
     if (audioTransport_ == NULL && videoTransport_ == NULL) {
+      ELOG_ERROR("Update Transport State with Transport NULL, this should not happen!");
       return;
     }
 
@@ -516,19 +516,12 @@ namespace erizo {
         (int)globalState_);
     }
     
-    if (temp < 0) {
-      return;
-    }
-
     if (temp == globalState_ || (temp == CONN_STARTED && globalState_ == CONN_READY))
       return;
 
     globalState_ = temp;
     if (connEventListener_ != NULL)
       connEventListener_->notifyEvent(globalState_);
-
-    if (globalState_ == CONN_STARTED && connEventListener_ != NULL) {
-    }
   }
 
   // changes the outgoing payload type for in the given data packet
