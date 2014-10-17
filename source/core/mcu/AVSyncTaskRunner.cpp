@@ -7,6 +7,7 @@
 
 #include "AVSyncTaskRunner.h"
 #include "webrtc/modules/interface/module.h"
+#include <webrtc/system_wrappers/interface/trace.h>
 
 #include <algorithm>
 #include <boost/bind.hpp>
@@ -17,52 +18,58 @@
 
 namespace mcu {
 
-AVSyncTaskRunner::AVSyncTaskRunner(int interval) :
+TaskRunner::TaskRunner(int interval) :
 						interval_(interval),
 						taskLock_(CriticalSectionWrapper::CreateCriticalSection()){
 }
 
-AVSyncTaskRunner::~AVSyncTaskRunner() {
+TaskRunner::~TaskRunner() {
 	// TODO Auto-generated destructor stub
 }
 
-void AVSyncTaskRunner::start() {
+void TaskRunner::start() {
 	timer_.reset(new boost::asio::deadline_timer(io_service_, boost::posix_time::milliseconds(interval_)));
-    timer_->async_wait(boost::bind(&AVSyncTaskRunner::run, this, boost::asio::placeholders::error));
+    timer_->async_wait(boost::bind(&TaskRunner::run, this, boost::asio::placeholders::error));
     thread_.reset(new boost::thread(boost::bind(&boost::asio::io_service::run, &io_service_)));
 }
 
-void AVSyncTaskRunner::run(const boost::system::error_code& ec) {
+void TaskRunner::run(const boost::system::error_code& ec) {
 	if (!ec) {
 		{
 			CriticalSectionScoped cs(taskLock_.get());
 			for(std::list<Module*>::iterator taskIter = taskList_.begin();
 					taskIter != taskList_.end();
 					taskIter++) {
-				(*taskIter)->Process();
+				if((*taskIter)->TimeUntilNextProcess() <= 0)
+					(*taskIter)->Process();
 			}
 		}
     	timer_->expires_at(timer_->expires_at() + boost::posix_time::milliseconds(interval_));
-    	timer_->async_wait(boost::bind(&AVSyncTaskRunner::run, this, boost::asio::placeholders::error));
+    	timer_->async_wait(boost::bind(&TaskRunner::run, this, boost::asio::placeholders::error));
 
 	} else {
 
 	}
 }
 
-void AVSyncTaskRunner::stop() {
+void TaskRunner::stop() {
 
 	if(timer_) timer_->cancel();
 	io_service_.stop();
 
 }
 
-void AVSyncTaskRunner::registerModule(Module* module) {
+void TaskRunner::registerModule(Module* module) {
 	CriticalSectionScoped cs(taskLock_.get());
+	interval_ = MIN(interval_, module->TimeUntilNextProcess());
+    WEBRTC_TRACE(kTraceStateInfo, kTraceUtility,
+                 -1,
+    			"registering module, interval changed to %d", interval_);
+
 	taskList_.push_back(module);
 }
 
-void AVSyncTaskRunner::unregisterModule(Module* module) {
+void TaskRunner::unregisterModule(Module* module) {
 	CriticalSectionScoped cs(taskLock_.get());
 	taskList_.remove(module);
 }

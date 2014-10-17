@@ -107,14 +107,17 @@ VCMInputProcessor::VCMInputProcessor(int index)
 
 VCMInputProcessor::~VCMInputProcessor()
 {
-    if (taskRunner_)
+    if (taskRunner_) {
         taskRunner_->unregisterModule(avSync_.get());
+        taskRunner_->unregisterModule(rtp_rtcp_.get());
+        taskRunner_->unregisterModule(vcm_);
+    }
 
     if (vcm_)
         VideoCodingModule::Destroy(vcm_), vcm_ = NULL;
 }
 
-bool VCMInputProcessor::init(boost::shared_ptr<BufferManager> bufferManager, boost::shared_ptr<InputFrameCallback> frameReadyCB, boost::shared_ptr<AVSyncTaskRunner> taskRunner)
+bool VCMInputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<BufferManager> bufferManager, boost::shared_ptr<InputFrameCallback> frameReadyCB, boost::shared_ptr<TaskRunner> taskRunner)
 {
     Trace::CreateTrace();
     Trace::SetTraceFile("webrtc.trace.txt");
@@ -128,6 +131,7 @@ bool VCMInputProcessor::init(boost::shared_ptr<BufferManager> bufferManager, boo
     if (vcm_) {
         vcm_->InitializeReceiver();
         vcm_->RegisterReceiveCallback(this);
+        taskRunner_->registerModule(vcm_);
     } else
         return false;
 
@@ -136,11 +140,16 @@ bool VCMInputProcessor::init(boost::shared_ptr<BufferManager> bufferManager, boo
     rtp_receiver_.reset(RtpReceiver::CreateVideoReceiver(index_, Clock::GetRealTimeClock(), this, NULL,
                                 rtp_payload_registry_.get()));
 
+    m_videoTransport.reset(transport);
+
     RtpRtcp::Configuration configuration;
     configuration.id = 002;
     configuration.audio = false;  // Video.
+    configuration.outgoing_transport = transport;	// for sending RTCP feedback to the publisher
     rtp_rtcp_.reset(RtpRtcp::CreateRtpRtcp(configuration));
-
+    rtp_rtcp_->SetRTCPStatus(webrtc::kRtcpCompound);
+    rtp_rtcp_->SetKeyFrameRequestMethod(kKeyFrameReqPliRtcp);
+    taskRunner_->registerModule(rtp_rtcp_.get());
 
     //register codec
     VideoCodec video_codec;
@@ -298,28 +307,37 @@ VCMOutputProcessor::~VCMOutputProcessor()
 {
     recorder_->Stop();
     this->close();
+    if (taskRunner_) {
+    	taskRunner_->unregisterModule(default_rtp_rtcp_.get());
+    	taskRunner_->unregisterModule(vcm_);
+    }
     if (vcm_)
         VideoCodingModule::Destroy(vcm_), vcm_ = NULL;
 }
 
-bool VCMOutputProcessor::init(webrtc::Transport* transport, boost::shared_ptr<BufferManager> bufferManager)
+bool VCMOutputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<BufferManager> bufferManager, boost::shared_ptr<TaskRunner> taskRunner)
 {
-    bufferManager_ = bufferManager;
+	taskRunner_ = taskRunner;
+	bufferManager_ = bufferManager;
     vcm_ = VideoCodingModule::Create(id_);
     if (vcm_) {
         vcm_->InitializeSender();
         vcm_->RegisterTransportCallback(this);
         vcm_->RegisterProtectionCallback(this);
         vcm_->EnableFrameDropper(false);
+        taskRunner_->registerModule(vcm_);
     } else
         return false;
 
     vpmPool_.reset(new VPMPool(SLOT_SIZE));
+
+    m_videoTransport.reset(transport);
     RtpRtcp::Configuration configuration;
     configuration.id = id_;
     configuration.outgoing_transport = transport;
     configuration.audio = false;  // Video.
     default_rtp_rtcp_.reset(RtpRtcp::CreateRtpRtcp(configuration));
+    taskRunner_->registerModule(default_rtp_rtcp_.get());
 
     VideoCodec video_codec;
     if (vcm_->Codec(kVideoCodecVP8, &video_codec) == VCM_OK) {
