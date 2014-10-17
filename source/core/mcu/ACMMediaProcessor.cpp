@@ -6,7 +6,7 @@
  */
 
 #include "ACMMediaProcessor.h"
-
+#include "AVSyncTaskRunner.h"
 #include <webrtc/voice_engine/include/voe_errors.h>
 
 using namespace erizo;
@@ -88,14 +88,19 @@ ACMInputProcessor::~ACMInputProcessor() {
                      "~ACMInputProcessor() failed to de-register VAD callback"
                      " (Audio coding module)");
     }
+    if (taskRunner_) {
+    	taskRunner_->unregisterModule(_rtpRtcpModule.get());
+    	taskRunner_->unregisterModule(audio_coding_.get());
+    }
     // End of modules shutdown
 
 
 }
 
-int32_t ACMInputProcessor::init(boost::shared_ptr<ACMOutputProcessor> aop) {
+int32_t ACMInputProcessor::init(boost::shared_ptr<ACMOutputProcessor> aop,  boost::shared_ptr<TaskRunner> taskRunner) {
     WEBRTC_TRACE(kTraceInfo, kTraceVoice, VoEId(_channelId,_channelId),
                  "ACMInputProcessor::Init()");
+    taskRunner_ = taskRunner;
     aop_ = aop;
 
     if ((audio_coding_->InitializeReceiver() == -1)/* ||
@@ -169,10 +174,17 @@ int32_t ACMInputProcessor::init(boost::shared_ptr<ACMOutputProcessor> aop) {
                          codec.channels, codec.rate);
         }
 
+        // Ensure that PCMU is used as default codec on the sending side
+        if (!STR_CASE_CMP(codec.plname, "PCMU") && (codec.channels == 1))
+        {
+            SetSendCodec(codec); /*The Process Timer will complain if no send codec*/
+        }
+
 
         if (!STR_CASE_CMP(codec.plname, "CN"))
         {
-            if ((audio_coding_->RegisterReceiveCodec(codec) == -1))
+            if ((audio_coding_->RegisterReceiveCodec(codec) == -1)
+            	 || audio_coding_->RegisterSendCodec(codec) == -1)
             {
                 WEBRTC_TRACE(kTraceWarning, kTraceVoice,
                              VoEId(_channelId,_channelId),
@@ -181,13 +193,12 @@ int32_t ACMInputProcessor::init(boost::shared_ptr<ACMOutputProcessor> aop) {
                              codec.pltype, codec.plfreq);
             }
         }
-#define WEBRTC_CODEC_RED
-#ifdef WEBRTC_CODEC_RED
         // Register RED to the receiving side of the ACM.
         // We will not receive an OnInitializeDecoder() callback for RED.
         if (!STR_CASE_CMP(codec.plname, "RED"))
         {
-            if (audio_coding_->RegisterReceiveCodec(codec) == -1)
+            if (audio_coding_->RegisterReceiveCodec(codec) == -1
+            	||	audio_coding_->RegisterSendCodec(codec) == -1)
             {
                 WEBRTC_TRACE(kTraceWarning, kTraceVoice,
                              VoEId(_channelId,_channelId),
@@ -196,7 +207,6 @@ int32_t ACMInputProcessor::init(boost::shared_ptr<ACMOutputProcessor> aop) {
                              codec.pltype, codec.plfreq);
             }
         }
-#endif
     }
 
     if (rx_audioproc_->noise_suppression()->set_level(kDefaultNsMode) != 0) {
@@ -207,10 +217,49 @@ int32_t ACMInputProcessor::init(boost::shared_ptr<ACMOutputProcessor> aop) {
       LOG_FERR1(LS_ERROR, gain_control()->set_mode, kDefaultRxAgcMode);
       return -1;
     }
-
+    if (taskRunner_) {
+    	taskRunner_->registerModule(_rtpRtcpModule.get());
+    	taskRunner_->registerModule(audio_coding_.get());
+    }
     aop_->SetMixabilityStatus(*this, true);
     return 0;
 
+}
+
+int32_t
+ACMInputProcessor::SetSendCodec(const CodecInst& codec)
+{
+    WEBRTC_TRACE(kTraceInfo, kTraceVoice, VoEId(_channelId,_channelId),
+                 "Channel::SetSendCodec()");
+
+    if (audio_coding_->RegisterSendCodec(codec) != 0)
+    {
+        WEBRTC_TRACE(kTraceError, kTraceVoice, VoEId(_channelId,_channelId),
+                     "SetSendCodec() failed to register codec to ACM");
+        return -1;
+    }
+
+    if (_rtpRtcpModule->RegisterSendPayload(codec) != 0)
+    {
+        _rtpRtcpModule->DeRegisterSendPayload(codec.pltype);
+        if (_rtpRtcpModule->RegisterSendPayload(codec) != 0)
+        {
+            WEBRTC_TRACE(
+                    kTraceError, kTraceVoice, VoEId(_channelId,_channelId),
+                    "SetSendCodec() failed to register codec to"
+                    " RTP/RTCP module");
+            return -1;
+        }
+    }
+
+    if (_rtpRtcpModule->SetAudioPacketSize(codec.pacsize) != 0)
+    {
+        WEBRTC_TRACE(kTraceError, kTraceVoice, VoEId(_channelId,_channelId),
+                     "SetSendCodec() failed to set audio packet size");
+        return -1;
+    }
+
+    return 0;
 }
 
 void ACMInputProcessor::receiveRtpData(char* rtpdata, int len,
@@ -735,7 +784,7 @@ int32_t ACMInputProcessor::NeededFrequency(const int32_t id) {
 }
 
 DEFINE_LOGGER(ACMOutputProcessor, "media.ACMOutputProcessor");
-ACMOutputProcessor::ACMOutputProcessor(uint32_t instanceId, webrtc::Transport* transport):
+ACMOutputProcessor::ACMOutputProcessor(uint32_t instanceId, woogeen_base::WoogeenTransport<erizo::AUDIO>* transport):
 		amixer_(AudioConferenceMixer::Create(instanceId)),
 		apm_(NULL),
 		instanceId_(instanceId),
@@ -753,6 +802,7 @@ ACMOutputProcessor::ACMOutputProcessor(uint32_t instanceId, webrtc::Transport* t
                      "callbacks");
     }
 
+    m_audioTransport.reset(transport);
     RtpRtcp::Configuration configuration;
     configuration.outgoing_transport = transport;
     configuration.id = VoEModuleId(instanceId_, instanceId_);
@@ -763,18 +813,26 @@ ACMOutputProcessor::ACMOutputProcessor(uint32_t instanceId, webrtc::Transport* t
 */
     _rtpRtcpModule.reset(RtpRtcp::CreateRtpRtcp(configuration));
 
-    init();
 }
 
 ACMOutputProcessor::~ACMOutputProcessor() {
-    WEBRTC_TRACE(kTraceMemory, kTraceVoice, instanceId_,
+    WEBRTC_TRACE(kTraceDebug, kTraceVoice, instanceId_,
                  "OutputMixer::~OutputMixer() - dtor");
     this->StopRecordingPlayout();
     amixer_->UnRegisterMixerStatusCallback();
     amixer_->UnRegisterMixedStreamCallback();
+    if (taskRunner_) {
+    	taskRunner_->unregisterModule(_rtpRtcpModule.get());
+    }
+    delete amixer_;
 }
 
-bool ACMOutputProcessor::init() {
+bool ACMOutputProcessor::init(boost::shared_ptr<TaskRunner> taskRunner) {
+
+    WEBRTC_TRACE(kTraceDebug, kTraceVoice, instanceId_,
+                 "ACMOutputProcessor::init");
+
+	taskRunner_ = taskRunner;
 
     if ((audio_coding_->InitializeSender() == -1))
     {
@@ -831,6 +889,9 @@ bool ACMOutputProcessor::init() {
         }
     }
 
+    if (taskRunner_) {
+        taskRunner_->registerModule(_rtpRtcpModule.get());
+    }
 
     this->StartRecordingPlayout("mixer.audio", NULL);
     timer_.reset(new boost::asio::deadline_timer(io_service_, boost::posix_time::milliseconds(10)));

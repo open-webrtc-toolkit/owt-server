@@ -29,19 +29,20 @@ namespace woogeen_base {
 template<erizo::DataType dataType>
 class WoogeenTransport : public webrtc::Transport {
 public:
-    WoogeenTransport(erizo::RTPDataReceiver*);
+    WoogeenTransport(erizo::RTPDataReceiver*, erizo::FeedbackSink*);
     virtual ~WoogeenTransport();
 
     virtual int SendPacket(int channel, const void* data, int len);
     virtual int SendRTCPPacket(int channel, const void* data, int len);
 
 private:
-    erizo::RTPDataReceiver* m_receiver;
+    erizo::RTPDataReceiver* m_rtpReceiver;
+    erizo::FeedbackSink*    m_rtcpReceiver;
 };
 
 template<erizo::DataType dataType>
-WoogeenTransport<dataType>::WoogeenTransport(erizo::RTPDataReceiver* receiver)
-    : m_receiver(receiver)
+WoogeenTransport<dataType>::WoogeenTransport(erizo::RTPDataReceiver* rtpReceiver, erizo::FeedbackSink* rtcpReceiver)
+    : m_rtpReceiver(rtpReceiver), m_rtcpReceiver(rtcpReceiver)
 {
 }
 
@@ -54,14 +55,17 @@ WoogeenTransport<dataType>::~WoogeenTransport()
 template<erizo::DataType dataType>
 inline int WoogeenTransport<dataType>::SendPacket(int channel, const void* data, int len)
 {
-    m_receiver->receiveRtpData(reinterpret_cast<char*>(const_cast<void*>(data)), len, dataType, channel);
+    m_rtpReceiver->receiveRtpData(reinterpret_cast<char*>(const_cast<void*>(data)), len, dataType, channel);
     return len;    //return 0 will tell rtp_sender not able to send the packet, thus impact bitrate update
 }
 
 template<erizo::DataType dataType>
 inline int WoogeenTransport<dataType>::SendRTCPPacket(int channel, const void* data, int len)
 {
-    return 0;
+	if (m_rtcpReceiver) {
+		return m_rtcpReceiver->deliverFeedback(reinterpret_cast<char*>(const_cast<void*>(data)), len);
+	}
+	return 0;
 }
 
 }

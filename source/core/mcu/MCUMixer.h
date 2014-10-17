@@ -37,7 +37,7 @@ namespace mcu {
 class ACMOutputProcessor;
 class BufferManager;
 class VCMOutputProcessor;
-class AVSyncTaskRunner;
+class TaskRunner;
 
 /**
  * Represents a Many to Many connection.
@@ -108,9 +108,7 @@ private:
     std::vector<erizo::MediaSource*> m_publisherSlotMap;    // each publisher will be allocated one index
 
     boost::shared_ptr<BufferManager> m_bufferManager;
-    boost::shared_ptr<AVSyncTaskRunner> m_taskRunner;
-    boost::shared_ptr<webrtc::Transport> m_videoTransport;
-    boost::shared_ptr<webrtc::Transport> m_audioTransport;
+    boost::shared_ptr<TaskRunner> m_taskRunner;
     boost::shared_ptr<VCMOutputProcessor> m_vcmOutputProcessor;
     boost::shared_ptr<ACMOutputProcessor> m_acmOutputProcessor;
 };

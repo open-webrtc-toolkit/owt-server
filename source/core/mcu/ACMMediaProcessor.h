@@ -9,7 +9,7 @@
 #define ACMMEDIAPROCESSOR_H_
 #include "MediaDefinitions.h"
 #include "logger.h"
-//#include "media/MediaProcessor.h"
+#include "WoogeenTransport.h"
 #include "webrtc/common_types.h"
 #include "webrtc/modules/interface/module_common_types.h"
 #include "webrtc/voice_engine/voice_engine_defines.h"	//for some const definitions
@@ -41,6 +41,7 @@ using namespace webrtc;
 namespace mcu {
 
 class ACMOutputProcessor;
+class TaskRunner;
 
 class ACMInputProcessor : public erizo::RTPDataReceiver,
 						 public RtpData,
@@ -54,13 +55,13 @@ public:
 	ACMInputProcessor(int32_t channelId);
 	virtual ~ACMInputProcessor();
     int32_t channelId() { return _channelId;}
-    int32_t init(boost::shared_ptr<ACMOutputProcessor> aop);
+    int32_t init(boost::shared_ptr<ACMOutputProcessor> aop, boost::shared_ptr<TaskRunner>);
 	virtual void receiveRtpData(char* rtpdata, int len, erizo::DataType type = erizo::VIDEO, uint32_t streamId = 0);
     virtual int32_t GetAudioFrame(const int32_t id, AudioFrame& audioFrame);
     // This function specifies the sampling frequency needed for the AudioFrame
     // for future GetAudioFrame(..) calls.
     virtual int32_t NeededFrequency(const int32_t id);
-
+    int32_t SetSendCodec(const CodecInst& codec);
     int32_t ReceivedRTCPPacket(const int8_t* data, int32_t length);
 
     //implements RtpData
@@ -115,16 +116,17 @@ public:
 
 
 private:
-    bool IsPacketInOrder(const RTPHeader& header) const;
-    bool IsPacketRetransmitted(const RTPHeader& header, bool in_order) const;
+    bool IsPacketInOrder(const webrtc::RTPHeader& header) const;
+    bool IsPacketRetransmitted(const webrtc::RTPHeader& header, bool in_order) const;
 	bool ReceivePacket(const uint8_t* packet,
 	                            int packet_length,
-	                            const RTPHeader& header,
+	                            const webrtc::RTPHeader& header,
 	                            bool in_order);
 
 private:
     int32_t _channelId;	//index id of the participant
 
+    boost::shared_ptr<TaskRunner> taskRunner_;
     scoped_ptr<RtpHeaderParser> rtp_header_parser_;
     scoped_ptr<RTPPayloadRegistry> rtp_payload_registry_;
     scoped_ptr<ReceiveStatistics> rtp_receive_statistics_;
@@ -149,6 +151,7 @@ private:
     Transport* _transportPtr; // WebRtc socket or external transport
     scoped_ptr<AudioProcessing> rtp_audioproc_;
     scoped_ptr<AudioProcessing> rx_audioproc_; // far end AudioProcessing
+
 
     // VoeRTP_RTCP
     uint32_t _lastLocalTimeStamp;
@@ -177,9 +180,9 @@ class ACMOutputProcessor: public AudioPacketizationCallback,
 							public FileCallback{
 	DECLARE_LOGGER();
 public:
-	ACMOutputProcessor(uint32_t instanceId, webrtc::Transport* transport);
+	ACMOutputProcessor(uint32_t instanceId, woogeen_base::WoogeenTransport<erizo::AUDIO>* transport);
 	virtual ~ACMOutputProcessor();
-	bool init();
+	bool init(boost::shared_ptr<TaskRunner>);
 
     int32_t SetAudioProcessingModule(
         AudioProcessing* audioProcessingModule) {
@@ -264,8 +267,10 @@ private:
 	AudioProcessing*   apm_;
     AudioFrame audioFrame_;
     uint32_t instanceId_;
+    boost::shared_ptr<TaskRunner> taskRunner_;
     scoped_ptr<RtpRtcp> _rtpRtcpModule;
     scoped_ptr<AudioCodingModule> audio_coding_;
+    scoped_ptr<woogeen_base::WoogeenTransport<erizo::AUDIO>> m_audioTransport;	//owned by this ACMOutputProcessor
 
 	boost::scoped_ptr<boost::thread> audioMixingThread_;
     boost::asio::io_service io_service_;

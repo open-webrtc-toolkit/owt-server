@@ -17,6 +17,7 @@
 #include <boost/thread.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 
+#define MIN(a, b) (((a) < (b)) ? (a) : (b))
 
 namespace webrtc{
 class Module;
@@ -24,14 +25,14 @@ class Module;
 
 using namespace webrtc;
 /**
- * AVSync process is running by a separate thread, to not to interrupt with the decoding thread
+ * This thread is now responsible for running the non critical process for each modules
  */
 namespace mcu {
 
-class AVSyncTaskRunner {
+class TaskRunner {
 public:
-	AVSyncTaskRunner(int interval);
-	virtual ~AVSyncTaskRunner();
+	TaskRunner(int interval);
+	virtual ~TaskRunner();
 	void start();
 	void stop();
 	void registerModule(Module* module);

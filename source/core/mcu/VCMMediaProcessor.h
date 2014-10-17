@@ -29,6 +29,7 @@
 #include <boost/thread.hpp>
 #include <logger.h>
 #include <MediaDefinitions.h>
+#include <WoogeenTransport.h>
 #include <webrtc/common_types.h>
 #include <webrtc/modules/rtp_rtcp/interface/fec_receiver.h>
 #include <webrtc/modules/rtp_rtcp/interface/rtp_header_parser.h>
@@ -51,7 +52,7 @@ namespace mcu {
 class VPMPool;
 class ACMInputProcessor;
 class AVSyncModule;
-class AVSyncTaskRunner;
+class TaskRunner;
 class DebugRecorder;
 
 class InputFrameCallback {
@@ -82,7 +83,7 @@ public:
     // Implements the erizo::RTPDataReceiver interface.
     virtual void receiveRtpData(char* rtpdata, int len, erizo::DataType type = erizo::VIDEO, uint32_t streamId = 0);
 
-    bool init(boost::shared_ptr<BufferManager>, boost::shared_ptr<InputFrameCallback>, boost::shared_ptr<AVSyncTaskRunner>);
+    bool init(woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<BufferManager>, boost::shared_ptr<InputFrameCallback>, boost::shared_ptr<TaskRunner>);
     void close();
 
     bool setReceiveVideoCodec(const VideoCodec&);
@@ -92,6 +93,7 @@ public:
 private:
     int index_; //the index number of this publisher
     VideoCodingModule* vcm_;
+    boost::scoped_ptr<woogeen_base::WoogeenTransport<erizo::VIDEO>> m_videoTransport;
     boost::scoped_ptr<RtpHeaderParser> rtp_header_parser_;
     boost::scoped_ptr<RTPPayloadRegistry> rtp_payload_registry_;
     boost::scoped_ptr<RtpReceiver> rtp_receiver_;
@@ -101,7 +103,7 @@ private:
     boost::shared_ptr<ACMInputProcessor> aip_;
     boost::shared_ptr<InputFrameCallback> frameReadyCB_;
     boost::shared_ptr<BufferManager> bufferManager_;
-    boost::shared_ptr<AVSyncTaskRunner> taskRunner_;
+    boost::shared_ptr<TaskRunner> taskRunner_;
 
     boost::scoped_ptr<DebugRecorder> recorder_;
 };
@@ -118,7 +120,7 @@ public:
     VCMOutputProcessor(int id);
     ~VCMOutputProcessor();
 
-    bool init(webrtc::Transport*, boost::shared_ptr<BufferManager>);
+    bool init(woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<BufferManager>, boost::shared_ptr<TaskRunner>);
     void close();
 
     void updateMaxSlot(int newMaxSlot);
@@ -177,6 +179,8 @@ private:
     boost::scoped_ptr<VPMPool> vpmPool_;
     boost::scoped_ptr<RtpRtcp> default_rtp_rtcp_;
     boost::scoped_ptr<DebugRecorder> recorder_;
+    boost::scoped_ptr<woogeen_base::WoogeenTransport<erizo::VIDEO>> m_videoTransport;
+    boost::shared_ptr<TaskRunner> taskRunner_;
     bool recordStarted_;
 
     /*
