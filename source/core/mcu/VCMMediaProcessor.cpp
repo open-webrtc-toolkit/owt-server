@@ -107,6 +107,13 @@ VCMInputProcessor::VCMInputProcessor(int index)
 
 VCMInputProcessor::~VCMInputProcessor()
 {
+    recorder_->Stop();
+    Trace::ReturnTrace();
+
+    boost::unique_lock<boost::mutex> lock(m_rtpReceiverMutex);
+    rtp_receiver_.reset();
+    lock.unlock();
+
     if (taskRunner_) {
         taskRunner_->unregisterModule(avSync_.get());
         taskRunner_->unregisterModule(rtp_rtcp_.get());
@@ -174,8 +181,6 @@ bool VCMInputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* trans
 }
 
 void VCMInputProcessor::close() {
-    recorder_->Stop();
-    Trace::ReturnTrace();
 }
 
 void VCMInputProcessor::bindAudioInputProcessor(boost::shared_ptr<ACMInputProcessor> aip)
@@ -242,8 +247,11 @@ void VCMInputProcessor::receiveRtpData(char* rtp_packet, int rtp_packet_length, 
     if (!rtp_payload_registry_->GetPayloadSpecifics(header.payloadType, &payload_specific)) {
        return;
     }
-    rtp_receiver_->IncomingRtpPacket(header, reinterpret_cast<uint8_t*>(rtp_packet + header.headerLength) , payload_length,
-        payload_specific, in_order);
+    boost::unique_lock<boost::mutex> lock(m_rtpReceiverMutex);
+    if (rtp_receiver_) {
+        rtp_receiver_->IncomingRtpPacket(header, reinterpret_cast<uint8_t*>(rtp_packet + header.headerLength) , payload_length,
+            payload_specific, in_order);
+    }
 }
 
 #define SLOT_SIZE 16
