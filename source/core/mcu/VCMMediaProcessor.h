@@ -27,6 +27,7 @@
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/scoped_ptr.hpp>
 #include <boost/thread.hpp>
+#include <boost/thread/mutex.hpp>
 #include <logger.h>
 #include <MediaDefinitions.h>
 #include <WoogeenTransport.h>
@@ -99,6 +100,7 @@ private:
     boost::scoped_ptr<RtpReceiver> rtp_receiver_;
     boost::scoped_ptr<RtpRtcp> rtp_rtcp_;
     boost::scoped_ptr<AVSyncModule> avSync_;
+    boost::mutex m_rtpReceiverMutex;
 
     boost::shared_ptr<ACMInputProcessor> aip_;
     boost::shared_ptr<InputFrameCallback> frameReadyCB_;
