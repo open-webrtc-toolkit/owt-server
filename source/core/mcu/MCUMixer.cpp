@@ -87,6 +87,7 @@ bool MCUMixer::init()
 
 int MCUMixer::deliverAudioData(char* buf, int len, MediaSource* from) 
 {
+    boost::shared_lock<boost::shared_mutex> lock(m_publisherMutex);
     std::map<erizo::MediaSource*, boost::shared_ptr<erizo::MediaSink>>::iterator it = m_sinksForPublishers.find(from);
     if (it != m_sinksForPublishers.end() && it->second)
         return it->second->deliverAudioData(buf, len);
@@ -101,6 +102,7 @@ int MCUMixer::deliverAudioData(char* buf, int len, MediaSource* from)
  */
 int MCUMixer::deliverVideoData(char* buf, int len, MediaSource* from)
 {
+    boost::shared_lock<boost::shared_mutex> lock(m_publisherMutex);
     std::map<erizo::MediaSource*, boost::shared_ptr<erizo::MediaSink>>::iterator it = m_sinksForPublishers.find(from);
     if (it != m_sinksForPublishers.end() && it->second)
         return it->second->deliverVideoData(buf, len);
@@ -142,6 +144,7 @@ void MCUMixer::addPublisher(MediaSource* publisher)
 {
     int index = assignSlot(publisher);
     ELOG_DEBUG("addPublisher - assigned slot is %d", index);
+    boost::upgrade_lock<boost::shared_mutex> lock(m_publisherMutex);
     std::map<erizo::MediaSource*, boost::shared_ptr<erizo::MediaSink>>::iterator it = m_sinksForPublishers.find(publisher);
     if (it == m_sinksForPublishers.end() || !it->second) {
         m_vcmOutputProcessor->updateMaxSlot(maxSlot());
@@ -160,6 +163,8 @@ void MCUMixer::addPublisher(MediaSource* publisher)
 
         boost::shared_ptr<ProtectedRTPReceiver> videoReceiver(new ProtectedRTPReceiver(videoInputProcessor));
         boost::shared_ptr<ProtectedRTPReceiver> audioReceiver(new ProtectedRTPReceiver(audioInputProcessor));
+
+        boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
         m_sinksForPublishers[publisher].reset(new SeparateMediaSink(audioReceiver, videoReceiver));
     } else
         assert("new publisher added with InputProcessor still available");    // should not go there
@@ -201,6 +206,7 @@ void MCUMixer::removeSubscriber(const std::string& peerId)
 
 void MCUMixer::removePublisher(MediaSource* publisher)
 {
+    boost::unique_lock<boost::shared_mutex> lock(m_publisherMutex);
     std::map<erizo::MediaSource*, boost::shared_ptr<erizo::MediaSink>>::iterator it = m_sinksForPublishers.find(publisher);
     if (it != m_sinksForPublishers.end()) {
         int index = getSlot(publisher);
@@ -212,7 +218,7 @@ void MCUMixer::removePublisher(MediaSource* publisher)
 
 void MCUMixer::closeAll()
 {
-    boost::unique_lock<boost::mutex> lock(m_subscriberMutex);
+    boost::unique_lock<boost::mutex> subscriberLock(m_subscriberMutex);
     ELOG_DEBUG ("Mixer closeAll");
     m_taskRunner->stop();
     std::map<std::string, boost::shared_ptr<MediaSink>>::iterator it = m_subscribers.begin();
@@ -224,10 +230,11 @@ void MCUMixer::closeAll()
         }
         m_subscribers.erase(it++);
     }
-    lock.unlock();
-    lock.lock();
     m_subscribers.clear();
-    // TODO: publishers
+    subscriberLock.unlock();
+
+    boost::unique_lock<boost::shared_mutex> publisherLock(m_publisherMutex);
+    m_sinksForPublishers.clear();
     ELOG_DEBUG ("ClosedAll media in this Mixer");
 }
 
