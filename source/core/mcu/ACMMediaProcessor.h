@@ -30,9 +30,10 @@
 
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
-#include <boost/thread.hpp>
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
+#include <boost/thread.hpp>
+#include <boost/thread/mutex.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 
 
@@ -131,6 +132,7 @@ private:
     scoped_ptr<RTPPayloadRegistry> rtp_payload_registry_;
     scoped_ptr<ReceiveStatistics> rtp_receive_statistics_;
     scoped_ptr<RtpReceiver> rtp_receiver_;
+    boost::mutex m_rtpReceiverMutex;
     scoped_ptr<RtpRtcp> _rtpRtcpModule;
     scoped_ptr<AudioCodingModule> audio_coding_;
     bool _externalTransport;

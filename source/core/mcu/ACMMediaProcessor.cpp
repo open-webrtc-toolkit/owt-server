@@ -74,6 +74,10 @@ ACMInputProcessor::~ACMInputProcessor() {
     // 1. De-register callbacks in modules
     // 2. De-register modules in process thread
     // 3. Destroy modules
+    boost::unique_lock<boost::mutex> lock(m_rtpReceiverMutex);
+    rtp_receiver_.reset();
+    lock.unlock();
+
     aop_->SetMixabilityStatus(*this, false);
 
     if (audio_coding_->RegisterTransportCallback(NULL) == -1)
@@ -309,8 +313,9 @@ bool ACMInputProcessor::ReceivePacket(const uint8_t* packet, int packet_length,
 	                                                  &payload_specific)) {
 	    return false;
 	  }
-	  return rtp_receiver_->IncomingRtpPacket(header, payload, payload_length,
-	                                          payload_specific, in_order);
+          boost::unique_lock<boost::mutex> lock(m_rtpReceiverMutex);
+	  return rtp_receiver_ ? rtp_receiver_->IncomingRtpPacket(header, payload, payload_length,
+	                                          payload_specific, in_order) : false;
 
 }
 
