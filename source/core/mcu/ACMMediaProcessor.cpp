@@ -74,6 +74,8 @@ ACMInputProcessor::~ACMInputProcessor() {
     // 1. De-register callbacks in modules
     // 2. De-register modules in process thread
     // 3. Destroy modules
+    aop_->SetMixabilityStatus(*this, false);
+
     if (audio_coding_->RegisterTransportCallback(NULL) == -1)
     {
         WEBRTC_TRACE(kTraceWarning, kTraceVoice,
@@ -818,9 +820,15 @@ ACMOutputProcessor::ACMOutputProcessor(uint32_t instanceId, woogeen_base::Woogee
 ACMOutputProcessor::~ACMOutputProcessor() {
     WEBRTC_TRACE(kTraceDebug, kTraceVoice, instanceId_,
                  "OutputMixer::~OutputMixer() - dtor");
-    this->StopRecordingPlayout();
+
     amixer_->UnRegisterMixerStatusCallback();
     amixer_->UnRegisterMixedStreamCallback();
+    if (timer_)
+        timer_->cancel();
+    if (audioMixingThread_)
+        audioMixingThread_->join();
+
+    this->StopRecordingPlayout();
     if (taskRunner_) {
     	taskRunner_->unregisterModule(_rtpRtcpModule.get());
     }
