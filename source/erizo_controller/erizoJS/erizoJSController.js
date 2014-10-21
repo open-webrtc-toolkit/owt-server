@@ -135,12 +135,15 @@ exports.ErizoJSController = function (spec) {
 
             log.info("Adding external input peer_id ", from);
 
-            if (!GLOBAL.config.erizo.mixer) {
-                muxer = new addon.OneToManyProcessor();
-            }
             var ei = new addon.ExternalInput(url);
 
-            publishers[from] = muxer;
+            if (!GLOBAL.config.erizo.mixer) {
+                muxer = new addon.OneToManyProcessor();
+                publishers[from] = muxer;
+            } else {
+                publishers[from] = ei;
+            }
+
             subscribers[from] = [];
 
             ei.setAudioReceiver(muxer);
@@ -165,7 +168,11 @@ exports.ErizoJSController = function (spec) {
             log.info("Adding ExternalOutput to " + to + " url " + url);
             var externalOutput = new addon.ExternalOutput(url);
             externalOutput.init();
-            publishers[to].addExternalOutput(externalOutput, url);
+            if (!GLOBAL.config.erizo.mixer) {
+                publishers[to].addExternalOutput(externalOutput, url);
+            } else {
+                muxer.addExternalOutput(externalOutput, url);
+            }
             externalOutputs[url] = externalOutput;
         }
     };
@@ -173,7 +180,11 @@ exports.ErizoJSController = function (spec) {
     that.removeExternalOutput = function (to, url) {
       if (externalOutputs[url] !== undefined && publishers[to]!=undefined) {
         log.info("Stopping ExternalOutput: url " + url);
-        publishers[to].removeSubscriber(url);
+        if (!GLOBAL.config.erizo.mixer) {
+            publishers[to].removeSubscriber(url);
+        } else {
+            muxer.removeSubscriber(url);
+        }
         delete externalOutputs[url];
       }
     };
@@ -193,11 +204,12 @@ exports.ErizoJSController = function (spec) {
             if (!GLOBAL.config.erizo.mixer) {
                 muxer = new addon.OneToManyProcessor();
                 muxer.setPublisher(wrtc);
+                publishers[from] = muxer;
             } else {
                 muxer.addPublisher(wrtc);
+                publishers[from] = wrtc;
             }
 
-            publishers[from] = muxer;
             subscribers[from] = [];
 
             wrtc.setAudioReceiver(muxer);
@@ -227,7 +239,11 @@ exports.ErizoJSController = function (spec) {
             var wrtc = new addon.WebRtcConnection(audio, video, GLOBAL.config.erizo.stunserver, GLOBAL.config.erizo.stunport, GLOBAL.config.erizo.minport, GLOBAL.config.erizo.maxport, undefined, undefined, undefined, true, true, true, true);
 
             subscribers[to].push(from);
-            publishers[to].addSubscriber(wrtc, from);
+            if (!GLOBAL.config.erizo.mixer) {
+                publishers[to].addSubscriber(wrtc, from);
+            } else {
+                muxer.addSubscriber(wrtc, from);
+            }
 
             initWebRtcConnection(wrtc, sdp, callback, to, from);
 //            waitForFIR(wrtc, to);
@@ -243,8 +259,12 @@ exports.ErizoJSController = function (spec) {
     that.removePublisher = function (from) {
 
         if (subscribers[from] !== undefined && publishers[from] !== undefined) {
-            log.info('Removing muxer', from);
-            publishers[from].close();
+            if (!GLOBAL.config.erizo.mixer) {
+                log.info('Removing muxer', from);
+                publishers[from].close();
+            } else {
+                muxer.removePublisher(publishers[from]);
+            }
             log.info('Removing subscribers', from);
             delete subscribers[from];
             log.info('Removing publisher', from);
@@ -257,6 +277,10 @@ exports.ErizoJSController = function (spec) {
             }
             log.info("Publishers: ", count);
             if (count === 0)  {
+                if (GLOBAL.config.erizo.mixer) {
+                    log.info('Removing muxer');
+                    muxer.close();
+                }
                 log.info('Removed all publishers. Killing process.');
                 process.exit(0);
             }
@@ -271,7 +295,11 @@ exports.ErizoJSController = function (spec) {
         var index = subscribers[to].indexOf(from);
         if (index !== -1) {
             log.info('Removing subscriber ', from, 'to muxer ', to);
-            publishers[to].removeSubscriber(from);
+            if (!GLOBAL.config.erizo.mixer) {
+                publishers[to].removeSubscriber(from);
+            } else {
+                muxer.removeSubscriber(from);
+            }
             subscribers[to].splice(index, 1);
         }
     };
@@ -289,7 +317,11 @@ exports.ErizoJSController = function (spec) {
                 index = subscribers[key].indexOf(from);
                 if (index !== -1) {
                     log.info('Removing subscriber ', from, 'to muxer ', key);
-                    publishers[key].removeSubscriber(from);
+                    if (!GLOBAL.config.erizo.mixer) {
+                        publishers[key].removeSubscriber(from);
+                    } else {
+                        muxer.removeSubscriber(from);
+                    }
                     subscribers[key].splice(index, 1);
                 }
             }
