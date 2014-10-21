@@ -796,7 +796,8 @@ ACMOutputProcessor::ACMOutputProcessor(uint32_t instanceId, woogeen_base::Woogee
 		apm_(NULL),
 		instanceId_(instanceId),
 	    audio_coding_(AudioCodingModule::Create(
-	    		instanceId)) {
+	    		instanceId)),
+                m_isStopping(false) {
 
     WEBRTC_TRACE(kTraceMemory, kTraceVoice, instanceId,
                  "OutputMixer::OutputMixer() - ctor");
@@ -828,6 +829,14 @@ ACMOutputProcessor::~ACMOutputProcessor() {
 
     amixer_->UnRegisterMixerStatusCallback();
     amixer_->UnRegisterMixedStreamCallback();
+
+    // According to the boost document, if the timer has already expired when
+    // cancel() is called, then the handlers for asynchronous wait operations
+    // can no longer be cancelled, and therefore are passed an error code
+    // that indicates the successful completion of the wait operation.
+    // This means we cannot rely on the operation_aborted error code in the handlers
+    // to know if the timer is being cancelled, thus an additional flag is provided.
+    m_isStopping = true;
     if (timer_)
         timer_->cancel();
     if (audioMixingThread_)
@@ -987,8 +996,10 @@ void ACMOutputProcessor::NewMixedAudio(const int32_t id,
 int32_t ACMOutputProcessor::MixActiveChannels(const boost::system::error_code& ec) {
     if (!ec) {
     	amixer_->Process();
-    	timer_->expires_at(timer_->expires_at() + boost::posix_time::milliseconds(10));
-    	timer_->async_wait(boost::bind(&ACMOutputProcessor::MixActiveChannels, this, boost::asio::placeholders::error));
+        if (!m_isStopping) {
+      	    timer_->expires_at(timer_->expires_at() + boost::posix_time::milliseconds(10));
+      	    timer_->async_wait(boost::bind(&ACMOutputProcessor::MixActiveChannels, this, boost::asio::placeholders::error));
+        }
     } else {
         ELOG_INFO("ACMOutputProcessor timer error: %s", ec.message().c_str());
     }

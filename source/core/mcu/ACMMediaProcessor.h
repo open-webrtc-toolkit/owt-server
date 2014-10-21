@@ -28,6 +28,7 @@
 #include "webrtc/system_wrappers/interface/trace.h"
 #include "webrtc/modules/utility/interface/file_recorder.h"
 
+#include <atomic>
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
 #include <boost/scoped_ptr.hpp>
@@ -277,6 +278,7 @@ private:
 	boost::scoped_ptr<boost::thread> audioMixingThread_;
     boost::asio::io_service io_service_;
     boost::scoped_ptr<boost::asio::deadline_timer> timer_;
+    std::atomic<bool> m_isStopping;
 
     FileRecorder* _outputFileRecorderPtr;
     bool _outputFileRecording;
