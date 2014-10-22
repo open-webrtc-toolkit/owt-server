@@ -95,6 +95,7 @@ private:
     int index_; //the index number of this publisher
     VideoCodingModule* vcm_;
     boost::scoped_ptr<woogeen_base::WoogeenTransport<erizo::VIDEO>> m_videoTransport;
+    boost::scoped_ptr<ReceiveStatistics> m_receiveStatistics;
     boost::scoped_ptr<RtpHeaderParser> rtp_header_parser_;
     boost::scoped_ptr<RTPPayloadRegistry> rtp_payload_registry_;
     boost::scoped_ptr<RtpReceiver> rtp_receiver_;
