@@ -480,19 +480,19 @@ Erizo.Client = function (spec) {
         // Unpublish stream from Erizo-Controller
         if (stream.local && that.localStreams[stream.getId()] !== undefined) {
             // Media stream
-            sendMessageSocket('unpublish', stream.getId(), function(){}, onFailure);
-            if ((stream.hasAudio() || stream.hasVideo() || stream.hasScreen()) && stream.url === undefined) {
-                stream.pc.close();
-                stream.pc = undefined;
-            }
-            delete that.localStreams[stream.getId()];
-
-            stream.getId = function () { return null; };
-            stream.onClose = undefined;
-            stream.signalOnPlayAudio = undefined;
-            stream.signalOnPauseAudio = undefined;
-            stream.signalOnPlayVideo = undefined;
-            stream.signalOnPauseVideo = undefined;
+            sendMessageSocket('unpublish', stream.getId(), function () {
+                if ((stream.hasAudio() || stream.hasVideo() || stream.hasScreen()) && stream.url === undefined) {
+                    stream.pc.close();
+                    stream.pc = undefined;
+                }
+                delete that.localStreams[stream.getId()];
+                stream.getId = function () { return null; };
+                stream.onClose = undefined;
+                stream.signalOnPlayAudio = undefined;
+                stream.signalOnPauseAudio = undefined;
+                stream.signalOnPlayVideo = undefined;
+                stream.signalOnPauseVideo = undefined;
+            }, onFailure);
         } else {
             safeCall(onFailure, 'stream is not local');
         }
