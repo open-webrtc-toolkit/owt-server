@@ -10,9 +10,9 @@
 
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
-#include "stream_synchronization.h"
 #include "webrtc/modules/interface/module.h"
 #include "webrtc/system_wrappers/interface/tick_util.h"
+#include "webrtc/video_engine/stream_synchronization.h"
 
 
 // AVSyncModule is responsible for synchronization audio and video for a given
