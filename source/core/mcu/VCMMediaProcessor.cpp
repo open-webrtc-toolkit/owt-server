@@ -246,7 +246,6 @@ void VCMInputProcessor::receiveRtpData(char* rtp_packet, int rtp_packet_length, 
         payload_specific, in_order);
 }
 
-#define SLOT_SIZE 16
 
 VPMPool::VPMPool(unsigned int size) {
 	size_ = size;
@@ -329,7 +328,7 @@ bool VCMOutputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* tran
     } else
         return false;
 
-    vpmPool_.reset(new VPMPool(SLOT_SIZE));
+    vpmPool_.reset(new VPMPool(BufferManager::SLOT_SIZE));
 
     m_videoTransport.reset(transport);
     RtpRtcp::Configuration configuration;

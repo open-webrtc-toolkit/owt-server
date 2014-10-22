@@ -49,11 +49,12 @@ class I420VideoFrame;
 
 namespace mcu {
 
-#define SLOT_SIZE 16
 
 class BufferManager {
     DECLARE_LOGGER();
 
+public:
+    static const int SLOT_SIZE = 16;
 public:
     BufferManager();
     virtual ~BufferManager();
