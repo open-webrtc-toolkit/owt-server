@@ -50,7 +50,9 @@ Erizo.Client = function (spec) {
         for (index in that.localStreams) {
             if (that.localStreams.hasOwnProperty(index)) {
                 stream = that.localStreams[index];
-                stream.pc.close();
+                if (stream.pc && typeof stream.pc.close === 'function') {
+                    stream.pc.close();
+                }
                 delete that.localStreams[index];
             }
         }
