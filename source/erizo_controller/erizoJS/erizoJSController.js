@@ -3,7 +3,7 @@
 var addon = require('./../../bindings/mcu/build/Release/addon');
 
 var logger = require('./../common/logger').logger;
-var rpc = require('./../common/rpc');
+var amqper = require('./../common/amqper');
 var cipher = require('../../common/cipher');
 
 // Logger
@@ -66,7 +66,7 @@ exports.ErizoJSController = function () {
                 // setup event listeners
                 mixer.addEventListener('UpdateStream', function (evt) {
                     if (erizoControllerId !== undefined) {
-                        rpc.callRpc(erizoControllerId, 'eventReport', ['updateStream', roomId, {event: evt, id: id, data: null}]);
+                        amqper.callRpc(erizoControllerId, 'eventReport', ['updateStream', roomId, {event: evt, id: id, data: null}]);
                     }
                 });
                 publishers[id] = {muxer: mixer};
@@ -118,11 +118,11 @@ exports.ErizoJSController = function () {
      * Given a WebRtcConnection waits for the state CANDIDATES_GATHERED for set remote SDP.
      */
     initWebRtcConnection = function (wrtc, id_mixer, unmix, callback, id_pub, id_sub) {
-        if (GLOBAL.config.erizoController.sendStats) {
+        if (GLOBAL.config.erizoController.report.session_events) {
             wrtc.getStats(function (newStats){
                 log.info('Received RTCP stats:', newStats);
                 var timeStamp = new Date();
-                rpc.callRpc('stats_handler', 'stats', [{pub: id_pub, subs: id_sub, stats: JSON.parse(newStats), timestamp:timeStamp.getTime()}]);
+                amqper.broadcast('stats', {pub: id_pub, subs: id_sub, stats: JSON.parse(newStats), timestamp:timeStamp.getTime()});
             });
         }
 
@@ -137,24 +137,14 @@ exports.ErizoJSController = function () {
           var localSdp, answer;
           logger.info("webrtc Addon status" + newStatus + mess);
 
-          if (GLOBAL.config.erizoController.sendStats) {
+          if (GLOBAL.config.erizoController.report.session_events) {
             var timeStamp = new Date();
-            rpc.callRpc('stats_handler', 'event', [{pub: id_pub, subs: id_sub, type: 'connection_status', status: newStatus, timestamp:timeStamp.getTime()}]);
+            amqper.broadcast('event', {pub: id_pub, subs: id_sub, type: 'connection_status', status: newStatus, timestamp:timeStamp.getTime()});
           }
 
           if (newStatus === CONN_FINISHED) { // Connection Finished
             terminated = true;
           }
-          // if (newStatus === 102 && !sdpDelivered) {
-          //   localSdp = wrtc.getLocalSdp();
-          //   answer = getRoap(localSdp, roap);
-          //   callback('callback', answer);
-          //   sdpDelivered = true;
-
-          // }
-          // if (newStatus === 103) {
-          //   callback('onReady');
-          // }
 
           if (newStatus == CONN_INITIAL) {
             callback('callback', {type: 'started'});
@@ -306,7 +296,7 @@ exports.ErizoJSController = function () {
                     // Some errors happen after the external input has been initialized.
                     log.warn('External input', from, 'encounters following error after initialized:', message);
                     if (erizoControllerId !== undefined) {
-                        rpc.callRpc(erizoControllerId, 'eventReport', ['unpublish', roomId, {event: '', id: from, data: null}]);
+                        amqper.callRpc(erizoControllerId, 'eventReport', ['unpublish', roomId, {event: '', id: from, data: null}]);
                     }
                 }
             });
@@ -350,7 +340,7 @@ exports.ErizoJSController = function () {
                             }
 
                             callback('callback', 'setMediaSource timeout');
-                        }, rpc.timeout);
+                        }, amqper.timeout);
 
             externalOutputs[output_id].setMediaSource(publishers[video_publisher_id].muxer,
                                                       publishers[audio_publisher_id].muxer,

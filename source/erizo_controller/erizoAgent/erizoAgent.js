@@ -59,7 +59,7 @@ for (var prop in opt.options) {
 
 // Load submodules with updated config
 var logger = require('./../common/logger').logger;
-var rpc = require('./../common/rpc');
+var amqper = require('./../common/amqper');
 
 // Logger
 var log = logger.getLogger("ErizoAgent");
@@ -216,7 +216,7 @@ var addToCloudHandler = function (callback) {
             purpose: myPurpose
         };
 
-        rpc.callRpc('nuve', 'addNewErizoAgent', controller, {callback: function (msg) {
+        amqper.callRpc('nuve', 'addNewErizoAgent', controller, {callback: function (msg) {
 
             if (msg === 'timeout') {
                 log.info('CloudHandler does not respond');
@@ -238,13 +238,13 @@ var addToCloudHandler = function (callback) {
 
             var intervarId = setInterval(function () {
 
-                rpc.callRpc('nuve', 'keepAlive', myId, {"callback": function (result) {
+                amqper.callRpc('nuve', 'keepAlive', myId, {"callback": function (result) {
                     if (result === 'whoareyou') {
 
                         // TODO: It should try to register again in Cloud Handler. But taking into account current rooms, users, ...
                         log.info('I don`t exist in cloudHandler. I`m going to be killed');
                         clearInterval(intervarId);
-                        rpc.callRpc('nuve', 'killMe', privateIP, {callback: function () {}});
+                        amqper.callRpc('nuve', 'killMe', privateIP, {callback: function () {}});
                     }
                 }});
 
@@ -257,13 +257,13 @@ var addToCloudHandler = function (callback) {
     addEAToCloudHandler(5);
 };
 
-rpc.connect(function () {
+amqper.connect(function () {
     'use strict';
-    rpc.setPublicRPC(api);
+    amqper.setPublicRPC(api);
     log.info("Adding agent to cloudhandler, purpose:", myPurpose);
     addToCloudHandler(function () {
       var rpcID = 'ErizoAgent_' + myId;
-      rpc.bind(rpcID, function callback () {
+      amqper.bind(rpcID, function callback () {
         log.info('ErizoAgent rpcID:', rpcID);
       });
       fillErizos();
