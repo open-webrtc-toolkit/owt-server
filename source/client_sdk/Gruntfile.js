@@ -85,8 +85,8 @@ window.L = L;\n\
         undef: true,
         boss: true,
         eqnull: true,
-        onecase:true,
-        unused:true,
+        onecase: true,
+        unused: true,
         supernew: true,
         laxcomma: true
       },

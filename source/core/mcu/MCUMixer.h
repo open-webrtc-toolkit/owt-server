@@ -23,6 +23,7 @@
 
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/mutex.hpp>
+#include <boost/thread/shared_mutex.hpp>
 #include <logger.h>
 #include <map>
 #include <MediaDefinitions.h>
@@ -104,6 +105,7 @@ private:
     boost::shared_ptr<erizo::FeedbackSink> m_feedback;
     boost::mutex m_subscriberMutex;
     std::map<std::string, boost::shared_ptr<erizo::MediaSink>> m_subscribers;
+    boost::shared_mutex m_publisherMutex;
     std::map<erizo::MediaSource*, boost::shared_ptr<erizo::MediaSink>> m_sinksForPublishers;
     std::vector<erizo::MediaSource*> m_publisherSlotMap;    // each publisher will be allocated one index
 

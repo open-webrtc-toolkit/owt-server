@@ -50,7 +50,9 @@ Erizo.Client = function (spec) {
         for (index in that.localStreams) {
             if (that.localStreams.hasOwnProperty(index)) {
                 stream = that.localStreams[index];
-                stream.pc.close();
+                if (stream.pc && typeof stream.pc.close === 'function') {
+                    stream.pc.close();
+                }
                 delete that.localStreams[index];
             }
         }
@@ -461,7 +463,7 @@ Erizo.Client = function (spec) {
 
                             stream.pc.processSignalingMessage(answer);
                         });
-                    }, stunServerUrl: that.stunServerUrl, turnServer: that.turnServer, maxAudioBW: options.maxAudioBW, maxVideoBW: options.maxVideoBW});
+                    }, iceServers: that.userSetIceServers, stunServerUrl: that.stunServerUrl, turnServer: that.turnServer, maxAudioBW: options.maxAudioBW, maxVideoBW: options.maxVideoBW});
 
                     stream.pc.addStream(stream.stream);
                 }
@@ -478,19 +480,19 @@ Erizo.Client = function (spec) {
         // Unpublish stream from Erizo-Controller
         if (stream.local && that.localStreams[stream.getId()] !== undefined) {
             // Media stream
-            sendMessageSocket('unpublish', stream.getId(), function(){}, onFailure);
-            if ((stream.hasAudio() || stream.hasVideo() || stream.hasScreen()) && stream.url === undefined) {
-                stream.pc.close();
-                stream.pc = undefined;
-            }
-            delete that.localStreams[stream.getId()];
-
-            stream.getId = function () { return null; };
-            stream.onClose = undefined;
-            stream.signalOnPlayAudio = undefined;
-            stream.signalOnPauseAudio = undefined;
-            stream.signalOnPlayVideo = undefined;
-            stream.signalOnPauseVideo = undefined;
+            sendMessageSocket('unpublish', stream.getId(), function () {
+                if ((stream.hasAudio() || stream.hasVideo() || stream.hasScreen()) && stream.url === undefined) {
+                    stream.pc.close();
+                    stream.pc = undefined;
+                }
+                delete that.localStreams[stream.getId()];
+                stream.getId = function () { return null; };
+                stream.onClose = undefined;
+                stream.signalOnPlayAudio = undefined;
+                stream.signalOnPauseAudio = undefined;
+                stream.signalOnPlayVideo = undefined;
+                stream.signalOnPauseVideo = undefined;
+            }, onFailure);
         } else {
             safeCall(onFailure, 'stream is not local');
         }
@@ -519,7 +521,7 @@ Erizo.Client = function (spec) {
 */                            
                         stream.pc.processSignalingMessage(answer);
                     });
-                }, nop2p: true, audio: stream.hasAudio(), video: stream.hasVideo(), stunServerUrl: that.stunServerUrl, turnServer: that.turnServer});
+                }, nop2p: true, audio: stream.hasAudio(), video: stream.hasVideo(), iceServers: that.userSetIceServers, stunServerUrl: that.stunServerUrl, turnServer: that.turnServer});
 
                 stream.pc.onaddstream = function (evt) {
                     // Draw on html
@@ -601,6 +603,29 @@ Erizo.Client = function (spec) {
 
     that.send = function(msg, onSuccess, onFailure) {
         sendMessageSocket("customMessage", msg, onSuccess, onFailure);
+    };
+
+    // turn: {"username": username, "credential": password, "url": url}
+    // stun: {"url": url}
+    that.setIceServers = function() {
+        that.userSetIceServers = [];
+        var args = Array.prototype.slice.call(arguments, 0);
+        args.map(function (arg) {
+            if (arg instanceof Array) {
+                arg.map(function (server) {
+                    if (typeof server === 'object' && server !== null && typeof server.url === 'string' && server.url !== '') {
+                        that.userSetIceServers.push(server);
+                    } else if (typeof server === 'string' && server !== '') {
+                        that.userSetIceServers.push({"url": server});
+                    }
+                });
+            } else if (typeof arg === 'object' && arg !== null && typeof arg.url === 'string' && arg.url !== '') {
+                that.userSetIceServers.push(arg);
+            } else if (typeof arg === 'string' && arg !== '') {
+                that.userSetIceServers.push({"url": arg});
+            }
+        });
+        return that.userSetIceServers;
     };
 
     //It searchs the streams that have "name" attribute with "value" value

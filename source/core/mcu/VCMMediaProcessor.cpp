@@ -107,6 +107,13 @@ VCMInputProcessor::VCMInputProcessor(int index)
 
 VCMInputProcessor::~VCMInputProcessor()
 {
+    recorder_->Stop();
+    Trace::ReturnTrace();
+
+    boost::unique_lock<boost::mutex> lock(m_rtpReceiverMutex);
+    rtp_receiver_.reset();
+    lock.unlock();
+
     if (taskRunner_) {
         taskRunner_->unregisterModule(avSync_.get());
         taskRunner_->unregisterModule(rtp_rtcp_.get());
@@ -141,11 +148,13 @@ bool VCMInputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* trans
                                 rtp_payload_registry_.get()));
 
     m_videoTransport.reset(transport);
+    m_receiveStatistics.reset(ReceiveStatistics::Create(Clock::GetRealTimeClock()));
 
     RtpRtcp::Configuration configuration;
     configuration.id = 002;
     configuration.audio = false;  // Video.
     configuration.outgoing_transport = transport;	// for sending RTCP feedback to the publisher
+    configuration.receive_statistics = m_receiveStatistics.get();
     rtp_rtcp_.reset(RtpRtcp::CreateRtpRtcp(configuration));
     rtp_rtcp_->SetRTCPStatus(webrtc::kRtcpCompound);
     rtp_rtcp_->SetKeyFrameRequestMethod(kKeyFrameReqPliRtcp);
@@ -174,8 +183,6 @@ bool VCMInputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* trans
 }
 
 void VCMInputProcessor::close() {
-    recorder_->Stop();
-    Trace::ReturnTrace();
 }
 
 void VCMInputProcessor::bindAudioInputProcessor(boost::shared_ptr<ACMInputProcessor> aip)
@@ -242,8 +249,15 @@ void VCMInputProcessor::receiveRtpData(char* rtp_packet, int rtp_packet_length, 
     if (!rtp_payload_registry_->GetPayloadSpecifics(header.payloadType, &payload_specific)) {
        return;
     }
-    rtp_receiver_->IncomingRtpPacket(header, reinterpret_cast<uint8_t*>(rtp_packet + header.headerLength) , payload_length,
-        payload_specific, in_order);
+    boost::unique_lock<boost::mutex> lock(m_rtpReceiverMutex);
+    if (rtp_receiver_) {
+        rtp_receiver_->IncomingRtpPacket(header, reinterpret_cast<uint8_t*>(rtp_packet + header.headerLength) , payload_length,
+            payload_specific, in_order);
+    }
+
+    bool isRetransmitted = false; // IsPacketRetransmitted(header, in_order);
+    if (m_receiveStatistics)
+        m_receiveStatistics->IncomingPacket(header, rtp_packet_length, isRetransmitted);
 }
 
 

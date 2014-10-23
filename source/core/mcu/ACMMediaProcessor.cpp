@@ -74,6 +74,12 @@ ACMInputProcessor::~ACMInputProcessor() {
     // 1. De-register callbacks in modules
     // 2. De-register modules in process thread
     // 3. Destroy modules
+    boost::unique_lock<boost::mutex> lock(m_rtpReceiverMutex);
+    rtp_receiver_.reset();
+    lock.unlock();
+
+    aop_->SetMixabilityStatus(*this, false);
+
     if (audio_coding_->RegisterTransportCallback(NULL) == -1)
     {
         WEBRTC_TRACE(kTraceWarning, kTraceVoice,
@@ -307,8 +313,9 @@ bool ACMInputProcessor::ReceivePacket(const uint8_t* packet, int packet_length,
 	                                                  &payload_specific)) {
 	    return false;
 	  }
-	  return rtp_receiver_->IncomingRtpPacket(header, payload, payload_length,
-	                                          payload_specific, in_order);
+          boost::unique_lock<boost::mutex> lock(m_rtpReceiverMutex);
+	  return rtp_receiver_ ? rtp_receiver_->IncomingRtpPacket(header, payload, payload_length,
+	                                          payload_specific, in_order) : false;
 
 }
 
@@ -789,7 +796,8 @@ ACMOutputProcessor::ACMOutputProcessor(uint32_t instanceId, woogeen_base::Woogee
 		apm_(NULL),
 		instanceId_(instanceId),
 	    audio_coding_(AudioCodingModule::Create(
-	    		instanceId)) {
+	    		instanceId)),
+                m_isStopping(false) {
 
     WEBRTC_TRACE(kTraceMemory, kTraceVoice, instanceId,
                  "OutputMixer::OutputMixer() - ctor");
@@ -818,9 +826,23 @@ ACMOutputProcessor::ACMOutputProcessor(uint32_t instanceId, woogeen_base::Woogee
 ACMOutputProcessor::~ACMOutputProcessor() {
     WEBRTC_TRACE(kTraceDebug, kTraceVoice, instanceId_,
                  "OutputMixer::~OutputMixer() - dtor");
-    this->StopRecordingPlayout();
+
     amixer_->UnRegisterMixerStatusCallback();
     amixer_->UnRegisterMixedStreamCallback();
+
+    // According to the boost document, if the timer has already expired when
+    // cancel() is called, then the handlers for asynchronous wait operations
+    // can no longer be cancelled, and therefore are passed an error code
+    // that indicates the successful completion of the wait operation.
+    // This means we cannot rely on the operation_aborted error code in the handlers
+    // to know if the timer is being cancelled, thus an additional flag is provided.
+    m_isStopping = true;
+    if (timer_)
+        timer_->cancel();
+    if (audioMixingThread_)
+        audioMixingThread_->join();
+
+    this->StopRecordingPlayout();
     if (taskRunner_) {
     	taskRunner_->unregisterModule(_rtpRtcpModule.get());
     }
@@ -974,8 +996,10 @@ void ACMOutputProcessor::NewMixedAudio(const int32_t id,
 int32_t ACMOutputProcessor::MixActiveChannels(const boost::system::error_code& ec) {
     if (!ec) {
     	amixer_->Process();
-    	timer_->expires_at(timer_->expires_at() + boost::posix_time::milliseconds(10));
-    	timer_->async_wait(boost::bind(&ACMOutputProcessor::MixActiveChannels, this, boost::asio::placeholders::error));
+        if (!m_isStopping) {
+      	    timer_->expires_at(timer_->expires_at() + boost::posix_time::milliseconds(10));
+      	    timer_->async_wait(boost::bind(&ACMOutputProcessor::MixActiveChannels, this, boost::asio::placeholders::error));
+        }
     } else {
         ELOG_INFO("ACMOutputProcessor timer error: %s", ec.message().c_str());
     }
