@@ -299,12 +299,13 @@ void ACMInputProcessor::receiveRtpData(char* rtpdata, int len,
 
 bool ACMInputProcessor::ReceivePacket(const uint8_t* packet, int packet_length,
 		const RTPHeader& header, bool in_order) {
-	//should not be encapsulated at here
-	/*
+
 	  if (rtp_payload_registry_->IsEncapsulated(header)) {
-	    return HandleEncapsulation(packet, packet_length, header);
+	    //return HandleEncapsulation(packet, packet_length, header);
+		  assert (!"should not be encapsulated at here");
+		  return false;
 	  }
-	  */
+
 	  const uint8_t* payload = packet + header.headerLength;
 	  int payload_length = packet_length - header.headerLength;
 	  assert(payload_length >= 0);
@@ -360,8 +361,6 @@ int32_t ACMInputProcessor::OnReceivedPayloadData(const uint8_t* payloadData,
     // Update the packet delay.
     UpdatePacketDelay(rtpHeader->header.timestamp,
                       rtpHeader->header.sequenceNumber);
-
-#if 0
     uint16_t round_trip_time = 0;
     _rtpRtcpModule->RTT(rtp_receiver_->SSRC(), &round_trip_time,
                         NULL, NULL, NULL);
@@ -373,9 +372,12 @@ int32_t ACMInputProcessor::OnReceivedPayloadData(const uint8_t* payloadData,
       // compilers.
       ResendPackets(&(nack_list[0]), static_cast<int>(nack_list.size()));
     }
-#endif
     return 0;
 
+}
+
+int ACMInputProcessor::ResendPackets(const uint16_t* sequence_numbers, int length) {
+	return _rtpRtcpModule->SendNACK(sequence_numbers, length);
 }
 
 int32_t ACMInputProcessor::OnInitializeDecoder(const int32_t id,
@@ -408,7 +410,6 @@ int32_t ACMInputProcessor::OnInitializeDecoder(const int32_t id,
                      VoEId(_channelId, _channelId),
                      "Channel::OnInitializeDecoder() invalid codec ("
                      "pt=%d, name=%s) received - 1", payloadType, payloadName);
-       // _engineStatisticsPtr->SetLastError(VE_AUDIO_CODING_MODULE_ERROR);
         return -1;
     }
 
@@ -573,26 +574,10 @@ void ACMInputProcessor::UpdatePlayoutTimestamp(bool rtcp) {
     WEBRTC_TRACE(kTraceWarning, kTraceVoice, VoEId(_channelId,_channelId),
                  "Channel::UpdatePlayoutTimestamp() failed to read playout"
                  " timestamp from the ACM");
-#if 0
-    _engineStatisticsPtr->SetLastError(
-        VE_CANNOT_RETRIEVE_VALUE, kTraceError,
-        "UpdatePlayoutTimestamp() failed to retrieve timestamp");
-#endif
     return;
   }
 
-  uint16_t delay_ms = 0;
-#if 0
-  if (_audioDeviceModulePtr->PlayoutDelay(&delay_ms) == -1) {
-    WEBRTC_TRACE(kTraceWarning, kTraceVoice, VoEId(_channelId,_channelId),
-                 "Channel::UpdatePlayoutTimestamp() failed to read playout"
-                 " delay from the ADM");
-    _engineStatisticsPtr->SetLastError(
-        VE_CANNOT_RETRIEVE_VALUE, kTraceError,
-        "UpdatePlayoutTimestamp() failed to retrieve playout delay");
-    return;
-  }
-#endif
+  uint16_t delay_ms = 0;	/*originally it is to measure the audio device playout delay*/
 
   int32_t playout_frequency = audio_coding_->PlayoutFrequency();
   CodecInst current_recive_codec;
@@ -626,11 +611,9 @@ int ACMInputProcessor::GetPlayoutTimestamp(unsigned int& timestamp) {
 	WEBRTC_TRACE(kTraceInfo, kTraceVoice, VoEId(_channelId,_channelId),
 	               "Channel::GetPlayoutTimestamp()");
 	  if (playout_timestamp_rtp_ == 0)  {
-#if 0
-	    _engineStatisticsPtr->SetLastError(
-	        VE_CANNOT_RETRIEVE_VALUE, kTraceError,
+		  WEBRTC_TRACE(kTraceStateInfo, kTraceVoice,
+		               VoEId(_channelId,_channelId),
 	        "GetPlayoutTimestamp() failed to retrieve timestamp");
-#endif
 	    return -1;
 	  }
 	  timestamp = playout_timestamp_rtp_;
@@ -654,11 +637,9 @@ int ACMInputProcessor::SetInitTimestamp(unsigned int timestamp) {
 #endif
     if (_rtpRtcpModule->SetStartTimestamp(timestamp) != 0)
     {
-#if 0
-        _engineStatisticsPtr->SetLastError(
-            VE_RTP_RTCP_MODULE_ERROR, kTraceError,
+		  WEBRTC_TRACE(kTraceStateInfo, kTraceVoice,
+		               VoEId(_channelId,_channelId),
             "SetInitTimestamp() failed to set timestamp");
-#endif
         return -1;
     }
     return 0;
@@ -679,11 +660,10 @@ int ACMInputProcessor::SetInitSequenceNumber(short sequenceNumber) {
 #endif
     if (_rtpRtcpModule->SetSequenceNumber(sequenceNumber) != 0)
     {
-#if 0
-        _engineStatisticsPtr->SetLastError(
-            VE_RTP_RTCP_MODULE_ERROR, kTraceError,
+
+  	  WEBRTC_TRACE(kTraceStateInfo, kTraceVoice,
+  	               VoEId(_channelId,_channelId),
             "SetInitSequenceNumber() failed to set sequence number");
-#endif
         return -1;
     }
     return 0;

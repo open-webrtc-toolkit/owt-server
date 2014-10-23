@@ -120,6 +120,7 @@ public:
 private:
     bool IsPacketInOrder(const webrtc::RTPHeader& header) const;
     bool IsPacketRetransmitted(const webrtc::RTPHeader& header, bool in_order) const;
+    int ResendPackets(const uint16_t* sequence_numbers, int length);
 	bool ReceivePacket(const uint8_t* packet,
 	                            int packet_length,
 	                            const webrtc::RTPHeader& header,
