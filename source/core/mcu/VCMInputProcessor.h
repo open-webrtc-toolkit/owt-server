@@ -62,28 +62,26 @@ public:
     // Implements the erizo::RTPDataReceiver interface.
     virtual void receiveRtpData(char* rtpdata, int len, erizo::DataType type = erizo::VIDEO, uint32_t streamId = 0);
 
-    bool init(woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<BufferManager>, boost::shared_ptr<InputFrameCallback>, boost::shared_ptr<TaskRunner>);
-    void close();
+    bool init(woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<BufferManager>, boost::shared_ptr<InputFrameCallback>, boost::shared_ptr<TaskRunner>);
 
     void bindAudioInputProcessor(boost::shared_ptr<ACMInputProcessor>);
-    int channelId() { return index_;}
+    int channelId() { return m_index; }
 
 private:
-    int index_; //the index number of this publisher
-    VideoCodingModule* vcm_;
+    int m_index;
+    boost::scoped_ptr<VideoCodingModule> m_vcm;
     boost::scoped_ptr<RemoteBitrateObserver> m_remoteBitrateObserver;
     boost::scoped_ptr<RemoteBitrateEstimator> m_remoteBitrateEstimator;
     boost::scoped_ptr<ViEReceiver> m_videoReceiver;
-    boost::scoped_ptr<woogeen_base::WoogeenTransport<erizo::VIDEO>> m_videoTransport;
-    boost::scoped_ptr<RtpRtcp> rtp_rtcp_;
-    boost::scoped_ptr<AVSyncModule> avSync_;
+    boost::scoped_ptr<RtpRtcp> m_rtpRtcp;
+    boost::scoped_ptr<AVSyncModule> m_avSync;
+    boost::scoped_ptr<DebugRecorder> m_recorder;
 
-    boost::shared_ptr<ACMInputProcessor> aip_;
-    boost::shared_ptr<InputFrameCallback> frameReadyCB_;
-    boost::shared_ptr<BufferManager> bufferManager_;
-    boost::shared_ptr<TaskRunner> taskRunner_;
-
-    boost::scoped_ptr<DebugRecorder> recorder_;
+    boost::shared_ptr<Transport> m_videoTransport;
+    boost::shared_ptr<ACMInputProcessor> m_aip;
+    boost::shared_ptr<InputFrameCallback> m_frameReadyCB;
+    boost::shared_ptr<BufferManager> m_bufferManager;
+    boost::shared_ptr<TaskRunner> m_taskRunner;
 };
 
 class DummyRemoteBitrateObserver : public RemoteBitrateObserver {
