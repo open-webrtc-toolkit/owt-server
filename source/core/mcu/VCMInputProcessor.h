@@ -29,12 +29,10 @@
 #include <logger.h>
 #include <MediaDefinitions.h>
 #include <WoogeenTransport.h>
-#include <webrtc/common_types.h>
-#include <webrtc/modules/rtp_rtcp/interface/fec_receiver.h>
-#include <webrtc/modules/rtp_rtcp/interface/rtp_header_parser.h>
-#include <webrtc/modules/rtp_rtcp/interface/rtp_payload_registry.h>
+#include <webrtc/modules/remote_bitrate_estimator/include/remote_bitrate_estimator.h>
 #include <webrtc/modules/rtp_rtcp/interface/rtp_rtcp.h>
 #include <webrtc/modules/video_coding/main/interface/video_coding.h>
+#include <webrtc/video_engine/vie_receiver.h>
 
 using namespace webrtc;
 
@@ -51,7 +49,6 @@ class AVSyncModule;
 class TaskRunner;
 
 class VCMInputProcessor : public erizo::RTPDataReceiver,
-                          public RtpData,
                           public VCMReceiveCallback {
     DECLARE_LOGGER();
 
@@ -62,35 +59,24 @@ public:
     // Implements the webrtc::VCMReceiveCallback interface.
     virtual int32_t FrameToRender(webrtc::I420VideoFrame&);
 
-    // Implements the webrtc::RtpData interfaces.
-    virtual int32_t OnReceivedPayloadData(
-        const uint8_t* payloadData,
-        const uint16_t payloadSize,
-        const WebRtcRTPHeader*);
-
-    virtual bool OnRecoveredPacket(const uint8_t* packet, int packet_length) { return false; }
-
     // Implements the erizo::RTPDataReceiver interface.
     virtual void receiveRtpData(char* rtpdata, int len, erizo::DataType type = erizo::VIDEO, uint32_t streamId = 0);
 
     bool init(woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<BufferManager>, boost::shared_ptr<InputFrameCallback>, boost::shared_ptr<TaskRunner>);
     void close();
 
-    bool setReceiveVideoCodec(const VideoCodec&);
     void bindAudioInputProcessor(boost::shared_ptr<ACMInputProcessor>);
     int channelId() { return index_;}
 
 private:
     int index_; //the index number of this publisher
     VideoCodingModule* vcm_;
+    boost::scoped_ptr<RemoteBitrateObserver> m_remoteBitrateObserver;
+    boost::scoped_ptr<RemoteBitrateEstimator> m_remoteBitrateEstimator;
+    boost::scoped_ptr<ViEReceiver> m_videoReceiver;
     boost::scoped_ptr<woogeen_base::WoogeenTransport<erizo::VIDEO>> m_videoTransport;
-    boost::scoped_ptr<ReceiveStatistics> m_receiveStatistics;
-    boost::scoped_ptr<RtpHeaderParser> rtp_header_parser_;
-    boost::scoped_ptr<RTPPayloadRegistry> rtp_payload_registry_;
-    boost::scoped_ptr<RtpReceiver> rtp_receiver_;
     boost::scoped_ptr<RtpRtcp> rtp_rtcp_;
     boost::scoped_ptr<AVSyncModule> avSync_;
-    boost::mutex m_rtpReceiverMutex;
 
     boost::shared_ptr<ACMInputProcessor> aip_;
     boost::shared_ptr<InputFrameCallback> frameReadyCB_;
@@ -98,6 +84,11 @@ private:
     boost::shared_ptr<TaskRunner> taskRunner_;
 
     boost::scoped_ptr<DebugRecorder> recorder_;
+};
+
+class DummyRemoteBitrateObserver : public RemoteBitrateObserver {
+public:
+    virtual void OnReceiveBitrateChanged(const std::vector<unsigned int>& ssrcs, unsigned int bitrate) {}
 };
 
 }
