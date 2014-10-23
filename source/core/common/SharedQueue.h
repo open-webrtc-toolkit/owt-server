@@ -32,7 +32,18 @@ public:
     ~SharedQueue();
 
     bool push(const T&);
+
+    // Pops object from queue.
+    // If pop operation is successful, object will be copied to element.
+    // Returns true if the pop operation is successful, false if the queue was empty
+    // or the queue is being deleted.
     bool pop(T&);
+
+    // blockingPop will wait until the queue is non-empty,
+    // or the queue is being deleted.
+    // If pop operation is successful, object will be copied to element.
+    // Returns true if the pop operation is successful, false if the queue is being deleted.
+    bool blockingPop(T&);
 
 private:
     std::queue<T> m_queue;
@@ -70,6 +81,19 @@ inline bool SharedQueue<T>::push(const T& element)
 
 template <typename T>
 inline bool SharedQueue<T>::pop(T& element)
+{
+    boost::unique_lock<boost::mutex> lock(m_mutex);
+
+    if (m_queue.empty() || m_ending)
+        return false;
+
+    element = m_queue.front();
+    m_queue.pop();
+    return true;
+}
+
+template <typename T>
+inline bool SharedQueue<T>::blockingPop(T& element)
 {
     boost::unique_lock<boost::mutex> lock(m_mutex);
 

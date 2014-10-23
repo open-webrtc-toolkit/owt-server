@@ -27,6 +27,7 @@
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/scoped_ptr.hpp>
 #include <boost/thread.hpp>
+#include <boost/thread/mutex.hpp>
 #include <logger.h>
 #include <MediaDefinitions.h>
 #include <WoogeenTransport.h>
@@ -94,11 +95,13 @@ private:
     int index_; //the index number of this publisher
     VideoCodingModule* vcm_;
     boost::scoped_ptr<woogeen_base::WoogeenTransport<erizo::VIDEO>> m_videoTransport;
+    boost::scoped_ptr<ReceiveStatistics> m_receiveStatistics;
     boost::scoped_ptr<RtpHeaderParser> rtp_header_parser_;
     boost::scoped_ptr<RTPPayloadRegistry> rtp_payload_registry_;
     boost::scoped_ptr<RtpReceiver> rtp_receiver_;
     boost::scoped_ptr<RtpRtcp> rtp_rtcp_;
     boost::scoped_ptr<AVSyncModule> avSync_;
+    boost::mutex m_rtpReceiverMutex;
 
     boost::shared_ptr<ACMInputProcessor> aip_;
     boost::shared_ptr<InputFrameCallback> frameReadyCB_;

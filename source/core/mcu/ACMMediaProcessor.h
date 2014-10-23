@@ -28,11 +28,13 @@
 #include "webrtc/system_wrappers/interface/trace.h"
 #include "webrtc/modules/utility/interface/file_recorder.h"
 
+#include <atomic>
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
-#include <boost/thread.hpp>
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
+#include <boost/thread.hpp>
+#include <boost/thread/mutex.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 
 
@@ -131,6 +133,7 @@ private:
     scoped_ptr<RTPPayloadRegistry> rtp_payload_registry_;
     scoped_ptr<ReceiveStatistics> rtp_receive_statistics_;
     scoped_ptr<RtpReceiver> rtp_receiver_;
+    boost::mutex m_rtpReceiverMutex;
     scoped_ptr<RtpRtcp> _rtpRtcpModule;
     scoped_ptr<AudioCodingModule> audio_coding_;
     bool _externalTransport;
@@ -275,6 +278,7 @@ private:
 	boost::scoped_ptr<boost::thread> audioMixingThread_;
     boost::asio::io_service io_service_;
     boost::scoped_ptr<boost::asio::deadline_timer> timer_;
+    std::atomic<bool> m_isStopping;
 
     FileRecorder* _outputFileRecorderPtr;
     bool _outputFileRecording;
