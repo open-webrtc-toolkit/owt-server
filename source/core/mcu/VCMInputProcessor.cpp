@@ -23,6 +23,7 @@
 #include "ACMMediaProcessor.h"
 #include "AVSyncModule.h"
 #include "AVSyncTaskRunner.h"
+#include <rtputils.h>
 
 using namespace webrtc;
 using namespace erizo;
@@ -39,12 +40,9 @@ VCMInputProcessor::VCMInputProcessor(int index)
 
 VCMInputProcessor::~VCMInputProcessor()
 {
+    m_videoReceiver->StopReceive();
     recorder_->Stop();
     Trace::ReturnTrace();
-
-    boost::unique_lock<boost::mutex> lock(m_rtpReceiverMutex);
-    rtp_receiver_.reset();
-    lock.unlock();
 
     if (taskRunner_) {
         taskRunner_->unregisterModule(avSync_.get());
@@ -70,47 +68,49 @@ bool VCMInputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* trans
     if (vcm_) {
         vcm_->InitializeReceiver();
         vcm_->RegisterReceiveCallback(this);
-        taskRunner_->registerModule(vcm_);
     } else
         return false;
 
-    rtp_header_parser_.reset(RtpHeaderParser::Create());
-    rtp_payload_registry_.reset(new RTPPayloadRegistry(index_, RTPPayloadStrategy::CreateStrategy(false)));
-    rtp_receiver_.reset(RtpReceiver::CreateVideoReceiver(index_, Clock::GetRealTimeClock(), this, NULL,
-                                rtp_payload_registry_.get()));
-
+    m_remoteBitrateObserver.reset(new DummyRemoteBitrateObserver());
+    m_remoteBitrateEstimator.reset(RemoteBitrateEstimatorFactory().Create(m_remoteBitrateObserver.get(), Clock::GetRealTimeClock(), kMimdControl, 0));
+    m_videoReceiver.reset(new ViEReceiver(index_, vcm_, m_remoteBitrateEstimator.get(), nullptr));
     m_videoTransport.reset(transport);
-    m_receiveStatistics.reset(ReceiveStatistics::Create(Clock::GetRealTimeClock()));
 
     RtpRtcp::Configuration configuration;
     configuration.id = 002;
     configuration.audio = false;  // Video.
     configuration.outgoing_transport = transport;	// for sending RTCP feedback to the publisher
-    configuration.receive_statistics = m_receiveStatistics.get();
+    configuration.remote_bitrate_estimator = m_remoteBitrateEstimator.get();
+    configuration.receive_statistics = m_videoReceiver->GetReceiveStatistics();
     rtp_rtcp_.reset(RtpRtcp::CreateRtpRtcp(configuration));
     rtp_rtcp_->SetRTCPStatus(webrtc::kRtcpCompound);
     rtp_rtcp_->SetKeyFrameRequestMethod(kKeyFrameReqPliRtcp);
-    taskRunner_->registerModule(rtp_rtcp_.get());
 
-    //register codec
+    m_videoReceiver->SetRtpRtcpModule(rtp_rtcp_.get());
+
+    // Register codec.
     VideoCodec video_codec;
     if (VideoCodingModule::Codec(webrtc::kVideoCodecVP8, &video_codec) != VCM_OK) {
       return false;
     }
 
-    setReceiveVideoCodec(video_codec);
-
     if (video_codec.codecType != kVideoCodecRED &&
         video_codec.codecType != kVideoCodecULPFEC) {
       // Register codec type with VCM, but do not register RED or ULPFEC.
       if (vcm_->RegisterReceiveCodec(&video_codec, 1, true) != VCM_OK) {
-        return true;
+        return false;
       }
     }
+
+    m_videoReceiver->SetReceiveCodec(video_codec);
 
     avSync_.reset(new AVSyncModule(vcm_, index_));
     recorder_.reset(new DebugRecorder());
     recorder_->Start("/home/qzhang8/webrtc/webrtc.frame.i420");
+
+    taskRunner_->registerModule(vcm_);
+    taskRunner_->registerModule(rtp_rtcp_.get());
+    m_videoReceiver->StartReceive();
     return true;
 }
 
@@ -121,7 +121,7 @@ void VCMInputProcessor::bindAudioInputProcessor(boost::shared_ptr<ACMInputProces
 {
     aip_ = aip;
     if (avSync_) {
-        avSync_->ConfigureSync(aip_, rtp_rtcp_.get(), rtp_receiver_.get());
+        avSync_->ConfigureSync(aip_, rtp_rtcp_.get(), m_videoReceiver->GetRtpReceiver());
         taskRunner_->registerModule(avSync_.get());
     }
 }
@@ -133,63 +133,23 @@ int32_t VCMInputProcessor::FrameToRender(I420VideoFrame& videoFrame)
     return 0;
 }
 
-int32_t VCMInputProcessor::OnReceivedPayloadData(
-    const uint8_t* payloadData,
-    const uint16_t payloadSize,
-    const WebRtcRTPHeader* rtpHeader)
-{
-    vcm_->IncomingPacket(payloadData, payloadSize, *rtpHeader);
-    int32_t ret = vcm_->Decode(0);
-    ELOG_DEBUG("OnReceivedPayloadData index= %d, decode result = %d",  index_, ret);
-
-    return 0;
-}
-
-bool VCMInputProcessor::setReceiveVideoCodec(const VideoCodec& video_codec)
-{
-    int8_t old_pltype = -1;
-    if (rtp_payload_registry_->ReceivePayloadType(video_codec.plName,
-        kVideoPayloadTypeFrequency,
-        0,
-        video_codec.maxBitrate,
-        &old_pltype) != -1) {
-        rtp_payload_registry_->DeRegisterReceivePayload(old_pltype);
-    }
-
-    return rtp_receiver_->RegisterReceivePayload(video_codec.plName,
-        video_codec.plType,
-        kVideoPayloadTypeFrequency,
-        0,
-        video_codec.maxBitrate) == 0;
-}
-
-
 void VCMInputProcessor::receiveRtpData(char* rtp_packet, int rtp_packet_length, erizo::DataType type , uint32_t streamId)
 {
     assert(type == erizo::VIDEO);
 
-    webrtc::RTPHeader header;
-    if (!rtp_header_parser_->Parse(reinterpret_cast<uint8_t*>(rtp_packet), rtp_packet_length, &header)) {
-        ELOG_DEBUG("Incoming packet: Invalid RTP header");
+    RTCPHeader* chead = reinterpret_cast<RTCPHeader*>(rtp_packet);
+    uint8_t packetType = chead->getPacketType();
+    assert(packetType != RTCP_Receiver_PT && packetType != RTCP_PS_Feedback_PT && packetType != RTCP_RTP_Feedback_PT);
+    if (packetType == RTCP_Sender_PT) { // Sender Report
+        m_videoReceiver->ReceivedRTCPPacket(rtp_packet, rtp_packet_length);
         return;
     }
-    int payload_length = rtp_packet_length - header.headerLength;
-    header.payload_type_frequency = kVideoPayloadTypeFrequency;
-    bool in_order = true; /*IsPacketInOrder(header)*/;
-    rtp_payload_registry_->SetIncomingPayloadType(header);
-    PayloadUnion payload_specific;
-    if (!rtp_payload_registry_->GetPayloadSpecifics(header.payloadType, &payload_specific)) {
-       return;
-    }
-    boost::unique_lock<boost::mutex> lock(m_rtpReceiverMutex);
-    if (rtp_receiver_) {
-        rtp_receiver_->IncomingRtpPacket(header, reinterpret_cast<uint8_t*>(rtp_packet + header.headerLength) , payload_length,
-            payload_specific, in_order);
-    }
 
-    bool isRetransmitted = false; // IsPacketRetransmitted(header, in_order);
-    if (m_receiveStatistics)
-        m_receiveStatistics->IncomingPacket(header, rtp_packet_length, isRetransmitted);
+    PacketTime current;
+    if (m_videoReceiver->ReceivedRTPPacket(rtp_packet, rtp_packet_length, current) != -1) {
+        int32_t ret = vcm_->Decode(0);
+        ELOG_DEBUG("receivedRtpData index= %d, decode result = %d",  index_, ret);
+    }
 }
 
 }

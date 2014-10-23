@@ -24,7 +24,12 @@ set(WEBRTC_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/../../../third_party/webrtc")
 
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}" "${LIB_DIRS}../include/" "${UV_DIRS}/include/" "${WEBRTC_DIRS}/src")
 
-file(GLOB_RECURSE MCU_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/*.h" "${CMAKE_CURRENT_SOURCE_DIR}/*.c" "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp" "${WEBRTC_DIRS}/src/webrtc/video_engine/stream_synchronization.cc")
+file(GLOB_RECURSE MCU_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/*.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/*.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"
+    "${WEBRTC_DIRS}/src/webrtc/video_engine/stream_synchronization.cc"
+    "${WEBRTC_DIRS}/src/webrtc/video_engine/vie_receiver.cc")
 
 add_library(mcu SHARED ${MCU_SOURCES})
 
