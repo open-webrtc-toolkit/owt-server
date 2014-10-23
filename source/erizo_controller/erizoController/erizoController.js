@@ -28,7 +28,7 @@ if (config.erizoController.turnServer !== undefined) {
 GLOBAL.config.erizoController.warning_n_rooms = (GLOBAL.config.erizoController.warning_n_rooms !== undefined ? GLOBAL.config.erizoController.warning_n_rooms : 15);
 GLOBAL.config.erizoController.limit_n_rooms = (GLOBAL.config.erizoController.limit_n_rooms !== undefined ? GLOBAL.config.erizoController.limit_n_rooms : 20);
 GLOBAL.config.erizoController.interval_time_keepAlive = GLOBAL.config.erizoController.interval_time_keepAlive || 1000;
-GLOBAL.config.erizoController.sendStats = GLOBAL.config.erizoController.sendStats || false;
+GLOBAL.config.erizoController.report.session_events = GLOBAL.config.erizoController.report.session_events || false;
 GLOBAL.config.erizoController.recording_path = GLOBAL.config.erizoController.recording_path || undefined;
 GLOBAL.config.erizoController.roles = GLOBAL.config.erizoController.roles || {'presenter':{'publish': true, 'subscribe':true, 'record':true}, 'viewer':{'subscribe':true}, 'viewerWithData':{'subscribe':true, 'publish':{'audio':false,'video':false,'screen':false,'data':true}}};
 
@@ -82,7 +82,7 @@ for (var prop in opt.options) {
 
 // Load submodules with updated config
 var logger = require('./../common/logger').logger;
-var rpc = require('./../common/rpc');
+var amqper = require('./../common/amqper');
 var controller = require('./roomController');
 
 // Logger
@@ -233,7 +233,7 @@ var addToCloudHandler = function (callback) {
             port: GLOBAL.config.erizoController.port,
             ssl: GLOBAL.config.erizoController.ssl
         };
-        rpc.callRpc('nuve', 'addNewErizoController', controller, {callback: function (msg) {
+        amqper.callRpc('nuve', 'addNewErizoController', controller, {callback: function (msg) {
 
             if (msg === 'timeout') {
                 log.info('CloudHandler does not respond');
@@ -282,22 +282,22 @@ var addToCloudHandler = function (callback) {
 
             var intervarId = setInterval(function () {
 
-                rpc.callRpc('nuve', 'keepAlive', myId, {callback: function (result) {
+                amqper.callRpc('nuve', 'keepAlive', myId, {callback: function (result) {
                     if (result === 'whoareyou') {
 
                         // TODO: It should try to register again in Cloud Handler. But taking into account current rooms, users, ...
                         log.info('I don`t exist in cloudHandler. I`m going to be killed');
                         clearInterval(intervarId);
-                        rpc.callRpc('nuve', 'killMe', publicIP, {callback: function () {}});
+                        amqper.callRpc('nuve', 'killMe', publicIP, {callback: function () {}});
                     }
                 }});
 
             }, INTERVAL_TIME_KEEPALIVE);
 
-            rpc.callRpc('nuve', 'getKey', myId, {
+            amqper.callRpc('nuve', 'getKey', myId, {
                 callback: function (key) {
                     if (key === 'error' || key === 'timeout') {
-                        rpc.callRpc('nuve', 'killMe', publicIP, {callback: function () {}});
+                        amqper.callRpc('nuve', 'killMe', publicIP, {callback: function () {}});
                         log.info('Failed to join nuve network.');
                         return process.exit();
                     }
@@ -344,7 +344,7 @@ var updateMyState = function () {
     myState = newState;
 
     info = {id: myId, state: myState};
-    rpc.callRpc('nuve', 'setInfo', info, {callback: function () {}});
+    amqper.callRpc('nuve', 'setInfo', info, {callback: function () {}});
 };
 
 function safeCall () {
@@ -460,7 +460,7 @@ var listen = function () {
 
             if (checkSignature(token)) {
 
-                rpc.callRpc('nuve', 'deleteToken', token.tokenId, {callback: function (resp) {
+                amqper.callRpc('nuve', 'deleteToken', token.tokenId, {callback: function (resp) {
                     if (resp === 'error') {
                         log.info('Token does not exist');
                         safeCall(callback, 'error', 'Token does not exist');
@@ -495,9 +495,9 @@ var listen = function () {
 
                             log.debug('OK, Valid token');
 
-                            if (!tokenDB.p2p && GLOBAL.config.erizoController.sendStats) {
+                            if (!tokenDB.p2p && GLOBAL.config.erizoController.report.session_events) {
                                 var timeStamp = new Date();
-                                rpc.callRpc('stats_handler', 'event', [{room: tokenDB.room, user: socket.id, type: 'connection', timestamp:timeStamp.getTime()}]);
+                                amqper.broadcast('event', {room: tokenDB.room, user: socket.id, type: 'user_connection', timestamp:timeStamp.getTime()});
                             }
 
                             // Add client socket to room socket list and start to receive room events
@@ -526,7 +526,7 @@ var listen = function () {
 
                         if (rooms[tokenDB.room] === undefined) {
                             if (myState === 0) {
-                                return rpc.callRpc('nuve', 'reschedule', tokenDB.room, {callback: function () {
+                                return amqper.callRpc('nuve', 'reschedule', tokenDB.room, {callback: function () {
                                     var errMsg = 'Erizo: out of capacity';
                                     log.warn(errMsg);
                                     safeCall(callback, 'error', errMsg);
@@ -544,7 +544,7 @@ var listen = function () {
                                     room.p2p = true;
                                     on_ok();
                                 } else {
-                                    rpc.callRpc('nuve', 'getRoomConfig', room.id, {callback: function (resp) {
+                                    amqper.callRpc('nuve', 'getRoomConfig', room.id, {callback: function (resp) {
                                         if (resp === 'error') {
                                             log.error('Room does not exist');
                                             delete rooms[roomID];
@@ -561,7 +561,7 @@ var listen = function () {
                                                 delete rooms[roomID];
                                                 return on_error();
                                             }
-                                            rpc.callRpc('nuve', 'allocErizoAgent', room.id, {callback: function (erizoAgent) {
+                                            amqper.callRpc('nuve', 'allocErizoAgent', room.id, {callback: function (erizoAgent) {
                                                 if (erizoAgent === 'error') {
                                                     log.error('Alloc ErizoAgent error.');
                                                     delete rooms[roomID];
@@ -572,7 +572,7 @@ var listen = function () {
                                                     on_error();
                                                 } else {
                                                     room.agent = erizoAgent.id;
-                                                    room.controller = controller.RoomController({rpc: rpc, agent_id: erizoAgent.id, id: room.id});
+                                                    room.controller = controller.RoomController({amqper: amqper, agent_id: erizoAgent.id, id: room.id});
                                                     room.controller.addEventListener(function(type, event) {
                                                         // TODO Send message to room? Handle ErizoJS disconnection.
                                                         if (type === 'unpublish') {
@@ -850,9 +850,9 @@ var listen = function () {
                     }
                 }
 
-                if (GLOBAL.config.erizoController.sendStats) {
+                if (GLOBAL.config.erizoController.report.session_events) {
                     var timeStamp = new Date();
-                    rpc.callRpc('stats_handler', 'event', [{room: socket.room.id, user: socket.id, type: 'publish', stream: id, timestamp: timeStamp.getTime()}]);
+                    amqper.broadcast('event', [{room: socket.room.id, user: socket.id, type: 'publish', stream: id, timestamp: timeStamp.getTime()}]);
                 }
 
                 socket.room.controller.addPublisher(id, mixer, unmix, function (signMess) {
@@ -897,9 +897,9 @@ var listen = function () {
                         }
                     }
 
-                    if (GLOBAL.config.erizoController.sendStats) {
+                    if (GLOBAL.config.erizoController.report.session_events) {
                         var timeStamp = new Date();
-                        rpc.callRpc('stats_handler', 'event', [{room: socket.room.id, user: socket.id, type: 'publish', stream: id, timestamp: timeStamp.getTime()}]);
+                        amqper.callRpc('stats_handler', 'event', [{room: socket.room.id, user: socket.id, type: 'publish', stream: id, timestamp: timeStamp.getTime()}]);
                     }
 
                     socket.room.controller.addPublisher(id, sdp, mixer, unmix, function (answer) {
@@ -975,9 +975,9 @@ var listen = function () {
                     });
 
                 } else {
-                    if (GLOBAL.config.erizoController.sendStats) {
+                    if (GLOBAL.config.erizoController.report.session_events) {
                         var timeStamp = new Date();
-                        rpc.callRpc('stats_handler', 'event', [{room: socket.room.id, user: socket.id, type: 'subscribe', stream: options.streamId, timestamp: timeStamp.getTime()}]);
+                        amqper.broadcast('event', {room: socket.room.id, user: socket.id, type: 'subscribe', stream: options.streamId, timestamp: timeStamp.getTime()});
                     }
                     if (typeof options.video === 'object' && options.video !== null) {
                         if (!stream.hasResolution(options.video.resolution)) {
@@ -1218,9 +1218,9 @@ var listen = function () {
             socket.state = 'sleeping';
             if (!socket.room.p2p) {
                 socket.room.controller.removePublisher(streamId);
-                if (GLOBAL.config.erizoController.sendStats) {
+                if (GLOBAL.config.erizoController.report.session_events) {
                     var timeStamp = new Date();
-                    rpc.callRpc('stats_handler', 'event', [{room: socket.room.id, user: socket.id, type: 'unpublish', stream: streamId, timestamp: timeStamp.getTime()}]);
+                    amqper.broadcast('event', {room: socket.room.id, user: socket.id, type: 'unpublish', stream: streamId, timestamp: timeStamp.getTime()});
                 }
             }
 
@@ -1245,9 +1245,9 @@ var listen = function () {
             if (socket.room.streams[to].hasAudio() || socket.room.streams[to].hasVideo()) {
                 if (!socket.room.p2p) {
                     socket.room.controller.removeSubscriber(socket.id, to);
-                    if (GLOBAL.config.erizoController.sendStats) {
+                    if (GLOBAL.config.erizoController.report.session_events) {
                         var timeStamp = new Date();
-                        rpc.callRpc('stats_handler', 'event', [{room: socket.room.id, user: socket.id, type: 'unsubscribe', stream: to, timestamp:timeStamp.getTime()}]);
+                        amqper.broadcast('event', {room: socket.room.id, user: socket.id, type: 'unsubscribe', stream: to, timestamp:timeStamp.getTime()});
                     }
                 }
             }
@@ -1288,8 +1288,8 @@ var listen = function () {
                         id = socket.streams[i];
                         if (!socket.room.p2p) {
                             socket.room.controller.removePublisher(id);
-                            if (GLOBAL.config.erizoController.sendStats) {
-                                rpc.callRpc('stats_handler', 'event', [{room: socket.room.id, user: socket.id, type: 'unpublish', stream: id, timestamp: (new Date()).getTime()}]);
+                            if (GLOBAL.config.erizoController.report.session_events) {
+                                amqper.broadcast('event', {room: socket.room.id, user: socket.id, type: 'unpublish', stream: id, timestamp: (new Date()).getTime()});
                             }
                         }
 
@@ -1300,8 +1300,8 @@ var listen = function () {
                 }
             }
 
-            if (socket.room !== undefined && !socket.room.p2p && GLOBAL.config.erizoController.sendStats) {
-                rpc.callRpc('stats_handler', 'event', [{room: socket.room.id, user: socket.id, type: 'disconnection', timestamp: (new Date()).getTime()}]);
+            if (socket.room !== undefined && !socket.room.p2p && GLOBAL.config.erizoController.report.session_events) {
+                amqper.broadcast('event', {room: socket.room.id, user: socket.id, type: 'user_disconnection', timestamp: (new Date()).getTime()});
             }
 
             if (socket.room !== undefined && socket.room.sockets.length === 0) {
@@ -1325,7 +1325,7 @@ var listen = function () {
                     socket.room.mixer = undefined;
                 }
                 if (socket.room.agent !== undefined) {
-                    rpc.callRpc('nuve', 'freeErizoAgent', socket.room.agent);
+                    amqper.callRpc('nuve', 'freeErizoAgent', socket.room.agent);
                 }
                 delete rooms[socket.room.id];
                 updateMyState();
@@ -1400,7 +1400,7 @@ exports.deleteRoom = function (roomId, callback) {
     }
 
     if (room.agent !== undefined) {
-        rpc.callRpc('nuve', 'freeErizoAgent', room.agent);
+        amqper.callRpc('nuve', 'freeErizoAgent', room.agent);
     }
     delete rooms[roomId];
     updateMyState();
@@ -1446,12 +1446,12 @@ exports.handleEventReport = function (event, room, spec) {
     } else if (WARNING_N_ROOMS >= LIMIT_N_ROOMS) {
         log.info('Invalid config: warning_n_rooms >= limit_n_rooms');
     } else {
-        rpc.connect(function () {
+        amqper.connect(function () {
             try {
-                rpc.setPublicRPC(rpcPublic);
+                amqper.setPublicRPC(rpcPublic);
                 addToCloudHandler(function () {
                     var rpcID = 'erizoController_' + myId;
-                    rpc.bind(rpcID, listen);
+                    amqper.bind(rpcID, listen);
                     controller.myId = 'erizoController_' + myId;
                 });
             } catch (error) {

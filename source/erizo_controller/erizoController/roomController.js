@@ -18,7 +18,7 @@ exports.RoomController = function (spec) {
         // {id: ExternalOutput}
         externalOutputs = {};
 
-    var rpc = spec.rpc;
+    var amqper = spec.amqper;
     var agentId = spec.agent_id;
     var roomId = spec.id;
 
@@ -30,7 +30,7 @@ exports.RoomController = function (spec) {
         return function(ok) {
             if (ok !== true) {
                 dispatchEvent("unpublish", publisher_id);
-                rpc.callRpc("ErizoAgent_" + agentId, "deleteErizoJS", [erizo_id], {callback: function(){
+                amqper.callRpc("ErizoAgent_" + agentId, "deleteErizoJS", [erizo_id], {callback: function(){
                     delete erizos[publisher_id];
                 }});
             }
@@ -40,7 +40,7 @@ exports.RoomController = function (spec) {
     var sendKeepAlive = function() {
         for (var publisher_id in erizos) {
             var erizo_id = erizos[publisher_id];
-            rpc.callRpc(getErizoQueue(publisher_id), "keepAlive", [], {callback: callbackFor(erizo_id, publisher_id)});
+            amqper.callRpc(getErizoQueue(publisher_id), "keepAlive", [], {callback: callbackFor(erizo_id, publisher_id)});
         }
     };
 
@@ -58,11 +58,11 @@ exports.RoomController = function (spec) {
             callback();
             return;
         }
-        rpc.callRpc("ErizoAgent_" + agentId, "createErizoJS", [publisher_id], {callback: function(erizo_id) {
+        amqper.callRpc("ErizoAgent_" + agentId, "createErizoJS", [publisher_id], {callback: function(erizo_id) {
             log.debug("Answer", erizo_id);
             erizos[publisher_id] = erizo_id;
             callback();
-            rpc.callRpc('ErizoJS_'+erizo_id, 'setControllerId', [exports.myId, roomId], {});
+            amqper.callRpc('ErizoJS_'+erizo_id, 'setControllerId', [exports.myId, roomId], {});
         }});
     };
 
@@ -98,7 +98,7 @@ exports.RoomController = function (spec) {
             log.info("Erizo created");
             // then we call its initMixer method.
             var args = [id, GLOBAL.config.erizoController.outOfProcessMixer, roomConfig];
-            rpc.callRpc(getErizoQueue(id), "initMixer", args, {callback: callback});
+            amqper.callRpc(getErizoQueue(id), "initMixer", args, {callback: callback});
 
             // Track publisher locally
             publishers[id] = id;
@@ -121,7 +121,7 @@ exports.RoomController = function (spec) {
                 // then we call its addExternalInput method.
                 var mixer = {id: mixer_id, oop: GLOBAL.config.erizoController.outOfProcessMixer};
                 var args = [publisher_id, options, mixer];
-                rpc.callRpc(getErizoQueue(publisher_id), "addExternalInput", args, {callback: callback, onReady: onReady});
+                amqper.callRpc(getErizoQueue(publisher_id), "addExternalInput", args, {callback: callback, onReady: onReady});
 
                 // Track publisher locally
                 publishers[publisher_id] = publisher_id;
@@ -157,7 +157,7 @@ exports.RoomController = function (spec) {
 
                 var args = [video_publisher_id, audio_publisher_id, output_id, url, interval];
 
-                rpc.callRpc(getErizoQueue(output_id), "addExternalOutput", args, {callback: function (result) {
+                amqper.callRpc(getErizoQueue(output_id), "addExternalOutput", args, {callback: function (result) {
                     if (result === 'success') {
                         // Track external outputs
                         externalOutputs[output_id] = {video: video_publisher_id, audio: audio_publisher_id};
@@ -225,7 +225,7 @@ exports.RoomController = function (spec) {
 
             var args = [output_id, close];
 
-            rpc.callRpc(getErizoQueue(output_id), "removeExternalOutput", args, {callback: function (result) {
+            amqper.callRpc(getErizoQueue(output_id), "removeExternalOutput", args, {callback: function (result) {
                 if (result === 'success') {
                     // Remove the track
                     delete externalOutputs[output_id];
@@ -256,7 +256,7 @@ exports.RoomController = function (spec) {
 
             var args = [streamId, peerId, msg];
 
-            rpc.callRpc("ErizoJS_" + streamId, "processSignaling", args, {});
+            amqper.callRpc("ErizoJS_" + streamId, "processSignaling", args, {});
 
         }
     };
@@ -278,14 +278,14 @@ exports.RoomController = function (spec) {
                 // then we call its addPublisher method.
                 var mixer = {id: mixer_id, oop: GLOBAL.config.erizoController.outOfProcessMixer};
                 var args = [publisher_id, mixer, unmix];
-	            rpc.callRpc("ErizoJS_" + publisher_id, "addPublisher", args, {callback: function(msg) {
+	            amqper.callRpc("ErizoJS_" + publisher_id, "addPublisher", args, {callback: function(msg) {
                     console.log("Erizo started");
                     callback(msg);
                 }});
                 /*
                 var mixer = {id: mixer_id, oop: GLOBAL.config.erizoController.outOfProcessMixer};
                 var args = [publisher_id, sdp, mixer, unmix];
-                rpc.callRpc(getErizoQueue(publisher_id), 'addPublisher', args, {callback: callback, onReady: onReady});
+                amqper.callRpc(getErizoQueue(publisher_id), 'addPublisher', args, {callback: callback, onReady: onReady});
 */
                 // Track publisher locally
                 publishers[publisher_id] = publisher_id;
@@ -320,8 +320,8 @@ exports.RoomController = function (spec) {
 
             var args = [subscriber_id, publisher_id, audio, video];
 
-            // rpc.callRpc(getErizoQueue(publisher_id), "addSubscriber", args, {callback: callback, onReady: onReady});
-            rpc.callRpc(getErizoQueue(publisher_id), "addSubscriber", args, {callback: function (msg) {
+            // amqper.callRpc(getErizoQueue(publisher_id), "addSubscriber", args, {callback: callback, onReady: onReady});
+            amqper.callRpc(getErizoQueue(publisher_id), "addSubscriber", args, {callback: function (msg) {
                 callback(msg);
             }});
 
@@ -358,7 +358,7 @@ exports.RoomController = function (spec) {
             if (video_output_id !== -1) {
                 log.info('Removing external output', video_output_id);
                 var args = [video_output_id, false];
-                rpc.callRpc(getErizoQueue(video_output_id), "removeExternalOutput", args, {callback: function (result) {}});
+                amqper.callRpc(getErizoQueue(video_output_id), "removeExternalOutput", args, {callback: function (result) {}});
 
                 // Remove the external output track anyway
                 delete externalOutputs[video_output_id];
@@ -368,14 +368,14 @@ exports.RoomController = function (spec) {
             if (audio_output_id !== -1 && audio_output_id !== video_output_id) {
                 log.info('Removing external output', audio_output_id);
                 var args = [audio_output_id, false];
-                rpc.callRpc(getErizoQueue(audio_output_id), "removeExternalOutput", args, {callback: function (result) {}});
+                amqper.callRpc(getErizoQueue(audio_output_id), "removeExternalOutput", args, {callback: function (result) {}});
 
                 // Remove the external output track anyway
                 delete externalOutputs[audio_output_id];
             }
 
             var args = [publisher_id];
-            rpc.callRpc(getErizoQueue(publisher_id), "removePublisher", args, undefined);
+            amqper.callRpc(getErizoQueue(publisher_id), "removePublisher", args, undefined);
 
             // Remove tracks
             log.info('Removing subscribers', publisher_id);
@@ -398,7 +398,7 @@ exports.RoomController = function (spec) {
             log.info('Removing subscriber ', subscriber_id, 'to muxer ', publisher_id);
 
             var args = [subscriber_id, publisher_id];
-            rpc.callRpc(getErizoQueue(publisher_id), "removeSubscriber", args, undefined);
+            amqper.callRpc(getErizoQueue(publisher_id), "removeSubscriber", args, undefined);
 
             // Remove track
             subscribers[publisher_id].splice(index, 1);
@@ -422,7 +422,7 @@ exports.RoomController = function (spec) {
                     log.info('Removing subscriber ', subscriber_id, 'to muxer ', publisher_id);
 
                     var args = [subscriber_id, publisher_id];
-                    rpc.callRpc(getErizoQueue(publisher_id), "removeSubscriber", args, undefined);
+                    amqper.callRpc(getErizoQueue(publisher_id), "removeSubscriber", args, undefined);
 
                     // Remove tracks
                     subscribers[publisher_id].splice(index, 1);
@@ -435,7 +435,7 @@ exports.RoomController = function (spec) {
         if (publishers[publisher_id] === undefined) {
             return callback('error', 'stream not published');
         }
-        rpc.callRpc(getErizoQueue(publisher_id), 'addToMixer', [publisher_id, mixer_id], {callback: callback});
+        amqper.callRpc(getErizoQueue(publisher_id), 'addToMixer', [publisher_id, mixer_id], {callback: callback});
 
     };
 
@@ -443,7 +443,7 @@ exports.RoomController = function (spec) {
         if (publishers[publisher_id] === undefined) {
             return callback('error', 'stream not published');
         }
-        rpc.callRpc(getErizoQueue(publisher_id), 'removeFromMixer', [publisher_id, mixer_id], {callback: callback});
+        amqper.callRpc(getErizoQueue(publisher_id), 'removeFromMixer', [publisher_id, mixer_id], {callback: callback});
     };
 
     that.publisherNum = function () {
@@ -464,7 +464,7 @@ exports.RoomController = function (spec) {
             });
         }
         var args = [mixer_id, publisher_id];
-        rpc.callRpc(getErizoQueue(mixer_id), "getRegion", args, {callback: function (result) {
+        amqper.callRpc(getErizoQueue(mixer_id), "getRegion", args, {callback: function (result) {
             if (result) {
                 return callback({
                     success: true,
@@ -487,7 +487,7 @@ exports.RoomController = function (spec) {
             return callback('mixer is not available');
         }
         var args = [mixer_id, publisher_id, region_id];
-        rpc.callRpc(getErizoQueue(mixer_id), "setRegion", args, {callback: callback});
+        amqper.callRpc(getErizoQueue(mixer_id), "setRegion", args, {callback: callback});
     };
 
     that.setVideoBitrate = function (mixer_id, publisher_id, bitrate, callback) {
@@ -498,13 +498,13 @@ exports.RoomController = function (spec) {
             return callback('mixer is not available');
         }
         var args = [mixer_id, publisher_id, bitrate];
-        rpc.callRpc(getErizoQueue(mixer_id), "setVideoBitrate", args, {callback: callback});
+        amqper.callRpc(getErizoQueue(mixer_id), "setVideoBitrate", args, {callback: callback});
     };
 
     that.addRTSPOut = function (mixer_id, callback) {
         if (publishers[mixer_id] !== undefined) {
             var args = [mixer_id, mixer_id, '', '', 0];
-            rpc.callRpc(getErizoQueue(mixer_id), 'addExternalOutput', args, {callback: function (result) {
+            amqper.callRpc(getErizoQueue(mixer_id), 'addExternalOutput', args, {callback: function (result) {
                 callback(result);
             }});
         } else {
@@ -516,7 +516,7 @@ exports.RoomController = function (spec) {
         var index = subscribers[publisher_id].indexOf(subscriber_id);
         if (index !== -1) {
             log.info('Enabling [audio] subscriber', subscriber_id, 'in', publisher_id);
-            rpc.callRpc(getErizoQueue(publisher_id), 'subscribeStream', [publisher_id, subscriber_id, true], {callback: callback});
+            amqper.callRpc(getErizoQueue(publisher_id), 'subscribeStream', [publisher_id, subscriber_id, true], {callback: callback});
         } else {
             callback('error');
         }
@@ -526,7 +526,7 @@ exports.RoomController = function (spec) {
         var index = subscribers[publisher_id].indexOf(subscriber_id);
         if (index !== -1) {
             log.info('Disabling [audio] subscriber', subscriber_id, 'in', publisher_id);
-            rpc.callRpc(getErizoQueue(publisher_id), 'unsubscribeStream', [publisher_id, subscriber_id, true], {callback: callback});
+            amqper.callRpc(getErizoQueue(publisher_id), 'unsubscribeStream', [publisher_id, subscriber_id, true], {callback: callback});
         } else {
             callback('error');
         }
@@ -536,7 +536,7 @@ exports.RoomController = function (spec) {
         var index = subscribers[publisher_id].indexOf(subscriber_id);
         if (index !== -1) {
             log.info('Enabling [video] subscriber', subscriber_id, 'in', publisher_id);
-            rpc.callRpc(getErizoQueue(publisher_id), 'subscribeStream', [publisher_id, subscriber_id, false], {callback: callback});
+            amqper.callRpc(getErizoQueue(publisher_id), 'subscribeStream', [publisher_id, subscriber_id, false], {callback: callback});
         } else {
             callback('error');
         }
@@ -546,7 +546,7 @@ exports.RoomController = function (spec) {
         var index = subscribers[publisher_id].indexOf(subscriber_id);
         if (index !== -1) {
             log.info('Disabling [video] subscriber', subscriber_id, 'in', publisher_id);
-            rpc.callRpc(getErizoQueue(publisher_id), 'unsubscribeStream', [publisher_id, subscriber_id, false], {callback: callback});
+            amqper.callRpc(getErizoQueue(publisher_id), 'unsubscribeStream', [publisher_id, subscriber_id, false], {callback: callback});
         } else {
             callback('error');
         }
@@ -555,7 +555,7 @@ exports.RoomController = function (spec) {
     that['audio-out-on'] = function (publisher_id, unused, callback) {
         if (publishers[publisher_id] !== undefined) {
             log.info('Enabling [audio] publisher', publisher_id);
-            rpc.callRpc(getErizoQueue(publisher_id), 'publishStream', [publisher_id, true], {callback: function (err) {
+            amqper.callRpc(getErizoQueue(publisher_id), 'publishStream', [publisher_id, true], {callback: function (err) {
                 if (!err) {
                     erizoController.handleEventReport('updateStream', roomId, {event: 'AudioEnabled', id: publisher_id, data: null});
                 }
@@ -569,7 +569,7 @@ exports.RoomController = function (spec) {
     that['audio-out-off'] = function (publisher_id, unused, callback) {
         if (publishers[publisher_id] !== undefined) {
             log.info('Disabling [audio] publisher', publisher_id);
-            rpc.callRpc(getErizoQueue(publisher_id), 'unpublishStream', [publisher_id, true], {callback: function (err) {
+            amqper.callRpc(getErizoQueue(publisher_id), 'unpublishStream', [publisher_id, true], {callback: function (err) {
                 if (!err) {
                     erizoController.handleEventReport('updateStream', roomId, {event: 'AudioDisabled', id: publisher_id, data: null});
                 }
@@ -583,7 +583,7 @@ exports.RoomController = function (spec) {
     that['video-out-on'] = function (publisher_id, unused, callback) {
         if (publishers[publisher_id] !== undefined) {
             log.info('Enabling [video] publisher', publisher_id);
-            rpc.callRpc(getErizoQueue(publisher_id), 'publishStream', [publisher_id, false], {callback: function (err) {
+            amqper.callRpc(getErizoQueue(publisher_id), 'publishStream', [publisher_id, false], {callback: function (err) {
                 if (!err) {
                     erizoController.handleEventReport('updateStream', roomId, {event: 'VideoEnabled', id: publisher_id, data: null});
                 }
@@ -597,7 +597,7 @@ exports.RoomController = function (spec) {
     that['video-out-off'] = function (publisher_id, unused, callback) {
         if (publishers[publisher_id] !== undefined) {
             log.info('Disabling [video] publisher', publisher_id);
-            rpc.callRpc(getErizoQueue(publisher_id), 'unpublishStream', [publisher_id, false], {callback: function (err) {
+            amqper.callRpc(getErizoQueue(publisher_id), 'unpublishStream', [publisher_id, false], {callback: function (err) {
                 if (!err) {
                     erizoController.handleEventReport('updateStream', roomId, {event: 'VideoDisabled', id: publisher_id, data: null});
                 }
