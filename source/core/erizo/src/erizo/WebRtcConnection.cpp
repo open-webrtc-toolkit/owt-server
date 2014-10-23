@@ -480,7 +480,7 @@ namespace erizo {
 
     
     if (globalState_ == CONN_FAILED) {
-      // if current state is failed we don't use
+      // if current state is failed -> noop
       return;
     }
 
