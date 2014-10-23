@@ -48,7 +48,7 @@ class ACMInputProcessor;
 class AVSyncModule;
 class TaskRunner;
 
-class VCMInputProcessor : public erizo::RTPDataReceiver,
+class VCMInputProcessor : public erizo::MediaSink,
                           public VCMReceiveCallback {
     DECLARE_LOGGER();
 
@@ -59,8 +59,9 @@ public:
     // Implements the webrtc::VCMReceiveCallback interface.
     virtual int32_t FrameToRender(webrtc::I420VideoFrame&);
 
-    // Implements the erizo::RTPDataReceiver interface.
-    virtual void receiveRtpData(char* rtpdata, int len, erizo::DataType type = erizo::VIDEO, uint32_t streamId = 0);
+    // Implement the MediaSink interfaces.
+    int deliverAudioData(char*, int len, erizo::MediaSource* from = nullptr);
+    int deliverVideoData(char*, int len, erizo::MediaSource* from = nullptr);
 
     bool init(woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<BufferManager>, boost::shared_ptr<InputFrameCallback>, boost::shared_ptr<TaskRunner>);
 
