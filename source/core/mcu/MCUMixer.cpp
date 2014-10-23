@@ -20,10 +20,11 @@
 
 #include "MCUMixer.h"
 
-#include "BufferManager.h"
-#include "VCMMediaProcessor.h"
 #include "ACMMediaProcessor.h"
 #include "AVSyncTaskRunner.h"
+#include "BufferManager.h"
+#include "VCMInputProcessor.h"
+#include "VCMOutputProcessor.h"
 #include <ProtectedRTPReceiver.h>
 #include <ProtectedRTPSender.h>
 #include <WebRTCFeedbackProcessor.h>

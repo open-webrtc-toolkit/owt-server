@@ -18,15 +18,13 @@
  * and approved by Intel in writing.
  */
 
-#ifndef VCMMediaProcessor_h
-#define VCMMediaProcessor_h
+#ifndef VCMInputProcessor_h
+#define VCMInputProcessor_h
 
 #include "BufferManager.h"
+#include "VCMMediaProcessorHelper.h"
 
-#include <boost/asio.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/scoped_ptr.hpp>
-#include <boost/thread.hpp>
 #include <boost/thread/mutex.hpp>
 #include <logger.h>
 #include <MediaDefinitions.h>
@@ -37,8 +35,6 @@
 #include <webrtc/modules/rtp_rtcp/interface/rtp_payload_registry.h>
 #include <webrtc/modules/rtp_rtcp/interface/rtp_rtcp.h>
 #include <webrtc/modules/video_coding/main/interface/video_coding.h>
-#include <webrtc/modules/video_processing/main/interface/video_processing.h>
-#include <webrtc/system_wrappers/interface/thread_wrapper.h>
 
 using namespace webrtc;
 
@@ -50,16 +46,9 @@ namespace mcu {
  * served by one VCMInputProcessor.
  * This class more or less is working as the vie_receiver class
  */
-class VPMPool;
 class ACMInputProcessor;
 class AVSyncModule;
 class TaskRunner;
-class DebugRecorder;
-
-class InputFrameCallback {
-public:
-    virtual void handleInputFrame(webrtc::I420VideoFrame&, int index) = 0;
-};
 
 class VCMInputProcessor : public erizo::RTPDataReceiver,
                           public RtpData,
@@ -111,109 +100,5 @@ private:
     boost::scoped_ptr<DebugRecorder> recorder_;
 };
 
-/**
- * This is the class to accepts the decoded frame and do some processing
- * for example, media layout mixing
- */
-class VCMOutputProcessor : public webrtc::VCMPacketizationCallback,
-                           public webrtc::VCMProtectionCallback,
-                           public InputFrameCallback {
-    DECLARE_LOGGER();
-public:
-    VCMOutputProcessor(int id);
-    ~VCMOutputProcessor();
-
-    bool init(woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<BufferManager>, boost::shared_ptr<TaskRunner>);
-    void close();
-
-    void updateMaxSlot(int newMaxSlot);
-    bool setSendVideoCodec(const VideoCodec& video_codec);
-    void onRequestIFrame();
-
-    void layoutTimerHandler(const boost::system::error_code& ec);
-    /**
-     * Implements InputFrameCallback.
-     * This should be called whenever a new frame is decoded from
-     * one particular publisher with index
-     */
-    virtual void handleInputFrame(webrtc::I420VideoFrame& frame, int index);
-
-    // Implements VCMPacketizationCallback.
-    virtual int32_t SendData(
-        webrtc::FrameType frameType,
-        uint8_t payloadType,
-        uint32_t timeStamp,
-        int64_t capture_time_ms,
-        const uint8_t* payloadData,
-        uint32_t payloadSize,
-        const webrtc::RTPFragmentationHeader& fragmentationHeader,
-        const webrtc::RTPVideoHeader* rtpVideoHdr);
-
-    // Implements VideoProtectionCallback.
-    virtual int ProtectionRequest(
-        const FecProtectionParams* delta_fec_params,
-        const FecProtectionParams* key_fec_params,
-        uint32_t* sent_video_rate_bps,
-        uint32_t* sent_nack_rate_bps,
-        uint32_t* sent_fec_rate_bps);
-
-
-    struct Layout{
-        unsigned int subWidth_: 12; // assuming max is 4096
-        unsigned int subHeight_: 12; // assuming max is 2160
-        unsigned int div_factor_: 3; // max is 4
-        bool operator==(const Layout& rhs) {
-            return (this->div_factor_ == rhs.div_factor_)
-                && (this->subHeight_ == rhs.subHeight_)
-                && (this->subWidth_ == rhs.subWidth_);
-        }
-    };
-
-private:
-    int id_;
-
-    int maxSlot_;
-    Layout layout_; // current layout config;
-    Layout layoutNew_; // new layout config if any;
-    boost::scoped_ptr<CriticalSectionWrapper> layoutLock_;
-    bool layoutFrames();
-
-    webrtc::VideoCodingModule* vcm_;
-    boost::scoped_ptr<VPMPool> vpmPool_;
-    boost::scoped_ptr<RtpRtcp> default_rtp_rtcp_;
-    boost::scoped_ptr<DebugRecorder> recorder_;
-    boost::scoped_ptr<woogeen_base::WoogeenTransport<erizo::VIDEO>> m_videoTransport;
-    boost::shared_ptr<TaskRunner> taskRunner_;
-    bool recordStarted_;
-
-    /*
-     * Each incoming channel will store the decoded frame in this array, and the encoding
-     * thread will scan this array and compose the frames into one frame
-     */
-    // Delta used for translating between NTP and internal timestamps.
-    int64_t delta_ntp_internal_ms_;
-    boost::shared_ptr<BufferManager> bufferManager_;
-    webrtc::I420VideoFrame* composedFrame_;
-    webrtc::I420VideoFrame* mockFrame_;
-
-    boost::scoped_ptr<boost::thread> encodingThread_;
-    boost::asio::io_service io_service_;
-    boost::scoped_ptr<boost::asio::deadline_timer> timer_;
-};
-
-/**
- * manages a pool of VPM for preprocessing the incoming I420 frame
- */
-class VPMPool {
-public:
-	VPMPool(unsigned int size);
-	~VPMPool();
-	VideoProcessingModule* get(unsigned int slot);
-	void update(VCMOutputProcessor::Layout& layout);
-private:
-	VideoProcessingModule** vpms_;
-	unsigned int size_;
-};
-
 }
-#endif /* VCMMediaProcessor_h */
+#endif /* VCMInputProcessor_h */
