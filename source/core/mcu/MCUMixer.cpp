@@ -21,8 +21,8 @@
 #include "MCUMixer.h"
 
 #include "ACMMediaProcessor.h"
-#include "AVSyncTaskRunner.h"
 #include "BufferManager.h"
+#include "TaskRunner.h"
 #include "VCMInputProcessor.h"
 #include "VCMOutputProcessor.h"
 #include <ProtectedRTPReceiver.h>
