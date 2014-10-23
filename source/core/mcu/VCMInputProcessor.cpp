@@ -33,25 +33,24 @@ namespace mcu {
 DEFINE_LOGGER(VCMInputProcessor, "media.VCMInputProcessor");
 
 VCMInputProcessor::VCMInputProcessor(int index)
+    : m_index(index)
 {
-    vcm_ = NULL;
-    index_ = index;
 }
 
 VCMInputProcessor::~VCMInputProcessor()
 {
     m_videoReceiver->StopReceive();
-    recorder_->Stop();
+    m_recorder->Stop();
     Trace::ReturnTrace();
 
-    if (taskRunner_) {
-        taskRunner_->unregisterModule(avSync_.get());
-        taskRunner_->unregisterModule(rtp_rtcp_.get());
-        taskRunner_->unregisterModule(vcm_);
+    if (m_taskRunner) {
+        m_taskRunner->unregisterModule(m_avSync.get());
+        m_taskRunner->unregisterModule(m_rtpRtcp.get());
+        m_taskRunner->unregisterModule(m_vcm.get());
     }
 
-    if (vcm_)
-        VideoCodingModule::Destroy(vcm_), vcm_ = NULL;
+    if (m_vcm)
+        VideoCodingModule::Destroy(m_vcm.get());
 }
 
 bool VCMInputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<BufferManager> bufferManager, boost::shared_ptr<InputFrameCallback> frameReadyCB, boost::shared_ptr<TaskRunner> taskRunner)
@@ -60,76 +59,71 @@ bool VCMInputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* trans
     Trace::SetTraceFile("webrtc.trace.txt");
     Trace::set_level_filter(webrtc::kTraceAll);
 
-    bufferManager_ = bufferManager;
-    frameReadyCB_ = frameReadyCB;
-    taskRunner_ = taskRunner;
+    m_videoTransport.reset(transport);
+    m_bufferManager = bufferManager;
+    m_frameReadyCB = frameReadyCB;
+    m_taskRunner = taskRunner;
 
-    vcm_ = VideoCodingModule::Create(index_);
-    if (vcm_) {
-        vcm_->InitializeReceiver();
-        vcm_->RegisterReceiveCallback(this);
+    m_vcm.reset(VideoCodingModule::Create(m_index));
+    if (m_vcm) {
+        m_vcm->InitializeReceiver();
+        m_vcm->RegisterReceiveCallback(this);
     } else
         return false;
 
     m_remoteBitrateObserver.reset(new DummyRemoteBitrateObserver());
     m_remoteBitrateEstimator.reset(RemoteBitrateEstimatorFactory().Create(m_remoteBitrateObserver.get(), Clock::GetRealTimeClock(), kMimdControl, 0));
-    m_videoReceiver.reset(new ViEReceiver(index_, vcm_, m_remoteBitrateEstimator.get(), nullptr));
-    m_videoTransport.reset(transport);
+    m_videoReceiver.reset(new ViEReceiver(m_index, m_vcm.get(), m_remoteBitrateEstimator.get(), nullptr));
 
     RtpRtcp::Configuration configuration;
     configuration.id = 002;
     configuration.audio = false;  // Video.
-    configuration.outgoing_transport = transport;	// for sending RTCP feedback to the publisher
+    configuration.outgoing_transport = transport; // For sending RTCP feedback to the publisher
     configuration.remote_bitrate_estimator = m_remoteBitrateEstimator.get();
     configuration.receive_statistics = m_videoReceiver->GetReceiveStatistics();
-    rtp_rtcp_.reset(RtpRtcp::CreateRtpRtcp(configuration));
-    rtp_rtcp_->SetRTCPStatus(webrtc::kRtcpCompound);
-    rtp_rtcp_->SetKeyFrameRequestMethod(kKeyFrameReqPliRtcp);
+    m_rtpRtcp.reset(RtpRtcp::CreateRtpRtcp(configuration));
+    m_rtpRtcp->SetRTCPStatus(webrtc::kRtcpCompound);
+    m_rtpRtcp->SetKeyFrameRequestMethod(kKeyFrameReqPliRtcp);
 
-    m_videoReceiver->SetRtpRtcpModule(rtp_rtcp_.get());
+    m_videoReceiver->SetRtpRtcpModule(m_rtpRtcp.get());
 
     // Register codec.
     VideoCodec video_codec;
-    if (VideoCodingModule::Codec(webrtc::kVideoCodecVP8, &video_codec) != VCM_OK) {
-      return false;
-    }
+    if (VideoCodingModule::Codec(webrtc::kVideoCodecVP8, &video_codec) != VCM_OK)
+        return false;
 
     if (video_codec.codecType != kVideoCodecRED &&
         video_codec.codecType != kVideoCodecULPFEC) {
-      // Register codec type with VCM, but do not register RED or ULPFEC.
-      if (vcm_->RegisterReceiveCodec(&video_codec, 1, true) != VCM_OK) {
-        return false;
-      }
+        // Register codec type with VCM, but do not register RED or ULPFEC.
+        if (m_vcm->RegisterReceiveCodec(&video_codec, 1, true) != VCM_OK)
+            return false;
     }
 
     m_videoReceiver->SetReceiveCodec(video_codec);
 
-    avSync_.reset(new AVSyncModule(vcm_, index_));
-    recorder_.reset(new DebugRecorder());
-    recorder_->Start("/home/qzhang8/webrtc/webrtc.frame.i420");
+    m_avSync.reset(new AVSyncModule(m_vcm.get(), m_index));
+    m_recorder.reset(new DebugRecorder());
+    m_recorder->Start("/home/qzhang8/webrtc/webrtc.frame.i420");
 
-    taskRunner_->registerModule(vcm_);
-    taskRunner_->registerModule(rtp_rtcp_.get());
+    m_taskRunner->registerModule(m_vcm.get());
+    m_taskRunner->registerModule(m_rtpRtcp.get());
     m_videoReceiver->StartReceive();
     return true;
 }
 
-void VCMInputProcessor::close() {
-}
-
 void VCMInputProcessor::bindAudioInputProcessor(boost::shared_ptr<ACMInputProcessor> aip)
 {
-    aip_ = aip;
-    if (avSync_) {
-        avSync_->ConfigureSync(aip_, rtp_rtcp_.get(), m_videoReceiver->GetRtpReceiver());
-        taskRunner_->registerModule(avSync_.get());
+    m_aip = aip;
+    if (m_avSync) {
+        m_avSync->ConfigureSync(m_aip, m_rtpRtcp.get(), m_videoReceiver->GetRtpReceiver());
+        m_taskRunner->registerModule(m_avSync.get());
     }
 }
 
 int32_t VCMInputProcessor::FrameToRender(I420VideoFrame& videoFrame)
 {
-    ELOG_DEBUG("Got decoded frame from %d\n", index_);
-    frameReadyCB_->handleInputFrame(videoFrame, index_);
+    ELOG_DEBUG("Got decoded frame from %d\n", m_index);
+    m_frameReadyCB->handleInputFrame(videoFrame, m_index);
     return 0;
 }
 
@@ -147,8 +141,8 @@ void VCMInputProcessor::receiveRtpData(char* rtp_packet, int rtp_packet_length, 
 
     PacketTime current;
     if (m_videoReceiver->ReceivedRTPPacket(rtp_packet, rtp_packet_length, current) != -1) {
-        int32_t ret = vcm_->Decode(0);
-        ELOG_DEBUG("receivedRtpData index= %d, decode result = %d",  index_, ret);
+        int32_t ret = m_vcm->Decode(0);
+        ELOG_DEBUG("receivedRtpData index= %d, decode result = %d",  m_index, ret);
     }
 }
 
