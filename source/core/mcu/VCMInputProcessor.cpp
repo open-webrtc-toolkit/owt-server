@@ -127,23 +127,30 @@ int32_t VCMInputProcessor::FrameToRender(I420VideoFrame& videoFrame)
     return 0;
 }
 
-void VCMInputProcessor::receiveRtpData(char* rtp_packet, int rtp_packet_length, erizo::DataType type , uint32_t streamId)
+int VCMInputProcessor::deliverVideoData(char* buf, int len, erizo::MediaSource*)
 {
-    assert(type == erizo::VIDEO);
-
-    RTCPHeader* chead = reinterpret_cast<RTCPHeader*>(rtp_packet);
+    RTCPHeader* chead = reinterpret_cast<RTCPHeader*>(buf);
     uint8_t packetType = chead->getPacketType();
     assert(packetType != RTCP_Receiver_PT && packetType != RTCP_PS_Feedback_PT && packetType != RTCP_RTP_Feedback_PT);
     if (packetType == RTCP_Sender_PT) { // Sender Report
-        m_videoReceiver->ReceivedRTCPPacket(rtp_packet, rtp_packet_length);
-        return;
+        m_videoReceiver->ReceivedRTCPPacket(buf, len);
+        return len;
     }
 
     PacketTime current;
-    if (m_videoReceiver->ReceivedRTPPacket(rtp_packet, rtp_packet_length, current) != -1) {
+    if (m_videoReceiver->ReceivedRTPPacket(buf, len, current) != -1) {
         int32_t ret = m_vcm->Decode(0);
         ELOG_DEBUG("receivedRtpData index= %d, decode result = %d",  m_index, ret);
+        return len;
     }
+
+    return 0;
+}
+
+int VCMInputProcessor::deliverAudioData(char* buf, int len, erizo::MediaSource*)
+{
+    assert(false);
+    return 0;
 }
 
 }

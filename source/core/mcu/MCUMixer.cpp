@@ -162,11 +162,10 @@ void MCUMixer::addPublisher(MediaSource* publisher)
         // TODO: Needs a simpler and cleaner relationship among the video/audio input/output processors.
         videoInputProcessor->bindAudioInputProcessor(audioInputProcessor);
 
-        boost::shared_ptr<ProtectedRTPReceiver> videoReceiver(new ProtectedRTPReceiver(videoInputProcessor));
         boost::shared_ptr<ProtectedRTPReceiver> audioReceiver(new ProtectedRTPReceiver(audioInputProcessor));
 
         boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
-        m_sinksForPublishers[publisher].reset(new SeparateMediaSink(audioReceiver, videoReceiver));
+        m_sinksForPublishers[publisher].reset(new SeparateMediaSink(audioReceiver, videoInputProcessor));
     } else
         assert("new publisher added with InputProcessor still available");    // should not go there
 }
