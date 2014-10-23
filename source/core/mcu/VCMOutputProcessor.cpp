@@ -20,7 +20,7 @@
 
 #include "VCMOutputProcessor.h"
 
-#include "AVSyncTaskRunner.h"
+#include "TaskRunner.h"
 
 #include <boost/bind.hpp>
 #include <webrtc/system_wrappers/interface/tick_util.h>

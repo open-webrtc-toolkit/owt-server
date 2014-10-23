@@ -6,7 +6,7 @@
  */
 
 #include "ACMMediaProcessor.h"
-#include "AVSyncTaskRunner.h"
+#include "TaskRunner.h"
 #include <webrtc/voice_engine/include/voe_errors.h>
 
 using namespace erizo;

@@ -22,7 +22,7 @@
 
 #include "ACMMediaProcessor.h"
 #include "AVSyncModule.h"
-#include "AVSyncTaskRunner.h"
+#include "TaskRunner.h"
 #include <rtputils.h>
 
 using namespace webrtc;
