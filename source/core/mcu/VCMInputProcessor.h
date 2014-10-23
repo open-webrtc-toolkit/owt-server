@@ -70,7 +70,7 @@ public:
 
 private:
     int m_index;
-    boost::scoped_ptr<VideoCodingModule> m_vcm;
+    VideoCodingModule* m_vcm;
     boost::scoped_ptr<RemoteBitrateObserver> m_remoteBitrateObserver;
     boost::scoped_ptr<RemoteBitrateEstimator> m_remoteBitrateEstimator;
     boost::scoped_ptr<ViEReceiver> m_videoReceiver;

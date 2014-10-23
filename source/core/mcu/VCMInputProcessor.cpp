@@ -34,6 +34,7 @@ DEFINE_LOGGER(VCMInputProcessor, "media.VCMInputProcessor");
 
 VCMInputProcessor::VCMInputProcessor(int index)
     : m_index(index)
+    , m_vcm(nullptr)
 {
 }
 
@@ -46,11 +47,13 @@ VCMInputProcessor::~VCMInputProcessor()
     if (m_taskRunner) {
         m_taskRunner->unregisterModule(m_avSync.get());
         m_taskRunner->unregisterModule(m_rtpRtcp.get());
-        m_taskRunner->unregisterModule(m_vcm.get());
+        m_taskRunner->unregisterModule(m_vcm);
     }
 
-    if (m_vcm)
-        VideoCodingModule::Destroy(m_vcm.get());
+    if (m_vcm) {
+        VideoCodingModule::Destroy(m_vcm);
+        m_vcm = nullptr;
+    }
 }
 
 bool VCMInputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<BufferManager> bufferManager, boost::shared_ptr<InputFrameCallback> frameReadyCB, boost::shared_ptr<TaskRunner> taskRunner)
@@ -64,7 +67,7 @@ bool VCMInputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* trans
     m_frameReadyCB = frameReadyCB;
     m_taskRunner = taskRunner;
 
-    m_vcm.reset(VideoCodingModule::Create(m_index));
+    m_vcm = VideoCodingModule::Create(m_index);
     if (m_vcm) {
         m_vcm->InitializeReceiver();
         m_vcm->RegisterReceiveCallback(this);
@@ -73,7 +76,7 @@ bool VCMInputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* trans
 
     m_remoteBitrateObserver.reset(new DummyRemoteBitrateObserver());
     m_remoteBitrateEstimator.reset(RemoteBitrateEstimatorFactory().Create(m_remoteBitrateObserver.get(), Clock::GetRealTimeClock(), kMimdControl, 0));
-    m_videoReceiver.reset(new ViEReceiver(m_index, m_vcm.get(), m_remoteBitrateEstimator.get(), nullptr));
+    m_videoReceiver.reset(new ViEReceiver(m_index, m_vcm, m_remoteBitrateEstimator.get(), nullptr));
 
     RtpRtcp::Configuration configuration;
     configuration.id = 002;
@@ -101,11 +104,11 @@ bool VCMInputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* trans
 
     m_videoReceiver->SetReceiveCodec(video_codec);
 
-    m_avSync.reset(new AVSyncModule(m_vcm.get(), m_index));
+    m_avSync.reset(new AVSyncModule(m_vcm, m_index));
     m_recorder.reset(new DebugRecorder());
     m_recorder->Start("/home/qzhang8/webrtc/webrtc.frame.i420");
 
-    m_taskRunner->registerModule(m_vcm.get());
+    m_taskRunner->registerModule(m_vcm);
     m_taskRunner->registerModule(m_rtpRtcp.get());
     m_videoReceiver->StartReceive();
     return true;
