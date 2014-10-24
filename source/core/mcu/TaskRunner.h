@@ -21,41 +21,60 @@
 #ifndef TaskRunner_h
 #define TaskRunner_h
 
-#include <boost/asio.hpp>
-#include <boost/thread.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
-#include <list>
-#include <webrtc/modules/interface/module.h>
-#include <webrtc/system_wrappers/interface/scoped_ptr.h>
-#include <webrtc/system_wrappers/interface/critical_section_wrapper.h>
+#include <webrtc/modules/utility/interface/process_thread.h>
 
-#define MIN(a, b) (((a) < (b)) ? (a) : (b))
-
-using namespace webrtc;
-/**
- * This thread is now responsible for running the non critical process for each modules
- */
 namespace mcu {
 
+/**
+ * This thread is now responsible for running the non critical process for each modules.
+ * It's now simply a wrapper of the webrtc ProcessThread, and we need it because it's shared
+ * by different objects and we want to manage its lifetime automatically.
+ */
 class TaskRunner {
 public:
-    TaskRunner(int interval);
-    virtual ~TaskRunner();
-    void start();
-    void stop();
-    void registerModule(Module*);
-    void unregisterModule(Module*);
-    void run(const boost::system::error_code& /*e*/);
+    TaskRunner();
+    ~TaskRunner();
+
+    int32_t Start();
+    int32_t Stop();
+    int32_t RegisterModule(webrtc::Module*);
+    int32_t DeRegisterModule(webrtc::Module*);
 
 private:
-    int m_interval; // milliseconds
-    std::list<Module*> m_taskList;
-    scoped_ptr<CriticalSectionWrapper> m_taskLock;
-
-    scoped_ptr<boost::thread> m_thread;
-    boost::asio::io_service m_ioService;
-    scoped_ptr<boost::asio::deadline_timer> m_timer;
+    webrtc::ProcessThread* m_processThread;
 };
 
+inline TaskRunner::TaskRunner()
+    : m_processThread(webrtc::ProcessThread::CreateProcessThread())
+{
+}
+
+inline TaskRunner::~TaskRunner()
+{
+    webrtc::ProcessThread::DestroyProcessThread(m_processThread);
+    m_processThread = nullptr;
+}
+
+inline int32_t TaskRunner::Start()
+{
+    return m_processThread->Start();
+}
+
+inline int32_t TaskRunner::Stop()
+{
+    return m_processThread->Stop();
+}
+
+inline int32_t TaskRunner::RegisterModule(webrtc::Module* module)
+{
+    return m_processThread->RegisterModule(module);
+}
+
+inline int32_t TaskRunner::DeRegisterModule(webrtc::Module* module)
+{
+    return m_processThread->DeRegisterModule(module);
+}
+
 } /* namespace mcu */
+
 #endif /* TaskRunner_h */

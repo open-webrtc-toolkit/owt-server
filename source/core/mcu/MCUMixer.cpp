@@ -72,7 +72,7 @@ MCUMixer::~MCUMixer()
 bool MCUMixer::init()
 {
     m_bufferManager.reset(new BufferManager());
-    m_taskRunner.reset(new TaskRunner(1000));
+    m_taskRunner.reset(new TaskRunner());
 
     m_vcmOutputProcessor.reset(new VCMOutputProcessor(MIXED_VIDEO_STREAM_ID));
     m_vcmOutputProcessor->init(new WoogeenTransport<erizo::VIDEO>(this, nullptr/*not enabled yet*/), m_bufferManager, m_taskRunner);
@@ -80,8 +80,7 @@ bool MCUMixer::init()
     m_acmOutputProcessor.reset(new ACMOutputProcessor(1000, new WoogeenTransport<erizo::AUDIO>(this, nullptr/*not enabled yet*/)));
     m_acmOutputProcessor->init(m_taskRunner);
 
-
-    m_taskRunner->start();
+    m_taskRunner->Start();
 
     return true;
 }
@@ -221,7 +220,7 @@ void MCUMixer::removePublisher(MediaSource* publisher)
 void MCUMixer::closeAll()
 {
     ELOG_DEBUG ("Mixer closeAll");
-    m_taskRunner->stop();
+    m_taskRunner->Stop();
 
     boost::unique_lock<boost::mutex> subscriberLock(m_subscriberMutex);
     std::map<std::string, boost::shared_ptr<MediaSink>>::iterator subscriberItor = m_subscribers.begin();

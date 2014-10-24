@@ -95,8 +95,8 @@ ACMInputProcessor::~ACMInputProcessor() {
                      " (Audio coding module)");
     }
     if (taskRunner_) {
-    	taskRunner_->unregisterModule(_rtpRtcpModule.get());
-    	taskRunner_->unregisterModule(audio_coding_.get());
+    	taskRunner_->DeRegisterModule(_rtpRtcpModule.get());
+    	taskRunner_->DeRegisterModule(audio_coding_.get());
     }
     // End of modules shutdown
 
@@ -224,8 +224,8 @@ int32_t ACMInputProcessor::init(boost::shared_ptr<ACMOutputProcessor> aop,  boos
       return -1;
     }
     if (taskRunner_) {
-    	taskRunner_->registerModule(_rtpRtcpModule.get());
-    	taskRunner_->registerModule(audio_coding_.get());
+    	taskRunner_->RegisterModule(_rtpRtcpModule.get());
+    	taskRunner_->RegisterModule(audio_coding_.get());
     }
     aop_->SetMixabilityStatus(*this, true);
     return 0;
@@ -824,7 +824,7 @@ ACMOutputProcessor::~ACMOutputProcessor() {
 
     this->StopRecordingPlayout();
     if (taskRunner_) {
-    	taskRunner_->unregisterModule(_rtpRtcpModule.get());
+    	taskRunner_->DeRegisterModule(_rtpRtcpModule.get());
     }
     delete amixer_;
 }
@@ -892,7 +892,7 @@ bool ACMOutputProcessor::init(boost::shared_ptr<TaskRunner> taskRunner) {
     }
 
     if (taskRunner_) {
-        taskRunner_->registerModule(_rtpRtcpModule.get());
+        taskRunner_->RegisterModule(_rtpRtcpModule.get());
     }
 
     this->StartRecordingPlayout("mixer.audio", NULL);
