@@ -134,10 +134,7 @@ bool VCMOutputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* tran
     composedFrame_ = new webrtc::I420VideoFrame();
     composedFrame_->CreateEmptyFrame(640, 480,
                                      640, 640/2, 640/2);
-    memset(composedFrame_->buffer(webrtc::kYPlane), 0x00, composedFrame_->allocated_size(webrtc::kYPlane));
-    memset(composedFrame_->buffer(webrtc::kUPlane), 128, composedFrame_->allocated_size(webrtc::kUPlane));
-    memset(composedFrame_->buffer(webrtc::kVPlane), 128, composedFrame_->allocated_size(webrtc::kVPlane));
-
+    clearFrame(composedFrame_);
     recordStarted_ = false;
 
     timer_.reset(new boost::asio::deadline_timer(io_service_, boost::posix_time::milliseconds(33)));
@@ -254,6 +251,14 @@ void VCMOutputProcessor::handleInputFrame(webrtc::I420VideoFrame& frame, int ind
 
 }
 
+void VCMOutputProcessor::clearFrame(webrtc::I420VideoFrame* frame) {
+	if (frame) {
+		memset(frame->buffer(webrtc::kYPlane), 0x00, frame->allocated_size(webrtc::kYPlane));
+		memset(frame->buffer(webrtc::kUPlane), 128, frame->allocated_size(webrtc::kUPlane));
+		memset(frame->buffer(webrtc::kVPlane), 128, frame->allocated_size(webrtc::kVPlane));
+	}
+}
+
 bool VCMOutputProcessor::layoutFrames()
 {
 #if SCALE_BY_OUTPUT
@@ -263,7 +268,7 @@ bool VCMOutputProcessor::layoutFrames()
             // commit new layout config at the beginning of each iteration
             layout_ = layoutNew_;
             vpmPool_->update(layout_);
-
+            clearFrame(composedFrame_);
         }
         unsigned int offset_width = (input%layout_.div_factor_) * layout_.subWidth_;
         unsigned int offset_height = (input/layout_.div_factor_) * layout_.subHeight_;
