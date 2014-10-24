@@ -45,9 +45,9 @@ VCMInputProcessor::~VCMInputProcessor()
     Trace::ReturnTrace();
 
     if (m_taskRunner) {
-        m_taskRunner->unregisterModule(m_avSync.get());
-        m_taskRunner->unregisterModule(m_rtpRtcp.get());
-        m_taskRunner->unregisterModule(m_vcm);
+        m_taskRunner->DeRegisterModule(m_avSync.get());
+        m_taskRunner->DeRegisterModule(m_rtpRtcp.get());
+        m_taskRunner->DeRegisterModule(m_vcm);
     }
 
     if (m_vcm) {
@@ -110,8 +110,8 @@ bool VCMInputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* trans
     m_recorder.reset(new DebugRecorder());
     m_recorder->Start("/home/qzhang8/webrtc/webrtc.frame.i420");
 
-    m_taskRunner->registerModule(m_vcm);
-    m_taskRunner->registerModule(m_rtpRtcp.get());
+    m_taskRunner->RegisterModule(m_vcm);
+    m_taskRunner->RegisterModule(m_rtpRtcp.get());
     m_videoReceiver->StartReceive();
     return true;
 }
@@ -121,7 +121,7 @@ void VCMInputProcessor::bindAudioInputProcessor(boost::shared_ptr<ACMInputProces
     m_aip = aip;
     if (m_avSync) {
         m_avSync->ConfigureSync(m_aip, m_rtpRtcp.get(), m_videoReceiver->GetRtpReceiver());
-        m_taskRunner->registerModule(m_avSync.get());
+        m_taskRunner->RegisterModule(m_avSync.get());
     }
 }
 

@@ -92,8 +92,8 @@ VCMOutputProcessor::~VCMOutputProcessor()
     recorder_->Stop();
     this->close();
     if (taskRunner_) {
-    	taskRunner_->unregisterModule(default_rtp_rtcp_.get());
-    	taskRunner_->unregisterModule(vcm_);
+    	taskRunner_->DeRegisterModule(default_rtp_rtcp_.get());
+    	taskRunner_->DeRegisterModule(vcm_);
     }
     if (vcm_)
         VideoCodingModule::Destroy(vcm_), vcm_ = NULL;
@@ -109,7 +109,7 @@ bool VCMOutputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* tran
         vcm_->RegisterTransportCallback(this);
         vcm_->RegisterProtectionCallback(this);
         vcm_->EnableFrameDropper(false);
-        taskRunner_->registerModule(vcm_);
+        taskRunner_->RegisterModule(vcm_);
     } else
         return false;
 
@@ -122,7 +122,7 @@ bool VCMOutputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* tran
     configuration.outgoing_transport = transport;
     configuration.audio = false;  // Video.
     default_rtp_rtcp_.reset(RtpRtcp::CreateRtpRtcp(configuration));
-    taskRunner_->registerModule(default_rtp_rtcp_.get());
+    taskRunner_->RegisterModule(default_rtp_rtcp_.get());
 
     VideoCodec video_codec;
     if (vcm_->Codec(kVideoCodecVP8, &video_codec) == VCM_OK) {
