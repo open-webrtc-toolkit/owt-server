@@ -147,6 +147,7 @@ public:
 private:
 	VideoProcessingModule** vpms_;
 	unsigned int size_;
+	VCMOutputProcessor::Layout layout_;
 };
 
 }
