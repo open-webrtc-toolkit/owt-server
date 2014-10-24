@@ -86,7 +86,9 @@ bool VCMInputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* trans
     configuration.receive_statistics = m_videoReceiver->GetReceiveStatistics();
     m_rtpRtcp.reset(RtpRtcp::CreateRtpRtcp(configuration));
     m_rtpRtcp->SetRTCPStatus(webrtc::kRtcpCompound);
-    m_rtpRtcp->SetKeyFrameRequestMethod(kKeyFrameReqPliRtcp);
+    // There're 3 options of Intra frame requests: PLI, FIR in RTCP and FIR in RTP (RFC 2032).
+    // Since currently our MCU only claims FIR support in SDP, we choose FirRtcp for now.
+    m_rtpRtcp->SetKeyFrameRequestMethod(kKeyFrameReqFirRtcp);
 
     m_videoReceiver->SetRtpRtcpModule(m_rtpRtcp.get());
 
