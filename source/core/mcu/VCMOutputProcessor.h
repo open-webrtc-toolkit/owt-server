@@ -109,6 +109,8 @@ private:
     Layout layoutNew_; // new layout config if any;
     boost::scoped_ptr<CriticalSectionWrapper> layoutLock_;
     bool layoutFrames();
+    // set the background to be black
+    void clearFrame(webrtc::I420VideoFrame* frame);
 
     webrtc::VideoCodingModule* vcm_;
     boost::scoped_ptr<VPMPool> vpmPool_;
