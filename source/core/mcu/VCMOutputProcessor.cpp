@@ -49,12 +49,14 @@ VideoProcessingModule* VPMPool::get(unsigned int slot) {
 	if(vpms_[slot] == nullptr) {
 		VideoProcessingModule* vpm = VideoProcessingModule::Create(slot);
 	    vpm->SetInputFrameResampleMode(webrtc::kFastRescaling);
+		vpm->SetTargetResolution(layout_.subWidth_, layout_.subHeight_, 30);
 		vpms_[slot] = vpm;
 	}
 	return vpms_[slot];
 }
 
 void VPMPool::update(VCMOutputProcessor::Layout& layout) {
+	layout_  = layout;
 	for (unsigned int i = 0; i < size_; i++) {
 		if (vpms_[i])
 			vpms_[i]->SetTargetResolution(layout.subWidth_, layout.subHeight_, 30);
@@ -112,6 +114,7 @@ bool VCMOutputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* tran
         return false;
 
     vpmPool_.reset(new VPMPool(BufferManager::SLOT_SIZE));
+    vpmPool_->update(layout_);
 
     m_videoTransport.reset(transport);
     RtpRtcp::Configuration configuration;
@@ -297,29 +300,27 @@ bool VCMOutputProcessor::layoutFrames()
             if (ret == VPM_OK && processedFrame == NULL) {
                 // do nothing
             } else if (ret == VPM_OK && processedFrame != NULL) {
-                sub_image->CopyFrame(*processedFrame);
-            }
+            	for (int i = 0; i < layout_.subHeight_; i++) {
+            		memcpy(target->buffer(webrtc::kYPlane) + (i+offset_height)* target->stride(webrtc::kYPlane) + offset_width,
+            				processedFrame->buffer(webrtc::kYPlane) + i * processedFrame->stride(webrtc::kYPlane),
+            				layout_.subWidth_);
+            	}
 
-            for (int i = 0; i < layout_.subHeight_; i++) {
-                memcpy(target->buffer(webrtc::kYPlane) + (i+offset_height)* target->stride(webrtc::kYPlane) + offset_width,
-                    sub_image->buffer(webrtc::kYPlane) + i * sub_image->stride(webrtc::kYPlane),
-                    layout_.subWidth_);
+            	for (int i = 0; i < layout_.subHeight_/2; i++) {
+            		memcpy(target->buffer(webrtc::kUPlane) + (i+offset_height/2) * target->stride(webrtc::kUPlane) + offset_width/2,
+            				processedFrame->buffer(webrtc::kUPlane) + i * processedFrame->stride(webrtc::kUPlane),
+            				layout_.subWidth_/2);
+            		memcpy(target->buffer(webrtc::kVPlane) + (i+offset_height/2) * target->stride(webrtc::kVPlane) + offset_width/2,
+            				processedFrame->buffer(webrtc::kVPlane) + i * processedFrame->stride(webrtc::kVPlane),
+            				layout_.subWidth_/2);
+            	}
             }
-
-            for (int i = 0; i < layout_.subHeight_/2; i++) {
-                memcpy(target->buffer(webrtc::kUPlane) + (i+offset_height/2) * target->stride(webrtc::kUPlane) + offset_width/2,
-                    sub_image->buffer(webrtc::kUPlane) + i * sub_image->stride(webrtc::kUPlane),
-                    layout_.subWidth_/2);
-                memcpy(target->buffer(webrtc::kVPlane) + (i+offset_height/2) * target->stride(webrtc::kVPlane) + offset_width/2,
-                    sub_image->buffer(webrtc::kVPlane) + i * sub_image->stride(webrtc::kVPlane),
-                    layout_.subWidth_/2);
+            // if return busy frame failed, which means a new busy frame has been posted
+            // simply release the busy frame
+            if (bufferManager_->returnBusyBuffer(sub_image, input)) {
+                bufferManager_->releaseBuffer(sub_image);
+                ELOG_DEBUG("releasing busyFrame[%d]", input);
             }
-        }
-        // if return busy frame failed, which means a new busy frame has been posted
-        // simply release the busy frame
-        if (bufferManager_->returnBusyBuffer(sub_image, input)) {
-            bufferManager_->releaseBuffer(sub_image);
-            ELOG_DEBUG("releasing busyFrame[%d]", input);
         }
 
 #if DEBUG_RECORDING
