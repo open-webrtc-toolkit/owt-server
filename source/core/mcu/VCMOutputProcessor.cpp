@@ -23,6 +23,8 @@
 #include "TaskRunner.h"
 
 #include <boost/bind.hpp>
+#include <webrtc/common.h>
+#include <webrtc/modules/rtp_rtcp/interface/rtp_rtcp.h>
 #include <webrtc/system_wrappers/interface/tick_util.h>
 
 using namespace webrtc;
@@ -63,13 +65,13 @@ void VPMPool::update(VCMOutputProcessor::Layout& layout) {
 	}
 
 }
+
 DEFINE_LOGGER(VCMOutputProcessor, "media.VCMOutputProcessor");
 
 VCMOutputProcessor::VCMOutputProcessor(int id)
     : id_(id)
     , layoutLock_(CriticalSectionWrapper::CreateCriticalSection())
 {
-    vcm_ = NULL;
     layout_.subWidth_ = 640;
     layout_.subHeight_ = 480;
     layout_.div_factor_ = 1;
@@ -91,49 +93,42 @@ VCMOutputProcessor::~VCMOutputProcessor()
 {
     recorder_->Stop();
     this->close();
-    if (taskRunner_) {
-    	taskRunner_->DeRegisterModule(default_rtp_rtcp_.get());
-    	taskRunner_->DeRegisterModule(vcm_);
-    }
-    if (vcm_)
-        VideoCodingModule::Destroy(vcm_), vcm_ = NULL;
 }
 
 bool VCMOutputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<BufferManager> bufferManager, boost::shared_ptr<TaskRunner> taskRunner)
 {
-	taskRunner_ = taskRunner;
-	bufferManager_ = bufferManager;
-    vcm_ = VideoCodingModule::Create(id_);
-    if (vcm_) {
-        vcm_->InitializeSender();
-        vcm_->RegisterTransportCallback(this);
-        vcm_->RegisterProtectionCallback(this);
-        vcm_->EnableFrameDropper(false);
-        taskRunner_->RegisterModule(vcm_);
-    } else
-        return false;
-
+    taskRunner_ = taskRunner;
+    bufferManager_ = bufferManager;
+    m_videoTransport.reset(transport);
     vpmPool_.reset(new VPMPool(BufferManager::SLOT_SIZE));
     vpmPool_->update(layout_);
 
-    m_videoTransport.reset(transport);
+    m_bitrateController.reset(webrtc::BitrateController::CreateBitrateController(Clock::GetRealTimeClock(), true));
+    m_bandwidthObserver.reset(m_bitrateController->CreateRtcpBandwidthObserver());
+    webrtc::Config config;
+    m_videoEncoder.reset(new ViEEncoder(id_, id_, 4, config, *(taskRunner_->unwrap()), m_bitrateController.get()));
+    m_videoEncoder->Init();
+
     RtpRtcp::Configuration configuration;
     configuration.id = id_;
     configuration.outgoing_transport = transport;
     configuration.audio = false;  // Video.
+    configuration.default_module = m_videoEncoder->SendRtpRtcpModule();
+    configuration.intra_frame_callback = m_videoEncoder.get();
+    configuration.bandwidth_callback = m_bandwidthObserver.get();
     default_rtp_rtcp_.reset(RtpRtcp::CreateRtpRtcp(configuration));
     taskRunner_->RegisterModule(default_rtp_rtcp_.get());
 
     VideoCodec video_codec;
-    if (vcm_->Codec(kVideoCodecVP8, &video_codec) == VCM_OK) {
+    if (m_videoEncoder->GetEncoder(&video_codec) == 0) {
         video_codec.width = 640;
         video_codec.height = 480;
+        m_videoEncoder->SetEncoder(video_codec);
         default_rtp_rtcp_->RegisterSendPayload(video_codec);
-        vcm_->RegisterSendCodec(&video_codec, 1,
-        		default_rtp_rtcp_->MaxDataPayloadLength());
     } else {
       assert(false);
     }
+
     composedFrame_ = new webrtc::I420VideoFrame();
     composedFrame_->CreateEmptyFrame(640, 480,
                                      640, 640/2, 640/2);
@@ -156,7 +151,7 @@ void VCMOutputProcessor::close()
     io_service_.reset();
     encodingThread_.reset();
 
-    vcm_->StopDebugRecording();
+    m_videoEncoder->StopDebugRecording();
     if (composedFrame_) {
         delete composedFrame_, composedFrame_ = NULL;
     }
@@ -177,12 +172,12 @@ void VCMOutputProcessor::layoutTimerHandler(const boost::system::error_code& ec)
 
 bool VCMOutputProcessor::setSendVideoCodec(const VideoCodec& video_codec)
 {
-    return true;
+    return m_videoEncoder ? (m_videoEncoder->SetEncoder(video_codec) == 0) : false;
 }
 
 void VCMOutputProcessor::onRequestIFrame()
 {
-    vcm_->IntraFrameRequest(0);
+    m_videoEncoder->SendKeyFrame();
 }
 
 void VCMOutputProcessor::updateMaxSlot(int newMaxSlot)
@@ -325,19 +320,14 @@ bool VCMOutputProcessor::layoutFrames()
 
 #if DEBUG_RECORDING
         if (recordStarted_ == false) {
-            vcm_->StartDebugRecording("/home/qzhang8/webrtc/encoded.frame.i420");
+            m_videoEncoder->StartDebugRecording("/home/qzhang8/webrtc/encoded.frame.i420");
             recordStarted_ = true;
         }
 #endif
     }
 
     composedFrame_->set_render_time_ms(TickTime::MillisecondTimestamp() - delta_ntp_internal_ms_);
-    const int kMsToRtpTimestamp = 90;
-    const uint32_t time_stamp =
-        kMsToRtpTimestamp *
-        static_cast<uint32_t>(composedFrame_->render_time_ms());
-    composedFrame_->set_timestamp(time_stamp);
-    vcm_->AddVideoFrame(*composedFrame_);
+    m_videoEncoder->DeliverFrame(id_, composedFrame_);
 #elif SCALE_BY_INPUT
 //    CriticalSectionScoped cs(layoutLock_.get());
     webrtc::I420VideoFrame* target = composedFrame_;
@@ -391,57 +381,22 @@ bool VCMOutputProcessor::layoutFrames()
             bufferManager_->releaseBuffer(sub_image);
 
         if (recordStarted_ == false) {
-            vcm_->StartDebugRecording("/home/qzhang8/webrtc/encoded.frame.i420");
+            m_videoEncoder->StartDebugRecording("/home/qzhang8/webrtc/encoded.frame.i420");
             recordStarted_ = true;
         }
     }
 
-    vcm_->AddVideoFrame(*composedFrame_);
+    composedFrame_->set_render_time_ms(TickTime::MillisecondTimestamp() - delta_ntp_internal_ms_);
+    m_videoEncoder->DeliverFrame(id_, composedFrame_);
 #else
     if (recordStarted_ == true) {
-        vcm_->StartDebugRecording("/home/qzhang8/webrtc/encoded.frame.i420");
+        m_videoEncoder->StartDebugRecording("/home/qzhang8/webrtc/encoded.frame.i420");
         recordStarted_ = true;
     }
     if (mockFrame_)
-        vcm_->AddVideoFrame(*mockFrame_);
+        m_videoEncoder->DeliverFrame(mockFrame_, id_);
 #endif
     return true;
-}
-
-int32_t VCMOutputProcessor::SendData(
-                                    FrameType frameType,
-                                    uint8_t payloadType,
-                                    uint32_t timeStamp,
-                                    int64_t capture_time_ms,
-                                    const uint8_t* payloadData,
-                                    uint32_t payloadSize,
-                                    const RTPFragmentationHeader& fragmentationHeader,
-                                    const RTPVideoHeader* rtpVideoHdr)
-{
-      // New encoded data, hand over to the rtp module.
-      return default_rtp_rtcp_->SendOutgoingData(frameType,
-                                                 payloadType,
-                                                 timeStamp,
-                                                 capture_time_ms,
-                                                 payloadData,
-                                                 payloadSize,
-                                                 &fragmentationHeader,
-                                                 rtpVideoHdr);
-
-}
-
-int VCMOutputProcessor::ProtectionRequest(
-                                    const FecProtectionParams* delta_fec_params,
-                                    const FecProtectionParams* key_fec_params,
-                                    uint32_t* sent_video_rate_bps,
-                                    uint32_t* sent_nack_rate_bps,
-                                    uint32_t* sent_fec_rate_bps)
-{
-    ELOG_DEBUG("ProtectionRequest");
-    default_rtp_rtcp_->SetFecParameters(delta_fec_params, key_fec_params);
-    default_rtp_rtcp_->BitrateSent(NULL, sent_video_rate_bps, sent_fec_rate_bps,
-        sent_nack_rate_bps);
-    return 0;
 }
 
 }

@@ -31,10 +31,7 @@
 #include <logger.h>
 #include <MediaDefinitions.h>
 #include <WoogeenTransport.h>
-#include <webrtc/common_types.h>
-#include <webrtc/modules/rtp_rtcp/interface/rtp_rtcp.h>
-#include <webrtc/modules/video_coding/main/interface/video_coding.h>
-#include <webrtc/modules/video_processing/main/interface/video_processing.h>
+#include <webrtc/video_engine/vie_encoder.h>
 
 using namespace webrtc;
 
@@ -47,10 +44,9 @@ class VPMPool;
  * This is the class to accepts the decoded frame and do some processing
  * for example, media layout mixing
  */
-class VCMOutputProcessor : public webrtc::VCMPacketizationCallback,
-                           public webrtc::VCMProtectionCallback,
-                           public InputFrameCallback {
+class VCMOutputProcessor :  public InputFrameCallback {
     DECLARE_LOGGER();
+
 public:
     VCMOutputProcessor(int id);
     ~VCMOutputProcessor();
@@ -63,32 +59,13 @@ public:
     void onRequestIFrame();
 
     void layoutTimerHandler(const boost::system::error_code& ec);
+
     /**
      * Implements InputFrameCallback.
      * This should be called whenever a new frame is decoded from
      * one particular publisher with index
      */
     virtual void handleInputFrame(webrtc::I420VideoFrame& frame, int index);
-
-    // Implements VCMPacketizationCallback.
-    virtual int32_t SendData(
-        webrtc::FrameType frameType,
-        uint8_t payloadType,
-        uint32_t timeStamp,
-        int64_t capture_time_ms,
-        const uint8_t* payloadData,
-        uint32_t payloadSize,
-        const webrtc::RTPFragmentationHeader& fragmentationHeader,
-        const webrtc::RTPVideoHeader* rtpVideoHdr);
-
-    // Implements VideoProtectionCallback.
-    virtual int ProtectionRequest(
-        const FecProtectionParams* delta_fec_params,
-        const FecProtectionParams* key_fec_params,
-        uint32_t* sent_video_rate_bps,
-        uint32_t* sent_nack_rate_bps,
-        uint32_t* sent_fec_rate_bps);
-
 
     struct Layout{
         unsigned int subWidth_: 12; // assuming max is 4096
@@ -112,12 +89,14 @@ private:
     // set the background to be black
     void clearFrame(webrtc::I420VideoFrame* frame);
 
-    webrtc::VideoCodingModule* vcm_;
-    boost::scoped_ptr<VPMPool> vpmPool_;
-    boost::scoped_ptr<RtpRtcp> default_rtp_rtcp_;
-    boost::scoped_ptr<DebugRecorder> recorder_;
-    boost::scoped_ptr<woogeen_base::WoogeenTransport<erizo::VIDEO>> m_videoTransport;
     boost::shared_ptr<TaskRunner> taskRunner_;
+    boost::scoped_ptr<webrtc::BitrateController> m_bitrateController;
+    boost::scoped_ptr<webrtc::RtcpBandwidthObserver> m_bandwidthObserver;
+    boost::scoped_ptr<webrtc::ViEEncoder> m_videoEncoder;
+    boost::scoped_ptr<woogeen_base::WoogeenTransport<erizo::VIDEO>> m_videoTransport;
+    boost::scoped_ptr<RtpRtcp> default_rtp_rtcp_;
+    boost::scoped_ptr<VPMPool> vpmPool_;
+    boost::scoped_ptr<DebugRecorder> recorder_;
     bool recordStarted_;
 
     /*
