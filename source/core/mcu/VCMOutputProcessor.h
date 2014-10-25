@@ -24,6 +24,7 @@
 #include "BufferManager.h"
 #include "VCMMediaProcessorHelper.h"
 
+#include <atomic>
 #include <boost/asio.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/scoped_ptr.hpp>
@@ -85,6 +86,7 @@ private:
     void clearFrame(webrtc::I420VideoFrame*);
 
     int m_id;
+    std::atomic<bool> m_isClosing;
 
     int m_maxSlot;
     Layout m_currentLayout; // current layout config;
