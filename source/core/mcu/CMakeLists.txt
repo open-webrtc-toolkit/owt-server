@@ -29,6 +29,7 @@ file(GLOB_RECURSE MCU_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/*.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"
     "${WEBRTC_DIRS}/src/webrtc/video_engine/stream_synchronization.cc"
+    "${WEBRTC_DIRS}/src/webrtc/video_engine/vie_encoder.cc"
     "${WEBRTC_DIRS}/src/webrtc/video_engine/vie_receiver.cc")
 
 add_library(mcu SHARED ${MCU_SOURCES})

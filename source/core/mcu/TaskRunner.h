@@ -40,6 +40,8 @@ public:
     int32_t RegisterModule(webrtc::Module*);
     int32_t DeRegisterModule(webrtc::Module*);
 
+    webrtc::ProcessThread* unwrap();
+
 private:
     webrtc::ProcessThread* m_processThread;
 };
@@ -73,6 +75,11 @@ inline int32_t TaskRunner::RegisterModule(webrtc::Module* module)
 inline int32_t TaskRunner::DeRegisterModule(webrtc::Module* module)
 {
     return m_processThread->DeRegisterModule(module);
+}
+
+inline webrtc::ProcessThread* TaskRunner::unwrap()
+{
+    return m_processThread;
 }
 
 } /* namespace mcu */
