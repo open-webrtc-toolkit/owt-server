@@ -32,128 +32,127 @@ using namespace erizo;
 
 namespace mcu {
 
-VPMPool::VPMPool(unsigned int size) {
-	size_ = size;
-	vpms_ = new VideoProcessingModule*[size];
-	memset(vpms_, 0, sizeof(VideoProcessingModule*)*size);
+VPMPool::VPMPool(unsigned int size)
+    : m_size(size)
+{
+    m_vpms = new VideoProcessingModule*[size];
+    memset(m_vpms, 0, sizeof(VideoProcessingModule*) * size);
 }
 
-VPMPool::~VPMPool() {
-	for (unsigned int i = 0; i < size_; i++) {
-		if (vpms_[i])
-			VideoProcessingModule::Destroy(vpms_[i]);
-	}
-	delete []vpms_;
+VPMPool::~VPMPool()
+{
+    for (unsigned int i = 0; i < m_size; i++) {
+        if (m_vpms[i])
+            VideoProcessingModule::Destroy(m_vpms[i]);
+    }
+    delete[] m_vpms;
 }
 
-VideoProcessingModule* VPMPool::get(unsigned int slot) {
-	assert (slot < size_);
-	if(vpms_[slot] == nullptr) {
-		VideoProcessingModule* vpm = VideoProcessingModule::Create(slot);
-	    vpm->SetInputFrameResampleMode(webrtc::kFastRescaling);
-		vpm->SetTargetResolution(layout_.subWidth_, layout_.subHeight_, 30);
-		vpms_[slot] = vpm;
-	}
-	return vpms_[slot];
+VideoProcessingModule* VPMPool::get(unsigned int slot)
+{
+    assert (slot < m_size);
+    if (m_vpms[slot] == nullptr) {
+        VideoProcessingModule* vpm = VideoProcessingModule::Create(slot);
+        vpm->SetInputFrameResampleMode(webrtc::kFastRescaling);
+        vpm->SetTargetResolution(m_layout.m_subWidth, m_layout.m_subHeight, 30);
+        m_vpms[slot] = vpm;
+    }
+    return m_vpms[slot];
 }
 
-void VPMPool::update(VCMOutputProcessor::Layout& layout) {
-	layout_  = layout;
-	for (unsigned int i = 0; i < size_; i++) {
-		if (vpms_[i])
-			vpms_[i]->SetTargetResolution(layout.subWidth_, layout.subHeight_, 30);
-	}
-
+void VPMPool::update(VCMOutputProcessor::Layout& layout)
+{
+    m_layout  = layout;
+    for (unsigned int i = 0; i < m_size; i++) {
+        if (m_vpms[i])
+            m_vpms[i]->SetTargetResolution(layout.m_subWidth, layout.m_subHeight, 30);
+    }
 }
 
 DEFINE_LOGGER(VCMOutputProcessor, "media.VCMOutputProcessor");
 
 VCMOutputProcessor::VCMOutputProcessor(int id)
-    : id_(id)
-    , layoutLock_(CriticalSectionWrapper::CreateCriticalSection())
+    : m_id(id)
+    , m_maxSlot(0)
+    , m_layoutLock(CriticalSectionWrapper::CreateCriticalSection())
+    , m_recordStarted(false)
+    , m_composedFrame(nullptr)
+    , m_mockFrame(nullptr)
 {
-    layout_.subWidth_ = 640;
-    layout_.subHeight_ = 480;
-    layout_.div_factor_ = 1;
-    layoutNew_ = layout_;
-    composedFrame_ = NULL;
-    encodingThread_.reset();
-    timer_.reset();
-    maxSlot_ = 0;
+    m_currentLayout.m_subWidth = 640;
+    m_currentLayout.m_subHeight = 480;
+    m_currentLayout.m_divFactor = 1;
+    m_newLayout = m_currentLayout;
 
-    delta_ntp_internal_ms_ = Clock::GetRealTimeClock()->CurrentNtpInMilliseconds() -
-              	  	  	  	  TickTime::MillisecondTimestamp();
-    // recorder_->Start("/home/qzhang8/webrtc/webrtc.frame.i420");
-    recorder_.reset(new DebugRecorder());
-    recordStarted_= false;
-    mockFrame_ = NULL;
+    m_ntpDelta = Clock::GetRealTimeClock()->CurrentNtpInMilliseconds() -
+                                  TickTime::MillisecondTimestamp();
+    m_recorder.reset(new DebugRecorder());
 }
 
 VCMOutputProcessor::~VCMOutputProcessor()
 {
-    recorder_->Stop();
-    this->close();
+    m_recorder->Stop();
+    close();
 }
 
 bool VCMOutputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<BufferManager> bufferManager, boost::shared_ptr<TaskRunner> taskRunner)
 {
-    taskRunner_ = taskRunner;
-    bufferManager_ = bufferManager;
+    m_taskRunner = taskRunner;
+    m_bufferManager = bufferManager;
     m_videoTransport.reset(transport);
-    vpmPool_.reset(new VPMPool(BufferManager::SLOT_SIZE));
-    vpmPool_->update(layout_);
+    m_vpmPool.reset(new VPMPool(BufferManager::SLOT_SIZE));
+    m_vpmPool->update(m_currentLayout);
 
     m_bitrateController.reset(webrtc::BitrateController::CreateBitrateController(Clock::GetRealTimeClock(), true));
     m_bandwidthObserver.reset(m_bitrateController->CreateRtcpBandwidthObserver());
     webrtc::Config config;
-    m_videoEncoder.reset(new ViEEncoder(id_, id_, 4, config, *(taskRunner_->unwrap()), m_bitrateController.get()));
+    m_videoEncoder.reset(new ViEEncoder(m_id, m_id, 4, config, *(m_taskRunner->unwrap()), m_bitrateController.get()));
     m_videoEncoder->Init();
 
     RtpRtcp::Configuration configuration;
-    configuration.id = id_;
+    configuration.id = m_id;
     configuration.outgoing_transport = transport;
     configuration.audio = false;  // Video.
     configuration.default_module = m_videoEncoder->SendRtpRtcpModule();
     configuration.intra_frame_callback = m_videoEncoder.get();
     configuration.bandwidth_callback = m_bandwidthObserver.get();
-    default_rtp_rtcp_.reset(RtpRtcp::CreateRtpRtcp(configuration));
-    taskRunner_->RegisterModule(default_rtp_rtcp_.get());
+    m_rtpRtcp.reset(RtpRtcp::CreateRtpRtcp(configuration));
+    m_taskRunner->RegisterModule(m_rtpRtcp.get());
 
     VideoCodec video_codec;
     if (m_videoEncoder->GetEncoder(&video_codec) == 0) {
         video_codec.width = 640;
         video_codec.height = 480;
         m_videoEncoder->SetEncoder(video_codec);
-        default_rtp_rtcp_->RegisterSendPayload(video_codec);
-    } else {
-      assert(false);
-    }
+        m_rtpRtcp->RegisterSendPayload(video_codec);
+    } else
+        assert(false);
 
-    composedFrame_ = new webrtc::I420VideoFrame();
-    composedFrame_->CreateEmptyFrame(640, 480,
-                                     640, 640/2, 640/2);
-    clearFrame(composedFrame_);
-    recordStarted_ = false;
+    m_composedFrame = new webrtc::I420VideoFrame();
+    m_composedFrame->CreateEmptyFrame(640, 480,
+                                      640, 640 / 2, 640 / 2);
+    clearFrame(m_composedFrame);
+    m_recordStarted = false;
 
-    timer_.reset(new boost::asio::deadline_timer(io_service_, boost::posix_time::milliseconds(33)));
-    timer_->async_wait(boost::bind(&VCMOutputProcessor::layoutTimerHandler, this, boost::asio::placeholders::error));
-
-    encodingThread_.reset(new boost::thread(boost::bind(&boost::asio::io_service::run, &io_service_)));
+    m_timer.reset(new boost::asio::deadline_timer(m_ioService, boost::posix_time::milliseconds(33)));
+    m_timer->async_wait(boost::bind(&VCMOutputProcessor::layoutTimerHandler, this, boost::asio::placeholders::error));
+    m_encodingThread.reset(new boost::thread(boost::bind(&boost::asio::io_service::run, &m_ioService)));
 
     return true;
 }
 
 void VCMOutputProcessor::close()
 {
-    timer_->cancel();
-    io_service_.stop();
-    encodingThread_->join();
-    io_service_.reset();
-    encodingThread_.reset();
+    m_timer->cancel();
+    m_ioService.stop();
+    m_encodingThread->join();
+    m_ioService.reset();
+    m_encodingThread.reset();
 
     m_videoEncoder->StopDebugRecording();
-    if (composedFrame_) {
-        delete composedFrame_, composedFrame_ = NULL;
+    if (m_composedFrame) {
+        delete m_composedFrame;
+        m_composedFrame = nullptr;
     }
 }
 
@@ -163,8 +162,8 @@ void VCMOutputProcessor::layoutTimerHandler(const boost::system::error_code& ec)
 {
     if (!ec) {
         layoutFrames();
-        timer_->expires_at(timer_->expires_at() + boost::posix_time::milliseconds(33));
-        timer_->async_wait(boost::bind(&VCMOutputProcessor::layoutTimerHandler, this, boost::asio::placeholders::error));
+        m_timer->expires_at(m_timer->expires_at() + boost::posix_time::milliseconds(33));
+        m_timer->async_wait(boost::bind(&VCMOutputProcessor::layoutTimerHandler, this, boost::asio::placeholders::error));
     } else {
         ELOG_INFO("VCMOutputProcessor timer error: %s", ec.message().c_str());
     }
@@ -182,26 +181,29 @@ void VCMOutputProcessor::onRequestIFrame()
 
 void VCMOutputProcessor::updateMaxSlot(int newMaxSlot)
 {
-    maxSlot_ = newMaxSlot;
+    m_maxSlot = newMaxSlot;
     Layout layout;
-    if (newMaxSlot == 1) {
-        layout.div_factor_ = 1;
-    } else if (newMaxSlot <= 4) {
-        layout.div_factor_ = 2;
-    } else if (newMaxSlot <= 9) {
-        layout.div_factor_ = 3;
-    } else layout.div_factor_ = 4;
+    if (newMaxSlot == 1)
+        layout.m_divFactor = 1;
+    else if (newMaxSlot <= 4)
+        layout.m_divFactor = 2;
+    else if (newMaxSlot <= 9)
+        layout.m_divFactor = 3;
+    else
+        layout.m_divFactor = 4;
 
-    layout.subWidth_ = 640/layout.div_factor_;
-    layout.subHeight_ = 480/layout.div_factor_;
+    layout.m_subWidth = 640 / layout.m_divFactor;
+    layout.m_subHeight = 480 / layout.m_divFactor;
 
-    layoutNew_ = layout;    //atomic
+    m_newLayout = layout; // atomic
 
-    ELOG_DEBUG("div_factor is changed to %d,  subWidth is %d, subHeight is %d", layoutNew_.div_factor_, layoutNew_.subWidth_, layoutNew_.subHeight_);
+    ELOG_DEBUG("div_factor is changed to %d,  subWidth is %d, subHeight is %d", m_newLayout.m_divFactor, m_newLayout.m_subWidth, m_newLayout.m_subHeight);
 }
+
 #define SCALE_BY_OUTPUT 1
 #define SCALE_BY_INPUT 0
 #define DEBUG_RECORDING 0
+
 /**
  * this should be called whenever a new frame is decoded from
  * one particular publisher with index
@@ -210,191 +212,190 @@ bool posted = false;
 void VCMOutputProcessor::handleInputFrame(webrtc::I420VideoFrame& frame, int index)
 {
 #if SCALE_BY_OUTPUT
-    I420VideoFrame* freeFrame = bufferManager_->getFreeBuffer();
-    if (freeFrame == NULL)
+    I420VideoFrame* freeFrame = m_bufferManager->getFreeBuffer();
+    if (!freeFrame)
         return;    //no free frame, simply ignore it
     else {
         freeFrame->CopyFrame(frame);
-        I420VideoFrame* busyFrame = bufferManager_->postFreeBuffer(freeFrame, index);
+        I420VideoFrame* busyFrame = m_bufferManager->postFreeBuffer(freeFrame, index);
         if (busyFrame) {
             ELOG_DEBUG("handleInputFrame: returning busy frame, index is %d", index);
-            bufferManager_->releaseBuffer(busyFrame);
+            m_bufferManager->releaseBuffer(busyFrame);
         }
         posted = true;
     }
 #elif SCALE_BY_INPUT
-    I420VideoFrame* processedFrame;
+    I420VideoFrame* processedFrame = nullptr;
     int ret = vpm_->PreprocessFrame(frame, &processedFrame);
-    if (ret == VPM_OK && processedFrame != NULL) {
-        I420VideoFrame* freeFrame = bufferManager_->getFreeBuffer();
-        if (freeFrame == NULL)
+    if (ret == VPM_OK && processedFrame) {
+        I420VideoFrame* freeFrame = m_bufferManager->getFreeBuffer();
+        if (!freeFrame)
             return;
         else {
             freeFrame->CopyFrame(*processedFrame);
-            I420VideoFrame* busyFrame = bufferManager_->postFreeBuffer(freeFrame, index);
+            I420VideoFrame* busyFrame = m_bufferManager->postFreeBuffer(freeFrame, index);
                if (busyFrame)
-                   bufferManager_->releaseBuffer(busyFrame);
+                   m_bufferManager->releaseBuffer(busyFrame);
         }
     }
 #else
 //    CriticalSectionScoped cs(cs_.get());
-    composedFrame_->CopyFrame(frame);
-    if (mockFrame_ == NULL) {
-        mockFrame_ = new webrtc::I420VideoFrame();
-        mockFrame_->CreateEmptyFrame(640, 480,
-                                     640, 640/2, 640/2);
-        mockFrame_->CopyFrame(frame);
+    m_composedFrame->CopyFrame(frame);
+    if (!m_mockFrame) {
+        m_mockFrame = new webrtc::I420VideoFrame();
+        m_mockFrame->CreateEmptyFrame(640, 480,
+                                      640, 640 / 2, 640 / 2);
+        m_mockFrame->CopyFrame(frame);
     }
 #endif
-
 }
 
 void VCMOutputProcessor::clearFrame(webrtc::I420VideoFrame* frame) {
-	if (frame) {
-		memset(frame->buffer(webrtc::kYPlane), 0x00, frame->allocated_size(webrtc::kYPlane));
-		memset(frame->buffer(webrtc::kUPlane), 128, frame->allocated_size(webrtc::kUPlane));
-		memset(frame->buffer(webrtc::kVPlane), 128, frame->allocated_size(webrtc::kVPlane));
-	}
+    if (frame) {
+        memset(frame->buffer(webrtc::kYPlane), 0x00, frame->allocated_size(webrtc::kYPlane));
+        memset(frame->buffer(webrtc::kUPlane), 128, frame->allocated_size(webrtc::kUPlane));
+        memset(frame->buffer(webrtc::kVPlane), 128, frame->allocated_size(webrtc::kVPlane));
+    }
 }
 
 bool VCMOutputProcessor::layoutFrames()
 {
 #if SCALE_BY_OUTPUT
-    webrtc::I420VideoFrame* target = composedFrame_;
-    for (int input = 0; input < maxSlot_; input++) {
-        if ((input == 0) && !(layout_ == layoutNew_)) {
+    webrtc::I420VideoFrame* target = m_composedFrame;
+    for (int input = 0; input < m_maxSlot; input++) {
+        if ((input == 0) && !(m_currentLayout == m_newLayout)) {
             // commit new layout config at the beginning of each iteration
-            layout_ = layoutNew_;
-            vpmPool_->update(layout_);
-            clearFrame(composedFrame_);
+            m_currentLayout = m_newLayout;
+            m_vpmPool->update(m_currentLayout);
+            clearFrame(m_composedFrame);
         }
-        unsigned int offset_width = (input%layout_.div_factor_) * layout_.subWidth_;
-        unsigned int offset_height = (input/layout_.div_factor_) * layout_.subHeight_;
-        webrtc::I420VideoFrame* sub_image = bufferManager_->getBusyBuffer(input);
-        if (sub_image == NULL) {
-            for (int i = 0; i < layout_.subHeight_; i++) {
+        unsigned int offset_width = (input%m_currentLayout.m_divFactor) * m_currentLayout.m_subWidth;
+        unsigned int offset_height = (input/m_currentLayout.m_divFactor) * m_currentLayout.m_subHeight;
+        webrtc::I420VideoFrame* sub_image = m_bufferManager->getBusyBuffer(input);
+        if (!sub_image) {
+            for (int i = 0; i < m_currentLayout.m_subHeight; i++) {
                 memset(target->buffer(webrtc::kYPlane) + (i+offset_height) * target->stride(webrtc::kYPlane) + offset_width,
                     0,
-                    layout_.subWidth_);
+                    m_currentLayout.m_subWidth);
             }
 
-            for (int i = 0; i < layout_.subHeight_/2; i++) {
+            for (int i = 0; i < m_currentLayout.m_subHeight/2; i++) {
                 memset(target->buffer(webrtc::kUPlane) + (i+offset_height/2) * target->stride(webrtc::kUPlane) + offset_width/2,
                     128,
-                    layout_.subWidth_/2);
+                    m_currentLayout.m_subWidth/2);
                 memset(target->buffer(webrtc::kVPlane) + (i+offset_height/2) * target->stride(webrtc::kVPlane) + offset_width/2,
                     128,
-                    layout_.subWidth_/2);
+                    m_currentLayout.m_subWidth/2);
             }
             continue;
         }
         // do the scale first
         else {
-            I420VideoFrame* processedFrame;
-            int ret = vpmPool_->get(input)->PreprocessFrame(*sub_image, &processedFrame);
-            if (ret == VPM_OK && processedFrame == NULL) {
+            I420VideoFrame* processedFrame = nullptr;
+            int ret = m_vpmPool->get(input)->PreprocessFrame(*sub_image, &processedFrame);
+            if (ret == VPM_OK && !processedFrame) {
                 // do nothing
-            } else if (ret == VPM_OK && processedFrame != NULL) {
-            	for (int i = 0; i < layout_.subHeight_; i++) {
-            		memcpy(target->buffer(webrtc::kYPlane) + (i+offset_height)* target->stride(webrtc::kYPlane) + offset_width,
-            				processedFrame->buffer(webrtc::kYPlane) + i * processedFrame->stride(webrtc::kYPlane),
-            				layout_.subWidth_);
-            	}
+            } else if (ret == VPM_OK && processedFrame) {
+               for (int i = 0; i < m_currentLayout.m_subHeight; i++) {
+                  memcpy(target->buffer(webrtc::kYPlane) + (i+offset_height)* target->stride(webrtc::kYPlane) + offset_width,
+                        processedFrame->buffer(webrtc::kYPlane) + i * processedFrame->stride(webrtc::kYPlane),
+                        m_currentLayout.m_subWidth);
+               }
 
-            	for (int i = 0; i < layout_.subHeight_/2; i++) {
-            		memcpy(target->buffer(webrtc::kUPlane) + (i+offset_height/2) * target->stride(webrtc::kUPlane) + offset_width/2,
-            				processedFrame->buffer(webrtc::kUPlane) + i * processedFrame->stride(webrtc::kUPlane),
-            				layout_.subWidth_/2);
-            		memcpy(target->buffer(webrtc::kVPlane) + (i+offset_height/2) * target->stride(webrtc::kVPlane) + offset_width/2,
-            				processedFrame->buffer(webrtc::kVPlane) + i * processedFrame->stride(webrtc::kVPlane),
-            				layout_.subWidth_/2);
-            	}
+               for (int i = 0; i < m_currentLayout.m_subHeight/2; i++) {
+                  memcpy(target->buffer(webrtc::kUPlane) + (i+offset_height/2) * target->stride(webrtc::kUPlane) + offset_width/2,
+                        processedFrame->buffer(webrtc::kUPlane) + i * processedFrame->stride(webrtc::kUPlane),
+                        m_currentLayout.m_subWidth/2);
+                  memcpy(target->buffer(webrtc::kVPlane) + (i+offset_height/2) * target->stride(webrtc::kVPlane) + offset_width/2,
+                        processedFrame->buffer(webrtc::kVPlane) + i * processedFrame->stride(webrtc::kVPlane),
+                        m_currentLayout.m_subWidth/2);
+               }
             }
             // if return busy frame failed, which means a new busy frame has been posted
             // simply release the busy frame
-            if (bufferManager_->returnBusyBuffer(sub_image, input)) {
-                bufferManager_->releaseBuffer(sub_image);
+            if (m_bufferManager->returnBusyBuffer(sub_image, input)) {
+                m_bufferManager->releaseBuffer(sub_image);
                 ELOG_DEBUG("releasing busyFrame[%d]", input);
             }
         }
 
 #if DEBUG_RECORDING
-        if (recordStarted_ == false) {
+        if (m_recordStarted == false) {
             m_videoEncoder->StartDebugRecording("/home/qzhang8/webrtc/encoded.frame.i420");
-            recordStarted_ = true;
+            m_recordStarted = true;
         }
 #endif
     }
 
-    composedFrame_->set_render_time_ms(TickTime::MillisecondTimestamp() - delta_ntp_internal_ms_);
-    m_videoEncoder->DeliverFrame(id_, composedFrame_);
+    m_composedFrame->set_render_time_ms(TickTime::MillisecondTimestamp() - m_ntpDelta);
+    m_videoEncoder->DeliverFrame(m_id, m_composedFrame);
 #elif SCALE_BY_INPUT
-//    CriticalSectionScoped cs(layoutLock_.get());
-    webrtc::I420VideoFrame* target = composedFrame_;
-    for (int input = 0; input < maxSlot_; input++) {
+//    CriticalSectionScoped cs(m_layoutLock.get());
+    webrtc::I420VideoFrame* target = m_composedFrame;
+    for (int input = 0; input < m_maxSlot; input++) {
         if (input == 0) {
             // commit new layout config at the beginning of each iteration
-            layout_ = layoutNew_;
+            m_currentLayout = m_newLayout;
         }
-        unsigned int offset_width = (input%layout_.div_factor_) * layout_.subWidth_;
-        unsigned int offset_height = (input/layout_.div_factor_) * layout_.subHeight_;
-        webrtc::I420VideoFrame* sub_image = bufferManager_->getBusyBuffer(input);
-        if (sub_image == NULL) {
-            for (int i = 0; i < layout_.subHeight_; i++) {
+        unsigned int offset_width = (input%m_currentLayout.m_divFactor) * m_currentLayout.m_subWidth;
+        unsigned int offset_height = (input/m_currentLayout.m_divFactor) * m_currentLayout.m_subHeight;
+        webrtc::I420VideoFrame* sub_image = m_bufferManager->getBusyBuffer(input);
+        if (!sub_image) {
+            for (int i = 0; i < m_currentLayout.m_subHeight; i++) {
                 memset(target->buffer(webrtc::kYPlane) + (i+offset_height) * target->stride(webrtc::kYPlane) + offset_width,
                     0,
-                    layout_.subWidth_);
+                    m_currentLayout.m_subWidth);
             }
 
-            for (int i = 0; i < layout_.subHeight_/2; i++) {
+            for (int i = 0; i < m_currentLayout.m_subHeight/2; i++) {
                 memset(target->buffer(webrtc::kUPlane) + (i+offset_height/2) * target->stride(webrtc::kUPlane) + offset_width/2,
                     128,
-                    layout_.subWidth_/2);
+                    m_currentLayout.m_subWidth/2);
                 memset(target->buffer(webrtc::kVPlane) + (i+offset_height/2) * target->stride(webrtc::kVPlane) + offset_width/2,
                     128,
-                    layout_.subWidth_/2);
+                    m_currentLayout.m_subWidth/2);
             }
             continue;
         }
         // check whether the layout should be changed
-        if (sub_image->width() != layout_.subWidth_ || sub_image->height() != layout_.subHeight_) {
-            bufferManager_->releaseBuffer(sub_image);
+        if (sub_image->width() != m_currentLayout.m_subWidth || sub_image->height() != m_currentLayout.m_subHeight) {
+            m_bufferManager->releaseBuffer(sub_image);
             ELOG_DEBUG("busyFrame[%d] is returned due to layout change", input);
         }
-        for (int i = 0; i < layout_.subHeight_; i++) {
+        for (int i = 0; i < m_currentLayout.m_subHeight; i++) {
             memcpy(target->buffer(webrtc::kYPlane) + (i+offset_height)* target->stride(webrtc::kYPlane) + offset_width,
                 sub_image->buffer(webrtc::kYPlane) + i * sub_image->stride(webrtc::kYPlane),
-                layout_.subWidth_);
+                m_currentLayout.m_subWidth);
         }
 
-        for (int i = 0; i < layout_.subHeight_/2; i++) {
+        for (int i = 0; i < m_currentLayout.m_subHeight/2; i++) {
             memcpy(target->buffer(webrtc::kUPlane) + (i+offset_height/2) * target->stride(webrtc::kUPlane) + offset_width/2,
                 sub_image->buffer(webrtc::kUPlane) + i * sub_image->stride(webrtc::kUPlane),
-                layout_.subWidth_/2);
+                m_currentLayout.m_subWidth/2);
             memcpy(target->buffer(webrtc::kVPlane) + (i+offset_height/2) * target->stride(webrtc::kVPlane) + offset_width/2,
                 sub_image->buffer(webrtc::kVPlane) + i * sub_image->stride(webrtc::kVPlane),
-                layout_.subWidth_/2);
+                m_currentLayout.m_subWidth/2);
         }
         // if return busy frame failed, which means a new busy frame has been posted
         // simply release the busy frame
-        if (bufferManager_->returnBusyBuffer(sub_image, input))
-            bufferManager_->releaseBuffer(sub_image);
+        if (m_bufferManager->returnBusyBuffer(sub_image, input))
+            m_bufferManager->releaseBuffer(sub_image);
 
-        if (recordStarted_ == false) {
+        if (m_recordStarted == false) {
             m_videoEncoder->StartDebugRecording("/home/qzhang8/webrtc/encoded.frame.i420");
-            recordStarted_ = true;
+            m_recordStarted = true;
         }
     }
 
-    composedFrame_->set_render_time_ms(TickTime::MillisecondTimestamp() - delta_ntp_internal_ms_);
-    m_videoEncoder->DeliverFrame(id_, composedFrame_);
+    m_composedFrame->set_render_time_ms(TickTime::MillisecondTimestamp() - m_ntpDelta);
+    m_videoEncoder->DeliverFrame(m_id, m_composedFrame);
 #else
-    if (recordStarted_ == true) {
+    if (m_recordStarted == true) {
         m_videoEncoder->StartDebugRecording("/home/qzhang8/webrtc/encoded.frame.i420");
-        recordStarted_ = true;
+        m_recordStarted = true;
     }
-    if (mockFrame_)
-        m_videoEncoder->DeliverFrame(mockFrame_, id_);
+    if (m_mockFrame)
+        m_videoEncoder->DeliverFrame(m_mockFrame, m_id);
 #endif
     return true;
 }

@@ -44,7 +44,7 @@ class VPMPool;
  * This is the class to accepts the decoded frame and do some processing
  * for example, media layout mixing
  */
-class VCMOutputProcessor :  public InputFrameCallback {
+class VCMOutputProcessor : public InputFrameCallback {
     DECLARE_LOGGER();
 
 public:
@@ -63,55 +63,57 @@ public:
     /**
      * Implements InputFrameCallback.
      * This should be called whenever a new frame is decoded from
-     * one particular publisher with index
+     * one particular publisher with the index.
      */
-    virtual void handleInputFrame(webrtc::I420VideoFrame& frame, int index);
+    virtual void handleInputFrame(webrtc::I420VideoFrame&, int index);
 
-    struct Layout{
-        unsigned int subWidth_: 12; // assuming max is 4096
-        unsigned int subHeight_: 12; // assuming max is 2160
-        unsigned int div_factor_: 3; // max is 4
-        bool operator==(const Layout& rhs) {
-            return (this->div_factor_ == rhs.div_factor_)
-                && (this->subHeight_ == rhs.subHeight_)
-                && (this->subWidth_ == rhs.subWidth_);
+    struct Layout {
+        unsigned int m_subWidth: 12; // assuming max is 4096
+        unsigned int m_subHeight: 12; // assuming max is 2160
+        unsigned int m_divFactor: 3; // max is 4
+        bool operator==(const Layout& rhs)
+        {
+            return (this->m_divFactor == rhs.m_divFactor)
+                && (this->m_subHeight == rhs.m_subHeight)
+                && (this->m_subWidth == rhs.m_subWidth);
         }
     };
 
 private:
-    int id_;
-
-    int maxSlot_;
-    Layout layout_; // current layout config;
-    Layout layoutNew_; // new layout config if any;
-    boost::scoped_ptr<CriticalSectionWrapper> layoutLock_;
     bool layoutFrames();
     // set the background to be black
-    void clearFrame(webrtc::I420VideoFrame* frame);
+    void clearFrame(webrtc::I420VideoFrame*);
 
-    boost::shared_ptr<TaskRunner> taskRunner_;
+    int m_id;
+
+    int m_maxSlot;
+    Layout m_currentLayout; // current layout config;
+    Layout m_newLayout; // new layout config if any;
+    boost::scoped_ptr<CriticalSectionWrapper> m_layoutLock;
+
+    boost::shared_ptr<TaskRunner> m_taskRunner;
     boost::scoped_ptr<webrtc::BitrateController> m_bitrateController;
     boost::scoped_ptr<webrtc::RtcpBandwidthObserver> m_bandwidthObserver;
     boost::scoped_ptr<webrtc::ViEEncoder> m_videoEncoder;
     boost::scoped_ptr<woogeen_base::WoogeenTransport<erizo::VIDEO>> m_videoTransport;
-    boost::scoped_ptr<RtpRtcp> default_rtp_rtcp_;
-    boost::scoped_ptr<VPMPool> vpmPool_;
-    boost::scoped_ptr<DebugRecorder> recorder_;
-    bool recordStarted_;
+    boost::scoped_ptr<RtpRtcp> m_rtpRtcp;
+    boost::scoped_ptr<VPMPool> m_vpmPool;
+    boost::scoped_ptr<DebugRecorder> m_recorder;
+    bool m_recordStarted;
 
     /*
      * Each incoming channel will store the decoded frame in this array, and the encoding
      * thread will scan this array and compose the frames into one frame
      */
     // Delta used for translating between NTP and internal timestamps.
-    int64_t delta_ntp_internal_ms_;
-    boost::shared_ptr<BufferManager> bufferManager_;
-    webrtc::I420VideoFrame* composedFrame_;
-    webrtc::I420VideoFrame* mockFrame_;
+    int64_t m_ntpDelta;
+    boost::shared_ptr<BufferManager> m_bufferManager;
+    webrtc::I420VideoFrame* m_composedFrame;
+    webrtc::I420VideoFrame* m_mockFrame;
 
-    boost::scoped_ptr<boost::thread> encodingThread_;
-    boost::asio::io_service io_service_;
-    boost::scoped_ptr<boost::asio::deadline_timer> timer_;
+    boost::scoped_ptr<boost::thread> m_encodingThread;
+    boost::asio::io_service m_ioService;
+    boost::scoped_ptr<boost::asio::deadline_timer> m_timer;
 };
 
 /**
@@ -119,14 +121,15 @@ private:
  */
 class VPMPool {
 public:
-	VPMPool(unsigned int size);
-	~VPMPool();
-	VideoProcessingModule* get(unsigned int slot);
-	void update(VCMOutputProcessor::Layout& layout);
+    VPMPool(unsigned int size);
+    ~VPMPool();
+    VideoProcessingModule* get(unsigned int slot);
+    void update(VCMOutputProcessor::Layout&);
+
 private:
-	VideoProcessingModule** vpms_;
-	unsigned int size_;
-	VCMOutputProcessor::Layout layout_;
+    VideoProcessingModule** m_vpms;
+    unsigned int m_size;
+    VCMOutputProcessor::Layout m_layout;
 };
 
 }
