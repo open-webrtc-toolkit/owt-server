@@ -73,6 +73,7 @@ DEFINE_LOGGER(VCMOutputProcessor, "media.VCMOutputProcessor");
 
 VCMOutputProcessor::VCMOutputProcessor(int id)
     : m_id(id)
+    , m_isClosing(false)
     , m_maxSlot(0)
     , m_layoutLock(CriticalSectionWrapper::CreateCriticalSection())
     , m_recordStarted(false)
@@ -143,16 +144,18 @@ bool VCMOutputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* tran
 
 void VCMOutputProcessor::close()
 {
+    m_isClosing = true;
     m_timer->cancel();
-    m_ioService.stop();
     m_encodingThread->join();
-    m_ioService.reset();
-    m_encodingThread.reset();
 
     m_videoEncoder->StopDebugRecording();
     if (m_composedFrame) {
         delete m_composedFrame;
         m_composedFrame = nullptr;
+    }
+    if (m_mockFrame) {
+        delete m_mockFrame;
+        m_mockFrame = nullptr;
     }
 }
 
@@ -162,8 +165,10 @@ void VCMOutputProcessor::layoutTimerHandler(const boost::system::error_code& ec)
 {
     if (!ec) {
         layoutFrames();
-        m_timer->expires_at(m_timer->expires_at() + boost::posix_time::milliseconds(33));
-        m_timer->async_wait(boost::bind(&VCMOutputProcessor::layoutTimerHandler, this, boost::asio::placeholders::error));
+        if (!m_isClosing) {
+            m_timer->expires_at(m_timer->expires_at() + boost::posix_time::milliseconds(33));
+            m_timer->async_wait(boost::bind(&VCMOutputProcessor::layoutTimerHandler, this, boost::asio::placeholders::error));
+        }
     } else {
         ELOG_INFO("VCMOutputProcessor timer error: %s", ec.message().c_str());
     }
@@ -208,7 +213,6 @@ void VCMOutputProcessor::updateMaxSlot(int newMaxSlot)
  * this should be called whenever a new frame is decoded from
  * one particular publisher with index
  */
-bool posted = false;
 void VCMOutputProcessor::handleInputFrame(webrtc::I420VideoFrame& frame, int index)
 {
 #if SCALE_BY_OUTPUT
@@ -222,7 +226,6 @@ void VCMOutputProcessor::handleInputFrame(webrtc::I420VideoFrame& frame, int ind
             ELOG_DEBUG("handleInputFrame: returning busy frame, index is %d", index);
             m_bufferManager->releaseBuffer(busyFrame);
         }
-        posted = true;
     }
 #elif SCALE_BY_INPUT
     I420VideoFrame* processedFrame = nullptr;
