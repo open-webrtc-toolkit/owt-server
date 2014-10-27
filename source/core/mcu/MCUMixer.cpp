@@ -20,7 +20,8 @@
 
 #include "MCUMixer.h"
 
-#include "ACMMediaProcessor.h"
+#include "ACMInputProcessor.h"
+#include "ACMOutputProcessor.h"
 #include "BufferManager.h"
 #include "TaskRunner.h"
 #include "VCMInputProcessor.h"

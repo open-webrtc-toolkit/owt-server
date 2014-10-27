@@ -20,10 +20,11 @@
 
 #include "VCMInputProcessor.h"
 
-#include "ACMMediaProcessor.h"
+#include "ACMInputProcessor.h"
 #include "AVSyncModule.h"
 #include "TaskRunner.h"
 #include <rtputils.h>
+#include <webrtc/system_wrappers/interface/trace.h>
 
 using namespace webrtc;
 using namespace erizo;
