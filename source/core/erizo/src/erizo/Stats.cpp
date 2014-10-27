@@ -45,7 +45,7 @@ namespace erizo {
           ReportBlock* report = reinterpret_cast<ReportBlock*>(movingBuf + blockOffset);
           uint32_t sourceSSRC = report->getSourceSSRC();
           // TODO: This "add" fraction lost is totally WRONG, or MEANINGLESS!
-          addFragmentLost(report->getFractionLost(), sourceSSRC);
+          setFractionLost(report->getFractionLost(), sourceSSRC);
           setPacketsLost(report->getCumulativeLost(), sourceSSRC);
           setJitter(report->getJitter(), sourceSSRC);
           blockOffset += sizeof(ReportBlock);
