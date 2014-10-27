@@ -206,16 +206,13 @@ void VCMOutputProcessor::updateMaxSlot(int newMaxSlot)
 }
 
 #define SCALE_BY_OUTPUT 1
-#define SCALE_BY_INPUT 0
 #define DEBUG_RECORDING 0
-
 /**
  * this should be called whenever a new frame is decoded from
  * one particular publisher with index
  */
 void VCMOutputProcessor::handleInputFrame(webrtc::I420VideoFrame& frame, int index)
 {
-#if SCALE_BY_OUTPUT
     I420VideoFrame* freeFrame = m_bufferManager->getFreeBuffer();
     if (!freeFrame)
         return;    //no free frame, simply ignore it
@@ -227,30 +224,6 @@ void VCMOutputProcessor::handleInputFrame(webrtc::I420VideoFrame& frame, int ind
             m_bufferManager->releaseBuffer(busyFrame);
         }
     }
-#elif SCALE_BY_INPUT
-    I420VideoFrame* processedFrame = nullptr;
-    int ret = vpm_->PreprocessFrame(frame, &processedFrame);
-    if (ret == VPM_OK && processedFrame) {
-        I420VideoFrame* freeFrame = m_bufferManager->getFreeBuffer();
-        if (!freeFrame)
-            return;
-        else {
-            freeFrame->CopyFrame(*processedFrame);
-            I420VideoFrame* busyFrame = m_bufferManager->postFreeBuffer(freeFrame, index);
-               if (busyFrame)
-                   m_bufferManager->releaseBuffer(busyFrame);
-        }
-    }
-#else
-//    CriticalSectionScoped cs(cs_.get());
-    m_composedFrame->CopyFrame(frame);
-    if (!m_mockFrame) {
-        m_mockFrame = new webrtc::I420VideoFrame();
-        m_mockFrame->CreateEmptyFrame(640, 480,
-                                      640, 640 / 2, 640 / 2);
-        m_mockFrame->CopyFrame(frame);
-    }
-#endif
 }
 
 void VCMOutputProcessor::clearFrame(webrtc::I420VideoFrame* frame) {
@@ -324,7 +297,7 @@ bool VCMOutputProcessor::layoutFrames()
 
 #if DEBUG_RECORDING
         if (m_recordStarted == false) {
-            m_videoEncoder->StartDebugRecording("/home/qzhang8/webrtc/encoded.frame.i420");
+            m_videoEncoder->StartDebugRecording("encoded.frame.i420");
             m_recordStarted = true;
         }
 #endif
@@ -332,73 +305,6 @@ bool VCMOutputProcessor::layoutFrames()
 
     m_composedFrame->set_render_time_ms(TickTime::MillisecondTimestamp() - m_ntpDelta);
     m_videoEncoder->DeliverFrame(m_id, m_composedFrame);
-#elif SCALE_BY_INPUT
-//    CriticalSectionScoped cs(m_layoutLock.get());
-    webrtc::I420VideoFrame* target = m_composedFrame;
-    for (int input = 0; input < m_maxSlot; input++) {
-        if (input == 0) {
-            // commit new layout config at the beginning of each iteration
-            m_currentLayout = m_newLayout;
-        }
-        unsigned int offset_width = (input%m_currentLayout.m_divFactor) * m_currentLayout.m_subWidth;
-        unsigned int offset_height = (input/m_currentLayout.m_divFactor) * m_currentLayout.m_subHeight;
-        webrtc::I420VideoFrame* sub_image = m_bufferManager->getBusyBuffer(input);
-        if (!sub_image) {
-            for (int i = 0; i < m_currentLayout.m_subHeight; i++) {
-                memset(target->buffer(webrtc::kYPlane) + (i+offset_height) * target->stride(webrtc::kYPlane) + offset_width,
-                    0,
-                    m_currentLayout.m_subWidth);
-            }
-
-            for (int i = 0; i < m_currentLayout.m_subHeight/2; i++) {
-                memset(target->buffer(webrtc::kUPlane) + (i+offset_height/2) * target->stride(webrtc::kUPlane) + offset_width/2,
-                    128,
-                    m_currentLayout.m_subWidth/2);
-                memset(target->buffer(webrtc::kVPlane) + (i+offset_height/2) * target->stride(webrtc::kVPlane) + offset_width/2,
-                    128,
-                    m_currentLayout.m_subWidth/2);
-            }
-            continue;
-        }
-        // check whether the layout should be changed
-        if (sub_image->width() != m_currentLayout.m_subWidth || sub_image->height() != m_currentLayout.m_subHeight) {
-            m_bufferManager->releaseBuffer(sub_image);
-            ELOG_DEBUG("busyFrame[%d] is returned due to layout change", input);
-        }
-        for (int i = 0; i < m_currentLayout.m_subHeight; i++) {
-            memcpy(target->buffer(webrtc::kYPlane) + (i+offset_height)* target->stride(webrtc::kYPlane) + offset_width,
-                sub_image->buffer(webrtc::kYPlane) + i * sub_image->stride(webrtc::kYPlane),
-                m_currentLayout.m_subWidth);
-        }
-
-        for (int i = 0; i < m_currentLayout.m_subHeight/2; i++) {
-            memcpy(target->buffer(webrtc::kUPlane) + (i+offset_height/2) * target->stride(webrtc::kUPlane) + offset_width/2,
-                sub_image->buffer(webrtc::kUPlane) + i * sub_image->stride(webrtc::kUPlane),
-                m_currentLayout.m_subWidth/2);
-            memcpy(target->buffer(webrtc::kVPlane) + (i+offset_height/2) * target->stride(webrtc::kVPlane) + offset_width/2,
-                sub_image->buffer(webrtc::kVPlane) + i * sub_image->stride(webrtc::kVPlane),
-                m_currentLayout.m_subWidth/2);
-        }
-        // if return busy frame failed, which means a new busy frame has been posted
-        // simply release the busy frame
-        if (m_bufferManager->returnBusyBuffer(sub_image, input))
-            m_bufferManager->releaseBuffer(sub_image);
-
-        if (m_recordStarted == false) {
-            m_videoEncoder->StartDebugRecording("/home/qzhang8/webrtc/encoded.frame.i420");
-            m_recordStarted = true;
-        }
-    }
-
-    m_composedFrame->set_render_time_ms(TickTime::MillisecondTimestamp() - m_ntpDelta);
-    m_videoEncoder->DeliverFrame(m_id, m_composedFrame);
-#else
-    if (m_recordStarted == true) {
-        m_videoEncoder->StartDebugRecording("/home/qzhang8/webrtc/encoded.frame.i420");
-        m_recordStarted = true;
-    }
-    if (m_mockFrame)
-        m_videoEncoder->DeliverFrame(m_mockFrame, m_id);
 #endif
     return true;
 }
