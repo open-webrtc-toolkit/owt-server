@@ -205,7 +205,6 @@ void VCMOutputProcessor::updateMaxSlot(int newMaxSlot)
     ELOG_DEBUG("div_factor is changed to %d,  subWidth is %d, subHeight is %d", m_newLayout.m_divFactor, m_newLayout.m_subWidth, m_newLayout.m_subHeight);
 }
 
-#define SCALE_BY_OUTPUT 1
 #define DEBUG_RECORDING 0
 /**
  * this should be called whenever a new frame is decoded from
@@ -236,7 +235,6 @@ void VCMOutputProcessor::clearFrame(webrtc::I420VideoFrame* frame) {
 
 bool VCMOutputProcessor::layoutFrames()
 {
-#if SCALE_BY_OUTPUT
     webrtc::I420VideoFrame* target = m_composedFrame;
     for (int input = 0; input < m_maxSlot; input++) {
         if ((input == 0) && !(m_currentLayout == m_newLayout)) {
@@ -305,7 +303,6 @@ bool VCMOutputProcessor::layoutFrames()
 
     m_composedFrame->set_render_time_ms(TickTime::MillisecondTimestamp() - m_ntpDelta);
     m_videoEncoder->DeliverFrame(m_id, m_composedFrame);
-#endif
     return true;
 }
 
