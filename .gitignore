@@ -11,13 +11,11 @@ scripts/libdeps/
 libdeps/
 source/extras/vagrant/.vagrant
 source/extras/vagrant/licode/
-source/erizo_controller/erizoAgent/out.log
-source/erizo_controller/erizoAgent/erizo-*.log
+source/erizo_controller/erizoAgent/*.log
+source/erizo_controller/erizoAgent/*.pem
+source/erizo_controller/erizoAgent/webrtc.*
+source/erizo_controller/erizoAgent/mixer.audio
 third_party/node-v0.*
-third_party/webrtc/Makefile
-third_party/webrtc/out/
-third_party/webrtc/webrtc/
-third_party/webrtc/*.a
 third_party/libuv-*
 third_party/libre-*
 third_party/mediaprocessor/
