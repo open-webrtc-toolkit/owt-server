@@ -156,7 +156,7 @@ private:
     boost::scoped_ptr<boost::thread> audioMixingThread_;
     boost::asio::io_service io_service_;
     boost::scoped_ptr<boost::asio::deadline_timer> timer_;
-    std::atomic<bool> m_isStopping;
+    std::atomic<bool> m_isClosing;
 
     FileRecorder* _outputFileRecorderPtr;
     bool _outputFileRecording;

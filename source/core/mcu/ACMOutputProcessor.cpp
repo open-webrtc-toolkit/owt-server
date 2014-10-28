@@ -48,10 +48,11 @@ ACMOutputProcessor::ACMOutputProcessor(uint32_t instanceId, woogeen_base::Woogee
         amixer_(AudioConferenceMixer::Create(instanceId)),
         apm_(NULL),
         instanceId_(instanceId),
-        audio_coding_(AudioCodingModule::Create(
-                instanceId)),
-                m_isStopping(false) {
-
+        audio_coding_(AudioCodingModule::Create(instanceId)),
+        m_isClosing(false),
+        _outputFileRecorderPtr(nullptr),
+        _outputFileRecording(false)
+{
     WEBRTC_TRACE(kTraceMemory, kTraceVoice, instanceId,
                  "OutputMixer::OutputMixer() - ctor");
 
@@ -89,7 +90,7 @@ ACMOutputProcessor::~ACMOutputProcessor() {
     // that indicates the successful completion of the wait operation.
     // This means we cannot rely on the operation_aborted error code in the handlers
     // to know if the timer is being cancelled, thus an additional flag is provided.
-    m_isStopping = true;
+    m_isClosing = true;
     if (timer_)
         timer_->cancel();
     if (audioMixingThread_)
@@ -240,16 +241,19 @@ int32_t ACMOutputProcessor::SendData(FrameType frame_type, uint8_t payload_type,
 
 void ACMOutputProcessor::NewMixedAudio(const int32_t id,
         const AudioFrame& generalAudioFrame,
-        const AudioFrame** uniqueAudioFrames, const uint32_t size) {
+        const AudioFrame** uniqueAudioFrames, const uint32_t size)
+{
+    if (_outputFileRecording && _outputFileRecorderPtr)
         _outputFileRecorderPtr->RecordAudioToFile(generalAudioFrame, NULL);
-        audio_coding_->Add10MsData(generalAudioFrame);
-        audio_coding_->Process();
+
+    audio_coding_->Add10MsData(generalAudioFrame);
+    audio_coding_->Process();
 }
 
 int32_t ACMOutputProcessor::MixActiveChannels(const boost::system::error_code& ec) {
     if (!ec) {
         amixer_->Process();
-        if (!m_isStopping) {
+        if (!m_isClosing) {
               timer_->expires_at(timer_->expires_at() + boost::posix_time::milliseconds(10));
               timer_->async_wait(boost::bind(&ACMOutputProcessor::MixActiveChannels, this, boost::asio::placeholders::error));
         }
