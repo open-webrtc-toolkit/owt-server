@@ -6,7 +6,7 @@
  */
 
 #include "AVSyncModule.h"
-#include "ACMMediaProcessor.h"
+#include "ACMInputProcessor.h"
 #include <webrtc/modules/video_coding/main/interface/video_coding.h>
 #include "webrtc/system_wrappers/interface/trace.h"
 

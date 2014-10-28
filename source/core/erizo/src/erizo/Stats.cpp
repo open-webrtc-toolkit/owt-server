@@ -45,7 +45,7 @@ namespace erizo {
           ReportBlock* report = reinterpret_cast<ReportBlock*>(movingBuf + blockOffset);
           uint32_t sourceSSRC = report->getSourceSSRC();
           // TODO: This "add" fraction lost is totally WRONG, or MEANINGLESS!
-          addFragmentLost(report->getFractionLost(), sourceSSRC);
+          setFractionLost(report->getFractionLost(), sourceSSRC);
           setPacketsLost(report->getCumulativeLost(), sourceSSRC);
           setJitter(report->getJitter(), sourceSSRC);
           blockOffset += sizeof(ReportBlock);
@@ -67,17 +67,22 @@ namespace erizo {
     for (fullStatsMap_t::iterator itssrc=theStats_.begin(); itssrc!=theStats_.end();){
       unsigned long int currentSSRC = itssrc->first;
       theString << "{\"ssrc\":\"" << currentSSRC << "\",\n";
-        for (singleSSRCstatsMap_t::iterator it=theStats_[currentSSRC].begin(); it!=theStats_[currentSSRC].end();){
-          theString << "\"" << it->first << "\":\"" << it->second << "\"";
-          if (++it != theStats_[currentSSRC].end()){
-            theString << ",\n";
-          }          
-        }
-        theString << "}";
-        if (++itssrc != theStats_.end()){
-          theString << ",";
-        }
+      if (currentSSRC == videoSSRC_){
+        theString << "\"type\":\"" << "video\",\n";
+      }else if (currentSSRC == audioSSRC_){
+        theString << "\"type\":\"" << "audio\",\n";
       }
+      for (singleSSRCstatsMap_t::iterator it=theStats_[currentSSRC].begin(); it!=theStats_[currentSSRC].end();){
+        theString << "\"" << it->first << "\":\"" << it->second << "\"";
+        if (++it != theStats_[currentSSRC].end()){
+          theString << ",\n";
+        }          
+      }
+      theString << "}";
+      if (++itssrc != theStats_.end()){
+        theString << ",";
+      }
+    }
     theString << "]";
     return theString.str(); 
   }
