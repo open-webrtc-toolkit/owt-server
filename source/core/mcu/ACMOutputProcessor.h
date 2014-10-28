@@ -34,7 +34,6 @@
 #ifndef ACMOutputProcessor_h
 #define ACMOutputProcessor_h
 
-#include <atomic>
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
 #include <boost/scoped_ptr.hpp>
