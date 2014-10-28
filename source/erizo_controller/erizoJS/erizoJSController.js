@@ -13,6 +13,10 @@ var rpc = require('./../common/rpc');
 // Logger
 var log = logger.getLogger("ErizoJSController");
 
+// Log segfaults
+var SegfaultHandler = require('segfault-handler');
+SegfaultHandler.registerHandler();
+
 exports.ErizoJSController = function (spec) {
     "use strict";
 
@@ -62,16 +66,25 @@ exports.ErizoJSController = function (spec) {
      * Given a WebRtcConnection waits for the state CANDIDATES_GATHERED for set remote SDP.
      */
     initWebRtcConnection = function (wrtc, sdp, callback, id_pub, id_sub) {
+        if(typeof sdp != 'string') sdp = JSON.stringify(sdp); // fixes some issues with sending json object as json, and not as string
 
         if (GLOBAL.config.erizoController.sendStats) {
             wrtc.getStats(function (newStats){
-                rpc.callRpc('stats_handler', 'stats', [{pub: id_pub, subs: id_sub, stats: JSON.parse(newStats)}]);
+                log.info("Received RTCP stats: ", newStats);
+                var timeStamp = new Date();
+                rpc.callRpc('stats_handler', 'stats', [{pub: id_pub, subs: id_sub, stats: JSON.parse(newStats), timestamp:timeStamp.getTime()}]);
             });
         }
 
         wrtc.init( function (newStatus){
+
           var localSdp, answer;
           log.info("webrtc Addon status" + newStatus );
+
+          if (GLOBAL.config.erizoController.sendStats) {
+            var timeStamp = new Date();
+            rpc.callRpc('stats_handler', 'event', [{pub: id_pub, subs: id_sub, type: 'connection_status', status: newStatus, timestamp:timeStamp.getTime()}]);
+          }
           if (newStatus === 102 && !sdpDelivered) {
             localSdp = wrtc.getLocalSdp();
             answer = getRoap(localSdp, roap);
@@ -231,6 +244,7 @@ exports.ErizoJSController = function (spec) {
      * OneToManyProcessor.
      */
     that.addSubscriber = function (from, to, audio, video, sdp, callback) {
+        if (typeof sdp != 'string') sdp = JSON.stringify(sdp);
 
         if (publishers[to] !== undefined && subscribers[to].indexOf(from) === -1 && sdp.match('OFFER') !== null) {
 

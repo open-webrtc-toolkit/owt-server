@@ -93,11 +93,6 @@ DtlsTransport::~DtlsTransport() {
 
   ELOG_DEBUG("Join thread getNice");
   getNice_Thread_.join();
-
-  ELOG_DEBUG("writeMutex");
-  boost::mutex::scoped_lock lockw(writeMutex_);
-  ELOG_DEBUG("sessionMutex");
-  boost::mutex::scoped_lock locks(sessionMutex_);
   ELOG_DEBUG("DTLSTransport destructor END");
 
   if (dtlsRtp != NULL)
@@ -107,7 +102,6 @@ DtlsTransport::~DtlsTransport() {
 }
 
 void DtlsTransport::start() {
-  nice_->start();
   running_ =true;
   getNice_Thread_ = boost::thread(&DtlsTransport::getNiceDataLoop, this);
 
@@ -269,9 +263,9 @@ void DtlsTransport::updateIceState(IceState state, NiceConnection *conn) {
     updateTransportState(TRANSPORT_FAILED);
   }
   if (state == NICE_READY) {
-    ELOG_DEBUG("%s - Nice ready", transport_name.c_str());
-    if (!dtlsRtp->started) {
-      ELOG_DEBUG("%s - DTLSRTP Start", transport_name.c_str());
+    ELOG_INFO("%s - Nice ready", transport_name.c_str());
+    if (dtlsRtp && !dtlsRtp->started) {
+      ELOG_INFO("%s - DTLSRTP Start", transport_name.c_str());
       dtlsRtp->start();
     }
     if (dtlsRtcp != NULL && !dtlsRtcp->started) {
@@ -305,7 +299,7 @@ void DtlsTransport::processLocalSdp(SdpInfo *localSdp_) {
 }
 
 void DtlsTransport::getNiceDataLoop(){
-  while(running_ == true){
+  while(running_){
     p_ = nice_->getPacket();
     if (p_->length > 0) {
         this->onNiceData(p_->comp, p_->data, p_->length, NULL);

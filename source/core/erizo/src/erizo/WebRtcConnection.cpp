@@ -26,11 +26,8 @@ namespace erizo {
     fbSink_ = NULL;
     sourcefbSink_ = this;
     sinkfbSource_ = this;
-
     globalState_ = CONN_INITIAL;
     connEventListener_ = NULL;
-
-
     videoTransport_ = NULL;
     audioTransport_ = NULL;
 
@@ -61,24 +58,21 @@ namespace erizo {
   WebRtcConnection::~WebRtcConnection() {
     ELOG_INFO("WebRtcConnection Destructor");
     sending_ = false;
-    this->queueData(-1,NULL,-1,NULL);
     cond_.notify_one();
     send_Thread_.join();
-    delete videoTransport_;
-    videoTransport_=NULL;
-    delete audioTransport_;
-    audioTransport_= NULL;
-    boost::mutex::scoped_lock lock(receiveMediaMutex_);
-    boost::mutex::scoped_lock lock2(writeMutex_);
-    boost::mutex::scoped_lock lock3(updateStateMutex_);
-    videoSink_ = NULL;
-    audioSink_ = NULL;
-    fbSink_ = NULL;
     globalState_ = CONN_FINISHED;
     if (connEventListener_ != NULL){
       connEventListener_->notifyEvent(globalState_);
       connEventListener_ = NULL;
     }
+    globalState_ = CONN_FINISHED;
+    videoSink_ = NULL;
+    audioSink_ = NULL;
+    fbSink_ = NULL;
+    delete videoTransport_;
+    videoTransport_=NULL;
+    delete audioTransport_;
+    audioTransport_= NULL;
   }
 
   bool WebRtcConnection::init() {
@@ -135,7 +129,9 @@ namespace erizo {
     localSdp_.audioSsrc = this->getAudioSinkSSRC();
 
     this->setVideoSourceSSRC(remoteSdp_.videoSsrc);
+    this->thisStats_.setVideoSourceSSRC(this->getVideoSourceSSRC());
     this->setAudioSourceSSRC(remoteSdp_.audioSsrc);
+    this->thisStats_.setAudioSourceSSRC(this->getAudioSourceSSRC());
 
     if (!remoteSdp_.supportPayloadType(RED_90000_PT))
       deliverMediaBuffer_.reset(new char[3000]);
@@ -417,10 +413,9 @@ namespace erizo {
 
     if (state == TRANSPORT_FAILED) {
       temp = CONN_FAILED;
-      globalState_ = CONN_FAILED;
+      //globalState_ = CONN_FAILED;
       sending_ = false;
-      ELOG_INFO("WebRtcConnection failed, stopped sending");
-      boost::unique_lock<boost::mutex> lock(receiveMediaMutex_);
+      ELOG_INFO("WebRtcConnection failed, stopping sending");
       cond_.notify_one();
       ELOG_INFO("WebRtcConnection failed, stopped sending");
     }
@@ -488,7 +483,7 @@ namespace erizo {
   }
 
   void WebRtcConnection::queueData(int comp, const char* buf, int length, Transport *transport) {
-    if (audioSink_ == NULL && videoSink_ == NULL && fbSink_==NULL) //we don't enqueue data if there is nothing to receive it
+    if ((audioSink_ == NULL && videoSink_ == NULL && fbSink_==NULL) || !sending_) //we don't enqueue data if there is nothing to receive it
       return;
 
     if (length > MAX_DATA_PACKET_SIZE) {
@@ -496,7 +491,7 @@ namespace erizo {
       return;
     }
 
-    if (sending_==false)
+    if (!sending_)
       return;
     if (comp == -1){
       sending_ = false;
@@ -571,31 +566,33 @@ namespace erizo {
   }
 
   void WebRtcConnection::sendLoop() {
-    boost::unique_lock<boost::mutex> lock(receiveMediaMutex_);
+      while (sending_) {
+          dataPacket p;
+          {
+              boost::unique_lock<boost::mutex> lock(receiveMediaMutex_);
+              while (sendQueue_.size() == 0) {
+                  cond_.wait(lock);
+                  if (!sending_) {
+                      return;
+                  }
+              }
+              if(sendQueue_.front().comp ==-1){
+                  sending_ =  false;
+                  ELOG_DEBUG("Finishing send Thread, packet -1");
+                  sendQueue_.pop();
+                  return;
+              }
 
-    while (sending_ == true) {
+              p = sendQueue_.front();
+              sendQueue_.pop();
+          }
 
-      while (sendQueue_.size() == 0) {
-        cond_.wait(lock);
-        if (sending_ == false) {
-          return;
-        }
+          if (bundle_ || p.type == VIDEO_PACKET) {
+              videoTransport_->write(p.data, p.length);
+          } else {
+              audioTransport_->write(p.data, p.length);
+          }
       }
-      if(sendQueue_.front().comp ==-1){
-        sending_ =  false;
-        ELOG_DEBUG("Finishing send Thread, packet -1");
-        sendQueue_.pop();
-        lock.unlock();
-        return;
-      }
-      if (sendQueue_.front().type == VIDEO_PACKET || bundle_) {
-        videoTransport_->write(sendQueue_.front().data, sendQueue_.front().length);
-      } else {
-        audioTransport_->write(sendQueue_.front().data, sendQueue_.front().length);
-      }
-      sendQueue_.pop();
-    }
-
   }
 }
 /* namespace erizo */
