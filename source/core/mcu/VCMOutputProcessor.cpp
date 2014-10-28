@@ -120,18 +120,15 @@ bool VCMOutputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* tran
     m_rtpRtcp.reset(RtpRtcp::CreateRtpRtcp(configuration));
     m_taskRunner->RegisterModule(m_rtpRtcp.get());
 
-    if (m_videoEncoder->GetEncoder(&m_currentCodec) == 0) {
-    	m_currentCodec.width = 640;
-    	m_currentCodec.height = 480;
-        m_videoEncoder->SetEncoder(m_currentCodec);
-        m_rtpRtcp->RegisterSendPayload(m_currentCodec);
+    VideoCodec videoCodec;
+    if (m_videoEncoder->GetEncoder(&videoCodec) == 0) {
+        videoCodec.width = 640;
+        videoCodec.height = 480;
+        if (!setSendVideoCodec(videoCodec))
+            return false;
     } else
         assert(false);
 
-    m_composedFrame.reset(new webrtc::I420VideoFrame());
-    m_composedFrame->CreateEmptyFrame(m_currentCodec.width, m_currentCodec.height,
-    				m_currentCodec.width, m_currentCodec.width / 2, m_currentCodec.width / 2);
-    clearFrame(m_composedFrame.get());
     m_recordStarted = false;
 
     m_timer.reset(new boost::asio::deadline_timer(m_ioService, boost::posix_time::milliseconds(33)));
@@ -169,15 +166,18 @@ void VCMOutputProcessor::layoutTimerHandler(const boost::system::error_code& ec)
     }
 }
 
-bool VCMOutputProcessor::setSendVideoCodec(const VideoCodec& video_codec)
+bool VCMOutputProcessor::setSendVideoCodec(const VideoCodec& videoCodec)
 {
-    m_currentCodec = video_codec;
+    m_currentCodec = videoCodec;
     webrtc::I420VideoFrame* newComposedFrame = new webrtc::I420VideoFrame();
     newComposedFrame->CreateEmptyFrame(m_currentCodec.width, m_currentCodec.height,
-    				m_currentCodec.width, m_currentCodec.width / 2, m_currentCodec.width / 2);
+                    m_currentCodec.width, m_currentCodec.width / 2, m_currentCodec.width / 2);
     clearFrame(newComposedFrame);
     m_composedFrame.reset(newComposedFrame);
-	return m_videoEncoder ? (m_videoEncoder->SetEncoder(video_codec) == 0) : false;
+    if (!m_rtpRtcp || m_rtpRtcp->RegisterSendPayload(m_currentCodec) == -1)
+        return false;
+
+    return m_videoEncoder ? (m_videoEncoder->SetEncoder(m_currentCodec) != -1) : false;
 }
 
 void VCMOutputProcessor::onRequestIFrame()

@@ -55,10 +55,10 @@ public:
     void close();
 
     void updateMaxSlot(int newMaxSlot);
-    bool setSendVideoCodec(const VideoCodec& video_codec);
+    bool setSendVideoCodec(const VideoCodec&);
     void onRequestIFrame();
 
-    void layoutTimerHandler(const boost::system::error_code& ec);
+    void layoutTimerHandler(const boost::system::error_code&);
 
     /**
      * Implements InputFrameCallback.
