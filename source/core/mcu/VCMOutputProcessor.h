@@ -92,6 +92,7 @@ private:
     Layout m_currentLayout; // current layout config;
     Layout m_newLayout; // new layout config if any;
     boost::scoped_ptr<CriticalSectionWrapper> m_layoutLock;
+    VideoCodec m_currentCodec;
 
     boost::shared_ptr<TaskRunner> m_taskRunner;
     boost::scoped_ptr<webrtc::BitrateController> m_bitrateController;
@@ -110,7 +111,7 @@ private:
     // Delta used for translating between NTP and internal timestamps.
     int64_t m_ntpDelta;
     boost::shared_ptr<BufferManager> m_bufferManager;
-    webrtc::I420VideoFrame* m_composedFrame;
+    boost::scoped_ptr<webrtc::I420VideoFrame> m_composedFrame;
     webrtc::I420VideoFrame* m_mockFrame;
 
     boost::scoped_ptr<boost::thread> m_encodingThread;

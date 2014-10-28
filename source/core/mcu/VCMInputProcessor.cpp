@@ -108,7 +108,7 @@ bool VCMInputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* trans
 
     m_avSync.reset(new AVSyncModule(m_vcm, m_index));
     m_recorder.reset(new DebugRecorder());
-    m_recorder->Start("/home/qzhang8/webrtc/webrtc.frame.i420");
+    m_recorder->Start("webrtc.frame.i420");
 
     m_taskRunner->RegisterModule(m_vcm);
     m_taskRunner->RegisterModule(m_rtpRtcp.get());

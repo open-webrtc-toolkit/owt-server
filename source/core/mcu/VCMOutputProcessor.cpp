@@ -120,19 +120,18 @@ bool VCMOutputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* tran
     m_rtpRtcp.reset(RtpRtcp::CreateRtpRtcp(configuration));
     m_taskRunner->RegisterModule(m_rtpRtcp.get());
 
-    VideoCodec video_codec;
-    if (m_videoEncoder->GetEncoder(&video_codec) == 0) {
-        video_codec.width = 640;
-        video_codec.height = 480;
-        m_videoEncoder->SetEncoder(video_codec);
-        m_rtpRtcp->RegisterSendPayload(video_codec);
+    if (m_videoEncoder->GetEncoder(&m_currentCodec) == 0) {
+    	m_currentCodec.width = 640;
+    	m_currentCodec.height = 480;
+        m_videoEncoder->SetEncoder(m_currentCodec);
+        m_rtpRtcp->RegisterSendPayload(m_currentCodec);
     } else
         assert(false);
 
-    m_composedFrame = new webrtc::I420VideoFrame();
-    m_composedFrame->CreateEmptyFrame(640, 480,
-                                      640, 640 / 2, 640 / 2);
-    clearFrame(m_composedFrame);
+    m_composedFrame.reset(new webrtc::I420VideoFrame());
+    m_composedFrame->CreateEmptyFrame(m_currentCodec.width, m_currentCodec.height,
+    				m_currentCodec.width, m_currentCodec.width / 2, m_currentCodec.width / 2);
+    clearFrame(m_composedFrame.get());
     m_recordStarted = false;
 
     m_timer.reset(new boost::asio::deadline_timer(m_ioService, boost::posix_time::milliseconds(33)));
@@ -149,10 +148,6 @@ void VCMOutputProcessor::close()
     m_encodingThread->join();
 
     m_videoEncoder->StopDebugRecording();
-    if (m_composedFrame) {
-        delete m_composedFrame;
-        m_composedFrame = nullptr;
-    }
     if (m_mockFrame) {
         delete m_mockFrame;
         m_mockFrame = nullptr;
@@ -176,7 +171,13 @@ void VCMOutputProcessor::layoutTimerHandler(const boost::system::error_code& ec)
 
 bool VCMOutputProcessor::setSendVideoCodec(const VideoCodec& video_codec)
 {
-    return m_videoEncoder ? (m_videoEncoder->SetEncoder(video_codec) == 0) : false;
+    m_currentCodec = video_codec;
+    webrtc::I420VideoFrame* newComposedFrame = new webrtc::I420VideoFrame();
+    newComposedFrame->CreateEmptyFrame(m_currentCodec.width, m_currentCodec.height,
+    				m_currentCodec.width, m_currentCodec.width / 2, m_currentCodec.width / 2);
+    clearFrame(newComposedFrame);
+    m_composedFrame.reset(newComposedFrame);
+	return m_videoEncoder ? (m_videoEncoder->SetEncoder(video_codec) == 0) : false;
 }
 
 void VCMOutputProcessor::onRequestIFrame()
@@ -197,8 +198,8 @@ void VCMOutputProcessor::updateMaxSlot(int newMaxSlot)
     else
         layout.m_divFactor = 4;
 
-    layout.m_subWidth = 640 / layout.m_divFactor;
-    layout.m_subHeight = 480 / layout.m_divFactor;
+    layout.m_subWidth = m_currentCodec.width / layout.m_divFactor;
+    layout.m_subHeight = m_currentCodec.height / layout.m_divFactor;
 
     m_newLayout = layout; // atomic
 
@@ -237,13 +238,13 @@ void VCMOutputProcessor::clearFrame(webrtc::I420VideoFrame* frame) {
 bool VCMOutputProcessor::layoutFrames()
 {
 #if SCALE_BY_OUTPUT
-    webrtc::I420VideoFrame* target = m_composedFrame;
+    webrtc::I420VideoFrame* target = m_composedFrame.get();
     for (int input = 0; input < m_maxSlot; input++) {
         if ((input == 0) && !(m_currentLayout == m_newLayout)) {
             // commit new layout config at the beginning of each iteration
             m_currentLayout = m_newLayout;
             m_vpmPool->update(m_currentLayout);
-            clearFrame(m_composedFrame);
+            clearFrame(m_composedFrame.get());
         }
         unsigned int offset_width = (input%m_currentLayout.m_divFactor) * m_currentLayout.m_subWidth;
         unsigned int offset_height = (input/m_currentLayout.m_divFactor) * m_currentLayout.m_subHeight;
@@ -304,7 +305,7 @@ bool VCMOutputProcessor::layoutFrames()
     }
 
     m_composedFrame->set_render_time_ms(TickTime::MillisecondTimestamp() - m_ntpDelta);
-    m_videoEncoder->DeliverFrame(m_id, m_composedFrame);
+    m_videoEncoder->DeliverFrame(m_id, m_composedFrame.get());
 #endif
     return true;
 }
