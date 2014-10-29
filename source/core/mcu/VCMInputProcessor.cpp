@@ -73,7 +73,7 @@ bool VCMInputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* trans
     m_videoReceiver.reset(new ViEReceiver(m_index, m_vcm, m_remoteBitrateEstimator.get(), nullptr));
 
     RtpRtcp::Configuration configuration;
-    configuration.id = 002;
+    configuration.id = m_index;
     configuration.audio = false;  // Video.
     configuration.outgoing_transport = transport; // For sending RTCP feedback to the publisher
     configuration.remote_bitrate_estimator = m_remoteBitrateEstimator.get();
