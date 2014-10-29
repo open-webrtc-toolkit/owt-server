@@ -69,7 +69,7 @@ void VPMPool::update(VCMOutputProcessor::Layout& layout)
     }
 }
 
-DEFINE_LOGGER(VCMOutputProcessor, "media.VCMOutputProcessor");
+DEFINE_LOGGER(VCMOutputProcessor, "mcu.VCMOutputProcessor");
 
 VCMOutputProcessor::VCMOutputProcessor(int id)
     : m_id(id)

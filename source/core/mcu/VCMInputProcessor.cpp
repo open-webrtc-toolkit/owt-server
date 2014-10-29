@@ -20,18 +20,16 @@
 
 #include "VCMInputProcessor.h"
 
-#include "ACMInputProcessor.h"
-#include "AVSyncModule.h"
+#include "AudioProcessor.h"
 #include "TaskRunner.h"
 #include <rtputils.h>
-#include <webrtc/system_wrappers/interface/trace.h>
 
 using namespace webrtc;
 using namespace erizo;
 
 namespace mcu {
 
-DEFINE_LOGGER(VCMInputProcessor, "media.VCMInputProcessor");
+DEFINE_LOGGER(VCMInputProcessor, "mcu.VCMInputProcessor");
 
 VCMInputProcessor::VCMInputProcessor(int index)
     : m_index(index)
@@ -43,7 +41,6 @@ VCMInputProcessor::~VCMInputProcessor()
 {
     m_videoReceiver->StopReceive();
     m_recorder->Stop();
-    Trace::ReturnTrace();
 
     if (m_taskRunner) {
         m_taskRunner->DeRegisterModule(m_avSync.get());
@@ -59,10 +56,6 @@ VCMInputProcessor::~VCMInputProcessor()
 
 bool VCMInputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<BufferManager> bufferManager, boost::shared_ptr<InputFrameCallback> frameReadyCB, boost::shared_ptr<TaskRunner> taskRunner)
 {
-    Trace::CreateTrace();
-    Trace::SetTraceFile("webrtc.trace.txt");
-    Trace::set_level_filter(webrtc::kTraceAll);
-
     m_videoTransport.reset(transport);
     m_bufferManager = bufferManager;
     m_frameReadyCB = frameReadyCB;
@@ -107,7 +100,7 @@ bool VCMInputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* trans
 
     m_videoReceiver->SetReceiveCodec(video_codec);
 
-    m_avSync.reset(new AVSyncModule(m_vcm, m_index));
+    m_avSync.reset(new ViESyncModule(m_vcm, m_index));
     m_recorder.reset(new DebugRecorder());
     m_recorder->Start("webrtc.frame.i420");
 
@@ -117,11 +110,10 @@ bool VCMInputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* trans
     return true;
 }
 
-void VCMInputProcessor::bindAudioInputProcessor(boost::shared_ptr<ACMInputProcessor> aip)
+void VCMInputProcessor::bindAudioForSync(int32_t voiceChannelId, VoEVideoSync* voe)
 {
-    m_aip = aip;
     if (m_avSync) {
-        m_avSync->ConfigureSync(m_aip, m_rtpRtcp.get(), m_videoReceiver->GetRtpReceiver());
+        m_avSync->ConfigureSync(voiceChannelId, voe, m_rtpRtcp.get(), m_videoReceiver->GetRtpReceiver());
         m_taskRunner->RegisterModule(m_avSync.get());
     }
 }
