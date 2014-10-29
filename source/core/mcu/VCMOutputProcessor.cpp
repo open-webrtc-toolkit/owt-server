@@ -107,11 +107,11 @@ bool VCMOutputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* tran
     m_bitrateController.reset(webrtc::BitrateController::CreateBitrateController(Clock::GetRealTimeClock(), true));
     m_bandwidthObserver.reset(m_bitrateController->CreateRtcpBandwidthObserver());
     webrtc::Config config;
-    m_videoEncoder.reset(new ViEEncoder(m_id, m_id, 4, config, *(m_taskRunner->unwrap()), m_bitrateController.get()));
+    m_videoEncoder.reset(new ViEEncoder(m_id, -1, 4, config, *(m_taskRunner->unwrap()), m_bitrateController.get()));
     m_videoEncoder->Init();
 
     RtpRtcp::Configuration configuration;
-    configuration.id = m_id;
+    configuration.id = ViEModuleId(m_id);
     configuration.outgoing_transport = transport;
     configuration.audio = false;  // Video.
     configuration.default_module = m_videoEncoder->SendRtpRtcpModule();
