@@ -33,8 +33,6 @@
 #include <WoogeenTransport.h>
 #include <webrtc/video_engine/vie_encoder.h>
 
-using namespace webrtc;
-
 namespace mcu {
 
 class TaskRunner;
@@ -55,7 +53,7 @@ public:
     void close();
 
     void updateMaxSlot(int newMaxSlot);
-    bool setSendVideoCodec(const VideoCodec&);
+    bool setSendVideoCodec(const webrtc::VideoCodec&);
     void onRequestIFrame();
 
     void layoutTimerHandler(const boost::system::error_code&);
@@ -90,15 +88,15 @@ private:
     int m_maxSlot;
     Layout m_currentLayout; // current layout config;
     Layout m_newLayout; // new layout config if any;
-    boost::scoped_ptr<CriticalSectionWrapper> m_layoutLock;
-    VideoCodec m_currentCodec;
+    boost::scoped_ptr<webrtc::CriticalSectionWrapper> m_layoutLock;
+    webrtc::VideoCodec m_currentCodec;
 
     boost::shared_ptr<TaskRunner> m_taskRunner;
     boost::scoped_ptr<webrtc::BitrateController> m_bitrateController;
     boost::scoped_ptr<webrtc::RtcpBandwidthObserver> m_bandwidthObserver;
     boost::scoped_ptr<webrtc::ViEEncoder> m_videoEncoder;
     boost::scoped_ptr<woogeen_base::WoogeenTransport<erizo::VIDEO>> m_videoTransport;
-    boost::scoped_ptr<RtpRtcp> m_rtpRtcp;
+    boost::scoped_ptr<webrtc::RtpRtcp> m_rtpRtcp;
     boost::scoped_ptr<VPMPool> m_vpmPool;
     boost::scoped_ptr<DebugRecorder> m_recorder;
     bool m_recordStarted;
@@ -125,11 +123,11 @@ class VPMPool {
 public:
     VPMPool(unsigned int size);
     ~VPMPool();
-    VideoProcessingModule* get(unsigned int slot);
+    webrtc::VideoProcessingModule* get(unsigned int slot);
     void update(VCMOutputProcessor::Layout&);
 
 private:
-    VideoProcessingModule** m_vpms;
+    webrtc::VideoProcessingModule** m_vpms;
     unsigned int m_size;
     VCMOutputProcessor::Layout m_layout;
 };

@@ -1,8 +1,8 @@
 Index: src/webrtc/webrtc.gyp
 ===================================================================
---- src/webrtc/webrtc.gyp	(revision 7301)
+--- src/webrtc/webrtc.gyp	(revision 7370)
 +++ src/webrtc/webrtc.gyp	(working copy)
-@@ -6,75 +6,16 @@
+@@ -6,75 +6,17 @@
  # in the file PATENTS.  All contributing project authors may
  # be found in the AUTHORS file in the root of the source tree.
  {
@@ -36,6 +36,7 @@ Index: src/webrtc/webrtc.gyp
 -        '<@(webrtc_all_dependencies)',
 -        'webrtc',
 +        'modules/modules.gyp:*',
++        'voice_engine/voice_engine.gyp:*',
        ],
 -      'conditions': [
 -        ['include_tests==1', {
@@ -81,7 +82,7 @@ Index: src/webrtc/webrtc.gyp
  }
 Index: src/webrtc/modules/utility/source/utility.gypi
 ===================================================================
---- src/webrtc/modules/utility/source/utility.gypi	(revision 7301)
+--- src/webrtc/modules/utility/source/utility.gypi	(revision 7370)
 +++ src/webrtc/modules/utility/source/utility.gypi	(working copy)
 @@ -21,7 +21,6 @@
          '../interface/audio_frame_operations.h',
@@ -113,20 +114,17 @@ Index: src/webrtc/modules/utility/source/utility.gypi
              'webrtc_video_coding',
 Index: src/webrtc/modules/modules.gyp
 ===================================================================
---- src/webrtc/modules/modules.gyp	(revision 7301)
+--- src/webrtc/modules/modules.gyp	(revision 7370)
 +++ src/webrtc/modules/modules.gyp	(working copy)
-@@ -20,10 +20,8 @@
-     'audio_coding/neteq/neteq.gypi',
-     'audio_coding/neteq4/neteq.gypi',
-     'audio_conference_mixer/source/audio_conference_mixer.gypi',
--    'audio_device/audio_device.gypi',
+@@ -23,7 +23,6 @@
+     'audio_device/audio_device.gypi',
      'audio_processing/audio_processing.gypi',
      'bitrate_controller/bitrate_controller.gypi',
 -    'desktop_capture/desktop_capture.gypi',
      'media_file/source/media_file.gypi',
      'pacing/pacing.gypi',
      'remote_bitrate_estimator/remote_bitrate_estimator.gypi',
-@@ -31,11 +29,19 @@
+@@ -31,11 +30,18 @@
      'utility/source/utility.gypi',
      'video_coding/codecs/i420/main/source/i420.gypi',
      'video_coding/main/source/video_coding.gypi',
@@ -137,7 +135,6 @@ Index: src/webrtc/modules/modules.gyp
    'conditions': [
 +    ['include_capture==1', {
 +      'includes': [
-+        'audio_device/audio_device.gypi',
 +        'desktop_capture/desktop_capture.gypi',
 +        'video_capture/video_capture.gypi',
 +      ],
@@ -150,7 +147,7 @@ Index: src/webrtc/modules/modules.gyp
      }],
 Index: src/webrtc/build/common.gypi
 ===================================================================
---- src/webrtc/build/common.gypi	(revision 7301)
+--- src/webrtc/build/common.gypi	(revision 7370)
 +++ src/webrtc/build/common.gypi	(working copy)
 @@ -55,6 +55,9 @@
      'include_opus%': '<(include_opus)',
@@ -164,7 +161,7 @@ Index: src/webrtc/build/common.gypi
      # preferred warning settings.
 Index: src/webrtc/system_wrappers/source/system_wrappers.gyp
 ===================================================================
---- src/webrtc/system_wrappers/source/system_wrappers.gyp	(revision 7301)
+--- src/webrtc/system_wrappers/source/system_wrappers.gyp	(revision 7370)
 +++ src/webrtc/system_wrappers/source/system_wrappers.gyp	(working copy)
 @@ -144,6 +144,24 @@
            'link_settings': {

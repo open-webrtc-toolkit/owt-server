@@ -33,8 +33,13 @@
 #include <webrtc/modules/rtp_rtcp/interface/rtp_rtcp.h>
 #include <webrtc/modules/video_coding/main/interface/video_coding.h>
 #include <webrtc/video_engine/vie_receiver.h>
+#include <webrtc/video_engine/vie_sync_module.h>
 
 using namespace webrtc;
+
+namespace webrtc {
+class VoEVideoSync;
+}
 
 namespace mcu {
 
@@ -44,8 +49,7 @@ namespace mcu {
  * served by one VCMInputProcessor.
  * This class more or less is working as the vie_receiver class
  */
-class ACMInputProcessor;
-class AVSyncModule;
+class AudioProcessor;
 class TaskRunner;
 
 class VCMInputProcessor : public erizo::MediaSink,
@@ -65,7 +69,7 @@ public:
 
     bool init(woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<BufferManager>, boost::shared_ptr<InputFrameCallback>, boost::shared_ptr<TaskRunner>);
 
-    void bindAudioInputProcessor(boost::shared_ptr<ACMInputProcessor>);
+    void bindAudioForSync(int32_t voiceChannelId, VoEVideoSync*);
     int channelId() { return m_index; }
 
 private:
@@ -75,11 +79,10 @@ private:
     boost::scoped_ptr<RemoteBitrateEstimator> m_remoteBitrateEstimator;
     boost::scoped_ptr<ViEReceiver> m_videoReceiver;
     boost::scoped_ptr<RtpRtcp> m_rtpRtcp;
-    boost::scoped_ptr<AVSyncModule> m_avSync;
+    boost::scoped_ptr<ViESyncModule> m_avSync;
     boost::scoped_ptr<DebugRecorder> m_recorder;
 
     boost::shared_ptr<Transport> m_videoTransport;
-    boost::shared_ptr<ACMInputProcessor> m_aip;
     boost::shared_ptr<InputFrameCallback> m_frameReadyCB;
     boost::shared_ptr<BufferManager> m_bufferManager;
     boost::shared_ptr<TaskRunner> m_taskRunner;

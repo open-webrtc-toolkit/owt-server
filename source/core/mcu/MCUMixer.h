@@ -35,7 +35,7 @@ class Transport;
 
 namespace mcu {
 
-class ACMOutputProcessor;
+class AudioProcessor;
 class BufferManager;
 class VCMOutputProcessor;
 class TaskRunner;
@@ -112,7 +112,7 @@ private:
     boost::shared_ptr<BufferManager> m_bufferManager;
     boost::shared_ptr<TaskRunner> m_taskRunner;
     boost::shared_ptr<VCMOutputProcessor> m_vcmOutputProcessor;
-    boost::shared_ptr<ACMOutputProcessor> m_acmOutputProcessor;
+    boost::shared_ptr<AudioProcessor> m_audioProcessor;
 };
 
 class SeparateMediaSink : public erizo::MediaSink {

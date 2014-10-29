@@ -20,16 +20,15 @@
 
 #include "MCUMixer.h"
 
-#include "ACMInputProcessor.h"
-#include "ACMOutputProcessor.h"
+#include "AudioProcessor.h"
 #include "BufferManager.h"
 #include "TaskRunner.h"
 #include "VCMInputProcessor.h"
 #include "VCMOutputProcessor.h"
-#include <ProtectedRTPReceiver.h>
 #include <ProtectedRTPSender.h>
 #include <WebRTCFeedbackProcessor.h>
 #include <WoogeenTransport.h>
+#include <webrtc/system_wrappers/interface/trace.h>
 
 using namespace webrtc;
 using namespace woogeen_base;
@@ -72,14 +71,18 @@ MCUMixer::~MCUMixer()
  */
 bool MCUMixer::init()
 {
+    Trace::CreateTrace();
+    Trace::SetTraceFile("webrtc.trace.txt");
+    Trace::set_level_filter(webrtc::kTraceAll);
+
     m_bufferManager.reset(new BufferManager());
     m_taskRunner.reset(new TaskRunner());
 
     m_vcmOutputProcessor.reset(new VCMOutputProcessor(MIXED_VIDEO_STREAM_ID));
     m_vcmOutputProcessor->init(new WoogeenTransport<erizo::VIDEO>(this, nullptr/*not enabled yet*/), m_bufferManager, m_taskRunner);
 
-    m_acmOutputProcessor.reset(new ACMOutputProcessor(1000, new WoogeenTransport<erizo::AUDIO>(this, nullptr/*not enabled yet*/)));
-    m_acmOutputProcessor->init(m_taskRunner);
+    m_audioProcessor.reset(new AudioProcessor());
+    m_audioProcessor->setOutTransport(new WoogeenTransport<erizo::AUDIO>(this, nullptr));
 
     m_taskRunner->Start();
 
@@ -91,7 +94,7 @@ int MCUMixer::deliverAudioData(char* buf, int len, MediaSource* from)
     boost::shared_lock<boost::shared_mutex> lock(m_publisherMutex);
     std::map<erizo::MediaSource*, boost::shared_ptr<erizo::MediaSink>>::iterator it = m_sinksForPublishers.find(from);
     if (it != m_sinksForPublishers.end() && it->second)
-        return it->second->deliverAudioData(buf, len);
+        return it->second->deliverAudioData(buf, len, from);
 
     return 0;
 }
@@ -106,7 +109,7 @@ int MCUMixer::deliverVideoData(char* buf, int len, MediaSource* from)
     boost::shared_lock<boost::shared_mutex> lock(m_publisherMutex);
     std::map<erizo::MediaSource*, boost::shared_ptr<erizo::MediaSink>>::iterator it = m_sinksForPublishers.find(from);
     if (it != m_sinksForPublishers.end() && it->second)
-        return it->second->deliverVideoData(buf, len);
+        return it->second->deliverVideoData(buf, len, from);
 
     return 0;
 }
@@ -150,22 +153,16 @@ void MCUMixer::addPublisher(MediaSource* publisher)
     if (it == m_sinksForPublishers.end() || !it->second) {
         m_vcmOutputProcessor->updateMaxSlot(maxSlot());
 
-        boost::shared_ptr<ACMInputProcessor> audioInputProcessor(new ACMInputProcessor(index));
-        audioInputProcessor->init(m_acmOutputProcessor, m_taskRunner);
-
         boost::shared_ptr<VCMInputProcessor> videoInputProcessor(new VCMInputProcessor(index));
-
         videoInputProcessor->init(new WoogeenTransport<erizo::VIDEO>(this, publisher->getFeedbackSink()),
         							m_bufferManager,
         							m_vcmOutputProcessor,
         							m_taskRunner);
-        // TODO: Needs a simpler and cleaner relationship among the video/audio input/output processors.
-        videoInputProcessor->bindAudioInputProcessor(audioInputProcessor);
-
-        boost::shared_ptr<ProtectedRTPReceiver> audioReceiver(new ProtectedRTPReceiver(audioInputProcessor));
+        int32_t voiceChannelId = m_audioProcessor->addSource(publisher, new WoogeenTransport<erizo::AUDIO>(this, publisher->getFeedbackSink()));
+        videoInputProcessor->bindAudioForSync(voiceChannelId, m_audioProcessor->avSyncInterface());
 
         boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
-        m_sinksForPublishers[publisher].reset(new SeparateMediaSink(audioReceiver, videoInputProcessor));
+        m_sinksForPublishers[publisher].reset(new SeparateMediaSink(m_audioProcessor, videoInputProcessor));
     } else
         assert("new publisher added with InputProcessor still available");    // should not go there
 }
@@ -215,6 +212,7 @@ void MCUMixer::removePublisher(MediaSource* publisher)
         m_sinksForPublishers.erase(it);
     }
     lock.unlock();
+    m_audioProcessor->removeSource(publisher);
     delete publisher;
 }
 
@@ -254,6 +252,8 @@ void MCUMixer::closeAll()
     }
     m_sinksForPublishers.clear();
     ELOG_DEBUG ("ClosedAll media in this Mixer");
+
+    Trace::ReturnTrace();
 }
 
 }/* namespace mcu */
