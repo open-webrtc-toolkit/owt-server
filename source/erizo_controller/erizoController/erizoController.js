@@ -852,7 +852,7 @@ var listen = function () {
 
                 if (GLOBAL.config.erizoController.report.session_events) {
                     var timeStamp = new Date();
-                    amqper.broadcast('event', [{room: socket.room.id, user: socket.id, type: 'publish', stream: id, timestamp: timeStamp.getTime()}]);
+                    amqper.broadcast('event', [{room: socket.room.id, user: socket.id, name: socket.user.name, type: 'publish', stream: id, timestamp: timeStamp.getTime()}]);
                 }
 
                 socket.room.controller.addPublisher(id, mixer, unmix, function (signMess) {
@@ -977,7 +977,7 @@ var listen = function () {
                 } else {
                     if (GLOBAL.config.erizoController.report.session_events) {
                         var timeStamp = new Date();
-                        amqper.broadcast('event', {room: socket.room.id, user: socket.id, type: 'subscribe', stream: options.streamId, timestamp: timeStamp.getTime()});
+                        amqper.broadcast('event', {room: socket.room.id, user: socket.id, name: socket.user.name, type: 'subscribe', stream: options.streamId, timestamp: timeStamp.getTime()});
                     }
                     if (typeof options.video === 'object' && options.video !== null) {
                         if (!stream.hasResolution(options.video.resolution)) {
