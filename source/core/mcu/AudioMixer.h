@@ -18,8 +18,8 @@
  * and approved by Intel in writing.
  */
 
-#ifndef AudioProcessor_h
-#define AudioProcessor_h
+#ifndef AudioMixer_h
+#define AudioMixer_h
 
 #include <boost/asio.hpp>
 #include <boost/scoped_ptr.hpp>
@@ -34,15 +34,14 @@
 
 namespace mcu {
 
-class AudioProcessor : public erizo::MediaSink {
+class AudioMixer : public erizo::MediaSink {
     DECLARE_LOGGER();
 
 public:
-    AudioProcessor();
-    virtual ~AudioProcessor();
+    AudioMixer(erizo::RTPDataReceiver*);
+    virtual ~AudioMixer();
 
-    int32_t setOutTransport(woogeen_base::WoogeenTransport<erizo::AUDIO>*);
-    int32_t addSource(erizo::MediaSource*, woogeen_base::WoogeenTransport<erizo::AUDIO>*);
+    int32_t addSource(erizo::MediaSource*);
     int32_t removeSource(erizo::MediaSource*);
 
     // Implement the MediaSink interfaces.
@@ -72,11 +71,11 @@ private:
     std::atomic<bool> m_isClosing;
 };
 
-inline webrtc::VoEVideoSync* AudioProcessor::avSyncInterface()
+inline webrtc::VoEVideoSync* AudioMixer::avSyncInterface()
 {
     return m_voiceEngine ? webrtc::VoEVideoSync::GetInterface(m_voiceEngine) : nullptr;
 }
 
 } /* namespace mcu */
 
-#endif /* AudioProcessor_h */
+#endif /* AudioMixer_h */
