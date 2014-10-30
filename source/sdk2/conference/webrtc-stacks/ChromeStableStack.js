@@ -41,12 +41,18 @@ Erizo.ChromeStableStack = function (spec) {
         var a, r;
         if (spec.maxVideoBW) {
             a = sdp.match(/m=video.*\r\n/);
+            if (a == null){
+              a = sdp.match(/m=video.*\n/);
+            }
             r = a[0] + "b=AS:" + spec.maxVideoBW + "\r\n";
             sdp = sdp.replace(a[0], r);
         }
 
         if (spec.maxAudioBW) {
             a = sdp.match(/m=audio.*\r\n/);
+            if (a == null){
+              a = sdp.match(/m=audio.*\n/);
+            }
             r = a[0] + "b=AS:" + spec.maxAudioBW + "\r\n";
             sdp = sdp.replace(a[0], r);
         }
@@ -68,7 +74,6 @@ Erizo.ChromeStableStack = function (spec) {
         if (event.candidate) {
 
             if (!event.candidate.candidate.match(/a=/)) {
-                console.log('pongo la aaaaaaaaaaa');
                 event.candidate.candidate ="a="+event.candidate.candidate;
             }
             if (spec.remoteDescriptionSet) {
@@ -141,19 +146,21 @@ Erizo.ChromeStableStack = function (spec) {
 
             console.log("Set remote and local description", msg.sdp);
 
-            //msg.sdp = setMaxBW(msg.sdp);
+            msg.sdp = setMaxBW(msg.sdp);
 
-            that.peerConnection.setLocalDescription(localDesc);
-            that.peerConnection.setRemoteDescription(new RTCSessionDescription(msg), function() {
+            that.peerConnection.setLocalDescription(localDesc, function(){
+              that.peerConnection.setRemoteDescription(new RTCSessionDescription(msg), function() {
                 spec.remoteDescriptionSet = true;
                 console.log("Candidates to be added: ", spec.remoteCandidates.length, spec.remoteCandidates);
                 while (spec.remoteCandidates.length > 0) {
-                    that.peerConnection.addIceCandidate(spec.remoteCandidates.pop());
+                  that.peerConnection.addIceCandidate(spec.remoteCandidates.pop());
+                }
+                console.log("Local candidates to send:" , spec.localCandidates.length);
+                while(spec.localCandidates.length > 0) {
+                  spec.callback({type:'candidate', candidate: spec.localCandidates.pop()});
                 }
 
-                while (spec.localCandidates.length > 0) {
-                    spec.callback({type:'candidate', candidate: spec.remoteCandidates.pop()});
-                }
+              });
             });
 
         } else if (msg.type === 'candidate') {
