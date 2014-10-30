@@ -37,10 +37,6 @@
 
 using namespace webrtc;
 
-namespace webrtc {
-class VoEVideoSync;
-}
-
 namespace mcu {
 
 /**
@@ -49,7 +45,6 @@ namespace mcu {
  * served by one VCMInputProcessor.
  * This class more or less is working as the vie_receiver class
  */
-class AudioProcessor;
 class TaskRunner;
 
 class VCMInputProcessor : public erizo::MediaSink,

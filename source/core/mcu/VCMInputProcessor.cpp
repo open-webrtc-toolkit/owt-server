@@ -20,7 +20,6 @@
 
 #include "VCMInputProcessor.h"
 
-#include "AudioProcessor.h"
 #include "TaskRunner.h"
 #include <rtputils.h>
 
