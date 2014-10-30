@@ -12,9 +12,6 @@ project (MCU)
 set(MCU_VERSION_MAJOR 0)
 set(MCU_VERSION_MINOR 1)
 set(CMAKE_CXX_FLAGS "-Wall -std=c++0x -fvisibility=hidden -fvisibility-inlines-hidden")
-ADD_DEFINITIONS("-DPOSIX")
-ADD_DEFINITIONS("-DWEBRTC_LINUX")
-
 
 # TODO: Make a clean interface for the woogeen_base module so that we don't need
 # to add such misc. ugly include paths.
@@ -23,6 +20,8 @@ set(UV_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/../../../third_party/libuv-0.10.26")
 set(WEBRTC_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/../../../third_party/webrtc")
 
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}" "${LIB_DIRS}../include/" "${UV_DIRS}/include/" "${WEBRTC_DIRS}/src")
+
+add_definitions(-DWEBRTC_POSIX -DWEBRTC_LINUX)
 
 file(GLOB_RECURSE MCU_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/*.h"
