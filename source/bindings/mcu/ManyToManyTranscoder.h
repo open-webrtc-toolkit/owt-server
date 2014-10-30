@@ -27,14 +27,14 @@
 
 
 namespace mcu {
-  class MCUMixer;
+  class MCU;
 }
 
 class ManyToManyTranscoder: public node::ObjectWrap {
 
 public:
  static void Init(v8::Handle<v8::Object> target);
- mcu::MCUMixer* me;
+ mcu::MCU* me;
 
 
 private:

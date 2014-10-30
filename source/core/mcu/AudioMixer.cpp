@@ -18,7 +18,7 @@
  * and approved by Intel in writing.
  */
 
-#include "AudioProcessor.h"
+#include "AudioMixer.h"
 
 #include <rtputils.h>
 #include <webrtc/common_types.h>
@@ -33,9 +33,9 @@ using namespace webrtc;
 
 namespace mcu {
 
-DEFINE_LOGGER(AudioProcessor, "mcu.AudioProcessor");
+DEFINE_LOGGER(AudioMixer, "mcu.AudioMixer");
 
-AudioProcessor::AudioProcessor()
+AudioMixer::AudioMixer(erizo::RTPDataReceiver* receiver)
     : m_isClosing(false)
 {
     m_voiceEngine = VoiceEngine::Create();
@@ -48,12 +48,16 @@ AudioProcessor::AudioProcessor()
     externalMedia->SetExternalRecordingStatus(true);
     externalMedia->SetExternalPlayoutStatus(true);
 
+    m_outChannel.transport.reset(new woogeen_base::WoogeenTransport<erizo::AUDIO>(receiver, nullptr));
+    VoENetwork* network = VoENetwork::GetInterface(m_voiceEngine);
+    network->RegisterExternalTransport(m_outChannel.id, *(m_outChannel.transport));
+
     m_timer.reset(new boost::asio::deadline_timer(m_ioService, boost::posix_time::milliseconds(10)));
-    m_timer->async_wait(boost::bind(&AudioProcessor::performMix, this, boost::asio::placeholders::error));
+    m_timer->async_wait(boost::bind(&AudioMixer::performMix, this, boost::asio::placeholders::error));
     m_audioMixingThread.reset(new boost::thread(boost::bind(&boost::asio::io_service::run, &m_ioService)));
 }
 
-AudioProcessor::~AudioProcessor()
+AudioMixer::~AudioMixer()
 {
     // According to the boost document, if the timer has already expired when
     // cancel() is called, then the handlers for asynchronous wait operations
@@ -90,19 +94,12 @@ AudioProcessor::~AudioProcessor()
     VoiceEngine::Delete(m_voiceEngine);
 }
 
-int32_t AudioProcessor::setOutTransport(woogeen_base::WoogeenTransport<erizo::AUDIO>* transport)
-{
-    m_outChannel.transport.reset(transport);
-
-    VoENetwork* network = VoENetwork::GetInterface(m_voiceEngine);
-    return network->RegisterExternalTransport(m_outChannel.id, *transport);
-}
-
-int32_t AudioProcessor::addSource(erizo::MediaSource* from, woogeen_base::WoogeenTransport<erizo::AUDIO>* feedbackTransport)
+int32_t AudioMixer::addSource(erizo::MediaSource* from)
 {
     VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);
     int channel = voe->CreateChannel();
     if (channel != -1) {
+        woogeen_base::WoogeenTransport<erizo::AUDIO>* feedbackTransport = new woogeen_base::WoogeenTransport<erizo::AUDIO>(nullptr, from->getFeedbackSink());
         VoENetwork* network = VoENetwork::GetInterface(m_voiceEngine);
         if (network->RegisterExternalTransport(channel, *feedbackTransport) == -1)
             return -1;
@@ -126,7 +123,7 @@ int32_t AudioProcessor::addSource(erizo::MediaSource* from, woogeen_base::Woogee
     return channel;
 }
 
-int32_t AudioProcessor::removeSource(erizo::MediaSource* from)
+int32_t AudioMixer::removeSource(erizo::MediaSource* from)
 {
     VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);
     VoENetwork* network = VoENetwork::GetInterface(m_voiceEngine);
@@ -151,7 +148,7 @@ int32_t AudioProcessor::removeSource(erizo::MediaSource* from)
     return -1;
 }
 
-int AudioProcessor::deliverAudioData(char* buf, int len, erizo::MediaSource* from)
+int AudioMixer::deliverAudioData(char* buf, int len, erizo::MediaSource* from)
 {
     boost::shared_lock<boost::shared_mutex> lock(m_sourceMutex);
     std::map<MediaSource*, VoiceChannel>::iterator it = m_inChannels.find(from);
@@ -175,13 +172,13 @@ int AudioProcessor::deliverAudioData(char* buf, int len, erizo::MediaSource* fro
     return 0;
 }
 
-int AudioProcessor::deliverVideoData(char* buf, int len, erizo::MediaSource* from)
+int AudioMixer::deliverVideoData(char* buf, int len, erizo::MediaSource* from)
 {
     assert(false);
     return 0;
 }
 
-int32_t AudioProcessor::performMix(const boost::system::error_code& ec)
+int32_t AudioMixer::performMix(const boost::system::error_code& ec)
 {
     if (!ec) {
         VoECodec* codec = VoECodec::GetInterface(m_voiceEngine);
@@ -204,10 +201,10 @@ int32_t AudioProcessor::performMix(const boost::system::error_code& ec)
 
         if (!m_isClosing) {
             m_timer->expires_at(m_timer->expires_at() + boost::posix_time::milliseconds(10));
-            m_timer->async_wait(boost::bind(&AudioProcessor::performMix, this, boost::asio::placeholders::error));
+            m_timer->async_wait(boost::bind(&AudioMixer::performMix, this, boost::asio::placeholders::error));
         }
     } else {
-        ELOG_INFO("AudioProcessor timer error: %s", ec.message().c_str());
+        ELOG_INFO("AudioMixer timer error: %s", ec.message().c_str());
     }
     return 0;
 }
