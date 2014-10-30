@@ -92,31 +92,37 @@ Erizo.FirefoxStack = function (spec) {
         }
     };
 
-/*
+
     var setMaxBW = function (sdp) {
+        var a, r;
         if (spec.maxVideoBW) {
-            var a = sdp.match(/m=video.*\r\n/);
-            var r = a[0] + "b=AS:" + spec.maxVideoBW + "\r\n";
+            a = sdp.match(/m=video.*\r\n/);
+            if (a == null){
+              a = sdp.match(/m=video.*\n/);
+            }
+            r = a[0] + "b=AS:" + spec.maxVideoBW + "\r\n";
             sdp = sdp.replace(a[0], r);
         }
 
         if (spec.maxAudioBW) {
-            var a = sdp.match(/m=audio.*\r\n/);
-            var r = a[0] + "b=AS:" + spec.maxAudioBW + "\r\n";
+            a = sdp.match(/m=audio.*\r\n/);
+            if (a == null){
+              a = sdp.match(/m=audio.*\n/);
+            }
+            r = a[0] + "b=AS:" + spec.maxAudioBW + "\r\n";
             sdp = sdp.replace(a[0], r);
         }
 
         return sdp;
     };
-*/
+
     var localDesc;
 
     var setLocalDesc = function (sessionDescription) {
-//        sessionDescription.sdp = setMaxBW(sessionDescription.sdp);
+        sessionDescription.sdp = setMaxBW(sessionDescription.sdp);
         sessionDescription.sdp = sessionDescription.sdp.replace(/a=ice-options:google-ice\r\n/g, "");
         spec.callback(sessionDescription);
         localDesc = sessionDescription;
-        //that.peerConnection.setLocalDescription(sessionDescription);
     };
 
     that.createOffer = function () {
@@ -152,20 +158,20 @@ Erizo.FirefoxStack = function (spec) {
 
             console.log("Set remote and local description", msg.sdp);
 
-            //msg.sdp = setMaxBW(msg.sdp);
+            msg.sdp = setMaxBW(msg.sdp);
 
-            that.peerConnection.setLocalDescription(localDesc);
-            that.peerConnection.setRemoteDescription(new RTCSessionDescription(msg), function() {
+            that.peerConnection.setLocalDescription(localDesc, function(){
+              that.peerConnection.setRemoteDescription(new RTCSessionDescription(msg), function() {
                 spec.remoteDescriptionSet = true;
                 console.log("Candidates to be added: ", spec.remoteCandidates.length, spec.remoteCandidates);
                 while (spec.remoteCandidates.length > 0) {
-                    that.peerConnection.addIceCandidate(spec.remoteCandidates.pop());
+                  that.peerConnection.addIceCandidate(spec.remoteCandidates.pop());
                 }
 
                 while(spec.localCandidates.length > 0) {
-                    spec.callback({type:'candidate', candidate: spec.remoteCandidates.pop()});
+                  spec.callback({type:'candidate', candidate: spec.localCandidates.pop()});
                 }
-
+              });
             });
 
         } else if (msg.type === 'candidate') {
