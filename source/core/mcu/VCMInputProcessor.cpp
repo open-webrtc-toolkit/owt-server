@@ -99,6 +99,16 @@ bool VCMInputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* trans
 
     m_videoReceiver->SetReceiveCodec(video_codec);
 
+    // Enable NACK.
+    // TODO: the parameters should be dynamically adjustable.
+    m_videoReceiver->SetNackStatus(true, webrtc::kMaxPacketAgeToNack);
+    m_vcm->SetVideoProtection(webrtc::kProtectionNackReceiver, true);
+    m_vcm->SetNackSettings(webrtc::kMaxNackListSize, webrtc::kMaxPacketAgeToNack, 0);
+    m_vcm->RegisterPacketRequestCallback(this);
+
+    // Register the key frame request callback.
+    m_vcm->RegisterFrameTypeCallback(this);
+
     m_avSync.reset(new ViESyncModule(m_vcm, m_index));
     m_recorder.reset(new DebugRecorder());
     m_recorder->Start("webrtc.frame.i420");
@@ -122,6 +132,16 @@ int32_t VCMInputProcessor::FrameToRender(I420VideoFrame& videoFrame)
     ELOG_DEBUG("Got decoded frame from %d\n", m_index);
     m_frameReadyCB->handleInputFrame(videoFrame, m_index);
     return 0;
+}
+
+int32_t VCMInputProcessor::ResendPackets(const uint16_t* sequenceNumbers, uint16_t length)
+{
+    return m_rtpRtcp->SendNACK(sequenceNumbers, length);
+}
+
+int32_t VCMInputProcessor::RequestKeyFrame()
+{
+    return m_rtpRtcp->RequestKeyFrame();
 }
 
 int VCMInputProcessor::deliverVideoData(char* buf, int len, erizo::MediaSource*)
