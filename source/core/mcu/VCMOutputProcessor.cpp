@@ -118,7 +118,6 @@ bool VCMOutputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* tran
     configuration.intra_frame_callback = m_videoEncoder.get();
     configuration.bandwidth_callback = m_bandwidthObserver.get();
     m_rtpRtcp.reset(RtpRtcp::CreateRtpRtcp(configuration));
-    m_taskRunner->RegisterModule(m_rtpRtcp.get());
 
     VideoCodec videoCodec;
     if (m_videoEncoder->GetEncoder(&videoCodec) == 0) {
@@ -128,6 +127,20 @@ bool VCMOutputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* tran
             return false;
     } else
         assert(false);
+
+    // Enable FEC.
+    m_rtpRtcp->SetGenericFECStatus(true, RED_90000_PT, ULP_90000_PT);
+    // Enable NACK.
+    m_rtpRtcp->SetStorePacketsStatus(true, webrtc::kSendSidePacketHistorySize);
+    m_videoEncoder->UpdateProtectionMethod(true);
+
+    // Register the SSRC so that the video encoder is able to respond to
+    // the intra frame request to a given SSRC.
+    std::list<uint32_t> ssrcs;
+    ssrcs.push_back(m_rtpRtcp->SSRC());
+    m_videoEncoder->SetSsrcs(ssrcs);
+
+    m_taskRunner->RegisterModule(m_rtpRtcp.get());
 
     m_recordStarted = false;
 
@@ -185,6 +198,11 @@ void VCMOutputProcessor::onRequestIFrame()
     m_videoEncoder->SendKeyFrame();
 }
 
+uint32_t VCMOutputProcessor::sendSSRC()
+{
+    return m_rtpRtcp->SSRC();
+}
+
 void VCMOutputProcessor::updateMaxSlot(int newMaxSlot)
 {
     m_maxSlot = newMaxSlot;
@@ -224,6 +242,11 @@ void VCMOutputProcessor::handleInputFrame(webrtc::I420VideoFrame& frame, int ind
             m_bufferManager->releaseBuffer(busyFrame);
         }
     }
+}
+
+int VCMOutputProcessor::deliverFeedback(char* buf, int len)
+{
+    return m_rtpRtcp->IncomingRtcpPacket(reinterpret_cast<uint8_t*>(buf), len);
 }
 
 void VCMOutputProcessor::clearFrame(webrtc::I420VideoFrame* frame) {

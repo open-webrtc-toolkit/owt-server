@@ -87,6 +87,11 @@ int VideoMixer::deliverVideoData(char* buf, int len, MediaSource* from)
     return 0;
 }
 
+int VideoMixer::deliverFeedback(char* buf, int len)
+{
+    return m_vcmOutputProcessor->deliverFeedback(buf, len);
+}
+
 /**
  * Attach a new InputStream to the mixer
  */
@@ -126,12 +131,18 @@ void VideoMixer::removeSource(MediaSource* source)
 
 void VideoMixer::onRequestIFrame()
 {
+    ELOG_DEBUG("onRequestIFrame");
     m_vcmOutputProcessor->onRequestIFrame();
+}
+
+uint32_t VideoMixer::sendSSRC()
+{
+    return m_vcmOutputProcessor->sendSSRC();
 }
 
 void VideoMixer::closeAll()
 {
-    ELOG_DEBUG ("Video Mixer closeAll");
+    ELOG_DEBUG("Video Mixer closeAll");
     m_taskRunner->Stop();
 
     boost::unique_lock<boost::shared_mutex> sourceLock(m_sourceMutex);

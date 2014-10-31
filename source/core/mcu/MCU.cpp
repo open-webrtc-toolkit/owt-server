@@ -67,6 +67,8 @@ bool MCU::init()
     m_videoMixer.reset(new VideoMixer(this));
     m_audioMixer.reset(new AudioMixer(this));
 
+    m_feedback = m_videoMixer;
+
     return true;
 }
 
@@ -117,6 +119,11 @@ void MCU::addPublisher(MediaSource* publisher)
 
 void MCU::addSubscriber(MediaSink* subscriber, const std::string& peerId)
 {
+    subscriber->setVideoSinkSSRC(m_videoMixer->sendSSRC());
+
+    // FIXME: We now just pass the feedback from _all_ of the subscribers to the video mixer without pre-processing,
+    // but maybe it's needed in a MCU scenario where one mixed stream is sent to multiple subscribers.
+    // The WebRTCFeedbackProcessor can be enhanced to provide another option to handle the feedback from the subscribers.
     // Lazily create the feedback sink only if there're subscribers added, because only with
     // subscribers are there chances for us to receive feedback.
     // Currently all of the subscribers shared one feedback sink because the feedback will

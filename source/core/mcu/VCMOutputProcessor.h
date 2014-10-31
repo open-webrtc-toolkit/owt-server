@@ -42,7 +42,7 @@ class VPMPool;
  * This is the class to accepts the decoded frame and do some processing
  * for example, media layout mixing
  */
-class VCMOutputProcessor : public InputFrameCallback {
+class VCMOutputProcessor : public InputFrameCallback, public erizo::FeedbackSink {
     DECLARE_LOGGER();
 
 public:
@@ -55,6 +55,7 @@ public:
     void updateMaxSlot(int newMaxSlot);
     bool setSendVideoCodec(const webrtc::VideoCodec&);
     void onRequestIFrame();
+    uint32_t sendSSRC();
 
     void layoutTimerHandler(const boost::system::error_code&);
 
@@ -64,6 +65,9 @@ public:
      * one particular publisher with the index.
      */
     virtual void handleInputFrame(webrtc::I420VideoFrame&, int index);
+
+    // Implements the FeedbackSink interfaces
+    virtual int deliverFeedback(char* buf, int len);
 
     struct Layout {
         unsigned int m_subWidth: 12; // assuming max is 4096
