@@ -112,7 +112,10 @@ void MCU::receiveRtpData(char* buf, int len, erizo::DataType type, uint32_t stre
 void MCU::addPublisher(MediaSource* publisher)
 {
     int32_t voiceChannelId = m_audioMixer->addSource(publisher);
-    // TODO
+    // TODO: The lifetime of the publisher is currently (temporarily) managed by
+    // the video mixer, which means removing the source from the video mixer will
+    // cause the source being destroyed.
+    // We should make the lifetime management smarter, more natural and reasonable.
     if (voiceChannelId != -1)
         m_videoMixer->addSource(publisher, voiceChannelId, m_audioMixer->avSyncInterface());
 }
@@ -156,8 +159,8 @@ void MCU::removeSubscriber(const std::string& peerId)
 
 void MCU::removePublisher(MediaSource* publisher)
 {
-    m_videoMixer->removeSource(publisher);
     m_audioMixer->removeSource(publisher);
+    m_videoMixer->removeSource(publisher);
 }
 
 void MCU::closeAll()
