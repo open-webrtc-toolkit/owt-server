@@ -25,7 +25,7 @@
 #include "VCMMediaProcessorHelper.h"
 
 #include <boost/scoped_ptr.hpp>
-#include <boost/thread/mutex.hpp>
+#include <boost/shared_ptr.hpp>
 #include <logger.h>
 #include <MediaDefinitions.h>
 #include <WoogeenTransport.h>
@@ -34,8 +34,6 @@
 #include <webrtc/modules/video_coding/main/interface/video_coding.h>
 #include <webrtc/video_engine/vie_receiver.h>
 #include <webrtc/video_engine/vie_sync_module.h>
-
-using namespace webrtc;
 
 namespace mcu {
 
@@ -48,9 +46,9 @@ namespace mcu {
 class TaskRunner;
 
 class VCMInputProcessor : public erizo::MediaSink,
-                          public VCMFrameTypeCallback,
-                          public VCMPacketRequestCallback,
-                          public VCMReceiveCallback {
+                          public webrtc::VCMFrameTypeCallback,
+                          public webrtc::VCMPacketRequestCallback,
+                          public webrtc::VCMReceiveCallback {
     DECLARE_LOGGER();
 
 public:
@@ -72,28 +70,28 @@ public:
 
     bool init(woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<BufferManager>, boost::shared_ptr<InputFrameCallback>, boost::shared_ptr<TaskRunner>);
 
-    void bindAudioForSync(int32_t voiceChannelId, VoEVideoSync*);
-    int channelId() { return m_index; }
+    void bindAudioForSync(int32_t voiceChannelId, webrtc::VoEVideoSync*);
 
 private:
     int m_index;
-    VideoCodingModule* m_vcm;
-    boost::scoped_ptr<RemoteBitrateObserver> m_remoteBitrateObserver;
-    boost::scoped_ptr<RemoteBitrateEstimator> m_remoteBitrateEstimator;
-    boost::scoped_ptr<ViEReceiver> m_videoReceiver;
-    boost::scoped_ptr<RtpRtcp> m_rtpRtcp;
-    boost::scoped_ptr<ViESyncModule> m_avSync;
-    boost::scoped_ptr<DebugRecorder> m_recorder;
 
-    boost::shared_ptr<Transport> m_videoTransport;
+    webrtc::VideoCodingModule* m_vcm;
+    boost::scoped_ptr<webrtc::RemoteBitrateObserver> m_remoteBitrateObserver;
+    boost::scoped_ptr<webrtc::RemoteBitrateEstimator> m_remoteBitrateEstimator;
+    boost::scoped_ptr<webrtc::ViEReceiver> m_videoReceiver;
+    boost::scoped_ptr<webrtc::RtpRtcp> m_rtpRtcp;
+    boost::scoped_ptr<webrtc::ViESyncModule> m_avSync;
+    boost::shared_ptr<webrtc::Transport> m_videoTransport;
+
+    boost::scoped_ptr<DebugRecorder> m_recorder;
     boost::shared_ptr<InputFrameCallback> m_frameReadyCB;
     boost::shared_ptr<BufferManager> m_bufferManager;
     boost::shared_ptr<TaskRunner> m_taskRunner;
 };
 
-class DummyRemoteBitrateObserver : public RemoteBitrateObserver {
+class DummyRemoteBitrateObserver : public webrtc::RemoteBitrateObserver {
 public:
-    virtual void OnReceiveBitrateChanged(const std::vector<unsigned int>& ssrcs, unsigned int bitrate) {}
+    virtual void OnReceiveBitrateChanged(const std::vector<unsigned int>& ssrcs, unsigned int bitrate) { }
 };
 
 }

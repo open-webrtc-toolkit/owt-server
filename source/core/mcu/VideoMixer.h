@@ -22,7 +22,6 @@
 #define VideoMixer_h
 
 #include <boost/shared_ptr.hpp>
-#include <boost/thread/mutex.hpp>
 #include <boost/thread/shared_mutex.hpp>
 #include <logger.h>
 #include <map>
