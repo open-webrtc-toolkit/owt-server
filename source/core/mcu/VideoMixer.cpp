@@ -122,10 +122,13 @@ void VideoMixer::removeSource(MediaSource* source)
     boost::unique_lock<boost::shared_mutex> lock(m_sourceMutex);
     std::map<erizo::MediaSource*, boost::shared_ptr<erizo::MediaSink>>::iterator it = m_sinksForSources.find(source);
     if (it != m_sinksForSources.end()) {
+        m_sinksForSources.erase(it);
+        lock.unlock();
+
         int index = getSlot(source);
         assert(index >= 0);
         m_sourceSlotMap[index] = nullptr;
-        m_sinksForSources.erase(it);
+        delete source;
     }
 }
 
@@ -149,16 +152,15 @@ void VideoMixer::closeAll()
     std::map<erizo::MediaSource*, boost::shared_ptr<erizo::MediaSink>>::iterator sourceItor = m_sinksForSources.begin();
     while (sourceItor != m_sinksForSources.end()) {
         MediaSource* source = sourceItor->first;
-        int index = getSlot(source);
-        assert(index >= 0);
-        m_sourceSlotMap[index] = nullptr;
         m_sinksForSources.erase(sourceItor++);
         // Delete the source as a MediaSource.
         // We need to release the lock before deleting it because the destructor of the source
         // will need to wait for its working thread to finish the work which may need the lock.
         sourceLock.unlock();
-        // TODO
-        // delete source;
+        int index = getSlot(source);
+        assert(index >= 0);
+        m_sourceSlotMap[index] = nullptr;
+        delete source;
         sourceLock.lock();
     }
     m_sinksForSources.clear();
