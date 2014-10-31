@@ -22,6 +22,7 @@
 #define WoogeenTransport_h
 
 #include <MediaDefinitions.h>
+#include <rtputils.h>
 #include <webrtc/common_types.h>
 
 namespace woogeen_base {
@@ -37,35 +38,49 @@ public:
 
 private:
     erizo::RTPDataReceiver* m_rtpReceiver;
-    erizo::FeedbackSink*    m_rtcpReceiver;
+    erizo::FeedbackSink* m_feedbackSink;
 };
 
 template<erizo::DataType dataType>
-WoogeenTransport<dataType>::WoogeenTransport(erizo::RTPDataReceiver* rtpReceiver, erizo::FeedbackSink* rtcpReceiver)
-    : m_rtpReceiver(rtpReceiver), m_rtcpReceiver(rtcpReceiver)
+WoogeenTransport<dataType>::WoogeenTransport(erizo::RTPDataReceiver* rtpReceiver, erizo::FeedbackSink* feedbackSink)
+    : m_rtpReceiver(rtpReceiver)
+    , m_feedbackSink(feedbackSink)
 {
 }
 
 template<erizo::DataType dataType>
 WoogeenTransport<dataType>::~WoogeenTransport()
 {
-    // TODO Auto-generated destructor stub
 }
 
 template<erizo::DataType dataType>
 inline int WoogeenTransport<dataType>::SendPacket(int channel, const void* data, int len)
 {
-    m_rtpReceiver->receiveRtpData(reinterpret_cast<char*>(const_cast<void*>(data)), len, dataType, channel);
-    return len;    //return 0 will tell rtp_sender not able to send the packet, thus impact bitrate update
+    int ret = 0;
+    if (m_rtpReceiver) {
+        m_rtpReceiver->receiveRtpData(reinterpret_cast<char*>(const_cast<void*>(data)), len, dataType, channel);
+        ret = len;
+    }
+
+    return ret;
 }
 
 template<erizo::DataType dataType>
 inline int WoogeenTransport<dataType>::SendRTCPPacket(int channel, const void* data, int len)
 {
-	if (m_rtcpReceiver) {
-		return m_rtcpReceiver->deliverFeedback(reinterpret_cast<char*>(const_cast<void*>(data)), len);
-	}
-	return 0;
+    // FIXME: We need add a new interface to the RTPDataReceiver for RTCP Sender Reports.
+    const RTCPHeader* chead = reinterpret_cast<const RTCPHeader*>(data);
+    uint8_t packetType = chead->getPacketType();
+    if (packetType == RTCP_Sender_PT) {
+        int ret = 0;
+        if (m_rtpReceiver) {
+            m_rtpReceiver->receiveRtpData(reinterpret_cast<char*>(const_cast<void*>(data)), len, dataType, channel);
+            ret = len;
+        }
+        return ret;
+    }
+    
+    return m_feedbackSink ? m_feedbackSink->deliverFeedback(reinterpret_cast<char*>(const_cast<void*>(data)), len) : 0;
 }
 
 }
