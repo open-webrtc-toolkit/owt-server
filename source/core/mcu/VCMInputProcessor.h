@@ -48,6 +48,8 @@ namespace mcu {
 class TaskRunner;
 
 class VCMInputProcessor : public erizo::MediaSink,
+                          public VCMFrameTypeCallback,
+                          public VCMPacketRequestCallback,
                           public VCMReceiveCallback {
     DECLARE_LOGGER();
 
@@ -55,8 +57,14 @@ public:
     VCMInputProcessor(int index);
     virtual ~VCMInputProcessor();
 
+    // Implements the webrtc::VCMPacketRequestCallback interface.
+    virtual int32_t ResendPackets(const uint16_t* sequenceNumbers, uint16_t length);
+
     // Implements the webrtc::VCMReceiveCallback interface.
     virtual int32_t FrameToRender(webrtc::I420VideoFrame&);
+
+    // Implements the webrtc::VCMFrameTypeCallback interface.
+    virtual int32_t RequestKeyFrame();
 
     // Implement the MediaSink interfaces.
     int deliverAudioData(char*, int len, erizo::MediaSource* from = nullptr);

@@ -129,8 +129,10 @@ bool VCMOutputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* tran
         assert(false);
 
     // Enable FEC.
+    // TODO: the parameters should be dynamically adjustable.
     m_rtpRtcp->SetGenericFECStatus(true, RED_90000_PT, ULP_90000_PT);
     // Enable NACK.
+    // TODO: the parameters should be dynamically adjustable.
     m_rtpRtcp->SetStorePacketsStatus(true, webrtc::kSendSidePacketHistorySize);
     m_videoEncoder->UpdateProtectionMethod(true);
 
