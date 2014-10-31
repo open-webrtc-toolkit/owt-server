@@ -25,8 +25,8 @@
 #include "VCMMediaProcessorHelper.h"
 
 #include <boost/asio.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/scoped_ptr.hpp>
+#include <boost/shared_ptr.hpp>
 #include <boost/thread.hpp>
 #include <logger.h>
 #include <MediaDefinitions.h>
