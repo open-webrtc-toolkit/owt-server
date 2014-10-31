@@ -44,7 +44,7 @@ static const int MIXED_VIDEO_STREAM_ID = 2;
 /**
  * Receives media from several sources, mixed into one stream and retransmits it to the RTPDataReceiver.
  */
-class VideoMixer : public erizo::MediaSink {
+class VideoMixer : public erizo::MediaSink, public erizo::FeedbackSink {
     DECLARE_LOGGER();
 
 public:
@@ -59,10 +59,14 @@ public:
     void removeSource(erizo::MediaSource*);
 
     void onRequestIFrame();
+    uint32_t sendSSRC();
 
     // Implements the MediaSink interfaces
     virtual int deliverAudioData(char* buf, int len, erizo::MediaSource*);
     virtual int deliverVideoData(char* buf, int len, erizo::MediaSource*);
+
+    // Implements the FeedbackSink interfaces
+    virtual int deliverFeedback(char* buf, int len);
 
 private:
     bool init();
