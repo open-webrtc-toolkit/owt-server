@@ -23,6 +23,7 @@
 
 #include "BufferManager.h"
 #include "VCMMediaProcessorHelper.h"
+#include "VideoCompositor.h"
 
 #include <boost/asio.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
@@ -33,12 +34,12 @@
 #include <WoogeenTransport.h>
 #include <webrtc/video_engine/vie_encoder.h>
 
+
 using namespace webrtc;
 
 namespace mcu {
 
 class TaskRunner;
-class VPMPool;
 
 /**
  * This is the class to accepts the decoded frame and do some processing
@@ -67,31 +68,15 @@ public:
      */
     virtual void handleInputFrame(webrtc::I420VideoFrame&, int index);
 
-    struct Layout {
-        unsigned int m_subWidth: 12; // assuming max is 4096
-        unsigned int m_subHeight: 12; // assuming max is 2160
-        unsigned int m_divFactor: 3; // max is 4
-        bool operator==(const Layout& rhs)
-        {
-            return (this->m_divFactor == rhs.m_divFactor)
-                && (this->m_subHeight == rhs.m_subHeight)
-                && (this->m_subWidth == rhs.m_subWidth);
-        }
-    };
-
 private:
     bool layoutFrames();
-    // set the background to be black
-    void clearFrame(webrtc::I420VideoFrame*);
 
     int m_id;
     std::atomic<bool> m_isClosing;
 
     int m_maxSlot;
-    Layout m_currentLayout; // current layout config;
-    Layout m_newLayout; // new layout config if any;
-    boost::scoped_ptr<CriticalSectionWrapper> m_layoutLock;
     VideoCodec m_currentCodec;
+
 
     boost::shared_ptr<TaskRunner> m_taskRunner;
     boost::scoped_ptr<webrtc::BitrateController> m_bitrateController;
@@ -110,29 +95,15 @@ private:
     // Delta used for translating between NTP and internal timestamps.
     int64_t m_ntpDelta;
     boost::shared_ptr<BufferManager> m_bufferManager;
-    boost::scoped_ptr<webrtc::I420VideoFrame> m_composedFrame;
+    webrtc::I420VideoFrame* m_composedFrame;
     webrtc::I420VideoFrame* m_mockFrame;
+    boost::scoped_ptr<SoftVideoCompositor> m_videoCompositor;
 
     boost::scoped_ptr<boost::thread> m_encodingThread;
     boost::asio::io_service m_ioService;
     boost::scoped_ptr<boost::asio::deadline_timer> m_timer;
 };
 
-/**
- * manages a pool of VPM for preprocessing the incoming I420 frame
- */
-class VPMPool {
-public:
-    VPMPool(unsigned int size);
-    ~VPMPool();
-    VideoProcessingModule* get(unsigned int slot);
-    void update(VCMOutputProcessor::Layout&);
-
-private:
-    VideoProcessingModule** m_vpms;
-    unsigned int m_size;
-    VCMOutputProcessor::Layout m_layout;
-};
 
 }
 #endif /* VCMOutputProcessor_h */
