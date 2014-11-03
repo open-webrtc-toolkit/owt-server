@@ -36,7 +36,6 @@ namespace mcu {
 class VPMPool;
 class BufferManager;
 
-
 /**
  * the configuration is a subset of rfc5707, VideoLayout element definition
  *    An example of a video layout with six regions is:
@@ -61,39 +60,39 @@ class BufferManager;
  */
 enum VideoResolutionType
 {
-	cif = 0,//352x288
-	vga,
-	hd_720p,
-	sif, //320x240
-	hvga, //480x320
-	r480x360,
-	qcif, //176x144
-	r192x144,
-	hd_1080p,
-	uhd_4k,
-	total = uhd_4k,
+    cif = 0,//352x288
+    vga,
+    hd_720p,
+    sif, //320x240
+    hvga, //480x320
+    r480x360,
+    qcif, //176x144
+    r192x144,
+    hd_1080p,
+    uhd_4k,
+    total = uhd_4k,
 };
 struct VideoSize {
-	int width;
-	int height;
+    int width;
+    int height;
 };
 
 extern VideoSize VideoSizes[];
 
 struct Region {
-	std::string id;
-	float left; // percentage
-	float top;	// percentage
-	float relativesize;	//fraction
-	float priority;
+    std::string id;
+    float left; // percentage
+    float top;    // percentage
+    float relativesize;    //fraction
+    float priority;
 } ;
 
 struct VideoLayout {
-	VideoResolutionType rootsize;
-	std::vector<Region> regions;
-	unsigned int divFactor;	//valid for fluidLayout
-	unsigned int subWidth;
-	unsigned int subHeight;
+    VideoResolutionType rootsize;
+    std::vector<Region> regions;
+    unsigned int divFactor;    //valid for fluidLayout
+    unsigned int subWidth;
+    unsigned int subHeight;
 };
 
 /**
@@ -105,13 +104,11 @@ public:
     ~VPMPool();
     webrtc::VideoProcessingModule* get(unsigned int slot);
     void update(unsigned int slot, VideoSize&);
-    unsigned int getSize() {
-    	return m_size;
-    }
+    unsigned int size() { return m_size; }
 
 private:
     webrtc::VideoProcessingModule** m_vpms;
-    unsigned int m_size;	// total pool capacity
+    unsigned int m_size;    // total pool capacity
     std::vector<VideoSize> m_subVideSize;
 };
 
@@ -125,37 +122,35 @@ private:
 class SoftVideoCompositor {
     DECLARE_LOGGER();
 public:
-	SoftVideoCompositor(boost::shared_ptr<BufferManager>&);
-	virtual bool config(VideoLayout&); //set a new layout config, but won't be effective
-	virtual bool commitLayout(); //commit the new layout config
-	virtual void setBackgroundColor();
-	virtual webrtc::I420VideoFrame* layout(int maxSlot) = 0;
-	void getLayout(VideoLayout& layout) {
-		layout = m_currentLayout;
-	}
+    SoftVideoCompositor(boost::shared_ptr<BufferManager>&);
+    virtual bool config(VideoLayout&); //set a new layout config, but won't be effective
+    virtual bool commitLayout(); //commit the new layout config
+    virtual void setBackgroundColor();
+    virtual webrtc::I420VideoFrame* layout(int maxSlot) = 0;
+    void getLayout(VideoLayout& layout)
+    {
+        layout = m_currentLayout;
+    }
 protected:
     boost::scoped_ptr<webrtc::CriticalSectionWrapper> m_configLock;
-	bool m_configChanged;
+    bool m_configChanged;
     boost::scoped_ptr<VPMPool> m_vpmPool;
-	boost::shared_ptr<BufferManager> m_bufferManager;
+    boost::shared_ptr<BufferManager> m_bufferManager;
     boost::scoped_ptr<webrtc::I420VideoFrame> m_composedFrame;
-	VideoLayout	m_currentLayout;
-	VideoLayout m_newLayout;
+    VideoLayout m_currentLayout;
+    VideoLayout m_newLayout;
 };
 
 class FluidVideoCompositor: public SoftVideoCompositor {
 public:
-	FluidVideoCompositor(boost::shared_ptr<BufferManager>&);
-	webrtc::I420VideoFrame* layout(int maxSlot);
-
+    FluidVideoCompositor(boost::shared_ptr<BufferManager>&);
+    webrtc::I420VideoFrame* layout(int maxSlot);
 };
 
 class CustomVideoCompositor : public SoftVideoCompositor {
 public:
-	CustomVideoCompositor(boost::shared_ptr<BufferManager>&);
-	webrtc::I420VideoFrame* layout(int maxSlot /*not used*/);
-
-private:
+    CustomVideoCompositor(boost::shared_ptr<BufferManager>&);
+    webrtc::I420VideoFrame* layout(int maxSlot /*not used*/);
 };
 
 }

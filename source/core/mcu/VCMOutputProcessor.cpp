@@ -40,7 +40,6 @@ VCMOutputProcessor::VCMOutputProcessor(int id)
     , m_isClosing(false)
     , m_maxSlot(0)
     , m_recordStarted(false)
-    , m_composedFrame(nullptr)
     , m_videoCompositor(nullptr)
 {
     m_ntpDelta = Clock::GetRealTimeClock()->CurrentNtpInMilliseconds() -
@@ -198,11 +197,10 @@ int VCMOutputProcessor::deliverFeedback(char* buf, int len)
 
 bool VCMOutputProcessor::layoutFrames()
 {
-    m_composedFrame = m_videoCompositor->layout(m_maxSlot);
-    m_composedFrame->set_render_time_ms(TickTime::MillisecondTimestamp() - m_ntpDelta);
-    m_videoEncoder->DeliverFrame(m_id, m_composedFrame);
+    I420VideoFrame* composedFrame = m_videoCompositor->layout(m_maxSlot);
+    composedFrame->set_render_time_ms(TickTime::MillisecondTimestamp() - m_ntpDelta);
+    m_videoEncoder->DeliverFrame(m_id, composedFrame);
     return true;
 }
 
 }
-
