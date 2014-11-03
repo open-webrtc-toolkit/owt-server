@@ -718,6 +718,10 @@ var listen = function () {
 
         //Gets 'updateStreamAttributes' messages on the socket in order to update attributes from the stream.
         socket.on('updateStreamAttributes', function (msg) {
+            if (socket.room.streams[msg.id] === undefined){
+                log.warn('Trying to update atributes from a non-initialized stream ', msg);
+                return;
+            }
             socket.room.streams[msg.id].setAttributes(msg.attrs);
             socket.room.streams[msg.id].getDataSubscribers().map(function (sockid) {
                 log.info('Sending new attributes to', sockid, 'in stream ', msg.id);
