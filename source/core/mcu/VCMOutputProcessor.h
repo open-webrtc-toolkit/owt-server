@@ -34,7 +34,6 @@
 #include <WoogeenTransport.h>
 #include <webrtc/video_engine/vie_encoder.h>
 
-
 namespace mcu {
 
 class TaskRunner;
@@ -97,7 +96,6 @@ private:
     int64_t m_ntpDelta;
     boost::shared_ptr<BufferManager> m_bufferManager;
     webrtc::I420VideoFrame* m_composedFrame;
-    webrtc::I420VideoFrame* m_mockFrame;
     boost::scoped_ptr<SoftVideoCompositor> m_videoCompositor;
 
     boost::scoped_ptr<boost::thread> m_encodingThread;
