@@ -84,7 +84,6 @@ private:
     boost::scoped_ptr<webrtc::ViEEncoder> m_videoEncoder;
     boost::scoped_ptr<woogeen_base::WoogeenTransport<erizo::VIDEO>> m_videoTransport;
     boost::scoped_ptr<webrtc::RtpRtcp> m_rtpRtcp;
-    boost::scoped_ptr<VPMPool> m_vpmPool;
     boost::scoped_ptr<DebugRecorder> m_recorder;
     bool m_recordStarted;
 
@@ -95,7 +94,6 @@ private:
     // Delta used for translating between NTP and internal timestamps.
     int64_t m_ntpDelta;
     boost::shared_ptr<BufferManager> m_bufferManager;
-    webrtc::I420VideoFrame* m_composedFrame;
     boost::scoped_ptr<SoftVideoCompositor> m_videoCompositor;
 
     boost::scoped_ptr<boost::thread> m_encodingThread;
