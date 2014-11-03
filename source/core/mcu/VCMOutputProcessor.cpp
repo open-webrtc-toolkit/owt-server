@@ -32,15 +32,14 @@ using namespace erizo;
 
 namespace mcu {
 
-
 DEFINE_LOGGER(VCMOutputProcessor, "mcu.VCMOutputProcessor");
 
 VCMOutputProcessor::VCMOutputProcessor(int id)
     : m_id(id)
     , m_isClosing(false)
     , m_maxSlot(0)
-    , m_recordStarted(false)
     , m_videoCompositor(nullptr)
+    , m_recordStarted(false)
 {
     m_ntpDelta = Clock::GetRealTimeClock()->CurrentNtpInMilliseconds() -
                                   TickTime::MillisecondTimestamp();
@@ -137,11 +136,10 @@ void VCMOutputProcessor::layoutTimerHandler(const boost::system::error_code& ec)
 
 bool VCMOutputProcessor::setSendVideoCodec(const VideoCodec& videoCodec)
 {
-    m_currentCodec = videoCodec;
-    if (!m_rtpRtcp || m_rtpRtcp->RegisterSendPayload(m_currentCodec) == -1)
+    if (!m_rtpRtcp || m_rtpRtcp->RegisterSendPayload(videoCodec) == -1)
         return false;
 
-    return m_videoEncoder ? (m_videoEncoder->SetEncoder(m_currentCodec) != -1) : false;
+    return m_videoEncoder ? (m_videoEncoder->SetEncoder(videoCodec) != -1) : false;
 }
 
 void VCMOutputProcessor::onRequestIFrame()
@@ -179,9 +177,7 @@ void VCMOutputProcessor::updateMaxSlot(int newMaxSlot)
 void VCMOutputProcessor::handleInputFrame(webrtc::I420VideoFrame& frame, int index)
 {
     I420VideoFrame* freeFrame = m_bufferManager->getFreeBuffer();
-    if (!freeFrame)
-        return;    // No free frame, simply ignore it.
-    else {
+    if (freeFrame) {
         freeFrame->CopyFrame(frame);
         I420VideoFrame* busyFrame = m_bufferManager->postFreeBuffer(freeFrame, index);
         if (busyFrame)
