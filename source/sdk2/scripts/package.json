@@ -1,0 +1,26 @@
+{
+  "name": "woogeen.sdk",
+  "title": "Intel WebRTC SDK",
+  "description": "Intel WebRTC JavaScript library",
+  "version": "2.0.0",
+  "homepage": "http://webrtc.intel.com",
+  "author": "Markus Chou <yue.y.zhou@intel.com>",
+  "contributors": [],
+  "keywords": [
+    "webrtc",
+    "library",
+    "sdk",
+    "gateway",
+    "mcu"
+  ],
+  "devDependencies": {
+    "grunt": "~0.4.0",
+    "grunt-cli": "~0.1.6",
+    "grunt-contrib-concat": "~0.1.3",
+    "grunt-contrib-uglify": "~0.2.0",
+    "grunt-contrib-jshint": "~0.3.0"
+  },
+  "engines": {
+    "node": ">=0.10"
+  }
+}
