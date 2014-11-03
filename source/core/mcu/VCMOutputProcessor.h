@@ -76,13 +76,11 @@ private:
     std::atomic<bool> m_isClosing;
 
     int m_maxSlot;
-    webrtc::VideoCodec m_currentCodec;
 
-    boost::shared_ptr<TaskRunner> m_taskRunner;
+    boost::scoped_ptr<SoftVideoCompositor> m_videoCompositor;
     boost::scoped_ptr<webrtc::BitrateController> m_bitrateController;
     boost::scoped_ptr<webrtc::RtcpBandwidthObserver> m_bandwidthObserver;
     boost::scoped_ptr<webrtc::ViEEncoder> m_videoEncoder;
-    boost::scoped_ptr<woogeen_base::WoogeenTransport<erizo::VIDEO>> m_videoTransport;
     boost::scoped_ptr<webrtc::RtpRtcp> m_rtpRtcp;
     boost::scoped_ptr<DebugRecorder> m_recorder;
     bool m_recordStarted;
@@ -94,7 +92,8 @@ private:
     // Delta used for translating between NTP and internal timestamps.
     int64_t m_ntpDelta;
     boost::shared_ptr<BufferManager> m_bufferManager;
-    boost::scoped_ptr<SoftVideoCompositor> m_videoCompositor;
+    boost::shared_ptr<webrtc::Transport> m_videoTransport;
+    boost::shared_ptr<TaskRunner> m_taskRunner;
 
     boost::scoped_ptr<boost::thread> m_encodingThread;
     boost::asio::io_service m_ioService;
