@@ -41,8 +41,7 @@ VCMOutputProcessor::VCMOutputProcessor(int id)
     , m_maxSlot(0)
     , m_recordStarted(false)
     , m_composedFrame(nullptr)
-    , m_mockFrame(nullptr)
-	, m_videoCompositor(nullptr)
+    , m_videoCompositor(nullptr)
 {
     m_ntpDelta = Clock::GetRealTimeClock()->CurrentNtpInMilliseconds() -
                                   TickTime::MillisecondTimestamp();
@@ -51,17 +50,14 @@ VCMOutputProcessor::VCMOutputProcessor(int id)
 
 VCMOutputProcessor::~VCMOutputProcessor()
 {
-    m_recorder->Stop();
     close();
 }
 
 bool VCMOutputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<BufferManager> bufferManager, boost::shared_ptr<TaskRunner> taskRunner)
 {
-	m_taskRunner = taskRunner;
+    m_taskRunner = taskRunner;
     m_bufferManager = bufferManager;
     m_videoTransport.reset(transport);
-    m_vpmPool.reset(new VPMPool(BufferManager::SLOT_SIZE));
-
 
     m_bitrateController.reset(webrtc::BitrateController::CreateBitrateController(Clock::GetRealTimeClock(), true));
     m_bandwidthObserver.reset(m_bitrateController->CreateRtcpBandwidthObserver());
@@ -114,6 +110,7 @@ bool VCMOutputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* tran
     m_timer.reset(new boost::asio::deadline_timer(m_ioService, boost::posix_time::milliseconds(33)));
     m_timer->async_wait(boost::bind(&VCMOutputProcessor::layoutTimerHandler, this, boost::asio::placeholders::error));
     m_encodingThread.reset(new boost::thread(boost::bind(&boost::asio::io_service::run, &m_ioService)));
+
     return true;
 }
 
@@ -122,12 +119,6 @@ void VCMOutputProcessor::close()
     m_isClosing = true;
     m_timer->cancel();
     m_encodingThread->join();
-
-    m_videoEncoder->StopDebugRecording();
-    if (m_mockFrame) {
-        delete m_mockFrame;
-        m_mockFrame = nullptr;
-    }
 }
 
 // A return value of false is interpreted as that the function has no
@@ -182,7 +173,6 @@ void VCMOutputProcessor::updateMaxSlot(int newMaxSlot)
     ELOG_DEBUG("maxSlot is changed to %d", m_maxSlot);
 }
 
-#define DEBUG_RECORDING 0
 /**
  * this should be called whenever a new frame is decoded from
  * one particular publisher with index
@@ -191,13 +181,12 @@ void VCMOutputProcessor::handleInputFrame(webrtc::I420VideoFrame& frame, int ind
 {
     I420VideoFrame* freeFrame = m_bufferManager->getFreeBuffer();
     if (!freeFrame)
-        return;    //no free frame, simply ignore it
+        return;    // No free frame, simply ignore it.
     else {
         freeFrame->CopyFrame(frame);
         I420VideoFrame* busyFrame = m_bufferManager->postFreeBuffer(freeFrame, index);
-        if (busyFrame) {
+        if (busyFrame)
             m_bufferManager->releaseBuffer(busyFrame);
-        }
     }
 }
 
