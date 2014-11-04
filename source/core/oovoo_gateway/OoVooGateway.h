@@ -67,15 +67,15 @@ public:
     bool setPublisher(erizo::MediaSource*, const std::string& videoResolution);
     bool setPublisher(erizo::MediaSource*);
     void unsetPublisher();
-    void addSubscriber(erizo::MediaSink*, uint32_t id);
-    void removeSubscriber(uint32_t id);
+    void addSubscriber(erizo::MediaSink*, const std::string& id);
+    void removeSubscriber(const std::string& id);
     void setupAsyncEvent(const std::string& event, woogeen_base::EventRegistry*);
     void destroyAsyncEvents();
     bool clientJoin(const std::string& clientJoinUri);
     void customMessage(const std::string& message);
     std::string retrieveGatewayStatistics();
-    void subscribeStream(uint32_t id, bool isAudio);
-    void unsubscribeStream(uint32_t id, bool isAudio);
+    void subscribeStream(const std::string& id, bool isAudio);
+    void unsubscribeStream(const std::string& id, bool isAudio);
     void publishStream(bool isAudio);
     void unpublishStream(bool isAudio);
 

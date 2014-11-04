@@ -165,7 +165,11 @@ Handle<Value> Gateway::addSubscriber(const Arguments& args) {
 
   erizo::MediaSink* ms = dynamic_cast<erizo::MediaSink*>(wr);
 
-  uint32_t peerId = args[1]->ToUint32()->Value();
+  // get the param
+  v8::String::Utf8Value param1(args[1]->ToString());
+
+  // convert it to string
+  std::string peerId = std::string(*param1);
   me->addSubscriber(ms, peerId);
 
   return scope.Close(Null());
@@ -182,7 +186,11 @@ Handle<Value> Gateway::addExternalOutput(const Arguments& args) {
 
   erizo::MediaSink* ms = dynamic_cast<erizo::MediaSink*>(output);
 
-  uint32_t peerId = args[1]->ToUint32()->Value();
+  // get the param
+  v8::String::Utf8Value param1(args[1]->ToString());
+
+  // convert it to string
+  std::string peerId = std::string(*param1);
   me->addSubscriber(ms, peerId);
 
   return scope.Close(Null());
@@ -194,7 +202,11 @@ Handle<Value> Gateway::removeSubscriber(const Arguments& args) {
   Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.This());
   woogeen_base::Gateway* me = obj->me;
 
-  uint32_t peerId = args[0]->ToUint32()->Value();
+  // get the param
+  v8::String::Utf8Value param(args[0]->ToString());
+
+  // convert it to string
+  std::string peerId = std::string(*param);
   me->removeSubscriber(peerId);
 
   return scope.Close(Null());
@@ -249,7 +261,8 @@ Handle<Value> Gateway::subscribeStream(const Arguments& args) {
   HandleScope scope;
   Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.This());
   woogeen_base::Gateway* me = obj->me;
-  uint32_t id = args[0]->ToUint32()->Value();
+  v8::String::Utf8Value param(args[0]->ToString());
+  std::string id = std::string(*param);
   bool isAudio = args[1]->BooleanValue();
   me->subscribeStream(id, isAudio);
   return scope.Close(Undefined());
@@ -259,7 +272,8 @@ Handle<Value> Gateway::unsubscribeStream(const Arguments& args) {
   HandleScope scope;
   Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.This());
   woogeen_base::Gateway* me = obj->me;
-  uint32_t id = args[0]->ToUint32()->Value();
+  v8::String::Utf8Value param(args[0]->ToString());
+  std::string id = std::string(*param);
   bool isAudio = args[1]->BooleanValue();
   me->unsubscribeStream(id, isAudio);
   return scope.Close(Undefined());
