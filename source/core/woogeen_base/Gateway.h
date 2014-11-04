@@ -62,12 +62,12 @@ public:
      * @param sink the MediaSink of the subscriber
      * @param id the id for the subscriber
      */
-    DLL_PUBLIC virtual void addSubscriber(erizo::MediaSink*, uint32_t id) = 0;
+    DLL_PUBLIC virtual void addSubscriber(erizo::MediaSink*, const std::string& id) = 0;
     /**
      * Eliminates the subscriber given its peer id
      * @param id the id for the subscriber
      */
-    DLL_PUBLIC virtual void removeSubscriber(uint32_t id) = 0;
+    DLL_PUBLIC virtual void removeSubscriber(const std::string& id) = 0;
     /**
      * Set async event handler
      * @param event name, handle
@@ -101,14 +101,14 @@ public:
      * @param id the subscriber id
      * @param isAudio subscribe audio or video
      */
-    DLL_PUBLIC virtual void subscribeStream(uint32_t id, bool isAudio) = 0;
+    DLL_PUBLIC virtual void subscribeStream(const std::string& id, bool isAudio) = 0;
 
     /**
      * Stop subscribing audio or video
      * @param id the subscriber id
      * @param isAudio unsubscrib audio or video
      */
-    DLL_PUBLIC virtual void unsubscribeStream(uint32_t id, bool isAudio) = 0;
+    DLL_PUBLIC virtual void unsubscribeStream(const std::string& id, bool isAudio) = 0;
 
     /**
      * Start publishing audio or video

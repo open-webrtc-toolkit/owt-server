@@ -469,9 +469,11 @@ void OoVooGateway::unsetPublisher()
 }
 
 // The main thread
-void OoVooGateway::addSubscriber(MediaSink* sink, uint32_t id)
+void OoVooGateway::addSubscriber(MediaSink* sink, const std::string& subscriberId)
 {
     ELOG_DEBUG("Adding subscriber");
+
+    uint32_t id = std::stoi(subscriberId);
     FeedbackSource* fbsource = sink->getFeedbackSource();
 
     if (fbsource) {
@@ -496,8 +498,9 @@ void OoVooGateway::addSubscriber(MediaSink* sink, uint32_t id)
 }
 
 // The main thread
-void OoVooGateway::removeSubscriber(uint32_t id)
+void OoVooGateway::removeSubscriber(const std::string& subscriberId)
 {
+    uint32_t id = std::stoi(subscriberId);
     std::vector<boost::shared_ptr<MediaSink>> removedSubscribers;
 
     boost::unique_lock<boost::shared_mutex> subscriberLock(m_subscriberMutex);
@@ -567,12 +570,14 @@ std::string OoVooGateway::retrieveGatewayStatistics()
     return output.str();
 }
 
-void OoVooGateway::subscribeStream(uint32_t id, bool isAudio) {
+void OoVooGateway::subscribeStream(const std::string& subscriberId, bool isAudio) {
+    uint32_t id = std::stoi(subscriberId);
     ELOG_DEBUG("ooVoo -> inboundStreamCreate: user %u, %s", id, isAudio ? "AUDIO" : "VIDEO");
     m_ooVoo->inboundStreamCreate(id, isAudio);
 }
 
-void OoVooGateway::unsubscribeStream(uint32_t id, bool isAudio) {
+void OoVooGateway::unsubscribeStream(const std::string& subscriberId, bool isAudio) {
+    uint32_t id = std::stoi(subscriberId);
     bool found = false;
 
     boost::shared_lock<boost::shared_mutex> streamInfoLock(m_ooVooStreamMutex);
