@@ -29,7 +29,6 @@ DEFINE_LOGGER(WebRTCGateway, "mcu.WebRTCGateway");
 WebRTCGateway::WebRTCGateway()
     : m_feedback(nullptr)
     , m_mixer(nullptr)
-    , m_asyncHandler(nullptr)
 {
 }
 
