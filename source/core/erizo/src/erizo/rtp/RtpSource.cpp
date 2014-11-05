@@ -34,7 +34,7 @@ namespace erizo {
 
   }
 
-  int RtpSource::deliverFeedback_(char* buf, int len){
+  int RtpSource::deliverFeedback(char* buf, int len){
     fbSocket_->send_to(boost::asio::buffer(buf, len), *iterator_);
     return len;
 
