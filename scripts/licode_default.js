@@ -102,7 +102,50 @@ config.erizo.maxport = 0; // default value: 0
 
 // If true, the streams from different clients in a room will be mixed by the media server.
 config.erizo.mixer = false;
-
+// Config the mixed video layout. Default is Fluid layout
+/*
+config.erizo.videolayout = {
+	    "root": { "size": "vga" },
+	    "region": [
+	      {
+	        "id": "1",
+	        "left": 0,
+	        "top": 0,
+	        "relativesize": 2/3
+	      },
+	      {
+	        "id": "2",
+	        "left": 0.67,
+	        "top": 0,
+	        "relativesize": 1/3
+	      },
+	      {
+	        "id": "3",
+	        "left": 0.67,
+	        "top": 0.33,
+	        "relativesize": 1/3
+	      },
+	      {
+	        "id": "4",
+	        "left": 0.67,
+	        "top": 0.67,
+	        "relativesize": 1/3
+	      },
+	      {
+	        "id": "5",
+	        "left": 0.33,
+	        "top": 0.67,
+	        "relativesize": 1/3
+	      },
+	      {
+	        "id": "6",
+	        "left": 0,
+	        "top": 0.67,
+	        "relativesize": 1/3
+	      }
+	    ]
+	};
+*/
 /***** END *****/
 // Following lines are always needed.
 var module = module || {};

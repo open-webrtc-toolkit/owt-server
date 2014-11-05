@@ -37,6 +37,7 @@ namespace mcu {
 class BufferManager;
 class VCMOutputProcessor;
 class TaskRunner;
+struct Layout;
 
 static const int MIXED_VIDEO_STREAM_ID = 2;
 

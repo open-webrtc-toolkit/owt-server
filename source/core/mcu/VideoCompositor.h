@@ -24,6 +24,7 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/scoped_ptr.hpp>
 #include <logger.h>
+#include "Config.h"
 
 namespace webrtc {
 class I420VideoFrame;
@@ -78,6 +79,7 @@ struct VideoSize {
 };
 
 extern VideoSize VideoSizes[];
+extern const char* VideoResString[];
 
 struct Region {
     std::string id;
@@ -126,11 +128,21 @@ public:
     virtual bool config(VideoLayout&); //set a new layout config, but won't be effective
     virtual bool commitLayout(); //commit the new layout config
     virtual void setBackgroundColor();
-    virtual webrtc::I420VideoFrame* layout(int maxSlot) = 0;
+    virtual webrtc::I420VideoFrame* layout(int maxSlot);
     void getLayout(VideoLayout& layout)
     {
         layout = m_currentLayout;
     }
+protected:
+    virtual webrtc::I420VideoFrame* fluidLayout(int maxSlot);
+    virtual webrtc::I420VideoFrame* customLayout();
+private:
+
+    virtual bool validateConfig(VideoLayout& layout)
+    {
+    	return true;
+    }
+
 protected:
     boost::scoped_ptr<webrtc::CriticalSectionWrapper> m_configLock;
     bool m_configChanged;
@@ -139,18 +151,6 @@ protected:
     boost::scoped_ptr<webrtc::I420VideoFrame> m_composedFrame;
     VideoLayout m_currentLayout;
     VideoLayout m_newLayout;
-};
-
-class FluidVideoCompositor: public SoftVideoCompositor {
-public:
-    FluidVideoCompositor(boost::shared_ptr<BufferManager>&);
-    webrtc::I420VideoFrame* layout(int maxSlot);
-};
-
-class CustomVideoCompositor : public SoftVideoCompositor {
-public:
-    CustomVideoCompositor(boost::shared_ptr<BufferManager>&);
-    webrtc::I420VideoFrame* layout(int maxSlot /*not used*/);
 };
 
 }

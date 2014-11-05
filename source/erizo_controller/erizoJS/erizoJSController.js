@@ -14,8 +14,8 @@ var rpc = require('./../common/rpc');
 var log = logger.getLogger("ErizoJSController");
 
 // Log segfaults
-var SegfaultHandler = require('segfault-handler');
-SegfaultHandler.registerHandler();
+//var SegfaultHandler = require('segfault-handler');
+//SegfaultHandler.registerHandler();
 
 exports.ErizoJSController = function (spec) {
     "use strict";
@@ -41,6 +41,8 @@ exports.ErizoJSController = function (spec) {
     that.init = function () {
         if (GLOBAL.config.erizo.mixer) {
             muxer = new addon.ManyToManyTranscoder();
+            if (GLOBAL.config.erizo.videolayout !== undefined)
+            	muxer.configLayout(JSON.stringify(GLOBAL.config.erizo.videolayout));            
         }
     };
 
@@ -260,6 +262,7 @@ exports.ErizoJSController = function (spec) {
             }
 
             initWebRtcConnection(wrtc, sdp, callback, to, from);
+
 //            waitForFIR(wrtc, to);
 
             //log.info('Publishers: ', publishers);

@@ -31,6 +31,7 @@ namespace mcu {
 
 VideoSize VideoSizes[] = {{352, 288}, {640, 480}, {1280, 720},{320, 240},{480, 320}, {480, 360}, {176, 144}, {192, 144}, {1920, 1080}, {3840, 2160}};
 
+
 VPMPool::VPMPool(unsigned int size)
     : m_size(size)
 {
@@ -80,8 +81,15 @@ SoftVideoCompositor::SoftVideoCompositor(boost::shared_ptr<BufferManager>& buffe
     m_currentLayout.subHeight = VideoSizes[m_currentLayout.rootsize].height;
     m_currentLayout.subWidth = VideoSizes[m_currentLayout.rootsize].width;
     m_vpmPool.reset(new VPMPool(BufferManager::SLOT_SIZE));
+    m_composedFrame.reset(new webrtc::I420VideoFrame());
+    // create max size  frame
+    unsigned int width = VideoSizes[VideoResolutionType::vga].width;
+    unsigned int height = VideoSizes[VideoResolutionType::vga].height;
+    m_composedFrame->CreateEmptyFrame(width, height,  width, width / 2, width / 2);
+
     config(m_currentLayout);
 }
+
 
 bool SoftVideoCompositor::config(VideoLayout& layout)
 {
@@ -89,6 +97,7 @@ bool SoftVideoCompositor::config(VideoLayout& layout)
     ELOG_DEBUG("Configuring layout");
     m_newLayout = layout;
     m_configChanged = true;
+    ELOG_DEBUG("configChanged is true");
     return true;
 }
 
@@ -108,8 +117,6 @@ bool SoftVideoCompositor::commitLayout()
 {
     m_currentLayout = m_newLayout;
     VideoSize rootSize = VideoSizes[m_currentLayout.rootsize];
-    m_composedFrame.reset(new webrtc::I420VideoFrame());
-    m_composedFrame->CreateEmptyFrame(rootSize.width, rootSize.height,  rootSize.width, rootSize.width / 2, rootSize.width / 2);
     if (m_currentLayout.regions.empty()) {
         //fluid layout
         VideoSize videoSize;
@@ -130,25 +137,30 @@ bool SoftVideoCompositor::commitLayout()
             videoSize.height = (int)(rootSize.height*region.relativesize);
             m_vpmPool->update(i, videoSize);
         }
+        ELOG_DEBUG("commit customlayout");
     }
     m_configChanged = false;
+    ELOG_DEBUG("configChanged is false");
     return true;
 
 }
 
-CustomVideoCompositor::CustomVideoCompositor(boost::shared_ptr<BufferManager>& bufferManager)
-    : SoftVideoCompositor(bufferManager)
-{
-}
-
-webrtc::I420VideoFrame* CustomVideoCompositor::layout(int maxSlot)
-{
-    if (m_configChanged) {
-        webrtc::CriticalSectionScoped cs(m_configLock.get());
-        commitLayout();
+webrtc::I420VideoFrame* SoftVideoCompositor::layout(int maxSlot) {
+	if (m_configChanged) {
+	    webrtc::CriticalSectionScoped cs(m_configLock.get());
+		commitLayout();
         setBackgroundColor();
     }
 
+	if (m_currentLayout.regions.empty()) {
+		return fluidLayout(maxSlot);
+	} else {
+		return customLayout();
+	}
+}
+
+webrtc::I420VideoFrame* SoftVideoCompositor::customLayout()
+{
     VideoSize rootSize = VideoSizes[m_currentLayout.rootsize];
     webrtc::I420VideoFrame* target = m_composedFrame.get();
 
@@ -210,18 +222,9 @@ webrtc::I420VideoFrame* CustomVideoCompositor::layout(int maxSlot)
     return m_composedFrame.get();
 }
 
-FluidVideoCompositor::FluidVideoCompositor(boost::shared_ptr<BufferManager>& bufferManager)
-    : SoftVideoCompositor(bufferManager)
-{
-}
 
-webrtc::I420VideoFrame* FluidVideoCompositor::layout(int maxSlot)
+webrtc::I420VideoFrame* SoftVideoCompositor::fluidLayout(int maxSlot)
 {
-    if (m_configChanged) {
-        webrtc::CriticalSectionScoped cs(m_configLock.get());
-        commitLayout();
-        setBackgroundColor();
-    }
     webrtc::I420VideoFrame* target = m_composedFrame.get();
 
     for (int input = 0; input < maxSlot; input++) {
@@ -276,5 +279,6 @@ webrtc::I420VideoFrame* FluidVideoCompositor::layout(int maxSlot)
     }
     return m_composedFrame.get();
 };
+
 
 }

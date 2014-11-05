@@ -69,6 +69,11 @@ class ManyToManyTranscoder: public node::ObjectWrap {
    * Param: the peerId
    */
   static v8::Handle<v8::Value> removeSubscriber(const v8::Arguments& args);
+  /*
+   * configure the layout of this mixer. return false if the config is invalid
+   * Using FluidLayout if no layout is configured
+   */
+  static v8::Handle<v8::Value> configLayout(const v8::Arguments& args);
 };
 
 #endif /* MANYTOMANYTRANSCODER_H_ */

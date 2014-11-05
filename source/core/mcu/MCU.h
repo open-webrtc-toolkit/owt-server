@@ -31,6 +31,7 @@ namespace mcu {
 
 class AudioMixer;
 class VideoMixer;
+struct VideoLayout;
 
 /**
  * Represents a Many to Many connection.
@@ -61,6 +62,10 @@ public:
 
     DLL_PUBLIC void removePublisher(erizo::MediaSource*);
 
+    /**
+     * @param the JSON formatted videolayout string
+     */
+    DLL_PUBLIC void configLayout(const std::string&);
     /**
      * called by WebRtcConnections' onTransportData. This MCU
      * will be set as the MediaSink of all the WebRtcConnections in the
