@@ -21,10 +21,11 @@
 #ifndef VideoCompositor_h
 #define VideoCompositor_h
 
+#include "Config.h"
+
 #include <boost/shared_ptr.hpp>
 #include <boost/scoped_ptr.hpp>
 #include <logger.h>
-#include "Config.h"
 
 namespace webrtc {
 class I420VideoFrame;
