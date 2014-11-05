@@ -29,8 +29,7 @@ using namespace webrtc;
 
 namespace mcu {
 
-VideoSize VideoSizes[] = {{352, 288}, {640, 480}, {1280, 720},{320, 240},{480, 320}, {480, 360}, {176, 144}, {192, 144}, {1920, 1080}, {3840, 2160}};
-
+VideoSize VideoSizes[] = {{352, 288}, {640, 480}, {1280, 720}, {320, 240}, {480, 320}, {480, 360}, {176, 144}, {192, 144}, {1920, 1080}, {3840, 2160}};
 
 VPMPool::VPMPool(unsigned int size)
     : m_size(size)
@@ -42,7 +41,6 @@ VPMPool::VPMPool(unsigned int size)
         vpm->SetInputFrameResampleMode(webrtc::kFastRescaling);
         m_vpms[i] = vpm;
     }
-
 }
 
 VPMPool::~VPMPool()
@@ -64,7 +62,7 @@ void VPMPool::update(unsigned int slot, VideoSize& videoSize)
 {
     m_subVideSize[slot] = videoSize;
     if (m_vpms[slot])
-       m_vpms[slot]->SetTargetResolution(videoSize.width, videoSize.height, 30);
+        m_vpms[slot]->SetTargetResolution(videoSize.width, videoSize.height, 30);
 }
 
 
@@ -110,7 +108,6 @@ void SoftVideoCompositor::setBackgroundColor()
         memset(m_composedFrame->buffer(webrtc::kUPlane), 128, m_composedFrame->allocated_size(webrtc::kUPlane));
         memset(m_composedFrame->buffer(webrtc::kVPlane), 128, m_composedFrame->allocated_size(webrtc::kVPlane));
     }
-
 }
 
 bool SoftVideoCompositor::commitLayout()
@@ -124,9 +121,9 @@ bool SoftVideoCompositor::commitLayout()
         videoSize.height = rootSize.height / m_currentLayout.divFactor;
         m_currentLayout.subHeight = videoSize.height;
         m_currentLayout.subWidth = videoSize.width;
-        for (uint32_t i = 0; i < m_vpmPool->size(); i++) {
+        for (uint32_t i = 0; i < m_vpmPool->size(); i++)
             m_vpmPool->update(i, videoSize);
-        }
+
         ELOG_DEBUG("commit fluidlayout, rooSize is %d, current subHeight is %d, current subWidth is %d",
                 m_currentLayout.rootsize,  m_currentLayout.subHeight, m_currentLayout.subWidth);
     } else { //custom layout
@@ -142,21 +139,20 @@ bool SoftVideoCompositor::commitLayout()
     m_configChanged = false;
     ELOG_DEBUG("configChanged is false");
     return true;
-
 }
 
-webrtc::I420VideoFrame* SoftVideoCompositor::layout(int maxSlot) {
-	if (m_configChanged) {
-	    webrtc::CriticalSectionScoped cs(m_configLock.get());
-		commitLayout();
+webrtc::I420VideoFrame* SoftVideoCompositor::layout(int maxSlot)
+{
+    if (m_configChanged) {
+        webrtc::CriticalSectionScoped cs(m_configLock.get());
+        commitLayout();
         setBackgroundColor();
     }
 
-	if (m_currentLayout.regions.empty()) {
-		return fluidLayout(maxSlot);
-	} else {
-		return customLayout();
-	}
+    if (m_currentLayout.regions.empty())
+        return fluidLayout(maxSlot);
+
+    return customLayout();
 }
 
 webrtc::I420VideoFrame* SoftVideoCompositor::customLayout()
@@ -222,7 +218,6 @@ webrtc::I420VideoFrame* SoftVideoCompositor::customLayout()
     return m_composedFrame.get();
 }
 
-
 webrtc::I420VideoFrame* SoftVideoCompositor::fluidLayout(int maxSlot)
 {
     webrtc::I420VideoFrame* target = m_composedFrame.get();
@@ -279,6 +274,5 @@ webrtc::I420VideoFrame* SoftVideoCompositor::fluidLayout(int maxSlot)
     }
     return m_composedFrame.get();
 };
-
 
 }

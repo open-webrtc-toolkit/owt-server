@@ -74,6 +74,7 @@ enum VideoResolutionType
     uhd_4k,
     total = uhd_4k,
 };
+
 struct VideoSize {
     int width;
     int height;
@@ -134,14 +135,15 @@ public:
     {
         layout = m_currentLayout;
     }
+
 protected:
     virtual webrtc::I420VideoFrame* fluidLayout(int maxSlot);
     virtual webrtc::I420VideoFrame* customLayout();
-private:
 
+private:
     virtual bool validateConfig(VideoLayout& layout)
     {
-    	return true;
+        return true;
     }
 
 protected:
