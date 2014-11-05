@@ -69,6 +69,32 @@ exports.RoomController = function (spec) {
         eventListeners.push(eventListener);
     };
 
+    /*
+     * Initialize the mixer in the room.
+     */
+    that.initMixer = function (id, callback) {
+
+        if (publishers[id] === undefined) {
+
+            log.info("Adding mixer id ", id);
+
+            // We create a new ErizoJS with the id.
+            createErizoJS(id, function(erizo_id) {
+            	log.info("Erizo created");
+            	// then we call its initMixer method.
+	            var args = [id];
+	            rpc.callRpc(getErizoQueue(id), "initMixer", args, {callback: callback});
+
+	            // Track publisher locally
+	            publishers[id] = id;
+	            subscribers[id] = [];
+            });
+
+        } else {
+            log.info("Mixer already set for", id);
+        }
+    };
+
     that.addExternalInput = function (publisher_id, url, callback) {
 
         if (publishers[publisher_id] === undefined) {

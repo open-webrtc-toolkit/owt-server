@@ -18,11 +18,12 @@
  * and approved by Intel in writing.
  */
 
-#ifndef MCU_h
-#define MCU_h
+#ifndef InProcessMixer_h
+#define InProcessMixer_h
 
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/mutex.hpp>
+#include <Gateway.h>
 #include <logger.h>
 #include <map>
 #include <MediaDefinitions.h>
@@ -31,52 +32,53 @@ namespace mcu {
 
 class AudioMixer;
 class VideoMixer;
-struct VideoLayout;
 
 /**
- * Represents a Many to Many connection.
- * Receives media from several publishers, mixed into one stream and retransmits it to every subscriber.
+ * An InProcessMixer refers to a media mixer which is run in the same process as a woogeen_base::Gateway.
+ * It receives media from several sources through the WebRTCGateways, mixed them into one stream and retransmits
+ * it to every subscriber.
  */
-class MCU : public erizo::MediaSink, public erizo::RTPDataReceiver {
+class InProcessMixer : public woogeen_base::Gateway, public erizo::MediaSink, public erizo::RTPDataReceiver {
     DECLARE_LOGGER();
 
 public:
-    DLL_PUBLIC MCU();
-    DLL_PUBLIC virtual ~MCU();
-    /**
-     * Add a Publisher.
-     * @param publisher The MediaSource as the Publisher
-     */
-    DLL_PUBLIC void addPublisher(erizo::MediaSource*);
-    /**
-     * Sets the subscriber
-     * @param subscriber The MediaSink as the subscriber
-     * @param peerId An unique Id for the subscriber
-     */
-    DLL_PUBLIC void addSubscriber(erizo::MediaSink*, const std::string& peerId);
-    /**
-     * Eliminates the subscriber
-     * @param peerId An unique Id for the subscriber
-     */
-    DLL_PUBLIC void removeSubscriber(const std::string& peerId);
-
-    DLL_PUBLIC void removePublisher(erizo::MediaSource*);
+    InProcessMixer();
+    virtual ~InProcessMixer();
 
     /**
-     * @param the JSON formatted videolayout string
+     * Implements Gateway interfaces
      */
-    DLL_PUBLIC void configLayout(const std::string&);
+    bool setPublisher(erizo::MediaSource*) { return false; }
+    bool setPublisher(erizo::MediaSource* source, const std::string& videoResolution) { return setPublisher(source); }
+    void unsetPublisher() { }
+
+    void addSubscriber(erizo::MediaSink*, const std::string& id);
+    void removeSubscriber(const std::string& id);
+
+    void setupAsyncEvent(const std::string& event, woogeen_base::EventRegistry*) { }
+    void destroyAsyncEvents() { }
+
+    bool clientJoin(const std::string& clientJoinUri) { return true; }
+    void customMessage(const std::string& message) { }
+
+    std::string retrieveGatewayStatistics() { return ""; }
+
+    void subscribeStream(const std::string& id, bool isAudio) { }
+    void unsubscribeStream(const std::string& id, bool isAudio) { }
+    void publishStream(bool isAudio) { }
+    void unpublishStream(bool isAudio) { }
+
+    void setAdditionalSourceConsumer(woogeen_base::MediaSourceConsumer*) { }
+
+    int32_t addSource(erizo::MediaSource*);
+    int32_t removeSource(erizo::MediaSource*);
+    erizo::MediaSink* mediaSink() { return this; }
+    void configLayout(const std::string&);
+
     /**
-     * called by WebRtcConnections' onTransportData. This MCU
-     * will be set as the MediaSink of all the WebRtcConnections in the
-     * same room
+     * Implements MediaSink interfaces
      */
     virtual int deliverAudioData(char* buf, int len, erizo::MediaSource*);
-    /**
-     * called by WebRtcConnections' onTransportData. This MCU
-     * will be set as the MediaSink of all the WebRtcConnections in the
-     * same room
-     */
     virtual int deliverVideoData(char* buf, int len, erizo::MediaSource*);
 
     /**
@@ -100,4 +102,4 @@ private:
 };
 
 } /* namespace mcu */
-#endif /* MCU_h */
+#endif /* InProcessMixer_h */

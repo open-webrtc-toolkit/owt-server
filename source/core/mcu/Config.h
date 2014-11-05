@@ -20,8 +20,9 @@
 
 #ifndef Config_h
 #define Config_h
-#include <list>
+
 #include <boost/scoped_ptr.hpp>
+#include <list>
 
 
 /**
@@ -54,9 +55,7 @@ public:
 	void registerListner(ConfigListner* listner);
 	void unregisterListner(ConfigListner* listner);
 private:
-	Config() {
-		m_videoLayout.reset(nullptr);
-	};
+	Config();
 
 	void signalConfigChanged();
 	static Config* m_config;

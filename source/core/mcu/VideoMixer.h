@@ -26,6 +26,7 @@
 #include <logger.h>
 #include <map>
 #include <MediaDefinitions.h>
+#include <MediaSourceConsumer.h>
 #include <vector>
 
 namespace webrtc {
@@ -35,8 +36,8 @@ class VoEVideoSync;
 namespace mcu {
 
 class BufferManager;
-class VCMOutputProcessor;
 class TaskRunner;
+class VCMOutputProcessor;
 struct Layout;
 
 static const int MIXED_VIDEO_STREAM_ID = 2;
@@ -44,7 +45,7 @@ static const int MIXED_VIDEO_STREAM_ID = 2;
 /**
  * Receives media from several sources, mixed into one stream and retransmits it to the RTPDataReceiver.
  */
-class VideoMixer : public erizo::MediaSink, public erizo::FeedbackSink {
+class VideoMixer : public woogeen_base::MediaSourceConsumer, public erizo::MediaSink, public erizo::FeedbackSink {
     DECLARE_LOGGER();
 
 public:
@@ -55,13 +56,19 @@ public:
      * Each source will be served by a InputProcessor, which is responsible for
      * decoding the incoming streams into I420Frames
      */
-    void addSource(erizo::MediaSource*, int voiceChannelId, webrtc::VoEVideoSync*);
-    void removeSource(erizo::MediaSource*);
+    int32_t addSource(erizo::MediaSource*, int voiceChannelId, webrtc::VoEVideoSync*);
 
     void onRequestIFrame();
     uint32_t sendSSRC();
 
-    // Implements the MediaSink interfaces
+    // Implements the MediaSourceConsumer interfaces
+    virtual int32_t addSource(erizo::MediaSource* source) { return addSource(source, -1, nullptr); }
+    virtual int32_t removeSource(erizo::MediaSource*);
+    erizo::MediaSink* mediaSink() { return this; }
+
+    /**
+     * Implements MediaSink interfaces
+     */
     virtual int deliverAudioData(char* buf, int len, erizo::MediaSource*);
     virtual int deliverVideoData(char* buf, int len, erizo::MediaSource*);
 

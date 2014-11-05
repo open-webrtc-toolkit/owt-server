@@ -12,7 +12,6 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
-
 namespace mcu {
 
 Config* Config::m_config = nullptr;
@@ -72,4 +71,9 @@ void Config::registerListner(ConfigListner* listner) {
 void Config::unregisterListner(ConfigListner* listner) {
 	m_configListner.remove(listner);
 }
+
+Config::Config() {
+	m_videoLayout.reset(nullptr);
+};
+
 } /* namespace mcu */
