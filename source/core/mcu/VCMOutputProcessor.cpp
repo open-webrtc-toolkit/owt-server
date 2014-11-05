@@ -72,7 +72,7 @@ bool VCMOutputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* tran
     configuration.bandwidth_callback = m_bandwidthObserver.get();
     m_rtpRtcp.reset(RtpRtcp::CreateRtpRtcp(configuration));
 
-    m_videoCompositor.reset(new FluidVideoCompositor(m_bufferManager));
+    m_videoCompositor.reset(new SoftVideoCompositor(m_bufferManager));
     VideoLayout layout;
     layout.rootsize = vga;
     layout.divFactor = 1;
@@ -102,6 +102,7 @@ bool VCMOutputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* tran
     m_videoEncoder->SetSsrcs(ssrcs);
 
     m_taskRunner->RegisterModule(m_rtpRtcp.get());
+    Config::get()->registerListner(this);
 
     m_recordStarted = false;
 
@@ -115,6 +116,7 @@ bool VCMOutputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* tran
 void VCMOutputProcessor::close()
 {
     m_isClosing = true;
+    Config::get()->unregisterListner(this);
     m_timer->cancel();
     m_encodingThread->join();
 }
@@ -140,6 +142,21 @@ bool VCMOutputProcessor::setSendVideoCodec(const VideoCodec& videoCodec)
         return false;
 
     return m_videoEncoder ? (m_videoEncoder->SetEncoder(videoCodec) != -1) : false;
+}
+
+void VCMOutputProcessor::onConfigChanged()
+{
+    ELOG_DEBUG("VCMOutputProcessor::onConfigChanged");
+    VideoLayout* layout = Config::get()->getVideoLayout();
+    m_videoCompositor->config(*layout);
+
+    VideoCodec videoCodec;
+    if (m_videoEncoder->GetEncoder(&videoCodec) == 0) {
+        videoCodec.width = VideoSizes[layout->rootsize].width;
+        videoCodec.height = VideoSizes[layout->rootsize].height;
+        if (!setSendVideoCodec(videoCodec))
+            assert(!"VCMOutputProcessor::onConfigChanged, setSendVideoCodec error!");
+    }
 }
 
 void VCMOutputProcessor::onRequestIFrame()

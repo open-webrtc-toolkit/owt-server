@@ -42,6 +42,7 @@ void ManyToManyTranscoder::Init(Handle<Object> target) {
     tpl->PrototypeTemplate()->Set(String::NewSymbol("removePublisher"), FunctionTemplate::New(removePublisher)->GetFunction());
     tpl->PrototypeTemplate()->Set(String::NewSymbol("addSubscriber"), FunctionTemplate::New(addSubscriber)->GetFunction());
     tpl->PrototypeTemplate()->Set(String::NewSymbol("removeSubscriber"), FunctionTemplate::New(removeSubscriber)->GetFunction());
+    tpl->PrototypeTemplate()->Set(String::NewSymbol("configLayout"), FunctionTemplate::New(configLayout)->GetFunction());
 
     Persistent<Function> constructor = Persistent<Function>::New(tpl->GetFunction());
     target->Set(String::NewSymbol("ManyToManyTranscoder"), constructor);
@@ -133,5 +134,18 @@ Handle<Value> ManyToManyTranscoder::removeSubscriber(
   std::string peerId = std::string(*param1);
   me->removeSubscriber(peerId);
 
+  return scope.Close(Null());
+}
+
+Handle<Value> ManyToManyTranscoder::configLayout(
+    const Arguments& args) {
+  HandleScope scope;
+  ManyToManyTranscoder* obj = ObjectWrap::Unwrap<ManyToManyTranscoder>(args.This());
+  mcu::MCU *me = (mcu::MCU*)obj->me;
+
+  v8::String::Utf8Value param1(args[0]->ToString());
+  // convert it to string
+  std::string layoutStr = std::string(*param1);
+  me->configLayout(layoutStr);
   return scope.Close(Null());
 }

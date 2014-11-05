@@ -20,9 +20,10 @@
 
 #include "MCU.h"
 
+#include "Config.h"
 #include "AudioMixer.h"
 #include "VideoMixer.h"
-
+#include "VideoCompositor.h"
 #include <ProtectedRTPSender.h>
 #include <WebRTCFeedbackProcessor.h>
 
@@ -161,6 +162,11 @@ void MCU::removePublisher(MediaSource* publisher)
 {
     m_audioMixer->removeSource(publisher);
     m_videoMixer->removeSource(publisher);
+}
+
+void MCU::configLayout(const std::string& layout) {
+    ELOG_DEBUG ("MCU configLayout");
+	Config::get()->setVideoLayout(layout);
 }
 
 void MCU::closeAll()
