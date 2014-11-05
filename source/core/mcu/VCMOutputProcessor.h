@@ -22,9 +22,9 @@
 #define VCMOutputProcessor_h
 
 #include "BufferManager.h"
+#include "Config.h"
 #include "VCMMediaProcessorHelper.h"
 #include "VideoCompositor.h"
-#include "Config.h"
 
 #include <boost/asio.hpp>
 #include <boost/scoped_ptr.hpp>
@@ -43,8 +43,7 @@ class TaskRunner;
  * This is the class to accepts the decoded frame and do some processing
  * for example, media layout mixing
  */
-class VCMOutputProcessor : public InputFrameCallback, public erizo::FeedbackSink,
-						   public ConfigListner{
+class VCMOutputProcessor : public InputFrameCallback, public erizo::FeedbackSink, public ConfigListener {
     DECLARE_LOGGER();
 
 public:
@@ -57,7 +56,6 @@ public:
     void updateMaxSlot(int newMaxSlot);
     bool setSendVideoCodec(const webrtc::VideoCodec&);
     void onRequestIFrame();
-    void onConfigChanged();
     uint32_t sendSSRC();
 
     void layoutTimerHandler(const boost::system::error_code&);
@@ -71,6 +69,9 @@ public:
 
     // Implements the FeedbackSink interfaces
     virtual int deliverFeedback(char* buf, int len);
+
+    // Implements the ConfigListener interfaces
+    void onConfigChanged();
 
 private:
     bool layoutFrames();

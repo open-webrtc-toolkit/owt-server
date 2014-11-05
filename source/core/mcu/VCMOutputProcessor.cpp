@@ -102,7 +102,7 @@ bool VCMOutputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* tran
     m_videoEncoder->SetSsrcs(ssrcs);
 
     m_taskRunner->RegisterModule(m_rtpRtcp.get());
-    Config::get()->registerListner(this);
+    Config::get()->registerListener(this);
 
     m_recordStarted = false;
 
@@ -116,7 +116,7 @@ bool VCMOutputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* tran
 void VCMOutputProcessor::close()
 {
     m_isClosing = true;
-    Config::get()->unregisterListner(this);
+    Config::get()->unregisterListener(this);
     m_timer->cancel();
     m_encodingThread->join();
 }
