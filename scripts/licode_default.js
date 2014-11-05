@@ -76,6 +76,9 @@ config.erizoController.sendStats = false; // default value: false
 // If undefined, the path will be /tmp/
 config.erizoController.recording_path = undefined; // default value: undefined
 
+// If true, the streams from different clients in a room will be mixed by the media server.
+config.erizoController.mixer = true;
+
 /*********************************************************
  ERIZO AGENT CONFIGURATION
 **********************************************************/
@@ -100,8 +103,6 @@ config.erizo.stunport = 0; // default value: 0
 config.erizo.minport = 0; // default value: 0
 config.erizo.maxport = 0; // default value: 0
 
-// If true, the streams from different clients in a room will be mixed by the media server.
-config.erizo.mixer = false;
 // Config the mixed video layout. Default is Fluid layout
 /*
 config.erizo.videolayout = {

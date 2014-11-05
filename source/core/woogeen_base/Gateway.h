@@ -22,6 +22,7 @@
 #define Gateway_h
 
 #include "EventRegistry.h"
+#include "MediaSourceConsumer.h"
 
 #include <Compiler.h>
 #include <MediaDefinitions.h>
@@ -29,11 +30,11 @@
 namespace woogeen_base {
 
 /**
- * Represents connection between WebRTC clients, or between a WebRTC client and other third-party clients.
+ * Represents connection between different WebRTC clients, or between a WebRTC client and other third-party clients.
  * Receives media from the WebRTC client and retransmits it to others,
- * or receives media from other clients and retransmits it to the WebRTC client.
+ * or receives media from other sources and retransmits it to the WebRTC clients.
  */
-class Gateway {
+class Gateway : public MediaSourceConsumer {
 
 public:
     DLL_PUBLIC static Gateway* createGatewayInstance(const std::string& customParam);
@@ -122,6 +123,20 @@ public:
      */
     DLL_PUBLIC virtual void unpublishStream(bool isAudio) = 0;
 
+    /**
+     * Set the additional media source consumer which consumes the publisher of this Gateway
+     * @param mediaSourceConsumer
+     */
+    DLL_PUBLIC virtual void setAdditionalSourceConsumer(MediaSourceConsumer*) = 0;
+
+    /**
+     * Configure the layout of the sources by the MediaSourceConsumer
+     * @param layout the layout description string
+     */
+    DLL_PUBLIC virtual void configLayout(const std::string&) { }
+
+    virtual int32_t addSource(erizo::MediaSource*) { return -1; }
+    virtual int32_t removeSource(erizo::MediaSource*) { return -1; }
 };
 
 } /* namespace woogeen_base */

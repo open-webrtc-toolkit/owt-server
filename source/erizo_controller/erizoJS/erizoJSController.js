@@ -1,11 +1,6 @@
 /*global require, exports, , setInterval, clearInterval*/
 
-var addon;
-if (GLOBAL.config.erizo.mixer) {
-    addon = require('./../../bindings/mcu/build/Release/addon');
-} else {
-    addon = require('./../../bindings/erizoAPI/build/Release/addon');
-}
+var addon = require('./../../bindings/mcu/build/Release/addon');
 
 var logger = require('./../common/logger').logger;
 var rpc = require('./../common/rpc');
@@ -21,10 +16,10 @@ exports.ErizoJSController = function (spec) {
     "use strict";
 
     var that = {},
-        muxer,
+        mixer,
         // {id: array of subscribers}
         subscribers = {},
-        // {id: OneToManyProcessor}
+        // {id: Gateway}
         publishers = {},
 
         // {id: ExternalOutput}
@@ -38,11 +33,17 @@ exports.ErizoJSController = function (spec) {
         getSdp,
         getRoap;
 
-    that.init = function () {
-        if (GLOBAL.config.erizo.mixer) {
-            muxer = new addon.ManyToManyTranscoder();
+    that.initMixer = function (id, callback) {
+        if (publishers[id] === undefined) {
+            mixer = new addon.Gateway("InProcessMixer");
             if (GLOBAL.config.erizo.videolayout !== undefined)
-            	muxer.configLayout(JSON.stringify(GLOBAL.config.erizo.videolayout));            
+            	mixer.configLayout(JSON.stringify(GLOBAL.config.erizo.videolayout));
+
+            publishers[id] = mixer;
+            subscribers[id] = [];
+            callback('callback', 'success');
+        } else {
+            log.info("Mixer already set for", id);
         }
     };
 
@@ -152,17 +153,15 @@ exports.ErizoJSController = function (spec) {
 
             var ei = new addon.ExternalInput(url);
 
-            if (!GLOBAL.config.erizo.mixer) {
-                muxer = new addon.OneToManyProcessor();
-                publishers[from] = muxer;
-            } else {
-                publishers[from] = ei;
+            var muxer = new addon.Gateway();
+            publishers[from] = muxer;
+
+            if (mixer) {
+                muxer.setMixer(mixer);
             }
 
             subscribers[from] = [];
 
-            ei.setAudioReceiver(muxer);
-            ei.setVideoReceiver(muxer);
             muxer.setExternalPublisher(ei);
 
             var answer = ei.init();
@@ -183,11 +182,7 @@ exports.ErizoJSController = function (spec) {
             log.info("Adding ExternalOutput to " + to + " url " + url);
             var externalOutput = new addon.ExternalOutput(url);
             externalOutput.init();
-            if (!GLOBAL.config.erizo.mixer) {
-                publishers[to].addExternalOutput(externalOutput, url);
-            } else {
-                muxer.addExternalOutput(externalOutput, url);
-            }
+            publishers[to].addExternalOutput(externalOutput, url);
             externalOutputs[url] = externalOutput;
         }
     };
@@ -195,19 +190,15 @@ exports.ErizoJSController = function (spec) {
     that.removeExternalOutput = function (to, url) {
       if (externalOutputs[url] !== undefined && publishers[to]!=undefined) {
         log.info("Stopping ExternalOutput: url " + url);
-        if (!GLOBAL.config.erizo.mixer) {
-            publishers[to].removeSubscriber(url);
-        } else {
-            muxer.removeSubscriber(url);
-        }
+        publishers[to].removeSubscriber(url);
         delete externalOutputs[url];
       }
     };
 
     /*
-     * Adds a publisher to the room. This creates a new OneToManyProcessor
+     * Adds a publisher to the room. This creates a new Gateway
      * and a new WebRtcConnection. This WebRtcConnection will be the publisher
-     * of the OneToManyProcessor.
+     * of the Gateway.
      */
     that.addPublisher = function (from, sdp, callback) {
 
@@ -216,19 +207,15 @@ exports.ErizoJSController = function (spec) {
             log.info("Adding publisher peer_id ", from);
 
             var wrtc = new addon.WebRtcConnection(true, true, GLOBAL.config.erizo.stunserver, GLOBAL.config.erizo.stunport, GLOBAL.config.erizo.minport, GLOBAL.config.erizo.maxport, undefined, undefined, undefined, true, true, true, true);
-            if (!GLOBAL.config.erizo.mixer) {
-                muxer = new addon.OneToManyProcessor();
-                muxer.setPublisher(wrtc);
-                publishers[from] = muxer;
-            } else {
-                muxer.addPublisher(wrtc);
-                publishers[from] = wrtc;
+            var muxer = new addon.Gateway();
+            muxer.setPublisher(wrtc);
+            publishers[from] = muxer;
+
+            if (mixer) {
+                muxer.setMixer(mixer);
             }
 
             subscribers[from] = [];
-
-            wrtc.setAudioReceiver(muxer);
-            wrtc.setVideoReceiver(muxer);
 
             initWebRtcConnection(wrtc, sdp, callback, from);
 
@@ -243,7 +230,7 @@ exports.ErizoJSController = function (spec) {
     /*
      * Adds a subscriber to the room. This creates a new WebRtcConnection.
      * This WebRtcConnection will be added to the subscribers list of the
-     * OneToManyProcessor.
+     * Gateway.
      */
     that.addSubscriber = function (from, to, audio, video, sdp, callback) {
         if (typeof sdp != 'string') sdp = JSON.stringify(sdp);
@@ -255,11 +242,7 @@ exports.ErizoJSController = function (spec) {
             var wrtc = new addon.WebRtcConnection(audio, video, GLOBAL.config.erizo.stunserver, GLOBAL.config.erizo.stunport, GLOBAL.config.erizo.minport, GLOBAL.config.erizo.maxport, undefined, undefined, undefined, true, true, true, true);
 
             subscribers[to].push(from);
-            if (!GLOBAL.config.erizo.mixer) {
-                publishers[to].addSubscriber(wrtc, from);
-            } else {
-                muxer.addSubscriber(wrtc, from);
-            }
+            publishers[to].addSubscriber(wrtc, from);
 
             initWebRtcConnection(wrtc, sdp, callback, to, from);
 
@@ -271,17 +254,13 @@ exports.ErizoJSController = function (spec) {
     };
 
     /*
-     * Removes a publisher from the room. This also deletes the associated OneToManyProcessor.
+     * Removes a publisher from the room. This also deletes the associated Gateway.
      */
     that.removePublisher = function (from) {
 
         if (subscribers[from] !== undefined && publishers[from] !== undefined) {
-            if (!GLOBAL.config.erizo.mixer) {
-                log.info('Removing muxer', from);
-                publishers[from].close();
-            } else {
-                muxer.removePublisher(publishers[from]);
-            }
+            log.info('Removing muxer', from);
+            publishers[from].close();
             log.info('Removing subscribers', from);
             delete subscribers[from];
             log.info('Removing publisher', from);
@@ -294,10 +273,6 @@ exports.ErizoJSController = function (spec) {
             }
             log.info("Publishers: ", count);
             if (count === 0)  {
-                if (GLOBAL.config.erizo.mixer) {
-                    log.info('Removing muxer');
-                    muxer.close();
-                }
                 log.info('Removed all publishers. Killing process.');
                 process.exit(0);
             }
@@ -305,18 +280,14 @@ exports.ErizoJSController = function (spec) {
     };
 
     /*
-     * Removes a subscriber from the room. This also removes it from the associated OneToManyProcessor.
+     * Removes a subscriber from the room. This also removes it from the associated Gateway.
      */
     that.removeSubscriber = function (from, to) {
 
         var index = subscribers[to].indexOf(from);
         if (index !== -1) {
             log.info('Removing subscriber ', from, 'to muxer ', to);
-            if (!GLOBAL.config.erizo.mixer) {
-                publishers[to].removeSubscriber(from);
-            } else {
-                muxer.removeSubscriber(from);
-            }
+            publishers[to].removeSubscriber(from);
             subscribers[to].splice(index, 1);
         }
     };
@@ -334,11 +305,7 @@ exports.ErizoJSController = function (spec) {
                 index = subscribers[key].indexOf(from);
                 if (index !== -1) {
                     log.info('Removing subscriber ', from, 'to muxer ', key);
-                    if (!GLOBAL.config.erizo.mixer) {
-                        publishers[key].removeSubscriber(from);
-                    } else {
-                        muxer.removeSubscriber(from);
-                    }
+                    publishers[key].removeSubscriber(from);
                     subscribers[key].splice(index, 1);
                 }
             }

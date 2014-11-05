@@ -95,7 +95,7 @@ int VideoMixer::deliverFeedback(char* buf, int len)
 /**
  * Attach a new InputStream to the mixer
  */
-void VideoMixer::addSource(MediaSource* source, int voiceChannelId, VoEVideoSync* voeVideoSync)
+int32_t VideoMixer::addSource(MediaSource* source, int voiceChannelId, VoEVideoSync* voeVideoSync)
 {
     int index = assignSlot(source);
     ELOG_DEBUG("addSource - assigned slot is %d", index);
@@ -113,11 +113,14 @@ void VideoMixer::addSource(MediaSource* source, int voiceChannelId, VoEVideoSync
 
         boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
         m_sinksForSources[source].reset(videoInputProcessor);
-    } else
-        assert("new source added with InputProcessor still available");    // should not go there
+        return 0;
+    }
+
+    assert("new source added with InputProcessor still available");    // should not go there
+    return -1;
 }
 
-void VideoMixer::removeSource(MediaSource* source)
+int32_t VideoMixer::removeSource(MediaSource* source)
 {
     boost::unique_lock<boost::shared_mutex> lock(m_sourceMutex);
     std::map<erizo::MediaSource*, boost::shared_ptr<erizo::MediaSink>>::iterator it = m_sinksForSources.find(source);
@@ -128,8 +131,10 @@ void VideoMixer::removeSource(MediaSource* source)
         int index = getSlot(source);
         assert(index >= 0);
         m_sourceSlotMap[index] = nullptr;
-        delete source;
+        return 0;
     }
+
+    return -1;
 }
 
 void VideoMixer::onRequestIFrame()
@@ -153,15 +158,9 @@ void VideoMixer::closeAll()
     while (sourceItor != m_sinksForSources.end()) {
         MediaSource* source = sourceItor->first;
         m_sinksForSources.erase(sourceItor++);
-        // Delete the source as a MediaSource.
-        // We need to release the lock before deleting it because the destructor of the source
-        // will need to wait for its working thread to finish the work which may need the lock.
-        sourceLock.unlock();
         int index = getSlot(source);
         assert(index >= 0);
         m_sourceSlotMap[index] = nullptr;
-        delete source;
-        sourceLock.lock();
     }
     m_sinksForSources.clear();
 

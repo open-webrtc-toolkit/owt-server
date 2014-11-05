@@ -78,6 +78,7 @@ public:
     void unsubscribeStream(const std::string& id, bool isAudio);
     void publishStream(bool isAudio);
     void unpublishStream(bool isAudio);
+    void setAdditionalSourceConsumer(woogeen_base::MediaSourceConsumer*) { }
 
     /**
      * Implements MediaSink interfaces

@@ -69,6 +69,11 @@ void Gateway::Init(Handle<Object> target) {
   tpl->PrototypeTemplate()->Set(String::NewSymbol("unpublishStream"),
       FunctionTemplate::New(unpublishStream)->GetFunction());
 
+  tpl->PrototypeTemplate()->Set(String::NewSymbol("configLayout"),
+      FunctionTemplate::New(configLayout)->GetFunction());
+  tpl->PrototypeTemplate()->Set(String::NewSymbol("setMixer"),
+      FunctionTemplate::New(setMixer)->GetFunction());
+
   Persistent<Function> constructor =
       Persistent<Function>::New(tpl->GetFunction());
   target->Set(String::NewSymbol("Gateway"), constructor);
@@ -294,5 +299,34 @@ Handle<Value> Gateway::unpublishStream(const Arguments& args) {
   woogeen_base::Gateway* me = obj->me;
   bool isAudio = args[0]->BooleanValue();
   me->unpublishStream(isAudio);
+  return scope.Close(Undefined());
+}
+
+Handle<Value> Gateway::configLayout(
+    const Arguments& args) {
+  HandleScope scope;
+  Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.This());
+  woogeen_base::Gateway *me = obj->me;
+
+  v8::String::Utf8Value param(args[0]->ToString());
+  std::string layoutStr = std::string(*param);
+  me->configLayout(layoutStr);
+
+  return scope.Close(Undefined());
+}
+
+Handle<Value> Gateway::setMixer(const Arguments& args) {
+  HandleScope scope;
+
+  Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.This());
+  woogeen_base::Gateway* me = obj->me;
+
+  // FIXME!
+  Gateway* param =
+      ObjectWrap::Unwrap<Gateway>(args[0]->ToObject());
+  woogeen_base::MediaSourceConsumer* mixer = (woogeen_base::MediaSourceConsumer*)param->me;
+
+  me->setAdditionalSourceConsumer(mixer);
+
   return scope.Close(Undefined());
 }

@@ -31,6 +31,7 @@ GLOBAL.config.erizoController.interval_time_keepAlive = GLOBAL.config.erizoContr
 GLOBAL.config.erizoController.sendStats = GLOBAL.config.erizoController.sendStats || false;
 GLOBAL.config.erizoController.recording_path = GLOBAL.config.erizoController.recording_path || undefined;
 GLOBAL.config.erizoController.roles = GLOBAL.config.erizoController.roles || {"presenter":{"publish": true, "subscribe":true, "record":true}, "viewer":{"subscribe":true}, "viewerWithData":{"subscribe":true, "publish":{"audio":false,"video":false,"screen":false,"data":true}}};
+GLOBAL.config.erizoController.mixer = GLOBAL.config.erizoController.mixer || false;
 
 // Parse command line arguments
 var getopt = new Getopt([
@@ -350,6 +351,17 @@ var listen = function () {
                         if (!tokenDB.p2p && GLOBAL.config.erizoController.sendStats) {
                             var timeStamp = new Date();
                             rpc.callRpc('stats_handler', 'event', [{room: tokenDB.room, user: socket.id, type: 'connection', timestamp:timeStamp.getTime()}]);
+                        }
+
+                        if (GLOBAL.config.erizoController.mixer) {
+                            var id = 0;
+                            socket.room.controller.initMixer(id, function (result) {
+                                if (result === 'success') {
+                                    var st = new ST.Stream({id: id, socket: socket.id, audio: true, video: true, data: false});
+                                    socket.room.streams[id] = st;
+                                    sendMsgToRoom(socket.room, 'onAddStream', st.getPublicStream());
+                                }
+                            });
                         }
 
                         for (index in socket.room.streams) {
@@ -698,6 +710,13 @@ var listen = function () {
 
             if (socket.room !== undefined && socket.room.sockets.length === 0) {
                 log.info('Empty room ', socket.room.id, '. Deleting it');
+                if (GLOBAL.config.erizoController.mixer) {
+                    // FIXME: Don't hard code the mixer id.
+                    socket.room.controller.removePublisher(0);
+                    if (socket.room.streams[0]) {
+                        delete socket.room.streams[0];
+                    }
+                }
                 delete rooms[socket.room.id];
                 updateMyState();
             }

@@ -28,23 +28,28 @@
 #include <boost/thread/mutex.hpp>
 #include <logger.h>
 #include <MediaDefinitions.h>
+#include <MediaSourceConsumer.h>
 #include <WoogeenTransport.h>
 #include <webrtc/voice_engine/include/voe_base.h>
 #include <webrtc/voice_engine/include/voe_video_sync.h>
 
 namespace mcu {
 
-class AudioMixer : public erizo::MediaSink {
+class AudioMixer : public woogeen_base::MediaSourceConsumer, public erizo::MediaSink {
     DECLARE_LOGGER();
 
 public:
     AudioMixer(erizo::RTPDataReceiver*);
     virtual ~AudioMixer();
 
+    // Implements the MediaSourceConsumer interfaces.
     int32_t addSource(erizo::MediaSource*);
     int32_t removeSource(erizo::MediaSource*);
+    erizo::MediaSink* mediaSink() { return this; }
 
-    // Implement the MediaSink interfaces.
+    /**
+     * Implements MediaSink interfaces
+     */
     int deliverAudioData(char*, int len, erizo::MediaSource*);
     int deliverVideoData(char*, int len, erizo::MediaSource*);
 

@@ -18,13 +18,24 @@
  * and approved by Intel in writing.
  */
 
-#include "InProcessMixer.h"
-#include "WebRTCGateway.h"
+#ifndef MediaSourceConsumer_h
+#define MediaSourceConsumer_h
 
-woogeen_base::Gateway* woogeen_base::Gateway::createGatewayInstance(const std::string& customParams)
-{
-    if (customParams == "InProcessMixer")
-        return new mcu::InProcessMixer();
+#include <MediaDefinitions.h>
 
-    return new mcu::WebRTCGateway();
-}
+namespace woogeen_base {
+
+class MediaSourceConsumer {
+public:
+    virtual ~MediaSourceConsumer() { }
+
+    virtual int32_t addSource(erizo::MediaSource*) = 0;
+    virtual int32_t removeSource(erizo::MediaSource*) = 0;
+
+    virtual erizo::MediaSink* mediaSink() { return nullptr; }
+    virtual void configLayout(const std::string&) { }
+};
+
+} /* namespace woogeen_base */
+
+#endif /* MediaSourceConsumer_h */
