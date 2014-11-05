@@ -24,6 +24,9 @@ class RtpSink: public MediaSink, public FeedbackSource {
 	RtpSink(const std::string& url, const std::string& port, int feedbackPort);
 	virtual ~RtpSink();
 
+    int deliverAudioData(char* buf, int len, MediaSource* from = nullptr);
+    int deliverVideoData(char* buf, int len, MediaSource* from = nullptr);
+
 private:
 
   boost::scoped_ptr<boost::asio::ip::udp::socket> socket_, fbSocket_;
@@ -42,8 +45,6 @@ private:
   static const int LENGTH = 1500;
   char* buffer_[LENGTH];
 
-  int deliverAudioData_(char* buf, int len);
-  int deliverVideoData_(char* buf, int len);
 	int sendData(char* buffer, int len);
   void sendLoop();
   void serviceLoop();

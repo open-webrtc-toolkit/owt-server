@@ -24,6 +24,8 @@ public:
       const std::string& feedbackPort);
 	virtual ~RtpSource();
 
+  int deliverFeedback(char* buf, int len);
+
 private:
 
   static const int LENGTH = 1500;
@@ -38,7 +40,6 @@ private:
   void handleReceive(const::boost::system::error_code& error, 
     size_t bytes_recvd);
   void eventLoop();
-  int deliverFeedback_(char* buf, int len);
 };
 
 
