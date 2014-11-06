@@ -170,36 +170,6 @@ parse_arguments(){
   done
 }
 
-install_openssl(){
-  if [ -d $LIB_DIR ]; then
-    cd $LIB_DIR
-    curl -O http://www.openssl.org/source/openssl-1.0.1g.tar.gz
-    tar -zxvf openssl-1.0.1g.tar.gz
-    cd openssl-1.0.1g
-    ./config --prefix=$PREFIX_DIR -fPIC
-    make -s V=0 && make install
-    cd $CURRENT_DIR
-  else
-    mkdir -p $LIB_DIR
-    install_openssl
-  fi
-}
-
-install_libnice(){
-  if [ -d $LIB_DIR ]; then
-    cd $LIB_DIR
-    curl -O http://nice.freedesktop.org/releases/libnice-0.1.4.tar.gz
-    tar -zxvf libnice-0.1.4.tar.gz
-    cd libnice-0.1.4
-    patch -R ./agent/conncheck.c < $PATHNAME/libnice-014.patch0
-    PKG_CONFIG_PATH=$PREFIX_DIR"/lib/pkgconfig":$PREFIX_DIR"/lib64/pkgconfig":$PKG_CONFIG_PATH ./configure --prefix=$PREFIX_DIR && make -s V= && make install
-    cd $CURRENT_DIR
-  else
-    mkdir -p $LIB_DIR
-    install_libnice
-  fi
-}
-
 install_mediadeps_nogpl(){
   sudo yum install yasm
   if [ -d $LIB_DIR ]; then
@@ -252,16 +222,6 @@ install_mediadeps(){
     mkdir -p $LIB_DIR
     install_mediadeps
   fi
-}
-
-install_libsrtp(){
-  cd $ROOT/third_party/srtp
-  ./configure --prefix=$PREFIX_DIR
-  make clean
-  make -s V=0
-  make uninstall
-  make install
-  cd $CURRENT_DIR
 }
 
 install_glibc(){
@@ -327,23 +287,6 @@ case $yn in
   * ) installYumDeps;;
 esac
 
-read -p "Installing openssl library [Yes/no]" yn
-case $yn in
-  [Nn]* ) ;;
-  [Yy]* ) install_openssl;;
-  * ) install_openssl;;
-esac
-
-read -p "Installing libnice library [Yes/no]" yn
-case $yn in
-  [Nn]* ) ;;
-  [Yy]* ) install_libnice;;
-  * ) install_libnice;;
-esac
-
-pause "Installing libsrtp library...  [press Enter]"
-install_libsrtp
-
 if [ "$ENABLE_GPL" = "true" ]; then
   pause "GPL libraries enabled"
   install_mediadeps
@@ -352,11 +295,10 @@ else
   install_mediadeps_nogpl
 fi
 
+cd $PATHNAME
+./installCommonDeps.sh
+
 if [ "$CLEANUP" = "true" ]; then
   echo "Cleaning up..."
   cleanup
 fi
-
-pause "Installing Gateway dependencies...  [press Enter]"
-cd $PATHNAME
-./installGatewayDeps.sh
