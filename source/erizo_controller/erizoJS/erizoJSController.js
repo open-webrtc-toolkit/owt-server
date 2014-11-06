@@ -172,6 +172,8 @@ exports.ErizoJSController = function () {
                 }
               }
             }
+          } else if (newStatus == CONN_FAILED){
+            callback('callback', {type: 'failed'});
           }
         });
 
