@@ -53,39 +53,6 @@ install_apt_deps(){
   sudo chown -R `whoami` ~/.npm ~/tmp/
 }
 
-install_openssl(){
-  if [ -d $LIB_DIR ]; then
-    cd $LIB_DIR
-    curl -O http://www.openssl.org/source/openssl-1.0.1g.tar.gz
-    tar -zxvf openssl-1.0.1g.tar.gz
-    cd openssl-1.0.1g
-    ./config --prefix=$PREFIX_DIR -fPIC
-    make -s V=0
-    make install
-    cd $CURRENT_DIR
-  else
-    mkdir -p $LIB_DIR
-    install_openssl
-  fi
-}
-
-install_libnice(){
-  if [ -d $LIB_DIR ]; then
-    cd $LIB_DIR
-    curl -O http://nice.freedesktop.org/releases/libnice-0.1.4.tar.gz
-    tar -zxvf libnice-0.1.4.tar.gz
-    cd libnice-0.1.4
-    patch -R ./agent/conncheck.c < $PATHNAME/libnice-014.patch0
-    ./configure --prefix=$PREFIX_DIR
-    make -s V=0
-    make install
-    cd $CURRENT_DIR
-  else
-    mkdir -p $LIB_DIR
-    install_libnice
-  fi
-}
-
 install_opus(){
   [ -d $LIB_DIR ] || mkdir -p $LIB_DIR
   cd $LIB_DIR
@@ -134,15 +101,6 @@ install_mediadeps_nogpl(){
   fi
 }
 
-install_libsrtp(){
-  cd $ROOT/third_party/srtp
-  ./configure --prefix=$PREFIX_DIR
-  make -s V=0
-  make uninstall
-  make install
-  cd $CURRENT_DIR
-}
-
 cleanup(){  
   if [ -d $LIB_DIR ]; then
     cd $LIB_DIR
@@ -155,22 +113,12 @@ cleanup(){
 
 parse_arguments $*
 
-
 mkdir -p $PREFIX_DIR
 
 pause "Installing deps via apt-get... [press Enter]"
 install_apt_deps
 
 check_proxy
-
-pause "Installing openssl library...  [press Enter]"
-install_openssl
-
-pause "Installing libnice library...  [press Enter]"
-install_libnice
-
-pause "Installing libsrtp library...  [press Enter]"
-install_libsrtp
 
 pause "Installing opus library...  [press Enter]"
 install_opus
@@ -183,11 +131,10 @@ else
   install_mediadeps_nogpl
 fi
 
+cd $PATHNAME
+./installCommonDeps.sh
+
 if [ "$CLEANUP" = "true" ]; then
   echo "Cleaning up..."
   cleanup
 fi
-
-pause "Installing Gateway dependencies...  [press Enter]"
-cd $PATHNAME
-./installGatewayDeps.sh
