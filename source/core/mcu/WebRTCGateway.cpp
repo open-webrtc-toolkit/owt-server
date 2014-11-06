@@ -81,6 +81,10 @@ bool WebRTCGateway::setPublisher(MediaSource* publisher)
     publisher->setVideoSink(this);
 
     m_publisher.reset(publisher);
+    // TODO: We now directly forward the feedback from the subscribers to the publisher.
+    // It "might" not be the best idea in the MCU mode (and considering if there's another
+    // mixer involved). We may need to do some research and experiments in different
+    // scenarios to figure out what the correct approach is.
     m_feedback = m_publisher->getFeedbackSink();
 
     // Automatically put the publisher as a source of the mixer.
