@@ -84,6 +84,7 @@ bool VCMOutputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* tran
     if (m_videoEncoder->GetEncoder(&videoCodec) == 0) {
         videoCodec.width = VideoSizes[layout.rootsize].width;
         videoCodec.height = VideoSizes[layout.rootsize].height;
+        // TODO: Set startBitrate, minBitrate and maxBitrate of the codec according to the (future) configurable parameters.
         if (!setSendVideoCodec(videoCodec))
             return false;
     } else
