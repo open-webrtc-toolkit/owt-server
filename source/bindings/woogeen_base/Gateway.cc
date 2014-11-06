@@ -24,7 +24,7 @@
 
 #include "Gateway.h"
 
-#include "../common/NodeEventRegistry.h"
+#include "NodeEventRegistry.h"
 
 using namespace v8;
 
