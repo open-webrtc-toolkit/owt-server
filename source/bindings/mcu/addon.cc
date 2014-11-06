@@ -5,7 +5,7 @@
 #include "../erizoAPI/ExternalInput.h"
 #include "../erizoAPI/ExternalOutput.h"
 #include "../erizoAPI/WebRtcConnection.h"
-#include "../gateway/Gateway.h"
+#include "../woogeen_base/Gateway.h"
 
 using namespace v8;
 

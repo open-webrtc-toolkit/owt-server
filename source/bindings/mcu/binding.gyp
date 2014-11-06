@@ -2,8 +2,8 @@
   'targets': [
   {
     'target_name': 'addon',
-      'sources': [ 'addon.cc', '../erizoAPI/WebRtcConnection.cc', '../erizoAPI/ExternalInput.cc', '../erizoAPI/ExternalOutput.cc', '../gateway/Gateway.cc' ],
-      'include_dirs' : ['$(CORE_HOME)/common', '$(CORE_HOME)/erizo/src/erizo', '$(CORE_HOME)/woogeen_base', '$(CORE_HOME)/mcu', '$(CORE_HOME)/../../build/libdeps/build/include', '$(CORE_HOME)/../../third_party/libuv-0.10.26/include', '$(CORE_HOME)/../../third_party/webrtc/src'],
+      'sources': [ 'addon.cc', '../erizoAPI/WebRtcConnection.cc', '../erizoAPI/ExternalInput.cc', '../erizoAPI/ExternalOutput.cc', '../woogeen_base/Gateway.cc' ],
+      'include_dirs' : ['$(CORE_HOME)/common', '$(CORE_HOME)/erizo/src/erizo', '$(CORE_HOME)/woogeen_base', '$(CORE_HOME)/../../build/libdeps/build/include', '$(CORE_HOME)/../../third_party/libuv-0.10.26/include'],
       'libraries': ['-L$(CORE_HOME)/build/mcu', '-lmcu', '-L$(CORE_HOME)/build/erizo/src/erizo', '-lerizo', '-L$(CORE_HOME)/../../third_party/libuv-0.10.26', '-luv'],
       'conditions': [
         [ 'OS=="mac"', {

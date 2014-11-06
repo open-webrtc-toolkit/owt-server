@@ -64,7 +64,7 @@ pack_mcu() {
   local LIBOOVOOGATEWAY="${SOURCE}/core/build/oovoo_gateway/liboovoo_gateway.so"
   [[ -s ${LIBOOVOOGATEWAY} ]] && cp -av ${LIBOOVOOGATEWAY} ${WOOGEEN_DIST}/lib
   # bindings
-  local GATEWAY_ADDON="${SOURCE}/bindings/gateway/build/Release/addon.node"
+  local GATEWAY_ADDON="${SOURCE}/bindings/oovoo_gateway/build/Release/addon.node"
   [[ -s ${GATEWAY_ADDON} ]] && \
   mkdir -p ${WOOGEEN_DIST}/bindings/gateway/build/Release && \
   cp -av ${GATEWAY_ADDON} ${WOOGEEN_DIST}/bindings/gateway/build/Release
