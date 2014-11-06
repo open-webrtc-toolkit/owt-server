@@ -52,6 +52,7 @@ AudioMixer::AudioMixer(erizo::RTPDataReceiver* receiver)
     VoENetwork* network = VoENetwork::GetInterface(m_voiceEngine);
     network->RegisterExternalTransport(m_outChannel.id, *(m_outChannel.transport));
 
+    // FIXME: hard coded timer interval.
     m_timer.reset(new boost::asio::deadline_timer(m_ioService, boost::posix_time::milliseconds(10)));
     m_timer->async_wait(boost::bind(&AudioMixer::performMix, this, boost::asio::placeholders::error));
     m_audioMixingThread.reset(new boost::thread(boost::bind(&boost::asio::io_service::run, &m_ioService)));
@@ -109,8 +110,9 @@ int32_t AudioMixer::addSource(erizo::MediaSource* from)
         if (voe->StartPlayout(channel) == -1)
             return -1;
 
-        // One option is that we can implement VoEMediaProcess and register
-        // an External media processor for mixing.
+        // TODO: Another option is that we can implement VoEMediaProcess and register
+        // an External media processor for mixing. We may need to investigate whether it's
+        // better than the current approach.
         // VoEExternalMedia* externalMedia = VoEExternalMedia::GetInterface(m_voiceEngine);
         // externalMedia->SetExternalMixing(channel, true);
 
@@ -189,7 +191,7 @@ int32_t AudioMixer::performMix(const boost::system::error_code& ec)
             int16_t data[AudioFrame::kMaxDataSizeSamples];
             uint32_t nSamplesOut = 0;
             if (audioTransport->NeedMorePlayData(
-                audioCodec.plfreq / 1000 * 10, // samples per channel in a 10 ms period.
+                audioCodec.plfreq / 1000 * 10, // samples per channel in a 10 ms period. FIXME: hard coded timer interval.
                 0,
                 audioCodec.channels,
                 audioCodec.plfreq,
@@ -200,6 +202,7 @@ int32_t AudioMixer::performMix(const boost::system::error_code& ec)
         }
 
         if (!m_isClosing) {
+            // FIXME: hard coded timer interval.
             m_timer->expires_at(m_timer->expires_at() + boost::posix_time::milliseconds(10));
             m_timer->async_wait(boost::bind(&AudioMixer::performMix, this, boost::asio::placeholders::error));
         }

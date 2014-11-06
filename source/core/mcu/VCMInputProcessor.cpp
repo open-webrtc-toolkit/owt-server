@@ -67,6 +67,9 @@ bool VCMInputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* trans
     } else
         return false;
 
+    // FIXME: Now we just provide a DummyRemoteBitrateObserver to satisfy the requirement of our components.
+    // We need to investigate whether this is necessary or not in our case, so that we can decide whether to
+    // provide a real RemoteBitrateObserver.
     m_remoteBitrateObserver.reset(new DummyRemoteBitrateObserver());
     m_remoteBitrateEstimator.reset(RemoteBitrateEstimatorFactory().Create(m_remoteBitrateObserver.get(), Clock::GetRealTimeClock(), kMimdControl, 0));
     m_videoReceiver.reset(new ViEReceiver(m_index, m_vcm, m_remoteBitrateEstimator.get(), nullptr));
@@ -156,6 +159,10 @@ int VCMInputProcessor::deliverVideoData(char* buf, int len, erizo::MediaSource*)
 
     PacketTime current;
     if (m_videoReceiver->ReceivedRTPPacket(buf, len, current) != -1) {
+        // FIXME: Decode should be invoked as often as possible.
+        // To invoke it in current work thread is not a good idea. We may need to create
+        // a dedicated thread to keep on invoking vcm Decode, and, with a wait time other than 0.
+        // (Default wait time used by webrtc vie engine is 50ms).
         int32_t ret = m_vcm->Decode(0);
         ELOG_DEBUG("receivedRtpData index= %d, decode result = %d",  m_index, ret);
         return len;

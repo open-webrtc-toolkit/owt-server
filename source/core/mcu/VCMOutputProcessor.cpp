@@ -59,6 +59,8 @@ bool VCMOutputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* tran
 
     m_bitrateController.reset(webrtc::BitrateController::CreateBitrateController(Clock::GetRealTimeClock(), true));
     m_bandwidthObserver.reset(m_bitrateController->CreateRtcpBandwidthObserver());
+    // FIXME: "config" is currently not respected.
+    // The number of cores is currently hard coded to be 4. Need a function to get the correct information from the system.
     webrtc::Config config;
     m_videoEncoder.reset(new ViEEncoder(m_id, -1, 4, config, *(m_taskRunner->unwrap()), m_bitrateController.get()));
     m_videoEncoder->Init();
@@ -106,6 +108,8 @@ bool VCMOutputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* tran
 
     m_recordStarted = false;
 
+    // FIXME: Get rid of the hard coded timer interval here.
+    // Also it may need to be associated with the target fps configured in VPM.
     m_timer.reset(new boost::asio::deadline_timer(m_ioService, boost::posix_time::milliseconds(33)));
     m_timer->async_wait(boost::bind(&VCMOutputProcessor::layoutTimerHandler, this, boost::asio::placeholders::error));
     m_encodingThread.reset(new boost::thread(boost::bind(&boost::asio::io_service::run, &m_ioService)));
@@ -128,6 +132,8 @@ void VCMOutputProcessor::layoutTimerHandler(const boost::system::error_code& ec)
     if (!ec) {
         layoutFrames();
         if (!m_isClosing) {
+            // FIXME: Get rid of the hard coded timer interval here.
+            // Also it may need to be associated with the target fps configured in VPM.
             m_timer->expires_at(m_timer->expires_at() + boost::posix_time::milliseconds(33));
             m_timer->async_wait(boost::bind(&VCMOutputProcessor::layoutTimerHandler, this, boost::asio::placeholders::error));
         }

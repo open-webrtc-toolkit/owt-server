@@ -69,6 +69,8 @@ bool InProcessMixer::init()
     m_audioMixer.reset(new AudioMixer(this));
 
     m_feedback = m_videoMixer;
+    // TODO: The audio mixer should also have the feedback channel.
+    // The feedback from the browsers should go to both audio an video mixers.
 
     return true;
 }
@@ -123,7 +125,7 @@ void InProcessMixer::addSubscriber(MediaSink* subscriber, const std::string& pee
 {
     subscriber->setVideoSinkSSRC(m_videoMixer->sendSSRC());
 
-    // FIXME: We now just pass the feedback from _all_ of the subscribers to the video mixer without pre-processing,
+    // TODO: We now just pass the feedback from _all_ of the subscribers to the video mixer without pre-processing,
     // but maybe it's needed in a InProcessMixer scenario where one mixed stream is sent to multiple subscribers.
     // The WebRTCFeedbackProcessor can be enhanced to provide another option to handle the feedback from the subscribers.
     // Lazily create the feedback sink only if there're subscribers added, because only with
