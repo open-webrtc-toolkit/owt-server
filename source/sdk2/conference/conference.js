@@ -401,6 +401,14 @@ conference.join(token, function(response) {...}, function(error) {...});
           safeCall(onFailure, err || 'connection_error');
         });
 
+        that.socket.on('connection_failed', function() {
+          L.Logger.info("ICE Connection Failed");
+          if (that.state !== DISCONNECTED) {
+            var disconnectEvt = new Woogeen.StreamEvent({type: 'stream-failed'});
+            that.dispatchEvent(disconnectEvt);
+          }
+        });
+
         self.socket.on('signaling_message', function (arg) {
           var stream;
           if (arg.peerId) {
