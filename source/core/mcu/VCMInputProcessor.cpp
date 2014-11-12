@@ -33,7 +33,6 @@ DEFINE_LOGGER(VCMInputProcessor, "mcu.VCMInputProcessor");
 VCMInputProcessor::VCMInputProcessor(int index)
     : m_index(index)
     , m_vcm(nullptr)
-    , m_sourceSSRC(0)
 {
 }
 
@@ -73,7 +72,7 @@ bool VCMInputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* trans
     // provide a real RemoteBitrateObserver.
     m_remoteBitrateObserver.reset(new DummyRemoteBitrateObserver());
     m_remoteBitrateEstimator.reset(RemoteBitrateEstimatorFactory().Create(m_remoteBitrateObserver.get(), Clock::GetRealTimeClock(), kMimdControl, 0));
-    m_videoReceiver.reset(new ViEReceiver(m_index, m_vcm, m_remoteBitrateEstimator.get(), nullptr));
+    m_videoReceiver.reset(new ViEReceiver(m_index, m_vcm, m_remoteBitrateEstimator.get(), this));
 
     RtpRtcp::Configuration configuration;
     configuration.id = m_index;
@@ -148,7 +147,29 @@ int32_t VCMInputProcessor::RequestKeyFrame()
     return m_rtpRtcp->RequestKeyFrame();
 }
 
-#define global_namespace
+int32_t VCMInputProcessor::OnInitializeDecoder(
+    const int32_t id,
+    const int8_t payload_type,
+    const char payload_name[RTP_PAYLOAD_NAME_SIZE],
+    const int frequency,
+    const uint8_t channels,
+    const uint32_t rate)
+{
+    m_vcm->ResetDecoder();
+    return 0;
+}
+
+void VCMInputProcessor::OnIncomingSSRCChanged(const int32_t id, const uint32_t ssrc)
+{
+    m_rtpRtcp->SetRemoteSSRC(ssrc);
+}
+
+void VCMInputProcessor::ResetStatistics(uint32_t ssrc)
+{
+    StreamStatistician* statistician = m_videoReceiver->GetReceiveStatistics()->GetStatistician(ssrc);
+    if (statistician)
+        statistician->ResetStatistics();
+}
 
 int VCMInputProcessor::deliverVideoData(char* buf, int len, erizo::MediaSource*)
 {
@@ -158,12 +179,6 @@ int VCMInputProcessor::deliverVideoData(char* buf, int len, erizo::MediaSource*)
     if (packetType == RTCP_Sender_PT) { // Sender Report
         m_videoReceiver->ReceivedRTCPPacket(buf, len);
         return len;
-    }
-
-    global_namespace::RTPHeader* head = reinterpret_cast<global_namespace::RTPHeader*>(buf);
-    if (head->getSSRC() != m_sourceSSRC) {
-        m_sourceSSRC = head->getSSRC();
-        m_rtpRtcp->SetRemoteSSRC(m_sourceSSRC);
     }
 
     PacketTime current;

@@ -46,6 +46,7 @@ namespace mcu {
 class TaskRunner;
 
 class VCMInputProcessor : public erizo::MediaSink,
+                          public webrtc::RtpFeedback,
                           public webrtc::VCMFrameTypeCallback,
                           public webrtc::VCMPacketRequestCallback,
                           public webrtc::VCMReceiveCallback {
@@ -64,6 +65,18 @@ public:
     // Implements the webrtc::VCMFrameTypeCallback interface.
     virtual int32_t RequestKeyFrame();
 
+    // Implements the webrtc::RtpFeedback interface.
+    virtual int32_t OnInitializeDecoder(
+      const int32_t id,
+      const int8_t payload_type,
+      const char payload_name[RTP_PAYLOAD_NAME_SIZE],
+      const int frequency,
+      const uint8_t channels,
+      const uint32_t rate);
+    virtual void OnIncomingSSRCChanged(const int32_t id, const uint32_t ssrc);
+    virtual void OnIncomingCSRCChanged(const int32_t id, const uint32_t CSRC, const bool added) { }
+    virtual void ResetStatistics(uint32_t ssrc);
+
     // Implement the MediaSink interfaces.
     int deliverAudioData(char*, int len, erizo::MediaSource* from = nullptr);
     int deliverVideoData(char*, int len, erizo::MediaSource* from = nullptr);
@@ -76,7 +89,6 @@ private:
     int m_index;
 
     webrtc::VideoCodingModule* m_vcm;
-    uint32_t m_sourceSSRC;
     boost::scoped_ptr<webrtc::RemoteBitrateObserver> m_remoteBitrateObserver;
     boost::scoped_ptr<webrtc::RemoteBitrateEstimator> m_remoteBitrateEstimator;
     boost::scoped_ptr<webrtc::ViEReceiver> m_videoReceiver;
