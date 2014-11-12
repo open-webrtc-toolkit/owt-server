@@ -91,7 +91,7 @@ void InProcessMixer::receiveRtpData(char* buf, int len, erizo::DataType type, ui
         return;
 
     std::map<std::string, boost::shared_ptr<MediaSink>>::iterator it;
-    boost::unique_lock<boost::mutex> lock(m_subscriberMutex);
+    boost::shared_lock<boost::shared_mutex> lock(m_subscriberMutex);
     switch (type) {
     case erizo::AUDIO: {
         for (it = m_subscribers.begin(); it != m_subscribers.end(); ++it) {
@@ -145,14 +145,14 @@ void InProcessMixer::addSubscriber(MediaSink* subscriber, const std::string& pee
         fbsource->setFeedbackSink(m_feedback.get());
     }
 
-    boost::mutex::scoped_lock lock(m_subscriberMutex);
+    boost::unique_lock<boost::shared_mutex> lock(m_subscriberMutex);
     m_subscribers[peerId] = boost::shared_ptr<MediaSink>(subscriber);
 }
 
 void InProcessMixer::removeSubscriber(const std::string& peerId)
 {
     ELOG_DEBUG("removing subscriber: peerId is %s",   peerId.c_str());
-    boost::mutex::scoped_lock lock(m_subscriberMutex);
+    boost::unique_lock<boost::shared_mutex> lock(m_subscriberMutex);
     std::map<std::string, boost::shared_ptr<MediaSink>>::iterator it = m_subscribers.find(peerId);
     if (it != m_subscribers.end())
         m_subscribers.erase(it);
@@ -176,7 +176,7 @@ void InProcessMixer::closeAll()
 {
     ELOG_DEBUG ("InProcessMixer closeAll");
 
-    boost::unique_lock<boost::mutex> subscriberLock(m_subscriberMutex);
+    boost::unique_lock<boost::shared_mutex> subscriberLock(m_subscriberMutex);
     std::map<std::string, boost::shared_ptr<MediaSink>>::iterator subscriberItor = m_subscribers.begin();
     while (subscriberItor != m_subscribers.end()) {
         boost::shared_ptr<MediaSink>& subscriber = subscriberItor->second;
