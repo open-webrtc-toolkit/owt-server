@@ -33,6 +33,7 @@ DEFINE_LOGGER(VCMInputProcessor, "mcu.VCMInputProcessor");
 VCMInputProcessor::VCMInputProcessor(int index)
     : m_index(index)
     , m_vcm(nullptr)
+    , m_sourceSSRC(0)
 {
 }
 
@@ -147,6 +148,8 @@ int32_t VCMInputProcessor::RequestKeyFrame()
     return m_rtpRtcp->RequestKeyFrame();
 }
 
+#define global_namespace
+
 int VCMInputProcessor::deliverVideoData(char* buf, int len, erizo::MediaSource*)
 {
     RTCPHeader* chead = reinterpret_cast<RTCPHeader*>(buf);
@@ -155,6 +158,12 @@ int VCMInputProcessor::deliverVideoData(char* buf, int len, erizo::MediaSource*)
     if (packetType == RTCP_Sender_PT) { // Sender Report
         m_videoReceiver->ReceivedRTCPPacket(buf, len);
         return len;
+    }
+
+    global_namespace::RTPHeader* head = reinterpret_cast<global_namespace::RTPHeader*>(buf);
+    if (head->getSSRC() != m_sourceSSRC) {
+        m_sourceSSRC = head->getSSRC();
+        m_rtpRtcp->SetRemoteSSRC(m_sourceSSRC);
     }
 
     PacketTime current;
@@ -178,4 +187,3 @@ int VCMInputProcessor::deliverAudioData(char* buf, int len, erizo::MediaSource*)
 }
 
 }
-

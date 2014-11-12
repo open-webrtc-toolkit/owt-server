@@ -76,6 +76,7 @@ private:
     int m_index;
 
     webrtc::VideoCodingModule* m_vcm;
+    uint32_t m_sourceSSRC;
     boost::scoped_ptr<webrtc::RemoteBitrateObserver> m_remoteBitrateObserver;
     boost::scoped_ptr<webrtc::RemoteBitrateEstimator> m_remoteBitrateEstimator;
     boost::scoped_ptr<webrtc::ViEReceiver> m_videoReceiver;
