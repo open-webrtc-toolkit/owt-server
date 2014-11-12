@@ -22,7 +22,7 @@
 #define InProcessMixer_h
 
 #include <boost/shared_ptr.hpp>
-#include <boost/thread/mutex.hpp>
+#include <boost/thread/shared_mutex.hpp>
 #include <Gateway.h>
 #include <logger.h>
 #include <map>
@@ -94,7 +94,7 @@ private:
     void closeAll();
 
     boost::shared_ptr<erizo::FeedbackSink> m_feedback;
-    boost::mutex m_subscriberMutex;
+    boost::shared_mutex m_subscriberMutex;
     std::map<std::string, boost::shared_ptr<erizo::MediaSink>> m_subscribers;
 
     boost::shared_ptr<VideoMixer> m_videoMixer;
