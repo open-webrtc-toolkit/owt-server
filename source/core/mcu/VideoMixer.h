@@ -80,11 +80,11 @@ private:
     void closeAll();
 
     int assignSlot(erizo::MediaSource*);
-    int maxSlot();
     // find the slot number for the corresponding source
     // return -1 if not found
     int getSlot(erizo::MediaSource*);
 
+    int m_participants;
     boost::shared_ptr<erizo::FeedbackSink> m_feedback;
     erizo::RTPDataReceiver* m_outputReceiver;
     boost::shared_mutex m_sourceMutex;
@@ -106,11 +106,6 @@ inline int VideoMixer::assignSlot(erizo::MediaSource* source)
     }
     m_sourceSlotMap.push_back(source);
     return m_sourceSlotMap.size() - 1;
-}
-
-inline int VideoMixer::maxSlot()
-{
-    return m_sourceSlotMap.size();
 }
 
 inline int VideoMixer::getSlot(erizo::MediaSource* source)

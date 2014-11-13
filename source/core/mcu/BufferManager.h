@@ -21,6 +21,7 @@
 #ifndef BufferManager_h
 #define BufferManager_h
 
+#include <bitset>
 #include <boost/version.hpp>
 #include <Compiler.h>
 
@@ -74,6 +75,9 @@ public:
      */
     webrtc::I420VideoFrame* postFreeBuffer(webrtc::I420VideoFrame*, int slot);
 
+    void setActive(int slot, bool active) { m_activeSlots.set(slot, active); }
+    bool isActive(int slot) { return m_activeSlots.test(slot); }
+
 private:
     /* only works for 64bit */
     static uint64_t exchange(volatile uint64_t* ptr, uint64_t value) {
@@ -101,6 +105,8 @@ private:
 #endif
     // frames in the busyQ is ready for composition by the encoder thread
     volatile webrtc::I420VideoFrame* busyQ_[SLOT_SIZE];
+
+    std::bitset<SLOT_SIZE> m_activeSlots;
 };
 
 } /* namespace mcu */

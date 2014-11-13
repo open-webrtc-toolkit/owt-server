@@ -162,7 +162,11 @@ webrtc::I420VideoFrame* SoftVideoCompositor::customLayout()
     VideoSize rootSize = VideoSizes[m_currentLayout.rootsize];
     webrtc::I420VideoFrame* target = m_composedFrame.get();
 
-    for (uint32_t input = 0; input < m_currentLayout.regions.size(); input++) {
+    int input = 0;
+    for (int index = 0; index < BufferManager::SLOT_SIZE; ++index) {
+        if (!m_bufferManager->isActive(index))
+            continue;
+
         Region region = m_currentLayout.regions[input];
 
         int sub_width = (int)(rootSize.width*region.relativesize);
@@ -170,7 +174,7 @@ webrtc::I420VideoFrame* SoftVideoCompositor::customLayout()
         unsigned int offset_width = (unsigned int)(rootSize.width*region.left);
         unsigned int offset_height = (unsigned int)(rootSize.height*region.top);
 
-        webrtc::I420VideoFrame* sub_image = m_bufferManager->getBusyBuffer(input);
+        webrtc::I420VideoFrame* sub_image = m_bufferManager->getBusyBuffer(index);
         if (!sub_image) {
             for (int i = 0; i < sub_height; i++) {
                 memset(target->buffer(webrtc::kYPlane) + (i+offset_height) * target->stride(webrtc::kYPlane) + offset_width,
@@ -186,10 +190,7 @@ webrtc::I420VideoFrame* SoftVideoCompositor::customLayout()
                         128,
                         sub_width/2);
             }
-            continue;
-        }
-        // do the scale first
-        else {
+        } else {
             I420VideoFrame* processedFrame = nullptr;
             int ret = m_vpmPool->get(input)->PreprocessFrame(*sub_image, &processedFrame);
             if (ret == VPM_OK && !processedFrame) {
@@ -212,10 +213,11 @@ webrtc::I420VideoFrame* SoftVideoCompositor::customLayout()
             }
             // if return busy frame failed, which means a new busy frame has been posted
             // simply release the busy frame
-            if (m_bufferManager->returnBusyBuffer(sub_image, input)) {
+            if (m_bufferManager->returnBusyBuffer(sub_image, index)) {
                 m_bufferManager->releaseBuffer(sub_image);
             }
         }
+        ++input;
     }
     return m_composedFrame.get();
 }
@@ -224,10 +226,14 @@ webrtc::I420VideoFrame* SoftVideoCompositor::fluidLayout(int maxSlot)
 {
     webrtc::I420VideoFrame* target = m_composedFrame.get();
 
-    for (int input = 0; input < maxSlot; input++) {
+    int input = 0;
+    for (int index = 0; index < BufferManager::SLOT_SIZE; ++index) {
+        if (!m_bufferManager->isActive(index))
+            continue;
+
         unsigned int offset_width = (input%m_currentLayout.divFactor) * m_currentLayout.subWidth;
         unsigned int offset_height = (input/m_currentLayout.divFactor) * m_currentLayout.subHeight;
-        webrtc::I420VideoFrame* sub_image = m_bufferManager->getBusyBuffer(input);
+        webrtc::I420VideoFrame* sub_image = m_bufferManager->getBusyBuffer(index);
         if (!sub_image) {
             for (uint32_t i = 0; i < m_currentLayout.subHeight; i++) {
                 memset(target->buffer(webrtc::kYPlane) + (i+offset_height) * target->stride(webrtc::kYPlane) + offset_width,
@@ -243,10 +249,7 @@ webrtc::I420VideoFrame* SoftVideoCompositor::fluidLayout(int maxSlot)
                     128,
                     m_currentLayout.subWidth/2);
             }
-            continue;
-        }
-        // do the scale first
-        else {
+        } else {
             I420VideoFrame* processedFrame = nullptr;
             int ret = m_vpmPool->get(input)->PreprocessFrame(*sub_image, &processedFrame);
             if (ret == VPM_OK && !processedFrame) {
@@ -269,10 +272,11 @@ webrtc::I420VideoFrame* SoftVideoCompositor::fluidLayout(int maxSlot)
             }
             // if return busy frame failed, which means a new busy frame has been posted
             // simply release the busy frame
-            if (m_bufferManager->returnBusyBuffer(sub_image, input)) {
+            if (m_bufferManager->returnBusyBuffer(sub_image, index)) {
                 m_bufferManager->releaseBuffer(sub_image);
             }
         }
+        ++input;
     }
     return m_composedFrame.get();
 };
