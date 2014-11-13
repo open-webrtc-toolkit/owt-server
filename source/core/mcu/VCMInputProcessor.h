@@ -67,12 +67,12 @@ public:
 
     // Implements the webrtc::RtpFeedback interface.
     virtual int32_t OnInitializeDecoder(
-      const int32_t id,
-      const int8_t payload_type,
-      const char payload_name[RTP_PAYLOAD_NAME_SIZE],
-      const int frequency,
-      const uint8_t channels,
-      const uint32_t rate);
+        const int32_t id,
+        const int8_t payload_type,
+        const char payload_name[RTP_PAYLOAD_NAME_SIZE],
+        const int frequency,
+        const uint8_t channels,
+        const uint32_t rate);
     virtual void OnIncomingSSRCChanged(const int32_t id, const uint32_t ssrc);
     virtual void OnIncomingCSRCChanged(const int32_t id, const uint32_t CSRC, const bool added) { }
     virtual void ResetStatistics(uint32_t ssrc);

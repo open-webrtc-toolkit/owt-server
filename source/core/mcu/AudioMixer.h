@@ -35,7 +35,7 @@
 
 namespace mcu {
 
-class AudioMixer : public woogeen_base::MediaSourceConsumer, public erizo::MediaSink {
+class AudioMixer : public woogeen_base::MediaSourceConsumer, public erizo::MediaSink, public erizo::FeedbackSink {
     DECLARE_LOGGER();
 
 public:
@@ -48,12 +48,16 @@ public:
     erizo::MediaSink* mediaSink() { return this; }
 
     /**
-     * Implements MediaSink interfaces
+     * Implements the MediaSink interfaces
      */
     int deliverAudioData(char*, int len, erizo::MediaSource*);
     int deliverVideoData(char*, int len, erizo::MediaSource*);
 
+    // Implements the FeedbackSink interfaces
+    int deliverFeedback(char* buf, int len);
+
     webrtc::VoEVideoSync* avSyncInterface();
+    uint32_t sendSSRC();
 
 private:
     int32_t performMix(const boost::system::error_code&);

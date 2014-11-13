@@ -38,7 +38,7 @@ class VideoMixer;
  * It receives media from several sources through the WebRTCGateways, mixed them into one stream and retransmits
  * it to every subscriber.
  */
-class InProcessMixer : public woogeen_base::Gateway, public erizo::MediaSink, public erizo::RTPDataReceiver {
+class InProcessMixer : public woogeen_base::Gateway, public erizo::MediaSink, public erizo::FeedbackSink, public erizo::RTPDataReceiver {
     DECLARE_LOGGER();
 
 public:
@@ -46,7 +46,7 @@ public:
     virtual ~InProcessMixer();
 
     /**
-     * Implements Gateway interfaces
+     * Implements the Gateway interfaces
      */
     bool setPublisher(erizo::MediaSource*) { return false; }
     bool setPublisher(erizo::MediaSource* source, const std::string& videoResolution) { return setPublisher(source); }
@@ -76,13 +76,16 @@ public:
     void configLayout(const std::string&);
 
     /**
-     * Implements MediaSink interfaces
+     * Implements the MediaSink interfaces
      */
     virtual int deliverAudioData(char* buf, int len, erizo::MediaSource*);
     virtual int deliverVideoData(char* buf, int len, erizo::MediaSource*);
 
+    // Implements the FeedbackSink interfaces
+    virtual int deliverFeedback(char* buf, int len);
+
     /**
-     * Implements RTPDataReceiver interfaces
+     * Implements the RTPDataReceiver interfaces
      */
     void receiveRtpData(char*, int len, erizo::DataType, uint32_t streamId);
 

@@ -68,10 +68,6 @@ bool InProcessMixer::init()
     m_videoMixer.reset(new VideoMixer(this));
     m_audioMixer.reset(new AudioMixer(this));
 
-    m_feedback = m_videoMixer;
-    // TODO: The audio mixer should also have the feedback channel.
-    // The feedback from the browsers should go to both audio an video mixers.
-
     return true;
 }
 
@@ -83,6 +79,13 @@ int InProcessMixer::deliverAudioData(char* buf, int len, MediaSource* from)
 int InProcessMixer::deliverVideoData(char* buf, int len, MediaSource* from)
 {
     return m_videoMixer ? m_videoMixer->deliverVideoData(buf, len, from) : 0;
+}
+
+int InProcessMixer::deliverFeedback(char* buf, int len)
+{
+    m_videoMixer->deliverFeedback(buf, len);
+    m_audioMixer->deliverFeedback(buf, len);
+    return len;
 }
 
 void InProcessMixer::receiveRtpData(char* buf, int len, erizo::DataType type, uint32_t streamId)
@@ -124,6 +127,7 @@ int32_t InProcessMixer::addSource(MediaSource* source)
 void InProcessMixer::addSubscriber(MediaSink* subscriber, const std::string& peerId)
 {
     subscriber->setVideoSinkSSRC(m_videoMixer->sendSSRC());
+    subscriber->setAudioSinkSSRC(m_audioMixer->sendSSRC());
 
     // TODO: We now just pass the feedback from _all_ of the subscribers to the video mixer without pre-processing,
     // but maybe it's needed in a InProcessMixer scenario where one mixed stream is sent to multiple subscribers.
@@ -132,7 +136,7 @@ void InProcessMixer::addSubscriber(MediaSink* subscriber, const std::string& pee
     // subscribers are there chances for us to receive feedback.
     // Currently all of the subscribers shared one feedback sink because the feedback will
     // be sent to the VCMOutputProcessor which is a single instance shared by all the subscribers.
-    if (!m_feedback) {
+    if (0 && !m_feedback) {
         WebRTCFeedbackProcessor* feedback = new woogeen_base::WebRTCFeedbackProcessor(0);
         boost::shared_ptr<woogeen_base::IntraFrameCallback> intraFrameCallback(new InProcessMixerIntraFrameCallback(m_videoMixer));
         feedback->initVideoFeedbackReactor(MIXED_VIDEO_STREAM_ID, subscriber->getVideoSinkSSRC(), boost::shared_ptr<woogeen_base::ProtectedRTPSender>(), intraFrameCallback);
@@ -142,7 +146,7 @@ void InProcessMixer::addSubscriber(MediaSink* subscriber, const std::string& pee
     FeedbackSource* fbsource = subscriber->getFeedbackSource();
     if (fbsource) {
         ELOG_DEBUG("adding fbsource");
-        fbsource->setFeedbackSink(m_feedback.get());
+        fbsource->setFeedbackSink(this);
     }
 
     boost::unique_lock<boost::shared_mutex> lock(m_subscriberMutex);
