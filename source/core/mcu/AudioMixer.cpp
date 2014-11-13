@@ -27,6 +27,7 @@
 #include <webrtc/voice_engine/include/voe_codec.h>
 #include <webrtc/voice_engine/include/voe_external_media.h>
 #include <webrtc/voice_engine/include/voe_network.h>
+#include <webrtc/voice_engine/include/voe_rtp_rtcp.h>
 
 using namespace erizo;
 using namespace webrtc;
@@ -178,6 +179,22 @@ int AudioMixer::deliverVideoData(char* buf, int len, erizo::MediaSource* from)
 {
     assert(false);
     return 0;
+}
+
+int AudioMixer::deliverFeedback(char* buf, int len)
+{
+    VoENetwork* network = VoENetwork::GetInterface(m_voiceEngine);
+    if (network->ReceivedRTCPPacket(m_outChannel.id, buf, len) != -1)
+        return len;
+    return 0;
+}
+
+uint32_t AudioMixer::sendSSRC()
+{
+    VoERTP_RTCP* rtpRtcp = VoERTP_RTCP::GetInterface(m_voiceEngine);
+    uint32_t ssrc = 0;
+    rtpRtcp->GetLocalSSRC(m_outChannel.id, ssrc);
+    return ssrc;
 }
 
 int32_t AudioMixer::performMix(const boost::system::error_code& ec)

@@ -67,7 +67,7 @@ public:
     erizo::MediaSink* mediaSink() { return this; }
 
     /**
-     * Implements MediaSink interfaces
+     * Implements the MediaSink interfaces
      */
     virtual int deliverAudioData(char* buf, int len, erizo::MediaSource*);
     virtual int deliverVideoData(char* buf, int len, erizo::MediaSource*);
