@@ -75,14 +75,14 @@ class DebugRecorder {
       webrtc::PlaneType plane_type = static_cast<webrtc::PlaneType>(planeNum);
       const uint8_t* plane_buffer = frame.buffer(plane_type);
       for (int y = 0; y < height; y++) {
-       if (fwrite(plane_buffer, 1, width, file) !=
-           static_cast<unsigned int>(width)) {
-         return -1;
-         }
-         plane_buffer += frame.stride(plane_type);
+        if (fwrite(plane_buffer, 1, width, file) !=
+            static_cast<unsigned int>(width)) {
+          return -1;
+        }
+        plane_buffer += frame.stride(plane_type);
       }
-   }
-   return 0;
+    }
+    return 0;
   }
 
  private:
