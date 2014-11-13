@@ -186,7 +186,7 @@ int VCMInputProcessor::deliverVideoData(char* buf, int len, erizo::MediaSource*)
         // a dedicated thread to keep on invoking vcm Decode, and, with a wait time other than 0.
         // (Default wait time used by webrtc vie engine is 50ms).
         int32_t ret = m_vcm->Decode(0);
-        ELOG_DEBUG("receivedRtpData index= %d, decode result = %d",  m_index, ret);
+        ELOG_TRACE("receivedRtpData index= %d, decode result = %d",  m_index, ret);
         return len;
     }
 

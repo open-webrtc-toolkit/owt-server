@@ -105,8 +105,7 @@ void WebRTCGateway::unsetPublisher()
 
 void WebRTCGateway::addSubscriber(MediaSink* subscriber, const std::string& id)
 {
-    ELOG_DEBUG("Adding subscriber");
-    ELOG_DEBUG("From %u, %u ", m_publisher->getAudioSourceSSRC(), m_publisher->getVideoSourceSSRC());
+    ELOG_DEBUG("Adding subscriber to %u(a), %u(v)", m_publisher->getAudioSourceSSRC(), m_publisher->getVideoSourceSSRC());
 
     subscriber->setAudioSinkSSRC(m_publisher->getAudioSourceSSRC());
     subscriber->setVideoSinkSSRC(m_publisher->getVideoSourceSSRC());
@@ -123,7 +122,7 @@ void WebRTCGateway::addSubscriber(MediaSink* subscriber, const std::string& id)
 
 void WebRTCGateway::removeSubscriber(const std::string& id)
 {
-    ELOG_DEBUG("removing subscriber: id is %s", id.c_str());
+    ELOG_DEBUG("Removing subscriber: id is %s", id.c_str());
     boost::unique_lock<boost::shared_mutex> lock(m_subscriberMutex);
     std::map<std::string, boost::shared_ptr<MediaSink>>::iterator it = m_subscribers.find(id);
     if (it != m_subscribers.end())
@@ -139,7 +138,7 @@ void WebRTCGateway::setAdditionalSourceConsumer(woogeen_base::MediaSourceConsume
 
 void WebRTCGateway::closeAll()
 {
-    ELOG_DEBUG ("WebRTCGateway closeAll");
+    ELOG_DEBUG("closeAll");
 
     unsetPublisher();
 
