@@ -164,15 +164,10 @@ int AudioMixer::deliverAudioData(char* buf, int len, erizo::MediaSource* from)
     RTCPHeader* chead = reinterpret_cast<RTCPHeader*>(buf);
     uint8_t packetType = chead->getPacketType();
     assert(packetType != RTCP_Receiver_PT && packetType != RTCP_PS_Feedback_PT && packetType != RTCP_RTP_Feedback_PT);
-    if (packetType == RTCP_Sender_PT) {
-        network->ReceivedRTCPPacket(channel, buf, len);
-        return len;
-    }
+    if (packetType == RTCP_Sender_PT)
+        return network->ReceivedRTCPPacket(channel, buf, len) == -1 ? 0 : len;
 
-    if (network->ReceivedRTPPacket(channel, buf, len) != -1)
-        return len;
-
-    return 0;
+    return network->ReceivedRTPPacket(channel, buf, len) == -1 ? 0 : len;
 }
 
 int AudioMixer::deliverVideoData(char* buf, int len, erizo::MediaSource* from)
@@ -184,9 +179,7 @@ int AudioMixer::deliverVideoData(char* buf, int len, erizo::MediaSource* from)
 int AudioMixer::deliverFeedback(char* buf, int len)
 {
     VoENetwork* network = VoENetwork::GetInterface(m_voiceEngine);
-    if (network->ReceivedRTCPPacket(m_outChannel.id, buf, len) != -1)
-        return len;
-    return 0;
+    return network->ReceivedRTCPPacket(m_outChannel.id, buf, len) == -1 ? 0 : len;
 }
 
 uint32_t AudioMixer::sendSSRC()

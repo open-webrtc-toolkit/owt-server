@@ -176,10 +176,8 @@ int VCMInputProcessor::deliverVideoData(char* buf, int len, erizo::MediaSource*)
     RTCPHeader* chead = reinterpret_cast<RTCPHeader*>(buf);
     uint8_t packetType = chead->getPacketType();
     assert(packetType != RTCP_Receiver_PT && packetType != RTCP_PS_Feedback_PT && packetType != RTCP_RTP_Feedback_PT);
-    if (packetType == RTCP_Sender_PT) { // Sender Report
-        m_videoReceiver->ReceivedRTCPPacket(buf, len);
-        return len;
-    }
+    if (packetType == RTCP_Sender_PT)
+        return m_videoReceiver->ReceivedRTCPPacket(buf, len) == -1 ? 0 : len;
 
     PacketTime current;
     if (m_videoReceiver->ReceivedRTPPacket(buf, len, current) != -1) {

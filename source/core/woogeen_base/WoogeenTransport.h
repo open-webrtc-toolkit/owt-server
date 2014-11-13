@@ -79,7 +79,7 @@ inline int WoogeenTransport<dataType>::SendRTCPPacket(int channel, const void* d
         }
         return ret;
     }
-    
+
     return m_feedbackSink ? m_feedbackSink->deliverFeedback(reinterpret_cast<char*>(const_cast<void*>(data)), len) : 0;
 }
 

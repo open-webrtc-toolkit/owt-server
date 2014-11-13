@@ -83,9 +83,11 @@ int InProcessMixer::deliverVideoData(char* buf, int len, MediaSource* from)
 
 int InProcessMixer::deliverFeedback(char* buf, int len)
 {
-    m_videoMixer->deliverFeedback(buf, len);
-    m_audioMixer->deliverFeedback(buf, len);
-    return len;
+    if (m_videoMixer->deliverFeedback(buf, len) > 0 &&
+        m_audioMixer->deliverFeedback(buf, len) > 0)
+        return len;
+
+    return 0;
 }
 
 void InProcessMixer::receiveRtpData(char* buf, int len, erizo::DataType type, uint32_t streamId)
