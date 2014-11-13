@@ -153,7 +153,7 @@ bool VCMOutputProcessor::setSendVideoCodec(const VideoCodec& videoCodec)
 
 void VCMOutputProcessor::onConfigChanged()
 {
-    ELOG_DEBUG("VCMOutputProcessor::onConfigChanged");
+    ELOG_DEBUG("onConfigChanged");
     VideoLayout* layout = Config::get()->getVideoLayout();
     m_videoCompositor->config(*layout);
 
@@ -181,7 +181,7 @@ void VCMOutputProcessor::updateMaxSlot(int newMaxSlot)
     m_maxSlot = newMaxSlot;
     VideoLayout layout;
     m_videoCompositor->getLayout(layout);
-    if (newMaxSlot == 1)
+    if (newMaxSlot <= 1)
         layout.divFactor = 1;
     else if (newMaxSlot <= 4)
         layout.divFactor = 2;
@@ -213,7 +213,6 @@ int VCMOutputProcessor::deliverFeedback(char* buf, int len)
 {
     return m_rtpRtcp->IncomingRtcpPacket(reinterpret_cast<uint8_t*>(buf), len) == -1 ? 0 : len;
 }
-
 
 bool VCMOutputProcessor::layoutFrames()
 {

@@ -36,7 +36,8 @@ namespace mcu {
 DEFINE_LOGGER(VideoMixer, "mcu.VideoMixer");
 
 VideoMixer::VideoMixer(erizo::RTPDataReceiver* receiver)
-    : m_outputReceiver(receiver)
+    : m_participants(0)
+    , m_outputReceiver(receiver)
 {
     init();
 }
@@ -97,12 +98,18 @@ int VideoMixer::deliverFeedback(char* buf, int len)
  */
 int32_t VideoMixer::addSource(MediaSource* source, int voiceChannelId, VoEVideoSync* voeVideoSync)
 {
-    int index = assignSlot(source);
-    ELOG_DEBUG("addSource - assigned slot is %d", index);
+    if (m_participants == BufferManager::SLOT_SIZE) {
+        ELOG_WARN("Exceeding maximum number of sources (%u), ignoring the addSource request", BufferManager::SLOT_SIZE);
+        return -1;
+    }
+
     boost::upgrade_lock<boost::shared_mutex> lock(m_sourceMutex);
     std::map<erizo::MediaSource*, boost::shared_ptr<erizo::MediaSink>>::iterator it = m_sinksForSources.find(source);
     if (it == m_sinksForSources.end() || !it->second) {
-        m_vcmOutputProcessor->updateMaxSlot(maxSlot());
+        int index = assignSlot(source);
+        ELOG_DEBUG("addSource - assigned slot is %d", index);
+        m_bufferManager->setActive(index, true);
+        m_vcmOutputProcessor->updateMaxSlot(++m_participants);
 
         VCMInputProcessor* videoInputProcessor(new VCMInputProcessor(index));
         videoInputProcessor->init(new WoogeenTransport<erizo::VIDEO>(nullptr, source->getFeedbackSink()),
@@ -131,6 +138,8 @@ int32_t VideoMixer::removeSource(MediaSource* source)
         int index = getSlot(source);
         assert(index >= 0);
         m_sourceSlotMap[index] = nullptr;
+        m_bufferManager->setActive(index, false);
+        m_vcmOutputProcessor->updateMaxSlot(--m_participants);
         return 0;
     }
 
@@ -161,8 +170,11 @@ void VideoMixer::closeAll()
         int index = getSlot(source);
         assert(index >= 0);
         m_sourceSlotMap[index] = nullptr;
+        m_bufferManager->setActive(index, false);
     }
     m_sinksForSources.clear();
+    m_participants = 0;
+    m_vcmOutputProcessor->updateMaxSlot(0);
 
     ELOG_DEBUG("Closed all media in this Mixer");
     Trace::ReturnTrace();
