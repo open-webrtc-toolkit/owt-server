@@ -150,7 +150,7 @@ uint32_t VideoMixer::sendSSRC()
 
 void VideoMixer::closeAll()
 {
-    ELOG_DEBUG("Video Mixer closeAll");
+    ELOG_DEBUG("closeAll");
     m_taskRunner->Stop();
 
     boost::unique_lock<boost::shared_mutex> sourceLock(m_sourceMutex);
@@ -164,9 +164,8 @@ void VideoMixer::closeAll()
     }
     m_sinksForSources.clear();
 
-    ELOG_DEBUG ("ClosedAll media in this Mixer");
+    ELOG_DEBUG("Closed all media in this Mixer");
     Trace::ReturnTrace();
 }
 
 }/* namespace mcu */
-

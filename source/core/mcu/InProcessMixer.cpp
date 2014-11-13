@@ -128,6 +128,8 @@ int32_t InProcessMixer::addSource(MediaSource* source)
 
 void InProcessMixer::addSubscriber(MediaSink* subscriber, const std::string& peerId)
 {
+    ELOG_DEBUG("Adding subscriber to %u(a), %u(v)", m_audioMixer->sendSSRC(), m_videoMixer->sendSSRC());
+
     subscriber->setVideoSinkSSRC(m_videoMixer->sendSSRC());
     subscriber->setAudioSinkSSRC(m_audioMixer->sendSSRC());
 
@@ -157,7 +159,7 @@ void InProcessMixer::addSubscriber(MediaSink* subscriber, const std::string& pee
 
 void InProcessMixer::removeSubscriber(const std::string& peerId)
 {
-    ELOG_DEBUG("removing subscriber: peerId is %s",   peerId.c_str());
+    ELOG_DEBUG("Removing subscriber: id is %s", peerId.c_str());
     boost::unique_lock<boost::shared_mutex> lock(m_subscriberMutex);
     std::map<std::string, boost::shared_ptr<MediaSink>>::iterator it = m_subscribers.find(peerId);
     if (it != m_subscribers.end())
@@ -174,13 +176,13 @@ int32_t InProcessMixer::removeSource(MediaSource* source)
 
 void InProcessMixer::configLayout(const std::string& layout)
 {
-    ELOG_DEBUG("InProcessMixer configLayout");
+    ELOG_DEBUG("configLayout");
     Config::get()->setVideoLayout(layout);
 }
 
 void InProcessMixer::closeAll()
 {
-    ELOG_DEBUG ("InProcessMixer closeAll");
+    ELOG_DEBUG("closeAll");
 
     boost::unique_lock<boost::shared_mutex> subscriberLock(m_subscriberMutex);
     std::map<std::string, boost::shared_ptr<MediaSink>>::iterator subscriberItor = m_subscribers.begin();
