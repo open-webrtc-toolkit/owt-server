@@ -23,38 +23,18 @@
 
 #include "OoVooProtocolHeader.h"
 
-#include <boost/asio.hpp>
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
-#include <boost/thread.hpp>
-#include <boost/thread/mutex.hpp>
 #include <logger.h>
-#include <queue>
+#include <RawTransport.h>
 
 namespace oovoo_gateway {
-
-class RawTransport;
-
-enum Protocol {
-    TCP = 0,
-    UDP
-};
-
-class RawTransportListener {
-public:
-    virtual ~RawTransportListener() = 0;
-    virtual void onTransportData(char*, int len, Protocol) = 0;
-    virtual void onTransportError(Protocol) = 0;
-    virtual void onTransportConnected(Protocol) = 0;
-};
-
-inline RawTransportListener::~RawTransportListener() { }
 
 /**
  * A ooVoo Connection. This class represents a simple connection between the GW and AVS server.
  * it comprises all the necessary Transport components.
  */
-class OoVooConnection : public RawTransportListener {
+class OoVooConnection : public woogeen_base::RawTransportListener {
     DECLARE_LOGGER();
 public:
     OoVooConnection(boost::shared_ptr<OoVooProtocolStack> ooVoo);
@@ -64,9 +44,9 @@ public:
     int sendData(const char*, int len, bool isUdp);
     void close();
 
-    virtual void onTransportData(char*, int len, Protocol);
-    virtual void onTransportError(Protocol);
-    virtual void onTransportConnected(Protocol);
+    virtual void onTransportData(char*, int len, woogeen_base::Protocol);
+    virtual void onTransportError(woogeen_base::Protocol);
+    virtual void onTransportConnected(woogeen_base::Protocol);
 
 private:
     // We need to ensure the order of the object destructions. In this case we
@@ -78,58 +58,7 @@ private:
     // According to C++ standard the non-static members are destructed in the
     // reverse order they were created.
     boost::shared_ptr<OoVooProtocolStack> m_ooVoo;
-    boost::scoped_ptr<RawTransport> m_transport;
-};
-
-// The buffer with this size should be enough to hold one message from/to the
-// network based on the MTU of network protocols.
-static const int TRANSPORT_BUFFER_SIZE = 1600;
-
-typedef struct {
-    char buffer[TRANSPORT_BUFFER_SIZE];
-    int length;
-} TransportData;
-
-class RawTransport {
-    DECLARE_LOGGER();
-public:
-    RawTransport(RawTransportListener* listener);
-    ~RawTransport();
-
-    void createConnection(const std::string& ip, uint32_t port, Protocol);
-    void sendData(const char*, int len, Protocol);
-    void close();
-
-private:
-    void receiveData(Protocol);
-    void readHandler(Protocol, const boost::system::error_code&, std::size_t);
-    void writeHandler(Protocol, const boost::system::error_code&, std::size_t);
-    void connectHandler(Protocol, const boost::system::error_code&);
-    void dumpTcpSSLv3Header(const char*, int len);
-
-    bool m_isClosing;
-    TransportData m_udpReceiveData;
-    TransportData m_tcpReceiveData;
-    TransportData m_udpSendData;
-    std::queue<TransportData> m_tcpSendQueue;
-    boost::mutex m_tcpSendQueueMutex;
-
-    // We need to ensure the order of the object destructions. In this case the
-    // io_service object must be destructed after the socket objects, because in
-    // the destructor of the socket objects it will tell the io_service to do
-    // something like closing the descriptor, etc. In other words, the sockets
-    // depend on io_service.
-    // We ensure the order based on the C++ standard that the non-static members
-    // are destructed in the reverse order they were created, so DON'T change
-    // the order of the member declarations here.
-    // Alternatively, we may make the io_service object reference counted but it
-    // introduces unnecessary complexity.
-    boost::asio::io_service m_io_service;
-    boost::thread m_workThread;
-    boost::scoped_ptr<boost::asio::ip::udp::socket> m_udpSocket;
-    boost::scoped_ptr<boost::asio::ip::tcp::socket> m_tcpSocket;
-
-    RawTransportListener* m_listener;
+    boost::scoped_ptr<woogeen_base::RawTransport> m_transport;
 };
 
 } /* namespace oovoo_gateway */
