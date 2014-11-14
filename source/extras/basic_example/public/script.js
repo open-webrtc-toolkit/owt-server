@@ -55,11 +55,13 @@ window.onload = function () {
     console.log(token);
     room = Erizo.Room({token: token});
 
+    var rand = Math.floor(Math.random() * 100 + 1);
     localStream.addEventListener("access-accepted", function () {
       var subscribeToStreams = function (streams) {
         for (var index in streams) {
           var stream = streams[index];
-          if (localStream.getID() !== stream.getID()) {
+          if ((localStream.getID() !== stream.getID()) &&
+              (!(rand % 2) === !stream.getID())) {
             room.subscribe(stream);
           }
         }
@@ -74,7 +76,11 @@ window.onload = function () {
       room.addEventListener("stream-subscribed", function(streamEvent) {
         var stream = streamEvent.stream;
         var div = document.createElement('div');
-        div.setAttribute("style", "width: 320px; height: 240px;");
+        if (stream.getID() === 0) {
+          div.setAttribute("style", "width: 640px; height: 480px;");
+        } else {
+          div.setAttribute("style", "width: 320px; height: 240px;");
+        }
         div.setAttribute("id", "test" + stream.getID());
 
         document.body.appendChild(div);
