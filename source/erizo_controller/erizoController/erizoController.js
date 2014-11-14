@@ -12,7 +12,8 @@ var Getopt = require('node-getopt');
 // Configuration default values
 GLOBAL.config = config || {};
 GLOBAL.config.erizoController = GLOBAL.config.erizoController || {};
-GLOBAL.config.erizoController.stunServerUrl = GLOBAL.config.erizoController.stunServerUrl || 'stun:stun.l.google.com:19302';
+// GLOBAL.config.erizoController.stunServerUrl = GLOBAL.config.erizoController.stunServerUrl || 'stun:stun.l.google.com:19302';
+GLOBAL.config.erizoController.stunServerUrl = GLOBAL.config.erizoController.stunServerUrl;
 GLOBAL.config.erizoController.defaultVideoBW = GLOBAL.config.erizoController.defaultVideoBW || 300;
 GLOBAL.config.erizoController.maxVideoBW = GLOBAL.config.erizoController.maxVideoBW || 300;
 GLOBAL.config.erizoController.publicIP = GLOBAL.config.erizoController.publicIP || '';
