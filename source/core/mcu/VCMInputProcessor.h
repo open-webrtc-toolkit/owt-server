@@ -78,8 +78,8 @@ public:
     virtual void ResetStatistics(uint32_t ssrc);
 
     // Implement the MediaSink interfaces.
-    int deliverAudioData(char*, int len, erizo::MediaSource* from = nullptr);
-    int deliverVideoData(char*, int len, erizo::MediaSource* from = nullptr);
+    int deliverAudioData(char*, int len);
+    int deliverVideoData(char*, int len);
 
     bool init(woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<BufferManager>, boost::shared_ptr<InputFrameCallback>, boost::shared_ptr<TaskRunner>);
 

@@ -61,8 +61,8 @@ public:
 
 	int init(const MediaInfo& info, RawDataReceiver* receiver);
 
-	int deliverAudioData(char* buf, int len, MediaSource*);
-	int deliverVideoData(char* buf, int len, MediaSource*);
+	int deliverAudioData(char* buf, int len);
+	int deliverVideoData(char* buf, int len);
 
 	int unpackageVideo(unsigned char* inBuff, int inBuffLen,
             unsigned char* outBuff, int* gotFrame);

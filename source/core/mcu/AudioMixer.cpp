@@ -81,7 +81,7 @@ AudioMixer::~AudioMixer()
     voe->DeleteChannel(m_outChannel.id);
 
     boost::unique_lock<boost::shared_mutex> lock(m_sourceMutex);
-    std::map<MediaSource*, VoiceChannel>::iterator it = m_inChannels.begin();
+    std::map<uint32_t, VoiceChannel>::iterator it = m_inChannels.begin();
     for (; it != m_inChannels.end(); ++it) {
         int channel = it->second.id;
         voe->StopPlayout(channel);
@@ -96,12 +96,13 @@ AudioMixer::~AudioMixer()
     VoiceEngine::Delete(m_voiceEngine);
 }
 
-int32_t AudioMixer::addSource(erizo::MediaSource* from)
+int32_t AudioMixer::addSource(uint32_t from, bool isAudio, erizo::FeedbackSink* feedback)
 {
+    assert(isAudio);
     VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);
     int channel = voe->CreateChannel();
     if (channel != -1) {
-        woogeen_base::WoogeenTransport<erizo::AUDIO>* feedbackTransport = new woogeen_base::WoogeenTransport<erizo::AUDIO>(nullptr, from->getFeedbackSink());
+        woogeen_base::WoogeenTransport<erizo::AUDIO>* feedbackTransport = new woogeen_base::WoogeenTransport<erizo::AUDIO>(nullptr, feedback);
         VoENetwork* network = VoENetwork::GetInterface(m_voiceEngine);
         if (network->RegisterExternalTransport(channel, *feedbackTransport) == -1)
             return -1;
@@ -126,13 +127,15 @@ int32_t AudioMixer::addSource(erizo::MediaSource* from)
     return channel;
 }
 
-int32_t AudioMixer::removeSource(erizo::MediaSource* from)
+int32_t AudioMixer::removeSource(uint32_t from, bool isAudio)
 {
+    assert(isAudio);
+
     VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);
     VoENetwork* network = VoENetwork::GetInterface(m_voiceEngine);
 
     boost::unique_lock<boost::shared_mutex> lock(m_sourceMutex);
-    std::map<MediaSource*, VoiceChannel>::iterator it = m_inChannels.find(from);
+    std::map<uint32_t, VoiceChannel>::iterator it = m_inChannels.find(from);
     if (it != m_inChannels.end()) {
         int channel = it->second.id;
 
@@ -151,26 +154,36 @@ int32_t AudioMixer::removeSource(erizo::MediaSource* from)
     return -1;
 }
 
-int AudioMixer::deliverAudioData(char* buf, int len, erizo::MediaSource* from)
+#define global_ns
+
+int AudioMixer::deliverAudioData(char* buf, int len)
 {
+    uint32_t id = 0;
+    RTCPHeader* chead = reinterpret_cast<RTCPHeader*>(buf);
+    uint8_t packetType = chead->getPacketType();
+    assert(packetType != RTCP_Receiver_PT && packetType != RTCP_PS_Feedback_PT && packetType != RTCP_RTP_Feedback_PT);
+    if (packetType == RTCP_Sender_PT)
+        id = chead->getSSRC();
+    else {
+        global_ns::RTPHeader* head = reinterpret_cast<global_ns::RTPHeader*>(buf);
+        id = head->getSSRC();
+    }
+
     boost::shared_lock<boost::shared_mutex> lock(m_sourceMutex);
-    std::map<MediaSource*, VoiceChannel>::iterator it = m_inChannels.find(from);
+    std::map<uint32_t, VoiceChannel>::iterator it = m_inChannels.find(id);
     if (it == m_inChannels.end())
         return 0;
 
     int channel = it->second.id;
     VoENetwork* network = VoENetwork::GetInterface(m_voiceEngine);
 
-    RTCPHeader* chead = reinterpret_cast<RTCPHeader*>(buf);
-    uint8_t packetType = chead->getPacketType();
-    assert(packetType != RTCP_Receiver_PT && packetType != RTCP_PS_Feedback_PT && packetType != RTCP_RTP_Feedback_PT);
     if (packetType == RTCP_Sender_PT)
         return network->ReceivedRTCPPacket(channel, buf, len) == -1 ? 0 : len;
 
     return network->ReceivedRTPPacket(channel, buf, len) == -1 ? 0 : len;
 }
 
-int AudioMixer::deliverVideoData(char* buf, int len, erizo::MediaSource* from)
+int AudioMixer::deliverVideoData(char* buf, int len)
 {
     assert(false);
     return 0;
@@ -180,6 +193,16 @@ int AudioMixer::deliverFeedback(char* buf, int len)
 {
     VoENetwork* network = VoENetwork::GetInterface(m_voiceEngine);
     return network->ReceivedRTCPPacket(m_outChannel.id, buf, len) == -1 ? 0 : len;
+}
+
+int32_t AudioMixer::channelId(uint32_t sourceId)
+{
+    boost::shared_lock<boost::shared_mutex> lock(m_sourceMutex);
+    std::map<uint32_t, VoiceChannel>::iterator it = m_inChannels.find(sourceId);
+    if (it != m_inChannels.end())
+        return it->second.id;
+
+    return -1;
 }
 
 uint32_t AudioMixer::sendSSRC()

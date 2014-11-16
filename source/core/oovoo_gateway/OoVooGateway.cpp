@@ -88,21 +88,21 @@ void OoVooGateway::videoReady()
 }
 
 // The WebRTC connection audio receive thread
-int OoVooGateway::deliverAudioData(char* buf, int len, MediaSource* from)
+int OoVooGateway::deliverAudioData(char* buf, int len)
 {
     if (len <= 0)
         return 0;
 
-    return m_audioReceiver->deliverAudioData(buf, len, from);
+    return m_audioReceiver->deliverAudioData(buf, len);
 }
 
 // The WebRTC connection video receive thread
-int OoVooGateway::deliverVideoData(char* buf, int len, MediaSource* from)
+int OoVooGateway::deliverVideoData(char* buf, int len)
 {
     if (len <= 0)
         return 0;
 
-    return m_videoReceiver->deliverVideoData(buf, len, from);
+    return m_videoReceiver->deliverVideoData(buf, len);
 }
 
 bool OoVooGateway::acceptEncapsulatedRTPData()

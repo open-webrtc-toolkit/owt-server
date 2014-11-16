@@ -29,8 +29,8 @@ public:
     DLL_PUBLIC ExternalOutput(const std::string& outputUrl);
     virtual ~ExternalOutput();
     DLL_PUBLIC bool init();
-    int deliverAudioData(char* buf, int len, MediaSource*);
-    int deliverVideoData(char* buf, int len, MediaSource*);
+    int deliverAudioData(char* buf, int len);
+    int deliverVideoData(char* buf, int len);
     void receiveRawData(RawDataPacket& packet);
 
 private:

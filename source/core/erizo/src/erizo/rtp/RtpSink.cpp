@@ -34,12 +34,12 @@ namespace erizo {
     receive_Thread_.join();
   }
 
-  int RtpSink::deliverVideoData(char* buf, int len, MediaSource*){
+  int RtpSink::deliverVideoData(char* buf, int len){
     this->queueData(buf, len, VIDEO_PACKET);
     return 0;
   }
 
-  int RtpSink::deliverAudioData(char* buf, int len, MediaSource*){
+  int RtpSink::deliverAudioData(char* buf, int len){
     this->queueData(buf, len, AUDIO_PACKET);
     return 0;
   }

@@ -70,16 +70,17 @@ public:
 
     void setAdditionalSourceConsumer(woogeen_base::MediaSourceConsumer*) { }
 
-    int32_t addSource(erizo::MediaSource*);
-    int32_t removeSource(erizo::MediaSource*);
+    int32_t addSource(uint32_t id, bool isAudio, erizo::FeedbackSink*);
+    int32_t removeSource(uint32_t id, bool isAudio);
+    int32_t bindAV(uint32_t audioId, uint32_t videoId);
     erizo::MediaSink* mediaSink() { return this; }
     void configLayout(const std::string&);
 
     /**
      * Implements the MediaSink interfaces
      */
-    virtual int deliverAudioData(char* buf, int len, erizo::MediaSource*);
-    virtual int deliverVideoData(char* buf, int len, erizo::MediaSource*);
+    virtual int deliverAudioData(char* buf, int len);
+    virtual int deliverVideoData(char* buf, int len);
 
     // Implements the FeedbackSink interfaces
     virtual int deliverFeedback(char* buf, int len);

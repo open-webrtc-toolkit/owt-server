@@ -24,8 +24,8 @@ class RtpSink: public MediaSink, public FeedbackSource {
 	RtpSink(const std::string& url, const std::string& port, int feedbackPort);
 	virtual ~RtpSink();
 
-    int deliverAudioData(char* buf, int len, MediaSource* from = nullptr);
-    int deliverVideoData(char* buf, int len, MediaSource* from = nullptr);
+    int deliverAudioData(char* buf, int len);
+    int deliverVideoData(char* buf, int len);
 
 private:
 

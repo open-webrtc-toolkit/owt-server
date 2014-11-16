@@ -135,8 +135,8 @@ public:
      */
     DLL_PUBLIC virtual void configLayout(const std::string&) { }
 
-    virtual int32_t addSource(erizo::MediaSource*) { return -1; }
-    virtual int32_t removeSource(erizo::MediaSource*) { return -1; }
+    virtual int32_t addSource(uint32_t id, bool isAudio, erizo::FeedbackSink*) { return -1; }
+    virtual int32_t removeSource(uint32_t id, bool isAudio) { return -1; }
 };
 
 } /* namespace woogeen_base */
