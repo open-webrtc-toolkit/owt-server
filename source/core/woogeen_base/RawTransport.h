@@ -63,6 +63,7 @@ public:
     ~RawTransport();
 
     void createConnection(const std::string& ip, uint32_t port, Protocol);
+    void listenTo(uint32_t port, Protocol);
     void sendData(const char*, int len, Protocol);
     void close();
 

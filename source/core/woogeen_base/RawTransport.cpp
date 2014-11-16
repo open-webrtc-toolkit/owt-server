@@ -122,6 +122,30 @@ void RawTransport::connectHandler(Protocol prot, const boost::system::error_code
     }
 }
 
+void RawTransport::listenTo(uint32_t port, Protocol prot)
+{
+    switch (prot) {
+    case TCP: {
+        ELOG_WARN("NOT IMPLEMENTED, ignoring the TCP listening request for port %d\n", port);
+        break;
+    }
+    case UDP: {
+        if (m_udpSocket) {
+            ELOG_WARN("UDP transport existed, ignoring the listening request for port %d\n", port);
+        } else {
+            m_udpSocket.reset(new udp::socket(m_io_service, udp::endpoint(udp::v4(), port)));
+            receiveData(UDP);
+        }
+        break;
+    }
+    default:
+        break;
+    }
+
+    if (m_workThread.get_id() == boost::thread::id()) // Not-A-Thread
+        m_workThread = boost::thread(boost::bind(&boost::asio::io_service::run, &m_io_service));
+}
+
 void RawTransport::readHandler(Protocol prot, const boost::system::error_code& ec, std::size_t bytes)
 {
     if (!ec || ec == boost::asio::error::message_size) {
