@@ -68,22 +68,35 @@ bool VideoMixer::init()
     return true;
 }
 
-int VideoMixer::deliverAudioData(char* buf, int len, MediaSource* from) 
+int VideoMixer::deliverAudioData(char* buf, int len) 
 {
     assert(false);
     return 0;
 }
 
+#define global_ns
+
 /**
  * Multiple sources may call this method simultaneously from different threads.
  * the incoming buffer is a rtp packet
  */
-int VideoMixer::deliverVideoData(char* buf, int len, MediaSource* from)
+int VideoMixer::deliverVideoData(char* buf, int len)
 {
+    uint32_t id = 0;
+    RTCPHeader* chead = reinterpret_cast<RTCPHeader*>(buf);
+    uint8_t packetType = chead->getPacketType();
+    assert(packetType != RTCP_Receiver_PT && packetType != RTCP_PS_Feedback_PT && packetType != RTCP_RTP_Feedback_PT);
+    if (packetType == RTCP_Sender_PT)
+        id = chead->getSSRC();
+    else {
+        global_ns::RTPHeader* head = reinterpret_cast<global_ns::RTPHeader*>(buf);
+        id = head->getSSRC();
+    }
+
     boost::shared_lock<boost::shared_mutex> lock(m_sourceMutex);
-    std::map<erizo::MediaSource*, boost::shared_ptr<erizo::MediaSink>>::iterator it = m_sinksForSources.find(from);
+    std::map<uint32_t, boost::shared_ptr<VCMInputProcessor>>::iterator it = m_sinksForSources.find(id);
     if (it != m_sinksForSources.end() && it->second)
-        return it->second->deliverVideoData(buf, len, from);
+        return it->second->deliverVideoData(buf, len);
 
     return 0;
 }
@@ -96,30 +109,31 @@ int VideoMixer::deliverFeedback(char* buf, int len)
 /**
  * Attach a new InputStream to the mixer
  */
-int32_t VideoMixer::addSource(MediaSource* source, int voiceChannelId, VoEVideoSync* voeVideoSync)
+int32_t VideoMixer::addSource(uint32_t from, bool isAudio, FeedbackSink* feedback)
 {
+    assert(!isAudio);
+
     if (m_participants == BufferManager::SLOT_SIZE) {
         ELOG_WARN("Exceeding maximum number of sources (%u), ignoring the addSource request", BufferManager::SLOT_SIZE);
         return -1;
     }
 
     boost::upgrade_lock<boost::shared_mutex> lock(m_sourceMutex);
-    std::map<erizo::MediaSource*, boost::shared_ptr<erizo::MediaSink>>::iterator it = m_sinksForSources.find(source);
+    std::map<uint32_t, boost::shared_ptr<VCMInputProcessor>>::iterator it = m_sinksForSources.find(from);
     if (it == m_sinksForSources.end() || !it->second) {
-        int index = assignSlot(source);
+        int index = assignSlot(from);
         ELOG_DEBUG("addSource - assigned slot is %d", index);
         m_bufferManager->setActive(index, true);
         m_vcmOutputProcessor->updateMaxSlot(++m_participants);
 
         VCMInputProcessor* videoInputProcessor(new VCMInputProcessor(index));
-        videoInputProcessor->init(new WoogeenTransport<erizo::VIDEO>(nullptr, source->getFeedbackSink()),
+        videoInputProcessor->init(new WoogeenTransport<erizo::VIDEO>(nullptr, feedback),
         							m_bufferManager,
         							m_vcmOutputProcessor,
         							m_taskRunner);
-        videoInputProcessor->bindAudioForSync(voiceChannelId, voeVideoSync);
 
         boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
-        m_sinksForSources[source].reset(videoInputProcessor);
+        m_sinksForSources[from].reset(videoInputProcessor);
         return 0;
     }
 
@@ -127,17 +141,30 @@ int32_t VideoMixer::addSource(MediaSource* source, int voiceChannelId, VoEVideoS
     return -1;
 }
 
-int32_t VideoMixer::removeSource(MediaSource* source)
+int32_t VideoMixer::bindAudio(uint32_t id, int voiceChannelId, VoEVideoSync* voeVideoSync)
 {
+    boost::shared_lock<boost::shared_mutex> lock(m_sourceMutex);
+    std::map<uint32_t, boost::shared_ptr<VCMInputProcessor>>::iterator it = m_sinksForSources.find(id);
+    if (it != m_sinksForSources.end() && it->second) {
+        it->second->bindAudioForSync(voiceChannelId, voeVideoSync);
+        return 0;
+    }
+    return -1;
+}
+
+int32_t VideoMixer::removeSource(uint32_t from, bool isAudio)
+{
+    assert(!isAudio);
+
     boost::unique_lock<boost::shared_mutex> lock(m_sourceMutex);
-    std::map<erizo::MediaSource*, boost::shared_ptr<erizo::MediaSink>>::iterator it = m_sinksForSources.find(source);
+    std::map<uint32_t, boost::shared_ptr<VCMInputProcessor>>::iterator it = m_sinksForSources.find(from);
     if (it != m_sinksForSources.end()) {
         m_sinksForSources.erase(it);
         lock.unlock();
 
-        int index = getSlot(source);
+        int index = getSlot(from);
         assert(index >= 0);
-        m_sourceSlotMap[index] = nullptr;
+        m_sourceSlotMap[index] = 0;
         m_bufferManager->setActive(index, false);
         m_vcmOutputProcessor->updateMaxSlot(--m_participants);
         return 0;
@@ -163,13 +190,13 @@ void VideoMixer::closeAll()
     m_taskRunner->Stop();
 
     boost::unique_lock<boost::shared_mutex> sourceLock(m_sourceMutex);
-    std::map<erizo::MediaSource*, boost::shared_ptr<erizo::MediaSink>>::iterator sourceItor = m_sinksForSources.begin();
+    std::map<uint32_t, boost::shared_ptr<VCMInputProcessor>>::iterator sourceItor = m_sinksForSources.begin();
     while (sourceItor != m_sinksForSources.end()) {
-        MediaSource* source = sourceItor->first;
+        uint32_t source = sourceItor->first;
         m_sinksForSources.erase(sourceItor++);
         int index = getSlot(source);
         assert(index >= 0);
-        m_sourceSlotMap[index] = nullptr;
+        m_sourceSlotMap[index] = 0;
         m_bufferManager->setActive(index, false);
     }
     m_sinksForSources.clear();

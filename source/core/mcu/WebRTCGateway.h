@@ -73,8 +73,8 @@ public:
     /**
      * Implements the MediaSink interfaces
      */
-    int deliverAudioData(char*, int len, erizo::MediaSource*);
-    int deliverVideoData(char*, int len, erizo::MediaSource*);
+    int deliverAudioData(char*, int len);
+    int deliverVideoData(char*, int len);
 
 private:
     void closeAll();

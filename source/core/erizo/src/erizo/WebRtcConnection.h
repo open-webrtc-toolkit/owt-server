@@ -107,8 +107,8 @@ public:
 
 	DLL_PUBLIC bool isInitialized();
 
-	int deliverAudioData(char* buf, int len, MediaSource*);
-	int deliverVideoData(char* buf, int len, MediaSource*);
+	int deliverAudioData(char* buf, int len);
+	int deliverVideoData(char* buf, int len);
 
 	int deliverFeedback(char* buf, int len);
 

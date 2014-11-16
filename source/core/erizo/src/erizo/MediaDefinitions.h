@@ -66,8 +66,8 @@ protected:
   //Is it able to provide Feedback
   FeedbackSource* sinkfbSource_;
 public:
-  virtual int deliverAudioData(char* buf, int len, MediaSource* from = nullptr)=0;
-  virtual int deliverVideoData(char* buf, int len, MediaSource* from = nullptr)=0;
+  virtual int deliverAudioData(char* buf, int len)=0;
+  virtual int deliverVideoData(char* buf, int len)=0;
   unsigned int getVideoSinkSSRC (){return videoSinkSSRC_;};
   void setVideoSinkSSRC (unsigned int ssrc){videoSinkSSRC_ = ssrc;};
   unsigned int getAudioSinkSSRC (){return audioSinkSSRC_;};
@@ -120,6 +120,7 @@ public:
   void setVideoSourceSSRC (unsigned int ssrc){videoSourceSSRC_ = ssrc;};
   unsigned int getAudioSourceSSRC (){return audioSourceSSRC_;};
   void setAudioSourceSSRC (unsigned int ssrc){audioSourceSSRC_ = ssrc;};
+  MediaSource() : videoSourceSSRC_(0), audioSourceSSRC_(0), videoSink_(nullptr), audioSink_(nullptr), sourcefbSink_(nullptr) {}
   virtual ~MediaSource(){};
 };
 

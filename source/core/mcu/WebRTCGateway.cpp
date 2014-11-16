@@ -37,7 +37,7 @@ WebRTCGateway::~WebRTCGateway()
     closeAll();
 }
 
-int WebRTCGateway::deliverAudioData(char* buf, int len, MediaSource* from)
+int WebRTCGateway::deliverAudioData(char* buf, int len)
 {
     if (len <= 0)
         return 0;
@@ -51,12 +51,12 @@ int WebRTCGateway::deliverAudioData(char* buf, int len, MediaSource* from)
     lock.unlock();
 
     if (m_mixer && m_mixer->mediaSink())
-        m_mixer->mediaSink()->deliverAudioData(buf, len, from);
+        m_mixer->mediaSink()->deliverAudioData(buf, len);
 
     return len;
 }
 
-int WebRTCGateway::deliverVideoData(char* buf, int len, MediaSource* from)
+int WebRTCGateway::deliverVideoData(char* buf, int len)
 {
     if (len <= 0)
         return 0;
@@ -70,7 +70,7 @@ int WebRTCGateway::deliverVideoData(char* buf, int len, MediaSource* from)
     lock.unlock();
 
     if (m_mixer && m_mixer->mediaSink())
-        m_mixer->mediaSink()->deliverVideoData(buf, len, from);
+        m_mixer->mediaSink()->deliverVideoData(buf, len);
 
     return len;
 }
@@ -87,17 +87,15 @@ bool WebRTCGateway::setPublisher(MediaSource* publisher)
     // scenarios to figure out what the correct approach is.
     m_feedback = m_publisher->getFeedbackSink();
 
-    // Automatically put the publisher as a source of the mixer.
-    if (m_mixer)
-        m_mixer->addSource(publisher);
-
     return true;
 }
 
 void WebRTCGateway::unsetPublisher()
 {
-    if (m_mixer)
-        m_mixer->removeSource(m_publisher.get());
+    if (m_mixer) {
+        m_mixer->removeSource(m_publisher->getAudioSourceSSRC(), true);
+        m_mixer->removeSource(m_publisher->getVideoSourceSSRC(), false);
+    }
 
     m_feedback = nullptr;
     m_publisher.reset();
@@ -132,8 +130,9 @@ void WebRTCGateway::removeSubscriber(const std::string& id)
 void WebRTCGateway::setAdditionalSourceConsumer(woogeen_base::MediaSourceConsumer* mixer)
 {
     m_mixer = mixer;
-    if (m_publisher)
-        mixer->addSource(m_publisher.get());
+    mixer->addSource(m_publisher->getAudioSourceSSRC(), true, m_feedback);
+    mixer->addSource(m_publisher->getVideoSourceSSRC(), false, m_feedback);
+    mixer->bindAV(m_publisher->getAudioSourceSSRC(), m_publisher->getVideoSourceSSRC());
 }
 
 void WebRTCGateway::closeAll()

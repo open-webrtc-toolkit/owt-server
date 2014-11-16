@@ -71,14 +71,14 @@ bool InProcessMixer::init()
     return true;
 }
 
-int InProcessMixer::deliverAudioData(char* buf, int len, MediaSource* from) 
+int InProcessMixer::deliverAudioData(char* buf, int len) 
 {
-    return m_audioMixer ? m_audioMixer->deliverAudioData(buf, len, from) : 0;
+    return m_audioMixer ? m_audioMixer->deliverAudioData(buf, len) : 0;
 }
 
-int InProcessMixer::deliverVideoData(char* buf, int len, MediaSource* from)
+int InProcessMixer::deliverVideoData(char* buf, int len)
 {
-    return m_videoMixer ? m_videoMixer->deliverVideoData(buf, len, from) : 0;
+    return m_videoMixer ? m_videoMixer->deliverVideoData(buf, len) : 0;
 }
 
 int InProcessMixer::deliverFeedback(char* buf, int len)
@@ -117,13 +117,17 @@ void InProcessMixer::receiveRtpData(char* buf, int len, erizo::DataType type, ui
     }
 }
 
-int32_t InProcessMixer::addSource(MediaSource* source)
+int32_t InProcessMixer::addSource(uint32_t id, bool isAudio, FeedbackSink* feedback)
 {
-    int32_t voiceChannelId = m_audioMixer->addSource(source);
-    if (voiceChannelId != -1)
-        m_videoMixer->addSource(source, voiceChannelId, m_audioMixer->avSyncInterface());
+    if (isAudio)
+        return m_audioMixer->addSource(id, true, feedback);
 
-    return 0;
+    return m_videoMixer->addSource(id, false, feedback);
+}
+
+int32_t InProcessMixer::bindAV(uint32_t audioId, uint32_t videoId)
+{
+    return m_videoMixer->bindAudio(videoId, m_audioMixer->channelId(audioId), m_audioMixer->avSyncInterface());
 }
 
 void InProcessMixer::addSubscriber(MediaSink* subscriber, const std::string& peerId)
@@ -166,12 +170,9 @@ void InProcessMixer::removeSubscriber(const std::string& peerId)
         m_subscribers.erase(it);
 }
 
-int32_t InProcessMixer::removeSource(MediaSource* source)
+int32_t InProcessMixer::removeSource(uint32_t source, bool isAudio)
 {
-    m_audioMixer->removeSource(source);
-    m_videoMixer->removeSource(source);
-
-    return 0;
+    return isAudio ? m_audioMixer->removeSource(source, true) : m_videoMixer->removeSource(source, false);
 }
 
 void InProcessMixer::configLayout(const std::string& layout)

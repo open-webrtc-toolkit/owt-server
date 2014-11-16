@@ -96,6 +96,10 @@ exports.ErizoJSController = function (spec) {
 
           }
           if (newStatus === 103) {
+            if (id_sub === undefined && mixer) {
+              publishers[id_pub].setMixer(mixer);
+            }
+
             callback('onReady');
           }
         });
@@ -210,10 +214,6 @@ exports.ErizoJSController = function (spec) {
             var muxer = new addon.Gateway();
             muxer.setPublisher(wrtc);
             publishers[from] = muxer;
-
-            if (mixer) {
-                muxer.setMixer(mixer);
-            }
 
             subscribers[from] = [];
 

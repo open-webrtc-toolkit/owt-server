@@ -171,7 +171,7 @@ void VCMInputProcessor::ResetStatistics(uint32_t ssrc)
         statistician->ResetStatistics();
 }
 
-int VCMInputProcessor::deliverVideoData(char* buf, int len, erizo::MediaSource*)
+int VCMInputProcessor::deliverVideoData(char* buf, int len)
 {
     RTCPHeader* chead = reinterpret_cast<RTCPHeader*>(buf);
     uint8_t packetType = chead->getPacketType();
@@ -193,7 +193,7 @@ int VCMInputProcessor::deliverVideoData(char* buf, int len, erizo::MediaSource*)
     return 0;
 }
 
-int VCMInputProcessor::deliverAudioData(char* buf, int len, erizo::MediaSource*)
+int VCMInputProcessor::deliverAudioData(char* buf, int len)
 {
     assert(false);
     return 0;

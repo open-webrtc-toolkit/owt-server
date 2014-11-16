@@ -37,6 +37,7 @@ namespace mcu {
 
 class BufferManager;
 class TaskRunner;
+class VCMInputProcessor;
 class VCMOutputProcessor;
 struct Layout;
 
@@ -52,25 +53,24 @@ public:
     VideoMixer(erizo::RTPDataReceiver*);
     virtual ~VideoMixer();
 
-    /*
-     * Each source will be served by a InputProcessor, which is responsible for
-     * decoding the incoming streams into I420Frames
-     */
-    int32_t addSource(erizo::MediaSource*, int voiceChannelId, webrtc::VoEVideoSync*);
-
+    int32_t bindAudio(uint32_t sourceId, int voiceChannelId, webrtc::VoEVideoSync*);
     void onRequestIFrame();
     uint32_t sendSSRC();
 
     // Implements the MediaSourceConsumer interfaces
-    virtual int32_t addSource(erizo::MediaSource* source) { return addSource(source, -1, nullptr); }
-    virtual int32_t removeSource(erizo::MediaSource*);
+    /*
+     * Each source will be served by a InputProcessor, which is responsible for
+     * decoding the incoming streams into I420Frames
+     */
+    virtual int32_t addSource(uint32_t from, bool isAudio, erizo::FeedbackSink*);
+    virtual int32_t removeSource(uint32_t from, bool isAudio);
     erizo::MediaSink* mediaSink() { return this; }
 
     /**
      * Implements the MediaSink interfaces
      */
-    virtual int deliverAudioData(char* buf, int len, erizo::MediaSource*);
-    virtual int deliverVideoData(char* buf, int len, erizo::MediaSource*);
+    virtual int deliverAudioData(char* buf, int len);
+    virtual int deliverVideoData(char* buf, int len);
 
     // Implements the FeedbackSink interfaces
     virtual int deliverFeedback(char* buf, int len);
@@ -79,24 +79,24 @@ private:
     bool init();
     void closeAll();
 
-    int assignSlot(erizo::MediaSource*);
+    int assignSlot(uint32_t source);
     // find the slot number for the corresponding source
     // return -1 if not found
-    int getSlot(erizo::MediaSource*);
+    int getSlot(uint32_t source);
 
     int m_participants;
     boost::shared_ptr<erizo::FeedbackSink> m_feedback;
     erizo::RTPDataReceiver* m_outputReceiver;
     boost::shared_mutex m_sourceMutex;
-    std::map<erizo::MediaSource*, boost::shared_ptr<erizo::MediaSink>> m_sinksForSources;
-    std::vector<erizo::MediaSource*> m_sourceSlotMap;    // each source will be allocated one index
+    std::map<uint32_t, boost::shared_ptr<VCMInputProcessor>> m_sinksForSources;
+    std::vector<uint32_t> m_sourceSlotMap;    // each source will be allocated one index
 
     boost::shared_ptr<BufferManager> m_bufferManager;
     boost::shared_ptr<TaskRunner> m_taskRunner;
     boost::shared_ptr<VCMOutputProcessor> m_vcmOutputProcessor;
 };
 
-inline int VideoMixer::assignSlot(erizo::MediaSource* source)
+inline int VideoMixer::assignSlot(uint32_t source)
 {
     for (uint32_t i = 0; i < m_sourceSlotMap.size(); i++) {
         if (!m_sourceSlotMap[i]) {
@@ -108,7 +108,7 @@ inline int VideoMixer::assignSlot(erizo::MediaSource* source)
     return m_sourceSlotMap.size() - 1;
 }
 
-inline int VideoMixer::getSlot(erizo::MediaSource* source)
+inline int VideoMixer::getSlot(uint32_t source)
 {
     for (uint32_t i = 0; i < m_sourceSlotMap.size(); i++) {
         if (m_sourceSlotMap[i] == source)
