@@ -21,9 +21,9 @@
 #ifndef OutOfProcessMixerProxy_h
 #define OutOfProcessMixerProxy_h
 
-#include "Mixer.h"
-
 #include <boost/scoped_ptr.hpp>
+#include <MediaDefinitions.h>
+#include <MediaSourceConsumer.h>
 #include <RawTransport.h>
 
 namespace mcu {
