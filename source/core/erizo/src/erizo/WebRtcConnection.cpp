@@ -437,9 +437,11 @@ namespace erizo {
     if (state == TRANSPORT_READY &&
         (audioTransport_ == NULL || audioTransport_->getTransportState() == TRANSPORT_READY) &&
         (videoTransport_ == NULL || videoTransport_->getTransportState() == TRANSPORT_READY) &&
-        (!remoteSdp_.hasAudio || this->getAudioSourceSSRC() != 0) &&
-        (!remoteSdp_.hasVideo || this->getVideoSourceSSRC() != 0)) {
-        // WebRTCConnection will be ready only when all channels are ready.
+        (remoteSdp_.audioDirection <= RECVONLY || this->getAudioSourceSSRC() != 0) &&
+        (remoteSdp_.videoDirection <= RECVONLY || this->getVideoSourceSSRC() != 0)) {
+        // WebRTCConnection will be ready only when all channels are ready,
+        // and the source SSRCs are correctly configured if this connection
+        // is receiving audio or video packets from the browser.
         temp = CONN_READY;
     }
 
