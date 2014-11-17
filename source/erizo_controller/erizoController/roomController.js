@@ -169,11 +169,8 @@ exports.RoomController = function (spec) {
             createErizoJS(publisher_id, function(erizo_id) {
             	log.info("Erizo created");
             	// then we call its addPublisher method.
-	            var args = [publisher_id, sdp];
+	            var args = [publisher_id, sdp, GLOBAL.config.erizoController.outOfProcessMixer];
 	            rpc.callRpc(getErizoQueue(publisher_id), "addPublisher", args, {callback: callback, onReady: onReady});
-
-                if (GLOBAL.config.erizoController.outOfProcessMixer)
-                    rpc.callRpc(getErizoQueue(publisher_id), "setMixer", [], undefined);
 
 	            // Track publisher locally
 	            publishers[publisher_id] = publisher_id;
