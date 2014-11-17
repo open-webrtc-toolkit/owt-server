@@ -21,6 +21,8 @@ exports.ErizoJSController = function (spec) {
         subscribers = {},
         // {id: Gateway}
         publishers = {},
+        // {id: MediaSourceConsumer}
+        mixerProxies = {},
 
         // {id: ExternalOutput}
         externalOutputs = {},
@@ -50,11 +52,6 @@ exports.ErizoJSController = function (spec) {
             log.info("Mixer already set for", id);
         }
     };
-
-    that.setMixer = function () {
-        if (mixer === undefined)
-            mixer = new addon.MediaSourceConsumer();
-    }
 
     /*
      * Given a WebRtcConnection waits for the state READY for ask it to send a FIR packet to its publisher.
@@ -105,8 +102,16 @@ exports.ErizoJSController = function (spec) {
 
           }
           if (newStatus === 103) {
-            if (id_sub === undefined && mixer) {
-              publishers[id_pub].setMixer(mixer);
+            // Perform the additional work for publishers.
+            if (id_sub === undefined) {
+              if (mixer) {
+                publishers[id_pub].setMixer(mixer);
+              } else {
+                var mixerProxy = mixerProxies[id_pub];
+                if (mixerProxy) {
+                  publishers[id_pub].setMixer(mixerProxy);
+                }
+              }
             }
 
             callback('onReady');
@@ -213,7 +218,7 @@ exports.ErizoJSController = function (spec) {
      * and a new WebRtcConnection. This WebRtcConnection will be the publisher
      * of the Gateway.
      */
-    that.addPublisher = function (from, sdp, callback) {
+    that.addPublisher = function (from, sdp, oopMixer, callback) {
 
         if (publishers[from] === undefined) {
 
@@ -225,6 +230,9 @@ exports.ErizoJSController = function (spec) {
             publishers[from] = muxer;
 
             subscribers[from] = [];
+
+            if (oopMixer && mixer === undefined)
+                mixerProxies[from] = new addon.MediaSourceConsumer();
 
             initWebRtcConnection(wrtc, sdp, callback, from);
 
@@ -274,6 +282,12 @@ exports.ErizoJSController = function (spec) {
             delete subscribers[from];
             log.info('Removing publisher', from);
             delete publishers[from];
+            if (mixerProxies[from] !== undefined) {
+                log.info('Removing mixer proxy', from);
+                mixerProxies[from].close();
+                delete mixerProxies[from];
+            }
+
             var count = 0;
             for (var k in publishers) {
                 if (publishers.hasOwnProperty(k)) {
