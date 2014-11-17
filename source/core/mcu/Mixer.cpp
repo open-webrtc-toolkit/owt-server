@@ -18,11 +18,9 @@
  * and approved by Intel in writing.
  */
 
-#include "InProcessMixer.h"
+#include "Mixer.h"
 
-#include "AudioMixer.h"
 #include "Config.h"
-#include "VideoMixer.h"
 
 #include <ProtectedRTPSender.h>
 #include <WebRTCFeedbackProcessor.h>
@@ -32,9 +30,9 @@ using namespace erizo;
 
 namespace mcu {
 
-class InProcessMixerIntraFrameCallback : public woogeen_base::IntraFrameCallback {
+class MixerIntraFrameCallback : public woogeen_base::IntraFrameCallback {
 public:
-    InProcessMixerIntraFrameCallback(boost::shared_ptr<VideoMixer> videoMixer)
+    MixerIntraFrameCallback(boost::shared_ptr<VideoMixer> videoMixer)
         : m_videoMixer(videoMixer)
     {
     }
@@ -48,22 +46,22 @@ private:
     boost::shared_ptr<VideoMixer> m_videoMixer;
 };
 
-DEFINE_LOGGER(InProcessMixer, "mcu.InProcessMixer");
+DEFINE_LOGGER(Mixer, "mcu.Mixer");
 
-InProcessMixer::InProcessMixer()
+Mixer::Mixer()
 {
     init();
 }
 
-InProcessMixer::~InProcessMixer()
+Mixer::~Mixer()
 {
     closeAll();
 }
 
 /**
- * init could be used for reset the state of this InProcessMixer
+ * init could be used for reset the state of this Mixer
  */
-bool InProcessMixer::init()
+bool Mixer::init()
 {
     m_videoMixer.reset(new VideoMixer(this));
     m_audioMixer.reset(new AudioMixer(this));
@@ -71,17 +69,17 @@ bool InProcessMixer::init()
     return true;
 }
 
-int InProcessMixer::deliverAudioData(char* buf, int len) 
+int Mixer::deliverAudioData(char* buf, int len) 
 {
     return m_audioMixer ? m_audioMixer->deliverAudioData(buf, len) : 0;
 }
 
-int InProcessMixer::deliverVideoData(char* buf, int len)
+int Mixer::deliverVideoData(char* buf, int len)
 {
     return m_videoMixer ? m_videoMixer->deliverVideoData(buf, len) : 0;
 }
 
-int InProcessMixer::deliverFeedback(char* buf, int len)
+int Mixer::deliverFeedback(char* buf, int len)
 {
     if (m_videoMixer->deliverFeedback(buf, len) > 0 &&
         m_audioMixer->deliverFeedback(buf, len) > 0)
@@ -90,7 +88,7 @@ int InProcessMixer::deliverFeedback(char* buf, int len)
     return 0;
 }
 
-void InProcessMixer::receiveRtpData(char* buf, int len, erizo::DataType type, uint32_t streamId)
+void Mixer::receiveRtpData(char* buf, int len, erizo::DataType type, uint32_t streamId)
 {
     if (m_subscribers.empty() || len <= 0)
         return;
@@ -117,7 +115,7 @@ void InProcessMixer::receiveRtpData(char* buf, int len, erizo::DataType type, ui
     }
 }
 
-int32_t InProcessMixer::addSource(uint32_t id, bool isAudio, FeedbackSink* feedback)
+int32_t Mixer::addSource(uint32_t id, bool isAudio, FeedbackSink* feedback)
 {
     if (isAudio)
         return m_audioMixer->addSource(id, true, feedback);
@@ -125,12 +123,12 @@ int32_t InProcessMixer::addSource(uint32_t id, bool isAudio, FeedbackSink* feedb
     return m_videoMixer->addSource(id, false, feedback);
 }
 
-int32_t InProcessMixer::bindAV(uint32_t audioId, uint32_t videoId)
+int32_t Mixer::bindAV(uint32_t audioId, uint32_t videoId)
 {
     return m_videoMixer->bindAudio(videoId, m_audioMixer->channelId(audioId), m_audioMixer->avSyncInterface());
 }
 
-void InProcessMixer::addSubscriber(MediaSink* subscriber, const std::string& peerId)
+void Mixer::addSubscriber(MediaSink* subscriber, const std::string& peerId)
 {
     ELOG_DEBUG("Adding subscriber to %u(a), %u(v)", m_audioMixer->sendSSRC(), m_videoMixer->sendSSRC());
 
@@ -138,7 +136,7 @@ void InProcessMixer::addSubscriber(MediaSink* subscriber, const std::string& pee
     subscriber->setAudioSinkSSRC(m_audioMixer->sendSSRC());
 
     // TODO: We now just pass the feedback from _all_ of the subscribers to the video mixer without pre-processing,
-    // but maybe it's needed in a InProcessMixer scenario where one mixed stream is sent to multiple subscribers.
+    // but maybe it's needed in a Mixer scenario where one mixed stream is sent to multiple subscribers.
     // The WebRTCFeedbackProcessor can be enhanced to provide another option to handle the feedback from the subscribers.
     // Lazily create the feedback sink only if there're subscribers added, because only with
     // subscribers are there chances for us to receive feedback.
@@ -146,7 +144,7 @@ void InProcessMixer::addSubscriber(MediaSink* subscriber, const std::string& pee
     // be sent to the VCMOutputProcessor which is a single instance shared by all the subscribers.
     if (0 && !m_feedback) {
         WebRTCFeedbackProcessor* feedback = new woogeen_base::WebRTCFeedbackProcessor(0);
-        boost::shared_ptr<woogeen_base::IntraFrameCallback> intraFrameCallback(new InProcessMixerIntraFrameCallback(m_videoMixer));
+        boost::shared_ptr<woogeen_base::IntraFrameCallback> intraFrameCallback(new MixerIntraFrameCallback(m_videoMixer));
         feedback->initVideoFeedbackReactor(MIXED_VIDEO_STREAM_ID, subscriber->getVideoSinkSSRC(), boost::shared_ptr<woogeen_base::ProtectedRTPSender>(), intraFrameCallback);
         m_feedback.reset(feedback);
     }
@@ -161,7 +159,7 @@ void InProcessMixer::addSubscriber(MediaSink* subscriber, const std::string& pee
     m_subscribers[peerId] = boost::shared_ptr<MediaSink>(subscriber);
 }
 
-void InProcessMixer::removeSubscriber(const std::string& peerId)
+void Mixer::removeSubscriber(const std::string& peerId)
 {
     ELOG_DEBUG("Removing subscriber: id is %s", peerId.c_str());
     boost::unique_lock<boost::shared_mutex> lock(m_subscriberMutex);
@@ -170,18 +168,18 @@ void InProcessMixer::removeSubscriber(const std::string& peerId)
         m_subscribers.erase(it);
 }
 
-int32_t InProcessMixer::removeSource(uint32_t source, bool isAudio)
+int32_t Mixer::removeSource(uint32_t source, bool isAudio)
 {
     return isAudio ? m_audioMixer->removeSource(source, true) : m_videoMixer->removeSource(source, false);
 }
 
-void InProcessMixer::configLayout(const std::string& layout)
+void Mixer::configLayout(const std::string& layout)
 {
     ELOG_DEBUG("configLayout");
     Config::get()->setVideoLayout(layout);
 }
 
-void InProcessMixer::closeAll()
+void Mixer::closeAll()
 {
     ELOG_DEBUG("closeAll");
 

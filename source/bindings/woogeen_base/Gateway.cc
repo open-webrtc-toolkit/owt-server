@@ -24,6 +24,7 @@
 
 #include "Gateway.h"
 
+#include "MediaSourceConsumer.h"
 #include "NodeEventRegistry.h"
 
 using namespace v8;
@@ -322,9 +323,9 @@ Handle<Value> Gateway::setMixer(const Arguments& args) {
   woogeen_base::Gateway* me = obj->me;
 
   // FIXME!
-  Gateway* param =
-      ObjectWrap::Unwrap<Gateway>(args[0]->ToObject());
-  woogeen_base::MediaSourceConsumer* mixer = (woogeen_base::MediaSourceConsumer*)param->me;
+  MediaSourceConsumer* param =
+      ObjectWrap::Unwrap<MediaSourceConsumer>(args[0]->ToObject());
+  woogeen_base::MediaSourceConsumer* mixer = param->me;
 
   me->setAdditionalSourceConsumer(mixer);
 

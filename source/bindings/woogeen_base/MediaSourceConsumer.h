@@ -18,25 +18,35 @@
  * and approved by Intel in writing.
  */
 
-#ifndef InProcessMixer_h
-#define InProcessMixer_h
+#ifndef MEDIASOURCECONSUMER_H
+#define MEDIASOURCECONSUMER_H
 
-#include "Mixer.h"
+#include <MediaSourceConsumer.h>
+#include <node.h>
+#include <string>
 
-namespace mcu {
-
-/**
- * An InProcessMixer refers to a media mixer which is run in the same process as a woogeen_base::Gateway.
+/*
+ * Wrapper class of woogeen_base::MediaSourceConsumer
  */
-class InProcessMixer : public Mixer {
-public:
-    InProcessMixer()
-        : Mixer()
-    {
-    }
+class MediaSourceConsumer : public node::ObjectWrap {
+ public:
+  static void Init(v8::Handle<v8::Object> target);
+  woogeen_base::MediaSourceConsumer* me;
 
-    ~InProcessMixer() { }
+ private:
+  MediaSourceConsumer();
+  ~MediaSourceConsumer();
+
+  /*
+   * Constructor.
+   * Constructs a MediaSourceConsumer
+   */
+  static v8::Handle<v8::Value> New(const v8::Arguments& args);
+  /*
+   * Closes the MediaSourceConsumer.
+   * The object cannot be used after this call
+   */
+  static v8::Handle<v8::Value> close(const v8::Arguments& args);
 };
 
-} /* namespace mcu */
-#endif /* InProcessMixer_h */
+#endif

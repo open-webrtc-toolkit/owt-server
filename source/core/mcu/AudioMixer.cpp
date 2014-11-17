@@ -171,8 +171,12 @@ int AudioMixer::deliverAudioData(char* buf, int len)
 
     boost::shared_lock<boost::shared_mutex> lock(m_sourceMutex);
     std::map<uint32_t, VoiceChannel>::iterator it = m_inChannels.find(id);
-    if (it == m_inChannels.end())
+    if (it == m_inChannels.end()) {
+        // TODO: Add a flag to control whether to add source on demand.
+        lock.unlock();
+        addSource(id, true, nullptr);
         return 0;
+    }
 
     int channel = it->second.id;
     VoENetwork* network = VoENetwork::GetInterface(m_voiceEngine);
