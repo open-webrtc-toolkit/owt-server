@@ -33,11 +33,15 @@ exports.ErizoJSController = function (spec) {
         getSdp,
         getRoap;
 
-    that.initMixer = function (id, callback) {
+    that.initMixer = function (id, oop, callback) {
         if (publishers[id] === undefined) {
-            mixer = new addon.Gateway("InProcessMixer");
+            if (oop)
+                mixer = new addon.Gateway("OutOfProcessMixer");
+            else
+                mixer = new addon.Gateway("InProcessMixer");
+
             if (GLOBAL.config.erizo.videolayout !== undefined)
-            	mixer.configLayout(JSON.stringify(GLOBAL.config.erizo.videolayout));
+                mixer.configLayout(JSON.stringify(GLOBAL.config.erizo.videolayout));
 
             publishers[id] = mixer;
             subscribers[id] = [];
@@ -46,6 +50,11 @@ exports.ErizoJSController = function (spec) {
             log.info("Mixer already set for", id);
         }
     };
+
+    that.setMixer = function () {
+        if (mixer === undefined)
+            mixer = new addon.MediaSourceConsumer();
+    }
 
     /*
      * Given a WebRtcConnection waits for the state READY for ask it to send a FIR packet to its publisher.

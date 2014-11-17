@@ -18,23 +18,57 @@
  * and approved by Intel in writing.
  */
 
-#include "InProcessMixer.h"
 #include "OutOfProcessMixer.h"
-#include "OutOfProcessMixerProxy.h"
-#include "WebRTCGateway.h"
 
-woogeen_base::Gateway* woogeen_base::Gateway::createGatewayInstance(const std::string& customParams)
+namespace mcu {
+
+OutOfProcessMixer::OutOfProcessMixer()
+    : Mixer()
 {
-    if (customParams == "InProcessMixer")
-        return new mcu::InProcessMixer();
-
-    if (customParams == "OutOfProcessMixer")
-        return new mcu::OutOfProcessMixer();
-
-    return new mcu::WebRTCGateway();
+    m_audioInput.reset(new AudioDataReader(this));
+    m_videoInput.reset(new VideoDataReader(this));
 }
 
-woogeen_base::MediaSourceConsumer* woogeen_base::MediaSourceConsumer::createMediaSourceConsumerInstance()
+OutOfProcessMixer::~OutOfProcessMixer()
 {
-    return new mcu::OutOfProcessMixerProxy();
 }
+
+AudioDataReader::AudioDataReader(erizo::MediaSink* sink)
+    : m_sink(sink)
+{
+    m_transport.reset(new woogeen_base::RawTransport(this));
+    m_transport->listenTo(44444, woogeen_base::UDP);
+}
+
+AudioDataReader::~AudioDataReader()
+{
+    m_transport->close();
+}
+
+void AudioDataReader::onTransportData(char* buf, int len, woogeen_base::Protocol prot) 
+{
+    assert(prot == woogeen_base::UDP);
+    if (m_sink)
+        m_sink->deliverAudioData(buf, len);
+}
+
+VideoDataReader::VideoDataReader(erizo::MediaSink* sink)
+    : m_sink(sink)
+{
+    m_transport.reset(new woogeen_base::RawTransport(this));
+    m_transport->listenTo(55543, woogeen_base::UDP);
+}
+
+VideoDataReader::~VideoDataReader()
+{
+    m_transport->close();
+}
+
+void VideoDataReader::onTransportData(char* buf, int len, woogeen_base::Protocol prot) 
+{
+    assert(prot == woogeen_base::UDP);
+    if (m_sink)
+        m_sink->deliverVideoData(buf, len);
+}
+
+}/* namespace mcu */

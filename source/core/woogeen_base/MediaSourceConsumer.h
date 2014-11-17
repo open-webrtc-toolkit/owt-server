@@ -27,7 +27,8 @@ namespace woogeen_base {
 
 class MediaSourceConsumer {
 public:
-    virtual ~MediaSourceConsumer() { }
+    DLL_PUBLIC static MediaSourceConsumer* createMediaSourceConsumerInstance();
+    DLL_PUBLIC virtual ~MediaSourceConsumer() { }
 
     virtual int32_t addSource(uint32_t id, bool isAudio, erizo::FeedbackSink*) = 0;
     virtual int32_t removeSource(uint32_t id, bool isAudio) = 0;

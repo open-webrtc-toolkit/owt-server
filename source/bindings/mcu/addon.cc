@@ -6,12 +6,14 @@
 #include "../erizoAPI/ExternalOutput.h"
 #include "../erizoAPI/WebRtcConnection.h"
 #include "../woogeen_base/Gateway.h"
+#include "../woogeen_base/MediaSourceConsumer.h"
 
 using namespace v8;
 
 void InitAll(Handle<Object> target) {
   WebRtcConnection::Init(target);
   Gateway::Init(target);
+  MediaSourceConsumer::Init(target);
   ExternalInput::Init(target);
   ExternalOutput::Init(target);
 }
