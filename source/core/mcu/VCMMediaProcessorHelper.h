@@ -21,6 +21,7 @@
 #ifndef VCMMediaProcessorHelper_h
 #define VCMMediaProcessorHelper_h
 
+#include <stdio.h>
 #include <webrtc/common_video/interface/i420_video_frame.h>
 #include <webrtc/modules/video_coding/main/interface/video_coding_defines.h>
 #include <webrtc/system_wrappers/interface/critical_section_wrapper.h>
