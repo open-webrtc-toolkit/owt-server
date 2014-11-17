@@ -128,7 +128,6 @@ int32_t VideoMixer::addSource(uint32_t from, bool isAudio, FeedbackSink* feedbac
 
         VCMInputProcessor* videoInputProcessor(new VCMInputProcessor(index));
         videoInputProcessor->init(new WoogeenTransport<erizo::VIDEO>(nullptr, feedback),
-        							m_bufferManager,
         							m_vcmOutputProcessor,
         							m_taskRunner);
 

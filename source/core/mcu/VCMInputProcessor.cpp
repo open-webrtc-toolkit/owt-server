@@ -53,10 +53,9 @@ VCMInputProcessor::~VCMInputProcessor()
     }
 }
 
-bool VCMInputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<BufferManager> bufferManager, boost::shared_ptr<InputFrameCallback> frameReadyCB, boost::shared_ptr<TaskRunner> taskRunner)
+bool VCMInputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<InputFrameCallback> frameReadyCB, boost::shared_ptr<TaskRunner> taskRunner)
 {
     m_videoTransport.reset(transport);
-    m_bufferManager = bufferManager;
     m_frameReadyCB = frameReadyCB;
     m_taskRunner = taskRunner;
 

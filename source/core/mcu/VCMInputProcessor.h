@@ -21,7 +21,6 @@
 #ifndef VCMInputProcessor_h
 #define VCMInputProcessor_h
 
-#include "BufferManager.h"
 #include "VCMMediaProcessorHelper.h"
 
 #include <boost/scoped_ptr.hpp>
@@ -81,7 +80,7 @@ public:
     int deliverAudioData(char*, int len);
     int deliverVideoData(char*, int len);
 
-    bool init(woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<BufferManager>, boost::shared_ptr<InputFrameCallback>, boost::shared_ptr<TaskRunner>);
+    bool init(woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<InputFrameCallback>, boost::shared_ptr<TaskRunner>);
 
     void bindAudioForSync(int32_t voiceChannelId, webrtc::VoEVideoSync*);
 
@@ -98,7 +97,6 @@ private:
 
     boost::scoped_ptr<DebugRecorder> m_recorder;
     boost::shared_ptr<InputFrameCallback> m_frameReadyCB;
-    boost::shared_ptr<BufferManager> m_bufferManager;
     boost::shared_ptr<TaskRunner> m_taskRunner;
 };
 
