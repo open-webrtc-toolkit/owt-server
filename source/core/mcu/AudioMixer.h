@@ -59,6 +59,8 @@ public:
     int32_t channelId(uint32_t sourceId);
     webrtc::VoEVideoSync* avSyncInterface();
     uint32_t sendSSRC();
+    // TODO: Remove me once OOP Mixer is able to invoke addSource explicitly.
+    void addSourceOnDemand(bool allow) { m_addSourceOnDemand = allow; }
 
 private:
     int32_t performMix(const boost::system::error_code&);
@@ -79,6 +81,7 @@ private:
     boost::asio::io_service m_ioService;
     boost::scoped_ptr<boost::asio::deadline_timer> m_timer;
     std::atomic<bool> m_isClosing;
+    std::atomic<bool> m_addSourceOnDemand;
 };
 
 inline webrtc::VoEVideoSync* AudioMixer::avSyncInterface()

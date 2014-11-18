@@ -27,6 +27,8 @@ OutOfProcessMixer::OutOfProcessMixer()
 {
     m_audioInput.reset(new AudioDataReader(this));
     m_videoInput.reset(new VideoDataReader(this));
+    m_audioMixer->addSourceOnDemand(true);
+    m_videoMixer->addSourceOnDemand(true);
 }
 
 OutOfProcessMixer::~OutOfProcessMixer()

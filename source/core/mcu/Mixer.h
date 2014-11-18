@@ -90,6 +90,10 @@ public:
      */
     void receiveRtpData(char*, int len, erizo::DataType, uint32_t streamId);
 
+protected:
+    boost::shared_ptr<VideoMixer> m_videoMixer;
+    boost::shared_ptr<AudioMixer> m_audioMixer;
+
 private:
     bool init();
     /**
@@ -100,9 +104,6 @@ private:
     boost::shared_ptr<erizo::FeedbackSink> m_feedback;
     boost::shared_mutex m_subscriberMutex;
     std::map<std::string, boost::shared_ptr<erizo::MediaSink>> m_subscribers;
-
-    boost::shared_ptr<VideoMixer> m_videoMixer;
-    boost::shared_ptr<AudioMixer> m_audioMixer;
 };
 
 } /* namespace mcu */

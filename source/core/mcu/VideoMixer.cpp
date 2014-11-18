@@ -38,6 +38,7 @@ DEFINE_LOGGER(VideoMixer, "mcu.VideoMixer");
 VideoMixer::VideoMixer(erizo::RTPDataReceiver* receiver)
     : m_participants(0)
     , m_outputReceiver(receiver)
+    , m_addSourceOnDemand(false)
 {
     init();
 }
@@ -99,8 +100,10 @@ int VideoMixer::deliverVideoData(char* buf, int len)
         return it->second->deliverVideoData(buf, len);
 
     // TODO: Add a flag to control whether to add source on demand.
-    lock.unlock();
-    addSource(id, false, nullptr);
+    if (m_addSourceOnDemand) {
+        lock.unlock();
+        addSource(id, false, nullptr);
+    }
 
     return 0;
 }
