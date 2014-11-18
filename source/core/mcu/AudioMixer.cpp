@@ -38,6 +38,7 @@ DEFINE_LOGGER(AudioMixer, "mcu.AudioMixer");
 
 AudioMixer::AudioMixer(erizo::RTPDataReceiver* receiver)
     : m_isClosing(false)
+    , m_addSourceOnDemand(false)
 {
     m_voiceEngine = VoiceEngine::Create();
 
@@ -99,18 +100,24 @@ AudioMixer::~AudioMixer()
 int32_t AudioMixer::addSource(uint32_t from, bool isAudio, erizo::FeedbackSink* feedback)
 {
     assert(isAudio);
+
+    boost::upgrade_lock<boost::shared_mutex> lock(m_sourceMutex);
+    std::map<uint32_t, VoiceChannel>::iterator it = m_inChannels.find(from);
+    if (it != m_inChannels.end())
+        return it->second.id;
+
     VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);
     int channel = voe->CreateChannel();
     if (channel != -1) {
         woogeen_base::WoogeenTransport<erizo::AUDIO>* feedbackTransport = new woogeen_base::WoogeenTransport<erizo::AUDIO>(nullptr, feedback);
         VoENetwork* network = VoENetwork::GetInterface(m_voiceEngine);
-        if (network->RegisterExternalTransport(channel, *feedbackTransport) == -1)
+        if (network->RegisterExternalTransport(channel, *feedbackTransport) == -1 ||
+            voe->StartReceive(channel) == -1 ||
+            voe->StartPlayout(channel) == -1) {
+            voe->DeleteChannel(channel);
+            delete feedbackTransport;
             return -1;
-
-        if (voe->StartReceive(channel) == -1)
-            return -1;
-        if (voe->StartPlayout(channel) == -1)
-            return -1;
+        }
 
         // TODO: Another option is that we can implement VoEMediaProcess and register
         // an External media processor for mixing. We may need to investigate whether it's
@@ -118,7 +125,7 @@ int32_t AudioMixer::addSource(uint32_t from, bool isAudio, erizo::FeedbackSink* 
         // VoEExternalMedia* externalMedia = VoEExternalMedia::GetInterface(m_voiceEngine);
         // externalMedia->SetExternalMixing(channel, true);
 
-        boost::unique_lock<boost::shared_mutex> lock(m_sourceMutex);
+        boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
         if (m_inChannels.size() == 0)
             voe->StartSend(m_outChannel.id);
 
@@ -172,9 +179,10 @@ int AudioMixer::deliverAudioData(char* buf, int len)
     boost::shared_lock<boost::shared_mutex> lock(m_sourceMutex);
     std::map<uint32_t, VoiceChannel>::iterator it = m_inChannels.find(id);
     if (it == m_inChannels.end()) {
-        // TODO: Add a flag to control whether to add source on demand.
-        lock.unlock();
-        addSource(id, true, nullptr);
+        if (m_addSourceOnDemand) {
+            lock.unlock();
+            addSource(id, true, nullptr);
+        }
         return 0;
     }
 

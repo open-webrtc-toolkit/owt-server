@@ -56,6 +56,8 @@ public:
     int32_t bindAudio(uint32_t sourceId, int voiceChannelId, webrtc::VoEVideoSync*);
     void onRequestIFrame();
     uint32_t sendSSRC();
+    // TODO: Remove me once OOP Mixer is able to invoke addSource explicitly.
+    void addSourceOnDemand(bool allow) { m_addSourceOnDemand = allow; }
 
     // Implements the MediaSourceConsumer interfaces
     /*
@@ -90,6 +92,7 @@ private:
     boost::shared_mutex m_sourceMutex;
     std::map<uint32_t, boost::shared_ptr<VCMInputProcessor>> m_sinksForSources;
     std::vector<uint32_t> m_sourceSlotMap;    // each source will be allocated one index
+    bool m_addSourceOnDemand;
 
     boost::shared_ptr<TaskRunner> m_taskRunner;
     boost::shared_ptr<VideoOutputProcessor> m_videoOutputProcessor;
