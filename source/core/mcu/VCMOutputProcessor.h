@@ -25,6 +25,7 @@
 #include "Config.h"
 #include "VCMMediaProcessorHelper.h"
 #include "VideoCompositor.h"
+#include "VideoOutputProcessor.h"
 
 #include <boost/asio.hpp>
 #include <boost/scoped_ptr.hpp>
@@ -33,6 +34,7 @@
 #include <logger.h>
 #include <MediaDefinitions.h>
 #include <WoogeenTransport.h>
+#include <webrtc/modules/rtp_rtcp/interface/rtp_rtcp.h>
 #include <webrtc/video_engine/vie_encoder.h>
 
 namespace mcu {
@@ -40,43 +42,51 @@ namespace mcu {
 class TaskRunner;
 
 /**
- * This is the class to accepts the decoded frame and do some processing
- * for example, media layout mixing
+ * This is the class to accept the decoded frame and do some processing
+ * for example, media layout mixing and encoding. It then sends out the encoded
+ * data via the given WoogeenTransport. It also gives the feedback
+ * to the encoder based on the feedback from the remote.
  */
-class VCMOutputProcessor : public InputFrameCallback, public erizo::FeedbackSink, public ConfigListener {
+class VCMOutputProcessor : public VideoOutputProcessor, public erizo::FeedbackSink, public ConfigListener, public InputFrameCallback {
     DECLARE_LOGGER();
 
 public:
     VCMOutputProcessor(int id);
     ~VCMOutputProcessor();
 
-    bool init(woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<BufferManager>, boost::shared_ptr<TaskRunner>);
+    // Implements VideoOutputProcessor.
+    bool init(woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<TaskRunner>);
     void close();
 
-    void updateMaxSlot(int newMaxSlot);
     bool setSendVideoCodec(const webrtc::VideoCodec&);
     void onRequestIFrame();
     uint32_t sendSSRC();
+    // It's not accepting external encoded frame.
+    int sendFrame(char* payload, int len) { return -1; }
+    erizo::FeedbackSink* feedbackSink() { return this; }
 
-    void layoutTimerHandler(const boost::system::error_code&);
+    // Implements FeedbackSink.
+    int deliverFeedback(char* buf, int len);
+
+    // Implements ConfigListener.
+    void onConfigChanged();
 
     /**
      * Implements InputFrameCallback.
+     */
+    void activateInput(int index);
+    void deActivateInput(int index);
+    /**
      * This should be called whenever a new frame is decoded from
      * one particular publisher with the index.
      */
-    virtual void handleInputFrame(webrtc::I420VideoFrame&, int index);
-
-    // Implements the FeedbackSink interfaces
-    virtual int deliverFeedback(char* buf, int len);
-
-    // Implements the ConfigListener interfaces
-    void onConfigChanged();
+    void handleInputFrame(webrtc::I420VideoFrame&, int index);
 
 private:
+    void layoutTimerHandler(const boost::system::error_code&);
     bool layoutFrames();
+    void updateMaxSlot(int newMaxSlot);
 
-    int m_id;
     std::atomic<bool> m_isClosing;
 
     int m_maxSlot;

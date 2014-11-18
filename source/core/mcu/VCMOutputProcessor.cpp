@@ -24,7 +24,6 @@
 
 #include <boost/bind.hpp>
 #include <webrtc/common.h>
-#include <webrtc/modules/rtp_rtcp/interface/rtp_rtcp.h>
 #include <webrtc/system_wrappers/interface/tick_util.h>
 
 using namespace webrtc;
@@ -35,7 +34,7 @@ namespace mcu {
 DEFINE_LOGGER(VCMOutputProcessor, "mcu.VCMOutputProcessor");
 
 VCMOutputProcessor::VCMOutputProcessor(int id)
-    : m_id(id)
+    : VideoOutputProcessor(id)
     , m_isClosing(false)
     , m_maxSlot(0)
     , m_videoCompositor(nullptr)
@@ -51,10 +50,10 @@ VCMOutputProcessor::~VCMOutputProcessor()
     close();
 }
 
-bool VCMOutputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<BufferManager> bufferManager, boost::shared_ptr<TaskRunner> taskRunner)
+bool VCMOutputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<TaskRunner> taskRunner)
 {
+    m_bufferManager.reset(new BufferManager());
     m_taskRunner = taskRunner;
-    m_bufferManager = bufferManager;
     m_videoTransport.reset(transport);
 
     m_bitrateController.reset(webrtc::BitrateController::CreateBitrateController(Clock::GetRealTimeClock(), true));
@@ -122,25 +121,9 @@ void VCMOutputProcessor::close()
 {
     m_isClosing = true;
     Config::get()->unregisterListener(this);
+    m_taskRunner->DeRegisterModule(m_rtpRtcp.get());
     m_timer->cancel();
     m_encodingThread->join();
-}
-
-// A return value of false is interpreted as that the function has no
-// more work to do and that the thread can be released.
-void VCMOutputProcessor::layoutTimerHandler(const boost::system::error_code& ec)
-{
-    if (!ec) {
-        layoutFrames();
-        if (!m_isClosing) {
-            // FIXME: Get rid of the hard coded timer interval here.
-            // Also it may need to be associated with the target fps configured in VPM.
-            m_timer->expires_at(m_timer->expires_at() + boost::posix_time::milliseconds(33));
-            m_timer->async_wait(boost::bind(&VCMOutputProcessor::layoutTimerHandler, this, boost::asio::placeholders::error));
-        }
-    } else {
-        ELOG_INFO("VCMOutputProcessor timer error: %s", ec.message().c_str());
-    }
 }
 
 bool VCMOutputProcessor::setSendVideoCodec(const VideoCodec& videoCodec)
@@ -176,22 +159,16 @@ uint32_t VCMOutputProcessor::sendSSRC()
     return m_rtpRtcp->SSRC();
 }
 
-void VCMOutputProcessor::updateMaxSlot(int newMaxSlot)
+void VCMOutputProcessor::activateInput(int index)
 {
-    m_maxSlot = newMaxSlot;
-    VideoLayout layout;
-    m_videoCompositor->getLayout(layout);
-    if (newMaxSlot <= 1)
-        layout.divFactor = 1;
-    else if (newMaxSlot <= 4)
-        layout.divFactor = 2;
-    else if (newMaxSlot <= 9)
-        layout.divFactor = 3;
-    else
-        layout.divFactor = 4;
-    m_videoCompositor->config(layout);
+    m_bufferManager->setActive(index, true);
+    updateMaxSlot(m_bufferManager->activeSlots());
+}
 
-    ELOG_DEBUG("maxSlot is changed to %d", m_maxSlot);
+void VCMOutputProcessor::deActivateInput(int index)
+{
+    m_bufferManager->setActive(index, false);
+    updateMaxSlot(m_bufferManager->activeSlots());
 }
 
 /**
@@ -214,12 +191,47 @@ int VCMOutputProcessor::deliverFeedback(char* buf, int len)
     return m_rtpRtcp->IncomingRtcpPacket(reinterpret_cast<uint8_t*>(buf), len) == -1 ? 0 : len;
 }
 
+// A return value of false is interpreted as that the function has no
+// more work to do and that the thread can be released.
+void VCMOutputProcessor::layoutTimerHandler(const boost::system::error_code& ec)
+{
+    if (!ec) {
+        layoutFrames();
+        if (!m_isClosing) {
+            // FIXME: Get rid of the hard coded timer interval here.
+            // Also it may need to be associated with the target fps configured in VPM.
+            m_timer->expires_at(m_timer->expires_at() + boost::posix_time::milliseconds(33));
+            m_timer->async_wait(boost::bind(&VCMOutputProcessor::layoutTimerHandler, this, boost::asio::placeholders::error));
+        }
+    } else {
+        ELOG_INFO("VCMOutputProcessor timer error: %s", ec.message().c_str());
+    }
+}
+
 bool VCMOutputProcessor::layoutFrames()
 {
     I420VideoFrame* composedFrame = m_videoCompositor->layout(m_maxSlot);
     composedFrame->set_render_time_ms(TickTime::MillisecondTimestamp() - m_ntpDelta);
     m_videoEncoder->DeliverFrame(m_id, composedFrame);
     return true;
+}
+
+void VCMOutputProcessor::updateMaxSlot(int newMaxSlot)
+{
+    m_maxSlot = newMaxSlot;
+    VideoLayout layout;
+    m_videoCompositor->getLayout(layout);
+    if (newMaxSlot <= 1)
+        layout.divFactor = 1;
+    else if (newMaxSlot <= 4)
+        layout.divFactor = 2;
+    else if (newMaxSlot <= 9)
+        layout.divFactor = 3;
+    else
+        layout.divFactor = 4;
+    m_videoCompositor->config(layout);
+
+    ELOG_DEBUG("maxSlot is changed to %d", m_maxSlot);
 }
 
 }

@@ -77,6 +77,7 @@ public:
 
     void setActive(int slot, bool active) { m_activeSlots.set(slot, active); }
     bool isActive(int slot) { return m_activeSlots.test(slot); }
+    uint32_t activeSlots() { return m_activeSlots.count(); }
 
 private:
     /* only works for 64bit */
