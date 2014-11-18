@@ -105,4 +105,10 @@ int ExternalVideoProcessor::deliverFeedback(char* buf, int len)
     return m_rtpRtcp->IncomingRtcpPacket(reinterpret_cast<uint8_t*>(buf), len) == -1 ? 0 : len;
 }
 
+void ExternalVideoProcessor::OnReceivedIntraFrameRequest(uint32_t ssrc)
+{
+    // TODO: Send I-Frame request to the encoder.
+    // May need to valid the ssrc.
+}
+
 }
