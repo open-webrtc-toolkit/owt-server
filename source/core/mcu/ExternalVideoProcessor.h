@@ -36,7 +36,10 @@ class TaskRunner;
  * send them out via the given WoogeenTransport. It also gives the feedback
  * to the encoder based on the feedback from the remote.
  */
-class ExternalVideoProcessor : public VideoOutputProcessor, public erizo::FeedbackSink, public ConfigListener {
+class ExternalVideoProcessor : public VideoOutputProcessor,
+                               public erizo::FeedbackSink,
+                               public ConfigListener,
+                               public webrtc::RtcpIntraFrameObserver {
     DECLARE_LOGGER();
 
 public:
@@ -58,6 +61,12 @@ public:
 
     // Implements ConfigListener.
     void onConfigChanged();
+
+    // Implements webrtc::RtcpIntraFrameObserver.
+    void OnReceivedIntraFrameRequest(uint32_t ssrc);
+    void OnReceivedSLI(uint32_t ssrc, uint8_t picture_id) { }
+    void OnReceivedRPSI(uint32_t ssrc, uint64_t picture_id) { }
+    void OnLocalSsrcChanged(uint32_t old_ssrc, uint32_t new_ssrc) { }
 
 private:
     boost::scoped_ptr<webrtc::RtpRtcp> m_rtpRtcp;
