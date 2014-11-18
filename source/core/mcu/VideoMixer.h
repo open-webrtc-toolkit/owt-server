@@ -35,10 +35,10 @@ class VoEVideoSync;
 
 namespace mcu {
 
-class BufferManager;
+class InputFrameCallback;
 class TaskRunner;
 class VCMInputProcessor;
-class VCMOutputProcessor;
+class VideoOutputProcessor;
 struct Layout;
 
 static const int MIXED_VIDEO_STREAM_ID = 2;
@@ -91,9 +91,9 @@ private:
     std::map<uint32_t, boost::shared_ptr<VCMInputProcessor>> m_sinksForSources;
     std::vector<uint32_t> m_sourceSlotMap;    // each source will be allocated one index
 
-    boost::shared_ptr<BufferManager> m_bufferManager;
     boost::shared_ptr<TaskRunner> m_taskRunner;
-    boost::shared_ptr<VCMOutputProcessor> m_vcmOutputProcessor;
+    boost::shared_ptr<VideoOutputProcessor> m_videoOutputProcessor;
+    boost::shared_ptr<InputFrameCallback> m_inputFrameCallback;
 };
 
 inline int VideoMixer::assignSlot(uint32_t source)

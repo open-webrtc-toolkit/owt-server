@@ -57,11 +57,11 @@ bool VideoMixer::init()
     Trace::SetTraceFile("webrtc.trace.txt");
     Trace::set_level_filter(webrtc::kTraceAll);
 
-    m_bufferManager.reset(new BufferManager());
     m_taskRunner.reset(new TaskRunner());
 
-    m_vcmOutputProcessor.reset(new VCMOutputProcessor(MIXED_VIDEO_STREAM_ID));
-    m_vcmOutputProcessor->init(new WoogeenTransport<erizo::VIDEO>(m_outputReceiver, nullptr), m_bufferManager, m_taskRunner);
+    m_videoOutputProcessor.reset(new VCMOutputProcessor(MIXED_VIDEO_STREAM_ID));
+    m_videoOutputProcessor->init(new WoogeenTransport<erizo::VIDEO>(m_outputReceiver, nullptr), m_taskRunner);
+    m_inputFrameCallback = boost::dynamic_pointer_cast<InputFrameCallback>(m_videoOutputProcessor);
 
     m_taskRunner->Start();
 
@@ -107,7 +107,11 @@ int VideoMixer::deliverVideoData(char* buf, int len)
 
 int VideoMixer::deliverFeedback(char* buf, int len)
 {
-    return m_vcmOutputProcessor->deliverFeedback(buf, len);
+    FeedbackSink* feedbackSink = m_videoOutputProcessor->feedbackSink();
+    if (feedbackSink)
+        return feedbackSink->deliverFeedback(buf, len);
+
+    return 0;
 }
 
 /**
@@ -117,7 +121,7 @@ int32_t VideoMixer::addSource(uint32_t from, bool isAudio, FeedbackSink* feedbac
 {
     assert(!isAudio);
 
-    if (m_participants == BufferManager::SLOT_SIZE) {
+    if (m_participants++ == BufferManager::SLOT_SIZE) {
         ELOG_WARN("Exceeding maximum number of sources (%u), ignoring the addSource request", BufferManager::SLOT_SIZE);
         return -1;
     }
@@ -127,13 +131,11 @@ int32_t VideoMixer::addSource(uint32_t from, bool isAudio, FeedbackSink* feedbac
     if (it == m_sinksForSources.end() || !it->second) {
         int index = assignSlot(from);
         ELOG_DEBUG("addSource - assigned slot is %d", index);
-        m_bufferManager->setActive(index, true);
-        m_vcmOutputProcessor->updateMaxSlot(++m_participants);
 
         VCMInputProcessor* videoInputProcessor(new VCMInputProcessor(index));
         videoInputProcessor->init(new WoogeenTransport<erizo::VIDEO>(nullptr, feedback),
-        							m_vcmOutputProcessor,
-        							m_taskRunner);
+                                  m_inputFrameCallback,
+                                  m_taskRunner);
 
         boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
         m_sinksForSources[from].reset(videoInputProcessor);
@@ -168,8 +170,7 @@ int32_t VideoMixer::removeSource(uint32_t from, bool isAudio)
         int index = getSlot(from);
         assert(index >= 0);
         m_sourceSlotMap[index] = 0;
-        m_bufferManager->setActive(index, false);
-        m_vcmOutputProcessor->updateMaxSlot(--m_participants);
+        --m_participants;
         return 0;
     }
 
@@ -179,12 +180,12 @@ int32_t VideoMixer::removeSource(uint32_t from, bool isAudio)
 void VideoMixer::onRequestIFrame()
 {
     ELOG_DEBUG("onRequestIFrame");
-    m_vcmOutputProcessor->onRequestIFrame();
+    m_videoOutputProcessor->onRequestIFrame();
 }
 
 uint32_t VideoMixer::sendSSRC()
 {
-    return m_vcmOutputProcessor->sendSSRC();
+    return m_videoOutputProcessor->sendSSRC();
 }
 
 void VideoMixer::closeAll()
@@ -200,11 +201,9 @@ void VideoMixer::closeAll()
         int index = getSlot(source);
         assert(index >= 0);
         m_sourceSlotMap[index] = 0;
-        m_bufferManager->setActive(index, false);
     }
     m_sinksForSources.clear();
     m_participants = 0;
-    m_vcmOutputProcessor->updateMaxSlot(0);
 
     ELOG_DEBUG("Closed all media in this Mixer");
     Trace::ReturnTrace();

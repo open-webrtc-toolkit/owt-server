@@ -38,6 +38,9 @@ VCMInputProcessor::VCMInputProcessor(int index)
 
 VCMInputProcessor::~VCMInputProcessor()
 {
+    if (m_frameReadyCB)
+        m_frameReadyCB->deActivateInput(m_index);
+
     m_videoReceiver->StopReceive();
     m_recorder->Stop();
 
@@ -58,6 +61,9 @@ bool VCMInputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* trans
     m_videoTransport.reset(transport);
     m_frameReadyCB = frameReadyCB;
     m_taskRunner = taskRunner;
+
+    if (m_frameReadyCB)
+        m_frameReadyCB->activateInput(m_index);
 
     m_vcm = VideoCodingModule::Create(m_index);
     if (m_vcm) {
@@ -132,7 +138,8 @@ void VCMInputProcessor::bindAudioForSync(int32_t voiceChannelId, VoEVideoSync* v
 int32_t VCMInputProcessor::FrameToRender(I420VideoFrame& videoFrame)
 {
     ELOG_DEBUG("Got decoded frame from %d\n", m_index);
-    m_frameReadyCB->handleInputFrame(videoFrame, m_index);
+    if (m_frameReadyCB)
+        m_frameReadyCB->handleInputFrame(videoFrame, m_index);
     return 0;
 }
 
