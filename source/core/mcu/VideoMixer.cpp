@@ -99,7 +99,6 @@ int VideoMixer::deliverVideoData(char* buf, int len)
     if (it != m_sinksForSources.end() && it->second)
         return it->second->deliverVideoData(buf, len);
 
-    // TODO: Add a flag to control whether to add source on demand.
     if (m_addSourceOnDemand) {
         lock.unlock();
         addSource(id, false, nullptr);
@@ -124,7 +123,7 @@ int32_t VideoMixer::addSource(uint32_t from, bool isAudio, FeedbackSink* feedbac
 {
     assert(!isAudio);
 
-    if (m_participants++ == BufferManager::SLOT_SIZE) {
+    if (m_participants == BufferManager::SLOT_SIZE) {
         ELOG_WARN("Exceeding maximum number of sources (%u), ignoring the addSource request", BufferManager::SLOT_SIZE);
         return -1;
     }
@@ -142,6 +141,7 @@ int32_t VideoMixer::addSource(uint32_t from, bool isAudio, FeedbackSink* feedbac
 
         boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
         m_sinksForSources[from].reset(videoInputProcessor);
+        ++m_participants;
         return 0;
     }
 
