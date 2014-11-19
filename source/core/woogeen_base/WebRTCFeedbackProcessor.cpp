@@ -210,8 +210,7 @@ void WebRTCFeedbackProcessor::handleReceiverReport(RTCPHeader* chead, uint32_t r
                 report->getDLSR());
             reportBlocks.push_back(reportBlock);
         }
-        // TODO: We may remove updatePacketLoss later if we find another approach to
-        // getting the average aggregated packet loss information needed by ooVoo.
+        // TODO: We may remove updatePacketLoss later.
         updatePacketLoss(report);
         blockOffset += sizeof(ReportBlock);
     }
