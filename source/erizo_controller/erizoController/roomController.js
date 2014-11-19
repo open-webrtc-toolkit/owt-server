@@ -22,7 +22,7 @@ exports.RoomController = function (spec) {
 
     var rpc = spec.rpc;
 
-    var KEELALIVE_INTERVAL = 5*1000;
+    var KEEPLALIVE_INTERVAL = 5*1000;
 
     var eventListeners = [];
 
@@ -38,13 +38,13 @@ exports.RoomController = function (spec) {
     };
 
     var sendKeepAlive = function() {
-        for (var publisher_id in erizos) {
+        for (var publisher_id in erizos) {º
             var erizo_id = erizos[publisher_id];
             rpc.callRpc(getErizoQueue(publisher_id), "keepAlive", [], {callback: callbackFor(erizo_id, publisher_id)});
         }
     };
 
-    var keepAliveLoop = setInterval(sendKeepAlive, KEELALIVE_INTERVAL);
+    var keepAliveLoop = setInterval(sendKeepAlive, KEEPLALIVE_INTERVAL);
 
     var createErizoJS = function(publisher_id, callback) {
     	rpc.callRpc("ErizoAgent", "createErizoJS", [publisher_id], {callback: function(erizo_id) {
