@@ -68,6 +68,7 @@ install_webrtc(){
   patch -p0 < ./webrtc-3.52-build.patch
   patch -p0 < ./webrtc-3.52-source.patch
   patch -p0 < ./opus-build.patch
+  patch -p1 < ./webrtc-3.52-h264.patch
   ./build.sh
   cd $CURRENT_DIR
 }

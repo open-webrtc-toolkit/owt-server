@@ -18,6 +18,7 @@ set(CMAKE_CXX_FLAGS "-Wall -std=c++0x -fvisibility=hidden -fvisibility-inlines-h
 set(LIB_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/../../../build/libdeps/build/lib/")
 set(UV_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/../../../third_party/libuv-0.10.26")
 set(WEBRTC_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/../../../third_party/webrtc")
+set(H264_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/../../../third_party/openh264")
 
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}" "${LIB_DIRS}../include/" "${UV_DIRS}/include/" "${WEBRTC_DIRS}/src")
 
@@ -42,4 +43,9 @@ test_lib(${WEBRTC})
 find_library(VPX vpx)
 test_lib(${VPX})
 
-target_link_libraries(mcu ${EXTRA_LIBS} ${WEBRTC} ${VPX})
+# H264
+find_library(H264 openh264 HINTS "${H264_DIRS}")
+test_lib(${H264})
+
+
+target_link_libraries(mcu ${EXTRA_LIBS} ${WEBRTC} ${VPX} ${H264})
