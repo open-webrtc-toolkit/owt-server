@@ -95,16 +95,14 @@ bool VCMInputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* trans
 
     // Register codec.
     VideoCodec video_codec;
-    if (VideoCodingModule::Codec(webrtc::kVideoCodecVP8, &video_codec) != VCM_OK)
-        return false;
+    if (VideoCodingModule::Codec(webrtc::kVideoCodecVP8, &video_codec) != VCM_OK
+    	|| m_vcm->RegisterReceiveCodec(&video_codec, 1, true) != VCM_OK	)
+        assert(!"register VP8 decoder failed");
+    m_videoReceiver->SetReceiveCodec(video_codec);
 
-    if (video_codec.codecType != kVideoCodecRED &&
-        video_codec.codecType != kVideoCodecULPFEC) {
-        // Register codec type with VCM, but do not register RED or ULPFEC.
-        if (m_vcm->RegisterReceiveCodec(&video_codec, 1, true) != VCM_OK)
-            return false;
-    }
-
+    if (VideoCodingModule::Codec(webrtc::kVideoCodecH264, &video_codec) != VCM_OK
+    	|| m_vcm->RegisterReceiveCodec(&video_codec, 1, true) != VCM_OK	)
+        assert(!"register H264 decoder failed");
     m_videoReceiver->SetReceiveCodec(video_codec);
 
     // Enable NACK.
@@ -119,7 +117,7 @@ bool VCMInputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* trans
 
     m_avSync.reset(new ViESyncModule(m_vcm, m_index));
     m_recorder.reset(new DebugRecorder());
-    m_recorder->Start("webrtc.frame.i420");
+//    m_recorder->Start("webrtc.frame.i420");
 
     m_taskRunner->RegisterModule(m_vcm);
     m_taskRunner->RegisterModule(m_rtpRtcp.get());

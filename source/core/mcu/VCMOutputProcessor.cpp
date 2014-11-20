@@ -25,6 +25,7 @@
 #include <boost/bind.hpp>
 #include <webrtc/common.h>
 #include <webrtc/system_wrappers/interface/tick_util.h>
+#include <webrtc/modules/video_coding/main/interface/video_coding.h>
 
 using namespace webrtc;
 using namespace erizo;
@@ -43,6 +44,8 @@ VCMOutputProcessor::VCMOutputProcessor(int id)
     m_ntpDelta = Clock::GetRealTimeClock()->CurrentNtpInMilliseconds() -
                                   TickTime::MillisecondTimestamp();
     m_recorder.reset(new DebugRecorder());
+    m_mockFrame.reset(new webrtc::I420VideoFrame());
+    m_mockFrame->CreateEmptyFrame(640, 480, 640, 640/2, 640/2);
 }
 
 VCMOutputProcessor::~VCMOutputProcessor()
@@ -80,6 +83,15 @@ bool VCMOutputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* tran
     m_videoCompositor->config(layout);
 
     VideoCodec videoCodec;
+    //TODO: enable VP8/H264 in one room later
+#if 0
+    if (VideoCodingModule::Codec(webrtc::kVideoCodecH264, &videoCodec) == VCM_OK) {
+       videoCodec.width = VideoSizes[layout.rootsize].width;
+       videoCodec.height = VideoSizes[layout.rootsize].height;
+       if (!setSendVideoCodec(videoCodec))
+           return false;
+    }
+#else
     if (m_videoEncoder->GetEncoder(&videoCodec) == 0) {
         videoCodec.width = VideoSizes[layout.rootsize].width;
         videoCodec.height = VideoSizes[layout.rootsize].height;
@@ -88,6 +100,7 @@ bool VCMOutputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* tran
             return false;
     } else
         assert(false);
+#endif
 
     // Enable FEC.
     // TODO: the parameters should be dynamically adjustable.
@@ -108,8 +121,13 @@ bool VCMOutputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* tran
 
     m_recordStarted = false;
 
+
+
+    m_recorder->Start("webrtc.mixed.frame");
+
     // FIXME: Get rid of the hard coded timer interval here.
     // Also it may need to be associated with the target fps configured in VPM.
+
     m_timer.reset(new boost::asio::deadline_timer(m_ioService, boost::posix_time::milliseconds(33)));
     m_timer->async_wait(boost::bind(&VCMOutputProcessor::layoutTimerHandler, this, boost::asio::placeholders::error));
     m_encodingThread.reset(new boost::thread(boost::bind(&boost::asio::io_service::run, &m_ioService)));
@@ -184,6 +202,10 @@ void VCMOutputProcessor::handleInputFrame(webrtc::I420VideoFrame& frame, int ind
         if (busyFrame)
             m_bufferManager->releaseBuffer(busyFrame);
     }
+    if(m_recordStarted == false) {
+    	m_mockFrame->CopyFrame(frame);
+    	m_recordStarted = true;
+    }
 }
 
 int VCMOutputProcessor::deliverFeedback(char* buf, int len)
@@ -210,9 +232,17 @@ void VCMOutputProcessor::layoutTimerHandler(const boost::system::error_code& ec)
 
 bool VCMOutputProcessor::layoutFrames()
 {
-    I420VideoFrame* composedFrame = m_videoCompositor->layout(m_maxSlot);
+#if 1
+	I420VideoFrame* composedFrame = m_videoCompositor->layout(m_maxSlot);
     composedFrame->set_render_time_ms(TickTime::MillisecondTimestamp() - m_ntpDelta);
+//    if (m_recordStarted)
+//    	m_recorder->Add(*composedFrame);
     m_videoEncoder->DeliverFrame(m_id, composedFrame);
+#else
+    if (m_recordStarted) {
+    	m_videoEncoder->DeliverFrame(m_id, m_mockFrame.get());
+    }
+#endif
     return true;
 }
 

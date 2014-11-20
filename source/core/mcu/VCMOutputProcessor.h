@@ -98,6 +98,7 @@ private:
     boost::scoped_ptr<webrtc::RtpRtcp> m_rtpRtcp;
     boost::scoped_ptr<DebugRecorder> m_recorder;
     bool m_recordStarted;
+    boost::scoped_ptr<webrtc::I420VideoFrame> m_mockFrame;
 
     /*
      * Each incoming channel will store the decoded frame in this array, and the encoding
