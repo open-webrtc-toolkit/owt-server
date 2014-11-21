@@ -1,0 +1,87 @@
+@TEMPLATE encoder_tmpl.c
+Two Pass Encoder
+================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ INTRODUCTION
+This is an example of a two pass encoder loop. It takes an input file in
+YV12 format, passes it through the encoder twice, and writes the compressed
+frames to disk in IVF format. It builds upon the simple_encoder example.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ INTRODUCTION
+
+
+Twopass Variables
+-----------------
+Twopass mode needs to track the current pass number and the buffer of
+statistics packets.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ TWOPASS_VARS
+int                  pass;
+vpx_fixed_buf_t      stats = {0};
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ TWOPASS_VARS
+
+
+Updating The Configuration
+---------------------------------
+In two pass mode, the configuration has to be updated on each pass. The
+statistics buffer is passed on the last pass.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ TWOPASS_LOOP_BEGIN
+for(pass=0; pass<2; pass++) {
+    frame_cnt = 0;
+
+    if(pass == 0)
+        cfg.g_pass = VPX_RC_FIRST_PASS;
+    else {
+        cfg.g_pass              = VPX_RC_LAST_PASS;
+        cfg.rc_twopass_stats_in = stats;
+    }
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ TWOPASS_LOOP_BEGIN
+
+
+Encoding A Frame
+----------------
+Encoding a frame in two pass mode is identical to the simple encoder
+example, except the deadline is set to VPX_DL_BEST_QUALITY to get the
+best quality possible. VPX_DL_GOOD_QUALITY could also be used.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ENCODE_FRAME
+frame_avail = read_frame(infile, &raw);
+if(vpx_codec_encode(&codec, frame_avail? &raw : NULL, frame_cnt,
+                    1, flags, VPX_DL_BEST_QUALITY))
+    die_codec(&codec, "Failed to encode frame");
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ENCODE_FRAME
+
+
+Processing Statistics Packets
+-----------------------------
+Each packet of type `VPX_CODEC_CX_FRAME_PKT` contains the encoded data
+for this frame. We write a IVF frame header, followed by the raw data.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ PROCESS_STATS
+case VPX_CODEC_STATS_PKT:
+    stats.buf = realloc(stats.buf, stats.sz
+                        + pkt->data.twopass_stats.sz);
+    if(!stats.buf)
+        die("Memory reallocation failed.\n");
+    memcpy((char*)stats.buf + stats.sz,
+           pkt->data.twopass_stats.buf,
+           pkt->data.twopass_stats.sz);
+    stats.sz +=  pkt->data.twopass_stats.sz;
+    break;
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ PROCESS_STATS
+
+
+Pass Progress Reporting
+-----------------------------
+It's sometimes helpful to see when each pass completes.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ TWOPASS_LOOP_END
+    printf("Pass %d complete.\n", pass+1);
+    if(vpx_codec_destroy(&codec))
+        die_codec(&codec, "Failed to destroy codec");
+}
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ TWOPASS_LOOP_END
+
+
+Clean-up
+-----------------------------
+Destruction of the encoder instance must be done on each pass. The
+raw image should be destroyed at the end as usual.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ DESTROY
+vpx_img_free(&raw);
+free(stats.buf);
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ DESTROY
