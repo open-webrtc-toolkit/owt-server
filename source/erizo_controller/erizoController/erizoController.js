@@ -581,10 +581,14 @@ var listen = function () {
                                                             sendMsgToRoom(room, 'onRemoveStream', {id: streamId});
                                                             room.controller.removePublisher(streamId);
 
-                                                            var index = socket.streams instanceof Array ? socket.streams.indexOf(streamId) : -1;
-                                                            if (index !== -1) {
-                                                                socket.streams.splice(index, 1);
+                                                            for (var s in room.sockets) {
+                                                                var streams = io.sockets.to(room.sockets[s]).streams;
+                                                                var index = streams instanceof Array ? streams.indexOf(streamId) : -1;
+                                                                if (index !== -1) {
+                                                                    streams.splice(index, 1);
+                                                                }
                                                             }
+
                                                             if (room.streams[streamId]) {
                                                                 delete room.streams[streamId];
                                                             }

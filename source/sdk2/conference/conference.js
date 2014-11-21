@@ -401,7 +401,7 @@ conference.join(token, function(response) {...}, function(error) {...});
           safeCall(onFailure, err || 'connection_error');
         });
 
-        that.socket.on('connection_failed', function() {
+        self.socket.on('connection_failed', function() {
           L.Logger.info("ICE Connection Failed");
           if (that.state !== DISCONNECTED) {
             var disconnectEvt = new Woogeen.StreamEvent({type: 'stream-failed'});
@@ -412,14 +412,14 @@ conference.join(token, function(response) {...}, function(error) {...});
         self.socket.on('signaling_message', function (arg) {
           var stream;
           if (arg.peerId) {
-            stream = that.remoteStreams[arg.peerId];
+            stream = self.remoteStreams[arg.peerId];
           } else {
-            stream = that.localStreams[arg.streamId];
+            stream = self.localStreams[arg.streamId];
           }
 
           console.log('SOCKE SID', arg.mess);
           if (stream) {
-            stream.pc.processSignalingMessage(arg.mess);
+            stream.channel.processSignalingMessage(arg.mess);
           }
         });
       }

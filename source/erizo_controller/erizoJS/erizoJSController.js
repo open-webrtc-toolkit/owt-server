@@ -135,7 +135,7 @@ exports.ErizoJSController = function () {
           }
 
           var localSdp, answer;
-          logger.info("webrtc Addon status" + newStatus + mess);
+          log.info("webrtc Addon status" + newStatus + mess);
 
           if (GLOBAL.config.erizoController.report.session_events) {
             var timeStamp = new Date();
@@ -150,7 +150,7 @@ exports.ErizoJSController = function () {
             callback('callback', {type: 'started'});
 
           } else if (newStatus == CONN_SDP) {
-            logger.debug('Sending SDP', mess);
+            log.debug('Sending SDP', mess);
             callback('callback', {type: 'answer', sdp: mess});
 
           } else if (newStatus == CONN_CANDIDATE) {

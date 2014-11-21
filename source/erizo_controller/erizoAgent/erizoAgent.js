@@ -148,7 +148,7 @@ var fillErizos = function() {
 };
 
 var api = {
-    createErizoJS: function(id, callback) {
+    createErizoJS: function(callback) {
         try {
             var erizo_id = idle_erizos.shift();
             callback("callback", erizo_id);
