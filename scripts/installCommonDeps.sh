@@ -44,6 +44,13 @@ install_openssl(){
   fi
 }
 
+install_openh264(){
+  cd $ROOT/third_party/openh264
+  make clean
+  make
+  cd $CURRENT_DIR
+}
+
 install_libsrtp(){
   cd $ROOT/third_party/srtp
   ./configure --prefix=$PREFIX_DIR
@@ -143,3 +150,11 @@ case $yn in
   [Nn]* ) ;;
   * ) ;;
 esac
+
+read -p "Installing openh264 library? [No/yes]" yn
+case $yn in
+  [Yy]* ) install_openh264;;
+  [Nn]* ) ;;
+  * ) ;;
+esac
+
