@@ -1,0 +1,96 @@
+@TEMPLATE encoder_tmpl.c
+VP8 Set Active and ROI Maps
+===========================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ INTRODUCTION
+This is an example demonstrating how to control the VP8 encoder's
+ROI and Active maps.
+
+ROI (Reigon of Interest) maps are a way for the application to assign
+each macroblock in the image to a region, and then set quantizer and
+filtering parameters on that image.
+
+Active maps are a way for the application to specify on a
+macroblock-by-macroblock basis whether there is any activity in that
+macroblock.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ INTRODUCTION
+
+
+Configuration
+-------------
+An ROI map is set on frame 22. If the width of the image in macroblocks
+is evenly divisble by 4, then the output will appear to have distinct
+columns, where the quantizer, loopfilter, and static threshold differ
+from column to column.
+
+An active map is set on frame 33. If the width of the image in macroblocks
+is evenly divisble by 4, then the output will appear to have distinct
+columns, where one column will have motion and the next will not.
+
+The active map is cleared on frame 44.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  PER_FRAME_CFG
+if(frame_cnt + 1 == 22) {
+    vpx_roi_map_t  roi;
+    int            i;
+
+    roi.rows = cfg.g_h/16;
+    roi.cols = cfg.g_w/16;
+
+    roi.delta_q[0] = 0;
+    roi.delta_q[1] = -2;
+    roi.delta_q[2] = -4;
+    roi.delta_q[3] = -6;
+
+    roi.delta_lf[0] = 0;
+    roi.delta_lf[1] = 1;
+    roi.delta_lf[2] = 2;
+    roi.delta_lf[3] = 3;
+
+    roi.static_threshold[0] = 1500;
+    roi.static_threshold[1] = 1000;
+    roi.static_threshold[2] =  500;
+    roi.static_threshold[3] =    0;
+
+    /* generate an ROI map for example */
+    roi.roi_map = malloc(roi.rows * roi.cols);
+    for(i=0;i<roi.rows*roi.cols;i++)
+        roi.roi_map[i] = i & 3;
+
+    if(vpx_codec_control(&codec, VP8E_SET_ROI_MAP, &roi))
+        die_codec(&codec, "Failed to set ROI map");
+
+    free(roi.roi_map);
+} else if(frame_cnt + 1 == 33) {
+    vpx_active_map_t  active;
+    int               i;
+
+    active.rows = cfg.g_h/16;
+    active.cols = cfg.g_w/16;
+
+    /* generate active map for example */
+    active.active_map = malloc(active.rows * active.cols);
+    for(i=0;i<active.rows*active.cols;i++)
+        active.active_map[i] = i & 1;
+
+    if(vpx_codec_control(&codec, VP8E_SET_ACTIVEMAP, &active))
+        die_codec(&codec, "Failed to set active map");
+
+    free(active.active_map);
+} else if(frame_cnt + 1 == 44) {
+    vpx_active_map_t  active;
+
+    active.rows = cfg.g_h/16;
+    active.cols = cfg.g_w/16;
+
+    /* pass in null map to disable active_map*/
+    active.active_map = NULL;
+
+    if(vpx_codec_control(&codec, VP8E_SET_ACTIVEMAP, &active))
+        die_codec(&codec, "Failed to set active map");
+}
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  PER_FRAME_CFG
+
+
+Observing The Effects
+---------------------
+Use the `simple_decoder` example to decode this sample, and observe
+the change in the image at frames 22, 33, and 44.

@@ -1,0 +1,74 @@
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ENC_INCLUDES
+#define VPX_CODEC_DISABLE_COMPAT 1
+#include "vpx/vpx_encoder.h"
+#include "vpx/vp9cx.h"
+#define interface (vpx_codec_vp8_cx())
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ENC_INCLUDES
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ DIE_CODEC
+static void die_codec(vpx_codec_ctx_t *ctx, const char *s) {
+    const char *detail = vpx_codec_error_detail(ctx);
+
+    printf("%s: %s\n", s, vpx_codec_error(ctx));
+    if(detail)
+        printf("    %s\n",detail);
+    exit(EXIT_FAILURE);
+}
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ DIE_CODEC
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ USAGE
+if(argc!=5)
+    die("Usage: %s <width> <height> <infile> <outfile>\n", argv[0]);
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ USAGE
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ENC_DEF_CFG
+/* Populate encoder configuration */
+res = vpx_codec_enc_config_default(interface, &cfg, 0);
+if(res) {
+    printf("Failed to get config: %s\n", vpx_codec_err_to_string(res));
+    return EXIT_FAILURE;
+}
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ENC_DEF_CFG
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ENC_SET_CFG
+/* Update the default configuration with our settings */
+cfg.rc_target_bitrate = width * height * cfg.rc_target_bitrate
+                        / cfg.g_w / cfg.g_h;
+cfg.g_w = width;
+cfg.g_h = height;
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ENC_SET_CFG
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ENC_INIT
+/* Initialize codec */
+if(vpx_codec_enc_init(&codec, interface, &cfg, 0))
+    die_codec(&codec, "Failed to initialize encoder");
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ENC_INIT
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ENCODE_FRAME
+frame_avail = read_frame(infile, &raw);
+if(vpx_codec_encode(&codec, frame_avail? &raw : NULL, frame_cnt,
+                    1, flags, VPX_DL_REALTIME))
+    die_codec(&codec, "Failed to encode frame");
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ENCODE_FRAME
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ PROCESS_FRAME
+case VPX_CODEC_CX_FRAME_PKT:
+    write_ivf_frame_header(outfile, pkt);
+    (void) fwrite(pkt->data.frame.buf, 1, pkt->data.frame.sz,
+                  outfile);
+    break;
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ PROCESS_FRAME
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ DESTROY
+vpx_img_free(&raw);
+if(vpx_codec_destroy(&codec))
+    die_codec(&codec, "Failed to destroy codec");
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ DESTROY

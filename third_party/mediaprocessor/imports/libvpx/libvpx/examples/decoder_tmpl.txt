@@ -1,0 +1,62 @@
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ DEC_INCLUDES
+#define VPX_CODEC_DISABLE_COMPAT 1
+#include "vpx/vpx_decoder.h"
+#include "vpx/vp9dx.h"
+#define interface (vpx_codec_vp8_dx())
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ DEC_INCLUDES
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ DIE_CODEC
+static void die_codec(vpx_codec_ctx_t *ctx, const char *s) {
+    const char *detail = vpx_codec_error_detail(ctx);
+
+    printf("%s: %s\n", s, vpx_codec_error(ctx));
+    if(detail)
+        printf("    %s\n",detail);
+    exit(EXIT_FAILURE);
+}
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ DIE_CODEC
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ USAGE
+if(argc!=3)
+    die("Usage: %s <infile> <outfile>\n", argv[0]);
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ USAGE
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ DEC_INIT
+/* Initialize codec */
+if(vpx_codec_dec_init(&codec, interface, NULL, flags))
+    die_codec(&codec, "Failed to initialize decoder");
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ DEC_INIT
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ DECODE
+/* Decode the frame */
+if(vpx_codec_decode(&codec, frame, frame_sz, NULL, 0))
+    die_codec(&codec, "Failed to decode frame");
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ DECODE
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ GET_FRAME
+while((img = vpx_codec_get_frame(&codec, &iter))) {
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ GET_FRAME
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ PROCESS_DX
+for(plane=0; plane < 3; plane++) {
+    unsigned char *buf =img->planes[plane];
+
+    for(y=0; y < (plane ? (img->d_h + 1) >> 1 : img->d_h); y++) {
+        (void) fwrite(buf, 1, (plane ? (img->d_w + 1) >> 1 : img->d_w),
+                      outfile);
+        buf += img->stride[plane];
+    }
+}
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ PROCESS_DX
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ DESTROY
+if(vpx_codec_destroy(&codec))
+    die_codec(&codec, "Failed to destroy codec");
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ DESTROY

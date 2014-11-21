@@ -1,0 +1,25 @@
+@TEMPLATE encoder_tmpl.c
+Error Resiliency Features
+=========================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ INTRODUCTION
+This is an example demonstrating how to enable the error resiliency
+features of the codec.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ INTRODUCTION
+
+
+Configuration
+-------------
+Error resiliency is controlled by the g_error_resilient member of the
+configuration structure.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  ENC_SET_CFG2
+
+/* Enable error resilient mode */
+cfg.g_error_resilient = 1;
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ENC_SET_CFG2
+
+
+Observing The Effects
+---------------------
+Use the `decode_with_drops` example to decode with frames 5-10 dropped.
+Compare the output for a file encoded with this example versus one
+encoded with the `simple_encoder` example.
