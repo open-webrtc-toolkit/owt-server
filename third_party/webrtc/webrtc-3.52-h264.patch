@@ -1407,7 +1407,7 @@ index 0000000..cd5e055
 +
 +{
 +   'variables' : {	
-+      'openh264_dir%': '<(DEPTH)/../../openh264/openh264-openh264v1.2',
++      'openh264_dir%': '<(DEPTH)/../../openh264',
 +      'libav_dir%': '<(DEPTH)/../../../build/libdeps/libav-9.13',
 +   },         
 +  'includes': [
@@ -1444,7 +1444,7 @@ index 0000000..cd5e055
 +      'link_settings': {
 +        'libraries': [
 +          '-L<(openh264_dir)',
-+          '-lopenh264-1.2.0-linux64',
++          '-lopenh264',
 +        ],
 +      },
 +      'sources': [
