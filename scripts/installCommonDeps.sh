@@ -47,7 +47,7 @@ install_openssl(){
 install_openh264(){
   cd $ROOT/third_party/openh264
   make clean
-  make
+  make ENABLE64BIT=Yes
   cd $CURRENT_DIR
 }
 
@@ -63,7 +63,7 @@ install_libsrtp(){
 
 install_webrtc(){
   cd $ROOT/third_party/webrtc
-  git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
+  #git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
   PATH=$ROOT/third_party/webrtc/depot_tools:$PATH
   if [ -d src ]; then
     rm -rf src
