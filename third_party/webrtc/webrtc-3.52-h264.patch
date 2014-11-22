@@ -2631,7 +2631,7 @@ index 1cb60d3..4d0a99e 100644
 +	  }
 +
 +	  // The insert operation invalidates the iterator |rit|.
-+	  PacketIterator packet_list_it = packets_.insert(rit.base(), packet);
++	  packet_list_it = packets_.insert(rit.base(), packet);
    }
 -
 -  // The insert operation invalidates the iterator |rit|.
