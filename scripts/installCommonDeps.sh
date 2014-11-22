@@ -63,7 +63,7 @@ install_libsrtp(){
 
 install_webrtc(){
   cd $ROOT/third_party/webrtc
-  #git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
+  git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
   PATH=$ROOT/third_party/webrtc/depot_tools:$PATH
   if [ -d src ]; then
     rm -rf src

@@ -1,6 +1,6 @@
 #ifndef VERSION_H
 #define VERSION_H
 
-#define VERSION_NUMBER "889d002+M"
+#define VERSION_NUMBER "aaaca78"
 
 #endif // VERSION_H
