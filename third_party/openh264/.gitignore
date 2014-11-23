@@ -1,3 +1,6 @@
+# Generated source files
+codec/common/inc/version.h
+
 # Object files
 *.o
 *.obj
