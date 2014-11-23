@@ -83,7 +83,7 @@ bool VCMOutputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* tran
     m_videoCompositor->config(layout);
 
     VideoCodec videoCodec;
-    //TODO: enable VP8/H264 in one room later
+    // TODO: enable VP8/H264 in one room later
 #if 0
     if (VideoCodingModule::Codec(webrtc::kVideoCodecH264, &videoCodec) == VCM_OK) {
        videoCodec.width = VideoSizes[layout.rootsize].width;
@@ -202,9 +202,9 @@ void VCMOutputProcessor::handleInputFrame(webrtc::I420VideoFrame& frame, int ind
         if (busyFrame)
             m_bufferManager->releaseBuffer(busyFrame);
     }
-    if(m_recordStarted == false) {
-    	m_mockFrame->CopyFrame(frame);
-    	m_recordStarted = true;
+    if (m_recordStarted == false) {
+        m_mockFrame->CopyFrame(frame);
+        m_recordStarted = true;
     }
 }
 
@@ -233,15 +233,12 @@ void VCMOutputProcessor::layoutTimerHandler(const boost::system::error_code& ec)
 bool VCMOutputProcessor::layoutFrames()
 {
 #if 1
-	I420VideoFrame* composedFrame = m_videoCompositor->layout(m_maxSlot);
+    I420VideoFrame* composedFrame = m_videoCompositor->layout(m_maxSlot);
     composedFrame->set_render_time_ms(TickTime::MillisecondTimestamp() - m_ntpDelta);
-//    if (m_recordStarted)
-//    	m_recorder->Add(*composedFrame);
     m_videoEncoder->DeliverFrame(m_id, composedFrame);
 #else
-    if (m_recordStarted) {
-    	m_videoEncoder->DeliverFrame(m_id, m_mockFrame.get());
-    }
+    if (m_recordStarted)
+        m_videoEncoder->DeliverFrame(m_id, m_mockFrame.get());
 #endif
     return true;
 }
