@@ -48,8 +48,7 @@ bool ExternalVideoProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* 
     configuration.id = m_id;
     configuration.outgoing_transport = transport;
     configuration.audio = false;  // Video.
-    // TODO: Implement RtcpIntraFrameObserver interface and provide it to the rtp_rtcp module.
-    configuration.intra_frame_callback = nullptr;
+    configuration.intra_frame_callback = this;
     // TODO: Add bitrate observation and control later.
     configuration.bandwidth_callback = nullptr;
     m_rtpRtcp.reset(RtpRtcp::CreateRtpRtcp(configuration));
