@@ -24,7 +24,7 @@ exports.RoomController = function (spec) {
     var roomId = spec.id;
 
     var KEEPALIVE_INTERVAL = 5*1000;
-    var TIMEOUT_LIMIT = 0;
+    var TIMEOUT_LIMIT = 2;
 
     var eventListeners = [];
 
