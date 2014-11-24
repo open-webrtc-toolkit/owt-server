@@ -9,7 +9,7 @@ var config = require('./../../etc/woogeen_config');
 GLOBAL.config = config || {};
 GLOBAL.config.erizoAgent = GLOBAL.config.erizoAgent || {};
 GLOBAL.config.erizoAgent.maxProcesses = GLOBAL.config.erizoAgent.maxProcesses || 1;
-GLOBAL.config.erizoAgent.prerunProcesses = GLOBAL.config.erizoAgent.prerunProcesses || 1;
+GLOBAL.config.erizoAgent.prerunProcesses = GLOBAL.config.erizoAgent.prerunProcesses === undefined ? 1 : GLOBAL.config.erizoAgent.prerunProcesses;
 
 // Parse command line arguments
 var getopt = new Getopt([
@@ -110,7 +110,6 @@ var launchErizoJS = function() {
         var index2 = erizos.indexOf(id);
         if (index > -1) {
             idle_erizos.splice(index, 1);
-            launchErizoJS();
         } else if (index2 > -1) {
             erizos.splice(index2, 1);
         }
@@ -142,27 +141,39 @@ var dropErizoJS = function(erizo_id, callback) {
 };
 
 var fillErizos = function() {
-    for (var i = idle_erizos.length; i < GLOBAL.config.erizoAgent.prerunProcesses; i++) {
-        launchErizoJS();
+    if (erizos.length + idle_erizos.length < GLOBAL.config.erizoAgent.maxProcesses) {
+        if (idle_erizos.length < GLOBAL.config.erizoAgent.prerunProcesses) {
+            launchErizoJS();
+            fillErizos();
+        }
     }
+};
+
+var getErizo = function () {
+
+    var erizo_id = idle_erizos.shift();
+
+    if (!erizo_id) {
+        if (erizos.length < GLOBAL.config.erizoAgent.maxProcesses) {
+            launchErizoJS();
+            return getErizo();
+        } else {
+            erizo_id = erizos.shift();
+        }
+    }
+
+    return erizo_id;
 };
 
 var api = {
     createErizoJS: function(callback) {
         try {
-            var erizo_id = idle_erizos.shift();
+            var erizo_id = getErizo();
             callback("callback", erizo_id);
 
-            // We re-use Erizos
-            if ((erizos.length + idle_erizos.length + 1) >= GLOBAL.config.erizoAgent.maxProcesses) {
-                idle_erizos.push(erizo_id);
-            } else {
-                erizos.push(erizo_id);
-            }
-
-            // We launch more processes
+            erizos.push(erizo_id);
             fillErizos();
-            
+
         } catch (error) {
             console.log("Error in ErizoAgent:", error);
         }
