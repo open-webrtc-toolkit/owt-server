@@ -44,13 +44,17 @@ bool ExternalVideoProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* 
     m_taskRunner = taskRunner;
     m_videoTransport.reset(transport);
 
+    m_bitrateController.reset(webrtc::BitrateController::CreateBitrateController(Clock::GetRealTimeClock(), true));
+    m_bandwidthObserver.reset(m_bitrateController->CreateRtcpBandwidthObserver());
+    // FIXME: Provide the correct bitrate settings (start, min and max bitrates).
+    m_bitrateController->SetBitrateObserver(this, 300 * 1000, 0, 0);
+
     RtpRtcp::Configuration configuration;
     configuration.id = m_id;
     configuration.outgoing_transport = transport;
     configuration.audio = false;  // Video.
     configuration.intra_frame_callback = this;
-    // TODO: Add bitrate observation and control later.
-    configuration.bandwidth_callback = nullptr;
+    configuration.bandwidth_callback = m_bandwidthObserver.get();
     m_rtpRtcp.reset(RtpRtcp::CreateRtpRtcp(configuration));
 
     // Enable FEC.
@@ -68,6 +72,8 @@ bool ExternalVideoProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* 
 
 void ExternalVideoProcessor::close()
 {
+    if (m_bitrateController)
+        m_bitrateController->RemoveBitrateObserver(this);
     Config::get()->unregisterListener(this);
     m_taskRunner->DeRegisterModule(m_rtpRtcp.get());
 }
@@ -107,7 +113,12 @@ int ExternalVideoProcessor::deliverFeedback(char* buf, int len)
 void ExternalVideoProcessor::OnReceivedIntraFrameRequest(uint32_t ssrc)
 {
     // TODO: Send I-Frame request to the encoder.
-    // May need to valid the ssrc.
+    // May need to validate the ssrc.
+}
+
+void ExternalVideoProcessor::OnNetworkChanged(const uint32_t target_bitrate, const uint8_t fraction_loss, const uint32_t rtt)
+{
+    // TODO: Send the bitrate adjustment request to the encoder.
 }
 
 }
