@@ -25,6 +25,7 @@
 #include "VideoOutputProcessor.h"
 
 #include <logger.h>
+#include <webrtc/modules/bitrate_controller/include/bitrate_controller.h>
 #include <webrtc/modules/rtp_rtcp/interface/rtp_rtcp.h>
 
 namespace mcu {
@@ -39,6 +40,7 @@ class TaskRunner;
 class ExternalVideoProcessor : public VideoOutputProcessor,
                                public erizo::FeedbackSink,
                                public ConfigListener,
+                               public webrtc::BitrateObserver,
                                public webrtc::RtcpIntraFrameObserver {
     DECLARE_LOGGER();
 
@@ -68,7 +70,12 @@ public:
     void OnReceivedRPSI(uint32_t ssrc, uint64_t picture_id) { }
     void OnLocalSsrcChanged(uint32_t old_ssrc, uint32_t new_ssrc) { }
 
+    // Implements webrtc::BitrateObserver.
+    void OnNetworkChanged(const uint32_t target_bitrate, const uint8_t fraction_loss, const uint32_t rtt);
+
 private:
+    boost::scoped_ptr<webrtc::BitrateController> m_bitrateController;
+    boost::scoped_ptr<webrtc::RtcpBandwidthObserver> m_bandwidthObserver;
     boost::scoped_ptr<webrtc::RtpRtcp> m_rtpRtcp;
 
     boost::shared_ptr<webrtc::Transport> m_videoTransport;
