@@ -1,0 +1,105 @@
+@TEMPLATE encoder_tmpl.c
+Simple Encoder
+==============
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ INTRODUCTION
+This is an example of a simple encoder loop. It takes an input file in
+YV12 format, passes it through the encoder, and writes the compressed
+frames to disk in IVF format. Other decoder examples build upon this
+one.
+
+The details of the IVF format have been elided from this example for
+simplicity of presentation, as IVF files will not generally be used by
+your application. In general, an IVF file consists of a file header,
+followed by a variable number of frames. Each frame consists of a frame
+header followed by a variable length payload. The length of the payload
+is specified in the first four bytes of the frame header. The payload is
+the raw compressed data.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ INTRODUCTION
+
+
+Standard Includes
+-----------------
+For encoders, you only have to include `vpx_encoder.h` and then any
+header files for the specific codecs you use. In this case, we're using
+vp8. The `VPX_CODEC_DISABLE_COMPAT` macro can be defined to ensure
+strict compliance with the latest SDK by disabling some backwards
+compatibility features. Defining this macro is encouraged.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ENC_INCLUDES
+@DEFAULT
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ENC_INCLUDES
+
+
+Getting The Default Configuration
+---------------------------------
+Encoders have the notion of "usage profiles." For example, an encoder
+may want to publish default configurations for both a video
+conferencing appliction and a best quality offline encoder. These
+obviously have very different default settings. Consult the
+documentation for your codec to see if it provides any default
+configurations. All codecs provide a default configuration, number 0,
+which is valid for material in the vacinity of QCIF/QVGA.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ENC_DEF_CFG
+@DEFAULT
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ENC_DEF_CFG
+
+
+Updating The Configuration
+---------------------------------
+Almost all applications will want to update the default configuration
+with settings specific to their usage. Here we set the width and height
+of the video file to that specified on the command line. We also scale
+the default bitrate based on the ratio between the default resolution
+and the resolution specified on the command line.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ENC_SET_CFG
+@DEFAULT
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ENC_SET_CFG
+
+
+Initializing The Codec
+----------------------
+The encoder is initialized by the following code.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ENC_INIT
+@DEFAULT
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ENC_INIT
+
+
+Encoding A Frame
+----------------
+The frame is read as a continuous block (size width * height * 3 / 2)
+from the input file. If a frame was read (the input file has not hit
+EOF) then the frame is passed to the encoder. Otherwise, a NULL
+is passed, indicating the End-Of-Stream condition to the encoder. The
+`frame_cnt` is reused as the presentation time stamp (PTS) and each
+frame is shown for one frame-time in duration. The flags parameter is
+unused in this example. The deadline is set to VPX_DL_REALTIME to
+make the example run as quickly as possible.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ENCODE_FRAME
+@DEFAULT
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ENCODE_FRAME
+
+Processing The Encoded Data
+---------------------------
+Each packet of type `VPX_CODEC_CX_FRAME_PKT` contains the encoded data
+for this frame. We write a IVF frame header, followed by the raw data.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ PROCESS_FRAME
+@DEFAULT
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ PROCESS_FRAME
+
+
+Cleanup
+-------
+The `vpx_codec_destroy` call frees any memory allocated by the codec.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ DESTROY
+@DEFAULT
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ DESTROY
+
+
+Error Handling
+--------------
+This example does not special case any error return codes. If there was
+an error, a descriptive message is printed and the program exits. With
+few exeptions, vpx_codec functions return an enumerated error status,
+with the value `0` indicating success.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ DIE_CODEC
+@DEFAULT
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ DIE_CODEC
