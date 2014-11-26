@@ -1,0 +1,28 @@
+@TEMPLATE encoder_tmpl.c
+Forcing A Keyframe
+==================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ INTRODUCTION
+This is an example demonstrating how to control placement of keyframes
+on a frame-by-frame basis.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ INTRODUCTION
+
+
+Configuration
+-------------
+Keyframes can be forced by setting the VPX_EFLAG_FORCE_KF bit of the
+flags passed to `vpx_codec_control()`. In this example, we force a
+keyframe every 8 frames.
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  PER_FRAME_CFG
+if(!(frame_cnt & 7))
+    flags |= VPX_EFLAG_FORCE_KF;
+else
+    flags &= ~VPX_EFLAG_FORCE_KF;
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ PER_FRAME_CFG
+
+
+Observing The Effects
+---------------------
+The output of the encoder examples shows a 'K' rather than a dot '.'
+when the encoder generates a keyframe. Note that every 8 frames a 'K'
+is output.

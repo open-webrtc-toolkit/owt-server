@@ -1,0 +1,48 @@
+@TEMPLATE decoder_tmpl.c
+Frame-by-frame MD5 Checksum
+===========================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ INTRODUCTION
+This example builds upon the simple decoder loop to show how checksums
+of the decoded output can be generated. These are used for validating
+decoder implementations against the reference implementation, for example.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ INTRODUCTION
+
+MD5 algorithm
+-------------
+The Message-Digest 5 (MD5) is a well known hash function. We have provided
+an implementation derived from the RSA Data Security, Inc. MD5 Message-Digest
+Algorithm for your use. Our implmentation only changes the interface of this
+reference code. You must include the `md5_utils.h` header for access to these
+functions.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ EXTRA_INCLUDES
+#include "md5_utils.h"
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ EXTRA_INCLUDES
+
+
+Processing The Decoded Data
+---------------------------
+Each row of the image is passed to the MD5 accumulator. First the Y plane
+is processed, then U, then V. It is important to honor the image's `stride`
+values.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ PROCESS_DX
+unsigned char  md5_sum[16];
+MD5Context     md5;
+int            i;
+
+MD5Init(&md5);
+
+for(plane=0; plane < 3; plane++) {
+    unsigned char *buf =img->planes[plane];
+
+    for(y=0; y < (plane ? (img->d_h + 1) >> 1 : img->d_h); y++) {
+        MD5Update(&md5, buf, (plane ? (img->d_w + 1) >> 1 : img->d_w));
+        buf += img->stride[plane];
+    }
+}
+
+MD5Final(md5_sum, &md5);
+for(i=0; i<16; i++)
+    fprintf(outfile, "%02x",md5_sum[i]);
+fprintf(outfile, "  img-%dx%d-%04d.i420\n", img->d_w, img->d_h,
+        frame_cnt);
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ PROCESS_DX

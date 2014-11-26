@@ -1,0 +1,73 @@
+@TEMPLATE decoder_tmpl.c
+Decode With Drops Example
+=========================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ INTRODUCTION
+This is an example utility which drops a series of frames, as specified
+on the command line. This is useful for observing the error recovery
+features of the codec.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ INTRODUCTION
+
+Usage
+-----
+This example adds a single argument to the `simple_decoder` example,
+which specifies the range or pattern of frames to drop. The parameter is
+parsed as follows:
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ USAGE
+if(argc!=4)
+    die("Usage: %s <infile> <outfile> <N-M|N/M>\n", argv[0]);
+{
+    char *nptr;
+    n = strtol(argv[3], &nptr, 0);
+    m = strtol(nptr+1, NULL, 0);
+    is_range = *nptr == '-';
+    if(!n || !m || (*nptr != '-' && *nptr != '/'))
+        die("Couldn't parse pattern %s\n", argv[3]);
+}
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ USAGE
+
+
+Dropping A Range Of Frames
+--------------------------
+To drop a range of frames, specify the starting frame and the ending
+frame to drop, separated by a dash. The following command will drop
+frames 5 through 10 (base 1).
+
+  $ ./decode_with_drops in.ivf out.i420 5-10
+
+
+Dropping A Pattern Of Frames
+----------------------------
+To drop a pattern of frames, specify the number of frames to drop and
+the number of frames after which to repeat the pattern, separated by
+a forward-slash. The following command will drop 3 of 7 frames.
+Specifically, it will decode 4 frames, then drop 3 frames, and then
+repeat.
+
+  $ ./decode_with_drops in.ivf out.i420 3/7
+
+
+Extra Variables
+---------------
+This example maintains the pattern passed on the command line in the
+`n`, `m`, and `is_range` variables:
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ EXTRA_VARS
+int              n, m, is_range;
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ EXTRA_VARS
+
+
+Making The Drop Decision
+------------------------
+The example decides whether to drop the frame based on the current
+frame number, immediately before decoding the frame.
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ PRE_DECODE
+if((is_range && frame_cnt >= n && frame_cnt <= m)
+   ||(!is_range && m - (frame_cnt-1)%m <= n)) {
+   putc('X', stdout);
+   continue;
+}
+putc('.', stdout);
+fflush(stdout);
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ PRE_DECODE

@@ -1,0 +1,26 @@
+Revision history for Perl extension HTML::Toc.
+
+2001-09-03   Freddy Vulto <fvu@fvu.myweb.nl>
+
+	Release 0.91
+
+	- Tested on Cygwin.
+	- Used Unix file type for source files.
+	- Updated documentation.
+	- Prohibited call with undefined parameter to HTML::Parser->parse() from
+	  HTML::_tokenTocEndParser->parse() which caused havoc with version 3.25
+	  of HTML::Parser.
+	- Specified 'HTML::Parser' as module that needs to be available in order
+	  to use HTML::Toc.
+	- Added protected method HTML::TocGenerator::_setActiveAnchorName().
+	  This method replaces the incongruous access of 
+	  'HTML::TocUpdator::_doDeleteTokens' by HTML::TocGenerator.
+	  HTML::TocUpdator now overrides '_setActiveAnchorName()' to allow
+	  the ancestor call to HTML::TocGenerator only when '_doDeleteTokens'
+	  equals false.
+
+2001-08-09   Freddy Vulto <fvu@fvu.myweb.nl>
+
+	Release 0.90
+
+	- First release.
