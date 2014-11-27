@@ -116,6 +116,14 @@ install_tcmalloc(){
   fi
 }
 
+install_grunt_tools() {
+  local SDK_DIR="${ROOT}/source/sdk2"
+  if ! hash grunt 2>/dev/null; then
+    npm install -g grunt-cli
+  fi
+  cd ${SDK_DIR} && make dep
+}
+
 mkdir -p $PREFIX_DIR
 
 pause "Installing libnice library...  [press Enter]"
@@ -158,3 +166,9 @@ case $yn in
   * ) ;;
 esac
 
+read -p "Installing sdk building tool? [No/yes]" yn
+case $yn in
+  [Yy]* ) install_grunt_tools;;
+  [Nn]* ) ;;
+  * ) ;;
+esac

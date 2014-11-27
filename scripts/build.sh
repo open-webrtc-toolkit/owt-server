@@ -79,9 +79,10 @@ build_mcu_runtime() {
   RUNTIME_ADDON_SRC_DIR="${SOURCE}/bindings/mcu"
   build_runtime
 
-  cd $ROOT/source/erizo_controller
-  ./installErizo_controller.sh
-  cd $this
+  cd $ROOT/source/erizo_controller && \
+  npm install --loglevel error amqp socket.io@0.9.16 log4js node-getopt
+  echo "[erizo_controller] Done, node_modules installed"
+  cd ${ROOT}/source/sdk2 && make
 }
 
 build_runtime() {
