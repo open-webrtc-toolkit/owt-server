@@ -79,10 +79,8 @@ build_mcu_runtime() {
   RUNTIME_ADDON_SRC_DIR="${SOURCE}/bindings/mcu"
   build_runtime
 
-  cd $ROOT/source/erizo_controller && \
-  npm install --loglevel error amqp socket.io@0.9.16 log4js node-getopt
-  echo "[erizo_controller] Done, node_modules installed"
-  cd ${ROOT}/source/sdk2 && make
+  cd $ROOT/source/erizo_controller
+  ./installErizo_controller.sh
 }
 
 build_runtime() {
@@ -137,6 +135,8 @@ build_mcu_client_sdk() {
   npm install --prefix ${CLIENTSDK_DIR} --development --loglevel error && \
   grunt --force
   cp -av ${CLIENTSDK_DIR}/dist/*.js ${BUILD_ROOT}/sdk/
+
+  cd ${ROOT}/source/sdk2 && make
 }
 
 build_mcu_server_sdk() {
