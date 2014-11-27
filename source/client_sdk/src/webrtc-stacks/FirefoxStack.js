@@ -46,9 +46,9 @@ Erizo.FirefoxStack = function (spec) {
     }
 
     that.mediaConstraints = {
-            offerToReceiveAudio: spec.audio,
-            offerToReceiveVideo: spec.video,
-            mozDontOfferDataChannel: true
+        offerToReceiveAudio: spec.audio,
+        offerToReceiveVideo: spec.video,
+        mozDontOfferDataChannel: true
     };
 
     that.roapSessionId = 103;
@@ -163,7 +163,6 @@ Erizo.FirefoxStack = function (spec) {
             that.peerConnection.setLocalDescription(localDesc, function(){
               that.peerConnection.setRemoteDescription(new RTCSessionDescription(msg), function() {
                 spec.remoteDescriptionSet = true;
-                console.log("Candidates to be added: ", spec.remoteCandidates.length, spec.remoteCandidates);
                 while (spec.remoteCandidates.length > 0) {
                   that.peerConnection.addIceCandidate(spec.remoteCandidates.pop());
                 }
@@ -182,6 +181,8 @@ Erizo.FirefoxStack = function (spec) {
                 obj.candidate = obj.candidate.replace(/ udp /g, " UDP ");
                 obj.sdpMLineIndex = parseInt(obj.sdpMLineIndex, 10);
                 var candidate = new RTCIceCandidate(obj);
+                candidate.sdpMLineIndex = candidate.sdpMid==="audio"?0:1;
+                console.log("Remote Candidate",candidate);
 
                 if (spec.remoteDescriptionSet) {
                     that.peerConnection.addIceCandidate(candidate);
