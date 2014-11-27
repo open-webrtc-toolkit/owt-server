@@ -116,13 +116,14 @@ install_tcmalloc(){
   fi
 }
 
-install_grunt_tools() {
+install_node_tools() {
+  sudo -E npm install -g --loglevel error node-gyp grunt-cli underscore
   local SDK_DIR="${ROOT}/source/sdk2"
-  if ! hash grunt 2>/dev/null; then
-    npm install -g grunt-cli
-  fi
   cd ${SDK_DIR} && make dep
 }
+
+pause "Installing node building tools... [press Enter]"
+install_node_tools
 
 mkdir -p $PREFIX_DIR
 
@@ -162,13 +163,6 @@ esac
 read -p "Installing openh264 library? [No/yes]" yn
 case $yn in
   [Yy]* ) install_openh264;;
-  [Nn]* ) ;;
-  * ) ;;
-esac
-
-read -p "Installing sdk building tool? [No/yes]" yn
-case $yn in
-  [Yy]* ) install_grunt_tools;;
   [Nn]* ) ;;
   * ) ;;
 esac
