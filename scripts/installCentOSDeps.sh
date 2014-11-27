@@ -103,7 +103,6 @@ installYumDeps(){
   sudo yum install zlib-devel pkgconfig git subversion libcurl-devel.x86_64 curl log4cxx-devel -y
   sudo yum install gcc gcc-c++ bzip2 bzip2-devel bzip2-libs python-devel gyp nodejs npm -y
   sudo yum install rabbitmq-server mongodb mongodb-server java-1.7.0-openjdk -y
-  sudo -E npm install -g --loglevel error node-gyp grunt-cli underscore
 
   read -p "Installing glib2... [Yes/no]" yn
   case $yn in
@@ -250,7 +249,6 @@ install_node() {
   fi
   nvm install ${NODE_VERSION}
   nvm use ${NODE_VERSION}
-  npm install -g node-gyp grunt-cli underscore
   sudo chown -R `whoami` ~/.npm
 }
 
