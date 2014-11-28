@@ -57,7 +57,7 @@ public:
                             std::string name,
                             unsigned int framerate,
                             unsigned short bitrate,
-                            VideoMixOutReceiver* receiver);
+                            VideoMixOutConsumer* receiver);
     virtual ~HardwareVideoMixerOutput();
 
     void setBitrate(unsigned short bitrate);
@@ -73,7 +73,7 @@ private:
     FrameFormat m_outFormat;
     OutputIndex m_index;
     boost::shared_ptr<VideoMixEngine> m_engine;
-    VideoMixOutReceiver* m_receiver;
+    VideoMixOutConsumer* m_receiver;
 
     unsigned int m_frameRate;
     unsigned int m_outCount;
@@ -86,11 +86,11 @@ public:
     HardwareVideoMixer();
     virtual ~HardwareVideoMixer();
 
-    bool activateInput(int slot, FrameFormat format, VideoMixInProvider* provider);
+    bool activateInput(int slot, FrameFormat, VideoMixInProvider*);
     void deActivateInput(int slot);
     void pushInput(int slot, unsigned char* payload, int len);
 
-    bool activateOutput(FrameFormat format, unsigned int framerate, unsigned short bitrate, VideoMixOutReceiver* receiver);
+    bool activateOutput(FrameFormat, unsigned int framerate, unsigned short bitrate, VideoMixOutConsumer*);
     void deActivateOutput(FrameFormat format);
 
     void setLayout(struct VideoLayout&);
