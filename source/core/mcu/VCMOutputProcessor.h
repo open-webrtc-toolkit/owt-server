@@ -21,8 +21,6 @@
 #ifndef VCMOutputProcessor_h
 #define VCMOutputProcessor_h
 
-#include "VCMMediaProcessorHelper.h"
-#include "VideoFrameProcessor.h"
 #include "VideoOutputProcessor.h"
 
 #include <boost/scoped_ptr.hpp>

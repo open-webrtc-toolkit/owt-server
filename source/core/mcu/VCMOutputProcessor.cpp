@@ -22,7 +22,6 @@
 
 #include "TaskRunner.h"
 
-#include <boost/bind.hpp>
 #include <webrtc/common.h>
 #include <webrtc/modules/video_coding/main/interface/video_coding.h>
 #include <webrtc/system_wrappers/interface/tick_util.h>
@@ -97,7 +96,6 @@ bool VCMOutputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* tran
     m_videoEncoder->SetSsrcs(ssrcs);
 
     m_taskRunner->RegisterModule(m_rtpRtcp.get());
-
 
     // FIXME: Get rid of the hard coded timer interval here.
     // Also it may need to be associated with the target fps configured in VPM.
