@@ -22,14 +22,29 @@
 #include "OutOfProcessMixer.h"
 #include "OutOfProcessMixerProxy.h"
 #include "WebRTCGateway.h"
+ 
+#include <boost/property_tree/json_parser.hpp>
+#include <boost/property_tree/ptree.hpp>
 
-woogeen_base::Gateway* woogeen_base::Gateway::createGatewayInstance(const std::string& customParams, const bool hardwareAccelerated)
+woogeen_base::Gateway* woogeen_base::Gateway::createGatewayInstance(const std::string& customParams)
 {
-    if (customParams == "InProcessMixer")
-        return new mcu::InProcessMixer(hardwareAccelerated);
+    // FIXME: Figure out a more reliable approach to validating the input parameter.
+    if (customParams != "" && customParams != "undefined") {
+        boost::property_tree::ptree pt;
+        std::istringstream is(customParams);
+        boost::property_tree::read_json(is, pt);
+        bool isMixer = pt.get<bool>("mixer");
+ 
+        if (isMixer) {
+            bool outOfProcess = pt.get<bool>("oop");
+            bool hardwareAccelerated = pt.get<bool>("hardware");
 
-    if (customParams == "OutOfProcessMixer")
-        return new mcu::OutOfProcessMixer(hardwareAccelerated);
+            if (outOfProcess)
+                return new mcu::OutOfProcessMixer(hardwareAccelerated);
+
+            return new mcu::InProcessMixer(hardwareAccelerated);
+        }
+    }
 
     return new mcu::WebRTCGateway();
 }
