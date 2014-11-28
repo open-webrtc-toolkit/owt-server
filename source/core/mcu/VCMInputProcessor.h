@@ -22,7 +22,7 @@
 #define VCMInputProcessor_h
 
 #include "VCMMediaProcessorHelper.h"
-#include "VideoMixerInterface.h"
+#include "VideoFrameProcessor.h"
 
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
@@ -41,8 +41,8 @@ namespace mcu {
 class ExternalRenderer : public webrtc::VCMReceiveCallback {
 public:
     ExternalRenderer(int index,
-                     boost::shared_ptr<VideoMixerInterface> frameHandler,
-                     VideoMixInProvider* provider) 
+                     boost::shared_ptr<VideoFrameProcessor> frameHandler,
+                     VideoFrameProvider* provider) 
         : m_index(index)
         , m_frameHandler(frameHandler)
     {
@@ -63,14 +63,14 @@ public:
 
 private:
     int m_index;
-    boost::shared_ptr<VideoMixerInterface> m_frameHandler;
+    boost::shared_ptr<VideoFrameProcessor> m_frameHandler;
 };
 
 class ExternalDecoder : public webrtc::VideoDecoder {
 public:
     ExternalDecoder(int index, 
-                    boost::shared_ptr<VideoMixerInterface> imageHandler,
-                    VideoMixInProvider* provider)
+                    boost::shared_ptr<VideoFrameProcessor> imageHandler,
+                    VideoFrameProvider* provider)
         : m_index(index)
         , m_imageHandler(imageHandler)
     {
@@ -100,7 +100,7 @@ public:
 
 private:
     int m_index;
-    boost::shared_ptr<VideoMixerInterface> m_imageHandler;
+    boost::shared_ptr<VideoFrameProcessor> m_imageHandler;
 };
 
 /**
@@ -115,14 +115,14 @@ class VCMInputProcessor : public erizo::MediaSink,
                           public webrtc::RtpFeedback,
                           public webrtc::VCMFrameTypeCallback,
                           public webrtc::VCMPacketRequestCallback,
-                          public VideoMixInProvider {
+                          public VideoFrameProvider {
     DECLARE_LOGGER();
 
 public:
     VCMInputProcessor(int index, bool externalDecode = false);
     virtual ~VCMInputProcessor();
 
-    // Implements the VideoMixInProvider interface.
+    // Implements the VideoFrameProvider interface.
     virtual void requestKeyFrame();
 
     // Implements the webrtc::VCMPacketRequestCallback interface.
@@ -147,7 +147,7 @@ public:
     int deliverAudioData(char*, int len);
     int deliverVideoData(char*, int len);
 
-    bool init(woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<VideoMixerInterface>, boost::shared_ptr<TaskRunner>);
+    bool init(woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<VideoFrameProcessor>, boost::shared_ptr<TaskRunner>);
 
     void bindAudioForSync(int32_t voiceChannelId, webrtc::VoEVideoSync*);
 
@@ -165,7 +165,7 @@ private:
     boost::shared_ptr<webrtc::Transport> m_videoTransport;
 
     boost::scoped_ptr<DebugRecorder> m_recorder;
-    boost::shared_ptr<VideoMixerInterface> m_frameReceiver;
+    boost::shared_ptr<VideoFrameProcessor> m_frameReceiver;
     boost::shared_ptr<webrtc::VCMReceiveCallback> m_renderer;
     boost::shared_ptr<webrtc::VideoDecoder> m_decoder;
     boost::shared_ptr<TaskRunner> m_taskRunner;

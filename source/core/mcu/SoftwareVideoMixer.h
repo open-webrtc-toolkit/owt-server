@@ -22,7 +22,7 @@
 #define SoftwareVideoMixer_h
 
 #include "JobTimer.h"
-#include "VideoMixerInterface.h"
+#include "VideoFrameProcessor.h"
 
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
@@ -32,17 +32,17 @@ namespace mcu {
 class BufferManager;
 class SoftVideoCompositor;
 
-class SoftwareVideoMixer : public VideoMixerInterface,
+class SoftwareVideoMixer : public VideoFrameProcessor,
                            public JobTimerListener {
 public:
     SoftwareVideoMixer();
     virtual ~SoftwareVideoMixer();
 
-    bool activateInput(int slot, FrameFormat, VideoMixInProvider*);
+    bool activateInput(int slot, FrameFormat, VideoFrameProvider*);
     void deActivateInput(int slot);
     void pushInput(int slot, unsigned char* payload, int len);
 
-    bool activateOutput(FrameFormat, unsigned int framerate, unsigned short bitrate, VideoMixOutConsumer*);
+    bool activateOutput(FrameFormat, unsigned int framerate, unsigned short bitrate, VideoFrameConsumer*);
     void deActivateOutput(FrameFormat);
 
     void setLayout(struct VideoLayout&);
@@ -60,7 +60,7 @@ private:
     int64_t m_ntpDelta;
     boost::shared_ptr<BufferManager> m_bufferManager;
     boost::scoped_ptr<SoftVideoCompositor> m_videoCompositor;
-    VideoMixOutConsumer* m_receiver;
+    VideoFrameConsumer* m_receiver;
     boost::scoped_ptr<JobTimer> m_jobTimer;
 };
 

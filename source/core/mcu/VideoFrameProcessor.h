@@ -18,8 +18,8 @@
  * and approved by Intel in writing.
  */
 
-#ifndef VideoMixerInterface_h
-#define VideoMixerInterface_h
+#ifndef VideoFrameProcessor_h
+#define VideoFrameProcessor_h
 
 #include "VideoLayout.h"
 
@@ -32,23 +32,23 @@ enum FrameFormat {
     FRAME_FORMAT_H264
 };
 
-class VideoMixInProvider {
+class VideoFrameProvider {
 public:
     virtual void requestKeyFrame() = 0;
 };
 
-class VideoMixOutConsumer {
+class VideoFrameConsumer {
 public:
     virtual void onFrame(FrameFormat format, unsigned char* payload, int len, unsigned int ts) = 0;
 };
 
-class VideoMixerInterface {
+class VideoFrameProcessor {
 public:
-    virtual bool activateInput(int slot, FrameFormat, VideoMixInProvider*) = 0;
+    virtual bool activateInput(int slot, FrameFormat, VideoFrameProvider*) = 0;
     virtual void deActivateInput(int slot) = 0;
     virtual void pushInput(int slot, unsigned char* payload, int len) = 0;
 
-    virtual bool activateOutput(FrameFormat, unsigned int framerate, unsigned short bitrate, VideoMixOutConsumer*) = 0;
+    virtual bool activateOutput(FrameFormat, unsigned int framerate, unsigned short bitrate, VideoFrameConsumer*) = 0;
     virtual void deActivateOutput(FrameFormat) = 0;
 
     virtual void setLayout(struct VideoLayout&) = 0;

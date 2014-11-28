@@ -29,7 +29,7 @@ namespace mcu {
 
 DEFINE_LOGGER(ExternalVideoProcessor, "mcu.ExternalVideoProcessor");
 
-ExternalVideoProcessor::ExternalVideoProcessor(int id, boost::shared_ptr<VideoMixerInterface> mixer, FrameFormat frameFormat)
+ExternalVideoProcessor::ExternalVideoProcessor(int id, boost::shared_ptr<VideoFrameProcessor> mixer, FrameFormat frameFormat)
     : VideoOutputProcessor(id)
     , m_mixer(mixer)
     , m_frameFormat(frameFormat)

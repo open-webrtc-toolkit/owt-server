@@ -22,7 +22,7 @@
 #define VCMOutputProcessor_h
 
 #include "VCMMediaProcessorHelper.h"
-#include "VideoMixerInterface.h"
+#include "VideoFrameProcessor.h"
 #include "VideoOutputProcessor.h"
 
 #include <boost/scoped_ptr.hpp>

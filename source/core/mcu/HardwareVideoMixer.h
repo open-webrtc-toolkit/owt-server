@@ -22,7 +22,7 @@
 #define HardwareVideoMixer_h
 
 #include "JobTimer.h"
-#include "VideoMixerInterface.h"
+#include "VideoFrameProcessor.h"
 
 #include <string>
 #include <map>
@@ -36,7 +36,7 @@ class HardwareVideoMixerInput : public VideoInputProducer {
 public:
     HardwareVideoMixerInput(boost::shared_ptr<VideoMixEngine> engine,
                             FrameFormat inFormat,
-                            VideoMixInProvider* provider);
+                            VideoFrameProvider* provider);
     virtual ~HardwareVideoMixerInput();
 
     void push(unsigned char* payload, int len);
@@ -45,7 +45,7 @@ public:
 
 private:
     InputIndex m_index;
-    VideoMixInProvider* m_provider;
+    VideoFrameProvider* m_provider;
     boost::shared_ptr<VideoMixEngine> m_engine;
 };
 
@@ -57,7 +57,7 @@ public:
                             std::string name,
                             unsigned int framerate,
                             unsigned short bitrate,
-                            VideoMixOutConsumer* receiver);
+                            VideoFrameConsumer* receiver);
     virtual ~HardwareVideoMixerOutput();
 
     void setBitrate(unsigned short bitrate);
@@ -73,24 +73,24 @@ private:
     FrameFormat m_outFormat;
     OutputIndex m_index;
     boost::shared_ptr<VideoMixEngine> m_engine;
-    VideoMixOutConsumer* m_receiver;
+    VideoFrameConsumer* m_receiver;
 
     unsigned int m_frameRate;
     unsigned int m_outCount;
     boost::scoped_ptr<JobTimer> m_jobTimer;
 };
 
-class HardwareVideoMixer : public VideoMixerInterface {
+class HardwareVideoMixer : public VideoFrameProcessor {
     enum MixerState{UN_INITIALIZED, IN_SERVICE}; // states shall be deprecated if VCSA supports init();
 public:
     HardwareVideoMixer();
     virtual ~HardwareVideoMixer();
 
-    bool activateInput(int slot, FrameFormat, VideoMixInProvider*);
+    bool activateInput(int slot, FrameFormat, VideoFrameProvider*);
     void deActivateInput(int slot);
     void pushInput(int slot, unsigned char* payload, int len);
 
-    bool activateOutput(FrameFormat, unsigned int framerate, unsigned short bitrate, VideoMixOutConsumer*);
+    bool activateOutput(FrameFormat, unsigned int framerate, unsigned short bitrate, VideoFrameConsumer*);
     void deActivateOutput(FrameFormat format);
 
     void setLayout(struct VideoLayout&);

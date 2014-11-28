@@ -21,7 +21,7 @@
 #ifndef VideoOutputProcessor_h
 #define VideoOutputProcessor_h
 
-#include "VideoMixerInterface.h"
+#include "VideoFrameProcessor.h"
 
 #include <boost/shared_ptr.hpp>
 #include <MediaDefinitions.h>
@@ -34,7 +34,7 @@ class TaskRunner;
 /**
  * This is the class to send out the encoded frame via the given WoogeenTransport.
  */
-class VideoOutputProcessor : public VideoMixOutConsumer {
+class VideoOutputProcessor : public VideoFrameConsumer {
 public:
     enum VideoCodecType {VCT_VP8, VCT_H264};
 

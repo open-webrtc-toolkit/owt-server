@@ -36,7 +36,7 @@ CodecType Frameformat2CodecType(FrameFormat format)
 
 HardwareVideoMixerInput::HardwareVideoMixerInput(boost::shared_ptr<VideoMixEngine> engine,
                                                  FrameFormat inFormat, 
-                                                 VideoMixInProvider* provider)
+                                                 VideoFrameProvider* provider)
     : m_index(INVALID_INPUT_INDEX)
     , m_provider(provider)
     , m_engine(engine)
@@ -70,7 +70,7 @@ HardwareVideoMixerOutput::HardwareVideoMixerOutput(boost::shared_ptr<VideoMixEng
                                                     std::string name,
                                                     unsigned int framerate,
                                                     unsigned short bitrate,
-                                                    VideoMixOutConsumer* receiver)
+                                                    VideoFrameConsumer* receiver)
     : m_outFormat(outFormat)
     , m_index(INVALID_OUTPUT_INDEX)
     , m_engine(engine)
@@ -149,7 +149,7 @@ void HardwareVideoMixer::setLayout(struct VideoLayout& layout)
     //m_engine->setLayout(layout);
 }
 
-bool HardwareVideoMixer::activateInput(int slot, FrameFormat format, VideoMixInProvider* provider)
+bool HardwareVideoMixer::activateInput(int slot, FrameFormat format, VideoFrameProvider* provider)
 {
     if (m_inputs.find(slot) != m_inputs.end()) {
         return false;
@@ -172,7 +172,7 @@ void HardwareVideoMixer::pushInput(int slot, unsigned char* payload, int len)
 }
 
 // Should be refined when VCSA supports init().
-bool HardwareVideoMixer::activateOutput(FrameFormat format, unsigned int framerate, unsigned short bitrate, VideoMixOutConsumer* receiver)
+bool HardwareVideoMixer::activateOutput(FrameFormat format, unsigned int framerate, unsigned short bitrate, VideoFrameConsumer* receiver)
 {
     if (m_outputs.find(format) != m_outputs.end()) {
         return false;

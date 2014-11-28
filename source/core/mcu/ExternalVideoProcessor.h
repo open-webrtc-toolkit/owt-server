@@ -22,7 +22,7 @@
 #define ExternalVideoProcessor_h
 
 #include "VideoOutputProcessor.h"
-#include "VideoMixerInterface.h"
+#include "VideoFrameProcessor.h"
 
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
@@ -47,7 +47,7 @@ class ExternalVideoProcessor : public VideoOutputProcessor,
     DECLARE_LOGGER();
 
 public:
-    ExternalVideoProcessor(int id, boost::shared_ptr<VideoMixerInterface> mixer, FrameFormat frameFormat);
+    ExternalVideoProcessor(int id, boost::shared_ptr<VideoFrameProcessor> mixer, FrameFormat frameFormat);
     ~ExternalVideoProcessor();
 
     // Implements VideoOutputProcessor.
@@ -79,7 +79,7 @@ private:
 
     boost::shared_ptr<webrtc::Transport> m_videoTransport;
     boost::shared_ptr<TaskRunner> m_taskRunner;
-    boost::shared_ptr<VideoMixerInterface> m_mixer;
+    boost::shared_ptr<VideoFrameProcessor> m_mixer;
     FrameFormat m_frameFormat;
 };
 
