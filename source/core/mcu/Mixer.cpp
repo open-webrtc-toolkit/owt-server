@@ -48,9 +48,9 @@ private:
 
 DEFINE_LOGGER(Mixer, "mcu.Mixer");
 
-Mixer::Mixer()
+Mixer::Mixer(bool hardwareAccelerated)
 {
-    init();
+    init(hardwareAccelerated);
 }
 
 Mixer::~Mixer()
@@ -61,9 +61,9 @@ Mixer::~Mixer()
 /**
  * init could be used for reset the state of this Mixer
  */
-bool Mixer::init()
+bool Mixer::init(bool hardwareAccelerated)
 {
-    m_videoMixer.reset(new VideoMixer(this));
+    m_videoMixer.reset(new VideoMixer(this, hardwareAccelerated));
     m_audioMixer.reset(new AudioMixer(this));
 
     return true;

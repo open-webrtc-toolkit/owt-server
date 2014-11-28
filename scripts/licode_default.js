@@ -82,6 +82,9 @@ config.erizoController.mixer = true;
 // If true and the maxProcesses allows, the mixer will be run in a dedicated process.
 config.erizoController.outOfProcessMixer = false;
 
+// If true and the machine has the capacity, the mixer will be accelerated by hardware graphic chips.
+config.erizoController.hardwareAccelerated = false;
+
 /*********************************************************
  ERIZO AGENT CONFIGURATION
 **********************************************************/

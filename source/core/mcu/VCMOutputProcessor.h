@@ -21,16 +21,13 @@
 #ifndef VCMOutputProcessor_h
 #define VCMOutputProcessor_h
 
-#include "BufferManager.h"
-#include "Config.h"
-#include "VCMMediaProcessorHelper.h"
-#include "VideoCompositor.h"
-#include "VideoOutputProcessor.h"
 
-#include <boost/asio.hpp>
+#include "VCMMediaProcessorHelper.h"
+#include "VideoOutputProcessor.h"
+#include "VideoMixerInterface.h"
+
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
-#include <boost/thread.hpp>
 #include <logger.h>
 #include <MediaDefinitions.h>
 #include <WoogeenTransport.h>
@@ -47,7 +44,7 @@ class TaskRunner;
  * data via the given WoogeenTransport. It also gives the feedback
  * to the encoder based on the feedback from the remote.
  */
-class VCMOutputProcessor : public VideoOutputProcessor, public erizo::FeedbackSink, public ConfigListener, public InputFrameCallback {
+class VCMOutputProcessor : public VideoOutputProcessor, public erizo::FeedbackSink, public VideoMixOutReceiver {
     DECLARE_LOGGER();
 
 public:
@@ -55,64 +52,35 @@ public:
     ~VCMOutputProcessor();
 
     // Implements VideoOutputProcessor.
-    bool init(woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<TaskRunner>);
+    bool init(woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<TaskRunner>, VideoCodecType videoCodecType, VideoSize videoSize);
     void close();
 
-    bool setSendVideoCodec(const webrtc::VideoCodec&);
     void onRequestIFrame();
     uint32_t sendSSRC();
-    // It's not accepting external encoded frame.
-    int sendFrame(char* payload, int len) { return -1; }
     erizo::FeedbackSink* feedbackSink() { return this; }
 
     // Implements FeedbackSink.
     int deliverFeedback(char* buf, int len);
 
-    // Implements ConfigListener.
-    void onConfigChanged();
-
     /**
-     * Implements InputFrameCallback.
+     * Inplement VideoMixOutReceiver interface
      */
-    void activateInput(int index);
-    void deActivateInput(int index);
-    /**
-     * This should be called whenever a new frame is decoded from
-     * one particular publisher with the index.
-     */
-    void handleInputFrame(webrtc::I420VideoFrame&, int index);
+    virtual void onFrame(FrameFormat format, unsigned char* payload, int len, unsigned int ts);
 
 private:
-    void layoutTimerHandler(const boost::system::error_code&);
-    bool layoutFrames();
-    void updateMaxSlot(int newMaxSlot);
+    bool setVideoSize(VideoSize videoSize);
 
-    std::atomic<bool> m_isClosing;
-
-    int m_maxSlot;
-
-    boost::scoped_ptr<SoftVideoCompositor> m_videoCompositor;
     boost::scoped_ptr<webrtc::BitrateController> m_bitrateController;
     boost::scoped_ptr<webrtc::RtcpBandwidthObserver> m_bandwidthObserver;
     boost::scoped_ptr<webrtc::ViEEncoder> m_videoEncoder;
     boost::scoped_ptr<webrtc::RtpRtcp> m_rtpRtcp;
-    boost::scoped_ptr<DebugRecorder> m_recorder;
-    bool m_recordStarted;
-    boost::scoped_ptr<webrtc::I420VideoFrame> m_mockFrame;
-
     /*
      * Each incoming channel will store the decoded frame in this array, and the encoding
      * thread will scan this array and compose the frames into one frame
      */
     // Delta used for translating between NTP and internal timestamps.
-    int64_t m_ntpDelta;
-    boost::shared_ptr<BufferManager> m_bufferManager;
     boost::shared_ptr<webrtc::Transport> m_videoTransport;
     boost::shared_ptr<TaskRunner> m_taskRunner;
-
-    boost::scoped_ptr<boost::thread> m_encodingThread;
-    boost::asio::io_service m_ioService;
-    boost::scoped_ptr<boost::asio::deadline_timer> m_timer;
 };
 
 }

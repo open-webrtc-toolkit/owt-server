@@ -42,7 +42,7 @@ class Mixer : public woogeen_base::Gateway, public erizo::MediaSink, public eriz
     DECLARE_LOGGER();
 
 public:
-    Mixer();
+    Mixer(bool hardwareAccelerated);
     virtual ~Mixer();
 
     /**
@@ -95,7 +95,7 @@ protected:
     boost::shared_ptr<AudioMixer> m_audioMixer;
 
 private:
-    bool init();
+    bool init(bool hardwareAccelerated);
     /**
      * Closes all the subscribers and the publisher, the object is useless after this
      */
