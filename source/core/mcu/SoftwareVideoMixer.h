@@ -42,7 +42,7 @@ public:
     void deActivateInput(int slot);
     void pushInput(int slot, unsigned char* payload, int len);
 
-    bool activateOutput(FrameFormat, unsigned int framerate, unsigned short bitrate, VideoMixOutReceiver*);
+    bool activateOutput(FrameFormat, unsigned int framerate, unsigned short bitrate, VideoMixOutConsumer*);
     void deActivateOutput(FrameFormat);
 
     void setLayout(struct VideoLayout&);
@@ -60,7 +60,7 @@ private:
     int64_t m_ntpDelta;
     boost::shared_ptr<BufferManager> m_bufferManager;
     boost::scoped_ptr<SoftVideoCompositor> m_videoCompositor;
-    VideoMixOutReceiver* m_receiver;
+    VideoMixOutConsumer* m_receiver;
     boost::scoped_ptr<JobTimer> m_jobTimer;
 };
 

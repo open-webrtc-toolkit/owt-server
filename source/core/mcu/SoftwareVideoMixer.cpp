@@ -90,7 +90,7 @@ void SoftwareVideoMixer::pushInput(int slot, unsigned char* payload, int len)
     }
 }
 
-bool SoftwareVideoMixer::activateOutput(FrameFormat format, unsigned int framerate, unsigned short bitrate, VideoMixOutReceiver* receiver)
+bool SoftwareVideoMixer::activateOutput(FrameFormat format, unsigned int framerate, unsigned short bitrate, VideoMixOutConsumer* receiver)
 {
     assert(format == FRAME_FORMAT_I420);
     m_receiver = receiver;

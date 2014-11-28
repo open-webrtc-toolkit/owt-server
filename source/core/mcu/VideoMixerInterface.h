@@ -25,7 +25,7 @@
 
 namespace mcu {
 
-enum FrameFormat{
+enum FrameFormat {
     FRAME_FORMAT_UNKOWN,
     FRAME_FORMAT_I420,
     FRAME_FORMAT_VP8,
@@ -37,7 +37,7 @@ public:
     virtual void requestKeyFrame() = 0;
 };
 
-class VideoMixOutReceiver {
+class VideoMixOutConsumer {
 public:
     virtual void onFrame(FrameFormat format, unsigned char* payload, int len, unsigned int ts) = 0;
 };
@@ -48,7 +48,7 @@ public:
     virtual void deActivateInput(int slot) = 0;
     virtual void pushInput(int slot, unsigned char* payload, int len) = 0;
 
-    virtual bool activateOutput(FrameFormat, unsigned int framerate, unsigned short bitrate, VideoMixOutReceiver*) = 0;
+    virtual bool activateOutput(FrameFormat, unsigned int framerate, unsigned short bitrate, VideoMixOutConsumer*) = 0;
     virtual void deActivateOutput(FrameFormat) = 0;
 
     virtual void setLayout(struct VideoLayout&) = 0;

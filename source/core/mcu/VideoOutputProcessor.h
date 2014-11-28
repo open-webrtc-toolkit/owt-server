@@ -34,7 +34,7 @@ class TaskRunner;
 /**
  * This is the class to send out the encoded frame via the given WoogeenTransport.
  */
-class VideoOutputProcessor : public VideoMixOutReceiver {
+class VideoOutputProcessor : public VideoMixOutConsumer {
 public:
     enum VideoCodecType {VCT_VP8, VCT_H264};
 
