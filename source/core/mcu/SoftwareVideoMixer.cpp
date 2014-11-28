@@ -63,7 +63,7 @@ void SoftwareVideoMixer::setLayout(struct VideoLayout& layout)
     m_videoCompositor->config(layout);
 }
 
-bool SoftwareVideoMixer::activateInput(int slot, FrameFormat format, VideoMixInProvider* provider)
+bool SoftwareVideoMixer::activateInput(int slot, FrameFormat format, VideoFrameProvider* provider)
 {
     assert(format == FRAME_FORMAT_I420);
 
@@ -90,7 +90,7 @@ void SoftwareVideoMixer::pushInput(int slot, unsigned char* payload, int len)
     }
 }
 
-bool SoftwareVideoMixer::activateOutput(FrameFormat format, unsigned int framerate, unsigned short bitrate, VideoMixOutConsumer* receiver)
+bool SoftwareVideoMixer::activateOutput(FrameFormat format, unsigned int framerate, unsigned short bitrate, VideoFrameConsumer* receiver)
 {
     assert(format == FRAME_FORMAT_I420);
     m_receiver = receiver;

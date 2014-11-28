@@ -40,7 +40,7 @@ namespace mcu {
 class TaskRunner;
 class VCMInputProcessor;
 class VideoOutputProcessor;
-class VideoMixerInterface;
+class VideoFrameProcessor;
 struct Layout;
 
 static const int MIXED_VIDEO_STREAM_ID = 2;
@@ -102,7 +102,7 @@ private:
 
     boost::shared_ptr<TaskRunner> m_taskRunner;
     boost::shared_ptr<VideoOutputProcessor> m_videoOutputProcessor;
-    boost::shared_ptr<VideoMixerInterface> m_mixer;
+    boost::shared_ptr<VideoFrameProcessor> m_mixer;
 };
 
 inline int VideoMixer::assignSlot(uint32_t source)
