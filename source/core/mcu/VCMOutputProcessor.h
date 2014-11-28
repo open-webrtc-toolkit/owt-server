@@ -45,15 +45,13 @@ class VCMOutputProcessor : public VideoOutputProcessor, public erizo::FeedbackSi
     DECLARE_LOGGER();
 
 public:
-    VCMOutputProcessor(int id);
+    VCMOutputProcessor(int id, woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<TaskRunner>);
     ~VCMOutputProcessor();
 
     // Implements VideoOutputProcessor.
-    bool init(woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<TaskRunner>, VideoCodecType videoCodecType, VideoSize videoSize);
-    void close();
-
-    void onRequestIFrame();
+    bool setSendCodec(VideoCodecType, VideoSize);
     uint32_t sendSSRC();
+    void onRequestIFrame();
     erizo::FeedbackSink* feedbackSink() { return this; }
 
     void onFrame(FrameFormat, unsigned char* payload, int len, unsigned int ts);
@@ -62,7 +60,8 @@ public:
     int deliverFeedback(char* buf, int len);
 
 private:
-    bool setVideoSize(VideoSize videoSize);
+    bool init(woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<TaskRunner>);
+    void close();
 
     boost::scoped_ptr<webrtc::BitrateController> m_bitrateController;
     boost::scoped_ptr<webrtc::RtcpBandwidthObserver> m_bandwidthObserver;

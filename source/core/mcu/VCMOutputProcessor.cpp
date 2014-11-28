@@ -33,9 +33,10 @@ namespace mcu {
 
 DEFINE_LOGGER(VCMOutputProcessor, "mcu.VCMOutputProcessor");
 
-VCMOutputProcessor::VCMOutputProcessor(int id)
+VCMOutputProcessor::VCMOutputProcessor(int id, woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<TaskRunner> taskRunner)
     : VideoOutputProcessor(id)
 {
+    init(transport, taskRunner);
 }
 
 VCMOutputProcessor::~VCMOutputProcessor()
@@ -43,81 +44,25 @@ VCMOutputProcessor::~VCMOutputProcessor()
     close();
 }
 
-bool VCMOutputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<TaskRunner> taskRunner, VideoCodecType videoCodecType, VideoSize videoSize)
+bool VCMOutputProcessor::setSendCodec(VideoCodecType codecType, VideoSize videoSize)
 {
-    m_taskRunner = taskRunner;
-    m_videoTransport.reset(transport);
-
-    m_bitrateController.reset(webrtc::BitrateController::CreateBitrateController(Clock::GetRealTimeClock(), true));
-    m_bandwidthObserver.reset(m_bitrateController->CreateRtcpBandwidthObserver());
-    // FIXME: "config" is currently not respected.
-    // The number of cores is currently hard coded to be 4. Need a function to get the correct information from the system.
-    webrtc::Config config;
-    m_videoEncoder.reset(new ViEEncoder(m_id, -1, 4, config, *(m_taskRunner->unwrap()), m_bitrateController.get()));
-    m_videoEncoder->Init();
-
-    RtpRtcp::Configuration configuration;
-    configuration.id = ViEModuleId(m_id);
-    configuration.outgoing_transport = transport;
-    configuration.audio = false;  // Video.
-    configuration.default_module = m_videoEncoder->SendRtpRtcpModule();
-    configuration.intra_frame_callback = m_videoEncoder.get();
-    configuration.bandwidth_callback = m_bandwidthObserver.get();
-    m_rtpRtcp.reset(RtpRtcp::CreateRtpRtcp(configuration));
-
     VideoCodec videoCodec;
     // TODO: enable VP8/H264 in one room later
 #if 0
-    if (VideoCodingModule::Codec(webrtc::kVideoCodecH264, &videoCodec) == VCM_OK) {
-       if (!setVideoSize(videoSize))
-           return false;
-    }
+    if ((codecType == VCT_H264 && VideoCodingModule::Codec(webrtc::kVideoCodecH264, &videoCodec) == VCM_OK) ||
+         codecType == VCT_VP8 && VideoCodingModule::Codec(webrtc::kVideoCodecVP8, &videoCodec == VCM_OK)) {
 #else
     if (m_videoEncoder->GetEncoder(&videoCodec) == 0) {
-        // TODO: Set startBitrate, minBitrate and maxBitrate of the codec according to the (future) configurable parameters.
-        if (!setVideoSize(videoSize))
-            return false;
-    } else
-        assert(false);
 #endif
-
-    // Enable FEC.
-    // TODO: the parameters should be dynamically adjustable.
-    m_rtpRtcp->SetGenericFECStatus(true, RED_90000_PT, ULP_90000_PT);
-    // Enable NACK.
-    // TODO: the parameters should be dynamically adjustable.
-    m_rtpRtcp->SetStorePacketsStatus(true, webrtc::kSendSidePacketHistorySize);
-    m_videoEncoder->UpdateProtectionMethod(true);
-
-    // Register the SSRC so that the video encoder is able to respond to
-    // the intra frame request to a given SSRC.
-    std::list<uint32_t> ssrcs;
-    ssrcs.push_back(m_rtpRtcp->SSRC());
-    m_videoEncoder->SetSsrcs(ssrcs);
-
-    m_taskRunner->RegisterModule(m_rtpRtcp.get());
-
-    // FIXME: Get rid of the hard coded timer interval here.
-    // Also it may need to be associated with the target fps configured in VPM.
-    return true;
-}
-
-void VCMOutputProcessor::close()
-{
-    m_taskRunner->DeRegisterModule(m_rtpRtcp.get());
-}
-
-bool VCMOutputProcessor::setVideoSize(VideoSize videoSize)
-{
-    VideoCodec videoCodec;
-    if (m_videoEncoder->GetEncoder(&videoCodec) == 0) {
         videoCodec.width = videoSize.width;
         videoCodec.height = videoSize.height;
+        // TODO: Set startBitrate, minBitrate and maxBitrate of the codec according to the (future) configurable parameters.
 
         if (!m_rtpRtcp || m_rtpRtcp->RegisterSendPayload(videoCodec) == -1)
             return false;
         return m_videoEncoder ? (m_videoEncoder->SetEncoder(videoCodec) != -1) : false;
     }
+
     return false;
 }
 
@@ -150,6 +95,54 @@ void VCMOutputProcessor::onFrame(FrameFormat format, unsigned char* payload, int
 int VCMOutputProcessor::deliverFeedback(char* buf, int len)
 {
     return m_rtpRtcp->IncomingRtcpPacket(reinterpret_cast<uint8_t*>(buf), len) == -1 ? 0 : len;
+}
+
+bool VCMOutputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<TaskRunner> taskRunner)
+{
+    m_taskRunner = taskRunner;
+    m_videoTransport.reset(transport);
+
+    m_bitrateController.reset(webrtc::BitrateController::CreateBitrateController(Clock::GetRealTimeClock(), true));
+    m_bandwidthObserver.reset(m_bitrateController->CreateRtcpBandwidthObserver());
+    // FIXME: "config" is currently not respected.
+    // The number of cores is currently hard coded to be 4. Need a function to get the correct information from the system.
+    webrtc::Config config;
+    m_videoEncoder.reset(new ViEEncoder(m_id, -1, 4, config, *(m_taskRunner->unwrap()), m_bitrateController.get()));
+    m_videoEncoder->Init();
+
+    RtpRtcp::Configuration configuration;
+    configuration.id = ViEModuleId(m_id);
+    configuration.outgoing_transport = transport;
+    configuration.audio = false;  // Video.
+    configuration.default_module = m_videoEncoder->SendRtpRtcpModule();
+    configuration.intra_frame_callback = m_videoEncoder.get();
+    configuration.bandwidth_callback = m_bandwidthObserver.get();
+    m_rtpRtcp.reset(RtpRtcp::CreateRtpRtcp(configuration));
+
+    // Enable FEC.
+    // TODO: the parameters should be dynamically adjustable.
+    m_rtpRtcp->SetGenericFECStatus(true, RED_90000_PT, ULP_90000_PT);
+    // Enable NACK.
+    // TODO: the parameters should be dynamically adjustable.
+    m_rtpRtcp->SetStorePacketsStatus(true, webrtc::kSendSidePacketHistorySize);
+    m_videoEncoder->UpdateProtectionMethod(true);
+
+    // Register the SSRC so that the video encoder is able to respond to
+    // the intra frame request to a given SSRC.
+    std::list<uint32_t> ssrcs;
+    ssrcs.push_back(m_rtpRtcp->SSRC());
+    m_videoEncoder->SetSsrcs(ssrcs);
+
+    m_taskRunner->RegisterModule(m_rtpRtcp.get());
+
+    // FIXME: Get rid of the hard coded timer interval here.
+    // Also it may need to be associated with the target fps configured in VPM.
+    return true;
+}
+
+void VCMOutputProcessor::close()
+{
+    m_taskRunner->DeRegisterModule(m_rtpRtcp.get());
 }
 
 }
