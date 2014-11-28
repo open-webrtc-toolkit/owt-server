@@ -142,8 +142,8 @@ void VCMOutputProcessor::onFrame(FrameFormat format, unsigned char* payload, int
         webrtc::RTPVideoHeader h;
         h.codec = webrtc::kRtpVideoVp8;
         h.codecHeader.VP8.InitRTPVideoHeaderVP8();
-        m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, 100, ts*90,
-                                    ts, payload, len, NULL, &h);
+        m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, 100, ts * 90,
+                                    ts, payload, len, nullptr, &h);
     } else {
         // TODO: H264 image should be handled here.
     }

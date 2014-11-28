@@ -41,7 +41,7 @@ HardwareVideoMixerInput::HardwareVideoMixerInput(boost::shared_ptr<VideoMixEngin
     , m_provider(provider)
     , m_engine(engine)
 {
-    assert((inFormat == FRAME_FORMAT_VP8 || inFormat == FRAME_FORMAT_H264) && m_provider != NULL);
+    assert((inFormat == FRAME_FORMAT_VP8 || inFormat == FRAME_FORMAT_H264) && m_provider);
 
     m_index = m_engine->EnableInput(Frameformat2CodecType(inFormat), this);
 }
@@ -78,7 +78,7 @@ HardwareVideoMixerOutput::HardwareVideoMixerOutput(boost::shared_ptr<VideoMixEng
     , m_frameRate(framerate)
     , m_outCount(0)
 {
-    assert((m_outFormat == FRAME_FORMAT_VP8 || m_outFormat == FRAME_FORMAT_H264) && m_receiver != NULL);
+    assert((m_outFormat == FRAME_FORMAT_VP8 || m_outFormat == FRAME_FORMAT_H264) && m_receiver);
 
     m_index = m_engine->EnableOutput(Frameformat2CodecType(m_outFormat), name.c_str(), bitrate, this);
     assert(m_index != INVALID_OUTPUT_INDEX);
