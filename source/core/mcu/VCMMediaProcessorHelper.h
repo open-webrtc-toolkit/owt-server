@@ -29,13 +29,6 @@
 
 namespace mcu {
 
-class InputFrameCallback {
-public:
-    virtual void activateInput(int index) = 0;
-    virtual void deActivateInput(int index) = 0;
-    virtual void handleInputFrame(webrtc::I420VideoFrame&, int index) = 0;
-};
-
 class DebugRecorder {
  public:
   DebugRecorder()

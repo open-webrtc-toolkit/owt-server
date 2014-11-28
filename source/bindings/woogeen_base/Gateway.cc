@@ -86,8 +86,14 @@ Handle<Value> Gateway::New(const Arguments& args) {
   String::Utf8Value param(args[0]->ToString());
   std::string customParam = std::string(*param);
 
+  bool hardwareAccelerated = false;
+
+  if (args.Length() > 1) {
+    bool hardwareAccelerated = args[1]->BooleanValue();
+  }
+
   Gateway* obj = new Gateway();
-  obj->me = woogeen_base::Gateway::createGatewayInstance(customParam);
+  obj->me = woogeen_base::Gateway::createGatewayInstance(customParam, hardwareAccelerated);
 
   obj->Wrap(args.This());
 

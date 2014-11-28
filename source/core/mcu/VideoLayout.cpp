@@ -18,25 +18,11 @@
  * and approved by Intel in writing.
  */
 
-#ifndef InProcessMixer_h
-#define InProcessMixer_h
-
-#include "Mixer.h"
+#include "VideoLayout.h"
 
 namespace mcu {
 
-/**
- * An InProcessMixer refers to a media mixer which is run in the same process as a woogeen_base::Gateway.
- */
-class InProcessMixer : public Mixer {
-public:
-    InProcessMixer(bool hardwareAccelerated)
-        : Mixer(hardwareAccelerated)
-    {
-    }
+VideoSize VideoSizes[] = {{352, 288}, {640, 480}, {1280, 720}, {320, 240}, {480, 320}, {480, 360}, {176, 144}, {192, 144}, {1920, 1080}, {3840, 2160}};
+const char* VideoResString[] = {"cif", "vga", "hd_720p", "sif", "hvga", "r480x360", "qcif", "r192x144", "hd_1080p", "uhd_4k"};
 
-    ~InProcessMixer() { }
-};
-
-} /* namespace mcu */
-#endif /* InProcessMixer_h */
+}

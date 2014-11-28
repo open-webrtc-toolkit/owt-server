@@ -22,12 +22,14 @@
 #define VCMInputProcessor_h
 
 #include "VCMMediaProcessorHelper.h"
+#include "VideoMixerInterface.h"
 
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
 #include <logger.h>
 #include <MediaDefinitions.h>
 #include <WoogeenTransport.h>
+#include <webrtc/modules/video_coding/codecs/interface/video_codec_interface.h>
 #include <webrtc/modules/remote_bitrate_estimator/include/remote_bitrate_estimator.h>
 #include <webrtc/modules/rtp_rtcp/interface/rtp_rtcp.h>
 #include <webrtc/modules/video_coding/main/interface/video_coding.h>
@@ -35,6 +37,62 @@
 #include <webrtc/video_engine/vie_sync_module.h>
 
 namespace mcu {
+
+class ExternalRenderer : public webrtc::VCMReceiveCallback {
+public:
+    ExternalRenderer(int index,
+                     boost::shared_ptr<VideoMixerInterface> frameHandler,
+                     VideoMixInProvider* provider) 
+    : m_index(index)
+    , m_frameHandler(frameHandler) {
+        m_frameHandler->activateInput(m_index, FRAME_FORMAT_I420, provider);
+    }
+    virtual ~ExternalRenderer() {
+        m_frameHandler->deActivateInput(m_index);
+    }
+    // Implements the webrtc::VCMReceiveCallback interface.
+    virtual int32_t FrameToRender(webrtc::I420VideoFrame& frame) {
+        m_frameHandler->pushInput(m_index, reinterpret_cast<unsigned char*>(&frame), sizeof(webrtc::I420VideoFrame));
+        return 0;
+    }
+
+private:
+    int m_index;
+    boost::shared_ptr<VideoMixerInterface> m_frameHandler;
+};
+
+class ExternalDecoder : public webrtc::VideoDecoder {
+public:
+    ExternalDecoder(int index, 
+                    boost::shared_ptr<VideoMixerInterface> imageHandler,
+                    VideoMixInProvider* provider)
+    : m_index(index)
+    , m_imageHandler(imageHandler) {
+        m_imageHandler->activateInput(m_index, FRAME_FORMAT_VP8, provider);
+    }
+    virtual ~ExternalDecoder() {
+        m_imageHandler->deActivateInput(m_index);
+    }
+    // Implements the webrtc::VideoDecoder interface.
+    virtual int32_t InitDecode(const webrtc::VideoCodec* codecSettings, int32_t numberOfCores) { return 0; }
+    virtual int32_t Decode(const webrtc::EncodedImage& inputImage,
+                           bool missingFrames,
+                           const webrtc::RTPFragmentationHeader* fragmentation,
+                           const webrtc::CodecSpecificInfo* codecSpecificInfo = NULL,
+                           int64_t renderTimeMs = -1) {
+        if (m_imageHandler) {
+            m_imageHandler->pushInput(m_index, inputImage._buffer, inputImage._length);
+        }
+        return 0;
+    }
+    virtual int32_t RegisterDecodeCompleteCallback(webrtc::DecodedImageCallback* callback){ return -1;}
+    virtual int32_t Release() {return 0;}
+    virtual int32_t Reset() {return 0;}
+
+private:
+    int m_index;
+    boost::shared_ptr<VideoMixerInterface> m_imageHandler;
+};
 
 /**
  * A class to process the incoming streams by leveraging video coding module from
@@ -48,18 +106,18 @@ class VCMInputProcessor : public erizo::MediaSink,
                           public webrtc::RtpFeedback,
                           public webrtc::VCMFrameTypeCallback,
                           public webrtc::VCMPacketRequestCallback,
-                          public webrtc::VCMReceiveCallback {
+                          public VideoMixInProvider {
     DECLARE_LOGGER();
 
 public:
-    VCMInputProcessor(int index);
+    VCMInputProcessor(int index, bool externalDecode = false);
     virtual ~VCMInputProcessor();
+
+    // Implements the VideoMixInProvider interface.
+    virtual void requestKeyFrame();
 
     // Implements the webrtc::VCMPacketRequestCallback interface.
     virtual int32_t ResendPackets(const uint16_t* sequenceNumbers, uint16_t length);
-
-    // Implements the webrtc::VCMReceiveCallback interface.
-    virtual int32_t FrameToRender(webrtc::I420VideoFrame&);
 
     // Implements the webrtc::VCMFrameTypeCallback interface.
     virtual int32_t RequestKeyFrame();
@@ -80,12 +138,14 @@ public:
     int deliverAudioData(char*, int len);
     int deliverVideoData(char*, int len);
 
-    bool init(woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<InputFrameCallback>, boost::shared_ptr<TaskRunner>);
+    bool init(woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<VideoMixerInterface>, boost::shared_ptr<TaskRunner>);
 
     void bindAudioForSync(int32_t voiceChannelId, webrtc::VoEVideoSync*);
 
 private:
     int m_index;
+    bool m_externalDecoding;
+    bool m_decoderRegistered;
 
     webrtc::VideoCodingModule* m_vcm;
     boost::scoped_ptr<webrtc::RemoteBitrateObserver> m_remoteBitrateObserver;
@@ -96,7 +156,9 @@ private:
     boost::shared_ptr<webrtc::Transport> m_videoTransport;
 
     boost::scoped_ptr<DebugRecorder> m_recorder;
-    boost::shared_ptr<InputFrameCallback> m_frameReadyCB;
+    boost::shared_ptr<VideoMixerInterface> m_frameReceiver;
+    boost::shared_ptr<webrtc::VCMReceiveCallback> m_renderer;
+    boost::shared_ptr<webrtc::VideoDecoder> m_decoder;
     boost::shared_ptr<TaskRunner> m_taskRunner;
 };
 
