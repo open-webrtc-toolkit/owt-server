@@ -43,8 +43,7 @@ class HardwareVideoMixer;
 class ExternalVideoProcessor : public VideoOutputProcessor,
                                public erizo::FeedbackSink,
                                public webrtc::BitrateObserver,
-                               public webrtc::RtcpIntraFrameObserver,
-                               public VideoMixOutReceiver {
+                               public webrtc::RtcpIntraFrameObserver {
     DECLARE_LOGGER();
 
 public:
@@ -59,6 +58,8 @@ public:
     uint32_t sendSSRC();
     erizo::FeedbackSink* feedbackSink() { return this; }
 
+    void onFrame(FrameFormat, unsigned char* payload, int len, unsigned int ts);
+
     // Implements FeedbackSink.
     int deliverFeedback(char* buf, int len);
 
@@ -70,11 +71,6 @@ public:
 
     // Implements webrtc::BitrateObserver.
     void OnNetworkChanged(const uint32_t target_bitrate, const uint8_t fraction_loss, const uint32_t rtt);
-
-    /**
-     * Inplement VideoMixOutReceiver interface
-     */
-    virtual void onFrame(FrameFormat format, unsigned char* payload, int len, unsigned int ts);
 
 private:
     boost::scoped_ptr<webrtc::BitrateController> m_bitrateController;

@@ -69,17 +69,16 @@ bool VideoMixer::init()
     layout.rootsize = vga;
     layout.divFactor = 1;
 
-
     if (m_hardwareAccelerated) {
         m_mixer.reset(new HardwareVideoMixer());
         m_videoOutputProcessor.reset(new ExternalVideoProcessor(MIXED_VIDEO_STREAM_ID, m_mixer, FRAME_FORMAT_VP8));
         m_videoOutputProcessor->init(new WoogeenTransport<erizo::VIDEO>(m_outputReceiver, nullptr), m_taskRunner, VideoOutputProcessor::VCT_VP8, VideoSizes[layout.rootsize]);
-        m_mixer->activateOutput(FRAME_FORMAT_VP8, 30, 500, dynamic_cast<VideoMixOutReceiver*>(m_videoOutputProcessor.get()));
+        m_mixer->activateOutput(FRAME_FORMAT_VP8, 30, 500, m_videoOutputProcessor.get());
     } else {
         m_mixer.reset(new SoftwareVideoMixer());
         m_videoOutputProcessor.reset(new VCMOutputProcessor(MIXED_VIDEO_STREAM_ID));
         m_videoOutputProcessor->init(new WoogeenTransport<erizo::VIDEO>(m_outputReceiver, nullptr), m_taskRunner, VideoOutputProcessor::VCT_VP8, VideoSizes[layout.rootsize]);
-        m_mixer->activateOutput(FRAME_FORMAT_I420, 30, 500, dynamic_cast<VideoMixOutReceiver*>(m_videoOutputProcessor.get()));
+        m_mixer->activateOutput(FRAME_FORMAT_I420, 30, 500, m_videoOutputProcessor.get());
     }
     m_mixer->setLayout(layout);
 

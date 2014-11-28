@@ -21,14 +21,11 @@
 #ifndef VideoOutputProcessor_h
 #define VideoOutputProcessor_h
 
-#include "VideoLayout.h"
+#include "VideoMixerInterface.h"
+
 #include <boost/shared_ptr.hpp>
 #include <MediaDefinitions.h>
 #include <WoogeenTransport.h>
-
-namespace webrtc {
-class VideoCodec;
-}
 
 namespace mcu {
 
@@ -37,9 +34,10 @@ class TaskRunner;
 /**
  * This is the class to send out the encoded frame via the given WoogeenTransport.
  */
-class VideoOutputProcessor{
+class VideoOutputProcessor : public VideoMixOutReceiver {
 public:
-    enum VideoCodecType{VCT_VP8, VCT_H264};
+    enum VideoCodecType {VCT_VP8, VCT_H264};
+
     VideoOutputProcessor(int id)
         : m_id(id)
     {
@@ -47,7 +45,7 @@ public:
 
     virtual ~VideoOutputProcessor() { }
 
-    virtual bool init(woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<TaskRunner>, VideoCodecType videoCodecType, VideoSize videoSize) = 0;
+    virtual bool init(woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<TaskRunner>, VideoCodecType, VideoSize) = 0;
     virtual void close() = 0;
 
     virtual void onRequestIFrame() = 0;
