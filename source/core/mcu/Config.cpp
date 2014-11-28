@@ -19,7 +19,7 @@
  */
 
 #include "Config.h"
-#include "VideoCompositor.h"
+#include "VideoLayout.h"
 
 #include <boost/foreach.hpp>
 #include <boost/property_tree/ptree.hpp>
@@ -30,8 +30,6 @@
 namespace mcu {
 
 Config* Config::m_config = nullptr;
-
-const char* VideoResString[] = {"cif", "vga", "hd_720p", "sif", "hvga", "r480x360", "qcif", "r192x144", "hd_1080p", "uhd_4k"};
 
 Config* Config::get()
 {

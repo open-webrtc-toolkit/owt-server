@@ -29,8 +29,6 @@ using namespace webrtc;
 
 namespace mcu {
 
-VideoSize VideoSizes[] = {{352, 288}, {640, 480}, {1280, 720}, {320, 240}, {480, 320}, {480, 360}, {176, 144}, {192, 144}, {1920, 1080}, {3840, 2160}};
-
 VPMPool::VPMPool(unsigned int size)
     : m_size(size)
 {
@@ -143,7 +141,7 @@ bool SoftVideoCompositor::commitLayout()
     return true;
 }
 
-webrtc::I420VideoFrame* SoftVideoCompositor::layout(int maxSlot)
+webrtc::I420VideoFrame* SoftVideoCompositor::layout()
 {
     if (m_configChanged) {
         webrtc::CriticalSectionScoped cs(m_configLock.get());
@@ -152,7 +150,7 @@ webrtc::I420VideoFrame* SoftVideoCompositor::layout(int maxSlot)
     }
 
     if (m_currentLayout.regions.empty())
-        return fluidLayout(maxSlot);
+        return fluidLayout();
 
     return customLayout();
 }
@@ -222,7 +220,7 @@ webrtc::I420VideoFrame* SoftVideoCompositor::customLayout()
     return m_composedFrame.get();
 }
 
-webrtc::I420VideoFrame* SoftVideoCompositor::fluidLayout(int maxSlot)
+webrtc::I420VideoFrame* SoftVideoCompositor::fluidLayout()
 {
     webrtc::I420VideoFrame* target = m_composedFrame.get();
 

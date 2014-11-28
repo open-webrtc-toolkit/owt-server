@@ -30,17 +30,16 @@ namespace mcu {
 
 DEFINE_LOGGER(VCMInputProcessor, "mcu.VCMInputProcessor");
 
-VCMInputProcessor::VCMInputProcessor(int index)
+VCMInputProcessor::VCMInputProcessor(int index, bool externalDecode)
     : m_index(index)
+    , m_externalDecoding(externalDecode)
+    , m_decoderRegistered(false)
     , m_vcm(nullptr)
 {
 }
 
 VCMInputProcessor::~VCMInputProcessor()
 {
-    if (m_frameReadyCB)
-        m_frameReadyCB->deActivateInput(m_index);
-
     m_videoReceiver->StopReceive();
     m_recorder->Stop();
 
@@ -56,19 +55,22 @@ VCMInputProcessor::~VCMInputProcessor()
     }
 }
 
-bool VCMInputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<InputFrameCallback> frameReadyCB, boost::shared_ptr<TaskRunner> taskRunner)
+bool VCMInputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<VideoMixerInterface> frameReceiver, boost::shared_ptr<TaskRunner> taskRunner)
 {
     m_videoTransport.reset(transport);
-    m_frameReadyCB = frameReadyCB;
+    m_frameReceiver = frameReceiver;
     m_taskRunner = taskRunner;
-
-    if (m_frameReadyCB)
-        m_frameReadyCB->activateInput(m_index);
 
     m_vcm = VideoCodingModule::Create(m_index);
     if (m_vcm) {
         m_vcm->InitializeReceiver();
-        m_vcm->RegisterReceiveCallback(this);
+        if (m_externalDecoding) {
+            m_decoder.reset(new ExternalDecoder(m_index, m_frameReceiver, this));
+            m_decoderRegistered = false;
+        } else {
+            m_renderer.reset(new ExternalRenderer(m_index, m_frameReceiver, this));
+            m_vcm->RegisterReceiveCallback(m_renderer.get());
+        }
     } else
         return false;
 
@@ -125,20 +127,17 @@ bool VCMInputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* trans
     return true;
 }
 
+void VCMInputProcessor::requestKeyFrame()
+{
+    m_rtpRtcp->RequestKeyFrame();
+}
+
 void VCMInputProcessor::bindAudioForSync(int32_t voiceChannelId, VoEVideoSync* voe)
 {
     if (m_avSync) {
         m_avSync->ConfigureSync(voiceChannelId, voe, m_rtpRtcp.get(), m_videoReceiver->GetRtpReceiver());
         m_taskRunner->RegisterModule(m_avSync.get());
     }
-}
-
-int32_t VCMInputProcessor::FrameToRender(I420VideoFrame& videoFrame)
-{
-    ELOG_DEBUG("Got decoded frame from %d\n", m_index);
-    if (m_frameReadyCB)
-        m_frameReadyCB->handleInputFrame(videoFrame, m_index);
-    return 0;
 }
 
 int32_t VCMInputProcessor::ResendPackets(const uint16_t* sequenceNumbers, uint16_t length)
@@ -159,6 +158,10 @@ int32_t VCMInputProcessor::OnInitializeDecoder(
     const uint8_t channels,
     const uint32_t rate)
 {
+    if (m_externalDecoding && !m_decoderRegistered && m_decoder.get()) {
+        m_vcm->RegisterExternalDecoder(m_decoder.get(), payload_type, true);
+        m_decoderRegistered = true;
+    }
     m_vcm->ResetDecoder();
     return 0;
 }

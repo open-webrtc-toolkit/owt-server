@@ -37,17 +37,34 @@ exports.ErizoJSController = function (spec) {
 
     that.initMixer = function (id, oop, callback) {
         if (publishers[id] === undefined) {
-            if (oop)
-                mixer = new addon.Gateway("OutOfProcessMixer");
-            else
-                mixer = new addon.Gateway("InProcessMixer");
+            var doInitMixer = function(hardwareAccelerated) {
+                if (oop)
+                    mixer = new addon.Gateway("OutOfProcessMixer", hardwareAccelerated);
+                else
+                    mixer = new addon.Gateway("InProcessMixer", hardwareAccelerated);
 
-            if (GLOBAL.config.erizo.videolayout !== undefined)
-                mixer.configLayout(JSON.stringify(GLOBAL.config.erizo.videolayout));
+                if (GLOBAL.config.erizo.videolayout !== undefined)
+                    mixer.configLayout(JSON.stringify(GLOBAL.config.erizo.videolayout));
 
-            publishers[id] = mixer;
-            subscribers[id] = [];
-            callback('callback', 'success');
+                publishers[id] = mixer;
+                subscribers[id] = [];
+                callback('callback', 'success');
+            };
+
+            var hasHardwareCap = false;
+            require('child_process').exec('vainfo', function (err, stdout, stderr) {
+                // Check whether hardware codec should be used for this room
+                if (err) {
+                    var errInfo = err.toString();
+                    hasHardwareCap = (errInfo.indexOf('VA-API version 0.34.0') != -1) ||
+                                     (errInfo.indexOf('VA-API version: 0.34') != -1);
+                } else if(stdout.length > 0) {
+                    var outInfo = stdout.toString();
+                    hasHardwareCap = (outInfo.indexOf('VA-API version 0.34.0') != -1) ||
+                                     (outInfo.indexOf('VA-API version: 0.34') != -1);
+                }
+                doInitMixer(hasHardwareCap && GLOBAL.config.erizoController.hardwareAccelerated);
+            });
         } else {
             log.info("Mixer already set for", id);
         }

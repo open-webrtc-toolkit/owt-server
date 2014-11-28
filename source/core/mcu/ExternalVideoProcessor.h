@@ -21,9 +21,11 @@
 #ifndef ExternalVideoProcessor_h
 #define ExternalVideoProcessor_h
 
-#include "Config.h"
 #include "VideoOutputProcessor.h"
+#include "VideoMixerInterface.h"
 
+#include <boost/scoped_ptr.hpp>
+#include <boost/shared_ptr.hpp>
 #include <logger.h>
 #include <webrtc/modules/bitrate_controller/include/bitrate_controller.h>
 #include <webrtc/modules/rtp_rtcp/interface/rtp_rtcp.h>
@@ -31,6 +33,7 @@
 namespace mcu {
 
 class TaskRunner;
+class HardwareVideoMixer;
 
 /**
  * This is the class to accept the encoded frame from external, packetize the frame and
@@ -39,30 +42,25 @@ class TaskRunner;
  */
 class ExternalVideoProcessor : public VideoOutputProcessor,
                                public erizo::FeedbackSink,
-                               public ConfigListener,
                                public webrtc::BitrateObserver,
-                               public webrtc::RtcpIntraFrameObserver {
+                               public webrtc::RtcpIntraFrameObserver,
+                               public VideoMixOutReceiver {
     DECLARE_LOGGER();
 
 public:
-    ExternalVideoProcessor(int id);
+    ExternalVideoProcessor(int id, boost::shared_ptr<VideoMixerInterface> mixer, FrameFormat frameFormat);
     ~ExternalVideoProcessor();
 
     // Implements VideoOutputProcessor.
-    bool init(woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<TaskRunner>);
+    bool init(woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<TaskRunner>, VideoCodecType videoCodecType, VideoSize videoSize);
     void close();
 
-    bool setSendVideoCodec(const webrtc::VideoCodec&);
     void onRequestIFrame();
     uint32_t sendSSRC();
-    int sendFrame(char* payload, int len);
     erizo::FeedbackSink* feedbackSink() { return this; }
 
     // Implements FeedbackSink.
     int deliverFeedback(char* buf, int len);
-
-    // Implements ConfigListener.
-    void onConfigChanged();
 
     // Implements webrtc::RtcpIntraFrameObserver.
     void OnReceivedIntraFrameRequest(uint32_t ssrc);
@@ -73,6 +71,11 @@ public:
     // Implements webrtc::BitrateObserver.
     void OnNetworkChanged(const uint32_t target_bitrate, const uint8_t fraction_loss, const uint32_t rtt);
 
+    /**
+     * Inplement VideoMixOutReceiver interface
+     */
+    virtual void onFrame(FrameFormat format, unsigned char* payload, int len, unsigned int ts);
+
 private:
     boost::scoped_ptr<webrtc::BitrateController> m_bitrateController;
     boost::scoped_ptr<webrtc::RtcpBandwidthObserver> m_bandwidthObserver;
@@ -80,6 +83,8 @@ private:
 
     boost::shared_ptr<webrtc::Transport> m_videoTransport;
     boost::shared_ptr<TaskRunner> m_taskRunner;
+    boost::shared_ptr<VideoMixerInterface> m_mixer;
+    FrameFormat m_frameFormat;
 };
 
 }

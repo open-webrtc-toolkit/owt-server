@@ -22,8 +22,8 @@
 
 namespace mcu {
 
-OutOfProcessMixer::OutOfProcessMixer()
-    : Mixer()
+OutOfProcessMixer::OutOfProcessMixer(bool hardwareAccelerated)
+    : Mixer(hardwareAccelerated)
 {
     m_audioInput.reset(new AudioDataReader(this));
     m_videoInput.reset(new VideoDataReader(this));

@@ -23,13 +23,13 @@
 #include "OutOfProcessMixerProxy.h"
 #include "WebRTCGateway.h"
 
-woogeen_base::Gateway* woogeen_base::Gateway::createGatewayInstance(const std::string& customParams)
+woogeen_base::Gateway* woogeen_base::Gateway::createGatewayInstance(const std::string& customParams, const bool hardwareAccelerated)
 {
     if (customParams == "InProcessMixer")
-        return new mcu::InProcessMixer();
+        return new mcu::InProcessMixer(hardwareAccelerated);
 
     if (customParams == "OutOfProcessMixer")
-        return new mcu::OutOfProcessMixer();
+        return new mcu::OutOfProcessMixer(hardwareAccelerated);
 
     return new mcu::WebRTCGateway();
 }

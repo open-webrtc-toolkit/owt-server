@@ -36,16 +36,7 @@ DEFINE_LOGGER(VCMOutputProcessor, "mcu.VCMOutputProcessor");
 
 VCMOutputProcessor::VCMOutputProcessor(int id)
     : VideoOutputProcessor(id)
-    , m_isClosing(false)
-    , m_maxSlot(0)
-    , m_videoCompositor(nullptr)
-    , m_recordStarted(false)
 {
-    m_ntpDelta = Clock::GetRealTimeClock()->CurrentNtpInMilliseconds() -
-                                  TickTime::MillisecondTimestamp();
-    m_recorder.reset(new DebugRecorder());
-    m_mockFrame.reset(new webrtc::I420VideoFrame());
-    m_mockFrame->CreateEmptyFrame(640, 480, 640, 640/2, 640/2);
 }
 
 VCMOutputProcessor::~VCMOutputProcessor()
@@ -53,9 +44,8 @@ VCMOutputProcessor::~VCMOutputProcessor()
     close();
 }
 
-bool VCMOutputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<TaskRunner> taskRunner)
+bool VCMOutputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<TaskRunner> taskRunner, VideoCodecType videoCodecType, VideoSize videoSize)
 {
-    m_bufferManager.reset(new BufferManager());
     m_taskRunner = taskRunner;
     m_videoTransport.reset(transport);
 
@@ -76,27 +66,17 @@ bool VCMOutputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* tran
     configuration.bandwidth_callback = m_bandwidthObserver.get();
     m_rtpRtcp.reset(RtpRtcp::CreateRtpRtcp(configuration));
 
-    m_videoCompositor.reset(new SoftVideoCompositor(m_bufferManager));
-    VideoLayout layout;
-    layout.rootsize = vga;
-    layout.divFactor = 1;
-    m_videoCompositor->config(layout);
-
     VideoCodec videoCodec;
     // TODO: enable VP8/H264 in one room later
 #if 0
     if (VideoCodingModule::Codec(webrtc::kVideoCodecH264, &videoCodec) == VCM_OK) {
-       videoCodec.width = VideoSizes[layout.rootsize].width;
-       videoCodec.height = VideoSizes[layout.rootsize].height;
-       if (!setSendVideoCodec(videoCodec))
+       if (!setVideoSize(videoSize))
            return false;
     }
 #else
     if (m_videoEncoder->GetEncoder(&videoCodec) == 0) {
-        videoCodec.width = VideoSizes[layout.rootsize].width;
-        videoCodec.height = VideoSizes[layout.rootsize].height;
         // TODO: Set startBitrate, minBitrate and maxBitrate of the codec according to the (future) configurable parameters.
-        if (!setSendVideoCodec(videoCodec))
+        if (!setVideoSize(videoSize))
             return false;
     } else
         assert(false);
@@ -117,54 +97,30 @@ bool VCMOutputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* tran
     m_videoEncoder->SetSsrcs(ssrcs);
 
     m_taskRunner->RegisterModule(m_rtpRtcp.get());
-    Config::get()->registerListener(this);
 
-    m_recordStarted = false;
-
-
-
-    m_recorder->Start("webrtc.mixed.frame");
 
     // FIXME: Get rid of the hard coded timer interval here.
     // Also it may need to be associated with the target fps configured in VPM.
-
-    m_timer.reset(new boost::asio::deadline_timer(m_ioService, boost::posix_time::milliseconds(33)));
-    m_timer->async_wait(boost::bind(&VCMOutputProcessor::layoutTimerHandler, this, boost::asio::placeholders::error));
-    m_encodingThread.reset(new boost::thread(boost::bind(&boost::asio::io_service::run, &m_ioService)));
-
     return true;
 }
 
 void VCMOutputProcessor::close()
 {
-    m_isClosing = true;
-    Config::get()->unregisterListener(this);
     m_taskRunner->DeRegisterModule(m_rtpRtcp.get());
-    m_timer->cancel();
-    m_encodingThread->join();
 }
 
-bool VCMOutputProcessor::setSendVideoCodec(const VideoCodec& videoCodec)
+bool VCMOutputProcessor::setVideoSize(VideoSize videoSize)
 {
-    if (!m_rtpRtcp || m_rtpRtcp->RegisterSendPayload(videoCodec) == -1)
-        return false;
-
-    return m_videoEncoder ? (m_videoEncoder->SetEncoder(videoCodec) != -1) : false;
-}
-
-void VCMOutputProcessor::onConfigChanged()
-{
-    ELOG_DEBUG("onConfigChanged");
-    VideoLayout* layout = Config::get()->getVideoLayout();
-    m_videoCompositor->config(*layout);
-
     VideoCodec videoCodec;
     if (m_videoEncoder->GetEncoder(&videoCodec) == 0) {
-        videoCodec.width = VideoSizes[layout->rootsize].width;
-        videoCodec.height = VideoSizes[layout->rootsize].height;
-        if (!setSendVideoCodec(videoCodec))
-            assert(!"VCMOutputProcessor::onConfigChanged, setSendVideoCodec error!");
+        videoCodec.width = videoSize.width;
+        videoCodec.height = videoSize.height;
+
+        if (!m_rtpRtcp || m_rtpRtcp->RegisterSendPayload(videoCodec) == -1)
+            return false;
+        return m_videoEncoder ? (m_videoEncoder->SetEncoder(videoCodec) != -1) : false;
     }
+    return false;
 }
 
 void VCMOutputProcessor::onRequestIFrame()
@@ -177,88 +133,25 @@ uint32_t VCMOutputProcessor::sendSSRC()
     return m_rtpRtcp->SSRC();
 }
 
-void VCMOutputProcessor::activateInput(int index)
+void VCMOutputProcessor::onFrame(FrameFormat format, unsigned char* payload, int len, unsigned int ts)
 {
-    m_bufferManager->setActive(index, true);
-    updateMaxSlot(m_bufferManager->activeSlots());
-}
-
-void VCMOutputProcessor::deActivateInput(int index)
-{
-    m_bufferManager->setActive(index, false);
-    updateMaxSlot(m_bufferManager->activeSlots());
-}
-
-/**
- * this should be called whenever a new frame is decoded from
- * one particular publisher with index
- */
-void VCMOutputProcessor::handleInputFrame(webrtc::I420VideoFrame& frame, int index)
-{
-    I420VideoFrame* freeFrame = m_bufferManager->getFreeBuffer();
-    if (freeFrame) {
-        freeFrame->CopyFrame(frame);
-        I420VideoFrame* busyFrame = m_bufferManager->postFreeBuffer(freeFrame, index);
-        if (busyFrame)
-            m_bufferManager->releaseBuffer(busyFrame);
-    }
-    if (m_recordStarted == false) {
-        m_mockFrame->CopyFrame(frame);
-        m_recordStarted = true;
+    if (format == FRAME_FORMAT_I420) {
+        I420VideoFrame* composedFrame = reinterpret_cast<I420VideoFrame*>(payload);
+        m_videoEncoder->DeliverFrame(m_id, composedFrame);
+    } else if (format == FRAME_FORMAT_VP8) {
+        webrtc::RTPVideoHeader h;
+        h.codec = webrtc::kRtpVideoVp8;
+        h.codecHeader.VP8.InitRTPVideoHeaderVP8();
+        m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, 100, ts*90,
+                                    ts, payload, len, NULL, &h);
+    } else {
+        // TODO: H264 image should be handled here.
     }
 }
 
 int VCMOutputProcessor::deliverFeedback(char* buf, int len)
 {
     return m_rtpRtcp->IncomingRtcpPacket(reinterpret_cast<uint8_t*>(buf), len) == -1 ? 0 : len;
-}
-
-// A return value of false is interpreted as that the function has no
-// more work to do and that the thread can be released.
-void VCMOutputProcessor::layoutTimerHandler(const boost::system::error_code& ec)
-{
-    if (!ec) {
-        layoutFrames();
-        if (!m_isClosing) {
-            // FIXME: Get rid of the hard coded timer interval here.
-            // Also it may need to be associated with the target fps configured in VPM.
-            m_timer->expires_at(m_timer->expires_at() + boost::posix_time::milliseconds(33));
-            m_timer->async_wait(boost::bind(&VCMOutputProcessor::layoutTimerHandler, this, boost::asio::placeholders::error));
-        }
-    } else {
-        ELOG_INFO("VCMOutputProcessor timer error: %s", ec.message().c_str());
-    }
-}
-
-bool VCMOutputProcessor::layoutFrames()
-{
-#if 1
-    I420VideoFrame* composedFrame = m_videoCompositor->layout(m_maxSlot);
-    composedFrame->set_render_time_ms(TickTime::MillisecondTimestamp() - m_ntpDelta);
-    m_videoEncoder->DeliverFrame(m_id, composedFrame);
-#else
-    if (m_recordStarted)
-        m_videoEncoder->DeliverFrame(m_id, m_mockFrame.get());
-#endif
-    return true;
-}
-
-void VCMOutputProcessor::updateMaxSlot(int newMaxSlot)
-{
-    m_maxSlot = newMaxSlot;
-    VideoLayout layout;
-    m_videoCompositor->getLayout(layout);
-    if (newMaxSlot <= 1)
-        layout.divFactor = 1;
-    else if (newMaxSlot <= 4)
-        layout.divFactor = 2;
-    else if (newMaxSlot <= 9)
-        layout.divFactor = 3;
-    else
-        layout.divFactor = 4;
-    m_videoCompositor->config(layout);
-
-    ELOG_DEBUG("maxSlot is changed to %d", m_maxSlot);
 }
 
 }
