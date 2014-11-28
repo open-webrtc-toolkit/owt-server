@@ -29,11 +29,12 @@ namespace mcu {
 
 DEFINE_LOGGER(ExternalVideoProcessor, "mcu.ExternalVideoProcessor");
 
-ExternalVideoProcessor::ExternalVideoProcessor(int id, boost::shared_ptr<VideoFrameProcessor> mixer, FrameFormat frameFormat)
+ExternalVideoProcessor::ExternalVideoProcessor(int id, boost::shared_ptr<VideoFrameProcessor> mixer, FrameFormat frameFormat, woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<TaskRunner> taskRunner)
     : VideoOutputProcessor(id)
     , m_mixer(mixer)
     , m_frameFormat(frameFormat)
 {
+    init(transport, taskRunner);
 }
 
 ExternalVideoProcessor::~ExternalVideoProcessor()
@@ -41,49 +42,17 @@ ExternalVideoProcessor::~ExternalVideoProcessor()
     close();
 }
 
-bool ExternalVideoProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<TaskRunner> taskRunner, VideoCodecType videoCodecType, VideoSize videoSize)
+bool ExternalVideoProcessor::setSendCodec(VideoCodecType codecType, VideoSize)
 {
-    m_taskRunner = taskRunner;
-    m_videoTransport.reset(transport);
-
-    m_bitrateController.reset(webrtc::BitrateController::CreateBitrateController(Clock::GetRealTimeClock(), true));
-    m_bandwidthObserver.reset(m_bitrateController->CreateRtcpBandwidthObserver());
-    // FIXME: Provide the correct bitrate settings (start, min and max bitrates).
-    m_bitrateController->SetBitrateObserver(this, 300 * 1000, 0, 0);
-
-    RtpRtcp::Configuration configuration;
-    configuration.id = m_id;
-    configuration.outgoing_transport = transport;
-    configuration.audio = false;  // Video.
-    configuration.intra_frame_callback = this;
-    configuration.bandwidth_callback = m_bandwidthObserver.get();
-    m_rtpRtcp.reset(RtpRtcp::CreateRtpRtcp(configuration));
-
-    // Enable FEC.
-    // TODO: the parameters should be dynamically adjustable.
-    m_rtpRtcp->SetGenericFECStatus(true, RED_90000_PT, ULP_90000_PT);
-    // Enable NACK.
-    // TODO: the parameters should be dynamically adjustable.
-    m_rtpRtcp->SetStorePacketsStatus(true, 600);
-
-    m_taskRunner->RegisterModule(m_rtpRtcp.get());
-
     VideoCodec videoCodec = {webrtc::kVideoCodecVP8, "VP8", VP8_90000_PT};
 
-    if (videoCodecType == VCT_H264) {
+    if (codecType == VCT_H264) {
         videoCodec.codecType = webrtc::kVideoCodecH264;
         strcpy(videoCodec.plName, "H264");
         videoCodec.plType = H264_90000_PT;
     }
 
     return m_rtpRtcp && m_rtpRtcp->RegisterSendPayload(videoCodec) != -1;
-}
-
-void ExternalVideoProcessor::close()
-{
-    if (m_bitrateController)
-        m_bitrateController->RemoveBitrateObserver(this);
-    m_taskRunner->DeRegisterModule(m_rtpRtcp.get());
 }
 
 void ExternalVideoProcessor::onRequestIFrame()
@@ -119,6 +88,43 @@ void ExternalVideoProcessor::onFrame(FrameFormat format, unsigned char* payload,
 
     m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, 100, ts * 90,
                                 ts, payload, len, nullptr, &h);
+}
+
+bool ExternalVideoProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<TaskRunner> taskRunner)
+{
+    m_taskRunner = taskRunner;
+    m_videoTransport.reset(transport);
+
+    m_bitrateController.reset(webrtc::BitrateController::CreateBitrateController(Clock::GetRealTimeClock(), true));
+    m_bandwidthObserver.reset(m_bitrateController->CreateRtcpBandwidthObserver());
+    // FIXME: Provide the correct bitrate settings (start, min and max bitrates).
+    m_bitrateController->SetBitrateObserver(this, 300 * 1000, 0, 0);
+
+    RtpRtcp::Configuration configuration;
+    configuration.id = m_id;
+    configuration.outgoing_transport = transport;
+    configuration.audio = false;  // Video.
+    configuration.intra_frame_callback = this;
+    configuration.bandwidth_callback = m_bandwidthObserver.get();
+    m_rtpRtcp.reset(RtpRtcp::CreateRtpRtcp(configuration));
+
+    // Enable FEC.
+    // TODO: the parameters should be dynamically adjustable.
+    m_rtpRtcp->SetGenericFECStatus(true, RED_90000_PT, ULP_90000_PT);
+    // Enable NACK.
+    // TODO: the parameters should be dynamically adjustable.
+    m_rtpRtcp->SetStorePacketsStatus(true, 600);
+
+    m_taskRunner->RegisterModule(m_rtpRtcp.get());
+
+    return true;
+}
+
+void ExternalVideoProcessor::close()
+{
+    if (m_bitrateController)
+        m_bitrateController->RemoveBitrateObserver(this);
+    m_taskRunner->DeRegisterModule(m_rtpRtcp.get());
 }
 
 }

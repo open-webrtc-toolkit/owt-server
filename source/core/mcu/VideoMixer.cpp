@@ -64,22 +64,23 @@ bool VideoMixer::init()
     webrtc::Trace::set_level_filter(webrtc::kTraceAll);
 
     m_taskRunner.reset(new TaskRunner());
+    WoogeenTransport<erizo::VIDEO>* transport = new WoogeenTransport<erizo::VIDEO>(m_outputReceiver, nullptr);
+
+    if (m_hardwareAccelerated) {
+        m_frameProcessor.reset(new HardwareVideoMixer());
+        m_videoOutputProcessor.reset(new ExternalVideoProcessor(MIXED_VIDEO_STREAM_ID, m_frameProcessor, FRAME_FORMAT_VP8, transport, m_taskRunner));
+        m_frameProcessor->activateOutput(FRAME_FORMAT_VP8, 30, 500, m_videoOutputProcessor.get());
+    } else {
+        m_frameProcessor.reset(new SoftVideoCompositor());
+        m_videoOutputProcessor.reset(new VCMOutputProcessor(MIXED_VIDEO_STREAM_ID, transport, m_taskRunner));
+        m_frameProcessor->activateOutput(FRAME_FORMAT_I420, 30, 500, m_videoOutputProcessor.get());
+    }
 
     VideoLayout layout;
     layout.rootsize = vga;
     layout.divFactor = 1;
 
-    if (m_hardwareAccelerated) {
-        m_frameProcessor.reset(new HardwareVideoMixer());
-        m_videoOutputProcessor.reset(new ExternalVideoProcessor(MIXED_VIDEO_STREAM_ID, m_frameProcessor, FRAME_FORMAT_VP8));
-        m_videoOutputProcessor->init(new WoogeenTransport<erizo::VIDEO>(m_outputReceiver, nullptr), m_taskRunner, VideoOutputProcessor::VCT_VP8, VideoSizes[layout.rootsize]);
-        m_frameProcessor->activateOutput(FRAME_FORMAT_VP8, 30, 500, m_videoOutputProcessor.get());
-    } else {
-        m_frameProcessor.reset(new SoftVideoCompositor());
-        m_videoOutputProcessor.reset(new VCMOutputProcessor(MIXED_VIDEO_STREAM_ID));
-        m_videoOutputProcessor->init(new WoogeenTransport<erizo::VIDEO>(m_outputReceiver, nullptr), m_taskRunner, VideoOutputProcessor::VCT_VP8, VideoSizes[layout.rootsize]);
-        m_frameProcessor->activateOutput(FRAME_FORMAT_I420, 30, 500, m_videoOutputProcessor.get());
-    }
+    m_videoOutputProcessor->setSendCodec(VideoOutputProcessor::VCT_VP8, VideoSizes[layout.rootsize]);
     m_frameProcessor->setLayout(layout);
 
     m_taskRunner->Start();

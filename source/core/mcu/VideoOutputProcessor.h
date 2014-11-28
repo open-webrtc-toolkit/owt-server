@@ -45,11 +45,9 @@ public:
 
     virtual ~VideoOutputProcessor() { }
 
-    virtual bool init(woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<TaskRunner>, VideoCodecType, VideoSize) = 0;
-    virtual void close() = 0;
-
-    virtual void onRequestIFrame() = 0;
+    virtual bool setSendCodec(VideoCodecType, VideoSize) = 0;
     virtual uint32_t sendSSRC() = 0;
+    virtual void onRequestIFrame() = 0;
     virtual erizo::FeedbackSink* feedbackSink() = 0;
 
 protected:

@@ -47,15 +47,13 @@ class ExternalVideoProcessor : public VideoOutputProcessor,
     DECLARE_LOGGER();
 
 public:
-    ExternalVideoProcessor(int id, boost::shared_ptr<VideoFrameProcessor> mixer, FrameFormat frameFormat);
+    ExternalVideoProcessor(int id, boost::shared_ptr<VideoFrameProcessor>, FrameFormat, woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<TaskRunner>);
     ~ExternalVideoProcessor();
 
     // Implements VideoOutputProcessor.
-    bool init(woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<TaskRunner>, VideoCodecType videoCodecType, VideoSize videoSize);
-    void close();
-
-    void onRequestIFrame();
+    bool setSendCodec(VideoCodecType, VideoSize);
     uint32_t sendSSRC();
+    void onRequestIFrame();
     erizo::FeedbackSink* feedbackSink() { return this; }
 
     void onFrame(FrameFormat, unsigned char* payload, int len, unsigned int ts);
@@ -73,6 +71,9 @@ public:
     void OnNetworkChanged(const uint32_t target_bitrate, const uint8_t fraction_loss, const uint32_t rtt);
 
 private:
+    bool init(woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<TaskRunner>);
+    void close();
+
     boost::scoped_ptr<webrtc::BitrateController> m_bitrateController;
     boost::scoped_ptr<webrtc::RtcpBandwidthObserver> m_bandwidthObserver;
     boost::scoped_ptr<webrtc::RtpRtcp> m_rtpRtcp;
