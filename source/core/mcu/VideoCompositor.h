@@ -21,6 +21,8 @@
 #ifndef VideoCompositor_h
 #define VideoCompositor_h
 
+#include "JobTimer.h"
+#include "VideoFrameProcessor.h"
 #include "VideoLayout.h"
 
 #include <boost/shared_ptr.hpp>
@@ -62,37 +64,50 @@ private:
  * still 16 audios will be mixed. In the future, we may enable the video rotation based on VAD history
  * single thread only
  */
-class SoftVideoCompositor {
+class SoftVideoCompositor : public VideoFrameProcessor,
+                            public JobTimerListener {
     DECLARE_LOGGER();
 public:
-    SoftVideoCompositor(boost::shared_ptr<BufferManager>&);
-    virtual bool config(VideoLayout&); //set a new layout config, but won't be effective
-    virtual bool commitLayout(); //commit the new layout config
-    virtual void setBackgroundColor();
-    virtual webrtc::I420VideoFrame* layout();
-    void getLayout(VideoLayout& layout)
-    {
-        layout = m_currentLayout;
-    }
+    SoftVideoCompositor();
+    ~SoftVideoCompositor();
 
-protected:
-    virtual webrtc::I420VideoFrame* fluidLayout();
-    virtual webrtc::I420VideoFrame* customLayout();
+    bool activateInput(int slot, FrameFormat, VideoFrameProvider*);
+    void deActivateInput(int slot);
+    void pushInput(int slot, unsigned char* payload, int len);
+
+    bool activateOutput(FrameFormat, unsigned int framerate, unsigned short bitrate, VideoFrameConsumer*);
+    void deActivateOutput(FrameFormat);
+
+    void setLayout(struct VideoLayout&);
+    void setBitrate(FrameFormat, unsigned short bitrate);
+    void requestKeyFrame(FrameFormat);
+
+    void onTimeout();
 
 private:
-    virtual bool validateConfig(VideoLayout& layout)
+    webrtc::I420VideoFrame* layout();
+    webrtc::I420VideoFrame* fluidLayout();
+    webrtc::I420VideoFrame* customLayout();
+    void generateFrame();
+    void updateMaxSlot(int newMaxSlot);
+    bool commitLayout(); //commit the new layout config
+    void setBackgroundColor();
+    bool validateConfig(VideoLayout& layout)
     {
         return true;
     }
 
-protected:
+    int m_maxSlot;
+    int64_t m_ntpDelta;
     boost::scoped_ptr<webrtc::CriticalSectionWrapper> m_configLock;
     bool m_configChanged;
     boost::scoped_ptr<VPMPool> m_vpmPool;
-    boost::shared_ptr<BufferManager> m_bufferManager;
+    boost::scoped_ptr<BufferManager> m_bufferManager;
     boost::scoped_ptr<webrtc::I420VideoFrame> m_composedFrame;
     VideoLayout m_currentLayout;
     VideoLayout m_newLayout;
+    VideoFrameConsumer* m_receiver;
+    boost::scoped_ptr<JobTimer> m_jobTimer;
 };
 
 }
