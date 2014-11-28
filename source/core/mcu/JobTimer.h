@@ -35,7 +35,7 @@ public:
 
 class JobTimer {
 public:
-    JobTimer(unsigned int frequency, JobTimerListener * listener)
+    JobTimer(unsigned int frequency, JobTimerListener* listener)
         : m_isClosing(false)
         , m_interval(1000 / frequency)
         , m_listener(listener)
@@ -44,7 +44,9 @@ public:
         m_timer->async_wait(boost::bind(&JobTimer::onTimeout, this, boost::asio::placeholders::error));
         m_timingThread.reset(new boost::thread(boost::bind(&boost::asio::io_service::run, &m_ioService)));
     }
-    virtual ~JobTimer() {
+
+    virtual ~JobTimer()
+    {
         m_isClosing = true;
         m_timer->cancel();
         m_timingThread->join();
@@ -52,7 +54,8 @@ public:
 
 
 private:
-    void onTimeout(const boost::system::error_code& ec) {
+    void onTimeout(const boost::system::error_code& ec)
+    {
         if (!ec) {
             if (!m_isClosing) {
                 handleJob();
@@ -62,7 +65,8 @@ private:
         }
     }
 
-    void handleJob() {
+    void handleJob()
+    {
         if (m_listener)
             m_listener->onTimeout();
     }
@@ -77,7 +81,6 @@ private:
     boost::asio::io_service m_ioService;
     boost::scoped_ptr<boost::asio::deadline_timer> m_timer;
 };
-
 
 }
 #endif

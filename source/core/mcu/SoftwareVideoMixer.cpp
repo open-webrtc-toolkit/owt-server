@@ -19,13 +19,14 @@
  */
 
 #include "SoftwareVideoMixer.h"
+
 #include "BufferManager.h"
 #include "VCMMediaProcessorHelper.h"
 #include "VideoCompositor.h"
 
 #include <webrtc/common.h>
-#include <webrtc/system_wrappers/interface/tick_util.h>
 #include <webrtc/system_wrappers/interface/clock.h>
+#include <webrtc/system_wrappers/interface/tick_util.h>
 #include <webrtc/common_video/interface/i420_video_frame.h>
 
 using namespace webrtc;

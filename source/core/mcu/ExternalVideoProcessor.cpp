@@ -19,7 +19,6 @@
  */
 
 #include "ExternalVideoProcessor.h"
-#include "HardwareVideoMixer.h"
 
 #include "TaskRunner.h"
 
