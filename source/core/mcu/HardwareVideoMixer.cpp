@@ -123,7 +123,7 @@ void HardwareVideoMixerOutput::notifyFrameReady(OutputIndex index)
 HardwareVideoMixer::HardwareVideoMixer()
 {
     m_engine.reset(new VideoMixEngine());
-    assert(m_engine->init());
+    // assert(m_engine->Init());
 }
 
 HardwareVideoMixer::~HardwareVideoMixer()
