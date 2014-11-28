@@ -23,7 +23,9 @@
 #include "BufferManager.h"
 #include <webrtc/common_video/interface/i420_video_frame.h>
 #include <webrtc/modules/video_processing/main/interface/video_processing.h>
+#include <webrtc/system_wrappers/interface/clock.h>
 #include <webrtc/system_wrappers/interface/critical_section_wrapper.h>
+#include <webrtc/system_wrappers/interface/tick_util.h>
 
 using namespace webrtc;
 
@@ -68,12 +70,18 @@ void VPMPool::update(unsigned int slot, VideoSize& videoSize)
 
 DEFINE_LOGGER(SoftVideoCompositor, "mcu.SoftVideoCompositor");
 
-SoftVideoCompositor::SoftVideoCompositor(boost::shared_ptr<BufferManager>& bufferManager)
-    : m_configLock(CriticalSectionWrapper::CreateCriticalSection())
+SoftVideoCompositor::SoftVideoCompositor()
+    : m_maxSlot(0)
+    , m_configLock(CriticalSectionWrapper::CreateCriticalSection())
     , m_configChanged(false)
-    , m_bufferManager(bufferManager)
     , m_composedFrame(nullptr)
+    , m_receiver(nullptr)
 {
+    m_ntpDelta = Clock::GetRealTimeClock()->CurrentNtpInMilliseconds() -
+                                  TickTime::MillisecondTimestamp();
+
+    m_bufferManager.reset(new BufferManager());
+
     m_currentLayout.rootsize = vga;    //default is VGA but no region defined
     m_currentLayout.divFactor = 1;
     m_currentLayout.subHeight = VideoSizes[m_currentLayout.rootsize].height;
@@ -85,18 +93,99 @@ SoftVideoCompositor::SoftVideoCompositor(boost::shared_ptr<BufferManager>& buffe
     unsigned int height = VideoSizes[VideoResolutionType::vga].height;
     m_composedFrame->CreateEmptyFrame(width, height,  width, width / 2, width / 2);
 
-    config(m_currentLayout);
+    setLayout(m_currentLayout);
+
+    m_jobTimer.reset(new JobTimer(30, this));
 }
 
+SoftVideoCompositor::~SoftVideoCompositor()
+{
+    m_receiver = nullptr;
+}
 
-bool SoftVideoCompositor::config(VideoLayout& layout)
+void SoftVideoCompositor::setBitrate(FrameFormat format, unsigned short bitrate)
+{
+}
+
+void SoftVideoCompositor::requestKeyFrame(FrameFormat format)
+{
+}
+
+void SoftVideoCompositor::setLayout(struct VideoLayout& layout)
 {
     webrtc::CriticalSectionScoped cs(m_configLock.get());
     ELOG_DEBUG("Configuring layout");
     m_newLayout = layout;
     m_configChanged = true;
     ELOG_DEBUG("configChanged is true");
+}
+
+bool SoftVideoCompositor::activateInput(int slot, FrameFormat format, VideoFrameProvider* provider)
+{
+    assert(format == FRAME_FORMAT_I420);
+
+    m_bufferManager->setActive(slot, true);
+    updateMaxSlot(m_bufferManager->activeSlots());
     return true;
+}
+
+void SoftVideoCompositor::deActivateInput(int slot)
+{
+    m_bufferManager->setActive(slot, false);
+    updateMaxSlot(m_bufferManager->activeSlots());
+}
+
+void SoftVideoCompositor::pushInput(int slot, unsigned char* payload, int len)
+{
+    I420VideoFrame* frame = reinterpret_cast<I420VideoFrame*>(payload);
+    I420VideoFrame* freeFrame = m_bufferManager->getFreeBuffer();
+    if (freeFrame) {
+        freeFrame->CopyFrame(*frame);
+        I420VideoFrame* busyFrame = m_bufferManager->postFreeBuffer(freeFrame, slot);
+        if (busyFrame)
+            m_bufferManager->releaseBuffer(busyFrame);
+    }
+}
+
+bool SoftVideoCompositor::activateOutput(FrameFormat format, unsigned int framerate, unsigned short bitrate, VideoFrameConsumer* receiver)
+{
+    assert(format == FRAME_FORMAT_I420);
+    m_receiver = receiver;
+    return true;
+}
+
+void SoftVideoCompositor::deActivateOutput(FrameFormat format)
+{
+    m_receiver = nullptr;
+}
+
+void SoftVideoCompositor::onTimeout()
+{
+    generateFrame();
+}
+
+void SoftVideoCompositor::generateFrame()
+{
+    if (m_receiver) {
+        I420VideoFrame* composedFrame = layout();
+        composedFrame->set_render_time_ms(TickTime::MillisecondTimestamp() - m_ntpDelta);
+        m_receiver->onFrame(FRAME_FORMAT_I420, reinterpret_cast<unsigned char*>(composedFrame), sizeof(I420VideoFrame), 0);
+    }
+}
+
+void SoftVideoCompositor::updateMaxSlot(int newMaxSlot)
+{
+    m_maxSlot = newMaxSlot;
+    VideoLayout layout = m_currentLayout;
+    if (newMaxSlot <= 1)
+        layout.divFactor = 1;
+    else if (newMaxSlot <= 4)
+        layout.divFactor = 2;
+    else if (newMaxSlot <= 9)
+        layout.divFactor = 3;
+    else
+        layout.divFactor = 4;
+    setLayout(layout);
 }
 
 // only back for now
@@ -211,9 +300,8 @@ webrtc::I420VideoFrame* SoftVideoCompositor::customLayout()
             }
             // if return busy frame failed, which means a new busy frame has been posted
             // simply release the busy frame
-            if (m_bufferManager->returnBusyBuffer(sub_image, index)) {
+            if (m_bufferManager->returnBusyBuffer(sub_image, index))
                 m_bufferManager->releaseBuffer(sub_image);
-            }
         }
         ++input;
     }
@@ -270,9 +358,8 @@ webrtc::I420VideoFrame* SoftVideoCompositor::fluidLayout()
             }
             // if return busy frame failed, which means a new busy frame has been posted
             // simply release the busy frame
-            if (m_bufferManager->returnBusyBuffer(sub_image, index)) {
+            if (m_bufferManager->returnBusyBuffer(sub_image, index))
                 m_bufferManager->releaseBuffer(sub_image);
-            }
         }
         ++input;
     }

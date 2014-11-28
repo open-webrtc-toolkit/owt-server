@@ -102,7 +102,7 @@ private:
 
     boost::shared_ptr<TaskRunner> m_taskRunner;
     boost::shared_ptr<VideoOutputProcessor> m_videoOutputProcessor;
-    boost::shared_ptr<VideoFrameProcessor> m_mixer;
+    boost::shared_ptr<VideoFrameProcessor> m_frameProcessor;
 };
 
 inline int VideoMixer::assignSlot(uint32_t source)

@@ -26,7 +26,7 @@
 #include "VCMOutputProcessor.h"
 #include "ExternalVideoProcessor.h"
 #include "HardwareVideoMixer.h"
-#include "SoftwareVideoMixer.h"
+#include "VideoCompositor.h"
 #include <WoogeenTransport.h>
 #include <webrtc/system_wrappers/interface/trace.h>
 
@@ -70,17 +70,17 @@ bool VideoMixer::init()
     layout.divFactor = 1;
 
     if (m_hardwareAccelerated) {
-        m_mixer.reset(new HardwareVideoMixer());
-        m_videoOutputProcessor.reset(new ExternalVideoProcessor(MIXED_VIDEO_STREAM_ID, m_mixer, FRAME_FORMAT_VP8));
+        m_frameProcessor.reset(new HardwareVideoMixer());
+        m_videoOutputProcessor.reset(new ExternalVideoProcessor(MIXED_VIDEO_STREAM_ID, m_frameProcessor, FRAME_FORMAT_VP8));
         m_videoOutputProcessor->init(new WoogeenTransport<erizo::VIDEO>(m_outputReceiver, nullptr), m_taskRunner, VideoOutputProcessor::VCT_VP8, VideoSizes[layout.rootsize]);
-        m_mixer->activateOutput(FRAME_FORMAT_VP8, 30, 500, m_videoOutputProcessor.get());
+        m_frameProcessor->activateOutput(FRAME_FORMAT_VP8, 30, 500, m_videoOutputProcessor.get());
     } else {
-        m_mixer.reset(new SoftwareVideoMixer());
+        m_frameProcessor.reset(new SoftVideoCompositor());
         m_videoOutputProcessor.reset(new VCMOutputProcessor(MIXED_VIDEO_STREAM_ID));
         m_videoOutputProcessor->init(new WoogeenTransport<erizo::VIDEO>(m_outputReceiver, nullptr), m_taskRunner, VideoOutputProcessor::VCT_VP8, VideoSizes[layout.rootsize]);
-        m_mixer->activateOutput(FRAME_FORMAT_I420, 30, 500, m_videoOutputProcessor.get());
+        m_frameProcessor->activateOutput(FRAME_FORMAT_I420, 30, 500, m_videoOutputProcessor.get());
     }
-    m_mixer->setLayout(layout);
+    m_frameProcessor->setLayout(layout);
 
     m_taskRunner->Start();
     Config::get()->registerListener(this);
@@ -140,7 +140,7 @@ void VideoMixer::onConfigChanged()
     ELOG_DEBUG("onConfigChanged");
     VideoLayout* layout = Config::get()->getVideoLayout();
 
-    m_mixer->setLayout(*layout);
+    m_frameProcessor->setLayout(*layout);
 }
 
 /**
@@ -163,7 +163,7 @@ int32_t VideoMixer::addSource(uint32_t from, bool isAudio, FeedbackSink* feedbac
 
         VCMInputProcessor* videoInputProcessor(new VCMInputProcessor(index, m_hardwareAccelerated));
         videoInputProcessor->init(new WoogeenTransport<erizo::VIDEO>(nullptr, feedback),
-                                  m_mixer,
+                                  m_frameProcessor,
                                   m_taskRunner);
 
         boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
