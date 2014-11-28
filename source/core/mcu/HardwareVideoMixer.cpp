@@ -131,15 +131,15 @@ HardwareVideoMixer::~HardwareVideoMixer()
 
 void HardwareVideoMixer::setBitrate(FrameFormat format, unsigned short bitrate)
 {
-    std::map<FrameFormat, boost::shared_ptr<HardwareVideoMixerOutput>>::iterator it = m_outputers.find(format);
-    if (it != m_outputers.end())
+    std::map<FrameFormat, boost::shared_ptr<HardwareVideoMixerOutput>>::iterator it = m_outputs.find(format);
+    if (it != m_outputs.end())
         it->second->setBitrate(bitrate);
 }
 
 void HardwareVideoMixer::requestKeyFrame(FrameFormat format)
 {
-    std::map<FrameFormat, boost::shared_ptr<HardwareVideoMixerOutput>>::iterator it = m_outputers.find(format);
-    if (it != m_outputers.end())
+    std::map<FrameFormat, boost::shared_ptr<HardwareVideoMixerOutput>>::iterator it = m_outputs.find(format);
+    if (it != m_outputs.end())
         it->second->requestKeyFrame();
 }
 
@@ -151,40 +151,40 @@ void HardwareVideoMixer::setLayout(struct VideoLayout& layout)
 
 bool HardwareVideoMixer::activateInput(int slot, FrameFormat format, VideoMixInProvider* provider)
 {
-    if (m_inputers.find(slot) != m_inputers.end()) {
+    if (m_inputs.find(slot) != m_inputs.end()) {
         return false;
     } else {
-        m_inputers[slot].reset(new HardwareVideoMixerInput(m_engine, format, provider));
+        m_inputs[slot].reset(new HardwareVideoMixerInput(m_engine, format, provider));
         return true;
     }
 }
 
 void HardwareVideoMixer::deActivateInput(int slot)
 {
-    m_inputers.erase(slot);
+    m_inputs.erase(slot);
 }
 
 void HardwareVideoMixer::pushInput(int slot, unsigned char* payload, int len)
 {
-    std::map<int, boost::shared_ptr<HardwareVideoMixerInput>>::iterator it = m_inputers.find(slot);
-    if (it != m_inputers.end())
+    std::map<int, boost::shared_ptr<HardwareVideoMixerInput>>::iterator it = m_inputs.find(slot);
+    if (it != m_inputs.end())
         it->second->push(payload, len);
 }
 
 // Should be refined when VCSA supports init().
 bool HardwareVideoMixer::activateOutput(FrameFormat format, unsigned int framerate, unsigned short bitrate, VideoMixOutReceiver* receiver)
 {
-    if (m_outputers.find(format) != m_outputers.end()) {
+    if (m_outputs.find(format) != m_outputs.end()) {
         return false;
     } else {
-        m_outputers[format].reset(new HardwareVideoMixerOutput(m_engine, format, "name", framerate, bitrate, receiver));
+        m_outputs[format].reset(new HardwareVideoMixerOutput(m_engine, format, "name", framerate, bitrate, receiver));
         return true;
     }
 }
 
 void HardwareVideoMixer::deActivateOutput(FrameFormat format)
 {
-    m_outputers.erase(format);
+    m_outputs.erase(format);
 }
 
 }

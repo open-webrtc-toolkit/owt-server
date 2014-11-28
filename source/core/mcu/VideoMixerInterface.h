@@ -44,16 +44,16 @@ public:
 
 class VideoMixerInterface {
 public:
-    virtual bool activateInput(int slot, FrameFormat format, VideoMixInProvider* provider) = 0;
+    virtual bool activateInput(int slot, FrameFormat, VideoMixInProvider*) = 0;
     virtual void deActivateInput(int slot) = 0;
     virtual void pushInput(int slot, unsigned char* payload, int len) = 0;
 
-    virtual bool activateOutput(FrameFormat format, unsigned int framerate, unsigned short bitrate, VideoMixOutReceiver* receiver) = 0;
-    virtual void deActivateOutput(FrameFormat format) = 0;
+    virtual bool activateOutput(FrameFormat, unsigned int framerate, unsigned short bitrate, VideoMixOutReceiver*) = 0;
+    virtual void deActivateOutput(FrameFormat) = 0;
 
     virtual void setLayout(struct VideoLayout&) = 0;
-    virtual void setBitrate(FrameFormat format, unsigned short bitrate) = 0;
-    virtual void requestKeyFrame(FrameFormat format) = 0;
+    virtual void setBitrate(FrameFormat, unsigned short bitrate) = 0;
+    virtual void requestKeyFrame(FrameFormat) = 0;
 };
 
 }

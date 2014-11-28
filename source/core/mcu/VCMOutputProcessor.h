@@ -21,10 +21,9 @@
 #ifndef VCMOutputProcessor_h
 #define VCMOutputProcessor_h
 
-
 #include "VCMMediaProcessorHelper.h"
-#include "VideoOutputProcessor.h"
 #include "VideoMixerInterface.h"
+#include "VideoOutputProcessor.h"
 
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>

@@ -21,18 +21,14 @@
 #ifndef HardwareVideoMixer_h
 #define HardwareVideoMixer_h
 
-#include "VideoMixerInterface.h"
 #include "JobTimer.h"
-#include "VideoMixEngine.h"
+#include "VideoMixerInterface.h"
 
-#include <atomic>
 #include <string>
-#include <vector>
 #include <map>
 #include <boost/shared_ptr.hpp>
 #include <boost/scoped_ptr.hpp>
-
-#include <logger.h>
+#include <VideoMixEngine.h>
 
 namespace mcu {
 
@@ -103,8 +99,8 @@ public:
 
 private:
     boost::shared_ptr<VideoMixEngine> m_engine;
-    std::map<int, boost::shared_ptr<HardwareVideoMixerInput>> m_inputers;
-    std::map<FrameFormat, boost::shared_ptr<HardwareVideoMixerOutput>> m_outputers;
+    std::map<int, boost::shared_ptr<HardwareVideoMixerInput>> m_inputs;
+    std::map<FrameFormat, boost::shared_ptr<HardwareVideoMixerOutput>> m_outputs;
 };
 
 }

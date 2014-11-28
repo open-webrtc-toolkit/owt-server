@@ -21,7 +21,6 @@
 #ifndef VideoCompositor_h
 #define VideoCompositor_h
 
-#include "Config.h"
 #include "VideoLayout.h"
 
 #include <boost/shared_ptr.hpp>

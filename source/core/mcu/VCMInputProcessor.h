@@ -29,9 +29,9 @@
 #include <logger.h>
 #include <MediaDefinitions.h>
 #include <WoogeenTransport.h>
-#include <webrtc/modules/video_coding/codecs/interface/video_codec_interface.h>
 #include <webrtc/modules/remote_bitrate_estimator/include/remote_bitrate_estimator.h>
 #include <webrtc/modules/rtp_rtcp/interface/rtp_rtcp.h>
+#include <webrtc/modules/video_coding/codecs/interface/video_codec_interface.h>
 #include <webrtc/modules/video_coding/main/interface/video_coding.h>
 #include <webrtc/video_engine/vie_receiver.h>
 #include <webrtc/video_engine/vie_sync_module.h>
@@ -43,15 +43,20 @@ public:
     ExternalRenderer(int index,
                      boost::shared_ptr<VideoMixerInterface> frameHandler,
                      VideoMixInProvider* provider) 
-    : m_index(index)
-    , m_frameHandler(frameHandler) {
+        : m_index(index)
+        , m_frameHandler(frameHandler)
+    {
         m_frameHandler->activateInput(m_index, FRAME_FORMAT_I420, provider);
     }
-    virtual ~ExternalRenderer() {
+
+    virtual ~ExternalRenderer()
+    {
         m_frameHandler->deActivateInput(m_index);
     }
+
     // Implements the webrtc::VCMReceiveCallback interface.
-    virtual int32_t FrameToRender(webrtc::I420VideoFrame& frame) {
+    virtual int32_t FrameToRender(webrtc::I420VideoFrame& frame)
+    {
         m_frameHandler->pushInput(m_index, reinterpret_cast<unsigned char*>(&frame), sizeof(webrtc::I420VideoFrame));
         return 0;
     }
@@ -66,28 +71,32 @@ public:
     ExternalDecoder(int index, 
                     boost::shared_ptr<VideoMixerInterface> imageHandler,
                     VideoMixInProvider* provider)
-    : m_index(index)
-    , m_imageHandler(imageHandler) {
+        : m_index(index)
+        , m_imageHandler(imageHandler)
+    {
         m_imageHandler->activateInput(m_index, FRAME_FORMAT_VP8, provider);
     }
-    virtual ~ExternalDecoder() {
+
+    virtual ~ExternalDecoder()
+    {
         m_imageHandler->deActivateInput(m_index);
     }
+
     // Implements the webrtc::VideoDecoder interface.
     virtual int32_t InitDecode(const webrtc::VideoCodec* codecSettings, int32_t numberOfCores) { return 0; }
     virtual int32_t Decode(const webrtc::EncodedImage& inputImage,
                            bool missingFrames,
                            const webrtc::RTPFragmentationHeader* fragmentation,
                            const webrtc::CodecSpecificInfo* codecSpecificInfo = NULL,
-                           int64_t renderTimeMs = -1) {
-        if (m_imageHandler) {
+                           int64_t renderTimeMs = -1)
+    {
+        if (m_imageHandler)
             m_imageHandler->pushInput(m_index, inputImage._buffer, inputImage._length);
-        }
         return 0;
     }
-    virtual int32_t RegisterDecodeCompleteCallback(webrtc::DecodedImageCallback* callback){ return -1;}
-    virtual int32_t Release() {return 0;}
-    virtual int32_t Reset() {return 0;}
+    virtual int32_t RegisterDecodeCompleteCallback(webrtc::DecodedImageCallback* callback) { return -1; }
+    virtual int32_t Release() { return 0; }
+    virtual int32_t Reset() { return 0; }
 
 private:
     int m_index;

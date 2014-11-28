@@ -21,17 +21,11 @@
 #ifndef SoftwareVideoMixer_h
 #define SoftwareVideoMixer_h
 
-#include "VideoMixerInterface.h"
 #include "JobTimer.h"
+#include "VideoMixerInterface.h"
 
-#include <atomic>
-#include <string>
-#include <vector>
-#include <map>
-#include <boost/shared_ptr.hpp>
 #include <boost/scoped_ptr.hpp>
-
-#include <logger.h>
+#include <boost/shared_ptr.hpp>
 
 namespace mcu {
 
@@ -44,16 +38,16 @@ public:
     SoftwareVideoMixer();
     virtual ~SoftwareVideoMixer();
 
-    bool activateInput(int slot, FrameFormat format, VideoMixInProvider* provider);
+    bool activateInput(int slot, FrameFormat, VideoMixInProvider*);
     void deActivateInput(int slot);
     void pushInput(int slot, unsigned char* payload, int len);
 
-    bool activateOutput(FrameFormat format, unsigned int framerate, unsigned short bitrate, VideoMixOutReceiver* receiver);
-    void deActivateOutput(FrameFormat format);
+    bool activateOutput(FrameFormat, unsigned int framerate, unsigned short bitrate, VideoMixOutReceiver*);
+    void deActivateOutput(FrameFormat);
 
     void setLayout(struct VideoLayout&);
-    void setBitrate(FrameFormat format, unsigned short bitrate);
-    void requestKeyFrame(FrameFormat format);
+    void setBitrate(FrameFormat, unsigned short bitrate);
+    void requestKeyFrame(FrameFormat);
 
     void onTimeout();
 

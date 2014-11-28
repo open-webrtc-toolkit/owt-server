@@ -24,8 +24,8 @@
 
 #include <boost/bind.hpp>
 #include <webrtc/common.h>
-#include <webrtc/system_wrappers/interface/tick_util.h>
 #include <webrtc/modules/video_coding/main/interface/video_coding.h>
+#include <webrtc/system_wrappers/interface/tick_util.h>
 
 using namespace webrtc;
 using namespace erizo;
