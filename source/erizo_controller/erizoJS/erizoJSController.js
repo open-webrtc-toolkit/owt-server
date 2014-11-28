@@ -38,10 +38,12 @@ exports.ErizoJSController = function (spec) {
     that.initMixer = function (id, oop, callback) {
         if (publishers[id] === undefined) {
             var doInitMixer = function(hardwareAccelerated) {
-                if (oop)
-                    mixer = new addon.Gateway("OutOfProcessMixer", hardwareAccelerated);
-                else
-                    mixer = new addon.Gateway("InProcessMixer", hardwareAccelerated);
+                var config = {
+                    "mixer": true,
+                    "oop": oop,
+                    "hardware": hardwareAccelerated
+                };
+                mixer = new addon.Gateway(JSON.stringify(config));
 
                 if (GLOBAL.config.erizo.videolayout !== undefined)
                     mixer.configLayout(JSON.stringify(GLOBAL.config.erizo.videolayout));
