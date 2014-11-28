@@ -21,6 +21,8 @@
 #ifndef VideoMixer_h
 #define VideoMixer_h
 
+#include "Config.h"
+
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/shared_mutex.hpp>
 #include <logger.h>
@@ -35,10 +37,10 @@ class VoEVideoSync;
 
 namespace mcu {
 
-class InputFrameCallback;
 class TaskRunner;
 class VCMInputProcessor;
 class VideoOutputProcessor;
+class VideoMixerInterface;
 struct Layout;
 
 static const int MIXED_VIDEO_STREAM_ID = 2;
@@ -46,11 +48,11 @@ static const int MIXED_VIDEO_STREAM_ID = 2;
 /**
  * Receives media from several sources, mixed into one stream and retransmits it to the RTPDataReceiver.
  */
-class VideoMixer : public woogeen_base::MediaSourceConsumer, public erizo::MediaSink, public erizo::FeedbackSink {
+class VideoMixer : public woogeen_base::MediaSourceConsumer, public erizo::MediaSink, public erizo::FeedbackSink, public ConfigListener {
     DECLARE_LOGGER();
 
 public:
-    VideoMixer(erizo::RTPDataReceiver*);
+    VideoMixer(erizo::RTPDataReceiver*, bool hardwareAccelerated);
     virtual ~VideoMixer();
 
     int32_t bindAudio(uint32_t sourceId, int voiceChannelId, webrtc::VoEVideoSync*);
@@ -77,6 +79,9 @@ public:
     // Implements the FeedbackSink interfaces
     virtual int deliverFeedback(char* buf, int len);
 
+    // Implements ConfigListener.
+    void onConfigChanged();
+
 private:
     bool init();
     void closeAll();
@@ -86,6 +91,7 @@ private:
     // return -1 if not found
     int getSlot(uint32_t source);
 
+    int m_hardwareAccelerated;
     int m_participants;
     boost::shared_ptr<erizo::FeedbackSink> m_feedback;
     erizo::RTPDataReceiver* m_outputReceiver;
@@ -96,7 +102,7 @@ private:
 
     boost::shared_ptr<TaskRunner> m_taskRunner;
     boost::shared_ptr<VideoOutputProcessor> m_videoOutputProcessor;
-    boost::shared_ptr<InputFrameCallback> m_inputFrameCallback;
+    boost::shared_ptr<VideoMixerInterface> m_mixer;
 };
 
 inline int VideoMixer::assignSlot(uint32_t source)

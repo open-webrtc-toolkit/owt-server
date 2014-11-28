@@ -18,25 +18,43 @@
  * and approved by Intel in writing.
  */
 
-#ifndef InProcessMixer_h
-#define InProcessMixer_h
+#ifndef VideoMixerInterface_h
+#define VideoMixerInterface_h
 
-#include "Mixer.h"
+#include "VideoLayout.h"
 
 namespace mcu {
 
-/**
- * An InProcessMixer refers to a media mixer which is run in the same process as a woogeen_base::Gateway.
- */
-class InProcessMixer : public Mixer {
-public:
-    InProcessMixer(bool hardwareAccelerated)
-        : Mixer(hardwareAccelerated)
-    {
-    }
-
-    ~InProcessMixer() { }
+enum FrameFormat{
+    FRAME_FORMAT_UNKOWN,
+    FRAME_FORMAT_I420,
+    FRAME_FORMAT_VP8,
+    FRAME_FORMAT_H264
 };
 
-} /* namespace mcu */
-#endif /* InProcessMixer_h */
+class VideoMixInProvider {
+public:
+    virtual void requestKeyFrame() = 0;
+};
+
+class VideoMixOutReceiver {
+public:
+    virtual void onFrame(FrameFormat format, unsigned char* payload, int len, unsigned int ts) = 0;
+};
+
+class VideoMixerInterface {
+public:
+    virtual bool activateInput(int slot, FrameFormat format, VideoMixInProvider* provider) = 0;
+    virtual void deActivateInput(int slot) = 0;
+    virtual void pushInput(int slot, unsigned char* payload, int len) = 0;
+
+    virtual bool activateOutput(FrameFormat format, unsigned int framerate, unsigned short bitrate, VideoMixOutReceiver* receiver) = 0;
+    virtual void deActivateOutput(FrameFormat format) = 0;
+
+    virtual void setLayout(struct VideoLayout&) = 0;
+    virtual void setBitrate(FrameFormat format, unsigned short bitrate) = 0;
+    virtual void requestKeyFrame(FrameFormat format) = 0;
+};
+
+}
+#endif

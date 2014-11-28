@@ -63,7 +63,7 @@ private:
  */
 class OutOfProcessMixer : public Mixer {
 public:
-    OutOfProcessMixer();
+    OutOfProcessMixer(bool hardwareAccelerated);
     ~OutOfProcessMixer();
 
 private:

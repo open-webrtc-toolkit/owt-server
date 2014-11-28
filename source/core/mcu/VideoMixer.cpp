@@ -24,6 +24,9 @@
 #include "TaskRunner.h"
 #include "VCMInputProcessor.h"
 #include "VCMOutputProcessor.h"
+#include "ExternalVideoProcessor.h"
+#include "HardwareVideoMixer.h"
+#include "SoftwareVideoMixer.h"
 #include <WoogeenTransport.h>
 #include <webrtc/system_wrappers/interface/trace.h>
 
@@ -35,8 +38,9 @@ namespace mcu {
 
 DEFINE_LOGGER(VideoMixer, "mcu.VideoMixer");
 
-VideoMixer::VideoMixer(erizo::RTPDataReceiver* receiver)
-    : m_participants(0)
+VideoMixer::VideoMixer(erizo::RTPDataReceiver* receiver, bool hardwareAccelerated)
+    : m_hardwareAccelerated(hardwareAccelerated)
+    , m_participants(0)
     , m_outputReceiver(receiver)
     , m_addSourceOnDemand(false)
 {
@@ -46,6 +50,7 @@ VideoMixer::VideoMixer(erizo::RTPDataReceiver* receiver)
 VideoMixer::~VideoMixer()
 {
     closeAll();
+    Config::get()->unregisterListener(this);
     m_outputReceiver = nullptr;
 }
 
@@ -54,17 +59,32 @@ VideoMixer::~VideoMixer()
  */
 bool VideoMixer::init()
 {
-    Trace::CreateTrace();
-    Trace::SetTraceFile("webrtc.trace.txt");
-    Trace::set_level_filter(webrtc::kTraceAll);
+    webrtc::Trace::CreateTrace();
+    webrtc::Trace::SetTraceFile("webrtc.trace.txt");
+    webrtc::Trace::set_level_filter(webrtc::kTraceAll);
 
     m_taskRunner.reset(new TaskRunner());
 
-    m_videoOutputProcessor.reset(new VCMOutputProcessor(MIXED_VIDEO_STREAM_ID));
-    m_videoOutputProcessor->init(new WoogeenTransport<erizo::VIDEO>(m_outputReceiver, nullptr), m_taskRunner);
-    m_inputFrameCallback = boost::dynamic_pointer_cast<InputFrameCallback>(m_videoOutputProcessor);
+    VideoLayout layout;
+    layout.rootsize = vga;
+    layout.divFactor = 1;
+
+
+    if (m_hardwareAccelerated) {
+        m_mixer.reset(new HardwareVideoMixer());
+        m_videoOutputProcessor.reset(new ExternalVideoProcessor(MIXED_VIDEO_STREAM_ID, m_mixer, FRAME_FORMAT_VP8));
+        m_videoOutputProcessor->init(new WoogeenTransport<erizo::VIDEO>(m_outputReceiver, nullptr), m_taskRunner, VideoOutputProcessor::VCT_VP8, VideoSizes[layout.rootsize]);
+        m_mixer->activateOutput(FRAME_FORMAT_VP8, 30, 500, dynamic_cast<VideoMixOutReceiver*>(m_videoOutputProcessor.get()));
+    } else {
+        m_mixer.reset(new SoftwareVideoMixer());
+        m_videoOutputProcessor.reset(new VCMOutputProcessor(MIXED_VIDEO_STREAM_ID));
+        m_videoOutputProcessor->init(new WoogeenTransport<erizo::VIDEO>(m_outputReceiver, nullptr), m_taskRunner, VideoOutputProcessor::VCT_VP8, VideoSizes[layout.rootsize]);
+        m_mixer->activateOutput(FRAME_FORMAT_I420, 30, 500, dynamic_cast<VideoMixOutReceiver*>(m_videoOutputProcessor.get()));
+    }
+    m_mixer->setLayout(layout);
 
     m_taskRunner->Start();
+    Config::get()->registerListener(this);
 
     return true;
 }
@@ -116,6 +136,14 @@ int VideoMixer::deliverFeedback(char* buf, int len)
     return 0;
 }
 
+void VideoMixer::onConfigChanged()
+{
+    ELOG_DEBUG("onConfigChanged");
+    VideoLayout* layout = Config::get()->getVideoLayout();
+
+    m_mixer->setLayout(*layout);
+}
+
 /**
  * Attach a new InputStream to the mixer
  */
@@ -134,9 +162,9 @@ int32_t VideoMixer::addSource(uint32_t from, bool isAudio, FeedbackSink* feedbac
         int index = assignSlot(from);
         ELOG_DEBUG("addSource - assigned slot is %d", index);
 
-        VCMInputProcessor* videoInputProcessor(new VCMInputProcessor(index));
+        VCMInputProcessor* videoInputProcessor(new VCMInputProcessor(index, m_hardwareAccelerated));
         videoInputProcessor->init(new WoogeenTransport<erizo::VIDEO>(nullptr, feedback),
-                                  m_inputFrameCallback,
+                                  m_mixer,
                                   m_taskRunner);
 
         boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
@@ -209,7 +237,7 @@ void VideoMixer::closeAll()
     m_participants = 0;
 
     ELOG_DEBUG("Closed all media in this Mixer");
-    Trace::ReturnTrace();
+    webrtc::Trace::ReturnTrace();
 }
 
 }/* namespace mcu */

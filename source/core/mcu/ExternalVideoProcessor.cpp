@@ -19,6 +19,7 @@
  */
 
 #include "ExternalVideoProcessor.h"
+#include "HardwareVideoMixer.h"
 
 #include "TaskRunner.h"
 
@@ -29,8 +30,10 @@ namespace mcu {
 
 DEFINE_LOGGER(ExternalVideoProcessor, "mcu.ExternalVideoProcessor");
 
-ExternalVideoProcessor::ExternalVideoProcessor(int id)
+ExternalVideoProcessor::ExternalVideoProcessor(int id, boost::shared_ptr<VideoMixerInterface> mixer, FrameFormat frameFormat)
     : VideoOutputProcessor(id)
+    , m_mixer(mixer)
+    , m_frameFormat(frameFormat)
 {
 }
 
@@ -39,7 +42,7 @@ ExternalVideoProcessor::~ExternalVideoProcessor()
     close();
 }
 
-bool ExternalVideoProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<TaskRunner> taskRunner)
+bool ExternalVideoProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<TaskRunner> taskRunner, VideoCodecType videoCodecType, VideoSize videoSize)
 {
     m_taskRunner = taskRunner;
     m_videoTransport.reset(transport);
@@ -65,31 +68,28 @@ bool ExternalVideoProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* 
     m_rtpRtcp->SetStorePacketsStatus(true, 600);
 
     m_taskRunner->RegisterModule(m_rtpRtcp.get());
-    Config::get()->registerListener(this);
 
-    return true;
+    VideoCodec videoCodec = {webrtc::kVideoCodecVP8, "VP8", VP8_90000_PT};
+
+    if (videoCodecType == VCT_H264) {
+        videoCodec.codecType = webrtc::kVideoCodecH264;
+        strcpy(videoCodec.plName, "H264");
+        videoCodec.plType = H264_90000_PT;
+    }
+
+    return m_rtpRtcp && m_rtpRtcp->RegisterSendPayload(videoCodec) != -1;
 }
 
 void ExternalVideoProcessor::close()
 {
     if (m_bitrateController)
         m_bitrateController->RemoveBitrateObserver(this);
-    Config::get()->unregisterListener(this);
     m_taskRunner->DeRegisterModule(m_rtpRtcp.get());
-}
-
-bool ExternalVideoProcessor::setSendVideoCodec(const VideoCodec& videoCodec)
-{
-    return m_rtpRtcp && m_rtpRtcp->RegisterSendPayload(videoCodec) != -1;
-}
-
-void ExternalVideoProcessor::onConfigChanged()
-{
-    ELOG_DEBUG("onConfigChanged");
 }
 
 void ExternalVideoProcessor::onRequestIFrame()
 {
+    m_mixer->requestKeyFrame(m_frameFormat);
 }
 
 uint32_t ExternalVideoProcessor::sendSSRC()
@@ -97,12 +97,9 @@ uint32_t ExternalVideoProcessor::sendSSRC()
     return m_rtpRtcp->SSRC();
 }
 
-int ExternalVideoProcessor::sendFrame(char* payload, int len)
+void ExternalVideoProcessor::OnReceivedIntraFrameRequest(uint32_t ssrc)
 {
-    // TODO: Invoke m_rtpRtcp->SendOutgoingData.
-    // Need to provide the necessary parameters like payload type,
-    // timestamp and capture time etc.
-    return -1;
+    m_mixer->requestKeyFrame(m_frameFormat);
 }
 
 int ExternalVideoProcessor::deliverFeedback(char* buf, int len)
@@ -110,15 +107,19 @@ int ExternalVideoProcessor::deliverFeedback(char* buf, int len)
     return m_rtpRtcp->IncomingRtcpPacket(reinterpret_cast<uint8_t*>(buf), len) == -1 ? 0 : len;
 }
 
-void ExternalVideoProcessor::OnReceivedIntraFrameRequest(uint32_t ssrc)
-{
-    // TODO: Send I-Frame request to the encoder.
-    // May need to validate the ssrc.
-}
-
 void ExternalVideoProcessor::OnNetworkChanged(const uint32_t target_bitrate, const uint8_t fraction_loss, const uint32_t rtt)
 {
     // TODO: Send the bitrate adjustment request to the encoder.
+}
+
+void ExternalVideoProcessor::onFrame(FrameFormat format, unsigned char* payload, int len, unsigned int ts)
+{
+    webrtc::RTPVideoHeader h;
+    h.codec = webrtc::kRtpVideoVp8;
+    h.codecHeader.VP8.InitRTPVideoHeaderVP8();
+
+    m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, 100, ts*90,
+                                ts, payload, len, NULL, &h);
 }
 
 }

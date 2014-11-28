@@ -37,7 +37,7 @@ namespace woogeen_base {
 class Gateway : public MediaSourceConsumer {
 
 public:
-    DLL_PUBLIC static Gateway* createGatewayInstance(const std::string& customParam);
+    DLL_PUBLIC static Gateway* createGatewayInstance(const std::string& customParam, bool hardwareAccelerated = false);
 
     DLL_PUBLIC virtual ~Gateway() { }
 

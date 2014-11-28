@@ -22,6 +22,7 @@
 #define VideoCompositor_h
 
 #include "Config.h"
+#include "VideoLayout.h"
 
 #include <boost/shared_ptr.hpp>
 #include <boost/scoped_ptr.hpp>
@@ -37,67 +38,6 @@ namespace mcu {
 
 class VPMPool;
 class BufferManager;
-
-/**
- * the configuration is a subset of rfc5707, VideoLayout element definition
- *    An example of a video layout with six regions is:
-
-      +-------+---+
-      |       | 2 |
-      |   1   +---+
-      |       | 3 |
-      +---+---+---+
-      | 6 | 5 | 4 |
-      +---+---+---+
-
-      <videolayout type="text/msml-basic-layout">
-         <root size="CIF"/>
-         <region id="1" left="0" top="0" relativesize="2/3"/>
-         <region id="2" left="67%" top="0" relativesize="1/3"/>
-         <region id="3" left="67%" top="33%" relativesize="1/3">
-         <region id="4" left="67%" top="67%" relativesize="1/3"/>
-         <region id="5" left="33%" top="67%" relativesize="1/3"/>
-         <region id="6" left="0" top="67%" relativesize="1/3"/>
-      </videolayout>
- */
-enum VideoResolutionType
-{
-    cif = 0,//352x288
-    vga,
-    hd_720p,
-    sif, //320x240
-    hvga, //480x320
-    r480x360,
-    qcif, //176x144
-    r192x144,
-    hd_1080p,
-    uhd_4k,
-    total = uhd_4k,
-};
-
-struct VideoSize {
-    int width;
-    int height;
-};
-
-extern VideoSize VideoSizes[];
-extern const char* VideoResString[];
-
-struct Region {
-    std::string id;
-    float left; // percentage
-    float top;    // percentage
-    float relativesize;    //fraction
-    float priority;
-} ;
-
-struct VideoLayout {
-    VideoResolutionType rootsize;
-    std::vector<Region> regions;
-    unsigned int divFactor;    //valid for fluidLayout
-    unsigned int subWidth;
-    unsigned int subHeight;
-};
 
 /**
  * manages a pool of VPM for preprocessing the incoming I420 frame
@@ -130,14 +70,14 @@ public:
     virtual bool config(VideoLayout&); //set a new layout config, but won't be effective
     virtual bool commitLayout(); //commit the new layout config
     virtual void setBackgroundColor();
-    virtual webrtc::I420VideoFrame* layout(int maxSlot);
+    virtual webrtc::I420VideoFrame* layout();
     void getLayout(VideoLayout& layout)
     {
         layout = m_currentLayout;
     }
 
 protected:
-    virtual webrtc::I420VideoFrame* fluidLayout(int maxSlot);
+    virtual webrtc::I420VideoFrame* fluidLayout();
     virtual webrtc::I420VideoFrame* customLayout();
 
 private:
