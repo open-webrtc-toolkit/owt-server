@@ -43,7 +43,7 @@ class TaskRunner;
  * data via the given WoogeenTransport. It also gives the feedback
  * to the encoder based on the feedback from the remote.
  */
-class VCMOutputProcessor : public VideoOutputProcessor, public erizo::FeedbackSink, public VideoMixOutReceiver {
+class VCMOutputProcessor : public VideoOutputProcessor, public erizo::FeedbackSink {
     DECLARE_LOGGER();
 
 public:
@@ -58,13 +58,10 @@ public:
     uint32_t sendSSRC();
     erizo::FeedbackSink* feedbackSink() { return this; }
 
+    void onFrame(FrameFormat, unsigned char* payload, int len, unsigned int ts);
+
     // Implements FeedbackSink.
     int deliverFeedback(char* buf, int len);
-
-    /**
-     * Inplement VideoMixOutReceiver interface
-     */
-    virtual void onFrame(FrameFormat format, unsigned char* payload, int len, unsigned int ts);
 
 private:
     bool setVideoSize(VideoSize videoSize);
