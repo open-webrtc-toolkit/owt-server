@@ -42,17 +42,32 @@ ExternalVideoProcessor::~ExternalVideoProcessor()
     close();
 }
 
-bool ExternalVideoProcessor::setSendCodec(VideoCodecType codecType, VideoSize)
+bool ExternalVideoProcessor::setSendCodec(FrameFormat frameFormat, VideoSize)
 {
-    VideoCodec videoCodec = {webrtc::kVideoCodecVP8, "VP8", VP8_90000_PT};
+    // The send video format should be identical to the input video format,
+    // because we (ExternalVideoProcessor) don't have the transcoding capability.
+    assert(frameFormat == m_frameFormat);
 
-    if (codecType == VCT_H264) {
-        videoCodec.codecType = webrtc::kVideoCodecH264;
-        strcpy(videoCodec.plName, "H264");
-        videoCodec.plType = H264_90000_PT;
+    VideoCodec codec;
+    memset(&codec, 0, sizeof(codec));
+
+    switch (frameFormat) {
+    case FRAME_FORMAT_VP8:
+        codec.codecType = webrtc::kVideoCodecVP8;
+        strcpy(codec.plName, "VP8");
+        codec.plType = VP8_90000_PT;
+        break;
+    case FRAME_FORMAT_H264:
+        codec.codecType = webrtc::kVideoCodecH264;
+        strcpy(codec.plName, "H264");
+        codec.plType = H264_90000_PT;
+        break;
+    case FRAME_FORMAT_I420:
+    default:
+        break;
     }
 
-    return m_rtpRtcp && m_rtpRtcp->RegisterSendPayload(videoCodec) != -1;
+    return m_rtpRtcp && m_rtpRtcp->RegisterSendPayload(codec) != -1;
 }
 
 void ExternalVideoProcessor::onRequestIFrame()

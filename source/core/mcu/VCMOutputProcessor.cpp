@@ -35,6 +35,7 @@ DEFINE_LOGGER(VCMOutputProcessor, "mcu.VCMOutputProcessor");
 
 VCMOutputProcessor::VCMOutputProcessor(int id, woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<TaskRunner> taskRunner)
     : VideoOutputProcessor(id)
+    , m_sendFormat(FRAME_FORMAT_UNKNOWN)
 {
     init(transport, taskRunner);
 }
@@ -44,23 +45,40 @@ VCMOutputProcessor::~VCMOutputProcessor()
     close();
 }
 
-bool VCMOutputProcessor::setSendCodec(VideoCodecType codecType, VideoSize videoSize)
+bool VCMOutputProcessor::setSendCodec(FrameFormat frameFormat, VideoSize videoSize)
 {
     VideoCodec videoCodec;
+    bool validCodec = false;
+
     // TODO: enable VP8/H264 in one room later
 #if 0
-    if ((codecType == VCT_H264 && VideoCodingModule::Codec(webrtc::kVideoCodecH264, &videoCodec) == VCM_OK) ||
-         codecType == VCT_VP8 && VideoCodingModule::Codec(webrtc::kVideoCodecVP8, &videoCodec == VCM_OK)) {
+    switch (frameFormat) {
+    case FRAME_FORMAT_VP8:
+        validCodec = (VideoCodingModule::Codec(webrtc::kVideoCodecVP8, &videoCodec) == VCM_OK);
+        break;
+    case FRAME_FORMAT_H264:
+        validCodec = (VideoCodingModule::Codec(webrtc::kVideoCodecH264, &videoCodec) == VCM_OK);
+        break;
+    case FRAME_FORMAT_I420:
+    default:
+        break;
+    }
 #else
-    if (m_videoEncoder->GetEncoder(&videoCodec) == 0) {
+    validCodec = (m_videoEncoder->GetEncoder(&videoCodec) == 0);
 #endif
+
+    if (validCodec) {
         videoCodec.width = videoSize.width;
         videoCodec.height = videoSize.height;
         // TODO: Set startBitrate, minBitrate and maxBitrate of the codec according to the (future) configurable parameters.
 
         if (!m_rtpRtcp || m_rtpRtcp->RegisterSendPayload(videoCodec) == -1)
             return false;
-        return m_videoEncoder ? (m_videoEncoder->SetEncoder(videoCodec) != -1) : false;
+
+        if (m_videoEncoder && m_videoEncoder->SetEncoder(videoCodec) != -1) {
+            m_sendFormat = frameFormat;
+            return true;
+        }
     }
 
     return false;
@@ -78,17 +96,28 @@ uint32_t VCMOutputProcessor::sendSSRC()
 
 void VCMOutputProcessor::onFrame(FrameFormat format, unsigned char* payload, int len, unsigned int ts)
 {
-    if (format == FRAME_FORMAT_I420) {
+    if (format != FRAME_FORMAT_I420 && format != m_sendFormat) {
+        ELOG_INFO("Frame format %d is not supported, ignored.", format);
+        return;
+    }
+
+    switch (format) {
+    case FRAME_FORMAT_I420: {
         I420VideoFrame* composedFrame = reinterpret_cast<I420VideoFrame*>(payload);
         m_videoEncoder->DeliverFrame(m_id, composedFrame);
-    } else if (format == FRAME_FORMAT_VP8) {
+        break;
+    }
+    case FRAME_FORMAT_VP8:
         webrtc::RTPVideoHeader h;
         h.codec = webrtc::kRtpVideoVp8;
         h.codecHeader.VP8.InitRTPVideoHeaderVP8();
         m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, 100, ts * 90,
                                     ts, payload, len, nullptr, &h);
-    } else {
+        break;
+    case FRAME_FORMAT_H264:
         // TODO: H264 image should be handled here.
+    default:
+        break;
     }
 }
 

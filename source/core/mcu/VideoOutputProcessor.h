@@ -36,8 +36,6 @@ class TaskRunner;
  */
 class VideoOutputProcessor : public VideoFrameConsumer {
 public:
-    enum VideoCodecType {VCT_VP8, VCT_H264};
-
     VideoOutputProcessor(int id)
         : m_id(id)
     {
@@ -45,7 +43,7 @@ public:
 
     virtual ~VideoOutputProcessor() { }
 
-    virtual bool setSendCodec(VideoCodecType, VideoSize) = 0;
+    virtual bool setSendCodec(FrameFormat, VideoSize) = 0;
     virtual uint32_t sendSSRC() = 0;
     virtual void onRequestIFrame() = 0;
     virtual erizo::FeedbackSink* feedbackSink() = 0;
