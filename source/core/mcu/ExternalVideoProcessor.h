@@ -51,7 +51,7 @@ public:
     ~ExternalVideoProcessor();
 
     // Implements VideoOutputProcessor.
-    bool setSendCodec(VideoCodecType, VideoSize);
+    bool setSendCodec(FrameFormat, VideoSize);
     uint32_t sendSSRC();
     void onRequestIFrame();
     erizo::FeedbackSink* feedbackSink() { return this; }

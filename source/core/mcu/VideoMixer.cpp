@@ -80,7 +80,7 @@ bool VideoMixer::init()
     layout.rootsize = vga;
     layout.divFactor = 1;
 
-    m_videoOutputProcessor->setSendCodec(VideoOutputProcessor::VCT_VP8, VideoSizes[layout.rootsize]);
+    m_videoOutputProcessor->setSendCodec(FRAME_FORMAT_VP8, VideoSizes[layout.rootsize]);
     m_frameProcessor->setLayout(layout);
 
     m_taskRunner->Start();

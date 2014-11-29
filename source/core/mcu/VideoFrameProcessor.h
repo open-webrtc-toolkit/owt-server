@@ -26,7 +26,7 @@
 namespace mcu {
 
 enum FrameFormat {
-    FRAME_FORMAT_UNKOWN,
+    FRAME_FORMAT_UNKNOWN,
     FRAME_FORMAT_I420,
     FRAME_FORMAT_VP8,
     FRAME_FORMAT_H264

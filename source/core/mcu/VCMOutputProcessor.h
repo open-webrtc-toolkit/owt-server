@@ -49,7 +49,7 @@ public:
     ~VCMOutputProcessor();
 
     // Implements VideoOutputProcessor.
-    bool setSendCodec(VideoCodecType, VideoSize);
+    bool setSendCodec(FrameFormat, VideoSize);
     uint32_t sendSSRC();
     void onRequestIFrame();
     erizo::FeedbackSink* feedbackSink() { return this; }
@@ -62,6 +62,8 @@ public:
 private:
     bool init(woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<TaskRunner>);
     void close();
+
+    FrameFormat m_sendFormat;
 
     boost::scoped_ptr<webrtc::BitrateController> m_bitrateController;
     boost::scoped_ptr<webrtc::RtcpBandwidthObserver> m_bandwidthObserver;
