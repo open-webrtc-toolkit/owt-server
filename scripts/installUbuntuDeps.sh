@@ -44,11 +44,11 @@ check_proxy(){
 }
 
 install_apt_deps(){
-  sudo apt-get install python-software-properties
-  sudo apt-get install software-properties-common
-  sudo add-apt-repository ppa:chris-lea/node.js
-  sudo apt-get update
-  sudo apt-get install git make gcc g++ libssl-dev cmake libglib2.0-dev pkg-config nodejs libboost-regex-dev libboost-thread-dev libboost-system-dev liblog4cxx10-dev rabbitmq-server mongodb openjdk-6-jre curl libboost-test-dev
+  sudo -E apt-get install python-software-properties
+  sudo -E apt-get install software-properties-common
+  sudo -E add-apt-repository ppa:chris-lea/node.js
+  sudo -E apt-get update
+  sudo -E apt-get install git make gcc g++ libssl-dev cmake libglib2.0-dev pkg-config nodejs libboost-regex-dev libboost-thread-dev libboost-system-dev liblog4cxx10-dev rabbitmq-server mongodb openjdk-6-jre curl libboost-test-dev nasm
 }
 
 install_opus(){
@@ -64,7 +64,7 @@ install_opus(){
 }
 
 install_mediadeps(){
-  sudo apt-get install yasm libvpx. libx264.
+  sudo -E apt-get install yasm libvpx. libx264.
   if [ -d $LIB_DIR ]; then
     cd $LIB_DIR
     curl -O https://www.libav.org/releases/libav-9.13.tar.gz
@@ -82,7 +82,7 @@ install_mediadeps(){
 }
 
 install_mediadeps_nogpl(){
-  sudo apt-get install yasm libvpx.
+  sudo -E apt-get install yasm libvpx.
   if [ -d $LIB_DIR ]; then
     cd $LIB_DIR
     curl -O https://www.libav.org/releases/libav-9.13.tar.gz
