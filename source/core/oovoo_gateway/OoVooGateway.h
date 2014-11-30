@@ -85,8 +85,6 @@ public:
      */
     int deliverAudioData(char*, int len);
     int deliverVideoData(char*, int len);
-    void audioReady();
-    void videoReady();
     bool acceptEncapsulatedRTPData();
     bool acceptFEC();
     bool acceptResentData();

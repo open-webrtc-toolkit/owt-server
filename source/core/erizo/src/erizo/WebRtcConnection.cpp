@@ -438,16 +438,6 @@ namespace erizo {
 
     if (temp == CONN_READY && globalState_ != temp) {
       ELOG_INFO("Ready to send and receive media");
-
-      // Notify the media sinks to get ready for receiving media
-      if (audioSink_ != NULL) {
-        if (audioTransport_ != NULL || (bundle_ && videoTransport_ != NULL))
-          audioSink_->audioReady();
-      }
-
-      if (videoSink_ != NULL && videoTransport_ != NULL) {
-        videoSink_->videoReady();
-      }
     }
 
     if (audioTransport_ != NULL && videoTransport_ != NULL) {

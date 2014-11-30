@@ -68,25 +68,6 @@ OoVooGateway::~OoVooGateway()
     closeWebRTCClient();
 }
 
-// Firefox does not send SSRC in SDP, but we need to map its SSRC
-// to ooVoo streamId before we can forward its stream to ooVoo.
-// So for Firefox we'll notify ooVoo outboundStreamCreate lazily when
-// the first RTP packet which contains SSRC from Firefox is received.
-
-void OoVooGateway::audioReady()
-{
-    ELOG_DEBUG("ooVoo -> outboundStreamCreate: user %u, AUDIO", m_webRTCClientId);
-    if (!m_isClientLeaving)
-        m_ooVoo->outboundStreamCreate(m_webRTCClientId, true, unknown);
-}
-
-void OoVooGateway::videoReady()
-{
-    ELOG_DEBUG("ooVoo -> outboundStreamCreate: user %u, VIDEO", m_webRTCClientId);
-    if (!m_isClientLeaving)
-        m_ooVoo->outboundStreamCreate(m_webRTCClientId, false, m_webRTCVideoResolution);
-}
-
 // The WebRTC connection audio receive thread
 int OoVooGateway::deliverAudioData(char* buf, int len)
 {
@@ -603,10 +584,20 @@ void OoVooGateway::publishStream(bool isAudio) {
     if (!publisher)
         return;
 
-    if (isAudio && publisher->getAudioSourceSSRC())
-        audioReady();
-    else if (publisher->getVideoSourceSSRC())
-        videoReady();
+    // Firefox does not send SSRC in SDP, but we need to map its SSRC
+    // to ooVoo streamId before we can forward its stream to ooVoo.
+    // So for Firefox we'll notify ooVoo outboundStreamCreate lazily when
+    // the first RTP packet which contains SSRC from Firefox is received.
+
+    if (isAudio && publisher->getAudioSourceSSRC()) {
+        ELOG_DEBUG("ooVoo -> outboundStreamCreate: user %u, AUDIO", m_webRTCClientId);
+        if (!m_isClientLeaving)
+            m_ooVoo->outboundStreamCreate(m_webRTCClientId, true, unknown);
+    } else if (publisher->getVideoSourceSSRC()) {
+        ELOG_DEBUG("ooVoo -> outboundStreamCreate: user %u, VIDEO", m_webRTCClientId);
+        if (!m_isClientLeaving)
+            m_ooVoo->outboundStreamCreate(m_webRTCClientId, false, m_webRTCVideoResolution);
+    }
 }
 
 void OoVooGateway::unpublishStream(bool isAudio) {
