@@ -174,11 +174,11 @@ case $yn in
   * ) ;;
 esac
 
-read -p "Installing openh264 library? [No/yes]" yn
+read -p "Installing openh264 library? [Yes/no]" yn
 case $yn in
-  [Yy]* ) install_openh264;;
   [Nn]* ) ;;
-  * ) ;;
+  [Yy]* ) install_openh264;;
+  * ) install_openh264;;
 esac
 
 read -p "Installing mediaprocessor? [No/yes]" yn
