@@ -103,10 +103,6 @@ public:
 	 */
 	int setVideoCodec(const std::string& codecName, unsigned int clockRate);
 
-	void setInitialized(bool);
-
-	DLL_PUBLIC bool isInitialized();
-
 	int deliverAudioData(char* buf, int len);
 	int deliverVideoData(char* buf, int len);
 
@@ -161,7 +157,6 @@ private:
   Stats thisStats_;
 
 	WebRTCEvent globalState_;
-	bool initialized_;
 
 	int bundle_, sequenceNumberFIR_;
 	boost::mutex writeMutex_, receiveMediaMutex_, updateStateMutex_;

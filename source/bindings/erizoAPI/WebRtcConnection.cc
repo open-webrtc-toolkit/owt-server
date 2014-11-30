@@ -19,7 +19,6 @@ void WebRtcConnection::Init(Handle<Object> target) {
   // Prototype
   tpl->PrototypeTemplate()->Set(String::NewSymbol("close"), FunctionTemplate::New(close)->GetFunction());
   tpl->PrototypeTemplate()->Set(String::NewSymbol("init"), FunctionTemplate::New(init)->GetFunction());
-  tpl->PrototypeTemplate()->Set(String::NewSymbol("isInitialized"), FunctionTemplate::New(isInitialized)->GetFunction());
   tpl->PrototypeTemplate()->Set(String::NewSymbol("setRemoteSdp"), FunctionTemplate::New(setRemoteSdp)->GetFunction());
   tpl->PrototypeTemplate()->Set(String::NewSymbol("getLocalSdp"), FunctionTemplate::New(getLocalSdp)->GetFunction());
   tpl->PrototypeTemplate()->Set(String::NewSymbol("setAudioReceiver"), FunctionTemplate::New(setAudioReceiver)->GetFunction());
@@ -92,17 +91,6 @@ Handle<Value> WebRtcConnection::init(const Arguments& args) {
 
   bool r = me->init();
   obj->eventCallback_ = Persistent<Function>::New(Local<Function>::Cast(args[0]));
-
-  return scope.Close(Boolean::New(r));
-}
-
-Handle<Value> WebRtcConnection::isInitialized(const Arguments& args) {
-  HandleScope scope;
-
-  WebRtcConnection* obj = ObjectWrap::Unwrap<WebRtcConnection>(args.This());
-  erizo::WebRtcConnection *me = obj->me;
-
-  bool r = me->isInitialized();
 
   return scope.Close(Boolean::New(r));
 }

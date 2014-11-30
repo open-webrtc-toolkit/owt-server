@@ -115,7 +115,6 @@ public:
   virtual int sendFirPacket()=0;
   virtual int setVideoCodec(const std::string& codecName, unsigned int clockRate){return -1;};
   virtual int setAudioCodec(const std::string& codecName, unsigned int clockRate){return -1;};
-  virtual void setInitialized(bool){};
   unsigned int getVideoSourceSSRC (){return videoSourceSSRC_;};
   void setVideoSourceSSRC (unsigned int ssrc){videoSourceSSRC_ = ssrc;};
   unsigned int getAudioSourceSSRC (){return audioSourceSSRC_;};

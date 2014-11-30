@@ -48,12 +48,6 @@ class WebRtcConnection : public node::ObjectWrap, erizo::WebRtcConnectionEventLi
    */
   static v8::Handle<v8::Value> init(const v8::Arguments& args);  
   /*
-   * Gets the initialization state of the WebRtcConnection.
-   * The initialization work may include configuring some SDP parameters.
-   * Returns true if the connection is initialized.
-   */
-  static v8::Handle<v8::Value> isInitialized(const v8::Arguments& args);  
-  /*
    * Sets the SDP of the remote peer.
    * Param: the SDP.
    * Returns true if the SDP was received correctly.

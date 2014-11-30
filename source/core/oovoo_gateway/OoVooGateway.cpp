@@ -405,7 +405,6 @@ bool OoVooGateway::setPublisher(erizo::MediaSource* source, const std::string& v
 
     publisher->setAudioSink(this);
     publisher->setVideoSink(this);
-    publisher->setInitialized(true);
     lock.unlock();
 
     m_ooVooTimer->registerFeedbackTimerListener(this);
