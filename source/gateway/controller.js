@@ -158,8 +158,13 @@ exports = module.exports = function () {
         }
 
         if (gateway.setPublisher(wrtc, resolution)) {
+            var overridenOnReady = function () {
+                gateway.publishStream(true);
+                gateway.publishStream(false);
+                onReady();
+            };
             publisher = wrtc;
-            initWebRtcConnection(wrtc, sdp, callback, onReady);
+            initWebRtcConnection(wrtc, sdp, callback, overridenOnReady);
         } else {
             logger.info("Failed to publish ", from);
             // TODO: We should notify the browser if there's anything wrong with its stream publishing

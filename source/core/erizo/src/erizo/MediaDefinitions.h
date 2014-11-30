@@ -75,8 +75,6 @@ public:
   FeedbackSource* getFeedbackSource(){
     return sinkfbSource_;
   };  
-  virtual void audioReady() { }
-  virtual void videoReady() { }
   // Is it able to sink the encapsulated RTP data (like RED)
   virtual bool acceptEncapsulatedRTPData() { return false; }
   // Is it able to sink the FEC packet
