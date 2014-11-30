@@ -50,7 +50,6 @@ namespace erizo {
     remoteSdp_.setREDSupport(qos & QOS_SUPPORT_RED_MASK);
     remoteSdp_.setFECSupport(qos & QOS_SUPPORT_FEC_MASK);
 
-    initialized_ = true;
     sending_ = true;
     send_Thread_ = boost::thread(&WebRtcConnection::sendLoop, this);
   }
@@ -79,14 +78,6 @@ namespace erizo {
     return true;
   }
 
-  void WebRtcConnection::setInitialized(bool done) {
-    initialized_ = done;
-  }
-
-  bool WebRtcConnection::isInitialized() {
-    return initialized_;
-  }
-  
   int WebRtcConnection::setAudioCodec(const std::string& codecName, unsigned int clockRate) {
     int payloadType = localSdp_.forceCodecSupportByName(codecName, clockRate, AUDIO_TYPE);
     if (payloadType == INVALID_PT) {
