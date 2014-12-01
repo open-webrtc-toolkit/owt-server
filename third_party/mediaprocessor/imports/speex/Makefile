@@ -14,6 +14,9 @@ else
 endif
 
 clean:
+ifeq ($(DIR)/Makefile, $(wildcard $(DIR)/Makefile))
 	$(MAKE) -C $(DIR) clean
-	rm $(DST)/libspeexdsp.so*
-	rm $(DST)/libspeex.so*
+else
+endif
+	rm -f $(DST)/libspeexdsp.so*
+	rm -f $(DST)/libspeex.so*
