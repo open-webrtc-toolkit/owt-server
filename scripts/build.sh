@@ -130,9 +130,6 @@ build_mcu_client_sdk() {
   rm -f ${BUILD_ROOT}/sdk/*.js
   rm -f ${CLIENTSDK_DIR}/dist/*.js
   cd ${CLIENTSDK_DIR}
-  grunt
-  [[ $? -ne 0 ]] && mkdir -p ${CLIENTSDK_DIR}/node_modules && \
-  npm install --prefix ${CLIENTSDK_DIR} --development --loglevel error && \
   grunt --force
   cp -av ${CLIENTSDK_DIR}/dist/*.js ${BUILD_ROOT}/sdk/
 
