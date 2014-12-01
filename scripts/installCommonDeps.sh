@@ -120,6 +120,7 @@ install_node_tools() {
   sudo -E npm install -g --loglevel error node-gyp grunt-cli underscore
   local SDK_DIR="${ROOT}/source/sdk2"
   cd ${SDK_DIR} && make dep
+  sudo chown -R `whoami` ~/.npm ~/tmp/
 }
 
 pause "Installing node building tools... [press Enter]"
@@ -186,4 +187,3 @@ case $yn in
   [Nn]* ) ;;
   * ) ;;
 esac
-

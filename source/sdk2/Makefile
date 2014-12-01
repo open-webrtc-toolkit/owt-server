@@ -8,7 +8,7 @@ all:
 
 dep:
 	@cd $(current_dir)/scripts; mkdir -p node_modules && \
- 	npm install --prefix . --development --loglevel error
+	sudo -E npm install --prefix . --development --loglevel error
 
 clean:
 	@cd $(current_dir) && rm -f ../extras/basic_example/public/woogeen.sdk*.js
