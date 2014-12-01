@@ -249,7 +249,6 @@ install_node() {
   fi
   nvm install ${NODE_VERSION}
   nvm use ${NODE_VERSION}
-  sudo chown -R `whoami` ~/.npm
 }
 
 cleanup(){
