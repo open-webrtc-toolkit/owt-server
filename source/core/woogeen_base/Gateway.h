@@ -47,13 +47,13 @@ public:
      * @param videoResolution the video resolution
      * @return true if the publisher is added successfully
      */
-    DLL_PUBLIC virtual bool setPublisher(erizo::MediaSource*, const std::string& clientId, const std::string& videoResolution) = 0;
+    DLL_PUBLIC virtual bool setPublisher(erizo::MediaSource*, const std::string& participantId, const std::string& videoResolution) = 0;
     /**
      * Sets the Publisher
      * @param source the MediaSource as the Publisher
      * @return true if the publisher is added successfully
      */
-    DLL_PUBLIC virtual bool setPublisher(erizo::MediaSource*, const std::string& clientId) = 0;
+    DLL_PUBLIC virtual bool setPublisher(erizo::MediaSource*, const std::string& participantId) = 0;
     /**
      * Unsets the Publisher
      */
@@ -136,7 +136,7 @@ public:
     DLL_PUBLIC virtual void configLayout(const std::string& type, const std::string& defaultRootSize,
         const std::string& defaultBackgroundColor, const std::string& customLayout) { }
 
-    virtual int32_t addSource(uint32_t id, bool isAudio, erizo::FeedbackSink*, std::string* clientId) { return -1; }
+    virtual int32_t addSource(uint32_t id, bool isAudio, erizo::FeedbackSink*, const std::string& participantId) { return -1; }
     virtual int32_t removeSource(uint32_t id, bool isAudio) { return -1; }
 };
 

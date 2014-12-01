@@ -127,15 +127,15 @@ void Mixer::receiveRtpData(char* buf, int len, erizo::DataType type, uint32_t st
     }
 }
 
-int32_t Mixer::addSource(uint32_t id, bool isAudio, FeedbackSink* feedback, std::string* clientId)
+int32_t Mixer::addSource(uint32_t id, bool isAudio, FeedbackSink* feedback, const std::string& participantId)
 {
     if (isAudio) {
-    	int32_t channelId = m_audioMixer->addSource(id, true, feedback, clientId);
-    	m_sourceChannels[*clientId] = channelId;
-    	ELOG_DEBUG("Adding source: clientId %s, channelId is %d", clientId->c_str(), channelId);
+    	int32_t channelId = m_audioMixer->addSource(id, true, feedback, participantId);
+    	m_sourceChannels[participantId] = channelId;
+    	ELOG_DEBUG("Adding source: participantId %s, channelId is %d", participantId.c_str(), channelId);
     	return channelId;
     }
-    return m_videoMixer->addSource(id, false, feedback, clientId);
+    return m_videoMixer->addSource(id, false, feedback, participantId);
 }
 
 int32_t Mixer::bindAV(uint32_t audioId, uint32_t videoId)

@@ -75,12 +75,12 @@ int WebRTCGateway::deliverVideoData(char* buf, int len)
     return len;
 }
 
-bool WebRTCGateway::setPublisher(MediaSource* publisher, const std::string& clientId)
+bool WebRTCGateway::setPublisher(MediaSource* publisher, const std::string& id)
 {
     publisher->setAudioSink(this);
     publisher->setVideoSink(this);
 
-    m_clientId = clientId;
+    m_participantId = id;
     m_publisher.reset(publisher);
     // TODO: We now directly forward the feedback from the subscribers to the publisher.
     // It "might" not be the best idea in the MCU mode (and considering if there's another
@@ -131,8 +131,8 @@ void WebRTCGateway::removeSubscriber(const std::string& id)
 void WebRTCGateway::setAdditionalSourceConsumer(woogeen_base::MediaSourceConsumer* mixer)
 {
     m_mixer = mixer;
-    mixer->addSource(m_publisher->getAudioSourceSSRC(), true, m_feedback, &m_clientId);
-    mixer->addSource(m_publisher->getVideoSourceSSRC(), false, m_feedback, &m_clientId);
+    mixer->addSource(m_publisher->getAudioSourceSSRC(), true, m_feedback, m_participantId);
+    mixer->addSource(m_publisher->getVideoSourceSSRC(), false, m_feedback, m_participantId);
     mixer->bindAV(m_publisher->getAudioSourceSSRC(), m_publisher->getVideoSourceSSRC());
 }
 
