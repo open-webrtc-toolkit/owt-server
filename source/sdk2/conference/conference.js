@@ -175,10 +175,12 @@ Woogeen.Conference = (function () {
 
         self.socket.on('onRemoveStream', function (spec) {
           var stream = self.remoteStreams[spec.id];
-          stream.close(); // >removeStream<
-          delete self.remoteStreams[spec.id];
-          var evt = new Woogeen.StreamEvent({type: 'stream-removed', stream: stream});
-          self.dispatchEvent(evt);
+          if (stream) {
+            stream.close(); // >removeStream<
+            delete self.remoteStreams[spec.id];
+            var evt = new Woogeen.StreamEvent({type: 'stream-removed', stream: stream});
+            self.dispatchEvent(evt);
+          }
         });
 
         // We receive an event of remote video stream paused
