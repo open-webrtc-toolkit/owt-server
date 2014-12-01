@@ -1,6 +1,7 @@
 /*global require, logger. setInterval, clearInterval, Buffer, exports*/
 var Getopt = require('node-getopt');
 var config = require('./../../../licode_config');
+var customlayout = require('./../../../custom_video_layout');
 
 GLOBAL.config = config || {};
 GLOBAL.config.erizo = GLOBAL.config.erizo || {};
@@ -8,6 +9,12 @@ GLOBAL.config.erizo.stunserver = GLOBAL.config.erizo.stunserver || '';
 GLOBAL.config.erizo.stunport = GLOBAL.config.erizo.stunport || 0;
 GLOBAL.config.erizo.minport = GLOBAL.config.erizo.minport || 0;
 GLOBAL.config.erizo.maxport = GLOBAL.config.erizo.maxport || 0;
+
+GLOBAL.config.erizo.videolayout = GLOBAL.config.erizo.videolayout || {};
+GLOBAL.config.erizo.videolayout.type = GLOBAL.config.erizo.videolayout.type || "fluid";
+GLOBAL.config.erizo.videolayout.defaultrootsize = GLOBAL.config.erizo.videolayout.defaultrootsize || "vga";
+GLOBAL.config.erizo.videolayout.defaultbackgroundcolor = GLOBAL.config.erizo.videolayout.defaultbackgroundcolor || "black";
+GLOBAL.config.erizo.videolayout.custom = customlayout.customvideolayout || {};
 
 // Parse command line arguments
 var getopt = new Getopt([

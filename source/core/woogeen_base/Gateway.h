@@ -133,7 +133,8 @@ public:
      * Configure the layout of the sources by the MediaSourceConsumer
      * @param layout the layout description string
      */
-    DLL_PUBLIC virtual void configLayout(const std::string&) { }
+    DLL_PUBLIC virtual void configLayout(const std::string& type, const std::string& defaultRootSize,
+        const std::string& defaultBackgroundColor, const std::string& customLayout) { }
 
     virtual int32_t addSource(uint32_t id, bool isAudio, erizo::FeedbackSink*, std::string* clientId) { return -1; }
     virtual int32_t removeSource(uint32_t id, bool isAudio) { return -1; }
