@@ -48,8 +48,8 @@ public:
     /**
      * Implements the Gateway interfaces
      */
-    bool setPublisher(erizo::MediaSource*, const std::string& clientId) { return false; }
-    bool setPublisher(erizo::MediaSource* source, const std::string& clientId, const std::string& videoResolution) { return setPublisher(source, clientId); }
+    bool setPublisher(erizo::MediaSource*, const std::string& id) { return false; }
+    bool setPublisher(erizo::MediaSource* source, const std::string& id, const std::string& videoResolution) { return setPublisher(source, id); }
     void unsetPublisher() { }
 
     void addSubscriber(erizo::MediaSink*, const std::string& id);
@@ -70,7 +70,7 @@ public:
 
     void setAdditionalSourceConsumer(woogeen_base::MediaSourceConsumer*) { }
 
-    int32_t addSource(uint32_t id, bool isAudio, erizo::FeedbackSink*, std::string* clientId);
+    int32_t addSource(uint32_t id, bool isAudio, erizo::FeedbackSink*, const std::string& participantId);
     int32_t removeSource(uint32_t id, bool isAudio);
     int32_t bindAV(uint32_t audioId, uint32_t videoId);
     void configLayout(const std::string& type, const std::string& defaultRootSize,

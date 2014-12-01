@@ -66,7 +66,7 @@ public:
      * Each source will be served by a InputProcessor, which is responsible for
      * decoding the incoming streams into I420Frames
      */
-    virtual int32_t addSource(uint32_t from, bool isAudio, erizo::FeedbackSink*, std::string* clientId);
+    virtual int32_t addSource(uint32_t from, bool isAudio, erizo::FeedbackSink*, const std::string& participantId);
     virtual int32_t removeSource(uint32_t from, bool isAudio);
     erizo::MediaSink* mediaSink() { return this; }
 

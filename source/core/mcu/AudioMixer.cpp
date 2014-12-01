@@ -99,7 +99,7 @@ AudioMixer::~AudioMixer()
     VoiceEngine::Delete(m_voiceEngine);
 }
 
-int32_t AudioMixer::addSource(uint32_t from, bool isAudio, erizo::FeedbackSink* feedback, std::string* clientId)
+int32_t AudioMixer::addSource(uint32_t from, bool isAudio, erizo::FeedbackSink* feedback, const std::string& participantId)
 {
     assert(isAudio);
 
@@ -185,7 +185,7 @@ int AudioMixer::deliverAudioData(char* buf, int len)
     if (it == m_inChannels.end()) {
         if (m_addSourceOnDemand) {
             lock.unlock();
-            addSource(id, true, nullptr, nullptr);
+            addSource(id, true, nullptr, "");
         }
         return 0;
     }
