@@ -120,10 +120,16 @@ void HardwareVideoMixerOutput::notifyFrameReady(OutputIndex index)
     }
 }
 
+DEFINE_LOGGER(HardwareVideoMixer, "mcu.HardwareVideoMixer");
+
 HardwareVideoMixer::HardwareVideoMixer()
 {
     m_engine.reset(new VideoMixEngine());
-    // assert(m_engine->Init());
+    bool result = m_engine->Init(0, 640, 480);
+    assert(result);
+    if (!result) {
+        ELOG_ERROR("Init video mixing engine failed!");
+    }
 }
 
 HardwareVideoMixer::~HardwareVideoMixer()
@@ -152,11 +158,13 @@ void HardwareVideoMixer::setLayout(struct VideoLayout& layout)
 bool HardwareVideoMixer::activateInput(int slot, FrameFormat format, VideoFrameProvider* provider)
 {
     if (m_inputs.find(slot) != m_inputs.end()) {
+        ELOG_WARN("activateInput failed, slot is in use.");
         return false;
-    } else {
-        m_inputs[slot].reset(new HardwareVideoMixerInput(m_engine, format, provider));
-        return true;
     }
+
+    ELOG_DEBUG("activateInput OK, slot: %d", slot);
+    m_inputs[slot].reset(new HardwareVideoMixerInput(m_engine, format, provider));
+    return true;
 }
 
 void HardwareVideoMixer::deActivateInput(int slot)
@@ -166,20 +174,21 @@ void HardwareVideoMixer::deActivateInput(int slot)
 
 void HardwareVideoMixer::pushInput(int slot, unsigned char* payload, int len)
 {
+    //ELOG_DEBUG("pushInput");
     std::map<int, boost::shared_ptr<HardwareVideoMixerInput>>::iterator it = m_inputs.find(slot);
     if (it != m_inputs.end())
         it->second->push(payload, len);
 }
 
-// Should be refined when VCSA supports init().
 bool HardwareVideoMixer::activateOutput(FrameFormat format, unsigned int framerate, unsigned short bitrate, VideoFrameConsumer* receiver)
 {
     if (m_outputs.find(format) != m_outputs.end()) {
+        ELOG_WARN("activateOutput failed, format is in use.");
         return false;
-    } else {
-        m_outputs[format].reset(new HardwareVideoMixerOutput(m_engine, format, "name", framerate, bitrate, receiver));
-        return true;
     }
+    ELOG_DEBUG("activateOutput OK, format: %s", ((format == FRAME_FORMAT_VP8)? "VP8" : "H264"));
+    m_outputs[format].reset(new HardwareVideoMixerOutput(m_engine, format, "name", framerate, bitrate, receiver));
+    return true;
 }
 
 void HardwareVideoMixer::deActivateOutput(FrameFormat format)
