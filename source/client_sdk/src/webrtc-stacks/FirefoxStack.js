@@ -138,6 +138,14 @@ Erizo.FirefoxStack = function (spec) {
     spec.remoteCandidates = [];
     spec.remoteDescriptionSet = false;
 
+    /**
+     * Closes the connection.
+     */
+    that.close = function () {
+        that.state = 'closed';
+        that.peerConnection.close();
+    };
+
     that.processSignalingMessage = function (msg) {
 //        console.log("Process Signaling Message", msg);
 
