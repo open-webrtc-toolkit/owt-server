@@ -29,6 +29,8 @@
 
 namespace mcu {
 
+DEFINE_LOGGER(Config, "mcu.Config");
+
 Config* Config::m_config = nullptr;
 
 Config* Config::get()
@@ -55,6 +57,8 @@ VideoLayout& Config::getVideoLayout()
 void Config::initVideoLayout(const std::string& type, const std::string& defaultRootSize,
     const std::string& defaultBackgroundColor, const std::string& customLayout)
 {
+    ELOG_DEBUG("initVideoLayout configuration");
+
     // Set the default value for root size, background color
     VideoResolutionType defaultSize = VideoResolutionType::vga;
     for (std::map<std::string, VideoResolutionType>::const_iterator it=VideoResolutions.begin();
@@ -186,6 +190,8 @@ bool Config::updateVideoLayout(uint32_t slotNumber)
                 signalConfigChanged();
                 return true;
             }
+
+            break;
         }
     }
 
