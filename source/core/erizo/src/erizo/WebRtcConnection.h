@@ -108,6 +108,7 @@ public:
 
 	int deliverFeedback(char* buf, int len);
 
+	bool acceptPayloadType(const int plType);
 	bool acceptEncapsulatedRTPData();
 	bool acceptFEC();
 	bool acceptResentData();

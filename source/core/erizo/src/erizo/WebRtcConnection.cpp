@@ -178,6 +178,10 @@ namespace erizo {
     return localSdp_.getSdp();
   }
 
+  bool WebRtcConnection::acceptPayloadType(const int plType) {
+    return remoteSdp_.supportPayloadType(plType);
+  }
+
   bool WebRtcConnection::acceptEncapsulatedRTPData() {
     return remoteSdp_.supportPayloadType(RED_90000_PT);
   }
