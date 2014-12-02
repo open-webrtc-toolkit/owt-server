@@ -279,10 +279,10 @@ exports.ErizoJSController = function (spec) {
 
             var wrtc = new addon.WebRtcConnection(audio, video, GLOBAL.config.erizo.stunserver, GLOBAL.config.erizo.stunport, GLOBAL.config.erizo.minport, GLOBAL.config.erizo.maxport, undefined, undefined, undefined, true, true, true, true);
 
+            initWebRtcConnection(wrtc, sdp, callback, to, from);
+
             subscribers[to].push(from);
             publishers[to].addSubscriber(wrtc, from);
-
-            initWebRtcConnection(wrtc, sdp, callback, to, from);
 
 //            waitForFIR(wrtc, to);
 
