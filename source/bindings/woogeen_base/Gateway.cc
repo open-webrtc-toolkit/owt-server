@@ -126,9 +126,12 @@ Handle<Value> Gateway::setPublisher(const Arguments& args) {
   erizo::WebRtcConnection* wr = (erizo::WebRtcConnection*)param0->me;
 
   String::Utf8Value param1(args[1]->ToString());
-  std::string videoResolution = std::string(*param1);
+  std::string clientId = std::string(*param1);
 
-  bool added = me->setPublisher(wr, videoResolution);
+  String::Utf8Value param2(args[2]->ToString());
+  std::string videoResolution = std::string(*param2);
+
+  bool added = me->setPublisher(wr, clientId, videoResolution);
 
   return scope.Close(Boolean::New(added));
 }
@@ -142,8 +145,11 @@ Handle<Value> Gateway::setExternalPublisher(const Arguments& args) {
   ExternalInput* param = ObjectWrap::Unwrap<ExternalInput>(args[0]->ToObject());
   erizo::ExternalInput* wr = (erizo::ExternalInput*)param->me;
 
+  String::Utf8Value param1(args[1]->ToString());
+  std::string clientId = std::string(*param1);
+
   erizo::MediaSource* ms = dynamic_cast<erizo::MediaSource*>(wr);
-  bool added = me->setPublisher(ms);
+  bool added = me->setPublisher(ms, clientId);
 
   return scope.Close(Boolean::New(added));
 }

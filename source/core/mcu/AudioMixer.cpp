@@ -37,22 +37,23 @@ namespace mcu {
 DEFINE_LOGGER(AudioMixer, "mcu.AudioMixer");
 
 AudioMixer::AudioMixer(erizo::RTPDataReceiver* receiver)
-    : m_isClosing(false)
-    , m_addSourceOnDemand(false)
+	: m_dataReceiver(receiver)
+	, m_isClosing(false)
+	, m_addSourceOnDemand(false)
 {
     m_voiceEngine = VoiceEngine::Create();
 
     VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);
     voe->Init();
-    m_outChannel.id = voe->CreateChannel();
+    m_sharedChannel.id = voe->CreateChannel();	// id is always 0
 
     VoEExternalMedia* externalMedia = VoEExternalMedia::GetInterface(m_voiceEngine);
     externalMedia->SetExternalRecordingStatus(true);
     externalMedia->SetExternalPlayoutStatus(true);
 
-    m_outChannel.transport.reset(new woogeen_base::WoogeenTransport<erizo::AUDIO>(receiver, nullptr));
+    m_sharedChannel.transport.reset(new woogeen_base::WoogeenTransport<erizo::AUDIO>(receiver, nullptr));
     VoENetwork* network = VoENetwork::GetInterface(m_voiceEngine);
-    network->RegisterExternalTransport(m_outChannel.id, *(m_outChannel.transport));
+    network->RegisterExternalTransport(m_sharedChannel.id, *(m_sharedChannel.transport));
 
     // FIXME: hard coded timer interval.
     m_timer.reset(new boost::asio::deadline_timer(m_ioService, boost::posix_time::milliseconds(10)));
@@ -77,9 +78,9 @@ AudioMixer::~AudioMixer()
     VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);
     VoENetwork* network = VoENetwork::GetInterface(m_voiceEngine);
 
-    voe->StopSend(m_outChannel.id);
-    network->DeRegisterExternalTransport(m_outChannel.id);
-    voe->DeleteChannel(m_outChannel.id);
+    voe->StopSend(m_sharedChannel.id);
+    network->DeRegisterExternalTransport(m_sharedChannel.id);
+    voe->DeleteChannel(m_sharedChannel.id);
 
     boost::unique_lock<boost::shared_mutex> lock(m_sourceMutex);
     std::map<uint32_t, VoiceChannel>::iterator it = m_inChannels.begin();
@@ -87,6 +88,7 @@ AudioMixer::~AudioMixer()
         int channel = it->second.id;
         voe->StopPlayout(channel);
         voe->StopReceive(channel);
+        voe->StopSend(channel);
         network->DeRegisterExternalTransport(channel);
         voe->DeleteChannel(channel);
     }
@@ -97,7 +99,7 @@ AudioMixer::~AudioMixer()
     VoiceEngine::Delete(m_voiceEngine);
 }
 
-int32_t AudioMixer::addSource(uint32_t from, bool isAudio, erizo::FeedbackSink* feedback)
+int32_t AudioMixer::addSource(uint32_t from, bool isAudio, erizo::FeedbackSink* feedback, std::string* clientId)
 {
     assert(isAudio);
 
@@ -109,13 +111,14 @@ int32_t AudioMixer::addSource(uint32_t from, bool isAudio, erizo::FeedbackSink* 
     VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);
     int channel = voe->CreateChannel();
     if (channel != -1) {
-        woogeen_base::WoogeenTransport<erizo::AUDIO>* feedbackTransport = new woogeen_base::WoogeenTransport<erizo::AUDIO>(nullptr, feedback);
+        woogeen_base::WoogeenTransport<erizo::AUDIO>* transport = new woogeen_base::WoogeenTransport<erizo::AUDIO>(m_dataReceiver, feedback);
         VoENetwork* network = VoENetwork::GetInterface(m_voiceEngine);
-        if (network->RegisterExternalTransport(channel, *feedbackTransport) == -1 ||
+        if (network->RegisterExternalTransport(channel, *transport) == -1 ||
             voe->StartReceive(channel) == -1 ||
+            voe->StartSend(channel) == -1 ||
             voe->StartPlayout(channel) == -1) {
             voe->DeleteChannel(channel);
-            delete feedbackTransport;
+            delete transport;
             return -1;
         }
 
@@ -127,9 +130,9 @@ int32_t AudioMixer::addSource(uint32_t from, bool isAudio, erizo::FeedbackSink* 
 
         boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
         if (m_inChannels.size() == 0)
-            voe->StartSend(m_outChannel.id);
+            voe->StartSend(m_sharedChannel.id);
 
-        m_inChannels[from] = {channel, boost::shared_ptr<woogeen_base::WoogeenTransport<erizo::AUDIO>>(feedbackTransport)};
+        m_inChannels[from] = {channel, boost::shared_ptr<woogeen_base::WoogeenTransport<erizo::AUDIO>>(transport)};
     }
     return channel;
 }
@@ -148,12 +151,13 @@ int32_t AudioMixer::removeSource(uint32_t from, bool isAudio)
 
         voe->StopPlayout(channel);
         voe->StopReceive(channel);
+        voe->StopSend(channel);
         network->DeRegisterExternalTransport(channel);
         voe->DeleteChannel(channel);
         m_inChannels.erase(it);
 
         if (m_inChannels.size() == 0)
-            voe->StopSend(m_outChannel.id);
+            voe->StopSend(m_sharedChannel.id);
 
         return 0;
     }
@@ -181,7 +185,7 @@ int AudioMixer::deliverAudioData(char* buf, int len)
     if (it == m_inChannels.end()) {
         if (m_addSourceOnDemand) {
             lock.unlock();
-            addSource(id, true, nullptr);
+            addSource(id, true, nullptr, nullptr);
         }
         return 0;
     }
@@ -203,8 +207,9 @@ int AudioMixer::deliverVideoData(char* buf, int len)
 
 int AudioMixer::deliverFeedback(char* buf, int len)
 {
-    VoENetwork* network = VoENetwork::GetInterface(m_voiceEngine);
-    return network->ReceivedRTCPPacket(m_outChannel.id, buf, len) == -1 ? 0 : len;
+	// TODO: how to handle this?
+	VoENetwork* network = VoENetwork::GetInterface(m_voiceEngine);
+    return network->ReceivedRTCPPacket(m_sharedChannel.id, buf, len) == -1 ? 0 : len;
 }
 
 int32_t AudioMixer::channelId(uint32_t sourceId)
@@ -219,10 +224,14 @@ int32_t AudioMixer::channelId(uint32_t sourceId)
 
 uint32_t AudioMixer::sendSSRC()
 {
-    VoERTP_RTCP* rtpRtcp = VoERTP_RTCP::GetInterface(m_voiceEngine);
+#ifdef NDEBUG
+	VoERTP_RTCP* rtpRtcp = VoERTP_RTCP::GetInterface(m_voiceEngine);
     uint32_t ssrc = 0;
-    rtpRtcp->GetLocalSSRC(m_outChannel.id, ssrc);
+    rtpRtcp->GetLocalSSRC(m_sharedChannel.id, ssrc);
     return ssrc;
+#else
+    return 44444;
+#endif
 }
 
 int32_t AudioMixer::performMix(const boost::system::error_code& ec)
@@ -230,22 +239,39 @@ int32_t AudioMixer::performMix(const boost::system::error_code& ec)
     if (!ec) {
         VoECodec* codec = VoECodec::GetInterface(m_voiceEngine);
         CodecInst audioCodec;
-        if (codec->GetSendCodec(m_outChannel.id, audioCodec) != -1) {
-            VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);
-            AudioTransport* audioTransport = voe->audio_transport();
-            int16_t data[AudioFrame::kMaxDataSizeSamples];
-            uint32_t nSamplesOut = 0;
-            if (audioTransport->NeedMorePlayData(
-                audioCodec.plfreq / 1000 * 10, // samples per channel in a 10 ms period. FIXME: hard coded timer interval.
-                0,
-                audioCodec.channels,
-                audioCodec.plfreq,
-                data,
-                nSamplesOut) == 0) {
-                audioTransport->OnData(m_outChannel.id, data, 0, audioCodec.plfreq, audioCodec.channels, nSamplesOut);
-            }
+		VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);
+   		AudioTransport* audioTransport = voe->audio_transport();
+   		int16_t data[AudioFrame::kMaxDataSizeSamples];
+   		uint32_t nSamplesOut = 0;
+        boost::shared_lock<boost::shared_mutex> lock(m_sourceMutex);
+        if (codec->GetSendCodec(m_sharedChannel.id, audioCodec) != -1) {
+           		if (audioTransport->NeedMorePlayData(
+           				audioCodec.plfreq / 1000 * 10, // samples per channel in a 10 ms period. FIXME: hard coded timer interval.
+           				0,
+           				audioCodec.channels,
+           				audioCodec.plfreq,
+           				data,
+           				nSamplesOut,
+           				-1) == 0) {	// ugly to use -1 to represents the shared channel id
+           			audioTransport->OnData(m_sharedChannel.id, data, 0, audioCodec.plfreq, audioCodec.channels, nSamplesOut);
+           		}
         }
-
+        for (std::map<uint32_t, VoiceChannel>::iterator it = m_inChannels.begin();
+        	 it != m_inChannels.end();
+        	 it++) {
+           	if (codec->GetSendCodec(it->second.id, audioCodec) != -1) {
+               		if (audioTransport->NeedMorePlayData(
+               				audioCodec.plfreq / 1000 * 10, // samples per channel in a 10 ms period. FIXME: hard coded timer interval.
+               				0,
+               				audioCodec.channels,
+               				audioCodec.plfreq,
+               				data,
+               				nSamplesOut,
+               				it->second.id) == 0) {
+               			audioTransport->OnData(it->second.id, data, 0, audioCodec.plfreq, audioCodec.channels, nSamplesOut);
+               		}
+              	}
+        }
         if (!m_isClosing) {
             // FIXME: hard coded timer interval.
             m_timer->expires_at(m_timer->expires_at() + boost::posix_time::milliseconds(10));

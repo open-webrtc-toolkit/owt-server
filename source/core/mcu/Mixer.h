@@ -48,8 +48,8 @@ public:
     /**
      * Implements the Gateway interfaces
      */
-    bool setPublisher(erizo::MediaSource*) { return false; }
-    bool setPublisher(erizo::MediaSource* source, const std::string& videoResolution) { return setPublisher(source); }
+    bool setPublisher(erizo::MediaSource*, const std::string& clientId) { return false; }
+    bool setPublisher(erizo::MediaSource* source, const std::string& clientId, const std::string& videoResolution) { return setPublisher(source, clientId); }
     void unsetPublisher() { }
 
     void addSubscriber(erizo::MediaSink*, const std::string& id);
@@ -70,7 +70,7 @@ public:
 
     void setAdditionalSourceConsumer(woogeen_base::MediaSourceConsumer*) { }
 
-    int32_t addSource(uint32_t id, bool isAudio, erizo::FeedbackSink*);
+    int32_t addSource(uint32_t id, bool isAudio, erizo::FeedbackSink*, std::string* clientId);
     int32_t removeSource(uint32_t id, bool isAudio);
     int32_t bindAV(uint32_t audioId, uint32_t videoId);
     void configLayout(const std::string&);
@@ -88,7 +88,7 @@ public:
     /**
      * Implements the RTPDataReceiver interfaces
      */
-    void receiveRtpData(char*, int len, erizo::DataType, uint32_t streamId);
+    void receiveRtpData(char*, int len, erizo::DataType, uint32_t channelId);
 
 protected:
     boost::shared_ptr<VideoMixer> m_videoMixer;
@@ -101,6 +101,7 @@ private:
      */
     void closeAll();
 
+    std::map<std::string, uint32_t> m_sourceChannels;
     boost::shared_ptr<erizo::FeedbackSink> m_feedback;
     boost::shared_mutex m_subscriberMutex;
     std::map<std::string, boost::shared_ptr<erizo::MediaSink>> m_subscribers;

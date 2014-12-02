@@ -245,7 +245,7 @@ exports.ErizoJSController = function (spec) {
 
             var wrtc = new addon.WebRtcConnection(true, true, GLOBAL.config.erizo.stunserver, GLOBAL.config.erizo.stunport, GLOBAL.config.erizo.minport, GLOBAL.config.erizo.maxport, undefined, undefined, undefined, true, true, true, true);
             var muxer = new addon.Gateway();
-            muxer.setPublisher(wrtc);
+            muxer.setPublisher(wrtc, from);
             publishers[from] = muxer;
 
             subscribers[from] = [];

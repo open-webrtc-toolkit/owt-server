@@ -43,7 +43,7 @@ public:
     virtual ~AudioMixer();
 
     // Implements the MediaSourceConsumer interfaces.
-    int32_t addSource(uint32_t id, bool isAudio, erizo::FeedbackSink*);
+    int32_t addSource(uint32_t id, bool isAudio, erizo::FeedbackSink*, std::string* clientId);
     int32_t removeSource(uint32_t id, bool isAudio);
     erizo::MediaSink* mediaSink() { return this; }
 
@@ -73,8 +73,9 @@ private:
 
     webrtc::VoiceEngine* m_voiceEngine;
 
-    VoiceChannel m_outChannel;
-    std::map<uint32_t, VoiceChannel> m_inChannels;
+    VoiceChannel m_sharedChannel;
+    erizo::RTPDataReceiver* m_dataReceiver;
+    std::map<uint32_t, VoiceChannel> m_inChannels; //TODO: revisit here - shall we use ChannelManager?
     boost::shared_mutex m_sourceMutex;
 
     boost::scoped_ptr<boost::thread> m_audioMixingThread;

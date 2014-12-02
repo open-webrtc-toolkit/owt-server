@@ -121,7 +121,7 @@ int VideoMixer::deliverVideoData(char* buf, int len)
 
     if (m_addSourceOnDemand) {
         lock.unlock();
-        addSource(id, false, nullptr);
+        addSource(id, false, nullptr, nullptr);
     }
 
     return 0;
@@ -147,7 +147,7 @@ void VideoMixer::onConfigChanged()
 /**
  * Attach a new InputStream to the mixer
  */
-int32_t VideoMixer::addSource(uint32_t from, bool isAudio, FeedbackSink* feedback)
+int32_t VideoMixer::addSource(uint32_t from, bool isAudio, FeedbackSink* feedback, std::string* clientId)
 {
     assert(!isAudio);
 
