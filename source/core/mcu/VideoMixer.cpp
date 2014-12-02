@@ -73,10 +73,11 @@ VideoMixer::~VideoMixer()
     m_outputReceiver = nullptr;
 }
 
-bool VideoMixer::addOutput(int payloadType)
+int32_t VideoMixer::addOutput(int payloadType)
 {
-    if (m_videoOutputProcessors.find(payloadType) != m_videoOutputProcessors.end())
-        return false;
+    std::map<int, boost::shared_ptr<VideoOutputProcessor>>::iterator it = m_videoOutputProcessors.find(payloadType);
+    if (it != m_videoOutputProcessors.end())
+        return it->second->id();
 
     FrameFormat outputFormat = FRAME_FORMAT_UNKNOWN;
     int outputId = -1;
@@ -90,7 +91,7 @@ bool VideoMixer::addOutput(int payloadType)
         outputId = MIXED_H264_VIDEO_STREAM_ID;
         break;
     default:
-        return false;
+        return -1;
     }
 
     WoogeenTransport<erizo::VIDEO>* transport = new WoogeenTransport<erizo::VIDEO>(m_outputReceiver, nullptr);
@@ -106,20 +107,21 @@ bool VideoMixer::addOutput(int payloadType)
     output->setSendCodec(outputFormat, VideoSizes.find(vga)->second);
     m_videoOutputProcessors[payloadType].reset(output);
 
-    return true;
+    return output->id();
 }
 
-bool VideoMixer::removeOutput(int payloadType)
+int32_t VideoMixer::removeOutput(int payloadType)
 {
     std::map<int, boost::shared_ptr<VideoOutputProcessor>>::iterator it = m_videoOutputProcessors.find(payloadType);
     if (it != m_videoOutputProcessors.end()) {
         // VideoOutputProcessor* output = it->second.get();
         // TODO: m_frameProcessor->deActivateOutput();
+        int32_t id = it->second->id();
         m_videoOutputProcessors.erase(it);
-        return true;
+        return id;
     }
 
-    return false;
+    return -1;
 }
 
 int VideoMixer::deliverAudioData(char* buf, int len) 
