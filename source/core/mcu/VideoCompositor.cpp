@@ -246,7 +246,7 @@ webrtc::I420VideoFrame* SoftVideoCompositor::customLayout()
 {
     VideoSize rootSize = VideoSizes.find(m_currentLayout.rootSize)->second;
     webrtc::I420VideoFrame* target = m_composedFrame.get();
-    int input = 0;
+    uint32_t input = 0;
     for (int index = 0; index < BufferManager::SLOT_SIZE; ++index) {
         if (!m_bufferManager->isActive(index) || input >= m_currentLayout.regions.size())
             continue;
