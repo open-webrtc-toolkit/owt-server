@@ -157,7 +157,7 @@ exports = module.exports = function () {
             resolution = '';
         }
 
-        if (gateway.setPublisher(wrtc, resolution)) {
+        if (gateway.setPublisher(wrtc, from, resolution)) {
             var overridenOnReady = function () {
                 gateway.publishStream(true);
                 gateway.publishStream(false);

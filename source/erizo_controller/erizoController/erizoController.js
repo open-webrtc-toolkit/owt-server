@@ -455,7 +455,8 @@ var listen = function () {
                 });
             } else if (options.state !== 'data' && !socket.room.p2p) {
                 if (options.state === 'offer' && socket.state === 'sleeping') {
-                    id = Math.random() * 1000000000000000000;
+                    // id = Math.random() * 1000000000000000000;
+                	id = socket.id;
                     if (GLOBAL.config.erizoController.sendStats) {
                         var timeStamp = new Date();
                         rpc.callRpc('stats_handler', 'event', [{room: socket.room.id, user: socket.id, type: 'publish', stream: id, timestamp: timeStamp.getTime()}]);

@@ -69,7 +69,7 @@ public:
 
     // Implement MediaSourceConsumer.
     // TODO: Add real implementation later.
-    int32_t addSource(uint32_t id, bool isAudio, erizo::FeedbackSink*) { return -1; }
+    int32_t addSource(uint32_t id, bool isAudio, erizo::FeedbackSink*, std::string* clientId) { return -1; }
     int32_t removeSource(uint32_t id, bool isAudio) { return -1; }
     int32_t bindAV(uint32_t audioId, uint32_t videoId) { return -1; }
     void configLayout(const std::string&) { }

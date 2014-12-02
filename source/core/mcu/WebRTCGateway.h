@@ -44,8 +44,8 @@ public:
     /**
      * Implements the Gateway interfaces
      */
-    bool setPublisher(erizo::MediaSource*);
-    bool setPublisher(erizo::MediaSource* source, const std::string& videoResolution) { return setPublisher(source); }
+    bool setPublisher(erizo::MediaSource*, const std::string& clientId);
+    bool setPublisher(erizo::MediaSource* source, const std::string& clientId, const std::string& videoResolution) { return setPublisher(source, clientId); }
     void unsetPublisher();
 
     void addSubscriber(erizo::MediaSink*, const std::string& id);
@@ -79,6 +79,7 @@ public:
 private:
     void closeAll();
 
+    std::string m_clientId;
     boost::shared_ptr<erizo::MediaSource> m_publisher;
     erizo::FeedbackSink* m_feedback;
     boost::shared_mutex m_subscriberMutex;

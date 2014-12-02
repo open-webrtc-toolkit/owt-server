@@ -98,8 +98,20 @@ void Mixer::receiveRtpData(char* buf, int len, erizo::DataType type, uint32_t st
     switch (type) {
     case erizo::AUDIO: {
         for (it = m_subscribers.begin(); it != m_subscribers.end(); ++it) {
-            if ((*it).second)
-                (*it).second->deliverAudioData(buf, len);
+        	if ((*it).second) {
+        		uint32_t sourceId = m_sourceChannels[it->first];
+        		ELOG_DEBUG("it first is %s, streamId is %u, sourceId is %u, len is %d", it->first.c_str(), streamId, sourceId, len);
+        		if (sourceId == 0) {
+        			// no publisher from this user, deliver the shared audio data
+        			if (streamId == 0) {
+        				ELOG_DEBUG("delivering shared stream");
+        				it->second->deliverAudioData(buf, len);
+        			}
+        		} else if (streamId == sourceId) {
+        			ELOG_DEBUG("delivering stream from channel %d, len is %d", streamId, len);
+        			it->second->deliverAudioData(buf, len);
+        		}
+        	}
         }
         break;
     }
@@ -115,12 +127,15 @@ void Mixer::receiveRtpData(char* buf, int len, erizo::DataType type, uint32_t st
     }
 }
 
-int32_t Mixer::addSource(uint32_t id, bool isAudio, FeedbackSink* feedback)
+int32_t Mixer::addSource(uint32_t id, bool isAudio, FeedbackSink* feedback, std::string* clientId)
 {
-    if (isAudio)
-        return m_audioMixer->addSource(id, true, feedback);
-
-    return m_videoMixer->addSource(id, false, feedback);
+    if (isAudio) {
+    	int32_t channelId = m_audioMixer->addSource(id, true, feedback, clientId);
+    	m_sourceChannels[*clientId] = channelId;
+    	ELOG_DEBUG("Adding source: clientId %s, channelId is %d", clientId->c_str(), channelId);
+    	return channelId;
+    }
+    return m_videoMixer->addSource(id, false, feedback, clientId);
 }
 
 int32_t Mixer::bindAV(uint32_t audioId, uint32_t videoId)
