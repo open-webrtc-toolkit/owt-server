@@ -94,7 +94,7 @@ public:
             m_imageHandler->pushInput(m_index, inputImage._buffer, inputImage._length);
         return 0;
     }
-    virtual int32_t RegisterDecodeCompleteCallback(webrtc::DecodedImageCallback* callback) { return -1; }
+    virtual int32_t RegisterDecodeCompleteCallback(webrtc::DecodedImageCallback* callback) { return 0; }
     virtual int32_t Release() { return 0; }
     virtual int32_t Reset() { return 0; }
 

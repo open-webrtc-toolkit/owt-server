@@ -24,6 +24,7 @@
 #include "JobTimer.h"
 #include "VideoFrameProcessor.h"
 
+#include <logger.h>
 #include <string>
 #include <map>
 #include <boost/shared_ptr.hpp>
@@ -81,7 +82,7 @@ private:
 };
 
 class HardwareVideoMixer : public VideoFrameProcessor {
-    enum MixerState{UN_INITIALIZED, IN_SERVICE}; // states shall be deprecated if VCSA supports init();
+    DECLARE_LOGGER();
 public:
     HardwareVideoMixer();
     virtual ~HardwareVideoMixer();

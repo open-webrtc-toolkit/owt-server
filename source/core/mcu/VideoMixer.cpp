@@ -67,6 +67,7 @@ bool VideoMixer::init()
     WoogeenTransport<erizo::VIDEO>* transport = new WoogeenTransport<erizo::VIDEO>(m_outputReceiver, nullptr);
 
     if (m_hardwareAccelerated) {
+        ELOG_DEBUG("VideoMixer::Init - hardwareAccelerated.");
         m_frameProcessor.reset(new HardwareVideoMixer());
         m_videoOutputProcessor.reset(new ExternalVideoProcessor(MIXED_VIDEO_STREAM_ID, m_frameProcessor, FRAME_FORMAT_VP8, transport, m_taskRunner));
         m_frameProcessor->activateOutput(FRAME_FORMAT_VP8, 30, 500, m_videoOutputProcessor.get());
