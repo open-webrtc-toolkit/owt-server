@@ -25,14 +25,14 @@
 
 #include <boost/shared_ptr.hpp>
 #include <MediaDefinitions.h>
-#include <WoogeenTransport.h>
+#include <WebRTCFeedbackProcessor.h>
 
 namespace mcu {
 
 class TaskRunner;
 
 /**
- * This is the class to send out the encoded frame via the given WoogeenTransport.
+ * This is the class to send out the encoded video frame.
  */
 class VideoOutputProcessor : public VideoFrameConsumer {
 public:
@@ -45,8 +45,9 @@ public:
 
     virtual bool setSendCodec(FrameFormat, VideoSize) = 0;
     virtual uint32_t sendSSRC() = 0;
-    virtual void onRequestIFrame() = 0;
+    virtual woogeen_base::IntraFrameCallback* iFrameCallback() = 0;
     virtual erizo::FeedbackSink* feedbackSink() = 0;
+    virtual int id() { return m_id; }
 
 protected:
     int m_id;

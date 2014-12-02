@@ -30,22 +30,6 @@ using namespace erizo;
 
 namespace mcu {
 
-class MixerIntraFrameCallback : public woogeen_base::IntraFrameCallback {
-public:
-    MixerIntraFrameCallback(boost::shared_ptr<VideoMixer> videoMixer)
-        : m_videoMixer(videoMixer)
-    {
-    }
-
-    virtual void handleIntraFrameRequest()
-    {
-        m_videoMixer->onRequestIFrame();
-    }
-
-private:
-    boost::shared_ptr<VideoMixer> m_videoMixer;
-};
-
 DEFINE_LOGGER(Mixer, "mcu.Mixer");
 
 Mixer::Mixer(bool hardwareAccelerated)
@@ -81,8 +65,8 @@ int Mixer::deliverVideoData(char* buf, int len)
 
 int Mixer::deliverFeedback(char* buf, int len)
 {
-    if (m_videoMixer->deliverFeedback(buf, len) > 0 &&
-        m_audioMixer->deliverFeedback(buf, len) > 0)
+    if (m_videoMixer->deliverFeedback(buf, len) > 0
+        && m_audioMixer->deliverFeedback(buf, len) > 0)
         return len;
 
     return 0;
@@ -145,9 +129,12 @@ int32_t Mixer::bindAV(uint32_t audioId, uint32_t videoId)
 
 void Mixer::addSubscriber(MediaSink* subscriber, const std::string& peerId)
 {
-    ELOG_DEBUG("Adding subscriber to %u(a), %u(v)", m_audioMixer->sendSSRC(), m_videoMixer->sendSSRC());
+    ELOG_DEBUG("Adding subscriber to %u(a), %u(v)", m_audioMixer->sendSSRC(), m_videoMixer->getSendSSRC(VP8_90000_PT));
 
-    subscriber->setVideoSinkSSRC(m_videoMixer->sendSSRC());
+    if (m_subscribers.size() == 0)
+        m_videoMixer->addOutput(VP8_90000_PT);
+
+    subscriber->setVideoSinkSSRC(m_videoMixer->getSendSSRC(VP8_90000_PT));
     subscriber->setAudioSinkSSRC(m_audioMixer->sendSSRC());
 
     // TODO: We now just pass the feedback from _all_ of the subscribers to the video mixer without pre-processing,
@@ -159,8 +146,8 @@ void Mixer::addSubscriber(MediaSink* subscriber, const std::string& peerId)
     // be sent to the VCMOutputProcessor which is a single instance shared by all the subscribers.
     if (0 && !m_feedback) {
         WebRTCFeedbackProcessor* feedback = new woogeen_base::WebRTCFeedbackProcessor(0);
-        boost::shared_ptr<woogeen_base::IntraFrameCallback> intraFrameCallback(new MixerIntraFrameCallback(m_videoMixer));
-        feedback->initVideoFeedbackReactor(MIXED_VIDEO_STREAM_ID, subscriber->getVideoSinkSSRC(), boost::shared_ptr<woogeen_base::ProtectedRTPSender>(), intraFrameCallback);
+        boost::shared_ptr<woogeen_base::IntraFrameCallback> intraFrameCallback(m_videoMixer->getIFrameCallback(VP8_90000_PT));
+        feedback->initVideoFeedbackReactor(MIXED_VP8_VIDEO_STREAM_ID, subscriber->getVideoSinkSSRC(), boost::shared_ptr<woogeen_base::ProtectedRTPSender>(), intraFrameCallback);
         m_feedback.reset(feedback);
     }
 
