@@ -46,8 +46,9 @@ install_openssl(){
 
 install_openh264(){
   cd $ROOT/third_party/openh264
-  make clean
-  make ENABLE64BIT=Yes
+  curl -O http://ciscobinary.openh264.org/libopenh264-1.2.0-linux64.so.bz2
+  bzip2 -d libopenh264-1.2.0-linux64.so.bz2
+  ln -s libopenh264-1.2.0-linux64.so libopenh264.so
   cd $CURRENT_DIR
 }
 
@@ -175,7 +176,7 @@ case $yn in
   * ) ;;
 esac
 
-read -p "Installing openh264 library? [Yes/no]" yn
+read -p "Installing OpenH264 Video Codec provided by Cisco Systems, Inc.? [Yes/no]" yn
 case $yn in
   [Nn]* ) ;;
   [Yy]* ) install_openh264;;
