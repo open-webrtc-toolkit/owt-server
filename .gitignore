@@ -1,6 +1,7 @@
 build/
 dist/
 licode_config.js
+custom_video_layout.js
 source/extras/basic_example/node_modules
 source/extras/basic_example/public/erizo.js
 source/extras/basic_example/public/woogeen.sdk*.js

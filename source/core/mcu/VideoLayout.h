@@ -23,6 +23,7 @@
 
 #include <string>
 #include <vector>
+#include <map>
 
 namespace mcu {
 
@@ -59,8 +60,14 @@ enum VideoResolutionType
     qcif, //176x144
     r192x144,
     hd_1080p,
-    uhd_4k,
-    total = uhd_4k,
+    uhd_4k
+};
+
+// Chunbo's TODO: Enable background color setting for video engine
+enum VideoBackgroundColor
+{
+    black = 0, //YUV: 0x00,0x80,0x80
+    white, //YUV: 0xFF,0x80,0x80
 };
 
 struct VideoSize {
@@ -72,20 +79,31 @@ struct Region {
     std::string id;
     float left; // percentage
     float top;    // percentage
-    float relativesize;    //fraction
+    float relativeSize;    //fraction
     float priority;
-} ;
+};
 
 struct VideoLayout {
-    VideoResolutionType rootsize;
+    VideoResolutionType rootSize;
+    VideoBackgroundColor rootColor;
+
+    // Valid for customized video layout
+    unsigned int maxInput;
     std::vector<Region> regions;
-    unsigned int divFactor;    //valid for fluidLayout
+
+    // Valid for fluid video layout
+    unsigned int divFactor;
     unsigned int subWidth;
     unsigned int subHeight;
 };
 
-extern VideoSize VideoSizes[];
-extern const char* VideoResString[];
+const std::map<std::string, VideoResolutionType> VideoResolutions = {{"cif", cif}, {"vga", vga}, {"hd_720p", hd_720p}, {"sif", sif},
+  {"hvga",hvga}, {"r480x360", r480x360}, {"qcif", qcif}, {"r192x144", r192x144}, {"hd_1080p", hd_1080p}, {"uhd_4k", uhd_4k}};
+
+const std::map<VideoResolutionType, VideoSize> VideoSizes = {{cif, {352, 288}}, {vga, {640, 480}}, {hd_720p, {1280, 720}}, {sif, {320, 240}},
+  {hvga, {480, 320}}, {r480x360, {480, 360}}, {qcif, {176, 144}}, {r192x144, {192, 144}}, {hd_1080p, {1920, 1080}}, {uhd_4k, {3840, 2160}}};
+
+const std::map<std::string, VideoBackgroundColor> VideoColors = {{"black", black}, {"white", white}};
 
 }
 #endif

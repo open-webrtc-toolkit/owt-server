@@ -89,7 +89,7 @@ private:
     webrtc::I420VideoFrame* fluidLayout();
     webrtc::I420VideoFrame* customLayout();
     void generateFrame();
-    void updateMaxSlot(int newMaxSlot);
+    void onSlotNumberChanged(uint32_t newSlotNum);
     bool commitLayout(); //commit the new layout config
     void setBackgroundColor();
     bool validateConfig(VideoLayout& layout)
@@ -97,7 +97,6 @@ private:
         return true;
     }
 
-    int m_maxSlot;
     int64_t m_ntpDelta;
     boost::scoped_ptr<webrtc::CriticalSectionWrapper> m_configLock;
     bool m_configChanged;

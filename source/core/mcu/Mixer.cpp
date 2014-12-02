@@ -188,10 +188,11 @@ int32_t Mixer::removeSource(uint32_t source, bool isAudio)
     return isAudio ? m_audioMixer->removeSource(source, true) : m_videoMixer->removeSource(source, false);
 }
 
-void Mixer::configLayout(const std::string& layout)
+void Mixer::configLayout(const std::string& type, const std::string& defaultRootSize,
+    const std::string& defaultBackgroundColor, const std::string& customLayout)
 {
     ELOG_DEBUG("configLayout");
-    Config::get()->setVideoLayout(layout);
+    Config::get()->initVideoLayout(type, defaultRootSize, defaultBackgroundColor, customLayout);
 }
 
 void Mixer::closeAll()
