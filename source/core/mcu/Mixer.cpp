@@ -22,9 +22,6 @@
 
 #include "Config.h"
 
-#include <ProtectedRTPSender.h>
-#include <WebRTCFeedbackProcessor.h>
-
 using namespace woogeen_base;
 using namespace erizo;
 
@@ -100,9 +97,21 @@ void Mixer::receiveRtpData(char* buf, int len, erizo::DataType type, uint32_t st
         break;
     }
     case erizo::VIDEO: {
+        uint32_t ssrc = 0;
+        RTCPHeader* chead = reinterpret_cast<RTCPHeader*>(buf);
+        uint8_t packetType = chead->getPacketType();
+        assert(packetType != RTCP_Receiver_PT && packetType != RTCP_PS_Feedback_PT && packetType != RTCP_RTP_Feedback_PT);
+        if (packetType == RTCP_Sender_PT)
+            ssrc = chead->getSSRC();
+        else {
+            RTPHeader* head = reinterpret_cast<RTPHeader*>(buf);
+            ssrc = head->getSSRC();
+        }
+
         for (it = m_subscribers.begin(); it != m_subscribers.end(); ++it) {
-            if ((*it).second)
-                (*it).second->deliverVideoData(buf, len);
+            MediaSink* sink = it->second.get();
+            if (sink && sink->getVideoSinkSSRC() == ssrc)
+                sink->deliverVideoData(buf, len);
         }
         break;
     }
@@ -129,12 +138,19 @@ int32_t Mixer::bindAV(uint32_t audioId, uint32_t videoId)
 
 void Mixer::addSubscriber(MediaSink* subscriber, const std::string& peerId)
 {
-    ELOG_DEBUG("Adding subscriber to %u(a), %u(v)", m_audioMixer->sendSSRC(), m_videoMixer->getSendSSRC(VP8_90000_PT));
+    int videoPayloadType = INVALID_PT;
 
-    if (m_subscribers.size() == 0)
-        m_videoMixer->addOutput(VP8_90000_PT);
+    // Prefer H264.
+    if (subscriber->acceptPayloadType(H264_90000_PT))
+        videoPayloadType = H264_90000_PT;
+    else if (subscriber->acceptPayloadType(VP8_90000_PT))
+        videoPayloadType = VP8_90000_PT;
 
-    subscriber->setVideoSinkSSRC(m_videoMixer->getSendSSRC(VP8_90000_PT));
+    ELOG_DEBUG("Adding subscriber to %u(a), %u(v)", m_audioMixer->sendSSRC(), m_videoMixer->getSendSSRC(videoPayloadType));
+
+    m_videoMixer->addOutput(videoPayloadType);
+
+    subscriber->setVideoSinkSSRC(m_videoMixer->getSendSSRC(videoPayloadType));
     subscriber->setAudioSinkSSRC(m_audioMixer->sendSSRC());
 
     // TODO: We now just pass the feedback from _all_ of the subscribers to the video mixer without pre-processing,
