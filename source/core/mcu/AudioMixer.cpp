@@ -88,12 +88,22 @@ AudioMixer::~AudioMixer()
         int channel = it->second.id;
         voe->StopPlayout(channel);
         voe->StopReceive(channel);
-        voe->StopSend(channel);
         network->DeRegisterExternalTransport(channel);
         voe->DeleteChannel(channel);
     }
     m_inChannels.clear();
     lock.unlock();
+
+    boost::unique_lock<boost::shared_mutex> participantLock(m_participantChannelMutex);
+    std::map<std::string, VoiceChannel>::iterator participantIt = m_participantChannels.begin();
+    for (; participantIt != m_participantChannels.end(); ++participantIt) {
+        int channel = participantIt->second.id;
+        voe->StopSend(channel);
+        network->DeRegisterExternalTransport(channel);
+        voe->DeleteChannel(channel);
+    }
+    m_participantChannels.clear();
+    participantLock.unlock();
 
     voe->Terminate();
     VoiceEngine::Delete(m_voiceEngine);
@@ -354,8 +364,8 @@ int32_t AudioMixer::performMix(const boost::system::error_code& ec)
                 -1) == 0)    // ugly to use -1 to represents the shared channel id
                 audioTransport->OnData(m_sharedChannel.id, data, 0, audioCodec.plfreq, audioCodec.channels, nSamplesOut);
         }
-        for (std::map<uint32_t, VoiceChannel>::iterator it = m_inChannels.begin();
-             it != m_inChannels.end();
+        for (std::map<std::string, VoiceChannel>::iterator it = m_participantChannels.begin();
+             it != m_participantChannels.end();
              ++it) {
             if (codec->GetSendCodec(it->second.id, audioCodec) != -1) {
                 if (audioTransport->NeedMorePlayData(
