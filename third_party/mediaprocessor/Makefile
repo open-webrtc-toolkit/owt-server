@@ -1,7 +1,7 @@
 # <COPYRIGHT_TAG>
 
-DIRS = imports libxcode app
-SRCS = libxcode app
+DIRS = imports libxcode
+SRCS = libxcode
 
 ifeq (README, $(wildcard README))
 	TARGET=help

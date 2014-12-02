@@ -22,4 +22,4 @@ endif
 
 clean:
 	$(MAKE) -C $(DIR) distclean
-	rm $(DST)/libfreetype.so*
+	rm -f $(DST)/libfreetype.so*

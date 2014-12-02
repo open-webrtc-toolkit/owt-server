@@ -70,22 +70,22 @@ Woogeen.Conference = (function () {
       }
     });
 
-    this.join = function (token, callback) {
+    this.join = function (token, onSuccess, onFailure) {
       var self = this;
       try {
         token = JSON.parse(L.Base64.decodeBase64(token));
       } catch (err) {
-        return safeCall(callback, 'invalid token');
+        return safeCall(onFailure, 'invalid token');
       }
 
       var isSecured = (token.secure === true);
       var host = token.host;
       if (typeof host !== 'string') {
-        return safeCall(callback, 'invalid host');
+        return safeCall(onFailure, 'invalid host');
       }
       // check connection>host< state
       if (self.state !== DISCONNECTED) {
-        return safeCall(callback, 'connection state invalid');
+        return safeCall(onFailure, 'connection state invalid');
       }
 
       self.on('client-disconnected', function () { // onConnectionClose handler
@@ -296,17 +296,17 @@ Woogeen.Conference = (function () {
         });
 
         self.socket.on('connect_failed', function (err) {
-          safeCall(callback, err || 'connection_failed');
+          safeCall(onFailure, err || 'connection_failed');
         });
 
         self.socket.on('error', function (err) {
-          safeCall(callback, err || 'connection_error');
+          safeCall(onFailure, err || 'connection_error');
         });
       }
 
       sendMsg(self.socket, 'token', token, function (err, resp) {
         if (err) {
-          return safeCall(callback, resp);
+          return safeCall(onFailure, err);
         }
         self.connSettings = {
           turn: resp.turnServer,
@@ -321,7 +321,7 @@ Woogeen.Conference = (function () {
           self.remoteStreams[st.id] = new Woogeen.RemoteStream(st);
           return self.remoteStreams[st.id];
         });
-        safeCall(callback, null, {streams: streams});
+        safeCall(onSuccess, {streams: streams});
       });
     };
 
@@ -369,9 +369,9 @@ Woogeen.Conference = (function () {
     this.dispatchEvent(evt);
   };
 
-  WoogeenConference.prototype.send = function (data, receiver, callback) {
+  WoogeenConference.prototype.send = function (data, receiver, onSuccess, onFailure) {
     if (data === undefined || data === null || typeof data === 'function') {
-      return safeCall(callback, 'nothing to send');
+      return safeCall(onFailure, 'nothing to send');
     }
     if (typeof receiver === 'undefined') {
       receiver = 0; // 0 => ALL
@@ -379,28 +379,33 @@ Woogeen.Conference = (function () {
       // supposed to be a valid receiverId.
       // pass.
     } else if (typeof receiver === 'function') {
-      callback = receiver;
+      onFailure = onSuccess;
+      onSuccess = receiver;
       receiver = 0;
     } else {
-      return safeCall(callback, 'invalid receiver');
+      return safeCall(onFailure, 'invalid receiver');
     }
     sendMsg(this.socket, 'customMessage', {
       data: data,
       receiver: receiver
     }, function (err, resp) {
-      safeCall(callback, err, resp);
+      if (err) {
+        return safeCall(onFailure, err);
+      }
+      safeCall(onSuccess, resp);
     });
   };
 
-  WoogeenConference.prototype.publish = function (stream, options, callback) {
+  WoogeenConference.prototype.publish = function (stream, options, onSuccess, onFailure) {
     var self = this;
     if (!(stream instanceof Woogeen.LocalStream) ||
       (typeof stream.mediaStream !== 'object' || stream.mediaStream === null)) {
-      return safeCall(callback, 'invalid stream');
+      return safeCall(onFailure, 'invalid stream');
     }
 
     if (typeof options === 'function') {
-      callback = options;
+      onFailure = onSuccess;
+      onSuccess = options;
       options = stream.bitRate;
     } else if (typeof options !== 'object' || options === null) {
       options = stream.bitRate;
@@ -420,7 +425,7 @@ Woogeen.Conference = (function () {
             attributes: stream.attributes()
           }, offer, function (answer, id) {
             if (answer === 'error') {
-              return safeCall(callback, answer, id);
+              return safeCall(onFailure, id);
             }
             stream.channel.onsignalingmessage = function () {
               stream.channel.onsignalingmessage = function () {};
@@ -440,7 +445,7 @@ Woogeen.Conference = (function () {
               stream.signalOnPauseVideo = function (onSuccess, onFailure) {
                 self.send(mkCtrlPayload('video-out-off'), onSuccess, onFailure);
               };
-              safeCall(callback, null, stream);
+              safeCall(onSuccess, stream);
             };
 
             stream.channel.oniceconnectionstatechange = function (state) {
@@ -455,7 +460,7 @@ Woogeen.Conference = (function () {
                 stream.signalOnPlayVideo = undefined;
                 stream.signalOnPauseVideo = undefined;
                 delete stream.unpublish;
-                safeCall(callback, 'peer connection failed');
+                safeCall(onFailure, 'peer connection failed');
               }
             };
             stream.channel.processSignalingMessage(answer);
@@ -471,17 +476,17 @@ Woogeen.Conference = (function () {
       });
       stream.channel.addStream(stream.mediaStream);
     } else {
-      return safeCall(callback, 'already published');
+      return safeCall(onFailure, 'already published');
     }
   };
 
-  WoogeenConference.prototype.unpublish = function (stream, callback) {
+  WoogeenConference.prototype.unpublish = function (stream, onSuccess, onFailure) {
     var self = this;
     if (!(stream instanceof Woogeen.LocalStream)) {
-      return safeCall(callback, 'invalid stream');
+      return safeCall(onFailure, 'invalid stream');
     }
     sendMsg(self.socket, 'unpublish', stream.id(), function (err) {
-      if (err) {return safeCall(callback, err);}
+      if (err) {return safeCall(onFailure, err);}
       if (stream.channel && typeof stream.channel.close === 'function') {
         stream.channel.close();
         stream.channel = null;
@@ -492,17 +497,18 @@ Woogeen.Conference = (function () {
       stream.signalOnPauseAudio = undefined;
       stream.signalOnPlayVideo = undefined;
       stream.signalOnPauseVideo = undefined;
-      safeCall(callback, null);
+      safeCall(onSuccess, null);
     });
   };
 
-  WoogeenConference.prototype.subscribe = function (stream, options, callback) {
+  WoogeenConference.prototype.subscribe = function (stream, options, onSuccess, onFailure) {
     var self = this;
     if (!(stream instanceof Woogeen.RemoteStream)) {
-      return safeCall(callback, 'invalid stream');
+      return safeCall(onFailure, 'invalid stream');
     }
     if (typeof options === 'function') {
-      callback = options;
+      onFailure = onSuccess;
+      onSuccess = options;
       options = null;
     }
     stream.channel = createChannel({
@@ -513,7 +519,7 @@ Woogeen.Conference = (function () {
           video: stream.hasVideo()
         }, offer, function (answer) {
           if (answer === 'error') {
-            return safeCall(callback, answer);
+            return safeCall(onFailure, answer);
           }
           stream.channel.processSignalingMessage(answer);
         });
@@ -527,7 +533,7 @@ Woogeen.Conference = (function () {
 
     stream.channel.onaddstream = function (evt) {
       stream.mediaStream = evt.stream;
-      safeCall(callback, null, stream);
+      safeCall(onSuccess, stream);
       stream.signalOnPlayAudio = function (onSuccess, onFailure) {
         self.send(mkCtrlPayload('audio-in-on', stream.id()), onSuccess, onFailure);
       };
@@ -550,24 +556,24 @@ Woogeen.Conference = (function () {
         stream.signalOnPauseAudio = undefined;
         stream.signalOnPlayVideo = undefined;
         stream.signalOnPauseVideo = undefined;
-        safeCall(callback, 'peer connection failed');
+        safeCall(onFailure, 'peer connection failed');
       }
     };
   };
 
-  WoogeenConference.prototype.unsubscribe = function (stream, callback) {
+  WoogeenConference.prototype.unsubscribe = function (stream, onSuccess, onFailure) {
     var self = this;
     if (!(stream instanceof Woogeen.RemoteStream)) {
-      return safeCall(callback, 'invalid stream');
+      return safeCall(onFailure, 'invalid stream');
     }
     sendMsg(self.socket, 'unsubscribe', stream.id(), function (err, resp) {
-      if (err) {return safeCall(callback, err);}
+      if (err) {return safeCall(onFailure, err);}
       stream.close();
       stream.signalOnPlayAudio = undefined;
       stream.signalOnPauseAudio = undefined;
       stream.signalOnPlayVideo = undefined;
       stream.signalOnPauseVideo = undefined;
-      safeCall(callback, null, resp);
+      safeCall(onSuccess, resp);
     });
   };
 
