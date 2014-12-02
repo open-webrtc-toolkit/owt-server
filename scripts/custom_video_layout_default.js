@@ -1,6 +1,75 @@
 exports.customvideolayout = {
   "videolayout": [
-    // Video layout for the case of no more than 4 input
+    // Video layout for the case of no more than 1 input
+    {
+      "maxinput": 1,
+      "root":
+        {
+          "size": "vga",
+          "backgroundcolor": "black"
+        },
+      "region": [
+        {
+          "id": "1",
+          "left": 0,
+          "top": 0,
+          "relativesize": 1
+        }
+      ]
+    },
+    // Video layout for the case of no more than 2 inputs
+    {
+      "maxinput": 2,
+      "root":
+        {
+          "size": "vga",
+          "backgroundcolor": "black"
+        },
+      "region": [
+        {
+          "id": "1",
+          "left": 0,
+          "top": 0.25,
+          "relativesize": 0.5
+        },
+        {
+          "id": "2",
+          "left": 0.5,
+          "top": 0.25,
+          "relativesize": 0.5
+        }
+      ]
+    },
+    // Video layout for the case of no more than 3 inputs
+    {
+      "maxinput": 3,
+      "root":
+        {
+          "size": "vga",
+          "backgroundcolor": "black"
+        },
+      "region": [
+        {
+          "id": "1",
+          "left": 0,
+          "top": 0,
+          "relativesize": 0.5
+        },
+        {
+          "id": "2",
+          "left": 0.5,
+          "top": 0,
+          "relativesize": 0.5
+        },
+        {
+          "id": "3",
+          "left": 0.25,
+          "top": 0.5,
+          "relativesize": 0.5
+        }
+      ]
+    },
+    // Video layout for the case of no more than 4 inputs
     {
       "maxinput": 4,
       "root":
@@ -35,7 +104,7 @@ exports.customvideolayout = {
         }
       ]
     },
-    // Video layout for the case of no more than 6 input
+    // Video layout for the case of no more than 6 inputs
     {
       "maxinput": 6,
       "root":
@@ -82,7 +151,7 @@ exports.customvideolayout = {
         }
       ]
     },
-    // Video layout for the case of no more than 8 input
+    // Video layout for the case of no more than 8 inputs
     {
       "maxinput": 8,
       "root":
@@ -141,7 +210,7 @@ exports.customvideolayout = {
         }
       ]
     },
-    // Video layout for the case of no more than 16 input
+    // Video layout for the case of no more than 16 inputs
     {
       "maxinput": 16,
       "root":
