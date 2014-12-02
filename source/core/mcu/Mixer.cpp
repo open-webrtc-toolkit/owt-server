@@ -117,9 +117,9 @@ int32_t Mixer::addSource(uint32_t id, bool isAudio, FeedbackSink* feedback, cons
     return m_videoMixer->addSource(id, false, feedback, participantId);
 }
 
-int32_t Mixer::bindAV(uint32_t audioId, uint32_t videoId)
+int32_t Mixer::bindAV(uint32_t audioSource, uint32_t videoSource)
 {
-    return m_videoMixer->bindAudio(videoId, m_audioMixer->channelId(audioId), m_audioMixer->avSyncInterface());
+    return m_videoMixer->bindAudio(videoSource, m_audioMixer->getChannelId(audioSource), m_audioMixer->avSyncInterface());
 }
 
 void Mixer::addSubscriber(MediaSink* subscriber, const std::string& peerId)

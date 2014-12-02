@@ -83,27 +83,27 @@ AudioMixer::~AudioMixer()
     voe->DeleteChannel(m_sharedChannel.id);
 
     boost::unique_lock<boost::shared_mutex> lock(m_sourceMutex);
-    std::map<uint32_t, VoiceChannel>::iterator it = m_inChannels.begin();
-    for (; it != m_inChannels.end(); ++it) {
+    std::map<uint32_t, VoiceChannel>::iterator it = m_sourceChannels.begin();
+    for (; it != m_sourceChannels.end(); ++it) {
         int channel = it->second.id;
         voe->StopPlayout(channel);
         voe->StopReceive(channel);
         network->DeRegisterExternalTransport(channel);
         voe->DeleteChannel(channel);
     }
-    m_inChannels.clear();
+    m_sourceChannels.clear();
     lock.unlock();
 
-    boost::unique_lock<boost::shared_mutex> participantLock(m_participantChannelMutex);
-    std::map<std::string, VoiceChannel>::iterator participantIt = m_participantChannels.begin();
-    for (; participantIt != m_participantChannels.end(); ++participantIt) {
-        int channel = participantIt->second.id;
+    boost::unique_lock<boost::shared_mutex> outputLock(m_outputMutex);
+    std::map<std::string, VoiceChannel>::iterator outputIt = m_outputChannels.begin();
+    for (; outputIt != m_outputChannels.end(); ++outputIt) {
+        int channel = outputIt->second.id;
         voe->StopSend(channel);
         network->DeRegisterExternalTransport(channel);
         voe->DeleteChannel(channel);
     }
-    m_participantChannels.clear();
-    participantLock.unlock();
+    m_outputChannels.clear();
+    outputLock.unlock();
 
     voe->Terminate();
     VoiceEngine::Delete(m_voiceEngine);
@@ -114,8 +114,8 @@ int32_t AudioMixer::addSource(uint32_t from, bool isAudio, erizo::FeedbackSink* 
     assert(isAudio);
 
     boost::upgrade_lock<boost::shared_mutex> lock(m_sourceMutex);
-    std::map<uint32_t, VoiceChannel>::iterator it = m_inChannels.find(from);
-    if (it != m_inChannels.end())
+    std::map<uint32_t, VoiceChannel>::iterator it = m_sourceChannels.find(from);
+    if (it != m_sourceChannels.end())
         return it->second.id;
 
     int channel = -1;
@@ -123,13 +123,13 @@ int32_t AudioMixer::addSource(uint32_t from, bool isAudio, erizo::FeedbackSink* 
     VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);
     bool existingParticipant = false;
 
-    boost::upgrade_lock<boost::shared_mutex> participantLock(m_participantChannelMutex);
-    std::map<std::string, VoiceChannel>::iterator participantIt = m_participantChannels.find(participantId);
-    if (participantIt != m_participantChannels.end()) {
-        channel = participantIt->second.id;
-        transport = participantIt->second.transport;
+    boost::upgrade_lock<boost::shared_mutex> outputLock(m_outputMutex);
+    std::map<std::string, VoiceChannel>::iterator outputIt = m_outputChannels.find(participantId);
+    if (outputIt != m_outputChannels.end()) {
+        channel = outputIt->second.id;
+        transport = outputIt->second.transport;
         existingParticipant = true;
-        participantLock.unlock();
+        outputLock.unlock();
     } else
         channel = voe->CreateChannel();
 
@@ -149,8 +149,8 @@ int32_t AudioMixer::addSource(uint32_t from, bool isAudio, erizo::FeedbackSink* 
                 voe->DeleteChannel(channel);
                 return -1;
             }
-            boost::upgrade_to_unique_lock<boost::shared_mutex> uniquePartLock(participantLock);
-            m_participantChannels[participantId] = {channel, transport};
+            boost::upgrade_to_unique_lock<boost::shared_mutex> uniquePartLock(outputLock);
+            m_outputChannels[participantId] = {channel, transport};
         }
 
         // TODO: Another option is that we can implement
@@ -160,10 +160,10 @@ int32_t AudioMixer::addSource(uint32_t from, bool isAudio, erizo::FeedbackSink* 
         // externalMedia->SetExternalMixing(channel, true);
 
         boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
-        if (m_inChannels.size() == 0)
+        if (m_sourceChannels.size() == 0)
             voe->StartSend(m_sharedChannel.id);
 
-        m_inChannels[from] = {channel, transport};
+        m_sourceChannels[from] = {channel, transport};
     }
     return channel;
 }
@@ -176,32 +176,32 @@ int32_t AudioMixer::removeSource(uint32_t from, bool isAudio)
     VoENetwork* network = VoENetwork::GetInterface(m_voiceEngine);
 
     boost::unique_lock<boost::shared_mutex> lock(m_sourceMutex);
-    std::map<uint32_t, VoiceChannel>::iterator it = m_inChannels.find(from);
-    if (it != m_inChannels.end()) {
+    std::map<uint32_t, VoiceChannel>::iterator it = m_sourceChannels.find(from);
+    if (it != m_sourceChannels.end()) {
         int channel = it->second.id;
 
         voe->StopPlayout(channel);
         voe->StopReceive(channel);
 
-        bool participantExisted = false;
-        boost::shared_lock<boost::shared_mutex> participantLock(m_participantChannelMutex);
-        std::map<std::string, VoiceChannel>::iterator participantIt = m_participantChannels.begin();
-        for (; participantIt != m_participantChannels.end(); ++participantIt) {
-            if (participantIt->second.id == channel) {
-                participantExisted = true;
+        bool outputExisted = false;
+        boost::shared_lock<boost::shared_mutex> outputLock(m_outputMutex);
+        std::map<std::string, VoiceChannel>::iterator outputIt = m_outputChannels.begin();
+        for (; outputIt != m_outputChannels.end(); ++outputIt) {
+            if (outputIt->second.id == channel) {
+                outputExisted = true;
                 break;
             }
         }
-        participantLock.unlock();
+        outputLock.unlock();
 
-        if (!participantExisted) {
+        if (!outputExisted) {
             network->DeRegisterExternalTransport(channel);
             voe->DeleteChannel(channel);
         }
 
-        m_inChannels.erase(it);
+        m_sourceChannels.erase(it);
 
-        if (m_inChannels.size() == 0)
+        if (m_sourceChannels.size() == 0)
             voe->StopSend(m_sharedChannel.id);
 
         return 0;
@@ -226,8 +226,8 @@ int AudioMixer::deliverAudioData(char* buf, int len)
     }
 
     boost::shared_lock<boost::shared_mutex> lock(m_sourceMutex);
-    std::map<uint32_t, VoiceChannel>::iterator it = m_inChannels.find(id);
-    if (it == m_inChannels.end()) {
+    std::map<uint32_t, VoiceChannel>::iterator it = m_sourceChannels.find(id);
+    if (it == m_sourceChannels.end()) {
         if (m_addSourceOnDemand) {
             lock.unlock();
             addSource(id, true, nullptr, "");
@@ -263,9 +263,9 @@ int32_t AudioMixer::addOutput(const std::string& participant)
     bool existingParticipant = false;
     VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);
 
-    boost::upgrade_lock<boost::shared_mutex> lock(m_participantChannelMutex);
-    std::map<std::string, VoiceChannel>::iterator it = m_participantChannels.find(participant);
-    if (it != m_participantChannels.end()) {
+    boost::upgrade_lock<boost::shared_mutex> lock(m_outputMutex);
+    std::map<std::string, VoiceChannel>::iterator it = m_outputChannels.find(participant);
+    if (it != m_outputChannels.end()) {
         channel = it->second.id;
         existingParticipant = true;
         lock.unlock();
@@ -282,7 +282,7 @@ int32_t AudioMixer::addOutput(const std::string& participant)
                 return -1;
             }
             boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
-            m_participantChannels[participant] = {channel, transport};
+            m_outputChannels[participant] = {channel, transport};
         } else if (voe->StartSend(channel) == -1)
             return -1;
     }
@@ -295,17 +295,17 @@ int32_t AudioMixer::removeOutput(const std::string& participant)
     VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);
     VoENetwork* network = VoENetwork::GetInterface(m_voiceEngine);
 
-    boost::unique_lock<boost::shared_mutex> lock(m_participantChannelMutex);
-    std::map<std::string, VoiceChannel>::iterator it = m_participantChannels.find(participant);
-    if (it != m_participantChannels.end()) {
+    boost::unique_lock<boost::shared_mutex> lock(m_outputMutex);
+    std::map<std::string, VoiceChannel>::iterator it = m_outputChannels.find(participant);
+    if (it != m_outputChannels.end()) {
         int channel = it->second.id;
 
         voe->StopSend(channel);
 
         bool sourceExisted = false;
         boost::shared_lock<boost::shared_mutex> sourceLock(m_sourceMutex);
-        std::map<uint32_t, VoiceChannel>::iterator sourceIt = m_inChannels.begin();
-        for (; sourceIt != m_inChannels.end(); ++sourceIt) {
+        std::map<uint32_t, VoiceChannel>::iterator sourceIt = m_sourceChannels.begin();
+        for (; sourceIt != m_sourceChannels.end(); ++sourceIt) {
             if (sourceIt->second.id == channel) {
                 sourceExisted = true;
                 break;
@@ -318,18 +318,18 @@ int32_t AudioMixer::removeOutput(const std::string& participant)
             voe->DeleteChannel(channel);
         }
 
-        m_participantChannels.erase(it);
+        m_outputChannels.erase(it);
         return 0;
     }
 
     return -1;
 }
 
-int32_t AudioMixer::channelId(uint32_t sourceId)
+int32_t AudioMixer::getChannelId(uint32_t sourceId)
 {
     boost::shared_lock<boost::shared_mutex> lock(m_sourceMutex);
-    std::map<uint32_t, VoiceChannel>::iterator it = m_inChannels.find(sourceId);
-    if (it != m_inChannels.end())
+    std::map<uint32_t, VoiceChannel>::iterator it = m_sourceChannels.find(sourceId);
+    if (it != m_sourceChannels.end())
         return it->second.id;
 
     return -1;
@@ -364,8 +364,8 @@ int32_t AudioMixer::performMix(const boost::system::error_code& ec)
                 -1) == 0)    // ugly to use -1 to represents the shared channel id
                 audioTransport->OnData(m_sharedChannel.id, data, 0, audioCodec.plfreq, audioCodec.channels, nSamplesOut);
         }
-        for (std::map<std::string, VoiceChannel>::iterator it = m_participantChannels.begin();
-             it != m_participantChannels.end();
+        for (std::map<std::string, VoiceChannel>::iterator it = m_outputChannels.begin();
+             it != m_outputChannels.end();
              ++it) {
             if (codec->GetSendCodec(it->second.id, audioCodec) != -1) {
                 if (audioTransport->NeedMorePlayData(
