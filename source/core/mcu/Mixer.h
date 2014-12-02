@@ -102,8 +102,6 @@ private:
      */
     void closeAll();
 
-    boost::shared_mutex m_audioChannelMutex;
-    std::map<std::string, uint32_t> m_audioChannels;
     boost::shared_ptr<erizo::FeedbackSink> m_feedback;
     boost::shared_mutex m_subscriberMutex;
     std::map<std::string, boost::shared_ptr<erizo::MediaSink>> m_subscribers;

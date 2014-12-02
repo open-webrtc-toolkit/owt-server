@@ -56,9 +56,13 @@ public:
     // Implements the FeedbackSink interfaces
     int deliverFeedback(char* buf, int len);
 
+    int32_t sharedChannelId() { return m_sharedChannel.id; }
+    int32_t addOutput(const std::string& participant);
+    int32_t removeOutput(const std::string& particpant);
+    uint32_t getSendSSRC(int32_t channelId);
+
     int32_t channelId(uint32_t sourceId);
     webrtc::VoEVideoSync* avSyncInterface();
-    uint32_t sendSSRC();
     // TODO: Remove me once OOP Mixer is able to invoke addSource explicitly.
     void addSourceOnDemand(bool allow) { m_addSourceOnDemand = allow; }
 
@@ -75,8 +79,10 @@ private:
 
     VoiceChannel m_sharedChannel;
     erizo::RTPDataReceiver* m_dataReceiver;
-    std::map<uint32_t, VoiceChannel> m_inChannels; //TODO: revisit here - shall we use ChannelManager?
+    std::map<uint32_t, VoiceChannel> m_inChannels; // TODO: revisit here - shall we use ChannelManager?
     boost::shared_mutex m_sourceMutex;
+    std::map<std::string, VoiceChannel> m_participantChannels;
+    boost::shared_mutex m_participantChannelMutex;
 
     boost::scoped_ptr<boost::thread> m_audioMixingThread;
     boost::asio::io_service m_ioService;

@@ -108,22 +108,43 @@ int32_t AudioMixer::addSource(uint32_t from, bool isAudio, erizo::FeedbackSink* 
     if (it != m_inChannels.end())
         return it->second.id;
 
+    int channel = -1;
+    boost::shared_ptr<woogeen_base::WoogeenTransport<erizo::AUDIO>> transport;
     VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);
-    int channel = voe->CreateChannel();
+    bool existingParticipant = false;
+
+    boost::upgrade_lock<boost::shared_mutex> participantLock(m_participantChannelMutex);
+    std::map<std::string, VoiceChannel>::iterator participantIt = m_participantChannels.find(participantId);
+    if (participantIt != m_participantChannels.end()) {
+        channel = participantIt->second.id;
+        transport = participantIt->second.transport;
+        existingParticipant = true;
+        participantLock.unlock();
+    } else
+        channel = voe->CreateChannel();
+
     if (channel != -1) {
-        woogeen_base::WoogeenTransport<erizo::AUDIO>* transport = new woogeen_base::WoogeenTransport<erizo::AUDIO>(m_dataReceiver, feedback);
-        VoENetwork* network = VoENetwork::GetInterface(m_voiceEngine);
-        if (network->RegisterExternalTransport(channel, *transport) == -1 ||
-            voe->StartReceive(channel) == -1 ||
-            voe->StartSend(channel) == -1 ||
-            voe->StartPlayout(channel) == -1) {
-            voe->DeleteChannel(channel);
-            delete transport;
-            return -1;
+        if (existingParticipant) {
+            assert(transport);
+            // Set the Feedback sink for the transport, because this channel is going to be a source channel.
+            transport->setFeedbackSink(feedback);
+            if (voe->StartReceive(channel) == -1 || voe->StartPlayout(channel) == -1)
+                return -1;
+        } else {
+            VoENetwork* network = VoENetwork::GetInterface(m_voiceEngine);
+            transport.reset(new woogeen_base::WoogeenTransport<erizo::AUDIO>(m_dataReceiver, feedback));
+            if (network->RegisterExternalTransport(channel, *(transport.get())) == -1
+                || voe->StartReceive(channel) == -1
+                || voe->StartPlayout(channel) == -1) {
+                voe->DeleteChannel(channel);
+                return -1;
+            }
+            boost::upgrade_to_unique_lock<boost::shared_mutex> uniquePartLock(participantLock);
+            m_participantChannels[participantId] = {channel, transport};
         }
 
-        // TODO: Another option is that we can implement VoEMediaProcess and register
-        // an External media processor for mixing. We may need to investigate whether it's
+        // TODO: Another option is that we can implement
+        // an External mixer. We may need to investigate whether it's
         // better than the current approach.
         // VoEExternalMedia* externalMedia = VoEExternalMedia::GetInterface(m_voiceEngine);
         // externalMedia->SetExternalMixing(channel, true);
@@ -132,7 +153,7 @@ int32_t AudioMixer::addSource(uint32_t from, bool isAudio, erizo::FeedbackSink* 
         if (m_inChannels.size() == 0)
             voe->StartSend(m_sharedChannel.id);
 
-        m_inChannels[from] = {channel, boost::shared_ptr<woogeen_base::WoogeenTransport<erizo::AUDIO>>(transport)};
+        m_inChannels[from] = {channel, transport};
     }
     return channel;
 }
@@ -151,9 +172,23 @@ int32_t AudioMixer::removeSource(uint32_t from, bool isAudio)
 
         voe->StopPlayout(channel);
         voe->StopReceive(channel);
-        voe->StopSend(channel);
-        network->DeRegisterExternalTransport(channel);
-        voe->DeleteChannel(channel);
+
+        bool participantExisted = false;
+        boost::shared_lock<boost::shared_mutex> participantLock(m_participantChannelMutex);
+        std::map<std::string, VoiceChannel>::iterator participantIt = m_participantChannels.begin();
+        for (; participantIt != m_participantChannels.end(); ++participantIt) {
+            if (participantIt->second.id == channel) {
+                participantExisted = true;
+                break;
+            }
+        }
+        participantLock.unlock();
+
+        if (!participantExisted) {
+            network->DeRegisterExternalTransport(channel);
+            voe->DeleteChannel(channel);
+        }
+
         m_inChannels.erase(it);
 
         if (m_inChannels.size() == 0)
@@ -212,6 +247,74 @@ int AudioMixer::deliverFeedback(char* buf, int len)
     return network->ReceivedRTCPPacket(m_sharedChannel.id, buf, len) == -1 ? 0 : len;
 }
 
+int32_t AudioMixer::addOutput(const std::string& participant)
+{
+    int channel = -1;
+    bool existingParticipant = false;
+    VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);
+
+    boost::upgrade_lock<boost::shared_mutex> lock(m_participantChannelMutex);
+    std::map<std::string, VoiceChannel>::iterator it = m_participantChannels.find(participant);
+    if (it != m_participantChannels.end()) {
+        channel = it->second.id;
+        existingParticipant = true;
+        lock.unlock();
+    } else
+        channel = voe->CreateChannel();
+
+    if (channel != -1) {
+        if (!existingParticipant) {
+            boost::shared_ptr<woogeen_base::WoogeenTransport<erizo::AUDIO>> transport(new woogeen_base::WoogeenTransport<erizo::AUDIO>(m_dataReceiver, nullptr));
+            VoENetwork* network = VoENetwork::GetInterface(m_voiceEngine);
+            if (network->RegisterExternalTransport(channel, *(transport.get())) == -1
+                || voe->StartSend(channel) == -1) {
+                voe->DeleteChannel(channel);
+                return -1;
+            }
+            boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
+            m_participantChannels[participant] = {channel, transport};
+        } else if (voe->StartSend(channel) == -1)
+            return -1;
+    }
+
+    return channel;
+}
+
+int32_t AudioMixer::removeOutput(const std::string& participant)
+{
+    VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);
+    VoENetwork* network = VoENetwork::GetInterface(m_voiceEngine);
+
+    boost::unique_lock<boost::shared_mutex> lock(m_participantChannelMutex);
+    std::map<std::string, VoiceChannel>::iterator it = m_participantChannels.find(participant);
+    if (it != m_participantChannels.end()) {
+        int channel = it->second.id;
+
+        voe->StopSend(channel);
+
+        bool sourceExisted = false;
+        boost::shared_lock<boost::shared_mutex> sourceLock(m_sourceMutex);
+        std::map<uint32_t, VoiceChannel>::iterator sourceIt = m_inChannels.begin();
+        for (; sourceIt != m_inChannels.end(); ++sourceIt) {
+            if (sourceIt->second.id == channel) {
+                sourceExisted = true;
+                break;
+            }
+        }
+        sourceLock.unlock();
+
+        if (!sourceExisted) {
+            network->DeRegisterExternalTransport(channel);
+            voe->DeleteChannel(channel);
+        }
+
+        m_participantChannels.erase(it);
+        return 0;
+    }
+
+    return -1;
+}
+
 int32_t AudioMixer::channelId(uint32_t sourceId)
 {
     boost::shared_lock<boost::shared_mutex> lock(m_sourceMutex);
@@ -222,16 +325,12 @@ int32_t AudioMixer::channelId(uint32_t sourceId)
     return -1;
 }
 
-uint32_t AudioMixer::sendSSRC()
+uint32_t AudioMixer::getSendSSRC(int32_t channelId)
 {
-#ifdef NDEBUG
     VoERTP_RTCP* rtpRtcp = VoERTP_RTCP::GetInterface(m_voiceEngine);
     uint32_t ssrc = 0;
-    rtpRtcp->GetLocalSSRC(m_sharedChannel.id, ssrc);
+    rtpRtcp->GetLocalSSRC(channelId, ssrc);
     return ssrc;
-#else
-    return 44444;
-#endif
 }
 
 int32_t AudioMixer::performMix(const boost::system::error_code& ec)
