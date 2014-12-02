@@ -141,6 +141,20 @@ index 31dc71e..76e5b27 100644
  };
  }  // namespace webrtc
  
+diff --git a/src/webrtc/modules/audio_device/include/audio_device_defines.h b/src/webrtc/modules/audio_device/include/audio_device_defines.h
+index 9f3e24b..a8742cc 100644
+--- a/src/webrtc/modules/audio_device/include/audio_device_defines.h
++++ b/src/webrtc/modules/audio_device/include/audio_device_defines.h
+@@ -70,7 +70,8 @@ public:
+                                      const uint8_t nChannels,
+                                      const uint32_t samplesPerSec,
+                                      void* audioSamples,
+-                                     uint32_t& nSamplesOut) = 0;
++                                     uint32_t& nSamplesOut,
++                                     const int32_t channelId = -1) = 0;
+ 
+     // Method to pass captured data directly and unmixed to network channels.
+     // |channel_ids| contains a list of VoE channels which are the
 diff --git a/src/webrtc/voice_engine/output_mixer.cc b/src/webrtc/voice_engine/output_mixer.cc
 index 1648a9d..2307aa3 100644
 --- a/src/webrtc/voice_engine/output_mixer.cc
