@@ -21,8 +21,9 @@
 #ifndef Config_h
 #define Config_h
 
-#include <stdint.h>
 #include <list>
+#include <logger.h>
+#include <stdint.h>
 #include <vector>
 
 #include "VideoLayout.h"
@@ -41,6 +42,7 @@ public:
 
 class Config
 {
+    DECLARE_LOGGER();
 public:
     static Config* get();
     VideoLayout& getVideoLayout();
