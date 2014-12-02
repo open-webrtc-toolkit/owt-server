@@ -109,50 +109,13 @@ config.erizo.stunport = 0; // default value: 0
 config.erizo.minport = 0; // default value: 0
 config.erizo.maxport = 0; // default value: 0
 
-// Config the mixed video layout. Default is Fluid layout
-/*
-config.erizo.videolayout = {
-	    "root": { "size": "vga" },
-	    "region": [
-	      {
-	        "id": "1",
-	        "left": 0,
-	        "top": 0,
-	        "relativesize": 2/3
-	      },
-	      {
-	        "id": "2",
-	        "left": 0.67,
-	        "top": 0,
-	        "relativesize": 1/3
-	      },
-	      {
-	        "id": "3",
-	        "left": 0.67,
-	        "top": 0.33,
-	        "relativesize": 1/3
-	      },
-	      {
-	        "id": "4",
-	        "left": 0.67,
-	        "top": 0.67,
-	        "relativesize": 1/3
-	      },
-	      {
-	        "id": "5",
-	        "left": 0.33,
-	        "top": 0.67,
-	        "relativesize": 1/3
-	      },
-	      {
-	        "id": "6",
-	        "left": 0,
-	        "top": 0.67,
-	        "relativesize": 1/3
-	      }
-	    ]
-	};
-*/
+// Config the mixed video layout. Default is "fluid" layout.
+// Otherwise, "custom" layout can be used for video layout customization.
+config.erizo.videolayout = {};
+config.erizo.videolayout.type = "fluid";
+config.erizo.videolayout.defaultrootsize = "vga"; // Default 640x480 root size. See docs for more details.
+config.erizo.videolayout.defaultbackgroundcolor = "black"; // Default black root background color . See docs for more details.
+
 /***** END *****/
 // Following lines are always needed.
 var module = module || {};

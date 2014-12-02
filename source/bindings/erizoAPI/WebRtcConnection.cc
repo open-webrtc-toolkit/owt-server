@@ -76,7 +76,6 @@ Handle<Value> WebRtcConnection::New(const Arguments& args) {
 Handle<Value> WebRtcConnection::close(const Arguments& args) {
   HandleScope scope;
   WebRtcConnection* obj = ObjectWrap::Unwrap<WebRtcConnection>(args.This());
-  erizo::WebRtcConnection *me = obj->me;
   uv_close((uv_handle_t*)&obj->async_, NULL);
   uv_close((uv_handle_t*)&obj->asyncStats_, NULL);
 
