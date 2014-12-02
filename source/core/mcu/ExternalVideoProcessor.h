@@ -27,6 +27,7 @@
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
 #include <logger.h>
+#include <WoogeenTransport.h>
 #include <webrtc/modules/bitrate_controller/include/bitrate_controller.h>
 #include <webrtc/modules/rtp_rtcp/interface/rtp_rtcp.h>
 
@@ -42,6 +43,7 @@ class HardwareVideoMixer;
  */
 class ExternalVideoProcessor : public VideoOutputProcessor,
                                public erizo::FeedbackSink,
+                               public woogeen_base::IntraFrameCallback,
                                public webrtc::BitrateObserver,
                                public webrtc::RtcpIntraFrameObserver {
     DECLARE_LOGGER();
@@ -53,13 +55,16 @@ public:
     // Implements VideoOutputProcessor.
     bool setSendCodec(FrameFormat, VideoSize);
     uint32_t sendSSRC();
-    void onRequestIFrame();
+    woogeen_base::IntraFrameCallback* iFrameCallback() { return this; }
     erizo::FeedbackSink* feedbackSink() { return this; }
 
     void onFrame(FrameFormat, unsigned char* payload, int len, unsigned int ts);
 
     // Implements FeedbackSink.
     int deliverFeedback(char* buf, int len);
+
+    // Implements IntraFrameCallback.
+    void handleIntraFrameRequest();
 
     // Implements webrtc::RtcpIntraFrameObserver.
     void OnReceivedIntraFrameRequest(uint32_t ssrc);

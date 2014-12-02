@@ -70,7 +70,7 @@ bool ExternalVideoProcessor::setSendCodec(FrameFormat frameFormat, VideoSize)
     return m_rtpRtcp && m_rtpRtcp->RegisterSendPayload(codec) != -1;
 }
 
-void ExternalVideoProcessor::onRequestIFrame()
+void ExternalVideoProcessor::handleIntraFrameRequest()
 {
     m_mixer->requestKeyFrame(m_frameFormat);
 }

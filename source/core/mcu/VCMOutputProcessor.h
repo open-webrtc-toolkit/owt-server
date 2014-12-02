@@ -41,7 +41,7 @@ class TaskRunner;
  * data via the given WoogeenTransport. It also gives the feedback
  * to the encoder based on the feedback from the remote.
  */
-class VCMOutputProcessor : public VideoOutputProcessor, public erizo::FeedbackSink {
+class VCMOutputProcessor : public VideoOutputProcessor, public erizo::FeedbackSink, public woogeen_base::IntraFrameCallback {
     DECLARE_LOGGER();
 
 public:
@@ -51,13 +51,16 @@ public:
     // Implements VideoOutputProcessor.
     bool setSendCodec(FrameFormat, VideoSize);
     uint32_t sendSSRC();
-    void onRequestIFrame();
+    woogeen_base::IntraFrameCallback* iFrameCallback() { return this; }
     erizo::FeedbackSink* feedbackSink() { return this; }
 
     void onFrame(FrameFormat, unsigned char* payload, int len, unsigned int ts);
 
     // Implements FeedbackSink.
     int deliverFeedback(char* buf, int len);
+
+    // Implements IntraFrameCallback.
+    void handleIntraFrameRequest();
 
 private:
     bool init(woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<TaskRunner>);

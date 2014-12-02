@@ -44,7 +44,26 @@ VideoMixer::VideoMixer(erizo::RTPDataReceiver* receiver, bool hardwareAccelerate
     , m_outputReceiver(receiver)
     , m_addSourceOnDemand(false)
 {
-    init();
+    m_taskRunner.reset(new TaskRunner());
+
+    if (m_hardwareAccelerated)
+        m_frameProcessor.reset(new HardwareVideoMixer());
+    else
+        m_frameProcessor.reset(new SoftVideoCompositor());
+
+    VideoLayout layout;
+    layout.rootSize = vga;
+    layout.divFactor = 1;
+
+    m_frameProcessor->setLayout(layout);
+
+    Config::get()->registerListener(this);
+
+    m_taskRunner->Start();
+
+    webrtc::Trace::CreateTrace();
+    webrtc::Trace::SetTraceFile("webrtc.trace.txt");
+    webrtc::Trace::set_level_filter(webrtc::kTraceAll);
 }
 
 VideoMixer::~VideoMixer()
@@ -54,39 +73,53 @@ VideoMixer::~VideoMixer()
     m_outputReceiver = nullptr;
 }
 
-/**
- * init could be used for reset the state of this VideoMixer
- */
-bool VideoMixer::init()
+bool VideoMixer::addOutput(int payloadType)
 {
-    webrtc::Trace::CreateTrace();
-    webrtc::Trace::SetTraceFile("webrtc.trace.txt");
-    webrtc::Trace::set_level_filter(webrtc::kTraceAll);
+    if (m_videoOutputProcessors.find(payloadType) != m_videoOutputProcessors.end())
+        return false;
 
-    m_taskRunner.reset(new TaskRunner());
-    WoogeenTransport<erizo::VIDEO>* transport = new WoogeenTransport<erizo::VIDEO>(m_outputReceiver, nullptr);
-
-    if (m_hardwareAccelerated) {
-        ELOG_DEBUG("VideoMixer::Init - hardwareAccelerated.");
-        m_frameProcessor.reset(new HardwareVideoMixer());
-        m_videoOutputProcessor.reset(new ExternalVideoProcessor(MIXED_VIDEO_STREAM_ID, m_frameProcessor, FRAME_FORMAT_VP8, transport, m_taskRunner));
-        m_frameProcessor->activateOutput(FRAME_FORMAT_VP8, 30, 500, m_videoOutputProcessor.get());
-    } else {
-        m_frameProcessor.reset(new SoftVideoCompositor());
-        m_videoOutputProcessor.reset(new VCMOutputProcessor(MIXED_VIDEO_STREAM_ID, transport, m_taskRunner));
-        m_frameProcessor->activateOutput(FRAME_FORMAT_I420, 30, 500, m_videoOutputProcessor.get());
+    FrameFormat outputFormat = FRAME_FORMAT_UNKNOWN;
+    int outputId = -1;
+    switch (payloadType) {
+    case VP8_90000_PT:
+        outputFormat = FRAME_FORMAT_VP8;
+        outputId = MIXED_VP8_VIDEO_STREAM_ID;
+        break;
+    case H264_90000_PT:
+        outputFormat = FRAME_FORMAT_H264;
+        outputId = MIXED_H264_VIDEO_STREAM_ID;
+        break;
+    default:
+        return false;
     }
 
-    VideoLayout layout;
-    layout.rootSize = vga;
-    layout.divFactor = 1;
-    m_videoOutputProcessor->setSendCodec(FRAME_FORMAT_VP8, VideoSizes.find(layout.rootSize)->second);
-    m_frameProcessor->setLayout(layout);
+    WoogeenTransport<erizo::VIDEO>* transport = new WoogeenTransport<erizo::VIDEO>(m_outputReceiver, nullptr);
 
-    m_taskRunner->Start();
-    Config::get()->registerListener(this);
+    VideoOutputProcessor* output = nullptr;
+    if (m_hardwareAccelerated) {
+        output = new ExternalVideoProcessor(outputId, m_frameProcessor, outputFormat, transport, m_taskRunner);
+        m_frameProcessor->activateOutput(outputFormat, 30, 500, output);
+    } else {
+        output = new VCMOutputProcessor(outputId, transport, m_taskRunner);
+        m_frameProcessor->activateOutput(FRAME_FORMAT_I420, 30, 500, output);
+    }
+    output->setSendCodec(outputFormat, VideoSizes.find(vga)->second);
+    m_videoOutputProcessors[payloadType].reset(output);
 
     return true;
+}
+
+bool VideoMixer::removeOutput(int payloadType)
+{
+    std::map<int, boost::shared_ptr<VideoOutputProcessor>>::iterator it = m_videoOutputProcessors.find(payloadType);
+    if (it != m_videoOutputProcessors.end()) {
+        // VideoOutputProcessor* output = it->second.get();
+        // TODO: m_frameProcessor->deActivateOutput();
+        m_videoOutputProcessors.erase(it);
+        return true;
+    }
+
+    return false;
 }
 
 int VideoMixer::deliverAudioData(char* buf, int len) 
@@ -129,9 +162,33 @@ int VideoMixer::deliverVideoData(char* buf, int len)
 
 int VideoMixer::deliverFeedback(char* buf, int len)
 {
-    FeedbackSink* feedbackSink = m_videoOutputProcessor->feedbackSink();
-    if (feedbackSink)
-        return feedbackSink->deliverFeedback(buf, len);
+    // TODO: For now we just send the feedback to all of the output processors.
+    // The output processor will filter out the feedback which does not belong
+    // to it. In the future we may do the filtering at a higher level?
+    std::map<int, boost::shared_ptr<VideoOutputProcessor>>::iterator it = m_videoOutputProcessors.begin();
+    for (; it != m_videoOutputProcessors.end(); ++it) {
+        FeedbackSink* feedbackSink = it->second->feedbackSink();
+        if (feedbackSink)
+            feedbackSink->deliverFeedback(buf, len);
+    }
+
+    return len;
+}
+
+IntraFrameCallback* VideoMixer::getIFrameCallback(int payloadType)
+{
+    std::map<int, boost::shared_ptr<VideoOutputProcessor>>::iterator it = m_videoOutputProcessors.find(payloadType);
+    if (it != m_videoOutputProcessors.end())
+        return it->second->iFrameCallback();
+
+    return nullptr;
+}
+
+uint32_t VideoMixer::getSendSSRC(int payloadType)
+{
+    std::map<int, boost::shared_ptr<VideoOutputProcessor>>::iterator it = m_videoOutputProcessors.find(payloadType);
+    if (it != m_videoOutputProcessors.end())
+        return it->second->sendSSRC();
 
     return 0;
 }
@@ -204,17 +261,6 @@ int32_t VideoMixer::removeSource(uint32_t from, bool isAudio)
     }
 
     return -1;
-}
-
-void VideoMixer::onRequestIFrame()
-{
-    ELOG_DEBUG("onRequestIFrame");
-    m_videoOutputProcessor->onRequestIFrame();
-}
-
-uint32_t VideoMixer::sendSSRC()
-{
-    return m_videoOutputProcessor->sendSSRC();
 }
 
 void VideoMixer::closeAll()

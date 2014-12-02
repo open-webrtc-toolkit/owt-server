@@ -29,6 +29,7 @@
 #include <map>
 #include <MediaDefinitions.h>
 #include <MediaSourceConsumer.h>
+#include <WebRTCFeedbackProcessor.h>
 #include <vector>
 
 namespace webrtc {
@@ -43,7 +44,8 @@ class VideoOutputProcessor;
 class VideoFrameProcessor;
 struct Layout;
 
-static const int MIXED_VIDEO_STREAM_ID = 2;
+static const int MIXED_VP8_VIDEO_STREAM_ID = 2;
+static const int MIXED_H264_VIDEO_STREAM_ID = 3;
 
 /**
  * Receives media from several sources, mixed into one stream and retransmits it to the RTPDataReceiver.
@@ -55,9 +57,14 @@ public:
     VideoMixer(erizo::RTPDataReceiver*, bool hardwareAccelerated);
     virtual ~VideoMixer();
 
+    // Video output related methods.
+    bool addOutput(int payloadType);
+    bool removeOutput(int payloadType);
+    woogeen_base::IntraFrameCallback* getIFrameCallback(int payloadType);
+    uint32_t getSendSSRC(int payloadType);
+
+    // Video input related methods.
     int32_t bindAudio(uint32_t sourceId, int voiceChannelId, webrtc::VoEVideoSync*);
-    void onRequestIFrame();
-    uint32_t sendSSRC();
     // TODO: Remove me once OOP Mixer is able to invoke addSource explicitly.
     void addSourceOnDemand(bool allow) { m_addSourceOnDemand = allow; }
 
@@ -66,24 +73,23 @@ public:
      * Each source will be served by a InputProcessor, which is responsible for
      * decoding the incoming streams into I420Frames
      */
-    virtual int32_t addSource(uint32_t from, bool isAudio, erizo::FeedbackSink*, const std::string& participantId);
-    virtual int32_t removeSource(uint32_t from, bool isAudio);
+    int32_t addSource(uint32_t from, bool isAudio, erizo::FeedbackSink*, const std::string& participantId);
+    int32_t removeSource(uint32_t from, bool isAudio);
     erizo::MediaSink* mediaSink() { return this; }
 
     /**
-     * Implements the MediaSink interfaces
+     * Implements the MediaSink interfaces.
      */
-    virtual int deliverAudioData(char* buf, int len);
-    virtual int deliverVideoData(char* buf, int len);
+    int deliverAudioData(char* buf, int len);
+    int deliverVideoData(char* buf, int len);
 
-    // Implements the FeedbackSink interfaces
-    virtual int deliverFeedback(char* buf, int len);
+    // Implements the FeedbackSink interfaces.
+    int deliverFeedback(char* buf, int len);
 
     // Implements ConfigListener.
     void onConfigChanged();
 
 private:
-    bool init();
     void closeAll();
 
     int assignSlot(uint32_t source);
@@ -91,8 +97,10 @@ private:
     // return -1 if not found
     int getSlot(uint32_t source);
 
-    int m_hardwareAccelerated;
+    bool m_hardwareAccelerated;
     int m_participants;
+
+    boost::shared_ptr<TaskRunner> m_taskRunner;
     boost::shared_ptr<erizo::FeedbackSink> m_feedback;
     erizo::RTPDataReceiver* m_outputReceiver;
     boost::shared_mutex m_sourceMutex;
@@ -100,8 +108,7 @@ private:
     std::vector<uint32_t> m_sourceSlotMap;    // each source will be allocated one index
     bool m_addSourceOnDemand;
 
-    boost::shared_ptr<TaskRunner> m_taskRunner;
-    boost::shared_ptr<VideoOutputProcessor> m_videoOutputProcessor;
+    std::map<int, boost::shared_ptr<VideoOutputProcessor>> m_videoOutputProcessors;
     boost::shared_ptr<VideoFrameProcessor> m_frameProcessor;
 };
 
