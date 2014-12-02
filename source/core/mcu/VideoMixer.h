@@ -58,8 +58,8 @@ public:
     virtual ~VideoMixer();
 
     // Video output related methods.
-    bool addOutput(int payloadType);
-    bool removeOutput(int payloadType);
+    int32_t addOutput(int payloadType);
+    int32_t removeOutput(int payloadType);
     woogeen_base::IntraFrameCallback* getIFrameCallback(int payloadType);
     uint32_t getSendSSRC(int payloadType);
 
