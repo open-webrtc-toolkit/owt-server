@@ -237,9 +237,17 @@ int AudioMixer::deliverVideoData(char* buf, int len)
 
 int AudioMixer::deliverFeedback(char* buf, int len)
 {
-    // TODO: how to handle this?
     VoENetwork* network = VoENetwork::GetInterface(m_voiceEngine);
-    return network->ReceivedRTCPPacket(m_sharedChannel.id, buf, len) == -1 ? 0 : len;
+
+    // TODO: For now we just send the feedback to all of the output channels.
+    // The output channel will filter out the feedback which does not belong
+    // to it. In the future we may do the filtering at a higher level?
+    boost::shared_lock<boost::shared_mutex> lock(m_outputMutex);
+    std::map<std::string, VoiceChannel>::iterator it = m_outputChannels.begin();
+    for (; it != m_outputChannels.end(); ++it)
+        network->ReceivedRTCPPacket(it->second.id, buf, len);
+
+    return len;
 }
 
 void AudioMixer::onTimeout()
