@@ -37,15 +37,15 @@ namespace mcu {
 DEFINE_LOGGER(AudioMixer, "mcu.AudioMixer");
 
 AudioMixer::AudioMixer(erizo::RTPDataReceiver* receiver)
-	: m_dataReceiver(receiver)
-	, m_isClosing(false)
-	, m_addSourceOnDemand(false)
+    : m_dataReceiver(receiver)
+    , m_isClosing(false)
+    , m_addSourceOnDemand(false)
 {
     m_voiceEngine = VoiceEngine::Create();
 
     VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);
     voe->Init();
-    m_sharedChannel.id = voe->CreateChannel();	// id is always 0
+    m_sharedChannel.id = voe->CreateChannel();    // id is always 0
 
     VoEExternalMedia* externalMedia = VoEExternalMedia::GetInterface(m_voiceEngine);
     externalMedia->SetExternalRecordingStatus(true);
@@ -207,8 +207,8 @@ int AudioMixer::deliverVideoData(char* buf, int len)
 
 int AudioMixer::deliverFeedback(char* buf, int len)
 {
-	// TODO: how to handle this?
-	VoENetwork* network = VoENetwork::GetInterface(m_voiceEngine);
+    // TODO: how to handle this?
+    VoENetwork* network = VoENetwork::GetInterface(m_voiceEngine);
     return network->ReceivedRTCPPacket(m_sharedChannel.id, buf, len) == -1 ? 0 : len;
 }
 
@@ -225,7 +225,7 @@ int32_t AudioMixer::channelId(uint32_t sourceId)
 uint32_t AudioMixer::sendSSRC()
 {
 #ifdef NDEBUG
-	VoERTP_RTCP* rtpRtcp = VoERTP_RTCP::GetInterface(m_voiceEngine);
+    VoERTP_RTCP* rtpRtcp = VoERTP_RTCP::GetInterface(m_voiceEngine);
     uint32_t ssrc = 0;
     rtpRtcp->GetLocalSSRC(m_sharedChannel.id, ssrc);
     return ssrc;
@@ -239,38 +239,36 @@ int32_t AudioMixer::performMix(const boost::system::error_code& ec)
     if (!ec) {
         VoECodec* codec = VoECodec::GetInterface(m_voiceEngine);
         CodecInst audioCodec;
-		VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);
-   		AudioTransport* audioTransport = voe->audio_transport();
-   		int16_t data[AudioFrame::kMaxDataSizeSamples];
-   		uint32_t nSamplesOut = 0;
+        VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);
+        AudioTransport* audioTransport = voe->audio_transport();
+        int16_t data[AudioFrame::kMaxDataSizeSamples];
+        uint32_t nSamplesOut = 0;
         boost::shared_lock<boost::shared_mutex> lock(m_sourceMutex);
         if (codec->GetSendCodec(m_sharedChannel.id, audioCodec) != -1) {
-           		if (audioTransport->NeedMorePlayData(
-           				audioCodec.plfreq / 1000 * 10, // samples per channel in a 10 ms period. FIXME: hard coded timer interval.
-           				0,
-           				audioCodec.channels,
-           				audioCodec.plfreq,
-           				data,
-           				nSamplesOut,
-           				-1) == 0) {	// ugly to use -1 to represents the shared channel id
-           			audioTransport->OnData(m_sharedChannel.id, data, 0, audioCodec.plfreq, audioCodec.channels, nSamplesOut);
-           		}
+            if (audioTransport->NeedMorePlayData(
+                audioCodec.plfreq / 1000 * 10, // samples per channel in a 10 ms period. FIXME: hard coded timer interval.
+                0,
+                audioCodec.channels,
+                audioCodec.plfreq,
+                data,
+                nSamplesOut,
+                -1) == 0)    // ugly to use -1 to represents the shared channel id
+                audioTransport->OnData(m_sharedChannel.id, data, 0, audioCodec.plfreq, audioCodec.channels, nSamplesOut);
         }
         for (std::map<uint32_t, VoiceChannel>::iterator it = m_inChannels.begin();
-        	 it != m_inChannels.end();
-        	 it++) {
-           	if (codec->GetSendCodec(it->second.id, audioCodec) != -1) {
-               		if (audioTransport->NeedMorePlayData(
-               				audioCodec.plfreq / 1000 * 10, // samples per channel in a 10 ms period. FIXME: hard coded timer interval.
-               				0,
-               				audioCodec.channels,
-               				audioCodec.plfreq,
-               				data,
-               				nSamplesOut,
-               				it->second.id) == 0) {
-               			audioTransport->OnData(it->second.id, data, 0, audioCodec.plfreq, audioCodec.channels, nSamplesOut);
-               		}
-              	}
+             it != m_inChannels.end();
+             ++it) {
+            if (codec->GetSendCodec(it->second.id, audioCodec) != -1) {
+                if (audioTransport->NeedMorePlayData(
+                    audioCodec.plfreq / 1000 * 10, // samples per channel in a 10 ms period. FIXME: hard coded timer interval.
+                    0,
+                    audioCodec.channels,
+                    audioCodec.plfreq,
+                    data,
+                    nSamplesOut,
+                    it->second.id) == 0)
+                    audioTransport->OnData(it->second.id, data, 0, audioCodec.plfreq, audioCodec.channels, nSamplesOut);
+            }
         }
         if (!m_isClosing) {
             // FIXME: hard coded timer interval.
