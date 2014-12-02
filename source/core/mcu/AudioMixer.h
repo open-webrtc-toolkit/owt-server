@@ -21,10 +21,10 @@
 #ifndef AudioMixer_h
 #define AudioMixer_h
 
-#include <boost/asio.hpp>
+#include "JobTimer.h"
+
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
-#include <boost/thread.hpp>
 #include <boost/thread/shared_mutex.hpp>
 #include <logger.h>
 #include <MediaDefinitions.h>
@@ -35,7 +35,7 @@
 
 namespace mcu {
 
-class AudioMixer : public woogeen_base::MediaSourceConsumer, public erizo::MediaSink, public erizo::FeedbackSink {
+class AudioMixer : public woogeen_base::MediaSourceConsumer, public erizo::MediaSink, public erizo::FeedbackSink, public JobTimerListener {
     DECLARE_LOGGER();
 
 public:
@@ -56,6 +56,9 @@ public:
     // Implements the FeedbackSink interfaces
     int deliverFeedback(char* buf, int len);
 
+    // Implements JobTimer.
+    void onTimeout();
+
     int32_t sharedChannelId() { return m_sharedChannel.id; }
     int32_t addOutput(const std::string& participant);
     int32_t removeOutput(const std::string& particpant);
@@ -67,7 +70,7 @@ public:
     void addSourceOnDemand(bool allow) { m_addSourceOnDemand = allow; }
 
 private:
-    int32_t performMix(const boost::system::error_code&);
+    int32_t performMix();
     int32_t updateAudioFrame();
 
     struct VoiceChannel {
@@ -83,12 +86,9 @@ private:
     boost::shared_mutex m_sourceMutex;
     std::map<std::string, VoiceChannel> m_outputChannels;
     boost::shared_mutex m_outputMutex;
-
-    boost::scoped_ptr<boost::thread> m_audioMixingThread;
-    boost::asio::io_service m_ioService;
-    boost::scoped_ptr<boost::asio::deadline_timer> m_timer;
-    std::atomic<bool> m_isClosing;
     std::atomic<bool> m_addSourceOnDemand;
+
+    boost::scoped_ptr<JobTimer> m_jobTimer;
 };
 
 inline webrtc::VoEVideoSync* AudioMixer::avSyncInterface()

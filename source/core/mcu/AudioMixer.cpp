@@ -38,7 +38,6 @@ DEFINE_LOGGER(AudioMixer, "mcu.AudioMixer");
 
 AudioMixer::AudioMixer(erizo::RTPDataReceiver* receiver)
     : m_dataReceiver(receiver)
-    , m_isClosing(false)
     , m_addSourceOnDemand(false)
 {
     m_voiceEngine = VoiceEngine::Create();
@@ -56,25 +55,11 @@ AudioMixer::AudioMixer(erizo::RTPDataReceiver* receiver)
     network->RegisterExternalTransport(m_sharedChannel.id, *(m_sharedChannel.transport));
 
     // FIXME: hard coded timer interval.
-    m_timer.reset(new boost::asio::deadline_timer(m_ioService, boost::posix_time::milliseconds(10)));
-    m_timer->async_wait(boost::bind(&AudioMixer::performMix, this, boost::asio::placeholders::error));
-    m_audioMixingThread.reset(new boost::thread(boost::bind(&boost::asio::io_service::run, &m_ioService)));
+    m_jobTimer.reset(new JobTimer(100, this));
 }
 
 AudioMixer::~AudioMixer()
 {
-    // According to the boost document, if the timer has already expired when
-    // cancel() is called, then the handlers for asynchronous wait operations
-    // can no longer be cancelled, and therefore are passed an error code
-    // that indicates the successful completion of the wait operation.
-    // This means we cannot rely on the operation_aborted error code in the handlers
-    // to know if the timer is being cancelled, thus an additional flag is provided.
-    m_isClosing = true;
-    if (m_timer)
-        m_timer->cancel();
-    if (m_audioMixingThread)
-        m_audioMixingThread->join();
-
     VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);
     VoENetwork* network = VoENetwork::GetInterface(m_voiceEngine);
 
@@ -257,6 +242,11 @@ int AudioMixer::deliverFeedback(char* buf, int len)
     return network->ReceivedRTCPPacket(m_sharedChannel.id, buf, len) == -1 ? 0 : len;
 }
 
+void AudioMixer::onTimeout()
+{
+    performMix();
+}
+
 int32_t AudioMixer::addOutput(const std::string& participant)
 {
     int channel = -1;
@@ -343,17 +333,30 @@ uint32_t AudioMixer::getSendSSRC(int32_t channelId)
     return ssrc;
 }
 
-int32_t AudioMixer::performMix(const boost::system::error_code& ec)
+int32_t AudioMixer::performMix()
 {
-    if (!ec) {
-        VoECodec* codec = VoECodec::GetInterface(m_voiceEngine);
-        CodecInst audioCodec;
-        VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);
-        AudioTransport* audioTransport = voe->audio_transport();
-        int16_t data[AudioFrame::kMaxDataSizeSamples];
-        uint32_t nSamplesOut = 0;
-        boost::shared_lock<boost::shared_mutex> lock(m_sourceMutex);
-        if (codec->GetSendCodec(m_sharedChannel.id, audioCodec) != -1) {
+    VoECodec* codec = VoECodec::GetInterface(m_voiceEngine);
+    CodecInst audioCodec;
+    VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);
+    AudioTransport* audioTransport = voe->audio_transport();
+    int16_t data[AudioFrame::kMaxDataSizeSamples];
+    uint32_t nSamplesOut = 0;
+    boost::shared_lock<boost::shared_mutex> lock(m_sourceMutex);
+    if (codec->GetSendCodec(m_sharedChannel.id, audioCodec) != -1) {
+        if (audioTransport->NeedMorePlayData(
+            audioCodec.plfreq / 1000 * 10, // samples per channel in a 10 ms period. FIXME: hard coded timer interval.
+            0,
+            audioCodec.channels,
+            audioCodec.plfreq,
+            data,
+            nSamplesOut,
+            -1) == 0)    // ugly to use -1 to represents the shared channel id
+            audioTransport->OnData(m_sharedChannel.id, data, 0, audioCodec.plfreq, audioCodec.channels, nSamplesOut);
+    }
+    for (std::map<std::string, VoiceChannel>::iterator it = m_outputChannels.begin();
+        it != m_outputChannels.end();
+        ++it) {
+        if (codec->GetSendCodec(it->second.id, audioCodec) != -1) {
             if (audioTransport->NeedMorePlayData(
                 audioCodec.plfreq / 1000 * 10, // samples per channel in a 10 ms period. FIXME: hard coded timer interval.
                 0,
@@ -361,32 +364,11 @@ int32_t AudioMixer::performMix(const boost::system::error_code& ec)
                 audioCodec.plfreq,
                 data,
                 nSamplesOut,
-                -1) == 0)    // ugly to use -1 to represents the shared channel id
-                audioTransport->OnData(m_sharedChannel.id, data, 0, audioCodec.plfreq, audioCodec.channels, nSamplesOut);
+                it->second.id) == 0)
+                audioTransport->OnData(it->second.id, data, 0, audioCodec.plfreq, audioCodec.channels, nSamplesOut);
         }
-        for (std::map<std::string, VoiceChannel>::iterator it = m_outputChannels.begin();
-             it != m_outputChannels.end();
-             ++it) {
-            if (codec->GetSendCodec(it->second.id, audioCodec) != -1) {
-                if (audioTransport->NeedMorePlayData(
-                    audioCodec.plfreq / 1000 * 10, // samples per channel in a 10 ms period. FIXME: hard coded timer interval.
-                    0,
-                    audioCodec.channels,
-                    audioCodec.plfreq,
-                    data,
-                    nSamplesOut,
-                    it->second.id) == 0)
-                    audioTransport->OnData(it->second.id, data, 0, audioCodec.plfreq, audioCodec.channels, nSamplesOut);
-            }
-        }
-        if (!m_isClosing) {
-            // FIXME: hard coded timer interval.
-            m_timer->expires_at(m_timer->expires_at() + boost::posix_time::milliseconds(10));
-            m_timer->async_wait(boost::bind(&AudioMixer::performMix, this, boost::asio::placeholders::error));
-        }
-    } else {
-        ELOG_INFO("AudioMixer timer error: %s", ec.message().c_str());
     }
+
     return 0;
 }
 
