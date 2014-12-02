@@ -26,9 +26,6 @@
     this.id = function () {
       return spec.id;
     };
-    this.isMixed = function () {
-      return (!!spec.video) && (spec.video.category === 'mix'); // category: 'mix', 'single'
-    };
     this.isScreen = function () {
       return (!!spec.video) && (spec.video.device === 'screen'); // device: 'camera', 'screen'
     };
@@ -121,13 +118,13 @@
 
   function WoogeenLocalStream (spec) {
     WoogeenStream.call(this, spec);
-    this.isMix = function () {
-      return false;
-    };
   }
 
   function WoogeenRemoteStream (spec) {
     WoogeenStream.call(this, spec);
+    this.isMixed = function () {
+      return (!!spec.video) && (spec.video.category === 'mix'); // category: 'mix', 'single'
+    };
   }
 
   WoogeenLocalStream.prototype = Object.create(WoogeenStream.prototype);

@@ -13,5 +13,8 @@ else
 endif
 
 clean:
+ifeq ($(DIR)/Makefile, $(wildcard $(DIR)/Makefile))
 	$(MAKE) -C $(DIR) clean
-	rm $(DST)/libvpx.so*
+else
+endif
+	rm -f $(DST)/libvpx.so*
