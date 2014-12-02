@@ -140,16 +140,6 @@ void Mixer::addSubscriber(MediaSink* subscriber, const std::string& peerId)
     // TODO: We now just pass the feedback from _all_ of the subscribers to the video mixer without pre-processing,
     // but maybe it's needed in a Mixer scenario where one mixed stream is sent to multiple subscribers.
     // The WebRTCFeedbackProcessor can be enhanced to provide another option to handle the feedback from the subscribers.
-    // Lazily create the feedback sink only if there're subscribers added, because only with
-    // subscribers are there chances for us to receive feedback.
-    // Currently all of the subscribers shared one feedback sink because the feedback will
-    // be sent to the VCMOutputProcessor which is a single instance shared by all the subscribers.
-    if (0 && !m_feedback) {
-        WebRTCFeedbackProcessor* feedback = new woogeen_base::WebRTCFeedbackProcessor(0);
-        boost::shared_ptr<woogeen_base::IntraFrameCallback> intraFrameCallback(m_videoMixer->getIFrameCallback(VP8_90000_PT));
-        feedback->initVideoFeedbackReactor(MIXED_VP8_VIDEO_STREAM_ID, subscriber->getVideoSinkSSRC(), boost::shared_ptr<woogeen_base::ProtectedRTPSender>(), intraFrameCallback);
-        m_feedback.reset(feedback);
-    }
 
     FeedbackSource* fbsource = subscriber->getFeedbackSource();
     if (fbsource) {
