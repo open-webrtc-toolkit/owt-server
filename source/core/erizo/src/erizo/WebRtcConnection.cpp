@@ -115,10 +115,6 @@ namespace erizo {
 
     ELOG_DEBUG("Video %d videossrc %u Audio %d audio ssrc %u Bundle %d", videoEnabled_, remoteSdp_.videoSsrc, audioEnabled_, remoteSdp_.audioSsrc,  bundle_);
 
-    ELOG_DEBUG("Setting SSRC to localSdp %u", this->getVideoSinkSSRC());
-    localSdp_.videoSsrc = this->getVideoSinkSSRC();
-    localSdp_.audioSsrc = this->getAudioSinkSSRC();
-
     this->setVideoSourceSSRC(remoteSdp_.videoSsrc);
     this->thisStats_.setVideoSourceSSRC(this->getVideoSourceSSRC());
     this->setAudioSourceSSRC(remoteSdp_.audioSsrc);
@@ -164,6 +160,10 @@ namespace erizo {
   }
 
   std::string WebRtcConnection::getLocalSdp() {
+    ELOG_DEBUG("Setting SSRC to localSdp %u", this->getVideoSinkSSRC());
+    localSdp_.videoSsrc = this->getVideoSinkSSRC();
+    localSdp_.audioSsrc = this->getAudioSinkSSRC();
+
     boost::mutex::scoped_lock lock(updateStateMutex_);
     ELOG_DEBUG("Getting SDP");
     if (videoTransport_ != NULL) {
