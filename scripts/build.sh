@@ -81,6 +81,8 @@ build_mcu_runtime() {
 
   cd $ROOT/source/erizo_controller
   ./installErizo_controller.sh
+
+  install_config
 }
 
 build_runtime() {
@@ -165,6 +167,10 @@ build_mcu_server_sdk() {
     echo 'module.exports = N;' >> "${DESTFILE}"
   fi
   echo "==> SDK:${BUILDTYPE}:nuve.js -> \`${DESTFILE}'"
+}
+
+install_config() {
+  cp -av ${this}/custom_video_layout_default.js $ROOT/custom_video_layout.js
 }
 
 build() {

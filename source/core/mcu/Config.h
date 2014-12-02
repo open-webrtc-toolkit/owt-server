@@ -21,8 +21,11 @@
 #ifndef Config_h
 #define Config_h
 
-#include <boost/scoped_ptr.hpp>
+#include <stdint.h>
 #include <list>
+#include <vector>
+
+#include "VideoLayout.h"
 
 /**
  * A singleton class to store all the configurations for MCU
@@ -40,20 +43,21 @@ class Config
 {
 public:
     static Config* get();
+    VideoLayout& getVideoLayout();
 
-    VideoLayout * getVideoLayout();
-    void setVideoLayout(const std::string& layoutStr);
-    void setVideoLayout(VideoLayout&);
+    void initVideoLayout(const std::string&, const std::string&, const std::string&, const std::string&);
+    bool updateVideoLayout(uint32_t);
     void registerListener(ConfigListener*);
     void unregisterListener(ConfigListener*);
 
 private:
     Config();
-
     void signalConfigChanged();
+
     static Config* m_config;
-    std::list<ConfigListener*> m_configListener;
-    boost::scoped_ptr<VideoLayout> m_videoLayout;
+    VideoLayout m_currentVideoLayout;
+    std::vector<VideoLayout> m_customVideoLayouts;
+    std::list<ConfigListener*> m_configListeners;
 };
 
 } /* namespace mcu */

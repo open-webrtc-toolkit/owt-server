@@ -65,7 +65,7 @@ public:
      * Implements Gateway interfaces
      */
     bool setPublisher(erizo::MediaSource*, const std::string& clientId, const std::string& videoResolution);
-    bool setPublisher(erizo::MediaSource*, const std::string& clientId,);
+    bool setPublisher(erizo::MediaSource*, const std::string& clientId);
     void unsetPublisher();
     void addSubscriber(erizo::MediaSink*, const std::string& id);
     void removeSubscriber(const std::string& id);
