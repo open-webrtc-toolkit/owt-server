@@ -79,20 +79,27 @@ void Mixer::receiveRtpData(char* buf, int len, erizo::DataType type, uint32_t st
     switch (type) {
     case erizo::AUDIO: {
         for (it = m_subscribers.begin(); it != m_subscribers.end(); ++it) {
-        	if ((*it).second) {
-        		uint32_t sourceId = m_sourceChannels[it->first];
-        		ELOG_DEBUG("it first is %s, streamId is %u, sourceId is %u, len is %d", it->first.c_str(), streamId, sourceId, len);
-        		if (sourceId == 0) {
-        			// no publisher from this user, deliver the shared audio data
-        			if (streamId == 0) {
-        				ELOG_DEBUG("delivering shared stream");
-        				it->second->deliverAudioData(buf, len);
-        			}
-        		} else if (streamId == sourceId) {
-        			ELOG_DEBUG("delivering stream from channel %d, len is %d", streamId, len);
-        			it->second->deliverAudioData(buf, len);
-        		}
-        	}
+            if ((*it).second) {
+                boost::shared_lock<boost::shared_mutex> audioLock(m_audioChannelMutex);
+                std::map<std::string, uint32_t>::iterator channelIt = m_audioChannels.find(it->first);
+                if (channelIt == m_audioChannels.end())
+                    continue;
+
+                uint32_t sourceId = channelIt->second;
+                audioLock.unlock();
+
+                ELOG_TRACE("Subscriber %s, streamId is %u, sourceId is %u, len is %d", it->first.c_str(), streamId, sourceId, len);
+                if (sourceId == 0) {
+                    // no publisher from this user, deliver the shared audio data
+                    if (streamId == 0) {
+                        ELOG_TRACE("delivering shared stream");
+                        it->second->deliverAudioData(buf, len);
+                    }
+                } else if (streamId == sourceId) {
+                    ELOG_TRACE("delivering stream from channel %d, len is %d", streamId, len);
+                    it->second->deliverAudioData(buf, len);
+                }
+            }
         }
         break;
     }
@@ -123,10 +130,13 @@ void Mixer::receiveRtpData(char* buf, int len, erizo::DataType type, uint32_t st
 int32_t Mixer::addSource(uint32_t id, bool isAudio, FeedbackSink* feedback, const std::string& participantId)
 {
     if (isAudio) {
-    	int32_t channelId = m_audioMixer->addSource(id, true, feedback, participantId);
-    	m_sourceChannels[participantId] = channelId;
-    	ELOG_DEBUG("Adding source: participantId %s, channelId is %d", participantId.c_str(), channelId);
-    	return channelId;
+        int32_t channelId = m_audioMixer->addSource(id, true, feedback, participantId);
+        if (channelId != -1) {
+            ELOG_DEBUG("Adding source: participantId %s, channelId is %d", participantId.c_str(), channelId);
+            boost::unique_lock<boost::shared_mutex> lock(m_audioChannelMutex);
+            m_audioChannels[participantId] = channelId;
+        }
+        return channelId;
     }
     return m_videoMixer->addSource(id, false, feedback, participantId);
 }
