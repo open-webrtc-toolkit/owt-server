@@ -36,6 +36,9 @@ public:
     virtual int SendPacket(int channel, const void* data, int len);
     virtual int SendRTCPPacket(int channel, const void* data, int len);
 
+    void setRTPReceiver(erizo::RTPDataReceiver*);
+    void setFeedbackSink(erizo::FeedbackSink*);
+
 private:
     erizo::RTPDataReceiver* m_rtpReceiver;
     erizo::FeedbackSink* m_feedbackSink;
@@ -51,6 +54,18 @@ WoogeenTransport<dataType>::WoogeenTransport(erizo::RTPDataReceiver* rtpReceiver
 template<erizo::DataType dataType>
 WoogeenTransport<dataType>::~WoogeenTransport()
 {
+}
+
+template<erizo::DataType dataType>
+inline void WoogeenTransport<dataType>::setRTPReceiver(erizo::RTPDataReceiver* rtpReceiver)
+{
+    m_rtpReceiver = rtpReceiver;
+}
+
+template<erizo::DataType dataType>
+inline void WoogeenTransport<dataType>::setFeedbackSink(erizo::FeedbackSink* feedbackSink)
+{
+    m_feedbackSink = feedbackSink;
 }
 
 template<erizo::DataType dataType>

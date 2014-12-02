@@ -74,47 +74,29 @@ void Mixer::receiveRtpData(char* buf, int len, erizo::DataType type, uint32_t st
     if (m_subscribers.empty() || len <= 0)
         return;
 
+    uint32_t ssrc = 0;
+    RTCPHeader* chead = reinterpret_cast<RTCPHeader*>(buf);
+    uint8_t packetType = chead->getPacketType();
+    assert(packetType != RTCP_Receiver_PT && packetType != RTCP_PS_Feedback_PT && packetType != RTCP_RTP_Feedback_PT);
+    if (packetType == RTCP_Sender_PT)
+        ssrc = chead->getSSRC();
+    else {
+        RTPHeader* head = reinterpret_cast<RTPHeader*>(buf);
+        ssrc = head->getSSRC();
+    }
+
     std::map<std::string, boost::shared_ptr<MediaSink>>::iterator it;
     boost::shared_lock<boost::shared_mutex> lock(m_subscriberMutex);
     switch (type) {
     case erizo::AUDIO: {
         for (it = m_subscribers.begin(); it != m_subscribers.end(); ++it) {
-            if ((*it).second) {
-                boost::shared_lock<boost::shared_mutex> audioLock(m_audioChannelMutex);
-                std::map<std::string, uint32_t>::iterator channelIt = m_audioChannels.find(it->first);
-                if (channelIt == m_audioChannels.end())
-                    continue;
-
-                uint32_t sourceId = channelIt->second;
-                audioLock.unlock();
-
-                ELOG_TRACE("Subscriber %s, streamId is %u, sourceId is %u, len is %d", it->first.c_str(), streamId, sourceId, len);
-                if (sourceId == 0) {
-                    // no publisher from this user, deliver the shared audio data
-                    if (streamId == 0) {
-                        ELOG_TRACE("delivering shared stream");
-                        it->second->deliverAudioData(buf, len);
-                    }
-                } else if (streamId == sourceId) {
-                    ELOG_TRACE("delivering stream from channel %d, len is %d", streamId, len);
-                    it->second->deliverAudioData(buf, len);
-                }
-            }
+            MediaSink* sink = it->second.get();
+            if (sink && sink->getAudioSinkSSRC() == ssrc)
+                sink->deliverAudioData(buf, len);
         }
         break;
     }
     case erizo::VIDEO: {
-        uint32_t ssrc = 0;
-        RTCPHeader* chead = reinterpret_cast<RTCPHeader*>(buf);
-        uint8_t packetType = chead->getPacketType();
-        assert(packetType != RTCP_Receiver_PT && packetType != RTCP_PS_Feedback_PT && packetType != RTCP_RTP_Feedback_PT);
-        if (packetType == RTCP_Sender_PT)
-            ssrc = chead->getSSRC();
-        else {
-            RTPHeader* head = reinterpret_cast<RTPHeader*>(buf);
-            ssrc = head->getSSRC();
-        }
-
         for (it = m_subscribers.begin(); it != m_subscribers.end(); ++it) {
             MediaSink* sink = it->second.get();
             if (sink && sink->getVideoSinkSSRC() == ssrc)
@@ -129,15 +111,9 @@ void Mixer::receiveRtpData(char* buf, int len, erizo::DataType type, uint32_t st
 
 int32_t Mixer::addSource(uint32_t id, bool isAudio, FeedbackSink* feedback, const std::string& participantId)
 {
-    if (isAudio) {
-        int32_t channelId = m_audioMixer->addSource(id, true, feedback, participantId);
-        if (channelId != -1) {
-            ELOG_DEBUG("Adding source: participantId %s, channelId is %d", participantId.c_str(), channelId);
-            boost::unique_lock<boost::shared_mutex> lock(m_audioChannelMutex);
-            m_audioChannels[participantId] = channelId;
-        }
-        return channelId;
-    }
+    if (isAudio)
+        return m_audioMixer->addSource(id, true, feedback, participantId);
+
     return m_videoMixer->addSource(id, false, feedback, participantId);
 }
 
@@ -156,12 +132,13 @@ void Mixer::addSubscriber(MediaSink* subscriber, const std::string& peerId)
     else if (subscriber->acceptPayloadType(VP8_90000_PT))
         videoPayloadType = VP8_90000_PT;
 
-    ELOG_DEBUG("Adding subscriber to %u(a), %u(v)", m_audioMixer->sendSSRC(), m_videoMixer->getSendSSRC(videoPayloadType));
-
     m_videoMixer->addOutput(videoPayloadType);
-
     subscriber->setVideoSinkSSRC(m_videoMixer->getSendSSRC(videoPayloadType));
-    subscriber->setAudioSinkSSRC(m_audioMixer->sendSSRC());
+
+    int32_t channelId = m_audioMixer->addOutput(peerId);
+    subscriber->setAudioSinkSSRC(m_audioMixer->getSendSSRC(channelId));
+
+    ELOG_DEBUG("Adding subscriber to %u(a), %u(v)", m_audioMixer->getSendSSRC(channelId), m_videoMixer->getSendSSRC(videoPayloadType));
 
     // TODO: We now just pass the feedback from _all_ of the subscribers to the video mixer without pre-processing,
     // but maybe it's needed in a Mixer scenario where one mixed stream is sent to multiple subscribers.
@@ -182,8 +159,10 @@ void Mixer::removeSubscriber(const std::string& peerId)
     ELOG_DEBUG("Removing subscriber: id is %s", peerId.c_str());
     boost::unique_lock<boost::shared_mutex> lock(m_subscriberMutex);
     std::map<std::string, boost::shared_ptr<MediaSink>>::iterator it = m_subscribers.find(peerId);
-    if (it != m_subscribers.end())
+    if (it != m_subscribers.end()) {
+        m_audioMixer->removeOutput(peerId);
         m_subscribers.erase(it);
+    }
 }
 
 int32_t Mixer::removeSource(uint32_t source, bool isAudio)
