@@ -4,10 +4,10 @@
   var recordingId;
   var localStream;
   function getParameterByName (name) {
-    name = name.replace(/[\[]/, "\\\[").replace(/[\]]/, "\\\]");
-    var regex = new RegExp("[\\?&]" + name + "=([^&#]*)"),
+    name = name.replace(/[\[]/, '\\\[').replace(/[\]]/, '\\\]');
+    var regex = new RegExp('[\\?&]' + name + '=([^&#]*)'),
         results = regex.exec(location.search);
-    return results == null ? "" : decodeURIComponent(results[1].replace(/\+/g, " "));
+    return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
   }
 
   function createToken (userName, role, callback) {
@@ -38,6 +38,7 @@
   //   }
   // }
 
+  var myresolution = getParameterByName('resolution') || 'vga';
   var conference = Woogeen.Conference.create({});
 
   function displayStream (stream) {
@@ -63,7 +64,7 @@
 
   conference.on('stream-added', function (event) {
     var stream = event.stream;
-    L.Logger.info('Stream added: '+stream.id());
+    L.Logger.info('stream added:', stream.id());
     if (localStream && localStream.id() === stream.id()) {
       L.Logger.info('stream', stream.id(), 'is local; will not be subscribed.');
       return;
@@ -100,7 +101,7 @@
         Woogeen.LocalStream.create({
           video: {
             device: 'camera',
-            resolution: 'vga'
+            resolution: myresolution
           },
           audio: true
         }, function (err, stream) {
