@@ -315,9 +315,19 @@ Handle<Value> Gateway::configLayout(
   Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.This());
   woogeen_base::Gateway *me = obj->me;
 
-  v8::String::Utf8Value param(args[0]->ToString());
-  std::string layoutStr = std::string(*param);
-  me->configLayout(layoutStr);
+  v8::String::Utf8Value param0(args[0]->ToString());
+  std::string layoutType = std::string(*param0);
+
+  v8::String::Utf8Value param1(args[1]->ToString());
+  std::string layoutSize = std::string(*param1);
+
+  v8::String::Utf8Value param2(args[2]->ToString());
+  std::string layoutBackgroundColor = std::string(*param2);
+
+  v8::String::Utf8Value param3(args[3]->ToString());
+  std::string layoutStr = std::string(*param3);
+
+  me->configLayout(layoutType, layoutSize, layoutBackgroundColor, layoutStr);
 
   return scope.Close(Undefined());
 }

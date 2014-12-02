@@ -78,10 +78,9 @@ bool VideoMixer::init()
     }
 
     VideoLayout layout;
-    layout.rootsize = vga;
+    layout.rootSize = vga;
     layout.divFactor = 1;
-
-    m_videoOutputProcessor->setSendCodec(FRAME_FORMAT_VP8, VideoSizes[layout.rootsize]);
+    m_videoOutputProcessor->setSendCodec(FRAME_FORMAT_VP8, VideoSizes.find(layout.rootSize)->second);
     m_frameProcessor->setLayout(layout);
 
     m_taskRunner->Start();
@@ -140,9 +139,7 @@ int VideoMixer::deliverFeedback(char* buf, int len)
 void VideoMixer::onConfigChanged()
 {
     ELOG_DEBUG("onConfigChanged");
-    VideoLayout* layout = Config::get()->getVideoLayout();
-
-    m_frameProcessor->setLayout(*layout);
+    m_frameProcessor->setLayout(Config::get()->getVideoLayout());
 }
 
 /**

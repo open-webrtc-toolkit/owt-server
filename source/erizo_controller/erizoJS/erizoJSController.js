@@ -45,8 +45,10 @@ exports.ErizoJSController = function (spec) {
                 };
                 mixer = new addon.Gateway(JSON.stringify(config));
 
-                if (GLOBAL.config.erizo.videolayout !== undefined)
-                    mixer.configLayout(JSON.stringify(GLOBAL.config.erizo.videolayout));
+                mixer.configLayout(GLOBAL.config.erizo.videolayout.type,
+                    GLOBAL.config.erizo.videolayout.defaultrootsize,
+                    GLOBAL.config.erizo.videolayout.defaultbackgroundcolor,
+                    JSON.stringify(GLOBAL.config.erizo.videolayout.custom));
 
                 publishers[id] = mixer;
                 subscribers[id] = [];
