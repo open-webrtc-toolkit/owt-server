@@ -69,13 +69,11 @@
       return;
     }
     L.Logger.info('subscribing:', stream.id());
-    conference.subscribe(stream, function (err, resp) {
-      if (err) {
-        L.Logger.error('subscribe failed:', err);
-        return;
-      }
+    conference.subscribe(stream, function () {
       L.Logger.info('subscribed:', stream.id());
       displayStream(stream);
+    }, function (err) {
+      L.Logger.error(stream.id(), 'subscribe failed:', err);
     });
   });
   conference.on('stream-removed', function (event) {
@@ -98,10 +96,7 @@
     createToken('user', 'presenter', function (response) {
       var token = response;
 
-      conference.join(token, function (err, resp) {
-        if (err) {
-          return L.Logger.error('server connection failed:', err);
-        }
+      conference.join(token, function (resp) {
         Woogeen.LocalStream.create({
           video: {
             device: 'camera',
@@ -114,10 +109,10 @@
           }
           localStream = stream;
           localStream.show('myVideo');
-          conference.publish(localStream, {maxVideoBW: 300}, function (err, resp) {
-            if (err) {
-              return L.Logger.error('publish failed:', err);
-            }
+          conference.publish(localStream, {maxVideoBW: 300}, function (st) {
+            L.Logger.info('stream published:', st.id());
+          }, function (err) {
+            L.Logger.error('publish failed:', err);
           });
         });
         var streams = resp.streams;
@@ -127,8 +122,12 @@
           conference.subscribe(stream, function () {
             L.Logger.info('subscribed:', stream.id());
             displayStream(stream);
+          }, function (err) {
+            L.Logger.error(stream.id(), 'subscribe failed:', err);
           });
         });
+      }, function (err) {
+        L.Logger.error('server connection failed:', err);
       });
     });
   };
