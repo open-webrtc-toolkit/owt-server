@@ -1,7 +1,7 @@
-diff --git a/src/webrtc/modules/audio_conference_mixer/interface/audio_conference_mixer.h b/src/webrtc/modules/audio_conference_mixer/interface/audio_conference_mixer.h
+diff --git a/modules/audio_conference_mixer/interface/audio_conference_mixer.h b/modules/audio_conference_mixer/interface/audio_conference_mixer.h
 index 2969ece..da10c8f 100644
---- a/src/webrtc/modules/audio_conference_mixer/interface/audio_conference_mixer.h
-+++ b/src/webrtc/modules/audio_conference_mixer/interface/audio_conference_mixer.h
+--- a/modules/audio_conference_mixer/interface/audio_conference_mixer.h
++++ b/modules/audio_conference_mixer/interface/audio_conference_mixer.h
 @@ -34,7 +34,11 @@ public:
          kLowestPossible   = -1,
          kDefaultFrequency = kWbInHz
@@ -25,10 +25,44 @@ index 2969ece..da10c8f 100644
      // Register/unregister a callback class for receiving status information.
      virtual int32_t RegisterMixerStatusCallback(
          AudioMixerStatusReceiver& mixerStatusCallback,
-diff --git a/src/webrtc/modules/audio_conference_mixer/source/audio_conference_mixer_impl.cc b/src/webrtc/modules/audio_conference_mixer/source/audio_conference_mixer_impl.cc
-index f3883c0..63962bf 100644
---- a/src/webrtc/modules/audio_conference_mixer/source/audio_conference_mixer_impl.cc
-+++ b/src/webrtc/modules/audio_conference_mixer/source/audio_conference_mixer_impl.cc
+diff --git a/modules/audio_conference_mixer/interface/audio_conference_mixer_defines.h b/modules/audio_conference_mixer/interface/audio_conference_mixer_defines.h
+index 663be18..76977ff 100644
+--- a/modules/audio_conference_mixer/interface/audio_conference_mixer_defines.h
++++ b/modules/audio_conference_mixer/interface/audio_conference_mixer_defines.h
+@@ -15,7 +15,28 @@
+ #include "webrtc/typedefs.h"
+ 
+ namespace webrtc {
+-class MixHistory;
++// Cheshire cat implementation of MixerParticipant's non virtual functions.
++class MixHistory
++{
++public:
++    MixHistory();
++    ~MixHistory();
++
++    // MixerParticipant function
++    int32_t IsMixed(bool& mixed) const;
++
++    // Sets wasMixed to true if the participant was mixed previous mix
++    // iteration.
++    int32_t WasMixed(bool& wasMixed) const;
++
++    // Updates the mixed status.
++    int32_t SetIsMixed(const bool mixed);
++
++    void ResetMixedStatus();
++private:
++    bool _isMixed;
++};
++
+ 
+ // A callback class that all mixer participants must inherit from/implement.
+ class MixerParticipant
+diff --git a/modules/audio_conference_mixer/source/audio_conference_mixer_impl.cc b/modules/audio_conference_mixer/source/audio_conference_mixer_impl.cc
+index f3883c0..33d9029 100644
+--- a/modules/audio_conference_mixer/source/audio_conference_mixer_impl.cc
++++ b/modules/audio_conference_mixer/source/audio_conference_mixer_impl.cc
 @@ -134,7 +134,8 @@ AudioConferenceMixerImpl::AudioConferenceMixerImpl(int id)
        _timeStamp(0),
        _timeScheduler(kProcessPeriodicityInMs),
@@ -53,7 +87,17 @@ index f3883c0..63962bf 100644
      MemoryPool<AudioFrame>::DeleteMemoryPool(_audioFramePool);
      assert(_audioFramePool == NULL);
  }
-@@ -373,6 +381,15 @@ int32_t AudioConferenceMixerImpl::Process() {
+@@ -306,7 +314,8 @@ int32_t AudioConferenceMixerImpl::Process() {
+                                 AudioFrame::kNormalSpeech,
+                                 AudioFrame::kVadPassive, num_mixed_channels);
+ 
+-        _timeStamp += _sampleSize;
++        if (MixingMode() == kExclusive)
++        	_timeStamp += _sampleSize;
+ 
+         MixFromList(*mixedAudio, &mixList);
+         MixAnonomouslyFromList(*mixedAudio, &additionalFramesList);
+@@ -373,6 +382,15 @@ int32_t AudioConferenceMixerImpl::Process() {
      return retval;
  }
  
@@ -69,7 +113,7 @@ index f3883c0..63962bf 100644
  int32_t AudioConferenceMixerImpl::RegisterMixedStreamCallback(
      AudioMixerOutputReceiver& mixReceiver) {
      CriticalSectionScoped cs(_cbCrit.get());
-@@ -645,12 +662,33 @@ void AudioConferenceMixerImpl::UpdateToMix(
+@@ -645,12 +663,33 @@ void AudioConferenceMixerImpl::UpdateToMix(
          }
          audioFrame->sample_rate_hz_ = _outputFrequency;
  
@@ -108,7 +152,7 @@ index f3883c0..63962bf 100644
          // TODO(henrike): this assert triggers in some test cases where SRTP is
          // used which prevents NetEQ from making a VAD. Temporarily disable this
          // assert until the problem is fixed on a higher level.
-@@ -704,6 +742,7 @@ void AudioConferenceMixerImpl::UpdateToMix(
+@@ -704,6 +743,7 @@ void AudioConferenceMixerImpl::UpdateToMix(
                      assert(mixParticipantList->size() <=
                             kMaximumAmountOfMixedParticipants);
  
@@ -116,10 +160,28 @@ index f3883c0..63962bf 100644
                      if (replaceWasMixed) {
                        RampOut(*replaceFrame);
                        rampOutList->push_back(replaceFrame);
-diff --git a/src/webrtc/modules/audio_conference_mixer/source/audio_conference_mixer_impl.h b/src/webrtc/modules/audio_conference_mixer/source/audio_conference_mixer_impl.h
-index 31dc71e..76e5b27 100644
---- a/src/webrtc/modules/audio_conference_mixer/source/audio_conference_mixer_impl.h
-+++ b/src/webrtc/modules/audio_conference_mixer/source/audio_conference_mixer_impl.h
+diff --git a/modules/audio_conference_mixer/source/audio_conference_mixer_impl.h b/modules/audio_conference_mixer/source/audio_conference_mixer_impl.h
+index 31dc71e..b22b2a5 100644
+--- a/modules/audio_conference_mixer/source/audio_conference_mixer_impl.h
++++ b/modules/audio_conference_mixer/source/audio_conference_mixer_impl.h
+@@ -28,7 +28,7 @@ class CriticalSectionWrapper;
+ 
+ typedef std::list<AudioFrame*> AudioFrameList;
+ typedef std::list<MixerParticipant*> MixerParticipantList;
+-
++/*
+ // Cheshire cat implementation of MixerParticipant's non virtual functions.
+ class MixHistory
+ {
+@@ -50,7 +50,7 @@ public:
+ private:
+     bool _isMixed;
+ };
+-
++*/
+ class AudioConferenceMixerImpl : public AudioConferenceMixer
+ {
+ public:
 @@ -85,6 +85,9 @@ public:
          MixerParticipant& participant, const bool mixable);
      virtual int32_t AnonymousMixabilityStatus(
@@ -141,10 +203,10 @@ index 31dc71e..76e5b27 100644
  };
  }  // namespace webrtc
  
-diff --git a/src/webrtc/modules/audio_device/include/audio_device_defines.h b/src/webrtc/modules/audio_device/include/audio_device_defines.h
+diff --git a/modules/audio_device/include/audio_device_defines.h b/modules/audio_device/include/audio_device_defines.h
 index 9f3e24b..a8742cc 100644
---- a/src/webrtc/modules/audio_device/include/audio_device_defines.h
-+++ b/src/webrtc/modules/audio_device/include/audio_device_defines.h
+--- a/modules/audio_device/include/audio_device_defines.h
++++ b/modules/audio_device/include/audio_device_defines.h
 @@ -70,7 +70,8 @@ public:
                                       const uint8_t nChannels,
                                       const uint32_t samplesPerSec,
@@ -155,10 +217,10 @@ index 9f3e24b..a8742cc 100644
  
      // Method to pass captured data directly and unmixed to network channels.
      // |channel_ids| contains a list of VoE channels which are the
-diff --git a/src/webrtc/voice_engine/output_mixer.cc b/src/webrtc/voice_engine/output_mixer.cc
-index 1648a9d..2307aa3 100644
---- a/src/webrtc/voice_engine/output_mixer.cc
-+++ b/src/webrtc/voice_engine/output_mixer.cc
+diff --git a/voice_engine/output_mixer.cc b/voice_engine/output_mixer.cc
+index 1648a9d..9fad3ec 100644
+--- a/voice_engine/output_mixer.cc
++++ b/voice_engine/output_mixer.cc
 @@ -276,6 +276,7 @@ OutputMixer::SetAnonymousMixabilityStatus(MixerParticipant& participant,
  int32_t
  OutputMixer::MixActiveChannels()
@@ -167,7 +229,7 @@ index 1648a9d..2307aa3 100644
      return _mixerModule.Process();
  }
  
-@@ -509,6 +510,24 @@ int OutputMixer::StopRecordingPlayout()
+@@ -509,6 +510,27 @@ int OutputMixer::StopRecordingPlayout()
      return 0;
  }
  
@@ -178,24 +240,27 @@ index 1648a9d..2307aa3 100644
 +	_mixerModule.MixabilityStatus(participant, isMixed);
 +	if (isMixed == false) {
 +		return -1;
-+	} else {
-+		_mixerModule.SetMixingMode(AudioConferenceMixer::kExclusive);
-+		_mixerModule.SetMixabilityStatus(participant, false);
-+		_mixerModule.Process();
-+		DoOperationsOnCombinedSignal();
-+		_mixerModule.SetMixabilityStatus(participant, true);
-+		return GetMixedAudio(sample_rate_hz, num_channels, audioFrame);
 +	}
++	participant._mixHistory->IsMixed(isMixed);
++	if (isMixed == false) {
++		return -1;
++	}
++	_mixerModule.SetMixingMode(AudioConferenceMixer::kExclusive);
++	_mixerModule.SetMixabilityStatus(participant, false);
++	_mixerModule.Process();
++	DoOperationsOnCombinedSignal();
++	_mixerModule.SetMixabilityStatus(participant, true);
++	return GetMixedAudio(sample_rate_hz, num_channels, audioFrame);
 +
 +}
 +
  int OutputMixer::GetMixedAudio(int sample_rate_hz,
                                 int num_channels,
                                 AudioFrame* frame) {
-diff --git a/src/webrtc/voice_engine/output_mixer.h b/src/webrtc/voice_engine/output_mixer.h
+diff --git a/voice_engine/output_mixer.h b/voice_engine/output_mixer.h
 index fc9afd8..c60767c 100644
---- a/src/webrtc/voice_engine/output_mixer.h
-+++ b/src/webrtc/voice_engine/output_mixer.h
+--- a/voice_engine/output_mixer.h
++++ b/voice_engine/output_mixer.h
 @@ -70,6 +70,9 @@ public:
  
      int GetMixedAudio(int sample_rate_hz, int num_channels,
@@ -206,10 +271,10 @@ index fc9afd8..c60767c 100644
  
      // VoEVolumeControl
      int GetSpeechOutputLevel(uint32_t& level);
-diff --git a/src/webrtc/voice_engine/voe_base_impl.cc b/src/webrtc/voice_engine/voe_base_impl.cc
+diff --git a/voice_engine/voe_base_impl.cc b/voice_engine/voe_base_impl.cc
 index 1b6e144..547f6ac 100644
---- a/src/webrtc/voice_engine/voe_base_impl.cc
-+++ b/src/webrtc/voice_engine/voe_base_impl.cc
+--- a/voice_engine/voe_base_impl.cc
++++ b/voice_engine/voe_base_impl.cc
 @@ -148,7 +148,8 @@ int32_t VoEBaseImpl::NeedMorePlayData(
          uint8_t nChannels,
          uint32_t samplesPerSec,
@@ -281,10 +346,10 @@ index 1b6e144..547f6ac 100644
  
      return 0;
  }
-diff --git a/src/webrtc/voice_engine/voe_base_impl.h b/src/webrtc/voice_engine/voe_base_impl.h
+diff --git a/voice_engine/voe_base_impl.h b/voice_engine/voe_base_impl.h
 index df406eb..eaf11cb 100644
---- a/src/webrtc/voice_engine/voe_base_impl.h
-+++ b/src/webrtc/voice_engine/voe_base_impl.h
+--- a/voice_engine/voe_base_impl.h
++++ b/voice_engine/voe_base_impl.h
 @@ -89,7 +89,8 @@ public:
                                       uint8_t nChannels,
                                       uint32_t samplesPerSec,
