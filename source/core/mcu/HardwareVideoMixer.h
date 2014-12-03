@@ -24,12 +24,13 @@
 #include "JobTimer.h"
 #include "VideoFrameProcessor.h"
 
+#include "hardware/VideoMixEngine.h"
+
 #include <logger.h>
 #include <string>
 #include <map>
 #include <boost/shared_ptr.hpp>
 #include <boost/scoped_ptr.hpp>
-#include <VideoMixEngine.h>
 
 namespace mcu {
 
