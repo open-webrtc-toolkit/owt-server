@@ -352,12 +352,12 @@ Woogeen.Conference = (function () {
     }
   }
 
-  function mkCtrlPayload(action, id) {
+  function mkCtrlPayload(action, streamId) {
     return {
       type: 'control',
       payload: {
         action: action,
-        streamId: id
+        streamId: streamId
       }
     };
   }
@@ -434,23 +434,23 @@ Woogeen.Conference = (function () {
               };
               self.localStreams[id] = stream;
               stream.signalOnPlayAudio = function (onSuccess, onFailure) {
-                self.send(mkCtrlPayload('audio-out-on'), onSuccess, onFailure);
+                self.send(mkCtrlPayload('audio-out-on', id), onSuccess, onFailure);
               };
               stream.signalOnPauseAudio = function (onSuccess, onFailure) {
-                self.send(mkCtrlPayload('audio-out-off'), onSuccess, onFailure);
+                self.send(mkCtrlPayload('audio-out-off', id), onSuccess, onFailure);
               };
               stream.signalOnPlayVideo = function (onSuccess, onFailure) {
-                self.send(mkCtrlPayload('video-out-on'), onSuccess, onFailure);
+                self.send(mkCtrlPayload('video-out-on', id), onSuccess, onFailure);
               };
               stream.signalOnPauseVideo = function (onSuccess, onFailure) {
-                self.send(mkCtrlPayload('video-out-off'), onSuccess, onFailure);
+                self.send(mkCtrlPayload('video-out-off', id), onSuccess, onFailure);
               };
               safeCall(onSuccess, stream);
             };
 
             stream.channel.oniceconnectionstatechange = function (state) {
               if (state === 'failed') {
-                sendMsg(self.socket, 'unpublish', stream.id(), function(){}, function(){});
+                sendMsg(self.socket, 'unpublish', stream.id(), function () {}, function () {});
                 stream.channel.close();
                 stream.channel = undefined;
                 delete self.localStreams[stream.id()];
