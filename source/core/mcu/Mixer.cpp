@@ -22,29 +22,10 @@
 
 #include "Config.h"
 
-#include <ProtectedRTPSender.h>
-#include <WebRTCFeedbackProcessor.h>
-
 using namespace woogeen_base;
 using namespace erizo;
 
 namespace mcu {
-
-class MixerIntraFrameCallback : public woogeen_base::IntraFrameCallback {
-public:
-    MixerIntraFrameCallback(boost::shared_ptr<VideoMixer> videoMixer)
-        : m_videoMixer(videoMixer)
-    {
-    }
-
-    virtual void handleIntraFrameRequest()
-    {
-        m_videoMixer->onRequestIFrame();
-    }
-
-private:
-    boost::shared_ptr<VideoMixer> m_videoMixer;
-};
 
 DEFINE_LOGGER(Mixer, "mcu.Mixer");
 
@@ -81,8 +62,8 @@ int Mixer::deliverVideoData(char* buf, int len)
 
 int Mixer::deliverFeedback(char* buf, int len)
 {
-    if (m_videoMixer->deliverFeedback(buf, len) > 0 &&
-        m_audioMixer->deliverFeedback(buf, len) > 0)
+    if (m_videoMixer->deliverFeedback(buf, len) > 0
+        && m_audioMixer->deliverFeedback(buf, len) > 0)
         return len;
 
     return 0;
@@ -98,27 +79,46 @@ void Mixer::receiveRtpData(char* buf, int len, erizo::DataType type, uint32_t st
     switch (type) {
     case erizo::AUDIO: {
         for (it = m_subscribers.begin(); it != m_subscribers.end(); ++it) {
-        	if ((*it).second) {
-        		uint32_t sourceId = m_sourceChannels[it->first];
-        		ELOG_DEBUG("it first is %s, streamId is %u, sourceId is %u, len is %d", it->first.c_str(), streamId, sourceId, len);
-        		if (sourceId == 0) {
-        			// no publisher from this user, deliver the shared audio data
-        			if (streamId == 0) {
-        				ELOG_DEBUG("delivering shared stream");
-        				it->second->deliverAudioData(buf, len);
-        			}
-        		} else if (streamId == sourceId) {
-        			ELOG_DEBUG("delivering stream from channel %d, len is %d", streamId, len);
-        			it->second->deliverAudioData(buf, len);
-        		}
-        	}
+            if ((*it).second) {
+                boost::shared_lock<boost::shared_mutex> audioLock(m_audioChannelMutex);
+                std::map<std::string, uint32_t>::iterator channelIt = m_audioChannels.find(it->first);
+                if (channelIt == m_audioChannels.end())
+                    continue;
+
+                uint32_t sourceId = channelIt->second;
+                audioLock.unlock();
+
+                ELOG_TRACE("Subscriber %s, streamId is %u, sourceId is %u, len is %d", it->first.c_str(), streamId, sourceId, len);
+                if (sourceId == 0) {
+                    // no publisher from this user, deliver the shared audio data
+                    if (streamId == 0) {
+                        ELOG_TRACE("delivering shared stream");
+                        it->second->deliverAudioData(buf, len);
+                    }
+                } else if (streamId == sourceId) {
+                    ELOG_TRACE("delivering stream from channel %d, len is %d", streamId, len);
+                    it->second->deliverAudioData(buf, len);
+                }
+            }
         }
         break;
     }
     case erizo::VIDEO: {
+        uint32_t ssrc = 0;
+        RTCPHeader* chead = reinterpret_cast<RTCPHeader*>(buf);
+        uint8_t packetType = chead->getPacketType();
+        assert(packetType != RTCP_Receiver_PT && packetType != RTCP_PS_Feedback_PT && packetType != RTCP_RTP_Feedback_PT);
+        if (packetType == RTCP_Sender_PT)
+            ssrc = chead->getSSRC();
+        else {
+            RTPHeader* head = reinterpret_cast<RTPHeader*>(buf);
+            ssrc = head->getSSRC();
+        }
+
         for (it = m_subscribers.begin(); it != m_subscribers.end(); ++it) {
-            if ((*it).second)
-                (*it).second->deliverVideoData(buf, len);
+            MediaSink* sink = it->second.get();
+            if (sink && sink->getVideoSinkSSRC() == ssrc)
+                sink->deliverVideoData(buf, len);
         }
         break;
     }
@@ -127,15 +127,18 @@ void Mixer::receiveRtpData(char* buf, int len, erizo::DataType type, uint32_t st
     }
 }
 
-int32_t Mixer::addSource(uint32_t id, bool isAudio, FeedbackSink* feedback, std::string* clientId)
+int32_t Mixer::addSource(uint32_t id, bool isAudio, FeedbackSink* feedback, const std::string& participantId)
 {
     if (isAudio) {
-    	int32_t channelId = m_audioMixer->addSource(id, true, feedback, clientId);
-    	m_sourceChannels[*clientId] = channelId;
-    	ELOG_DEBUG("Adding source: clientId %s, channelId is %d", clientId->c_str(), channelId);
-    	return channelId;
+        int32_t channelId = m_audioMixer->addSource(id, true, feedback, participantId);
+        if (channelId != -1) {
+            ELOG_DEBUG("Adding source: participantId %s, channelId is %d", participantId.c_str(), channelId);
+            boost::unique_lock<boost::shared_mutex> lock(m_audioChannelMutex);
+            m_audioChannels[participantId] = channelId;
+        }
+        return channelId;
     }
-    return m_videoMixer->addSource(id, false, feedback, clientId);
+    return m_videoMixer->addSource(id, false, feedback, participantId);
 }
 
 int32_t Mixer::bindAV(uint32_t audioId, uint32_t videoId)
@@ -145,24 +148,24 @@ int32_t Mixer::bindAV(uint32_t audioId, uint32_t videoId)
 
 void Mixer::addSubscriber(MediaSink* subscriber, const std::string& peerId)
 {
-    ELOG_DEBUG("Adding subscriber to %u(a), %u(v)", m_audioMixer->sendSSRC(), m_videoMixer->sendSSRC());
+    int videoPayloadType = INVALID_PT;
 
-    subscriber->setVideoSinkSSRC(m_videoMixer->sendSSRC());
+    // Prefer H264.
+    if (subscriber->acceptPayloadType(H264_90000_PT))
+        videoPayloadType = H264_90000_PT;
+    else if (subscriber->acceptPayloadType(VP8_90000_PT))
+        videoPayloadType = VP8_90000_PT;
+
+    ELOG_DEBUG("Adding subscriber to %u(a), %u(v)", m_audioMixer->sendSSRC(), m_videoMixer->getSendSSRC(videoPayloadType));
+
+    m_videoMixer->addOutput(videoPayloadType);
+
+    subscriber->setVideoSinkSSRC(m_videoMixer->getSendSSRC(videoPayloadType));
     subscriber->setAudioSinkSSRC(m_audioMixer->sendSSRC());
 
     // TODO: We now just pass the feedback from _all_ of the subscribers to the video mixer without pre-processing,
     // but maybe it's needed in a Mixer scenario where one mixed stream is sent to multiple subscribers.
     // The WebRTCFeedbackProcessor can be enhanced to provide another option to handle the feedback from the subscribers.
-    // Lazily create the feedback sink only if there're subscribers added, because only with
-    // subscribers are there chances for us to receive feedback.
-    // Currently all of the subscribers shared one feedback sink because the feedback will
-    // be sent to the VCMOutputProcessor which is a single instance shared by all the subscribers.
-    if (0 && !m_feedback) {
-        WebRTCFeedbackProcessor* feedback = new woogeen_base::WebRTCFeedbackProcessor(0);
-        boost::shared_ptr<woogeen_base::IntraFrameCallback> intraFrameCallback(new MixerIntraFrameCallback(m_videoMixer));
-        feedback->initVideoFeedbackReactor(MIXED_VIDEO_STREAM_ID, subscriber->getVideoSinkSSRC(), boost::shared_ptr<woogeen_base::ProtectedRTPSender>(), intraFrameCallback);
-        m_feedback.reset(feedback);
-    }
 
     FeedbackSource* fbsource = subscriber->getFeedbackSource();
     if (fbsource) {

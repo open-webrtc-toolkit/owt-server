@@ -328,7 +328,7 @@ void OoVooGateway::onProcessFeedback()
 }
 
 // The main thread
-bool OoVooGateway::setPublisher(erizo::MediaSource* source, const std::string& clientId, const std::string& videoResolution)
+bool OoVooGateway::setPublisher(erizo::MediaSource* source, const std::string& id, const std::string& videoResolution)
 {
     ELOG_DEBUG("SET PUBLISHER");
     m_audioReceiver.reset(new ProtectedRTPReceiver(m_outboundStreamProcessor));
@@ -396,9 +396,9 @@ bool OoVooGateway::setPublisher(erizo::MediaSource* source, const std::string& c
 }
 
 // The main thread
-bool OoVooGateway::setPublisher(MediaSource* source, const std::string& clientId)
+bool OoVooGateway::setPublisher(MediaSource* source, const std::string& id)
 {
-    return setPublisher(source, clientId, "unknown");
+    return setPublisher(source, id, "unknown");
 }
 
 // The main thread

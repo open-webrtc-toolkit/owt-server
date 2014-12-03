@@ -75,7 +75,6 @@ SoftVideoCompositor::SoftVideoCompositor()
     : m_configLock(CriticalSectionWrapper::CreateCriticalSection())
     , m_configChanged(false)
     , m_composedFrame(nullptr)
-    , m_receiver(nullptr)
 {
     m_ntpDelta = Clock::GetRealTimeClock()->CurrentNtpInMilliseconds() -
                                   TickTime::MillisecondTimestamp();
@@ -102,7 +101,7 @@ SoftVideoCompositor::SoftVideoCompositor()
 
 SoftVideoCompositor::~SoftVideoCompositor()
 {
-    m_receiver = nullptr;
+    m_consumers.clear();
 }
 
 void SoftVideoCompositor::setBitrate(FrameFormat format, unsigned short bitrate)
@@ -149,16 +148,19 @@ void SoftVideoCompositor::pushInput(int slot, unsigned char* payload, int len)
     }
 }
 
-bool SoftVideoCompositor::activateOutput(FrameFormat format, unsigned int framerate, unsigned short bitrate, VideoFrameConsumer* receiver)
+bool SoftVideoCompositor::activateOutput(FrameFormat format, unsigned int framerate, unsigned short bitrate, VideoFrameConsumer* consumer)
 {
     assert(format == FRAME_FORMAT_I420);
-    m_receiver = receiver;
+    m_consumers.push_back(consumer);
     return true;
 }
 
 void SoftVideoCompositor::deActivateOutput(FrameFormat format)
 {
-    m_receiver = nullptr;
+    // TODO: Now we should have only one output format,
+    // and all of the consumers should accept the same format.
+    // Need to refine the interface.
+    m_consumers.clear();
 }
 
 void SoftVideoCompositor::onTimeout()
@@ -168,10 +170,12 @@ void SoftVideoCompositor::onTimeout()
 
 void SoftVideoCompositor::generateFrame()
 {
-    if (m_receiver) {
+    if (!m_consumers.empty()) {
         I420VideoFrame* composedFrame = layout();
         composedFrame->set_render_time_ms(TickTime::MillisecondTimestamp() - m_ntpDelta);
-        m_receiver->onFrame(FRAME_FORMAT_I420, reinterpret_cast<unsigned char*>(composedFrame), sizeof(I420VideoFrame), 0);
+        std::vector<VideoFrameConsumer*>::iterator it = m_consumers.begin();
+        for (; it != m_consumers.end(); ++it)
+            (*it)->onFrame(FRAME_FORMAT_I420, reinterpret_cast<unsigned char*>(composedFrame), sizeof(I420VideoFrame), 0);
     }
 }
 

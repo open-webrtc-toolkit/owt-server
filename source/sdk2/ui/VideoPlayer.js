@@ -124,15 +124,12 @@ Erizo.VideoPlayer = function (spec) {
     that.parentNode = that.div.parentNode;
 
     that.div.appendChild(that.video);
-    that.video.addEventListener('playing', function () {
-        var display = function () {
-            if (that.video.videoWidth * that.video.videoHeight > 4) { // why remote video size initially is 2*2 in chrome?
-                L.Logger.info('video dimensions:', that.video.videoWidth, that.video.videoHeight);
-                return;
-            }
-            setTimeout(display, 50);
-        };
-        display();
+    that.video.addEventListener('playing', function display () {
+        if (that.video.videoWidth * that.video.videoHeight > 4) { // why remote video size initially is 2*2 in chrome?
+            L.Logger.debug('video dimensions:', that.video.videoWidth, that.video.videoHeight);
+            return;
+        }
+        setTimeout(display, 50);
     });
     that.containerWidth = 0;
     that.containerHeight = 0;
