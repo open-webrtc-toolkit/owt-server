@@ -135,16 +135,16 @@ HardwareVideoMixer::HardwareVideoMixer()
 HardwareVideoMixer::~HardwareVideoMixer()
 {}
 
-void HardwareVideoMixer::setBitrate(FrameFormat format, unsigned short bitrate)
+void HardwareVideoMixer::setBitrate(int id, unsigned short bitrate)
 {
-    std::map<FrameFormat, boost::shared_ptr<HardwareVideoMixerOutput>>::iterator it = m_outputs.find(format);
+    std::map<int, boost::shared_ptr<HardwareVideoMixerOutput>>::iterator it = m_outputs.find(id);
     if (it != m_outputs.end())
         it->second->setBitrate(bitrate);
 }
 
-void HardwareVideoMixer::requestKeyFrame(FrameFormat format)
+void HardwareVideoMixer::requestKeyFrame(int id)
 {
-    std::map<FrameFormat, boost::shared_ptr<HardwareVideoMixerOutput>>::iterator it = m_outputs.find(format);
+    std::map<int, boost::shared_ptr<HardwareVideoMixerOutput>>::iterator it = m_outputs.find(id);
     if (it != m_outputs.end())
         it->second->requestKeyFrame();
 }
@@ -180,20 +180,20 @@ void HardwareVideoMixer::pushInput(int slot, unsigned char* payload, int len)
         it->second->push(payload, len);
 }
 
-bool HardwareVideoMixer::activateOutput(FrameFormat format, unsigned int framerate, unsigned short bitrate, VideoFrameConsumer* receiver)
+bool HardwareVideoMixer::activateOutput(int id, FrameFormat format, unsigned int framerate, unsigned short bitrate, VideoFrameConsumer* receiver)
 {
-    if (m_outputs.find(format) != m_outputs.end()) {
+    if (m_outputs.find(id) != m_outputs.end()) {
         ELOG_WARN("activateOutput failed, format is in use.");
         return false;
     }
     ELOG_DEBUG("activateOutput OK, format: %s", ((format == FRAME_FORMAT_VP8)? "VP8" : "H264"));
-    m_outputs[format].reset(new HardwareVideoMixerOutput(m_engine, format, "name", framerate, bitrate, receiver));
+    m_outputs[id].reset(new HardwareVideoMixerOutput(m_engine, format, "name", framerate, bitrate, receiver));
     return true;
 }
 
-void HardwareVideoMixer::deActivateOutput(FrameFormat format)
+void HardwareVideoMixer::deActivateOutput(int id)
 {
-    m_outputs.erase(format);
+    m_outputs.erase(id);
 }
 
 }

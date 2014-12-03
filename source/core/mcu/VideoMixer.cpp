@@ -99,10 +99,10 @@ int32_t VideoMixer::addOutput(int payloadType)
     VideoOutputProcessor* output = nullptr;
     if (m_hardwareAccelerated) {
         output = new ExternalVideoProcessor(outputId, m_frameProcessor, outputFormat, transport, m_taskRunner);
-        m_frameProcessor->activateOutput(outputFormat, 30, 500, output);
+        m_frameProcessor->activateOutput(output->id(), outputFormat, 30, 500, output);
     } else {
         output = new VCMOutputProcessor(outputId, transport, m_taskRunner);
-        m_frameProcessor->activateOutput(FRAME_FORMAT_I420, 30, 500, output);
+        m_frameProcessor->activateOutput(output->id(), FRAME_FORMAT_I420, 30, 500, output);
     }
     output->setSendCodec(outputFormat, VideoSizes.find(vga)->second);
     m_videoOutputProcessors[payloadType].reset(output);
@@ -114,9 +114,9 @@ int32_t VideoMixer::removeOutput(int payloadType)
 {
     std::map<int, boost::shared_ptr<VideoOutputProcessor>>::iterator it = m_videoOutputProcessors.find(payloadType);
     if (it != m_videoOutputProcessors.end()) {
-        // VideoOutputProcessor* output = it->second.get();
-        // TODO: m_frameProcessor->deActivateOutput();
-        int32_t id = it->second->id();
+        VideoOutputProcessor* output = it->second.get();
+        int32_t id = output->id();
+        m_frameProcessor->deActivateOutput(id);
         m_videoOutputProcessors.erase(it);
         return id;
     }

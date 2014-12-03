@@ -48,12 +48,12 @@ public:
     virtual void deActivateInput(int slot) = 0;
     virtual void pushInput(int slot, unsigned char* payload, int len) = 0;
 
-    virtual bool activateOutput(FrameFormat, unsigned int framerate, unsigned short bitrate, VideoFrameConsumer*) = 0;
-    virtual void deActivateOutput(FrameFormat) = 0;
+    virtual bool activateOutput(int id, FrameFormat, unsigned int framerate, unsigned short bitrate, VideoFrameConsumer*) = 0;
+    virtual void deActivateOutput(int id) = 0;
 
     virtual void setLayout(struct VideoLayout&) = 0;
-    virtual void setBitrate(FrameFormat, unsigned short bitrate) = 0;
-    virtual void requestKeyFrame(FrameFormat) = 0;
+    virtual void setBitrate(int id, unsigned short bitrate) = 0;
+    virtual void requestKeyFrame(int id) = 0;
 };
 
 }
