@@ -148,29 +148,9 @@ bool Config::updateVideoLayout(uint32_t slotNumber)
 {
     if (m_currentVideoLayout.regions.empty()) {
         // fluid layout
-        uint32_t currentDivFactor = m_currentVideoLayout.divFactor;
-        bool updateDivFactor = false;
-        if (slotNumber <= 1) {
-            if (currentDivFactor != 1) {
-                m_currentVideoLayout.divFactor = 1;
-                updateDivFactor = true;
-            }
-        } else if (slotNumber <= 4) {
-            if (currentDivFactor != 2) {
-                m_currentVideoLayout.divFactor = 2;
-                updateDivFactor = true;
-            }
-        } else if (slotNumber <= 9) {
-            if (currentDivFactor != 3) {
-                m_currentVideoLayout.divFactor = 3;
-                updateDivFactor = true;
-            }
-        } else if (currentDivFactor != 4) {
-            m_currentVideoLayout.divFactor = 4;
-            updateDivFactor = true;
-        }
-
-        if (updateDivFactor) {
+        uint32_t newDivFactor = sqrt(slotNumber > 0 ? slotNumber - 1 : 0) + 1;
+        if (newDivFactor != m_currentVideoLayout.divFactor) {
+            m_currentVideoLayout.divFactor = newDivFactor;
             signalConfigChanged();
             return true;
         }
