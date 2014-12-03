@@ -19,7 +19,6 @@
  */
 
 #include "Config.h"
-#include "BufferManager.h"
 
 #include <boost/foreach.hpp>
 #include <boost/property_tree/ptree.hpp>
@@ -190,7 +189,6 @@ void Config::unregisterListener(ConfigListener* listener)
 
 Config::Config()
 {
-    m_customVideoLayouts.reserve(BufferManager::SLOT_SIZE);
 }
 
 } /* namespace mcu */
