@@ -72,11 +72,7 @@ private:
     boost::scoped_ptr<webrtc::RtcpBandwidthObserver> m_bandwidthObserver;
     boost::scoped_ptr<webrtc::ViEEncoder> m_videoEncoder;
     boost::scoped_ptr<webrtc::RtpRtcp> m_rtpRtcp;
-    /*
-     * Each incoming channel will store the decoded frame in this array, and the encoding
-     * thread will scan this array and compose the frames into one frame
-     */
-    // Delta used for translating between NTP and internal timestamps.
+
     boost::shared_ptr<webrtc::Transport> m_videoTransport;
     boost::shared_ptr<TaskRunner> m_taskRunner;
 };

@@ -121,9 +121,7 @@ private:
 
 /**
  * A class to process the incoming streams by leveraging video coding module from
- * webrtc engine, which will framize and decode the frames.  Each publisher will be
- * served by one VCMInputProcessor.
- * This class more or less is working as the vie_receiver class
+ * webrtc engine, which will framize and decode the frames.
  */
 class TaskRunner;
 

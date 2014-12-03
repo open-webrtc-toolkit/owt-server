@@ -68,22 +68,16 @@ public:
     // TODO: Remove me once OOP Mixer is able to invoke addSource explicitly.
     void addSourceOnDemand(bool allow) { m_addSourceOnDemand = allow; }
 
-    // Implements the MediaSourceConsumer interfaces
-    /*
-     * Each source will be served by a InputProcessor, which is responsible for
-     * decoding the incoming streams into I420Frames
-     */
+    // Implements MediaSourceConsumer.
     int32_t addSource(uint32_t from, bool isAudio, erizo::FeedbackSink*, const std::string& participantId);
     int32_t removeSource(uint32_t from, bool isAudio);
     erizo::MediaSink* mediaSink() { return this; }
 
-    /**
-     * Implements the MediaSink interfaces.
-     */
+    // Implements MediaSink.
     int deliverAudioData(char* buf, int len);
     int deliverVideoData(char* buf, int len);
 
-    // Implements the FeedbackSink interfaces.
+    // Implements FeedbackSink.
     int deliverFeedback(char* buf, int len);
 
     // Implements ConfigListener.
@@ -93,7 +87,7 @@ private:
     void closeAll();
 
     int assignSlot(uint32_t source);
-    // find the slot number for the corresponding source
+    // Find the slot number for the corresponding source
     // return -1 if not found
     int getSlot(uint32_t source);
 

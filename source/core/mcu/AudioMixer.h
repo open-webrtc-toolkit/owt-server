@@ -42,21 +42,19 @@ public:
     AudioMixer(erizo::RTPDataReceiver*);
     virtual ~AudioMixer();
 
-    // Implements the MediaSourceConsumer interfaces.
+    // Implements MediaSourceConsumer.
     int32_t addSource(uint32_t id, bool isAudio, erizo::FeedbackSink*, const std::string& participantId);
     int32_t removeSource(uint32_t id, bool isAudio);
     erizo::MediaSink* mediaSink() { return this; }
 
-    /**
-     * Implements the MediaSink interfaces
-     */
+    // Implements MediaSink.
     int deliverAudioData(char*, int len);
     int deliverVideoData(char*, int len);
 
-    // Implements the FeedbackSink interfaces
+    // Implements FeedbackSink.
     int deliverFeedback(char* buf, int len);
 
-    // Implements JobTimer.
+    // Implements JobTimerListener.
     void onTimeout();
 
     int32_t sharedChannelId() { return m_sharedChannel.id; }
