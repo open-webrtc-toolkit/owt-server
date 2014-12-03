@@ -583,8 +583,29 @@ Woogeen.Conference = (function () {
     }
   };
 
-  WoogeenConference.prototype.shareScreen = function () {
-    // this.stopShare = function () {};
+  WoogeenConference.prototype.shareScreen = function (option, onSuccess, onFailure) {
+    var self = this;
+    if (typeof option === 'function') {
+      onFailure = onSuccess;
+      onSuccess = option;
+      option = {};
+    }
+    option = option || {};
+    Woogeen.LocalStream.create({
+      video: {
+        device: 'screen'
+      },
+      audio: false
+    }, function (err, stream) {
+      if (err) {
+        return safeCall(onFailure, err);
+      }
+      self.publish(stream, function (st) {
+        safeCall(onSuccess, st);
+      }, function (err) {
+        safeCall(onFailure, err);
+      });
+    });
   };
 
   WoogeenConference.create = function factory (spec) { // factory, not in prototype

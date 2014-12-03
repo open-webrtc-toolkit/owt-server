@@ -1,7 +1,5 @@
 (function () {
   'use strict';
-  var recording;
-  var recordingId;
   var localStream;
   function getParameterByName (name) {
     name = name.replace(/[\[]/, '\\\[').replace(/[\]]/, '\\\]');
@@ -24,6 +22,8 @@
     req.send(JSON.stringify(body));
   }
 
+  // var recording;
+  // var recordingId;
   // function startRecording () {
   //   if (room !== undefined){
   //     if (!recording){
@@ -38,7 +38,6 @@
   //   }
   // }
 
-  var myresolution = getParameterByName('resolution') || 'vga';
   var conference = Woogeen.Conference.create({});
 
   function displayStream (stream) {
@@ -79,7 +78,7 @@
   });
   conference.on('stream-removed', function (event) {
     var stream = event.stream;
-    L.Logger.info('Stream removed: '+stream.id());
+    L.Logger.info('stream removed:' ,stream.id());
     if (stream.elementId !== undefined) {
       var element = document.getElementById(stream.elementId);
       if (element) {document.body.removeChild(element);}
@@ -94,28 +93,39 @@
 
   window.onload = function () {
     L.Logger.setLogLevel(L.Logger.INFO);
+    var myResolution = getParameterByName('resolution') || 'vga';
+    var shareScreen = getParameterByName('screen') || false;
+
     createToken('user', 'presenter', function (response) {
       var token = response;
 
       conference.join(token, function (resp) {
-        Woogeen.LocalStream.create({
-          video: {
-            device: 'camera',
-            resolution: myresolution
-          },
-          audio: true
-        }, function (err, stream) {
-          if (err) {
-            return L.Logger.error('create LocalStream failed:', err);
-          }
-          localStream = stream;
-          localStream.show('myVideo', {muted: 'muted'});
-          conference.publish(localStream, {maxVideoBW: 300}, function (st) {
-            L.Logger.info('stream published:', st.id());
-          }, function (err) {
-            L.Logger.error('publish failed:', err);
+        if (shareScreen === false) {
+          Woogeen.LocalStream.create({
+            video: {
+              device: 'camera',
+              resolution: myResolution
+            },
+            audio: true
+          }, function (err, stream) {
+            if (err) {
+              return L.Logger.error('create LocalStream failed:', err);
+            }
+            localStream = stream;
+            localStream.show('myVideo', {muted: 'muted'});
+            conference.publish(localStream, {maxVideoBW: 300}, function (st) {
+              L.Logger.info('stream published:', st.id());
+            }, function (err) {
+              L.Logger.error('publish failed:', err);
+            });
           });
-        });
+        } else {
+          conference.shareScreen(function (stream) {
+            stream.show('myVideo');
+          }, function (err) {
+            L.Logger.error('share screen failed:', err);
+          });
+        }
         var streams = resp.streams;
         streams.map(function (stream) {
           L.Logger.info('stream in conference:', stream.id());
