@@ -108,11 +108,8 @@ Erizo.VideoPlayer = function (spec) {
     that.video.setAttribute('id', 'stream' + that.id);
     that.video.setAttribute('style', 'width: 100%; height: 100%; position: absolute');
     that.video.setAttribute('autoplay', 'autoplay');
-    if (typeof spec.options.muted !== 'undefined') {
-        that.video.setAttribute('muted', spec.options.muted);
-    }
 
-    if (spec.stream.local) {
+    if (spec.stream instanceof Woogeen.LocalStream) {
         that.video.volume = 0;
     }
 

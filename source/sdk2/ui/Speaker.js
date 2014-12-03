@@ -32,12 +32,12 @@ Erizo.Speaker = function (spec) {
     that.div = document.createElement('div');
     that.div.setAttribute('style', 'width: 40%; height: 100%; max-width: 32px; position: absolute; right: 0;z-index:0;');
 
-    // // Volume icon 
-    // that.icon = document.createElement('img');
-    // that.icon.setAttribute('id', 'volume_' + that.id);
-    // that.icon.setAttribute('src', that.url + '/assets/sound48.png');
-    // that.icon.setAttribute('style', 'width: 80%; height: 100%; position: absolute;');
-    // that.div.appendChild(that.icon);
+    // Volume icon
+    that.icon = document.createElement('img');
+    that.icon.setAttribute('id', 'volume_' + that.id);
+    that.icon.setAttribute('src', Woogeen.Images.sound48);
+    that.icon.setAttribute('style', 'width: 80%; height: 100%; position: absolute;');
+    that.div.appendChild(that.icon);
 
 
     if (that.stream instanceof Woogeen.RemoteStream) {
@@ -58,10 +58,10 @@ Erizo.Speaker = function (spec) {
         that.picker.oninput = function () {
             if (that.picker.value > 0) {
                 that.media.muted = false;
-                // that.icon.setAttribute('src', that.url + '/assets/sound48.png');
+                that.icon.setAttribute('src', Woogeen.Images.sound48);
             } else {
                 that.media.muted = true;
-                // that.icon.setAttribute('src', that.url + '/assets/mute48.png');
+                that.icon.setAttribute('src', Woogeen.Images.mute48);
             }
             that.media.volume = that.picker.value / 100;
         };
@@ -72,7 +72,7 @@ Erizo.Speaker = function (spec) {
         };
 
         mute = function () {
-            // that.icon.setAttribute('src', that.url + '/assets/mute48.png');
+            that.icon.setAttribute('src', Woogeen.Images.mute48);
             lastVolume = that.picker.value;
             that.picker.value = 0;
             that.media.volume = 0;
@@ -80,19 +80,19 @@ Erizo.Speaker = function (spec) {
         };
 
         unmute = function () {
-            // that.icon.setAttribute('src', that.url + '/assets/sound48.png');
+            that.icon.setAttribute('src', Woogeen.Images.sound48);
             that.picker.value = lastVolume;
             that.media.volume = that.picker.value / 100;
             that.media.muted = false;
         };
 
-        // that.icon.onclick = function () {
-        //     if (that.media.muted) {
-        //         unmute();
-        //     } else {
-        //         mute();
-        //     }
-        // };
+        that.icon.onclick = function () {
+            if (that.media.muted) {
+                unmute();
+            } else {
+                mute();
+            }
+        };
 
         // Public functions
         that.div.onmouseover = function () {
@@ -106,26 +106,25 @@ Erizo.Speaker = function (spec) {
         show('none');
 
     } else if (that.stream instanceof Woogeen.LocalStream) {
-        var muted = false;
         mute = function () {
-            muted = true;
-            // that.icon.setAttribute('src', that.url + '/assets/mute48.png');
-            that.stream.stream.getAudioTracks()[0].enabled = false;
+            that.media.muted = true;
+            that.icon.setAttribute('src', Woogeen.Images.mute48);
+            that.stream.mediaStream.getAudioTracks()[0].enabled = false;
         };
 
         unmute = function () {
-            muted = false;
-            // that.icon.setAttribute('src', that.url + '/assets/sound48.png');
-            that.stream.stream.getAudioTracks()[0].enabled = true;
+            that.media.muted = false;
+            that.icon.setAttribute('src', Woogeen.Images.sound48);
+            that.stream.mediaStream.getAudioTracks()[0].enabled = true;
         };
 
-        // that.icon.onclick = function () {
-        //     if (muted) {
-        //         unmute();
-        //     } else {
-        //         mute();
-        //     }
-        // };
+        that.icon.onclick = function () {
+            if (that.media.muted) {
+                unmute();
+            } else {
+                mute();
+            }
+        };
     }
   
 
