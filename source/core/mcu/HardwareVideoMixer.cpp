@@ -100,16 +100,19 @@ void HardwareVideoMixerOutput::setBitrate(unsigned short bitrate)
 
 void HardwareVideoMixerOutput::requestKeyFrame()
 {
-    m_engine->RequestKeyFrame(m_index);
+    m_engine->ForceKeyFrame(m_index);
 }
 
 void HardwareVideoMixerOutput::onTimeout()
-{
-    int len = m_engine->PullOutput(m_index, (unsigned char*)&m_esBuffer);
-    if (len > 0) {
-        m_outCount++;
-        m_receiver->onFrame(m_outFormat, (unsigned char *)&m_esBuffer, len, m_outCount * m_frameRate);
-    }
+{   
+    do {
+        int len = m_engine->PullOutput(m_index, (unsigned char*)&m_esBuffer);
+        if (len > 0) {
+            m_outCount++;
+            m_receiver->onFrame(m_outFormat, (unsigned char *)&m_esBuffer, len, m_outCount * m_frameRate);
+        } else
+            break;
+    } while (1);
 }
 
 void HardwareVideoMixerOutput::notifyFrameReady(OutputIndex index)
@@ -125,7 +128,8 @@ DEFINE_LOGGER(HardwareVideoMixer, "mcu.HardwareVideoMixer");
 HardwareVideoMixer::HardwareVideoMixer()
 {
     m_engine.reset(new VideoMixEngine());
-    bool result = m_engine->Init(0, 640, 480);
+    BgColor bg = {{0}, {0}, {0}};
+    bool result = m_engine->Init(bg, 640, 480);
     assert(result);
     if (!result) {
         ELOG_ERROR("Init video mixing engine failed!");

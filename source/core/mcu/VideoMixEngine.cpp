@@ -1,6 +1,9 @@
 #include "VideoMixEngine.h"
 #include <string.h>
 
+#include <iostream>
+#include <webrtc/system_wrappers/interface/tick_util.h>
+
 #define GOP_SIZE 24
 
 VideoMixEngine::VideoMixEngine()
@@ -8,38 +11,50 @@ VideoMixEngine::VideoMixEngine()
     , m_inputIndex(0)
     , m_outputIndex(0)
 {
-    m_xcoder = new MsdkXcoder;
-    m_vpp = new VppInfo;
+    m_xcoder = NULL;
+    m_vpp = NULL;
 }
 
 VideoMixEngine::~VideoMixEngine()
 {
+    printf("[%s]Destroy Video Mix Engine.\n", __FUNCTION__);
+
+    if (m_xcoder) {
+        m_xcoder->Stop();
+        delete m_xcoder;
+        m_xcoder = NULL;
+    }
+
     for(std::map<OutputIndex, OutputInfo>::iterator it = m_outputs.begin(); it != m_outputs.end(); ++it) {
-        uninstallOutput(it->first);
-        removeOutput(it->first);
+        delete it->second.stream;
+        it->second.stream = NULL;
+        m_outputs.erase(it);
     }
 
     for(std::map<InputIndex, InputInfo>::iterator it = m_inputs.begin(); it != m_inputs.end(); ++it) {
-        uninstallInput(it->first);
-        removeInput(it->first);
+        delete it->second.mp;
+        it->second.mp = NULL;
+        m_inputs.erase(it);
     }
 
-    delete m_vpp;
-    m_vpp = NULL;
-    delete m_xcoder;
-    m_xcoder = NULL;
+    if (m_vpp) {
+        delete m_vpp;
+        m_vpp = NULL;
+    }
 }
 
 bool VideoMixEngine::Init(BgColor bgColor, unsigned int width, unsigned int height) 
 {
     if (m_state == UN_INITIALIZED) {
+        m_vpp = new VppInfo;
         m_vpp->bgColor = bgColor;
         m_vpp->width = width;
         m_vpp->height = height;
         m_state = IDLE;
         return true;
-    } else
+    } else {
         return false;
+    }
 }
 
 void VideoMixEngine::SetBackgroundColor(BgColor bgColor)
@@ -116,7 +131,6 @@ void VideoMixEngine::PushInput(InputIndex index, unsigned char* data, int len)
         unsigned char* memPool_wrptr = m_inputs[index].mp->GetWritePtr();
         int prefixLength = (m_inputs[index].codec == CODEC_TYPE_VIDEO_VP8) ? 4 : 0;
         int copySize = len + prefixLength;
-
         if (memPool_freeflat < copySize) {
             return;
         }
@@ -177,7 +191,7 @@ void VideoMixEngine::DisableOutput(OutputIndex index)
     }
 }
 
-void VideoMixEngine::RequestKeyFrame(OutputIndex index)
+void VideoMixEngine::ForceKeyFrame(OutputIndex index)
 {
     if (m_state == IN_SERVICE && m_outputs.find(index) != m_outputs.end()) {
         m_xcoder->ForceKeyFrame(m_outputs[index].codec);
@@ -216,7 +230,8 @@ void VideoMixEngine::installInput(InputIndex index)
     MemPool* memPool = new MemPool;
     memPool->init();
     
-    DecOptions dec_cfg = {{0}};
+    DecOptions dec_cfg;
+    memset(&dec_cfg, 0, sizeof(dec_cfg));
     dec_cfg.inputStream = memPool;
     dec_cfg.input_codec_type = m_inputs[index].codec;
     dec_cfg.measuremnt = NULL;
@@ -237,6 +252,7 @@ void VideoMixEngine::uninstallInput(InputIndex index)
         it->second.decHandle = NULL;
         delete it->second.mp;
         it->second.mp = NULL;
+        m_inputs.erase(it);
     }
 }
 
@@ -259,9 +275,11 @@ OutputIndex VideoMixEngine::scheduleOutput(CodecType codec, const char* name, un
 void VideoMixEngine::installOutput(OutputIndex index) 
 {
     Stream* stream = new Stream;
-    stream->Open(m_outputs[index].name);
+    //stream->Open(m_outputs[index].name);
+    stream->Open();
     
-    EncOptions enc_cfg = {::CODEC_TYPE_INVALID};
+    EncOptions enc_cfg;
+    memset(&enc_cfg, 0, sizeof(enc_cfg));
     enc_cfg.outputStream = stream;
     enc_cfg.output_codec_type = m_outputs[index].codec;
     enc_cfg.bitrate = m_outputs[index].bitrate;
@@ -287,6 +305,7 @@ void VideoMixEngine::uninstallOutput(OutputIndex index)
         it->second.encHandle = NULL;
         delete it->second.stream;
         it->second.stream = NULL;
+        m_outputs.erase(it);
     }
 }
 
@@ -300,26 +319,35 @@ void VideoMixEngine::removeOutput(OutputIndex index)
 
 void VideoMixEngine::setupPipeline() 
 {
+    if (m_xcoder) {
+        printf("[%s]Xcode has been started.\n", __FUNCTION__);
+        return;
+    }
+
     InputInfo input = m_inputs.begin()->second;
     OutputInfo output = m_outputs.begin()->second;
 
     MemPool* memPool = new MemPool;
     memPool->init();
     
-    DecOptions dec_cfg = {{0}};
+    DecOptions dec_cfg;
+    memset(&dec_cfg, 0, sizeof(dec_cfg));
     dec_cfg.inputStream = memPool;
     dec_cfg.input_codec_type = input.codec;
     dec_cfg.measuremnt = NULL;
 
-    VppOptions vpp_cfg = {0};
+    VppOptions vpp_cfg;
+    memset(&vpp_cfg, 0, sizeof(vpp_cfg));
     vpp_cfg.out_width = m_vpp->width;
     vpp_cfg.out_height = m_vpp->height;
     vpp_cfg.measuremnt = NULL;
 
     Stream* stream = new Stream;
-    stream->Open(output.name);
+    //stream->Open(output.name);
+    stream->Open();
     
-    EncOptions enc_cfg = {CODEC_TYPE_INVALID};
+    EncOptions enc_cfg;
+    memset(&enc_cfg, 0, sizeof(enc_cfg));
     enc_cfg.outputStream = stream;
     enc_cfg.output_codec_type = output.codec;
     enc_cfg.bitrate = output.bitrate;
@@ -331,6 +359,7 @@ void VideoMixEngine::setupPipeline()
         enc_cfg.intraPeriod = GOP_SIZE;
     }
 
+    m_xcoder = new MsdkXcoder;
     m_xcoder->Init(&dec_cfg, &vpp_cfg, &enc_cfg);
     m_xcoder->Start();
     
@@ -340,17 +369,19 @@ void VideoMixEngine::setupPipeline()
     m_outputs.begin()->second.stream = stream;
     m_vpp->vppHandle = vpp_cfg.VppHandle;
     
-    std::map<InputIndex, InputInfo>::iterator it = m_inputs.begin();
-    ++it;
-    for (; it != m_inputs.end(); ++it) {
-        installInput(it->first);
+    std::map<InputIndex, InputInfo>::iterator it_input = m_inputs.begin();
+    ++it_input;
+    for (; it_input != m_inputs.end(); ++it_input) {
+        installInput(it_input->first);
     }
     
-    std::map<OutputIndex, OutputInfo>::iterator it2 = m_outputs.begin();
-    ++it2;
-    for (; it2 != m_outputs.end(); ++it2) {
-        installOutput(it2->first);
+    std::map<OutputIndex, OutputInfo>::iterator it_output = m_outputs.begin();
+    ++it_output;
+    for (; it_output != m_outputs.end(); ++it_output) {
+        installOutput(it_output->first);
     }
+
+    printf("[%s]Start Xcode pipeline.\n", __FUNCTION__);
 }
 
 void VideoMixEngine::demolishPipeline() 
@@ -358,7 +389,8 @@ void VideoMixEngine::demolishPipeline()
     switch (m_state) {
         case IN_SERVICE:
             m_xcoder->Stop();
-            m_xcoder->Join();
+            delete m_xcoder;
+            m_xcoder = NULL;
             m_vpp->vppHandle = NULL;
         case WAITING_FOR_INPUT:
         case WAITING_FOR_OUTPUT:
