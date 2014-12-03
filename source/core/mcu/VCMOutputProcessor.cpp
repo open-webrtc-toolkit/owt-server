@@ -84,7 +84,7 @@ bool VCMOutputProcessor::setSendCodec(FrameFormat frameFormat, VideoSize videoSi
     return false;
 }
 
-void VCMOutputProcessor::onRequestIFrame()
+void VCMOutputProcessor::handleIntraFrameRequest()
 {
     m_videoEncoder->SendKeyFrame();
 }
@@ -140,7 +140,7 @@ bool VCMOutputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* tran
     m_videoEncoder->Init();
 
     RtpRtcp::Configuration configuration;
-    configuration.id = ViEModuleId(m_id);
+    configuration.id = m_id;
     configuration.outgoing_transport = transport;
     configuration.audio = false;  // Video.
     configuration.default_module = m_videoEncoder->SendRtpRtcpModule();

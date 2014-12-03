@@ -54,65 +54,186 @@
 
   WoogeenStream.prototype.disableAudio = function(tracknum) {
     var self = this;
-    if (self.audio() && self.mediaStream) {
-      if (arguments.length > 0) {
-        var tracks = self.mediaStream.getAudioTracks();
-        if (tracks && tracks[tracknum]) {
-          tracks[tracknum].enable = true;
-        }
-        return;
+    if (self.hasAudio() && self.mediaStream) {
+      if (tracknum === undefined) {
+        tracknum = 0;
       }
-      self.mediaStream.getAudioTracks().map(function (track) {
-        track.enable = true;
-      });
+      if (tracknum === -1) {
+        return self.mediaStream.getAudioTracks().map(function (track) {
+          if (track.enabled) {
+            track.enabled = false;
+            return true;
+          }
+          return false;
+        });
+      }
+      var tracks = self.mediaStream.getAudioTracks();
+      if (tracks && tracks[tracknum] && tracks[tracknum].enabled) {
+        tracks[tracknum].enabled = false;
+        return true;
+      }
     }
+    return false;
   };
 
   WoogeenStream.prototype.enableAudio = function(tracknum) {
     var self = this;
-    if (self.audio() && self.mediaStream) {
-      if (arguments.length > 0) {
-        var tracks = self.mediaStream.getAudioTracks();
-        if (tracks && tracks[tracknum]) {
-          tracks[tracknum].enable = false;
-        }
-        return;
+    if (self.hasAudio() && self.mediaStream) {
+      if (tracknum === undefined) {
+        tracknum = 0;
       }
-      self.mediaStream.getAudioTracks().map(function (track) {
-        track.enable = false;
-      });
+      if (tracknum === -1) {
+        return self.mediaStream.getAudioTracks().map(function (track) {
+          if (track.enabled !== true) {
+            track.enabled = true;
+            return true;
+          }
+          return false;
+        });
+      }
+      var tracks = self.mediaStream.getAudioTracks();
+      if (tracks && tracks[tracknum] && tracks[tracknum].enabled !== true) {
+        tracks[tracknum].enabled = true;
+        return true;
+      }
     }
+    return false;
   };
 
   WoogeenStream.prototype.disableVideo = function(tracknum) {
     var self = this;
-    if (self.audio() && self.mediaStream) {
-      if (arguments.length > 0) {
-        var tracks = self.mediaStream.getVideoTracks();
-        if (tracks && tracks[tracknum]) {
-          tracks[tracknum].enable = false;
-        }
-        return;
+    if (self.hasVideo() && self.mediaStream) {
+      if (tracknum === undefined) {
+        tracknum = 0;
       }
-      self.mediaStream.getVideoTracks().map(function (track) {
-        track.enable = false;
-      });
+      if (tracknum === -1) {
+        return self.mediaStream.getVideoTracks().map(function (track) {
+          if (track.enabled) {
+            track.enabled = false;
+            return true;
+          }
+          return false;
+        });
+      }
+      var tracks = self.mediaStream.getVideoTracks();
+      if (tracks && tracks[tracknum] && tracks[tracknum].enabled) {
+        tracks[tracknum].enabled = false;
+        return true;
+      }
     }
+    return false;
   };
 
   WoogeenStream.prototype.enableVideo = function(tracknum) {
     var self = this;
-    if (self.audio() && self.mediaStream) {
-      if (arguments.length > 0) {
-        var tracks = self.mediaStream.getVideoTracks();
-        if (tracks && tracks[tracknum]) {
-          tracks[tracknum].enable = true;
-        }
-        return;
+    if (self.hasVideo() && self.mediaStream) {
+      if (tracknum === undefined) {
+        tracknum = 0;
       }
-      self.mediaStream.getVideoTracks().map(function (track) {
-        track.enable = true;
+      if (tracknum === -1) {
+        return self.mediaStream.getVideoTracks().map(function (track) {
+          if (track.enabled !== true) {
+            track.enabled = true;
+            return true;
+          }
+          return false;
+        });
+      }
+      var tracks = self.mediaStream.getVideoTracks();
+      if (tracks && tracks[tracknum] && tracks[tracknum].enabled !== true) {
+        tracks[tracknum].enabled = true;
+        return true;
+      }
+    }
+    return false;
+  };
+
+  WoogeenStream.prototype.playAudio = function(tracknum, onSuccess, onFailure) {
+    if (typeof tracknum === 'function') {
+      onFailure = onSuccess;
+      onSuccess = tracknum;
+      tracknum = undefined;
+    }
+    if (tracknum === -1) {
+      this.enableAudio(-1).map(function (result) {
+        if (result === true && typeof this.signalOnPlayAudio === 'function') {
+          this.signalOnPlayAudio(onSuccess, onFailure);
+        }
       });
+      return;
+    }
+    if (this.enableAudio(tracknum) && typeof this.signalOnPlayAudio === 'function') {
+      return this.signalOnPlayAudio(onSuccess, onFailure);
+    }
+    if (typeof onFailure === 'function') {
+      onFailure('unable to call playAudio');
+    }
+  };
+
+
+  WoogeenStream.prototype.pauseAudio = function(tracknum, onSuccess, onFailure) {
+    if (typeof tracknum === 'function') {
+      onFailure = onSuccess;
+      onSuccess = tracknum;
+      tracknum = undefined;
+    }
+    if (tracknum === -1) {
+      this.disableAudio(-1).map(function (result) {
+        if (result === true && typeof this.signalOnPauseAudio === 'function') {
+          this.signalOnPauseAudio(onSuccess, onFailure);
+        }
+      });
+      return;
+    }
+    if (this.disableAudio() && typeof this.signalOnPauseAudio === 'function') {
+      return this.signalOnPauseAudio(onSuccess, onFailure);
+    }
+    if (typeof onFailure === 'function') {
+      onFailure('unable to call pauseAudio');
+    }
+  };
+
+  WoogeenStream.prototype.playVideo = function(tracknum, onSuccess, onFailure) {
+    if (typeof tracknum === 'function') {
+      onFailure = onSuccess;
+      onSuccess = tracknum;
+      tracknum = undefined;
+    }
+    if (tracknum === -1) {
+      this.enableVideo(-1).map(function (result) {
+        if (result === true && typeof this.signalOnPlayVideo === 'function') {
+          this.signalOnPlayVideo(onSuccess, onFailure);
+        }
+      });
+      return;
+    }
+    if (this.enableVideo() && typeof this.signalOnPlayVideo === 'function') {
+      return this.signalOnPlayVideo(onSuccess, onFailure);
+    }
+    if (typeof onFailure === 'function') {
+      onFailure('unable to call playVideo');
+    }
+  };
+
+  WoogeenStream.prototype.pauseVideo = function(tracknum, onSuccess, onFailure) {
+    if (typeof tracknum === 'function') {
+      onFailure = onSuccess;
+      onSuccess = tracknum;
+      tracknum = undefined;
+    }
+    if (tracknum === -1) {
+      this.disableVideo(-1).map(function (result) {
+        if (result === true && typeof this.signalOnPauseVideo === 'function') {
+          this.signalOnPauseVideo(onSuccess, onFailure);
+        }
+      });
+      return;
+    }
+    if (this.disableVideo() && typeof this.signalOnPauseVideo === 'function') {
+      return this.signalOnPauseVideo(onSuccess, onFailure);
+    }
+    if (typeof onFailure === 'function') {
+      onFailure('unable to call pauseVideo');
     }
   };
 

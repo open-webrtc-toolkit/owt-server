@@ -43,7 +43,7 @@ public:
     virtual ~AudioMixer();
 
     // Implements the MediaSourceConsumer interfaces.
-    int32_t addSource(uint32_t id, bool isAudio, erizo::FeedbackSink*, std::string* clientId);
+    int32_t addSource(uint32_t id, bool isAudio, erizo::FeedbackSink*, const std::string& participantId);
     int32_t removeSource(uint32_t id, bool isAudio);
     erizo::MediaSink* mediaSink() { return this; }
 

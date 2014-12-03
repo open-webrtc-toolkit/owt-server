@@ -74,7 +74,8 @@ public:
   void setAudioSinkSSRC (unsigned int ssrc){audioSinkSSRC_ = ssrc;};
   FeedbackSource* getFeedbackSource(){
     return sinkfbSource_;
-  };  
+  };
+  virtual bool acceptPayloadType(const int plType) { return true; }
   // Is it able to sink the encapsulated RTP data (like RED)
   virtual bool acceptEncapsulatedRTPData() { return false; }
   // Is it able to sink the FEC packet

@@ -28,6 +28,7 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/scoped_ptr.hpp>
 #include <logger.h>
+#include <vector>
 
 namespace webrtc {
 class I420VideoFrame;
@@ -105,7 +106,7 @@ private:
     boost::scoped_ptr<webrtc::I420VideoFrame> m_composedFrame;
     VideoLayout m_currentLayout;
     VideoLayout m_newLayout;
-    VideoFrameConsumer* m_receiver;
+    std::vector<VideoFrameConsumer*> m_consumers;
     boost::scoped_ptr<JobTimer> m_jobTimer;
 };
 
