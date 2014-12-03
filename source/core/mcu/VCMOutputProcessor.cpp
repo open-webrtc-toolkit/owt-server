@@ -50,22 +50,26 @@ bool VCMOutputProcessor::setSendCodec(FrameFormat frameFormat, VideoSize videoSi
     VideoCodec videoCodec;
     bool validCodec = false;
 
-    // TODO: enable VP8/H264 in one room later
-#if 0
+    // We need to use the default codec setting in the videoEncoder
+    // if the default codec type is same as the new one.
+    // Some status of the codec is modified inside the videoEncoder
+    // and if we set a new codec with the same type, the videoEncoder
+    // won't work correctly.
+    validCodec = (m_videoEncoder->GetEncoder(&videoCodec) == 0);
+
     switch (frameFormat) {
     case FRAME_FORMAT_VP8:
-        validCodec = (VideoCodingModule::Codec(webrtc::kVideoCodecVP8, &videoCodec) == VCM_OK);
+        if (!validCodec || videoCodec.codecType != webrtc::kVideoCodecVP8)
+            validCodec = (VideoCodingModule::Codec(webrtc::kVideoCodecVP8, &videoCodec) == VCM_OK);
         break;
     case FRAME_FORMAT_H264:
-        validCodec = (VideoCodingModule::Codec(webrtc::kVideoCodecH264, &videoCodec) == VCM_OK);
+        if (!validCodec || videoCodec.codecType != webrtc::kVideoCodecH264)
+            validCodec = (VideoCodingModule::Codec(webrtc::kVideoCodecH264, &videoCodec) == VCM_OK);
         break;
     case FRAME_FORMAT_I420:
     default:
         break;
     }
-#else
-    validCodec = (m_videoEncoder->GetEncoder(&videoCodec) == 0);
-#endif
 
     if (validCodec) {
         videoCodec.width = videoSize.width;
