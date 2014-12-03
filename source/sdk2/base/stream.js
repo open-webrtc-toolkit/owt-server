@@ -347,7 +347,15 @@
     var onSuccess = function (mediaStream) {
       option.mediaStream = mediaStream;
       var localStream = new Woogeen.LocalStream(option);
-
+      if (option.video && option.video.device === 'screen' &&
+          mediaStream.getVideoTracks() &&
+          mediaStream.getVideoTracks().length > 0) {
+        // when <Stop sharing> button in Browser was pressed, `onended' is triggered;
+        // then we need to close the screen sharing stream.
+        mediaStream.getVideoTracks()[0].onended = function () {
+          localStream.close();
+        };
+      }
       // set default bit rate
       switch (mediaOption.video.mandatory.maxWidth) {
       case 320:
