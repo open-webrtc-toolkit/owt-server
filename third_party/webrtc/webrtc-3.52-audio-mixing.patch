@@ -1,7 +1,7 @@
-diff --git a/modules/audio_conference_mixer/interface/audio_conference_mixer.h b/modules/audio_conference_mixer/interface/audio_conference_mixer.h
+diff --git a/src/webrtc/modules/audio_conference_mixer/interface/audio_conference_mixer.h b/src/webrtc/modules/audio_conference_mixer/interface/audio_conference_mixer.h
 index 2969ece..da10c8f 100644
---- a/modules/audio_conference_mixer/interface/audio_conference_mixer.h
-+++ b/modules/audio_conference_mixer/interface/audio_conference_mixer.h
+--- a/src/webrtc/modules/audio_conference_mixer/interface/audio_conference_mixer.h
++++ b/src/webrtc/modules/audio_conference_mixer/interface/audio_conference_mixer.h
 @@ -34,7 +34,11 @@ public:
          kLowestPossible   = -1,
          kDefaultFrequency = kWbInHz
@@ -25,10 +25,10 @@ index 2969ece..da10c8f 100644
      // Register/unregister a callback class for receiving status information.
      virtual int32_t RegisterMixerStatusCallback(
          AudioMixerStatusReceiver& mixerStatusCallback,
-diff --git a/modules/audio_conference_mixer/interface/audio_conference_mixer_defines.h b/modules/audio_conference_mixer/interface/audio_conference_mixer_defines.h
+diff --git a/src/webrtc/modules/audio_conference_mixer/interface/audio_conference_mixer_defines.h b/src/webrtc/modules/audio_conference_mixer/interface/audio_conference_mixer_defines.h
 index 663be18..76977ff 100644
---- a/modules/audio_conference_mixer/interface/audio_conference_mixer_defines.h
-+++ b/modules/audio_conference_mixer/interface/audio_conference_mixer_defines.h
+--- a/src/webrtc/modules/audio_conference_mixer/interface/audio_conference_mixer_defines.h
++++ b/src/webrtc/modules/audio_conference_mixer/interface/audio_conference_mixer_defines.h
 @@ -15,7 +15,28 @@
  #include "webrtc/typedefs.h"
  
@@ -59,10 +59,10 @@ index 663be18..76977ff 100644
  
  // A callback class that all mixer participants must inherit from/implement.
  class MixerParticipant
-diff --git a/modules/audio_conference_mixer/source/audio_conference_mixer_impl.cc b/modules/audio_conference_mixer/source/audio_conference_mixer_impl.cc
+diff --git a/src/webrtc/modules/audio_conference_mixer/source/audio_conference_mixer_impl.cc b/src/webrtc/modules/audio_conference_mixer/source/audio_conference_mixer_impl.cc
 index f3883c0..33d9029 100644
---- a/modules/audio_conference_mixer/source/audio_conference_mixer_impl.cc
-+++ b/modules/audio_conference_mixer/source/audio_conference_mixer_impl.cc
+--- a/src/webrtc/modules/audio_conference_mixer/source/audio_conference_mixer_impl.cc
++++ b/src/webrtc/modules/audio_conference_mixer/source/audio_conference_mixer_impl.cc
 @@ -134,7 +134,8 @@ AudioConferenceMixerImpl::AudioConferenceMixerImpl(int id)
        _timeStamp(0),
        _timeScheduler(kProcessPeriodicityInMs),
@@ -160,10 +160,10 @@ index f3883c0..33d9029 100644
                      if (replaceWasMixed) {
                        RampOut(*replaceFrame);
                        rampOutList->push_back(replaceFrame);
-diff --git a/modules/audio_conference_mixer/source/audio_conference_mixer_impl.h b/modules/audio_conference_mixer/source/audio_conference_mixer_impl.h
+diff --git a/src/webrtc/modules/audio_conference_mixer/source/audio_conference_mixer_impl.h b/src/webrtc/modules/audio_conference_mixer/source/audio_conference_mixer_impl.h
 index 31dc71e..b22b2a5 100644
---- a/modules/audio_conference_mixer/source/audio_conference_mixer_impl.h
-+++ b/modules/audio_conference_mixer/source/audio_conference_mixer_impl.h
+--- a/src/webrtc/modules/audio_conference_mixer/source/audio_conference_mixer_impl.h
++++ b/src/webrtc/modules/audio_conference_mixer/source/audio_conference_mixer_impl.h
 @@ -28,7 +28,7 @@ class CriticalSectionWrapper;
  
  typedef std::list<AudioFrame*> AudioFrameList;
@@ -203,10 +203,10 @@ index 31dc71e..b22b2a5 100644
  };
  }  // namespace webrtc
  
-diff --git a/modules/audio_device/include/audio_device_defines.h b/modules/audio_device/include/audio_device_defines.h
+diff --git a/src/webrtc/modules/audio_device/include/audio_device_defines.h b/src/webrtc/modules/audio_device/include/audio_device_defines.h
 index 9f3e24b..a8742cc 100644
---- a/modules/audio_device/include/audio_device_defines.h
-+++ b/modules/audio_device/include/audio_device_defines.h
+--- a/src/webrtc/modules/audio_device/include/audio_device_defines.h
++++ b/src/webrtc/modules/audio_device/include/audio_device_defines.h
 @@ -70,7 +70,8 @@ public:
                                       const uint8_t nChannels,
                                       const uint32_t samplesPerSec,
@@ -217,10 +217,10 @@ index 9f3e24b..a8742cc 100644
  
      // Method to pass captured data directly and unmixed to network channels.
      // |channel_ids| contains a list of VoE channels which are the
-diff --git a/voice_engine/output_mixer.cc b/voice_engine/output_mixer.cc
+diff --git a/src/webrtc/voice_engine/output_mixer.cc b/src/webrtc/voice_engine/output_mixer.cc
 index 1648a9d..9fad3ec 100644
---- a/voice_engine/output_mixer.cc
-+++ b/voice_engine/output_mixer.cc
+--- a/src/webrtc/voice_engine/output_mixer.cc
++++ b/src/webrtc/voice_engine/output_mixer.cc
 @@ -276,6 +276,7 @@ OutputMixer::SetAnonymousMixabilityStatus(MixerParticipant& participant,
  int32_t
  OutputMixer::MixActiveChannels()
@@ -257,10 +257,10 @@ index 1648a9d..9fad3ec 100644
  int OutputMixer::GetMixedAudio(int sample_rate_hz,
                                 int num_channels,
                                 AudioFrame* frame) {
-diff --git a/voice_engine/output_mixer.h b/voice_engine/output_mixer.h
+diff --git a/src/webrtc/voice_engine/output_mixer.h b/src/webrtc/voice_engine/output_mixer.h
 index fc9afd8..c60767c 100644
---- a/voice_engine/output_mixer.h
-+++ b/voice_engine/output_mixer.h
+--- a/src/webrtc/voice_engine/output_mixer.h
++++ b/src/webrtc/voice_engine/output_mixer.h
 @@ -70,6 +70,9 @@ public:
  
      int GetMixedAudio(int sample_rate_hz, int num_channels,
@@ -271,10 +271,10 @@ index fc9afd8..c60767c 100644
  
      // VoEVolumeControl
      int GetSpeechOutputLevel(uint32_t& level);
-diff --git a/voice_engine/voe_base_impl.cc b/voice_engine/voe_base_impl.cc
+diff --git a/src/webrtc/voice_engine/voe_base_impl.cc b/src/webrtc/voice_engine/voe_base_impl.cc
 index 1b6e144..547f6ac 100644
---- a/voice_engine/voe_base_impl.cc
-+++ b/voice_engine/voe_base_impl.cc
+--- a/src/webrtc/voice_engine/voe_base_impl.cc
++++ b/src/webrtc/voice_engine/voe_base_impl.cc
 @@ -148,7 +148,8 @@ int32_t VoEBaseImpl::NeedMorePlayData(
          uint8_t nChannels,
          uint32_t samplesPerSec,
@@ -346,10 +346,10 @@ index 1b6e144..547f6ac 100644
  
      return 0;
  }
-diff --git a/voice_engine/voe_base_impl.h b/voice_engine/voe_base_impl.h
+diff --git a/src/webrtc/voice_engine/voe_base_impl.h b/src/webrtc/voice_engine/voe_base_impl.h
 index df406eb..eaf11cb 100644
---- a/voice_engine/voe_base_impl.h
-+++ b/voice_engine/voe_base_impl.h
+--- a/src/webrtc/voice_engine/voe_base_impl.h
++++ b/src/webrtc/voice_engine/voe_base_impl.h
 @@ -89,7 +89,8 @@ public:
                                       uint8_t nChannels,
                                       uint32_t samplesPerSec,
