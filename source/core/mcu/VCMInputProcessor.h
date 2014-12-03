@@ -73,17 +73,32 @@ public:
                     VideoFrameProvider* provider)
         : m_index(index)
         , m_imageHandler(imageHandler)
+        , m_provider(provider)
     {
-        m_imageHandler->activateInput(m_index, FRAME_FORMAT_VP8, provider);
+        assert(provider);
     }
 
     virtual ~ExternalDecoder()
     {
+        m_provider = nullptr;
         m_imageHandler->deActivateInput(m_index);
     }
 
     // Implements the webrtc::VideoDecoder interface.
-    virtual int32_t InitDecode(const webrtc::VideoCodec* codecSettings, int32_t numberOfCores) { return 0; }
+    virtual int32_t InitDecode(const webrtc::VideoCodec* codecSettings, int32_t numberOfCores) 
+    {
+        int32_t result = -1;
+        assert(codecSettings->codecType == webrtc::kVideoCodecVP8 || codecSettings->codecType == webrtc::kVideoCodecH264);
+        if ((codecSettings->codecType == webrtc::kVideoCodecVP8)
+             && m_imageHandler->activateInput(m_index, FRAME_FORMAT_VP8, m_provider))
+            result = 0;
+        else if ((codecSettings->codecType == webrtc::kVideoCodecH264)
+                  && m_imageHandler->activateInput(m_index, FRAME_FORMAT_H264, m_provider))
+            result = 0;
+        else
+            result = -1;
+        return result;
+    }
     virtual int32_t Decode(const webrtc::EncodedImage& inputImage,
                            bool missingFrames,
                            const webrtc::RTPFragmentationHeader* fragmentation,
@@ -101,6 +116,7 @@ public:
 private:
     int m_index;
     boost::shared_ptr<VideoFrameProcessor> m_imageHandler;
+    VideoFrameProvider* m_provider;
 };
 
 /**
