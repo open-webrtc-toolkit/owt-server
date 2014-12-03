@@ -39,7 +39,7 @@ public:
 
 class VideoFrameConsumer {
 public:
-    virtual void onFrame(FrameFormat format, unsigned char* payload, int len, unsigned int ts) = 0;
+    virtual void onFrame(FrameFormat, unsigned char* payload, int len, unsigned int ts) = 0;
 };
 
 class VideoFrameProcessor {

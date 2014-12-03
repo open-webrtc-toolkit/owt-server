@@ -62,8 +62,7 @@ private:
  * composite a sequence of frames into one frame based on current layout config,
  * there is a question of how many streams to be composited if there are 16 participants
  * but only 6 regions are configed. current implementation will only show 6 participants but
- * still 16 audios will be mixed. In the future, we may enable the video rotation based on VAD history
- * single thread only
+ * still 16 audios will be mixed. In the future, we may enable the video rotation based on VAD history.
  */
 class SoftVideoCompositor : public VideoFrameProcessor,
                             public JobTimerListener {
@@ -91,13 +90,14 @@ private:
     webrtc::I420VideoFrame* customLayout();
     void generateFrame();
     void onSlotNumberChanged(uint32_t newSlotNum);
-    bool commitLayout(); //commit the new layout config
+    bool commitLayout(); // Commit the new layout config.
     void setBackgroundColor();
     bool validateConfig(VideoLayout& layout)
     {
         return true;
     }
 
+    // Delta used for translating between NTP and internal timestamps.
     int64_t m_ntpDelta;
     boost::scoped_ptr<webrtc::CriticalSectionWrapper> m_configLock;
     bool m_configChanged;
@@ -107,6 +107,10 @@ private:
     VideoLayout m_currentLayout;
     VideoLayout m_newLayout;
     std::vector<VideoFrameConsumer*> m_consumers;
+    /*
+     * Each incoming channel will store the decoded frame in this array, and the composition
+     * thread will scan this array and compose the frames into one frame.
+     */
     boost::scoped_ptr<JobTimer> m_jobTimer;
 };
 

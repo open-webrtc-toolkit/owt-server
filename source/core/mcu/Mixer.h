@@ -45,9 +45,7 @@ public:
     Mixer(bool hardwareAccelerated);
     virtual ~Mixer();
 
-    /**
-     * Implements the Gateway interfaces
-     */
+    // Implements Gateway.
     bool setPublisher(erizo::MediaSource*, const std::string& id) { return false; }
     bool setPublisher(erizo::MediaSource* source, const std::string& id, const std::string& videoResolution) { return setPublisher(source, id); }
     void unsetPublisher() { }
@@ -77,18 +75,14 @@ public:
         const std::string& defaultBackgroundColor, const std::string& customLayout);
     erizo::MediaSink* mediaSink() { return this; }
 
-    /**
-     * Implements the MediaSink interfaces
-     */
+    // Implements MediaSink.
     int deliverAudioData(char* buf, int len);
     int deliverVideoData(char* buf, int len);
 
-    // Implements the FeedbackSink interfaces
+    // Implements FeedbackSink.
     int deliverFeedback(char* buf, int len);
 
-    /**
-     * Implements the RTPDataReceiver interfaces
-     */
+    // Implements RTPDataReceiver.
     void receiveRtpData(char*, int len, erizo::DataType, uint32_t channelId);
 
 protected:

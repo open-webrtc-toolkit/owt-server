@@ -41,9 +41,7 @@ public:
     WebRTCGateway();
     virtual ~WebRTCGateway();
 
-    /**
-     * Implements the Gateway interfaces
-     */
+    // Implements Gateway.
     bool setPublisher(erizo::MediaSource*, const std::string& participantId);
     bool setPublisher(erizo::MediaSource* source, const std::string& participantId, const std::string& videoResolution) { return setPublisher(source, participantId); }
     void unsetPublisher();
@@ -70,9 +68,7 @@ public:
 
     void setAdditionalSourceConsumer(woogeen_base::MediaSourceConsumer*);
 
-    /**
-     * Implements the MediaSink interfaces
-     */
+    // Implements MediaSink.
     int deliverAudioData(char*, int len);
     int deliverVideoData(char*, int len);
 
