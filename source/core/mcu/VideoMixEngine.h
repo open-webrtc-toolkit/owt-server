@@ -10,7 +10,6 @@
 #define INVALID_INPUT_INDEX -1
 #define INVALID_OUTPUT_INDEX INVALID_INPUT_INDEX
 
-typedef unsigned int BgColor;
 typedef int InputIndex;
 typedef int OutputIndex;
 
@@ -23,6 +22,22 @@ class VideoOutputConsumer {
 public:
     virtual void notifyFrameReady(OutputIndex index) = 0;
 };
+
+/* background color*/
+typedef struct {
+    union {
+        unsigned short Y;
+        unsigned short R;
+    };
+    union {
+        unsigned short U;
+        unsigned short G;
+    };
+    union {
+        unsigned short V;
+        unsigned short B;
+    };
+} BgColor;
 
 typedef struct {
     CodecType codec;
@@ -52,11 +67,14 @@ typedef struct {
 } LayoutInfo;
 
 class VideoMixEngine {
-    enum PipelineState{UN_INITIALIZED = 0,
-                       IDLE,
-                       WAITING_FOR_INPUT,
-                       WAITING_FOR_OUTPUT,
-                       IN_SERVICE};
+    typedef enum {
+        UN_INITIALIZED = 0,
+        IDLE,
+        WAITING_FOR_INPUT,
+        WAITING_FOR_OUTPUT,
+        IN_SERVICE
+    } PipelineState;
+
 public:
     VideoMixEngine();
     virtual ~VideoMixEngine();
@@ -73,7 +91,7 @@ public:
 
     OutputIndex EnableOutput(CodecType codec, const char* name, unsigned short bitrate, VideoOutputConsumer* consumer);
     void DisableOutput(OutputIndex index);
-    void RequestKeyFrame(OutputIndex index);
+    void ForceKeyFrame(OutputIndex index);
     void SetBitrate(OutputIndex index, unsigned short bitrate);
     int PullOutput(OutputIndex index, unsigned char* buf);
 
@@ -95,8 +113,8 @@ private:
 
 private:
     PipelineState m_state;
-    int m_inputIndex;
-    int m_outputIndex;
+    unsigned int m_inputIndex;
+    unsigned int m_outputIndex;
     MsdkXcoder* m_xcoder;
     VppInfo* m_vpp;
     std::map<InputIndex, InputInfo> m_inputs;
