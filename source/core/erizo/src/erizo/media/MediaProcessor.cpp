@@ -163,7 +163,7 @@ namespace erizo {
     }
 
     AVPacket avpkt;
-    int outSize;
+    int outSize = 0;
     int decSize = 0;
     int len = -1;
     uint8_t *decBuff = (uint8_t*) malloc(16000);
@@ -452,7 +452,7 @@ namespace erizo {
 
     timeval time;
     gettimeofday(&time, NULL);
-    long millis = (time.tv_sec * 1000) + (time.tv_usec / 1000);
+//    long millis = (time.tv_sec * 1000) + (time.tv_usec / 1000);
 
     RTPHeader head;
     head.setSeqNumber(audioSeqnum_++);
