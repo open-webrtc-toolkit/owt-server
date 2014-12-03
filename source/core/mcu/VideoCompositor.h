@@ -25,8 +25,9 @@
 #include "VideoFrameProcessor.h"
 #include "VideoLayout.h"
 
-#include <boost/shared_ptr.hpp>
 #include <boost/scoped_ptr.hpp>
+#include <boost/shared_ptr.hpp>
+#include <boost/thread/shared_mutex.hpp>
 #include <logger.h>
 #include <vector>
 
@@ -75,12 +76,12 @@ public:
     void deActivateInput(int slot);
     void pushInput(int slot, unsigned char* payload, int len);
 
-    bool activateOutput(FrameFormat, unsigned int framerate, unsigned short bitrate, VideoFrameConsumer*);
-    void deActivateOutput(FrameFormat);
+    bool activateOutput(int id, FrameFormat, unsigned int framerate, unsigned short bitrate, VideoFrameConsumer*);
+    void deActivateOutput(int id);
 
     void setLayout(struct VideoLayout&);
-    void setBitrate(FrameFormat, unsigned short bitrate);
-    void requestKeyFrame(FrameFormat);
+    void setBitrate(int id, unsigned short bitrate);
+    void requestKeyFrame(int id);
 
     void onTimeout();
 
@@ -106,7 +107,8 @@ private:
     boost::scoped_ptr<webrtc::I420VideoFrame> m_composedFrame;
     VideoLayout m_currentLayout;
     VideoLayout m_newLayout;
-    std::vector<VideoFrameConsumer*> m_consumers;
+    std::map<int, VideoFrameConsumer*> m_consumers;
+    boost::shared_mutex m_consumerMutex;
     /*
      * Each incoming channel will store the decoded frame in this array, and the composition
      * thread will scan this array and compose the frames into one frame.

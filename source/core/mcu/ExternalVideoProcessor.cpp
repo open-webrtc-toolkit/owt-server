@@ -72,7 +72,7 @@ bool ExternalVideoProcessor::setSendCodec(FrameFormat frameFormat, VideoSize)
 
 void ExternalVideoProcessor::handleIntraFrameRequest()
 {
-    m_mixer->requestKeyFrame(m_frameFormat);
+    m_mixer->requestKeyFrame(m_id);
 }
 
 uint32_t ExternalVideoProcessor::sendSSRC()
@@ -82,7 +82,7 @@ uint32_t ExternalVideoProcessor::sendSSRC()
 
 void ExternalVideoProcessor::OnReceivedIntraFrameRequest(uint32_t ssrc)
 {
-    m_mixer->requestKeyFrame(m_frameFormat);
+    m_mixer->requestKeyFrame(m_id);
 }
 
 int ExternalVideoProcessor::deliverFeedback(char* buf, int len)

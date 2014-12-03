@@ -104,11 +104,11 @@ SoftVideoCompositor::~SoftVideoCompositor()
     m_consumers.clear();
 }
 
-void SoftVideoCompositor::setBitrate(FrameFormat format, unsigned short bitrate)
+void SoftVideoCompositor::setBitrate(int id, unsigned short bitrate)
 {
 }
 
-void SoftVideoCompositor::requestKeyFrame(FrameFormat format)
+void SoftVideoCompositor::requestKeyFrame(int id)
 {
 }
 
@@ -148,19 +148,28 @@ void SoftVideoCompositor::pushInput(int slot, unsigned char* payload, int len)
     }
 }
 
-bool SoftVideoCompositor::activateOutput(FrameFormat format, unsigned int framerate, unsigned short bitrate, VideoFrameConsumer* consumer)
+bool SoftVideoCompositor::activateOutput(int id, FrameFormat format, unsigned int framerate, unsigned short bitrate, VideoFrameConsumer* consumer)
 {
     assert(format == FRAME_FORMAT_I420);
-    m_consumers.push_back(consumer);
+
+    boost::upgrade_lock<boost::shared_mutex> lock(m_consumerMutex);
+    std::map<int, VideoFrameConsumer*>::iterator it = m_consumers.find(id);
+    if (it != m_consumers.end())
+        return false;
+
+    boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
+    m_consumers[id] = consumer;
     return true;
 }
 
-void SoftVideoCompositor::deActivateOutput(FrameFormat format)
+void SoftVideoCompositor::deActivateOutput(int id)
 {
-    // TODO: Now we should have only one output format,
-    // and all of the consumers should accept the same format.
-    // Need to refine the interface.
-    m_consumers.clear();
+    boost::upgrade_lock<boost::shared_mutex> lock(m_consumerMutex);
+    std::map<int, VideoFrameConsumer*>::iterator it = m_consumers.find(id);
+    if (it != m_consumers.end()) {
+        boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
+        m_consumers.erase(it);
+    }
 }
 
 void SoftVideoCompositor::onTimeout()
@@ -170,12 +179,14 @@ void SoftVideoCompositor::onTimeout()
 
 void SoftVideoCompositor::generateFrame()
 {
+    boost::shared_lock<boost::shared_mutex> lock(m_consumerMutex);
     if (!m_consumers.empty()) {
         I420VideoFrame* composedFrame = layout();
         composedFrame->set_render_time_ms(TickTime::MillisecondTimestamp() - m_ntpDelta);
-        std::vector<VideoFrameConsumer*>::iterator it = m_consumers.begin();
+
+        std::map<int, VideoFrameConsumer*>::iterator it = m_consumers.begin();
         for (; it != m_consumers.end(); ++it)
-            (*it)->onFrame(FRAME_FORMAT_I420, reinterpret_cast<unsigned char*>(composedFrame), sizeof(I420VideoFrame), 0);
+            it->second->onFrame(FRAME_FORMAT_I420, reinterpret_cast<unsigned char*>(composedFrame), sizeof(I420VideoFrame), 0);
     }
 }
 

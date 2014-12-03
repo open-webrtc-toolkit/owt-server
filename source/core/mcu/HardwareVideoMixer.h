@@ -91,17 +91,17 @@ public:
     void deActivateInput(int slot);
     void pushInput(int slot, unsigned char* payload, int len);
 
-    bool activateOutput(FrameFormat, unsigned int framerate, unsigned short bitrate, VideoFrameConsumer*);
-    void deActivateOutput(FrameFormat format);
+    bool activateOutput(int id, FrameFormat, unsigned int framerate, unsigned short bitrate, VideoFrameConsumer*);
+    void deActivateOutput(int id);
 
     void setLayout(struct VideoLayout&);
-    void setBitrate(FrameFormat format, unsigned short bitrate);
-    void requestKeyFrame(FrameFormat format);
+    void setBitrate(int id, unsigned short bitrate);
+    void requestKeyFrame(int id);
 
 private:
     boost::shared_ptr<VideoMixEngine> m_engine;
     std::map<int, boost::shared_ptr<HardwareVideoMixerInput>> m_inputs;
-    std::map<FrameFormat, boost::shared_ptr<HardwareVideoMixerOutput>> m_outputs;
+    std::map<int, boost::shared_ptr<HardwareVideoMixerOutput>> m_outputs;
 };
 
 }
