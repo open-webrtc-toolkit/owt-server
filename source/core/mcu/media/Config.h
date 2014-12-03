@@ -21,12 +21,13 @@
 #ifndef Config_h
 #define Config_h
 
+#include "BufferManager.h"
+#include "VideoLayout.h"
+
 #include <list>
 #include <logger.h>
 #include <stdint.h>
 #include <vector>
-
-#include "VideoLayout.h"
 
 /**
  * A singleton class to store all the configurations for MCU
@@ -58,7 +59,7 @@ private:
 
     static Config* m_config;
     VideoLayout m_currentVideoLayout;
-    std::vector<VideoLayout> m_customVideoLayouts;
+    VideoLayout m_customVideoLayouts[BufferManager::SLOT_SIZE];
     std::list<ConfigListener*> m_configListeners;
 };
 
