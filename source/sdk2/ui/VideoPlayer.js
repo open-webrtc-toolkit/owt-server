@@ -108,6 +108,9 @@ Erizo.VideoPlayer = function (spec) {
     that.video.setAttribute('id', 'stream' + that.id);
     that.video.setAttribute('style', 'width: 100%; height: 100%; position: absolute');
     that.video.setAttribute('autoplay', 'autoplay');
+    if (typeof spec.options.muted !== 'undefined') {
+        that.video.setAttribute('muted', spec.options.muted);
+    }
 
     if (spec.stream.local) {
         that.video.volume = 0;
@@ -120,6 +123,35 @@ Erizo.VideoPlayer = function (spec) {
         document.body.appendChild(that.div);
         that.container = document.body;
     }
+
+    var fullscreenHandler = (function () {
+      var requestFS = ['requestFullScreen', 'webkitRequestFullScreen', 'mozRequestFullScreen', 'msRequestFullScreen', 'oRequestFullScreen'];
+      function _enterFullScreen (tag) {
+        var method;
+        for (var p in requestFS) {
+          if (typeof tag[requestFS[p]] === 'function') {
+            method = requestFS[p];
+            break;
+          }
+        }
+        if (typeof tag[method] === 'function') {
+          tag[method]();
+        }
+      }
+      function _exitFullScreen () {
+        if (typeof document.exitFullscreen === 'function') {
+          document.exitFullscreen();
+        } else if (typeof document.webkitExitFullscreen === 'function') {
+          document.webkitExitFullscreen();
+        } else if (typeof document.mozCancelFullScreen === 'function') {
+          document.mozCancelFullScreen();
+        }
+      }
+      return function (tag) {
+        if (window.innerWidth == screen.width) _exitFullScreen();
+        else _enterFullScreen(tag);
+      };
+    }());
 
     that.parentNode = that.div.parentNode;
 
@@ -137,6 +169,10 @@ Erizo.VideoPlayer = function (spec) {
     that.resizer = new L.ResizeSensor(that.container, that.resize);
 
     that.resize();
+
+    that.div.ondblclick = function() {
+      fullscreenHandler(that.video);
+    };
 
     // Bottom Bar
     that.bar = new Erizo.Bar({elementID: 'player_' + that.id, id: that.id, stream: spec.stream, media: that.video, options: spec.options});

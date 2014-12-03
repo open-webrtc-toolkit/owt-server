@@ -109,7 +109,7 @@
             return L.Logger.error('create LocalStream failed:', err);
           }
           localStream = stream;
-          localStream.show('myVideo');
+          localStream.show('myVideo', {muted: 'muted'});
           conference.publish(localStream, {maxVideoBW: 300}, function (st) {
             L.Logger.info('stream published:', st.id());
           }, function (err) {
