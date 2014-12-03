@@ -51,8 +51,10 @@ VideoMixer::VideoMixer(erizo::RTPDataReceiver* receiver, bool hardwareAccelerate
     else
         m_frameProcessor.reset(new SoftVideoCompositor());
 
+    // Chunbo's TODO: Init a default layout in Config class
     VideoLayout layout;
     layout.rootSize = vga;
+    layout.rootColor = black;
     layout.divFactor = 1;
 
     m_frameProcessor->setLayout(layout);
@@ -104,7 +106,13 @@ int32_t VideoMixer::addOutput(int payloadType)
         output = new VCMOutputProcessor(outputId, transport, m_taskRunner);
         m_frameProcessor->activateOutput(output->id(), FRAME_FORMAT_I420, 30, 500, output);
     }
-    output->setSendCodec(outputFormat, VideoSizes.find(vga)->second);
+
+    // Fetch video size.
+    VideoSize rootSize = DEFAULT_VIDEO_SIZE;
+    std::map<VideoResolutionType, VideoSize>::const_iterator sizeIterator = VideoSizes.find(vga);
+    if (sizeIterator != VideoSizes.end())
+        rootSize = sizeIterator->second;
+    output->setSendCodec(outputFormat, rootSize);
     m_videoOutputProcessors[payloadType].reset(output);
 
     return output->id();
