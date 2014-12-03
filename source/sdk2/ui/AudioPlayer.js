@@ -29,18 +29,10 @@ Erizo.AudioPlayer = function (spec) {
     that.audio.setAttribute('id', 'stream' + that.id);
     that.audio.setAttribute('style', 'width: 100%; height: 100%; position: absolute');
     that.audio.setAttribute('autoplay', 'autoplay');
-    if (typeof spec.options.muted !== 'undefined') {
-        that.audio.setAttribute('muted', spec.options.muted);
-    }
 
-    if (spec.stream.local) {
+    if (spec.stream instanceof Woogeen.LocalStream) {
         that.audio.volume = 0;
     }
-
-    if (spec.stream.local) {
-        that.audio.volume = 0;
-    }
-
 
     if (that.elementID !== undefined) {
 
