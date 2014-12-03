@@ -63,7 +63,6 @@ enum VideoResolutionType
     uhd_4k
 };
 
-// Chunbo's TODO: Enable background color setting for video engine
 enum VideoBackgroundColor
 {
     black = 0, //YUV: 0x00,0x80,0x80
@@ -73,6 +72,12 @@ enum VideoBackgroundColor
 struct VideoSize {
     int width;
     int height;
+};
+
+struct YUVColor {
+    uint8_t y;
+    uint8_t cb; // Also called U
+    uint8_t cr; // Also called V
 };
 
 struct Region {
@@ -97,13 +102,21 @@ struct VideoLayout {
     unsigned int subHeight;
 };
 
+// Default video layout configuration
+const VideoSize DEFAULT_VIDEO_SIZE = {640, 480};
+const YUVColor DEFAULT_VIDEO_BG_COLOR = {0x00, 0x80, 0x80};
+
+// Video resolutions definition
 const std::map<std::string, VideoResolutionType> VideoResolutions = {{"cif", cif}, {"vga", vga}, {"hd_720p", hd_720p}, {"sif", sif},
   {"hvga",hvga}, {"r480x360", r480x360}, {"qcif", qcif}, {"r192x144", r192x144}, {"hd_1080p", hd_1080p}, {"uhd_4k", uhd_4k}};
 
 const std::map<VideoResolutionType, VideoSize> VideoSizes = {{cif, {352, 288}}, {vga, {640, 480}}, {hd_720p, {1280, 720}}, {sif, {320, 240}},
   {hvga, {480, 320}}, {r480x360, {480, 360}}, {qcif, {176, 144}}, {r192x144, {192, 144}}, {hd_1080p, {1920, 1080}}, {uhd_4k, {3840, 2160}}};
 
+// Video background colors definition
 const std::map<std::string, VideoBackgroundColor> VideoColors = {{"black", black}, {"white", white}};
+
+const std::map<VideoBackgroundColor, YUVColor> VideoYuvColors = {{black, {0x00, 0x80, 0x80}}, {white, {0xFF, 0x80, 0x80}}};
 
 }
 #endif

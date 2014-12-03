@@ -68,7 +68,6 @@ void VPMPool::update(unsigned int slot, VideoSize& videoSize)
         m_vpms[slot]->SetTargetResolution(videoSize.width, videoSize.height, 30);
 }
 
-
 DEFINE_LOGGER(SoftVideoCompositor, "mcu.media.SoftVideoCompositor");
 
 SoftVideoCompositor::SoftVideoCompositor()
@@ -82,17 +81,22 @@ SoftVideoCompositor::SoftVideoCompositor()
     m_bufferManager.reset(new BufferManager());
 
     // Default video layout definition
-    m_currentLayout.rootSize = vga;    //default is VGA but no region defined
-    m_currentLayout.rootColor = black;
+    m_currentLayout.rootSize = vga;    // Default to VGA
+    m_currentLayout.rootColor = black; // Default to Black
     m_currentLayout.divFactor = 1;
-    m_currentLayout.subWidth = VideoSizes.find(m_currentLayout.rootSize)->second.width;
-    m_currentLayout.subHeight = VideoSizes.find(m_currentLayout.rootSize)->second.height;
+
     m_vpmPool.reset(new VPMPool(BufferManager::SLOT_SIZE));
     m_composedFrame.reset(new webrtc::I420VideoFrame());
-    // create max size  frame
-    unsigned int width = VideoSizes.find(VideoResolutionType::vga)->second.width;
-    unsigned int height = VideoSizes.find(VideoResolutionType::vga)->second.height;
-    m_composedFrame->CreateEmptyFrame(width, height,  width, width / 2, width / 2);
+
+    // Create max size frame.
+    unsigned int videoWidth = DEFAULT_VIDEO_SIZE.width;
+    unsigned int videoHeight = DEFAULT_VIDEO_SIZE.height;
+    std::map<VideoResolutionType, VideoSize>::const_iterator it = VideoSizes.find(m_currentLayout.rootSize);
+    if (it != VideoSizes.end()) {
+        videoWidth = it->second.width;
+        videoHeight = it->second.height;
+    }
+    m_composedFrame->CreateEmptyFrame(videoWidth, videoHeight, videoWidth, videoWidth / 2, videoWidth / 2);
 
     setLayout(m_currentLayout);
 
@@ -198,21 +202,36 @@ void SoftVideoCompositor::onSlotNumberChanged(uint32_t newSlotNum)
     }
 }
 
-// only black for now
 void SoftVideoCompositor::setBackgroundColor()
 {
     if (m_composedFrame) {
-        ELOG_DEBUG("setBGColor");
-        memset(m_composedFrame->buffer(webrtc::kYPlane), 0x00, m_composedFrame->allocated_size(webrtc::kYPlane));
-        memset(m_composedFrame->buffer(webrtc::kUPlane), 0x80, m_composedFrame->allocated_size(webrtc::kUPlane));
-        memset(m_composedFrame->buffer(webrtc::kVPlane), 0x80, m_composedFrame->allocated_size(webrtc::kVPlane));
+        ELOG_DEBUG("setBackgroundColor");
+
+        // Fetch video background color.
+        YUVColor rootColor = DEFAULT_VIDEO_BG_COLOR;
+        std::map<VideoBackgroundColor, YUVColor>::const_iterator it = VideoYuvColors.find(m_currentLayout.rootColor);
+        if (it != VideoYuvColors.end())
+            rootColor = it->second;
+
+        // Set the background color
+        memset(m_composedFrame->buffer(webrtc::kYPlane), rootColor.y, m_composedFrame->allocated_size(webrtc::kYPlane));
+        memset(m_composedFrame->buffer(webrtc::kUPlane), rootColor.cb, m_composedFrame->allocated_size(webrtc::kUPlane));
+        memset(m_composedFrame->buffer(webrtc::kVPlane), rootColor.cr, m_composedFrame->allocated_size(webrtc::kVPlane));
     }
 }
 
 bool SoftVideoCompositor::commitLayout()
 {
+    // Update the current video layout
     m_currentLayout = m_newLayout;
-    VideoSize rootSize = VideoSizes.find(m_currentLayout.rootSize)->second;
+
+    // Fetch video size.
+    VideoSize rootSize = DEFAULT_VIDEO_SIZE;
+    std::map<VideoResolutionType, VideoSize>::const_iterator it = VideoSizes.find(m_currentLayout.rootSize);
+    if (it != VideoSizes.end())
+        rootSize = it->second;
+
+    // Update the vpm pool size
     if (m_currentLayout.regions.empty()) { //fluid layout
         VideoSize videoSize;
         videoSize.width = rootSize.width / m_currentLayout.divFactor;
@@ -234,6 +253,7 @@ bool SoftVideoCompositor::commitLayout()
         }
         ELOG_DEBUG("commit customlayout");
     }
+
     m_configChanged = false;
     ELOG_DEBUG("configChanged sets to false after commitLayout!");
     return true;
@@ -244,9 +264,12 @@ webrtc::I420VideoFrame* SoftVideoCompositor::layout()
     if (m_configChanged) {
         webrtc::CriticalSectionScoped cs(m_configLock.get());
         commitLayout();
-        setBackgroundColor();
     }
 
+    // Update the background color
+    setBackgroundColor();
+
+    // Run the video layout operation
     if (m_currentLayout.regions.empty())
         return fluidLayout();
 
@@ -255,9 +278,14 @@ webrtc::I420VideoFrame* SoftVideoCompositor::layout()
 
 webrtc::I420VideoFrame* SoftVideoCompositor::customLayout()
 {
-    VideoSize rootSize = VideoSizes.find(m_currentLayout.rootSize)->second;
-    webrtc::I420VideoFrame* target = m_composedFrame.get();
+    // Fetch video size
+    VideoSize rootSize = DEFAULT_VIDEO_SIZE;
+    std::map<VideoResolutionType, VideoSize>::const_iterator it = VideoSizes.find(m_currentLayout.rootSize);
+    if (it != VideoSizes.end())
+        rootSize = it->second;
+
     uint32_t input = 0;
+    webrtc::I420VideoFrame* target = m_composedFrame.get();
     for (int index = 0; index < BufferManager::SLOT_SIZE; ++index) {
         if (!m_bufferManager->isActive(index) || input >= m_currentLayout.regions.size())
             continue;
