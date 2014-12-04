@@ -34,7 +34,7 @@
 
 namespace mcu {
 
-class HardwareVideoMixerInput : public VideoInputProducer {
+class HardwareVideoMixerInput : public VideoMixEngineInput {
 public:
     HardwareVideoMixerInput(boost::shared_ptr<VideoMixEngine> engine,
                             FrameFormat inFormat,
@@ -51,12 +51,11 @@ private:
     boost::shared_ptr<VideoMixEngine> m_engine;
 };
 
-class HardwareVideoMixerOutput : public VideoOutputConsumer,
+class HardwareVideoMixerOutput : public VideoMixEngineOutput,
                                  public JobTimerListener {
 public:
     HardwareVideoMixerOutput(boost::shared_ptr<VideoMixEngine> engine,
                             FrameFormat outFormat,
-                            std::string name,
                             unsigned int framerate,
                             unsigned short bitrate,
                             VideoFrameConsumer* receiver);
