@@ -114,7 +114,7 @@ void SoftVideoCompositor::requestKeyFrame(int id)
 {
 }
 
-void SoftVideoCompositor::setLayout(struct VideoLayout& layout)
+void SoftVideoCompositor::setLayout(VideoLayout& layout)
 {
     webrtc::CriticalSectionScoped cs(m_configLock.get());
     ELOG_DEBUG("Configuring layout");

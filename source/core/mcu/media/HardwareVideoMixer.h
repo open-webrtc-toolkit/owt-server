@@ -94,7 +94,7 @@ public:
     bool activateOutput(int id, FrameFormat, unsigned int framerate, unsigned short bitrate, VideoFrameConsumer*);
     void deActivateOutput(int id);
 
-    void setLayout(struct VideoLayout&);
+    void setLayout(VideoLayout&);
     void setBitrate(int id, unsigned short bitrate);
     void requestKeyFrame(int id);
 
