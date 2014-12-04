@@ -283,12 +283,12 @@ Woogeen.Conference = (function () {
         });
 
         self.socket.on('onPeerJoin', function (spec) {
-          var evt = new Woogeen.ClientEvent({type: 'peer-joined', attr: spec.attr, user: spec.user});
+          var evt = new Woogeen.ClientEvent({type: 'peer-joined', user: spec.user});
           self.dispatchEvent(evt);
         });
 
         self.socket.on('onPeerLeave', function (spec) {
-          var evt = new Woogeen.ClientEvent({type: 'peer-left', attr: spec.attr, user: spec.user});
+          var evt = new Woogeen.ClientEvent({type: 'peer-left', user: spec.user});
           self.dispatchEvent(evt);
         });
 
