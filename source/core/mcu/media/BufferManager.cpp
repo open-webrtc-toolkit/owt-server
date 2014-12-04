@@ -24,7 +24,7 @@
 
 namespace mcu {
 
-DEFINE_LOGGER(BufferManager, "mcu.BufferManager");
+DEFINE_LOGGER(BufferManager, "mcu.media.BufferManager");
 
 BufferManager::BufferManager()
 {

@@ -36,7 +36,7 @@ using namespace erizo;
 
 namespace mcu {
 
-DEFINE_LOGGER(VideoMixer, "mcu.VideoMixer");
+DEFINE_LOGGER(VideoMixer, "mcu.media.VideoMixer");
 
 VideoMixer::VideoMixer(erizo::RTPDataReceiver* receiver, bool hardwareAccelerated)
     : m_hardwareAccelerated(hardwareAccelerated)

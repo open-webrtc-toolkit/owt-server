@@ -20,7 +20,7 @@
 
 #include "Mixer.h"
 
-#include "Config.h"
+#include "media/Config.h"
 
 using namespace woogeen_base;
 using namespace erizo;

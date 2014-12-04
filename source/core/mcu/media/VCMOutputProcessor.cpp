@@ -31,7 +31,7 @@ using namespace erizo;
 
 namespace mcu {
 
-DEFINE_LOGGER(VCMOutputProcessor, "mcu.VCMOutputProcessor");
+DEFINE_LOGGER(VCMOutputProcessor, "mcu.media.VCMOutputProcessor");
 
 VCMOutputProcessor::VCMOutputProcessor(int id, woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<TaskRunner> taskRunner)
     : VideoOutputProcessor(id)

@@ -21,8 +21,8 @@
 #ifndef Mixer_h
 #define Mixer_h
 
-#include "AudioMixer.h"
-#include "VideoMixer.h"
+#include "media/AudioMixer.h"
+#include "media/VideoMixer.h"
 
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/shared_mutex.hpp>

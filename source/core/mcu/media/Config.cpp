@@ -29,7 +29,7 @@
 
 namespace mcu {
 
-DEFINE_LOGGER(Config, "mcu.Config");
+DEFINE_LOGGER(Config, "mcu.media.Config");
 
 Config* Config::m_config = nullptr;
 
