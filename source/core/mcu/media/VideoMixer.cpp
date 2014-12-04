@@ -45,18 +45,12 @@ VideoMixer::VideoMixer(erizo::RTPDataReceiver* receiver, bool hardwareAccelerate
 {
     m_taskRunner.reset(new TaskRunner());
 
+    const VideoLayout& layout = Config::get()->getVideoLayout();
+
     if (m_hardwareAccelerated)
-        m_frameProcessor.reset(new HardwareVideoMixer());
+        m_frameProcessor.reset(new HardwareVideoMixer(layout));
     else
-        m_frameProcessor.reset(new SoftVideoCompositor());
-
-    // Chunbo's TODO: Init a default layout in Config class
-    VideoLayout layout;
-    layout.rootSize = vga;
-    layout.rootColor = black;
-    layout.divFactor = 1;
-
-    m_frameProcessor->setLayout(layout);
+        m_frameProcessor.reset(new SoftVideoCompositor(layout));
 
     Config::get()->registerListener(this);
 

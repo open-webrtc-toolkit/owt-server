@@ -84,7 +84,7 @@ private:
 class HardwareVideoMixer : public VideoFrameProcessor {
     DECLARE_LOGGER();
 public:
-    HardwareVideoMixer();
+    HardwareVideoMixer(const VideoLayout& layout);
     virtual ~HardwareVideoMixer();
 
     bool activateInput(int slot, FrameFormat, VideoFrameProvider*);
@@ -94,7 +94,7 @@ public:
     bool activateOutput(int id, FrameFormat, unsigned int framerate, unsigned short bitrate, VideoFrameConsumer*);
     void deActivateOutput(int id);
 
-    void setLayout(VideoLayout&);
+    void setLayout(const VideoLayout&);
     void setBitrate(int id, unsigned short bitrate);
     void requestKeyFrame(int id);
 

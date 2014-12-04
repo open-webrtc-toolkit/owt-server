@@ -69,17 +69,13 @@ void VPMPool::update(unsigned int slot, VideoSize& videoSize)
 
 DEFINE_LOGGER(SoftVideoCompositor, "mcu.media.SoftVideoCompositor");
 
-SoftVideoCompositor::SoftVideoCompositor()
+SoftVideoCompositor::SoftVideoCompositor(const VideoLayout& layout)
     : m_configLock(CriticalSectionWrapper::CreateCriticalSection())
     , m_configChanged(false)
+    , m_currentLayout(layout)
 {
     m_ntpDelta = Clock::GetRealTimeClock()->CurrentNtpInMilliseconds() - TickTime::MillisecondTimestamp();
     m_vpmPool.reset(new VPMPool(MAX_VIDEO_SLOT_NUMBER));
-
-    // Default video layout definition
-    m_currentLayout.rootSize = vga;    // Default to VGA
-    m_currentLayout.rootColor = black; // Default to Black
-    m_currentLayout.divFactor = 1;
 
     // Fetch the video size
     unsigned int videoWidth = DEFAULT_VIDEO_SIZE.width;
@@ -114,7 +110,7 @@ void SoftVideoCompositor::requestKeyFrame(int id)
 {
 }
 
-void SoftVideoCompositor::setLayout(VideoLayout& layout)
+void SoftVideoCompositor::setLayout(const VideoLayout& layout)
 {
     webrtc::CriticalSectionScoped cs(m_configLock.get());
     ELOG_DEBUG("Configuring layout");

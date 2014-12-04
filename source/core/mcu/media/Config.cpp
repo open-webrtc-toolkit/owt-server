@@ -40,6 +40,14 @@ Config* Config::get()
     return m_config;
 }
 
+Config::Config()
+{
+    // Default video layout definition
+    m_currentVideoLayout.rootSize = vga; // Default to VGA
+    m_currentVideoLayout.rootColor = black; // Default to Black
+    m_currentVideoLayout.divFactor = 1;
+}
+
 inline void Config::signalConfigChanged()
 {
     for (std::list<ConfigListener*>::iterator listenerIter = m_configListeners.begin();
@@ -48,7 +56,7 @@ inline void Config::signalConfigChanged()
         (*listenerIter)->onConfigChanged();
 }
 
-VideoLayout& Config::getVideoLayout()
+const VideoLayout& Config::getVideoLayout()
 {
     return m_currentVideoLayout;
 }
@@ -184,10 +192,6 @@ void Config::registerListener(ConfigListener* listener)
 void Config::unregisterListener(ConfigListener* listener)
 {
     m_configListeners.remove(listener);
-}
-
-Config::Config()
-{
 }
 
 } /* namespace mcu */
