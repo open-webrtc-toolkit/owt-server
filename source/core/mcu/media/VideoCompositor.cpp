@@ -63,7 +63,7 @@ void VPMPool::update(unsigned int slot, VideoSize& videoSize)
 {
     m_subVideSize[slot] = videoSize;
     // FIXME: Get rid of the hard coded fps here.
-    // Also it may need to be associated with the layout timer interval configured in VCMOutputProcessor.
+    // Also it may need to be associated with the layout timer interval configured in VideoCompositor.
     if (m_vpms[slot])
         m_vpms[slot]->SetTargetResolution(videoSize.width, videoSize.height, 30);
 }

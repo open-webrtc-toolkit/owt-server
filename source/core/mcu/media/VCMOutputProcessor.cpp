@@ -112,6 +112,8 @@ void VCMOutputProcessor::onFrame(FrameFormat format, unsigned char* payload, int
         break;
     }
     case FRAME_FORMAT_VP8:
+        // Currently we should only receive I420 format.
+        // The below code is just to illustrate what it would be for other format support in the future.
         webrtc::RTPVideoHeader h;
         h.codec = webrtc::kRtpVideoVp8;
         h.codecHeader.VP8.InitRTPVideoHeaderVP8();
@@ -119,7 +121,6 @@ void VCMOutputProcessor::onFrame(FrameFormat format, unsigned char* payload, int
                                     ts, payload, len, nullptr, &h);
         break;
     case FRAME_FORMAT_H264:
-        // TODO: H264 image should be handled here.
     default:
         break;
     }
@@ -168,8 +169,6 @@ bool VCMOutputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* tran
 
     m_taskRunner->RegisterModule(m_rtpRtcp.get());
 
-    // FIXME: Get rid of the hard coded timer interval here.
-    // Also it may need to be associated with the target fps configured in VPM.
     return true;
 }
 
