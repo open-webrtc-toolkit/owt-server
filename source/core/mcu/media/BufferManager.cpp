@@ -31,11 +31,11 @@ BufferManager::BufferManager()
     for (int i = 0; i < SLOT_SIZE*2; i++) {
         webrtc::I420VideoFrame* buffer =  new webrtc::I420VideoFrame();
         buffer->CreateEmptyFrame(640, 480, 640, 640/2, 640/2);
-        freeQ_.push(buffer);
+        m_freeQ.push(buffer);
     }
 
     for (int i = 0; i < SLOT_SIZE; i++)
-        busyQ_[i] = nullptr;
+        m_busyQ[i] = nullptr;
 
     ELOG_DEBUG("BufferManager constructed")
 }
@@ -43,7 +43,7 @@ BufferManager::BufferManager()
 BufferManager::~BufferManager()
 {
     webrtc::I420VideoFrame* buffer = nullptr;
-    while (freeQ_.pop(buffer))
+    while (m_freeQ.pop(buffer))
         delete buffer;
     ELOG_DEBUG("BufferManager destroyed")
 }
@@ -51,25 +51,24 @@ BufferManager::~BufferManager()
 webrtc::I420VideoFrame* BufferManager::getFreeBuffer()
 {
     webrtc::I420VideoFrame* buffer = nullptr;
-    if (freeQ_.pop(buffer))
+    if (m_freeQ.pop(buffer))
         return buffer;
-    else {
-        ELOG_DEBUG("freeQ is empty")
-        return nullptr;
-    }
+
+    ELOG_DEBUG("freeQ is empty")
+    return nullptr;
 }
 
 void BufferManager::releaseBuffer(webrtc::I420VideoFrame* frame)
 {
     if (frame)
-        freeQ_.push(frame);
+        m_freeQ.push(frame);
 }
 
 webrtc::I420VideoFrame* BufferManager::getBusyBuffer(int slot)
 {
     assert (slot <= SLOT_SIZE);
-    webrtc::I420VideoFrame* busyFrame = reinterpret_cast<webrtc::I420VideoFrame*>(BufferManager::exchange((volatile uint64_t*)&(busyQ_[slot]), 0));
-    ELOG_TRACE("getBusyBuffer: busyQ[%d] is 0x%p, busyFrame is 0x%p", slot, busyQ_[slot], busyFrame);
+    webrtc::I420VideoFrame* busyFrame = reinterpret_cast<webrtc::I420VideoFrame*>(BufferManager::exchange((volatile uint64_t*)&(m_busyQ[slot]), 0));
+    ELOG_TRACE("getBusyBuffer: busyQ[%d] is 0x%p, busyFrame is 0x%p", slot, m_busyQ[slot], busyFrame);
     return busyFrame;
 }
 
@@ -77,8 +76,8 @@ webrtc::I420VideoFrame* BufferManager::returnBusyBuffer(
     webrtc::I420VideoFrame* frame, int slot)
 {
     assert (slot <= SLOT_SIZE);
-    webrtc::I420VideoFrame* busyFrame = reinterpret_cast<webrtc::I420VideoFrame*>(BufferManager::cmpexchange((volatile uint64_t*)&(busyQ_[slot]), reinterpret_cast<uint64_t>(frame), 0));
-    ELOG_TRACE("after returnBusyBuffer: busyQ[%d] is 0x%p, busyFrame is 0x%p", slot, busyQ_[slot], busyFrame);
+    webrtc::I420VideoFrame* busyFrame = reinterpret_cast<webrtc::I420VideoFrame*>(BufferManager::cmpexchange((volatile uint64_t*)&(m_busyQ[slot]), reinterpret_cast<uint64_t>(frame), 0));
+    ELOG_TRACE("after returnBusyBuffer: busyQ[%d] is 0x%p, busyFrame is 0x%p", slot, m_busyQ[slot], busyFrame);
     return busyFrame;
 }
 
@@ -86,8 +85,8 @@ webrtc::I420VideoFrame* BufferManager::postFreeBuffer(webrtc::I420VideoFrame* fr
 {
     assert (slot <= SLOT_SIZE);
     ELOG_TRACE("Posting buffer to slot %d", slot);
-    webrtc::I420VideoFrame* busyFrame = reinterpret_cast<webrtc::I420VideoFrame*>(BufferManager::exchange((volatile uint64_t*)&(busyQ_[slot]), reinterpret_cast<uint64_t>(frame)));
-    ELOG_TRACE("after postFreeBuffer: busyQ[%d] is 0x%p,  busyFrame is 0x%p", slot, busyQ_[slot], busyFrame);
+    webrtc::I420VideoFrame* busyFrame = reinterpret_cast<webrtc::I420VideoFrame*>(BufferManager::exchange((volatile uint64_t*)&(m_busyQ[slot]), reinterpret_cast<uint64_t>(frame)));
+    ELOG_TRACE("after postFreeBuffer: busyQ[%d] is 0x%p,  busyFrame is 0x%p", slot, m_busyQ[slot], busyFrame);
     return busyFrame;
 }
 

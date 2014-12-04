@@ -50,15 +50,14 @@ class I420VideoFrame;
 
 namespace mcu {
 
-
 class BufferManager {
     DECLARE_LOGGER();
 
 public:
     static const int SLOT_SIZE = 16;
-public:
+
     BufferManager();
-    virtual ~BufferManager();
+    ~BufferManager();
 
     webrtc::I420VideoFrame* getFreeBuffer();
     void releaseBuffer(webrtc::I420VideoFrame*);
@@ -100,12 +99,12 @@ private:
 
     // frames in freeQ can be used to copy decoded frame data by the decoder thread
 #if BOOST_LOCKFREE_QUEUE
-    boost::lockfree::queue<webrtc::I420VideoFrame*, boost::lockfree::capacity<SLOT_SIZE*2>> freeQ_;
+    boost::lockfree::queue<webrtc::I420VideoFrame*, boost::lockfree::capacity<SLOT_SIZE * 2>> m_freeQ;
 #else
-    SharedQueue<webrtc::I420VideoFrame*> freeQ_;
+    SharedQueue<webrtc::I420VideoFrame*> m_freeQ;
 #endif
     // frames in the busyQ is ready for composition by the encoder thread
-    volatile webrtc::I420VideoFrame* busyQ_[SLOT_SIZE];
+    volatile webrtc::I420VideoFrame* m_busyQ[SLOT_SIZE];
 
     std::bitset<SLOT_SIZE> m_activeSlots;
 };
