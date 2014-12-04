@@ -285,6 +285,15 @@ var listen = function () {
     io.sockets.on('connection', function (socket) {
         log.info("Socket connect ", socket.id);
 
+        function sendMsgToOthersInRoom (room, type, arg) {
+            'use strict';
+            room.sockets.map(function (sock) {
+                if (sock !== socket.id) {
+                    log.info('Sending message to', sock, 'in room ', room.id);
+                    io.sockets.socket(sock).emit(type, arg);
+                }
+            });
+        };
         // Gets 'token' messages on the socket. Checks the signature and ask nuve if it is valid.
         // Then registers it in the room and callback to the client.
         socket.on('token', function (token, callback) {
@@ -369,7 +378,7 @@ var listen = function () {
                         } else {
                             rooms[tokenDB.room].sockets.push(socket.id);
                         }
-                        user = {name: tokenDB.userName, role: tokenDB.role};
+                        user = {name: tokenDB.userName, role: tokenDB.role, id: socket.id};
                         socket.user = user;
                         var permissions = GLOBAL.config.erizoController.roles[tokenDB.role] || [];
                         socket.user.permissions = {};
@@ -395,12 +404,14 @@ var listen = function () {
 
                         safeCall(callback, 'success', {streams: streamList,
                                             id: socket.room.id,
+                                            clientId: socket.id,
                                             p2p: socket.room.p2p,
                                             defaultVideoBW: GLOBAL.config.erizoController.defaultVideoBW,
                                             maxVideoBW: GLOBAL.config.erizoController.maxVideoBW,
                                             stunServerUrl: GLOBAL.config.erizoController.stunServerUrl,
                                             turnServer: GLOBAL.config.erizoController.turnServer
                                             });
+                        sendMsgToOthersInRoom(socket.room, 'onPeerJoin', {user: user});
 
                     } else {
                         log.warn('Invalid host');
@@ -786,6 +797,8 @@ var listen = function () {
                 }
                 delete rooms[socket.room.id];
                 updateMyState();
+            } else if (socket.room !== undefined) {
+                sendMsgToOthersInRoom(socket.room, 'onPeerLeave', {user: socket.user});
             }
         });
     });

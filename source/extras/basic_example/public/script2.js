@@ -86,9 +86,11 @@
   });
 
   conference.on('peer-joined', function (event) {
+    L.Logger.info('peer joined:', event.user);
   });
 
   conference.on('peer-left', function (event) {
+    L.Logger.info('peer left:', event.user);
   });
 
   window.onload = function () {
