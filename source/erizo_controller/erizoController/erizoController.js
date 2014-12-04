@@ -338,6 +338,31 @@ var listen = function () {
                                     }
 
                                 });
+
+                                if (GLOBAL.config.erizoController.mixer) {
+                                    // In case we need to do an RPC call to initialize the mixer when the first
+                                    // client is connected, we should wait for a while because the room may still
+                                    // be dirty at this moment (due to the fact that there's currently no inter
+                                    // process synchronization for room deletion). This could happen when the
+                                    // last user in the room refreshes the web page.
+                                    // TODO: Revisit here for a better solution.
+                                    var tryOut = 10;
+                                    room.initMixerTimer = setInterval(function() {
+                                        var id = 0;
+                                        room.controller.initMixer(id, function (result) {
+                                            if (result === 'success') {
+                                                var st = new ST.Stream({id: id, socket: socket.id, audio: true, video: true, data: false});
+                                                room.streams[id] = st;
+                                                sendMsgToRoom(room, 'onAddStream', st.getPublicStream());
+                                                clearInterval(room.initMixerTimer);
+                                            } else if (--tryOut === 0) {
+                                                log.info('Mixer initialization failed in Room ', room.id);
+                                                clearInterval(room.initMixerTimer);
+                                            }
+                                        });
+                                    }, 100);
+                                }
+
                             }
                             rooms[tokenDB.room] = room;
                             updateMyState();
@@ -360,17 +385,6 @@ var listen = function () {
                         if (!tokenDB.p2p && GLOBAL.config.erizoController.sendStats) {
                             var timeStamp = new Date();
                             rpc.callRpc('stats_handler', 'event', [{room: tokenDB.room, user: socket.id, type: 'connection', timestamp:timeStamp.getTime()}]);
-                        }
-
-                        if (GLOBAL.config.erizoController.mixer) {
-                            var id = 0;
-                            socket.room.controller.initMixer(id, function (result) {
-                                if (result === 'success') {
-                                    var st = new ST.Stream({id: id, socket: socket.id, audio: true, video: true, data: false});
-                                    socket.room.streams[id] = st;
-                                    sendMsgToRoom(socket.room, 'onAddStream', st.getPublicStream());
-                                }
-                            });
                         }
 
                         for (index in socket.room.streams) {
@@ -763,6 +777,7 @@ var listen = function () {
             if (socket.room !== undefined && socket.room.sockets.length === 0) {
                 log.info('Empty room ', socket.room.id, '. Deleting it');
                 if (GLOBAL.config.erizoController.mixer) {
+                    clearInterval(socket.room.initMixerTimer);
                     // FIXME: Don't hard code the mixer id.
                     socket.room.controller.removePublisher(0);
                     if (socket.room.streams[0]) {

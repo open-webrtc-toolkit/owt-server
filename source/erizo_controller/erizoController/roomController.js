@@ -73,26 +73,19 @@ exports.RoomController = function (spec) {
      * Initialize the mixer in the room.
      */
     that.initMixer = function (id, callback) {
+        log.info("Adding mixer id ", id);
 
-        if (publishers[id] === undefined) {
+        // We create a new ErizoJS with the id.
+        createErizoJS(id, function(erizo_id) {
+            log.info("Erizo created");
+            // then we call its initMixer method.
+            var args = [id, GLOBAL.config.erizoController.outOfProcessMixer];
+            rpc.callRpc(getErizoQueue(id), "initMixer", args, {callback: callback});
 
-            log.info("Adding mixer id ", id);
-
-            // We create a new ErizoJS with the id.
-            createErizoJS(id, function(erizo_id) {
-            	log.info("Erizo created");
-            	// then we call its initMixer method.
-	            var args = [id, GLOBAL.config.erizoController.outOfProcessMixer];
-	            rpc.callRpc(getErizoQueue(id), "initMixer", args, {callback: callback});
-
-	            // Track publisher locally
-	            publishers[id] = id;
-	            subscribers[id] = [];
-            });
-
-        } else {
-            log.info("Mixer already set for", id);
-        }
+            // Track publisher locally
+            publishers[id] = id;
+            subscribers[id] = [];
+        });
     };
 
     that.addExternalInput = function (publisher_id, url, callback) {
