@@ -186,7 +186,7 @@ void SoftVideoCompositor::generateFrame()
 
         std::map<int, VideoFrameConsumer*>::iterator it = m_consumers.begin();
         for (; it != m_consumers.end(); ++it)
-            it->second->onFrame(FRAME_FORMAT_I420, reinterpret_cast<unsigned char*>(composedFrame), sizeof(I420VideoFrame), 0);
+            it->second->onFrame(FRAME_FORMAT_I420, reinterpret_cast<unsigned char*>(composedFrame), 0, 0);
     }
 }
 
