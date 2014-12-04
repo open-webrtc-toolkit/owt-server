@@ -152,7 +152,7 @@ void HardwareVideoMixer::requestKeyFrame(int id)
         it->second->requestKeyFrame();
 }
 
-void HardwareVideoMixer::setLayout(struct VideoLayout& layout)
+void HardwareVideoMixer::setLayout(VideoLayout& layout)
 {
     //TODO: set the layout inFormation to engine.
     //m_engine->setLayout(layout);
