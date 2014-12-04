@@ -360,7 +360,7 @@ var listen = function () {
                                         var id = 0;
                                         room.controller.initMixer(id, function (result) {
                                             if (result === 'success') {
-                                                var st = new ST.Stream({id: id, socket: socket.id, audio: true, video: true, data: false});
+                                                var st = new ST.Stream({id: id, socket: socket.id, audio: true, video: {category: 'mix'}, data: false});
                                                 room.streams[id] = st;
                                                 sendMsgToRoom(room, 'onAddStream', st.getPublicStream());
                                                 clearInterval(room.initMixerTimer);

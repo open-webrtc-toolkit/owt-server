@@ -31,6 +31,7 @@ Woogeen.Conference = (function () {
   }
 
   var DISCONNECTED = 0, CONNECTING = 1, CONNECTED = 2;
+  var internalDispatcher = Woogeen.EventDispatcher({});
 
   function WoogeenConference (spec) {
     var that = spec || {};
@@ -185,6 +186,67 @@ Woogeen.Conference = (function () {
           }
         });
 
+        self.socket.on('onSubscribeP2P', function (spec) { // p2p conference call
+          var myStream = self.localStreams[spec.streamId];
+          if (myStream.channel === undefined) {
+            myStream.channel = {};
+          }
+
+          myStream.channel[spec.subsSocket] = createChannel({
+            callback: function (offer) {
+              sendSdp('publish', {
+                state: 'p2pSignaling',
+                streamId: spec.streamId,
+                subsSocket: spec.subsSocket
+              }, offer, function (answer) {
+                if (answer === 'error') {
+                  return;
+                }
+                myStream.channel[spec.subsSocket].onsignalingmessage = function () {
+                  myStream.channel[spec.subsSocket].onsignalingmessage = function () {};
+                };
+                myStream.channel[spec.subsSocket].processSignalingMessage(answer);
+              });
+            },
+            audio: myStream.hasAudio(),
+            video: myStream.hasVideo(),
+            stunServerUrl: self.connSettings.stun,
+            turnServer: self.connSettings.turn
+          });
+
+          myStream.channel[spec.subsSocket].addStream(myStream.stream);
+          myStream.channel[spec.subsSocket].oniceconnectionstatechange = function (state) {
+            if (state === 'disconnected') {
+              myStream.channel[spec.subsSocket].close();
+              delete myStream.channel[spec.subsSocket];
+            }
+          };
+        });
+
+        self.socket.on('onPublishP2P', function (spec, callback) {
+          var myStream = self.remoteStreams[spec.streamId];
+
+          myStream.channel = createChannel({
+            callback: function () {},
+            stunServerUrl: self.connSettings.stun,
+            turnServer: self.connSettings.turn,
+            maxAudioBW: self.connSettings.maxAudioBW,
+            maxVideoBW: self.connSettings.maxVideoBW
+          });
+
+          myStream.channel.onsignalingmessage = function (answer) {
+            myStream.channel.onsignalingmessage = function () {};
+            safeCall(callback, answer);
+          };
+
+          myStream.channel.processSignalingMessage(spec.sdp);
+
+          myStream.channel.onaddstream = function (evt) {
+            myStream.mediaStream = evt.stream;
+            internalDispatcher.dispatchEvent(new Woogeen.StreamEvent({type: 'p2p-stream-subscribed', stream: myStream}));
+          };
+        });
+
         // We receive an event of remote video stream paused
         self.socket.on('onVideoHold', function (spec) {
           var stream = self.remoteStreams[spec.id];
@@ -318,6 +380,7 @@ Woogeen.Conference = (function () {
         };
         self.myId = resp.clientId;
         self.conferenceId = resp.id;
+        self.p2p = resp.p2p;
         that.state = CONNECTED;
         var streams = resp.streams.map(function (st) {
           self.remoteStreams[st.id] = new Woogeen.RemoteStream(st);
@@ -407,11 +470,6 @@ Woogeen.Conference = (function () {
 
   WoogeenConference.prototype.publish = function (stream, options, onSuccess, onFailure) {
     var self = this;
-    if (!(stream instanceof Woogeen.LocalStream) ||
-      (typeof stream.mediaStream !== 'object' || stream.mediaStream === null)) {
-      return safeCall(onFailure, 'invalid stream');
-    }
-
     if (typeof options === 'function') {
       onFailure = onSuccess;
       onSuccess = options;
@@ -419,20 +477,37 @@ Woogeen.Conference = (function () {
     } else if (typeof options !== 'object' || options === null) {
       options = stream.bitRate;
     }
+    if (!(stream instanceof Woogeen.LocalStream) ||
+      (typeof stream.mediaStream !== 'object' || stream.mediaStream === null)) {
+      return safeCall(onFailure, 'invalid stream');
+    }
 
     if (self.localStreams[stream.id()] === undefined) { // not pulished
+      var opt = stream.toJson();
+      if (self.p2p) {
+        self.connSettings.maxVideoBW = options.maxVideoBW;
+        self.connSettings.maxAudioBW = options.maxAudioBW;
+        opt.state = 'p2p';
+        sendSdp(self.socket, 'publish', opt, null, function (answer, id) {
+            if (answer === 'error') {
+                return safeCall(onFailure, answer);
+            }
+            stream.id = function () {
+                return id;
+            };
+            self.localStreams[id] = stream;
+            safeCall(onSuccess, stream);
+        });
+        return;
+      }
       options.maxVideoBW = options.maxVideoBW || self.connSettings.defaultVideoBW;
       if (options.maxVideoBW > self.connSettings.maxVideoBW) {
         options.maxVideoBW = self.connSettings.maxVideoBW;
       }
       stream.channel = createChannel({
         callback: function (offer) {
-          sendSdp(self.socket, 'publish', {
-            state: 'offer',
-            audio: stream.hasAudio(),
-            video: stream.hasVideo(),
-            attributes: stream.attributes()
-          }, offer, function (answer, id) {
+          opt.state = 'offer';
+          sendSdp(self.socket, 'publish', opt, offer, function (answer, id) {
             if (answer === 'error') {
               return safeCall(onFailure, id);
             }
@@ -512,14 +587,23 @@ Woogeen.Conference = (function () {
 
   WoogeenConference.prototype.subscribe = function (stream, options, onSuccess, onFailure) {
     var self = this;
-    if (!(stream instanceof Woogeen.RemoteStream)) {
-      return safeCall(onFailure, 'invalid stream');
-    }
     if (typeof options === 'function') {
       onFailure = onSuccess;
       onSuccess = options;
       options = null;
     }
+    if (!(stream instanceof Woogeen.RemoteStream)) {
+      return safeCall(onFailure, 'invalid stream');
+    }
+    if (self.p2p) {
+      internalDispatcher.on('p2p-stream-subscribed', function p2pStreamHandler (evt) {
+        internalDispatcher.removeEventListener('p2p-stream-subscribed', p2pStreamHandler);
+        safeCall(onSuccess, evt.stream);
+      });
+      sendSdp(self.socket, 'subscribe', {streamId: stream.id()}, null, function () {});
+      return;
+    }
+
     stream.channel = createChannel({
       callback: function (offer) {
         sendSdp(self.socket, 'subscribe', {

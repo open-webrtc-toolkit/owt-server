@@ -33,6 +33,14 @@
       maxVideoBW: undefined,
       maxAudioBW: undefined
     }; // mutable;
+    this.toJson = function () {
+      return {
+        id: this.id(),
+        audio: spec.audio,
+        video: spec.video,
+        attributes: spec.attributes
+      };
+    };
   }
 
   WoogeenStream.prototype.close = function() {
