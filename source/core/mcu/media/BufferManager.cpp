@@ -26,11 +26,11 @@ namespace mcu {
 
 DEFINE_LOGGER(BufferManager, "mcu.media.BufferManager");
 
-BufferManager::BufferManager()
+BufferManager::BufferManager(int width, int height)
 {
-    for (int i = 0; i < SLOT_SIZE*2; i++) {
+    for (int i = 0; i < SLOT_SIZE * 2; i++) {
         webrtc::I420VideoFrame* buffer =  new webrtc::I420VideoFrame();
-        buffer->CreateEmptyFrame(640, 480, 640, 640/2, 640/2);
+        buffer->CreateEmptyFrame(width, height, width, width / 2, width / 2);
         m_freeQ.push(buffer);
     }
 

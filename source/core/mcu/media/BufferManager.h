@@ -56,7 +56,7 @@ class BufferManager {
 public:
     static const int SLOT_SIZE = 16;
 
-    BufferManager();
+    BufferManager(int width, int height);
     ~BufferManager();
 
     webrtc::I420VideoFrame* getFreeBuffer();
