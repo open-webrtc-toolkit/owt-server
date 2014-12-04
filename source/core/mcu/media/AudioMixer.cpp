@@ -34,7 +34,7 @@ using namespace webrtc;
 
 namespace mcu {
 
-DEFINE_LOGGER(AudioMixer, "mcu.AudioMixer");
+DEFINE_LOGGER(AudioMixer, "mcu.media.AudioMixer");
 
 AudioMixer::AudioMixer(erizo::RTPDataReceiver* receiver)
     : m_dataReceiver(receiver)

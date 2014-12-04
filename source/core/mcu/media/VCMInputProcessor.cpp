@@ -28,7 +28,7 @@ using namespace erizo;
 
 namespace mcu {
 
-DEFINE_LOGGER(VCMInputProcessor, "mcu.VCMInputProcessor");
+DEFINE_LOGGER(VCMInputProcessor, "mcu.media.VCMInputProcessor");
 
 VCMInputProcessor::VCMInputProcessor(int index, bool externalDecode)
     : m_index(index)

@@ -27,7 +27,7 @@ using namespace erizo;
 
 namespace mcu {
 
-DEFINE_LOGGER(ExternalVideoProcessor, "mcu.ExternalVideoProcessor");
+DEFINE_LOGGER(ExternalVideoProcessor, "mcu.media.ExternalVideoProcessor");
 
 ExternalVideoProcessor::ExternalVideoProcessor(int id, boost::shared_ptr<VideoFrameProcessor> mixer, FrameFormat frameFormat, woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<TaskRunner> taskRunner)
     : VideoOutputProcessor(id)

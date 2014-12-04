@@ -69,7 +69,7 @@ void VPMPool::update(unsigned int slot, VideoSize& videoSize)
 }
 
 
-DEFINE_LOGGER(SoftVideoCompositor, "mcu.SoftVideoCompositor");
+DEFINE_LOGGER(SoftVideoCompositor, "mcu.media.SoftVideoCompositor");
 
 SoftVideoCompositor::SoftVideoCompositor()
     : m_configLock(CriticalSectionWrapper::CreateCriticalSection())

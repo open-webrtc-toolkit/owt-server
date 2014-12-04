@@ -123,7 +123,7 @@ void HardwareVideoMixerOutput::notifyFrameReady(OutputIndex index)
     }
 }
 
-DEFINE_LOGGER(HardwareVideoMixer, "mcu.HardwareVideoMixer");
+DEFINE_LOGGER(HardwareVideoMixer, "mcu.media.HardwareVideoMixer");
 
 HardwareVideoMixer::HardwareVideoMixer()
 {
