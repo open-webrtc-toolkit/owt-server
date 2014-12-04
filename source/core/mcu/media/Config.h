@@ -21,7 +21,6 @@
 #ifndef Config_h
 #define Config_h
 
-#include "BufferManager.h"
 #include "VideoLayout.h"
 
 #include <list>
@@ -59,7 +58,7 @@ private:
 
     static Config* m_config;
     VideoLayout m_currentVideoLayout;
-    VideoLayout m_customVideoLayouts[BufferManager::SLOT_SIZE];
+    VideoLayout m_customVideoLayouts[MAX_VIDEO_SLOT_NUMBER];
     std::list<ConfigListener*> m_configListeners;
 };
 

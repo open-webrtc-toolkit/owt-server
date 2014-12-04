@@ -85,15 +85,15 @@ void Config::initVideoLayout(const std::string& type, const std::string& default
         m_currentVideoLayout.divFactor = 1;
     } else {
         // Customized video layout
-        int initIndex = BufferManager::SLOT_SIZE;
+        uint32_t initIndex = MAX_VIDEO_SLOT_NUMBER;
         boost::property_tree::ptree pt;
         std::istringstream is (customLayout);
         boost::property_tree::read_json (is, pt);
 
         // Parsing all the customized layout candidates
         BOOST_FOREACH (boost::property_tree::ptree::value_type& layoutPair, pt.get_child("videolayout")) {
-            int maxInput = layoutPair.second.get<int>("maxinput");
-            int validMaxInput = (maxInput > 0 && maxInput <= BufferManager::SLOT_SIZE) ? maxInput : 0;
+            uint32_t maxInput = layoutPair.second.get<int>("maxinput");
+            int validMaxInput = (maxInput > 0 && maxInput <= MAX_VIDEO_SLOT_NUMBER) ? maxInput : 0;
             if (validMaxInput < 1)
                 continue;
 
@@ -136,7 +136,7 @@ void Config::initVideoLayout(const std::string& type, const std::string& default
         }
 
         // Find the minimum customized layout for initialization purpose
-        if (initIndex < BufferManager::SLOT_SIZE)
+        if (initIndex < MAX_VIDEO_SLOT_NUMBER)
             m_currentVideoLayout = m_customVideoLayouts[initIndex];
     }
 
@@ -160,7 +160,7 @@ bool Config::updateVideoLayout(uint32_t slotNumber)
     // custom layout
     uint32_t currentRegionNum = m_currentVideoLayout.regions.size();
     if (slotNumber != currentRegionNum) {
-        for (int i = slotNumber - 1; i < BufferManager::SLOT_SIZE; ++i) {
+        for (uint32_t i = slotNumber - 1; i < MAX_VIDEO_SLOT_NUMBER; ++i) {
             if (m_customVideoLayouts[i].regions.empty())
                 continue;
 

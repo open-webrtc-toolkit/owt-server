@@ -20,7 +20,6 @@
 
 #include "VideoCompositor.h"
 
-#include "BufferManager.h"
 #include "Config.h"
 #include <webrtc/common_video/interface/i420_video_frame.h>
 #include <webrtc/modules/video_processing/main/interface/video_processing.h>
@@ -75,7 +74,7 @@ SoftVideoCompositor::SoftVideoCompositor()
     , m_configChanged(false)
 {
     m_ntpDelta = Clock::GetRealTimeClock()->CurrentNtpInMilliseconds() - TickTime::MillisecondTimestamp();
-    m_vpmPool.reset(new VPMPool(BufferManager::SLOT_SIZE));
+    m_vpmPool.reset(new VPMPool(MAX_VIDEO_SLOT_NUMBER));
 
     // Default video layout definition
     m_currentLayout.rootSize = vga;    // Default to VGA
@@ -285,7 +284,7 @@ webrtc::I420VideoFrame* SoftVideoCompositor::customLayout()
 
     uint32_t input = 0;
     webrtc::I420VideoFrame* target = m_composedFrame.get();
-    for (int index = 0; index < BufferManager::SLOT_SIZE; ++index) {
+    for (uint32_t index = 0; index < MAX_VIDEO_SLOT_NUMBER; ++index) {
         if (!m_bufferManager->isActive(index) || input >= m_currentLayout.regions.size())
             continue;
 
@@ -347,7 +346,7 @@ webrtc::I420VideoFrame* SoftVideoCompositor::fluidLayout()
     webrtc::I420VideoFrame* target = m_composedFrame.get();
 
     int input = 0;
-    for (int index = 0; index < BufferManager::SLOT_SIZE; ++index) {
+    for (uint32_t index = 0; index < MAX_VIDEO_SLOT_NUMBER; ++index) {
         if (!m_bufferManager->isActive(index))
             continue;
 

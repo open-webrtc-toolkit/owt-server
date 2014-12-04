@@ -20,7 +20,6 @@
 
 #include "VideoMixer.h"
 
-#include "BufferManager.h"
 #include "TaskRunner.h"
 #include "VCMInputProcessor.h"
 #include "VCMOutputProcessor.h"
@@ -216,8 +215,8 @@ int32_t VideoMixer::addSource(uint32_t from, bool isAudio, FeedbackSink* feedbac
 {
     assert(!isAudio);
 
-    if (m_participants == BufferManager::SLOT_SIZE) {
-        ELOG_WARN("Exceeding maximum number of sources (%u), ignoring the addSource request", BufferManager::SLOT_SIZE);
+    if (m_participants == MAX_VIDEO_SLOT_NUMBER) {
+        ELOG_WARN("Exceeding maximum number of sources (%u), ignoring the addSource request", MAX_VIDEO_SLOT_NUMBER);
         return -1;
     }
 

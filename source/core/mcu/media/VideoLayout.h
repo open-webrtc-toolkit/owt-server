@@ -27,6 +27,8 @@
 
 namespace mcu {
 
+static const uint32_t MAX_VIDEO_SLOT_NUMBER = 16;
+
 /**
  * the configuration is a subset of rfc5707, VideoLayout element definition
  *    An example of a video layout with six regions is:
