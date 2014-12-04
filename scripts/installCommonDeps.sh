@@ -70,7 +70,6 @@ install_webrtc(){
     rm -rf src
   fi
   echo "Downloading WebRTC source code..."
-  # svn checkout -q http://webrtc.googlecode.com/svn/branches/3.52/webrtc
   gclient sync --nohooks
   echo "Done."
   patch -p0 < ./webrtc-3.52-build.patch
