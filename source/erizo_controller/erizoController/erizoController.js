@@ -402,6 +402,56 @@ var listen = function () {
             }
         });
 
+
+        socket.on('customMessage', function (msg, callback) {
+            switch (msg.type) {
+            case 'login': // reserved
+                break;
+            case 'control': // stream media manipulation
+                if (typeof msg.payload === 'object' && msg.payload !== null) {
+                    var action = msg.payload.action;
+                    var streamId = msg.payload.streamId;
+                    if (/^((audio)|(video))-((in)|(out))-((on)|(off))$/.test(action)) {
+                    //     action = socket.room.controller[action];
+                    //     if (typeof streamId === 'string') {
+                    //         streamId = parseInt(streamId, 10);
+                    //     }
+                    //     if (typeof action === 'function') {
+                    //         action(streamId);
+                    //         if (typeof callback === 'function') callback('success');
+                    //         return;
+                    //     }
+                    }
+                }
+                if (typeof callback === 'function') callback('error');
+                break;
+            case 'data':
+                var receiver = msg.receiver;
+                var data = {
+                    data: msg.data,
+                    from: socket.id,
+                    to: receiver
+                };
+                if (receiver === 0) {
+                    sendMsgToRoom(socket.room, 'onCustomMessage', data);
+                    return safeCall(callback, 'success');
+                } else {
+                    if (socket.room.sockets.indexOf(receiver) === -1) {
+                        return safeCall(callback, 'error', 'invalid receiver');
+                    }
+                    try {
+                        io.sockets.socket(receiver).emit('onCustomMessage', data);
+                        safeCall(callback, 'success');
+                    } catch (err) {
+                        safeCall(callback, 'error', err);
+                    }
+                }
+                break;
+            default: // do nothing
+                return safeCall(callback, 'success');
+            }
+        });
+
         //Gets 'sendDataStream' messages on the socket in order to write a message in a dataStream.
         socket.on('sendDataStream', function (msg) {
             var sockets = socket.room.streams[msg.id].getDataSubscribers(), id;

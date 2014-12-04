@@ -54,7 +54,7 @@
   }
 
   conference.onMessage(function (event) {
-    L.Logger.info('Message Received:', event.attr);
+    L.Logger.info('Message Received:', event.msg);
   });
 
   conference.on('client-disconnected', function () {

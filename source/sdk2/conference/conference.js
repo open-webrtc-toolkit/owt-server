@@ -293,7 +293,7 @@ Woogeen.Conference = (function () {
         });
 
         self.socket.on('onCustomMessage', function (spec) {
-          var evt = new Woogeen.ClientEvent({type: 'message-received', attr: spec.msg});
+          var evt = new Woogeen.MessageEvent({type: 'message-received', msg: spec});
           self.dispatchEvent(evt);
         });
 
@@ -354,14 +354,20 @@ Woogeen.Conference = (function () {
     }
   }
 
-  function mkCtrlPayload(action, streamId) {
-    return {
+  function sendCtrlPayload(socket, action, streamId, onSuccess, onFailure) {
+    var payload = {
       type: 'control',
       payload: {
         action: action,
         streamId: streamId
       }
     };
+    sendMsg(socket, 'onCustomMessage', payload, function(err, resp) {
+      if (err) {
+        return safeCall(onFailure, err);
+      }
+      safeCall(onSuccess, resp);
+    });
   }
 
   WoogeenConference.prototype = Woogeen.EventDispatcher({}); // make WoogeenConference a eventDispatcher
@@ -377,7 +383,7 @@ Woogeen.Conference = (function () {
     }
     if (typeof receiver === 'undefined') {
       receiver = 0; // 0 => ALL
-    } else if (typeof receiver === 'number') {
+    } else if (typeof receiver === 'string' || typeof receiver === 'number') {
       // supposed to be a valid receiverId.
       // pass.
     } else if (typeof receiver === 'function') {
@@ -388,6 +394,7 @@ Woogeen.Conference = (function () {
       return safeCall(onFailure, 'invalid receiver');
     }
     sendMsg(this.socket, 'customMessage', {
+      type: 'data',
       data: data,
       receiver: receiver
     }, function (err, resp) {
@@ -436,16 +443,16 @@ Woogeen.Conference = (function () {
               };
               self.localStreams[id] = stream;
               stream.signalOnPlayAudio = function (onSuccess, onFailure) {
-                self.send(mkCtrlPayload('audio-out-on', id), onSuccess, onFailure);
+                sendCtrlPayload(self.socket, 'audio-out-on', id, onSuccess, onFailure);
               };
               stream.signalOnPauseAudio = function (onSuccess, onFailure) {
-                self.send(mkCtrlPayload('audio-out-off', id), onSuccess, onFailure);
+                sendCtrlPayload(self.socket, 'audio-out-off', id, onSuccess, onFailure);
               };
               stream.signalOnPlayVideo = function (onSuccess, onFailure) {
-                self.send(mkCtrlPayload('video-out-on', id), onSuccess, onFailure);
+                sendCtrlPayload(self.socket, 'video-out-on', id, onSuccess, onFailure);
               };
               stream.signalOnPauseVideo = function (onSuccess, onFailure) {
-                self.send(mkCtrlPayload('video-out-off', id), onSuccess, onFailure);
+                sendCtrlPayload(self.socket, 'video-out-off', id, onSuccess, onFailure);
               };
               safeCall(onSuccess, stream);
             };
@@ -537,16 +544,16 @@ Woogeen.Conference = (function () {
       stream.mediaStream = evt.stream;
       safeCall(onSuccess, stream);
       stream.signalOnPlayAudio = function (onSuccess, onFailure) {
-        self.send(mkCtrlPayload('audio-in-on', stream.id()), onSuccess, onFailure);
+        sendCtrlPayload(self.socket, 'audio-in-on', stream.id(), onSuccess, onFailure);
       };
       stream.signalOnPauseAudio = function (onSuccess, onFailure) {
-        self.send(mkCtrlPayload('audio-in-off', stream.id()), onSuccess, onFailure);
+        sendCtrlPayload(self.socket, 'audio-in-off', stream.id(), onSuccess, onFailure);
       };
       stream.signalOnPlayVideo = function (onSuccess, onFailure) {
-        self.send(mkCtrlPayload('video-in-on', stream.id()), onSuccess, onFailure);
+        sendCtrlPayload(self.socket, 'video-in-on', stream.id(), onSuccess, onFailure);
       };
       stream.signalOnPauseVideo = function (onSuccess, onFailure) {
-        self.send(mkCtrlPayload('video-in-off', stream.id()), onSuccess, onFailure);
+        sendCtrlPayload(self.socket, 'video-in-off', stream.id(), onSuccess, onFailure);
       };
     };
 

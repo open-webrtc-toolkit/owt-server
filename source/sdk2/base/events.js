@@ -53,7 +53,6 @@ function WoogeenEvent (spec) { // base event class
   'use strict';
   this.type = spec.type;
   this.attributes = spec.attributes;
-  this.label = spec.label;
 }
 
 /*
@@ -86,8 +85,19 @@ Woogeen.ClientEvent = function WoogeenClientEvent (spec) {
   this.user = spec.user;
 };
 
+/*
+ * Class MessageEvent represents an event related to a custom message.
+ */
+Woogeen.MessageEvent = function WoogeenMessageEvent (spec) {
+  'use strict';
+  WoogeenEvent.call(this, spec);
+  this.msg = spec.msg;
+};
+
 // inheritance
 Woogeen.StreamEvent.prototype = Object.create(WoogeenEvent.prototype);
 Woogeen.StreamEvent.prototype.constructor = Woogeen.StreamEvent;
 Woogeen.ClientEvent.prototype = Object.create(WoogeenEvent.prototype);
 Woogeen.ClientEvent.prototype.constructor = Woogeen.ClientEvent;
+Woogeen.MessageEvent.prototype = Object.create(WoogeenEvent.prototype);
+Woogeen.MessageEvent.prototype.constructor = Woogeen.MessageEvent;
