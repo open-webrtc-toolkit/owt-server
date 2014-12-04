@@ -81,7 +81,7 @@ void VideoMixEngine::SetLayout(LayoutInfo& layout){
     }
 }
 
-InputIndex VideoMixEngine::EnableInput(CodecType codec, VideoInputProducer* producer) 
+InputIndex VideoMixEngine::EnableInput(CodecType codec, VideoMixEngineInput* producer) 
 {
     InputIndex index = INVALID_INPUT_INDEX;
     switch (m_state) {
@@ -144,7 +144,7 @@ void VideoMixEngine::PushInput(InputIndex index, unsigned char* data, int len)
     }
 }
 
-OutputIndex VideoMixEngine::EnableOutput(CodecType codec, const char* name, unsigned short bitrate, VideoOutputConsumer* consumer)
+OutputIndex VideoMixEngine::EnableOutput(CodecType codec, unsigned short bitrate, VideoMixEngineOutput* consumer)
 {
     OutputIndex index = INVALID_OUTPUT_INDEX;
 
@@ -156,16 +156,16 @@ OutputIndex VideoMixEngine::EnableOutput(CodecType codec, const char* name, unsi
             break;
         case IDLE:
         case WAITING_FOR_INPUT:
-            index = scheduleOutput(codec, name, bitrate, consumer);
+            index = scheduleOutput(codec, bitrate, consumer);
             m_state = WAITING_FOR_INPUT;
             break;
         case WAITING_FOR_OUTPUT:
-            index = scheduleOutput(codec, name, bitrate, consumer);                
+            index = scheduleOutput(codec, bitrate, consumer);                
             setupPipeline();
             m_state = IN_SERVICE;
             break;
         case IN_SERVICE:
-            index = scheduleOutput(codec, name, bitrate, consumer);
+            index = scheduleOutput(codec, bitrate, consumer);
             installOutput(index);
             break;
         default:
@@ -217,7 +217,7 @@ int VideoMixEngine::PullOutput(OutputIndex index, unsigned char* buf)
     return 0;
 }
 
-InputIndex VideoMixEngine::scheduleInput(CodecType codec, VideoInputProducer* producer) 
+InputIndex VideoMixEngine::scheduleInput(CodecType codec, VideoMixEngineInput* producer) 
 {
     InputIndex i = m_inputIndex++;
     InputInfo input = {codec, producer, NULL, NULL};
@@ -264,10 +264,10 @@ void VideoMixEngine::removeInput(InputIndex index)
     }
 }
 
-OutputIndex VideoMixEngine::scheduleOutput(CodecType codec, const char* name, unsigned short bitrate, VideoOutputConsumer* consumer) 
+OutputIndex VideoMixEngine::scheduleOutput(CodecType codec, unsigned short bitrate, VideoMixEngineOutput* consumer) 
 {
     OutputIndex i = m_outputIndex++;
-    OutputInfo output = {codec, consumer, name, bitrate};
+    OutputInfo output = {codec, consumer, bitrate};
     m_outputs[i] = output;
     return i;
 }
@@ -275,7 +275,6 @@ OutputIndex VideoMixEngine::scheduleOutput(CodecType codec, const char* name, un
 void VideoMixEngine::installOutput(OutputIndex index) 
 {
     Stream* stream = new Stream;
-    //stream->Open(m_outputs[index].name);
     stream->Open();
     
     EncOptions enc_cfg;
@@ -343,7 +342,6 @@ void VideoMixEngine::setupPipeline()
     vpp_cfg.measuremnt = NULL;
 
     Stream* stream = new Stream;
-    //stream->Open(output.name);
     stream->Open();
     
     EncOptions enc_cfg;

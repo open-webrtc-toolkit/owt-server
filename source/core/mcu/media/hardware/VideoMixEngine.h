@@ -13,12 +13,12 @@
 typedef int InputIndex;
 typedef int OutputIndex;
 
-class VideoInputProducer {
+class VideoMixEngineInput {
 public:
     virtual void requestKeyFrame(InputIndex index) = 0; 
 };
 
-class VideoOutputConsumer {
+class VideoMixEngineOutput {
 public:
     virtual void notifyFrameReady(OutputIndex index) = 0;
 };
@@ -41,15 +41,14 @@ typedef struct {
 
 typedef struct {
     CodecType codec;
-    VideoInputProducer* producer;
+    VideoMixEngineInput* producer;
     void* decHandle;
     MemPool* mp;
 } InputInfo;
 
 typedef struct {
     CodecType codec;
-    VideoOutputConsumer* consumer;
-    const char* name; //char name[64];
+    VideoMixEngineOutput* consumer;
     unsigned short bitrate;
     void* encHandle;
     Stream* stream;
@@ -85,23 +84,23 @@ public:
     void SetResolution(unsigned int width, unsigned int height);
     void SetLayout(LayoutInfo& layout);
 
-    InputIndex EnableInput(CodecType codec, VideoInputProducer* producer);
+    InputIndex EnableInput(CodecType codec, VideoMixEngineInput* producer);
     void DisableInput(InputIndex index);
     void PushInput(InputIndex index, unsigned char* data, int len);
 
-    OutputIndex EnableOutput(CodecType codec, const char* name, unsigned short bitrate, VideoOutputConsumer* consumer);
+    OutputIndex EnableOutput(CodecType codec, unsigned short bitrate, VideoMixEngineOutput* consumer);
     void DisableOutput(OutputIndex index);
     void ForceKeyFrame(OutputIndex index);
     void SetBitrate(OutputIndex index, unsigned short bitrate);
     int PullOutput(OutputIndex index, unsigned char* buf);
 
 private:
-    InputIndex scheduleInput(CodecType codec, VideoInputProducer* producer);
+    InputIndex scheduleInput(CodecType codec, VideoMixEngineInput* producer);
     void installInput(InputIndex index);
     void uninstallInput(InputIndex index);
     void removeInput(InputIndex index);
 
-    OutputIndex scheduleOutput(CodecType codec, const char* name, unsigned short bitrate, VideoOutputConsumer* consumer);
+    OutputIndex scheduleOutput(CodecType codec, unsigned short bitrate, VideoMixEngineOutput* consumer);
     void installOutput(OutputIndex index);
     void uninstallOutput(OutputIndex index);
     void removeOutput(OutputIndex index);

@@ -67,7 +67,6 @@ void HardwareVideoMixerInput::requestKeyFrame(InputIndex index) {
 
 HardwareVideoMixerOutput::HardwareVideoMixerOutput(boost::shared_ptr<VideoMixEngine> engine,
                                                     FrameFormat outFormat,
-                                                    std::string name,
                                                     unsigned int framerate,
                                                     unsigned short bitrate,
                                                     VideoFrameConsumer* receiver)
@@ -80,7 +79,7 @@ HardwareVideoMixerOutput::HardwareVideoMixerOutput(boost::shared_ptr<VideoMixEng
 {
     assert((m_outFormat == FRAME_FORMAT_VP8 || m_outFormat == FRAME_FORMAT_H264) && m_receiver);
 
-    m_index = m_engine->EnableOutput(Frameformat2CodecType(m_outFormat), name.c_str(), bitrate, this);
+    m_index = m_engine->EnableOutput(Frameformat2CodecType(m_outFormat), bitrate, this);
     assert(m_index != INVALID_OUTPUT_INDEX);
     m_jobTimer.reset(new JobTimer(m_frameRate, this));
 }
@@ -178,7 +177,6 @@ void HardwareVideoMixer::deActivateInput(int slot)
 
 void HardwareVideoMixer::pushInput(int slot, unsigned char* payload, int len)
 {
-    //ELOG_DEBUG("pushInput");
     std::map<int, boost::shared_ptr<HardwareVideoMixerInput>>::iterator it = m_inputs.find(slot);
     if (it != m_inputs.end())
         it->second->push(payload, len);
@@ -191,7 +189,7 @@ bool HardwareVideoMixer::activateOutput(int id, FrameFormat format, unsigned int
         return false;
     }
     ELOG_DEBUG("activateOutput OK, format: %s", ((format == FRAME_FORMAT_VP8)? "VP8" : "H264"));
-    m_outputs[id].reset(new HardwareVideoMixerOutput(m_engine, format, "name", framerate, bitrate, receiver));
+    m_outputs[id].reset(new HardwareVideoMixerOutput(m_engine, format, framerate, bitrate, receiver));
     return true;
 }
 

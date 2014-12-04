@@ -129,15 +129,9 @@ install_node_tools
 
 install_mediaprocessor() {
   local MEDIAPROCESSOR_DIR="${ROOT}/third_party/mediaprocessor"
-  local target="vcsa_base"
-  read -p "Installing mediaprocessor with hardware supprot (MSDK)? [Yes/no]" yn
-  case $yn in
-    [Nn]* ) BUILD_WITH_MSDK=false;;
-    [Yy]* ) BUILD_WITH_MSDK=true;;
-    * ) BUILD_WITH_MSDK=true;;
-  esac
-  ${BUILD_WITH_MSDK} && target="vcsa_video"
-  cd "${MEDIAPROCESSOR_DIR}" && make distclean && make ${target}
+  local target="vcsa_video"
+  BUILD_WITH_MSDK=true
+  cd ${MEDIAPROCESSOR_DIR} && make distclean && make ${target}
 }
 
 mkdir -p $PREFIX_DIR
