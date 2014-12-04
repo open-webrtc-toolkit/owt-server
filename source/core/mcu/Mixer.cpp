@@ -39,17 +39,6 @@ Mixer::~Mixer()
     closeAll();
 }
 
-/**
- * init could be used for reset the state of this Mixer
- */
-bool Mixer::init(bool hardwareAccelerated)
-{
-    m_videoMixer.reset(new VideoMixer(this, hardwareAccelerated));
-    m_audioMixer.reset(new AudioMixer(this));
-
-    return true;
-}
-
 int Mixer::deliverAudioData(char* buf, int len) 
 {
     return m_audioMixer ? m_audioMixer->deliverAudioData(buf, len) : 0;
@@ -175,6 +164,14 @@ void Mixer::configLayout(const std::string& type, const std::string& defaultRoot
 {
     ELOG_DEBUG("configLayout");
     Config::get()->initVideoLayout(type, defaultRootSize, defaultBackgroundColor, customLayout);
+}
+
+bool Mixer::init(bool hardwareAccelerated)
+{
+    m_videoMixer.reset(new VideoMixer(this, hardwareAccelerated));
+    m_audioMixer.reset(new AudioMixer(this));
+
+    return true;
 }
 
 void Mixer::closeAll()
