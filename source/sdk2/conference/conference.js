@@ -138,7 +138,7 @@ Woogeen.Conference = (function () {
               dispatchEventAfterSubscribed(event);
             }, 20);
           } else {
-            // log.warn('event missed:', event);
+            L.Logger.warning('event missed:', event.type);
           }
         };
 
@@ -153,6 +153,7 @@ Woogeen.Conference = (function () {
           });
           var evt;
           if (self.remoteStreams[spec.id] !== undefined) {
+            stream.mediaStream = self.remoteStreams[spec.id].mediaStream;
             evt = new Woogeen.StreamEvent({type: 'stream-updated', stream: stream});
           } else {
             evt = new Woogeen.StreamEvent({type: 'stream-added', stream: stream});
@@ -161,12 +162,13 @@ Woogeen.Conference = (function () {
           self.dispatchEvent(evt);
         });
 
-        self.socket.on('onUpdateStream', function (spec) { // FIXME: mediaStream
+        self.socket.on('onUpdateStream', function (spec) {
           var stream = new Woogeen.RemoteStream({
             video: spec.video,
             audio: spec.audio,
             id: spec.id,
-            attributes: spec.attributes
+            attributes: spec.attributes,
+            mediaStream: (self.remoteStreams[spec.id] || {}).mediaStream
           });
           var evt = new Woogeen.StreamEvent({type: 'stream-updated', stream: stream});
           self.remoteStreams[spec.id] = stream;
@@ -593,7 +595,9 @@ Woogeen.Conference = (function () {
     option = option || {};
     Woogeen.LocalStream.create({
       video: {
-        device: 'screen'
+        device: 'screen',
+        resolution: option.resolution,
+        framerate: option.framerate
       },
       audio: false
     }, function (err, stream) {
