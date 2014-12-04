@@ -127,8 +127,8 @@ DEFINE_LOGGER(HardwareVideoMixer, "mcu.media.HardwareVideoMixer");
 HardwareVideoMixer::HardwareVideoMixer()
 {
     m_engine.reset(new VideoMixEngine());
-    BgColor bg = {{0}, {0}, {0}};
-    bool result = m_engine->Init(bg, 640, 480);
+    BgColor bg = {{DEFAULT_VIDEO_BG_COLOR.y}, {DEFAULT_VIDEO_BG_COLOR.cb}, {DEFAULT_VIDEO_BG_COLOR.cr}};
+    bool result = m_engine->Init(bg, DEFAULT_VIDEO_SIZE.width, DEFAULT_VIDEO_SIZE.height);
     assert(result);
     if (!result) {
         ELOG_ERROR("Init video mixing engine failed!");
