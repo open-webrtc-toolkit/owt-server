@@ -45,8 +45,8 @@ class Config
     DECLARE_LOGGER();
 public:
     static Config* get();
-    VideoLayout& getVideoLayout();
 
+    const VideoLayout& getVideoLayout();
     void initVideoLayout(const std::string&, const std::string&, const std::string&, const std::string&);
     bool updateVideoLayout(uint32_t);
     void registerListener(ConfigListener*);

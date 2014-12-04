@@ -124,7 +124,7 @@ void HardwareVideoMixerOutput::notifyFrameReady(OutputIndex index)
 
 DEFINE_LOGGER(HardwareVideoMixer, "mcu.media.HardwareVideoMixer");
 
-HardwareVideoMixer::HardwareVideoMixer()
+HardwareVideoMixer::HardwareVideoMixer(const VideoLayout& layout)
 {
     m_engine.reset(new VideoMixEngine());
     BgColor bg = {{DEFAULT_VIDEO_BG_COLOR.y}, {DEFAULT_VIDEO_BG_COLOR.cb}, {DEFAULT_VIDEO_BG_COLOR.cr}};
@@ -136,7 +136,8 @@ HardwareVideoMixer::HardwareVideoMixer()
 }
 
 HardwareVideoMixer::~HardwareVideoMixer()
-{}
+{
+}
 
 void HardwareVideoMixer::setBitrate(int id, unsigned short bitrate)
 {
@@ -152,7 +153,7 @@ void HardwareVideoMixer::requestKeyFrame(int id)
         it->second->requestKeyFrame();
 }
 
-void HardwareVideoMixer::setLayout(VideoLayout& layout)
+void HardwareVideoMixer::setLayout(const VideoLayout& layout)
 {
     //TODO: set the layout inFormation to engine.
     //m_engine->setLayout(layout);

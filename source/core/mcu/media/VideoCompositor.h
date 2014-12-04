@@ -67,7 +67,7 @@ class SoftVideoCompositor : public VideoFrameProcessor,
                             public JobTimerListener {
     DECLARE_LOGGER();
 public:
-    SoftVideoCompositor();
+    SoftVideoCompositor(const VideoLayout& layout);
     ~SoftVideoCompositor();
 
     bool activateInput(int slot, FrameFormat, VideoFrameProvider*);
@@ -77,7 +77,7 @@ public:
     bool activateOutput(int id, FrameFormat, unsigned int framerate, unsigned short bitrate, VideoFrameConsumer*);
     void deActivateOutput(int id);
 
-    void setLayout(VideoLayout&);
+    void setLayout(const VideoLayout&);
     void setBitrate(int id, unsigned short bitrate);
     void requestKeyFrame(int id);
 
