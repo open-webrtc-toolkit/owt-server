@@ -271,6 +271,14 @@ var updateMyState = function () {
     rpc.callRpc('nuve', 'setInfo', info, {callback: function () {}});
 };
 
+function safeCall () {
+    var callback = arguments[0];
+    if (typeof callback === 'function') {
+        var args = Array.prototype.slice.call(arguments, 1);
+        callback.apply(null, args);
+    }
+}
+
 var listen = function () {
     "use strict";
 
@@ -290,12 +298,12 @@ var listen = function () {
                 rpc.callRpc('nuve', 'deleteToken', token.tokenId, {callback: function (resp) {
                     if (resp === 'error') {
                         log.info('Token does not exist');
-                        callback('error', 'Token does not exist');
+                        safeCall(callback, 'error', 'Token does not exist');
                         socket.disconnect();
 
                     } else if (resp === 'timeout') {
                         log.warn('Nuve does not respond');
-                        callback('error', 'Nuve does not respond');
+                        safeCall(callback, 'error', 'Nuve does not respond');
                         socket.disconnect();
 
                     } else if (token.host === resp.host) {
@@ -371,7 +379,7 @@ var listen = function () {
                             }
                         }
 
-                        callback('success', {streams: streamList,
+                        safeCall(callback, 'success', {streams: streamList,
                                             id: socket.room.id,
                                             p2p: socket.room.p2p,
                                             defaultVideoBW: GLOBAL.config.erizoController.defaultVideoBW,
@@ -382,14 +390,14 @@ var listen = function () {
 
                     } else {
                         log.warn('Invalid host');
-                        callback('error', 'Invalid host');
+                        safeCall(callback, 'error', 'Invalid host');
                         socket.disconnect();
                     }
                 }});
 
             } else {
                 log.warn("Authentication error");
-                callback('error', 'Authentication error');
+                safeCall(callback, 'error', 'Authentication error');
                 socket.disconnect();
             }
         });
@@ -421,14 +429,13 @@ var listen = function () {
         socket.on('publish', function (options, sdp, callback) {
             var id, st;
             if (socket.user === undefined || !socket.user.permissions[Permission.PUBLISH]) {
-                callback('error', 'unauthorized');
-                return;
+                return safeCall(callback, 'error', 'unauthorized');
             }
             if (socket.user.permissions[Permission.PUBLISH] !== true) {
                 var permissions = socket.user.permissions[Permission.PUBLISH];
                 for (var right in permissions) {
                     if ((options[right] === true) && (permissions[right] === false))
-                        return callback('error', 'unauthorized');
+                        return safeCall(callback, 'error', 'unauthorized');
                 }
             }
             if (options.state === 'url' || options.state === 'recording') {
@@ -447,10 +454,10 @@ var listen = function () {
                         st = new ST.Stream({id: id, socket: socket.id, audio: options.audio, video: options.video, data: options.data, attributes: options.attributes});
                         socket.streams.push(id);
                         socket.room.streams[id] = st;
-                        callback(result, id);
+                        safeCall(callback, result, id);
                         sendMsgToRoom(socket.room, 'onAddStream', st.getPublicStream());
                     } else {
-                        callback(result);
+                        safeCall(callback, result);
                     }
                 });
             } else if (options.state !== 'data' && !socket.room.p2p) {
@@ -464,7 +471,7 @@ var listen = function () {
                     socket.room.controller.addPublisher(id, sdp, function (answer) {
                         socket.state = 'waitingOk';
                         answer = answer.replace(privateRegexp, publicIP);
-                        callback(answer, id);
+                        safeCall(callback, answer, id);
                     }, function() {
                         st = new ST.Stream({id: id, audio: options.audio, video: options.video, data: options.data, screen: options.screen, attributes: options.attributes});
                         socket.state = 'sleeping';
@@ -480,37 +487,35 @@ var listen = function () {
                 }
             } else if (options.state === 'p2pSignaling') {
                 io.sockets.socket(options.subsSocket).emit('onPublishP2P', {sdp: sdp, streamId: options.streamId}, function(answer) {
-                    callback(answer);
+                    safeCall(callback, answer);
                 });
             } else {
                 id = Math.random() * 1000000000000000000;
                 st = new ST.Stream({id: id, socket: socket.id, audio: options.audio, video: options.video, data: options.data, screen: options.screen, attributes: options.attributes});
                 socket.streams.push(id);
                 socket.room.streams[id] = st;
-                callback(undefined, id);
+                safeCall(callback, undefined, id);
                 sendMsgToRoom(socket.room, 'onAddStream', st.getPublicStream());
-
             }
         });
 
         //Gets 'subscribe' messages on the socket in order to add new subscriber to a determined stream (options.streamId).
         socket.on('subscribe', function (options, sdp, callback) {
             if (socket.user === undefined || !socket.user.permissions[Permission.SUBSCRIBE]) {
-                callback('error', 'unauthorized');
-                return;
+                return safeCall(callback, 'error', 'unauthorized');
             }
             if (socket.user.permissions[Permission.SUBSCRIBE] !== true) {
                 var permissions = socket.user.permissions[Permission.SUBSCRIBE];
                 for (var right in permissions) {
                     if ((options[right] === true) && (permissions[right] === false))
-                        return callback('error', 'unauthorized');
+                        return safeCall(callback, 'error', 'unauthorized');
                 }
             }
 
             var stream = socket.room.streams[options.streamId];
 
             if (stream === undefined) {
-                return;
+                return safeCall(callback, 'error', 'stream does not exist');
             }
 
             if (stream.hasData() && options.data !== false) {
@@ -522,7 +527,7 @@ var listen = function () {
                 if (socket.room.p2p) {
                     var s = stream.getSocket();
                     io.sockets.socket(s).emit('onSubscribeP2P', {streamId: options.streamId, subsSocket: socket.id}, function(offer) {
-                        callback(offer);
+                        safeCall(callback, offer);
                     });
 
                 } else {
@@ -532,22 +537,20 @@ var listen = function () {
                     }
                     socket.room.controller.addSubscriber(socket.id, options.streamId, options.audio, options.video, sdp, function (answer) {
                         answer = answer.replace(privateRegexp, publicIP);
-                        callback(answer);
+                        safeCall(callback, answer);
                     }, function() {
                         log.info("Subscriber added");
                     });
                 }
             } else {
-                callback(undefined);
+                safeCall(callback, undefined);
             }
-
         });
 
         //Gets 'startRecorder' messages
         socket.on('startRecorder', function (options, callback) {
             if (socket.user === undefined || !socket.user.permissions[Permission.RECORD]) {
-                callback('error', 'unauthorized');
-                return;
+                return safeCall(callback, 'error', 'unauthorized');
             }
             var streamId = options.to;
             var recordingId = Math.random() * 1000000000000000000;
@@ -565,21 +568,20 @@ var listen = function () {
                 socket.room.controller.addExternalOutput(streamId, url, function (result) {
                     if (result === 'success') {
                         log.info("erizoController.js: Recorder Started");
-                        callback('success', recordingId);
+                        safeCall(callback, 'success', recordingId);
                     } else {
-                        callback('error', 'This stream is not published in this room');
+                        safeCall(callback, 'error', 'This stream is not published in this room');
                     }
                 });
 
             } else {
-                callback('error', 'Stream can not be recorded');
+                safeCall(callback, 'error', 'Stream can not be recorded');
             }
         });
 
         socket.on('stopRecorder', function (options, callback) {
             if (socket.user === undefined || !socket.user.permissions[Permission.RECORD]) {
-                if (callback) callback('error', 'unauthorized');
-                return;
+                return safeCall(callback, 'error', 'unauthorized');
             }
             var recordingId = options.id;
             var url;
@@ -597,13 +599,12 @@ var listen = function () {
         //Gets 'unpublish' messages on the socket in order to remove a stream from the room.
         socket.on('unpublish', function (streamId, callback) {
             if (socket.user === undefined || !socket.user.permissions[Permission.PUBLISH]) {
-                if (callback) callback('error', 'unauthorized');
-                return;
+                return safeCall(callback, 'error', 'unauthorized');
             }
 
             // Stream has been already deleted or it does not exist
             if (socket.room.streams[streamId] === undefined) {
-                return;
+                return safeCall(callback, 'error', 'stream does not exist');
             }
             var i, index;
 
@@ -627,17 +628,16 @@ var listen = function () {
             if (socket.room.streams[streamId]) {
                 delete socket.room.streams[streamId];
             }
-
+            safeCall(callback, 'success');
         });
 
         //Gets 'unsubscribe' messages on the socket in order to remove a subscriber from a determined stream (to).
         socket.on('unsubscribe', function (to, callback) {
             if (!socket.user.permissions[Permission.SUBSCRIBE]) {
-                if (callback) callback('error', 'unauthorized');
-                return;
+                return safeCall(callback, 'error', 'unauthorized');
             }
             if (socket.room.streams[to] === undefined) {
-                return;
+                return safeCall(callback, 'error', 'stream does not exist');
             }
 
             socket.room.streams[to].removeDataSubscriber(socket.id);
@@ -651,7 +651,7 @@ var listen = function () {
                     }
                 };
             }
-
+            safeCall(callback, 'success');
         });
 
         //When a client leaves the room erizoController removes its streams from the room if exists.
@@ -735,8 +735,7 @@ exports.getUsersInRoom = function (room, callback) {
 
     var users = [], sockets, id;
     if (rooms[room] === undefined) {
-        callback(users);
-        return;
+        return safeCall(callback, users);
     }
 
     sockets = rooms[room].sockets;
@@ -747,7 +746,7 @@ exports.getUsersInRoom = function (room, callback) {
         }
     }
 
-    callback(users);
+    safeCall(callback, users);
 };
 
 /*
@@ -759,8 +758,7 @@ exports.deleteUser = function (user, room, callback) {
     var users = [], sockets, id;
 
      if (rooms[room] === undefined) {
-         callback('Success');
-         return;
+         return safeCall(callback, 'Success');
      }
 
     sockets = rooms[room].sockets;
@@ -781,13 +779,11 @@ exports.deleteUser = function (user, room, callback) {
     }
 
     if (sockets_to_delete.length !== 0) {
-        callback('Success');
-        return;
+        return safeCall(callback, 'Success');
     }
     else {
         log.error('User', user, 'does not exist');
-        callback('User does not exist', 404);
-        return;
+        return safeCall(callback, 'User does not exist', 404);
     }
 
 
@@ -805,8 +801,7 @@ exports.deleteRoom = function (room, callback) {
     log.info('Deleting room ', room);
 
     if (rooms[room] === undefined) {
-        callback('Success');
-        return;
+        return safeCall(callback, 'Success');
     }
     sockets = rooms[room].sockets;
 
@@ -829,7 +824,7 @@ exports.deleteRoom = function (room, callback) {
     delete rooms[room];
     updateMyState();
     log.info('Deleted room ', room, rooms);
-    callback('Success');
+    safeCall(callback, 'Success');
 };
 rpc.connect(function () {
     "use strict";
