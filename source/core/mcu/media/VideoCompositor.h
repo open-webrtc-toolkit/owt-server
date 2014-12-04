@@ -21,6 +21,7 @@
 #ifndef VideoCompositor_h
 #define VideoCompositor_h
 
+#include "BufferManager.h"
 #include "JobTimer.h"
 #include "VideoFrameProcessor.h"
 #include "VideoLayout.h"
@@ -38,9 +39,6 @@ class CriticalSectionWrapper;
 }
 
 namespace mcu {
-
-class VPMPool;
-class BufferManager;
 
 /**
  * manages a pool of VPM for preprocessing the incoming I420 frame

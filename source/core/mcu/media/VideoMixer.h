@@ -92,7 +92,7 @@ private:
     int getSlot(uint32_t source);
 
     bool m_hardwareAccelerated;
-    int m_participants;
+    uint32_t m_participants;
 
     boost::shared_ptr<TaskRunner> m_taskRunner;
     boost::shared_ptr<erizo::FeedbackSink> m_feedback;
