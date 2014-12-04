@@ -343,16 +343,16 @@
       }
     }
 
-
     var onSuccess = function (mediaStream) {
       option.mediaStream = mediaStream;
       var localStream = new Woogeen.LocalStream(option);
-      if (option.video && option.video.device === 'screen' &&
-          mediaStream.getVideoTracks() &&
-          mediaStream.getVideoTracks().length > 0) {
-        // when <Stop sharing> button in Browser was pressed, `onended' is triggered;
-        // then we need to close the screen sharing stream.
-        mediaStream.getVideoTracks()[0].onended = function () {
+      if (option.video && option.video.device === 'screen') {
+        // when <Stop sharing> button in Browser was pressed, `onended' would
+        // be triggered; then we need to close the screen sharing stream.
+        // `onended' is a EventHandler containing the action
+        // to perform when an ended event is fired on the object,
+        // that is when the streaming is terminating.
+        mediaStream.onended = function () {
           localStream.close();
         };
       }
