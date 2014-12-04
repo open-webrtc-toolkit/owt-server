@@ -73,22 +73,16 @@ DEFINE_LOGGER(SoftVideoCompositor, "mcu.media.SoftVideoCompositor");
 SoftVideoCompositor::SoftVideoCompositor()
     : m_configLock(CriticalSectionWrapper::CreateCriticalSection())
     , m_configChanged(false)
-    , m_composedFrame(nullptr)
 {
-    m_ntpDelta = Clock::GetRealTimeClock()->CurrentNtpInMilliseconds() -
-                                  TickTime::MillisecondTimestamp();
-
-    m_bufferManager.reset(new BufferManager());
+    m_ntpDelta = Clock::GetRealTimeClock()->CurrentNtpInMilliseconds() - TickTime::MillisecondTimestamp();
+    m_vpmPool.reset(new VPMPool(BufferManager::SLOT_SIZE));
 
     // Default video layout definition
     m_currentLayout.rootSize = vga;    // Default to VGA
     m_currentLayout.rootColor = black; // Default to Black
     m_currentLayout.divFactor = 1;
 
-    m_vpmPool.reset(new VPMPool(BufferManager::SLOT_SIZE));
-    m_composedFrame.reset(new webrtc::I420VideoFrame());
-
-    // Create max size frame.
+    // Fetch the video size
     unsigned int videoWidth = DEFAULT_VIDEO_SIZE.width;
     unsigned int videoHeight = DEFAULT_VIDEO_SIZE.height;
     std::map<VideoResolutionType, VideoSize>::const_iterator it = VideoSizes.find(m_currentLayout.rootSize);
@@ -96,8 +90,13 @@ SoftVideoCompositor::SoftVideoCompositor()
         videoWidth = it->second.width;
         videoHeight = it->second.height;
     }
-    m_composedFrame->CreateEmptyFrame(videoWidth, videoHeight, videoWidth, videoWidth / 2, videoWidth / 2);
 
+    // Initialize frame buffer and buffer manager for video composition
+    m_composedFrame.reset(new webrtc::I420VideoFrame());
+    m_composedFrame->CreateEmptyFrame(videoWidth, videoHeight, videoWidth, videoWidth / 2, videoWidth / 2);
+    m_bufferManager.reset(new BufferManager(videoWidth, videoHeight));
+
+    // Set the initialized video layout
     setLayout(m_currentLayout);
 
     m_jobTimer.reset(new JobTimer(30, this));
