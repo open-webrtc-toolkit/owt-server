@@ -194,7 +194,7 @@ Woogeen.Conference = (function () {
 
           myStream.channel[spec.subsSocket] = createChannel({
             callback: function (offer) {
-              sendSdp('publish', {
+              sendSdp(self.socket, 'publish', {
                 state: 'p2pSignaling',
                 streamId: spec.streamId,
                 subsSocket: spec.subsSocket
@@ -214,7 +214,7 @@ Woogeen.Conference = (function () {
             turnServer: self.connSettings.turn
           });
 
-          myStream.channel[spec.subsSocket].addStream(myStream.stream);
+          myStream.channel[spec.subsSocket].addStream(myStream.mediaStream);
           myStream.channel[spec.subsSocket].oniceconnectionstatechange = function (state) {
             if (state === 'disconnected') {
               myStream.channel[spec.subsSocket].close();
@@ -490,10 +490,13 @@ Woogeen.Conference = (function () {
         opt.state = 'p2p';
         sendSdp(self.socket, 'publish', opt, null, function (answer, id) {
             if (answer === 'error') {
-                return safeCall(onFailure, answer);
+              return safeCall(onFailure, answer);
             }
             stream.id = function () {
-                return id;
+              return id;
+            };
+            stream.unpublish = function (onSuccess, onFailure) {
+              self.unpublish(stream, onSuccess, onFailure);
             };
             self.localStreams[id] = stream;
             safeCall(onSuccess, stream);
@@ -528,6 +531,9 @@ Woogeen.Conference = (function () {
               };
               stream.signalOnPauseVideo = function (onSuccess, onFailure) {
                 sendCtrlPayload(self.socket, 'video-out-off', id, onSuccess, onFailure);
+              };
+              stream.unpublish = function (onSuccess, onFailure) {
+                self.unpublish(stream, onSuccess, onFailure);
               };
               safeCall(onSuccess, stream);
             };
@@ -581,6 +587,7 @@ Woogeen.Conference = (function () {
       stream.signalOnPauseAudio = undefined;
       stream.signalOnPlayVideo = undefined;
       stream.signalOnPauseVideo = undefined;
+      delete stream.unpublish;
       safeCall(onSuccess, null);
     });
   };

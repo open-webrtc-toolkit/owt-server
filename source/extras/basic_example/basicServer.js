@@ -37,24 +37,51 @@ app.use(bodyParser.urlencoded({
 N.API.init(config.nuve.superserviceID, config.nuve.superserviceKey, 'http://localhost:3000/');
 
 var myRoom;
+var p2pRoom;
 
 N.API.getRooms(function(roomlist) {
     "use strict";
     var rooms = JSON.parse(roomlist);
-    console.log(rooms.length); //check and see if one of these rooms is 'myRoom'
-    for (var room in rooms) {
-        if (room.name === 'myRoom'){
-            myRoom = room._id;
+    console.log(rooms.length +' rooms in this service.');
+    for (var i = 0; i < rooms.length; i++) {
+        if (myRoom === undefined && rooms[i].name === 'myRoom') {
+            myRoom = rooms[i]._id;
+            console.log('MyRoom Id:', myRoom);
+        }
+        if (p2pRoom === undefined && rooms[i].p2p) {
+            p2pRoom = rooms[i]._id;
+            console.log('P2PRoom Id:', p2pRoom);
+        }
+        if (myRoom !== undefined && p2pRoom !== undefined) {
+            break;
         }
     }
-    if (!myRoom) {
+    var tryCreate = function (room, callback) {
+        N.API.createRoom(room.name, function (roomID) {
+            console.log('Created room:', roomID._id);
+            callback(roomID._id);
+        }, function (status, err) {
+            console.log('Error in creating room:', err, '[Retry]');
+            setTimeout(function(){
+                tryCreate(room, callback);
+            }, 100);
+        }, room);
+    };
 
-        N.API.createRoom('myRoom', function(roomID) {
-            myRoom = roomID._id;
-            console.log('Created room ', myRoom);
+    var room;
+    if (!myRoom) {
+        room = {name:'myRoom'};
+        tryCreate(room, function (Id) {
+            myRoom = Id;
+            console.log('myRoom Id:', myRoom);
         });
-    } else {
-        console.log('Using room ', myRoom);
+    }
+    if (!p2pRoom) {
+        room = {name:'P2P Room', p2p:true};
+        tryCreate(room, function (Id) {
+            p2pRoom = Id;
+            console.log('P2PRoom Id:', p2pRoom);
+        });
     }
 });
 
@@ -77,9 +104,12 @@ app.get('/getUsers/:room', function(req, res) {
 
 app.post('/createToken/', function(req, res) {
     "use strict";
-    var room = myRoom,
+    var room = req.body.room || myRoom,
         username = req.body.username,
         role = req.body.role;
+    if (room === 'p2p') {
+        room = p2pRoom;
+    }
     N.API.createToken(room, username, role, function(token) {
         console.log(token);
         res.send(token);
