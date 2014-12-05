@@ -27,7 +27,6 @@ cd $ROOT/source/erizo_controller
 ./initErizo_controller.sh
 ./initErizo_agent.sh
 
-cp $ROOT/source/erizo_controller/erizoClient/dist/erizo.js $EXTRAS/basic_example/public/
 cp $ROOT/source/nuve/nuveClient/dist/nuve.js $EXTRAS/basic_example/
 
 echo [licode] Done, run basic_example/basicServer.js
