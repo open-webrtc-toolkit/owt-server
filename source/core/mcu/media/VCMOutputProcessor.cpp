@@ -107,20 +107,16 @@ void VCMOutputProcessor::onFrame(FrameFormat format, unsigned char* payload, int
 
     switch (format) {
     case FRAME_FORMAT_I420: {
+        // Currently we should only receive I420 format frame.
         I420VideoFrame* composedFrame = reinterpret_cast<I420VideoFrame*>(payload);
         m_videoEncoder->DeliverFrame(m_id, composedFrame);
         break;
     }
     case FRAME_FORMAT_VP8:
-        // Currently we should only receive I420 format.
-        // The below code is just to illustrate what it would be for other format support in the future.
-        webrtc::RTPVideoHeader h;
-        h.codec = webrtc::kRtpVideoVp8;
-        h.codecHeader.VP8.InitRTPVideoHeaderVP8();
-        m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, 100, ts * 90,
-                                    ts, payload, len, nullptr, &h);
+        assert(false);
         break;
     case FRAME_FORMAT_H264:
+        assert(false);
     default:
         break;
     }
