@@ -93,14 +93,13 @@ void Config::initVideoLayout(const std::string& type, const std::string& default
         // Parsing all the customized layout candidates
         BOOST_FOREACH (boost::property_tree::ptree::value_type& layoutPair, pt.get_child("videolayout")) {
             uint32_t maxInput = layoutPair.second.get<int>("maxinput");
-            int validMaxInput = (maxInput > 0 && maxInput <= MAX_VIDEO_SLOT_NUMBER) ? maxInput : 0;
-            if (validMaxInput < 1)
+            if (maxInput == 0 || maxInput > MAX_VIDEO_SLOT_NUMBER)
                 continue;
 
             VideoLayout& targetLayout = m_customVideoLayouts[maxInput - 1];
             targetLayout.rootSize = defaultSize;
             targetLayout.rootColor = defaultColor;
-            targetLayout.maxInput = validMaxInput;
+            targetLayout.maxInput = maxInput;
 
             std::string size = layoutPair.second.get<std::string> ("root.size");
             targetLayout.rootSize = VideoResolutionType::vga;
