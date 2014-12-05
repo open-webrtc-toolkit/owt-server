@@ -13,7 +13,7 @@ usage() {
   echo "    --debug                             build in debug mode"
   echo "    --gateway                           build oovoo gateway library & addon"
   echo "    --mcu                               build mcu runtime library & addon"
-  echo "    --sdk                               build erizo.js"
+  echo "    --sdk                               build sdk"
   echo "    --all                               build all components"
   echo "    --help                              print this help"
   echo "Example:"
