@@ -49,6 +49,9 @@
       this.mediaStream.stop();
     }
     this.mediaStream = null;
+    if (typeof this.unpublish === 'function') {
+      this.unpublish();
+    }
     // close peer connection if necessary
     if (this.channel && typeof this.channel.close === 'function') {
       this.channel.close();

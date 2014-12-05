@@ -8,10 +8,10 @@
     return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
   }
 
-  function createToken (userName, role, callback) {
+  function createToken (room, userName, role, callback) {
     var req = new XMLHttpRequest();
     var url = '/createToken/';
-    var body = {username: userName, role: role};
+    var body = {room: room, username: userName, role: role};
     req.onreadystatechange = function () {
       if (req.readyState === 4) {
         callback(req.responseText);
@@ -64,8 +64,17 @@
   conference.on('stream-added', function (event) {
     var stream = event.stream;
     L.Logger.info('stream added:', stream.id());
-    if (localStream && localStream.id() === stream.id()) {
-      L.Logger.info('stream', stream.id(), 'is local; will not be subscribed.');
+    var fromMe = false;
+    for (var i in conference.localStreams) {
+      if (conference.localStreams.hasOwnProperty(i)) {
+        if (conference.localStreams[i].id() === stream.id()) {
+          fromMe = true;
+          break;
+        }
+      }
+    }
+    if (fromMe) {
+      L.Logger.info('stream', stream.id(), 'is from me; will not be subscribed.');
       return;
     }
     L.Logger.info('subscribing:', stream.id());
@@ -97,8 +106,9 @@
     L.Logger.setLogLevel(L.Logger.INFO);
     var myResolution = getParameterByName('resolution') || 'vga';
     var shareScreen = getParameterByName('screen') || false;
+    var myRoom = getParameterByName('room');
 
-    createToken('user', 'presenter', function (response) {
+    createToken(myRoom, 'user', 'presenter', function (response) {
       var token = response;
 
       conference.join(token, function (resp) {

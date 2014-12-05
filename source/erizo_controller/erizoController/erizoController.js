@@ -790,7 +790,9 @@ var listen = function () {
                 if (GLOBAL.config.erizoController.mixer) {
                     clearInterval(socket.room.initMixerTimer);
                     // FIXME: Don't hard code the mixer id.
-                    socket.room.controller.removePublisher(0);
+                    if (socket.room.controller && typeof socket.room.controller.removePublisher === 'function') {
+                        socket.room.controller.removePublisher(0);
+                    }
                     if (socket.room.streams[0]) {
                         delete socket.room.streams[0];
                     }
