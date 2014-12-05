@@ -1,4 +1,4 @@
-/* global window, mozRTCSessionDescription, mozRTCPeerConnection*/
+/* global window, mozRTCSessionDescription, mozRTCPeerConnection */
 
 Erizo.FirefoxStack = function (spec) {
     'use strict';
@@ -43,12 +43,9 @@ Erizo.FirefoxStack = function (spec) {
     }
 
     that.mediaConstraints = {
-        optional: [],
-        mandatory: {
-            OfferToReceiveAudio: spec.audio,
-            OfferToReceiveVideo: spec.video,
-            MozDontOfferDataChannel: true
-        }
+        offerToReceiveAudio: spec.audio,
+        offerToReceiveVideo: spec.video,
+        mozDontOfferDataChannel: true
     };
 
     that.roapSessionId = 103;
@@ -76,7 +73,7 @@ Erizo.FirefoxStack = function (spec) {
         }
     };
 
-    // L.Logger.debug("Created webkitRTCPeerConnnection with config \"" + JSON.stringify(that.pc_config) + "\".");
+    L.Logger.debug('Created webkitRTCPeerConnnection with config "' + JSON.stringify(that.pc_config) + '".');
 
     /**
      * This function processes signalling messages from the other side.
@@ -266,8 +263,6 @@ Erizo.FirefoxStack = function (spec) {
 
                 }
                 onSuccess();
-                
-
 
             } else if (that.state === 'preparing-offer') {
                 // Don't do anything until we have the ICE candidates.
