@@ -101,7 +101,7 @@ void ExternalVideoProcessor::onFrame(FrameFormat format, unsigned char* payload,
     h.codec = webrtc::kRtpVideoVp8;
     h.codecHeader.VP8.InitRTPVideoHeaderVP8();
 
-    m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, 100, ts * 90,
+    m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, VP8_90000_PT, ts * 90,
                                 ts, payload, len, nullptr, &h);
 }
 
