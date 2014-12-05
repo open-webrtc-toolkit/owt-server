@@ -132,7 +132,7 @@
             });
           });
         } else {
-          conference.shareScreen(function (stream) {
+          conference.shareScreen({resolution: myResolution}, function (stream) {
             stream.show('myVideo');
           }, function (err) {
             L.Logger.error('share screen failed:', err);
