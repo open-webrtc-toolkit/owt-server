@@ -74,6 +74,7 @@ bool VCMOutputProcessor::setSendCodec(FrameFormat frameFormat, VideoSize videoSi
         videoCodec.width = videoSize.width;
         videoCodec.height = videoSize.height;
         // TODO: Set startBitrate, minBitrate and maxBitrate of the codec according to the (future) configurable parameters.
+        videoCodec.minBitrate = 300 * 1000;
 
         if (!m_rtpRtcp || m_rtpRtcp->RegisterSendPayload(videoCodec) == -1)
             return false;
