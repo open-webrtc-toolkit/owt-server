@@ -24,6 +24,11 @@ var MODES = {
     LECTURE: 'lecture'
 };
 var mode = MODES.GALAXY;
+var SUBSCRIBETYPES = {
+  FORWARD: 'forward',
+  MIX: 'mix'
+};
+var subscribeType=SUBSCRIBETYPES.FORWARD;
 var isScreenSharing = false;
 var isLocalScreenSharing = false;
 var remoteScreen = null;
@@ -31,6 +36,11 @@ var remoteScreenName = null;
 var curTime = 0;
 var totalTime = 0;
 var isMobile = false;
+var token;
+
+/* Rewrite some woogeen functions */
+Woogeen.Room=Woogeen.Conference;
+
 
 function login() {
     setTimeout(function() {
@@ -69,9 +79,10 @@ function exit() {
 }
 
 function initWoogeen() {
-    Woogeen.Logger.setLogLevel(Woogeen.Logger.WARNING);
+    L.Logger.setLogLevel(L.Logger.WARNING);
     var videoWidth = 640;
     var videoHeight = 480;
+    room = Woogeen.Room.create({});
     if ($('#login-240').hasClass('selected')) {
         videoWidth = 320;
 	videoHeight = 240;
@@ -79,8 +90,13 @@ function initWoogeen() {
         videoWidth = 1280;
 	videoHeight = 720;
     }
+    if ($('#subscribe-type').val() === 'mixed'){
+      subscribeType = SUBSCRIBETYPES.MIX;
+      mode = MODES.LECTURE;
+    }
 
-    localStream = Woogeen.Stream({
+    Woogeen.LocalStream.create({
+        id: localId,
         audio: true,
         video: $('#login-audio-video').hasClass('selected'),
         videoSize: [videoWidth, videoHeight, videoWidth, videoHeight],
@@ -89,6 +105,9 @@ function initWoogeen() {
             id: localId,
             name: name
         }
+    },function(err, stream){
+      localStream=stream;
+      connectRoom();
     });
     users.push({
         name: name,
@@ -96,23 +115,20 @@ function initWoogeen() {
     });
     $('#profile').text(name);
 
-    createToken(localId, 'role', serviceKey, function (status, response) {
+    createToken(localId, 'presenter', serviceKey, function (status, response) {
         if (status !== 200) {
             Woogeen.Logger.error('createToken failed:', response, status);
             sendIm('Failed to connect to the server, please reload the page to '
                     + 'try again.', 'System');
             return;
         }
-        room = Woogeen.Room({
-            token: response,
-            secure: isSecuredConnection
-        });
-        localStream.addEventListener('access-accepted', connectRoom);
-        localStream.addEventListener('access-denied', function() {
-            sendIm('Failed to get the access to camera. Please '
-                    + 'accept the access to join a conference.', 'System');
-        });
-        localStream.init();
+        token = response;
+        //localStream.addEventListener('access-accepted', connectRoom);
+        //localStream.addEventListener('access-denied', function() {
+        //    sendIm('Failed to get the access to camera. Please '
+        //            + 'accept the access to join a conference.', 'System');
+        //});
+        //localStream.init();
     });
 }
 
@@ -141,70 +157,52 @@ function connectRoom() {
     function subscribeToStreams(streams) {
         for (var index in streams) {
             var stream = streams[index];
-            if ((!localStream || localStream.getID() !== stream.getID()) &&
-                !stream.isMix()) {
-                room.subscribe(stream);
-            }
-      }
-    }
-
-    room.addEventListener('room-connected', function (roomEvent) {
-        sendIm('Connected to the room.', 'System');
-        $('#text-send,#send-btn').show();
-
-        var bandWidth = 100;
-        if ($('#login-480').hasClass('selected')) {
-            bandWidth = 300;
-        } else if ($('#login-720').hasClass('selected')) {
-            bandWidth = 1000;
-        }
-
-        if ($('#login-audio-video').hasClass('selected')) {
-          room.publish(localStream, {maxAudioBW: 30})
-        } else {
-          room.publish(localStream, {maxVideoBW: bandWidth, maxAudioBW: 30});;
-        }
-        subscribeToStreams(roomEvent.streams);
-    });
-
-    room.addEventListener('stream-subscribed', function(streamEvent) {
-        var stream = streamEvent.stream;
-
-        // append name to users for previously online clients
-        var attr = stream.getAttributes() || [];
-        var thatId = attr['id'] || stream.getID();
-        var thatName = attr['name'] || 'Anonymous';
-        var isScreen = attr['type'] === 'screen';
-        var user = getUserFromId(thatId);
-        if (user === null) {
-            users.push({
-                name: thatName,
-                id: thatId
-            });
-            sendIm(thatName + ' has joined the room.', 'System');
-        } else if (!user['name']) {
-            user['name'] = thatName;
-            sendIm(thatName + ' has joined the room.', 'System');
-        } else if (isScreen && !isLocalScreenSharing) {
-            remoteScreen = stream;
-            remoteScreenName = thatName;
-            shareScreenChanged(true, false);
-            sendIm(thatName + ' is sharing screen now.', 'System');
-        }
-
-        // add video of non-local streams
-        if (localId !== thatId) {
-            stream.addEventListener('stream-data', function(event) {
-                if (event.stream && event.msg && thatId !== null) {
+            if ((!localStream || localStream.id() !== stream.id())) {
+              if ((subscribeType === SUBSCRIBETYPES.MIX && stream.id() == 0)
+                  || (subscribeType === SUBSCRIBETYPES.FORWARD && stream.id() != 0))
+                room.subscribe(stream, (function(){
+                  return function(stream){
+                    // append name to users for previously online clients
+                    var attr = stream.attributes() || [];
+                    var thatId = attr['id'] || stream.id();
+                    var thatName = attr['name'] || 'Anonymous';
+                    var isScreen = attr['type'] === 'screen';
                     var user = getUserFromId(thatId);
-                    if (user && user['id']) {
-                        sendIm(event.msg, user['id']);
+                    if (user === null) {
+                        users.push({
+                            name: thatName,
+                            id: thatId
+                        });
+                        //sendIm(thatName + ' has joined the room.', 'System');
+                    } else if (!user['name']) {
+                        user['name'] = thatName;
+                        //sendIm(thatName + ' has joined the room.', 'System');
+                    } else if (isScreen && !isLocalScreenSharing) {
+                        remoteScreen = stream;
+                        remoteScreenName = thatName;
+                        shareScreenChanged(true, false);
+                        sendIm(thatName + ' is sharing screen now.', 'System');
                     }
-                }
-            });
-            addVideo(stream);
+
+                    // add video of non-local streams
+                    if (localId !== thatId) {
+                        room.addEventListener('stream-data', function(event) {
+                            if (event.stream && event.msg && thatId !== null) {
+                                var user = getUserFromId(thatId);
+                                if (user && user['id']) {
+                                    sendIm(event.msg, user['id']);
+                                }
+                            }
+                        });
+                        addVideo(stream);
+                    }
+                  }
+                })(stream), function(err){
+                  L.Logger.error('Subscribe stream failed: '+JSON.stringify(err));
+                });
+            }
         }
-    });
+    }
 
     room.addEventListener('stream-added', function (streamEvent) {
         console.log('stream-added!');
@@ -217,8 +215,8 @@ function connectRoom() {
         console.log('stream-removed!');
         // Remove stream from DOM
         var stream = streamEvent.stream;
-        var attr = stream.getAttributes() || [];
-        var uid = attr['id'] || stream.getID();
+        var attr = stream.attributes() || [];
+        var uid = attr['id'] || stream.id();
         var user = getUserFromId(uid);
         if (user !== null && user['htmlId'] !== undefined) {
             if (attr['type'] === 'screen') {
@@ -276,7 +274,39 @@ function connectRoom() {
         }
     });
 
-    room.connect();
+    room.join(token,function(res){
+
+      sendIm('Connected to the room.', 'System');
+      $('#text-send,#send-btn').show();
+
+      var bandWidth = 100;
+      if ($('#login-480').hasClass('selected')) {
+          bandWidth = 300;
+      } else if ($('#login-720').hasClass('selected')) {
+          bandWidth = 1000;
+      }
+
+      if (!$('#login-audio-video').hasClass('selected')) {
+        room.publish(localStream, {}, function(resp){
+          L.Logger.info('Publish stream success.');
+        },function(err){
+          if(err){
+            return L.Logger.error('publish failed:', err);
+          }
+        });
+      } else {
+        room.publish(localStream, {maxVideoBW: 500}, function(resp){
+          L.Logger.info('Publish stream success.', resp.id());
+        },function(err){
+          L.Logger.error('publish failed:', err);
+        });
+      }
+
+      var streams = res.streams;
+      subscribeToStreams(streams);
+    }, function(err){
+      L.Logger.error('Join room failed.');
+    });
 
     addVideo(localStream, true);
 }
@@ -357,12 +387,9 @@ function addVideo(stream, isLocal) {
     while ($('#client-' + id).length > 0) {
         ++id;
     }
-    var attr = stream.getAttributes() || [];
-    var uid = attr['id'];
-    if (uid === undefined) {
-        // users from other UI
-        uid = stream.getID();
-    }
+
+    var attr = stream.attributes() || {};
+    var uid = attr.id || stream.id();
 
     // check if is screen sharing
     if (attr['type'] === 'screen') {
@@ -372,40 +399,8 @@ function addVideo(stream, isLocal) {
         $('#screen').addClass('clt-' + getColorId(uid))
                 .children().children('div').remove();
         $('#screen').append('<div class="ctrl"><a href="#" class="ctrl-btn '
-                + 'fullscreen"></a><a href="#" class="ctrl-btn reset">'
-                + '</a><a href="#" class="ctrl-btn zoomin"></a>'
-                + '<a href="#" class="ctrl-btn zoomout"></a>' + '</div>')
-        .append('<div class="ctrl-name">'
+                + 'fullscreen"></a></div>').append('<div class="ctrl-name">'
                 + 'Screen Sharing from ' + attr['name'] + '</div>');
-
-        // mouse scroll to zoom in or out screen sharing video, drag to move
-        $('#screen video').panzoom({
-            minScale: 1,
-            maxScale: 4
-        }).bind('mousewheel', function(e) {
-            e.preventDefault();
-            var evt = window.event || e;
-            var delta = evt.wheelDelta;
-
-            if (delta < 0) {
-                // zoom out
-                $(this).panzoom('zoom', true);
-            } else {
-                // zoom in
-                $(this).panzoom('zoom');
-            }
-        });
-        $('.reset').click(function() {
-            $('#screen video').panzoom('reset');
-        });
-        $('.zoomin').click(function() {
-            // zoom in
-            $('#screen video').panzoom('zoom');
-        });
-        $('.zoomout').click(function() {
-            // zoom out
-            $('#screen video').panzoom('zoom', true);
-        });
 
         changeMode(MODES.LECTURE, $('#screen'));
 
@@ -439,9 +434,12 @@ function addVideo(stream, isLocal) {
             player.append('<img src="img/avatar.png" class="img-novideo" />');
         }
 
+        if(stream.id()==0)
+          attr['name'] = "Mixed Stream";
+
         // control buttons and user name panel
         var resize = size === 'large' ? 'shrink' : 'enlarge';
-        var attr = stream.getAttributes() ? stream.getAttributes() : [];
+        var attr = stream.attributes() ? stream.attributes() : [];
         var name = attr['name'] ? attr['name'] : 'Anonymous';
         var muteBtn = '<a href="#" class="ctrl-btn unmute"></a>';
         $('#client-' + id).append('<div class="ctrl">'
@@ -451,7 +449,13 @@ function addVideo(stream, isLocal) {
                 .append('<div class="ctrl-name">' + name + '</div>');
         relocate($('#client-' + id));
 
-        changeMode(mode);
+        if(stream.id()==0){
+          name = 'Mixed';
+          changeMode(MODES.LECTURE, $('#client-'+id));
+        }
+        else{
+          changeMode(mode);
+        }
     }
 
     function mouseout(e) {
