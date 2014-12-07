@@ -77,19 +77,15 @@ SoftVideoCompositor::SoftVideoCompositor(const VideoLayout& layout)
     m_ntpDelta = Clock::GetRealTimeClock()->CurrentNtpInMilliseconds() - TickTime::MillisecondTimestamp();
     m_vpmPool.reset(new VPMPool(MAX_VIDEO_SLOT_NUMBER));
 
-    // Fetch the video size
-    unsigned int videoWidth = DEFAULT_VIDEO_SIZE.width;
-    unsigned int videoHeight = DEFAULT_VIDEO_SIZE.height;
-    std::map<VideoResolutionType, VideoSize>::const_iterator it = VideoSizes.find(m_currentLayout.rootSize);
-    if (it != VideoSizes.end()) {
-        videoWidth = it->second.width;
-        videoHeight = it->second.height;
-    }
+    // TODO: Fetch the video size and use it across this compositor.
+    // Currently video root size does not support changing on the fly.
+    // Yet, the layout configuration does not have this restriction.
+    m_composedSize = getVideoSize(m_currentLayout.rootSize);
 
     // Initialize frame buffer and buffer manager for video composition
     m_composedFrame.reset(new webrtc::I420VideoFrame());
-    m_composedFrame->CreateEmptyFrame(videoWidth, videoHeight, videoWidth, videoWidth / 2, videoWidth / 2);
-    m_bufferManager.reset(new BufferManager(videoWidth, videoHeight));
+    m_composedFrame->CreateEmptyFrame(m_composedSize.width, m_composedSize.height, m_composedSize.width, m_composedSize.width / 2, m_composedSize.width / 2);
+    m_bufferManager.reset(new BufferManager(m_composedSize.width, m_composedSize.height));
 
     // Set the initialized video layout
     setLayout(m_currentLayout);
@@ -196,16 +192,33 @@ void SoftVideoCompositor::onSlotNumberChanged(uint32_t newSlotNum)
     }
 }
 
+VideoSize SoftVideoCompositor::getVideoSize(VideoResolutionType videoResolution)
+{
+    // Fetch video size
+    std::map<VideoResolutionType, VideoSize>::const_iterator it = VideoSizes.find(videoResolution);
+    if (it != VideoSizes.end())
+        return it->second;
+
+    return DEFAULT_VIDEO_SIZE;
+}
+
+YUVColor SoftVideoCompositor::getVideoBackgroundColor(VideoBackgroundColor videoBgColor)
+{
+    // Fetch video background color
+    std::map<VideoBackgroundColor, YUVColor>::const_iterator it = VideoYuvColors.find(videoBgColor);
+    if (it != VideoYuvColors.end())
+        return it->second;
+
+    return DEFAULT_VIDEO_BG_COLOR;
+}
+
 void SoftVideoCompositor::setBackgroundColor()
 {
     if (m_composedFrame) {
         ELOG_DEBUG("setBackgroundColor");
 
         // Fetch video background color.
-        YUVColor rootColor = DEFAULT_VIDEO_BG_COLOR;
-        std::map<VideoBackgroundColor, YUVColor>::const_iterator it = VideoYuvColors.find(m_currentLayout.rootColor);
-        if (it != VideoYuvColors.end())
-            rootColor = it->second;
+        YUVColor rootColor = getVideoBackgroundColor(m_currentLayout.rootColor);
 
         // Set the background color
         memset(m_composedFrame->buffer(webrtc::kYPlane), rootColor.y, m_composedFrame->allocated_size(webrtc::kYPlane));
@@ -219,30 +232,22 @@ bool SoftVideoCompositor::commitLayout()
     // Update the current video layout
     m_currentLayout = m_newLayout;
 
-    // Fetch video size.
-    VideoSize rootSize = DEFAULT_VIDEO_SIZE;
-    std::map<VideoResolutionType, VideoSize>::const_iterator it = VideoSizes.find(m_currentLayout.rootSize);
-    if (it != VideoSizes.end())
-        rootSize = it->second;
-
-    // Update the vpm pool size
+    // Update the vpm sub-video size
     if (m_currentLayout.regions.empty()) { //fluid layout
         VideoSize videoSize;
-        videoSize.width = rootSize.width / m_currentLayout.divFactor;
-        videoSize.height = rootSize.height / m_currentLayout.divFactor;
-        m_currentLayout.subWidth = videoSize.width;
-        m_currentLayout.subHeight = videoSize.height;
+        videoSize.width = m_composedSize.width / m_currentLayout.divFactor;
+        videoSize.height = m_composedSize.height / m_currentLayout.divFactor;
         for (uint32_t i = 0; i < m_vpmPool->size(); i++)
             m_vpmPool->update(i, videoSize);
 
-        ELOG_DEBUG("commit fluidlayout, rooSize is %d, current subHeight is %d, current subWidth is %d",
-                m_currentLayout.rootSize,  m_currentLayout.subHeight, m_currentLayout.subWidth);
+        ELOG_DEBUG("commit fluidlayout, rooSize is %d, current subWidth is %d, current subHeight is %d",
+            m_currentLayout.rootSize,  videoSize.width, videoSize.height);
     } else { //custom layout
         for (uint32_t i = 0; i < m_currentLayout.regions.size(); i++) {
             Region region = m_currentLayout.regions[i];
             VideoSize videoSize;
-            videoSize.width = (int)(rootSize.width * region.relativeSize);
-            videoSize.height = (int)(rootSize.height * region.relativeSize);
+            videoSize.width = (int)(m_composedSize.width * region.relativeSize);
+            videoSize.height = (int)(m_composedSize.height * region.relativeSize);
             m_vpmPool->update(i, videoSize);
         }
         ELOG_DEBUG("commit customlayout");
@@ -272,12 +277,6 @@ webrtc::I420VideoFrame* SoftVideoCompositor::layout()
 
 webrtc::I420VideoFrame* SoftVideoCompositor::customLayout()
 {
-    // Fetch video size
-    VideoSize rootSize = DEFAULT_VIDEO_SIZE;
-    std::map<VideoResolutionType, VideoSize>::const_iterator it = VideoSizes.find(m_currentLayout.rootSize);
-    if (it != VideoSizes.end())
-        rootSize = it->second;
-
     uint32_t input = 0;
     webrtc::I420VideoFrame* target = m_composedFrame.get();
     for (uint32_t index = 0; index < MAX_VIDEO_SLOT_NUMBER; ++index) {
@@ -285,25 +284,25 @@ webrtc::I420VideoFrame* SoftVideoCompositor::customLayout()
             continue;
 
         Region region = m_currentLayout.regions[input];
-        int sub_width = (int)(rootSize.width * region.relativeSize);
-        int sub_height = (int)(rootSize.height * region.relativeSize);
-        unsigned int offset_width = (unsigned int)(rootSize.width * region.left);
-        unsigned int offset_height = (unsigned int)(rootSize.height * region.top);
+        int sub_width = (int)(m_composedSize.width * region.relativeSize);
+        int sub_height = (int)(m_composedSize.height * region.relativeSize);
+        unsigned int offset_width = (unsigned int)(m_composedSize.width * region.left);
+        unsigned int offset_height = (unsigned int)(m_composedSize.height * region.top);
         webrtc::I420VideoFrame* sub_image = m_bufferManager->getBusyBuffer(index);
         if (!sub_image) {
             for (int i = 0; i < sub_height; i++) {
                 memset(target->buffer(webrtc::kYPlane) + (i+offset_height) * target->stride(webrtc::kYPlane) + offset_width,
-                        0,
-                        sub_width);
+                    0,
+                    sub_width);
             }
 
             for (int i = 0; i < sub_height/2; i++) {
                 memset(target->buffer(webrtc::kUPlane) + (i+offset_height/2) * target->stride(webrtc::kUPlane) + offset_width/2,
-                        128,
-                        sub_width/2);
+                    128,
+                    sub_width/2);
                 memset(target->buffer(webrtc::kVPlane) + (i+offset_height/2) * target->stride(webrtc::kVPlane) + offset_width/2,
-                        128,
-                        sub_width/2);
+                    128,
+                    sub_width/2);
             }
         } else {
             I420VideoFrame* processedFrame = nullptr;
@@ -313,17 +312,17 @@ webrtc::I420VideoFrame* SoftVideoCompositor::customLayout()
             } else if (ret == VPM_OK && processedFrame) {
                 for (int i = 0; i < sub_height; i++) {
                     memcpy(target->buffer(webrtc::kYPlane) + (i+offset_height) * target->stride(webrtc::kYPlane) + offset_width,
-                            processedFrame->buffer(webrtc::kYPlane) + i * processedFrame->stride(webrtc::kYPlane),
-                            sub_width);
+                        processedFrame->buffer(webrtc::kYPlane) + i * processedFrame->stride(webrtc::kYPlane),
+                        sub_width);
                 }
 
                 for (int i = 0; i < sub_height/2; i++) {
                     memcpy(target->buffer(webrtc::kUPlane) + (i+offset_height/2) * target->stride(webrtc::kUPlane) + offset_width/2,
-                            processedFrame->buffer(webrtc::kUPlane) + i * processedFrame->stride(webrtc::kUPlane),
-                            sub_width/2);
+                        processedFrame->buffer(webrtc::kUPlane) + i * processedFrame->stride(webrtc::kUPlane),
+                        sub_width/2);
                     memcpy(target->buffer(webrtc::kVPlane) + (i+offset_height/2) * target->stride(webrtc::kVPlane) + offset_width/2,
-                            processedFrame->buffer(webrtc::kVPlane) + i * processedFrame->stride(webrtc::kVPlane),
-                            sub_width/2);
+                        processedFrame->buffer(webrtc::kVPlane) + i * processedFrame->stride(webrtc::kVPlane),
+                        sub_width/2);
                 }
             }
             // if return busy frame failed, which means a new busy frame has been posted
@@ -340,29 +339,31 @@ webrtc::I420VideoFrame* SoftVideoCompositor::customLayout()
 webrtc::I420VideoFrame* SoftVideoCompositor::fluidLayout()
 {
     webrtc::I420VideoFrame* target = m_composedFrame.get();
+    unsigned int subWidth = m_composedSize.width / m_currentLayout.divFactor;
+    unsigned int subHeight = m_composedSize.height / m_currentLayout.divFactor;
 
     int input = 0;
     for (uint32_t index = 0; index < MAX_VIDEO_SLOT_NUMBER; ++index) {
         if (!m_bufferManager->isActive(index))
             continue;
 
-        unsigned int offset_width = (input%m_currentLayout.divFactor) * m_currentLayout.subWidth;
-        unsigned int offset_height = (input/m_currentLayout.divFactor) * m_currentLayout.subHeight;
+        unsigned int offset_width = (input%m_currentLayout.divFactor) * subWidth;
+        unsigned int offset_height = (input/m_currentLayout.divFactor) * subHeight;
         webrtc::I420VideoFrame* sub_image = m_bufferManager->getBusyBuffer(index);
         if (!sub_image) {
-            for (uint32_t i = 0; i < m_currentLayout.subHeight; i++) {
+            for (uint32_t i = 0; i < subHeight; i++) {
                 memset(target->buffer(webrtc::kYPlane) + (i+offset_height) * target->stride(webrtc::kYPlane) + offset_width,
                     0,
-                    m_currentLayout.subWidth);
+                    subWidth);
             }
 
-            for (uint32_t i = 0; i < m_currentLayout.subHeight/2; i++) {
+            for (uint32_t i = 0; i < subHeight/2; i++) {
                 memset(target->buffer(webrtc::kUPlane) + (i+offset_height/2) * target->stride(webrtc::kUPlane) + offset_width/2,
                     128,
-                    m_currentLayout.subWidth/2);
+                    subWidth/2);
                 memset(target->buffer(webrtc::kVPlane) + (i+offset_height/2) * target->stride(webrtc::kVPlane) + offset_width/2,
                     128,
-                    m_currentLayout.subWidth/2);
+                    subWidth/2);
             }
         } else {
             I420VideoFrame* processedFrame = nullptr;
@@ -370,21 +371,22 @@ webrtc::I420VideoFrame* SoftVideoCompositor::fluidLayout()
             if (ret == VPM_OK && !processedFrame) {
                 // do nothing
             } else if (ret == VPM_OK && processedFrame) {
-                for (uint32_t i = 0; i < m_currentLayout.subHeight; i++) {
+                for (uint32_t i = 0; i < subHeight; i++) {
                     memcpy(target->buffer(webrtc::kYPlane) + (i+offset_height)* target->stride(webrtc::kYPlane) + offset_width,
                         processedFrame->buffer(webrtc::kYPlane) + i * processedFrame->stride(webrtc::kYPlane),
-                        m_currentLayout.subWidth);
+                        subWidth);
                 }
 
-                for (uint32_t i = 0; i < m_currentLayout.subHeight/2; i++) {
+                for (uint32_t i = 0; i < subHeight/2; i++) {
                     memcpy(target->buffer(webrtc::kUPlane) + (i+offset_height/2) * target->stride(webrtc::kUPlane) + offset_width/2,
                         processedFrame->buffer(webrtc::kUPlane) + i * processedFrame->stride(webrtc::kUPlane),
-                        m_currentLayout.subWidth/2);
+                        subWidth/2);
                     memcpy(target->buffer(webrtc::kVPlane) + (i+offset_height/2) * target->stride(webrtc::kVPlane) + offset_width/2,
                         processedFrame->buffer(webrtc::kVPlane) + i * processedFrame->stride(webrtc::kVPlane),
-                        m_currentLayout.subWidth/2);
+                        subWidth/2);
                 }
             }
+
             // if return busy frame failed, which means a new busy frame has been posted
             // simply release the busy frame
             if (m_bufferManager->returnBusyBuffer(sub_image, index))

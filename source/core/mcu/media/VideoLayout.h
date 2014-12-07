@@ -100,8 +100,6 @@ struct VideoLayout {
 
     // Valid for fluid video layout
     unsigned int divFactor;
-    unsigned int subWidth;
-    unsigned int subHeight;
 };
 
 // Default video layout configuration
