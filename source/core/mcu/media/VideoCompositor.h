@@ -91,6 +91,8 @@ private:
     void onSlotNumberChanged(uint32_t newSlotNum);
     bool commitLayout(); // Commit the new layout config.
     void setBackgroundColor();
+    VideoSize getVideoSize(VideoResolutionType);
+    YUVColor getVideoBackgroundColor(VideoBackgroundColor);
     bool validateConfig(VideoLayout& layout)
     {
         return true;
@@ -103,6 +105,7 @@ private:
     boost::scoped_ptr<VPMPool> m_vpmPool;
     boost::scoped_ptr<BufferManager> m_bufferManager;
     boost::scoped_ptr<webrtc::I420VideoFrame> m_composedFrame;
+    VideoSize m_composedSize;
     VideoLayout m_currentLayout;
     VideoLayout m_newLayout;
     std::map<int, VideoFrameConsumer*> m_consumers;
