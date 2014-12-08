@@ -18,11 +18,11 @@
  * and approved by Intel in writing.
  */
 
-#ifndef ExternalVideoProcessor_h
-#define ExternalVideoProcessor_h
+#ifndef EncodedVideoFrameSender_h
+#define EncodedVideoFrameSender_h
 
-#include "VideoOutputProcessor.h"
 #include "VideoFrameProcessor.h"
+#include "VideoFrameSender.h"
 
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
@@ -34,25 +34,24 @@
 namespace mcu {
 
 class TaskRunner;
-class HardwareVideoMixer;
 
 /**
- * This is the class to accept the encoded frame from external, packetize the frame and
- * send them out via the given WoogeenTransport. It also gives the feedback
- * to the encoder based on the feedback from the remote.
+ * This is the class to accept the encoded frame with the given format,
+ * packetize the frame and send them out via the given WoogeenTransport.
+ * It also gives the feedback to the encoder based on the feedback from the remote.
  */
-class ExternalVideoProcessor : public VideoOutputProcessor,
-                               public erizo::FeedbackSink,
-                               public woogeen_base::IntraFrameCallback,
-                               public webrtc::BitrateObserver,
-                               public webrtc::RtcpIntraFrameObserver {
+class EncodedVideoFrameSender : public VideoFrameSender,
+                                public erizo::FeedbackSink,
+                                public woogeen_base::IntraFrameCallback,
+                                public webrtc::BitrateObserver,
+                                public webrtc::RtcpIntraFrameObserver {
     DECLARE_LOGGER();
 
 public:
-    ExternalVideoProcessor(int id, boost::shared_ptr<VideoFrameProcessor>, FrameFormat, woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<TaskRunner>);
-    ~ExternalVideoProcessor();
+    EncodedVideoFrameSender(int id, boost::shared_ptr<VideoFrameProcessor>, FrameFormat, woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<TaskRunner>);
+    ~EncodedVideoFrameSender();
 
-    // Implements VideoOutputProcessor.
+    // Implements VideoFrameSender.
     bool setSendCodec(FrameFormat, VideoSize);
     uint32_t sendSSRC();
     woogeen_base::IntraFrameCallback* iFrameCallback() { return this; }
@@ -85,9 +84,9 @@ private:
 
     boost::shared_ptr<webrtc::Transport> m_videoTransport;
     boost::shared_ptr<TaskRunner> m_taskRunner;
-    boost::shared_ptr<VideoFrameProcessor> m_mixer;
+    boost::shared_ptr<VideoFrameProcessor> m_source;
     FrameFormat m_frameFormat;
 };
 
 }
-#endif /* ExternalVideoProcessor_h */
+#endif /* EncodedVideoFrameSender_h */

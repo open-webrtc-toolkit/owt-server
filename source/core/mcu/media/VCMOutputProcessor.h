@@ -21,7 +21,7 @@
 #ifndef VCMOutputProcessor_h
 #define VCMOutputProcessor_h
 
-#include "VideoOutputProcessor.h"
+#include "VideoFrameSender.h"
 
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
@@ -41,14 +41,14 @@ class TaskRunner;
  * data via the given WoogeenTransport. It also gives the feedback
  * to the encoder based on the feedback from the remote.
  */
-class VCMOutputProcessor : public VideoOutputProcessor, public erizo::FeedbackSink, public woogeen_base::IntraFrameCallback {
+class VCMOutputProcessor : public VideoFrameSender, public erizo::FeedbackSink, public woogeen_base::IntraFrameCallback {
     DECLARE_LOGGER();
 
 public:
     VCMOutputProcessor(int id, woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<TaskRunner>);
     ~VCMOutputProcessor();
 
-    // Implements VideoOutputProcessor.
+    // Implements VideoFrameSender.
     bool setSendCodec(FrameFormat, VideoSize);
     uint32_t sendSSRC();
     woogeen_base::IntraFrameCallback* iFrameCallback() { return this; }

@@ -40,7 +40,7 @@ namespace mcu {
 
 class TaskRunner;
 class VCMInputProcessor;
-class VideoOutputProcessor;
+class VideoFrameSender;
 class VideoFrameProcessor;
 struct Layout;
 
@@ -102,8 +102,8 @@ private:
     std::vector<uint32_t> m_sourceSlotMap;    // each source will be allocated one index
     bool m_addSourceOnDemand;
 
-    std::map<int, boost::shared_ptr<VideoOutputProcessor>> m_videoOutputProcessors;
-    boost::shared_ptr<VideoFrameProcessor> m_frameProcessor;
+    std::map<int, boost::shared_ptr<VideoFrameSender>> m_outputs;
+    boost::shared_ptr<VideoFrameProcessor> m_frameCompositor;
 };
 
 inline int VideoMixer::assignSlot(uint32_t source)

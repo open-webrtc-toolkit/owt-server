@@ -18,8 +18,8 @@
  * and approved by Intel in writing.
  */
 
-#ifndef VideoOutputProcessor_h
-#define VideoOutputProcessor_h
+#ifndef VideoFrameSender_h
+#define VideoFrameSender_h
 
 #include "VideoFrameProcessor.h"
 
@@ -32,16 +32,16 @@ namespace mcu {
 class TaskRunner;
 
 /**
- * This is the class to send out the encoded video frame.
+ * This is the class to send out the video frame with a given format.
  */
-class VideoOutputProcessor : public VideoFrameConsumer {
+class VideoFrameSender : public VideoFrameConsumer {
 public:
-    VideoOutputProcessor(int id)
+    VideoFrameSender(int id)
         : m_id(id)
     {
     }
 
-    virtual ~VideoOutputProcessor() { }
+    virtual ~VideoFrameSender() { }
 
     virtual bool setSendCodec(FrameFormat, VideoSize) = 0;
     virtual uint32_t sendSSRC() = 0;
@@ -54,4 +54,4 @@ protected:
 };
 
 }
-#endif /* VideoOutputProcessor_h */
+#endif /* VideoFrameSender_h */

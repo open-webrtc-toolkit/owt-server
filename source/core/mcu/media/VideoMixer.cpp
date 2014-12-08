@@ -20,11 +20,11 @@
 
 #include "VideoMixer.h"
 
+#include "EncodedVideoFrameSender.h"
+#include "HardwareVideoMixer.h"
 #include "TaskRunner.h"
 #include "VCMInputProcessor.h"
 #include "VCMOutputProcessor.h"
-#include "ExternalVideoProcessor.h"
-#include "HardwareVideoMixer.h"
 #include "VideoCompositor.h"
 #include <WoogeenTransport.h>
 #include <webrtc/system_wrappers/interface/trace.h>
@@ -48,9 +48,9 @@ VideoMixer::VideoMixer(erizo::RTPDataReceiver* receiver, bool hardwareAccelerate
     const VideoLayout& layout = Config::get()->getVideoLayout();
 
     if (m_hardwareAccelerated)
-        m_frameProcessor.reset(new HardwareVideoMixer(layout));
+        m_frameCompositor.reset(new HardwareVideoMixer(layout));
     else
-        m_frameProcessor.reset(new SoftVideoCompositor(layout));
+        m_frameCompositor.reset(new SoftVideoCompositor(layout));
 
     Config::get()->registerListener(this);
 
@@ -70,8 +70,8 @@ VideoMixer::~VideoMixer()
 
 int32_t VideoMixer::addOutput(int payloadType)
 {
-    std::map<int, boost::shared_ptr<VideoOutputProcessor>>::iterator it = m_videoOutputProcessors.find(payloadType);
-    if (it != m_videoOutputProcessors.end())
+    std::map<int, boost::shared_ptr<VideoFrameSender>>::iterator it = m_outputs.find(payloadType);
+    if (it != m_outputs.end())
         return it->second->id();
 
     FrameFormat outputFormat = FRAME_FORMAT_UNKNOWN;
@@ -91,13 +91,13 @@ int32_t VideoMixer::addOutput(int payloadType)
 
     WoogeenTransport<erizo::VIDEO>* transport = new WoogeenTransport<erizo::VIDEO>(m_outputReceiver, nullptr);
 
-    VideoOutputProcessor* output = nullptr;
+    VideoFrameSender* output = nullptr;
     if (m_hardwareAccelerated) {
-        output = new ExternalVideoProcessor(outputId, m_frameProcessor, outputFormat, transport, m_taskRunner);
-        m_frameProcessor->activateOutput(output->id(), outputFormat, 30, 500, output);
+        output = new EncodedVideoFrameSender(outputId, m_frameCompositor, outputFormat, transport, m_taskRunner);
+        m_frameCompositor->activateOutput(output->id(), outputFormat, 30, 500, output);
     } else {
         output = new VCMOutputProcessor(outputId, transport, m_taskRunner);
-        m_frameProcessor->activateOutput(output->id(), FRAME_FORMAT_I420, 30, 500, output);
+        m_frameCompositor->activateOutput(output->id(), FRAME_FORMAT_I420, 30, 500, output);
     }
 
     // Fetch video size.
@@ -106,19 +106,19 @@ int32_t VideoMixer::addOutput(int payloadType)
     if (sizeIterator != VideoSizes.end())
         rootSize = sizeIterator->second;
     output->setSendCodec(outputFormat, rootSize);
-    m_videoOutputProcessors[payloadType].reset(output);
+    m_outputs[payloadType].reset(output);
 
     return output->id();
 }
 
 int32_t VideoMixer::removeOutput(int payloadType)
 {
-    std::map<int, boost::shared_ptr<VideoOutputProcessor>>::iterator it = m_videoOutputProcessors.find(payloadType);
-    if (it != m_videoOutputProcessors.end()) {
-        VideoOutputProcessor* output = it->second.get();
+    std::map<int, boost::shared_ptr<VideoFrameSender>>::iterator it = m_outputs.find(payloadType);
+    if (it != m_outputs.end()) {
+        VideoFrameSender* output = it->second.get();
         int32_t id = output->id();
-        m_frameProcessor->deActivateOutput(id);
-        m_videoOutputProcessors.erase(it);
+        m_frameCompositor->deActivateOutput(id);
+        m_outputs.erase(it);
         return id;
     }
 
@@ -168,8 +168,8 @@ int VideoMixer::deliverFeedback(char* buf, int len)
     // TODO: For now we just send the feedback to all of the output processors.
     // The output processor will filter out the feedback which does not belong
     // to it. In the future we may do the filtering at a higher level?
-    std::map<int, boost::shared_ptr<VideoOutputProcessor>>::iterator it = m_videoOutputProcessors.begin();
-    for (; it != m_videoOutputProcessors.end(); ++it) {
+    std::map<int, boost::shared_ptr<VideoFrameSender>>::iterator it = m_outputs.begin();
+    for (; it != m_outputs.end(); ++it) {
         FeedbackSink* feedbackSink = it->second->feedbackSink();
         if (feedbackSink)
             feedbackSink->deliverFeedback(buf, len);
@@ -180,8 +180,8 @@ int VideoMixer::deliverFeedback(char* buf, int len)
 
 IntraFrameCallback* VideoMixer::getIFrameCallback(int payloadType)
 {
-    std::map<int, boost::shared_ptr<VideoOutputProcessor>>::iterator it = m_videoOutputProcessors.find(payloadType);
-    if (it != m_videoOutputProcessors.end())
+    std::map<int, boost::shared_ptr<VideoFrameSender>>::iterator it = m_outputs.find(payloadType);
+    if (it != m_outputs.end())
         return it->second->iFrameCallback();
 
     return nullptr;
@@ -189,8 +189,8 @@ IntraFrameCallback* VideoMixer::getIFrameCallback(int payloadType)
 
 uint32_t VideoMixer::getSendSSRC(int payloadType)
 {
-    std::map<int, boost::shared_ptr<VideoOutputProcessor>>::iterator it = m_videoOutputProcessors.find(payloadType);
-    if (it != m_videoOutputProcessors.end())
+    std::map<int, boost::shared_ptr<VideoFrameSender>>::iterator it = m_outputs.find(payloadType);
+    if (it != m_outputs.end())
         return it->second->sendSSRC();
 
     return 0;
@@ -199,7 +199,7 @@ uint32_t VideoMixer::getSendSSRC(int payloadType)
 void VideoMixer::onConfigChanged()
 {
     ELOG_DEBUG("onConfigChanged");
-    m_frameProcessor->setLayout(Config::get()->getVideoLayout());
+    m_frameCompositor->setLayout(Config::get()->getVideoLayout());
 }
 
 /**
@@ -222,7 +222,7 @@ int32_t VideoMixer::addSource(uint32_t from, bool isAudio, FeedbackSink* feedbac
 
         VCMInputProcessor* videoInputProcessor(new VCMInputProcessor(index, m_hardwareAccelerated));
         videoInputProcessor->init(new WoogeenTransport<erizo::VIDEO>(nullptr, feedback),
-                                  m_frameProcessor,
+                                  m_frameCompositor,
                                   m_taskRunner);
 
         boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);

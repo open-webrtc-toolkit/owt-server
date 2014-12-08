@@ -33,7 +33,7 @@ namespace mcu {
 DEFINE_LOGGER(VCMOutputProcessor, "mcu.media.VCMOutputProcessor");
 
 VCMOutputProcessor::VCMOutputProcessor(int id, woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<TaskRunner> taskRunner)
-    : VideoOutputProcessor(id)
+    : VideoFrameSender(id)
     , m_sendFormat(FRAME_FORMAT_UNKNOWN)
 {
     init(transport, taskRunner);
