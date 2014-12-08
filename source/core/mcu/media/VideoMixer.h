@@ -40,8 +40,9 @@ namespace mcu {
 
 class TaskRunner;
 class VCMInputProcessor;
+class VideoFrameCompositor;
+class VideoFrameEncoder;
 class VideoFrameSender;
-class VideoFrameProcessor;
 struct Layout;
 
 static const int MIXED_VP8_VIDEO_STREAM_ID = 2;
@@ -102,8 +103,9 @@ private:
     std::vector<uint32_t> m_sourceSlotMap;    // each source will be allocated one index
     bool m_addSourceOnDemand;
 
+    boost::shared_ptr<VideoFrameCompositor> m_frameCompositor;
+    boost::shared_ptr<VideoFrameEncoder> m_frameEncoder;
     std::map<int, boost::shared_ptr<VideoFrameSender>> m_outputs;
-    boost::shared_ptr<VideoFrameProcessor> m_frameCompositor;
 };
 
 inline int VideoMixer::assignSlot(uint32_t source)

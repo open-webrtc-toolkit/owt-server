@@ -81,20 +81,24 @@ private:
     boost::scoped_ptr<JobTimer> m_jobTimer;
 };
 
-class HardwareVideoMixer : public VideoFrameProcessor {
+class HardwareVideoMixer : public VideoFrameCompositor, public VideoFrameEncoder {
     DECLARE_LOGGER();
 public:
     HardwareVideoMixer(const VideoLayout& layout);
     virtual ~HardwareVideoMixer();
 
+    // Implements VideoFrameCompositor.
     bool activateInput(int slot, FrameFormat, VideoFrameProvider*);
     void deActivateInput(int slot);
     void pushInput(int slot, unsigned char* payload, int len);
+    bool activateOutput(VideoFrameConsumer*);
+    void deActivateOutput();
+    void setLayout(const VideoLayout&);
 
+    // Implements VideoFrameEncoder.
+    void onFrame(FrameFormat, unsigned char* payload, int len, unsigned int ts);
     bool activateOutput(int id, FrameFormat, unsigned int framerate, unsigned short bitrate, VideoFrameConsumer*);
     void deActivateOutput(int id);
-
-    void setLayout(const VideoLayout&);
     void setBitrate(int id, unsigned short bitrate);
     void requestKeyFrame(int id);
 
