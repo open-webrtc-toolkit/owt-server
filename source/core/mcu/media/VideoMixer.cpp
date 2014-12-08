@@ -23,10 +23,10 @@
 #include "EncodedVideoFrameSender.h"
 #include "FakedVideoFrameEncoder.h"
 #include "HardwareVideoMixer.h"
+#include "SoftVideoCompositor.h"
 #include "TaskRunner.h"
 #include "VCMInputProcessor.h"
 #include "VCMOutputProcessor.h"
-#include "VideoCompositor.h"
 #include <WoogeenTransport.h>
 #include <webrtc/system_wrappers/interface/trace.h>
 
