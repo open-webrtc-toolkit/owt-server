@@ -1,7 +1,7 @@
 /*global require, logger. setInterval, clearInterval, Buffer, exports*/
 var Getopt = require('node-getopt');
-var config = require('./../../../licode_config');
-var customlayout = require('./../../../custom_video_layout');
+var config = require('./../../etc/licode_config');
+var customlayout = require('./../../etc/custom_video_layout');
 
 GLOBAL.config = config || {};
 GLOBAL.config.erizo = GLOBAL.config.erizo || {};

@@ -170,7 +170,8 @@ build_mcu_server_sdk() {
 }
 
 install_config() {
-  cp -av ${this}/custom_video_layout_default.js $ROOT/custom_video_layout.js
+  mkdir -p ${SOURCE}/etc
+  cp -av ${this}/custom_video_layout_default.js ${SOURCE}/etc/custom_video_layout.js
 }
 
 build() {
