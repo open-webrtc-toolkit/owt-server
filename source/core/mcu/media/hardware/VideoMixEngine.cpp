@@ -1,6 +1,6 @@
 #include "VideoMixEngine.h"
-#include <string.h>
 
+#include <string.h>
 #include <iostream>
 #include <webrtc/system_wrappers/interface/tick_util.h>
 
@@ -75,9 +75,10 @@ void VideoMixEngine::SetResolution(unsigned int width, unsigned int height)
     }
 }
 
-void VideoMixEngine::SetLayout(LayoutInfo& layout){
+void VideoMixEngine::SetLayout(const CustomLayoutInfo& layout)
+{
     if (m_state == IN_SERVICE) {
-        // TODO: set the actual layout information to media engine.
+        // Set the actual layout information to media engine.
     }
 }
 

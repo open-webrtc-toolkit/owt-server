@@ -89,8 +89,6 @@ private:
     void onSlotNumberChanged(uint32_t newSlotNum);
     bool commitLayout(); // Commit the new layout config.
     void setBackgroundColor();
-    VideoSize getVideoSize(VideoResolutionType);
-    YUVColor getVideoBackgroundColor(VideoBackgroundColor);
     bool validateConfig(VideoLayout& layout)
     {
         return true;

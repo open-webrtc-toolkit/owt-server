@@ -20,6 +20,8 @@
 
 #include "HardwareVideoMixer.h"
 
+#include "Config.h"
+
 namespace mcu {
 
 CodecType Frameformat2CodecType(FrameFormat format)
@@ -127,12 +129,17 @@ DEFINE_LOGGER(HardwareVideoMixer, "mcu.media.HardwareVideoMixer");
 HardwareVideoMixer::HardwareVideoMixer(const VideoLayout& layout)
 {
     m_engine.reset(new VideoMixEngine());
-    BgColor bg = {{DEFAULT_VIDEO_BG_COLOR.y}, {DEFAULT_VIDEO_BG_COLOR.cb}, {DEFAULT_VIDEO_BG_COLOR.cr}};
-    bool result = m_engine->Init(bg, DEFAULT_VIDEO_SIZE.width, DEFAULT_VIDEO_SIZE.height);
+
+    // Fetch video size and background color.
+    VideoSize rootSize = VideoLayoutHelper::getVideoSize(layout.rootSize);
+    YUVColor rootColor = VideoLayoutHelper::getVideoBackgroundColor(layout.rootColor);
+    BgColor bg = {rootColor.y, rootColor.cb, rootColor.cr};
+    bool result = m_engine->Init(bg, rootSize.width, rootSize.height);
     assert(result);
-    if (!result) {
+    if (!result)
         ELOG_ERROR("Init video mixing engine failed!");
-    }
+
+    setLayout(layout);
 }
 
 HardwareVideoMixer::~HardwareVideoMixer()
@@ -141,8 +148,46 @@ HardwareVideoMixer::~HardwareVideoMixer()
 
 void HardwareVideoMixer::setLayout(const VideoLayout& layout)
 {
-    //TODO: set the layout inFormation to engine.
-    //m_engine->setLayout(layout);
+    // Initialize the layout mapping with custom video layout
+    if (m_inputs.size() > 0 && !layout.regions.empty()) {
+        m_currentLayout.layoutMapping.clear();
+
+        // Set the layout information to hardware engine.
+        std::vector<Region>::const_iterator regionIt = layout.regions.begin();
+        for (std::map<int, boost::shared_ptr<HardwareVideoMixerInput>>::iterator it=m_inputs.begin();
+            it!=m_inputs.end(); ++it) {
+            if (regionIt != layout.regions.end()) {
+                RegionInfo regionInfo;
+                regionInfo.id = (*regionIt).id;
+                regionInfo.left = (*regionIt).left;
+                regionInfo.top = (*regionIt).top;
+                regionInfo.relativeSize = (*regionIt).relativeSize;
+                regionInfo.priority = (*regionIt).priority;
+
+                // TODO: Currently, map the input to region sequentially.
+                // Some enhancement like VAD will change this logic in the future.
+                m_currentLayout.layoutMapping[it->first] = regionInfo;
+
+                ++regionIt;
+            } else {
+                ELOG_WARN("HardwareVideoMixer::setLayout failed. Not enough regions defined.");
+            }
+        }
+
+        while (regionIt != layout.regions.end()) {
+            RegionInfo regionInfo;
+            regionInfo.id = (*regionIt).id;
+            regionInfo.left = (*regionIt).left;
+            regionInfo.top = (*regionIt).top;
+            regionInfo.relativeSize = (*regionIt).relativeSize;
+            regionInfo.priority = (*regionIt).priority;
+            m_currentLayout.candidateRegions.push_back(regionInfo);
+
+            ++regionIt;
+        }
+
+        m_engine->SetLayout(m_currentLayout);
+    }
 }
 
 bool HardwareVideoMixer::activateInput(int slot, FrameFormat format, VideoFrameProvider* provider)
@@ -154,12 +199,36 @@ bool HardwareVideoMixer::activateInput(int slot, FrameFormat format, VideoFrameP
 
     ELOG_DEBUG("activateInput OK, slot: %d", slot);
     m_inputs[slot].reset(new HardwareVideoMixerInput(m_engine, format, provider));
+
+    if (!onSlotNumberChanged(m_inputs.size())) {
+        // TODO: New mapping might be required
+        // Add a new mapping, and pop up an existing one from candidateRegions
+        m_engine->SetLayout(m_currentLayout);
+    }
+
     return true;
 }
 
 void HardwareVideoMixer::deActivateInput(int slot)
 {
     m_inputs.erase(slot);
+
+    if (!onSlotNumberChanged(m_inputs.size())) {
+        // TODO: New mapping might be required
+        // At least, remove an existing one from mapping, and add it to candidateRegions
+        m_engine->SetLayout(m_currentLayout);
+    }
+}
+
+bool HardwareVideoMixer::onSlotNumberChanged(uint32_t newSlotNum)
+{
+    // Update the video layout according to the new input number
+    if (Config::get()->updateVideoLayout(newSlotNum)) {
+        ELOG_DEBUG("Video layout updated with new slot number changed to %d", newSlotNum);
+        return true;
+    }
+
+    return false;
 }
 
 void HardwareVideoMixer::pushInput(int slot, unsigned char* payload, int len)

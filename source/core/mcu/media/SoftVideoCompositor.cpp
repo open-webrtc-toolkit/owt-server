@@ -81,7 +81,7 @@ SoftVideoCompositor::SoftVideoCompositor(const VideoLayout& layout)
     // TODO: Fetch the video size and use it across this compositor.
     // Currently video root size does not support changing on the fly.
     // Yet, the layout configuration does not have this restriction.
-    m_composedSize = getVideoSize(m_currentLayout.rootSize);
+    m_composedSize = VideoLayoutHelper::getVideoSize(m_currentLayout.rootSize);
 
     // Initialize frame buffer and buffer manager for video composition
     m_composedFrame.reset(new webrtc::I420VideoFrame());
@@ -169,33 +169,13 @@ void SoftVideoCompositor::onSlotNumberChanged(uint32_t newSlotNum)
     }
 }
 
-VideoSize SoftVideoCompositor::getVideoSize(VideoResolutionType videoResolution)
-{
-    // Fetch video size
-    std::map<VideoResolutionType, VideoSize>::const_iterator it = VideoSizes.find(videoResolution);
-    if (it != VideoSizes.end())
-        return it->second;
-
-    return DEFAULT_VIDEO_SIZE;
-}
-
-YUVColor SoftVideoCompositor::getVideoBackgroundColor(VideoBackgroundColor videoBgColor)
-{
-    // Fetch video background color
-    std::map<VideoBackgroundColor, YUVColor>::const_iterator it = VideoYuvColors.find(videoBgColor);
-    if (it != VideoYuvColors.end())
-        return it->second;
-
-    return DEFAULT_VIDEO_BG_COLOR;
-}
-
 void SoftVideoCompositor::setBackgroundColor()
 {
     if (m_composedFrame) {
         ELOG_DEBUG("setBackgroundColor");
 
         // Fetch video background color.
-        YUVColor rootColor = getVideoBackgroundColor(m_currentLayout.rootColor);
+        YUVColor rootColor = VideoLayoutHelper::getVideoBackgroundColor(m_currentLayout.rootColor);
 
         // Set the background color
         memset(m_composedFrame->buffer(webrtc::kYPlane), rootColor.y, m_composedFrame->allocated_size(webrtc::kYPlane));
