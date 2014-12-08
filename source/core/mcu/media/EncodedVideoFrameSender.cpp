@@ -18,7 +18,7 @@
  * and approved by Intel in writing.
  */
 
-#include "ExternalVideoProcessor.h"
+#include "EncodedVideoFrameSender.h"
 
 #include "TaskRunner.h"
 
@@ -27,25 +27,25 @@ using namespace erizo;
 
 namespace mcu {
 
-DEFINE_LOGGER(ExternalVideoProcessor, "mcu.media.ExternalVideoProcessor");
+DEFINE_LOGGER(EncodedVideoFrameSender, "mcu.media.EncodedVideoFrameSender");
 
-ExternalVideoProcessor::ExternalVideoProcessor(int id, boost::shared_ptr<VideoFrameProcessor> mixer, FrameFormat frameFormat, woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<TaskRunner> taskRunner)
-    : VideoOutputProcessor(id)
-    , m_mixer(mixer)
+EncodedVideoFrameSender::EncodedVideoFrameSender(int id, boost::shared_ptr<VideoFrameProcessor> source, FrameFormat frameFormat, woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<TaskRunner> taskRunner)
+    : VideoFrameSender(id)
+    , m_source(source)
     , m_frameFormat(frameFormat)
 {
     init(transport, taskRunner);
 }
 
-ExternalVideoProcessor::~ExternalVideoProcessor()
+EncodedVideoFrameSender::~EncodedVideoFrameSender()
 {
     close();
 }
 
-bool ExternalVideoProcessor::setSendCodec(FrameFormat frameFormat, VideoSize)
+bool EncodedVideoFrameSender::setSendCodec(FrameFormat frameFormat, VideoSize)
 {
     // The send video format should be identical to the input video format,
-    // because we (ExternalVideoProcessor) don't have the transcoding capability.
+    // because we (EncodedVideoFrameSender) don't have the transcoding capability.
     assert(frameFormat == m_frameFormat);
 
     VideoCodec codec;
@@ -70,32 +70,32 @@ bool ExternalVideoProcessor::setSendCodec(FrameFormat frameFormat, VideoSize)
     return m_rtpRtcp && m_rtpRtcp->RegisterSendPayload(codec) != -1;
 }
 
-void ExternalVideoProcessor::handleIntraFrameRequest()
+void EncodedVideoFrameSender::handleIntraFrameRequest()
 {
-    m_mixer->requestKeyFrame(m_id);
+    m_source->requestKeyFrame(m_id);
 }
 
-uint32_t ExternalVideoProcessor::sendSSRC()
+uint32_t EncodedVideoFrameSender::sendSSRC()
 {
     return m_rtpRtcp->SSRC();
 }
 
-void ExternalVideoProcessor::OnReceivedIntraFrameRequest(uint32_t ssrc)
+void EncodedVideoFrameSender::OnReceivedIntraFrameRequest(uint32_t ssrc)
 {
-    m_mixer->requestKeyFrame(m_id);
+    m_source->requestKeyFrame(m_id);
 }
 
-int ExternalVideoProcessor::deliverFeedback(char* buf, int len)
+int EncodedVideoFrameSender::deliverFeedback(char* buf, int len)
 {
     return m_rtpRtcp->IncomingRtcpPacket(reinterpret_cast<uint8_t*>(buf), len) == -1 ? 0 : len;
 }
 
-void ExternalVideoProcessor::OnNetworkChanged(const uint32_t target_bitrate, const uint8_t fraction_loss, const uint32_t rtt)
+void EncodedVideoFrameSender::OnNetworkChanged(const uint32_t target_bitrate, const uint8_t fraction_loss, const uint32_t rtt)
 {
     // TODO: Send the bitrate adjustment request to the encoder.
 }
 
-void ExternalVideoProcessor::onFrame(FrameFormat format, unsigned char* payload, int len, unsigned int ts)
+void EncodedVideoFrameSender::onFrame(FrameFormat format, unsigned char* payload, int len, unsigned int ts)
 {
     webrtc::RTPVideoHeader h;
     h.codec = webrtc::kRtpVideoVp8;
@@ -105,7 +105,7 @@ void ExternalVideoProcessor::onFrame(FrameFormat format, unsigned char* payload,
                                 ts, payload, len, nullptr, &h);
 }
 
-bool ExternalVideoProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<TaskRunner> taskRunner)
+bool EncodedVideoFrameSender::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<TaskRunner> taskRunner)
 {
     m_taskRunner = taskRunner;
     m_videoTransport.reset(transport);
@@ -135,7 +135,7 @@ bool ExternalVideoProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* 
     return true;
 }
 
-void ExternalVideoProcessor::close()
+void EncodedVideoFrameSender::close()
 {
     if (m_bitrateController)
         m_bitrateController->RemoveBitrateObserver(this);
