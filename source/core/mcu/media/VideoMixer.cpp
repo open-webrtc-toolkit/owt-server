@@ -92,13 +92,10 @@ int32_t VideoMixer::addOutput(int payloadType)
     WoogeenTransport<erizo::VIDEO>* transport = new WoogeenTransport<erizo::VIDEO>(m_outputReceiver, nullptr);
 
     VideoFrameSender* output = nullptr;
-    if (m_hardwareAccelerated) {
+    if (m_hardwareAccelerated)
         output = new EncodedVideoFrameSender(outputId, m_frameCompositor, outputFormat, transport, m_taskRunner);
-        m_frameCompositor->activateOutput(output->id(), outputFormat, 30, 500, output);
-    } else {
-        output = new VCMOutputProcessor(outputId, transport, m_taskRunner);
-        m_frameCompositor->activateOutput(output->id(), FRAME_FORMAT_I420, 30, 500, output);
-    }
+    else
+        output = new VCMOutputProcessor(outputId, m_frameCompositor, transport, m_taskRunner);
 
     // Fetch video size.
     VideoSize rootSize = DEFAULT_VIDEO_SIZE;
@@ -117,7 +114,6 @@ int32_t VideoMixer::removeOutput(int payloadType)
     if (it != m_outputs.end()) {
         VideoFrameSender* output = it->second.get();
         int32_t id = output->id();
-        m_frameCompositor->deActivateOutput(id);
         m_outputs.erase(it);
         return id;
     }

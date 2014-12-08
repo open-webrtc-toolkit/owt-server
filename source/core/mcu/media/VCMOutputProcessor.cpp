@@ -32,9 +32,10 @@ namespace mcu {
 
 DEFINE_LOGGER(VCMOutputProcessor, "mcu.media.VCMOutputProcessor");
 
-VCMOutputProcessor::VCMOutputProcessor(int id, woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<TaskRunner> taskRunner)
+VCMOutputProcessor::VCMOutputProcessor(int id, boost::shared_ptr<VideoFrameProcessor> source, woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<TaskRunner> taskRunner)
     : VideoFrameSender(id)
     , m_sendFormat(FRAME_FORMAT_UNKNOWN)
+    , m_source(source)
 {
     init(transport, taskRunner);
 }
@@ -165,11 +166,14 @@ bool VCMOutputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* tran
 
     m_taskRunner->RegisterModule(m_rtpRtcp.get());
 
+    m_source->activateOutput(m_id, FRAME_FORMAT_I420, 30, 500, this);
+
     return true;
 }
 
 void VCMOutputProcessor::close()
 {
+    m_source->deActivateOutput(m_id);
     m_taskRunner->DeRegisterModule(m_rtpRtcp.get());
 }
 
