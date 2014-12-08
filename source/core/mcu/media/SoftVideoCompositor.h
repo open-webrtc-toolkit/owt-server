@@ -18,8 +18,8 @@
  * and approved by Intel in writing.
  */
 
-#ifndef VideoCompositor_h
-#define VideoCompositor_h
+#ifndef SoftVideoCompositor_h
+#define SoftVideoCompositor_h
 
 #include "BufferManager.h"
 #include "JobTimer.h"
@@ -115,4 +115,4 @@ private:
 };
 
 }
-#endif /* VideoCompositor_h*/
+#endif /* SoftVideoCompositor_h*/

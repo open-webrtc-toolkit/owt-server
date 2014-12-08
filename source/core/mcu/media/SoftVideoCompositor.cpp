@@ -18,7 +18,7 @@
  * and approved by Intel in writing.
  */
 
-#include "VideoCompositor.h"
+#include "SoftVideoCompositor.h"
 
 #include "Config.h"
 #include <webrtc/common_video/interface/i420_video_frame.h>
