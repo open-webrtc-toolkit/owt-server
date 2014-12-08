@@ -41,7 +41,7 @@ namespace mcu {
 class ExternalRenderer : public webrtc::VCMReceiveCallback {
 public:
     ExternalRenderer(int index,
-                     boost::shared_ptr<VideoFrameProcessor> frameHandler,
+                     boost::shared_ptr<VideoFrameCompositor> frameHandler,
                      VideoFrameProvider* provider) 
         : m_index(index)
         , m_frameHandler(frameHandler)
@@ -63,13 +63,13 @@ public:
 
 private:
     int m_index;
-    boost::shared_ptr<VideoFrameProcessor> m_frameHandler;
+    boost::shared_ptr<VideoFrameCompositor> m_frameHandler;
 };
 
 class ExternalDecoder : public webrtc::VideoDecoder {
 public:
     ExternalDecoder(int index, 
-                    boost::shared_ptr<VideoFrameProcessor> imageHandler,
+                    boost::shared_ptr<VideoFrameCompositor> imageHandler,
                     VideoFrameProvider* provider)
         : m_index(index)
         , m_imageHandler(imageHandler)
@@ -115,7 +115,7 @@ public:
 
 private:
     int m_index;
-    boost::shared_ptr<VideoFrameProcessor> m_imageHandler;
+    boost::shared_ptr<VideoFrameCompositor> m_imageHandler;
     VideoFrameProvider* m_provider;
 };
 
@@ -161,7 +161,7 @@ public:
     int deliverAudioData(char*, int len);
     int deliverVideoData(char*, int len);
 
-    bool init(woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<VideoFrameProcessor>, boost::shared_ptr<TaskRunner>);
+    bool init(woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<VideoFrameCompositor>, boost::shared_ptr<TaskRunner>);
 
     void bindAudioForSync(int32_t voiceChannelId, webrtc::VoEVideoSync*);
 
@@ -179,7 +179,7 @@ private:
     boost::shared_ptr<webrtc::Transport> m_videoTransport;
 
     boost::scoped_ptr<DebugRecorder> m_recorder;
-    boost::shared_ptr<VideoFrameProcessor> m_frameReceiver;
+    boost::shared_ptr<VideoFrameCompositor> m_frameReceiver;
     boost::shared_ptr<webrtc::VCMReceiveCallback> m_renderer;
     boost::shared_ptr<webrtc::VideoDecoder> m_decoder;
     boost::shared_ptr<TaskRunner> m_taskRunner;

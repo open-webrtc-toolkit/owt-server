@@ -21,6 +21,7 @@
 #include "VideoMixer.h"
 
 #include "EncodedVideoFrameSender.h"
+#include "FakedVideoFrameEncoder.h"
 #include "HardwareVideoMixer.h"
 #include "TaskRunner.h"
 #include "VCMInputProcessor.h"
@@ -47,10 +48,14 @@ VideoMixer::VideoMixer(erizo::RTPDataReceiver* receiver, bool hardwareAccelerate
 
     const VideoLayout& layout = Config::get()->getVideoLayout();
 
-    if (m_hardwareAccelerated)
+    if (m_hardwareAccelerated) {
         m_frameCompositor.reset(new HardwareVideoMixer(layout));
-    else
+        // HardwareVideoMixer is both a VideoFrameCompositor and VideoFrameEncoder, for now.
+        m_frameEncoder = boost::dynamic_pointer_cast<VideoFrameEncoder>(m_frameCompositor);
+    } else {
         m_frameCompositor.reset(new SoftVideoCompositor(layout));
+        m_frameEncoder.reset(new FakedVideoFrameEncoder(m_frameCompositor));
+    }
 
     Config::get()->registerListener(this);
 
@@ -93,9 +98,9 @@ int32_t VideoMixer::addOutput(int payloadType)
 
     VideoFrameSender* output = nullptr;
     if (m_hardwareAccelerated)
-        output = new EncodedVideoFrameSender(outputId, m_frameCompositor, outputFormat, transport, m_taskRunner);
+        output = new EncodedVideoFrameSender(outputId, m_frameEncoder, outputFormat, transport, m_taskRunner);
     else
-        output = new VCMOutputProcessor(outputId, m_frameCompositor, transport, m_taskRunner);
+        output = new VCMOutputProcessor(outputId, m_frameEncoder, transport, m_taskRunner);
 
     // Fetch video size.
     VideoSize rootSize = DEFAULT_VIDEO_SIZE;

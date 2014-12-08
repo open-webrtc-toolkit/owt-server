@@ -139,20 +139,6 @@ HardwareVideoMixer::~HardwareVideoMixer()
 {
 }
 
-void HardwareVideoMixer::setBitrate(int id, unsigned short bitrate)
-{
-    std::map<int, boost::shared_ptr<HardwareVideoMixerOutput>>::iterator it = m_outputs.find(id);
-    if (it != m_outputs.end())
-        it->second->setBitrate(bitrate);
-}
-
-void HardwareVideoMixer::requestKeyFrame(int id)
-{
-    std::map<int, boost::shared_ptr<HardwareVideoMixerOutput>>::iterator it = m_outputs.find(id);
-    if (it != m_outputs.end())
-        it->second->requestKeyFrame();
-}
-
 void HardwareVideoMixer::setLayout(const VideoLayout& layout)
 {
     //TODO: set the layout inFormation to engine.
@@ -181,6 +167,35 @@ void HardwareVideoMixer::pushInput(int slot, unsigned char* payload, int len)
     std::map<int, boost::shared_ptr<HardwareVideoMixerInput>>::iterator it = m_inputs.find(slot);
     if (it != m_inputs.end())
         it->second->push(payload, len);
+}
+
+bool HardwareVideoMixer::activateOutput(VideoFrameConsumer* encoder)
+{
+    return false;
+}
+
+void HardwareVideoMixer::deActivateOutput()
+{
+}
+
+void HardwareVideoMixer::onFrame(FrameFormat, unsigned char* payload, int len, unsigned int ts)
+{
+    // We now don't support push mode encoder.
+    assert(false);
+}
+
+void HardwareVideoMixer::setBitrate(int id, unsigned short bitrate)
+{
+    std::map<int, boost::shared_ptr<HardwareVideoMixerOutput>>::iterator it = m_outputs.find(id);
+    if (it != m_outputs.end())
+        it->second->setBitrate(bitrate);
+}
+
+void HardwareVideoMixer::requestKeyFrame(int id)
+{
+    std::map<int, boost::shared_ptr<HardwareVideoMixerOutput>>::iterator it = m_outputs.find(id);
+    if (it != m_outputs.end())
+        it->second->requestKeyFrame();
 }
 
 bool HardwareVideoMixer::activateOutput(int id, FrameFormat format, unsigned int framerate, unsigned short bitrate, VideoFrameConsumer* receiver)

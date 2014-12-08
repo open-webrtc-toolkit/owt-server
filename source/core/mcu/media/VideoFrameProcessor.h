@@ -42,19 +42,32 @@ public:
     virtual void onFrame(FrameFormat, unsigned char* payload, int len, unsigned int ts) = 0;
 };
 
-class VideoFrameProcessor {
+class VideoFrameCompositor {
 public:
     virtual bool activateInput(int slot, FrameFormat, VideoFrameProvider*) = 0;
     virtual void deActivateInput(int slot) = 0;
     virtual void pushInput(int slot, unsigned char* payload, int len) = 0;
 
+    virtual bool activateOutput(VideoFrameConsumer*) = 0;
+    virtual void deActivateOutput() = 0;
+
+    virtual void setLayout(const VideoLayout&) = 0;
+};
+
+class VideoFrameEncoder : public VideoFrameConsumer {
+public:
     virtual bool activateOutput(int id, FrameFormat, unsigned int framerate, unsigned short bitrate, VideoFrameConsumer*) = 0;
     virtual void deActivateOutput(int id) = 0;
 
-    virtual void setLayout(const VideoLayout&) = 0;
     virtual void setBitrate(int id, unsigned short bitrate) = 0;
     virtual void requestKeyFrame(int id) = 0;
 };
+
+// TODO: Define VideoFrameDecoder as a VideoFrameProvider.
+// Modify the activateInput of VideoFrameCompositor to get rid of the FrameFormat parameter.
+// In this case VideoFrameCompositor should have multiple raw frame inputs and one raw frame output.
+// The interface can also be changed to (de)activateRawInput/Output to better differentiate itself
+// from the VideoFrameEncoder/Decoder.
 
 }
 #endif

@@ -73,6 +73,7 @@ SoftVideoCompositor::SoftVideoCompositor(const VideoLayout& layout)
     : m_configLock(CriticalSectionWrapper::CreateCriticalSection())
     , m_configChanged(false)
     , m_currentLayout(layout)
+    , m_consumer(nullptr)
 {
     m_ntpDelta = Clock::GetRealTimeClock()->CurrentNtpInMilliseconds() - TickTime::MillisecondTimestamp();
     m_vpmPool.reset(new VPMPool(MAX_VIDEO_SLOT_NUMBER));
@@ -95,15 +96,7 @@ SoftVideoCompositor::SoftVideoCompositor(const VideoLayout& layout)
 
 SoftVideoCompositor::~SoftVideoCompositor()
 {
-    m_consumers.clear();
-}
-
-void SoftVideoCompositor::setBitrate(int id, unsigned short bitrate)
-{
-}
-
-void SoftVideoCompositor::requestKeyFrame(int id)
-{
+    m_consumer = nullptr;
 }
 
 void SoftVideoCompositor::setLayout(const VideoLayout& layout)
@@ -142,28 +135,15 @@ void SoftVideoCompositor::pushInput(int slot, unsigned char* payload, int len)
     }
 }
 
-bool SoftVideoCompositor::activateOutput(int id, FrameFormat format, unsigned int framerate, unsigned short bitrate, VideoFrameConsumer* consumer)
+bool SoftVideoCompositor::activateOutput(VideoFrameConsumer* consumer)
 {
-    assert(format == FRAME_FORMAT_I420);
-
-    boost::upgrade_lock<boost::shared_mutex> lock(m_consumerMutex);
-    std::map<int, VideoFrameConsumer*>::iterator it = m_consumers.find(id);
-    if (it != m_consumers.end())
-        return false;
-
-    boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
-    m_consumers[id] = consumer;
+    m_consumer = consumer;
     return true;
 }
 
-void SoftVideoCompositor::deActivateOutput(int id)
+void SoftVideoCompositor::deActivateOutput()
 {
-    boost::upgrade_lock<boost::shared_mutex> lock(m_consumerMutex);
-    std::map<int, VideoFrameConsumer*>::iterator it = m_consumers.find(id);
-    if (it != m_consumers.end()) {
-        boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
-        m_consumers.erase(it);
-    }
+    m_consumer = nullptr;
 }
 
 void SoftVideoCompositor::onTimeout()
@@ -173,14 +153,11 @@ void SoftVideoCompositor::onTimeout()
 
 void SoftVideoCompositor::generateFrame()
 {
-    boost::shared_lock<boost::shared_mutex> lock(m_consumerMutex);
-    if (!m_consumers.empty()) {
+    if (m_consumer) {
         I420VideoFrame* composedFrame = layout();
         composedFrame->set_render_time_ms(TickTime::MillisecondTimestamp() - m_ntpDelta);
 
-        std::map<int, VideoFrameConsumer*>::iterator it = m_consumers.begin();
-        for (; it != m_consumers.end(); ++it)
-            it->second->onFrame(FRAME_FORMAT_I420, reinterpret_cast<unsigned char*>(composedFrame), 0, 0);
+        m_consumer->onFrame(FRAME_FORMAT_I420, reinterpret_cast<unsigned char*>(composedFrame), 0, 0);
     }
 }
 

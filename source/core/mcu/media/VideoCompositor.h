@@ -63,7 +63,7 @@ private:
  * but only 6 regions are configed. current implementation will only show 6 participants but
  * still 16 audios will be mixed. In the future, we may enable the video rotation based on VAD history.
  */
-class SoftVideoCompositor : public VideoFrameProcessor,
+class SoftVideoCompositor : public VideoFrameCompositor,
                             public JobTimerListener {
     DECLARE_LOGGER();
 public:
@@ -74,12 +74,10 @@ public:
     void deActivateInput(int slot);
     void pushInput(int slot, unsigned char* payload, int len);
 
-    bool activateOutput(int id, FrameFormat, unsigned int framerate, unsigned short bitrate, VideoFrameConsumer*);
-    void deActivateOutput(int id);
+    bool activateOutput(VideoFrameConsumer*);
+    void deActivateOutput();
 
     void setLayout(const VideoLayout&);
-    void setBitrate(int id, unsigned short bitrate);
-    void requestKeyFrame(int id);
 
     void onTimeout();
 
@@ -108,8 +106,7 @@ private:
     VideoSize m_composedSize;
     VideoLayout m_currentLayout;
     VideoLayout m_newLayout;
-    std::map<int, VideoFrameConsumer*> m_consumers;
-    boost::shared_mutex m_consumerMutex;
+    VideoFrameConsumer* m_consumer;
     /*
      * Each incoming channel will store the decoded frame in this array, and the composition
      * thread will scan this array and compose the frames into one frame.
