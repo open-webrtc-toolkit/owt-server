@@ -1,0 +1,15 @@
+{
+  "name": "WooGeen-MCU-Sample-app",
+  "version": "2.0.0",
+  "description": "Intel CS for WebRTC",
+  "dependencies": {
+    "express": "*",
+    "body-parser": "*",
+    "morgan": "*",
+    "errorhandler": "*"
+  }
+}
+
+
+
+

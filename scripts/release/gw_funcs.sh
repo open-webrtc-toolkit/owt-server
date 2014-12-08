@@ -5,69 +5,19 @@
 # */
 #
 
-this=`dirname "$0"`
-this=`cd "$this"; pwd`
-ROOT=`cd "${this}/.."; pwd`
-SOURCE="${ROOT}/source"
-UV_DIR="${ROOT}/third_party/libuv-0.10.26"
-
-export WOOGEEN_DIST="${ROOT}/dist"
-PACK_NODE=true
-PACK_ARCH=false
-PACK_MODULE=true
-ENCRYPT=false
-
-usage() {
-  echo
-  echo "WooGeen Packaging Script"
-  echo "    This script creates a WooGeen-MCU package to dist/"
-  echo "    You should use scripts/build.sh to build WooGeen-MCU first."
-  echo
-  echo "Usage:"
-  echo "    --archive                           archive & compress to Release-<version>.tgz"
-  echo "    --encrypt                           minify, compress and encrypt js files for release"
-  echo "    --no-node                           exclude node.js in package"
-  echo "    --no-module                         exclude node_modules in package"
-  echo "    --help                              print this help"
-  echo
-}
-
-encrypt_js() {
-  local target="$1"
-  local tmp="$1.tmp"
-  echo "Encrypt javascript file: ${target}"
-  uglifyjs ${target} -o ${tmp} -c -m
-  mv ${tmp} ${target}
-}
-
-archive() {
-  local VER="trunk"
-  if hash git 2>/dev/null; then
-    echo "using git revision as version number."
-    VER=$(cd ${ROOT} && git show-ref --head | head -1 | fold -w 8 | head -1)
-  fi
-  [ -d ${WOOGEEN_DIST} ] && \
-  find ${WOOGEEN_DIST} -name liberizo.so -exec strip -s {} \; && \
-  find ${WOOGEEN_DIST} -name liboovoo_gateway.so -exec strip -s {} \; && \
-  find ${WOOGEEN_DIST} -name addon.node -exec strip -s {} \; && \
-  find ${WOOGEEN_DIST} -name webrtc_gateway -exec strip -s {} \; && \
-  cd ${ROOT} && tar --numeric-owner -czf "Release-${VER}.tgz" ${WOOGEEN_DIST}
-  echo -e "\x1b[32mRelease-${VER}.tgz generated.\x1b[0m"
-}
-
-pack_mcu() {
+pack_runtime() {
   mkdir -p ${WOOGEEN_DIST}/lib
-  # liberizo.so
   local LIBERIZO="${SOURCE}/core/build/erizo/src/erizo/liberizo.so"
-  [[ -s ${LIBERIZO} ]] && cp -av ${LIBERIZO} ${WOOGEEN_DIST}/lib
-  # liboovoo_gateway.so
   local LIBOOVOOGATEWAY="${SOURCE}/core/build/oovoo_gateway/liboovoo_gateway.so"
-  [[ -s ${LIBOOVOOGATEWAY} ]] && cp -av ${LIBOOVOOGATEWAY} ${WOOGEEN_DIST}/lib
-  # bindings
   local GATEWAY_ADDON="${SOURCE}/bindings/oovoo_gateway/build/Release/addon.node"
+  [[ -s ${LIBERIZO} ]] && cp -av ${LIBERIZO} ${WOOGEEN_DIST}/lib && \
+  strip ${WOOGEEN_DIST}/lib/liberizo.so
+  [[ -s ${LIBOOVOOGATEWAY} ]] && cp -av ${LIBOOVOOGATEWAY} ${WOOGEEN_DIST}/lib && \
+  strip ${WOOGEEN_DIST}/lib/liboovoo_gateway.so
   [[ -s ${GATEWAY_ADDON} ]] && \
   mkdir -p ${WOOGEEN_DIST}/bindings/gateway/build/Release && \
-  cp -av ${GATEWAY_ADDON} ${WOOGEEN_DIST}/bindings/gateway/build/Release
+  cp -av ${GATEWAY_ADDON} ${WOOGEEN_DIST}/bindings/gateway/build/Release && \
+  strip ${WOOGEEN_DIST}/bindings/gateway/build/Release/addon.node
   # gateway
   mkdir -p ${WOOGEEN_DIST}/gateway/util
   cp -av ${SOURCE}/gateway/oovoo_gateway.js ${WOOGEEN_DIST}/gateway/
@@ -123,19 +73,26 @@ pack_libs() {
       [[ -s "${line}" ]] && [[ -z `dpkg -S ${line} 2>/dev/null | grep 'libc6\|libselinux'` ]] && cp -Lv ${line} ${WOOGEEN_DIST}/lib
     fi
   done
-  if [[ -s ${UV_DIR}/libuv.so ]]; then
-      local symbol=$(readelf -d ${UV_DIR}/libuv.so | grep soname | sed 's/.*\[\(.*\)\]/\1/g')
-      cp -av ${UV_DIR}/libuv.so ${WOOGEEN_DIST}/lib
-      ln -s libuv.so ${WOOGEEN_DIST}/lib/${symbol}
-  fi
 }
 
 pack_scripts() {
   mkdir -p ${WOOGEEN_DIST}/bin/
-  cp -av ${ROOT}/scripts/daemon.sh ${WOOGEEN_DIST}/bin/
-  cp -av ${ROOT}/scripts/restart-all.sh ${WOOGEEN_DIST}/bin/
-  cp -av ${ROOT}/scripts/start-all.sh ${WOOGEEN_DIST}/bin/
-  cp -av ${ROOT}/scripts/stop-all.sh ${WOOGEEN_DIST}/bin/
+  cp -av ${ROOT}/scripts/daemon-gw.sh ${WOOGEEN_DIST}/bin/daemon.sh
+  cp -av ${this}/launch-base.sh ${WOOGEEN_DIST}/bin/start-all.sh
+  cp -av ${this}/launch-base.sh ${WOOGEEN_DIST}/bin/stop-all.sh
+  cp -av ${this}/launch-base.sh ${WOOGEEN_DIST}/bin/restart-all.sh
+  echo '
+${bin}/daemon.sh start gateway
+${bin}/daemon.sh start app
+' >> ${WOOGEEN_DIST}/bin/start-all.sh
+  echo '
+${bin}/daemon.sh stop gateway
+${bin}/daemon.sh stop app
+' >> ${WOOGEEN_DIST}/bin/stop-all.sh
+  echo '
+${bin}/stop-all.sh
+${bin}/start-all.sh
+' >> ${WOOGEEN_DIST}/bin/restart-all.sh
   cp -av ${ROOT}/scripts/retrieveGatewayCounters.sh ${WOOGEEN_DIST}/bin/
   cp -av ${ROOT}/scripts/webrtc-gateway-init.sh ${WOOGEEN_DIST}/bin/
   chmod +x ${WOOGEEN_DIST}/bin/*.sh
@@ -143,7 +100,7 @@ pack_scripts() {
 
 pack_node() {
   NODE_VERSION=
-  . ${this}/.conf
+  . ${this}/../.conf
   echo "node version: ${NODE_VERSION}"
 
   local PREFIX_DIR=$ROOT/build/libdeps/build/
@@ -182,7 +139,8 @@ pack_node() {
   make uninstall
   make install
   mkdir -p ${WOOGEEN_DIST}/sbin
-  cp -av ${PREFIX_DIR}/bin/node ${WOOGEEN_DIST}/sbin/webrtc_gateway
+  cp -av ${PREFIX_DIR}/bin/node ${WOOGEEN_DIST}/sbin/webrtc_gateway && \
+  strip ${WOOGEEN_DIST}/sbin/webrtc_gateway
   make uninstall
 
   sed -i 's/\/gateway\//\/sbin\//g' "${WOOGEEN_DIST}/bin/daemon.sh"
@@ -210,43 +168,3 @@ install_module() {
     echo >&2 "You need to install node first."
   fi
 }
-
-shopt -s extglob
-while [[ $# -gt 0 ]]; do
-  case $1 in
-    *(-)no-node )
-      PACK_NODE=false
-      ;;
-    *(-)no-module )
-      PACK_MODULE=false
-      ;;
-    *(-)archive )
-      PACK_ARCH=true
-      ;;
-    *(-)encrypt )
-      ENCRYPT=true
-      ;;
-    *(-)help )
-      usage
-      exit 0
-      ;;
-    * )
-      echo -e "\x1b[33mUnknown argument\x1b[0m: $1"
-      ;;
-  esac
-  shift
-done
-
-echo "Cleaning ${WOOGEEN_DIST}/ ..."; rm -fr ${WOOGEEN_DIST}/
-pack_mcu
-pack_libs
-pack_scripts
-if ${PACK_MODULE}; then
-  install_module
-fi
-if ${PACK_NODE}; then
-  pack_node
-fi
-if ${PACK_ARCH}; then
-  archive
-fi

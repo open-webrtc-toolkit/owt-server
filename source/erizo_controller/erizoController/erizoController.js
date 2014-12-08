@@ -5,7 +5,7 @@ var ST = require('./Stream');
 var http = require('http');
 var server = http.createServer();
 var io = require('socket.io').listen(server, {log:false});
-var config = require('./../../../licode_config');
+var config = require('./../../etc/licode_config');
 var Permission = require('./permission');
 var Getopt = require('node-getopt');
 

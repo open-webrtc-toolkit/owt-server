@@ -3,7 +3,7 @@ var Getopt = require('node-getopt');
 
 var spawn = require('child_process').spawn;
 
-var config = require('./../../../licode_config');
+var config = require('./../../etc/licode_config');
 
 // Configuration default values
 GLOBAL.config = config || {};
