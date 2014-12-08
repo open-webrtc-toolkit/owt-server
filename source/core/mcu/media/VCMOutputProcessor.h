@@ -36,16 +36,15 @@ namespace mcu {
 class TaskRunner;
 
 /**
- * This is the class to accept the decoded frame and do some processing
- * for example, media layout mixing and encoding. It then sends out the encoded
- * data via the given WoogeenTransport. It also gives the feedback
- * to the encoder based on the feedback from the remote.
+ * This is the class to accept the composited raw frame and encode it.
+ * It then sends out the encoded data via the given WoogeenTransport.
+ * It also handles the feedback from the remote.
  */
 class VCMOutputProcessor : public VideoFrameSender, public erizo::FeedbackSink, public woogeen_base::IntraFrameCallback {
     DECLARE_LOGGER();
 
 public:
-    VCMOutputProcessor(int id, woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<TaskRunner>);
+    VCMOutputProcessor(int id, boost::shared_ptr<VideoFrameProcessor>, woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<TaskRunner>);
     ~VCMOutputProcessor();
 
     // Implements VideoFrameSender.
@@ -75,6 +74,7 @@ private:
 
     boost::shared_ptr<webrtc::Transport> m_videoTransport;
     boost::shared_ptr<TaskRunner> m_taskRunner;
+    boost::shared_ptr<VideoFrameProcessor> m_source;
 };
 
 }

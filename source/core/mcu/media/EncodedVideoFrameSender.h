@@ -21,7 +21,6 @@
 #ifndef EncodedVideoFrameSender_h
 #define EncodedVideoFrameSender_h
 
-#include "VideoFrameProcessor.h"
 #include "VideoFrameSender.h"
 
 #include <boost/scoped_ptr.hpp>

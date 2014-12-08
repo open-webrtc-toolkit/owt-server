@@ -132,11 +132,15 @@ bool EncodedVideoFrameSender::init(woogeen_base::WoogeenTransport<erizo::VIDEO>*
 
     m_taskRunner->RegisterModule(m_rtpRtcp.get());
 
+    m_source->activateOutput(m_id, m_frameFormat, 30, 500, this);
+
     return true;
 }
 
 void EncodedVideoFrameSender::close()
 {
+    m_source->deActivateOutput(m_id);
+
     if (m_bitrateController)
         m_bitrateController->RemoveBitrateObserver(this);
     m_taskRunner->DeRegisterModule(m_rtpRtcp.get());
