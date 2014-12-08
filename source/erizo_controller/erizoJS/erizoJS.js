@@ -96,3 +96,16 @@ controller.RoomController().addPublisher("1", sdp, function(type, answer) {
     console.log(answer);
 });
 */
+
+['SIGINT', 'SIGTERM'].map(function (sig) {
+    process.on(sig, function () {
+        log.warn('Exiting on', sig);
+        process.exit();
+    });
+});
+
+['SIGHUP', 'SIGPIPE'].map(function (sig) {
+    process.on(sig, function () {
+        log.warn(sig, 'caught and ignored');
+    });
+});
