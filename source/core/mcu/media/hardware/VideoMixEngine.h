@@ -24,46 +24,55 @@ public:
 };
 
 /* background color*/
-typedef struct {
-    union {
-        unsigned short Y;
-        unsigned short R;
-    };
-    union {
-        unsigned short U;
-        unsigned short G;
-    };
-    union {
-        unsigned short V;
-        unsigned short B;
-    };
-} BgColor;
+struct BgColor {
+    unsigned short y;
+    unsigned short cb; // Also called U
+    unsigned short cr; // Also called V
+};
 
-typedef struct {
+struct FrameSize {
+    int width;
+    int height;
+};
+
+struct InputInfo {
     CodecType codec;
     VideoMixEngineInput* producer;
     void* decHandle;
     MemPool* mp;
-} InputInfo;
+};
 
-typedef struct {
+struct OutputInfo {
     CodecType codec;
     VideoMixEngineOutput* consumer;
     unsigned short bitrate;
     void* encHandle;
     Stream* stream;
-} OutputInfo;
+};
 
-typedef struct {
+struct VppInfo {
     BgColor bgColor;
     unsigned int width;
     unsigned int height;
     void* vppHandle;
-} VppInfo;
+};
 
-typedef struct {
+struct RegionInfo {
+    std::string id;
+    float left; // percentage
+    float top; // percentage
+    float relativeSize; //fraction
+    float priority;
+};
 
-} LayoutInfo;
+struct CustomLayoutInfo {
+    FrameSize rootSize;
+    BgColor rootColor;
+
+    // Valid for customized video layout - Custom type in VCSA
+    std::map<InputIndex, RegionInfo> layoutMapping;
+    std::vector<RegionInfo> candidateRegions;
+};
 
 class VideoMixEngine {
     typedef enum {
@@ -82,7 +91,7 @@ public:
 
     void SetBackgroundColor(BgColor bgColor);
     void SetResolution(unsigned int width, unsigned int height);
-    void SetLayout(LayoutInfo& layout);
+    void SetLayout(const CustomLayoutInfo& layout);
 
     InputIndex EnableInput(CodecType codec, VideoMixEngineInput* producer);
     void DisableInput(InputIndex index);
@@ -119,7 +128,5 @@ private:
     std::map<InputIndex, InputInfo> m_inputs;
     std::map<OutputIndex, OutputInfo> m_outputs;
 };
-
-
 
 #endif

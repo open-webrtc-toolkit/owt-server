@@ -103,6 +103,9 @@ public:
     void requestKeyFrame(int id);
 
 private:
+    bool onSlotNumberChanged(uint32_t newSlotNum);
+
+    CustomLayoutInfo m_currentLayout;
     boost::shared_ptr<VideoMixEngine> m_engine;
     std::map<int, boost::shared_ptr<HardwareVideoMixerInput>> m_inputs;
     std::map<int, boost::shared_ptr<HardwareVideoMixerOutput>> m_outputs;
