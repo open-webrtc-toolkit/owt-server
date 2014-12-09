@@ -58,7 +58,7 @@ bool HardwareVideoMixerInput::setInput(FrameFormat inFormat, VideoFrameProvider*
     if (m_index == INVALID_INPUT_INDEX) {
         assert((inFormat == FRAME_FORMAT_VP8 || inFormat == FRAME_FORMAT_H264) && provider);
         m_provider = provider;
-        m_index = m_engine->EnableInput(Frameformat2CodecType(inFormat), this);
+        m_index = m_engine->enableInput(Frameformat2CodecType(inFormat), this);
         return true;
     }
 
@@ -68,7 +68,7 @@ bool HardwareVideoMixerInput::setInput(FrameFormat inFormat, VideoFrameProvider*
 void HardwareVideoMixerInput::unsetInput()
 {
     if (m_index != INVALID_INPUT_INDEX && m_engine.get()) {
-        m_engine->DisableInput(m_index);
+        m_engine->disableInput(m_index);
         m_index = INVALID_INPUT_INDEX;
     }
     m_provider = nullptr;
@@ -76,7 +76,7 @@ void HardwareVideoMixerInput::unsetInput()
 
 void HardwareVideoMixerInput::onFrame(FrameFormat, unsigned char* payload, int len, unsigned int ts)
 {
-    m_engine->PushInput(m_index, payload, len);
+    m_engine->pushInput(m_index, payload, len);
 }
 
 void HardwareVideoMixerInput::requestKeyFrame(InputIndex index) {
@@ -98,7 +98,7 @@ HardwareVideoMixerOutput::HardwareVideoMixerOutput(boost::shared_ptr<VideoMixEng
 {
     assert((m_outFormat == FRAME_FORMAT_VP8 || m_outFormat == FRAME_FORMAT_H264) && m_receiver);
 
-    m_index = m_engine->EnableOutput(Frameformat2CodecType(m_outFormat), bitrate, this);
+    m_index = m_engine->enableOutput(Frameformat2CodecType(m_outFormat), bitrate, this);
     assert(m_index != INVALID_OUTPUT_INDEX);
     m_jobTimer.reset(new JobTimer(m_frameRate, this));
 }
@@ -106,25 +106,25 @@ HardwareVideoMixerOutput::HardwareVideoMixerOutput(boost::shared_ptr<VideoMixEng
 HardwareVideoMixerOutput::~HardwareVideoMixerOutput()
 {
     if(m_index != INVALID_OUTPUT_INDEX && m_engine.get()) {
-        m_engine->DisableOutput(m_index);
+        m_engine->disableOutput(m_index);
         m_index = INVALID_OUTPUT_INDEX;
     }
 }
 
 void HardwareVideoMixerOutput::setBitrate(unsigned short bitrate)
 {
-    m_engine->SetBitrate(m_index, bitrate);
+    m_engine->setBitrate(m_index, bitrate);
 }
 
 void HardwareVideoMixerOutput::requestKeyFrame()
 {
-    m_engine->ForceKeyFrame(m_index);
+    m_engine->forceKeyFrame(m_index);
 }
 
 void HardwareVideoMixerOutput::onTimeout()
 {   
     do {
-        int len = m_engine->PullOutput(m_index, (unsigned char*)&m_esBuffer);
+        int len = m_engine->pullOutput(m_index, (unsigned char*)&m_esBuffer);
         if (len > 0) {
             m_outCount++;
             m_receiver->onFrame(m_outFormat, (unsigned char *)&m_esBuffer, len, m_outCount * m_frameRate);
@@ -151,10 +151,11 @@ HardwareVideoMixer::HardwareVideoMixer(const VideoLayout& layout)
     VideoSize rootSize = VideoLayoutHelper::getVideoSize(layout.rootSize);
     YUVColor rootColor = VideoLayoutHelper::getVideoBackgroundColor(layout.rootColor);
     BgColor bg = {rootColor.y, rootColor.cb, rootColor.cr};
-    bool result = engine->Init(bg, rootSize.width, rootSize.height);
+    bool result = engine->init(bg, rootSize.width, rootSize.height);
     assert(result);
-    if (!result)
+    if (!result) {
         ELOG_ERROR("Init video mixing engine failed!");
+    }
 
     setLayout(layout);
 }
@@ -203,7 +204,7 @@ void HardwareVideoMixer::setLayout(const VideoLayout& layout)
             ++regionIt;
         }
 
-        engine->SetLayout(m_currentLayout);
+        engine->setLayout(m_currentLayout);
     }
 }
 
@@ -220,7 +221,7 @@ bool HardwareVideoMixer::activateInput(int slot)
     if (!onSlotNumberChanged(m_inputs.size())) {
         // TODO: New mapping might be required
         // Add a new mapping, and pop up an existing one from candidateRegions
-        engine->SetLayout(m_currentLayout);
+        engine->setLayout(m_currentLayout);
     }
 
     return true;
@@ -233,7 +234,7 @@ void HardwareVideoMixer::deActivateInput(int slot)
     if (!onSlotNumberChanged(m_inputs.size())) {
         // TODO: New mapping might be required
         // At least, remove an existing one from mapping, and add it to candidateRegions
-        engine->SetLayout(m_currentLayout);
+        engine->setLayout(m_currentLayout);
     }
 }
 

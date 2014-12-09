@@ -43,7 +43,7 @@ VideoMixEngine::~VideoMixEngine()
     }
 }
 
-bool VideoMixEngine::Init(BgColor bgColor, unsigned int width, unsigned int height) 
+bool VideoMixEngine::init(BgColor bgColor, unsigned int width, unsigned int height)
 {
     if (m_state == UN_INITIALIZED) {
         m_vpp = new VppInfo;
@@ -52,12 +52,11 @@ bool VideoMixEngine::Init(BgColor bgColor, unsigned int width, unsigned int heig
         m_vpp->height = height;
         m_state = IDLE;
         return true;
-    } else {
+    } else
         return false;
-    }
 }
 
-void VideoMixEngine::SetBackgroundColor(BgColor bgColor)
+void VideoMixEngine::setBackgroundColor(BgColor bgColor)
 {
     m_vpp->bgColor = bgColor;
     if (m_state == IN_SERVICE) {
@@ -66,23 +65,22 @@ void VideoMixEngine::SetBackgroundColor(BgColor bgColor)
     }
 }
 
-void VideoMixEngine::SetResolution(unsigned int width, unsigned int height)
+void VideoMixEngine::setResolution(unsigned int width, unsigned int height)
 {
     m_vpp->width = width;
     m_vpp->height = height;
-    if (m_state == IN_SERVICE) {
+    if (m_state == IN_SERVICE)
         m_xcoder->SetResolution(m_vpp->vppHandle, width, height);
-    }
 }
 
-void VideoMixEngine::SetLayout(const CustomLayoutInfo& layout)
+void VideoMixEngine::setLayout(const CustomLayoutInfo& layout)
 {
     if (m_state == IN_SERVICE) {
         // Set the actual layout information to media engine.
     }
 }
 
-InputIndex VideoMixEngine::EnableInput(CodecType codec, VideoMixEngineInput* producer) 
+InputIndex VideoMixEngine::enableInput(CodecType codec, VideoMixEngineInput* producer)
 {
     InputIndex index = INVALID_INPUT_INDEX;
     switch (m_state) {
@@ -108,7 +106,7 @@ InputIndex VideoMixEngine::EnableInput(CodecType codec, VideoMixEngineInput* pro
     return index;
 }
 
-void VideoMixEngine::DisableInput(InputIndex index) 
+void VideoMixEngine::disableInput(InputIndex index)
 {
     switch (m_state) {
         case UN_INITIALIZED:
@@ -125,27 +123,25 @@ void VideoMixEngine::DisableInput(InputIndex index)
     }
 }
 
-void VideoMixEngine::PushInput(InputIndex index, unsigned char* data, int len)
+void VideoMixEngine::pushInput(InputIndex index, unsigned char* data, int len)
 {
     if (m_state == IN_SERVICE && m_inputs.find(index) != m_inputs.end()) {
         int memPool_freeflat = m_inputs[index].mp->GetFreeFlatBufSize();
         unsigned char* memPool_wrptr = m_inputs[index].mp->GetWritePtr();
         int prefixLength = (m_inputs[index].codec == CODEC_TYPE_VIDEO_VP8) ? 4 : 0;
         int copySize = len + prefixLength;
-        if (memPool_freeflat < copySize) {
+        if (memPool_freeflat < copySize)
             return;
-        }
 
-        if (m_inputs[index].codec == CODEC_TYPE_VIDEO_VP8) {
+        if (m_inputs[index].codec == CODEC_TYPE_VIDEO_VP8)
             memcpy(memPool_wrptr, (void*)&len, prefixLength);
-        }
 
         memcpy(memPool_wrptr + prefixLength, data, len);
         m_inputs[index].mp->UpdateWritePtrCopyData(copySize);
     }
 }
 
-OutputIndex VideoMixEngine::EnableOutput(CodecType codec, unsigned short bitrate, VideoMixEngineOutput* consumer)
+OutputIndex VideoMixEngine::enableOutput(CodecType codec, unsigned short bitrate, VideoMixEngineOutput* consumer)
 {
     OutputIndex index = INVALID_OUTPUT_INDEX;
 
@@ -175,7 +171,7 @@ OutputIndex VideoMixEngine::EnableOutput(CodecType codec, unsigned short bitrate
     return index;
 }
 
-void VideoMixEngine::DisableOutput(OutputIndex index)
+void VideoMixEngine::disableOutput(OutputIndex index)
 {
     switch (m_state) {
         case UN_INITIALIZED:
@@ -192,14 +188,13 @@ void VideoMixEngine::DisableOutput(OutputIndex index)
     }
 }
 
-void VideoMixEngine::ForceKeyFrame(OutputIndex index)
+void VideoMixEngine::forceKeyFrame(OutputIndex index)
 {
-    if (m_state == IN_SERVICE && m_outputs.find(index) != m_outputs.end()) {
+    if (m_state == IN_SERVICE && m_outputs.find(index) != m_outputs.end())
         m_xcoder->ForceKeyFrame(m_outputs[index].codec);
-    }
 }
 
-void VideoMixEngine::SetBitrate(OutputIndex index, unsigned short bitrate)
+void VideoMixEngine::setBitrate(OutputIndex index, unsigned short bitrate)
 {
     if (m_state == IN_SERVICE && m_outputs.find(index) != m_outputs.end()) {
         m_outputs[index].bitrate = bitrate;
@@ -207,14 +202,14 @@ void VideoMixEngine::SetBitrate(OutputIndex index, unsigned short bitrate)
     }
 }
 
-int VideoMixEngine::PullOutput(OutputIndex index, unsigned char* buf)
+int VideoMixEngine::pullOutput(OutputIndex index, unsigned char* buf)
 {
     if (m_state == IN_SERVICE && m_outputs.find(index) != m_outputs.end()) {
         Stream* stream = m_outputs[index].stream;
-        if (stream->GetBlockCount() > 0) {
+        if (stream->GetBlockCount() > 0)
             return stream->ReadBlocks(buf, 1);
-        }
     }
+
     return 0;
 }
 
@@ -240,9 +235,8 @@ void VideoMixEngine::installInput(InputIndex index)
     m_inputs[index].decHandle = dec_cfg.DecHandle;
     m_inputs[index].mp = memPool;
    
-    if (m_inputs[index].producer) {
+    if (m_inputs[index].producer)
         m_inputs[index].producer->requestKeyFrame(index);
-    }
 }
 
 void VideoMixEngine::uninstallInput(InputIndex index) 
@@ -260,9 +254,8 @@ void VideoMixEngine::uninstallInput(InputIndex index)
 void VideoMixEngine::removeInput(InputIndex index) 
 {
     m_inputs.erase(index);
-    if (m_inputs.size() == 0) {
+    if (m_inputs.size() == 0)
         demolishPipeline();
-    }
 }
 
 OutputIndex VideoMixEngine::scheduleOutput(CodecType codec, unsigned short bitrate, VideoMixEngineOutput* consumer) 
@@ -312,9 +305,8 @@ void VideoMixEngine::uninstallOutput(OutputIndex index)
 void VideoMixEngine::removeOutput(OutputIndex index) 
 {
     m_outputs.erase(index);
-    if (m_outputs.size() == 0) {
+    if (m_outputs.size() == 0)
         demolishPipeline();
-    }
 }
 
 void VideoMixEngine::setupPipeline() 
@@ -370,15 +362,12 @@ void VideoMixEngine::setupPipeline()
     
     std::map<InputIndex, InputInfo>::iterator it_input = m_inputs.begin();
     ++it_input;
-    for (; it_input != m_inputs.end(); ++it_input) {
+    for (; it_input != m_inputs.end(); ++it_input)
         installInput(it_input->first);
-    }
-    
+
     std::map<OutputIndex, OutputInfo>::iterator it_output = m_outputs.begin();
-    ++it_output;
-    for (; it_output != m_outputs.end(); ++it_output) {
+    for (++it_output; it_output != m_outputs.end(); ++it_output)
         installOutput(it_output->first);
-    }
 
     printf("[%s]Start Xcode pipeline.\n", __FUNCTION__);
 }
@@ -393,13 +382,12 @@ void VideoMixEngine::demolishPipeline()
             m_vpp->vppHandle = NULL;
         case WAITING_FOR_INPUT:
         case WAITING_FOR_OUTPUT:
-            if (m_inputs.size() == 0 && m_outputs.size() == 0) {
+            if (m_inputs.size() == 0 && m_outputs.size() == 0)
                 m_state = IDLE;
-            } else if (m_inputs.size() == 0) {
+            else if (m_inputs.size() == 0)
                 m_state = WAITING_FOR_INPUT;
-            } else if (m_outputs.size() == 0) {
+            else if (m_outputs.size() == 0)
                 m_state = WAITING_FOR_OUTPUT;
-            } else {}
             break;
         case IDLE:
         default:
@@ -410,9 +398,9 @@ void VideoMixEngine::demolishPipeline()
 bool VideoMixEngine::isCodecAlreadyInUse(CodecType codec)
 {
     for (std::map<OutputIndex, OutputInfo>::iterator it = m_outputs.begin(); it != m_outputs.end(); ++it) {
-        if (it->second.codec == codec) {
+        if (it->second.codec == codec)
             return true;
-        }
     }
+
     return false;
 }
