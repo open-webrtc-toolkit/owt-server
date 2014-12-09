@@ -87,21 +87,21 @@ public:
     VideoMixEngine();
     virtual ~VideoMixEngine();
 
-    bool Init(BgColor bgColor, unsigned int width, unsigned int height);
+    bool init(BgColor bgColor, unsigned int width, unsigned int height);
 
-    void SetBackgroundColor(BgColor bgColor);
-    void SetResolution(unsigned int width, unsigned int height);
-    void SetLayout(const CustomLayoutInfo& layout);
+    void setBackgroundColor(BgColor bgColor);
+    void setResolution(unsigned int width, unsigned int height);
+    void setLayout(const CustomLayoutInfo& layout);
 
-    InputIndex EnableInput(CodecType codec, VideoMixEngineInput* producer);
-    void DisableInput(InputIndex index);
-    void PushInput(InputIndex index, unsigned char* data, int len);
+    InputIndex enableInput(CodecType codec, VideoMixEngineInput* producer);
+    void disableInput(InputIndex index);
+    void pushInput(InputIndex index, unsigned char* data, int len);
 
-    OutputIndex EnableOutput(CodecType codec, unsigned short bitrate, VideoMixEngineOutput* consumer);
-    void DisableOutput(OutputIndex index);
-    void ForceKeyFrame(OutputIndex index);
-    void SetBitrate(OutputIndex index, unsigned short bitrate);
-    int PullOutput(OutputIndex index, unsigned char* buf);
+    OutputIndex enableOutput(CodecType codec, unsigned short bitrate, VideoMixEngineOutput* consumer);
+    void disableOutput(OutputIndex index);
+    void forceKeyFrame(OutputIndex index);
+    void setBitrate(OutputIndex index, unsigned short bitrate);
+    int pullOutput(OutputIndex index, unsigned char* buf);
 
 private:
     InputIndex scheduleInput(CodecType codec, VideoMixEngineInput* producer);
