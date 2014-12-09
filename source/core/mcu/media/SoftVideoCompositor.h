@@ -23,7 +23,7 @@
 
 #include "BufferManager.h"
 #include "JobTimer.h"
-#include "VideoFrameProcessor.h"
+#include "VideoFramePipeline.h"
 #include "VideoLayout.h"
 
 #include <boost/scoped_ptr.hpp>
@@ -70,12 +70,12 @@ public:
     SoftVideoCompositor(const VideoLayout& layout);
     ~SoftVideoCompositor();
 
-    bool activateInput(int slot, FrameFormat, VideoFrameProvider*);
+    bool activateInput(int slot);
     void deActivateInput(int slot);
-    void pushInput(int slot, unsigned char* payload, int len);
+    void pushInput(int slot, webrtc::I420VideoFrame*);
 
-    bool activateOutput(VideoFrameConsumer*);
-    void deActivateOutput();
+    bool setOutput(VideoFrameConsumer*);
+    void unsetOutput();
 
     void setLayout(const VideoLayout&);
 

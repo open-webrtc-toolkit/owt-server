@@ -55,7 +55,7 @@ VCMInputProcessor::~VCMInputProcessor()
     }
 }
 
-bool VCMInputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<VideoFrameCompositor> frameReceiver, boost::shared_ptr<TaskRunner> taskRunner)
+bool VCMInputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<VideoFrameDecoder> frameReceiver, boost::shared_ptr<TaskRunner> taskRunner)
 {
     m_videoTransport.reset(transport);
     m_frameReceiver = frameReceiver;
@@ -65,10 +65,10 @@ bool VCMInputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* trans
     if (m_vcm) {
         m_vcm->InitializeReceiver();
         if (m_externalDecoding) {
-            m_decoder.reset(new ExternalDecoder(m_index, m_frameReceiver, this));
+            m_decoder.reset(new ExternalDecoder(m_frameReceiver, this));
             m_decoderRegistered = false;
         } else {
-            m_renderer.reset(new ExternalRenderer(m_index, m_frameReceiver, this));
+            m_renderer.reset(new ExternalRenderer(m_frameReceiver, this));
             m_vcm->RegisterReceiveCallback(m_renderer.get());
         }
     } else

@@ -22,33 +22,36 @@
 #define HardwareVideoMixer_h
 
 #include "JobTimer.h"
-#include "VideoFrameProcessor.h"
+#include "VideoFramePipeline.h"
 
 #include "hardware/VideoMixEngine.h"
 
-#include <logger.h>
-#include <string>
-#include <map>
-#include <boost/shared_ptr.hpp>
 #include <boost/scoped_ptr.hpp>
+#include <boost/shared_ptr.hpp>
+#include <logger.h>
+#include <map>
+#include <set>
+#include <string>
 
 namespace mcu {
 
-class HardwareVideoMixerInput : public VideoMixEngineInput {
+class HardwareVideoMixerInput : public VideoMixEngineInput, public VideoFrameDecoder {
 public:
-    HardwareVideoMixerInput(boost::shared_ptr<VideoMixEngine> engine,
-                            FrameFormat inFormat,
-                            VideoFrameProvider* provider);
+    HardwareVideoMixerInput(int slot, boost::shared_ptr<VideoFrameCompositor>);
     virtual ~HardwareVideoMixerInput();
 
-    void push(unsigned char* payload, int len);
+    bool setInput(FrameFormat, VideoFrameProvider*);
+    void unsetInput();
+    void onFrame(FrameFormat, unsigned char* payload, int len, unsigned int ts);
 
     virtual void requestKeyFrame(InputIndex index);
 
 private:
     InputIndex m_index;
+    int m_slot;
     VideoFrameProvider* m_provider;
     boost::shared_ptr<VideoMixEngine> m_engine;
+    boost::shared_ptr<VideoFrameCompositor> m_compositor;
 };
 
 class HardwareVideoMixerOutput : public VideoMixEngineOutput,
@@ -87,12 +90,13 @@ public:
     HardwareVideoMixer(const VideoLayout& layout);
     virtual ~HardwareVideoMixer();
 
+    // TODO: Split this class into a Compositor and an Encoder.
     // Implements VideoFrameCompositor.
-    bool activateInput(int slot, FrameFormat, VideoFrameProvider*);
+    bool activateInput(int slot);
     void deActivateInput(int slot);
-    void pushInput(int slot, unsigned char* payload, int len);
-    bool activateOutput(VideoFrameConsumer*);
-    void deActivateOutput();
+    void pushInput(int slot, webrtc::I420VideoFrame*);
+    bool setOutput(VideoFrameConsumer*);
+    void unsetOutput();
     void setLayout(const VideoLayout&);
 
     // Implements VideoFrameEncoder.
@@ -102,12 +106,13 @@ public:
     void setBitrate(int id, unsigned short bitrate);
     void requestKeyFrame(int id);
 
+    boost::shared_ptr<VideoMixEngine> engine;
+
 private:
     bool onSlotNumberChanged(uint32_t newSlotNum);
 
     CustomLayoutInfo m_currentLayout;
-    boost::shared_ptr<VideoMixEngine> m_engine;
-    std::map<int, boost::shared_ptr<HardwareVideoMixerInput>> m_inputs;
+    std::set<int> m_inputs;
     std::map<int, boost::shared_ptr<HardwareVideoMixerOutput>> m_outputs;
 };
 

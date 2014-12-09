@@ -36,35 +36,52 @@ CodecType Frameformat2CodecType(FrameFormat format)
     }
 }
 
-HardwareVideoMixerInput::HardwareVideoMixerInput(boost::shared_ptr<VideoMixEngine> engine,
-                                                 FrameFormat inFormat, 
-                                                 VideoFrameProvider* provider)
+HardwareVideoMixerInput::HardwareVideoMixerInput(int slot, boost::shared_ptr<VideoFrameCompositor> compositor)
     : m_index(INVALID_INPUT_INDEX)
-    , m_provider(provider)
-    , m_engine(engine)
+    , m_slot(slot)
+    , m_provider(nullptr)
+    , m_compositor(compositor)
 {
-    assert((inFormat == FRAME_FORMAT_VP8 || inFormat == FRAME_FORMAT_H264) && m_provider);
-
-    m_index = m_engine->EnableInput(Frameformat2CodecType(inFormat), this);
+    // FIXME: The dynamic cast is ugly... Get rid of it asap!
+    m_engine = boost::dynamic_pointer_cast<HardwareVideoMixer>(compositor)->engine;
+    m_compositor->activateInput(slot);
 }
 
 HardwareVideoMixerInput::~HardwareVideoMixerInput()
 {
-    if(m_index != INVALID_INPUT_INDEX && m_engine.get()) {
+    unsetInput();
+    m_compositor->deActivateInput(m_slot);
+}
+
+bool HardwareVideoMixerInput::setInput(FrameFormat inFormat, VideoFrameProvider* provider)
+{
+    if (m_index == INVALID_INPUT_INDEX) {
+        assert((inFormat == FRAME_FORMAT_VP8 || inFormat == FRAME_FORMAT_H264) && provider);
+        m_provider = provider;
+        m_index = m_engine->EnableInput(Frameformat2CodecType(inFormat), this);
+        return true;
+    }
+
+    return false;
+}
+
+void HardwareVideoMixerInput::unsetInput()
+{
+    if (m_index != INVALID_INPUT_INDEX && m_engine.get()) {
         m_engine->DisableInput(m_index);
         m_index = INVALID_INPUT_INDEX;
     }
+    m_provider = nullptr;
 }
 
-void HardwareVideoMixerInput::push(unsigned char* payload, int len)
+void HardwareVideoMixerInput::onFrame(FrameFormat, unsigned char* payload, int len, unsigned int ts)
 {
     m_engine->PushInput(m_index, payload, len);
 }
 
 void HardwareVideoMixerInput::requestKeyFrame(InputIndex index) {
-    if (index == m_index) {
+    if (index == m_index)
         m_provider->requestKeyFrame();
-    }
 }
 
 HardwareVideoMixerOutput::HardwareVideoMixerOutput(boost::shared_ptr<VideoMixEngine> engine,
@@ -128,13 +145,13 @@ DEFINE_LOGGER(HardwareVideoMixer, "mcu.media.HardwareVideoMixer");
 
 HardwareVideoMixer::HardwareVideoMixer(const VideoLayout& layout)
 {
-    m_engine.reset(new VideoMixEngine());
+    engine.reset(new VideoMixEngine());
 
     // Fetch video size and background color.
     VideoSize rootSize = VideoLayoutHelper::getVideoSize(layout.rootSize);
     YUVColor rootColor = VideoLayoutHelper::getVideoBackgroundColor(layout.rootColor);
     BgColor bg = {rootColor.y, rootColor.cb, rootColor.cr};
-    bool result = m_engine->Init(bg, rootSize.width, rootSize.height);
+    bool result = engine->Init(bg, rootSize.width, rootSize.height);
     assert(result);
     if (!result)
         ELOG_ERROR("Init video mixing engine failed!");
@@ -154,7 +171,7 @@ void HardwareVideoMixer::setLayout(const VideoLayout& layout)
 
         // Set the layout information to hardware engine.
         std::vector<Region>::const_iterator regionIt = layout.regions.begin();
-        for (std::map<int, boost::shared_ptr<HardwareVideoMixerInput>>::iterator it=m_inputs.begin();
+        for (std::set<int>::iterator it=m_inputs.begin();
             it!=m_inputs.end(); ++it) {
             if (regionIt != layout.regions.end()) {
                 RegionInfo regionInfo;
@@ -166,7 +183,7 @@ void HardwareVideoMixer::setLayout(const VideoLayout& layout)
 
                 // TODO: Currently, map the input to region sequentially.
                 // Some enhancement like VAD will change this logic in the future.
-                m_currentLayout.layoutMapping[it->first] = regionInfo;
+                m_currentLayout.layoutMapping[*it] = regionInfo;
 
                 ++regionIt;
             } else {
@@ -186,24 +203,24 @@ void HardwareVideoMixer::setLayout(const VideoLayout& layout)
             ++regionIt;
         }
 
-        m_engine->SetLayout(m_currentLayout);
+        engine->SetLayout(m_currentLayout);
     }
 }
 
-bool HardwareVideoMixer::activateInput(int slot, FrameFormat format, VideoFrameProvider* provider)
+bool HardwareVideoMixer::activateInput(int slot)
 {
     if (m_inputs.find(slot) != m_inputs.end()) {
         ELOG_WARN("activateInput failed, slot is in use.");
         return false;
     }
 
+    m_inputs.insert(slot);
     ELOG_DEBUG("activateInput OK, slot: %d", slot);
-    m_inputs[slot].reset(new HardwareVideoMixerInput(m_engine, format, provider));
 
     if (!onSlotNumberChanged(m_inputs.size())) {
         // TODO: New mapping might be required
         // Add a new mapping, and pop up an existing one from candidateRegions
-        m_engine->SetLayout(m_currentLayout);
+        engine->SetLayout(m_currentLayout);
     }
 
     return true;
@@ -216,7 +233,7 @@ void HardwareVideoMixer::deActivateInput(int slot)
     if (!onSlotNumberChanged(m_inputs.size())) {
         // TODO: New mapping might be required
         // At least, remove an existing one from mapping, and add it to candidateRegions
-        m_engine->SetLayout(m_currentLayout);
+        engine->SetLayout(m_currentLayout);
     }
 }
 
@@ -231,20 +248,24 @@ bool HardwareVideoMixer::onSlotNumberChanged(uint32_t newSlotNum)
     return false;
 }
 
-void HardwareVideoMixer::pushInput(int slot, unsigned char* payload, int len)
+// For current hardware mixer, the composition is hidden
+// inside the hardware mix engine, and there won't be invocation
+// to the below compositor interfaces.
+
+void HardwareVideoMixer::pushInput(int slot, webrtc::I420VideoFrame*)
 {
-    std::map<int, boost::shared_ptr<HardwareVideoMixerInput>>::iterator it = m_inputs.find(slot);
-    if (it != m_inputs.end())
-        it->second->push(payload, len);
+    assert(false);
 }
 
-bool HardwareVideoMixer::activateOutput(VideoFrameConsumer* encoder)
+bool HardwareVideoMixer::setOutput(VideoFrameConsumer* encoder)
 {
+    assert(false);
     return false;
 }
 
-void HardwareVideoMixer::deActivateOutput()
+void HardwareVideoMixer::unsetOutput()
 {
+    assert(false);
 }
 
 void HardwareVideoMixer::onFrame(FrameFormat, unsigned char* payload, int len, unsigned int ts)
@@ -274,7 +295,7 @@ bool HardwareVideoMixer::activateOutput(int id, FrameFormat format, unsigned int
         return false;
     }
     ELOG_DEBUG("activateOutput OK, format: %s", ((format == FRAME_FORMAT_VP8)? "VP8" : "H264"));
-    m_outputs[id].reset(new HardwareVideoMixerOutput(m_engine, format, framerate, bitrate, receiver));
+    m_outputs[id].reset(new HardwareVideoMixerOutput(engine, format, framerate, bitrate, receiver));
     return true;
 }
 

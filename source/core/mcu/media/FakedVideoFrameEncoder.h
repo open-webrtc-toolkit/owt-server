@@ -21,7 +21,7 @@
 #ifndef FakedVideoFrameEncoder_h
 #define FakedVideoFrameEncoder_h
 
-#include "VideoFrameProcessor.h"
+#include "VideoFramePipeline.h"
 
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/shared_mutex.hpp>
@@ -42,17 +42,20 @@ public:
     void onFrame(FrameFormat, unsigned char* payload, int len, unsigned int ts);
 
 private:
+    boost::shared_ptr<VideoFrameCompositor> m_compositor;
     std::map<int, VideoFrameConsumer*> m_consumers;
     boost::shared_mutex m_consumerMutex;
 };
 
 FakedVideoFrameEncoder::FakedVideoFrameEncoder(boost::shared_ptr<VideoFrameCompositor> compositor)
+    : m_compositor(compositor)
 {
-    compositor->activateOutput(this);
+    compositor->setOutput(this);
 }
 
 FakedVideoFrameEncoder::~FakedVideoFrameEncoder()
 {
+    m_compositor->unsetOutput();
     m_consumers.clear();
 }
 
