@@ -107,6 +107,18 @@ bool VCMInputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* trans
         assert(!"register H264 decoder failed");
     m_videoReceiver->SetReceiveCodec(video_codec);
 
+    memset(&video_codec, 0, sizeof(VideoCodec));
+    video_codec.codecType = webrtc::kVideoCodecRED;
+    strcpy(video_codec.plName, "red");
+    video_codec.plType = RED_90000_PT;
+    m_videoReceiver->SetReceiveCodec(video_codec);
+
+    memset(&video_codec, 0, sizeof(VideoCodec));
+    video_codec.codecType = webrtc::kVideoCodecULPFEC;
+    strcpy(video_codec.plName, "ulpfec");
+    video_codec.plType = ULP_90000_PT;
+    m_videoReceiver->SetReceiveCodec(video_codec);
+
     // Enable NACK.
     // TODO: the parameters should be dynamically adjustable.
     m_videoReceiver->SetNackStatus(true, webrtc::kMaxPacketAgeToNack);
