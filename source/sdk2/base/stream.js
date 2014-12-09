@@ -393,8 +393,10 @@
       // below - internally handled
       case 'Starting video failed':       // firefox: camera possessed by other process?
       case 'TrackStartError':             // chrome: probably resolution not supported
-        // that.setVideo('unspecified');
-        option.video = true;
+        option.video = {
+          device: option.video.device,
+          extensionId: option.video.extensionId
+        };
         if (init_retry > 0) {
           setTimeout(function () {
             createLocalStream(option, callback, init_retry-1);
@@ -430,7 +432,7 @@
     };
 
     if (option.video && option.video.device === 'screen') {
-      var extensionId = Woogeen.chromeExtensionId || 'pndohhifhheefbpeljcmnhnkphepimhe';
+      var extensionId = option.video.extensionId || 'pndohhifhheefbpeljcmnhnkphepimhe';
       try {
         chrome.runtime.sendMessage(extensionId, {getStream: true}, function (response) {
           mediaOption.video.mandatory.chromeMediaSource = 'desktop';
