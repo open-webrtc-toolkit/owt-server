@@ -21,6 +21,7 @@
 #include "VideoMixer.h"
 
 #include "EncodedVideoFrameSender.h"
+#include "FakedVideoFrameDecoder.h"
 #include "FakedVideoFrameEncoder.h"
 #include "HardwareVideoMixer.h"
 #include "SoftVideoCompositor.h"
@@ -103,6 +104,7 @@ int32_t VideoMixer::addOutput(int payloadType)
         output = new VCMOutputProcessor(outputId, m_frameEncoder, transport, m_taskRunner);
 
     // Fetch video size.
+    // TODO: The size should be identical to the composited video size.
     VideoSize rootSize = DEFAULT_VIDEO_SIZE;
     std::map<VideoResolutionType, VideoSize>::const_iterator sizeIterator = VideoSizes.find(vga);
     if (sizeIterator != VideoSizes.end())
@@ -221,10 +223,18 @@ int32_t VideoMixer::addSource(uint32_t from, bool isAudio, FeedbackSink* feedbac
         int index = assignSlot(from);
         ELOG_DEBUG("addSource - assigned slot is %d", index);
 
+        boost::shared_ptr<VideoFrameDecoder> decoder;
+        if (m_hardwareAccelerated)
+            decoder.reset(new HardwareVideoMixerInput(index, m_frameCompositor));
+        else
+            decoder.reset(new FakedVideoFrameDecoder(index, m_frameCompositor));
+
         VCMInputProcessor* videoInputProcessor(new VCMInputProcessor(index, m_hardwareAccelerated));
         videoInputProcessor->init(new WoogeenTransport<erizo::VIDEO>(nullptr, feedback),
-                                  m_frameCompositor,
+                                  decoder,
                                   m_taskRunner);
+
+        m_frameDecoders[index] = decoder;
 
         boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
         m_sinksForSources[from].reset(videoInputProcessor);
@@ -260,6 +270,7 @@ int32_t VideoMixer::removeSource(uint32_t from, bool isAudio)
         int index = getSlot(from);
         assert(index >= 0);
         m_sourceSlotMap[index] = 0;
+        m_frameDecoders.erase(index);
         --m_participants;
         return 0;
     }
@@ -282,6 +293,7 @@ void VideoMixer::closeAll()
         m_sourceSlotMap[index] = 0;
     }
     m_sinksForSources.clear();
+    m_frameDecoders.clear();
     m_participants = 0;
 
     ELOG_DEBUG("Closed all media in this Mixer");

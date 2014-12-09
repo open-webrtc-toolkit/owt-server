@@ -108,10 +108,8 @@ void SoftVideoCompositor::setLayout(const VideoLayout& layout)
     ELOG_DEBUG("configChanged is true");
 }
 
-bool SoftVideoCompositor::activateInput(int slot, FrameFormat format, VideoFrameProvider* provider)
+bool SoftVideoCompositor::activateInput(int slot)
 {
-    assert(format == FRAME_FORMAT_I420);
-
     m_bufferManager->setActive(slot, true);
     onSlotNumberChanged(m_bufferManager->activeSlots());
     return true;
@@ -123,9 +121,8 @@ void SoftVideoCompositor::deActivateInput(int slot)
     onSlotNumberChanged(m_bufferManager->activeSlots());
 }
 
-void SoftVideoCompositor::pushInput(int slot, unsigned char* payload, int len)
+void SoftVideoCompositor::pushInput(int slot, webrtc::I420VideoFrame* frame)
 {
-    I420VideoFrame* frame = reinterpret_cast<I420VideoFrame*>(payload);
     I420VideoFrame* freeFrame = m_bufferManager->getFreeBuffer();
     if (freeFrame) {
         freeFrame->CopyFrame(*frame);
@@ -135,13 +132,13 @@ void SoftVideoCompositor::pushInput(int slot, unsigned char* payload, int len)
     }
 }
 
-bool SoftVideoCompositor::activateOutput(VideoFrameConsumer* consumer)
+bool SoftVideoCompositor::setOutput(VideoFrameConsumer* consumer)
 {
     m_consumer = consumer;
     return true;
 }
 
-void SoftVideoCompositor::deActivateOutput()
+void SoftVideoCompositor::unsetOutput()
 {
     m_consumer = nullptr;
 }

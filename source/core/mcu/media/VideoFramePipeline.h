@@ -18,10 +18,12 @@
  * and approved by Intel in writing.
  */
 
-#ifndef VideoFrameProcessor_h
-#define VideoFrameProcessor_h
+#ifndef VideoFramePipeline_h
+#define VideoFramePipeline_h
 
 #include "VideoLayout.h"
+
+#include <webrtc/common_video/interface/i420_video_frame.h>
 
 namespace mcu {
 
@@ -42,18 +44,32 @@ public:
     virtual void onFrame(FrameFormat, unsigned char* payload, int len, unsigned int ts) = 0;
 };
 
+// VideoFrameDecoder accepts the input data from exactly one VideoFrameProvider
+// and decodes it into raw I420VideoFrame.
+class VideoFrameDecoder : public VideoFrameConsumer {
+public:
+    virtual bool setInput(FrameFormat, VideoFrameProvider*) = 0;
+    virtual void unsetInput() = 0;
+};
+
+// VideoFrameCompositor accepts the raw I420VideoFrame from multiple inputs and
+// composites them into one I420VideoFrame with the given VideoLayout.
+// The composited I420VideoFrame will be handed over to one VideoFrameConsumer.
 class VideoFrameCompositor {
 public:
-    virtual bool activateInput(int slot, FrameFormat, VideoFrameProvider*) = 0;
+    virtual bool activateInput(int slot) = 0;
     virtual void deActivateInput(int slot) = 0;
-    virtual void pushInput(int slot, unsigned char* payload, int len) = 0;
+    virtual void pushInput(int slot, webrtc::I420VideoFrame*) = 0;
 
-    virtual bool activateOutput(VideoFrameConsumer*) = 0;
-    virtual void deActivateOutput() = 0;
+    virtual bool setOutput(VideoFrameConsumer*) = 0;
+    virtual void unsetOutput() = 0;
 
     virtual void setLayout(const VideoLayout&) = 0;
 };
 
+// VideoFrameEncoder consumes the I420VideoFrame and encodes it into the
+// given FrameFormat. It can have multiple outputs with different FrameFormat
+// or framerate/bitrate settings.
 class VideoFrameEncoder : public VideoFrameConsumer {
 public:
     virtual bool activateOutput(int id, FrameFormat, unsigned int framerate, unsigned short bitrate, VideoFrameConsumer*) = 0;
@@ -62,12 +78,6 @@ public:
     virtual void setBitrate(int id, unsigned short bitrate) = 0;
     virtual void requestKeyFrame(int id) = 0;
 };
-
-// TODO: Define VideoFrameDecoder as a VideoFrameProvider.
-// Modify the activateInput of VideoFrameCompositor to get rid of the FrameFormat parameter.
-// In this case VideoFrameCompositor should have multiple raw frame inputs and one raw frame output.
-// The interface can also be changed to (de)activateRawInput/Output to better differentiate itself
-// from the VideoFrameEncoder/Decoder.
 
 }
 #endif

@@ -41,6 +41,7 @@ namespace mcu {
 class TaskRunner;
 class VCMInputProcessor;
 class VideoFrameCompositor;
+class VideoFrameDecoder;
 class VideoFrameEncoder;
 class VideoFrameSender;
 struct Layout;
@@ -104,6 +105,7 @@ private:
     bool m_addSourceOnDemand;
 
     boost::shared_ptr<VideoFrameCompositor> m_frameCompositor;
+    std::map<int, boost::shared_ptr<VideoFrameDecoder>> m_frameDecoders;
     boost::shared_ptr<VideoFrameEncoder> m_frameEncoder;
     std::map<int, boost::shared_ptr<VideoFrameSender>> m_outputs;
 };

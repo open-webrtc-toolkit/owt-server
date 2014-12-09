@@ -21,7 +21,7 @@
 #ifndef VideoFrameSender_h
 #define VideoFrameSender_h
 
-#include "VideoFrameProcessor.h"
+#include "VideoFramePipeline.h"
 
 #include <boost/shared_ptr.hpp>
 #include <MediaDefinitions.h>
