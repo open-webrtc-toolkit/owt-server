@@ -167,13 +167,14 @@ HardwareVideoMixer::~HardwareVideoMixer()
 void HardwareVideoMixer::setLayout(const VideoLayout& layout)
 {
     // Initialize the layout mapping with custom video layout
-    if (m_inputs.size() > 0 && !layout.regions.empty()) {
+    if (!layout.regions.empty()) {
+        // Clear the current video layout
         m_currentLayout.layoutMapping.clear();
+        m_currentLayout.candidateRegions.clear();
 
-        // Set the layout information to hardware engine.
+        // Set the layout information to hardware engine
         std::vector<Region>::const_iterator regionIt = layout.regions.begin();
-        for (std::set<int>::iterator it=m_inputs.begin();
-            it!=m_inputs.end(); ++it) {
+        for (std::set<int>::iterator it=m_inputs.begin(); it!=m_inputs.end(); ++it) {
             if (regionIt != layout.regions.end()) {
                 RegionInfo regionInfo;
                 regionInfo.id = (*regionIt).id;
@@ -218,9 +219,15 @@ bool HardwareVideoMixer::activateInput(int slot)
     m_inputs.insert(slot);
     ELOG_DEBUG("activateInput OK, slot: %d", slot);
 
-    if (!onSlotNumberChanged(m_inputs.size())) {
-        // TODO: New mapping might be required
-        // Add a new mapping, and pop up an existing one from candidateRegions
+    // Adjust the mapping of input and layout region
+    if (!onSlotNumberChanged(m_inputs.size()) && !m_currentLayout.candidateRegions.empty()) {
+        // Pop up an existing one from candidateRegions
+        RegionInfo regionInfo = m_currentLayout.candidateRegions.back();
+        m_currentLayout.candidateRegions.pop_back();
+
+        // Add a new mapping
+        m_currentLayout.layoutMapping[slot] = regionInfo;
+
         engine->setLayout(m_currentLayout);
     }
 
@@ -231,10 +238,18 @@ void HardwareVideoMixer::deActivateInput(int slot)
 {
     m_inputs.erase(slot);
 
+    // Adjust the mapping of input and layout region
     if (!onSlotNumberChanged(m_inputs.size())) {
-        // TODO: New mapping might be required
-        // At least, remove an existing one from mapping, and add it to candidateRegions
-        engine->setLayout(m_currentLayout);
+        std::map<InputIndex, RegionInfo>::iterator it = m_currentLayout.layoutMapping.find(slot);
+        if (it != m_currentLayout.layoutMapping.end()) {
+            // Add it to candidateRegions
+            m_currentLayout.candidateRegions.push_back(it->second);
+
+            // Remove the existing one from mapping
+            m_currentLayout.layoutMapping.erase(it);
+
+            engine->setLayout(m_currentLayout);
+        }
     }
 }
 
