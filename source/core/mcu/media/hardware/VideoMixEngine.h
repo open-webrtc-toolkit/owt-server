@@ -23,13 +23,6 @@ public:
     virtual void notifyFrameReady(OutputIndex index) = 0;
 };
 
-/* background color*/
-struct BgColor {
-    unsigned short y;
-    unsigned short cb; // Also called U
-    unsigned short cr; // Also called V
-};
-
 struct FrameSize {
     int width;
     int height;
@@ -89,7 +82,7 @@ public:
 
     bool init(BgColor bgColor, unsigned int width, unsigned int height);
 
-    void setBackgroundColor(BgColor bgColor);
+    void setBackgroundColor(BgColor* bgColor);
     void setResolution(unsigned int width, unsigned int height);
     void setLayout(const CustomLayoutInfo& layout);
 
@@ -127,6 +120,8 @@ private:
     VppInfo* m_vpp;
     std::map<InputIndex, InputInfo> m_inputs;
     std::map<OutputIndex, OutputInfo> m_outputs;
+    Mutex m_inputs_mutex;
+    Mutex m_outputs_mutex;
 };
 
 #endif

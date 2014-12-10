@@ -461,18 +461,58 @@ int MsdkXcoder::SetBitrate(CodecType ctype, unsigned short bitrate)
     return 0;
 }
 
-void MsdkXcoder::SetComboType(ComboType type, void* master)
+/*
+ * Set combo type for vpp_handle.
+ * If (type == COMBO_MASTER), then "master" points to the master input
+ * Returns:  0 - Successful
+ *          -1 - invalid inputs
+ */
+
+int MsdkXcoder::SetComboType(ComboType type, void *vpp_handle, void* master)
 {
     Locker<Mutex> lock(mutex);
-    std::list<MSDKCodec*>::iterator vpp_it;
-    vpp_it = vpp_list_.begin();
-    for (; vpp_it != vpp_list_.end(); ++vpp_it) {
-        if (*vpp_it && master) {
-            (*vpp_it)->ConfigVppCombo(type, master);
-        } else {
-            printf("SetComboType is not available before init vpp\n");
+
+    int ret_val = 0;
+
+    if (!vpp_handle || (type == COMBO_MASTER && !master)) {
+        printf("Err: invalid inputs\n");
+        return -1;
+    }
+
+    //map the input decoder handle (master) to its dispatcher
+    Dispatcher *dec_dis = NULL;
+    if (master) {
+        std::map<MSDKCodec*, Dispatcher*>::iterator it_dec_dis;
+        assert(dec_dis_map_.size());
+        for(it_dec_dis = dec_dis_map_.begin(); it_dec_dis != dec_dis_map_.end(); ++it_dec_dis) {
+            if (master == it_dec_dis->first) {
+                dec_dis = it_dec_dis->second;
+                break;
+            }
+        }
+
+        if (dec_dis == NULL) {
+            printf("Err: invalid input\n");
+            assert(0);
+            return -1;
         }
     }
+
+    std::list<MSDKCodec*>::iterator vpp_it;
+    for (vpp_it = vpp_list_.begin(); vpp_it != vpp_list_.end(); ++vpp_it) {
+        if (*vpp_it == vpp_handle) {
+            ret_val = (*vpp_it)->ConfigVppCombo(type, dec_dis);
+            assert(ret_val == 0);
+            break;
+        }
+    }
+    if (vpp_it == vpp_list_.end()) {
+        printf("Err: invalid vpp handle\n");
+        assert(0);
+        return -1;
+    }
+
+    return 0;
 }
 
 int MsdkXcoder::DetachInput(void* input_handle)
@@ -514,8 +554,6 @@ int MsdkXcoder::DetachInput(void* input_handle)
     if (dec_found && dec) {
         printf("[%s]Stopping decoder...\n", __FUNCTION__);
         dec->Stop();
-        printf("[%s]Unlinking element ...\n", __FUNCTION__);
-        dec->UnlinkNextElement();
     } else {
         printf("[%s]Can't find the input handle", __FUNCTION__);
         return -1;
@@ -535,20 +573,25 @@ int MsdkXcoder::DetachInput(void* input_handle)
     if (dec_dis_found && dec_dis) {
         printf("[%s]Stopping decoder dis...\n", __FUNCTION__);
         dec_dis->Stop();
-        printf("[%s]Unlinking element ...\n", __FUNCTION__);
-        dec_dis->UnlinkNextElement();
     } else {
         printf("[%s]Can't find the input dispatch handle", __FUNCTION__);
         return -1;
     }
 
-    if (dec) {
-        del_dec_list_.push_back(dec);
-    }
+    //make sure decoder is stopped before unlinking them.
+    //make sure dec_dis and vpp is unlinked in advance, so vpp can return the queued buffers
+    printf("[%s]Unlinking elements dec_dis and vpp ...\n", __FUNCTION__);
+    dec_dis->UnlinkNextElement();
+    printf("[%s]Unlinking elements dec and dec_dis ...\n", __FUNCTION__);
+    dec->UnlinkNextElement();
 
     if (dec_dis) {
         delete dec_dis;
         dec_dis = NULL;
+    }
+
+    if (dec) {
+        del_dec_list_.push_back(dec);
     }
 
     printf("[%s]Detach Decoder Done\n", __FUNCTION__);
@@ -717,11 +760,12 @@ int MsdkXcoder::DetachVpp(void* vpp_handle)
         return -1;
     }
 
-    printf("[%s]Stopping vpp...\n", __FUNCTION__);
+    printf("[%s]Stopping vpp %p...\n", __FUNCTION__, vpp);
     vpp->Stop();
-    printf("[%s]Unlinking element ...\n", __FUNCTION__);
+    printf("[%s]vpp->UnlinkPrevElement...\n", __FUNCTION__);
     vpp->UnlinkPrevElement();
-    vpp->UnlinkNextElement();
+    //don't unlink vpp with the following elements at this point.
+    //Or else its surfaces can't be recycled
 
     for(it_vpp_dis = vpp_dis_map_.begin(); \
             it_vpp_dis != vpp_dis_map_.end(); \
@@ -739,8 +783,6 @@ int MsdkXcoder::DetachVpp(void* vpp_handle)
 
     printf("[%s]Stopping vpp dis...\n", __FUNCTION__);
     vpp_dis->Stop();
-    printf("[%s]Unlinking element ...\n", __FUNCTION__);
-    vpp_dis->UnlinkNextElement();
 
     BaseElement *enc = NULL;
     typedef std::multimap<MSDKCodec*, MSDKCodec*>::iterator enc_multimap_it;
@@ -749,16 +791,22 @@ int MsdkXcoder::DetachVpp(void* vpp_handle)
         enc = k->second;
         printf("[%s]Stopping encoder ...\n", __FUNCTION__);
         enc->Stop();
-        printf("[%s]Deleting enc...\n", __FUNCTION__);
-        delete enc;
-        enc = NULL;
     }
     enc_multimap_.erase(vpp);
+
+    //It's safe to unlink the elements now as encoder is stopped already.
+    printf("[%s]Unlinking vpp_dis' next element ...\n", __FUNCTION__);
+    vpp_dis->UnlinkNextElement();
+    printf("[%s]Vpp->UnlinkNextElement ...\n", __FUNCTION__);
+    vpp->UnlinkNextElement();
 
     delete vpp;
     vpp = NULL;
     delete vpp_dis;
     vpp_dis = NULL;
+    printf("[%s]Deleting enc...\n", __FUNCTION__);
+    delete enc;
+    enc = NULL;
 
     printf("[%s]Detach VPP Done\n", __FUNCTION__);
     return 0;
@@ -912,10 +960,11 @@ int MsdkXcoder::DetachOutput(void* output_handle)
                 return -1;
             } else {
                 enc_multimap_.erase(it_enc);
-                printf("[%s]Unlinking element ...\n", __FUNCTION__);
-                enc->UnlinkPrevElement();
                 printf("[%s]Stopping encoder ...\n", __FUNCTION__);
                 enc->Stop();
+                printf("[%s]Unlinking element ...\n", __FUNCTION__);
+                //don't unlink enc from previous elements before it's stopped.
+                enc->UnlinkPrevElement();
                 printf("[%s]Deleting enc...\n", __FUNCTION__);
                 delete enc;
                 enc = NULL;
@@ -1052,6 +1101,12 @@ void MsdkXcoder::StringOperateAttach(DecOptions *dec_cfg, void *vppHandle, unsig
         }
     }
 
+    int stream_cnt = vpp->QueryStreamCnt();
+    if (stream_cnt == 0) {
+        printf("There is no video stream attached on this vpp, so can't attach string now.\n");
+        return;
+    }
+
     unsigned int fps_n = vpp->GetVppOutFpsN();
     unsigned int fps_d = vpp->GetVppOutFpsD();
     float frame_rate = (1.0 * fps_n) / fps_d;
@@ -1172,6 +1227,12 @@ void MsdkXcoder::StringOperateChange(DecOptions *dec_cfg, void *vppHandle, unsig
         }
     }
 
+    int stream_cnt = vpp->QueryStreamCnt();
+    if (stream_cnt == 0) {
+        printf("There is no video stream attached on this vpp, so can't change string now.\n");
+        return;
+    }
+
     old_dec = dec_cfg->DecHandle;
     if (!old_dec) {
         printf("Invalid old dec parameter\n");
@@ -1238,6 +1299,11 @@ void MsdkXcoder::PicOperateAttach(DecOptions *dec_cfg, void *vppHandle, unsigned
         }
     }
 
+    int stream_cnt = vpp->QueryStreamCnt();
+    if (stream_cnt == 0) {
+        printf("There is no video stream attached on this vpp, so can't attach picture now.\n");
+        return;
+    }
     unsigned int fps_n = vpp->GetVppOutFpsN();
     unsigned int fps_d = vpp->GetVppOutFpsD();
     float frame_rate = (1.0 * fps_n) / fps_d;
@@ -1356,6 +1422,12 @@ void MsdkXcoder::PicOperateChange(DecOptions *dec_cfg, void *vppHandle, unsigned
             printf("Can't find VPP, please check it\n");
             return;
         }
+    }
+
+    int stream_cnt = vpp->QueryStreamCnt();
+    if (stream_cnt == 0) {
+        printf("There is no video stream attached on this vpp, so can't change picture now.\n");
+        return;
     }
 
     old_dec = dec_cfg->DecHandle;
@@ -1557,6 +1629,8 @@ void MsdkXcoder::CleanUpResource()
         }
     }
     m_pAllocArray.clear();
+
+    DestroyVaDisp();
 }
 
 
@@ -1691,3 +1765,104 @@ int MsdkXcoder::SetResolution(void *vppHandle, unsigned int width, unsigned int 
     printf("Err: specified vppHandle is not in vpp_list_\n");
     return -2;
 }
+
+/*
+ * Set rendering region "info" for input "decHandle" in "vpHandle".
+ * if(bApply), apply the setting, or it means there are more "decHandle"(s) to set.
+ * Returns: 0 - Successful
+ *          1 - Warning, it does't apply to non-vpp element
+ *          2 - Warning, VPP is not in COMBO_CUSTOM mode
+ *          3 - Warnign, vpp has not finished the last request.
+ *         -1 - Invalid inputs
+ */
+int MsdkXcoder::SetRegionInfo(void *vppHandle, void *decHandle, Region &info, bool bApply)
+{
+    Locker<Mutex> lock(mutex);
+    int ret_val = 0;
+
+    //Check if the inputs are valid
+    if (!vppHandle || !decHandle) {
+        printf("Err: null input\n");
+        return -1;
+    }
+
+    if (info.left < 0.0 || info.left >= 1.0 ||
+        info.top < 0.0 || info.top >= 1.0 ||
+        info.width_ratio <= 0.0 || info.width_ratio > 1.0 ||
+        info.height_ratio <= 0.0 || info.height_ratio > 1.0 ||
+        info.left + info.width_ratio > 1.0 ||
+        info.top + info.height_ratio > 1.0) {
+        printf("Err: invalid Region infomation\n");
+        return -1;
+    }
+
+    MSDKCodec *vpp = static_cast<MSDKCodec *>(vppHandle);
+    std::list<MSDKCodec*>::iterator it_vpp;
+    for (it_vpp = vpp_list_.begin(); it_vpp != vpp_list_.end(); ++it_vpp) {
+        if (*it_vpp == vpp) {
+            break;
+        }
+    }
+    if (it_vpp == vpp_list_.end()) {
+        printf("Err: input vppHandle %p is not valid\n", vppHandle);
+        return -1;
+    }
+
+    MSDKCodec *dec = static_cast<MSDKCodec *>(decHandle);
+    Dispatcher *dec_dis = NULL;
+    std::map<MSDKCodec*, Dispatcher*>::iterator it_dec_dis;
+    assert(dec_dis_map_.size());
+    for(it_dec_dis = dec_dis_map_.begin(); it_dec_dis != dec_dis_map_.end(); ++it_dec_dis) {
+        if (dec == it_dec_dis->first) {
+            dec_dis = it_dec_dis->second;
+            break;
+        }
+    }
+    if (!dec_dis) {
+        printf("Err: input decHandle %p is not valid\n", decHandle);
+        return -1;
+    }
+
+    ret_val = vpp->SetCompRegion((void *)dec_dis, info, bApply);
+    assert(ret_val >= 0);
+
+    return ret_val;
+}
+
+int MsdkXcoder::SetBackgroundColor(void *vppHandle, BgColor *bgColor)
+{
+    Locker<Mutex> lock(mutex);
+
+    if (!done_init_) {
+        printf("[%s]set background color before initialization\n", __FUNCTION__);
+        return -1;
+    }
+
+    if (!vppHandle || !bgColor) {
+        printf("[%s]Invalid input parameters\n", __FUNCTION__);
+        return -1;
+    }
+
+    MSDKCodec *vpp = static_cast<MSDKCodec*>(vppHandle);
+    std::list<MSDKCodec*>::iterator it_vpp;
+    for (it_vpp = vpp_list_.begin(); it_vpp != vpp_list_.end(); ++it_vpp) {
+        if (*it_vpp == vpp) {
+            BgColorInfo bgColorInfo;
+            bgColorInfo.Y = bgColor->Y;
+            bgColorInfo.U = bgColor->U;
+            bgColorInfo.V = bgColor->V;
+            int ret = (*it_vpp)->SetBgColor(&bgColorInfo);
+            if (ret != 0) {
+                printf("[%s]Set background error\n", __FUNCTION__);
+                return -1;
+            } else {
+                return 0;
+            }
+        }
+    }
+
+    printf("[%s]Can't find the vpp handle\n", __FUNCTION__);
+    return -1;
+}
+
+
