@@ -57,7 +57,7 @@ exports.ErizoJSController = function (spec) {
                 callback('callback', 'success');
             };
 
-            var useHardware = GLOBAL.config.erizoController.hardwareAccelerated;
+            var useHardware = GLOBAL.config.erizo.hardwareAccelerated;
             if (useHardware) {
                 // Query the hardware capability only if we want to try it.
                 require('child_process').exec('vainfo', function (err, stdout, stderr) {

@@ -82,9 +82,6 @@ config.erizoController.mixer = true;
 // If true and the maxProcesses allows, the mixer will be run in a dedicated process.
 config.erizoController.outOfProcessMixer = false;
 
-// If true and the machine has the capability, the mixer will be accelerated by hardware graphic chips.
-config.erizoController.hardwareAccelerated = false;
-
 /*********************************************************
  ERIZO AGENT CONFIGURATION
 **********************************************************/
@@ -108,6 +105,9 @@ config.erizo.stunport = 0; // default value: 0
 //note, this won't work with all versions of libnice. With 0 all the available ports are used
 config.erizo.minport = 0; // default value: 0
 config.erizo.maxport = 0; // default value: 0
+
+// If true and the machine has the capability, the mixer will be accelerated by hardware graphic chips.
+config.erizo.hardwareAccelerated = false;
 
 // Config the mixed video layout. Default is "fluid" layout.
 // Otherwise, "custom" layout can be used for video layout customization.
