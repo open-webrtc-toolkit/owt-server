@@ -104,7 +104,7 @@ private:
     VideoSize m_composedSize;
     VideoLayout m_currentLayout;
     VideoLayout m_newLayout;
-    VideoFrameConsumer* m_consumer;
+    std::atomic<VideoFrameConsumer*> m_consumer;
     /*
      * Each incoming channel will store the decoded frame in this array, and the composition
      * thread will scan this array and compose the frames into one frame.
