@@ -18,8 +18,8 @@
  * and approved by Intel in writing.
  */
 
-#ifndef FakedVideoFrameDecoder_h
-#define FakedVideoFrameDecoder_h
+#ifndef I420VideoFrameDecoder_h
+#define I420VideoFrameDecoder_h
 
 #include "VideoFramePipeline.h"
 
@@ -27,12 +27,10 @@
 
 namespace mcu {
 
-// A FakedVideoFrameDecoder doesn't do real decoding stuffs.
-// Or in other words, it "decodes" a frame into the same format frame.
-class FakedVideoFrameDecoder : public VideoFrameDecoder {
+class I420VideoFrameDecoder : public VideoFrameDecoder {
 public:
-    FakedVideoFrameDecoder(int slot, boost::shared_ptr<EncodedVideoFrameCompositor>);
-    ~FakedVideoFrameDecoder();
+    I420VideoFrameDecoder(int slot, boost::shared_ptr<I420VideoFrameCompositor>);
+    ~I420VideoFrameDecoder();
 
     bool setInput(FrameFormat, VideoFrameProvider*);
     void unsetInput();
@@ -40,33 +38,36 @@ public:
 
 private:
     int m_slot;
-    boost::shared_ptr<EncodedVideoFrameCompositor> m_compositor;
+    boost::shared_ptr<I420VideoFrameCompositor> m_compositor;
 };
 
-FakedVideoFrameDecoder::FakedVideoFrameDecoder(int slot, boost::shared_ptr<EncodedVideoFrameCompositor> compositor)
+I420VideoFrameDecoder::I420VideoFrameDecoder(int slot, boost::shared_ptr<I420VideoFrameCompositor> compositor)
     : m_slot(slot)
     , m_compositor(compositor)
 {
+    m_compositor->activateInput(m_slot);
 }
 
-FakedVideoFrameDecoder::~FakedVideoFrameDecoder()
+I420VideoFrameDecoder::~I420VideoFrameDecoder()
 {
+    m_compositor->deActivateInput(m_slot);
 }
 
-inline void FakedVideoFrameDecoder::onFrame(FrameFormat format, unsigned char* payload, int len, unsigned int ts)
+inline void I420VideoFrameDecoder::onFrame(FrameFormat format, unsigned char* payload, int len, unsigned int ts)
 {
-    m_compositor->pushInput(m_slot, payload, len);
+    assert(format == FRAME_FORMAT_I420);
+    webrtc::I420VideoFrame* frame = reinterpret_cast<webrtc::I420VideoFrame*>(payload);
+    m_compositor->pushInput(m_slot, frame);
 }
 
-inline bool FakedVideoFrameDecoder::setInput(FrameFormat format, VideoFrameProvider* provider)
+inline bool I420VideoFrameDecoder::setInput(FrameFormat format, VideoFrameProvider*)
 {
-    m_compositor->activateInput(m_slot, format, provider);
+    assert(format == FRAME_FORMAT_I420);
     return true;
 }
 
-inline void FakedVideoFrameDecoder::unsetInput()
+inline void I420VideoFrameDecoder::unsetInput()
 {
-    m_compositor->deActivateInput(m_slot);
 }
 
 }

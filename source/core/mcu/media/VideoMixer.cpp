@@ -24,6 +24,7 @@
 #include "FakedVideoFrameDecoder.h"
 #include "FakedVideoFrameEncoder.h"
 #include "HardwareVideoMixer.h"
+#include "I420VideoFrameDecoder.h"
 #include "SoftVideoCompositor.h"
 #include "TaskRunner.h"
 #include "VCMInputProcessor.h"
@@ -224,10 +225,13 @@ int32_t VideoMixer::addSource(uint32_t from, bool isAudio, FeedbackSink* feedbac
         ELOG_DEBUG("addSource - assigned slot is %d", index);
 
         boost::shared_ptr<VideoFrameDecoder> decoder;
-        if (m_hardwareAccelerated)
-            decoder.reset(new HardwareVideoMixerInput(index, m_frameCompositor));
-        else
-            decoder.reset(new FakedVideoFrameDecoder(index, m_frameCompositor));
+        if (m_hardwareAccelerated) {
+            decoder.reset(new FakedVideoFrameDecoder(
+                        index, boost::dynamic_pointer_cast<EncodedVideoFrameCompositor>(m_frameCompositor)));
+        } else {
+            decoder.reset(new I420VideoFrameDecoder(
+                        index, boost::dynamic_pointer_cast<I420VideoFrameCompositor>(m_frameCompositor)));
+        }
 
         VCMInputProcessor* videoInputProcessor(new VCMInputProcessor(index, m_hardwareAccelerated));
         videoInputProcessor->init(new WoogeenTransport<erizo::VIDEO>(nullptr, feedback),

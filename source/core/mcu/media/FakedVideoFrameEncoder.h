@@ -29,6 +29,8 @@
 
 namespace mcu {
 
+// A FakedVideoFrameEncoder doesn't do real encoding stuffs.
+// Or in other words, it "encodes" an I420 frame into an I420 frame.
 class FakedVideoFrameEncoder : public VideoFrameEncoder {
 public:
     FakedVideoFrameEncoder(boost::shared_ptr<VideoFrameCompositor>);
