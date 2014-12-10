@@ -170,7 +170,7 @@ void SoftVideoCompositor::onSlotNumberChanged(uint32_t newSlotNum)
 void SoftVideoCompositor::setBackgroundColor()
 {
     if (m_composedFrame) {
-        ELOG_DEBUG("setBackgroundColor");
+        ELOG_TRACE("setBackgroundColor");
 
         // Fetch video background color.
         YUVColor rootColor = VideoLayoutHelper::getVideoBackgroundColor(m_currentLayout.rootColor);
