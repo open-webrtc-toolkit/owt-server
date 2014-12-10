@@ -43,13 +43,13 @@ VideoMixEngine::~VideoMixEngine()
     }
 }
 
-bool VideoMixEngine::init(BgColor bgColor, unsigned int width, unsigned int height)
+bool VideoMixEngine::init(BgColor bgColor, FrameSize frameSize)
 {
     if (m_state == UN_INITIALIZED) {
         m_vpp = new VppInfo;
         m_vpp->bgColor = bgColor;
-        m_vpp->width = width;
-        m_vpp->height = height;
+        m_vpp->width = frameSize.width;
+        m_vpp->height = frameSize.height;
         m_state = IDLE;
         return true;
     } else
