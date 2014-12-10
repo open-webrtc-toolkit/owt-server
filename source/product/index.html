@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <meta name="viewport" content="width=100%, initial-scale=1" />
+        
+        <!--link rel="stylesheet" href="css/index.css" /-->
+        <link rel="stylesheet/less" type="text/css" href="css/styles.less" />
+        
+        <script type="text/javascript" src="js/jquery-1.11.0.min.js"></script>
+        <script type="text/javascript" src="js/jquery.panzoom.js"></script>
+        <script type="text/javascript" src="js/less-1.7.0.min.js"></script>
+        
+        <!--script src="../sdk/dependencies/socket.io.js" type="text/javascript"></script>
+        <script src="../sdk/gab.websocket.js" type="text/javascript"></script>
+        <script src="../sdk/woogeen.js" type="text/javascript"></script>
+        <script src="../sdk/woogeen.p2p.js" type="text/javascript"></script-->
+        <script src="js/woogeenconfig.js" type="text/javascript"></script>
+        <script src="js/woogeen.js" type="text/javascript"></script>
+        
+        <script type="text/javascript" src="js/index.js"></script>
+    </head>
+    
+    <body>
+        <div id="login-panel">
+            <div id="default-login">
+                <h3>Web Conference</h3>
+                <p class="time"></p>
+                <input placeholder="Login Name" id="login-input" />
+                <div>
+                    <a href="#" onclick="toggleLoginSetting()" id="setting">Settings</a>
+                </div>
+                <a href="#" class="button" onclick="login()">Login</a>
+            </div>
+            <div id="setting-login">
+                <h4>Video Options</h4>
+                <div>
+                    <div class="buttonset">
+                        <a class="button" onclick="loginDisableVideo()" id="login-audio-only">Audio-Only</a><a class="button selected" onclick="loginEnableVideo()" id="login-audio-video">Video and Audio</a>
+                    </div>
+                </div>
+                <div id="login-resolution">
+                    <h4>Video Resolution</h4>
+                    <div>
+                        <div class="buttonset">
+                            <a class="button selected" id="login-240">320x240</a><a class="button" id="login-480">640x480</a><a class="button" id="login-720">1280x720</a>
+                        </div>
+                    </div>
+                </div>
+                <a href="#" onclick="toggleLoginSetting()" class="button">Save</a>
+            </div>
+        </div>
+        <div id="container">
+            <div id="title-panel">
+                <div id="titleText"></div>
+                <div id="titleTime"></div>
+                <a id="exitBtn" href="#" onclick="exit()">Exit</a>
+            </div>
+            <div id="progress-panel">
+                <div id="progress" class="back-clt-0"></div>
+            </div>
+            
+            <div id="content-panel">
+                <div id="text-panel">
+                    <div id="text-content">
+                    </div>
+                    
+                    <textarea id="text-send" placeholder="Send Message"></textarea>
+                    <a href="#" id="send-btn" onclick="sendIm()"><img src="img/return.png" /></a>
+                </div>
+                
+                <div id="video-panel" class="galaxy">
+                    <div class="largest-mask"></div>
+                </div>
+            </div>
+            
+            <div id="menu-panel" class="back-clt-0">
+                <div id="menu">
+                    <a href="#" class="button selected" onclick="changeMode('galaxy')" id="galaxy-btn" title="Galaxy Layout"></a>
+                    <a href="#" class="button" onclick="changeMode('monitor')" id="monitor-btn" title="Monitor Layout"></a>
+                    <a href="#" class="button" onclick="changeMode('lecture')" id="lecture-btn" title="Lecture Layout"></a>
+                    <div class="button-split"></div>
+                    <a href="#" class="button" onclick="shareScreen()" id="screen-btn" title="Share Screen"></a>
+                    <a href="#" class="button selected" onclick="toggleIm()" id="im-btn" title="Toggle Instant Message Panel"></a>
+                    <div class="button-split"></div>
+                </div>
+                <div id="profile"></div>
+            </div>
+        </div>
+    </body>
+</html>
