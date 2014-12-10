@@ -1,213 +1,8 @@
-diff --git a/src/webrtc/modules/audio_conference_mixer/interface/audio_conference_mixer.h b/src/webrtc/modules/audio_conference_mixer/interface/audio_conference_mixer.h
-index 2969ece..da10c8f 100644
---- a/src/webrtc/modules/audio_conference_mixer/interface/audio_conference_mixer.h
-+++ b/src/webrtc/modules/audio_conference_mixer/interface/audio_conference_mixer.h
-@@ -34,7 +34,11 @@ public:
-         kLowestPossible   = -1,
-         kDefaultFrequency = kWbInHz
-     };
--
-+    enum Mode
-+    {
-+    	kInclusive,
-+    	kExclusive
-+    };
-     // Factory method. Constructor disabled.
-     static AudioConferenceMixer* Create(int id);
-     virtual ~AudioConferenceMixer() {}
-@@ -49,6 +53,9 @@ public:
-         AudioMixerOutputReceiver& receiver) = 0;
-     virtual int32_t UnRegisterMixedStreamCallback() = 0;
- 
-+    virtual int32_t SetMixingMode(Mode mode) = 0;
-+    virtual Mode    MixingMode() = 0;
-+
-     // Register/unregister a callback class for receiving status information.
-     virtual int32_t RegisterMixerStatusCallback(
-         AudioMixerStatusReceiver& mixerStatusCallback,
-diff --git a/src/webrtc/modules/audio_conference_mixer/interface/audio_conference_mixer_defines.h b/src/webrtc/modules/audio_conference_mixer/interface/audio_conference_mixer_defines.h
-index 663be18..76977ff 100644
---- a/src/webrtc/modules/audio_conference_mixer/interface/audio_conference_mixer_defines.h
-+++ b/src/webrtc/modules/audio_conference_mixer/interface/audio_conference_mixer_defines.h
-@@ -15,7 +15,28 @@
- #include "webrtc/typedefs.h"
- 
- namespace webrtc {
--class MixHistory;
-+// Cheshire cat implementation of MixerParticipant's non virtual functions.
-+class MixHistory
-+{
-+public:
-+    MixHistory();
-+    ~MixHistory();
-+
-+    // MixerParticipant function
-+    int32_t IsMixed(bool& mixed) const;
-+
-+    // Sets wasMixed to true if the participant was mixed previous mix
-+    // iteration.
-+    int32_t WasMixed(bool& wasMixed) const;
-+
-+    // Updates the mixed status.
-+    int32_t SetIsMixed(const bool mixed);
-+
-+    void ResetMixedStatus();
-+private:
-+    bool _isMixed;
-+};
-+
- 
- // A callback class that all mixer participants must inherit from/implement.
- class MixerParticipant
-diff --git a/src/webrtc/modules/audio_conference_mixer/source/audio_conference_mixer_impl.cc b/src/webrtc/modules/audio_conference_mixer/source/audio_conference_mixer_impl.cc
-index f3883c0..33d9029 100644
---- a/src/webrtc/modules/audio_conference_mixer/source/audio_conference_mixer_impl.cc
-+++ b/src/webrtc/modules/audio_conference_mixer/source/audio_conference_mixer_impl.cc
-@@ -134,7 +134,8 @@ AudioConferenceMixerImpl::AudioConferenceMixerImpl(int id)
-       _timeStamp(0),
-       _timeScheduler(kProcessPeriodicityInMs),
-       _mixedAudioLevel(),
--      _processCalls(0) {}
-+      _processCalls(0),
-+      _mode(kInclusive){}
- 
- bool AudioConferenceMixerImpl::Init() {
-     _crit.reset(CriticalSectionWrapper::CreateCriticalSection());
-@@ -183,6 +184,13 @@ bool AudioConferenceMixerImpl::Init() {
- }
- 
- AudioConferenceMixerImpl::~AudioConferenceMixerImpl() {
-+
-+	std::map<MixerParticipant*, AudioFrame*>::iterator it;
-+	for (it = _mixedFrames.begin(); it != _mixedFrames.begin(); it++) {
-+		if (it->second!=NULL) {
-+			_audioFramePool->PushMemory(it->second);
-+		}
-+	}
-     MemoryPool<AudioFrame>::DeleteMemoryPool(_audioFramePool);
-     assert(_audioFramePool == NULL);
- }
-@@ -306,7 +314,8 @@ int32_t AudioConferenceMixerImpl::Process() {
-                                 AudioFrame::kNormalSpeech,
-                                 AudioFrame::kVadPassive, num_mixed_channels);
- 
--        _timeStamp += _sampleSize;
-+        if (MixingMode() == kExclusive)
-+        	_timeStamp += _sampleSize;
- 
-         MixFromList(*mixedAudio, &mixList);
-         MixAnonomouslyFromList(*mixedAudio, &additionalFramesList);
-@@ -373,6 +382,15 @@ int32_t AudioConferenceMixerImpl::Process() {
-     return retval;
- }
- 
-+int32_t AudioConferenceMixerImpl::SetMixingMode(AudioConferenceMixer::Mode mode) {
-+	_mode = mode;
-+	return 0;
-+}
-+
-+AudioConferenceMixer::Mode AudioConferenceMixerImpl::MixingMode() {
-+	return _mode;
-+}
-+
- int32_t AudioConferenceMixerImpl::RegisterMixedStreamCallback(
-     AudioMixerOutputReceiver& mixReceiver) {
-     CriticalSectionScoped cs(_cbCrit.get());
-@@ -645,12 +663,33 @@ void AudioConferenceMixerImpl::UpdateToMix(
-         }
-         audioFrame->sample_rate_hz_ = _outputFrequency;
- 
--        if((*participant)->GetAudioFrame(_id,*audioFrame) != 0) {
--            WEBRTC_TRACE(kTraceWarning, kTraceAudioMixerServer, _id,
--                         "failed to GetAudioFrame() from participant");
--            _audioFramePool->PushMemory(audioFrame);
--            continue;
-+        if (MixingMode() == kInclusive) {
-+        	if((*participant)->GetAudioFrame(_id,*audioFrame) != 0) {
-+        		WEBRTC_TRACE(kTraceWarning, kTraceAudioMixerServer, _id,
-+        				"failed to GetAudioFrame() from participant");
-+        		_audioFramePool->PushMemory(audioFrame);
-+        		continue;
-+        	} else {
-+        		AudioFrame* cachedAudioFrame = _mixedFrames[*participant];
-+        		if (cachedAudioFrame == NULL) {
-+        			if(_audioFramePool->PopMemory(cachedAudioFrame) == -1) {
-+        				WEBRTC_TRACE(kTraceMemory, kTraceAudioMixerServer, _id,
-+        						"failed PopMemory() call");
-+        				assert(false);
-+        				return;
-+        			}
-+        			_mixedFrames[*participant] = cachedAudioFrame;
-+        		}
-+                cachedAudioFrame->CopyFrom(*audioFrame);
-+        	}
-+        } else {
-+        	assert(MixingMode() == kExclusive);
-+        	if (_mixedFrames[*participant] != NULL) {
-+        		audioFrame->CopyFrom(*_mixedFrames[*participant]);	//GetAudioFrame from cached ones
-+        	}
-+
-         }
-+
-         // TODO(henrike): this assert triggers in some test cases where SRTP is
-         // used which prevents NetEQ from making a VAD. Temporarily disable this
-         // assert until the problem is fixed on a higher level.
-@@ -704,6 +743,7 @@ void AudioConferenceMixerImpl::UpdateToMix(
-                     assert(mixParticipantList->size() <=
-                            kMaximumAmountOfMixedParticipants);
- 
-+
-                     if (replaceWasMixed) {
-                       RampOut(*replaceFrame);
-                       rampOutList->push_back(replaceFrame);
-diff --git a/src/webrtc/modules/audio_conference_mixer/source/audio_conference_mixer_impl.h b/src/webrtc/modules/audio_conference_mixer/source/audio_conference_mixer_impl.h
-index 31dc71e..b22b2a5 100644
---- a/src/webrtc/modules/audio_conference_mixer/source/audio_conference_mixer_impl.h
-+++ b/src/webrtc/modules/audio_conference_mixer/source/audio_conference_mixer_impl.h
-@@ -28,7 +28,7 @@ class CriticalSectionWrapper;
- 
- typedef std::list<AudioFrame*> AudioFrameList;
- typedef std::list<MixerParticipant*> MixerParticipantList;
--
-+/*
- // Cheshire cat implementation of MixerParticipant's non virtual functions.
- class MixHistory
- {
-@@ -50,7 +50,7 @@ public:
- private:
-     bool _isMixed;
- };
--
-+*/
- class AudioConferenceMixerImpl : public AudioConferenceMixer
- {
- public:
-@@ -85,6 +85,9 @@ public:
-         MixerParticipant& participant, const bool mixable);
-     virtual int32_t AnonymousMixabilityStatus(
-         MixerParticipant& participant, bool& mixable);
-+    virtual int32_t SetMixingMode(AudioConferenceMixer::Mode mode);
-+    virtual AudioConferenceMixer::Mode    MixingMode();
-+
- private:
-     enum{DEFAULT_AUDIO_FRAME_POOLSIZE = 50};
- 
-@@ -207,6 +210,10 @@ private:
- 
-     // Used for inhibiting saturation in mixing.
-     scoped_ptr<AudioProcessing> _limiter;
-+
-+    AudioConferenceMixer::Mode _mode;
-+    // a buffer to store the AudioFrame that has been mixed in previous iteration
-+    std::map<MixerParticipant*, AudioFrame*> _mixedFrames;
- };
- }  // namespace webrtc
- 
-diff --git a/src/webrtc/modules/audio_device/include/audio_device_defines.h b/src/webrtc/modules/audio_device/include/audio_device_defines.h
-index 9f3e24b..a8742cc 100644
---- a/src/webrtc/modules/audio_device/include/audio_device_defines.h
-+++ b/src/webrtc/modules/audio_device/include/audio_device_defines.h
-@@ -70,7 +70,8 @@ public:
+Index: src/webrtc/modules/audio_device/include/audio_device_defines.h
+===================================================================
+--- src/webrtc/modules/audio_device/include/audio_device_defines.h	(revision 7820)
++++ src/webrtc/modules/audio_device/include/audio_device_defines.h	(working copy)
+@@ -70,7 +70,8 @@
                                       const uint8_t nChannels,
                                       const uint32_t samplesPerSec,
                                       void* audioSamples,
@@ -217,65 +12,205 @@ index 9f3e24b..a8742cc 100644
  
      // Method to pass captured data directly and unmixed to network channels.
      // |channel_ids| contains a list of VoE channels which are the
-diff --git a/src/webrtc/voice_engine/output_mixer.cc b/src/webrtc/voice_engine/output_mixer.cc
-index 1648a9d..9fad3ec 100644
---- a/src/webrtc/voice_engine/output_mixer.cc
-+++ b/src/webrtc/voice_engine/output_mixer.cc
-@@ -276,6 +276,7 @@ OutputMixer::SetAnonymousMixabilityStatus(MixerParticipant& participant,
- int32_t
- OutputMixer::MixActiveChannels()
- {
-+	_mixerModule.SetMixingMode(AudioConferenceMixer::kInclusive);
-     return _mixerModule.Process();
- }
- 
-@@ -509,6 +510,27 @@ int OutputMixer::StopRecordingPlayout()
-     return 0;
- }
- 
-+int OutputMixer::GetParticipantMixedAudio(int sample_rate_hz, int num_channels,
-+                  AudioFrame* audioFrame,
-+                  MixerParticipant& participant) {
-+	bool isMixed = false;
-+	_mixerModule.MixabilityStatus(participant, isMixed);
-+	if (isMixed == false) {
-+		return -1;
-+	}
-+	participant._mixHistory->IsMixed(isMixed);
-+	if (isMixed == false) {
-+		return -1;
-+	}
-+	_mixerModule.SetMixingMode(AudioConferenceMixer::kExclusive);
-+	_mixerModule.SetMixabilityStatus(participant, false);
-+	_mixerModule.Process();
-+	DoOperationsOnCombinedSignal();
-+	_mixerModule.SetMixabilityStatus(participant, true);
-+	return GetMixedAudio(sample_rate_hz, num_channels, audioFrame);
+Index: src/webrtc/modules/audio_conference_mixer/interface/audio_conference_mixer_defines.h
+===================================================================
+--- src/webrtc/modules/audio_conference_mixer/interface/audio_conference_mixer_defines.h	(revision 7820)
++++ src/webrtc/modules/audio_conference_mixer/interface/audio_conference_mixer_defines.h	(working copy)
+@@ -82,6 +82,11 @@
+                                const AudioFrame& generalAudioFrame,
+                                const AudioFrame** uniqueAudioFrames,
+                                const uint32_t size) = 0;
 +
++    virtual void NewMixedAudio(const int32_t id,
++                               const AudioFrame& generalAudioFrame,
++                               bool isExlusive,
++                               MixerParticipant* participant) = 0;
+ protected:
+     AudioMixerOutputReceiver() {}
+     virtual ~AudioMixerOutputReceiver() {}
+Index: src/webrtc/modules/audio_conference_mixer/source/audio_conference_mixer_impl.cc
+===================================================================
+--- src/webrtc/modules/audio_conference_mixer/source/audio_conference_mixer_impl.cc	(revision 7820)
++++ src/webrtc/modules/audio_conference_mixer/source/audio_conference_mixer_impl.cc	(working copy)
+@@ -280,49 +280,14 @@
+     }
+ 
+     // Get an AudioFrame for mixing from the memory pool.
+-    AudioFrame* mixedAudio = NULL;
+-    if(_audioFramePool->PopMemory(mixedAudio) == -1) {
+-        WEBRTC_TRACE(kTraceMemory, kTraceAudioMixerServer, _id,
+-                     "failed PopMemory() call");
+-        assert(false);
+-        return -1;
+-    }
+-
+     bool timeForMixerCallback = false;
+-    int retval = 0;
+     int32_t audioLevel = 0;
+     {
+         CriticalSectionScoped cs(_crit.get());
+-
+-        // TODO(henrike): it might be better to decide the number of channels
+-        //                with an API instead of dynamically.
+-
+-        // Find the max channels over all mixing lists.
+-        const int num_mixed_channels = std::max(MaxNumChannels(&mixList),
+-            std::max(MaxNumChannels(&additionalFramesList),
+-                     MaxNumChannels(&rampOutList)));
+-
+-        mixedAudio->UpdateFrame(-1, _timeStamp, NULL, 0, _outputFrequency,
+-                                AudioFrame::kNormalSpeech,
+-                                AudioFrame::kVadPassive, num_mixed_channels);
+-
+         _timeStamp += _sampleSize;
+ 
+-        MixFromList(*mixedAudio, &mixList);
+-        MixAnonomouslyFromList(*mixedAudio, &additionalFramesList);
+-        MixAnonomouslyFromList(*mixedAudio, &rampOutList);
++        GenerateMixedFrame(mixList, rampOutList, additionalFramesList, NULL);
+ 
+-        if(mixedAudio->samples_per_channel_ == 0) {
+-            // Nothing was mixed, set the audio samples to silence.
+-            mixedAudio->samples_per_channel_ = _sampleSize;
+-            mixedAudio->Mute();
+-        } else {
+-            // Only call the limiter if we have something to mix.
+-            if(!LimitMixedAudio(*mixedAudio))
+-                retval = -1;
+-        }
+-
+-        _mixedAudioLevel.ComputeLevel(mixedAudio->data_,_sampleSize);
+         audioLevel = _mixedAudioLevel.GetLevel();
+ 
+         if(_mixerStatusCb) {
+@@ -337,14 +302,6 @@
+ 
+     {
+         CriticalSectionScoped cs(_cbCrit.get());
+-        if(_mixReceiver != NULL) {
+-            const AudioFrame** dummy = NULL;
+-            _mixReceiver->NewMixedAudio(
+-                _id,
+-                *mixedAudio,
+-                dummy,
+-                0);
+-        }
+ 
+         if((_mixerStatusCallback != NULL) &&
+             timeForMixerCallback) {
+@@ -361,8 +318,22 @@
+         }
+     }
+ 
++    {
++        CriticalSectionScoped cs(_crit.get());
++        for (std::map<int, MixerParticipant*>::iterator it = mixedParticipantsMap.begin(); it != mixedParticipantsMap.end(); ++it) {
++            int frame_id = it->first;
++            MixerParticipant* participant = it->second;
++            AudioFrameList inList;
++            for (std::list<AudioFrame*>::iterator it2 = mixList.begin(); it2 != mixList.end(); ++it2) {
++                if ((*it2)->id_ != frame_id) {
++                    inList.push_back(*it2);
++                }
++            }
++            GenerateMixedFrame(inList, rampOutList, additionalFramesList, participant);
++        }
++    }
++
+     // Reclaim all outstanding memory.
+-    _audioFramePool->PushMemory(mixedAudio);
+     ClearAudioFrameList(&mixList);
+     ClearAudioFrameList(&rampOutList);
+     ClearAudioFrameList(&additionalFramesList);
+@@ -370,9 +341,69 @@
+         CriticalSectionScoped cs(_crit.get());
+         _processCalls--;
+     }
+-    return retval;
++    return 0;
+ }
+ 
++int32_t AudioConferenceMixerImpl::GenerateMixedFrame(
++    AudioFrameList& mixList, 
++    AudioFrameList& rampOutList,                  
++    AudioFrameList& additionalFramesList,
++    MixerParticipant* participant)
++{
++    AudioFrame* mixedAudio = NULL;
++    if(_audioFramePool->PopMemory(mixedAudio) == -1) {
++        WEBRTC_TRACE(kTraceMemory, kTraceAudioMixerServer, _id,
++                     "failed PopMemory() call");
++        assert(false);
++        return -1;
++    }
++
++    int retval = 0;
++    // TODO(henrike): it might be better to decide the number of channels
++    //                with an API instead of dynamically.
++
++    // Find the max channels over all mixing lists.
++    const int num_mixed_channels = std::max(MaxNumChannels(&mixList),
++        std::max(MaxNumChannels(&additionalFramesList),
++                 MaxNumChannels(&rampOutList)));
++
++    mixedAudio->UpdateFrame(-1, _timeStamp, NULL, 0, _outputFrequency,
++                            AudioFrame::kNormalSpeech,
++                            AudioFrame::kVadPassive, num_mixed_channels);
++
++    MixFromList(*mixedAudio, &mixList);
++    MixAnonomouslyFromList(*mixedAudio, &additionalFramesList);
++    MixAnonomouslyFromList(*mixedAudio, &rampOutList);
++
++    if(mixedAudio->samples_per_channel_ == 0) {
++        // Nothing was mixed, set the audio samples to silence.
++        mixedAudio->samples_per_channel_ = _sampleSize;
++        mixedAudio->Mute();
++    } else {
++        // Only call the limiter if we have something to mix.
++        if(!LimitMixedAudio(*mixedAudio))
++            retval = -1;
++    }
++
++    _mixedAudioLevel.ComputeLevel(mixedAudio->data_,_sampleSize);
++
++    {
++        CriticalSectionScoped cs(_cbCrit.get());
++        if(_mixReceiver != NULL) {
++            bool exlusive = (participant != NULL);
++            _mixReceiver->NewMixedAudio(
++                _id,
++                *mixedAudio,
++                exlusive,
++                participant);
++        }
++    }
++
++    // Reclaim all outstanding memory.
++    _audioFramePool->PushMemory(mixedAudio);
++    return retval; 
 +}
 +
- int OutputMixer::GetMixedAudio(int sample_rate_hz,
-                                int num_channels,
-                                AudioFrame* frame) {
-diff --git a/src/webrtc/voice_engine/output_mixer.h b/src/webrtc/voice_engine/output_mixer.h
-index fc9afd8..c60767c 100644
---- a/src/webrtc/voice_engine/output_mixer.h
-+++ b/src/webrtc/voice_engine/output_mixer.h
-@@ -70,6 +70,9 @@ public:
+ int32_t AudioConferenceMixerImpl::RegisterMixedStreamCallback(
+     AudioMixerOutputReceiver& mixReceiver) {
+     CriticalSectionScoped cs(_cbCrit.get());
+Index: src/webrtc/modules/audio_conference_mixer/source/audio_conference_mixer_impl.h
+===================================================================
+--- src/webrtc/modules/audio_conference_mixer/source/audio_conference_mixer_impl.h	(revision 7820)
++++ src/webrtc/modules/audio_conference_mixer/source/audio_conference_mixer_impl.h	(working copy)
+@@ -154,6 +154,8 @@
  
-     int GetMixedAudio(int sample_rate_hz, int num_channels,
-                       AudioFrame* audioFrame);
-+    int GetParticipantMixedAudio(int sample_rate_hz, int num_channels,
-+                      AudioFrame* audioFrame,
-+                      MixerParticipant& participant);
+     bool LimitMixedAudio(AudioFrame& mixedAudio);
  
-     // VoEVolumeControl
-     int GetSpeechOutputLevel(uint32_t& level);
-diff --git a/src/webrtc/voice_engine/voe_base_impl.cc b/src/webrtc/voice_engine/voe_base_impl.cc
-index 1b6e144..547f6ac 100644
---- a/src/webrtc/voice_engine/voe_base_impl.cc
-+++ b/src/webrtc/voice_engine/voe_base_impl.cc
-@@ -148,7 +148,8 @@ int32_t VoEBaseImpl::NeedMorePlayData(
++    int32_t GenerateMixedFrame(AudioFrameList& mixList, AudioFrameList& rampOutList,
++                           AudioFrameList& additionalFramesList, MixerParticipant* participant);
+     // Scratch memory
+     // Note that the scratch memory may only be touched in the scope of
+     // Process().
+Index: src/webrtc/voice_engine/voe_base_impl.cc
+===================================================================
+--- src/webrtc/voice_engine/voe_base_impl.cc	(revision 7820)
++++ src/webrtc/voice_engine/voe_base_impl.cc	(working copy)
+@@ -148,7 +148,8 @@
          uint8_t nChannels,
          uint32_t samplesPerSec,
          void* audioSamples,
@@ -285,7 +220,7 @@ index 1b6e144..547f6ac 100644
  {
      WEBRTC_TRACE(kTraceStream, kTraceVoice, VoEId(_shared->instance_id(), -1),
                   "VoEBaseImpl::NeedMorePlayData(nSamples=%u, "
-@@ -157,30 +158,45 @@ int32_t VoEBaseImpl::NeedMorePlayData(
+@@ -157,17 +158,21 @@
  
      assert(_shared->output_mixer() != NULL);
  
@@ -293,7 +228,6 @@ index 1b6e144..547f6ac 100644
 -    // here so that it will only request mono from AudioCodingModule.
 -    // Perform mixing of all active participants (channel-based mixing)
 -    _shared->output_mixer()->MixActiveChannels();
-+    AudioFrame* resultFrame = NULL;
 +    if (channelId == -1) {
 +    	// TODO(andrew): if the device is running in mono, we should tell the mixer
 +    	// here so that it will only request mono from AudioCodingModule.
@@ -302,55 +236,113 @@ index 1b6e144..547f6ac 100644
  
 -    // Additional operations on the combined signal
 -    _shared->output_mixer()->DoOperationsOnCombinedSignal();
-+    	// Additional operations on the combined signal
-+    	_shared->output_mixer()->DoOperationsOnCombinedSignal();
++    	// Retrieve the final output mix (resampled to match the ADM)
++    	_shared->output_mixer()->GetMixedAudio(samplesPerSec, nChannels,
++    			&_audioFrame);
  
 -    // Retrieve the final output mix (resampled to match the ADM)
 -    _shared->output_mixer()->GetMixedAudio(samplesPerSec, nChannels,
 -        &_audioFrame);
- 
--    assert(static_cast<int>(nSamples) == _audioFrame.samples_per_channel_);
-+    	// Retrieve the final output mix (resampled to match the ADM)
-+    	_shared->output_mixer()->GetMixedAudio(samplesPerSec, nChannels,
-+    			&_inclusiveAudioFrame);
-+    	resultFrame = &_inclusiveAudioFrame;
-+
 +    } else {
 +    	voe::Channel* channel = _shared->channel_manager().GetChannel(channelId).channel();
-+    	if (_shared->output_mixer()->GetParticipantMixedAudio(samplesPerSec, nChannels,
-+    			&_exclusiveAudioFrame, *channel) == -1) {
-+    		resultFrame = &_inclusiveAudioFrame;
-+    	} else {
-+    		resultFrame = &_exclusiveAudioFrame;
-+    	}
++    	_shared->output_mixer()->GetParticipantMixedAudio(samplesPerSec, nChannels,
++    			&_audioFrame, *channel);
++    }
+ 
+     assert(static_cast<int>(nSamples) == _audioFrame.samples_per_channel_);
+     assert(samplesPerSec ==
+Index: src/webrtc/voice_engine/output_mixer.cc
+===================================================================
+--- src/webrtc/voice_engine/output_mixer.cc	(revision 7820)
++++ src/webrtc/voice_engine/output_mixer.cc	(working copy)
+@@ -35,6 +35,33 @@
+     _audioFrame.id_ = id;
+ }
+ 
++void OutputMixer::NewMixedAudio(int32_t id, 
++                                const AudioFrame& generalAudioFrame,
++                                bool isExlusive,
++                                MixerParticipant* participant)
++{
++    WEBRTC_TRACE(kTraceStream, kTraceVoice, VoEId(_instanceId,-1),
++                 "OutputMixer::NewMixedAudio(id=%d)", id);
 +
++    _audioFrame.CopyFrom(generalAudioFrame);
++    _audioFrame.id_ = id;
++
++    DoOperationsOnCombinedSignal();
++
++    if (isExlusive) {
++        if (_exclusiveAudioFrames.find(participant) == _exclusiveAudioFrames.end()) {
++            AudioFrame* audioframe = new AudioFrame();
++            ExclusiveAudioFrame frameInfo = {false, audioframe};
++            _exclusiveAudioFrames[participant] = frameInfo;
++        }
++
++        _exclusiveAudioFrames[participant].frame->CopyFrom(_audioFrame);
++        _exclusiveAudioFrames[participant].fresh = true;
 +    }
 +
-+	assert(static_cast<int>(nSamples) == resultFrame->samples_per_channel_);
-     assert(samplesPerSec ==
--        static_cast<uint32_t>(_audioFrame.sample_rate_hz_));
-+        static_cast<uint32_t>(resultFrame->sample_rate_hz_));
- 
-     // Deliver audio (PCM) samples to the ADM
-     memcpy(
-            (int16_t*) audioSamples,
--           (const int16_t*) _audioFrame.data_,
--           sizeof(int16_t) * (_audioFrame.samples_per_channel_
--                   * _audioFrame.num_channels_));
-+           (const int16_t*) resultFrame->data_,
-+           sizeof(int16_t) * (resultFrame->samples_per_channel_
-+                   * resultFrame->num_channels_));
- 
--    nSamplesOut = _audioFrame.samples_per_channel_;
-+    nSamplesOut = resultFrame->samples_per_channel_;
- 
++    _inclusiveAudioFrame.CopyFrom(_audioFrame);
++}
++
+ void OutputMixer::MixedParticipants(
+     int32_t id,
+     const ParticipantStatistics* participantStatistics,
+@@ -156,6 +183,12 @@
+ {
+     WEBRTC_TRACE(kTraceMemory, kTraceVoice, VoEId(_instanceId,-1),
+                  "OutputMixer::~OutputMixer() - dtor");
++
++    for (std::map<MixerParticipant*, ExclusiveAudioFrame>::iterator it = _exclusiveAudioFrames.begin(); it != _exclusiveAudioFrames.end(); ++it) {
++        delete it->second.frame;
++    }
++    _exclusiveAudioFrames.clear();
++
+     if (_externalMedia)
+     {
+         DeRegisterExternalMediaProcessing();
+@@ -509,6 +542,26 @@
      return 0;
  }
-diff --git a/src/webrtc/voice_engine/voe_base_impl.h b/src/webrtc/voice_engine/voe_base_impl.h
-index df406eb..eaf11cb 100644
---- a/src/webrtc/voice_engine/voe_base_impl.h
-+++ b/src/webrtc/voice_engine/voe_base_impl.h
-@@ -89,7 +89,8 @@ public:
+ 
++int OutputMixer::GetParticipantMixedAudio(int sample_rate_hz, int num_channels,
++                  AudioFrame* audioFrame,
++                  MixerParticipant& participant) {
++	bool isMixed = false;
++	_mixerModule.MixabilityStatus(participant, isMixed);
++
++    std::map<MixerParticipant*, ExclusiveAudioFrame>::iterator it = _exclusiveAudioFrames.find(&participant);
++
++	if (isMixed && it != _exclusiveAudioFrames.end() && it->second.fresh) {
++        AudioFrame* frame = it->second.frame;
++        audioFrame->num_channels_ = num_channels;
++        audioFrame->sample_rate_hz_ = sample_rate_hz;
++        it->second.fresh = false;
++        RemixAndResample(*frame, &resampler_, audioFrame);
++		return 0;
++	}
++
++	return GetMixedAudio(sample_rate_hz, num_channels, audioFrame);
++}
++
+ int OutputMixer::GetMixedAudio(int sample_rate_hz,
+                                int num_channels,
+                                AudioFrame* frame) {
+@@ -527,7 +580,7 @@
+   frame->sample_rate_hz_ = sample_rate_hz;
+   // TODO(andrew): Ideally the downmixing would occur much earlier, in
+   // AudioCodingModule.
+-  RemixAndResample(_audioFrame, &resampler_, frame);
++  RemixAndResample(_inclusiveAudioFrame, &resampler_, frame);
+   return 0;
+ }
+ 
+Index: src/webrtc/voice_engine/voe_base_impl.h
+===================================================================
+--- src/webrtc/voice_engine/voe_base_impl.h	(revision 7820)
++++ src/webrtc/voice_engine/voe_base_impl.h	(working copy)
+@@ -89,7 +89,8 @@
                                       uint8_t nChannels,
                                       uint32_t samplesPerSec,
                                       void* audioSamples,
@@ -360,13 +352,44 @@ index df406eb..eaf11cb 100644
  
      virtual int OnDataAvailable(const int voe_channels[],
                                  int number_of_voe_channels,
-@@ -154,7 +155,8 @@ private:
-     CriticalSectionWrapper& _callbackCritSect;
+Index: src/webrtc/voice_engine/output_mixer.h
+===================================================================
+--- src/webrtc/voice_engine/output_mixer.h	(revision 7820)
++++ src/webrtc/voice_engine/output_mixer.h	(working copy)
+@@ -70,6 +70,9 @@
  
-     bool _voiceEngineObserver;
--    AudioFrame _audioFrame;
-+    AudioFrame _exclusiveAudioFrame;
+     int GetMixedAudio(int sample_rate_hz, int num_channels,
+                       AudioFrame* audioFrame);
++    int GetParticipantMixedAudio(int sample_rate_hz, int num_channels,
++                      AudioFrame* audioFrame,
++                      MixerParticipant& participant);
+ 
+     // VoEVolumeControl
+     int GetSpeechOutputLevel(uint32_t& level);
+@@ -97,6 +100,12 @@
+         const AudioFrame** uniqueAudioFrames,
+         uint32_t size);
+ 
++    virtual void NewMixedAudio(
++        int32_t id,
++        const AudioFrame& generalAudioFrame,
++        bool isExlusive,
++        MixerParticipant* participant);
++
+     // from AudioMixerStatusReceiver
+     virtual void MixedParticipants(
+         int32_t id,
+@@ -145,6 +154,13 @@
+     int _mixingFrequencyHz;
+     FileRecorder* _outputFileRecorderPtr;
+     bool _outputFileRecording;
++
++    struct ExclusiveAudioFrame {
++        bool fresh;
++        AudioFrame* frame;
++    };
++    std::map<MixerParticipant*, ExclusiveAudioFrame> _exclusiveAudioFrames;
 +    AudioFrame _inclusiveAudioFrame;
-     voe::SharedData* _shared;
  };
  
+ }  // namespace voe
