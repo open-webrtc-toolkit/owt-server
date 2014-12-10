@@ -262,9 +262,10 @@ webrtc::I420VideoFrame* SoftVideoCompositor::customLayout()
         } else {
             I420VideoFrame* processedFrame = nullptr;
             int ret = m_vpmPool->get(input)->PreprocessFrame(*sub_image, &processedFrame);
-            if (ret == VPM_OK && !processedFrame) {
-                // do nothing
-            } else if (ret == VPM_OK && processedFrame) {
+            if (ret == VPM_OK) {
+                if (!processedFrame)
+                    processedFrame = sub_image;
+
                 for (int i = 0; i < sub_height; i++) {
                     memcpy(target->buffer(webrtc::kYPlane) + (i+offset_height) * target->stride(webrtc::kYPlane) + offset_width,
                         processedFrame->buffer(webrtc::kYPlane) + i * processedFrame->stride(webrtc::kYPlane),
@@ -323,9 +324,11 @@ webrtc::I420VideoFrame* SoftVideoCompositor::fluidLayout()
         } else {
             I420VideoFrame* processedFrame = nullptr;
             int ret = m_vpmPool->get(input)->PreprocessFrame(*sub_image, &processedFrame);
-            if (ret == VPM_OK && !processedFrame) {
-                // do nothing
-            } else if (ret == VPM_OK && processedFrame) {
+            if (ret == VPM_OK) {
+                if (!processedFrame)
+                    processedFrame = sub_image;
+
+                ELOG_DEBUG("fluidlayout, processedFrame() OK");
                 for (uint32_t i = 0; i < subHeight; i++) {
                     memcpy(target->buffer(webrtc::kYPlane) + (i+offset_height)* target->stride(webrtc::kYPlane) + offset_width,
                         processedFrame->buffer(webrtc::kYPlane) + i * processedFrame->stride(webrtc::kYPlane),
