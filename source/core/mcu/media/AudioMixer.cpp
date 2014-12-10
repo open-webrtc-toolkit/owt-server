@@ -173,6 +173,7 @@ int32_t AudioMixer::removeSource(uint32_t from, bool isAudio)
         std::map<std::string, VoiceChannel>::iterator outputIt = m_outputChannels.begin();
         for (; outputIt != m_outputChannels.end(); ++outputIt) {
             if (outputIt->second.id == channel) {
+                outputIt->second.transport->setFeedbackSink(nullptr);
                 outputExisted = true;
                 break;
             }
