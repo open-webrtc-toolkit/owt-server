@@ -112,6 +112,7 @@ namespace erizo {
     localSdp_.getPayloadInfos() = remoteSdp_.getPayloadInfos();
     localSdp_.isBundle = bundle_;
     localSdp_.isRtcpMux = remoteSdp_.isRtcpMux;
+    localSdp_.setOfferSdp(&remoteSdp_);
 
     ELOG_DEBUG("Video %d videossrc %u Audio %d audio ssrc %u Bundle %d", videoEnabled_, remoteSdp_.videoSsrc, audioEnabled_, remoteSdp_.audioSsrc,  bundle_);
 
@@ -202,12 +203,12 @@ namespace erizo {
     if (bundle_){
       if (videoTransport_ != NULL) {
         if (audioEnabled_ == true) {
-          this->queueData(0, buf, len, videoTransport_);
+          this->queueData(0, buf, len, videoTransport_, AUDIO_PACKET);
         }
       }
     } else if (audioTransport_ != NULL) {
       if (audioEnabled_ == true) {
-        this->queueData(0, buf, len, audioTransport_);
+        this->queueData(0, buf, len, audioTransport_, AUDIO_PACKET);
       }
     }
     return len;
@@ -245,7 +246,7 @@ namespace erizo {
             len = len - 1 - totalLength + rtpHeaderLength;
           }
         }
-        this->queueData(0, buf, len, videoTransport_);
+        this->queueData(0, buf, len, videoTransport_, VIDEO_PACKET);
       }
     }
     return len;
@@ -260,15 +261,15 @@ namespace erizo {
     if (sourceSsrc == getAudioSinkSSRC() || sourceSsrc == getAudioSourceSSRC()) {
       writeSsrc(buf, len, this->getAudioSinkSSRC());
       if (audioTransport_ != NULL)
-        this->queueData(0, buf, len, audioTransport_);
+        this->queueData(0, buf, len, audioTransport_, OTHER_PACKET);
       else {
         assert(bundle_ && videoTransport_ != NULL);
-        this->queueData(0, buf, len, videoTransport_);
+        this->queueData(0, buf, len, videoTransport_, OTHER_PACKET);
       }
     } else if (sourceSsrc == getVideoSinkSSRC() || sourceSsrc == getVideoSourceSSRC()) {
       writeSsrc(buf, len, this->getVideoSinkSSRC());
       assert(videoTransport_ != NULL);
-      this->queueData(0, buf, len, videoTransport_);
+      this->queueData(0, buf, len, videoTransport_, OTHER_PACKET);
     } else {
       ELOG_WARN("Bad source SSRC in RTCP feedback packet: %u", sourceSsrc);
     }
@@ -322,14 +323,17 @@ namespace erizo {
       if (bundle_) {
         // Deliver data
         if (recvSSRC==this->getVideoSourceSSRC() || recvSSRC==this->getVideoSinkSSRC()) {
-          videoSink_->deliverVideoData(buf, length);
+          videoSink_->deliverVideoData(buf, len);
+          parseIncomingPayloadType(buf, len, VIDEO_PACKET);
         } else if (recvSSRC==this->getAudioSourceSSRC() || recvSSRC==this->getAudioSinkSSRC()) {
-          audioSink_->deliverAudioData(buf, length);
+          audioSink_->deliverAudioData(buf, len);
+          parseIncomingPayloadType(buf, len, AUDIO_PACKET);
         } else {
           ELOG_ERROR("Unknown SSRC %u, localVideo %u, remoteVideo %u, ignoring", recvSSRC, this->getVideoSourceSSRC(), this->getVideoSinkSSRC());
         }
       } else if (transport->mediaType == AUDIO_TYPE) {
         if (audioSink_ != NULL) {
+          parseIncomingPayloadType(buf, len, AUDIO_PACKET);
           // Firefox does not send SSRC in SDP
           if (this->getAudioSourceSSRC() == 0) {
             ELOG_DEBUG("Audio Source SSRC is %u", recvSSRC);
@@ -340,6 +344,7 @@ namespace erizo {
         }
       } else if (transport->mediaType == VIDEO_TYPE) {
         if (videoSink_ != NULL) {
+          parseIncomingPayloadType(buf, len, VIDEO_PACKET);
           // Firefox does not send SSRC in SDP
           if (this->getVideoSourceSSRC() == 0) {
             ELOG_DEBUG("Video Source SSRC is %u", recvSSRC);
@@ -466,7 +471,47 @@ namespace erizo {
       connEventListener_->notifyEvent(globalState_);
   }
 
-  void WebRtcConnection::queueData(int comp, const char* buf, int length, Transport *transport) {
+  // changes the outgoing payload type for in the given data packet
+  void WebRtcConnection::changeDeliverPayloadType(dataPacket *dp, packetType type) {
+    RtpHeader* h = reinterpret_cast<RtpHeader*>(dp->data);
+    RtcpHeader *chead = reinterpret_cast<RtcpHeader*>(dp->data);
+    if (!chead->isRtcp()) {
+        int internalPT = h->getPayloadType();
+        int externalPT = internalPT;
+        if (type == AUDIO_PACKET) {
+            externalPT = remoteSdp_.getAudioExternalPT(internalPT);
+        } else if (type == VIDEO_PACKET) {
+            externalPT = remoteSdp_.getVideoExternalPT(externalPT);
+        }
+        if (internalPT != externalPT) {
+            h->setPayloadType(externalPT);
+        }
+    }
+  }
+
+  // parses incoming payload type, replaces occurence in buf
+  void WebRtcConnection::parseIncomingPayloadType(char *buf, int len, packetType type) {
+      RtcpHeader* chead = reinterpret_cast<RtcpHeader*>(buf);
+      RtpHeader* h = reinterpret_cast<RtpHeader*>(buf);
+      if (!chead->isRtcp()) {
+        int externalPT = h->getPayloadType();
+        int internalPT = externalPT;
+        if (type == AUDIO_PACKET) {
+            internalPT = remoteSdp_.getAudioInternalPT(externalPT);
+        } else if (type == VIDEO_PACKET) {
+            internalPT = remoteSdp_.getVideoInternalPT(externalPT);
+        }
+        if (externalPT != internalPT) {
+            h->setPayloadType(internalPT);
+            //ELOG_ERROR("onTransportData mapping %i to %i", externalPT, internalPT);
+        } else {
+            //ELOG_ERROR("onTransportData did not find mapping for %i", externalPT);
+        }
+      }
+  }
+
+
+  void WebRtcConnection::queueData(int comp, const char* buf, int length, Transport *transport, packetType type) {
     if ((audioSink_ == NULL && videoSink_ == NULL && fbSink_==NULL) || !sending_) //we don't enqueue data if there is nothing to receive it
       return;
 
@@ -494,6 +539,7 @@ namespace erizo {
       p_.comp = comp;
       p_.type = (transport->mediaType == VIDEO_TYPE) ? VIDEO_PACKET : AUDIO_PACKET;
       p_.length = length;
+      changeDeliverPayloadType(&p_, type);
       boost::lock_guard<boost::mutex> lock(receiveMediaMutex_);
       sendQueue_.push(p_);
     }
