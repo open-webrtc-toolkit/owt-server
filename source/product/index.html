@@ -15,8 +15,10 @@
         <script src="../sdk/gab.websocket.js" type="text/javascript"></script>
         <script src="../sdk/woogeen.js" type="text/javascript"></script>
         <script src="../sdk/woogeen.p2p.js" type="text/javascript"></script-->
-        <script src="js/woogeenconfig.js" type="text/javascript"></script>
-        <script src="js/woogeen.js" type="text/javascript"></script>
+        <script src="js/woogeen.sdk.js" type="text/javascript"></script>
+        <script src="js/woogeen.sdk.ui.js" type="text/javascript"></script>
+        <!-- rewrite VideoPlayer because new video player has some bug for this page -->
+        <script src="js/VideoPlayer.js" type="text/javascript"></script>
         
         <script type="text/javascript" src="js/index.js"></script>
     </head>
@@ -28,7 +30,11 @@
                 <p class="time"></p>
                 <input placeholder="Login Name" id="login-input" />
                 <div>
-                    <a href="#" onclick="toggleLoginSetting()" id="setting">Settings</a>
+                  <a href="#" onclick="toggleLoginSetting()" id="setting">Settings</a>
+                  <select id="subscribe-type">
+                    <option value="forward">Forward</option>
+                    <option value="mixed" selected="selected">Mixed</option>
+                  </select>
                 </div>
                 <a href="#" class="button" onclick="login()">Login</a>
             </div>
