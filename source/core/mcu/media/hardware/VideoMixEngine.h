@@ -80,7 +80,7 @@ public:
     VideoMixEngine();
     virtual ~VideoMixEngine();
 
-    bool init(BgColor bgColor, unsigned int width, unsigned int height);
+    bool init(BgColor bgColor, FrameSize frameSize);
 
     void setBackgroundColor(BgColor bgColor);
     void setResolution(unsigned int width, unsigned int height);

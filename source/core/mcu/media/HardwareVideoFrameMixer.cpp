@@ -135,8 +135,9 @@ HardwareVideoFrameMixer::HardwareVideoFrameMixer()
     // Fetch video size and background color.
     VideoSize rootSize = VideoLayoutHelper::getVideoSize(layout.rootSize);
     YUVColor rootColor = VideoLayoutHelper::getVideoBackgroundColor(layout.rootColor);
-    BgColor bg = {rootColor.y, rootColor.cb, rootColor.cr};
-    bool result = m_engine->init(bg, rootSize.width, rootSize.height);
+    BgColor bgColor = {rootColor.y, rootColor.cb, rootColor.cr};
+    FrameSize frameSize = {rootSize.width, rootSize.height};
+    bool result = m_engine->init(bgColor, frameSize);
     assert(result);
     if (!result) {
         ELOG_ERROR("Init video mixing engine failed!");
