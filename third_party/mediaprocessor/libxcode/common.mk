@@ -1,9 +1,15 @@
 # <COPYRIGHT_TAG>
 export CXX=g++
-export CXXFLAGS=-g -Wall -fPIC -msse4
+export CXXFLAGS=-Wall -fPIC -msse4
 export STATIC_LIBRARY_LINK=ar cr
 
 export LIB_PREFIX=libxcode
+
+ifeq ($(ver), release)
+	CXXFLAGS += -DNDEBUG
+else
+	CXXFLAGS += -g
+endif
 
 LIB_NAME=$(shell basename `pwd`)
 STATIC_TARGET=../../dist/$(LIB_PREFIX)$(LIB_NAME).a

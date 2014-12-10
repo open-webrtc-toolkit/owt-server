@@ -40,7 +40,7 @@ vcsa_audio:libxcodebase libxcodewav
 vcsa_video:libxcodebase libxcodevideovpx
 	@echo "Building VCSA without Audio Done"
 
-snva:libxcodebase libxcodevideova libocl
+snva:libxcodebase libxcodevideo libocl
 	@echo "Building SNVA Done"
 
 xcoder:libxcodebase libxcodevideo libxcodeformats
@@ -63,9 +63,6 @@ libxcodebase:$(DIR_BASE)
 
 libxcodevideo:$(DIR_VIDEO)
 	$(MAKE) -C $(DIR_VIDEO)
-
-libxcodevideova:$(DIR_VIDEO)
-	$(MAKE) -C $(DIR_VIDEO) VA_ENABLE=1
 
 libxcodevideovpx:$(DIR_VIDEO)
 	$(MAKE) -C $(DIR_VIDEO) VPX_ENABLE=1 STR_ENABLE=1 PIC_ENABLE=1

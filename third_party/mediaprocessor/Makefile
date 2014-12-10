@@ -46,19 +46,24 @@ endif
 all:$(TARGET)
 
 help:
-	@echo "use \"make asta\" to build ASTA codes"
-	@echo "use \"make vcsa\" to build VCSA without IPP"
-	@echo "use \"make vcsa_audio\" to build VCSA without IPP and video module"
-	@echo "use \"make vcsa_video\" to build VCSA without IPP and audio module"
-	@echo "use \"make adec\" to build VCSA with IPP"
-	@echo "use \"make xcoder\" to build file and stream codes"
-	@echo "use \"make xcoder_sw\" to build software file codes"
-	@echo "use \"make fei\" to build FEI samples"
-	@echo "use \"make snva\" to build SNVA codes."
-	@echo "use \"make vioa\" to build VIOA codes."
-	@echo "use \"make on_demand_server\" to build On Demand Server."
-	@echo "use \"make clean\" to clean the builds except imports directory"
-	@echo "use \"make distclean\" to clean all the builds"
+	@echo "Usage: make <TARGET> [ver=release/debug]"
+	@echo "Description:"
+	@echo "       TARGET : asta, to build ASTA codes"
+	@echo "              : vcsa, to build VCSA without IPP"
+	@echo "              : vcsa_audio, to build VCSA without IPP and video module"
+	@echo "              : vcsa_video, to build VCSA without IPP and audio module"
+	@echo "              : adec, to build VCSA with IPP"
+	@echo "              : xcoder, to build file and stream codes"
+	@echo "              : xcoder_sw, to build software file codes"
+	@echo "              : fei, to build FEI samples"
+	@echo "              : snva, to build SNVA codes."
+	@echo "              : vioa, to build VIOA codes."
+	@echo "              : on_demand_server, to build On Demand Server."
+	@echo "              : clean, to clean the builds except imports directory"
+	@echo "              : distclean, to clean all the builds"
+	@echo "       ver=release/debug, release or debug version to build"
+	@echo "Example:"
+	@echo "       \"make vcsa ver=debug\", to build VCSA debug version"
 
 asta:
 	@for dir in $(DIRS); \
@@ -102,7 +107,7 @@ fei:
 
 snva:
 	@for dir in $(DIRS); \
-		do $(MAKE) -C $$dir snva; \
+		do $(MAKE) -C $$dir snva VA_ENABLE=1; \
 	done
 
 vioa:

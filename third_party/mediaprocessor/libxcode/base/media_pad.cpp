@@ -22,6 +22,12 @@ MediaPad::MediaPad(MediaPadDirection direction):
 
 MediaPad::~MediaPad()
 {
+    //if assert happens, pad is unlinked/deleted before queued buffers returned.
+    assert(in_buf_q_.IsEmpty());
+    peer_pad_ = NULL;
+    parent_ = NULL;
+    pad_status_ = MEDIA_PAD_UNLINKED;
+    chain_func_ = NULL;
 }
 
 int MediaPad::ProcessBuf(MediaBuf &buf)
@@ -52,7 +58,14 @@ int MediaPad::ProcessBuf(MediaBuf &buf)
             }
         }
 
-        in_buf_q_.Push(buf);
+        //if it's parent is stopped, return the buf.
+        //this may happen when 2 MSDKCodec(Active mode) are linked.
+        if (this->get_parent()->is_running_) {
+            in_buf_q_.Push(buf);
+        } else {
+            ret = ReturnBufToPeerPad(buf);
+        }
+
     }
 
     return ret;
