@@ -154,6 +154,12 @@ void HardwareVideoFrameMixer::setLayout(const VideoLayout& layout)
 {
     // Initialize the layout mapping with custom video layout
     if (!layout.regions.empty()) {
+        // Set the layout video size and background color
+        VideoSize rootSize = VideoLayoutHelper::getVideoSize(layout.rootSize);
+        YUVColor rootColor = VideoLayoutHelper::getVideoBackgroundColor(layout.rootColor);
+        m_currentLayout.rootSize = {rootSize.width, rootSize.height};
+        m_currentLayout.rootColor = {rootColor.y, rootColor.cb, rootColor.cr};
+
         // Clear the current video layout
         m_currentLayout.layoutMapping.clear();
         m_currentLayout.candidateRegions.clear();

@@ -54,8 +54,7 @@ private:
     boost::shared_ptr<VideoMixEngine> m_engine;
 };
 
-class HardwareVideoFrameMixerOutput : public VideoMixEngineOutput,
-                                 public JobTimerListener {
+class HardwareVideoFrameMixerOutput : public VideoMixEngineOutput, public JobTimerListener {
 public:
     HardwareVideoFrameMixerOutput(boost::shared_ptr<VideoMixEngine> engine,
                             FrameFormat outFormat,
