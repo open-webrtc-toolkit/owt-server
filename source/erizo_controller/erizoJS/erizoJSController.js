@@ -33,6 +33,11 @@ exports.ErizoJSController = function (spec) {
 
     that.initMixer = function (id, oop, callback) {
         if (publishers[id] === undefined) {
+            // Place holder to avoid duplicated mixer creations when the initMixer request
+            // comes again before current mixer with the same id is created.
+            // The mixer creation may take a while partly because we need to query the
+            // hardware capability in some case.
+            publishers[id] = true;
             var doInitMixer = function(hardwareAccelerated) {
                 var config = {
                     "mixer": true,
@@ -41,30 +46,33 @@ exports.ErizoJSController = function (spec) {
                 };
                 mixer = new addon.Gateway(JSON.stringify(config));
 
+                publishers[id] = mixer;
+                subscribers[id] = [];
+
                 mixer.configLayout(GLOBAL.config.erizo.videolayout.type,
                     GLOBAL.config.erizo.videolayout.defaultrootsize,
                     GLOBAL.config.erizo.videolayout.defaultbackgroundcolor,
                     JSON.stringify(GLOBAL.config.erizo.videolayout.custom));
 
-                publishers[id] = mixer;
-                subscribers[id] = [];
                 callback('callback', 'success');
             };
 
-            var hasHardwareCap = false;
-            require('child_process').exec('vainfo', function (err, stdout, stderr) {
-                // Check whether hardware codec should be used for this room
-                if (err) {
-                    var errInfo = err.toString();
-                    hasHardwareCap = (errInfo.indexOf('VA-API version 0.34.0') != -1) ||
-                                     (errInfo.indexOf('VA-API version: 0.34') != -1);
-                } else if(stdout.length > 0) {
-                    var outInfo = stdout.toString();
-                    hasHardwareCap = (outInfo.indexOf('VA-API version 0.34.0') != -1) ||
-                                     (outInfo.indexOf('VA-API version: 0.34') != -1);
-                }
-                doInitMixer(hasHardwareCap && GLOBAL.config.erizoController.hardwareAccelerated);
-            });
+            var useHardware = GLOBAL.config.erizoController.hardwareAccelerated;
+            if (useHardware) {
+                // Query the hardware capability only if we want to try it.
+                require('child_process').exec('vainfo', function (err, stdout, stderr) {
+                    var info = "";
+                    if (err) {
+                        info = err.toString();
+                    } else if(stdout.length > 0) {
+                        info = stdout.toString();
+                    }
+                    // Check whether hardware codec should be used for this room
+                    useHardware = (info.indexOf('VA-API version 0.34.0') != -1)
+                                   || (info.indexOf('VA-API version: 0.34') != -1);
+                });
+            }
+            doInitMixer(useHardware);
         } else {
             log.info("Mixer already set for", id);
         }
