@@ -146,12 +146,12 @@ void Mixer::addSubscriber(MediaSink* subscriber, const std::string& peerId)
 void Mixer::removeSubscriber(const std::string& peerId)
 {
     ELOG_DEBUG("Removing subscriber: id is %s", peerId.c_str());
+    m_audioMixer->removeOutput(peerId);
+
     boost::unique_lock<boost::shared_mutex> lock(m_subscriberMutex);
     std::map<std::string, boost::shared_ptr<MediaSink>>::iterator it = m_subscribers.find(peerId);
-    if (it != m_subscribers.end()) {
-        m_audioMixer->removeOutput(peerId);
+    if (it != m_subscribers.end())
         m_subscribers.erase(it);
-    }
 }
 
 int32_t Mixer::removeSource(uint32_t source, bool isAudio)
