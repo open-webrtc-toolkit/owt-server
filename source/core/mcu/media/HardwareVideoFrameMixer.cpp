@@ -24,15 +24,15 @@
 
 namespace mcu {
 
-CodecType Frameformat2CodecType(FrameFormat format)
+VideoMixCodecType Frameformat2CodecType(FrameFormat format)
 {
     switch (format) {
         case FRAME_FORMAT_H264:
-            return ::CODEC_TYPE_VIDEO_AVC;
+            return VCT_MIX_H264;
         case FRAME_FORMAT_VP8:
-            return ::CODEC_TYPE_VIDEO_VP8;
+            return VCT_MIX_VP8;
         default:
-            return ::CODEC_TYPE_INVALID;
+            return VCT_MIX_UNKNOWN;
     }
 }
 
@@ -135,7 +135,7 @@ HardwareVideoFrameMixer::HardwareVideoFrameMixer()
     // Fetch video size and background color.
     VideoSize rootSize = VideoLayoutHelper::getVideoSize(layout.rootSize);
     YUVColor rootColor = VideoLayoutHelper::getVideoBackgroundColor(layout.rootColor);
-    BgColor bgColor = {rootColor.y, rootColor.cb, rootColor.cr};
+    BackgroundColor bgColor = {rootColor.y, rootColor.cb, rootColor.cr};
     FrameSize frameSize = {rootSize.width, rootSize.height};
     bool result = m_engine->init(bgColor, frameSize);
     assert(result);
