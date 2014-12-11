@@ -24,7 +24,6 @@
 #include <webrtc/common_video/interface/i420_video_frame.h>
 #include <webrtc/modules/video_processing/main/interface/video_processing.h>
 #include <webrtc/system_wrappers/interface/clock.h>
-#include <webrtc/system_wrappers/interface/critical_section_wrapper.h>
 #include <webrtc/system_wrappers/interface/tick_util.h>
 
 using namespace webrtc;
@@ -70,8 +69,7 @@ void VPMPool::update(unsigned int slot, VideoSize& videoSize)
 DEFINE_LOGGER(SoftVideoCompositor, "mcu.media.SoftVideoCompositor");
 
 SoftVideoCompositor::SoftVideoCompositor(const VideoLayout& layout)
-    : m_configLock(CriticalSectionWrapper::CreateCriticalSection())
-    , m_configChanged(false)
+    : m_configChanged(false)
     , m_currentLayout(layout)
     , m_consumer(nullptr)
 {
@@ -101,7 +99,6 @@ SoftVideoCompositor::~SoftVideoCompositor()
 
 void SoftVideoCompositor::setLayout(const VideoLayout& layout)
 {
-    webrtc::CriticalSectionScoped cs(m_configLock.get());
     ELOG_DEBUG("Configuring layout");
     m_newLayout = layout;
     m_configChanged = true;
@@ -215,10 +212,8 @@ bool SoftVideoCompositor::commitLayout()
 
 webrtc::I420VideoFrame* SoftVideoCompositor::layout()
 {
-    if (m_configChanged) {
-        webrtc::CriticalSectionScoped cs(m_configLock.get());
+    if (m_configChanged)
         commitLayout();
-    }
 
     // Update the background color
     setBackgroundColor();
