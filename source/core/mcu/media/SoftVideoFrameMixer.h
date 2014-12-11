@@ -67,22 +67,26 @@ SoftVideoFrameMixer::~SoftVideoFrameMixer()
     m_decoders.clear();
 }
 
-inline bool SoftVideoFrameMixer::activateInput(int slot, FrameFormat format, VideoFrameProvider*)
+inline bool SoftVideoFrameMixer::activateInput(int slot, FrameFormat format, VideoFrameProvider* provider)
 {
     assert(format == FRAME_FORMAT_I420);
     std::map<int, boost::shared_ptr<VideoFrameDecoder>>::iterator it = m_decoders.find(slot);
     if (it != m_decoders.end())
         return false;
 
-    m_decoders[slot].reset(new I420VideoFrameDecoder(slot, m_compositor));
+    I420VideoFrameDecoder* decoder = new I420VideoFrameDecoder(slot, m_compositor);
+    decoder->setInput(format, provider);
+    m_decoders[slot].reset(decoder);
     return true;
 }
 
 inline void SoftVideoFrameMixer::deActivateInput(int slot)
 {
     std::map<int, boost::shared_ptr<VideoFrameDecoder>>::iterator it = m_decoders.find(slot);
-    if (it != m_decoders.end())
+    if (it != m_decoders.end()) {
+        it->second->unsetInput();
         m_decoders.erase(it);
+    }
 }
 
 inline void SoftVideoFrameMixer::pushInput(int slot, unsigned char* payload, int len)
