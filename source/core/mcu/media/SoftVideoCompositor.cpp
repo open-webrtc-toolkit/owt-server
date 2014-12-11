@@ -323,7 +323,7 @@ webrtc::I420VideoFrame* SoftVideoCompositor::fluidLayout()
                 if (!processedFrame)
                     processedFrame = sub_image;
 
-                ELOG_DEBUG("fluidlayout, processedFrame() OK");
+                ELOG_TRACE("fluidlayout, processedFrame() OK");
                 for (uint32_t i = 0; i < subHeight; i++) {
                     memcpy(target->buffer(webrtc::kYPlane) + (i+offset_height)* target->stride(webrtc::kYPlane) + offset_width,
                         processedFrame->buffer(webrtc::kYPlane) + i * processedFrame->stride(webrtc::kYPlane),
