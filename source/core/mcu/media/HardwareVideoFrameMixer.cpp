@@ -232,7 +232,7 @@ bool HardwareVideoFrameMixer::activateInput(int slot, FrameFormat format, VideoF
 void HardwareVideoFrameMixer::deActivateInput(int slot)
 {
     // Adjust the mapping of input and layout region
-    if (!onSlotNumberChanged(m_inputs.size())) {
+    if (!onSlotNumberChanged(m_inputs.size() - 1)) {
         std::map<int, boost::shared_ptr<HardwareVideoFrameMixerInput>>::iterator itr = m_inputs.find(slot);
         if (itr != m_inputs.end()) {
             InputIndex index = itr->second->index();
@@ -249,6 +249,7 @@ void HardwareVideoFrameMixer::deActivateInput(int slot)
         }
     }
 
+    // Remove the input entry
     m_inputs.erase(slot);
 }
 
