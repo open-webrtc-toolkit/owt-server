@@ -110,6 +110,8 @@ private:
     void setupPipeline();
     void demolishPipeline();
 
+    void setRegions(const std::map<InputIndex, RegionInfo>&);
+
     bool isCodecAlreadyInUse(CodecType codec);
 
 private:
