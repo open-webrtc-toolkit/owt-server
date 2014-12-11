@@ -8,9 +8,10 @@ else ifeq ("/sbin/lspci", "$(wildcard /sbin/lspci)")
 endif
 
 
-DEVICEID=$(shell $(LSPCI) -nn | grep VGA | grep Intel | cut -d: -f 4 | cut -d']' -f 1)
+#DEVICEID=$(shell $(LSPCI) -nn | grep VGA | grep Intel | cut -d: -f 4 | cut -d']' -f 1)
 MEDIASDK_OUTPUT=/opt/intel
-MEDIASDK_INSTALL_DIR=$(MEDIASDK_OUTPUT)/mediasdk/lib64/8086/$(DEVICEID)/
+#MEDIASDK_INSTALL_DIR=$(MEDIASDK_OUTPUT)/mediasdk/lib64/8086/$(DEVICEID)/
+MEDIASDK_INSTALL_DIR=$(shell find $(MEDIASDK_OUTPUT)/mediasdk/lib64/ -name libmfxhw64.so -exec dirname {} \; | sed -n '1p')
 MFX_INCLUDE_PATH=$(MEDIASDK_OUTPUT)/mediasdk/include/
 MFX_LIBS=-L$(MEDIASDK_INSTALL_DIR) -lmfxhw64 -Wl,-rpath=$(MEDIASDK_INSTALL_DIR) -lva -lva-drm -lva-x11
 LIBS+=$(MFX_LIBS)
@@ -46,7 +47,8 @@ endif
 ifeq ($(VA_ENABLE),1)
 VA_INSTALL_DIR=../../imports/opencv
 VA_INCLUDE_PATH=$(VA_INSTALL_DIR)/include
-VA_LIBS=-L$(VA_INSTALL_DIR)/lib -lopencv_core -lopencv_highgui -lopencv_objdetect  -lopencv_legacy -Wl,-rpath=$(VA_INSTALL_DIR)/lib
+VA_LIBS=-L$(VA_INSTALL_DIR)/lib -lopencv_core -lopencv_highgui -lopencv_objdetect  -lopencv_legacy -lopencv_flann \
+				-lopencv_calib3d -lopencv_features2d -lopencv_ml -lopencv_video -Wl,-rpath=$(VA_INSTALL_DIR)/lib
 EXTRA_FLAGS+= -DENABLE_VA -DLIBVA_SUPPORT -DLIBVA_X11_SUPPORT
 LIBS+=$(VA_LIBS)
 OPENCL_INSTALL_DIR=/usr/lib64

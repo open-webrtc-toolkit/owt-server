@@ -23,13 +23,6 @@ public:
     virtual void notifyFrameReady(OutputIndex index) = 0;
 };
 
-/* background color*/
-struct BgColor {
-    unsigned short y;
-    unsigned short cb; // Also called U
-    unsigned short cr; // Also called V
-};
-
 struct FrameSize {
     int width;
     int height;

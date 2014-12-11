@@ -149,10 +149,10 @@ int AudioPCMReader::HandleProcess()
             }
 #ifdef DUMP_AUDIO_PCM_INPUT
             if (m_pDumpOutFile) {
-                m_WaveInfoOut.channels_number = 2;
+                m_WaveInfoOut.channels_number = 2;    // Special case for debugging in WebRTC scenario
                 m_WaveHeader.Populate(&m_WaveInfoOut, 0xFFFFFFFF);
                 m_pDumpOutFile->WriteBlock(&m_WaveHeader, m_WaveHeader.GetHeaderSize());
-                m_WaveInfoOut.channels_number = 1;
+                m_WaveInfoOut.channels_number = 1;    // Special case for debugging in WebRTC scenario
                 m_WaveHeader.Populate(&m_WaveInfoOut, 0xFFFFFFFF);
             }
 #endif
@@ -162,7 +162,7 @@ int AudioPCMReader::HandleProcess()
             frame_size = m_WaveInfoOut.channels_number *
                          m_WaveInfoOut.sample_rate * 3 *
                          (m_WaveInfoOut.resolution >> 3) / 50;
-            printf("AudioPCMReader[%p]: frame_size = %d\n", this, frame_size);
+            APP_TRACE_DEBUG("AudioPCMReader[%p]: frame_size = %d\n", this, frame_size);
             buffer_size = (mem_size < frame_size) ? mem_size : frame_size;
             // allocate memory for audio payload
             for (i = 0; i < AUDIO_OUTPUT_QUEUE_SIZE; i++) {
@@ -190,7 +190,7 @@ int AudioPCMReader::HandleProcess()
         data_consumed = 0;
         ret = PCMRead(&payload_out, &payload_in, isFirstPacket, &data_consumed);
         if (ret == -1) {
-            printf("PCMRead error, return.\n");
+            printf("AudioPCMReader[%p]: PCMRead error, return.\n", this);
             buf.payload = NULL;
             buf.payload_length = 0;
             srcpad->PushBufToPeerPad(buf);
@@ -204,7 +204,7 @@ int AudioPCMReader::HandleProcess()
         frame_count++;
         measure.GetCurTime(&cur_time);
         if (cur_time - last_time >= 1000000) {
-            APP_TRACE_DEBUG("[%p]: audio frame rate = %d\n", this, frame_count);
+            APP_TRACE_DEBUG("AudioPCMReader[%p]: audio frame rate = %d\n", this, frame_count);
             last_time = cur_time;
             frame_count = 0;
         }
@@ -228,13 +228,16 @@ int AudioPCMReader::ParseWAVHeader(AudioPayload *pIn)
 {
     m_nDataOffset = m_WaveHeader.Interpret(pIn->payload, &m_WaveInfoOut, pIn->payload_length);
     if (m_nDataOffset <= 0) {
-        printf("PCMRead: Invalid or unsupported wav format!\n");
+        printf("AudioPCMReader[%p]: Invalid or unsupported wav format! DataOffset(%d)\n",
+               this,
+               m_nDataOffset);
         return -1;
     }
     unsigned int inputDataSize = pIn->payload_length - m_nDataOffset;
     // Create a RIFF header to prepend to the PCM samples
     m_WaveHeader.Populate(&m_WaveInfoOut, inputDataSize);
-    printf("%s: channel:sample_frequency:bit_per_sample: channel_mask is %d:%d:%d:%d\n",
+    printf("AudioPCMReader[%p] %s: channel:sample_frequency:bit_per_sample:channel_mask is %d:%d:%d:%d\n",
+           this,
            __FUNCTION__,
            m_WaveInfoOut.channels_number,
            m_WaveInfoOut.sample_rate,

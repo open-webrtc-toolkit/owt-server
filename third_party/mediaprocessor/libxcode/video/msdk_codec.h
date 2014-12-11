@@ -109,6 +109,7 @@ typedef struct {
     bool bOpenCLEnable;
     bool bDump;
     int  va_interval;
+    VAType va_type;
     CHWDevice *hwdev;
 #endif
 #ifdef MSDK_FEI
@@ -123,7 +124,7 @@ typedef struct {
     unsigned h;
 } VppRect;
 
-typedef struct {
+typedef struct VPPCompInfo {
     MediaPad *vpp_sinkpad;
     VppRect dst_rect;
     StringInfo str_info;
@@ -133,9 +134,19 @@ typedef struct {
     float frame_rate;
     int drop_frame_num; // Number of frames need to be dropped.
     int total_dropped_frames; // Totally dropped frames.
+
+    VPPCompInfo():
+    drop_frame_num(0),
+    total_dropped_frames(0) {
+    };
 } VPPCompInfo;
 
-
+/* background color*/
+typedef struct {
+    unsigned short Y;
+    unsigned short U;
+    unsigned short V;
+} BgColorInfo;
 
 class MSDKCodec: public BaseElement
 {
@@ -168,7 +179,12 @@ public:
 
     int SetRes(unsigned int width, unsigned int height);
 
-    void ConfigVppCombo(ComboType combo_type, void *master_handle);
+    int ConfigVppCombo(ComboType combo_type, void *master_handle);
+
+    //If vpp layout is set as COMBO_CUSTOM, the inputs are not displayed before this API is called with bApply=true
+    int SetCompRegion(void *dec_dis, Region &info, bool bApply);
+
+    int SetBgColor(BgColorInfo *bgColorInfo);
 
     StringInfo *GetStrInfo() {
         return input_str_;
@@ -193,6 +209,9 @@ public:
     }
     void SetPicInfo(PicInfo *picinfo) {
         input_pic_ = picinfo;
+    }
+    int QueryStreamCnt() {
+        return stream_cnt_;
     }
 protected:
     virtual void NewPadAdded(MediaPad *pad);
@@ -247,8 +266,12 @@ private:
     bool comp_info_change_;    //denote whether info for composition changed
     unsigned long vppframe_num_;
     ComboType combo_type_;
+    std::map<MediaPad *, Region> dec_region_map_; //for COMBO_CUSTOM mode only. Apply to
+                                                  //vpp_comp_map_ if(apply_region_info_flag_)
+    bool apply_region_info_flag_; //For COMBO_CUSTOM only, indicate Region infos are ready to apply
     void *combo_master_;
     bool reinit_vpp_flag_;
+    bool res_change_flag_;
     int stream_cnt_;
     int string_cnt_;
     int pic_cnt_;
@@ -256,6 +279,12 @@ private:
     //res of pre-allocated surfaces, following res change can't exceed it.
     unsigned int frame_width_;
     unsigned int frame_height_;
+    //In COMBO_CUSTOM mode, when res changes, the following 2 parameters are needed to
+    //calculate the new comp info for every streams. "Region"(s) in dec_region_map_ may be under
+    //updating and can't be used yet.
+    unsigned int old_out_width_;
+    unsigned int old_out_height_;
+    BgColorInfo bg_color_info;
 
 #ifdef MSDK_FEI
     MFXVideoENC *mfx_fei_preenc_;
@@ -285,6 +314,7 @@ private:
     // VA plugin
     MFXGenericPlugin *user_va_;
     CHWDevice *m_hwdev;
+    mfxExtBuffer **extbuf_;
 #endif
     void *aux_param_;
     int aux_param_size_;

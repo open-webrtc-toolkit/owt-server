@@ -25,6 +25,9 @@ public:
 
     virtual int ProcessChain(MediaPad *pad, MediaBuf &buf);
 
+protected:
+    virtual void PadRemoved(MediaPad *pad);
+
 private:
     std::map<void*, unsigned int> sur_ref_map_;
 
