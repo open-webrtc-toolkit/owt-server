@@ -40,35 +40,39 @@ namespace mcu {
 
 class ExternalRenderer : public webrtc::VCMReceiveCallback {
 public:
-    ExternalRenderer(boost::shared_ptr<VideoFrameDecoder> frameHandler,
-                     VideoFrameProvider* provider) 
-        : m_frameHandler(frameHandler)
+    ExternalRenderer(int index,
+                     boost::shared_ptr<VideoFrameMixer> frameHandler,
+                     VideoFrameProvider* provider)
+        : m_index(index)
+        , m_frameHandler(frameHandler)
     {
-        m_frameHandler->setInput(FRAME_FORMAT_I420, provider);
+        m_frameHandler->activateInput(index, FRAME_FORMAT_I420, provider);
     }
 
     virtual ~ExternalRenderer()
     {
-        m_frameHandler->unsetInput();
+        m_frameHandler->deActivateInput(m_index);
     }
 
     // Implements the webrtc::VCMReceiveCallback interface.
     virtual int32_t FrameToRender(webrtc::I420VideoFrame& frame)
     {
-        m_frameHandler->onFrame(FRAME_FORMAT_I420, reinterpret_cast<unsigned char*>(&frame), 0, 0);
+        m_frameHandler->pushInput(m_index, reinterpret_cast<unsigned char*>(&frame), 0);
         return 0;
     }
 
 private:
-    boost::shared_ptr<VideoFrameDecoder> m_frameHandler;
+    int m_index;
+    boost::shared_ptr<VideoFrameMixer> m_frameHandler;
 };
 
 class ExternalDecoder : public webrtc::VideoDecoder {
 public:
-    ExternalDecoder(boost::shared_ptr<VideoFrameDecoder> decoder,
+    ExternalDecoder(int index,
+                    boost::shared_ptr<VideoFrameMixer> frameHandler,
                     VideoFrameProvider* provider)
-        : m_frameFormat(FRAME_FORMAT_UNKNOWN)
-        , m_frameDecoder(decoder)
+        : m_index(index)
+        , m_frameHandler(frameHandler)
         , m_provider(provider)
     {
         assert(provider);
@@ -77,19 +81,20 @@ public:
     virtual ~ExternalDecoder()
     {
         m_provider = nullptr;
-        m_frameDecoder->unsetInput();
+        m_frameHandler->deActivateInput(m_index);
     }
 
     // Implements the webrtc::VideoDecoder interface.
     virtual int32_t InitDecode(const webrtc::VideoCodec* codecSettings, int32_t numberOfCores) 
     {
+        FrameFormat frameFormat = FRAME_FORMAT_UNKNOWN;
         assert(codecSettings->codecType == webrtc::kVideoCodecVP8 || codecSettings->codecType == webrtc::kVideoCodecH264);
         if (codecSettings->codecType == webrtc::kVideoCodecVP8)
-            m_frameFormat = FRAME_FORMAT_VP8;
+            frameFormat = FRAME_FORMAT_VP8;
         else if (codecSettings->codecType == webrtc::kVideoCodecH264)
-            m_frameFormat = FRAME_FORMAT_H264;
+            frameFormat = FRAME_FORMAT_H264;
 
-        if (m_frameDecoder->setInput(m_frameFormat, m_provider))
+        if (m_frameHandler->activateInput(m_index, frameFormat, m_provider))
             return 0;
 
         return -1;
@@ -100,8 +105,7 @@ public:
                            const webrtc::CodecSpecificInfo* codecSpecificInfo = NULL,
                            int64_t renderTimeMs = -1)
     {
-        if (m_frameDecoder)
-            m_frameDecoder->onFrame(m_frameFormat, inputImage._buffer, inputImage._length, 0);
+        m_frameHandler->pushInput(m_index, inputImage._buffer, inputImage._length);
         return 0;
     }
     virtual int32_t RegisterDecodeCompleteCallback(webrtc::DecodedImageCallback* callback) { return 0; }
@@ -109,8 +113,8 @@ public:
     virtual int32_t Reset() { return 0; }
 
 private:
-    FrameFormat m_frameFormat;
-    boost::shared_ptr<VideoFrameDecoder> m_frameDecoder;
+    int m_index;
+    boost::shared_ptr<VideoFrameMixer> m_frameHandler;
     VideoFrameProvider* m_provider;
 };
 
@@ -156,7 +160,7 @@ public:
     int deliverAudioData(char*, int len);
     int deliverVideoData(char*, int len);
 
-    bool init(woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<VideoFrameDecoder>, boost::shared_ptr<TaskRunner>);
+    bool init(woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<VideoFrameMixer>, boost::shared_ptr<TaskRunner>);
 
     void bindAudioForSync(int32_t voiceChannelId, webrtc::VoEVideoSync*);
 
@@ -174,7 +178,7 @@ private:
     boost::shared_ptr<webrtc::Transport> m_videoTransport;
 
     boost::scoped_ptr<DebugRecorder> m_recorder;
-    boost::shared_ptr<VideoFrameDecoder> m_frameReceiver;
+    boost::shared_ptr<VideoFrameMixer> m_frameReceiver;
     boost::shared_ptr<webrtc::VCMReceiveCallback> m_renderer;
     boost::shared_ptr<webrtc::VideoDecoder> m_decoder;
     boost::shared_ptr<TaskRunner> m_taskRunner;

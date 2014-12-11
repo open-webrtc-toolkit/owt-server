@@ -21,11 +21,8 @@
 #include "VideoMixer.h"
 
 #include "EncodedVideoFrameSender.h"
-#include "FakedVideoFrameDecoder.h"
-#include "FakedVideoFrameEncoder.h"
 #include "HardwareVideoMixer.h"
-#include "I420VideoFrameDecoder.h"
-#include "SoftVideoCompositor.h"
+#include "SoftVideoFrameMixer.h"
 #include "TaskRunner.h"
 #include "VCMInputProcessor.h"
 #include "VCMOutputProcessor.h"
@@ -48,16 +45,10 @@ VideoMixer::VideoMixer(erizo::RTPDataReceiver* receiver, bool hardwareAccelerate
 {
     m_taskRunner.reset(new TaskRunner());
 
-    const VideoLayout& layout = Config::get()->getVideoLayout();
-
-    if (m_hardwareAccelerated) {
-        m_frameCompositor.reset(new HardwareVideoMixer(layout));
-        // HardwareVideoMixer is both a VideoFrameCompositor and VideoFrameEncoder, for now.
-        m_frameEncoder = boost::dynamic_pointer_cast<VideoFrameEncoder>(m_frameCompositor);
-    } else {
-        m_frameCompositor.reset(new SoftVideoCompositor(layout));
-        m_frameEncoder.reset(new FakedVideoFrameEncoder(m_frameCompositor));
-    }
+    if (m_hardwareAccelerated)
+        m_frameMixer.reset(new HardwareVideoMixer());
+    else
+        m_frameMixer.reset(new SoftVideoFrameMixer());
 
     Config::get()->registerListener(this);
 
@@ -100,9 +91,9 @@ int32_t VideoMixer::addOutput(int payloadType)
 
     VideoFrameSender* output = nullptr;
     if (m_hardwareAccelerated)
-        output = new EncodedVideoFrameSender(outputId, m_frameEncoder, outputFormat, transport, m_taskRunner);
+        output = new EncodedVideoFrameSender(outputId, m_frameMixer, outputFormat, transport, m_taskRunner);
     else
-        output = new VCMOutputProcessor(outputId, m_frameEncoder, transport, m_taskRunner);
+        output = new VCMOutputProcessor(outputId, m_frameMixer, transport, m_taskRunner);
 
     // Fetch video size.
     // TODO: The size should be identical to the composited video size.
@@ -203,7 +194,7 @@ uint32_t VideoMixer::getSendSSRC(int payloadType)
 void VideoMixer::onConfigChanged()
 {
     ELOG_DEBUG("onConfigChanged");
-    m_frameCompositor->setLayout(Config::get()->getVideoLayout());
+    m_frameMixer->setLayout(Config::get()->getVideoLayout());
 }
 
 /**
@@ -224,21 +215,10 @@ int32_t VideoMixer::addSource(uint32_t from, bool isAudio, FeedbackSink* feedbac
         int index = assignSlot(from);
         ELOG_DEBUG("addSource - assigned slot is %d", index);
 
-        boost::shared_ptr<VideoFrameDecoder> decoder;
-        if (m_hardwareAccelerated) {
-            decoder.reset(new FakedVideoFrameDecoder(
-                        index, boost::dynamic_pointer_cast<EncodedVideoFrameCompositor>(m_frameCompositor)));
-        } else {
-            decoder.reset(new I420VideoFrameDecoder(
-                        index, boost::dynamic_pointer_cast<I420VideoFrameCompositor>(m_frameCompositor)));
-        }
-
         VCMInputProcessor* videoInputProcessor(new VCMInputProcessor(index, m_hardwareAccelerated));
         videoInputProcessor->init(new WoogeenTransport<erizo::VIDEO>(nullptr, feedback),
-                                  decoder,
+                                  m_frameMixer,
                                   m_taskRunner);
-
-        m_frameDecoders[index] = decoder;
 
         boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
         m_sinksForSources[from].reset(videoInputProcessor);
@@ -274,7 +254,6 @@ int32_t VideoMixer::removeSource(uint32_t from, bool isAudio)
         int index = getSlot(from);
         assert(index >= 0);
         m_sourceSlotMap[index] = 0;
-        m_frameDecoders.erase(index);
         --m_participants;
         return 0;
     }
@@ -297,7 +276,6 @@ void VideoMixer::closeAll()
         m_sourceSlotMap[index] = 0;
     }
     m_sinksForSources.clear();
-    m_frameDecoders.clear();
     m_participants = 0;
 
     ELOG_DEBUG("Closed all media in this Mixer");

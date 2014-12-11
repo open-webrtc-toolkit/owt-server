@@ -29,7 +29,7 @@ namespace mcu {
 
 class I420VideoFrameDecoder : public VideoFrameDecoder {
 public:
-    I420VideoFrameDecoder(int slot, boost::shared_ptr<I420VideoFrameCompositor>);
+    I420VideoFrameDecoder(int slot, boost::shared_ptr<VideoFrameCompositor>);
     ~I420VideoFrameDecoder();
 
     bool setInput(FrameFormat, VideoFrameProvider*);
@@ -38,10 +38,10 @@ public:
 
 private:
     int m_slot;
-    boost::shared_ptr<I420VideoFrameCompositor> m_compositor;
+    boost::shared_ptr<VideoFrameCompositor> m_compositor;
 };
 
-I420VideoFrameDecoder::I420VideoFrameDecoder(int slot, boost::shared_ptr<I420VideoFrameCompositor> compositor)
+I420VideoFrameDecoder::I420VideoFrameDecoder(int slot, boost::shared_ptr<VideoFrameCompositor> compositor)
     : m_slot(slot)
     , m_compositor(compositor)
 {
