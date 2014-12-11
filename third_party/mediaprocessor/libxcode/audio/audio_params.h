@@ -17,10 +17,6 @@ struct sAudioParams
     unsigned int nBitRate;
     MemPool* input_stream;
     Stream* output_stream;
-    union {
-        void *dec_handle;
-        void *enc_handle;
-    };
 };
 
 struct AudioStreamInfo
@@ -58,7 +54,8 @@ typedef struct APPFilterParameters {
     bool back_end_denoise_enable;
     int back_end_denoise_level;
 
-    bool aec_enable;
+    bool echo_cancellation_enable;
+    char *echo_name;
 
     bool front_end_resample_enable;
     unsigned int front_end_sample_rate;
@@ -81,13 +78,14 @@ typedef struct APPFilterParameters {
         front_end_denoise_level(15),
         back_end_denoise_enable(0),
         back_end_denoise_level(15),
-        aec_enable(0),
+        echo_cancellation_enable(0),
+        echo_name(0),
         front_end_resample_enable(0),
-        front_end_sample_rate(0),
+        front_end_sample_rate(16000),
         back_end_resample_enable(0),
         back_end_sample_rate(16000),
         channel_number_convert_enable(0),
-        channel_number(0),
+        channel_number(2),
         nn_mixing_enable(0),
         file_mode_app(0) {
     };

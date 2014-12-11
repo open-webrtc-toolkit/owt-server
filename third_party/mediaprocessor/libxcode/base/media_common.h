@@ -126,14 +126,6 @@ typedef enum {
 }SWCodecID;
 #endif
 
-#ifdef ENABLE_VA
-typedef enum {
-    VA_PEOPLE,
-    VA_FACE,
-    VA_ROI
-} VAType;
-#endif
-
 enum VP8FILETYPE {
     RAW_FILE,
     IVF_FILE,
@@ -147,7 +139,7 @@ typedef struct StringInfo {
     unsigned int  pos_y; //starting position of the string on surface from primary stream in vertical direction
     unsigned int  width; //width of string image on composite output
     unsigned int  height; //height of string image on composite output
-    char          *font; //font file
+    unsigned int  font; //font option
     unsigned int  plsize; //character pixel size. Character size will be plsize*plsize
     float         alpha; //alpha value for blending, in the range of [0, 1.0]
     unsigned char rgb_r; //R value for character color
@@ -160,7 +152,7 @@ typedef struct StringInfo {
     pos_y(0),
     width(0),
     height(0),
-    font(NULL),
+    font(0),
     plsize(0),
     alpha(0),
     rgb_r(255),
@@ -188,16 +180,7 @@ typedef struct PicInfo {
 } PicInfo;
 
 typedef enum {
-    COMBO_BLOCKS, //default type
-    COMBO_MASTER,
-    COMBO_CUSTOM
+    COMBO_BLOCKS,
+    COMBO_MASTER
 } ComboType;
-
-typedef struct {
-    float left;            //"x / WIDTH"
-    float top;             //"y / HEIGHT"
-    float width_ratio;     //"width / WIDTH"
-    float height_ratio;    //"height / HEIGHT"
-} Region;
-
 #endif

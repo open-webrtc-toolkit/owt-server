@@ -11,7 +11,6 @@
 #include "base/stream.h"
 #include "wave_header.h"
 #include "audio_params.h"
-#include "base/measurement.h"
 
 class AudioPCMWriter : public BaseElement
 {
@@ -31,12 +30,7 @@ protected:
     AudioStreamInfo               m_StreamInfo;
     Info                          m_WaveInfo;
     WaveHeader                    m_WaveHeader;
-    Stream*                       m_pDumpOutFile;
     unsigned long long            m_nDataSize;
-    unsigned int                  m_nFrameCount;
-    Measurement                   m_Measure;
-    unsigned long                 m_nCurTime;
-    unsigned long                 m_nLastTime;
 };
 
 #endif // __AUDIOPCMWRITER_H__

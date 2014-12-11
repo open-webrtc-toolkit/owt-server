@@ -22,9 +22,6 @@ AudioDecoder::AudioDecoder(MemPool* mp, char* input) :
 {
     m_DecoderName = input;
     m_bFirstPass = true;
-    for (int i = 0; i < AUDIO_OUTPUT_QUEUE_SIZE; i++) {
-        m_Output[i].payload = NULL;
-    }
 }
 
 AudioDecoder::~AudioDecoder()

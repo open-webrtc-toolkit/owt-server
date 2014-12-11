@@ -247,9 +247,8 @@ int BaseElement::UnlinkNextElement()
                 peer_element = peer_sink_pad->get_parent();
                 WaitSrcMutex();
                 peer_element->WaitSinkMutex();
-                //Remove sink_pad at first. (especially to detach decoder from VPP)
-                peer_element->RemovePad(peer_sink_pad);
                 RemovePad(first_src_pad);
+                peer_element->RemovePad(peer_sink_pad);
                 peer_element->ReleaseSinkMutex();
                 ReleaseSrcMutex();
                 it_srcpad = srcpads_.begin();
@@ -388,12 +387,11 @@ int BaseElement::ReturnBuf(MediaBuf &buf)
     // Return buf belong to its prev element
     std::list<MediaPad *>::iterator it_sinkpad;
 
-    //don't unlink prev element when there are buffers to return
-    assert(sinkpads_.size());
     for (it_sinkpad = sinkpads_.begin(); it_sinkpad != sinkpads_.end(); it_sinkpad++) {
-        assert((*it_sinkpad)->get_pad_status() == MEDIA_PAD_LINKED);
-        (*it_sinkpad)->ReturnBufToPeerPad(buf);
-        // printf("Element 0x%x return sid 0x%x to its prev element\n", this, buf.sid);
+        if ((*it_sinkpad)->get_pad_status() == MEDIA_PAD_LINKED) {
+            (*it_sinkpad)->ReturnBufToPeerPad(buf);
+            // printf("Element 0x%x return sid 0x%x to its prev element\n", this, buf.sid);
+        }
     }
 
     return 0;
