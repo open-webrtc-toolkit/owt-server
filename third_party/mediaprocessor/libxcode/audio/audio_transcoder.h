@@ -119,6 +119,9 @@ private:
         return *this;
     }
 
+    errors_t CreateEncoder(void *encCfg_list);
+    void* CreateDecoder(void *decCfg_list);
+
     std::list<Stream *>      mInputStream_list_;
     std::list<MemPool *>     mMemPool_list_;
     std::list<BaseElement *> mDecoder_list_;

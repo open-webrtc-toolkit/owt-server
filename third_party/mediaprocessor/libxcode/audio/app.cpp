@@ -10,7 +10,6 @@
 #include "base/trace.h"
 #include "base/measurement.h"
 
-//#define DUMP_APP_OUT_PCM
 #define VAD_PROB_START  80
 #define VAD_PROB_CONT   60
 #define MIXER_TIMER_INT 30000
@@ -79,73 +78,39 @@ bool AudioPostProcessing::Destroy()
         assert(0);
     }
 
-    if (buf_silence_) {
-        free(buf_silence_);
-        buf_silence_ = NULL;
-    }
-
-#ifdef DUMP_APP_OUT_PCM
-    if (file_dump_app_) {
-        input = *(media_input_list_.begin());
-        for (i = 0; i < MAX_APP_INPUT; i++) {
-            if (file_dump_app_[i]) {
-                input->input_ctx->wav_info_out.channels_number = 2;
-                input->input_ctx->wav_header_out.Populate(&(input->input_ctx->wav_info_out), 0xFFFFFFFF);
-                fseek(file_dump_app_[i], 0, SEEK_SET);
-                fwrite(&(input->input_ctx->wav_header_out),
-                       sizeof(unsigned char),
-                       input->input_ctx->wav_header_out.GetHeaderSize(),
-                file_dump_app_[i]);
-                fclose(file_dump_app_[i]);
-                file_dump_app_[i] = NULL;
-            }
-            delete file_dump_app_;
-            file_dump_app_ = NULL;
+    for (i = 0; i < MAX_APP_INPUT; i++) {
+        if (m_pBufResample[i]) {
+            free(m_pBufResample[i]);
+            m_pBufResample[i] = NULL;
+        }
+        if (m_pBufBKResample[i]) {
+            free(m_pBufBKResample[i]);
+            m_pBufBKResample[i] = NULL;
+        }
+        if (m_pBufMix[i]) {
+            free(m_pBufMix[i]);
+            m_pBufMix[i] = NULL;
+        }
+        if (m_pBufChannelNumConvert[i]) {
+            free(m_pBufChannelNumConvert[i]);
+            m_pBufChannelNumConvert[i] = NULL;
         }
     }
-#endif
-
+    if (m_pBufSilence) {
+        free(m_pBufSilence);
+        m_pBufSilence = NULL;
+    }
     // destroy the media input list
-    for (it_mediainput = media_input_list_.begin(), i = 0;
-         it_mediainput != media_input_list_.end();
-         it_mediainput++, i++) {
+    for (it_mediainput = media_input_.begin(); it_mediainput != media_input_.end(); it_mediainput++) {
         if (*it_mediainput != NULL) {
             input = *it_mediainput;
-            if (input->check_ctx) {
-                if (input->check_ctx->processor_state) {
-                    speex_preprocess_state_destroy(input->check_ctx->processor_state);
-                    input->check_ctx->processor_state = NULL;
+            if (input->ctx) {
+                if (input->ctx->m_st) {
+                    speex_preprocess_state_destroy(input->ctx->m_st);
+                    input->ctx->m_st = NULL;
                 }
-                free(input->check_ctx);
-                input->check_ctx = NULL;
-            }
-            if (input->input_ctx) {
-                free(input->input_ctx);
-                input->input_ctx = NULL;
-            }
-            if (input->buffers) {
-                if (input->buffers->buf_front_resample) {
-                    free(input->buffers->buf_front_resample);
-                    input->buffers->buf_front_resample = NULL;
-                }
-                if (input->buffers->buf_back_resample) {
-                    free(input->buffers->buf_back_resample);
-                    input->buffers->buf_back_resample = NULL;
-                }
-                if (input->buffers->buf_mix) {
-                    free(input->buffers->buf_mix);
-                    input->buffers->buf_mix = NULL;
-                }
-                if (input->buffers->buf_channel_convert) {
-                    free(input->buffers->buf_channel_convert);
-                    input->buffers->buf_channel_convert = NULL;
-                }
-                if (input->buffers->buf_psd) {
-                    free(input->buffers->buf_psd);
-                    input->buffers->buf_psd = NULL;
-                }
-                free(input->buffers);
-                input->buffers = NULL;
+                free(input->ctx);
+                input->ctx = NULL;
             }
             if (input->front_end_processor) {
                 speex_preprocess_state_destroy(input->front_end_processor);
@@ -163,10 +128,6 @@ bool AudioPostProcessing::Destroy()
                 speex_resampler_destroy(input->back_end_resampler);
                 input->back_end_resampler = NULL;
             }
-            if (input->echo_state) {
-                speex_echo_state_destroy(input->echo_state);
-                input->echo_state = NULL;
-            }
             delete input;
         }
     }
@@ -178,18 +139,36 @@ AudioPostProcessing::AudioPostProcessing() :
     host_input_(NULL),
     num_input_(0),
     num_running_input_(0),
-    out_param_inited_(false),
-    active_input_id_(-1),
-    total_frame_count_(0),
-    buf_silence_(NULL),
-    file_dump_app_(NULL)
+    m_bOutParamInited(false),
+    m_nActiveInputID(-1),
+    m_nFrameCount(0)
 {
-    int i = 0;
+    int i;
+    memset(&app_context_, 0, sizeof(app_context_));
     memset(vad_sort_ctx_, 0, sizeof(vad_sort_ctx_));
 
     for (i = 0; i < MAX_APP_INPUT; i++) {
+        app_context_.audio_data_in[i] = NULL;
+        app_context_.audio_frame_size_in[i] = 0;
+        app_context_.audio_input_id[i] = i;
+        app_context_.audio_input_running_status[i] = 0;
+        app_context_.audio_input_active_status[i] = 0;
+        app_context_.audio_param_inited[i] = false;
+        m_pBufMix[i] = NULL;
+        m_nMixBufSize[i] = 0;
+        m_bFirstPacket[i] = true;
+        m_pBufResample[i] = NULL;
+        m_pBufBKResample[i] = NULL;
+        m_pBufChannelNumConvert[i] = NULL;
         vad_sort_ctx_[i].audio_input_id = i;
     }
+
+    m_pBufSilence = NULL;
+
+    memset(m_inputWaveHeader, 0, sizeof(m_inputWaveHeader));
+    memset(m_inputWaveInfo, 0, sizeof(m_inputWaveInfo));
+    memset(m_outputWaveHeader, 0, sizeof(m_outputWaveHeader));
+    memset(m_outputWaveInfo, 0, sizeof(m_outputWaveInfo));
 
     pthread_mutex_init(&mutex_, NULL);
 }
@@ -211,11 +190,6 @@ bool AudioPostProcessing::Init(void *cfg, ElementMode element_mode)
 
     APPFilterParameters *app_cfg = static_cast<APPFilterParameters *>(cfg);
     app_parameter_ = *app_cfg;
-
-#ifdef DUMP_APP_OUT_PCM
-    file_dump_app_ = new FILE*[MAX_APP_INPUT];
-    memset(file_dump_app_, 0, sizeof(FILE *) * MAX_APP_INPUT);
-#endif
 
     return true;
 }
@@ -277,36 +251,36 @@ int AudioPostProcessing::Recycle(MediaBuf &buf)
 
 int AudioPostProcessing::FrontEndProcessRun(APPMediaInput *mediainput, unsigned int input_id, AudioPayload *payload)
 {
-    unsigned char *audio_data = payload->payload + mediainput->input_ctx->wav_data_offset;
+    unsigned char *audio_data = payload->payload + m_nDataOffset[input_id];
     int ret = 0;
     int vad_prob_start = 95;
     int vad_prob_continue = 80;
     int i = 0;
 
-    if((mediainput->input_ctx->audio_input_running_status == 0) ||
-       (mediainput->input_ctx->audio_frame_size_in <= 0) ||
-       (mediainput->input_ctx->audio_sample_rate_in <= 0)) {
+    if((app_context_.audio_input_running_status[input_id] == 0) ||
+       (app_context_.audio_frame_size_in[input_id] <= 0) ||
+       (app_context_.audio_sample_rate_in[input_id] <= 0)) {
         return 0;
     }
 
     if (!(mediainput->front_end_processor)) {
         // Init speex front-end process status
-        printf("APP[%p]: %s[%d], frame_size_in = %d, sample_rate_in = %d\n",
-               this,
+        // Only support float type agc level currently.
+        float agc_level = app_parameter_.agc_level_value * 327.68;
+        int noise_suppress_value = app_parameter_.front_end_denoise_level;
+
+        if (noise_suppress_value > 100) {
+            printf("APP Warning: front_end_denoise_level > 100!");
+        }
+        printf("APP: %s[%d], frame_size_in = %d, sample_rate_in = %d\n",
                __FUNCTION__,
                input_id,
-               mediainput->input_ctx->audio_frame_size_in,
-               mediainput->input_ctx->audio_sample_rate_in);
+               app_context_.audio_frame_size_in[input_id],
+               app_context_.audio_sample_rate_in[input_id]);
 
-        mediainput->front_end_processor = speex_preprocess_state_init(mediainput->input_ctx->audio_frame_size_in >> 1,
-                                                                      mediainput->input_ctx->audio_sample_rate_in);
+        mediainput->front_end_processor = speex_preprocess_state_init(app_context_.audio_frame_size_in[input_id] >> 1,
+                                                                      app_context_.audio_sample_rate_in[input_id]);
         if (app_parameter_.front_end_denoise_enable) {
-            int noise_suppress_value = app_parameter_.front_end_denoise_level;
-
-            if (noise_suppress_value > 100) {
-                printf("APP Warning: front_end_denoise_level > 100!");
-            }
-
             speex_preprocess_ctl(mediainput->front_end_processor,\
                                  SPEEX_PREPROCESS_SET_DENOISE,\
                                  &(app_parameter_.front_end_denoise_enable));
@@ -316,95 +290,79 @@ int AudioPostProcessing::FrontEndProcessRun(APPMediaInput *mediainput, unsigned 
                                  &(noise_suppress_value));
         }
 
-        if (app_parameter_.agc_enable) {
-            // Only support float type agc level currently.
-            float agc_level = app_parameter_.agc_level_value * 327.68;
+        speex_preprocess_ctl(mediainput->front_end_processor,\
+                             SPEEX_PREPROCESS_SET_AGC,\
+                             &(app_parameter_.agc_enable));
 
-            speex_preprocess_ctl(mediainput->front_end_processor,\
-                                 SPEEX_PREPROCESS_SET_AGC,\
-                                 &(app_parameter_.agc_enable));
+        speex_preprocess_ctl(mediainput->front_end_processor,\
+                             SPEEX_PREPROCESS_SET_AGC_LEVEL,\
+                             &(agc_level));
 
-            speex_preprocess_ctl(mediainput->front_end_processor,\
-                                 SPEEX_PREPROCESS_SET_AGC_LEVEL,\
-                                 &(agc_level));
-        }
+        speex_preprocess_ctl(mediainput->front_end_processor,\
+                             SPEEX_PREPROCESS_SET_VAD,\
+                             &(app_parameter_.vad_enable));
 
-        if (app_parameter_.vad_enable) {
-            speex_preprocess_ctl(mediainput->front_end_processor,\
-                                 SPEEX_PREPROCESS_SET_VAD,\
-                                 &(app_parameter_.vad_enable));
+        speex_preprocess_ctl(mediainput->front_end_processor,\
+                             SPEEX_PREPROCESS_SET_PROB_START,\
+                             &vad_prob_start);
 
-            speex_preprocess_ctl(mediainput->front_end_processor,\
-                                 SPEEX_PREPROCESS_SET_PROB_START,\
-                                 &vad_prob_start);
-
-            speex_preprocess_ctl(mediainput->front_end_processor,\
-                                 SPEEX_PREPROCESS_SET_PROB_CONTINUE,\
-                                 &vad_prob_continue);
-        }
+        speex_preprocess_ctl(mediainput->front_end_processor,\
+                             SPEEX_PREPROCESS_SET_PROB_CONTINUE,\
+                             &vad_prob_continue);
     }
 
     if (mediainput->front_end_processor) {
         ret = speex_preprocess_run(mediainput->front_end_processor, (short *)(audio_data));
+        speex_preprocess_ctl(mediainput->front_end_processor,\
+                             SPEEX_PREPROCESS_GET_PROB,\
+                             &(vad_sort_ctx_[input_id].audio_speech_prob));
+        app_context_.audio_vad_prob[input_id] = vad_sort_ctx_[input_id].audio_speech_prob;
 
-        if (app_parameter_.vad_enable) {
+        if (ret) {
+            app_context_.audio_input_active_status[input_id] = 1;
+            // Get power spectrum
+            int psd_size = 0;
+            int *psd_array = NULL;
+            float psd_avg = 0.0;
             speex_preprocess_ctl(mediainput->front_end_processor,\
-                                 SPEEX_PREPROCESS_GET_PROB,\
-                                 &(vad_sort_ctx_[input_id].audio_speech_prob));
-            mediainput->input_ctx->audio_vad_prob = vad_sort_ctx_[input_id].audio_speech_prob;
-
-            if (ret) {
-                mediainput->input_ctx->audio_input_active_status = 1;
-                // Get power spectrum
-                int psd_size = 0;
-                float psd_avg = 0.0;
-                speex_preprocess_ctl(mediainput->front_end_processor,\
-                                     SPEEX_PREPROCESS_GET_PSD_SIZE,\
-                                     &(psd_size));
-                if (mediainput->buffers->psd_buf_size < psd_size) {
-                    printf("APP[%p]: PsdSize[%d](%d) < psd_size(%d)\n",
-                           this, input_id, mediainput->buffers->psd_buf_size, psd_size);
-                    if (mediainput->buffers->buf_psd) {
-                        free(mediainput->buffers->buf_psd);
-                        mediainput->buffers->buf_psd = NULL;
-                    }
-                    mediainput->buffers->psd_buf_size = psd_size;
-                }
-                if (!(mediainput->buffers->buf_psd)) {
-                    mediainput->buffers->buf_psd = (int *)malloc(mediainput->buffers->psd_buf_size * sizeof(int));
-                }
-                if (!(mediainput->buffers->buf_psd)) {
-                    printf("APP[%p]: ERROR: Fail to malloc psd_array\n", this);
-                    return ret;
-                }
-                speex_preprocess_ctl(mediainput->front_end_processor,\
-                                     SPEEX_PREPROCESS_GET_PSD,\
-                                     mediainput->buffers->buf_psd);
-                // Calculate average power spectrum
-                for (i = 0; i < psd_size; i++) {
-                    psd_avg += (float)(mediainput->buffers->buf_psd[i]) / psd_size;
-                }
-#ifdef USD_PSD_MSD
-                float psd_squared_sum = 0.0;
-                float psd_deviation = 0.0;
-                float psd_msd = 0.0;
-                for (i = 0; i < psd_size; i++) {
-                    psd_deviation = mediainput->buffers->buf_psd[i] - psd_avg;
-                    psd_squared_sum += psd_deviation * psd_deviation;
-                }
-                psd_msd = sqrt(psd_squared_sum / psd_size);
-                vad_sort_ctx_[input_id].audio_power_spect = (int)psd_msd;
-#else
-                vad_sort_ctx_[input_id].audio_power_spect = (int)psd_avg;
-#endif
-            } else {
-                mediainput->input_ctx->audio_input_active_status = 0;
-                vad_sort_ctx_[input_id].audio_power_spect = 0;
+                                 SPEEX_PREPROCESS_GET_PSD_SIZE,\
+                                 &(psd_size));
+            psd_array = (int *)malloc(psd_size * sizeof(int));
+            if (!psd_array) {
+                printf("APP[%p]: ERROR: Fail to malloc psd_array\n", this);
+                return ret;
             }
-
-            vad_sort_ctx_[input_id].audio_input_id = input_id;
-            vad_sort_ctx_[input_id].media_input = mediainput;
+            speex_preprocess_ctl(mediainput->front_end_processor,\
+                                 SPEEX_PREPROCESS_GET_PSD,\
+                                 psd_array);
+            // Calculate average power spectrum
+            for (i = 0; i < psd_size; i++) {
+                psd_avg += (float)psd_array[i] / psd_size;
+            }
+#ifdef USD_PSD_MSD
+            float psd_squared_sum = 0.0;
+            float psd_deviation = 0.0;
+            float psd_msd = 0.0;
+            for (i = 0; i < psd_size; i++) {
+                psd_deviation = psd_array[i] - psd_avg;
+                psd_squared_sum += psd_deviation * psd_deviation;
+            }
+            psd_msd = sqrt(psd_squared_sum / psd_size);
+            vad_sort_ctx_[input_id].audio_power_spect = (int)psd_msd;
+#else
+            vad_sort_ctx_[input_id].audio_power_spect = (int)psd_avg;
+#endif
+            if (psd_array) {
+                free(psd_array);
+                psd_array = NULL;
+            }
+        } else {
+            app_context_.audio_input_active_status[input_id] = 0;
+            vad_sort_ctx_[input_id].audio_power_spect = 0;
         }
+
+        vad_sort_ctx_[input_id].audio_input_id = input_id;
+        vad_sort_ctx_[input_id].media_input = mediainput;
     }
 
     return ret;
@@ -412,72 +370,39 @@ int AudioPostProcessing::FrontEndProcessRun(APPMediaInput *mediainput, unsigned 
 
 int AudioPostProcessing::BackEndProcessRun(APPMediaInput *mediainput, unsigned int input_id, AudioPayload *payload)
 {
-    unsigned char *audio_data = payload->payload + mediainput->input_ctx->wav_data_offset;
+    unsigned char *audio_data = payload->payload + m_nDataOffset[input_id];
     int ret = 0;
 
-    if((mediainput->input_ctx->audio_frame_size_mix <= 0) ||
-       (mediainput->input_ctx->audio_sample_rate_mix <= 0)) {
+    if((app_context_.audio_frame_size_mix[input_id] <= 0) ||
+       (app_context_.audio_sample_rate_mix[input_id] <= 0)) {
         return 0;
     }
 
     if (!(mediainput->back_end_processor)) {
         // Init speex back-end process status
-        printf("APP[%p]: %s[%d]: frame_size_mix = %d, sample_rate_mix = %d\n",
-               this,
+        int noise_suppress_value = app_parameter_.back_end_denoise_level;
+        if (noise_suppress_value > 100) {
+            printf("APP Warning: back_end_denoise_level > 100!");
+        }
+        printf("APP: %s[%d]: frame_size_mix = %d, sample_rate_mix = %d, noise_suppress_value = %d\n",
                __FUNCTION__,
                input_id,
-               mediainput->input_ctx->audio_frame_size_mix,
-               mediainput->input_ctx->audio_sample_rate_mix);
+               app_context_.audio_frame_size_mix[input_id],
+               app_context_.audio_sample_rate_mix[input_id],
+               noise_suppress_value);
 
-        mediainput->back_end_processor = speex_preprocess_state_init(mediainput->input_ctx->audio_frame_size_mix >> 1,
-                                                                     mediainput->input_ctx->audio_sample_rate_mix);
-        if (NULL == mediainput->back_end_processor) {
-            printf("APP [%p]: Back-end processor init failed!\n", this);
-            return -1;
-        }
-        if (app_parameter_.back_end_denoise_enable) {
-            int noise_suppress_value = app_parameter_.back_end_denoise_level;
-            if (noise_suppress_value > 100) {
-                printf("APP Warning: back_end_denoise_level > 100!");
-            }
-            speex_preprocess_ctl(mediainput->back_end_processor,\
-                                 SPEEX_PREPROCESS_SET_DENOISE,\
-                                 &(app_parameter_.back_end_denoise_enable));
+        mediainput->back_end_processor = speex_preprocess_state_init(app_context_.audio_frame_size_mix[input_id] >> 1,
+                                                                     app_context_.audio_sample_rate_mix[input_id]);
+        speex_preprocess_ctl(mediainput->back_end_processor,\
+                             SPEEX_PREPROCESS_SET_DENOISE,\
+                             &(app_parameter_.back_end_denoise_enable));
 
-            speex_preprocess_ctl(mediainput->back_end_processor,\
-                                 SPEEX_PREPROCESS_SET_NOISE_SUPPRESS,\
-                                 &(noise_suppress_value));
-        }
-        if (app_parameter_.aec_enable) {
-            //Init speex preprocess status
-            int echo_tail = 1;    // between 1 and (mediainput->input_ctx->audio_frame_size_mix * 10)
-            mediainput->echo_state = speex_echo_state_init(mediainput->input_ctx->audio_frame_size_mix >> 1,
-                                                           echo_tail);
-            if (NULL == mediainput->echo_state) {
-                printf("APP [%p]: Failed to initialize echo state!\n", this);
-                return -2;
-            } else {
-                printf("APP [%p]: Echo state initialized successfully. tail = %d\n", this, echo_tail);
-            }
-            speex_echo_ctl(mediainput->echo_state,
-                           SPEEX_ECHO_SET_SAMPLING_RATE,
-                           &(mediainput->input_ctx->audio_sample_rate_mix));
-            speex_preprocess_ctl(mediainput->back_end_processor,
-                                 SPEEX_PREPROCESS_SET_ECHO_STATE,
-                                 mediainput->echo_state);
-        }
+        speex_preprocess_ctl(mediainput->back_end_processor,\
+                             SPEEX_PREPROCESS_SET_NOISE_SUPPRESS,\
+                             &(noise_suppress_value));
     }
 
     if (mediainput->back_end_processor) {
-        if (app_parameter_.aec_enable &&
-            mediainput->echo_state &&
-            (mediainput->input_ctx->audio_input_running_status != 0)) {
-            //echo cancellation process
-            speex_echo_cancellation(mediainput->echo_state,
-                                    (short *)(audio_data),
-                                    mediainput->input_ctx->audio_data_in,
-                                    (short *)(audio_data));
-        }
         ret = speex_preprocess_run(mediainput->back_end_processor, (short *)(audio_data));
     }
 
@@ -489,16 +414,16 @@ int AudioPostProcessing::FrontEndResample(APPMediaInput *mediainput, unsigned in
     int ret = 0;
     unsigned int nSizeToWrite, nSizeWrite;
     unsigned char *pBufDstData = NULL;
-    unsigned int nSizeToRead = (payload->payload_length - mediainput->input_ctx->wav_data_offset) >> 1;
-    unsigned char *audio_data_in = payload->payload + mediainput->input_ctx->wav_data_offset;
+    unsigned int nSizeToRead = (payload->payload_length - m_nDataOffset[input_id]) >> 1;
+    unsigned char *audio_data_in = payload->payload + m_nDataOffset[input_id];
 
-    if((mediainput->input_ctx->audio_input_running_status == 0) ||
-       (mediainput->input_ctx->audio_sample_rate_in <= 0) ||
+    if((app_context_.audio_input_running_status[input_id] == 0) ||
+       (app_context_.audio_sample_rate_in[input_id] <= 0) ||
        (app_parameter_.front_end_sample_rate <= 0)) {
         APP_TRACE_INFO("APP: %s[%d]: sample_rate_in(%d) -> front_end_sample_rate (%d), return.\n",
                        __FUNCTION__,
                        input_id,
-                       mediainput->input_ctx->audio_sample_rate_in,
+                       app_context_.audio_sample_rate_in[input_id],
                        app_parameter_.front_end_sample_rate);
         return 0;
     }
@@ -507,16 +432,15 @@ int AudioPostProcessing::FrontEndResample(APPMediaInput *mediainput, unsigned in
         printf("APP: %s[%d]: sampe_rate_in(%d) -> front_end_sample_rate(%d), frame_size_in = %d\n",
                __FUNCTION__,
                input_id,
-               mediainput->input_ctx->audio_sample_rate_in,
+               app_context_.audio_sample_rate_in[input_id],
                app_parameter_.front_end_sample_rate,
-               mediainput->input_ctx->audio_frame_size_in);
+               app_context_.audio_frame_size_in[input_id]);
 
         // Init speex resampler status
-        int resample_quality_level = 10;    // Between 0 and 10.
-        mediainput->front_end_resampler = speex_resampler_init(mediainput->input_ctx->audio_channel_number_in,
-                                                               mediainput->input_ctx->audio_sample_rate_in,
+        mediainput->front_end_resampler = speex_resampler_init(app_parameter_.front_end_resample_enable,
+                                                               app_context_.audio_sample_rate_in[input_id],
                                                                app_parameter_.front_end_sample_rate,
-                                                               resample_quality_level,
+                                                               4,
                                                                &ret);
 
         if (!(mediainput->front_end_resampler)) {
@@ -525,28 +449,27 @@ int AudioPostProcessing::FrontEndResample(APPMediaInput *mediainput, unsigned in
     }
 
     if (mediainput->front_end_resampler) {
-        if (app_parameter_.front_end_sample_rate <= mediainput->input_ctx->audio_sample_rate_in) {
+        if (app_parameter_.front_end_sample_rate <= app_context_.audio_sample_rate_in[input_id]) {
             nSizeToWrite = nSizeToRead;
         } else {
             nSizeToWrite = nSizeToRead *
-                           (1 + app_parameter_.front_end_sample_rate / mediainput->input_ctx->audio_sample_rate_in);
+                           (1 + app_parameter_.front_end_sample_rate / app_context_.audio_sample_rate_in[input_id]);
         }
 
-        int size = (nSizeToWrite << 1) + mediainput->input_ctx->wav_data_offset;
+        int size = (nSizeToWrite << 1) + m_nDataOffset[input_id];
         if (size <= 0) {
             printf("APP: [Error]: Resampler size = %d\n", size);
             return -1;
         }
 
-        if (!(mediainput->buffers->buf_front_resample)) {
-            mediainput->buffers->buf_front_resample = (short *)malloc(sizeof(short) * size);
-            if (!(mediainput->buffers->buf_front_resample)) {
+        if (!m_pBufResample[input_id]) {
+            m_pBufResample[input_id] = (short *)malloc(sizeof(short) * size);
+            if (!m_pBufResample[input_id]) {
                 printf("APP: [Error]: Failed to allocate memory! nSizeToWrite = %d\n", nSizeToWrite);
                 return -1;
             }
         }
-        pBufDstData = (unsigned char *)(mediainput->buffers->buf_front_resample) +
-                      mediainput->input_ctx->wav_data_offset;
+        pBufDstData = (unsigned char *)m_pBufResample[input_id] + m_nDataOffset[input_id];
 
         nSizeWrite = nSizeToWrite;
         APP_TRACE_INFO("APP: input %d, nSizeToRead = %d, nSizeToWrite = %d\n", input_id, nSizeToRead, nSizeToWrite);
@@ -560,38 +483,36 @@ int AudioPostProcessing::FrontEndResample(APPMediaInput *mediainput, unsigned in
                                           &nSizeWrite);
         if (!ret) {
             APP_TRACE_INFO("APP: [Info]: nSizeRead = %d, nSizeWrite = %d, nSizeToWrite = %d\n",
-                            mediainput->input_ctx->audio_frame_size_in,
+                            app_context_.audio_frame_size_in[input_id],
                             nSizeWrite,
                             nSizeToWrite);
 
 #ifdef DUMP_FR_RESAMPLE_PCM
-            if (input_id == 0) {
-                FILE *fp;
-                fp = fopen("dump_fr_resample.pcm", "ab+");
-                fwrite(pBufDstData, sizeof(short), nSizeWrite, fp);
-                fclose(fp);
-            }
+        if (input_id == 0) {
+            FILE *fp;
+            fp = fopen("dump_fr_resample.pcm", "ab+");
+            fwrite(pBufDstData, sizeof(short), nSizeWrite, fp);
+            fclose(fp);
+        }
 #endif
 
-            mediainput->input_ctx->wav_info_out.sample_rate = app_parameter_.front_end_sample_rate;
-            mediainput->input_ctx->wav_header_out.freq = app_parameter_.front_end_sample_rate;
-            mediainput->input_ctx->wav_header_out.Populate(&(mediainput->input_ctx->wav_info_out),
-                                                           nSizeWrite << 1);
-            memcpy(mediainput->buffers->buf_front_resample,
-                   (unsigned char*) &(mediainput->input_ctx->wav_header_out),
-                   mediainput->input_ctx->wav_header_out.GetHeaderSize());
-            payload->payload_length = (nSizeWrite << 1) + mediainput->input_ctx->wav_header_out.GetHeaderSize();
-            payload->payload = (unsigned char*)(mediainput->buffers->buf_front_resample);
+            m_outputWaveInfo[input_id].sample_rate = app_parameter_.front_end_sample_rate;
+            m_outputWaveHeader[input_id].freq = app_parameter_.front_end_sample_rate;
+            m_outputWaveHeader[input_id].Populate(&(m_outputWaveInfo[input_id]), nSizeWrite << 1);
+            memcpy(m_pBufResample[input_id],
+                   (unsigned char*) &(m_outputWaveHeader[input_id]),
+                   m_outputWaveHeader[input_id].GetHeaderSize());
+            payload->payload_length = (nSizeWrite << 1) + m_outputWaveHeader[input_id].GetHeaderSize();
+            payload->payload = (unsigned char*)m_pBufResample[input_id];
 
-            mediainput->input_ctx->audio_payload = *payload;
-            mediainput->input_ctx->audio_data_in = mediainput->buffers->buf_front_resample +
-                                                   (mediainput->input_ctx->wav_data_offset >> 1);
-            mediainput->input_ctx->audio_payload_length = payload->payload_length;
-            mediainput->input_ctx->audio_frame_size_mix = nSizeWrite << 1;
+            app_context_.audio_payload[input_id] = *payload;
+            app_context_.audio_data_in[input_id] = m_pBufResample[input_id] + (m_nDataOffset[input_id] >> 1);
+            app_context_.audio_payload_length[input_id] = payload->payload_length;
+            app_context_.audio_frame_size_mix[input_id] = nSizeWrite << 1;
             APP_TRACE_INFO("APP: Front-end Resample [%d], frame_size_mix = %d, sample_rate_mix = %d\n",
                            input_id,
-                           mediainput->input_ctx->audio_frame_size_mix,
-                           mediainput->input_ctx->audio_sample_rate_mix);
+                           app_context_.audio_frame_size_mix[input_id],
+                           app_context_.audio_sample_rate_mix[input_id]);
 
         } else {
             APP_TRACE_INFO("APP: [Error]: speex_resampler_process_int() returns %d\n", ret);
@@ -605,15 +526,15 @@ int AudioPostProcessing::BackEndResample(APPMediaInput *mediainput, unsigned int
     int ret = 0;
     unsigned int nSizeToWrite, nSizeWrite;
     unsigned char *pBufDstData = NULL;
-    unsigned int nSizeToRead = (payload->payload_length - mediainput->input_ctx->wav_data_offset) >> 1;
-    unsigned char *audio_data_in = payload->payload + mediainput->input_ctx->wav_data_offset;
+    unsigned int nSizeToRead = (payload->payload_length - m_nDataOffset[input_id]) >> 1;
+    unsigned char *audio_data_in = payload->payload + m_nDataOffset[input_id];
 
-    if ((mediainput->input_ctx->audio_sample_rate_mix <= 0) ||
+    if ((app_context_.audio_sample_rate_mix[input_id] <= 0) ||
         (app_parameter_.back_end_sample_rate <= 0)) {
         printf("APP: %s[%d], sample_rate_mix(%d) -> back_end_sample_rate(%d), return\n",
                        __FUNCTION__,
                        input_id,
-                       mediainput->input_ctx->audio_sample_rate_mix,
+                       app_context_.audio_sample_rate_mix[input_id],
                        app_parameter_.back_end_sample_rate);
         return 0;
     }
@@ -622,16 +543,15 @@ int AudioPostProcessing::BackEndResample(APPMediaInput *mediainput, unsigned int
         printf("APP: %s[%d], sample_rate_mix(%d) -> back_end_sample_rate(%d), frame_size_mix = %d\n",
                __FUNCTION__,
                input_id,
-               mediainput->input_ctx->audio_sample_rate_mix,
+               app_context_.audio_sample_rate_mix[input_id],
                app_parameter_.back_end_sample_rate,
-               mediainput->input_ctx->audio_frame_size_mix);
+               app_context_.audio_frame_size_mix[input_id]);
 
         // Init speex resampler status
-        int resample_quality_level = 5;    // Between 0 and 10.
-        mediainput->back_end_resampler = speex_resampler_init(mediainput->input_ctx->audio_channel_number,
-                                                              mediainput->input_ctx->audio_sample_rate_mix,
+        mediainput->back_end_resampler = speex_resampler_init(app_parameter_.back_end_resample_enable,
+                                                              app_context_.audio_sample_rate_mix[input_id],
                                                               app_parameter_.back_end_sample_rate,
-                                                              resample_quality_level,
+                                                              4,
                                                               &ret);
 
         if (!(mediainput->back_end_resampler)) {
@@ -640,28 +560,27 @@ int AudioPostProcessing::BackEndResample(APPMediaInput *mediainput, unsigned int
     }
 
     if (mediainput->back_end_resampler) {
-        if (app_parameter_.back_end_sample_rate <= mediainput->input_ctx->audio_sample_rate_mix) {
+        if (app_parameter_.back_end_sample_rate <= app_context_.audio_sample_rate_mix[input_id]) {
             nSizeToWrite = nSizeToRead;
         } else {
             nSizeToWrite = nSizeToRead *
-                           (1 + app_parameter_.back_end_sample_rate / mediainput->input_ctx->audio_sample_rate_mix);
+                           (1 + app_parameter_.back_end_sample_rate / app_context_.audio_sample_rate_mix[input_id]);
         }
 
-        int size = (nSizeToWrite << 1) + mediainput->input_ctx->wav_data_offset;
+        int size = (nSizeToWrite << 1) + m_nDataOffset[input_id];
         if (size <= 0) {
             printf("APP: [Error]: Resampler size = %d\n", size);
             return -1;
         }
 
-        if (!(mediainput->buffers->buf_back_resample)) {
-            mediainput->buffers->buf_back_resample = (short *)malloc(sizeof(short) * size);
-            if (!(mediainput->buffers->buf_back_resample)) {
+        if (!m_pBufBKResample[input_id]) {
+            m_pBufBKResample[input_id] = (short *)malloc(sizeof(short) * size);
+            if (!m_pBufBKResample[input_id]) {
                 printf("APP: [Error]: Failed to allocate memory! nSizeWrite = %d\n", nSizeToWrite);
                 return -1;
             }
         }
-        pBufDstData = (unsigned char *)(mediainput->buffers->buf_back_resample) +
-                      mediainput->input_ctx->wav_data_offset;
+        pBufDstData = (unsigned char *)m_pBufBKResample[input_id] + m_nDataOffset[input_id];
 
         nSizeWrite = nSizeToWrite;
         APP_TRACE_INFO("APP: nSizeToRead = %d, nSizeToWrite = %d\n", nSizeToRead, nSizeToWrite);
@@ -676,32 +595,30 @@ int AudioPostProcessing::BackEndResample(APPMediaInput *mediainput, unsigned int
 
         if (!ret) {
             APP_TRACE_INFO("APP: [Info]: nSizeRead = %d, nSizeWrite = %d, nSizeToWrite = %d\n",
-                           mediainput->input_ctx->audio_frame_size_mix, nSizeWrite, nSizeToWrite);
+                           app_context_.audio_frame_size_mix[input_id], nSizeWrite, nSizeToWrite);
 
 #ifdef DUMP_BK_RESAMPLE_PCM
-            if (input_id == 0) {
-                FILE *fp;
-                fp = fopen("dump_bk_resample.pcm", "ab+");
-                fwrite(pBufDstData, sizeof(short), nSizeWrite, fp);
-                fclose(fp);
-            }
+        if (input_id == 0) {
+            FILE *fp;
+            fp = fopen("dump_bk_resample.pcm", "ab+");
+            fwrite(pBufDstData, sizeof(short), nSizeWrite, fp);
+            fclose(fp);
+        }
 #endif
 
-            mediainput->input_ctx->wav_info_out.sample_rate = app_parameter_.back_end_sample_rate;
-            mediainput->input_ctx->wav_header_out.freq = app_parameter_.back_end_sample_rate;
-            mediainput->input_ctx->wav_header_out.Populate(&(mediainput->input_ctx->wav_info_out),
-                                                           nSizeWrite << 1);
-            memcpy(mediainput->buffers->buf_back_resample,
-                   (unsigned char*) &(mediainput->input_ctx->wav_header_out),
-                   mediainput->input_ctx->wav_header_out.GetHeaderSize());
-            payload->payload_length = (nSizeWrite << 1) +
-                                      mediainput->input_ctx->wav_header_out.GetHeaderSize();
-            payload->payload = (unsigned char*)(mediainput->buffers->buf_back_resample);
-            mediainput->input_ctx->audio_frame_size_out = nSizeWrite << 1;
+            m_outputWaveInfo[input_id].sample_rate = app_parameter_.back_end_sample_rate;
+            m_outputWaveHeader[input_id].freq = app_parameter_.back_end_sample_rate;
+            m_outputWaveHeader[input_id].Populate(&(m_outputWaveInfo[input_id]), nSizeWrite << 1);
+            memcpy(m_pBufBKResample[input_id],
+                   (unsigned char*) &(m_outputWaveHeader[input_id]),
+                   m_outputWaveHeader[input_id].GetHeaderSize());
+            payload->payload_length = (nSizeWrite << 1) + m_outputWaveHeader[input_id].GetHeaderSize();
+            payload->payload = (unsigned char*)m_pBufBKResample[input_id];
+            app_context_.audio_frame_size_out[input_id] = nSizeWrite << 1;
             APP_TRACE_INFO("APP: Back-end Resample: input %d, frame_size_out = %d, sample_rate_mix = %d\n",
                             input_id,
-                            mediainput->input_ctx->audio_frame_size_out,
-                            mediainput->input_ctx->audio_sample_rate_mix);
+                            app_context_.audio_frame_size_out[input_id],
+                            app_context_.audio_sample_rate_mix[input_id]);
         } else {
             APP_TRACE_INFO("APP: [Error]: speex_resampler_process_int() returns %d\n", ret);
         }
@@ -714,39 +631,36 @@ int AudioPostProcessing::ChannelNumberConvert(APPMediaInput *mediainput, unsigne
 {
     unsigned int write_size_16b = 0;
     unsigned char *audio_data_out = NULL;
-    unsigned int read_size_16b = (payload->payload_length - mediainput->input_ctx->wav_data_offset) >> 1;
-    unsigned char *audio_data_in = payload->payload + mediainput->input_ctx->wav_data_offset;
+    unsigned int read_size_16b = (payload->payload_length - m_nDataOffset[input_id]) >> 1;
+    unsigned char *audio_data_in = payload->payload + m_nDataOffset[input_id];
 
-    if ((mediainput->input_ctx->audio_input_running_status == 0) ||
-        (mediainput->input_ctx->audio_channel_number_in == app_parameter_.channel_number)) {
+    if ((app_context_.audio_input_running_status[input_id] == 0) ||
+        (app_context_.audio_channel_number_in[input_id] == app_parameter_.channel_number)) {
         return 0;
     }
 
-    if (mediainput->input_ctx->audio_channel_number_in == 1) {  //mono to stereo
+    if (app_context_.audio_channel_number_in[input_id] == 1) {  //mono to stereo
         write_size_16b = read_size_16b << 1;
-    } else if (mediainput->input_ctx->audio_channel_number_in == 2) { //stereo to mono
+    } else if (app_context_.audio_channel_number_in[input_id] == 2) { //stereo to mono
         write_size_16b = read_size_16b >> 1;
-    } else {
-        printf("APP: Error: Only support conversion between mono and stereo!");
-        return 0;
     }
-    int convert_buf_size = (write_size_16b << 1) + mediainput->input_ctx->wav_data_offset;
+    int convert_buf_size = (write_size_16b << 1) + m_nDataOffset[input_id];
 
     // Allocate buffer for channel number conversion
-    if (!(mediainput->buffers->buf_channel_convert)) {
-        mediainput->buffers->buf_channel_convert = (short *)malloc(sizeof(short) * convert_buf_size);
+    if (!m_pBufChannelNumConvert[input_id]) {
+        m_pBufChannelNumConvert[input_id] = (short *)malloc(sizeof(short) * convert_buf_size);
         printf("APP: Allocate memory for %s[%d]\n", __FUNCTION__, input_id);
-        if (!(mediainput->buffers->buf_channel_convert)) {
+        if (!m_pBufChannelNumConvert[input_id]) {
             printf("APP: [Error]: Failed to allocate memory! write_size_16b = %d\n", write_size_16b);
             return -1;
         }
     }
-    audio_data_out = (unsigned char *)(mediainput->buffers->buf_channel_convert) + mediainput->input_ctx->wav_data_offset;
+    audio_data_out = (unsigned char *)m_pBufChannelNumConvert[input_id] + m_nDataOffset[input_id];
 
     // Channel number conversion
-    if (mediainput->input_ctx->audio_channel_number_in == 1) {
+    if (app_context_.audio_channel_number_in[input_id] == 1) {
         MonoToStereo((short *)audio_data_out, (short *)audio_data_in, read_size_16b);
-    } else if (mediainput->input_ctx->audio_channel_number_in == 2) {
+    } else if (app_context_.audio_channel_number_in[input_id] == 2) {
         StereoToMono((short *)audio_data_out, (short *)audio_data_in, read_size_16b);
     }
 
@@ -761,25 +675,24 @@ int AudioPostProcessing::ChannelNumberConvert(APPMediaInput *mediainput, unsigne
 
     // Build the output payload packet
     APP_TRACE_DEBUG("read_size_16b = %d, write_size_16b = %d\n", read_size_16b, write_size_16b);
-    mediainput->input_ctx->wav_info_out.channels_number = app_parameter_.channel_number;
-    mediainput->input_ctx->wav_header_out.Populate(&(mediainput->input_ctx->wav_info_out), write_size_16b << 1);
-    memcpy(mediainput->buffers->buf_channel_convert,
-           (unsigned char*) &(mediainput->input_ctx->wav_header_out),
-           mediainput->input_ctx->wav_header_out.GetHeaderSize());
-    payload->payload_length = (write_size_16b << 1) + mediainput->input_ctx->wav_header_out.GetHeaderSize();
-    payload->payload = (unsigned char*)(mediainput->buffers->buf_channel_convert);
+    m_outputWaveInfo[input_id].channels_number = app_parameter_.channel_number;
+    m_outputWaveHeader[input_id].Populate(&(m_outputWaveInfo[input_id]), write_size_16b << 1);
+    memcpy(m_pBufChannelNumConvert[input_id],
+           (unsigned char*) &(m_outputWaveHeader[input_id]),
+           m_outputWaveHeader[input_id].GetHeaderSize());
+    payload->payload_length = (write_size_16b << 1) + m_outputWaveHeader[input_id].GetHeaderSize();
+    payload->payload = (unsigned char*)m_pBufChannelNumConvert[input_id];
 
     // Update APP context variable value.
-    mediainput->input_ctx->audio_payload = *payload;
-    mediainput->input_ctx->audio_data_in = mediainput->buffers->buf_channel_convert +
-                                           (mediainput->input_ctx->wav_data_offset >> 1);
-    mediainput->input_ctx->audio_payload_length = payload->payload_length;
-    mediainput->input_ctx->audio_frame_size_mix = write_size_16b << 1;
-    mediainput->input_ctx->audio_channel_number = app_parameter_.channel_number;
+    app_context_.audio_payload[input_id] = *payload;
+    app_context_.audio_data_in[input_id] = m_pBufChannelNumConvert[input_id] + (m_nDataOffset[input_id] >> 1);
+    app_context_.audio_payload_length[input_id] = payload->payload_length;
+    app_context_.audio_frame_size_mix[input_id] = write_size_16b << 1;
+    app_context_.audio_channel_number[input_id] = app_parameter_.channel_number;
     APP_TRACE_DEBUG("APP: input %d, frame_size_mix = %d, channel_number[input_id] = %d\n",
                     input_id,
-                    mediainput->input_ctx->audio_frame_size_mix,
-                    mediainput->input_ctx->audio_channel_number);
+                    app_context_.audio_frame_size_mix[input_id],
+                    app_context_.audio_channel_number[input_id]);
 
     return 0;
 }
@@ -816,12 +729,10 @@ int AudioPostProcessing::GetInputActiveStatus(void *input_handle)
 
     BaseElement *element_dec = static_cast<BaseElement*>(input_handle);
 
-    for (it_mediainput = media_input_list_.begin();
-         it_mediainput != media_input_list_.end();
-         it_mediainput++, id++) {
+    for (it_mediainput = media_input_.begin(); it_mediainput != media_input_.end(); it_mediainput++, id++) {
         mediainput = *it_mediainput;
         if (element_dec == mediainput->pad->get_peer_pad()->get_parent()) {
-            status = mediainput->input_ctx->audio_input_active_status;
+            status = app_context_.audio_input_active_status[id];
             APP_TRACE_DEBUG("APP: Found dec(%p), id = %d, active status = %d\n", element_dec, id, status);
             break;
         }
@@ -851,9 +762,7 @@ int AudioPostProcessing::ProcessChain(MediaPad *pad, MediaBuf &buf)
     APPMediaInput *mediainput = NULL;
     std::list<APPMediaInput *>::iterator it_mediainput;
 
-    for (it_mediainput = media_input_list_.begin();
-         it_mediainput != media_input_list_.end();
-         it_mediainput++) {
+    for (it_mediainput = media_input_.begin(); it_mediainput != media_input_.end(); it_mediainput++) {
         if ((*it_mediainput)->pad == pad) {
             mediainput = *it_mediainput;
             // If EOF, set input status to STOP
@@ -877,9 +786,7 @@ int AudioPostProcessing::ProcessChain(MediaPad *pad, MediaBuf &buf)
             APP_TRACE_INFO("APP: host_input_->pad->GetBufQueueSize() = %d\n", host_input_->pad->GetBufQueueSize());
             ProcessInput();
             // Step 4: release the outdated surface.
-            for (it_mediainput = media_input_list_.begin();
-                 it_mediainput != media_input_list_.end();
-                 it_mediainput++) {
+            for (it_mediainput = media_input_.begin(); it_mediainput != media_input_.end();it_mediainput++) {
                 MediaPad* pad_i;
                 int remaining;
                 MediaBuf buffer;
@@ -904,7 +811,7 @@ int AudioPostProcessing::ProcessChain(MediaPad *pad, MediaBuf &buf)
 
 bool AudioPostProcessing::ProcessInput()
 {
-    APP_TRACE_INFO("APP: %s: line %d, total_frame_count_ = %lld\n", __FUNCTION__, __LINE__, total_frame_count_++);
+    APP_TRACE_INFO("APP: %s: line %d, m_nFrameCount = %lld\n", __FUNCTION__, __LINE__, m_nFrameCount++);
     APPMediaInput *mediainput = NULL;
     MediaBuf buffer;
     int ret = 0;
@@ -920,8 +827,8 @@ bool AudioPostProcessing::ProcessInput()
         assert(0);
     }
 
-    for (it_mediainput = media_input_list_.begin();
-         it_mediainput != media_input_list_.end();
+    for (it_mediainput = media_input_.begin();
+         it_mediainput != media_input_.end();
          it_mediainput++, input_id++) {
         mediainput = *it_mediainput;
         if (mediainput->status != RUNNING) {
@@ -953,16 +860,15 @@ bool AudioPostProcessing::ProcessInput()
             // Retrieve the raw audio parameters
             APP_TRACE_INFO("input_id = %d, pIn.payload = %p\n", input_id, pIn.payload);
 
-            mediainput->input_ctx->wav_data_offset = mediainput->input_ctx->wav_header_in.Interpret(pIn.payload,
-                                                                            &(mediainput->input_ctx->wav_info_in),
+            m_nDataOffset[input_id] = m_inputWaveHeader[input_id].Interpret(pIn.payload,
+                                                                            &(m_inputWaveInfo[input_id]),
                                                                             pIn.payload_length);
-            if ((pIn.payload_length <= mediainput->input_ctx->wav_data_offset) ||
-                (mediainput->input_ctx->wav_data_offset <= 0)) {
+            if (pIn.payload_length <= m_nDataOffset[input_id] || m_nDataOffset[input_id] <= 0) {
                 printf("APP: %s: input payload size (%d) is lower than data dataOffset[%d](%d)\n",
-                            __FUNCTION__, pIn.payload_length, input_id, mediainput->input_ctx->wav_data_offset);
+                            __FUNCTION__, pIn.payload_length, input_id, m_nDataOffset[input_id]);
 
             } else {
-                ret = PrepareParameter(mediainput, buffer, input_id);
+                ret = PrepareParameter(buffer, input_id);
                 num_running_input_++;
             }
         }
@@ -994,37 +900,37 @@ int AudioPostProcessing::ComposeAudioFrame()
     std::list<APPMediaInput *>::iterator it_mediainput;
 
     // Front-end process, including de-noise, VAD, AGC.
-    for (it_mediainput = media_input_list_.begin();
-         it_mediainput != media_input_list_.end();
+    for (it_mediainput = media_input_.begin();
+         it_mediainput != media_input_.end();
          it_mediainput++, i++) {
         mediainput = *it_mediainput;
         if (app_parameter_.vad_enable ||
             app_parameter_.agc_enable ||
             app_parameter_.front_end_denoise_enable) {
-             ret = FrontEndProcessRun(mediainput, i, &(mediainput->input_ctx->audio_payload));
+             ret = FrontEndProcessRun(mediainput, i, &(app_context_.audio_payload[i]));
         }
 
         // Front-end re-sampling
         if (app_parameter_.front_end_resample_enable) {
-            ret = FrontEndResample(mediainput, i, &(mediainput->input_ctx->audio_payload));
+            ret = FrontEndResample(mediainput, i, &(app_context_.audio_payload[i]));
         }
 
         // Channel number conversion
         if (app_parameter_.channel_number_convert_enable) {
-            ChannelNumberConvert(mediainput, i, &(mediainput->input_ctx->audio_payload));
+            ChannelNumberConvert(mediainput, i, &(app_context_.audio_payload[i]));
         }
 
-        OutBuf[i].payload = mediainput->input_ctx->audio_payload.payload;
-        OutBuf[i].payload_length = mediainput->input_ctx->audio_payload.payload_length;
+        OutBuf[i].payload = app_context_.audio_payload[i].payload;
+        OutBuf[i].payload_length = app_context_.audio_payload[i].payload_length;
     }
 
     // This is for VAD internal test. Check the VAD status every 100frames.
-    if ((app_parameter_.vad_enable) && ((total_frame_count_ - 15) % 100 == 0)) {
+    if ((app_parameter_.vad_enable) && ((m_nFrameCount - 15) % 100 == 0)) {
         // Sort power spectrum and get the input with most higher probability
         VADSort();
-        active_input_id_ = vad_sort_ctx_[0].audio_input_id;
+        m_nActiveInputID = vad_sort_ctx_[0].audio_input_id;
 
-        APP_TRACE_DEBUG("\nFrame %3lld: ", total_frame_count_);
+        APP_TRACE_DEBUG("\nFrame %3lld: ", m_nFrameCount);
         for (i = 0; i < num_input_; i++) {
             APP_TRACE_DEBUG("power_spect[%d] = %4d\t", vad_sort_ctx_[i].audio_input_id,
                                                        vad_sort_ctx_[i].audio_power_spect);
@@ -1042,12 +948,12 @@ int AudioPostProcessing::ComposeAudioFrame()
         num_output = 1;
     }
 
-    for (it_mediainput = media_input_list_.begin(), i = 0;
-         it_mediainput != media_input_list_.end() && i < num_output;
+    for (it_mediainput = media_input_.begin(), i = 0;
+         it_mediainput != media_input_.end() && i < num_output;
          it_mediainput++, i++) {
         mediainput = *it_mediainput;
         // Process audio mixing
-        ret = AudioMix(mediainput, OutBuf[i], i);
+        ret = AudioMix(OutBuf[i], i);
         if (ret) {
             OutBuf[i].payload_length = 0;
             OutBuf[i].payload = NULL;
@@ -1063,9 +969,8 @@ int AudioPostProcessing::ComposeAudioFrame()
         pOut.payload = OutBuf[i].payload;
         pOut.payload_length = OutBuf[i].payload_length;
 
-        // Back-end process, including de-noise and AEC.
-        if (app_parameter_.back_end_denoise_enable ||
-            app_parameter_.aec_enable) {
+        // Back-end process, including de-noise.
+        if (app_parameter_.back_end_denoise_enable) {
              BackEndProcessRun(mediainput, i, &pOut);
         }
 
@@ -1075,32 +980,9 @@ int AudioPostProcessing::ComposeAudioFrame()
         }
 
         // Prepare the output buffer
-        OutBuf[i].isFirstPacket = mediainput->first_packet;
-#ifdef DUMP_APP_OUT_PCM
-        if (!(file_dump_app_[i])) {
-            char file_name[FILENAME_MAX] = {0};
-            sprintf(file_name, "dump_app_out%d_%p.wav", i, this);
-            file_dump_app_[i] = fopen(file_name, "wb+");
-            printf("APP[%p]: Dump APP output to %s, file_dump_app_[%d]  = %p\n", this, file_name, i, file_dump_app_[i]);
-        }
-        if (file_dump_app_[i]) {
-            if (mediainput->first_packet) {
-                mediainput->input_ctx->wav_info_out.channels_number = 2;    // Special case for debugging in WebRTC scenario
-                mediainput->input_ctx->wav_header_out.Populate(&(mediainput->input_ctx->wav_info_out), 0xFFFFFFFF);
-                mediainput->input_ctx->wav_info_out.channels_number = 1;    // Special case for debugging in WebRTC scenario
-                fwrite(&(mediainput->input_ctx->wav_header_out),
-                       sizeof(unsigned char),
-                       mediainput->input_ctx->wav_header_out.GetHeaderSize(),
-                       file_dump_app_[i]);
-            }
-            fwrite(pOut.payload + mediainput->input_ctx->wav_data_offset,
-                       sizeof(unsigned char),
-                       mediainput->input_ctx->audio_frame_size_in,
-                       file_dump_app_[i]);
-        }
-#endif
-        if (mediainput->first_packet) {
-            mediainput->first_packet = false;
+        OutBuf[i].isFirstPacket = m_bFirstPacket[i];
+        if (m_bFirstPacket[i]) {
+            m_bFirstPacket[i] = false;
         }
         OutBuf[i].payload = pOut.payload;
         OutBuf[i].payload_length = pOut.payload_length;
@@ -1110,12 +992,9 @@ int AudioPostProcessing::ComposeAudioFrame()
                         pOut.payload_length);
     }
 
-    for (it_mediainput = media_input_list_.begin(), i = 0;
-         it_mediainput != media_input_list_.end();
-         it_mediainput++, i++) {
-        mediainput = *it_mediainput;
-        mediainput->input_ctx->audio_input_running_status = 0;
-        mediainput->input_ctx->audio_vad_prob = 0;
+    for (i = 0; i < num_input_; i++) {
+        app_context_.audio_input_running_status[i] = 0;
+        app_context_.audio_vad_prob[i] = 0;
         vad_sort_ctx_[i].audio_power_spect = 0;
         vad_sort_ctx_[i].audio_speech_prob = 0;
     }
@@ -1125,107 +1004,101 @@ int AudioPostProcessing::ComposeAudioFrame()
     return 0;
 }
 
-int AudioPostProcessing::PrepareParameter(APPMediaInput *mediainput, MediaBuf &buffer, unsigned int input_id)
+int AudioPostProcessing::PrepareParameter(MediaBuf &buffer, unsigned int input_id)
 {
     AudioPayload pIn;
     pIn.payload = buffer.payload;
     pIn.payload_length = buffer.payload_length;
     pIn.isFirstPacket = buffer.isFirstPacket;
 
-    mediainput->input_ctx->audio_payload = pIn;
-    mediainput->input_ctx->audio_data_in = (short *)(pIn.payload + mediainput->input_ctx->wav_data_offset);
-    mediainput->input_ctx->audio_payload_length = pIn.payload_length;
-    mediainput->input_ctx->audio_frame_size_in = pIn.payload_length - mediainput->input_ctx->wav_data_offset;
-    mediainput->input_ctx->audio_input_id = input_id;
-    mediainput->input_ctx->audio_input_running_status = 1;
+    app_context_.audio_payload[input_id] = pIn;
+    app_context_.audio_data_in[input_id] = (short *)(pIn.payload + m_nDataOffset[input_id]);
+    app_context_.audio_payload_length[input_id] = pIn.payload_length;
+    app_context_.audio_data_offset[input_id] = m_nDataOffset[input_id];
+    app_context_.audio_frame_size_in[input_id] = pIn.payload_length - m_nDataOffset[input_id];
+    app_context_.audio_input_id[input_id] = input_id;
+    app_context_.audio_input_running_status[input_id] = 1;
 
     // Init input and mixed related parameters for each channel
-    if (!(mediainput->input_ctx->audio_param_inited)) {
-        mediainput->input_ctx->wav_data_offset = mediainput->input_ctx->wav_header_in.Interpret(pIn.payload,
-                                                                        &(mediainput->input_ctx->wav_info_in),
+    if (!app_context_.audio_param_inited[input_id]) {
+        m_nDataOffset[input_id] = m_inputWaveHeader[input_id].Interpret(pIn.payload,
+                                                                        &(m_inputWaveInfo[input_id]),
                                                                         pIn.payload_length);
-        mediainput->input_ctx->audio_sample_rate_in = mediainput->input_ctx->wav_info_in.sample_rate;
-        mediainput->input_ctx->audio_channel_number_in = mediainput->input_ctx->wav_info_in.channels_number;
+        app_context_.audio_sample_rate_in[input_id] = m_inputWaveInfo[input_id].sample_rate;
+        app_context_.audio_channel_number_in[input_id] = m_inputWaveInfo[input_id].channels_number;
 
-        if (app_parameter_.front_end_sample_rate == 0) {
-            app_parameter_.front_end_sample_rate = mediainput->input_ctx->audio_sample_rate_in;
-        }
         // Automatically enable re-sample for different sample rate inputs case
-        if (mediainput->input_ctx->audio_sample_rate_in != app_parameter_.front_end_sample_rate) {
+        if ((app_context_.audio_sample_rate_in[0] != 0) &&
+            (app_context_.audio_sample_rate_in[input_id] != app_context_.audio_sample_rate_in[0])) {
             if (!app_parameter_.front_end_resample_enable) {
                 app_parameter_.front_end_resample_enable = true;
+                app_parameter_.front_end_sample_rate = app_context_.audio_sample_rate_in[0];
             }
-            printf("APP: [%d]: Enable front-end re-sample to support inputs with different sample rate!\n",\
+            printf("APP: [%d]: Enable front-end re-sample to support inputs with different sample rate!\n",
                    input_id);
         }
-        mediainput->input_ctx->audio_sample_rate_mix = app_parameter_.front_end_sample_rate;
 
-        if (app_parameter_.channel_number == 0) {
-            app_parameter_.channel_number = mediainput->input_ctx->audio_channel_number_in;
+        if (!app_parameter_.front_end_resample_enable) {
+            app_context_.audio_sample_rate_mix[input_id] = app_context_.audio_sample_rate_in[input_id];
+        } else {
+            app_context_.audio_sample_rate_mix[input_id] = app_parameter_.front_end_sample_rate;
         }
+
         // Automatically enable channel num conversion for different channel num inputs case
-        if (mediainput->input_ctx->audio_channel_number_in != app_parameter_.channel_number) {
+        if ((app_context_.audio_channel_number_in[0] != 0) &&
+            (app_context_.audio_channel_number_in[input_id] != app_context_.audio_channel_number_in[0])) {
             if (!app_parameter_.channel_number_convert_enable) {
                 app_parameter_.channel_number_convert_enable = true;
+                app_parameter_.channel_number = app_context_.audio_channel_number_in[0];
             }
             printf("APP: [%d]: Enable channel num conversion to support inputs with different channel num!\n",
                    input_id);
         }
-        mediainput->input_ctx->audio_channel_number = app_parameter_.channel_number;
 
-        // Calculate the mixed frame size according to the audio mixed parameters. (60ms as one frame)
-        // Note: The calculation of frame size should be sychronous with PCM reader or decoder.
-        mediainput->input_ctx->audio_frame_size_mix = mediainput->input_ctx->audio_channel_number *
-                                  mediainput->input_ctx->audio_sample_rate_mix * 3 *
-                                  (mediainput->input_ctx->wav_info_in.resolution >> 3) / 50;
+        if (!app_parameter_.channel_number_convert_enable) {
+            app_context_.audio_channel_number[input_id] = app_context_.audio_channel_number_in[input_id];
+        } else {
+            app_context_.audio_channel_number[input_id] = app_parameter_.channel_number;
+        }
 
-        // Calculate the mixed buffer size
-        mediainput->buffers->mix_buf_size = mediainput->input_ctx->audio_frame_size_mix
-                                            + mediainput->input_ctx->wav_data_offset;
+        app_context_.audio_frame_size_mix[input_id] = app_context_.audio_channel_number[input_id] *
+                                  app_context_.audio_sample_rate_mix[input_id] * 3 *
+                                  (m_inputWaveInfo[input_id].resolution >> 3) / 50;
 
-        mediainput->input_ctx->audio_param_inited = true;
+        m_nMixBufSize[input_id] = pIn.payload_length;
+
+        app_context_.audio_param_inited[input_id] = true;
     }
 
     // Init mixed and output related parameters for all channels
-    APPMediaInput *input = NULL;
-    std::list<APPMediaInput *>::iterator it_mediainput;
-    int i = 0;
-    if (!out_param_inited_) {
-        for (it_mediainput = media_input_list_.begin();
-             it_mediainput != media_input_list_.end();
-             it_mediainput++, i++) {
-            input = *it_mediainput;
-            input->input_ctx->wav_data_offset = input->input_ctx->wav_header_in.Interpret(pIn.payload,
-                                                                              &(input->input_ctx->wav_info_in),
-                                                                              pIn.payload_length);
-            input->input_ctx->wav_header_out.Interpret(pIn.payload, &(input->input_ctx->wav_info_out), pIn.payload_length);
-            input->input_ctx->audio_sample_rate_mix = mediainput->input_ctx->audio_sample_rate_mix;
-            input->input_ctx->audio_frame_size_mix = mediainput->input_ctx->audio_frame_size_mix;
-            input->input_ctx->audio_channel_number = mediainput->input_ctx->audio_channel_number;
-            input->input_ctx->wav_info_out.channels_number = mediainput->input_ctx->audio_channel_number;
-            input->buffers->mix_buf_size = mediainput->buffers->mix_buf_size;
+    if (!m_bOutParamInited) {
+        for (int i = 0; i < MAX_APP_INPUT; i++) {
+            m_nDataOffset[i] = m_inputWaveHeader[i].Interpret(pIn.payload, &(m_inputWaveInfo[i]), pIn.payload_length);
+            m_outputWaveHeader[i].Interpret(pIn.payload, &(m_outputWaveInfo[i]), pIn.payload_length);
+            app_context_.audio_sample_rate_in[i] = app_context_.audio_sample_rate_in[input_id];
+            app_context_.audio_sample_rate_mix[i] = app_context_.audio_sample_rate_mix[input_id];
+            app_context_.audio_frame_size_mix[i] = app_context_.audio_frame_size_mix[input_id];
+            app_context_.audio_channel_number[i] = app_context_.audio_channel_number[input_id];
+            m_outputWaveInfo[i].channels_number = app_context_.audio_channel_number[input_id];
+            m_nMixBufSize[i] = pIn.payload_length;
         }
-        out_param_inited_ = true;
+        m_bOutParamInited = true;
     }
 
     return 0;
 }
 
-int AudioPostProcessing::AudioMix(APPMediaInput *mediainput, MediaBuf &out_buf, int input_id)
+int AudioPostProcessing::AudioMix(MediaBuf &out_buf, int input_id)
 {
     int i, k, input_m, nSizeRead;
     short *pAudioDataIn, *pAudioDataOut;
-    APPMediaInput *mediainput_m = NULL;
-    std::list<APPMediaInput *>::iterator it_mediainput;
 
     // Find the first valid input.
     input_m = -1;
-    for (it_mediainput = media_input_list_.begin(), i = 0;
-         it_mediainput != media_input_list_.end();
-         it_mediainput++, i++) {
-        mediainput_m = *it_mediainput;
+
+    for (i = 0; i < num_input_; i++) {
         if ((app_parameter_.nn_mixing_enable && (i == input_id)) ||
-            (mediainput_m->input_ctx->audio_input_running_status == 0)) {
+            (app_context_.audio_input_running_status[i] == 0)) {
             continue;
         } else {
             input_m = i;
@@ -1239,72 +1112,67 @@ int AudioPostProcessing::AudioMix(APPMediaInput *mediainput, MediaBuf &out_buf, 
 
     // Check mixer buffer size. If it's smaller than the payload length, change
     // the buffer size and re-allocate the buffer.
-    if (mediainput->buffers->mix_buf_size < mediainput_m->input_ctx->audio_payload_length) {
-        if (mediainput->buffers->buf_mix) {
-            printf("APP: Warning: mixer buffer size(%d) is smaller than payload length(%d)!\n",
-                   mediainput->buffers->mix_buf_size, mediainput_m->input_ctx->audio_payload_length);
-            free(mediainput->buffers->buf_mix);
-            mediainput->buffers->buf_mix = NULL;
+    if (m_nMixBufSize[input_id] < app_context_.audio_payload_length[input_m]) {
+        if (m_pBufMix[input_id]) {
+            printf("APP: Warning: mixer buffer size is smaller than payload length!\n");
+            free(m_pBufMix[input_id]);
+            m_pBufMix[input_id] = NULL;
         }
-        mediainput->buffers->mix_buf_size = mediainput_m->input_ctx->audio_payload_length;
+        m_nMixBufSize[input_id] = app_context_.audio_payload_length[input_m];
     }
     // Allocate mixer buffer
-    if (!(mediainput->buffers->buf_mix)) {
-        if (mediainput->buffers->mix_buf_size > 0) {
-            mediainput->buffers->buf_mix = (short *)malloc(sizeof(short) * (mediainput->buffers->mix_buf_size >> 1));
-            if (!(mediainput->buffers->buf_mix)) {
-                printf("APP: [Error]: Failed to allocate memory! size = %d\n", mediainput->buffers->mix_buf_size >> 1);
+    if (!m_pBufMix[input_id]) {
+        if (m_nMixBufSize[input_id] > 0) {
+            m_pBufMix[input_id] = (short *)malloc(sizeof(short) * (m_nMixBufSize[input_id] >> 1));
+            if (!(m_pBufMix[input_id])) {
+                printf("APP: [Error]: Failed to allocate memory! size = %d\n", m_nMixBufSize[input_id] >> 1);
                 return -2;
             }
         } else {
-            printf("APP: Invalid size = %d\n", mediainput->buffers->mix_buf_size >> 1);
+            printf("APP: Invalid size = %d\n", m_nMixBufSize[input_id] >> 1);
             return -2;
         }
     }
 
-    short *pBufDstData = mediainput->buffers->buf_mix + (mediainput_m->input_ctx->wav_data_offset >> 1);
-    memset(mediainput->buffers->buf_mix, 0, mediainput->buffers->mix_buf_size >> 1);
-    memcpy(mediainput->buffers->buf_mix,
-           mediainput_m->input_ctx->audio_payload.payload,
-           mediainput_m->input_ctx->audio_payload_length);
-    out_buf.payload = (unsigned char*)(mediainput->buffers->buf_mix);
+    short *pBufDstData = m_pBufMix[input_id] + (m_nDataOffset[input_m] >> 1);
+    memset(m_pBufMix[input_id], 0, m_nMixBufSize[input_id] >> 1);
+    memcpy(m_pBufMix[input_id],
+           app_context_.audio_payload[input_m].payload,
+           app_context_.audio_payload_length[input_m]);
+    out_buf.payload = (unsigned char*)(m_pBufMix[input_id]);
     pAudioDataOut = pBufDstData;
 
     // No need to mix for only one input case.
     if (num_input_ < 2 || num_running_input_ < 2) {
-        out_buf.payload_length = mediainput_m->input_ctx->audio_payload_length;
+        out_buf.payload_length = app_context_.audio_payload_length[input_m];
         return 0;
     }
 
-    nSizeRead = mediainput_m->input_ctx->audio_frame_size_mix;
-    for (it_mediainput = media_input_list_.begin(), i = 0;
-         it_mediainput != media_input_list_.end();
-         it_mediainput++, i++) {
-        mediainput = *it_mediainput;
-        if ((i != input_m) && (mediainput->input_ctx->audio_input_running_status == 1)) {
+    nSizeRead = app_context_.audio_frame_size_mix[input_m];
+    for (i = 0; i < num_input_; i++) {
+        if ((i != input_m) && (app_context_.audio_input_running_status[i] == 1)) {
             // If N:N mixer is enabled, exclude the input itself. Only mix other inputs.
             if (app_parameter_.nn_mixing_enable && (i == input_id)) {
                 continue;
             }
             // If VAD is enabled, exclude the input without active voice. Only mix inputs with active voice.
-            if (app_parameter_.vad_enable && (mediainput->input_ctx->audio_input_active_status == 0)) {
+            if (app_parameter_.vad_enable && (app_context_.audio_input_active_status[i] == 0)) {
                 continue;
             }
 
-            pAudioDataIn = mediainput->input_ctx->audio_data_in;
+            pAudioDataIn = app_context_.audio_data_in[i];
 
             // If mixer buffer size is smaller than payload length of current inputs,
             // report error message and reduce frame size to avoid overstepping the bundary
-            if (mediainput->buffers->mix_buf_size < mediainput->input_ctx->audio_payload_length) {
-                APP_TRACE_ERROR("APP: [Error]: MixBufSize(%d) < payload_length(%d)\n",
-                                mediainput->buffers->mix_buf_size,
-                                mediainput->input_ctx->audio_payload_length);
-                mediainput->input_ctx->audio_frame_size_mix = mediainput->buffers->mix_buf_size
-                                                              - mediainput->input_ctx->wav_data_offset;
+            if (m_nMixBufSize[input_id] < app_context_.audio_payload_length[i]) {
+                APP_TRACE_ERROR("APP: [Error]: nMixBufSize(%d) < payload_length(%d)\n",
+                                m_nMixBufSize[input_id],
+                                app_context_.audio_payload_length[i]);
+                app_context_.audio_frame_size_mix[i] = m_nMixBufSize[input_id] - app_context_.audio_data_offset[i];
             }
 
-            if (nSizeRead < mediainput->input_ctx->audio_frame_size_mix) {
-                nSizeRead = mediainput->input_ctx->audio_frame_size_mix;
+            if (nSizeRead < app_context_.audio_frame_size_mix[i]) {
+                nSizeRead = app_context_.audio_frame_size_mix[i];
             }
 
             for (k = 0; k < (nSizeRead >> 1); k++) {
@@ -1313,14 +1181,13 @@ int AudioPostProcessing::AudioMix(APPMediaInput *mediainput, MediaBuf &out_buf, 
         }
     }
 
-    out_buf.payload_length = nSizeRead + mediainput_m->input_ctx->wav_data_offset;
+    out_buf.payload_length = nSizeRead + m_nDataOffset[input_m];
 
     return 0;
 }
 
 void AudioPostProcessing::ReleaseBuffer(MediaBuf *out)
 {
-    WaitSrcMutex();
     std::list<MediaPad *>::iterator srcpad;
     int i = 0;
     for (srcpad = (srcpads_.begin()); srcpad != (srcpads_.end()); srcpad++, i++) {
@@ -1328,7 +1195,6 @@ void AudioPostProcessing::ReleaseBuffer(MediaBuf *out)
                 (*srcpad)->PushBufToPeerPad(out[i]);
         }
     }
-    ReleaseSrcMutex();
 }
 
 void AudioPostProcessing::NewPadAdded(MediaPad *pad)
@@ -1342,38 +1208,22 @@ void AudioPostProcessing::NewPadAdded(MediaPad *pad)
 
     if (direction == MEDIA_PAD_SINK) {
         mediainput = new APPMediaInput;
-        memset(mediainput, 0, sizeof(APPMediaInput));
         mediainput->element = this;
         mediainput->pad = pad;
         mediainput->status = INITIALIZED;
-        mediainput->check_ctx = (CheckContext *)malloc(sizeof(CheckContext));
-        if (!(mediainput->check_ctx)) {
+        mediainput->ctx = (CheckContext *)malloc(sizeof(CheckContext));
+        if (!mediainput->ctx) {
             printf("ERROR: fail to malloc\n");
         } else {
-            memset(mediainput->check_ctx, 0, sizeof(CheckContext));
+            memset(mediainput->ctx, 0, sizeof(CheckContext));
         }
-        mediainput->input_ctx = (APPInputContext *)malloc(sizeof(APPInputContext));
-        if (!(mediainput->input_ctx)) {
-            printf("ERROR: fail to malloc APPInputContext\n");
-        } else {
-            memset(mediainput->input_ctx, 0, sizeof(APPInputContext));
-        }
-
-        mediainput->buffers = (APPInputBuffers *)malloc(sizeof(APPInputBuffers));
-        if (!(mediainput->buffers)) {
-            printf("ERROR: fail to malloc APPInputBuffers\n");
-        } else {
-            memset(mediainput->buffers, 0, sizeof(APPInputBuffers));
-        }
-        mediainput->first_packet = true;
         mediainput->front_end_processor = NULL;
         mediainput->back_end_processor = NULL;
         mediainput->front_end_resampler = NULL;
         mediainput->back_end_resampler = NULL;
-        mediainput->echo_state = NULL;
-        media_input_list_.push_back(mediainput);
+        media_input_.push_back(mediainput);
 
-        if (media_input_list_.size() == 1) {
+        if (media_input_.size() == 1) {
             host_input_ = mediainput;
         }
     }
@@ -1386,49 +1236,19 @@ void AudioPostProcessing::PadRemoved(MediaPad *pad)
 
     MediaPadDirection direction = pad->get_pad_direction();
     if (direction == MEDIA_PAD_SINK) {
-        for (it_mediainput = media_input_list_.begin();
-             it_mediainput != media_input_list_.end();
+        for (it_mediainput = media_input_.begin();
+             it_mediainput != media_input_.end();
              it_mediainput++) {
             mediainput = *it_mediainput;
             if (mediainput->pad == pad) {
                 mediainput->status = STOP;
-                if (mediainput->check_ctx) {
-                    if (mediainput->check_ctx->processor_state) {
-                        speex_preprocess_state_destroy(mediainput->check_ctx->processor_state);
-                        mediainput->check_ctx->processor_state = NULL;
+                if (mediainput->ctx) {
+                    if (mediainput->ctx->m_st) {
+                        speex_preprocess_state_destroy(mediainput->ctx->m_st);
+                        mediainput->ctx->m_st = NULL;
                     }
-                    free(mediainput->check_ctx);
-                    mediainput->check_ctx = NULL;
-                }
-                if (mediainput->input_ctx) {
-                    free(mediainput->input_ctx);
-                    mediainput->input_ctx = NULL;
-                }
-                if (mediainput->buffers) {
-                    if (mediainput->buffers->buf_front_resample) {
-                        free(mediainput->buffers->buf_front_resample);
-                        mediainput->buffers->buf_front_resample = NULL;
-                    }
-                    if (mediainput->buffers->buf_back_resample) {
-                        free(mediainput->buffers->buf_back_resample);
-                        mediainput->buffers->buf_back_resample = NULL;
-                    }
-                    if (mediainput->buffers->buf_mix) {
-                        free(mediainput->buffers->buf_mix);
-                        mediainput->buffers->buf_mix = NULL;
-                        mediainput->buffers->mix_buf_size = 0;
-                    }
-                    if (mediainput->buffers->buf_channel_convert) {
-                        free(mediainput->buffers->buf_channel_convert);
-                        mediainput->buffers->buf_channel_convert = NULL;
-                    }
-                    if (mediainput->buffers->buf_psd) {
-                        free(mediainput->buffers->buf_psd);
-                        mediainput->buffers->buf_psd = NULL;
-                        mediainput->buffers->psd_buf_size = 0;
-                    }
-                    free(mediainput->buffers);
-                    mediainput->buffers = NULL;
+                    free(mediainput->ctx);
+                    mediainput->ctx = NULL;
                 }
                 if (mediainput->front_end_processor) {
                     speex_preprocess_state_destroy(mediainput->front_end_processor);
@@ -1446,11 +1266,7 @@ void AudioPostProcessing::PadRemoved(MediaPad *pad)
                     speex_resampler_destroy(mediainput->back_end_resampler);
                     mediainput->back_end_resampler = NULL;
                 }
-                if (mediainput->echo_state) {
-                    speex_echo_state_destroy(mediainput->echo_state);
-                    mediainput->echo_state = NULL;
-                }
-                media_input_list_.erase(it_mediainput);
+                media_input_.erase(it_mediainput);
                 delete mediainput;
                 break;
             }
@@ -1475,9 +1291,9 @@ int AudioPostProcessing::SpeechCheck(CheckContext *ctx, MediaBuf &buffer)
         return ret;
     }
 
-    if (!ctx->processor_state) {
+    if (!ctx->m_st) {
         if (pIn.payload) {
-            ctx->data_offset = ctx->wav_header.Interpret(pIn.payload, &(ctx->wav_info), pIn.payload_length);
+            ctx->data_offset = ctx->m_hdr.Interpret(pIn.payload, &(ctx->m_info), pIn.payload_length);
             if (pIn.payload_length <= ctx->data_offset || ctx->data_offset <= 0) {
                 printf("APP:[%s] Input payload size (%d) is lower than data dataOffset:%d\n",
                    __FUNCTION__, pIn.payload_length, ctx->data_offset);
@@ -1486,29 +1302,175 @@ int AudioPostProcessing::SpeechCheck(CheckContext *ctx, MediaBuf &buffer)
                 ctx->frame_size = pIn.payload_length - ctx->data_offset;
 
                 int vad = 1;
-                ctx->processor_state = speex_preprocess_state_init(ctx->frame_size >> 1, ctx->wav_info.sample_rate);
+                ctx->m_st = speex_preprocess_state_init(ctx->frame_size >> 1, ctx->m_info.sample_rate);
                 printf("APP:[%s] frame_size = %d, sample rate = %d\n",
-                   __FUNCTION__, ctx->frame_size, ctx->wav_info.sample_rate);
-                speex_preprocess_ctl(ctx->processor_state, SPEEX_PREPROCESS_SET_VAD, &vad);
+                   __FUNCTION__, ctx->frame_size, ctx->m_info.sample_rate);
+                speex_preprocess_ctl(ctx->m_st, SPEEX_PREPROCESS_SET_VAD, &vad);
                 //set prob start and prob continue
-                speex_preprocess_ctl(ctx->processor_state, SPEEX_PREPROCESS_SET_PROB_START, &vad_prob_start);
-                speex_preprocess_ctl(ctx->processor_state, SPEEX_PREPROCESS_SET_PROB_CONTINUE, &vad_prob_continue);
+                speex_preprocess_ctl(ctx->m_st, SPEEX_PREPROCESS_SET_PROB_START, &vad_prob_start);
+                speex_preprocess_ctl(ctx->m_st, SPEEX_PREPROCESS_SET_PROB_CONTINUE, &vad_prob_continue);
             }
         } else {
             printf("APP: [%s] input payload NULL.\n", __FUNCTION__);
             return ret;
         }
     }
-    if (ctx->processor_state) {
+    if (ctx->m_st) {
         audio_data = pIn.payload + ctx->data_offset;
-        if (ctx->processor_state) {
-            ret = speex_preprocess_run(ctx->processor_state, (short *)(audio_data));
+        if (ctx->m_st) {
+            ret = speex_preprocess_run(ctx->m_st, (short *)(audio_data));
         }
     }
 
     return ret;
 }
 
+#ifdef USE_ORIGINAL_HANDLE_PROCESS
+int AudioPostProcessing::HandleProcess()
+{
+    APP_TRACE_INFO("APP: %s\n", __FUNCTION__);
+    std::list<APPMediaInput *>::iterator it_mediainput;
+    APPMediaInput *mediainput = NULL;
+    MediaPad *pad = NULL;
+    MediaBuf buffer;
+    bool eof = false;
+    bool empty;
+    bool underflow;
+    MediaBuf OutBuf[MAX_APP_INPUT];
+    int i = 0;
+    int input_num = 0;
+    unsigned long last_time = 0;
+    unsigned long cur_time = 0;
+    Measurement mesaure;
+
+    while (is_running_) {
+        // Step 1:
+        empty = true;
+        underflow = false;
+
+        // set timer triggered mixing
+        if (!app_parameter_.file_mode_app) {
+            measure.GetCurTime(&cur_time);
+            while ((cur_time - last_time) < MIXER_TIMER_INT) {
+                usleep(MIXER_SLEEP_INT);
+                measure.GetCurTime(&cur_time);
+            }
+        }
+
+        for (it_mediainput = media_input_.begin(), input_num = 0;
+             it_mediainput != media_input_.end();
+             it_mediainput++, input_num++) {
+            mediainput = *it_mediainput;
+
+            // check if there is valid input data inside the APP.
+            if (mediainput->pad->GetBufQueueSize() > 0) {
+                empty = false;
+                // update the media input status
+                if (mediainput->status == INITIALIZED) {
+                    mediainput->status = RUNNING;
+                }
+            }
+
+            if(!app_parameter_.file_mode_app) {
+                // cache data for de-jitter buffer
+                // only for the beginning of mix
+                if ((mediainput->pad->GetBufQueueSize() < BUF_DEPTH_LOW) &&
+                    (mediainput->status == RUNNING) && last_time == 0) {
+                    underflow = true;
+                }
+            } else {
+                if ((mediainput->pad->GetBufQueueSize() < 1) &&
+                    (mediainput->status == RUNNING)) {
+                    underflow = true;
+                }
+            }
+        }
+
+        // reset timer if all input pins are removed
+        if (0 == input_num) {
+            last_time = 0;
+        }
+
+        if ((underflow == true) || (empty == true)) {
+            if (!app_parameter_.file_mode_app) {
+                // padding silence data for network jitter
+                if (last_time != 0 && app_context_.audio_frame_size_out[0] != 0) {
+                    printf("[%p] APP underflow %d , empty = %d\n", this, underflow, empty);
+                    // Build the silence payload
+                    if (!m_pBufSilence) {
+                        m_pBufSilence = (unsigned char *)malloc(sizeof(unsigned char) *
+                                         app_context_.audio_frame_size_out[0]);
+                        if (!m_pBufSilence) {
+                            printf("APP: [Error]: Failed to allocate memory! size = %d\n",
+                                    app_context_.audio_frame_size_out[0]);
+                            continue;
+                        }
+                        memset(m_pBufSilence, 0, app_context_.audio_frame_size_out[0]);
+                        m_outputWaveHeader[0].Populate(&(m_outputWaveInfo[0]),
+                                                        app_context_.audio_frame_size_out[0]);
+                        memcpy(m_pBufSilence,
+                                (unsigned char*) &(m_outputWaveHeader[0]),
+                                m_outputWaveHeader[0].GetHeaderSize());
+                    }
+                    OutBuf[0].payload = m_pBufSilence;
+                    OutBuf[0].payload_length = app_context_.audio_frame_size_out[0];
+                    ReleaseBuffer(OutBuf);
+                }
+            }
+            // sleep for next round
+            usleep(MIXER_SLEEP_INT);
+            continue;
+        }
+
+        // Step 2: process the inputs.
+        eof = ProcessInput();
+        measure.GetCurTime(&last_time);
+
+        // Step 3: release the outdated buffer.
+        for (it_mediainput = media_input_.begin();
+             it_mediainput != media_input_.end();
+             it_mediainput++) {
+            mediainput = *it_mediainput;
+            pad = mediainput->pad;
+
+            if (pad->GetBufQueueSize() > 0) {
+                pad->GetBufData(buffer);
+                pad->ReturnBufToPeerPad(buffer);
+                if (!app_parameter_.file_mode_app) {
+                    if (pad->GetBufQueueSize() == BUF_DEPTH_OVER) {
+                            pad->GetBufData(buffer);
+                            pad->ReturnBufToPeerPad(buffer);
+                            printf("[%p]****Pad [%p] cache buffer overflow\n", this, pad);
+#ifdef AUDIO_SPEECH_DETECTION
+                        } else if (pad->GetBufQueueSize() >= BUF_DEPTH_HIGH &&
+                                   pad->GetBufQueueSize() < BUF_DEPTH_OVER) {
+                        pad->PickBufData(buffer);
+                        if (!(SpeechCheck(mediainput->ctx, buffer))) { //non-speech
+                            pad->GetBufData(buffer);
+                            pad->ReturnBufToPeerPad(buffer);
+                            printf("[%p]****Pad [%p] drop non-speech frame\n", this, pad);
+                        }
+#endif
+                    }
+                }
+            }
+        }
+        // Step 4: all inputs get eof, finish processing.
+        if (eof) {
+            for (it_mediainput = media_input_.begin();
+                 it_mediainput != media_input_.end();
+                 it_mediainput++) {
+                OutBuf[i++].payload = NULL;
+            }
+            ReleaseBuffer(OutBuf);
+            break;
+        }
+    }
+
+    is_running_ = 0;
+    return 0;
+}
+#else
 int AudioPostProcessing::HandleProcess()
 {
     int ret = -1;
@@ -1521,6 +1483,7 @@ int AudioPostProcessing::HandleProcess()
 
     return ret;
 }
+#endif
 
 int AudioPostProcessing::FileModeHandleProcess()
 {
@@ -1540,8 +1503,8 @@ int AudioPostProcessing::FileModeHandleProcess()
         empty = true;
         underflow = false;
 
-        for (it_mediainput = media_input_list_.begin();
-             it_mediainput != media_input_list_.end();
+        for (it_mediainput = media_input_.begin();
+             it_mediainput != media_input_.end();
              it_mediainput++) {
             mediainput = *it_mediainput;
             // check if there is valid input data inside the APP.
@@ -1568,7 +1531,7 @@ int AudioPostProcessing::FileModeHandleProcess()
         eof = ProcessInput();
 
         // Step 3: release the outdated buffer.
-        for (it_mediainput = media_input_list_.begin(); it_mediainput != media_input_list_.end();
+        for (it_mediainput = media_input_.begin(); it_mediainput != media_input_.end();
              it_mediainput++) {
                 mediainput = *it_mediainput;
                 pad = mediainput->pad;
@@ -1580,8 +1543,8 @@ int AudioPostProcessing::FileModeHandleProcess()
         }
         // Step 4: all inputs get eof, finish processing.
         if (eof) {
-            for (it_mediainput = media_input_list_.begin();
-                 it_mediainput != media_input_list_.end();
+            for (it_mediainput = media_input_.begin();
+                 it_mediainput != media_input_.end();
                  it_mediainput++) {
                 OutBuf[i++].payload = NULL;
             }
@@ -1617,8 +1580,8 @@ int AudioPostProcessing::StreamingModeHandleProcess()
         empty = true;
         underflow = false;
 
-        for (it_mediainput = media_input_list_.begin(), input_num = 0;
-             it_mediainput != media_input_list_.end();
+        for (it_mediainput = media_input_.begin(), input_num = 0;
+             it_mediainput != media_input_.end();
              it_mediainput++, input_num++) {
             mediainput = *it_mediainput;
 
@@ -1644,30 +1607,29 @@ int AudioPostProcessing::StreamingModeHandleProcess()
             if ((cur_time - last_time) >= MIXER_TIMER_INT) {
                 measure.GetCurTime(&last_time);
                 // padding silence data for network jitter
-                mediainput = *(media_input_list_.begin());
-                if (mediainput->input_ctx->audio_frame_size_out != 0 && input_num != 0) {
+                if (app_context_.audio_frame_size_out[0] != 0 && input_num != 0) {
                     printf("[%p] APP underflow %d , empty = %d\n", this, underflow, empty);
 #ifdef PADDING_SILENCE_FRAME    //Don't enable this option for current status
                     // Build the silence payload
-                    if (!buf_silence_) {
+                    if (!m_pBufSilence) {
                         printf("[%p] APP building silence packet\n", this);
-                        buf_silence_ = (unsigned char *)malloc(sizeof(unsigned char) *
-                                         mediainput->input_ctx->audio_frame_size_out);
-                        if (!buf_silence_) {
+                        m_pBufSilence = (unsigned char *)malloc(sizeof(unsigned char) *
+                                         app_context_.audio_frame_size_out[0]);
+                        if (!m_pBufSilence) {
                             printf("APP: [Error]: Failed to allocate memory! size = %d\n",
-                                    mediainput->input_ctx->audio_frame_size_out);
+                                    app_context_.audio_frame_size_out[0]);
                             ReleaseSinkMutex();
                             continue;
                         }
-                        memset(buf_silence_, 0, mediainput->input_ctx->audio_frame_size_out);
-                        mediainput->input_ctx->wav_header_out.Populate(&(mediainput->input_ctx->wav_info_out),
-                                                        mediainput->input_ctx->audio_frame_size_out);
-                        memcpy(buf_silence_,
-                                (unsigned char*) &(mediainput->input_ctx->wav_header_out),
-                                mediainput->input_ctx->wav_header_out.GetHeaderSize());
+                        memset(m_pBufSilence, 0, app_context_.audio_frame_size_out[0]);
+                        m_outputWaveHeader[0].Populate(&(m_outputWaveInfo[0]),
+                                                        app_context_.audio_frame_size_out[0]);
+                        memcpy(m_pBufSilence,
+                                (unsigned char*) &(m_outputWaveHeader[0]),
+                                m_outputWaveHeader[0].GetHeaderSize());
                     }
-                    OutBuf[0].payload = buf_silence_;
-                    OutBuf[0].payload_length = mediainput->input_ctx->audio_frame_size_out;
+                    OutBuf[0].payload = m_pBufSilence;
+                    OutBuf[0].payload_length = app_context_.audio_frame_size_out[0];
                     ReleaseBuffer(OutBuf);
 #endif
                 }
@@ -1691,8 +1653,8 @@ int AudioPostProcessing::StreamingModeHandleProcess()
         measure.GetCurTime(&last_time);
 
         // Step 3: release the outdated buffer.
-        for (it_mediainput = media_input_list_.begin();
-             it_mediainput != media_input_list_.end();
+        for (it_mediainput = media_input_.begin();
+             it_mediainput != media_input_.end();
              it_mediainput++) {
             mediainput = *it_mediainput;
             pad = mediainput->pad;
@@ -1708,7 +1670,7 @@ int AudioPostProcessing::StreamingModeHandleProcess()
                 } else if (pad->GetBufQueueSize() >= BUF_DEPTH_HIGH &&
                            pad->GetBufQueueSize() < BUF_DEPTH_OVER) {
                     pad->PickBufData(buffer);
-                    if (!(SpeechCheck(mediainput->check_ctx, buffer))) { //non-speech
+                    if (!(SpeechCheck(mediainput->ctx, buffer))) { //non-speech
                         pad->GetBufData(buffer);
                         pad->ReturnBufToPeerPad(buffer);
                         printf("[%p]****Pad [%p] drop non-speech frame\n", this, pad);
@@ -1719,8 +1681,8 @@ int AudioPostProcessing::StreamingModeHandleProcess()
         }
         // Step 4: all inputs get eof, finish processing.
         if (eof) {
-            for (it_mediainput = media_input_list_.begin();
-                 it_mediainput != media_input_list_.end();
+            for (it_mediainput = media_input_.begin();
+                 it_mediainput != media_input_.end();
                  it_mediainput++) {
                 OutBuf[i++].payload = NULL;
             }
@@ -1739,8 +1701,8 @@ int AudioPostProcessing::UpdateMediaInput(APPMediaInput *mediainput, MediaBuf &b
 {
     if ((mediainput == host_input_) && (mediainput->status == STOP)) {
         std::list<APPMediaInput *>::iterator it_mediainput;
-        for (it_mediainput = media_input_list_.begin();
-             it_mediainput != media_input_list_.end();
+        for (it_mediainput = media_input_.begin();
+             it_mediainput != media_input_.end();
              it_mediainput++) {
             mediainput = *it_mediainput;
             if (mediainput->status == RUNNING) {

@@ -334,25 +334,78 @@ void StringDecPlugin::Release()
 mfxStatus StringDecPlugin::InitFreeType(StringInfo *strinfo)
 {
     FT_Error error;
-    char *font_file = strinfo->font;
+    FILE *fp = NULL;
+    bool is_ubuntu = false;
+    bool is_suse = false;
+    char *fnt0_path = NULL;
+    char *fnt1_path = NULL;
+    unsigned int font = strinfo->font;
+
+    fp = fopen("/etc/issue", "r");
+    if (!fp) {
+        printf("Can't open the system file /etc/issue.\n");
+        return MFX_ERR_UNKNOWN;
+    }
+    char file_buf[512] = {0};
+    while (!feof(fp)) {
+        if (fgets(file_buf, 511, fp)) {
+            if (strstr(file_buf, "Ubuntu")) {
+                is_ubuntu = true;
+                printf("This is Ubuntu.\n");
+                break;
+            } else if (strstr(file_buf, "SUSE")) {
+                is_suse = true;
+                printf("This is SUSE.\n");
+                break;
+            }
+        } else {
+            printf("Error in reading in system file /etc/issue. \n");
+            fclose(fp);
+            return MFX_ERR_UNKNOWN;
+        }
+    }
+    if (!is_ubuntu && !is_suse) {
+        printf("This OS is not supported now.\n");
+        fclose(fp);
+        return MFX_ERR_UNKNOWN;
+    }
+
+    if (is_ubuntu) {
+        fnt0_path = "/usr/share/fonts/truetype/ttf-dejavu/DejaVuSans.ttf";
+        fnt1_path = "/usr/share/fonts/truetype/ttf-dejavu/DejaVuSerif.ttf";
+    } else if (is_suse) {
+        fnt0_path = "/usr/share/fonts/truetype/DejaVuSans.ttf";
+        fnt1_path = "/usr/share/fonts/truetype/DejaVuSerif.ttf";
+    }
 
     error = FT_Init_FreeType(&freetype_library_);
     if (error) {
         printf("Error in initializing FreeType library.\n");
+        fclose(fp);
         return MFX_ERR_UNKNOWN;
     }
 
-    printf("font_file %s\n", font_file);
-    error = FT_New_Face(freetype_library_, font_file, 0, &font_face_);
+    if (font == 0) {
+        error = FT_New_Face(freetype_library_, fnt0_path, 0, &font_face_);
+    } else if (font == 1) {
+        error = FT_New_Face(freetype_library_, fnt1_path, 0, &font_face_);
+    } else {
+        printf("The font option is %d, isn't supported now.\n", font);
+        fclose(fp);
+        return MFX_ERR_UNKNOWN;
+    }
 
     if (error == FT_Err_Unknown_File_Format) {
         printf("Font file could be opened and read, but it appears its font is unsupported.\n");
+        fclose(fp);
         return MFX_ERR_UNKNOWN;
     } else if (error) {
         printf("Error in opening or reading font file.\n");
+        fclose(fp);
         return MFX_ERR_UNKNOWN;
     }
 
+    fclose(fp);
     return MFX_ERR_NONE;
 }
 
@@ -665,6 +718,7 @@ mfxStatus StringDecPlugin::UploadToSurface(unsigned char *yuv_buf, mfxFrameSurfa
         printf("Surface Fourcc not supported!\n");
         return MFX_ERR_UNKNOWN;
     }
+
     return MFX_ERR_NONE;
 }
 

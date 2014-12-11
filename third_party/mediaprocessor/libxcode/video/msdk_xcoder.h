@@ -24,13 +24,6 @@ typedef enum {
     CODEC_TYPE_OTHER
 } CodecType;
 
-/* background color*/
-typedef struct {
-    unsigned short Y;
-    unsigned short U;
-    unsigned short V;
-} BgColor;
-
 typedef struct DecOptions_ {
     union {
         MemPool *inputStream;
@@ -220,15 +213,11 @@ public:
 
     int SetResolution(void *vppHandle, unsigned int width, unsigned int height);
 
-    int SetComboType(ComboType type, void *vpp, void* master);
+    void SetComboType(ComboType type, void* master);
 
     void AttachInput(DecOptions *dec_cfg, void *vppHandle);
 
     int DetachInput(void* input_handle);
-
-    int SetRegionInfo(void *vppHandle, void *decHandle, Region &info, bool bApply);
-
-    int SetBackgroundColor(void *vppHandle, BgColor *bgColor);
 
     void AttachVpp(VppOptions *vpp_cfg, EncOptions *enc_cfg);
 
