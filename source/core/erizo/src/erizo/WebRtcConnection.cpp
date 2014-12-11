@@ -164,7 +164,6 @@ namespace erizo {
     localSdp_.videoSsrc = this->getVideoSinkSSRC();
     localSdp_.audioSsrc = this->getAudioSinkSSRC();
 
-    boost::mutex::scoped_lock lock(updateStateMutex_);
     ELOG_DEBUG("Getting SDP");
     if (videoTransport_ != NULL) {
       videoTransport_->processLocalSdp(&localSdp_);
