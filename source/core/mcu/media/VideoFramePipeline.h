@@ -80,7 +80,7 @@ public:
 };
 
 // VideoFrameMixer accepts frames from multiple inputs and mixes them.
-// It can have multiple outputs with different FrameFormat of framerate/bitrate settings.
+// It can have multiple outputs with different FrameFormat or framerate/bitrate settings.
 class VideoFrameMixer {
 public:
     virtual bool activateInput(int slot, FrameFormat, VideoFrameProvider*) = 0;
