@@ -76,7 +76,50 @@ void VideoMixEngine::setResolution(unsigned int width, unsigned int height)
 void VideoMixEngine::setLayout(const CustomLayoutInfo& layout)
 {
     if (m_state == IN_SERVICE) {
-        // Set the actual layout information to media engine.
+        std::map<InputIndex, RegionInfo> tmp_layout_map;
+        tmp_layout_map.insert(layout.layoutMapping.begin(), layout.layoutMapping.end());
+        std::map<InputIndex, RegionInfo>::iterator it_dec;
+        it_dec = tmp_layout_map.begin();
+        std::map<InputIndex, RegionInfo>::reverse_iterator re_it_dec;
+        re_it_dec = tmp_layout_map.rbegin();
+        bool set_combo_type = false;
+        int ret = -1;
+
+        for(;it_dec != tmp_layout_map.end(); ++it_dec) {
+            Region regionInfo;
+            regionInfo.left = it_dec->second.left;
+            regionInfo.top = it_dec->second.top;
+            regionInfo.width_ratio = it_dec->second.relativeSize;
+            regionInfo.height_ratio = it_dec->second.relativeSize;
+
+            std::map<InputIndex, InputInfo>::iterator it = m_inputs.find(it_dec->first);
+            if (it != m_inputs.end() && it->second.decHandle != NULL) {
+                if (!set_combo_type) {
+                    ret = m_xcoder->SetComboType(COMBO_CUSTOM, m_vpp->vppHandle, NULL);
+                    if (ret != 0) {
+                        printf("[%s]Fail to set combo type\n", __FUNCTION__);
+                        break;
+                    } else {
+                        set_combo_type = true;
+                    }
+                }
+                if (it_dec->first == re_it_dec->first) {
+                    ret = m_xcoder->SetRegionInfo(m_vpp->vppHandle, it->second.decHandle, regionInfo, true);
+                    if (ret < 0) {
+                        printf("[%s]Fail to set region, input index:%d\n", __FUNCTION__, it_dec->first);
+                        break;
+                    } else {
+                        printf("[%s]End set dynamic layout\n", __FUNCTION__);
+                    }
+                } else {
+                    ret = m_xcoder->SetRegionInfo(m_vpp->vppHandle, it->second.decHandle, regionInfo, false);
+                    if (ret < 0) {
+                        printf("[%s]Fail to set region, input index:%d\n", __FUNCTION__, it_dec->first);
+                        break;
+                    }
+                }
+            }
+        }
     }
 }
 
