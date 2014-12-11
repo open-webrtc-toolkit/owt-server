@@ -52,8 +52,15 @@ public:
     virtual void unsetInput() = 0;
 };
 
+// VideoFrameCompositor accepts the raw I420VideoFrame from multiple inputs and
+// composites them into one I420VideoFrame with the given VideoLayout.
+// The composited I420VideoFrame will be handed over to one VideoFrameConsumer.
 class VideoFrameCompositor {
 public:
+    virtual bool activateInput(int slot) = 0;
+    virtual void deActivateInput(int slot) = 0;
+    virtual void pushInput(int slot, webrtc::I420VideoFrame*) = 0;
+
     virtual void setLayout(const VideoLayout&) = 0;
 
     virtual bool setOutput(VideoFrameConsumer*) = 0;
@@ -72,24 +79,20 @@ public:
     virtual void requestKeyFrame(int id) = 0;
 };
 
-// I420VideoFrameCompositor accepts the raw I420VideoFrame from multiple inputs and
-// composites them into one I420VideoFrame with the given VideoLayout.
-// The composited I420VideoFrame will be handed over to one VideoFrameConsumer.
-class I420VideoFrameCompositor : public VideoFrameCompositor {
-public:
-    virtual bool activateInput(int slot) = 0;
-    virtual void deActivateInput(int slot) = 0;
-    virtual void pushInput(int slot, webrtc::I420VideoFrame*) = 0;
-};
-
-// EncodedVideoFrameCompositor accepts the encoded frames from multiple inputs and
-// composites them into one I420VideoFrame with the given VideoLayout.
-// The composited I420VideoFrame will be handed over to one VideoFrameConsumer.
-class EncodedVideoFrameCompositor : public VideoFrameCompositor {
+// VideoFrameMixer accepts frames from multiple inputs and mixes them.
+// It can have multiple outputs with different FrameFormat of framerate/bitrate settings.
+class VideoFrameMixer {
 public:
     virtual bool activateInput(int slot, FrameFormat, VideoFrameProvider*) = 0;
     virtual void deActivateInput(int slot) = 0;
     virtual void pushInput(int slot, unsigned char* payload, int len) = 0;
+
+    virtual void setLayout(const VideoLayout&) = 0;
+
+    virtual void setBitrate(int id, unsigned short bitrate) = 0;
+    virtual void requestKeyFrame(int id) = 0;
+    virtual bool activateOutput(int id, FrameFormat, unsigned int framerate, unsigned short bitrate, VideoFrameConsumer*) = 0;
+    virtual void deActivateOutput(int id) = 0;
 };
 
 }

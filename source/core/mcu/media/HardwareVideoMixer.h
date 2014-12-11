@@ -84,27 +84,22 @@ private:
     boost::scoped_ptr<JobTimer> m_jobTimer;
 };
 
-class HardwareVideoMixer : public EncodedVideoFrameCompositor, public VideoFrameEncoder {
+class HardwareVideoMixer : public VideoFrameMixer {
     DECLARE_LOGGER();
 public:
-    HardwareVideoMixer(const VideoLayout& layout);
+    HardwareVideoMixer();
     virtual ~HardwareVideoMixer();
 
-    // TODO: Split this class into a Compositor and an Encoder.
-    // Implements EncodedVideoFrameCompositor.
     bool activateInput(int slot, FrameFormat, VideoFrameProvider*);
     void deActivateInput(int slot);
     void pushInput(int slot, unsigned char* payload, int len);
-    bool setOutput(VideoFrameConsumer*);
-    void unsetOutput();
+
     void setLayout(const VideoLayout&);
 
-    // Implements VideoFrameEncoder.
-    void onFrame(FrameFormat, unsigned char* payload, int len, unsigned int ts);
-    bool activateOutput(int id, FrameFormat, unsigned int framerate, unsigned short bitrate, VideoFrameConsumer*);
-    void deActivateOutput(int id);
     void setBitrate(int id, unsigned short bitrate);
     void requestKeyFrame(int id);
+    bool activateOutput(int id, FrameFormat, unsigned int framerate, unsigned short bitrate, VideoFrameConsumer*);
+    void deActivateOutput(int id);
 
 private:
     bool onSlotNumberChanged(uint32_t newSlotNum);

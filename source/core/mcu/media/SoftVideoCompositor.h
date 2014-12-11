@@ -62,7 +62,7 @@ private:
  * but only 6 regions are configed. current implementation will only show 6 participants but
  * still 16 audios will be mixed. In the future, we may enable the video rotation based on VAD history.
  */
-class SoftVideoCompositor : public I420VideoFrameCompositor,
+class SoftVideoCompositor : public VideoFrameCompositor,
                             public JobTimerListener {
     DECLARE_LOGGER();
 public:

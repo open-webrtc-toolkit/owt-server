@@ -126,9 +126,11 @@ void HardwareVideoMixerOutput::notifyFrameReady(OutputIndex index)
 
 DEFINE_LOGGER(HardwareVideoMixer, "mcu.media.HardwareVideoMixer");
 
-HardwareVideoMixer::HardwareVideoMixer(const VideoLayout& layout)
+HardwareVideoMixer::HardwareVideoMixer()
 {
     m_engine.reset(new VideoMixEngine());
+
+    const VideoLayout& layout = Config::get()->getVideoLayout();
 
     // Fetch video size and background color.
     VideoSize rootSize = VideoLayoutHelper::getVideoSize(layout.rootSize);
@@ -141,12 +143,10 @@ HardwareVideoMixer::HardwareVideoMixer(const VideoLayout& layout)
     }
 
     setLayout(layout);
-    setOutput(this);
 }
 
 HardwareVideoMixer::~HardwareVideoMixer()
 {
-    unsetOutput();
 }
 
 void HardwareVideoMixer::setLayout(const VideoLayout& layout)
@@ -252,36 +252,6 @@ void HardwareVideoMixer::pushInput(int slot, unsigned char* payload, int len)
         it->second->push(payload, len);
 }
 
-bool HardwareVideoMixer::onSlotNumberChanged(uint32_t newSlotNum)
-{
-    // Update the video layout according to the new input number
-    if (Config::get()->updateVideoLayout(newSlotNum)) {
-        ELOG_DEBUG("Video layout updated with new slot number changed to %d", newSlotNum);
-        return true;
-    }
-
-    return false;
-}
-
-bool HardwareVideoMixer::setOutput(VideoFrameConsumer* encoder)
-{
-    return true;
-}
-
-void HardwareVideoMixer::unsetOutput()
-{
-}
-
-// For current hardware mixer, the composition is hidden
-// inside the hardware mix engine, and there won't be invocation
-// to the below onFrame interface.
-
-void HardwareVideoMixer::onFrame(FrameFormat, unsigned char* payload, int len, unsigned int ts)
-{
-    // We now don't support push mode encoder.
-    assert(false);
-}
-
 void HardwareVideoMixer::setBitrate(int id, unsigned short bitrate)
 {
     std::map<int, boost::shared_ptr<HardwareVideoMixerOutput>>::iterator it = m_outputs.find(id);
@@ -310,6 +280,17 @@ bool HardwareVideoMixer::activateOutput(int id, FrameFormat format, unsigned int
 void HardwareVideoMixer::deActivateOutput(int id)
 {
     m_outputs.erase(id);
+}
+
+bool HardwareVideoMixer::onSlotNumberChanged(uint32_t newSlotNum)
+{
+    // Update the video layout according to the new input number
+    if (Config::get()->updateVideoLayout(newSlotNum)) {
+        ELOG_DEBUG("Video layout updated with new slot number changed to %d", newSlotNum);
+        return true;
+    }
+
+    return false;
 }
 
 }
