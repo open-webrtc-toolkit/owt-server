@@ -35,7 +35,6 @@
 namespace webrtc {
 class I420VideoFrame;
 class VideoProcessingModule;
-class CriticalSectionWrapper;
 }
 
 namespace mcu {
@@ -96,8 +95,7 @@ private:
 
     // Delta used for translating between NTP and internal timestamps.
     int64_t m_ntpDelta;
-    boost::scoped_ptr<webrtc::CriticalSectionWrapper> m_configLock;
-    bool m_configChanged;
+    std::atomic<bool> m_configChanged;
     boost::scoped_ptr<VPMPool> m_vpmPool;
     boost::scoped_ptr<BufferManager> m_bufferManager;
     boost::scoped_ptr<webrtc::I420VideoFrame> m_composedFrame;
