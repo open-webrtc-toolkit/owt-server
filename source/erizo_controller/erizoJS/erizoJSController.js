@@ -110,7 +110,13 @@ exports.ErizoJSController = function (spec) {
             });
         }
 
+        var terminated = false;
+
         wrtc.init( function (newStatus){
+
+          if (terminated) {
+            return;
+          }
 
           var localSdp, answer;
           log.info("webrtc Addon status" + newStatus );
@@ -118,6 +124,10 @@ exports.ErizoJSController = function (spec) {
           if (GLOBAL.config.erizoController.sendStats) {
             var timeStamp = new Date();
             rpc.callRpc('stats_handler', 'event', [{pub: id_pub, subs: id_sub, type: 'connection_status', status: newStatus, timestamp:timeStamp.getTime()}]);
+          }
+
+          if (newStatus === 104) {
+            terminated = true;
           }
           if (newStatus === 102 && !sdpDelivered) {
             localSdp = wrtc.getLocalSdp();
