@@ -18,8 +18,8 @@
  * and approved by Intel in writing.
  */
 
-#ifndef HardwareVideoMixer_h
-#define HardwareVideoMixer_h
+#ifndef HardwareVideoFrameMixer_h
+#define HardwareVideoFrameMixer_h
 
 #include "JobTimer.h"
 #include "VideoFramePipeline.h"
@@ -35,12 +35,12 @@
 
 namespace mcu {
 
-class HardwareVideoMixerInput : public VideoMixEngineInput {
+class HardwareVideoFrameMixerInput : public VideoMixEngineInput {
 public:
-    HardwareVideoMixerInput(boost::shared_ptr<VideoMixEngine> engine,
+    HardwareVideoFrameMixerInput(boost::shared_ptr<VideoMixEngine> engine,
                             FrameFormat inFormat,
                             VideoFrameProvider* provider);
-    virtual ~HardwareVideoMixerInput();
+    virtual ~HardwareVideoFrameMixerInput();
 
     void push(unsigned char* payload, int len);
 
@@ -54,15 +54,15 @@ private:
     boost::shared_ptr<VideoMixEngine> m_engine;
 };
 
-class HardwareVideoMixerOutput : public VideoMixEngineOutput,
+class HardwareVideoFrameMixerOutput : public VideoMixEngineOutput,
                                  public JobTimerListener {
 public:
-    HardwareVideoMixerOutput(boost::shared_ptr<VideoMixEngine> engine,
+    HardwareVideoFrameMixerOutput(boost::shared_ptr<VideoMixEngine> engine,
                             FrameFormat outFormat,
                             unsigned int framerate,
                             unsigned short bitrate,
                             VideoFrameConsumer* receiver);
-    virtual ~HardwareVideoMixerOutput();
+    virtual ~HardwareVideoFrameMixerOutput();
 
     void setBitrate(unsigned short bitrate);
     void requestKeyFrame();
@@ -84,11 +84,11 @@ private:
     boost::scoped_ptr<JobTimer> m_jobTimer;
 };
 
-class HardwareVideoMixer : public VideoFrameMixer {
+class HardwareVideoFrameMixer : public VideoFrameMixer {
     DECLARE_LOGGER();
 public:
-    HardwareVideoMixer();
-    virtual ~HardwareVideoMixer();
+    HardwareVideoFrameMixer();
+    virtual ~HardwareVideoFrameMixer();
 
     bool activateInput(int slot, FrameFormat, VideoFrameProvider*);
     void deActivateInput(int slot);
@@ -106,8 +106,8 @@ private:
 
     CustomLayoutInfo m_currentLayout;
     boost::shared_ptr<VideoMixEngine> m_engine;
-    std::map<int, boost::shared_ptr<HardwareVideoMixerInput>> m_inputs;
-    std::map<int, boost::shared_ptr<HardwareVideoMixerOutput>> m_outputs;
+    std::map<int, boost::shared_ptr<HardwareVideoFrameMixerInput>> m_inputs;
+    std::map<int, boost::shared_ptr<HardwareVideoFrameMixerOutput>> m_outputs;
 };
 
 }

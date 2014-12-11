@@ -18,7 +18,7 @@
  * and approved by Intel in writing.
  */
 
-#include "HardwareVideoMixer.h"
+#include "HardwareVideoFrameMixer.h"
 
 #include "Config.h"
 
@@ -36,7 +36,7 @@ CodecType Frameformat2CodecType(FrameFormat format)
     }
 }
 
-HardwareVideoMixerInput::HardwareVideoMixerInput(boost::shared_ptr<VideoMixEngine> engine,
+HardwareVideoFrameMixerInput::HardwareVideoFrameMixerInput(boost::shared_ptr<VideoMixEngine> engine,
                                                  FrameFormat inFormat,
                                                  VideoFrameProvider* provider)
     : m_index(INVALID_INPUT_INDEX)
@@ -48,7 +48,7 @@ HardwareVideoMixerInput::HardwareVideoMixerInput(boost::shared_ptr<VideoMixEngin
     m_index = m_engine->enableInput(Frameformat2CodecType(inFormat), this);
 }
 
-HardwareVideoMixerInput::~HardwareVideoMixerInput()
+HardwareVideoFrameMixerInput::~HardwareVideoFrameMixerInput()
 {
     if (m_index != INVALID_INPUT_INDEX && m_engine.get()) {
         m_engine->disableInput(m_index);
@@ -57,17 +57,17 @@ HardwareVideoMixerInput::~HardwareVideoMixerInput()
     m_provider = nullptr;
 }
 
-void HardwareVideoMixerInput::push(unsigned char* payload, int len)
+void HardwareVideoFrameMixerInput::push(unsigned char* payload, int len)
 {
     m_engine->pushInput(m_index, payload, len);
 }
 
-void HardwareVideoMixerInput::requestKeyFrame(InputIndex index) {
+void HardwareVideoFrameMixerInput::requestKeyFrame(InputIndex index) {
     if (index == m_index)
         m_provider->requestKeyFrame();
 }
 
-HardwareVideoMixerOutput::HardwareVideoMixerOutput(boost::shared_ptr<VideoMixEngine> engine,
+HardwareVideoFrameMixerOutput::HardwareVideoFrameMixerOutput(boost::shared_ptr<VideoMixEngine> engine,
                                                     FrameFormat outFormat,
                                                     unsigned int framerate,
                                                     unsigned short bitrate,
@@ -86,7 +86,7 @@ HardwareVideoMixerOutput::HardwareVideoMixerOutput(boost::shared_ptr<VideoMixEng
     m_jobTimer.reset(new JobTimer(m_frameRate, this));
 }
 
-HardwareVideoMixerOutput::~HardwareVideoMixerOutput()
+HardwareVideoFrameMixerOutput::~HardwareVideoFrameMixerOutput()
 {
     if(m_index != INVALID_OUTPUT_INDEX && m_engine.get()) {
         m_engine->disableOutput(m_index);
@@ -94,17 +94,17 @@ HardwareVideoMixerOutput::~HardwareVideoMixerOutput()
     }
 }
 
-void HardwareVideoMixerOutput::setBitrate(unsigned short bitrate)
+void HardwareVideoFrameMixerOutput::setBitrate(unsigned short bitrate)
 {
     m_engine->setBitrate(m_index, bitrate);
 }
 
-void HardwareVideoMixerOutput::requestKeyFrame()
+void HardwareVideoFrameMixerOutput::requestKeyFrame()
 {
     m_engine->forceKeyFrame(m_index);
 }
 
-void HardwareVideoMixerOutput::onTimeout()
+void HardwareVideoFrameMixerOutput::onTimeout()
 {   
     do {
         int len = m_engine->pullOutput(m_index, (unsigned char*)&m_esBuffer);
@@ -116,7 +116,7 @@ void HardwareVideoMixerOutput::onTimeout()
     } while (1);
 }
 
-void HardwareVideoMixerOutput::notifyFrameReady(OutputIndex index)
+void HardwareVideoFrameMixerOutput::notifyFrameReady(OutputIndex index)
 {
     if (index == m_index) {
         // TODO: Pulling stratege (onTigger) is used now, but if mix-engine support notify mechanism, we
@@ -124,9 +124,9 @@ void HardwareVideoMixerOutput::notifyFrameReady(OutputIndex index)
     }
 }
 
-DEFINE_LOGGER(HardwareVideoMixer, "mcu.media.HardwareVideoMixer");
+DEFINE_LOGGER(HardwareVideoFrameMixer, "mcu.media.HardwareVideoFrameMixer");
 
-HardwareVideoMixer::HardwareVideoMixer()
+HardwareVideoFrameMixer::HardwareVideoFrameMixer()
 {
     m_engine.reset(new VideoMixEngine());
 
@@ -145,11 +145,11 @@ HardwareVideoMixer::HardwareVideoMixer()
     setLayout(layout);
 }
 
-HardwareVideoMixer::~HardwareVideoMixer()
+HardwareVideoFrameMixer::~HardwareVideoFrameMixer()
 {
 }
 
-void HardwareVideoMixer::setLayout(const VideoLayout& layout)
+void HardwareVideoFrameMixer::setLayout(const VideoLayout& layout)
 {
     // Initialize the layout mapping with custom video layout
     if (!layout.regions.empty()) {
@@ -159,7 +159,7 @@ void HardwareVideoMixer::setLayout(const VideoLayout& layout)
 
         // Set the layout information to hardware engine
         std::vector<Region>::const_iterator regionIt = layout.regions.begin();
-        for (std::map<int, boost::shared_ptr<HardwareVideoMixerInput>>::iterator it=m_inputs.begin(); it!=m_inputs.end(); ++it) {
+        for (std::map<int, boost::shared_ptr<HardwareVideoFrameMixerInput>>::iterator it=m_inputs.begin(); it!=m_inputs.end(); ++it) {
             if (regionIt != layout.regions.end()) {
                 RegionInfo regionInfo;
                 regionInfo.id = (*regionIt).id;
@@ -175,7 +175,7 @@ void HardwareVideoMixer::setLayout(const VideoLayout& layout)
                     m_currentLayout.layoutMapping[index] = regionInfo;
                 ++regionIt;
             } else {
-                ELOG_WARN("HardwareVideoMixer::setLayout failed. Not enough regions defined.");
+                ELOG_WARN("HardwareVideoFrameMixer::setLayout failed. Not enough regions defined.");
             }
         }
 
@@ -195,14 +195,14 @@ void HardwareVideoMixer::setLayout(const VideoLayout& layout)
     }
 }
 
-bool HardwareVideoMixer::activateInput(int slot, FrameFormat format, VideoFrameProvider* provider)
+bool HardwareVideoFrameMixer::activateInput(int slot, FrameFormat format, VideoFrameProvider* provider)
 {
     if (m_inputs.find(slot) != m_inputs.end()) {
         ELOG_WARN("activateInput failed, slot is in use.");
         return false;
     }
 
-    m_inputs[slot].reset(new HardwareVideoMixerInput(m_engine, format, provider));
+    m_inputs[slot].reset(new HardwareVideoFrameMixerInput(m_engine, format, provider));
     ELOG_DEBUG("activateInput OK, slot: %d", slot);
 
     // Adjust the mapping of input and layout region
@@ -222,11 +222,11 @@ bool HardwareVideoMixer::activateInput(int slot, FrameFormat format, VideoFrameP
     return true;
 }
 
-void HardwareVideoMixer::deActivateInput(int slot)
+void HardwareVideoFrameMixer::deActivateInput(int slot)
 {
     // Adjust the mapping of input and layout region
     if (!onSlotNumberChanged(m_inputs.size())) {
-        std::map<int, boost::shared_ptr<HardwareVideoMixerInput>>::iterator itr = m_inputs.find(slot);
+        std::map<int, boost::shared_ptr<HardwareVideoFrameMixerInput>>::iterator itr = m_inputs.find(slot);
         if (itr != m_inputs.end()) {
             InputIndex index = itr->second->index();
             std::map<InputIndex, RegionInfo>::iterator it = m_currentLayout.layoutMapping.find(index);
@@ -245,44 +245,44 @@ void HardwareVideoMixer::deActivateInput(int slot)
     m_inputs.erase(slot);
 }
 
-void HardwareVideoMixer::pushInput(int slot, unsigned char* payload, int len)
+void HardwareVideoFrameMixer::pushInput(int slot, unsigned char* payload, int len)
 {
-    std::map<int, boost::shared_ptr<HardwareVideoMixerInput>>::iterator it = m_inputs.find(slot);
+    std::map<int, boost::shared_ptr<HardwareVideoFrameMixerInput>>::iterator it = m_inputs.find(slot);
     if (it != m_inputs.end())
         it->second->push(payload, len);
 }
 
-void HardwareVideoMixer::setBitrate(int id, unsigned short bitrate)
+void HardwareVideoFrameMixer::setBitrate(int id, unsigned short bitrate)
 {
-    std::map<int, boost::shared_ptr<HardwareVideoMixerOutput>>::iterator it = m_outputs.find(id);
+    std::map<int, boost::shared_ptr<HardwareVideoFrameMixerOutput>>::iterator it = m_outputs.find(id);
     if (it != m_outputs.end())
         it->second->setBitrate(bitrate);
 }
 
-void HardwareVideoMixer::requestKeyFrame(int id)
+void HardwareVideoFrameMixer::requestKeyFrame(int id)
 {
-    std::map<int, boost::shared_ptr<HardwareVideoMixerOutput>>::iterator it = m_outputs.find(id);
+    std::map<int, boost::shared_ptr<HardwareVideoFrameMixerOutput>>::iterator it = m_outputs.find(id);
     if (it != m_outputs.end())
         it->second->requestKeyFrame();
 }
 
-bool HardwareVideoMixer::activateOutput(int id, FrameFormat format, unsigned int framerate, unsigned short bitrate, VideoFrameConsumer* receiver)
+bool HardwareVideoFrameMixer::activateOutput(int id, FrameFormat format, unsigned int framerate, unsigned short bitrate, VideoFrameConsumer* receiver)
 {
     if (m_outputs.find(id) != m_outputs.end()) {
         ELOG_WARN("activateOutput failed, format is in use.");
         return false;
     }
     ELOG_DEBUG("activateOutput OK, format: %s", ((format == FRAME_FORMAT_VP8)? "VP8" : "H264"));
-    m_outputs[id].reset(new HardwareVideoMixerOutput(m_engine, format, framerate, bitrate, receiver));
+    m_outputs[id].reset(new HardwareVideoFrameMixerOutput(m_engine, format, framerate, bitrate, receiver));
     return true;
 }
 
-void HardwareVideoMixer::deActivateOutput(int id)
+void HardwareVideoFrameMixer::deActivateOutput(int id)
 {
     m_outputs.erase(id);
 }
 
-bool HardwareVideoMixer::onSlotNumberChanged(uint32_t newSlotNum)
+bool HardwareVideoFrameMixer::onSlotNumberChanged(uint32_t newSlotNum)
 {
     // Update the video layout according to the new input number
     if (Config::get()->updateVideoLayout(newSlotNum)) {
