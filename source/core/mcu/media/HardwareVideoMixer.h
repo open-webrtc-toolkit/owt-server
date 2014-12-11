@@ -44,6 +44,8 @@ public:
 
     void push(unsigned char* payload, int len);
 
+    InputIndex index() { return m_index; }
+
     virtual void requestKeyFrame(InputIndex index);
 
 private:
