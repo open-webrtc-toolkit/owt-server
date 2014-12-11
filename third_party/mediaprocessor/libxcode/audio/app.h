@@ -7,6 +7,7 @@
 #include <time.h>
 #include <speex/speex_preprocess.h>
 #include <speex/speex_resampler.h>
+#include <speex/speex_echo.h>
 #include "base/media_common.h"
 #include "base/base_element.h"
 #include "base/media_types.h"
@@ -27,28 +28,43 @@ enum MEDIA_INPUT_STATUS {
 };
 
 typedef struct {
-    AudioPayload audio_payload[MAX_APP_INPUT];
-    short *audio_data_in[MAX_APP_INPUT];
-    int audio_payload_length[MAX_APP_INPUT];
-    int audio_data_offset[MAX_APP_INPUT];
-    int audio_frame_size_in[MAX_APP_INPUT];
-    int audio_frame_size_mix[MAX_APP_INPUT];
-    int audio_frame_size_out[MAX_APP_INPUT];
-    unsigned int audio_input_id[MAX_APP_INPUT];
-    unsigned int audio_input_running_status[MAX_APP_INPUT];
-    unsigned int audio_input_active_status[MAX_APP_INPUT];
-    unsigned int audio_param_inited[MAX_APP_INPUT];
-    unsigned int audio_sample_rate_in[MAX_APP_INPUT];
-    unsigned int audio_sample_rate_mix[MAX_APP_INPUT];
-    unsigned int audio_vad_prob[MAX_APP_INPUT];
-    unsigned int audio_channel_number_in[MAX_APP_INPUT];
-    unsigned int audio_channel_number[MAX_APP_INPUT];
-} APPContext;
+    AudioPayload audio_payload;
+    short *audio_data_in;
+    int audio_payload_length;
+    int audio_data_offset;
+    int audio_frame_size_in;
+    int audio_frame_size_mix;
+    int audio_frame_size_out;
+    unsigned int audio_input_id;
+    unsigned int audio_input_running_status;
+    unsigned int audio_input_active_status;
+    unsigned int audio_param_inited;
+    unsigned int audio_sample_rate_in;
+    unsigned int audio_sample_rate_mix;
+    unsigned int audio_vad_prob;
+    unsigned int audio_channel_number_in;
+    unsigned int audio_channel_number;
+    WaveHeader wav_header_in;
+    Info wav_info_in;
+    WaveHeader wav_header_out;
+    Info wav_info_out;
+    int wav_data_offset;
+} APPInputContext;
 
 typedef struct {
-    SpeexPreprocessState *m_st;
-    WaveHeader m_hdr;
-    Info m_info;
+    short *buf_front_resample;
+    short *buf_back_resample;
+    short *buf_mix;
+    int mix_buf_size;
+    short *buf_channel_convert;
+    int *buf_psd;
+    int psd_buf_size;
+} APPInputBuffers;
+
+typedef struct {
+    SpeexPreprocessState *processor_state;
+    WaveHeader wav_header;
+    Info wav_info;
     int data_offset;
     int frame_size;
 } CheckContext;
@@ -58,11 +74,15 @@ typedef struct {
     const char *input_name;
     MediaPad *pad;
     MEDIA_INPUT_STATUS status;
-    CheckContext *ctx;
+    CheckContext *check_ctx;
+    APPInputContext *input_ctx;
+    APPInputBuffers *buffers;
+    bool first_packet;
     SpeexPreprocessState *front_end_processor;
     SpeexPreprocessState *back_end_processor;
     SpeexResamplerState *front_end_resampler;
     SpeexResamplerState *back_end_resampler;
+    SpeexEchoState *echo_state;
 } APPMediaInput;
 
 typedef struct {
@@ -123,39 +143,25 @@ private:
     int BackEndProcessRun(APPMediaInput *media_input, unsigned int input_id, AudioPayload *payload);
     int FrontEndResample(APPMediaInput *media_input, unsigned int input_id, AudioPayload *payload);
     int BackEndResample(APPMediaInput *media_input, unsigned int input_id, AudioPayload *payload);
-    int ChannelNumberConvert(APPMediaInput *mediainput, unsigned int input_id, AudioPayload *payload);
-    int AudioMix(MediaBuf &buffer, int input_id);
-    int UpdateMediaInput(APPMediaInput *mediainput, MediaBuf &buf);
-    int PrepareParameter(MediaBuf &buffer, unsigned int input_id);
+    int ChannelNumberConvert(APPMediaInput *media_input, unsigned int input_id, AudioPayload *payload);
+    int AudioMix(APPMediaInput *media_input, MediaBuf &buffer, int input_id);
+    int UpdateMediaInput(APPMediaInput *media_input, MediaBuf &buf);
+    int PrepareParameter(APPMediaInput *media_input, MediaBuf &buffer, unsigned int input_id);
     void ReleaseBuffer(MediaBuf *out);
     int SpeechCheck(CheckContext *ctx, MediaBuf &buffer);
     void VADSort();
 
-    APPContext app_context_;
-    std::list<APPMediaInput *> media_input_;
+    std::list<APPMediaInput *> media_input_list_;
     APPMediaInput *host_input_;
     int num_input_;
     int num_running_input_;
     pthread_mutex_t mutex_;
+    bool out_param_inited_;
+    int active_input_id_;
+    unsigned long long total_frame_count_;
+    unsigned char *buf_silence_;
     VADSortContext vad_sort_ctx_[MAX_APP_INPUT];
-
-    bool m_bFirstPacket[MAX_APP_INPUT];
-    bool m_bOutParamInited;
-    int m_nActiveInputID;
-
-    WaveHeader m_inputWaveHeader[MAX_APP_INPUT];
-    Info m_inputWaveInfo[MAX_APP_INPUT];
-    WaveHeader m_outputWaveHeader[MAX_APP_INPUT];
-    Info m_outputWaveInfo[MAX_APP_INPUT];
-    int m_nDataOffset[MAX_APP_INPUT];
-    unsigned long long m_nFrameCount;
-    unsigned char *m_pBufSilence;
-
-    short *m_pBufResample[MAX_APP_INPUT];
-    short *m_pBufBKResample[MAX_APP_INPUT];
-    short *m_pBufMix[MAX_APP_INPUT];
-    int m_nMixBufSize[MAX_APP_INPUT];
-    short *m_pBufChannelNumConvert[MAX_APP_INPUT];
+    FILE **file_dump_app_;
 };
 
 #endif

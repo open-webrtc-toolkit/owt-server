@@ -140,8 +140,14 @@ Stream &AudioTranscoder::OpenOutput(string name)
 
 void* AudioTranscoder::AttachInputStream(void *decCfg)
 {
+    if (!decCfg) {
+        printf("Invalid decCfg parameter\n");
+        return NULL;
+    }
+
     BaseElement *element_dec = NULL;
     sAudioParams *audio_params = reinterpret_cast<sAudioParams *> (decCfg);
+    audio_params->dec_handle = NULL;
     printf("Attach input stream in AudioTrancoder %p\n", this);
     WaitMutex();
     //TODO prevent call this func before Init()
@@ -178,6 +184,7 @@ void* AudioTranscoder::AttachInputStream(void *decCfg)
     if (is_running_) {
         element_dec->Start();
     }
+    audio_params->dec_handle = element_dec;
     printf("Link decoder %p to APP %p...dec list size %d\n", element_dec, mAPP_, (int)mDecoder_list_.size());
     ReleaseMutex();
     return element_dec;
@@ -197,6 +204,12 @@ errors_t AudioTranscoder::DetachInputStream(void *input_handle)
         return ERR_INVALID_INPUT_PARAMETER;
     }
 
+    if (1 == mDecoder_list_.size()) {
+        ReleaseMutex();
+        printf("The last input handle. Please stop the audio pipeline\n");
+        return ERR_INVALID_INPUT_PARAMETER;
+    }
+
     BaseElement *dec = static_cast<BaseElement*>(input_handle);
     for(std::list<BaseElement*>::iterator it_dec = mDecoder_list_.begin();
             it_dec != mDecoder_list_.end();
@@ -212,14 +225,14 @@ errors_t AudioTranscoder::DetachInputStream(void *input_handle)
         ReleaseMutex();
         return ERR_INVALID_INPUT_PARAMETER;
     }
-    printf("Found dec, about to stop decoder %p...\n", dec);
+    printf("Found audio dec, about to stop audio decoder %p...\n", dec);
     dec->Stop();
-    printf("Unlinking element ...\n");
+    printf("Unlinking audio decoder element ...\n");
     dec->UnlinkNextElement();
-    printf("Deleting dec %p...\n", dec);
+    printf("Deleting audio dec %p...\n", dec);
     delete dec;
     dec = NULL;
-    printf("DetachInputStream Done\n");
+    printf("AudioTranscoder: DetachInputStream Done\n");
 
     ReleaseMutex();
     return ERR_NONE;
@@ -227,8 +240,14 @@ errors_t AudioTranscoder::DetachInputStream(void *input_handle)
 
 void* AudioTranscoder::AttachOutputStream(void *encCfg)
 {
+    if (!encCfg) {
+        printf("Invalid encCfg parameter\n");
+        return NULL;
+    }
+
     BaseElement *element_enc = NULL;
     sAudioParams *audio_params = reinterpret_cast<sAudioParams *> (encCfg);
+    audio_params->enc_handle = NULL;
     printf("Attach output stream in AudioTrancoder %p\n", this);
     WaitMutex();
     //TODO prevent call this func before Init()
@@ -263,6 +282,7 @@ void* AudioTranscoder::AttachOutputStream(void *encCfg)
 
     mEncoder_list_.push_back(element_enc);
     mAPP_->LinkNextElement(element_enc);
+    audio_params->enc_handle = element_enc;
     printf("Link APP %p to encoder %p...enc list size %d\n", mAPP_, element_enc, (int)mEncoder_list_.size());
     if (is_running_) {
         element_enc->Start();
@@ -286,6 +306,12 @@ errors_t AudioTranscoder::DetachOutputStream(void *output_handle)
         return ERR_INVALID_INPUT_PARAMETER;
     }
 
+    if (1 == mEncoder_list_.size()) {
+        ReleaseMutex();
+        printf("The last output handle. Please stop the audio pipeline\n");
+        return ERR_INVALID_INPUT_PARAMETER;
+    }
+
     BaseElement *enc = static_cast<BaseElement*>(output_handle);
     for(std::list<BaseElement*>::iterator it_enc = mEncoder_list_.begin();
             it_enc != mEncoder_list_.end();
@@ -301,14 +327,14 @@ errors_t AudioTranscoder::DetachOutputStream(void *output_handle)
         ReleaseMutex();
         return ERR_INVALID_INPUT_PARAMETER;
     }
-    printf("Found enc, about to stop encoder %p...\n", enc);
+    printf("Found audio enc, about to stop audio encoder %p...\n", enc);
     enc->Stop();
-    printf("Unlinking element ...\n");
-    enc->UnlinkNextElement();
-    printf("Deleting enc %p...\n", enc);
+    printf("Unlinking audio enc element ...\n");
+    enc->UnlinkPrevElement();
+    printf("Deleting audio enc %p...\n", enc);
     delete enc;
     enc = NULL;
-    printf("DetachOutputStream Done\n");
+    printf("AudioTranscoder: DetachOutputStream Done\n");
 
     ReleaseMutex();
     return ERR_NONE;
@@ -337,90 +363,6 @@ int AudioTranscoder::GetInputActiveStatus(void *input_handle)
     return status;
 }
 
-errors_t AudioTranscoder::CreateEncoder(void *encCfg_list)
-{
-    bool res = true;
-    std::list<Stream *>::iterator output_i;
-    BaseElement *element_enc = NULL;
-    std::list<sAudioParams *>::iterator encOpt_i;
-    LIST_AUDDECOPT *encOpt_list = (LIST_AUDDECOPT *)encCfg_list;
-
-    output_i = mOutputStream_list_.begin();
-
-    for (encOpt_i = (*encOpt_list).begin();
-         encOpt_i != (*encOpt_list).end() && output_i != mOutputStream_list_.end();
-         encOpt_i++, output_i++) {
-        if ((*encOpt_i)->nCodecType == STREAM_TYPE_AUDIO_PCM) {
-            element_enc = new AudioPCMWriter(*output_i, NULL);
-        } else {
-#ifdef ENABLE_AUDIO_CODEC
-            element_enc = new AudioEncoder(*output_i, NULL);
-#endif
-        }
-
-        if (!element_enc) {
-            ReleaseMutex();
-            printf("Failed to new Encoder\n");
-            return ERR_ALLOCATION_FAIL;
-        }
-
-        printf("enter AudioTranscoder::CreateEncoder\n");
-        res = element_enc->Init((*encOpt_i), ELEMENT_MODE_PASSIVE);
-
-        if (!res) {
-            delete element_enc;
-            element_enc = NULL;
-            ReleaseMutex();
-            printf("Failed to initialise Encoder\n");
-            return ERR_ENCODER_INITIALIZATION_FAIL;
-        }
-
-       mEncoder_list_.push_back(element_enc);
-    }
-
-    return ERR_NONE;
-}
-
-void* AudioTranscoder::CreateDecoder(void *decCfg_list)
-{
-    BaseElement *element_dec = NULL;
-    std::list<sAudioParams *>::iterator decOpt_i;
-    std::list<MemPool *>::iterator input_i;
-    LIST_AUDDECOPT *decOpt_list = (LIST_AUDDECOPT *)decCfg_list;
-
-    input_i = mMemPool_list_.begin();
-
-    for (decOpt_i = (*decOpt_list).begin();
-         decOpt_i != (*decOpt_list).end() && input_i != mMemPool_list_.end();
-         decOpt_i++, input_i++) {
-        if ((*decOpt_i)->nCodecType == STREAM_TYPE_AUDIO_PCM) {
-            element_dec = new AudioPCMReader((*decOpt_i)->input_stream, NULL);
-        } else {
-#ifdef ENABLE_AUDIO_CODEC
-            element_dec = new AudioDecoder((*decOpt_i)->input_stream, NULL);
-#endif
-        }
-
-        if (!element_dec) {
-            ReleaseMutex();
-            printf("Failed to new Decoder\n");
-            return NULL;
-        }
-
-        if (!element_dec->Init((*decOpt_i), ELEMENT_MODE_ACTIVE)) {
-            delete element_dec;
-            element_dec = NULL;
-            ReleaseMutex();
-            printf("Failed to initialize Decoder\n");
-            return NULL;
-        }
-
-        mDecoder_list_.push_back(element_dec);
-    }
-
-    return element_dec;
-}
-
 void* AudioTranscoder::Init(void *decCfg, void *appCfg, void *encCfg)
 {
     FRMW_TRACE_INFO("mem pool size %d, input stream list size %d\n", (int)mMemPool_list_.size(),
@@ -437,6 +379,7 @@ void* AudioTranscoder::Init(void *decCfg, void *appCfg, void *encCfg)
     //create decoder object
     BaseElement *element_dec = NULL;
     sAudioParams *dec_params = reinterpret_cast<sAudioParams *> (decCfg);
+    dec_params->dec_handle = NULL;
 
     if (dec_params->nCodecType == STREAM_TYPE_AUDIO_PCM) {
         element_dec = new AudioPCMReader(dec_params->input_stream, NULL);
@@ -485,6 +428,7 @@ void* AudioTranscoder::Init(void *decCfg, void *appCfg, void *encCfg)
     //create encoder objects
     BaseElement *element_enc = NULL;
     sAudioParams *enc_params = reinterpret_cast<sAudioParams *> (encCfg);
+    enc_params->enc_handle = NULL;
 
     if (enc_params->nCodecType == STREAM_TYPE_AUDIO_PCM) {
        element_enc = new AudioPCMWriter(enc_params->output_stream, NULL);
@@ -525,6 +469,10 @@ void* AudioTranscoder::Init(void *decCfg, void *appCfg, void *encCfg)
 
     mDecoder_list_.push_back(element_dec);
     mEncoder_list_.push_back(element_enc);
+
+    dec_params->dec_handle = element_dec;
+    enc_params->enc_handle = element_enc;
+
     done_init_ = true;
 
     printf("Create pipeline done\n");
