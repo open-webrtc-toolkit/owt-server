@@ -21,7 +21,7 @@
 #include "VideoMixer.h"
 
 #include "EncodedVideoFrameSender.h"
-#include "HardwareVideoMixer.h"
+#include "HardwareVideoFrameMixer.h"
 #include "SoftVideoFrameMixer.h"
 #include "TaskRunner.h"
 #include "VCMInputProcessor.h"
@@ -46,7 +46,7 @@ VideoMixer::VideoMixer(erizo::RTPDataReceiver* receiver, bool hardwareAccelerate
     m_taskRunner.reset(new TaskRunner());
 
     if (m_hardwareAccelerated)
-        m_frameMixer.reset(new HardwareVideoMixer());
+        m_frameMixer.reset(new HardwareVideoFrameMixer());
     else
         m_frameMixer.reset(new SoftVideoFrameMixer());
 
