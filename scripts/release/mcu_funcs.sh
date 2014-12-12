@@ -9,9 +9,16 @@ pack_runtime() {
   mkdir -p ${WOOGEEN_DIST}/lib
   local LIBERIZO="${SOURCE}/core/build/erizo/src/erizo/liberizo.so"
   local LIBMCU="${SOURCE}/core/build/mcu/libmcu.so"
+  local LIBMCU_HW="${SOURCE}/core/build/mcu/libmcu_hw.so"
+  local LIBMCU_SW="${SOURCE}/core/build/mcu/libmcu_sw.so"
   local ADDON="${SOURCE}/bindings/mcu/build/Release/addon.node"
   [[ -s ${LIBERIZO} ]] && cp -av ${LIBERIZO} ${WOOGEEN_DIST}/lib
-  [[ -s ${LIBMCU} ]] && cp -av ${LIBMCU} ${WOOGEEN_DIST}/lib
+  if [[ -s ${LIBMCU_SW} ]] && [[ -s ${LIBMCU_HW} ]]; then
+    cp -av ${LIBMCU_HW} ${WOOGEEN_DIST}/lib
+    cp -av ${LIBMCU_SW} ${WOOGEEN_DIST}/lib
+  else
+    [[ -s ${LIBMCU} ]] && cp -av ${LIBMCU} ${WOOGEEN_DIST}/lib
+  fi
   [[ -s ${ADDON} ]] && \
   mkdir -p ${WOOGEEN_DIST}/bindings/mcu/build/Release && \
   cp -av ${ADDON} ${WOOGEEN_DIST}/bindings/mcu/build/Release && \
@@ -80,8 +87,7 @@ pack_sdk() {
 }
 
 pack_libs() {
-  [[ -s ${WOOGEEN_DIST}/lib/libmcu.so ]] && \
-  LD_LIBRARY_PATH=$ROOT/build/libdeps/build/lib:$ROOT/build/libdeps/build/lib64 ldd ${WOOGEEN_DIST}/lib/libmcu.so ${WOOGEEN_DIST}/lib/liberizo.so | grep '=>' | awk '{print $3}' | sort | uniq | while read line; do
+  LD_LIBRARY_PATH=$ROOT/build/libdeps/build/lib:$ROOT/build/libdeps/build/lib64 ldd ${WOOGEEN_DIST}/lib/libmcu{,_sw,_hw}.so ${WOOGEEN_DIST}/lib/liberizo.so | grep '=>' | awk '{print $3}' | sort | uniq | while read line; do
     if ! uname -a | grep [Uu]buntu -q -s; then # CentOS
       [[ -s "${line}" ]] && [[ -z `rpm -qf ${line} 2>/dev/null | grep 'glibc'` ]] && cp -Lv ${line} ${WOOGEEN_DIST}/lib
     else # Ubuntu
@@ -89,8 +95,10 @@ pack_libs() {
     fi
   done
   # remove openh264
-  rm -rf ${WOOGEEN_DIST}/lib/libx264*
-  #TODO: remove libs from msdk
+  rm -f ${WOOGEEN_DIST}/lib/libopenh264*
+  # remove libs from msdk
+  rm -f ${WOOGEEN_DIST}/lib/libmfxhw*
+  rm -f ${WOOGEEN_DIST}/lib/libva*
 }
 
 pack_scripts() {
@@ -98,7 +106,7 @@ pack_scripts() {
   cp -av ${ROOT}/scripts/.conf ${WOOGEEN_DIST}/bin/
   cp -av ${ROOT}/scripts/licode_default.js ${WOOGEEN_DIST}/etc/.licode_default.js
   cp -av ${ROOT}/scripts/custom_video_layout_default.js ${WOOGEEN_DIST}/etc/custom_video_layout.js
-  cp -av ${ROOT}/scripts/daemon-mcu.sh ${WOOGEEN_DIST}/bin/daemon.sh
+  cp -av ${this}/daemon-mcu.sh ${WOOGEEN_DIST}/bin/daemon.sh
   cp -av ${this}/launch-base.sh ${WOOGEEN_DIST}/bin/start-all.sh
   cp -av ${this}/launch-base.sh ${WOOGEEN_DIST}/bin/stop-all.sh
   cp -av ${this}/launch-base.sh ${WOOGEEN_DIST}/bin/restart-all.sh

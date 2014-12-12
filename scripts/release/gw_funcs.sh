@@ -75,7 +75,7 @@ pack_libs() {
 
 pack_scripts() {
   mkdir -p ${WOOGEEN_DIST}/bin/
-  cp -av ${ROOT}/scripts/daemon-gw.sh ${WOOGEEN_DIST}/bin/daemon.sh
+  cp -av ${this}/daemon-gw.sh ${WOOGEEN_DIST}/bin/daemon.sh
   cp -av ${this}/launch-base.sh ${WOOGEEN_DIST}/bin/start-all.sh
   cp -av ${this}/launch-base.sh ${WOOGEEN_DIST}/bin/stop-all.sh
   cp -av ${this}/launch-base.sh ${WOOGEEN_DIST}/bin/restart-all.sh
