@@ -10,10 +10,8 @@ pack_runtime() {
   local LIBERIZO="${SOURCE}/core/build/erizo/src/erizo/liberizo.so"
   local LIBMCU="${SOURCE}/core/build/mcu/libmcu.so"
   local ADDON="${SOURCE}/bindings/mcu/build/Release/addon.node"
-  [[ -s ${LIBERIZO} ]] && cp -av ${LIBERIZO} ${WOOGEEN_DIST}/lib && \
-  strip ${WOOGEEN_DIST}/lib/liberizo.so
-  [[ -s ${LIBMCU} ]] && cp -av ${LIBMCU} ${WOOGEEN_DIST}/lib && \
-  strip ${WOOGEEN_DIST}/lib/libmcu.so
+  [[ -s ${LIBERIZO} ]] && cp -av ${LIBERIZO} ${WOOGEEN_DIST}/lib
+  [[ -s ${LIBMCU} ]] && cp -av ${LIBMCU} ${WOOGEEN_DIST}/lib
   [[ -s ${ADDON} ]] && \
   mkdir -p ${WOOGEEN_DIST}/bindings/mcu/build/Release && \
   cp -av ${ADDON} ${WOOGEEN_DIST}/bindings/mcu/build/Release && \
