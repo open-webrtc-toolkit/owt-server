@@ -350,7 +350,7 @@ int32_t AudioMixer::performMix()
     AudioTransport* audioTransport = voe->audio_transport();
     int16_t data[AudioFrame::kMaxDataSizeSamples];
     uint32_t nSamplesOut = 0;
-    boost::shared_lock<boost::shared_mutex> lock(m_sourceMutex);
+    boost::shared_lock<boost::shared_mutex> lock(m_outputMutex);
     if (codec->GetSendCodec(m_sharedChannel.id, audioCodec) != -1) {
         if (audioTransport->NeedMorePlayData(
             audioCodec.plfreq / 1000 * 10, // samples per channel in a 10 ms period. FIXME: hard coded timer interval.
