@@ -548,7 +548,11 @@ var listen = function () {
                         answer = answer.replace(privateRegexp, publicIP);
                         safeCall(callback, answer, id);
                     }, function() {
-                        st = new ST.Stream({id: id, audio: options.audio, video: options.video, data: options.data, screen: options.screen, attributes: options.attributes});
+                        var hasScreen = false;
+                        if (options.video && options.video.device === 'screen') {
+                            hasScreen = true;
+                        }
+                        st = new ST.Stream({id: id, audio: options.audio, video: options.video, data: options.data, screen: hasScreen, attributes: options.attributes});
                         socket.state = 'sleeping';
                         socket.streams.push(id);
                         socket.room.streams[id] = st;
@@ -566,7 +570,11 @@ var listen = function () {
                 });
             } else {
                 id = Math.random() * 1000000000000000000;
-                st = new ST.Stream({id: id, socket: socket.id, audio: options.audio, video: options.video, data: options.data, screen: options.screen, attributes: options.attributes});
+                var hasScreen = false;
+                if (options.video && options.video.device === 'screen') {
+                    hasScreen = true;
+                }
+                st = new ST.Stream({id: id, socket: socket.id, audio: options.audio, video: options.video, data: options.data, screen: hasScreen, attributes: options.attributes});
                 socket.streams.push(id);
                 socket.room.streams[id] = st;
                 safeCall(callback, undefined, id);
