@@ -2,7 +2,6 @@
 
 #include <string.h>
 #include <iostream>
-#include <webrtc/system_wrappers/interface/tick_util.h>
 #include "msdk_xcoder.h"
 
 #define GOP_SIZE 24
