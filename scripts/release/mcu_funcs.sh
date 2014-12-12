@@ -83,13 +83,15 @@ pack_sdk() {
 
 pack_libs() {
   [[ -s ${WOOGEEN_DIST}/lib/libmcu.so ]] && \
-  LD_LIBRARY_PATH=$ROOT/build/libdeps/build/lib:$ROOT/build/libdeps/build/lib64 ldd ${WOOGEEN_DIST}/lib/libmcu.so | grep '=>' | awk '{print $3}' | while read line; do
+  LD_LIBRARY_PATH=$ROOT/build/libdeps/build/lib:$ROOT/build/libdeps/build/lib64 ldd ${WOOGEEN_DIST}/lib/libmcu.so ${WOOGEEN_DIST}/lib/liberizo.so | grep '=>' | awk '{print $3}' | sort | uniq | while read line; do
     if ! uname -a | grep [Uu]buntu -q -s; then # CentOS
       [[ -s "${line}" ]] && [[ -z `rpm -qf ${line} 2>/dev/null | grep 'glibc'` ]] && cp -Lv ${line} ${WOOGEEN_DIST}/lib
     else # Ubuntu
       [[ -s "${line}" ]] && [[ -z `dpkg -S ${line} 2>/dev/null | grep 'libc6\|libselinux'` ]] && cp -Lv ${line} ${WOOGEEN_DIST}/lib
     fi
   done
+  # remove openh264
+  rm -rf ${WOOGEEN_DIST}/lib/libx264*
   #TODO: remove libs from msdk
 }
 

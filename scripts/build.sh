@@ -29,7 +29,7 @@ fi
 
 BUILD_GATEWAY_RUNTIME=false
 BUILD_MCU_RUNTIME=false
-BUILD_SDK_CLIENT=false
+BUILD_SDK=false
 BUILDTYPE="Release"
 BUILD_ROOT="${ROOT}/build"
 DEPS_ROOT="${ROOT}/build/libdeps/build"
@@ -46,7 +46,7 @@ while [[ $# -gt 0 ]]; do
     *(-)all )
       BUILD_GATEWAY_RUNTIME=true
       BUILD_MCU_RUNTIME=true
-      BUILD_SDK_CLIENT=true
+      BUILD_SDK=true
       ;;
     *(-)gateway )
       BUILD_GATEWAY_RUNTIME=true
@@ -55,7 +55,7 @@ while [[ $# -gt 0 ]]; do
       BUILD_MCU_RUNTIME=true
       ;;
     *(-)sdk )
-      BUILD_SDK_CLIENT=true
+      BUILD_SDK=true
       ;;
     *(-)help )
       usage
@@ -78,9 +78,6 @@ build_mcu_runtime() {
   CMAKE_ADDITIONAL_OPTIONS="-DCOMPILE_MCU=ON"
   RUNTIME_ADDON_SRC_DIR="${SOURCE}/bindings/mcu"
   build_runtime
-
-  cd $ROOT/source/erizo_controller
-  ./installErizo_controller.sh
 
   install_config
 }
@@ -140,33 +137,11 @@ build_mcu_client_sdk() {
 
 build_mcu_server_sdk() {
   local SERVERSDK_DIR="${SOURCE}/nuve/nuveClient"
-  local DESTFILE="${BUILD_ROOT}/sdk/nuve.js"
   # nuve.js
-  if [[ ${BUILDTYPE} == "Release" ]]; then
-    if ! hash java 2>/dev/null; then
-      echo >&2 "java not found."
-      echo >&2 "You need to install jre or jdk."
-      return 1
-    fi
-    java -jar "${SERVERSDK_DIR}/tools/compiler.jar" \
-    --js "${SERVERSDK_DIR}/src/hmac-sha1.js" --js "${SERVERSDK_DIR}/src/N.js" \
-    --js "${SERVERSDK_DIR}/src/N.Base64.js" --js "${SERVERSDK_DIR}/src/N.API.js" \
-    --js_output_file "${BUILD_ROOT}/sdk/nuve_tmp.js"
-    java -jar "${SOURCE}/nuve/nuveClient/tools/compiler.jar" \
-    --js "${SERVERSDK_DIR}/lib/xmlhttprequest.js" \
-    --js_output_file "${DESTFILE}"
-    cat "${BUILD_ROOT}/sdk/nuve_tmp.js" >> "${DESTFILE}"
-    echo 'module.exports = N;' >> "${DESTFILE}"
-    rm -f "${BUILD_ROOT}/sdk/nuve_tmp.js"
-  else
-    cat "${SERVERSDK_DIR}/lib/xmlhttprequest.js" > "${DESTFILE}"
-    cat "${SERVERSDK_DIR}/src/hmac-sha1.js" >> "${DESTFILE}"
-    cat "${SERVERSDK_DIR}/src/N.js" >> "${DESTFILE}"
-    cat "${SERVERSDK_DIR}/src/N.Base64.js" >> "${DESTFILE}"
-    cat "${SERVERSDK_DIR}/src/N.API.js" >> "${DESTFILE}"
-    echo 'module.exports = N;' >> "${DESTFILE}"
-  fi
-  echo "==> SDK:${BUILDTYPE}:nuve.js -> \`${DESTFILE}'"
+  cd ${SERVERSDK_DIR}/tools
+  ./compile.sh
+  echo [nuve] Done, nuve.js compiled
+  cp -av ${SERVERSDK_DIR}/dist/nuve.js ${SOURCE}/extras/basic_example/
 }
 
 install_config() {
@@ -186,8 +161,9 @@ build() {
     build_mcu_runtime
     ((DONE++))
   fi
-  if ${BUILD_SDK_CLIENT} ; then
+  if ${BUILD_SDK} ; then
     build_mcu_client_sdk
+    build_mcu_server_sdk
     ((DONE++))
   fi
   if [[ ${DONE} -eq 0 ]]; then

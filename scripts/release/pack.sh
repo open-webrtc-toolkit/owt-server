@@ -51,6 +51,10 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 
+if ! hash pack_runtime 2>/dev/null; then
+  usage
+  exit 0
+fi
 echo "Cleaning ${WOOGEEN_DIST}/ ..."; rm -fr ${WOOGEEN_DIST}/
 pack_runtime
 pack_libs
