@@ -10,10 +10,8 @@ pack_runtime() {
   local LIBERIZO="${SOURCE}/core/build/erizo/src/erizo/liberizo.so"
   local LIBOOVOOGATEWAY="${SOURCE}/core/build/oovoo_gateway/liboovoo_gateway.so"
   local GATEWAY_ADDON="${SOURCE}/bindings/oovoo_gateway/build/Release/addon.node"
-  [[ -s ${LIBERIZO} ]] && cp -av ${LIBERIZO} ${WOOGEEN_DIST}/lib && \
-  strip ${WOOGEEN_DIST}/lib/liberizo.so
-  [[ -s ${LIBOOVOOGATEWAY} ]] && cp -av ${LIBOOVOOGATEWAY} ${WOOGEEN_DIST}/lib && \
-  strip ${WOOGEEN_DIST}/lib/liboovoo_gateway.so
+  [[ -s ${LIBERIZO} ]] && cp -av ${LIBERIZO} ${WOOGEEN_DIST}/lib
+  [[ -s ${LIBOOVOOGATEWAY} ]] && cp -av ${LIBOOVOOGATEWAY} ${WOOGEEN_DIST}/lib
   [[ -s ${GATEWAY_ADDON} ]] && \
   mkdir -p ${WOOGEEN_DIST}/bindings/gateway/build/Release && \
   cp -av ${GATEWAY_ADDON} ${WOOGEEN_DIST}/bindings/gateway/build/Release && \

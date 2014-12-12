@@ -36,6 +36,7 @@ archive() {
     echo "using git revision as version number."
     VER=$(cd ${ROOT} && git show-ref --head | head -1 | fold -w 8 | head -1)
   fi
+  for file in ${WOOGEEN_DIST}/lib/* ; do strip -s "$file" ; done
   cd ${ROOT} && tar --numeric-owner -czf "Release-${VER}.tgz" ${WOOGEEN_DIST}
   echo -e "\x1b[32mRelease-${VER}.tgz generated.\x1b[0m"
 }
