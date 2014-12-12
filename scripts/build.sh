@@ -12,7 +12,9 @@ usage() {
   echo "    --release (default)                 build in release mode"
   echo "    --debug                             build in debug mode"
   echo "    --gateway                           build oovoo gateway library & addon"
-  echo "    --mcu                               build mcu runtime library & addon"
+  echo "    --mcu (software)                    build mcu runtime library & addon without msdk"
+  echo "    --mcu-hardware                      build mcu runtime library & addon with msdk"
+  echo "    --mcu-all                           build mcu runtime library & addon both with and without msdk"
   echo "    --sdk                               build sdk"
   echo "    --all                               build all components"
   echo "    --help                              print this help"
@@ -28,7 +30,9 @@ if [[ $# -eq 0 ]];then
 fi
 
 BUILD_GATEWAY_RUNTIME=false
-BUILD_MCU_RUNTIME=false
+BUILD_MCU_RUNTIME_SW=false
+BUILD_MCU_RUNTIME_HW=false
+BUILD_MCU_BUNDLE=false
 BUILD_SDK=false
 BUILDTYPE="Release"
 BUILD_ROOT="${ROOT}/build"
@@ -45,14 +49,22 @@ while [[ $# -gt 0 ]]; do
       ;;
     *(-)all )
       BUILD_GATEWAY_RUNTIME=true
-      BUILD_MCU_RUNTIME=true
+      BUILD_MCU_RUNTIME_SW=true
+      BUILD_MCU_RUNTIME_HW=true
       BUILD_SDK=true
       ;;
     *(-)gateway )
       BUILD_GATEWAY_RUNTIME=true
       ;;
     *(-)mcu )
-      BUILD_MCU_RUNTIME=true
+      BUILD_MCU_RUNTIME_SW=true
+      ;;
+    *(-)mcu-hardware )
+      BUILD_MCU_RUNTIME_HW=true
+      ;;
+    *(-)mcu-all )
+      BUILD_MCU_RUNTIME_SW=true
+      BUILD_MCU_RUNTIME_HW=true
       ;;
     *(-)sdk )
       BUILD_SDK=true
@@ -68,6 +80,8 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 
+${BUILD_MCU_RUNTIME_HW} && ${BUILD_MCU_RUNTIME_SW} && BUILD_MCU_BUNDLE=true
+
 build_gateway_runtime() {
   CMAKE_ADDITIONAL_OPTIONS="-DCOMPILE_OOVOO_GATEWAY=ON"
   RUNTIME_ADDON_SRC_DIR="${SOURCE}/bindings/oovoo_gateway"
@@ -78,8 +92,18 @@ build_mcu_runtime() {
   CMAKE_ADDITIONAL_OPTIONS="-DCOMPILE_MCU=ON"
   RUNTIME_ADDON_SRC_DIR="${SOURCE}/bindings/mcu"
   build_runtime
+}
 
-  install_config
+build_mcu_runtime_sw() {
+  unset BUILD_WITH_MSDK
+  build_mcu_runtime
+  ${BUILD_MCU_BUNDLE} && cp -av ${SOURCE}/core/build/mcu/libmcu{,_sw}.so
+}
+
+build_mcu_runtime_hw() {
+  export BUILD_WITH_MSDK=true
+  build_mcu_runtime
+  ${BUILD_MCU_BUNDLE} && cp -av ${SOURCE}/core/build/mcu/libmcu{,_hw}.so
 }
 
 build_runtime() {
@@ -144,11 +168,6 @@ build_mcu_server_sdk() {
   cp -av ${SERVERSDK_DIR}/dist/nuve.js ${SOURCE}/extras/basic_example/
 }
 
-install_config() {
-  mkdir -p ${SOURCE}/etc
-  cp -av ${this}/custom_video_layout_default.js ${SOURCE}/etc/custom_video_layout.js
-}
-
 build() {
   local DONE=0
   mkdir -p "${BUILD_ROOT}/sdk"
@@ -157,8 +176,12 @@ build() {
     build_gateway_runtime
     ((DONE++))
   fi
-  if ${BUILD_MCU_RUNTIME} ; then
-    build_mcu_runtime
+  if ${BUILD_MCU_RUNTIME_SW} ; then
+    build_mcu_runtime_sw
+    ((DONE++))
+  fi
+  if ${BUILD_MCU_RUNTIME_HW} ; then
+    build_mcu_runtime_hw
     ((DONE++))
   fi
   if ${BUILD_SDK} ; then
