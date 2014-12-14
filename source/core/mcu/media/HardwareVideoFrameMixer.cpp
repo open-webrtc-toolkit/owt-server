@@ -168,12 +168,8 @@ void HardwareVideoFrameMixer::setLayout(const VideoLayout& layout)
         std::vector<Region>::const_iterator regionIt = layout.regions.begin();
         for (std::map<int, boost::shared_ptr<HardwareVideoFrameMixerInput>>::iterator it=m_inputs.begin(); it!=m_inputs.end(); ++it) {
             if (regionIt != layout.regions.end()) {
-                RegionInfo regionInfo;
-                regionInfo.id = (*regionIt).id;
-                regionInfo.left = (*regionIt).left;
-                regionInfo.top = (*regionIt).top;
-                regionInfo.relativeSize = (*regionIt).relativeSize;
-                regionInfo.priority = (*regionIt).priority;
+                RegionInfo regionInfo = {regionIt->left, regionIt->top,
+                    regionIt->relativeSize, regionIt->relativeSize};
 
                 // TODO: Currently, map the input to region sequentially.
                 // Some enhancement like VAD will change this logic in the future.
@@ -187,12 +183,8 @@ void HardwareVideoFrameMixer::setLayout(const VideoLayout& layout)
         }
 
         while (regionIt != layout.regions.end()) {
-            RegionInfo regionInfo;
-            regionInfo.id = (*regionIt).id;
-            regionInfo.left = (*regionIt).left;
-            regionInfo.top = (*regionIt).top;
-            regionInfo.relativeSize = (*regionIt).relativeSize;
-            regionInfo.priority = (*regionIt).priority;
+            RegionInfo regionInfo = {regionIt->left, regionIt->top,
+                regionIt->relativeSize, regionIt->relativeSize};
             m_currentLayout.candidateRegions.push_back(regionInfo);
 
             ++regionIt;

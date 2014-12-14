@@ -112,12 +112,8 @@ void VideoMixEngineImp::setRegions(const std::map<InputIndex, RegionInfo>& layou
     int ret = -1;
 
     for(; it_dec != layoutMapping.end(); ++it_dec) {
-        Region regionInfo;
-        regionInfo.left = it_dec->second.left;
-        regionInfo.top = it_dec->second.top;
-        regionInfo.width_ratio = it_dec->second.relativeSize;
-        regionInfo.height_ratio = it_dec->second.relativeSize;
-
+        Region regionInfo = {it_dec->second.left, it_dec->second.top,
+            it_dec->second.width_ratio, it_dec->second.height_ratio};
         std::map<InputIndex, InputInfo>::iterator it = m_inputs.find(it_dec->first);
         if (it != m_inputs.end() && it->second.decHandle != NULL) {
             if (!set_combo_type) {
@@ -130,6 +126,7 @@ void VideoMixEngineImp::setRegions(const std::map<InputIndex, RegionInfo>& layou
                 }
             }
             if (it_dec->first == re_it_dec->first) {
+                // TODO: Make the Region parameter constant in SetRegionInfo in VCSA
                 ret = m_xcoder->SetRegionInfo(m_vpp->vppHandle, it->second.decHandle, regionInfo, true);
                 if (ret < 0) {
                     printf("[%s]Fail to set region, input index:%d\n", __FUNCTION__, it_dec->first);
@@ -138,6 +135,7 @@ void VideoMixEngineImp::setRegions(const std::map<InputIndex, RegionInfo>& layou
                     printf("[%s]End set dynamic layout\n", __FUNCTION__);
                 }
             } else {
+                // TODO: Make the Region parameter constant in SetRegionInfo in VCSA
                 ret = m_xcoder->SetRegionInfo(m_vpp->vppHandle, it->second.decHandle, regionInfo, false);
                 if (ret < 0) {
                     printf("[%s]Fail to set region, input index:%d\n", __FUNCTION__, it_dec->first);
