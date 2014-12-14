@@ -1,11 +1,9 @@
 #ifndef VideoMixEngineImp_h
 #define VideoMixEngineImp_h
 
-
 #include <map>
 #include "msdk_xcoder.h"
 #include "VideoMixEngine.h"
-
 
 struct InputInfo {
     VideoMixCodecType codec;

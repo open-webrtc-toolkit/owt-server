@@ -26,25 +26,24 @@ struct FrameSize {
     int height;
 };
 
-enum VideoMixCodecType{
+enum VideoMixCodecType {
     VCT_MIX_VP8 = 0,
     VCT_MIX_H264,
     VCT_MIX_UNKNOWN
 };
 
 /* background color*/
-struct BackgroundColor{
+struct BackgroundColor {
     unsigned short y;
     unsigned short cb;
     unsigned short cr;
 };
 
 struct RegionInfo {
-    std::string id;
-    float left; // percentage
-    float top; // percentage
-    float relativeSize; //fraction
-    float priority;
+    float left;            //"x / WIDTH"
+    float top;             //"y / HEIGHT"
+    float width_ratio;     //"width / WIDTH"
+    float height_ratio;    //"height / HEIGHT"
 };
 
 struct CustomLayoutInfo {
