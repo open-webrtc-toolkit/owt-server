@@ -30,6 +30,19 @@ app.use(bodyParser.urlencoded({
     extended: true
 }));
 
+app.use(function (req, res, next) {
+  "use strict";
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS, DELETE');
+  res.header('Access-Control-Allow-Headers', 'origin, content-type');
+  if (req.method == 'OPTIONS') {
+    res.send(200);
+  }
+  else {
+    next();
+  }
+});
+
 //app.set('views', __dirname + '/../views/');
 //disable layout
 //app.set("view options", {layout: false});
