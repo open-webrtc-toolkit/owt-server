@@ -159,6 +159,7 @@
     return false;
   };
 
+  /*
   WoogeenStream.prototype.playAudio = function(tracknum, onSuccess, onFailure) {
     if (typeof tracknum === 'function') {
       onFailure = onSuccess;
@@ -247,6 +248,7 @@
       onFailure('unable to call pauseVideo');
     }
   };
+  */
 
   function WoogeenLocalStream (spec) {
     WoogeenStream.call(this, spec);
