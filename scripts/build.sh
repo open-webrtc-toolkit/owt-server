@@ -97,13 +97,13 @@ build_mcu_runtime() {
 build_mcu_runtime_sw() {
   unset BUILD_WITH_MSDK
   build_mcu_runtime
-  ${BUILD_MCU_BUNDLE} && cp -av ${SOURCE}/core/build/mcu/libmcu{,_sw}.so
+  ${BUILD_MCU_BUNDLE} && cp -av ${SOURCE}/core/build/mcu/libmcu{,_sw}.so || rm -f ${SOURCE}/core/build/mcu/libmcu_sw.so
 }
 
 build_mcu_runtime_hw() {
   export BUILD_WITH_MSDK=true
   build_mcu_runtime
-  ${BUILD_MCU_BUNDLE} && cp -av ${SOURCE}/core/build/mcu/libmcu{,_hw}.so
+  ${BUILD_MCU_BUNDLE} && cp -av ${SOURCE}/core/build/mcu/libmcu{,_hw}.so || rm -f ${SOURCE}/core/build/mcu/libmcu_hw.so
 }
 
 build_runtime() {
