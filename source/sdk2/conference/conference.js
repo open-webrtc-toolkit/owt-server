@@ -199,7 +199,8 @@ Woogeen.ConferenceClient = (function () {
                 streamId: spec.streamId,
                 subsSocket: spec.subsSocket
               }, offer, function (answer) {
-                if (answer === 'error') {
+                if (answer === 'error' || answer === 'timeout') {
+                  L.Logger.warning('invalid answer');
                   return;
                 }
                 myStream.channel[spec.subsSocket].onsignalingmessage = function () {
@@ -514,6 +515,9 @@ Woogeen.ConferenceClient = (function () {
             if (answer === 'error') {
               return safeCall(onFailure, id);
             }
+            if (answer === 'timeout') {
+              return safeCall(onFailure, answer);
+            }
             stream.channel.onsignalingmessage = function () {
               stream.channel.onsignalingmessage = function () {};
               stream.id = function () {
@@ -618,7 +622,7 @@ Woogeen.ConferenceClient = (function () {
           audio: stream.hasAudio(),
           video: stream.hasVideo()
         }, offer, function (answer) {
-          if (answer === 'error') {
+          if (answer === 'error' || answer === 'timeout') {
             return safeCall(onFailure, answer);
           }
           stream.channel.processSignalingMessage(answer);
