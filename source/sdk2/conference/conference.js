@@ -1,5 +1,5 @@
 /* global io, console */
-Woogeen.Conference = (function () {
+Woogeen.ConferenceClient = (function () {
   'use strict';
 
   function safeCall () {
@@ -435,7 +435,7 @@ Woogeen.Conference = (function () {
 
   WoogeenConference.prototype = Woogeen.EventDispatcher({}); // make WoogeenConference a eventDispatcher
 
-  WoogeenConference.prototype.quit = function () {
+  WoogeenConference.prototype.disconnect = function () {
     var evt = new Woogeen.ClientEvent({type: 'client-disconnected'});
     this.dispatchEvent(evt);
   };
