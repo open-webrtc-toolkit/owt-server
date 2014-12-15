@@ -473,9 +473,10 @@ namespace erizo {
 
   // changes the outgoing payload type for in the given data packet
   void WebRtcConnection::changeDeliverPayloadType(dataPacket *dp, packetType type) {
-    RtpHeader* h = reinterpret_cast<RtpHeader*>(dp->data);
-    RtcpHeader *chead = reinterpret_cast<RtcpHeader*>(dp->data);
-    if (!chead->isRtcp()) {
+    RTPHeader* h = reinterpret_cast<RTPHeader*>(dp->data);
+    RTCPHeader* chead = reinterpret_cast<RTCPHeader*>(dp->data);
+    uint8_t packetType = chead->getPacketType();
+    if (packetType != RTCP_Sender_PT && packetType != RTCP_Receiver_PT && packetType != RTCP_PS_Feedback_PT && packetType != RTCP_RTP_Feedback_PT) {
         int internalPT = h->getPayloadType();
         int externalPT = internalPT;
         if (type == AUDIO_PACKET) {
@@ -483,6 +484,13 @@ namespace erizo {
         } else if (type == VIDEO_PACKET) {
             externalPT = remoteSdp_.getVideoExternalPT(externalPT);
         }
+
+        if (internalPT == RED_90000_PT) {
+          assert(type == VIDEO_PACKET);
+          redheader* redhead = (redheader*)(dp->data);
+          redhead->payloadtype = remoteSdp_.getVideoExternalPT(redhead->payloadtype);
+        }
+
         if (internalPT != externalPT) {
             h->setPayloadType(externalPT);
         }
@@ -491,9 +499,10 @@ namespace erizo {
 
   // parses incoming payload type, replaces occurence in buf
   void WebRtcConnection::parseIncomingPayloadType(char *buf, int len, packetType type) {
-      RtcpHeader* chead = reinterpret_cast<RtcpHeader*>(buf);
-      RtpHeader* h = reinterpret_cast<RtpHeader*>(buf);
-      if (!chead->isRtcp()) {
+      RTCPHeader* chead = reinterpret_cast<RTCPHeader*>(buf);
+      RTPHeader* h = reinterpret_cast<RTPHeader*>(buf);
+      uint8_t packetType = chead->getPacketType();
+      if (packetType != RTCP_Sender_PT && packetType != RTCP_Receiver_PT && packetType != RTCP_PS_Feedback_PT && packetType != RTCP_RTP_Feedback_PT) {
         int externalPT = h->getPayloadType();
         int internalPT = externalPT;
         if (type == AUDIO_PACKET) {
@@ -501,6 +510,13 @@ namespace erizo {
         } else if (type == VIDEO_PACKET) {
             internalPT = remoteSdp_.getVideoInternalPT(externalPT);
         }
+
+        if (internalPT == RED_90000_PT) {
+          assert(type == VIDEO_PACKET);
+          redheader* redhead = (redheader*)(buf);
+          redhead->payloadtype = remoteSdp_.getVideoInternalPT(redhead->payloadtype);
+        }
+
         if (externalPT != internalPT) {
             h->setPayloadType(internalPT);
             //ELOG_ERROR("onTransportData mapping %i to %i", externalPT, internalPT);
