@@ -20,7 +20,7 @@ usage() {
   echo "    --help                              print this help"
   echo "Example:"
   echo "    --release --all                     build all components in release mode"
-  echo "    --debug --runtime                   build runtime in debug mode"
+  echo "    --debug --mcu                       build mcu in debug mode"
   echo
 }
 
