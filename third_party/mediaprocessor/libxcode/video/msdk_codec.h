@@ -171,6 +171,8 @@ public:
 
     ElementType GetCodecType();
 
+    int MarkLTR();
+
     void SetForceKeyFrame();
 
     void SetResetBitrateFlag();
@@ -256,6 +258,9 @@ private:
     bool reset_bitrate_flag_;
     bool reset_res_flag_;
     mfxEncodeCtrl enc_ctrl_;
+    mfxU32 m_nFramesProcessed;
+    mfxExtAVCRefListCtrl m_avcRefList;
+    bool m_bMarkLTR;
 
     // VPP
     MFXVideoVPP *mfx_vpp_;
@@ -385,6 +390,9 @@ private:
     mfxStatus WriteBitStreamFrame(mfxBitstream *pMfxBitstream, Stream *out_stream);
     int SetVppCompParam(mfxExtVPPComposite *vpp_comp);
     int PrepareVppCompFrames();
+
+    void OnFrameEncoded(mfxBitstream *pBs);
+    void OnMarkLTR();
 
     /**
      * \brief benchmark.

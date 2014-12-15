@@ -361,6 +361,7 @@ void VideoMixEngineImp::installOutput(OutputIndex index)
         enc_cfg.outputStream = stream;
         enc_cfg.output_codec_type = codec_type_dict[m_outputs[index].codec];
         enc_cfg.bitrate = m_outputs[index].bitrate;
+        enc_cfg.numRefFrame = 1;
         enc_cfg.measuremnt = NULL;
 
         if (m_outputs[index].codec == VCT_MIX_H264) {
@@ -430,6 +431,7 @@ void VideoMixEngineImp::setupPipeline()
     enc_cfg.outputStream = stream;
     enc_cfg.output_codec_type = codec_type_dict[output.codec];
     enc_cfg.bitrate = output.bitrate;
+    enc_cfg.numRefFrame = 1;
     enc_cfg.measuremnt = NULL;
     if (output.codec == VCT_MIX_H264) {
         enc_cfg.profile = 66;

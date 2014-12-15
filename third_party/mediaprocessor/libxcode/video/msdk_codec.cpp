@@ -178,6 +178,9 @@ MSDKCodec::MSDKCodec(ElementType type, MFXVideoSession *session, MFXFrameAllocat
     old_out_width_ = 0;
     old_out_height_ = 0;
     memset(&bg_color_info, 0, sizeof(bg_color_info));
+    m_nFramesProcessed = 0;
+    m_bMarkLTR = false;
+    memset(&m_avcRefList, 0, sizeof(m_avcRefList));
 }
 
 MSDKCodec::~MSDKCodec()
@@ -574,7 +577,7 @@ bool MSDKCodec::Init(void *cfg, ElementMode element_mode)
         }
 
         mfx_video_param_.mfx.NumSlice = ele_param->EncParams.mfx.NumSlice;
-        mfx_video_param_.mfx.NumRefFrame = 1;//ele_param->EncParams.mfx.NumRefFrame;
+        mfx_video_param_.mfx.NumRefFrame = ele_param->EncParams.mfx.NumRefFrame;
         mfx_video_param_.mfx.EncodedOrder = ele_param->EncParams.mfx.EncodedOrder;
         mfx_video_param_.AsyncDepth = 1;
         extParams.bMBBRC = ele_param->extParams.bMBBRC;
@@ -806,6 +809,7 @@ int MSDKCodec::SetVppCompParam(mfxExtVPPComposite *vpp_comp)
     //stream_idx - to indicate stream's index in vpp_comp->InputStream(as that in sinkpads_).
     int *stream_idx;
     stream_idx = new int[stream_cnt];
+    memset(stream_idx, 0, sizeof(int) * stream_cnt);
     std::list<MediaPad *>::iterator it_sinkpad;
     bool is_text;
     bool is_pic;
@@ -938,7 +942,7 @@ int MSDKCodec::SetVppCompParam(mfxExtVPPComposite *vpp_comp)
         if (stream_cnt <= 6) {
             line_size = 3;
         } else if (stream_cnt > 6 && stream_cnt <= 16) {
-            line_size = stream_cnt / 2;
+            line_size = (stream_cnt + 1) / 2;
         }
 
         //find the index for master stream input
@@ -1327,11 +1331,12 @@ mfxStatus MSDKCodec::InitEncoder(MediaBuf &buf)
                mfx_video_param_.mfx.TargetKbps);
     }
 
-#ifdef ENABLE_ASTA_CONFIG
-    //extcoding options for instructing encoder to specify maxdecodebuffering=1
+    //extcoding options for instructing encoder to specify maxdecodebuffering
     if (mfx_video_param_.mfx.CodecId == MFX_CODEC_AVC) {
         coding_opt.Header.BufferId = MFX_EXTBUFF_CODING_OPTION;
         coding_opt.Header.BufferSz = sizeof(coding_opt);
+        coding_opt.MaxDecFrameBuffering = mfx_video_param_.mfx.NumRefFrame;
+#ifdef ENABLE_ASTA_CONFIG
         coding_opt.AUDelimiter = MFX_CODINGOPTION_OFF;//No AUD
         coding_opt.RecoveryPointSEI = MFX_CODINGOPTION_OFF;//No SEI
         coding_opt.PicTimingSEI = MFX_CODINGOPTION_OFF;
@@ -1339,9 +1344,9 @@ mfxStatus MSDKCodec::InitEncoder(MediaBuf &buf)
         //cause that the ouptu file unusual when setup the NumSlice > 1
         coding_opt.VuiNalHrdParameters = MFX_CODINGOPTION_ON;
         coding_opt.VuiVclHrdParameters = MFX_CODINGOPTION_OFF;
+#endif
         m_EncExtParams.push_back(reinterpret_cast<mfxExtBuffer *>(&coding_opt));
     }
-#endif
 
     //extcoding option2
     if (mfx_video_param_.mfx.CodecId == MFX_CODEC_AVC) {
@@ -1361,6 +1366,7 @@ mfxStatus MSDKCodec::InitEncoder(MediaBuf &buf)
         //max slice size setting, supported for AVC only, not compatible with "slice num"
         if (extParams.nMaxSliceSize) {
             coding_opt2.MaxSliceSize = extParams.nMaxSliceSize;
+            printf("nMaxSlixeSize = %d\n", coding_opt2.MaxSliceSize);
         }
 
         m_EncExtParams.push_back(reinterpret_cast<mfxExtBuffer *>(&coding_opt2));
@@ -1488,6 +1494,28 @@ mfxStatus MSDKCodec::InitEncoder(MediaBuf &buf)
     output_bs_.Data = new mfxU8[output_bs_.MaxLength];
     printf("output bitstream buffer size %d\n", output_bs_.MaxLength);
 
+    m_EncExtParams.clear();
+    m_nFramesProcessed = 0;
+
+    if (mfx_video_param_.mfx.CodecId == MFX_CODEC_AVC) {
+        //initialize m_avcRefList
+        memset(&m_avcRefList, 0, sizeof(m_avcRefList));
+        m_avcRefList.Header.BufferId = MFX_EXTBUFF_AVC_REFLIST_CTRL;
+        m_avcRefList.Header.BufferSz = sizeof(m_avcRefList);
+
+        int i = 0;
+        for (i = 0; i < 32; i++) {
+           m_avcRefList.PreferredRefList[i].FrameOrder = (mfxU32)MFX_FRAMEORDER_UNKNOWN;
+           m_avcRefList.PreferredRefList[i].PicStruct  = mfx_video_param_.mfx.FrameInfo.PicStruct;
+        }
+        for (i = 0; i < 16; i++) {
+           m_avcRefList.RejectedRefList[i].FrameOrder  = (mfxU32)MFX_FRAMEORDER_UNKNOWN;
+           m_avcRefList.RejectedRefList[i].PicStruct   = mfx_video_param_.mfx.FrameInfo.PicStruct;
+           m_avcRefList.LongTermRefList[i].FrameOrder  = (mfxU32)MFX_FRAMEORDER_UNKNOWN;
+           m_avcRefList.LongTermRefList[i].PicStruct   = mfx_video_param_.mfx.FrameInfo.PicStruct;
+        }
+    }
+
     if (measuremnt) {
         measuremnt->GetLock();
         measuremnt->TimeStpFinish(ENC_INIT_TIME_STAMP, this);
@@ -1561,20 +1589,9 @@ int MSDKCodec::ProcessChainEncode(MediaBuf &buf)
             printf("Info: to reset encoder res as %d x %d\n",
                    mfx_video_param_.mfx.FrameInfo.Width, mfx_video_param_.mfx.FrameInfo.Height);
         }
-    }
 
-    if (force_key_frame_) {
-        if (ELEMENT_ENCODER == element_type_) {
-            memset(&enc_ctrl_, 0, sizeof(enc_ctrl_));
-            enc_ctrl_.FrameType = MFX_FRAMETYPE_I | MFX_FRAMETYPE_IDR | MFX_FRAMETYPE_REF;
-            enc_ctrl = &enc_ctrl_;
-#ifdef ENABLE_VPX_CODEC
-        } else {
-            ((VP8EncPlugin *)user_enc_)->VP8ForceKeyFrame();
-#endif
-        }
-
-        force_key_frame_ = false;
+        //mark the frame order for incoming surface.
+        pmfxInSurface->Data.FrameOrder = m_nFramesProcessed;
     }
 
     if (reset_bitrate_flag_) {
@@ -1667,6 +1684,34 @@ int MSDKCodec::ProcessChainEncode(MediaBuf &buf)
         reset_res_flag_ = false;
     }
 
+    if (force_key_frame_) {
+        if (ELEMENT_ENCODER == element_type_) {
+            memset(&enc_ctrl_, 0, sizeof(enc_ctrl_));
+            enc_ctrl_.FrameType = MFX_FRAMETYPE_I | MFX_FRAMETYPE_IDR | MFX_FRAMETYPE_REF;
+            enc_ctrl = &enc_ctrl_;
+#ifdef ENABLE_VPX_CODEC
+        } else {
+            ((VP8EncPlugin *)user_enc_)->VP8ForceKeyFrame();
+#endif
+        }
+
+        force_key_frame_ = false;
+    }
+
+    if (m_bMarkLTR) {
+        OnMarkLTR();
+        m_bMarkLTR = false;
+    }
+
+    if (!m_EncExtParams.empty())
+    {
+        //currently this may happen only for H264 HW encoder with m_avcRefList attached
+        assert(mfx_video_param_.mfx.CodecId == MFX_CODEC_AVC);
+        enc_ctrl_.NumExtParam = (mfxU16)m_EncExtParams.size();
+        enc_ctrl_.ExtParam = &m_EncExtParams.front();
+        enc_ctrl = &enc_ctrl_;
+    }
+
     if (measuremnt) {
         measuremnt->GetLock();
         measuremnt->TimeStpStart(ENC_FRAME_TIME_STAMP, this);
@@ -1723,6 +1768,9 @@ int MSDKCodec::ProcessChainEncode(MediaBuf &buf)
             if (output_stream_) {
                 sts = WriteBitStreamFrame(&output_bs_, output_stream_);
             }
+
+            OnFrameEncoded(&output_bs_);
+            m_nFramesProcessed++;
         }
     } while (pmfxInSurface == NULL && sts >= MFX_ERR_NONE);
 
@@ -3152,7 +3200,7 @@ int MSDKCodec::HandleProcessVpp()
         } else if (prepare_result == 1) {
             ReleaseSinkMutex();
             all_eos = true;
-            is_running_ = 0;
+            is_running_ = false;
             break;
         }
 
@@ -3180,8 +3228,25 @@ int MSDKCodec::HandleProcessVpp()
             printf("stop/init vpp\n");
             mfx_vpp_->Close();
             printf("Re-init VPP...\n");
-            //TODO: if vpp re-inits when the first pad is EOS, ready_surface == NULL
-            sts = InitVpp(vpp_comp_map_[*sinkpads_.begin()].ready_surface);
+
+            //find valid surface to init vpp
+            for (it_sinkpad = sinkpads_.begin(); it_sinkpad != sinkpads_.end(); ++it_sinkpad) {
+                if (vpp_comp_map_[*it_sinkpad].ready_surface.msdk_surface)
+                    break;
+            }
+            //assert(it_sinkpad != sinkpads_.end());
+            if (it_sinkpad == sinkpads_.end()) {
+                //happens: p d 1eos u 2eos v
+                //TODO: need to refine the exit logic for VPP
+                printf("all inputs are null surfaces, exit\n");
+                is_running_ = false;
+                ReleaseSinkMutex();
+                break;
+            }
+
+            //initialize vpp
+            sts = InitVpp(vpp_comp_map_[*it_sinkpad].ready_surface);
+
             current_comp_number_ = sinkpads_.size();
             comp_info_change_ = false;
             reinit_vpp_flag_ = false;
@@ -3247,13 +3312,13 @@ int MSDKCodec::HandleProcessVpp()
             it_sinkpad != this->sinkpads_.end(); \
             ++it_sinkpad) {
             MediaPad *sinkpad = *it_sinkpad;
-            if (all_eos) {
-                if (vpp_comp_map_[sinkpad].str_info.text || vpp_comp_map_[sinkpad].pic_info.bmp) {
-                    vpp_comp_map_[sinkpad].ready_surface.is_eos = 1;
-                }
-            }
-            sinkpad->ReturnBufToPeerPad(vpp_comp_map_[sinkpad].ready_surface);
             if (sinkpad) {
+                if (all_eos) {
+                    if (vpp_comp_map_[sinkpad].str_info.text || vpp_comp_map_[sinkpad].pic_info.bmp) {
+                        vpp_comp_map_[sinkpad].ready_surface.is_eos = 1;
+                    }
+                }
+                sinkpad->ReturnBufToPeerPad(vpp_comp_map_[sinkpad].ready_surface);
                 while (sinkpad->GetBufQueueSize() > 0) {
                     MediaBuf return_buf;
                     sinkpad->GetBufData(return_buf);
@@ -3591,3 +3656,126 @@ int MSDKCodec::SetBgColor(BgColorInfo *bgColorInfo)
 }
 
 
+/*
+ * Mark current frame as long-term reference frame.
+ * Returns: 0 - Successful
+ *          1 - Warning, this api is for H264 encoder only
+ *         -1 - codec is not initialized yet
+ */
+int MSDKCodec::MarkLTR()
+{
+    if (ELEMENT_ENCODER != element_type_ || mfx_video_param_.mfx.CodecId != MFX_CODEC_AVC) {
+        printf("Err: this api is for H264 encoder only\n");
+        return 1;
+    }
+
+    if (!codec_init_) {
+        printf("Err: encoder is not initialized yet\n");
+        return -1;
+    }
+
+    m_bMarkLTR = true;
+    return 0;
+}
+
+void MSDKCodec::OnMarkLTR()
+{
+    //put current frame into LongTermRefList
+    int i = 0;
+    for (i = 0; i < 16; i++) {
+        //find a slot in sequence
+        if (m_avcRefList.LongTermRefList[i].FrameOrder == m_nFramesProcessed) {
+            //This frame is already marked as LTR
+            break;
+        }
+        if (m_avcRefList.LongTermRefList[i].FrameOrder == (mfxU32)MFX_FRAMEORDER_UNKNOWN) {
+            m_avcRefList.LongTermRefList[i].FrameOrder = m_nFramesProcessed;
+            break;
+        }
+    }
+    if (i == 16) {
+        printf("War: LongTermRefList is full\n");
+        return;
+    }
+
+    //put current frame into PreferredRefList, or else it may be ignored
+    for (i = 0; i < 32; i++) {
+        if (m_avcRefList.PreferredRefList[i].FrameOrder == m_nFramesProcessed) {
+            //Current frame is already in PreferredRefList
+            break;
+        }
+        if (m_avcRefList.PreferredRefList[i].FrameOrder == (mfxU32)MFX_FRAMEORDER_UNKNOWN) {
+            m_avcRefList.PreferredRefList[i].FrameOrder = m_nFramesProcessed;
+            break;
+        }
+    }
+    if (i == 32) {
+        printf("War: PreferredRefList is full");
+        //no need to return
+    }
+
+    //Check if m_avcRefList is already in m_EncExtParams
+    if (!m_EncExtParams.empty()) {
+        std::vector<mfxExtBuffer *>::iterator it;
+        for (it = m_EncExtParams.begin(); it != m_EncExtParams.end(); ++it) {
+            if (*it == (mfxExtBuffer *)&m_avcRefList) {
+                printf("m_avcRefList is already in m_EncExtParams\n");
+                break;
+            }
+        }
+        if (it == m_EncExtParams.end()) {
+            //m_avcRefList is not in m_EncExtParams
+            m_EncExtParams.push_back(reinterpret_cast<mfxExtBuffer*>(&m_avcRefList));
+        }
+    } else {
+        //m_EncExtParams is empty, push m_avcRefList directly
+        m_EncExtParams.push_back(reinterpret_cast<mfxExtBuffer*>(&m_avcRefList));
+    }
+
+    printf("Info: mark frame %d as LTR\n", m_nFramesProcessed);
+}
+/*
+ * Perform actions needed when one frame is encoded
+ */
+void MSDKCodec::OnFrameEncoded(mfxBitstream *pBs)
+{
+    assert(pBs);
+    if (ELEMENT_ENCODER != element_type_ || mfx_video_param_.mfx.CodecId != MFX_CODEC_AVC) {
+        return;
+    }
+
+    if (!m_EncExtParams.empty()) {
+        int i = 0;
+        for (i = 0; i < 16; i++) {
+            //LTR reference list is stateful, mark it once is encough, so remove all frames in LTRL
+            if (m_avcRefList.LongTermRefList[i].FrameOrder != (mfxU32)MFX_FRAMEORDER_UNKNOWN) {
+                m_avcRefList.LongTermRefList[i].FrameOrder = (mfxU32)MFX_FRAMEORDER_UNKNOWN;
+            } else {
+                //stop searching
+                break;
+            }
+        }
+
+        //PreferredRefList is stateless, so mark it explicitely until next IDR frame
+        if (pBs->FrameType & MFX_FRAMETYPE_I) {
+            //1. remove the elements in PreferredList
+            for (i = 0; i < 32; i++) {
+               if (m_avcRefList.PreferredRefList[i].FrameOrder != (mfxU32)MFX_FRAMEORDER_UNKNOWN) {
+                   m_avcRefList.PreferredRefList[i].FrameOrder = (mfxU32)MFX_FRAMEORDER_UNKNOWN;
+               } else {
+                   break;
+               }
+            }
+
+            //2. erase m_avcRefList from m_EncExtParams when IDR frame was encoded
+            std::vector<mfxExtBuffer *>::iterator it;
+            for (it = m_EncExtParams.begin(); it != m_EncExtParams.end(); ++it) {
+                if (*it == (mfxExtBuffer *)&m_avcRefList) {
+                    printf("to erase m_avcRefList from m_EncExtParams\n");
+                    m_EncExtParams.erase(it);
+                    break;
+                }
+            }
+        }
+    }
+}

@@ -203,6 +203,7 @@ void MsdkXcoder::ReadEncConfig(EncOptions *enc_cfg, void *cfg)
         encCfg->EncParams.mfx.CodecId = MFX_CODEC_AVC;
         encCfg->EncParams.mfx.CodecProfile = enc_cfg->profile;
         encCfg->EncParams.mfx.NumRefFrame = enc_cfg->numRefFrame;
+        encCfg->EncParams.mfx.GopRefDist = enc_cfg->gopRefDist;
         encCfg->EncParams.mfx.IdrInterval= enc_cfg->idrInterval;
         encCfg->EncParams.mfx.GopPicSize = enc_cfg->intraPeriod;
         encCfg->extParams.nMaxSliceSize = enc_cfg->nMaxSliceSize;
@@ -462,6 +463,67 @@ int MsdkXcoder::SetBitrate(CodecType ctype, unsigned short bitrate)
 }
 
 /*
+ * Insert LTR frame for encoder "encHandle". If encHandle is null, apply this to all ELEMENT_ENCODER
+ * Returns:  0 - successful
+ *          -1 - XCoder is not initialized yet
+ *          -2 - failed, invalid call
+ *          -3 - failed with other cause.
+ *          -4 - failed, invalid encoder handle
+ */
+int MsdkXcoder::MarkLTR(void *encHandle)
+{
+    Locker<Mutex> lock(mutex);
+    if (!done_init_) {
+        printf("Err: MsdkXcoder is not initialized yet\n");
+        return -1;
+    }
+
+    MSDKCodec *enc = NULL;
+    int ret_val = 0;
+    std::multimap<MSDKCodec*, MSDKCodec*>::iterator it_enc;
+    for(it_enc = enc_multimap_.begin(); it_enc != enc_multimap_.end(); ++it_enc) {
+        if (encHandle) {
+            if (encHandle == (void *)(it_enc->second)) {
+                enc = it_enc->second;
+                //1. check if encoder is ELEMENT_ENCODER
+                if (enc->GetCodecType() != ELEMENT_ENCODER) {
+                    printf("Err: this API is for H264 hw encoder only\n");
+                    return -2;
+                }
+
+                //2. call MSDKCodec::MarkLTR()
+                ret_val = enc->MarkLTR();
+                if (ret_val) {
+                    printf("Err: failed.\n");
+                    return -3;
+                } else {
+                    break;
+                }
+            }
+        } else {
+            //apply to all H264 ELEMENT_ENCODER
+            enc = it_enc->second;
+            if (enc->GetCodecType() != ELEMENT_ENCODER) {
+                printf("Info: encoder %p is not H264 HW encoder, can't mark LTR\n", encHandle);
+                continue;
+            } else {
+                ret_val = enc->MarkLTR();
+                if (ret_val != 0) {
+                    printf("Err: failed to mark LTR frame for encoder %p\n", encHandle);
+                }
+            }
+        }
+    }
+
+    if (encHandle && it_enc == enc_multimap_.end()) {
+        printf("Err: invalid input encHandle %p\n", encHandle);
+        return -4;
+    }
+
+    return 0;
+}
+
+/*
  * Set combo type for vpp_handle.
  * If (type == COMBO_MASTER), then "master" points to the master input
  * Returns:  0 - Successful
@@ -638,6 +700,19 @@ void MsdkXcoder::AttachInput(DecOptions *dec_cfg, void *vppHandle)
             printf("[%s]Can't find the vpp handle\n", __FUNCTION__);
             return;
         }
+        if (is_running_ && !vpp->is_running_) {
+            printf("[%s]Vpp has been exit, can't attach input\n", __FUNCTION__);
+            return;
+        }
+    } else {
+        for (vpp_it = vpp_list_.begin(); \
+                vpp_it != vpp_list_.end(); \
+                ++vpp_it) {
+            if (is_running_ && !((*vpp_it)->is_running_)) {
+                printf("[%s]One vpp has been exit, can't attach input\n", __FUNCTION__);
+                return;
+            }
+        }
     }
 
     ElementCfg decCfg;
@@ -693,9 +768,6 @@ void MsdkXcoder::AttachInput(DecOptions *dec_cfg, void *vppHandle)
         vpp->SetStrInfo(dec_->GetStrInfo());
         vpp->SetPicInfo(dec_->GetPicInfo());
         dec_dis_->LinkNextElement(vpp);
-        if (is_running_ && !vpp->is_running_) {
-            vpp->Start();
-        }
     } else {
         for (vpp_it = vpp_list_.begin(); \
                 vpp_it != vpp_list_.end(); \
@@ -704,9 +776,6 @@ void MsdkXcoder::AttachInput(DecOptions *dec_cfg, void *vppHandle)
                 (*vpp_it)->SetStrInfo(dec_->GetStrInfo());
                 (*vpp_it)->SetPicInfo(dec_->GetPicInfo());
                 dec_dis_->LinkNextElement(*vpp_it);
-                if (is_running_ && !(*vpp_it)->is_running_) {
-                    (*vpp_it)->Start();
-                }
             }
         }
     }
@@ -827,6 +896,16 @@ void MsdkXcoder::AttachVpp(VppOptions *vpp_cfg, EncOptions *enc_cfg)
     }
     vpp_cfg->VppHandle = NULL;
     enc_cfg->EncHandle = NULL;
+
+    std::list<MSDKCodec*>::iterator vpp_it;
+    for (vpp_it = vpp_list_.begin(); \
+            vpp_it != vpp_list_.end(); \
+            ++vpp_it) {
+        if (is_running_ && !((*vpp_it)->is_running_)) {
+            printf("[%s]One vpp have been exit, shouldn't attach new vpp\n", __FUNCTION__);
+            return;
+        }
+    }
 
     ElementCfg vppCfg;
     memset(&vppCfg, 0, sizeof(vppCfg));
@@ -1007,14 +1086,20 @@ void MsdkXcoder::AttachOutput(EncOptions *enc_cfg, void *vppHandle)
     ReadEncConfig(enc_cfg, &encCfg);
 
     MSDKCodec *vpp = static_cast<MSDKCodec*>(vppHandle);
-    for (vpp_it = vpp_list_.begin(); vpp_it != vpp_list_.end(); ++vpp_it) {
-        if (vpp == (*vpp_it)) {
-            vpp_found = true;
-            break;
+    if (vpp) {
+        for (vpp_it = vpp_list_.begin(); vpp_it != vpp_list_.end(); ++vpp_it) {
+            if (vpp == (*vpp_it)) {
+                vpp_found = true;
+                break;
+            }
         }
     }
-    if (!vpp_found || !vpp) {
+    if (!vpp_found) {
         printf("[%s]Can't find the vpp handle\n", __FUNCTION__);
+        return;
+    }
+    if (is_running_ && !vpp->is_running_) {
+        printf("[%s]Vpp has been exit, can't attach output\n", __FUNCTION__);
         return;
     }
 
