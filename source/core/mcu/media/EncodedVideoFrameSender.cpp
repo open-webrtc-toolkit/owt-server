@@ -20,6 +20,7 @@
 
 #include "EncodedVideoFrameSender.h"
 
+#include "MediaUtilities.h"
 #include "TaskRunner.h"
 
 using namespace webrtc;
@@ -42,7 +43,7 @@ EncodedVideoFrameSender::~EncodedVideoFrameSender()
     close();
 }
 
-bool EncodedVideoFrameSender::setSendCodec(FrameFormat frameFormat, VideoSize)
+bool EncodedVideoFrameSender::setSendCodec(FrameFormat frameFormat, VideoSize videoSize)
 {
     // The send video format should be identical to the input video format,
     // because we (EncodedVideoFrameSender) don't have the transcoding capability.
@@ -66,6 +67,11 @@ bool EncodedVideoFrameSender::setSendCodec(FrameFormat frameFormat, VideoSize)
     default:
         break;
     }
+
+    unsigned int targetBitrate = calcBitrate(videoSize.width, videoSize.height) * (frameFormat == FRAME_FORMAT_VP8 ? 900 : 1000);
+    unsigned int minBitrate = targetBitrate < 300 * 1000 ? targetBitrate : 300 * 1000;
+    m_bitrateController->SetBitrateObserver(this, 300 * 1000, minBitrate, targetBitrate);
+    m_source->setBitrate(m_id, targetBitrate / 1000); // kbps
 
     return m_rtpRtcp && m_rtpRtcp->RegisterSendPayload(codec) != -1;
 }
