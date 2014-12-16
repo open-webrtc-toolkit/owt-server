@@ -150,6 +150,7 @@ Woogeen.ConferenceClient = (function () {
             video: spec.video,
             audio: spec.audio,
             id: spec.id,
+            from: spec.from,
             attributes: spec.attributes
           });
           var evt;
@@ -168,6 +169,7 @@ Woogeen.ConferenceClient = (function () {
             video: spec.video,
             audio: spec.audio,
             id: spec.id,
+            from: spec.from,
             attributes: spec.attributes,
             mediaStream: (self.remoteStreams[spec.id] || {}).mediaStream
           });

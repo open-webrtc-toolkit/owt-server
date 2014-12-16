@@ -364,7 +364,7 @@ var listen = function () {
                                         var id = 0;
                                         room.controller.initMixer(id, function (result) {
                                             if (result === 'success') {
-                                                var st = new ST.Stream({id: id, socket: socket.id, audio: true, video: {category: 'mix'}, data: false});
+                                                var st = new ST.Stream({id: id, socket: socket.id, audio: true, video: {category: 'mix'}, data: false, from: ''});
                                                 room.streams[id] = st;
                                                 sendMsgToRoom(room, 'onAddStream', st.getPublicStream());
                                                 clearInterval(room.initMixerTimer);
@@ -530,7 +530,7 @@ var listen = function () {
                 }
                 socket.room.controller.addExternalInput(id, url, function (result) {
                     if (result === 'success') {
-                        st = new ST.Stream({id: id, socket: socket.id, audio: options.audio, video: options.video, data: options.data, attributes: options.attributes});
+                        st = new ST.Stream({id: id, socket: socket.id, audio: options.audio, video: options.video, data: options.data, attributes: options.attributes, from: url});
                         socket.streams.push(id);
                         socket.room.streams[id] = st;
                         safeCall(callback, result, id);
@@ -569,7 +569,7 @@ var listen = function () {
                         if (options.video && options.video.device === 'screen') {
                             hasScreen = true;
                         }
-                        st = new ST.Stream({id: id, audio: options.audio, video: options.video, data: options.data, screen: hasScreen, attributes: options.attributes});
+                        st = new ST.Stream({id: id, audio: options.audio, video: options.video, data: options.data, screen: hasScreen, attributes: options.attributes, from: socket.id});
                         socket.state = 'sleeping';
                         socket.streams.push(id);
                         socket.room.streams[id] = st;
@@ -591,7 +591,7 @@ var listen = function () {
                 if (options.video && options.video.device === 'screen') {
                     hasScreen = true;
                 }
-                st = new ST.Stream({id: id, socket: socket.id, audio: options.audio, video: options.video, data: options.data, screen: hasScreen, attributes: options.attributes});
+                st = new ST.Stream({id: id, socket: socket.id, audio: options.audio, video: options.video, data: options.data, screen: hasScreen, attributes: options.attributes, from: socket.id});
                 socket.streams.push(id);
                 socket.room.streams[id] = st;
                 safeCall(callback, undefined, id);

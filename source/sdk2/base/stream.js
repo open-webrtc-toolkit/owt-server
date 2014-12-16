@@ -259,6 +259,7 @@
     this.isMixed = function () {
       return (!!spec.video) && (spec.video.category === 'mix'); // category: 'mix', 'single'
     };
+    this.from = spec.from;
   }
 
   WoogeenLocalStream.prototype = Object.create(WoogeenStream.prototype);
