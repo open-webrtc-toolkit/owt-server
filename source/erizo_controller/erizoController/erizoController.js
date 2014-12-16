@@ -316,6 +316,10 @@ var listen = function () {
                         socket.disconnect();
 
                     } else if (token.host === resp.host) {
+                        if (socket.disconnected) {
+                            log.warn('Client already disconnected');
+                            return;
+                        }
                         tokenDB = resp;
                         if (rooms[tokenDB.room] === undefined) {
                             var room = {};
