@@ -98,7 +98,7 @@ int32_t VideoMixer::addOutput(int payloadType)
     // Fetch video size.
     // TODO: The size should be identical to the composited video size.
     VideoSize rootSize = DEFAULT_VIDEO_SIZE;
-    std::map<VideoResolutionType, VideoSize>::const_iterator sizeIterator = VideoSizes.find(vga);
+    std::map<VideoResolutionType, VideoSize>::const_iterator sizeIterator = VideoSizes.find(Config::get()->getVideoLayout().rootSize);
     if (sizeIterator != VideoSizes.end())
         rootSize = sizeIterator->second;
     output->setSendCodec(outputFormat, rootSize);
