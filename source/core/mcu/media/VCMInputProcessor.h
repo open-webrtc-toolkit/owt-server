@@ -21,7 +21,7 @@
 #ifndef VCMInputProcessor_h
 #define VCMInputProcessor_h
 
-#include "VCMMediaProcessorHelper.h"
+#include "DebugRecorder.h"
 #include "VideoFramePipeline.h"
 
 #include <boost/scoped_ptr.hpp>
