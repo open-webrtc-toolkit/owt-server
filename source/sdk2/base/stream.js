@@ -435,6 +435,7 @@
 
     if (option.video && option.video.device === 'screen') {
       var extensionId = option.video.extensionId || 'pndohhifhheefbpeljcmnhnkphepimhe';
+      mediaOption.audio = false;
       try {
         chrome.runtime.sendMessage(extensionId, {getStream: true}, function (response) {
           mediaOption.video.mandatory.chromeMediaSource = 'desktop';
