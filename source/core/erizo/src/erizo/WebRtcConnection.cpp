@@ -65,13 +65,13 @@ namespace erizo {
       connEventListener_ = NULL;
     }
     globalState_ = CONN_FINISHED;
-    videoSink_ = NULL;
-    audioSink_ = NULL;
-    fbSink_ = NULL;
     delete videoTransport_;
     videoTransport_=NULL;
     delete audioTransport_;
     audioTransport_= NULL;
+    videoSink_ = NULL;
+    audioSink_ = NULL;
+    fbSink_ = NULL;
   }
 
   bool WebRtcConnection::init() {
@@ -324,10 +324,12 @@ namespace erizo {
         // Deliver data
         if (recvSSRC==this->getVideoSourceSSRC() || recvSSRC==this->getVideoSinkSSRC()) {
           parseIncomingPayloadType(buf, len, VIDEO_PACKET);
-          videoSink_->deliverVideoData(buf, len);
+          if (videoSink_ != NULL)
+            videoSink_->deliverVideoData(buf, len);
         } else if (recvSSRC==this->getAudioSourceSSRC() || recvSSRC==this->getAudioSinkSSRC()) {
           parseIncomingPayloadType(buf, len, AUDIO_PACKET);
-          audioSink_->deliverAudioData(buf, len);
+          if (audioSink_ != NULL)
+            audioSink_->deliverAudioData(buf, len);
         } else {
           ELOG_ERROR("Unknown SSRC %u, localVideo %u, remoteVideo %u, ignoring", recvSSRC, this->getVideoSourceSSRC(), this->getVideoSinkSSRC());
         }
