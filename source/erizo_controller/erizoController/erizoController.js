@@ -548,6 +548,19 @@ var listen = function () {
                         answer = answer.replace(privateRegexp, publicIP);
                         safeCall(callback, answer, id);
                     }, function() {
+                        // Double check if this socket is still in the room.
+                        // It can be removed from the room if the socket is disconnected
+                        // before the publish succeeds.
+                        var index = socket.room.sockets.indexOf(socket.id);
+                        if (index === -1) {
+                            socket.room.controller.removePublisher(id);
+                            if (GLOBAL.config.erizoController.sendStats) {
+                                var timeStamp = new Date();
+                                rpc.callRpc('stats_handler', 'event', [{room: socket.room.id, user: socket.id, type: 'unpublish', stream: id, timestamp: timeStamp.getTime()}]);
+                            }
+                            return;
+                        }
+
                         var hasScreen = false;
                         if (options.video && options.video.device === 'screen') {
                             hasScreen = true;
