@@ -557,11 +557,6 @@ var listen = function () {
                         // before the publish succeeds.
                         var index = socket.room.sockets.indexOf(socket.id);
                         if (index === -1) {
-                            socket.room.controller.removePublisher(id);
-                            if (GLOBAL.config.erizoController.sendStats) {
-                                var timeStamp = new Date();
-                                rpc.callRpc('stats_handler', 'event', [{room: socket.room.id, user: socket.id, type: 'unpublish', stream: id, timestamp: timeStamp.getTime()}]);
-                            }
                             return;
                         }
 
@@ -571,7 +566,6 @@ var listen = function () {
                         }
                         st = new ST.Stream({id: id, audio: options.audio, video: options.video, data: options.data, screen: hasScreen, attributes: options.attributes, from: socket.id});
                         socket.state = 'sleeping';
-                        socket.streams.push(id);
                         socket.room.streams[id] = st;
 
                         if (socket.room.streams[id] !== undefined) {
@@ -579,6 +573,7 @@ var listen = function () {
                         }
                     });
 
+                    socket.streams.push(id);
                 } else if (options.state === 'ok' && socket.state === 'waitingOk') {
                 }
             } else if (options.state === 'p2pSignaling') {
@@ -786,16 +781,12 @@ var listen = function () {
                 for (i in socket.streams) {
                     if (socket.streams.hasOwnProperty(i)) {
                         id = socket.streams[i];
-
-                        if (socket.room.streams[id].hasAudio() || socket.room.streams[id].hasVideo() || socket.room.streams[id].hasScreen()) {
-                            if (!socket.room.p2p) {
-                                socket.room.controller.removePublisher(id);
-                                if (GLOBAL.config.erizoController.sendStats) {
-                                    var timeStamp = new Date();
-                                    rpc.callRpc('stats_handler', 'event', [{room: socket.room.id, user: socket.id, type: 'unpublish', stream: id, timestamp: timeStamp.getTime()}]);
-                                }
+                        if (!socket.room.p2p) {
+                            socket.room.controller.removePublisher(id);
+                            if (GLOBAL.config.erizoController.sendStats) {
+                                var timeStamp = new Date();
+                                rpc.callRpc('stats_handler', 'event', [{room: socket.room.id, user: socket.id, type: 'unpublish', stream: id, timestamp: timeStamp.getTime()}]);
                             }
-
                         }
 
                         if (socket.room.streams[id]) {
