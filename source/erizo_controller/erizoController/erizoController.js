@@ -904,7 +904,7 @@ exports.deleteRoom = function (room, callback) {
 
     for (id in sockets) {
         if (sockets.hasOwnProperty(id)) {
-            rooms[room].roomController.removeSubscriptions(sockets[id]);
+            rooms[room].controller.removeSubscriptions(sockets[id]);
         }
     }
 
@@ -913,7 +913,7 @@ exports.deleteRoom = function (room, callback) {
     for (j in streams) {
         if (streams[j].hasAudio() || streams[j].hasVideo() || streams[j].hasScreen()) {
             if (!room.p2p) {
-                rooms[room].roomController.removePublisher(j);
+                rooms[room].controller.removePublisher(j);
             }
         }
     }

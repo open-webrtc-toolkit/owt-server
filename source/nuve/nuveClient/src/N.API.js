@@ -87,7 +87,8 @@ N.API = (function (N) {
         }
 
         if (service === '' || key === '') {
-            console.log('ServiceID and Key are required!!');
+            if (typeof callbackError === 'function')
+                callbackError(401, 'ServiceID and Key are required!!');
             return;
         }
 
@@ -127,26 +128,20 @@ N.API = (function (N) {
         req.onreadystatechange = function () {
             if (req.readyState === 4) {
                 switch (req.status) {
-                    case 100:
-                    case 200:
-                    case 201:
-                    case 202:
-                    case 203:
-                    case 204:
-                    case 205:
-                        callback(req.responseText);
-                        break;
-                    case 400:
-                        if (callbackError !== undefined) callbackError("400 Bad Request");
-                        break;
-                    case 401:
-                        if (callbackError !== undefined) callbackError("401 Unauthorized");
-                        break;
-                    case 403:
-                        if (callbackError !== undefined) callbackError("403 Forbidden");
-                        break;
-                    default:
-                        if (callbackError !== undefined) callbackError(req.status + " Error" + req.responseText);
+                case 100:
+                case 200:
+                case 201:
+                case 202:
+                case 203:
+                case 204:
+                case 205:
+                    if (typeof callback === 'function') callback(req.responseText);
+                    break;
+                case 400:
+                case 401:
+                case 403:
+                default:
+                    if (typeof callbackError === 'function') callbackError(req.status, req.responseText);
                 }
             }
         };

@@ -28,12 +28,12 @@ exports.createRoom = function (req, res) {
     doInit();
 
     if (currentService === undefined) {
-        res.send('Service not found', 404);
+        res.status(404).send('Service not found');
         return;
     }
     if (req.body.name === undefined) {
         log.info('Invalid room');
-        res.send('Invalid room', 404);
+        res.status(404).send('Invalid room');
         return;
     }
 
@@ -79,7 +79,7 @@ exports.represent = function (req, res) {
 
     doInit();
     if (currentService === undefined) {
-        res.send('Service not found', 404);
+        res.status(404).send('Service not found');
         return;
     }
     log.info('Representing rooms for service ', currentService._id);

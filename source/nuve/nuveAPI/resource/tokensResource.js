@@ -154,22 +154,22 @@ exports.create = function (req, res) {
 
         if (currentService === undefined) {
             log.info('Service not found');
-            res.send('Service not found', 404);
+            res.status(404).send('Service not found');
             return;
         } else if (currentRoom === undefined) {
             log.info('Room ', req.params.room, ' does not exist');
-            res.send('Room does not exist', 404);
+            res.status(404).send('Room does not exist');
             return;
         }
 
         generateToken(function (tokenS) {
 
             if (tokenS === undefined) {
-                res.send('Name and role?', 401);
+                res.status(401).send('Name and role?');
                 return;
             }
             if (tokenS === 'error') {
-                res.send('CloudHandler does not respond', 401);
+                res.status(401).send('CloudHandler does not respond');
                 return;
             }
             log.info('Created token for room ', currentRoom._id, 'and service ', currentService._id);

@@ -22,11 +22,20 @@ exports.getList = function (callback) {
 
 var getService = exports.getService = function (id, callback) {
     "use strict";
-    db.services.findOne({_id: db.ObjectId(id)}, function (err, service) {
+    var serviceId;
+    try {
+        serviceId = db.ObjectId(id);
+    } catch (e) {
+        if (typeof callback === 'function') {
+            callback(undefined);
+        }
+        return;
+    }
+    db.services.findOne({_id: serviceId}, function (err, service) {
         if (service === undefined || service === null) {
             log.info("Service not found");
         }
-        if (callback !== undefined) {
+        if (typeof callback === 'function') {
             callback(service);
         }
     });
