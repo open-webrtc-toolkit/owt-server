@@ -23,7 +23,7 @@ exports.getList = function (callback) {
 var getService = exports.getService = function (id, callback) {
     "use strict";
     db.services.findOne({_id: db.ObjectId(id)}, function (err, service) {
-        if (service === undefined) {
+        if (service === undefined || service === null) {
             log.info("Service not found");
         }
         if (callback !== undefined) {
@@ -52,7 +52,7 @@ exports.addService = function (service, callback) {
     service.rooms = [];
     db.services.save(service, function (error, saved) {
         if (error) log.info('MongoDB: Error adding service: ', error);
-        callback(saved._id);
+        callback(saved._id+'');
     });
 };
 
