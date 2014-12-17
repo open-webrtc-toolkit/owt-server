@@ -76,7 +76,7 @@ install_webrtc(){
   patch -p0 < ./webrtc-3.52-source.patch
   patch -p0 < ./opus-build.patch
   patch -p1 < ./webrtc-3.52-h264.patch
-  patch -p0 < ./webrtc-3.52-audio-mixing.patch
+  patch -p0 < ./webrtc-3.52-audio-mixing-no-rampin.patch
   ./build.sh
   cd $CURRENT_DIR
 }
