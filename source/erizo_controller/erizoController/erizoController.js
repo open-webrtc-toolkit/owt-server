@@ -547,7 +547,12 @@ var listen = function () {
                         var timeStamp = new Date();
                         rpc.callRpc('stats_handler', 'event', [{room: socket.room.id, user: socket.id, type: 'publish', stream: id, timestamp: timeStamp.getTime()}]);
                     }
-                    socket.room.controller.addPublisher(id, sdp, function (answer) {
+
+                    var hasScreen = false;
+                    if (options.video && options.video.device === 'screen') {
+                        hasScreen = true;
+                    }
+                    socket.room.controller.addPublisher(id, sdp, hasScreen, function (answer) {
                         socket.state = 'waitingOk';
                         answer = answer.replace(privateRegexp, publicIP);
                         safeCall(callback, answer, id);
@@ -560,10 +565,6 @@ var listen = function () {
                             return;
                         }
 
-                        var hasScreen = false;
-                        if (options.video && options.video.device === 'screen') {
-                            hasScreen = true;
-                        }
                         st = new ST.Stream({id: id, audio: options.audio, video: options.video, data: options.data, screen: hasScreen, attributes: options.attributes, from: socket.id});
                         socket.state = 'sleeping';
                         socket.room.streams[id] = st;

@@ -99,7 +99,7 @@ exports.ErizoJSController = function (spec) {
     /*
      * Given a WebRtcConnection waits for the state CANDIDATES_GATHERED for set remote SDP.
      */
-    initWebRtcConnection = function (wrtc, sdp, callback, id_pub, id_sub) {
+    initWebRtcConnection = function (wrtc, sdp, addToMixer, callback, id_pub, id_sub) {
         if(typeof sdp != 'string') sdp = JSON.stringify(sdp); // fixes some issues with sending json object as json, and not as string
 
         if (GLOBAL.config.erizoController.sendStats) {
@@ -138,7 +138,7 @@ exports.ErizoJSController = function (spec) {
           }
           if (newStatus === 103) {
             // Perform the additional work for publishers.
-            if (id_sub === undefined) {
+            if (addToMixer) {
               if (mixer) {
                 publishers[id_pub].setMixer(mixer);
               } else {
@@ -186,12 +186,7 @@ exports.ErizoJSController = function (spec) {
             answer = ('\n{\n \"messageType\":\"ANSWER\",\n');
 
         sdp = sdp.replace(reg1, '\\r\\n');
-
-        //var reg2 = new RegExp(/^.*offererSessionId\":(...).*$/);
-        //var offererSessionId = offerRoap.match(reg2)[1];
-
         answer += ' \"sdp\":\"' + sdp + '\",\n';
-        //answer += ' \"offererSessionId\":' + offererSessionId + ',\n';
         answer += ' ' + offererSessionId + '\n';
         answer += ' \"answererSessionId\":' + answererSessionId + ',\n \"seq\" : 1\n}\n';
 
@@ -205,7 +200,6 @@ exports.ErizoJSController = function (spec) {
             log.info("Adding external input peer_id ", from);
 
             var ei = new addon.ExternalInput(url);
-
             var muxer = new addon.Gateway();
             publishers[from] = muxer;
 
@@ -214,17 +208,14 @@ exports.ErizoJSController = function (spec) {
             }
 
             subscribers[from] = [];
-
             muxer.setExternalPublisher(ei);
 
             var answer = ei.init();
-
             if (answer >= 0) {
                 callback('callback', 'success');
             } else {
                 callback('callback', answer);
             }
-
         } else {
             log.info("Publisher already set for", from);
         }
@@ -253,10 +244,9 @@ exports.ErizoJSController = function (spec) {
      * and a new WebRtcConnection. This WebRtcConnection will be the publisher
      * of the Gateway.
      */
-    that.addPublisher = function (from, sdp, oopMixer, callback) {
+    that.addPublisher = function (from, sdp, hasScreen, oopMixer, callback) {
 
         if (publishers[from] === undefined) {
-
             log.info("Adding publisher peer_id ", from);
             var hasAudio = false;
             var hasVideo = false;
@@ -270,17 +260,12 @@ exports.ErizoJSController = function (spec) {
             var muxer = new addon.Gateway();
             muxer.setPublisher(wrtc, from);
             publishers[from] = muxer;
-
             subscribers[from] = [];
 
             if (oopMixer && mixer === undefined)
                 mixerProxies[from] = new addon.MediaSourceConsumer();
 
-            initWebRtcConnection(wrtc, sdp, callback, from);
-
-            //log.info('Publishers: ', publishers);
-            //log.info('Subscribers: ', subscribers);
-
+            initWebRtcConnection(wrtc, sdp, !hasScreen, callback, from);
         } else {
             log.info("Publisher already set for", from);
         }
@@ -300,15 +285,10 @@ exports.ErizoJSController = function (spec) {
 
             var wrtc = new addon.WebRtcConnection(audio, video, GLOBAL.config.erizo.stunserver, GLOBAL.config.erizo.stunport, GLOBAL.config.erizo.minport, GLOBAL.config.erizo.maxport, undefined, undefined, undefined, true, true, true, true);
 
-            initWebRtcConnection(wrtc, sdp, callback, to, from);
+            initWebRtcConnection(wrtc, sdp, false, callback, to, from);
 
             subscribers[to].push(from);
             publishers[to].addSubscriber(wrtc, from);
-
-//            waitForFIR(wrtc, to);
-
-            //log.info('Publishers: ', publishers);
-            //log.info('Subscribers: ', subscribers);
         }
     };
 
@@ -336,8 +316,9 @@ exports.ErizoJSController = function (spec) {
                    ++count;
                 }
             }
+
             log.info("Publishers: ", count);
-            if (count === 0)  {
+            if (count === 0) {
                 log.info('Removed all publishers. Killing process.');
                 process.exit(0);
             }
