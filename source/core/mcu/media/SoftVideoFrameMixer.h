@@ -51,7 +51,7 @@ public:
 private:
     std::map<int, boost::shared_ptr<VideoFrameDecoder>> m_decoders;
     boost::shared_ptr<VideoFrameCompositor> m_compositor;
-    boost::scoped_ptr<VideoFrameEncoder> m_encoder;
+    boost::scoped_ptr<FakedVideoFrameEncoder> m_encoder;
 };
 
 SoftVideoFrameMixer::SoftVideoFrameMixer()
