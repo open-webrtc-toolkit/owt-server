@@ -127,8 +127,6 @@ void VideoMixEngineImp::setRegions(const std::map<InputIndex, RegionInfo>& layou
 
     Locker<Mutex> inputs_lock(m_inputs_mutex);
     for(; it_dec != layoutMapping.end(); ++it_dec) {
-        Region regionInfo = {it_dec->second.left, it_dec->second.top,
-            it_dec->second.width_ratio, it_dec->second.height_ratio};
         std::map<InputIndex, InputInfo>::iterator it = m_inputs.find(it_dec->first);
         if (it != m_inputs.end() && it->second.decHandle != NULL) {
             if (!set_combo_type) {
@@ -140,6 +138,9 @@ void VideoMixEngineImp::setRegions(const std::map<InputIndex, RegionInfo>& layou
                     set_combo_type = true;
                 }
             }
+
+            Region regionInfo = {it_dec->second.left, it_dec->second.top,
+                it_dec->second.width_ratio, it_dec->second.height_ratio};
             if (it_dec->first == re_it_dec->first) {
                 // TODO: Make the Region parameter constant in SetRegionInfo in VCSA
                 ret = m_xcoder->SetRegionInfo(m_vpp->vppHandle, it->second.decHandle, regionInfo, true);
