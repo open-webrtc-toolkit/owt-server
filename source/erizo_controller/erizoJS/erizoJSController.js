@@ -258,8 +258,15 @@ exports.ErizoJSController = function (spec) {
         if (publishers[from] === undefined) {
 
             log.info("Adding publisher peer_id ", from);
-
-            var wrtc = new addon.WebRtcConnection(true, true, GLOBAL.config.erizo.stunserver, GLOBAL.config.erizo.stunport, GLOBAL.config.erizo.minport, GLOBAL.config.erizo.maxport, undefined, undefined, undefined, true, true, true, true);
+            var hasAudio = false;
+            var hasVideo = false;
+            if (sdp.indexOf('m=audio') !== -1) {
+                hasAudio = true;
+            }
+            if (sdp.indexOf('m=video') !== -1) {
+                hasVideo = true;
+            }
+            var wrtc = new addon.WebRtcConnection(hasAudio, hasVideo, GLOBAL.config.erizo.stunserver, GLOBAL.config.erizo.stunport, GLOBAL.config.erizo.minport, GLOBAL.config.erizo.maxport, undefined, undefined, undefined, true, true, true, true);
             var muxer = new addon.Gateway();
             muxer.setPublisher(wrtc, from);
             publishers[from] = muxer;

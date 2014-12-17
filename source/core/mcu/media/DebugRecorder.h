@@ -18,8 +18,8 @@
  * and approved by Intel in writing.
  */
 
-#ifndef VCMMediaProcessorHelper_h
-#define VCMMediaProcessorHelper_h
+#ifndef DebugRecorder_h
+#define DebugRecorder_h
 
 #include <stdio.h>
 #include <webrtc/common_video/interface/i420_video_frame.h>

@@ -23,6 +23,7 @@ usage() {
   echo
   echo "Usage:"
   echo "    --deps (default: false)             install dependent components and libraries via apt-get/local"
+  echo "    --hardware                          enable mcu with msdk (if \`libmcu_hw.so' is packed)"
   echo "    --help                              print this help"
   echo
 }
@@ -84,12 +85,16 @@ install_config() {
 }
 
 INSTALL_DEPS=false
+ENABLE_HARDWARE=false
 
 shopt -s extglob
 while [[ $# -gt 0 ]]; do
   case $1 in
     *(-)deps )
       INSTALL_DEPS=true
+      ;;
+    *(-)hardware )
+      ENABLE_HARDWARE=true
       ;;
     *(-)help )
       usage
@@ -102,8 +107,21 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 
-if ${INSTALL_DEPS}; then
-  install_deps
-fi
+${INSTALL_DEPS} && install_deps
+
 install_db
 install_config
+
+if ${ENABLE_HARDWARE}; then
+  cd ${ROOT}/lib
+  [[ -s libmcu_hw.so ]] && \
+  rm -f libmcu.so && \
+  ln -s libmcu_hw.so libmcu.so
+  sed -i 's/config\.erizo\.hardwareAccelerated = false/config\.erizo\.hardwareAccelerated = true/' ${ROOT}/etc/licode_config.js
+else
+  cd ${ROOT}/lib
+  [[ -s libmcu_sw.so ]] && \
+  rm -f libmcu.so && \
+  ln -s libmcu_sw.so libmcu.so
+  sed -i 's/config\.erizo\.hardwareAccelerated = true/config\.erizo\.hardwareAccelerated = false/' ${ROOT}/etc/licode_config.js
+fi

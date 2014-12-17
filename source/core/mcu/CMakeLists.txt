@@ -49,12 +49,14 @@ test_lib(${VPX})
 find_library(H264 openh264 HINTS "${H264_DIRS}")
 test_lib(${H264})
 
+set(VCSA_LIBS "")
 if($ENV{BUILD_WITH_MSDK})
   find_library(XCODER_BASE xcodebase HINTS "${MEDIAPROCESSOR_DIR}/dist")
   test_lib(${XCODER_BASE})
 
   find_library(XCODER_VIDEO xcodevideo HINTS "${MEDIAPROCESSOR_DIR}/dist")
   test_lib(${XCODER_VIDEO})
+  set(VCSA_LIBS ${XCODER_BASE} ${XCODER_VIDEO})
 endif()
 
-target_link_libraries(mcu ${EXTRA_LIBS} ${WEBRTC} ${VPX} ${H264} ${XCODER_BASE} ${XCODER_VIDEO})
+target_link_libraries(mcu ${EXTRA_LIBS} ${WEBRTC} ${VPX} ${H264} ${VCSA_LIBS})

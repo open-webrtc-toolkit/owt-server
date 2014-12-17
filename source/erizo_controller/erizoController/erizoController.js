@@ -316,6 +316,10 @@ var listen = function () {
                         socket.disconnect();
 
                     } else if (token.host === resp.host) {
+                        if (socket.disconnected) {
+                            log.warn('Client already disconnected');
+                            return;
+                        }
                         tokenDB = resp;
                         if (rooms[tokenDB.room] === undefined) {
                             var room = {};
@@ -360,7 +364,7 @@ var listen = function () {
                                         var id = 0;
                                         room.controller.initMixer(id, function (result) {
                                             if (result === 'success') {
-                                                var st = new ST.Stream({id: id, socket: socket.id, audio: true, video: {category: 'mix'}, data: false});
+                                                var st = new ST.Stream({id: id, socket: socket.id, audio: true, video: {category: 'mix'}, data: false, from: ''});
                                                 room.streams[id] = st;
                                                 sendMsgToRoom(room, 'onAddStream', st.getPublicStream());
                                                 clearInterval(room.initMixerTimer);
@@ -526,7 +530,7 @@ var listen = function () {
                 }
                 socket.room.controller.addExternalInput(id, url, function (result) {
                     if (result === 'success') {
-                        st = new ST.Stream({id: id, socket: socket.id, audio: options.audio, video: options.video, data: options.data, attributes: options.attributes});
+                        st = new ST.Stream({id: id, socket: socket.id, audio: options.audio, video: options.video, data: options.data, attributes: options.attributes, from: url});
                         socket.streams.push(id);
                         socket.room.streams[id] = st;
                         safeCall(callback, result, id);
@@ -548,13 +552,20 @@ var listen = function () {
                         answer = answer.replace(privateRegexp, publicIP);
                         safeCall(callback, answer, id);
                     }, function() {
+                        // Double check if this socket is still in the room.
+                        // It can be removed from the room if the socket is disconnected
+                        // before the publish succeeds.
+                        var index = socket.room.sockets.indexOf(socket.id);
+                        if (index === -1) {
+                            return;
+                        }
+
                         var hasScreen = false;
                         if (options.video && options.video.device === 'screen') {
                             hasScreen = true;
                         }
-                        st = new ST.Stream({id: id, audio: options.audio, video: options.video, data: options.data, screen: hasScreen, attributes: options.attributes});
+                        st = new ST.Stream({id: id, audio: options.audio, video: options.video, data: options.data, screen: hasScreen, attributes: options.attributes, from: socket.id});
                         socket.state = 'sleeping';
-                        socket.streams.push(id);
                         socket.room.streams[id] = st;
 
                         if (socket.room.streams[id] !== undefined) {
@@ -562,6 +573,7 @@ var listen = function () {
                         }
                     });
 
+                    socket.streams.push(id);
                 } else if (options.state === 'ok' && socket.state === 'waitingOk') {
                 }
             } else if (options.state === 'p2pSignaling') {
@@ -574,7 +586,7 @@ var listen = function () {
                 if (options.video && options.video.device === 'screen') {
                     hasScreen = true;
                 }
-                st = new ST.Stream({id: id, socket: socket.id, audio: options.audio, video: options.video, data: options.data, screen: hasScreen, attributes: options.attributes});
+                st = new ST.Stream({id: id, socket: socket.id, audio: options.audio, video: options.video, data: options.data, screen: hasScreen, attributes: options.attributes, from: socket.id});
                 socket.streams.push(id);
                 socket.room.streams[id] = st;
                 safeCall(callback, undefined, id);
@@ -769,16 +781,12 @@ var listen = function () {
                 for (i in socket.streams) {
                     if (socket.streams.hasOwnProperty(i)) {
                         id = socket.streams[i];
-
-                        if (socket.room.streams[id].hasAudio() || socket.room.streams[id].hasVideo() || socket.room.streams[id].hasScreen()) {
-                            if (!socket.room.p2p) {
-                                socket.room.controller.removePublisher(id);
-                                if (GLOBAL.config.erizoController.sendStats) {
-                                    var timeStamp = new Date();
-                                    rpc.callRpc('stats_handler', 'event', [{room: socket.room.id, user: socket.id, type: 'unpublish', stream: id, timestamp: timeStamp.getTime()}]);
-                                }
+                        if (!socket.room.p2p) {
+                            socket.room.controller.removePublisher(id);
+                            if (GLOBAL.config.erizoController.sendStats) {
+                                var timeStamp = new Date();
+                                rpc.callRpc('stats_handler', 'event', [{room: socket.room.id, user: socket.id, type: 'unpublish', stream: id, timestamp: timeStamp.getTime()}]);
                             }
-
                         }
 
                         if (socket.room.streams[id]) {

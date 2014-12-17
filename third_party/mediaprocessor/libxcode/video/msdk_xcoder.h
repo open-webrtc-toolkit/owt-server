@@ -218,6 +218,8 @@ public:
 
     int SetBitrate(CodecType type, unsigned short bitrate);
 
+    int MarkLTR(void *encHandle);
+
     int SetResolution(void *vppHandle, unsigned int width, unsigned int height);
 
     int SetComboType(ComboType type, void *vpp, void* master);

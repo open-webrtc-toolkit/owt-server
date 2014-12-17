@@ -94,6 +94,7 @@ SoftVideoCompositor::SoftVideoCompositor(const VideoLayout& layout)
 
 SoftVideoCompositor::~SoftVideoCompositor()
 {
+    m_jobTimer->stop();
     m_consumer = nullptr;
 }
 
@@ -132,11 +133,13 @@ void SoftVideoCompositor::pushInput(int slot, webrtc::I420VideoFrame* frame)
 bool SoftVideoCompositor::setOutput(VideoFrameConsumer* consumer)
 {
     m_consumer = consumer;
+    m_jobTimer->start();
     return true;
 }
 
 void SoftVideoCompositor::unsetOutput()
 {
+    m_jobTimer->stop();
     m_consumer = nullptr;
 }
 
@@ -151,8 +154,7 @@ void SoftVideoCompositor::generateFrame()
         I420VideoFrame* composedFrame = layout();
         composedFrame->set_render_time_ms(TickTime::MillisecondTimestamp() - m_ntpDelta);
 
-        if (m_consumer)
-            m_consumer.load()->onFrame(FRAME_FORMAT_I420, reinterpret_cast<unsigned char*>(composedFrame), 0, 0);
+        m_consumer->onFrame(FRAME_FORMAT_I420, reinterpret_cast<unsigned char*>(composedFrame), 0, 0);
     }
 }
 

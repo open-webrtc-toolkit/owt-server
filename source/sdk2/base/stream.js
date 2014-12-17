@@ -159,6 +159,7 @@
     return false;
   };
 
+  /*
   WoogeenStream.prototype.playAudio = function(tracknum, onSuccess, onFailure) {
     if (typeof tracknum === 'function') {
       onFailure = onSuccess;
@@ -247,6 +248,7 @@
       onFailure('unable to call pauseVideo');
     }
   };
+  */
 
   function WoogeenLocalStream (spec) {
     WoogeenStream.call(this, spec);
@@ -257,6 +259,7 @@
     this.isMixed = function () {
       return (!!spec.video) && (spec.video.category === 'mix'); // category: 'mix', 'single'
     };
+    this.from = spec.from;
   }
 
   WoogeenLocalStream.prototype = Object.create(WoogeenStream.prototype);
@@ -367,20 +370,22 @@
           localStream.close();
         };
       }
-      // set default bit rate
-      switch (mediaOption.video.mandatory.maxWidth) {
-      case 320:
-        localStream.bitRate.maxVideoBW = 512;
-        break;
-      case 640:
-        localStream.bitRate.maxVideoBW = 1024;
-        break;
-      case 1280:
-        localStream.bitRate.maxVideoBW = 2048;
-        break;
-      default:
-        // localStream.bitRate.maxVideoBW = undefined;
-        break;
+      if (mediaOption.video) {
+        // set default bit rate
+        switch (mediaOption.video.mandatory.maxWidth) {
+        case 320:
+          localStream.bitRate.maxVideoBW = 512;
+          break;
+        case 640:
+          localStream.bitRate.maxVideoBW = 1024;
+          break;
+        case 1280:
+          localStream.bitRate.maxVideoBW = 2048;
+          break;
+        default:
+          // localStream.bitRate.maxVideoBW = undefined;
+          break;
+        }
       }
       if (typeof callback === 'function') {
         callback(null, localStream);
@@ -433,6 +438,7 @@
 
     if (option.video && option.video.device === 'screen') {
       var extensionId = option.video.extensionId || 'pndohhifhheefbpeljcmnhnkphepimhe';
+      mediaOption.audio = false;
       try {
         chrome.runtime.sendMessage(extensionId, {getStream: true}, function (response) {
           mediaOption.video.mandatory.chromeMediaSource = 'desktop';

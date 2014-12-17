@@ -38,7 +38,7 @@
   //   }
   // }
 
-  var conference = Woogeen.Conference.create({});
+  var conference = Woogeen.ConferenceClient.create({});
 
   function displayStream (stream) {
     var div = document.createElement('div');

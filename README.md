@@ -10,7 +10,9 @@
 
 ### Build
 
-- `scripts/build.sh --mcu --sdk`
+- without msdk: `scripts/build.sh --mcu --sdk`
+- with msdk: `scripts/build.sh --mcu-hardware --sdk`
+- both: `scripts/build.sh --mcu-all --sdk`
 
 ### Package
 
@@ -19,7 +21,7 @@
 - run in package:
 
     - `cd dist`
-    - `bin/init.sh`
+    - `bin/init.sh` for software; `bin/init.sh --hardware` for hardware.
     - `bin/start-all.sh`
 
 ## Gateway
