@@ -370,20 +370,22 @@
           localStream.close();
         };
       }
-      // set default bit rate
-      switch (mediaOption.video.mandatory.maxWidth) {
-      case 320:
-        localStream.bitRate.maxVideoBW = 512;
-        break;
-      case 640:
-        localStream.bitRate.maxVideoBW = 1024;
-        break;
-      case 1280:
-        localStream.bitRate.maxVideoBW = 2048;
-        break;
-      default:
-        // localStream.bitRate.maxVideoBW = undefined;
-        break;
+      if (mediaOption.video) {
+        // set default bit rate
+        switch (mediaOption.video.mandatory.maxWidth) {
+        case 320:
+          localStream.bitRate.maxVideoBW = 512;
+          break;
+        case 640:
+          localStream.bitRate.maxVideoBW = 1024;
+          break;
+        case 1280:
+          localStream.bitRate.maxVideoBW = 2048;
+          break;
+        default:
+          // localStream.bitRate.maxVideoBW = undefined;
+          break;
+        }
       }
       if (typeof callback === 'function') {
         callback(null, localStream);
