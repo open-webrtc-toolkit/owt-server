@@ -27,16 +27,22 @@ VideoMixEngineImp::~VideoMixEngineImp()
         m_xcoder = NULL;
     }
 
-    for(std::map<OutputIndex, OutputInfo>::iterator it = m_outputs.begin(); it != m_outputs.end(); ++it) {
-        delete it->second.stream;
-        it->second.stream = NULL;
-        m_outputs.erase(it);
+    {
+        Locker<Mutex> outputs_lock(m_outputs_mutex);
+        for(std::map<OutputIndex, OutputInfo>::iterator it = m_outputs.begin(); it != m_outputs.end(); ++it) {
+            delete it->second.stream;
+            it->second.stream = NULL;
+            m_outputs.erase(it);
+        }
     }
 
-    for(std::map<InputIndex, InputInfo>::iterator it = m_inputs.begin(); it != m_inputs.end(); ++it) {
-        delete it->second.mp;
-        it->second.mp = NULL;
-        m_inputs.erase(it);
+    {
+        Locker<Mutex> inputs_lock(m_inputs_mutex);
+        for(std::map<InputIndex, InputInfo>::iterator it = m_inputs.begin(); it != m_inputs.end(); ++it) {
+            delete it->second.mp;
+            it->second.mp = NULL;
+            m_inputs.erase(it);
+        }
     }
 
     if (m_vpp) {
@@ -47,19 +53,25 @@ VideoMixEngineImp::~VideoMixEngineImp()
 
 bool VideoMixEngineImp::init(BackgroundColor bgColor, FrameSize frameSize)
 {
+    Locker<Mutex> state_lock(m_state_mutex);
     if (m_state == UN_INITIALIZED) {
         m_vpp = new VppInfo;
-        m_vpp->bgColor = bgColor;
-        m_vpp->width = frameSize.width;
-        m_vpp->height = frameSize.height;
-        m_state = IDLE;
-        return true;
+        if (m_vpp) {
+            m_vpp->bgColor = bgColor;
+            m_vpp->width = frameSize.width;
+            m_vpp->height = frameSize.height;
+            m_state = IDLE;
+            return true;
+        } else {
+            return false;
+        }
     } else
         return false;
 }
 
 void VideoMixEngineImp::setBackgroundColor(const BackgroundColor* bgColor)
 {
+    Locker<Mutex> state_lock(m_state_mutex);
     if (m_state == IN_SERVICE && bgColor) {
         BgColor bg_color;
         bg_color.Y = bgColor->y;
@@ -77,6 +89,7 @@ void VideoMixEngineImp::setBackgroundColor(const BackgroundColor* bgColor)
 
 void VideoMixEngineImp::setResolution(unsigned int width, unsigned int height)
 {
+    Locker<Mutex> state_lock(m_state_mutex);
     if (m_state == IN_SERVICE) {
         if (0 == m_xcoder->SetResolution(m_vpp->vppHandle, width, height)) {
             m_vpp->width = width;
@@ -89,6 +102,7 @@ void VideoMixEngineImp::setResolution(unsigned int width, unsigned int height)
 
 void VideoMixEngineImp::setLayout(const CustomLayoutInfo& layout)
 {
+    Locker<Mutex> state_lock(m_state_mutex);
     if (m_state == IN_SERVICE) {
         if (m_vpp->bgColor.y != layout.rootColor.y
             || m_vpp->bgColor.cb != layout.rootColor.cb
@@ -111,6 +125,7 @@ void VideoMixEngineImp::setRegions(const std::map<InputIndex, RegionInfo>& layou
     bool set_combo_type = false;
     int ret = -1;
 
+    Locker<Mutex> inputs_lock(m_inputs_mutex);
     for(; it_dec != layoutMapping.end(); ++it_dec) {
         Region regionInfo = {it_dec->second.left, it_dec->second.top,
             it_dec->second.width_ratio, it_dec->second.height_ratio};
@@ -149,6 +164,8 @@ void VideoMixEngineImp::setRegions(const std::map<InputIndex, RegionInfo>& layou
 InputIndex VideoMixEngineImp::enableInput(VideoMixCodecType codec, VideoMixEngineInput* producer)
 {
     InputIndex index = INVALID_INPUT_INDEX;
+
+    Locker<Mutex> state_lock(m_state_mutex);
     switch (m_state) {
         case UN_INITIALIZED:
             break;
@@ -174,6 +191,7 @@ InputIndex VideoMixEngineImp::enableInput(VideoMixCodecType codec, VideoMixEngin
 
 void VideoMixEngineImp::disableInput(InputIndex index)
 {
+    Locker<Mutex> state_lock(m_state_mutex);
     switch (m_state) {
         case UN_INITIALIZED:
         case IDLE:
@@ -191,22 +209,27 @@ void VideoMixEngineImp::disableInput(InputIndex index)
 
 void VideoMixEngineImp::pushInput(InputIndex index, unsigned char* data, int len)
 {
+    Locker<Mutex> state_lock(m_state_mutex);
     if (m_state == IN_SERVICE) {
-        MemPool* mp = m_inputs[index].mp;
-        VideoMixCodecType codec_type = m_inputs[index].codec;
-        if (mp) {
-            int memPool_freeflat = mp->GetFreeFlatBufSize();
-            unsigned char* memPool_wrptr = mp->GetWritePtr();
-            int prefixLength = (codec_type == VCT_MIX_VP8) ? 4 : 0;
-            int copySize = len + prefixLength;
-            if (memPool_freeflat < copySize)
-                return;
+        Locker<Mutex> inputs_lock(m_inputs_mutex);
+        std::map<InputIndex, InputInfo>::iterator it = m_inputs.find(index);
+        if (it != m_inputs.end()) {
+            MemPool* mp = it->second.mp;
+            VideoMixCodecType codec_type = it->second.codec;
+            if (mp) {
+                int memPool_freeflat = mp->GetFreeFlatBufSize();
+                unsigned char* memPool_wrptr = mp->GetWritePtr();
+                int prefixLength = (codec_type == VCT_MIX_VP8) ? 4 : 0;
+                int copySize = len + prefixLength;
+                if (memPool_freeflat < copySize)
+                    return;
 
-            if (codec_type == VCT_MIX_VP8)
-                memcpy(memPool_wrptr, (void*)&len, prefixLength);
+                if (codec_type == VCT_MIX_VP8)
+                    memcpy(memPool_wrptr, (void*)&len, prefixLength);
 
-            memcpy(memPool_wrptr + prefixLength, data, len);
-            mp->UpdateWritePtrCopyData(copySize);
+                memcpy(memPool_wrptr + prefixLength, data, len);
+                mp->UpdateWritePtrCopyData(copySize);
+            }
         }
     }
 }
@@ -218,6 +241,7 @@ OutputIndex VideoMixEngineImp::enableOutput(VideoMixCodecType codec, unsigned sh
     if (isCodecAlreadyInUse(codec))
         return index;
 
+    Locker<Mutex> state_lock(m_state_mutex);
     switch (m_state) {
         case UN_INITIALIZED:
             break;
@@ -243,6 +267,7 @@ OutputIndex VideoMixEngineImp::enableOutput(VideoMixCodecType codec, unsigned sh
 
 void VideoMixEngineImp::disableOutput(OutputIndex index)
 {
+    Locker<Mutex> state_lock(m_state_mutex);
     switch (m_state) {
         case UN_INITIALIZED:
         case IDLE:
@@ -260,29 +285,41 @@ void VideoMixEngineImp::disableOutput(OutputIndex index)
 
 void VideoMixEngineImp::forceKeyFrame(OutputIndex index)
 {
-    if (m_state == IN_SERVICE)
-        if (0 != m_xcoder->ForceKeyFrame(codec_type_dict[m_outputs[index].codec])) {
+    Locker<Mutex> state_lock(m_state_mutex);
+    Locker<Mutex> outputs_lock(m_outputs_mutex);
+    std::map<OutputIndex, OutputInfo>::iterator it = m_outputs.find(index);
+    if (m_state == IN_SERVICE && it != m_outputs.end()) {
+        if (0 != m_xcoder->ForceKeyFrame(codec_type_dict[it->second.codec])) {
             printf("[%s]Fail to force key frame.\n", __FUNCTION__);
         }
+    }
 }
 
 void VideoMixEngineImp::setBitrate(OutputIndex index, unsigned short bitrate)
 {
-    if (m_state == IN_SERVICE) {
-        if (0 != m_xcoder->SetBitrate(codec_type_dict[m_outputs[index].codec], bitrate)) {
+    Locker<Mutex> state_lock(m_state_mutex);
+    Locker<Mutex> outputs_lock(m_outputs_mutex);
+    std::map<OutputIndex, OutputInfo>::iterator it = m_outputs.find(index);
+    if (m_state == IN_SERVICE && it != m_outputs.end()) {
+        if (0 != m_xcoder->SetBitrate(codec_type_dict[it->second.codec], bitrate)) {
             printf("[%s]Fail to set bit rate.\n", __FUNCTION__);
         } else {
-            m_outputs[index].bitrate = bitrate;
+            it->second.bitrate = bitrate;
         }
     }
 }
 
 int VideoMixEngineImp::pullOutput(OutputIndex index, unsigned char* buf)
 {
+    Locker<Mutex> state_lock(m_state_mutex);
     if (m_state == IN_SERVICE) {
-        Stream* stream = m_outputs[index].stream;
-        if (stream && stream->GetBlockCount() > 0)
-            return stream->ReadBlocks(buf, 1);
+        Locker<Mutex> outputs_lock(m_outputs_mutex);
+        std::map<OutputIndex, OutputInfo>::iterator it = m_outputs.find(index);
+        if (it != m_outputs.end()) {
+            Stream* stream = it->second.stream;
+            if (stream && stream->GetBlockCount() > 0)
+                return stream->ReadBlocks(buf, 1);
+        }
     }
 
     return 0;
@@ -297,24 +334,29 @@ InputIndex VideoMixEngineImp::scheduleInput(VideoMixCodecType codec, VideoMixEng
     return i;
 }
 
-void VideoMixEngineImp::installInput(InputIndex index)
+void VideoMixEngineImp::attachInput(InputIndex index, InputInfo* input)
 {
-    if (index >= 0) {
-        MemPool* memPool = new MemPool;
-        memPool->init();
-
+    if (input) {
         DecOptions dec_cfg;
         memset(&dec_cfg, 0, sizeof(dec_cfg));
-        dec_cfg.inputStream = memPool;
-        dec_cfg.input_codec_type = codec_type_dict[m_inputs[index].codec];
-        dec_cfg.measuremnt = NULL;
-        m_xcoder->AttachInput(&dec_cfg, m_vpp->vppHandle);
-        m_inputs[index].decHandle = dec_cfg.DecHandle;
-        m_inputs[index].mp = memPool;
+        setupInputCfg(&dec_cfg, input);
 
-        VideoMixEngineInput* producer = m_inputs[index].producer;
+        m_xcoder->AttachInput(&dec_cfg, m_vpp->vppHandle);
+        input->decHandle = dec_cfg.DecHandle;
+        input->mp = dec_cfg.inputStream;
+
+        VideoMixEngineInput* producer = input->producer;
         if (producer)
             producer->requestKeyFrame(index);
+    }
+}
+
+void VideoMixEngineImp::installInput(InputIndex index)
+{
+    Locker<Mutex> inputs_lock(m_inputs_mutex);
+    std::map<InputIndex, InputInfo>::iterator it = m_inputs.find(index);
+    if (it != m_inputs.end()) {
+        attachInput(index, &(it->second));
     }
 }
 
@@ -323,20 +365,32 @@ void VideoMixEngineImp::uninstallInput(InputIndex index)
     Locker<Mutex> inputs_lock(m_inputs_mutex);
     std::map<InputIndex, InputInfo>::iterator it = m_inputs.find(index);
     if (it != m_inputs.end() && it->second.decHandle != NULL) {
-        m_xcoder->DetachInput(it->second.decHandle);
-        it->second.decHandle = NULL;
-        delete it->second.mp;
-        it->second.mp = NULL;
         m_inputs.erase(it);
+        int input_size = m_inputs.size();
+        if (input_size > 0) {
+            m_xcoder->DetachInput(it->second.decHandle);
+            it->second.decHandle = NULL;
+            delete it->second.mp;
+            it->second.mp = NULL;
+        } else if (input_size == 0) {
+            Locker<Mutex> outputs_lock(m_outputs_mutex);
+            demolishPipeline(input_size, m_outputs.size());
+        }
     }
 }
 
 void VideoMixEngineImp::removeInput(InputIndex index)
 {
     Locker<Mutex> inputs_lock(m_inputs_mutex);
-    m_inputs.erase(index);
-    if (m_inputs.size() == 0)
-        demolishPipeline();
+    std::map<InputIndex, InputInfo>::iterator it = m_inputs.find(index);
+    if (it != m_inputs.end()) {
+        m_inputs.erase(it);
+        int input_size = m_inputs.size();
+        if (input_size == 0) {
+            Locker<Mutex> outputs_lock(m_outputs_mutex);
+            demolishPipeline(input_size, m_outputs.size());
+        }
+    }
 }
 
 OutputIndex VideoMixEngineImp::scheduleOutput(VideoMixCodecType codec, unsigned short bitrate, VideoMixEngineOutput* consumer)
@@ -348,30 +402,25 @@ OutputIndex VideoMixEngineImp::scheduleOutput(VideoMixCodecType codec, unsigned 
     return i;
 }
 
-void VideoMixEngineImp::installOutput(OutputIndex index)
+void VideoMixEngineImp::attachOutput(OutputIndex index, OutputInfo* output)
 {
-    if (index >= 0) {
-        Stream* stream = new Stream;
-        stream->Open();
-
+    if (output) {
         EncOptions enc_cfg;
         memset(&enc_cfg, 0, sizeof(enc_cfg));
-        enc_cfg.outputStream = stream;
-        enc_cfg.output_codec_type = codec_type_dict[m_outputs[index].codec];
-        enc_cfg.bitrate = m_outputs[index].bitrate;
-        enc_cfg.numRefFrame = 1;
-        enc_cfg.measuremnt = NULL;
-
-        if (m_outputs[index].codec == VCT_MIX_H264) {
-            enc_cfg.profile = 66;
-            enc_cfg.numRefFrame = 1;
-            enc_cfg.idrInterval= 0;
-            enc_cfg.intraPeriod = GOP_SIZE;
-        }
+        setupOutputCfg(&enc_cfg, output);
 
         m_xcoder->AttachOutput(&enc_cfg, m_vpp->vppHandle);
-        m_outputs[index].encHandle = enc_cfg.EncHandle;
-        m_outputs[index].stream = stream;
+        output->encHandle = enc_cfg.EncHandle;
+        output->stream = enc_cfg.outputStream;
+    }
+}
+
+void VideoMixEngineImp::installOutput(OutputIndex index)
+{
+    Locker<Mutex> outputs_lock(m_outputs_mutex);
+    std::map<OutputIndex, OutputInfo>::iterator it = m_outputs.find(index);
+    if (it != m_outputs.end()) {
+        attachOutput(index, &(it->second));
     }
 }
 
@@ -380,20 +429,75 @@ void VideoMixEngineImp::uninstallOutput(OutputIndex index)
     Locker<Mutex> outputs_lock(m_outputs_mutex);
     std::map<OutputIndex, OutputInfo>::iterator it = m_outputs.find(index);
     if (it != m_outputs.end() && it->second.encHandle != NULL) {
-        m_xcoder->DetachOutput(it->second.encHandle);
-        it->second.encHandle = NULL;
-        delete it->second.stream;
-        it->second.stream = NULL;
         m_outputs.erase(it);
+        int output_size = m_outputs.size();
+        if (output_size > 0) {
+            m_xcoder->DetachOutput(it->second.encHandle);
+            it->second.encHandle = NULL;
+            delete it->second.stream;
+            it->second.stream = NULL;
+        } else if (output_size == 0) {
+            Locker<Mutex> inputs_lock(m_inputs_mutex);
+            demolishPipeline(m_inputs.size(), output_size);
+        }
     }
 }
 
 void VideoMixEngineImp::removeOutput(OutputIndex index)
 {
     Locker<Mutex> outputs_lock(m_outputs_mutex);
-    m_outputs.erase(index);
-    if (m_outputs.size() == 0)
-        demolishPipeline();
+    std::map<OutputIndex, OutputInfo>::iterator it = m_outputs.find(index);
+    if (it != m_outputs.end() && it->second.encHandle != NULL) {
+        m_outputs.erase(it);
+        int output_size = m_outputs.size();
+        if (output_size == 0) {
+            Locker<Mutex> inputs_lock(m_inputs_mutex);
+            demolishPipeline(m_inputs.size(), output_size);
+        }
+    }
+}
+
+void VideoMixEngineImp::setupInputCfg(DecOptions* dec_cfg, InputInfo* input)
+{
+    if (dec_cfg && input) {
+        MemPool* memPool = new MemPool;
+        if (memPool) {
+            memPool->init();
+            dec_cfg->inputStream = memPool;
+            dec_cfg->input_codec_type = codec_type_dict[input->codec];
+            dec_cfg->measuremnt = NULL;
+        }
+    }
+}
+
+void VideoMixEngineImp::setupVppCfg(VppOptions* vpp_cfg)
+{
+    if (vpp_cfg && m_vpp) {
+        vpp_cfg->out_width = m_vpp->width;
+        vpp_cfg->out_height = m_vpp->height;
+        vpp_cfg->measuremnt = NULL;
+    }
+}
+
+void VideoMixEngineImp::setupOutputCfg(EncOptions* enc_cfg, OutputInfo* output)
+{
+    if (enc_cfg && output) {
+        Stream* stream = new Stream;
+        if (stream) {
+            stream->Open();
+            enc_cfg->outputStream = stream;
+            enc_cfg->output_codec_type = codec_type_dict[output->codec];
+            enc_cfg->bitrate = output->bitrate;
+            enc_cfg->numRefFrame = 1;
+            enc_cfg->measuremnt = NULL;
+            if (output->codec == VCT_MIX_H264) {
+                enc_cfg->profile = 66;
+                enc_cfg->numRefFrame = 1;
+                enc_cfg->idrInterval= 0;
+                enc_cfg->intraPeriod = GOP_SIZE;
+            }
+        }
+    }
 }
 
 void VideoMixEngineImp::setupPipeline()
@@ -403,65 +507,49 @@ void VideoMixEngineImp::setupPipeline()
         return;
     }
 
-    InputInfo input = m_inputs.begin()->second;
-    OutputInfo output = m_outputs.begin()->second;
+    Locker<Mutex> inputs_lock(m_inputs_mutex);
+    Locker<Mutex> outputs_lock(m_outputs_mutex);
+    std::map<InputIndex, InputInfo>::iterator it_input = m_inputs.begin();
+    std::map<OutputIndex, OutputInfo>::iterator it_output = m_outputs.begin();
+    if (it_input != m_inputs.end() && it_output != m_outputs.end() && m_vpp) {
+        DecOptions dec_cfg;
+        memset(&dec_cfg, 0, sizeof(dec_cfg));
+        setupInputCfg(&dec_cfg, &(it_input->second));
 
-    MemPool* memPool = new MemPool;
-    memPool->init();
+        VppOptions vpp_cfg;
+        memset(&vpp_cfg, 0, sizeof(vpp_cfg));
+        setupVppCfg(&vpp_cfg);
 
-    DecOptions dec_cfg;
-    memset(&dec_cfg, 0, sizeof(dec_cfg));
-    dec_cfg.inputStream = memPool;
-    dec_cfg.input_codec_type = codec_type_dict[input.codec];
-    dec_cfg.measuremnt = NULL;
+        EncOptions enc_cfg;
+        memset(&enc_cfg, 0, sizeof(enc_cfg));
+        setupOutputCfg(&enc_cfg, &(it_output->second));
 
-    VppOptions vpp_cfg;
-    memset(&vpp_cfg, 0, sizeof(vpp_cfg));
-    vpp_cfg.out_width = m_vpp->width;
-    vpp_cfg.out_height = m_vpp->height;
-    vpp_cfg.measuremnt = NULL;
+        m_xcoder = new MsdkXcoder;
+        m_xcoder->Init(&dec_cfg, &vpp_cfg, &enc_cfg);
+        m_xcoder->Start();
 
-    Stream* stream = new Stream;
-    stream->Open();
-
-    EncOptions enc_cfg;
-    memset(&enc_cfg, 0, sizeof(enc_cfg));
-    enc_cfg.outputStream = stream;
-    enc_cfg.output_codec_type = codec_type_dict[output.codec];
-    enc_cfg.bitrate = output.bitrate;
-    enc_cfg.numRefFrame = 1;
-    enc_cfg.measuremnt = NULL;
-    if (output.codec == VCT_MIX_H264) {
-        enc_cfg.profile = 66;
-        enc_cfg.numRefFrame = 1;
-        enc_cfg.idrInterval= 0;
-        enc_cfg.intraPeriod = GOP_SIZE;
+        it_input->second.decHandle = dec_cfg.DecHandle;
+        it_input->second.mp = dec_cfg.inputStream;
+        it_output->second.encHandle = enc_cfg.EncHandle;
+        it_output->second.stream = enc_cfg.outputStream;
+        m_vpp->vppHandle = vpp_cfg.VppHandle;
     }
 
-    m_xcoder = new MsdkXcoder;
-    m_xcoder->Init(&dec_cfg, &vpp_cfg, &enc_cfg);
-    m_xcoder->Start();
+    for (++it_input; it_input != m_inputs.end(); ++it_input) {
+        attachInput(it_input->first, &(it_input->second));
+    }
 
-    m_inputs.begin()->second.decHandle = dec_cfg.DecHandle;
-    m_inputs.begin()->second.mp = memPool;
-    m_outputs.begin()->second.encHandle = enc_cfg.EncHandle;
-    m_outputs.begin()->second.stream = stream;
-    m_vpp->vppHandle = vpp_cfg.VppHandle;
-
-    std::map<InputIndex, InputInfo>::iterator it_input = m_inputs.begin();
-    ++it_input;
-    for (; it_input != m_inputs.end(); ++it_input)
-        installInput(it_input->first);
-
-    std::map<OutputIndex, OutputInfo>::iterator it_output = m_outputs.begin();
-    for (++it_output; it_output != m_outputs.end(); ++it_output)
-        installOutput(it_output->first);
+    for (++it_output; it_output != m_outputs.end(); ++it_output) {
+        attachOutput(it_output->first, &(it_output->second));
+    }
 
     printf("[%s]Start Xcode pipeline.\n", __FUNCTION__);
 }
 
-void VideoMixEngineImp::demolishPipeline()
+void VideoMixEngineImp::demolishPipeline(int input_size, int output_size)
 {
+    //shouldn't lock here, m_state has been locked by caller
+    //Locker<Mutex> state_lock(m_state_mutex);
     switch (m_state) {
         case IN_SERVICE:
             m_xcoder->Stop();
@@ -470,11 +558,11 @@ void VideoMixEngineImp::demolishPipeline()
             m_vpp->vppHandle = NULL;
         case WAITING_FOR_INPUT:
         case WAITING_FOR_OUTPUT:
-            if (m_inputs.size() == 0 && m_outputs.size() == 0)
+            if (input_size == 0 && output_size == 0)
                 m_state = IDLE;
-            else if (m_inputs.size() == 0)
+            else if (input_size == 0)
                 m_state = WAITING_FOR_INPUT;
-            else if (m_outputs.size() == 0)
+            else if (output_size == 0)
                 m_state = WAITING_FOR_OUTPUT;
             break;
         case IDLE:
@@ -485,6 +573,7 @@ void VideoMixEngineImp::demolishPipeline()
 
 bool VideoMixEngineImp::isCodecAlreadyInUse(VideoMixCodecType codec)
 {
+    Locker<Mutex> outputs_lock(m_outputs_mutex);
     for (std::map<OutputIndex, OutputInfo>::iterator it = m_outputs.begin(); it != m_outputs.end(); ++it) {
         if (it->second.codec == codec)
             return true;

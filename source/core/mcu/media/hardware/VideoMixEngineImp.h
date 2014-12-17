@@ -59,16 +59,21 @@ public:
 private:
     InputIndex scheduleInput(VideoMixCodecType codec, VideoMixEngineInput* producer);
     void installInput(InputIndex index);
+    void attachInput(InputIndex index, InputInfo* input);
     void uninstallInput(InputIndex index);
     void removeInput(InputIndex index);
 
     OutputIndex scheduleOutput(VideoMixCodecType codec, unsigned short bitrate, VideoMixEngineOutput* consumer);
     void installOutput(OutputIndex index);
+    void attachOutput(OutputIndex index, OutputInfo* output);
     void uninstallOutput(OutputIndex index);
     void removeOutput(OutputIndex index);
 
+    void setupInputCfg(DecOptions* dec_cfg, InputInfo* input);
+    void setupVppCfg(VppOptions* vpp_cfg);
+    void setupOutputCfg(EncOptions* enc_cfg, OutputInfo* output);
     void setupPipeline();
-    void demolishPipeline();
+    void demolishPipeline(int input_size, int output_size);
 
     void setRegions(const std::map<InputIndex, RegionInfo>&);
 
@@ -84,6 +89,7 @@ private:
     std::map<OutputIndex, OutputInfo> m_outputs;
     Mutex m_inputs_mutex;
     Mutex m_outputs_mutex;
+    Mutex m_state_mutex;
 };
 
 #endif
