@@ -8,11 +8,13 @@ var log = logger.getLogger("ServiceResource");
 /*
  * Gets the service and checks if it is superservice. Only superservice can do actions about services.
  */
+
+var superService = require('./../mdb/dataBase').superService;
+
 var doInit = function (serv, callback) {
     "use strict";
 
-    var service = require('./../auth/nuveAuthenticator').service,
-        superService = require('./../mdb/dataBase').superService;
+    var service = require('./../auth/nuveAuthenticator').service;
 
     service._id = service._id + '';
     if (service._id !== superService) {
@@ -33,11 +35,11 @@ exports.represent = function (req, res) {
     doInit(req.params.service, function (serv) {
         if (serv === 'error') {
             log.info('Service ', req.params.service, ' not authorized for this action');
-            res.send('Service not authorized for this action', 401);
+            res.status(401).send('Service not authorized for this action');
             return;
         }
-        if (serv === undefined) {
-            res.send('Service not found', 404);
+        if (serv === undefined || serv === null) {
+            res.status(404).send('Service not found');
             return;
         }
         log.info('Representing service ', serv._id);
@@ -54,15 +56,19 @@ exports.deleteService = function (req, res) {
     doInit(req.params.service, function (serv) {
         if (serv === 'error') {
             log.info('Service ', req.params.service, ' not authorized for this action');
-            res.send('Service not authorized for this action', 401);
+            res.status(401).send('Service not authorized for this action');
             return;
         }
         if (serv === undefined || serv === null) {
-            res.send('Service not found', 404);
+            res.status(404).send('Service not found');
             return;
         }
         var id = '';
         id += serv._id;
+        if (id === superService) {
+            res.status(401).send('Super service not permitted to be deleted');
+            return;
+        }
         serviceRegistry.removeService(id);
         log.info('Serveice ', id, ' deleted');
         res.send('Service deleted');

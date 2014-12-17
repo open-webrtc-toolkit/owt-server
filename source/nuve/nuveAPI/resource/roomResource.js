@@ -9,7 +9,6 @@ var logger = require('./../logger').logger;
 var log = logger.getLogger("RoomResource");
 
 var currentService;
-var currentRoom;
 
 /*
  * Gets the service and the room for the proccess of the request.
@@ -19,10 +18,7 @@ var doInit = function (roomId, callback) {
 
     currentService = require('./../auth/nuveAuthenticator').service;
 
-    serviceRegistry.getRoomForService(roomId, currentService, function (room) {
-        currentRoom = room;
-        callback();
-    });
+    serviceRegistry.getRoomForService(roomId, currentService, callback);
 };
 
 /*
@@ -31,15 +27,15 @@ var doInit = function (roomId, callback) {
 exports.represent = function (req, res) {
     "use strict";
 
-    doInit(req.params.room, function () {
+    doInit(req.params.room, function (room) {
         if (currentService === undefined) {
-            res.send('Client unathorized', 401);
-        } else if (currentRoom === undefined) {
+            res.status(401).send('Client unathorized');
+        } else if (room === undefined) {
             log.info('Room ', req.params.room, ' does not exist');
-            res.send('Room does not exist', 404);
+            res.status(404).send('Room does not exist');
         } else {
-            log.info('Representing room ', currentRoom._id, 'of service ', currentService._id);
-            res.send(currentRoom);
+            log.info('Representing room ', room._id, 'of service ', currentService._id);
+            res.send(room);
         }
     });
 };
@@ -50,33 +46,25 @@ exports.represent = function (req, res) {
 exports.deleteRoom = function (req, res) {
     "use strict";
 
-    doInit(req.params.room, function () {
+    doInit(req.params.room, function (room) {
         if (currentService === undefined) {
-            res.send('Client unathorized', 401);
-        } else if (currentRoom === undefined) {
+            res.status(401).send('Client unathorized');
+        } else if (room === undefined) {
             log.info('Room ', req.params.room, ' does not exist');
-            res.send('Room does not exist', 404);
+            res.status(404).send('Room does not exist');
         } else {
-            var id = '',
-                array = currentService.rooms,
-                index = -1,
-                i;
-
-            id += currentRoom._id;
+            log.info('Preparing deleting room', room._id);
+            var id = room._id + '';
             roomRegistry.removeRoom(id);
-
-            for (i = 0; i < array.length; i += 1) {
-                if (array[i]._id === currentRoom._id) {
-                    index = i;
+            currentService.rooms.map(function (r, index) {
+                if (r._id === room._id) {
+                    currentService.rooms.splice(index, 1);
+                    serviceRegistry.updateService(currentService);
+                    log.info('Room ', id, ' deleted for service ', currentService._id);
+                    cloudHandler.deleteRoom(id, function () {});
                 }
-            }
-            if (index !== -1) {
-                currentService.rooms.splice(index, 1);
-                serviceRegistry.updateService(currentService);
-                log.info('Room ', id, ' deleted for service ', currentService._id);
-                cloudHandler.deleteRoom(id, function () {});
-                res.send('Room deleted');
-            }
+            });
+            res.send('Room deleted');
         }
     });
 };
