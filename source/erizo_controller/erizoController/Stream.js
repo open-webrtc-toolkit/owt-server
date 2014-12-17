@@ -65,7 +65,7 @@ exports.Stream = function (spec) {
 
     // Returns the public specification of this stream
     that.getPublicStream = function () {
-        return {id: spec.id, audio: spec.audio, video: spec.video, data: spec.data, screen: spec.screen, attributes: spec.attributes};
+        return {id: spec.id, audio: spec.audio, video: spec.video, data: spec.data, screen: spec.screen, from: spec.from, attributes: spec.attributes};
     };
 
     return that;

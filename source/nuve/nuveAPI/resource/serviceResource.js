@@ -14,7 +14,7 @@ var doInit = function (serv, callback) {
     var service = require('./../auth/nuveAuthenticator').service,
         superService = require('./../mdb/dataBase').superService;
 
-    service._id = service._id + '';    
+    service._id = service._id + '';
     if (service._id !== superService) {
         callback('error');
     } else {
@@ -57,7 +57,7 @@ exports.deleteService = function (req, res) {
             res.send('Service not authorized for this action', 401);
             return;
         }
-        if (serv === undefined) {
+        if (serv === undefined || serv === null) {
             res.send('Service not found', 404);
             return;
         }

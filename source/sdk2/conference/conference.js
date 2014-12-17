@@ -1,5 +1,5 @@
 /* global io, console */
-Woogeen.Conference = (function () {
+Woogeen.ConferenceClient = (function () {
   'use strict';
 
   function safeCall () {
@@ -150,6 +150,7 @@ Woogeen.Conference = (function () {
             video: spec.video,
             audio: spec.audio,
             id: spec.id,
+            from: spec.from,
             attributes: spec.attributes
           });
           var evt;
@@ -168,6 +169,7 @@ Woogeen.Conference = (function () {
             video: spec.video,
             audio: spec.audio,
             id: spec.id,
+            from: spec.from,
             attributes: spec.attributes,
             mediaStream: (self.remoteStreams[spec.id] || {}).mediaStream
           });
@@ -199,7 +201,8 @@ Woogeen.Conference = (function () {
                 streamId: spec.streamId,
                 subsSocket: spec.subsSocket
               }, offer, function (answer) {
-                if (answer === 'error') {
+                if (answer === 'error' || answer === 'timeout') {
+                  L.Logger.warning('invalid answer');
                   return;
                 }
                 myStream.channel[spec.subsSocket].onsignalingmessage = function () {
@@ -435,7 +438,7 @@ Woogeen.Conference = (function () {
 
   WoogeenConference.prototype = Woogeen.EventDispatcher({}); // make WoogeenConference a eventDispatcher
 
-  WoogeenConference.prototype.quit = function () {
+  WoogeenConference.prototype.disconnect = function () {
     var evt = new Woogeen.ClientEvent({type: 'client-disconnected'});
     this.dispatchEvent(evt);
   };
@@ -513,6 +516,9 @@ Woogeen.Conference = (function () {
           sendSdp(self.socket, 'publish', opt, offer, function (answer, id) {
             if (answer === 'error') {
               return safeCall(onFailure, id);
+            }
+            if (answer === 'timeout') {
+              return safeCall(onFailure, answer);
             }
             stream.channel.onsignalingmessage = function () {
               stream.channel.onsignalingmessage = function () {};
@@ -618,7 +624,7 @@ Woogeen.Conference = (function () {
           audio: stream.hasAudio(),
           video: stream.hasVideo()
         }, offer, function (answer) {
-          if (answer === 'error') {
+          if (answer === 'error' || answer === 'timeout') {
             return safeCall(onFailure, answer);
           }
           stream.channel.processSignalingMessage(answer);

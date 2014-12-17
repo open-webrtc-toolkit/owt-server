@@ -91,8 +91,8 @@ var launchErizoJS = function() {
     console.log("Running process");
     var id = guid();
     var fs = require('fs');
-    var out = fs.openSync('./erizo-' + id + '.log', 'a');
-    var err = fs.openSync('./erizo-' + id + '.log', 'a');
+    var out = fs.openSync('../../logs/erizo-' + id + '.log', 'a');
+    var err = fs.openSync('../../logs/erizo-' + id + '.log', 'a');
     var erizoProcess = spawn('node', ['./../erizoJS/erizoJS.js', id], { detached: true, stdio: [ 'ignore', out, err ] });
     erizoProcess.unref();
     erizoProcess.on('close', function (code) {
@@ -166,6 +166,21 @@ rpc.connect(function () {
 
     rpc.bind(rpcID);
 
+});
+
+['SIGINT', 'SIGTERM'].map(function (sig) {
+    process.on(sig, function () {
+        log.warn('Exiting on', sig);
+        process.exit();
+    });
+});
+
+process.on('exit', function () {
+    Object.keys(processes).map(function (k) {
+        dropErizoJS(k, function(status){
+            log.info('Terminate ErizoJS', k, status);
+        });
+    });
 });
 
 /*

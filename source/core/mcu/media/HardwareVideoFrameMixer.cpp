@@ -168,12 +168,8 @@ void HardwareVideoFrameMixer::setLayout(const VideoLayout& layout)
         std::vector<Region>::const_iterator regionIt = layout.regions.begin();
         for (std::map<int, boost::shared_ptr<HardwareVideoFrameMixerInput>>::iterator it=m_inputs.begin(); it!=m_inputs.end(); ++it) {
             if (regionIt != layout.regions.end()) {
-                RegionInfo regionInfo;
-                regionInfo.id = (*regionIt).id;
-                regionInfo.left = (*regionIt).left;
-                regionInfo.top = (*regionIt).top;
-                regionInfo.relativeSize = (*regionIt).relativeSize;
-                regionInfo.priority = (*regionIt).priority;
+                RegionInfo regionInfo = {regionIt->left, regionIt->top,
+                    regionIt->relativeSize, regionIt->relativeSize};
 
                 // TODO: Currently, map the input to region sequentially.
                 // Some enhancement like VAD will change this logic in the future.
@@ -187,12 +183,8 @@ void HardwareVideoFrameMixer::setLayout(const VideoLayout& layout)
         }
 
         while (regionIt != layout.regions.end()) {
-            RegionInfo regionInfo;
-            regionInfo.id = (*regionIt).id;
-            regionInfo.left = (*regionIt).left;
-            regionInfo.top = (*regionIt).top;
-            regionInfo.relativeSize = (*regionIt).relativeSize;
-            regionInfo.priority = (*regionIt).priority;
+            RegionInfo regionInfo = {regionIt->left, regionIt->top,
+                regionIt->relativeSize, regionIt->relativeSize};
             m_currentLayout.candidateRegions.push_back(regionInfo);
 
             ++regionIt;
@@ -231,26 +223,29 @@ bool HardwareVideoFrameMixer::activateInput(int slot, FrameFormat format, VideoF
 
 void HardwareVideoFrameMixer::deActivateInput(int slot)
 {
-    // Adjust the mapping of input and layout region
-    if (!onSlotNumberChanged(m_inputs.size() - 1)) {
-        std::map<int, boost::shared_ptr<HardwareVideoFrameMixerInput>>::iterator itr = m_inputs.find(slot);
-        if (itr != m_inputs.end()) {
-            InputIndex index = itr->second->index();
-            std::map<InputIndex, RegionInfo>::iterator it = m_currentLayout.layoutMapping.find(index);
-            if (it != m_currentLayout.layoutMapping.end()) {
-                // Add it to candidateRegions
-                m_currentLayout.candidateRegions.push_back(it->second);
+    std::map<int, boost::shared_ptr<HardwareVideoFrameMixerInput>>::iterator inputIt = m_inputs.find(slot);
+    if (inputIt == m_inputs.end())
+        return;
 
-                // Remove the existing one from mapping
-                m_currentLayout.layoutMapping.erase(it);
-
-                m_engine->setLayout(m_currentLayout);
-            }
-        }
-    }
+    // Get the index first
+    InputIndex index = inputIt->second->index();
 
     // Remove the input entry
     m_inputs.erase(slot);
+
+    // Adjust the mapping of input and layout region
+    if (!onSlotNumberChanged(m_inputs.size())) {
+        std::map<InputIndex, RegionInfo>::iterator it = m_currentLayout.layoutMapping.find(index);
+        if (it != m_currentLayout.layoutMapping.end()) {
+            // Add it to candidateRegions
+            m_currentLayout.candidateRegions.push_back(it->second);
+
+            // Remove the existing one from mapping
+            m_currentLayout.layoutMapping.erase(it);
+
+            m_engine->setLayout(m_currentLayout);
+        }
+    }
 }
 
 void HardwareVideoFrameMixer::pushInput(int slot, unsigned char* payload, int len)

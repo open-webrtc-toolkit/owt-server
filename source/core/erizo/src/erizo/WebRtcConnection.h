@@ -148,7 +148,7 @@ public:
 
 	void updateState(TransportState state, Transport * transport);
 
-	void queueData(int comp, const char* data, int len, Transport *transport);
+    void queueData(int comp, const char* data, int len, Transport *transport, packetType type);
 
 private:
   static const int STATS_INTERVAL = 5000;
@@ -173,6 +173,12 @@ private:
 	void writeSsrc(char* buf, int len, unsigned int ssrc);
 	void processRtcpHeaders(char* buf, int len, unsigned int ssrc);
 
+  // changes the outgoing payload type for in the given data packet
+  void changeDeliverPayloadType(dataPacket *dp, packetType type);
+  // parses incoming payload type, replaces occurence in buf
+  void parseIncomingPayloadType(char *buf, int len, packetType type);
+
+  
 	bool audioEnabled_;
 	bool videoEnabled_;
 	bool nackEnabled_;
