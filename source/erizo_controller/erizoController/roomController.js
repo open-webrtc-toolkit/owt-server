@@ -65,6 +65,12 @@ exports.RoomController = function (spec) {
         
     };
 
+    var unescapeSdp = function(sdp) {
+        var reg = new RegExp(/\\\//g);
+        sdp = sdp.replace(reg, '/');
+        return sdp;
+    };
+
     that.addEventListener = function(eventListener) {
         eventListeners.push(eventListener);
     };
@@ -158,6 +164,8 @@ exports.RoomController = function (spec) {
 
             log.info("Adding publisher peer_id ", publisher_id);
 
+            sdp = unescapeSdp(sdp);
+
             // We create a new ErizoJS with the publisher_id.
             createErizoJS(publisher_id, function(erizo_id) {
             	log.info("Erizo created");
@@ -187,6 +195,8 @@ exports.RoomController = function (spec) {
             callback("error");
             return;
         }
+
+        unescapeSdp(sdp);
 
         if (publishers[publisher_id] !== undefined && subscribers[publisher_id].indexOf(subscriber_id) === -1 && sdp.match('OFFER') !== null) {
 
