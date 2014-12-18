@@ -776,9 +776,12 @@ var listen = function () {
         });
 
         socket.on('signaling_message', function (msg) {
-            socket.room.controller.processSignaling(msg.streamId, socket.id, msg.msg);
+            if (socket.room.p2p) {
+                io.sockets.to(msg.peerSocket).emit('signaling_message_peer', {streamId: msg.streamId, peerSocket: socket.id, msg: msg.msg});
+            } else {
+                socket.room.controller.processSignaling(msg.streamId, socket.id, msg.msg);
+            }
         });
-
 
         //Gets 'publish' messages on the socket in order to add new stream to the room.
         socket.on('publish', function (options, sdp, callback) {
@@ -912,7 +915,7 @@ var listen = function () {
                     }
 
                     console.log(';;;;;;;;;;;;;;; VOY ', signMess);
-                    socket.emit('signaling_message', {mess: signMess, streamId: id});
+                    socket.emit('signaling_message_erizo', {mess: signMess, streamId: id});
                 });
 
                 socket.streams.push(id);
@@ -972,10 +975,6 @@ var listen = function () {
                 } else if (options.state === 'ok' && socket.state === 'waitingOk') {
                 }
 */
-            } else if (options.state === 'p2pSignaling') {
-                io.sockets.to(options.subsSocket).emit('onPublishP2P', {sdp: sdp, streamId: options.streamId}, function(answer) {
-                    safeCall(callback, answer);
-                });
             } else {
                 id = Math.random() * 1000000000000000000;
                 st = new ST.Stream({id: id, socket: socket.id, audio: options.audio, video: options.video, attributes: options.attributes, from: socket.id});
@@ -1013,9 +1012,7 @@ var listen = function () {
 
                 if (socket.room.p2p) {
                     var s = stream.getSocket();
-                    io.sockets.to(s).emit('onSubscribeP2P', {streamId: options.streamId, subsSocket: socket.id}, function(offer) {
-                        safeCall(callback, offer);
-                    });
+                    io.sockets.to(s).emit('publish_me', {streamId: options.streamId, peerSocket: socket.id});
 
                 } else {
                     if (GLOBAL.config.erizoController.report.session_events) {
@@ -1037,7 +1034,7 @@ var listen = function () {
                         if (signMess.type === 'candidate') {
                             signMess.candidate = signMess.candidate.replace(privateRegexp, publicIP);
                         }
-                        socket.emit('signaling_message', {mess: signMess, peerId: options.streamId});
+                        socket.emit('signaling_message_erizo', {mess: signMess, peerId: options.streamId});
                     });
                     log.info('Subscriber added');
                     // safeCall(callback, '');
