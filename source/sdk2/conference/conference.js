@@ -623,9 +623,9 @@ Woogeen.ConferenceClient = (function () {
           streamId: stream.id(),
           audio: stream.hasAudio(),
           video: stream.hasVideo()
-        }, offer, function (answer) {
+        }, offer, function (answer, errText) {
           if (answer === 'error' || answer === 'timeout') {
-            return safeCall(onFailure, answer);
+            return safeCall(onFailure, errText || answer);
           }
           stream.channel.processSignalingMessage(answer);
         });

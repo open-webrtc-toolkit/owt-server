@@ -192,7 +192,7 @@ exports.RoomController = function (spec) {
         if (typeof sdp != 'string') sdp = JSON.stringify(sdp);
 
         if (sdp === null || subscriber_id === null) {
-            callback("error");
+            callback('error', 'invalid sdp or id');
             return;
         }
 
@@ -211,6 +211,9 @@ exports.RoomController = function (spec) {
 
             // Track subscriber locally
             subscribers[publisher_id].push(subscriber_id);
+        } else {
+            log.info('subscriber', subscriber_id, 'already added');
+            callback('error', 'subscriber already added');
         }
     };
 
