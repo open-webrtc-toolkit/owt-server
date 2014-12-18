@@ -21,6 +21,16 @@ config.cloudProvider.host = '';
 config.cloudProvider.accessKey = '';
 config.cloudProvider.secretAccessKey = '';
 
+config.certificate = {};
+// A string or Buffer containing the certificate key of the server in PEM format. (Required)
+config.certificate.cert = "../../cert/cert.pem";
+// A string or Buffer containing the private key of the server in PEM format. (Required)
+config.certificate.key = "../../cert/key.pem";
+// A string of passphrase for the private key or pfx
+config.certificate.passphrase = "private password";
+// An array of strings or Buffers of trusted certificates in PEM format. If this is omitted several well known "root" CAs will be used, like VeriSign. These are used to authorize connections.
+config.certificate.ca = "";
+
 /*********************************************************
  NUVE CONFIGURATION
 **********************************************************/

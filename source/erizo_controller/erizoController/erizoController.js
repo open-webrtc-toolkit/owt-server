@@ -2,12 +2,10 @@
 var crypto = require('crypto');
 var rpcPublic = require('./rpc/rpcPublic');
 var ST = require('./Stream');
-var http = require('http');
-var server = http.createServer();
-var io = require('socket.io').listen(server, {log:false});
 var config = require('./../../etc/licode_config');
 var Permission = require('./permission');
 var Getopt = require('node-getopt');
+var io;
 
 // Configuration default values
 GLOBAL.config = config || {};
@@ -89,10 +87,6 @@ var controller = require('./roomController');
 
 // Logger
 var log = logger.getLogger("ErizoController");
-
-server.listen(8080);
-
-io.set('log level', 0);
 
 var nuveKey = GLOBAL.config.nuve.superserviceKey;
 
@@ -212,6 +206,22 @@ var addToCloudHandler = function (callback) {
             myId = msg.id;
             myState = 2;
 
+            var enableSSL = msg.ssl;
+            var server;
+            if (enableSSL === true) {
+                log.info('SSL enabled!');
+                server = require('https').createServer({
+                  key: require('fs').readFileSync(config.certificate.key).toString(),
+                  cert: require('fs').readFileSync(config.certificate.cert).toString(),
+                  passphrase: config.certificate.passphrase,
+                  ca: config.certificate.ca
+                }).listen(8080);
+            } else {
+                server = require('http').createServer().listen(8080);
+            }
+            io = require('socket.io').listen(server, {log: false});
+            io.set('log level', 0);
+
             var intervarId = setInterval(function () {
 
                 rpc.callRpc('nuve', 'keepAlive', myId, {"callback": function (result) {
@@ -281,6 +291,7 @@ function safeCall () {
 
 var listen = function () {
     "use strict";
+    log.info('server on');
 
     io.sockets.on('connection', function (socket) {
         log.info("Socket connect ", socket.id);
