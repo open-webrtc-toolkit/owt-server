@@ -107,6 +107,25 @@
     var myResolution = getParameterByName('resolution') || 'vga';
     var shareScreen = getParameterByName('screen') || false;
     var myRoom = getParameterByName('room');
+    var isHttps = (location.protocol === 'https:');
+
+    if (isHttps) {
+      var shareButton = document.getElementById('shareScreen');
+      if (shareButton) {
+        shareButton.setAttribute('style', 'display:block');
+        shareButton.onclick = (function () {
+          conference.shareScreen({resolution: myResolution}, function (stream) {
+            var div = document.createElement('div');
+            div.setAttribute('style', 'width: 320px; height: 240px;');
+            div.setAttribute('id', 'myScreen');
+            document.body.appendChild(div);
+            stream.show('myScreen');
+          }, function (err) {
+            L.Logger.error('share screen failed:', err);
+          });
+        });
+      }
+    }
 
     createToken(myRoom, 'user', 'presenter', function (response) {
       var token = response;
@@ -131,12 +150,14 @@
               L.Logger.error('publish failed:', err);
             });
           });
-        } else {
+        } else if (isHttps) {
           conference.shareScreen({resolution: myResolution}, function (stream) {
             stream.show('myVideo');
           }, function (err) {
             L.Logger.error('share screen failed:', err);
           });
+        } else {
+          L.Logger.error('Share screen must be done in https enviromnent!');
         }
         var streams = resp.streams;
         streams.map(function (stream) {

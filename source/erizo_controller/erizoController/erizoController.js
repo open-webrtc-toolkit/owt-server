@@ -543,15 +543,21 @@ var listen = function () {
                 if (options.state === 'offer' && socket.state === 'sleeping') {
                     // id = Math.random() * 1000000000000000000;
                     id = socket.id;
+                    var hasScreen = false;
+                    if (options.video && options.video.device === 'screen') {
+                        hasScreen = true;
+                        id = id.slice(0, -8) + '_SCREEN_';
+                    }
+
+                    if (socket.streams.indexOf(id) !== -1) {
+                        return safeCall(callback, 'error', 'already published');
+                    }
+
                     if (GLOBAL.config.erizoController.sendStats) {
                         var timeStamp = new Date();
                         rpc.callRpc('stats_handler', 'event', [{room: socket.room.id, user: socket.id, type: 'publish', stream: id, timestamp: timeStamp.getTime()}]);
                     }
 
-                    var hasScreen = false;
-                    if (options.video && options.video.device === 'screen') {
-                        hasScreen = true;
-                    }
                     socket.room.controller.addPublisher(id, sdp, hasScreen, function (answer) {
                         socket.state = 'waitingOk';
                         answer = answer.replace(privateRegexp, publicIP);
