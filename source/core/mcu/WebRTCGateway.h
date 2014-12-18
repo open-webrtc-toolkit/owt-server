@@ -34,7 +34,7 @@ namespace mcu {
  * Represents a gateway between different WebRTC clients.
  * Receives media from one WebRTC client and dispatches it to others,
  */
-class WebRTCGateway : public woogeen_base::Gateway, public erizo::MediaSink {
+class WebRTCGateway : public woogeen_base::Gateway, public erizo::MediaSink, public erizo::FeedbackSink {
     DECLARE_LOGGER();
 
 public:
@@ -71,6 +71,9 @@ public:
     // Implements MediaSink.
     int deliverAudioData(char*, int len);
     int deliverVideoData(char*, int len);
+
+    // Implements FeedbackSink.
+    int deliverFeedback(char*, int len);
 
 private:
     void closeAll();
