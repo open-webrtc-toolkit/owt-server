@@ -75,6 +75,14 @@ int WebRTCGateway::deliverVideoData(char* buf, int len)
     return len;
 }
 
+int WebRTCGateway::deliverFeedback(char* buf, int len)
+{
+    if (m_feedback)
+        return m_feedback->deliverFeedback(buf, len);
+
+    return 0;
+}
+
 bool WebRTCGateway::setPublisher(MediaSource* publisher, const std::string& id)
 {
     publisher->setAudioSink(this);
@@ -112,7 +120,7 @@ void WebRTCGateway::addSubscriber(MediaSink* subscriber, const std::string& id)
     FeedbackSource* fbsource = subscriber->getFeedbackSource();
     if (fbsource) {
         ELOG_DEBUG("adding fbsource");
-        fbsource->setFeedbackSink(m_feedback);
+        fbsource->setFeedbackSink(this);
     }
 
     boost::unique_lock<boost::shared_mutex> lock(m_subscriberMutex);
@@ -131,16 +139,14 @@ void WebRTCGateway::removeSubscriber(const std::string& id)
 void WebRTCGateway::setAdditionalSourceConsumer(woogeen_base::MediaSourceConsumer* mixer)
 {
     m_mixer = mixer;
-    mixer->addSource(m_publisher->getAudioSourceSSRC(), true, m_feedback, m_participantId);
-    mixer->addSource(m_publisher->getVideoSourceSSRC(), false, m_feedback, m_participantId);
+    mixer->addSource(m_publisher->getAudioSourceSSRC(), true, this, m_participantId);
+    mixer->addSource(m_publisher->getVideoSourceSSRC(), false, this, m_participantId);
     mixer->bindAV(m_publisher->getAudioSourceSSRC(), m_publisher->getVideoSourceSSRC());
 }
 
 void WebRTCGateway::closeAll()
 {
     ELOG_DEBUG("closeAll");
-
-    unsetPublisher();
 
     boost::unique_lock<boost::shared_mutex> subscriberLock(m_subscriberMutex);
     std::map<std::string, boost::shared_ptr<MediaSink>>::iterator subscriberItor = m_subscribers.begin();
@@ -154,7 +160,9 @@ void WebRTCGateway::closeAll()
         m_subscribers.erase(subscriberItor++);
     }
     m_subscribers.clear();
+    subscriberLock.unlock();
 
+    unsetPublisher();
     m_mixer = nullptr;
 }
 
