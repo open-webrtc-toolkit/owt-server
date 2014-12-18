@@ -637,9 +637,9 @@ var listen = function () {
                         var timeStamp = new Date();
                         rpc.callRpc('stats_handler', 'event', [{room: socket.room.id, user: socket.id, type: 'subscribe', stream: options.streamId, timestamp: timeStamp.getTime()}]);
                     }
-                    socket.room.controller.addSubscriber(socket.id, options.streamId, options.audio, options.video, sdp, function (answer) {
+                    socket.room.controller.addSubscriber(socket.id, options.streamId, options.audio, options.video, sdp, function (answer, errText) {
                         answer = answer.replace(privateRegexp, publicIP);
-                        safeCall(callback, answer);
+                        safeCall(callback, answer, errText);
                     }, function() {
                         log.info("Subscriber added");
                     });
