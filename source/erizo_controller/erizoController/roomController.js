@@ -67,8 +67,8 @@ exports.RoomController = function (spec) {
 
     var unescapeSdp = function(sdp) {
         var reg = new RegExp(/\\\//g);
-        sdp = sdp.replace(reg, '/');
-        return sdp;
+        var newSdp = sdp.replace(reg, '/');
+        return newSdp;
     };
 
     that.addEventListener = function(eventListener) {
@@ -196,7 +196,7 @@ exports.RoomController = function (spec) {
             return;
         }
 
-        unescapeSdp(sdp);
+        sdp = unescapeSdp(sdp);
 
         if (publishers[publisher_id] !== undefined && subscribers[publisher_id].indexOf(subscriber_id) === -1 && sdp.match('OFFER') !== null) {
 
