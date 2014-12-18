@@ -17,8 +17,8 @@ class WebRtcConnection : public node::ObjectWrap, erizo::WebRtcConnectionEventLi
   static void Init(v8::Handle<v8::Object> target);
 
   erizo::WebRtcConnection *me;
-  std::queue<int> eventSts;
-  std::queue<std::string> eventMsgs;
+  std::list<int> eventSts;
+  std::list<std::string> eventMsgs;
   std::string statsMsg;
   boost::mutex statsMutex, eventsMutex;
 
@@ -80,7 +80,7 @@ class WebRtcConnection : public node::ObjectWrap, erizo::WebRtcConnectionEventLi
   static void eventsCallback(uv_async_t *handle, int status);
   static void statsCallback(uv_async_t *handle, int status);
  
-	virtual void notifyEvent(erizo::WebRTCEvent event, const std::string& message="");
+	virtual void notifyEvent(erizo::WebRTCEvent event, const std::string& message="", bool prompt=false);
 	virtual void notifyStats(const std::string& message);
 };
 

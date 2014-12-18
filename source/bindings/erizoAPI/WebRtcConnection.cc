@@ -170,10 +170,15 @@ Handle<Value> WebRtcConnection::getStats(const v8::Arguments& args){
 
 }
 
-void WebRtcConnection::notifyEvent(erizo::WebRTCEvent event, const std::string& message) {
+void WebRtcConnection::notifyEvent(erizo::WebRTCEvent event, const std::string& message, bool prompt) {
   boost::mutex::scoped_lock lock(eventsMutex);
-  this->eventSts.push(event);
-  this->eventMsgs.push(message);
+  if (prompt) {
+    this->eventSts.push_front(event);
+    this->eventMsgs.push_front(message);
+  } else {
+    this->eventSts.push_back(event);
+    this->eventMsgs.push_back(message);
+  }
   async_.data = this;
   uv_async_send (&async_);
 }
@@ -194,8 +199,8 @@ void WebRtcConnection::eventsCallback(uv_async_t *handle, int status){
   while (!obj->eventSts.empty()) {
     Local<Value> args[] = {Integer::New(obj->eventSts.front()), String::NewSymbol(obj->eventMsgs.front().c_str())};
     obj->eventCallback_->Call(Context::GetCurrent()->Global(), 2, args);
-    obj->eventMsgs.pop();
-    obj->eventSts.pop();
+    obj->eventMsgs.pop_front();
+    obj->eventSts.pop_front();
   }
 }
 

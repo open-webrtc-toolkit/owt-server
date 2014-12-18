@@ -42,7 +42,7 @@ public:
 	virtual ~WebRtcConnectionEventListener() {
 	}
 	;
-	virtual void notifyEvent(WebRTCEvent newEvent, const std::string& message="")=0;
+	virtual void notifyEvent(WebRTCEvent newEvent, const std::string& message="", bool prompt=false)=0;
 
 };
 

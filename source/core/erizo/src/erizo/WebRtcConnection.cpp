@@ -61,7 +61,10 @@ namespace erizo {
     send_Thread_.join();
     globalState_ = CONN_FINISHED;
     if (connEventListener_ != NULL){
-      connEventListener_->notifyEvent(globalState_);
+      // Prompt this event notification because we want the listener
+      // to get the information that we're being destroyed ASAP so that
+      // it won't ask us to do something when it receives some other events (from other working threads).
+      connEventListener_->notifyEvent(globalState_, "", true);
       connEventListener_ = NULL;
     }
     globalState_ = CONN_FINISHED;
