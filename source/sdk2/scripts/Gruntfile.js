@@ -9,7 +9,6 @@ module.exports = function(grunt) {
     '../base/stream.js',
     '../base/events.js',
     '../conference/conference.js',
-    '../conference/webrtc-stacks/ChromeCanaryStack.js',
     '../conference/webrtc-stacks/ChromeStableStack.js',
     '../conference/webrtc-stacks/FirefoxStack.js'
   ];
