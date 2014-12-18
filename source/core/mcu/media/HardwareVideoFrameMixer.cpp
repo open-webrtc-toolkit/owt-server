@@ -210,7 +210,7 @@ bool HardwareVideoFrameMixer::activateInput(int slot, FrameFormat format, VideoF
         RegionInfo regionInfo = m_currentLayout.candidateRegions.back();
         m_currentLayout.candidateRegions.pop_back();
 
-        // Add a new mapping
+        // Add a new mapping item
         InputIndex index = m_inputs[slot]->index();
         if (index != INVALID_INPUT_INDEX)
             m_currentLayout.layoutMapping[index] = regionInfo;
@@ -237,12 +237,22 @@ void HardwareVideoFrameMixer::deActivateInput(int slot)
     if (!onSlotNumberChanged(m_inputs.size())) {
         std::map<InputIndex, RegionInfo>::iterator it = m_currentLayout.layoutMapping.find(index);
         if (it != m_currentLayout.layoutMapping.end()) {
-            // Add it to candidateRegions
-            m_currentLayout.candidateRegions.push_back(it->second);
+            // Add the spared region to candidateRegions
+            std::map<InputIndex, RegionInfo>::reverse_iterator rit = m_currentLayout.layoutMapping.rbegin();
+            m_currentLayout.candidateRegions.push_back(rit->second);
 
-            // Remove the existing one from mapping
-            m_currentLayout.layoutMapping.erase(it);
+            // Move the following regions forward
+            while (rit != m_currentLayout.layoutMapping.rend()) {
+                if (rit->first == it->first)
+                    break;
 
+                rit->second = (++rit)->second;
+            }
+
+            // Remove the existing item from mapping
+            m_currentLayout.layoutMapping.erase(index);
+
+            // Set the new layout with updated mapping items
             m_engine->setLayout(m_currentLayout);
         }
     }
