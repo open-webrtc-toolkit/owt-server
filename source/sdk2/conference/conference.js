@@ -243,27 +243,47 @@ conference.join(token, function(response) {...}, function(error) {...});
           }
         });
 
-        self.socket.on('onSubscribeP2P', function (spec) { // p2p conference call
+        self.socket.on('signaling_message_erizo', function (arg) {
+            var stream;
+            if (arg.peerId) {
+                stream = self.remoteStreams[arg.peerId];
+            } else {
+                stream = self.localStreams[arg.streamId];
+            }
+             
+            if (stream) {
+                stream.channel.processSignalingMessage(arg.mess);
+            }
+        });
+
+        self.socket.on('signaling_message_peer', function (arg) {
+
+            var stream = self.localStreams[arg.streamId];
+
+            if (stream) {
+                stream.channel[arg.peerSocket].processSignalingMessage(arg.msg);
+            } else {
+                stream = self.remoteStreams[arg.streamId];
+
+                if (!stream.pc) {
+                    create_remote_pc(stream, arg.peerSocket);
+                }   
+                stream.channel.processSignalingMessage(arg.msg);
+            }
+        });
+
+        self.socket.on('publish_me', function (spec) {
           var myStream = self.localStreams[spec.streamId];
           if (myStream.channel === undefined) {
             myStream.channel = {};
           }
 
-          myStream.channel[spec.subsSocket] = createChannel({
-            callback: function (offer) {
-              sendSdp(self.socket, 'publish', {
-                state: 'p2pSignaling',
+          myStream.channel[spec.peerSocket] = createChannel({
+            callback: function (msg) {
+              sendSdp(self.socket, 'signaling_message', {
                 streamId: spec.streamId,
-                subsSocket: spec.subsSocket
-              }, offer, function (answer) {
-                if (answer === 'error' || answer === 'timeout') {
-                  L.Logger.warning('invalid answer');
-                  return;
-                }
-                myStream.channel[spec.subsSocket].onsignalingmessage = function () {
-                  myStream.channel[spec.subsSocket].onsignalingmessage = function () {};
-                };
-                myStream.channel[spec.subsSocket].processSignalingMessage(answer);
+                peerSocket: spec.peerSocket,
+                msg: msg
               });
             },
             audio: myStream.hasAudio(),
@@ -272,38 +292,36 @@ conference.join(token, function(response) {...}, function(error) {...});
             turnServer: self.connSettings.turn
           });
 
-          myStream.channel[spec.subsSocket].addStream(myStream.mediaStream);
-          myStream.channel[spec.subsSocket].oniceconnectionstatechange = function (state) {
+          myStream.channel[spec.peerSocket].oniceconnectionstatechange = function (state) {
             if (state === 'disconnected') {
-              myStream.channel[spec.subsSocket].close();
-              delete myStream.channel[spec.subsSocket];
+              myStream.channel[spec.peerSocket].close();
+              delete myStream.channel[spec.peerSocket];
             }
           };
+
+          myStream.channel[spec.peerSocket].addStream(myStream.mediaStream);
+          myStream.channel[spec.peerSocket].createOffer();
         });
 
-        self.socket.on('onPublishP2P', function (spec, callback) {
-          var myStream = self.remoteStreams[spec.streamId];
+        var create_remote_pc = function (stream, peerSocket) {
 
-          myStream.channel = createChannel({
-            callback: function () {},
+          stream.channel = createChannel({
+            callback: function (msg) {
+              sendSdp(self.socket, 'signaling_message', {streamId: stream.id(), peerSocket: peerSocket, msg: msg});
+            },
             stunServerUrl: self.connSettings.stun,
             turnServer: self.connSettings.turn,
             maxAudioBW: self.connSettings.maxAudioBW,
             maxVideoBW: self.connSettings.maxVideoBW
           });
 
-          myStream.channel.onsignalingmessage = function (answer) {
-            myStream.channel.onsignalingmessage = function () {};
-            safeCall(callback, answer);
+          stream.channel.onaddstream = function (evt) {
+            // Draw on html
+            L.Logger.info('Stream subscribed');
+            stream.mediaStream = evt.stream;
+            internalDispatcher.dispatchEvent(new Woogeen.StreamEvent({type: 'p2p-stream-subscribed', stream: stream}));
           };
-
-          myStream.channel.processSignalingMessage(spec.sdp);
-
-          myStream.channel.onaddstream = function (evt) {
-            myStream.mediaStream = evt.stream;
-            internalDispatcher.dispatchEvent(new Woogeen.StreamEvent({type: 'p2p-stream-subscribed', stream: myStream}));
-          };
-        });
+        };
 
         // We receive an event of remote video stream paused
         self.socket.on('onVideoHold', function (spec) {
@@ -409,19 +427,6 @@ conference.join(token, function(response) {...}, function(error) {...});
           }
         });
 
-        self.socket.on('signaling_message', function (arg) {
-          var stream;
-          if (arg.peerId) {
-            stream = self.remoteStreams[arg.peerId];
-          } else {
-            stream = self.localStreams[arg.streamId];
-          }
-
-          console.log('SOCKE SID', arg.mess);
-          if (stream) {
-            stream.channel.processSignalingMessage(arg.mess);
-          }
-        });
       }
 
       try {
@@ -638,9 +643,9 @@ conference.publish(localStream, {maxVideoBW: 300}, function (st) {
         self.connSettings.maxVideoBW = options.maxVideoBW;
         self.connSettings.maxAudioBW = options.maxAudioBW;
         opt.state = 'p2p';
-        sendSdp(self.socket, 'publish', opt, null, function (answer, id) {
-            if (answer === 'error') {
-              return safeCall(onFailure, answer);
+        sendSdp(self.socket, 'publish', opt, null, function (id) {
+            if (id === 'error') {
+              return safeCall(onFailure, id);
             }
             stream.id = function () {
               return id;
@@ -667,6 +672,10 @@ conference.publish(localStream, {maxVideoBW: 300}, function (st) {
           return safeCall(onFailure, answer);
         }
         // stream.room = that;
+        stream.id = function () {
+          return id;
+        };
+        self.localStreams[id] = stream;
 
         stream.channel = createChannel({
           callback: function (message) {
@@ -684,10 +693,6 @@ conference.publish(localStream, {maxVideoBW: 300}, function (st) {
         });
 
         var onChannelReady = function () {
-          stream.id = function () {
-            return id;
-          };
-          self.localStreams[id] = stream;
           stream.signalOnPlayAudio = function (onSuccess, onFailure) {
             sendCtrlPayload(self.socket, 'audio-out-on', id, onSuccess, onFailure);
           };
