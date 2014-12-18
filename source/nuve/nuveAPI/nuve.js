@@ -2,6 +2,7 @@
 var express = require('express');
 var bodyParser = require('body-parser');
 
+var config = require('./../../etc/licode_config');
 var db = require('./mdb/dataBase').db;
 var rpc = require('./rpc/rpc');
 var logger = require('./logger').logger;
@@ -75,4 +76,13 @@ app.get('/rooms/:room/users', usersResource.getList);
 app.get('/rooms/:room/users/:user', userResource.getUser);
 app.delete('/rooms/:room/users/:user', userResource.deleteUser);
 
-app.listen(3000);
+if (config.nuve.ssl === true) {
+    require('https').createServer({
+      key: require('fs').readFileSync(config.certificate.key).toString(),
+      cert: require('fs').readFileSync(config.certificate.cert).toString(),
+      passphrase: config.certificate.passphrase,
+      ca: config.certificate.ca
+    }, app).listen(3000);
+} else {
+    app.listen(3000);
+}
