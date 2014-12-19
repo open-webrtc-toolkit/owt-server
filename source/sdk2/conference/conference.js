@@ -619,6 +619,7 @@ Woogeen.ConferenceClient = (function () {
 
     stream.channel = createChannel({
       callback: function (offer) {
+        if (JSON.parse(offer).messageType !== 'OFFER') {return;} // filter out 'sendOK'
         sendSdp(self.socket, 'subscribe', {
           streamId: stream.id(),
           audio: stream.hasAudio(),
