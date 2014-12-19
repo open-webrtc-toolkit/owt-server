@@ -126,11 +126,12 @@ void HardwareVideoFrameMixerOutput::notifyFrameReady(OutputIndex index)
 
 DEFINE_LOGGER(HardwareVideoFrameMixer, "mcu.media.HardwareVideoFrameMixer");
 
-HardwareVideoFrameMixer::HardwareVideoFrameMixer()
+HardwareVideoFrameMixer::HardwareVideoFrameMixer(uint32_t configListenerId)
+    : m_configListenerId(configListenerId)
 {
     m_engine.reset(new VideoMixEngine());
 
-    const VideoLayout& layout = Config::get()->getVideoLayout();
+    const VideoLayout& layout = Config::get()->getVideoLayout(configListenerId);
 
     // Fetch video size and background color.
     VideoSize rootSize = VideoLayoutHelper::getVideoSize(layout.rootSize);
@@ -298,7 +299,7 @@ void HardwareVideoFrameMixer::deActivateOutput(int id)
 bool HardwareVideoFrameMixer::onSlotNumberChanged(uint32_t newSlotNum)
 {
     // Update the video layout according to the new input number
-    if (Config::get()->updateVideoLayout(newSlotNum)) {
+    if (Config::get()->updateVideoLayout(m_configListenerId, newSlotNum)) {
         ELOG_DEBUG("Video layout updated with new slot number changed to %d", newSlotNum);
         return true;
     }

@@ -66,7 +66,7 @@ class SoftVideoCompositor : public VideoFrameCompositor,
                             public JobTimerListener {
     DECLARE_LOGGER();
 public:
-    SoftVideoCompositor(const VideoLayout& layout);
+    SoftVideoCompositor(uint32_t configListenerId);
     ~SoftVideoCompositor();
 
     bool activateInput(int slot);
@@ -95,6 +95,8 @@ private:
 
     // Delta used for translating between NTP and internal timestamps.
     int64_t m_ntpDelta;
+
+    uint32_t m_configListenerId;
     std::atomic<bool> m_configChanged;
     boost::scoped_ptr<VPMPool> m_vpmPool;
     boost::scoped_ptr<BufferManager> m_bufferManager;

@@ -86,7 +86,7 @@ private:
 class HardwareVideoFrameMixer : public VideoFrameMixer {
     DECLARE_LOGGER();
 public:
-    HardwareVideoFrameMixer();
+    HardwareVideoFrameMixer(uint32_t configListenerId);
     virtual ~HardwareVideoFrameMixer();
 
     bool activateInput(int slot, FrameFormat, VideoFrameProvider*);
@@ -103,6 +103,7 @@ public:
 private:
     bool onSlotNumberChanged(uint32_t newSlotNum);
 
+    uint32_t m_configListenerId;
     CustomLayoutInfo m_currentLayout;
     boost::shared_ptr<VideoMixEngine> m_engine;
     std::map<int, boost::shared_ptr<HardwareVideoFrameMixerInput>> m_inputs;

@@ -33,6 +33,8 @@ using namespace webrtc;
 using namespace woogeen_base;
 using namespace erizo;
 
+#define ENABLE_WEBRTC_TRACE 0
+
 namespace mcu {
 
 DEFINE_LOGGER(VideoMixer, "mcu.media.VideoMixer");
@@ -43,27 +45,34 @@ VideoMixer::VideoMixer(erizo::RTPDataReceiver* receiver, bool hardwareAccelerate
     , m_outputReceiver(receiver)
     , m_addSourceOnDemand(false)
 {
-    m_taskRunner.reset(new TaskRunner());
+    m_configListenerId = Config::get()->registerListener(this);
 
     if (m_hardwareAccelerated)
-        m_frameMixer.reset(new HardwareVideoFrameMixer());
+        m_frameMixer.reset(new HardwareVideoFrameMixer(m_configListenerId));
     else
-        m_frameMixer.reset(new SoftVideoFrameMixer());
+        m_frameMixer.reset(new SoftVideoFrameMixer(m_configListenerId));
 
-    Config::get()->registerListener(this);
-
+    m_taskRunner.reset(new TaskRunner());
     m_taskRunner->Start();
 
+#if ENABLE_WEBRTC_TRACE
     webrtc::Trace::CreateTrace();
     webrtc::Trace::SetTraceFile("webrtc.trace.txt");
     webrtc::Trace::set_level_filter(webrtc::kTraceAll);
+#endif
 }
 
 VideoMixer::~VideoMixer()
 {
     closeAll();
-    Config::get()->unregisterListener(this);
+    Config::get()->unregisterListener(m_configListenerId);
     m_outputReceiver = nullptr;
+}
+
+void VideoMixer::initVideoLayout(const std::string& type, const std::string& defaultRootSize,
+    const std::string& defaultBackgroundColor, const std::string& customLayout)
+{
+    Config::get()->initVideoLayout(m_configListenerId, type, defaultRootSize, defaultBackgroundColor, customLayout);
 }
 
 int32_t VideoMixer::addOutput(int payloadType)
@@ -98,7 +107,7 @@ int32_t VideoMixer::addOutput(int payloadType)
     // Fetch video size.
     // TODO: The size should be identical to the composited video size.
     VideoSize rootSize = DEFAULT_VIDEO_SIZE;
-    std::map<VideoResolutionType, VideoSize>::const_iterator sizeIterator = VideoSizes.find(Config::get()->getVideoLayout().rootSize);
+    std::map<VideoResolutionType, VideoSize>::const_iterator sizeIterator = VideoSizes.find(Config::get()->getVideoLayout(m_configListenerId).rootSize);
     if (sizeIterator != VideoSizes.end())
         rootSize = sizeIterator->second;
     output->setSendCodec(outputFormat, rootSize);
@@ -194,7 +203,7 @@ uint32_t VideoMixer::getSendSSRC(int payloadType)
 void VideoMixer::onConfigChanged()
 {
     ELOG_DEBUG("onConfigChanged");
-    m_frameMixer->setLayout(Config::get()->getVideoLayout());
+    m_frameMixer->setLayout(Config::get()->getVideoLayout(m_configListenerId));
 }
 
 /**
@@ -279,7 +288,10 @@ void VideoMixer::closeAll()
     m_participants = 0;
 
     ELOG_DEBUG("Closed all media in this Mixer");
+
+#if ENABLE_WEBRTC_TRACE
     webrtc::Trace::ReturnTrace();
+#endif
 }
 
 }/* namespace mcu */

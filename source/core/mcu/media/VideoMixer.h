@@ -57,6 +57,8 @@ public:
     VideoMixer(erizo::RTPDataReceiver*, bool hardwareAccelerated);
     virtual ~VideoMixer();
 
+    void initVideoLayout(const std::string&, const std::string&, const std::string&, const std::string&);
+
     // Video output related methods.
     int32_t addOutput(int payloadType);
     int32_t removeOutput(int payloadType);
@@ -93,6 +95,7 @@ private:
 
     bool m_hardwareAccelerated;
     uint32_t m_participants;
+    uint32_t m_configListenerId;
 
     boost::shared_ptr<TaskRunner> m_taskRunner;
     boost::shared_ptr<erizo::FeedbackSink> m_feedback;

@@ -41,27 +41,21 @@ Config* Config::get()
 }
 
 Config::Config()
+    : m_idAccumulator(0)
 {
-    // Default video layout definition
-    m_currentVideoLayout.rootSize = vga; // Default to VGA
-    m_currentVideoLayout.rootColor = black; // Default to Black
-    m_currentVideoLayout.divFactor = 1;
 }
 
-inline void Config::signalConfigChanged()
+inline void Config::signalConfigChanged(uint32_t id)
 {
-    for (std::list<ConfigListener*>::iterator listenerIter = m_configListeners.begin();
-            listenerIter != m_configListeners.end();
-            listenerIter++)
-        (*listenerIter)->onConfigChanged();
+    m_configListeners[id]->onConfigChanged();
 }
 
-const VideoLayout& Config::getVideoLayout()
+const VideoLayout& Config::getVideoLayout(uint32_t id)
 {
-    return m_currentVideoLayout;
+    return m_currentVideoLayouts[id];
 }
 
-void Config::initVideoLayout(const std::string& type, const std::string& defaultRootSize,
+void Config::initVideoLayout(uint32_t id, const std::string& type, const std::string& defaultRootSize,
     const std::string& defaultBackgroundColor, const std::string& customLayout)
 {
     ELOG_DEBUG("initVideoLayout configuration");
@@ -75,7 +69,9 @@ void Config::initVideoLayout(const std::string& type, const std::string& default
             break;
         }
     }
-    m_currentVideoLayout.rootSize = defaultSize;
+    VideoLayout& currentVideoLayout = m_currentVideoLayouts[id];
+
+    currentVideoLayout.rootSize = defaultSize;
 
     VideoBackgroundColor defaultColor = VideoBackgroundColor::black;
     for (std::map<std::string, VideoBackgroundColor>::const_iterator it=VideoColors.begin();
@@ -85,12 +81,12 @@ void Config::initVideoLayout(const std::string& type, const std::string& default
             break;
         }
     }
-    m_currentVideoLayout.rootColor = defaultColor;
+    currentVideoLayout.rootColor = defaultColor;
 
     // Load the configuration
     if (type.compare("custom")) {
         // The default fluid video layout
-        m_currentVideoLayout.divFactor = 1;
+        currentVideoLayout.divFactor = 1;
     } else {
         // Customized video layout
         uint32_t initIndex = MAX_VIDEO_SLOT_NUMBER;
@@ -144,20 +140,21 @@ void Config::initVideoLayout(const std::string& type, const std::string& default
 
         // Find the minimum customized layout for initialization purpose
         if (initIndex < MAX_VIDEO_SLOT_NUMBER)
-            m_currentVideoLayout = m_customVideoLayouts[initIndex];
+            currentVideoLayout = m_customVideoLayouts[initIndex];
     }
 
-    signalConfigChanged();
+    signalConfigChanged(id);
 }
 
-bool Config::updateVideoLayout(uint32_t slotNumber)
+bool Config::updateVideoLayout(uint32_t id, uint32_t slotNumber)
 {
-    if (m_currentVideoLayout.regions.empty()) {
+    VideoLayout& currentVideoLayout = m_currentVideoLayouts[id];
+    if (currentVideoLayout.regions.empty()) {
         // fluid layout
         uint32_t newDivFactor = sqrt(slotNumber > 0 ? slotNumber - 1 : 0) + 1;
-        if (newDivFactor != m_currentVideoLayout.divFactor) {
-            m_currentVideoLayout.divFactor = newDivFactor;
-            signalConfigChanged();
+        if (newDivFactor != currentVideoLayout.divFactor) {
+            currentVideoLayout.divFactor = newDivFactor;
+            signalConfigChanged(id);
             return true;
         }
 
@@ -165,15 +162,15 @@ bool Config::updateVideoLayout(uint32_t slotNumber)
     }
 
     // custom layout
-    uint32_t currentRegionNum = m_currentVideoLayout.regions.size();
+    uint32_t currentRegionNum = currentVideoLayout.regions.size();
     if (slotNumber != currentRegionNum) {
         for (uint32_t i = slotNumber - 1; i < MAX_VIDEO_SLOT_NUMBER; ++i) {
             if (m_customVideoLayouts[i].regions.empty())
                 continue;
 
             if (m_customVideoLayouts[i].regions.size() != currentRegionNum) {
-                m_currentVideoLayout = m_customVideoLayouts[i];
-                signalConfigChanged();
+                currentVideoLayout = m_customVideoLayouts[i];
+                signalConfigChanged(id);
                 return true;
             }
 
@@ -184,14 +181,25 @@ bool Config::updateVideoLayout(uint32_t slotNumber)
     return false;
 }
 
-void Config::registerListener(ConfigListener* listener)
+uint32_t Config::registerListener(ConfigListener* listener)
 {
-    m_configListeners.push_back(listener);
+    // Default video layout definition
+    VideoLayout layout;
+    layout.rootSize = vga; // Default to VGA
+    layout.rootColor = black; // Default to Black
+    layout.divFactor = 1;
+
+    uint32_t id = m_idAccumulator++;
+    m_configListeners[id] = listener;
+    m_currentVideoLayouts[id] = layout;
+
+    return id;
 }
 
-void Config::unregisterListener(ConfigListener* listener)
+void Config::unregisterListener(uint32_t id)
 {
-    m_configListeners.remove(listener);
+    m_currentVideoLayouts.erase(id);
+    m_configListeners.erase(id);
 }
 
 } /* namespace mcu */
