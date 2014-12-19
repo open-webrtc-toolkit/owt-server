@@ -68,10 +68,11 @@ bool EncodedVideoFrameSender::setSendCodec(FrameFormat frameFormat, VideoSize vi
         break;
     }
 
-    unsigned int targetBitrate = calcBitrate(videoSize.width, videoSize.height) * (frameFormat == FRAME_FORMAT_VP8 ? 900 : 1000);
-    unsigned int minBitrate = targetBitrate < 300 * 1000 ? targetBitrate : 300 * 1000;
-    m_bitrateController->SetBitrateObserver(this, 300 * 1000, minBitrate, targetBitrate);
-    m_source->setBitrate(m_id, targetBitrate / 1000); // kbps
+    uint32_t targetBitrate = calcBitrate(videoSize.width, videoSize.height) * (frameFormat == FRAME_FORMAT_VP8 ? 0.9 : 1);
+    uint32_t minBitrate = targetBitrate / 4;
+    // The bitrate controller is accepting "bps".
+    m_bitrateController->SetBitrateObserver(this, targetBitrate * 1000, minBitrate * 1000, targetBitrate * 1000);
+    m_source->setBitrate(m_id, targetBitrate);
 
     return m_rtpRtcp && m_rtpRtcp->RegisterSendPayload(codec) != -1;
 }
