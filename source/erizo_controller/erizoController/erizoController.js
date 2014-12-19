@@ -372,11 +372,12 @@ var listen = function () {
                                     // TODO: Revisit here for a better solution.
                                     var tryOut = 10;
                                     room.initMixerTimer = setInterval(function() {
-                                        var id = 0;
+                                        var id = room.id;
                                         room.controller.initMixer(id, function (result) {
                                             if (result === 'success') {
                                                 var st = new ST.Stream({id: id, socket: socket.id, audio: true, video: {category: 'mix'}, data: false, from: ''});
                                                 room.streams[id] = st;
+                                                room.mixer = id;
                                                 sendMsgToRoom(room, 'onAddStream', st.getPublicStream());
                                                 clearInterval(room.initMixerTimer);
                                             } else if (--tryOut === 0) {
@@ -554,10 +555,12 @@ var listen = function () {
                 if (options.state === 'offer' && socket.state === 'sleeping') {
                     // id = Math.random() * 1000000000000000000;
                     id = socket.id;
+                    var mixer = socket.room.mixer;
                     var hasScreen = false;
                     if (options.video && options.video.device === 'screen') {
                         hasScreen = true;
                         id = id.slice(0, -8) + '_SCREEN_';
+                        mixer = undefined;
                     }
 
                     if (socket.streams.indexOf(id) !== -1) {
@@ -569,7 +572,7 @@ var listen = function () {
                         rpc.callRpc('stats_handler', 'event', [{room: socket.room.id, user: socket.id, type: 'publish', stream: id, timestamp: timeStamp.getTime()}]);
                     }
 
-                    socket.room.controller.addPublisher(id, sdp, hasScreen, function (answer) {
+                    socket.room.controller.addPublisher(id, sdp, mixer, function (answer) {
                         socket.state = 'waitingOk';
                         answer = answer.replace(privateRegexp, publicIP);
                         safeCall(callback, answer, id);
@@ -821,14 +824,13 @@ var listen = function () {
 
             if (socket.room !== undefined && socket.room.sockets.length === 0) {
                 log.info('Empty room ', socket.room.id, '. Deleting it');
-                if (GLOBAL.config.erizoController.mixer) {
+                if (GLOBAL.config.erizoController.mixer && socket.room.mixer) {
                     clearInterval(socket.room.initMixerTimer);
-                    // FIXME: Don't hard code the mixer id.
                     if (socket.room.controller && typeof socket.room.controller.removePublisher === 'function') {
-                        socket.room.controller.removePublisher(0);
+                        socket.room.controller.removePublisher(socket.room.mixer);
                     }
-                    if (socket.room.streams[0]) {
-                        delete socket.room.streams[0];
+                    if (socket.room.streams[socket.room.mixer]) {
+                        delete socket.room.streams[socket.room.mixer];
                     }
                 }
                 delete rooms[socket.room.id];
