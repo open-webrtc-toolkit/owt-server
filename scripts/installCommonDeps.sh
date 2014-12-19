@@ -48,6 +48,7 @@ install_openh264(){
   cd $ROOT/third_party/openh264
   curl -O http://ciscobinary.openh264.org/libopenh264-1.2.0-linux64.so.bz2
   bzip2 -d libopenh264-1.2.0-linux64.so.bz2
+  rm -f libopenh264.so
   ln -s libopenh264-1.2.0-linux64.so libopenh264.so
   cd $CURRENT_DIR
 }
