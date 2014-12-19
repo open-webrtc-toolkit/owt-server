@@ -417,7 +417,7 @@ namespace erizo {
               int payloadType = getVideoExternalPT(rtp.payloadType);
           sdp << "a=rtpmap:"<<payloadType << " " << rtp.encodingName << "/"
               << rtp.clockRate <<"\n";
-          if (rtp.encodingName == "VP8") {
+          if (rtp.encodingName == "VP8" || rtp.encodingName == "H264") {
             sdp << "a=rtcp-fb:"<< payloadType<<" ccm fir\n";
             if (nackEnabled) {
               sdp << "a=rtcp-fb:"<< payloadType<<" nack\n";
