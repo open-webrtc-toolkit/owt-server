@@ -58,7 +58,7 @@
     L.Logger.info('Message Received:', event.msg);
   });
 
-  conference.on('client-disconnected', function () {
+  conference.on('server-disconnected', function () {
     L.Logger.info('Server disconnected');
   });
 
@@ -95,12 +95,12 @@
     }
   });
 
-  conference.on('peer-joined', function (event) {
-    L.Logger.info('peer joined:', event.user);
+  conference.on('user-joined', function (event) {
+    L.Logger.info('user joined:', event.user);
   });
 
-  conference.on('peer-left', function (event) {
-    L.Logger.info('peer left:', event.user);
+  conference.on('user-left', function (event) {
+    L.Logger.info('user left:', event.user);
   });
 
   window.onload = function () {
