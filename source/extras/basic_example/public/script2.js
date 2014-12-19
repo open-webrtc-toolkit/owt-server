@@ -49,6 +49,7 @@
       div.setAttribute('style', 'width: 320px; height: 240px;');
     }
     div.setAttribute('id', 'test' + streamId);
+    div.setAttribute('title', 'Stream#' + streamId);
     document.body.appendChild(div);
     stream.show('test' + streamId);
   }
@@ -115,10 +116,6 @@
         shareButton.setAttribute('style', 'display:block');
         shareButton.onclick = (function () {
           conference.shareScreen({resolution: myResolution}, function (stream) {
-            var div = document.createElement('div');
-            div.setAttribute('style', 'width: 320px; height: 240px;');
-            div.setAttribute('id', 'myScreen');
-            document.body.appendChild(div);
             stream.show('myScreen');
           }, function (err) {
             L.Logger.error('share screen failed:', err);
@@ -152,7 +149,7 @@
           });
         } else if (isHttps) {
           conference.shareScreen({resolution: myResolution}, function (stream) {
-            stream.show('myVideo');
+            stream.show('myScreen');
           }, function (err) {
             L.Logger.error('share screen failed:', err);
           });
