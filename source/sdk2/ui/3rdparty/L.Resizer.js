@@ -251,10 +251,10 @@
          */
         function addResizeListener(element, callback) {
             if (window.OverflowEvent) {
-                //webkit
-                element.addEventListener('overflowchanged', function(e) {
-                    callback.call(this, e);
-                });
+                // webkit [deprecated!]
+                // element.addEventListener('overflowchanged', function(e) {
+                //     callback.call(this, e);
+                // });
             } else {
                 element.addEventListener('overflow', function(e) {
                     callback.call(this, e);
