@@ -215,9 +215,9 @@ var addToCloudHandler = function (callback) {
                   cert: require('fs').readFileSync(config.certificate.cert).toString(),
                   passphrase: config.certificate.passphrase,
                   ca: config.certificate.ca
-                }).listen(8080);
+                }).listen(msg.port);
             } else {
-                server = require('http').createServer().listen(8080);
+                server = require('http').createServer().listen(msg.port);
             }
             io = require('socket.io').listen(server, {log: false});
             io.set('log level', 0);
