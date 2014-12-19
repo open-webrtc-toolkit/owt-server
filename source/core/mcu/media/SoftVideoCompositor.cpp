@@ -68,11 +68,13 @@ void VPMPool::update(unsigned int slot, VideoSize& videoSize)
 
 DEFINE_LOGGER(SoftVideoCompositor, "mcu.media.SoftVideoCompositor");
 
-SoftVideoCompositor::SoftVideoCompositor(const VideoLayout& layout)
-    : m_configChanged(false)
-    , m_currentLayout(layout)
+SoftVideoCompositor::SoftVideoCompositor(uint32_t configListenerId)
+    : m_configListenerId(configListenerId)
+    , m_configChanged(false)
     , m_consumer(nullptr)
 {
+    m_currentLayout = Config::get()->getVideoLayout(configListenerId);
+
     m_ntpDelta = Clock::GetRealTimeClock()->CurrentNtpInMilliseconds() - TickTime::MillisecondTimestamp();
     m_vpmPool.reset(new VPMPool(MAX_VIDEO_SLOT_NUMBER));
 
@@ -161,7 +163,7 @@ void SoftVideoCompositor::generateFrame()
 void SoftVideoCompositor::onSlotNumberChanged(uint32_t newSlotNum)
 {
     // Update the video layout according to the new input number
-    if (Config::get()->updateVideoLayout(newSlotNum)) {
+    if (Config::get()->updateVideoLayout(m_configListenerId, newSlotNum)) {
         ELOG_DEBUG("Video layout updated with new slot number changed to %d", newSlotNum);
     }
 }

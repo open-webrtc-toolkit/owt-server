@@ -34,7 +34,7 @@ namespace mcu {
 
 class SoftVideoFrameMixer : public VideoFrameMixer {
 public:
-    SoftVideoFrameMixer();
+    SoftVideoFrameMixer(uint32_t configListenerId);
     ~SoftVideoFrameMixer();
 
     bool activateInput(int slot, FrameFormat, VideoFrameProvider*);
@@ -54,11 +54,9 @@ private:
     boost::scoped_ptr<FakedVideoFrameEncoder> m_encoder;
 };
 
-SoftVideoFrameMixer::SoftVideoFrameMixer()
+SoftVideoFrameMixer::SoftVideoFrameMixer(uint32_t configListenerId)
 {
-    const VideoLayout& layout = Config::get()->getVideoLayout();
-
-    m_compositor.reset(new SoftVideoCompositor(layout));
+    m_compositor.reset(new SoftVideoCompositor(configListenerId));
     m_encoder.reset(new FakedVideoFrameEncoder(m_compositor));
 }
 

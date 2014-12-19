@@ -46,20 +46,21 @@ class Config
 public:
     static Config* get();
 
-    const VideoLayout& getVideoLayout();
-    void initVideoLayout(const std::string&, const std::string&, const std::string&, const std::string&);
-    bool updateVideoLayout(uint32_t);
-    void registerListener(ConfigListener*);
-    void unregisterListener(ConfigListener*);
+    const VideoLayout& getVideoLayout(uint32_t id);
+    void initVideoLayout(uint32_t id, const std::string&, const std::string&, const std::string&, const std::string&);
+    bool updateVideoLayout(uint32_t id, uint32_t slots);
+    uint32_t registerListener(ConfigListener*);
+    void unregisterListener(uint32_t id);
 
 private:
     Config();
-    void signalConfigChanged();
+    void signalConfigChanged(uint32_t id);
 
     static Config* m_config;
-    VideoLayout m_currentVideoLayout;
     VideoLayout m_customVideoLayouts[MAX_VIDEO_SLOT_NUMBER];
-    std::list<ConfigListener*> m_configListeners;
+    uint32_t m_idAccumulator;
+    std::map<uint32_t, VideoLayout> m_currentVideoLayouts;
+    std::map<uint32_t, ConfigListener*> m_configListeners;
 };
 
 } /* namespace mcu */

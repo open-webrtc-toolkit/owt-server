@@ -20,8 +20,6 @@
 
 #include "Mixer.h"
 
-#include "media/Config.h"
-
 using namespace woogeen_base;
 using namespace erizo;
 
@@ -163,7 +161,7 @@ void Mixer::configLayout(const std::string& type, const std::string& defaultRoot
     const std::string& defaultBackgroundColor, const std::string& customLayout)
 {
     ELOG_DEBUG("configLayout");
-    Config::get()->initVideoLayout(type, defaultRootSize, defaultBackgroundColor, customLayout);
+    m_videoMixer->initVideoLayout(type, defaultRootSize, defaultBackgroundColor, customLayout);
 }
 
 bool Mixer::init(bool hardwareAccelerated)
