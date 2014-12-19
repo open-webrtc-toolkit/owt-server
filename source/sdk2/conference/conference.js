@@ -89,7 +89,7 @@ Woogeen.ConferenceClient = (function () {
         return safeCall(onFailure, 'connection state invalid');
       }
 
-      self.on('client-disconnected', function () { // onConnectionClose handler
+      self.on('server-disconnected', function () { // onConnectionClose handler
         that.state = DISCONNECTED;
         self.myId = null;
         var i, stream;
@@ -342,18 +342,18 @@ Woogeen.ConferenceClient = (function () {
 
         self.socket.on('disconnect', function () {
           if (that.state !== DISCONNECTED) {
-            var evt = new Woogeen.ClientEvent({type: 'client-disconnected'});
+            var evt = new Woogeen.ClientEvent({type: 'server-disconnected'});
             self.dispatchEvent(evt);
           }
         });
 
-        self.socket.on('onPeerJoin', function (spec) {
-          var evt = new Woogeen.ClientEvent({type: 'peer-joined', user: spec.user});
+        self.socket.on('onUserJoin', function (spec) {
+          var evt = new Woogeen.ClientEvent({type: 'user-joined', user: spec.user});
           self.dispatchEvent(evt);
         });
 
-        self.socket.on('onPeerLeave', function (spec) {
-          var evt = new Woogeen.ClientEvent({type: 'peer-left', user: spec.user});
+        self.socket.on('onUserLeave', function (spec) {
+          var evt = new Woogeen.ClientEvent({type: 'user-left', user: spec.user});
           self.dispatchEvent(evt);
         });
 
@@ -439,7 +439,7 @@ Woogeen.ConferenceClient = (function () {
   WoogeenConference.prototype = Woogeen.EventDispatcher({}); // make WoogeenConference a eventDispatcher
 
   WoogeenConference.prototype.disconnect = function () {
-    var evt = new Woogeen.ClientEvent({type: 'client-disconnected'});
+    var evt = new Woogeen.ClientEvent({type: 'server-disconnected'});
     this.dispatchEvent(evt);
   };
 

@@ -427,7 +427,7 @@ var listen = function () {
                                             stunServerUrl: GLOBAL.config.erizoController.stunServerUrl,
                                             turnServer: GLOBAL.config.erizoController.turnServer
                                             });
-                        sendMsgToOthersInRoom(socket.room, 'onPeerJoin', {user: user});
+                        sendMsgToOthersInRoom(socket.room, 'onUserJoin', {user: user});
 
                     } else {
                         log.warn('Invalid host');
@@ -836,7 +836,7 @@ var listen = function () {
                 delete rooms[socket.room.id];
                 updateMyState();
             } else if (socket.room !== undefined) {
-                sendMsgToOthersInRoom(socket.room, 'onPeerLeave', {user: socket.user});
+                sendMsgToOthersInRoom(socket.room, 'onUserLeave', {user: socket.user});
             }
         });
     });
