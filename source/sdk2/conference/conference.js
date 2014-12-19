@@ -438,7 +438,7 @@ Woogeen.ConferenceClient = (function () {
 
   WoogeenConference.prototype = Woogeen.EventDispatcher({}); // make WoogeenConference a eventDispatcher
 
-  WoogeenConference.prototype.disconnect = function () {
+  WoogeenConference.prototype.leave = function () {
     var evt = new Woogeen.ClientEvent({type: 'server-disconnected'});
     this.dispatchEvent(evt);
   };
