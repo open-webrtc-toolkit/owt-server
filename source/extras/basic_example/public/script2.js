@@ -43,7 +43,7 @@
   function displayStream (stream) {
     var div = document.createElement('div');
     var streamId = stream.id();
-    if (streamId === 0) {
+    if (stream instanceof Woogeen.RemoteStream && stream.isMixed()) {
       div.setAttribute('style', 'width: 640px; height: 480px;');
     } else {
       div.setAttribute('style', 'width: 320px; height: 240px;');
@@ -116,6 +116,7 @@
         shareButton.setAttribute('style', 'display:block');
         shareButton.onclick = (function () {
           conference.shareScreen({resolution: myResolution}, function (stream) {
+            document.getElementById('myScreen').setAttribute('style', 'width:320px; height: 240px;');
             stream.show('myScreen');
           }, function (err) {
             L.Logger.error('share screen failed:', err);
@@ -149,6 +150,7 @@
           });
         } else if (isHttps) {
           conference.shareScreen({resolution: myResolution}, function (stream) {
+            document.getElementById('myScreen').setAttribute('style', 'width:320px; height: 240px;');
             stream.show('myScreen');
           }, function (err) {
             L.Logger.error('share screen failed:', err);
