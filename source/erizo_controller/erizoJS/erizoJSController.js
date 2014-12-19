@@ -12,7 +12,6 @@ exports.ErizoJSController = function (spec) {
     "use strict";
 
     var that = {},
-        mixer,
         // {id: array of subscribers}
         subscribers = {},
         // {id: Gateway}
@@ -44,7 +43,7 @@ exports.ErizoJSController = function (spec) {
                     "oop": oop,
                     "hardware": hardwareAccelerated
                 };
-                mixer = new addon.Gateway(JSON.stringify(config));
+                var mixer = new addon.Gateway(JSON.stringify(config));
 
                 publishers[id] = mixer;
                 subscribers[id] = [];
@@ -99,7 +98,7 @@ exports.ErizoJSController = function (spec) {
     /*
      * Given a WebRtcConnection waits for the state CANDIDATES_GATHERED for set remote SDP.
      */
-    initWebRtcConnection = function (wrtc, sdp, addToMixer, callback, id_pub, id_sub) {
+    initWebRtcConnection = function (wrtc, sdp, id_mixer, callback, id_pub, id_sub) {
         if(typeof sdp != 'string') sdp = JSON.stringify(sdp); // fixes some issues with sending json object as json, and not as string
 
         if (GLOBAL.config.erizoController.sendStats) {
@@ -138,7 +137,8 @@ exports.ErizoJSController = function (spec) {
           }
           if (newStatus === 103) {
             // Perform the additional work for publishers.
-            if (addToMixer) {
+            if (id_mixer) {
+              var mixer = publishers[id_mixer];
               if (mixer) {
                 publishers[id_pub].setMixer(mixer);
               } else {
@@ -244,7 +244,7 @@ exports.ErizoJSController = function (spec) {
      * and a new WebRtcConnection. This WebRtcConnection will be the publisher
      * of the Gateway.
      */
-    that.addPublisher = function (from, sdp, hasScreen, oopMixer, callback) {
+    that.addPublisher = function (from, sdp, mixer, callback) {
 
         if (publishers[from] === undefined) {
             log.info("Adding publisher peer_id ", from);
@@ -262,10 +262,10 @@ exports.ErizoJSController = function (spec) {
             publishers[from] = muxer;
             subscribers[from] = [];
 
-            if (oopMixer && mixer === undefined)
+            if (mixer.oop)
                 mixerProxies[from] = new addon.MediaSourceConsumer();
 
-            initWebRtcConnection(wrtc, sdp, !hasScreen, callback, from);
+            initWebRtcConnection(wrtc, sdp, mixer.id, callback, from);
         } else {
             log.info("Publisher already set for", from);
         }
@@ -285,7 +285,7 @@ exports.ErizoJSController = function (spec) {
 
             var wrtc = new addon.WebRtcConnection(audio, video, GLOBAL.config.erizo.stunserver, GLOBAL.config.erizo.stunport, GLOBAL.config.erizo.minport, GLOBAL.config.erizo.maxport, undefined, undefined, undefined, true, true, true, true);
 
-            initWebRtcConnection(wrtc, sdp, false, callback, to, from);
+            initWebRtcConnection(wrtc, sdp, undefined, callback, to, from);
 
             subscribers[to].push(from);
             publishers[to].addSubscriber(wrtc, from);
