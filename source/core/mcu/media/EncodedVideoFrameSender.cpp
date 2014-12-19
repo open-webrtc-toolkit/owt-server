@@ -28,6 +28,10 @@ using namespace erizo;
 
 namespace mcu {
 
+// To make it consistent with the webrtc library, we allow packets to be transmitted
+// in up to 2 times max video bitrate if the bandwidth estimate allows it.
+static const int TRANSMISSION_MAXBITRATE_MULTIPLIER = 2;
+
 DEFINE_LOGGER(EncodedVideoFrameSender, "mcu.media.EncodedVideoFrameSender");
 
 EncodedVideoFrameSender::EncodedVideoFrameSender(int id, boost::shared_ptr<VideoFrameMixer> source, FrameFormat frameFormat, woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<TaskRunner> taskRunner)
@@ -42,6 +46,7 @@ EncodedVideoFrameSender::~EncodedVideoFrameSender()
 {
     close();
 }
+
 
 bool EncodedVideoFrameSender::setSendCodec(FrameFormat frameFormat, VideoSize videoSize)
 {
@@ -71,7 +76,7 @@ bool EncodedVideoFrameSender::setSendCodec(FrameFormat frameFormat, VideoSize vi
     uint32_t targetBitrate = calcBitrate(videoSize.width, videoSize.height) * (frameFormat == FRAME_FORMAT_VP8 ? 0.9 : 1);
     uint32_t minBitrate = targetBitrate / 4;
     // The bitrate controller is accepting "bps".
-    m_bitrateController->SetBitrateObserver(this, targetBitrate * 1000, minBitrate * 1000, targetBitrate * 1000);
+    m_bitrateController->SetBitrateObserver(this, targetBitrate * 1000, minBitrate * 1000, TRANSMISSION_MAXBITRATE_MULTIPLIER * targetBitrate * 1000);
     m_source->setBitrate(m_id, targetBitrate);
 
     return m_rtpRtcp && m_rtpRtcp->RegisterSendPayload(codec) != -1;
