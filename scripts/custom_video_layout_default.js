@@ -4,7 +4,6 @@ exports.customvideolayout = {
         {
             "maxinput": 1,
             "root": {
-                "size": "vga",
                 "backgroundcolor": "black"
             },
             "region": [{
@@ -18,7 +17,6 @@ exports.customvideolayout = {
         {
             "maxinput": 2,
             "root": {
-                "size": "vga",
                 "backgroundcolor": "black"
             },
             "region": [{
@@ -37,7 +35,6 @@ exports.customvideolayout = {
         {
             "maxinput": 3,
             "root": {
-                "size": "vga",
                 "backgroundcolor": "black"
             },
             "region": [{
@@ -61,7 +58,6 @@ exports.customvideolayout = {
         {
             "maxinput": 4,
             "root": {
-                "size": "vga",
                 "backgroundcolor": "white"
             },
             "region": [{
@@ -90,7 +86,6 @@ exports.customvideolayout = {
         {
             "maxinput": 6,
             "root": {
-                "size": "vga",
                 "backgroundcolor": "black"
             },
             "region": [{
@@ -129,7 +124,6 @@ exports.customvideolayout = {
         {
             "maxinput": 8,
             "root": {
-                "size": "vga",
                 "backgroundcolor": "white"
             },
             "region": [{
@@ -178,7 +172,6 @@ exports.customvideolayout = {
         {
             "maxinput": 16,
             "root": {
-                "size": "vga",
                 "backgroundcolor": "black"
             },
             "region": [{
