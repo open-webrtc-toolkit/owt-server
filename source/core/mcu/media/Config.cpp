@@ -40,14 +40,25 @@ Config* Config::get()
     return m_config;
 }
 
-Config::Config()
-    : m_idAccumulator(0)
+Config::Config() : m_idAccumulator(0)
 {
 }
 
 inline void Config::signalConfigChanged(uint32_t id)
 {
     m_configListeners[id]->onConfigChanged();
+}
+
+bool Config::validateVideoRegion(const Region& region)
+{
+    // region.left, region.top and region.relativeSize should be between 0-1.0
+    if (region.left < 0.0 || region.left > 1.0
+        || region.top < 0.0 || region.top > 1.0
+        || region.relativeSize < 0.0 || region.relativeSize > 1.0) {
+        return false;
+    }
+
+    return true;
 }
 
 const VideoLayout& Config::getVideoLayout(uint32_t id)
@@ -96,7 +107,12 @@ void Config::initVideoLayout(uint32_t id, const std::string& type, const std::st
                 region.left = regionPair.second.get<float>("left");
                 region.top = regionPair.second.get<float>("top");
                 region.relativeSize = regionPair.second.get<float>("relativesize");
-                targetLayout.regions.push_back(region);
+                if (validateVideoRegion(region))
+                    targetLayout.regions.push_back(region);
+                else {
+                    ELOG_WARN("Abandoning improper region configuration with id: %s in the video layout with maxInput: %u",
+                        region.id.c_str(), maxInput);
+                }
             }
 
             if (initIndex > maxInput - 1)
@@ -127,13 +143,12 @@ bool Config::updateVideoLayout(uint32_t id, uint32_t slotNumber)
     }
 
     // custom layout
-    uint32_t currentRegionNum = currentVideoLayout.regions.size();
-    if (slotNumber != currentRegionNum) {
+    if (slotNumber != currentVideoLayout.maxInput) {
         for (uint32_t i = slotNumber - 1; i < MAX_VIDEO_SLOT_NUMBER; ++i) {
             if (m_customVideoLayouts[i].regions.empty())
                 continue;
 
-            if (m_customVideoLayouts[i].regions.size() != currentRegionNum) {
+            if (m_customVideoLayouts[i].maxInput != currentVideoLayout.maxInput) {
                 currentVideoLayout = m_customVideoLayouts[i];
                 signalConfigChanged(id);
                 return true;

@@ -55,6 +55,7 @@ public:
 private:
     Config();
     void signalConfigChanged(uint32_t id);
+    bool validateVideoRegion(const Region&);
 
     static Config* m_config;
     VideoLayout m_customVideoLayouts[MAX_VIDEO_SLOT_NUMBER];
