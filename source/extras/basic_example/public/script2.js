@@ -8,6 +8,8 @@
     return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
   }
 
+  var subscribeMix = getParameterByName("mix") || "true";
+
   function createToken (room, userName, role, callback) {
     var req = new XMLHttpRequest();
     var url = '/createToken/';
@@ -78,14 +80,19 @@
       L.Logger.info('stream', stream.id(), 'is from me; will not be subscribed.');
       return;
     }
-    L.Logger.info('subscribing:', stream.id());
-    conference.subscribe(stream, function () {
-      L.Logger.info('subscribed:', stream.id());
-      displayStream(stream);
-    }, function (err) {
-      L.Logger.error(stream.id(), 'subscribe failed:', err);
-    });
+
+    if ((subscribeMix === "true" && (stream.isMixed() || stream.isScreen())) ||
+      (subscribeMix !== "true" && !stream.isMixed())) {
+      L.Logger.info('subscribing:', stream.id());
+      conference.subscribe(stream, function () {
+        L.Logger.info('subscribed:', stream.id());
+        displayStream(stream);
+      }, function (err) {
+        L.Logger.error(stream.id(), 'subscribe failed:', err);
+      });
+    }
   });
+
   conference.on('stream-removed', function (event) {
     var stream = event.stream;
     L.Logger.info('stream removed:' ,stream.id());
@@ -161,13 +168,16 @@
         var streams = resp.streams;
         streams.map(function (stream) {
           L.Logger.info('stream in conference:', stream.id());
-          L.Logger.info('subscribing:', stream.id());
-          conference.subscribe(stream, function () {
-            L.Logger.info('subscribed:', stream.id());
-            displayStream(stream);
-          }, function (err) {
-            L.Logger.error(stream.id(), 'subscribe failed:', err);
-          });
+          if ((subscribeMix === "true" && (stream.isMixed() || stream.isScreen())) ||
+            (subscribeMix !== "true" && !stream.isMixed())) {
+            L.Logger.info('subscribing:', stream.id());
+            conference.subscribe(stream, function () {
+              L.Logger.info('subscribed:', stream.id());
+              displayStream(stream);
+            }, function (err) {
+              L.Logger.error(stream.id(), 'subscribe failed:', err);
+            });
+          }
         });
       }, function (err) {
         L.Logger.error('server connection failed:', err);
