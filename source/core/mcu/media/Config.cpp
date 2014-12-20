@@ -105,18 +105,8 @@ void Config::initVideoLayout(uint32_t id, const std::string& type, const std::st
             targetLayout.rootColor = defaultColor;
             targetLayout.maxInput = maxInput;
 
-            std::string size = layoutPair.second.get<std::string> ("root.size");
-            targetLayout.rootSize = VideoResolutionType::vga;
-            for (std::map<std::string, VideoResolutionType>::const_iterator it=VideoResolutions.begin();
-                it!=VideoResolutions.end(); ++it) {
-                if (!size.compare(it->first)) {
-                    targetLayout.rootSize = it->second;
-                    break;
-                }
-            }
-
+            // Parse the background color
             std::string color = layoutPair.second.get<std::string> ("root.backgroundcolor");
-            targetLayout.rootColor = VideoBackgroundColor::black;
             for (std::map<std::string, VideoBackgroundColor>::const_iterator it=VideoColors.begin();
                 it!=VideoColors.end(); ++it) {
                 if (!color.compare(it->first)) {
