@@ -98,7 +98,6 @@ private:
     uint32_t m_configListenerId;
 
     boost::shared_ptr<TaskRunner> m_taskRunner;
-    boost::shared_ptr<erizo::FeedbackSink> m_feedback;
     erizo::RTPDataReceiver* m_outputReceiver;
     boost::shared_mutex m_sourceMutex;
     std::map<uint32_t, boost::shared_ptr<VCMInputProcessor>> m_sinksForSources;
