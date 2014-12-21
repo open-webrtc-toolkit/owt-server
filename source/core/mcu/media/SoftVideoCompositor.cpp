@@ -20,7 +20,6 @@
 
 #include "SoftVideoCompositor.h"
 
-#include "Config.h"
 #include <webrtc/common_video/interface/i420_video_frame.h>
 #include <webrtc/modules/video_processing/main/interface/video_processing.h>
 #include <webrtc/system_wrappers/interface/clock.h>
@@ -68,12 +67,14 @@ void VPMPool::update(unsigned int slot, VideoSize& videoSize)
 
 DEFINE_LOGGER(SoftVideoCompositor, "mcu.media.SoftVideoCompositor");
 
-SoftVideoCompositor::SoftVideoCompositor(uint32_t configListenerId)
-    : m_configListenerId(configListenerId)
-    , m_configChanged(false)
+SoftVideoCompositor::SoftVideoCompositor(const std::string& layoutType, const std::string& rootSize, const std::string& bgColor, const std::string& customLayout)
+    : m_configChanged(false)
     , m_consumer(nullptr)
 {
-    m_currentLayout = Config::get()->getVideoLayout(configListenerId);
+    m_configListenerId = Config::get()->registerListener(this);
+    Config::get()->initVideoLayout(m_configListenerId, layoutType, rootSize, bgColor, customLayout);
+
+    m_currentLayout = Config::get()->getVideoLayout(m_configListenerId);
 
     m_ntpDelta = Clock::GetRealTimeClock()->CurrentNtpInMilliseconds() - TickTime::MillisecondTimestamp();
     m_vpmPool.reset(new VPMPool(MAX_VIDEO_SLOT_NUMBER));
@@ -98,6 +99,7 @@ SoftVideoCompositor::~SoftVideoCompositor()
 {
     m_jobTimer->stop();
     m_consumer = nullptr;
+    Config::get()->unregisterListener(m_configListenerId);
 }
 
 void SoftVideoCompositor::setLayout(const VideoLayout& layout)
@@ -145,6 +147,12 @@ void SoftVideoCompositor::unsetOutput()
     m_consumer = nullptr;
 }
 
+void SoftVideoCompositor::onConfigChanged()
+{
+    ELOG_DEBUG("onConfigChanged");
+    setLayout(Config::get()->getVideoLayout(m_configListenerId));
+}
+
 void SoftVideoCompositor::onTimeout()
 {
     generateFrame();
@@ -174,7 +182,7 @@ void SoftVideoCompositor::setBackgroundColor()
         ELOG_TRACE("setBackgroundColor");
 
         // Fetch video background color.
-        YUVColor rootColor = VideoLayoutHelper::getVideoBackgroundColor(m_currentLayout.rootColor);
+        YUVColor rootColor = VideoLayoutHelper::getVideoYUVColor(m_currentLayout.rootColor);
 
         // Set the background color
         memset(m_composedFrame->buffer(webrtc::kYPlane), rootColor.y, m_composedFrame->allocated_size(webrtc::kYPlane));

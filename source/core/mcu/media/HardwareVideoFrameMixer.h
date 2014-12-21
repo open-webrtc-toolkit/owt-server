@@ -21,6 +21,7 @@
 #ifndef HardwareVideoFrameMixer_h
 #define HardwareVideoFrameMixer_h
 
+#include "Config.h"
 #include "JobTimer.h"
 #include "VideoFramePipeline.h"
 
@@ -83,10 +84,10 @@ private:
     boost::scoped_ptr<JobTimer> m_jobTimer;
 };
 
-class HardwareVideoFrameMixer : public VideoFrameMixer {
+class HardwareVideoFrameMixer : public VideoFrameMixer, public ConfigListener {
     DECLARE_LOGGER();
 public:
-    HardwareVideoFrameMixer(uint32_t configListenerId);
+    HardwareVideoFrameMixer(const std::string& layoutType, const std::string& rootSize, const std::string& bgColor, const std::string& customLayout);
     virtual ~HardwareVideoFrameMixer();
 
     bool activateInput(int slot, FrameFormat, VideoFrameProvider*);
@@ -99,6 +100,8 @@ public:
     void requestKeyFrame(int id);
     bool activateOutput(int id, FrameFormat, unsigned int framerate, unsigned short bitrate, VideoFrameConsumer*);
     void deActivateOutput(int id);
+
+    void onConfigChanged();
 
 private:
     bool onSlotNumberChanged(uint32_t newSlotNum);

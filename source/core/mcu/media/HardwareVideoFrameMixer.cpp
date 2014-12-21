@@ -20,8 +20,6 @@
 
 #include "HardwareVideoFrameMixer.h"
 
-#include "Config.h"
-
 namespace mcu {
 
 VideoMixCodecType Frameformat2CodecType(FrameFormat format)
@@ -126,16 +124,18 @@ void HardwareVideoFrameMixerOutput::notifyFrameReady(OutputIndex index)
 
 DEFINE_LOGGER(HardwareVideoFrameMixer, "mcu.media.HardwareVideoFrameMixer");
 
-HardwareVideoFrameMixer::HardwareVideoFrameMixer(uint32_t configListenerId)
-    : m_configListenerId(configListenerId)
+HardwareVideoFrameMixer::HardwareVideoFrameMixer(const std::string& layoutType, const std::string& defaultRootSize, const std::string& backgroundColor, const std::string& customLayout)
 {
     m_engine.reset(new VideoMixEngine());
 
-    const VideoLayout& layout = Config::get()->getVideoLayout(configListenerId);
+    m_configListenerId = Config::get()->registerListener(this);
+    Config::get()->initVideoLayout(m_configListenerId, layoutType, defaultRootSize, backgroundColor, customLayout);
+
+    const VideoLayout& layout = Config::get()->getVideoLayout(m_configListenerId);
 
     // Fetch video size and background color.
     VideoSize rootSize = VideoLayoutHelper::getVideoSize(layout.rootSize);
-    YUVColor rootColor = VideoLayoutHelper::getVideoBackgroundColor(layout.rootColor);
+    YUVColor rootColor = VideoLayoutHelper::getVideoYUVColor(layout.rootColor);
     BackgroundColor bgColor = {rootColor.y, rootColor.cb, rootColor.cr};
     FrameSize frameSize = {rootSize.width, rootSize.height};
     bool result = m_engine->init(bgColor, frameSize);
@@ -149,6 +149,7 @@ HardwareVideoFrameMixer::HardwareVideoFrameMixer(uint32_t configListenerId)
 
 HardwareVideoFrameMixer::~HardwareVideoFrameMixer()
 {
+    Config::get()->unregisterListener(m_configListenerId);
 }
 
 void HardwareVideoFrameMixer::setLayout(const VideoLayout& layout)
@@ -157,7 +158,7 @@ void HardwareVideoFrameMixer::setLayout(const VideoLayout& layout)
     if (!layout.regions.empty()) {
         // Set the layout video size and background color
         VideoSize rootSize = VideoLayoutHelper::getVideoSize(layout.rootSize);
-        YUVColor rootColor = VideoLayoutHelper::getVideoBackgroundColor(layout.rootColor);
+        YUVColor rootColor = VideoLayoutHelper::getVideoYUVColor(layout.rootColor);
         m_currentLayout.rootSize = {rootSize.width, rootSize.height};
         m_currentLayout.rootColor = {rootColor.y, rootColor.cb, rootColor.cr};
 
@@ -294,6 +295,12 @@ bool HardwareVideoFrameMixer::activateOutput(int id, FrameFormat format, unsigne
 void HardwareVideoFrameMixer::deActivateOutput(int id)
 {
     m_outputs.erase(id);
+}
+
+void HardwareVideoFrameMixer::onConfigChanged()
+{
+    ELOG_DEBUG("onConfigChanged");
+    setLayout(Config::get()->getVideoLayout(m_configListenerId));
 }
 
 bool HardwareVideoFrameMixer::onSlotNumberChanged(uint32_t newSlotNum)

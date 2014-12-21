@@ -120,6 +120,16 @@ const std::map<VideoBackgroundColor, YUVColor> VideoYuvColors = {{black, {0x00, 
 
 class VideoLayoutHelper {
 public:
+    static VideoResolutionType getVideoResolution(const std::string& resolutionDescription)
+    {
+        // Fetch video resolution
+        std::map<std::string, VideoResolutionType>::const_iterator it = VideoResolutions.find(resolutionDescription);
+        if (it != VideoResolutions.end())
+            return it->second;
+
+        return VideoResolutionType::vga;
+    }
+
     static VideoSize getVideoSize(VideoResolutionType videoResolution)
     {
         // Fetch video size
@@ -130,9 +140,19 @@ public:
         return DEFAULT_VIDEO_SIZE;
     }
 
-    static YUVColor getVideoBackgroundColor(VideoBackgroundColor videoBgColor)
+    static VideoBackgroundColor getVideoBackgroundColor(const std::string& colorDescription)
     {
         // Fetch video background color
+        std::map<std::string, VideoBackgroundColor>::const_iterator it = VideoColors.find(colorDescription);
+        if (it != VideoColors.end())
+            return it->second;
+
+        return VideoBackgroundColor::black;
+    }
+
+    static YUVColor getVideoYUVColor(VideoBackgroundColor videoBgColor)
+    {
+        // Fetch video YUV color
         std::map<VideoBackgroundColor, YUVColor>::const_iterator it = VideoYuvColors.find(videoBgColor);
         if (it != VideoYuvColors.end())
             return it->second;

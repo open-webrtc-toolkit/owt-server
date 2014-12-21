@@ -22,6 +22,7 @@
 #define SoftVideoCompositor_h
 
 #include "BufferManager.h"
+#include "Config.h"
 #include "JobTimer.h"
 #include "VideoFramePipeline.h"
 #include "VideoLayout.h"
@@ -63,10 +64,11 @@ private:
  * still 16 audios will be mixed. In the future, we may enable the video rotation based on VAD history.
  */
 class SoftVideoCompositor : public VideoFrameCompositor,
+                            public ConfigListener,
                             public JobTimerListener {
     DECLARE_LOGGER();
 public:
-    SoftVideoCompositor(uint32_t configListenerId);
+    SoftVideoCompositor(const std::string& layoutType, const std::string& rootSize, const std::string& bgColor, const std::string& customLayout);
     ~SoftVideoCompositor();
 
     bool activateInput(int slot);
@@ -77,6 +79,8 @@ public:
     void unsetOutput();
 
     void setLayout(const VideoLayout&);
+
+    void onConfigChanged();
 
     void onTimeout();
 
