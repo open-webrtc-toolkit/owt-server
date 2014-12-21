@@ -48,15 +48,6 @@ namespace erizo {
 
     ELOG_DEBUG("Generating internal RtpMap");
 
-    RtpMap h264;
-    h264.payloadType = H264_90000_PT;
-    h264.encodingName = "H264";
-    h264.clockRate = 90000;
-    h264.channels = 1;
-    h264.mediaType = VIDEO_TYPE;
-    h264.enable = true;
-    internalPayloadVector_.push_back(h264);
-
     RtpMap vp8;
     vp8.payloadType = VP8_90000_PT;
     vp8.encodingName = "VP8";
@@ -65,6 +56,15 @@ namespace erizo {
     vp8.mediaType = VIDEO_TYPE;
     vp8.enable = true;
     internalPayloadVector_.push_back(vp8);
+
+    RtpMap h264;
+    h264.payloadType = H264_90000_PT;
+    h264.encodingName = "H264";
+    h264.clockRate = 90000;
+    h264.channels = 1;
+    h264.mediaType = VIDEO_TYPE;
+    h264.enable = true;
+    internalPayloadVector_.push_back(h264);
 
     RtpMap red;
     red.payloadType = RED_90000_PT;
