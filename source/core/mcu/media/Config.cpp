@@ -61,27 +61,10 @@ void Config::initVideoLayout(uint32_t id, const std::string& type, const std::st
     ELOG_DEBUG("initVideoLayout configuration");
 
     // Set the default value for root size, background color
-    VideoResolutionType defaultSize = VideoResolutionType::vga;
-    for (std::map<std::string, VideoResolutionType>::const_iterator it=VideoResolutions.begin();
-        it!=VideoResolutions.end(); ++it) {
-        if (!defaultRootSize.compare(it->first)) {
-            defaultSize = it->second;
-            break;
-        }
-    }
     VideoLayout& currentVideoLayout = m_currentVideoLayouts[id];
-
+    VideoResolutionType defaultSize = VideoLayoutHelper::getVideoResolution(defaultRootSize);
     currentVideoLayout.rootSize = defaultSize;
-
-    VideoBackgroundColor defaultColor = VideoBackgroundColor::black;
-    for (std::map<std::string, VideoBackgroundColor>::const_iterator it=VideoColors.begin();
-        it!=VideoColors.end(); ++it) {
-        if (!defaultBackgroundColor.compare(it->first)) {
-            defaultColor = it->second;
-            break;
-        }
-    }
-    currentVideoLayout.rootColor = defaultColor;
+    currentVideoLayout.rootColor = VideoLayoutHelper::getVideoBackgroundColor(defaultBackgroundColor);
 
     // Load the configuration
     if (type.compare("custom")) {
@@ -101,19 +84,11 @@ void Config::initVideoLayout(uint32_t id, const std::string& type, const std::st
                 continue;
 
             VideoLayout& targetLayout = m_customVideoLayouts[maxInput - 1];
-            targetLayout.rootSize = defaultSize;
-            targetLayout.rootColor = defaultColor;
             targetLayout.maxInput = maxInput;
+            targetLayout.rootSize = defaultSize;
 
-            // Parse the background color
             std::string color = layoutPair.second.get<std::string> ("root.backgroundcolor");
-            for (std::map<std::string, VideoBackgroundColor>::const_iterator it=VideoColors.begin();
-                it!=VideoColors.end(); ++it) {
-                if (!color.compare(it->first)) {
-                    targetLayout.rootColor = it->second;
-                    break;
-                }
-            }
+            targetLayout.rootColor = VideoLayoutHelper::getVideoBackgroundColor(color);
 
             BOOST_FOREACH (boost::property_tree::ptree::value_type& regionPair, layoutPair.second.get_child("region")) {
                 Region region;

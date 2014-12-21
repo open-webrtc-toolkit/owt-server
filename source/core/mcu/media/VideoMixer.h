@@ -21,7 +21,7 @@
 #ifndef VideoMixer_h
 #define VideoMixer_h
 
-#include "Config.h"
+#include "VideoLayout.h"
 
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/shared_mutex.hpp>
@@ -50,7 +50,7 @@ static const int MIXED_H264_VIDEO_STREAM_ID = 3;
 /**
  * Receives media from several sources, mixed into one stream and retransmits it to the RTPDataReceiver.
  */
-class VideoMixer : public woogeen_base::MediaSourceConsumer, public erizo::MediaSink, public erizo::FeedbackSink, public ConfigListener {
+class VideoMixer : public woogeen_base::MediaSourceConsumer, public erizo::MediaSink, public erizo::FeedbackSink {
     DECLARE_LOGGER();
 
 public:
@@ -82,9 +82,6 @@ public:
     // Implements FeedbackSink.
     int deliverFeedback(char* buf, int len);
 
-    // Implements ConfigListener.
-    void onConfigChanged();
-
 private:
     void closeAll();
 
@@ -93,9 +90,7 @@ private:
     // return -1 if not found
     int getSlot(uint32_t source);
 
-    bool m_hardwareAccelerated;
     uint32_t m_participants;
-    uint32_t m_configListenerId;
 
     boost::shared_ptr<TaskRunner> m_taskRunner;
     erizo::RTPDataReceiver* m_outputReceiver;
@@ -104,7 +99,9 @@ private:
     std::vector<uint32_t> m_sourceSlotMap;    // each source will be allocated one index
     bool m_addSourceOnDemand;
 
+    bool m_hardwareAccelerated;
     boost::shared_ptr<VideoFrameMixer> m_frameMixer;
+    VideoSize m_outputSize;
     std::map<int, boost::shared_ptr<VideoFrameSender>> m_outputs;
 };
 

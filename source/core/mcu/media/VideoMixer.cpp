@@ -40,18 +40,12 @@ namespace mcu {
 DEFINE_LOGGER(VideoMixer, "mcu.media.VideoMixer");
 
 VideoMixer::VideoMixer(erizo::RTPDataReceiver* receiver, bool hardwareAccelerated)
-    : m_hardwareAccelerated(hardwareAccelerated)
-    , m_participants(0)
+    : m_participants(0)
     , m_outputReceiver(receiver)
     , m_addSourceOnDemand(false)
+    , m_hardwareAccelerated(hardwareAccelerated)
+    , m_outputSize(DEFAULT_VIDEO_SIZE)
 {
-    m_configListenerId = Config::get()->registerListener(this);
-
-    if (m_hardwareAccelerated)
-        m_frameMixer.reset(new HardwareVideoFrameMixer(m_configListenerId));
-    else
-        m_frameMixer.reset(new SoftVideoFrameMixer(m_configListenerId));
-
     m_taskRunner.reset(new TaskRunner());
     m_taskRunner->Start();
 
@@ -65,14 +59,19 @@ VideoMixer::VideoMixer(erizo::RTPDataReceiver* receiver, bool hardwareAccelerate
 VideoMixer::~VideoMixer()
 {
     closeAll();
-    Config::get()->unregisterListener(m_configListenerId);
     m_outputReceiver = nullptr;
 }
 
-void VideoMixer::initVideoLayout(const std::string& type, const std::string& defaultRootSize,
+void VideoMixer::initVideoLayout(const std::string& type, const std::string& rootSize,
     const std::string& defaultBackgroundColor, const std::string& customLayout)
 {
-    Config::get()->initVideoLayout(m_configListenerId, type, defaultRootSize, defaultBackgroundColor, customLayout);
+    VideoResolutionType resolution = VideoLayoutHelper::getVideoResolution(rootSize);
+    m_outputSize = VideoLayoutHelper::getVideoSize(resolution);
+
+    if (m_hardwareAccelerated)
+        m_frameMixer.reset(new HardwareVideoFrameMixer(type, rootSize, defaultBackgroundColor, customLayout));
+    else
+        m_frameMixer.reset(new SoftVideoFrameMixer(type, rootSize, defaultBackgroundColor, customLayout));
 }
 
 int32_t VideoMixer::addOutput(int payloadType)
@@ -106,11 +105,7 @@ int32_t VideoMixer::addOutput(int payloadType)
 
     // Fetch video size.
     // TODO: The size should be identical to the composited video size.
-    VideoSize rootSize = DEFAULT_VIDEO_SIZE;
-    std::map<VideoResolutionType, VideoSize>::const_iterator sizeIterator = VideoSizes.find(Config::get()->getVideoLayout(m_configListenerId).rootSize);
-    if (sizeIterator != VideoSizes.end())
-        rootSize = sizeIterator->second;
-    output->setSendCodec(outputFormat, rootSize);
+    output->setSendCodec(outputFormat, m_outputSize);
     m_outputs[payloadType].reset(output);
 
     return output->id();
@@ -198,12 +193,6 @@ uint32_t VideoMixer::getSendSSRC(int payloadType)
         return it->second->sendSSRC();
 
     return 0;
-}
-
-void VideoMixer::onConfigChanged()
-{
-    ELOG_DEBUG("onConfigChanged");
-    m_frameMixer->setLayout(Config::get()->getVideoLayout(m_configListenerId));
 }
 
 /**
