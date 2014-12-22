@@ -375,7 +375,7 @@ var listen = function () {
                                         var id = room.id;
                                         room.controller.initMixer(id, function (result) {
                                             if (result === 'success') {
-                                                var st = new ST.Stream({id: id, socket: socket.id, audio: true, video: {category: 'mix'}, data: false, from: ''});
+                                                var st = new ST.Stream({id: id, socket: socket.id, audio: true, video: {category: 'mix'}, data: true, from: ''});
                                                 room.streams[id] = st;
                                                 room.mixer = id;
                                                 sendMsgToRoom(room, 'onAddStream', st.getPublicStream());
@@ -495,11 +495,25 @@ var listen = function () {
 
         //Gets 'sendDataStream' messages on the socket in order to write a message in a dataStream.
         socket.on('sendDataStream', function (msg) {
-            var sockets = socket.room.streams[msg.id].getDataSubscribers(), id;
-            for (id in sockets) {
-                if (sockets.hasOwnProperty(id)) {
-                    log.info('Sending dataStream to', sockets[id], 'in stream ', msg.id);
-                    io.sockets.socket(sockets[id]).emit('onDataStream', msg);
+            if (msg.id !== undefined && socket.room.streams[msg.id]) {
+                var sockets = socket.room.streams[msg.id].getDataSubscribers(), id;
+                for (id in sockets) {
+                    if (sockets.hasOwnProperty(id)) {
+                        log.info('Sending dataStream to', sockets[id], 'in stream ', msg.id);
+                        io.sockets.socket(sockets[id]).emit('onDataStream', msg);
+                    }
+                }
+            }
+
+            // send to mix stream subscribers
+            var mixer = socket.room.mixer;
+            if (mixer && socket.room.streams[mixer]) {
+                var sockets = socket.room.streams[mixer].getDataSubscribers(), id;
+                for (id in sockets) {
+                    if (sockets.hasOwnProperty(id)) {
+                        log.info('Sending dataStream to', sockets[id], 'in stream ', mixer);
+                        io.sockets.socket(sockets[id]).emit('onDataStream', msg);
+                    }
                 }
             }
         });
