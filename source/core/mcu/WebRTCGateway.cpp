@@ -139,9 +139,17 @@ void WebRTCGateway::removeSubscriber(const std::string& id)
 void WebRTCGateway::setAdditionalSourceConsumer(woogeen_base::MediaSourceConsumer* mixer)
 {
     m_mixer = mixer;
-    mixer->addSource(m_publisher->getAudioSourceSSRC(), true, this, m_participantId);
-    mixer->addSource(m_publisher->getVideoSourceSSRC(), false, this, m_participantId);
-    mixer->bindAV(m_publisher->getAudioSourceSSRC(), m_publisher->getVideoSourceSSRC());
+
+    uint32_t audioSSRC = m_publisher->getAudioSourceSSRC();
+    uint32_t videoSSRC = m_publisher->getVideoSourceSSRC();
+
+    if (audioSSRC)
+        mixer->addSource(audioSSRC, true, this, m_participantId);
+    if (videoSSRC)
+        mixer->addSource(videoSSRC, false, this, m_participantId);
+
+    if (audioSSRC && videoSSRC)
+        mixer->bindAV(audioSSRC, videoSSRC);
 }
 
 void WebRTCGateway::closeAll()
