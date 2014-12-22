@@ -72,8 +72,8 @@ enum VideoBackgroundColor
 };
 
 struct VideoSize {
-    int width;
-    int height;
+    unsigned int width;
+    unsigned int height;
 };
 
 struct YUVColor {
