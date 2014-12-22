@@ -52,7 +52,7 @@ VPMPool::~VPMPool()
 
 VideoProcessingModule* VPMPool::get(unsigned int slot)
 {
-    assert (slot < m_size);
+    assert(slot < m_size);
     return m_vpms[slot];
 }
 
@@ -246,19 +246,28 @@ webrtc::I420VideoFrame* SoftVideoCompositor::customLayout()
             continue;
 
         Region region = m_currentLayout.regions[input];
-        int sub_width = (int)(m_composedSize.width * region.relativeSize);
-        int sub_height = (int)(m_composedSize.height * region.relativeSize);
+        assert(!(region.relativeSize < 0.0 || region.relativeSize > 1.0)
+            && !(region.left < 0.0 || region.left > 1.0)
+            && !(region.top < 0.0 || region.top > 1.0));
+        unsigned int sub_width = (unsigned int)(m_composedSize.width * region.relativeSize);
+        unsigned int sub_height = (unsigned int)(m_composedSize.height * region.relativeSize);
         unsigned int offset_width = (unsigned int)(m_composedSize.width * region.left);
         unsigned int offset_height = (unsigned int)(m_composedSize.height * region.top);
+        if (offset_width + sub_width > m_composedSize.width)
+            sub_width = m_composedSize.width - offset_width;
+
+        if (offset_height + sub_height > m_composedSize.height)
+            sub_height = m_composedSize.height - offset_height;
+
         webrtc::I420VideoFrame* sub_image = m_bufferManager->getBusyBuffer(index);
         if (!sub_image) {
-            for (int i = 0; i < sub_height; i++) {
+            for (unsigned int i = 0; i < sub_height; i++) {
                 memset(target->buffer(webrtc::kYPlane) + (i+offset_height) * target->stride(webrtc::kYPlane) + offset_width,
                     0,
                     sub_width);
             }
 
-            for (int i = 0; i < sub_height/2; i++) {
+            for (unsigned int i = 0; i < sub_height/2; i++) {
                 memset(target->buffer(webrtc::kUPlane) + (i+offset_height/2) * target->stride(webrtc::kUPlane) + offset_width/2,
                     128,
                     sub_width/2);
@@ -273,13 +282,13 @@ webrtc::I420VideoFrame* SoftVideoCompositor::customLayout()
                 if (!processedFrame)
                     processedFrame = sub_image;
 
-                for (int i = 0; i < sub_height; i++) {
+                for (unsigned int i = 0; i < sub_height; i++) {
                     memcpy(target->buffer(webrtc::kYPlane) + (i+offset_height) * target->stride(webrtc::kYPlane) + offset_width,
                         processedFrame->buffer(webrtc::kYPlane) + i * processedFrame->stride(webrtc::kYPlane),
                         sub_width);
                 }
 
-                for (int i = 0; i < sub_height/2; i++) {
+                for (unsigned int i = 0; i < sub_height/2; i++) {
                     memcpy(target->buffer(webrtc::kUPlane) + (i+offset_height/2) * target->stride(webrtc::kUPlane) + offset_width/2,
                         processedFrame->buffer(webrtc::kUPlane) + i * processedFrame->stride(webrtc::kUPlane),
                         sub_width/2);
