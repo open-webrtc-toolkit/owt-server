@@ -259,6 +259,9 @@ namespace erizo {
     // Check where to send the feedback
     RTCPFeedbackHeader* chead = reinterpret_cast<RTCPFeedbackHeader*>(buf);
     uint32_t sourceSsrc = chead->getSourceSSRC();
+    if (sourceSsrc == 0)
+        return 0;
+
     ELOG_DEBUG("received Feedback type %u, ssrc %u, sourceSsrc %u",
       chead->getRTCPHeader().getPacketType(), chead->getRTCPHeader().getSSRC(), sourceSsrc);
     if (sourceSsrc == getAudioSinkSSRC() || sourceSsrc == getAudioSourceSSRC()) {
