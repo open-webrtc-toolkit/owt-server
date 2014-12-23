@@ -76,6 +76,7 @@ void VideoMixer::initVideoLayout(const std::string& type, const std::string& roo
 
 int32_t VideoMixer::addOutput(int payloadType)
 {
+    boost::upgrade_lock<boost::shared_mutex> lock(m_outputMutex);
     std::map<int, boost::shared_ptr<VideoFrameSender>>::iterator it = m_outputs.find(payloadType);
     if (it != m_outputs.end())
         return it->second->id();
@@ -106,6 +107,7 @@ int32_t VideoMixer::addOutput(int payloadType)
     // Fetch video size.
     // TODO: The size should be identical to the composited video size.
     output->setSendCodec(outputFormat, m_outputSize);
+    boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
     m_outputs[payloadType].reset(output);
 
     return output->id();
@@ -113,6 +115,7 @@ int32_t VideoMixer::addOutput(int payloadType)
 
 int32_t VideoMixer::removeOutput(int payloadType)
 {
+    boost::unique_lock<boost::shared_mutex> lock(m_outputMutex);
     std::map<int, boost::shared_ptr<VideoFrameSender>>::iterator it = m_outputs.find(payloadType);
     if (it != m_outputs.end()) {
         VideoFrameSender* output = it->second.get();
@@ -167,6 +170,7 @@ int VideoMixer::deliverFeedback(char* buf, int len)
     // TODO: For now we just send the feedback to all of the output processors.
     // The output processor will filter out the feedback which does not belong
     // to it. In the future we may do the filtering at a higher level?
+    boost::shared_lock<boost::shared_mutex> lock(m_outputMutex);
     std::map<int, boost::shared_ptr<VideoFrameSender>>::iterator it = m_outputs.begin();
     for (; it != m_outputs.end(); ++it) {
         FeedbackSink* feedbackSink = it->second->feedbackSink();
@@ -179,6 +183,7 @@ int VideoMixer::deliverFeedback(char* buf, int len)
 
 IntraFrameCallback* VideoMixer::getIFrameCallback(int payloadType)
 {
+    boost::shared_lock<boost::shared_mutex> lock(m_outputMutex);
     std::map<int, boost::shared_ptr<VideoFrameSender>>::iterator it = m_outputs.find(payloadType);
     if (it != m_outputs.end())
         return it->second->iFrameCallback();
@@ -188,6 +193,7 @@ IntraFrameCallback* VideoMixer::getIFrameCallback(int payloadType)
 
 uint32_t VideoMixer::getSendSSRC(int payloadType)
 {
+    boost::shared_lock<boost::shared_mutex> lock(m_outputMutex);
     std::map<int, boost::shared_ptr<VideoFrameSender>>::iterator it = m_outputs.find(payloadType);
     if (it != m_outputs.end())
         return it->second->sendSSRC();
@@ -262,7 +268,6 @@ int32_t VideoMixer::removeSource(uint32_t from, bool isAudio)
 void VideoMixer::closeAll()
 {
     ELOG_DEBUG("closeAll");
-    m_taskRunner->Stop();
 
     boost::unique_lock<boost::shared_mutex> sourceLock(m_sourceMutex);
     std::map<uint32_t, boost::shared_ptr<VCMInputProcessor>>::iterator sourceItor = m_sinksForSources.begin();
@@ -275,12 +280,19 @@ void VideoMixer::closeAll()
     }
     m_sinksForSources.clear();
     m_participants = 0;
+    sourceLock.unlock();
 
-    ELOG_DEBUG("Closed all media in this Mixer");
+    boost::unique_lock<boost::shared_mutex> outputLock(m_outputMutex);
+    m_outputs.clear();
+    outputLock.unlock();
+
+    m_taskRunner->Stop();
 
 #if ENABLE_WEBRTC_TRACE
     webrtc::Trace::ReturnTrace();
 #endif
+
+    ELOG_DEBUG("Closed all media in this Mixer");
 }
 
 }/* namespace mcu */

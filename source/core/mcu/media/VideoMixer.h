@@ -102,6 +102,7 @@ private:
     bool m_hardwareAccelerated;
     boost::shared_ptr<VideoFrameMixer> m_frameMixer;
     VideoSize m_outputSize;
+    boost::shared_mutex m_outputMutex;
     std::map<int, boost::shared_ptr<VideoFrameSender>> m_outputs;
 };
 
