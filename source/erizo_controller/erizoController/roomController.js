@@ -46,7 +46,14 @@ exports.RoomController = function (spec) {
 
     var keepAliveLoop = setInterval(sendKeepAlive, KEEPALIVE_INTERVAL);
 
-    var createErizoJS = function(publisher_id, callback) {
+    var createErizoJS = function(publisher_id, mixer_id, callback) {
+        // Currently we want to make sure the publishers and the mixer they associate with
+        // are run in the same process. This is the requirement of in-process mixer.
+        if (!GLOBAL.config.erizoController.outOfProcessMixer && mixer_id !== undefined && erizos[mixer_id] !== undefined) {
+            erizos[publisher_id] = erizos[mixer_id];
+            callback();
+            return;
+        }
     	rpc.callRpc("ErizoAgent", "createErizoJS", [publisher_id], {callback: function(erizo_id) {
             log.debug("Answer", erizo_id);
             erizos[publisher_id] = erizo_id;
@@ -82,7 +89,7 @@ exports.RoomController = function (spec) {
         log.info("Adding mixer id ", id);
 
         // We create a new ErizoJS with the id.
-        createErizoJS(id, function(erizo_id) {
+        createErizoJS(id, id, function(erizo_id) {
             log.info("Erizo created");
             // then we call its initMixer method.
             var args = [id, GLOBAL.config.erizoController.outOfProcessMixer];
@@ -100,7 +107,7 @@ exports.RoomController = function (spec) {
 
             log.info("Adding external input peer_id ", publisher_id);
 
-            createErizoJS(publisher_id, function() {
+            createErizoJS(publisher_id, undefined, function() {
             // then we call its addPublisher method.
 	        var args = [publisher_id, url];
 	        rpc.callRpc(getErizoQueue(publisher_id), "addExternalInput", args, {callback: callback});
@@ -167,7 +174,7 @@ exports.RoomController = function (spec) {
             sdp = unescapeSdp(sdp);
 
             // We create a new ErizoJS with the publisher_id.
-            createErizoJS(publisher_id, function(erizo_id) {
+            createErizoJS(publisher_id, mixer_id, function(erizo_id) {
             	log.info("Erizo created");
             	// then we call its addPublisher method.
                 var mixer = {id: mixer_id, oop: GLOBAL.config.erizoController.outOfProcessMixer};
