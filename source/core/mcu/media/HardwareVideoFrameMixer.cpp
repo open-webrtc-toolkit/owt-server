@@ -192,7 +192,7 @@ void HardwareVideoFrameMixer::setLayout(const VideoLayout& layout)
             ++regionIt;
         }
 
-        m_engine->setLayout(m_currentLayout);
+        m_engine->setLayout(&m_currentLayout);
     }
 }
 
@@ -217,7 +217,7 @@ bool HardwareVideoFrameMixer::activateInput(int slot, FrameFormat format, VideoF
         if (index != INVALID_INPUT_INDEX)
             m_currentLayout.layoutMapping[index] = regionInfo;
 
-        m_engine->setLayout(m_currentLayout);
+        m_engine->setLayout(&m_currentLayout);
     }
 
     return true;
@@ -255,7 +255,7 @@ void HardwareVideoFrameMixer::deActivateInput(int slot)
             m_currentLayout.layoutMapping.erase(index);
 
             // Set the new layout with updated mapping items
-            m_engine->setLayout(m_currentLayout);
+            m_engine->setLayout(&m_currentLayout);
         }
     }
 }

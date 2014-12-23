@@ -5,10 +5,10 @@ export STATIC_LIBRARY_LINK=ar cr
 
 export LIB_PREFIX=libxcode
 
-ifeq ($(ver), release)
-	CXXFLAGS += -DNDEBUG
-else
+ifeq ($(ver), debug)
 	CXXFLAGS += -g
+else
+	CXXFLAGS += -DNDEBUG
 endif
 
 LIB_NAME=$(shell basename `pwd`)

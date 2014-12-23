@@ -1877,8 +1877,8 @@ int MsdkXcoder::SetRegionInfo(void *vppHandle, void *decHandle, Region &info, bo
         info.height_ratio <= 0.0 || info.height_ratio > 1.0 ||
         info.left + info.width_ratio > 1.0 ||
         info.top + info.height_ratio > 1.0) {
-        printf("Err: invalid Region infomation\n");
-        return -1;
+        printf("War: invalid Region infomation, left:%.2f, top:%.2f, width_ratio:%.2f, height_ratio:%.2f\n", \
+            info.left, info.top, info.width_ratio, info.height_ratio);
     }
 
     MSDKCodec *vpp = static_cast<MSDKCodec *>(vppHandle);
