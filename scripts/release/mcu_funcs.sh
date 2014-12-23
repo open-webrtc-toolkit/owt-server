@@ -94,8 +94,9 @@ pack_libs() {
       [[ -s "${line}" ]] && [[ -z `dpkg -S ${line} 2>/dev/null | grep 'libc6\|libselinux'` ]] && cp -Lv ${line} ${WOOGEEN_DIST}/lib
     fi
   done
-  # remove openh264
+  # remove openh264 and replace with the pseudo one
   rm -f ${WOOGEEN_DIST}/lib/libopenh264*
+  cp -av $ROOT/third_party/openh264/pseudo-openh264.so ${WOOGEEN_DIST}/lib/libopenh264.so
   # remove libs from msdk
   rm -f ${WOOGEEN_DIST}/lib/libmfxhw*
   rm -f ${WOOGEEN_DIST}/lib/libva*
