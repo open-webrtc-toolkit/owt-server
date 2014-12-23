@@ -18,7 +18,7 @@ bool VideoMixEngine::init(BackgroundColor bgColor, FrameSize frameSize)
     return m_imp->init(bgColor, frameSize);
 }
 
-void VideoMixEngine::setBackgroundColor(BackgroundColor* bgColor)
+void VideoMixEngine::setBackgroundColor(const BackgroundColor* bgColor)
 {
     m_imp->setBackgroundColor(bgColor);
 }
@@ -28,7 +28,7 @@ void VideoMixEngine::setResolution(unsigned int width, unsigned int height)
     m_imp->setResolution(width, height);
 }
 
-void VideoMixEngine::setLayout(const CustomLayoutInfo& layout)
+void VideoMixEngine::setLayout(const CustomLayoutInfo* layout)
 {
     m_imp->setLayout(layout);
 }

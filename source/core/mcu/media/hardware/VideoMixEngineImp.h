@@ -44,7 +44,7 @@ public:
 
     void setBackgroundColor(const BackgroundColor* bgColor);
     void setResolution(unsigned int width, unsigned int height);
-    void setLayout(const CustomLayoutInfo& layout);
+    void setLayout(const CustomLayoutInfo* layout);
 
     InputIndex enableInput(VideoMixCodecType codec, VideoMixEngineInput* producer);
     void disableInput(InputIndex index);
@@ -60,22 +60,31 @@ private:
     InputIndex scheduleInput(VideoMixCodecType codec, VideoMixEngineInput* producer);
     void installInput(InputIndex index);
     void attachInput(InputIndex index, InputInfo* input);
-    void uninstallInput(InputIndex index);
-    void removeInput(InputIndex index);
+    void detachInput(InputInfo* input);
+    int uninstallInput(InputIndex index);
+    void resetInput();
+    int removeInput(InputIndex index);
 
     OutputIndex scheduleOutput(VideoMixCodecType codec, unsigned short bitrate, VideoMixEngineOutput* consumer);
     void installOutput(OutputIndex index);
-    void attachOutput(OutputIndex index, OutputInfo* output);
-    void uninstallOutput(OutputIndex index);
-    void removeOutput(OutputIndex index);
+    void attachOutput(OutputInfo* output);
+    void detachOutput(OutputInfo* output);
+    int uninstallOutput(OutputIndex index);
+    void resetOutput();
+    int removeOutput(OutputIndex index);
 
     void setupInputCfg(DecOptions* dec_cfg, InputInfo* input);
     void setupVppCfg(VppOptions* vpp_cfg);
     void setupOutputCfg(EncOptions* enc_cfg, OutputInfo* output);
     void setupPipeline();
-    void demolishPipeline(int input_size, int output_size);
+    void demolishPipeline();
 
-    void setRegions(const std::map<InputIndex, RegionInfo>&);
+    void setregions(const std::map<InputIndex, RegionInfo>* layoutMapping);
+    void setbackgroundcolor(const BackgroundColor* bgColor);
+    void setresolution(unsigned int width, unsigned int height);
+
+    void forcekeyframe(OutputIndex index);
+    void setbitrate(OutputIndex index, unsigned short bitrate);
 
     bool isCodecAlreadyInUse(VideoMixCodecType codec);
 

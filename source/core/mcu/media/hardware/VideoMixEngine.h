@@ -63,9 +63,9 @@ public:
 
     bool init(BackgroundColor bgColor, FrameSize frameSize);
 
-    void setBackgroundColor(BackgroundColor* bgColor);
+    void setBackgroundColor(const BackgroundColor* bgColor);
     void setResolution(unsigned int width, unsigned int height);
-    void setLayout(const CustomLayoutInfo& layout);
+    void setLayout(const CustomLayoutInfo* layout);
 
     InputIndex enableInput(VideoMixCodecType codec, VideoMixEngineInput* producer);
     void disableInput(InputIndex index);
