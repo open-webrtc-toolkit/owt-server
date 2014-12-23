@@ -343,6 +343,7 @@ var listen = function () {
                                 log.debug('Token of p2p room');
                                 room.p2p = true;
                             } else {
+                                room.p2p = false;
                                 room.controller = controller.RoomController({rpc: rpc});
                                 room.controller.addEventListener(function(type, event) {
                                     // TODO Send message to room? Handle ErizoJS disconnection.
