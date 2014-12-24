@@ -110,11 +110,15 @@ void EncodedVideoFrameSender::OnNetworkChanged(const uint32_t target_bitrate, co
 void EncodedVideoFrameSender::onFrame(FrameFormat format, unsigned char* payload, int len, unsigned int ts)
 {
     webrtc::RTPVideoHeader h;
-    h.codec = webrtc::kRtpVideoVp8;
-    h.codecHeader.VP8.InitRTPVideoHeaderVP8();
 
-    m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, VP8_90000_PT, ts * 90,
-                                ts, payload, len, nullptr, &h);
+    if (format == FRAME_FORMAT_VP8) {
+        h.codec = webrtc::kRtpVideoVp8;
+        h.codecHeader.VP8.InitRTPVideoHeaderVP8();
+        m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, VP8_90000_PT, ts * 90, ts, payload, len, nullptr, &h);
+    } else if (format == FRAME_FORMAT_H264) {
+        h.codec = webrtc::kRtpVideoH264;
+        m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, H264_90000_PT, ts * 90, ts, payload, len, nullptr, &h);
+    }
 }
 
 bool EncodedVideoFrameSender::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<TaskRunner> taskRunner)
