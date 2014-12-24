@@ -24,8 +24,8 @@ if (config.erizoController.turnServer !== undefined) {
     GLOBAL.config.erizoController.turnServer.username = GLOBAL.config.erizoController.turnServer.username || '';
     GLOBAL.config.erizoController.turnServer.password = GLOBAL.config.erizoController.turnServer.password || '';
 }
-GLOBAL.config.erizoController.warning_n_rooms = GLOBAL.config.erizoController.warning_n_rooms || 15;
-GLOBAL.config.erizoController.limit_n_rooms = GLOBAL.config.erizoController.limit_n_rooms || 20;
+GLOBAL.config.erizoController.warning_n_rooms = (GLOBAL.config.erizoController.warning_n_rooms != undefined ? GLOBAL.config.erizoController.warning_n_rooms : 15);
+GLOBAL.config.erizoController.limit_n_rooms = (GLOBAL.config.erizoController.limit_n_rooms != undefined ? GLOBAL.config.erizoController.limit_n_rooms : 20);
 GLOBAL.config.erizoController.interval_time_keepAlive = GLOBAL.config.erizoController.interval_time_keepAlive || 1000;
 GLOBAL.config.erizoController.sendStats = GLOBAL.config.erizoController.sendStats || false;
 GLOBAL.config.erizoController.recording_path = GLOBAL.config.erizoController.recording_path || undefined;
@@ -957,18 +957,28 @@ exports.deleteRoom = function (room, callback) {
     log.info('Deleted room ', room, rooms);
     safeCall(callback, 'Success');
 };
-rpc.connect(function () {
-    "use strict";
-    try {
-        rpc.setPublicRPC(rpcPublic);
 
-        addToCloudHandler(function () {
-            var rpcID = 'erizoController_' + myId;
+(function validateLocalConfig() {
+    if (LIMIT_N_ROOMS == 0) {
+        log.info("Invalid config: limit_n_rooms == 0");
+    } else if (WARNING_N_ROOMS >= LIMIT_N_ROOMS) {
+        log.info("Invalid config: warning_n_rooms >= limit_n_rooms");
+    } else {
+        rpc.connect(function () {
+            "use strict";
+            try {
+                rpc.setPublicRPC(rpcPublic);
 
-            rpc.bind(rpcID, listen);
+                addToCloudHandler(function () {
+                    var rpcID = 'erizoController_' + myId;
 
+                    rpc.bind(rpcID, listen);
+
+                });
+            } catch (error) {
+                log.info("Error in Erizo Controller: ", error);
+            }
         });
-    } catch (error) {
-        log.info("Error in Erizo Controller: ", error);
     }
-});
+})();
+
