@@ -495,7 +495,7 @@ namespace erizo {
 
         if (internalPT == RED_90000_PT) {
           assert(type == VIDEO_PACKET);
-          redheader* redhead = (redheader*)(dp->data);
+          redheader* redhead = (redheader*)(dp->data + h->getHeaderLength());
           redhead->payloadtype = remoteSdp_.getVideoExternalPT(redhead->payloadtype);
         }
 
@@ -521,7 +521,7 @@ namespace erizo {
 
         if (internalPT == RED_90000_PT) {
           assert(type == VIDEO_PACKET);
-          redheader* redhead = (redheader*)(buf);
+          redheader* redhead = (redheader*)(buf + h->getHeaderLength());
           redhead->payloadtype = remoteSdp_.getVideoInternalPT(redhead->payloadtype);
         }
 
