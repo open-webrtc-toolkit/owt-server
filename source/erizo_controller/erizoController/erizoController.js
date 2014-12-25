@@ -922,29 +922,27 @@ exports.deleteUser = function (user, room, callback) {
 exports.deleteRoom = function (roomId, callback) {
     "use strict";
 
-    var sockets, id, j;
+    var sockets, streams, id, j;
 
     log.info('Deleting room ', roomId);
 
     var room = rooms[roomId];
-
     if (room === undefined) {
         return safeCall(callback, 'Success');
     }
-    sockets = room.sockets;
 
+    sockets = room.sockets;
     for (id in sockets) {
         if (sockets.hasOwnProperty(id)) {
-            var socket = sockets[id];
-            room.controller.removeSubscriptions(socket.id);
+            room.controller.removeSubscriptions(sockets[id]);
+        }
+    }
 
-            for (j in socket.streams) {
-                if (socket.streams.hasOwnProperty(j)) {
-                    var streamId = socket.streams[j];
-                    if (!room.p2p) {
-                        room.controller.removePublisher(streamId);
-                    }
-                }
+    streams = room.streams;
+    for (j in streams) {
+        if (streams[j].hasAudio() || streams[j].hasVideo() || streams[j].hasScreen()) {
+            if (!room.p2p) {
+                room.controller.removePublisher(j);
             }
         }
     }
