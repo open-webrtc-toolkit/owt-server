@@ -184,6 +184,7 @@ public:
     void setNACKSupport(bool enable) { nackEnabled = enable; }
     bool setREDSupport(bool enable);
     bool setFECSupport(bool enable);
+    bool removePayloadSupport(unsigned int payloadType);
 
     /**
      * @brief copies relevant information from the offer sdp for which this will be an answer sdp

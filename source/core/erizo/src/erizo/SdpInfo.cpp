@@ -438,7 +438,7 @@ namespace erizo {
     return sdp.str();
   }
 
-  RtpMap *SdpInfo::getCodecByName(const std::string codecName, const unsigned int clockRate) {
+  RtpMap* SdpInfo::getCodecByName(const std::string codecName, const unsigned int clockRate) {
     for (unsigned int it = 0; it < internalPayloadVector_.size(); it++) {
       RtpMap& rtp = internalPayloadVector_[it];
       if (rtp.encodingName == codecName && rtp.clockRate == clockRate) {
@@ -449,7 +449,7 @@ namespace erizo {
   }
 
   bool SdpInfo::supportCodecByName(const std::string codecName, const unsigned int clockRate) {
-    RtpMap *rtp = getCodecByName(codecName, clockRate);
+    RtpMap* rtp = getCodecByName(codecName, clockRate);
     if (rtp != NULL && rtp->enable) {
       return supportPayloadType(rtp->payloadType);
     }
@@ -474,16 +474,27 @@ namespace erizo {
 
   bool SdpInfo::supportPayloadType(const int payloadType) {
     if (inOutPTMap.count(payloadType) > 0) {
-
       for (unsigned int it = 0; it < payloadVector_.size(); it++) {
         const RtpMap& rtp = payloadVector_[it];
-        if (inOutPTMap[rtp.payloadType] == payloadType) {
+        if (outInPTMap[rtp.payloadType] == payloadType) {
           return true;
         }
       }
-
     }
     return false;
+  }
+
+  bool SdpInfo::removePayloadSupport(unsigned int payloadType) {
+    bool found = false;
+    for (unsigned int it = 0; it < internalPayloadVector_.size(); it++) {
+      RtpMap& rtp = internalPayloadVector_[it];
+      if (rtp.payloadType == payloadType) {
+        rtp.enable = false;
+        found = true;
+      }
+    }
+
+    return found;
   }
 
   bool SdpInfo::setREDSupport(bool enable) {
@@ -662,7 +673,6 @@ namespace erizo {
           payloadVector_.push_back(theMap);
         }
       }
-
     }
 
     for (unsigned int i = 0; i < candidateVector_.size(); i++) {

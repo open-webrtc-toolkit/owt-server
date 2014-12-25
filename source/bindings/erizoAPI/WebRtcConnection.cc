@@ -4,10 +4,10 @@
 
 #include "WebRtcConnection.h"
 
-
 using namespace v8;
 
-WebRtcConnection::WebRtcConnection() {};
+WebRtcConnection::WebRtcConnection() {
+};
 WebRtcConnection::~WebRtcConnection(){
 };
 
@@ -30,10 +30,9 @@ void WebRtcConnection::Init(Handle<Object> target) {
   target->Set(String::NewSymbol("WebRtcConnection"), constructor);
 }
 
-
 Handle<Value> WebRtcConnection::New(const Arguments& args) {
   HandleScope scope;
-  if (args.Length()<13){
+  if (args.Length() < 14){
     ThrowException(Exception::TypeError(String::New("Wrong number of arguments")));
     return args.This();
   }
@@ -41,22 +40,23 @@ Handle<Value> WebRtcConnection::New(const Arguments& args) {
 
   bool a = (args[0]->ToBoolean())->BooleanValue();
   bool v = (args[1]->ToBoolean())->BooleanValue();
-  String::Utf8Value param2(args[2]->ToString());
-  std::string stunServer = std::string(*param2);
-  int stunPort = args[3]->IntegerValue();
-  int minPort = args[4]->IntegerValue();
-  int maxPort = args[5]->IntegerValue();
-  String::Utf8Value param6(args[6]->ToString());
-  std::string certFile = std::string(*param6);
+  bool h = (args[2]->ToBoolean())->BooleanValue();
+  String::Utf8Value param3(args[3]->ToString());
+  std::string stunServer = std::string(*param3);
+  int stunPort = args[4]->IntegerValue();
+  int minPort = args[5]->IntegerValue();
+  int maxPort = args[6]->IntegerValue();
   String::Utf8Value param7(args[7]->ToString());
-  std::string keyFile = std::string(*param7);
+  std::string certFile = std::string(*param7);
   String::Utf8Value param8(args[8]->ToString());
-  std::string privatePass = std::string(*param8);
+  std::string keyFile = std::string(*param8);
+  String::Utf8Value param9(args[9]->ToString());
+  std::string privatePass = std::string(*param9);
 
-  bool red = (args[9]->ToBoolean())->BooleanValue();
-  bool fec = (args[10]->ToBoolean())->BooleanValue();
-  bool nackSender = (args[11]->ToBoolean())->BooleanValue();
-  bool nackRecv = (args[12]->ToBoolean())->BooleanValue();
+  bool red = (args[10]->ToBoolean())->BooleanValue();
+  bool fec = (args[11]->ToBoolean())->BooleanValue();
+  bool nackSender = (args[12]->ToBoolean())->BooleanValue();
+  bool nackRecv = (args[13]->ToBoolean())->BooleanValue();
 
   uint32_t qos = (red << erizo::QOS_SUPPORT_RED_SHIFT) |
                  (fec << erizo::QOS_SUPPORT_FEC_SHIFT) |
@@ -64,7 +64,7 @@ Handle<Value> WebRtcConnection::New(const Arguments& args) {
                  (nackRecv << erizo::QOS_SUPPORT_NACK_RECEIVER_SHIFT);
 
   WebRtcConnection* obj = new WebRtcConnection();
-  obj->me = new erizo::WebRtcConnection(a, v, stunServer,stunPort,minPort,maxPort, certFile, keyFile, privatePass, qos);
+  obj->me = new erizo::WebRtcConnection(a, v, h, stunServer,stunPort,minPort,maxPort, certFile, keyFile, privatePass, qos);
   obj->me->setWebRtcConnectionEventListener(obj);
   obj->Wrap(args.This());
   uv_async_init(uv_default_loop(), &obj->async_, &WebRtcConnection::eventsCallback); 
@@ -118,7 +118,6 @@ Handle<Value> WebRtcConnection::getLocalSdp(const Arguments& args) {
 
   return scope.Close(String::NewSymbol(sdp.c_str()));
 }
-
 
 Handle<Value> WebRtcConnection::setAudioReceiver(const Arguments& args) {
   HandleScope scope;
