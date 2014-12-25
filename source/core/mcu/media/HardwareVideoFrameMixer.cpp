@@ -22,6 +22,9 @@
 
 namespace mcu {
 
+static int H264_STARTCODE_BYTES = 4;
+static int H264_AUD_BYTES = 6;
+
 VideoMixCodecType Frameformat2CodecType(FrameFormat format)
 {
     switch (format) {
@@ -108,9 +111,9 @@ void HardwareVideoFrameMixerOutput::onTimeout()
         int len = m_engine->pullOutput(m_index, (unsigned char*)&m_esBuffer);
         if (len > 0) {
             if (m_outFormat == FRAME_FORMAT_H264) {
-                if ((len - START_CODE_BYTES) > 0) {
+                if ((len - H264_STARTCODE_BYTES - H264_AUD_BYTES) > 0) {
                     m_outCount++;
-                    m_receiver->onFrame(m_outFormat, (unsigned char *)&m_esBuffer + START_CODE_BYTES, len - START_CODE_BYTES, m_outCount * m_frameRate);
+                    m_receiver->onFrame(m_outFormat, (unsigned char *)&m_esBuffer + H264_STARTCODE_BYTES + H264_AUD_BYTES, len - H264_STARTCODE_BYTES - H264_AUD_BYTES, m_outCount * m_frameRate);
                 } else
                     break;
             } else {
