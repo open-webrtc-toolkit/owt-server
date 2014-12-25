@@ -348,7 +348,7 @@ var listen = function () {
                                 room.controller.addEventListener(function(type, event) {
                                     // TODO Send message to room? Handle ErizoJS disconnection.
                                     if (type === "unpublish") {
-                                        var streamId = parseInt(event); // It's supposed to be an integer.
+                                        var streamId = event;
                                         log.info("ErizoJS stopped", streamId);
                                         sendMsgToRoom(room, 'onRemoveStream', {id: streamId});
                                         room.controller.removePublisher(streamId);
