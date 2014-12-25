@@ -116,6 +116,17 @@ var dropErizoJS = function(erizo_id, callback) {
       var process = processes[erizo_id];
       process.kill();
       delete processes[erizo_id];
+
+      var index = erizos.indexOf(erizo_id);
+      if (index !== -1) {
+          erizos.splice(index, 1);
+      }
+
+      var idleIndex = idle_erizos.indexOf(erizo_id);
+      if (idleIndex !== -1) {
+          idle_erizos.splice(idleIndex, 1);
+      }
+
       callback("callback", "ok");
    }
 };
