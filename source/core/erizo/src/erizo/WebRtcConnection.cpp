@@ -14,7 +14,8 @@
 namespace erizo {
   DEFINE_LOGGER(WebRtcConnection, "WebRtcConnection");
 
-  WebRtcConnection::WebRtcConnection(bool audioEnabled, bool videoEnabled, const std::string &stunServer, int stunPort, int minPort, int maxPort, const std::string& certFile, const std::string& keyFile, const std::string& privatePasswd, uint32_t qos) {
+  WebRtcConnection::WebRtcConnection(bool audioEnabled, bool videoEnabled, bool h264Enabled, const std::string &stunServer, int stunPort, int minPort,
+      int maxPort, const std::string& certFile, const std::string& keyFile, const std::string& privatePasswd, uint32_t qos) {
 
     ELOG_WARN("WebRtcConnection constructor stunserver %s stunPort %d minPort %d maxPort %d\n", stunServer.c_str(), stunPort, minPort, maxPort);
     sequenceNumberFIR_ = 0;
@@ -33,6 +34,10 @@ namespace erizo {
 
     audioEnabled_ = audioEnabled;
     videoEnabled_ = videoEnabled;
+    if (!h264Enabled) {
+      localSdp_.removePayloadSupport(H264_90000_PT);
+      remoteSdp_.removePayloadSupport(H264_90000_PT);
+    }
 
     stunServer_ = stunServer;
     stunPort_ = stunPort;
@@ -41,7 +46,7 @@ namespace erizo {
     certFile_ = certFile;
     keyFile_ = keyFile;
     privatePasswd_ = privatePasswd;
-    
+
     nackEnabled_ = qos & QOS_SUPPORT_NACK_RECEIVER_MASK;
     localSdp_.setNACKSupport(qos & QOS_SUPPORT_NACK_SENDER_MASK);
 
@@ -97,7 +102,7 @@ namespace erizo {
     return payloadType;
   }
 
-  bool WebRtcConnection::setRemoteSdp(const std::string &sdp) {
+  bool WebRtcConnection::setRemoteSdp(const std::string& sdp) {
     ELOG_DEBUG("Set Remote SDP %s", sdp.c_str());
     remoteSdp_.initWithSdp(sdp);
     //std::vector<CryptoInfo> crypto_remote = remoteSdp_.getCryptoInfos();

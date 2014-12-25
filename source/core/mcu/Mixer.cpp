@@ -113,7 +113,7 @@ void Mixer::addSubscriber(MediaSink* subscriber, const std::string& peerId)
 {
     int videoPayloadType = INVALID_PT;
 
-    // Prefer H264.
+    // Prefer H.264
     if (subscriber->acceptPayloadType(H264_90000_PT))
         videoPayloadType = H264_90000_PT;
     else if (subscriber->acceptPayloadType(VP8_90000_PT))

@@ -64,7 +64,7 @@ public:
 	 * Constructor.
 	 * Constructs an empty WebRTCConnection without any configuration.
 	 */
-	DLL_PUBLIC WebRtcConnection(bool audioEnabled, bool videoEnabled, const std::string &stunServer, int stunPort, int minPort, int maxPort, const std::string& certFile, const std::string& keyFile, const std::string& privatePasswd, uint32_t qos);
+	DLL_PUBLIC WebRtcConnection(bool audioEnabled, bool videoEnabled, bool h264Enabled, const std::string &stunServer, int stunPort, int minPort, int maxPort, const std::string& certFile, const std::string& keyFile, const std::string& privatePasswd, uint32_t qos);
 	/**
 	 * Destructor.
 	 */
@@ -151,11 +151,11 @@ public:
     void queueData(int comp, const char* data, int len, Transport *transport, packetType type);
 
 private:
-  static const int STATS_INTERVAL = 5000;
+    static const int STATS_INTERVAL = 5000;
 	SdpInfo remoteSdp_;
 	SdpInfo localSdp_;
 
-  Stats thisStats_;
+    Stats thisStats_;
 
 	WebRTCEvent globalState_;
 
@@ -163,8 +163,8 @@ private:
 	boost::mutex writeMutex_, receiveMediaMutex_, updateStateMutex_;
 	boost::thread send_Thread_;
 	std::queue<dataPacket> sendQueue_;
-	WebRtcConnectionEventListener* connEventListener_;
-  WebRtcConnectionStatsListener* statsListener_;
+    WebRtcConnectionEventListener* connEventListener_;
+    WebRtcConnectionStatsListener* statsListener_;
 	Transport *videoTransport_, *audioTransport_;
 	boost::scoped_array<char> deliverMediaBuffer_;
 
@@ -173,10 +173,10 @@ private:
 	void writeSsrc(char* buf, int len, unsigned int ssrc);
 	void processRtcpHeaders(char* buf, int len, unsigned int ssrc);
 
-  // changes the outgoing payload type for in the given data packet
-  void changeDeliverPayloadType(dataPacket *dp, packetType type);
-  // parses incoming payload type, replaces occurence in buf
-  void parseIncomingPayloadType(char *buf, int len, packetType type);
+    // changes the outgoing payload type for in the given data packet
+    void changeDeliverPayloadType(dataPacket *dp, packetType type);
+    // parses incoming payload type, replaces occurence in buf
+    void parseIncomingPayloadType(char *buf, int len, packetType type);
 
   
 	bool audioEnabled_;
@@ -191,7 +191,6 @@ private:
 
 	boost::condition_variable cond_;
 	int id_;
-
 };
 
 } /* namespace erizo */

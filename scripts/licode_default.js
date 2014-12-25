@@ -119,6 +119,10 @@ config.erizo.maxport = 0; // default value: 0
 // If true and the machine has the capability, the mixer will be accelerated by hardware graphic chips.
 config.erizo.hardwareAccelerated = false;
 
+// This configuration is only for software media engine. Hardware graphic acceleration provides H.264 by default.
+// "true" means OpenH264 is deployed for H.264. Otherwise no support of H.264 in MCU.
+config.erizo.openh264Enabled = false;
+
 // Config the mixed video layout. Default is "fluid" layout.
 // Otherwise, "custom" layout can be used for video layout customization.
 config.erizo.videolayout = {};

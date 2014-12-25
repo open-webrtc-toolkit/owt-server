@@ -28,7 +28,9 @@ exports.ErizoJSController = function (spec) {
         waitForFIR,
         initWebRtcConnection,
         getSdp,
-        getRoap;
+        getRoap,
+        useHardware = GLOBAL.config.erizo.hardwareAccelerated,
+        openh264Enabled = GLOBAL.config.erizo.openh264Enabled;
 
     that.initMixer = function (id, oop, callback) {
         if (publishers[id] === undefined) {
@@ -56,7 +58,6 @@ exports.ErizoJSController = function (spec) {
                 callback('callback', 'success');
             };
 
-            var useHardware = GLOBAL.config.erizo.hardwareAccelerated;
             if (useHardware) {
                 // Query the hardware capability only if we want to try it.
                 require('child_process').exec('vainfo', function (err, stdout, stderr) {
@@ -111,7 +112,7 @@ exports.ErizoJSController = function (spec) {
 
         var terminated = false;
 
-        wrtc.init( function (newStatus){
+        wrtc.init(function (newStatus){
 
           if (terminated) {
             return;
@@ -256,7 +257,13 @@ exports.ErizoJSController = function (spec) {
             if (sdp.indexOf('m=video') !== -1) {
                 hasVideo = true;
             }
-            var wrtc = new addon.WebRtcConnection(hasAudio, hasVideo, GLOBAL.config.erizo.stunserver, GLOBAL.config.erizo.stunport, GLOBAL.config.erizo.minport, GLOBAL.config.erizo.maxport, undefined, undefined, undefined, true, true, true, true);
+
+            var hasH264 = true;
+            if (!useHardware && !openh264Enabled) {
+                hasH264 = false;
+            }
+
+            var wrtc = new addon.WebRtcConnection(hasAudio, hasVideo, hasH264, GLOBAL.config.erizo.stunserver, GLOBAL.config.erizo.stunport, GLOBAL.config.erizo.minport, GLOBAL.config.erizo.maxport, undefined, undefined, undefined, true, true, true, true);
             var muxer = new addon.Gateway();
             muxer.setPublisher(wrtc, from);
             publishers[from] = muxer;
@@ -283,7 +290,12 @@ exports.ErizoJSController = function (spec) {
 
             log.info("Adding subscriber from ", from, 'to ', to, 'audio', audio, 'video', video);
 
-            var wrtc = new addon.WebRtcConnection(audio, video, GLOBAL.config.erizo.stunserver, GLOBAL.config.erizo.stunport, GLOBAL.config.erizo.minport, GLOBAL.config.erizo.maxport, undefined, undefined, undefined, true, true, true, true);
+            var hasH264 = true;
+            if (!useHardware && !openh264Enabled) {
+                hasH264 = false;
+            }
+
+            var wrtc = new addon.WebRtcConnection(audio, video, hasH264, GLOBAL.config.erizo.stunserver, GLOBAL.config.erizo.stunport, GLOBAL.config.erizo.minport, GLOBAL.config.erizo.maxport, undefined, undefined, undefined, true, true, true, true);
 
             initWebRtcConnection(wrtc, sdp, undefined, callback, to, from);
 
