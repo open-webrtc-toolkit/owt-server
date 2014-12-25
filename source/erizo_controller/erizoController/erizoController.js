@@ -733,29 +733,24 @@ var listen = function () {
                 return safeCall(callback, 'error', 'unauthorized');
             }
 
+            var index = socket.streams.indexOf(streamId);
             // Stream has been already deleted or it does not exist
-            if (socket.room.streams[streamId] === undefined) {
+            if (index === -1) {
                 return safeCall(callback, 'error', 'stream does not exist');
             }
-            var i, index;
 
             sendMsgToRoom(socket.room, 'onRemoveStream', {id: streamId});
 
-            if (socket.room.streams[streamId].hasAudio() || socket.room.streams[streamId].hasVideo() || socket.room.streams[streamId].hasScreen()) {
-                socket.state = 'sleeping';
-                if (!socket.room.p2p) {
-                    socket.room.controller.removePublisher(streamId);
-                    if (GLOBAL.config.erizoController.sendStats) {
-                        var timeStamp = new Date();
-                        rpc.callRpc('stats_handler', 'event', [{room: socket.room.id, user: socket.id, type: 'unpublish', stream: streamId, timestamp: timeStamp.getTime()}]);
-                    }
+            socket.state = 'sleeping';
+            if (!socket.room.p2p) {
+                socket.room.controller.removePublisher(streamId);
+                if (GLOBAL.config.erizoController.sendStats) {
+                    var timeStamp = new Date();
+                    rpc.callRpc('stats_handler', 'event', [{room: socket.room.id, user: socket.id, type: 'unpublish', stream: streamId, timestamp: timeStamp.getTime()}]);
                 }
             }
 
-            index = socket.streams.indexOf(streamId);
-            if (index !== -1) {
-                socket.streams.splice(index, 1);
-            }
+            socket.streams.splice(index, 1);
             if (socket.room.streams[streamId]) {
                 delete socket.room.streams[streamId];
             }
@@ -924,37 +919,39 @@ exports.deleteUser = function (user, room, callback) {
 /*
  * Delete a determined room.
  */
-exports.deleteRoom = function (room, callback) {
+exports.deleteRoom = function (roomId, callback) {
     "use strict";
 
-    var sockets, streams, id, j;
+    var sockets, id, j;
 
-    log.info('Deleting room ', room);
+    log.info('Deleting room ', roomId);
 
-    if (rooms[room] === undefined) {
+    var room = rooms[roomId];
+
+    if (room === undefined) {
         return safeCall(callback, 'Success');
     }
-    sockets = rooms[room].sockets;
+    sockets = room.sockets;
 
     for (id in sockets) {
         if (sockets.hasOwnProperty(id)) {
-            rooms[room].controller.removeSubscriptions(sockets[id]);
-        }
-    }
+            var socket = sockets[id];
+            room.controller.removeSubscriptions(socket.id);
 
-    streams = rooms[room].streams;
-
-    for (j in streams) {
-        if (streams[j].hasAudio() || streams[j].hasVideo() || streams[j].hasScreen()) {
-            if (!room.p2p) {
-                rooms[room].controller.removePublisher(j);
+            for (j in socket.streams) {
+                if (socket.streams.hasOwnProperty(j)) {
+                    var streamId = socket.streams[j];
+                    if (!room.p2p) {
+                        room.controller.removePublisher(streamId);
+                    }
+                }
             }
         }
     }
 
-    delete rooms[room];
+    delete rooms[roomId];
     updateMyState();
-    log.info('Deleted room ', room, rooms);
+    log.info('Deleted room ', roomId, rooms);
     safeCall(callback, 'Success');
 };
 
