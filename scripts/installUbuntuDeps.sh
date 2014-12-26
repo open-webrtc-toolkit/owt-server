@@ -63,8 +63,25 @@ install_opus(){
   cd $CURRENT_DIR
 }
 
+install_libvpx(){
+  if [ -d $LIB_DIR ]; then
+    cd $LIB_DIR
+    wget https://webm.googlecode.com/files/libvpx-v1.3.0.tar.bz2
+    tar -xvf libvpx-v1.3.0.tar.bz2
+    cd libvpx-v1.3.0
+    ./configure --prefix=/usr --enable-shared --enable-vp8 --disable-vp9
+    make -s V=0 && sudo make install
+    sudo ldconfig
+    cd $CURRENT_DIR
+  else
+    mkdir -p $LIB_DIR
+    install_libvpx
+  fi
+}
+
 install_mediadeps(){
-  sudo -E apt-get install yasm libvpx. libx264.
+  sudo -E apt-get install yasm libx264.
+  install_libvpx
   if [ -d $LIB_DIR ]; then
     cd $LIB_DIR
     curl -O https://www.libav.org/releases/libav-9.13.tar.gz
@@ -82,7 +99,8 @@ install_mediadeps(){
 }
 
 install_mediadeps_nogpl(){
-  sudo -E apt-get install yasm libvpx.
+  sudo -E apt-get install yasm
+  install_libvpx
   if [ -d $LIB_DIR ]; then
     cd $LIB_DIR
     curl -O https://www.libav.org/releases/libav-9.13.tar.gz
