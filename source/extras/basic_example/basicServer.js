@@ -7,7 +7,7 @@ var express = require('express'),
     N = require('./nuve'),
     fs = require("fs"),
     https = require("https"),
-    config = require('./../../etc/licode_config');
+    config = require('./../../etc/woogeen_config');
 
 var options = {
     key: fs.readFileSync('cert/key.pem').toString(),

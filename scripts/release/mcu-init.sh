@@ -56,7 +56,7 @@ install_db() {
 install_config() {
   echo -e "\x1b[32mInitializing default configuration...\x1b[0m"
   # default configuration
-  local DEFAULT_CONFIG="${WOOGEEN_HOME}/etc/.licode_default.js"
+  local DEFAULT_CONFIG="${WOOGEEN_HOME}/etc/.woogeen_default.js"
   if [[ ! -s ${DEFAULT_CONFIG} ]]; then
     echo >&2 "Error: configuration template not found."
     return 1
@@ -80,7 +80,7 @@ install_config() {
   local TMPFILE=$(mktemp)
   sed $replacement ${DEFAULT_CONFIG} > ${TMPFILE}
   replacement=s/_auto_generated_KEY_/${SERVKEY}/
-  sed $replacement ${TMPFILE} > ${WOOGEEN_HOME}/etc/licode_config.js
+  sed $replacement ${TMPFILE} > ${WOOGEEN_HOME}/etc/woogeen_config.js
   rm -f ${TMPFILE}
 }
 
@@ -117,11 +117,11 @@ if ${ENABLE_HARDWARE}; then
   [[ -s libmcu_hw.so ]] && \
   rm -f libmcu.so && \
   ln -s libmcu_hw.so libmcu.so
-  sed -i 's/config\.erizo\.hardwareAccelerated = false/config\.erizo\.hardwareAccelerated = true/' ${ROOT}/etc/licode_config.js
+  sed -i 's/config\.erizo\.hardwareAccelerated = false/config\.erizo\.hardwareAccelerated = true/' ${ROOT}/etc/woogeen_config.js
 else
   cd ${ROOT}/lib
   [[ -s libmcu_sw.so ]] && \
   rm -f libmcu.so && \
   ln -s libmcu_sw.so libmcu.so
-  sed -i 's/config\.erizo\.hardwareAccelerated = true/config\.erizo\.hardwareAccelerated = false/' ${ROOT}/etc/licode_config.js
+  sed -i 's/config\.erizo\.hardwareAccelerated = true/config\.erizo\.hardwareAccelerated = false/' ${ROOT}/etc/woogeen_config.js
 fi

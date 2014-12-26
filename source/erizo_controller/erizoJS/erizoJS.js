@@ -1,6 +1,6 @@
 /*global require, logger. setInterval, clearInterval, Buffer, exports*/
 var Getopt = require('node-getopt');
-var config = require('./../../etc/licode_config');
+var config = require('./../../etc/woogeen_config');
 var customlayout = require('./../../etc/custom_video_layout');
 
 GLOBAL.config = config || {};

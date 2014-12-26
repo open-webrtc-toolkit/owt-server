@@ -17,7 +17,7 @@ module.exports = function(config) {
       'erizo-test.js',
       '../erizo_controller/erizoClient/dist/erizo.js',
       '../nuve/nuveClient/build/nuve.js',
-      '../../source/etc/licode_config.js'
+      '../../source/etc/woogeen_config.js'
     ],
 
 

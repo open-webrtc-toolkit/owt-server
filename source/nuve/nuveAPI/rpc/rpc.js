@@ -2,7 +2,7 @@
 var sys = require('util');
 var amqp = require('amqp');
 var rpcPublic = require('./rpcPublic');
-var config = require('./../../../etc/licode_config');
+var config = require('./../../../etc/woogeen_config');
 var logger = require('./../logger').logger;
 
 // Logger
