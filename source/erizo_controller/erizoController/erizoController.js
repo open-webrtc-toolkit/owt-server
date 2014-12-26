@@ -2,7 +2,7 @@
 var crypto = require('crypto');
 var rpcPublic = require('./rpc/rpcPublic');
 var ST = require('./Stream');
-var config = require('./../../etc/licode_config');
+var config = require('./../../etc/woogeen_config');
 var Permission = require('./permission');
 var Getopt = require('node-getopt');
 var io;

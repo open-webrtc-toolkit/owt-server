@@ -1,5 +1,5 @@
 var log4js = require('log4js'); 
-var config = require('./../../etc/licode_config');
+var config = require('./../../etc/woogeen_config');
 
 GLOBAL.config.logger = GLOBAL.config.logger || {};
 

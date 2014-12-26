@@ -2,7 +2,7 @@
 var express = require('express');
 var bodyParser = require('body-parser');
 
-var config = require('./../../etc/licode_config');
+var config = require('./../../etc/woogeen_config');
 var db = require('./mdb/dataBase').db;
 var rpc = require('./rpc/rpc');
 var logger = require('./logger').logger;

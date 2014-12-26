@@ -1,5 +1,5 @@
 /*global require, exports*/
-var config = require('./../../../etc/licode_config');
+var config = require('./../../../etc/woogeen_config');
 
 var logger = require('./../logger').logger;
 

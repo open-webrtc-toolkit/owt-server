@@ -1,6 +1,6 @@
 /*global require, console, setInterval, clearInterval, exports*/
 var rpc = require('./rpc/rpc');
-var config = require('./../../etc/licode_config');
+var config = require('./../../etc/woogeen_config');
 var logger = require('./logger').logger;
 
 // Logger
