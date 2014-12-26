@@ -15,7 +15,7 @@ using std::endl;
 namespace erizo {
   DEFINE_LOGGER(SdpInfo, "SdpInfo");
 
-  static const char *SDP_IDENTIFIER = "LicodeMCU";
+  static const char *SDP_IDENTIFIER = "IntelWebRTCMCU";
   static const char *cand = "a=candidate:";
   static const char *crypto = "a=crypto:";
   static const char *group = "a=group:";
