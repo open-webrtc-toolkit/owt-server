@@ -1,27 +1,6 @@
-Index: src/webrtc/video_engine/vie_sync_module.h
-===================================================================
---- src/webrtc/video_engine/vie_sync_module.h	(revision 7370)
-+++ src/webrtc/video_engine/vie_sync_module.h	(working copy)
-@@ -32,6 +32,8 @@
-  public:
-   ViESyncModule(VideoCodingModule* vcm,
-                 ViEChannel* vie_channel);
-+  ViESyncModule(VideoCodingModule* vcm,
-+                int vie_channel_id);
-   ~ViESyncModule();
- 
-   int ConfigureSync(int voe_channel_id,
-@@ -52,6 +54,7 @@
-   scoped_ptr<CriticalSectionWrapper> data_cs_;
-   VideoCodingModule* vcm_;
-   ViEChannel* vie_channel_;
-+  int vie_channel_id_;
-   RtpReceiver* video_receiver_;
-   RtpRtcp* video_rtp_rtcp_;
-   int voe_channel_id_;
 Index: src/webrtc/video_engine/vie_sync_module.cc
 ===================================================================
---- src/webrtc/video_engine/vie_sync_module.cc	(revision 7370)
+--- src/webrtc/video_engine/vie_sync_module.cc	(revision 7940)
 +++ src/webrtc/video_engine/vie_sync_module.cc	(working copy)
 @@ -63,6 +63,7 @@
      : data_cs_(CriticalSectionWrapper::CreateCriticalSection()),
@@ -105,123 +84,61 @@ Index: src/webrtc/video_engine/vie_sync_module.cc
                   "voe_sync_interface_ NULL, can't set playout delay.");
      return -1;
    }
-Index: src/webrtc/modules/rtp_rtcp/source/producer_fec.cc
+Index: src/webrtc/video_engine/vie_sync_module.h
 ===================================================================
---- src/webrtc/modules/rtp_rtcp/source/producer_fec.cc	(revision 7370)
-+++ src/webrtc/modules/rtp_rtcp/source/producer_fec.cc	(working copy)
-@@ -144,9 +144,11 @@
-   const bool marker_bit = (data_buffer[1] & kRtpMarkerBitMask) ? true : false;
-   if (media_packets_fec_.size() < ForwardErrorCorrection::kMaxMediaPackets) {
-     // Generic FEC can only protect up to kMaxMediaPackets packets.
--    ForwardErrorCorrection::Packet* packet = new ForwardErrorCorrection::Packet;
-+    ForwardErrorCorrection::SentPacket* packet =
-+        new ForwardErrorCorrection::SentPacket;
-     packet->length = payload_length + rtp_header_length;
-     memcpy(packet->data, data_buffer, packet->length);
-+    packet->seq_num = ModuleRTPUtility::BufferToUWord16(&data_buffer[2]);
-     media_packets_fec_.push_back(packet);
+--- src/webrtc/video_engine/vie_sync_module.h	(revision 7940)
++++ src/webrtc/video_engine/vie_sync_module.h	(working copy)
+@@ -32,6 +32,8 @@
+  public:
+   ViESyncModule(VideoCodingModule* vcm,
+                 ViEChannel* vie_channel);
++  ViESyncModule(VideoCodingModule* vcm,
++                int vie_channel_id);
+   ~ViESyncModule();
+ 
+   int ConfigureSync(int voe_channel_id,
+@@ -52,6 +54,7 @@
+   scoped_ptr<CriticalSectionWrapper> data_cs_;
+   VideoCodingModule* vcm_;
+   ViEChannel* vie_channel_;
++  int vie_channel_id_;
+   RtpReceiver* video_receiver_;
+   RtpRtcp* video_rtp_rtcp_;
+   int voe_channel_id_;
+Index: src/webrtc/modules/video_coding/codecs/vp8/vp8_impl.cc
+===================================================================
+--- src/webrtc/modules/video_coding/codecs/vp8/vp8_impl.cc	(revision 7940)
++++ src/webrtc/modules/video_coding/codecs/vp8/vp8_impl.cc	(working copy)
+@@ -541,7 +541,7 @@
+   cfg.h = cfg.w = 0;  // set after decode
+ 
+   vpx_codec_flags_t flags = 0;
+-#ifndef WEBRTC_ARCH_ARM
++#if 0
+   flags = VPX_CODEC_USE_POSTPROC;
+   if (inst->codecSpecific.VP8.errorConcealmentOn) {
+     flags |= VPX_CODEC_USE_ERROR_CONCEALMENT;
+@@ -555,7 +555,7 @@
+     return WEBRTC_VIDEO_CODEC_MEMORY;
    }
-   if (marker_bit) {
-@@ -162,12 +164,18 @@
-           (ExcessOverheadBelowMax() && MinimumMediaPacketsReached()))) {
-     assert(num_first_partition_ <=
-            static_cast<int>(ForwardErrorCorrection::kMaxMediaPackets));
--    int ret = fec_->GenerateFEC(media_packets_fec_,
--                                params_.fec_rate,
--                                num_first_partition_,
--                                params_.use_uep_protection,
--                                params_.fec_mask_type,
--                                &fec_packets_);
-+    media_packets_fec_.sort(ForwardErrorCorrection::SortablePacket::LessThan);
-+    int ret = 0;
-+    if (static_cast<size_t>(media_packets_fec_.back()->seq_num + 1 -
-+        media_packets_fec_.front()->seq_num) == media_packets_fec_.size()) {
-+      // Only generate FEC for continuous in-order packets.
-+      ret = fec_->GenerateFEC(media_packets_fec_,
-+                              params_.fec_rate,
-+                              num_first_partition_,
-+                              params_.use_uep_protection,
-+                              params_.fec_mask_type,
-+                              &fec_packets_);
-+    }
-     if (fec_packets_.empty()) {
-       num_frames_ = 0;
-       DeletePackets();
-Index: src/webrtc/modules/rtp_rtcp/source/forward_error_correction.h
-===================================================================
---- src/webrtc/modules/rtp_rtcp/source/forward_error_correction.h	(revision 7370)
-+++ src/webrtc/modules/rtp_rtcp/source/forward_error_correction.h	(working copy)
-@@ -66,6 +66,10 @@
-     uint16_t seq_num;
-   };
  
-+  class SentPacket : public Packet, public SortablePacket {
-+  };
-+
-+
-   // The received list parameter of #DecodeFEC() must reference structs of this
-   // type. The last_media_pkt_in_frame is not required to be used for correct
-   // recovery, but will reduce delay by allowing #DecodeFEC() to pre-emptively
-@@ -114,6 +118,7 @@
-   };
+-#ifndef WEBRTC_ARCH_ARM
++#if 0
+   vp8_postproc_cfg_t  ppcfg;
+   ppcfg.post_proc_flag = VP8_DEMACROBLOCK | VP8_DEBLOCK;
+   // Strength of deblocking filter. Valid range:[0,16]
+@@ -602,7 +602,7 @@
+   }
+ #endif
  
-   typedef std::list<Packet*> PacketList;
-+  typedef std::list<SentPacket*> SentPacketList;
-   typedef std::list<ReceivedPacket*> ReceivedPacketList;
-   typedef std::list<RecoveredPacket*> RecoveredPacketList;
- 
-@@ -158,7 +163,7 @@
-    *
-    * \return 0 on success, -1 on failure.
-    */
--  int32_t GenerateFEC(const PacketList& media_packet_list,
-+  int32_t GenerateFEC(const SentPacketList& media_packet_list,
-                       uint8_t protection_factor, int num_important_packets,
-                       bool use_unequal_protection, FecMaskType fec_mask_type,
-                       PacketList* fec_packet_list);
-@@ -210,7 +215,7 @@
-  private:
-   typedef std::list<FecPacket*> FecPacketList;
- 
--  void GenerateFecUlpHeaders(const PacketList& media_packet_list,
-+  void GenerateFecUlpHeaders(const SentPacketList& media_packet_list,
-                              uint8_t* packet_mask, bool l_bit,
-                              int num_fec_packets);
- 
-@@ -220,7 +225,7 @@
-   // Returns the number of bits used for one row of the new packet mask.
-   // Requires that |packet_mask| has at least 6 * |num_fec_packets| bytes
-   // allocated.
--  int InsertZerosInBitMasks(const PacketList& media_packets,
-+  int InsertZerosInBitMasks(const SentPacketList& media_packets,
-                             uint8_t* packet_mask, int num_mask_bytes,
-                             int num_fec_packets);
- 
-@@ -245,7 +250,7 @@
-                          int num_fec_packets, int new_bit_index,
-                          int old_bit_index);
- 
--  void GenerateFecBitStrings(const PacketList& media_packet_list,
-+  void GenerateFecBitStrings(const SentPacketList& media_packet_list,
-                              uint8_t* packet_mask, int num_fec_packets,
-                              bool l_bit);
- 
-Index: src/webrtc/modules/rtp_rtcp/source/producer_fec.h
-===================================================================
---- src/webrtc/modules/rtp_rtcp/source/producer_fec.h	(revision 7370)
-+++ src/webrtc/modules/rtp_rtcp/source/producer_fec.h	(working copy)
-@@ -69,7 +69,7 @@
-   void DeletePackets();
-   int Overhead() const;
-   ForwardErrorCorrection* fec_;
--  std::list<ForwardErrorCorrection::Packet*> media_packets_fec_;
-+  std::list<ForwardErrorCorrection::SentPacket*> media_packets_fec_;
-   std::list<ForwardErrorCorrection::Packet*> fec_packets_;
-   int num_frames_;
-   bool incomplete_frame_;
+-#ifndef WEBRTC_ARCH_ARM
++#if 0
+   if (!mfqe_enabled_ && codec_specific_info &&
+       codec_specific_info->codecSpecific.VP8.temporalIdx > 0) {
+     // Enable MFQE if we are receiving layers.
 Index: src/webrtc/modules/rtp_rtcp/source/forward_error_correction.cc
 ===================================================================
---- src/webrtc/modules/rtp_rtcp/source/forward_error_correction.cc	(revision 7370)
+--- src/webrtc/modules/rtp_rtcp/source/forward_error_correction.cc	(revision 7940)
 +++ src/webrtc/modules/rtp_rtcp/source/forward_error_correction.cc	(working copy)
 @@ -106,12 +106,10 @@
  //   |                     FEC Level 0 Payload                       |
@@ -305,3 +222,117 @@ Index: src/webrtc/modules/rtp_rtcp/source/forward_error_correction.cc
    Packet* media_packet = *media_list_it;
    assert(media_packet != NULL);
    int num_maskBytes = l_bit ? kMaskSizeLBitSet : kMaskSizeLBitClear;
+Index: src/webrtc/modules/rtp_rtcp/source/producer_fec.cc
+===================================================================
+--- src/webrtc/modules/rtp_rtcp/source/producer_fec.cc	(revision 7940)
++++ src/webrtc/modules/rtp_rtcp/source/producer_fec.cc	(working copy)
+@@ -144,9 +144,11 @@
+   const bool marker_bit = (data_buffer[1] & kRtpMarkerBitMask) ? true : false;
+   if (media_packets_fec_.size() < ForwardErrorCorrection::kMaxMediaPackets) {
+     // Generic FEC can only protect up to kMaxMediaPackets packets.
+-    ForwardErrorCorrection::Packet* packet = new ForwardErrorCorrection::Packet;
++    ForwardErrorCorrection::SentPacket* packet =
++        new ForwardErrorCorrection::SentPacket;
+     packet->length = payload_length + rtp_header_length;
+     memcpy(packet->data, data_buffer, packet->length);
++    packet->seq_num = ModuleRTPUtility::BufferToUWord16(&data_buffer[2]);
+     media_packets_fec_.push_back(packet);
+   }
+   if (marker_bit) {
+@@ -162,12 +164,18 @@
+           (ExcessOverheadBelowMax() && MinimumMediaPacketsReached()))) {
+     assert(num_first_partition_ <=
+            static_cast<int>(ForwardErrorCorrection::kMaxMediaPackets));
+-    int ret = fec_->GenerateFEC(media_packets_fec_,
+-                                params_.fec_rate,
+-                                num_first_partition_,
+-                                params_.use_uep_protection,
+-                                params_.fec_mask_type,
+-                                &fec_packets_);
++    media_packets_fec_.sort(ForwardErrorCorrection::SortablePacket::LessThan);
++    int ret = 0;
++    if (static_cast<size_t>(media_packets_fec_.back()->seq_num + 1 -
++        media_packets_fec_.front()->seq_num) == media_packets_fec_.size()) {
++      // Only generate FEC for continuous in-order packets.
++      ret = fec_->GenerateFEC(media_packets_fec_,
++                              params_.fec_rate,
++                              num_first_partition_,
++                              params_.use_uep_protection,
++                              params_.fec_mask_type,
++                              &fec_packets_);
++    }
+     if (fec_packets_.empty()) {
+       num_frames_ = 0;
+       DeletePackets();
+Index: src/webrtc/modules/rtp_rtcp/source/forward_error_correction.h
+===================================================================
+--- src/webrtc/modules/rtp_rtcp/source/forward_error_correction.h	(revision 7940)
++++ src/webrtc/modules/rtp_rtcp/source/forward_error_correction.h	(working copy)
+@@ -66,6 +66,10 @@
+     uint16_t seq_num;
+   };
+ 
++  class SentPacket : public Packet, public SortablePacket {
++  };
++
++
+   // The received list parameter of #DecodeFEC() must reference structs of this
+   // type. The last_media_pkt_in_frame is not required to be used for correct
+   // recovery, but will reduce delay by allowing #DecodeFEC() to pre-emptively
+@@ -114,6 +118,7 @@
+   };
+ 
+   typedef std::list<Packet*> PacketList;
++  typedef std::list<SentPacket*> SentPacketList;
+   typedef std::list<ReceivedPacket*> ReceivedPacketList;
+   typedef std::list<RecoveredPacket*> RecoveredPacketList;
+ 
+@@ -158,7 +163,7 @@
+    *
+    * \return 0 on success, -1 on failure.
+    */
+-  int32_t GenerateFEC(const PacketList& media_packet_list,
++  int32_t GenerateFEC(const SentPacketList& media_packet_list,
+                       uint8_t protection_factor, int num_important_packets,
+                       bool use_unequal_protection, FecMaskType fec_mask_type,
+                       PacketList* fec_packet_list);
+@@ -210,7 +215,7 @@
+  private:
+   typedef std::list<FecPacket*> FecPacketList;
+ 
+-  void GenerateFecUlpHeaders(const PacketList& media_packet_list,
++  void GenerateFecUlpHeaders(const SentPacketList& media_packet_list,
+                              uint8_t* packet_mask, bool l_bit,
+                              int num_fec_packets);
+ 
+@@ -220,7 +225,7 @@
+   // Returns the number of bits used for one row of the new packet mask.
+   // Requires that |packet_mask| has at least 6 * |num_fec_packets| bytes
+   // allocated.
+-  int InsertZerosInBitMasks(const PacketList& media_packets,
++  int InsertZerosInBitMasks(const SentPacketList& media_packets,
+                             uint8_t* packet_mask, int num_mask_bytes,
+                             int num_fec_packets);
+ 
+@@ -245,7 +250,7 @@
+                          int num_fec_packets, int new_bit_index,
+                          int old_bit_index);
+ 
+-  void GenerateFecBitStrings(const PacketList& media_packet_list,
++  void GenerateFecBitStrings(const SentPacketList& media_packet_list,
+                              uint8_t* packet_mask, int num_fec_packets,
+                              bool l_bit);
+ 
+Index: src/webrtc/modules/rtp_rtcp/source/producer_fec.h
+===================================================================
+--- src/webrtc/modules/rtp_rtcp/source/producer_fec.h	(revision 7940)
++++ src/webrtc/modules/rtp_rtcp/source/producer_fec.h	(working copy)
+@@ -69,7 +69,7 @@
+   void DeletePackets();
+   int Overhead() const;
+   ForwardErrorCorrection* fec_;
+-  std::list<ForwardErrorCorrection::Packet*> media_packets_fec_;
++  std::list<ForwardErrorCorrection::SentPacket*> media_packets_fec_;
+   std::list<ForwardErrorCorrection::Packet*> fec_packets_;
+   int num_frames_;
+   bool incomplete_frame_;
