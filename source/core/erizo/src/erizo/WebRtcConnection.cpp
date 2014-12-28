@@ -116,7 +116,6 @@ namespace erizo {
     bool audioTransportNeeded = audioEnabled_ && remoteSdp_.audioDirection >= RECVONLY && (!remoteSdp_.isBundle || !videoTransportNeeded);
     bundle_ = audioEnabled_ && !audioTransportNeeded;
 
-    std::vector<RtpMap> payloadRemote = remoteSdp_.getPayloadInfos();
     localSdp_.getPayloadInfos() = remoteSdp_.getPayloadInfos();
     localSdp_.isBundle = bundle_;
     localSdp_.isRtcpMux = remoteSdp_.isRtcpMux;
@@ -186,8 +185,8 @@ namespace erizo {
     return localSdp_.getSdp();
   }
 
-  bool WebRtcConnection::acceptPayloadType(const int plType) {
-    return remoteSdp_.supportPayloadType(plType);
+  int WebRtcConnection::preferredVideoPayloadType() {
+    return remoteSdp_.preferredVideoPayloadType();
   }
 
   bool WebRtcConnection::acceptEncapsulatedRTPData() {

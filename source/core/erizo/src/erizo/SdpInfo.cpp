@@ -117,7 +117,7 @@ namespace erizo {
     opus.clockRate = 48000;
     opus.channels = 2;
     opus.mediaType = AUDIO_TYPE;
-    opus.enable = true;
+    opus.enable = false;
     internalPayloadVector_.push_back(opus);
 /*
     RtpMap pcma;
@@ -235,10 +235,10 @@ namespace erizo {
         if (!printedAudio) {
           sdp << "m=audio " << cand.hostPort
             << " RTP/" << (profile==SAVPF?"SAVPF ":"AVPF ");// << "103 104 0 8 106 105 13 126\n"
-          for (unsigned int it =0; it<internalPayloadVector_.size(); it++){
-            const RtpMap& payload_info = internalPayloadVector_[it];
+          for (unsigned int it =0; it<payloadVector_.size(); it++){
+            const RtpMap& payload_info = payloadVector_[it];
             if (payload_info.mediaType == AUDIO_TYPE && payload_info.enable)
-              sdp << getAudioExternalPT(payload_info.payloadType) <<" ";
+              sdp << payload_info.payloadType <<" ";
 
           }
           sdp << "\n"
@@ -295,10 +295,10 @@ namespace erizo {
         }
       }
 
-      for (unsigned int it = 0; it < internalPayloadVector_.size(); it++) {
-        const RtpMap& rtp = internalPayloadVector_[it];
+      for (unsigned int it = 0; it < payloadVector_.size(); it++) {
+        const RtpMap& rtp = payloadVector_[it];
         if (rtp.mediaType==AUDIO_TYPE && rtp.enable) {
-          int payloadType = getAudioExternalPT(rtp.payloadType);
+          int payloadType = rtp.payloadType;
           if (rtp.channels>1) {
             sdp << "a=rtpmap:"<<payloadType << " " << rtp.encodingName << "/"
               << rtp.clockRate << "/" << rtp.channels << endl;
@@ -346,10 +346,10 @@ namespace erizo {
         if (!printedVideo) {
           sdp << "m=video " << cand.hostPort << " RTP/" << (profile==SAVPF?"SAVPF ":"AVPF "); //<<  "100 101 102 103\n"
 
-          for (unsigned int it =0; it<internalPayloadVector_.size(); it++){
-            const RtpMap& payload_info = internalPayloadVector_[it];
+          for (unsigned int it =0; it<payloadVector_.size(); it++){
+            const RtpMap& payload_info = payloadVector_[it];
             if (payload_info.mediaType == VIDEO_TYPE && payload_info.enable)
-              sdp << getVideoExternalPT(payload_info.payloadType) <<" ";
+              sdp << payload_info.payloadType <<" ";
           }
 
           sdp << "\n" << "c=IN IP4 " << cand.hostAddress << endl;
@@ -410,11 +410,11 @@ namespace erizo {
         }
       }
 
-      for (unsigned int it = 0; it < internalPayloadVector_.size(); it++) {
-        const RtpMap& rtp = internalPayloadVector_[it];
+      for (unsigned int it = 0; it < payloadVector_.size(); it++) {
+        const RtpMap& rtp = payloadVector_[it];
           if (rtp.mediaType==VIDEO_TYPE && rtp.enable)
           {
-              int payloadType = getVideoExternalPT(rtp.payloadType);
+              int payloadType = rtp.payloadType;
           sdp << "a=rtpmap:"<<payloadType << " " << rtp.encodingName << "/"
               << rtp.clockRate <<"\n";
           if (rtp.encodingName == "VP8" || rtp.encodingName == "H264") {
@@ -533,10 +533,13 @@ namespace erizo {
 
     std::string line;
     std::istringstream iss(sdp);
+    bool nextLineRetrieved = false;
 
     MediaType mtype = OTHER;
 
-    while (std::getline(iss, line)) {
+    while (nextLineRetrieved || std::getline(iss, line)) {
+      nextLineRetrieved = false;
+
       size_t isVideo = line.find(video);
       size_t isAudio = line.find(audio);
       size_t isGroup = line.find(group);
@@ -648,16 +651,33 @@ namespace erizo {
       }
       // a=rtpmap:PT codec_name/clock_rate
       if(isRtpmap != std::string::npos){
-        std::vector<std::string> parts = stringutil::splitOneOf(line, " :/\n", 4);
+        std::vector<std::string> parts = stringutil::splitOneOf(line, " :/\n");
         RtpMap theMap;
         unsigned int PT = strtoul(parts[1].c_str(), NULL, 10);
         std::string codecname = parts[2];
         unsigned int clock = strtoul(parts[3].c_str(), NULL, 10);
+
+        if (codecname == "H264") {
+          if (std::getline(iss, line)) {
+            nextLineRetrieved = true;
+            if (line.find("a=fmtp") != std::string::npos
+                && line.find(parts[1].c_str()) != std::string::npos
+                && line.find("packetization-mode=1") != std::string::npos) {
+              continue;
+            }
+          }
+        }
+
         theMap.payloadType = PT;
         theMap.encodingName = codecname;
         theMap.clockRate = clock;
         theMap.mediaType = mtype;
         theMap.enable = true;
+        if (parts.size() > 4) {
+          theMap.channels = strtoul(parts[4].c_str(), NULL, 10);
+        } else {
+          theMap.channels = 1;
+        }
 
         bool found = false;
         for (unsigned int it = 0; it < internalPayloadVector_.size(); it++) {
@@ -731,6 +751,19 @@ namespace erizo {
       return getAudioExternalPT(internalPT);
   }
 
+  int SdpInfo::preferredVideoPayloadType() {
+    for (unsigned int it = 0; it < payloadVector_.size(); it++) {
+      const RtpMap& rtp = payloadVector_[it];
+      if (rtp.mediaType == VIDEO_TYPE) {
+        int internalPT = getVideoInternalPT(rtp.payloadType);
+        if (internalPT != RED_90000_PT && internalPT != ULP_90000_PT
+            && getVideoExternalPT(internalPT) == (int)(rtp.payloadType)) {
+          return internalPT;
+        }
+      }
+    }
+    return INVALID_PT;
+  }
 
   bool SdpInfo::processCandidate(std::vector<std::string>& pieces, MediaType mediaType) {
 

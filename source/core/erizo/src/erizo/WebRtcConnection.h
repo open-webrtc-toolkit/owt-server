@@ -108,7 +108,7 @@ public:
 
 	int deliverFeedback(char* buf, int len);
 
-	bool acceptPayloadType(const int plType);
+	int preferredVideoPayloadType();
 	bool acceptEncapsulatedRTPData();
 	bool acceptFEC();
 	bool acceptResentData();

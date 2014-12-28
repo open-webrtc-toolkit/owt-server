@@ -75,7 +75,7 @@ public:
   FeedbackSource* getFeedbackSource(){
     return sinkfbSource_;
   };
-  virtual bool acceptPayloadType(const int plType) { return true; }
+  virtual int preferredVideoPayloadType() { return -1; }
   // Is it able to sink the encapsulated RTP data (like RED)
   virtual bool acceptEncapsulatedRTPData() { return false; }
   // Is it able to sink the FEC packet
