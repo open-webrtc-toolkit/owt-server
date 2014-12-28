@@ -702,7 +702,7 @@ Woogeen.ConferenceClient = (function () {
       video: {
         device: 'screen',
         resolution: option.resolution,
-        framerate: option.framerate
+        frameRate: option.frameRate
       },
       audio: false
     }, function (err, stream) {
