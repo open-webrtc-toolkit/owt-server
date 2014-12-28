@@ -40,6 +40,9 @@
 #define MSDK_ALIGN32(X)     (((mfxU32)((X)+31)) & (~ (mfxU32)31))
 #define MSDK_ALIGN16(value)     (((value + 15) >> 4) << 4)
 
+#define FRAME_RATE_CTRL_TIMER (1000 * 1000)
+#define FRAME_RATE_CTRL_PADDING (3)
+
 static unsigned int GetSysTimeInUs()
 {
     struct timeval tv;
@@ -3081,15 +3084,26 @@ int MSDKCodec::PrepareVppCompFrames()
         // TODO:
         // How to end, what if input surface is NULL.
         bool out_of_time = false;
+        int pad_cursor = 1;
+        int pad_size = this->sinkpads_.size();
+        if (pad_size == 0 ) {
+            return -1;
+        }
+
+        unsigned pad_com_start = GetSysTimeInUs();
+        int pad_comp_time = (FRAME_RATE_CTRL_TIMER / (max_comp_framerate_ + FRAME_RATE_CTRL_PADDING)) - (pad_com_start - comp_stc_);
+        int pad_comp_timer = (pad_comp_time < 0) ? 0 : pad_comp_time / pad_size;
+
         for (it_sinkpad = this->sinkpads_.begin();
                 it_sinkpad != this->sinkpads_.end();
-                ++it_sinkpad) {
+                ++it_sinkpad, ++pad_cursor) {
             sinkpad = *it_sinkpad;
 
             if ((vpp_comp_map_[sinkpad].ready_surface.msdk_surface == NULL && \
                     vpp_comp_map_[sinkpad].ready_surface.is_eos)) {
                 continue;
             }
+
             while (sinkpad->GetBufData(buf) != 0) {
                 // No data, just sleep and wait
                 if (!is_running_) {
@@ -3098,7 +3112,7 @@ int MSDKCodec::PrepareVppCompFrames()
                 }
                 unsigned tmp_cur_time = GetSysTimeInUs();
 
-                if (tmp_cur_time - comp_stc_ > 1000 * 1000 / max_comp_framerate_) {
+                if (tmp_cur_time - pad_com_start > pad_cursor * pad_comp_timer) {
                     if (vpp_comp_map_[sinkpad].ready_surface.msdk_surface == NULL &&
                             vpp_comp_map_[sinkpad].ready_surface.is_eos == 0) {
                         // Newly attached stream doesn't have decoded frame yet, wait...
@@ -3113,8 +3127,9 @@ int MSDKCodec::PrepareVppCompFrames()
                     }
                 }
 
-                usleep(5000);
+                usleep(200);
             }
+
             if (!vpp_comp_map_[sinkpad].str_info.text && !vpp_comp_map_[sinkpad].pic_info.bmp) { //this sinkpad corresponds to video stream
                 if (buf.is_eos) {
                     eos_cnt += buf.is_eos;
@@ -3152,6 +3167,12 @@ int MSDKCodec::PrepareVppCompFrames()
                     }
                 }
             }
+        }
+        unsigned pad_comp_end = GetSysTimeInUs();
+        int need_sleep = 0;
+        need_sleep = pad_size * pad_comp_timer - (pad_comp_end - pad_com_start);
+        if (need_sleep > 0) {
+            usleep(need_sleep);
         }
     }
 

@@ -132,8 +132,8 @@ typedef struct VPPCompInfo {
     MediaBuf ready_surface;
     //mfxFrameSurface1* ready_surface;
     float frame_rate;
-    int drop_frame_num; // Number of frames need to be dropped.
-    int total_dropped_frames; // Totally dropped frames.
+    unsigned int drop_frame_num; // Number of frames need to be dropped.
+    unsigned int total_dropped_frames; // Totally dropped frames.
 
     VPPCompInfo():
     drop_frame_num(0),
