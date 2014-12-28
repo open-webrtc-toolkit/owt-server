@@ -337,11 +337,12 @@
             }
           }
         }
+
         mediaOption.video = supportedVideoList[option.video.resolution] || supportedVideoList.unspecified;
 
-        if (!isLegacyChrome() && option.frameRate instanceof Array && option.frameRate.length >= 2) {
-          mediaOption.video.mandatory.maxFrameRate = option.frameRate[0];
-          mediaOption.video.mandatory.minFrameRate = option.frameRate[1];
+        if (!isLegacyChrome() && option.video.frameRate instanceof Array && option.video.frameRate.length >= 2) {
+          mediaOption.video.mandatory.minFrameRate = option.video.frameRate[0];
+          mediaOption.video.mandatory.maxFrameRate = option.video.frameRate[1];
         }
       }
       if (option.audio) {
