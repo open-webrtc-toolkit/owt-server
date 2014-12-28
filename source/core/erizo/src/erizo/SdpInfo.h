@@ -185,6 +185,7 @@ public:
     bool setREDSupport(bool enable);
     bool setFECSupport(bool enable);
     bool removePayloadSupport(unsigned int payloadType);
+    int preferredVideoPayloadType();
 
     /**
      * @brief copies relevant information from the offer sdp for which this will be an answer sdp
