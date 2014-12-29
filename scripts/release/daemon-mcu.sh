@@ -43,6 +43,19 @@ rotate_log ()
   fi
 }
 
+check_node_version()
+{
+  local NODE_VERSION=
+  . ${bin}/.conf
+  NODE_VERSION=$(echo ${NODE_VERSION} | cut -d '.' -f 1,2)
+  if ! hash node 2>/dev/null; then
+    echo >&2 "Error: node not found. Please install node ${NODE_VERSION} first."
+    return 1
+  fi
+  local NODE_VERSION_USE=$(node --version | cut -d '.' -f 1,2)
+  [[ ${NODE_VERSION} == ${NODE_VERSION_USE} ]] && return 0 || (echo "node version not match. Please use node ${NODE_VERSION}"; return 1;)
+}
+
 [[ -z ${WOOGEEN_HOME} ]] && WOOGEEN_HOME="${ROOT}/build"
 [[ ! -d ${WOOGEEN_HOME} ]] && WOOGEEN_HOME="${ROOT}"
 export WOOGEEN_HOME=${WOOGEEN_HOME}
@@ -82,7 +95,7 @@ case $startStop in
         exit 1
       fi
     fi
-
+    check_node_version || exit 1
     rotate_log $stdout
     [[ $command != "mcu" ]] && echo "starting $command, stdout -> $stdout"
     case ${command} in

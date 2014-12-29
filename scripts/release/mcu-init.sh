@@ -12,8 +12,6 @@ ROOT=`cd "${this}/.."; pwd`
 export WOOGEEN_HOME=${ROOT}
 
 LogDir=${WOOGEEN_HOME}/logs
-NODE_VERSION=
-. ${this}/.conf
 
 usage() {
   echo
