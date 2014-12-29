@@ -5,6 +5,7 @@
 #ifndef SDPINFO_H_
 #define SDPINFO_H_
 
+#include <list>
 #include <string>
 #include <vector>
 #include <map>
@@ -141,7 +142,7 @@ public:
     * Gets the payloadType information
     * @return A vector containing the PT-codec information
     */
-    std::vector<RtpMap>& getPayloadInfos();
+    std::list<RtpMap>& getPayloadInfos();
     /**
      * Gets the actual SDP.
      * @return The SDP in string format.
@@ -252,7 +253,7 @@ private:
     void gen_random(char* s, int len);
     std::vector<CandidateInfo> candidateVector_;
     std::vector<CryptoInfo> cryptoVector_;
-    std::vector<RtpMap> payloadVector_;
+    std::list<RtpMap> payloadVector_;
     std::vector<RtpMap> internalPayloadVector_;
     std::string iceUsername_;
     std::string icePassword_;
