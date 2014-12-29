@@ -1580,7 +1580,7 @@ index 0000000..789ad19
 +  param.fMaxFrameRate = inst->maxFramerate;
 +  param.iPicWidth = inst->width;
 +  param.iPicHeight = inst->height;
-+  param.iTargetBitrate = inst->maxBitrate;
++  param.iTargetBitrate = inst->maxBitrate * 1000;
 +
 +  WEBRTC_TRACE(webrtc::kTraceError, webrtc::kTraceVideoCoding, -1,
 +               "H264EncoderImpl::InitEncode(): maxFrameRate %f, width %d, height %d, targetbitRate %d",
