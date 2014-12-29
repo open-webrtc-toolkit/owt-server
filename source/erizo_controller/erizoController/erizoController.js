@@ -265,7 +265,7 @@ var updateMyState = function () {
 
     if (nRooms < WARNING_N_ROOMS) {
         newState = 2;
-    } else if (nRooms > LIMIT_N_ROOMS) {
+    } else if (nRooms >= LIMIT_N_ROOMS) {
         newState = 0;
     } else {
         newState = 1;
