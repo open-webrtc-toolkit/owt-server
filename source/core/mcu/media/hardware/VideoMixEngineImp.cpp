@@ -359,9 +359,9 @@ void VideoMixEngineImp::forcekeyframe(OutputIndex index)
 
 void VideoMixEngineImp::setBitrate(OutputIndex index, unsigned short bitrate)
 {
-    if (m_state == IN_SERVICE) {
-        setbitrate(index, bitrate);
-    }
+    // remove the output bitrate setting limitation here
+    // now stream bitrate can be set even before pipeline create/init
+    setbitrate(index, bitrate);
 }
 
 void VideoMixEngineImp::setbitrate(OutputIndex index, unsigned short bitrate)
@@ -373,10 +373,12 @@ void VideoMixEngineImp::setbitrate(OutputIndex index, unsigned short bitrate)
             if (0 != m_xcoder->SetBitrate(codec_type_dict[it->second.codec], bitrate)) {
                 printf("[%s]Fail to set bit rate.\n", __FUNCTION__);
             } else {
+                // in case: pipeline created but not initialized
                 it->second.bitrate = bitrate;
             }
         } else {
-            printf("[%s]NULL pointer.\n", __FUNCTION__);
+            // in case: pipeline not created yet
+            it->second.bitrate = bitrate;
         }
     } else {
         printf("[%s]Invalid input parameter.\n", __FUNCTION__);
