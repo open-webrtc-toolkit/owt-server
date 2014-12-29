@@ -84,7 +84,7 @@ case $startStop in
     fi
 
     rotate_log $stdout
-    echo "starting $command, stdout -> $stdout"
+    [[ $command != "mcu" ]] && echo "starting $command, stdout -> $stdout"
     case ${command} in
       nuve )
         if ! pgrep -f rabbitmq; then
