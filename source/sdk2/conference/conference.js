@@ -471,6 +471,14 @@ Woogeen.ConferenceClient = (function () {
     });
   };
 
+  /*
+  options: {
+    audio: true/false,
+    video: true/false,
+    maxVideoBW: xxx,
+    maxAudioBW: xxx
+  }
+  */
   WoogeenConference.prototype.publish = function (stream, options, onSuccess, onFailure) {
     var self = this;
     if (typeof options === 'function') {
@@ -562,8 +570,8 @@ Woogeen.ConferenceClient = (function () {
             stream.channel.processSignalingMessage(answer);
           });
         },
-        video: stream.hasVideo(),
-        audio: stream.hasAudio(),
+        video: stream.hasVideo() && (options.video !== false),
+        audio: stream.hasAudio() && (options.audio !== false),
         iceServers: self.getIceServers(),
         stunServerUrl: self.connSettings.stun,
         turnServer: self.connSettings.turn,
@@ -598,6 +606,14 @@ Woogeen.ConferenceClient = (function () {
     });
   };
 
+  /*
+  options: {
+    audio: true/false,
+    video: true/false,
+    maxVideoBW: xxx,
+    maxAudioBW: xxx
+  }
+  */
   WoogeenConference.prototype.subscribe = function (stream, options, onSuccess, onFailure) {
     var self = this;
     if (typeof options === 'function') {
@@ -631,8 +647,8 @@ Woogeen.ConferenceClient = (function () {
           stream.channel.processSignalingMessage(answer);
         });
       },
-      audio: stream.hasAudio(),
-      video: stream.hasVideo(),
+      audio: stream.hasAudio() && (options.audio !== false),
+      video: stream.hasVideo() && (options.video !== false),
       iceServers: self.getIceServers(),
       stunServerUrl: self.connSettings.stun,
       turnServer: self.connSettings.turn
