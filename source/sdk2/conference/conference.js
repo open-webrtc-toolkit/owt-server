@@ -481,6 +481,7 @@ Woogeen.ConferenceClient = (function () {
   */
   WoogeenConference.prototype.publish = function (stream, options, onSuccess, onFailure) {
     var self = this;
+    stream = stream || {};
     if (typeof options === 'function') {
       onFailure = onSuccess;
       onSuccess = options;
@@ -609,9 +610,7 @@ Woogeen.ConferenceClient = (function () {
   /*
   options: {
     audio: true/false,
-    video: true/false,
-    maxVideoBW: xxx,
-    maxAudioBW: xxx
+    video: true/false
   }
   */
   WoogeenConference.prototype.subscribe = function (stream, options, onSuccess, onFailure) {
@@ -619,7 +618,9 @@ Woogeen.ConferenceClient = (function () {
     if (typeof options === 'function') {
       onFailure = onSuccess;
       onSuccess = options;
-      options = null;
+      options = {};
+    } else if (typeof options !== 'object' || options === null) {
+      options = {};
     }
     if (!(stream instanceof Woogeen.RemoteStream)) {
       return safeCall(onFailure, 'invalid stream');
