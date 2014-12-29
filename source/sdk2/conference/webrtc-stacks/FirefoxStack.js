@@ -75,6 +75,24 @@ Erizo.FirefoxStack = function (spec) {
 
     L.Logger.debug('Created webkitRTCPeerConnnection with config "' + JSON.stringify(that.pc_config) + '".');
 
+    var setVideoCodec = function(sdp){
+        if (spec.videoCodec !== 'H264'&& spec.videoCodec !== 'h264') {
+            return sdp;
+        }
+        // Put H264 in front of VP8(120)
+        var mLine = sdp.match(/m=video.*\r\n/g)[0];
+        var newMLine = mLine.replace(/\s120/, '').replace('\r\n','');
+        newMLine = newMLine+' 120\r\n';
+        var newSdp = sdp.replace(mLine, newMLine);
+        return newSdp;
+    };
+
+    var updateSdp = function(sdp) {
+        var newSdp = setVideoCodec(sdp);
+        // Add other operations here, e.g. set bandwidth.
+        return newSdp;
+    };
+
     /**
      * This function processes signalling messages from the other side.
      * @param {string} msgstring JSON-formatted string containing a ROAP message.
@@ -118,6 +136,9 @@ Erizo.FirefoxStack = function (spec) {
                     type: 'answer'
                 };
                 L.Logger.debug('Received ANSWER: ', sd.sdp);
+
+                sd.sdp = updateSdp(sd.sdp);
+
                 that.peerConnection.setRemoteDescription(new RTCSessionDescription(sd), function() {
                         L.Logger.debug('setRemoteDescription succeeded');
                     }, function(error) {
@@ -239,6 +260,8 @@ Erizo.FirefoxStack = function (spec) {
                 var onSuccess = function() {
                     that.peerConnection.createOffer(function (sessionDescription) {
 
+                        sessionDescription.sdp = updateSdp(sessionDescription.sdp);
+
                         var newOffer = sessionDescription.sdp;
 
                         L.Logger.debug('Changed', sessionDescription.sdp);
@@ -274,7 +297,7 @@ Erizo.FirefoxStack = function (spec) {
 
 
                 // Now able to send the offer we've already prepared.
-                that.prevOffer = that.peerConnection.localDescription.sdp;
+                that.prevOffer = updateSdp(that.peerConnection.localDescription.sdp);
                 L.Logger.debug('Sending OFFER: ', that.prevOffer);
                 //L.Logger.debug('Sent SDP is ' + that.prevOffer);
                 that.sendMessage('OFFER', that.prevOffer);

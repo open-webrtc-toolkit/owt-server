@@ -37,6 +37,7 @@ Woogeen.ConferenceClient = (function () {
     var that = spec || {};
     this.remoteStreams = {};
     this.localStreams = {};
+    this.videoCodec = spec.videoCodec;  // Preference video codec, default is VP8.
     that.state = DISCONNECTED;
 
     this.setIceServers = function () {
@@ -214,7 +215,8 @@ Woogeen.ConferenceClient = (function () {
             audio: myStream.hasAudio(),
             video: myStream.hasVideo(),
             stunServerUrl: self.connSettings.stun,
-            turnServer: self.connSettings.turn
+            turnServer: self.connSettings.turn,
+            videoCodec: self.videoCodec
           });
 
           myStream.channel[spec.subsSocket].addStream(myStream.mediaStream);
@@ -234,7 +236,8 @@ Woogeen.ConferenceClient = (function () {
             stunServerUrl: self.connSettings.stun,
             turnServer: self.connSettings.turn,
             maxAudioBW: self.connSettings.maxAudioBW,
-            maxVideoBW: self.connSettings.maxVideoBW
+            maxVideoBW: self.connSettings.maxVideoBW,
+            videoCodec: self.videoCodec
           });
 
           myStream.channel.onsignalingmessage = function (answer) {
@@ -577,7 +580,8 @@ Woogeen.ConferenceClient = (function () {
         stunServerUrl: self.connSettings.stun,
         turnServer: self.connSettings.turn,
         maxAudioBW: options.maxAudioBW,
-        maxVideoBW: options.maxVideoBW
+        maxVideoBW: options.maxVideoBW,
+        videoCodec: self.videoCodec
       });
       stream.channel.addStream(stream.mediaStream);
     } else {
@@ -652,7 +656,8 @@ Woogeen.ConferenceClient = (function () {
       video: stream.hasVideo() && (options.video !== false),
       iceServers: self.getIceServers(),
       stunServerUrl: self.connSettings.stun,
-      turnServer: self.connSettings.turn
+      turnServer: self.connSettings.turn,
+      videoCodec: self.videoCodec
     });
 
     stream.channel.onaddstream = function (evt) {
