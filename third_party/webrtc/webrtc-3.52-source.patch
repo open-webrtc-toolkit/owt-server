@@ -336,3 +336,25 @@ Index: src/webrtc/modules/rtp_rtcp/source/producer_fec.h
    std::list<ForwardErrorCorrection::Packet*> fec_packets_;
    int num_frames_;
    bool incomplete_frame_;
+Index: src/webrtc/modules/rtp_rtcp/source/rtcp_receiver.cc
+===================================================================
+--- src/webrtc/modules/rtp_rtcp/source/rtcp_receiver.cc	(revision 7940)
++++ src/webrtc/modules/rtp_rtcp/source/rtcp_receiver.cc	(working copy)
+@@ -1254,9 +1254,14 @@
+     RTCPUtility::RTCPParserV2& rtcpParser,
+     RTCPPacketInformation& rtcpPacketInformation) {
+   const RTCPUtility::RTCPPacket& rtcpPacket = rtcpParser.Packet();
+-  rtcpPacketInformation.rtcpPacketTypeFlags |= kRtcpRemb;
+-  rtcpPacketInformation.receiverEstimatedMaxBitrate =
+-      rtcpPacket.REMBItem.BitRate;
++  for (uint8_t i = 0; i < rtcpPacket.REMBItem.NumberOfSSRCs; ++i) {
++    if (main_ssrc_ == rtcpPacket.REMBItem.SSRCs[i]) {
++      rtcpPacketInformation.rtcpPacketTypeFlags |= kRtcpRemb;
++      rtcpPacketInformation.receiverEstimatedMaxBitrate =
++          rtcpPacket.REMBItem.BitRate;
++      break;
++    }
++  }
+ }
+ 
+ // no need for critsect we have _criticalSectionRTCPReceiver
