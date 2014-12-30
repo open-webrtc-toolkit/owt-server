@@ -30,9 +30,18 @@ exports = module.exports = function () {
      * Given a WebRtcConnection waits for the state CANDIDATES_GATHERED for set remote SDP. 
      */
     initWebRtcConnection = function (wrtc, sdp, callback, onReady) {
+        var terminated = false;
+
         wrtc.init(function (newStatus) {
+            if (terminated) {
+                return;
+            }
+
             var localSdp, answer;
             logger.info("webrtc Addon status: " + newStatus);
+            if (newStatus === 104) {
+                terminated = true;
+            }
             if (newStatus === 102 && !sdpDelivered) {
                 localSdp = wrtc.getLocalSdp();
                 answer = getRoap(localSdp, roap);
@@ -151,7 +160,16 @@ exports = module.exports = function () {
         }
 
         logger.info("Adding publisher peer_id ", from);
-        var wrtc = new addon.WebRtcConnection(true, true, config.core.stunserver, config.core.stunport, config.core.minport, config.core.maxport, config.core.certificate.cert, config.core.certificate.key, config.core.certificate.passphrase, config.core.red, config.core.fec, config.core.nack_sender, config.core.nack_receiver);
+        var hasAudio = false;
+        var hasVideo = false;
+        if (sdp.indexOf('m=audio') !== -1) {
+            hasAudio = true;
+        }
+        if (sdp.indexOf('m=video') !== -1) {
+            hasVideo = true;
+        }
+
+        var wrtc = new addon.WebRtcConnection(hasAudio, hasVideo, false, config.core.stunserver, config.core.stunport, config.core.minport, config.core.maxport, config.core.certificate.cert, config.core.certificate.key, config.core.certificate.passphrase, config.core.red, config.core.fec, config.core.nack_sender, config.core.nack_receiver);
 
         if (typeof resolution !== 'string') {
             resolution = '';
@@ -179,10 +197,7 @@ exports = module.exports = function () {
         if (gateway !== undefined && subscribers.indexOf(to) === -1 && sdp.match('OFFER') !== null) {
             logger.info("Adding subscriber from ", from, 'to ', to);
 
-            if (audio === undefined) audio = true;
-            if (video === undefined) video = true;
-
-            var wrtc = new addon.WebRtcConnection(true, true, config.core.stunserver, config.core.stunport, config.core.minport, config.core.maxport, config.core.certificate.cert, config.core.certificate.key, config.core.certificate.passphrase, config.core.red, config.core.fec, config.core.nack_sender, config.core.nack_receiver);
+            var wrtc = new addon.WebRtcConnection(audio, video, false, config.core.stunserver, config.core.stunport, config.core.minport, config.core.maxport, config.core.certificate.cert, config.core.certificate.key, config.core.certificate.passphrase, config.core.red, config.core.fec, config.core.nack_sender, config.core.nack_receiver);
 
             subscribers.push(to);
             gateway.addSubscriber(wrtc, to);
