@@ -33,11 +33,15 @@ encrypt_js() {
 archive() {
   local VER="trunk"
   local DIR=$(dirname ${WOOGEEN_DIST})
-  if hash git 2>/dev/null; then
-    echo "using git revision as version number."
-    VER=$(cd ${ROOT} && git show-ref --head | head -1 | fold -w 8 | head -1)
+  if [[ -z ${PACKAGE_VERSION} ]]; then
+    if hash git 2>/dev/null; then
+      echo "using git revision as version number."
+      VER=$(cd ${ROOT} && git show-ref --head | head -1 | fold -w 8 | head -1)
+    fi
+  else
+    VER="${PACKAGE_VERSION}"
   fi
   for file in ${WOOGEEN_DIST}/lib/* ; do strip -s "$file" ; done
-  cd ${DIR} && tar --numeric-owner -czf "Release-${VER}.tgz" $(basename ${WOOGEEN_DIST})
+  cd ${DIR} && mv $(basename ${WOOGEEN_DIST}) Release-${VER}; tar --numeric-owner -czf "Release-${VER}.tgz" Release-${VER}/; mv Release-${VER} $(basename ${WOOGEEN_DIST})
   echo -e "\x1b[32mRelease-${VER}.tgz generated in ${DIR}.\x1b[0m"
 }
