@@ -338,7 +338,7 @@
           }
         }
 
-        mediaOption.video = supportedVideoList[option.video.resolution] || supportedVideoList.unspecified;
+        mediaOption.video = JSON.parse(JSON.stringify(supportedVideoList[option.video.resolution] || supportedVideoList.unspecified));
 
         if (!isLegacyChrome() && option.video.frameRate instanceof Array && option.video.frameRate.length >= 2) {
           mediaOption.video.mandatory.minFrameRate = option.video.frameRate[0];
