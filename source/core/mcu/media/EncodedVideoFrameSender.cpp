@@ -104,7 +104,7 @@ int EncodedVideoFrameSender::deliverFeedback(char* buf, int len)
 
 void EncodedVideoFrameSender::OnNetworkChanged(const uint32_t target_bitrate, const uint8_t fraction_loss, const uint32_t rtt)
 {
-    // TODO: Send the bitrate adjustment request to the encoder.
+    m_source->setBitrate(m_id, target_bitrate / 1000);
 }
 
 void EncodedVideoFrameSender::onFrame(FrameFormat format, unsigned char* payload, int len, unsigned int ts)

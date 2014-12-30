@@ -113,12 +113,12 @@ void HardwareVideoFrameMixerOutput::onTimeout()
             if (m_outFormat == FRAME_FORMAT_H264) {
                 if ((len - H264_STARTCODE_BYTES - H264_AUD_BYTES) > 0) {
                     m_outCount++;
-                    m_receiver->onFrame(m_outFormat, (unsigned char *)&m_esBuffer + H264_STARTCODE_BYTES + H264_AUD_BYTES, len - H264_STARTCODE_BYTES - H264_AUD_BYTES, m_outCount * m_frameRate);
+                    m_receiver->onFrame(m_outFormat, (unsigned char *)&m_esBuffer + H264_STARTCODE_BYTES + H264_AUD_BYTES, len - H264_STARTCODE_BYTES - H264_AUD_BYTES, m_outCount * (1000 / m_frameRate));
                 } else
                     break;
             } else {
                 m_outCount++;
-                m_receiver->onFrame(m_outFormat, (unsigned char *)&m_esBuffer, len, m_outCount * m_frameRate);
+                m_receiver->onFrame(m_outFormat, (unsigned char *)&m_esBuffer, len, m_outCount * (1000 / m_frameRate));
             }
         } else
             break;
