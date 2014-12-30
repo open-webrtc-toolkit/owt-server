@@ -1,0 +1,9 @@
+The Intel(R) Collaboration Service for WebRTC MCU Server redistributes the following third-party software under GNU Lesser General Public License (LGPL) 2.1 or Mozilla Public License(MPL) 1.1.
+
+All are compiled from source code without change and used through dynamic link.
+
+1. FFmpeg, LGPL2.1, download source code from https://github.com/FFmpeg/FFmpeg/archive/n0.10.2.zip
+
+2. PNotify, MPL1.1, download source code from http://sciactive.github.io/pnotify/#download
+
+Portions of this software are copyright (c) <2014> The FreeType Project (www.freetype.org).  All rights reserved.
