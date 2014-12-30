@@ -76,15 +76,17 @@ Erizo.FirefoxStack = function (spec) {
     L.Logger.debug('Created webkitRTCPeerConnnection with config "' + JSON.stringify(that.pc_config) + '".');
 
     var setVideoCodec = function(sdp){
-        if (spec.videoCodec !== 'H264'&& spec.videoCodec !== 'h264') {
+        if (spec.videoCodec !== 'H264' && spec.videoCodec !== 'h264') {
             return sdp;
         }
         // Put H264 in front of VP8(120)
-        var mLine = sdp.match(/m=video.*\r\n/g)[0];
-        var newMLine = mLine.replace(/\s120/, '').replace('\r\n','');
-        newMLine = newMLine+' 120\r\n';
-        var newSdp = sdp.replace(mLine, newMLine);
-        return newSdp;
+        try {
+            var mLine = sdp.match(/m=video.*\r\n/g)[0];
+            var newMLine = mLine.replace(/\s120/, '').replace('\r\n','') + ' 120\r\n';
+            return sdp.replace(mLine, newMLine);
+        } catch (e) {
+            return sdp;
+        }
     };
 
     var updateSdp = function(sdp) {
