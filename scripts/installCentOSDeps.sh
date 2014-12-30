@@ -57,10 +57,10 @@ install_glib2(){
     # libffi
     cd $LIB_DIR
     wget ftp://sourceware.org/pub/libffi/libffi-3.0.13.tar.gz
-    wget http://svn.exactcode.de/t2/trunk/package/develop/libffi/libffi-3.0.13-includedir.patch
+    wget http://www.linuxfromscratch.org/patches/downloads/libffi/libffi-3.0.13-includedir-1.patch
     tar zxvf libffi-3.0.13.tar.gz
     cd libffi-3.0.13
-    patch -Np1 -i ../libffi-3.0.13-includedir.patch &&
+    patch -Np1 -i ../libffi-3.0.13-includedir-1.patch &&
     ./configure --prefix=$PREFIX_DIR --disable-static &&
     make -s V=0 && make install
     # prce
