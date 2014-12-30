@@ -37,7 +37,6 @@ Woogeen.ConferenceClient = (function () {
     var that = spec || {};
     this.remoteStreams = {};
     this.localStreams = {};
-    this.videoCodec = spec.videoCodec;  // Preference video codec, default is VP8.
     that.state = DISCONNECTED;
 
     this.setIceServers = function () {
@@ -215,8 +214,7 @@ Woogeen.ConferenceClient = (function () {
             audio: myStream.hasAudio(),
             video: myStream.hasVideo(),
             stunServerUrl: self.connSettings.stun,
-            turnServer: self.connSettings.turn,
-            videoCodec: self.videoCodec
+            turnServer: self.connSettings.turn
           });
 
           myStream.channel[spec.subsSocket].addStream(myStream.mediaStream);
@@ -236,8 +234,7 @@ Woogeen.ConferenceClient = (function () {
             stunServerUrl: self.connSettings.stun,
             turnServer: self.connSettings.turn,
             maxAudioBW: self.connSettings.maxAudioBW,
-            maxVideoBW: self.connSettings.maxVideoBW,
-            videoCodec: self.videoCodec
+            maxVideoBW: self.connSettings.maxVideoBW
           });
 
           myStream.channel.onsignalingmessage = function (answer) {
@@ -479,7 +476,8 @@ Woogeen.ConferenceClient = (function () {
     audio: true/false,
     video: true/false,
     maxVideoBW: xxx,
-    maxAudioBW: xxx
+    maxAudioBW: xxx,
+    videoCodec: 'h264' // not for p2p room
   }
   */
   WoogeenConference.prototype.publish = function (stream, options, onSuccess, onFailure) {
@@ -581,7 +579,7 @@ Woogeen.ConferenceClient = (function () {
         turnServer: self.connSettings.turn,
         maxAudioBW: options.maxAudioBW,
         maxVideoBW: options.maxVideoBW,
-        videoCodec: self.videoCodec
+        videoCodec: options.videoCodec
       });
       stream.channel.addStream(stream.mediaStream);
     } else {
@@ -614,7 +612,8 @@ Woogeen.ConferenceClient = (function () {
   /*
   options: {
     audio: true/false,
-    video: true/false
+    video: true/false,
+    videoCodec: 'h264' // not for p2p room
   }
   */
   WoogeenConference.prototype.subscribe = function (stream, options, onSuccess, onFailure) {
@@ -657,7 +656,7 @@ Woogeen.ConferenceClient = (function () {
       iceServers: self.getIceServers(),
       stunServerUrl: self.connSettings.stun,
       turnServer: self.connSettings.turn,
-      videoCodec: self.videoCodec
+      videoCodec: options.videoCodec
     });
 
     stream.channel.onaddstream = function (evt) {
