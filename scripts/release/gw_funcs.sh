@@ -166,3 +166,6 @@ install_module() {
     echo >&2 "You need to install node first."
   fi
 }
+
+pack_license() {
+}

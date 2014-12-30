@@ -201,3 +201,8 @@ install_module() {
     echo >&2 "You need to install node first."
   fi
 }
+
+pack_license() {
+  cp -v {$ROOT/third_party,${WOOGEEN_DIST}}/NOTICE
+  cp -v {$ROOT/third_party,${WOOGEEN_DIST}}/ThirdpartyLicenses.txt
+}

@@ -59,6 +59,7 @@ echo "Cleaning ${WOOGEEN_DIST}/ ..."; rm -fr ${WOOGEEN_DIST}/
 pack_runtime
 pack_libs
 pack_scripts
+pack_license
 ${PACK_MODULE} && install_module
 ${PACK_NODE} && pack_node
 ${PACK_ARCH} && archive
