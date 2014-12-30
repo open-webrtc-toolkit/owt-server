@@ -123,6 +123,9 @@ install_node_tools() {
   sudo -E npm install -g --loglevel error node-gyp grunt-cli underscore
   local SDK_DIR="${ROOT}/source/sdk2"
   cd ${SDK_DIR} && make dep
+  local GATEWAY_SDK_DIR="${ROOT}/source/client_sdk"
+  cd ${GATEWAY_SDK_DIR}
+  mkdir -p node_modules && sudo -E npm install --prefix . --development --loglevel error
   sudo chown -R `whoami` ~/.npm ~/tmp/
 }
 
