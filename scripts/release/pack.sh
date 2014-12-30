@@ -16,6 +16,7 @@ PACK_NODE=true
 PACK_ARCH=false
 PACK_MODULE=true
 ENCRYPT=false
+PACKAGE_VERSION=
 
 cd ${this}
 . common.sh
@@ -43,6 +44,9 @@ while [[ $# -gt 0 ]]; do
     *(-)help )
       usage
       exit 0
+      ;;
+    v[0-9]*)
+      PACKAGE_VERSION="$1"
       ;;
     * )
       echo -e "\x1b[33mUnknown argument\x1b[0m: $1"
