@@ -48,6 +48,10 @@ Erizo.ChromeCanaryStack = function (spec) {
         }
     }
 
+    if ((spec.turnServer || {}).url) {
+        that.pc_config.iceServers.push({"username": spec.turnServer.username, "credential": spec.turnServer.password, "url": spec.turnServer.url});
+    }
+
     if (spec.audio === undefined) {
         spec.audio = true;
     }
