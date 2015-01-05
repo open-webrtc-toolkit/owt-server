@@ -16,12 +16,15 @@ var getopt = new Getopt([
   ['r' , 'rabbit-host=ARG'            , 'RabbitMQ Host'],
   ['g' , 'rabbit-port=ARG'            , 'RabbitMQ Port'],
   ['l' , 'logging-config-file=ARG'    , 'Logging Config File'],
-  ['M' , 'maxProcesses=ARG'          , 'Stun Server URL'],
-  ['P' , 'prerunProcesses=ARG'         , 'Default video Bandwidth'],
+  ['M' , 'maxProcesses=ARG'           , 'Stun Server URL'],
+  ['P' , 'prerunProcesses=ARG'        , 'Default video Bandwidth'],
+  ['I' , 'my-id=ARG'                  , 'RPC Id Postfix'],
   ['h' , 'help'                       , 'display this help']
 ]);
 
-opt = getopt.parse(process.argv.slice(2));
+var myId = '';
+
+var opt = getopt.parse(process.argv.slice(2));
 
 for (var prop in opt.options) {
     if (opt.options.hasOwnProperty(prop)) {
@@ -42,6 +45,9 @@ for (var prop in opt.options) {
             case "logging-config-file":
                 GLOBAL.config.logger = GLOBAL.config.logger || {};
                 GLOBAL.config.logger.config_file = value;
+                break;
+            case 'my-id':
+                myId = value;
                 break;
             default:
                 GLOBAL.config.erizoAgent[prop] = value;
@@ -132,7 +138,7 @@ var dropErizoJS = function(erizo_id, callback) {
 };
 
 var fillErizos = function() {
-    for (var i = idle_erizos.length; i<GLOBAL.config.erizoAgent.prerunProcesses; i++) {
+    for (var i = idle_erizos.length; i < GLOBAL.config.erizoAgent.prerunProcesses; i++) {
         launchErizoJS();
     }
 };
@@ -169,14 +175,12 @@ var api = {
 fillErizos();
 
 rpc.connect(function () {
-    "use strict";
+    'use strict';
     rpc.setPublicRPC(api);
-
-    var rpcID = "ErizoAgent";
-    
-
-    rpc.bind(rpcID);
-
+    var rpcID = 'ErizoAgent_' + myId;
+    rpc.bind(rpcID, function callback () {
+      log.info('ErizoAgent RPC Id:', rpcID);
+    });
 });
 
 ['SIGINT', 'SIGTERM'].map(function (sig) {

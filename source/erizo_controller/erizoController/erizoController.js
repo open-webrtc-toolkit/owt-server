@@ -973,7 +973,27 @@ exports.deleteRoom = function (roomId, callback) {
     safeCall(callback, 'Success');
 };
 
-(function validateLocalConfig() {
+function spawnAgent (id) { // called once.
+    var spawn = require('child_process').spawn;
+    log.info('starting erizoAgent', id);
+    var agent = spawn('node', ['./../erizoAgent/erizoAgent.js', '-I', id], { detached: true, stdio: 'inherit' });
+    agent.unref();
+    log.info('erizoAgent pid', agent.pid);
+    controller.agentId = 'ErizoAgent_' + id; // save agentId for callRpc() in roomController.
+    process.on('exit', function () { // kill agent on exiting.
+        log.info('ErizoController closed');
+        agent.kill('SIGTERM');
+    });
+}
+
+['SIGINT', 'SIGTERM'].map(function (sig) {
+    process.on(sig, function () {
+        log.warn('Exiting on', sig);
+        process.exit();
+    });
+});
+
+(function validateLocalConfig () {
     if (LIMIT_N_ROOMS == 0) {
         log.info("Invalid config: limit_n_rooms == 0");
     } else if (WARNING_N_ROOMS >= LIMIT_N_ROOMS) {
@@ -983,12 +1003,10 @@ exports.deleteRoom = function (roomId, callback) {
             "use strict";
             try {
                 rpc.setPublicRPC(rpcPublic);
-
                 addToCloudHandler(function () {
                     var rpcID = 'erizoController_' + myId;
-
                     rpc.bind(rpcID, listen);
-
+                    spawnAgent(myId);
                 });
             } catch (error) {
                 log.info("Error in Erizo Controller: ", error);

@@ -97,7 +97,7 @@ case $startStop in
     fi
     check_node_version || exit 1
     rotate_log $stdout
-    [[ $command != "mcu" ]] && echo "starting $command, stdout -> $stdout"
+    echo "starting $command, stdout -> $stdout"
     case ${command} in
       nuve )
         if ! pgrep -f rabbitmq; then
@@ -110,23 +110,13 @@ case $startStop in
         echo $! > ${pid}
         sleep 5
         ;;
-      controller )
+      mcu )
+        export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${WOOGEEN_HOME}/lib
+        export LOG4CXX_CONFIGURATION=${WOOGEEN_HOME}/etc/mcu/log4cxx.properties
         cd ${WOOGEEN_HOME}/mcu/erizoController
         nohup nice -n ${WOOGEEN_NICENESS} node erizoController.js \
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
-        ;;
-      agent)
-        export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${WOOGEEN_HOME}/lib
-        export LOG4CXX_CONFIGURATION=${WOOGEEN_HOME}/etc/mcu/log4cxx.properties
-        cd ${WOOGEEN_HOME}/mcu/erizoAgent
-        nohup nice -n ${WOOGEEN_NICENESS} node erizoAgent.js \
-          > "${stdout}" 2>&1 </dev/null &
-        echo $! > ${pid}
-        ;;
-      mcu )
-        ${bin}/daemon.sh start controller;
-        ${bin}/daemon.sh start agent;
         ;;
       app )
         cd ${WOOGEEN_HOME}/extras/basic_example/
@@ -144,11 +134,6 @@ case $startStop in
     ;;
 
   (stop)
-    if [[ "$command" == "mcu" ]]; then
-      ${bin}/daemon.sh stop controller;
-      ${bin}/daemon.sh stop agent;
-      exit 0;
-    fi
     if [ -f $pid ]; then
       if ps -p `cat $pid` > /dev/null 2>&1; then
         if ! kill -0 `cat $pid` > /dev/null 2>&1; then
