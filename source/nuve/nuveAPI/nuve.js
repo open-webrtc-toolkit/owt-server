@@ -8,7 +8,7 @@ var rpc = require('./rpc/rpc');
 var logger = require('./logger').logger;
 
 // Logger
-var log = logger.getLogger("Nuve");
+var log = logger.getLogger('Nuve');
 
 var app = express();
 
@@ -23,18 +23,20 @@ var servicesResource = require('./resource/servicesResource');
 var serviceResource = require('./resource/serviceResource');
 var usersResource = require('./resource/usersResource');
 var userResource = require('./resource/userResource');
+var clusterResource = require('./resource/clusterResource');
 
-app.use(express.static(__dirname + '/public'));
+app.use('/console', express.static(__dirname + '/public'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({
     extended: true
-}));app.set('view engine', 'ejs');
+}));
+
 app.set('view options', {
     layout: false
 });
 
 app.use(function (req, res, next) {
-    "use strict";
+    'use strict';
 
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS, DELETE');
@@ -43,13 +45,8 @@ app.use(function (req, res, next) {
     next();
 });
 
-app.get('/test', function (req, res) {
-    "use strict";
-
-    res.render('test');
-});
-
 app.options('*', function(req, res) {
+    'use strict';
     res.send(200);
 });
 
@@ -75,6 +72,10 @@ app.get('/rooms/:room/users', usersResource.getList);
 
 app.get('/rooms/:room/users/:user', userResource.getUser);
 app.delete('/rooms/:room/users/:user', userResource.deleteUser);
+
+app.get('/cluster/nodes', clusterResource.getNodes);
+app.get('/cluster/nodes/:node', clusterResource.getNode);
+app.get('/cluster/rooms', clusterResource.getRooms);
 
 if (config.nuve.ssl === true) {
     require('https').createServer({

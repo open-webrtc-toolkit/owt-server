@@ -1,0 +1,45 @@
+<html>
+
+<head>
+<title>Management Console</title>
+<meta charset="utf-8">
+<link rel="stylesheet" href="/console/style.css">
+<script src="/console/vendor/hmac-sha1.js"></script>
+<script src="/console/libnuve.js"></script>
+<script src="/console/script.js"></script>
+</head>
+
+<body>
+<h1>Management Console</h1>
+<div id="container">
+    <div id="data">
+        <textarea id="response" rows="24" cols="60" readonly="readonly"></textarea>
+    </div>
+    <div id="options">
+        <input type="radio" id="getRooms" name="req"/>Represent rooms<br/>
+        Room: <input type="text" id="room1"/><br/>
+        <input type="radio" id="createRoom" name="req"/>Create room<br/>
+        <input type="radio" id="getRoom" name="req"/>Get room<br/>
+        <input type="radio" id="deleteRoom" name="req"/>Delete room<br/>
+        <br/><br/>
+        <input type="radio" id="getServices" name="req"/>Represent services<br/>
+        Service: <input type="text" id="service1"/>
+        Key: <input type="text" id="key1"/><br/>
+        <input type="radio" id="createService" name="req"/>Create service<br/>
+        <input type="radio" id="getService" name="req"/>Get service<br/>
+        <input type="radio" id="deleteService" name="req"/>Delete service<br/><br/>
+        <br/><br/>
+        <input type="radio" id="getClusterNodes" name="req"/>Get Cluster Nodes<br/>
+        <input type="radio" id="getClusterNode" name="req"/>Get Cluster Node<br/>
+        <input type="radio" id="getClusterRooms" name="req"/>Get Cluster Rooms<br/>
+        <p><input type="button" value="Send" id ="sendButton" onClick="javascript:send()" /></p>
+    </div>
+</div>
+
+<div id="contact">
+Powered by <a href="http://webrtc.intel.com/">Intel WebRTC Team</a>.<br/>
+</div>
+
+</body>
+
+</html>
