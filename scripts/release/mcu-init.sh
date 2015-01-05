@@ -59,18 +59,16 @@ install_config() {
     echo >&2 "Error: configuration template not found."
     return 1
   fi
-  local dbURL=`grep "config.nuve.dataBaseURL" ${DEFAULT_CONFIG}`
-  dbURL=`echo ${dbURL} | cut -d'"' -f 2`
-  dbURL=`echo ${dbURL} | cut -d'"' -f 1`
-
-  echo Creating superservice in ${dbURL}
-  local SERVID=`mongo ${dbURL} --quiet --eval "db.services.findOne({\"name\":\"superService\"})._id" | cut -d '"' -f 2`
-  if [[ ${SERVID} == "superService" ]]; then
+  local dbURL=$(grep "config.nuve.dataBaseURL" ${DEFAULT_CONFIG})
+  dbURL=$(echo ${dbURL} | cut -d'"' -f 2)
+  dbURL=$(echo ${dbURL} | cut -d'"' -f 1)
+  local SERVICE=$(mongo ${dbURL} --quiet --eval 'db.services.findOne({"name":"superService"})')
+  if [[ ${SERVICE} == "null" ]]; then
+    echo -e "\x1b[36mCreating superservice in ${dbURL}\x1b[0m"
     mongo ${dbURL} --eval "db.services.insert({name: 'superService', key: '$RANDOM', rooms: []})"
-    SERVID=`mongo ${dbURL} --quiet --eval "db.services.findOne({\"name\":\"superService\"})._id" | cut -d '"' -f 2`
   fi
-  SERVID=`echo ${SERVID}| cut -d'"' -f 1`
-  local SERVKEY=`mongo ${dbURL} --quiet --eval "db.services.findOne({\"name\":\"superService\"}).key"`
+  local SERVID=$(mongo ${dbURL} --quiet --eval 'db.services.findOne({"name":"superService"})._id')
+  local SERVKEY=$(mongo ${dbURL} --quiet --eval 'db.services.findOne({"name":"superService"}).key')
   [[ -f ${LogDir}/mongo.log ]] && cat ${LogDir}/mongo.log
   echo "SuperService ID: ${SERVID}"
   echo "SuperService KEY: ${SERVKEY}"
