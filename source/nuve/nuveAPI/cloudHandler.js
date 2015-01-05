@@ -236,3 +236,22 @@ exports.deleteUser = function (user, roomId, callback) {
     }});
 };
 
+exports.getEcQueue = function getEcQueue (idx) {
+    'use strict';
+    if (arguments.length > 0) {
+        return erizoControllers[idx];
+    }
+    return ecQueue.map(function (id) {
+        return erizoControllers[id];
+    });
+};
+
+exports.getHostedRooms = function getHostedRooms () {
+    'use strict';
+    return Object.keys(rooms).map(function (rid) {
+        return {
+            id: rid,
+            ec: rooms[rid]
+        };
+    });
+};

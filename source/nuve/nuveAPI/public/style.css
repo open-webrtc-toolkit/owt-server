@@ -1,0 +1,31 @@
+h1 {
+  font-size: 20 px;
+}
+
+#container {
+  width: 100%;
+
+}
+
+#data {
+  float: left;
+  width: 35%;
+  height: 100%;
+}
+
+#data #response {
+  margin-top: 5%;
+  margin-bottom: 5%;
+}
+
+#options {
+  float: right;
+  width: 45%;
+  text-align: left;
+  margin-top: 2%;
+  margin-right: 15%;
+}
+
+#contact {
+  clear: both;
+}
