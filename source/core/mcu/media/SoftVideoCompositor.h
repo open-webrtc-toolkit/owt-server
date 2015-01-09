@@ -22,7 +22,6 @@
 #define SoftVideoCompositor_h
 
 #include "BufferManager.h"
-#include "Config.h"
 #include "JobTimer.h"
 #include "VideoFramePipeline.h"
 #include "VideoLayout.h"
@@ -47,8 +46,8 @@ class VPMPool {
 public:
     VPMPool(unsigned int size);
     ~VPMPool();
-    webrtc::VideoProcessingModule* get(unsigned int slot);
-    void update(unsigned int slot, VideoSize&);
+    webrtc::VideoProcessingModule* get(unsigned int input);
+    void update(unsigned int input, VideoSize&);
     unsigned int size() { return m_size; }
 
 private:
@@ -64,51 +63,44 @@ private:
  * still 16 audios will be mixed. In the future, we may enable the video rotation based on VAD history.
  */
 class SoftVideoCompositor : public VideoFrameCompositor,
-                            public ConfigListener,
                             public JobTimerListener {
     DECLARE_LOGGER();
+    enum LayoutSolutionState{UN_INITIALIZED = 0, CHANGING, IN_WORK};
 public:
-    SoftVideoCompositor(const std::string& layoutType, const std::string& rootSize, const std::string& bgColor, const std::string& customLayout);
+    SoftVideoCompositor(VideoSize rootSize, YUVColor bgColor);
     ~SoftVideoCompositor();
 
-    bool activateInput(int slot);
-    void deActivateInput(int slot);
-    void pushInput(int slot, webrtc::I420VideoFrame*);
+    bool activateInput(int input);
+    void deActivateInput(int input);
+    void pushInput(int input, webrtc::I420VideoFrame*);
 
     bool setOutput(VideoFrameConsumer*);
     void unsetOutput();
 
-    void setLayout(const VideoLayout&);
-
-    void onConfigChanged();
+    void setRootSize(VideoSize& rootSize);
+    void setBgColor(YUVColor& bgColor);
+    void setLayoutSolution(LayoutSolution& solution);
 
     void onTimeout();
 
 private:
     webrtc::I420VideoFrame* layout();
-    webrtc::I420VideoFrame* fluidLayout();
     webrtc::I420VideoFrame* customLayout();
     void generateFrame();
-    void onSlotNumberChanged(uint32_t newSlotNum);
     bool commitLayout(); // Commit the new layout config.
     void setBackgroundColor();
-    bool validateConfig(VideoLayout& layout)
-    {
-        return true;
-    }
-
     // Delta used for translating between NTP and internal timestamps.
     int64_t m_ntpDelta;
-
-    uint32_t m_configListenerId;
-    std::atomic<bool> m_configChanged;
     boost::scoped_ptr<VPMPool> m_vpmPool;
     boost::scoped_ptr<BufferManager> m_bufferManager;
     boost::scoped_ptr<webrtc::I420VideoFrame> m_composedFrame;
     VideoSize m_composedSize;
-    VideoLayout m_currentLayout;
-    VideoLayout m_newLayout;
-    VideoFrameConsumer* m_consumer;
+    VideoSize m_newComposedSize;
+    YUVColor m_bgColor;
+    LayoutSolution m_currentLayout;
+    LayoutSolution m_newLayout;
+    LayoutSolutionState m_solutionState;
+    std::atomic<VideoFrameConsumer*> m_consumer;
     /*
      * Each incoming channel will store the decoded frame in this array, and the composition
      * thread will scan this array and compose the frames into one frame.

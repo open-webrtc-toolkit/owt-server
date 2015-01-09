@@ -23,6 +23,7 @@
 #include "EncodedVideoFrameSender.h"
 #include "HardwareVideoFrameMixer.h"
 #include "SoftVideoFrameMixer.h"
+#include "VideoLayoutProcessor.h"
 #include "TaskRunner.h"
 #include "VCMInputProcessor.h"
 #include "VCMOutputProcessor.h"
@@ -39,14 +40,27 @@ namespace mcu {
 
 DEFINE_LOGGER(VideoMixer, "mcu.media.VideoMixer");
 
-VideoMixer::VideoMixer(erizo::RTPDataReceiver* receiver, bool hardwareAccelerated)
+VideoMixer::VideoMixer(erizo::RTPDataReceiver* receiver, bool hardwareAccelerated, boost::property_tree::ptree& config)
     : m_participants(0)
     , m_outputReceiver(receiver)
     , m_addSourceOnDemand(false)
     , m_hardwareAccelerated(hardwareAccelerated)
-    , m_outputSize(DEFAULT_VIDEO_SIZE)
 {
     m_taskRunner.reset(new TaskRunner());
+    m_layoutProcessor.reset(new VideoLayoutProcessor(this, config));
+
+    VideoSize rootSize;
+    m_layoutProcessor->getRootSize(rootSize);
+    YUVColor bgColor;
+    m_layoutProcessor->getBgColor(bgColor);
+
+    ELOG_DEBUG("Init rootSize(%u, %u), bgColor(%u, %u, %u)", rootSize.width, rootSize.height, bgColor.y, bgColor.cb, bgColor.cr);
+
+    if (m_hardwareAccelerated)
+        m_frameMixer.reset(new HardwareVideoFrameMixer(rootSize, bgColor));
+    else
+        m_frameMixer.reset(new SoftVideoFrameMixer(rootSize, bgColor));
+
     m_taskRunner->Start();
 
 #if ENABLE_WEBRTC_TRACE
@@ -60,18 +74,6 @@ VideoMixer::~VideoMixer()
 {
     closeAll();
     m_outputReceiver = nullptr;
-}
-
-void VideoMixer::initVideoLayout(const std::string& type, const std::string& rootSize,
-    const std::string& defaultBackgroundColor, const std::string& customLayout)
-{
-    VideoResolutionType resolution = VideoLayoutHelper::getVideoResolution(rootSize);
-    m_outputSize = VideoLayoutHelper::getVideoSize(resolution);
-
-    if (m_hardwareAccelerated)
-        m_frameMixer.reset(new HardwareVideoFrameMixer(type, rootSize, defaultBackgroundColor, customLayout));
-    else
-        m_frameMixer.reset(new SoftVideoFrameMixer(type, rootSize, defaultBackgroundColor, customLayout));
 }
 
 int32_t VideoMixer::addOutput(int payloadType)
@@ -106,7 +108,9 @@ int32_t VideoMixer::addOutput(int payloadType)
 
     // Fetch video size.
     // TODO: The size should be identical to the composited video size.
-    output->setSendCodec(outputFormat, m_outputSize);
+    VideoSize outputSize;
+    m_layoutProcessor->getRootSize(outputSize);
+    output->setSendCodec(outputFormat, outputSize);
     boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
     m_outputs[payloadType].reset(output);
 
@@ -181,6 +185,52 @@ int VideoMixer::deliverFeedback(char* buf, int len)
     return len;
 }
 
+void VideoMixer::updateRootSize(VideoSize& rootSize)
+{
+    for (std::map<int, boost::shared_ptr<VideoFrameSender>>::iterator it = m_outputs.begin(); it != m_outputs.end(); ++it) {
+        it->second->setVideoSize(rootSize);
+    }
+    m_frameMixer->setRootSize(rootSize);
+}
+
+void VideoMixer::updateBackgroundColor(YUVColor& bgColor)
+{
+    m_frameMixer->setBackgroundColor(bgColor);
+}
+
+void VideoMixer::updateLayoutSolution(LayoutSolution& solution)
+{
+    m_frameMixer->setLayoutSolution(solution);
+}
+
+void VideoMixer::onInputProcessorInitOK(int index)
+{
+    ELOG_DEBUG("onInputProcessorInitOK - index: %d", index);
+    m_layoutProcessor->addInput(index);
+}
+
+void VideoMixer::specifySourceRegion(uint32_t from, std::string& regionID)
+{
+    int index = getInput(from);
+    assert(index >= 0);
+
+    if (index >= 0)
+        m_layoutProcessor->specifyInputRegion(index, regionID);
+    else {
+        ELOG_ERROR("specifySourceRegion - no such a source %d", from);
+    }
+}
+
+bool VideoMixer::setResolution(const std::string& resolution)
+{
+    return m_layoutProcessor->setRootSize(resolution);
+}
+
+bool VideoMixer::setBackgroundColor(const std::string& color)
+{
+    return m_layoutProcessor->setBgColor(color);
+}
+
 IntraFrameCallback* VideoMixer::getIFrameCallback(int payloadType)
 {
     boost::shared_lock<boost::shared_mutex> lock(m_outputMutex);
@@ -216,13 +266,14 @@ int32_t VideoMixer::addSource(uint32_t from, bool isAudio, FeedbackSink* feedbac
     boost::upgrade_lock<boost::shared_mutex> lock(m_sourceMutex);
     std::map<uint32_t, boost::shared_ptr<VCMInputProcessor>>::iterator it = m_sinksForSources.find(from);
     if (it == m_sinksForSources.end() || !it->second) {
-        int index = assignSlot(from);
-        ELOG_DEBUG("addSource - assigned slot is %d", index);
+        int index = assignInput(from);
+        ELOG_DEBUG("addSource - assigned input index is %d", index);
 
         VCMInputProcessor* videoInputProcessor(new VCMInputProcessor(index, m_hardwareAccelerated));
         videoInputProcessor->init(new WoogeenTransport<erizo::VIDEO>(nullptr, feedback),
                                   m_frameMixer,
-                                  m_taskRunner);
+                                  m_taskRunner,
+                                  this);
 
         boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
         m_sinksForSources[from].reset(videoInputProcessor);
@@ -255,9 +306,10 @@ int32_t VideoMixer::removeSource(uint32_t from, bool isAudio)
         m_sinksForSources.erase(it);
         lock.unlock();
 
-        int index = getSlot(from);
+        int index = getInput(from);
         assert(index >= 0);
-        m_sourceSlotMap[index] = 0;
+        m_sourceInputMap[index] = 0;
+        m_layoutProcessor->removeInput(index);
         --m_participants;
         return 0;
     }
@@ -274,9 +326,10 @@ void VideoMixer::closeAll()
     while (sourceItor != m_sinksForSources.end()) {
         uint32_t source = sourceItor->first;
         m_sinksForSources.erase(sourceItor++);
-        int index = getSlot(source);
+        int index = getInput(source);
         assert(index >= 0);
-        m_sourceSlotMap[index] = 0;
+        m_sourceInputMap[index] = 0;
+        m_layoutProcessor->removeInput(index);
     }
     m_sinksForSources.clear();
     m_participants = 0;

@@ -116,11 +116,6 @@ class Gateway : public node::ObjectWrap {
   static v8::Handle<v8::Value> publishStream(const v8::Arguments& args);
   static v8::Handle<v8::Value> unpublishStream(const v8::Arguments& args);
 
-  /*
-   * configure the layout of this mixer. return false if the config is invalid
-   * Using FluidLayout if no layout is configured
-   */
-  static v8::Handle<v8::Value> configLayout(const v8::Arguments& args);
   static v8::Handle<v8::Value> setMixer(const v8::Arguments& args);
 };
 

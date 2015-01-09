@@ -63,7 +63,7 @@ private:
  */
 class OutOfProcessMixer : public Mixer {
 public:
-    OutOfProcessMixer(bool hardwareAccelerated);
+    OutOfProcessMixer(bool hardwareAccelerated, boost::property_tree::ptree& videoConf);
     ~OutOfProcessMixer();
 
 private:

@@ -40,21 +40,101 @@ exports.ErizoJSController = function (spec) {
             // hardware capability in some case.
             publishers[id] = true;
             var doInitMixer = function(hardwareAccelerated) {
+                var generateFluidTemplates = function(maxInput) {
+                    var result = [];
+
+                    var maxDiv = Math.sqrt(maxInput);
+                    if (maxDiv > Math.floor(maxDiv))
+                        maxDiv = Math.floor(maxDiv) + 1;
+                    else
+                        maxDiv = Math.floor(maxDiv);
+
+                    for (var divFactor = 1; divFactor <= maxDiv; divFactor++) {
+                        var regions = [];
+                        var relativeSize = 1.0 / divFactor;
+                        var id = 1;
+                        for (var y = 0; y < divFactor; y++)
+                            for(var x = 0; x < divFactor; x++) {
+                                var region = {"id": String(id++),
+                                              "left": x*1.0 / divFactor,
+                                              "top": y*1.0 / divFactor,
+                                              "relativesize": relativeSize,
+                                              "priority": 1.0};
+                                regions.push(region);
+                            }
+
+                        result.push({"maxinput": divFactor, "region": regions});
+                    }
+                    return result;
+                };
+
+                var generateLectureTemplates = function(maxInput) {
+                    var result = [ {"maxinput": 1, "region":[{"id": "1", "left": 0, "top": 0, "relativesize": 1.0, "priority": 1.0}]},
+                                   {"maxinput": 6, "region":[{"id": "1", "left": 0, "top": 0, "relativesize": 0.667, "priority": 1.0},
+                                                             {"id": "2", "left": 0.667, "top": 0, "relativesize": 0.333, "priority": 1.0},
+                                                             {"id": "3", "left": 0.667, "top": 0.333, "relativesize": 0.333, "priority": 1.0},
+                                                             {"id": "4", "left": 0.667, "top": 0.667, "relativesize": 0.333, "priority": 1.0},
+                                                             {"id": "5", "left": 0.333, "top": 0.667, "relativesize": 0.333, "priority": 1.0},
+                                                             {"id": "6", "left": 0, "top": 0.667, "relativesize": 0.333, "priority": 1.0}]}];
+                    var maxDiv = maxInput / 2;
+                    if (maxDiv > Math.floor(maxDiv))
+                        maxDiv = Math.floor(maxDiv) + 1;
+                    else
+                        maxDiv = Math.floor(maxDiv);
+
+                    for (var divFactor = 4; divFactor <= maxDiv; divFactor++) {
+                        var inputCount = divFactor * 2;
+                        var mainReginRelative = ((divFactor - 1) * 1.0 / divFactor);
+                        var minorRegionRelative = 1.0 / divFactor;
+
+                        var regions = [{"id": "1", "left": 0, "top": 0, "relativesize": mainReginRelative, "priority": 1.0}];
+                        var id = 2;
+                        for (var y = 0; y < divFactor; y++) {
+                            var region = {"id": String(id++),
+                                          "left": mainReginRelative,
+                                          "top": y*1.0 / divFactor,
+                                          "relativesize": minorRegionRelative,
+                                          "priority": 1.0};
+                            regions.push(region);
+                        }
+
+                        for (var x = divFactor - 2; x >= 0; x--) {
+                            var region = {"id": String(id++),
+                                          "left": x*1.0 / divFactor,
+                                          "top": mainReginRelative,
+                                          "relativesize": minorRegionRelative,
+                                          "priority": 1.0};
+                            regions.push(region);
+                        }
+                        result.push({"maxinput": divFactor * 2, "region": regions});
+                    }
+                    return result;
+                };
+
+                var layoutTemplates = {};
+
+                if (GLOBAL.config.erizo.videolayout.pattern == "fluid") {
+                    layoutTemplates = generateFluidTemplates(GLOBAL.config.erizo.videolayout.maxinput);
+                } else if (GLOBAL.config.erizo.videolayout.pattern == "lecture") {
+                    layoutTemplates = generateLectureTemplates(GLOBAL.config.erizo.videolayout.maxinput);
+                } else if (GLOBAL.config.erizo.videolayout.pattern == "custom") {
+                    var custom_templates = require('./../../etc/custom_video_layout');
+                    layoutTemplates = custom_templates.customvideolayout.videolayout;
+                } else
+                    layoutTemplates = generateFluidTemplates(GLOBAL.config.erizo.videolayout.maxinput);
+
                 var config = {
                     "mixer": true,
                     "oop": oop,
-                    "hardware": hardwareAccelerated
+                    "hardware": hardwareAccelerated,
+                    "video": {"resolution" : GLOBAL.config.erizo.videolayout.rootsize,
+                              "backgroundcolor" : GLOBAL.config.erizo.videolayout.backgroundcolor,
+                              "templates" : layoutTemplates}
                 };
                 var mixer = new addon.Gateway(JSON.stringify(config));
 
                 publishers[id] = mixer;
                 subscribers[id] = [];
-
-                mixer.configLayout(GLOBAL.config.erizo.videolayout.type,
-                    GLOBAL.config.erizo.videolayout.defaultrootsize,
-                    GLOBAL.config.erizo.videolayout.defaultbackgroundcolor,
-                    JSON.stringify(GLOBAL.config.erizo.videolayout.custom));
-
                 callback('callback', 'success');
             };
 

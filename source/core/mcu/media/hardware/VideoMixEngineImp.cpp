@@ -130,18 +130,7 @@ void VideoMixEngineImp::setresolution(unsigned int width, unsigned int height)
 void VideoMixEngineImp::setLayout(const CustomLayoutInfo* layout)
 {
     if (m_state == IN_SERVICE) {
-        if (m_vpp->bgColor.y != layout->rootColor.y
-                || m_vpp->bgColor.cb != layout->rootColor.cb
-                ||m_vpp->bgColor.cr != layout->rootColor.cr) {
-            setbackgroundcolor(&(layout->rootColor));
-        }
-
-        // TODO: Currently video root size does not support changing on the fly.
-        // Yet, the layout configuration does not have this restriction.
-        //if (m_vpp->width != layout.rootSize.width || m_vpp->height != layout.rootSize.height)
-        //setresolution(layout->rootSize.width, layout->rootSize.height);
-
-        setregions(&(layout->layoutMapping));
+        setregions(layout);
     }
 }
 

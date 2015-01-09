@@ -38,15 +38,24 @@
 
 namespace mcu {
 
+class VCMInputProcessorCallback {
+public:
+    virtual void onInputProcessorInitOK(int index) = 0;
+};
+
 class ExternalRenderer : public webrtc::VCMReceiveCallback {
 public:
     ExternalRenderer(int index,
                      boost::shared_ptr<VideoFrameMixer> frameHandler,
-                     VideoFrameProvider* provider)
+                     VideoFrameProvider* provider,
+                     VCMInputProcessorCallback* initCallback)
         : m_index(index)
         , m_frameHandler(frameHandler)
     {
+        assert(provider);
+        assert(initCallback);
         m_frameHandler->activateInput(index, FRAME_FORMAT_I420, provider);
+        initCallback->onInputProcessorInitOK(index);
     }
 
     virtual ~ExternalRenderer()
@@ -70,12 +79,15 @@ class ExternalDecoder : public webrtc::VideoDecoder {
 public:
     ExternalDecoder(int index,
                     boost::shared_ptr<VideoFrameMixer> frameHandler,
-                    VideoFrameProvider* provider)
+                    VideoFrameProvider* provider,
+                    VCMInputProcessorCallback* initCallback)
         : m_index(index)
         , m_frameHandler(frameHandler)
         , m_provider(provider)
+        , m_initCallback(initCallback)
     {
         assert(provider);
+        assert(initCallback);
     }
 
     virtual ~ExternalDecoder()
@@ -94,8 +106,10 @@ public:
         else if (codecSettings->codecType == webrtc::kVideoCodecH264)
             frameFormat = FRAME_FORMAT_H264;
 
-        if (m_frameHandler->activateInput(m_index, frameFormat, m_provider))
+        if (m_frameHandler->activateInput(m_index, frameFormat, m_provider)) {
+            m_initCallback->onInputProcessorInitOK(m_index);
             return 0;
+        }
 
         return -1;
     }
@@ -116,6 +130,7 @@ private:
     int m_index;
     boost::shared_ptr<VideoFrameMixer> m_frameHandler;
     VideoFrameProvider* m_provider;
+    VCMInputProcessorCallback* m_initCallback;
 };
 
 /**
@@ -160,7 +175,7 @@ public:
     int deliverAudioData(char*, int len);
     int deliverVideoData(char*, int len);
 
-    bool init(woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<VideoFrameMixer>, boost::shared_ptr<TaskRunner>);
+    bool init(woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<VideoFrameMixer>, boost::shared_ptr<TaskRunner>, VCMInputProcessorCallback*);
 
     void bindAudioForSync(int32_t voiceChannelId, webrtc::VoEVideoSync*);
 

@@ -57,11 +57,13 @@ public:
 // The composited I420VideoFrame will be handed over to one VideoFrameConsumer.
 class VideoFrameCompositor {
 public:
-    virtual bool activateInput(int slot) = 0;
-    virtual void deActivateInput(int slot) = 0;
-    virtual void pushInput(int slot, webrtc::I420VideoFrame*) = 0;
+    virtual bool activateInput(int input) = 0;
+    virtual void deActivateInput(int input) = 0;
+    virtual void pushInput(int input, webrtc::I420VideoFrame*) = 0;
 
-    virtual void setLayout(const VideoLayout&) = 0;
+    virtual void setRootSize(VideoSize& videoSize) = 0;
+    virtual void setBgColor(YUVColor& bgColor) = 0;
+    virtual void setLayoutSolution(LayoutSolution& solution) = 0;
 
     virtual bool setOutput(VideoFrameConsumer*) = 0;
     virtual void unsetOutput() = 0;
@@ -83,11 +85,13 @@ public:
 // It can have multiple outputs with different FrameFormat or framerate/bitrate settings.
 class VideoFrameMixer {
 public:
-    virtual bool activateInput(int slot, FrameFormat, VideoFrameProvider*) = 0;
-    virtual void deActivateInput(int slot) = 0;
-    virtual void pushInput(int slot, unsigned char* payload, int len) = 0;
+    virtual bool activateInput(int input, FrameFormat, VideoFrameProvider*) = 0;
+    virtual void deActivateInput(int input) = 0;
+    virtual void pushInput(int input, unsigned char* payload, int len) = 0;
 
-    virtual void setLayout(const VideoLayout&) = 0;
+    virtual void setRootSize(VideoSize& videoSize) = 0;
+    virtual void setBackgroundColor(YUVColor& bgColor) = 0;
+    virtual void setLayoutSolution(LayoutSolution& solution) = 0;
 
     virtual void setBitrate(int id, unsigned short bitrate) = 0;
     virtual void requestKeyFrame(int id) = 0;
