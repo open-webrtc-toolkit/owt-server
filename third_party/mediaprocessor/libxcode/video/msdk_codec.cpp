@@ -1339,15 +1339,13 @@ mfxStatus MSDKCodec::InitEncoder(MediaBuf &buf)
         coding_opt.Header.BufferId = MFX_EXTBUFF_CODING_OPTION;
         coding_opt.Header.BufferSz = sizeof(coding_opt);
         coding_opt.MaxDecFrameBuffering = mfx_video_param_.mfx.NumRefFrame;
-#ifdef ENABLE_ASTA_CONFIG
         coding_opt.AUDelimiter = MFX_CODINGOPTION_OFF;//No AUD
         coding_opt.RecoveryPointSEI = MFX_CODINGOPTION_OFF;//No SEI
         coding_opt.PicTimingSEI = MFX_CODINGOPTION_OFF;
         //when cVuiNalHrdParameters = MFX_CODINGOPTION_OFF
         //cause that the ouptu file unusual when setup the NumSlice > 1
-        coding_opt.VuiNalHrdParameters = MFX_CODINGOPTION_ON;
+        coding_opt.VuiNalHrdParameters = MFX_CODINGOPTION_OFF;
         coding_opt.VuiVclHrdParameters = MFX_CODINGOPTION_OFF;
-#endif
         m_EncExtParams.push_back(reinterpret_cast<mfxExtBuffer *>(&coding_opt));
     }
 
