@@ -42,7 +42,7 @@ class Mixer : public woogeen_base::Gateway, public erizo::MediaSink, public eriz
     DECLARE_LOGGER();
 
 public:
-    Mixer(bool hardwareAccelerated);
+    Mixer(bool hardwareAccelerated, boost::property_tree::ptree& videoConf);
     virtual ~Mixer();
 
     // Implements Gateway.
@@ -71,8 +71,6 @@ public:
     int32_t addSource(uint32_t id, bool isAudio, erizo::FeedbackSink*, const std::string& participantId);
     int32_t removeSource(uint32_t id, bool isAudio);
     int32_t bindAV(uint32_t audioSource, uint32_t videoSource);
-    void configLayout(const std::string& type, const std::string& defaultRootSize,
-        const std::string& defaultBackgroundColor, const std::string& customLayout);
     erizo::MediaSink* mediaSink() { return this; }
 
     // Implements MediaSink.
@@ -90,7 +88,7 @@ protected:
     boost::shared_ptr<AudioMixer> m_audioMixer;
 
 private:
-    bool init(bool hardwareAccelerated);
+    bool init(bool hardwareAccelerated, boost::property_tree::ptree& videoConf);
     /**
      * Closes all the subscribers and the publisher, the object is useless after this
      */

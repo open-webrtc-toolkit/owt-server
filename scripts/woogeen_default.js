@@ -126,9 +126,10 @@ config.erizo.openh264Enabled = false;
 // Config the mixed video layout. Default is "fluid" layout.
 // Otherwise, "custom" layout can be used for video layout customization.
 config.erizo.videolayout = {};
-config.erizo.videolayout.type = "fluid";
-config.erizo.videolayout.defaultrootsize = "vga"; // Default 640x480 root size. See docs for more details.
-config.erizo.videolayout.defaultbackgroundcolor = "black"; // Default black root background color . See docs for more details.
+config.erizo.videolayout.rootsize = "vga";
+config.erizo.videolayout.backgroundcolor = "black";
+config.erizo.videolayout.maxinput = 16;
+config.erizo.videolayout.pattern = "fluid"; // "fluid" or "lecture" or "custom"
 
 /***** END *****/
 // Following lines are always needed.

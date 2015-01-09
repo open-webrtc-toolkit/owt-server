@@ -30,8 +30,8 @@ namespace mcu {
  */
 class InProcessMixer : public Mixer {
 public:
-    InProcessMixer(bool hardwareAccelerated)
-        : Mixer(hardwareAccelerated)
+    InProcessMixer(bool hardwareAccelerated, boost::property_tree::ptree& videoConf)
+        : Mixer(hardwareAccelerated, videoConf)
     {
     }
 

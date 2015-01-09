@@ -34,14 +34,16 @@ namespace mcu {
 
 class SoftVideoFrameMixer : public VideoFrameMixer {
 public:
-    SoftVideoFrameMixer(const std::string& layoutType, const std::string& rootSize, const std::string& bgColor, const std::string& customLayout);
+    SoftVideoFrameMixer(VideoSize rootSize, YUVColor bgColor);
     ~SoftVideoFrameMixer();
 
-    bool activateInput(int slot, FrameFormat, VideoFrameProvider*);
-    void deActivateInput(int slot);
-    void pushInput(int slot, unsigned char* payload, int len);
+    bool activateInput(int input, FrameFormat, VideoFrameProvider*);
+    void deActivateInput(int input);
+    void pushInput(int input, unsigned char* payload, int len);
 
-    void setLayout(const VideoLayout&);
+    void setRootSize(VideoSize& rootSize);
+    void setBackgroundColor(YUVColor& bgColor);
+    void setLayoutSolution(LayoutSolution& solution);
 
     void setBitrate(int id, unsigned short bitrate);
     void requestKeyFrame(int id);
@@ -54,9 +56,9 @@ private:
     boost::scoped_ptr<FakedVideoFrameEncoder> m_encoder;
 };
 
-SoftVideoFrameMixer::SoftVideoFrameMixer(const std::string& layoutType, const std::string& rootSize, const std::string& bgColor, const std::string& customLayout)
+SoftVideoFrameMixer::SoftVideoFrameMixer(VideoSize rootSize, YUVColor bgColor)
 {
-    m_compositor.reset(new SoftVideoCompositor(layoutType, rootSize, bgColor, customLayout));
+    m_compositor.reset(new SoftVideoCompositor(rootSize, bgColor));
     m_encoder.reset(new FakedVideoFrameEncoder(m_compositor));
 }
 
@@ -65,38 +67,48 @@ SoftVideoFrameMixer::~SoftVideoFrameMixer()
     m_decoders.clear();
 }
 
-inline bool SoftVideoFrameMixer::activateInput(int slot, FrameFormat format, VideoFrameProvider* provider)
+inline bool SoftVideoFrameMixer::activateInput(int input, FrameFormat format, VideoFrameProvider* provider)
 {
     assert(format == FRAME_FORMAT_I420);
-    std::map<int, boost::shared_ptr<VideoFrameDecoder>>::iterator it = m_decoders.find(slot);
+    std::map<int, boost::shared_ptr<VideoFrameDecoder>>::iterator it = m_decoders.find(input);
     if (it != m_decoders.end())
         return false;
 
-    I420VideoFrameDecoder* decoder = new I420VideoFrameDecoder(slot, m_compositor);
+    I420VideoFrameDecoder* decoder = new I420VideoFrameDecoder(input, m_compositor);
     decoder->setInput(format, provider);
-    m_decoders[slot].reset(decoder);
+    m_decoders[input].reset(decoder);
     return true;
 }
 
-inline void SoftVideoFrameMixer::deActivateInput(int slot)
+inline void SoftVideoFrameMixer::deActivateInput(int input)
 {
-    std::map<int, boost::shared_ptr<VideoFrameDecoder>>::iterator it = m_decoders.find(slot);
+    std::map<int, boost::shared_ptr<VideoFrameDecoder>>::iterator it = m_decoders.find(input);
     if (it != m_decoders.end()) {
         it->second->unsetInput();
         m_decoders.erase(it);
     }
 }
 
-inline void SoftVideoFrameMixer::pushInput(int slot, unsigned char* payload, int len)
+inline void SoftVideoFrameMixer::pushInput(int input, unsigned char* payload, int len)
 {
-    std::map<int, boost::shared_ptr<VideoFrameDecoder>>::iterator it = m_decoders.find(slot);
+    std::map<int, boost::shared_ptr<VideoFrameDecoder>>::iterator it = m_decoders.find(input);
     if (it != m_decoders.end())
         it->second->onFrame(FRAME_FORMAT_I420, payload, len, 0);
 }
 
-inline void SoftVideoFrameMixer::setLayout(const VideoLayout& layout)
+inline void SoftVideoFrameMixer::setRootSize(VideoSize& rootSize)
 {
-    m_compositor->setLayout(layout);
+    m_compositor->setRootSize(rootSize);
+}
+
+inline void SoftVideoFrameMixer::setBackgroundColor(YUVColor& bgColor)
+{
+    m_compositor->setBgColor(bgColor);
+}
+
+inline void SoftVideoFrameMixer::setLayoutSolution(LayoutSolution& solution)
+{
+    m_compositor->setLayoutSolution(solution);
 }
 
 inline void SoftVideoFrameMixer::setBitrate(int id, unsigned short bitrate)

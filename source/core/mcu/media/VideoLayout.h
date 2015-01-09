@@ -51,25 +51,6 @@ static const uint32_t MAX_VIDEO_SLOT_NUMBER = 16;
          <region id="6" left="0" top="67%" relativesize="1/3"/>
       </videolayout>
  */
-enum VideoResolutionType
-{
-    cif = 0,//352x288
-    vga,
-    hd_720p,
-    sif, //320x240
-    hvga, //480x320
-    r480x360,
-    qcif, //176x144
-    r192x144,
-    hd_1080p,
-    uhd_4k
-};
-
-enum VideoBackgroundColor
-{
-    black = 0, //YUV: 0x00,0x80,0x80
-    white, //YUV: 0xFF,0x80,0x80
-};
 
 struct VideoSize {
     unsigned int width;
@@ -90,74 +71,57 @@ struct Region {
     float priority;
 };
 
-struct VideoLayout {
-    VideoResolutionType rootSize;
-    VideoBackgroundColor rootColor;
+typedef std::map<int/*input*/, Region> LayoutSolution;
 
-    // Valid for customized video layout
-    unsigned int maxInput;
-    std::vector<Region> regions;
-
-    // Valid for fluid video layout
-    unsigned int divFactor;
+class LayoutConsumer {
+public:
+    virtual void updateRootSize(VideoSize& rootSize) = 0;
+    virtual void updateBackgroundColor(YUVColor& bgColor) = 0;
+    virtual void updateLayoutSolution(LayoutSolution& solution) = 0;
 };
 
 // Default video layout configuration
 const VideoSize DEFAULT_VIDEO_SIZE = {640, 480};
 const YUVColor DEFAULT_VIDEO_BG_COLOR = {0x00, 0x80, 0x80};
 
-// Video resolutions definition
-const std::map<std::string, VideoResolutionType> VideoResolutions = {{"cif", cif}, {"vga", vga}, {"hd720p", hd_720p}, {"sif", sif},
-  {"hvga",hvga}, {"r480x360", r480x360}, {"qcif", qcif}, {"r192x144", r192x144}, {"hd1080p", hd_1080p}, {"uhd_4k", uhd_4k}};
+const std::map<std::string, VideoSize> VideoResolution =
+    {{"cif", {352, 288}},
+     {"vga", {640, 480}},
+     {"hd_720p", {1280, 720}},
+     {"sif", {320, 240}},
+     {"hvga", {480, 320}},
+     {"r480x360", {480, 360}},
+     {"qcif", {176, 144}},
+     {"r192x144", {192, 144}},
+     {"hd_1080p", {1920, 1080}},
+     {"uhd_4k", {3840, 2160}}};
 
-const std::map<VideoResolutionType, VideoSize> VideoSizes = {{cif, {352, 288}}, {vga, {640, 480}}, {hd_720p, {1280, 720}}, {sif, {320, 240}},
-  {hvga, {480, 320}}, {r480x360, {480, 360}}, {qcif, {176, 144}}, {r192x144, {192, 144}}, {hd_1080p, {1920, 1080}}, {uhd_4k, {3840, 2160}}};
+class VideoResolutionHelper {
+public:
+    static bool getVideoSize(const std::string& resolution, VideoSize& videoSize) {
+        std::map<std::string, VideoSize>::const_iterator it = VideoResolution.find(resolution);
+        if (it != VideoResolution.end()) {
+            videoSize = it->second;
+            return true;
+        }
+        return false;
+    }
+};
 
 // Video background colors definition
-const std::map<std::string, VideoBackgroundColor> VideoColors = {{"black", black}, {"white", white}};
+const std::map<std::string, YUVColor> VideoColors = 
+    {{"black", {0x00, 0x80, 0x80}}, 
+     {"white", {0xFF, 0x80, 0x80}}};
 
-const std::map<VideoBackgroundColor, YUVColor> VideoYuvColors = {{black, {0x00, 0x80, 0x80}}, {white, {0xFF, 0x80, 0x80}}};
-
-class VideoLayoutHelper {
+class VideoColorHelper {
 public:
-    static VideoResolutionType getVideoResolution(const std::string& resolutionDescription)
-    {
-        // Fetch video resolution
-        std::map<std::string, VideoResolutionType>::const_iterator it = VideoResolutions.find(resolutionDescription);
-        if (it != VideoResolutions.end())
-            return it->second;
-
-        return VideoResolutionType::vga;
-    }
-
-    static VideoSize getVideoSize(VideoResolutionType videoResolution)
-    {
-        // Fetch video size
-        std::map<VideoResolutionType, VideoSize>::const_iterator it = VideoSizes.find(videoResolution);
-        if (it != VideoSizes.end())
-            return it->second;
-
-        return DEFAULT_VIDEO_SIZE;
-    }
-
-    static VideoBackgroundColor getVideoBackgroundColor(const std::string& colorDescription)
-    {
-        // Fetch video background color
-        std::map<std::string, VideoBackgroundColor>::const_iterator it = VideoColors.find(colorDescription);
-        if (it != VideoColors.end())
-            return it->second;
-
-        return VideoBackgroundColor::black;
-    }
-
-    static YUVColor getVideoYUVColor(VideoBackgroundColor videoBgColor)
-    {
-        // Fetch video YUV color
-        std::map<VideoBackgroundColor, YUVColor>::const_iterator it = VideoYuvColors.find(videoBgColor);
-        if (it != VideoYuvColors.end())
-            return it->second;
-
-        return DEFAULT_VIDEO_BG_COLOR;
+    static bool getVideoColor(const std::string& name, YUVColor& color) {
+        std::map<std::string, YUVColor>::const_iterator it = VideoColors.find(name);
+        if (it != VideoColors.end()) {
+            color = it->second;
+            return true;
+        }
+        return false;
     }
 };
 
