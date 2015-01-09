@@ -150,6 +150,11 @@ Nuve.prototype.deleteRoom = function (roomId, callback) {
     this.send('DELETE', undefined, 'rooms/' + roomId, callback);
 };
 
+Nuve.prototype.updateRoom = function (roomId, updates, callback) {
+    roomId = roomId || null;
+    this.send('PUT', (updates || {}), 'rooms/' + roomId, callback);
+};
+
 Nuve.prototype.createService = function (name, key, callback) {
     this.send('POST', {name: name, key: key}, 'services', callback);
 };

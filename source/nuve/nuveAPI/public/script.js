@@ -47,7 +47,10 @@ function getCookie (cname) {
         }
       };
       if (document.getElementById('createRoom').checked) {
-        var room = {name: document.getElementById('room1').value};
+        var room = {
+          name: document.getElementById('room1').value,
+          options: JSON.parse(document.getElementById('option1').value)
+        };
         nuve.createRoom(room, callback);
       } else if (document.getElementById('getRooms').checked) {
         nuve.getRooms(callback);
@@ -55,6 +58,10 @@ function getCookie (cname) {
         nuve.getRoom(document.getElementById('room1').value, callback);
       } else if (document.getElementById('deleteRoom').checked) {
         nuve.deleteRoom(document.getElementById('room1').value, callback);
+      } else if (document.getElementById('updateRoom').checked) {
+        nuve.updateRoom(document.getElementById('room1').value,
+          JSON.parse(document.getElementById('option1').value),
+          callback);
       } else if (document.getElementById('createService').checked) {
         nuve.createService(document.getElementById('service1').value,
           document.getElementById('key1').value, callback);

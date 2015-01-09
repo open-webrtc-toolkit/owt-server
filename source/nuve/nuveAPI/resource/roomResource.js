@@ -2,7 +2,7 @@
 var roomRegistry = require('./../mdb/roomRegistry');
 var serviceRegistry = require('./../mdb/serviceRegistry');
 var cloudHandler = require('../cloudHandler');
-
+var Room = require('./room');
 var logger = require('./../logger').logger;
 
 // Logger
@@ -65,6 +65,37 @@ exports.deleteRoom = function (req, res) {
                 }
             });
             res.send('Room deleted');
+        }
+    });
+};
+
+exports.updateRoom = function (req, res) {
+    'use strict';
+    doInit(req.params.room, function (room) {
+        if (currentService === undefined) {
+            res.status(401).send('Client unathorized');
+        } else if (room === undefined) {
+            log.info('Room ', req.params.room, ' does not exist');
+            res.status(404).send('Room does not exist');
+        } else {
+            var updates = req.body || {};
+            var newRoom = Room.create(updates);
+            if (newRoom.validate()) {
+                var currentRoom = Room.create(room);
+                Object.keys(newRoom).map(function (k) {
+                    room[k] = newRoom[k] || currentRoom[k];
+                });
+                roomRegistry.addRoom(room, function (result) {
+                    serviceRegistry.updateService(currentService);
+                    if (result == 1) {
+                      res.send(room);
+                    } else {
+                      res.send(result);
+                    }
+                });
+            } else {
+                res.send(room);
+            }
         }
     });
 };
