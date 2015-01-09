@@ -3,7 +3,7 @@ var N = N || {};
 
 N.API = (function (N) {
     "use strict";
-    var createRoom, getRooms, getRoom, deleteRoom, createToken, createService, getServices, getService, deleteService, getUsers, getUser, deleteUser, params, send, calculateSignature, init;
+    var createRoom, getRooms, getRoom, deleteRoom, updateRoom, createToken, createService, getServices, getService, deleteService, getUsers, getUser, deleteUser, params, send, calculateSignature, init;
 
     params = {
         service: undefined,
@@ -39,6 +39,10 @@ N.API = (function (N) {
 
     deleteRoom = function (room, callback, callbackError, params) {
         send(callback, callbackError, 'DELETE', undefined, 'rooms/' + room, params);
+    };
+
+    updateRoom = function (roomId, options, callback, callbackError, params) {
+        send(callback, callbackError, 'PUT', (options || {}), 'rooms/' + roomId, params);
     };
 
     createToken = function (room, username, role, callback, callbackError, params) {
@@ -181,6 +185,7 @@ N.API = (function (N) {
         getRooms: getRooms,
         getRoom: getRoom,
         deleteRoom: deleteRoom,
+        updateRoom: updateRoom,
         createToken: createToken,
         createService: createService,
         getServices: getServices,

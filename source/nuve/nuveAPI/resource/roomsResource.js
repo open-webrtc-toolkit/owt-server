@@ -1,7 +1,7 @@
 /*global exports, require, console*/
 var roomRegistry = require('./../mdb/roomRegistry');
 var serviceRegistry = require('./../mdb/serviceRegistry');
-
+var Room = require('./room');
 var logger = require('./../logger').logger;
 
 // Logger
@@ -31,7 +31,7 @@ exports.createRoom = function (req, res) {
         res.status(404).send('Service not found');
         return;
     }
-    if (req.body.name === undefined) {
+    if (typeof req.body.name !== 'string' || req.body.name === '') {
         log.info('Invalid room');
         res.status(404).send('Invalid room');
         return;
@@ -54,18 +54,21 @@ exports.createRoom = function (req, res) {
             });
         }
     } else {
-        room = {name: req.body.name};
-        
-        if (req.body.options.p2p) {
-            room.p2p = true;
-        }
-        if (req.body.options.data) {
-            room.data = req.body.options.data;
+        room = Room.create({
+            name: req.body.name,
+            mode: req.body.options.mode || 0, // type number
+            publishLimit: req.body.options.publishLimit || 16, // type number
+            userLimit: req.body.options.userLimit || 100, // type number
+            mediaMixing: req.body.options.mediaMixing || null, // type object
+            needRecording: req.body.options.needRecording || false // type boolean
+        });
+        if (!room.validate()) {
+            room = Room.createDefault(req.body.name);
         }
         roomRegistry.addRoom(room, function (result) {
             currentService.rooms.push(result);
             serviceRegistry.updateService(currentService);
-            log.info('Room created:', req.body.name, 'for service', currentService.name, 'p2p = ', room.p2p);
+            log.info('Room created:', req.body.name, 'for service', currentService.name);
             res.send(result);
         });
     }

@@ -76,7 +76,9 @@ var generateToken = function (callback) {
     // Values to be filled from the erizoController
     token.secure = false;
 
-    if (currentRoom.p2p) {
+    if (currentRoom.p2p || currentRoom.mode === 1) {
+        // FIXME: work around for current room configuration in nuve not to break p2p conference.
+        // when applying room configuration, *reconsider* p2p mode setting.
         token.p2p = true;
     }
 
