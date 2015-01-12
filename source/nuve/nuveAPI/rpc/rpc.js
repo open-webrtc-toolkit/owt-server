@@ -82,10 +82,11 @@ exports.connect = function () {
 
 var callbackError = function (corrID) {
     "use strict";
-
-    map[corrID].fn('timeout');
+    for (var i in map[corrID].fn) {
+        map[corrID].fn[i]('timeout');
+    }
     delete map[corrID];
-};
+}
 
 /*
  * Calls remotely the 'method' function defined in rpcPublic of 'to'.
