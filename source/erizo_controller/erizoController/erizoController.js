@@ -881,7 +881,7 @@ exports.getUsersInRoom = function (room, callback) {
 
     var users = [], sockets, id;
     if (rooms[room] === undefined) {
-        return safeCall(callback, users);
+        return safeCall(callback, undefined);
     }
 
     sockets = rooms[room].sockets;
@@ -931,8 +931,6 @@ exports.deleteUser = function (user, room, callback) {
         log.error('User', user, 'does not exist');
         return safeCall(callback, 'User does not exist', 404);
     }
-
-
 };
 
 
@@ -972,6 +970,14 @@ exports.deleteRoom = function (roomId, callback) {
     log.info('Deleted room ', roomId, rooms);
     safeCall(callback, 'Success');
 };
+
+/*
+ * Apply new configuration.
+ */
+exports.updateConfig = function (conf, callback) {
+    safeCall(callback, 'Success');
+};
+
 
 function spawnAgent (id) { // called once.
     var spawn = require('child_process').spawn;
