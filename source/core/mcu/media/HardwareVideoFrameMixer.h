@@ -21,9 +21,9 @@
 #ifndef HardwareVideoFrameMixer_h
 #define HardwareVideoFrameMixer_h
 
-#include "Config.h"
 #include "JobTimer.h"
 #include "VideoFramePipeline.h"
+#include "VideoLayout.h"
 
 #include "hardware/VideoMixEngine.h"
 
@@ -84,30 +84,27 @@ private:
     boost::scoped_ptr<JobTimer> m_jobTimer;
 };
 
-class HardwareVideoFrameMixer : public VideoFrameMixer, public ConfigListener {
+class VideoLayoutProcessor;
+class HardwareVideoFrameMixer : public VideoFrameMixer{
     DECLARE_LOGGER();
 public:
-    HardwareVideoFrameMixer(const std::string& layoutType, const std::string& rootSize, const std::string& bgColor, const std::string& customLayout);
+    HardwareVideoFrameMixer(VideoSize rootSize, YUVColor bgColor);
     virtual ~HardwareVideoFrameMixer();
 
-    bool activateInput(int slot, FrameFormat, VideoFrameProvider*);
-    void deActivateInput(int slot);
-    void pushInput(int slot, unsigned char* payload, int len);
+    bool activateInput(int input, FrameFormat, VideoFrameProvider*);
+    void deActivateInput(int input);
+    void pushInput(int input, unsigned char* payload, int len);
 
-    void setLayout(const VideoLayout&);
+    void setRootSize(VideoSize& rootSize);
+    void setBackgroundColor(YUVColor& bgColor);
+    void setLayoutSolution(LayoutSolution& solution);
 
     void setBitrate(int id, unsigned short bitrate);
     void requestKeyFrame(int id);
     bool activateOutput(int id, FrameFormat, unsigned int framerate, unsigned short bitrate, VideoFrameConsumer*);
     void deActivateOutput(int id);
 
-    void onConfigChanged();
-
 private:
-    bool onSlotNumberChanged(uint32_t newSlotNum);
-
-    uint32_t m_configListenerId;
-    CustomLayoutInfo m_currentLayout;
     boost::shared_ptr<VideoMixEngine> m_engine;
     std::map<int, boost::shared_ptr<HardwareVideoFrameMixerInput>> m_inputs;
     std::map<int, boost::shared_ptr<HardwareVideoFrameMixerOutput>> m_outputs;

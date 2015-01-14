@@ -46,6 +46,29 @@ VCMOutputProcessor::~VCMOutputProcessor()
     close();
 }
 
+bool VCMOutputProcessor::setVideoSize(VideoSize& videoSize)
+{
+    VideoCodec videoCodec;
+    bool validCodec = false;
+    validCodec = (m_videoEncoder->GetEncoder(&videoCodec) == 0);
+
+    if (validCodec) {
+        videoCodec.width = videoSize.width;
+        videoCodec.height = videoSize.height;
+        // TODO: Set startBitrate, minBitrate and maxBitrate of the codec according to the (future) configurable parameters.
+        uint32_t targetBitrate = calcBitrate(videoCodec.width, videoCodec.height) * (m_sendFormat == FRAME_FORMAT_VP8 ? 0.9 : 1);
+        videoCodec.maxBitrate = targetBitrate;
+        videoCodec.minBitrate = targetBitrate / 4;
+        videoCodec.startBitrate = targetBitrate;
+
+        if (m_videoEncoder && m_videoEncoder->SetEncoder(videoCodec) != -1) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 bool VCMOutputProcessor::setSendCodec(FrameFormat frameFormat, VideoSize videoSize)
 {
     VideoCodec videoCodec;

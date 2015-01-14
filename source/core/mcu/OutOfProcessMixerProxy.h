@@ -72,8 +72,6 @@ public:
     int32_t addSource(uint32_t id, bool isAudio, erizo::FeedbackSink*, const std::string& participantId) { return -1; }
     int32_t removeSource(uint32_t id, bool isAudio) { return -1; }
     int32_t bindAV(uint32_t audioId, uint32_t videoId) { return -1; }
-    void configLayout(const std::string& type, const std::string& defaultRootSize,
-        const std::string& defaultBackgroundColor, const std::string& customLayout) { }
     erizo::MediaSink* mediaSink() { return this; }
 
     // Implement MediaSink.

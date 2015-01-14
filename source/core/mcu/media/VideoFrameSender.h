@@ -43,6 +43,7 @@ public:
 
     virtual ~VideoFrameSender() { }
 
+    virtual bool setVideoSize(VideoSize& videoSize) = 0;
     virtual bool setSendCodec(FrameFormat, VideoSize) = 0;
     virtual uint32_t sendSSRC() = 0;
     virtual woogeen_base::IntraFrameCallback* iFrameCallback() = 0;

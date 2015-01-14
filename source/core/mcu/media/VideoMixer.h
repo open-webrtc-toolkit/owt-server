@@ -21,8 +21,7 @@
 #ifndef VideoMixer_h
 #define VideoMixer_h
 
-#include "VideoLayout.h"
-
+#include <boost/property_tree/ptree.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/shared_mutex.hpp>
 #include <logger.h>
@@ -31,6 +30,9 @@
 #include <MediaSourceConsumer.h>
 #include <WebRTCFeedbackProcessor.h>
 #include <vector>
+
+#include "VideoLayout.h"
+#include "VCMInputProcessor.h"
 
 namespace webrtc {
 class VoEVideoSync;
@@ -43,6 +45,7 @@ class VCMInputProcessor;
 class VideoFrameMixer;
 class VideoFrameSender;
 struct Layout;
+class VideoLayoutProcessor;
 
 static const int MIXED_VP8_VIDEO_STREAM_ID = 2;
 static const int MIXED_H264_VIDEO_STREAM_ID = 3;
@@ -50,14 +53,12 @@ static const int MIXED_H264_VIDEO_STREAM_ID = 3;
 /**
  * Receives media from several sources, mixed into one stream and retransmits it to the RTPDataReceiver.
  */
-class VideoMixer : public woogeen_base::MediaSourceConsumer, public erizo::MediaSink, public erizo::FeedbackSink {
+class VideoMixer : public woogeen_base::MediaSourceConsumer, public erizo::MediaSink, public erizo::FeedbackSink, public LayoutConsumer, public VCMInputProcessorCallback {
     DECLARE_LOGGER();
 
 public:
-    VideoMixer(erizo::RTPDataReceiver*, bool hardwareAccelerated);
+    VideoMixer(erizo::RTPDataReceiver*, bool hardwareAccelerated, boost::property_tree::ptree& config);
     virtual ~VideoMixer();
-
-    void initVideoLayout(const std::string&, const std::string&, const std::string&, const std::string&);
 
     // Video output related methods.
     int32_t addOutput(int payloadType);
@@ -82,13 +83,26 @@ public:
     // Implements FeedbackSink.
     int deliverFeedback(char* buf, int len);
 
+    // Implements LayoutConsumer
+    void updateRootSize(VideoSize& rootSize);
+    void updateBackgroundColor(YUVColor& bgColor);
+    void updateLayoutSolution(LayoutSolution& solution);
+
+    // Implements VCMInputProcessorInitCallback
+    void onInputProcessorInitOK(int index);
+
+    // Layout related operations
+    void specifySourceRegion(uint32_t from, std::string& regionID);
+    bool setResolution(const std::string& resolution);
+    bool setBackgroundColor(const std::string& color);
+
 private:
     void closeAll();
 
-    int assignSlot(uint32_t source);
+    int assignInput(uint32_t source);
     // Find the slot number for the corresponding source
     // return -1 if not found
-    int getSlot(uint32_t source);
+    int getInput(uint32_t source);
 
     uint32_t m_participants;
 
@@ -96,32 +110,31 @@ private:
     erizo::RTPDataReceiver* m_outputReceiver;
     boost::shared_mutex m_sourceMutex;
     std::map<uint32_t, boost::shared_ptr<VCMInputProcessor>> m_sinksForSources;
-    std::vector<uint32_t> m_sourceSlotMap;    // each source will be allocated one index
+    std::vector<uint32_t> m_sourceInputMap;    // each source will be allocated one index
     bool m_addSourceOnDemand;
-
+    boost::scoped_ptr<VideoLayoutProcessor> m_layoutProcessor;
     bool m_hardwareAccelerated;
     boost::shared_ptr<VideoFrameMixer> m_frameMixer;
-    VideoSize m_outputSize;
     boost::shared_mutex m_outputMutex;
     std::map<int, boost::shared_ptr<VideoFrameSender>> m_outputs;
 };
 
-inline int VideoMixer::assignSlot(uint32_t source)
+inline int VideoMixer::assignInput(uint32_t source)
 {
-    for (uint32_t i = 0; i < m_sourceSlotMap.size(); i++) {
-        if (!m_sourceSlotMap[i]) {
-            m_sourceSlotMap[i] = source;
+    for (uint32_t i = 0; i < m_sourceInputMap.size(); i++) {
+        if (!m_sourceInputMap[i]) {
+            m_sourceInputMap[i] = source;
             return i;
         }
     }
-    m_sourceSlotMap.push_back(source);
-    return m_sourceSlotMap.size() - 1;
+    m_sourceInputMap.push_back(source);
+    return m_sourceInputMap.size() - 1;
 }
 
-inline int VideoMixer::getSlot(uint32_t source)
+inline int VideoMixer::getInput(uint32_t source)
 {
-    for (uint32_t i = 0; i < m_sourceSlotMap.size(); i++) {
-        if (m_sourceSlotMap[i] == source)
+    for (uint32_t i = 0; i < m_sourceInputMap.size(); i++) {
+        if (m_sourceInputMap[i] == source)
             return i;
     }
     return -1;

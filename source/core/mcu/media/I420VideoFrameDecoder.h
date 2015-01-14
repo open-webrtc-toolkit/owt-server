@@ -29,7 +29,7 @@ namespace mcu {
 
 class I420VideoFrameDecoder : public VideoFrameDecoder {
 public:
-    I420VideoFrameDecoder(int slot, boost::shared_ptr<VideoFrameCompositor>);
+    I420VideoFrameDecoder(int input, boost::shared_ptr<VideoFrameCompositor>);
     ~I420VideoFrameDecoder();
 
     bool setInput(FrameFormat, VideoFrameProvider*);
@@ -37,27 +37,27 @@ public:
     void onFrame(FrameFormat, unsigned char* payload, int len, unsigned int ts);
 
 private:
-    int m_slot;
+    int m_input;
     boost::shared_ptr<VideoFrameCompositor> m_compositor;
 };
 
-I420VideoFrameDecoder::I420VideoFrameDecoder(int slot, boost::shared_ptr<VideoFrameCompositor> compositor)
-    : m_slot(slot)
+I420VideoFrameDecoder::I420VideoFrameDecoder(int input, boost::shared_ptr<VideoFrameCompositor> compositor)
+    : m_input(input)
     , m_compositor(compositor)
 {
-    m_compositor->activateInput(m_slot);
+    m_compositor->activateInput(m_input);
 }
 
 I420VideoFrameDecoder::~I420VideoFrameDecoder()
 {
-    m_compositor->deActivateInput(m_slot);
+    m_compositor->deActivateInput(m_input);
 }
 
 inline void I420VideoFrameDecoder::onFrame(FrameFormat format, unsigned char* payload, int len, unsigned int ts)
 {
     assert(format == FRAME_FORMAT_I420);
     webrtc::I420VideoFrame* frame = reinterpret_cast<webrtc::I420VideoFrame*>(payload);
-    m_compositor->pushInput(m_slot, frame);
+    m_compositor->pushInput(m_input, frame);
 }
 
 inline bool I420VideoFrameDecoder::setInput(FrameFormat format, VideoFrameProvider*)
