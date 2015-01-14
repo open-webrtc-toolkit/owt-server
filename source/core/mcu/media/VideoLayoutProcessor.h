@@ -18,38 +18,50 @@
  * and approved by Intel in writing.
  */
 
-#include "InProcessMixer.h"
-#include "OutOfProcessMixer.h"
-#include "OutOfProcessMixerProxy.h"
-#include "WebRTCGateway.h"
- 
-#include <boost/property_tree/json_parser.hpp>
+#ifndef VideoLayoutProcessor_h
+#define VideoLayoutProcessor_h
+
 #include <boost/property_tree/ptree.hpp>
+#include <map>
+#include <vector>
+#include <boost/shared_ptr.hpp>
+#include <logger.h>
 
-woogeen_base::Gateway* woogeen_base::Gateway::createGatewayInstance(const std::string& customParams)
-{
-    // FIXME: Figure out a more reliable approach to validating the input parameter.
-    if (customParams != "" && customParams != "undefined") {
-        boost::property_tree::ptree pt;
-        std::istringstream is(customParams);
-        boost::property_tree::read_json(is, pt);
-        bool isMixer = pt.get<bool>("mixer");
- 
-        if (isMixer) {
-            bool outOfProcess = pt.get<bool>("oop");
-            bool hardwareAccelerated = pt.get<bool>("hardware");
+#include "VideoLayout.h"
 
-            if (outOfProcess)
-                return new mcu::OutOfProcessMixer(hardwareAccelerated, pt.get_child("video"));
+namespace mcu {
 
-            return new mcu::InProcessMixer(hardwareAccelerated, pt.get_child("video"));
-        }
-    }
+class VideoLayoutProcessor{
+    DECLARE_LOGGER();
+public:
+    VideoLayoutProcessor(LayoutConsumer* consumer, boost::property_tree::ptree& layoutConfig);
+    virtual ~VideoLayoutProcessor();
 
-    return new mcu::WebRTCGateway();
+    bool getRootSize(VideoSize& rootSize);
+    bool setRootSize(const std::string& resolution);
+
+    bool getBgColor(YUVColor& bgColor);
+    bool setBgColor(const std::string& color);
+
+    void addInput(int input, bool toFront = false);
+    void addInput(int input, std::string& specifiedRegionID);
+    void removeInput(int input);
+    void promoteInput(int input, size_t magnitude);
+    void specifyInputRegion(int input, std::string& regionID);
+
+private:
+    void updateInputPositions();
+    void chooseRegions();
+
+private:
+    LayoutConsumer* m_consumer;
+    VideoSize m_rootSize;
+    YUVColor m_bgColor;
+    std::vector<int> m_inputPositions;
+    std::vector<Region>* m_currentRegions;
+    std::map<size_t/*MaxInputCount*/, std::vector<Region>> m_templates;
+};
+
+
 }
-
-woogeen_base::MediaSourceConsumer* woogeen_base::MediaSourceConsumer::createMediaSourceConsumerInstance()
-{
-    return new mcu::OutOfProcessMixerProxy();
-}
+#endif

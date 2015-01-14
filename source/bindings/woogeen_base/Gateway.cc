@@ -70,8 +70,6 @@ void Gateway::Init(Handle<Object> target) {
   tpl->PrototypeTemplate()->Set(String::NewSymbol("unpublishStream"),
       FunctionTemplate::New(unpublishStream)->GetFunction());
 
-  tpl->PrototypeTemplate()->Set(String::NewSymbol("configLayout"),
-      FunctionTemplate::New(configLayout)->GetFunction());
   tpl->PrototypeTemplate()->Set(String::NewSymbol("setMixer"),
       FunctionTemplate::New(setMixer)->GetFunction());
 
@@ -306,29 +304,6 @@ Handle<Value> Gateway::unpublishStream(const Arguments& args) {
   woogeen_base::Gateway* me = obj->me;
   bool isAudio = args[0]->BooleanValue();
   me->unpublishStream(isAudio);
-  return scope.Close(Undefined());
-}
-
-Handle<Value> Gateway::configLayout(
-    const Arguments& args) {
-  HandleScope scope;
-  Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.This());
-  woogeen_base::Gateway *me = obj->me;
-
-  v8::String::Utf8Value param0(args[0]->ToString());
-  std::string layoutType = std::string(*param0);
-
-  v8::String::Utf8Value param1(args[1]->ToString());
-  std::string layoutSize = std::string(*param1);
-
-  v8::String::Utf8Value param2(args[2]->ToString());
-  std::string layoutBackgroundColor = std::string(*param2);
-
-  v8::String::Utf8Value param3(args[3]->ToString());
-  std::string layoutStr = std::string(*param3);
-
-  me->configLayout(layoutType, layoutSize, layoutBackgroundColor, layoutStr);
-
   return scope.Close(Undefined());
 }
 

@@ -50,47 +50,36 @@ VPMPool::~VPMPool()
     delete[] m_vpms;
 }
 
-VideoProcessingModule* VPMPool::get(unsigned int slot)
+VideoProcessingModule* VPMPool::get(unsigned int input)
 {
-    assert(slot < m_size);
-    return m_vpms[slot];
+    assert (input < m_size);
+    return m_vpms[input];
 }
 
-void VPMPool::update(unsigned int slot, VideoSize& videoSize)
+void VPMPool::update(unsigned int input, VideoSize& videoSize)
 {
-    m_subVideSize[slot] = videoSize;
+    m_subVideSize[input] = videoSize;
     // FIXME: Get rid of the hard coded fps here.
     // Also it may need to be associated with the layout timer interval configured in VideoCompositor.
-    if (m_vpms[slot])
-        m_vpms[slot]->SetTargetResolution(videoSize.width, videoSize.height, 30);
+    if (m_vpms[input])
+        m_vpms[input]->SetTargetResolution(videoSize.width, videoSize.height, 30);
 }
 
 DEFINE_LOGGER(SoftVideoCompositor, "mcu.media.SoftVideoCompositor");
 
-SoftVideoCompositor::SoftVideoCompositor(const std::string& layoutType, const std::string& rootSize, const std::string& bgColor, const std::string& customLayout)
-    : m_configChanged(false)
+SoftVideoCompositor::SoftVideoCompositor(VideoSize rootSize, YUVColor bgColor)
+    : m_composedSize(rootSize)
+    , m_bgColor(bgColor)
+    , m_solutionState(UN_INITIALIZED)
     , m_consumer(nullptr)
 {
-    m_configListenerId = Config::get()->registerListener(this);
-    Config::get()->initVideoLayout(m_configListenerId, layoutType, rootSize, bgColor, customLayout);
-
-    m_currentLayout = Config::get()->getVideoLayout(m_configListenerId);
-
     m_ntpDelta = Clock::GetRealTimeClock()->CurrentNtpInMilliseconds() - TickTime::MillisecondTimestamp();
     m_vpmPool.reset(new VPMPool(MAX_VIDEO_SLOT_NUMBER));
-
-    // TODO: Fetch the video size and use it across this compositor.
-    // Currently video root size does not support changing on the fly.
-    // Yet, the layout configuration does not have this restriction.
-    m_composedSize = VideoLayoutHelper::getVideoSize(m_currentLayout.rootSize);
 
     // Initialize frame buffer and buffer manager for video composition
     m_composedFrame.reset(new webrtc::I420VideoFrame());
     m_composedFrame->CreateEmptyFrame(m_composedSize.width, m_composedSize.height, m_composedSize.width, m_composedSize.width / 2, m_composedSize.width / 2);
     m_bufferManager.reset(new BufferManager(m_composedSize.width, m_composedSize.height));
-
-    // Set the initialized video layout
-    setLayout(m_currentLayout);
 
     m_jobTimer.reset(new JobTimer(30, this));
 }
@@ -99,36 +88,44 @@ SoftVideoCompositor::~SoftVideoCompositor()
 {
     m_jobTimer->stop();
     m_consumer = nullptr;
-    Config::get()->unregisterListener(m_configListenerId);
 }
 
-void SoftVideoCompositor::setLayout(const VideoLayout& layout)
+void SoftVideoCompositor::setRootSize(VideoSize& videoSize)
+{
+    m_newComposedSize = videoSize;
+    m_solutionState = CHANGING;
+}
+
+void SoftVideoCompositor::setBgColor(YUVColor& bgColor)
+{
+    m_bgColor = bgColor;
+}
+
+void SoftVideoCompositor::setLayoutSolution(LayoutSolution& solution)
 {
     ELOG_DEBUG("Configuring layout");
-    m_newLayout = layout;
-    m_configChanged = true;
+    m_newLayout = solution;
+    m_solutionState = CHANGING;
     ELOG_DEBUG("configChanged is true");
 }
 
-bool SoftVideoCompositor::activateInput(int slot)
+bool SoftVideoCompositor::activateInput(int input)
 {
-    m_bufferManager->setActive(slot, true);
-    onSlotNumberChanged(m_bufferManager->activeSlots());
+    m_bufferManager->setActive(input, true);
     return true;
 }
 
-void SoftVideoCompositor::deActivateInput(int slot)
+void SoftVideoCompositor::deActivateInput(int input)
 {
-    m_bufferManager->setActive(slot, false);
-    onSlotNumberChanged(m_bufferManager->activeSlots());
+    m_bufferManager->setActive(input, false);
 }
 
-void SoftVideoCompositor::pushInput(int slot, webrtc::I420VideoFrame* frame)
+void SoftVideoCompositor::pushInput(int input, webrtc::I420VideoFrame* frame)
 {
     I420VideoFrame* freeFrame = m_bufferManager->getFreeBuffer();
     if (freeFrame) {
         freeFrame->CopyFrame(*frame);
-        I420VideoFrame* busyFrame = m_bufferManager->postFreeBuffer(freeFrame, slot);
+        I420VideoFrame* busyFrame = m_bufferManager->postFreeBuffer(freeFrame, input);
         if (busyFrame)
             m_bufferManager->releaseBuffer(busyFrame);
     }
@@ -147,12 +144,6 @@ void SoftVideoCompositor::unsetOutput()
     m_consumer = nullptr;
 }
 
-void SoftVideoCompositor::onConfigChanged()
-{
-    ELOG_DEBUG("onConfigChanged");
-    setLayout(Config::get()->getVideoLayout(m_configListenerId));
-}
-
 void SoftVideoCompositor::onTimeout()
 {
     generateFrame();
@@ -164,15 +155,8 @@ void SoftVideoCompositor::generateFrame()
         I420VideoFrame* composedFrame = layout();
         composedFrame->set_render_time_ms(TickTime::MillisecondTimestamp() - m_ntpDelta);
 
-        m_consumer->onFrame(FRAME_FORMAT_I420, reinterpret_cast<unsigned char*>(composedFrame), 0, 0);
-    }
-}
-
-void SoftVideoCompositor::onSlotNumberChanged(uint32_t newSlotNum)
-{
-    // Update the video layout according to the new input number
-    if (Config::get()->updateVideoLayout(m_configListenerId, newSlotNum)) {
-        ELOG_DEBUG("Video layout updated with new slot number changed to %d", newSlotNum);
+        if (m_consumer)
+            m_consumer.load()->onFrame(FRAME_FORMAT_I420, reinterpret_cast<unsigned char*>(composedFrame), 0, 0);
     }
 }
 
@@ -181,13 +165,10 @@ void SoftVideoCompositor::setBackgroundColor()
     if (m_composedFrame) {
         ELOG_TRACE("setBackgroundColor");
 
-        // Fetch video background color.
-        YUVColor rootColor = VideoLayoutHelper::getVideoYUVColor(m_currentLayout.rootColor);
-
         // Set the background color
-        memset(m_composedFrame->buffer(webrtc::kYPlane), rootColor.y, m_composedFrame->allocated_size(webrtc::kYPlane));
-        memset(m_composedFrame->buffer(webrtc::kUPlane), rootColor.cb, m_composedFrame->allocated_size(webrtc::kUPlane));
-        memset(m_composedFrame->buffer(webrtc::kVPlane), rootColor.cr, m_composedFrame->allocated_size(webrtc::kVPlane));
+        memset(m_composedFrame->buffer(webrtc::kYPlane), m_bgColor.y, m_composedFrame->allocated_size(webrtc::kYPlane));
+        memset(m_composedFrame->buffer(webrtc::kUPlane), m_bgColor.cb, m_composedFrame->allocated_size(webrtc::kUPlane));
+        memset(m_composedFrame->buffer(webrtc::kVPlane), m_bgColor.cr, m_composedFrame->allocated_size(webrtc::kVPlane));
     }
 }
 
@@ -195,60 +176,43 @@ bool SoftVideoCompositor::commitLayout()
 {
     // Update the current video layout
     m_currentLayout = m_newLayout;
-
-    // Update the vpm sub-video size
-    if (m_currentLayout.regions.empty()) { //fluid layout
+    for (LayoutSolution::iterator it = m_currentLayout.begin(); it != m_currentLayout.end(); ++it) {
         VideoSize videoSize;
-        videoSize.width = m_composedSize.width / m_currentLayout.divFactor;
-        videoSize.height = m_composedSize.height / m_currentLayout.divFactor;
-        for (uint32_t i = 0; i < m_vpmPool->size(); i++)
-            m_vpmPool->update(i, videoSize);
-
-        ELOG_DEBUG("commit fluidlayout, rooSize is %d, current subWidth is %d, current subHeight is %d",
-            m_currentLayout.rootSize,  videoSize.width, videoSize.height);
-    } else { //custom layout
-        for (uint32_t i = 0; i < m_currentLayout.regions.size(); i++) {
-            Region region = m_currentLayout.regions[i];
-            VideoSize videoSize;
-            videoSize.width = (int)(m_composedSize.width * region.relativeSize);
-            videoSize.height = (int)(m_composedSize.height * region.relativeSize);
-            m_vpmPool->update(i, videoSize);
-        }
-        ELOG_DEBUG("commit customlayout");
+        videoSize.width = (int)(m_composedSize.width * it->second.relativeSize);
+        videoSize.height = (int)(m_composedSize.height * it->second.relativeSize);
+        m_vpmPool->update(it->first, videoSize);
     }
 
-    m_configChanged = false;
+    ELOG_DEBUG("commit customlayout");
+
+    m_solutionState = IN_WORK;
     ELOG_DEBUG("configChanged sets to false after commitLayout!");
     return true;
 }
 
 webrtc::I420VideoFrame* SoftVideoCompositor::layout()
 {
-    if (m_configChanged)
+    if (m_solutionState == CHANGING)
         commitLayout();
 
     // Update the background color
     setBackgroundColor();
-
-    // Run the video layout operation
-    if (m_currentLayout.regions.empty())
-        return fluidLayout();
-
     return customLayout();
 }
 
 webrtc::I420VideoFrame* SoftVideoCompositor::customLayout()
 {
-    uint32_t input = 0;
     webrtc::I420VideoFrame* target = m_composedFrame.get();
-    for (uint32_t index = 0; index < MAX_VIDEO_SLOT_NUMBER; ++index) {
-        if (!m_bufferManager->isActive(index) || input >= m_currentLayout.regions.size())
+    for (LayoutSolution::iterator it = m_currentLayout.begin(); it != m_currentLayout.end(); ++it) {
+        int index = it->first;
+        if (!m_bufferManager->isActive(index))
             continue;
 
-        Region region = m_currentLayout.regions[input];
+        Region region = it->second;
         assert(!(region.relativeSize < 0.0 || region.relativeSize > 1.0)
             && !(region.left < 0.0 || region.left > 1.0)
             && !(region.top < 0.0 || region.top > 1.0));
+
         unsigned int sub_width = (unsigned int)(m_composedSize.width * region.relativeSize);
         unsigned int sub_height = (unsigned int)(m_composedSize.height * region.relativeSize);
         unsigned int offset_width = (unsigned int)(m_composedSize.width * region.left);
@@ -259,7 +223,7 @@ webrtc::I420VideoFrame* SoftVideoCompositor::customLayout()
         if (offset_height + sub_height > m_composedSize.height)
             sub_height = m_composedSize.height - offset_height;
 
-        webrtc::I420VideoFrame* sub_image = m_bufferManager->getBusyBuffer(index);
+        webrtc::I420VideoFrame* sub_image = m_bufferManager->getBusyBuffer((uint32_t)index);
         if (!sub_image) {
             for (unsigned int i = 0; i < sub_height; i++) {
                 memset(target->buffer(webrtc::kYPlane) + (i+offset_height) * target->stride(webrtc::kYPlane) + offset_width,
@@ -277,7 +241,7 @@ webrtc::I420VideoFrame* SoftVideoCompositor::customLayout()
             }
         } else {
             I420VideoFrame* processedFrame = nullptr;
-            int ret = m_vpmPool->get(input)->PreprocessFrame(*sub_image, &processedFrame);
+            int ret = m_vpmPool->get((unsigned int)index)->PreprocessFrame(*sub_image, &processedFrame);
             if (ret == VPM_OK) {
                 if (!processedFrame)
                     processedFrame = sub_image;
@@ -299,76 +263,13 @@ webrtc::I420VideoFrame* SoftVideoCompositor::customLayout()
             }
             // if return busy frame failed, which means a new busy frame has been posted
             // simply release the busy frame
-            if (m_bufferManager->returnBusyBuffer(sub_image, index))
+            if (m_bufferManager->returnBusyBuffer(sub_image, (uint32_t)index))
                 m_bufferManager->releaseBuffer(sub_image);
         }
-        ++input;
     }
 
     return m_composedFrame.get();
 }
 
-webrtc::I420VideoFrame* SoftVideoCompositor::fluidLayout()
-{
-    webrtc::I420VideoFrame* target = m_composedFrame.get();
-    unsigned int subWidth = m_composedSize.width / m_currentLayout.divFactor;
-    unsigned int subHeight = m_composedSize.height / m_currentLayout.divFactor;
-
-    int input = 0;
-    for (uint32_t index = 0; index < MAX_VIDEO_SLOT_NUMBER; ++index) {
-        if (!m_bufferManager->isActive(index))
-            continue;
-
-        unsigned int offset_width = (input%m_currentLayout.divFactor) * subWidth;
-        unsigned int offset_height = (input/m_currentLayout.divFactor) * subHeight;
-        webrtc::I420VideoFrame* sub_image = m_bufferManager->getBusyBuffer(index);
-        if (!sub_image) {
-            for (uint32_t i = 0; i < subHeight; i++) {
-                memset(target->buffer(webrtc::kYPlane) + (i+offset_height) * target->stride(webrtc::kYPlane) + offset_width,
-                    0,
-                    subWidth);
-            }
-
-            for (uint32_t i = 0; i < subHeight/2; i++) {
-                memset(target->buffer(webrtc::kUPlane) + (i+offset_height/2) * target->stride(webrtc::kUPlane) + offset_width/2,
-                    128,
-                    subWidth/2);
-                memset(target->buffer(webrtc::kVPlane) + (i+offset_height/2) * target->stride(webrtc::kVPlane) + offset_width/2,
-                    128,
-                    subWidth/2);
-            }
-        } else {
-            I420VideoFrame* processedFrame = nullptr;
-            int ret = m_vpmPool->get(input)->PreprocessFrame(*sub_image, &processedFrame);
-            if (ret == VPM_OK) {
-                if (!processedFrame)
-                    processedFrame = sub_image;
-
-                ELOG_TRACE("fluidlayout, processedFrame() OK");
-                for (uint32_t i = 0; i < subHeight; i++) {
-                    memcpy(target->buffer(webrtc::kYPlane) + (i+offset_height)* target->stride(webrtc::kYPlane) + offset_width,
-                        processedFrame->buffer(webrtc::kYPlane) + i * processedFrame->stride(webrtc::kYPlane),
-                        subWidth);
-                }
-
-                for (uint32_t i = 0; i < subHeight/2; i++) {
-                    memcpy(target->buffer(webrtc::kUPlane) + (i+offset_height/2) * target->stride(webrtc::kUPlane) + offset_width/2,
-                        processedFrame->buffer(webrtc::kUPlane) + i * processedFrame->stride(webrtc::kUPlane),
-                        subWidth/2);
-                    memcpy(target->buffer(webrtc::kVPlane) + (i+offset_height/2) * target->stride(webrtc::kVPlane) + offset_width/2,
-                        processedFrame->buffer(webrtc::kVPlane) + i * processedFrame->stride(webrtc::kVPlane),
-                        subWidth/2);
-                }
-            }
-
-            // if return busy frame failed, which means a new busy frame has been posted
-            // simply release the busy frame
-            if (m_bufferManager->returnBusyBuffer(sub_image, index))
-                m_bufferManager->releaseBuffer(sub_image);
-        }
-        ++input;
-    }
-    return m_composedFrame.get();
-};
 
 }

@@ -46,14 +46,7 @@ struct RegionInfo {
     float height_ratio;    //"height / HEIGHT"
 };
 
-struct CustomLayoutInfo {
-    FrameSize rootSize;
-    BackgroundColor rootColor;
-
-    // Valid for customized video layout - Custom type in VCSA
-    std::map<InputIndex, RegionInfo> layoutMapping;
-    std::vector<RegionInfo> candidateRegions;
-};
+typedef std::map<InputIndex, RegionInfo> CustomLayoutInfo;
 
 class VideoMixEngineImp;
 class VideoMixEngine {

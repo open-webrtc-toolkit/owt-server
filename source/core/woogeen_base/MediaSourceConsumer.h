@@ -35,8 +35,6 @@ public:
     virtual int32_t bindAV(uint32_t audioSource, uint32_t videoSource) { return -1; }
 
     virtual erizo::MediaSink* mediaSink() { return nullptr; }
-    virtual void configLayout(const std::string& type, const std::string& defaultRootSize,
-		const std::string& defaultBackgroundColor, const std::string& customLayout) { }
 };
 
 } /* namespace woogeen_base */
