@@ -90,18 +90,18 @@ SoftVideoCompositor::~SoftVideoCompositor()
     m_consumer = nullptr;
 }
 
-void SoftVideoCompositor::setRootSize(VideoSize& videoSize)
+void SoftVideoCompositor::updateRootSize(VideoSize& videoSize)
 {
     m_newComposedSize = videoSize;
     m_solutionState = CHANGING;
 }
 
-void SoftVideoCompositor::setBgColor(YUVColor& bgColor)
+void SoftVideoCompositor::updateBackgroundColor(YUVColor& bgColor)
 {
     m_bgColor = bgColor;
 }
 
-void SoftVideoCompositor::setLayoutSolution(LayoutSolution& solution)
+void SoftVideoCompositor::updateLayoutSolution(LayoutSolution& solution)
 {
     ELOG_DEBUG("Configuring layout");
     m_newLayout = solution;

@@ -153,18 +153,18 @@ HardwareVideoFrameMixer::~HardwareVideoFrameMixer()
 {
 }
 
-void HardwareVideoFrameMixer::setRootSize(VideoSize& rootSize)
+void HardwareVideoFrameMixer::updateRootSize(VideoSize& rootSize)
 {
     m_engine->setResolution(rootSize.width, rootSize.height);
 }
 
-void HardwareVideoFrameMixer::setBackgroundColor(YUVColor& bgColor)
+void HardwareVideoFrameMixer::updateBackgroundColor(YUVColor& bgColor)
 {
     BackgroundColor backgroundColor = {bgColor.y, bgColor.cb, bgColor.cr};
     m_engine->setBackgroundColor(&backgroundColor);
 }
 
-void HardwareVideoFrameMixer::setLayoutSolution(LayoutSolution& solution)
+void HardwareVideoFrameMixer::updateLayoutSolution(LayoutSolution& solution)
 {
     CustomLayoutInfo layout;
     for (LayoutSolution::iterator it = solution.begin(); it != solution.end(); ++it) {

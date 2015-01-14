@@ -21,21 +21,25 @@
 #ifndef VideoLayoutProcessor_h
 #define VideoLayoutProcessor_h
 
+#include "VideoLayout.h"
+
 #include <boost/property_tree/ptree.hpp>
+#include <boost/shared_ptr.hpp>
+#include <list>
+#include <logger.h>
 #include <map>
 #include <vector>
-#include <boost/shared_ptr.hpp>
-#include <logger.h>
-
-#include "VideoLayout.h"
 
 namespace mcu {
 
 class VideoLayoutProcessor{
     DECLARE_LOGGER();
 public:
-    VideoLayoutProcessor(LayoutConsumer* consumer, boost::property_tree::ptree& layoutConfig);
+    VideoLayoutProcessor(boost::property_tree::ptree& layoutConfig);
     virtual ~VideoLayoutProcessor();
+
+    void registerConsumer(boost::shared_ptr<LayoutConsumer>);
+    void deregisterConsumer(boost::shared_ptr<LayoutConsumer>);
 
     bool getRootSize(VideoSize& rootSize);
     bool setRootSize(const std::string& resolution);
@@ -54,7 +58,7 @@ private:
     void chooseRegions();
 
 private:
-    LayoutConsumer* m_consumer;
+    std::list<boost::shared_ptr<LayoutConsumer>> m_consumers;
     VideoSize m_rootSize;
     YUVColor m_bgColor;
     std::vector<int> m_inputPositions;

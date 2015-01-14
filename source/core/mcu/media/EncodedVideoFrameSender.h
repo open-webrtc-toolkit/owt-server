@@ -51,8 +51,8 @@ public:
     ~EncodedVideoFrameSender();
 
     // Implements VideoFrameSender.
-    bool setVideoSize(VideoSize& videoSize);
     bool setSendCodec(FrameFormat, VideoSize);
+    bool updateVideoSize(VideoSize);
     uint32_t sendSSRC();
     woogeen_base::IntraFrameCallback* iFrameCallback() { return this; }
     erizo::FeedbackSink* feedbackSink() { return this; }

@@ -55,15 +55,11 @@ public:
 // VideoFrameCompositor accepts the raw I420VideoFrame from multiple inputs and
 // composites them into one I420VideoFrame with the given VideoLayout.
 // The composited I420VideoFrame will be handed over to one VideoFrameConsumer.
-class VideoFrameCompositor {
+class VideoFrameCompositor : public LayoutConsumer {
 public:
     virtual bool activateInput(int input) = 0;
     virtual void deActivateInput(int input) = 0;
     virtual void pushInput(int input, webrtc::I420VideoFrame*) = 0;
-
-    virtual void setRootSize(VideoSize& videoSize) = 0;
-    virtual void setBgColor(YUVColor& bgColor) = 0;
-    virtual void setLayoutSolution(LayoutSolution& solution) = 0;
 
     virtual bool setOutput(VideoFrameConsumer*) = 0;
     virtual void unsetOutput() = 0;
@@ -83,15 +79,11 @@ public:
 
 // VideoFrameMixer accepts frames from multiple inputs and mixes them.
 // It can have multiple outputs with different FrameFormat or framerate/bitrate settings.
-class VideoFrameMixer {
+class VideoFrameMixer : public LayoutConsumer {
 public:
     virtual bool activateInput(int input, FrameFormat, VideoFrameProvider*) = 0;
     virtual void deActivateInput(int input) = 0;
     virtual void pushInput(int input, unsigned char* payload, int len) = 0;
-
-    virtual void setRootSize(VideoSize& videoSize) = 0;
-    virtual void setBackgroundColor(YUVColor& bgColor) = 0;
-    virtual void setLayoutSolution(LayoutSolution& solution) = 0;
 
     virtual void setBitrate(int id, unsigned short bitrate) = 0;
     virtual void requestKeyFrame(int id) = 0;

@@ -25,12 +25,9 @@ namespace mcu {
 
 DEFINE_LOGGER(VideoLayoutProcessor, "mcu.media.VideoLayoutProcessor");
 
-VideoLayoutProcessor::VideoLayoutProcessor(LayoutConsumer* consumer, boost::property_tree::ptree& layoutConfig)
-    : m_consumer(consumer)
-    , m_currentRegions(nullptr)
+VideoLayoutProcessor::VideoLayoutProcessor(boost::property_tree::ptree& layoutConfig)
+    : m_currentRegions(nullptr)
 {
-    assert(consumer);
-
     std::string resolution = layoutConfig.get<std::string>("resolution");
     if (!VideoResolutionHelper::getVideoSize(resolution, m_rootSize)) {
         ELOG_WARN("configured resolution is invalid!");
@@ -73,6 +70,29 @@ VideoLayoutProcessor::~VideoLayoutProcessor()
 {
 }
 
+void VideoLayoutProcessor::registerConsumer(boost::shared_ptr<LayoutConsumer> consumer)
+{
+    std::list<boost::shared_ptr<LayoutConsumer>>::iterator it = m_consumers.begin();
+    for (; it != m_consumers.end(); ++it) {
+        if (*it == consumer)
+            break;
+    }
+
+    if (it == m_consumers.end())
+        m_consumers.push_back(consumer);
+}
+
+void VideoLayoutProcessor::deregisterConsumer(boost::shared_ptr<LayoutConsumer> consumer)
+{
+    std::list<boost::shared_ptr<LayoutConsumer>>::iterator it = m_consumers.begin();
+    for (; it != m_consumers.end(); ++it) {
+        if (*it == consumer) {
+            m_consumers.erase(it);
+            break;
+        }
+    }
+}
+
 bool VideoLayoutProcessor::getRootSize(VideoSize& rootSize)
 {
     rootSize = m_rootSize;
@@ -85,7 +105,9 @@ bool VideoLayoutProcessor::setRootSize(const std::string& resolution)
     if (VideoResolutionHelper::getVideoSize(resolution, newSize)) {
         if (!(m_rootSize.width == newSize.width && m_rootSize.height == newSize.height)) {
             m_rootSize = newSize;
-            m_consumer->updateRootSize(m_rootSize);
+            std::list<boost::shared_ptr<LayoutConsumer>>::iterator it = m_consumers.begin();
+            for (; it != m_consumers.end(); ++it)
+                (*it)->updateRootSize(m_rootSize);
         }
         return true;
     }
@@ -104,7 +126,9 @@ bool VideoLayoutProcessor::setBgColor(const std::string& color)
     if (VideoColorHelper::getVideoColor(color, newColor)) {
         if (!(m_bgColor.y == newColor.y && m_bgColor.cb == newColor.cb && m_bgColor.cr == newColor.cr)) {
             m_bgColor = newColor;
-            m_consumer->updateBackgroundColor(m_bgColor);
+            std::list<boost::shared_ptr<LayoutConsumer>>::iterator it = m_consumers.begin();
+            for (; it != m_consumers.end(); ++it)
+                (*it)->updateBackgroundColor(m_bgColor);
         }
         return true;
     }
@@ -201,10 +225,12 @@ void VideoLayoutProcessor::updateInputPositions()
 
     LayoutSolution solution;
     std::vector<Region>::iterator itReg = m_currentRegions->begin();
-    for (std::vector<int>::iterator it = m_inputPositions.begin(); it != m_inputPositions.end(); ++it) {
+    for (std::vector<int>::iterator it = m_inputPositions.begin(); it != m_inputPositions.end(); ++it)
         solution[*it] = *itReg++;
-    }
-    m_consumer->updateLayoutSolution(solution);
+
+    std::list<boost::shared_ptr<LayoutConsumer>>::iterator it = m_consumers.begin();
+    for (; it != m_consumers.end(); ++it)
+        (*it)->updateLayoutSolution(solution);
 }
 
 void VideoLayoutProcessor::chooseRegions()

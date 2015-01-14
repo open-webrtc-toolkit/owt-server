@@ -95,14 +95,14 @@ public:
     void deActivateInput(int input);
     void pushInput(int input, unsigned char* payload, int len);
 
-    void setRootSize(VideoSize& rootSize);
-    void setBackgroundColor(YUVColor& bgColor);
-    void setLayoutSolution(LayoutSolution& solution);
-
     void setBitrate(int id, unsigned short bitrate);
     void requestKeyFrame(int id);
     bool activateOutput(int id, FrameFormat, unsigned int framerate, unsigned short bitrate, VideoFrameConsumer*);
     void deActivateOutput(int id);
+
+    void updateRootSize(VideoSize& rootSize);
+    void updateBackgroundColor(YUVColor& bgColor);
+    void updateLayoutSolution(LayoutSolution& solution);
 
 private:
     boost::shared_ptr<VideoMixEngine> m_engine;

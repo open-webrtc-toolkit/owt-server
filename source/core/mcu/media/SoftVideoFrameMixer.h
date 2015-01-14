@@ -41,14 +41,14 @@ public:
     void deActivateInput(int input);
     void pushInput(int input, unsigned char* payload, int len);
 
-    void setRootSize(VideoSize& rootSize);
-    void setBackgroundColor(YUVColor& bgColor);
-    void setLayoutSolution(LayoutSolution& solution);
-
     void setBitrate(int id, unsigned short bitrate);
     void requestKeyFrame(int id);
     bool activateOutput(int id, FrameFormat, unsigned int framerate, unsigned short bitrate, VideoFrameConsumer*);
     void deActivateOutput(int id);
+
+    void updateRootSize(VideoSize& rootSize);
+    void updateBackgroundColor(YUVColor& bgColor);
+    void updateLayoutSolution(LayoutSolution& solution);
 
 private:
     std::map<int, boost::shared_ptr<VideoFrameDecoder>> m_decoders;
@@ -96,19 +96,19 @@ inline void SoftVideoFrameMixer::pushInput(int input, unsigned char* payload, in
         it->second->onFrame(FRAME_FORMAT_I420, payload, len, 0);
 }
 
-inline void SoftVideoFrameMixer::setRootSize(VideoSize& rootSize)
+inline void SoftVideoFrameMixer::updateRootSize(VideoSize& rootSize)
 {
-    m_compositor->setRootSize(rootSize);
+    m_compositor->updateRootSize(rootSize);
 }
 
-inline void SoftVideoFrameMixer::setBackgroundColor(YUVColor& bgColor)
+inline void SoftVideoFrameMixer::updateBackgroundColor(YUVColor& bgColor)
 {
-    m_compositor->setBgColor(bgColor);
+    m_compositor->updateBackgroundColor(bgColor);
 }
 
-inline void SoftVideoFrameMixer::setLayoutSolution(LayoutSolution& solution)
+inline void SoftVideoFrameMixer::updateLayoutSolution(LayoutSolution& solution)
 {
-    m_compositor->setLayoutSolution(solution);
+    m_compositor->updateLayoutSolution(solution);
 }
 
 inline void SoftVideoFrameMixer::setBitrate(int id, unsigned short bitrate)

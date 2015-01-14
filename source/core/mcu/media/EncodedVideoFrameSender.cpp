@@ -47,14 +47,13 @@ EncodedVideoFrameSender::~EncodedVideoFrameSender()
     close();
 }
 
-bool EncodedVideoFrameSender::setVideoSize(VideoSize& videoSize)
+bool EncodedVideoFrameSender::updateVideoSize(VideoSize videoSize)
 {
     uint32_t targetBitrate = calcBitrate(videoSize.width, videoSize.height) * (m_frameFormat == FRAME_FORMAT_VP8 ? 0.9 : 1);
     uint32_t minBitrate = targetBitrate / 4;
     // The bitrate controller is accepting "bps".
     m_bitrateController->SetBitrateObserver(this, targetBitrate * 1000, minBitrate * 1000, TRANSMISSION_MAXBITRATE_MULTIPLIER * targetBitrate * 1000);
     m_source->setBitrate(m_id, targetBitrate);
-
     return true;
 }
 
