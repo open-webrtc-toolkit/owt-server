@@ -46,7 +46,7 @@ VCMOutputProcessor::~VCMOutputProcessor()
     close();
 }
 
-bool VCMOutputProcessor::setVideoSize(VideoSize& videoSize)
+bool VCMOutputProcessor::updateVideoSize(VideoSize videoSize)
 {
     VideoCodec videoCodec;
     bool validCodec = false;
@@ -61,9 +61,7 @@ bool VCMOutputProcessor::setVideoSize(VideoSize& videoSize)
         videoCodec.minBitrate = targetBitrate / 4;
         videoCodec.startBitrate = targetBitrate;
 
-        if (m_videoEncoder && m_videoEncoder->SetEncoder(videoCodec) != -1) {
-            return true;
-        }
+        return (m_videoEncoder->SetEncoder(videoCodec) != -1);
     }
 
     return false;
@@ -104,10 +102,10 @@ bool VCMOutputProcessor::setSendCodec(FrameFormat frameFormat, VideoSize videoSi
         videoCodec.minBitrate = targetBitrate / 4;
         videoCodec.startBitrate = targetBitrate;
 
-        if (!m_rtpRtcp || m_rtpRtcp->RegisterSendPayload(videoCodec) == -1)
+        if (m_rtpRtcp->RegisterSendPayload(videoCodec) == -1)
             return false;
 
-        if (m_videoEncoder && m_videoEncoder->SetEncoder(videoCodec) != -1) {
+        if (m_videoEncoder->SetEncoder(videoCodec) != -1) {
             m_sendFormat = frameFormat;
             return true;
         }

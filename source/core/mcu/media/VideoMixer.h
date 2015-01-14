@@ -21,6 +21,9 @@
 #ifndef VideoMixer_h
 #define VideoMixer_h
 
+#include "VCMInputProcessor.h"
+#include "VideoFramePipeline.h"
+
 #include <boost/property_tree/ptree.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/shared_mutex.hpp>
@@ -31,9 +34,6 @@
 #include <WebRTCFeedbackProcessor.h>
 #include <vector>
 
-#include "VideoLayout.h"
-#include "VCMInputProcessor.h"
-
 namespace webrtc {
 class VoEVideoSync;
 }
@@ -41,10 +41,7 @@ class VoEVideoSync;
 namespace mcu {
 
 class TaskRunner;
-class VCMInputProcessor;
-class VideoFrameMixer;
 class VideoFrameSender;
-struct Layout;
 class VideoLayoutProcessor;
 
 static const int MIXED_VP8_VIDEO_STREAM_ID = 2;
@@ -53,7 +50,7 @@ static const int MIXED_H264_VIDEO_STREAM_ID = 3;
 /**
  * Receives media from several sources, mixed into one stream and retransmits it to the RTPDataReceiver.
  */
-class VideoMixer : public woogeen_base::MediaSourceConsumer, public erizo::MediaSink, public erizo::FeedbackSink, public LayoutConsumer, public VCMInputProcessorCallback {
+class VideoMixer : public woogeen_base::MediaSourceConsumer, public erizo::MediaSink, public erizo::FeedbackSink, public VCMInputProcessorCallback {
     DECLARE_LOGGER();
 
 public:
@@ -82,11 +79,6 @@ public:
 
     // Implements FeedbackSink.
     int deliverFeedback(char* buf, int len);
-
-    // Implements LayoutConsumer
-    void updateRootSize(VideoSize& rootSize);
-    void updateBackgroundColor(YUVColor& bgColor);
-    void updateLayoutSolution(LayoutSolution& solution);
 
     // Implements VCMInputProcessorInitCallback
     void onInputProcessorInitOK(int index);

@@ -47,8 +47,8 @@ VideoMixer::VideoMixer(erizo::RTPDataReceiver* receiver, bool hardwareAccelerate
     , m_hardwareAccelerated(hardwareAccelerated)
 {
     m_taskRunner.reset(new TaskRunner());
-    m_layoutProcessor.reset(new VideoLayoutProcessor(this, config));
 
+    m_layoutProcessor.reset(new VideoLayoutProcessor(config));
     VideoSize rootSize;
     m_layoutProcessor->getRootSize(rootSize);
     YUVColor bgColor;
@@ -60,6 +60,7 @@ VideoMixer::VideoMixer(erizo::RTPDataReceiver* receiver, bool hardwareAccelerate
         m_frameMixer.reset(new HardwareVideoFrameMixer(rootSize, bgColor));
     else
         m_frameMixer.reset(new SoftVideoFrameMixer(rootSize, bgColor));
+    m_layoutProcessor->registerConsumer(m_frameMixer);
 
     m_taskRunner->Start();
 
@@ -73,6 +74,13 @@ VideoMixer::VideoMixer(erizo::RTPDataReceiver* receiver, bool hardwareAccelerate
 VideoMixer::~VideoMixer()
 {
     closeAll();
+
+    m_taskRunner->Stop();
+#if ENABLE_WEBRTC_TRACE
+    webrtc::Trace::ReturnTrace();
+#endif
+
+    m_layoutProcessor->deregisterConsumer(m_frameMixer);
     m_outputReceiver = nullptr;
 }
 
@@ -122,8 +130,7 @@ int32_t VideoMixer::removeOutput(int payloadType)
     boost::unique_lock<boost::shared_mutex> lock(m_outputMutex);
     std::map<int, boost::shared_ptr<VideoFrameSender>>::iterator it = m_outputs.find(payloadType);
     if (it != m_outputs.end()) {
-        VideoFrameSender* output = it->second.get();
-        int32_t id = output->id();
+        int32_t id = it->second->id();
         m_outputs.erase(it);
         return id;
     }
@@ -185,24 +192,6 @@ int VideoMixer::deliverFeedback(char* buf, int len)
     return len;
 }
 
-void VideoMixer::updateRootSize(VideoSize& rootSize)
-{
-    for (std::map<int, boost::shared_ptr<VideoFrameSender>>::iterator it = m_outputs.begin(); it != m_outputs.end(); ++it) {
-        it->second->setVideoSize(rootSize);
-    }
-    m_frameMixer->setRootSize(rootSize);
-}
-
-void VideoMixer::updateBackgroundColor(YUVColor& bgColor)
-{
-    m_frameMixer->setBackgroundColor(bgColor);
-}
-
-void VideoMixer::updateLayoutSolution(LayoutSolution& solution)
-{
-    m_frameMixer->setLayoutSolution(solution);
-}
-
 void VideoMixer::onInputProcessorInitOK(int index)
 {
     ELOG_DEBUG("onInputProcessorInitOK - index: %d", index);
@@ -223,7 +212,19 @@ void VideoMixer::specifySourceRegion(uint32_t from, std::string& regionID)
 
 bool VideoMixer::setResolution(const std::string& resolution)
 {
-    return m_layoutProcessor->setRootSize(resolution);
+    if (!m_layoutProcessor->setRootSize(resolution))
+        return false;
+
+    bool ret = true;
+    boost::shared_lock<boost::shared_mutex> lock(m_outputMutex);
+    std::map<int, boost::shared_ptr<VideoFrameSender>>::iterator it = m_outputs.begin();
+    for (; it != m_outputs.end(); ++it) {
+        VideoSize outputSize;
+        m_layoutProcessor->getRootSize(outputSize);
+        ret &= (it->second->updateVideoSize(outputSize));
+    }
+
+    return ret;
 }
 
 bool VideoMixer::setBackgroundColor(const std::string& color)
@@ -338,12 +339,6 @@ void VideoMixer::closeAll()
     boost::unique_lock<boost::shared_mutex> outputLock(m_outputMutex);
     m_outputs.clear();
     outputLock.unlock();
-
-    m_taskRunner->Stop();
-
-#if ENABLE_WEBRTC_TRACE
-    webrtc::Trace::ReturnTrace();
-#endif
 
     ELOG_DEBUG("Closed all media in this Mixer");
 }

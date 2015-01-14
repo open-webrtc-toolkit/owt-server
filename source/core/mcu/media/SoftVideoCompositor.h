@@ -77,9 +77,9 @@ public:
     bool setOutput(VideoFrameConsumer*);
     void unsetOutput();
 
-    void setRootSize(VideoSize& rootSize);
-    void setBgColor(YUVColor& bgColor);
-    void setLayoutSolution(LayoutSolution& solution);
+    void updateRootSize(VideoSize& rootSize);
+    void updateBackgroundColor(YUVColor& bgColor);
+    void updateLayoutSolution(LayoutSolution& solution);
 
     void onTimeout();
 
