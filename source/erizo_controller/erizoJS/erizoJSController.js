@@ -396,14 +396,14 @@ exports.ErizoJSController = function () {
                 if (msg.type === 'offer') {
                     subscribers[streamId][peerId].setRemoteSdp(msg.sdp);
                 } else if (msg.type === 'candidate') {
-                    subscribers[streamId][peerId].addRemoteCandidate(msg.candidate.sdpMid, msg.candidate.candidate);
+                    subscribers[streamId][peerId].addRemoteCandidate(msg.candidate.sdpMid, msg.candidate.sdpMLineIndex, msg.candidate.candidate);
                 } 
             } else {
                 if (msg.type === 'offer') {
                     publishers[streamId].wrtc.setRemoteSdp(msg.sdp);
                 } else if (msg.type === 'candidate') {
                     console.log('PROCESS CAND', msg);
-                    publishers[streamId].wrtc.addRemoteCandidate(msg.candidate.sdpMid, msg.candidate.candidate);
+                    publishers[streamId].wrtc.addRemoteCandidate(msg.candidate.sdpMid, msg.candidate.sdpMLineIndex, msg.candidate.candidate);
                 } 
             }
             

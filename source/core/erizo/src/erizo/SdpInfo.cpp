@@ -46,6 +46,8 @@ namespace erizo {
     profile = AVPF;
     audioSsrc = 0;
     videoSsrc = 0;
+    videoSdpMLine = -1;
+    audioSdpMLine = -1;
 
     ELOG_DEBUG("Generating internal RtpMap");
 
@@ -326,7 +328,7 @@ namespace erizo {
 */
     bool printedAudio = false, printedVideo = false;
 
-    if (printedAudio) {
+    if (printedAudio && this->hasAudio) {
       sdp << "m=audio 1 RTP/" << (profile==SAVPF?"SAVPF ":"AVPF ");// << "103 104 0 8 106 105 13 126\n"
       for (std::list<RtpMap>::iterator it = payloadVector_.begin(); it != payloadVector_.end(); ++it){
         const RtpMap& payload_info = *it;
@@ -471,7 +473,8 @@ namespace erizo {
     }
     //crypto video
 */
-    if (printedVideo) {
+    
+    if (printedVideo && this->hasVideo) {
       sdp << "m=video 1 RTP/" << (profile==SAVPF?"SAVPF ":"AVPF "); //<<  "100 101 102 103\n"
 
       for (std::list<RtpMap>::iterator it = payloadVector_.begin(); it != payloadVector_.end(); ++it){
@@ -618,6 +621,8 @@ namespace erizo {
   }
 
   void SdpInfo::setOfferSdp(const SdpInfo& offerSdp) {
+    this->videoSdpMLine = offerSdp.videoSdpMLine;
+    this->audioSdpMLine = offerSdp.audioSdpMLine;
     this->isBundle = offerSdp.isBundle;
     this->profile = offerSdp.profile;
     this->isRtcpMux = offerSdp.isRtcpMux;
@@ -683,6 +688,7 @@ namespace erizo {
     std::map<int, int> audioPayloadTypePreferences;
     std::map<int, int> videoPayloadTypePreferences;
     bool nextLineRetrieved = false;
+    int mlineNum = -1;
 
     MediaType mtype = OTHER;
     if (media == "audio") {
@@ -749,6 +755,8 @@ namespace erizo {
         }
       }
       if (isVideo != std::string::npos) {
+        videoSdpMLine = ++mlineNum; 
+        ELOG_DEBUG("sdp has video, mline = %d",videoSdpMLine);
         mtype = VIDEO_TYPE;
         hasVideo = true;
         if (!videoPayloadTypePreferences.empty()) {
@@ -765,6 +773,8 @@ namespace erizo {
         }
       }
       if (isAudio != std::string::npos) {
+        audioSdpMLine = ++mlineNum; 
+        ELOG_DEBUG("sdp has audio, mline = %d",audioSdpMLine);
         mtype = AUDIO_TYPE;
         hasAudio = true;
         if (!audioPayloadTypePreferences.empty()) {
