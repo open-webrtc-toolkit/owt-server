@@ -142,38 +142,48 @@ exports.ErizoJSController = function () {
             amqper.broadcast('event', {pub: id_pub, subs: id_sub, type: 'connection_status', status: newStatus, timestamp:timeStamp.getTime()});
           }
 
-          if (newStatus === CONN_FINISHED) { // Connection Finished
-            terminated = true;
-          }
+          switch (newStatus) {
+            case CONN_FINISHED:
+              terminated = true;
+              break;
 
-          if (newStatus == CONN_INITIAL) {
-            callback('callback', {type: 'started'});
+            case CONN_INITIAL:
+              callback('callback', {type: 'started'});
+              break;
 
-          } else if (newStatus == CONN_SDP) {
-            log.debug('Sending SDP', mess);
-            callback('callback', {type: 'answer', sdp: mess});
+            case CONN_SDP:
+              log.debug('Sending SDP', mess);
+              callback('callback', {type: 'answer', sdp: mess});
+              break;
 
-          } else if (newStatus == CONN_CANDIDATE) {
-            callback('callback', {type: 'candidate', candidate: mess});
-          } else if (newStatus == CONN_STARTED) {
-          }
+            case CONN_CANDIDATE:
+              callback('callback', {type: 'candidate', candidate: mess});
+              break;
 
-          if (newStatus === CONN_READY) { // Connection Ready
-            // Perform the additional work for publishers.
-            if (id_mixer && (unmix !== true)) {
-              var mixer = publishers[id_mixer] ? publishers[id_mixer].muxer : undefined;
-              if (mixer) {
-                mixer.addPublisher(publishers[id_pub], id_pub);
-                mixers[id_pub] = mixer;
-              } else {
-                if (mixerProxy) {
-                  mixerProxy.addPublisher(publishers[id_pub], id_pub);
-                  mixers[id_pub] = mixerProxy;
+            case CONN_FAILED:
+              callback('callback', {type: 'failed'});
+              break;
+
+            case CONN_READY: {
+              // Perform the additional work for publishers.
+              if (id_mixer && (unmix !== true)) {
+                var mixer = publishers[id_mixer] ? publishers[id_mixer].muxer : undefined;
+                if (mixer) {
+                  mixer.addPublisher(publishers[id_pub], id_pub);
+                  mixers[id_pub] = mixer;
+                } else {
+                  if (mixerProxy) {
+                    mixerProxy.addPublisher(publishers[id_pub], id_pub);
+                    mixers[id_pub] = mixerProxy;
+                  }
                 }
               }
+              callback('callback', {type: 'ready'});
+              break;
             }
-          } else if (newStatus == CONN_FAILED){
-            callback('callback', {type: 'failed'});
+
+            default:
+              break;
           }
         });
 

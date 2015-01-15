@@ -871,7 +871,6 @@ var listen = function () {
                         safeCall(callback, undefined, id);
                         st = new ST.Stream({id: id, audio: options.audio, video: options.video, attributes: options.attributes, from: socket.id});
                         socket.room.streams[id] = st;
-                        sendMsgToRoom(socket.room, 'onAddStream', socket.room.streams[id].getPublicStream());
                         return;
                     }
 
@@ -912,9 +911,10 @@ var listen = function () {
 
                     if (signMess.type === 'candidate') {
                         signMess.candidate = signMess.candidate.replace(privateRegexp, publicIP);
+                    } else if (signMess.type === 'ready') {
+                        sendMsgToRoom(socket.room, 'onAddStream', socket.room.streams[id].getPublicStream());
                     }
 
-                    console.log(';;;;;;;;;;;;;;; VOY ', signMess);
                     socket.emit('signaling_message_erizo', {mess: signMess, streamId: id});
                 });
 
