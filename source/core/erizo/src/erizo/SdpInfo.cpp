@@ -800,14 +800,30 @@ namespace erizo {
       if (isUser != std::string::npos) {
         std::vector<std::string> parts = stringutil::splitOneOf(stringutil::splitOneOf(line, ":", 1)[1], "\r", 1);
         // FIXME add error checking
-        iceVideoUsername_ = parts[1];
-        ELOG_DEBUG("ICE username: %s", iceVideoUsername_.c_str());
+        if (mtype == VIDEO_TYPE){
+          iceVideoUsername_ = parts[0];
+          ELOG_DEBUG("ICE Video username: %s", iceVideoUsername_.c_str());
+        }else if (mtype == AUDIO_TYPE){
+          iceAudioUsername_ = parts[0];
+          ELOG_DEBUG("ICE Audio username: %s", iceAudioUsername_.c_str());
+        }else{
+          ELOG_DEBUG("Unknown media type for ICE credentials, looks like Firefox");
+          iceVideoUsername_ = parts[0];
+        }
       }
       if (isPass != std::string::npos) {
         std::vector<std::string> parts = stringutil::splitOneOf(stringutil::splitOneOf(line, ":", 1)[1], "\r", 1);
         // FIXME add error checking
-        iceVideoPassword_ = parts[1];
-        ELOG_DEBUG("ICE password: %s", iceVideoPassword_.c_str());
+        if (mtype == VIDEO_TYPE){
+          iceVideoPassword_ = parts[0];
+          ELOG_DEBUG("ICE Video password: %s", iceVideoPassword_.c_str());
+        }else if (mtype == AUDIO_TYPE){
+          iceAudioPassword_ = parts[0];
+          ELOG_DEBUG("ICE Audio password: %s", iceAudioPassword_.c_str());
+        }else{
+          ELOG_DEBUG("Unknown media type for ICE credentials, looks like Firefox");
+          iceVideoPassword_ = parts[0];
+        }
       }
       if (isMid!= std::string::npos){
         std::vector<std::string> parts = stringutil::splitOneOf(line, ": \r\n",4);
@@ -917,12 +933,29 @@ namespace erizo {
         }
       }
     }
-
+    // If there is no video or audio credentials we use the ones we have
+    if (iceVideoUsername_.empty() && iceAudioUsername_.empty()){
+      ELOG_ERROR("No valid credentials for ICE")
+    }else if (iceVideoUsername_.empty()){
+      ELOG_DEBUG("Video credentials empty, setting the audio ones");
+      iceVideoUsername_ = iceAudioUsername_;
+      iceVideoPassword_ = iceAudioPassword_;
+    }else if (iceAudioUsername_.empty()){
+      ELOG_DEBUG("Audio credentials empty, setting the video ones");
+      iceAudioUsername_ = iceVideoUsername_;
+      iceAudioPassword_ = iceVideoPassword_;
+    }
+    
     for (unsigned int i = 0; i < candidateVector_.size(); i++) {
-      CandidateInfo& c = candidateVector_[i];
-      c.username = iceVideoUsername_;
-      c.password = iceVideoPassword_;
-      c.isBundle = isBundle;
+        CandidateInfo& c = candidateVector_[i];
+        c.isBundle = isBundle;
+        if (c.mediaType == VIDEO_TYPE){
+          c.username = iceVideoUsername_;
+          c.password = iceVideoPassword_;
+        }else{
+          c.username = iceAudioUsername_;
+          c.password = iceAudioPassword_;
+        }
     }
 
     return true;

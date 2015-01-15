@@ -11,7 +11,8 @@ module.exports = function(grunt) {
     '../conference/conference.js',
     '../conference/webrtc-stacks/ChromeStableStack.js',
     '../conference/webrtc-stacks/FirefoxStack.js',
-    '../conference/webrtc-stacks/IEStableStack.js'
+    '../conference/webrtc-stacks/IEStableStack.js',
+    '../conference/webrtc-stacks/BowserStack.js'
   ];
 
   var uiSrcFiles = [
