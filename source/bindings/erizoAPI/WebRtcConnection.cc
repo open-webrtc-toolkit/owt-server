@@ -77,8 +77,14 @@ void WebRtcConnection::close(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
   WebRtcConnection* obj = ObjectWrap::Unwrap<WebRtcConnection>(args.Holder());
-  uv_close((uv_handle_t*)&obj->async_, NULL);
-  uv_close((uv_handle_t*)&obj->asyncStats_, NULL);
+
+  if(!uv_is_closing((uv_handle_t*)&obj->async_)) {
+    uv_close((uv_handle_t*)&obj->async_, NULL);
+  }
+  if(!uv_is_closing((uv_handle_t*)&obj->asyncStats_)) {
+ 	uv_close((uv_handle_t*)&obj->asyncStats_, NULL);
+  }
+
 }
 
 void WebRtcConnection::init(const FunctionCallbackInfo<Value>& args) {
