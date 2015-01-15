@@ -1064,6 +1064,7 @@ conference.subscribe(remoteStream, function (st) {
           L.Logger.warning('unknown ice connection state:', state);
         }
       };
+      stream.channel.createOffer(true);
     });
 /*
     stream.channel = createChannel({
