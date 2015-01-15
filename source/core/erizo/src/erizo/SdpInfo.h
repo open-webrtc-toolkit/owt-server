@@ -264,6 +264,11 @@ public:
     */
     std::map<const int, int> outInPTMap;
     std::vector<BundleTag> bundleTags;
+    /*
+     * MLines for video and audio
+     */
+    int videoSdpMLine;
+    int audioSdpMLine;
 
 private:
     bool processSdp(const std::string& sdp, const std::string& media);

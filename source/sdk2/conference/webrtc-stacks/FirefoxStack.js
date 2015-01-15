@@ -63,7 +63,6 @@ Erizo.FirefoxStack = function (spec) {
             if (!event.candidate.candidate.match(/a=/)) {
                 event.candidate.candidate ="a="+event.candidate.candidate;
             }
-            event.candidate.sdpMid = event.candidate.sdpMLineIndex === 0?"audio":"video";
 
             if (spec.remoteDescriptionSet) {
                 spec.callback({type:'candidate', candidate: event.candidate});
@@ -162,6 +161,14 @@ Erizo.FirefoxStack = function (spec) {
     spec.remoteCandidates = [];
     spec.remoteDescriptionSet = false;
 
+    /**
+     * Closes the connection.
+     */
+    that.close = function () {
+        that.state = 'closed';
+        that.peerConnection.close();
+    };
+
     that.processSignalingMessage = function (msg) {
 
         //console.log("Process Signaling Message", msg);
@@ -190,12 +197,14 @@ Erizo.FirefoxStack = function (spec) {
               that.peerConnection.setRemoteDescription(new RTCSessionDescription(msg), function() {
                 spec.remoteDescriptionSet = true;
                 while (spec.remoteCandidates.length > 0) {
-                  that.peerConnection.addIceCandidate(spec.remoteCandidates.pop());
+                // IMPORTANT: preserve ordering of candidates
+                  that.peerConnection.addIceCandidate(spec.remoteCandidates.shift());
                 }
 
                 while(spec.localCandidates.length > 0) {
                   L.Logger.info("Sending Candidate");
-                  spec.callback({type:'candidate', candidate: spec.localCandidates.pop()});
+                  // IMPORTANT: preserve ordering of candidates
+                  spec.callback({type:'candidate', candidate: spec.localCandidates.shift()});
                 }
 
               });
@@ -214,7 +223,6 @@ Erizo.FirefoxStack = function (spec) {
                 obj.candidate = obj.candidate.replace(/ udp /g, " UDP ");
                 obj.sdpMLineIndex = parseInt(obj.sdpMLineIndex, 10);
                 var candidate = new RTCIceCandidate(obj);
-                candidate.sdpMLineIndex = candidate.sdpMid==="audio"?0:1;
                 //console.log("Remote Candidate",candidate);
                 if (spec.remoteDescriptionSet) {
                     that.peerConnection.addIceCandidate(candidate);
