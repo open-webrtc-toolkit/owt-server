@@ -110,7 +110,7 @@ Erizo.FirefoxStack = function (spec) {
 
     var setMaxBW = function (sdp) {
         var a, r;
-        if (spec.maxVideoBW) {
+        if (spec.video && spec.maxVideoBW) {
             a = sdp.match(/m=video.*\r\n/);
             if (a == null){
               a = sdp.match(/m=video.*\n/);
@@ -119,7 +119,7 @@ Erizo.FirefoxStack = function (spec) {
             sdp = sdp.replace(a[0], r);
         }
 
-        if (spec.maxAudioBW) {
+        if (spec.audio && spec.maxAudioBW) {
             a = sdp.match(/m=audio.*\r\n/);
             if (a == null){
               a = sdp.match(/m=audio.*\n/);
