@@ -54,7 +54,7 @@ class VideoMixer : public woogeen_base::MediaSourceConsumer, public erizo::Media
     DECLARE_LOGGER();
 
 public:
-    VideoMixer(erizo::RTPDataReceiver*, bool hardwareAccelerated, boost::property_tree::ptree& config);
+    VideoMixer(erizo::RTPDataReceiver*, boost::property_tree::ptree& config);
     virtual ~VideoMixer();
 
     // Video output related methods.

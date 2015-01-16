@@ -42,7 +42,7 @@ class Mixer : public woogeen_base::Gateway, public erizo::MediaSink, public eriz
     DECLARE_LOGGER();
 
 public:
-    Mixer(bool hardwareAccelerated, boost::property_tree::ptree& videoConf);
+    Mixer(boost::property_tree::ptree& videoConfig);
     virtual ~Mixer();
 
     // Implements Gateway.
@@ -88,7 +88,7 @@ protected:
     boost::shared_ptr<AudioMixer> m_audioMixer;
 
 private:
-    bool init(bool hardwareAccelerated, boost::property_tree::ptree& videoConf);
+    bool init(boost::property_tree::ptree& videoConfig);
     /**
      * Closes all the subscribers and the publisher, the object is useless after this
      */

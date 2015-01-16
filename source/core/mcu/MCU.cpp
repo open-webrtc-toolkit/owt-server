@@ -37,12 +37,10 @@ woogeen_base::Gateway* woogeen_base::Gateway::createGatewayInstance(const std::s
  
         if (isMixer) {
             bool outOfProcess = pt.get<bool>("oop");
-            bool hardwareAccelerated = pt.get<bool>("hardware");
-
             if (outOfProcess)
-                return new mcu::OutOfProcessMixer(hardwareAccelerated, pt.get_child("video"));
+                return new mcu::OutOfProcessMixer(pt.get_child("video"));
 
-            return new mcu::InProcessMixer(hardwareAccelerated, pt.get_child("video"));
+            return new mcu::InProcessMixer(pt.get_child("video"));
         }
     }
 

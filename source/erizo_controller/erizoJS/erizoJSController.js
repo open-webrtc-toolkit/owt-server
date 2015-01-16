@@ -126,10 +126,12 @@ exports.ErizoJSController = function (spec) {
                 var config = {
                     "mixer": true,
                     "oop": oop,
-                    "hardware": hardwareAccelerated,
-                    "video": {"resolution" : GLOBAL.config.erizo.videolayout.rootsize,
-                              "backgroundcolor" : GLOBAL.config.erizo.videolayout.backgroundcolor,
-                              "templates" : layoutTemplates}
+                    "video": {
+                        "hardware": hardwareAccelerated,
+                        "resolution": GLOBAL.config.erizo.videolayout.rootsize,
+                        "backgroundcolor": GLOBAL.config.erizo.videolayout.backgroundcolor,
+                        "templates": layoutTemplates
+                    }
                 };
                 var mixer = new addon.Gateway(JSON.stringify(config));
 
