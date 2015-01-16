@@ -36,8 +36,11 @@ namespace mcu {
 
 DEFINE_LOGGER(AudioMixer, "mcu.media.AudioMixer");
 
-AudioMixer::AudioMixer(erizo::RTPDataReceiver* receiver)
+AudioMixer::AudioMixer(erizo::RTPDataReceiver* receiver, AudioMixerVADCallback* callback, bool enableVAD)
     : m_dataReceiver(receiver)
+    , m_vadEnabled(enableVAD)
+    , m_vadCallback(callback)
+    , m_jitterHoldCount(0)
     , m_addSourceOnDemand(false)
 {
     m_voiceEngine = VoiceEngine::Create();
@@ -359,8 +362,11 @@ int32_t AudioMixer::performMix()
             audioCodec.plfreq,
             data,
             nSamplesOut,
-            -1) == 0)    // ugly to use -1 to represents the shared channel id
+            -1) == 0) {   // ugly to use -1 to represents the shared channel id
             audioTransport->OnData(m_sharedChannel.id, data, 0, audioCodec.plfreq, audioCodec.channels, nSamplesOut);
+            if (m_vadEnabled)
+                detectActiveSources();
+        }
     }
     for (std::map<std::string, VoiceChannel>::iterator it = m_outputChannels.begin();
         it != m_outputChannels.end();
@@ -379,6 +385,40 @@ int32_t AudioMixer::performMix()
     }
 
     return 0;
+}
+
+void AudioMixer::detectActiveSources()
+{
+    VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);
+    std::vector<int32_t> activeChannels;
+
+    if (m_jitterHoldCount > 0) {
+        m_jitterHoldCount--;
+        return;
+    }
+
+    if (!voe->GetActiveMixedInChannels(activeChannels)) {
+        if (activeChannels != m_activeChannels) {
+            m_activeChannels = activeChannels;
+            notifyActiveSources();
+            m_jitterHoldCount = 300; /* 300 * 10ms = 3 seconds */
+        }
+    }
+}
+
+void AudioMixer::notifyActiveSources()
+{
+    std::vector<uint32_t> sources;
+
+    boost::shared_lock<boost::shared_mutex> sourceLock(m_sourceMutex);
+    std::map<uint32_t, VoiceChannel>::iterator sourceIt = m_sourceChannels.begin();
+    for (; sourceIt != m_sourceChannels.end(); ++sourceIt) {
+        if (std::find(m_activeChannels.begin(), m_activeChannels.end(), sourceIt->second.id) != m_activeChannels.end())
+            sources.push_back(sourceIt->first);
+    }
+
+    if (m_vadCallback)
+        m_vadCallback->onPositiveAudioSources(sources);
 }
 
 } /* namespace mcu */

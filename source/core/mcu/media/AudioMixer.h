@@ -35,11 +35,16 @@
 
 namespace mcu {
 
+class AudioMixerVADCallback {
+public:
+    virtual void onPositiveAudioSources(std::vector<uint32_t>& sources) = 0;
+};
+
 class AudioMixer : public woogeen_base::MediaSourceConsumer, public erizo::MediaSink, public erizo::FeedbackSink, public JobTimerListener {
     DECLARE_LOGGER();
 
 public:
-    AudioMixer(erizo::RTPDataReceiver*);
+    AudioMixer(erizo::RTPDataReceiver*, AudioMixerVADCallback* callback, bool enableVAD = false);
     virtual ~AudioMixer();
 
     // Implements MediaSourceConsumer.
@@ -70,6 +75,8 @@ public:
 private:
     int32_t performMix();
     int32_t updateAudioFrame();
+    void detectActiveSources();
+    void notifyActiveSources();
 
     struct VoiceChannel {
         int32_t id;
@@ -80,6 +87,10 @@ private:
 
     VoiceChannel m_sharedChannel;
     erizo::RTPDataReceiver* m_dataReceiver;
+    bool m_vadEnabled;
+    AudioMixerVADCallback* m_vadCallback;
+    uint32_t m_jitterHoldCount;
+    std::vector<int32_t> m_activeChannels;
     std::map<uint32_t, VoiceChannel> m_sourceChannels; // TODO: revisit here - shall we use ChannelManager?
     boost::shared_mutex m_sourceMutex;
     std::map<std::string, VoiceChannel> m_outputChannels;

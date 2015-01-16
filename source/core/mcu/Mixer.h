@@ -38,7 +38,7 @@ namespace mcu {
  * It receives media from several sources through the WebRTCGateways, mixed them into one stream and retransmits
  * it to every subscriber.
  */
-class Mixer : public woogeen_base::Gateway, public erizo::MediaSink, public erizo::FeedbackSink, public erizo::RTPDataReceiver {
+class Mixer : public woogeen_base::Gateway, public erizo::MediaSink, public erizo::FeedbackSink, public erizo::RTPDataReceiver, AudioMixerVADCallback {
     DECLARE_LOGGER();
 
 public:
@@ -83,6 +83,9 @@ public:
     // Implements RTPDataReceiver.
     void receiveRtpData(char*, int len, erizo::DataType, uint32_t channelId);
 
+    // Implements AudioMixerVADCallback
+    void onPositiveAudioSources(std::vector<uint32_t>& sources);
+
 protected:
     boost::shared_ptr<VideoMixer> m_videoMixer;
     boost::shared_ptr<AudioMixer> m_audioMixer;
@@ -97,6 +100,9 @@ private:
     boost::shared_ptr<erizo::FeedbackSink> m_feedback;
     boost::shared_mutex m_subscriberMutex;
     std::map<std::string, boost::shared_ptr<erizo::MediaSink>> m_subscribers;
+    bool m_avCoordinated;
+    boost::shared_mutex m_avBindingsMutex;
+    std::map<uint32_t/*audio source*/, uint32_t/*video source*/> m_avBindings;
 };
 
 } /* namespace mcu */

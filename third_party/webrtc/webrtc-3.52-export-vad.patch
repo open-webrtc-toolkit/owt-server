@@ -1,0 +1,166 @@
+Index: src/webrtc/voice_engine/output_mixer.cc
+===================================================================
+--- src/webrtc/voice_engine/output_mixer.cc	(revision 8027)
++++ src/webrtc/voice_engine/output_mixer.cc	(working copy)
+@@ -50,8 +50,36 @@
+     WEBRTC_TRACE(kTraceStream, kTraceVoice, VoEId(_instanceId,-1),
+                  "OutputMixer::VADPositiveParticipants(id=%d, size=%u)",
+                  id, size);
++
++    _vadPositiveParticipantStatistics = participantStatistics;
++    _vadPositiveParticipantStatistics_size = size;
+ }
+ 
++int OutputMixer::GetVADPositiveParticipants(std::vector<int32_t>& channels)
++{
++    uint32_t threthhold = 2097152; /* FIXME: This is an experimental value.*/
++    channels.clear();
++    const ParticipantStatistics* p = _vadPositiveParticipantStatistics;
++    std::map<int32_t, uint32_t> participantLevel;
++    for (uint32_t i = 0; i < _vadPositiveParticipantStatistics_size; ++i) {
++        if (p->level > threthhold) {
++            std::vector<int32_t>::iterator it = channels.begin();
++            for (; it != channels.end(); ++it) {
++                if (participantLevel[*it] < p->level)
++                    break;
++            }
++            if (it == channels.end())
++                channels.push_back(p->participant);
++            else
++                channels.insert(it, p->participant);
++            participantLevel[p->participant] = p->level;
++        }
++        p++;
++    }
++
++    return 0;
++}
++
+ void OutputMixer::MixedAudioLevel(int32_t id, uint32_t level)
+ {
+     WEBRTC_TRACE(kTraceStream, kTraceVoice, VoEId(_instanceId,-1),
+@@ -126,7 +154,9 @@
+     _panRight(1.0f),
+     _mixingFrequencyHz(8000),
+     _outputFileRecorderPtr(NULL),
+-    _outputFileRecording(false)
++    _outputFileRecording(false),
++    _vadPositiveParticipantStatistics(NULL),
++    _vadPositiveParticipantStatistics_size(0)
+ {
+     WEBRTC_TRACE(kTraceMemory, kTraceVoice, VoEId(_instanceId,-1),
+                  "OutputMixer::OutputMixer() - ctor");
+Index: src/webrtc/voice_engine/voe_base_impl.h
+===================================================================
+--- src/webrtc/voice_engine/voe_base_impl.h	(revision 8027)
++++ src/webrtc/voice_engine/voe_base_impl.h	(working copy)
+@@ -71,6 +71,8 @@
+ 
+     virtual AudioTransport* audio_transport() { return this; }
+ 
++    virtual int GetActiveMixedInChannels(std::vector<int32_t/*channel*/>& channels);
++
+     // AudioTransport
+     virtual int32_t
+         RecordedDataIsAvailable(const void* audioSamples,
+Index: src/webrtc/voice_engine/include/voe_base.h
+===================================================================
+--- src/webrtc/voice_engine/include/voe_base.h	(revision 8027)
++++ src/webrtc/voice_engine/include/voe_base.h	(working copy)
+@@ -188,6 +188,9 @@
+     // implements the interface in its FakeWebRtcVoiceEngine.
+     virtual AudioTransport* audio_transport() { return NULL; }
+ 
++    // Extended(xiande): Add this interface to fetch the active input channels in the last round of audio-mixing.
++    virtual int GetActiveMixedInChannels(std::vector<int32_t/*channel*/>& channels) = 0;
++
+ protected:
+     VoEBase() {}
+     virtual ~VoEBase() {}
+Index: src/webrtc/voice_engine/voe_base_impl.cc
+===================================================================
+--- src/webrtc/voice_engine/voe_base_impl.cc	(revision 8027)
++++ src/webrtc/voice_engine/voe_base_impl.cc	(working copy)
+@@ -117,6 +117,13 @@
+     }
+ }
+ 
++int VoEBaseImpl::GetActiveMixedInChannels(std::vector<int32_t/*channel*/>& channels)
++{
++    assert(_shared->output_mixer() != NULL);
++
++    return _shared->output_mixer()->GetVADPositiveParticipants(channels);
++}
++
+ int32_t VoEBaseImpl::RecordedDataIsAvailable(
+         const void* audioSamples,
+         uint32_t nSamples,
+Index: src/webrtc/voice_engine/output_mixer.h
+===================================================================
+--- src/webrtc/voice_engine/output_mixer.h	(revision 8027)
++++ src/webrtc/voice_engine/output_mixer.h	(working copy)
+@@ -118,6 +118,8 @@
+     void PlayFileEnded(int32_t id);
+     void RecordFileEnded(int32_t id);
+ 
++    int GetVADPositiveParticipants(std::vector<int32_t>& channels);
++
+ private:
+     OutputMixer(uint32_t instanceId);
+     void APMAnalyzeReverseStream();
+@@ -145,6 +147,8 @@
+     int _mixingFrequencyHz;
+     FileRecorder* _outputFileRecorderPtr;
+     bool _outputFileRecording;
++    const ParticipantStatistics* _vadPositiveParticipantStatistics;
++    uint32_t _vadPositiveParticipantStatistics_size;
+ };
+ 
+ }  // namespace voe
+Index: src/webrtc/modules/audio_conference_mixer/interface/audio_conference_mixer_defines.h
+===================================================================
+--- src/webrtc/modules/audio_conference_mixer/interface/audio_conference_mixer_defines.h	(revision 8027)
++++ src/webrtc/modules/audio_conference_mixer/interface/audio_conference_mixer_defines.h	(working copy)
+@@ -44,7 +44,7 @@
+ struct ParticipantStatistics
+ {
+     int32_t participant;
+-    int32_t level;
++    uint32_t level;
+ };
+ 
+ class AudioMixerStatusReceiver
+Index: src/webrtc/modules/audio_conference_mixer/source/audio_conference_mixer_impl.cc
+===================================================================
+--- src/webrtc/modules/audio_conference_mixer/source/audio_conference_mixer_impl.cc	(revision 8027)
++++ src/webrtc/modules/audio_conference_mixer/source/audio_conference_mixer_impl.cc	(working copy)
+@@ -883,7 +883,7 @@
+                 (*iter)->id_;
+             // TODO(andrew): to what should this be set?
+             _scratchVadPositiveParticipants[
+-                _scratchVadPositiveParticipantsAmount].level = 0;
++                _scratchVadPositiveParticipantsAmount].level = (*iter)->energy_; //0;
+             _scratchVadPositiveParticipantsAmount++;
+         }
+     }
+Index: src/webrtc/modules/audio_conference_mixer/source/audio_frame_manipulator.cc
+===================================================================
+--- src/webrtc/modules/audio_conference_mixer/source/audio_frame_manipulator.cc	(revision 8027)
++++ src/webrtc/modules/audio_conference_mixer/source/audio_frame_manipulator.cc	(working copy)
+@@ -46,13 +46,15 @@
+         return;
+     }
+     audioFrame.energy_ = 0;
++    unsigned long long sum = 0;
+     for(int position = 0; position < audioFrame.samples_per_channel_;
+         position++)
+     {
+         // TODO(andrew): this can easily overflow.
+-        audioFrame.energy_ += audioFrame.data_[position] *
++        sum += audioFrame.data_[position] *
+                               audioFrame.data_[position];
+     }
++    audioFrame.energy_ = sum / audioFrame.samples_per_channel_;
+ }
+ 
+ void RampIn(AudioFrame& audioFrame)
