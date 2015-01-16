@@ -23,10 +23,9 @@
 #include "EncodedVideoFrameSender.h"
 #include "HardwareVideoFrameMixer.h"
 #include "SoftVideoFrameMixer.h"
-#include "VideoLayoutProcessor.h"
 #include "TaskRunner.h"
-#include "VCMInputProcessor.h"
 #include "VCMOutputProcessor.h"
+#include "VideoLayoutProcessor.h"
 #include <WoogeenTransport.h>
 #include <webrtc/system_wrappers/interface/trace.h>
 
@@ -40,13 +39,12 @@ namespace mcu {
 
 DEFINE_LOGGER(VideoMixer, "mcu.media.VideoMixer");
 
-VideoMixer::VideoMixer(erizo::RTPDataReceiver* receiver, bool hardwareAccelerated, boost::property_tree::ptree& config)
+VideoMixer::VideoMixer(erizo::RTPDataReceiver* receiver, boost::property_tree::ptree& config)
     : m_participants(0)
     , m_outputReceiver(receiver)
     , m_addSourceOnDemand(false)
-    , m_hardwareAccelerated(hardwareAccelerated)
 {
-    m_taskRunner.reset(new TaskRunner());
+    m_hardwareAccelerated = config.get<bool>("hardware");
 
     m_layoutProcessor.reset(new VideoLayoutProcessor(config));
     VideoSize rootSize;
@@ -62,6 +60,7 @@ VideoMixer::VideoMixer(erizo::RTPDataReceiver* receiver, bool hardwareAccelerate
         m_frameMixer.reset(new SoftVideoFrameMixer(rootSize, bgColor));
     m_layoutProcessor->registerConsumer(m_frameMixer);
 
+    m_taskRunner.reset(new TaskRunner());
     m_taskRunner->Start();
 
 #if ENABLE_WEBRTC_TRACE

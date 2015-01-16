@@ -27,9 +27,9 @@ namespace mcu {
 
 DEFINE_LOGGER(Mixer, "mcu.Mixer");
 
-Mixer::Mixer(bool hardwareAccelerated, boost::property_tree::ptree& videoConf)
+Mixer::Mixer(boost::property_tree::ptree& videoConfig)
 {
-    init(hardwareAccelerated, videoConf);
+    init(videoConfig);
 }
 
 Mixer::~Mixer()
@@ -150,9 +150,9 @@ int32_t Mixer::removeSource(uint32_t source, bool isAudio)
     return isAudio ? m_audioMixer->removeSource(source, true) : m_videoMixer->removeSource(source, false);
 }
 
-bool Mixer::init(bool hardwareAccelerated, boost::property_tree::ptree& videoConf)
+bool Mixer::init(boost::property_tree::ptree& videoConfig)
 {
-    m_videoMixer.reset(new VideoMixer(this, hardwareAccelerated, videoConf));
+    m_videoMixer.reset(new VideoMixer(this, videoConfig));
     m_audioMixer.reset(new AudioMixer(this));
 
     return true;
