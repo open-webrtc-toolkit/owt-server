@@ -11,6 +11,7 @@ GLOBAL.config.erizo.maxport = GLOBAL.config.erizo.maxport || 0;
 
 GLOBAL.config.erizo.videolayout = GLOBAL.config.erizo.videolayout || {};
 GLOBAL.config.erizo.videolayout.pattern = GLOBAL.config.erizo.videolayout.pattern || "fluid";
+GLOBAL.config.erizo.videolayout.avcoordinated = GLOBAL.config.erizo.videolayout.avcoordinated || false;
 GLOBAL.config.erizo.videolayout.rootsize = GLOBAL.config.erizo.videolayout.rootsize || "vga";
 GLOBAL.config.erizo.videolayout.maxinput = GLOBAL.config.erizo.videolayout.maxinput || 16;
 GLOBAL.config.erizo.videolayout.backgroundcolor = GLOBAL.config.erizo.videolayout.backgroundcolor || "black";

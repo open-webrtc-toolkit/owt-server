@@ -85,6 +85,7 @@ public:
 
     // Layout related operations
     void specifySourceRegion(uint32_t from, std::string& regionID);
+    void promoteSources(std::vector<uint32_t>& sources);
     bool setResolution(const std::string& resolution);
     bool setBackgroundColor(const std::string& color);
 

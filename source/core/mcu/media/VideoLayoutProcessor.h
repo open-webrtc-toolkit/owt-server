@@ -51,6 +51,7 @@ public:
     void addInput(int input, std::string& specifiedRegionID);
     void removeInput(int input);
     void promoteInput(int input, size_t magnitude);
+    void promoteInputs(std::vector<int>& inputs);
     void specifyInputRegion(int input, std::string& regionID);
 
 private:

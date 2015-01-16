@@ -197,6 +197,18 @@ void VideoMixer::onInputProcessorInitOK(int index)
     m_layoutProcessor->addInput(index);
 }
 
+void VideoMixer::promoteSources(std::vector<uint32_t>& sources)
+{
+    std::vector<int> inputs;
+    for (std::vector<uint32_t>::iterator it = sources.begin(); it != sources.end(); ++it) {
+        int index = getInput(*it);
+        if (index >= 0)
+            inputs.push_back(index);
+    }
+    if (inputs.size() > 0)
+        m_layoutProcessor->promoteInputs(inputs);
+}
+
 void VideoMixer::specifySourceRegion(uint32_t from, std::string& regionID)
 {
     int index = getInput(from);

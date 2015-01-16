@@ -76,58 +76,117 @@ exports.ErizoJSController = function (spec) {
                                                              {"id": "4", "left": 0.667, "top": 0.667, "relativesize": 0.333, "priority": 1.0},
                                                              {"id": "5", "left": 0.333, "top": 0.667, "relativesize": 0.333, "priority": 1.0},
                                                              {"id": "6", "left": 0, "top": 0.667, "relativesize": 0.333, "priority": 1.0}]}];
-                    var maxDiv = maxInput / 2;
-                    if (maxDiv > Math.floor(maxDiv))
-                        maxDiv = Math.floor(maxDiv) + 1;
-                    else
-                        maxDiv = Math.floor(maxDiv);
+                    if (maxInput > 6) { // for maxInput: 8, 10, 12, 14
+                        var maxDiv = maxInput / 2;
+                        maxDiv = (maxDiv > Math.floor(maxDiv)) ? (maxDiv + 1) : maxDiv;
+                        maxDiv = maxDiv > 7 ? 7 : maxDiv;
 
-                    for (var divFactor = 4; divFactor <= maxDiv; divFactor++) {
-                        var inputCount = divFactor * 2;
-                        var mainReginRelative = ((divFactor - 1) * 1.0 / divFactor);
-                        var minorRegionRelative = 1.0 / divFactor;
+                        for (var divFactor = 4; divFactor <= maxDiv; divFactor++) {
+                            var inputCount = divFactor * 2;
+                            var mainReginRelative = ((divFactor - 1) * 1.0 / divFactor);
+                            var minorRegionRelative = 1.0 / divFactor;
 
-                        var regions = [{"id": "1", "left": 0, "top": 0, "relativesize": mainReginRelative, "priority": 1.0}];
-                        var id = 2;
-                        for (var y = 0; y < divFactor; y++) {
-                            var region = {"id": String(id++),
-                                          "left": mainReginRelative,
-                                          "top": y*1.0 / divFactor,
-                                          "relativesize": minorRegionRelative,
-                                          "priority": 1.0};
-                            regions.push(region);
+                            var regions = [{"id": "1", "left": 0, "top": 0, "relativesize": mainReginRelative, "priority": 1.0}];
+                            var id = 2;
+                            for (var y = 0; y < divFactor; y++) {
+                                var region = {"id": String(id++),
+                                              "left": mainReginRelative,
+                                              "top": y*1.0 / divFactor,
+                                              "relativesize": minorRegionRelative,
+                                              "priority": 1.0};
+                                regions.push(region);
+                            }
+
+                            for (var x = divFactor - 2; x >= 0; x--) {
+                                var region = {"id": String(id++),
+                                              "left": x*1.0 / divFactor,
+                                              "top": mainReginRelative,
+                                              "relativesize": minorRegionRelative,
+                                              "priority": 1.0};
+                                regions.push(region);
+                            }
+                            result.push({"maxinput": divFactor * 2, "region": regions});
                         }
 
-                        for (var x = divFactor - 2; x >= 0; x--) {
-                            var region = {"id": String(id++),
-                                          "left": x*1.0 / divFactor,
-                                          "top": mainReginRelative,
-                                          "relativesize": minorRegionRelative,
-                                          "priority": 1.0};
-                            regions.push(region);
+                        if (maxInput > 14) { // for maxInput: 17, 21, 25
+                            var maxDiv = (maxInput + 3) / 4;
+                            maxDiv = (maxDiv > Math.floor(maxDiv)) ? (maxDiv + 1) : maxDiv;
+                            maxDiv = maxDiv > 7 ? 7 : maxDiv;
+
+                            for (var divFactor = 4; divFactor <= maxDiv; divFactor++) {
+                                var inputCount = divFactor * 4 - 3;
+                                var mainReginRelative = ((divFactor - 2) * 1.0 / divFactor);
+                                var minorRegionRelative = 1.0 / divFactor;
+
+                                var regions = [{"id": "1", "left": 0, "top": 0, "relativesize": mainReginRelative, "priority": 1.0}];
+                                var id = 2;
+                                for (var y = 0; y < divFactor - 1; y++) {
+                                    var region = {"id": String(id++),
+                                                  "left": mainReginRelative,
+                                                  "top": y*1.0 / divFactor,
+                                                  "relativesize": minorRegionRelative,
+                                                  "priority": 1.0};
+                                    regions.push(region);
+                                }
+
+                                for (var x = divFactor - 3; x >= 0; x--) {
+                                    var region = {"id": String(id++),
+                                                  "left": x*1.0 / divFactor,
+                                                  "top": mainReginRelative,
+                                                  "relativesize": minorRegionRelative,
+                                                  "priority": 1.0};
+                                    regions.push(region);
+                                }
+
+                                for (var y = 0; y < divFactor; y++) {
+                                    var region = {"id": String(id++),
+                                                  "left": mainReginRelative + minorRegionRelative,
+                                                  "top": y*1.0 / divFactor,
+                                                  "relativesize": minorRegionRelative,
+                                                  "priority": 1.0};
+                                    regions.push(region);
+                                }
+
+                                for (var x = divFactor - 2; x >= 0; x--) {
+                                    var region = {"id": String(id++),
+                                                  "left": x*1.0 / divFactor,
+                                                  "top": mainReginRelative + minorRegionRelative,
+                                                  "relativesize": minorRegionRelative,
+                                                  "priority": 1.0};
+                                    regions.push(region);
+                                }
+                                result.push({"maxinput": divFactor * 4 - 3, "region": regions});
+                            }
                         }
-                        result.push({"maxinput": divFactor * 2, "region": regions});
                     }
                     return result;
                 };
 
                 var layoutTemplates = {};
 
-                if (GLOBAL.config.erizo.videolayout.pattern == "fluid") {
+                if (GLOBAL.config.erizo.videolayout.pattern == "custom") {
+                    var custom_templates = require('./../../etc/custom_video_layout');
+                    if (isTemplatesValid(custom_templates))
+                        layoutTemplates = custom_templates.customvideolayout.videolayout;
+                    else {
+                        log.error("Custom layout file 'custom_video_layout' is invalid, default pattern [fluid] will be adopted.");
+                        layoutTemplates = generateFluidTemplates(GLOBAL.config.erizo.videolayout.maxinput);
+                    }
+                } else if (GLOBAL.config.erizo.videolayout.pattern == "fluid") {
                     layoutTemplates = generateFluidTemplates(GLOBAL.config.erizo.videolayout.maxinput);
                 } else if (GLOBAL.config.erizo.videolayout.pattern == "lecture") {
                     layoutTemplates = generateLectureTemplates(GLOBAL.config.erizo.videolayout.maxinput);
-                } else if (GLOBAL.config.erizo.videolayout.pattern == "custom") {
-                    var custom_templates = require('./../../etc/custom_video_layout');
-                    layoutTemplates = custom_templates.customvideolayout.videolayout;
-                } else
+                } else {
+                    log.error("Configuration item 'config.erizo.videolayout.pattern' is invalid, default pattern [fluid] will be adopted.");
                     layoutTemplates = generateFluidTemplates(GLOBAL.config.erizo.videolayout.maxinput);
+                }
 
                 var config = {
                     "mixer": true,
                     "oop": oop,
                     "video": {
                         "hardware": hardwareAccelerated,
+                        "avcoordinate": GLOBAL.config.erizo.videolayout.avcoordinated,
                         "resolution": GLOBAL.config.erizo.videolayout.rootsize,
                         "backgroundcolor": GLOBAL.config.erizo.videolayout.backgroundcolor,
                         "templates": layoutTemplates

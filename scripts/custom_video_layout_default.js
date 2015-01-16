@@ -3,9 +3,6 @@ exports.customvideolayout = {
         // Video layout for the case of no more than 1 input
         {
             "maxinput": 1,
-            "root": {
-                "backgroundcolor": "black"
-            },
             "region": [{
                 "id": "1",
                 "left": 0,
@@ -16,9 +13,6 @@ exports.customvideolayout = {
         // Video layout for the case of no more than 2 inputs
         {
             "maxinput": 2,
-            "root": {
-                "backgroundcolor": "black"
-            },
             "region": [{
                 "id": "1",
                 "left": 0,
@@ -34,9 +28,6 @@ exports.customvideolayout = {
         // Video layout for the case of no more than 3 inputs
         {
             "maxinput": 3,
-            "root": {
-                "backgroundcolor": "black"
-            },
             "region": [{
                 "id": "1",
                 "left": 0,
@@ -57,9 +48,6 @@ exports.customvideolayout = {
         // Video layout for the case of no more than 4 inputs
         {
             "maxinput": 4,
-            "root": {
-                "backgroundcolor": "white"
-            },
             "region": [{
                 "id": "1",
                 "left": 0,
@@ -85,9 +73,6 @@ exports.customvideolayout = {
         // Video layout for the case of no more than 6 inputs
         {
             "maxinput": 6,
-            "root": {
-                "backgroundcolor": "black"
-            },
             "region": [{
                 "id": "1",
                 "left": 0,
@@ -123,9 +108,6 @@ exports.customvideolayout = {
         // Video layout for the case of no more than 8 inputs
         {
             "maxinput": 8,
-            "root": {
-                "backgroundcolor": "white"
-            },
             "region": [{
                 "id": "1",
                 "left": 0,
@@ -171,9 +153,6 @@ exports.customvideolayout = {
         // Video layout for the case of no more than 16 inputs
         {
             "maxinput": 16,
-            "root": {
-                "backgroundcolor": "black"
-            },
             "region": [{
                 "id": "1",
                 "left": 0,

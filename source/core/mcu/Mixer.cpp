@@ -29,6 +29,7 @@ DEFINE_LOGGER(Mixer, "mcu.Mixer");
 
 Mixer::Mixer(boost::property_tree::ptree& videoConfig)
 {
+    m_avCoordinated = videoConfig.get<bool>("avcoordinate");
     init(videoConfig);
 }
 
@@ -96,6 +97,18 @@ void Mixer::receiveRtpData(char* buf, int len, erizo::DataType type, uint32_t st
     }
 }
 
+void Mixer::onPositiveAudioSources(std::vector<uint32_t>& audioSources)
+{
+    std::vector<uint32_t> videoSources;
+    for (std::vector<uint32_t>::iterator it = audioSources.begin(); it != audioSources.end(); ++it) {
+        boost::shared_lock<boost::shared_mutex> lock(m_avBindingsMutex);
+        std::map<uint32_t, uint32_t>::iterator found = m_avBindings.find(*it);
+        if (found != m_avBindings.end())
+            videoSources.push_back(found->second);
+    }
+    m_videoMixer->promoteSources(videoSources);
+}
+
 int32_t Mixer::addSource(uint32_t id, bool isAudio, FeedbackSink* feedback, const std::string& participantId)
 {
     if (isAudio)
@@ -106,6 +119,11 @@ int32_t Mixer::addSource(uint32_t id, bool isAudio, FeedbackSink* feedback, cons
 
 int32_t Mixer::bindAV(uint32_t audioSource, uint32_t videoSource)
 {
+    {
+        boost::unique_lock<boost::shared_mutex> lock(m_avBindingsMutex);
+        m_avBindings[audioSource] = videoSource;
+    }
+
     return m_videoMixer->bindAudio(videoSource, m_audioMixer->getChannelId(audioSource), m_audioMixer->avSyncInterface());
 }
 
@@ -147,13 +165,18 @@ void Mixer::removeSubscriber(const std::string& peerId)
 
 int32_t Mixer::removeSource(uint32_t source, bool isAudio)
 {
+    if (isAudio) {
+        boost::unique_lock<boost::shared_mutex> lock(m_avBindingsMutex);
+        m_avBindings.erase(source);
+    }
+
     return isAudio ? m_audioMixer->removeSource(source, true) : m_videoMixer->removeSource(source, false);
 }
 
 bool Mixer::init(boost::property_tree::ptree& videoConfig)
 {
     m_videoMixer.reset(new VideoMixer(this, videoConfig));
-    m_audioMixer.reset(new AudioMixer(this));
+    m_audioMixer.reset(new AudioMixer(this, this, m_avCoordinated));
 
     return true;
 }

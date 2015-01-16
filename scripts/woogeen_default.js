@@ -130,6 +130,7 @@ config.erizo.videolayout.rootsize = "vga";
 config.erizo.videolayout.backgroundcolor = "black";
 config.erizo.videolayout.maxinput = 16;
 config.erizo.videolayout.pattern = "fluid"; // "fluid" or "lecture" or "custom"
+config.erizo.videolayout.avcoordinated = false;
 
 /***** END *****/
 // Following lines are always needed.

@@ -189,6 +189,33 @@ void VideoLayoutProcessor::promoteInput(int input, size_t magnitude)
     }
 }
 
+void VideoLayoutProcessor::promoteInputs(std::vector<int>& inputs)
+{
+    // FIXME: We just promote the highest input in inputs to the head of m_inputPositions.
+    // this is a temporary strategy due to the current layout template having only one main sub-image.
+    if (inputs.size() > 0) {
+        int highestInput = inputs.front();
+        if (!m_inputPositions.empty()) {
+            int old = m_inputPositions.front();
+            if (highestInput != old) {
+                std::vector<int>::iterator found = std::find(m_inputPositions.begin(), m_inputPositions.end(), highestInput);
+                if (found != m_inputPositions.end()) {
+                    // m_inputPositions.insert(found, old);
+                    // std::vector<int>::iterator found = std::find(m_inputPositions.begin(), m_inputPositions.end(), highestInput);
+                    // m_inputPositions.erase(found);
+                    *found = old;
+                    m_inputPositions.erase(m_inputPositions.begin());
+                }
+                m_inputPositions.insert(m_inputPositions.begin(), highestInput);
+                updateInputPositions();
+            }
+        } else {
+            m_inputPositions.insert(m_inputPositions.begin(), highestInput);
+            updateInputPositions();
+        }
+    }
+}
+
 void VideoLayoutProcessor::specifyInputRegion(int input, std::string& regionID)
 {
     std::vector<int>::iterator itOldPosition = std::find(m_inputPositions.begin(), m_inputPositions.end(), input);
