@@ -170,9 +170,8 @@ exports.ErizoJSController = function (spec) {
                         var maxinput = templates[i].maxinput;
                         var region = templates[i].region;
 
-                        if (((typeof maxinput) !== "number")
-                            || maxinput < 1
-                            || ((typeof region) !== "object"))
+                        if (((typeof maxinput) !== "number") || maxinput < 1
+                            || !(region instanceof Array))
                             return false;
 
                         for (var j in region) {
@@ -189,7 +188,10 @@ exports.ErizoJSController = function (spec) {
 
                 if (GLOBAL.config.erizo.videolayout.pattern === "custom") {
                     var custom_templates = require('./../../etc/custom_video_layout');
-                    if (isTemplatesValid(custom_templates.customvideolayout.videolayout))
+                    if (custom_templates
+                        && custom_templates.customvideolayout
+                        && custom_templates.customvideolayout.videolayout
+                        && isTemplatesValid(custom_templates.customvideolayout.videolayout))
                         layoutTemplates = custom_templates.customvideolayout.videolayout;
                     else {
                         log.error("Custom layout file 'custom_video_layout' is invalid, default pattern [fluid] will be adopted.");
