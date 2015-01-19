@@ -416,6 +416,7 @@ void AudioMixer::notifyActiveSources()
         if (std::find(m_activeChannels.begin(), m_activeChannels.end(), sourceIt->second.id) != m_activeChannels.end())
             sources.push_back(sourceIt->first);
     }
+    sourceLock.unlock();
 
     if (m_vadCallback)
         m_vadCallback->onPositiveAudioSources(sources);

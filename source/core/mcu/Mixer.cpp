@@ -29,7 +29,6 @@ DEFINE_LOGGER(Mixer, "mcu.Mixer");
 
 Mixer::Mixer(boost::property_tree::ptree& videoConfig)
 {
-    m_avCoordinated = videoConfig.get<bool>("avcoordinate");
     init(videoConfig);
 }
 
@@ -176,7 +175,8 @@ int32_t Mixer::removeSource(uint32_t source, bool isAudio)
 bool Mixer::init(boost::property_tree::ptree& videoConfig)
 {
     m_videoMixer.reset(new VideoMixer(this, videoConfig));
-    m_audioMixer.reset(new AudioMixer(this, this, m_avCoordinated));
+    bool avCoordinated = videoConfig.get<bool>("avcoordinate");
+    m_audioMixer.reset(new AudioMixer(this, this, avCoordinated));
 
     return true;
 }
