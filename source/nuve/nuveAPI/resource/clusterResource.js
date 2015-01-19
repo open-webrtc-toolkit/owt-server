@@ -30,6 +30,19 @@ exports.getNode = function (req, res) {
   });
 };
 
+exports.getNodeConfig = function (req, res) {
+  'use strict';
+  var node = req.params.node;
+  authorized(function (ok) {
+    if (ok) {
+      return cloudHandler.getEcConfig(node, function (config) {
+        res.send(config);
+      });
+    }
+    return res.status(401).send('Service not authorized for this action');
+  });
+};
+
 exports.getRooms = function (req, res) {
   'use strict';
   authorized(function (ok) {

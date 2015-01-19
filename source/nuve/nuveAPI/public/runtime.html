@@ -58,9 +58,9 @@
       <div class="row">
         <div class="col-sm-3 col-md-2 sidebar">
           <ul class="nav nav-sidebar">
-            <li class="active"><a href=".">Overview <span class="sr-only">(current)</span></a></li>
+            <li><a href=".">Overview</a></li>
             <li><a href="room.html">Room Management</a></li>
-            <li><a href="runtime.html">Runtime Configuration</a></li>
+            <li class="active"><a href="runtime.html">Runtime Configuration <span class="sr-only">(current)</span></a></li>
           </ul>
           <div class="footer">
             <div class="container">
@@ -69,40 +69,58 @@
           </div>
         </div>
         <div class="col-sm-9 col-sm-offset-3 col-md-10 col-md-offset-2 main">
-          <h1 class="page-header">Services</h1>
+          <h1 class="page-header">MCU Cluster</h1>
 
-          <div class="row placeholders" id="serviceGraph">
-          </div>
-          <div class="row placeholders">
+          <div class="row placeholders" id="mcu-nuve">
             <div class="col-xs-6 col-sm-3 placeholder">
-              <a href="#"><img src="plus.svg" id="createService" title="click to toggle service creation form"></a>
-              <form style="display:none" id="cs-form">
-                <div class="input-group form-creation">
-                  <span class="input-group-addon">Service Name</span>
-                  <input type="text" class="form-control" id="cs-name" aria-describedby="cs-name">
-                </div>
-                <div class="input-group form-creation">
-                  <span class="input-group-addon">Service Key</span>
-                  <input type="text" class="form-control" id="cs-key" aria-describedby="cs-key">
-                </div>
-                <button type="button" class="btn btn-primary" id="cs-submit">Submit</button>
-              </form>
+              <a href="#"><img class="img-responsive" src="green.svg"></a>
+              <h4 class="text-info">Nuve</h4>
+              <span></span>
             </div>
           </div>
-          <div class="table-responsive" id="serviceTable">
-            <h3 id="tableTitle">Rooms in service</h3>
+          <div class="row placeholders" id="mcu-ecs">
+          </div>
+          <div class="table-responsive" id="ec-config-table" style="display:none">
+            <h3 id="tableTitle"></h3>
+            <table class="table table-striped">
+              <thead>
+                <tr>
+                  <th>defaultVideoBW</th>
+                  <th>maxVideoBW</th>
+                  <th>turn</th>
+                  <th>stun</th>
+                  <th>warning_n_rooms</th>
+                  <th>limit_n_rooms</th>
+                </tr>
+              </thead>
+              <tbody>
+              </tbody>
+            </table>
+          </div>
+          <div class="table-responsive" id="mcu-ecs-table">
+            <h3 id="tableTitle">MCU nodes in cluster</h3>
             <table class="table table-striped">
               <thead>
                 <tr>
                   <th>#</th>
-                  <th>Name</th>
-                  <th>Mode</th>
-                  <th>Publish Limit</th>
-                  <th>User Limit</th>
-                  <th>Media Mixing</th>
+                  <th>IP/Hostname</th>
+                  <th>Port</th>
+                  <th>State</th>
+                  <th>rpcId</th>
+                  <th>KeepAlive</th>
+                  <th>SSL</th>
                 </tr>
               </thead>
               <tbody>
+                <tr>
+                  <td>{{index}}</td>
+                  <td>{{address}}</td>
+                  <td>{{port}}</td>
+                  <td>{{state}}</td>
+                  <td><code>{{rpcID}}</code></td>
+                  <td>{{keepAlive}}</td>
+                  <td>{{ssl}}</td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -118,6 +136,6 @@
     <script src="vendor/js/hmac-sha1.js"></script> <!-- v3.0.2 -->
     <script src="libnuve.js"></script>
     <script src="util.js"></script>
-    <script src="service.js"></script>
+    <script src="runtime.js"></script>
   </body>
 </html>

@@ -1,25 +1,5 @@
-/* global Nuve, Mustache, PNotify, $ */
-function setCookie (cname, cvalue, exdays) {
-  'use strict';
-  var d = new Date();
-  d.setTime(d.getTime() + (exdays*24*60*60*1000));
-  var expires = 'expires='+d.toUTCString();
-  document.cookie = cname + '=' + cvalue + '; ' + expires;
-}
-
-function getCookie (cname) {
-  'use strict';
-  var name = cname + '=';
-  var ca = document.cookie.split(';');
-  for(var i=0; i<ca.length; i++) {
-    var c = ca[i];
-    while (c.charAt(0) == ' ') c = c.substring(1);
-    if (c.indexOf(name) === 0) return c.substring(name.length, c.length);
-  }
-  return '';
-}
-
-(function () {
+/* global Nuve, Mustache, notify, notifyConfirm, getCookie, setCookie, $ */
+(function serviceManagement () {
   'use strict';
 
   var nuve;
@@ -37,36 +17,6 @@ function getCookie (cname) {
     callback();
   }
 
-  function notify(level, title, message) {
-    $(function(){
-      new PNotify({
-        title: title,
-        text: message,
-        opacity: 0.8,
-        type: level
-      });
-    });
-  }
-
-  function notifyConfirm (title, message, onConfirm, onCancle) {
-    (new PNotify({
-      title: title,
-      text: message,
-      icon: 'glyphicon glyphicon-question-sign',
-      hide: false,
-      confirm: {
-        confirm: true
-      },
-      buttons: {
-        closer: false,
-        sticker: false
-      },
-      history: {
-        history: false
-      }
-    })).get().on('pnotify.confirm', onConfirm).on('pnotify.cancel', onCancle);
-  }
-
   $('button#clearCookie').click(function () {
     document.cookie = 'serviceId=; expires=Thu, 01 Jan 1970 00:00:00 UTC';
     document.cookie = 'serviceKey=; expires=Thu, 01 Jan 1970 00:00:00 UTC';
@@ -75,7 +25,7 @@ function getCookie (cname) {
   $('button#saveSericeInfo').click(function () {
     var serviceId = $('.modal-body #inputId').val();
     var serviceKey = $('.modal-body #inputKey').val();
-    var rememberMe = $('modal-body .checkbox input').prop('checked');
+    var rememberMe = $('.modal-body .checkbox input').prop('checked');
     if (serviceId !== '' && serviceKey !== '') {
       if (rememberMe) {
         setCookie('serviceId', serviceId, 365);
@@ -101,7 +51,7 @@ function getCookie (cname) {
     this.hide = function () {
       $('#cs-form').hide();
     };
-    // PNotify.prototype.options.styling = 'bootstrap2';
+
     $('#cs-form #cs-submit').click(function () {
       var serviceName = $('#cs-form #cs-name').val();
       var serviceKey = $('#cs-form #cs-key').val();
@@ -133,7 +83,14 @@ function getCookie (cname) {
     renderServices();
   });
 
-  var tableTemplate = '{{#rooms}}' + $('div#serviceTable tbody').html() + '{{/rooms}}';
+  var tableTemplate = '{{#rooms}}<tr>\
+      <td><code>{{_id}}</code></td>\
+      <td>{{name}}</td>\
+      <td>{{mode}}</td>\
+      <td>{{publishLimit}}</td>\
+      <td>{{userLimit}}</td>\
+      <td>{{mediaSetting}}</td>\
+    </tr>{{/rooms}}';
   Mustache.parse(tableTemplate);
   function tableHandler (rooms, sname) {
     var template = tableTemplate;
@@ -145,7 +102,7 @@ function getCookie (cname) {
       }
     });
     $('div#serviceTable tbody').html(view);
-    $('h3#tableTitle').html('Rooms in service <span class="underline">'+sname+'</span>');
+    $('h3#tableTitle').html('Rooms in service <em class="text-primary">'+sname+'</em>');
   }
 
   var svgBlue = 'blue.svg';
@@ -201,4 +158,5 @@ function getCookie (cname) {
   window.onload = function () {
     checkProfile(renderServices);
   };
+
 }());

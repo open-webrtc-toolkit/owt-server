@@ -58,8 +58,8 @@
       <div class="row">
         <div class="col-sm-3 col-md-2 sidebar">
           <ul class="nav nav-sidebar">
-            <li class="active"><a href=".">Overview <span class="sr-only">(current)</span></a></li>
-            <li><a href="room.html">Room Management</a></li>
+            <li><a href=".">Overview</a></li>
+            <li class="active"><a href="room.html">Room Management <span class="sr-only">(current)</span></a></li>
             <li><a href="runtime.html">Runtime Configuration</a></li>
           </ul>
           <div class="footer">
@@ -69,28 +69,8 @@
           </div>
         </div>
         <div class="col-sm-9 col-sm-offset-3 col-md-10 col-md-offset-2 main">
-          <h1 class="page-header">Services</h1>
-
-          <div class="row placeholders" id="serviceGraph">
-          </div>
-          <div class="row placeholders">
-            <div class="col-xs-6 col-sm-3 placeholder">
-              <a href="#"><img src="plus.svg" id="createService" title="click to toggle service creation form"></a>
-              <form style="display:none" id="cs-form">
-                <div class="input-group form-creation">
-                  <span class="input-group-addon">Service Name</span>
-                  <input type="text" class="form-control" id="cs-name" aria-describedby="cs-name">
-                </div>
-                <div class="input-group form-creation">
-                  <span class="input-group-addon">Service Key</span>
-                  <input type="text" class="form-control" id="cs-key" aria-describedby="cs-key">
-                </div>
-                <button type="button" class="btn btn-primary" id="cs-submit">Submit</button>
-              </form>
-            </div>
-          </div>
+          <h1 class="page-header">Rooms in current Service</h1>
           <div class="table-responsive" id="serviceTable">
-            <h3 id="tableTitle">Rooms in service</h3>
             <table class="table table-striped">
               <thead>
                 <tr>
@@ -118,6 +98,6 @@
     <script src="vendor/js/hmac-sha1.js"></script> <!-- v3.0.2 -->
     <script src="libnuve.js"></script>
     <script src="util.js"></script>
-    <script src="service.js"></script>
+    <script src="room.js"></script>
   </body>
 </html>

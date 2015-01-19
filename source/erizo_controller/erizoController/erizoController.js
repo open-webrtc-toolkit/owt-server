@@ -978,6 +978,17 @@ exports.updateConfig = function (conf, callback) {
     safeCall(callback, 'Success');
 };
 
+exports.getConfig = function (callback) {
+    safeCall(callback, {
+        defaultVideoBW: GLOBAL.config.erizoController.defaultVideoBW,
+        maxVideoBW: GLOBAL.config.erizoController.maxVideoBW,
+        turnServer: GLOBAL.config.erizoController.turnServer,
+        stunServerUrl: GLOBAL.config.erizoController.stunServerUrl,
+        warning_n_rooms: GLOBAL.config.erizoController.warning_n_rooms,
+        limit_n_rooms: GLOBAL.config.erizoController.limit_n_rooms
+    });
+};
+
 
 function spawnAgent (id) { // called once.
     var spawn = require('child_process').spawn;
