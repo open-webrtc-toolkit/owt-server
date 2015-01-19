@@ -162,19 +162,42 @@ exports.ErizoJSController = function (spec) {
                     return result;
                 };
 
+                var isTemplatesValid = function(templates) {
+                    if (templates === undefined)
+                        return false;
+
+                    for (var i in templates) {
+                        var maxinput = templates[i].maxinput;
+                        var region = templates[i].region;
+
+                        if (((typeof maxinput) !== "number")
+                            || maxinput < 1
+                            || ((typeof region) !== "object"))
+                            return false;
+
+                        for (var j in region) {
+                            if (((typeof region[j].left) !== "number") || region[j].left < 0.0 || region[j].left > 1.0
+                                || ((typeof region[j].top) !== "number") || region[j].top < 0.0 || region[j].top > 1.0
+                                || ((typeof region[j].relativesize) !== "number") || region[j].relativesize < 0.0 || region[j].relativesize > 1.0)
+                                return false;
+                        }
+                    }
+                    return true;
+                };
+
                 var layoutTemplates = {};
 
-                if (GLOBAL.config.erizo.videolayout.pattern == "custom") {
+                if (GLOBAL.config.erizo.videolayout.pattern === "custom") {
                     var custom_templates = require('./../../etc/custom_video_layout');
-                    if (isTemplatesValid(custom_templates))
+                    if (isTemplatesValid(custom_templates.customvideolayout.videolayout))
                         layoutTemplates = custom_templates.customvideolayout.videolayout;
                     else {
                         log.error("Custom layout file 'custom_video_layout' is invalid, default pattern [fluid] will be adopted.");
                         layoutTemplates = generateFluidTemplates(GLOBAL.config.erizo.videolayout.maxinput);
                     }
-                } else if (GLOBAL.config.erizo.videolayout.pattern == "fluid") {
+                } else if (GLOBAL.config.erizo.videolayout.pattern === "fluid") {
                     layoutTemplates = generateFluidTemplates(GLOBAL.config.erizo.videolayout.maxinput);
-                } else if (GLOBAL.config.erizo.videolayout.pattern == "lecture") {
+                } else if (GLOBAL.config.erizo.videolayout.pattern === "lecture") {
                     layoutTemplates = generateLectureTemplates(GLOBAL.config.erizo.videolayout.maxinput);
                 } else {
                     log.error("Configuration item 'config.erizo.videolayout.pattern' is invalid, default pattern [fluid] will be adopted.");
