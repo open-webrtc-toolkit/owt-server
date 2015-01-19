@@ -910,7 +910,7 @@ var listen = function () {
                     }
 
                     if (signMess.type === 'candidate') {
-                        signMess.candidate = signMess.candidate.replace(privateRegexp, publicIP);
+                        // signMess.candidate = signMess.candidate.replace(privateRegexp, publicIP);
                     } else if (signMess.type === 'ready') {
                         sendMsgToRoom(socket.room, 'onAddStream', socket.room.streams[id].getPublicStream());
                     }
@@ -1032,7 +1032,7 @@ var listen = function () {
                         }
 
                         if (signMess.type === 'candidate') {
-                            signMess.candidate = signMess.candidate.replace(privateRegexp, publicIP);
+                            // signMess.candidate = signMess.candidate.replace(privateRegexp, publicIP);
                         }
                         socket.emit('signaling_message_erizo', {mess: signMess, peerId: options.streamId});
                     });
