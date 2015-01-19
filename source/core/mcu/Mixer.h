@@ -100,7 +100,6 @@ private:
     boost::shared_ptr<erizo::FeedbackSink> m_feedback;
     boost::shared_mutex m_subscriberMutex;
     std::map<std::string, boost::shared_ptr<erizo::MediaSink>> m_subscribers;
-    bool m_avCoordinated;
     boost::shared_mutex m_avBindingsMutex;
     std::map<uint32_t/*audio source*/, uint32_t/*video source*/> m_avBindings;
 };
