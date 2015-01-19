@@ -37,3 +37,10 @@ exports.updateConfig = function (conf, callback) {
         callback('callback', result);
     });
 };
+
+exports.getConfig = function (callback) {
+    'use strict';
+    erizoController.getConfig(function (result) {
+        callback('callback', result);
+    });
+};

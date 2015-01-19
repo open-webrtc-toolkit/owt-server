@@ -198,6 +198,10 @@ Nuve.prototype.getClusterNode = function (nodeIndex, callback) {
     this.send('GET', undefined, 'cluster/nodes/' + nodeIndex, callback);
 };
 
+Nuve.prototype.getClusterNodeConfig = function (nodeRpcId, callback) {
+    this.send('GET', undefined, 'cluster/nodes/' + nodeRpcId + '/config', callback);
+};
+
 Nuve.prototype.getClusterRooms = function (callback) {
     this.send('GET', undefined, 'cluster/rooms', callback);
 };

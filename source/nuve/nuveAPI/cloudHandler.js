@@ -246,6 +246,13 @@ exports.getEcQueue = function getEcQueue (idx) {
     });
 };
 
+exports.getEcConfig = function getEcConfig (rpcID, callback) {
+    'use strict';
+    rpc.callRpc(rpcID, 'getConfig', [], {callback: function (result) {
+        callback(result);
+    }});
+};
+
 exports.getHostedRooms = function getHostedRooms () {
     'use strict';
     return Object.keys(rooms).map(function (rid) {

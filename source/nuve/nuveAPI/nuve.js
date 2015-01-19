@@ -77,6 +77,7 @@ app.delete('/rooms/:room/users/:user', userResource.deleteUser);
 app.get('/cluster/nodes', clusterResource.getNodes);
 app.get('/cluster/nodes/:node', clusterResource.getNode);
 app.get('/cluster/rooms', clusterResource.getRooms);
+app.get('/cluster/nodes/:node/config', clusterResource.getNodeConfig);
 
 if (config.nuve.ssl === true) {
     require('https').createServer({
