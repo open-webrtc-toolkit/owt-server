@@ -67,7 +67,7 @@ class SoftVideoCompositor : public VideoFrameCompositor,
     DECLARE_LOGGER();
     enum LayoutSolutionState{UN_INITIALIZED = 0, CHANGING, IN_WORK};
 public:
-    SoftVideoCompositor(VideoSize rootSize, YUVColor bgColor);
+    SoftVideoCompositor(uint32_t maxInput, VideoSize rootSize, YUVColor bgColor);
     ~SoftVideoCompositor();
 
     bool activateInput(int input);

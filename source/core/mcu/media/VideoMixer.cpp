@@ -43,8 +43,10 @@ VideoMixer::VideoMixer(erizo::RTPDataReceiver* receiver, boost::property_tree::p
     : m_participants(0)
     , m_outputReceiver(receiver)
     , m_addSourceOnDemand(false)
+    , m_maxInputCount(0)
 {
     m_hardwareAccelerated = config.get<bool>("hardware");
+    m_maxInputCount = config.get<uint32_t>("maxinput");
 
     m_layoutProcessor.reset(new VideoLayoutProcessor(config));
     VideoSize rootSize;
@@ -52,12 +54,12 @@ VideoMixer::VideoMixer(erizo::RTPDataReceiver* receiver, boost::property_tree::p
     YUVColor bgColor;
     m_layoutProcessor->getBgColor(bgColor);
 
-    ELOG_DEBUG("Init rootSize(%u, %u), bgColor(%u, %u, %u)", rootSize.width, rootSize.height, bgColor.y, bgColor.cb, bgColor.cr);
+    ELOG_DEBUG("Init maxInput(%u), rootSize(%u, %u), bgColor(%u, %u, %u)", m_maxInputCount, rootSize.width, rootSize.height, bgColor.y, bgColor.cb, bgColor.cr);
 
     if (m_hardwareAccelerated)
         m_frameMixer.reset(new HardwareVideoFrameMixer(rootSize, bgColor));
     else
-        m_frameMixer.reset(new SoftVideoFrameMixer(rootSize, bgColor));
+        m_frameMixer.reset(new SoftVideoFrameMixer(m_maxInputCount, rootSize, bgColor));
     m_layoutProcessor->registerConsumer(m_frameMixer);
 
     m_taskRunner.reset(new TaskRunner());
@@ -270,8 +272,8 @@ int32_t VideoMixer::addSource(uint32_t from, bool isAudio, FeedbackSink* feedbac
 {
     assert(!isAudio);
 
-    if (m_participants == MAX_VIDEO_SLOT_NUMBER) {
-        ELOG_WARN("Exceeding maximum number of sources (%u), ignoring the addSource request", MAX_VIDEO_SLOT_NUMBER);
+    if (m_participants == m_maxInputCount) {
+        ELOG_WARN("Exceeding maximum number of sources (%u), ignoring the addSource request", m_maxInputCount);
         return -1;
     }
 

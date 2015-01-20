@@ -212,6 +212,7 @@ exports.ErizoJSController = function (spec) {
                     "video": {
                         "hardware": hardwareAccelerated,
                         "avcoordinate": GLOBAL.config.erizo.videolayout.avcoordinated,
+                        "maxinput":GLOBAL.config.erizo.videolayout.maxinput,
                         "resolution": GLOBAL.config.erizo.videolayout.rootsize,
                         "backgroundcolor": GLOBAL.config.erizo.videolayout.backgroundcolor,
                         "templates": layoutTemplates

@@ -67,19 +67,19 @@ void VPMPool::update(unsigned int input, VideoSize& videoSize)
 
 DEFINE_LOGGER(SoftVideoCompositor, "mcu.media.SoftVideoCompositor");
 
-SoftVideoCompositor::SoftVideoCompositor(VideoSize rootSize, YUVColor bgColor)
+SoftVideoCompositor::SoftVideoCompositor(uint32_t maxInput, VideoSize rootSize, YUVColor bgColor)
     : m_composedSize(rootSize)
     , m_bgColor(bgColor)
     , m_solutionState(UN_INITIALIZED)
     , m_consumer(nullptr)
 {
     m_ntpDelta = Clock::GetRealTimeClock()->CurrentNtpInMilliseconds() - TickTime::MillisecondTimestamp();
-    m_vpmPool.reset(new VPMPool(MAX_VIDEO_SLOT_NUMBER));
+    m_vpmPool.reset(new VPMPool(maxInput));
 
     // Initialize frame buffer and buffer manager for video composition
     m_composedFrame.reset(new webrtc::I420VideoFrame());
     m_composedFrame->CreateEmptyFrame(m_composedSize.width, m_composedSize.height, m_composedSize.width, m_composedSize.width / 2, m_composedSize.width / 2);
-    m_bufferManager.reset(new BufferManager(m_composedSize.width, m_composedSize.height));
+    m_bufferManager.reset(new BufferManager(maxInput, m_composedSize.width, m_composedSize.height));
 
     m_jobTimer.reset(new JobTimer(30, this));
 }
