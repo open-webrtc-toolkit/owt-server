@@ -21,9 +21,7 @@
 #ifndef BufferManager_h
 #define BufferManager_h
 
-#include "VideoLayout.h"
-
-#include <bitset>
+#include <vector>
 #include <boost/version.hpp>
 #include <Compiler.h>
 
@@ -56,7 +54,7 @@ class BufferManager {
     DECLARE_LOGGER();
 
 public:
-    BufferManager(uint32_t width, uint32_t height);
+    BufferManager(uint32_t maxInput, uint32_t width, uint32_t height);
     ~BufferManager();
 
     webrtc::I420VideoFrame* getFreeBuffer();
@@ -74,9 +72,8 @@ public:
      */
     webrtc::I420VideoFrame* postFreeBuffer(webrtc::I420VideoFrame*, uint32_t slot);
 
-    void setActive(uint32_t slot, bool active) { m_activeSlots.set(slot, active); }
-    bool isActive(uint32_t slot) { return m_activeSlots.test(slot); }
-    uint32_t activeSlots() { return m_activeSlots.count(); }
+    void setActive(uint32_t slot, bool active) { m_activeSlots[slot] = active; }
+    bool isActive(uint32_t slot) { return m_activeSlots[slot]; }
 
 private:
     /* only works for 64bit */
@@ -97,16 +94,18 @@ private:
         return value;
     }
 
+    uint32_t m_maxInput;
+
     // frames in freeQ can be used to copy decoded frame data by the decoder thread
 #if BOOST_LOCKFREE_QUEUE
-    boost::lockfree::queue<webrtc::I420VideoFrame*, boost::lockfree::capacity<MAX_VIDEO_SLOT_NUMBER * 2>> m_freeQ;
+    boost::lockfree::queue<webrtc::I420VideoFrame*> m_freeQ;
 #else
     SharedQueue<webrtc::I420VideoFrame*> m_freeQ;
 #endif
     // frames in the busyQ is ready for composition by the encoder thread
-    volatile webrtc::I420VideoFrame* m_busyQ[MAX_VIDEO_SLOT_NUMBER];
+    volatile webrtc::I420VideoFrame** m_busyQ;
 
-    std::bitset<MAX_VIDEO_SLOT_NUMBER> m_activeSlots;
+    std::vector<bool> m_activeSlots;
 };
 
 } /* namespace mcu */

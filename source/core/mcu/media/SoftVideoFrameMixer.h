@@ -34,7 +34,7 @@ namespace mcu {
 
 class SoftVideoFrameMixer : public VideoFrameMixer {
 public:
-    SoftVideoFrameMixer(VideoSize rootSize, YUVColor bgColor);
+    SoftVideoFrameMixer(uint32_t maxInput, VideoSize rootSize, YUVColor bgColor);
     ~SoftVideoFrameMixer();
 
     bool activateInput(int input, FrameFormat, VideoFrameProvider*);
@@ -56,9 +56,9 @@ private:
     boost::scoped_ptr<FakedVideoFrameEncoder> m_encoder;
 };
 
-SoftVideoFrameMixer::SoftVideoFrameMixer(VideoSize rootSize, YUVColor bgColor)
+SoftVideoFrameMixer::SoftVideoFrameMixer(uint32_t maxInput, VideoSize rootSize, YUVColor bgColor)
 {
-    m_compositor.reset(new SoftVideoCompositor(rootSize, bgColor));
+    m_compositor.reset(new SoftVideoCompositor(maxInput, rootSize, bgColor));
     m_encoder.reset(new FakedVideoFrameEncoder(m_compositor));
 }
 
