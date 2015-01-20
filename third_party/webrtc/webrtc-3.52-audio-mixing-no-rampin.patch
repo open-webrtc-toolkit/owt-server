@@ -299,21 +299,6 @@ index 9f3e24b..a8742cc 100644
  
      // Method to pass captured data directly and unmixed to network channels.
      // |channel_ids| contains a list of VoE channels which are the
-diff --git src/webrtc/modules/video_coding/codecs/h264/h264.gyp src/webrtc/modules/video_coding/codecs/h264/h264.gyp
-index ab7ecc7..0d057c1 100644
---- src/webrtc/modules/video_coding/codecs/h264/h264.gyp
-+++ src/webrtc/modules/video_coding/codecs/h264/h264.gyp
-@@ -25,10 +25,6 @@
-       ],
-       'include_dirs': [
-         '<(openh264_dir)/codec/api/svc',
--        '<(openh264_dir)/codec/common',
--        '<(openh264_dir)/codec/encoder/core/inc',
--        '<(openh264_dir)/codec/encoder/plus/inc',
--        '<(openh264_dir)/codec/processing/interface', 
- 		'<(libav_dir)',               
-         'include',
-         '<(webrtc_root)/common_video/interface',
 diff --git src/webrtc/voice_engine/output_mixer.cc src/webrtc/voice_engine/output_mixer.cc
 index 1648a9d..fbf3ee6 100644
 --- src/webrtc/voice_engine/output_mixer.cc
