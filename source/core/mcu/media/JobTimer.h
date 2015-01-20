@@ -21,10 +21,10 @@
 #ifndef JobTimer_h
 #define JobTimer_h
 
-#include <atomic>
 #include <boost/asio.hpp>
 #include <boost/scoped_ptr.hpp>
 #include <boost/thread.hpp>
+#include <Compiler.h>
 
 namespace mcu {
 
