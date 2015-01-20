@@ -19,7 +19,9 @@
  */
 
 #include "VideoLayoutProcessor.h"
+
 #include <boost/foreach.hpp>
+#include <Compiler.h>
 
 namespace mcu {
 

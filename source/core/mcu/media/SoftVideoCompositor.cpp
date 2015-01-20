@@ -156,7 +156,7 @@ void SoftVideoCompositor::generateFrame()
         composedFrame->set_render_time_ms(TickTime::MillisecondTimestamp() - m_ntpDelta);
 
         if (m_consumer)
-            m_consumer.load()->onFrame(FRAME_FORMAT_I420, reinterpret_cast<unsigned char*>(composedFrame), 0, 0);
+            m_consumer->onFrame(FRAME_FORMAT_I420, reinterpret_cast<unsigned char*>(composedFrame), 0, 0);
     }
 }
 

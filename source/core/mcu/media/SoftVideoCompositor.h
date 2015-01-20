@@ -100,7 +100,7 @@ private:
     LayoutSolution m_currentLayout;
     LayoutSolution m_newLayout;
     LayoutSolutionState m_solutionState;
-    std::atomic<VideoFrameConsumer*> m_consumer;
+    VideoFrameConsumer* m_consumer;
     /*
      * Each incoming channel will store the decoded frame in this array, and the composition
      * thread will scan this array and compose the frames into one frame.
