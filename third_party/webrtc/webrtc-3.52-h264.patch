@@ -1396,7 +1396,7 @@ new file mode 100644
 index 0000000..cd5e055
 --- /dev/null
 +++ b/src/webrtc/modules/video_coding/codecs/h264/h264.gyp
-@@ -0,0 +1,57 @@
+@@ -0,0 +1,53 @@
 +# Copyright (c) 2012 The WebRTC project authors. All Rights Reserved.
 +#
 +# Use of this source code is governed by a BSD-style license
@@ -1424,10 +1424,6 @@ index 0000000..cd5e055
 +      ],
 +      'include_dirs': [
 +        '<(openh264_dir)/codec/api/svc',
-+        '<(openh264_dir)/codec/common',
-+        '<(openh264_dir)/codec/encoder/core/inc',
-+        '<(openh264_dir)/codec/encoder/plus/inc',
-+        '<(openh264_dir)/codec/processing/interface', 
 +		'<(libav_dir)',               
 +        'include',
 +        '<(webrtc_root)/common_video/interface',
