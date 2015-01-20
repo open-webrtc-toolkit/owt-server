@@ -1,16 +1,51 @@
 #!/bin/bash
-SCRIPT=`pwd`/$0
-FILENAME=`basename $SCRIPT`
-PATHNAME=`dirname $SCRIPT`
-ROOT=$PATHNAME/..
-BUILD_DIR=$ROOT/build
-CURRENT_DIR=`pwd`
-
-LIB_DIR=$BUILD_DIR/libdeps
-PREFIX_DIR=$LIB_DIR/build/
 
 pause() {
   read -p "$*"
+}
+
+check_proxy(){
+  if [ -z "$http_proxy" ]; then
+    echo "No http proxy set, doing nothing"
+  else
+    echo "http proxy configured, configuring npm"
+    npm config set proxy $http_proxy
+  fi  
+
+  if [ -z "$https_proxy" ]; then
+    echo "No https proxy set, doing nothing"
+  else
+    echo "https proxy configured, configuring npm"
+    npm config set https-proxy $https_proxy
+  fi  
+}
+
+install_opus(){
+  [ -d $LIB_DIR ] || mkdir -p $LIB_DIR
+  cd $LIB_DIR
+  curl -O http://downloads.xiph.org/releases/opus/opus-1.1.tar.gz
+  tar -zxvf opus-1.1.tar.gz
+  cd opus-1.1
+  ./configure --prefix=$PREFIX_DIR
+  make -s V=0
+  make install
+  cd $CURRENT_DIR
+}
+
+install_libvpx(){
+  if [ -d $LIB_DIR ]; then
+    cd $LIB_DIR
+    wget https://webm.googlecode.com/files/libvpx-v1.3.0.tar.bz2
+    tar -xvf libvpx-v1.3.0.tar.bz2
+    cd libvpx-v1.3.0
+    ./configure --prefix=/usr --enable-shared --enable-vp8 --disable-vp9
+    make -s V=0 && sudo make install
+    sudo ldconfig
+    cd $CURRENT_DIR
+  else
+    mkdir -p $LIB_DIR
+    install_libvpx
+  fi
 }
 
 install_libnice(){
@@ -130,61 +165,9 @@ install_node_tools() {
   sudo chown -R `whoami` ~/.npm ~/tmp/
 }
 
-pause "Installing node building tools... [press Enter]"
-install_node_tools
-
 install_mediaprocessor() {
   local MEDIAPROCESSOR_DIR="${ROOT}/third_party/mediaprocessor"
   local target="vcsa_video"
   BUILD_WITH_MSDK=true
   cd ${MEDIAPROCESSOR_DIR} && make distclean && make ${target}
 }
-
-mkdir -p $PREFIX_DIR
-
-pause "Installing libnice library...  [press Enter]"
-install_libnice
-
-pause "Installing openssl library...  [press Enter]"
-install_openssl
-
-pause "Installing libsrtp library...  [press Enter]"
-install_libsrtp
-
-read -p "Installing webrtc library? [Yes/no]" yn
-case $yn in
-  [Nn]* ) ;;
-  [Yy]* ) install_webrtc;;
-  * ) install_webrtc;;
-esac
-
-pause "Installing ooVoo SDK library...  [press Enter]"
-install_oovoosdk
-
-read -p "Building libuv? [Yes/no]" yn
-case $yn in
-  [Nn]* ) ;;
-  [Yy]* ) install_libuv;;
-  * ) install_libuv;;
-esac
-
-read -p "Installing tcmalloc library? [No/yes]" yn
-case $yn in
-  [Yy]* ) install_tcmalloc;;
-  [Nn]* ) ;;
-  * ) ;;
-esac
-
-read -p "Installing OpenH264 Video Codec provided by Cisco Systems, Inc.? [Yes/no]" yn
-case $yn in
-  [Nn]* ) ;;
-  [Yy]* ) install_openh264;;
-  * ) install_openh264;;
-esac
-
-read -p "Installing mediaprocessor? [No/yes]" yn
-case $yn in
-  [Yy]* ) install_mediaprocessor;;
-  [Nn]* ) ;;
-  * ) ;;
-esac

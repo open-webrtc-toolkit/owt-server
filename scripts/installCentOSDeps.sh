@@ -1,15 +1,5 @@
 #!/bin/bash
 
-SCRIPT=`pwd`/$0
-FILENAME=`basename $SCRIPT`
-PATHNAME=`dirname $SCRIPT`
-ROOT=$PATHNAME/..
-BUILD_DIR=$ROOT/build
-CURRENT_DIR=`pwd`
-
-LIB_DIR=$BUILD_DIR/libdeps
-PREFIX_DIR=$LIB_DIR/build
-
 install_gcc(){
   if [ -d $LIB_DIR ]; then
     cd $LIB_DIR
@@ -151,34 +141,10 @@ installRepo(){
   rm *.rpm
 }
 
-pause() {
-  read -p "$*"
-}
-
-parse_arguments(){
-  while [ "$1" != "" ]; do
-    case $1 in
-      "--enable-gpl")
-        ENABLE_GPL=true
-        ;;
-      "--cleanup")
-        CLEANUP=true
-        ;;
-    esac
-    shift
-  done
-}
-
 install_mediadeps_nogpl(){
   sudo -E yum install yasm
+  install_libvpx
   if [ -d $LIB_DIR ]; then
-    cd $LIB_DIR
-    wget https://webm.googlecode.com/files/libvpx-v1.3.0.tar.bz2
-    tar -xvf libvpx-v1.3.0.tar.bz2
-    cd libvpx-v1.3.0
-    ./configure --prefix=/usr --enable-shared
-    make -s V=0 && sudo make install
-    sudo ldconfig
     cd $LIB_DIR
     wget https://www.libav.org/releases/libav-9.9.tar.gz
     tar -zxvf libav-9.9.tar.gz
@@ -194,6 +160,7 @@ install_mediadeps_nogpl(){
 
 install_mediadeps(){
   sudo -E yum install yasm
+  install_libvpx
   if [ -d $LIB_DIR ]; then
     # x264
     cd $LIB_DIR
@@ -202,13 +169,6 @@ install_mediadeps(){
     ./configure --enable-static --enable-shared
     make;sudo make install
     sudo ldconfig
-    # libvpx
-    cd $LIB_DIR
-    wget https://webm.googlecode.com/files/libvpx-v1.3.0.tar.bz2
-    tar -xvf libvpx-v1.3.0.tar.bz2
-    cd libvpx-v1.3.0
-    ./configure --enable-shared
-    make -s V=0;sudo make install
     #libav
     cd $LIB_DIR
     wget https://www.libav.org/releases/libav-9.9.tar.gz
@@ -265,37 +225,3 @@ cleanup(){
     cd $CURRENT_DIR
   fi
 }
-
-parse_arguments $*
-
-mkdir -p $PREFIX_DIR
-
-read -p "Add EPEL repository to yum? [Yes/no]" yn
-case $yn in
-  [Nn]* ) ;;
-  [Yy]* ) installRepo;;
-  * ) installRepo;;
-esac
-
-read -p "Installing deps via yum [Yes/no]" yn
-case $yn in
-  [Nn]* ) ;;
-  [Yy]* ) installYumDeps;;
-  * ) installYumDeps;;
-esac
-
-if [ "$ENABLE_GPL" = "true" ]; then
-  pause "GPL libraries enabled"
-  install_mediadeps
-else
-  pause "No GPL libraries enabled, this disables h264 transcoding, to enable gpl please use the --enable-gpl option"
-  install_mediadeps_nogpl
-fi
-
-cd $PATHNAME
-./installCommonDeps.sh
-
-if [ "$CLEANUP" = "true" ]; then
-  echo "Cleaning up..."
-  cleanup
-fi

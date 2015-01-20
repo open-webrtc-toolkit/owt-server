@@ -1,47 +1,4 @@
 #!/bin/bash
-SCRIPT=`pwd`/$0
-FILENAME=`basename $SCRIPT`
-PATHNAME=`dirname $SCRIPT`
-ROOT=$PATHNAME/..
-BUILD_DIR=$ROOT/build
-CURRENT_DIR=`pwd`
-
-LIB_DIR=$BUILD_DIR/libdeps
-PREFIX_DIR=$LIB_DIR/build/
-
-pause() {
-  read -p "$*"
-}
-
-parse_arguments(){
-  while [ "$1" != "" ]; do
-    case $1 in
-      "--enable-gpl")
-        ENABLE_GPL=true
-        ;;
-      "--cleanup")
-        CLEANUP=true
-        ;;
-    esac
-    shift
-  done
-}
-
-check_proxy(){
-  if [ -z "$http_proxy" ]; then
-    echo "No http proxy set, doing nothing"
-  else
-    echo "http proxy configured, configuring npm"
-    npm config set proxy $http_proxy
-  fi  
-
-  if [ -z "$https_proxy" ]; then
-    echo "No https proxy set, doing nothing"
-  else
-    echo "https proxy configured, configuring npm"
-    npm config set https-proxy $https_proxy
-  fi  
-}
 
 install_apt_deps(){
   sudo -E apt-get install python-software-properties
@@ -49,34 +6,6 @@ install_apt_deps(){
   sudo -E add-apt-repository ppa:chris-lea/node.js
   sudo -E apt-get update
   sudo -E apt-get install git make gcc g++ libssl-dev cmake libglib2.0-dev pkg-config nodejs libboost-regex-dev libboost-thread-dev libboost-system-dev liblog4cxx10-dev rabbitmq-server mongodb openjdk-6-jre curl libboost-test-dev nasm
-}
-
-install_opus(){
-  [ -d $LIB_DIR ] || mkdir -p $LIB_DIR
-  cd $LIB_DIR
-  curl -O http://downloads.xiph.org/releases/opus/opus-1.1.tar.gz
-  tar -zxvf opus-1.1.tar.gz
-  cd opus-1.1
-  ./configure --prefix=$PREFIX_DIR
-  make -s V=0
-  make install
-  cd $CURRENT_DIR
-}
-
-install_libvpx(){
-  if [ -d $LIB_DIR ]; then
-    cd $LIB_DIR
-    wget https://webm.googlecode.com/files/libvpx-v1.3.0.tar.bz2
-    tar -xvf libvpx-v1.3.0.tar.bz2
-    cd libvpx-v1.3.0
-    ./configure --prefix=/usr --enable-shared --enable-vp8 --disable-vp9
-    make -s V=0 && sudo make install
-    sudo ldconfig
-    cd $CURRENT_DIR
-  else
-    mkdir -p $LIB_DIR
-    install_libvpx
-  fi
 }
 
 install_mediadeps(){
@@ -126,31 +55,3 @@ cleanup(){
     cd $CURRENT_DIR
   fi
 }
-
-parse_arguments $*
-
-mkdir -p $PREFIX_DIR
-
-pause "Installing deps via apt-get... [press Enter]"
-install_apt_deps
-
-check_proxy
-
-pause "Installing opus library...  [press Enter]"
-install_opus
-
-if [ "$ENABLE_GPL" = "true" ]; then
-  pause "GPL libraries enabled"
-  install_mediadeps
-else
-  pause "No GPL libraries enabled, this disables h264 transcoding, to enable gpl please use the --enable-gpl option"
-  install_mediadeps_nogpl
-fi
-
-cd $PATHNAME
-./installCommonDeps.sh
-
-if [ "$CLEANUP" = "true" ]; then
-  echo "Cleaning up..."
-  cleanup
-fi
