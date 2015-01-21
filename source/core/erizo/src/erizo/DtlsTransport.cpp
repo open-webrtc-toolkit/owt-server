@@ -74,7 +74,7 @@ void Resender::resend(const boost::system::error_code& ec) {
   }
 }
 
-DtlsTransport::DtlsTransport(MediaType med, const std::string &transport_name, bool bundle, bool rtcp_mux, TransportListener *transportListener, const std::string &stunServer, int stunPort, int minPort, int maxPort, const std::string& certFile, const std::string& keyFile, const std::string& privatePasswd):Transport(med, transport_name, bundle, rtcp_mux, transportListener, stunServer, stunPort, minPort, maxPort),
+DtlsTransport::DtlsTransport(MediaType med, const std::string &transport_name, bool bundle, bool rtcp_mux, TransportListener *transportListener, const std::string &stunServer, int stunPort, int minPort, int maxPort, const std::string& certFile, const std::string& keyFile, const std::string& privatePasswd, std::string username, std::string password):Transport(med, transport_name, bundle, rtcp_mux, transportListener, stunServer, stunPort, minPort, maxPort),
   readyRtp(false), readyRtcp(false), running_(false) {
   ELOG_DEBUG( "Initializing DtlsTransport" );
 
@@ -91,7 +91,7 @@ DtlsTransport::DtlsTransport(MediaType med, const std::string &transport_name, b
     dtlsFactory_->createClient(dtlsRtcp);
     dtlsRtcp->setDtlsReceiver(this);
   }
-  nice_.reset(new NiceConnection(med, transport_name, this, comps, stunServer, stunPort, minPort, maxPort));
+  nice_.reset(new NiceConnection(med, transport_name, this, comps, stunServer, stunPort, minPort, maxPort, username, password));
 }
 
 DtlsTransport::~DtlsTransport() {

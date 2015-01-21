@@ -78,7 +78,7 @@ namespace erizo {
   }
 
   NiceConnection::NiceConnection(MediaType med, const std::string &transport_name,NiceConnectionListener* listener, 
-      unsigned int iceComponents, const std::string& stunServer, int stunPort, int minPort, int maxPort)
+      unsigned int iceComponents, const std::string& stunServer, int stunPort, int minPort, int maxPort, std::string username, std::string password)
      : mediaType(med), agent_(NULL), listener_(listener), candsDelivered_(0), context_(NULL), iceState_(NICE_INITIAL), iceComponents_(iceComponents),
              stunServer_(stunServer), stunPort_ (stunPort), minPort_(minPort), maxPort_(maxPort) {
 
@@ -142,8 +142,10 @@ namespace erizo {
     g_free(ufrag);
     g_free(upass);
 
+    // Set our remote credentials.  This must be done *after* we add a stream.
+    nice_agent_set_remote_credentials(agent_, (guint) 1, username.c_str(), password.c_str());
+
     // Set Port Range ----> If this doesn't work when linking the file libnice.sym has to be modified to include this call
-    
     if (minPort_!=0 && maxPort_!=0){
       ELOG_DEBUG("Setting port range: %d to %d\n", minPort_, maxPort_);
       nice_agent_set_port_range(agent_, (guint)1, (guint)1, (guint)minPort_, (guint)maxPort_);
