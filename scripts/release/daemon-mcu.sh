@@ -111,6 +111,7 @@ case $startStop in
         sleep 5
         ;;
       mcu )
+        export PATH=${PATH}:${WOOGEEN_HOME}/sbin
         export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${WOOGEEN_HOME}/lib
         export LOG4CXX_CONFIGURATION=${WOOGEEN_HOME}/etc/mcu/log4cxx.properties
         cd ${WOOGEEN_HOME}/mcu/erizoController

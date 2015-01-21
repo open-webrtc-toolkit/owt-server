@@ -130,7 +130,7 @@ ${bin}/start-all.sh
 }
 
 pack_node() {
-  return # just return now since existing conflicts not resolved.
+  return # just return for now.
   NODE_VERSION=
   . ${this}/../.conf
   echo "node version: ${NODE_VERSION}"
@@ -142,7 +142,7 @@ pack_node() {
   cd node-${NODE_VERSION}
   mkdir -p lib/webrtc_mcu
 
-  find ${WOOGEEN_DIST}/mcu -type f -name "*.js" | while read line; do
+  find ${WOOGEEN_DIST}/mcu/common ${WOOGEEN_DIST}/mcu/erizoJS -type f -name "*.js" | while read line; do
     # This is kind of fragile - we assume that the occurrences of "require" are
     # always the keyword for module loading in the original JavaScript file.
     sed -i.origin "s/require('.*\//Module\._load('/g; s/require('/Module\._load('/g" "${line}"
@@ -153,8 +153,8 @@ pack_node() {
     mv "${line}.origin" "${line}" # revert to original
   done
   # The entry
-  mv `pwd`/lib/webrtc_mcu/mcu.js `pwd`/lib/_third_party_main.js
-  sed -i "s/webrtc_mcu\/mcu\.js/_third_party_main.js/g" node.gyp
+  mv `pwd`/lib/webrtc_mcu/erizoJS.js `pwd`/lib/_third_party_main.js
+  sed -i "s/webrtc_mcu\/erizoJS\.js/_third_party_main.js/g" node.gyp
 
   local UV_OPT=
   [[ -s ${UV_DIR}/libuv.so ]] && UV_OPT="--shared-libuv --shared-libuv-includes=${UV_DIR}/include --shared-libuv-libpath=${UV_DIR}"
@@ -174,17 +174,14 @@ pack_node() {
   cp -av ${PREFIX_DIR}/bin/node ${WOOGEEN_DIST}/sbin/webrtc_mcu
   make uninstall
 
-  sed -i 's/\/mcu\//\/sbin\//g' "${WOOGEEN_DIST}/bin/daemon.sh"
-  sed -i 's/node mcu\.js/\.\/webrtc_mcu/g' "${WOOGEEN_DIST}/bin/daemon.sh"
+  sed -i "s/spawn('node'/spawn('webrtc_mcu'/g" "${WOOGEEN_DIST}/mcu/erizoAgent/erizoAgent.js"
 
-  mkdir -p ${WOOGEEN_DIST}/lib/node
-  ln -s ../../etc/mcu_config.json ${WOOGEEN_DIST}/lib/node/
+  ln -s ${WOOGEEN_DIST}/node_modules ${WOOGEEN_DIST}/lib/node
+  ln -s ../etc/woogeen_config.js ${WOOGEEN_DIST}/node_modules/
   mv ${WOOGEEN_DIST}/bindings/mcu/build/Release/addon.node ${WOOGEEN_DIST}/lib/node/
-  mv ${WOOGEEN_DIST}/node_modules/* ${WOOGEEN_DIST}/lib/node/
 
-  rm -rf ${WOOGEEN_DIST}/mcu
+  rm -rf ${WOOGEEN_DIST}/mcu/erizoJS
   rm -rf ${WOOGEEN_DIST}/bindings
-  rm -rf ${WOOGEEN_DIST}/node_modules
 }
 
 install_module() {
