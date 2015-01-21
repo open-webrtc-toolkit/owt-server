@@ -137,7 +137,7 @@
             if (err) return notify('error', 'Delete Service Error', resp);
             renderServices();
             notify('info', 'Delete Service Success', resp);
-          }, function () {});
+          });
         });
       });
     });
