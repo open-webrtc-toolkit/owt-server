@@ -7,7 +7,16 @@ function Room (spec) {
     this.publishLimit = spec.publishLimit || 0;
     this.userLimit = spec.userLimit || 0;
     this.mediaMixing = spec.mediaMixing || null;
-    this.needRecording = spec.needRecording || false;
+    if (typeof this.mode === 'string') this.mode = parseInt(this.mode, 10);
+    if (typeof this.publishLimit === 'string') this.publishLimit = parseInt(this.publishLimit, 10);
+    if (typeof this.userLimit === 'string') this.userLimit = parseInt(this.userLimit, 10);
+    if (typeof this.mediaMixing === 'string') {
+      try {
+        this.mediaMixing = JSON.parse(this.mediaMixing);
+      } catch (e) {
+        this.mediaMixing = null;
+      }
+    }
 }
 
 Room.create = function (spec) {
@@ -22,19 +31,17 @@ Room.createDefault = function (name) {
         mode: 0,
         publishLimit: 16,
         userLimit: 100,
-        mediaMixing: null,
-        needRecording: false
+        mediaMixing: null
     });
 };
 
 Room.prototype.validate = function () {
     'use strict';
     return (typeof this.name === 'string') &&
-        (typeof this.mode === 'number') &&
-        (typeof this.publishLimit === 'number') &&
-        (typeof this.userLimit === 'number') &&
-        (typeof this.mediaMixing === 'object') &&
-        (typeof this.needRecording === 'boolean');
+        (typeof this.mode === 'number' && this.mode >= 0) &&
+        (typeof this.publishLimit === 'number' && (!isNaN(this.publishLimit))) &&
+        (typeof this.userLimit === 'number' && (!isNaN(this.userLimit))) &&
+        (typeof this.mediaMixing === 'object');
 };
 
 Room.prototype.toString = function () {
@@ -74,7 +81,6 @@ exports = module.exports = Room;
       }
     },
     "audio": null // type object
-  },
-  "needRecording": true // type boolean
+  }
 }
 */
