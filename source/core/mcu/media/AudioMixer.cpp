@@ -401,7 +401,7 @@ void AudioMixer::detectActiveSources()
         if (activeChannels != m_activeChannels) {
             m_activeChannels = activeChannels;
             notifyActiveSources();
-            m_jitterHoldCount = 300; /* 300 * 10ms = 3 seconds */
+            m_jitterHoldCount = 200; /* 200 * 10ms = 2 seconds */
         }
     }
 }
