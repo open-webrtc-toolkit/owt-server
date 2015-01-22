@@ -2,8 +2,8 @@
 
 ## Dependency
 
-- on Ubuntu: `scripts/installUbuntuDeps.sh`
-- on CentOS: `scripts/installCentOSDeps.sh`.
+- Interactive mode: `scripts/installDeps.sh`
+- Non-interactive mode: `scripts/installDepsUnattended.sh`.
 
 
 ## MCU
