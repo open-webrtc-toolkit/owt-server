@@ -46,6 +46,8 @@ namespace erizo {
     profile = AVPF;
     audioSsrc = 0;
     videoSsrc = 0;
+    videoCodecs = 0;
+    audioCodecs = 0;
     videoSdpMLine = -1;
     audioSdpMLine = -1;
 
@@ -330,10 +332,13 @@ namespace erizo {
 
     if (printedAudio && this->hasAudio) {
       sdp << "m=audio 1 RTP/" << (profile==SAVPF?"SAVPF ":"AVPF ");// << "103 104 0 8 106 105 13 126\n"
+      int codecCounter=0;
       for (std::list<RtpMap>::iterator it = payloadVector_.begin(); it != payloadVector_.end(); ++it){
         const RtpMap& payload_info = *it;
-        if (payload_info.mediaType == AUDIO_TYPE && payload_info.enable)
-          sdp << payload_info.payloadType <<" ";
+        if (payload_info.mediaType == AUDIO_TYPE && payload_info.enable) {
+          codecCounter++;
+          sdp << payload_info.payloadType <<((codecCounter<audioCodecs)?" ":"");
+        }
       }
       sdp << "\n"
           << "c=IN IP4 0.0.0.0" << endl;
@@ -477,10 +482,13 @@ namespace erizo {
     if (printedVideo && this->hasVideo) {
       sdp << "m=video 1 RTP/" << (profile==SAVPF?"SAVPF ":"AVPF "); //<<  "100 101 102 103\n"
 
+      int codecCounter = 0;      
       for (std::list<RtpMap>::iterator it = payloadVector_.begin(); it != payloadVector_.end(); ++it){
         const RtpMap& payload_info = *it;
-        if (payload_info.mediaType == VIDEO_TYPE && payload_info.enable)
-          sdp << payload_info.payloadType <<" ";
+        if (payload_info.mediaType == VIDEO_TYPE && payload_info.enable) {
+          codecCounter++;
+          sdp << payload_info.payloadType <<((codecCounter<videoCodecs)?" ":"");
+        }
       }
 
       sdp << "\n" << "c=IN IP4 0.0.0.0" << endl;
@@ -623,6 +631,8 @@ namespace erizo {
   void SdpInfo::setOfferSdp(const SdpInfo& offerSdp) {
     this->videoSdpMLine = offerSdp.videoSdpMLine;
     this->audioSdpMLine = offerSdp.audioSdpMLine;
+    this->videoCodecs = offerSdp.videoCodecs;
+    this->audioCodecs = offerSdp.audioCodecs;
     this->isBundle = offerSdp.isBundle;
     this->profile = offerSdp.profile;
     this->isRtcpMux = offerSdp.isRtcpMux;
@@ -930,6 +940,11 @@ namespace erizo {
           }
         }
         if (found) {
+          if(theMap.mediaType == VIDEO_TYPE)
+            videoCodecs++;
+          else
+            audioCodecs++;
+
           std::list<RtpMap>::reverse_iterator rit;
           for (rit = payloadVector_.rbegin(); rit != payloadVector_.rend(); ++rit) {
             if (rit->mediaType != mtype
