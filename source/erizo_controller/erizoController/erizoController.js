@@ -289,7 +289,7 @@ function safeCall () {
     }
 }
 
-var initMixer = function (room) {
+var initMixer = function (room, roomConfig) {
     if (GLOBAL.config.erizoController.mixer && room.mixer === undefined && room.initMixerTimer === undefined) {
         // In case we need to do an RPC call to initialize the mixer when the first
         // client is connected, we should wait for a while because the room may still
@@ -300,7 +300,7 @@ var initMixer = function (room) {
         var tryOut = 10;
         room.initMixerTimer = setInterval(function() {
             var id = room.id;
-            room.controller.initMixer(id, function (result) {
+            room.controller.initMixer(id, roomConfig, function (result) {
                 if (result === 'success') {
                     var st = new ST.Stream({id: id, socket: '', audio: true, video: {category: 'mix'}, data: true, from: ''});
                     room.streams[id] = st;
@@ -361,86 +361,110 @@ var listen = function () {
                             return;
                         }
                         tokenDB = resp;
-                        if (rooms[tokenDB.room] === undefined) {
-                            var room = {};
-
-                            room.id = tokenDB.room;
-                            room.sockets = [];
-                            room.sockets.push(socket.id);
-                            room.streams = {}; //streamId: Stream
-                            if (tokenDB.p2p) {
-                                log.debug('Token of p2p room');
-                                room.p2p = true;
-                            } else {
-                                room.p2p = false;
-                                room.controller = controller.RoomController({rpc: rpc});
-                                room.controller.addEventListener(function(type, event) {
-                                    // TODO Send message to room? Handle ErizoJS disconnection.
-                                    if (type === "unpublish") {
-                                        var streamId = event;
-                                        log.info("ErizoJS stopped", streamId);
-                                        sendMsgToRoom(room, 'onRemoveStream', {id: streamId});
-                                        room.controller.removePublisher(streamId);
-
-                                        var index = socket.streams.indexOf(streamId);
-                                        if (index !== -1) {
-                                            socket.streams.splice(index, 1);
-                                        }
-                                        if (room.streams[streamId]) {
-                                            delete room.streams[streamId];
-                                        }
-
-                                        if (room.mixer !== undefined && room.mixer === streamId) {
-                                            room.mixer = undefined;
-                                            // Re-initialize the mixer in the room.
-                                            initMixer(room);
-                                        }
-                                    }
-
-                                });
-
-                                initMixer(room);
+                        var validateTokenOK = function () {
+                            user = {name: tokenDB.userName, role: tokenDB.role, id: socket.id};
+                            socket.user = user;
+                            var permissions = GLOBAL.config.erizoController.roles[tokenDB.role] || [];
+                            socket.user.permissions = {};
+                            for (var right in permissions) {
+                                socket.user.permissions[right] = permissions[right];
                             }
-                            rooms[tokenDB.room] = room;
-                            updateMyState();
+                            socket.room = rooms[tokenDB.room];
+                            socket.streams = []; //[list of streamIds]
+                            socket.state = 'sleeping';
+
+                            log.debug('OK, Valid token');
+
+                            if (!tokenDB.p2p && GLOBAL.config.erizoController.sendStats) {
+                                var timeStamp = new Date();
+                                rpc.callRpc('stats_handler', 'event', [{room: tokenDB.room, user: socket.id, type: 'connection', timestamp:timeStamp.getTime()}]);
+                            }
+
+                            for (index in socket.room.streams) {
+                                if (socket.room.streams.hasOwnProperty(index)) {
+                                    streamList.push(socket.room.streams[index].getPublicStream());
+                                }
+                            }
+
+                            safeCall(callback, 'success', {streams: streamList,
+                                                id: socket.room.id,
+                                                clientId: socket.id,
+                                                p2p: socket.room.p2p,
+                                                defaultVideoBW: GLOBAL.config.erizoController.defaultVideoBW,
+                                                maxVideoBW: GLOBAL.config.erizoController.maxVideoBW,
+                                                stunServerUrl: GLOBAL.config.erizoController.stunServerUrl,
+                                                turnServer: GLOBAL.config.erizoController.turnServer
+                                                });
+                            sendMsgToOthersInRoom(socket.room, 'onUserJoin', {user: user});
+                        };
+
+                        if (rooms[tokenDB.room] === undefined) {
+                            var initRoom = function (roomID, on_ok, on_error) {
+                                var room = {};
+                                room.id = roomID;
+                                room.sockets = [];
+                                room.sockets.push(socket.id);
+                                room.streams = {}; //streamId: Stream
+                                if (tokenDB.p2p) {
+                                    log.debug('Token of p2p room');
+                                    room.p2p = true;
+                                    on_ok(room);
+                                } else {
+                                    rpc.callRpc('nuve', 'getRoomConfig', room.id, {callback: function (resp) {
+                                        if (resp === 'error') {
+                                            log.error('Room does not exist');
+                                            on_error();
+                                        } else if (resp === 'timeout') {
+                                            log.error('Nuve does not respond to "getRoomConfig"');
+                                            on_error();
+                                        } else {
+                                            room.p2p = false;
+                                            room.controller = controller.RoomController({rpc: rpc});
+                                            room.controller.addEventListener(function(type, event) {
+                                                // TODO Send message to room? Handle ErizoJS disconnection.
+                                                if (type === "unpublish") {
+                                                    var streamId = event;
+                                                    log.info("ErizoJS stopped", streamId);
+                                                    sendMsgToRoom(room, 'onRemoveStream', {id: streamId});
+                                                    room.controller.removePublisher(streamId);
+
+                                                    var index = socket.streams.indexOf(streamId);
+                                                    if (index !== -1) {
+                                                        socket.streams.splice(index, 1);
+                                                    }
+                                                    if (room.streams[streamId]) {
+                                                        delete room.streams[streamId];
+                                                    }
+
+                                                    if (room.mixer !== undefined && room.mixer === streamId) {
+                                                        room.mixer = undefined;
+                                                        // Re-initialize the mixer in the room.
+                                                        initMixer(room, resp);
+                                                    }
+                                                }
+
+                                            });
+
+                                            initMixer(room, resp);
+                                            on_ok(room);
+                                        }
+                                    }});
+                                }
+                            };
+
+                            initRoom(tokenDB.room, function (room) {
+                                rooms[tokenDB.room] = room;
+                                updateMyState();
+                                validateTokenOK();
+                            }, function () {
+                                log.warn('initRoom failed.');
+                                safeCall(callback, 'error', 'initRoom failed.');
+                                socket.disconnect();
+                            });
                         } else {
                             rooms[tokenDB.room].sockets.push(socket.id);
+                            validateTokenOK();
                         }
-                        user = {name: tokenDB.userName, role: tokenDB.role, id: socket.id};
-                        socket.user = user;
-                        var permissions = GLOBAL.config.erizoController.roles[tokenDB.role] || [];
-                        socket.user.permissions = {};
-                        for (var right in permissions) {
-                            socket.user.permissions[right] = permissions[right];
-                        }
-                        socket.room = rooms[tokenDB.room];
-                        socket.streams = []; //[list of streamIds]
-                        socket.state = 'sleeping';
-
-                        log.debug('OK, Valid token');
-
-                        if (!tokenDB.p2p && GLOBAL.config.erizoController.sendStats) {
-                            var timeStamp = new Date();
-                            rpc.callRpc('stats_handler', 'event', [{room: tokenDB.room, user: socket.id, type: 'connection', timestamp:timeStamp.getTime()}]);
-                        }
-
-                        for (index in socket.room.streams) {
-                            if (socket.room.streams.hasOwnProperty(index)) {
-                                streamList.push(socket.room.streams[index].getPublicStream());
-                            }
-                        }
-
-                        safeCall(callback, 'success', {streams: streamList,
-                                            id: socket.room.id,
-                                            clientId: socket.id,
-                                            p2p: socket.room.p2p,
-                                            defaultVideoBW: GLOBAL.config.erizoController.defaultVideoBW,
-                                            maxVideoBW: GLOBAL.config.erizoController.maxVideoBW,
-                                            stunServerUrl: GLOBAL.config.erizoController.stunServerUrl,
-                                            turnServer: GLOBAL.config.erizoController.turnServer
-                                            });
-                        sendMsgToOthersInRoom(socket.room, 'onUserJoin', {user: user});
-
                     } else {
                         log.warn('Invalid host');
                         safeCall(callback, 'error', 'Invalid host');
