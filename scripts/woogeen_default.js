@@ -123,15 +123,6 @@ config.erizo.hardwareAccelerated = false;
 // "true" means OpenH264 is deployed for H.264. Otherwise no support of H.264 in MCU.
 config.erizo.openh264Enabled = false;
 
-// Config the mixed video layout. Default is "fluid" layout.
-// Otherwise, "custom" layout can be used for video layout customization.
-config.erizo.videolayout = {};
-config.erizo.videolayout.rootsize = "vga";
-config.erizo.videolayout.backgroundcolor = "black";
-config.erizo.videolayout.maxinput = 16;
-config.erizo.videolayout.pattern = "fluid"; // "fluid" or "lecture" or "custom"
-config.erizo.videolayout.avcoordinated = false;
-
 /***** END *****/
 // Following lines are always needed.
 var module = module || {};

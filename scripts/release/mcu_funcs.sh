@@ -106,7 +106,6 @@ pack_scripts() {
   mkdir -p ${WOOGEEN_DIST}/bin/
   cp -av ${ROOT}/scripts/.conf ${WOOGEEN_DIST}/bin/
   cp -av ${ROOT}/scripts/woogeen_default.js ${WOOGEEN_DIST}/etc/.woogeen_default.js
-  cp -av ${ROOT}/scripts/custom_video_layout_default.js ${WOOGEEN_DIST}/etc/custom_video_layout.js
   cp -av ${this}/daemon-mcu.sh ${WOOGEEN_DIST}/bin/daemon.sh
   cp -av ${this}/launch-base.sh ${WOOGEEN_DIST}/bin/start-all.sh
   cp -av ${this}/launch-base.sh ${WOOGEEN_DIST}/bin/stop-all.sh

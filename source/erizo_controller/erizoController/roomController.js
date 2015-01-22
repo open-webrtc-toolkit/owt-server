@@ -88,14 +88,14 @@ exports.RoomController = function (spec) {
     /*
      * Initialize the mixer in the room.
      */
-    that.initMixer = function (id, callback) {
+    that.initMixer = function (id, roomConfig, callback) {
         log.info("Adding mixer id ", id);
 
         // We create a new ErizoJS with the id.
         createErizoJS(id, id, function(erizo_id) {
             log.info("Erizo created");
             // then we call its initMixer method.
-            var args = [id, GLOBAL.config.erizoController.outOfProcessMixer];
+            var args = [id, GLOBAL.config.erizoController.outOfProcessMixer, roomConfig];
             rpc.callRpc(getErizoQueue(id), "initMixer", args, {callback: callback});
 
             // Track publisher locally
