@@ -269,6 +269,7 @@ public:
      */
     int videoSdpMLine;
     int audioSdpMLine;
+    int videoCodecs, audioCodecs;
 
 private:
     bool processSdp(const std::string& sdp, const std::string& media);
