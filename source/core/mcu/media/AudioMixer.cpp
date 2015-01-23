@@ -163,7 +163,7 @@ int32_t AudioMixer::removeSource(uint32_t from, bool isAudio)
     VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);
     VoENetwork* network = VoENetwork::GetInterface(m_voiceEngine);
 
-    boost::unique_lock<boost::shared_mutex> lock(m_sourceMutex);
+    boost::upgrade_lock<boost::shared_mutex> lock(m_sourceMutex);
     std::map<uint32_t, VoiceChannel>::iterator it = m_sourceChannels.find(from);
     if (it != m_sourceChannels.end()) {
         int channel = it->second.id;
@@ -188,6 +188,7 @@ int32_t AudioMixer::removeSource(uint32_t from, bool isAudio)
             voe->DeleteChannel(channel);
         }
 
+        boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
         m_sourceChannels.erase(it);
 
         if (m_sourceChannels.size() == 0)
@@ -297,7 +298,7 @@ int32_t AudioMixer::removeOutput(const std::string& participant)
     VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);
     VoENetwork* network = VoENetwork::GetInterface(m_voiceEngine);
 
-    boost::unique_lock<boost::shared_mutex> lock(m_outputMutex);
+    boost::upgrade_lock<boost::shared_mutex> lock(m_outputMutex);
     std::map<std::string, VoiceChannel>::iterator it = m_outputChannels.find(participant);
     if (it != m_outputChannels.end()) {
         int channel = it->second.id;
@@ -320,6 +321,7 @@ int32_t AudioMixer::removeOutput(const std::string& participant)
             voe->DeleteChannel(channel);
         }
 
+        boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
         m_outputChannels.erase(it);
         return 0;
     }
