@@ -47,6 +47,9 @@ exports.RoomController = function (spec) {
     var keepAliveLoop = setInterval(sendKeepAlive, KEEPALIVE_INTERVAL);
 
     var createErizoJS = function(publisher_id, mixer_id, callback) {
+        if (erizos[publisher_id] !== undefined) {
+            return;
+        }
         // Currently we want to make sure the publishers and the mixer they associate with
         // are run in the same process. This is the requirement of in-process mixer.
         if (!GLOBAL.config.erizoController.outOfProcessMixer && mixer_id !== undefined && erizos[mixer_id] !== undefined) {
