@@ -52,6 +52,11 @@
   var modeList = ['Hybrid', 'P2P', 'Forward', 'Mix'];
 
   function tableHandler (rooms) {
+    var roomCache = {};
+    rooms.map(function (room) {
+      roomCache[room._id] = room;
+    });
+
     var template = tableTemplate;
     var view = Mustache.render(template, {
       rooms: rooms,
@@ -91,7 +96,8 @@
           setTimeout(function () {
             p.find('.editable-unsaved').removeClass('editable-unsaved');
           }, 20);
-          notify('info', 'Update Room Success', JSON.parse(resp)._id);
+          roomCache[roomId] = JSON.parse(resp);
+          notify('info', 'Update Room Success', roomId);
         });
       } else {
         notify('error', 'Update Room', 'error in finding roomId');
@@ -113,7 +119,7 @@
         return {value: id, text: mode};
       })
     };
-    var publishLimitHandle = {
+    var numberHandle = {
       mode: 'inline',
       validate: function (value) {
         var val = parseInt(value, 10);
@@ -121,18 +127,98 @@
         return {newValue: val};
       }
     };
-    var userLimitHandle = {
-      mode: 'inline',
-      validate: function (value) {
-        var val = parseInt(value, 10);
-        if (isNaN(val) || val < 0) return 'value should be a number in [0, +Infinity)';
-        return {newValue: val};
-      }
+    var disabledHandle = {
+      disabled: true
     };
     $('td#roomName').editable(roomNameHandle);
     $('td#roomMode').editable(roomModeHandle);
-    $('td#publishLimit').editable(publishLimitHandle);
-    $('td#userLimit').editable(userLimitHandle);
+    $('td#publishLimit').editable(numberHandle);
+    $('td#userLimit').editable(numberHandle);
+    $('td#mediaSetting').editable(disabledHandle);
+    $('td#mediaSetting').click(function () {
+      $('#myModal2').modal('toggle');
+      var roomId = $(this).parent().find('td:first').text();
+      var room = roomCache[roomId];
+      if (typeof room === 'undefined') {
+        return notify('error', 'Media Setting', 'error in finding roomId');
+      }
+      var p = $(this);
+      $('#myModal2 .modal-title').text('Media Setting for Room '+roomId);
+      var videoSetting = (room.mediaMixing || {}).video || {
+        resolution: 0, // type number
+        bitrate: 0, // type numer
+        bkColor: 0, // type number
+        layout: { // type object
+          base: 0, // type number
+          custom: null
+        }
+      };
+      var view = Mustache.render('<tr>\
+          <td rowspan="5">video</td>\
+          <td colspan="2">resolution</td>\
+          <td id="resolution" class="value-num-edit">{{resolution}}</td>\
+        </tr>\
+        <tr>\
+          <td colspan="2">bitrate</td>\
+          <td id="bitrate" class="value-num-edit">{{bitrate}}</td>\
+        </tr>\
+        <tr>\
+          <td colspan="2">bkColor</td>\
+          <td id="bkColor" class="value-num-edit">{{bkColor}}</td>\
+        </tr>\
+        <tr>\
+          <td rowspan="2">layout</td>\
+          <td>base</td>\
+          <td id="layout.base" class="value-num-edit">{{layout.base}}</td>\
+        </tr>\
+        <tr>\
+          <td>custom</td>\
+          <td id="layout.custom" class="value-obj-edit" data-type="textarea" data-value=""></td>\
+        </tr>\
+        <tr>\
+          <td>audio</td>\
+          <td colspan="3" class="text-muted"><em>NOT SUPPORTED NOW</em></td>\
+        </tr>', videoSetting);
+
+      $('#myModal2 #inRoomTable tbody').html(view);
+      $('#myModal2 .modal-footer').html('<button type="button" class="btn btn-primary" data-dismiss="modal"><i class="glyphicon glyphicon-ok"></i></button>\
+        <button type="button" class="btn btn-default" data-dismiss="modal"><i class="glyphicon glyphicon-remove"></i></button>');
+      $('#myModal2 tbody td.value-num-edit').editable(numberHandle);
+      $('#myModal2 tbody td.value-obj-edit').editable({
+        title: 'Input a stringified JSON object',
+        validate: function (value) {
+          try {
+            var obj = JSON.parse(value);
+            return {newValue: obj};
+          } catch (e) {
+            return 'invalid input';
+          }
+        },
+        disabled: true,
+        display: function () {
+          $(this).addClass('text-muted');
+          $(this).html('<em>NOT SUPPORTED NOW</em>');
+        }
+      });
+      // <audio not supported now>
+      $('#myModal2 .modal-footer button:first').click(function () {
+        var unsaved = $('#myModal2 tbody .editable-unsaved');
+        if (unsaved.length === 0) return;
+        unsaved.map(function (index, each) {
+          var id = $(each).attr('id');
+          var val = $(each).editable('getValue')[id];
+          setVal(videoSetting, id, val);
+        });
+        room.mediaMixing = room.mediaMixing || {};
+        room.mediaMixing.video = videoSetting;
+        p.addClass('editable-unsaved');
+        p.editable('setValue', room.mediaMixing);
+      });
+    });
+
+    $('#myModal2').on('hidden.bs.modal', function () {
+      $('#myModal2 #inRoomTable tbody').html('');
+    });
 
     $('button#add-room').click(function () {
       var p = $(this).parent().parent();
@@ -166,8 +252,10 @@
         var selector = p.parent().find('tr:nth-last-child(2)');
         selector.find('td#roomName').editable(roomNameHandle);
         selector.find('td#roomMode').editable(roomModeHandle);
-        selector.find('td#publishLimit').editable(publishLimitHandle);
-        selector.find('td#userLimit').editable(userLimitHandle);
+        selector.find('td#publishLimit').editable(numberHandle);
+        selector.find('td#userLimit').editable(numberHandle);
+        selector.find('td#mediaSetting').editable(disabledHandle);
+        roomCache[room1._id] = room1;
         notify('info', 'Add Room Success', room1._id);
       });
     });
@@ -179,6 +267,7 @@
           nuve.deleteRoom(roomId, function (err, resp) {
             if (err) return notify('error', 'Delete Room', resp);
             p.remove();
+            delete roomCache[roomId];
             notify('info', 'Delete Room Success', resp);
           });
         });
@@ -198,6 +287,13 @@
       var rooms = JSON.parse(resp);
       tableHandler(rooms);
     });
+  }
+
+  function setVal (obj, key, val) {
+    key = key.split('.');
+    while (key.length > 1)
+      obj = obj[key.shift()];
+    obj[key.shift()] = val;
   }
 
   window.onload = function () {
