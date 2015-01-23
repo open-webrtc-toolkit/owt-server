@@ -62,16 +62,32 @@ private:
     boost::scoped_ptr<woogeen_base::RawTransport> m_transport;
 };
 
+class MessageWriter : public woogeen_base::RawTransportListener {
+public:
+    MessageWriter();
+    ~MessageWriter();
+
+    // Implements RawTransportListener.
+    // TODO: onTransportData should be implemented to handle the feedback.
+    void onTransportData(char*, int len, woogeen_base::Protocol) { }
+    void onTransportError(woogeen_base::Protocol) { }
+    void onTransportConnected(woogeen_base::Protocol);
+
+    int32_t write(char*, int len);
+
+private:
+    boost::scoped_ptr<woogeen_base::RawTransport> m_transport;
+};
+
 class OutOfProcessMixerProxy : public woogeen_base::MediaSourceConsumer, public erizo::MediaSink {
 public:
     OutOfProcessMixerProxy();
     ~OutOfProcessMixerProxy();
 
     // Implement MediaSourceConsumer.
-    // TODO: Add real implementation later.
-    int32_t addSource(uint32_t id, bool isAudio, erizo::FeedbackSink*, const std::string& participantId) { return -1; }
-    int32_t removeSource(uint32_t id, bool isAudio) { return -1; }
-    int32_t bindAV(uint32_t audioId, uint32_t videoId) { return -1; }
+    int32_t addSource(uint32_t id, bool isAudio, erizo::FeedbackSink*, const std::string& participantId);
+    int32_t removeSource(uint32_t id, bool isAudio);
+    int32_t bindAV(uint32_t audioId, uint32_t videoId);
     erizo::MediaSink* mediaSink() { return this; }
 
     // Implement MediaSink.
@@ -81,6 +97,7 @@ public:
 private:
     boost::scoped_ptr<AudioDataWriter> m_audioOutput;
     boost::scoped_ptr<VideoDataWriter> m_videoOutput;
+    boost::scoped_ptr<MessageWriter> m_messageOutput;
 };
 
 } /* namespace mcu */

@@ -20,6 +20,8 @@
 
 #include "OutOfProcessMixer.h"
 
+#include "OutOfProcessMixerMessage.h"
+
 namespace mcu {
 
 OutOfProcessMixer::OutOfProcessMixer(boost::property_tree::ptree& videoConfig)
@@ -27,9 +29,7 @@ OutOfProcessMixer::OutOfProcessMixer(boost::property_tree::ptree& videoConfig)
 {
     m_audioInput.reset(new AudioDataReader(this));
     m_videoInput.reset(new VideoDataReader(this));
-
-    m_audioMixer->addSourceOnDemand(true);
-    m_videoMixer->addSourceOnDemand(true);
+    m_messageInput.reset(new MessageReader(this));
 }
 
 OutOfProcessMixer::~OutOfProcessMixer()
@@ -72,6 +72,53 @@ void VideoDataReader::onTransportData(char* buf, int len, woogeen_base::Protocol
     assert(prot == woogeen_base::UDP);
     if (m_sink)
         m_sink->deliverVideoData(buf, len);
+}
+
+MessageReader::MessageReader(woogeen_base::MediaSourceConsumer* consumer)
+    : m_consumer(consumer)
+{
+    m_transport.reset(new woogeen_base::RawTransport(this));
+    m_transport->listenTo(33345, woogeen_base::UDP);
+}
+
+MessageReader::~MessageReader()
+{
+    m_transport->close();
+}
+
+void MessageReader::onTransportData(char* buf, int len, woogeen_base::Protocol prot) 
+{
+    assert(prot == woogeen_base::UDP);
+
+    if (!m_consumer)
+        return;
+
+    OutOfProcessMixerMessage* msg = reinterpret_cast<OutOfProcessMixerMessage*>(buf);
+    if (msg->identifier() != MIXER_MESSAGE_IDENTIFIER)
+        return;
+
+    switch (msg->type()) {
+    case ADD_AUDIO:
+    case ADD_VIDEO: {
+        std::string participant(buf + sizeof(*msg), len - sizeof(*msg));
+        // TODO: FeedbackSink.
+        m_consumer->addSource(msg->mediaSource(), msg->type() == ADD_AUDIO, nullptr, participant);
+        break;
+    }
+    case REMOVE_AUDIO:
+    case REMOVE_VIDEO: {
+        m_consumer->removeSource(msg->mediaSource(), msg->type() == REMOVE_AUDIO);
+        break;
+    }
+    case BIND: {
+        assert(len == sizeof(*msg) + sizeof(uint32_t));
+        uint32_t videoSource = *(reinterpret_cast<uint32_t*>(buf + sizeof(*msg)));
+        m_consumer->bindAV(msg->mediaSource(), videoSource);
+        break;
+    }
+    default:
+        break;
+    }
 }
 
 }/* namespace mcu */

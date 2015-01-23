@@ -42,7 +42,6 @@ DEFINE_LOGGER(VideoMixer, "mcu.media.VideoMixer");
 VideoMixer::VideoMixer(erizo::RTPDataReceiver* receiver, boost::property_tree::ptree& config)
     : m_participants(0)
     , m_outputReceiver(receiver)
-    , m_addSourceOnDemand(false)
     , m_maxInputCount(0)
 {
     m_hardwareAccelerated = config.get<bool>("hardware");
@@ -168,11 +167,6 @@ int VideoMixer::deliverVideoData(char* buf, int len)
     std::map<uint32_t, boost::shared_ptr<VCMInputProcessor>>::iterator it = m_sinksForSources.find(id);
     if (it != m_sinksForSources.end() && it->second)
         return it->second->deliverVideoData(buf, len);
-
-    if (m_addSourceOnDemand) {
-        lock.unlock();
-        addSource(id, false, nullptr, "");
-    }
 
     return 0;
 }
