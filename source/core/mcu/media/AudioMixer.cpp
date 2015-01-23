@@ -41,7 +41,6 @@ AudioMixer::AudioMixer(erizo::RTPDataReceiver* receiver, AudioMixerVADCallback* 
     , m_vadEnabled(enableVAD)
     , m_vadCallback(callback)
     , m_jitterHoldCount(0)
-    , m_addSourceOnDemand(false)
 {
     m_voiceEngine = VoiceEngine::Create();
 
@@ -217,13 +216,8 @@ int AudioMixer::deliverAudioData(char* buf, int len)
 
     boost::shared_lock<boost::shared_mutex> lock(m_sourceMutex);
     std::map<uint32_t, VoiceChannel>::iterator it = m_sourceChannels.find(id);
-    if (it == m_sourceChannels.end()) {
-        if (m_addSourceOnDemand) {
-            lock.unlock();
-            addSource(id, true, nullptr, "");
-        }
+    if (it == m_sourceChannels.end())
         return 0;
-    }
 
     int channel = it->second.id;
     VoENetwork* network = VoENetwork::GetInterface(m_voiceEngine);

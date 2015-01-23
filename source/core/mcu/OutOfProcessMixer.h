@@ -58,6 +58,21 @@ private:
     boost::scoped_ptr<woogeen_base::RawTransport> m_transport;
 };
 
+class MessageReader : public woogeen_base::RawTransportListener {
+public:
+    MessageReader(woogeen_base::MediaSourceConsumer*);
+    ~MessageReader();
+
+    // Implements RawTransportListener.
+    void onTransportData(char*, int len, woogeen_base::Protocol);
+    void onTransportError(woogeen_base::Protocol) { }
+    void onTransportConnected(woogeen_base::Protocol) { }
+
+private:
+    woogeen_base::MediaSourceConsumer* m_consumer;
+    boost::scoped_ptr<woogeen_base::RawTransport> m_transport;
+};
+
 /**
  * An OutOfProcessMixer refers to a media mixer which is run in a dedicated process as a woogeen_base::Gateway.
  */
@@ -69,6 +84,7 @@ public:
 private:
     boost::scoped_ptr<AudioDataReader> m_audioInput;
     boost::scoped_ptr<VideoDataReader> m_videoInput;
+    boost::scoped_ptr<MessageReader> m_messageInput;
 };
 
 } /* namespace mcu */

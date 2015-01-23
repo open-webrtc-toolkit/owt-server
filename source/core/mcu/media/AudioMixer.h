@@ -69,8 +69,6 @@ public:
 
     int32_t getChannelId(uint32_t sourceId);
     webrtc::VoEVideoSync* avSyncInterface();
-    // TODO: Remove me once OOP Mixer is able to invoke addSource explicitly.
-    void addSourceOnDemand(bool allow) { m_addSourceOnDemand = allow; }
 
 private:
     int32_t performMix();
@@ -95,7 +93,6 @@ private:
     boost::shared_mutex m_sourceMutex;
     std::map<std::string, VoiceChannel> m_outputChannels;
     boost::shared_mutex m_outputMutex;
-    std::atomic<bool> m_addSourceOnDemand;
 
     boost::scoped_ptr<JobTimer> m_jobTimer;
 };

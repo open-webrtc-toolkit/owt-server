@@ -65,8 +65,6 @@ public:
 
     // Video input related methods.
     int32_t bindAudio(uint32_t sourceId, int voiceChannelId, webrtc::VoEVideoSync*);
-    // TODO: Remove me once OOP Mixer is able to invoke addSource explicitly.
-    void addSourceOnDemand(bool allow) { m_addSourceOnDemand = allow; }
 
     // Implements MediaSourceConsumer.
     int32_t addSource(uint32_t from, bool isAudio, erizo::FeedbackSink*, const std::string& participantId);
@@ -104,7 +102,6 @@ private:
     boost::shared_mutex m_sourceMutex;
     std::map<uint32_t, boost::shared_ptr<VCMInputProcessor>> m_sinksForSources;
     std::vector<uint32_t> m_sourceInputMap;    // each source will be allocated one index
-    bool m_addSourceOnDemand;
     boost::scoped_ptr<VideoLayoutProcessor> m_layoutProcessor;
     bool m_hardwareAccelerated;
     uint32_t m_maxInputCount;
