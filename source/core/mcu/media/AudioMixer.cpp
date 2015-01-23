@@ -313,10 +313,16 @@ int32_t AudioMixer::removeOutput(const std::string& participant)
         if (!sourceExisted) {
             network->DeRegisterExternalTransport(channel);
             voe->DeleteChannel(channel);
+            boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
+            m_outputChannels.erase(it);
         }
+        // We keep the output channel if the participant is still there.
+        // This is to make it consistent with the addSource/Output behavior.
+        // i.e., if there's a source channel for this participant, there's an
+        // output channel for it as well, but the output channel will only
+        // start sending out data if addOutput is invoked, and stop sending
+        // if removeOutput is invoked.
 
-        boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
-        m_outputChannels.erase(it);
         return 0;
     }
 
