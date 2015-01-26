@@ -265,7 +265,11 @@ Erizo.ChromeCanaryStack = function (spec) {
 
                     if (newOffer !== that.prevOffer) {
 
-                        that.peerConnection.setLocalDescription(sessionDescription);
+                        that.peerConnection.setLocalDescription(sessionDescription, function(){
+                      console.log("Success");
+                    }, function(){
+                      console.log("Failed Setting local desc");
+                    });
 
                         that.state = 'preparing-offer';
                         that.markActionNeeded();
