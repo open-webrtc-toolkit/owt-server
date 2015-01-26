@@ -63,7 +63,7 @@ public:
     void onTimeout();
 
     int32_t sharedChannelId() { return m_sharedChannel.id; }
-    int32_t addOutput(const std::string& participant);
+    int32_t addOutput(const std::string& participant, int payloadType);
     int32_t removeOutput(const std::string& particpant);
     uint32_t getSendSSRC(int32_t channelId);
 

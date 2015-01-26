@@ -83,7 +83,7 @@ namespace erizo {
     ulpfec.mediaType = VIDEO_TYPE;
     ulpfec.enable = true;
     internalPayloadVector_.push_back(ulpfec);
-/*
+
     RtpMap isac16;
     isac16.payloadType = ISAC_16000_PT;
     isac16.encodingName = "ISAC";
@@ -101,7 +101,7 @@ namespace erizo {
     isac32.mediaType = AUDIO_TYPE;
     isac32.enable = false;
     internalPayloadVector_.push_back(isac32);
-*/
+
     RtpMap pcmu;
     pcmu.payloadType = PCMU_8000_PT;
     pcmu.encodingName = "PCMU";
@@ -799,14 +799,17 @@ namespace erizo {
       return getAudioExternalPT(internalPT);
   }
 
-  int SdpInfo::preferredVideoPayloadType() {
+  int SdpInfo::preferredPayloadType(MediaType mediaType) {
     std::list<RtpMap>::iterator it = payloadVector_.begin();
     for (; it != payloadVector_.end(); ++it) {
       const RtpMap& rtp = *it;
-      if (rtp.mediaType == VIDEO_TYPE) {
-        int internalPT = getVideoInternalPT(rtp.payloadType);
+      if (rtp.mediaType == mediaType) {
+        int internalPT = mediaType == VIDEO_TYPE ? getVideoInternalPT(rtp.payloadType)
+            : getAudioInternalPT(rtp.payloadType);
+        int externalPT = mediaType == VIDEO_TYPE ? getVideoExternalPT(internalPT)
+            : getAudioExternalPT(internalPT);
         if (internalPT != RED_90000_PT && internalPT != ULP_90000_PT
-            && getVideoExternalPT(internalPT) == (int)(rtp.payloadType)) {
+            && externalPT == (int)(rtp.payloadType)) {
           return internalPT;
         }
       }
