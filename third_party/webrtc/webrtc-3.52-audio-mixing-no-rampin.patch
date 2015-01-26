@@ -246,7 +246,7 @@ index 1648a9d..fbf3ee6 100644
      return _mixerModule.Process();
  }
  
-@@ -509,6 +510,25 @@ int OutputMixer::StopRecordingPlayout()
+@@ -509,6 +510,24 @@ int OutputMixer::StopRecordingPlayout()
      return 0;
  }
  
@@ -255,18 +255,17 @@ index 1648a9d..fbf3ee6 100644
 +                  MixerParticipant& participant) {
 +    bool isMixed = false;
 +    participant.IsMixed(isMixed);
-+    if (isMixed == false) {
-+        return -1;
++    if (isMixed) {
++        _mixerModule.SetMixingMode(AudioConferenceMixer::kExclusive);
++        // _mixerModule.SetMixabilityStatus(participant, false);
++        participant.SetSkipped(true);
++        _mixerModule.Process();
++        DoOperationsOnCombinedSignal();
++        // _mixerModule.SetMixabilityStatus(participant, true);
++        participant.SetSkipped(false);
 +    }
-+    _mixerModule.SetMixingMode(AudioConferenceMixer::kExclusive);
-+    //_mixerModule.SetMixabilityStatus(participant, false);
-+    participant.SetSkipped(true);
-+    _mixerModule.Process();
-+    DoOperationsOnCombinedSignal();
-+    //_mixerModule.SetMixabilityStatus(participant, true);
-+    participant.SetSkipped(false);
-+    return GetMixedAudio(sample_rate_hz, num_channels, audioFrame);
 +
++    return GetMixedAudio(sample_rate_hz, num_channels, audioFrame);
 +}
 +
  int OutputMixer::GetMixedAudio(int sample_rate_hz,
