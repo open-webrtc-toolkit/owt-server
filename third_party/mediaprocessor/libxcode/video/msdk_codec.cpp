@@ -1597,11 +1597,6 @@ int MSDKCodec::ProcessChainEncode(MediaBuf &buf)
 
     if (reset_bitrate_flag_) {
         if (ELEMENT_ENCODER == element_type_) {
-            mfxVideoParam par;
-            memset(&par, 0, sizeof(par));
-            mfx_enc_->GetVideoParam(&par);
-            par.mfx.TargetKbps = mfx_video_param_.mfx.TargetKbps;
-
             //need to complete encoding with current settings
             for (;;) {
                 for (;;) {
@@ -1628,7 +1623,7 @@ int MSDKCodec::ProcessChainEncode(MediaBuf &buf)
                 }
             }
 
-            mfx_enc_->Reset(&par);
+            mfx_enc_->Reset(&mfx_video_param_);
 #ifdef ENABLE_VPX_CODEC
         } else {
             ((VP8EncPlugin *)user_enc_)->VP8ResetBitrate(mfx_video_param_.mfx.TargetKbps);
