@@ -168,9 +168,9 @@ void HardwareVideoFrameMixer::updateLayoutSolution(LayoutSolution& solution)
 {
     CustomLayoutInfo layout;
     for (LayoutSolution::iterator it = solution.begin(); it != solution.end(); ++it) {
-        std::map<int, boost::shared_ptr<HardwareVideoFrameMixerInput>>::iterator it2 = m_inputs.find(it->first);
+        std::map<int, boost::shared_ptr<HardwareVideoFrameMixerInput>>::iterator it2 = m_inputs.find(it->input);
         if (it2 != m_inputs.end()) {
-            RegionInfo region = {it->second.left, it->second.top, it->second.relativeSize, it->second.relativeSize};
+            RegionInfo region = {it->region.left, it->region.top, it->region.relativeSize, it->region.relativeSize};
             layout[it2->second->index()] = region;
         }
     }

@@ -253,9 +253,15 @@ void VideoLayoutProcessor::updateInputPositions()
     chooseRegions();
 
     LayoutSolution solution;
-    std::vector<Region>::iterator itReg = m_currentRegions->begin();
-    for (std::vector<int>::iterator it = m_inputPositions.begin(); it != m_inputPositions.end(); ++it)
-        solution[*it] = *itReg++;
+    if (!m_inputPositions.empty()) {
+        unsigned int pos = 0;
+        for (std::vector<Region>::iterator itReg = m_currentRegions->begin(); itReg != m_currentRegions->end(); ++itReg) {
+            int input = m_inputPositions[pos++];
+            solution.push_back({input, *itReg});
+            if (pos >= m_inputPositions.size())
+                break;
+        }
+    }
 
     std::list<boost::shared_ptr<LayoutConsumer>>::iterator it = m_consumers.begin();
     for (; it != m_consumers.end(); ++it)
