@@ -178,9 +178,9 @@ bool SoftVideoCompositor::commitLayout()
     m_currentLayout = m_newLayout;
     for (LayoutSolution::iterator it = m_currentLayout.begin(); it != m_currentLayout.end(); ++it) {
         VideoSize videoSize;
-        videoSize.width = (int)(m_composedSize.width * it->second.relativeSize);
-        videoSize.height = (int)(m_composedSize.height * it->second.relativeSize);
-        m_vpmPool->update(it->first, videoSize);
+        videoSize.width = (int)(m_composedSize.width * it->region.relativeSize);
+        videoSize.height = (int)(m_composedSize.height * it->region.relativeSize);
+        m_vpmPool->update(it->input, videoSize);
     }
 
     ELOG_DEBUG("commit customlayout");
@@ -204,11 +204,11 @@ webrtc::I420VideoFrame* SoftVideoCompositor::customLayout()
 {
     webrtc::I420VideoFrame* target = m_composedFrame.get();
     for (LayoutSolution::iterator it = m_currentLayout.begin(); it != m_currentLayout.end(); ++it) {
-        int index = it->first;
+        int index = it->input;
         if (!m_bufferManager->isActive(index))
             continue;
 
-        Region region = it->second;
+        Region region = it->region;
         assert(!(region.relativeSize < 0.0 || region.relativeSize > 1.0)
             && !(region.left < 0.0 || region.left > 1.0)
             && !(region.top < 0.0 || region.top > 1.0));

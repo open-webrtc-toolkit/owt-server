@@ -22,7 +22,7 @@
 #define VideoLayout_h
 
 #include <string>
-#include <vector>
+#include <list>
 #include <map>
 
 namespace mcu {
@@ -69,7 +69,12 @@ struct Region {
     float priority;
 };
 
-typedef std::map<int/*input*/, Region> LayoutSolution;
+struct InputRegion {
+    int input;
+    Region region;
+};
+
+typedef std::list<InputRegion> LayoutSolution;
 
 class LayoutConsumer {
 public:
