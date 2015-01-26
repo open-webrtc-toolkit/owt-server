@@ -29,37 +29,7 @@ diff --git src/webrtc/modules/audio_conference_mixer/interface/audio_conference_
 index 663be18..5af71ee 100644
 --- src/webrtc/modules/audio_conference_mixer/interface/audio_conference_mixer_defines.h
 +++ src/webrtc/modules/audio_conference_mixer/interface/audio_conference_mixer_defines.h
-@@ -15,7 +15,28 @@
- #include "webrtc/typedefs.h"
- 
- namespace webrtc {
--class MixHistory;
-+// Cheshire cat implementation of MixerParticipant's non virtual functions.
-+class MixHistory
-+{
-+public:
-+    MixHistory();
-+    ~MixHistory();
-+
-+    // MixerParticipant function
-+    int32_t IsMixed(bool& mixed) const;
-+
-+    // Sets wasMixed to true if the participant was mixed previous mix
-+    // iteration.
-+    int32_t WasMixed(bool& wasMixed) const;
-+
-+    // Updates the mixed status.
-+    int32_t SetIsMixed(const bool mixed);
-+
-+    void ResetMixedStatus();
-+private:
-+    bool _isMixed;
-+};
-+
- 
- // A callback class that all mixer participants must inherit from/implement.
- class MixerParticipant
-@@ -30,11 +51,17 @@ public:
+@@ -30,11 +30,17 @@ public:
      // mixed will be set to true if the participant was mixed this mix iteration
      int32_t IsMixed(bool& mixed) const;
  
@@ -225,45 +195,10 @@ index f3883c0..532e831 100644
          // TODO(henrike): this assert triggers in some test cases where SRTP is
          // used which prevents NetEQ from making a VAD. Temporarily disable this
          // assert until the problem is fixed on a higher level.
-@@ -662,7 +719,7 @@ void AudioConferenceMixerImpl::UpdateToMix(
- 
-         if(audioFrame->vad_activity_ == AudioFrame::kVadActive) {
-             if(!wasMixed) {
--                RampIn(*audioFrame);
-+               RampIn(*audioFrame);
-             }
- 
-             if(activeList.size() >= maxAudioFrameCounter) {
-@@ -704,6 +761,7 @@ void AudioConferenceMixerImpl::UpdateToMix(
-                     assert(mixParticipantList->size() <=
-                            kMaximumAmountOfMixedParticipants);
- 
-+
-                     if (replaceWasMixed) {
-                       RampOut(*replaceFrame);
-                       rampOutList->push_back(replaceFrame);
 diff --git src/webrtc/modules/audio_conference_mixer/source/audio_conference_mixer_impl.h src/webrtc/modules/audio_conference_mixer/source/audio_conference_mixer_impl.h
 index 31dc71e..b22b2a5 100644
 --- src/webrtc/modules/audio_conference_mixer/source/audio_conference_mixer_impl.h
 +++ src/webrtc/modules/audio_conference_mixer/source/audio_conference_mixer_impl.h
-@@ -28,7 +28,7 @@ class CriticalSectionWrapper;
- 
- typedef std::list<AudioFrame*> AudioFrameList;
- typedef std::list<MixerParticipant*> MixerParticipantList;
--
-+/*
- // Cheshire cat implementation of MixerParticipant's non virtual functions.
- class MixHistory
- {
-@@ -50,7 +50,7 @@ public:
- private:
-     bool _isMixed;
- };
--
-+*/
- class AudioConferenceMixerImpl : public AudioConferenceMixer
- {
- public:
 @@ -85,6 +85,9 @@ public:
          MixerParticipant& participant, const bool mixable);
      virtual int32_t AnonymousMixabilityStatus(
@@ -323,7 +258,7 @@ index 1648a9d..fbf3ee6 100644
 +	if (isMixed == false) {
 +		return -1;
 +	}
-+	participant._mixHistory->IsMixed(isMixed);
++	participant.IsMixed(isMixed);
 +	if (isMixed == false) {
 +		return -1;
 +	}
