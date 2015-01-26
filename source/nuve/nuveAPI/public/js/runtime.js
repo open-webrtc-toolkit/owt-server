@@ -54,7 +54,7 @@
   }
 
   var graphicTemplate = '{{#nodes}}<div class="col-xs-6 col-sm-3 placeholder" id="{{rpcID}}">\
-    <a href="#"><img class="img-responsive" src="blue.svg"></a>\
+    <a href="#"><img class="img-responsive" src="img/node.svg" width="33%"></a>\
     <h4 class="text-{{status}}">{{rpcID}}</h4>\
   </div>{{/nodes}}';
   Mustache.parse(graphicTemplate);

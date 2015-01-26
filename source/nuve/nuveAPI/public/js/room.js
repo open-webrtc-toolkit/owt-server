@@ -22,6 +22,8 @@
     document.cookie = 'serviceKey=; expires=Thu, 01 Jan 1970 00:00:00 UTC';
   });
 
+  var metadata;
+
   $('button#saveSericeInfo').click(function () {
     var serviceId = $('.modal-body #inputId').val();
     var serviceKey = $('.modal-body #inputKey').val();
@@ -49,7 +51,6 @@
       <td class="col-md-1"><button type="button" id="apply-room" class="btn btn-xs btn-primary">Apply</button> <button type="button" id="delete-room" class="btn btn-xs btn-danger">Delete</button></td>\
     </tr>{{/rooms}}';
   Mustache.parse(tableTemplate);
-  var modeList = ['Hybrid', 'P2P', 'Forward', 'Mix'];
 
   function tableHandler (rooms) {
     var roomCache = {};
@@ -115,7 +116,7 @@
     var roomModeHandle = {
       mode: 'inline',
       type: 'select',
-      source: modeList.map(function (mode, id) {
+      source: metadata.mode.map(function (mode, id) {
         return {value: id, text: mode};
       })
     };
@@ -156,20 +157,20 @@
       var view = Mustache.render('<tr>\
           <td rowspan="5">video</td>\
           <td colspan="2">resolution</td>\
-          <td id="resolution" class="value-num-edit">{{resolution}}</td>\
+          <td id="resolution" class="value-num-edit" data-value={{resolution}}></td>\
         </tr>\
         <tr>\
           <td colspan="2">bitrate</td>\
-          <td id="bitrate" class="value-num-edit">{{bitrate}}</td>\
+          <td id="bitrate" class="value-num-edit" data-value={{bitrate}}></td>\
         </tr>\
         <tr>\
           <td colspan="2">bkColor</td>\
-          <td id="bkColor" class="value-num-edit">{{bkColor}}</td>\
+          <td id="bkColor" class="value-num-edit" data-value={{bkColor}}></td>\
         </tr>\
         <tr>\
           <td rowspan="2">layout</td>\
           <td>base</td>\
-          <td id="layout.base" class="value-num-edit">{{layout.base}}</td>\
+          <td id="layout.base" class="value-num-edit" data-value={{layout.base}}></td>\
         </tr>\
         <tr>\
           <td>custom</td>\
@@ -183,7 +184,28 @@
       $('#myModal2 #inRoomTable tbody').html(view);
       $('#myModal2 .modal-footer').html('<button type="button" class="btn btn-primary" data-dismiss="modal"><i class="glyphicon glyphicon-ok"></i></button>\
         <button type="button" class="btn btn-default" data-dismiss="modal"><i class="glyphicon glyphicon-remove"></i></button>');
-      $('#myModal2 tbody td.value-num-edit').editable(numberHandle);
+      $('#myModal2 tbody td#resolution').editable({
+        mode: 'inline',
+        type: 'select',
+        source: metadata.mediaMixing.video.resolution.map(function (v, id) {
+          return {value: id, text: v};
+        })
+      });
+      $('#myModal2 tbody td#bitrate').editable(numberHandle);
+      $('#myModal2 tbody td#bkColor').editable({
+        mode: 'inline',
+        type: 'select',
+        source: metadata.mediaMixing.video.bkColor.map(function (v, id) {
+          return {value: id, text: v};
+        })
+      });
+      $('#myModal2 tbody td.value-num-edit:last').editable({
+        mode: 'inline',
+        type: 'select',
+        source: metadata.mediaMixing.video.layout.base.map(function (v, id) {
+          return {value: id, text: v};
+        })
+      });
       $('#myModal2 tbody td.value-obj-edit').editable({
         title: 'Input a stringified JSON object',
         validate: function (value) {
@@ -226,8 +248,8 @@
         return notify('error', 'Add Room', 'Empty room name');
       }
       var roomName = p.find('td#roomName').text();
-      var roomMode = modeList.indexOf(p.find('td#roomMode').text());
-      if (roomMode === -1) roomMode = 0;
+      var roomMode = parseInt(p.find('td#roomMode').editable('getValue').roomMode, 10);
+      if (isNaN(roomMode)) roomMode = 0;
       var publishLimit = parseInt(p.find('td#publishLimit').text(), 10);
       if (isNaN(publishLimit)) publishLimit = 16;
       var userLimit = parseInt(p.find('td#userLimit').text(), 10);
@@ -297,7 +319,13 @@
   }
 
   window.onload = function () {
-    checkProfile(renderRooms);
+    $.getJSON('meta.json').done(function (data) {
+      metadata = data;
+    }).fail(function () {
+      notify('error', 'Loading', 'Error in fetching data');
+    }).complete(function() {
+      checkProfile(renderRooms);
+    });
   };
 
 }());
