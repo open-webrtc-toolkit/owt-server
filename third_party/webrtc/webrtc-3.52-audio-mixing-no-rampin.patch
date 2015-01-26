@@ -9,8 +9,8 @@ index 2969ece..da10c8f 100644
 -
 +    enum Mode
 +    {
-+    	kInclusive,
-+    	kExclusive
++        kInclusive,
++        kExclusive
 +    };
      // Factory method. Constructor disabled.
      static AudioConferenceMixer* Create(int id);
@@ -65,11 +65,11 @@ index f3883c0..532e831 100644
  }
  
 +void MixerParticipant::SetSkipped(bool skipped) {
-+	_skipped = skipped;
++    _skipped = skipped;
 +}
 +
 +bool MixerParticipant::IsSkipped() const {
-+	return _skipped;
++    return _skipped;
 +}
 +
  MixHistory::MixHistory()
@@ -90,12 +90,12 @@ index f3883c0..532e831 100644
  
  AudioConferenceMixerImpl::~AudioConferenceMixerImpl() {
 +
-+	std::map<MixerParticipant*, AudioFrame*>::iterator it;
-+	for (it = _mixedFrames.begin(); it != _mixedFrames.begin(); it++) {
-+		if (it->second!=NULL) {
-+			_audioFramePool->PushMemory(it->second);
-+		}
-+	}
++    std::map<MixerParticipant*, AudioFrame*>::iterator it;
++    for (it = _mixedFrames.begin(); it != _mixedFrames.begin(); it++) {
++        if (it->second!=NULL) {
++            _audioFramePool->PushMemory(it->second);
++        }
++    }
      MemoryPool<AudioFrame>::DeleteMemoryPool(_audioFramePool);
      assert(_audioFramePool == NULL);
  }
@@ -103,11 +103,11 @@ index f3883c0..532e831 100644
  
          UpdateToMix(&mixList, &rampOutList, &mixedParticipantsMap,
                      remainingParticipantsAllowedToMix);
-+       	GetAdditionalAudio(&additionalFramesList);
-+       	if (MixingMode() == kInclusive) {
-+       		UpdateMixedStatus(mixedParticipantsMap);
-+       		_scratchParticipantsToMixAmount = mixedParticipantsMap.size();
-+       	}
++        GetAdditionalAudio(&additionalFramesList);
++        if (MixingMode() == kInclusive) {
++            UpdateMixedStatus(mixedParticipantsMap);
++            _scratchParticipantsToMixAmount = mixedParticipantsMap.size();
++        }
  
 -        GetAdditionalAudio(&additionalFramesList);
 -        UpdateMixedStatus(mixedParticipantsMap);
@@ -121,7 +121,7 @@ index f3883c0..532e831 100644
  
 -        _timeStamp += _sampleSize;
 +        if (MixingMode() == kInclusive)
-+        	_timeStamp += _sampleSize;
++            _timeStamp += _sampleSize;
  
          MixFromList(*mixedAudio, &mixList);
          MixAnonomouslyFromList(*mixedAudio, &additionalFramesList);
@@ -130,12 +130,12 @@ index f3883c0..532e831 100644
  }
  
 +int32_t AudioConferenceMixerImpl::SetMixingMode(AudioConferenceMixer::Mode mode) {
-+	_mode = mode;
-+	return 0;
++    _mode = mode;
++    return 0;
 +}
 +
 +AudioConferenceMixer::Mode AudioConferenceMixerImpl::MixingMode() {
-+	return _mode;
++    return _mode;
 +}
 +
  int32_t AudioConferenceMixerImpl::RegisterMixedStreamCallback(
@@ -146,8 +146,8 @@ index f3883c0..532e831 100644
           participant != _participantList.end();
           ++participant) {
 +
-+    	if ((*participant)->IsSkipped())
-+    		continue;
++        if ((*participant)->IsSkipped())
++            continue;
 +
          // Stop keeping track of passive participants if there are already
          // enough participants available (they wont be mixed anyway).
@@ -162,33 +162,33 @@ index f3883c0..532e831 100644
 -            _audioFramePool->PushMemory(audioFrame);
 -            continue;
 +        if (MixingMode() == kInclusive) {
-+        	if((*participant)->GetAudioFrame(_id,*audioFrame) != 0) {
-+        		WEBRTC_TRACE(kTraceWarning, kTraceAudioMixerServer, _id,
-+        				"failed to GetAudioFrame() from participant");
-+        		_audioFramePool->PushMemory(audioFrame);
-+        		continue;
-+        	} else {
-+        		AudioFrame* cachedAudioFrame = _mixedFrames[*participant];
-+        		if (cachedAudioFrame == NULL) {
-+        			if(_audioFramePool->PopMemory(cachedAudioFrame) == -1) {
-+        				WEBRTC_TRACE(kTraceMemory, kTraceAudioMixerServer, _id,
-+        						"failed PopMemory() call");
-+        				assert(false);
-+        				return;
-+        			}
-+        			_mixedFrames[*participant] = cachedAudioFrame;
-+        		}
++            if((*participant)->GetAudioFrame(_id,*audioFrame) != 0) {
++                WEBRTC_TRACE(kTraceWarning, kTraceAudioMixerServer, _id,
++                        "failed to GetAudioFrame() from participant");
++                _audioFramePool->PushMemory(audioFrame);
++                continue;
++            } else {
++                AudioFrame* cachedAudioFrame = _mixedFrames[*participant];
++                if (cachedAudioFrame == NULL) {
++                    if(_audioFramePool->PopMemory(cachedAudioFrame) == -1) {
++                        WEBRTC_TRACE(kTraceMemory, kTraceAudioMixerServer, _id,
++                                "failed PopMemory() call");
++                        assert(false);
++                        return;
++                    }
++                    _mixedFrames[*participant] = cachedAudioFrame;
++                }
 +                cachedAudioFrame->CopyFrom(*audioFrame);
-+        	}
++            }
 +        } else {
-+        	assert(MixingMode() == kExclusive);
-+        	if (_mixedFrames[*participant] != NULL) {
-+        		audioFrame->CopyFrom(*_mixedFrames[*participant]);	//GetAudioFrame from cached ones
-+        	} else {
-+        		WEBRTC_TRACE(kTraceWarning, kTraceAudioMixerServer, _id,
-+        				"failed to GetAudioFrame from cached ones");
++            assert(MixingMode() == kExclusive);
++            if (_mixedFrames[*participant] != NULL) {
++                audioFrame->CopyFrom(*_mixedFrames[*participant]);    //GetAudioFrame from cached ones
++            } else {
++                WEBRTC_TRACE(kTraceWarning, kTraceAudioMixerServer, _id,
++                        "failed to GetAudioFrame from cached ones");
 +
-+        	}
++            }
 +
          }
 +
@@ -242,7 +242,7 @@ index 1648a9d..fbf3ee6 100644
  int32_t
  OutputMixer::MixActiveChannels()
  {
-+	_mixerModule.SetMixingMode(AudioConferenceMixer::kInclusive);
++    _mixerModule.SetMixingMode(AudioConferenceMixer::kInclusive);
      return _mixerModule.Process();
  }
  
@@ -253,19 +253,19 @@ index 1648a9d..fbf3ee6 100644
 +int OutputMixer::GetParticipantMixedAudio(int sample_rate_hz, int num_channels,
 +                  AudioFrame* audioFrame,
 +                  MixerParticipant& participant) {
-+	bool isMixed = false;
-+	participant.IsMixed(isMixed);
-+	if (isMixed == false) {
-+		return -1;
-+	}
-+	_mixerModule.SetMixingMode(AudioConferenceMixer::kExclusive);
-+	//_mixerModule.SetMixabilityStatus(participant, false);
-+	participant.SetSkipped(true);
-+	_mixerModule.Process();
-+	DoOperationsOnCombinedSignal();
-+	//_mixerModule.SetMixabilityStatus(participant, true);
-+	participant.SetSkipped(false);
-+	return GetMixedAudio(sample_rate_hz, num_channels, audioFrame);
++    bool isMixed = false;
++    participant.IsMixed(isMixed);
++    if (isMixed == false) {
++        return -1;
++    }
++    _mixerModule.SetMixingMode(AudioConferenceMixer::kExclusive);
++    //_mixerModule.SetMixabilityStatus(participant, false);
++    participant.SetSkipped(true);
++    _mixerModule.Process();
++    DoOperationsOnCombinedSignal();
++    //_mixerModule.SetMixabilityStatus(participant, true);
++    participant.SetSkipped(false);
++    return GetMixedAudio(sample_rate_hz, num_channels, audioFrame);
 +
 +}
 +
@@ -310,38 +310,38 @@ index 1b6e144..547f6ac 100644
 -    _shared->output_mixer()->MixActiveChannels();
 +    AudioFrame* resultFrame = NULL;
 +    if (channelId == -1) {
-+    	// TODO(andrew): if the device is running in mono, we should tell the mixer
-+    	// here so that it will only request mono from AudioCodingModule.
-+    	// Perform mixing of all active participants (channel-based mixing)
-+    	_shared->output_mixer()->MixActiveChannels();
++        // TODO(andrew): if the device is running in mono, we should tell the mixer
++        // here so that it will only request mono from AudioCodingModule.
++        // Perform mixing of all active participants (channel-based mixing)
++        _shared->output_mixer()->MixActiveChannels();
  
 -    // Additional operations on the combined signal
 -    _shared->output_mixer()->DoOperationsOnCombinedSignal();
-+    	// Additional operations on the combined signal
-+    	_shared->output_mixer()->DoOperationsOnCombinedSignal();
++        // Additional operations on the combined signal
++        _shared->output_mixer()->DoOperationsOnCombinedSignal();
  
 -    // Retrieve the final output mix (resampled to match the ADM)
 -    _shared->output_mixer()->GetMixedAudio(samplesPerSec, nChannels,
 -        &_audioFrame);
  
 -    assert(static_cast<int>(nSamples) == _audioFrame.samples_per_channel_);
-+    	// Retrieve the final output mix (resampled to match the ADM)
-+    	_shared->output_mixer()->GetMixedAudio(samplesPerSec, nChannels,
-+    			&_inclusiveAudioFrame);
-+    	resultFrame = &_inclusiveAudioFrame;
++        // Retrieve the final output mix (resampled to match the ADM)
++        _shared->output_mixer()->GetMixedAudio(samplesPerSec, nChannels,
++            &_inclusiveAudioFrame);
++        resultFrame = &_inclusiveAudioFrame;
 +
 +    } else {
-+    	voe::Channel* channel = _shared->channel_manager().GetChannel(channelId).channel();
-+    	if (_shared->output_mixer()->GetParticipantMixedAudio(samplesPerSec, nChannels,
-+    			&_exclusiveAudioFrame, *channel) == -1) {
-+    		resultFrame = &_inclusiveAudioFrame;
-+    	} else {
-+    		resultFrame = &_exclusiveAudioFrame;
-+    	}
++        voe::Channel* channel = _shared->channel_manager().GetChannel(channelId).channel();
++        if (_shared->output_mixer()->GetParticipantMixedAudio(samplesPerSec, nChannels,
++                &_exclusiveAudioFrame, *channel) == -1) {
++            resultFrame = &_inclusiveAudioFrame;
++        } else {
++            resultFrame = &_exclusiveAudioFrame;
++        }
 +
 +    }
 +
-+	assert(static_cast<int>(nSamples) == resultFrame->samples_per_channel_);
++    assert(static_cast<int>(nSamples) == resultFrame->samples_per_channel_);
      assert(samplesPerSec ==
 -        static_cast<uint32_t>(_audioFrame.sample_rate_hz_));
 +        static_cast<uint32_t>(resultFrame->sample_rate_hz_));
