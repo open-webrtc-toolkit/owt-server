@@ -185,8 +185,12 @@ namespace erizo {
     return localSdp_.getSdp();
   }
 
+  int WebRtcConnection::preferredAudioPayloadType() {
+    return remoteSdp_.preferredPayloadType(AUDIO_TYPE);
+  }
+
   int WebRtcConnection::preferredVideoPayloadType() {
-    return remoteSdp_.preferredVideoPayloadType();
+    return remoteSdp_.preferredPayloadType(VIDEO_TYPE);
   }
 
   bool WebRtcConnection::acceptEncapsulatedRTPData() {

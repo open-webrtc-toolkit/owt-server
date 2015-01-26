@@ -108,6 +108,7 @@ public:
 
 	int deliverFeedback(char* buf, int len);
 
+	int preferredAudioPayloadType();
 	int preferredVideoPayloadType();
 	bool acceptEncapsulatedRTPData();
 	bool acceptFEC();

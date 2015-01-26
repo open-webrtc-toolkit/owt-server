@@ -254,7 +254,48 @@ void AudioMixer::onTimeout()
     performMix();
 }
 
-int32_t AudioMixer::addOutput(const std::string& participant)
+static bool fillAudioCodec(int payloadType, CodecInst& audioCodec)
+{
+    bool ret = true;
+    audioCodec.pltype = payloadType;
+    switch (payloadType) {
+    case PCMU_8000_PT:
+        strcpy(audioCodec.plname, "PCMU");
+        audioCodec.plfreq = 8000;
+        audioCodec.pacsize = 160;
+        audioCodec.channels = 1;
+        audioCodec.rate = 64000;
+        break;
+    case ISAC_16000_PT:
+        strcpy(audioCodec.plname, "ISAC");
+        audioCodec.plfreq = 16000;
+        audioCodec.pacsize = 480;
+        audioCodec.channels = 1;
+        audioCodec.rate = 32000;
+        break;
+    case ISAC_32000_PT:
+        strcpy(audioCodec.plname, "ISAC");
+        audioCodec.plfreq = 32000;
+        audioCodec.pacsize = 960;
+        audioCodec.channels = 1;
+        audioCodec.rate = 56000;
+        break;
+    case OPUS_48000_PT:
+        strcpy(audioCodec.plname, "opus");
+        audioCodec.plfreq = 48000;
+        audioCodec.pacsize = 960;
+        audioCodec.channels = 2;
+        audioCodec.rate = 64000;
+        break;
+    default:
+        ret = false;
+        break;
+    }
+
+    return ret;
+}
+
+int32_t AudioMixer::addOutput(const std::string& participant, int payloadType)
 {
     int channel = -1;
     bool existingParticipant = false;
@@ -270,17 +311,23 @@ int32_t AudioMixer::addOutput(const std::string& participant)
         channel = voe->CreateChannel();
 
     if (channel != -1) {
+        VoECodec* codec = VoECodec::GetInterface(m_voiceEngine);
+        CodecInst audioCodec;
+        bool validCodec = fillAudioCodec(payloadType, audioCodec);
+
         if (!existingParticipant) {
             boost::shared_ptr<woogeen_base::WoogeenTransport<erizo::AUDIO>> transport(new woogeen_base::WoogeenTransport<erizo::AUDIO>(m_dataReceiver, nullptr));
             VoENetwork* network = VoENetwork::GetInterface(m_voiceEngine);
-            if (network->RegisterExternalTransport(channel, *(transport.get())) == -1
+            if (!validCodec || codec->SetSendCodec(channel, audioCodec) == -1
+                || network->RegisterExternalTransport(channel, *(transport.get())) == -1
                 || voe->StartSend(channel) == -1) {
                 voe->DeleteChannel(channel);
                 return -1;
             }
             boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
             m_outputChannels[participant] = {channel, transport};
-        } else if (voe->StartSend(channel) == -1)
+        } else if (!validCodec || codec->SetSendCodec(channel, audioCodec) == -1
+                   || voe->StartSend(channel) == -1)
             return -1;
     }
 

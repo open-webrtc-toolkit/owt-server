@@ -132,7 +132,8 @@ void Mixer::addSubscriber(MediaSink* subscriber, const std::string& peerId)
     m_videoMixer->addOutput(videoPayloadType);
     subscriber->setVideoSinkSSRC(m_videoMixer->getSendSSRC(videoPayloadType));
 
-    int32_t channelId = m_audioMixer->addOutput(peerId);
+    int audioPayloadType = subscriber->preferredAudioPayloadType();
+    int32_t channelId = m_audioMixer->addOutput(peerId, audioPayloadType);
     subscriber->setAudioSinkSSRC(m_audioMixer->getSendSSRC(channelId));
 
     ELOG_DEBUG("Adding subscriber to %u(a), %u(v)", m_audioMixer->getSendSSRC(channelId), m_videoMixer->getSendSSRC(videoPayloadType));
