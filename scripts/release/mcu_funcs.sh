@@ -176,7 +176,7 @@ pack_node() {
 
   sed -i "s/spawn('node'/spawn('webrtc_mcu'/g" "${WOOGEEN_DIST}/mcu/erizoAgent/erizoAgent.js"
 
-  ln -s ${WOOGEEN_DIST}/node_modules ${WOOGEEN_DIST}/lib/node
+  ln -s ../node_modules ${WOOGEEN_DIST}/lib/node
   ln -s ../etc/woogeen_config.js ${WOOGEEN_DIST}/node_modules/
   mv ${WOOGEEN_DIST}/bindings/mcu/build/Release/addon.node ${WOOGEEN_DIST}/lib/node/
 
