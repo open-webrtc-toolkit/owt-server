@@ -36,23 +36,10 @@
   });
 
   function ServiceCreation () {
-    this.opened = false;
     this.toggle = function () {
-      if (this.opened) {
-        this.opened = false;
-        return this.hide();
-      }
-      this.opened = true;
-      this.show();
+      $('#myModal2').modal('toggle');
     };
-    this.show = function () {
-      $('#cs-form').show();
-    };
-    this.hide = function () {
-      $('#cs-form').hide();
-    };
-
-    $('#cs-form #cs-submit').click(function () {
+    $('#myModal2 .modal-footer button:first').click(function () {
       var serviceName = $('#cs-form #cs-name').val();
       var serviceKey = $('#cs-form #cs-key').val();
       if (serviceName !== '' && serviceKey !== '') {
@@ -64,11 +51,10 @@
       } else {
         notify('error', 'Service Creation', 'invalid service name or key');
       }
-      setTimeout(function () {
-        $('#cs-form #cs-name').val('');
-        $('#cs-form #cs-key').val('');
-        serviceCreation.toggle();
-      }, 100);
+    });
+    $('#myModal2').on('hidden.bs.modal', function () {
+      $('#cs-form #cs-name').val('');
+      $('#cs-form #cs-key').val('');
     });
   }
 
@@ -105,10 +91,8 @@
     $('h3#tableTitle').html('Rooms in service <em class="text-primary">'+sname+'</em>');
   }
 
-  var svgBlue = 'blue.svg';
-  var svgGreen = 'green.svg';
   var graphicTemplate = '{{#services}}<div class="col-xs-6 col-sm-3 placeholder" id="service_{{_id}}">\
-    <a href="#"><img class="img-responsive" src="{{graph}}"></a>\
+    <a href="#"><img class="img-responsive" src="img/service.svg" width="50%"></a>\
     <h4>{{name}}</h4>\
     <code>{{_id}}</code><button type="button" class="close" aria-label="Close"><span aria-hidden="true">&times;</span></button><br />\
     <span>{{rooms.length}} rooms</span>\
@@ -116,14 +100,7 @@
   Mustache.parse(graphicTemplate);
   function graphicHandler (services) {
     var view = Mustache.render(graphicTemplate, {
-      services: services,
-      graph: function () {
-        if (this.name === 'superService') {
-          tableHandler(this.rooms, this.name);
-          return svgGreen;
-        }
-        return svgBlue;
-      }
+      services: services
     });
     $('div#serviceGraph').html(view);
     services.map(function (service) {
