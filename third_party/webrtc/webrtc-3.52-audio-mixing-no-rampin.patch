@@ -246,7 +246,7 @@ index 1648a9d..fbf3ee6 100644
      return _mixerModule.Process();
  }
  
-@@ -509,6 +510,29 @@ int OutputMixer::StopRecordingPlayout()
+@@ -509,6 +510,25 @@ int OutputMixer::StopRecordingPlayout()
      return 0;
  }
  
@@ -254,10 +254,6 @@ index 1648a9d..fbf3ee6 100644
 +                  AudioFrame* audioFrame,
 +                  MixerParticipant& participant) {
 +	bool isMixed = false;
-+	_mixerModule.MixabilityStatus(participant, isMixed);
-+	if (isMixed == false) {
-+		return -1;
-+	}
 +	participant.IsMixed(isMixed);
 +	if (isMixed == false) {
 +		return -1;
