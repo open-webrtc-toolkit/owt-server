@@ -133,7 +133,7 @@ namespace erizo {
     // Create a new stream and start gathering candidates
     ELOG_DEBUG("Adding Stream... Number of components %d", iceComponents_);
     nice_agent_add_stream(agent_, iceComponents_);
-    gchar *ufrag, *upass;
+    gchar *ufrag = NULL, *upass = NULL;
     nice_agent_get_local_credentials(agent_, 1, &ufrag, &upass);
     ufrag_ = std::string(ufrag);
     upass_ = std::string(upass);
@@ -295,7 +295,6 @@ namespace erizo {
     }
 
     GSList* candList = NULL;
-    int currentCompId = 1;
     ELOG_DEBUG("Setting remote candidates %lu, mediatype %d", candidates.size(), this->mediaType);
 
     for (unsigned int it = 0; it < candidates.size(); it++) {
@@ -331,7 +330,6 @@ namespace erizo {
       thecandidate->transport = NICE_CANDIDATE_TRANSPORT_UDP;
       nice_address_set_from_string(&thecandidate->addr, cinfo.hostAddress.c_str());
       nice_address_set_port(&thecandidate->addr, cinfo.hostPort);
-      currentCompId = cinfo.componentId;
       
       if (cinfo.hostType == RELAY||cinfo.hostType==SRFLX){
         nice_address_set_from_string(&thecandidate->base_addr, cinfo.rAddress.c_str());
@@ -370,7 +368,7 @@ namespace erizo {
     if (candsDelivered_ <= g_slist_length(lcands)){
       lcands = g_slist_nth(lcands, (candsDelivered_));
     }
-    ELOG_DEBUG("getCandidate %u", g_slist_length(lcands)); 
+    ELOG_DEBUG("getCandidate %u", g_slist_length(lcands));
     for (GSList* iterator = lcands; iterator; iterator = iterator->next) {
       ELOG_DEBUG("Candidate");
       char address[NICE_ADDRESS_STRING_LEN], baseAddress[NICE_ADDRESS_STRING_LEN];
@@ -438,8 +436,8 @@ namespace erizo {
   }
 
   void NiceConnection::getLocalCredentials(std::string& username, std::string& password) {
-    username.replace(0, username.length(),ufrag_);
-    password.replace(0, username.length(), upass_);
+    username = ufrag_;
+    password = upass_;
   }
 
   void NiceConnection::setNiceListener(NiceConnectionListener *listener) {
