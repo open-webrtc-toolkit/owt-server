@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <title>WooGeen Sample</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link href="css/bootstrap.min.css" rel="stylesheet" media="screen">
+</head>
+<style type="text/css">
+#enabled-by {
+  position: relative;
+  margin-top: 5px;
+  left: 85%;
+  font-family: Helvetica, Arial;
+  font-size: 16px;
+}
+.woogeen-header {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+.woogeen-item {
+  padding-left: 0px;
+  padding-right: 0px;
+}
+div#localVideo {
+  float: left;
+}
+div#localScreen {
+  float: left;
+}
+div#localOperate {
+  float: left;
+  margin-left:15px;
+}
+div#localContainer {
+  margin: 0 0 0 0;
+  width:auto;
+  height:240px;
+}
+</style>
+<body>
+
+  <div class="container">
+    <div class="row clearfix" id="launcher">
+      <div class="col-md-12 column woogeen-item">
+        <div class="jumbotron woogeen-header">
+          <div>
+            <h2>WebRTC Conference Call</h2>
+            <div id="enabled-by">
+                <span>Enabled by &nbsp;&nbsp;</span><img src="intel.png" width="80">
+            </div>
+            <div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="row clearfix">
+      <div class="col-md-8 column woogeen-item" id="localContainer">
+        <div id="localVideo" style="width:320px; height:240px;">
+        </div>
+        <div id="localScreen" style="width:320px; height:240px;">
+        </div>
+        <div id="localOperate" style="width:320px; height:240px; z-index:9999">
+          <div id="audio-control" style="display:none">
+            <div class="btn-group">
+              <button type="button" class="btn btn-success" id="audio-btn">Enable Audio</button>
+            </div>
+          </div>
+          <div id="remote-media-control" style="display:none">
+            <div class="btn-group">
+              <button type="button" class="btn btn-danger" id="remote-video-btn">Pause Remote Video</button>
+              <button type="button" class="btn btn-danger" id="remote-audio-btn">Pause Remote Audio</button>
+            </div>
+          </div>
+          <div class="btn-group">
+            <a class="btn btn-warning dropdown-toggle" >
+              channel <span class="caret"></span>
+            </a>
+            <!--ul class="dropdown-menu"-->
+              <span class="caret"></span>
+              <li align='left'><a href="#" onClick="fullScreen()"><span class="glyphicon glyphicon-fullscreen"></span> full screen</a></li>
+              <li class="divider"></li>
+              <li align='left'><a href="#" onClick="shareScreen()"><span class="glyphicon glyphicon-ok-circle"></span> share screen</a></li>
+              <li align='left'><a href="#" onClick="showv('localVideo')"><span class="glyphicon glyphicon-ok-circle"></span> show local</a></li>
+              <li align='left'><a href="#" onClick="hidev('localVideo')"><span class="glyphicon glyphicon-ban-circle"></span> hide local</a></li>
+              <li align='left'><a href="#" onClick="stoplocal()"><span class="glyphicon glyphicon-remove-circle"></span> stop local</a></li>
+              <li align='left'><a href="#" onClick="recreateLocal(true)" >create local stream  </a></li>
+              <li align='left'><a href="#" onClick="recreateLocal(false)" >create audio only local stream  </a></li>
+              <li align='left'><a href="#" onClick="createNewToken('presenter')" >create new token and role is presenter </a></li>
+              <li align='left'><a href="#" onClick="joinRoom()" >rejoin the room </a></li>
+              <li align='left'><a href="#" onClick="pub('vp8')"><span class="glyphicon glyphicon-ok"></span> publish local vp8</a></li>
+              <li align='left'><a href="#" onClick="pub('h264')"><span class="glyphicon glyphicon-ok"></span> publish local h264</a></li>
+              <li align='left'><a href="#" onClick="unpub()"><span class="glyphicon glyphicon-remove-sign"></span> unpublish local</a></li>
+              <li align='left'><a href="#" onClick="room_disconn()"><span class="glyphicon glyphicon-remove"></span> room disconnect</a></li>
+              <li class="divider"></li>
+              <li align='left'><a href="#" onClick="subs('all','vp8')"><span class="glyphicon glyphicon-play-circle"></span> subscribe all remote vp8</a></li>
+              <li align='left'><a href="#" onClick="subs('mix','vp8')"><span class="glyphicon glyphicon-play-circle"></span> subscribe mix remote vp8</a></li>
+              <li align='left'><a href="#" onClick="subs('forward','vp8')"><span class="glyphicon glyphicon-play-circle"></span> subscribe forward remote vp8</a></li>
+              <li align='left'><a href="#" onClick="subs('all','h264')"><span class="glyphicon glyphicon-play-circle"></span> subscribe all remote h264</a></li>
+              <li align='left'><a href="#" onClick="subs('mix','h264')"><span class="glyphicon glyphicon-play-circle"></span> subscribe mix remote h264</a></li>
+              <li align='left'><a href="#" onClick="subs('forward','h264')"><span class="glyphicon glyphicon-play-circle"></span> subscribe forward remote h264</a></li>
+              <li align='left'><a href="#" onClick="unsub()"><span class="glyphicon glyphicon-off"></span> unsubscribe remote</a></li>
+              <li align='left'><a href="#" onClick="unsub('mix')"><span class="glyphicon glyphicon-off"></span> unsubscribe mix remote</a></li>
+              <li align='left'><a href="#" onClick="unsub('forward')"><span class="glyphicon glyphicon-off"></span> unsubscribe forward remote</a></li>
+              <li class="divider"></li>
+              <li align='left'><a href="#" onClick="startRecording(true)"><span class="glyphicon glyphicon-off"></span>start Recording</a></li>
+              <li align='left'><a href="#" onClick="startRecording(false)"><span class="glyphicon glyphicon-off"></span>stop Recording</a></li>
+            <!--/ul-->
+          </div>
+          <div class="btn-group">
+            <a class="btn btn-info dropdown-toggle" >
+              other Action  <span class="caret"></span>
+            </a>
+            <!--ul class="dropdown-menu"-->
+            <span class="caret"></span>
+            <li align='left'><a href="#" onClick="sendd()"><span class="glyphicon glyphicon-envelope"></span> send</a></li>
+            <a class="btn btn-info dropdown-toggle" >
+              media <span class="caret"></span>
+            </a>
+                  <span class="caret"></span>
+                  <li class="divider"></li>
+                   <li class="divider">local</li>
+                  <li align='left'><a href="#" onClick="playVideo()" >playVideo</a></li>
+                  <li align='left'><a href="#" onClick="pauseVideo()" >pauseVideo</a></li>
+                  <li align='left'><a href="#" onClick="playAudio()">playAudio</a></li>
+                  <li align='left'><a href="#" onClick="pauseAudio()">pauseAudio</a></li>
+                  <li class="divider"></li>
+                  <li align='left'><a href="#" onClick="enableVideo()">enableVideo</a></li>
+                  <li align='left'><a href="#" onClick="disableVideo()">disableVideo</a></li>
+                  <li align='left'><a href="#" onClick="enableAudio()">enableAudio</a></li>
+                  <li align='left'><a href="#" onClick="disableAudio()">diableAudio</a></li>
+                  <li class="divider" class="btn btn-info dropdown-toggle" >remote</li>
+                  <li align='left'><a href="#" onClick="remoteplayvideo()">playvideo</a></li>
+                  <li align='left'><a href="#" onClick="remotepausevideo()">pausevideo</a></li>
+                  <li align='left'><a href="#" onClick="remoteplayaudio()">playaudio</a></li>
+                  <li align='left'><a href="#" onClick="remotepauseaudio()">pauseaudio</a></li>
+                  <li class="divider"></li>
+                  <li align='left'><a href="#" onClick="remoteenablevideo()">enableVideo</a></li>
+                  <li align='left'><a href="#" onClick="remotedisablevideo()">disableVideo</a></li>
+                  <li align='left'><a href="#" onClick="remoteenableaudio()">enableAudio</a></li>
+                  <li align='left'><a href="#" onClick="remotedisableaudio()">disableAudio</a></li>
+                  <li class="divider" class="btn btn-info dropdown-toggle" >lastremote</li>
+                  <li align='left'><a href="#" onClick="lastremoteplayvideo()">playvideo</a></li>
+                  <li align='left'><a href="#" onClick="lastremotepausevideo()">pausevideo</a></li>
+                  <li align='left'><a href="#" onClick="lastremoteplayaudio()">playaudio</a></li>
+                  <li align='left'><a href="#" onClick="lastremotepauseaudio()">pauseaudio</a></li>
+                  <li class="divider"></li>
+                  <li align='left'><a href="#" onClick="lastremoteenablevideo()">enableVideo</a></li>
+                  <li align='left'><a href="#" onClick="lastremotedisablevideo()">disableVideo</a></li>
+                  <li align='left'><a href="#" onClick="lastremoteenableaudio()">enableAudio</a></li>
+                  <li align='left'><a href="#" onClick="lastremotedisableaudio()">disableAudio</a></li>
+
+            <!--/ul-->
+             <div id="myScreen" title="my screen"></div>
+          </div>
+          <div class="row-fluid">
+            <div class="span6" id="messenger">
+            </div>
+          </div>
+        </div>
+      </div>
+    <div class="col-md-8 column woogeen-item" id="conference" style="font-size:0px;">
+    </div>
+  </div>
+
+  <script type="text/javascript" src="js/jquery.js"></script>
+  <script src="js/bootstrap.min.js"></script>
+  <script type="text/javascript" src="woogeen.sdk.js"></script>
+  <script type="text/javascript" src="woogeen.sdk.ui.js"></script>
+  <script type="text/javascript" src="script2.js"></script>
+</body>
+</html>
