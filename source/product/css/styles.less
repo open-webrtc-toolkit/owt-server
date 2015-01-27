@@ -57,6 +57,7 @@ body {
     width: 100%;
     height: 100%;
     overflow: hidden;
+    position: relative;
 }
 
 .clr-clt-0 {
@@ -188,6 +189,7 @@ a {
         border-radius: 5px;
         border: 1px solid #ccc;
         margin: 10px 0;
+        outline: none;
     }
 
     .button {
@@ -229,6 +231,28 @@ a {
         }
     }
 
+    .check-panel{
+        display: inline-block;
+        width: 48px;
+        height: 18px;
+        line-height: 18px;
+        float: right;
+        margin-right: 5px;
+        border-right: 2px dotted #B2B2B2;
+    }
+
+    .checkbox {
+        width: 15px;
+        height: 15px;
+        margin: 0px;
+        vertical-align: sub;
+    }
+
+    .ice{
+        font-size: 14px;
+        vertical-align: middle;
+    }
+
     #setting {
         font-size: 0.8rem;
         margin-bottom: 0.5rem;
@@ -248,7 +272,7 @@ a {
     }
 
     #default-login {
-        height: 180px;
+        height: 160px;
     }
 }
 
@@ -441,12 +465,6 @@ a {
             }
             .reset {
                 background: url('../img/undo.png');
-            }
-            .zoomin {
-                background: url('../img/zoomin.png');
-            }
-            .zoomout {
-                background: url('../img/zoomout.png');
             }
         }
 
@@ -729,6 +747,13 @@ a {
         #im-btn.selected {
             background-image: url('../img/im2.png');
         }
+
+        #vc-btn {
+            background-image: url('../img/camera.png');
+        }
+        #vc-btn.selected {
+            background-image: url('../img/camera2.png');
+        }
     }
 
     #profile {
@@ -740,9 +765,75 @@ a {
     }
 }
 
-#subscribe-type {
-  float: right;
-  margin-right: 5px;
+.dialog {
+    position: absolute;
+    box-sizing: border-box;
+    z-index: 200;
+    width: 600px;
+    height: 500px;
+    left: 50%;
+    top: 50%;
+    margin-top: -250px;
+    margin-left: -300px;
+    overflow-: hidden;
+    background-color: @clr-lightest-gray;
+    border: 3px solid @clr-clt-0;
+    display: none;
+
+    .dialog--title {
+        width: 100%;
+        padding: 10px 20px;
+        background-color: @clr-clt-0;
+        box-sizing: border-box;
+
+        .dialog--close {
+            position: absolute;
+            right: 10px;
+            top: 10px;
+        }
+    }
+
+    .dialog--content {
+        padding: 20px;
+        height: 415px;
+        overflow: hidden;
+
+        .vc-selectable {
+            >* {
+                width: 160px;
+                height: 90px;
+            }
+
+            &:after {
+                content: '';
+                width: 20px;
+                height: 20px;
+                position: relative;
+                left: -25px;
+                top: -5px;
+                display: inline-block;
+            }
+
+            &.selected:after {
+                background: url('../img/checked.png');
+            }
+        }
+
+        button {
+            padding: 6px 15px;
+            border-radius: 5px;
+            background-color: @clr-back;
+            color: #fff;
+            text-decoration: none;
+            border: none;
+            margin: 20px 0;
+            cursor: pointer;
+        }
+
+        .dialog--section {
+            margin-top: 0px;
+        }
+    }
 }
 
 // mobile
@@ -756,3 +847,8 @@ a {
     }
 }
 
+#subscribe-type {
+  float: right;
+  margin-right: 5px;
+  outline: none;
+}
