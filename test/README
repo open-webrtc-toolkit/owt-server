@@ -1,0 +1,20 @@
+Manual testing 
+
+copy -r ./basic_example/* to dist/basic_example
+./bin/init.sh
+./bin/start-all.sh
+
+
+API-Test
+
+Please setup test enviroment according to
+http://owrt.sh.intel.com/index.php/How_to_run_automation_API_test_case_for_MCU
+
+
+run test cases for hardware version
+./runTest.sh hardware 
+
+run test cases for software version
+./runTest.sh software
+
+

@@ -1,0 +1,23 @@
+{
+  "name": "WooGeen-MCU",
+  "version": "2.1.0",
+  "description": "Intel CS for WebRTC",
+  "devDependencies": {
+    "vows": "0.6.x",
+    "coffee-script": "1.4.x",
+    "testacular": "0.4.x"
+  },
+  "dependencies": {
+    "amqp": "0.1.7",
+    "express": "~3.4",
+    "mongojs": "*",
+    "socket.io": "~0.9",
+    "socket.io-client": "~0.9",
+    "aws-lib": "*",
+    "request": "~2.34",
+    "node-stat": "*"
+  },
+  "scripts": {
+    "test": "./start-test.sh"
+  }
+}
