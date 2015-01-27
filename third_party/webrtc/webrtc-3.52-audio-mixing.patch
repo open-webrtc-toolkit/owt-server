@@ -302,65 +302,136 @@ Index: src/webrtc/modules/audio_conference_mixer/source/audio_conference_mixer_i
 ===================================================================
 --- src/webrtc/modules/audio_conference_mixer/source/audio_conference_mixer_impl.cc	(revision 8098)
 +++ src/webrtc/modules/audio_conference_mixer/source/audio_conference_mixer_impl.cc	(working copy)
-@@ -338,12 +338,58 @@
+@@ -279,13 +279,23 @@
+         _scratchParticipantsToMixAmount = mixedParticipantsMap.size();
+     }
+ 
+-    // Get an AudioFrame for mixing from the memory pool.
+-    AudioFrame* mixedAudio = NULL;
+-    if(_audioFramePool->PopMemory(mixedAudio) == -1) {
+-        WEBRTC_TRACE(kTraceMemory, kTraceAudioMixerServer, _id,
+-                     "failed PopMemory() call");
+-        assert(false);
+-        return -1;
++    AudioFrame* uniqueFrames[kMaximumAmountOfMixedParticipants];
++    AudioFrame* generalFrame = NULL;
++    for (size_t i = 0; i <= mixList.size(); ++i) {
++        // Get an AudioFrame for mixing from the memory pool.
++        AudioFrame* mixedAudio = NULL;
++        if(_audioFramePool->PopMemory(mixedAudio) == -1) {
++            WEBRTC_TRACE(kTraceMemory, kTraceAudioMixerServer, _id,
++                         "failed PopMemory() call");
++            assert(false);
++            return -1;
++        }
++
++        if (i == mixList.size()) {
++            generalFrame = mixedAudio;
++        } else {
++            uniqueFrames[i] = mixedAudio;
++        }
+     }
+ 
+     bool timeForMixerCallback = false;
+@@ -294,35 +304,51 @@
+     {
+         CriticalSectionScoped cs(_crit.get());
+ 
+-        // TODO(henrike): it might be better to decide the number of channels
+-        //                with an API instead of dynamically.
++        for (size_t i = 0; i <= mixList.size(); ++i) {
++            AudioFrameList workList = mixList;
++            int id = -1;
++            AudioFrame* mixedAudio = NULL;
+ 
+-        // Find the max channels over all mixing lists.
+-        const int num_mixed_channels = std::max(MaxNumChannels(&mixList),
+-            std::max(MaxNumChannels(&additionalFramesList),
+-                     MaxNumChannels(&rampOutList)));
++            if (i == mixList.size()) {
++                mixedAudio = generalFrame;
++            } else {
++                mixedAudio = uniqueFrames[i];
++                AudioFrameList::iterator it = workList.begin();
++                advance(it, i);
++                id = (*it)->id_;
++                workList.erase(it);
++            }
+ 
+-        mixedAudio->UpdateFrame(-1, _timeStamp, NULL, 0, _outputFrequency,
+-                                AudioFrame::kNormalSpeech,
+-                                AudioFrame::kVadPassive, num_mixed_channels);
++            // TODO(henrike): it might be better to decide the number of
++            //                channels with an API instead of dynamically.
+ 
+-        _timeStamp += _sampleSize;
++            // Find the max channels over all mixing lists.
++            const int num_mixed_channels = std::max(MaxNumChannels(&workList),
++                std::max(MaxNumChannels(&additionalFramesList),
++                         MaxNumChannels(&rampOutList)));
+ 
+-        MixFromList(*mixedAudio, &mixList);
+-        MixAnonomouslyFromList(*mixedAudio, &additionalFramesList);
+-        MixAnonomouslyFromList(*mixedAudio, &rampOutList);
++            mixedAudio->UpdateFrame(id, _timeStamp, NULL, 0, _outputFrequency,
++                                    AudioFrame::kNormalSpeech,
++                                    AudioFrame::kVadPassive,
++                                    num_mixed_channels);
+ 
+-        if(mixedAudio->samples_per_channel_ == 0) {
+-            // Nothing was mixed, set the audio samples to silence.
+-            mixedAudio->samples_per_channel_ = _sampleSize;
+-            mixedAudio->Mute();
+-        } else {
+-            // Only call the limiter if we have something to mix.
+-            if(!LimitMixedAudio(*mixedAudio))
+-                retval = -1;
++            MixFromList(*mixedAudio, &workList);
++            MixAnonomouslyFromList(*mixedAudio, &additionalFramesList);
++            MixAnonomouslyFromList(*mixedAudio, &rampOutList);
++
++            if(mixedAudio->samples_per_channel_ == 0) {
++                // Nothing was mixed, set the audio samples to silence.
++                mixedAudio->samples_per_channel_ = _sampleSize;
++                mixedAudio->Mute();
++            } else {
++                // Only call the limiter if we have something to mix.
++                if(!LimitMixedAudio(*mixedAudio))
++                    retval = -1;
++            }
+         }
+ 
+-        _mixedAudioLevel.ComputeLevel(mixedAudio->data_,_sampleSize);
++        _timeStamp += _sampleSize;
++        _mixedAudioLevel.ComputeLevel(generalFrame->data_,_sampleSize);
+         audioLevel = _mixedAudioLevel.GetLevel();
+ 
+         if(_mixerStatusCb) {
+@@ -338,12 +364,11 @@
      {
          CriticalSectionScoped cs(_cbCrit.get());
          if(_mixReceiver != NULL) {
 -            const AudioFrame** dummy = NULL;
-+            AudioFrame* uniqueFrames[kMaximumAmountOfMixedParticipants];
-+
-+            for (size_t i = 0; i < mixList.size(); ++i) {
-+                AudioFrameList workList = mixList;
-+                AudioFrameList::iterator it = workList.begin();
-+                advance(it, i);
-+                int id = (*it)->id_;
-+                workList.erase(it);
-+
-+                // Get an AudioFrame for mixing from the memory pool.
-+                AudioFrame* uniqueFrame = NULL;
-+                if(_audioFramePool->PopMemory(uniqueFrame) == -1) {
-+                    WEBRTC_TRACE(kTraceMemory, kTraceAudioMixerServer, _id,
-+                                 "failed PopMemory() call");
-+                    assert(false);
-+                    return -1;
-+                }
-+
-+                int num_mixed_channels = std::max(MaxNumChannels(&workList),
-+                    std::max(MaxNumChannels(&additionalFramesList),
-+                             MaxNumChannels(&rampOutList)));
-+
-+                uniqueFrame->UpdateFrame(id, _timeStamp, NULL, 0,
-+                                _outputFrequency, AudioFrame::kNormalSpeech,
-+                                AudioFrame::kVadPassive, num_mixed_channels);
-+
-+                MixFromList(*uniqueFrame, &workList);
-+                MixAnonomouslyFromList(*uniqueFrame, &additionalFramesList);
-+                MixAnonomouslyFromList(*uniqueFrame, &rampOutList);
-+
-+                if(uniqueFrame->samples_per_channel_ == 0) {
-+                    // Nothing was mixed, set the audio samples to silence.
-+                    uniqueFrame->samples_per_channel_ = _sampleSize;
-+                    uniqueFrame->Mute();
-+                } else {
-+                    // Only call the limiter if we have something to mix.
-+                    if(!LimitMixedAudio(*uniqueFrame))
-+                        retval = -1;
-+                }
-+
-+                uniqueFrames[i] = uniqueFrame;
-+            }
-+
              _mixReceiver->NewMixedAudio(
                  _id,
-                 *mixedAudio,
+-                *mixedAudio,
 -                dummy,
 -                0);
++                *generalFrame,
 +                const_cast<const AudioFrame**>(uniqueFrames),
 +                mixList.size());
-+
-+            for (size_t j = 0; j < mixList.size(); ++j) {
-+                _audioFramePool->PushMemory(uniqueFrames[j]);
-+            }
          }
  
          if((_mixerStatusCallback != NULL) &&
+@@ -362,7 +387,10 @@
+     }
+ 
+     // Reclaim all outstanding memory.
+-    _audioFramePool->PushMemory(mixedAudio);
++    _audioFramePool->PushMemory(generalFrame);
++    for (size_t j = 0; j < mixList.size(); ++j) {
++        _audioFramePool->PushMemory(uniqueFrames[j]);
++    }
+     ClearAudioFrameList(&mixList);
+     ClearAudioFrameList(&rampOutList);
+     ClearAudioFrameList(&additionalFramesList);
