@@ -235,6 +235,7 @@
         room.mediaMixing.video = videoSetting;
         p.addClass('editable-unsaved');
         p.editable('setValue', room.mediaMixing);
+        p.text('customized');
       });
     });
 
