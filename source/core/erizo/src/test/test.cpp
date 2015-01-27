@@ -128,7 +128,7 @@ BOOST_AUTO_TEST_CASE(rtpPacketQueueDoesNotPushSampleLessThanWhatHasBeenPopped)
     // Then try to add a packet with the same sequence number.  This packet should not have
     // been added to the queue.
     header.setSeqNumber(12);
-    queue.pushPacket((const char *)&header, sizeof(erizo::RtpHeader));
+    queue.pushPacket((const char *)&header, sizeof(RTPHeader));
     BOOST_CHECK(queue.getSize() == 0);
     BOOST_CHECK(queue.hasData() == false);
 }
@@ -201,3 +201,48 @@ BOOST_AUTO_TEST_CASE(rtpPacketQueueRejectsDuplicatePackets)
     // We should only see ten packets, because those should all have been rejected.
     BOOST_CHECK(queue.getSize() == 10);
 }
+
+
+BOOST_AUTO_TEST_CASE(depthCalculationHandlesTimestampWrap)
+{
+    // In the RTP spec, timestamps for a packet are 32 bit unsigned, and can overflow (very possible given that the starting
+    // point is random.  Test that our depth works correctly
+    unsigned int max = 10, depth = 5;
+    erizo::RtpPacketQueue queue(depth, max);  // max and depth.
+    queue.setTimebase(1);   // dummy timebase.
+
+    uint32_t x = UINT_MAX - 4;
+    while( x != 1) {
+        RTPHeader header;
+        header.setSeqNumber(x);
+        header.setTimestamp(x);
+        queue.pushPacket((const char *)&header, sizeof(RTPHeader));
+        x++;    // overflow causes us to hit 1
+    }
+
+    // at this point, we should have data, but not enough to pass hasData()
+    BOOST_CHECK(queue.hasData() == false);
+
+    // Add one more packet, and we should have data
+    RTPHeader header;
+    header.setSeqNumber(x);
+    header.setTimestamp(x);
+    queue.pushPacket((const char *)&header, sizeof(RTPHeader));
+    BOOST_CHECK(queue.hasData() == true);
+
+    // Add a bunch more packets, and make sure the max is being enforced
+    while (x != 100) {
+    RTPHeader header;
+        header.setSeqNumber(x);
+        header.setTimestamp(x);
+        queue.pushPacket((const char *)&header, sizeof(RTPHeader));
+        x++;
+    }
+
+    // Max should be respected, we should have data
+    BOOST_CHECK(queue.getSize() == (max + 1));
+    BOOST_CHECK(queue.hasData() == true);
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
