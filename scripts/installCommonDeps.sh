@@ -101,14 +101,20 @@ install_libsrtp(){
 
 install_webrtc(){
   cd $ROOT/third_party/webrtc
-  git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
-  PATH=$ROOT/third_party/webrtc/depot_tools:$PATH
   if [ -d src ]; then
     rm -rf src
   fi
-  echo "Downloading WebRTC source code..."
-  gclient sync --nohooks
-  echo "Done."
+  if [ "$NIGHTLY" != "true" ]; then
+    git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
+    PATH=$ROOT/third_party/webrtc/depot_tools:$PATH
+    echo "Downloading WebRTC source code..."
+    gclient sync --nohooks
+    echo "Done."
+  else
+    rm -rf webrtc-upstream-fork
+    git clone -b 3.52 ssh://lab_webrtctest@git-ccr-1.devtools.intel.com:29418/webrtc-upstream-fork/
+    mv webrtc-upstream-fork/src .
+  fi
   patch -p0 < ./webrtc-3.52-build.patch
   patch -p0 < ./webrtc-3.52-source.patch
   patch -p0 < ./opus-build.patch
