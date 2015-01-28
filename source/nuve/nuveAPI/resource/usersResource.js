@@ -38,15 +38,15 @@ exports.getList = function (req, res) {
             res.status(404).send('Service not found');
             return;
         } else if (currentRoom === undefined) {
-            log.info('Room ', req.params.room, ' does not exist');
-            res.status(404).send('Room does not exist');
+            log.info('Room ', req.params.room, ' not found');
+            res.status(404).send('Room not found');
             return;
         }
 
         log.info('Representing users for room ', currentRoom._id, 'and service', currentService._id);
         cloudHandler.getUsersInRoom (currentRoom._id, function (users) {
             if (users === 'error') {
-                res.status(401).send('CloudHandler does not respond');
+                res.status(404).send('Room not hosted');
                 return;
             }
             res.send(users);
