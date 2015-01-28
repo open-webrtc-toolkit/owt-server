@@ -77,7 +77,7 @@
       <td class="col-md-1"><button type="button" id="add-room" class="btn btn-xs btn-success">Add</button> <button type="button" id="reset-room" class="btn btn-xs btn-warning">Reset</button></td>\
     </tr>');
 
-    $('button#apply-room').click(function () {
+    var applyRoomFn = function () {
       var p = $(this).parent().parent();
       var unsaved = p.find('.editable-unsaved');
       if (unsaved.length === 0) {
@@ -103,7 +103,26 @@
       } else {
         notify('error', 'Update Room', 'error in finding roomId');
       }
-    });
+    };
+    var deleteRoomFn = function () {
+      var p = $(this).parent().parent();
+      var roomId = p.find('td:first').text();
+      if (roomId !== '') {
+        notifyConfirm('Delete Room', 'Are you sure want to delete room ' + roomId, function () {
+          nuve.deleteRoom(roomId, function (err, resp) {
+            if (err) return notify('error', 'Delete Room', resp);
+            p.remove();
+            delete roomCache[roomId];
+            notify('info', 'Delete Room Success', resp);
+          });
+        });
+      } else {
+        notify('error', 'Delete Room', 'error in finding roomId');
+      }
+    };
+
+    $('button#apply-room').click(applyRoomFn);
+    $('button#delete-room').click(deleteRoomFn);
 
     var roomNameHandle = {
       mode: 'inline',
@@ -278,26 +297,13 @@
         selector.find('td#publishLimit').editable(numberHandle);
         selector.find('td#userLimit').editable(numberHandle);
         selector.find('td#mediaSetting').editable(disabledHandle);
+        selector.find('button#apply-room').click(applyRoomFn);
+        selector.find('button#delete-room').click(deleteRoomFn);
         roomCache[room1._id] = room1;
         notify('info', 'Add Room Success', room1._id);
       });
     });
-    $('button#delete-room').click(function () {
-      var p = $(this).parent().parent();
-      var roomId = p.find('td:first').text();
-      if (roomId !== '') {
-        notifyConfirm('Delete Room', 'Are you sure want to delete room ' + roomId, function () {
-          nuve.deleteRoom(roomId, function (err, resp) {
-            if (err) return notify('error', 'Delete Room', resp);
-            p.remove();
-            delete roomCache[roomId];
-            notify('info', 'Delete Room Success', resp);
-          });
-        });
-      } else {
-        notify('error', 'Delete Room', 'error in finding roomId');
-      }
-    });
+
     $('button#reset-room').click(function () {
       var p = $(this).parent().parent();
       p.find('.editable-unsaved').editable('setValue', null).removeClass('editable-unsaved');
