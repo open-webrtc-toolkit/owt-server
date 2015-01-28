@@ -78,13 +78,33 @@ exports.updateRoom = function (req, res) {
             log.info('Room ', req.params.room, ' does not exist');
             res.status(404).send('Room does not exist');
         } else {
-            var updates = req.body || {};
-            var newRoom = Room.create(updates);
-            if (newRoom.validate()) {
-                var currentRoom = Room.create(room);
-                Object.keys(newRoom).map(function (k) {
-                    room[k] = newRoom[k] || currentRoom[k];
+            var updates = req.body;
+            if (typeof updates === 'object' && updates !== null) {
+                var newRoom = Room.create(updates);
+                var _id = room._id;
+                room = Room.create(room);
+                room._id = _id;
+                Object.keys(updates).map(function (k) {
+                    if (room.hasOwnProperty(k)) {
+                        if (k !== 'mediaMixing')
+                            room[k] = newRoom[k];
+                        else if (typeof updates.mediaMixing.video === 'object') {
+                            Object.keys(updates.mediaMixing.video).map(function (k) {
+                                if (room.mediaMixing.video.hasOwnProperty(k)) {
+                                    if (k !== 'layout')
+                                        room.mediaMixing.video[k] = newRoom.mediaMixing.video[k];
+                                    else if (typeof updates.mediaMixing.video.layout === 'object') {
+                                        Object.keys(updates.mediaMixing.video.layout).map(function (k) {
+                                            if (room.mediaMixing.video.layout.hasOwnProperty(k))
+                                                room.mediaMixing.video.layout[k] = newRoom.mediaMixing.video.layout[k];
+                                        });
+                                    }
+                                }
+                            });
+                        }
+                    }
                 });
+
                 roomRegistry.addRoom(room, function (result) {
                     serviceRegistry.updateService(currentService);
                     if (result == 1) {

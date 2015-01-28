@@ -1,22 +1,118 @@
-/* global exports, module */
+/* global module */
+var meta = require('../public/meta.json');
+
+function defaultMediaMixing () {
+    'use strict';
+    return {
+        video: {
+            avCoordinated: 0,
+            maxInput: 16,
+            resolution: 0,
+            bitrate: 0,
+            bkColor: 0,
+            layout: {
+                base: 0,
+                custom: null
+            }
+        },
+        audio: null
+    };
+}
 
 function Room (spec) {
     'use strict';
-    this.name = spec.name || '';
-    this.mode = spec.mode || 0;
-    this.publishLimit = spec.publishLimit || 0;
-    this.userLimit = spec.userLimit || 0;
-    this.mediaMixing = spec.mediaMixing || null;
-    if (typeof this.mode === 'string') this.mode = parseInt(this.mode, 10);
-    if (typeof this.publishLimit === 'string') this.publishLimit = parseInt(this.publishLimit, 10);
-    if (typeof this.userLimit === 'string') this.userLimit = parseInt(this.userLimit, 10);
-    if (typeof this.mediaMixing === 'string') {
-      try {
-        this.mediaMixing = JSON.parse(this.mediaMixing);
-      } catch (e) {
-        this.mediaMixing = null;
-      }
+    this.name = spec.name + ''; // ensure type string
+    this.mode = spec.mode;
+    this.publishLimit = spec.publishLimit;
+    this.userLimit = spec.userLimit;
+    this.mediaMixing = spec.mediaMixing;
+
+    if (typeof this.mode === 'string') {
+        this.mode = parseInt(this.mode, 10);
+        if (isNaN(this.mode)) this.mode = 0;
+    } else if (typeof this.mode !== 'number') {
+        this.mode = 0;
     }
+
+    if (typeof this.publishLimit === 'string'){
+        this.publishLimit = parseInt(this.publishLimit, 10);
+        if (isNaN(this.publishLimit)) this.publishLimit = 0;
+    } else if (typeof this.publishLimit !== 'number') {
+        this.publishLimit = 16;
+    }
+
+    if (typeof this.userLimit === 'string'){
+        this.userLimit = parseInt(this.userLimit, 10);
+        if (isNaN(this.userLimit)) this.userLimit = 0;
+    } else if (typeof this.userLimit !== 'number') {
+        this.userLimit = 100;
+    }
+
+    if (typeof this.mediaMixing === 'string') {
+        try {
+            this.mediaMixing = JSON.parse(this.mediaMixing);
+        } catch (e) {
+            this.mediaMixing = null;
+        }
+    }
+
+    if (typeof this.mediaMixing !== 'object') {
+        this.mediaMixing = null;
+    }
+
+    if (typeof this.mediaMixing === 'object' && this.mediaMixing !== null) {
+        if (this.mediaMixing.video) {
+            if (this.mediaMixing.video.avCoordinated === '1' ||
+                this.mediaMixing.video.avCoordinated === 1 ||
+                this.mediaMixing.video.avCoordinated === true) {
+                this.mediaMixing.video.avCoordinated = 1;
+            } else {
+                this.mediaMixing.video.avCoordinated = 0;
+            }
+
+            if (typeof this.mediaMixing.video.maxInput === 'string') {
+                this.mediaMixing.video.maxInput = parseInt(this.mediaMixing.video.maxInput, 10);
+            } else if (typeof this.mediaMixing.video.maxInput !== 'number') {
+                this.mediaMixing.video.maxInput = 16;
+            }
+
+            if (typeof this.mediaMixing.video.resolution === 'string') {
+                this.mediaMixing.video.resolution = parseInt(this.mediaMixing.video.resolution, 10);
+            } else if (typeof this.mediaMixing.video.resolution !== 'number') {
+                this.mediaMixing.video.resolution = 0;
+            }
+
+            if (typeof this.mediaMixing.video.bitrate === 'string') {
+                this.mediaMixing.video.bitrate = parseInt(this.mediaMixing.video.bitrate, 10);
+            } else if (typeof this.mediaMixing.video.bitrate !== 'number') {
+                this.mediaMixing.video.bitrate = 0;
+            }
+
+            if (typeof this.mediaMixing.video.bkColor === 'string') {
+                this.mediaMixing.video.bkColor = parseInt(this.mediaMixing.video.bkColor, 10);
+            } else if (typeof this.mediaMixing.video.bkColor !== 'number') {
+                this.mediaMixing.video.bkColor = 0;
+            }
+
+            if (typeof this.mediaMixing.video.layout === 'object' && this.mediaMixing.video.layout !== null) {
+                if (typeof this.mediaMixing.video.layout.base === 'string') {
+                    this.mediaMixing.video.layout.base = parseInt(this.mediaMixing.video.layout.base, 10);
+                    if (isNaN(this.mediaMixing.video.layout.base)) {
+                        this.mediaMixing.video.layout.base = 0;
+                    }
+                } else if (typeof this.mediaMixing.video.layout.base !== 'number') {
+                    this.mediaMixing.video.layout.base = 0;
+                }
+            } else {
+                this.mediaMixing.video.layout = defaultMediaMixing().video.layout;
+            }
+        } else {
+            this.mediaMixing.video = defaultMediaMixing().video;
+        }
+    } else {
+        this.mediaMixing = defaultMediaMixing();
+    }
+
 }
 
 Room.create = function (spec) {
@@ -31,17 +127,8 @@ Room.createDefault = function (name) {
         mode: 0,
         publishLimit: 16,
         userLimit: 100,
-        mediaMixing: null
+        mediaMixing: defaultMediaMixing()
     });
-};
-
-Room.prototype.validate = function () {
-    'use strict';
-    return (typeof this.name === 'string') &&
-        (typeof this.mode === 'number' && this.mode >= 0) &&
-        (typeof this.publishLimit === 'number' && (!isNaN(this.publishLimit))) &&
-        (typeof this.userLimit === 'number' && (!isNaN(this.userLimit))) &&
-        (typeof this.mediaMixing === 'object');
 };
 
 Room.prototype.toString = function () {
@@ -49,11 +136,43 @@ Room.prototype.toString = function () {
     return JSON.stringify(this);
 };
 
-Room.prototype.format = function () {
+Room.genConfig = function (room) {
+    'use strict';
+    var layoutType = meta.mediaMixing.video.layout.base[room.mediaMixing.video.layout.base];
+    var maxInput = room.mediaMixing.video.maxInput || 16;
+    var layoutTemplates;
 
+    if (layoutType === 'fluid') {
+        layoutTemplates = generateFluidTemplates(maxInput);
+    } else if (layoutType === 'lecture') {
+        layoutTemplates = generateLectureTemplates(maxInput);
+    } else {
+        layoutTemplates = generateFluidTemplates(maxInput);
+    }
+
+    return {
+        mode: meta.mode[room.mode],
+        publishLimit: room.publishLimit,
+        userLimit: room.userLimit,
+        mediaMixing: {
+            video: {
+                avCoordinated: room.mediaMixing.video.avCoordinated === 1 ? true : false,
+                maxInput: maxInput,
+                resolution: meta.mediaMixing.video.resolution[room.mediaMixing.video.resolution] || 'vga',
+                bkColor: meta.mediaMixing.video.bkColor[room.mediaMixing.video.bkColor] || 'black',
+                layout: layoutTemplates
+            },
+            audio: null
+        }
+    };
 };
 
-exports = module.exports = Room;
+Room.prototype.genConfig = function() {
+    'use strict';
+    return Room.genConfig(this);
+};
+
+module.exports = Room;
 
 /*
 {
@@ -64,8 +183,10 @@ exports = module.exports = Room;
   "mediaMixing": { // type object
     "video": {
       "resolution": 0, // type number
-      "bitrate": 750, // type numer
+      "bitrate": 0, // type numer
       "bkColor": 0, // type number
+      "maxInput": 16, // type number
+      "avCoordinated": 0, // type number: 0/1
       "layout": { // type object
         "base": 0, // type number
         "custom": [ // type object::Array or null
@@ -84,3 +205,140 @@ exports = module.exports = Room;
   }
 }
 */
+
+function generateLectureTemplates (maxInput) {
+    'use strict';
+    var result = [ {region:[{id: '1', left: 0, top: 0, relativesize: 1.0, priority: 1.0}]},
+                   {region:[{id: '1', left: 0, top: 0, relativesize: 0.667, priority: 1.0},
+                              {id: '2', left: 0.667, top: 0, relativesize: 0.333, priority: 1.0},
+                              {id: '3', left: 0.667, top: 0.333, relativesize: 0.333, priority: 1.0},
+                              {id: '4', left: 0.667, top: 0.667, relativesize: 0.333, priority: 1.0},
+                              {id: '5', left: 0.333, top: 0.667, relativesize: 0.333, priority: 1.0},
+                              {id: '6', left: 0, top: 0.667, relativesize: 0.333, priority: 1.0}]}];
+    if (maxInput > 6) { // for maxInput: 8, 10, 12, 14
+        var maxDiv = maxInput / 2;
+        maxDiv = (maxDiv > Math.floor(maxDiv)) ? (maxDiv + 1) : maxDiv;
+        maxDiv = maxDiv > 7 ? 7 : maxDiv;
+
+        for (var divFactor = 4; divFactor <= maxDiv; divFactor++) {
+            var mainReginRelative = ((divFactor - 1) * 1.0 / divFactor);
+            var minorRegionRelative = 1.0 / divFactor;
+
+            var regions = [{id: '1', left: 0, top: 0, relativesize: mainReginRelative, priority: 1.0}];
+            var id = 2;
+            for (var y = 0; y < divFactor; y++) {
+                regions.push({id: ''+(id++),
+                              left: mainReginRelative,
+                              top: y*1.0 / divFactor,
+                              relativesize: minorRegionRelative,
+                              priority: 1.0});
+            }
+
+            for (var x = divFactor - 2; x >= 0; x--) {
+                regions.push({id: ''+(id++),
+                              left: x*1.0 / divFactor,
+                              top: mainReginRelative,
+                              relativesize: minorRegionRelative,
+                              priority: 1.0});
+            }
+            result.push({region: regions});
+        }
+
+        if (maxInput > 14) { // for maxInput: 17, 21, 25
+            var maxDiv = (maxInput + 3) / 4;
+            maxDiv = (maxDiv > Math.floor(maxDiv)) ? (maxDiv + 1) : maxDiv;
+            maxDiv = maxDiv > 7 ? 7 : maxDiv;
+
+            for (var divFactor = 4; divFactor <= maxDiv; divFactor++) {
+                var mainReginRelative = ((divFactor - 2) * 1.0 / divFactor);
+                var minorRegionRelative = 1.0 / divFactor;
+
+                var regions = [{id: '1', left: 0, top: 0, relativesize: mainReginRelative, priority: 1.0}];
+                var id = 2;
+                for (var y = 0; y < divFactor - 1; y++) {
+                    regions.push({id: ''+(id++),
+                                  left: mainReginRelative,
+                                  top: y*1.0 / divFactor,
+                                  relativesize: minorRegionRelative,
+                                  priority: 1.0});
+                }
+
+                for (var x = divFactor - 3; x >= 0; x--) {
+                    regions.push({id: ''+(id++),
+                                  left: x*1.0 / divFactor,
+                                  top: mainReginRelative,
+                                  relativesize: minorRegionRelative,
+                                  priority: 1.0});
+                }
+
+                for (var y = 0; y < divFactor; y++) {
+                    regions.push({id: ''+(id++),
+                                  left: mainReginRelative + minorRegionRelative,
+                                  top: y*1.0 / divFactor,
+                                  relativesize: minorRegionRelative,
+                                  priority: 1.0});
+                }
+
+                for (var x = divFactor - 2; x >= 0; x--) {
+                    regions.push({id: ''+(id++),
+                                  left: x*1.0 / divFactor,
+                                  top: mainReginRelative + minorRegionRelative,
+                                  relativesize: minorRegionRelative,
+                                  priority: 1.0});
+                }
+                result.push({region: regions});
+            }
+        }
+    }
+    return result;
+}
+
+function generateFluidTemplates (maxInput) {
+    'use strict';
+
+    var result = [];
+    var maxDiv = Math.sqrt(maxInput);
+    if (maxDiv > Math.floor(maxDiv))
+        maxDiv = Math.floor(maxDiv) + 1;
+    else
+        maxDiv = Math.floor(maxDiv);
+
+    for (var divFactor = 1; divFactor <= maxDiv; divFactor++) {
+        var regions = [];
+        var relativeSize = 1.0 / divFactor;
+        var id = 1;
+        for (var y = 0; y < divFactor; y++)
+            for(var x = 0; x < divFactor; x++) {
+                var region = {id: String(id++),
+                              left: x*1.0 / divFactor,
+                              top: y*1.0 / divFactor,
+                              relativesize: relativeSize,
+                              priority: 1.0};
+                regions.push(region);
+            }
+
+        result.push({region: regions});
+    }
+    return result;
+}
+
+function isTemplatesValid (templates) {
+    'use strict';
+    if (templates === undefined)
+        return false;
+
+    for (var i in templates) {
+        var region = templates[i].region;
+        if (!(region instanceof Array))
+            return false;
+
+        for (var j in region) {
+            if (((typeof region[j].left) !== 'number') || region[j].left < 0.0 || region[j].left > 1.0 ||
+              ((typeof region[j].top) !== 'number') || region[j].top < 0.0 || region[j].top > 1.0 ||
+              ((typeof region[j].relativesize) !== 'number') || region[j].relativesize < 0.0 ||
+              region[j].relativesize > 1.0)
+                return false;
+        }
+    }
+    return true;
+}

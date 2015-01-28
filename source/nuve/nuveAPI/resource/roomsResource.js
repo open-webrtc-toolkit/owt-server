@@ -31,9 +31,9 @@ exports.createRoom = function (req, res) {
         res.status(404).send('Service not found');
         return;
     }
-    if (typeof req.body.name !== 'string' || req.body.name === '') {
+    if (typeof req.body !== 'object' || req.body === null || typeof req.body.name !== 'string' || req.body.name === '') {
         log.info('Invalid room');
-        res.status(404).send('Invalid room');
+        res.status(400).send('Invalid room');
         return;
     }
 
@@ -56,15 +56,11 @@ exports.createRoom = function (req, res) {
     } else {
         room = Room.create({
             name: req.body.name,
-            mode: req.body.options.mode || 0, // type number
-            publishLimit: req.body.options.publishLimit || 16, // type number
-            userLimit: req.body.options.userLimit || 100, // type number
-            mediaMixing: req.body.options.mediaMixing || null, // type object
-            needRecording: req.body.options.needRecording || false // type boolean
+            mode: req.body.options.mode,
+            publishLimit: req.body.options.publishLimit,
+            userLimit: req.body.options.userLimit,
+            mediaMixing: req.body.options.mediaMixing,
         });
-        if (!room.validate()) {
-            room = Room.createDefault(req.body.name);
-        }
         roomRegistry.addRoom(room, function (result) {
             currentService.rooms.push(result);
             serviceRegistry.updateService(currentService);
