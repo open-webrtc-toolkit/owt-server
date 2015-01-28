@@ -2,7 +2,7 @@
   "mode": ["Hybrid", "P2P"],
   "mediaMixing": {
     "video": {
-      "resolution": ["unspecified", "sif", "vga", "hd720p", "hd1080p"],
+      "resolution": ["vga", "sif", "hd720p", "hd1080p"],
       "bitrate": [],
       "bkColor": ["black", "white"],
       "layout": {

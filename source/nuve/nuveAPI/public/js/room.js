@@ -47,7 +47,7 @@
       <td id="roomMode" data-spin="mode" data-value="{{mode}}"></td>\
       <td id="publishLimit" data-spin="publishLimit">{{publishLimit}}</td>\
       <td id="userLimit" data-spin="userLimit">{{userLimit}}</td>\
-      <td id="mediaSetting" data-spin="mediaMixing">{{mediaSetting}}</td>\
+      <td id="mediaSetting" data-spin="mediaMixing">object</td>\
       <td class="col-md-1"><button type="button" id="apply-room" class="btn btn-xs btn-primary">Apply</button> <button type="button" id="delete-room" class="btn btn-xs btn-danger">Delete</button></td>\
     </tr>{{/rooms}}';
   Mustache.parse(tableTemplate);
@@ -60,11 +60,7 @@
 
     var template = tableTemplate;
     var view = Mustache.render(template, {
-      rooms: rooms,
-      mediaSetting: function () {
-        if (this.mediaMixing === null) return 'default';
-        return 'customized';
-      }
+      rooms: rooms
     });
     $('div#serviceTable tbody').html(view);
     $('div#serviceTable tbody').append('<tr>\
@@ -150,12 +146,8 @@
     var disabledHandle = {
       disabled: true
     };
-    $('td#roomName').editable(roomNameHandle);
-    $('td#roomMode').editable(roomModeHandle);
-    $('td#publishLimit').editable(numberHandle);
-    $('td#userLimit').editable(numberHandle);
-    $('td#mediaSetting').editable(disabledHandle);
-    $('td#mediaSetting').click(function () {
+
+    var mediaSettingFn = function () {
       $('#myModal2').modal('toggle');
       var roomId = $(this).parent().find('td:first').text();
       var room = roomCache[roomId];
@@ -168,13 +160,15 @@
         resolution: 0, // type number
         bitrate: 0, // type numer
         bkColor: 0, // type number
+        avCoordinated: false,
+        maxInput: 16,
         layout: { // type object
           base: 0, // type number
           custom: null
         }
       };
       var view = Mustache.render('<tr>\
-          <td rowspan="5">video</td>\
+          <td rowspan="7">video</td>\
           <td colspan="2">resolution</td>\
           <td id="resolution" class="value-num-edit" data-value={{resolution}}></td>\
         </tr>\
@@ -185,6 +179,14 @@
         <tr>\
           <td colspan="2">bkColor</td>\
           <td id="bkColor" class="value-num-edit" data-value={{bkColor}}></td>\
+        </tr>\
+        <tr>\
+          <td colspan="2">maxInput</td>\
+          <td id="maxInput" class="value-num-edit" data-value={{maxInput}}></td>\
+        </tr>\
+        <tr>\
+          <td colspan="2">avCoordinated</td>\
+          <td id="avCoordinated" class="value-num-edit" data-value={{avCoordinated}}></td>\
         </tr>\
         <tr>\
           <td rowspan="2">layout</td>\
@@ -211,12 +213,18 @@
         })
       });
       $('#myModal2 tbody td#bitrate').editable(numberHandle);
+      $('#myModal2 tbody td#maxInput').editable(numberHandle);
       $('#myModal2 tbody td#bkColor').editable({
         mode: 'inline',
         type: 'select',
         source: metadata.mediaMixing.video.bkColor.map(function (v, id) {
           return {value: id, text: v};
         })
+      });
+      $('#myModal2 tbody td#avCoordinated').editable({
+        mode: 'inline',
+        type: 'select',
+        source: [{value: 0, text: 'false'}, {value: 1, text: 'true'}]
       });
       $('#myModal2 tbody td.value-num-edit:last').editable({
         mode: 'inline',
@@ -254,9 +262,16 @@
         room.mediaMixing.video = videoSetting;
         p.addClass('editable-unsaved');
         p.editable('setValue', room.mediaMixing);
-        p.text('customized');
+        p.text('object');
       });
-    });
+    };
+
+    $('td#roomName').editable(roomNameHandle);
+    $('td#roomMode').editable(roomModeHandle);
+    $('td#publishLimit').editable(numberHandle);
+    $('td#userLimit').editable(numberHandle);
+    $('td#mediaSetting').editable(disabledHandle);
+    $('td#mediaSetting').click(mediaSettingFn);
 
     $('#myModal2').on('hidden.bs.modal', function () {
       $('#myModal2 #inRoomTable tbody').html('');
@@ -297,6 +312,7 @@
         selector.find('td#publishLimit').editable(numberHandle);
         selector.find('td#userLimit').editable(numberHandle);
         selector.find('td#mediaSetting').editable(disabledHandle);
+        selector.find('td#mediaSetting').click(mediaSettingFn);
         selector.find('button#apply-room').click(applyRoomFn);
         selector.find('button#delete-room').click(deleteRoomFn);
         roomCache[room1._id] = room1;
@@ -312,7 +328,7 @@
 
   function renderRooms () {
     nuve.getRooms(function (err, resp) {
-      if (err) return notify('error', 'Cluster Info', err);
+      if (err) return notify('error', 'Room Management', err);
       var rooms = JSON.parse(resp);
       tableHandler(rooms);
     });

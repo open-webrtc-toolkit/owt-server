@@ -442,13 +442,13 @@ var listen = function () {
                                                     if (room.mixer !== undefined && room.mixer === streamId) {
                                                         room.mixer = undefined;
                                                         // Re-initialize the mixer in the room.
-                                                        initMixer(room, resp);
+                                                        initMixer(room, resp.mediaMixing);
                                                     }
                                                 }
 
                                             });
 
-                                            initMixer(room, resp);
+                                            initMixer(room, resp.mediaMixing);
                                             on_ok();
                                         }
                                     }});
