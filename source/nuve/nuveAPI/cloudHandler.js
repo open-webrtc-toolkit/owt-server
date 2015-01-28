@@ -200,7 +200,7 @@ exports.getUsersInRoom = function (roomId, callback) {
     "use strict";
 
     if (rooms[roomId] === undefined) {
-        callback([]);
+        callback('error');
         return;
     }
 

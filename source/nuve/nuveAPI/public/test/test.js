@@ -58,6 +58,8 @@ function getCookie (cname) {
         nuve.getRoom(document.getElementById('room1').value, callback);
       } else if (document.getElementById('deleteRoom').checked) {
         nuve.deleteRoom(document.getElementById('room1').value, callback);
+      } else if (document.getElementById('getUsers').checked) {
+        nuve.getUsers(document.getElementById('room1').value, callback);
       } else if (document.getElementById('updateRoom').checked) {
         nuve.updateRoom(document.getElementById('room1').value,
           JSON.parse(document.getElementById('option1').value),
