@@ -112,7 +112,16 @@ install_webrtc(){
     echo "Done."
   else
     rm -rf webrtc-upstream-fork
-    git clone -b 3.52 ssh://lab_webrtctest@git-ccr-1.devtools.intel.com:29418/webrtc-upstream-fork/
+    local GIT_ACCOUNT="lab_webrtctest"
+    local WOOGEEN_GIT_URL=`git config --get remote.origin.url`
+    if [ ! -z "$WOOGEEN_GIT_URL" ]; then
+      if echo $WOOGEEN_GIT_URL | grep "@" -q -s; then
+        GIT_ACCOUNT=`echo $WOOGEEN_GIT_URL | awk -F '\/\/' '{print $2}' | awk -F '@' '{print $1}'`
+      else
+        GIT_ACCOUNT=`whoami`
+      fi
+    fi
+    git clone -b 3.52 ssh://${GIT_ACCOUNT}@git-ccr-1.devtools.intel.com:29418/webrtc-upstream-fork/
     mv webrtc-upstream-fork/src .
   fi
   patch -p0 < ./webrtc-3.52-build.patch
