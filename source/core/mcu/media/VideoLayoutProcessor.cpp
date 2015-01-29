@@ -256,8 +256,8 @@ void VideoLayoutProcessor::updateInputPositions()
     if (!m_inputPositions.empty()) {
         unsigned int pos = 0;
         for (std::vector<Region>::iterator itReg = m_currentRegions->begin(); itReg != m_currentRegions->end(); ++itReg) {
-            int input = m_inputPositions[pos++];
-            solution.push_back({input, *itReg});
+            InputRegion input = {m_inputPositions[pos++], *itReg};
+            solution.push_back(input);
             if (pos >= m_inputPositions.size())
                 break;
         }
