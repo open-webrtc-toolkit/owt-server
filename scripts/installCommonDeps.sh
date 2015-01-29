@@ -130,6 +130,7 @@ install_webrtc(){
   patch -p1 < ./webrtc-3.52-h264.patch
   patch -p0 < ./webrtc-3.52-audio-mixing.patch
   patch -p0 < ./webrtc-3.52-export-vad.patch
+  patch -p0 < ./webrtc-3.52-voe-encoded-frame-callback.patch
   ./build.sh
   cd $CURRENT_DIR
 }

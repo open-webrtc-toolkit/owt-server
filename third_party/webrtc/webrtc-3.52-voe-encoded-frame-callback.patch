@@ -1,0 +1,165 @@
+Index: src/webrtc/voice_engine/include/voe_base.h
+===================================================================
+--- src/webrtc/voice_engine/include/voe_base.h      (revision 8161)
++++ src/webrtc/voice_engine/include/voe_base.h      (working copy)
+@@ -45,6 +45,29 @@
+
+ const int kVoEDefault = -1;
+
++class AudioEncodedFrameCallback
++{
++public:
++    virtual ~AudioEncodedFrameCallback() {};
++
++    // Callback function which is called when an audio frame has been encoded and ready to be sent.
++    //
++    // Input:
++    //          - frameType         : Frame type
++    //          - payloadType       : Audio payload type
++    //          - timeStamp         : Time stamp
++    //          - payloadData       : Audio payload data
++    //          - payloadSize       : Audio payload data size
++    //
++    // Return value                    : = 0,   if OK.
++    //                                   != 0,  on error.
++    virtual int32_t Encoded(FrameType frameType,
++                            uint8_t   payloadType,
++                            uint32_t  timeStamp,
++                            const uint8_t*  payloadData,
++                            uint16_t  payloadSize) = 0;
++};
++
+ // VoiceEngineObserver
+ class WEBRTC_DLLEXPORT VoiceEngineObserver
+ {
+@@ -184,6 +207,10 @@
+     // Gets the NetEQ playout mode for a specified |channel| number.
+     virtual int GetNetEQPlayoutMode(int channel, NetEqModes& mode) = 0;
+
++    // (Chunbo): Encoded frame callback for the usage of media recording
++    virtual int RegisterPostEncodeFrameCallback(int channel, AudioEncodedFrameCallback* post_encode_callback) { return -1; }
++    virtual int DeRegisterPostEncodeFrameCallback(int channel) { return -1; }
++
+     // TODO(xians): Make the interface pure virtual after libjingle
+     // implements the interface in its FakeWebRtcVoiceEngine.
+     virtual AudioTransport* audio_transport() { return NULL; }
+Index: src/webrtc/voice_engine/voe_base_impl.h
+===================================================================
+--- src/webrtc/voice_engine/voe_base_impl.h (revision 8161)
++++ src/webrtc/voice_engine/voe_base_impl.h (working copy)
+@@ -71,6 +71,10 @@
+
+     virtual AudioTransport* audio_transport() { return this; }
+
++    virtual int RegisterPostEncodeFrameCallback(int channel, AudioEncodedFrameCallback* post_encode_callback);
++
++    virtual int DeRegisterPostEncodeFrameCallback(int channel);
++
+     // AudioTransport
+     virtual int32_t
+         RecordedDataIsAvailable(const void* audioSamples,
+Index: src/webrtc/voice_engine/channel.cc
+===================================================================
+--- src/webrtc/voice_engine/channel.cc      (revision 8161)
++++ src/webrtc/voice_engine/channel.cc      (working copy)
+@@ -100,6 +100,10 @@
+                  "Channel::SendData(frameType=%u, payloadType=%u, timeStamp=%u,"
+                  " payloadSize=%u, fragmentation=0x%x)",
+                  frameType, payloadType, timeStamp, payloadSize, fragmentation);
++    if (post_encode_callback_)
++    {
++       post_encode_callback_->Encoded(frameType, payloadType, timeStamp, payloadData, payloadSize);
++    }
+
+     if (_includeAudioLevelIndication)
+     {
+@@ -835,6 +839,7 @@
+     volume_settings_critsect_(*CriticalSectionWrapper::CreateCriticalSection()),
+     _instanceId(instanceId),
+     _channelId(channelId),
++    post_encode_callback_(NULL),
+     rtp_header_parser_(RtpHeaderParser::Create()),
+     rtp_payload_registry_(
+         new RTPPayloadRegistry(channelId,
+@@ -1221,11 +1226,17 @@
+ int32_t
+ Channel::UpdateLocalTimeStamp()
+ {
+-
+     _timeStamp += _audioFrame.samples_per_channel_;
+     return 0;
+ }
+
++int
++Channel::RegisterPostEncodeFrameCallback(AudioEncodedFrameCallback* post_encode_callback)
++{
++    post_encode_callback_ = post_encode_callback;
++    return 0;
++}
++
+ int32_t
+ Channel::StartPlayout()
+ {
+Index: src/webrtc/voice_engine/voe_base_impl.cc
+===================================================================
+--- src/webrtc/voice_engine/voe_base_impl.cc        (revision 8161)
++++ src/webrtc/voice_engine/voe_base_impl.cc        (working copy)
+@@ -246,6 +246,28 @@
+   }
+ }
+
++int VoEBaseImpl::RegisterPostEncodeFrameCallback(int channel, AudioEncodedFrameCallback* post_encode_callback) {
++    voe::ChannelOwner ch = _shared->channel_manager().GetChannel(channel);
++    voe::Channel* channelPtr = ch.channel();
++    if (channelPtr == NULL)
++    {
++        return -1;
++    }
++
++    return channelPtr->RegisterPostEncodeFrameCallback(post_encode_callback);
++}
++
++int VoEBaseImpl::DeRegisterPostEncodeFrameCallback(int channel) {
++    voe::ChannelOwner ch = _shared->channel_manager().GetChannel(channel);
++    voe::Channel* channelPtr = ch.channel();
++    if (channelPtr == NULL)
++    {
++        return -1;
++    }
++
++    return channelPtr->RegisterPostEncodeFrameCallback(NULL);
++}
++
+ int VoEBaseImpl::RegisterVoiceEngineObserver(VoiceEngineObserver& observer)
+ {
+     WEBRTC_TRACE(kTraceApiCall, kTraceVoice, VoEId(_shared->instance_id(), -1),
+Index: src/webrtc/voice_engine/channel.h
+===================================================================
+--- src/webrtc/voice_engine/channel.h       (revision 8161)
++++ src/webrtc/voice_engine/channel.h       (working copy)
+@@ -23,6 +23,7 @@
+ #include "webrtc/voice_engine/dtmf_inband.h"
+ #include "webrtc/voice_engine/dtmf_inband_queue.h"
+ #include "webrtc/voice_engine/include/voe_audio_processing.h"
++#include "webrtc/voice_engine/include/voe_base.h"
+ #include "webrtc/voice_engine/include/voe_network.h"
+ #include "webrtc/voice_engine/level_indicator.h"
+ #include "webrtc/voice_engine/shared_data.h"
+@@ -180,6 +181,7 @@
+         VoiceEngineObserver* voiceEngineObserver,
+         CriticalSectionWrapper* callbackCritSect);
+     int32_t UpdateLocalTimeStamp();
++    int RegisterPostEncodeFrameCallback(AudioEncodedFrameCallback* post_encode_callback);
+
+     // API methods
+
+@@ -530,6 +532,9 @@
+     uint32_t _instanceId;
+     int32_t _channelId;
+
++    // Callback for the encoded audio frame
++    AudioEncodedFrameCallback* post_encode_callback_;
++
+     ChannelState channel_state_;
+
+     scoped_ptr<RtpHeaderParser> rtp_header_parser_;
