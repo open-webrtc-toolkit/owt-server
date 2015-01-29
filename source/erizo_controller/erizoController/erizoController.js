@@ -405,17 +405,20 @@ var listen = function () {
                                 room.sockets = [];
                                 room.sockets.push(socket.id);
                                 room.streams = {}; //streamId: Stream
+                                rooms[roomID] = room;
                                 if (tokenDB.p2p) {
                                     log.debug('Token of p2p room');
                                     room.p2p = true;
-                                    on_ok(room);
+                                    on_ok();
                                 } else {
                                     rpc.callRpc('nuve', 'getRoomConfig', room.id, {callback: function (resp) {
                                         if (resp === 'error') {
                                             log.error('Room does not exist');
+                                            delete rooms[roomID];
                                             on_error();
                                         } else if (resp === 'timeout') {
                                             log.error('Nuve does not respond to "getRoomConfig"');
+                                            delete rooms[roomID];
                                             on_error();
                                         } else {
                                             room.p2p = false;
@@ -446,14 +449,13 @@ var listen = function () {
                                             });
 
                                             initMixer(room, resp);
-                                            on_ok(room);
+                                            on_ok();
                                         }
                                     }});
                                 }
                             };
 
-                            initRoom(tokenDB.room, function (room) {
-                                rooms[tokenDB.room] = room;
+                            initRoom(tokenDB.room, function () {
                                 updateMyState();
                                 validateTokenOK();
                             }, function () {
