@@ -21,6 +21,7 @@
 #ifndef VideoFrameSender_h
 #define VideoFrameSender_h
 
+#include "MediaUtilities.h"
 #include "VideoFramePipeline.h"
 
 #include <boost/shared_ptr.hpp>
@@ -49,6 +50,9 @@ public:
     virtual woogeen_base::IntraFrameCallback* iFrameCallback() = 0;
     virtual erizo::FeedbackSink* feedbackSink() = 0;
     virtual int id() { return m_id; }
+
+    virtual void RegisterPostEncodeCallback(MediaFrameQueue& mediaQueue, long long firstMediaReceived) {}
+    virtual void DeRegisterPostEncodeImageCallback() {}
 
 protected:
     int m_id;

@@ -131,6 +131,9 @@ public:
 
     virtual int32_t addSource(uint32_t id, bool isAudio, erizo::FeedbackSink*, const std::string& participantId) { return -1; }
     virtual int32_t removeSource(uint32_t id, bool isAudio) { return -1; }
+
+    virtual void setRecorder(std::string recordPath/*, RecordFormat format*/) {}
+    virtual void unsetRecorder() {}
 };
 
 } /* namespace woogeen_base */

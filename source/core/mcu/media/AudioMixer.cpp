@@ -21,8 +21,6 @@
 #include "AudioMixer.h"
 
 #include <rtputils.h>
-#include <webrtc/common_types.h>
-#include <webrtc/modules/audio_device/include/audio_device_defines.h>
 #include <webrtc/modules/interface/module_common_types.h>
 #include <webrtc/voice_engine/include/voe_codec.h>
 #include <webrtc/voice_engine/include/voe_external_media.h>
@@ -359,6 +357,23 @@ int32_t AudioMixer::removeOutput(const std::string& participant)
     }
 
     return -1;
+}
+
+void AudioMixer::startRecording(MediaFrameQueue& audioQueue, long long recordStartTime)
+{
+    VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);
+    m_encodedFrameCallback.reset(new AudioEncodedFrameCallbackAdapter(&audioQueue, recordStartTime));
+    // FIXME:  m_sharedChannel is gone. Chunbo to add a new output for recording
+    if (m_outputChannels.begin() != m_outputChannels.end())
+        voe->RegisterPostEncodeFrameCallback(m_outputChannels.begin()->second.id, m_encodedFrameCallback.get());
+}
+
+void AudioMixer::stopRecording()
+{
+    VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);
+    // FIXME:  m_sharedChannel is gone. Chunbo to add a new output for recording
+    if (m_outputChannels.begin() != m_outputChannels.end())
+        voe->DeRegisterPostEncodeFrameCallback(m_outputChannels.begin()->second.id);
 }
 
 int32_t AudioMixer::getChannelId(uint32_t sourceId)

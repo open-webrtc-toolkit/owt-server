@@ -59,4 +59,12 @@ if($ENV{BUILD_WITH_MSDK})
   set(VCSA_LIBS ${XCODER_BASE} ${XCODER_VIDEO})
 endif()
 
-target_link_libraries(mcu ${EXTRA_LIBS} ${WEBRTC} ${VPX} ${H264} ${VCSA_LIBS})
+# LIBAV
+find_library(AVCODEC avcodec HINTS "${LIB_DIRS}")
+test_lib(${AVCODEC})
+
+find_library(AVFORMAT avformat HINTS "${LIB_DIRS}")
+test_lib(${AVFORMAT})
+set (LIBAV_LIBS ${AVCODEC} ${AVFORMAT})
+
+target_link_libraries(mcu ${EXTRA_LIBS} ${WEBRTC} ${VPX} ${H264} ${VCSA_LIBS} ${LIBAV_LIBS})

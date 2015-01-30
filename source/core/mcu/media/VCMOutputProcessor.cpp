@@ -196,8 +196,22 @@ bool VCMOutputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* tran
     return true;
 }
 
+void VCMOutputProcessor::RegisterPostEncodeCallback(MediaFrameQueue& videoQueue, long long firstMediaReceived)
+{
+    m_encodedFrameCallback.reset(new EncodedFrameCallbackAdapter(&videoQueue, firstMediaReceived));
+    m_videoEncoder->RegisterPostEncodeImageCallback(m_encodedFrameCallback.get());
+}
+
+void VCMOutputProcessor::DeRegisterPostEncodeImageCallback()
+{
+    if (m_encodedFrameCallback)
+        m_videoEncoder->DeRegisterPostEncodeImageCallback();
+}
+
 void VCMOutputProcessor::close()
 {
+    DeRegisterPostEncodeImageCallback();
+
     m_source->deActivateOutput(m_id);
     m_taskRunner->DeRegisterModule(m_rtpRtcp.get());
 }

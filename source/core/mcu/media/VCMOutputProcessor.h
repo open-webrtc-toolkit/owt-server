@@ -21,6 +21,7 @@
 #ifndef VCMOutputProcessor_h
 #define VCMOutputProcessor_h
 
+#include "MediaRecording.h"
 #include "VideoFrameSender.h"
 
 #include <boost/scoped_ptr.hpp>
@@ -29,11 +30,42 @@
 #include <MediaDefinitions.h>
 #include <WoogeenTransport.h>
 #include <webrtc/modules/rtp_rtcp/interface/rtp_rtcp.h>
+#include <webrtc/video/encoded_frame_callback_adapter.h>
 #include <webrtc/video_engine/vie_encoder.h>
 
 namespace mcu {
 
 class TaskRunner;
+
+class EncodedFrameCallbackAdapter : public webrtc::EncodedImageCallback {
+public:
+    EncodedFrameCallbackAdapter(MediaFrameQueue* videoQueue, long long firstMediaReceived)
+        : m_videoQueue(videoQueue), m_firstMediaReceived(firstMediaReceived), m_videoOffsetMsec(-1) {}
+
+    virtual ~EncodedFrameCallbackAdapter() {}
+
+    virtual int32_t Encoded(webrtc::EncodedImage& encodedImage,
+                            const webrtc::CodecSpecificInfo* codecSpecificInfo,
+                            const webrtc::RTPFragmentationHeader* fragmentation)
+    {
+       if (m_videoOffsetMsec == -1) {
+           timeval time;
+           gettimeofday(&time, nullptr);
+
+           m_videoOffsetMsec = ((time.tv_sec * 1000) + (time.tv_usec / 1000)) - m_firstMediaReceived;
+       }
+
+       if (encodedImage._length > 0 && m_videoQueue)
+           m_videoQueue->pushFrame(encodedImage._buffer, encodedImage._length, encodedImage._timeStamp, m_videoOffsetMsec);
+
+       return 0;
+   }
+
+private:
+    MediaFrameQueue* m_videoQueue;
+    long long m_firstMediaReceived;
+    long long m_videoOffsetMsec;
+};
 
 /**
  * This is the class to accept the composited raw frame and encode it.
@@ -48,13 +80,15 @@ public:
     ~VCMOutputProcessor();
 
     // Implements VideoFrameSender.
+    void onFrame(FrameFormat, unsigned char* payload, int len, unsigned int ts);
     bool setSendCodec(FrameFormat, VideoSize);
     bool updateVideoSize(VideoSize);
     uint32_t sendSSRC();
     woogeen_base::IntraFrameCallback* iFrameCallback() { return this; }
     erizo::FeedbackSink* feedbackSink() { return this; }
 
-    void onFrame(FrameFormat, unsigned char* payload, int len, unsigned int ts);
+    void RegisterPostEncodeCallback(MediaFrameQueue& videoQueue, long long firstMediaReceived);
+    void DeRegisterPostEncodeImageCallback();
 
     // Implements FeedbackSink.
     int deliverFeedback(char* buf, int len);
@@ -76,7 +110,9 @@ private:
     boost::shared_ptr<webrtc::Transport> m_videoTransport;
     boost::shared_ptr<TaskRunner> m_taskRunner;
     boost::shared_ptr<VideoFrameMixer> m_source;
+
+    boost::scoped_ptr<EncodedFrameCallbackAdapter> m_encodedFrameCallback;
 };
 
-}
+} /* namespace mcu */
 #endif /* VCMOutputProcessor_h */

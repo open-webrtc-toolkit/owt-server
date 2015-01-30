@@ -45,6 +45,9 @@ public:
     // Returns true if the pop operation is successful, false if the queue is being deleted.
     bool blockingPop(T&);
 
+    // Returns the size of the queue.
+    unsigned int size();
+
 private:
     std::queue<T> m_queue;
     boost::mutex m_mutex;
@@ -106,6 +109,13 @@ inline bool SharedQueue<T>::blockingPop(T& element)
     element = m_queue.front();
     m_queue.pop();
     return true;
+}
+
+template <typename T>
+inline unsigned int SharedQueue<T>::size()
+{
+    boost::unique_lock<boost::mutex> lock(m_mutex);
+    return m_queue.size();
 }
 
 #endif /* SharedQueue_h */

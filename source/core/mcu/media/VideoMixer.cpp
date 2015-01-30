@@ -138,6 +138,22 @@ int32_t VideoMixer::removeOutput(int payloadType)
     return -1;
 }
 
+void VideoMixer::startRecording(MediaFrameQueue& videoQueue, long long recordStartTime)
+{
+    // FIXME: Currently, only VP8_90000_PT to be recorded.
+    std::map<int, boost::shared_ptr<VideoFrameSender>>::iterator it = m_outputs.find(VP8_90000_PT);
+    if (it != m_outputs.end())
+        it->second->RegisterPostEncodeCallback(videoQueue, recordStartTime);
+}
+
+void VideoMixer::stopRecording()
+{
+    // FIXME: Currently, only VP8_90000_PT to be recorded.
+    std::map<int, boost::shared_ptr<VideoFrameSender>>::iterator it = m_outputs.find(VP8_90000_PT);
+    if (it != m_outputs.end())
+        it->second->DeRegisterPostEncodeImageCallback();
+}
+
 int VideoMixer::deliverAudioData(char* buf, int len) 
 {
     assert(false);

@@ -21,6 +21,7 @@
 #ifndef VideoMixer_h
 #define VideoMixer_h
 
+#include "MediaRecording.h"
 #include "VCMInputProcessor.h"
 #include "VideoFramePipeline.h"
 
@@ -50,7 +51,7 @@ static const int MIXED_H264_VIDEO_STREAM_ID = 3;
 /**
  * Receives media from several sources, mixed into one stream and retransmits it to the RTPDataReceiver.
  */
-class VideoMixer : public woogeen_base::MediaSourceConsumer, public erizo::MediaSink, public erizo::FeedbackSink, public VCMInputProcessorCallback {
+class VideoMixer : public woogeen_base::MediaSourceConsumer, public MediaRecording, public erizo::MediaSink, public erizo::FeedbackSink, public VCMInputProcessorCallback {
     DECLARE_LOGGER();
 
 public:
@@ -86,6 +87,10 @@ public:
     void promoteSources(std::vector<uint32_t>& sources);
     bool setResolution(const std::string& resolution);
     bool setBackgroundColor(const std::string& color);
+
+    // Implements MediaRecording
+    void startRecording(MediaFrameQueue& videoQueue, long long recordStartTime);
+    void stopRecording();
 
 private:
     void closeAll();
