@@ -22,6 +22,7 @@
 #define AudioMixer_h
 
 #include "JobTimer.h"
+#include "MediaRecording.h"
 
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
@@ -30,6 +31,7 @@
 #include <MediaDefinitions.h>
 #include <MediaSourceConsumer.h>
 #include <WoogeenTransport.h>
+#include <webrtc/modules/audio_device/include/audio_device_defines.h>
 #include <webrtc/voice_engine/include/voe_base.h>
 #include <webrtc/voice_engine/include/voe_video_sync.h>
 
@@ -40,7 +42,41 @@ public:
     virtual void onPositiveAudioSources(std::vector<uint32_t>& sources) = 0;
 };
 
-class AudioMixer : public woogeen_base::MediaSourceConsumer, public erizo::MediaSink, public erizo::FeedbackSink, public JobTimerListener {
+class AudioEncodedFrameCallbackAdapter : public webrtc::AudioEncodedFrameCallback {
+    DECLARE_LOGGER();
+
+public:
+    AudioEncodedFrameCallbackAdapter(MediaFrameQueue* audioQueue, long long firstMediaReceived)
+        : m_audioQueue(audioQueue)
+        , m_firstMediaReceived(firstMediaReceived)
+        , m_audioOffsetMsec(-1) {}
+
+    virtual ~AudioEncodedFrameCallbackAdapter() {}
+
+    virtual int32_t Encoded(webrtc::FrameType frameType, uint8_t payloadType,
+                            uint32_t timeStamp, const uint8_t* payloadData,
+                            uint16_t payloadSize)
+    {
+        if (m_audioOffsetMsec == -1) {
+            timeval time;
+            gettimeofday(&time, nullptr);
+
+            m_audioOffsetMsec = ((time.tv_sec * 1000) + (time.tv_usec / 1000)) - m_firstMediaReceived;
+        }
+
+        if (payloadSize > 0 && m_audioQueue)
+            m_audioQueue->pushFrame(payloadData, payloadSize, timeStamp, m_audioOffsetMsec);
+
+        return 0;
+    }
+
+private:
+    MediaFrameQueue* m_audioQueue;
+    long long m_firstMediaReceived;
+    long long m_audioOffsetMsec;
+};
+
+class AudioMixer : public woogeen_base::MediaSourceConsumer, public MediaRecording, public erizo::MediaSink, public erizo::FeedbackSink, public JobTimerListener {
     DECLARE_LOGGER();
 
 public:
@@ -53,8 +89,8 @@ public:
     erizo::MediaSink* mediaSink() { return this; }
 
     // Implements MediaSink.
-    int deliverAudioData(char*, int len);
-    int deliverVideoData(char*, int len);
+    int deliverAudioData(char* buf, int len);
+    int deliverVideoData(char* buf, int len);
 
     // Implements FeedbackSink.
     int deliverFeedback(char* buf, int len);
@@ -68,6 +104,10 @@ public:
 
     int32_t getChannelId(uint32_t sourceId);
     webrtc::VoEVideoSync* avSyncInterface();
+
+    // Implements MediaRecording
+    void startRecording(MediaFrameQueue& audioQueue, long long recordStartTime);
+    void stopRecording();
 
 private:
     int32_t performMix();
@@ -92,6 +132,7 @@ private:
     std::map<std::string, VoiceChannel> m_outputChannels;
     boost::shared_mutex m_outputMutex;
 
+    boost::scoped_ptr<AudioEncodedFrameCallbackAdapter> m_encodedFrameCallback;
     boost::scoped_ptr<JobTimer> m_jobTimer;
 };
 

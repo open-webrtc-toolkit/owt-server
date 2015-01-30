@@ -21,6 +21,7 @@
 #ifndef EncodedVideoFrameSender_h
 #define EncodedVideoFrameSender_h
 
+#include "MediaRecording.h"
 #include "VideoFrameSender.h"
 
 #include <boost/scoped_ptr.hpp>
@@ -51,13 +52,14 @@ public:
     ~EncodedVideoFrameSender();
 
     // Implements VideoFrameSender.
+    void onFrame(FrameFormat, unsigned char* payload, int len, unsigned int ts);
     bool setSendCodec(FrameFormat, VideoSize);
     bool updateVideoSize(VideoSize);
     uint32_t sendSSRC();
     woogeen_base::IntraFrameCallback* iFrameCallback() { return this; }
     erizo::FeedbackSink* feedbackSink() { return this; }
-
-    void onFrame(FrameFormat, unsigned char* payload, int len, unsigned int ts);
+    void RegisterPostEncodeCallback(MediaFrameQueue& videoQueue, long long firstMediaReceived);
+    void DeRegisterPostEncodeImageCallback();
 
     // Implements FeedbackSink.
     int deliverFeedback(char* buf, int len);

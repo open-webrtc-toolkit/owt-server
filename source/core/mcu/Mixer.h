@@ -22,6 +22,7 @@
 #define Mixer_h
 
 #include "media/AudioMixer.h"
+#include "media/MediaRecorder.h"
 #include "media/VideoMixer.h"
 
 #include <boost/shared_ptr.hpp>
@@ -73,6 +74,9 @@ public:
     int32_t bindAV(uint32_t audioSource, uint32_t videoSource);
     erizo::MediaSink* mediaSink() { return this; }
 
+    void setRecorder(std::string recordPath/*, RecordFormat format*/);
+    void unsetRecorder();
+
     // Implements MediaSink.
     int deliverAudioData(char* buf, int len);
     int deliverVideoData(char* buf, int len);
@@ -97,11 +101,12 @@ private:
      */
     void closeAll();
 
-    boost::shared_ptr<erizo::FeedbackSink> m_feedback;
     boost::shared_mutex m_subscriberMutex;
     std::map<std::string, boost::shared_ptr<erizo::MediaSink>> m_subscribers;
     boost::shared_mutex m_avBindingsMutex;
     std::map<uint32_t/*audio source*/, uint32_t/*video source*/> m_avBindings;
+
+    boost::shared_ptr<MediaRecorder> m_recorder;
 };
 
 } /* namespace mcu */

@@ -30,7 +30,7 @@ BufferManager::BufferManager(uint32_t maxInput, uint32_t width, uint32_t height)
     : m_maxInput(maxInput)
 {
     for (uint32_t i = 0; i < m_maxInput * 2; i++) {
-        webrtc::I420VideoFrame* buffer =  new webrtc::I420VideoFrame();
+        webrtc::I420VideoFrame* buffer = new webrtc::I420VideoFrame();
         buffer->CreateEmptyFrame(width, height, width, width / 2, width / 2);
         m_freeQ.push(buffer);
     }
