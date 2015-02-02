@@ -40,51 +40,28 @@ Erizo.VideoPlayer = function (spec) {
         that.parentNode.removeChild(that.div);
     };
 
-    that.resize = function () {
+    that.resize = function (hasAbsoluteLeft) {
 
         var width = that.container.offsetWidth,
             height = that.container.offsetHeight;
 
-        if (spec.stream.screen || spec.options.crop === false) {
 
-            if (width * (3 / 4) < height) {
+        if (hasAbsoluteLeft) {
 
-                that.video.style.width = width + 'px';
-                that.video.style.height = (3 / 4) * width + 'px';
+            that.video.style.width = "calc(100% + " + ((4 / 3) * height - width) + "px)";
+            that.video.style.height = "100%";
 
-                that.video.style.top = -((3 / 4) * width / 2 - height / 2) + 'px';
-                that.video.style.left = '0px';
+            that.video.style.top = '0px';
+            that.video.style.left = -((4 / 3) * height / 2 - width / 2) + 'px';
 
-            } else {
-
-                that.video.style.height = height + 'px';
-                that.video.style.width = (4 / 3) * height + 'px';
-
-                that.video.style.left = -((4 / 3) * height / 2 - width / 2) + 'px';
-                that.video.style.top = '0px';
-
-            }
         } else {
-            if (width !== that.containerWidth || height !== that.containerHeight) {
 
-                if (width * (3 / 4) > height) {
+            that.video.style.height = '100%';
+            that.video.style.width = '100%';
 
-                    that.video.style.width = width + 'px';
-                    that.video.style.height = (3 / 4) * width + 'px';
+            that.video.style.left = '0px';
+            that.video.style.top = '0px';
 
-                    that.video.style.top = -((3 / 4) * width / 2 - height / 2) + 'px';
-                    that.video.style.left = '0px';
-
-                } else {
-
-                    that.video.style.height = height + 'px';
-                    that.video.style.width = (4 / 3) * height + 'px';
-
-                    that.video.style.left = -((4 / 3) * height / 2 - width / 2) + 'px';
-                    that.video.style.top = '0px';
-
-                }
-            }
         }
 
         that.containerWidth = width;
