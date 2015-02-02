@@ -20,6 +20,8 @@
   $('button#clearCookie').click(function () {
     document.cookie = 'serviceId=; expires=Thu, 01 Jan 1970 00:00:00 UTC';
     document.cookie = 'serviceKey=; expires=Thu, 01 Jan 1970 00:00:00 UTC';
+    document.getElementById("inputId").value = "";
+    document.getElementById("inputKey").value = "";
   });
 
   $('button#saveSericeInfo').click(function () {
