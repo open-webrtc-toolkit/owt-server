@@ -1,5 +1,6 @@
 /* global module */
 var meta = require('../public/meta.json');
+var log = require('./../logger').logger.getLogger("Room");
 
 function defaultMediaMixing () {
     'use strict';
@@ -148,6 +149,38 @@ Room.genConfig = function (room) {
         layoutTemplates = generateLectureTemplates(maxInput);
     } else {
         layoutTemplates = generateFluidTemplates(maxInput);
+    }
+
+    var custom = room.mediaMixing.video.layout.custom;
+    if (typeof custom === 'string') {
+        try {
+            custom = JSON.parse(custom);
+        } catch (e) {}
+    }
+
+    if (isTemplatesValid(custom)) {
+        log.info('apply custom layout templates');
+        custom.map(function (tpl) {
+            var len = tpl.region.length;
+            var pos;
+            for (var j in layoutTemplates) {
+                if (layoutTemplates.hasOwnProperty(j)) {
+                    if (layoutTemplates[j].region.length >= len) {
+                        pos = j;
+                        break;
+                    }
+                }
+            }
+            if (pos === undefined) {
+                layoutTemplates.push(tpl);
+            } else if (layoutTemplates[pos].region.length === len) {
+                layoutTemplates.splice(pos, 1, tpl);
+            } else {
+                layoutTemplates.splice(pos, 0, tpl);
+            }
+        });
+    } else if (custom) {
+        log.info('invalid custom layout templates');
     }
 
     return {
@@ -324,8 +357,9 @@ function generateFluidTemplates (maxInput) {
 
 function isTemplatesValid (templates) {
     'use strict';
-    if (templates === undefined)
+    if (!(templates instanceof Array)) {
         return false;
+    }
 
     for (var i in templates) {
         var region = templates[i].region;

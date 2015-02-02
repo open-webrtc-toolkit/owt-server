@@ -167,6 +167,7 @@
           custom: null
         }
       };
+
       var view = Mustache.render('<tr>\
           <td rowspan="7">video</td>\
           <td colspan="2">resolution</td>\
@@ -195,7 +196,7 @@
         </tr>\
         <tr>\
           <td>custom</td>\
-          <td id="layout.custom" class="value-obj-edit" data-type="textarea" data-value=""></td>\
+          <td id="layout.custom" class="value-obj-edit" data-type="textarea"></td>\
         </tr>\
         <tr>\
           <td>audio</td>\
@@ -237,17 +238,12 @@
         title: 'Input a stringified JSON object',
         validate: function (value) {
           try {
-            var obj = JSON.parse(value);
-            return {newValue: obj};
+            JSON.parse(value);
           } catch (e) {
             return 'invalid input';
           }
         },
-        disabled: true,
-        display: function () {
-          $(this).addClass('text-muted');
-          $(this).html('<em>NOT SUPPORTED NOW</em>');
-        }
+        value: JSON.stringify(videoSetting.layout.custom),
       });
       // <audio not supported now>
       $('#myModal2 .modal-footer button:first').click(function () {
@@ -274,7 +270,7 @@
     $('td#mediaSetting').click(mediaSettingFn);
 
     $('#myModal2').on('hidden.bs.modal', function () {
-      $('#myModal2 #inRoomTable tbody').html('');
+      $('#myModal2 #inRoomTable tbody').empty();
     });
 
     $('button#add-room').click(function () {
