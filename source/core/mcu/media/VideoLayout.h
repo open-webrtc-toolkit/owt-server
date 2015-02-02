@@ -90,13 +90,13 @@ const YUVColor DEFAULT_VIDEO_BG_COLOR = {0x00, 0x80, 0x80};
 const std::map<std::string, VideoSize> VideoResolution =
     {{"cif", {352, 288}},
      {"vga", {640, 480}},
-     {"hd_720p", {1280, 720}},
+     {"hd720p", {1280, 720}},
      {"sif", {320, 240}},
      {"hvga", {480, 320}},
      {"r480x360", {480, 360}},
      {"qcif", {176, 144}},
      {"r192x144", {192, 144}},
-     {"hd_1080p", {1920, 1080}},
+     {"hd1080p", {1920, 1080}},
      {"uhd_4k", {3840, 2160}}};
 
 class VideoResolutionHelper {
