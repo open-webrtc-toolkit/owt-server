@@ -422,6 +422,7 @@ var listen = function () {
                                             on_error();
                                         } else {
                                             room.p2p = false;
+                                            room.config = resp;
                                             room.controller = controller.RoomController({rpc: rpc});
                                             room.controller.addEventListener(function(type, event) {
                                                 // TODO Send message to room? Handle ErizoJS disconnection.
@@ -464,6 +465,13 @@ var listen = function () {
                                 socket.disconnect();
                             });
                         } else {
+                            if (rooms[tokenDB.room].config) {
+                                if (rooms[tokenDB.room].config.userLimit > 0 &&
+                                    rooms[tokenDB.room].sockets.length >= rooms[tokenDB.room].config.userLimit) {
+                                    safeCall(callback, 'error', 'Room is full');
+                                    return socket.disconnect();
+                                }
+                            }
                             rooms[tokenDB.room].sockets.push(socket.id);
                             validateTokenOK();
                         }
