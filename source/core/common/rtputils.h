@@ -53,8 +53,16 @@ struct redheader {
 // Payload types
 #define RTCP_Sender_PT      200 // RTCP Sender Report
 #define RTCP_Receiver_PT    201 // RTCP Receiver Report
+#define RTCP_SDES_PT        202
+#define RTCP_BYE            203
+#define RTCP_APP            204
 #define RTCP_RTP_Feedback_PT 205 // RTCP Transport Layer Feedback Packet
 #define RTCP_PS_Feedback_PT    206 // RTCP Payload Specific Feedback Packet
+
+#define RTCP_PLI_FMT        1
+#define RTCP_SLI_FMT        2
+#define RTCP_FIR_FMT        4
+#define RTCP_AFB            15
 
 #define VP8_90000_PT        100 // VP8 Video Codec
 #define H264_90000_PT		127 // H264 Video Codec
@@ -75,5 +83,21 @@ struct redheader {
 
 static const bool ENABLE_RTP_TRANSMISSION_TIME_OFFSET_EXTENSION = 0;
 static const bool ENABLE_RTP_ABS_SEND_TIME_EXTENSION = 0;
+
+inline bool isFeedback(char* buf) {
+    RTCPHeader* chead = reinterpret_cast<RTCPHeader*> (buf);
+    uint8_t packetType = chead->getPacketType();
+    return (packetType == RTCP_Receiver_PT ||
+            packetType == RTCP_PS_Feedback_PT ||
+            packetType == RTCP_RTP_Feedback_PT);
+}
+
+inline bool isRTCP(char* buf) {
+    RTCPHeader* chead = reinterpret_cast<RTCPHeader*> (buf);
+    uint8_t packetType = chead->getPacketType();
+    return (packetType == RTCP_Sender_PT ||
+            packetType == RTCP_APP ||
+            isFeedback(buf));
+  }
 
 #endif /* RTPUTILS_H */

@@ -381,12 +381,10 @@ namespace erizo {
     }
     int length = len;
 
-    // PROCESS STATS
-    if (this->statsListener_){ // if there is no listener we dont process stats
-      RTPHeader *head = reinterpret_cast<RTPHeader*> (buf);
-      if (head->getPayloadType() != RED_90000_PT && head->getPayloadType() != PCMU_8000_PT)     
-        thisStats_.processRtcpPacket(buf, length);
-    }
+    // PROCESS RTCP
+    if (isRTCP(buf))
+      thisStats_.processRtcpPacket(buf, length);
+
     RTCPHeader* chead = reinterpret_cast<RTCPHeader*> (buf);
     uint8_t packetType = chead->getPacketType();
     // DELIVER FEEDBACK (RR, FEEDBACK PACKETS)
@@ -646,6 +644,10 @@ namespace erizo {
 
   WebRTCEvent WebRtcConnection::getCurrentState() {
     return globalState_;
+  }
+
+  std::string WebRtcConnection::getJSONStats(){
+    return thisStats_.getStats();
   }
 
   void WebRtcConnection::processRtcpHeaders(char* buf, int len, unsigned int ssrc){

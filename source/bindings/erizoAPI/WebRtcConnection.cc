@@ -189,9 +189,16 @@ void WebRtcConnection::getStats(const FunctionCallbackInfo<Value>& args){
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
   WebRtcConnection* obj = ObjectWrap::Unwrap<WebRtcConnection>(args.Holder());
-  obj->me->setWebRtcConnectionStatsListener(obj);
-  obj->hasCallback_ = true;
-  obj->statsCallback_.Reset(isolate, Local<Function>::Cast(args[0]));
+  if (args.Length()==0){
+    printf("NO ARGS! , calling getJSONStats************************************\n");
+    std::string lastStats = obj->me->getJSONStats();
+    args.GetReturnValue().Set(String::NewFromUtf8(isolate, lastStats.c_str()));
+  }else{
+    printf("ARGS! , SETTING CALLBACK**********************************************\n");
+    obj->me->setWebRtcConnectionStatsListener(obj);
+    obj->hasCallback_ = true;
+    obj->statsCallback_.Reset(isolate, Local<Function>::Cast(args[0]));
+  }
 }
 
 void WebRtcConnection::notifyEvent(erizo::WebRTCEvent event, const std::string& message, bool prompt) {
