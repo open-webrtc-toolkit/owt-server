@@ -48,6 +48,7 @@ exports.RoomController = function (spec) {
 
     var createErizoJS = function(publisher_id, mixer_id, callback) {
         if (erizos[publisher_id] !== undefined) {
+            callback();
             return;
         }
         // Currently we want to make sure the publishers and the mixer they associate with
