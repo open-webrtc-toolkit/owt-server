@@ -106,7 +106,12 @@ exports.updateRoom = function (req, res) {
                 });
 
                 roomRegistry.addRoom(room, function (result) {
-                    serviceRegistry.updateService(currentService);
+                    currentService.rooms.map(function (r, index) {
+                        if (r._id === room._id) {
+                            currentService.rooms.splice(index, 1, room);
+                            serviceRegistry.updateService(currentService);
+                        }
+                    });
                     if (result == 1) {
                       res.send(room);
                     } else {
