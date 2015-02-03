@@ -143,6 +143,14 @@
         return {newValue: val};
       }
     };
+    var numberHandle1 = {
+      mode: 'inline',
+      validate: function (value) {
+        var val = parseInt(value, 10);
+        if (isNaN(val) || val < -1) return 'value should be a number in [-1, +Infinity)';
+        return {newValue: val};
+      }
+    };
     var disabledHandle = {
       disabled: true
     };
@@ -264,8 +272,8 @@
 
     $('td#roomName').editable(roomNameHandle);
     $('td#roomMode').editable(roomModeHandle);
-    $('td#publishLimit').editable(numberHandle);
-    $('td#userLimit').editable(numberHandle);
+    $('td#publishLimit').editable(numberHandle1);
+    $('td#userLimit').editable(numberHandle1);
     $('td#mediaSetting').editable(disabledHandle);
     $('td#mediaSetting').click(mediaSettingFn);
 
@@ -282,9 +290,7 @@
       var roomMode = parseInt(p.find('td#roomMode').editable('getValue').roomMode, 10);
       if (isNaN(roomMode)) roomMode = 0;
       var publishLimit = parseInt(p.find('td#publishLimit').text(), 10);
-      if (isNaN(publishLimit)) publishLimit = 16;
       var userLimit = parseInt(p.find('td#userLimit').text(), 10);
-      if (isNaN(userLimit)) userLimit = 100;
       var room = {
         name: roomName,
         options: {
@@ -305,8 +311,8 @@
         var selector = p.parent().find('tr:nth-last-child(2)');
         selector.find('td#roomName').editable(roomNameHandle);
         selector.find('td#roomMode').editable(roomModeHandle);
-        selector.find('td#publishLimit').editable(numberHandle);
-        selector.find('td#userLimit').editable(numberHandle);
+        selector.find('td#publishLimit').editable(numberHandle1);
+        selector.find('td#userLimit').editable(numberHandle1);
         selector.find('td#mediaSetting').editable(disabledHandle);
         selector.find('td#mediaSetting').click(mediaSettingFn);
         selector.find('button#apply-room').click(applyRoomFn);

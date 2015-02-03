@@ -312,6 +312,9 @@ var initMixer = function (room, roomConfig) {
                 log.info('Mixer already existed in Room ', room.id);
                 clearInterval(room.initMixerTimer);
                 room.initMixerTimer = undefined;
+                if (room.config && room.config.publishLimit > 0) {
+                    room.config.publishLimit++;
+                }
                 return;
             }
 
@@ -323,6 +326,9 @@ var initMixer = function (room, roomConfig) {
                     sendMsgToRoom(room, 'onAddStream', st.getPublicStream());
                     clearInterval(room.initMixerTimer);
                     room.initMixerTimer = undefined;
+                    if (room.config && room.config.publishLimit > 0) {
+                        room.config.publishLimit++;
+                    }
                 } else if (--tryOut === 0) {
                     log.info('Mixer initialization failed in Room ', room.id);
                     clearInterval(room.initMixerTimer);
@@ -438,6 +444,11 @@ var listen = function () {
                                         } else {
                                             room.p2p = false;
                                             room.config = resp;
+                                            if (room.config.userLimit === 0) {
+                                                log.error('Room', roomID, 'disabled');
+                                                delete rooms[roomID];
+                                                return on_error();
+                                            }
                                             room.controller = controller.RoomController({rpc: rpc});
                                             room.controller.addEventListener(function(type, event) {
                                                 // TODO Send message to room? Handle ErizoJS disconnection.
@@ -640,6 +651,13 @@ var listen = function () {
 
                     if (socket.streams.indexOf(id) !== -1) {
                         return safeCall(callback, 'error', 'already published');
+                    }
+
+                    if (socket.room.config) {
+                        if (socket.room.config.publishLimit >= 0 &&
+                            socket.room.controller.publisherNum() >= socket.room.config.publishLimit) {
+                            return safeCall(callback, 'error', 'max publishers');
+                        }
                     }
 
                     if (GLOBAL.config.erizoController.sendStats) {

@@ -37,16 +37,16 @@ function Room (spec) {
 
     if (typeof this.publishLimit === 'string'){
         this.publishLimit = parseInt(this.publishLimit, 10);
-        if (isNaN(this.publishLimit)) this.publishLimit = 0;
+        if (isNaN(this.publishLimit)) this.publishLimit = -1;
     } else if (typeof this.publishLimit !== 'number') {
-        this.publishLimit = 16;
+        this.publishLimit = -1;
     }
 
     if (typeof this.userLimit === 'string'){
         this.userLimit = parseInt(this.userLimit, 10);
-        if (isNaN(this.userLimit)) this.userLimit = 0;
+        if (isNaN(this.userLimit)) this.userLimit = -1;
     } else if (typeof this.userLimit !== 'number') {
-        this.userLimit = 100;
+        this.userLimit = -1;
     }
 
     if (typeof this.mediaMixing === 'string') {
@@ -126,8 +126,8 @@ Room.createDefault = function (name) {
     return new Room({
         name: name,
         mode: 0,
-        publishLimit: 16,
-        userLimit: 100,
+        publishLimit: -1,
+        userLimit: -1,
         mediaMixing: defaultMediaMixing()
     });
 };
