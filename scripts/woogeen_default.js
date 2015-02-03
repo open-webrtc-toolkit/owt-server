@@ -100,7 +100,7 @@ config.erizoAgent = {};
 // Max processes that ErizoAgent can run
 config.erizoAgent.maxProcesses 	  = 13; // default value: 13
 // Number of precesses that ErizoAgent runs when it starts. Always lower than or equals to maxProcesses.
-config.erizoAgent.prerunProcesses = 1; // default value: 1
+config.erizoAgent.prerunProcesses = 2; // default value: 2
 
 /*********************************************************
  ERIZO JS CONFIGURATION
