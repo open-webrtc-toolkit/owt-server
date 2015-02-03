@@ -141,14 +141,15 @@ public:
    */
   inline void setWebRtcConnectionStatsListener(
             WebRtcConnectionStatsListener* listener){
-    this->statsListener_ = listener;
-    this->thisStats_.setPeriodicStats(STATS_INTERVAL, listener);
+    this->thisStats_.setStatsListener(listener);
   }
     /**
      * Gets the current state of the Ice Connection
      * @return
      */
     DLL_PUBLIC WebRTCEvent getCurrentState();
+    
+    DLL_PUBLIC std::string getJSONStats();
 
     void onTransportData(char* buf, int len, Transport *transport);
 
@@ -172,7 +173,6 @@ private:
     boost::thread send_Thread_;
     std::queue<dataPacket> sendQueue_;
     WebRtcConnectionEventListener* connEventListener_;
-  WebRtcConnectionStatsListener* statsListener_;
     Transport *videoTransport_, *audioTransport_;
     boost::scoped_array<char> deliverMediaBuffer_;
 

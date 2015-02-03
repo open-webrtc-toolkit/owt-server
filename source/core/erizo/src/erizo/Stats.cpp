@@ -11,15 +11,17 @@
 namespace erizo {
 
   DEFINE_LOGGER(Stats, "Stats");
-  Stats::~Stats(){
-    if (runningStats_){
-      runningStats_ = false;
-      statsThread_.join();
-      ELOG_DEBUG("Stopped periodic stats report");
-    }
+  
+  Stats::Stats(){ 
+    ELOG_DEBUG("Constructor Stats");
+    theListener_ = NULL;
   }
+  Stats::~Stats(){
+    ELOG_DEBUG("Destructor Stats");
+  }
+
   void Stats::processRtcpPacket(char* buf, int length) {
-    boost::mutex::scoped_lock lock(mapMutex_);    
+    boost::recursive_mutex::scoped_lock lock(mapMutex_);
     char* movingBuf = buf;
     int rtcpLength = 0;
     int totalLength = 0;
@@ -30,18 +32,23 @@ namespace erizo {
       totalLength+= rtcpLength;
       this->processRtcpPacket(chead);
     } while(totalLength<length);
+    sendStats();
   }
   
   void Stats::processRtcpPacket(RTCPHeader* chead) {    
     unsigned int ssrc = chead->getSSRC();
     uint8_t packetType = chead->getPacketType();
-    uint32_t rtcpLength= (chead->getLength()+1)*4;      
-    ELOG_DEBUG("RTCP Packet: PT %d, SSRC %u, RC/FMT %d ", packetType, ssrc, chead->getRCOrFMT()); 
-    if (packetType == RTCP_Receiver_PT){
-      char* movingBuf = reinterpret_cast<char*>(chead);
-      // NEED to consider multiple report blocks in a single RTCP RR!
-      uint32_t blockOffset = sizeof(RTCPHeader);
-      while (blockOffset < rtcpLength) {
+
+    ELOG_DEBUG("RTCP SubPacket: PT %d, SSRC %u,  block count %d ",packetType,ssrc, chead->getRCOrFMT()); 
+    switch(packetType){
+      case RTCP_SDES_PT:
+        ELOG_DEBUG("SDES");
+      case RTCP_Receiver_PT: {
+        uint32_t rtcpLength= (chead->getLength()+1)*4;      
+        char* movingBuf = reinterpret_cast<char*>(chead);
+        // NEED to consider multiple report blocks in a single RTCP RR!
+        uint32_t blockOffset = sizeof(RTCPHeader);
+        while (blockOffset < rtcpLength) {
           ReportBlock* report = reinterpret_cast<ReportBlock*>(movingBuf + blockOffset);
           uint32_t sourceSSRC = report->getSourceSSRC();
           // TODO: This "add" fraction lost is totally WRONG, or MEANINGLESS!
@@ -49,19 +56,46 @@ namespace erizo {
           setPacketsLost(report->getCumulativeLost(), sourceSSRC);
           setJitter(report->getJitter(), sourceSSRC);
           blockOffset += sizeof(ReportBlock);
+        }
+        break;
       }
+      case RTCP_Sender_PT: {
+        SenderReport* sr = reinterpret_cast<SenderReport*>(chead);
+        setRtcpPacketSent(sr->getPacketCount(), ssrc);
+        setRtcpBytesSent(sr->getOctetCount(), ssrc);
+        break;
+      }
+      case RTCP_RTP_Feedback_PT:
+        ELOG_DEBUG("RTP FB: Usually NACKs: %u", chead->getRCOrFMT());
+        break;
+      case RTCP_PS_Feedback_PT:
+        ELOG_DEBUG("RTCP PS FB TYPE: %u", chead->getRCOrFMT() );
+        switch(chead->getRCOrFMT()){
+          case RTCP_PLI_FMT:
+            ELOG_DEBUG("PLI Message");
+            break;
+          case RTCP_SLI_FMT:
+            ELOG_DEBUG("SLI Message");
+            break;
+          case RTCP_FIR_FMT:
+            ELOG_DEBUG("FIR Message");
+            break;
+          case RTCP_AFB:
+            ELOG_DEBUG("AFB Message, possibly REMB");
+            break;
+          default:
+            ELOG_WARN("Unsupported RTCP_PS FB TYPE %u",chead->getRCOrFMT());
 
-    }else if (packetType == RTCP_Sender_PT){
-      SenderReport* sr = reinterpret_cast<SenderReport*>(chead);
-      setRtcpPacketSent(sr->getPacketCount(), ssrc);
-      setRtcpBytesSent(sr->getOctetCount(), ssrc);
-    }else if (packetType == 206){
-      // ELOG_DEBUG("REMB packet mantissa %u, exp %u", chead->getBrMantis(), chead->getBrExp());
+        }
+        break;
+      default:
+        ELOG_DEBUG("Unknown RTCP Packet, %d", packetType);
+        break;
     }
   }
  
   std::string Stats::getStats() {
-    boost::mutex::scoped_lock lock(mapMutex_);
+    boost::recursive_mutex::scoped_lock lock(mapMutex_);
     std::ostringstream theString;
     theString << "[";
     for (fullStatsMap_t::iterator itssrc=theStats_.begin(); itssrc!=theStats_.end();){
@@ -86,28 +120,10 @@ namespace erizo {
     theString << "]";
     return theString.str(); 
   }
-
-  void Stats::setPeriodicStats(int intervalMillis, WebRtcConnectionStatsListener* listener) {
-    if (!runningStats_){
-      theListener_ = listener;
-      iterationsPerTick_ = static_cast<int>((intervalMillis*1000)/SLEEP_INTERVAL_);
-      runningStats_ = true;
-      ELOG_DEBUG("Starting periodic stats report with interval %d, iterationsPerTick %d", intervalMillis, iterationsPerTick_);
-      statsThread_ = boost::thread(&Stats::sendStats, this);
-    }else{
-      ELOG_ERROR("Stats already started");
-    }
-  }
-
+  
   void Stats::sendStats() {
-    while(runningStats_) {
-      if (++currentIterations_ >= (iterationsPerTick_)){
-        theListener_->notifyStats(this->getStats());
-
-        currentIterations_ =0;
-      }
-      usleep(SLEEP_INTERVAL_);
-    }
+    if(theListener_!=NULL)
+      theListener_->notifyStats(this->getStats());
   }
 }
 
