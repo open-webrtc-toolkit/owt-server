@@ -284,13 +284,17 @@ exports.RoomController = function (spec) {
                     log.info('Removing subscriber ', subscriber_id, 'to muxer ', publisher_id);
 
                     var args = [subscriber_id, publisher_id];
-            		rpc.callRpc(getErizoQueue(publisher_id), "removeSubscriber", args, undefined);
+                    rpc.callRpc(getErizoQueue(publisher_id), "removeSubscriber", args, undefined);
 
             		// Remove tracks
                     subscribers[publisher_id].splice(index, 1);
                 }
             }
         }
+    };
+
+    that.publisherNum = function () {
+        return Object.keys(publishers).length;
     };
 
     return that;
