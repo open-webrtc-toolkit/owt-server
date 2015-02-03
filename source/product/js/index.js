@@ -4,6 +4,7 @@ var securedServerAddress = 'https://webrtc.sh.intel.com:3004/';
 var unsecuredServerAddress = 'http://webrtc.sh.intel.com:3001/';
 var serverAddress = unsecuredServerAddress;
 var isSecuredConnection = false;
+var nodeAddress = 'http://webrtc-006.sh.intel.com:1235';
 var localStream = null;
 var localScreen = null;
 var room = null;
@@ -25,10 +26,10 @@ var MODES = {
 };
 var mode = MODES.GALAXY;
 var SUBSCRIBETYPES = {
-  FORWARD: 'forward',
-  MIX: 'mix'
+    FORWARD: 'forward',
+    MIX: 'mix'
 };
-var subscribeType=SUBSCRIBETYPES.FORWARD;
+var subscribeType = SUBSCRIBETYPES.FORWARD;
 var isScreenSharing = false;
 var isLocalScreenSharing = false;
 var remoteScreen = null;
@@ -36,11 +37,9 @@ var remoteScreenName = null;
 var curTime = 0;
 var totalTime = 0;
 var isMobile = false;
-var token;
-
-/* Rewrite some woogeen functions */
-Woogeen.Room=Woogeen.Conference;
-
+var streamObj = {};
+var streamIndices = {};
+var hasMixed = false;
 
 function login() {
     setTimeout(function() {
@@ -78,71 +77,290 @@ function exit() {
     }
 }
 
-function initWoogeen() {
-    L.Logger.setLogLevel(L.Logger.WARNING);
-    var videoWidth = 640;
-    var videoHeight = 480;
-    room = Woogeen.Room.create({});
-    if ($('#login-240').hasClass('selected')) {
-        videoWidth = 320;
-	videoHeight = 240;
-    } else if ($('#login-720').hasClass('selected')) {
-        videoWidth = 1280;
-	videoHeight = 720;
+var isVcLoaded = false;
+
+function startVc() {
+    if (isVcLoaded) {
+        $('#vc-dialog').show();
+    } else {
+        // vc events
+        $('#vc-enable').change(function() {
+            if ($(this).prop('checked')) {
+                $('#vc-mode').removeAttr('disabled');
+            } else {
+                $('#vc-mode').attr('disabled', true).prop('checked', false);
+            }
+        });
+
+        $.ajax({
+            type: 'get',
+            dataType: 'jsonp',
+            crossDomain: true,
+            url: nodeAddress,
+            success: function(data) {
+                // get images and videos from nodejs server
+                data = JSON.parse(data);
+                var videos = data.videos;
+                for (var i in videos) {
+                    $('#vc-video-panel').append('<a class="vc-selectable vc-video"' + ' href="javascript:;"' + '><video src="' + nodeAddress + '/videos/' + videos[i] + '" autoplay muted loop></video></a>');
+                }
+                var images = data.images;
+                for (var i in images) {
+                    $('#vc-image-panel').append('<a class="vc-selectable vc-image"' + ' href="javascript:;"' + '><img src="' + nodeAddress + '/images/' + images[i] + '" /></a>');
+                }
+
+                for (var i = 0; i < 3; ++i) {
+                    $('#vc-position-panel').append('<a href="javascript:;" ' + 'class="vc-selectable vc-position"><img ' + 'src="img/avatar_p' + (i + 1) + '.png" /></a>');
+                }
+
+                // default select first image and video
+                $('.vc-image').first().addClass('selected');
+                $('.vc-position').first().addClass('selected');
+
+                // handle click events
+                $('.vc-selectable').click(function() {
+                    if ($(this).hasClass('vc-video') || $(this).hasClass('vc-image')) {
+                        $('.vc-video,.vc-image').removeClass('selected');
+                    } else if ($(this).hasClass('vc-position')) {
+                        $('.vc-position').removeClass('selected');
+                    }
+                    $(this).addClass('selected');
+                })
+
+                isVcLoaded = true;
+                $('#vc-dialog').show();
+            },
+            error: function(e) {
+                alert('Fail to load virtual camera images and videos!');
+                console.error(e);
+            }
+        });
     }
-    if ($('#subscribe-type').val() === 'mixed'){
-      subscribeType = SUBSCRIBETYPES.MIX;
-      mode = MODES.LECTURE;
+}
+
+function sendVc() {
+    var cx = 1920;
+    var cy = 1080;
+
+    // x and y value from position panel
+    var $pos = $('#vc-position-panel').children();
+    if ($($pos[0]).hasClass('selected')) {
+        // center aligned
+        var x = 640;
+        var y = 720;
+    } else if ($($pos[1]).hasClass('selected')) {
+        // left aligned
+        var x = 0;
+        var y = 720;
+    } else if ($($pos[2]).hasClass('selected')) {
+        // right aligned
+        var x = 1280;
+        var y = 720;
     }
 
-    Woogeen.LocalStream.create({
-        id: localId,
-        audio: true,
-        video: $('#login-audio-video').hasClass('selected'),
-        videoSize: [videoWidth, videoHeight, videoWidth, videoHeight],
-        data: true,
-        attributes: {
-            id: localId,
-            name: name
+    // check if image or video selected
+    var $selected = $('#vc-image-panel,#vc-video-panel').children('.selected');
+    var isImgSelected = $selected.hasClass('vc-image');
+
+    // file path
+    var path = $selected.children().attr('src');
+    path = path.slice(path.lastIndexOf('/') + 1);
+
+    $.ajax({
+        url: nodeAddress + '/upload',
+        crossDomain: true,
+        dataType: 'jsonp',
+        data: {
+            image: {
+                x: 0,
+                y: 0,
+                cx: 1920,
+                cy: 1080,
+                z: 5,
+                enable: isImgSelected ? 1 : 0,
+                file: 'images/' + path
+            },
+            video: {
+                x: 0,
+                y: 0,
+                cx: 1920,
+                cy: 1080,
+                z: 5,
+                enable: isImgSelected ? 0 : 1,
+                file: 'videos/' + path
+            },
+            seg: {
+                x: x,
+                y: y,
+                cx: 640,
+                cy: 360,
+                z: 5,
+                enable: $('#vc-enable').prop('checked') ? 1 : 0,
+                mode: $('#vc-mode').prop('checked') ? 1 : 0
+            }
+        },
+        success: function() {
+            alert('Successfully configured!');
+            $('#vc-dialog').hide();
+        },
+        error: function(xhr, status, error) {
+            alert('Error when apply!');
+            console.error(xhr, status, error);
         }
-    },function(err, stream){
-      localStream=stream;
-      connectRoom();
     });
+}
+
+function initWoogeen() {
+    L.Logger.setLogLevel(L.Logger.ERROR);
+
+    if ($('#subscribe-type').val() === 'mixed') {
+        subscribeType = SUBSCRIBETYPES.MIX;
+        mode = MODES.LECTURE;
+        $("#monitor-btn").hide();
+        $("#galaxy-btn").hide();
+    }
+
     users.push({
         name: name,
         id: localId
     });
     $('#profile').text(name);
+    hasMixed = !(subscribeType === SUBSCRIBETYPES.MIX);
 
-    createToken(localId, 'presenter', serviceKey, function (status, response) {
+    var bandWidth = 150,
+        videoSize = "sif";
+    if ($('#login-480').hasClass('selected')) {
+        bandWidth = 300;
+        videoSize = "vga";
+    } else if ($('#login-720').hasClass('selected')) {
+        bandWidth = 1000;
+        videoSize = "hd720p";
+    }
+
+    var setStream = {};
+    if ($("#login-audio-video").hasClass("selected")) {
+        setStream = {
+            resolution: videoSize
+        }
+    } else {
+        setStream = $("#login-audio-video").hasClass("selected")
+    }
+    var isIce = $(".checkbox")[0].checked;
+
+    function createLocal() {
+        if (hasMixed) {
+            Woogeen.LocalStream.create({
+                video: setStream,
+                audio: true,
+                data: true,
+                attributes: {
+                    id: localId,
+                    name: name
+                }
+            }, function(err, stream) {
+                if (err) {
+                    return L.Logger.error('create LocalStream failed:', err);
+                }
+                localStream = stream;
+                sendIm('Connected to the room.', 'System');
+                $('#text-send,#send-btn').show();
+
+                room.publish(localStream, {
+                    maxVideoBW: bandWidth
+                }, function(st) {
+                    L.Logger.info('stream published:', st.id());
+                    console.log("localStream subscribed");
+                    addVideo(localStream, true);
+                    streamObj[localStream.id()] = localStream;
+                }, function(err) {
+                    L.Logger.error('publish failed:', err);
+                });
+
+            });
+        } else {
+            setTimeout(createLocal, 500);
+        }
+    }
+
+    createToken(localId, 'presenter', serviceKey, function(status, response) {
         if (status !== 200) {
-            Woogeen.Logger.error('createToken failed:', response, status);
-            sendIm('Failed to connect to the server, please reload the page to '
-                    + 'try again.', 'System');
+            L.Logger.error('createToken failed:', response, status);
+            sendIm('Failed to connect to the server, please reload the page to ' + 'try again.', 'System');
             return;
         }
-        token = response;
-        //localStream.addEventListener('access-accepted', connectRoom);
-        //localStream.addEventListener('access-denied', function() {
-        //    sendIm('Failed to get the access to camera. Please '
-        //            + 'accept the access to join a conference.', 'System');
-        //});
-        //localStream.init();
+        room = Woogeen.ConferenceClient.create({
+            token: response,
+            secure: isSecuredConnection
+        });
+        connectRoom();
+
+        if (isIce) {
+            room.setIceServers([{
+                url: "stun:180.153.223.235:3478"
+            }, {
+                url: "turn:180.153.223.235:4478?transport=udp",
+                credential: "master",
+                username: "woogeen"
+            }, {
+                url: "turn:180.153.223.235:443?transport=udp",
+                credential: "master",
+                username: "woogeen"
+            }, {
+                url: "turn:180.153.223.235:4478?transport=tcp",
+                credential: "master",
+                username: "woogeen"
+            }, {
+                url: "turn:180.153.223.235:443?transport=tcp",
+                credential: "master",
+                username: "woogeen"
+            }]);
+        }
+
+        room.join(response, function(resp) {
+            var streams = resp.streams;
+            streams.map(function(stream) {
+                L.Logger.info('stream in conference:', stream.id());
+                streamObj[stream.id()] = stream;
+                if (subscribeType === SUBSCRIBETYPES.MIX) {
+                    if (!stream.isMixed() && !stream.isScreen()) {
+                        sendIm(stream.attributes()["name"] + ' has joined the room.', 'System');
+                        return;
+                    }
+                } else if (stream.isMixed()) {
+                    return;
+                }
+                L.Logger.info('subscribing:', stream.id());
+                room.subscribe(stream, function() {
+                    L.Logger.info('subscribed:', stream.id());
+                    addVideo(stream, false);
+                    console.log("subscribe");
+                    streamObj[stream.id()] = stream;
+                }, function(err) {
+                    L.Logger.error(stream.id(), 'subscribe failed1:', err);
+                });
+            });
+            createLocal();
+        }, function(err) {
+            L.Logger.error('server connection failed:', err);
+        });
     });
 }
 
 function generateId() {
     return Math.floor((1 + Math.random()) * 0x10000 * 0x10000)
-            .toString(16).substring(1);
+        .toString(16).substring(1);
 }
 
 function createToken(userName, role, room, callback) {
     var req = new XMLHttpRequest();
     var url = serverAddress + 'createToken/';
-    var body = {username: userName, role: role, room: room};
+    var body = {
+        username: userName,
+        role: role,
+        room: room
+    };
 
-    req.onreadystatechange = function () {
+    req.onreadystatechange = function() {
         if (req.readyState === 4 && typeof callback === 'function') {
             callback(req.status, req.responseText);
         }
@@ -153,110 +371,136 @@ function createToken(userName, role, room, callback) {
     req.send(JSON.stringify(body));
 }
 
-function connectRoom() {
-    function subscribeToStreams(streams) {
-        for (var index in streams) {
-            var stream = streams[index];
-            if ((!localStream || localStream.id() !== stream.id())) {
-              if ((subscribeType === SUBSCRIBETYPES.MIX && stream.id() == 0)
-                  || (subscribeType === SUBSCRIBETYPES.FORWARD && stream.id() != 0))
-                room.subscribe(stream, (function(){
-                  return function(stream){
-                    // append name to users for previously online clients
-                    var attr = stream.attributes() || [];
-                    var thatId = attr['id'] || stream.id();
-                    var thatName = attr['name'] || 'Anonymous';
-                    var isScreen = attr['type'] === 'screen';
-                    var user = getUserFromId(thatId);
-                    if (user === null) {
-                        users.push({
-                            name: thatName,
-                            id: thatId
-                        });
-                        //sendIm(thatName + ' has joined the room.', 'System');
-                    } else if (!user['name']) {
-                        user['name'] = thatName;
-                        //sendIm(thatName + ' has joined the room.', 'System');
-                    } else if (isScreen && !isLocalScreenSharing) {
-                        remoteScreen = stream;
-                        remoteScreenName = thatName;
-                        shareScreenChanged(true, false);
-                        sendIm(thatName + ' is sharing screen now.', 'System');
-                    }
 
-                    // add video of non-local streams
-                    if (localId !== thatId) {
-                        room.addEventListener('stream-data', function(event) {
-                            if (event.stream && event.msg && thatId !== null) {
-                                var user = getUserFromId(thatId);
-                                if (user && user['id']) {
-                                    sendIm(event.msg, user['id']);
-                                }
-                            }
-                        });
-                        addVideo(stream);
-                    }
-                  }
-                })(stream), function(err){
-                  L.Logger.error('Subscribe stream failed: '+JSON.stringify(err));
-                });
+function subscribeToStreams(streams) {
+    for (var index in streams) {
+        var stream = streams[index];
+        L.Logger.info('stream in conference:', stream.id());
+        streamObj[stream.id()] = stream;
+        if (subscribeType === SUBSCRIBETYPES.MIX) {
+            if (!stream.isMixed() && !stream.isScreen()) {
+                return;
             }
+        } else if (stream.isMixed()) {
+            return;
         }
+        L.Logger.info('subscribing:', stream.id());
+        room.subscribe(stream, function() {
+            L.Logger.info('subscribed:', stream.id());
+            addVideo(stream, false);
+            streamObj[stream.id()] = stream;
+        }, function(err) {
+            L.Logger.error(stream.id(), 'subscribe failed1:', err);
+        });
     }
+}
 
-    room.addEventListener('stream-added', function (streamEvent) {
+function connectRoom() {
+    room.on('stream-added', function(streamEvent) {
+        var stream = streamEvent.stream;
         console.log('stream-added!');
-        var streams = [];
-        streams.push(streamEvent.stream);
-        subscribeToStreams(streams);
+        if (subscribeType === SUBSCRIBETYPES.FORWARD && (stream.isMixed && stream.isMixed())) {
+            return;
+        } else if (subscribeType === SUBSCRIBETYPES.MIX && (!(stream.isMixed && stream.isMixed()) && !(stream.isScreen && stream.isScreen()))) {
+            return;
+        }
+        if (stream == localStream) {
+            console.log("localStream added video");
+        }
+
+        // append name to users for previously online clients
+        var attr = stream.attributes() || [];
+        var thatId = attr['id'] || stream.id();
+        var thatName = attr['name'] || 'Anonymous';
+        var user = getUserFromId(thatId);
+        if (stream.isMixed && stream.isMixed()) {
+            thatName = "MIX Stream";
+        } else if (stream.isScreen()) {
+            thatName = "Screen Sharing";
+        }
+        if (user === null && !stream.isScreen()) {
+            users.push({
+                name: thatName,
+                id: thatId
+            });
+            sendIm(thatName + ' has joined the room.', 'System');
+        } else if (user !== null && !user['name']) {
+            user['name'] = thatName;
+            sendIm(thatName + ' has joined the room.', 'System');
+        } else if (stream.isScreen() && !isLocalScreenSharing) {
+            remoteScreen = stream;
+            remoteScreenName = thatName;
+            shareScreenChanged(true, false);
+            sendIm(thatName + ' is sharing screen now.', 'System');
+        }
+
+        // add video of non-local streams
+        if (localId !== thatId) {
+            room.on('message-received', function(event) {
+                if (event.stream && event.msg && thatId !== null) {
+                    var user = getUserFromId(thatId);
+                    if (user && user['id']) {
+                        sendIm(event.msg, user['id']);
+                    }
+                }
+            });
+            room.subscribe(stream, function() {
+                L.Logger.info('subscribed:', stream.id());
+                addVideo(stream);
+                streamObj[stream.id()] = stream;
+            }, function(err) {
+                L.Logger.error(stream.id(), 'subscribe failed3:', err);
+            });
+        }
     });
 
-    room.addEventListener('stream-removed', function (streamEvent) {
+    room.on('stream-removed', function(streamEvent) {
         console.log('stream-removed!');
         // Remove stream from DOM
         var stream = streamEvent.stream;
         var attr = stream.attributes() || [];
         var uid = attr['id'] || stream.id();
         var user = getUserFromId(uid);
-        if (user !== null && user['htmlId'] !== undefined) {
-            if (attr['type'] === 'screen') {
-                if (isLocalScreenSharing) {
-                    $('#local-screen').addClass('pluse');
-                    localScreen.close();
-                    localScreen = null;
-                    sendIm('You have stopped screen sharing.');
-                } else {
-                    $('#screen').addClass('pluse');
-                    remoteScreen.close();
-                    remoteScreen = null;
-                    sendIm(attr['name'] + ' has stopped screen sharing.',
-                            'System');
-                }
-            } else {
-                $('#client-' + user['htmlId']).addClass('pulse');
-            }
-            setTimeout(function() {
-                if (attr['type'] === 'screen') {
-                    if (isLocalScreenSharing) {
-                        $('#local-screen').remove();
-                    } else {
-                        $('#screen').remove();
-                    }
-                    shareScreenChanged(false, false);
-                    changeMode(MODES.LECTURE, $('#client-' + user['htmlId']));
-                } else {
-                    $('#client-' + user['htmlId']).remove();
-                }
-                changeMode(mode);
-            }, 800);
+        localStorage.setItem(uid, "true");
+        if (stream.isScreen()) {
+            delete streamObj["screen"];
+        } else {
+            delete streamObj[stream.from];
         }
+        if (user !== null && user['htmlId'] !== undefined) {
+            $('#client-' + user['htmlId']).addClass('pulse');
+
+        } else if (stream.isScreen()) {
+            if (isLocalScreenSharing) {
+                $('#local-screen').addClass('pluse');
+                localScreen.close();
+                localScreen = null;
+                sendIm('You have stopped screen sharing.');
+            } else {
+                $('#screen').addClass('pluse');
+                remoteScreen.close();
+                remoteScreen = null;
+                sendIm(attr['name'] + ' has stopped screen sharing.',
+                    'System');
+            }
+        }
+        setTimeout(function() {
+            if (stream.isScreen()) {
+                $('#local-screen').remove();
+                $('#screen').remove();
+                shareScreenChanged(false, false);
+            } else {
+                $('#client-' + user['htmlId']).remove();
+            }
+            changeMode(mode);
+        }, 800);
     });
 
-    room.addEventListener('stream-changed', function (e) {
-        console.log('stream '+e.stream.getID()+' has changed');
+    room.on('stream-changed', function(e) {
+        console.log('stream ' + e.stream.id() + ' has changed');
     });
 
-    room.addEventListener('client-joined', function (e) {
+    room.on('user-joined', function(e) {
         if (e.user.name !== 'user' && getUserFromId(e.user.name) === null) {
             // new user
             users.push({
@@ -265,8 +509,13 @@ function connectRoom() {
         }
     });
 
-    room.addEventListener('client-left', function (e) {
+    room.on('user-left', function(e) {
         var user = getUserFromId(e.user.name);
+        if (localStorage.getItem(e.user.name) == null) {
+            return;
+        } else {
+            localStorage.removeItem(e.user.name);
+        }
         if (user !== null && user.name !== undefined) {
             sendIm(user['name'] + ' has left the room.', 'System');
         } else {
@@ -274,80 +523,56 @@ function connectRoom() {
         }
     });
 
-    room.join(token,function(res){
-
-      sendIm('Connected to the room.', 'System');
-      $('#text-send,#send-btn').show();
-
-      var bandWidth = 100;
-      if ($('#login-480').hasClass('selected')) {
-          bandWidth = 300;
-      } else if ($('#login-720').hasClass('selected')) {
-          bandWidth = 1000;
-      }
-
-      if (!$('#login-audio-video').hasClass('selected')) {
-        room.publish(localStream, {}, function(resp){
-          L.Logger.info('Publish stream success.');
-        },function(err){
-          if(err){
-            return L.Logger.error('publish failed:', err);
-          }
-        });
-      } else {
-        room.publish(localStream, {maxVideoBW: 500}, function(resp){
-          L.Logger.info('Publish stream success.', resp.id());
-        },function(err){
-          L.Logger.error('publish failed:', err);
-        });
-      }
-
-      var streams = res.streams;
-      subscribeToStreams(streams);
-    }, function(err){
-      L.Logger.error('Join room failed.');
+    room.onMessage(function(event) {
+        console.log("onMessage run");
+        var stream = streamObj[event.msg.from];
+        if (stream.id() === localStream.id()) return;
+        var time = new Date();
+        var hour = time.getHours();
+        hour = hour > 9 ? hour.toString() : '0' + hour.toString();
+        var mini = time.getMinutes();
+        mini = mini > 9 ? mini.toString() : '0' + mini.toString();
+        var sec = time.getSeconds();
+        sec = sec > 9 ? sec.toString() : '0' + sec.toString();
+        var timeStr = hour + ':' + mini + ':' + sec;
+        var color = getColor(stream.attributes()["name"]);
+        $('<p class="' + color + '">').html(timeStr + ' ' + stream.attributes()["name"] + '<br />')
+            .append(document.createTextNode(event.msg.data)).appendTo('#text-content');
     });
-
-    addVideo(localStream, true);
 }
 
 function shareScreen() {
     if ($('#screen-btn').hasClass('disabled')) {
         return;
     }
-
-    localScreen = Woogeen.Stream({
-        screen: true,
-        video: true,
-        videoSize: [1920, 1080, 1920, 1080],
-        attributes: {
-            type: 'screen',
-            name: name,
-            id: localId
-        }
-    });
-
-    localScreen.addEventListener('access-accepted', function(e) {
-        room.publish(localScreen);
-        sendIm('You are sharing screen now.');
-        $('#video-panel').append('<div id="local-screen" class="client clt-0"' +
-                '>Screen Sharing</div>').addClass('screen');
+    sendIm('You are sharing screen now.');
+    $('#video-panel').append('<div id="local-screen" class="client clt-0"' +
+        '>Screen Sharing</div>').addClass('screen');
+    changeMode(MODES.LECTURE, $('#local-screen'));
+    room.shareScreen({
+        resolution: "hd1080p",
+        frameRate: [10, 10]
+    }, function(stream) {
+        // stream.show('local-screen');
+        localScreen = stream;
         changeMode(MODES.LECTURE, $('#local-screen'));
-
-        localScreen.stream.addEventListener('ended', function(e) {
-            room.unpublish(localScreen);
+        localScreen.mediaStream.addEventListener('ended', function(e) {
+            changeMode(MODES.LECTURE);
             console.log('unpublish');
         });
-    });
-
-    localScreen.addEventListener('access-denied', function(e) {
-        sendIm('Failed to get the access to local media. '
-                + 'Please try again with HTTPS and accept it.');
+    }, function(err) {
+        L.Logger.error('share screen failed:', err);
+        changeMode(MODES.LECTURE);
+        $('#local-screen').remove();
+        $('#screen').remove();
         shareScreenChanged(false, false);
     });
 
-    localScreen.init();
     shareScreenChanged(true, true);
+}
+
+function removeScreen() {
+    $("local-screen").remove();
 }
 
 // update screen btn when sharing
@@ -363,7 +588,9 @@ function shareScreenChanged(ifToShare, ifToLocalShare) {
         }
         $('#galaxy-btn,#monitor-btn').addClass('disabled');
     } else {
-        $('#galaxy-btn,#monitor-btn').removeClass('disabled');
+        if (subscribeType === SUBSCRIBETYPES.FORWARD) {
+            $('#galaxy-btn,#monitor-btn').removeClass('disabled');
+        }
         $('#video-panel').removeClass('screen');
     }
 }
@@ -372,8 +599,7 @@ function shareScreenChanged(ifToShare, ifToLocalShare) {
 function getNextSize() {
     var lSum = $('#video-panel .small').length * smallRadius * smallRadius * 5;
     var sSum = $('#video-panel .large').length * largeRadius * largeRadius * 10;
-    var largeP = 1 / ((lSum + sSum) / $('#video-panel').width()
-            / $('#video-panel').height() + 1) - 0.5;
+    var largeP = 1 / ((lSum + sSum) / $('#video-panel').width() / $('#video-panel').height() + 1) - 0.5;
     if (Math.random() < largeP) {
         return 'large';
     } else {
@@ -387,26 +613,34 @@ function addVideo(stream, isLocal) {
     while ($('#client-' + id).length > 0) {
         ++id;
     }
-
-    var attr = stream.attributes() || {};
-    var uid = attr.id || stream.id();
+    var attr = stream.attributes() || [];
+    var uid = attr['id'];
+    if (uid === undefined) {
+        // users from other UI
+        uid = stream.id();
+    }
+    if (stream == localStream) {
+        console.log("localStream addVideo1");
+    }
+    if (stream instanceof Woogeen.RemoteStream && stream.isMixed()) {
+        hasMixed = true;
+    }
 
     // check if is screen sharing
-    if (attr['type'] === 'screen') {
+    if (stream.isScreen()) {
         $('#video-panel').addClass('screen')
-                .append('<div class="client" id="screen"></div>');
+            .append('<div class="client" id="screen"></div>');
         stream.show('screen');
         $('#screen').addClass('clt-' + getColorId(uid))
-                .children().children('div').remove();
-        $('#screen').append('<div class="ctrl"><a href="#" class="ctrl-btn '
-                + 'fullscreen"></a></div>').append('<div class="ctrl-name">'
-                + 'Screen Sharing from ' + attr['name'] + '</div>');
-
-        changeMode(MODES.LECTURE, $('#screen'));
+            .children().children('div').remove();
+        $('#screen').append('<div class="ctrl"><a href="#" class="ctrl-btn ' + 'fullscreen"></a></div>').append('<div class="ctrl-name">' + 'Screen Sharing from ' + attr['name'] + '</div>');
+        $('#local-screen').remove();
+        changeMode(MODES.LECTURE);
+        streamObj["screen"] = stream;
 
     } else {
         // append to global users
-        var thisUser = getUserFromId(uid);
+        var thisUser = getUserFromId(uid) || {};
         var htmlClass = isLocal ? 0 : (id - 1) % 5 + 1;
         thisUser.htmlId = id;
         thisUser.htmlClass = thisUser.htmlClass || htmlClass;
@@ -415,16 +649,17 @@ function addVideo(stream, isLocal) {
 
         // append new video to video panel
         var size = getNextSize();
-        $('#video-panel').append('<div class="' + size + ' clt-'
-                + htmlClass + ' client pulse" ' + 'id="client-'+ id + '"></div>');
+        $('#video-panel').append('<div class="' + size + ' clt-' + htmlClass + ' client pulse" ' + 'id="client-' + id + '"></div>');
         if (isLocal) {
-            var opt = {muted: 'muted'};
+            var opt = {
+                muted: 'muted'
+            };
             $('#client-' + id).append('<div class="self-arrow"></div>');
         }
         stream.show('client-' + id, opt);
         var player = $('#client-' + id).children(':not(.self-arrow)');
         player.attr('id', 'player-' + id).addClass('player')
-                .css('background-color', 'inherit');
+            .css('background-color', 'inherit');
         player.children('div').remove();
         player.children('video').attr('id', 'video-' + id).addClass('video');
 
@@ -434,77 +669,73 @@ function addVideo(stream, isLocal) {
             player.append('<img src="img/avatar.png" class="img-novideo" />');
         }
 
-        if(stream.id()==0)
-          attr['name'] = "Mixed Stream";
-
         // control buttons and user name panel
         var resize = size === 'large' ? 'shrink' : 'enlarge';
         var attr = stream.attributes() ? stream.attributes() : [];
         var name = attr['name'] ? attr['name'] : 'Anonymous';
         var muteBtn = '<a href="#" class="ctrl-btn unmute"></a>';
-        $('#client-' + id).append('<div class="ctrl">'
-                + '<a href="#" class="ctrl-btn ' + resize + '"></a>'
-                + '<a href="#" class="ctrl-btn fullscreen"></a>'
-                + muteBtn + '</div>')
-                .append('<div class="ctrl-name">' + name + '</div>');
-        relocate($('#client-' + id));
 
-        if(stream.id()==0){
-          name = 'Mixed';
-          changeMode(MODES.LECTURE, $('#client-'+id));
+        if (stream.isMixed && stream.isMixed()) {
+            name = "MIX Stream";
         }
-        else{
-          changeMode(mode);
+        streamObj[stream.id()] = stream;
+        streamIndices['client-' + id] = stream.id();
+
+        $('#client-' + id).append('<div class="ctrl">' + '<a href="#" class="ctrl-btn ' + resize + '"></a>' + '<a href="#" class="ctrl-btn fullscreen"></a>' + muteBtn + '</div>')
+            .append('<div class="ctrl-name">' + name + '</div>');
+        relocate($('#client-' + id));
+        if (stream == localStream) {
+            console.log("localStream addVideo2");
         }
+        changeMode(mode);
     }
 
     function mouseout(e) {
-        isMouseDown = false;
-        mouseX = null;
-        mouseY = null;
-        $(this).css('transition', '0.5s');
-    }
-    // no animation when dragging
+            isMouseDown = false;
+            mouseX = null;
+            mouseY = null;
+            $(this).css('transition', '0.5s');
+        }
+        // no animation when dragging
     $('.client').mousedown(function(e) {
-        isMouseDown = true;
-        mouseX = e.clientX;
-        mouseY = e.clientY;
-        $(this).css('transition', '0s');
-    }).mouseup(mouseout).mouseout(mouseout)
-    .mousemove(function(e) {
-        e.preventDefault();
-        if (!isMouseDown || mouseX === null || mouseY === null
-                || mode !== MODES.GALAXY) {
-            return;
-        }
-        // update position to prevent from moving outside of video-panel
-        var left = parseInt($(this).css('left')) + e.clientX - mouseX;
-        var border = parseInt($(this).css('border-width')) * 2;
-        var maxLeft = $('#video-panel').width() - $(this).width() - border;
-        if (left < 0) {
-            left = 0;
-        } else if (left > maxLeft) {
-            left = maxLeft;
-        }
-        $(this).css('left', left);
+            isMouseDown = true;
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+            $(this).css('transition', '0s');
+        }).mouseup(mouseout).mouseout(mouseout)
+        .mousemove(function(e) {
+            e.preventDefault();
+            if (!isMouseDown || mouseX === null || mouseY === null || mode !== MODES.GALAXY) {
+                return;
+            }
+            // update position to prevent from moving outside of video-panel
+            var left = parseInt($(this).css('left')) + e.clientX - mouseX;
+            var border = parseInt($(this).css('border-width')) * 2;
+            var maxLeft = $('#video-panel').width() - $(this).width() - border;
+            if (left < 0) {
+                left = 0;
+            } else if (left > maxLeft) {
+                left = maxLeft;
+            }
+            $(this).css('left', left);
 
-        var top = parseInt($(this).css('top')) + e.clientY - mouseY;
-        var maxTop = $('#video-panel').height() - $(this).height() - border;
-        if (top < 0) {
-            top = 0;
-        } else if (top > maxTop) {
-            top = maxTop;
-        }
-        $(this).css('top', top);
+            var top = parseInt($(this).css('top')) + e.clientY - mouseY;
+            var maxTop = $('#video-panel').height() - $(this).height() - border;
+            if (top < 0) {
+                top = 0;
+            } else if (top > maxTop) {
+                top = maxTop;
+            }
+            $(this).css('top', top);
 
-        // update data for later calculation position
-        $(this).data({
-            left: left,
-            top: top
+            // update data for later calculation position
+            $(this).data({
+                left: left,
+                top: top
+            });
+            mouseX = e.clientX;
+            mouseY = e.clientY;
         });
-        mouseX = e.clientX;
-        mouseY = e.clientY;
-    });
 
     // stop pulse when animation completes
     setTimeout(function() {
@@ -538,27 +769,32 @@ function relocate(element) {
         var y = Math.ceil(Math.random() * y + r + margin);
         var others = $('.client');
         var len = others.length;
-        var isFeasible = x + r < $('#video-panel').width() && y + r
-                < $('#video-panel').height();
-        for (var i = 0; i < len && isFeasible; ++ i) {
+        var isFeasible = x + r < $('#video-panel').width() && y + r < $('#video-panel').height();
+        for (var i = 0; i < len && isFeasible; ++i) {
             var o_r = $(others[i]).hasClass('large') ? largeRadius : smallRadius;
             var o_x = parseInt($(others[i]).data('left')) + o_r;
             var o_y = parseInt($(others[i]).data('top')) + o_r;
             if ((o_x - x) * (o_x - x) + (o_y - y) * (o_y - y) <
-                    (o_r + r + margin) * (o_r + r + margin)) {
+                (o_r + r + margin) * (o_r + r + margin)) {
                 // conflict
                 isFeasible = false;
                 break;
             }
         }
         if (isFeasible) {
-            var pos = {'left': x - r, 'top': y - r};
+            var pos = {
+                'left': x - r,
+                'top': y - r
+            };
             element.css(pos).data('left', x - r).data('top', y - r);
             return true;
         }
     }
     // no solution
-    var pos = {'left': x - r, 'top': y - r};
+    var pos = {
+        'left': x - r,
+        'top': y - r
+    };
     element.css(pos).data('left', x - r).data('top', y - r);
     return false;
 }
@@ -581,7 +817,11 @@ function sendIm(msg, sender) {
             sender = localId;
             // send to server
             if (users[0] && users[0].stream) {
-                users[0].stream.sendData(msg);
+                room.send(msg, 0, function(obj) {
+                    L.Logger.info(users[0].name + "send message: " + obj);
+                }, function(obj) {
+                    L.Logger.error(users[0].name + "send failed: " + obj);
+                });
             }
         } else {
             return;
@@ -591,7 +831,7 @@ function sendIm(msg, sender) {
     var user = getUserFromId(sender);
     var name = user ? user['name'] : 'System';
     $('<p class="' + color + '">').html(timeStr + ' ' + name + '<br />')
-            .append(document.createTextNode(msg)).appendTo('#text-content');
+        .append(document.createTextNode(msg)).appendTo('#text-content');
     // scroll to bottom of text content
     $('#text-content').scrollTop($('#text-content').prop('scrollHeight'));
 }
@@ -656,10 +896,11 @@ function getUserFromId(id) {
 }
 
 function toggleMute(id, toMute) {
-    for (var i = 0; i < users.length; ++i) {
-        if (users[i] && users[i].htmlId === id) {
-            users[i].stream.stream.getAudioTracks()[0].enabled = !toMute;
-            break;
+    if (streamObj[streamIndices["client-" + id]]) {
+        if (toMute) {
+            streamObj[streamIndices["client-" + id]].disableAudio();
+        } else {
+            streamObj[streamIndices["client-" + id]].enableAudio();
         }
     }
 }
@@ -675,8 +916,8 @@ function getColumns() {
     }
     while (true) {
         var width = mode === MODES.MONITOR ?
-                Math.floor($('#video-panel').width() / col) :
-                Math.floor($('#text-panel').width() / col);
+            Math.floor($('#video-panel').width() / col) :
+            Math.floor($('#text-panel').width() / col);
         var height = Math.floor(width * 3 / 4);
         var row = Math.floor($('#video-panel').height() / height);
         if (row * col >= cnt) {
@@ -687,31 +928,38 @@ function getColumns() {
 }
 
 function changeMode(newMode, enlargeElement) {
-    switch(newMode) {
+    if (localStream) {
+        console.log("localStream changeMode" + newMode);
+    }
+    switch (newMode) {
         case MODES.GALAXY:
             if ($('#galaxy-btn').hasClass('disabled')) {
                 return;
             }
             mode = MODES.GALAXY;
-            $('#monitor-btn,#lecture-btn').removeClass('selected');
+            if (subscribeType === SUBSCRIBETYPES.FORWARD) {
+                $('#galaxy-btn,#monitor-btn').removeClass('selected');
+            } else {
+                $('#galaxy-btn,#monitor-btn').addClass('disabled');
+            }
             $('#galaxy-btn').addClass('selected');
             $('#video-panel').removeClass('monitor lecture')
-                    .addClass('galaxy');
+                .addClass('galaxy');
             $.each($('.client'), function(key, value) {
                 var d = smallRadius * 2;
                 if ($(this).hasClass('large')) {
                     d = largeRadius * 2;
                     $(this).find('.enlarge')
-                            .removeClass('enlarge').addClass('shrink');
+                        .removeClass('enlarge').addClass('shrink');
                 } else {
                     $(this).find('.shrink')
-                            .removeClass('shrink').addClass('enlarge');
+                        .removeClass('shrink').addClass('enlarge');
                 }
                 var left = parseInt($(this).data('left'));
                 if (left < 0) {
                     left = 0;
                 } else if (left > $('#video-panel').width() - d) {
-                    left =  $('#video-panel') - d;
+                    left = $('#video-panel') - d;
                 }
                 var top = parseInt($(this).data('top'));
                 if (top < 0) {
@@ -729,6 +977,9 @@ function changeMode(newMode, enlargeElement) {
                     top: top
                 });
             });
+            setTimeout(function() {
+                $('.client').css("position", "absolute");
+            }, 500);
             break;
 
         case MODES.MONITOR:
@@ -736,10 +987,14 @@ function changeMode(newMode, enlargeElement) {
                 return;
             }
             mode = MODES.MONITOR;
-            $('#galaxy-btn,#lecture-btn').removeClass('selected');
+            if (subscribeType === SUBSCRIBETYPES.FORWARD) {
+                $('#galaxy-btn,#monitor-btn').removeClass('selected');
+            } else {
+                $('#galaxy-btn,#monitor-btn').addClass('disabled');
+            }
             $('#monitor-btn').addClass('selected');
             $('#video-panel').removeClass('galaxy lecture')
-                    .addClass('monitor');
+                .addClass('monitor');
             $('.shrink').removeClass('shrink').addClass('enlarge');
             updateMonitor();
             break;
@@ -749,19 +1004,22 @@ function changeMode(newMode, enlargeElement) {
                 return;
             }
             mode = MODES.LECTURE;
-            $('#galaxy-btn,#monitor-btn').removeClass('selected');
+            if (subscribeType === SUBSCRIBETYPES.FORWARD) {
+                $('#galaxy-btn,#monitor-btn').removeClass('selected');
+            } else {
+                $('#galaxy-btn,#monitor-btn').addClass('disabled');
+            }
             $('#lecture-btn').addClass('selected');
             $('#video-panel').removeClass('galaxy monitor')
-                    .addClass('lecture');
+                .addClass('lecture');
             $('.shrink').removeClass('shrink').addClass('enlarge');
 
-            var largest = enlargeElement || ($('#screen').length > 0
-                    ? $('#screen') : ($('.largest').length > 0
-                    ? $('.largest').first() : ($('.large').length > 0
-                    ? $('.large').first() : $('.client').first())));
-            $('.client').removeClass('largest');
-            largest.addClass('largest')
+            var largest = enlargeElement || ($('#screen').length > 0 ? $('#screen') : ($('.largest').length > 0 ? $('.largest').first() : ($('.large').length > 0 ? $('.large').first() : $('.client').first())));
+            if (!($('#screen').length > 0) || isLocalScreenSharing) {
+                $('.client').removeClass('largest');
+                largest.addClass('largest')
                     .find('.enlarge').removeClass('enlarge').addClass('shrink');
+            }
             updateLecture();
             break;
 
@@ -770,6 +1028,16 @@ function changeMode(newMode, enlargeElement) {
     }
     // update canvas size in all video panels
     $('.player').trigger('resizeVideo');
+    setTimeout(resizeStream, 500);
+}
+
+function resizeStream() {
+    for (var i in streamObj) {
+        var stream = streamObj[i];
+        if (stream.player) {
+            stream.player.resize();
+        }
+    };
 }
 
 function updateMonitor() {
@@ -779,23 +1047,44 @@ function updateMonitor() {
             width: Math.floor($('#video-panel').width() / col),
             height: Math.floor($('#video-panel').width() / col * 3 / 4),
             top: 'auto',
-            left: 'auto'
+            left: 'auto',
+            position: "relative",
+            right: "auto"
         });
     }
 }
 
 function updateLecture() {
-    $('.largest,.largest-mask').css({
+    $('.largest').css({
         width: $('#video-panel').width() - $('#text-panel').width(),
-        height: $('#video-panel').height()
+        height: $('#video-panel').height(),
+        position: "absolute"
     });
 
     var col = getColumns();
-    $('.client').not('.largest').css({
-        width: Math.floor($('#text-panel').width() / col),
-        height: Math.floor($('#text-panel').width() / col * 3 / 4),
-        top: 'auto',
-        left: 'auto'
+    var tempTop = 0;
+    var tempRight = 0;
+    $('.client').not('.largest').each(function(i) {
+        if (i === 0) {
+            tempTop = 0;
+        } else if (i % col === 0) {
+            tempTop += Math.floor($('#text-panel').width() / col * 3 / 4);
+            tempRight = 0;
+        } else {
+            tempRight += Math.floor($('#text-panel').width() / col);
+        }
+
+        // if (subscribeType === SUBSCRIBETYPES.FORWARD) {
+        $(this).css("position", "absolute");
+        // }
+
+        $(this).css({
+            width: Math.floor($('#text-panel').width() / col),
+            height: Math.floor($('#text-panel').width() / col * 3 / 4),
+            right: tempRight,
+            top: tempTop,
+            left: "auto"
+        });
     });
 }
 
@@ -811,18 +1100,17 @@ function exitFullScreen(ctrlElement) {
     if (ctrlElement.parent().hasClass('full-screen')) {
         fullScreen(false, ctrlElement.parent());
         ctrlElement.append('<a href="#" class="ctrl-btn fullscreen">');
-        if (ctrlElement.parent().hasClass('small')
-                || mode !== MODES.GALAXY) {
+        if (ctrlElement.parent().hasClass('small') || mode !== MODES.GALAXY) {
             ctrlElement.children('shrink')
-                    .removeClass('shrink').addClass('enlarge');
+                .removeClass('shrink').addClass('enlarge');
         }
         return;
     }
-    switch(mode) {
+    switch (mode) {
         case MODES.GALAXY:
             ctrlElement.children('.shrink')
-                    .addClass('enlarge').removeClass('shrink').parent()
-                    .parent().removeClass('large').addClass('small');
+                .addClass('enlarge').removeClass('shrink').parent()
+                .parent().removeClass('large').addClass('small');
             break;
 
         case MODES.MONITOR:
@@ -846,22 +1134,25 @@ $(document).ready(function() {
     if (window.location.protocol === "https:") {
         isSecuredConnection = true;
         serverAddress = securedServerAddress;
+        $('#screen-btn').removeClass('disabled');
     } else {
         isSecuredConnection = false;
         serverAddress = unsecuredServerAddress;
+        $('#screen-btn').addClass('disabled');
     }
 
     $(document).on('click', '.shrink', function() {
         exitFullScreen($(this).parent());
         $(this).parent().parent().children('.player').trigger('resizeVideo');
+        setTimeout(resizeStream, 500);
     });
 
     $(document).on('click', '.enlarge', function() {
-        switch(mode) {
+        switch (mode) {
             case MODES.GALAXY:
                 $(this).addClass('shrink').removeClass('enlarge').parent()
-                        .parent().removeClass('small').addClass('large');
-            break;
+                    .parent().removeClass('small').addClass('large');
+                break;
 
             case MODES.MONITOR:
             case MODES.LECTURE:
@@ -869,6 +1160,7 @@ $(document).ready(function() {
                 break;
         }
         $(this).parent().parent().children('.player').trigger('resizeVideo');
+        setTimeout(resizeStream, 500);
     });
 
     $(document).on('click', '.mute', function() {
@@ -923,6 +1215,10 @@ $(document).ready(function() {
         }
     });
 
+    $('.dialog--close').click(function() {
+        $(this).parent().parent().hide();
+    });
+
     $.get('config.json', function(data) {
         if (data['rooms'] === undefined) {
             alert('No room reserved!');
@@ -936,15 +1232,11 @@ $(document).ready(function() {
                     serviceKey = 'forward';
                 }
                 $('#titleText,#login-panel>h3').text(data['rooms'][i]['title']);
-                if (data['rooms'][i]['date'] && data['rooms'][i]['start-time']
-                        && data['rooms'][i]['end-time']) {
+                if (data['rooms'][i]['date'] && data['rooms'][i]['start-time'] && data['rooms'][i]['end-time']) {
                     $('#titleTime,.time').text(data['rooms'][i]['date'] +
-                           ' from ' + data['rooms'][i]['start-time'] + ' to '
-                            + data['rooms'][i]['end-time']);
-                    var s = new Date(data['rooms'][i]['date'] + ' '
-                            + data['rooms'][i]['start-time']);
-                    var e = new Date(data['rooms'][i]['date'] + ' '
-                            + data['rooms'][i]['end-time']);
+                        ' from ' + data['rooms'][i]['start-time'] + ' to ' + data['rooms'][i]['end-time']);
+                    var s = new Date(data['rooms'][i]['date'] + ' ' + data['rooms'][i]['start-time']);
+                    var e = new Date(data['rooms'][i]['date'] + ' ' + data['rooms'][i]['end-time']);
                     var now = new Date();
                     totalTime = e - s <= 0 ? 0 : (e - s) / 1000;
                     if (now - s <= 0) {
@@ -976,8 +1268,7 @@ $(document).ready(function() {
 });
 
 function checkMobile() {
-    if ((/iphone|ipod|android|ie|blackberry|fennec/).test
-            (navigator.userAgent.toLowerCase())) {
+    if ((/iphone|ipod|android|ie|blackberry|fennec/).test(navigator.userAgent.toLowerCase())) {
         isMobile = true;
 
         toggleIm(true);
@@ -985,4 +1276,3 @@ function checkMobile() {
         $('#galaxy-btn, .button-split, #screen-btn').hide();
     }
 }
-
