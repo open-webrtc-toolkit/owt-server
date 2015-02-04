@@ -77,6 +77,7 @@ void WebRtcConnection::close(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
   WebRtcConnection* obj = ObjectWrap::Unwrap<WebRtcConnection>(args.Holder());
+  obj->me = NULL;
 
   if(!uv_is_closing((uv_handle_t*)&obj->async_)) {
     uv_close((uv_handle_t*)&obj->async_, NULL);
@@ -189,12 +190,13 @@ void WebRtcConnection::getStats(const FunctionCallbackInfo<Value>& args){
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
   WebRtcConnection* obj = ObjectWrap::Unwrap<WebRtcConnection>(args.Holder());
+  if (obj->me == NULL){ //Requesting stats when WebrtcConnection not available
+    return;
+  }
   if (args.Length()==0){
-    printf("NO ARGS! , calling getJSONStats************************************\n");
     std::string lastStats = obj->me->getJSONStats();
     args.GetReturnValue().Set(String::NewFromUtf8(isolate, lastStats.c_str()));
   }else{
-    printf("ARGS! , SETTING CALLBACK**********************************************\n");
     obj->me->setWebRtcConnectionStatsListener(obj);
     obj->hasCallback_ = true;
     obj->statsCallback_.Reset(isolate, Local<Function>::Cast(args[0]));
@@ -216,6 +218,7 @@ void WebRtcConnection::notifyEvent(erizo::WebRTCEvent event, const std::string& 
 
 void WebRtcConnection::notifyStats(const std::string& message) {
   boost::mutex::scoped_lock lock(statsMutex);
+  // TODO: Add message queue
   this->statsMsg=message;
   asyncStats_.data = this;
   uv_async_send(&asyncStats_);
