@@ -291,15 +291,30 @@ function safeCall () {
 
 var initMixer = function (room, roomConfig) {
     if (GLOBAL.config.erizoController.mixer && room.mixer === undefined && room.initMixerTimer === undefined) {
+        var id = room.id;
+        room.controller.initMixer(id, roomConfig, function (result) {
+            if (result === 'success') {
+                var st = new ST.Stream({id: id, socket: '', audio: true, video: {category: 'mix'}, data: true, from: ''});
+                room.streams[id] = st;
+                room.mixer = id;
+                sendMsgToRoom(room, 'onAddStream', st.getPublicStream());
+            }
+        });
         // In case we need to do an RPC call to initialize the mixer when the first
-        // client is connected, we should wait for a while because the room may still
-        // be dirty at this moment (due to the fact that there's currently no inter
-        // process synchronization for room deletion). This could happen when the
-        // last user in the room refreshes the web page.
+        // client is connected, we may need to wait for a while because the room may
+        // still be dirty at this moment (due to the fact that there's currently no
+        // inter process synchronization for room deletion). This could happen when
+        // the last user in the room refreshes the web page.
         // TODO: Revisit here for a better solution.
         var tryOut = 10;
         room.initMixerTimer = setInterval(function() {
-            var id = room.id;
+            if (room.mixer !== undefined) {
+                log.info('Mixer already existed in Room ', room.id);
+                clearInterval(room.initMixerTimer);
+                room.initMixerTimer = undefined;
+                return;
+            }
+
             room.controller.initMixer(id, roomConfig, function (result) {
                 if (result === 'success') {
                     var st = new ST.Stream({id: id, socket: '', audio: true, video: {category: 'mix'}, data: true, from: ''});
