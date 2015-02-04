@@ -144,43 +144,22 @@ installRepo(){
 install_mediadeps_nogpl(){
   sudo -E yum install yasm
   install_libvpx
-  if [ -d $LIB_DIR ]; then
-    cd $LIB_DIR
-    wget https://www.libav.org/releases/libav-9.9.tar.gz
-    tar -zxvf libav-9.9.tar.gz
-    cd libav-9.9
-    CFLAGS=-D__STDC_CONSTANT_MACROS ./configure --prefix=$PREFIX_DIR --enable-shared --enable-libvpx
-    make -s V=0 && make install
-    cd $CURRENT_DIR
-  else
-    mkdir -p $LIB_DIR
-    install_mediadeps_nogpl
-  fi
+  install_libav
 }
 
 install_mediadeps(){
   sudo -E yum install yasm
   install_libvpx
-  if [ -d $LIB_DIR ]; then
-    # x264
-    cd $LIB_DIR
-    git clone git://git.videolan.org/x264.git
-    cd x264
-    ./configure --enable-static --enable-shared
-    make;sudo make install
-    sudo ldconfig
-    #libav
-    cd $LIB_DIR
-    wget https://www.libav.org/releases/libav-9.9.tar.gz
-    tar -zxvf libav-9.9.tar.gz
-    cd libav-9.9
-    CFLAGS=-D__STDC_CONSTANT_MACROS ./configure --prefix=$PREFIX_DIR --enable-shared --enable-gpl --enable-libvpx --enable-libx264
-    make -s V=0;make install
-    cd $CURRENT_DIR
-  else
-    mkdir -p $LIB_DIR
-    install_mediadeps
-  fi
+  # x264
+  mkdir -p $LIB_DIR
+  cd $LIB_DIR
+  git clone git://git.videolan.org/x264.git
+  cd x264
+  ./configure --enable-static --enable-shared
+  make;sudo make install
+  sudo ldconfig
+
+  install_libav
 }
 
 install_glibc(){
@@ -216,12 +195,12 @@ cleanup(){
   rm *rpm*
   if [ -d $LIB_DIR ]; then
     cd $LIB_DIR
-    rm -r openssl*
+    rm -r x264*
     rm -r boost*
     rm -r glib*
     rm -r pcre*
-    rm -r lib*
-    rm *.tar*
+    rm -r libffi*
     cd $CURRENT_DIR
   fi
+  cleanup_common
 }
