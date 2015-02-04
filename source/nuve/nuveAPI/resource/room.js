@@ -8,12 +8,12 @@ function defaultMediaMixing () {
         video: {
             avCoordinated: 0,
             maxInput: 16,
-            resolution: 0,
+            resolution: 'vga',
             bitrate: 0,
-            bkColor: 0,
+            bkColor: 'black',
             layout: {
-                base: 0,
-                custom: null
+                base: 'fluid',
+                custom: []
             }
         },
         audio: null
@@ -27,105 +27,181 @@ function Room (spec) {
     this.publishLimit = spec.publishLimit;
     this.userLimit = spec.userLimit;
     this.mediaMixing = spec.mediaMixing;
+}
 
-    if (typeof this.mode === 'string') {
-        this.mode = parseInt(this.mode, 10);
-        if (isNaN(this.mode)) this.mode = 0;
-    } else if (typeof this.mode !== 'number') {
-        this.mode = 0;
+Room.prototype.validate = function() {
+    'use strict';
+
+    if (this.mode === undefined || this.mode === null) {
+        this.mode = 'hybrid';
+    } else if (typeof this.mode === 'string') {
+        this.mode = this.mode.toLowerCase();
+        if (meta.mode.indexOf(this.mode) === -1) {
+            return null;
+        }
+    } else {
+        return null;
     }
 
-    if (typeof this.publishLimit === 'string'){
-        this.publishLimit = parseInt(this.publishLimit, 10);
-        if (isNaN(this.publishLimit)) this.publishLimit = -1;
-    } else if (typeof this.publishLimit !== 'number') {
+    if (this.publishLimit === undefined || this.publishLimit === null) {
         this.publishLimit = -1;
+    } else if (typeof this.publishLimit === 'string') {
+        this.publishLimit = parseInt(this.publishLimit, 10);
+        if (isNaN(this.publishLimit) || this.publishLimit < -1) {
+            return null;
+        }
+    } else if (typeof this.publishLimit !== 'number' || this.publishLimit < -1) {
+        return null;
     }
 
-    if (typeof this.userLimit === 'string'){
-        this.userLimit = parseInt(this.userLimit, 10);
-        if (isNaN(this.userLimit)) this.userLimit = -1;
-    } else if (typeof this.userLimit !== 'number') {
+    if (this.userLimit === undefined || this.userLimit === null) {
         this.userLimit = -1;
+    } else if (typeof this.userLimit === 'string') {
+        this.userLimit = parseInt(this.userLimit, 10);
+        if (isNaN(this.userLimit) || this.userLimit < -1) {
+            return null;
+        }
+    } else if (typeof this.userLimit !== 'number' || this.userLimit < -1) {
+        return null;
     }
 
     if (typeof this.mediaMixing === 'string') {
         try {
             this.mediaMixing = JSON.parse(this.mediaMixing);
         } catch (e) {
-            this.mediaMixing = null;
+            return null;
         }
     }
 
+    if (this.mediaMixing === undefined || this.mediaMixing === null) {
+        this.mediaMixing = defaultMediaMixing();
+        return this;
+    }
     if (typeof this.mediaMixing !== 'object') {
-        this.mediaMixing = null;
+        return null;
     }
 
-    if (typeof this.mediaMixing === 'object' && this.mediaMixing !== null) {
-        if (this.mediaMixing.video) {
-            if (this.mediaMixing.video.avCoordinated === '1' ||
-                this.mediaMixing.video.avCoordinated === 1 ||
-                this.mediaMixing.video.avCoordinated === true) {
-                this.mediaMixing.video.avCoordinated = 1;
+    if (this.mediaMixing.video === undefined || this.mediaMixing.video === null) {
+        this.mediaMixing.video = defaultMediaMixing().video;
+    } else if (typeof this.mediaMixing.video === 'object') {
+        if (this.mediaMixing.video.avCoordinated === '1' ||
+            this.mediaMixing.video.avCoordinated === 1 ||
+            this.mediaMixing.video.avCoordinated === true) {
+            this.mediaMixing.video.avCoordinated = 1;
+        } else {
+            this.mediaMixing.video.avCoordinated = 0;
+        }
+
+        if (this.mediaMixing.video.maxInput === undefined ||
+            this.mediaMixing.video.maxInput === null) {
+            this.mediaMixing.video.maxInput = 16;
+        } else if (typeof this.mediaMixing.video.maxInput === 'string') {
+            this.mediaMixing.video.maxInput = parseInt(this.mediaMixing.video.maxInput, 10);
+            if (isNaN(this.mediaMixing.video.maxInput) ||
+                this.mediaMixing.video.maxInput <= 0) {
+                return null;
+            }
+        } else if (typeof this.mediaMixing.video.maxInput !== 'number' ||
+            this.mediaMixing.video.maxInput <= 0) {
+            return null;
+        }
+
+        if (this.mediaMixing.video.resolution === undefined ||
+            this.mediaMixing.video.resolution === null) {
+            this.mediaMixing.video.resolution = 'vga';
+        } else if (typeof this.mediaMixing.video.resolution !== 'string') {
+            return null;
+        } else {
+            var resolution = this.mediaMixing.video.resolution.toLowerCase();
+            if (meta.mediaMixing.video.resolution.indexOf(resolution) === -1) {
+                return null;
+            }
+            this.mediaMixing.video.resolution = resolution;
+        }
+
+        if (this.mediaMixing.video.bitrate === undefined ||
+            this.mediaMixing.video.bitrate === null) {
+            this.mediaMixing.video.bitrate = 16;
+        } else if (typeof this.mediaMixing.video.bitrate === 'string') {
+            this.mediaMixing.video.bitrate = parseInt(this.mediaMixing.video.bitrate, 10);
+            if (isNaN(this.mediaMixing.video.bitrate) || this.mediaMixing.video.bitrate < 0) {
+                return null;
+            }
+        } else if (typeof this.mediaMixing.video.bitrate !== 'number' ||
+            this.mediaMixing.video.bitrate < 0) {
+            return null;
+        }
+
+        if (this.mediaMixing.video.bkColor === undefined ||
+            this.mediaMixing.video.bkColor === null) {
+            this.mediaMixing.video.bkColor = 'black';
+        } else if (typeof this.mediaMixing.video.bkColor !== 'string') {
+            return null;
+        } else {
+            var bkColor = this.mediaMixing.video.bkColor.toLowerCase();
+            if (meta.mediaMixing.video.bkColor.indexOf(bkColor) === -1) {
+                return null;
+            }
+            this.mediaMixing.video.bkColor = bkColor;
+        }
+
+        if (this.mediaMixing.video.layout === undefined ||
+            this.mediaMixing.video.layout === null) {
+            this.mediaMixing.video.layout = defaultMediaMixing().video.layout;
+        } else if (typeof this.mediaMixing.video.layout === 'object') {
+            if (this.mediaMixing.video.layout.base === undefined ||
+                this.mediaMixing.video.layout.base === null) {
+                this.mediaMixing.video.layout.base = 'fluid';
+            } else if (typeof this.mediaMixing.video.layout.base !== 'string') {
+                return null;
             } else {
-                this.mediaMixing.video.avCoordinated = 0;
-            }
-
-            if (typeof this.mediaMixing.video.maxInput === 'string') {
-                this.mediaMixing.video.maxInput = parseInt(this.mediaMixing.video.maxInput, 10);
-            } else if (typeof this.mediaMixing.video.maxInput !== 'number') {
-                this.mediaMixing.video.maxInput = 16;
-            }
-
-            if (typeof this.mediaMixing.video.resolution === 'string') {
-                this.mediaMixing.video.resolution = parseInt(this.mediaMixing.video.resolution, 10);
-            } else if (typeof this.mediaMixing.video.resolution !== 'number') {
-                this.mediaMixing.video.resolution = 0;
-            }
-
-            if (typeof this.mediaMixing.video.bitrate === 'string') {
-                this.mediaMixing.video.bitrate = parseInt(this.mediaMixing.video.bitrate, 10);
-            } else if (typeof this.mediaMixing.video.bitrate !== 'number') {
-                this.mediaMixing.video.bitrate = 0;
-            }
-
-            if (typeof this.mediaMixing.video.bkColor === 'string') {
-                this.mediaMixing.video.bkColor = parseInt(this.mediaMixing.video.bkColor, 10);
-            } else if (typeof this.mediaMixing.video.bkColor !== 'number') {
-                this.mediaMixing.video.bkColor = 0;
-            }
-
-            if (typeof this.mediaMixing.video.layout === 'object' && this.mediaMixing.video.layout !== null) {
-                if (typeof this.mediaMixing.video.layout.base === 'string') {
-                    this.mediaMixing.video.layout.base = parseInt(this.mediaMixing.video.layout.base, 10);
-                    if (isNaN(this.mediaMixing.video.layout.base)) {
-                        this.mediaMixing.video.layout.base = 0;
-                    }
-                } else if (typeof this.mediaMixing.video.layout.base !== 'number') {
-                    this.mediaMixing.video.layout.base = 0;
+                var layoutBase = this.mediaMixing.video.layout.base.toLowerCase();
+                if (meta.mediaMixing.video.layout.base.indexOf(layoutBase) === -1) {
+                    return null;
                 }
-            } else {
-                this.mediaMixing.video.layout = defaultMediaMixing().video.layout;
+                this.mediaMixing.video.layout.base = layoutBase;
+            }
+            if (this.mediaMixing.video.layout.custom === undefined ||
+                this.mediaMixing.video.layout.custom === null ||
+                this.mediaMixing.video.layout.custom === '') {
+                this.mediaMixing.video.layout.custom = [];
+            } else if (typeof this.mediaMixing.video.layout.custom === 'string') {
+                try {
+                    this.mediaMixing.video.layout.custom = JSON.parse(this.mediaMixing.video.layout.custom);
+                } catch (e) {
+                    console.log('verify failed at', 1);
+                    return null;
+                }
+            }
+            if (!isTemplatesValid(this.mediaMixing.video.layout.custom)) {
+                console.log('verify failed at', 2);
+                return null;
+            }
+            if (this.mediaMixing.video.layout.base === 'void' &&
+                this.mediaMixing.video.layout.custom.length === 0) {
+                console.log('verify failed at', 3);
+                return null;
             }
         } else {
-            this.mediaMixing.video = defaultMediaMixing().video;
+            return null;
         }
     } else {
-        this.mediaMixing = defaultMediaMixing();
+        return null;
     }
 
-}
+    return this;
+};
 
 Room.create = function (spec) {
     'use strict';
-    return new Room(spec);
+    return (new Room(spec)).validate();
 };
 
 Room.createDefault = function (name) {
     'use strict';
-    return new Room({
+    return Room.create({
         name: name,
-        mode: 0,
+        mode: 'hybrid',
         publishLimit: -1,
         userLimit: -1,
         mediaMixing: defaultMediaMixing()
@@ -139,7 +215,7 @@ Room.prototype.toString = function () {
 
 Room.genConfig = function (room) {
     'use strict';
-    var layoutType = meta.mediaMixing.video.layout.base[room.mediaMixing.video.layout.base];
+    var layoutType = room.mediaMixing.video.layout.base;
     var maxInput = room.mediaMixing.video.maxInput || 16;
     var layoutTemplates;
 
@@ -147,17 +223,13 @@ Room.genConfig = function (room) {
         layoutTemplates = generateFluidTemplates(maxInput);
     } else if (layoutType === 'lecture') {
         layoutTemplates = generateLectureTemplates(maxInput);
+    } else if (layoutType === 'void') {
+        layoutTemplates = [];
     } else {
         layoutTemplates = generateFluidTemplates(maxInput);
     }
 
     var custom = room.mediaMixing.video.layout.custom;
-    if (typeof custom === 'string') {
-        try {
-            custom = JSON.parse(custom);
-        } catch (e) {}
-    }
-
     if (isTemplatesValid(custom)) {
         log.info('apply custom layout templates');
         custom.map(function (tpl) {
@@ -179,20 +251,18 @@ Room.genConfig = function (room) {
                 layoutTemplates.splice(pos, 0, tpl);
             }
         });
-    } else if (custom) {
-        log.info('invalid custom layout templates');
     }
 
     return {
-        mode: meta.mode[room.mode],
+        mode: room.mode,
         publishLimit: room.publishLimit,
         userLimit: room.userLimit,
         mediaMixing: {
             video: {
                 avCoordinated: room.mediaMixing.video.avCoordinated === 1 ? true : false,
                 maxInput: maxInput,
-                resolution: meta.mediaMixing.video.resolution[room.mediaMixing.video.resolution] || 'vga',
-                bkColor: meta.mediaMixing.video.bkColor[room.mediaMixing.video.bkColor] || 'black',
+                resolution: room.mediaMixing.video.resolution || 'vga',
+                bkColor: room.mediaMixing.video.bkColor || 'black',
                 layout: layoutTemplates
             },
             audio: null
@@ -210,27 +280,19 @@ module.exports = Room;
 /*
 {
   "name": "roomName", // type string
-  "mode": 0, // type number
+  "mode": "hybrid", // type string
   "publishLimit": 16, // type number
   "userLimit": 100, // type number
   "mediaMixing": { // type object
     "video": {
-      "resolution": 0, // type number
+      "resolution": "vga", // type string
       "bitrate": 0, // type numer
-      "bkColor": 0, // type number
+      "bkColor": "black", // type string
       "maxInput": 16, // type number
       "avCoordinated": 0, // type number: 0/1
       "layout": { // type object
-        "base": 0, // type number
+        "base": "fluid", // type string
         "custom": [ // type object::Array or null
-          {
-            "maxinput": 5,
-            "region": []
-          },
-          {
-            "maxinput": 10,
-            "region": []
-          }
         ]
       }
     },

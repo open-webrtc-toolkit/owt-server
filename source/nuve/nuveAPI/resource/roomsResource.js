@@ -61,6 +61,9 @@ exports.createRoom = function (req, res) {
             userLimit: req.body.options.userLimit,
             mediaMixing: req.body.options.mediaMixing,
         });
+        if (room === null) {
+            return res.status(400).send('Bad room configuration');
+        }
         roomRegistry.addRoom(room, function (result) {
             currentService.rooms.push(result);
             serviceRegistry.updateService(currentService);

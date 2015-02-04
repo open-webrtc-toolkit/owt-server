@@ -81,21 +81,21 @@ exports.updateRoom = function (req, res) {
             var updates = req.body;
             if (typeof updates === 'object' && updates !== null) {
                 var newRoom = Room.create(updates);
-                var _id = room._id;
-                room = Room.create(room);
-                room._id = _id;
+                if (newRoom === null) {
+                    return res.status(400).send('Bad room configuration');
+                }
                 Object.keys(updates).map(function (k) {
-                    if (room.hasOwnProperty(k)) {
+                    if (newRoom.hasOwnProperty(k)) {
                         if (k !== 'mediaMixing')
                             room[k] = newRoom[k];
                         else if (typeof updates.mediaMixing.video === 'object') {
                             Object.keys(updates.mediaMixing.video).map(function (k) {
-                                if (room.mediaMixing.video.hasOwnProperty(k)) {
+                                if (newRoom.mediaMixing.video.hasOwnProperty(k)) {
                                     if (k !== 'layout')
                                         room.mediaMixing.video[k] = newRoom.mediaMixing.video[k];
                                     else if (typeof updates.mediaMixing.video.layout === 'object') {
                                         Object.keys(updates.mediaMixing.video.layout).map(function (k) {
-                                            if (room.mediaMixing.video.layout.hasOwnProperty(k))
+                                            if (newRoom.mediaMixing.video.layout.hasOwnProperty(k))
                                                 room.mediaMixing.video.layout[k] = newRoom.mediaMixing.video.layout[k];
                                         });
                                     }
@@ -119,7 +119,7 @@ exports.updateRoom = function (req, res) {
                     }
                 });
             } else {
-                res.send(room);
+                res.status(400).send('Bad room configuration');
             }
         }
     });

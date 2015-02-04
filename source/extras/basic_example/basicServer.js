@@ -61,7 +61,7 @@ N.API.getRooms(function(roomlist) {
             myRoom = rooms[i]._id;
             console.log('MyRoom Id:', myRoom);
         }
-        if (p2pRoom === undefined && rooms[i].mode === 1) {
+        if (p2pRoom === undefined && rooms[i].mode === 'p2p') {
             p2pRoom = rooms[i]._id;
             console.log('P2PRoom Id:', p2pRoom);
         }
@@ -90,7 +90,7 @@ N.API.getRooms(function(roomlist) {
         });
     }
     if (!p2pRoom) {
-        room = {name:'P2P Room', mode:1};
+        room = {name:'P2P Room', mode:'p2p'};
         tryCreate(room, function (Id) {
             p2pRoom = Id;
             console.log('P2PRoom Id:', p2pRoom);

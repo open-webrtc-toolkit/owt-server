@@ -133,8 +133,8 @@
     var roomModeHandle = {
       mode: 'inline',
       type: 'select',
-      source: metadata.mode.map(function (mode, id) {
-        return {value: id, text: mode};
+      source: metadata.mode.map(function (mode) {
+        return {value: mode, text: mode};
       })
     };
     var numberHandle = {
@@ -167,14 +167,14 @@
       var p = $(this);
       $('#myModal2 .modal-title').text('Media Setting for Room '+roomId);
       var videoSetting = (room.mediaMixing || {}).video || {
-        resolution: 0, // type number
-        bitrate: 0, // type numer
-        bkColor: 0, // type number
+        resolution: 'vga',
+        bitrate: 0,
+        bkColor: 'black',
         avCoordinated: false,
         maxInput: 16,
-        layout: { // type object
-          base: 0, // type number
-          custom: null
+        layout: {
+          base: 'fluid',
+          custom: []
         }
       };
 
@@ -219,8 +219,8 @@
       $('#myModal2 tbody td#resolution').editable({
         mode: 'inline',
         type: 'select',
-        source: metadata.mediaMixing.video.resolution.map(function (v, id) {
-          return {value: id, text: v};
+        source: metadata.mediaMixing.video.resolution.map(function (v) {
+          return {value: v, text: v};
         })
       });
       $('#myModal2 tbody td#bitrate').editable(numberHandle);
@@ -228,8 +228,8 @@
       $('#myModal2 tbody td#bkColor').editable({
         mode: 'inline',
         type: 'select',
-        source: metadata.mediaMixing.video.bkColor.map(function (v, id) {
-          return {value: id, text: v};
+        source: metadata.mediaMixing.video.bkColor.map(function (v) {
+          return {value: v, text: v};
         })
       });
       $('#myModal2 tbody td#avCoordinated').editable({
@@ -240,20 +240,24 @@
       $('#myModal2 tbody td.value-num-edit:last').editable({
         mode: 'inline',
         type: 'select',
-        source: metadata.mediaMixing.video.layout.base.map(function (v, id) {
-          return {value: id, text: v};
+        source: metadata.mediaMixing.video.layout.base.map(function (v) {
+          return {value: v, text: v};
         })
       });
       $('#myModal2 tbody td.value-obj-edit').editable({
         title: 'Input a stringified JSON object',
         validate: function (value) {
-          try {
-            JSON.parse(value);
-          } catch (e) {
-            return 'invalid input';
+          value = $.trim(value);
+          if (value !== '') {
+            try {
+              JSON.parse(value);
+            } catch (e) {
+              return 'invalid input';
+            }
           }
+          return {newValue: value};
         },
-        value: JSON.stringify(videoSetting.layout.custom),
+        value: JSON.stringify(videoSetting.layout.custom, null, 2),
       });
       // <audio not supported now>
       $('#myModal2 .modal-footer button:first').click(function () {
@@ -289,8 +293,7 @@
         return notify('error', 'Add Room', 'Empty room name');
       }
       var roomName = p.find('td#roomName').text();
-      var roomMode = parseInt(p.find('td#roomMode').editable('getValue').roomMode, 10);
-      if (isNaN(roomMode)) roomMode = 0;
+      var roomMode = p.find('td#roomMode').editable('getValue').roomMode;
       var publishLimit = parseInt(p.find('td#publishLimit').text(), 10);
       var userLimit = parseInt(p.find('td#userLimit').text(), 10);
       var room = {
