@@ -117,8 +117,8 @@ DtlsSocket::handlePacketMaybe(const unsigned char* bytes, unsigned int len)
    if(pType!=DtlsFactory::dtls)
       return false;
 
-   BIO_reset(mInBio);
-   BIO_reset(mOutBio);
+   (void)BIO_reset(mInBio);
+   (void)BIO_reset(mOutBio);
 
    int r = BIO_write(mInBio,bytes,len);
    assert(r==(int)len);  // Can't happen
@@ -135,8 +135,8 @@ DtlsSocket::handlePacketMaybe(const unsigned char* bytes, unsigned int len)
 void
 DtlsSocket::forceRetransmit()
 {
-   BIO_reset(mInBio);
-   BIO_reset(mOutBio);
+   (void)BIO_reset(mInBio);
+   (void)BIO_reset(mOutBio);
    BIO_ctrl(mInBio,BIO_CTRL_DGRAM_SET_RECV_TIMEOUT,0,0);
 
    doHandshakeIteration();
