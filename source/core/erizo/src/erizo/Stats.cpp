@@ -25,6 +25,7 @@ namespace erizo {
     char* movingBuf = buf;
     int rtcpLength = 0;
     int totalLength = 0;
+    
     do{
       movingBuf+=rtcpLength;
       RTCPHeader *chead= reinterpret_cast<RTCPHeader*>(movingBuf);
@@ -85,7 +86,7 @@ namespace erizo {
             break;
           default:
             ELOG_WARN("Unsupported RTCP_PS FB TYPE %u",chead->getRCOrFMT());
-
+            break;
         }
         break;
       default:
