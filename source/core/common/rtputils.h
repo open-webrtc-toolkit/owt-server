@@ -43,10 +43,11 @@ struct redheader {
     uint32_t follow :1;
     uint32_t tsLength :24;
     uint32_t getTS() {
-        return (ntohl(tsLength) & 0xfffc00) >> 10;
+        // remove the 8 bits added by nothl + the 10 from length 
+        return (ntohl(tsLength) & 0xfffc0000) >> 18;
     }
     uint32_t getLength() {
-        return (ntohl(tsLength) & 0x3ff);
+        return (ntohl(tsLength) & 0x3ff00);
     }
 };
 
