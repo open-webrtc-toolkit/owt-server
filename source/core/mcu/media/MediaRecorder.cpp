@@ -20,6 +20,8 @@
 
 #include "MediaRecorder.h"
 
+#include <Compiler.h>
+
 namespace mcu {
 
 DEFINE_LOGGER(MediaRecorder, "mcu.media.MediaRecorder");
