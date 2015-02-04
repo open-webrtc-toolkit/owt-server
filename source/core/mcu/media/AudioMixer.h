@@ -132,6 +132,7 @@ private:
     std::map<std::string, VoiceChannel> m_outputChannels;
     boost::shared_mutex m_outputMutex;
 
+    int32_t m_recordChannelId;
     boost::scoped_ptr<AudioEncodedFrameCallbackAdapter> m_encodedFrameCallback;
     boost::scoped_ptr<JobTimer> m_jobTimer;
 };
