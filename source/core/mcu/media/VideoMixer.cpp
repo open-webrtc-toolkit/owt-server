@@ -144,6 +144,12 @@ void VideoMixer::startRecording(MediaFrameQueue& videoQueue, long long recordSta
     std::map<int, boost::shared_ptr<VideoFrameSender>>::iterator it = m_outputs.find(VP8_90000_PT);
     if (it != m_outputs.end())
         it->second->RegisterPostEncodeCallback(videoQueue, recordStartTime);
+    else {
+        // Create a VP8 output as the default in case there's no subscriber at all (publisher only!)
+        int32_t id = addOutput(VP8_90000_PT);
+        if (id != -1)
+            m_outputs[VP8_90000_PT]->RegisterPostEncodeCallback(videoQueue, recordStartTime);
+    }
 }
 
 void VideoMixer::stopRecording()
