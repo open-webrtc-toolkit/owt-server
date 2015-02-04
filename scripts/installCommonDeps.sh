@@ -48,6 +48,26 @@ install_libvpx(){
   fi
 }
 
+install_libav(){
+  if [ -d $LIB_DIR ]; then
+    cd $LIB_DIR
+    curl -O https://www.libav.org/releases/libav-9.13.tar.gz
+    tar -zxvf libav-9.13.tar.gz
+    cd libav-9.13
+    if [ "$ENABLE_GPL" = "true" ]; then
+      PKG_CONFIG_PATH=${PREFIX_DIR}/lib/pkgconfig ./configure --prefix=$PREFIX_DIR --enable-shared --enable-libvpx --enable-libopus --enable-gpl --enable-libx264
+    else
+      PKG_CONFIG_PATH=${PREFIX_DIR}/lib/pkgconfig ./configure --prefix=$PREFIX_DIR --enable-shared --enable-libvpx --enable-libopus
+    fi
+    make -s V=0
+    make install
+    cd $CURRENT_DIR
+  else
+    mkdir -p $LIB_DIR
+    install_libav
+  fi
+}
+
 install_libnice(){
   if [ -d $LIB_DIR ]; then
     cd $LIB_DIR
@@ -186,4 +206,16 @@ install_mediaprocessor() {
   local target="vcsa_video"
   BUILD_WITH_MSDK=true
   cd ${MEDIAPROCESSOR_DIR} && make distclean && make ${target}
+}
+
+cleanup_common(){  
+  if [ -d $LIB_DIR ]; then
+    cd $LIB_DIR
+    rm -r openssl*
+    rm -r libnice*
+    rm -r libav*
+    rm -r libvpx*
+    rm -r opus*
+    cd $CURRENT_DIR
+  fi
 }
