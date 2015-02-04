@@ -44,6 +44,7 @@ namespace erizo {
     switch(packetType){
       case RTCP_SDES_PT:
         ELOG_DEBUG("SDES");
+        break;
       case RTCP_Receiver_PT: {
         uint32_t rtcpLength= (chead->getLength()+1)*4;      
         char* movingBuf = reinterpret_cast<char*>(chead);
@@ -68,18 +69,22 @@ namespace erizo {
       }
       case RTCP_RTP_Feedback_PT:
         ELOG_DEBUG("RTP FB: Usually NACKs: %u", chead->getRCOrFMT());
+        accountNACKMessage(ssrc);
         break;
       case RTCP_PS_Feedback_PT:
         ELOG_DEBUG("RTCP PS FB TYPE: %u", chead->getRCOrFMT() );
         switch(chead->getRCOrFMT()){
           case RTCP_PLI_FMT:
             ELOG_DEBUG("PLI Message");
+            accountPLIMessage(ssrc);
             break;
           case RTCP_SLI_FMT:
             ELOG_DEBUG("SLI Message");
+            accountSLIMessage(ssrc);
             break;
           case RTCP_FIR_FMT:
             ELOG_DEBUG("FIR Message");
+            accountFIRMessage(ssrc);
             break;
           case RTCP_AFB:
             ELOG_DEBUG("AFB Message, possibly REMB");
@@ -99,7 +104,7 @@ namespace erizo {
     boost::recursive_mutex::scoped_lock lock(mapMutex_);
     std::ostringstream theString;
     theString << "[";
-    for (fullStatsMap_t::iterator itssrc=theStats_.begin(); itssrc!=theStats_.end();){
+    for (fullStatsMap_t::iterator itssrc=statsPacket_.begin(); itssrc!=statsPacket_.end();){
       unsigned long int currentSSRC = itssrc->first;
       theString << "{\"ssrc\":\"" << currentSSRC << "\",\n";
       if (currentSSRC == videoSSRC_){
@@ -107,14 +112,14 @@ namespace erizo {
       }else if (currentSSRC == audioSSRC_){
         theString << "\"type\":\"" << "audio\",\n";
       }
-      for (singleSSRCstatsMap_t::iterator it=theStats_[currentSSRC].begin(); it!=theStats_[currentSSRC].end();){
+      for (singleSSRCstatsMap_t::iterator it=statsPacket_[currentSSRC].begin(); it!=statsPacket_[currentSSRC].end();){
         theString << "\"" << it->first << "\":\"" << it->second << "\"";
-        if (++it != theStats_[currentSSRC].end()){
+        if (++it != statsPacket_[currentSSRC].end()){
           theString << ",\n";
         }          
       }
       theString << "}";
-      if (++itssrc != theStats_.end()){
+      if (++itssrc != statsPacket_.end()){
         theString << ",";
       }
     }

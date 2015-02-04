@@ -31,7 +31,7 @@ exports.ErizoJSController = function () {
         // INTERVAL_TIME_SDP = 100,
         INTERVAL_TIME_FIR = 100,
         // INTERVAL_TIME_KILL = 30*60*1000, // Timeout to kill itself after a timeout since the publisher leaves room.
-        waitForFIR,
+        INTERVAL_STATS = 3000,
         initWebRtcConnection,
         getSdp,
         getRoap,
@@ -97,33 +97,27 @@ exports.ErizoJSController = function () {
     var CONN_INITIAL = 101, CONN_STARTED = 102, CONN_READY = 103, CONN_FINISHED = 104, CONN_CANDIDATE = 201, CONN_SDP = 202, CONN_FAILED = 500;
 
     /*
-     * Given a WebRtcConnection waits for the state READY for ask it to send a FIR packet to its publisher.
-     */
-    waitForFIR = function (wrtc, to) {
-
-        if (publishers[to] !== undefined) {
-            var intervarId = setInterval(function () {
-              if (publishers[to]!==undefined){
-                if (wrtc.getCurrentState() >= CONN_READY && publishers[to].muxer.getPublisherState() >= CONN_READY) {
-                    publishers[to].muxer.sendFIR();
-                    clearInterval(intervarId);
-                }
-              }
-
-            }, INTERVAL_TIME_FIR);
-        }
-    };
-
-    /*
      * Given a WebRtcConnection waits for the state CANDIDATES_GATHERED for set remote SDP.
      */
     initWebRtcConnection = function (wrtc, id_mixer, unmix, callback, id_pub, id_sub) {
-        if (GLOBAL.config.erizoController.report.session_events) {
+        if (GLOBAL.config.erizoController.report.rtcp_stats) {
+          var intervalId = setInterval(function () {
+            var newStats = wrtc.getStats();
+            if (newStats == null){
+              console.log("Stopping stats");
+              clearInterval(intervalId);
+            }
+            console.log("new STATS ", newStats);
+            var timeStamp = new Date();
+            amqper.broadcast('stats', {pub: id_pub, subs: id_sub, stats: JSON.parse(newStats), timestamp:timeStamp.getTime()});
+          }, INTERVAL_STATS);
+          /*
             wrtc.getStats(function (newStats){
                 log.info('Received RTCP stats:', newStats);
                 var timeStamp = new Date();
                 amqper.broadcast('stats', {pub: id_pub, subs: id_sub, stats: JSON.parse(newStats), timestamp:timeStamp.getTime()});
             });
+          */
         }
 
         var terminated = false;
@@ -499,8 +493,8 @@ exports.ErizoJSController = function () {
                 mixers[from].removePublisher(from);
                 delete mixers[from];
             }
-            publishers[from].muxer.close();
             publishers[from].wrtc.close();
+            publishers[from].muxer.close();
             log.info('Removing subscribers', from);
             delete subscribers[from];
             log.info('Removing publisher', from);
@@ -535,8 +529,8 @@ exports.ErizoJSController = function () {
 
         if (subscribers[to][from]) {
             log.info('Removing subscriber ', from, 'to muxer ', to);
-            publishers[to].muxer.removeSubscriber(from);
             subscribers[to][from].close();
+            publishers[to].muxer.removeSubscriber(from);
             delete subscribers[to][from];
         }
     };
