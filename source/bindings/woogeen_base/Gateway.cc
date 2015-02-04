@@ -70,6 +70,11 @@ void Gateway::Init(Handle<Object> target) {
   tpl->PrototypeTemplate()->Set(String::NewSymbol("unpublishStream"),
       FunctionTemplate::New(unpublishStream)->GetFunction());
 
+  tpl->PrototypeTemplate()->Set(String::NewSymbol("setRecorder"),
+      FunctionTemplate::New(setRecorder)->GetFunction());
+  tpl->PrototypeTemplate()->Set(String::NewSymbol("unsetRecorder"),
+      FunctionTemplate::New(unsetRecorder)->GetFunction());
+
   tpl->PrototypeTemplate()->Set(String::NewSymbol("setMixer"),
       FunctionTemplate::New(setMixer)->GetFunction());
 
@@ -305,6 +310,31 @@ Handle<Value> Gateway::unpublishStream(const Arguments& args) {
   bool isAudio = args[0]->BooleanValue();
   me->unpublishStream(isAudio);
   return scope.Close(Undefined());
+}
+
+Handle<Value> Gateway::setRecorder(const Arguments& args) {
+  HandleScope scope;
+
+  Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.This());
+  woogeen_base::Gateway* me = obj->me;
+
+  String::Utf8Value param0(args[0]->ToString());
+  std::string recordPath = std::string(*param0);
+
+  bool set = me->setRecorder(recordPath);
+
+  return scope.Close(Boolean::New(set));
+}
+
+Handle<Value> Gateway::unsetRecorder(const Arguments& args) {
+  HandleScope scope;
+
+  Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.This());
+  woogeen_base::Gateway* me = obj->me;
+
+  me->unsetRecorder();
+
+  return scope.Close(Null());
 }
 
 Handle<Value> Gateway::setMixer(const Arguments& args) {

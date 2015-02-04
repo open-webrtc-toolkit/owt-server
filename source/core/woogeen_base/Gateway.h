@@ -129,11 +129,19 @@ public:
      */
     DLL_PUBLIC virtual void setAdditionalSourceConsumer(MediaSourceConsumer*) = 0;
 
+    /**
+     * Sets the media recorder
+     * @param file path for media recording
+     * @return true if the media recorder is set successfully
+     */
+    DLL_PUBLIC virtual bool setRecorder(const std::string& recordPath) { return false; }
+    /**
+     * Unsets the media recorder
+     */
+    DLL_PUBLIC virtual void unsetRecorder() {}
+
     virtual int32_t addSource(uint32_t id, bool isAudio, erizo::FeedbackSink*, const std::string& participantId) { return -1; }
     virtual int32_t removeSource(uint32_t id, bool isAudio) { return -1; }
-
-    virtual void setRecorder(std::string recordPath/*, RecordFormat format*/) {}
-    virtual void unsetRecorder() {}
 };
 
 } /* namespace woogeen_base */

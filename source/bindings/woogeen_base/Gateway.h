@@ -116,6 +116,16 @@ class Gateway : public node::ObjectWrap {
   static v8::Handle<v8::Value> publishStream(const v8::Arguments& args);
   static v8::Handle<v8::Value> unpublishStream(const v8::Arguments& args);
 
+  /*
+   * Sets the media recorder
+   * Param: File path for media recording
+   */
+  static v8::Handle<v8::Value> setRecorder(const v8::Arguments& args);
+  /*
+   * Unsets the media recorder
+   */
+  static v8::Handle<v8::Value> unsetRecorder(const v8::Arguments& args);
+
   static v8::Handle<v8::Value> setMixer(const v8::Arguments& args);
 };
 
