@@ -34,6 +34,8 @@ namespace mcu {
 
 DEFINE_LOGGER(AudioMixer, "mcu.media.AudioMixer");
 
+static const char* RECORD_CHANNEL = "MediaRecordingVoiceChannel";
+
 AudioMixer::AudioMixer(erizo::RTPDataReceiver* receiver, AudioMixerVADCallback* callback, bool enableVAD)
     : m_dataReceiver(receiver)
     , m_vadEnabled(enableVAD)
@@ -48,6 +50,8 @@ AudioMixer::AudioMixer(erizo::RTPDataReceiver* receiver, AudioMixerVADCallback* 
     VoEExternalMedia* externalMedia = VoEExternalMedia::GetInterface(m_voiceEngine);
     externalMedia->SetExternalRecordingStatus(true);
     externalMedia->SetExternalPlayoutStatus(true);
+
+    m_recordChannelId = -1;
 
     // FIXME: hard coded timer interval.
     m_jobTimer.reset(new JobTimer(100, this));
@@ -362,18 +366,27 @@ int32_t AudioMixer::removeOutput(const std::string& participant)
 void AudioMixer::startRecording(MediaFrameQueue& audioQueue, long long recordStartTime)
 {
     VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);
-    m_encodedFrameCallback.reset(new AudioEncodedFrameCallbackAdapter(&audioQueue, recordStartTime));
-    // FIXME:  m_sharedChannel is gone. Chunbo to add a new output for recording
-    if (m_outputChannels.begin() != m_outputChannels.end())
-        voe->RegisterPostEncodeFrameCallback(m_outputChannels.begin()->second.id, m_encodedFrameCallback.get());
+
+    // Create a new voice output for recording
+    // FIXME: Currently ONLY PCMU is recorded
+    if (m_recordChannelId == -1)
+        m_recordChannelId = addOutput(RECORD_CHANNEL, PCMU_8000_PT);
+
+    if (m_recordChannelId != -1) {
+        m_encodedFrameCallback.reset(new AudioEncodedFrameCallbackAdapter(&audioQueue, recordStartTime));
+        voe->RegisterPostEncodeFrameCallback(m_recordChannelId, m_encodedFrameCallback.get());
+    }
 }
 
 void AudioMixer::stopRecording()
 {
-    VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);
-    // FIXME:  m_sharedChannel is gone. Chunbo to add a new output for recording
-    if (m_outputChannels.begin() != m_outputChannels.end())
-        voe->DeRegisterPostEncodeFrameCallback(m_outputChannels.begin()->second.id);
+    if (m_recordChannelId != -1) {
+        VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);
+        voe->DeRegisterPostEncodeFrameCallback(m_recordChannelId);
+
+        removeOutput(RECORD_CHANNEL);
+        m_recordChannelId = -1;
+    }
 }
 
 int32_t AudioMixer::getChannelId(uint32_t sourceId)
