@@ -37,20 +37,6 @@ Mixer::~Mixer()
     closeAll();
 }
 
-void Mixer::setRecorder(std::string recordPath/*, RecordFormat format*/)
-{
-    m_recorder.reset(new MediaRecorder(m_videoMixer.get(), m_audioMixer.get(), recordPath));
-    m_recorder->startRecording();
-}
-
-void Mixer::unsetRecorder()
-{
-    if (m_recorder) {
-        m_recorder->stopRecording();
-        m_recorder.reset();
-    }
-}
-
 int Mixer::deliverAudioData(char* buf, int len) 
 {
     return m_audioMixer ? m_audioMixer->deliverAudioData(buf, len) : 0;
@@ -138,6 +124,20 @@ int32_t Mixer::bindAV(uint32_t audioSource, uint32_t videoSource)
     }
 
     return m_videoMixer->bindAudio(videoSource, m_audioMixer->getChannelId(audioSource), m_audioMixer->avSyncInterface());
+}
+
+bool Mixer::setRecorder(std::string recordPath/*, RecordFormat format*/)
+{
+    m_recorder.reset(new MediaRecorder(m_videoMixer.get(), m_audioMixer.get(), recordPath));
+    return m_recorder->startRecording();
+}
+
+void Mixer::unsetRecorder()
+{
+    if (m_recorder) {
+        m_recorder->stopRecording();
+        m_recorder.reset();
+    }
 }
 
 void Mixer::addSubscriber(MediaSink* subscriber, const std::string& peerId)

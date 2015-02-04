@@ -41,7 +41,7 @@ MediaRecorder::~MediaRecorder()
         stopRecording();
 }
 
-void MediaRecorder::startRecording()
+bool MediaRecorder::startRecording()
 {
     if (m_recordStartTime == -1) {
         timeval time;
@@ -57,19 +57,22 @@ void MediaRecorder::startRecording()
     m_recordContext = avformat_alloc_context();
     if (m_recordContext == NULL) {
         ELOG_ERROR("Error allocating memory for recording file IO context.");
-    } else {
-        m_recordPath.copy(m_recordContext->filename, sizeof(m_recordContext->filename), 0);
-        m_recordContext->oformat = av_guess_format(NULL, m_recordContext->filename, NULL);
-        if (!m_recordContext->oformat){
-            ELOG_ERROR("Error guessing recording file format %s", m_recordContext->filename);
-        } else {
-            m_recordContext->oformat->video_codec = AV_CODEC_ID_VP8;       // FIXME: Currently only VP8 can be recorded as video stream
-            m_recordContext->oformat->audio_codec = AV_CODEC_ID_PCM_MULAW; // FIXME: We should figure this out once we start receiving data; it's either PCMU or OPUS
-        }
+        return false;
     }
 
+    m_recordPath.copy(m_recordContext->filename, sizeof(m_recordContext->filename), 0);
+    m_recordContext->oformat = av_guess_format(NULL, m_recordContext->filename, NULL);
+    if (!m_recordContext->oformat){
+        ELOG_ERROR("Error guessing recording file format %s", m_recordContext->filename);
+        return false;
+    }
+
+    m_recordContext->oformat->video_codec = AV_CODEC_ID_VP8;       // FIXME: Currently only VP8 can be recorded as video stream
+    m_recordContext->oformat->audio_codec = AV_CODEC_ID_PCM_MULAW; // FIXME: We should figure this out once we start receiving data; it's either PCMU or OPUS
+
     // Initialize the record context
-    initRecordContext();
+    if (!initRecordContext())
+        return false;
 
     // Start the recording of video and audio
     m_videoRecording->startRecording(m_videoQueue, m_recordStartTime);
@@ -79,6 +82,8 @@ void MediaRecorder::startRecording()
     m_recordThread = boost::thread(&MediaRecorder::recordLoop, this);
 
     m_recording = true;
+
+    return true;
 }
 
 void MediaRecorder::stopRecording()

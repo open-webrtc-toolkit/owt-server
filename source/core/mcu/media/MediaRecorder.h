@@ -44,7 +44,7 @@ public:
     MediaRecorder(MediaRecording* videoRecording, MediaRecording* audioRecording, const std::string& recordPath);
     virtual ~MediaRecorder();
 
-    void startRecording();
+    bool startRecording();
     void stopRecording();
 
 private:

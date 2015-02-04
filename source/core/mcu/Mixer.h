@@ -74,7 +74,7 @@ public:
     int32_t bindAV(uint32_t audioSource, uint32_t videoSource);
     erizo::MediaSink* mediaSink() { return this; }
 
-    void setRecorder(std::string recordPath/*, RecordFormat format*/);
+    bool setRecorder(std::string recordPath/*, RecordFormat format*/);
     void unsetRecorder();
 
     // Implements MediaSink.
