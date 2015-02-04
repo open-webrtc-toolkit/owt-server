@@ -2458,6 +2458,11 @@ int MSDKCodec::HandleProcessDecode()
                 }
             }
 
+            if (ELEMENT_DECODER == element_type_) {
+                sts = mfx_dec_->DecodeFrameAsync(NULL, surface_pool_[nIndex],
+                                                     &pmfxOutSurface, &syncpD);
+            }
+
             if (MFX_ERR_NONE < sts && syncpD) {
                 sts = MFX_ERR_NONE;
             }
