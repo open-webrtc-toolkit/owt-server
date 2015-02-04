@@ -283,6 +283,7 @@ DtlsFactory::DtlsFactory(const std::string& certFile, const std::string& keyFile
 
     int r = SSL_CTX_use_certificate(mContext, mCert);
     assert(r == 1);
+    (void)r;  // Unused.
 
     r = SSL_CTX_use_PrivateKey(mContext, privkey);
     assert(r == 1);
@@ -335,6 +336,7 @@ DtlsFactory::setSrtpProfiles(const char *str)
 {
    int r = SSL_CTX_set_tlsext_use_srtp(mContext,str);
    assert(r==0);
+   (void)r;  // Unused.
 }
 
 void
@@ -342,6 +344,7 @@ DtlsFactory::setCipherSuites(const char *str)
 {
    int r = SSL_CTX_set_cipher_list(mContext,str);
    assert(r==1);
+   (void)r;  // Unused.
 }
 
 DtlsFactory::PacketType

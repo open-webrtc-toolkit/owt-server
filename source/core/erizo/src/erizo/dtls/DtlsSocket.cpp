@@ -122,6 +122,7 @@ DtlsSocket::handlePacketMaybe(const unsigned char* bytes, unsigned int len)
 
    int r = BIO_write(mInBio,bytes,len);
    assert(r==(int)len);  // Can't happen
+   (void)r;  // Unused.
 
    // Note: we must catch any below exceptions--if there are any
    try {
@@ -282,12 +283,12 @@ void
 DtlsSocket::computeFingerprint(X509 *cert, char *fingerprint)
 {
    unsigned char md[EVP_MAX_MD_SIZE];
-   int r;
    unsigned int i,n;
 
    //r=X509_digest(cert,EVP_sha1(),md,&n);
-   r=X509_digest(cert,EVP_sha256(),md,&n);  // !slg! TODO - is sha1 vs sha256 supposed to come from DTLS handshake? fixing to to SHA-256 for compatibility with current web-rtc implementations
+   int r=X509_digest(cert,EVP_sha256(),md,&n);  // !slg! TODO - is sha1 vs sha256 supposed to come from DTLS handshake? fixing to to SHA-256 for compatibility with current web-rtc implementations
    assert(r==1);
+   (void)r;  // Unused.
 
    for(i=0;i<n;i++)
    {
