@@ -26,6 +26,8 @@ exports.RoomController = function (spec) {
 
     var eventListeners = [];
 
+    var recordingUrl = null;
+
     var callbackFor = function(erizo_id, publisher_id) {
         return function(ok) {
             if (ok !== true) {
@@ -294,25 +296,61 @@ exports.RoomController = function (spec) {
 
     that.startRecorder = function (mixer_id, url, callback) {
         if (publishers[mixer_id] !== undefined) {
-            var args = [mixer_id, url];
-
-            rpc.callRpc(getErizoQueue(mixer_id), "startRecorder", args, undefined);
-
-            callback('success');
+            if (recordingUrl) {
+                return callback({
+                    success: false,
+                    text: 'recorder busy'
+                });
+            }
+            recordingUrl = url;
+            rpc.callRpc(getErizoQueue(mixer_id), 'startRecorder', [mixer_id, url], {callback: function (result) {
+                if (result === 'success') {
+                    return callback({
+                        success: true,
+                        text: recordingUrl
+                    });
+                }
+                recordingUrl = null;
+                callback({
+                    success: false,
+                    text: 'recorder failed'
+                });
+            }});
         } else {
-            callback('error');
+            callback({
+                success: false,
+                text: 'mixer not found'
+            });
         }
     };
 
     that.stopRecorder = function (mixer_id, callback) {
         if (publishers[mixer_id] !== undefined) {
-            var args = [mixer_id];
-
-            rpc.callRpc(getErizoQueue(mixer_id), "stopRecorder", args, undefined);
-
-            callback('success');
+            if (!recordingUrl) {
+                return callback({
+                    success: false,
+                    text: 'no recorder process'
+                });
+            }
+            rpc.callRpc(getErizoQueue(mixer_id), 'stopRecorder', [mixer_id], {callback: function (result) {
+                if (result === 'success') {
+                    callback({
+                        success: true,
+                        text: recordingUrl
+                    });
+                    recordingUrl = null;
+                    return;
+                }
+                callback({
+                    success: false,
+                    text: 'recorder failed'
+                });
+            }});
         } else {
-            callback('error');
+            callback({
+                success: false,
+                text: 'mixer not found'
+            });
         }
     };
 

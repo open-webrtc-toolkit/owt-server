@@ -372,15 +372,21 @@ exports.ErizoJSController = function (spec) {
         }
     };
 
-    that.startRecorder = function (mixer, url) {
+    that.startRecorder = function (mixer, url, callback) {
         if (publishers[mixer] !== undefined) {
             publishers[mixer].setRecorder(url);
+            callback('callback', 'success');
+        } else {
+            callback('callback', 'error');
         }
     };
 
-    that.stopRecorder = function (mixer) {
+    that.stopRecorder = function (mixer, callback) {
         if (publishers[mixer] !== undefined) {
             publishers[mixer].unsetRecorder();
+            callback('callback', 'success');
+        } else {
+            callback('callback', 'error');
         }
     };
 

@@ -766,28 +766,29 @@ var listen = function () {
                 return safeCall(callback, 'error', 'unauthorized');
             }
 
-            var recordingId = Math.random() * 1000000000000000000;
-            var url;
-
-            if (GLOBAL.config.erizoController.recording_path) {
-                url = GLOBAL.config.erizoController.recording_path + 'room' + socket.room.id + '-' + recordingId + '.mkv';
-            } else {
-                url = '/tmp/room' + socket.room.id + '_' + recordingId + '.mkv';
-            }
+            var path = require('path');
+            var url = path.join((GLOBAL.config.erizoController.recording_path || '/tmp'),
+                'room' + socket.room.id + '_' + (Math.random() * 1000000000000000000) + '.mkv');
 
             // start recording mix stream
             var mixer = socket.room.mixer;
-            if (mixer && socket.room.streams[mixer] && (socket.room.streams[mixer].hasAudio() || socket.room.streams[mixer].hasVideo() || socket.room.streams[mixer].hasScreen())) {
+            if (mixer && socket.room.streams[mixer] &&
+                (socket.room.streams[mixer].hasAudio() ||
+                    socket.room.streams[mixer].hasVideo() ||
+                    socket.room.streams[mixer].hasScreen())) {
                 socket.room.controller.startRecorder(mixer, url, function (result) {
-                    if (result === 'success') {
-                        log.info("Recorder started");
-                        safeCall(callback, 'success', url);
+                    if (result.success) {
+                        log.info('Recorder started:', url);
+                        safeCall(callback, 'success', {
+                            host: publicIP,
+                            path: url
+                        });
                     } else {
-                        safeCall(callback, 'error', 'No mix stream found in the room');
+                        safeCall(callback, 'error', 'Error in start recording: ' + result.text);
                     }
                 });
             } else {
-                safeCall(callback, 'error', 'Mix stream can not be recorded');
+                safeCall(callback, 'error', 'No mix stream found in room');
             }
         });
 
@@ -803,17 +804,23 @@ var listen = function () {
 
             // stop recording mix stream
             var mixer = socket.room.mixer;
-            if (mixer && socket.room.streams[mixer] && (socket.room.streams[mixer].hasAudio() || socket.room.streams[mixer].hasVideo() || socket.room.streams[mixer].hasScreen())) {
+            if (mixer && socket.room.streams[mixer] &&
+                (socket.room.streams[mixer].hasAudio() ||
+                    socket.room.streams[mixer].hasVideo() ||
+                    socket.room.streams[mixer].hasScreen())) {
                 socket.room.controller.stopRecorder(mixer, function (result) {
-                    if (result === 'success') {
-                        log.info("Recorder stopped");
-                        safeCall(callback, 'success', "Mix stream has been recorded successfully");
+                    if (result.success) {
+                        log.info('Recorder stopped:', result.text);
+                        safeCall(callback, 'success', {
+                            host: publicIP,
+                            path: result.text
+                        });
                     } else {
-                        safeCall(callback, 'error', 'No mix stream found in this room');
+                        safeCall(callback, 'error', 'Error in stop recording: ' + result.text);
                     }
                 });
             } else {
-                safeCall(callback, 'error', 'Mix stream can not be recorded');
+                safeCall(callback, 'error', 'No mix stream found in room');
             }
         });
 
