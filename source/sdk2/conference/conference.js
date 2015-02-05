@@ -738,6 +738,38 @@ Woogeen.ConferenceClient = (function () {
     });
   };
 
+  WoogeenConference.prototype.startRecorder = function (options, onSuccess, onFailure) {
+    var self = this;
+    if (typeof options === 'function') {
+      onFailure = onSuccess;
+      onSuccess = options;
+      options = {};
+    } else if (typeof options !== 'object' || options === null) {
+      options = {};
+    }
+
+    sendMsg(self.socket, 'startRecorder', options, function (err, resp) {
+      if (err) {return safeCall(onFailure, err);}
+      safeCall(onSuccess, resp);
+    });
+  };
+
+  WoogeenConference.prototype.stopRecorder = function (options, onSuccess, onFailure) {
+    var self = this;
+    if (typeof options === 'function') {
+      onFailure = onSuccess;
+      onSuccess = options;
+      options = {};
+    } else if (typeof options !== 'object' || options === null) {
+      options = {};
+    }
+
+    sendMsg(self.socket, 'stopRecorder', options, function (err, resp) {
+      if (err) {return safeCall(onFailure, err);}
+      safeCall(onSuccess, resp);
+    });
+  };
+
   WoogeenConference.create = function factory (spec) { // factory, not in prototype
     return new WoogeenConference(spec);
   };

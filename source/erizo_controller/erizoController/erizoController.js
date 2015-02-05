@@ -758,51 +758,63 @@ var listen = function () {
 
         //Gets 'startRecorder' messages
         socket.on('startRecorder', function (options, callback) {
+            if (typeof options === 'function') {
+                callback = options;
+            }
+
             if (socket.user === undefined || !socket.user.permissions[Permission.RECORD]) {
                 return safeCall(callback, 'error', 'unauthorized');
             }
-            var streamId = options.to;
+
             var recordingId = Math.random() * 1000000000000000000;
             var url;
 
             if (GLOBAL.config.erizoController.recording_path) {
-                url = GLOBAL.config.erizoController.recording_path + recordingId + '.mkv';
+                url = GLOBAL.config.erizoController.recording_path + 'room' + socket.room.id + '-' + recordingId + '.mkv';
             } else {
-                url = '/tmp/' + recordingId + '.mkv';
+                url = '/tmp/room' + socket.room.id + '_' + recordingId + '.mkv';
             }
 
-            log.info("erizoController.js: Starting recorder streamID " + streamId + "url ", url);
-
-            if (socket.room.streams[streamId].hasAudio() || socket.room.streams[streamId].hasVideo() || socket.room.streams[streamId].hasScreen()) {
-                socket.room.controller.addExternalOutput(streamId, url, function (result) {
+            // start recording mix stream
+            var mixer = socket.room.mixer;
+            if (mixer && socket.room.streams[mixer] && (socket.room.streams[mixer].hasAudio() || socket.room.streams[mixer].hasVideo() || socket.room.streams[mixer].hasScreen())) {
+                socket.room.controller.startRecorder(mixer, url, function (result) {
                     if (result === 'success') {
-                        log.info("erizoController.js: Recorder Started");
-                        safeCall(callback, 'success', recordingId);
+                        log.info("Recorder started");
+                        safeCall(callback, 'success', url);
                     } else {
-                        safeCall(callback, 'error', 'This stream is not published in this room');
+                        safeCall(callback, 'error', 'No mix stream found in the room');
                     }
                 });
-
             } else {
-                safeCall(callback, 'error', 'Stream can not be recorded');
+                safeCall(callback, 'error', 'Mix stream can not be recorded');
             }
         });
 
+        //Gets 'stopRecorder' messages
         socket.on('stopRecorder', function (options, callback) {
+            if (typeof options === 'function') {
+                callback = options;
+            }
+
             if (socket.user === undefined || !socket.user.permissions[Permission.RECORD]) {
                 return safeCall(callback, 'error', 'unauthorized');
             }
-            var recordingId = options.id;
-            var url;
 
-            if (GLOBAL.config.erizoController.recording_path) {
-                url = GLOBAL.config.erizoController.recording_path + recordingId + '.mkv';
+            // stop recording mix stream
+            var mixer = socket.room.mixer;
+            if (mixer && socket.room.streams[mixer] && (socket.room.streams[mixer].hasAudio() || socket.room.streams[mixer].hasVideo() || socket.room.streams[mixer].hasScreen())) {
+                socket.room.controller.stopRecorder(mixer, function (result) {
+                    if (result === 'success') {
+                        log.info("Recorder stopped");
+                        safeCall(callback, 'success', "Mix stream has been recorded successfully");
+                    } else {
+                        safeCall(callback, 'error', 'No mix stream found in this room');
+                    }
+                });
             } else {
-                url = '/tmp/' + recordingId + '.mkv';
+                safeCall(callback, 'error', 'Mix stream can not be recorded');
             }
-
-            log.info("erizoController.js: Stoping recording  " + recordingId + " url " + url);
-            socket.room.controller.removeExternalOutput(url, callback);
         });
 
         //Gets 'unpublish' messages on the socket in order to remove a stream from the room.

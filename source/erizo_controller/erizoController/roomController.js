@@ -144,7 +144,6 @@ exports.RoomController = function (spec) {
         } else {
             callback('error');
         }
-
     };
 
     that.removeExternalOutput = function (url, callback) {
@@ -290,6 +289,30 @@ exports.RoomController = function (spec) {
                     subscribers[publisher_id].splice(index, 1);
                 }
             }
+        }
+    };
+
+    that.startRecorder = function (mixer_id, url, callback) {
+        if (publishers[mixer_id] !== undefined) {
+            var args = [mixer_id, url];
+
+            rpc.callRpc(getErizoQueue(mixer_id), "startRecorder", args, undefined);
+
+            callback('success');
+        } else {
+            callback('error');
+        }
+    };
+
+    that.stopRecorder = function (mixer_id, callback) {
+        if (publishers[mixer_id] !== undefined) {
+            var args = [mixer_id];
+
+            rpc.callRpc(getErizoQueue(mixer_id), "stopRecorder", args, undefined);
+
+            callback('success');
+        } else {
+            callback('error');
         }
     };
 

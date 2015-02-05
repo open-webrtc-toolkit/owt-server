@@ -372,5 +372,17 @@ exports.ErizoJSController = function (spec) {
         }
     };
 
+    that.startRecorder = function (mixer, url) {
+        if (publishers[mixer] !== undefined) {
+            publishers[mixer].setRecorder(url);
+        }
+    };
+
+    that.stopRecorder = function (mixer) {
+        if (publishers[mixer] !== undefined) {
+            publishers[mixer].unsetRecorder();
+        }
+    };
+
     return that;
 };
