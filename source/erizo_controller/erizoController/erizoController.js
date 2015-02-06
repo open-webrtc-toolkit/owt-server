@@ -298,6 +298,9 @@ var initMixer = function (room, roomConfig) {
                 room.streams[id] = st;
                 room.mixer = id;
                 sendMsgToRoom(room, 'onAddStream', st.getPublicStream());
+                if (room.config && room.config.publishLimit > 0) {
+                    room.config.publishLimit++;
+                }
             }
         });
         // In case we need to do an RPC call to initialize the mixer when the first
@@ -312,9 +315,6 @@ var initMixer = function (room, roomConfig) {
                 log.info('Mixer already existed in Room ', room.id);
                 clearInterval(room.initMixerTimer);
                 room.initMixerTimer = undefined;
-                if (room.config && room.config.publishLimit > 0) {
-                    room.config.publishLimit++;
-                }
                 return;
             }
 
