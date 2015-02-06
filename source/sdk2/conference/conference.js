@@ -18,38 +18,54 @@ Woogeen.ConferenceClient = (function () {
 
   Woogeen.sessionId = 103;
 
-  function createChannel (spec) {
-    spec.session_id = (Woogeen.sessionId += 1);
-    var that;
-    if (window.navigator.userAgent.match('Firefox') !== null) {
+  var getBrowser = function () {
+    var browser = "";
+
+    if (window.navigator.userAgent.match("Firefox") !== null) {
       // Firefox
-      that = Erizo.FirefoxStack(spec);
-      that.browser = 'mozilla';
+      browser = "mozilla";
     } else if (window.navigator.appVersion.indexOf('Trident') > -1) {
-      that = Erizo.IEStableStack(spec);
-      that.browser = 'internet-explorer';
-    } else if (window.navigator.userAgent.match("Bowser") !== null){
-      L.Logger.debug("Bowser Stack");
-      that = Erizo.BowserStack(spec);
-      that.browser = "chrome-stable";    
-    } else if (window.navigator.userAgent.match("Chrome") !== null) {
+      browser = 'internet-explorer';
+    } else if (window.navigator.userAgent.match("Bowser") !==null){
+      browser = "bowser";    
+    } else if (window.navigator.userAgent.match("Chrome") !==null) {
       if (window.navigator.appVersion.match(/Chrome\/([\w\W]*?)\./)[1] >= 26) {
-        // Google Chrome Stable.
-        L.Logger.debug("Stable!");
-        that = Erizo.ChromeStableStack(spec);
-        that.browser = "chrome-stable";
+        browser = "chrome-stable";
       }
     } else if (window.navigator.userAgent.match("Safari") !== null) {
-      L.Logger.debug("Safari, using Bowser Stack");
-      that = Erizo.BowserStack(spec);
-      that.browser = "chrome-stable";
+      browser = "bowser";
     } else if (window.navigator.appVersion.match(/Bowser\/([\w\W]*?)\./)[1] === "25") {
-      // Bowser
-      that.browser = "bowser";
+      browser = "bowser";
     } else {
-      // None.
-      throw 'WebRTC stack not available';
+      browser = "none";
     }
+
+    return browser;
+  };
+
+  function createChannel (spec) {
+    spec.session_id = (Woogeen.sessionId += 1);
+    var that = {};
+
+    that.browser = getBrowser();
+
+    if (that.browser === 'mozilla') {
+      L.Logger.debug("Firefox Stack");
+      that = Erizo.FirefoxStack(spec);
+    } else if (that.browser === 'internet-explorer'){
+      L.Logger.debug("IE Stack");
+      that = Erizo.IEStableStack(spec); 
+    } else if (that.browser === 'bowser'){
+      L.Logger.debug("Bowser Stack");
+      that = Erizo.BowserStack(spec); 
+    } else if (that.browser === 'chrome-stable') {
+      L.Logger.debug("Stable!");
+      that = Erizo.ChromeStableStack(spec);
+    } else {
+      that.browser = "none";
+      throw "WebRTC stack not available";
+    }
+
     return that;
   }
 
@@ -993,7 +1009,8 @@ conference.subscribe(remoteStream, function (st) {
     sendSdp(self.socket, 'subscribe', {
       streamId: stream.id(),
       audio: stream.hasAudio() && (options.audio !== false),
-      video: stream.hasVideo() && options.video
+      video: stream.hasVideo() && options.video,
+      browser: getBrowser()
     }, undefined, function (answer, errText) {
       if (answer === 'error' || answer === 'timeout') {
         return safeCall(onFailure, errText || answer);
@@ -1003,7 +1020,8 @@ conference.subscribe(remoteStream, function (st) {
         callback: function (message) {
           sendSdp(self.socket, 'signaling_message', {
             streamId: stream.id(),
-            msg: message
+            msg: message,
+            browser: stream.channel.browser
           }, undefined, function () {});
         },
         audio: stream.hasAudio() && (options.audio !== false),

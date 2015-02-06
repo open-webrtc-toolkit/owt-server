@@ -99,7 +99,7 @@ exports.ErizoJSController = function () {
     /*
      * Given a WebRtcConnection waits for the state CANDIDATES_GATHERED for set remote SDP.
      */
-    initWebRtcConnection = function (wrtc, id_mixer, unmix, callback, id_pub, id_sub) {
+    initWebRtcConnection = function (wrtc, id_mixer, unmix, callback, id_pub, id_sub, browser) {
         if (GLOBAL.config.erizoController.report.rtcp_stats) {
           var intervalId = setInterval(function () {
             var newStats = wrtc.getStats();
@@ -172,6 +172,12 @@ exports.ErizoJSController = function () {
                     mixers[id_pub] = mixerProxy;
                   }
                 }
+              }
+
+              // If I'm a subscriber and I'm bowser, I ask for a PLI
+              if (id_sub && browser === 'bowser') {
+                log.info('SENDING PLI from ', id_pub, ' to ', id_sub);
+                //publishers[id_pub].muxer.sendPLI();
               }
               callback('callback', {type: 'ready'});
               break;
@@ -452,9 +458,9 @@ exports.ErizoJSController = function () {
      * This WebRtcConnection will be added to the subscribers list of the
      * Gateway.
      */
-    that.addSubscriber = function (from, to, audio, video, callback) {
+    that.addSubscriber = function (from, to, options, callback) {
         if (publishers[to] !== undefined && subscribers[to][from] === undefined) {
-            log.info('Adding subscriber from', from, 'to', to, 'audio', audio, 'video', video);
+            log.info('Adding subscriber from', from, 'to', to, 'audio', options.audio, 'video', options.video);
             cipher.unlock(cipher.k, '../../cert/.woogeen.keystore', function cb (err, obj) {
                 if (!err && publishers[to] !== undefined && subscribers[to][from] === undefined) {
                     var erizoPassPhrase = obj.erizo;
@@ -463,12 +469,12 @@ exports.ErizoJSController = function () {
                     if (!useHardware && !openh264Enabled) {
                         hasH264 = false;
                     }
-                    var wrtc = new addon.WebRtcConnection(audio, (!!video), hasH264, GLOBAL.config.erizo.stunserver, GLOBAL.config.erizo.stunport, GLOBAL.config.erizo.minport, GLOBAL.config.erizo.maxport, GLOBAL.config.erizo.keystorePath, GLOBAL.config.erizo.keystorePath, erizoPassPhrase, true, true, true, true);
+                    var wrtc = new addon.WebRtcConnection(options.audio, (!!options.video), hasH264, GLOBAL.config.erizo.stunserver, GLOBAL.config.erizo.stunport, GLOBAL.config.erizo.minport, GLOBAL.config.erizo.maxport, GLOBAL.config.erizo.keystorePath, GLOBAL.config.erizo.keystorePath, erizoPassPhrase, true, true, true, true);
 
-                    initWebRtcConnection(wrtc, undefined, undefined, callback, to, from);
+                    initWebRtcConnection(wrtc, undefined, undefined, callback, to, from, options.browser);
 
                     subscribers[to][from] = wrtc;
-                    publishers[to].muxer.addSubscriber(wrtc, from, JSON.stringify(video.resolution));
+                    publishers[to].muxer.addSubscriber(wrtc, from, JSON.stringify(options.video.resolution));
                 } else {
                     log.warn('Failed to subscribe the stream:', err);
                 }

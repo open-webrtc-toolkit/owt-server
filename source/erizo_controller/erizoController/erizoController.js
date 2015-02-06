@@ -1008,7 +1008,7 @@ var listen = function () {
                             options.video = true;
                         }
                     }
-                    socket.room.controller.addSubscriber(socket.id, options.streamId, options.audio, options.video, function (signMess, errText) {
+                    socket.room.controller.addSubscriber(socket.id, options.streamId, options, function (signMess, errText) {
                         if (signMess.type === 'initializing') {
                             log.info("Initializing subscriber");
                             safeCall(callback, 'initializing');
