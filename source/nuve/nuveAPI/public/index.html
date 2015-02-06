@@ -8,6 +8,8 @@
     <meta name="author" content="">
     <title>Inter WebRTC Collaboration Suite</title>
     <link href="vendor/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="vendor/css/pnotify.custom.min.css">
+    <link rel="stylesheet" href="vendor/css/bootstrap-editable.css">
     <link href="css/dashboard.css" rel="stylesheet">
   </head>
 
@@ -26,7 +28,8 @@
         </div>
       </div>
       <!-- profile setting -->
-      <div id="myModal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display: none;">
+      <div id="myModal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" data-backdrop="false" style="display: none;">
+        <div class="modal-backdrop fade in"></div>
         <div class="modal-dialog">
           <div class="modal-content">
             <div class="modal-header">
@@ -78,15 +81,35 @@
           </div>
         </div>
       </div>
+      <div id="myModal3" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="editTableModal" aria-hidden="true" style="display: none;">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <div class="modal-header">
+              <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+              <h4 class="modal-title" id="editTableModal"></h4>
+            </div>
+            <div class="modal-body">
+              <div class="table-responsive" id="inRoomTable">
+                <table class="table table-striped">
+                  <tbody>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div class="modal-footer">
+            </div>
+          </div>
+        </div>
+      </div>
     </nav>
 
     <div class="container-fluid">
       <div class="row">
         <div class="col-sm-3 col-md-2 sidebar">
           <ul class="nav nav-sidebar">
-            <li class="active"><a href=".">Overview <span class="sr-only">(current)</span></a></li>
-            <li><a href="room.html">Room Management</a></li>
-            <li><a href="runtime.html">Runtime Configuration</a></li>
+            <li class="li hideLi"><a href="javascript:void(0);" onclick="a_click('service')">Overview <span class="sr-only">(current)</span></a></li>
+            <li class="li active"><a href="javascript:void(0);" onclick="a_click('room')">Room Management</a></li>
+            <li class="li hideLi"><a href="javascript:void(0);" onclick="a_click('runtime')">Runtime Configuration</a></li>
           </ul>
           <div class="footer">
             <div class="container">
@@ -95,29 +118,105 @@
           </div>
         </div>
         <div class="col-sm-9 col-sm-offset-3 col-md-10 col-md-offset-2 main">
-          <h1 class="page-header">Services</h1>
-          <div style="float:right">
-            <a href="#"><img src="img/plus.svg" id="createService" width="50%" title="click to toggle service creation form"></a>
-          </div>
-          <div class="row placeholders" id="serviceGraph">
-          </div>
+          <h1 class="page-header">Rooms in current Service</h1>
+          <div class="overview">
+            <div style="position: absolute; right: 41px; top: 10px;">
+              <a href="#"><img src="img/plus.svg" id="createService" width="50%" title="click to toggle service creation form"></a>
+            </div>
+            <div class="row placeholders" id="serviceGraph">
+            </div>
 
-          <div class="table-responsive" id="serviceTable">
-            <h3 id="tableTitle">Rooms in service</h3>
-            <table class="table table-striped">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Name</th>
-                  <th>Mode</th>
-                  <th>Publish Limit</th>
-                  <th>User Limit</th>
-                  <th>Media Mixing</th>
-                </tr>
-              </thead>
-              <tbody>
-              </tbody>
-            </table>
+            <div class="table-responsive" id="serviceTable">
+              <h3 id="tableTitle">Rooms in service</h3>
+              <table class="table table-striped">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Name</th>
+                    <th>Mode</th>
+                    <th>Publish Limit</th>
+                    <th>User Limit</th>
+                    <th>Media Mixing</th>
+                  </tr>
+                </thead>
+                <tbody>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="room">
+            <div class="table-responsive" id="serviceTable">
+              <table class="table table-striped">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Name</th>
+                    <th>Mode</th>
+                    <th>Publish Limit</th>
+                    <th>User Limit</th>
+                    <th>Media Mixing</th>
+                    <th class="col-md-1"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="runtime">
+            <div class="row placeholders" id="mcu-nuve">
+              <div class="col-xs-6 col-sm-3 placeholder">
+                <a href="#"><img class="img-responsive" src="img/node.svg" width="33%"></a>
+                <h4 class="text-primary">Nuve</h4>
+                <span></span>
+              </div>
+            </div>
+            <div class="row placeholders" id="mcu-ecs">
+            </div>
+            <div class="table-responsive" id="ec-config-table" style="display:none">
+              <h3 id="tableTitle"></h3>
+              <table class="table table-striped">
+                <thead>
+                  <tr>
+                    <th>defaultVideoBW</th>
+                    <th>maxVideoBW</th>
+                    <th>turn</th>
+                    <th>stun</th>
+                    <th>warning_n_rooms</th>
+                    <th>limit_n_rooms</th>
+                  </tr>
+                </thead>
+                <tbody>
+                </tbody>
+              </table>
+            </div>
+            <div class="table-responsive" id="mcu-ecs-table">
+              <h3 id="tableTitle">MCU nodes in cluster</h3>
+              <table class="table table-striped">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>IP/Hostname</th>
+                    <th>Port</th>
+                    <th>State</th>
+                    <th>rpcId</th>
+                    <th>KeepAlive</th>
+                    <th>SSL</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>{{index}}</td>
+                    <td>{{address}}</td>
+                    <td>{{port}}</td>
+                    <td>{{state}}</td>
+                    <td><code>{{rpcID}}</code></td>
+                    <td>{{keepAlive}}</td>
+                    <td>{{ssl}}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
@@ -126,11 +225,11 @@
     <script src="vendor/js/jquery.min.js"></script><!-- v1.11.1 -->
     <script src="vendor/js/bootstrap.min.js"></script> <!-- v3.3.1 -->
     <script src="vendor/js/mustache.min.js"></script> <!-- v1.0.0 -->
-    <link rel="stylesheet" href="vendor/css/pnotify.custom.min.css">
     <script src="vendor/js/pnotify.custom.min.js"></script> <!-- v2.0-bundle -->
+    <script src="vendor/js/bootstrap-editable.min.js"></script> <!-- v1.5-bootstrap3 -->
     <script src="vendor/js/hmac-sha1.js"></script> <!-- v3.0.2 -->
     <script src="js/libnuve.js"></script>
     <script src="js/util.js"></script>
-    <script src="js/service.js"></script>
+    <script src="js/index.js"></script>
   </body>
 </html>

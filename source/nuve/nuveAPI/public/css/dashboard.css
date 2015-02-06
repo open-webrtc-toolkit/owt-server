@@ -121,3 +121,11 @@ body {
   height: 60px;
   background-color: #f5f5f5;
 }
+
+.overview, .runtime{
+  display: none;
+}
+
+.nav>.hideLi{
+  display: none;
+}
