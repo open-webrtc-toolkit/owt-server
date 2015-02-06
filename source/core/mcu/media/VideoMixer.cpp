@@ -141,8 +141,14 @@ int32_t VideoMixer::removeOutput(int payloadType)
 void VideoMixer::startRecording(MediaFrameQueue& videoQueue, long long recordStartTime)
 {
     // FIXME: Currently, only VP8_90000_PT to be recorded.
-    if (addOutput(VP8_90000_PT) != -1)
+    if (addOutput(VP8_90000_PT) != -1) {
         m_outputs[VP8_90000_PT]->RegisterPostEncodeCallback(videoQueue, recordStartTime);
+
+        // Request an IFrame immediately for media recording
+        IntraFrameCallback* callback = getIFrameCallback(VP8_90000_PT);
+        if (callback)
+            callback->handleIntraFrameRequest();
+    }
 }
 
 void VideoMixer::stopRecording()
