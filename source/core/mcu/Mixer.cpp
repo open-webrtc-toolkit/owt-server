@@ -128,8 +128,13 @@ int32_t Mixer::bindAV(uint32_t audioSource, uint32_t videoSource)
 
 bool Mixer::setRecorder(const std::string& recordPath/*, RecordFormat format*/)
 {
-    m_recorder.reset(new MediaRecorder(m_videoMixer.get(), m_audioMixer.get(), recordPath));
-    return m_recorder->startRecording();
+    if (!m_recorder) {
+        m_recorder.reset(new MediaRecorder(m_videoMixer.get(), m_audioMixer.get(), recordPath));
+        return m_recorder->startRecording();
+    }
+
+    ELOG_DEBUG("Media recording has already been started.");
+    return false;
 }
 
 void Mixer::unsetRecorder()
