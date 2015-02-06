@@ -289,20 +289,22 @@ function safeCall () {
     }
 }
 
-var initMixer = function (room, roomConfig) {
+var initMixer = function (room, roomConfig, immediately) {
     if (GLOBAL.config.erizoController.mixer && room.mixer === undefined && room.initMixerTimer === undefined) {
         var id = room.id;
-        room.controller.initMixer(id, roomConfig, function (result) {
-            if (result === 'success') {
-                var st = new ST.Stream({id: id, socket: '', audio: true, video: {category: 'mix'}, data: true, from: ''});
-                room.streams[id] = st;
-                room.mixer = id;
-                sendMsgToRoom(room, 'onAddStream', st.getPublicStream());
-                if (room.config && room.config.publishLimit > 0) {
-                    room.config.publishLimit++;
+        if (immediately) {
+            room.controller.initMixer(id, roomConfig, function (result) {
+                if (result === 'success') {
+                    var st = new ST.Stream({id: id, socket: '', audio: true, video: {category: 'mix'}, data: true, from: ''});
+                    room.streams[id] = st;
+                    room.mixer = id;
+                    sendMsgToRoom(room, 'onAddStream', st.getPublicStream());
+                    if (room.config && room.config.publishLimit > 0) {
+                        room.config.publishLimit++;
+                    }
                 }
-            }
-        });
+            });
+        }
         // In case we need to do an RPC call to initialize the mixer when the first
         // client is connected, we may need to wait for a while because the room may
         // still be dirty at this moment (due to the fact that there's currently no
@@ -469,13 +471,15 @@ var listen = function () {
                                                     if (room.mixer !== undefined && room.mixer === streamId) {
                                                         room.mixer = undefined;
                                                         // Re-initialize the mixer in the room.
-                                                        initMixer(room, resp.mediaMixing);
+                                                        // Don't do it immediately because we want to wait for 
+                                                        // the original mixer being cleaned-up.
+                                                        initMixer(room, resp.mediaMixing, false);
                                                     }
                                                 }
 
                                             });
 
-                                            initMixer(room, resp.mediaMixing);
+                                            initMixer(room, resp.mediaMixing, true);
                                             on_ok();
                                         }
                                     }});
