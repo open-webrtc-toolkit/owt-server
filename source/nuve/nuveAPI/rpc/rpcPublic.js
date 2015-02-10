@@ -18,40 +18,13 @@ exports.deleteToken = function (id, callback) {
 
     tokenRegistry.removeOldTokens();
 
-    tokenRegistry.getToken(id, function (token) {
-
-        if (token === undefined) {
-            callback('callback', 'error');
+    tokenRegistry.removeToken(id, function (err, token) {
+        if (!err) {
+            log.info('Consumed token ', token._id, 'from room ', token.room, ' of service ', token.service);
+            callback('callback', token);
         } else {
-
-            if (token.use !== undefined) {
-                //Is a test token
-                var time = ((new Date()).getTime()) - token.creationDate.getTime(),
-                    s;
-                if (token.use > 490) { // || time*1000 > 3600*24*30) {
-                    s = token.service;
-                    serviceRegistry.getService(s, function (service) {
-                        delete service.testToken;
-                        serviceRegistry.updateService(service);
-                        tokenRegistry.removeToken(id, function () {
-                            log.info('TestToken expiration time. Deleting ', token._id, 'from room ', token.room, ' of service ', token.service);
-                            callback('callback', 'error');
-                        });
-
-                    });
-                } else {
-                    token.use += 1;
-                    tokenRegistry.updateToken(token);
-                    log.info('Using (', token.use, ') testToken ', token._id, 'for testRoom ', token.room, ' of service ', token.service);
-                    callback('callback', token);
-                }
-
-            } else {
-                tokenRegistry.removeToken(id, function () {
-                    log.info('Consumed token ', token._id, 'from room ', token.room, ' of service ', token.service);
-                    callback('callback', token);
-                });
-            }
+            log.info('Consume token error:', err, id);
+            callback('callback', 'error');
         }
     });
 };
