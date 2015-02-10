@@ -66,13 +66,16 @@ exports.addToken = function (token, callback) {
 var removeToken = exports.removeToken = function (id, callback) {
     "use strict";
 
-    hasToken(id, function (hasT) {
-        if (hasT) {
+    getToken(id, function (token) {
+        if (token) {
             db.tokens.remove({_id: db.ObjectId(id)}, function (error, removed) {
-                if (error) log.info('MongoDB: Error removing token: ', error);
-                callback();
+                if (error) {
+                    log.error('MongoDB: Error removing token: ', error);
+                }
+                callback(error, token);
             });
-            
+        } else {
+            callback('no such token', null);
         }
     });
 };
