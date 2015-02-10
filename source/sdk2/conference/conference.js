@@ -371,32 +371,38 @@ Woogeen.ConferenceClient = (function () {
         });
       }
 
-      sendMsg(self.socket, 'token', token, function (err, resp) {
-        if (err) {
-          return safeCall(onFailure, err);
-        }
-        self.connSettings = {
-          turn: resp.turnServer,
-          stun: resp.stunServerUrl,
-          defaultVideoBW: resp.defaultVideoBW,
-          maxVideoBW: resp.maxVideoBW
-        };
-        self.myId = resp.clientId;
-        self.conferenceId = resp.id;
-        self.p2p = resp.p2p;
-        that.state = CONNECTED;
-        var streams = resp.streams.map(function (st) {
-          self.remoteStreams[st.id] = new Woogeen.RemoteStream(st);
-          return self.remoteStreams[st.id];
+      try {
+        self.socket.emit('token', token, function (status, resp) {
+          if (status === 'success') {
+            self.connSettings = {
+              turn: resp.turnServer,
+              stun: resp.stunServerUrl,
+              defaultVideoBW: resp.defaultVideoBW,
+              maxVideoBW: resp.maxVideoBW
+            };
+            self.myId = resp.clientId;
+            self.conferenceId = resp.id;
+            self.p2p = resp.p2p;
+            that.state = CONNECTED;
+            var streams = resp.streams.map(function (st) {
+              self.remoteStreams[st.id] = new Woogeen.RemoteStream(st);
+              return self.remoteStreams[st.id];
+            });
+            return safeCall(onSuccess, {streams: streams});
+          }
+          return safeCall(onFailure, resp||'response error');
         });
-        safeCall(onSuccess, {streams: streams});
-      });
+      } catch (e) {
+        safeCall(onFailure, 'socket emit error');
+      }
     };
 
   }
 
   function sendMsg(socket, type, message, callback) {
-    if (!socket) {return callback('socket not ready');}
+    if (!socket || !socket.socket || !socket.socket.connected) {
+      return callback('socket not ready');
+    }
     try {
       socket.emit(type, message, function (resp, mesg) {
         if (resp === 'success') {
@@ -410,7 +416,9 @@ Woogeen.ConferenceClient = (function () {
   }
 
   function sendSdp(socket, type, option, sdp, callback) {
-    if (!socket) {return callback('error', 'socket not ready');}
+    if (!socket || !socket.socket || !socket.socket.connected) {
+      return callback('error', 'socket not ready');
+    }
     try {
       socket.emit(type, option, sdp, function (status, resp) {
         callback(status, resp);
