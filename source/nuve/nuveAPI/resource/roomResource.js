@@ -86,17 +86,21 @@ exports.updateRoom = function (req, res) {
                 }
                 Object.keys(updates).map(function (k) {
                     if (newRoom.hasOwnProperty(k)) {
-                        if (k !== 'mediaMixing')
+                        if (k !== 'mediaMixing') {
                             room[k] = newRoom[k];
-                        else if (typeof updates.mediaMixing.video === 'object') {
+                        } else if (typeof updates.mediaMixing.video === 'object') {
+                            room.mediaMixing = room.mediaMixing || {};
+                            room.mediaMixing.video = room.mediaMixing.video || {};
                             Object.keys(updates.mediaMixing.video).map(function (k) {
                                 if (newRoom.mediaMixing.video.hasOwnProperty(k)) {
-                                    if (k !== 'layout')
+                                    if (k !== 'layout') {
                                         room.mediaMixing.video[k] = newRoom.mediaMixing.video[k];
-                                    else if (typeof updates.mediaMixing.video.layout === 'object') {
+                                    } else if (typeof updates.mediaMixing.video.layout === 'object') {
+                                        room.mediaMixing.video.layout = room.mediaMixing.video.layout || {};
                                         Object.keys(updates.mediaMixing.video.layout).map(function (k) {
-                                            if (newRoom.mediaMixing.video.layout.hasOwnProperty(k))
+                                            if (newRoom.mediaMixing.video.layout.hasOwnProperty(k)) {
                                                 room.mediaMixing.video.layout[k] = newRoom.mediaMixing.video.layout[k];
+                                            }
                                         });
                                     }
                                 }
