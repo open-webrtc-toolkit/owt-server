@@ -14,6 +14,7 @@ var serviceKey = "";
 function checkProfile(callback) {
   var serviceId = getCookie('serviceId') === '' ? top.serviceId : getCookie('serviceId');
   var serviceKey = getCookie('serviceKey') === '' ? top.serviceKey : getCookie('serviceKey');
+  top.serviceId = serviceId;
   $('.modal-body #inputId').val(serviceId);
   $('.modal-body #inputKey').val(serviceKey);
   if (serviceId === '' || serviceKey === '') {
@@ -135,6 +136,7 @@ function graphicHandlerService(services) {
     $('div#service_' + id + ' img').click(function() {
       tableHandlerService(service.rooms, service.name);
     });
+    if(id === serviceId) $('div#service_' + id + ' button.close').hide();
     $('div#service_' + id + ' button.close').click(function() {
       notifyConfirm('Delete Service', 'Are you sure want to delete service ' + id, function() {
         nuve.deleteService(id, function(err, resp) {
@@ -285,7 +287,7 @@ function tableHandlerRoom(rooms) {
   };
 
   var mediaSettingFn = function() {
-    if (event.srcElement.parentNode.children[0].innerText === "") return;
+    if (this.parentNode.children[0].innerText === "") return;
     $('#myModal3').modal('toggle');
     var roomId = $(this).parent().find('td:first').text();
     var room = roomCache[roomId];
@@ -609,11 +611,11 @@ window.onload = function() {
   });
 };
 
-function a_click(nowList) {
+function a_click(nowList, dom) {
   var service = $(".overview");
   var room = $(".room");
   var runtime = $(".runtime");
-  var nowLI = $(event.srcElement.parentNode);
+  var nowLI = $(dom.parentNode);
   var title = $(".page-header");
   if (nowLI.hasClass("active")) {
     return;
