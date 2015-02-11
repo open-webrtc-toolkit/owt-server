@@ -53,9 +53,10 @@ $('button#saveSericeInfo').click(function() {
 function judgePermissions() {
   nuve.getServices(function(err, text) {
     if (err !== 401) {
-      $(".li:not(.active)").removeClass("hideLi");
+      $(".li").removeClass("hideLi");
     } else {
-      $(".li:not(.active)").addClass("hideLi");
+      $(".li:not(.normal)").addClass("hideLi").removeClass("active");
+      $(".li.normal").addClass("active");
       $(".overview").hide();
       $(".room").show();
       $(".runtime").hide();
