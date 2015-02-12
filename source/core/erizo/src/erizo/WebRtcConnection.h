@@ -33,7 +33,7 @@ static const uint32_t QOS_SUPPORT_NACK_RECEIVER_MASK = 1 << QOS_SUPPORT_NACK_REC
  * WebRTC Events
  */
 enum WebRTCEvent {
-  CONN_INITIAL = 101, CONN_STARTED = 102, CONN_READY = 103, CONN_FINISHED = 104, CONN_CANDIDATE = 201, CONN_SDP = 202,
+  CONN_INITIAL = 101, CONN_STARTED = 102,CONN_GATHERED = 103, CONN_READY = 104, CONN_FINISHED = 105, CONN_CANDIDATE = 201, CONN_SDP = 202,
   CONN_FAILED = 500
 };
 
@@ -64,7 +64,7 @@ public:
      * Constructor.
      * Constructs an empty WebRTCConnection without any configuration.
      */
-    DLL_PUBLIC WebRtcConnection(bool audioEnabled, bool videoEnabled, bool h264Enabled, const std::string &stunServer, int stunPort, int minPort, int maxPort, const std::string& certFile, const std::string& keyFile, const std::string& privatePasswd, uint32_t qos, WebRtcConnectionEventListener* listener);
+    DLL_PUBLIC WebRtcConnection(bool audioEnabled, bool videoEnabled, bool h264Enabled, const std::string &stunServer, int stunPort, int minPort, int maxPort, const std::string& certFile, const std::string& keyFile, const std::string& privatePasswd, uint32_t qos, bool trickleEnabled, WebRtcConnectionEventListener* listener);
     /**
      * Destructor.
      */
@@ -157,7 +157,7 @@ public:
 
     void queueData(int comp, const char* data, int len, Transport *transport, packetType type);
 
-    void onCandidate(const std::string& sdp, Transport *transport);
+    void onCandidate(const CandidateInfo& cand, Transport *transport);
 
 private:
   static const int STATS_INTERVAL = 5000;
@@ -190,6 +190,7 @@ private:
     bool audioEnabled_;
     bool videoEnabled_;
     bool nackEnabled_;
+    bool trickleEnabled_;
 
     int stunPort_, minPort_, maxPort_;
     std::string stunServer_;

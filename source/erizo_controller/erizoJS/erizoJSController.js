@@ -94,7 +94,7 @@ exports.ErizoJSController = function () {
         }
     };
 
-    var CONN_INITIAL = 101, CONN_STARTED = 102, CONN_READY = 103, CONN_FINISHED = 104, CONN_CANDIDATE = 201, CONN_SDP = 202, CONN_FAILED = 500;
+    var CONN_INITIAL = 101, CONN_STARTED = 102, CONN_GATHERED = 103, CONN_READY = 104, CONN_FINISHED = 105, CONN_CANDIDATE = 201, CONN_SDP = 202, CONN_FAILED = 500;
 
     /*
      * Given a WebRtcConnection waits for the state CANDIDATES_GATHERED for set remote SDP.
@@ -146,6 +146,7 @@ exports.ErizoJSController = function () {
               break;
 
             case CONN_SDP:
+            case CONN_GATHERED:
               log.debug('Sending SDP', mess);
               callback('callback', {type: 'answer', sdp: mess});
               break;
@@ -428,7 +429,7 @@ exports.ErizoJSController = function () {
                         hasH264 = false;
                     }
 
-                    var wrtc = new addon.WebRtcConnection(true, true, hasH264, GLOBAL.config.erizo.stunserver, GLOBAL.config.erizo.stunport, GLOBAL.config.erizo.minport, GLOBAL.config.erizo.maxport, GLOBAL.config.erizo.keystorePath, GLOBAL.config.erizo.keystorePath, erizoPassPhrase, true, true, true, true);
+                    var wrtc = new addon.WebRtcConnection(true, true, hasH264, GLOBAL.config.erizo.stunserver, GLOBAL.config.erizo.stunport, GLOBAL.config.erizo.minport, GLOBAL.config.erizo.maxport, GLOBAL.config.erizo.keystorePath, GLOBAL.config.erizo.keystorePath, erizoPassPhrase, true, true, true, true, false);
                     var muxer = new addon.Gateway();
                     publishers[from] = {muxer: muxer, wrtc: wrtc};
                     subscribers[from] = {};
@@ -469,7 +470,7 @@ exports.ErizoJSController = function () {
                     if (!useHardware && !openh264Enabled) {
                         hasH264 = false;
                     }
-                    var wrtc = new addon.WebRtcConnection(options.audio, (!!options.video), hasH264, GLOBAL.config.erizo.stunserver, GLOBAL.config.erizo.stunport, GLOBAL.config.erizo.minport, GLOBAL.config.erizo.maxport, GLOBAL.config.erizo.keystorePath, GLOBAL.config.erizo.keystorePath, erizoPassPhrase, true, true, true, true);
+                    var wrtc = new addon.WebRtcConnection(options.audio, (!!options.video), hasH264, GLOBAL.config.erizo.stunserver, GLOBAL.config.erizo.stunport, GLOBAL.config.erizo.minport, GLOBAL.config.erizo.maxport, GLOBAL.config.erizo.keystorePath, GLOBAL.config.erizo.keystorePath, erizoPassPhrase, true, true, true, true, false);
 
                     initWebRtcConnection(wrtc, undefined, undefined, callback, to, from, options.browser);
 

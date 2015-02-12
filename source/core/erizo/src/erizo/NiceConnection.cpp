@@ -163,8 +163,7 @@ namespace erizo {
               NICE_RELAY_TYPE_TURN_UDP);
         }
     }
-    ELOG_DEBUG("Gathering candidates %p", this);
-    nice_agent_gather_candidates(agent_, 1);
+    
     if(agent_){
       for (unsigned int i = 1; i<=iceComponents_; i++){
         nice_agent_attach_recv(agent_, 1, i, context_, cb_nice_recv, this);
@@ -198,7 +197,6 @@ namespace erizo {
           p->length=0;
         return p;
       }
-
       if(this->checkIceState()==NICE_FINISHED || !running_) {
           packetPtr p(new dataPacket());
           if (p)
@@ -277,7 +275,9 @@ namespace erizo {
   }
 
   void NiceConnection::init() {
-
+    
+    ELOG_DEBUG("Gathering candidates %p", this);
+    nice_agent_gather_candidates(agent_, 1);   
     // Attach to the component to receive the data
     while(running_){
       if(this->checkIceState()>=NICE_FINISHED || !running_)
@@ -358,6 +358,7 @@ namespace erizo {
 
   void NiceConnection::gatheringDone(uint stream_id){
     ELOG_DEBUG("Gathering done for stream %u", stream_id);
+    this->updateIceState(NICE_CANDIDATES_RECEIVED);
   }
 
   void NiceConnection::getCandidate(uint stream_id, uint component_id, const std::string &foundation) {
@@ -489,6 +490,7 @@ namespace erizo {
         break;
 
       case NICE_READY:
+      case NICE_CANDIDATES_RECEIVED:
         break;
       default:
         break;

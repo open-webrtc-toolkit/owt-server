@@ -13,7 +13,7 @@ namespace erizo {
   DEFINE_LOGGER(WebRtcConnection, "WebRtcConnection");
 
   WebRtcConnection::WebRtcConnection(bool audioEnabled, bool videoEnabled, bool h264Enabled, const std::string &stunServer, int stunPort, int minPort,
-      int maxPort, const std::string& certFile, const std::string& keyFile, const std::string& privatePasswd, uint32_t qos, WebRtcConnectionEventListener* listener)
+      int maxPort, const std::string& certFile, const std::string& keyFile, const std::string& privatePasswd, uint32_t qos, bool trickleEnabled, WebRtcConnectionEventListener* listener)
   : connEventListener_(listener) {
 
     ELOG_WARN("WebRtcConnection constructor stunserver %s stunPort %d minPort %d maxPort %d\n", stunServer.c_str(), stunPort, minPort, maxPort);
@@ -32,6 +32,7 @@ namespace erizo {
 
     audioEnabled_ = audioEnabled;
     videoEnabled_ = videoEnabled;
+    trickleEnabled_ = trickleEnabled;
     if (!h264Enabled) {
       localSdp_.removePayloadSupport(H264_90000_PT);
       remoteSdp_.removePayloadSupport(H264_90000_PT);
@@ -152,9 +153,11 @@ namespace erizo {
         audioTransport_->start();
     }
 
-    std::string object = this->getLocalSdp();
-    if (connEventListener_)
-      connEventListener_->notifyEvent(CONN_SDP, object);
+    if (trickleEnabled_) {
+      std::string object = this->getLocalSdp();
+      if (connEventListener_)
+        connEventListener_->notifyEvent(CONN_SDP, object);
+    }
 
     if (!remoteSdp_.getCandidateInfos().empty()){
       ELOG_DEBUG("There are candidate in the SDP: Setting Remote Candidates!!!!");
@@ -263,22 +266,26 @@ namespace erizo {
     return theString.str();
   }
 
-  void WebRtcConnection::onCandidate(const std::string& sdp, Transport *transport) {
-    if (connEventListener_ != NULL) {
-      if (!bundle_) {
-        std::string object = this->getJSONCandidate(transport->transport_name, sdp);
-        connEventListener_->notifyEvent(CONN_CANDIDATE, object);
-      } else {
-        if (remoteSdp_.hasAudio){
-          std::string object = this->getJSONCandidate("audio", sdp);
+  void WebRtcConnection::onCandidate(const CandidateInfo& cand, Transport *transport) {
+    std::string sdp = localSdp_.addCandidate(cand);
+    ELOG_DEBUG("On Candidate %s", sdp.c_str());
+    if(trickleEnabled_){
+      if (connEventListener_ != NULL) {
+        if (!bundle_) {
+          std::string object = this->getJSONCandidate(transport->transport_name, sdp);
           connEventListener_->notifyEvent(CONN_CANDIDATE, object);
+        } else {
+          if (remoteSdp_.hasAudio){
+            std::string object = this->getJSONCandidate("audio", sdp);
+            connEventListener_->notifyEvent(CONN_CANDIDATE, object);
+          }
+          if (remoteSdp_.hasVideo){
+            std::string object2 = this->getJSONCandidate("video", sdp);
+            connEventListener_->notifyEvent(CONN_CANDIDATE, object2);
+          }
         }
-        if (remoteSdp_.hasVideo){
-          std::string object2 = this->getJSONCandidate("video", sdp);
-          connEventListener_->notifyEvent(CONN_CANDIDATE, object2);
-        }
+        
       }
-      
     }
   }
 
@@ -488,6 +495,7 @@ namespace erizo {
   void WebRtcConnection::updateState(TransportState state, Transport * transport) {
     boost::lock_guard<boost::mutex> lock(updateStateMutex_);
     WebRTCEvent temp = globalState_;
+    std::string msg = "";
     ELOG_INFO("Update Transport State %s to %d", transport->transport_name.c_str(), state);
     if (audioTransport_ == NULL && videoTransport_ == NULL) {
       ELOG_ERROR("Update Transport State with Transport NULL, this should not happen!");
@@ -500,7 +508,6 @@ namespace erizo {
       sending_ = false;
       ELOG_INFO("WebRtcConnection failed, stopping sending");
       cond_.notify_one();
-      ELOG_INFO("WebRtcConnection failed, stopped sending");
     }
 
     
@@ -513,6 +520,15 @@ namespace erizo {
         (audioTransport_ == NULL || audioTransport_->getTransportState() == TRANSPORT_STARTED) &&
         (videoTransport_ == NULL || videoTransport_->getTransportState() == TRANSPORT_STARTED)) {
       temp = CONN_STARTED;
+    }
+
+    if (state == TRANSPORT_GATHERED &&
+        (audioTransport_ == NULL || audioTransport_->getTransportState() == TRANSPORT_GATHERED) &&
+        (videoTransport_ == NULL || videoTransport_->getTransportState() == TRANSPORT_GATHERED)) {
+      if(!trickleEnabled_){
+        temp = CONN_GATHERED;
+        msg = this->getLocalSdp();
+      }
     }
 
     if (state == TRANSPORT_READY &&
@@ -546,7 +562,7 @@ namespace erizo {
 
     globalState_ = temp;
     if (connEventListener_ != NULL)
-      connEventListener_->notifyEvent(globalState_);
+      connEventListener_->notifyEvent(globalState_, msg);
   }
 
   // changes the outgoing payload type for in the given data packet
