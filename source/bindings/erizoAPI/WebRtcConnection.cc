@@ -33,7 +33,7 @@ void WebRtcConnection::Init(Local<Object> exports) {
 void WebRtcConnection::New(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
-  if (args.Length() < 14){
+  if (args.Length() < 15){
     isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Wrong number of arguments")));
     return;
   }
@@ -64,8 +64,10 @@ void WebRtcConnection::New(const FunctionCallbackInfo<Value>& args) {
                  (nackSender << erizo::QOS_SUPPORT_NACK_SENDER_SHIFT) |
                  (nackRecv << erizo::QOS_SUPPORT_NACK_RECEIVER_SHIFT);
 
+  bool t = (args[14]->ToBoolean())->BooleanValue();
+
   WebRtcConnection* obj = new WebRtcConnection();
-  obj->me = new erizo::WebRtcConnection(a, v, h, stunServer,stunPort,minPort,maxPort, certFile, keyFile, privatePass, qos, obj);
+  obj->me = new erizo::WebRtcConnection(a, v, h, stunServer,stunPort,minPort,maxPort, certFile, keyFile, privatePass, qos, t, obj);
   obj->Wrap(args.This());
   uv_async_init(uv_default_loop(), &obj->async_, &WebRtcConnection::eventsCallback); 
   uv_async_init(uv_default_loop(), &obj->asyncStats_, &WebRtcConnection::statsCallback); 
