@@ -176,10 +176,14 @@ void Mixer::removeSubscriber(const std::string& peerId)
     ELOG_DEBUG("Removing subscriber: id is %s", peerId.c_str());
     m_audioMixer->removeOutput(peerId);
 
+    std::vector<boost::shared_ptr<MediaSink>> removedSubscribers;
     boost::unique_lock<boost::shared_mutex> lock(m_subscriberMutex);
     std::map<std::string, boost::shared_ptr<MediaSink>>::iterator it = m_subscribers.find(peerId);
-    if (it != m_subscribers.end())
+    if (it != m_subscribers.end()) {
+        removedSubscribers.push_back(it->second);
         m_subscribers.erase(it);
+    }
+    lock.unlock();
 }
 
 int32_t Mixer::removeSource(uint32_t source, bool isAudio)
@@ -205,6 +209,7 @@ void Mixer::closeAll()
 {
     ELOG_DEBUG("closeAll");
 
+    std::vector<boost::shared_ptr<MediaSink>> removedSubscribers;
     boost::unique_lock<boost::shared_mutex> subscriberLock(m_subscriberMutex);
     std::map<std::string, boost::shared_ptr<MediaSink>>::iterator subscriberItor = m_subscribers.begin();
     while (subscriberItor != m_subscribers.end()) {
@@ -213,10 +218,12 @@ void Mixer::closeAll()
             FeedbackSource* fbsource = subscriber->getFeedbackSource();
             if (fbsource)
                 fbsource->setFeedbackSink(nullptr);
+            removedSubscribers.push_back(subscriber);
         }
         m_subscribers.erase(subscriberItor++);
     }
     m_subscribers.clear();
+    subscriberLock.unlock();
 }
 
 }/* namespace mcu */
