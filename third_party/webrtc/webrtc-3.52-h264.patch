@@ -1698,7 +1698,7 @@ index 0000000..789ad19
 +        nal_type    = (nal_buffer[0] & 0x1F);
 +        //nal_type    = (nal_buffer[4] & 0x1F);
 +        layer_size += layer_bs_info->pNalLengthInByte[nal_index];
-+        nal_begin  += layer_size;
++        nal_begin += layer_bs_info->pNalLengthInByte[nal_index];
 +        if (nal_type == 14) {
 +          continue;
 +        }
