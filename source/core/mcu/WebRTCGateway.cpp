@@ -130,10 +130,15 @@ void WebRTCGateway::addSubscriber(MediaSink* subscriber, const std::string& id)
 void WebRTCGateway::removeSubscriber(const std::string& id)
 {
     ELOG_DEBUG("Removing subscriber: id is %s", id.c_str());
+
+    std::vector<boost::shared_ptr<MediaSink>> removedSubscribers;
     boost::unique_lock<boost::shared_mutex> lock(m_subscriberMutex);
     std::map<std::string, boost::shared_ptr<MediaSink>>::iterator it = m_subscribers.find(id);
-    if (it != m_subscribers.end())
+    if (it != m_subscribers.end()) {
+        removedSubscribers.push_back(it->second);
         m_subscribers.erase(it);
+    }
+    lock.unlock();
 }
 
 void WebRTCGateway::setAdditionalSourceConsumer(woogeen_base::MediaSourceConsumer* mixer)
@@ -156,6 +161,7 @@ void WebRTCGateway::closeAll()
 {
     ELOG_DEBUG("closeAll");
 
+    std::vector<boost::shared_ptr<MediaSink>> removedSubscribers;
     boost::unique_lock<boost::shared_mutex> subscriberLock(m_subscriberMutex);
     std::map<std::string, boost::shared_ptr<MediaSink>>::iterator subscriberItor = m_subscribers.begin();
     while (subscriberItor != m_subscribers.end()) {
@@ -164,6 +170,7 @@ void WebRTCGateway::closeAll()
             FeedbackSource* fbsource = subscriber->getFeedbackSource();
             if (fbsource)
                 fbsource->setFeedbackSink(nullptr);
+            removedSubscribers.push_back(subscriber);
         }
         m_subscribers.erase(subscriberItor++);
     }
