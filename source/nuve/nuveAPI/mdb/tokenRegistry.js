@@ -71,8 +71,13 @@ var removeToken = exports.removeToken = function (id, callback) {
             db.tokens.remove({_id: db.ObjectId(id)}, function (error, removed) {
                 if (error) {
                     log.error('MongoDB: Error removing token: ', error);
+                    return callback('removing token error', null);
                 }
-                callback(error, token);
+                if (removed.n === 1) {
+                    callback(null, token);
+                } else {
+                    callback('token already removed', null);
+                }
             });
         } else {
             callback('no such token', null);
