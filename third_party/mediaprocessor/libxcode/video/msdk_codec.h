@@ -246,6 +246,7 @@ private:
     mfxFrameAllocResponse m_mfxDecResponse;  // memory allocation response for decoder
     std::vector<mfxExtBuffer *> m_DecExtParams;
     bool is_eos_;
+    bool refresh_flag_;
 
     // Encoder
     MFXVideoENCODE *mfx_enc_;

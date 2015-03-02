@@ -125,6 +125,7 @@ MSDKCodec::MSDKCodec(ElementType type, MFXVideoSession *session, MFXFrameAllocat
     pic_cnt_ = 0;
     eos_cnt = 0;
     is_eos_ = false;
+    refresh_flag_ = false;
 #ifdef ENABLE_VA
     user_va_ = NULL;
 #endif
@@ -2441,8 +2442,11 @@ int MSDKCodec::HandleProcessDecode()
                 }
             } else {
                 if (ELEMENT_DECODER == element_type_) {
-                    sts = mfx_dec_->DecodeFrameAsync(&input_bs_, surface_pool_[nIndex],
-                                                     &pmfxOutSurface, &syncpD);
+                    if (input_bs_.DataLength > 0) {
+                        sts = mfx_dec_->DecodeFrameAsync(&input_bs_, surface_pool_[nIndex],
+                                                         &pmfxOutSurface, &syncpD);
+                        refresh_flag_ = true;
+                    }
                 } else {
                     sts = MFXVideoUSER_ProcessFrameAsync(*mfx_session_,
                                                          (mfxHDL *) &input_bs_, 1, (mfxHDL *) &surface_pool_[nIndex], 1, &syncpD);
@@ -2459,8 +2463,31 @@ int MSDKCodec::HandleProcessDecode()
             }
 
             if (ELEMENT_DECODER == element_type_) {
-                sts = mfx_dec_->DecodeFrameAsync(NULL, surface_pool_[nIndex],
-                                                     &pmfxOutSurface, &syncpD);
+                if (refresh_flag_) {
+                    int index = 0;
+                    do {
+                        while (is_running_) {
+                            index = GetFreeSurfaceIndex(surface_pool_, num_of_surf_);
+                            if (MFX_ERR_NOT_FOUND == index) {
+                                usleep(10000);
+                            } else {
+                                break;
+                            }
+                        }
+                        if (!is_running_) {
+                            break;
+                        }
+                        sts = mfx_dec_->DecodeFrameAsync(NULL, surface_pool_[index],
+                                                         &pmfxOutSurface, &syncpD);
+                        if (MFX_WRN_DEVICE_BUSY == sts)
+                        {
+                            usleep(1000);
+                        }
+                    } while (MFX_ERR_MORE_SURFACE == sts || MFX_WRN_DEVICE_BUSY == sts);
+                    refresh_flag_ = false;
+                } else {
+                    continue;
+                }
             }
 
             if (MFX_ERR_NONE < sts && syncpD) {
