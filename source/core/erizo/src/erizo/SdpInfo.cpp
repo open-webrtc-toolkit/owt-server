@@ -721,7 +721,7 @@ namespace erizo {
         bool found = false;
         for (unsigned int it = 0; it < internalPayloadVector_.size(); it++) {
           const RtpMap& rtp = internalPayloadVector_[it];
-          if (rtp.encodingName == codecname && rtp.clockRate == clock && rtp.enable) {
+          if (rtp.mediaType == mtype && rtp.encodingName == codecname && rtp.clockRate == clock && rtp.enable) {
             outInPTMap[PT] = rtp.payloadType;
             inOutPTMap[rtp.payloadType] = PT;
             found = true;
