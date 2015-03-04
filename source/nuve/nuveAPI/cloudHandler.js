@@ -262,3 +262,8 @@ exports.getHostedRooms = function getHostedRooms () {
         };
     });
 };
+
+exports.reschedule = function reschedule (id) {
+    'use strict';
+    delete rooms[id];
+};

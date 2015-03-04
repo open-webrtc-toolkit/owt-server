@@ -422,6 +422,14 @@ var listen = function () {
                         };
 
                         if (rooms[tokenDB.room] === undefined) {
+                            if (myState === 0) {
+                                return rpc.callRpc('nuve', 'reschedule', tokenDB.room, {callback: function () {
+                                    var errMsg = 'Erizo: out of capacity';
+                                    log.warn(errMsg);
+                                    safeCall(callback, 'error', errMsg);
+                                    socket.disconnect();
+                                }});
+                            }
                             var initRoom = function (roomID, on_ok, on_error) {
                                 var room = {};
                                 room.id = roomID;
