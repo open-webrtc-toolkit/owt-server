@@ -1017,8 +1017,10 @@ srtp_unprotect(srtp_ctx_t *ctx, void *srtp_hdr, int *pkt_octet_len) {
     
     /* check replay database */
     status = rdbx_check(&stream->rtp_rdbx, delta);
-    if (status && stream->allow_repeat_tx==0)
-      return status;
+    if (status) {
+      if (status != err_status_replay_fail || !stream->allow_repeat_tx)
+        return status;
+    }
   }
 
 #ifdef NO_64BIT_MATH
