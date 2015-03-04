@@ -81,3 +81,9 @@ exports.killMe = function(ip, callback) {
     cloudHandler.killMe(ip);
     callback('callback');
 };
+
+exports.reschedule = function (room, callback) { // ensure room is empty before calling this
+    'use strict';
+    cloudHandler.reschedule(room);
+    callback('callback');
+};
