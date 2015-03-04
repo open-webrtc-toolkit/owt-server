@@ -456,14 +456,14 @@ Woogeen.ConferenceClient = (function () {
       return safeCall(onFailure, 'nothing to send');
     }
     if (typeof receiver === 'undefined') {
-      receiver = 0; // 0 => ALL
-    } else if (typeof receiver === 'string' || typeof receiver === 'number') {
+      receiver = 'all';
+    } else if (typeof receiver === 'string') {
       // supposed to be a valid receiverId.
       // pass.
     } else if (typeof receiver === 'function') {
       onFailure = onSuccess;
       onSuccess = receiver;
-      receiver = 0;
+      receiver = 'all';
     } else {
       return safeCall(onFailure, 'invalid receiver');
     }

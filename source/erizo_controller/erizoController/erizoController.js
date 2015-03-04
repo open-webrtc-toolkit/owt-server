@@ -557,7 +557,7 @@ var listen = function () {
                     from: socket.id,
                     to: receiver
                 };
-                if (receiver === 0) {
+                if (receiver === 'all') {
                     sendMsgToRoom(socket.room, 'onCustomMessage', data);
                     return safeCall(callback, 'success');
                 } else {
@@ -573,7 +573,7 @@ var listen = function () {
                 }
                 break;
             default: // do nothing
-                return safeCall(callback, 'success');
+                return safeCall(callback, 'error', 'invalid message type');
             }
         });
 
