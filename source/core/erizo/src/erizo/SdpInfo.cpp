@@ -25,6 +25,7 @@ namespace erizo {
   static const char *ice_user = "a=ice-ufrag";
   static const char *ice_pass = "a=ice-pwd";
   static const char *ssrctag = "a=ssrc";
+  static const char *ssrcgrouptag = "a=ssrc-group";
   static const char *savpf = "SAVPF";
   static const char *rtpmap = "a=rtpmap:";
   static const char *rtcpmux = "a=rtcp-mux";
@@ -33,6 +34,7 @@ namespace erizo {
   static const char *sendonly = "a=sendonly";
   static const char *sendrecv = "a=sendrecv";
   static const char *nack = "nack";
+  static const char *fmtp = "a=fmtp:";
 
   SdpInfo::SdpInfo() {
     isBundle = false;
@@ -46,6 +48,7 @@ namespace erizo {
     profile = AVPF;
     audioSsrc = 0;
     videoSsrc = 0;
+    videoRtxSsrc = 0;
     videoCodecs = 0;
     audioCodecs = 0;
     videoSdpMLine = -1;
@@ -79,7 +82,16 @@ namespace erizo {
     red.mediaType = VIDEO_TYPE;
     red.enable = true;
     internalPayloadVector_.push_back(red);
-
+/*
+    RtpMap rtx;
+    rtx.payloadType = RTX_90000_PT;
+    rtx.encodingName = "rtx";
+    rtx.clockRate = 90000;
+    rtx.channels = 1;
+    rtx.mediaType = VIDEO_TYPE;
+    rtx.enable = false;
+    internalPayloadVector_.push_back(rtx);
+*/
     RtpMap ulpfec;
     ulpfec.payloadType = ULP_90000_PT;
     ulpfec.encodingName = "ulpfec";
@@ -438,8 +450,14 @@ namespace erizo {
             sdp << "a=rtpmap:"<<payloadType << " " << rtp.encodingName << "/"
               << rtp.clockRate << endl;
           }
-          if(rtp.encodingName == "opus"){
-            sdp << "a=fmtp:"<< payloadType<<" minptime=10\n";
+          for (std::map<std::string, std::string>::const_iterator theIt = rtp.formatParameters.begin(); 
+              theIt != rtp.formatParameters.end(); theIt++){
+            if (theIt->first.compare("none")){
+              sdp << "a=fmtp:" << payloadType << theIt->first << "=" << theIt->second << endl;
+            }else{
+              sdp << "a=fmtp:" << payloadType << theIt->second << endl;
+            }
+        
           }
         }
       }
@@ -581,9 +599,9 @@ namespace erizo {
 
       for (std::list<RtpMap>::iterator it = payloadVector_.begin(); it != payloadVector_.end(); ++it){
         const RtpMap& rtp = *it;
-          if (rtp.mediaType==VIDEO_TYPE && rtp.enable)
-          {
-              int payloadType = rtp.payloadType;
+        if (rtp.mediaType==VIDEO_TYPE && rtp.enable)
+        {
+          int payloadType = rtp.payloadType;
           sdp << "a=rtpmap:"<<payloadType << " " << rtp.encodingName << "/"
               << rtp.clockRate <<"\n";
           if (rtp.encodingName == "VP8" || rtp.encodingName == "H264") {
@@ -596,6 +614,16 @@ namespace erizo {
             }
             sdp << "a=rtcp-fb:"<< rtp.payloadType<<" goog-remb\n";
           }
+
+          for (std::map<std::string, std::string>::const_iterator theIt = rtp.formatParameters.begin(); 
+              theIt != rtp.formatParameters.end(); theIt++){
+            if (theIt->first.compare("none")){
+              sdp << "a=fmtp:" << payloadType << " " << theIt->first << "=" << theIt->second << endl;
+            }else{
+              sdp << "a=fmtp:" << payloadType << " " << theIt->second << endl;
+            }
+          }
+
         }
       }
       if (videoSsrc == 0) {
@@ -605,6 +633,12 @@ namespace erizo {
         "a=ssrc:"<< videoSsrc << " msid:"<< msidtemp << " v0"<< endl<<
         "a=ssrc:"<< videoSsrc << " mslabel:"<< msidtemp << endl<<
         "a=ssrc:"<< videoSsrc << " label:" << msidtemp <<"v0"<<endl;
+      if (videoRtxSsrc!=0){
+        sdp << "a=ssrc:" << videoRtxSsrc << " cname:o/i14u9pJrxRKAsu" << endl<<
+          "a=ssrc:"<< videoRtxSsrc << " msid:"<< msidtemp << " v0"<< endl<<
+          "a=ssrc:"<< videoRtxSsrc << " mslabel:"<< msidtemp << endl<<
+          "a=ssrc:"<< videoRtxSsrc << " label:" << msidtemp <<"v0"<<endl;
+      }
     }
     ELOG_DEBUG("sdp local \n %s",sdp.str().c_str());
     return sdp.str();
@@ -682,6 +716,9 @@ namespace erizo {
     this->hasVideo = offerSdp.hasVideo;
     this->hasAudio = offerSdp.hasAudio;
     this->bundleTags = offerSdp.bundleTags;
+    if (offerSdp.videoRtxSsrc != 0){
+      this->videoRtxSsrc = 55555;
+    }
 
     switch (offerSdp.videoDirection) {
     case SENDONLY:
@@ -760,6 +797,7 @@ namespace erizo {
       size_t isUser = line.find(ice_user);
       size_t isPass = line.find(ice_pass);
       size_t isSsrc = line.find(ssrctag);
+      size_t isSsrcGroup = line.find(ssrcgrouptag);
       size_t isSAVPF = line.find(savpf);
       size_t isRtpmap = line.find(rtpmap);
       size_t isRtcpMuxchar = line.find(rtcpmux);
@@ -768,6 +806,7 @@ namespace erizo {
       size_t isSendonly = line.find(sendonly);
       size_t isSendrecv = line.find(sendrecv);
       size_t isNack = line.find(nack);
+      size_t isFmtp = line.find(fmtp);
 
       ELOG_DEBUG("current line -> %s", line.c_str());
 
@@ -934,6 +973,16 @@ namespace erizo {
       if (isNack != std::string::npos) {
         nackEnabled = true;
       }
+      if (isSsrcGroup != std::string::npos) {
+        if (mtype == VIDEO_TYPE){
+          ELOG_DEBUG("FID group detected");
+          std::vector<std::string> parts = stringutil::splitOneOf(line, " :", 10);
+          if (parts.size()>=4){
+            videoRtxSsrc = strtoul(parts[3].c_str(), NULL, 10);
+            ELOG_DEBUG("Setting videoRtxSsrc to %u", videoRtxSsrc);
+          }
+        }
+      }
       // a=rtpmap:PT codec_name/clock_rate
       if(isRtpmap != std::string::npos){
         std::vector<std::string> parts = stringutil::splitOneOf(line, " :/\n");
@@ -996,6 +1045,33 @@ namespace erizo {
           }
 
           payloadVector_.insert(rit.base(), theMap);
+        }
+      }
+
+      if (isFmtp != std::string::npos){
+        std::vector<std::string> parts = stringutil::splitOneOf(line, " :=", 4);        
+        if (parts.size() >= 4){
+          unsigned int PT = strtoul(parts[2].c_str(), NULL, 10);
+          std::string option = "none";
+          std::string value = "none";
+          if (parts.size() == 4){
+            value = parts[3].c_str();
+          }else{
+            option = parts[3].c_str();
+            value = parts[4].c_str();
+          }
+          ELOG_DEBUG("Parsing fmtp to PT %u, option %s, value %s", PT, option.c_str(), value.c_str());
+          std::list<RtpMap>::iterator it = payloadVector_.begin();
+          for (; it != payloadVector_.end(); ++it) {
+            RtpMap& rtp = *it;
+            if (rtp.payloadType == PT){
+              ELOG_DEBUG("Saving fmtp to PT %u, option %s, value %s", PT, option.c_str(), value.c_str());
+              rtp.formatParameters[option] = value;
+            }
+          }
+        } else if (parts.size()==4){
+
+
         }
       }
     }

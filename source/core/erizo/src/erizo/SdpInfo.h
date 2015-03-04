@@ -103,6 +103,7 @@ struct RtpMap {
   MediaType mediaType;
   unsigned int channels;
   bool enable;
+  std::map<std::string, std::string> formatParameters;
 };
 
 enum StreamDirection {
@@ -213,7 +214,7 @@ public:
     /**
      * The audio and video SSRCs for this particular SDP.
      */
-    unsigned int audioSsrc, videoSsrc;
+    unsigned int audioSsrc, videoSsrc, videoRtxSsrc;
     /**
     * Is it Bundle
     */
