@@ -46,7 +46,7 @@ exports.getList = function (req, res) {
         log.info('Representing users for room ', currentRoom._id, 'and service', currentService._id);
         cloudHandler.getUsersInRoom (currentRoom._id, function (users) {
             if (users === 'error') {
-                res.status(404).send('Room not hosted');
+                res.status(404).send('Users do not exist');
                 return;
             }
             res.send(users);
