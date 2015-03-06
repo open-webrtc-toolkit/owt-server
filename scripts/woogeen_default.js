@@ -21,16 +21,6 @@ config.cloudProvider.host = '';
 config.cloudProvider.accessKey = '';
 config.cloudProvider.secretAccessKey = '';
 
-config.certificate = {};
-// A string or Buffer containing the certificate key of the server in PEM format. (Required)
-config.certificate.cert = "../../cert/cert.pem";
-// A string or Buffer containing the private key of the server in PEM format. (Required)
-config.certificate.key = "../../cert/key.pem";
-// A string of passphrase for the private key or pfx
-config.certificate.passphrase = "private password";
-// An array of strings or Buffers of trusted certificates in PEM format. If this is omitted several well known "root" CAs will be used, like VeriSign. These are used to authorize connections.
-config.certificate.ca = "";
-
 /*********************************************************
  NUVE CONFIGURATION
 **********************************************************/
@@ -38,6 +28,7 @@ config.nuve = {};
 config.nuve.dataBaseURL = 'localhost/nuvedb'; // default value: 'localhost/nuvedb'
 config.nuve.superserviceID = '_auto_generated_ID_'; // default value: ''
 config.nuve.testErizoController = 'localhost:8080'; // default value: 'localhost:8080'
+config.nuve.keystorePath = '../../cert/certificate.pfx';
 
 /*********************************************************
  ERIZO CONTROLLER CONFIGURATION
@@ -59,6 +50,7 @@ config.erizoController.hostname = ''; //default value: ''
 config.erizoController.port = 8080; //default value: 8080
 // Use true if clients communicate with erizoController over SSL
 config.erizoController.ssl = false; //default value: false
+config.erizoController.keystorePath = '../../cert/certificate.pfx';
 
 // Use the name of the inferface you want to bind to for websockets
 // config.erizoController.networkInterface = 'eth1' // default value: undefined
@@ -122,6 +114,7 @@ config.erizo.hardwareAccelerated = false;
 // "true" means OpenH264 is deployed for H.264. Otherwise no support of H.264 in MCU.
 config.erizo.openh264Enabled = false;
 
+config.erizo.keystorePath = '';
 /***** END *****/
 // Following lines are always needed.
 var module = module || {};
