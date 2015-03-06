@@ -897,6 +897,8 @@ var listen = function () {
                     if (signMess.type === 'ready') {
                         socket.room.streams[id] = st;
                         sendMsgToRoom(socket.room, 'onAddStream', st.getPublicStream());
+                    } else if (signMess.type === 'timeout') {
+                        safeCall(callback, 'error', 'No ErizoAgent available');
                     }
 
                     socket.emit('signaling_message_erizo', {mess: signMess, streamId: id});
