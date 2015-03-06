@@ -67,7 +67,7 @@ exports.RoomController = function (spec) {
         }
     	amqper.callRpc("ErizoAgent_" + agentId, "createErizoJS", [], {callback: function(erizo_id) {
             log.debug("Answer", erizo_id);
-            if (!erizos[erizo_id]) {
+            if (erizo_id !== 'timeout' && !erizos[erizo_id]) {
                 erizos[erizo_id] = {publishers: [], ka_count: 0};
             }
             callback(erizo_id);
@@ -310,6 +310,13 @@ exports.RoomController = function (spec) {
 
             // We create a new ErizoJS with the publisher_id.
             getErizoJS(mixer_id, function (erizo_id) {
+
+                if (erizo_id === 'timeout') {
+                    log.error('No Agents Available');
+                    callback('timeout');
+                    return;
+                }
+
                 // Track publisher locally
                 publishers[publisher_id] = erizo_id;
                 subscribers[publisher_id] = [];
