@@ -1,13 +1,12 @@
-/*global exports, require, console, Buffer, __dirname*/
+/*global require, __dirname, process*/
+'use strict';
+
 var express = require('express');
 var bodyParser = require('body-parser');
 
 var config = require('./../../etc/woogeen_config');
-var db = require('./mdb/dataBase').db;
 var rpc = require('./rpc/rpc');
 var logger = require('./logger').logger;
-
-// Logger
 var log = logger.getLogger('Nuve');
 
 var app = express();
@@ -36,17 +35,13 @@ app.set('view options', {
 });
 
 app.use(function (req, res, next) {
-    'use strict';
-
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS, DELETE');
     res.header('Access-Control-Allow-Headers', 'origin, authorization, content-type');
-
     next();
 });
 
 app.options('*', function(req, res) {
-    'use strict';
     res.send(200);
 });
 
@@ -80,12 +75,23 @@ app.get('/cluster/rooms', clusterResource.getRooms);
 app.get('/cluster/nodes/:node/config', clusterResource.getNodeConfig);
 
 if (config.nuve.ssl === true) {
-    require('https').createServer({
-      key: require('fs').readFileSync(config.certificate.key).toString(),
-      cert: require('fs').readFileSync(config.certificate.cert).toString(),
-      passphrase: config.certificate.passphrase,
-      ca: config.certificate.ca
-    }, app).listen(3000);
+    var cipher = require('../../common/cipher');
+    cipher.unlock(cipher.k, '../../cert/.woogeen.keystore', function cb (err, obj) {
+        if (!err) {
+            try {
+                require('https').createServer({
+                    pfx: require('fs').readFileSync(config.nuve.keystorePath),
+                    passphrase: obj.nuve
+                }, app).listen(3000);
+            } catch (e) {
+                err = e;
+            }
+        }
+        if (err) {
+            log.warn('Failed to setup secured server:', err);
+            return process.exit();
+        }
+    });
 } else {
     app.listen(3000);
 }

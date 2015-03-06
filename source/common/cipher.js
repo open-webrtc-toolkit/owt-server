@@ -26,22 +26,32 @@ function lock (password, object, filename, cb) {
   s._read = function noop() {};
   s.push(JSON.stringify(object));
   s.push(null);
-  var out = fs.createWriteStream(filename);
+  var out;
+  try {
+    out = fs.createWriteStream(filename);
+  } catch (e) {
+    return cb(e);
+  }
   out.on('finish', function () {
-    cb();
+    cb(null);
   });
   s.pipe(zlib.createGzip()).pipe(crypto.createCipher(algorithm, password)).pipe(out);
 }
 
 function unlock (password, filename, cb) {
-  var s = fs.createReadStream(filename);
+  var s;
+  try {
+    s = fs.createReadStream(filename);
+  } catch (e) {
+    return cb(e);
+  }
   var unzip = zlib.createGunzip();
   var buf = '';
   unzip.on('data', function (chunk) {
     buf += chunk.toString();
   });
   unzip.on('end', function () {
-    cb(JSON.parse(buf));
+    cb(null, JSON.parse(buf));
   });
   s.pipe(crypto.createDecipher(algorithm, password)).pipe(unzip);
 }
