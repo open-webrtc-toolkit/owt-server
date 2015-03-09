@@ -105,6 +105,21 @@ Index: src/webrtc/video_engine/vie_sync_module.h
    RtpReceiver* video_receiver_;
    RtpRtcp* video_rtp_rtcp_;
    int voe_channel_id_;
+Index: src/webrtc/video_engine/vie_encoder.cc
+===================================================================
+--- src/webrtc/video_engine/vie_encoder.cc	(revision 8161)
++++ src/webrtc/video_engine/vie_encoder.cc	(working copy)
+@@ -779,6 +779,10 @@
+     idx = stream_it->second;
+   }
+   // Release the critsect before triggering key frame.
++  VideoCodec codec;
++  if (vcm_.SendCodec(&codec) == 0 && codec.numberOfSimulcastStreams == 0) {
++    idx = 0;
++  }
+   vcm_.IntraFrameRequest(idx);
+ }
+ 
 Index: src/webrtc/modules/video_coding/codecs/vp8/vp8_impl.cc
 ===================================================================
 --- src/webrtc/modules/video_coding/codecs/vp8/vp8_impl.cc	(revision 7940)
