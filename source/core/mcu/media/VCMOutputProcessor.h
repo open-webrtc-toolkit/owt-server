@@ -83,7 +83,9 @@ public:
     void onFrame(FrameFormat, unsigned char* payload, int len, unsigned int ts);
     bool setSendCodec(FrameFormat, VideoSize);
     bool updateVideoSize(VideoSize);
-    uint32_t sendSSRC();
+    bool startSend(bool nack, bool fec);
+    bool stopSend(bool nack, bool fec);
+    uint32_t sendSSRC(bool nack, bool fec);
     woogeen_base::IntraFrameCallback* iFrameCallback() { return this; }
     erizo::FeedbackSink* feedbackSink() { return this; }
 
@@ -105,7 +107,7 @@ private:
     boost::scoped_ptr<webrtc::BitrateController> m_bitrateController;
     boost::scoped_ptr<webrtc::RtcpBandwidthObserver> m_bandwidthObserver;
     boost::scoped_ptr<webrtc::ViEEncoder> m_videoEncoder;
-    boost::scoped_ptr<webrtc::RtpRtcp> m_rtpRtcp;
+    std::list<boost::shared_ptr<webrtc::RtpRtcp>> m_rtpRtcps;
 
     boost::shared_ptr<webrtc::Transport> m_videoTransport;
     boost::shared_ptr<TaskRunner> m_taskRunner;
