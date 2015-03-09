@@ -267,13 +267,13 @@ bool VCMOutputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* tran
     return true;
 }
 
-void VCMOutputProcessor::RegisterPostEncodeCallback(MediaFrameQueue& videoQueue, long long firstMediaReceived)
+void VCMOutputProcessor::RegisterPreSendFrameCallback(MediaFrameQueue& videoQueue)
 {
-    m_encodedFrameCallback.reset(new EncodedFrameCallbackAdapter(&videoQueue, firstMediaReceived));
+    m_encodedFrameCallback.reset(new EncodedFrameCallbackAdapter(&videoQueue));
     m_videoEncoder->RegisterPostEncodeImageCallback(m_encodedFrameCallback.get());
 }
 
-void VCMOutputProcessor::DeRegisterPostEncodeImageCallback()
+void VCMOutputProcessor::DeRegisterPreSendFrameCallback()
 {
     if (m_encodedFrameCallback)
         m_videoEncoder->DeRegisterPostEncodeImageCallback();
@@ -281,7 +281,7 @@ void VCMOutputProcessor::DeRegisterPostEncodeImageCallback()
 
 void VCMOutputProcessor::close()
 {
-    DeRegisterPostEncodeImageCallback();
+    DeRegisterPreSendFrameCallback();
 
     m_source->deActivateOutput(m_id);
     std::list<boost::shared_ptr<RtpRtcp>>::iterator it = m_rtpRtcps.begin();

@@ -162,12 +162,12 @@ bool EncodedVideoFrameSender::init(woogeen_base::WoogeenTransport<erizo::VIDEO>*
     return true;
 }
 
-void EncodedVideoFrameSender::RegisterPostEncodeCallback(MediaFrameQueue& videoQueue, long long firstMediaReceived)
+void EncodedVideoFrameSender::RegisterPreSendFrameCallback(MediaFrameQueue& videoQueue)
 {
     // FIXME: Chunbo to add logic here
 }
 
-void EncodedVideoFrameSender::DeRegisterPostEncodeImageCallback()
+void EncodedVideoFrameSender::DeRegisterPreSendFrameCallback()
 {
     // FIXME: Chunbo to add logic here
 }

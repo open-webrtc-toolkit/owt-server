@@ -60,8 +60,8 @@ public:
     uint32_t sendSSRC(bool nack, bool fec);
     woogeen_base::IntraFrameCallback* iFrameCallback() { return this; }
     erizo::FeedbackSink* feedbackSink() { return this; }
-    void RegisterPostEncodeCallback(MediaFrameQueue& videoQueue, long long firstMediaReceived);
-    void DeRegisterPostEncodeImageCallback();
+    void RegisterPreSendFrameCallback(MediaFrameQueue& videoQueue);
+    void DeRegisterPreSendFrameCallback();
 
     // Implements FeedbackSink.
     int deliverFeedback(char* buf, int len);

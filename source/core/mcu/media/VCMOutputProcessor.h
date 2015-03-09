@@ -39,32 +39,25 @@ class TaskRunner;
 
 class EncodedFrameCallbackAdapter : public webrtc::EncodedImageCallback {
 public:
-    EncodedFrameCallbackAdapter(MediaFrameQueue* videoQueue, long long firstMediaReceived)
-        : m_videoQueue(videoQueue), m_firstMediaReceived(firstMediaReceived), m_videoOffsetMsec(-1) {}
+    EncodedFrameCallbackAdapter(MediaFrameQueue* videoQueue)
+        : m_videoQueue(videoQueue)
+    {
+    }
 
-    virtual ~EncodedFrameCallbackAdapter() {}
+    virtual ~EncodedFrameCallbackAdapter() { }
 
     virtual int32_t Encoded(webrtc::EncodedImage& encodedImage,
                             const webrtc::CodecSpecificInfo* codecSpecificInfo,
                             const webrtc::RTPFragmentationHeader* fragmentation)
     {
-       if (m_videoOffsetMsec == -1) {
-           timeval time;
-           gettimeofday(&time, nullptr);
+        if (encodedImage._length > 0 && m_videoQueue)
+            m_videoQueue->pushFrame(encodedImage._buffer, encodedImage._length, encodedImage._timeStamp);
 
-           m_videoOffsetMsec = ((time.tv_sec * 1000) + (time.tv_usec / 1000)) - m_firstMediaReceived;
-       }
-
-       if (encodedImage._length > 0 && m_videoQueue)
-           m_videoQueue->pushFrame(encodedImage._buffer, encodedImage._length, encodedImage._timeStamp, m_videoOffsetMsec);
-
-       return 0;
-   }
+        return 0;
+    }
 
 private:
     MediaFrameQueue* m_videoQueue;
-    long long m_firstMediaReceived;
-    long long m_videoOffsetMsec;
 };
 
 /**
@@ -89,8 +82,8 @@ public:
     woogeen_base::IntraFrameCallback* iFrameCallback() { return this; }
     erizo::FeedbackSink* feedbackSink() { return this; }
 
-    void RegisterPostEncodeCallback(MediaFrameQueue& videoQueue, long long firstMediaReceived);
-    void DeRegisterPostEncodeImageCallback();
+    void RegisterPreSendFrameCallback(MediaFrameQueue& videoQueue);
+    void DeRegisterPreSendFrameCallback();
 
     // Implements FeedbackSink.
     int deliverFeedback(char* buf, int len);

@@ -53,8 +53,8 @@ public:
     virtual erizo::FeedbackSink* feedbackSink() = 0;
     virtual int id() { return m_id; }
 
-    virtual void RegisterPostEncodeCallback(MediaFrameQueue& mediaQueue, long long firstMediaReceived) {}
-    virtual void DeRegisterPostEncodeImageCallback() {}
+    virtual void RegisterPreSendFrameCallback(MediaFrameQueue& mediaQueue) { }
+    virtual void DeRegisterPreSendFrameCallback() { }
 
 protected:
     int m_id;

@@ -46,34 +46,25 @@ class AudioEncodedFrameCallbackAdapter : public webrtc::AudioEncodedFrameCallbac
     DECLARE_LOGGER();
 
 public:
-    AudioEncodedFrameCallbackAdapter(MediaFrameQueue* audioQueue, long long firstMediaReceived)
+    AudioEncodedFrameCallbackAdapter(MediaFrameQueue* audioQueue)
         : m_audioQueue(audioQueue)
-        , m_firstMediaReceived(firstMediaReceived)
-        , m_audioOffsetMsec(-1) {}
+    {
+    }
 
-    virtual ~AudioEncodedFrameCallbackAdapter() {}
+    virtual ~AudioEncodedFrameCallbackAdapter() { }
 
     virtual int32_t Encoded(webrtc::FrameType frameType, uint8_t payloadType,
                             uint32_t timeStamp, const uint8_t* payloadData,
                             uint16_t payloadSize)
     {
-        if (m_audioOffsetMsec == -1) {
-            timeval time;
-            gettimeofday(&time, nullptr);
-
-            m_audioOffsetMsec = ((time.tv_sec * 1000) + (time.tv_usec / 1000)) - m_firstMediaReceived;
-        }
-
         if (payloadSize > 0 && m_audioQueue)
-            m_audioQueue->pushFrame(payloadData, payloadSize, timeStamp, m_audioOffsetMsec);
+            m_audioQueue->pushFrame(payloadData, payloadSize, timeStamp);
 
         return 0;
     }
 
 private:
     MediaFrameQueue* m_audioQueue;
-    long long m_firstMediaReceived;
-    long long m_audioOffsetMsec;
 };
 
 class AudioMixer : public woogeen_base::MediaSourceConsumer, public MediaRecording, public erizo::MediaSink, public erizo::FeedbackSink, public JobTimerListener {
@@ -106,7 +97,7 @@ public:
     webrtc::VoEVideoSync* avSyncInterface();
 
     // Implements MediaRecording
-    void startRecording(MediaFrameQueue& audioQueue, long long recordStartTime);
+    void startRecording(MediaFrameQueue& audioQueue);
     void stopRecording();
 
 private:

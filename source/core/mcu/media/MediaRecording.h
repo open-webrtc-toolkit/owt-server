@@ -59,17 +59,27 @@ static const unsigned int DEFAULT_QUEUE_MAX = 10;
 class MediaFrameQueue
 {
 public:
-    MediaFrameQueue(unsigned int max = DEFAULT_QUEUE_MAX) : m_max(max) {}
+    MediaFrameQueue(int64_t startTime, unsigned int max = DEFAULT_QUEUE_MAX)
+        : m_max(max)
+        , m_startTimeMsec(startTime)
+        , m_timeOffsetMsec(-1)
+    {
+    }
 
     virtual ~MediaFrameQueue()
     {
-        boost::shared_ptr<EncodedFrame> frame;
-        while (m_queue.pop(frame)) {}
     }
 
-    void pushFrame(const uint8_t* data, uint16_t length, uint32_t timeStamp, long long offsetMsec)
+    void pushFrame(const uint8_t* data, uint16_t length, uint32_t timeStamp)
     {
-        boost::shared_ptr<EncodedFrame> newFrame(new EncodedFrame(data, length, timeStamp, offsetMsec));
+        if (m_timeOffsetMsec == -1) {
+            timeval time;
+            gettimeofday(&time, nullptr);
+
+            m_timeOffsetMsec = ((time.tv_sec * 1000) + (time.tv_usec / 1000)) - m_startTimeMsec;
+        }
+
+        boost::shared_ptr<EncodedFrame> newFrame(new EncodedFrame(data, length, timeStamp, m_timeOffsetMsec));
         m_queue.push(newFrame);
 
         // Enforce our max queue size
@@ -91,13 +101,15 @@ private:
 
     // The max size we allow the queue to grow before discarding frames
     unsigned int m_max;
+    int64_t m_startTimeMsec;
+    int64_t m_timeOffsetMsec;
 };
 
 class MediaRecording {
 public:
     virtual ~MediaRecording() {}
 
-    virtual void startRecording(MediaFrameQueue& mediaQueue, long long recordStartTime) = 0;
+    virtual void startRecording(MediaFrameQueue& mediaQueue) = 0;
     virtual void stopRecording() = 0;
 };
 

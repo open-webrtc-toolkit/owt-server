@@ -141,12 +141,12 @@ int32_t VideoMixer::removeOutput(int payloadType)
     return -1;
 }
 
-void VideoMixer::startRecording(MediaFrameQueue& videoQueue, long long recordStartTime)
+void VideoMixer::startRecording(MediaFrameQueue& videoQueue)
 {
     // FIXME: Currently, only VP8_90000_PT to be recorded.
     if (addOutput(VP8_90000_PT, true, true) != -1) {
         VideoFrameSender* output = m_outputs[VP8_90000_PT].get();
-        output->RegisterPostEncodeCallback(videoQueue, recordStartTime);
+        output->RegisterPreSendFrameCallback(videoQueue);
 
         // Request an IFrame explicitly, because the recorder doesn't support active I-Frame requests.
         IntraFrameCallback* iFrameCallback = output->iFrameCallback();
@@ -160,7 +160,7 @@ void VideoMixer::stopRecording()
     // FIXME: Currently, only VP8_90000_PT to be recorded.
     std::map<int, boost::shared_ptr<VideoFrameSender>>::iterator it = m_outputs.find(VP8_90000_PT);
     if (it != m_outputs.end())
-        it->second->DeRegisterPostEncodeImageCallback();
+        it->second->DeRegisterPreSendFrameCallback();
 }
 
 int VideoMixer::deliverAudioData(char* buf, int len) 
