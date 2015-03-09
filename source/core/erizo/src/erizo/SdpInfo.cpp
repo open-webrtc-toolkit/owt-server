@@ -418,6 +418,9 @@ namespace erizo {
           sdp << "a=rtpmap:"<<payloadType << " " << rtp.encodingName << "/"
               << rtp.clockRate <<"\n";
           if (rtp.encodingName == "VP8" || rtp.encodingName == "H264") {
+            if (rtp.encodingName == "H264") {
+              sdp << "a=fmtp:"<< payloadType<<" profile-level-id=42e01f;packetization-mode=1\n";
+            }
             sdp << "a=rtcp-fb:"<< payloadType<<" ccm fir\n";
             if (nackEnabled) {
               sdp << "a=rtcp-fb:"<< payloadType<<" nack\n";
@@ -688,7 +691,7 @@ namespace erizo {
             nextLineRetrieved = true;
             if (line.find("a=fmtp") != std::string::npos
                 && line.find(parts[1].c_str()) != std::string::npos
-                && line.find("packetization-mode=1") != std::string::npos) {
+                && line.find("packetization-mode=1") == std::string::npos) {
               continue;
             }
           }
