@@ -84,12 +84,14 @@ VideoMixer::~VideoMixer()
     m_outputReceiver = nullptr;
 }
 
-int32_t VideoMixer::addOutput(int payloadType)
+int32_t VideoMixer::addOutput(int payloadType, bool nack, bool fec)
 {
     boost::upgrade_lock<boost::shared_mutex> lock(m_outputMutex);
     std::map<int, boost::shared_ptr<VideoFrameSender>>::iterator it = m_outputs.find(payloadType);
-    if (it != m_outputs.end())
+    if (it != m_outputs.end()) {
+        it->second->startSend(nack, fec);
         return it->second->id();
+    }
 
     FrameFormat outputFormat = FRAME_FORMAT_UNKNOWN;
     int outputId = -1;
@@ -119,6 +121,7 @@ int32_t VideoMixer::addOutput(int payloadType)
     VideoSize outputSize;
     m_layoutProcessor->getRootSize(outputSize);
     output->setSendCodec(outputFormat, outputSize);
+    output->startSend(nack, fec);
     boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
     m_outputs[payloadType].reset(output);
 
@@ -141,13 +144,14 @@ int32_t VideoMixer::removeOutput(int payloadType)
 void VideoMixer::startRecording(MediaFrameQueue& videoQueue, long long recordStartTime)
 {
     // FIXME: Currently, only VP8_90000_PT to be recorded.
-    if (addOutput(VP8_90000_PT) != -1) {
-        m_outputs[VP8_90000_PT]->RegisterPostEncodeCallback(videoQueue, recordStartTime);
+    if (addOutput(VP8_90000_PT, true, true) != -1) {
+        VideoFrameSender* output = m_outputs[VP8_90000_PT].get();
+        output->RegisterPostEncodeCallback(videoQueue, recordStartTime);
 
-        // Request an IFrame immediately for media recording
-        IntraFrameCallback* callback = getIFrameCallback(VP8_90000_PT);
-        if (callback)
-            callback->handleIntraFrameRequest();
+        // Request an IFrame explicitly, because the recorder doesn't support active I-Frame requests.
+        IntraFrameCallback* iFrameCallback = output->iFrameCallback();
+        if (iFrameCallback)
+            iFrameCallback->handleIntraFrameRequest();
     }
 }
 
@@ -270,12 +274,12 @@ IntraFrameCallback* VideoMixer::getIFrameCallback(int payloadType)
     return nullptr;
 }
 
-uint32_t VideoMixer::getSendSSRC(int payloadType)
+uint32_t VideoMixer::getSendSSRC(int payloadType, bool nack, bool fec)
 {
     boost::shared_lock<boost::shared_mutex> lock(m_outputMutex);
     std::map<int, boost::shared_ptr<VideoFrameSender>>::iterator it = m_outputs.find(payloadType);
     if (it != m_outputs.end())
-        return it->second->sendSSRC();
+        return it->second->sendSSRC(nack, fec);
 
     return 0;
 }

@@ -96,7 +96,7 @@ void EncodedVideoFrameSender::handleIntraFrameRequest()
     m_source->requestKeyFrame(m_id);
 }
 
-uint32_t EncodedVideoFrameSender::sendSSRC()
+uint32_t EncodedVideoFrameSender::sendSSRC(bool, bool)
 {
     return m_rtpRtcp->SSRC();
 }

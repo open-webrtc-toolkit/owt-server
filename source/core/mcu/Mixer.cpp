@@ -148,14 +148,16 @@ void Mixer::unsetRecorder()
 void Mixer::addSubscriber(MediaSink* subscriber, const std::string& peerId)
 {
     int videoPayloadType = subscriber->preferredVideoPayloadType();
-    m_videoMixer->addOutput(videoPayloadType);
-    subscriber->setVideoSinkSSRC(m_videoMixer->getSendSSRC(videoPayloadType));
+    bool enableNACK = subscriber->acceptResentData();
+    bool enableFEC = subscriber->acceptFEC();
+    m_videoMixer->addOutput(videoPayloadType, enableNACK, enableFEC);
+    subscriber->setVideoSinkSSRC(m_videoMixer->getSendSSRC(videoPayloadType, enableNACK, enableFEC));
 
     int audioPayloadType = subscriber->preferredAudioPayloadType();
     int32_t channelId = m_audioMixer->addOutput(peerId, audioPayloadType);
     subscriber->setAudioSinkSSRC(m_audioMixer->getSendSSRC(channelId));
 
-    ELOG_DEBUG("Adding subscriber to %u(a), %u(v)", m_audioMixer->getSendSSRC(channelId), m_videoMixer->getSendSSRC(videoPayloadType));
+    ELOG_DEBUG("Adding subscriber to %u(a), %u(v)", m_audioMixer->getSendSSRC(channelId), m_videoMixer->getSendSSRC(videoPayloadType, enableNACK, enableFEC));
 
     // TODO: We now just pass the feedback from _all_ of the subscribers to the video mixer without pre-processing,
     // but maybe it's needed in a Mixer scenario where one mixed stream is sent to multiple subscribers.

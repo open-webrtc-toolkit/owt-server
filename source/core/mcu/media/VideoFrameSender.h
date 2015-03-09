@@ -46,7 +46,9 @@ public:
 
     virtual bool setSendCodec(FrameFormat, VideoSize) = 0;
     virtual bool updateVideoSize(VideoSize) = 0;
-    virtual uint32_t sendSSRC() = 0;
+    virtual bool startSend(bool nack, bool fec) = 0;
+    virtual bool stopSend(bool nack, bool fec) = 0;
+    virtual uint32_t sendSSRC(bool nack, bool fec) = 0;
     virtual woogeen_base::IntraFrameCallback* iFrameCallback() = 0;
     virtual erizo::FeedbackSink* feedbackSink() = 0;
     virtual int id() { return m_id; }

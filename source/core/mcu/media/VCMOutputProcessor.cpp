@@ -102,8 +102,11 @@ bool VCMOutputProcessor::setSendCodec(FrameFormat frameFormat, VideoSize videoSi
         videoCodec.minBitrate = targetBitrate / 4;
         videoCodec.startBitrate = targetBitrate;
 
-        if (m_rtpRtcp->RegisterSendPayload(videoCodec) == -1)
-            return false;
+        std::list<boost::shared_ptr<RtpRtcp>>::iterator it = m_rtpRtcps.begin();
+        for (; it != m_rtpRtcps.end(); ++it) {
+            if ((*it)->RegisterSendPayload(videoCodec) == -1)
+                return false;
+        }
 
         if (m_videoEncoder->SetEncoder(videoCodec) != -1) {
             m_sendFormat = frameFormat;
@@ -119,9 +122,101 @@ void VCMOutputProcessor::handleIntraFrameRequest()
     m_videoEncoder->SendKeyFrame();
 }
 
-uint32_t VCMOutputProcessor::sendSSRC()
+bool VCMOutputProcessor::startSend(bool nack, bool fec)
 {
-    return m_rtpRtcp->SSRC();
+    std::list<uint32_t> ssrcs;
+    std::list<boost::shared_ptr<RtpRtcp>>::iterator it = m_rtpRtcps.begin();
+    for (; it != m_rtpRtcps.end(); ++it) {
+        bool fecEnabled = false;
+        uint8_t dummyRedPayloadType = 0;
+        uint8_t dummyFecPayloadType = 0;
+        (*it)->GenericFECStatus(fecEnabled, dummyRedPayloadType, dummyFecPayloadType);
+        bool nackEnabled = (*it)->StorePackets();
+
+        if (nackEnabled == nack && fecEnabled == fec)
+            return true;
+
+        ssrcs.push_back((*it)->SSRC());
+    }
+
+    RtpRtcp::Configuration configuration;
+    configuration.id = m_id + m_rtpRtcps.size();
+    configuration.outgoing_transport = m_videoTransport.get();
+    configuration.audio = false;  // Video.
+    configuration.default_module = m_videoEncoder->SendRtpRtcpModule();
+    configuration.intra_frame_callback = m_videoEncoder.get();
+    configuration.bandwidth_callback = m_bandwidthObserver.get();
+    RtpRtcp* rtpRtcp = RtpRtcp::CreateRtpRtcp(configuration);
+
+    // Enable/Disable FEC.
+    rtpRtcp->SetGenericFECStatus(fec, RED_90000_PT, ULP_90000_PT);
+
+    // Enable/Disable NACK.
+    rtpRtcp->SetStorePacketsStatus(nack, webrtc::kSendSidePacketHistorySize);
+
+    if (nack || fec)
+        m_videoEncoder->UpdateProtectionMethod(nack || m_videoEncoder->nack_enabled());
+
+    VideoCodec videoCodec;
+    if (m_videoEncoder->GetEncoder(&videoCodec) == 0)
+        rtpRtcp->RegisterSendPayload(videoCodec);
+
+    // Register the SSRC so that the video encoder is able to respond to
+    // the intra frame request to a given SSRC.
+    ssrcs.push_back(rtpRtcp->SSRC());
+    m_videoEncoder->SetSsrcs(ssrcs);
+
+    m_taskRunner->RegisterModule(rtpRtcp);
+
+    if (m_rtpRtcps.size() == 0)
+        m_source->activateOutput(m_id, FRAME_FORMAT_I420, 30, 500, this);
+
+    m_rtpRtcps.push_back(boost::shared_ptr<RtpRtcp>(rtpRtcp));
+    return true;
+}
+
+bool VCMOutputProcessor::stopSend(bool nack, bool fec)
+{
+    std::list<boost::shared_ptr<RtpRtcp>>::iterator it = m_rtpRtcps.begin();
+    for (; it != m_rtpRtcps.end(); ++it) {
+        bool fecEnabled = false;
+        uint8_t dummyRedPayloadType = 0;
+        uint8_t dummyFecPayloadType = 0;
+        (*it)->GenericFECStatus(fecEnabled, dummyRedPayloadType, dummyFecPayloadType);
+        bool nackEnabled = (*it)->StorePackets();
+
+        if (nackEnabled == nack && fecEnabled == fec) {
+            m_taskRunner->DeRegisterModule((*it).get());
+            m_rtpRtcps.erase(it);
+            // FIXME: This is not accurate.
+            // We should change the NACK enabling status if there's no NACK enabled
+            // stream now.
+            m_videoEncoder->UpdateProtectionMethod(m_videoEncoder->nack_enabled());
+            break;
+        }
+    }
+
+    if (m_rtpRtcps.size() == 0)
+        m_source->deActivateOutput(m_id);
+
+    return true;
+}
+
+uint32_t VCMOutputProcessor::sendSSRC(bool nack, bool fec)
+{
+    std::list<boost::shared_ptr<RtpRtcp>>::iterator it = m_rtpRtcps.begin();
+    for (; it != m_rtpRtcps.end(); ++it) {
+        bool fecEnabled = false;
+        uint8_t dummyRedPayloadType = 0;
+        uint8_t dummyFecPayloadType = 0;
+        (*it)->GenericFECStatus(fecEnabled, dummyRedPayloadType, dummyFecPayloadType);
+        bool nackEnabled = (*it)->StorePackets();
+
+        if (nackEnabled == nack && fecEnabled == fec)
+            return (*it)->SSRC();
+    }
+
+    return 0;
 }
 
 void VCMOutputProcessor::onFrame(FrameFormat format, unsigned char* payload, int len, unsigned int ts)
@@ -150,7 +245,10 @@ void VCMOutputProcessor::onFrame(FrameFormat format, unsigned char* payload, int
 
 int VCMOutputProcessor::deliverFeedback(char* buf, int len)
 {
-    return m_rtpRtcp->IncomingRtcpPacket(reinterpret_cast<uint8_t*>(buf), len) == -1 ? 0 : len;
+    std::list<boost::shared_ptr<RtpRtcp>>::iterator it = m_rtpRtcps.begin();
+    for (; it != m_rtpRtcps.end(); ++it)
+        (*it)->IncomingRtcpPacket(reinterpret_cast<uint8_t*>(buf), len);
+    return len;
 }
 
 bool VCMOutputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<TaskRunner> taskRunner)
@@ -165,33 +263,6 @@ bool VCMOutputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* tran
     webrtc::Config config;
     m_videoEncoder.reset(new ViEEncoder(m_id, -1, 4, config, *(m_taskRunner->unwrap()), m_bitrateController.get()));
     m_videoEncoder->Init();
-
-    RtpRtcp::Configuration configuration;
-    configuration.id = m_id;
-    configuration.outgoing_transport = transport;
-    configuration.audio = false;  // Video.
-    configuration.default_module = m_videoEncoder->SendRtpRtcpModule();
-    configuration.intra_frame_callback = m_videoEncoder.get();
-    configuration.bandwidth_callback = m_bandwidthObserver.get();
-    m_rtpRtcp.reset(RtpRtcp::CreateRtpRtcp(configuration));
-
-    // Enable FEC.
-    // TODO: the parameters should be dynamically adjustable.
-    m_rtpRtcp->SetGenericFECStatus(true, RED_90000_PT, ULP_90000_PT);
-    // Enable NACK.
-    // TODO: the parameters should be dynamically adjustable.
-    m_rtpRtcp->SetStorePacketsStatus(true, webrtc::kSendSidePacketHistorySize);
-    m_videoEncoder->UpdateProtectionMethod(true);
-
-    // Register the SSRC so that the video encoder is able to respond to
-    // the intra frame request to a given SSRC.
-    std::list<uint32_t> ssrcs;
-    ssrcs.push_back(m_rtpRtcp->SSRC());
-    m_videoEncoder->SetSsrcs(ssrcs);
-
-    m_taskRunner->RegisterModule(m_rtpRtcp.get());
-
-    m_source->activateOutput(m_id, FRAME_FORMAT_I420, 30, 500, this);
 
     return true;
 }
@@ -213,7 +284,9 @@ void VCMOutputProcessor::close()
     DeRegisterPostEncodeImageCallback();
 
     m_source->deActivateOutput(m_id);
-    m_taskRunner->DeRegisterModule(m_rtpRtcp.get());
+    std::list<boost::shared_ptr<RtpRtcp>>::iterator it = m_rtpRtcps.begin();
+    for (; it != m_rtpRtcps.end(); ++it)
+        m_taskRunner->DeRegisterModule((*it).get());
 }
 
 }

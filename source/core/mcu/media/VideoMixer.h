@@ -59,10 +59,10 @@ public:
     virtual ~VideoMixer();
 
     // Video output related methods.
-    int32_t addOutput(int payloadType);
+    int32_t addOutput(int payloadType, bool nack, bool fec);
     int32_t removeOutput(int payloadType);
     woogeen_base::IntraFrameCallback* getIFrameCallback(int payloadType);
-    uint32_t getSendSSRC(int payloadType);
+    uint32_t getSendSSRC(int payloadType, bool nack, bool fec);
 
     // Video input related methods.
     int32_t bindAudio(uint32_t sourceId, int voiceChannelId, webrtc::VoEVideoSync*);

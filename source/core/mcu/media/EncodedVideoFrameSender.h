@@ -55,7 +55,9 @@ public:
     void onFrame(FrameFormat, unsigned char* payload, int len, unsigned int ts);
     bool setSendCodec(FrameFormat, VideoSize);
     bool updateVideoSize(VideoSize);
-    uint32_t sendSSRC();
+    bool startSend(bool nack, bool fec) { return true; }
+    bool stopSend(bool nack, bool fec) { return true; }
+    uint32_t sendSSRC(bool nack, bool fec);
     woogeen_base::IntraFrameCallback* iFrameCallback() { return this; }
     erizo::FeedbackSink* feedbackSink() { return this; }
     void RegisterPostEncodeCallback(MediaFrameQueue& videoQueue, long long firstMediaReceived);
