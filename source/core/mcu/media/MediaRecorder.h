@@ -24,9 +24,8 @@
 #include "MediaRecording.h"
 #include "MediaUtilities.h"
 
-#include <boost/shared_ptr.hpp>
+#include <boost/scoped_ptr.hpp>
 #include <boost/thread.hpp>
-#include <boost/thread/shared_mutex.hpp>
 #include <logger.h>
 #include <string>
 
@@ -61,12 +60,12 @@ private:
     AVFormatContext* m_recordContext;
     AVStream* m_recordVideoStream;
     AVStream* m_recordAudioStream;
-    long long m_recordStartTime;
+    int64_t m_recordStartTime;
     long long m_firstVideoTimestamp;
     long long m_firstAudioTimestamp;
 
-    MediaFrameQueue m_videoQueue;
-    MediaFrameQueue m_audioQueue;
+    boost::scoped_ptr<MediaFrameQueue> m_videoQueue;
+    boost::scoped_ptr<MediaFrameQueue> m_audioQueue;
     boost::thread m_recordThread;
 };
 

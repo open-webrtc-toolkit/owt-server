@@ -363,7 +363,7 @@ int32_t AudioMixer::removeOutput(const std::string& participant)
     return -1;
 }
 
-void AudioMixer::startRecording(MediaFrameQueue& audioQueue, long long recordStartTime)
+void AudioMixer::startRecording(MediaFrameQueue& audioQueue)
 {
     // Create a new voice output for recording
     // FIXME: Currently ONLY PCMU is recorded
@@ -371,7 +371,7 @@ void AudioMixer::startRecording(MediaFrameQueue& audioQueue, long long recordSta
         m_recordChannelId = addOutput(RECORD_CHANNEL, PCMU_8000_PT);
 
     if (m_recordChannelId != -1) {
-        m_encodedFrameCallback.reset(new AudioEncodedFrameCallbackAdapter(&audioQueue, recordStartTime));
+        m_encodedFrameCallback.reset(new AudioEncodedFrameCallbackAdapter(&audioQueue));
         VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);
         voe->RegisterPostEncodeFrameCallback(m_recordChannelId, m_encodedFrameCallback.get());
     }

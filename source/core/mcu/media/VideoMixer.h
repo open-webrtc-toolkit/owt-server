@@ -89,7 +89,7 @@ public:
     bool setBackgroundColor(const std::string& color);
 
     // Implements MediaRecording
-    void startRecording(MediaFrameQueue& videoQueue, long long recordStartTime);
+    void startRecording(MediaFrameQueue& videoQueue);
     void stopRecording();
 
 private:

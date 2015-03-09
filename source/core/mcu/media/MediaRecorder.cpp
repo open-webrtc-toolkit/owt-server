@@ -74,9 +74,11 @@ bool MediaRecorder::startRecording()
     if (!initRecordContext())
         return false;
 
+    m_videoQueue.reset(new MediaFrameQueue(m_recordStartTime));
+    m_audioQueue.reset(new MediaFrameQueue(m_recordStartTime));
     // Start the recording of video and audio
-    m_videoRecording->startRecording(m_videoQueue, m_recordStartTime);
-    m_audioRecording->startRecording(m_audioQueue, m_recordStartTime);
+    m_videoRecording->startRecording(*m_videoQueue);
+    m_audioRecording->startRecording(*m_audioQueue);
 
     // File write thread
     m_recordThread = boost::thread(&MediaRecorder::recordLoop, this);
@@ -175,10 +177,10 @@ void MediaRecorder::recordLoop()
 {
     while (m_recording) {
         boost::shared_ptr<EncodedFrame> mediaFrame;
-        while (mediaFrame = m_audioQueue.popFrame())
+        while (mediaFrame = m_audioQueue->popFrame())
             this->writeAudioFrame(*mediaFrame);
 
-        while (mediaFrame = m_videoQueue.popFrame())
+        while (mediaFrame = m_videoQueue->popFrame())
             this->writeVideoFrame(*mediaFrame);
     }
 }
