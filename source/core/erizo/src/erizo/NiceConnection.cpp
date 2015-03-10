@@ -63,8 +63,7 @@ namespace erizo {
     for (unsigned int i = 1; i<=iceComponents; i++) {
       comp_state_list_[i] = NICE_INITIAL;
     }
-    running_ = true;
-    m_Thread_ = boost::thread(&NiceConnection::init, this);
+    running_ = false;
   }
 
   NiceConnection::~NiceConnection() {
@@ -139,6 +138,11 @@ namespace erizo {
     }
 
     ELOG_DEBUG("Nice Closed %p", this);
+  }
+
+  void NiceConnection::start() {
+    running_ = true;
+    m_Thread_ = boost::thread(&NiceConnection::init, this);
   }
 
   void NiceConnection::queueData(unsigned int component_id, char* buf, int len){
