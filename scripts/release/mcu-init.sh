@@ -65,7 +65,7 @@ install_config() {
   local SERVICE=$(mongo ${dbURL} --quiet --eval 'db.services.findOne({"name":"superService"})')
   if [[ ${SERVICE} == "null" ]]; then
     echo -e "\x1b[36mCreating superservice in ${dbURL}\x1b[0m"
-    mongo ${dbURL} --eval "db.services.insert({name: 'superService', key: '$RANDOM', rooms: []})"
+    mongo ${dbURL} --eval "db.services.insert({name: 'superService', key: '$RANDOM-$RANDOM-$RANDOM-$RANDOM', rooms: []})"
   fi
   local SERVID=$(mongo ${dbURL} --quiet --eval 'db.services.findOne({"name":"superService"})._id')
   local SERVKEY=$(mongo ${dbURL} --quiet --eval 'db.services.findOne({"name":"superService"}).key')
@@ -78,6 +78,16 @@ install_config() {
   replacement=s/_auto_generated_KEY_/${SERVKEY}/
   sed $replacement ${TMPFILE} > ${WOOGEEN_HOME}/etc/woogeen_config.js
   rm -f ${TMPFILE}
+  # service for sample:
+  SERVICE=$(mongo ${dbURL} --quiet --eval 'db.services.findOne({"name":"sampleService"})')
+  if [[ ${SERVICE} == "null" ]]; then
+    echo -e "\x1b[36mCreating sampleService in ${dbURL}\x1b[0m"
+    mongo ${dbURL} --eval "db.services.insert({name: 'sampleService', key: '$RANDOM-$RANDOM-$RANDOM-$RANDOM', rooms: []})"
+  fi
+  SERVID=$(mongo ${dbURL} --quiet --eval 'db.services.findOne({"name":"sampleService"})._id')
+  SERVKEY=$(mongo ${dbURL} --quiet --eval 'db.services.findOne({"name":"sampleService"}).key')
+  sed -i s/_auto_generated_ID_/${SERVID}/ ${WOOGEEN_HOME}/extras/basic_example/basicServer.js
+  sed -i s/_auto_generated_KEY_/${SERVKEY}/ ${WOOGEEN_HOME}/extras/basic_example/basicServer.js
 }
 
 INSTALL_DEPS=false

@@ -47,7 +47,7 @@ app.use(function (req, res, next) {
 //disable layout
 //app.set("view options", {layout: false});
 
-N.API.init(config.nuve.superserviceID, config.nuve.superserviceKey, 'http://localhost:3000/');
+N.API.init('_auto_generated_ID_', '_auto_generated_KEY_', 'http://localhost:3000/');
 
 var myRoom;
 var p2pRoom;

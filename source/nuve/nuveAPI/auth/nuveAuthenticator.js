@@ -1,17 +1,22 @@
-/*global require, exports, console */
-var db = require('./../mdb/dataBase').db;
+/*global require, exports */
+'use strict';
+var superServiceId = require('./../mdb/dataBase').superService;
 var serviceRegistry = require('./../mdb/serviceRegistry');
 var mauthParser = require('./mauthParser');
 
 var logger = require('./../logger').logger;
 
 // Logger
-var log = logger.getLogger("NuveAuthenticator");
+var log = logger.getLogger('NuveAuthenticator');
 
 var cache = {};
 
 var checkTimestamp = function (ser, params) {
-    "use strict";
+    var serviceId = ser._id + '';
+    if (serviceId === superServiceId) {
+        // disable timestamp checking for superService;
+        return true;
+    }
 
     var lastParams = cache[ser.name],
         lastTS,
@@ -38,8 +43,6 @@ var checkTimestamp = function (ser, params) {
 };
 
 var checkSignature = function (params, key) {
-    "use strict";
-
     if (params.signature_method !== 'HMAC_SHA1') {
         return false;
     }
@@ -59,8 +62,6 @@ var checkSignature = function (params, key) {
  * a response with an authentication request to the client.
  */
 exports.authenticate = function (req, res, next) {
-    "use strict";
-
     var authHeader = req.header('Authorization'),
         challengeReq = 'MAuth realm="http://marte3.dit.upm.es"',
         params;
