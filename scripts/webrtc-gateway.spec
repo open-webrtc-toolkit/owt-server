@@ -1,7 +1,7 @@
 
 Name:    webrtc-gateway
 Version: 0.10
-Release: 1
+Release: 2
 Summary: WebRTC Gateway supporting WebRTC connections with ooVoo server
 Group:   Development/Tools
 License: Intel
