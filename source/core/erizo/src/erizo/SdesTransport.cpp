@@ -51,6 +51,7 @@ SdesTransport::~SdesTransport() {
 }
 
 void SdesTransport::start() {
+    nice_->start();
 }
 
 void SdesTransport::onNiceData(unsigned int component_id, char* data, int len, NiceConnection* nice) {

@@ -102,6 +102,7 @@ DtlsTransport::~DtlsTransport() {
 }
 
 void DtlsTransport::start() {
+  nice_->start();
   running_ =true;
   getNice_Thread_ = boost::thread(&DtlsTransport::getNiceDataLoop, this);
 
