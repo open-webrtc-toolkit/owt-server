@@ -30,7 +30,6 @@ var encodeBase64 = (function () {
         base64Count = 0;
         var result = '';
         var inBuffer = new Array(3);
-        var lineCount = 0;
         var done = false;
         while (!done && (inBuffer[0] = readBase64()) != END_OF_INPUT){
             inBuffer[1] = readBase64();
@@ -52,11 +51,6 @@ var encodeBase64 = (function () {
                 result += ('=');
                 done = true;
             }
-            lineCount += 4;
-            if (lineCount >= 76){
-                result += ('\n');
-                lineCount = 0;
-            }
         }
         return result;
     };
@@ -64,7 +58,7 @@ var encodeBase64 = (function () {
 
 
 function calculateSignature (toSign, key) {
-    var hash = CryptoJS.HmacSHA1(toSign, key);
+    var hash = CryptoJS.HmacSHA256(toSign, key);
     var hex = hash.toString(CryptoJS.enc.Hex);
     return encodeBase64(hex);
 }
@@ -85,7 +79,7 @@ function Nuve (spec) {
         var timestamp = new Date().getTime();
         var cnounce = Math.floor(Math.random() * 99999);
         var toSign = timestamp + ',' + cnounce;
-        var header = 'MAuth realm=http://marte3.dit.upm.es,mauth_signature_method=HMAC_SHA1';
+        var header = 'MAuth realm=http://marte3.dit.upm.es,mauth_signature_method=HMAC_SHA256';
 
         header += ',mauth_serviceid=';
         header += service;

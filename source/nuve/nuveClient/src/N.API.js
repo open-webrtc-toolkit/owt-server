@@ -101,7 +101,7 @@ N.API = (function (N) {
 
         toSign = timestamp + ',' + cnounce;
 
-        header = 'MAuth realm=http://marte3.dit.upm.es,mauth_signature_method=HMAC_SHA1';
+        header = 'MAuth realm=http://marte3.dit.upm.es,mauth_signature_method=HMAC_SHA256';
 
         if (username && role) {
 
@@ -116,7 +116,6 @@ N.API = (function (N) {
         }
 
         signed = calculateSignature(toSign, key);
-
 
         header += ',mauth_serviceid=';
         header +=  service;
@@ -165,7 +164,7 @@ N.API = (function (N) {
 
     calculateSignature = function (toSign, key) {
         var hash, hex, signed;
-        hash = CryptoJS.HmacSHA1(toSign, key);
+        hash = CryptoJS.HmacSHA256(toSign, key);
         hex = hash.toString(CryptoJS.enc.Hex);
         signed = N.Base64.encodeBase64(hex);
         return signed;

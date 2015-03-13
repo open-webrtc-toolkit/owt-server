@@ -76,7 +76,7 @@ class Nuve:
         cnounce = int(random.random()*99999)
         toSign = str(timestamp) + ',' + str(cnounce)
 
-        header = 'MAuth realm=http://marte3.dit.upm.es,mauth_signature_method=HMAC_SHA1'
+        header = 'MAuth realm=http://marte3.dit.upm.es,mauth_signature_method=HMAC_SHA256'
 
         if (username != '' and role != ''):
             header += ',mauth_username='
@@ -113,9 +113,9 @@ class Nuve:
         return data
 
     def calculateSignature(self, toSign, key):
-        from hashlib import sha1
+        from hashlib import sha256
         import hmac
         import binascii
-        hasher = hmac.new(key, toSign, sha1)
+        hasher = hmac.new(key, toSign, sha256)
         signed = binascii.b2a_base64(hasher.hexdigest())[:-1]
         return signed

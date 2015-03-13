@@ -75,7 +75,7 @@ exports.calculateClientSignature = function (params, key) {
         toSign += ',' + params.username + ',' + params.role;
     }
 
-    signed = crypto.createHmac('sha1', key).update(toSign).digest('hex');
+    signed = crypto.createHmac('sha256', key).update(toSign).digest('hex');
 
     return (new Buffer(signed)).toString('base64');
 };
@@ -87,7 +87,7 @@ exports.calculateServerSignature = function (params, key) {
     "use strict";
 
     var toSign = params.timestamp,
-        signed = crypto.createHmac('sha1', key).update(toSign).digest('hex');
+        signed = crypto.createHmac('sha256', key).update(toSign).digest('hex');
 
     return (new Buffer(signed)).toString('base64');
 };

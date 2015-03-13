@@ -73,11 +73,10 @@ L.Base64 = (function () {
     };
 
     encodeBase64 = function (str) {
-        var result, inBuffer, lineCount, done;
+        var result, inBuffer, done;
         setBase64Str(str);
         result = '';
         inBuffer = new Array(3);
-        lineCount = 0;
         done = false;
         while (!done && (inBuffer[0] = readBase64()) !== END_OF_INPUT) {
             inBuffer[1] = readBase64();
@@ -98,11 +97,6 @@ L.Base64 = (function () {
                 result = result + ('=');
                 result = result + ('=');
                 done = true;
-            }
-            lineCount = lineCount + 4;
-            if (lineCount >= 76) {
-                result = result + ('\n');
-                lineCount = 0;
             }
         }
         return result;

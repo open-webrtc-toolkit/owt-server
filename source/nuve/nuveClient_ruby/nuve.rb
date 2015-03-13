@@ -1,6 +1,6 @@
 require 'net/http'
 require 'base64'
-require 'hmac-sha1'
+require 'hmac-sha256'
 
 class Nuve
 
@@ -55,7 +55,7 @@ class Nuve
 
 		uri = URI(@url + url)
 
-		header = 'MAuth realm=http://marte3.dit.upm.es,mauth_signature_method=HMAC_SHA1'
+		header = 'MAuth realm=http://marte3.dit.upm.es,mauth_signature_method=HMAC_SHA256'
 
 		timestamp = (Time.now.to_f * 1000).to_i
 		cnounce = rand(99999)
@@ -107,7 +107,7 @@ class Nuve
 
 	private
 	def calculateSignature (toSign, key)
-		hmac = HMAC::SHA1.new(key)
+		hmac = HMAC::SHA256.new(key)
 		hex = hmac.update(toSign)
 		signed   = Base64.encode64("#{hex}")
 		return signed
