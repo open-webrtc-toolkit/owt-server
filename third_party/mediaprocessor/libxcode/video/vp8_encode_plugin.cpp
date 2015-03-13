@@ -491,6 +491,11 @@ mfxStatus VP8EncPlugin::InitVpxEnc()
         goto EXIT;
     }
 
+    if(vpx_codec_control(&vpx_codec_, VP8E_SET_CPUUSED, encoder_options_.cpu_speed)) {
+        printf("VP8 Failed to set cpu used\n");
+        goto EXIT;
+    }
+
     return MFX_ERR_NONE;
 
 EXIT:
@@ -588,6 +593,38 @@ bool VP8EncPlugin::SetGopSize(unsigned int gopsize)
     return true;
 }
 
+bool VP8EncPlugin::SetGenericThread(unsigned int cpu_cores)
+{
+    if (m_width_ * m_height_ > 1280 * 960 && cpu_cores >= 6) {
+        encoder_options_.threads = 3;  // 3 threads for 1080p
+    } else if (m_width_ * m_height_ > 640 * 480 && cpu_cores >= 3) {
+        encoder_options_.threads = 2;  // 2 threads for qHD/HD.
+    } else {
+        encoder_options_.threads = 1;  // 1 thread for VGA or less
+    }
+    return true;
+}
+
+bool VP8EncPlugin::SetCPUSpeed(VP8Complexity complexity_level)
+{
+    switch (complexity_level) {
+        case complexityHigh:
+            encoder_options_.cpu_speed = -5;
+            break;
+        case complexityHigher:
+            encoder_options_.cpu_speed = -4;
+            break;
+        case complexityMax:
+            encoder_options_.cpu_speed = -3;
+            break;
+        case complexityNormal:
+        default:
+            encoder_options_.cpu_speed = -6;
+            break;
+    }
+
+    return true;
+}
 
 bool VP8EncPlugin::CheckParameters(mfxVideoParam *par)
 {
@@ -601,12 +638,17 @@ bool VP8EncPlugin::CheckParameters(mfxVideoParam *par)
     m_width_ = opt->FrameInfo.CropW;
     m_height_ = opt->FrameInfo.CropH;
 
+    //the number of cores is currently hard coded to be 4.
+    //Need a function to get the correct information from the system.
+    SetGenericThread(4);
+    SetCPUSpeed(complexityNormal);
+
     /* set encoder configure parameters */
     SetProfile(opt->CodecProfile);
 
     SetBitRate(opt->TargetKbps);
 
-    SetBitRateCtrlMode((MFX_RATECONTROL_CBR == opt->RateControlMethod) ? VPX_CBR : 
+    SetBitRateCtrlMode((MFX_RATECONTROL_CBR == opt->RateControlMethod) ? VPX_CBR :
         ((MFX_RATECONTROL_VBR == opt->RateControlMethod) ? VPX_VBR : VPX_CQ));
 
     SetGopSize(opt->GopPicSize);
