@@ -88,7 +88,7 @@ var controller = require('./roomController');
 // Logger
 var log = logger.getLogger("ErizoController");
 
-var nuveKey = GLOBAL.config.nuve.superserviceKey;
+var nuveKey;
 
 var WARNING_N_ROOMS = GLOBAL.config.erizoController.warning_n_rooms;
 var LIMIT_N_ROOMS = GLOBAL.config.erizoController.limit_n_rooms;
@@ -101,18 +101,18 @@ var myId;
 var rooms = {};
 var myState;
 
-var calculateSignature = function (token, key) {
+var calculateSignature = function (token) {
     "use strict";
 
     var toSign = token.tokenId + ',' + token.host,
-        signed = crypto.createHmac('sha1', key).update(toSign).digest('hex');
+        signed = crypto.createHmac('sha256', nuveKey).update(toSign).digest('hex');
     return (new Buffer(signed)).toString('base64');
 };
 
-var checkSignature = function (token, key) {
+var checkSignature = function (token) {
     "use strict";
 
-    var calculatedSignature = calculateSignature(token, key);
+    var calculatedSignature = calculateSignature(token);
 
     if (calculatedSignature !== token.signature) {
         log.info('Auth fail. Invalid signature.');
@@ -236,7 +236,17 @@ var addToCloudHandler = function (callback) {
 
             }, INTERVAL_TIME_KEEPALIVE);
 
-            callback("callback");
+            rpc.callRpc('nuve', 'getKey', myId, {
+                callback: function (key) {
+                    if (key === 'error' || key === 'timeout') {
+                        rpc.callRpc('nuve', 'killMe', publicIP, {callback: function () {}});
+                        log.info('Failed to join nuve network.');
+                        return process.exit();
+                    }
+                    nuveKey = key;
+                    callback();
+                }
+            });
 
         }});
     };
@@ -365,7 +375,7 @@ var listen = function () {
 
             var tokenDB, user, streamList = [], index;
 
-            if (checkSignature(token, nuveKey)) {
+            if (checkSignature(token)) {
 
                 rpc.callRpc('nuve', 'deleteToken', token.tokenId, {callback: function (resp) {
                     if (resp === 'error') {

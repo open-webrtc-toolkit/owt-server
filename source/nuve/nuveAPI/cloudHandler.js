@@ -2,6 +2,7 @@
 var rpc = require('./rpc/rpc');
 var config = require('./../../etc/woogeen_config');
 var logger = require('./logger').logger;
+var nuveKey = require('./mdb/dataBase').nuveKey;
 
 // Logger
 var log = logger.getLogger("CloudHandler");
@@ -267,3 +268,11 @@ exports.reschedule = function reschedule (id) {
     'use strict';
     delete rooms[id];
 };
+
+exports.getKey = function getKey (id) {
+    'use strict';
+    if (erizoControllers[id]) {
+        return nuveKey;
+    }
+    return 'error';
+}
