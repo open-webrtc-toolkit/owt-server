@@ -35,7 +35,7 @@
     }
 </style>
 
-<script src="http://crypto-js.googlecode.com/svn/tags/3.0.2/build/rollups/hmac-sha1.js"></script>
+<script src="http://crypto-js.googlecode.com/svn/tags/3.0.2/build/rollups/hmac-sha256.js"></script>
 <script type="text/javascript">
 
 var method;
@@ -123,7 +123,7 @@ function send() {
 
 	var toSign = timestamp + ',' + cnounce;
 
-	var header = 'MAuth realm=http://marte3.dit.upm.es,mauth_signature_method=HMAC_SHA1';
+	var header = 'MAuth realm=http://marte3.dit.upm.es,mauth_signature_method=HMAC_SHA256';
 
 	if (username != '' && role != '') {
 	
@@ -167,7 +167,7 @@ function send() {
 
 function calculateSignature(toSign, key) {
 	
-	var hash = CryptoJS.HmacSHA1(toSign, key);
+	var hash = CryptoJS.HmacSHA256(toSign, key);
 
 	var hex = hash.toString(CryptoJS.enc.Hex);
 
@@ -206,7 +206,6 @@ function encodeBase64(str){
     base64Count = 0;
     var result = '';
     var inBuffer = new Array(3);
-    var lineCount = 0;
     var done = false;
     while (!done && (inBuffer[0] = readBase64()) != END_OF_INPUT){
         inBuffer[1] = readBase64();
@@ -227,11 +226,6 @@ function encodeBase64(str){
             result += ('=');
             result += ('=');
             done = true;
-        }
-        lineCount += 4;
-        if (lineCount >= 76){
-            result += ('\n');
-            lineCount = 0;
         }
     }
     return result;

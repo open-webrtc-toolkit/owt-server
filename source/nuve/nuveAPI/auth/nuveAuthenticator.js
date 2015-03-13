@@ -43,7 +43,7 @@ var checkTimestamp = function (ser, params) {
 };
 
 var checkSignature = function (params, key) {
-    if (params.signature_method !== 'HMAC_SHA1') {
+    if (params.signature_method !== 'HMAC_SHA256') {
         return false;
     }
 
