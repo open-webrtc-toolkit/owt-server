@@ -60,8 +60,7 @@ install_config() {
     return 1
   fi
   local dbURL=$(grep "config.nuve.dataBaseURL" ${DEFAULT_CONFIG})
-  dbURL=$(echo ${dbURL} | cut -d'"' -f 2)
-  dbURL=$(echo ${dbURL} | cut -d'"' -f 1)
+  dbURL=$(echo ${dbURL} | cut -d "'" -f 2)
   local SERVICE=$(mongo ${dbURL} --quiet --eval 'db.services.findOne({"name":"superService"})')
   if [[ ${SERVICE} == "null" ]]; then
     echo -e "\x1b[36mCreating superservice in ${dbURL}\x1b[0m"
@@ -72,12 +71,7 @@ install_config() {
   [[ -f ${LogDir}/mongo.log ]] && cat ${LogDir}/mongo.log
   echo "SuperService ID: ${SERVID}"
   echo "SuperService KEY: ${SERVKEY}"
-  local replacement=s/_auto_generated_ID_/${SERVID}/
-  local TMPFILE=$(mktemp)
-  sed $replacement ${DEFAULT_CONFIG} > ${TMPFILE}
-  replacement=s/_auto_generated_KEY_/${SERVKEY}/
-  sed $replacement ${TMPFILE} > ${WOOGEEN_HOME}/etc/woogeen_config.js
-  rm -f ${TMPFILE}
+  sed s/_auto_generated_ID_/${SERVID}/ ${DEFAULT_CONFIG} > ${WOOGEEN_HOME}/etc/woogeen_config.js
   # service for sample:
   SERVICE=$(mongo ${dbURL} --quiet --eval 'db.services.findOne({"name":"sampleService"})')
   if [[ ${SERVICE} == "null" ]]; then
