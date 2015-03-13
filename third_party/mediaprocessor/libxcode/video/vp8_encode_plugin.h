@@ -116,6 +116,19 @@ typedef struct VP8EncodeOptions {
      **/
     unsigned int kf_max_dist;
 
+    /*!\brief control function to set vp8 encoder cpuused
+     **
+     ** Changes in this value influences, among others, the encoder's selection
+     ** of motion estimation methods. Values greater than 0 will increase encoder
+     ** speed at the expense of quality.
+     ** The full set of adjustments can be found in
+     ** onyx_if.c:vp8_set_speed_features().
+     ** \todo List highlights of the changes at various levels.
+     **
+     ** \note Valid range: -16..16
+     **/
+    int cpu_speed;
+
     //set default options
     VP8EncodeOptions():
         output_type(-1),
@@ -130,9 +143,18 @@ typedef struct VP8EncodeOptions {
         max_quantizer(-1),
         keyframe_auto(-1),
         kf_min_dist(-1),
-        kf_max_dist(-1)
+        kf_max_dist(-1),
+        cpu_speed(-6)
     {};
 } VP8EncodeOptions;
+
+typedef enum VP8Complexity
+{
+    complexityNormal = 0,
+    complexityHigh = 1,
+    complexityHigher = 2,
+    complexityMax = 3
+}VP8Complexity;
 
 // Task structure for OCL plugin
 typedef struct {
@@ -174,6 +196,8 @@ public:
     bool SetBitRate(unsigned int bitrate);
     bool SetProfile(unsigned int profile);
     bool SetGopSize(unsigned int gopsize);
+    bool SetGenericThread(unsigned int cpu_cores);
+    bool SetCPUSpeed(VP8Complexity complexity_level);
     bool CheckParameters(mfxVideoParam *par);
     mfxStatus GetInputYUV(mfxFrameSurface1* surf);
     void VP8ForceKeyFrame();
