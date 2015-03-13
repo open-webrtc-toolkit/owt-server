@@ -32,7 +32,7 @@ var getTokenString = function (id, token) {
     "use strict";
 
     var toSign = id + ',' + token.host,
-        hex = crypto.createHmac('sha1', dataBase.nuveKey).update(toSign).digest('hex'),
+        hex = crypto.createHmac('sha256', dataBase.nuveKey).update(toSign).digest('hex'),
         signed = (new Buffer(hex)).toString('base64'),
 
         tokenJ = {

@@ -87,3 +87,8 @@ exports.reschedule = function (room, callback) { // ensure room is empty before 
     cloudHandler.reschedule(room);
     callback('callback');
 };
+
+exports.getKey = function (id, callback) {
+    'use strict';
+    callback('callback', cloudHandler.getKey(id));
+};
