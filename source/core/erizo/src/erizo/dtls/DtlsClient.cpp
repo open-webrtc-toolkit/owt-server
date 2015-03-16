@@ -105,12 +105,12 @@ void DtlsSocketContext::handshakeCompleted()
 
     srtp_profile=mSocket->getSrtpProfile();
 
-    if(srtp_profile){
+    if (srtp_profile) {
       ELOG_DEBUG("SRTP Extension negotiated profile=%s", srtp_profile->name);
-    }
 
-    if (receiver != NULL) {
-      receiver->onHandshakeCompleted(this, clientKey, serverKey, srtp_profile->name);
+      if (receiver != NULL) {
+        receiver->onHandshakeCompleted(this, clientKey, serverKey, srtp_profile->name);
+      }
     }
   }
   else {
