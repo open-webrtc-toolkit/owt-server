@@ -12,6 +12,7 @@ ROOT=`cd "${this}/.."; pwd`
 export WOOGEEN_HOME=${ROOT}
 
 LogDir=${WOOGEEN_HOME}/logs
+DB_URL='localhost/nuvedb'
 
 usage() {
   echo
@@ -21,6 +22,7 @@ usage() {
   echo
   echo "Usage:"
   echo "    --deps (default: false)             install dependent components and libraries via apt-get/local"
+  echo "    --dburl=HOST/DBNAME                 specify mongodb URL other than default \`localhost/nuvedb'"
   echo "    --hardware                          enable mcu with msdk (if \`libmcu_hw.so' is packed)"
   echo "    --help                              print this help"
   echo
@@ -51,37 +53,29 @@ install_db() {
   fi
 }
 
+check_node_version()
+{
+  local NODE_VERSION=
+  . ${this}/.conf
+  NODE_VERSION=$(echo ${NODE_VERSION} | cut -d '.' -f 1,2)
+  if ! hash node 2>/dev/null; then
+    echo >&2 "Error: node not found. Please install node ${NODE_VERSION} first."
+    return 1
+  fi
+  local NODE_VERSION_USE=$(node --version | cut -d '.' -f 1,2)
+  [[ ${NODE_VERSION} == ${NODE_VERSION_USE} ]] && return 0 || (echo "node version not match. Please use node ${NODE_VERSION}"; return 1;)
+}
+
 install_config() {
   echo -e "\x1b[32mInitializing default configuration...\x1b[0m"
   # default configuration
-  local DEFAULT_CONFIG="${WOOGEEN_HOME}/etc/.woogeen_default.js"
+  export DEFAULT_CONFIG="${WOOGEEN_HOME}/etc/.woogeen_default.js"
   if [[ ! -s ${DEFAULT_CONFIG} ]]; then
     echo >&2 "Error: configuration template not found."
     return 1
   fi
-  local dbURL=$(grep "config.nuve.dataBaseURL" ${DEFAULT_CONFIG})
-  dbURL=$(echo ${dbURL} | cut -d "'" -f 2)
-  local SERVICE=$(mongo ${dbURL} --quiet --eval 'db.services.findOne({"name":"superService"})')
-  if [[ ${SERVICE} == "null" ]]; then
-    echo -e "\x1b[36mCreating superservice in ${dbURL}\x1b[0m"
-    mongo ${dbURL} --eval "db.services.insert({name: 'superService', key: '$RANDOM-$RANDOM-$RANDOM-$RANDOM', rooms: []})"
-  fi
-  local SERVID=$(mongo ${dbURL} --quiet --eval 'db.services.findOne({"name":"superService"})._id')
-  local SERVKEY=$(mongo ${dbURL} --quiet --eval 'db.services.findOne({"name":"superService"}).key')
-  [[ -f ${LogDir}/mongo.log ]] && cat ${LogDir}/mongo.log
-  echo "SuperService ID: ${SERVID}"
-  echo "SuperService KEY: ${SERVKEY}"
-  sed s/_auto_generated_ID_/${SERVID}/ ${DEFAULT_CONFIG} > ${WOOGEEN_HOME}/etc/woogeen_config.js
-  # service for sample:
-  SERVICE=$(mongo ${dbURL} --quiet --eval 'db.services.findOne({"name":"sampleService"})')
-  if [[ ${SERVICE} == "null" ]]; then
-    echo -e "\x1b[36mCreating sampleService in ${dbURL}\x1b[0m"
-    mongo ${dbURL} --eval "db.services.insert({name: 'sampleService', key: '$RANDOM-$RANDOM-$RANDOM-$RANDOM', rooms: []})"
-  fi
-  SERVID=$(mongo ${dbURL} --quiet --eval 'db.services.findOne({"name":"sampleService"})._id')
-  SERVKEY=$(mongo ${dbURL} --quiet --eval 'db.services.findOne({"name":"sampleService"}).key')
-  sed -i s/_auto_generated_ID_/${SERVID}/ ${WOOGEEN_HOME}/extras/basic_example/basicServer.js
-  sed -i s/_auto_generated_KEY_/${SERVKEY}/ ${WOOGEEN_HOME}/extras/basic_example/basicServer.js
+  export DB_URL
+  check_node_version && node ${this}/initdb.js || return 1
 }
 
 INSTALL_DEPS=false
@@ -92,6 +86,10 @@ while [[ $# -gt 0 ]]; do
   case $1 in
     *(-)deps )
       INSTALL_DEPS=true
+      ;;
+    *(-)dburl=* )
+      DB_URL=$(echo $1 | cut -d '=' -f 2)
+      echo -e "\x1b[36musing $DB_URL\x1b[0m"
       ;;
     *(-)hardware )
       ENABLE_HARDWARE=true
