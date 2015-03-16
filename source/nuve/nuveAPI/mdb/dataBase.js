@@ -26,6 +26,6 @@ exports.db = require('mongojs').connect(databaseUrl, collections);
 // Superservice ID
 exports.superService = config.nuve.superserviceID;
 
-// Superservice key
+// token key
 exports.nuveKey = require('crypto').randomBytes(64).toString('hex');
 exports.testErizoController = config.nuve.testErizoController;

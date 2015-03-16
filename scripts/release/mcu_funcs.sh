@@ -113,6 +113,7 @@ pack_scripts() {
   cp -av ${this}/launch-base.sh ${WOOGEEN_DIST}/bin/stop-all.sh
   cp -av ${this}/launch-base.sh ${WOOGEEN_DIST}/bin/restart-all.sh
   cp -av ${this}/mcu-init.sh ${WOOGEEN_DIST}/bin/init.sh
+  cp -av ${this}/initdb.js ${WOOGEEN_DIST}/bin/initdb.js
   echo '
 ${bin}/daemon.sh start nuve
 ${bin}/daemon.sh start mcu
