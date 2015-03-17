@@ -148,6 +148,7 @@ exports.ErizoJSController = function () {
             case CONN_SDP:
             case CONN_GATHERED:
               log.debug('Sending SDP', mess);
+              mess = mess.replace(that.privateRegexp, that.publicIP);
               callback('callback', {type: 'answer', sdp: mess});
               break;
 
