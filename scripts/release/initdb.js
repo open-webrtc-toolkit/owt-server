@@ -10,9 +10,8 @@ if (!dbURL) {
   throw 'DB_URL not found';
 }
 
+var configDefaultFile = process.env.DEFAULT_CONFIG;
 var path = require('path');
-var configDefaultFile = path.join(HOME, 'etc/woogeen_config.js');
-var configFile = configDefaultFile;
 var mongojs = require('mongojs');
 var db = mongojs.connect(dbURL, ['services']);
 
@@ -40,19 +39,14 @@ prepareService('superService', function (service) {
   var superServiceKey = service.key;
   console.log('superServiceId:', superServiceId);
   console.log('superServiceKey:', superServiceKey);
-  try {
-    fs.statSync(configFile);
-  } catch (e) {
-    configFile = process.env.DEFAULT_CONFIG;
-  }
-  fs.readFile(configFile, 'utf8', function (err, data) {
+  fs.readFile(configDefaultFile, 'utf8', function (err, data) {
     if (err) {
       return console.log(err);
     }
     data = data.replace(/config\.nuve\.dataBaseURL = '[^']*';/, 'config.nuve.dataBaseURL = \''+dbURL+'\';');
     data = data.replace(/config\.nuve\.superserviceID = '[^']*';/, 'config.nuve.superserviceID = \''+superServiceId+'\';');
-    fs.writeFile(configDefaultFile, data, 'utf8', function (err) {
-      if (err) return console.log('Error in saving woogeen_config:', err);
+    fs.writeFile(path.join(HOME, 'etc/woogeen_config.js'), data, 'utf8', function (err) {
+       if (err) return console.log('Error in saving woogeen_config:', err);
     });
   });
 

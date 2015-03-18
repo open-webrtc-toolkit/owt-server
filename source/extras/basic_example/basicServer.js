@@ -1,17 +1,22 @@
-/*global require, __dirname, console, process*/
-'use strict';
-
+/*global require, __dirname, console*/
 var express = require('express'),
     bodyParser = require('body-parser'),
     errorhandler = require('errorhandler'),
     morgan = require('morgan'),
-    fs = require('fs'),
-    https = require('https'),
-    N = require('./nuve');
+    net = require('net'),
+    N = require('./nuve'),
+    fs = require("fs"),
+    https = require("https");
+
+var options = {
+    key: fs.readFileSync('cert/key.pem').toString(),
+    cert: fs.readFileSync('cert/cert.pem').toString()
+};
 
 var app = express();
 
 // app.configure ya no existe
+"use strict";
 app.use(errorhandler({
     dumpExceptions: true,
     showStack: true
@@ -25,12 +30,14 @@ app.use(bodyParser.urlencoded({
 }));
 
 app.use(function (req, res, next) {
+  "use strict";
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS, DELETE');
   res.header('Access-Control-Allow-Headers', 'origin, content-type');
   if (req.method == 'OPTIONS') {
     res.send(200);
-  } else {
+  }
+  else {
     next();
   }
 });
@@ -45,6 +52,7 @@ var myRoom;
 var p2pRoom;
 
 N.API.getRooms(function(roomlist) {
+    "use strict";
     var rooms = JSON.parse(roomlist);
     console.log(rooms.length +' rooms in this service.');
     for (var i = 0; i < rooms.length; i++) {
@@ -91,19 +99,23 @@ N.API.getRooms(function(roomlist) {
 
 
 app.get('/getRooms/', function(req, res) {
+    "use strict";
     N.API.getRooms(function(rooms) {
         res.send(rooms);
     });
 });
 
 app.get('/getUsers/:room', function(req, res) {
+    "use strict";
     var room = req.params.room;
     N.API.getUsers(room, function(users) {
         res.send(users);
     });
 });
 
+
 app.post('/createToken/', function(req, res) {
+    "use strict";
     var room = req.body.room || myRoom,
         username = req.body.username,
         role = req.body.role;
@@ -116,22 +128,22 @@ app.post('/createToken/', function(req, res) {
     });
 });
 
-app.listen(3001);
 
-var cipher = require('../../common/cipher');
-cipher.unlock(cipher.k, '../../cert/.woogeen.keystore', function cb (err, obj) {
-    if (!err) {
-        try {
-            https.createServer({
-                pfx: fs.readFileSync('../../cert/certificate.pfx'),
-                passphrase: obj.sample
-            }, app).listen(3004);
-        } catch (e) {
-            err = e;
-        }
-    }
-    if (err) {
-        console.error('Failed to setup secured server:', err);
-        return process.exit();
+app.use(function(req, res, next) {
+    "use strict";
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS, DELETE');
+    res.header('Access-Control-Allow-Headers', 'origin, content-type');
+    if (req.method == 'OPTIONS') {
+        res.send(200);
+    } else {
+        next();
     }
 });
+
+
+
+app.listen(3001);
+
+var server = https.createServer(options, app);
+server.listen(3004);
