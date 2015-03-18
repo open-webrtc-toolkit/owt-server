@@ -25,14 +25,17 @@ namespace woogeen_base {
 EventRegistry::EventRegistry()
 {
     m_uvHandle = reinterpret_cast<uv_async_t*>(malloc(sizeof(uv_async_t)));
-    m_uvHandle->data = this;
-    m_uvHandle->close_cb = closeCallback;
-    uv_async_init(uv_default_loop(), m_uvHandle, callback);
+    if (m_uvHandle) {
+        m_uvHandle->data = this;
+        m_uvHandle->close_cb = closeCallback;
+        uv_async_init(uv_default_loop(), m_uvHandle, callback);
+    }
 }
 
 EventRegistry::~EventRegistry()
 {
-    uv_close((uv_handle_t*)m_uvHandle, closeCallback);
+    if (m_uvHandle)
+        uv_close((uv_handle_t*)m_uvHandle, closeCallback);
 }
 
 // main thread
@@ -52,7 +55,7 @@ void EventRegistry::process()
 // other thread
 bool EventRegistry::notify(const std::string& data)
 {
-    if (uv_is_active(reinterpret_cast<uv_handle_t*>(m_uvHandle))) {
+    if (m_uvHandle && uv_is_active(reinterpret_cast<uv_handle_t*>(m_uvHandle))) {
         {
             boost::lock_guard<boost::mutex> lock(m_lock);
             m_buffer.push(data);
