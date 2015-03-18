@@ -6,8 +6,7 @@ var express = require('express'),
     net = require('net'),
     N = require('./nuve'),
     fs = require("fs"),
-    https = require("https"),
-    config = require('./../../etc/woogeen_config');
+    https = require("https");
 
 var options = {
     key: fs.readFileSync('cert/key.pem').toString(),
