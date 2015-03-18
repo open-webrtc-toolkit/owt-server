@@ -55,6 +55,7 @@ namespace erizo {
       return;
     if (sendQueue_.size() < 1000) {
       dataPacket p_;
+      p_.comp = 0;
       memcpy(p_.data, buffer, len);
       p_.type = type;
       p_.length = len;
