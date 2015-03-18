@@ -210,30 +210,17 @@ var addToCloudHandler = function (callback) {
             var server;
             if (enableSSL === true) {
                 log.info('SSL enabled!');
-                var cipher = require('../../common/cipher');
-                cipher.unlock(cipher.k, '../../cert/.woogeen.keystore', function cb (err, obj) {
-                    if (!err) {
-                        try {
-                            server = require('https').createServer({
-                                pfx: require('fs').readFileSync(config.erizoController.keystorePath),
-                                passphrase: obj.erizoController
-                            }).listen(msg.port);
-                        } catch (e) {
-                            err = e;
-                        }
-                    }
-                    if (err) {
-                        log.warn('Failed to setup secured server:', err);
-                        return process.exit();
-                    }
-                    io = require('socket.io').listen(server, {log: false});
-                    io.set('log level', 0);
-                });
+                server = require('https').createServer({
+                  key: require('fs').readFileSync(config.certificate.key).toString(),
+                  cert: require('fs').readFileSync(config.certificate.cert).toString(),
+                  passphrase: config.certificate.passphrase,
+                  ca: config.certificate.ca
+                }).listen(msg.port);
             } else {
                 server = require('http').createServer().listen(msg.port);
-                io = require('socket.io').listen(server, {log: false});
-                io.set('log level', 0);
             }
+            io = require('socket.io').listen(server, {log: false});
+            io.set('log level', 0);
 
             var intervarId = setInterval(function () {
 

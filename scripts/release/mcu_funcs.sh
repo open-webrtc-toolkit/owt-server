@@ -30,7 +30,6 @@ pack_runtime() {
   cd ${SOURCE}/erizo_controller && \
   find . -type f -not -name "*.log" -not -name "in*.sh" -exec cp '{}' "${WOOGEEN_DIST}/mcu/{}" \;
   pack_nuve
-  pack_common
   # encryption if needed
   if ${ENCRYPT} ; then
     if ! hash uglifyjs 2>/dev/null; then
@@ -48,9 +47,6 @@ pack_runtime() {
     find ${WOOGEEN_DIST}/nuve -type f -name "*.js" | while read line; do
       encrypt_js "$line"
     done
-    find ${WOOGEEN_DIST}/common -type f -name "*.js" | while read line; do
-      encrypt_js "$line"
-    done
   fi
   pack_sdk
   # config
@@ -65,17 +61,12 @@ pack_runtime() {
   ln -s ../../etc/mcu/log4cxx.properties ${WOOGEEN_DIST}/mcu/erizoAgent/log4cxx.properties
   ln -s ../etc/mcu/log4js_configuration.json ${WOOGEEN_DIST}/mcu/log4js_configuration.json
   ln -s ../etc/nuve/log4js_configuration.json ${WOOGEEN_DIST}/nuve/log4js_configuration.json
-  # certificates
+  # pems
   mkdir -p ${WOOGEEN_DIST}/cert
-  cp -av ${ROOT}/cert/{*.pem,*.pfx,.woogeen.keystore} ${WOOGEEN_DIST}/cert
+  cp -av ${ROOT}/cert/*.pem ${WOOGEEN_DIST}/cert
   # sample
   mkdir -p ${WOOGEEN_DIST}/extras
   cp -av ${SOURCE}/extras/basic_example ${WOOGEEN_DIST}/extras
-}
-
-pack_common() {
-  mkdir -p ${WOOGEEN_DIST}/common
-  cp -av ${SOURCE}/common/* ${WOOGEEN_DIST}/common/
 }
 
 pack_nuve() {
