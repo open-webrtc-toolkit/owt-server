@@ -114,7 +114,7 @@ config.erizo.hardwareAccelerated = false;
 // "true" means OpenH264 is deployed for H.264. Otherwise no support of H.264 in MCU.
 config.erizo.openh264Enabled = false;
 
-config.erizo.keystorePath = '';
+config.erizo.keystorePath = '../../cert/certificate.pfx';
 /***** END *****/
 // Following lines are always needed.
 var module = module || {};

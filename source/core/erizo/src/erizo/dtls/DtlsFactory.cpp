@@ -16,6 +16,7 @@
 #include <openssl/bn.h>
 #include <openssl/srtp.h>
 #include <openssl/pem.h>
+#include <openssl/pkcs12.h>
 
 #include "DtlsFactory.h"
 #include "DtlsSocket.h"
@@ -125,7 +126,35 @@ int SSLVerifyCallback(int ok, X509_STORE_CTX* store) {
 
 static const int KEY_LENGTH = 1024;
 
-int loadCert(const std::string& certFileName, const std::string& keyFileName, const std::string& privatePasswd, X509*& cert, EVP_PKEY*& key) {
+static int loadPfx(const std::string& pfxFileName, const std::string& privatePasswd, X509*& cert, EVP_PKEY*& key) {
+  FILE* pfxFile = NULL;
+  pfxFile = fopen(pfxFileName.c_str(), "r");
+  if (pfxFile == NULL) {
+    return 0;
+  }
+  PKCS12* p12 = d2i_PKCS12_fp(pfxFile, NULL);
+  fclose(pfxFile);
+  if (p12 == NULL) {
+    ELOG_ERROR2(sslLogger, "Error reading PKCS#12 file: %s", pfxFileName.c_str());
+    return 0;
+  }
+  int ret = 0;
+  STACK_OF(X509)* ca = NULL;
+  if (!PKCS12_parse(p12, privatePasswd.c_str(), &key, &cert, &ca)) {
+    ELOG_ERROR2(sslLogger, "Error parsing PKCS#12 file: %s", pfxFileName.c_str());
+  } else {
+    ELOG_DEBUG2(sslLogger, "Static Key & Cert loaded!");
+    ret = 1;
+  }
+  PKCS12_free(p12);
+  sk_X509_pop_free(ca, X509_free);
+  return ret;
+}
+
+static int loadCert(const std::string& certFileName, const std::string& keyFileName, const std::string& privatePasswd, X509*& cert, EVP_PKEY*& key) {
+  if (certFileName == keyFileName) {
+    return loadPfx(certFileName, privatePasswd, cert, key);
+  }
   FILE* certFile = NULL;
   FILE* keyFile = NULL;
   keyFile = fopen(keyFileName.c_str(), "r");
@@ -145,7 +174,7 @@ int loadCert(const std::string& certFileName, const std::string& keyFileName, co
   return 1;
 }
 
-int saveCert(X509*& cert, EVP_PKEY*& key, const std::string& privatePasswd) {
+static int saveCert(X509*& cert, EVP_PKEY*& key, const std::string& privatePasswd) {
   FILE* certFile = fopen("static_cert.pem", "w+");
   if (certFile == NULL) {
     return 0;
