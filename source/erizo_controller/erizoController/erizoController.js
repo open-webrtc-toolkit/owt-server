@@ -828,11 +828,7 @@ var listen = function () {
         });
 
         //Gets 'stopRecorder' messages
-        socket.on('stopRecorder', function (options, callback) {
-            if (typeof options === 'function') {
-                callback = options;
-            }
-
+        socket.on('stopRecorder', function (callback) {
             if (socket.user === undefined || !socket.user.permissions[Permission.RECORD]) {
                 return safeCall(callback, 'error', 'unauthorized');
             }

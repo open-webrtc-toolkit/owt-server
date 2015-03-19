@@ -762,17 +762,9 @@ Woogeen.ConferenceClient = (function () {
     });
   };
 
-  WoogeenConference.prototype.stopRecorder = function (options, onSuccess, onFailure) {
+  WoogeenConference.prototype.stopRecorder = function (onSuccess, onFailure) {
     var self = this;
-    if (typeof options === 'function') {
-      onFailure = onSuccess;
-      onSuccess = options;
-      options = {};
-    } else if (typeof options !== 'object' || options === null) {
-      options = {};
-    }
-
-    sendMsg(self.socket, 'stopRecorder', options, function (err, resp) {
+    sendMsg(self.socket, 'stopRecorder', null, function (err, resp) {
       if (err) {return safeCall(onFailure, err);}
       safeCall(onSuccess, resp);
     });
