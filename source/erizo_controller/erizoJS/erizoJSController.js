@@ -4,6 +4,7 @@ var addon = require('./../../bindings/mcu/build/Release/addon');
 
 var logger = require('./../common/logger').logger;
 var rpc = require('./../common/rpc');
+var cipher = require('../../common/cipher');
 
 // Logger
 var log = logger.getLogger("ErizoJSController");
@@ -251,30 +252,38 @@ exports.ErizoJSController = function (spec) {
 
         if (publishers[from] === undefined) {
             log.info("Adding publisher peer_id ", from);
-            var hasAudio = false;
-            var hasVideo = false;
-            if (sdp.indexOf('m=audio') !== -1) {
-                hasAudio = true;
-            }
-            if (sdp.indexOf('m=video') !== -1) {
-                hasVideo = true;
-            }
+            cipher.unlock(cipher.k, '../../cert/.woogeen.keystore', function cb (err, obj) {
+                if (!err) {
+                    var erizoPassPhrase = obj.erizo;
 
-            var hasH264 = true;
-            if (!useHardware && !openh264Enabled) {
-                hasH264 = false;
-            }
+                    var hasAudio = false;
+                    var hasVideo = false;
+                    if (sdp.indexOf('m=audio') !== -1) {
+                        hasAudio = true;
+                    }
+                    if (sdp.indexOf('m=video') !== -1) {
+                        hasVideo = true;
+                    }
 
-            var wrtc = new addon.WebRtcConnection(hasAudio, hasVideo, hasH264, GLOBAL.config.erizo.stunserver, GLOBAL.config.erizo.stunport, GLOBAL.config.erizo.minport, GLOBAL.config.erizo.maxport, undefined, undefined, undefined, true, true, true, true);
-            var muxer = new addon.Gateway();
-            muxer.setPublisher(wrtc, from);
-            publishers[from] = muxer;
-            subscribers[from] = [];
+                    var hasH264 = true;
+                    if (!useHardware && !openh264Enabled) {
+                        hasH264 = false;
+                    }
 
-            if (mixer.oop)
-                mixerProxies[from] = new addon.MediaSourceConsumer();
+                    var wrtc = new addon.WebRtcConnection(hasAudio, hasVideo, hasH264, GLOBAL.config.erizo.stunserver, GLOBAL.config.erizo.stunport, GLOBAL.config.erizo.minport, GLOBAL.config.erizo.maxport, GLOBAL.config.erizo.keystorePath, GLOBAL.config.erizo.keystorePath, erizoPassPhrase, true, true, true, true);
+                    var muxer = new addon.Gateway();
+                    muxer.setPublisher(wrtc, from);
+                    publishers[from] = muxer;
+                    subscribers[from] = [];
 
-            initWebRtcConnection(wrtc, sdp, mixer.id, callback, from);
+                    if (mixer.oop)
+                        mixerProxies[from] = new addon.MediaSourceConsumer();
+
+                    initWebRtcConnection(wrtc, sdp, mixer.id, callback, from);
+                } else {
+                    log.warn('Failed to publish the stream:', err);
+                }
+            });
         } else {
             log.info("Publisher already set for", from);
         }
@@ -289,20 +298,25 @@ exports.ErizoJSController = function (spec) {
         if (typeof sdp != 'string') sdp = JSON.stringify(sdp);
 
         if (publishers[to] !== undefined && subscribers[to].indexOf(from) === -1 && sdp.match('OFFER') !== null) {
-
             log.info("Adding subscriber from ", from, 'to ', to, 'audio', audio, 'video', video);
+            cipher.unlock(cipher.k, '../../cert/.woogeen.keystore', function cb (err, obj) {
+                if (!err) {
+                    var erizoPassPhrase = obj.erizo;
 
-            var hasH264 = true;
-            if (!useHardware && !openh264Enabled) {
-                hasH264 = false;
-            }
+                    var hasH264 = true;
+                    if (!useHardware && !openh264Enabled) {
+                        hasH264 = false;
+                    }
+                    var wrtc = new addon.WebRtcConnection(audio, video, hasH264, GLOBAL.config.erizo.stunserver, GLOBAL.config.erizo.stunport, GLOBAL.config.erizo.minport, GLOBAL.config.erizo.maxport, GLOBAL.config.erizo.keystorePath, GLOBAL.config.erizo.keystorePath, erizoPassPhrase, true, true, true, true);
 
-            var wrtc = new addon.WebRtcConnection(audio, video, hasH264, GLOBAL.config.erizo.stunserver, GLOBAL.config.erizo.stunport, GLOBAL.config.erizo.minport, GLOBAL.config.erizo.maxport, undefined, undefined, undefined, true, true, true, true);
+                    initWebRtcConnection(wrtc, sdp, undefined, callback, to, from);
 
-            initWebRtcConnection(wrtc, sdp, undefined, callback, to, from);
-
-            subscribers[to].push(from);
-            publishers[to].addSubscriber(wrtc, from);
+                    subscribers[to].push(from);
+                    publishers[to].addSubscriber(wrtc, from);
+                } else {
+                    log.warn('Failed to subscribe the stream:', err);
+                }
+            });
         }
     };
 

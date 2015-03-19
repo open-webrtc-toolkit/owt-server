@@ -8,6 +8,7 @@ GLOBAL.config.erizo.stunserver = GLOBAL.config.erizo.stunserver || '';
 GLOBAL.config.erizo.stunport = GLOBAL.config.erizo.stunport || 0;
 GLOBAL.config.erizo.minport = GLOBAL.config.erizo.minport || 0;
 GLOBAL.config.erizo.maxport = GLOBAL.config.erizo.maxport || 0;
+GLOBAL.config.erizo.keystorePath = GLOBAL.config.erizo.keystorePath || '';
 
 GLOBAL.config.erizo.hardwareAccelerated = !!GLOBAL.config.erizo.hardwareAccelerated;
 GLOBAL.config.erizo.openh264Enabled = !!GLOBAL.config.erizo.openh264Enabled;
