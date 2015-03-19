@@ -558,9 +558,11 @@ namespace erizo {
       sending_ = false;
       std::queue<dataPacket> empty;
       boost::mutex::scoped_lock lock(receiveMediaMutex_);
-      std::swap( sendQueue_, empty);
+      std::swap(sendQueue_, empty);
       dataPacket p_;
       p_.comp = -1;
+      p_.length = 0;
+      p_.type = OTHER_PACKET;
       sendQueue_.push(p_);
       cond_.notify_one();
       return;
