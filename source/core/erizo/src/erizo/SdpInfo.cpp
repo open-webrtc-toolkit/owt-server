@@ -193,8 +193,9 @@ namespace erizo {
   }
 
   std::string SdpInfo::getSdp() {
-    char msidtemp [10];
+    char msidtemp[11];
     gen_random(msidtemp,10);
+    msidtemp[10] = 0;
 
     ELOG_DEBUG("Getting SDP");
 
@@ -888,7 +889,7 @@ namespace erizo {
     return true;
   }
 
-  void SdpInfo::gen_random(char *s, const int len) {
+  void SdpInfo::gen_random(char* s, const int len) {
     static const char alphanum[] =
         "0123456789"
         "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -897,8 +898,6 @@ namespace erizo {
     for (int i = 0; i < len; ++i) {
         s[i] = alphanum[rand() % (sizeof(alphanum) - 1)];
     }
-
-    s[len] = 0;
   }
 }/* namespace erizo */
 
