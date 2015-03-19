@@ -25,14 +25,14 @@ app.use(bodyParser.urlencoded({
 }));
 
 app.use(function (req, res, next) {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS, DELETE');
-  res.header('Access-Control-Allow-Headers', 'origin, content-type');
-  if (req.method == 'OPTIONS') {
-    res.send(200);
-  } else {
-    next();
-  }
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS, DELETE');
+    res.header('Access-Control-Allow-Headers', 'origin, content-type');
+    if (req.method == 'OPTIONS') {
+        res.send(200);
+    } else {
+        next();
+    }
 });
 
 //app.set('views', __dirname + '/../views/');
@@ -90,16 +90,12 @@ N.API.getRooms(function(roomlist) {
 });
 
 
-app.get('/getRooms/', function(req, res) {
-    N.API.getRooms(function(rooms) {
-        res.send(rooms);
-    });
-});
-
 app.get('/getUsers/:room', function(req, res) {
     var room = req.params.room;
     N.API.getUsers(room, function(users) {
         res.send(users);
+    }, function(err) {
+        res.send(err);
     });
 });
 
@@ -113,8 +109,81 @@ app.post('/createToken/', function(req, res) {
     N.API.createToken(room, username, role, function(token) {
         console.log(token);
         res.send(token);
+    },function (err){
+        res.send(err);
     });
 });
+
+
+app.post('/createRoom/', function (req, res) {
+    'use strict';
+    var name = req.body.name;
+    N.API.createRoom(name, function (response) {
+        console.log(response);
+        res.send(response);
+    },function (err) {
+        res.send(err);
+    });
+});
+app.get('/getRooms/', function (req, res) {
+    'use strict';
+    N.API.getRooms(function (rooms) {
+        res.send(rooms);
+    },function (err) {
+        res.send(err);
+    });
+});
+
+app.get('/getRoom/:room', function (req, res) {
+    'use strict';
+    var room = req.params.room;
+    N.API.getRoom(room,function (rooms) {
+        res.send(rooms);
+    },function (err) {
+        res.send(err);
+    });
+});
+app.get('/getUsers/:room', function (req, res) {
+    'use strict';
+    var room = req.params.room;
+    N.API.getUsers(room, function (users) {
+        res.send(users);
+    },function (err) {
+        res.send(err);
+    });
+});
+
+app.get('/room/:room/user/:user', function (req, res) {
+    'use strict';
+    var room = req.params.room;
+    var uid = req.params.user;
+    N.API.getUser(room, uid, function (user) {
+        res.send(user);
+    },function (err) {
+        res.send(err);
+    });
+});
+
+app.delete('/room/:room/user/:user', function (req, res) {
+    'use strict';
+    var room = req.params.room;
+    var uid = req.params.user;
+    N.API.deleteUser(room, uid, function (result) {
+        res.send(result);
+    },function (err) {
+        res.send(err);
+    });
+})
+
+app.delete('/room/:room', function (req, res) {
+    'use strict';
+    var room = req.params.room;
+    N.API.deleteRoom(room, function (result) {
+        res.send(result);
+    },function (err) {
+        res.send(err);
+    });
+})
 
 app.listen(3001);
 
