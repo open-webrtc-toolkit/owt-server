@@ -48,6 +48,7 @@ app.options('*', function(req, res) {
 app.get('*', nuveAuthenticator.authenticate);
 app.post('*', nuveAuthenticator.authenticate);
 app.delete('*', nuveAuthenticator.authenticate);
+app.put('*', nuveAuthenticator.authenticate);
 
 app.post('/rooms', roomsResource.createRoom);
 app.get('/rooms', roomsResource.represent);
