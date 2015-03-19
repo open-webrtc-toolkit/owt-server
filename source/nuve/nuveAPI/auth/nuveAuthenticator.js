@@ -3,7 +3,7 @@
 var superServiceId = require('./../mdb/dataBase').superService;
 var serviceRegistry = require('./../mdb/serviceRegistry');
 var mauthParser = require('./mauthParser');
-
+var cipher = require('../../../common/cipher');
 var logger = require('./../logger').logger;
 
 // Logger
@@ -79,6 +79,9 @@ exports.authenticate = function (req, res, next) {
             }
 
             var key = serv.key;
+            if (serv.encrypted === true) {
+                key = cipher.decrypt(cipher.k, key);
+            }
 
             // Check if timestam and cnonce are valids in order to avoid duplicate requests.
             if (!checkTimestamp(serv, params)) {

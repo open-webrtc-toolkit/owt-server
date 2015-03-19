@@ -15,20 +15,25 @@ var destConfigFile = path.join(HOME, 'etc/woogeen_config.js');
 var configFile = destConfigFile;
 var mongojs = require('mongojs');
 var db = mongojs.connect(dbURL, ['services']);
+var cipher = require('../common/cipher');
 
 function prepareService (serviceName, next) {
   db.services.findOne({name: serviceName}, function cb (err, service) {
     if (err || !service) {
       var key = require('crypto').randomBytes(64).toString('hex');
-      service = {name: serviceName, key: key, rooms: []};
+      service = {name: serviceName, key: cipher.encrypt(cipher.k, key), encrypted: true, rooms: []};
       db.services.save(service, function cb (err, saved) {
         if (err) {
           console.log('mongodb: error in adding', serviceName);
           return db.close();
         }
+        saved.key = key;
         next(saved);
       });
     } else {
+      if (service.encrypted === true) {
+        service.key = cipher.decrypt(cipher.k, service.key);
+      }
       next(service);
     }
   });
