@@ -162,7 +162,7 @@ Erizo.FirefoxStack = function (spec) {
             }, that.mediaConstraints);
                 spec.remoteDescriptionSet = true;
             }, function(error){
-              L.Logger.error("Error setting Remote Description", error)
+              L.Logger.error("Error setting Remote Description", error);
             });
         } else if (msg.type === 'answer') {
 
