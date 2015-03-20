@@ -100,7 +100,6 @@ while [[ $# -gt 0 ]]; do
     *(-)installCert=* )
       INSTALL_CERT=true
       export CERT_COMPS=$(echo $1 | cut -d '=' -f 2)
-      echo -e "\x1b[36mwill install certificates for ${CERT_COMPS}\x1b[0m"
       ;;
     *(-)hardware )
       ENABLE_HARDWARE=true
