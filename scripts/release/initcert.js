@@ -11,8 +11,6 @@ var readline = require('readline').createInterface({
   input: process.stdin,
   output: process.stdout
 });
-var EventEmitter = require('events').EventEmitter;
-var ev = new EventEmitter();
 var cipher = require('../common/cipher');
 var collection;
 var keystore = path.join(HOME, 'cert/.woogeen.keystore');
@@ -26,10 +24,19 @@ var comps = (function (comps) {
     }
     if (allComps.indexOf(comps[c]) !== -1) {
       components.push(comps[c]);
+    } else {
+      console.error('WARN: unrecogonized component', comps[c]);
     }
   }
   return components;
 }(process.env.CERT_COMPS));
+
+if (comps.length > 0) {
+  console.log('will install certificates for' + comps.join(' '));
+} else {
+  console.error('no certificates need to be installed');
+  process.exit();
+}
 
 cipher.unlock(cipher.k, keystore, function cb (err, obj) {
   if (err) {
@@ -37,21 +44,26 @@ cipher.unlock(cipher.k, keystore, function cb (err, obj) {
   } else {
     collection = obj;
   }
-  var len = comps.length;
-  ev.once('done', function () {
+
+  function done () {
     readline.close();
     cipher.lock(cipher.k, collection, keystore, function cb (err) {
       console.log(err||'done!');
     });
-  });
-  comps.map(function (component) {
-    readline.question('Enter passphrase of certificate for '+component+': ', function (res) {
-      collection[component] = res;
-      len--;
-      if (len <= 0) {
-        ev.emit('done');
-      }
-    });
-  });
+  }
+
+  function ask(components, end) {
+    var component = components.splice(0, 1)[0];
+    if (component) {
+      readline.question('Enter passphrase of certificate for '+component+': ', function (res) {
+        collection[component] = res;
+        ask(components, end);
+      });
+    } else {
+      end();
+    }
+  }
+
+  ask(comps, done);
 });
 
