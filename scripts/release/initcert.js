@@ -1,11 +1,6 @@
 #!/usr/bin/env node
 'use strict';
 
-var HOME = process.env.WOOGEEN_HOME;
-if (!HOME) {
-  throw 'WOOGEEN_HOME not found';
-}
-
 var path = require('path');
 var readline = require('readline').createInterface({
   input: process.stdin,
@@ -13,11 +8,13 @@ var readline = require('readline').createInterface({
 });
 var cipher = require('../common/cipher');
 var collection;
-var keystore = path.join(HOME, 'cert/.woogeen.keystore');
+var keystore = path.resolve(__dirname, '..', 'cert/.woogeen.keystore');
 var allComps = ['erizo', 'nuve', 'erizoController', 'sample'];
+var args = process.argv;
+args.splice(0, 2);
+
 var comps = (function (comps) {
   var components = [];
-  comps = comps.split(',');
   for (var c in comps) {
     if (comps[c] === 'all') {
       return allComps;
@@ -29,10 +26,10 @@ var comps = (function (comps) {
     }
   }
   return components;
-}(process.env.CERT_COMPS));
+}(args));
 
 if (comps.length > 0) {
-  console.log('will install certificates for' + comps.join(' '));
+  console.log('will install certificates for ' + comps.join(' '));
 } else {
   console.error('no certificates need to be installed');
   process.exit();

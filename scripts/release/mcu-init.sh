@@ -24,7 +24,6 @@ usage() {
   echo "    --deps (default: false)             install dependent components and libraries via apt-get/local"
   echo "    --dburl=HOST/DBNAME                 specify mongodb URL other than default \`localhost/nuvedb'"
   echo "    --hardware                          enable mcu with msdk (if \`libmcu_hw.so' is packed)"
-  echo "    --installCert=nuve,erizoController  install user specified certificates"
   echo "    --help                              print this help"
   echo
 }
@@ -79,13 +78,8 @@ install_config() {
   check_node_version && node ${this}/initdb.js || return 1
 }
 
-install_cert() {
-  check_node_version && node ${this}/initcert.js || return 1
-}
-
 INSTALL_DEPS=false
 ENABLE_HARDWARE=false
-INSTALL_CERT=false
 
 shopt -s extglob
 while [[ $# -gt 0 ]]; do
@@ -96,10 +90,6 @@ while [[ $# -gt 0 ]]; do
     *(-)dburl=* )
       DB_URL=$(echo $1 | cut -d '=' -f 2)
       echo -e "\x1b[36musing $DB_URL\x1b[0m"
-      ;;
-    *(-)installCert=* )
-      INSTALL_CERT=true
-      export CERT_COMPS=$(echo $1 | cut -d '=' -f 2)
       ;;
     *(-)hardware )
       ENABLE_HARDWARE=true
@@ -119,8 +109,6 @@ ${INSTALL_DEPS} && install_deps
 
 install_db
 install_config
-
-${INSTALL_CERT} && install_cert
 
 if ${ENABLE_HARDWARE}; then
   cd ${ROOT}/lib
