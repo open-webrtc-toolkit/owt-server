@@ -84,7 +84,7 @@ HardwareVideoFrameMixerOutput::HardwareVideoFrameMixerOutput(boost::shared_ptr<V
 
     m_index = m_engine->enableOutput(Frameformat2CodecType(m_outFormat), bitrate, this);
     assert(m_index != INVALID_OUTPUT_INDEX);
-    m_jobTimer.reset(new JobTimer(m_frameRate, this));
+    m_jobTimer.reset(new woogeen_base::JobTimer(m_frameRate, this));
 }
 
 HardwareVideoFrameMixerOutput::~HardwareVideoFrameMixerOutput()

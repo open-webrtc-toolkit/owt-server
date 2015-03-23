@@ -21,7 +21,6 @@
 #ifndef HardwareVideoFrameMixer_h
 #define HardwareVideoFrameMixer_h
 
-#include "JobTimer.h"
 #include "VideoFramePipeline.h"
 #include "VideoLayout.h"
 
@@ -29,6 +28,7 @@
 
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
+#include <JobTimer.h>
 #include <logger.h>
 #include <map>
 #include <set>
@@ -55,7 +55,7 @@ private:
     boost::shared_ptr<VideoMixEngine> m_engine;
 };
 
-class HardwareVideoFrameMixerOutput : public VideoMixEngineOutput, public JobTimerListener {
+class HardwareVideoFrameMixerOutput : public VideoMixEngineOutput, public woogeen_base::JobTimerListener {
 public:
     HardwareVideoFrameMixerOutput(boost::shared_ptr<VideoMixEngine> engine,
                             FrameFormat outFormat,
@@ -81,7 +81,7 @@ private:
 
     unsigned int m_frameRate;
     unsigned int m_outCount;
-    boost::scoped_ptr<JobTimer> m_jobTimer;
+    boost::scoped_ptr<woogeen_base::JobTimer> m_jobTimer;
 };
 
 class VideoLayoutProcessor;

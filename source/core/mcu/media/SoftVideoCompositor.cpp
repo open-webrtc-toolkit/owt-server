@@ -81,7 +81,7 @@ SoftVideoCompositor::SoftVideoCompositor(uint32_t maxInput, VideoSize rootSize, 
     m_composedFrame->CreateEmptyFrame(m_composedSize.width, m_composedSize.height, m_composedSize.width, m_composedSize.width / 2, m_composedSize.width / 2);
     m_bufferManager.reset(new BufferManager(maxInput, m_composedSize.width, m_composedSize.height));
 
-    m_jobTimer.reset(new JobTimer(30, this));
+    m_jobTimer.reset(new woogeen_base::JobTimer(30, this));
 }
 
 SoftVideoCompositor::~SoftVideoCompositor()

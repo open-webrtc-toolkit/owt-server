@@ -272,7 +272,6 @@ exports.ErizoJSController = function (spec) {
 
                     var wrtc = new addon.WebRtcConnection(hasAudio, hasVideo, hasH264, GLOBAL.config.erizo.stunserver, GLOBAL.config.erizo.stunport, GLOBAL.config.erizo.minport, GLOBAL.config.erizo.maxport, GLOBAL.config.erizo.keystorePath, GLOBAL.config.erizo.keystorePath, erizoPassPhrase, true, true, true, true);
                     var muxer = new addon.Gateway();
-                    muxer.setPublisher(wrtc, from);
                     publishers[from] = muxer;
                     subscribers[from] = [];
 
@@ -280,6 +279,7 @@ exports.ErizoJSController = function (spec) {
                         mixerProxies[from] = new addon.MediaSourceConsumer();
 
                     initWebRtcConnection(wrtc, sdp, mixer.id, callback, from);
+                    muxer.setPublisher(wrtc, from);
                 } else {
                     log.warn('Failed to publish the stream:', err);
                 }
