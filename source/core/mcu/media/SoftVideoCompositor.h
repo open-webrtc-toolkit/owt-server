@@ -22,13 +22,13 @@
 #define SoftVideoCompositor_h
 
 #include "BufferManager.h"
-#include "JobTimer.h"
 #include "VideoFramePipeline.h"
 #include "VideoLayout.h"
 
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/shared_mutex.hpp>
+#include <JobTimer.h>
 #include <logger.h>
 #include <vector>
 
@@ -63,7 +63,7 @@ private:
  * still 16 audios will be mixed. In the future, we may enable the video rotation based on VAD history.
  */
 class SoftVideoCompositor : public VideoFrameCompositor,
-                            public JobTimerListener {
+                            public woogeen_base::JobTimerListener {
     DECLARE_LOGGER();
     enum LayoutSolutionState{UN_INITIALIZED = 0, CHANGING, IN_WORK};
 public:
@@ -105,7 +105,7 @@ private:
      * Each incoming channel will store the decoded frame in this array, and the composition
      * thread will scan this array and compose the frames into one frame.
      */
-    boost::scoped_ptr<JobTimer> m_jobTimer;
+    boost::scoped_ptr<woogeen_base::JobTimer> m_jobTimer;
 };
 
 }

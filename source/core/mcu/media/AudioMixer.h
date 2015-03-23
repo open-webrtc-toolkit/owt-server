@@ -21,12 +21,12 @@
 #ifndef AudioMixer_h
 #define AudioMixer_h
 
-#include "JobTimer.h"
 #include "MediaRecording.h"
 
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/shared_mutex.hpp>
+#include <JobTimer.h>
 #include <logger.h>
 #include <MediaDefinitions.h>
 #include <MediaSourceConsumer.h>
@@ -67,7 +67,7 @@ private:
     MediaFrameQueue* m_audioQueue;
 };
 
-class AudioMixer : public woogeen_base::MediaSourceConsumer, public MediaRecording, public erizo::MediaSink, public erizo::FeedbackSink, public JobTimerListener {
+class AudioMixer : public woogeen_base::MediaSourceConsumer, public MediaRecording, public erizo::MediaSink, public erizo::FeedbackSink, public woogeen_base::JobTimerListener {
     DECLARE_LOGGER();
 
 public:
@@ -125,7 +125,7 @@ private:
 
     int32_t m_recordChannelId;
     boost::scoped_ptr<AudioEncodedFrameCallbackAdapter> m_encodedFrameCallback;
-    boost::scoped_ptr<JobTimer> m_jobTimer;
+    boost::scoped_ptr<woogeen_base::JobTimer> m_jobTimer;
 };
 
 inline webrtc::VoEVideoSync* AudioMixer::avSyncInterface()

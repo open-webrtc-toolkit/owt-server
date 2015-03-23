@@ -26,7 +26,7 @@
 #include <boost/thread.hpp>
 #include <Compiler.h>
 
-namespace mcu {
+namespace woogeen_base {
 
 class JobTimerListener {
 public:

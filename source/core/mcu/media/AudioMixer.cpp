@@ -54,7 +54,7 @@ AudioMixer::AudioMixer(erizo::RTPDataReceiver* receiver, AudioMixerVADCallback* 
     m_recordChannelId = -1;
 
     // FIXME: hard coded timer interval.
-    m_jobTimer.reset(new JobTimer(100, this));
+    m_jobTimer.reset(new woogeen_base::JobTimer(100, this));
 }
 
 AudioMixer::~AudioMixer()
