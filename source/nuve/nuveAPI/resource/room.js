@@ -261,7 +261,7 @@ Room.genConfig = function (room) {
             video: {
                 avCoordinated: room.mediaMixing.video.avCoordinated === 1 ? true : false,
                 maxInput: maxInput,
-                bitrate: room.mediaMixing.video.bitrate,
+                bitrate: room.mediaMixing.video.bitrate || 0,
                 resolution: room.mediaMixing.video.resolution || 'vga',
                 bkColor: room.mediaMixing.video.bkColor || 'black',
                 layout: layoutTemplates
