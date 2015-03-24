@@ -34,10 +34,11 @@ static const int TRANSMISSION_MAXBITRATE_MULTIPLIER = 2;
 
 DEFINE_LOGGER(EncodedVideoFrameSender, "mcu.media.EncodedVideoFrameSender");
 
-EncodedVideoFrameSender::EncodedVideoFrameSender(int id, boost::shared_ptr<VideoFrameMixer> source, FrameFormat frameFormat, woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<TaskRunner> taskRunner)
+EncodedVideoFrameSender::EncodedVideoFrameSender(int id, boost::shared_ptr<VideoFrameMixer> source, FrameFormat frameFormat, int targetBitrate, woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<TaskRunner> taskRunner)
     : VideoFrameSender(id)
     , m_source(source)
     , m_frameFormat(frameFormat)
+    , m_targetBitrate(targetBitrate)
 {
     init(transport, taskRunner);
 }
@@ -49,7 +50,12 @@ EncodedVideoFrameSender::~EncodedVideoFrameSender()
 
 bool EncodedVideoFrameSender::updateVideoSize(VideoSize videoSize)
 {
-    uint32_t targetBitrate = calcBitrate(videoSize.width, videoSize.height) * (m_frameFormat == FRAME_FORMAT_VP8 ? 0.9 : 1);
+    uint32_t targetBitrate = 0;
+    if (m_targetBitrate > 0)
+        targetBitrate = m_targetBitrate;
+    else
+        targetBitrate = calcBitrate(videoSize.width, videoSize.height) * (m_frameFormat == FRAME_FORMAT_VP8 ? 0.9 : 1);
+
     uint32_t minBitrate = targetBitrate / 4;
     // The bitrate controller is accepting "bps".
     m_bitrateController->SetBitrateObserver(this, targetBitrate * 1000, minBitrate * 1000, TRANSMISSION_MAXBITRATE_MULTIPLIER * targetBitrate * 1000);
@@ -82,7 +88,12 @@ bool EncodedVideoFrameSender::setSendCodec(FrameFormat frameFormat, VideoSize vi
         break;
     }
 
-    uint32_t targetBitrate = calcBitrate(videoSize.width, videoSize.height) * (frameFormat == FRAME_FORMAT_VP8 ? 0.9 : 1);
+    uint32_t targetBitrate = 0;
+    if (m_targetBitrate > 0)
+        targetBitrate = m_targetBitrate;
+    else
+        targetBitrate = calcBitrate(videoSize.width, videoSize.height) * (frameFormat == FRAME_FORMAT_VP8 ? 0.9 : 1);
+
     uint32_t minBitrate = targetBitrate / 4;
     // The bitrate controller is accepting "bps".
     m_bitrateController->SetBitrateObserver(this, targetBitrate * 1000, minBitrate * 1000, TRANSMISSION_MAXBITRATE_MULTIPLIER * targetBitrate * 1000);

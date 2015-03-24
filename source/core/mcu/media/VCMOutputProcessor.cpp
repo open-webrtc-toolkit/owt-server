@@ -33,9 +33,10 @@ namespace mcu {
 
 DEFINE_LOGGER(VCMOutputProcessor, "mcu.media.VCMOutputProcessor");
 
-VCMOutputProcessor::VCMOutputProcessor(int id, boost::shared_ptr<VideoFrameMixer> source, woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<TaskRunner> taskRunner)
+VCMOutputProcessor::VCMOutputProcessor(int id, boost::shared_ptr<VideoFrameMixer> source, int targetBitrate, woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<TaskRunner> taskRunner)
     : VideoFrameSender(id)
     , m_sendFormat(FRAME_FORMAT_UNKNOWN)
+    , m_targetBitrate(targetBitrate)
     , m_source(source)
 {
     init(transport, taskRunner);
@@ -55,8 +56,13 @@ bool VCMOutputProcessor::updateVideoSize(VideoSize videoSize)
     if (validCodec) {
         videoCodec.width = videoSize.width;
         videoCodec.height = videoSize.height;
-        // TODO: Set startBitrate, minBitrate and maxBitrate of the codec according to the (future) configurable parameters.
-        uint32_t targetBitrate = calcBitrate(videoCodec.width, videoCodec.height) * (m_sendFormat == FRAME_FORMAT_VP8 ? 0.9 : 1);
+
+        uint32_t targetBitrate = 0;
+        if (m_targetBitrate > 0)
+            targetBitrate = m_targetBitrate;
+        else
+            targetBitrate = calcBitrate(videoCodec.width, videoCodec.height) * (m_sendFormat == FRAME_FORMAT_VP8 ? 0.9 : 1);
+
         videoCodec.maxBitrate = targetBitrate;
         videoCodec.minBitrate = targetBitrate / 4;
         videoCodec.startBitrate = targetBitrate;
@@ -96,8 +102,13 @@ bool VCMOutputProcessor::setSendCodec(FrameFormat frameFormat, VideoSize videoSi
     if (validCodec) {
         videoCodec.width = videoSize.width;
         videoCodec.height = videoSize.height;
-        // TODO: Set startBitrate, minBitrate and maxBitrate of the codec according to the (future) configurable parameters.
-        uint32_t targetBitrate = calcBitrate(videoCodec.width, videoCodec.height) * (frameFormat == FRAME_FORMAT_VP8 ? 0.9 : 1);
+
+        uint32_t targetBitrate = 0;
+        if (m_targetBitrate > 0)
+            targetBitrate = m_targetBitrate;
+        else
+            targetBitrate = calcBitrate(videoCodec.width, videoCodec.height) * (m_sendFormat == FRAME_FORMAT_VP8 ? 0.9 : 1);
+
         videoCodec.maxBitrate = targetBitrate;
         videoCodec.minBitrate = targetBitrate / 4;
         videoCodec.startBitrate = targetBitrate;

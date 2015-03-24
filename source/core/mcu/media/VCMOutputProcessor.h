@@ -69,7 +69,7 @@ class VCMOutputProcessor : public VideoFrameSender, public erizo::FeedbackSink, 
     DECLARE_LOGGER();
 
 public:
-    VCMOutputProcessor(int id, boost::shared_ptr<VideoFrameMixer>, woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<TaskRunner>);
+    VCMOutputProcessor(int id, boost::shared_ptr<VideoFrameMixer>, int targetBitrate, woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<TaskRunner>);
     ~VCMOutputProcessor();
 
     // Implements VideoFrameSender.
@@ -96,6 +96,7 @@ private:
     void close();
 
     FrameFormat m_sendFormat;
+    int m_targetBitrate;
 
     boost::scoped_ptr<webrtc::BitrateController> m_bitrateController;
     boost::scoped_ptr<webrtc::RtcpBandwidthObserver> m_bandwidthObserver;

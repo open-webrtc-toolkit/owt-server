@@ -43,9 +43,11 @@ VideoMixer::VideoMixer(erizo::RTPDataReceiver* receiver, boost::property_tree::p
     : m_participants(0)
     , m_outputReceiver(receiver)
     , m_maxInputCount(0)
+    , m_outputBitrate(0)
 {
     m_hardwareAccelerated = config.get<bool>("hardware");
     m_maxInputCount = config.get<uint32_t>("maxinput");
+    m_outputBitrate = config.get<int>("bitrate");
 
     m_layoutProcessor.reset(new VideoLayoutProcessor(config));
     VideoSize rootSize;
@@ -112,9 +114,9 @@ int32_t VideoMixer::addOutput(int payloadType, bool nack, bool fec)
 
     VideoFrameSender* output = nullptr;
     if (m_hardwareAccelerated)
-        output = new EncodedVideoFrameSender(outputId, m_frameMixer, outputFormat, transport, m_taskRunner);
+        output = new EncodedVideoFrameSender(outputId, m_frameMixer, outputFormat, m_outputBitrate, transport, m_taskRunner);
     else
-        output = new VCMOutputProcessor(outputId, m_frameMixer, transport, m_taskRunner);
+        output = new VCMOutputProcessor(outputId, m_frameMixer, m_outputBitrate, transport, m_taskRunner);
 
     // Fetch video size.
     // TODO: The size should be identical to the composited video size.

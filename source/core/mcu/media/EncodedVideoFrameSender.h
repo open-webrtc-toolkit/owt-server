@@ -48,7 +48,7 @@ class EncodedVideoFrameSender : public VideoFrameSender,
     DECLARE_LOGGER();
 
 public:
-    EncodedVideoFrameSender(int id, boost::shared_ptr<VideoFrameMixer>, FrameFormat, woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<TaskRunner>);
+    EncodedVideoFrameSender(int id, boost::shared_ptr<VideoFrameMixer>, FrameFormat, int targetBitrate, woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<TaskRunner>);
     ~EncodedVideoFrameSender();
 
     // Implements VideoFrameSender.
@@ -90,6 +90,7 @@ private:
     boost::shared_ptr<TaskRunner> m_taskRunner;
     boost::shared_ptr<VideoFrameMixer> m_source;
     FrameFormat m_frameFormat;
+    int m_targetBitrate;
 };
 
 }

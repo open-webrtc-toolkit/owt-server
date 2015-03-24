@@ -48,7 +48,8 @@ exports.ErizoJSController = function (spec) {
                     "video": {
                         "hardware": hardwareAccelerated,
                         "avcoordinate": roomConfig.video.avCoordinated,
-                        "maxinput":roomConfig.video.maxInput,
+                        "maxinput": roomConfig.video.maxInput,
+                        "bitrate": roomConfig.video.bitrate,
                         "resolution": roomConfig.video.resolution,
                         "backgroundcolor": roomConfig.video.bkColor,
                         "templates": roomConfig.video.layout
