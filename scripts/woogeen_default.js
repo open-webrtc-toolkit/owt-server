@@ -41,7 +41,7 @@ config.erizoController.stunServerUrl = undefined; // default value: 'stun:stun.l
 
 // Default and max video bandwidth parameters to be used by clients
 config.erizoController.defaultVideoBW = 300; //default value: 300
-config.erizoController.maxVideoBW = 300; //default value: 300
+config.erizoController.maxVideoBW = 4000; //max value: 300
 
 // Public erizoController IP for websockets (useful when behind NATs)
 // Use '' to automatically get IP from the interface
