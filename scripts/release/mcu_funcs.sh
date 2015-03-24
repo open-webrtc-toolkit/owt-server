@@ -142,7 +142,6 @@ ${bin}/start-all.sh
 }
 
 pack_node() {
-  return # just return for now.
   NODE_VERSION=
   . ${this}/../.conf
   echo "node version: ${NODE_VERSION}"
@@ -190,6 +189,7 @@ pack_node() {
 
   ln -s ../node_modules ${WOOGEEN_DIST}/lib/node
   ln -s ../etc/woogeen_config.js ${WOOGEEN_DIST}/node_modules/
+  ln -s ../common/cipher.js ${WOOGEEN_DIST}/node_modules/
   mv ${WOOGEEN_DIST}/bindings/mcu/build/Release/addon.node ${WOOGEEN_DIST}/lib/node/
 
   rm -rf ${WOOGEEN_DIST}/mcu/erizoJS
