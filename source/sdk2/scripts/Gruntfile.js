@@ -10,8 +10,7 @@ module.exports = function(grunt) {
     '../base/events.js',
     '../conference/conference.js',
     '../conference/webrtc-stacks/ChromeStableStack.js',
-    '../conference/webrtc-stacks/FirefoxStack.js',
-    '../conference/webrtc-stacks/IEStableStack.js'
+    '../conference/webrtc-stacks/FirefoxStack.js'
   ];
 
   var uiSrcFiles = [
