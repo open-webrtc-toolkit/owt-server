@@ -13,6 +13,7 @@ module.exports = function(grunt) {
     'src/webrtc-stacks/BowserStack.js',
     'src/webrtc-stacks/ChromeCanaryStack.js',
     'src/webrtc-stacks/ChromeStableStack.js',
+    'src/webrtc-stacks/IEStableStack.js',
     'src/webrtc-stacks/FcStack.js',
     'src/webrtc-stacks/FirefoxStack.js'
   ];

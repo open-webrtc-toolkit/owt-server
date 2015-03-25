@@ -26,6 +26,9 @@ Erizo.Connection = function (spec) {
         L.Logger.debug("Canary!");
         that = Erizo.ChromeCanaryStack(spec);
         that.browser = "chrome-canary";
+    } else if (window.navigator.appVersion.indexOf("Trident") > -1){
+        that = Erizo.IEStableStack(spec);
+        that.browser = "Internet-Exploreer";
     } else {
         // None.
         that.browser = "none";
