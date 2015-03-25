@@ -49,13 +49,16 @@ function unlock (password, filename, cb) {
   unzip.on('end', function () {
     cb(null, JSON.parse(buf));
   });
+  unzip.on('error', function (e) {
+    cb(e);
+  });
   s.pipe(crypto.createDecipher(algorithm, password)).pipe(unzip);
 }
 
 module.exports = {
   encrypt: encrypt,
   decrypt: decrypt,
-  k: crypto.pbkdf2Sync('woogeen', 'mcu', 100, 128, 'sha256'),
+  k: crypto.pbkdf2Sync('woogeen', 'mcu', 4000, 128, 'sha256'),
   lock: lock,
   unlock: unlock
 };
