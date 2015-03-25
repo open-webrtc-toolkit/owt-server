@@ -20,7 +20,8 @@ var cipher = require('../common/cipher');
 function prepareService (serviceName, next) {
   db.services.findOne({name: serviceName}, function cb (err, service) {
     if (err || !service) {
-      var key = require('crypto').randomBytes(64).toString('hex');
+      var crypto = require('crypto');
+      var key = crypto.pbkdf2Sync(crypto.randomBytes(64).toString('hex'), crypto.randomBytes(32).toString('hex'), 4000, 128, 'sha256').toString('base64');
       service = {name: serviceName, key: cipher.encrypt(cipher.k, key), encrypted: true, rooms: []};
       db.services.save(service, function cb (err, saved) {
         if (err) {
