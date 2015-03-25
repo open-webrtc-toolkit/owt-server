@@ -46,7 +46,7 @@ app.listen(3001);
 var options = {
   key: fs.readFileSync(__dirname + '/cert/key.pem').toString(),
   cert: fs.readFileSync(__dirname + '/cert/cert.pem').toString(),
-  passphrase: "private password"
+  passphrase: "abc123"
 };
 var server = https.createServer(options, app);
 server.listen(3004);

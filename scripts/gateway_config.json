@@ -15,7 +15,7 @@
     "certificate": {
       "cert": "../cert/cert.pem",
       "key": "../cert/key.pem",
-      "passphrase": "private password",
+      "passphrase": "abc123",
       "ca": ""
     }
   },
@@ -28,7 +28,7 @@
     "certificate": {
       "cert": "../cert/cert.pem",
       "key": "../cert/key.pem",
-      "passphrase": "private password"
+      "passphrase": "abc123"
     },
     "red": false,
     "fec": false,
