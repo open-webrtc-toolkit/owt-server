@@ -107,7 +107,6 @@ app.post('/createToken/', function(req, res) {
         room = p2pRoom;
     }
     N.API.createToken(room, username, role, function(token) {
-        console.log(token);
         res.send(token);
     },function (err){
         res.send(err);
@@ -119,7 +118,6 @@ app.post('/createRoom/', function (req, res) {
     'use strict';
     var name = req.body.name;
     N.API.createRoom(name, function (response) {
-        console.log(response);
         res.send(response);
     },function (err) {
         res.send(err);
