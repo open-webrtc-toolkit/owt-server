@@ -53,7 +53,23 @@
     div.setAttribute('id', 'test' + streamId);
     div.setAttribute('title', 'Stream#' + streamId);
     document.body.appendChild(div);
-    stream.show('test' + streamId);
+    if(window.navigator.appVersion.indexOf("Trident") < 0){
+      stream.show('test' + streamId);
+    } else {
+      L.Logger.info('displayStream:', stream.id());
+      var canvas = document.createElement("canvas");
+      if (stream instanceof Woogeen.RemoteStream && stream.isMixed()) {
+        canvas.width = 640;
+        canvas.height = 480;
+      } else {
+        canvas.width = 320;
+        canvas.height = 240;
+      }
+      canvas.setAttribute("autoplay", "autoplay::autoplay");
+      div.appendChild(canvas);
+      var ieStream = new ieMediaStream(stream.mediaStream.label);
+      attachRemoteMediaStream(canvas, ieStream, stream.pcid);
+    }
   }
 
   conference.onMessage(function (event) {
@@ -66,6 +82,7 @@
 
   conference.on('stream-added', function (event) {
     var stream = event.stream;
+    // if(stream.id() !== localStream.id()) return;
     L.Logger.info('stream added:', stream.id());
     var fromMe = false;
     for (var i in conference.localStreams) {
@@ -96,8 +113,9 @@
   conference.on('stream-removed', function (event) {
     var stream = event.stream;
     L.Logger.info('stream removed:' ,stream.id());
-    if (stream.elementId !== undefined) {
-      var element = document.getElementById(stream.elementId);
+    var id = stream.elementId !==undefined ? stream.elementId : "test" + stream.id();
+    if (id !== undefined) {
+      var element = document.getElementById(id);
       if (element) {document.body.removeChild(element);}
     }
   });
@@ -111,6 +129,7 @@
   });
 
   window.onload = function () {
+
     L.Logger.setLogLevel(L.Logger.INFO);
     var myResolution = getParameterByName('resolution') || 'vga';
     var shareScreen = getParameterByName('screen') || false;
@@ -148,12 +167,27 @@
               return L.Logger.error('create LocalStream failed:', err);
             }
             localStream = stream;
-            localStream.show('myVideo');
+            console.log("localStream: " + localStream.id());
+            if(window.navigator.appVersion.match(/Chrome\/([\w\W]*?)\./) !== null){
+              localStream.show('myVideo');
+            }
+            if(window.navigator.appVersion.indexOf("Trident") > -1){
+              var canvas = document.createElement("canvas");
+              canvas.width = 320;
+              canvas.height = 240;
+              canvas.setAttribute("autoplay", "autoplay::autoplay");
+              document.getElementById("myVideo").appendChild(canvas);
+              attachMediaStream(canvas, localStream.mediaStream);
+            }
+            console.log("start publish");
             conference.publish(localStream, {maxVideoBW: 300}, function (st) {
+              console.log("published");
               L.Logger.info('stream published:', st.id());
             }, function (err) {
-              L.Logger.error('publish failed:', err);
+              console.log("error published: ", err);
+               L.Logger.error('publish failed:', err);
             });
+            console.log("publish end");
           });
         } else if (isHttps) {
           conference.shareScreen({resolution: myResolution}, function (stream) {
@@ -184,4 +218,24 @@
       });
     });
   };
+
+ window.onbeforeunload = function() {
+    if (localStream){
+      localStream.close();
+      if (localStream.channel && typeof localStream.channel.close === 'function') {
+        localStream.channel.close();
+      }
+    }
+    for (var i in conference.remoteStreams) {
+      if (conference.remoteStreams.hasOwnProperty(i)) {
+        var stream = conference.remoteStreams[i];
+        stream.close();
+        if (stream.channel && typeof stream.channel.close === 'function') {
+          stream.channel.close();
+        }
+        delete conference.remoteStreams[i];
+      }
+    }
+  };
+
 }());

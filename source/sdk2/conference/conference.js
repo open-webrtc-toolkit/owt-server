@@ -23,6 +23,9 @@ Woogeen.ConferenceClient = (function () {
       // Google Chrome Stable.
       that = Erizo.ChromeStableStack(spec);
       that.browser = 'chrome-stable';
+    } else if (window.navigator.appVersion.indexOf("Trident") > -1){
+      that = Erizo.IEStableStack(spec);
+      that.browser = 'internet-explorer';
     } else {
       // None.
       throw 'WebRTC stack not available';
@@ -669,6 +672,9 @@ Woogeen.ConferenceClient = (function () {
 
     stream.channel.onaddstream = function (evt) {
       stream.mediaStream = evt.stream;
+      if(navigator.appVersion.indexOf("Trident") > -1){
+        stream["pcid"] = evt.pcid;
+      }
       safeCall(onSuccess, stream);
       stream.signalOnPlayAudio = function (onSuccess, onFailure) {
         sendCtrlPayload(self.socket, 'audio-in-on', stream.id(), onSuccess, onFailure);
