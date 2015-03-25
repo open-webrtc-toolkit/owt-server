@@ -669,9 +669,6 @@ Woogeen.ConferenceClient = (function () {
 
     stream.channel.onaddstream = function (evt) {
       stream.mediaStream = evt.stream;
-      if(navigator.appVersion.indexOf("Trident") > -1){
-        stream["pcid"] = evt.pcid;
-      }
       safeCall(onSuccess, stream);
       stream.signalOnPlayAudio = function (onSuccess, onFailure) {
         sendCtrlPayload(self.socket, 'audio-in-on', stream.id(), onSuccess, onFailure);
