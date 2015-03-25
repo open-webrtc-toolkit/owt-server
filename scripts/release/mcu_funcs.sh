@@ -31,27 +31,7 @@ pack_runtime() {
   find . -type f -not -name "*.log" -not -name "in*.sh" -exec cp '{}' "${WOOGEEN_DIST}/mcu/{}" \;
   pack_nuve
   pack_common
-  # encryption if needed
-  if ${ENCRYPT} ; then
-    if ! hash uglifyjs 2>/dev/null; then
-      if hash npm 2>/dev/null; then
-        npm install -g --loglevel error uglify-js
-        hash -r
-      else
-        echo >&2 "npm not found."
-        echo >&2 "You need to install node first."
-      fi
-    fi
-    find ${WOOGEEN_DIST}/mcu -type f -name "*.js" | while read line; do
-      encrypt_js "$line"
-    done
-    find ${WOOGEEN_DIST}/nuve -type f -name "*.js" | while read line; do
-      encrypt_js "$line"
-    done
-    find ${WOOGEEN_DIST}/common -type f -name "*.js" | while read line; do
-      encrypt_js "$line"
-    done
-  fi
+  ENCRYPT_CAND_PATH=("${WOOGEEN_DIST}/mcu" "${WOOGEEN_DIST}/nuve" "${WOOGEEN_DIST}/common")
   pack_sdk
   # config
   mkdir -p ${WOOGEEN_DIST}/etc/nuve

@@ -24,20 +24,7 @@ pack_runtime() {
   cp -av ${SOURCE}/gateway/util/logger.js ${WOOGEEN_DIST}/gateway/util/
   cp -av ${SOURCE}/erizo_controller/erizoController/permission.js ${WOOGEEN_DIST}/gateway/util/
   cp -av ${SOURCE}/erizo_controller/erizoController/Stream.js ${WOOGEEN_DIST}/gateway/util/
-  if ${ENCRYPT} ; then
-    if ! hash uglifyjs 2>/dev/null; then
-      if hash npm 2>/dev/null; then
-        npm install -g --loglevel error uglify-js
-        hash -r
-      else
-        echo >&2 "npm not found."
-        echo >&2 "You need to install node first."
-      fi
-    fi
-    find ${WOOGEEN_DIST}/gateway -type f -name "*.js" | while read line; do
-      encrypt_js "$line"
-    done
-  fi
+  ENCRYPT_CAND_PATH=("${WOOGEEN_DIST}/gateway")
   # config
   mkdir -p ${WOOGEEN_DIST}/etc
   cp -av ${ROOT}/scripts/gateway_config.json ${WOOGEEN_DIST}/etc
