@@ -19,6 +19,9 @@ Woogeen.ConferenceClient = (function () {
       // Firefox
       that = Erizo.FirefoxStack(spec);
       that.browser = 'mozilla';
+    } else if (window.navigator.appVersion.indexOf("Trident") > -1) {
+      that = Erizo.IEStableStack(spec);
+      that.browser = 'internet-explorer';
     } else if (window.navigator.appVersion.match(/Chrome\/([\w\W]*?)\./)[1] >= 26) {
       // Google Chrome Stable.
       that = Erizo.ChromeStableStack(spec);
@@ -669,6 +672,9 @@ Woogeen.ConferenceClient = (function () {
 
     stream.channel.onaddstream = function (evt) {
       stream.mediaStream = evt.stream;
+      if(navigator.appVersion.indexOf("Trident") > -1){
+        stream["pcid"] = evt.pcid;
+      }
       safeCall(onSuccess, stream);
       stream.signalOnPlayAudio = function (onSuccess, onFailure) {
         sendCtrlPayload(self.socket, 'audio-in-on', stream.id(), onSuccess, onFailure);
