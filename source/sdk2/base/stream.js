@@ -272,11 +272,6 @@
       window.navigator.appVersion.match(/Chrome\/([\w\W]*?)\./)[1] <= 35;
   }
 
-  function isLegacyIE () {
-    return window.navigator.appVersion.indexOf("Trident") > -1 &&
-      window.navigator.appVersion.indexOf("rv") > -1;
-  }
-
   function getReso(w, h) {
     return {
       mandatory: {
@@ -314,7 +309,7 @@
   }, function () {});
   */
   function createLocalStream (option, callback) {
-    if (typeof getMedia !== 'function' && !isLegacyIE()) {
+    if (typeof getMedia !== 'function') {
       if (typeof callback === 'function') {
         callback({
           code: 4100,
@@ -344,11 +339,10 @@
         }
 
         mediaOption.video = JSON.parse(JSON.stringify(supportedVideoList[option.video.resolution] || supportedVideoList.unspecified));
-        if(!isLegacyIE()){
-          if (!isLegacyChrome() && option.video.frameRate instanceof Array && option.video.frameRate.length >= 2) {
-            mediaOption.video.mandatory.minFrameRate = option.video.frameRate[0];
-            mediaOption.video.mandatory.maxFrameRate = option.video.frameRate[1];
-          }
+
+        if (!isLegacyChrome() && option.video.frameRate instanceof Array && option.video.frameRate.length >= 2) {
+          mediaOption.video.mandatory.minFrameRate = option.video.frameRate[0];
+          mediaOption.video.mandatory.maxFrameRate = option.video.frameRate[1];
         }
       }
       if (option.audio) {
@@ -463,11 +457,7 @@
       }
       return;
     }
-    if(!isLegacyIE()){
-      getMedia.apply(navigator, [mediaOption, onSuccess, onFailure]);
-    }else{
-      navigator.getUserMedia(mediaOption, onSuccess, onFailure);
-    }
+    getMedia.apply(navigator, [mediaOption, onSuccess, onFailure]);
   }
 
   WoogeenLocalStream.create = function() {
