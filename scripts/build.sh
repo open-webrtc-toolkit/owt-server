@@ -169,6 +169,11 @@ build_mcu_server_sdk() {
 }
 
 build() {
+  export CFLAGS="-fstack-protector -D_FORTIFY_SOURCE=2 -Wformat -Wformat-security"
+  export CXXFLAGS=$CFLAGS
+  #export LDFLAGS="-z noexecstack -z relro -z now"
+  export LDFLAGS="-z noexecstack -z relro"
+
   local DONE=0
   mkdir -p "${BUILD_ROOT}/sdk"
   # Job

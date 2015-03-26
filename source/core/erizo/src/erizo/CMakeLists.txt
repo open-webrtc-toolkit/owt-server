@@ -13,7 +13,6 @@ project (ERIZO)
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../../cmake/")
 set(ERIZO_VERSION_MAJOR 0)
 set(ERIZO_VERSION_MINOR 1)
-set(CMAKE_CXX_FLAGS "-Wall -std=c++0x -fvisibility-inlines-hidden")
 
 set(LIB_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/../../../../../build/libdeps/build/lib/")
 
