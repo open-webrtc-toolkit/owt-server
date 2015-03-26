@@ -97,7 +97,7 @@ N.API = (function (N) {
         }
 
         timestamp = new Date().getTime();
-        cnounce = Math.floor(Math.random() * 99999);
+        cnounce = require('crypto').randomBytes(8).toString('hex');
 
         toSign = timestamp + ',' + cnounce;
 
