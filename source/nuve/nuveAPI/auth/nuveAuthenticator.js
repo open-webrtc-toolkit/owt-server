@@ -18,20 +18,23 @@ var checkTimestamp = function (ser, params) {
         return true;
     }
 
-    var lastParams = cache[ser.name],
+    var lastParams = cache[serviceId],
         lastTS,
-        newTS,
+        newTS = (new Date(parseInt(params.timestamp, 10))).getTime(),
         lastC,
-        newC;
+        newC = params.cnonce;
+
+    if (isNaN(newTS)) {
+        log.debug('Invalid timestamp:', params.timestamp);
+        return false;
+    }
 
     if (lastParams === undefined) {
         return true;
     }
 
-    lastTS = lastParams.timestamp;
-    newTS = params.timestamp;
+    lastTS = (new Date(parseInt(lastParams.timestamp, 10))).getTime();
     lastC = lastParams.cnonce;
-    newC = params.cnonce;
 
     if (newTS < lastTS || (lastTS === newTS && lastC === newC)) {
         log.info('Last timestamp: ', lastTS, ' and new: ', newTS);
@@ -90,7 +93,7 @@ exports.authenticate = function (req, res, next) {
                 return;
             }
 
-            // Check if the signature is valid. 
+            // Check if the signature is valid.
             if (checkSignature(params, key)) {
 
                 if (params.username !== undefined && params.role !== undefined) {
@@ -98,7 +101,7 @@ exports.authenticate = function (req, res, next) {
                     exports.role = params.role;
                 }
 
-                cache[serv.name] =  params;
+                cache[serv._id+''] =  params;
                 exports.service = serv;
 
                 // If everything in the authentication is valid continue with the request.
