@@ -270,7 +270,7 @@ namespace erizo {
     if (sourceSsrc == 0)
         return 0;
 
-    ELOG_DEBUG("received Feedback type %u, ssrc %u, sourceSsrc %u",
+    ELOG_TRACE("received Feedback type %u, ssrc %u, sourceSsrc %u",
       chead->getRTCPHeader().getPacketType(), chead->getRTCPHeader().getSSRC(), sourceSsrc);
     if (sourceSsrc == getAudioSinkSSRC() || sourceSsrc == getAudioSourceSSRC()) {
       writeSsrc(buf, len, this->getAudioSinkSSRC());
@@ -327,7 +327,7 @@ namespace erizo {
       // Check incoming SSRC
       unsigned int recvSSRC = 0;
       if (packetType == RTCP_Sender_PT) { //Sender Report
-        ELOG_DEBUG ("RTP Sender Report %d length %d ", packetType, chead->getLength());
+        ELOG_TRACE ("RTP Sender Report %d length %d ", packetType, chead->getLength());
         recvSSRC = chead->getSSRC();
       } else {
         RTPHeader* head = reinterpret_cast<RTPHeader*> (buf);
@@ -588,7 +588,7 @@ namespace erizo {
     char* movingBuf = buf;
     int rtcpLength = 0;
     int totalLength = 0;
-    ELOG_DEBUG("RTCP PACKET");
+    ELOG_TRACE("RTCP PACKET");
     do {
       movingBuf += rtcpLength;
       RTCPHeader* chead = reinterpret_cast<RTCPHeader*>(movingBuf);
@@ -602,20 +602,20 @@ namespace erizo {
           while (blockOffset < rtcpLength) {
             ReportBlock* report = reinterpret_cast<ReportBlock*>(movingBuf + blockOffset);
             if (report->getSourceSSRC() == getVideoSinkSSRC()) {
-              ELOG_DEBUG("Rewrite video source SSRC in the RTCP report block from %u to %u", getVideoSinkSSRC(), getVideoSourceSSRC());
+              ELOG_TRACE("Rewrite video source SSRC in the RTCP report block from %u to %u", getVideoSinkSSRC(), getVideoSourceSSRC());
               report->setSourceSSRC(getVideoSourceSSRC());
             } else if (report->getSourceSSRC() == getAudioSinkSSRC()) {
-              ELOG_DEBUG("Rewrite audio source SSRC in the RTCP report block from %u to %u", getAudioSinkSSRC(), getAudioSourceSSRC());
+              ELOG_TRACE("Rewrite audio source SSRC in the RTCP report block from %u to %u", getAudioSinkSSRC(), getAudioSourceSSRC());
               report->setSourceSSRC(getAudioSourceSSRC());
             } else {
-              ELOG_DEBUG("source SSRC %u in the RTCP report block unchanged", report->getSourceSSRC());
+              ELOG_TRACE("source SSRC %u in the RTCP report block unchanged", report->getSourceSSRC());
             }
             blockOffset += sizeof(ReportBlock);
           }
           break;
         }
         case RTCP_PS_Feedback_PT: {
-          ELOG_DEBUG("Payload specific Feedback packet %d", chead->getRCOrFMT());
+          ELOG_TRACE("Payload specific Feedback packet %d", chead->getRCOrFMT());
           if (chead->getRCOrFMT() == 4) // It is a FIR Packet, we generate it
             this->sendFirPacket();
           break;
