@@ -250,6 +250,6 @@ if (navigator.mozGetUserMedia) {
     this.sdp = sd.sdp;
   }
  
-  WebkitRTCPeerConnection = ieRTCPeerConnection;
+  webkitRTCPeerConnection = ieRTCPeerConnection;
   RTCSessionDescription = ieRTCSessionDescription;
 }
