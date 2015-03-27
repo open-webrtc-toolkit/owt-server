@@ -168,7 +168,7 @@
             }
             localStream = stream;
             console.log("localStream: " + localStream.id());
-            if(window.navigator.appVersion.match(/Chrome\/([\w\W]*?)\./) !== null){
+            if(window.navigator.appVersion.indexOf("Trident") < 0){
               localStream.show('myVideo');
             }
             if(window.navigator.appVersion.indexOf("Trident") > -1){
