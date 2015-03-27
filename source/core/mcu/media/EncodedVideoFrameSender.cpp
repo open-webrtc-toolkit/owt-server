@@ -145,7 +145,7 @@ void EncodedVideoFrameSender::onFrame(FrameFormat format, unsigned char* payload
         h.codec = webrtc::kRtpVideoH264;
         while (buffer_length > 0) {
             nalu_found_length = findNALU(buffer_start, buffer_length, &nalu_start_offset, &nalu_end_offset);
-            if (nalu_found_length == 0) {
+            if (nalu_found_length < 0) {
                 /* Error, should never happen */
                 break;
             } else {
