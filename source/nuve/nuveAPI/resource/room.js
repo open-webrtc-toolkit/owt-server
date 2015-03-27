@@ -1,9 +1,9 @@
-/* global module */
+/* global module, require */
+'use strict';
 var meta = require('../public/meta.json');
-var log = require('./../logger').logger.getLogger("Room");
+var log = require('./../logger').logger.getLogger('Room');
 
 function defaultMediaMixing () {
-    'use strict';
     return {
         video: {
             avCoordinated: 0,
@@ -21,7 +21,6 @@ function defaultMediaMixing () {
 }
 
 function Room (spec) {
-    'use strict';
     this.name = spec.name + ''; // ensure type string
     this.mode = spec.mode;
     this.publishLimit = spec.publishLimit;
@@ -30,8 +29,6 @@ function Room (spec) {
 }
 
 Room.prototype.validate = function() {
-    'use strict';
-
     if (this.mode === undefined || this.mode === null) {
         this.mode = 'hybrid';
     } else if (typeof this.mode === 'string') {
@@ -169,17 +166,14 @@ Room.prototype.validate = function() {
                 try {
                     this.mediaMixing.video.layout.custom = JSON.parse(this.mediaMixing.video.layout.custom);
                 } catch (e) {
-                    console.log('verify failed at', 1);
                     return null;
                 }
             }
             if (!isTemplatesValid(this.mediaMixing.video.layout.custom)) {
-                console.log('verify failed at', 2);
                 return null;
             }
             if (this.mediaMixing.video.layout.base === 'void' &&
                 this.mediaMixing.video.layout.custom.length === 0) {
-                console.log('verify failed at', 3);
                 return null;
             }
         } else {
@@ -193,12 +187,10 @@ Room.prototype.validate = function() {
 };
 
 Room.create = function (spec) {
-    'use strict';
     return (new Room(spec)).validate();
 };
 
 Room.createDefault = function (name) {
-    'use strict';
     return Room.create({
         name: name,
         mode: 'hybrid',
@@ -209,12 +201,10 @@ Room.createDefault = function (name) {
 };
 
 Room.prototype.toString = function () {
-    'use strict';
     return JSON.stringify(this);
 };
 
 Room.genConfig = function (room) {
-    'use strict';
     var layoutType = room.mediaMixing.video.layout.base;
     var maxInput = room.mediaMixing.video.maxInput || 16;
     var layoutTemplates;
@@ -272,7 +262,6 @@ Room.genConfig = function (room) {
 };
 
 Room.prototype.genConfig = function() {
-    'use strict';
     return Room.genConfig(this);
 };
 
@@ -303,7 +292,6 @@ module.exports = Room;
 */
 
 function generateLectureTemplates (maxInput) {
-    'use strict';
     var result = [ {region:[{id: '1', left: 0, top: 0, relativesize: 1.0, priority: 1.0}]},
                    {region:[{id: '1', left: 0, top: 0, relativesize: 0.667, priority: 1.0},
                               {id: '2', left: 0.667, top: 0, relativesize: 0.333, priority: 1.0},
@@ -390,8 +378,6 @@ function generateLectureTemplates (maxInput) {
 }
 
 function generateFluidTemplates (maxInput) {
-    'use strict';
-
     var result = [];
     var maxDiv = Math.sqrt(maxInput);
     if (maxDiv > Math.floor(maxDiv))
@@ -419,7 +405,6 @@ function generateFluidTemplates (maxInput) {
 }
 
 function isTemplatesValid (templates) {
-    'use strict';
     if (!(templates instanceof Array)) {
         return false;
     }
