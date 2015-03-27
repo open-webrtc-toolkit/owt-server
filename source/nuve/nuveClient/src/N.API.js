@@ -1,4 +1,4 @@
-/*global require, CryptoJS, XMLHttpRequest*/
+/*global require, CryptoJS, XMLHttpRequest, Buffer*/
 var N = N || {};
 
 N.API = (function (N) {
@@ -174,10 +174,7 @@ N.API = (function (N) {
     };
 
     function formatString (s) {
-        var r = s.toLowerCase();
-        var non_asciis = {'a': '[àáâãäå]', 'ae': 'æ', 'c': 'ç', 'e': '[èéêë]', 'i': '[ìíîï]', 'n': 'ñ', 'o': '[òóôõö]', 'oe': 'œ', 'u': '[ùúûűü]', 'y': '[ýÿ]'};
-        for (var i in non_asciis) { r = r.replace(new RegExp(non_asciis[i], 'g'), i); }
-        return r;
+        return (new Buffer(s, 'utf8')).toString('base64');
     }
 
     return {
