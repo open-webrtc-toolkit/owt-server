@@ -9,13 +9,13 @@ N.API = (function (N) {
         service: undefined,
         key: undefined,
         url: undefined,
-        rejectUnauthorized: undefined
+        rejectUnauthorizedCert: undefined
     };
 
-    function rejectUnauthorized (bool) {
+    function rejectUnauthorizedCert (bool) {
         if (typeof bool === 'boolean')
-            N.API.params.rejectUnauthorized = bool;
-        return N.API.params.rejectUnauthorized;
+            N.API.params.rejectUnauthorizedCert = bool;
+        return N.API.params.rejectUnauthorizedCert;
     }
 
     init = function (service, key, url) {
@@ -133,7 +133,7 @@ N.API = (function (N) {
         header += ',mauth_signature=';
         header +=  signed;
 
-        req = new XMLHttpRequest({rejectUnauthorized: N.API.params.rejectUnauthorized});
+        req = new XMLHttpRequest({rejectUnauthorized: N.API.params.rejectUnauthorizedCert});
 
         req.onreadystatechange = function () {
             if (req.readyState === 4) {
@@ -182,7 +182,7 @@ N.API = (function (N) {
 
     return {
         params: params,
-        rejectUnauthorized: rejectUnauthorized,
+        rejectUnauthorizedCert: rejectUnauthorizedCert,
         init: init,
         createRoom: createRoom,
         getRooms: getRooms,
