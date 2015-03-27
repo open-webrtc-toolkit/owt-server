@@ -1,15 +1,22 @@
-/*global console, CryptoJS, XMLHttpRequest*/
+/*global require, CryptoJS, XMLHttpRequest*/
 var N = N || {};
 
 N.API = (function (N) {
-    "use strict";
+    'use strict';
     var createRoom, getRooms, getRoom, deleteRoom, updateRoom, createToken, createService, getServices, getService, deleteService, getUsers, getUser, deleteUser, params, send, calculateSignature, init;
 
     params = {
         service: undefined,
         key: undefined,
-        url: undefined
+        url: undefined,
+        rejectUnauthorized: undefined
     };
+
+    function rejectUnauthorized (bool) {
+        if (typeof bool === 'boolean')
+            N.API.params.rejectUnauthorized = bool;
+        return N.API.params.rejectUnauthorized;
+    }
 
     init = function (service, key, url) {
         N.API.params.service = service;
@@ -46,7 +53,7 @@ N.API = (function (N) {
     };
 
     createToken = function (room, username, role, callback, callbackError, params) {
-        send(callback, callbackError, 'POST', undefined, 'rooms/' + room + "/tokens", params, username, role);
+        send(callback, callbackError, 'POST', undefined, 'rooms/' + room + '/tokens', params, username, role);
     };
 
     createService = function (name, key, callback, callbackError, params) {
@@ -126,7 +133,7 @@ N.API = (function (N) {
         header += ',mauth_signature=';
         header +=  signed;
 
-        req = new XMLHttpRequest();
+        req = new XMLHttpRequest({rejectUnauthorized: N.API.params.rejectUnauthorized});
 
         req.onreadystatechange = function () {
             if (req.readyState === 4) {
@@ -140,9 +147,6 @@ N.API = (function (N) {
                 case 205:
                     if (typeof callback === 'function') callback(req.responseText);
                     break;
-                case 400:
-                case 401:
-                case 403:
                 default:
                     if (typeof callbackError === 'function') callbackError(req.status, req.responseText);
                 }
@@ -159,7 +163,6 @@ N.API = (function (N) {
         } else {
             req.send();
         }
-
     };
 
     calculateSignature = function (toSign, key) {
@@ -170,15 +173,16 @@ N.API = (function (N) {
         return signed;
     };
 
-    formatString = function(s){
+    function formatString (s) {
         var r = s.toLowerCase();
-        non_asciis = {'a': '[àáâãäå]', 'ae': 'æ', 'c': 'ç', 'e': '[èéêë]', 'i': '[ìíîï]', 'n': 'ñ', 'o': '[òóôõö]', 'oe': 'œ', 'u': '[ùúûűü]', 'y': '[ýÿ]'};
-        for (i in non_asciis) { r = r.replace(new RegExp(non_asciis[i], 'g'), i); }
+        var non_asciis = {'a': '[àáâãäå]', 'ae': 'æ', 'c': 'ç', 'e': '[èéêë]', 'i': '[ìíîï]', 'n': 'ñ', 'o': '[òóôõö]', 'oe': 'œ', 'u': '[ùúûűü]', 'y': '[ýÿ]'};
+        for (var i in non_asciis) { r = r.replace(new RegExp(non_asciis[i], 'g'), i); }
         return r;
-    };
+    }
 
     return {
         params: params,
+        rejectUnauthorized: rejectUnauthorized,
         init: init,
         createRoom: createRoom,
         getRooms: getRooms,
