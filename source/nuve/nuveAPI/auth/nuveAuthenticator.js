@@ -97,7 +97,7 @@ exports.authenticate = function (req, res, next) {
             if (checkSignature(params, key)) {
 
                 if (params.username !== undefined && params.role !== undefined) {
-                    exports.user = params.username;
+                    exports.user = (new Buffer(params.username, 'base64').toString('utf8'));
                     exports.role = params.role;
                 }
 
