@@ -53,6 +53,48 @@ inline unsigned int calcBitrate(unsigned int width, unsigned int height, float f
     return bitrate;
 }
 
+inline unsigned int findNALU(uint8_t* buf, int size, int* nal_start, int* nal_end)
+{
+    int i = 0;
+    *nal_start = 0;
+    *nal_end = 0;
+
+    /* ( next_bits( 24 ) != 0x000001 && next_bits( 32 ) != 0x00000001 ) */
+    while((size > i + 3) && (buf[i] != 0 || buf[i+1] != 0 || buf[i+2] != 0x01) &&
+          (buf[i] != 0 || buf[i+1] != 0 || buf[i+2] != 0 || buf[i+3] != 0x01)){
+        i++; /* skip leading zero */
+        if (i+4 > size)
+            return 0; /* Did not find NAL start */
+    }
+
+    if  (buf[i] != 0 || buf[i+1] != 0 || buf[i+2] != 0x01) {
+        /* ( next_bits( 24 ) != 0x000001 ) */
+        i++;
+    }
+
+    if  (buf[i] != 0 || buf[i+1] != 0 || buf[i+2] != 0x01) {
+        /* Error, should never happen */
+        return 0;
+    }
+
+    i += 3;
+    *nal_start = i;
+
+    /*( next_bits( 24 ) != 0x000000 && next_bits( 24 ) != 0x000001 )*/
+    while ((size > i + 2) && (buf[i] != 0 || buf[i+1] != 0 || buf[i+2] != 0) &&
+           (buf[i] != 0 || buf[i+1] != 0 || buf[i+2] != 0x01)) {
+        i++;
+        if ((i + 3) > size) {
+            /* NAL end */
+            *nal_end = size;
+            return (*nal_end - *nal_start);
+        }
+    }
+
+    *nal_end = i;
+    return (*nal_end - *nal_start);
+}
+
 }
 
 #endif // MediaUtilities_h
