@@ -66,6 +66,7 @@ Erizo.ChromeStableStack = function (spec) {
     that.roapSessionId = 103;
 
     that.peerConnection = new WebkitRTCPeerConnection(that.pc_config, that.con);
+    L.Logger.debug("Created webkitRTCPeerConnnection with config \"" + JSON.stringify(that.pc_config) + "\".");
 
     that.peerConnection.onicecandidate = function (event) {
         L.Logger.debug('PeerConnection: ', spec.session_id);
@@ -87,7 +88,6 @@ Erizo.ChromeStableStack = function (spec) {
         }
     };
 
-    //L.Logger.debug("Created webkitRTCPeerConnnection with config \"" + JSON.stringify(that.pc_config) + "\".");
 
     var setMaxBW = function (sdp) {
         var a, r;
