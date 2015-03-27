@@ -31,6 +31,11 @@ var XMLHttpRequest = function() {
 
   // Request settings
   var settings = {};
+  var rejectUnauthorized;
+
+  if (typeof arguments[0] === 'object' && arguments[0] !== null && typeof arguments[0].rejectUnauthorized === 'boolean') { // Read extra options
+    rejectUnauthorized = arguments[0].rejectUnauthorized;
+  }
 
   // Set some default headers
   var defaultHeaders = {
@@ -213,6 +218,10 @@ var XMLHttpRequest = function() {
       method: settings.method,
       headers: headers
     };
+
+    if (ssl && rejectUnauthorized !== undefined) {
+      options.rejectUnauthorized = rejectUnauthorized;
+    }
 
     // Reset error flag
     errorFlag = false;
