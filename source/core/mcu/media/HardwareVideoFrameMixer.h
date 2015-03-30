@@ -28,6 +28,7 @@
 
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
+#include <boost/thread/shared_mutex.hpp>
 #include <JobTimer.h>
 #include <logger.h>
 #include <map>
@@ -107,7 +108,9 @@ public:
 private:
     boost::shared_ptr<VideoMixEngine> m_engine;
     std::map<int, boost::shared_ptr<HardwareVideoFrameMixerInput>> m_inputs;
+    boost::shared_mutex m_inputMutex;
     std::map<int, boost::shared_ptr<HardwareVideoFrameMixerOutput>> m_outputs;
+    boost::shared_mutex m_outputMutex;
 };
 
 }

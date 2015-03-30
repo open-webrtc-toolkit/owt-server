@@ -157,6 +157,7 @@ void HardwareVideoFrameMixer::updateLayoutSolution(LayoutSolution& solution)
 {
     CustomLayoutInfo layout;
     for (LayoutSolution::iterator it = solution.begin(); it != solution.end(); ++it) {
+        boost::shared_lock<boost::shared_mutex> lock(m_inputMutex);
         std::map<int, boost::shared_ptr<HardwareVideoFrameMixerInput>>::iterator it2 = m_inputs.find(it->input);
         if (it2 != m_inputs.end()) {
             RegionInfo region = {it->region.left, it->region.top, it->region.relativeSize, it->region.relativeSize};
@@ -168,23 +169,29 @@ void HardwareVideoFrameMixer::updateLayoutSolution(LayoutSolution& solution)
 
 bool HardwareVideoFrameMixer::activateInput(int input, FrameFormat format, VideoFrameProvider* provider)
 {
+    boost::upgrade_lock<boost::shared_mutex> lock(m_inputMutex);
     if (m_inputs.find(input) != m_inputs.end()) {
         ELOG_WARN("activateInput failed, input is in use.");
         return false;
     }
 
-    m_inputs[input].reset(new HardwareVideoFrameMixerInput(m_engine, format, provider));
+    HardwareVideoFrameMixerInput* newInput = new HardwareVideoFrameMixerInput(m_engine, format, provider);
+
+    boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
+    m_inputs[input].reset(newInput);
     ELOG_DEBUG("activateInput OK, input: %d", input);
     return true;
 }
 
 void HardwareVideoFrameMixer::deActivateInput(int input)
 {
+    boost::unique_lock<boost::shared_mutex> lock(m_inputMutex);
     m_inputs.erase(input);
 }
 
 void HardwareVideoFrameMixer::pushInput(int input, unsigned char* payload, int len)
 {
+    boost::shared_lock<boost::shared_mutex> lock(m_inputMutex);
     std::map<int, boost::shared_ptr<HardwareVideoFrameMixerInput>>::iterator it = m_inputs.find(input);
     if (it != m_inputs.end())
         it->second->push(payload, len);
@@ -192,6 +199,7 @@ void HardwareVideoFrameMixer::pushInput(int input, unsigned char* payload, int l
 
 void HardwareVideoFrameMixer::setBitrate(int id, unsigned short bitrate)
 {
+    boost::shared_lock<boost::shared_mutex> lock(m_outputMutex);
     std::map<int, boost::shared_ptr<HardwareVideoFrameMixerOutput>>::iterator it = m_outputs.find(id);
     if (it != m_outputs.end())
         it->second->setBitrate(bitrate);
@@ -199,6 +207,7 @@ void HardwareVideoFrameMixer::setBitrate(int id, unsigned short bitrate)
 
 void HardwareVideoFrameMixer::requestKeyFrame(int id)
 {
+    boost::shared_lock<boost::shared_mutex> lock(m_outputMutex);
     std::map<int, boost::shared_ptr<HardwareVideoFrameMixerOutput>>::iterator it = m_outputs.find(id);
     if (it != m_outputs.end())
         it->second->requestKeyFrame();
@@ -206,17 +215,22 @@ void HardwareVideoFrameMixer::requestKeyFrame(int id)
 
 bool HardwareVideoFrameMixer::activateOutput(int id, FrameFormat format, unsigned int framerate, unsigned short bitrate, VideoFrameConsumer* receiver)
 {
+    boost::upgrade_lock<boost::shared_mutex> lock(m_outputMutex);
     if (m_outputs.find(id) != m_outputs.end()) {
         ELOG_WARN("activateOutput failed, format is in use.");
         return false;
     }
     ELOG_DEBUG("activateOutput OK, format: %s", ((format == FRAME_FORMAT_VP8)? "VP8" : "H264"));
-    m_outputs[id].reset(new HardwareVideoFrameMixerOutput(m_engine, format, framerate, bitrate, receiver));
+    HardwareVideoFrameMixerOutput* newOutput = new HardwareVideoFrameMixerOutput(m_engine, format, framerate, bitrate, receiver);
+
+    boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
+    m_outputs[id].reset(newOutput);
     return true;
 }
 
 void HardwareVideoFrameMixer::deActivateOutput(int id)
 {
+    boost::unique_lock<boost::shared_mutex> lock(m_outputMutex);
     m_outputs.erase(id);
 }
 
