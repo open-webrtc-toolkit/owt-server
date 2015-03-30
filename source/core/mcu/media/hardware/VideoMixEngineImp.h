@@ -1,9 +1,11 @@
 #ifndef VideoMixEngineImp_h
 #define VideoMixEngineImp_h
 
-#include <map>
-#include "msdk_xcoder.h"
 #include "VideoMixEngine.h"
+
+#include <boost/thread/shared_mutex.hpp>
+#include <map>
+#include <msdk_xcoder.h>
 
 struct InputInfo {
     VideoMixCodecType codec;
@@ -96,9 +98,9 @@ private:
     VppInfo* m_vpp;
     std::map<InputIndex, InputInfo> m_inputs;
     std::map<OutputIndex, OutputInfo> m_outputs;
-    Mutex m_inputs_mutex;
-    Mutex m_outputs_mutex;
-    Mutex m_state_mutex;
+    boost::shared_mutex m_inputMutex;
+    boost::shared_mutex m_outputMutex;
+    boost::shared_mutex m_stateMutex;
 };
 
 #endif

@@ -1,8 +1,7 @@
 #include "VideoMixEngineImp.h"
 
-#include <string.h>
 #include <iostream>
-#include "msdk_xcoder.h"
+#include <string.h>
 
 #define GOP_SIZE 24
 
@@ -21,12 +20,12 @@ VideoMixEngineImp::~VideoMixEngineImp()
 {
     printf("[%s]Destroy Video Mix Engine Start.\n", __FUNCTION__);
 
-    Locker<Mutex> state_lock(m_state_mutex);
+    boost::unique_lock<boost::shared_mutex> stateLock(m_stateMutex);
     if (m_state != UN_INITIALIZED) {
         demolishPipeline();
 
         {
-            Locker<Mutex> outputs_lock(m_outputs_mutex);
+            boost::unique_lock<boost::shared_mutex> outputLock(m_outputMutex);
             for(std::map<OutputIndex, OutputInfo>::iterator it = m_outputs.begin(); it != m_outputs.end();) {
                 if (it->second.stream) {
                     delete it->second.stream;
@@ -37,7 +36,7 @@ VideoMixEngineImp::~VideoMixEngineImp()
         }
 
         {
-            Locker<Mutex> inputs_lock(m_inputs_mutex);
+            boost::unique_lock<boost::shared_mutex> inputLock(m_inputMutex);
             for(std::map<InputIndex, InputInfo>::iterator it = m_inputs.begin(); it != m_inputs.end();) {
                 if (it->second.mp) {
                     delete it->second.mp;
@@ -60,7 +59,7 @@ VideoMixEngineImp::~VideoMixEngineImp()
 
 bool VideoMixEngineImp::init(BackgroundColor bgColor, FrameSize frameSize)
 {
-    Locker<Mutex> state_lock(m_state_mutex);
+    boost::unique_lock<boost::shared_mutex> stateLock(m_stateMutex);
     if (m_state == UN_INITIALIZED) {
         m_vpp = new VppInfo;
         if (m_vpp) {
@@ -141,7 +140,7 @@ void VideoMixEngineImp::setregions(const std::map<InputIndex, RegionInfo>* layou
     bool set_combo_type = false;
     int ret = -1;
 
-    Locker<Mutex> inputs_lock(m_inputs_mutex);
+    boost::shared_lock<boost::shared_mutex> inputLock(m_inputMutex);
     for(; it_dec != layoutMapping->end(); ++it_dec) {
         std::map<InputIndex, InputInfo>::iterator it = m_inputs.find(it_dec->first);
         if (it != m_inputs.end() && it->second.decHandle != NULL) {
@@ -182,7 +181,7 @@ InputIndex VideoMixEngineImp::enableInput(VideoMixCodecType codec, VideoMixEngin
 {
     InputIndex index = INVALID_INPUT_INDEX;
 
-    Locker<Mutex> state_lock(m_state_mutex);
+    boost::unique_lock<boost::shared_mutex> stateLock(m_stateMutex);
     switch (m_state) {
         case UN_INITIALIZED:
             break;
@@ -210,7 +209,7 @@ InputIndex VideoMixEngineImp::enableInput(VideoMixCodecType codec, VideoMixEngin
 void VideoMixEngineImp::disableInput(InputIndex index)
 {
     int ret = -1;
-    Locker<Mutex> state_lock(m_state_mutex);
+    boost::unique_lock<boost::shared_mutex> stateLock(m_stateMutex);
     switch (m_state) {
         case UN_INITIALIZED:
         case IDLE:
@@ -236,7 +235,7 @@ void VideoMixEngineImp::disableInput(InputIndex index)
 
 void VideoMixEngineImp::pushInput(InputIndex index, unsigned char* data, int len)
 {
-    Locker<Mutex> inputs_lock(m_inputs_mutex);
+    boost::shared_lock<boost::shared_mutex> inputLock(m_inputMutex);
     std::map<InputIndex, InputInfo>::iterator it = m_inputs.find(index);
     if (it != m_inputs.end()) {
         MemPool* mp = it->second.mp;
@@ -271,7 +270,7 @@ OutputIndex VideoMixEngineImp::enableOutput(VideoMixCodecType codec, unsigned sh
     if (isCodecAlreadyInUse(codec))
         return index;
 
-    Locker<Mutex> state_lock(m_state_mutex);
+    boost::unique_lock<boost::shared_mutex> stateLock(m_stateMutex);
     switch (m_state) {
         case UN_INITIALIZED:
             break;
@@ -298,7 +297,7 @@ OutputIndex VideoMixEngineImp::enableOutput(VideoMixCodecType codec, unsigned sh
 void VideoMixEngineImp::disableOutput(OutputIndex index)
 {
     int ret = -1;
-    Locker<Mutex> state_lock(m_state_mutex);
+    boost::unique_lock<boost::shared_mutex> stateLock(m_stateMutex);
     switch (m_state) {
         case UN_INITIALIZED:
         case IDLE:
@@ -331,7 +330,7 @@ void VideoMixEngineImp::forceKeyFrame(OutputIndex index)
 
 void VideoMixEngineImp::forcekeyframe(OutputIndex index)
 {
-    Locker<Mutex> outputs_lock(m_outputs_mutex);
+    boost::shared_lock<boost::shared_mutex> outputLock(m_outputMutex);
     std::map<OutputIndex, OutputInfo>::iterator it = m_outputs.find(index);
     if (it != m_outputs.end()) {
         if (m_xcoder) {
@@ -355,7 +354,7 @@ void VideoMixEngineImp::setBitrate(OutputIndex index, unsigned short bitrate)
 
 void VideoMixEngineImp::setbitrate(OutputIndex index, unsigned short bitrate)
 {
-    Locker<Mutex> outputs_lock(m_outputs_mutex);
+    boost::shared_lock<boost::shared_mutex> outputLock(m_outputMutex);
     std::map<OutputIndex, OutputInfo>::iterator it = m_outputs.find(index);
     if (it != m_outputs.end()) {
         if (m_xcoder) {
@@ -376,7 +375,7 @@ void VideoMixEngineImp::setbitrate(OutputIndex index, unsigned short bitrate)
 
 int VideoMixEngineImp::pullOutput(OutputIndex index, unsigned char* buf)
 {
-    Locker<Mutex> outputs_lock(m_outputs_mutex);
+    boost::shared_lock<boost::shared_mutex> outputLock(m_outputMutex);
     std::map<OutputIndex, OutputInfo>::iterator it = m_outputs.find(index);
     if (it != m_outputs.end()) {
         Stream* stream = it->second.stream;
@@ -401,7 +400,7 @@ int VideoMixEngineImp::pullOutput(OutputIndex index, unsigned char* buf)
 
 InputIndex VideoMixEngineImp::scheduleInput(VideoMixCodecType codec, VideoMixEngineInput* producer)
 {
-    Locker<Mutex> inputs_lock(m_inputs_mutex);
+    boost::unique_lock<boost::shared_mutex> inputLock(m_inputMutex);
     InputIndex i = m_inputIndex++;
     InputInfo input = {codec, producer, NULL, NULL};
     m_inputs[i] = input;
@@ -429,11 +428,10 @@ void VideoMixEngineImp::attachInput(InputIndex index, InputInfo* input)
 
 void VideoMixEngineImp::installInput(InputIndex index)
 {
-    Locker<Mutex> inputs_lock(m_inputs_mutex);
+    boost::shared_lock<boost::shared_mutex> inputLock(m_inputMutex);
     std::map<InputIndex, InputInfo>::iterator it = m_inputs.find(index);
-    if (it != m_inputs.end()) {
+    if (it != m_inputs.end())
         attachInput(index, &(it->second));
-    }
 }
 
 void VideoMixEngineImp::detachInput(InputInfo* input)
@@ -450,22 +448,23 @@ void VideoMixEngineImp::detachInput(InputInfo* input)
 
 int VideoMixEngineImp::uninstallInput(InputIndex index)
 {
-    Locker<Mutex> inputs_lock(m_inputs_mutex);
+    boost::upgrade_lock<boost::shared_mutex> inputLock(m_inputMutex);
     int input_size = m_inputs.size();
     std::map<InputIndex, InputInfo>::iterator it = m_inputs.find(index);
     if (it != m_inputs.end()) {
-        if (input_size > 1) {
+        if (input_size > 1)
             detachInput(&(it->second));
-        } else if (input_size == 1) {
+        else if (input_size == 1) {
             demolishPipeline();
-            if (it->second.decHandle) {
+            if (it->second.decHandle)
                 it->second.decHandle = NULL;
-            }
+
             if (it->second.mp) {
                 delete it->second.mp;
                 it->second.mp = NULL;
             }
         }
+        boost::upgrade_to_unique_lock<boost::shared_mutex> lock(inputLock);
         m_inputs.erase(it);
     }
     return m_inputs.size();
@@ -473,7 +472,7 @@ int VideoMixEngineImp::uninstallInput(InputIndex index)
 
 void VideoMixEngineImp::resetInput()
 {
-    Locker<Mutex> inputs_lock(m_inputs_mutex);
+    boost::shared_lock<boost::shared_mutex> inputLock(m_inputMutex);
     for(std::map<InputIndex, InputInfo>::iterator it = m_inputs.begin(); it != m_inputs.end(); ++it) {
         if (it->second.mp) {
             delete it->second.mp;
@@ -485,17 +484,17 @@ void VideoMixEngineImp::resetInput()
 
 int VideoMixEngineImp::removeInput(InputIndex index)
 {
-    Locker<Mutex> inputs_lock(m_inputs_mutex);
+    boost::unique_lock<boost::shared_mutex> inputLock(m_inputMutex);
     std::map<InputIndex, InputInfo>::iterator it = m_inputs.find(index);
-    if (it != m_inputs.end()) {
+    if (it != m_inputs.end())
         m_inputs.erase(it);
-    }
+
     return m_inputs.size();
 }
 
 OutputIndex VideoMixEngineImp::scheduleOutput(VideoMixCodecType codec, unsigned short bitrate, VideoMixEngineOutput* consumer)
 {
-    Locker<Mutex> outputs_lock(m_outputs_mutex);
+    boost::unique_lock<boost::shared_mutex> outputLock(m_outputMutex);
     OutputIndex i = m_outputIndex++;
     OutputInfo output = {codec, consumer, bitrate};
     m_outputs[i] = output;
@@ -517,11 +516,10 @@ void VideoMixEngineImp::attachOutput(OutputInfo* output)
 
 void VideoMixEngineImp::installOutput(OutputIndex index)
 {
-    Locker<Mutex> outputs_lock(m_outputs_mutex);
+    boost::shared_lock<boost::shared_mutex> outputLock(m_outputMutex);
     std::map<OutputIndex, OutputInfo>::iterator it = m_outputs.find(index);
-    if (it != m_outputs.end()) {
+    if (it != m_outputs.end())
         attachOutput(&(it->second));
-    }
 }
 
 void VideoMixEngineImp::detachOutput(OutputInfo* output)
@@ -538,22 +536,23 @@ void VideoMixEngineImp::detachOutput(OutputInfo* output)
 
 int VideoMixEngineImp::uninstallOutput(OutputIndex index)
 {
-    Locker<Mutex> outputs_lock(m_outputs_mutex);
+    boost::upgrade_lock<boost::shared_mutex> outputLock(m_outputMutex);
     int output_size = m_outputs.size();
     std::map<OutputIndex, OutputInfo>::iterator it = m_outputs.find(index);
     if (it != m_outputs.end()) {
-        if (output_size > 1) {
+        if (output_size > 1)
             detachOutput(&(it->second));
-        } else if (output_size == 1) {
+        else if (output_size == 1) {
             demolishPipeline();
-            if (it->second.encHandle) {
+            if (it->second.encHandle)
                 it->second.encHandle = NULL;
-            }
+
             if (it->second.stream) {
                 delete it->second.stream;
                 it->second.stream = NULL;
             }
         }
+        boost::upgrade_to_unique_lock<boost::shared_mutex> lock(outputLock);
         m_outputs.erase(it);
     }
     return m_outputs.size();
@@ -561,7 +560,7 @@ int VideoMixEngineImp::uninstallOutput(OutputIndex index)
 
 void VideoMixEngineImp::resetOutput()
 {
-    Locker<Mutex> outputs_lock(m_outputs_mutex);
+    boost::shared_lock<boost::shared_mutex> outputLock(m_outputMutex);
     for(std::map<OutputIndex, OutputInfo>::iterator it = m_outputs.begin(); it != m_outputs.end(); ++it) {
         if (it->second.stream) {
             delete it->second.stream;
@@ -573,11 +572,11 @@ void VideoMixEngineImp::resetOutput()
 
 int VideoMixEngineImp::removeOutput(OutputIndex index)
 {
-    Locker<Mutex> outputs_lock(m_outputs_mutex);
+    boost::unique_lock<boost::shared_mutex> outputLock(m_outputMutex);
     std::map<OutputIndex, OutputInfo>::iterator it = m_outputs.find(index);
-    if (it != m_outputs.end()) {
+    if (it != m_outputs.end())
         m_outputs.erase(it);
-    }
+
     return m_outputs.size();
 }
 
@@ -631,8 +630,8 @@ void VideoMixEngineImp::setupPipeline()
         return;
     }
 
-    Locker<Mutex> inputs_lock(m_inputs_mutex);
-    Locker<Mutex> outputs_lock(m_outputs_mutex);
+    boost::shared_lock<boost::shared_mutex> inputLock(m_inputMutex);
+    boost::shared_lock<boost::shared_mutex> outputLock(m_outputMutex);
     std::map<InputIndex, InputInfo>::iterator it_input = m_inputs.begin();
     std::map<OutputIndex, OutputInfo>::iterator it_output = m_outputs.begin();
     if (it_input != m_inputs.end() && it_output != m_outputs.end() && m_vpp) {
@@ -682,7 +681,7 @@ void VideoMixEngineImp::demolishPipeline()
 
 bool VideoMixEngineImp::isCodecAlreadyInUse(VideoMixCodecType codec)
 {
-    Locker<Mutex> outputs_lock(m_outputs_mutex);
+    boost::shared_lock<boost::shared_mutex> outputLock(m_outputMutex);
     for (std::map<OutputIndex, OutputInfo>::iterator it = m_outputs.begin(); it != m_outputs.end(); ++it) {
         if (it->second.codec == codec)
             return true;
