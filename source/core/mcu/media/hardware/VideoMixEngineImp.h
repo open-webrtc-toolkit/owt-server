@@ -81,13 +81,6 @@ private:
     void setupPipeline();
     void demolishPipeline();
 
-    void setregions(const std::map<InputIndex, RegionInfo>* layoutMapping);
-    void setbackgroundcolor(const BackgroundColor* bgColor);
-    void setresolution(unsigned int width, unsigned int height);
-
-    void forcekeyframe(OutputIndex index);
-    void setbitrate(OutputIndex index, unsigned short bitrate);
-
     bool isCodecAlreadyInUse(VideoMixCodecType codec);
 
 private:
