@@ -11,9 +11,9 @@ VideoMixEngineImp::VideoMixEngineImp()
     : m_state(UN_INITIALIZED)
     , m_inputIndex(0)
     , m_outputIndex(0)
+    , m_xcoder(NULL)
+    , m_vpp(NULL)
 {
-    m_xcoder = NULL;
-    m_vpp = NULL;
 }
 
 VideoMixEngineImp::~VideoMixEngineImp()
@@ -68,22 +68,16 @@ bool VideoMixEngineImp::init(BackgroundColor bgColor, FrameSize frameSize)
             m_vpp->height = frameSize.height;
             m_state = IDLE;
             return true;
-        } else {
-            return false;
         }
-    } else
-        return false;
+    }
+    return false;
 }
 
 void VideoMixEngineImp::setBackgroundColor(const BackgroundColor* bgColor)
 {
-    if (m_state == IN_SERVICE && bgColor) {
-        setbackgroundcolor(bgColor);
-    }
-}
+    if (m_state != IN_SERVICE)
+        return;
 
-void VideoMixEngineImp::setbackgroundcolor(const BackgroundColor* bgColor)
-{
     if (bgColor) {
         BgColor bg_color;
         bg_color.Y = bgColor->y;
@@ -94,47 +88,34 @@ void VideoMixEngineImp::setbackgroundcolor(const BackgroundColor* bgColor)
                 m_vpp->bgColor.y = bgColor->y;
                 m_vpp->bgColor.cb = bgColor->cb;
                 m_vpp->bgColor.cr = bgColor->cr;
-            } else {
+            } else
                 printf("[%s]Fail to set bg color.\n", __FUNCTION__);
-            }
-        } else {
+        } else
             printf("[%s]NULL pointer.\n", __FUNCTION__);
-        }
-    } else {
+    } else
         printf("[%s]Invalid input parameter.\n", __FUNCTION__);
-    }
 }
 
 void VideoMixEngineImp::setResolution(unsigned int width, unsigned int height)
 {
-    if (m_state == IN_SERVICE) {
-        setresolution(width, height);
-    }
-}
+    if (m_state != IN_SERVICE)
+        return;
 
-void VideoMixEngineImp::setresolution(unsigned int width, unsigned int height)
-{
     if (m_xcoder && m_vpp) {
         if (0 == m_xcoder->SetResolution(m_vpp->vppHandle, width, height)) {
             m_vpp->width = width;
             m_vpp->height = height;
-        } else {
+        } else
             printf("[%s]Fail to set resolution.\n", __FUNCTION__);
-        }
-    } else {
+    } else
         printf("[%s]NULL pointer.\n", __FUNCTION__);
-    }
 }
 
-void VideoMixEngineImp::setLayout(const CustomLayoutInfo* layout)
+void VideoMixEngineImp::setLayout(const CustomLayoutInfo* layoutMapping)
 {
-    if (m_state == IN_SERVICE) {
-        setregions(layout);
-    }
-}
+    if (m_state != IN_SERVICE)
+        return;
 
-void VideoMixEngineImp::setregions(const std::map<InputIndex, RegionInfo>* layoutMapping)
-{
     std::map<InputIndex, RegionInfo>::const_iterator it_dec = layoutMapping->begin();
     std::map<InputIndex, RegionInfo>::const_reverse_iterator re_it_dec = layoutMapping->rbegin();
     bool set_combo_type = false;
@@ -149,9 +130,8 @@ void VideoMixEngineImp::setregions(const std::map<InputIndex, RegionInfo>* layou
                 if (ret != 0) {
                     printf("[%s]Fail to set combo type\n", __FUNCTION__);
                     break;
-                } else {
+                } else
                     set_combo_type = true;
-                }
             }
 
             Region regionInfo = {it_dec->second.left, it_dec->second.top,
@@ -162,9 +142,8 @@ void VideoMixEngineImp::setregions(const std::map<InputIndex, RegionInfo>* layou
                 if (ret < 0) {
                     printf("[%s]Fail to set region, input index:%d\n", __FUNCTION__, it_dec->first);
                     break;
-                } else {
+                } else
                     printf("[%s]End set dynamic layout\n", __FUNCTION__);
-                }
             } else {
                 // TODO: Make the Region parameter constant in SetRegionInfo in VCSA
                 ret = m_xcoder->SetRegionInfo(m_vpp->vppHandle, it->second.decHandle, regionInfo, false);
@@ -217,16 +196,15 @@ void VideoMixEngineImp::disableInput(InputIndex index)
             break;
         case IN_SERVICE:
             ret = uninstallInput(index);
-            if(ret == 0) {
+            if (ret == 0) {
                 m_state = WAITING_FOR_INPUT;
                 resetOutput();
             }
             break;
         case WAITING_FOR_OUTPUT:
             ret = removeInput(index);
-            if(ret == 0) {
+            if (ret == 0)
                 m_state = IDLE;
-            }
             break;
         default:
             break;
@@ -258,9 +236,8 @@ void VideoMixEngineImp::pushInput(InputIndex index, unsigned char* data, int len
             printf("[%s]NULL pointer, index:%d, decHandle:%p, mempool:%p.\n", \
                 __FUNCTION__, index, decHandle, mp);
         }
-    } else {
+    } else
         printf("[%s]Invalid input parameter.\n", __FUNCTION__);
-    }
 }
 
 OutputIndex VideoMixEngineImp::enableOutput(VideoMixCodecType codec, unsigned short bitrate, VideoMixEngineOutput* consumer)
@@ -305,16 +282,15 @@ void VideoMixEngineImp::disableOutput(OutputIndex index)
             break;
         case IN_SERVICE:
             ret = uninstallOutput(index);
-            if(ret == 0) {
+            if (ret == 0) {
                 m_state = WAITING_FOR_OUTPUT;
                 resetInput();
             }
             break;
         case WAITING_FOR_INPUT:
             ret = removeOutput(index);
-            if(ret == 0) {
+            if (ret == 0)
                 m_state = IDLE;
-            }
             break;
         default:
             break;
@@ -323,37 +299,26 @@ void VideoMixEngineImp::disableOutput(OutputIndex index)
 
 void VideoMixEngineImp::forceKeyFrame(OutputIndex index)
 {
-    if (m_state == IN_SERVICE) {
-        forcekeyframe(index);
-    }
-}
+    if (m_state != IN_SERVICE)
+        return;
 
-void VideoMixEngineImp::forcekeyframe(OutputIndex index)
-{
     boost::shared_lock<boost::shared_mutex> outputLock(m_outputMutex);
     std::map<OutputIndex, OutputInfo>::iterator it = m_outputs.find(index);
     if (it != m_outputs.end()) {
         if (m_xcoder) {
-            if (0 != m_xcoder->ForceKeyFrame(codec_type_dict[it->second.codec])) {
+            if (0 != m_xcoder->ForceKeyFrame(codec_type_dict[it->second.codec]))
                 printf("[%s]Fail to force key frame.\n", __FUNCTION__);
-            }
-        } else {
+        } else
             printf("[%s]NULL pointer.\n", __FUNCTION__);
-        }
-    } else {
+    } else
         printf("[%s]Invalid input parameter.\n", __FUNCTION__);
-    }
 }
 
 void VideoMixEngineImp::setBitrate(OutputIndex index, unsigned short bitrate)
 {
     // remove the output bitrate setting limitation here
     // now stream bitrate can be set even before pipeline create/init
-    setbitrate(index, bitrate);
-}
 
-void VideoMixEngineImp::setbitrate(OutputIndex index, unsigned short bitrate)
-{
     boost::shared_lock<boost::shared_mutex> outputLock(m_outputMutex);
     std::map<OutputIndex, OutputInfo>::iterator it = m_outputs.find(index);
     if (it != m_outputs.end()) {
@@ -368,9 +333,8 @@ void VideoMixEngineImp::setbitrate(OutputIndex index, unsigned short bitrate)
             // in case: pipeline not created yet
             it->second.bitrate = bitrate;
         }
-    } else {
+    } else
         printf("[%s]Invalid input parameter.\n", __FUNCTION__);
-    }
 }
 
 int VideoMixEngineImp::pullOutput(OutputIndex index, unsigned char* buf)
@@ -381,21 +345,20 @@ int VideoMixEngineImp::pullOutput(OutputIndex index, unsigned char* buf)
         Stream* stream = it->second.stream;
         void* encHandle = it->second.encHandle;
         if (encHandle && stream) {
-            if (stream->GetBlockCount() > 0) {
+            if (stream->GetBlockCount() > 0)
                 return stream->ReadBlocks(buf, 1);
-            } else {
-                printf("[%s]No output data.\n", __FUNCTION__);
-                return 0;
-            }
-        } else {
-            printf("[%s]NULL pointer, index:%d, encHandle:%p, stream:%p.\n", \
-                __FUNCTION__, index, encHandle, stream);
+
+            printf("[%s]No output data.\n", __FUNCTION__);
             return 0;
         }
-    } else {
-        printf("[%s]Invalid input parameter.\n", __FUNCTION__);
+
+        printf("[%s]NULL pointer, index:%d, encHandle:%p, stream:%p.\n", \
+                __FUNCTION__, index, encHandle, stream);
         return 0;
     }
+
+    printf("[%s]Invalid input parameter.\n", __FUNCTION__);
+    return 0;
 }
 
 InputIndex VideoMixEngineImp::scheduleInput(VideoMixCodecType codec, VideoMixEngineInput* producer)
@@ -421,9 +384,8 @@ void VideoMixEngineImp::attachInput(InputIndex index, InputInfo* input)
         VideoMixEngineInput* producer = input->producer;
         if (producer)
             producer->requestKeyFrame(index);
-    } else {
+    } else
         printf("[%s]Invalid input parameter.\n", __FUNCTION__);
-    }
 }
 
 void VideoMixEngineImp::installInput(InputIndex index)
@@ -441,9 +403,8 @@ void VideoMixEngineImp::detachInput(InputInfo* input)
         input->decHandle = NULL;
         delete input->mp;
         input->mp = NULL;
-    } else {
+    } else
         printf("[%s]Invalid input parameter.\n", __FUNCTION__);
-    }
 }
 
 int VideoMixEngineImp::uninstallInput(InputIndex index)
@@ -529,9 +490,8 @@ void VideoMixEngineImp::detachOutput(OutputInfo* output)
         output->encHandle = NULL;
         delete output->stream;
         output->stream = NULL;
-    } else {
+    } else
         printf("[%s]Invalid input parameter.\n", __FUNCTION__);
-    }
 }
 
 int VideoMixEngineImp::uninstallOutput(OutputIndex index)
@@ -658,13 +618,11 @@ void VideoMixEngineImp::setupPipeline()
         m_vpp->vppHandle = vpp_cfg.VppHandle;
     }
 
-    for (++it_input; it_input != m_inputs.end(); ++it_input) {
+    for (++it_input; it_input != m_inputs.end(); ++it_input)
         attachInput(it_input->first, &(it_input->second));
-    }
 
-    for (++it_output; it_output != m_outputs.end(); ++it_output) {
+    for (++it_output; it_output != m_outputs.end(); ++it_output)
         attachOutput(&(it_output->second));
-    }
 
     printf("[%s]Start Xcode pipeline.\n", __FUNCTION__);
 }
