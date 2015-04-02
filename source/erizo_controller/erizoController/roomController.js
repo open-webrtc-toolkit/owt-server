@@ -46,7 +46,7 @@ exports.RoomController = function (spec) {
         }
     };
 
-    var keepAliveLoop = setInterval(sendKeepAlive, KEEPALIVE_INTERVAL);
+    setInterval(sendKeepAlive, KEEPALIVE_INTERVAL);
 
     var createErizoJS = function(publisher_id, mixer_id, callback) {
         if (erizos[publisher_id] !== undefined) {

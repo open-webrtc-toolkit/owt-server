@@ -44,7 +44,7 @@ archive() {
     fi
     for i in "${ENCRYPT_CAND_PATH[@]}"
     do
-      find "$i" -type f -name "*.js" | while read line; do
+      find "$i" -path "${i}/public" -prune -o -type f -name "*.js" -print | while read line; do
         encrypt_js "$line"
       done
     done
