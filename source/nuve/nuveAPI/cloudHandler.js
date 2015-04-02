@@ -92,13 +92,11 @@ exports.addNewErizoController = function (msg, callback) {
     } else if (msg.cloudProvider === 'amazon') {
         addNewAmazonErizoController(msg.ip, msg.hostname, msg.port, msg.ssl, callback);
     }
-    
 };
 
 var addNewAmazonErizoController = function(privateIP, callback) {
-    
+
     var publicIP;
-    var instaceId;
 
     if (ec2 === undefined) {
         var opt = {version: '2012-12-01'};

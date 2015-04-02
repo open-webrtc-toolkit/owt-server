@@ -31,7 +31,7 @@ pack_runtime() {
   find . -type f -not -name "*.log" -not -name "in*.sh" -exec cp '{}' "${WOOGEEN_DIST}/mcu/{}" \;
   pack_nuve
   pack_common
-  ENCRYPT_CAND_PATH=("${WOOGEEN_DIST}/mcu" "${WOOGEEN_DIST}/nuve" "${WOOGEEN_DIST}/common")
+  ENCRYPT_CAND_PATH=("${WOOGEEN_DIST}/mcu" "${WOOGEEN_DIST}/nuve/nuveAPI" "${WOOGEEN_DIST}/common")
   pack_sdk
   # config
   mkdir -p ${WOOGEEN_DIST}/etc/nuve

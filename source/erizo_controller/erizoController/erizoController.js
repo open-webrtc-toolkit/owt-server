@@ -558,8 +558,8 @@ var listen = function () {
             case 'control': // stream media manipulation
                 if (typeof msg.payload === 'object' && msg.payload !== null) {
                     var action = msg.payload.action;
-                    var streamId = msg.payload.streamId;
                     if (/^((audio)|(video))-((in)|(out))-((on)|(off))$/.test(action)) {
+                    //     var streamId = msg.payload.streamId;
                     //     action = socket.room.controller[action];
                     //     if (typeof streamId === 'string') {
                     //         streamId = parseInt(streamId, 10);
@@ -1013,12 +1013,12 @@ exports.getUsersInRoom = function (room, callback) {
 };
 
 /*
- *Gets a list of users in a determined room.
+ *Delete a user in a determined room.
  */
 exports.deleteUser = function (user, room, callback) {
     "use strict";
 
-    var users = [], sockets, id;
+    var sockets, id;
 
      if (rooms[room] === undefined) {
          return safeCall(callback, 'Success');
