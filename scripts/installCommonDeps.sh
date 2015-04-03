@@ -211,6 +211,32 @@ install_mediaprocessor() {
   cd ${MEDIAPROCESSOR_DIR} && make distclean && make ${target}
 }
 
+install_gcc(){
+  if [ -d $LIB_DIR ]; then
+    cd $LIB_DIR
+    wget http://ftp.gnu.org/gnu/gcc/gcc-4.8.2/gcc-4.8.2.tar.bz2
+
+    tar jxf gcc-4.8.2.tar.bz2 ;cd gcc-4.8.2
+    ./contrib/download_prerequisites
+    make distclean
+    ./configure --prefix=${PREFIX_DIR} -enable-threads=posix -disable-checking -disable-multilib -enable-languages=c,c++ --disable-bootstrap
+
+    if
+    [ $? -eq 0 ];then
+    echo "this gcc configure is success"
+    else
+    echo "this gcc configure is failed"
+    fi
+
+    LD_LIBRARY_PATH=${PREFIX_DIR}/lib:$LD_LIBRARY_PATH make -s && make install
+
+    [ $? -eq 0 ] && echo install success && export CC=${PREFIX_DIR}/bin/gcc && export CXX=${PREFIX_DIR}/bin/g++
+  else
+    mkdir -p $LIB_DIR
+    install_gcc
+  fi
+}
+
 cleanup_common(){  
   if [ -d $LIB_DIR ]; then
     cd $LIB_DIR
@@ -219,6 +245,7 @@ cleanup_common(){
     rm -r libav*
     rm -r libvpx*
     rm -r opus*
+    rm -f gcc*
     cd $CURRENT_DIR
   fi
 }

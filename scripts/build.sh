@@ -115,29 +115,21 @@ build_runtime() {
   # rm -fr "${RUNTIME_LIB_SRC_DIR}/build"
   mkdir -p "${RUNTIME_LIB_SRC_DIR}/build"
   # runtime lib
-  if ! uname -a | grep [Uu]buntu -q -s; then
-    cd "${RUNTIME_LIB_SRC_DIR}/build"
-    if [[ -x $CCOMPILER && -x $CXXCOMPILER ]]; then
-      LD_LIBRARY_PATH=${DEPS_ROOT}/lib:$LD_LIBRARY_PATH PKG_CONFIG_PATH=${DEPS_ROOT}/lib/pkgconfig:$PKG_CONFIG_PATH BOOST_ROOT=${DEPS_ROOT} CC=$CCOMPILER CXX=$CXXCOMPILER cmake -DCMAKE_BUILD_TYPE=${BUILDTYPE} $CMAKE_ADDITIONAL_OPTIONS ..
-    else
-      LD_LIBRARY_PATH=${DEPS_ROOT}/lib:$LD_LIBRARY_PATH PKG_CONFIG_PATH=${DEPS_ROOT}/lib/pkgconfig:$PKG_CONFIG_PATH BOOST_ROOT=${DEPS_ROOT} cmake -DCMAKE_BUILD_TYPE=${BUILDTYPE} $CMAKE_ADDITIONAL_OPTIONS ..
-    fi
-    LD_LIBRARY_PATH=${DEPS_ROOT}/lib:$LD_LIBRARY_PATH make
+  cd "${RUNTIME_LIB_SRC_DIR}/build"
+  if [[ -x $CCOMPILER && -x $CXXCOMPILER ]]; then
+    LD_LIBRARY_PATH=${DEPS_ROOT}/lib:$LD_LIBRARY_PATH PKG_CONFIG_PATH=${DEPS_ROOT}/lib/pkgconfig:$PKG_CONFIG_PATH BOOST_ROOT=${DEPS_ROOT} CC=$CCOMPILER CXX=$CXXCOMPILER cmake -DCMAKE_BUILD_TYPE=${BUILDTYPE} $CMAKE_ADDITIONAL_OPTIONS ..
   else
-    cd "${RUNTIME_LIB_SRC_DIR}/build" && cmake -DCMAKE_BUILD_TYPE=${BUILDTYPE} ${CMAKE_ADDITIONAL_OPTIONS} .. && make
+    LD_LIBRARY_PATH=${DEPS_ROOT}/lib:$LD_LIBRARY_PATH PKG_CONFIG_PATH=${DEPS_ROOT}/lib/pkgconfig:$PKG_CONFIG_PATH BOOST_ROOT=${DEPS_ROOT} cmake -DCMAKE_BUILD_TYPE=${BUILDTYPE} $CMAKE_ADDITIONAL_OPTIONS ..
   fi
+  LD_LIBRARY_PATH=${DEPS_ROOT}/lib:$LD_LIBRARY_PATH make
   # runtime addon
   if hash node-gyp 2>/dev/null; then
     echo 'building with node-gyp...'
-    if ! uname -a | grep [Uu]buntu -q -s; then
-      cd "${RUNTIME_ADDON_SRC_DIR}"
-      if [[ -x $CCOMPILER && -x $CXXCOMPILER ]]; then
-        LD_LIBRARY_PATH=${DEPS_ROOT}/lib:$LD_LIBRARY_PATH CORE_HOME="${RUNTIME_LIB_SRC_DIR}" CC=$CCOMPILER CXX=$CXXCOMPILER node-gyp rebuild
-      else
-        LD_LIBRARY_PATH=${DEPS_ROOT}/lib:$LD_LIBRARY_PATH CORE_HOME="${RUNTIME_LIB_SRC_DIR}" node-gyp rebuild
-      fi
+    cd "${RUNTIME_ADDON_SRC_DIR}"
+    if [[ -x $CCOMPILER && -x $CXXCOMPILER ]]; then
+      LD_LIBRARY_PATH=${DEPS_ROOT}/lib:$LD_LIBRARY_PATH CORE_HOME="${RUNTIME_LIB_SRC_DIR}" CC=$CCOMPILER CXX=$CXXCOMPILER node-gyp rebuild
     else
-      cd "${RUNTIME_ADDON_SRC_DIR}" && CORE_HOME="${RUNTIME_LIB_SRC_DIR}" node-gyp rebuild
+      LD_LIBRARY_PATH=${DEPS_ROOT}/lib:$LD_LIBRARY_PATH CORE_HOME="${RUNTIME_LIB_SRC_DIR}" node-gyp rebuild
     fi
   else
     echo >&2 "Appropriate building tool not found."

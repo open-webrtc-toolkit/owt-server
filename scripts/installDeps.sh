@@ -53,6 +53,13 @@ parse_arguments $*
 
 check_proxy
 
+read -p "Installing gcc? [No/yes]" yn
+case $yn in
+  [Yy]* ) install_gcc;;
+  [Nn]* ) ;;
+  * ) ;;
+esac
+
 pause "Installing opus library...  [press Enter]"
 install_opus
 

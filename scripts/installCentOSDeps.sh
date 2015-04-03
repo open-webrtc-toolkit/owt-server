@@ -1,47 +1,5 @@
 #!/bin/bash
 
-install_gcc(){
-  if [ -d $LIB_DIR ]; then
-    cd $LIB_DIR
-    wget ftp://gcc.gnu.org/pub/gcc/infrastructure/{gmp-4.3.2.tar.bz2,mpc-0.8.1.tar.gz,mpfr-2.4.2.tar.bz2}
-    wget http://ftp.gnu.org/gnu/gcc/gcc-4.6.3/gcc-4.6.3.tar.bz2
-    tar jxf gmp-4.3.2.tar.bz2 && cd gmp-4.3.2/
-    ./configure --prefix=${PREFIX_DIR}
-    make -s && make install
-    cd ..
-
-    tar jxf mpfr-2.4.2.tar.bz2 ;cd mpfr-2.4.2/
-    ./configure --prefix=${PREFIX_DIR} -with-gmp=${PREFIX_DIR}
-    make -s && make install
-    cd ..
-
-    tar xzf mpc-0.8.1.tar.gz ;cd mpc-0.8.1
-    ./configure --prefix=${PREFIX_DIR} -with-mpfr=${PREFIX_DIR} -with-gmp=${PREFIX_DIR}
-    make -s && make install
-    cd ..
-
-    tar jxf gcc-4.6.3.tar.bz2 ;cd gcc-4.6.3
-    ./configure --prefix=${PREFIX_DIR} -enable-threads=posix -disable-checking -disable-multilib -enable-languages=c,c++ -with-gmp=${PREFIX_DIR} -with-mpfr=${PREFIX_DIR} -with-mpc=${PREFIX_DIR}
-
-    if
-    [ $? -eq 0 ];then
-    echo "this gcc configure is success"
-    else
-    echo "this gcc configure is failed"
-    fi
-
-    LD_LIBRARY_PATH=${PREFIX_DIR}/lib:$LD_LIBRARY_PATH make -s && make install
-
-    [ $? -eq 0 ] && echo install success
-
-    cd $LIB_DIR
-    rm *.tar.bz2 *.tar.gz
-  else
-    mkdir -p $LIB_DIR
-    install_gcc
-  fi
-}
-
 install_glib2(){
   if [ -d $LIB_DIR ]; then
     # libffi
@@ -106,13 +64,6 @@ installYumDeps(){
     [Nn]* ) ;;
     [yY]* ) install_boost;;
     * ) install_boost;;
-  esac
-
-  read -p "Installing gcc-4.6... [No/yes]" yn
-  case $yn in
-    [Yy]* ) install_gcc;;
-    [Nn]* ) ;;
-    * ) ;;
   esac
 
   read -p "Install nvm/node? [No/yes] NOTE: This will install a specific Nodejs version managed by nvm. You're highly recommended to just PRESS ENTER to skip this step." yn
