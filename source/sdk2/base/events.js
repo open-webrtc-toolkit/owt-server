@@ -116,6 +116,28 @@ Woogeen.MessageEvent = function WoogeenMessageEvent (spec) {
   this.msg = spec.msg;
 };
 
+/*
+ * Class ChatEvent represents an event related to P2P chat.
+ */
+Woogeen.ChatEvent = function WoogeenChatEvent (spec) {
+  'use strict';
+  WoogeenEvent.call(this, spec);
+  this.type = spec.type;
+  this.senderId = spec.senderId;
+  this.peerId = spec.peerId;
+};
+
+/*
+ * Class DataEvent represents an event related to data channel.
+ */
+Woogeen.DataEvent = function WoogeenDataEvent (spec) {
+  'use strict';
+  WoogeenEvent.call(this, spec);
+  this.type = spec.type;
+  this.senderId = spec.senderId;
+  this.data = spec.data;
+};
+
 // inheritance
 Woogeen.StreamEvent.prototype = Object.create(WoogeenEvent.prototype);
 Woogeen.StreamEvent.prototype.constructor = Woogeen.StreamEvent;
@@ -123,3 +145,7 @@ Woogeen.ClientEvent.prototype = Object.create(WoogeenEvent.prototype);
 Woogeen.ClientEvent.prototype.constructor = Woogeen.ClientEvent;
 Woogeen.MessageEvent.prototype = Object.create(WoogeenEvent.prototype);
 Woogeen.MessageEvent.prototype.constructor = Woogeen.MessageEvent;
+Woogeen.ChatEvent.prototype = Object.create(WoogeenEvent.prototype);
+Woogeen.ChatEvent.prototype.constructor = Woogeen.ChatEvent;
+Woogeen.DataEvent.prototype = Object.create(WoogeenEvent.prototype);
+Woogeen.DataEvent.prototype.constructor = Woogeen.DataEvent;
