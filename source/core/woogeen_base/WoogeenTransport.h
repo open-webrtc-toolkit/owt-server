@@ -33,8 +33,8 @@ public:
     WoogeenTransport(erizo::RTPDataReceiver*, erizo::FeedbackSink*);
     virtual ~WoogeenTransport();
 
-    virtual int SendPacket(int channel, const void* data, int len);
-    virtual int SendRTCPPacket(int channel, const void* data, int len);
+    virtual int SendPacket(int channel, const void* data, size_t len);
+    virtual int SendRTCPPacket(int channel, const void* data, size_t len);
 
     void setRTPReceiver(erizo::RTPDataReceiver*);
     void setFeedbackSink(erizo::FeedbackSink*);
@@ -69,7 +69,7 @@ inline void WoogeenTransport<dataType>::setFeedbackSink(erizo::FeedbackSink* fee
 }
 
 template<erizo::DataType dataType>
-inline int WoogeenTransport<dataType>::SendPacket(int channel, const void* data, int len)
+inline int WoogeenTransport<dataType>::SendPacket(int channel, const void* data, size_t len)
 {
     int ret = 0;
     if (m_rtpReceiver) {
@@ -81,7 +81,7 @@ inline int WoogeenTransport<dataType>::SendPacket(int channel, const void* data,
 }
 
 template<erizo::DataType dataType>
-inline int WoogeenTransport<dataType>::SendRTCPPacket(int channel, const void* data, int len)
+inline int WoogeenTransport<dataType>::SendRTCPPacket(int channel, const void* data, size_t len)
 {
     // FIXME: We need add a new interface to the RTPDataReceiver for RTCP Sender Reports.
     const RTCPHeader* chead = reinterpret_cast<const RTCPHeader*>(data);

@@ -29,7 +29,7 @@ DEFINE_LOGGER(VideoFeedbackReactor, "woogeen.VideoFeedbackReactor");
 VideoFeedbackReactor::VideoFeedbackReactor(uint32_t id, boost::shared_ptr<ProtectedRTPSender> rtpSender)
     : m_rtpSender(rtpSender)
 {
-    m_vcm = webrtc::VideoCodingModule::Create(id);
+    m_vcm = webrtc::VideoCodingModule::Create();
     m_vcm->RegisterProtectionCallback(this);
 
     bool nackEnabled = rtpSender->nackEnabled();
@@ -51,9 +51,9 @@ VideoFeedbackReactor::~VideoFeedbackReactor()
 void VideoFeedbackReactor::OnNetworkChanged(
     const uint32_t target_bitrate,
     const uint8_t fraction_loss,
-    const uint32_t rtt)
+    const int64_t rtt)
 {
-    ELOG_DEBUG("Received new Bitrate requests: target bitrate %u, fraction loss %u, rtt %u", target_bitrate, fraction_loss, rtt);
+    ELOG_DEBUG("Received new Bitrate requests: target bitrate %u, fraction loss %u, rtt %lu", target_bitrate, fraction_loss, rtt);
     m_vcm->SetChannelParameters(target_bitrate, fraction_loss, rtt);
 }
 
@@ -85,13 +85,13 @@ WebRTCRtpData::~WebRTCRtpData()
 
 int32_t WebRTCRtpData::OnReceivedPayloadData(
     const uint8_t* payloadData,
-    const uint16_t payloadSize,
+    const size_t payloadSize,
     const webrtc::WebRtcRTPHeader* rtpHeader)
 {
     return -1;
 }
 
-bool WebRTCRtpData::OnRecoveredPacket(const uint8_t* packet, int packet_length)
+bool WebRTCRtpData::OnRecoveredPacket(const uint8_t* packet, size_t packet_length)
 {
     m_rtpReceiver->receiveRtpData(const_cast<char*>(reinterpret_cast<const char*>(packet)), packet_length, erizo::VIDEO, m_streamId);
     return true;

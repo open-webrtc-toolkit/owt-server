@@ -29,6 +29,7 @@ file(GLOB_RECURSE MCU_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/*.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/*.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"
+    "${WEBRTC_DIRS}/src/webrtc/video_engine/payload_router.cc"
     "${WEBRTC_DIRS}/src/webrtc/video_engine/stream_synchronization.cc"
     "${WEBRTC_DIRS}/src/webrtc/video_engine/vie_encoder.cc"
     "${WEBRTC_DIRS}/src/webrtc/video_engine/vie_receiver.cc"
@@ -39,6 +40,8 @@ add_library(mcu SHARED ${MCU_SOURCES})
 # WEBRTC
 find_library(WEBRTC webrtc HINTS "${WEBRTC_DIRS}")
 test_lib(${WEBRTC})
+
+#set(WEBRTC "-rdynamic -Wl,--whole-archive ${WEBRTC} -Wl,--no-whole-archive")
 
 # VPX
 find_library(VPX vpx)

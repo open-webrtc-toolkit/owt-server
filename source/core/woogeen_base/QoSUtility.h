@@ -50,7 +50,7 @@ public:
     virtual void OnNetworkChanged(
         const uint32_t target_bitrate,
         const uint8_t fraction_loss,
-        const uint32_t rtt);
+        const int64_t rtt);
 
     virtual int ProtectionRequest(
         const webrtc::FecProtectionParams* delta_params,
@@ -71,10 +71,10 @@ public:
 
     virtual int32_t OnReceivedPayloadData(
         const uint8_t* payloadData,
-        const uint16_t payloadSize,
+        const size_t payloadSize,
         const webrtc::WebRtcRTPHeader*);
 
-    virtual bool OnRecoveredPacket(const uint8_t* packet, int packet_length);
+    virtual bool OnRecoveredPacket(const uint8_t* packet, size_t packet_length);
 
 private:
     uint32_t m_streamId;

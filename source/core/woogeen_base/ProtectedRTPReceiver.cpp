@@ -179,7 +179,7 @@ int ProtectedRTPReceiver::deliverVideoData(char* buf, int len)
             if (redhead->payloadtype == ULP_90000_PT) {
                 // Notify the receiver statistics that a FEC packet is received,
                 // though this information is not used for now.
-                m_receiveStatistics->FecPacketReceived(header.ssrc);
+                m_receiveStatistics->FecPacketReceived(header, len);
                 ELOG_INFO("Received FEC packet for stream %u, length %u", header.ssrc, len);
 
                 // Send an empty VP8 packet to the RTP receiver, because we want
@@ -352,7 +352,7 @@ webrtc::FecReceiver* ProtectedRTPReceiver::getFecReceiver(uint32_t ssrc)
     std::map<uint32_t, boost::shared_ptr<webrtc::FecReceiver>>::iterator it = m_fecReceivers.find(ssrc);
     if (it == m_fecReceivers.end()) {
         WebRTCRtpData* rtpData = new WebRTCRtpData(ssrc, m_decapsulatedRTPReceiver.get());
-        webrtc::FecReceiver* fecReceiver = webrtc::FecReceiver::Create(ssrc, rtpData);
+        webrtc::FecReceiver* fecReceiver = webrtc::FecReceiver::Create(rtpData);
 
         boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
         m_webRTCRtpData.push_back(boost::shared_ptr<WebRTCRtpData>(rtpData));

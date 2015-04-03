@@ -61,7 +61,7 @@ bool VCMInputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* trans
     m_frameReceiver = frameReceiver;
     m_taskRunner = taskRunner;
 
-    m_vcm = VideoCodingModule::Create(m_index);
+    m_vcm = VideoCodingModule::Create();
     if (m_vcm) {
         m_vcm->InitializeReceiver();
         if (m_externalDecoding) {

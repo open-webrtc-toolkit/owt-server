@@ -114,13 +114,13 @@ void ProtectedRTPSender::sendPacket(char* buf, uint32_t payloadLength, uint32_t 
     m_mediaBitrate->Update(payloadLength + headerLength);
 }
 
-void ProtectedRTPSender::resendPacket(uint16_t sequenceNumber, uint32_t minResendInterval, erizo::DataType type)
+void ProtectedRTPSender::resendPacket(uint16_t sequenceNumber, int64_t minResendInterval, erizo::DataType type)
 {
     uint8_t buffer[MAX_DATA_PACKET_SIZE];
-    uint16_t length = MAX_DATA_PACKET_SIZE;
+    size_t length = MAX_DATA_PACKET_SIZE;
     int64_t time = 0;
     if (m_packetHistory.GetPacketAndSetSendTime(sequenceNumber, minResendInterval, true, buffer, &length, &time)) {
-        ELOG_DEBUG("Resending packet for stream %u, sequence number %u, length %u", m_id, sequenceNumber, length);
+        ELOG_DEBUG("Resending packet for stream %u, sequence number %u, length %zu", m_id, sequenceNumber, length);
         m_rtpReceiver->receiveRtpData(reinterpret_cast<char*>(buffer), length, type, m_id);
         assert(m_nackBitrate);
         m_nackBitrate->Update(length);
@@ -134,7 +134,7 @@ int32_t ProtectedRTPSender::setFecParameters(const webrtc::FecProtectionParams& 
     m_keyParams = keyParams;
 
     if (!m_fecProducer && m_fecEnabled) {
-        m_fec.reset(new webrtc::ForwardErrorCorrection(m_id));
+        m_fec.reset(new webrtc::ForwardErrorCorrection());
         m_fecProducer.reset(new webrtc::ProducerFec(m_fec.get()));
         m_fecProtectedFrames = new FECProtectedFrame[NUMBER_OF_PROTECTED_FRAMES];
         memset(m_fecProtectedFrames, 0, sizeof(m_fecProtectedFrames));
@@ -161,7 +161,7 @@ void ProtectedRTPSender::protectVideoPacket(char* buf, uint32_t rtpPayloadLength
         uint32_t numberCurrentFECPackets = 0;
         while (m_fecProducer->FecAvailable()) {
             webrtc::RedPacket* fecPacket = m_fecProducer->GetFecPacket(RED_90000_PT, ULP_90000_PT, ++m_highestSeqNumber, rtpHeaderLength);
-            ELOG_DEBUG("Sending FEC packet for stream %u, packet %u, sequence number %u, length %u", m_id, packetId, static_cast<uint16_t>(m_highestSeqNumber), fecPacket->length());
+            ELOG_DEBUG("Sending FEC packet for stream %u, packet %u, sequence number %u, length %zu", m_id, packetId, static_cast<uint16_t>(m_highestSeqNumber), fecPacket->length());
             m_rtpReceiver->receiveRtpData(reinterpret_cast<char*>(fecPacket->data()), fecPacket->length(), VIDEO, m_id);
             m_packetHistory.PutRTPPacket(fecPacket->data(), fecPacket->length(), MAX_DATA_PACKET_SIZE, 0, webrtc::kAllowRetransmission);
             m_payloadBytesSent += (fecPacket->length() - rtpHeaderLength);
