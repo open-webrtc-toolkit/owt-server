@@ -43,18 +43,16 @@ public:
     webrtc::ProcessThread* unwrap();
 
 private:
-    webrtc::ProcessThread* m_processThread;
+    rtc::scoped_ptr<webrtc::ProcessThread> m_processThread;
 };
 
 inline TaskRunner::TaskRunner()
-    : m_processThread(webrtc::ProcessThread::CreateProcessThread())
+    : m_processThread(webrtc::ProcessThread::Create())
 {
 }
 
 inline TaskRunner::~TaskRunner()
 {
-    webrtc::ProcessThread::DestroyProcessThread(m_processThread);
-    m_processThread = nullptr;
 }
 
 inline int32_t TaskRunner::Start()
@@ -79,7 +77,7 @@ inline int32_t TaskRunner::DeRegisterModule(webrtc::Module* module)
 
 inline webrtc::ProcessThread* TaskRunner::unwrap()
 {
-    return m_processThread;
+    return m_processThread.get();
 }
 
 } /* namespace mcu */

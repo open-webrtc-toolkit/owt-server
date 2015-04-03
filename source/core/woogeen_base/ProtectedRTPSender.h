@@ -52,7 +52,7 @@ public:
     void setFecStatus(bool enable) { m_fecEnabled = enable; }
     bool fecEnabled() { return m_fecEnabled; }
 
-    void resendPacket(uint16_t sequenceNumber, uint32_t minResendInterval, erizo::DataType);
+    void resendPacket(uint16_t sequenceNumber, int64_t minResendInterval, erizo::DataType);
     void setNACKStatus(bool enable);
     bool nackEnabled();
 

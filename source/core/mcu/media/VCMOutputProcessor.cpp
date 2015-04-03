@@ -113,7 +113,7 @@ bool VCMOutputProcessor::setSendCodec(FrameFormat frameFormat, VideoSize videoSi
         videoCodec.minBitrate = targetBitrate / 4;
         videoCodec.startBitrate = targetBitrate;
 
-        std::list<boost::shared_ptr<RtpRtcp>>::iterator it = m_rtpRtcps.begin();
+        std::list<RtpRtcp*>::iterator it = m_rtpRtcps.begin();
         for (; it != m_rtpRtcps.end(); ++it) {
             if ((*it)->RegisterSendPayload(videoCodec) == -1)
                 return false;
@@ -136,7 +136,7 @@ void VCMOutputProcessor::handleIntraFrameRequest()
 bool VCMOutputProcessor::startSend(bool nack, bool fec)
 {
     std::list<uint32_t> ssrcs;
-    std::list<boost::shared_ptr<RtpRtcp>>::iterator it = m_rtpRtcps.begin();
+    std::list<RtpRtcp*>::iterator it = m_rtpRtcps.begin();
     for (; it != m_rtpRtcps.end(); ++it) {
         bool fecEnabled = false;
         uint8_t dummyRedPayloadType = 0;
@@ -182,13 +182,16 @@ bool VCMOutputProcessor::startSend(bool nack, bool fec)
     if (m_rtpRtcps.size() == 0)
         m_source->activateOutput(m_id, FRAME_FORMAT_I420, 30, 500, this);
 
-    m_rtpRtcps.push_back(boost::shared_ptr<RtpRtcp>(rtpRtcp));
+    m_rtpRtcps.push_back(rtpRtcp);
+    m_payloadRouter->SetSendingRtpModules(m_rtpRtcps);
+    m_payloadRouter->set_active(true);
+
     return true;
 }
 
 bool VCMOutputProcessor::stopSend(bool nack, bool fec)
 {
-    std::list<boost::shared_ptr<RtpRtcp>>::iterator it = m_rtpRtcps.begin();
+    std::list<RtpRtcp*>::iterator it = m_rtpRtcps.begin();
     for (; it != m_rtpRtcps.end(); ++it) {
         bool fecEnabled = false;
         uint8_t dummyRedPayloadType = 0;
@@ -197,8 +200,10 @@ bool VCMOutputProcessor::stopSend(bool nack, bool fec)
         bool nackEnabled = (*it)->StorePackets();
 
         if (nackEnabled == nack && fecEnabled == fec) {
-            m_taskRunner->DeRegisterModule((*it).get());
+            m_taskRunner->DeRegisterModule(*it);
             m_rtpRtcps.erase(it);
+            m_payloadRouter->SetSendingRtpModules(m_rtpRtcps);
+            delete *it;
             // FIXME: This is not accurate.
             // We should change the NACK enabling status if there's no NACK enabled
             // stream now.
@@ -215,7 +220,7 @@ bool VCMOutputProcessor::stopSend(bool nack, bool fec)
 
 uint32_t VCMOutputProcessor::sendSSRC(bool nack, bool fec)
 {
-    std::list<boost::shared_ptr<RtpRtcp>>::iterator it = m_rtpRtcps.begin();
+    std::list<RtpRtcp*>::iterator it = m_rtpRtcps.begin();
     for (; it != m_rtpRtcps.end(); ++it) {
         bool fecEnabled = false;
         uint8_t dummyRedPayloadType = 0;
@@ -241,7 +246,8 @@ void VCMOutputProcessor::onFrame(FrameFormat format, unsigned char* payload, int
     case FRAME_FORMAT_I420: {
         // Currently we should only receive I420 format frame.
         I420VideoFrame* composedFrame = reinterpret_cast<I420VideoFrame*>(payload);
-        m_videoEncoder->DeliverFrame(m_id, composedFrame);
+        std::vector<uint32_t> csrcs;
+        m_videoEncoder->DeliverFrame(m_id, composedFrame, csrcs);
         break;
     }
     case FRAME_FORMAT_VP8:
@@ -256,7 +262,7 @@ void VCMOutputProcessor::onFrame(FrameFormat format, unsigned char* payload, int
 
 int VCMOutputProcessor::deliverFeedback(char* buf, int len)
 {
-    std::list<boost::shared_ptr<RtpRtcp>>::iterator it = m_rtpRtcps.begin();
+    std::list<RtpRtcp*>::iterator it = m_rtpRtcps.begin();
     for (; it != m_rtpRtcps.end(); ++it)
         (*it)->IncomingRtcpPacket(reinterpret_cast<uint8_t*>(buf), len);
     return len;
@@ -269,11 +275,13 @@ bool VCMOutputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* tran
 
     m_bitrateController.reset(webrtc::BitrateController::CreateBitrateController(Clock::GetRealTimeClock(), true));
     m_bandwidthObserver.reset(m_bitrateController->CreateRtcpBandwidthObserver());
+    m_payloadRouter.reset(new PayloadRouter());
     // FIXME: "config" is currently not respected.
     // The number of cores is currently hard coded to be 4. Need a function to get the correct information from the system.
     webrtc::Config config;
-    m_videoEncoder.reset(new ViEEncoder(m_id, -1, 4, config, *(m_taskRunner->unwrap()), m_bitrateController.get()));
+    m_videoEncoder.reset(new ViEEncoder(m_id, -1, 4, config, *(m_taskRunner->unwrap()), m_bitrateController.get(), false));
     m_videoEncoder->Init();
+    m_videoEncoder->StartThreadsAndSetSendPayloadRouter(m_payloadRouter.get());
 
     return true;
 }
@@ -295,9 +303,14 @@ void VCMOutputProcessor::close()
     DeRegisterPreSendFrameCallback();
 
     m_source->deActivateOutput(m_id);
-    std::list<boost::shared_ptr<RtpRtcp>>::iterator it = m_rtpRtcps.begin();
-    for (; it != m_rtpRtcps.end(); ++it)
-        m_taskRunner->DeRegisterModule((*it).get());
+    m_videoEncoder->StopThreadsAndRemovePayloadRouter();
+    m_payloadRouter->SetSendingRtpModules(std::list<RtpRtcp*>());
+    std::list<RtpRtcp*>::iterator it = m_rtpRtcps.begin();
+    for (; it != m_rtpRtcps.end(); ++it) {
+        m_taskRunner->DeRegisterModule(*it);
+        delete *it;
+        m_rtpRtcps.erase(it);
+    }
 }
 
 }

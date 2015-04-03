@@ -43,13 +43,10 @@ AudioMixer::AudioMixer(erizo::RTPDataReceiver* receiver, AudioMixerVADCallback* 
     , m_jitterHoldCount(0)
 {
     m_voiceEngine = VoiceEngine::Create();
+    m_adm.reset(new webrtc::FakeAudioDeviceModule);
 
     VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);
-    voe->Init();
-
-    VoEExternalMedia* externalMedia = VoEExternalMedia::GetInterface(m_voiceEngine);
-    externalMedia->SetExternalRecordingStatus(true);
-    externalMedia->SetExternalPlayoutStatus(true);
+    voe->Init(m_adm.get());
 
     m_recordChannelId = -1;
 
@@ -418,6 +415,7 @@ int32_t AudioMixer::performMix()
     for (std::map<std::string, VoiceChannel>::iterator it = m_outputChannels.begin();
         it != m_outputChannels.end();
         ++it) {
+        int64_t elapsedTimeInMs, ntpTimeInMs;
         if (codec->GetSendCodec(it->second.id, audioCodec) != -1) {
             if (audioTransport->NeedMorePlayData(
                 audioCodec.plfreq / 1000 * 10, // samples per channel in a 10 ms period. FIXME: hard coded timer interval.
@@ -426,6 +424,8 @@ int32_t AudioMixer::performMix()
                 audioCodec.plfreq,
                 data,
                 nSamplesOut,
+                &elapsedTimeInMs,
+                &ntpTimeInMs,
                 it == m_outputChannels.begin(),
                 it->second.id) == 0)
                 audioTransport->OnData(it->second.id, data, 0, audioCodec.plfreq, audioCodec.channels, nSamplesOut);

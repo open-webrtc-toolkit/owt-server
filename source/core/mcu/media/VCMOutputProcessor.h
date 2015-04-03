@@ -31,6 +31,7 @@
 #include <WoogeenTransport.h>
 #include <webrtc/modules/rtp_rtcp/interface/rtp_rtcp.h>
 #include <webrtc/video/encoded_frame_callback_adapter.h>
+#include <webrtc/video_engine/payload_router.h>
 #include <webrtc/video_engine/vie_encoder.h>
 
 namespace mcu {
@@ -46,7 +47,7 @@ public:
 
     virtual ~EncodedFrameCallbackAdapter() { }
 
-    virtual int32_t Encoded(webrtc::EncodedImage& encodedImage,
+    virtual int32_t Encoded(const webrtc::EncodedImage& encodedImage,
                             const webrtc::CodecSpecificInfo* codecSpecificInfo,
                             const webrtc::RTPFragmentationHeader* fragmentation)
     {
@@ -100,8 +101,9 @@ private:
 
     boost::scoped_ptr<webrtc::BitrateController> m_bitrateController;
     boost::scoped_ptr<webrtc::RtcpBandwidthObserver> m_bandwidthObserver;
+    boost::scoped_ptr<webrtc::PayloadRouter> m_payloadRouter;
     boost::scoped_ptr<webrtc::ViEEncoder> m_videoEncoder;
-    std::list<boost::shared_ptr<webrtc::RtpRtcp>> m_rtpRtcps;
+    std::list<webrtc::RtpRtcp*> m_rtpRtcps;
 
     boost::shared_ptr<webrtc::Transport> m_videoTransport;
     boost::shared_ptr<TaskRunner> m_taskRunner;

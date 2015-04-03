@@ -31,7 +31,7 @@
 #include <MediaDefinitions.h>
 #include <MediaSourceConsumer.h>
 #include <WoogeenTransport.h>
-#include <webrtc/modules/audio_device/include/audio_device_defines.h>
+#include <webrtc/modules/audio_device/include/fake_audio_device.h>
 #include <webrtc/voice_engine/include/voe_base.h>
 #include <webrtc/voice_engine/include/voe_video_sync.h>
 
@@ -112,6 +112,7 @@ private:
     };
 
     webrtc::VoiceEngine* m_voiceEngine;
+    boost::scoped_ptr<webrtc::FakeAudioDeviceModule> m_adm;
 
     erizo::RTPDataReceiver* m_dataReceiver;
     bool m_vadEnabled;

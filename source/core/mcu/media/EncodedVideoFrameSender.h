@@ -76,7 +76,7 @@ public:
     void OnLocalSsrcChanged(uint32_t old_ssrc, uint32_t new_ssrc) { }
 
     // Implements webrtc::BitrateObserver.
-    void OnNetworkChanged(const uint32_t target_bitrate, const uint8_t fraction_loss, const uint32_t rtt);
+    void OnNetworkChanged(const uint32_t target_bitrate, const uint8_t fraction_loss, const int64_t rtt);
 
 private:
     bool init(woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<TaskRunner>);

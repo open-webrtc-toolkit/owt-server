@@ -125,34 +125,18 @@ install_webrtc(){
   if [ -d src ]; then
     rm -rf src
   fi
-  if [ "$NIGHTLY" != "true" ]; then
-    git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
-    PATH=$ROOT/third_party/webrtc/depot_tools:$PATH
-    echo "Downloading WebRTC source code..."
-    gclient sync --nohooks
-    echo "Done."
-  else
-    rm -rf webrtc-upstream-fork
-    local GIT_ACCOUNT="lab_webrtctest"
-    local WOOGEEN_GIT_URL=`git config --get remote.origin.url`
-    if [ ! -z "$WOOGEEN_GIT_URL" ]; then
-      if echo $WOOGEEN_GIT_URL | grep "@" -q -s; then
-        GIT_ACCOUNT=`echo $WOOGEEN_GIT_URL | awk -F '\/\/' '{print $2}' | awk -F '@' '{print $1}'`
-      else
-        GIT_ACCOUNT=`whoami`
-      fi
+  local GIT_ACCOUNT="lab_webrtctest"
+  local WOOGEEN_GIT_URL=`git config --get remote.origin.url`
+  if [ ! -z "$WOOGEEN_GIT_URL" ]; then
+    if echo $WOOGEEN_GIT_URL | grep "@" -q -s; then
+      GIT_ACCOUNT=`echo $WOOGEEN_GIT_URL | awk -F '\/\/' '{print $2}' | awk -F '@' '{print $1}'`
+    else
+      GIT_ACCOUNT=`whoami`
     fi
-    git clone -b 3.52 ssh://${GIT_ACCOUNT}@git-ccr-1.devtools.intel.com:29418/webrtc-upstream-fork/
-    mv webrtc-upstream-fork/src .
   fi
-  patch -p0 < ./webrtc-3.52-build.patch
-  patch -p0 < ./webrtc-3.52-source.patch
-  patch -p0 < ./opus-build.patch
-  patch -p1 < ./webrtc-3.52-h264.patch
-  patch -p0 < ./webrtc-3.52-audio-mixing.patch
-  patch -p0 < ./webrtc-3.52-export-vad.patch
-  patch -p0 < ./webrtc-3.52-voe-encoded-frame-callback.patch
-  ./build.sh
+  git clone --recursive -b 42-mcu ssh://${GIT_ACCOUNT}@git-ccr-1.devtools.intel.com:29418/webrtc-webrtcstack src
+  cd src && ./build.sh
+  mv libwebrtc.a ../
   cd $CURRENT_DIR
 }
 

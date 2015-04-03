@@ -123,7 +123,7 @@ int EncodedVideoFrameSender::deliverFeedback(char* buf, int len)
     return m_rtpRtcp->IncomingRtcpPacket(reinterpret_cast<uint8_t*>(buf), len) == -1 ? 0 : len;
 }
 
-void EncodedVideoFrameSender::OnNetworkChanged(const uint32_t target_bitrate, const uint8_t fraction_loss, const uint32_t rtt)
+void EncodedVideoFrameSender::OnNetworkChanged(const uint32_t target_bitrate, const uint8_t fraction_loss, const int64_t rtt)
 {
     m_source->setBitrate(m_id, target_bitrate / 1000);
 }

@@ -98,7 +98,7 @@ private:
 
     // frames in freeQ can be used to copy decoded frame data by the decoder thread
 #if BOOST_LOCKFREE_QUEUE
-    boost::lockfree::queue<webrtc::I420VideoFrame*> m_freeQ;
+    boost::lockfree::queue<webrtc::I420VideoFrame*, boost::lockfree::capacity<32>> m_freeQ;
 #else
     SharedQueue<webrtc::I420VideoFrame*> m_freeQ;
 #endif
