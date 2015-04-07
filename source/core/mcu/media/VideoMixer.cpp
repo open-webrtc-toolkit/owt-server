@@ -146,7 +146,7 @@ int32_t VideoMixer::removeOutput(int payloadType)
 void VideoMixer::startRecording(MediaFrameQueue& videoQueue)
 {
     // FIXME: Currently, only VP8_90000_PT to be recorded.
-    if (addOutput(VP8_90000_PT, true, true) != -1) {
+    if (addOutput(VP8_90000_PT, true, false) != -1) {
         VideoFrameSender* output = m_outputs[VP8_90000_PT].get();
         output->RegisterPreSendFrameCallback(videoQueue);
 
