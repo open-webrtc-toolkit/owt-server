@@ -148,8 +148,11 @@ void Mixer::unsetRecorder()
 void Mixer::addSubscriber(MediaSink* subscriber, const std::string& peerId)
 {
     int videoPayloadType = subscriber->preferredVideoPayloadType();
-    bool enableNACK = subscriber->acceptResentData();
-    bool enableFEC = subscriber->acceptFEC();
+    // FIXME: Now we hard code the output to be NACK enabled and FEC disabled,
+    // because the video mixer now is not able to output different formatted
+    // RTP packets for a single encoded stream elegantly.
+    bool enableNACK = true || subscriber->acceptResentData();
+    bool enableFEC = false && subscriber->acceptFEC();
     m_videoMixer->addOutput(videoPayloadType, enableNACK, enableFEC);
     subscriber->setVideoSinkSSRC(m_videoMixer->getSendSSRC(videoPayloadType, enableNACK, enableFEC));
 
