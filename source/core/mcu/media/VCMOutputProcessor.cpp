@@ -275,13 +275,13 @@ bool VCMOutputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* tran
 
     m_bitrateController.reset(webrtc::BitrateController::CreateBitrateController(Clock::GetRealTimeClock(), true));
     m_bandwidthObserver.reset(m_bitrateController->CreateRtcpBandwidthObserver());
-    m_payloadRouter.reset(new PayloadRouter());
+    m_payloadRouter = new PayloadRouter();
     // FIXME: "config" is currently not respected.
     // The number of cores is currently hard coded to be 4. Need a function to get the correct information from the system.
     webrtc::Config config;
     m_videoEncoder.reset(new ViEEncoder(m_id, -1, 4, config, *(m_taskRunner->unwrap()), m_bitrateController.get(), false));
     m_videoEncoder->Init();
-    m_videoEncoder->StartThreadsAndSetSendPayloadRouter(m_payloadRouter.get());
+    m_videoEncoder->StartThreadsAndSetSendPayloadRouter(m_payloadRouter);
 
     return true;
 }
@@ -305,8 +305,8 @@ void VCMOutputProcessor::close()
     m_source->deActivateOutput(m_id);
     m_videoEncoder->StopThreadsAndRemovePayloadRouter();
     m_payloadRouter->SetSendingRtpModules(std::list<RtpRtcp*>());
-    std::list<RtpRtcp*>::iterator it = m_rtpRtcps.begin();
-    for (; it != m_rtpRtcps.end(); ++it) {
+    while (m_rtpRtcps.size() > 0) {
+        std::list<RtpRtcp*>::iterator it = m_rtpRtcps.begin();
         m_taskRunner->DeRegisterModule(*it);
         delete *it;
         m_rtpRtcps.erase(it);

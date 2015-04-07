@@ -30,6 +30,7 @@
 #include <MediaDefinitions.h>
 #include <WoogeenTransport.h>
 #include <webrtc/modules/rtp_rtcp/interface/rtp_rtcp.h>
+#include <webrtc/system_wrappers/interface/scoped_refptr.h>
 #include <webrtc/video/encoded_frame_callback_adapter.h>
 #include <webrtc/video_engine/payload_router.h>
 #include <webrtc/video_engine/vie_encoder.h>
@@ -101,7 +102,7 @@ private:
 
     boost::scoped_ptr<webrtc::BitrateController> m_bitrateController;
     boost::scoped_ptr<webrtc::RtcpBandwidthObserver> m_bandwidthObserver;
-    boost::scoped_ptr<webrtc::PayloadRouter> m_payloadRouter;
+    webrtc::scoped_refptr<webrtc::PayloadRouter> m_payloadRouter;
     boost::scoped_ptr<webrtc::ViEEncoder> m_videoEncoder;
     std::list<webrtc::RtpRtcp*> m_rtpRtcps;
 
