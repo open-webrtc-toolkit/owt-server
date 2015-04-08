@@ -134,8 +134,13 @@ install_webrtc(){
       GIT_ACCOUNT=`whoami`
     fi
   fi
-  git clone --recursive -b 42-mcu ssh://${GIT_ACCOUNT}@git-ccr-1.devtools.intel.com:29418/webrtc-webrtcstack src
-  cd src && ./build.sh
+  # git clone --recursive -b 42-mcu ssh://${GIT_ACCOUNT}@git-ccr-1.devtools.intel.com:29418/webrtc-webrtcstack src
+  git clone -b 42-mcu ssh://${GIT_ACCOUNT}@git-ccr-1.devtools.intel.com:29418/webrtc-webrtcstack src
+  cd src
+  sed -i 's/lab_webrtctest/'${GIT_ACCOUNT}'/g' .gitmodules
+  git submodule init
+  git submodule update
+  ./build.sh
   mv libwebrtc.a ../
   cd $CURRENT_DIR
 }
