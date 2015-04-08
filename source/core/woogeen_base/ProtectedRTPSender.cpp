@@ -41,11 +41,11 @@ ProtectedRTPSender::ProtectedRTPSender(uint32_t id, RTPDataReceiver* rtpReceiver
     , m_initialPacketId(-1)
     , m_packetHistory(m_clock)
     , m_fecEnabled(false)
-    , m_fecProtectedFrames(nullptr)
     , m_rtpReceiver(rtpReceiver)
 {
     memset(m_lastSenderReport, 0, sizeof(m_lastSenderReport));
     memset(m_lastRTCPTime, 0, sizeof(m_lastRTCPTime));
+    memset(m_fecProtectedFrames, 0, sizeof(m_fecProtectedFrames));
     memset(&m_deltaParams, 0, sizeof(webrtc::FecProtectionParams));
     memset(&m_keyParams, 0, sizeof(webrtc::FecProtectionParams));
     m_mediaBitrate.reset(new webrtc::Bitrate(m_clock, nullptr));
@@ -54,8 +54,6 @@ ProtectedRTPSender::ProtectedRTPSender(uint32_t id, RTPDataReceiver* rtpReceiver
 ProtectedRTPSender::~ProtectedRTPSender()
 {
     boost::lock_guard<boost::shared_mutex> fecLock(m_fecMutex);
-    delete[] m_fecProtectedFrames;;
-    m_fecProtectedFrames = nullptr;
     boost::lock_guard<boost::shared_mutex> rtcpLock(m_rtcpMutex);
 }
 
@@ -136,7 +134,6 @@ int32_t ProtectedRTPSender::setFecParameters(const webrtc::FecProtectionParams& 
     if (!m_fecProducer && m_fecEnabled) {
         m_fec.reset(new webrtc::ForwardErrorCorrection());
         m_fecProducer.reset(new webrtc::ProducerFec(m_fec.get()));
-        m_fecProtectedFrames = new FECProtectedFrame[NUMBER_OF_PROTECTED_FRAMES];
         memset(m_fecProtectedFrames, 0, sizeof(m_fecProtectedFrames));
         m_fecBitrate.reset(new webrtc::Bitrate(m_clock, nullptr));
     }
@@ -221,7 +218,7 @@ uint32_t ProtectedRTPSender::produceSequenceNumberForPacket(uint32_t packetId)
     uint32_t sequenceNumber = m_initialSeqNumber + (packetId > m_initialPacketId ? packetId - m_initialPacketId : 0);
 
     boost::shared_lock<boost::shared_mutex> lock(m_fecMutex);
-    if (m_fecProtectedFrames && m_fecProtectedFrames[0].numberSentFECPackets > 0) {
+    if (m_fecProtectedFrames[0].numberSentFECPackets > 0) {
         uint32_t i = 0;
         for (; i < NUMBER_OF_PROTECTED_FRAMES; ++i) {
             if (packetId > m_fecProtectedFrames[i].lastPacketId) {
@@ -258,8 +255,7 @@ void ProtectedRTPSender::restart()
     // FIXME: See if other statistics like the bitrate stuffs need to be reset
     // or not, which depends on how we clearly define the functionality of this
     // method.
-    if (m_fecProtectedFrames)
-        memset(m_fecProtectedFrames, 0, sizeof(m_fecProtectedFrames));
+    memset(m_fecProtectedFrames, 0, sizeof(m_fecProtectedFrames));
 }
 
 void ProtectedRTPSender::processBitrate()
