@@ -97,14 +97,18 @@ Erizo.ChromeCanaryStack = function (spec) {
         var a, r;
         if (spec.maxVideoBW) {
             a = sdp.match(/m=video.*\r\n/);
-            r = a[0] + "b=AS:" + spec.maxVideoBW + "\r\n";
-            sdp = sdp.replace(a[0], r);
+            if (a && (a.length > 0)) {
+                r = a[0] + "b=AS:" + spec.maxVideoBW + "\r\n";
+                sdp = sdp.replace(a[0], r);
+            }
         }
 
         if (spec.maxAudioBW) {
             a = sdp.match(/m=audio.*\r\n/);
-            r = a[0] + "b=AS:" + spec.maxAudioBW + "\r\n";
-            sdp = sdp.replace(a[0], r);
+            if (a && (a.length > 0)) {
+                r = a[0] + "b=AS:" + spec.maxAudioBW + "\r\n";
+                sdp = sdp.replace(a[0], r);
+            }
         }
 
         return sdp;
