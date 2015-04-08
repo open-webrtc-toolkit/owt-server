@@ -282,7 +282,19 @@ namespace erizo {
       if (isFingerprint) {
         sdp << "a=fingerprint:sha-256 "<< fingerprint << endl;
       }
-      sdp << "a=sendrecv" << endl;
+
+      switch (audioDirection) {
+      case SENDONLY:
+        sdp << "a=sendonly" << endl;
+        break;
+      case RECVONLY:
+        sdp << "a=recvonly" << endl;
+        break;
+      default:
+        sdp << "a=sendrecv" << endl;
+        break;
+      }
+
       sdp << "a=mid:audio\n";
       sdp << "a=extmap:1 urn:ietf:params:rtp-hdrext:ssrc-audio-level" << endl;
       if (isRtcpMux)
@@ -397,7 +409,19 @@ namespace erizo {
       if (isFingerprint) {
         sdp << "a=fingerprint:sha-256 "<< fingerprint << endl;
       }
-      sdp << "a=sendrecv" << endl;
+
+      switch (videoDirection) {
+      case SENDONLY:
+        sdp << "a=sendonly" << endl;
+        break;
+      case RECVONLY:
+        sdp << "a=recvonly" << endl;
+        break;
+      default:
+        sdp << "a=sendrecv" << endl;
+        break;
+      }
+
       sdp << "a=mid:video\n";
       //sdp << "b=AS:84" << endl;
       if (isRtcpMux)
