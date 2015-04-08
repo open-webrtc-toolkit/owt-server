@@ -182,6 +182,31 @@ namespace erizo {
     }
     ELOG_DEBUG("Audio SDP done.");
     localSdp_.profile = remoteSdp_.profile;
+
+    switch (remoteSdp_.videoDirection) {
+    case SENDONLY:
+      localSdp_.videoDirection = RECVONLY;
+      break;
+    case RECVONLY:
+      localSdp_.videoDirection = SENDONLY;
+      break;
+    default:
+      localSdp_.videoDirection = SENDRECV;
+      break;
+    }
+
+    switch (remoteSdp_.audioDirection) {
+    case SENDONLY:
+      localSdp_.audioDirection = RECVONLY;
+      break;
+    case RECVONLY:
+      localSdp_.audioDirection = SENDONLY;
+      break;
+    default:
+      localSdp_.audioDirection = SENDRECV;
+      break;
+    }
+
     return localSdp_.getSdp();
   }
 
