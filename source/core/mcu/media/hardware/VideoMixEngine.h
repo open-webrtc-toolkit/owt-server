@@ -22,8 +22,8 @@ public:
 };
 
 struct FrameSize {
-    int width;
-    int height;
+    unsigned int width;
+    unsigned int height;
 };
 
 enum VideoMixCodecType {
