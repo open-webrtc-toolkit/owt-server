@@ -104,7 +104,7 @@ private:
 
     // These are used to support FEC at the sender side.
     bool m_fecEnabled;
-    FECProtectedFrame* m_fecProtectedFrames;
+    FECProtectedFrame m_fecProtectedFrames[NUMBER_OF_PROTECTED_FRAMES];
     webrtc::FecProtectionParams m_deltaParams;
     webrtc::FecProtectionParams m_keyParams;
     boost::shared_mutex m_fecMutex;
