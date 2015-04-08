@@ -232,7 +232,7 @@ namespace erizo {
     }
 
     if (SERVER_SIDE_TURN){
-        for (int i = 1; i < (iceComponents_ +1); i++){
+        for (unsigned int i = 1; i < (iceComponents_ +1); i++){
           ELOG_DEBUG("Setting TURN Comp %d\n", i);
           nice_agent_set_relay_info     (agent_,
               1,
