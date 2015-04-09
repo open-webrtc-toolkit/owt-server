@@ -202,10 +202,11 @@ install_mediaprocessor() {
 
 install_gcc(){
   if [ -d $LIB_DIR ]; then
+    local VERSION="4.8.4"
     cd $LIB_DIR
-    wget -c http://ftp.gnu.org/gnu/gcc/gcc-4.8.2/gcc-4.8.2.tar.bz2
+    wget -c http://ftp.gnu.org/gnu/gcc/gcc-${VERSION}/gcc-${VERSION}.tar.bz2
 
-    tar jxf gcc-4.8.2.tar.bz2 ;cd gcc-4.8.2
+    tar jxf gcc-${VERSION}.tar.bz2 ;cd gcc-${VERSION}
     ./contrib/download_prerequisites
     make distclean
     ./configure --prefix=${PREFIX_DIR} -enable-threads=posix -disable-checking -disable-multilib -enable-languages=c,c++ --disable-bootstrap
