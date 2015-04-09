@@ -4,8 +4,8 @@ install_glib2(){
   if [ -d $LIB_DIR ]; then
     # libffi
     cd $LIB_DIR
-    wget ftp://sourceware.org/pub/libffi/libffi-3.0.13.tar.gz
-    wget http://www.linuxfromscratch.org/patches/downloads/libffi/libffi-3.0.13-includedir-1.patch
+    wget -c ftp://sourceware.org/pub/libffi/libffi-3.0.13.tar.gz
+    wget -c http://www.linuxfromscratch.org/patches/downloads/libffi/libffi-3.0.13-includedir-1.patch
     tar zxvf libffi-3.0.13.tar.gz
     cd libffi-3.0.13
     patch -Np1 -i ../libffi-3.0.13-includedir-1.patch &&
@@ -13,14 +13,14 @@ install_glib2(){
     make -s V=0 && make install
     # prce
     cd $LIB_DIR
-    wget http://iweb.dl.sourceforge.net/project/pcre/pcre/8.34/pcre-8.34.tar.bz2
+    wget -c http://iweb.dl.sourceforge.net/project/pcre/pcre/8.34/pcre-8.34.tar.bz2
     tar jxvf pcre-8.34.tar.bz2
     cd pcre-8.34
     ./configure --prefix=$PREFIX_DIR --enable-utf8 --enable-unicode-properties --disable-static &&
     make -s V=0 && make install
     # glib2
     cd $LIB_DIR
-    wget http://ftp.gnome.org/pub/gnome/sources/glib/2.32/glib-2.32.4.tar.xz
+    wget -c http://ftp.gnome.org/pub/gnome/sources/glib/2.32/glib-2.32.4.tar.xz
     tar xvf glib-2.32.4.tar.xz
     cd glib-2.32.4
     LIBFFI_CFLAGS="-I"$PREFIX_DIR"/include" LIBFFI_LIBS="-L"$PREFIX_DIR"/lib64 -lffi"  PCRE_CFLAGS="-I"$PREFIX_DIR"/include"    PCRE_LIBS="-L"$PREFIX_DIR"/lib -lpcre" ./configure --prefix=$PREFIX_DIR &&
@@ -34,7 +34,7 @@ install_glib2(){
 install_boost(){
   if [ -d $LIB_DIR ]; then
     cd $LIB_DIR
-    wget http://superb-dca2.dl.sourceforge.net/project/boost/boost/1.50.0/boost_1_50_0.tar.bz2
+    wget -c http://superb-dca2.dl.sourceforge.net/project/boost/boost/1.50.0/boost_1_50_0.tar.bz2
     tar xvf boost_1_50_0.tar.bz2
     cd boost_1_50_0
     chmod +x bootstrap.sh
@@ -82,13 +82,13 @@ installYumDeps(){
 }
 
 installRepo(){
-  wget http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm
-  wget http://rpms.famillecollet.com/enterprise/remi-release-6.rpm
+  wget -c http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm
+  wget -c http://rpms.famillecollet.com/enterprise/remi-release-6.rpm
   sudo rpm -Uvh remi-release-6*.rpm epel-release-6*.rpm
-  wget http://dl.atrpms.net/el6-x86_64/atrpms/stable/atrpms-repo-6-7.el6.x86_64.rpm
+  wget -c http://dl.atrpms.net/el6-x86_64/atrpms/stable/atrpms-repo-6-7.el6.x86_64.rpm
   sudo rpm -Uvh atrpms-repo*rpm
   sudo -E yum --enablerepo=atrpms-testing install cmake -y
-  sudo -E wget -qO- http://people.redhat.com/bkabrda/scl_python27.repo >> /etc/yum.repos.d/scl.repo
+  sudo -E wget -c -qO- http://people.redhat.com/bkabrda/scl_python27.repo >> /etc/yum.repos.d/scl.repo
   rm *.rpm
 }
 
@@ -115,7 +115,7 @@ install_mediadeps(){
 
 install_glibc(){
   cd $LIB_DIR
-  wget http://gnu.mirrors.pair.com/gnu/libc/glibc-2.14.tar.xz
+  wget -c http://gnu.mirrors.pair.com/gnu/libc/glibc-2.14.tar.xz
   tar xvf glibc-2.14.tar.xz
   cd glibc-2.14
   mkdir build && cd build/

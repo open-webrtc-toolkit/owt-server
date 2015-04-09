@@ -35,7 +35,7 @@ install_opus(){
 install_libvpx(){
   if [ -d $LIB_DIR ]; then
     cd $LIB_DIR
-    wget https://webm.googlecode.com/files/libvpx-v1.3.0.tar.bz2
+    wget -c https://webm.googlecode.com/files/libvpx-v1.3.0.tar.bz2
     tar -xvf libvpx-v1.3.0.tar.bz2
     cd libvpx-v1.3.0
     ./configure --prefix=/usr --enable-shared --enable-vp8 --disable-vp9
@@ -203,7 +203,7 @@ install_mediaprocessor() {
 install_gcc(){
   if [ -d $LIB_DIR ]; then
     cd $LIB_DIR
-    wget http://ftp.gnu.org/gnu/gcc/gcc-4.8.2/gcc-4.8.2.tar.bz2
+    wget -c http://ftp.gnu.org/gnu/gcc/gcc-4.8.2/gcc-4.8.2.tar.bz2
 
     tar jxf gcc-4.8.2.tar.bz2 ;cd gcc-4.8.2
     ./contrib/download_prerequisites
