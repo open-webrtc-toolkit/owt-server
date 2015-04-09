@@ -119,7 +119,7 @@ namespace erizo {
     localSdp_.getPayloadInfos() = remoteSdp_.getPayloadInfos();
     localSdp_.isBundle = bundle_;
     localSdp_.isRtcpMux = remoteSdp_.isRtcpMux;
-    localSdp_.setOfferSdp(&remoteSdp_);
+    localSdp_.setOfferSdp(remoteSdp_);
 
     ELOG_DEBUG("Video %d videossrc %u Audio %d audio ssrc %u Bundle %d", videoEnabled_, remoteSdp_.videoSsrc, audioEnabled_, remoteSdp_.audioSsrc,  bundle_);
 
@@ -181,31 +181,6 @@ namespace erizo {
       audioTransport_->processLocalSdp(&localSdp_);
     }
     ELOG_DEBUG("Audio SDP done.");
-    localSdp_.profile = remoteSdp_.profile;
-
-    switch (remoteSdp_.videoDirection) {
-    case SENDONLY:
-      localSdp_.videoDirection = RECVONLY;
-      break;
-    case RECVONLY:
-      localSdp_.videoDirection = SENDONLY;
-      break;
-    default:
-      localSdp_.videoDirection = SENDRECV;
-      break;
-    }
-
-    switch (remoteSdp_.audioDirection) {
-    case SENDONLY:
-      localSdp_.audioDirection = RECVONLY;
-      break;
-    case RECVONLY:
-      localSdp_.audioDirection = SENDONLY;
-      break;
-    default:
-      localSdp_.audioDirection = SENDRECV;
-      break;
-    }
 
     return localSdp_.getSdp();
   }
