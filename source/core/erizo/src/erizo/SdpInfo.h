@@ -81,6 +81,18 @@ public:
     std::string password;
     MediaType mediaType;
 };
+
+/**
+ * A bundle tag
+ */
+class BundleTag {
+  public:
+    BundleTag(std::string theId, MediaType theType):id(theId),mediaType(theType){
+    };
+    std::string id;
+    MediaType mediaType;
+};
+
 /**
  * A PT to Codec map
  */
@@ -192,7 +204,7 @@ public:
      * @brief copies relevant information from the offer sdp for which this will be an answer sdp
      * @param offerSdp The offer SDP as received via signaling and parsed
      */
-    void setOfferSdp(SdpInfo *offerSdp);
+    void setOfferSdp(const SdpInfo& offerSdp);
 
     /**
      * The audio and video SSRCs for this particular SDP.
@@ -226,6 +238,7 @@ public:
     * Is there rtcp muxing
     */
     bool isRtcpMux;
+    
     /**
     * RTP Profile type
     */
@@ -246,6 +259,7 @@ public:
     * Mapping from external PT (key) to intermal PT (value)
     */
     std::map<const int, int> outInPTMap;
+    std::vector<BundleTag> bundleTags;
 
 private:
     bool processSdp(const std::string& sdp);

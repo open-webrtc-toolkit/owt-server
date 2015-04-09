@@ -21,6 +21,7 @@ namespace erizo {
   static const char *group = "a=group:";
   static const char *video = "m=video";
   static const char *audio = "m=audio";
+  static const char *mid = "a=mid";
   static const char *ice_user = "a=ice-ufrag";
   static const char *ice_pass = "a=ice-pwd";
   static const char *ssrctag = "a=ssrc";
@@ -205,7 +206,17 @@ namespace erizo {
     sdp << "t=0 0\n";
 
     if (isBundle) {
-      sdp << "a=group:BUNDLE audio video\n";
+      sdp << "a=group:BUNDLE";
+      /*
+      if (this->hasAudio)
+        sdp << " audio";
+      if (this->hasVideo)
+        sdp << " video";
+        */
+      for (uint8_t i = 0; i < bundleTags.size(); i++){
+        sdp << " " << bundleTags[i].id;
+      }
+      sdp << "\n";
       sdp << "a=msid-semantic: WMS "<< msidtemp << endl;
      }
     //candidates audio
@@ -295,7 +306,14 @@ namespace erizo {
         break;
       }
 
-      sdp << "a=mid:audio\n";
+      if (bundleTags.size()>2){
+        ELOG_WARN("More bundleTags than supported, expect unexpected behaviour");
+      }
+      for (int i = 0; i < bundleTags.size(); i++){
+        if(bundleTags[i].mediaType == AUDIO_TYPE){
+          sdp << "a=mid:" << bundleTags[i].id << endl;
+        }
+      }
       sdp << "a=extmap:1 urn:ietf:params:rtp-hdrext:ssrc-audio-level" << endl;
       if (isRtcpMux)
         sdp << "a=rtcp-mux\n";
@@ -422,8 +440,11 @@ namespace erizo {
         break;
       }
 
-      sdp << "a=mid:video\n";
-      //sdp << "b=AS:84" << endl;
+      for (int i = 0; i < bundleTags.size(); i++){
+        if(bundleTags[i].mediaType == VIDEO_TYPE){
+          sdp << "a=mid:" << bundleTags[i].id << endl;
+        }
+      }
       if (isRtcpMux)
         sdp << "a=rtcp-mux\n";
       for (unsigned int it = 0; it < cryptoVector_.size(); it++) {
@@ -525,6 +546,41 @@ namespace erizo {
     return found;
   }
 
+  void SdpInfo::setOfferSdp(const SdpInfo& offerSdp) {
+    this->isBundle = offerSdp.isBundle;
+    this->profile = offerSdp.profile;
+    this->isRtcpMux = offerSdp.isRtcpMux;
+    this->inOutPTMap = offerSdp.inOutPTMap;
+    this->outInPTMap = offerSdp.outInPTMap;
+    this->hasVideo = offerSdp.hasVideo;
+    this->hasAudio = offerSdp.hasAudio;
+    this->bundleTags = offerSdp.bundleTags;
+
+    switch (offerSdp.videoDirection) {
+    case SENDONLY:
+      videoDirection = RECVONLY;
+      break;
+    case RECVONLY:
+      videoDirection = SENDONLY;
+      break;
+    default:
+      videoDirection = SENDRECV;
+      break;
+    }
+
+    switch (offerSdp.audioDirection) {
+    case SENDONLY:
+      audioDirection = RECVONLY;
+      break;
+    case RECVONLY:
+      audioDirection = SENDONLY;
+      break;
+    default:
+      audioDirection = SENDRECV;
+      break;
+    }
+  }
+
   bool SdpInfo::setREDSupport(bool enable) {
     bool found = false;
     for (unsigned int it = 0; it < internalPayloadVector_.size(); it++) {
@@ -549,14 +605,6 @@ namespace erizo {
     return found;
   }
 
-  void SdpInfo::setOfferSdp(SdpInfo *offerSdp) {
-      if (offerSdp == NULL) return;
-
-      this->inOutPTMap = offerSdp->inOutPTMap;
-      this->outInPTMap = offerSdp->outInPTMap;
-  }
-
-
   bool SdpInfo::processSdp(const std::string& sdp) {
 
     std::string line;
@@ -573,6 +621,7 @@ namespace erizo {
       size_t isVideo = line.find(video);
       size_t isAudio = line.find(audio);
       size_t isGroup = line.find(group);
+      size_t isMid = line.find(mid);
       size_t isCand = line.find(cand);
       size_t isCrypt = line.find(crypto);
       size_t isUser = line.find(ice_user);
@@ -592,6 +641,7 @@ namespace erizo {
       if (isRtcpMuxchar != std::string::npos){
         isRtcpMux = true;
       }
+
       if (isSAVPF != std::string::npos){
         profile = SAVPF;
         ELOG_DEBUG("PROFILE %s (1 SAVPF)", line.substr(isSAVPF).c_str());
@@ -608,7 +658,19 @@ namespace erizo {
         ELOG_DEBUG("Fingerprint %s ", fingerprint.c_str());
       }
       if (isGroup != std::string::npos) {
-        isBundle = true;
+        std::vector<std::string> parts;
+        parts = stringutil::splitOneOf(line, ":  \r\n", 10);
+        if (!parts[1].compare("BUNDLE")){
+          ELOG_DEBUG("BUNDLE sdp");
+          isBundle = true;
+        }
+        if (parts.size()>=4){
+          for (unsigned int tagno=2; tagno<parts.size(); tagno++){
+            ELOG_DEBUG("Adding %s to bundle vector", parts[tagno].c_str());
+            BundleTag theTag(parts[tagno], OTHER);
+            bundleTags.push_back(theTag);
+          }
+        }
       }
       if (isVideo != std::string::npos) {
         mtype = VIDEO_TYPE;
@@ -670,6 +732,22 @@ namespace erizo {
         // FIXME add error checking
         icePassword_ = parts[1];
         ELOG_DEBUG("ICE password: %s", icePassword_.c_str());
+      }
+      if (isMid!= std::string::npos){
+        std::vector<std::string> parts = stringutil::splitOneOf(line, ": \r\n",4);
+        if (parts.size()>=2){
+          std::string thisId = parts[1];
+          for (uint8_t i = 0; i < bundleTags.size(); i++){
+            if (!bundleTags[i].id.compare(thisId)){
+              ELOG_DEBUG("Setting tag %s to mediaType %d", thisId.c_str(), mtype);
+              bundleTags[i].mediaType = mtype;
+            }
+          }
+        }else{
+          ELOG_WARN("Unexpected size of a=mid element");
+        }
+
+
       }
       if (isSsrc != std::string::npos) {
         std::vector<std::string> parts = stringutil::splitOneOf(line, " :\n", 2);
