@@ -138,6 +138,33 @@ var sendMsgToRoom = function (room, type, arg) {
     }
 };
 
+var formatDate = function(date, format) {
+    "use strict";
+
+    var dateTime = {
+        "M+": date.getMonth() + 1,
+        "d+": date.getDate(),
+        "h+": date.getHours(),
+        "m+": date.getMinutes(),
+        "s+": date.getSeconds(),
+        "q+": Math.floor((date.getMonth() + 3) / 3),
+        "S+": date.getMilliseconds()
+    };
+
+    if (/(y+)/i.test(format)) {
+        format = format.replace(RegExp.$1, (date.getFullYear() + '').substr(4 - RegExp.$1.length));
+    }
+
+    for (var k in dateTime) {
+        if (new RegExp("(" + k + ")").test(format)) {
+            format = format.replace(RegExp.$1, RegExp.$1.length == 1
+                ? dateTime[k] : ("00" + dateTime[k]).substr(("" + dateTime[k]).length));
+        }
+    }
+
+    return format;
+};
+
 var privateRegexp;
 var publicIP;
 
@@ -795,6 +822,9 @@ var listen = function () {
         socket.on('startRecorder', function (options, callback) {
             if (typeof options === 'function') {
                 callback = options;
+                options = {};
+            } else if (typeof options !== 'object' || options === null) {
+                options = {};
             }
 
             if (socket.user === undefined || !socket.user.permissions[Permission.RECORD]) {
@@ -802,8 +832,10 @@ var listen = function () {
             }
 
             var path = require('path');
+            var timeStamp = new Date();
+
             var url = path.join((GLOBAL.config.erizoController.recording_path || '/tmp'),
-                'room' + socket.room.id + '_' + (Math.random() * 1000000000000000000) + '.mkv');
+                'room' + socket.room.id + '_' + formatDate(timeStamp, 'yyyyMMddhhmmssSS') + '.mkv');
 
             // start recording mix stream
             var mixer = socket.room.mixer;
