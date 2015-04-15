@@ -789,17 +789,6 @@ namespace erizo {
         std::string codecname = parts[2];
         unsigned int clock = strtoul(parts[3].c_str(), NULL, 10);
 
-        if (codecname == "H264") {
-          if (std::getline(iss, line)) {
-            nextLineRetrieved = true;
-            if (line.find("a=fmtp") != std::string::npos
-                && line.find(parts[1].c_str()) != std::string::npos
-                && line.find("packetization-mode=1") == std::string::npos) {
-              continue;
-            }
-          }
-        }
-
         std::map<int, int>::iterator preferenceItor;
         if (mtype == VIDEO_TYPE) {
           preferenceItor = videoPayloadTypePreferences.find(PT);
@@ -828,10 +817,14 @@ namespace erizo {
         for (unsigned int it = 0; it < internalPayloadVector_.size(); it++) {
           const RtpMap& rtp = internalPayloadVector_[it];
           if (rtp.mediaType == mtype && rtp.encodingName == codecname && rtp.clockRate == clock && rtp.enable) {
-            outInPTMap[PT] = rtp.payloadType;
-            inOutPTMap[rtp.payloadType] = PT;
-            found = true;
-            ELOG_DEBUG("Mapping %s/%d:%d to %s/%d:%d", codecname.c_str(), clock, PT, rtp.encodingName.c_str(), rtp.clockRate, rtp.payloadType);
+            std::map<const int, int>::iterator mapIt = inOutPTMap.find(rtp.payloadType);
+            if (mapIt == inOutPTMap.end()) {
+              outInPTMap[PT] = rtp.payloadType;
+              inOutPTMap[rtp.payloadType] = PT;
+              found = true;
+              ELOG_DEBUG("Mapping %s/%d:%d to %s/%d:%d", codecname.c_str(), clock, PT, rtp.encodingName.c_str(), rtp.clockRate, rtp.payloadType);
+            }
+            break;
           }
         }
         if (found) {
