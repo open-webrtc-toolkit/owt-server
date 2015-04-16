@@ -40,7 +40,7 @@ class MediaRecorder {
     DECLARE_LOGGER();
 
 public:
-    MediaRecorder(MediaRecording* videoRecording, MediaRecording* audioRecording, const std::string& recordPath);
+    MediaRecorder(MediaRecording* videoRecording, MediaRecording* audioRecording, const std::string& recordPath, int snapshotInterval);
     virtual ~MediaRecorder();
 
     bool startRecording();

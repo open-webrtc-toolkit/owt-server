@@ -320,8 +320,8 @@ Handle<Value> Gateway::setRecorder(const Arguments& args) {
 
   String::Utf8Value param0(args[0]->ToString());
   std::string recordPath = std::string(*param0);
-
-  bool set = me->setRecorder(recordPath);
+  int snapshotInterval = args[1]->IntegerValue();
+  bool set = me->setRecorder(recordPath, snapshotInterval);
 
   return scope.Close(Boolean::New(set));
 }

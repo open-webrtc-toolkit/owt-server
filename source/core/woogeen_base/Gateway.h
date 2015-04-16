@@ -134,7 +134,7 @@ public:
      * @param file path for media recording
      * @return true if the media recorder is set successfully
      */
-    DLL_PUBLIC virtual bool setRecorder(const std::string& recordPath) { return false; }
+    DLL_PUBLIC virtual bool setRecorder(const std::string& recordPath, int snapshotInterval) { return false; }
     /**
      * Unsets the media recorder
      */

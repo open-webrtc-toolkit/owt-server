@@ -833,8 +833,9 @@ var listen = function () {
             var path = require('path');
             var timeStamp = new Date();
 
-            var url = path.join((GLOBAL.config.erizoController.recording_path || '/tmp'),
+            var url = path.join((options.path || GLOBAL.config.erizoController.recording_path || '/tmp'),
                 'room' + socket.room.id + '_' + formatDate(timeStamp, 'yyyyMMddhhmmssSS') + '.mkv');
+            var interval = (options.interval && options.interval > 0) ? options.interval : -1;
 
             // start recording mix stream
             var mixer = socket.room.mixer;
@@ -842,7 +843,7 @@ var listen = function () {
                 (socket.room.streams[mixer].hasAudio() ||
                     socket.room.streams[mixer].hasVideo() ||
                     socket.room.streams[mixer].hasScreen())) {
-                socket.room.controller.startRecorder(mixer, url, function (result) {
+                socket.room.controller.startRecorder(mixer, url, interval, function (result) {
                     if (result.success) {
                         log.info('Recorder started:', url);
                         safeCall(callback, 'success', {

@@ -126,10 +126,10 @@ int32_t Mixer::bindAV(uint32_t audioSource, uint32_t videoSource)
     return m_videoMixer->bindAudio(videoSource, m_audioMixer->getChannelId(audioSource), m_audioMixer->avSyncInterface());
 }
 
-bool Mixer::setRecorder(const std::string& recordPath/*, RecordFormat format*/)
+bool Mixer::setRecorder(const std::string& recordPath, int snapshotInterval/*, RecordFormat format*/)
 {
     if (!m_recorder) {
-        m_recorder.reset(new MediaRecorder(m_videoMixer.get(), m_audioMixer.get(), recordPath));
+        m_recorder.reset(new MediaRecorder(m_videoMixer.get(), m_audioMixer.get(), recordPath, snapshotInterval));
         return m_recorder->startRecording();
     }
 

@@ -115,10 +115,10 @@ exports.RoomController = function (spec) {
 
             createErizoJS(publisher_id, undefined, function() {
             // then we call its addPublisher method.
-	        var args = [publisher_id, url];
-	        rpc.callRpc(getErizoQueue(publisher_id), "addExternalInput", args, {callback: callback});
+            var args = [publisher_id, url];
+            rpc.callRpc(getErizoQueue(publisher_id), "addExternalInput", args, {callback: callback});
 
-	        // Track publisher locally
+            // Track publisher locally
             publishers[publisher_id] = publisher_id;
             subscribers[publisher_id] = [];
 
@@ -180,15 +180,15 @@ exports.RoomController = function (spec) {
 
             // We create a new ErizoJS with the publisher_id.
             createErizoJS(publisher_id, mixer_id, function(erizo_id) {
-            	log.info("Erizo created");
-            	// then we call its addPublisher method.
+                log.info("Erizo created");
+                // then we call its addPublisher method.
                 var mixer = {id: mixer_id, oop: GLOBAL.config.erizoController.outOfProcessMixer};
-	            var args = [publisher_id, sdp, mixer];
-	            rpc.callRpc(getErizoQueue(publisher_id), "addPublisher", args, {callback: callback, onReady: onReady});
+                var args = [publisher_id, sdp, mixer];
+                rpc.callRpc(getErizoQueue(publisher_id), "addPublisher", args, {callback: callback, onReady: onReady});
 
-	            // Track publisher locally
-	            publishers[publisher_id] = publisher_id;
-	            subscribers[publisher_id] = [];
+                // Track publisher locally
+                publishers[publisher_id] = publisher_id;
+                subscribers[publisher_id] = [];
             });
 
         } else {
@@ -287,14 +287,14 @@ exports.RoomController = function (spec) {
                     var args = [subscriber_id, publisher_id];
                     rpc.callRpc(getErizoQueue(publisher_id), "removeSubscriber", args, undefined);
 
-            		// Remove tracks
+                    // Remove tracks
                     subscribers[publisher_id].splice(index, 1);
                 }
             }
         }
     };
 
-    that.startRecorder = function (mixer_id, url, callback) {
+    that.startRecorder = function (mixer_id, url, interval, callback) {
         if (publishers[mixer_id] !== undefined) {
             if (recordingUrl) {
                 return callback({
@@ -303,7 +303,7 @@ exports.RoomController = function (spec) {
                 });
             }
             recordingUrl = url;
-            rpc.callRpc(getErizoQueue(mixer_id), 'startRecorder', [mixer_id, url], {callback: function (result) {
+            rpc.callRpc(getErizoQueue(mixer_id), 'startRecorder', [mixer_id, url, interval], {callback: function (result) {
                 if (result === 'success') {
                     return callback({
                         success: true,
