@@ -26,7 +26,7 @@ namespace mcu {
 
 DEFINE_LOGGER(MediaRecorder, "mcu.media.MediaRecorder");
 
-MediaRecorder::MediaRecorder(MediaRecording* videoRecording, MediaRecording* audioRecording, const std::string& recordPath)
+MediaRecorder::MediaRecorder(MediaRecording* videoRecording, MediaRecording* audioRecording, const std::string& recordPath, int snapshotInterval)
     : m_recording(false), m_recordVideoStream(NULL), m_recordAudioStream(NULL)
     , m_recordStartTime(-1), m_firstVideoTimestamp(-1), m_firstAudioTimestamp(-1)
 {
@@ -125,7 +125,7 @@ bool MediaRecorder::initRecordContext()
             return false;
         }
 
-        m_recordVideoStream = avformat_new_stream (m_recordContext, videoCodec);
+        m_recordVideoStream = avformat_new_stream(m_recordContext, videoCodec);
         m_recordVideoStream->id = 0;
         m_recordVideoStream->codec->codec_id = m_recordContext->oformat->video_codec;
         // FIXME: Chunbo to set this kind of codec information from VideoMixer
@@ -146,7 +146,7 @@ bool MediaRecorder::initRecordContext()
             return false;
         }
 
-        m_recordAudioStream = avformat_new_stream (m_recordContext, audioCodec);
+        m_recordAudioStream = avformat_new_stream(m_recordContext, audioCodec);
         m_recordAudioStream->id = 1;
         m_recordAudioStream->codec->codec_id = m_recordContext->oformat->audio_codec;
         // FIXME: Chunbo to set this kind of codec information from AudioMixer
@@ -154,7 +154,7 @@ bool MediaRecorder::initRecordContext()
         m_recordAudioStream->codec->time_base = (AVRational) {1, m_recordAudioStream->codec->sample_rate};
         m_recordAudioStream->codec->channels = m_recordContext->oformat->audio_codec == AV_CODEC_ID_PCM_MULAW ? 1 : 2;   // FIXME: Is it always two channels for opus?
         if (m_recordContext->oformat->flags & AVFMT_GLOBALHEADER)
-            m_recordAudioStream->codec->flags|=CODEC_FLAG_GLOBAL_HEADER;
+            m_recordAudioStream->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
 
         m_recordContext->streams[0] = m_recordVideoStream;
         m_recordContext->streams[1] = m_recordAudioStream;

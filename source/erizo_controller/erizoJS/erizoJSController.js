@@ -387,9 +387,9 @@ exports.ErizoJSController = function (spec) {
         }
     };
 
-    that.startRecorder = function (mixer, url, callback) {
+    that.startRecorder = function (mixer, url, interval, callback) {
         if (publishers[mixer] !== undefined) {
-            publishers[mixer].setRecorder(url);
+            publishers[mixer].setRecorder(url, interval);
             callback('callback', 'success');
         } else {
             callback('callback', 'error');
