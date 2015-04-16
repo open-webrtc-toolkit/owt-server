@@ -39,6 +39,7 @@ EncodedVideoFrameSender::EncodedVideoFrameSender(int id, boost::shared_ptr<Video
     , m_source(source)
     , m_frameFormat(frameFormat)
     , m_targetBitrate(targetBitrate)
+    , m_videoQueue(nullptr)
 {
     init(transport, taskRunner);
 }
@@ -134,6 +135,8 @@ void EncodedVideoFrameSender::onFrame(FrameFormat format, unsigned char* payload
     if (format == FRAME_FORMAT_VP8) {
         h.codec = webrtc::kRtpVideoVp8;
         h.codecHeader.VP8.InitRTPVideoHeaderVP8();
+        if (len > 0 && m_videoQueue)
+            m_videoQueue->pushFrame(payload, len, ts * 90);
         m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, VP8_90000_PT, ts * 90, ts, payload, len, nullptr, &h);
     } else if (format == FRAME_FORMAT_H264) {
         int nalu_found_length = 0;
@@ -192,16 +195,18 @@ bool EncodedVideoFrameSender::init(woogeen_base::WoogeenTransport<erizo::VIDEO>*
 
 void EncodedVideoFrameSender::RegisterPreSendFrameCallback(MediaFrameQueue& videoQueue)
 {
-    // FIXME: Chunbo to add logic here
+    m_videoQueue = &videoQueue;
 }
 
 void EncodedVideoFrameSender::DeRegisterPreSendFrameCallback()
 {
-    // FIXME: Chunbo to add logic here
+    m_videoQueue = nullptr;
 }
 
 void EncodedVideoFrameSender::close()
 {
+    DeRegisterPreSendFrameCallback();
+
     m_source->deActivateOutput(m_id);
 
     if (m_bitrateController)

@@ -91,6 +91,8 @@ private:
     boost::shared_ptr<VideoFrameMixer> m_source;
     FrameFormat m_frameFormat;
     int m_targetBitrate;
+
+    MediaFrameQueue* m_videoQueue;
 };
 
 }
