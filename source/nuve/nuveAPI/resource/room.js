@@ -26,6 +26,7 @@ function Room (spec) {
     this.publishLimit = spec.publishLimit;
     this.userLimit = spec.userLimit;
     this.mediaMixing = spec.mediaMixing;
+    this.enableMixing = spec.enableMixing;
 }
 
 Room.prototype.validate = function() {
@@ -250,6 +251,7 @@ Room.genConfig = function (room) {
         mode: room.mode,
         publishLimit: room.publishLimit,
         userLimit: room.userLimit,
+        enableMixing: room.enableMixing,
         mediaMixing: {
             video: {
                 avCoordinated: room.mediaMixing.video.avCoordinated === 1 ? true : false,

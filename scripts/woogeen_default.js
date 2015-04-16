@@ -78,9 +78,6 @@ config.erizoController.sendStats = false; // default value: false
 // If undefined, the path will be /tmp/
 config.erizoController.recording_path = undefined; // default value: undefined
 
-// If true, the streams from different clients in a room will be mixed by the media server.
-config.erizoController.mixer = true;
-
 // If true and the maxProcesses allows, the mixer will be run in a dedicated process.
 config.erizoController.outOfProcessMixer = false;
 
