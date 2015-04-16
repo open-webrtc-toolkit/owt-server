@@ -276,7 +276,7 @@ exports.ErizoJSController = function (spec) {
                     publishers[from] = muxer;
                     subscribers[from] = [];
 
-                    if (mixer.oop)
+                    if (mixer.id && mixer.oop)
                         mixerProxies[from] = new addon.MediaSourceConsumer();
 
                     initWebRtcConnection(wrtc, sdp, mixer.id, callback, from);

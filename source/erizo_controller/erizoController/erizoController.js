@@ -30,7 +30,6 @@ GLOBAL.config.erizoController.interval_time_keepAlive = GLOBAL.config.erizoContr
 GLOBAL.config.erizoController.sendStats = GLOBAL.config.erizoController.sendStats || false;
 GLOBAL.config.erizoController.recording_path = GLOBAL.config.erizoController.recording_path || undefined;
 GLOBAL.config.erizoController.roles = GLOBAL.config.erizoController.roles || {"presenter":{"publish": true, "subscribe":true, "record":true}, "viewer":{"subscribe":true}, "viewerWithData":{"subscribe":true, "publish":{"audio":false,"video":false,"screen":false,"data":true}}};
-GLOBAL.config.erizoController.mixer = GLOBAL.config.erizoController.mixer || false;
 
 // Parse command line arguments
 var getopt = new Getopt([
@@ -340,10 +339,10 @@ function safeCall () {
 }
 
 var initMixer = function (room, roomConfig, immediately) {
-    if (GLOBAL.config.erizoController.mixer && room.mixer === undefined && room.initMixerTimer === undefined) {
+    if (roomConfig.enableMixing && room.mixer === undefined && room.initMixerTimer === undefined) {
         var id = room.id;
         if (immediately) {
-            room.controller.initMixer(id, roomConfig, function (result) {
+            room.controller.initMixer(id, roomConfig.mediaMixing, function (result) {
                 if (result === 'success') {
                     var st = new ST.Stream({id: id, socket: '', audio: true, video: {category: 'mix'}, data: true, from: ''});
                     room.streams[id] = st;
@@ -370,7 +369,7 @@ var initMixer = function (room, roomConfig, immediately) {
                 return;
             }
 
-            room.controller.initMixer(id, roomConfig, function (result) {
+            room.controller.initMixer(id, roomConfig.mediaMixing, function (result) {
                 if (result === 'success') {
                     var st = new ST.Stream({id: id, socket: '', audio: true, video: {category: 'mix'}, data: true, from: ''});
                     room.streams[id] = st;
@@ -531,13 +530,13 @@ var listen = function () {
                                                         // Re-initialize the mixer in the room.
                                                         // Don't do it immediately because we want to wait for 
                                                         // the original mixer being cleaned-up.
-                                                        initMixer(room, resp.mediaMixing, false);
+                                                        initMixer(room, resp, false);
                                                     }
                                                 }
 
                                             });
 
-                                            initMixer(room, resp.mediaMixing, true);
+                                            initMixer(room, resp, true);
                                             on_ok();
                                         }
                                     }});
@@ -994,7 +993,7 @@ var listen = function () {
 
             if (socket.room !== undefined && socket.room.sockets.length === 0) {
                 log.info('Empty room ', socket.room.id, '. Deleting it');
-                if (GLOBAL.config.erizoController.mixer) {
+                if (!socket.room.p2p) {
                     if (socket.room.initMixerTimer !== undefined) {
                         clearInterval(socket.room.initMixerTimer);
                         socket.room.initMixerTimer = undefined;

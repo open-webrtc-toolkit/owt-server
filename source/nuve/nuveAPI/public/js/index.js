@@ -128,6 +128,7 @@ var tableTemplateService = '{{#rooms}}<tr>\
       <td>{{mode}}</td>\
       <td>{{publishLimit}}</td>\
       <td>{{userLimit}}</td>\
+      <td>{{enableMixing}}</td>\
       <td>{{mediaSetting}}</td>\
     </tr>{{/rooms}}';
 Mustache.parse(tableTemplateService);
@@ -196,6 +197,7 @@ var tableTemplateRoom = '{{#rooms}}<tr>\
       <td class="roomMode" data-spin="mode" data-value="{{mode}}"></td>\
       <td class="publishLimit" data-spin="publishLimit">{{publishLimit}}</td>\
       <td class="userLimit" data-spin="userLimit">{{userLimit}}</td>\
+      <td class="enableMixing" data-spin="enableMixing">{{enableMixing}}</td>\
       <td class="mediaSetting" data-spin="mediaMixing">object</td>\
       <td class="col-md-1"><button type="button" id="apply-room" class="btn btn-xs btn-primary">Apply</button> <button type="button" id="delete-room" class="btn btn-xs btn-danger">Delete</button></td>\
     </tr>{{/rooms}}';
@@ -218,6 +220,7 @@ function tableHandlerRoom(rooms) {
       <td class="roomMode" data-spin="mode"></td>\
       <td class="publishLimit" data-spin="publishLimit"></td>\
       <td class="userLimit" data-spin="userLimit"></td>\
+      <td class="enableMixing" data-spin="enableMixing"></td>\
       <td class="mediaSetting" data-spin="mediaMixing"></td>\
       <td class="col-md-1"><button type="button" id="add-room" class="btn btn-xs btn-success">Add</button> <button type="button" id="reset-room" class="btn btn-xs btn-warning">Reset</button></td>\
     </tr>');
@@ -237,6 +240,9 @@ function tableHandlerRoom(rooms) {
         var id = $(each).attr('id');
         updates[key] = valueObj[id];
       });
+      if(updates.enableMixing){
+        updates.enableMixing = updates.enableMixing === "0" ? false : true;
+      }
       nuve.updateRoom(roomId, updates, function(err, resp) {
         if (err) return notify('error', 'Update Room', resp);
         setTimeout(function() {
@@ -289,6 +295,19 @@ function tableHandlerRoom(rooms) {
       };
     })
   };
+
+  var roomEnableMixingHandle = {
+    mode: 'inline',
+    type: 'select',
+    source: [{
+      value: 1,
+      text: 'true'
+    }, {
+      value: 0,
+      text: 'false'
+    }]
+  };
+
   var numberHandle = {
     mode: 'inline',
     validate: function(value) {
@@ -373,7 +392,27 @@ function tableHandlerRoom(rooms) {
     $('#myModal3 #inRoomTable tbody').html(view);
     $('#myModal3 .modal-footer').html('<button type="button" class="btn btn-primary" data-dismiss="modal"><i class="glyphicon glyphicon-ok"></i></button>\
         <button type="button" class="btn btn-default" data-dismiss="modal"><i class="glyphicon glyphicon-remove"></i></button>');
-    $('#myModal3 tbody td#resolution').editable({
+
+    enabledMixing(videoSetting);
+    // <audio not supported now>
+    $('#myModal3 .modal-footer button:first').click(function() {
+      var unsaved = $('#myModal3 tbody .editable-unsaved');
+      if (unsaved.length === 0) return;
+      unsaved.map(function(index, each) {
+        var id = $(each).attr('id');
+        var val = $(each).editable('getValue')[id];
+        setVal(videoSetting, id, val);
+      });
+      room.mediaMixing = room.mediaMixing || {};
+      room.mediaMixing.video = videoSetting;
+      p.addClass('editable-unsaved');
+      p.editable('setValue', room.mediaMixing);
+      p.text('object');
+    });
+  };
+
+  var enabledMixing = function (videoSetting) {
+     $('#myModal3 tbody td#resolution').editable({
       mode: 'inline',
       type: 'select',
       source: metadata.mediaMixing.video.resolution.map(function(v) {
@@ -385,16 +424,7 @@ function tableHandlerRoom(rooms) {
     });
     $('#myModal3 tbody td#bitrate').editable(numberHandle);
     $('#myModal3 tbody td#maxInput').editable(numberHandle);
-    $('#myModal3 tbody td#bkColor').editable({
-      mode: 'inline',
-      type: 'select',
-      source: metadata.mediaMixing.video.bkColor.map(function(v) {
-        return {
-          value: v,
-          text: v
-        };
-      })
-    });
+    $('#myModal3 tbody td#bkColor').editable();
     $('#myModal3 tbody td#avCoordinated').editable({
       mode: 'inline',
       type: 'select',
@@ -433,27 +463,23 @@ function tableHandlerRoom(rooms) {
       },
       value: JSON.stringify(videoSetting.layout.custom, null, 2),
     });
-    // <audio not supported now>
-    $('#myModal3 .modal-footer button:first').click(function() {
-      var unsaved = $('#myModal3 tbody .editable-unsaved');
-      if (unsaved.length === 0) return;
-      unsaved.map(function(index, each) {
-        var id = $(each).attr('id');
-        var val = $(each).editable('getValue')[id];
-        setVal(videoSetting, id, val);
-      });
-      room.mediaMixing = room.mediaMixing || {};
-      room.mediaMixing.video = videoSetting;
-      p.addClass('editable-unsaved');
-      p.editable('setValue', room.mediaMixing);
-      p.text('object');
-    });
-  };
+  }
+
+  var disabledMixing = function () {
+    $('#myModal3 tbody td#resolution').editable(disabledHandle);
+    $('#myModal3 tbody td#bitrate').editable(disabledHandle);
+    $('#myModal3 tbody td#maxInput').editable(disabledHandle);
+    $('#myModal3 tbody td#bkColor').editable(disabledHandle);
+    $('#myModal3 tbody td#avCoordinated').editable(disabledHandle);
+    $('#myModal3 tbody td.value-num-edit:last').editable(disabledHandle);
+    $('#myModal3 tbody td.value-obj-edit').editable(disabledHandle);
+  }
 
   $('td.roomName').editable(roomNameHandle);
   $('td.roomMode').editable(roomModeHandle);
   $('td.publishLimit').editable(numberHandle1);
   $('td.userLimit').editable(numberHandle1);
+  $('td.enableMixing').editable(roomEnableMixingHandle);
   $('td.mediaSetting').editable(disabledHandle);
   $('td.mediaSetting').click(mediaSettingFn);
 
@@ -492,6 +518,7 @@ function tableHandlerRoom(rooms) {
       selector.find('td.roomMode').editable(roomModeHandle);
       selector.find('td.publishLimit').editable(numberHandle1);
       selector.find('td.userLimit').editable(numberHandle1);
+      selector.find('td.enableMixing').editable(roomEnableMixingHandle);
       selector.find('td.mediaSetting').editable(disabledHandle);
       selector.find('td.mediaSetting').click(mediaSettingFn);
       selector.find('button#apply-room').click(applyRoomFn);
