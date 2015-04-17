@@ -164,6 +164,7 @@ build_mcu_server_sdk() {
   # nuve.js
   cd ${SERVERSDK_DIR}/tools
   ./compile.sh
+  ./compileDebug.sh
   echo [nuve] Done, nuve.js compiled
   cp -av ${SERVERSDK_DIR}/dist/nuve.js ${SOURCE}/extras/basic_example/
 }
