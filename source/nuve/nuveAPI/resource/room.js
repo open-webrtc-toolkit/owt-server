@@ -29,7 +29,7 @@ function Room (spec) {
 }
 
 Room.prototype.validate = function() {
-    if (this.mode === undefined || this.mode === null) {
+    if (this.mode === undefined || this.mode === null || this.mode === '') {
         this.mode = 'hybrid';
     } else if (typeof this.mode === 'string') {
         this.mode = this.mode.toLowerCase();
@@ -104,7 +104,8 @@ Room.prototype.validate = function() {
         }
 
         if (this.mediaMixing.video.resolution === undefined ||
-            this.mediaMixing.video.resolution === null) {
+            this.mediaMixing.video.resolution === null ||
+            this.mediaMixing.video.resolution === '') {
             this.mediaMixing.video.resolution = 'vga';
         } else if (typeof this.mediaMixing.video.resolution !== 'string') {
             return null;
@@ -118,7 +119,7 @@ Room.prototype.validate = function() {
 
         if (this.mediaMixing.video.bitrate === undefined ||
             this.mediaMixing.video.bitrate === null) {
-            this.mediaMixing.video.bitrate = 16;
+            this.mediaMixing.video.bitrate = 0;
         } else if (typeof this.mediaMixing.video.bitrate === 'string') {
             this.mediaMixing.video.bitrate = parseInt(this.mediaMixing.video.bitrate, 10);
             if (isNaN(this.mediaMixing.video.bitrate) || this.mediaMixing.video.bitrate < 0) {
@@ -130,7 +131,8 @@ Room.prototype.validate = function() {
         }
 
         if (this.mediaMixing.video.bkColor === undefined ||
-            this.mediaMixing.video.bkColor === null) {
+            this.mediaMixing.video.bkColor === null ||
+            this.mediaMixing.video.bkColor === '') {
             this.mediaMixing.video.bkColor = 'black';
         } else if (typeof this.mediaMixing.video.bkColor !== 'string') {
             return null;
@@ -147,7 +149,8 @@ Room.prototype.validate = function() {
             this.mediaMixing.video.layout = defaultMediaMixing().video.layout;
         } else if (typeof this.mediaMixing.video.layout === 'object') {
             if (this.mediaMixing.video.layout.base === undefined ||
-                this.mediaMixing.video.layout.base === null) {
+                this.mediaMixing.video.layout.base === null ||
+                this.mediaMixing.video.layout.base === '') {
                 this.mediaMixing.video.layout.base = 'fluid';
             } else if (typeof this.mediaMixing.video.layout.base !== 'string') {
                 return null;
