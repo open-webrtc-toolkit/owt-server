@@ -54,13 +54,9 @@ exports.createRoom = function (req, res) {
             });
         }
     } else {
-        room = Room.create({
-            name: req.body.name,
-            mode: req.body.options.mode,
-            publishLimit: req.body.options.publishLimit,
-            userLimit: req.body.options.userLimit,
-            mediaMixing: req.body.options.mediaMixing,
-        });
+        var options = req.body.options;
+        options.name = req.body.name;
+        room = Room.create(options);
         if (room === null) {
             return res.status(400).send('Bad room configuration');
         }

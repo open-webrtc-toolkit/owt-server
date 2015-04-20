@@ -41,6 +41,14 @@ Room.prototype.validate = function() {
         return null;
     }
 
+    if (this.enableMixing === undefined || this.enableMixing === null) {
+        this.enableMixing = 1;
+    } else if (this.enableMixing === '1' || this.enableMixing === 1 || this.enableMixing === true) {
+        this.enableMixing = 1;
+    } else {
+        this.enableMixing = 0;
+    }
+
     if (this.publishLimit === undefined || this.publishLimit === null) {
         this.publishLimit = -1;
     } else if (typeof this.publishLimit === 'string') {
@@ -200,6 +208,7 @@ Room.createDefault = function (name) {
         mode: 'hybrid',
         publishLimit: -1,
         userLimit: -1,
+        enableMixing: 1,
         mediaMixing: defaultMediaMixing()
     });
 };
@@ -278,6 +287,7 @@ module.exports = Room;
   "mode": "hybrid", // type string
   "publishLimit": 16, // type number
   "userLimit": 100, // type number
+  "enableMixing": 1, // type number: 0/1
   "mediaMixing": { // type object
     "video": {
       "resolution": "vga", // type string

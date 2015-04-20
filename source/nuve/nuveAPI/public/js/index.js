@@ -197,7 +197,7 @@ var tableTemplateRoom = '{{#rooms}}<tr>\
       <td class="roomMode" data-spin="mode" data-value="{{mode}}"></td>\
       <td class="publishLimit" data-spin="publishLimit">{{publishLimit}}</td>\
       <td class="userLimit" data-spin="userLimit">{{userLimit}}</td>\
-      <td class="enableMixing" data-spin="enableMixing">{{enableMixing}}</td>\
+      <td class="enableMixing" data-spin="enableMixing" data-value="{{enableMixing}}"></td>\
       <td class="mediaSetting" data-spin="mediaMixing">object</td>\
       <td class="col-md-1"><button type="button" id="apply-room" class="btn btn-xs btn-primary">Apply</button> <button type="button" id="delete-room" class="btn btn-xs btn-danger">Delete</button></td>\
     </tr>{{/rooms}}';
@@ -220,7 +220,7 @@ function tableHandlerRoom(rooms) {
       <td class="roomMode" data-spin="mode"></td>\
       <td class="publishLimit" data-spin="publishLimit"></td>\
       <td class="userLimit" data-spin="userLimit"></td>\
-      <td class="enableMixing" data-spin="enableMixing"></td>\
+      <td class="enableMixing" data-spin="enableMixing" data-value="{{enableMixing}}"></td>\
       <td class="mediaSetting" data-spin="mediaMixing"></td>\
       <td class="col-md-1"><button type="button" id="add-room" class="btn btn-xs btn-success">Add</button> <button type="button" id="reset-room" class="btn btn-xs btn-warning">Reset</button></td>\
     </tr>');
