@@ -481,6 +481,10 @@ if (stream.isMixed()) {
       window.navigator.appVersion.indexOf('rv') > -1;
   }
 
+  function isFirefox () {
+    return window.navigator.userAgent.match("Firefox") !== null;
+  }
+
   function getReso(w, h) {
     return {
       mandatory: {
@@ -661,6 +665,11 @@ if (stream.isMixed()) {
     };
 
     if (option.video && option.video.device === 'screen') {
+      if (isFirefox()) {
+        mediaOption = { video: { mediaSource: 'window' || 'screen' }};
+        getMedia.apply(navigator, [mediaOption, onSuccess, onFailure]);
+        return;
+      }
       var extensionId = option.video.extensionId || 'pndohhifhheefbpeljcmnhnkphepimhe';
       mediaOption.audio = false;
       try {
