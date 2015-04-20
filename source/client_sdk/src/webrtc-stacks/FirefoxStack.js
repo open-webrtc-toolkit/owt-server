@@ -127,17 +127,19 @@ Erizo.FirefoxStack = function (spec) {
     };
 
     var changeOrder = function(sessionDescription) {
-        console.log("Before change", sessionDescription.sdp);
         var matches = sessionDescription.sdp.match(/^.*(rtcp-fb).*$/gm);
         var lines = "";
         for (var i in matches){
-            if (i == 0) lines += matches[i];
-            else lines += "\n\r" + matches[i];
+            if (i === 0) {
+                lines += matches[i];
+            } else {
+                lines += "\n\r" + matches[i];
+            }
         }
         sessionDescription.sdp = sessionDescription.sdp.replace(/^.*(rtcp-fb).*$\r\n/gm, "");
         sessionDescription.sdp += lines;
         return sessionDescription;
-    }
+    };
 
     var setLocalDescp2p = function (sessionDescription) {
         sessionDescription.sdp = setMaxBW(sessionDescription.sdp);
