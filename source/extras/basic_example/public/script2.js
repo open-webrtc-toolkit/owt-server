@@ -8,7 +8,7 @@
     return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
   }
 
-  var subscribeMix = getParameterByName("mix") || "true";
+  var subscribeMix = getParameterByName('mix') || 'true';
 
   function createToken (room, userName, role, callback) {
     var req = new XMLHttpRequest();
@@ -53,11 +53,11 @@
     div.setAttribute('id', 'test' + streamId);
     div.setAttribute('title', 'Stream#' + streamId);
     document.body.appendChild(div);
-    if(window.navigator.appVersion.indexOf("Trident") < 0){
+    if (window.navigator.appVersion.indexOf('Trident') < 0){
       stream.show('test' + streamId);
     } else {
       L.Logger.info('displayStream:', stream.id());
-      var canvas = document.createElement("canvas");
+      var canvas = document.createElement('canvas');
       if (stream instanceof Woogeen.RemoteStream && stream.isMixed()) {
         canvas.width = 640;
         canvas.height = 480;
@@ -65,7 +65,7 @@
         canvas.width = 320;
         canvas.height = 240;
       }
-      canvas.setAttribute("autoplay", "autoplay::autoplay");
+      canvas.setAttribute('autoplay', 'autoplay::autoplay');
       div.appendChild(canvas);
       var ieStream = new ieMediaStream(stream.mediaStream.label);
       attachRemoteMediaStream(canvas, ieStream, stream.pcid);
@@ -98,8 +98,8 @@
       return;
     }
 
-    if ((subscribeMix === "true" && (stream.isMixed() || stream.isScreen())) ||
-      (subscribeMix !== "true" && !stream.isMixed())) {
+    if ((subscribeMix === 'true' && (stream.isMixed() || stream.isScreen())) ||
+      (subscribeMix !== 'true' && !stream.isMixed())) {
       L.Logger.info('subscribing:', stream.id());
       conference.subscribe(stream, function () {
         L.Logger.info('subscribed:', stream.id());
@@ -107,13 +107,15 @@
       }, function (err) {
         L.Logger.error(stream.id(), 'subscribe failed:', err);
       });
+    } else {
+      L.Logger.info('won`t subscribe', stream.id());
     }
   });
 
   conference.on('stream-removed', function (event) {
     var stream = event.stream;
     L.Logger.info('stream removed:' ,stream.id());
-    var id = stream.elementId !==undefined ? stream.elementId : "test" + stream.id();
+    var id = stream.elementId !==undefined ? stream.elementId : 'test' + stream.id();
     if (id !== undefined) {
       var element = document.getElementById(id);
       if (element) {document.body.removeChild(element);}
@@ -167,27 +169,22 @@
               return L.Logger.error('create LocalStream failed:', err);
             }
             localStream = stream;
-            console.log("localStream: " + localStream.id());
-            if(window.navigator.appVersion.indexOf("Trident") < 0){
+            if (window.navigator.appVersion.indexOf('Trident') < 0){
               localStream.show('myVideo');
             }
-            if(window.navigator.appVersion.indexOf("Trident") > -1){
-              var canvas = document.createElement("canvas");
+            if (window.navigator.appVersion.indexOf('Trident') > -1){
+              var canvas = document.createElement('canvas');
               canvas.width = 320;
               canvas.height = 240;
-              canvas.setAttribute("autoplay", "autoplay::autoplay");
-              document.getElementById("myVideo").appendChild(canvas);
+              canvas.setAttribute('autoplay', 'autoplay::autoplay');
+              document.getElementById('myVideo').appendChild(canvas);
               attachMediaStream(canvas, localStream.mediaStream);
             }
-            console.log("start publish");
             conference.publish(localStream, {maxVideoBW: 300}, function (st) {
-              console.log("published");
               L.Logger.info('stream published:', st.id());
             }, function (err) {
-              console.log("error published: ", err);
                L.Logger.error('publish failed:', err);
             });
-            console.log("publish end");
           });
         } else if (isHttps) {
           conference.shareScreen({resolution: myResolution}, function (stream) {
@@ -202,8 +199,8 @@
         var streams = resp.streams;
         streams.map(function (stream) {
           L.Logger.info('stream in conference:', stream.id());
-          if ((subscribeMix === "true" && (stream.isMixed() || stream.isScreen())) ||
-            (subscribeMix !== "true" && !stream.isMixed())) {
+          if ((subscribeMix === 'true' && (stream.isMixed() || stream.isScreen())) ||
+            (subscribeMix !== 'true' && !stream.isMixed())) {
             L.Logger.info('subscribing:', stream.id());
             conference.subscribe(stream, function () {
               L.Logger.info('subscribed:', stream.id());
@@ -211,6 +208,8 @@
             }, function (err) {
               L.Logger.error(stream.id(), 'subscribe failed:', err);
             });
+          }  else {
+            L.Logger.info('won`t subscribe', stream.id());
           }
         });
       }, function (err) {
