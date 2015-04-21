@@ -125,11 +125,7 @@ Woogeen.ConferenceClient = (function () {
       });
 
       that.state = CONNECTING;
-      if (isSecured) {
-        delete io.sockets['https://'+host];
-      } else {
-        delete io.sockets['http://'+host];
-      }
+
       if (self.socket !== undefined) { // whether reconnect
         self.socket.socket.connect();
       } else {
@@ -403,7 +399,7 @@ Woogeen.ConferenceClient = (function () {
   }
 
   function sendMsg(socket, type, message, callback) {
-    if (!socket || !socket.socket || !socket.socket.connected) {
+    if (!socket || !socket.connected) {
       return callback('socket not ready');
     }
     try {
@@ -419,7 +415,7 @@ Woogeen.ConferenceClient = (function () {
   }
 
   function sendSdp(socket, type, option, sdp, callback) {
-    if (!socket || !socket.socket || !socket.socket.connected) {
+    if (!socket || !socket.connected) {
       return callback('error', 'socket not ready');
     }
     try {

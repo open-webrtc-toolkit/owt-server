@@ -132,7 +132,7 @@ var sendMsgToRoom = function (room, type, arg) {
     for (id in sockets) {
         if (sockets.hasOwnProperty(id)) {
             log.info('Sending message to', sockets[id], 'in room ', room.id);
-            io.sockets.socket(sockets[id]).emit(type, arg);
+            io.sockets.to(sockets[id]).emit(type, arg);
         }
     }
 };
@@ -252,13 +252,11 @@ var addToCloudHandler = function (callback) {
                         log.warn('Failed to setup secured server:', err);
                         return process.exit();
                     }
-                    io = require('socket.io').listen(server, {log: false});
-                    io.set('log level', 0);
+                    io = require('socket.io').listen(server);
                 });
             } else {
                 server = require('http').createServer().listen(msg.port);
-                io = require('socket.io').listen(server, {log: false});
-                io.set('log level', 0);
+                io = require('socket.io').listen(server);
             }
 
             var intervarId = setInterval(function () {
@@ -402,7 +400,7 @@ var listen = function () {
             room.sockets.map(function (sock) {
                 if (sock !== socket.id) {
                     log.info('Sending message to', sock, 'in room ', room.id);
-                    io.sockets.socket(sock).emit(type, arg);
+                    io.sockets.to(sock).emit(type, arg);
                 }
             });
         };
@@ -614,7 +612,7 @@ var listen = function () {
                         return safeCall(callback, 'error', 'invalid receiver');
                     }
                     try {
-                        io.sockets.socket(receiver).emit('onCustomMessage', data);
+                        io.sockets.to(receiver).emit('onCustomMessage', data);
                         safeCall(callback, 'success');
                     } catch (err) {
                         safeCall(callback, 'error', err);
@@ -633,7 +631,7 @@ var listen = function () {
                 for (id in sockets) {
                     if (sockets.hasOwnProperty(id)) {
                         log.info('Sending dataStream to', sockets[id], 'in stream ', msg.id);
-                        io.sockets.socket(sockets[id]).emit('onDataStream', msg);
+                        io.sockets.to(sockets[id]).emit('onDataStream', msg);
                     }
                 }
             }
@@ -645,7 +643,7 @@ var listen = function () {
                 for (id in sockets) {
                     if (sockets.hasOwnProperty(id)) {
                         log.info('Sending dataStream to', sockets[id], 'in stream ', mixer);
-                        io.sockets.socket(sockets[id]).emit('onDataStream', msg);
+                        io.sockets.to(sockets[id]).emit('onDataStream', msg);
                     }
                 }
             }
@@ -658,7 +656,7 @@ var listen = function () {
             for (id in sockets) {
                 if (sockets.hasOwnProperty(id)) {
                     log.info('Sending new attributes to', sockets[id], 'in stream ', msg.id);
-                    io.sockets.socket(sockets[id]).emit('onUpdateAttributeStream', msg);
+                    io.sockets.to(sockets[id]).emit('onUpdateAttributeStream', msg);
                 }
             }
         });
@@ -752,7 +750,7 @@ var listen = function () {
                 } else if (options.state === 'ok' && socket.state === 'waitingOk') {
                 }
             } else if (options.state === 'p2pSignaling') {
-                io.sockets.socket(options.subsSocket).emit('onPublishP2P', {sdp: sdp, streamId: options.streamId}, function(answer) {
+                io.sockets.to(options.subsSocket).emit('onPublishP2P', {sdp: sdp, streamId: options.streamId}, function(answer) {
                     safeCall(callback, answer);
                 });
             } else {
@@ -796,7 +794,7 @@ var listen = function () {
 
                 if (socket.room.p2p) {
                     var s = stream.getSocket();
-                    io.sockets.socket(s).emit('onSubscribeP2P', {streamId: options.streamId, subsSocket: socket.id}, function(offer) {
+                    io.sockets.to(s).emit('onSubscribeP2P', {streamId: options.streamId, subsSocket: socket.id}, function(offer) {
                         safeCall(callback, offer);
                     });
 
@@ -1037,7 +1035,7 @@ exports.getUsersInRoom = function (room, callback) {
 
     for (id in sockets) {
         if (sockets.hasOwnProperty(id)) {
-            users.push(io.sockets.socket(sockets[id]).user);
+            users.push(io.sockets.to(sockets[id]).user);
         }
     }
 
@@ -1061,7 +1059,7 @@ exports.deleteUser = function (user, room, callback) {
 
     for (id in sockets) {
         if (sockets.hasOwnProperty(id)) {
-            if (io.sockets.socket(sockets[id]).user.name === user){
+            if (io.sockets.to(sockets[id]).user.name === user){
                 sockets_to_delete.push(sockets[id]);
             }
         }
@@ -1069,8 +1067,8 @@ exports.deleteUser = function (user, room, callback) {
 
     for (var s in sockets_to_delete) {
 
-        log.info('Deleted user', io.sockets.socket(sockets_to_delete[s]).user.name);
-        io.sockets.socket(sockets_to_delete[s]).disconnect();
+        log.info('Deleted user', io.sockets.to(sockets_to_delete[s]).user.name);
+        io.sockets.to(sockets_to_delete[s]).disconnect();
     }
 
     if (sockets_to_delete.length !== 0) {
