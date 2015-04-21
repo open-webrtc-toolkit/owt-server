@@ -11,6 +11,7 @@ project (MCU)
 
 set(MCU_VERSION_MAJOR 0)
 set(MCU_VERSION_MINOR 1)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility=hidden")
 
 # TODO: Make a clean interface for the woogeen_base module so that we don't need
 # to add such misc. ugly include paths.
