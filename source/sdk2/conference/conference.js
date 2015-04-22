@@ -127,7 +127,7 @@ Woogeen.ConferenceClient = (function () {
       that.state = CONNECTING;
 
       if (self.socket !== undefined) { // whether reconnect
-        self.socket.socket.connect();
+        self.socket.connect();
       } else {
         var dispatchEventAfterSubscribed = function (event) {
           var remoteStream = event.stream;
