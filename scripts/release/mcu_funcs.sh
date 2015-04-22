@@ -78,7 +78,7 @@ pack_sdk() {
 }
 
 pack_libs() {
-  LD_LIBRARY_PATH=$ROOT/build/libdeps/build/lib:$ROOT/build/libdeps/build/lib64 ldd ${WOOGEEN_DIST}/sbin/webrtc_mcu ${WOOGEEN_DIST}/lib/libmcu{,_sw,_hw}.so ${WOOGEEN_DIST}/lib/liberizo.so | grep '=>' | awk '{print $3}' | sort | uniq | while read line; do
+  LD_LIBRARY_PATH=$ROOT/build/libdeps/build/lib:$ROOT/build/libdeps/build/lib64:${UV_DIR} ldd ${WOOGEEN_DIST}/sbin/webrtc_mcu ${WOOGEEN_DIST}/lib/libmcu{,_sw,_hw}.so ${WOOGEEN_DIST}/lib/liberizo.so | grep '=>' | awk '{print $3}' | sort | uniq | while read line; do
     if ! uname -a | grep [Uu]buntu -q -s; then # CentOS
       [[ -s "${line}" ]] && [[ -z `rpm -qf ${line} 2>/dev/null | grep 'glibc'` ]] && cp -Lv ${line} ${WOOGEEN_DIST}/lib
     else # Ubuntu
