@@ -78,7 +78,7 @@ pack_sdk() {
 }
 
 pack_libs() {
-  LD_LIBRARY_PATH=$ROOT/build/libdeps/build/lib:$ROOT/build/libdeps/build/lib64 ldd ${WOOGEEN_DIST}/lib/libmcu{,_sw,_hw}.so ${WOOGEEN_DIST}/lib/liberizo.so | grep '=>' | awk '{print $3}' | sort | uniq | while read line; do
+  LD_LIBRARY_PATH=$ROOT/build/libdeps/build/lib:$ROOT/build/libdeps/build/lib64 ldd ${WOOGEEN_DIST}/sbin/webrtc_mcu ${WOOGEEN_DIST}/lib/libmcu{,_sw,_hw}.so ${WOOGEEN_DIST}/lib/liberizo.so | grep '=>' | awk '{print $3}' | sort | uniq | while read line; do
     if ! uname -a | grep [Uu]buntu -q -s; then # CentOS
       [[ -s "${line}" ]] && [[ -z `rpm -qf ${line} 2>/dev/null | grep 'glibc'` ]] && cp -Lv ${line} ${WOOGEEN_DIST}/lib
     else # Ubuntu
@@ -153,7 +153,6 @@ pack_node() {
   patch -p0 < ../node-configure-tcmalloc.patch
   local LIBTCMALLOC="${PREFIX_DIR}/lib/libtcmalloc_minimal.so"
   if [ -s ${LIBTCMALLOC} ]; then
-    cp -av ${LIBTCMALLOC}* ${WOOGEEN_DIST}/lib/
     PKG_CONFIG_PATH=${PREFIX_DIR}/lib/pkgconfig:${PREFIX_DIR}/lib64/pkgconfig:$PKG_CONFIG_PATH ./configure --without-npm --prefix=${PREFIX_DIR} ${UV_OPT} --shared-openssl --shared-openssl-includes=${PREFIX_DIR}/include --shared-openssl-libpath=${PREFIX_DIR}/lib --shared-tcmalloc --shared-tcmalloc-libpath=${PREFIX_DIR}/lib --shared-tcmalloc-libname=tcmalloc_minimal
   else
     PKG_CONFIG_PATH=${PREFIX_DIR}/lib/pkgconfig:${PREFIX_DIR}/lib64/pkgconfig:$PKG_CONFIG_PATH ./configure --without-npm --prefix=${PREFIX_DIR} ${UV_OPT} --shared-openssl --shared-openssl-includes=${PREFIX_DIR}/include --shared-openssl-libpath=${PREFIX_DIR}/lib
