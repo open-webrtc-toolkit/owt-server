@@ -9,7 +9,7 @@ this=`dirname "$0"`
 this=`cd "$this"; pwd`
 ROOT=`cd "${this}/../.."; pwd`
 SOURCE="${ROOT}/source"
-UV_DIR="${ROOT}/third_party/libuv-0.10.26"
+UV_DIR="${ROOT}/third_party/libuv"
 
 export WOOGEEN_DIST="${ROOT}/dist"
 PACK_NODE=true
