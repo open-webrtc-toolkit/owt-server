@@ -142,7 +142,11 @@ Woogeen.ConferenceClient = (function () {
           }
         };
 
-        self.socket = io.connect(host, {reconnect: false, secure: isSecured});
+        self.socket = io.connect(host, {
+          reconnect: false,
+          secure: isSecured,
+          'force new connection': true
+        });
 
         self.socket.on('onAddStream', function (spec) {
           var stream = new Woogeen.RemoteStream({
