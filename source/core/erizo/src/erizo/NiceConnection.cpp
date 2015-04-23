@@ -181,7 +181,10 @@ namespace erizo {
 
     this->updateIceState(NICE_INITIAL);
 
+#ifndef GLIB_VERSION_2_36
     g_type_init();
+#endif
+
     context_ = g_main_context_new();
     g_main_context_set_poll_func(context_,timed_poll);
     /* loop_ =  g_main_loop_new(context_, FALSE); */
