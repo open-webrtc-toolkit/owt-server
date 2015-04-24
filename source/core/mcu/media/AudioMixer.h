@@ -27,7 +27,7 @@
 #include <JobTimer.h>
 #include <logger.h>
 #include <MediaDefinitions.h>
-#include <MediaRecording.h>
+#include <MediaMuxing.h>
 #include <MediaSourceConsumer.h>
 #include <WebRTCTransport.h>
 #include <webrtc/modules/audio_device/include/fake_audio_device.h>
@@ -40,7 +40,7 @@ public:
     virtual void onPositiveAudioSources(std::vector<uint32_t>& sources) = 0;
 };
 
-class AudioMixer : public woogeen_base::MediaSourceConsumer, public woogeen_base::MediaRecording, public erizo::MediaSink, public erizo::FeedbackSink, public woogeen_base::JobTimerListener {
+class AudioMixer : public woogeen_base::MediaSourceConsumer, public woogeen_base::MediaRecording, public woogeen_base::MediaStreaming, public erizo::MediaSink, public erizo::FeedbackSink, public woogeen_base::JobTimerListener {
     DECLARE_LOGGER();
 
 public:
@@ -74,6 +74,10 @@ public:
     int recordPayloadType() const;
     bool getVideoSize(unsigned int& width, unsigned int& height) const;
 
+    // Implements MediaStreaming
+    void startStreaming(woogeen_base::MediaFrameQueue& videoQueue);
+    void stopStreaming();
+
 private:
     int32_t performMix();
     int32_t updateAudioFrame();
@@ -100,6 +104,7 @@ private:
 
     int32_t m_recordChannelId;
     boost::scoped_ptr<woogeen_base::AudioEncodedFrameCallbackAdapter> m_encodedFrameCallback;
+    int32_t m_muxingChannelId;
     boost::scoped_ptr<woogeen_base::JobTimer> m_jobTimer;
 };
 

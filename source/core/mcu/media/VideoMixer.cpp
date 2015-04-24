@@ -189,6 +189,26 @@ bool VideoMixer::getVideoSize(unsigned int& width, unsigned int& height) const
     return false;
 }
 
+void VideoMixer::startStreaming(woogeen_base::MediaFrameQueue& videoQueue)
+{
+    if (addOutput(H264_90000_PT, true, false) != -1) {
+        woogeen_base::VideoFrameSender* output = m_outputs[H264_90000_PT].get();
+        output->registerPreSendFrameCallback(videoQueue);
+
+        // Request an IFrame explicitly, because the recorder doesn't support active I-Frame requests.
+        IntraFrameCallback* iFrameCallback = output->iFrameCallback();
+        if (iFrameCallback)
+            iFrameCallback->handleIntraFrameRequest();
+    }
+}
+
+void VideoMixer::stopStreaming()
+{
+    std::map<int, boost::shared_ptr<woogeen_base::VideoFrameSender>>::iterator it = m_outputs.find(H264_90000_PT);
+    if (it != m_outputs.end())
+        it->second->deRegisterPreSendFrameCallback();
+}
+
 int VideoMixer::deliverFeedback(char* buf, int len)
 {
     // TODO: For now we just send the feedback to all of the output processors.

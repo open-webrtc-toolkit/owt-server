@@ -21,7 +21,7 @@
 #ifndef EncodedVideoFrameSender_h
 #define EncodedVideoFrameSender_h
 
-#include "MediaRecording.h"
+#include "MediaMuxing.h"
 #include "VideoFrameSender.h"
 #include "WebRTCTaskRunner.h"
 #include "WebRTCTransport.h"

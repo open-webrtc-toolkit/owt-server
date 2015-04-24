@@ -46,9 +46,13 @@ inline AVCodecID payloadType2AudioCodecID(int payloadType)
 }
 
 MediaRecorder::MediaRecorder(woogeen_base::MediaRecording* videoRecording, woogeen_base::MediaRecording* audioRecording, const std::string& recordPath, int snapshotInterval)
-    : m_recording(false), m_recordVideoStream(NULL), m_recordAudioStream(NULL)
-    , m_recordStartTime(-1), m_firstVideoTimestamp(-1), m_firstAudioTimestamp(-1)
+    : m_videoStream(NULL)
+    , m_audioStream(NULL)
+    , m_recordStartTime(-1)
 {
+    m_muxing = false;
+    m_firstVideoTimestamp = -1;
+    m_firstAudioTimestamp = -1;
     m_videoRecording = videoRecording;
     m_audioRecording = audioRecording;
     m_recordPath = recordPath;
@@ -56,11 +60,11 @@ MediaRecorder::MediaRecorder(woogeen_base::MediaRecording* videoRecording, wooge
 
 MediaRecorder::~MediaRecorder()
 {
-    if (m_recording)
-        stopRecording();
+    if (m_muxing)
+        stop();
 }
 
-bool MediaRecorder::startRecording()
+bool MediaRecorder::start()
 {
     if (m_recordStartTime == -1) {
         timeval time;
@@ -73,21 +77,21 @@ bool MediaRecorder::startRecording()
     av_register_all();
     avcodec_register_all();
 
-    m_recordContext = avformat_alloc_context();
-    if (m_recordContext == NULL) {
+    m_context = avformat_alloc_context();
+    if (m_context == NULL) {
         ELOG_ERROR("Error allocating memory for recording file IO context.");
         return false;
     }
 
-    m_recordPath.copy(m_recordContext->filename, sizeof(m_recordContext->filename), 0);
-    m_recordContext->oformat = av_guess_format(NULL, m_recordContext->filename, NULL);
-    if (!m_recordContext->oformat){
-        ELOG_ERROR("Error guessing recording file format %s", m_recordContext->filename);
+    m_recordPath.copy(m_context->filename, sizeof(m_context->filename), 0);
+    m_context->oformat = av_guess_format(NULL, m_context->filename, NULL);
+    if (!m_context->oformat){
+        ELOG_ERROR("Error guessing recording file format %s", m_context->filename);
         return false;
     }
 
-    m_recordContext->oformat->video_codec = payloadType2VideoCodecID(m_videoRecording->recordPayloadType());
-    m_recordContext->oformat->audio_codec = payloadType2AudioCodecID(m_audioRecording->recordPayloadType());
+    m_context->oformat->video_codec = payloadType2VideoCodecID(m_videoRecording->recordPayloadType());
+    m_context->oformat->audio_codec = payloadType2AudioCodecID(m_audioRecording->recordPayloadType());
 
     // Initialize the record context
     if (!initRecordContext())
@@ -100,33 +104,33 @@ bool MediaRecorder::startRecording()
     m_audioRecording->startRecording(*m_audioQueue);
 
     // File write thread
-    m_recording = true;
-    m_recordThread = boost::thread(&MediaRecorder::recordLoop, this);
+    m_muxing = true;
+    m_thread = boost::thread(&MediaRecorder::recordLoop, this);
 
     return true;
 }
 
-void MediaRecorder::stopRecording()
+void MediaRecorder::stop()
 {
-    m_recording = false;
-    m_recordThread.join();
+    m_muxing = false;
+    m_thread.join();
 
     m_videoRecording->stopRecording();
     m_audioRecording->stopRecording();
 
-    if (m_recordAudioStream != NULL && m_recordVideoStream != NULL && m_recordContext != NULL)
-        av_write_trailer(m_recordContext);
+    if (m_audioStream != NULL && m_videoStream != NULL && m_context != NULL)
+        av_write_trailer(m_context);
 
-    if (m_recordVideoStream && m_recordVideoStream->codec != NULL)
-        avcodec_close(m_recordVideoStream->codec);
+    if (m_videoStream && m_videoStream->codec != NULL)
+        avcodec_close(m_videoStream->codec);
 
-    if (m_recordAudioStream && m_recordAudioStream->codec != NULL)
-        avcodec_close(m_recordAudioStream->codec);
+    if (m_audioStream && m_audioStream->codec != NULL)
+        avcodec_close(m_audioStream->codec);
 
-    if (m_recordContext != NULL){
-        avio_close(m_recordContext->pb);
-        avformat_free_context(m_recordContext);
-        m_recordContext = NULL;
+    if (m_context != NULL){
+        avio_close(m_context->pb);
+        avformat_free_context(m_context);
+        m_context = NULL;
     }
 
     ELOG_DEBUG("Media recording is closed successfully.");
@@ -134,63 +138,63 @@ void MediaRecorder::stopRecording()
 
 bool MediaRecorder::initRecordContext()
 {
-    if (m_recordContext->oformat->video_codec != AV_CODEC_ID_NONE
-        && m_recordContext->oformat->audio_codec != AV_CODEC_ID_NONE
-        && m_recordVideoStream == NULL && m_recordAudioStream == NULL) {
-        AVCodec* videoCodec = avcodec_find_encoder(m_recordContext->oformat->video_codec);
+    if (m_context->oformat->video_codec != AV_CODEC_ID_NONE
+        && m_context->oformat->audio_codec != AV_CODEC_ID_NONE
+        && m_videoStream == NULL && m_audioStream == NULL) {
+        AVCodec* videoCodec = avcodec_find_encoder(m_context->oformat->video_codec);
         if (videoCodec == NULL) {
             ELOG_ERROR("Media recording could not find video codec.");
             return false;
         }
 
-        m_recordVideoStream = avformat_new_stream(m_recordContext, videoCodec);
-        m_recordVideoStream->id = 0;
-        m_recordVideoStream->codec->codec_id = m_recordContext->oformat->video_codec;
+        m_videoStream = avformat_new_stream(m_context, videoCodec);
+        m_videoStream->id = 0;
+        m_videoStream->codec->codec_id = m_context->oformat->video_codec;
 
         unsigned int width = 0;
         unsigned int height = 0;
         if (m_videoRecording->getVideoSize(width, height)) {
-            m_recordVideoStream->codec->width = width;
-            m_recordVideoStream->codec->height = height;
+            m_videoStream->codec->width = width;
+            m_videoStream->codec->height = height;
         } else {
             // Default record size is VGA
-            m_recordVideoStream->codec->width = 640;
-            m_recordVideoStream->codec->height = 480;
+            m_videoStream->codec->width = 640;
+            m_videoStream->codec->height = 480;
         }
 
         // A decent guess here suffices; if processing the file with ffmpeg, use -vsync 0 to force it not to duplicate frames.
-        m_recordVideoStream->codec->time_base = (AVRational){1,30};
-        m_recordVideoStream->codec->pix_fmt = PIX_FMT_YUV420P;
+        m_videoStream->codec->time_base = (AVRational){1,30};
+        m_videoStream->codec->pix_fmt = PIX_FMT_YUV420P;
 
-        if (m_recordContext->oformat->flags & AVFMT_GLOBALHEADER)
-            m_recordVideoStream->codec->flags|=CODEC_FLAG_GLOBAL_HEADER;
+        if (m_context->oformat->flags & AVFMT_GLOBALHEADER)
+            m_videoStream->codec->flags|=CODEC_FLAG_GLOBAL_HEADER;
 
-        m_recordContext->oformat->flags |= AVFMT_VARIABLE_FPS;
+        m_context->oformat->flags |= AVFMT_VARIABLE_FPS;
 
-        AVCodec* audioCodec = avcodec_find_encoder(m_recordContext->oformat->audio_codec);
+        AVCodec* audioCodec = avcodec_find_encoder(m_context->oformat->audio_codec);
         if (audioCodec == NULL) {
             ELOG_ERROR("Media recording could not find audio codec.");
             return false;
         }
 
-        m_recordAudioStream = avformat_new_stream(m_recordContext, audioCodec);
-        m_recordAudioStream->id = 1;
-        m_recordAudioStream->codec->codec_id = m_recordContext->oformat->audio_codec;
+        m_audioStream = avformat_new_stream(m_context, audioCodec);
+        m_audioStream->id = 1;
+        m_audioStream->codec->codec_id = m_context->oformat->audio_codec;
         // FIXME: Chunbo to set this kind of codec information from AudioMixer
-        m_recordAudioStream->codec->sample_rate = m_recordContext->oformat->audio_codec == AV_CODEC_ID_PCM_MULAW ? 8000 : 48000; // FIXME: Is it always 48 khz for opus?
-        m_recordAudioStream->codec->time_base = (AVRational) {1, m_recordAudioStream->codec->sample_rate};
-        m_recordAudioStream->codec->channels = m_recordContext->oformat->audio_codec == AV_CODEC_ID_PCM_MULAW ? 1 : 2;   // FIXME: Is it always two channels for opus?
-        if (m_recordContext->oformat->flags & AVFMT_GLOBALHEADER)
-            m_recordAudioStream->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
+        m_audioStream->codec->sample_rate = m_context->oformat->audio_codec == AV_CODEC_ID_PCM_MULAW ? 8000 : 48000; // FIXME: Is it always 48 khz for opus?
+        m_audioStream->codec->time_base = (AVRational) {1, m_audioStream->codec->sample_rate};
+        m_audioStream->codec->channels = m_context->oformat->audio_codec == AV_CODEC_ID_PCM_MULAW ? 1 : 2;   // FIXME: Is it always two channels for opus?
+        if (m_context->oformat->flags & AVFMT_GLOBALHEADER)
+            m_audioStream->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
 
-        m_recordContext->streams[0] = m_recordVideoStream;
-        m_recordContext->streams[1] = m_recordAudioStream;
-        if (avio_open(&m_recordContext->pb, m_recordContext->filename, AVIO_FLAG_WRITE) < 0) {
+        m_context->streams[0] = m_videoStream;
+        m_context->streams[1] = m_audioStream;
+        if (avio_open(&m_context->pb, m_context->filename, AVIO_FLAG_WRITE) < 0) {
             ELOG_ERROR("Media recording error when opening output file.");
             return false;
         }
 
-        if (avformat_write_header(m_recordContext, NULL) < 0) {
+        if (avformat_write_header(m_context, NULL) < 0) {
             ELOG_ERROR("Media recording error during writing header");
             return false;
         }
@@ -202,7 +206,7 @@ bool MediaRecorder::initRecordContext()
 
 void MediaRecorder::recordLoop()
 {
-    while (m_recording) {
+    while (m_muxing) {
         boost::shared_ptr<woogeen_base::EncodedFrame> mediaFrame;
         while (mediaFrame = m_audioQueue->popFrame())
             this->writeAudioFrame(*mediaFrame);
@@ -213,7 +217,7 @@ void MediaRecorder::recordLoop()
 }
 
 void MediaRecorder::writeVideoFrame(woogeen_base::EncodedFrame& encodedVideoFrame) {
-    if (m_recordVideoStream == NULL) {
+    if (m_videoStream == NULL) {
         // could not init our context yet.
         return;
     }
@@ -227,9 +231,9 @@ void MediaRecorder::writeVideoFrame(woogeen_base::EncodedFrame& encodedVideoFram
         currentTimestamp += 0xFFFFFFFF;
     }
 
-    long long timestampToWrite = (currentTimestamp - m_firstVideoTimestamp) / (90000 / m_recordVideoStream->time_base.den);  // All of our video offerings are using a 90khz clock.
+    long long timestampToWrite = (currentTimestamp - m_firstVideoTimestamp) / (90000 / m_videoStream->time_base.den);  // All of our video offerings are using a 90khz clock.
     // Adjust for the start time offset
-    timestampToWrite += encodedVideoFrame.m_offsetMsec / (1000 / m_recordVideoStream->time_base.den);   //In practice, our timebase den is 1000, so this operation is a no-op.
+    timestampToWrite += encodedVideoFrame.m_offsetMsec / (1000 / m_videoStream->time_base.den);   //In practice, our timebase den is 1000, so this operation is a no-op.
 
     AVPacket avpkt;
     av_init_packet(&avpkt);
@@ -237,12 +241,12 @@ void MediaRecorder::writeVideoFrame(woogeen_base::EncodedFrame& encodedVideoFram
     avpkt.size = encodedVideoFrame.m_payloadSize;
     avpkt.pts = timestampToWrite;
     avpkt.stream_index = 0;
-    av_write_frame(m_recordContext, &avpkt);
+    av_write_frame(m_context, &avpkt);
     av_free_packet(&avpkt);
 }
 
 void MediaRecorder::writeAudioFrame(woogeen_base::EncodedFrame& encodedAudioFrame) {
-    if (m_recordAudioStream == NULL) {
+    if (m_audioStream == NULL) {
         // No audio stream has been initialized
         return;
     }
@@ -256,9 +260,9 @@ void MediaRecorder::writeAudioFrame(woogeen_base::EncodedFrame& encodedAudioFram
       currentTimestamp += 0xFFFFFFFF;
     }
 
-    long long timestampToWrite = (currentTimestamp - m_firstAudioTimestamp) / (m_recordAudioStream->codec->time_base.den / m_recordAudioStream->time_base.den);
+    long long timestampToWrite = (currentTimestamp - m_firstAudioTimestamp) / (m_audioStream->codec->time_base.den / m_audioStream->time_base.den);
     // Adjust for our start time offset
-    timestampToWrite += encodedAudioFrame.m_offsetMsec / (1000 / m_recordAudioStream->time_base.den);   // In practice, our timebase den is 1000, so this operation is a no-op.
+    timestampToWrite += encodedAudioFrame.m_offsetMsec / (1000 / m_audioStream->time_base.den);   // In practice, our timebase den is 1000, so this operation is a no-op.
 
     AVPacket avpkt;
     av_init_packet(&avpkt);
@@ -266,7 +270,7 @@ void MediaRecorder::writeAudioFrame(woogeen_base::EncodedFrame& encodedAudioFram
     avpkt.size = encodedAudioFrame.m_payloadSize;
     avpkt.pts = timestampToWrite;
     avpkt.stream_index = 1;
-    av_write_frame(m_recordContext, &avpkt);
+    av_write_frame(m_context, &avpkt);
     av_free_packet(&avpkt);
 }
 

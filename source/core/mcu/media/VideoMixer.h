@@ -30,7 +30,7 @@
 #include <logger.h>
 #include <map>
 #include <MediaDefinitions.h>
-#include <MediaRecording.h>
+#include <MediaMuxing.h>
 #include <MediaSourceConsumer.h>
 #include <WebRTCFeedbackProcessor.h>
 #include <WebRTCTaskRunner.h>
@@ -51,7 +51,7 @@ static const int MIXED_H264_VIDEO_STREAM_ID = 3;
 /**
  * Receives media from several sources, mixed into one stream and retransmits it to the RTPDataReceiver.
  */
-class VideoMixer : public woogeen_base::MediaSourceConsumer, public woogeen_base::MediaRecording, public erizo::FeedbackSink, public VCMInputProcessorCallback {
+class VideoMixer : public woogeen_base::MediaSourceConsumer, public woogeen_base::MediaRecording, public woogeen_base::MediaStreaming, public erizo::FeedbackSink, public VCMInputProcessorCallback {
     DECLARE_LOGGER();
 
 public:
@@ -91,6 +91,10 @@ public:
     void stopRecording();
     int recordPayloadType() const;
     bool getVideoSize(unsigned int& width, unsigned int& height) const;
+
+    // Implements MediaStreaming
+    void startStreaming(woogeen_base::MediaFrameQueue& videoQueue);
+    void stopStreaming();
 
 private:
     void closeAll();

@@ -35,6 +35,7 @@ namespace mcu {
 DEFINE_LOGGER(AudioMixer, "mcu.media.AudioMixer");
 
 static const char* RECORD_CHANNEL = "MediaRecordingVoiceChannel";
+static const char* RTSP_CHANNEL = "RTSPMuxingVoiceChannel";
 
 AudioMixer::AudioMixer(erizo::RTPDataReceiver* receiver, AudioMixerVADCallback* callback, bool enableVAD)
     : m_dataReceiver(receiver)
@@ -49,6 +50,7 @@ AudioMixer::AudioMixer(erizo::RTPDataReceiver* receiver, AudioMixerVADCallback* 
     voe->Init(m_adm.get());
 
     m_recordChannelId = -1;
+    m_muxingChannelId = -1;
 
     // FIXME: hard coded timer interval.
     m_jobTimer.reset(new woogeen_base::JobTimer(100, this));
@@ -394,6 +396,29 @@ bool AudioMixer::getVideoSize(unsigned int&, unsigned int&) const
 {
     // No video size info from audio mixer
     return false;
+}
+
+void AudioMixer::startStreaming(woogeen_base::MediaFrameQueue& audioQueue)
+{
+    if (m_muxingChannelId == -1)
+        m_muxingChannelId = addOutput(RTSP_CHANNEL, PCMU_8000_PT);
+
+    if (m_muxingChannelId != -1) {
+        m_encodedFrameCallback.reset(new woogeen_base::AudioEncodedFrameCallbackAdapter(&audioQueue));
+        VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);
+        voe->RegisterPostEncodeFrameCallback(m_muxingChannelId, m_encodedFrameCallback.get());
+    }
+}
+
+void AudioMixer::stopStreaming()
+{
+    if (m_muxingChannelId != -1) {
+        VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);
+        voe->DeRegisterPostEncodeFrameCallback(m_muxingChannelId);
+
+        removeOutput(RTSP_CHANNEL);
+        m_muxingChannelId = -1;
+    }
 }
 
 int32_t AudioMixer::getChannelId(uint32_t sourceId)

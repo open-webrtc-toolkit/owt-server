@@ -18,8 +18,8 @@
  * and approved by Intel in writing.
  */
 
-#ifndef MediaRecording_h
-#define MediaRecording_h
+#ifndef MediaMuxing_h
+#define MediaMuxing_h
 
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/mutex.hpp>
@@ -153,6 +153,14 @@ private:
     MediaFrameQueue* m_audioQueue;
 };
 
+
+class MediaStreaming {
+public:
+    virtual ~MediaStreaming() {}
+    virtual void startStreaming(MediaFrameQueue& mediaQueue) = 0;
+    virtual void stopStreaming() = 0;
+};
+
 class MediaRecording {
 public:
     virtual ~MediaRecording() {}
@@ -164,6 +172,21 @@ public:
     virtual bool getVideoSize(unsigned int& width, unsigned int& height) const = 0;
 };
 
+class MediaMuxer {
+public:
+    MediaMuxer() {}
+    virtual ~MediaMuxer() {}
+    virtual bool start() = 0;
+    virtual void stop() = 0;
+protected:
+    bool m_muxing;
+    boost::thread m_thread;
+    int64_t m_firstVideoTimestamp;
+    int64_t m_firstAudioTimestamp;
+    boost::scoped_ptr<woogeen_base::MediaFrameQueue> m_videoQueue;
+    boost::scoped_ptr<woogeen_base::MediaFrameQueue> m_audioQueue;
+};
+
 } /* namespace woogeen_base */
 
-#endif /* MediaRecording_h */
+#endif /* MediaMuxing_h */

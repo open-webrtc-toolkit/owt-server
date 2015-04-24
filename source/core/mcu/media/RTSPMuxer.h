@@ -18,49 +18,46 @@
  * and approved by Intel in writing.
  */
 
-#ifndef MediaRecorder_h
-#define MediaRecorder_h
+#ifndef RTSPMuxer_h
+#define RTSPMuxer_h
+
+#include "MediaMuxing.h"
+#include "MediaUtilities.h"
 
 #include <boost/scoped_ptr.hpp>
 #include <boost/thread.hpp>
 #include <logger.h>
-#include <MediaMuxing.h>
-#include <MediaUtilities.h>
 #include <string>
 
 extern "C" {
-#include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 }
 
 namespace mcu {
 
-class MediaRecorder : public woogeen_base::MediaMuxer {
+class RTSPMuxer : public woogeen_base::MediaMuxer {
     DECLARE_LOGGER();
-
 public:
-    MediaRecorder(woogeen_base::MediaRecording* videoRecording, woogeen_base::MediaRecording* audioRecording, const std::string& recordPath, int snapshotInterval);
-    virtual ~MediaRecorder();
+    RTSPMuxer(const std::string&, woogeen_base::MediaStreaming*, woogeen_base::MediaStreaming*);
+    virtual ~RTSPMuxer();
     // MediaMuxer interface
     bool start();
     void stop();
 
 private:
-    bool initRecordContext();
-    void recordLoop();
-    void writeVideoFrame(woogeen_base::EncodedFrame& encoded_frame);
-    void writeAudioFrame(woogeen_base::EncodedFrame& encoded_frame);
-
-    woogeen_base::MediaRecording* m_videoRecording;
-    woogeen_base::MediaRecording* m_audioRecording;
+    woogeen_base::MediaStreaming* m_videoSink;
+    woogeen_base::MediaStreaming* m_audioSink;
+    AVFormatContext* m_context;
     AVStream* m_videoStream;
     AVStream* m_audioStream;
-    AVFormatContext* m_context;
-
-    std::string m_recordPath;
-    int64_t m_recordStartTime;
+    void addVideoStream(enum AVCodecID codec_id);
+    void addAudioStream(enum AVCodecID codec_id);
+    int writeVideoFrame(uint8_t*, size_t, int);
+    int writeAudioFrame(uint8_t*, size_t, int);
+    AVFrame* allocAudioFrame();
+    void loop();
 };
 
-} /* namespace mcu */
+}
 
-#endif /* MediaRecorder_h */
+#endif // RTSPMuxer_h
