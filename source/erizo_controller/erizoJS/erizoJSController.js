@@ -1,4 +1,4 @@
-/*global require, exports, , setInterval, clearInterval*/
+/*global require, exports, setInterval, clearInterval, GLOBAL*/
 
 var addon = require('./../../bindings/mcu/build/Release/addon');
 
@@ -7,7 +7,17 @@ var rpc = require('./../common/rpc');
 var cipher = require('../../common/cipher');
 
 // Logger
-var log = logger.getLogger("ErizoJSController");
+var log = logger.getLogger('ErizoJSController');
+
+var rtsp_prefix = 'rtsp://';
+if (GLOBAL.config.erizo.rtsp) {
+    if (GLOBAL.config.erizo.rtsp.username && GLOBAL.config.erizo.rtsp.passwd) {
+        rtsp_prefix += [GLOBAL.config.erizo.rtsp.username, ':', GLOBAL.config.erizo.rtsp.passwd, '@'].join('');
+    }
+    rtsp_prefix += [GLOBAL.config.erizo.rtsp.addr, ':', GLOBAL.config.erizo.rtsp.port, GLOBAL.config.erizo.rtsp.application].join('');
+} else {
+    rtsp_prefix += 'localhost:1935/live/';
+}
 
 exports.ErizoJSController = function (spec) {
     "use strict";
@@ -226,13 +236,26 @@ exports.ErizoJSController = function (spec) {
 
     that.addExternalOutput = function (to, from, url, interval, callback) {
         if (publishers[to] !== undefined) {
-            log.info("Adding ExternalOutput to " + to + " url " + url);
-
             var config = {
-                "id": from,
-                "url": url,
-                "interval": interval
+                id: from,
+                url: url,
+                interval: interval
             };
+            if (from === '' && url === '' && interval === 0) { // rtsp out
+                if (GLOBAL.config.erizo.rtsp.enabled !== true) {
+                    callback('callback', 'not enabled');
+                    return;
+                }
+                config.url = [rtsp_prefix, 'room_', to, '.sdp'].join('');
+                config.id = config.url;
+                if (publishers[to].addExternalOutput(JSON.stringify(config))) {
+                    callback('callback', 'success');
+                    return;
+                }
+                callback('callback', 'error');
+                return;
+            }
+            log.info('Adding ExternalOutput to ' + to + ' url ' + url);
 
             // recordingId here is used as the peerId
             if (publishers[to].addExternalOutput(JSON.stringify(config))) {

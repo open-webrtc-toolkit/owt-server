@@ -100,33 +100,40 @@ void Mixer::onPositiveAudioSources(std::vector<uint32_t>& audioSources)
 
 bool Mixer::addExternalOutput(const std::string& configParam)
 {
-    if (!m_recorder && configParam != "" && configParam != "undefined") {
+    if (configParam != "" && configParam != "undefined") {
         boost::property_tree::ptree pt;
         std::istringstream is(configParam);
         boost::property_tree::read_json(is, pt);
-        const std::string recordPath = pt.get<std::string>("url");
-        int snapshotInterval = pt.get<int>("interval");
+        const std::string id = pt.get<std::string>("id");
 
-        // outputId here could be used as the ID of multiple outputs in the future
-        m_recorder.reset(new MediaRecorder(m_videoMixer.get(), m_audioMixer.get(), recordPath, snapshotInterval));
-        m_recorder->startRecording();
+        if (m_muxers.find(id) != m_muxers.end()) {
+            ELOG_DEBUG("add external output error: muxer already on");
+            return false;
+        }
 
-        ELOG_DEBUG("Media recording has already been started.");
-        return true;
+        const std::string url = pt.get<std::string>("url");
+        woogeen_base::MediaMuxer* muxer = nullptr;
+        if (url.compare(0, 7, "rtsp://") == 0) {
+            muxer = new RTSPMuxer(url, m_videoMixer.get(), m_audioMixer.get());
+        } else {
+            int snapshotInterval = pt.get<int>("interval");
+            muxer = new MediaRecorder(m_videoMixer.get(), m_audioMixer.get(), url, snapshotInterval);
+        }
+        m_muxers[id] = boost::shared_ptr<woogeen_base::MediaMuxer>(muxer);
+        return muxer->start();
     }
-
+    ELOG_DEBUG("add external output error: invalid config");
     return false;
 }
 
 bool Mixer::removeExternalOutput(const std::string& outputId)
 {
-    // outputId here could be used as the ID of multiple outputs in the future
-    if (m_recorder) {
-        m_recorder->stopRecording();
-        m_recorder.reset();
+    std::map<std::string, boost::shared_ptr<woogeen_base::MediaMuxer>>::iterator it = m_muxers.find(outputId);
+    if (it != m_muxers.end()) {
+        it->second->stop();
+        m_muxers.erase(it);
         return true;
     }
-
     return false;
 }
 

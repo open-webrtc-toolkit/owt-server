@@ -23,6 +23,7 @@
 
 #include "media/AudioMixer.h"
 #include "media/MediaRecorder.h"
+#include "media/RTSPMuxer.h"
 #include "media/VideoMixer.h"
 #include "MixerInterface.h"
 
@@ -115,7 +116,7 @@ private:
     std::map<std::string, boost::shared_ptr<erizo::MediaSink>> m_subscribers;
     std::map<std::string, erizo::MediaSource*> m_publishers;
 
-    boost::shared_ptr<MediaRecorder> m_recorder;
+    std::map<std::string, boost::shared_ptr<woogeen_base::MediaMuxer>> m_muxers;
 };
 
 } /* namespace mcu */

@@ -27,7 +27,7 @@
 #include <boost/shared_ptr.hpp>
 #include <logger.h>
 #include <MediaDefinitions.h>
-#include <MediaRecording.h>
+#include <MediaMuxing.h>
 #include <VideoFrameSender.h>
 #include <WebRTCTaskRunner.h>
 #include <WebRTCTransport.h>

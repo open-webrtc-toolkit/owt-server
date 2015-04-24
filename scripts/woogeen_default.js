@@ -116,6 +116,17 @@ config.erizo.hardwareAccelerated = false;
 config.erizo.openh264Enabled = false;
 
 config.erizo.keystorePath = '../../cert/certificate.pfx';
+
+// This configuration is only for RTSP muxing.
+// e.g.: 'rtsp://localhost:1935/live/xxx.sdp'
+config.erizo.rtsp = {};
+config.erizo.rtsp.enabled = false;
+config.erizo.rtsp.addr = 'localhost';
+config.erizo.rtsp.port = 1935;
+config.erizo.rtsp.application = '/live/'; // default application name, don't forget ending slash.
+config.erizo.rtsp.username = 'webrtc';
+config.erizo.rtsp.passwd = 'abc123';
+
 /***** END *****/
 // Following lines are always needed.
 var module = module || {};

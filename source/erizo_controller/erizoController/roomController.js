@@ -102,6 +102,11 @@ exports.RoomController = function (spec) {
             // Track publisher locally
             publishers[id] = id;
             subscribers[id] = [];
+            setTimeout(function () {
+                that.addRTSPOut(id, function (resp) {
+                    log.info('rtsp streaming', id, '->', resp);
+                });
+            }, 1);
         });
     };
 
@@ -363,6 +368,17 @@ exports.RoomController = function (spec) {
     that.setVideoBitrate = function (mixer_id, publisher_id, bitrate, callback) {
         var args = [mixer_id, publisher_id, bitrate];
         rpc.callRpc(getErizoQueue(mixer_id), "setVideoBitrate", args, {callback: callback});
+    };
+
+    that.addRTSPOut = function (mixer_id, callback) {
+        if (publishers[mixer_id] !== undefined) {
+            var args = [mixer_id, '', '', 0];
+            rpc.callRpc(getErizoQueue(mixer_id), 'addExternalOutput', args, {callback: function (result) {
+                callback(result);
+            }});
+        } else {
+            callback('mixer not found');
+        }
     };
 
     return that;
