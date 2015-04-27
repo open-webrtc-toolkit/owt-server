@@ -21,7 +21,6 @@
 #include "EncodedVideoFrameSender.h"
 
 #include "MediaUtilities.h"
-#include "TaskRunner.h"
 
 using namespace webrtc;
 using namespace erizo;
@@ -34,7 +33,7 @@ static const int TRANSMISSION_MAXBITRATE_MULTIPLIER = 2;
 
 DEFINE_LOGGER(EncodedVideoFrameSender, "mcu.media.EncodedVideoFrameSender");
 
-EncodedVideoFrameSender::EncodedVideoFrameSender(int id, boost::shared_ptr<VideoFrameMixer> source, FrameFormat frameFormat, int targetBitrate, woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<TaskRunner> taskRunner)
+EncodedVideoFrameSender::EncodedVideoFrameSender(int id, boost::shared_ptr<VideoFrameMixer> source, FrameFormat frameFormat, int targetBitrate, woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<woogeen_base::TaskRunner> taskRunner)
     : VideoFrameSender(id)
     , m_source(source)
     , m_frameFormat(frameFormat)
@@ -161,7 +160,7 @@ void EncodedVideoFrameSender::onFrame(FrameFormat format, unsigned char* payload
     }
 }
 
-bool EncodedVideoFrameSender::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<TaskRunner> taskRunner)
+bool EncodedVideoFrameSender::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<woogeen_base::TaskRunner> taskRunner)
 {
     m_taskRunner = taskRunner;
     m_videoTransport.reset(transport);
