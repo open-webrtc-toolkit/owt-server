@@ -27,13 +27,12 @@
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
 #include <logger.h>
+#include <TaskRunner.h>
 #include <WoogeenTransport.h>
 #include <webrtc/modules/bitrate_controller/include/bitrate_controller.h>
 #include <webrtc/modules/rtp_rtcp/interface/rtp_rtcp.h>
 
 namespace mcu {
-
-class TaskRunner;
 
 /**
  * This is the class to accept the encoded frame with the given format,
@@ -48,7 +47,7 @@ class EncodedVideoFrameSender : public VideoFrameSender,
     DECLARE_LOGGER();
 
 public:
-    EncodedVideoFrameSender(int id, boost::shared_ptr<VideoFrameMixer>, FrameFormat, int targetBitrate, woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<TaskRunner>);
+    EncodedVideoFrameSender(int id, boost::shared_ptr<VideoFrameMixer>, FrameFormat, int targetBitrate, woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<woogeen_base::TaskRunner>);
     ~EncodedVideoFrameSender();
 
     // Implements VideoFrameSender.
@@ -79,7 +78,7 @@ public:
     void OnNetworkChanged(const uint32_t target_bitrate, const uint8_t fraction_loss, const int64_t rtt);
 
 private:
-    bool init(woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<TaskRunner>);
+    bool init(woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<woogeen_base::TaskRunner>);
     void close();
 
     boost::scoped_ptr<webrtc::BitrateController> m_bitrateController;
@@ -87,7 +86,7 @@ private:
     boost::scoped_ptr<webrtc::RtpRtcp> m_rtpRtcp;
 
     boost::shared_ptr<webrtc::Transport> m_videoTransport;
-    boost::shared_ptr<TaskRunner> m_taskRunner;
+    boost::shared_ptr<woogeen_base::TaskRunner> m_taskRunner;
     boost::shared_ptr<VideoFrameMixer> m_source;
     FrameFormat m_frameFormat;
     int m_targetBitrate;

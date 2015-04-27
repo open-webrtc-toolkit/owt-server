@@ -30,8 +30,6 @@
 
 namespace mcu {
 
-class TaskRunner;
-
 /**
  * This is the class to send out the video frame with a given format.
  */

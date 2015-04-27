@@ -23,7 +23,6 @@
 #include "EncodedVideoFrameSender.h"
 #include "HardwareVideoFrameMixer.h"
 #include "SoftVideoFrameMixer.h"
-#include "TaskRunner.h"
 #include "VCMOutputProcessor.h"
 #include "VideoLayoutProcessor.h"
 #include <WoogeenTransport.h>
@@ -63,7 +62,7 @@ VideoMixer::VideoMixer(erizo::RTPDataReceiver* receiver, boost::property_tree::p
         m_frameMixer.reset(new SoftVideoFrameMixer(m_maxInputCount, rootSize, bgColor));
     m_layoutProcessor->registerConsumer(m_frameMixer);
 
-    m_taskRunner.reset(new TaskRunner());
+    m_taskRunner.reset(new woogeen_base::TaskRunner());
     m_taskRunner->Start();
 
 #if ENABLE_WEBRTC_TRACE

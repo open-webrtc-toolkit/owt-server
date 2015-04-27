@@ -21,7 +21,6 @@
 #include "VCMOutputProcessor.h"
 
 #include "MediaUtilities.h"
-#include "TaskRunner.h"
 
 #include <webrtc/common.h>
 #include <webrtc/modules/video_coding/main/interface/video_coding.h>
@@ -33,7 +32,7 @@ namespace mcu {
 
 DEFINE_LOGGER(VCMOutputProcessor, "mcu.media.VCMOutputProcessor");
 
-VCMOutputProcessor::VCMOutputProcessor(int id, boost::shared_ptr<VideoFrameMixer> source, int targetBitrate, woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<TaskRunner> taskRunner)
+VCMOutputProcessor::VCMOutputProcessor(int id, boost::shared_ptr<VideoFrameMixer> source, int targetBitrate, woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<woogeen_base::TaskRunner> taskRunner)
     : VideoFrameSender(id)
     , m_sendFormat(FRAME_FORMAT_UNKNOWN)
     , m_targetBitrate(targetBitrate)
@@ -268,7 +267,7 @@ int VCMOutputProcessor::deliverFeedback(char* buf, int len)
     return len;
 }
 
-bool VCMOutputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<TaskRunner> taskRunner)
+bool VCMOutputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<woogeen_base::TaskRunner> taskRunner)
 {
     m_taskRunner = taskRunner;
     m_videoTransport.reset(transport);

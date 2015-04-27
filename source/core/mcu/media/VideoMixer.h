@@ -32,6 +32,7 @@
 #include <map>
 #include <MediaDefinitions.h>
 #include <MediaSourceConsumer.h>
+#include <TaskRunner.h>
 #include <WebRTCFeedbackProcessor.h>
 #include <vector>
 
@@ -41,7 +42,6 @@ class VoEVideoSync;
 
 namespace mcu {
 
-class TaskRunner;
 class VideoFrameSender;
 class VideoLayoutProcessor;
 
@@ -102,7 +102,7 @@ private:
 
     uint32_t m_participants;
 
-    boost::shared_ptr<TaskRunner> m_taskRunner;
+    boost::shared_ptr<woogeen_base::TaskRunner> m_taskRunner;
     erizo::RTPDataReceiver* m_outputReceiver;
     boost::shared_mutex m_sourceMutex;
     std::map<uint32_t, boost::shared_ptr<VCMInputProcessor>> m_sinksForSources;

@@ -23,7 +23,7 @@
 
 #include <webrtc/modules/utility/interface/process_thread.h>
 
-namespace mcu {
+namespace woogeen_base {
 
 /**
  * This thread is now responsible for running the non critical process for each modules.
@@ -80,6 +80,6 @@ inline webrtc::ProcessThread* TaskRunner::unwrap()
     return m_processThread.get();
 }
 
-} /* namespace mcu */
+} /* namespace woogeen_base */
 
 #endif /* TaskRunner_h */

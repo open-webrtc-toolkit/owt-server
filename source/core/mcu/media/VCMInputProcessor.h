@@ -21,20 +21,11 @@
 #ifndef VCMInputProcessor_h
 #define VCMInputProcessor_h
 
-#include "DebugRecorder.h"
 #include "VideoFramePipeline.h"
 
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
-#include <logger.h>
-#include <MediaDefinitions.h>
-#include <WoogeenTransport.h>
-#include <webrtc/modules/remote_bitrate_estimator/include/remote_bitrate_estimator.h>
-#include <webrtc/modules/rtp_rtcp/interface/rtp_rtcp.h>
-#include <webrtc/modules/video_coding/codecs/interface/video_codec_interface.h>
-#include <webrtc/modules/video_coding/main/interface/video_coding.h>
-#include <webrtc/video_engine/vie_receiver.h>
-#include <webrtc/video_engine/vie_sync_module.h>
+#include <VCMFrameConstructor.h>
 
 namespace mcu {
 
@@ -133,75 +124,27 @@ private:
     VCMInputProcessorCallback* m_initCallback;
 };
 
-/**
- * A class to process the incoming streams by leveraging video coding module from
- * webrtc engine, which will framize and decode the frames.
- */
-class TaskRunner;
-
 class VCMInputProcessor : public erizo::MediaSink,
-                          public webrtc::RtpFeedback,
-                          public webrtc::VCMFrameTypeCallback,
-                          public webrtc::VCMPacketRequestCallback,
                           public VideoFrameProvider {
-    DECLARE_LOGGER();
-
 public:
-    VCMInputProcessor(int index, bool externalDecode = false);
+    VCMInputProcessor(int index, bool externalDecoding = false);
     virtual ~VCMInputProcessor();
+
+    // Implements the MediaSink interface.
+    int deliverAudioData(char*, int len);
+    int deliverVideoData(char*, int len);
 
     // Implements the VideoFrameProvider interface.
     virtual void requestKeyFrame();
 
-    // Implements the webrtc::VCMPacketRequestCallback interface.
-    virtual int32_t ResendPackets(const uint16_t* sequenceNumbers, uint16_t length);
-
-    // Implements the webrtc::VCMFrameTypeCallback interface.
-    virtual int32_t RequestKeyFrame();
-
-    // Implements the webrtc::RtpFeedback interface.
-    virtual int32_t OnInitializeDecoder(
-        const int32_t id,
-        const int8_t payload_type,
-        const char payload_name[RTP_PAYLOAD_NAME_SIZE],
-        const int frequency,
-        const uint8_t channels,
-        const uint32_t rate);
-    virtual void OnIncomingSSRCChanged(const int32_t id, const uint32_t ssrc);
-    virtual void OnIncomingCSRCChanged(const int32_t id, const uint32_t CSRC, const bool added) { }
-    virtual void ResetStatistics(uint32_t ssrc);
-
-    // Implement the MediaSink interfaces.
-    int deliverAudioData(char*, int len);
-    int deliverVideoData(char*, int len);
-
-    bool init(woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<VideoFrameMixer>, boost::shared_ptr<TaskRunner>, VCMInputProcessorCallback*);
+    bool init(woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<VideoFrameMixer>, boost::shared_ptr<woogeen_base::TaskRunner>, VCMInputProcessorCallback*);
 
     void bindAudioForSync(int32_t voiceChannelId, webrtc::VoEVideoSync*);
 
 private:
     int m_index;
+    boost::scoped_ptr<woogeen_base::VCMFrameConstructor> m_frameConstructor;
     bool m_externalDecoding;
-    bool m_decoderRegistered;
-
-    webrtc::VideoCodingModule* m_vcm;
-    boost::scoped_ptr<webrtc::RemoteBitrateObserver> m_remoteBitrateObserver;
-    boost::scoped_ptr<webrtc::RemoteBitrateEstimator> m_remoteBitrateEstimator;
-    boost::scoped_ptr<webrtc::ViEReceiver> m_videoReceiver;
-    boost::scoped_ptr<webrtc::RtpRtcp> m_rtpRtcp;
-    boost::scoped_ptr<webrtc::ViESyncModule> m_avSync;
-    boost::shared_ptr<webrtc::Transport> m_videoTransport;
-
-    boost::scoped_ptr<DebugRecorder> m_recorder;
-    boost::shared_ptr<VideoFrameMixer> m_frameReceiver;
-    boost::shared_ptr<webrtc::VCMReceiveCallback> m_renderer;
-    boost::shared_ptr<webrtc::VideoDecoder> m_decoder;
-    boost::shared_ptr<TaskRunner> m_taskRunner;
-};
-
-class DummyRemoteBitrateObserver : public webrtc::RemoteBitrateObserver {
-public:
-    virtual void OnReceiveBitrateChanged(const std::vector<unsigned int>& ssrcs, unsigned int bitrate) { }
 };
 
 }
