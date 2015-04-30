@@ -144,9 +144,9 @@ int32_t VideoMixer::removeOutput(int payloadType)
 
 void VideoMixer::startRecording(MediaFrameQueue& videoQueue)
 {
-    // FIXME: Currently, only VP8_90000_PT to be recorded.
-    if (addOutput(VP8_90000_PT, true, false) != -1) {
-        VideoFrameSender* output = m_outputs[VP8_90000_PT].get();
+    int payloadType = recordPayloadType();
+    if (addOutput(payloadType, true, false) != -1) {
+        VideoFrameSender* output = m_outputs[payloadType].get();
         output->RegisterPreSendFrameCallback(videoQueue);
 
         // Request an IFrame explicitly, because the recorder doesn't support active I-Frame requests.
@@ -158,10 +158,22 @@ void VideoMixer::startRecording(MediaFrameQueue& videoQueue)
 
 void VideoMixer::stopRecording()
 {
-    // FIXME: Currently, only VP8_90000_PT to be recorded.
-    std::map<int, boost::shared_ptr<VideoFrameSender>>::iterator it = m_outputs.find(VP8_90000_PT);
+    std::map<int, boost::shared_ptr<VideoFrameSender>>::iterator it = m_outputs.find(recordPayloadType());
     if (it != m_outputs.end())
         it->second->DeRegisterPreSendFrameCallback();
+}
+
+int VideoMixer::recordPayloadType() const
+{
+    // FIXME: Currently, ONLY VP8 to be recorded.
+    // Next step is for video mixer to automatically select an existing payload for recording.
+    // If none, then create a default output of VP8_90000_PT.
+    return VP8_90000_PT;
+}
+
+bool VideoMixer::getVideoSize(VideoSize& videoSize) const
+{
+    return m_layoutProcessor->getRootSize(videoSize);
 }
 
 int VideoMixer::deliverAudioData(char* buf, int len) 

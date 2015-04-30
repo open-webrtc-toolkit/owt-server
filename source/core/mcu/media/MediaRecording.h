@@ -21,6 +21,8 @@
 #ifndef MediaRecording_h
 #define MediaRecording_h
 
+#include "VideoLayout.h"
+
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/mutex.hpp>
 #include <Compiler.h>
@@ -111,6 +113,9 @@ public:
 
     virtual void startRecording(MediaFrameQueue& mediaQueue) = 0;
     virtual void stopRecording() = 0;
+
+    virtual int recordPayloadType() const = 0;
+    virtual bool getVideoSize(VideoSize& videoSize) const = 0;
 };
 
 } /* namespace mcu */
