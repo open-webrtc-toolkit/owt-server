@@ -131,7 +131,7 @@ void SoftVideoCompositor::pushInput(int input, webrtc::I420VideoFrame* frame)
     }
 }
 
-bool SoftVideoCompositor::setOutput(VideoFrameConsumer* consumer)
+bool SoftVideoCompositor::setOutput(woogeen_base::VideoFrameConsumer* consumer)
 {
     m_consumer = consumer;
     m_jobTimer->start();
@@ -156,7 +156,7 @@ void SoftVideoCompositor::generateFrame()
         composedFrame->set_render_time_ms(TickTime::MillisecondTimestamp() - m_ntpDelta);
 
         if (m_consumer)
-            m_consumer->onFrame(FRAME_FORMAT_I420, reinterpret_cast<unsigned char*>(composedFrame), 0, 0);
+            m_consumer->onFrame(woogeen_base::FRAME_FORMAT_I420, reinterpret_cast<unsigned char*>(composedFrame), 0, 0);
     }
 }
 

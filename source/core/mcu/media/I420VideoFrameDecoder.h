@@ -21,20 +21,21 @@
 #ifndef I420VideoFrameDecoder_h
 #define I420VideoFrameDecoder_h
 
-#include "VideoFramePipeline.h"
+#include "VideoFrameMixer.h"
 
 #include <boost/shared_ptr.hpp>
+#include <VideoFramePipeline.h>
 
 namespace mcu {
 
-class I420VideoFrameDecoder : public VideoFrameDecoder {
+class I420VideoFrameDecoder : public woogeen_base::VideoFrameDecoder {
 public:
     I420VideoFrameDecoder(int input, boost::shared_ptr<VideoFrameCompositor>);
     ~I420VideoFrameDecoder();
 
-    bool setInput(FrameFormat, VideoFrameProvider*);
+    bool setInput(woogeen_base::FrameFormat, woogeen_base::VideoFrameProvider*);
     void unsetInput();
-    void onFrame(FrameFormat, unsigned char* payload, int len, unsigned int ts);
+    void onFrame(woogeen_base::FrameFormat, unsigned char* payload, int len, unsigned int ts);
 
 private:
     int m_input;
@@ -53,16 +54,16 @@ I420VideoFrameDecoder::~I420VideoFrameDecoder()
     m_compositor->deActivateInput(m_input);
 }
 
-inline void I420VideoFrameDecoder::onFrame(FrameFormat format, unsigned char* payload, int len, unsigned int ts)
+inline void I420VideoFrameDecoder::onFrame(woogeen_base::FrameFormat format, unsigned char* payload, int len, unsigned int ts)
 {
-    assert(format == FRAME_FORMAT_I420);
+    assert(format == woogeen_base::FRAME_FORMAT_I420);
     webrtc::I420VideoFrame* frame = reinterpret_cast<webrtc::I420VideoFrame*>(payload);
     m_compositor->pushInput(m_input, frame);
 }
 
-inline bool I420VideoFrameDecoder::setInput(FrameFormat format, VideoFrameProvider*)
+inline bool I420VideoFrameDecoder::setInput(woogeen_base::FrameFormat format, woogeen_base::VideoFrameProvider*)
 {
-    assert(format == FRAME_FORMAT_I420);
+    assert(format == woogeen_base::FRAME_FORMAT_I420);
     return true;
 }
 

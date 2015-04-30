@@ -92,7 +92,7 @@ usage() {
   echo "    others_linux                        accumulated number of connections from other browsers on Linux"
   echo "    others_mac os x                     accumulated number of connections from other browsers on Mac OS X"
   echo "    others_android                      accumulated number of connections from other browsers on Android"
-  echo "    othres_others                       accumulated number of connections from other browsers on other OSes"
+  echo "    others_others                       accumulated number of connections from other browsers on other OSes"
   echo
 }
 

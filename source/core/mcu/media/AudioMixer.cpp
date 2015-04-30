@@ -360,7 +360,7 @@ int32_t AudioMixer::removeOutput(const std::string& participant)
     return -1;
 }
 
-void AudioMixer::startRecording(MediaFrameQueue& audioQueue)
+void AudioMixer::startRecording(woogeen_base::MediaFrameQueue& audioQueue)
 {
     // Create a new voice output for recording
     if (m_recordChannelId == -1)
@@ -392,7 +392,7 @@ int AudioMixer::recordPayloadType() const
     return PCMU_8000_PT;
 }
 
-bool AudioMixer::getVideoSize(VideoSize& videoSize) const
+bool AudioMixer::getVideoSize(unsigned int&, unsigned int&) const
 {
     // No video size info from audio mixer
     return false;

@@ -21,14 +21,13 @@
 #ifndef AudioMixer_h
 #define AudioMixer_h
 
-#include "MediaRecording.h"
-
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/shared_mutex.hpp>
 #include <JobTimer.h>
 #include <logger.h>
 #include <MediaDefinitions.h>
+#include <MediaRecording.h>
 #include <MediaSourceConsumer.h>
 #include <WoogeenTransport.h>
 #include <webrtc/modules/audio_device/include/fake_audio_device.h>
@@ -46,7 +45,7 @@ class AudioEncodedFrameCallbackAdapter : public webrtc::AudioEncodedFrameCallbac
     DECLARE_LOGGER();
 
 public:
-    AudioEncodedFrameCallbackAdapter(MediaFrameQueue* audioQueue)
+    AudioEncodedFrameCallbackAdapter(woogeen_base::MediaFrameQueue* audioQueue)
         : m_audioQueue(audioQueue)
     {
     }
@@ -64,10 +63,10 @@ public:
     }
 
 private:
-    MediaFrameQueue* m_audioQueue;
+    woogeen_base::MediaFrameQueue* m_audioQueue;
 };
 
-class AudioMixer : public woogeen_base::MediaSourceConsumer, public MediaRecording, public erizo::MediaSink, public erizo::FeedbackSink, public woogeen_base::JobTimerListener {
+class AudioMixer : public woogeen_base::MediaSourceConsumer, public woogeen_base::MediaRecording, public erizo::MediaSink, public erizo::FeedbackSink, public woogeen_base::JobTimerListener {
     DECLARE_LOGGER();
 
 public:
@@ -97,10 +96,10 @@ public:
     webrtc::VoEVideoSync* avSyncInterface();
 
     // Implements MediaRecording
-    void startRecording(MediaFrameQueue& audioQueue);
+    void startRecording(woogeen_base::MediaFrameQueue& audioQueue);
     void stopRecording();
     int recordPayloadType() const;
-    bool getVideoSize(VideoSize& videoSize) const;
+    bool getVideoSize(unsigned int& width, unsigned int& height) const;
 
 private:
     int32_t performMix();

@@ -21,7 +21,7 @@
 #ifndef HardwareVideoFrameMixer_h
 #define HardwareVideoFrameMixer_h
 
-#include "VideoFramePipeline.h"
+#include "VideoFrameMixer.h"
 #include "VideoLayout.h"
 
 #include "hardware/VideoMixEngine.h"
@@ -34,14 +34,15 @@
 #include <map>
 #include <set>
 #include <string>
+#include <VideoFramePipeline.h>
 
 namespace mcu {
 
 class HardwareVideoFrameMixerInput : public VideoMixEngineInput {
 public:
     HardwareVideoFrameMixerInput(boost::shared_ptr<VideoMixEngine> engine,
-                            FrameFormat inFormat,
-                            VideoFrameProvider* provider);
+                            woogeen_base::FrameFormat inFormat,
+                            woogeen_base::VideoFrameProvider* provider);
     virtual ~HardwareVideoFrameMixerInput();
 
     void push(unsigned char* payload, int len);
@@ -52,17 +53,17 @@ public:
 
 private:
     InputIndex m_index;
-    VideoFrameProvider* m_provider;
+    woogeen_base::VideoFrameProvider* m_provider;
     boost::shared_ptr<VideoMixEngine> m_engine;
 };
 
 class HardwareVideoFrameMixerOutput : public VideoMixEngineOutput, public woogeen_base::JobTimerListener {
 public:
     HardwareVideoFrameMixerOutput(boost::shared_ptr<VideoMixEngine> engine,
-                            FrameFormat outFormat,
+                            woogeen_base::FrameFormat outFormat,
                             unsigned int framerate,
                             unsigned short bitrate,
-                            VideoFrameConsumer* receiver);
+                            woogeen_base::VideoFrameConsumer* receiver);
     virtual ~HardwareVideoFrameMixerOutput();
 
     void setBitrate(unsigned short bitrate);
@@ -75,10 +76,10 @@ public:
 
 private:
     unsigned char m_esBuffer[1024 * 1024];
-    FrameFormat m_outFormat;
+    woogeen_base::FrameFormat m_outFormat;
     OutputIndex m_index;
     boost::shared_ptr<VideoMixEngine> m_engine;
-    VideoFrameConsumer* m_receiver;
+    woogeen_base::VideoFrameConsumer* m_receiver;
 
     unsigned int m_frameRate;
     unsigned int m_outCount;
@@ -86,19 +87,19 @@ private:
 };
 
 class VideoLayoutProcessor;
-class HardwareVideoFrameMixer : public VideoFrameMixer{
+class HardwareVideoFrameMixer : public VideoFrameMixer {
     DECLARE_LOGGER();
 public:
     HardwareVideoFrameMixer(VideoSize rootSize, YUVColor bgColor);
     virtual ~HardwareVideoFrameMixer();
 
-    bool activateInput(int input, FrameFormat, VideoFrameProvider*);
+    bool activateInput(int input, woogeen_base::FrameFormat, woogeen_base::VideoFrameProvider*);
     void deActivateInput(int input);
     void pushInput(int input, unsigned char* payload, int len);
 
-    void setBitrate(int id, unsigned short bitrate);
+    void setBitrate(unsigned short bitrate, int id);
     void requestKeyFrame(int id);
-    bool activateOutput(int id, FrameFormat, unsigned int framerate, unsigned short bitrate, VideoFrameConsumer*);
+    bool activateOutput(int id, woogeen_base::FrameFormat, unsigned int framerate, unsigned short bitrate, woogeen_base::VideoFrameConsumer*);
     void deActivateOutput(int id);
 
     void updateRootSize(VideoSize& rootSize);

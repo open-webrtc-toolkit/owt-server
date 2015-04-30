@@ -22,7 +22,7 @@
 #define SoftVideoCompositor_h
 
 #include "BufferManager.h"
-#include "VideoFramePipeline.h"
+#include "VideoFrameMixer.h"
 #include "VideoLayout.h"
 
 #include <boost/scoped_ptr.hpp>
@@ -31,6 +31,7 @@
 #include <JobTimer.h>
 #include <logger.h>
 #include <vector>
+#include <VideoFramePipeline.h>
 
 namespace webrtc {
 class I420VideoFrame;
@@ -74,7 +75,7 @@ public:
     void deActivateInput(int input);
     void pushInput(int input, webrtc::I420VideoFrame*);
 
-    bool setOutput(VideoFrameConsumer*);
+    bool setOutput(woogeen_base::VideoFrameConsumer*);
     void unsetOutput();
 
     void updateRootSize(VideoSize& rootSize);
@@ -100,7 +101,7 @@ private:
     LayoutSolution m_currentLayout;
     LayoutSolution m_newLayout;
     LayoutSolutionState m_solutionState;
-    VideoFrameConsumer* m_consumer;
+    woogeen_base::VideoFrameConsumer* m_consumer;
     /*
      * Each incoming channel will store the decoded frame in this array, and the composition
      * thread will scan this array and compose the frames into one frame.

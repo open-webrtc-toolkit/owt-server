@@ -33,8 +33,8 @@ namespace mcu {
 DEFINE_LOGGER(VCMOutputProcessor, "mcu.media.VCMOutputProcessor");
 
 VCMOutputProcessor::VCMOutputProcessor(int id, boost::shared_ptr<VideoFrameMixer> source, int targetBitrate, woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<woogeen_base::TaskRunner> taskRunner)
-    : VideoFrameSender(id)
-    , m_sendFormat(FRAME_FORMAT_UNKNOWN)
+    : woogeen_base::VideoFrameSender(id)
+    , m_sendFormat(woogeen_base::FRAME_FORMAT_UNKNOWN)
     , m_targetBitrate(targetBitrate)
     , m_source(source)
 {
@@ -46,21 +46,21 @@ VCMOutputProcessor::~VCMOutputProcessor()
     close();
 }
 
-bool VCMOutputProcessor::updateVideoSize(VideoSize videoSize)
+bool VCMOutputProcessor::updateVideoSize(unsigned int width, unsigned int height)
 {
     VideoCodec videoCodec;
     bool validCodec = false;
     validCodec = (m_videoEncoder->GetEncoder(&videoCodec) == 0);
 
     if (validCodec) {
-        videoCodec.width = videoSize.width;
-        videoCodec.height = videoSize.height;
+        videoCodec.width = width;
+        videoCodec.height = height;
 
         uint32_t targetBitrate = 0;
         if (m_targetBitrate > 0)
             targetBitrate = m_targetBitrate;
         else
-            targetBitrate = calcBitrate(videoCodec.width, videoCodec.height) * (m_sendFormat == FRAME_FORMAT_VP8 ? 0.9 : 1);
+            targetBitrate = woogeen_base::calcBitrate(videoCodec.width, videoCodec.height) * (m_sendFormat == woogeen_base::FRAME_FORMAT_VP8 ? 0.9 : 1);
 
         videoCodec.maxBitrate = targetBitrate;
         videoCodec.minBitrate = targetBitrate / 4;
@@ -72,7 +72,7 @@ bool VCMOutputProcessor::updateVideoSize(VideoSize videoSize)
     return false;
 }
 
-bool VCMOutputProcessor::setSendCodec(FrameFormat frameFormat, VideoSize videoSize)
+bool VCMOutputProcessor::setSendCodec(woogeen_base::FrameFormat frameFormat, unsigned int width, unsigned int height)
 {
     VideoCodec videoCodec;
     bool validCodec = false;
@@ -85,28 +85,28 @@ bool VCMOutputProcessor::setSendCodec(FrameFormat frameFormat, VideoSize videoSi
     validCodec = (m_videoEncoder->GetEncoder(&videoCodec) == 0);
 
     switch (frameFormat) {
-    case FRAME_FORMAT_VP8:
+    case woogeen_base::FRAME_FORMAT_VP8:
         if (!validCodec || videoCodec.codecType != webrtc::kVideoCodecVP8)
             validCodec = (VideoCodingModule::Codec(webrtc::kVideoCodecVP8, &videoCodec) == VCM_OK);
         break;
-    case FRAME_FORMAT_H264:
+    case woogeen_base::FRAME_FORMAT_H264:
         if (!validCodec || videoCodec.codecType != webrtc::kVideoCodecH264)
             validCodec = (VideoCodingModule::Codec(webrtc::kVideoCodecH264, &videoCodec) == VCM_OK);
         break;
-    case FRAME_FORMAT_I420:
+    case woogeen_base::FRAME_FORMAT_I420:
     default:
         break;
     }
 
     if (validCodec) {
-        videoCodec.width = videoSize.width;
-        videoCodec.height = videoSize.height;
+        videoCodec.width = width;
+        videoCodec.height = height;
 
         uint32_t targetBitrate = 0;
         if (m_targetBitrate > 0)
             targetBitrate = m_targetBitrate;
         else
-            targetBitrate = calcBitrate(videoCodec.width, videoCodec.height) * (m_sendFormat == FRAME_FORMAT_VP8 ? 0.9 : 1);
+            targetBitrate = woogeen_base::calcBitrate(videoCodec.width, videoCodec.height) * (m_sendFormat == woogeen_base::FRAME_FORMAT_VP8 ? 0.9 : 1);
 
         videoCodec.maxBitrate = targetBitrate;
         videoCodec.minBitrate = targetBitrate / 4;
@@ -179,7 +179,7 @@ bool VCMOutputProcessor::startSend(bool nack, bool fec)
     m_taskRunner->RegisterModule(rtpRtcp);
 
     if (m_rtpRtcps.size() == 0)
-        m_source->activateOutput(m_id, FRAME_FORMAT_I420, 30, 500, this);
+        m_source->activateOutput(m_id, woogeen_base::FRAME_FORMAT_I420, 30, 500, this);
 
     m_rtpRtcps.push_back(rtpRtcp);
     m_payloadRouter->SetSendingRtpModules(m_rtpRtcps);
@@ -234,25 +234,25 @@ uint32_t VCMOutputProcessor::sendSSRC(bool nack, bool fec)
     return 0;
 }
 
-void VCMOutputProcessor::onFrame(FrameFormat format, unsigned char* payload, int len, unsigned int ts)
+void VCMOutputProcessor::onFrame(woogeen_base::FrameFormat format, unsigned char* payload, int len, unsigned int ts)
 {
-    if (format != FRAME_FORMAT_I420 && format != m_sendFormat) {
+    if (format != woogeen_base::FRAME_FORMAT_I420 && format != m_sendFormat) {
         ELOG_INFO("Frame format %d is not supported, ignored.", format);
         return;
     }
 
     switch (format) {
-    case FRAME_FORMAT_I420: {
+    case woogeen_base::FRAME_FORMAT_I420: {
         // Currently we should only receive I420 format frame.
         I420VideoFrame* composedFrame = reinterpret_cast<I420VideoFrame*>(payload);
         std::vector<uint32_t> csrcs;
         m_videoEncoder->DeliverFrame(m_id, composedFrame, csrcs);
         break;
     }
-    case FRAME_FORMAT_VP8:
+    case woogeen_base::FRAME_FORMAT_VP8:
         assert(false);
         break;
-    case FRAME_FORMAT_H264:
+    case woogeen_base::FRAME_FORMAT_H264:
         assert(false);
     default:
         break;
@@ -285,7 +285,7 @@ bool VCMOutputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* tran
     return true;
 }
 
-void VCMOutputProcessor::RegisterPreSendFrameCallback(MediaFrameQueue& videoQueue)
+void VCMOutputProcessor::RegisterPreSendFrameCallback(woogeen_base::MediaFrameQueue& videoQueue)
 {
     m_encodedFrameCallback.reset(new EncodedFrameCallbackAdapter(&videoQueue));
     m_videoEncoder->RegisterPostEncodeImageCallback(m_encodedFrameCallback.get());

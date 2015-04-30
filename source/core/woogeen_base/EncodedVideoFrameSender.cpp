@@ -25,15 +25,15 @@
 using namespace webrtc;
 using namespace erizo;
 
-namespace mcu {
+namespace woogeen_base {
 
 // To make it consistent with the webrtc library, we allow packets to be transmitted
 // in up to 2 times max video bitrate if the bandwidth estimate allows it.
 static const int TRANSMISSION_MAXBITRATE_MULTIPLIER = 2;
 
-DEFINE_LOGGER(EncodedVideoFrameSender, "mcu.media.EncodedVideoFrameSender");
+DEFINE_LOGGER(EncodedVideoFrameSender, "woogeen.EncodedVideoFrameSender");
 
-EncodedVideoFrameSender::EncodedVideoFrameSender(int id, boost::shared_ptr<VideoFrameMixer> source, FrameFormat frameFormat, int targetBitrate, woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<woogeen_base::TaskRunner> taskRunner)
+EncodedVideoFrameSender::EncodedVideoFrameSender(int id, boost::shared_ptr<VideoFrameProvider> source, FrameFormat frameFormat, int targetBitrate, WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<TaskRunner> taskRunner)
     : VideoFrameSender(id)
     , m_source(source)
     , m_frameFormat(frameFormat)
@@ -48,22 +48,22 @@ EncodedVideoFrameSender::~EncodedVideoFrameSender()
     close();
 }
 
-bool EncodedVideoFrameSender::updateVideoSize(VideoSize videoSize)
+bool EncodedVideoFrameSender::updateVideoSize(unsigned int width, unsigned int height)
 {
     uint32_t targetBitrate = 0;
     if (m_targetBitrate > 0)
         targetBitrate = m_targetBitrate;
     else
-        targetBitrate = calcBitrate(videoSize.width, videoSize.height) * (m_frameFormat == FRAME_FORMAT_VP8 ? 0.9 : 1);
+        targetBitrate = calcBitrate(width, height) * (m_frameFormat == FRAME_FORMAT_VP8 ? 0.9 : 1);
 
     uint32_t minBitrate = targetBitrate / 4;
     // The bitrate controller is accepting "bps".
     m_bitrateController->SetBitrateObserver(this, targetBitrate * 1000, minBitrate * 1000, TRANSMISSION_MAXBITRATE_MULTIPLIER * targetBitrate * 1000);
-    m_source->setBitrate(m_id, targetBitrate);
+    m_source->setBitrate(targetBitrate, m_id);
     return true;
 }
 
-bool EncodedVideoFrameSender::setSendCodec(FrameFormat frameFormat, VideoSize videoSize)
+bool EncodedVideoFrameSender::setSendCodec(FrameFormat frameFormat, unsigned int width, unsigned int height)
 {
     // The send video format should be identical to the input video format,
     // because we (EncodedVideoFrameSender) don't have the transcoding capability.
@@ -92,12 +92,12 @@ bool EncodedVideoFrameSender::setSendCodec(FrameFormat frameFormat, VideoSize vi
     if (m_targetBitrate > 0)
         targetBitrate = m_targetBitrate;
     else
-        targetBitrate = calcBitrate(videoSize.width, videoSize.height) * (frameFormat == FRAME_FORMAT_VP8 ? 0.9 : 1);
+        targetBitrate = calcBitrate(width, height) * (frameFormat == FRAME_FORMAT_VP8 ? 0.9 : 1);
 
     uint32_t minBitrate = targetBitrate / 4;
     // The bitrate controller is accepting "bps".
     m_bitrateController->SetBitrateObserver(this, targetBitrate * 1000, minBitrate * 1000, TRANSMISSION_MAXBITRATE_MULTIPLIER * targetBitrate * 1000);
-    m_source->setBitrate(m_id, targetBitrate);
+    m_source->setBitrate(targetBitrate, m_id);
 
     return m_rtpRtcp && m_rtpRtcp->RegisterSendPayload(codec) != -1;
 }
@@ -124,7 +124,7 @@ int EncodedVideoFrameSender::deliverFeedback(char* buf, int len)
 
 void EncodedVideoFrameSender::OnNetworkChanged(const uint32_t target_bitrate, const uint8_t fraction_loss, const int64_t rtt)
 {
-    m_source->setBitrate(m_id, target_bitrate / 1000);
+    m_source->setBitrate(target_bitrate / 1000, m_id);
 }
 
 void EncodedVideoFrameSender::onFrame(FrameFormat format, unsigned char* payload, int len, unsigned int ts)
@@ -160,7 +160,7 @@ void EncodedVideoFrameSender::onFrame(FrameFormat format, unsigned char* payload
     }
 }
 
-bool EncodedVideoFrameSender::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<woogeen_base::TaskRunner> taskRunner)
+bool EncodedVideoFrameSender::init(WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<TaskRunner> taskRunner)
 {
     m_taskRunner = taskRunner;
     m_videoTransport.reset(transport);
@@ -178,16 +178,14 @@ bool EncodedVideoFrameSender::init(woogeen_base::WoogeenTransport<erizo::VIDEO>*
     configuration.bandwidth_callback = m_bandwidthObserver.get();
     m_rtpRtcp.reset(RtpRtcp::CreateRtpRtcp(configuration));
 
-    // Enable FEC.
+    // Disable FEC.
     // TODO: the parameters should be dynamically adjustable.
-    m_rtpRtcp->SetGenericFECStatus(true, RED_90000_PT, ULP_90000_PT);
+    m_rtpRtcp->SetGenericFECStatus(false, RED_90000_PT, ULP_90000_PT);
     // Enable NACK.
     // TODO: the parameters should be dynamically adjustable.
     m_rtpRtcp->SetStorePacketsStatus(true, 600);
 
     m_taskRunner->RegisterModule(m_rtpRtcp.get());
-
-    m_source->activateOutput(m_id, m_frameFormat, 30, 500, this);
 
     return true;
 }
@@ -205,8 +203,6 @@ void EncodedVideoFrameSender::DeRegisterPreSendFrameCallback()
 void EncodedVideoFrameSender::close()
 {
     DeRegisterPreSendFrameCallback();
-
-    m_source->deActivateOutput(m_id);
 
     if (m_bitrateController)
         m_bitrateController->RemoveBitrateObserver(this);

@@ -21,14 +21,12 @@
 #ifndef VideoFrameSender_h
 #define VideoFrameSender_h
 
-#include "MediaUtilities.h"
 #include "VideoFramePipeline.h"
+#include "WebRTCFeedbackProcessor.h"
 
-#include <boost/shared_ptr.hpp>
 #include <MediaDefinitions.h>
-#include <WebRTCFeedbackProcessor.h>
 
-namespace mcu {
+namespace woogeen_base {
 
 /**
  * This is the class to send out the video frame with a given format.
@@ -42,12 +40,12 @@ public:
 
     virtual ~VideoFrameSender() { }
 
-    virtual bool setSendCodec(FrameFormat, VideoSize) = 0;
-    virtual bool updateVideoSize(VideoSize) = 0;
+    virtual bool setSendCodec(FrameFormat, unsigned int width, unsigned int height) = 0;
+    virtual bool updateVideoSize(unsigned int width, unsigned int height) = 0;
     virtual bool startSend(bool nack, bool fec) = 0;
     virtual bool stopSend(bool nack, bool fec) = 0;
     virtual uint32_t sendSSRC(bool nack, bool fec) = 0;
-    virtual woogeen_base::IntraFrameCallback* iFrameCallback() = 0;
+    virtual IntraFrameCallback* iFrameCallback() = 0;
     virtual erizo::FeedbackSink* feedbackSink() = 0;
     virtual int id() { return m_id; }
 
