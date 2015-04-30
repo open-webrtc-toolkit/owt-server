@@ -91,6 +91,8 @@ public:
     // Implements MediaRecording
     void startRecording(MediaFrameQueue& videoQueue);
     void stopRecording();
+    int recordPayloadType() const;
+    bool getVideoSize(VideoSize& videoSize) const;
 
 private:
     void closeAll();

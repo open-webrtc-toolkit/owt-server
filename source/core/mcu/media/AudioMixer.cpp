@@ -363,9 +363,8 @@ int32_t AudioMixer::removeOutput(const std::string& participant)
 void AudioMixer::startRecording(MediaFrameQueue& audioQueue)
 {
     // Create a new voice output for recording
-    // FIXME: Currently ONLY PCMU is recorded
     if (m_recordChannelId == -1)
-        m_recordChannelId = addOutput(RECORD_CHANNEL, PCMU_8000_PT);
+        m_recordChannelId = addOutput(RECORD_CHANNEL, recordPayloadType());
 
     if (m_recordChannelId != -1) {
         m_encodedFrameCallback.reset(new AudioEncodedFrameCallbackAdapter(&audioQueue));
@@ -383,6 +382,20 @@ void AudioMixer::stopRecording()
         removeOutput(RECORD_CHANNEL);
         m_recordChannelId = -1;
     }
+}
+
+int AudioMixer::recordPayloadType() const
+{
+    // FIXME: Currently, ONLY PCMU to be recorded.
+    // Next step is for audio mixer to automatically select an existing payload for recording.
+    // If none, then create a default output of PCMU_8000_PT.
+    return PCMU_8000_PT;
+}
+
+bool AudioMixer::getVideoSize(VideoSize& videoSize) const
+{
+    // No video size info from audio mixer
+    return false;
 }
 
 int32_t AudioMixer::getChannelId(uint32_t sourceId)

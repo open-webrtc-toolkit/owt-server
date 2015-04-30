@@ -21,10 +21,29 @@
 #include "MediaRecorder.h"
 
 #include <Compiler.h>
+#include <rtputils.h>
 
 namespace mcu {
 
 DEFINE_LOGGER(MediaRecorder, "mcu.media.MediaRecorder");
+
+inline AVCodecID payloadType2VideoCodecID(int payloadType)
+{
+    switch (payloadType) {
+        case VP8_90000_PT: return AV_CODEC_ID_VP8;
+        case H264_90000_PT: return AV_CODEC_ID_H264;
+        default: return AV_CODEC_ID_VP8;
+    }
+}
+
+inline AVCodecID payloadType2AudioCodecID(int payloadType)
+{
+    switch (payloadType) {
+        case PCMU_8000_PT: return AV_CODEC_ID_PCM_MULAW;
+        case OPUS_48000_PT: return AV_CODEC_ID_OPUS;
+        default: return AV_CODEC_ID_PCM_MULAW;
+    }
+}
 
 MediaRecorder::MediaRecorder(MediaRecording* videoRecording, MediaRecording* audioRecording, const std::string& recordPath, int snapshotInterval)
     : m_recording(false), m_recordVideoStream(NULL), m_recordAudioStream(NULL)
@@ -67,8 +86,8 @@ bool MediaRecorder::startRecording()
         return false;
     }
 
-    m_recordContext->oformat->video_codec = AV_CODEC_ID_VP8;       // FIXME: Currently only VP8 can be recorded as video stream
-    m_recordContext->oformat->audio_codec = AV_CODEC_ID_PCM_MULAW; // FIXME: We should figure this out once we start receiving data; it's either PCMU or OPUS
+    m_recordContext->oformat->video_codec = payloadType2VideoCodecID(m_videoRecording->recordPayloadType());
+    m_recordContext->oformat->audio_codec = payloadType2AudioCodecID(m_audioRecording->recordPayloadType());
 
     // Initialize the record context
     if (!initRecordContext())
@@ -81,9 +100,8 @@ bool MediaRecorder::startRecording()
     m_audioRecording->startRecording(*m_audioQueue);
 
     // File write thread
-    m_recordThread = boost::thread(&MediaRecorder::recordLoop, this);
-
     m_recording = true;
+    m_recordThread = boost::thread(&MediaRecorder::recordLoop, this);
 
     return true;
 }
@@ -128,9 +146,17 @@ bool MediaRecorder::initRecordContext()
         m_recordVideoStream = avformat_new_stream(m_recordContext, videoCodec);
         m_recordVideoStream->id = 0;
         m_recordVideoStream->codec->codec_id = m_recordContext->oformat->video_codec;
-        // FIXME: Chunbo to set this kind of codec information from VideoMixer
-        m_recordVideoStream->codec->width = 640;
-        m_recordVideoStream->codec->height = 480;
+
+        VideoSize recordSize;
+        if (m_videoRecording->getVideoSize(recordSize)) {
+            m_recordVideoStream->codec->width = recordSize.width;
+            m_recordVideoStream->codec->height = recordSize.height;
+        } else {
+            // Default record size is VGA
+            m_recordVideoStream->codec->width = 640;
+            m_recordVideoStream->codec->height = 480;
+        }
+
         // A decent guess here suffices; if processing the file with ffmpeg, use -vsync 0 to force it not to duplicate frames.
         m_recordVideoStream->codec->time_base = (AVRational){1,30};
         m_recordVideoStream->codec->pix_fmt = PIX_FMT_YUV420P;

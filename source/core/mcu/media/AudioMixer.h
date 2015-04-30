@@ -99,6 +99,8 @@ public:
     // Implements MediaRecording
     void startRecording(MediaFrameQueue& audioQueue);
     void stopRecording();
+    int recordPayloadType() const;
+    bool getVideoSize(VideoSize& videoSize) const;
 
 private:
     int32_t performMix();
