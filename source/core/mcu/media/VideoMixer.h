@@ -21,9 +21,8 @@
 #ifndef VideoMixer_h
 #define VideoMixer_h
 
-#include "MediaRecording.h"
 #include "VCMInputProcessor.h"
-#include "VideoFramePipeline.h"
+#include "VideoFrameMixer.h"
 
 #include <boost/property_tree/ptree.hpp>
 #include <boost/shared_ptr.hpp>
@@ -31,10 +30,12 @@
 #include <logger.h>
 #include <map>
 #include <MediaDefinitions.h>
+#include <MediaRecording.h>
 #include <MediaSourceConsumer.h>
 #include <TaskRunner.h>
 #include <WebRTCFeedbackProcessor.h>
 #include <vector>
+#include <VideoFrameSender.h>
 
 namespace webrtc {
 class VoEVideoSync;
@@ -42,7 +43,6 @@ class VoEVideoSync;
 
 namespace mcu {
 
-class VideoFrameSender;
 class VideoLayoutProcessor;
 
 static const int MIXED_VP8_VIDEO_STREAM_ID = 2;
@@ -51,7 +51,7 @@ static const int MIXED_H264_VIDEO_STREAM_ID = 3;
 /**
  * Receives media from several sources, mixed into one stream and retransmits it to the RTPDataReceiver.
  */
-class VideoMixer : public woogeen_base::MediaSourceConsumer, public MediaRecording, public erizo::MediaSink, public erizo::FeedbackSink, public VCMInputProcessorCallback {
+class VideoMixer : public woogeen_base::MediaSourceConsumer, public woogeen_base::MediaRecording, public erizo::MediaSink, public erizo::FeedbackSink, public VCMInputProcessorCallback {
     DECLARE_LOGGER();
 
 public:
@@ -89,10 +89,10 @@ public:
     bool setBackgroundColor(const std::string& color);
 
     // Implements MediaRecording
-    void startRecording(MediaFrameQueue& videoQueue);
+    void startRecording(woogeen_base::MediaFrameQueue& videoQueue);
     void stopRecording();
     int recordPayloadType() const;
-    bool getVideoSize(VideoSize& videoSize) const;
+    bool getVideoSize(unsigned int& width, unsigned int& height) const;
 
 private:
     void closeAll();
@@ -115,7 +115,7 @@ private:
     int m_outputBitrate;
     boost::shared_ptr<VideoFrameMixer> m_frameMixer;
     boost::shared_mutex m_outputMutex;
-    std::map<int, boost::shared_ptr<VideoFrameSender>> m_outputs;
+    std::map<int, boost::shared_ptr<woogeen_base::VideoFrameSender>> m_outputs;
 };
 
 inline int VideoMixer::assignInput(uint32_t source)

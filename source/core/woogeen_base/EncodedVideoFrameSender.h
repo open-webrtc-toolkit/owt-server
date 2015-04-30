@@ -22,17 +22,17 @@
 #define EncodedVideoFrameSender_h
 
 #include "MediaRecording.h"
+#include "TaskRunner.h"
 #include "VideoFrameSender.h"
+#include "WoogeenTransport.h"
 
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
 #include <logger.h>
-#include <TaskRunner.h>
-#include <WoogeenTransport.h>
 #include <webrtc/modules/bitrate_controller/include/bitrate_controller.h>
 #include <webrtc/modules/rtp_rtcp/interface/rtp_rtcp.h>
 
-namespace mcu {
+namespace woogeen_base {
 
 /**
  * This is the class to accept the encoded frame with the given format,
@@ -41,23 +41,23 @@ namespace mcu {
  */
 class EncodedVideoFrameSender : public VideoFrameSender,
                                 public erizo::FeedbackSink,
-                                public woogeen_base::IntraFrameCallback,
+                                public IntraFrameCallback,
                                 public webrtc::BitrateObserver,
                                 public webrtc::RtcpIntraFrameObserver {
     DECLARE_LOGGER();
 
 public:
-    EncodedVideoFrameSender(int id, boost::shared_ptr<VideoFrameMixer>, FrameFormat, int targetBitrate, woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<woogeen_base::TaskRunner>);
+    EncodedVideoFrameSender(int id, boost::shared_ptr<VideoFrameProvider>, FrameFormat, int targetBitrate, WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<TaskRunner>);
     ~EncodedVideoFrameSender();
 
     // Implements VideoFrameSender.
     void onFrame(FrameFormat, unsigned char* payload, int len, unsigned int ts);
-    bool setSendCodec(FrameFormat, VideoSize);
-    bool updateVideoSize(VideoSize);
+    bool setSendCodec(FrameFormat, unsigned int width, unsigned int height);
+    bool updateVideoSize(unsigned int width, unsigned int height);
     bool startSend(bool nack, bool fec) { return true; }
     bool stopSend(bool nack, bool fec) { return true; }
     uint32_t sendSSRC(bool nack, bool fec);
-    woogeen_base::IntraFrameCallback* iFrameCallback() { return this; }
+    IntraFrameCallback* iFrameCallback() { return this; }
     erizo::FeedbackSink* feedbackSink() { return this; }
     void RegisterPreSendFrameCallback(MediaFrameQueue& videoQueue);
     void DeRegisterPreSendFrameCallback();
@@ -78,7 +78,7 @@ public:
     void OnNetworkChanged(const uint32_t target_bitrate, const uint8_t fraction_loss, const int64_t rtt);
 
 private:
-    bool init(woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<woogeen_base::TaskRunner>);
+    bool init(WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<TaskRunner>);
     void close();
 
     boost::scoped_ptr<webrtc::BitrateController> m_bitrateController;
@@ -86,8 +86,8 @@ private:
     boost::scoped_ptr<webrtc::RtpRtcp> m_rtpRtcp;
 
     boost::shared_ptr<webrtc::Transport> m_videoTransport;
-    boost::shared_ptr<woogeen_base::TaskRunner> m_taskRunner;
-    boost::shared_ptr<VideoFrameMixer> m_source;
+    boost::shared_ptr<TaskRunner> m_taskRunner;
+    boost::shared_ptr<VideoFrameProvider> m_source;
     FrameFormat m_frameFormat;
     int m_targetBitrate;
 

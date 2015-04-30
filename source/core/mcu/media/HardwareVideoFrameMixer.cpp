@@ -22,12 +22,12 @@
 
 namespace mcu {
 
-VideoMixCodecType Frameformat2CodecType(FrameFormat format)
+VideoMixCodecType Frameformat2CodecType(woogeen_base::FrameFormat format)
 {
     switch (format) {
-        case FRAME_FORMAT_H264:
+        case woogeen_base::FRAME_FORMAT_H264:
             return VCT_MIX_H264;
-        case FRAME_FORMAT_VP8:
+        case woogeen_base::FRAME_FORMAT_VP8:
             return VCT_MIX_VP8;
         default:
             return VCT_MIX_UNKNOWN;
@@ -35,13 +35,13 @@ VideoMixCodecType Frameformat2CodecType(FrameFormat format)
 }
 
 HardwareVideoFrameMixerInput::HardwareVideoFrameMixerInput(boost::shared_ptr<VideoMixEngine> engine,
-                                                 FrameFormat inFormat,
-                                                 VideoFrameProvider* provider)
+                                                 woogeen_base::FrameFormat inFormat,
+                                                 woogeen_base::VideoFrameProvider* provider)
     : m_index(INVALID_INPUT_INDEX)
     , m_provider(provider)
     , m_engine(engine)
 {
-    assert((inFormat == FRAME_FORMAT_VP8 || inFormat == FRAME_FORMAT_H264) && m_provider);
+    assert((inFormat == woogeen_base::FRAME_FORMAT_VP8 || inFormat == woogeen_base::FRAME_FORMAT_H264) && m_provider);
 
     m_index = m_engine->enableInput(Frameformat2CodecType(inFormat), this);
 }
@@ -66,10 +66,10 @@ void HardwareVideoFrameMixerInput::requestKeyFrame(InputIndex index) {
 }
 
 HardwareVideoFrameMixerOutput::HardwareVideoFrameMixerOutput(boost::shared_ptr<VideoMixEngine> engine,
-                                                    FrameFormat outFormat,
+                                                    woogeen_base::FrameFormat outFormat,
                                                     unsigned int framerate,
                                                     unsigned short bitrate,
-                                                    VideoFrameConsumer* receiver)
+                                                    woogeen_base::VideoFrameConsumer* receiver)
     : m_outFormat(outFormat)
     , m_index(INVALID_OUTPUT_INDEX)
     , m_engine(engine)
@@ -77,7 +77,7 @@ HardwareVideoFrameMixerOutput::HardwareVideoFrameMixerOutput(boost::shared_ptr<V
     , m_frameRate(framerate)
     , m_outCount(0)
 {
-    assert((m_outFormat == FRAME_FORMAT_VP8 || m_outFormat == FRAME_FORMAT_H264) && m_receiver);
+    assert((m_outFormat == woogeen_base::FRAME_FORMAT_VP8 || m_outFormat == woogeen_base::FRAME_FORMAT_H264) && m_receiver);
 
     m_index = m_engine->enableOutput(Frameformat2CodecType(m_outFormat), bitrate, this);
     assert(m_index != INVALID_OUTPUT_INDEX);
@@ -167,7 +167,7 @@ void HardwareVideoFrameMixer::updateLayoutSolution(LayoutSolution& solution)
     m_engine->setLayout(&layout);
 }
 
-bool HardwareVideoFrameMixer::activateInput(int input, FrameFormat format, VideoFrameProvider* provider)
+bool HardwareVideoFrameMixer::activateInput(int input, woogeen_base::FrameFormat format, woogeen_base::VideoFrameProvider* provider)
 {
     boost::upgrade_lock<boost::shared_mutex> lock(m_inputMutex);
     if (m_inputs.find(input) != m_inputs.end()) {
@@ -197,7 +197,7 @@ void HardwareVideoFrameMixer::pushInput(int input, unsigned char* payload, int l
         it->second->push(payload, len);
 }
 
-void HardwareVideoFrameMixer::setBitrate(int id, unsigned short bitrate)
+void HardwareVideoFrameMixer::setBitrate(unsigned short bitrate, int id)
 {
     boost::shared_lock<boost::shared_mutex> lock(m_outputMutex);
     std::map<int, boost::shared_ptr<HardwareVideoFrameMixerOutput>>::iterator it = m_outputs.find(id);
@@ -213,14 +213,14 @@ void HardwareVideoFrameMixer::requestKeyFrame(int id)
         it->second->requestKeyFrame();
 }
 
-bool HardwareVideoFrameMixer::activateOutput(int id, FrameFormat format, unsigned int framerate, unsigned short bitrate, VideoFrameConsumer* receiver)
+bool HardwareVideoFrameMixer::activateOutput(int id, woogeen_base::FrameFormat format, unsigned int framerate, unsigned short bitrate, woogeen_base::VideoFrameConsumer* receiver)
 {
     boost::upgrade_lock<boost::shared_mutex> lock(m_outputMutex);
     if (m_outputs.find(id) != m_outputs.end()) {
         ELOG_WARN("activateOutput failed, format is in use.");
         return false;
     }
-    ELOG_DEBUG("activateOutput OK, format: %s", ((format == FRAME_FORMAT_VP8)? "VP8" : "H264"));
+    ELOG_DEBUG("activateOutput OK, format: %s", ((format == woogeen_base::FRAME_FORMAT_VP8)? "VP8" : "H264"));
     HardwareVideoFrameMixerOutput* newOutput = new HardwareVideoFrameMixerOutput(m_engine, format, framerate, bitrate, receiver);
 
     boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);

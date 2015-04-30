@@ -37,13 +37,13 @@ public:
     SoftVideoFrameMixer(uint32_t maxInput, VideoSize rootSize, YUVColor bgColor);
     ~SoftVideoFrameMixer();
 
-    bool activateInput(int input, FrameFormat, VideoFrameProvider*);
+    bool activateInput(int input, woogeen_base::FrameFormat, woogeen_base::VideoFrameProvider*);
     void deActivateInput(int input);
     void pushInput(int input, unsigned char* payload, int len);
 
-    void setBitrate(int id, unsigned short bitrate);
+    void setBitrate(unsigned short bitrate, int id);
     void requestKeyFrame(int id);
-    bool activateOutput(int id, FrameFormat, unsigned int framerate, unsigned short bitrate, VideoFrameConsumer*);
+    bool activateOutput(int id, woogeen_base::FrameFormat, unsigned int framerate, unsigned short bitrate, woogeen_base::VideoFrameConsumer*);
     void deActivateOutput(int id);
 
     void updateRootSize(VideoSize& rootSize);
@@ -51,7 +51,7 @@ public:
     void updateLayoutSolution(LayoutSolution& solution);
 
 private:
-    std::map<int, boost::shared_ptr<VideoFrameDecoder>> m_decoders;
+    std::map<int, boost::shared_ptr<woogeen_base::VideoFrameDecoder>> m_decoders;
     boost::shared_ptr<VideoFrameCompositor> m_compositor;
     boost::scoped_ptr<FakedVideoFrameEncoder> m_encoder;
 };
@@ -67,10 +67,10 @@ SoftVideoFrameMixer::~SoftVideoFrameMixer()
     m_decoders.clear();
 }
 
-inline bool SoftVideoFrameMixer::activateInput(int input, FrameFormat format, VideoFrameProvider* provider)
+inline bool SoftVideoFrameMixer::activateInput(int input, woogeen_base::FrameFormat format, woogeen_base::VideoFrameProvider* provider)
 {
-    assert(format == FRAME_FORMAT_I420);
-    std::map<int, boost::shared_ptr<VideoFrameDecoder>>::iterator it = m_decoders.find(input);
+    assert(format == woogeen_base::FRAME_FORMAT_I420);
+    std::map<int, boost::shared_ptr<woogeen_base::VideoFrameDecoder>>::iterator it = m_decoders.find(input);
     if (it != m_decoders.end())
         return false;
 
@@ -82,7 +82,7 @@ inline bool SoftVideoFrameMixer::activateInput(int input, FrameFormat format, Vi
 
 inline void SoftVideoFrameMixer::deActivateInput(int input)
 {
-    std::map<int, boost::shared_ptr<VideoFrameDecoder>>::iterator it = m_decoders.find(input);
+    std::map<int, boost::shared_ptr<woogeen_base::VideoFrameDecoder>>::iterator it = m_decoders.find(input);
     if (it != m_decoders.end()) {
         it->second->unsetInput();
         m_decoders.erase(it);
@@ -91,9 +91,9 @@ inline void SoftVideoFrameMixer::deActivateInput(int input)
 
 inline void SoftVideoFrameMixer::pushInput(int input, unsigned char* payload, int len)
 {
-    std::map<int, boost::shared_ptr<VideoFrameDecoder>>::iterator it = m_decoders.find(input);
+    std::map<int, boost::shared_ptr<woogeen_base::VideoFrameDecoder>>::iterator it = m_decoders.find(input);
     if (it != m_decoders.end())
-        it->second->onFrame(FRAME_FORMAT_I420, payload, len, 0);
+        it->second->onFrame(woogeen_base::FRAME_FORMAT_I420, payload, len, 0);
 }
 
 inline void SoftVideoFrameMixer::updateRootSize(VideoSize& rootSize)
@@ -111,9 +111,9 @@ inline void SoftVideoFrameMixer::updateLayoutSolution(LayoutSolution& solution)
     m_compositor->updateLayoutSolution(solution);
 }
 
-inline void SoftVideoFrameMixer::setBitrate(int id, unsigned short bitrate)
+inline void SoftVideoFrameMixer::setBitrate(unsigned short bitrate, int id)
 {
-    m_encoder->setBitrate(id, bitrate);
+    m_encoder->setBitrate(bitrate, id);
 }
 
 inline void SoftVideoFrameMixer::requestKeyFrame(int id)
@@ -121,7 +121,7 @@ inline void SoftVideoFrameMixer::requestKeyFrame(int id)
     m_encoder->requestKeyFrame(id);
 }
 
-inline bool SoftVideoFrameMixer::activateOutput(int id, FrameFormat format, unsigned int framerate, unsigned short bitrate, VideoFrameConsumer* consumer)
+inline bool SoftVideoFrameMixer::activateOutput(int id, woogeen_base::FrameFormat format, unsigned int framerate, unsigned short bitrate, woogeen_base::VideoFrameConsumer* consumer)
 {
     return m_encoder->activateOutput(id, format, framerate, bitrate, consumer);
 }

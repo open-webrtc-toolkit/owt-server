@@ -21,11 +21,12 @@
 #ifndef VCMInputProcessor_h
 #define VCMInputProcessor_h
 
-#include "VideoFramePipeline.h"
+#include "VideoFrameMixer.h"
 
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
 #include <VCMFrameConstructor.h>
+#include <VideoFramePipeline.h>
 
 namespace mcu {
 
@@ -38,14 +39,14 @@ class ExternalRenderer : public webrtc::VCMReceiveCallback {
 public:
     ExternalRenderer(int index,
                      boost::shared_ptr<VideoFrameMixer> frameHandler,
-                     VideoFrameProvider* provider,
+                     woogeen_base::VideoFrameProvider* provider,
                      VCMInputProcessorCallback* initCallback)
         : m_index(index)
         , m_frameHandler(frameHandler)
     {
         assert(provider);
         assert(initCallback);
-        m_frameHandler->activateInput(index, FRAME_FORMAT_I420, provider);
+        m_frameHandler->activateInput(index, woogeen_base::FRAME_FORMAT_I420, provider);
         initCallback->onInputProcessorInitOK(index);
     }
 
@@ -70,7 +71,7 @@ class ExternalDecoder : public webrtc::VideoDecoder {
 public:
     ExternalDecoder(int index,
                     boost::shared_ptr<VideoFrameMixer> frameHandler,
-                    VideoFrameProvider* provider,
+                    woogeen_base::VideoFrameProvider* provider,
                     VCMInputProcessorCallback* initCallback)
         : m_index(index)
         , m_frameHandler(frameHandler)
@@ -90,12 +91,12 @@ public:
     // Implements the webrtc::VideoDecoder interface.
     virtual int32_t InitDecode(const webrtc::VideoCodec* codecSettings, int32_t numberOfCores) 
     {
-        FrameFormat frameFormat = FRAME_FORMAT_UNKNOWN;
+        woogeen_base::FrameFormat frameFormat = woogeen_base::FRAME_FORMAT_UNKNOWN;
         assert(codecSettings->codecType == webrtc::kVideoCodecVP8 || codecSettings->codecType == webrtc::kVideoCodecH264);
         if (codecSettings->codecType == webrtc::kVideoCodecVP8)
-            frameFormat = FRAME_FORMAT_VP8;
+            frameFormat = woogeen_base::FRAME_FORMAT_VP8;
         else if (codecSettings->codecType == webrtc::kVideoCodecH264)
-            frameFormat = FRAME_FORMAT_H264;
+            frameFormat = woogeen_base::FRAME_FORMAT_H264;
 
         if (m_frameHandler->activateInput(m_index, frameFormat, m_provider)) {
             m_initCallback->onInputProcessorInitOK(m_index);
@@ -120,12 +121,12 @@ public:
 private:
     int m_index;
     boost::shared_ptr<VideoFrameMixer> m_frameHandler;
-    VideoFrameProvider* m_provider;
+    woogeen_base::VideoFrameProvider* m_provider;
     VCMInputProcessorCallback* m_initCallback;
 };
 
 class VCMInputProcessor : public erizo::MediaSink,
-                          public VideoFrameProvider {
+                          public woogeen_base::VideoFrameProvider {
 public:
     VCMInputProcessor(int index, bool externalDecoding = false);
     virtual ~VCMInputProcessor();
@@ -135,7 +136,8 @@ public:
     int deliverVideoData(char*, int len);
 
     // Implements the VideoFrameProvider interface.
-    virtual void requestKeyFrame();
+    virtual void setBitrate(unsigned short bitrate, int id = 0);
+    virtual void requestKeyFrame(int id = 0);
 
     bool init(woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<VideoFrameMixer>, boost::shared_ptr<woogeen_base::TaskRunner>, VCMInputProcessorCallback*);
 

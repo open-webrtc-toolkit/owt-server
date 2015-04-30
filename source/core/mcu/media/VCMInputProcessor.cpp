@@ -68,7 +68,11 @@ int VCMInputProcessor::deliverAudioData(char* buf, int len)
     return m_frameConstructor->deliverAudioData(buf, len);
 }
 
-void VCMInputProcessor::requestKeyFrame()
+void VCMInputProcessor::setBitrate(unsigned short, int)
+{
+}
+
+void VCMInputProcessor::requestKeyFrame(int)
 {
     m_frameConstructor->RequestKeyFrame();
 }

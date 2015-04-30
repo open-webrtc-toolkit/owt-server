@@ -21,14 +21,15 @@
 #ifndef VCMOutputProcessor_h
 #define VCMOutputProcessor_h
 
-#include "MediaRecording.h"
-#include "VideoFrameSender.h"
+#include "VideoFrameMixer.h"
 
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
 #include <logger.h>
 #include <MediaDefinitions.h>
+#include <MediaRecording.h>
 #include <TaskRunner.h>
+#include <VideoFrameSender.h>
 #include <WoogeenTransport.h>
 #include <webrtc/modules/rtp_rtcp/interface/rtp_rtcp.h>
 #include <webrtc/system_wrappers/interface/scoped_refptr.h>
@@ -40,7 +41,7 @@ namespace mcu {
 
 class EncodedFrameCallbackAdapter : public webrtc::EncodedImageCallback {
 public:
-    EncodedFrameCallbackAdapter(MediaFrameQueue* videoQueue)
+    EncodedFrameCallbackAdapter(woogeen_base::MediaFrameQueue* videoQueue)
         : m_videoQueue(videoQueue)
     {
     }
@@ -58,7 +59,7 @@ public:
     }
 
 private:
-    MediaFrameQueue* m_videoQueue;
+    woogeen_base::MediaFrameQueue* m_videoQueue;
 };
 
 /**
@@ -66,7 +67,7 @@ private:
  * It then sends out the encoded data via the given WoogeenTransport.
  * It also handles the feedback from the remote.
  */
-class VCMOutputProcessor : public VideoFrameSender, public erizo::FeedbackSink, public woogeen_base::IntraFrameCallback {
+class VCMOutputProcessor : public woogeen_base::VideoFrameSender, public erizo::FeedbackSink, public woogeen_base::IntraFrameCallback {
     DECLARE_LOGGER();
 
 public:
@@ -74,16 +75,16 @@ public:
     ~VCMOutputProcessor();
 
     // Implements VideoFrameSender.
-    void onFrame(FrameFormat, unsigned char* payload, int len, unsigned int ts);
-    bool setSendCodec(FrameFormat, VideoSize);
-    bool updateVideoSize(VideoSize);
+    void onFrame(woogeen_base::FrameFormat, unsigned char* payload, int len, unsigned int ts);
+    bool setSendCodec(woogeen_base::FrameFormat, unsigned int width, unsigned int height);
+    bool updateVideoSize(unsigned int width, unsigned int height);
     bool startSend(bool nack, bool fec);
     bool stopSend(bool nack, bool fec);
     uint32_t sendSSRC(bool nack, bool fec);
     woogeen_base::IntraFrameCallback* iFrameCallback() { return this; }
     erizo::FeedbackSink* feedbackSink() { return this; }
 
-    void RegisterPreSendFrameCallback(MediaFrameQueue& videoQueue);
+    void RegisterPreSendFrameCallback(woogeen_base::MediaFrameQueue& videoQueue);
     void DeRegisterPreSendFrameCallback();
 
     // Implements FeedbackSink.
@@ -96,7 +97,7 @@ private:
     bool init(woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<woogeen_base::TaskRunner>);
     void close();
 
-    FrameFormat m_sendFormat;
+    woogeen_base::FrameFormat m_sendFormat;
     int m_targetBitrate;
 
     boost::scoped_ptr<webrtc::BitrateController> m_bitrateController;

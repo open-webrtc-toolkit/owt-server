@@ -45,7 +45,7 @@ inline AVCodecID payloadType2AudioCodecID(int payloadType)
     }
 }
 
-MediaRecorder::MediaRecorder(MediaRecording* videoRecording, MediaRecording* audioRecording, const std::string& recordPath, int snapshotInterval)
+MediaRecorder::MediaRecorder(woogeen_base::MediaRecording* videoRecording, woogeen_base::MediaRecording* audioRecording, const std::string& recordPath, int snapshotInterval)
     : m_recording(false), m_recordVideoStream(NULL), m_recordAudioStream(NULL)
     , m_recordStartTime(-1), m_firstVideoTimestamp(-1), m_firstAudioTimestamp(-1)
 {
@@ -93,8 +93,8 @@ bool MediaRecorder::startRecording()
     if (!initRecordContext())
         return false;
 
-    m_videoQueue.reset(new MediaFrameQueue(m_recordStartTime));
-    m_audioQueue.reset(new MediaFrameQueue(m_recordStartTime));
+    m_videoQueue.reset(new woogeen_base::MediaFrameQueue(m_recordStartTime));
+    m_audioQueue.reset(new woogeen_base::MediaFrameQueue(m_recordStartTime));
     // Start the recording of video and audio
     m_videoRecording->startRecording(*m_videoQueue);
     m_audioRecording->startRecording(*m_audioQueue);
@@ -147,10 +147,11 @@ bool MediaRecorder::initRecordContext()
         m_recordVideoStream->id = 0;
         m_recordVideoStream->codec->codec_id = m_recordContext->oformat->video_codec;
 
-        VideoSize recordSize;
-        if (m_videoRecording->getVideoSize(recordSize)) {
-            m_recordVideoStream->codec->width = recordSize.width;
-            m_recordVideoStream->codec->height = recordSize.height;
+        unsigned int width = 0;
+        unsigned int height = 0;
+        if (m_videoRecording->getVideoSize(width, height)) {
+            m_recordVideoStream->codec->width = width;
+            m_recordVideoStream->codec->height = height;
         } else {
             // Default record size is VGA
             m_recordVideoStream->codec->width = 640;
@@ -202,7 +203,7 @@ bool MediaRecorder::initRecordContext()
 void MediaRecorder::recordLoop()
 {
     while (m_recording) {
-        boost::shared_ptr<EncodedFrame> mediaFrame;
+        boost::shared_ptr<woogeen_base::EncodedFrame> mediaFrame;
         while (mediaFrame = m_audioQueue->popFrame())
             this->writeAudioFrame(*mediaFrame);
 
@@ -211,7 +212,7 @@ void MediaRecorder::recordLoop()
     }
 }
 
-void MediaRecorder::writeVideoFrame(EncodedFrame& encodedVideoFrame) {
+void MediaRecorder::writeVideoFrame(woogeen_base::EncodedFrame& encodedVideoFrame) {
     if (m_recordVideoStream == NULL) {
         // could not init our context yet.
         return;
@@ -240,7 +241,7 @@ void MediaRecorder::writeVideoFrame(EncodedFrame& encodedVideoFrame) {
     av_free_packet(&avpkt);
 }
 
-void MediaRecorder::writeAudioFrame(EncodedFrame& encodedAudioFrame) {
+void MediaRecorder::writeAudioFrame(woogeen_base::EncodedFrame& encodedAudioFrame) {
     if (m_recordAudioStream == NULL) {
         // No audio stream has been initialized
         return;

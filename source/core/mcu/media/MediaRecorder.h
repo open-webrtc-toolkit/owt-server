@@ -21,12 +21,11 @@
 #ifndef MediaRecorder_h
 #define MediaRecorder_h
 
-#include "MediaRecording.h"
-#include "MediaUtilities.h"
-
 #include <boost/scoped_ptr.hpp>
 #include <boost/thread.hpp>
 #include <logger.h>
+#include <MediaRecording.h>
+#include <MediaUtilities.h>
 #include <string>
 
 extern "C" {
@@ -40,7 +39,7 @@ class MediaRecorder {
     DECLARE_LOGGER();
 
 public:
-    MediaRecorder(MediaRecording* videoRecording, MediaRecording* audioRecording, const std::string& recordPath, int snapshotInterval);
+    MediaRecorder(woogeen_base::MediaRecording* videoRecording, woogeen_base::MediaRecording* audioRecording, const std::string& recordPath, int snapshotInterval);
     virtual ~MediaRecorder();
 
     bool startRecording();
@@ -49,11 +48,11 @@ public:
 private:
     bool initRecordContext();
     void recordLoop();
-    void writeVideoFrame(EncodedFrame& encoded_frame);
-    void writeAudioFrame(EncodedFrame& encoded_frame);
+    void writeVideoFrame(woogeen_base::EncodedFrame& encoded_frame);
+    void writeAudioFrame(woogeen_base::EncodedFrame& encoded_frame);
 
-    MediaRecording* m_videoRecording;
-    MediaRecording* m_audioRecording;
+    woogeen_base::MediaRecording* m_videoRecording;
+    woogeen_base::MediaRecording* m_audioRecording;
 
     bool m_recording;
     std::string m_recordPath;
@@ -64,8 +63,8 @@ private:
     long long m_firstVideoTimestamp;
     long long m_firstAudioTimestamp;
 
-    boost::scoped_ptr<MediaFrameQueue> m_videoQueue;
-    boost::scoped_ptr<MediaFrameQueue> m_audioQueue;
+    boost::scoped_ptr<woogeen_base::MediaFrameQueue> m_videoQueue;
+    boost::scoped_ptr<woogeen_base::MediaFrameQueue> m_audioQueue;
     boost::thread m_recordThread;
 };
 
