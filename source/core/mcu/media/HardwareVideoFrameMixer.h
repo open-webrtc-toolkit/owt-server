@@ -41,8 +41,8 @@ namespace mcu {
 class HardwareVideoFrameMixerInput : public VideoMixEngineInput {
 public:
     HardwareVideoFrameMixerInput(boost::shared_ptr<VideoMixEngine> engine,
-                            woogeen_base::FrameFormat inFormat,
-                            woogeen_base::VideoFrameProvider* provider);
+                                 woogeen_base::FrameFormat inFormat,
+                                 woogeen_base::VideoFrameProvider* provider);
     virtual ~HardwareVideoFrameMixerInput();
 
     void push(unsigned char* payload, int len);
@@ -60,10 +60,10 @@ private:
 class HardwareVideoFrameMixerOutput : public VideoMixEngineOutput, public woogeen_base::JobTimerListener {
 public:
     HardwareVideoFrameMixerOutput(boost::shared_ptr<VideoMixEngine> engine,
-                            woogeen_base::FrameFormat outFormat,
-                            unsigned int framerate,
-                            unsigned short bitrate,
-                            woogeen_base::VideoFrameConsumer* receiver);
+                                  woogeen_base::FrameFormat outFormat,
+                                  unsigned int framerate,
+                                  unsigned short bitrate,
+                                  woogeen_base::VideoFrameConsumer* receiver);
     virtual ~HardwareVideoFrameMixerOutput();
 
     void setBitrate(unsigned short bitrate);
@@ -89,6 +89,7 @@ private:
 class VideoLayoutProcessor;
 class HardwareVideoFrameMixer : public VideoFrameMixer {
     DECLARE_LOGGER();
+
 public:
     HardwareVideoFrameMixer(VideoSize rootSize, YUVColor bgColor);
     virtual ~HardwareVideoFrameMixer();
@@ -114,5 +115,5 @@ private:
     boost::shared_mutex m_outputMutex;
 };
 
-}
-#endif
+} /* namespace mcu */
+#endif /* HardwareVideoFrameMixer_h */

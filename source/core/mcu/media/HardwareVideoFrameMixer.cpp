@@ -35,8 +35,8 @@ VideoMixCodecType Frameformat2CodecType(woogeen_base::FrameFormat format)
 }
 
 HardwareVideoFrameMixerInput::HardwareVideoFrameMixerInput(boost::shared_ptr<VideoMixEngine> engine,
-                                                 woogeen_base::FrameFormat inFormat,
-                                                 woogeen_base::VideoFrameProvider* provider)
+                                                           woogeen_base::FrameFormat inFormat,
+                                                           woogeen_base::VideoFrameProvider* provider)
     : m_index(INVALID_INPUT_INDEX)
     , m_provider(provider)
     , m_engine(engine)
@@ -66,10 +66,10 @@ void HardwareVideoFrameMixerInput::requestKeyFrame(InputIndex index) {
 }
 
 HardwareVideoFrameMixerOutput::HardwareVideoFrameMixerOutput(boost::shared_ptr<VideoMixEngine> engine,
-                                                    woogeen_base::FrameFormat outFormat,
-                                                    unsigned int framerate,
-                                                    unsigned short bitrate,
-                                                    woogeen_base::VideoFrameConsumer* receiver)
+                                                             woogeen_base::FrameFormat outFormat,
+                                                             unsigned int framerate,
+                                                             unsigned short bitrate,
+                                                             woogeen_base::VideoFrameConsumer* receiver)
     : m_outFormat(outFormat)
     , m_index(INVALID_OUTPUT_INDEX)
     , m_engine(engine)
@@ -108,7 +108,7 @@ void HardwareVideoFrameMixerOutput::onTimeout()
         int len = m_engine->pullOutput(m_index, (unsigned char*)&m_esBuffer);
         if (len > 0) {
             m_outCount++;
-            m_receiver->onFrame(m_outFormat, (unsigned char *)&m_esBuffer, len, m_outCount * (1000 / m_frameRate) * 90);
+            m_receiver->onFrame(m_outFormat, (unsigned char*)&m_esBuffer, len, m_outCount * (1000 / m_frameRate) * 90);
         } else
             break;
     } while (1);
