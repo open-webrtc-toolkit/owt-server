@@ -136,7 +136,7 @@ void EncodedVideoFrameSender::onFrame(FrameFormat format, unsigned char* payload
         h.codecHeader.VP8.InitRTPVideoHeaderVP8();
         if (len > 0 && m_videoQueue)
             m_videoQueue->pushFrame(payload, len, ts * 90);
-        m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, VP8_90000_PT, ts * 90, ts, payload, len, nullptr, &h);
+        m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, VP8_90000_PT, ts, ts / 90, payload, len, nullptr, &h);
     } else if (format == FRAME_FORMAT_H264) {
         int nalu_found_length = 0;
         unsigned char* buffer_start = payload;
@@ -152,7 +152,7 @@ void EncodedVideoFrameSender::onFrame(FrameFormat format, unsigned char* payload
                 break;
             } else {
                 /* SPS, PPS, I, P*/
-                m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, H264_90000_PT, ts * 90, ts, buffer_start + nalu_start_offset, nalu_found_length, nullptr, &h);
+                m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, H264_90000_PT, ts, ts / 90, buffer_start + nalu_start_offset, nalu_found_length, nullptr, &h);
                 buffer_start += (nalu_start_offset + nalu_found_length);
                 buffer_length -= (nalu_start_offset + nalu_found_length);
             }

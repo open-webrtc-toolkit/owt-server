@@ -36,6 +36,7 @@ public:
     bool setInput(woogeen_base::FrameFormat, woogeen_base::VideoFrameProvider*);
     void unsetInput();
     void onFrame(woogeen_base::FrameFormat, unsigned char* payload, int len, unsigned int ts);
+    bool acceptEncodedFrame() { return false; }
 
 private:
     int m_input;

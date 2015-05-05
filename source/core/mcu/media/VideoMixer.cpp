@@ -56,13 +56,14 @@ VideoMixer::VideoMixer(erizo::RTPDataReceiver* receiver, boost::property_tree::p
 
     ELOG_DEBUG("Init maxInput(%u), rootSize(%u, %u), bgColor(%u, %u, %u)", m_maxInputCount, rootSize.width, rootSize.height, bgColor.y, bgColor.cb, bgColor.cr);
 
+    m_taskRunner.reset(new woogeen_base::TaskRunner());
+
     if (m_hardwareAccelerated)
         m_frameMixer.reset(new HardwareVideoFrameMixer(rootSize, bgColor));
     else
-        m_frameMixer.reset(new SoftVideoFrameMixer(m_maxInputCount, rootSize, bgColor));
+        m_frameMixer.reset(new SoftVideoFrameMixer(m_maxInputCount, rootSize, bgColor, m_taskRunner));
     m_layoutProcessor->registerConsumer(m_frameMixer);
 
-    m_taskRunner.reset(new woogeen_base::TaskRunner());
     m_taskRunner->Start();
 
 #if ENABLE_WEBRTC_TRACE
@@ -112,11 +113,14 @@ int32_t VideoMixer::addOutput(int payloadType, bool nack, bool fec)
     WoogeenTransport<erizo::VIDEO>* transport = new WoogeenTransport<erizo::VIDEO>(m_outputReceiver, nullptr);
 
     woogeen_base::VideoFrameSender* output = nullptr;
-    if (m_hardwareAccelerated) {
+    // Software mode can also use the EncodedVideoFrameSender, but using the
+    // compound VCMOutputProcessor (w/ both encoder and sender capability) provides
+    // better QoS control.
+    if (m_hardwareAccelerated)
         output = new woogeen_base::EncodedVideoFrameSender(outputId, m_frameMixer, outputFormat, m_outputBitrate, transport, m_taskRunner);
-        m_frameMixer->activateOutput(outputId, outputFormat, 30, 500, output);
-    } else
+    else
         output = new VCMOutputProcessor(outputId, m_frameMixer, m_outputBitrate, transport, m_taskRunner);
+    m_frameMixer->activateOutput(outputId, outputFormat, 30, 500, output);
 
     // Fetch video size.
     // TODO: The size should be identical to the composited video size.
@@ -136,8 +140,7 @@ int32_t VideoMixer::removeOutput(int payloadType)
     std::map<int, boost::shared_ptr<woogeen_base::VideoFrameSender>>::iterator it = m_outputs.find(payloadType);
     if (it != m_outputs.end()) {
         int32_t id = it->second->id();
-        if (m_hardwareAccelerated)
-            m_frameMixer->deActivateOutput(id);
+        m_frameMixer->deActivateOutput(id);
         m_outputs.erase(it);
         return id;
     }
@@ -391,6 +394,9 @@ void VideoMixer::closeAll()
     sourceLock.unlock();
 
     boost::unique_lock<boost::shared_mutex> outputLock(m_outputMutex);
+    std::map<int, boost::shared_ptr<woogeen_base::VideoFrameSender>>::iterator it = m_outputs.begin();
+    for (; it != m_outputs.end(); ++it)
+        m_frameMixer->deActivateOutput(it->second->id());
     m_outputs.clear();
     outputLock.unlock();
 
