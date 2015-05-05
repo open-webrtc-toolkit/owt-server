@@ -32,13 +32,19 @@ enum FrameFormat {
 
 class VideoFrameProvider {
 public:
+    virtual ~VideoFrameProvider() { }
+
     virtual void setBitrate(unsigned short bitrate, int id = 0) = 0;
     virtual void requestKeyFrame(int id = 0) = 0;
 };
 
 class VideoFrameConsumer {
 public:
+    virtual ~VideoFrameConsumer() { }
+
     virtual void onFrame(FrameFormat, unsigned char* payload, int len, unsigned int ts) = 0;
+    virtual bool acceptRawFrame() { return true; }
+    virtual bool acceptEncodedFrame() { return true; }
 };
 
 // VideoFrameDecoder accepts the input data from exactly one VideoFrameProvider

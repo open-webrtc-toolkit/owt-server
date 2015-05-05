@@ -21,8 +21,6 @@
 #ifndef FakedVideoFrameEncoder_h
 #define FakedVideoFrameEncoder_h
 
-#include "VideoFrameMixer.h"
-
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/shared_mutex.hpp>
 #include <map>
@@ -31,10 +29,10 @@
 namespace mcu {
 
 // A FakedVideoFrameEncoder doesn't do real encoding stuffs.
-// Or in other words, it "encodes" an I420 frame into an I420 frame.
+// Or in other words, it "encodes" an frame into its original format.
 class FakedVideoFrameEncoder : public woogeen_base::VideoFrameEncoder {
 public:
-    FakedVideoFrameEncoder(boost::shared_ptr<VideoFrameCompositor>);
+    FakedVideoFrameEncoder();
     ~FakedVideoFrameEncoder();
 
     bool activateOutput(int id, woogeen_base::FrameFormat, unsigned int framerate, unsigned short bitrate, woogeen_base::VideoFrameConsumer*);
@@ -45,20 +43,17 @@ public:
     void onFrame(woogeen_base::FrameFormat, unsigned char* payload, int len, unsigned int ts);
 
 private:
-    boost::shared_ptr<VideoFrameCompositor> m_compositor;
     std::map<int, woogeen_base::VideoFrameConsumer*> m_consumers;
     boost::shared_mutex m_consumerMutex;
 };
 
-FakedVideoFrameEncoder::FakedVideoFrameEncoder(boost::shared_ptr<VideoFrameCompositor> compositor)
-    : m_compositor(compositor)
+FakedVideoFrameEncoder::FakedVideoFrameEncoder()
 {
-    compositor->setOutput(this);
 }
 
 FakedVideoFrameEncoder::~FakedVideoFrameEncoder()
 {
-    m_compositor->unsetOutput();
+    boost::unique_lock<boost::shared_mutex> lock(m_consumerMutex);
     m_consumers.clear();
 }
 
@@ -72,8 +67,6 @@ inline void FakedVideoFrameEncoder::requestKeyFrame(int id)
 
 inline void FakedVideoFrameEncoder::onFrame(woogeen_base::FrameFormat format, unsigned char* payload, int len, unsigned int ts)
 {
-    assert(format == woogeen_base::FRAME_FORMAT_I420);
-
     boost::shared_lock<boost::shared_mutex> lock(m_consumerMutex);
     if (!m_consumers.empty()) {
         std::map<int, woogeen_base::VideoFrameConsumer*>::iterator it = m_consumers.begin();
@@ -84,8 +77,6 @@ inline void FakedVideoFrameEncoder::onFrame(woogeen_base::FrameFormat format, un
 
 inline bool FakedVideoFrameEncoder::activateOutput(int id, woogeen_base::FrameFormat format, unsigned int framerate, unsigned short bitrate, woogeen_base::VideoFrameConsumer* consumer)
 {
-    assert(format == woogeen_base::FRAME_FORMAT_I420);
-
     boost::upgrade_lock<boost::shared_mutex> lock(m_consumerMutex);
     std::map<int, woogeen_base::VideoFrameConsumer*>::iterator it = m_consumers.find(id);
     if (it != m_consumers.end())

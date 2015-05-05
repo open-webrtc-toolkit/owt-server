@@ -32,7 +32,7 @@ namespace mcu {
 
 DEFINE_LOGGER(VCMOutputProcessor, "mcu.media.VCMOutputProcessor");
 
-VCMOutputProcessor::VCMOutputProcessor(int id, boost::shared_ptr<VideoFrameMixer> source, int targetBitrate, woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<woogeen_base::TaskRunner> taskRunner)
+VCMOutputProcessor::VCMOutputProcessor(int id, boost::shared_ptr<woogeen_base::VideoFrameProvider> source, int targetBitrate, woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<woogeen_base::TaskRunner> taskRunner)
     : woogeen_base::VideoFrameSender(id)
     , m_sendFormat(woogeen_base::FRAME_FORMAT_UNKNOWN)
     , m_targetBitrate(targetBitrate)
@@ -178,9 +178,6 @@ bool VCMOutputProcessor::startSend(bool nack, bool fec)
 
     m_taskRunner->RegisterModule(rtpRtcp);
 
-    if (m_rtpRtcps.size() == 0)
-        m_source->activateOutput(m_id, woogeen_base::FRAME_FORMAT_I420, 30, 500, this);
-
     m_rtpRtcps.push_back(rtpRtcp);
     m_payloadRouter->SetSendingRtpModules(m_rtpRtcps);
     m_payloadRouter->set_active(true);
@@ -210,9 +207,6 @@ bool VCMOutputProcessor::stopSend(bool nack, bool fec)
             break;
         }
     }
-
-    if (m_rtpRtcps.size() == 0)
-        m_source->deActivateOutput(m_id);
 
     return true;
 }
@@ -244,9 +238,9 @@ void VCMOutputProcessor::onFrame(woogeen_base::FrameFormat format, unsigned char
     switch (format) {
     case woogeen_base::FRAME_FORMAT_I420: {
         // Currently we should only receive I420 format frame.
-        I420VideoFrame* composedFrame = reinterpret_cast<I420VideoFrame*>(payload);
+        I420VideoFrame* compositedFrame = reinterpret_cast<I420VideoFrame*>(payload);
         std::vector<uint32_t> csrcs;
-        m_videoEncoder->DeliverFrame(m_id, composedFrame, csrcs);
+        m_videoEncoder->DeliverFrame(m_id, compositedFrame, csrcs);
         break;
     }
     case woogeen_base::FRAME_FORMAT_VP8:
@@ -301,7 +295,6 @@ void VCMOutputProcessor::close()
 {
     DeRegisterPreSendFrameCallback();
 
-    m_source->deActivateOutput(m_id);
     m_videoEncoder->StopThreadsAndRemovePayloadRouter();
     m_payloadRouter->SetSendingRtpModules(std::list<RtpRtcp*>());
     while (m_rtpRtcps.size() > 0) {

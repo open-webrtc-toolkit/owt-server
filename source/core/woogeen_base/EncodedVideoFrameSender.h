@@ -59,6 +59,7 @@ public:
     uint32_t sendSSRC(bool nack, bool fec);
     IntraFrameCallback* iFrameCallback() { return this; }
     erizo::FeedbackSink* feedbackSink() { return this; }
+    bool acceptRawFrame() { return false; }
     void RegisterPreSendFrameCallback(MediaFrameQueue& videoQueue);
     void DeRegisterPreSendFrameCallback();
 
