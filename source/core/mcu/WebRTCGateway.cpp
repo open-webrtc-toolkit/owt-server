@@ -70,23 +70,60 @@ void WebRTCGateway::receiveRtpData(char* rtpdata, int len, DataType type, uint32
     if (m_subscribers.empty() || len <= 0)
         return;
 
-    std::map<std::string, boost::shared_ptr<MediaSink>>::iterator it;
+    assert(type == erizo::VIDEO || type == erizo::AUDIO);
+
+    RTCPHeader* chead = reinterpret_cast<RTCPHeader*>(rtpdata);
+    uint8_t packetType = chead->getPacketType();
+    assert(packetType != RTCP_Receiver_PT && packetType != RTCP_PS_Feedback_PT && packetType != RTCP_RTP_Feedback_PT);
+    if (packetType == RTCP_Sender_PT) { // Sender Report
+        std::map<std::string, SubscriberInfo>::iterator it;
+        boost::shared_lock<boost::shared_mutex> lock(m_subscriberMutex);
+        for (it = m_subscribers.begin(); it != m_subscribers.end(); ++it) {
+            woogeen_base::ProtectedRTPSender* sender = type == erizo::VIDEO ? it->second.videoSender.get() : it->second.audioSender.get();
+            if (sender)
+                sender->sendSenderReport(rtpdata, len, type);
+        }
+        return;
+    }
+
+    RTPHeader* rtp = reinterpret_cast<RTPHeader*>(rtpdata);
+    int headerLength = rtp->getHeaderLength();
+    assert(headerLength <= len);
+    if (type == erizo::AUDIO) {
+        std::map<std::string, SubscriberInfo>::iterator it;
+        boost::shared_lock<boost::shared_mutex> lock(m_subscriberMutex);
+        for (it = m_subscribers.begin(); it != m_subscribers.end(); ++it) {
+            woogeen_base::ProtectedRTPSender* sender = it->second.audioSender.get();
+            if (sender)
+                sender->sendPacket(rtpdata, len - headerLength, headerLength, type);
+        }
+        return;
+    }
+
+    assert(type == erizo::VIDEO);
+    char encapsulated[MAX_DATA_PACKET_SIZE];
+    if (len < MAX_DATA_PACKET_SIZE) {
+        memcpy(encapsulated, rtpdata, headerLength);
+        RTPHeader* newRtp = reinterpret_cast<RTPHeader*>(encapsulated);
+        // One more byte for the RED header.
+        newRtp->setPayloadType(RED_90000_PT);
+        redheader* red = reinterpret_cast<redheader*>(&encapsulated[headerLength]);
+        red->payloadtype = rtp->getPayloadType();
+        red->follow = 0;
+        // RED header length is 1.
+        memcpy(&encapsulated[headerLength + 1], rtpdata + headerLength, len - headerLength);
+    }
+
+    std::map<std::string, SubscriberInfo>::iterator it;
     boost::shared_lock<boost::shared_mutex> lock(m_subscriberMutex);
-    switch (type) {
-    case erizo::VIDEO:
-        for (it = m_subscribers.begin(); it != m_subscribers.end(); ++it) {
-            if ((*it).second)
-                (*it).second->deliverVideoData(rtpdata, len);
+    for (it = m_subscribers.begin(); it != m_subscribers.end(); ++it) {
+        woogeen_base::ProtectedRTPSender* sender = it->second.videoSender.get();
+        if (sender) {
+            if (sender->encapsulatedRTPDataEnabled() && len < MAX_DATA_PACKET_SIZE)
+                sender->sendPacket(encapsulated, len - headerLength + 1, headerLength, type);
+            else
+                sender->sendPacket(rtpdata, len - headerLength, headerLength, type);
         }
-        break;
-    case erizo::AUDIO:
-        for (it = m_subscribers.begin(); it != m_subscribers.end(); ++it) {
-            if ((*it).second)
-                (*it).second->deliverAudioData(rtpdata, len);
-        }
-        break;
-    default:
-        break;
     }
 }
 
@@ -103,7 +140,7 @@ bool WebRTCGateway::setPublisher(MediaSource* publisher, const std::string& id)
         return false;
     }
 
-    m_postProcessedMediaReceiver.reset(new RTPDataReceiveBridge(this));
+    m_postProcessedMediaReceiver.reset(new IncomingRTPBridge(this));
     m_audioReceiver.reset(new woogeen_base::ProtectedRTPReceiver(m_postProcessedMediaReceiver));
     m_videoReceiver.reset(new woogeen_base::ProtectedRTPReceiver(m_postProcessedMediaReceiver));
 
@@ -154,7 +191,6 @@ void WebRTCGateway::unsetPublisher()
     // The mixer reference and feedback processor need to be resetted because
     // they rely on the valid publisher information like the SSRCs.
     m_mixer = nullptr;
-    m_feedback.reset();
 }
 
 void WebRTCGateway::addSubscriber(MediaSink* subscriber, const std::string& id)
@@ -166,33 +202,44 @@ void WebRTCGateway::addSubscriber(MediaSink* subscriber, const std::string& id)
     subscriber->setAudioSinkSSRC(audioSSRC);
     subscriber->setVideoSinkSSRC(videoSSRC);
 
-    if (!m_feedback) {
-        m_feedback.reset(new woogeen_base::WebRTCFeedbackProcessor(0));
+    if (!m_iFrameRequestBridge)
         m_iFrameRequestBridge.reset(new IFrameRequestBridge(this));
-        boost::shared_ptr<woogeen_base::ProtectedRTPSender> noSender;
-        m_feedback->initVideoFeedbackReactor(0, videoSSRC, noSender, m_iFrameRequestBridge);
-        m_feedback->initAudioFeedbackReactor(0, audioSSRC, noSender);
-    }
+
+    boost::shared_ptr<OutgoingRTPBridge> mediaBridge(new OutgoingRTPBridge(boost::shared_ptr<MediaSink>(subscriber)));
+    boost::shared_ptr<woogeen_base::ProtectedRTPSender> videoSender(new woogeen_base::ProtectedRTPSender(0, mediaBridge.get()));
+    boost::shared_ptr<woogeen_base::ProtectedRTPSender> audioSender(new woogeen_base::ProtectedRTPSender(0, mediaBridge.get()));
+    boost::shared_ptr<woogeen_base::WebRTCFeedbackProcessor> feedback(new woogeen_base::WebRTCFeedbackProcessor(0));
+
+    videoSender->setNACKStatus(subscriber->acceptResentData());
+    videoSender->enableEncapsulatedRTPData(subscriber->acceptEncapsulatedRTPData());
+    videoSender->setFecStatus(subscriber->acceptFEC());
+    feedback->initVideoFeedbackReactor(0, videoSSRC, videoSender, m_iFrameRequestBridge);
+    feedback->initAudioFeedbackReactor(0, audioSSRC, audioSender);
 
     FeedbackSource* fbsource = subscriber->getFeedbackSource();
     if (fbsource) {
         ELOG_DEBUG("adding fbsource");
-        fbsource->setFeedbackSink(m_feedback.get());
+        fbsource->setFeedbackSink(feedback.get());
     }
 
     boost::unique_lock<boost::shared_mutex> lock(m_subscriberMutex);
-    m_subscribers[id] = boost::shared_ptr<MediaSink>(subscriber);
+    m_subscribers[id] = {feedback, mediaBridge, videoSender, audioSender};
 }
 
 void WebRTCGateway::removeSubscriber(const std::string& id)
 {
     ELOG_DEBUG("Removing subscriber: id is %s", id.c_str());
 
-    std::vector<boost::shared_ptr<MediaSink>> removedSubscribers;
+    std::vector<SubscriberInfo> removedSubscribers;
     boost::unique_lock<boost::shared_mutex> lock(m_subscriberMutex);
-    std::map<std::string, boost::shared_ptr<MediaSink>>::iterator it = m_subscribers.find(id);
+    std::map<std::string, SubscriberInfo>::iterator it = m_subscribers.find(id);
     if (it != m_subscribers.end()) {
-        removedSubscribers.push_back(it->second);
+        SubscriberInfo& subscriber = it->second;
+        if (subscriber.feedback) {
+            subscriber.feedback->resetVideoFeedbackReactor();
+            subscriber.feedback->resetAudioFeedbackReactor();
+        }
+        removedSubscribers.push_back(subscriber);
         m_subscribers.erase(it);
     }
     lock.unlock();
@@ -254,23 +301,20 @@ void WebRTCGateway::closeAll()
 {
     ELOG_DEBUG("closeAll");
 
-    std::vector<boost::shared_ptr<MediaSink>> removedSubscribers;
+    std::vector<SubscriberInfo> removedSubscribers;
     boost::unique_lock<boost::shared_mutex> subscriberLock(m_subscriberMutex);
-    std::map<std::string, boost::shared_ptr<MediaSink>>::iterator subscriberItor = m_subscribers.begin();
+    std::map<std::string, SubscriberInfo>::iterator subscriberItor = m_subscribers.begin();
     while (subscriberItor != m_subscribers.end()) {
-        boost::shared_ptr<MediaSink>& subscriber = subscriberItor->second;
-        if (subscriber) {
-            FeedbackSource* fbsource = subscriber->getFeedbackSource();
-            if (fbsource)
-                fbsource->setFeedbackSink(nullptr);
-            removedSubscribers.push_back(subscriber);
+        SubscriberInfo& subscriber = subscriberItor->second;
+        if (subscriber.feedback) {
+            subscriber.feedback->resetVideoFeedbackReactor();
+            subscriber.feedback->resetAudioFeedbackReactor();
         }
+        removedSubscribers.push_back(subscriber);
         m_subscribers.erase(subscriberItor++);
     }
     m_subscribers.clear();
     subscriberLock.unlock();
-
-    m_feedback.reset();
 
     unsetPublisher();
 }

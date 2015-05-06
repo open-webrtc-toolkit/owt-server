@@ -28,14 +28,15 @@
 #include <map>
 #include <MediaDefinitions.h>
 #include <ProtectedRTPReceiver.h>
+#include <ProtectedRTPSender.h>
 #include <string>
 #include <WebRTCFeedbackProcessor.h>
 
 namespace mcu {
 
-class RTPDataReceiveBridge : public erizo::RTPDataReceiver {
+class IncomingRTPBridge : public erizo::RTPDataReceiver {
 public:
-    RTPDataReceiveBridge(RTPDataReceiver* destination)
+    IncomingRTPBridge(erizo::RTPDataReceiver* destination)
         : m_destination(destination)
     {
     }
@@ -46,7 +47,32 @@ public:
     }
 
 private:
-    RTPDataReceiver* m_destination;
+    erizo::RTPDataReceiver* m_destination;
+};
+
+class OutgoingRTPBridge : public erizo::RTPDataReceiver {
+public:
+    OutgoingRTPBridge(boost::shared_ptr<erizo::MediaSink> sink)
+        : m_sink(sink)
+    {
+    }
+
+    void receiveRtpData(char* buf, int len, erizo::DataType type, uint32_t streamId)
+    {
+        switch (type) {
+        case erizo::VIDEO:
+            m_sink->deliverVideoData(buf, len);
+            break;
+        case erizo::AUDIO:
+            m_sink->deliverAudioData(buf, len);
+            break;
+        default:
+            break;
+        }
+    }
+
+private:
+    boost::shared_ptr<erizo::MediaSink> m_sink;
 };
 
 class IFrameRequestBridge : public woogeen_base::IntraFrameCallback {
@@ -119,10 +145,17 @@ public:
 private:
     void closeAll();
 
+    struct SubscriberInfo {
+        boost::shared_ptr<woogeen_base::WebRTCFeedbackProcessor> feedback;
+        boost::shared_ptr<OutgoingRTPBridge> mediaBridge;
+        boost::shared_ptr<woogeen_base::ProtectedRTPSender> videoSender;
+        boost::shared_ptr<woogeen_base::ProtectedRTPSender> audioSender;
+    };
+
     std::string m_participantId;
     boost::shared_ptr<erizo::MediaSource> m_publisher;
     boost::shared_mutex m_subscriberMutex;
-    std::map<std::string, boost::shared_ptr<erizo::MediaSink>> m_subscribers;
+    std::map<std::string, SubscriberInfo> m_subscribers;
 
     woogeen_base::MediaSourceConsumer* m_mixer;
 
@@ -130,8 +163,7 @@ private:
     boost::shared_ptr<woogeen_base::EventRegistry> m_asyncHandler;
 
     boost::shared_ptr<IFrameRequestBridge> m_iFrameRequestBridge;
-    boost::shared_ptr<woogeen_base::WebRTCFeedbackProcessor> m_feedback;
-    boost::shared_ptr<RTPDataReceiveBridge> m_postProcessedMediaReceiver;
+    boost::shared_ptr<IncomingRTPBridge> m_postProcessedMediaReceiver;
     boost::scoped_ptr<woogeen_base::ProtectedRTPReceiver> m_videoReceiver;
     boost::scoped_ptr<woogeen_base::ProtectedRTPReceiver> m_audioReceiver;
     boost::scoped_ptr<woogeen_base::JobTimer> m_feedbackTimer;
