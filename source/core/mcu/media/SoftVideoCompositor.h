@@ -94,9 +94,9 @@ private:
     int64_t m_ntpDelta;
     boost::scoped_ptr<VPMPool> m_vpmPool;
     boost::scoped_ptr<BufferManager> m_bufferManager;
-    boost::scoped_ptr<webrtc::I420VideoFrame> m_composedFrame;
-    VideoSize m_composedSize;
-    VideoSize m_newComposedSize;
+    boost::scoped_ptr<webrtc::I420VideoFrame> m_compositeFrame;
+    VideoSize m_compositeSize;
+    VideoSize m_newCompositeSize;
     YUVColor m_bgColor;
     LayoutSolution m_currentLayout;
     LayoutSolution m_newLayout;
@@ -104,7 +104,7 @@ private:
     woogeen_base::VideoFrameConsumer* m_consumer;
     /*
      * Each incoming channel will store the decoded frame in this array, and the composition
-     * thread will scan this array and compose the frames into one frame.
+     * thread will scan this array and composite the frames into one frame.
      */
     boost::scoped_ptr<woogeen_base::JobTimer> m_jobTimer;
 };

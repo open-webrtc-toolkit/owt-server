@@ -68,7 +68,7 @@ void VPMPool::update(unsigned int input, VideoSize& videoSize)
 DEFINE_LOGGER(SoftVideoCompositor, "mcu.media.SoftVideoCompositor");
 
 SoftVideoCompositor::SoftVideoCompositor(uint32_t maxInput, VideoSize rootSize, YUVColor bgColor)
-    : m_composedSize(rootSize)
+    : m_compositeSize(rootSize)
     , m_bgColor(bgColor)
     , m_solutionState(UN_INITIALIZED)
     , m_consumer(nullptr)
@@ -77,9 +77,9 @@ SoftVideoCompositor::SoftVideoCompositor(uint32_t maxInput, VideoSize rootSize, 
     m_vpmPool.reset(new VPMPool(maxInput));
 
     // Initialize frame buffer and buffer manager for video composition
-    m_composedFrame.reset(new webrtc::I420VideoFrame());
-    m_composedFrame->CreateEmptyFrame(m_composedSize.width, m_composedSize.height, m_composedSize.width, m_composedSize.width / 2, m_composedSize.width / 2);
-    m_bufferManager.reset(new BufferManager(maxInput, m_composedSize.width, m_composedSize.height));
+    m_compositeFrame.reset(new webrtc::I420VideoFrame());
+    m_compositeFrame->CreateEmptyFrame(m_compositeSize.width, m_compositeSize.height, m_compositeSize.width, m_compositeSize.width / 2, m_compositeSize.width / 2);
+    m_bufferManager.reset(new BufferManager(maxInput, m_compositeSize.width, m_compositeSize.height));
 
     m_jobTimer.reset(new woogeen_base::JobTimer(30, this));
 }
@@ -92,7 +92,7 @@ SoftVideoCompositor::~SoftVideoCompositor()
 
 void SoftVideoCompositor::updateRootSize(VideoSize& videoSize)
 {
-    m_newComposedSize = videoSize;
+    m_newCompositeSize = videoSize;
     m_solutionState = CHANGING;
 }
 
@@ -152,34 +152,35 @@ void SoftVideoCompositor::onTimeout()
 void SoftVideoCompositor::generateFrame()
 {
     if (m_consumer) {
-        I420VideoFrame* composedFrame = layout();
-        composedFrame->set_render_time_ms(TickTime::MillisecondTimestamp() - m_ntpDelta);
+        I420VideoFrame* compositeFrame = layout();
+        compositeFrame->set_render_time_ms(TickTime::MillisecondTimestamp() - m_ntpDelta);
 
         if (m_consumer)
-            m_consumer->onFrame(woogeen_base::FRAME_FORMAT_I420, reinterpret_cast<unsigned char*>(composedFrame), 0, 0);
+            m_consumer->onFrame(woogeen_base::FRAME_FORMAT_I420, reinterpret_cast<unsigned char*>(compositeFrame), 0, 0);
     }
 }
 
 void SoftVideoCompositor::setBackgroundColor()
 {
-    if (m_composedFrame) {
+    if (m_compositeFrame) {
         ELOG_TRACE("setBackgroundColor");
 
         // Set the background color
-        memset(m_composedFrame->buffer(webrtc::kYPlane), m_bgColor.y, m_composedFrame->allocated_size(webrtc::kYPlane));
-        memset(m_composedFrame->buffer(webrtc::kUPlane), m_bgColor.cb, m_composedFrame->allocated_size(webrtc::kUPlane));
-        memset(m_composedFrame->buffer(webrtc::kVPlane), m_bgColor.cr, m_composedFrame->allocated_size(webrtc::kVPlane));
+        memset(m_compositeFrame->buffer(webrtc::kYPlane), m_bgColor.y, m_compositeFrame->allocated_size(webrtc::kYPlane));
+        memset(m_compositeFrame->buffer(webrtc::kUPlane), m_bgColor.cb, m_compositeFrame->allocated_size(webrtc::kUPlane));
+        memset(m_compositeFrame->buffer(webrtc::kVPlane), m_bgColor.cr, m_compositeFrame->allocated_size(webrtc::kVPlane));
     }
 }
 
 bool SoftVideoCompositor::commitLayout()
 {
     // Update the current video layout
+    // m_compositeSize = m_newCompositeSize;
     m_currentLayout = m_newLayout;
     for (LayoutSolution::iterator it = m_currentLayout.begin(); it != m_currentLayout.end(); ++it) {
         VideoSize videoSize;
-        videoSize.width = (int)(m_composedSize.width * it->region.relativeSize);
-        videoSize.height = (int)(m_composedSize.height * it->region.relativeSize);
+        videoSize.width = (int)(m_compositeSize.width * it->region.relativeSize);
+        videoSize.height = (int)(m_compositeSize.height * it->region.relativeSize);
         m_vpmPool->update(it->input, videoSize);
     }
 
@@ -202,7 +203,7 @@ webrtc::I420VideoFrame* SoftVideoCompositor::layout()
 
 webrtc::I420VideoFrame* SoftVideoCompositor::customLayout()
 {
-    webrtc::I420VideoFrame* target = m_composedFrame.get();
+    webrtc::I420VideoFrame* target = m_compositeFrame.get();
     for (LayoutSolution::iterator it = m_currentLayout.begin(); it != m_currentLayout.end(); ++it) {
         int index = it->input;
         if (!m_bufferManager->isActive(index))
@@ -213,15 +214,15 @@ webrtc::I420VideoFrame* SoftVideoCompositor::customLayout()
             && !(region.left < 0.0 || region.left > 1.0)
             && !(region.top < 0.0 || region.top > 1.0));
 
-        unsigned int sub_width = (unsigned int)(m_composedSize.width * region.relativeSize);
-        unsigned int sub_height = (unsigned int)(m_composedSize.height * region.relativeSize);
-        unsigned int offset_width = (unsigned int)(m_composedSize.width * region.left);
-        unsigned int offset_height = (unsigned int)(m_composedSize.height * region.top);
-        if (offset_width + sub_width > m_composedSize.width)
-            sub_width = m_composedSize.width - offset_width;
+        unsigned int sub_width = (unsigned int)(m_compositeSize.width * region.relativeSize);
+        unsigned int sub_height = (unsigned int)(m_compositeSize.height * region.relativeSize);
+        unsigned int offset_width = (unsigned int)(m_compositeSize.width * region.left);
+        unsigned int offset_height = (unsigned int)(m_compositeSize.height * region.top);
+        if (offset_width + sub_width > m_compositeSize.width)
+            sub_width = m_compositeSize.width - offset_width;
 
-        if (offset_height + sub_height > m_composedSize.height)
-            sub_height = m_composedSize.height - offset_height;
+        if (offset_height + sub_height > m_compositeSize.height)
+            sub_height = m_compositeSize.height - offset_height;
 
         webrtc::I420VideoFrame* sub_image = m_bufferManager->getBusyBuffer((uint32_t)index);
         if (!sub_image) {
@@ -268,7 +269,7 @@ webrtc::I420VideoFrame* SoftVideoCompositor::customLayout()
         }
     }
 
-    return m_composedFrame.get();
+    return m_compositeFrame.get();
 }
 
 
