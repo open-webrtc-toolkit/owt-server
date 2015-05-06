@@ -119,6 +119,15 @@ case $startStop in
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
+      agent )
+        export PATH=${PATH}:${WOOGEEN_HOME}/sbin
+        export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${WOOGEEN_HOME}/lib
+        export LOG4CXX_CONFIGURATION=${WOOGEEN_HOME}/etc/mcu/log4cxx.properties
+        cd ${WOOGEEN_HOME}/mcu/erizoAgent
+        nohup nice -n ${WOOGEEN_NICENESS} node erizoAgent.js \
+          > "${stdout}" 2>&1 </dev/null &
+        echo $! > ${pid}
+        ;;
       app )
         cd ${WOOGEEN_HOME}/extras/basic_example/
         nohup nice -n ${WOOGEEN_NICENESS} node basicServer.js \

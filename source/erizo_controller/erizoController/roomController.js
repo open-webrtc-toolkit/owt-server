@@ -21,6 +21,7 @@ exports.RoomController = function (spec) {
         externalOutputs = {};
 
     var rpc = spec.rpc;
+    var agentId = spec.agent_id;
 
     var KEEPALIVE_INTERVAL = 5*1000;
 
@@ -32,7 +33,7 @@ exports.RoomController = function (spec) {
         return function(ok) {
             if (ok !== true) {
                 dispatchEvent("unpublish", publisher_id);
-                rpc.callRpc(exports.agentId, "deleteErizoJS", [erizo_id], {callback: function(){
+                rpc.callRpc("ErizoAgent_" + agentId, "deleteErizoJS", [erizo_id], {callback: function(){
                     delete erizos[publisher_id];
                 }});
             }
@@ -60,7 +61,7 @@ exports.RoomController = function (spec) {
             callback();
             return;
         }
-        rpc.callRpc(exports.agentId, "createErizoJS", [publisher_id], {callback: function(erizo_id) {
+        rpc.callRpc("ErizoAgent_" + agentId, "createErizoJS", [publisher_id], {callback: function(erizo_id) {
             log.debug("Answer", erizo_id);
             erizos[publisher_id] = erizo_id;
             callback();

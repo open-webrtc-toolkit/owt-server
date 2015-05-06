@@ -506,36 +506,49 @@ var listen = function () {
                                                 delete rooms[roomID];
                                                 return on_error();
                                             }
-                                            room.controller = controller.RoomController({rpc: rpc});
-                                            room.controller.addEventListener(function(type, event) {
-                                                // TODO Send message to room? Handle ErizoJS disconnection.
-                                                if (type === "unpublish") {
-                                                    var streamId = event;
-                                                    log.info("ErizoJS stopped", streamId);
-                                                    sendMsgToRoom(room, 'onRemoveStream', {id: streamId});
-                                                    room.controller.removePublisher(streamId);
+                                            rpc.callRpc('nuve', 'allocErizoAgent', room.id, {callback: function (erizoAgent) {
+                                                if (erizoAgent === 'error') {
+                                                    log.error('Alloc ErizoAgent error.');
+                                                    delete rooms[roomID];
+                                                    on_error();
+                                                } else if (erizoAgent === 'timeout') {
+                                                    log.error('Alloc ErizoAgent timeout.');
+                                                    delete rooms[roomID];
+                                                    on_error();
+                                                } else {
+                                                    room.agent = erizoAgent.id;
+                                                    room.controller = controller.RoomController({rpc: rpc, agent_id: erizoAgent.id});
+                                                    room.controller.addEventListener(function(type, event) {
+                                                        // TODO Send message to room? Handle ErizoJS disconnection.
+                                                        if (type === "unpublish") {
+                                                            var streamId = event;
+                                                            log.info("ErizoJS stopped", streamId);
+                                                            sendMsgToRoom(room, 'onRemoveStream', {id: streamId});
+                                                            room.controller.removePublisher(streamId);
 
-                                                    var index = socket.streams.indexOf(streamId);
-                                                    if (index !== -1) {
-                                                        socket.streams.splice(index, 1);
-                                                    }
-                                                    if (room.streams[streamId]) {
-                                                        delete room.streams[streamId];
-                                                    }
+                                                            var index = socket.streams.indexOf(streamId);
+                                                            if (index !== -1) {
+                                                                socket.streams.splice(index, 1);
+                                                            }
+                                                            if (room.streams[streamId]) {
+                                                                delete room.streams[streamId];
+                                                            }
 
-                                                    if (room.mixer !== undefined && room.mixer === streamId) {
-                                                        room.mixer = undefined;
-                                                        // Re-initialize the mixer in the room.
-                                                        // Don't do it immediately because we want to wait for 
-                                                        // the original mixer being cleaned-up.
-                                                        initMixer(room, resp, false);
-                                                    }
+                                                            if (room.mixer !== undefined && room.mixer === streamId) {
+                                                                room.mixer = undefined;
+                                                                // Re-initialize the mixer in the room.
+                                                                // Don't do it immediately because we want to wait for 
+                                                                // the original mixer being cleaned-up.
+                                                                initMixer(room, resp, false);
+                                                            }
+                                                        }
+
+                                                    });
+
+                                                    initMixer(room, resp, true);
+                                                    on_ok();
                                                 }
-
-                                            });
-
-                                            initMixer(room, resp, true);
-                                            on_ok();
+                                            }});
                                         }
                                     }});
                                 }
@@ -1010,6 +1023,9 @@ var listen = function () {
                     }
                     socket.room.mixer = undefined;
                 }
+                if (room.agent !== undefined) {
+                    rpc.callRpc('nuve', 'freeErizoAgent', room.agent);
+                }
                 delete rooms[socket.room.id];
                 updateMyState();
             } else if (socket.room !== undefined) {
@@ -1111,7 +1127,9 @@ exports.deleteRoom = function (roomId, callback) {
             }
         }
     }
-
+    if (room.agent !== undefined) {
+        rpc.callRpc('nuve', 'freeErizoAgent', room.agent);
+    }
     delete rooms[roomId];
     updateMyState();
     log.info('Deleted room ', roomId, rooms);
@@ -1136,20 +1154,6 @@ exports.getConfig = function (callback) {
     });
 };
 
-
-function spawnAgent (id) { // called once.
-    var spawn = require('child_process').spawn;
-    log.info('starting erizoAgent', id);
-    var agent = spawn('node', ['./../erizoAgent/erizoAgent.js', '-I', id], { detached: true, stdio: 'inherit' });
-    agent.unref();
-    log.info('erizoAgent pid', agent.pid);
-    controller.agentId = 'ErizoAgent_' + id; // save agentId for callRpc() in roomController.
-    process.on('exit', function () { // kill agent on exiting.
-        log.info('ErizoController closed');
-        agent.kill('SIGTERM');
-    });
-}
-
 ['SIGINT', 'SIGTERM'].map(function (sig) {
     process.on(sig, function () {
         log.warn('Exiting on', sig);
@@ -1170,7 +1174,6 @@ function spawnAgent (id) { // called once.
                 addToCloudHandler(function () {
                     var rpcID = 'erizoController_' + myId;
                     rpc.bind(rpcID, listen);
-                    spawnAgent(myId);
                 });
             } catch (error) {
                 log.info("Error in Erizo Controller: ", error);

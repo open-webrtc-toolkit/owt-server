@@ -18,11 +18,12 @@ var getopt = new Getopt([
   ['l' , 'logging-config-file=ARG'    , 'Logging Config File'],
   ['M' , 'maxProcesses=ARG'           , 'Stun Server URL'],
   ['P' , 'prerunProcesses=ARG'        , 'Default video Bandwidth'],
-  ['I' , 'my-id=ARG'                  , 'RPC Id Postfix'],
   ['h' , 'help'                       , 'display this help']
 ]);
 
 var myId = '';
+var myPurpose = 'general-use';
+var myState = 2;
 
 var opt = getopt.parse(process.argv.slice(2));
 
@@ -62,6 +63,9 @@ var rpc = require('./../common/rpc');
 
 // Logger
 var log = logger.getLogger("ErizoAgent");
+
+var INTERVAL_TIME_KEEPALIVE = GLOBAL.config.erizoAgent.interval_time_keepAlive;
+var BINDED_INTERFACE_NAME = GLOBAL.config.erizoAgent.networkInterface;
 
 var childs = [];
 
@@ -172,14 +176,97 @@ var api = {
     }
 };
 
-fillErizos();
+var privateIP;
+
+var addToCloudHandler = function (callback) {
+    "use strict";
+
+    var interfaces = require('os').networkInterfaces(),
+        addresses = [],
+        k,
+        k2,
+        address;
+
+
+    for (k in interfaces) {
+        if (interfaces.hasOwnProperty(k)) {
+            for (k2 in interfaces[k]) {
+                if (interfaces[k].hasOwnProperty(k2)) {
+                    address = interfaces[k][k2];
+                    if (address.family === 'IPv4' && !address.internal) {
+                        if (k === BINDED_INTERFACE_NAME || !BINDED_INTERFACE_NAME) {
+                            addresses.push(address.address);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    privateIP = addresses[0];
+
+
+    var addEAToCloudHandler = function(attempt) {
+        if (attempt <= 0) {
+            return;
+        }
+
+        var controller = {
+            ip: privateIP,
+            purpose: myPurpose
+        };
+
+        rpc.callRpc('nuve', 'addNewErizoAgent', controller, {callback: function (msg) {
+
+            if (msg === 'timeout') {
+                log.info('CloudHandler does not respond');
+
+                // We'll try it more!
+                setTimeout(function() {
+                    attempt = attempt - 1;
+                    addEAToCloudHandler(attempt);
+                }, 3000);
+                return;
+            }
+            if (msg == 'error') {
+                log.info('Error in communication with cloudProvider');
+            }
+
+            privateIP = msg.privateIP;
+            myId = msg.id;
+            myState = 2;
+
+            var intervarId = setInterval(function () {
+
+                rpc.callRpc('nuve', 'keepAlive', myId, {"callback": function (result) {
+                    if (result === 'whoareyou') {
+
+                        // TODO: It should try to register again in Cloud Handler. But taking into account current rooms, users, ...
+                        log.info('I don`t exist in cloudHandler. I`m going to be killed');
+                        clearInterval(intervarId);
+                        rpc.callRpc('nuve', 'killMe', privateIP, {callback: function () {}});
+                    }
+                }});
+
+            }, INTERVAL_TIME_KEEPALIVE);
+
+            callback("callback");
+
+        }});
+    };
+    addEAToCloudHandler(5);
+};
 
 rpc.connect(function () {
     'use strict';
     rpc.setPublicRPC(api);
-    var rpcID = 'ErizoAgent_' + myId;
-    rpc.bind(rpcID, function callback () {
-      log.info('ErizoAgent RPC Id:', rpcID);
+    log.info("Adding agent to cloudhandler, purpose:", myPurpose);
+    addToCloudHandler(function () {
+      var rpcID = 'ErizoAgent_' + myId;
+      rpc.bind(rpcID, function callback () {
+        log.info('ErizoAgent rpcID:', rpcID);
+      });
+      fillErizos();
     });
 });
 
