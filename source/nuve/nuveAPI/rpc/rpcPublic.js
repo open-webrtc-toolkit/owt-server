@@ -58,8 +58,29 @@ exports.getRoomConfig = function (roomId, callback) {
 
 exports.addNewErizoController = function(msg, callback) {
     'use strict';
-    cloudHandler.addNewErizoController(msg, function (id) {
-        callback('callback', id);   
+    cloudHandler.addNewErizoController(msg, function (ec) {
+        callback('callback', ec);
+    });
+};
+
+exports.addNewErizoAgent = function(msg, callback) {
+    'use strict';
+    cloudHandler.addNewErizoAgent(msg, function (ea) {
+        callback('callback', ea);
+    });
+};
+
+exports.allocErizoAgent = function(msg, callback) {
+    'use strict';
+    cloudHandler.allocErizoAgent(msg, function (ea) {
+        callback('callback', ea);
+    });
+};
+
+exports.freeErizoAgent = function(msg, callback) {
+    'use strict';
+    cloudHandler.freeErizoAgent(msg, function (ea) {
+        callback('callback', ea);
     });
 };
 

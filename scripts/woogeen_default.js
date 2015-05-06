@@ -86,6 +86,9 @@ config.erizoController.outOfProcessMixer = false;
 **********************************************************/
 config.erizoAgent = {};
 
+config.erizoAgent.interval_time_keepAlive = 1000; // default value: 1000
+// config.erizoAgent.networkInterface = 'eth0' // default value: undefined
+
 // Max processes that ErizoAgent can run
 config.erizoAgent.maxProcesses 	  = 13; // default value: 13
 // Number of precesses that ErizoAgent runs when it starts. Always lower than or equals to maxProcesses.

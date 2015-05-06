@@ -107,11 +107,13 @@ pack_scripts() {
   echo '
 ${bin}/daemon.sh start nuve
 ${bin}/daemon.sh start mcu
+${bin}/daemon.sh start agent
 ${bin}/daemon.sh start app
 ' >> ${WOOGEEN_DIST}/bin/start-all.sh
   echo '
 ${bin}/daemon.sh stop nuve
 ${bin}/daemon.sh stop mcu
+${bin}/daemon.sh stop agent
 ${bin}/daemon.sh stop app
 ' >> ${WOOGEEN_DIST}/bin/stop-all.sh
   echo '
