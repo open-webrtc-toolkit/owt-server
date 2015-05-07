@@ -21,8 +21,8 @@
 #ifndef VCMFrameEncoder_h
 #define VCMFrameEncoder_h
 
-#include "TaskRunner.h"
 #include "VideoFramePipeline.h"
+#include "WebRTCTaskRunner.h"
 
 #include <boost/shared_ptr.hpp>
 #include <webrtc/modules/video_coding/main/interface/video_coding.h>
@@ -34,7 +34,7 @@ namespace woogeen_base {
  */
 class VCMFrameEncoder : public VideoFrameEncoder, public webrtc::VCMPacketizationCallback {
 public:
-    VCMFrameEncoder(boost::shared_ptr<TaskRunner>);
+    VCMFrameEncoder(boost::shared_ptr<WebRTCTaskRunner>);
     ~VCMFrameEncoder();
 
     // Implements VideoFrameEncoder.
@@ -57,7 +57,7 @@ private:
     webrtc::VideoCodingModule* m_vcm;
     bool m_encoderInitialized;
     FrameFormat m_encodeFormat;
-    boost::shared_ptr<TaskRunner> m_taskRunner;
+    boost::shared_ptr<WebRTCTaskRunner> m_taskRunner;
     VideoFrameConsumer* m_encodedFrameConsumer;
     int m_consumerId;
 };

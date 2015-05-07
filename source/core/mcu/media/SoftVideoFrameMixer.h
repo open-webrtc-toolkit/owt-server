@@ -40,7 +40,7 @@ class SoftVideoFrameMixer : public VideoFrameMixer {
     friend class CompositedFrameDispatcher;
 
 public:
-    SoftVideoFrameMixer(uint32_t maxInput, VideoSize rootSize, YUVColor bgColor, boost::shared_ptr<woogeen_base::TaskRunner>);
+    SoftVideoFrameMixer(uint32_t maxInput, VideoSize rootSize, YUVColor bgColor, boost::shared_ptr<woogeen_base::WebRTCTaskRunner>);
     ~SoftVideoFrameMixer();
 
     bool activateInput(int input, woogeen_base::FrameFormat, woogeen_base::VideoFrameProvider*);
@@ -62,7 +62,7 @@ private:
     std::map<int, boost::shared_ptr<woogeen_base::VideoFrameEncoder>> m_encoders;
     boost::shared_mutex m_decoderMutex;
     boost::shared_mutex m_encoderMutex;
-    boost::shared_ptr<woogeen_base::TaskRunner> m_taskRunner;
+    boost::shared_ptr<woogeen_base::WebRTCTaskRunner> m_taskRunner;
     boost::scoped_ptr<CompositedFrameDispatcher> m_dispatcher;
 };
 
@@ -77,7 +77,7 @@ private:
     SoftVideoFrameMixer* m_mixer;
 };
 
-SoftVideoFrameMixer::SoftVideoFrameMixer(uint32_t maxInput, VideoSize rootSize, YUVColor bgColor, boost::shared_ptr<woogeen_base::TaskRunner> taskRunner)
+SoftVideoFrameMixer::SoftVideoFrameMixer(uint32_t maxInput, VideoSize rootSize, YUVColor bgColor, boost::shared_ptr<woogeen_base::WebRTCTaskRunner> taskRunner)
     : m_taskRunner(taskRunner)
 {
     m_compositor.reset(new SoftVideoCompositor(maxInput, rootSize, bgColor));

@@ -139,7 +139,7 @@ public:
     virtual void setBitrate(unsigned short bitrate, int id = 0);
     virtual void requestKeyFrame(int id = 0);
 
-    bool init(woogeen_base::WebRTCTransport<erizo::VIDEO>*, boost::shared_ptr<VideoFrameMixer>, boost::shared_ptr<woogeen_base::TaskRunner>, VCMInputProcessorCallback*);
+    bool init(woogeen_base::WebRTCTransport<erizo::VIDEO>*, boost::shared_ptr<VideoFrameMixer>, boost::shared_ptr<woogeen_base::WebRTCTaskRunner>, VCMInputProcessorCallback*);
 
     void bindAudioForSync(int32_t voiceChannelId, webrtc::VoEVideoSync*);
 

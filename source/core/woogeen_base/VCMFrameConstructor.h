@@ -22,7 +22,7 @@
 #define VCMFrameConstructor_h
 
 #include "DebugRecorder.h"
-#include "TaskRunner.h"
+#include "WebRTCTaskRunner.h"
 #include "WebRTCTransport.h"
 
 #include <boost/scoped_ptr.hpp>
@@ -74,7 +74,7 @@ public:
     int deliverAudioData(char*, int len);
     int deliverVideoData(char*, int len);
 
-    bool initialize(WebRTCTransport<erizo::VIDEO>*, boost::shared_ptr<TaskRunner>);
+    bool initialize(WebRTCTransport<erizo::VIDEO>*, boost::shared_ptr<WebRTCTaskRunner>);
 
     bool registerExternalDecoder(boost::shared_ptr<webrtc::VideoDecoder>);
     bool registerDecodedFrameReceiver(boost::shared_ptr<webrtc::VCMReceiveCallback>);
@@ -96,7 +96,7 @@ private:
     boost::scoped_ptr<DebugRecorder> m_recorder;
     boost::shared_ptr<webrtc::VCMReceiveCallback> m_renderer;
     boost::shared_ptr<webrtc::VideoDecoder> m_decoder;
-    boost::shared_ptr<TaskRunner> m_taskRunner;
+    boost::shared_ptr<WebRTCTaskRunner> m_taskRunner;
 };
 
 class DummyRemoteBitrateObserver : public webrtc::RemoteBitrateObserver {
