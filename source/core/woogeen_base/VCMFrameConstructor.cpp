@@ -20,7 +20,7 @@
 
 #include "VCMFrameConstructor.h"
 
-#include "TaskRunner.h"
+#include "WebRTCTaskRunner.h"
 #include <rtputils.h>
 
 using namespace webrtc;
@@ -54,7 +54,7 @@ VCMFrameConstructor::~VCMFrameConstructor()
     }
 }
 
-bool VCMFrameConstructor::initialize(WebRTCTransport<erizo::VIDEO>* transport, boost::shared_ptr<TaskRunner> taskRunner)
+bool VCMFrameConstructor::initialize(WebRTCTransport<erizo::VIDEO>* transport, boost::shared_ptr<WebRTCTaskRunner> taskRunner)
 {
     m_videoTransport.reset(transport);
     m_taskRunner = taskRunner;

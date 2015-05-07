@@ -33,7 +33,7 @@ static const int TRANSMISSION_MAXBITRATE_MULTIPLIER = 2;
 
 DEFINE_LOGGER(EncodedVideoFrameSender, "woogeen.EncodedVideoFrameSender");
 
-EncodedVideoFrameSender::EncodedVideoFrameSender(int id, boost::shared_ptr<VideoFrameProvider> source, FrameFormat frameFormat, int targetBitrate, WebRTCTransport<erizo::VIDEO>* transport, boost::shared_ptr<TaskRunner> taskRunner)
+EncodedVideoFrameSender::EncodedVideoFrameSender(int id, boost::shared_ptr<VideoFrameProvider> source, FrameFormat frameFormat, int targetBitrate, WebRTCTransport<erizo::VIDEO>* transport, boost::shared_ptr<WebRTCTaskRunner> taskRunner)
     : VideoFrameSender(id)
     , m_source(source)
     , m_frameFormat(frameFormat)
@@ -160,7 +160,7 @@ void EncodedVideoFrameSender::onFrame(FrameFormat format, unsigned char* payload
     }
 }
 
-bool EncodedVideoFrameSender::init(WebRTCTransport<erizo::VIDEO>* transport, boost::shared_ptr<TaskRunner> taskRunner)
+bool EncodedVideoFrameSender::init(WebRTCTransport<erizo::VIDEO>* transport, boost::shared_ptr<WebRTCTaskRunner> taskRunner)
 {
     m_taskRunner = taskRunner;
     m_videoTransport.reset(transport);

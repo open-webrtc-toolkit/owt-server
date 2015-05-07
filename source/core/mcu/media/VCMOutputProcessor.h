@@ -28,8 +28,8 @@
 #include <logger.h>
 #include <MediaDefinitions.h>
 #include <MediaRecording.h>
-#include <TaskRunner.h>
 #include <VideoFrameSender.h>
+#include <WebRTCTaskRunner.h>
 #include <WebRTCTransport.h>
 #include <webrtc/modules/rtp_rtcp/interface/rtp_rtcp.h>
 #include <webrtc/system_wrappers/interface/scoped_refptr.h>
@@ -71,7 +71,7 @@ class VCMOutputProcessor : public woogeen_base::VideoFrameSender, public erizo::
     DECLARE_LOGGER();
 
 public:
-    VCMOutputProcessor(int id, boost::shared_ptr<woogeen_base::VideoFrameProvider>, int targetBitrate, woogeen_base::WebRTCTransport<erizo::VIDEO>*, boost::shared_ptr<woogeen_base::TaskRunner>);
+    VCMOutputProcessor(int id, boost::shared_ptr<woogeen_base::VideoFrameProvider>, int targetBitrate, woogeen_base::WebRTCTransport<erizo::VIDEO>*, boost::shared_ptr<woogeen_base::WebRTCTaskRunner>);
     ~VCMOutputProcessor();
 
     // Implements VideoFrameSender.
@@ -94,7 +94,7 @@ public:
     void handleIntraFrameRequest();
 
 private:
-    bool init(woogeen_base::WebRTCTransport<erizo::VIDEO>*, boost::shared_ptr<woogeen_base::TaskRunner>);
+    bool init(woogeen_base::WebRTCTransport<erizo::VIDEO>*, boost::shared_ptr<woogeen_base::WebRTCTaskRunner>);
     void close();
 
     woogeen_base::FrameFormat m_sendFormat;
@@ -107,7 +107,7 @@ private:
     std::list<webrtc::RtpRtcp*> m_rtpRtcps;
 
     boost::shared_ptr<webrtc::Transport> m_videoTransport;
-    boost::shared_ptr<woogeen_base::TaskRunner> m_taskRunner;
+    boost::shared_ptr<woogeen_base::WebRTCTaskRunner> m_taskRunner;
     boost::shared_ptr<woogeen_base::VideoFrameProvider> m_source;
 
     boost::scoped_ptr<EncodedFrameCallbackAdapter> m_encodedFrameCallback;

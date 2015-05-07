@@ -24,7 +24,7 @@ using namespace webrtc;
 
 namespace woogeen_base {
 
-VCMFrameEncoder::VCMFrameEncoder(boost::shared_ptr<TaskRunner> taskRunner)
+VCMFrameEncoder::VCMFrameEncoder(boost::shared_ptr<WebRTCTaskRunner> taskRunner)
     : m_vcm(VideoCodingModule::Create())
     , m_encoderInitialized(false)
     , m_encodeFormat(FRAME_FORMAT_UNKNOWN)

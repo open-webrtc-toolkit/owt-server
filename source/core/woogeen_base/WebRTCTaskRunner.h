@@ -18,8 +18,8 @@
  * and approved by Intel in writing.
  */
 
-#ifndef TaskRunner_h
-#define TaskRunner_h
+#ifndef WebRTCTaskRunner_h
+#define WebRTCTaskRunner_h
 
 #include <webrtc/modules/utility/interface/process_thread.h>
 
@@ -30,10 +30,10 @@ namespace woogeen_base {
  * It's now simply a wrapper of the webrtc ProcessThread, and we need it because it's shared
  * by different objects and we want to manage its lifetime automatically.
  */
-class TaskRunner {
+class WebRTCTaskRunner {
 public:
-    TaskRunner();
-    ~TaskRunner();
+    WebRTCTaskRunner();
+    ~WebRTCTaskRunner();
 
     int32_t Start();
     int32_t Stop();
@@ -46,40 +46,40 @@ private:
     rtc::scoped_ptr<webrtc::ProcessThread> m_processThread;
 };
 
-inline TaskRunner::TaskRunner()
+inline WebRTCTaskRunner::WebRTCTaskRunner()
     : m_processThread(webrtc::ProcessThread::Create())
 {
 }
 
-inline TaskRunner::~TaskRunner()
+inline WebRTCTaskRunner::~WebRTCTaskRunner()
 {
 }
 
-inline int32_t TaskRunner::Start()
+inline int32_t WebRTCTaskRunner::Start()
 {
     return m_processThread->Start();
 }
 
-inline int32_t TaskRunner::Stop()
+inline int32_t WebRTCTaskRunner::Stop()
 {
     return m_processThread->Stop();
 }
 
-inline int32_t TaskRunner::RegisterModule(webrtc::Module* module)
+inline int32_t WebRTCTaskRunner::RegisterModule(webrtc::Module* module)
 {
     return m_processThread->RegisterModule(module);
 }
 
-inline int32_t TaskRunner::DeRegisterModule(webrtc::Module* module)
+inline int32_t WebRTCTaskRunner::DeRegisterModule(webrtc::Module* module)
 {
     return m_processThread->DeRegisterModule(module);
 }
 
-inline webrtc::ProcessThread* TaskRunner::unwrap()
+inline webrtc::ProcessThread* WebRTCTaskRunner::unwrap()
 {
     return m_processThread.get();
 }
 
 } /* namespace woogeen_base */
 
-#endif /* TaskRunner_h */
+#endif /* WebRTCTaskRunner_h */

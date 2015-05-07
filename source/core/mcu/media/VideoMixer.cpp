@@ -56,7 +56,7 @@ VideoMixer::VideoMixer(erizo::RTPDataReceiver* receiver, boost::property_tree::p
 
     ELOG_DEBUG("Init maxInput(%u), rootSize(%u, %u), bgColor(%u, %u, %u)", m_maxInputCount, rootSize.width, rootSize.height, bgColor.y, bgColor.cb, bgColor.cr);
 
-    m_taskRunner.reset(new woogeen_base::TaskRunner());
+    m_taskRunner.reset(new woogeen_base::WebRTCTaskRunner());
 
     if (m_hardwareAccelerated)
         m_frameMixer.reset(new HardwareVideoFrameMixer(rootSize, bgColor));
