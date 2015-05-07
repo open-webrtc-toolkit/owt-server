@@ -32,20 +32,25 @@ install_opus(){
   cd $CURRENT_DIR
 }
 
-install_libvpx(){
-  if [ -d $LIB_DIR ]; then
-    cd $LIB_DIR
-    wget -c https://webm.googlecode.com/files/libvpx-v1.3.0.tar.bz2
-    tar -xvf libvpx-v1.3.0.tar.bz2
-    cd libvpx-v1.3.0
-    ./configure --prefix=/usr --enable-shared --enable-vp8 --disable-vp9
-    make -s V=0 && sudo make install
-    sudo ldconfig
-    cd $CURRENT_DIR
-  else
-    mkdir -p $LIB_DIR
-    install_libvpx
+install_fdkaac(){
+  local VERSION="0.1.4"
+  local SRC="fdk-aac-${VERSION}.tar.gz"
+  local SRC_URL="http://sourceforge.net/projects/opencore-amr/files/fdk-aac/${SRC}/download"
+  local SRC_MD5SUM="e274a7d7f6cd92c71ec5c78e4dc9f8b7"
+  mkdir -p ${LIB_DIR}
+  pushd ${LIB_DIR}
+  [[ ! -s ${SRC} ]] && wget -c ${SRC_URL} -O ${SRC}
+  if ! (echo "${SRC_MD5SUM} ${SRC}" | md5sum --check) ; then
+    rm -f ${SRC} && wget -c ${SRC_URL} -O ${SRC} # try download again
+    (echo "${SRC_MD5SUM} ${SRC}" | md5sum --check) || (echo "Downloaded file ${SRC} is corrupted." && return 1)
   fi
+  rm -fr fdk-aac-${VERSION}
+  tar xf ${SRC}
+  pushd fdk-aac-${VERSION}
+  ./configure --prefix=/usr/local --enable-shared --enable-static
+  make -s V=0 && sudo make install && sudo ldconfig
+  popd
+  popd
 }
 
 install_libav(){
@@ -63,9 +68,9 @@ install_libav(){
   rm -fr libav-${VERSION}
   tar xf ${SRC}
   pushd libav-${VERSION}
-  [[ "${ENABLE_GPL}" == "true" ]] && \
-  PKG_CONFIG_PATH=${PREFIX_DIR}/lib/pkgconfig ./configure --prefix=${PREFIX_DIR} --enable-shared --enable-libvpx --enable-libopus --enable-gpl --enable-libx264 || \
-  PKG_CONFIG_PATH=${PREFIX_DIR}/lib/pkgconfig ./configure --prefix=${PREFIX_DIR} --enable-shared --enable-libvpx --enable-libopus && \
+  [[ "${DISABLE_NONFREE}" == "true" ]] && \
+  PKG_CONFIG_PATH=${PREFIX_DIR}/lib/pkgconfig ./configure --prefix=${PREFIX_DIR} --enable-shared --enable-libvpx --enable-libopus || \
+  PKG_CONFIG_PATH=${PREFIX_DIR}/lib/pkgconfig ./configure --prefix=${PREFIX_DIR} --enable-shared --enable-libvpx --enable-libopus --enable-libfdk-aac --enable-nonfree && \
   make -j4 -s V=0 && make install
   popd
   popd

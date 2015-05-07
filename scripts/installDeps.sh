@@ -12,8 +12,8 @@ PREFIX_DIR=$LIB_DIR/build/
 parse_arguments(){
   while [ "$1" != "" ]; do
     case $1 in
-      "--enable-gpl")
-        ENABLE_GPL=true
+      "--disable-nonfree")
+        DISABLE_NONFREE=true
         ;;
       "--cleanup")
         CLEANUP=true
@@ -63,12 +63,12 @@ esac
 pause "Installing opus library...  [press Enter]"
 install_opus
 
-if [ "$ENABLE_GPL" = "true" ]; then
-  pause "GPL libraries enabled"
+if [ "$DISABLE_NONFREE" = "true" ]; then
+  pause "Nonfree libraries disabled: aac transcoding unavailable."
   install_mediadeps
 else
-  pause "No GPL libraries enabled, this disables h264 transcoding, to enable gpl please use the --enable-gpl option"
-  install_mediadeps_nogpl
+  pause "Nonfree libraries enabled (DO NOT redistribute these libraries!!); to disable nonfree please use the \`--disable-nonfree' option."
+  install_mediadeps_nonfree
 fi
 
 pause "Installing node building tools... [press Enter]"
