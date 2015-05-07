@@ -48,7 +48,7 @@ VCMFrameEncoder::~VCMFrameEncoder()
     m_vcm = nullptr;
 }
 
-bool VCMFrameEncoder::activateOutput(int id, FrameFormat format, unsigned int framerate, unsigned short bitrate, VideoFrameConsumer* consumer)
+bool VCMFrameEncoder::activateOutput(int id, FrameFormat format, unsigned int framerate, unsigned short kbps, VideoFrameConsumer* consumer)
 {
     if (m_encodedFrameConsumer)
         return false;
@@ -56,7 +56,7 @@ bool VCMFrameEncoder::activateOutput(int id, FrameFormat format, unsigned int fr
     m_encodedFrameConsumer = consumer;
     m_consumerId = id;
     m_encodeFormat = format;
-    // m_vcm->SetChannelParameters(bitrate * 1000, 0, 0);
+    // m_vcm->SetChannelParameters(kbps * 1000, 0, 0);
     return true;
 }
 
@@ -69,9 +69,9 @@ void VCMFrameEncoder::deActivateOutput(int id)
     }
 }
 
-void VCMFrameEncoder::setBitrate(unsigned short bitrate, int id)
+void VCMFrameEncoder::setBitrate(unsigned short kbps, int id)
 {
-    int bps = bitrate * 1000;
+    int bps = kbps * 1000;
     // TODO: Notify VCM about the packet lost and rtt information.
     m_vcm->SetChannelParameters(bps, 0, 0);
 }

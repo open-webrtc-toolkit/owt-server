@@ -38,10 +38,10 @@ public:
     ~VCMFrameEncoder();
 
     // Implements VideoFrameEncoder.
-    bool activateOutput(int id, FrameFormat, unsigned int framerate, unsigned short bitrate, VideoFrameConsumer*);
+    bool activateOutput(int id, FrameFormat, unsigned int framerate, unsigned short kbps, VideoFrameConsumer*);
     void deActivateOutput(int id);
     void onFrame(FrameFormat, unsigned char* payload, int len, unsigned int ts);
-    void setBitrate(unsigned short bitrate, int id = 0);
+    void setBitrate(unsigned short kbps, int id = 0);
     void requestKeyFrame(int id = 0);
 
     // Implements VCMPacketizationCallback.

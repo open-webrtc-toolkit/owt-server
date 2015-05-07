@@ -34,7 +34,7 @@ class VideoFrameProvider {
 public:
     virtual ~VideoFrameProvider() { }
 
-    virtual void setBitrate(unsigned short bitrate, int id = 0) = 0;
+    virtual void setBitrate(unsigned short kbps, int id = 0) = 0;
     virtual void requestKeyFrame(int id = 0) = 0;
 };
 
@@ -60,7 +60,7 @@ public:
 // or framerate/bitrate settings.
 class VideoFrameEncoder : public VideoFrameConsumer, public VideoFrameProvider {
 public:
-    virtual bool activateOutput(int id, FrameFormat, unsigned int framerate, unsigned short bitrate, VideoFrameConsumer*) = 0;
+    virtual bool activateOutput(int id, FrameFormat, unsigned int framerate, unsigned short kbps, VideoFrameConsumer*) = 0;
     virtual void deActivateOutput(int id) = 0;
 };
 

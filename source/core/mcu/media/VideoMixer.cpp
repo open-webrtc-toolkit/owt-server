@@ -42,11 +42,11 @@ VideoMixer::VideoMixer(erizo::RTPDataReceiver* receiver, boost::property_tree::p
     : m_participants(0)
     , m_outputReceiver(receiver)
     , m_maxInputCount(0)
-    , m_outputBitrate(0)
+    , m_outputKbps(0)
 {
     m_hardwareAccelerated = config.get<bool>("hardware");
     m_maxInputCount = config.get<uint32_t>("maxinput");
-    m_outputBitrate = config.get<int>("bitrate");
+    m_outputKbps = config.get<int>("bitrate");
 
     m_layoutProcessor.reset(new VideoLayoutProcessor(config));
     VideoSize rootSize;
@@ -117,9 +117,9 @@ int32_t VideoMixer::addOutput(int payloadType, bool nack, bool fec)
     // compound VCMOutputProcessor (w/ both encoder and sender capability) provides
     // better QoS control.
     if (m_hardwareAccelerated)
-        output = new woogeen_base::EncodedVideoFrameSender(outputId, m_frameMixer, outputFormat, m_outputBitrate, transport, m_taskRunner);
+        output = new woogeen_base::EncodedVideoFrameSender(outputId, m_frameMixer, outputFormat, m_outputKbps, transport, m_taskRunner);
     else
-        output = new VCMOutputProcessor(outputId, m_frameMixer, m_outputBitrate, transport, m_taskRunner);
+        output = new VCMOutputProcessor(outputId, m_frameMixer, m_outputKbps, transport, m_taskRunner);
     m_frameMixer->activateOutput(outputId, outputFormat, 30, 500, output);
 
     // Fetch video size.

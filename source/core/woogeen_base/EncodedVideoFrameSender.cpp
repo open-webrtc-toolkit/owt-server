@@ -33,11 +33,11 @@ static const int TRANSMISSION_MAXBITRATE_MULTIPLIER = 2;
 
 DEFINE_LOGGER(EncodedVideoFrameSender, "woogeen.EncodedVideoFrameSender");
 
-EncodedVideoFrameSender::EncodedVideoFrameSender(int id, boost::shared_ptr<VideoFrameProvider> source, FrameFormat frameFormat, int targetBitrate, WebRTCTransport<erizo::VIDEO>* transport, boost::shared_ptr<WebRTCTaskRunner> taskRunner)
+EncodedVideoFrameSender::EncodedVideoFrameSender(int id, boost::shared_ptr<VideoFrameProvider> source, FrameFormat frameFormat, int targetKbps, WebRTCTransport<erizo::VIDEO>* transport, boost::shared_ptr<WebRTCTaskRunner> taskRunner)
     : VideoFrameSender(id)
     , m_source(source)
     , m_frameFormat(frameFormat)
-    , m_targetBitrate(targetBitrate)
+    , m_targetKbps(targetKbps)
     , m_videoQueue(nullptr)
 {
     init(transport, taskRunner);
@@ -50,16 +50,16 @@ EncodedVideoFrameSender::~EncodedVideoFrameSender()
 
 bool EncodedVideoFrameSender::updateVideoSize(unsigned int width, unsigned int height)
 {
-    uint32_t targetBitrate = 0;
-    if (m_targetBitrate > 0)
-        targetBitrate = m_targetBitrate;
+    uint32_t targetKbps = 0;
+    if (m_targetKbps > 0)
+        targetKbps = m_targetKbps;
     else
-        targetBitrate = calcBitrate(width, height) * (m_frameFormat == FRAME_FORMAT_VP8 ? 0.9 : 1);
+        targetKbps = calcBitrate(width, height) * (m_frameFormat == FRAME_FORMAT_VP8 ? 0.9 : 1);
 
-    uint32_t minBitrate = targetBitrate / 4;
+    uint32_t minKbps = targetKbps / 4;
     // The bitrate controller is accepting "bps".
-    m_bitrateController->SetBitrateObserver(this, targetBitrate * 1000, minBitrate * 1000, TRANSMISSION_MAXBITRATE_MULTIPLIER * targetBitrate * 1000);
-    m_source->setBitrate(targetBitrate, m_id);
+    m_bitrateController->SetBitrateObserver(this, targetKbps * 1000, minKbps * 1000, TRANSMISSION_MAXBITRATE_MULTIPLIER * targetKbps * 1000);
+    m_source->setBitrate(targetKbps, m_id);
     return true;
 }
 
@@ -88,16 +88,16 @@ bool EncodedVideoFrameSender::setSendCodec(FrameFormat frameFormat, unsigned int
         break;
     }
 
-    uint32_t targetBitrate = 0;
-    if (m_targetBitrate > 0)
-        targetBitrate = m_targetBitrate;
+    uint32_t targetKbps = 0;
+    if (m_targetKbps > 0)
+        targetKbps = m_targetKbps;
     else
-        targetBitrate = calcBitrate(width, height) * (frameFormat == FRAME_FORMAT_VP8 ? 0.9 : 1);
+        targetKbps = calcBitrate(width, height) * (frameFormat == FRAME_FORMAT_VP8 ? 0.9 : 1);
 
-    uint32_t minBitrate = targetBitrate / 4;
+    uint32_t minKbps = targetKbps / 4;
     // The bitrate controller is accepting "bps".
-    m_bitrateController->SetBitrateObserver(this, targetBitrate * 1000, minBitrate * 1000, TRANSMISSION_MAXBITRATE_MULTIPLIER * targetBitrate * 1000);
-    m_source->setBitrate(targetBitrate, m_id);
+    m_bitrateController->SetBitrateObserver(this, targetKbps * 1000, minKbps * 1000, TRANSMISSION_MAXBITRATE_MULTIPLIER * targetKbps * 1000);
+    m_source->setBitrate(targetKbps, m_id);
 
     return m_rtpRtcp && m_rtpRtcp->RegisterSendPayload(codec) != -1;
 }

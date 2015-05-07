@@ -32,10 +32,10 @@ namespace mcu {
 
 DEFINE_LOGGER(VCMOutputProcessor, "mcu.media.VCMOutputProcessor");
 
-VCMOutputProcessor::VCMOutputProcessor(int id, boost::shared_ptr<woogeen_base::VideoFrameProvider> source, int targetBitrate, woogeen_base::WebRTCTransport<erizo::VIDEO>* transport, boost::shared_ptr<woogeen_base::WebRTCTaskRunner> taskRunner)
+VCMOutputProcessor::VCMOutputProcessor(int id, boost::shared_ptr<woogeen_base::VideoFrameProvider> source, int targetKbps, woogeen_base::WebRTCTransport<erizo::VIDEO>* transport, boost::shared_ptr<woogeen_base::WebRTCTaskRunner> taskRunner)
     : woogeen_base::VideoFrameSender(id)
     , m_sendFormat(woogeen_base::FRAME_FORMAT_UNKNOWN)
-    , m_targetBitrate(targetBitrate)
+    , m_targetKbps(targetKbps)
     , m_source(source)
 {
     init(transport, taskRunner);
@@ -56,15 +56,15 @@ bool VCMOutputProcessor::updateVideoSize(unsigned int width, unsigned int height
         videoCodec.width = width;
         videoCodec.height = height;
 
-        uint32_t targetBitrate = 0;
-        if (m_targetBitrate > 0)
-            targetBitrate = m_targetBitrate;
+        uint32_t targetKbps = 0;
+        if (m_targetKbps > 0)
+            targetKbps = m_targetKbps;
         else
-            targetBitrate = woogeen_base::calcBitrate(videoCodec.width, videoCodec.height) * (m_sendFormat == woogeen_base::FRAME_FORMAT_VP8 ? 0.9 : 1);
+            targetKbps = woogeen_base::calcBitrate(videoCodec.width, videoCodec.height) * (m_sendFormat == woogeen_base::FRAME_FORMAT_VP8 ? 0.9 : 1);
 
-        videoCodec.maxBitrate = targetBitrate;
-        videoCodec.minBitrate = targetBitrate / 4;
-        videoCodec.startBitrate = targetBitrate;
+        videoCodec.maxBitrate = targetKbps;
+        videoCodec.minBitrate = targetKbps / 4;
+        videoCodec.startBitrate = targetKbps;
 
         return (m_videoEncoder->SetEncoder(videoCodec) != -1);
     }
@@ -102,15 +102,15 @@ bool VCMOutputProcessor::setSendCodec(woogeen_base::FrameFormat frameFormat, uns
         videoCodec.width = width;
         videoCodec.height = height;
 
-        uint32_t targetBitrate = 0;
-        if (m_targetBitrate > 0)
-            targetBitrate = m_targetBitrate;
+        uint32_t targetKbps = 0;
+        if (m_targetKbps > 0)
+            targetKbps = m_targetKbps;
         else
-            targetBitrate = woogeen_base::calcBitrate(videoCodec.width, videoCodec.height) * (m_sendFormat == woogeen_base::FRAME_FORMAT_VP8 ? 0.9 : 1);
+            targetKbps = woogeen_base::calcBitrate(videoCodec.width, videoCodec.height) * (m_sendFormat == woogeen_base::FRAME_FORMAT_VP8 ? 0.9 : 1);
 
-        videoCodec.maxBitrate = targetBitrate;
-        videoCodec.minBitrate = targetBitrate / 4;
-        videoCodec.startBitrate = targetBitrate;
+        videoCodec.maxBitrate = targetKbps;
+        videoCodec.minBitrate = targetKbps / 4;
+        videoCodec.startBitrate = targetKbps;
 
         std::list<RtpRtcp*>::iterator it = m_rtpRtcps.begin();
         for (; it != m_rtpRtcps.end(); ++it) {

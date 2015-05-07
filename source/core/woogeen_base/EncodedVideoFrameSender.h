@@ -47,7 +47,7 @@ class EncodedVideoFrameSender : public VideoFrameSender,
     DECLARE_LOGGER();
 
 public:
-    EncodedVideoFrameSender(int id, boost::shared_ptr<VideoFrameProvider>, FrameFormat, int targetBitrate, WebRTCTransport<erizo::VIDEO>*, boost::shared_ptr<WebRTCTaskRunner>);
+    EncodedVideoFrameSender(int id, boost::shared_ptr<VideoFrameProvider>, FrameFormat, int targetKbps, WebRTCTransport<erizo::VIDEO>*, boost::shared_ptr<WebRTCTaskRunner>);
     ~EncodedVideoFrameSender();
 
     // Implements VideoFrameSender.
@@ -90,7 +90,7 @@ private:
     boost::shared_ptr<WebRTCTaskRunner> m_taskRunner;
     boost::shared_ptr<VideoFrameProvider> m_source;
     FrameFormat m_frameFormat;
-    int m_targetBitrate;
+    int m_targetKbps;
 
     MediaFrameQueue* m_videoQueue;
 };

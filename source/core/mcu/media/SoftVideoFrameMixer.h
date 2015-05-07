@@ -47,9 +47,9 @@ public:
     void deActivateInput(int input);
     void pushInput(int input, unsigned char* payload, int len);
 
-    void setBitrate(unsigned short bitrate, int id);
+    void setBitrate(unsigned short kbps, int id);
     void requestKeyFrame(int id);
-    bool activateOutput(int id, woogeen_base::FrameFormat, unsigned int framerate, unsigned short bitrate, woogeen_base::VideoFrameConsumer*);
+    bool activateOutput(int id, woogeen_base::FrameFormat, unsigned int framerate, unsigned short kbps, woogeen_base::VideoFrameConsumer*);
     void deActivateOutput(int id);
 
     void updateRootSize(VideoSize& rootSize);
@@ -146,12 +146,12 @@ inline void SoftVideoFrameMixer::updateLayoutSolution(LayoutSolution& solution)
     m_compositor->updateLayoutSolution(solution);
 }
 
-inline void SoftVideoFrameMixer::setBitrate(unsigned short bitrate, int id)
+inline void SoftVideoFrameMixer::setBitrate(unsigned short kbps, int id)
 {
     boost::shared_lock<boost::shared_mutex> lock(m_encoderMutex);
     std::map<int, boost::shared_ptr<woogeen_base::VideoFrameEncoder>>::iterator it = m_encoders.find(id);
     if (it != m_encoders.end())
-        it->second->setBitrate(bitrate, id);
+        it->second->setBitrate(kbps, id);
 }
 
 inline void SoftVideoFrameMixer::requestKeyFrame(int id)
@@ -162,7 +162,7 @@ inline void SoftVideoFrameMixer::requestKeyFrame(int id)
         it->second->requestKeyFrame(id);
 }
 
-inline bool SoftVideoFrameMixer::activateOutput(int id, woogeen_base::FrameFormat format, unsigned int framerate, unsigned short bitrate, woogeen_base::VideoFrameConsumer* consumer)
+inline bool SoftVideoFrameMixer::activateOutput(int id, woogeen_base::FrameFormat format, unsigned int framerate, unsigned short kbps, woogeen_base::VideoFrameConsumer* consumer)
 {
     boost::upgrade_lock<boost::shared_mutex> lock(m_encoderMutex);
     std::map<int, boost::shared_ptr<woogeen_base::VideoFrameEncoder>>::iterator it = m_encoders.find(id);
@@ -177,7 +177,7 @@ inline bool SoftVideoFrameMixer::activateOutput(int id, woogeen_base::FrameForma
 
     boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
     m_encoders[id].reset(encoder);
-    return encoder->activateOutput(id, format, framerate, bitrate, consumer);
+    return encoder->activateOutput(id, format, framerate, kbps, consumer);
 }
 
 inline void SoftVideoFrameMixer::deActivateOutput(int id)

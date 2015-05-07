@@ -97,9 +97,9 @@ public:
     void deActivateInput(int input);
     void pushInput(int input, unsigned char* payload, int len);
 
-    void setBitrate(unsigned short bitrate, int id);
+    void setBitrate(unsigned short kbps, int id);
     void requestKeyFrame(int id);
-    bool activateOutput(int id, woogeen_base::FrameFormat, unsigned int framerate, unsigned short bitrate, woogeen_base::VideoFrameConsumer*);
+    bool activateOutput(int id, woogeen_base::FrameFormat, unsigned int framerate, unsigned short kbps, woogeen_base::VideoFrameConsumer*);
     void deActivateOutput(int id);
 
     void updateRootSize(VideoSize& rootSize);
