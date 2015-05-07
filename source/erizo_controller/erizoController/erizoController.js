@@ -1023,8 +1023,8 @@ var listen = function () {
                     }
                     socket.room.mixer = undefined;
                 }
-                if (room.agent !== undefined) {
-                    rpc.callRpc('nuve', 'freeErizoAgent', room.agent);
+                if (socket.room.agent !== undefined) {
+                    rpc.callRpc('nuve', 'freeErizoAgent', socket.room.agent);
                 }
                 delete rooms[socket.room.id];
                 updateMyState();
