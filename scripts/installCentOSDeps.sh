@@ -48,7 +48,7 @@ install_boost(){
 
 installYumDeps(){
   sudo -E yum groupinstall " Development Tools" "Development Libraries " -y
-  sudo -E yum install zlib-devel pkgconfig git subversion libcurl-devel.x86_64 curl log4cxx-devel -y
+  sudo -E yum install zlib-devel pkgconfig git subversion libcurl-devel.x86_64 curl log4cxx-devel yasm libvpx-devel -y
   sudo -E yum install gcc gcc-c++ bzip2 bzip2-devel bzip2-libs python-devel gyp nodejs npm nasm -y
   sudo -E yum install rabbitmq-server mongodb mongodb-server java-1.7.0-openjdk -y
 
@@ -92,24 +92,12 @@ installRepo(){
   rm *.rpm
 }
 
-install_mediadeps_nogpl(){
-  sudo -E yum install yasm
-  install_libvpx
+install_mediadeps_nonfree(){
+  install_fdkaac
   install_libav
 }
 
 install_mediadeps(){
-  sudo -E yum install yasm
-  install_libvpx
-  # x264
-  mkdir -p $LIB_DIR
-  cd $LIB_DIR
-  git clone git://git.videolan.org/x264.git
-  cd x264
-  ./configure --enable-static --enable-shared
-  make;sudo make install
-  sudo ldconfig
-
   install_libav
 }
 
