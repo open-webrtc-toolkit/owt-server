@@ -23,7 +23,7 @@
 
 #include "DebugRecorder.h"
 #include "TaskRunner.h"
-#include "WoogeenTransport.h"
+#include "WebRTCTransport.h"
 
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
@@ -74,7 +74,7 @@ public:
     int deliverAudioData(char*, int len);
     int deliverVideoData(char*, int len);
 
-    bool initialize(WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<TaskRunner>);
+    bool initialize(WebRTCTransport<erizo::VIDEO>*, boost::shared_ptr<TaskRunner>);
 
     bool registerExternalDecoder(boost::shared_ptr<webrtc::VideoDecoder>);
     bool registerDecodedFrameReceiver(boost::shared_ptr<webrtc::VCMReceiveCallback>);

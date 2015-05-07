@@ -29,7 +29,7 @@
 #include <MediaDefinitions.h>
 #include <MediaRecording.h>
 #include <MediaSourceConsumer.h>
-#include <WoogeenTransport.h>
+#include <WebRTCTransport.h>
 #include <webrtc/modules/audio_device/include/fake_audio_device.h>
 #include <webrtc/voice_engine/include/voe_base.h>
 #include <webrtc/voice_engine/include/voe_video_sync.h>
@@ -109,7 +109,7 @@ private:
 
     struct VoiceChannel {
         int32_t id;
-        boost::shared_ptr<woogeen_base::WoogeenTransport<erizo::AUDIO>> transport;
+        boost::shared_ptr<woogeen_base::WebRTCTransport<erizo::AUDIO>> transport;
     };
 
     webrtc::VoiceEngine* m_voiceEngine;

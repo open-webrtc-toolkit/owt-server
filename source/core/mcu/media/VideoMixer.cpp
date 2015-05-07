@@ -25,7 +25,7 @@
 #include "VCMOutputProcessor.h"
 #include "VideoLayoutProcessor.h"
 #include <EncodedVideoFrameSender.h>
-#include <WoogeenTransport.h>
+#include <WebRTCTransport.h>
 #include <webrtc/system_wrappers/interface/trace.h>
 
 using namespace webrtc;
@@ -110,7 +110,7 @@ int32_t VideoMixer::addOutput(int payloadType, bool nack, bool fec)
         return -1;
     }
 
-    WoogeenTransport<erizo::VIDEO>* transport = new WoogeenTransport<erizo::VIDEO>(m_outputReceiver, nullptr);
+    WebRTCTransport<erizo::VIDEO>* transport = new WebRTCTransport<erizo::VIDEO>(m_outputReceiver, nullptr);
 
     woogeen_base::VideoFrameSender* output = nullptr;
     // Software mode can also use the EncodedVideoFrameSender, but using the
@@ -328,7 +328,7 @@ int32_t VideoMixer::addSource(uint32_t from, bool isAudio, FeedbackSink* feedbac
         ELOG_DEBUG("addSource - assigned input index is %d", index);
 
         VCMInputProcessor* videoInputProcessor(new VCMInputProcessor(index, m_hardwareAccelerated));
-        videoInputProcessor->init(new WoogeenTransport<erizo::VIDEO>(nullptr, feedback),
+        videoInputProcessor->init(new WebRTCTransport<erizo::VIDEO>(nullptr, feedback),
                                   m_frameMixer,
                                   m_taskRunner,
                                   this);
