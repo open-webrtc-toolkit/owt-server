@@ -30,7 +30,7 @@
 #include <MediaRecording.h>
 #include <TaskRunner.h>
 #include <VideoFrameSender.h>
-#include <WoogeenTransport.h>
+#include <WebRTCTransport.h>
 #include <webrtc/modules/rtp_rtcp/interface/rtp_rtcp.h>
 #include <webrtc/system_wrappers/interface/scoped_refptr.h>
 #include <webrtc/video/encoded_frame_callback_adapter.h>
@@ -64,14 +64,14 @@ private:
 
 /**
  * This is the class to accept the composited raw frame and encode it.
- * It then sends out the encoded data via the given WoogeenTransport.
+ * It then sends out the encoded data via the given WebRTCTransport.
  * It also handles the feedback from the remote.
  */
 class VCMOutputProcessor : public woogeen_base::VideoFrameSender, public erizo::FeedbackSink, public woogeen_base::IntraFrameCallback {
     DECLARE_LOGGER();
 
 public:
-    VCMOutputProcessor(int id, boost::shared_ptr<woogeen_base::VideoFrameProvider>, int targetBitrate, woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<woogeen_base::TaskRunner>);
+    VCMOutputProcessor(int id, boost::shared_ptr<woogeen_base::VideoFrameProvider>, int targetBitrate, woogeen_base::WebRTCTransport<erizo::VIDEO>*, boost::shared_ptr<woogeen_base::TaskRunner>);
     ~VCMOutputProcessor();
 
     // Implements VideoFrameSender.
@@ -94,7 +94,7 @@ public:
     void handleIntraFrameRequest();
 
 private:
-    bool init(woogeen_base::WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<woogeen_base::TaskRunner>);
+    bool init(woogeen_base::WebRTCTransport<erizo::VIDEO>*, boost::shared_ptr<woogeen_base::TaskRunner>);
     void close();
 
     woogeen_base::FrameFormat m_sendFormat;

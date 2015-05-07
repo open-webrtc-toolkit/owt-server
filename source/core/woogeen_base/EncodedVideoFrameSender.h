@@ -24,7 +24,7 @@
 #include "MediaRecording.h"
 #include "TaskRunner.h"
 #include "VideoFrameSender.h"
-#include "WoogeenTransport.h"
+#include "WebRTCTransport.h"
 
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
@@ -36,7 +36,7 @@ namespace woogeen_base {
 
 /**
  * This is the class to accept the encoded frame with the given format,
- * packetize the frame and send them out via the given WoogeenTransport.
+ * packetize the frame and send them out via the given WebRTCTransport.
  * It also gives the feedback to the encoder based on the feedback from the remote.
  */
 class EncodedVideoFrameSender : public VideoFrameSender,
@@ -47,7 +47,7 @@ class EncodedVideoFrameSender : public VideoFrameSender,
     DECLARE_LOGGER();
 
 public:
-    EncodedVideoFrameSender(int id, boost::shared_ptr<VideoFrameProvider>, FrameFormat, int targetBitrate, WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<TaskRunner>);
+    EncodedVideoFrameSender(int id, boost::shared_ptr<VideoFrameProvider>, FrameFormat, int targetBitrate, WebRTCTransport<erizo::VIDEO>*, boost::shared_ptr<TaskRunner>);
     ~EncodedVideoFrameSender();
 
     // Implements VideoFrameSender.
@@ -79,7 +79,7 @@ public:
     void OnNetworkChanged(const uint32_t target_bitrate, const uint8_t fraction_loss, const int64_t rtt);
 
 private:
-    bool init(WoogeenTransport<erizo::VIDEO>*, boost::shared_ptr<TaskRunner>);
+    bool init(WebRTCTransport<erizo::VIDEO>*, boost::shared_ptr<TaskRunner>);
     void close();
 
     boost::scoped_ptr<webrtc::BitrateController> m_bitrateController;

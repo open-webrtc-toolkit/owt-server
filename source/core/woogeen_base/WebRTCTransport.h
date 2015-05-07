@@ -18,8 +18,8 @@
  * and approved by Intel in writing.
  */
 
-#ifndef WoogeenTransport_h
-#define WoogeenTransport_h
+#ifndef WebRTCTransport_h
+#define WebRTCTransport_h
 
 #include <MediaDefinitions.h>
 #include <rtputils.h>
@@ -28,10 +28,10 @@
 namespace woogeen_base {
 
 template<erizo::DataType dataType>
-class WoogeenTransport : public webrtc::Transport {
+class WebRTCTransport : public webrtc::Transport {
 public:
-    WoogeenTransport(erizo::RTPDataReceiver*, erizo::FeedbackSink*);
-    virtual ~WoogeenTransport();
+    WebRTCTransport(erizo::RTPDataReceiver*, erizo::FeedbackSink*);
+    virtual ~WebRTCTransport();
 
     virtual int SendPacket(int channel, const void* data, size_t len);
     virtual int SendRTCPPacket(int channel, const void* data, size_t len);
@@ -45,31 +45,31 @@ private:
 };
 
 template<erizo::DataType dataType>
-WoogeenTransport<dataType>::WoogeenTransport(erizo::RTPDataReceiver* rtpReceiver, erizo::FeedbackSink* feedbackSink)
+WebRTCTransport<dataType>::WebRTCTransport(erizo::RTPDataReceiver* rtpReceiver, erizo::FeedbackSink* feedbackSink)
     : m_rtpReceiver(rtpReceiver)
     , m_feedbackSink(feedbackSink)
 {
 }
 
 template<erizo::DataType dataType>
-WoogeenTransport<dataType>::~WoogeenTransport()
+WebRTCTransport<dataType>::~WebRTCTransport()
 {
 }
 
 template<erizo::DataType dataType>
-inline void WoogeenTransport<dataType>::setRTPReceiver(erizo::RTPDataReceiver* rtpReceiver)
+inline void WebRTCTransport<dataType>::setRTPReceiver(erizo::RTPDataReceiver* rtpReceiver)
 {
     m_rtpReceiver = rtpReceiver;
 }
 
 template<erizo::DataType dataType>
-inline void WoogeenTransport<dataType>::setFeedbackSink(erizo::FeedbackSink* feedbackSink)
+inline void WebRTCTransport<dataType>::setFeedbackSink(erizo::FeedbackSink* feedbackSink)
 {
     m_feedbackSink = feedbackSink;
 }
 
 template<erizo::DataType dataType>
-inline int WoogeenTransport<dataType>::SendPacket(int channel, const void* data, size_t len)
+inline int WebRTCTransport<dataType>::SendPacket(int channel, const void* data, size_t len)
 {
     int ret = 0;
     if (m_rtpReceiver) {
@@ -81,7 +81,7 @@ inline int WoogeenTransport<dataType>::SendPacket(int channel, const void* data,
 }
 
 template<erizo::DataType dataType>
-inline int WoogeenTransport<dataType>::SendRTCPPacket(int channel, const void* data, size_t len)
+inline int WebRTCTransport<dataType>::SendRTCPPacket(int channel, const void* data, size_t len)
 {
     // FIXME: We need add a new interface to the RTPDataReceiver for RTCP Sender Reports.
     const RTCPHeader* chead = reinterpret_cast<const RTCPHeader*>(data);
@@ -99,4 +99,4 @@ inline int WoogeenTransport<dataType>::SendRTCPPacket(int channel, const void* d
 }
 
 }
-#endif /* WoogeenTransport_h */
+#endif /* WebRTCTransport_h */

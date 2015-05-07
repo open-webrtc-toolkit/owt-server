@@ -98,7 +98,7 @@ int32_t AudioMixer::addSource(uint32_t from, bool isAudio, erizo::FeedbackSink* 
         return it->second.id;
 
     int channel = -1;
-    boost::shared_ptr<woogeen_base::WoogeenTransport<erizo::AUDIO>> transport;
+    boost::shared_ptr<woogeen_base::WebRTCTransport<erizo::AUDIO>> transport;
     VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);
     bool existingParticipant = false;
 
@@ -121,7 +121,7 @@ int32_t AudioMixer::addSource(uint32_t from, bool isAudio, erizo::FeedbackSink* 
                 return -1;
         } else {
             VoENetwork* network = VoENetwork::GetInterface(m_voiceEngine);
-            transport.reset(new woogeen_base::WoogeenTransport<erizo::AUDIO>(m_dataReceiver, feedback));
+            transport.reset(new woogeen_base::WebRTCTransport<erizo::AUDIO>(m_dataReceiver, feedback));
             if (network->RegisterExternalTransport(channel, *(transport.get())) == -1
                 || voe->StartReceive(channel) == -1
                 || voe->StartPlayout(channel) == -1) {
@@ -302,7 +302,7 @@ int32_t AudioMixer::addOutput(const std::string& participant, int payloadType)
         bool validCodec = fillAudioCodec(payloadType, audioCodec);
 
         if (!existingParticipant) {
-            boost::shared_ptr<woogeen_base::WoogeenTransport<erizo::AUDIO>> transport(new woogeen_base::WoogeenTransport<erizo::AUDIO>(m_dataReceiver, nullptr));
+            boost::shared_ptr<woogeen_base::WebRTCTransport<erizo::AUDIO>> transport(new woogeen_base::WebRTCTransport<erizo::AUDIO>(m_dataReceiver, nullptr));
             VoENetwork* network = VoENetwork::GetInterface(m_voiceEngine);
             if (!validCodec || codec->SetSendCodec(channel, audioCodec) == -1
                 || network->RegisterExternalTransport(channel, *(transport.get())) == -1

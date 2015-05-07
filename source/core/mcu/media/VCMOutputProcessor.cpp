@@ -32,7 +32,7 @@ namespace mcu {
 
 DEFINE_LOGGER(VCMOutputProcessor, "mcu.media.VCMOutputProcessor");
 
-VCMOutputProcessor::VCMOutputProcessor(int id, boost::shared_ptr<woogeen_base::VideoFrameProvider> source, int targetBitrate, woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<woogeen_base::TaskRunner> taskRunner)
+VCMOutputProcessor::VCMOutputProcessor(int id, boost::shared_ptr<woogeen_base::VideoFrameProvider> source, int targetBitrate, woogeen_base::WebRTCTransport<erizo::VIDEO>* transport, boost::shared_ptr<woogeen_base::TaskRunner> taskRunner)
     : woogeen_base::VideoFrameSender(id)
     , m_sendFormat(woogeen_base::FRAME_FORMAT_UNKNOWN)
     , m_targetBitrate(targetBitrate)
@@ -261,7 +261,7 @@ int VCMOutputProcessor::deliverFeedback(char* buf, int len)
     return len;
 }
 
-bool VCMOutputProcessor::init(woogeen_base::WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<woogeen_base::TaskRunner> taskRunner)
+bool VCMOutputProcessor::init(woogeen_base::WebRTCTransport<erizo::VIDEO>* transport, boost::shared_ptr<woogeen_base::TaskRunner> taskRunner)
 {
     m_taskRunner = taskRunner;
     m_videoTransport.reset(transport);

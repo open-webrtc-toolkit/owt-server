@@ -54,7 +54,7 @@ VCMFrameConstructor::~VCMFrameConstructor()
     }
 }
 
-bool VCMFrameConstructor::initialize(WoogeenTransport<erizo::VIDEO>* transport, boost::shared_ptr<TaskRunner> taskRunner)
+bool VCMFrameConstructor::initialize(WebRTCTransport<erizo::VIDEO>* transport, boost::shared_ptr<TaskRunner> taskRunner)
 {
     m_videoTransport.reset(transport);
     m_taskRunner = taskRunner;
