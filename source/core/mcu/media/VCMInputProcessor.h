@@ -136,7 +136,7 @@ public:
     int deliverVideoData(char*, int len);
 
     // Implements the VideoFrameProvider interface.
-    virtual void setBitrate(unsigned short bitrate, int id = 0);
+    virtual void setBitrate(unsigned short kbps, int id = 0);
     virtual void requestKeyFrame(int id = 0);
 
     bool init(woogeen_base::WebRTCTransport<erizo::VIDEO>*, boost::shared_ptr<VideoFrameMixer>, boost::shared_ptr<woogeen_base::WebRTCTaskRunner>, VCMInputProcessorCallback*);

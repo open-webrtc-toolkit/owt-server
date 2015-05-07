@@ -35,10 +35,10 @@ public:
     FakedVideoFrameEncoder();
     ~FakedVideoFrameEncoder();
 
-    bool activateOutput(int id, woogeen_base::FrameFormat, unsigned int framerate, unsigned short bitrate, woogeen_base::VideoFrameConsumer*);
+    bool activateOutput(int id, woogeen_base::FrameFormat, unsigned int framerate, unsigned short kbps, woogeen_base::VideoFrameConsumer*);
     void deActivateOutput(int id);
 
-    void setBitrate(unsigned short bitrate, int id = 0);
+    void setBitrate(unsigned short kbps, int id = 0);
     void requestKeyFrame(int id);
     void onFrame(woogeen_base::FrameFormat, unsigned char* payload, int len, unsigned int ts);
 
@@ -57,7 +57,7 @@ FakedVideoFrameEncoder::~FakedVideoFrameEncoder()
     m_consumers.clear();
 }
 
-inline void FakedVideoFrameEncoder::setBitrate(unsigned short bitrate, int id)
+inline void FakedVideoFrameEncoder::setBitrate(unsigned short kbps, int id)
 {
 }
 
@@ -75,7 +75,7 @@ inline void FakedVideoFrameEncoder::onFrame(woogeen_base::FrameFormat format, un
     }
 }
 
-inline bool FakedVideoFrameEncoder::activateOutput(int id, woogeen_base::FrameFormat format, unsigned int framerate, unsigned short bitrate, woogeen_base::VideoFrameConsumer* consumer)
+inline bool FakedVideoFrameEncoder::activateOutput(int id, woogeen_base::FrameFormat format, unsigned int framerate, unsigned short kbps, woogeen_base::VideoFrameConsumer* consumer)
 {
     boost::upgrade_lock<boost::shared_mutex> lock(m_consumerMutex);
     std::map<int, woogeen_base::VideoFrameConsumer*>::iterator it = m_consumers.find(id);

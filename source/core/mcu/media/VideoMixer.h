@@ -112,7 +112,7 @@ private:
     boost::scoped_ptr<VideoLayoutProcessor> m_layoutProcessor;
     bool m_hardwareAccelerated;
     uint32_t m_maxInputCount;
-    int m_outputBitrate;
+    int m_outputKbps;
     boost::shared_ptr<VideoFrameMixer> m_frameMixer;
     boost::shared_mutex m_outputMutex;
     std::map<int, boost::shared_ptr<woogeen_base::VideoFrameSender>> m_outputs;
