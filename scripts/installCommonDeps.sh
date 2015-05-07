@@ -49,23 +49,26 @@ install_libvpx(){
 }
 
 install_libav(){
-  if [ -d $LIB_DIR ]; then
-    cd $LIB_DIR
-    curl -O https://www.libav.org/releases/libav-9.13.tar.gz
-    tar -zxvf libav-9.13.tar.gz
-    cd libav-9.13
-    if [ "$ENABLE_GPL" = "true" ]; then
-      PKG_CONFIG_PATH=${PREFIX_DIR}/lib/pkgconfig ./configure --prefix=$PREFIX_DIR --enable-shared --enable-libvpx --enable-libopus --enable-gpl --enable-libx264
-    else
-      PKG_CONFIG_PATH=${PREFIX_DIR}/lib/pkgconfig ./configure --prefix=$PREFIX_DIR --enable-shared --enable-libvpx --enable-libopus
-    fi
-    make -s V=0
-    make install
-    cd $CURRENT_DIR
-  else
-    mkdir -p $LIB_DIR
-    install_libav
+  local VERSION="11.3"
+  local SRC="libav-${VERSION}.tar.gz"
+  local SRC_URL="https://www.libav.org/releases/${SRC}"
+  local SRC_MD5SUM="1a2eb461b98e0f1d1d6c4d892d51ac9b"
+  mkdir -p ${LIB_DIR}
+  pushd ${LIB_DIR}
+  [[ ! -s ${SRC} ]] && wget -c ${SRC_URL}
+  if ! (echo "${SRC_MD5SUM} ${SRC}" | md5sum --check) ; then
+    rm -f ${SRC} && wget -c ${SRC_URL} # try download again
+    (echo "${SRC_MD5SUM} ${SRC}" | md5sum --check) || (echo "Downloaded file ${SRC} is corrupted." && return 1)
   fi
+  rm -fr libav-${VERSION}
+  tar xf ${SRC}
+  pushd libav-${VERSION}
+  [[ "${ENABLE_GPL}" == "true" ]] && \
+  PKG_CONFIG_PATH=${PREFIX_DIR}/lib/pkgconfig ./configure --prefix=${PREFIX_DIR} --enable-shared --enable-libvpx --enable-libopus --enable-gpl --enable-libx264 || \
+  PKG_CONFIG_PATH=${PREFIX_DIR}/lib/pkgconfig ./configure --prefix=${PREFIX_DIR} --enable-shared --enable-libvpx --enable-libopus && \
+  make -j4 -s V=0 && make install
+  popd
+  popd
 }
 
 install_libnice(){
