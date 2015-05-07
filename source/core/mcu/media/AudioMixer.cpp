@@ -56,6 +56,8 @@ AudioMixer::AudioMixer(erizo::RTPDataReceiver* receiver, AudioMixerVADCallback* 
 
 AudioMixer::~AudioMixer()
 {
+    m_jobTimer->stop();
+
     VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);
     VoENetwork* network = VoENetwork::GetInterface(m_voiceEngine);
 
