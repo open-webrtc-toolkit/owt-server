@@ -27,6 +27,7 @@ namespace woogeen_base {
 VCMFrameEncoder::VCMFrameEncoder(boost::shared_ptr<WebRTCTaskRunner> taskRunner)
     : m_vcm(VideoCodingModule::Create())
     , m_encoderInitialized(false)
+    , m_initialKbps(0)
     , m_encodeFormat(FRAME_FORMAT_UNKNOWN)
     , m_taskRunner(taskRunner)
     , m_encodedFrameConsumer(nullptr)
@@ -56,7 +57,7 @@ bool VCMFrameEncoder::activateOutput(int id, FrameFormat format, unsigned int fr
     m_encodedFrameConsumer = consumer;
     m_consumerId = id;
     m_encodeFormat = format;
-    // m_vcm->SetChannelParameters(kbps * 1000, 0, 0);
+    m_initialKbps = kbps;
     return true;
 }
 
@@ -148,6 +149,9 @@ bool VCMFrameEncoder::initializeEncoder(uint32_t width, uint32_t height)
 
     videoCodec.width = width;
     videoCodec.height = height;
+    videoCodec.startBitrate = m_initialKbps;
+    videoCodec.maxBitrate = m_initialKbps;
+    videoCodec.minBitrate = m_initialKbps / 4;
 
     m_vcm->RegisterSendCodec(&videoCodec, 1, 1400);
     m_encoderInitialized = true;
