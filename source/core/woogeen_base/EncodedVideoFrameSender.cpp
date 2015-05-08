@@ -143,6 +143,7 @@ void EncodedVideoFrameSender::onFrame(FrameFormat format, unsigned char* payload
         int buffer_length = len;
         int nalu_start_offset = 0;
         int nalu_end_offset = 0;
+        RTPFragmentationHeader frag_info;
 
         h.codec = webrtc::kRtpVideoH264;
         while (buffer_length > 0) {
@@ -152,11 +153,15 @@ void EncodedVideoFrameSender::onFrame(FrameFormat format, unsigned char* payload
                 break;
             } else {
                 /* SPS, PPS, I, P*/
-                m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, H264_90000_PT, ts, ts / 90, buffer_start + nalu_start_offset, nalu_found_length, nullptr, &h);
+                uint16_t last = frag_info.fragmentationVectorSize;
+                frag_info.VerifyAndAllocateFragmentationHeader(last + 1);
+                frag_info.fragmentationOffset[last] = nalu_start_offset + (buffer_start - payload);
+                frag_info.fragmentationLength[last] = nalu_found_length;
                 buffer_start += (nalu_start_offset + nalu_found_length);
                 buffer_length -= (nalu_start_offset + nalu_found_length);
             }
         }
+        m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, H264_90000_PT, ts, ts / 90, payload, len, &frag_info, &h);
     }
 }
 
