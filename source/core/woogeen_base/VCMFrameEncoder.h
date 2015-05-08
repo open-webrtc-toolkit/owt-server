@@ -56,6 +56,7 @@ private:
 
     webrtc::VideoCodingModule* m_vcm;
     bool m_encoderInitialized;
+    uint16_t m_initialKbps;
     FrameFormat m_encodeFormat;
     boost::shared_ptr<WebRTCTaskRunner> m_taskRunner;
     VideoFrameConsumer* m_encodedFrameConsumer;
