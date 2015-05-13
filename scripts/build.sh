@@ -148,15 +148,23 @@ build_mcu_client_sdk() {
   grunt --force
   cp -av ${CLIENTSDK_DIR}/dist/*.js ${BUILD_ROOT}/sdk/
 
-  cd ${ROOT}/source/sdk2 && make
+  cd ${ROOT}/source/sdk2
+  if [ "$BUILDTYPE" != "Debug" ]; then
+    make
+  else
+    make debug
+  fi
 }
 
 build_mcu_server_sdk() {
   local SERVERSDK_DIR="${SOURCE}/nuve/nuveClient"
   # nuve.js
   cd ${SERVERSDK_DIR}/tools
-  ./compile.sh
-  ./compileDebug.sh
+  if [ "$BUILDTYPE" != "Debug" ]; then
+    ./compile.sh
+  else
+    ./compileDebug.sh
+  fi
   echo [nuve] Done, nuve.js compiled
   cp -av ${SERVERSDK_DIR}/dist/nuve.js ${SOURCE}/extras/basic_example/
 }

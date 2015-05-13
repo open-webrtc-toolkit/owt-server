@@ -1,6 +1,6 @@
 #!/bin/bash
 
-TARGET=../dist/nuve-debug.js
+TARGET=../dist/nuve.js
 
 cat ../lib/xmlhttprequest.js > ${TARGET}
 cat ../src/hmac-sha256.js >> ${TARGET}
