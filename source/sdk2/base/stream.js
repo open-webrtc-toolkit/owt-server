@@ -8,6 +8,12 @@
     // }
     this.mediaStream = spec.mediaStream;
     spec.attributes = spec.attributes || {};
+    this.url = function () {
+      if(typeof spec.url === 'string' && spec.url !== '') {
+        return spec.url;
+      }
+      return undefined;
+    };
     this.hasVideo = function () {
       return !!spec.video;
     };
@@ -314,6 +320,13 @@
   }, function () {});
   */
   function createLocalStream (option, callback) {
+    if (typeof option === 'object' && option !== null && option.url !== undefined) {
+      var localStream = new Woogeen.LocalStream(option);
+      if (typeof callback === 'function') {
+        callback(null, localStream);
+      }
+      return;
+    }
     if (typeof getMedia !== 'function' && !isLegacyIE()) {
       if (typeof callback === 'function') {
         callback({

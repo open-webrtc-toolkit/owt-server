@@ -140,6 +140,12 @@ public:
      */
     DLL_PUBLIC virtual void unsetRecorder() {}
 
+    /**
+     * Add the media source to compose the virtual Publisher
+     * @param source the MediaSource for publishing
+     */
+    DLL_PUBLIC virtual void addSource(erizo::MediaSource* source) {}
+
     virtual int32_t addSource(uint32_t id, bool isAudio, erizo::FeedbackSink*, const std::string& participantId) { return -1; }
     virtual int32_t removeSource(uint32_t id, bool isAudio) { return -1; }
 };

@@ -66,6 +66,7 @@ class Gateway : public node::ObjectWrap {
    * Unsets the Publisher
    */
   static v8::Handle<v8::Value> unsetPublisher(const v8::Arguments& args);
+
   /*
    * Sets the subscriber
    * Param1: the WebRtcConnection of the subscriber
@@ -87,6 +88,13 @@ class Gateway : public node::ObjectWrap {
    * Param: the ExternalInput of the Publisher
    */
   static v8::Handle<v8::Value> setExternalPublisher(const v8::Arguments& args);
+
+  /*
+   * Add external source to for the virtual publisher
+   * This API is exclusive to setExternalPublisher
+   */
+  static v8::Handle<v8::Value> addExternalSource(const v8::Arguments& args);
+
   /*
    * add Event Listener
    */

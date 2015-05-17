@@ -198,29 +198,30 @@ exports.ErizoJSController = function (spec) {
         return answer;
     };
 
-    that.addExternalInput = function (from, url, callback) {
+    that.addExternalInput = function (from, url, mixer, callback) {
 
         if (publishers[from] === undefined) {
 
             log.info("Adding external input peer_id ", from);
 
             var ei = new addon.ExternalInput(url);
-            var muxer = new addon.Gateway();
-            publishers[from] = muxer;
-
-            if (mixer) {
-                muxer.setMixer(mixer);
-            }
-
-            subscribers[from] = [];
-            muxer.setExternalPublisher(ei);
-
             var answer = ei.init();
-            if (answer >= 0) {
-                callback('callback', 'success');
-            } else {
+            if (answer < 0) {
                 callback('callback', answer);
+                return;
             }
+
+            publishers[from] = ei;
+            subscribers[from] = [];
+
+            if (mixer.id) {
+              var mixerObj = publishers[mixer.id];
+              if (mixerObj) {
+                mixerObj.addExternalSource(ei);
+              }
+            }
+
+            callback('callback', 'success');
         } else {
             log.info("Publisher already set for", from);
         }

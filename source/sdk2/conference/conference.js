@@ -502,13 +502,30 @@ Woogeen.ConferenceClient = (function () {
       options = stream.bitRate;
     }
     if (!(stream instanceof Woogeen.LocalStream) ||
-      (typeof stream.mediaStream !== 'object' || stream.mediaStream === null)) {
+          ((typeof stream.mediaStream !== 'object' || stream.mediaStream === null) &&
+             stream.url() === undefined)) {
       return safeCall(onFailure, 'invalid stream');
     }
 
     if (self.localStreams[stream.id()] === undefined) { // not pulished
       var opt = stream.toJson();
-      if (self.p2p) {
+      if (stream.url() !== undefined) {
+        opt.state = 'url';
+        sendSdp(self.socket, 'publish', opt, stream.url(), function (answer, id) {
+            if (answer !== 'success') {
+              return safeCall(onFailure, answer);
+            }
+            stream.id = function () {
+              return id;
+            };
+            stream.unpublish = function (onSuccess, onFailure) {
+              self.unpublish(stream, onSuccess, onFailure);
+            };
+            self.localStreams[id] = stream;
+            safeCall(onSuccess, stream);
+        });
+        return;
+      } else if (self.p2p) {
         self.connSettings.maxVideoBW = options.maxVideoBW;
         self.connSettings.maxAudioBW = options.maxAudioBW;
         opt.state = 'p2p';

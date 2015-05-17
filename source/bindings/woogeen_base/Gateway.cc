@@ -44,6 +44,8 @@ void Gateway::Init(Handle<Object> target) {
       FunctionTemplate::New(setPublisher)->GetFunction());
   tpl->PrototypeTemplate()->Set(String::NewSymbol("unsetPublisher"),
       FunctionTemplate::New(unsetPublisher)->GetFunction());
+  tpl->PrototypeTemplate()->Set(String::NewSymbol("addExternalSource"),
+      FunctionTemplate::New(addExternalSource)->GetFunction());
   tpl->PrototypeTemplate()->Set(String::NewSymbol("addSubscriber"),
       FunctionTemplate::New(addSubscriber)->GetFunction());
   tpl->PrototypeTemplate()->Set(String::NewSymbol("removeSubscriber"),
@@ -155,6 +157,21 @@ Handle<Value> Gateway::setExternalPublisher(const Arguments& args) {
   bool added = me->setPublisher(ms, clientId);
 
   return scope.Close(Boolean::New(added));
+}
+
+Handle<Value> Gateway::addExternalSource(const Arguments& args) {
+  HandleScope scope;
+
+  Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.This());
+  woogeen_base::Gateway* me = obj->me;
+
+  ExternalInput* param = ObjectWrap::Unwrap<ExternalInput>(args[0]->ToObject());
+  erizo::ExternalInput* ei = (erizo::ExternalInput*)param->me;
+
+  erizo::MediaSource* ms = dynamic_cast<erizo::MediaSource*>(ei);
+  me->addSource(ms);
+
+  return scope.Close(Null());
 }
 
 Handle<Value> Gateway::unsetPublisher(const Arguments& args) {
