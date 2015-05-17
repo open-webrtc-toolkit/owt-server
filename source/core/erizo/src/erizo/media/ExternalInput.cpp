@@ -9,12 +9,11 @@
 namespace erizo {
   DEFINE_LOGGER(ExternalInput, "media.ExternalInput");
   ExternalInput::ExternalInput(const std::string& inputUrl):url_(inputUrl){
+    setVideoDataType(DataContentType::ENCODED_FRAME);
+    setAudioDataType(DataContentType::ENCODED_FRAME);
     sourcefbSink_=NULL;
     context_ = NULL;
     running_ = false;
-    needTranscoding_ = false;
-    lastPts_ = 0;
-    lastAudioPts_=0;
   }
 
   ExternalInput::~ExternalInput(){
@@ -22,8 +21,6 @@ namespace erizo {
     ELOG_DEBUG("Closing ExternalInput");
     running_ = false;
     thread_.join();
-    if (needTranscoding_)
-      encodeThread_.join();
     av_free_packet(&avpacket_);
     if (context_!=NULL)
       avformat_free_context(context_);
@@ -31,6 +28,8 @@ namespace erizo {
   }
 
   int ExternalInput::init(){
+    srand((unsigned)time(NULL));
+
     context_ = avformat_alloc_context();
     av_register_all();
     avcodec_register_all();
@@ -54,105 +53,73 @@ namespace erizo {
       return res;
     }
 
-    //VideoCodecInfo info;
-
-    MediaInfo om;
     AVStream *st, *audio_st;
-    
     
     int streamNo = av_find_best_stream(context_, AVMEDIA_TYPE_VIDEO, -1, -1, NULL, 0);
     if (streamNo < 0){
       ELOG_WARN("No Video stream found");
       //return streamNo;
     }else{
-      om.hasVideo = true;
       video_stream_index_ = streamNo;
-      st = context_->streams[streamNo]; 
+      st = context_->streams[streamNo];
+      ELOG_DEBUG("Has video, video stream number %d. time base = %d / %d, codec type = %d ",
+                  video_stream_index_,
+                  st->time_base.num,
+                  st->time_base.den,
+                  st->codec->codec_id);
+      ELOG_DEBUG("AV_CODEC_ID_VP8: %d ", AV_CODEC_ID_VP8);
+      ELOG_DEBUG("AV_CODEC_ID_H264: %d ", AV_CODEC_ID_H264);
+      int videoCodecId = st->codec->codec_id;
+      if(videoCodecId == AV_CODEC_ID_VP8 || videoCodecId == AV_CODEC_ID_H264) {
+        unsigned int videoSourceId = rand();
+        ELOG_DEBUG("Set video SSRC : %d ", videoSourceId);
+        setVideoSourceSSRC(videoSourceId);
+      } else {
+        ELOG_WARN("Video codec %d is not supported ", st->codec->codec_id);
+      }
     }
 
     int audioStreamNo = av_find_best_stream(context_, AVMEDIA_TYPE_AUDIO, -1, -1, NULL, 0);
     if (audioStreamNo < 0){
       ELOG_WARN("No Audio stream found");
-      ELOG_DEBUG("Has video, audio stream number %d. time base = %d / %d ", video_stream_index_, st->time_base.num, st->time_base.den);
       //return streamNo;
     }else{
-      om.hasAudio = true;
       audio_stream_index_ = audioStreamNo;
       audio_st = context_->streams[audio_stream_index_];
-      ELOG_DEBUG("Has Audio, audio stream number %d. time base = %d / %d ", audio_stream_index_, audio_st->time_base.num, audio_st->time_base.den);
+      ELOG_DEBUG("Has audio, audio stream number %d. time base = %d / %d, codec type = %d ",
+                  audio_stream_index_,
+                  audio_st->time_base.num,
+                  audio_st->time_base.den,
+                  audio_st->codec->codec_id);
+      ELOG_DEBUG("AV_CODEC_ID_PCM_MULAW: %d ", AV_CODEC_ID_PCM_MULAW);
+      ELOG_DEBUG("AV_CODEC_ID_PCM_ALAW: %d ", AV_CODEC_ID_PCM_ALAW);
+      ELOG_DEBUG("AV_CODEC_ID_ADPCM_G722: %d ", AV_CODEC_ID_ADPCM_G722);
+      ELOG_DEBUG("AV_CODEC_ID_OPUS: %d ", AV_CODEC_ID_OPUS);
+
       audio_time_base_ = audio_st->time_base.den;
       ELOG_DEBUG("Audio Time base %d", audio_time_base_);
-      if (audio_st->codec->codec_id==AV_CODEC_ID_PCM_MULAW){
-        ELOG_DEBUG("PCM U8");
-        om.audioCodec.sampleRate=8000;
-        om.audioCodec.codec = AUDIO_CODEC_PCM_U8;
-        om.rtpAudioInfo.PT = PCMU_8000_PT; 
-      }else if (audio_st->codec->codec_id == AV_CODEC_ID_OPUS){
-        ELOG_DEBUG("OPUS");
-        om.audioCodec.sampleRate=48000;
-        om.audioCodec.codec = AUDIO_CODEC_OPUS;
-        om.rtpAudioInfo.PT = OPUS_48000_PT; 
+
+      int audioCodecId = audio_st->codec->codec_id;
+      if (audioCodecId == AV_CODEC_ID_PCM_MULAW ||
+          audioCodecId == AV_CODEC_ID_PCM_ALAW ||
+          audioCodecId == AV_CODEC_ID_ADPCM_G722 ||
+          audioCodecId == AV_CODEC_ID_OPUS) {
+        unsigned int audioSourceId = rand();
+        ELOG_DEBUG("Set audio SSRC : %d ", audioSourceId);
+        setAudioSourceSSRC(audioSourceId);
+      } else {
+        ELOG_WARN("Audio codec %d is not supported ", audioCodecId);
       }
-      if (!om.hasVideo)
-        st = audio_st;
     }
 
-     
-    if (st->codec->codec_id==AV_CODEC_ID_VP8 || !om.hasVideo){
-      ELOG_DEBUG("No need for video transcoding, already VP8");      
-      video_time_base_ = st->time_base.den;
-      needTranscoding_=false;
-      decodedBuffer_.reset((unsigned char*) malloc(100000));
-      MediaInfo om;
-      om.processorType = PACKAGE_ONLY;
-      if (audio_st->codec->codec_id==AV_CODEC_ID_PCM_MULAW){
-        ELOG_DEBUG("PCM U8");
-        om.audioCodec.sampleRate=8000;
-        om.audioCodec.codec = AUDIO_CODEC_PCM_U8;
-        om.rtpAudioInfo.PT = PCMU_8000_PT; 
-      }else if (audio_st->codec->codec_id == AV_CODEC_ID_OPUS){
-        ELOG_DEBUG("OPUS");
-        om.audioCodec.sampleRate=48000;
-        om.audioCodec.codec = AUDIO_CODEC_OPUS;
-        om.rtpAudioInfo.PT = OPUS_48000_PT; 
-      }
-      op_.reset(new OutputProcessor());
-      op_->init(om,this);
-    }else{
-      needTranscoding_=true;
-      inCodec_.initDecoder(st->codec);
-
-      bufflen_ = st->codec->width*st->codec->height*3/2;
-      decodedBuffer_.reset((unsigned char*) malloc(bufflen_));
-
-
-      om.processorType = RTP_ONLY;
-      om.videoCodec.codec = VIDEO_CODEC_VP8;
-      om.videoCodec.bitRate = 1000000;
-      om.videoCodec.width = 640;
-      om.videoCodec.height = 480;
-      om.videoCodec.frameRate = 20;
-      om.hasVideo = true;
-
-      om.hasAudio = false;
-      if (om.hasAudio) {
-        om.audioCodec.sampleRate = 8000;
-        om.audioCodec.bitRate = 64000;
-      }
-
-      op_.reset(new OutputProcessor());
-      op_->init(om, this);
+    if (!getVideoSourceSSRC() && !getAudioSourceSSRC()) {
+      return false;
     }
 
     av_init_packet(&avpacket_);
 
-//    AVStream* stream=NULL;
-
-    ELOG_DEBUG("Initializing external input for codec %s", st->codec->codec_name);
     thread_ = boost::thread(&ExternalInput::receiveLoop, this);
     running_ = true;
-    if (needTranscoding_)
-      encodeThread_ = boost::thread(&ExternalInput::encodeLoop, this);
  
     return true;
   }
@@ -161,60 +128,21 @@ namespace erizo {
     return 0;
   }
 
-
-  void ExternalInput::receiveRtpData(char* rtpdata, int len, DataType type, uint32_t streamId) {
-    if (videoSink_!=NULL){
-      memcpy(sendVideoBuffer_, rtpdata, len);
-      videoSink_->deliverVideoData(sendVideoBuffer_, len);
-    }
-
-  }
-
-  void ExternalInput::receiveLoop(){
-
+  void ExternalInput::receiveLoop() {
     av_read_play(context_);//play RTSP
-    int gotDecodedFrame = 0;
-    int length;
-    startTime_ = av_gettime();
 
     ELOG_DEBUG("Start playing external input %s", url_.c_str() );
-    while(av_read_frame(context_,&avpacket_)>=0&& running_==true){
+    while (av_read_frame(context_, &avpacket_)>=0 && running_==true) {
       AVPacket orig_pkt = avpacket_;
-      if (needTranscoding_){
-        if(avpacket_.stream_index == video_stream_index_){//packet is video               
-          inCodec_.decodeVideo(avpacket_.data, avpacket_.size, decodedBuffer_.get(), bufflen_, &gotDecodedFrame);
-          RawDataPacket packetR;
-          if (gotDecodedFrame){
-            packetR.data = decodedBuffer_.get();
-            packetR.length = bufflen_;
-            packetR.type = VIDEO;
-            queueMutex_.lock();
-            packetQueue_.push(packetR);
-            queueMutex_.unlock();
-            gotDecodedFrame=0;
-          }
+      if (avpacket_.stream_index == video_stream_index_) { //packet is video
+        //ELOG_DEBUG("Receive video frame packet with size %d ", avpacket_.size);
+        if (getVideoSourceSSRC() && videoSink_!=NULL) {
+          videoSink_->deliverVideoData((char*)avpacket_.data, avpacket_.size);
         }
-      }else{
-        if(avpacket_.stream_index == video_stream_index_){//packet is video               
-          // av_rescale(input, new_scale, old_scale)          
-          int64_t pts = av_rescale(lastPts_, 1000000, (long int)video_time_base_);
-          int64_t now = av_gettime() - startTime_;         
-          if (pts > now){
-            av_usleep(pts - now);
-          }
-          lastPts_ = avpacket_.pts;
-          op_->packageVideo(avpacket_.data, avpacket_.size, decodedBuffer_.get(), avpacket_.pts);
-        }else if(avpacket_.stream_index == audio_stream_index_){//packet is audio
-          int64_t pts = av_rescale(lastAudioPts_, 1000000, (long int)audio_time_base_);
-          int64_t now = av_gettime() - startTime_;
-          if (pts > now){
-            av_usleep(pts - now);
-          }
-          lastAudioPts_ = avpacket_.pts;
-          length = op_->packageAudio(avpacket_.data, avpacket_.size, decodedBuffer_.get(), avpacket_.pts);
-          if (length>0){
-            audioSink_->deliverAudioData(reinterpret_cast<char*>(decodedBuffer_.get()),length);
-          }
+      } else if (avpacket_.stream_index == audio_stream_index_) { //packet is audio
+        //ELOG_DEBUG("Receive audio frame packet with size %d ", avpacket_.size);
+        if (getAudioSourceSSRC() && audioSink_!=NULL) {
+          audioSink_->deliverAudioData((char*)avpacket_.data, avpacket_.size);
         }
       }
       av_free_packet(&orig_pkt);
@@ -222,20 +150,4 @@ namespace erizo {
     running_=false;
     av_read_pause(context_);
   }
-
-  void ExternalInput::encodeLoop() {
-    while (running_ == true) {
-      queueMutex_.lock();
-      if (packetQueue_.size() > 0) {
-        op_->receiveRawData(packetQueue_.front());
-        packetQueue_.pop();
-        queueMutex_.unlock();
-      } else {
-        queueMutex_.unlock();
-        usleep(10000);
-      }
-    }
-  }
-
 }
-

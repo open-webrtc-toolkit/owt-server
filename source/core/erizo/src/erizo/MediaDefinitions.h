@@ -89,6 +89,10 @@ public:
 
 inline MediaSink::~MediaSink() {}
 
+enum DataContentType {
+  RTP, ENCODED_FRAME
+};
+
 /**
  * A MediaSource is any class that produces audio or video data.
  */
@@ -101,6 +105,9 @@ protected:
   MediaSink* audioSink_;
   //can it accept feedback
   FeedbackSink* sourcefbSink_;
+  DataContentType videoDataType_;
+  DataContentType audioDataType_;
+
 public:
   DLL_PUBLIC void setAudioSink(MediaSink* audioSink){
     this->audioSink_ = audioSink;
@@ -119,7 +126,17 @@ public:
   void setVideoSourceSSRC (unsigned int ssrc){videoSourceSSRC_ = ssrc;};
   unsigned int getAudioSourceSSRC (){return audioSourceSSRC_;};
   void setAudioSourceSSRC (unsigned int ssrc){audioSourceSSRC_ = ssrc;};
-  MediaSource() : videoSourceSSRC_(0), audioSourceSSRC_(0), videoSink_(nullptr), audioSink_(nullptr), sourcefbSink_(nullptr) {}
+  DataContentType getVideoDataType (){return videoDataType_;};
+  void setVideoDataType (DataContentType type){videoDataType_ = type;};
+  DataContentType getAudioDataType (){return audioDataType_;};
+  void setAudioDataType (DataContentType type){audioDataType_ = type;};
+  MediaSource() : videoSourceSSRC_(0),
+                  audioSourceSSRC_(0), 
+                  videoSink_(nullptr), 
+                  audioSink_(nullptr), 
+                  sourcefbSink_(nullptr),
+                  videoDataType_(DataContentType::RTP),
+                  audioDataType_(DataContentType::RTP) {}
   virtual ~MediaSource(){};
 };
 

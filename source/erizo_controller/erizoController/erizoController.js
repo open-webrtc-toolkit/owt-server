@@ -339,6 +339,7 @@ function safeCall () {
 var initMixer = function (room, roomConfig, immediately) {
     if (roomConfig.enableMixing && room.mixer === undefined && room.initMixerTimer === undefined) {
         var id = room.id;
+        room.enableMixing = true;
         if (immediately) {
             room.controller.initMixer(id, roomConfig.mediaMixing, function (result) {
                 if (result === 'success') {
@@ -554,9 +555,22 @@ var listen = function () {
                                 }
                             };
 
+                            var checkRoomReady = function(room, num) {
+                                setTimeout(function () {
+                                    if (room.enableMixing && room.mixer === undefined && num > 0) {
+                                        if (num === 1) {
+                                            log.warn('room initialzation is not ready before room connection return.');
+                                        }
+                                        checkRoomReady(room, num-1);
+                                    } else {
+                                        updateMyState();
+                                        validateTokenOK();
+                                    }
+                                }, 100);
+                            }
+
                             initRoom(tokenDB.room, function () {
-                                updateMyState();
-                                validateTokenOK();
+                                checkRoomReady(rooms[tokenDB.room], 10);
                             }, function () {
                                 log.warn('initRoom failed.');
                                 safeCall(callback, 'error', 'initRoom failed.');
@@ -688,7 +702,8 @@ var listen = function () {
                 }
             }
             if (options.state === 'url' || options.state === 'recording') {
-                id = Math.random() * 1000000000000000000;
+                id = socket.id;
+                var mixer = socket.room.mixer;
                 var url = sdp;
                 if (options.state === 'recording') {
                     var recordingId = sdp;
@@ -698,16 +713,16 @@ var listen = function () {
                         url = '/tmp/' + recordingId + '.mkv';
                     }
                 }
-                socket.room.controller.addExternalInput(id, url, function (result) {
+                socket.room.controller.addExternalInput(id, url, mixer, function (result) {
                     if (result === 'success') {
                         st = new ST.Stream({id: id, socket: socket.id, audio: options.audio, video: options.video, data: options.data, attributes: options.attributes, from: url});
                         socket.streams.push(id);
                         socket.room.streams[id] = st;
-                        safeCall(callback, result, id);
-                        sendMsgToRoom(socket.room, 'onAddStream', st.getPublicStream());
-                    } else {
-                        safeCall(callback, result);
+                        //Temporarilly not disclose the external input to end user for subscribing,
+                        //but only as input to mix stream now.
+                        //sendMsgToRoom(socket.room, 'onAddStream', st.getPublicStream());
                     }
+                    safeCall(callback, result, id);
                 });
             } else if (options.state !== 'data' && !socket.room.p2p) {
                 if (options.state === 'offer' && socket.state === 'sleeping') {

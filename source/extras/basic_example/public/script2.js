@@ -137,6 +137,7 @@
     var shareScreen = getParameterByName('screen') || false;
     var myRoom = getParameterByName('room');
     var isHttps = (location.protocol === 'https:');
+    var mediaUrl = getParameterByName('url');
 
     if (isHttps) {
       var shareButton = document.getElementById('shareScreen');
@@ -157,7 +158,23 @@
       var token = response;
 
       conference.join(token, function (resp) {
-        if (shareScreen === false) {
+        if (typeof mediaUrl === 'string' && mediaUrl !== '') {
+            Woogeen.LocalStream.create({
+            video: true,
+            audio: true,
+            url: mediaUrl
+          }, function (err, stream) {
+            if (err) {
+              return L.Logger.error('create LocalStream failed:', err);
+            }
+            localStream = stream;
+            conference.publish(localStream, {}, function (st) {
+              L.Logger.info('stream published:', st.id());
+            }, function (err) {
+               L.Logger.error('publish failed:', err);
+            });
+          });
+        } else if (shareScreen === false) {
           Woogeen.LocalStream.create({
             video: {
               device: 'camera',

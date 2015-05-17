@@ -19,7 +19,6 @@ set(LIB_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/../../../../../build/libdeps/build/lib
 include_directories("${ERIZO_SOURCE_DIR}" "${LIB_DIRS}../include/")
 
 file(GLOB_RECURSE ERIZO_SOURCES "${ERIZO_SOURCE_DIR}/*.h" "${ERIZO_SOURCE_DIR}/*.c" "${ERIZO_SOURCE_DIR}/*.cpp")
-string(REGEX REPLACE "${ERIZO_SOURCE_DIR}/media/[^;]+;?" "" ERIZO_SOURCES "${ERIZO_SOURCES}")
 
 add_library(erizo SHARED ${ERIZO_SOURCES})
 

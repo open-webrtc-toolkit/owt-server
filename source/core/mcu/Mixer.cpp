@@ -108,6 +108,16 @@ void Mixer::onPositiveAudioSources(std::vector<uint32_t>& audioSources)
     m_videoMixer->promoteSources(videoSources);
 }
 
+void Mixer::addSource(erizo::MediaSource* mediaSource)
+{
+    if (mediaSource->getAudioSourceSSRC()) {
+        m_audioMixer->addSource(mediaSource);
+    }
+    if (mediaSource->getVideoSourceSSRC()) {
+        m_videoMixer->addSource(mediaSource);
+    }
+}
+
 int32_t Mixer::addSource(uint32_t id, bool isAudio, FeedbackSink* feedback, const std::string& participantId)
 {
     if (isAudio)

@@ -88,6 +88,13 @@ AudioMixer::~AudioMixer()
     VoiceEngine::Delete(m_voiceEngine);
 }
 
+int32_t AudioMixer::addSource(erizo::MediaSource* audioSource)
+{
+    //TODO Add logic to handle audio frame.
+
+    return 0;
+}
+
 int32_t AudioMixer::addSource(uint32_t from, bool isAudio, erizo::FeedbackSink* feedback, const std::string& participantId)
 {
     assert(isAudio);

@@ -69,6 +69,9 @@ public:
 
     void setAdditionalSourceConsumer(woogeen_base::MediaSourceConsumer*) { }
 
+    // New addSource interface, and others legacy ones should be changed to this one in future
+    void addSource(erizo::MediaSource*);
+
     int32_t addSource(uint32_t id, bool isAudio, erizo::FeedbackSink*, const std::string& participantId);
     int32_t removeSource(uint32_t id, bool isAudio);
     int32_t bindAV(uint32_t audioSource, uint32_t videoSource);

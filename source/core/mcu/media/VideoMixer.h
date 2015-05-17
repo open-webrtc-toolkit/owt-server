@@ -67,6 +67,9 @@ public:
     // Video input related methods.
     int32_t bindAudio(uint32_t sourceId, int voiceChannelId, webrtc::VoEVideoSync*);
 
+    // New AddSource API.
+    int32_t addSource(erizo::MediaSource*);
+
     // Implements MediaSourceConsumer.
     int32_t addSource(uint32_t from, bool isAudio, erizo::FeedbackSink*, const std::string& participantId);
     int32_t removeSource(uint32_t from, bool isAudio);
@@ -107,7 +110,7 @@ private:
     boost::shared_ptr<woogeen_base::WebRTCTaskRunner> m_taskRunner;
     erizo::RTPDataReceiver* m_outputReceiver;
     boost::shared_mutex m_sourceMutex;
-    std::map<uint32_t, boost::shared_ptr<VCMInputProcessor>> m_sinksForSources;
+    std::map<uint32_t, boost::shared_ptr<erizo::MediaSink>> m_sinksForSources;
     std::vector<uint32_t> m_sourceInputMap;    // each source will be allocated one index
     boost::scoped_ptr<VideoLayoutProcessor> m_layoutProcessor;
     bool m_hardwareAccelerated;

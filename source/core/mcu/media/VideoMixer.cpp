@@ -24,6 +24,7 @@
 #include "SoftVideoFrameMixer.h"
 #include "VCMOutputProcessor.h"
 #include "VideoLayoutProcessor.h"
+#include "VideoFrameInputProcessor.h"
 #include <EncodedVideoFrameSender.h>
 #include <WebRTCTransport.h>
 #include <webrtc/system_wrappers/interface/trace.h>
@@ -214,7 +215,7 @@ int VideoMixer::deliverVideoData(char* buf, int len)
     }
 
     boost::shared_lock<boost::shared_mutex> lock(m_sourceMutex);
-    std::map<uint32_t, boost::shared_ptr<VCMInputProcessor>>::iterator it = m_sinksForSources.find(id);
+    std::map<uint32_t, boost::shared_ptr<MediaSink>>::iterator it = m_sinksForSources.find(id);
     if (it != m_sinksForSources.end() && it->second)
         return it->second->deliverVideoData(buf, len);
 
@@ -309,6 +310,38 @@ uint32_t VideoMixer::getSendSSRC(int payloadType, bool nack, bool fec)
     return 0;
 }
 
+int32_t VideoMixer::addSource(MediaSource* videoSource)
+{
+    if (m_participants == m_maxInputCount) {
+        ELOG_WARN("Exceeding maximum number of sources (%u), ignoring the addSource request", m_maxInputCount);
+        return -1;
+    }
+
+    uint32_t from = videoSource->getVideoSourceSSRC();
+    boost::upgrade_lock<boost::shared_mutex> lock(m_sourceMutex);
+    std::map<uint32_t, boost::shared_ptr<MediaSink>>::iterator it = m_sinksForSources.find(from);
+    if (it == m_sinksForSources.end() || !it->second) {
+        int index = assignInput(from);
+        ELOG_DEBUG("addSource - assigned input index is %d", index);
+
+        MediaSink* videoInputProcessor = nullptr;
+        if (videoSource->getVideoDataType() == DataContentType::ENCODED_FRAME) {
+            videoInputProcessor = new VideoFrameInputProcessor(index, m_hardwareAccelerated);
+            videoSource->setVideoSink(videoInputProcessor);
+        }
+
+        if (videoInputProcessor) {
+            boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
+            m_sinksForSources[from].reset(videoInputProcessor);
+            ++m_participants;
+            return 0;
+        }
+    }
+
+    assert("New source added is still available");    // should not go there
+    return -1;
+}
+
 /**
  * Attach a new InputStream to the mixer
  */
@@ -322,7 +355,7 @@ int32_t VideoMixer::addSource(uint32_t from, bool isAudio, FeedbackSink* feedbac
     }
 
     boost::upgrade_lock<boost::shared_mutex> lock(m_sourceMutex);
-    std::map<uint32_t, boost::shared_ptr<VCMInputProcessor>>::iterator it = m_sinksForSources.find(from);
+    std::map<uint32_t, boost::shared_ptr<MediaSink>>::iterator it = m_sinksForSources.find(from);
     if (it == m_sinksForSources.end() || !it->second) {
         int index = assignInput(from);
         ELOG_DEBUG("addSource - assigned input index is %d", index);
@@ -346,10 +379,13 @@ int32_t VideoMixer::addSource(uint32_t from, bool isAudio, FeedbackSink* feedbac
 int32_t VideoMixer::bindAudio(uint32_t id, int voiceChannelId, VoEVideoSync* voeVideoSync)
 {
     boost::shared_lock<boost::shared_mutex> lock(m_sourceMutex);
-    std::map<uint32_t, boost::shared_ptr<VCMInputProcessor>>::iterator it = m_sinksForSources.find(id);
+    std::map<uint32_t, boost::shared_ptr<MediaSink>>::iterator it = m_sinksForSources.find(id);
     if (it != m_sinksForSources.end() && it->second) {
-        it->second->bindAudioForSync(voiceChannelId, voeVideoSync);
-        return 0;
+        VCMInputProcessor* vcm = dynamic_cast<VCMInputProcessor*>(it->second.get());
+        if (vcm != nullptr) {
+            vcm->bindAudioForSync(voiceChannelId, voeVideoSync);
+            return 0;
+        }
     }
     return -1;
 }
@@ -359,7 +395,7 @@ int32_t VideoMixer::removeSource(uint32_t from, bool isAudio)
     assert(!isAudio);
 
     boost::unique_lock<boost::shared_mutex> lock(m_sourceMutex);
-    std::map<uint32_t, boost::shared_ptr<VCMInputProcessor>>::iterator it = m_sinksForSources.find(from);
+    std::map<uint32_t, boost::shared_ptr<MediaSink>>::iterator it = m_sinksForSources.find(from);
     if (it != m_sinksForSources.end()) {
         m_sinksForSources.erase(it);
         lock.unlock();
@@ -380,7 +416,7 @@ void VideoMixer::closeAll()
     ELOG_DEBUG("closeAll");
 
     boost::unique_lock<boost::shared_mutex> sourceLock(m_sourceMutex);
-    std::map<uint32_t, boost::shared_ptr<VCMInputProcessor>>::iterator sourceItor = m_sinksForSources.begin();
+    std::map<uint32_t, boost::shared_ptr<MediaSink>>::iterator sourceItor = m_sinksForSources.begin();
     while (sourceItor != m_sinksForSources.end()) {
         uint32_t source = sourceItor->first;
         m_sinksForSources.erase(sourceItor++);

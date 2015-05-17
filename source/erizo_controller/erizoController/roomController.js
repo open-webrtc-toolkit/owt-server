@@ -108,20 +108,21 @@ exports.RoomController = function (spec) {
         });
     };
 
-    that.addExternalInput = function (publisher_id, url, callback) {
+    that.addExternalInput = function (publisher_id, url, mixer_id, callback) {
 
         if (publishers[publisher_id] === undefined) {
 
-            log.info("Adding external input peer_id ", publisher_id);
+            log.info("Adding external input peer_id ", publisher_id, ", mixer id", mixer_id);
 
-            createErizoJS(publisher_id, undefined, function() {
-            // then we call its addPublisher method.
-            var args = [publisher_id, url];
-            rpc.callRpc(getErizoQueue(publisher_id), "addExternalInput", args, {callback: callback});
+            createErizoJS(publisher_id, mixer_id, function() {
+                // then we call its addExternalInput method.
+                var mixer = {id: mixer_id, oop: GLOBAL.config.erizoController.outOfProcessMixer};
+                var args = [publisher_id, url, mixer];
+                rpc.callRpc(getErizoQueue(publisher_id), "addExternalInput", args, {callback: callback});
 
-            // Track publisher locally
-            publishers[publisher_id] = publisher_id;
-            subscribers[publisher_id] = [];
+                // Track publisher locally
+                publishers[publisher_id] = publisher_id;
+                subscribers[publisher_id] = [];
 
             });
         } else {
