@@ -78,6 +78,8 @@ public:
 
     bool registerExternalDecoder(boost::shared_ptr<webrtc::VideoDecoder>);
     bool registerDecodedFrameReceiver(boost::shared_ptr<webrtc::VCMReceiveCallback>);
+    void registerPreDecodeImageCallback(boost::shared_ptr<webrtc::EncodedImageCallback>);
+    void deRegisterPreDecodeImageCallback();
 
     void syncWithAudio(int32_t voiceChannelId, webrtc::VoEVideoSync*);
 
