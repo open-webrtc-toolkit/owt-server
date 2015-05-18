@@ -49,8 +49,8 @@ public:
     virtual erizo::FeedbackSink* feedbackSink() = 0;
     virtual int id() { return m_id; }
 
-    virtual void RegisterPreSendFrameCallback(MediaFrameQueue& mediaQueue) { }
-    virtual void DeRegisterPreSendFrameCallback() { }
+    virtual void registerPreSendFrameCallback(MediaFrameQueue& mediaQueue) { }
+    virtual void deRegisterPreSendFrameCallback() { }
 
 protected:
     int m_id;

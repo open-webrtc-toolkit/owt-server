@@ -195,19 +195,19 @@ bool EncodedVideoFrameSender::init(WebRTCTransport<erizo::VIDEO>* transport, boo
     return true;
 }
 
-void EncodedVideoFrameSender::RegisterPreSendFrameCallback(MediaFrameQueue& videoQueue)
+void EncodedVideoFrameSender::registerPreSendFrameCallback(MediaFrameQueue& videoQueue)
 {
     m_videoQueue = &videoQueue;
 }
 
-void EncodedVideoFrameSender::DeRegisterPreSendFrameCallback()
+void EncodedVideoFrameSender::deRegisterPreSendFrameCallback()
 {
     m_videoQueue = nullptr;
 }
 
 void EncodedVideoFrameSender::close()
 {
-    DeRegisterPreSendFrameCallback();
+    deRegisterPreSendFrameCallback();
 
     if (m_bitrateController)
         m_bitrateController->RemoveBitrateObserver(this);

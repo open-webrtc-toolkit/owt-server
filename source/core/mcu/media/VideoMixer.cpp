@@ -153,7 +153,7 @@ void VideoMixer::startRecording(woogeen_base::MediaFrameQueue& videoQueue)
     int payloadType = recordPayloadType();
     if (addOutput(payloadType, true, false) != -1) {
         woogeen_base::VideoFrameSender* output = m_outputs[payloadType].get();
-        output->RegisterPreSendFrameCallback(videoQueue);
+        output->registerPreSendFrameCallback(videoQueue);
 
         // Request an IFrame explicitly, because the recorder doesn't support active I-Frame requests.
         IntraFrameCallback* iFrameCallback = output->iFrameCallback();
@@ -166,7 +166,7 @@ void VideoMixer::stopRecording()
 {
     std::map<int, boost::shared_ptr<woogeen_base::VideoFrameSender>>::iterator it = m_outputs.find(recordPayloadType());
     if (it != m_outputs.end())
-        it->second->DeRegisterPreSendFrameCallback();
+        it->second->deRegisterPreSendFrameCallback();
 }
 
 int VideoMixer::recordPayloadType() const
