@@ -60,8 +60,8 @@ public:
     woogeen_base::IntraFrameCallback* iFrameCallback() { return this; }
     erizo::FeedbackSink* feedbackSink() { return this; }
 
-    void RegisterPreSendFrameCallback(woogeen_base::MediaFrameQueue& videoQueue);
-    void DeRegisterPreSendFrameCallback();
+    void registerPreSendFrameCallback(woogeen_base::MediaFrameQueue& videoQueue);
+    void deRegisterPreSendFrameCallback();
 
     // Implements FeedbackSink.
     int deliverFeedback(char* buf, int len);

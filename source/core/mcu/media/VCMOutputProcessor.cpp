@@ -279,13 +279,13 @@ bool VCMOutputProcessor::init(woogeen_base::WebRTCTransport<erizo::VIDEO>* trans
     return true;
 }
 
-void VCMOutputProcessor::RegisterPreSendFrameCallback(woogeen_base::MediaFrameQueue& videoQueue)
+void VCMOutputProcessor::registerPreSendFrameCallback(woogeen_base::MediaFrameQueue& videoQueue)
 {
     m_encodedFrameCallback.reset(new woogeen_base::EncodedFrameCallbackAdapter(&videoQueue));
     m_videoEncoder->RegisterPostEncodeImageCallback(m_encodedFrameCallback.get());
 }
 
-void VCMOutputProcessor::DeRegisterPreSendFrameCallback()
+void VCMOutputProcessor::deRegisterPreSendFrameCallback()
 {
     if (m_encodedFrameCallback)
         m_videoEncoder->DeRegisterPostEncodeImageCallback();
@@ -293,7 +293,7 @@ void VCMOutputProcessor::DeRegisterPreSendFrameCallback()
 
 void VCMOutputProcessor::close()
 {
-    DeRegisterPreSendFrameCallback();
+    deRegisterPreSendFrameCallback();
 
     m_videoEncoder->StopThreadsAndRemovePayloadRouter();
     m_payloadRouter->SetSendingRtpModules(std::list<RtpRtcp*>());

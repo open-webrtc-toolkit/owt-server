@@ -60,8 +60,8 @@ public:
     IntraFrameCallback* iFrameCallback() { return this; }
     erizo::FeedbackSink* feedbackSink() { return this; }
     bool acceptRawFrame() { return false; }
-    void RegisterPreSendFrameCallback(MediaFrameQueue& videoQueue);
-    void DeRegisterPreSendFrameCallback();
+    void registerPreSendFrameCallback(MediaFrameQueue& videoQueue);
+    void deRegisterPreSendFrameCallback();
 
     // Implements FeedbackSink.
     int deliverFeedback(char* buf, int len);
