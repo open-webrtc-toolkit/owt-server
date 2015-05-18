@@ -33,34 +33,10 @@
 #include <WebRTCTransport.h>
 #include <webrtc/modules/rtp_rtcp/interface/rtp_rtcp.h>
 #include <webrtc/system_wrappers/interface/scoped_refptr.h>
-#include <webrtc/video/encoded_frame_callback_adapter.h>
 #include <webrtc/video_engine/payload_router.h>
 #include <webrtc/video_engine/vie_encoder.h>
 
 namespace mcu {
-
-class EncodedFrameCallbackAdapter : public webrtc::EncodedImageCallback {
-public:
-    EncodedFrameCallbackAdapter(woogeen_base::MediaFrameQueue* videoQueue)
-        : m_videoQueue(videoQueue)
-    {
-    }
-
-    virtual ~EncodedFrameCallbackAdapter() { }
-
-    virtual int32_t Encoded(const webrtc::EncodedImage& encodedImage,
-                            const webrtc::CodecSpecificInfo* codecSpecificInfo,
-                            const webrtc::RTPFragmentationHeader* fragmentation)
-    {
-        if (encodedImage._length > 0 && m_videoQueue)
-            m_videoQueue->pushFrame(encodedImage._buffer, encodedImage._length, encodedImage._timeStamp);
-
-        return 0;
-    }
-
-private:
-    woogeen_base::MediaFrameQueue* m_videoQueue;
-};
 
 /**
  * This is the class to accept the composited raw frame and encode it.
@@ -110,7 +86,7 @@ private:
     boost::shared_ptr<woogeen_base::WebRTCTaskRunner> m_taskRunner;
     boost::shared_ptr<woogeen_base::VideoFrameProvider> m_source;
 
-    boost::scoped_ptr<EncodedFrameCallbackAdapter> m_encodedFrameCallback;
+    boost::scoped_ptr<woogeen_base::EncodedFrameCallbackAdapter> m_encodedFrameCallback;
 };
 
 } /* namespace mcu */

@@ -223,4 +223,14 @@ bool VCMFrameConstructor::registerDecodedFrameReceiver(boost::shared_ptr<webrtc:
     return true;
 }
 
+void VCMFrameConstructor::registerPreDecodeImageCallback(boost::shared_ptr<webrtc::EncodedImageCallback> observer)
+{
+    m_vcm->RegisterPreDecodeImageCallback(observer.get());
+}
+
+void VCMFrameConstructor::deRegisterPreDecodeImageCallback()
+{
+    m_vcm->RegisterPreDecodeImageCallback(nullptr);
+}
+
 }

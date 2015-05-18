@@ -25,6 +25,7 @@
 #include <boost/thread/mutex.hpp>
 #include <Compiler.h>
 #include <SharedQueue.h>
+#include <webrtc/video/encoded_frame_callback_adapter.h>
 
 namespace woogeen_base {
 
@@ -103,6 +104,29 @@ private:
     unsigned int m_max;
     int64_t m_startTimeMsec;
     int64_t m_timeOffsetMsec;
+};
+
+class EncodedFrameCallbackAdapter : public webrtc::EncodedImageCallback {
+public:
+    EncodedFrameCallbackAdapter(MediaFrameQueue* videoQueue)
+        : m_videoQueue(videoQueue)
+    {
+    }
+
+    virtual ~EncodedFrameCallbackAdapter() { }
+
+    virtual int32_t Encoded(const webrtc::EncodedImage& encodedImage,
+                            const webrtc::CodecSpecificInfo* codecSpecificInfo,
+                            const webrtc::RTPFragmentationHeader* fragmentation)
+    {
+        if (encodedImage._length > 0 && m_videoQueue)
+            m_videoQueue->pushFrame(encodedImage._buffer, encodedImage._length, encodedImage._timeStamp);
+
+        return 0;
+    }
+
+private:
+    MediaFrameQueue* m_videoQueue;
 };
 
 class MediaRecording {
