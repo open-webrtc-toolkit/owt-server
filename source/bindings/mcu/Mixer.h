@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Intel Corporation All Rights Reserved. 
+ * Copyright 2015 Intel Corporation All Rights Reserved. 
  * 
  * The source code contained or described herein and all documents related to the 
  * source code ("Material") are owned by Intel Corporation or its suppliers or 
@@ -18,42 +18,34 @@
  * and approved by Intel in writing.
  */
 
-#ifndef GATEWAY_H
-#define GATEWAY_H
+#ifndef MIXER_H
+#define MIXER_H
 
-#include "../erizoAPI/ExternalInput.h"
-#include "../erizoAPI/ExternalOutput.h"
-#include "../erizoAPI/MediaDefinitions.h"
-#include "../erizoAPI/WebRtcConnection.h"
+#include "../woogeen_base/Gateway.h"
 
-#include <Gateway.h>
+#include <MixerInterface.h>
 #include <node.h>
 #include <string>
 
 /*
- * Wrapper class of woogeen_base::Gateway
- *
- * Represents connection between WebRTC clients, or between a WebRTC client
- * and other third-party clients.
- * Receives media from the WebRTC client and retransmits it to others,
- * or receives media from other clients and retransmits it to the WebRTC client.
+ * Wrapper class of mcu::MixerInterface
  */
-class Gateway : public node::ObjectWrap {
+class Mixer : public node::ObjectWrap {
  public:
   static void Init(v8::Handle<v8::Object> target);
-  woogeen_base::Gateway* me;
+  mcu::MixerInterface* me;
 
  private:
-  Gateway();
-  ~Gateway();
+  Mixer();
+  ~Mixer();
 
   /*
    * Constructor.
-   * Constructs a Gateway
+   * Constructs a Mixer
    */
   static v8::Handle<v8::Value> New(const v8::Arguments& args);
   /*
-   * Closes the Gateway.
+   * Closes the Mixer.
    * The object cannot be used after this call
    */
   static v8::Handle<v8::Value> close(const v8::Arguments& args);
@@ -79,7 +71,7 @@ class Gateway : public node::ObjectWrap {
   static v8::Handle<v8::Value> removeSubscriber(const v8::Arguments& args);
   /*
    * Adds an ExternalOutput
-   * Param: The ExternalOutput   
+   * Param: The ExternalOutput uri and options
    */
   static v8::Handle<v8::Value> addExternalOutput(const v8::Arguments& args);
   /*
@@ -88,34 +80,10 @@ class Gateway : public node::ObjectWrap {
    */
   static v8::Handle<v8::Value> removeExternalOutput(const v8::Arguments& args);
   /*
-   * Adds an External Publisher
+   * Sets an External Publisher
    * Param: the ExternalInput of the Publisher
    */
   static v8::Handle<v8::Value> addExternalPublisher(const v8::Arguments& args);
-
-  /*
-   * add Event Listener
-   */
-  static v8::Handle<v8::Value> addEventListener(const v8::Arguments& args);
-  /*
-   * pass custom message
-   */
-  static v8::Handle<v8::Value> customMessage(const v8::Arguments& args);
-  /*
-   * Gets the gateway statistics
-   */
-  static v8::Handle<v8::Value> retrieveStatistics(const v8::Arguments& args);
-
-  /*
-   * Start/stop subscribing video or audio
-   */
-  static v8::Handle<v8::Value> subscribeStream(const v8::Arguments& args);
-  static v8::Handle<v8::Value> unsubscribeStream(const v8::Arguments& args);
-  /*
-   * Start/stop publishing video or audio
-   */
-  static v8::Handle<v8::Value> publishStream(const v8::Arguments& args);
-  static v8::Handle<v8::Value> unpublishStream(const v8::Arguments& args);
 };
 
 #endif

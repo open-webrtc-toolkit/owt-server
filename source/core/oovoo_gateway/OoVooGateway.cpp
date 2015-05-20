@@ -328,9 +328,12 @@ void OoVooGateway::onProcessFeedback()
 }
 
 // The main thread
-bool OoVooGateway::setPublisher(erizo::MediaSource* source, const std::string& id, const std::string& videoResolution)
+bool OoVooGateway::addPublisher(erizo::MediaSource* source, const std::string& id, const std::string& videoResolution)
 {
     ELOG_DEBUG("SET PUBLISHER");
+    if (publisher)
+        return false;
+
     m_audioReceiver.reset(new ProtectedRTPReceiver(m_outboundStreamProcessor));
     m_videoReceiver.reset(new ProtectedRTPReceiver(m_outboundStreamProcessor));
     boost::unique_lock<boost::shared_mutex> lock(m_publisherMutex);
@@ -396,13 +399,13 @@ bool OoVooGateway::setPublisher(erizo::MediaSource* source, const std::string& i
 }
 
 // The main thread
-bool OoVooGateway::setPublisher(MediaSource* source, const std::string& id)
+bool OoVooGateway::addPublisher(MediaSource* source, const std::string& id)
 {
-    return setPublisher(source, id, "unknown");
+    return addPublisher(source, id, "unknown");
 }
 
 // The main thread
-void OoVooGateway::unsetPublisher()
+void OoVooGateway::removePublisher(const std::string&)
 {
     if (!publisher)
         return;
@@ -517,20 +520,13 @@ void OoVooGateway::removeSubscriber(const std::string& subscriberId)
     }
 }
 
-bool OoVooGateway::clientJoin(const std::string& clientJoinUri)
-{
-    ELOG_DEBUG("ooVoo -> clientJoin");
-    m_ooVoo->clientJoin(clientJoinUri.c_str());
-    return !m_isClientLeaving;
-}
-
 void OoVooGateway::customMessage(const std::string& message)
 {
     ELOG_DEBUG("ooVoo -> customMessage - length: %lu", message.size());
     m_ooVoo->customMessage(const_cast<char*>(message.c_str()), message.size());
 }
 
-std::string OoVooGateway::retrieveGatewayStatistics()
+std::string OoVooGateway::retrieveStatistics()
 {
     std::ostringstream output;
 
@@ -580,7 +576,7 @@ void OoVooGateway::unsubscribeStream(const std::string& subscriberId, bool isAud
     }
 }
 
-void OoVooGateway::publishStream(bool isAudio) {
+void OoVooGateway::publishStream(const std::string&, bool isAudio) {
     if (!publisher)
         return;
 
@@ -600,7 +596,7 @@ void OoVooGateway::publishStream(bool isAudio) {
     }
 }
 
-void OoVooGateway::unpublishStream(bool isAudio) {
+void OoVooGateway::unpublishStream(const std::string&, bool isAudio) {
     if (!publisher)
         return;
 
@@ -960,6 +956,21 @@ void OoVooGateway::notifyAsyncEvent(const std::string& event, uint32_t data)
     std::ostringstream message;
     message << data;
     notifyAsyncEvent(event, message.str());
+}
+
+int OoVooGateway::sendFirPacket()
+{
+    return publisher ? publisher->sendFirPacket() : -1;
+}
+
+int OoVooGateway::setVideoCodec(const std::string& codecName, unsigned int clockRate)
+{
+    return publisher ? publisher->setVideoCodec(codecName, clockRate) : -1;
+}
+
+int OoVooGateway::setAudioCodec(const std::string& codecName, unsigned int clockRate)
+{
+    return publisher ? publisher->setAudioCodec(codecName, clockRate) : -1;
 }
 
 DEFINE_LOGGER(OoVooJobTimer, "ooVoo.OoVooJobTimer");

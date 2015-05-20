@@ -64,21 +64,23 @@ public:
     /**
      * Implements Gateway interfaces
      */
-    bool setPublisher(erizo::MediaSource*, const std::string& id, const std::string& videoResolution);
-    bool setPublisher(erizo::MediaSource*, const std::string& id);
-    void unsetPublisher();
+    bool addPublisher(erizo::MediaSource*, const std::string& id, const std::string& videoResolution);
+    bool addPublisher(erizo::MediaSource*, const std::string& id);
+    void removePublisher(const std::string& id);
     void addSubscriber(erizo::MediaSink*, const std::string& id);
     void removeSubscriber(const std::string& id);
     void setupAsyncEvent(const std::string& event, woogeen_base::EventRegistry*);
     void destroyAsyncEvents();
-    bool clientJoin(const std::string& clientJoinUri);
     void customMessage(const std::string& message);
-    std::string retrieveGatewayStatistics();
+    std::string retrieveStatistics();
     void subscribeStream(const std::string& id, bool isAudio);
     void unsubscribeStream(const std::string& id, bool isAudio);
-    void publishStream(bool isAudio);
-    void unpublishStream(bool isAudio);
-    void setAdditionalSourceConsumer(woogeen_base::MediaSourceConsumer*) { }
+    void publishStream(const std::string& id, bool isAudio);
+    void unpublishStream(const std::string& id, bool isAudio);
+
+    int sendFirPacket();
+    int setVideoCodec(const std::string& codecName, unsigned int clockRate);
+    int setAudioCodec(const std::string& codecName, unsigned int clockRate);
 
     /**
      * Implements MediaSink interfaces

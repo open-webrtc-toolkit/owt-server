@@ -24,6 +24,7 @@
 #include "media/AudioMixer.h"
 #include "media/MediaRecorder.h"
 #include "media/VideoMixer.h"
+#include "MixerInterface.h"
 
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/shared_ptr.hpp>
@@ -40,50 +41,51 @@ namespace mcu {
  * It receives media from several sources through the WebRTCGateways, mixed them into one stream and retransmits
  * it to every subscriber.
  */
-class Mixer : public woogeen_base::Gateway, public erizo::MediaSink, public erizo::FeedbackSink, public erizo::RTPDataReceiver, AudioMixerVADCallback {
+class Mixer : public MixerInterface, public erizo::FeedbackSink, public erizo::RTPDataReceiver, AudioMixerVADCallback {
     DECLARE_LOGGER();
 
 public:
     Mixer(boost::property_tree::ptree& videoConfig);
     virtual ~Mixer();
 
-    // Implements Gateway.
-    bool setPublisher(erizo::MediaSource*, const std::string& id) { return false; }
-    bool setPublisher(erizo::MediaSource* source, const std::string& id, const std::string& videoResolution) { return setPublisher(source, id); }
-    void unsetPublisher() { }
+    // Implements MixerInterface.
+    bool addPublisher(erizo::MediaSource*, const std::string& id);
+    bool addPublisher(erizo::MediaSource* source, const std::string& id, const std::string& videoResolution) { return addPublisher(source, id); }
+    void removePublisher(const std::string& id);
 
     void addSubscriber(erizo::MediaSink*, const std::string& id);
     void removeSubscriber(const std::string& id);
 
+    // TODO: implement the below interfaces to support async event notification
+    // from the native layer to the JS (controller) layer.
     void setupAsyncEvent(const std::string& event, woogeen_base::EventRegistry*) { }
     void destroyAsyncEvents() { }
 
-    bool clientJoin(const std::string& clientJoinUri) { return true; }
     void customMessage(const std::string& message) { }
 
-    std::string retrieveGatewayStatistics() { return ""; }
+    // TODO: implement the below interface to support Mixer statistics retrieval,
+    // which can be used to monitor the mixer.
+    std::string retrieveStatistics() { return ""; }
 
+    // TODO: implement the below interfaces to support media play/pause.
     void subscribeStream(const std::string& id, bool isAudio) { }
     void unsubscribeStream(const std::string& id, bool isAudio) { }
-    void publishStream(bool isAudio) { }
-    void unpublishStream(bool isAudio) { }
-
-    void setAdditionalSourceConsumer(woogeen_base::MediaSourceConsumer*) { }
+    void publishStream(const std::string& id, bool isAudio) { }
+    void unpublishStream(const std::string& id, bool isAudio) { }
 
     bool addExternalOutput(const std::string& configParam);
     bool removeExternalOutput(const std::string& outputId);
 
-    // New addSource interface, and others legacy ones should be changed to this one in future
-    void addSource(erizo::MediaSource*);
+    // TODO: we currently don't accept the below requests to the mixer as a MediaSource.
+    // We may reconsider it later to see if it's valuable to support them.
+    int sendFirPacket() { return -1; }
+    int setVideoCodec(const std::string& codecName, unsigned int clockRate) { return -1; }
+    int setAudioCodec(const std::string& codecName, unsigned int clockRate) { return -1; }
 
-    int32_t addSource(uint32_t id, bool isAudio, erizo::FeedbackSink*, const std::string& participantId);
-    int32_t removeSource(uint32_t id, bool isAudio);
-    int32_t bindAV(uint32_t audioSource, uint32_t videoSource);
-    erizo::MediaSink* mediaSink() { return this; }
-
-    // Implements MediaSink.
-    int deliverAudioData(char* buf, int len);
-    int deliverVideoData(char* buf, int len);
+    // TODO: implement the below interfaces to support video layout related
+    // information retrieval and setting.
+    std::string getRegion(const std::string& participantId) { return ""; }
+    void setRegion(const std::string& participantId, const std::string& regionId) { }
 
     // Implements FeedbackSink.
     int deliverFeedback(char* buf, int len);
@@ -97,6 +99,8 @@ public:
 protected:
     boost::shared_ptr<VideoMixer> m_videoMixer;
     boost::shared_ptr<AudioMixer> m_audioMixer;
+    boost::shared_mutex m_avBindingsMutex;
+    std::map<uint32_t/*audio source*/, uint32_t/*video source*/> m_avBindings;
 
 private:
     bool init(boost::property_tree::ptree& videoConfig);
@@ -107,8 +111,7 @@ private:
 
     boost::shared_mutex m_subscriberMutex;
     std::map<std::string, boost::shared_ptr<erizo::MediaSink>> m_subscribers;
-    boost::shared_mutex m_avBindingsMutex;
-    std::map<uint32_t/*audio source*/, uint32_t/*video source*/> m_avBindings;
+    std::map<std::string, erizo::MediaSource*> m_publishers;
 
     boost::shared_ptr<MediaRecorder> m_recorder;
 };

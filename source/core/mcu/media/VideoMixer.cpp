@@ -189,39 +189,6 @@ bool VideoMixer::getVideoSize(unsigned int& width, unsigned int& height) const
     return false;
 }
 
-int VideoMixer::deliverAudioData(char* buf, int len) 
-{
-    assert(false);
-    return 0;
-}
-
-#define global_ns
-
-/**
- * Multiple sources may call this method simultaneously from different threads.
- * the incoming buffer is a rtp packet
- */
-int VideoMixer::deliverVideoData(char* buf, int len)
-{
-    uint32_t id = 0;
-    RTCPHeader* chead = reinterpret_cast<RTCPHeader*>(buf);
-    uint8_t packetType = chead->getPacketType();
-    assert(packetType != RTCP_Receiver_PT && packetType != RTCP_PS_Feedback_PT && packetType != RTCP_RTP_Feedback_PT);
-    if (packetType == RTCP_Sender_PT)
-        id = chead->getSSRC();
-    else {
-        global_ns::RTPHeader* head = reinterpret_cast<global_ns::RTPHeader*>(buf);
-        id = head->getSSRC();
-    }
-
-    boost::shared_lock<boost::shared_mutex> lock(m_sourceMutex);
-    std::map<uint32_t, boost::shared_ptr<MediaSink>>::iterator it = m_sinksForSources.find(id);
-    if (it != m_sinksForSources.end() && it->second)
-        return it->second->deliverVideoData(buf, len);
-
-    return 0;
-}
-
 int VideoMixer::deliverFeedback(char* buf, int len)
 {
     // TODO: For now we just send the feedback to all of the output processors.
@@ -310,48 +277,23 @@ uint32_t VideoMixer::getSendSSRC(int payloadType, bool nack, bool fec)
     return 0;
 }
 
-int32_t VideoMixer::addSource(MediaSource* videoSource)
+boost::shared_ptr<MediaSink> VideoMixer::getMediaSink(uint32_t from)
 {
-    if (m_participants == m_maxInputCount) {
-        ELOG_WARN("Exceeding maximum number of sources (%u), ignoring the addSource request", m_maxInputCount);
-        return -1;
-    }
-
-    uint32_t from = videoSource->getVideoSourceSSRC();
-    boost::upgrade_lock<boost::shared_mutex> lock(m_sourceMutex);
+    boost::shared_lock<boost::shared_mutex> lock(m_sourceMutex);
     std::map<uint32_t, boost::shared_ptr<MediaSink>>::iterator it = m_sinksForSources.find(from);
-    if (it == m_sinksForSources.end() || !it->second) {
-        int index = assignInput(from);
-        ELOG_DEBUG("addSource - assigned input index is %d", index);
-
-        MediaSink* videoInputProcessor = nullptr;
-        if (videoSource->getVideoDataType() == DataContentType::ENCODED_FRAME) {
-            videoInputProcessor = new VideoFrameInputProcessor(index, m_hardwareAccelerated);
-            videoSource->setVideoSink(videoInputProcessor);
-        }
-
-        if (videoInputProcessor) {
-            boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
-            m_sinksForSources[from].reset(videoInputProcessor);
-            ++m_participants;
-            return 0;
-        }
-    }
-
-    assert("New source added is still available");    // should not go there
-    return -1;
+    return it == m_sinksForSources.end() ? boost::shared_ptr<MediaSink>() : it->second;
 }
 
 /**
  * Attach a new InputStream to the mixer
  */
-int32_t VideoMixer::addSource(uint32_t from, bool isAudio, FeedbackSink* feedback, const std::string&)
+MediaSink* VideoMixer::addSource(uint32_t from, bool isAudio, DataContentType type, FeedbackSink* feedback, const std::string&)
 {
     assert(!isAudio);
 
     if (m_participants == m_maxInputCount) {
         ELOG_WARN("Exceeding maximum number of sources (%u), ignoring the addSource request", m_maxInputCount);
-        return -1;
+        return nullptr;
     }
 
     boost::upgrade_lock<boost::shared_mutex> lock(m_sourceMutex);
@@ -360,20 +302,27 @@ int32_t VideoMixer::addSource(uint32_t from, bool isAudio, FeedbackSink* feedbac
         int index = assignInput(from);
         ELOG_DEBUG("addSource - assigned input index is %d", index);
 
-        VCMInputProcessor* videoInputProcessor(new VCMInputProcessor(index, m_hardwareAccelerated));
-        videoInputProcessor->init(new WebRTCTransport<erizo::VIDEO>(nullptr, feedback),
-                                  m_frameMixer,
-                                  m_taskRunner,
-                                  this);
+        MediaSink* sink = nullptr;
+        if (type == DataContentType::ENCODED_FRAME)
+            sink = new VideoFrameInputProcessor(index, m_hardwareAccelerated);
+        else {
+            assert(type == DataContentType::RTP);
+            VCMInputProcessor* vcmInputProcessor(new VCMInputProcessor(index, m_hardwareAccelerated));
+            vcmInputProcessor->init(new WebRTCTransport<erizo::VIDEO>(nullptr, feedback),
+                                    m_frameMixer,
+                                    m_taskRunner,
+                                    this);
+            sink = vcmInputProcessor;
+        }
 
         boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
-        m_sinksForSources[from].reset(videoInputProcessor);
+        m_sinksForSources[from].reset(sink);
         ++m_participants;
-        return 0;
+        return sink;
     }
 
     assert("new source added with InputProcessor still available");    // should not go there
-    return -1;
+    return nullptr;
 }
 
 int32_t VideoMixer::bindAudio(uint32_t id, int voiceChannelId, VoEVideoSync* voeVideoSync)
@@ -390,7 +339,7 @@ int32_t VideoMixer::bindAudio(uint32_t id, int voiceChannelId, VoEVideoSync* voe
     return -1;
 }
 
-int32_t VideoMixer::removeSource(uint32_t from, bool isAudio)
+void VideoMixer::removeSource(uint32_t from, bool isAudio)
 {
     assert(!isAudio);
 
@@ -405,10 +354,7 @@ int32_t VideoMixer::removeSource(uint32_t from, bool isAudio)
         m_sourceInputMap[index] = 0;
         m_layoutProcessor->removeInput(index);
         --m_participants;
-        return 0;
     }
-
-    return -1;
 }
 
 void VideoMixer::closeAll()

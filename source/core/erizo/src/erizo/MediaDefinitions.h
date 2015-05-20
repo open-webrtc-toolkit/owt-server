@@ -109,10 +109,10 @@ protected:
   DataContentType audioDataType_;
 
 public:
-  DLL_PUBLIC void setAudioSink(MediaSink* audioSink){
+  DLL_PUBLIC virtual void setAudioSink(MediaSink* audioSink){
     this->audioSink_ = audioSink;
   };
-  DLL_PUBLIC void setVideoSink(MediaSink* videoSink){
+  DLL_PUBLIC virtual void setVideoSink(MediaSink* videoSink){
     this->videoSink_ = videoSink;
   };
 

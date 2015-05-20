@@ -76,11 +76,19 @@ private:
 /**
  * An OutOfProcessMixer refers to a media mixer which is run in a dedicated process as a woogeen_base::Gateway.
  */
-class OutOfProcessMixer : public Mixer {
+class OutOfProcessMixer : public Mixer, public woogeen_base::MediaSourceConsumer, public erizo::MediaSink {
 public:
     OutOfProcessMixer(boost::property_tree::ptree& videoConfig);
     ~OutOfProcessMixer();
 
+    // Implements MediaSourceConsumer.
+    erizo::MediaSink* addSource(uint32_t id, bool isAudio, erizo::DataContentType, erizo::FeedbackSink*, const std::string& participantId);
+    void removeSource(uint32_t id, bool isAudio);
+    int32_t bindAV(uint32_t audioSource, uint32_t videoSource);
+
+    // Implements MediaSink.
+    int deliverAudioData(char* buf, int len);
+    int deliverVideoData(char* buf, int len);
 private:
     boost::scoped_ptr<AudioDataReader> m_audioInput;
     boost::scoped_ptr<VideoDataReader> m_videoInput;

@@ -37,17 +37,17 @@ woogeen_base::Gateway* woogeen_base::Gateway::createGatewayInstance(const std::s
  
         if (isMixer) {
             bool outOfProcess = pt.get<bool>("oop");
-            if (outOfProcess)
-                return new mcu::OutOfProcessMixer(pt.get_child("video"));
+            if (outOfProcess) {
+                bool isProxy = pt.get<bool>("proxy");
+                if (!isProxy)
+                    return new mcu::OutOfProcessMixer(pt.get_child("video"));
+
+                return new mcu::OutOfProcessMixerProxy();
+            }
 
             return new mcu::InProcessMixer(pt.get_child("video"));
         }
     }
 
     return new mcu::WebRTCGateway();
-}
-
-woogeen_base::MediaSourceConsumer* woogeen_base::MediaSourceConsumer::createMediaSourceConsumerInstance()
-{
-    return new mcu::OutOfProcessMixerProxy();
 }

@@ -37,16 +37,6 @@ Mixer::~Mixer()
     closeAll();
 }
 
-int Mixer::deliverAudioData(char* buf, int len) 
-{
-    return m_audioMixer ? m_audioMixer->deliverAudioData(buf, len) : 0;
-}
-
-int Mixer::deliverVideoData(char* buf, int len)
-{
-    return m_videoMixer ? m_videoMixer->deliverVideoData(buf, len) : 0;
-}
-
 int Mixer::deliverFeedback(char* buf, int len)
 {
     if (m_videoMixer->deliverFeedback(buf, len) > 0
@@ -140,32 +130,59 @@ bool Mixer::removeExternalOutput(const std::string& outputId)
     return false;
 }
 
-void Mixer::addSource(erizo::MediaSource* mediaSource)
+bool Mixer::addPublisher(erizo::MediaSource* publisher, const std::string& id)
 {
-    if (mediaSource->getAudioSourceSSRC()) {
-        m_audioMixer->addSource(mediaSource);
+    if (m_publishers.find(id) != m_publishers.end())
+        return false;
+
+    uint32_t audioSSRC = publisher->getAudioSourceSSRC();
+    uint32_t videoSSRC = publisher->getVideoSourceSSRC();
+    FeedbackSink* feedback = publisher->getFeedbackSink();
+    MediaSink* audioSink = nullptr;
+    MediaSink* videoSink = nullptr;
+
+    if (audioSSRC)
+        audioSink = m_audioMixer->addSource(audioSSRC, true, publisher->getAudioDataType(), feedback, id);
+    if (videoSSRC)
+        videoSink = m_videoMixer->addSource(videoSSRC, false, publisher->getVideoDataType(), feedback, id);
+
+    if (audioSSRC && videoSSRC) {
+        {
+            boost::unique_lock<boost::shared_mutex> lock(m_avBindingsMutex);
+            m_avBindings[audioSSRC] = videoSSRC;
+        }
+
+        m_videoMixer->bindAudio(videoSSRC, m_audioMixer->getChannelId(audioSSRC), m_audioMixer->avSyncInterface());
     }
-    if (mediaSource->getVideoSourceSSRC()) {
-        m_videoMixer->addSource(mediaSource);
-    }
+
+    publisher->setAudioSink(audioSink);
+    publisher->setVideoSink(videoSink);
+
+    m_publishers[id] = publisher;
+    return true;
 }
 
-int32_t Mixer::addSource(uint32_t id, bool isAudio, FeedbackSink* feedback, const std::string& participantId)
+void Mixer::removePublisher(const std::string& id)
 {
-    if (isAudio)
-        return m_audioMixer->addSource(id, true, feedback, participantId);
+    std::map<std::string, MediaSource*>::iterator it = m_publishers.find(id);
+    if (it == m_publishers.end())
+        return;
 
-    return m_videoMixer->addSource(id, false, feedback, participantId);
-}
+    it->second->setAudioSink(nullptr);
+    it->second->setVideoSink(nullptr);
 
-int32_t Mixer::bindAV(uint32_t audioSource, uint32_t videoSource)
-{
-    {
+    int audioSSRC = it->second->getAudioSourceSSRC();
+    int videoSSRC = it->second->getVideoSourceSSRC();
+
+    if (audioSSRC) {
         boost::unique_lock<boost::shared_mutex> lock(m_avBindingsMutex);
-        m_avBindings[audioSource] = videoSource;
+        m_avBindings.erase(audioSSRC);
+        m_audioMixer->removeSource(audioSSRC, true);
     }
 
-    return m_videoMixer->bindAudio(videoSource, m_audioMixer->getChannelId(audioSource), m_audioMixer->avSyncInterface());
+    m_videoMixer->removeSource(videoSSRC, false);
+
+    m_publishers.erase(it);
 }
 
 void Mixer::addSubscriber(MediaSink* subscriber, const std::string& peerId)
@@ -212,16 +229,6 @@ void Mixer::removeSubscriber(const std::string& peerId)
         m_subscribers.erase(it);
     }
     lock.unlock();
-}
-
-int32_t Mixer::removeSource(uint32_t source, bool isAudio)
-{
-    if (isAudio) {
-        boost::unique_lock<boost::shared_mutex> lock(m_avBindingsMutex);
-        m_avBindings.erase(source);
-    }
-
-    return isAudio ? m_audioMixer->removeSource(source, true) : m_videoMixer->removeSource(source, false);
 }
 
 bool Mixer::init(boost::property_tree::ptree& videoConfig)

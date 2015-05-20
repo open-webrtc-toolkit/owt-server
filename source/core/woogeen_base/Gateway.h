@@ -22,7 +22,6 @@
 #define Gateway_h
 
 #include "EventRegistry.h"
-#include "MediaSourceConsumer.h"
 
 #include <Compiler.h>
 #include <MediaDefinitions.h>
@@ -34,7 +33,7 @@ namespace woogeen_base {
  * Receives media from the WebRTC client and retransmits it to others,
  * or receives media from other sources and retransmits it to the WebRTC clients.
  */
-class Gateway : public MediaSourceConsumer {
+class Gateway : public erizo::MediaSource {
 
 public:
     DLL_PUBLIC static Gateway* createGatewayInstance(const std::string& customParam);
@@ -42,24 +41,27 @@ public:
     DLL_PUBLIC virtual ~Gateway() { }
 
     /**
-     * Sets the Publisher
+     * Adds a Publisher
      * @param source the MediaSource as the Publisher
+     * @param participantId the id for the publisher
      * @param videoResolution the video resolution
      * @return true if the publisher is added successfully
      */
-    DLL_PUBLIC virtual bool setPublisher(erizo::MediaSource*, const std::string& participantId, const std::string& videoResolution) = 0;
+    DLL_PUBLIC virtual bool addPublisher(erizo::MediaSource*, const std::string& participantId, const std::string& videoResolution) = 0;
     /**
-     * Sets the Publisher
+     * Adds a Publisher
      * @param source the MediaSource as the Publisher
+     * @param participantId the id for the publisher
      * @return true if the publisher is added successfully
      */
-    DLL_PUBLIC virtual bool setPublisher(erizo::MediaSource*, const std::string& participantId) = 0;
+    DLL_PUBLIC virtual bool addPublisher(erizo::MediaSource*, const std::string& participantId) = 0;
     /**
-     * Unsets the Publisher
+     * Removes the Publisher
+     * @param participantId the id for the publisher
      */
-    DLL_PUBLIC virtual void unsetPublisher() = 0;
+    DLL_PUBLIC virtual void removePublisher(const std::string& participantId) = 0;
     /**
-     * Adds the subscriber
+     * Adds a subscriber
      * @param sink the MediaSink of the subscriber
      * @param id the peer id for the subscriber
      */
@@ -69,6 +71,7 @@ public:
      * @param id the peer id for the subscriber
      */
     DLL_PUBLIC virtual void removeSubscriber(const std::string& id) = 0;
+
     /**
      * Set async event handler
      * @param event name, handle
@@ -78,12 +81,7 @@ public:
      * Destroy async event handlers
      */
     DLL_PUBLIC virtual void destroyAsyncEvents() = 0;
-    /**
-     * Client joins a session with the specified uri
-     * @param clientJoinUri
-     * @return true if client joins successfully
-     */
-    DLL_PUBLIC virtual bool clientJoin(const std::string& clientJoinUri) = 0;
+
     /**
      * Pass 'custom' messages such as text messages
      * @param message
@@ -94,7 +92,8 @@ public:
      * and lost, the average RTT between Gateway and browser, etc.
      * @return the JSON formatted string of the statistics.
      */
-    DLL_PUBLIC virtual std::string retrieveGatewayStatistics() = 0;
+    DLL_PUBLIC virtual std::string retrieveStatistics() = 0;
+
     /**
      * Start subscribing audio or video
      * @param id the subscriber id
@@ -104,24 +103,22 @@ public:
     /**
      * Stop subscribing audio or video
      * @param id the subscriber id
-     * @param isAudio unsubscrib audio or video
+     * @param isAudio unsubscribe audio or video
      */
     DLL_PUBLIC virtual void unsubscribeStream(const std::string& id, bool isAudio) = 0;
     /**
      * Start publishing audio or video
+     * @param id the publisher id
      * @param isAudio publish audio or video
      */
-    DLL_PUBLIC virtual void publishStream(bool isAudio) = 0;
+    DLL_PUBLIC virtual void publishStream(const std::string& id, bool isAudio) = 0;
     /**
      * Stop publishing audio or video
+     * @param id the publisher id
      * @param isAudio unpublish audio or video
      */
-    DLL_PUBLIC virtual void unpublishStream(bool isAudio) = 0;
-    /**
-     * Set the additional media source consumer which consumes the publisher of this Gateway
-     * @param mediaSourceConsumer
-     */
-    DLL_PUBLIC virtual void setAdditionalSourceConsumer(MediaSourceConsumer*) = 0;
+    DLL_PUBLIC virtual void unpublishStream(const std::string& id, bool isAudio) = 0;
+
     /**
      * Adds the external output
      * @param configParam the configuration of the external output
@@ -133,13 +130,12 @@ public:
      */
     DLL_PUBLIC virtual bool removeExternalOutput(const std::string& id) { return false; }
     /**
-     * Add the media source to compose the virtual Publisher
-     * @param source the MediaSource for publishing
+     * Change the bitrate of a video stream
+     * @param id the publisher id
+     * @param id the suggested new bitrate
+     * @return true if the bitrate change request is accepted
      */
-    DLL_PUBLIC virtual void addSource(erizo::MediaSource* source) {}
-
-    virtual int32_t addSource(uint32_t id, bool isAudio, erizo::FeedbackSink*, const std::string& participantId) { return -1; }
-    virtual int32_t removeSource(uint32_t id, bool isAudio) { return -1; }
+    DLL_PUBLIC virtual bool changeVideoBitrate(const std::string& id, uint32_t bitrate) { return false; }
 };
 
 } /* namespace woogeen_base */

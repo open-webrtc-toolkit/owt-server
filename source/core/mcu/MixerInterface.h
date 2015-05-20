@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Intel Corporation All Rights Reserved. 
+ * Copyright 2015 Intel Corporation All Rights Reserved. 
  * 
  * The source code contained or described herein and all documents related to the 
  * source code ("Material") are owned by Intel Corporation or its suppliers or 
@@ -18,35 +18,22 @@
  * and approved by Intel in writing.
  */
 
-#ifndef MEDIASOURCECONSUMER_H
-#define MEDIASOURCECONSUMER_H
+#ifndef MixerInterface_h
+#define MixerInterface_h
 
-#include <MediaSourceConsumer.h>
-#include <node.h>
-#include <string>
+#include <Compiler.h>
+#include <Gateway.h>
 
-/*
- * Wrapper class of woogeen_base::MediaSourceConsumer
- */
-class MediaSourceConsumer : public node::ObjectWrap {
- public:
-  static void Init(v8::Handle<v8::Object> target);
-  woogeen_base::MediaSourceConsumer* me;
+namespace mcu {
 
- private:
-  MediaSourceConsumer();
-  ~MediaSourceConsumer();
+class MixerInterface : public woogeen_base::Gateway {
 
-  /*
-   * Constructor.
-   * Constructs a MediaSourceConsumer
-   */
-  static v8::Handle<v8::Value> New(const v8::Arguments& args);
-  /*
-   * Closes the MediaSourceConsumer.
-   * The object cannot be used after this call
-   */
-  static v8::Handle<v8::Value> close(const v8::Arguments& args);
+public:
+    DLL_PUBLIC virtual ~MixerInterface() { }
+
+    DLL_PUBLIC virtual std::string getRegion(const std::string& participantId) = 0;
+    DLL_PUBLIC virtual void setRegion(const std::string& participantId, const std::string& regionId) = 0;
 };
 
-#endif
+} /* namespace mcu */
+#endif /* MixerInterface_h */

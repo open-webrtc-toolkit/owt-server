@@ -21,6 +21,8 @@
 #ifndef OutOfProcessMixerProxy_h
 #define OutOfProcessMixerProxy_h
 
+#include "MixerInterface.h"
+
 #include <boost/scoped_ptr.hpp>
 #include <MediaDefinitions.h>
 #include <MediaSourceConsumer.h>
@@ -79,16 +81,41 @@ private:
     boost::scoped_ptr<woogeen_base::RawTransport> m_transport;
 };
 
-class OutOfProcessMixerProxy : public woogeen_base::MediaSourceConsumer, public erizo::MediaSink {
+class OutOfProcessMixerProxy : public MixerInterface, public erizo::MediaSink {
 public:
     OutOfProcessMixerProxy();
     ~OutOfProcessMixerProxy();
 
-    // Implement MediaSourceConsumer.
-    int32_t addSource(uint32_t id, bool isAudio, erizo::FeedbackSink*, const std::string& participantId);
-    int32_t removeSource(uint32_t id, bool isAudio);
-    int32_t bindAV(uint32_t audioId, uint32_t videoId);
-    erizo::MediaSink* mediaSink() { return this; }
+    // Implements MixerInterface.
+    bool addPublisher(erizo::MediaSource*, const std::string& id);
+    bool addPublisher(erizo::MediaSource* source, const std::string& id, const std::string& videoResolution) { return addPublisher(source, id); }
+    void removePublisher(const std::string& id);
+
+    void addSubscriber(erizo::MediaSink*, const std::string& id) { }
+    void removeSubscriber(const std::string& id) { }
+
+    // TODO: reconsider the role and usage of this class.
+    void setupAsyncEvent(const std::string& event, woogeen_base::EventRegistry*) { }
+    void destroyAsyncEvents() { }
+
+    void customMessage(const std::string& message) { }
+
+    std::string retrieveStatistics() { return ""; }
+
+    void subscribeStream(const std::string& id, bool isAudio) { }
+    void unsubscribeStream(const std::string& id, bool isAudio) { }
+    void publishStream(const std::string& id, bool isAudio) { }
+    void unpublishStream(const std::string& id, bool isAudio) { }
+
+    bool setRecorder(const std::string& recordPath, int snapshotInterval/*, RecordFormat format*/) { return false; }
+    void unsetRecorder() { }
+
+    int sendFirPacket() { return -1; }
+    int setVideoCodec(const std::string& codecName, unsigned int clockRate) { return -1; }
+    int setAudioCodec(const std::string& codecName, unsigned int clockRate) { return -1; }
+
+    std::string getRegion(const std::string& participantId) { return ""; }
+    void setRegion(const std::string& participantId, const std::string& regionId) { }
 
     // Implement MediaSink.
     int deliverAudioData(char* buf, int len);
@@ -98,6 +125,7 @@ private:
     boost::scoped_ptr<AudioDataWriter> m_audioOutput;
     boost::scoped_ptr<VideoDataWriter> m_videoOutput;
     boost::scoped_ptr<MessageWriter> m_messageOutput;
+    std::map<std::string, erizo::MediaSource*> m_publishers;
 };
 
 } /* namespace mcu */

@@ -35,45 +35,80 @@ OutOfProcessMixerProxy::~OutOfProcessMixerProxy()
 {
 }
 
-int32_t OutOfProcessMixerProxy::addSource(uint32_t id, bool isAudio, erizo::FeedbackSink*, const std::string& participantId)
+bool OutOfProcessMixerProxy::addPublisher(erizo::MediaSource* publisher, const std::string& id)
 {
-    OutOfProcessMixerMessage msg;
-    msg.setType(isAudio ? ADD_AUDIO : ADD_VIDEO);
-    msg.setMediaSource(id);
+    if (m_publishers.find(id) != m_publishers.end())
+        return false;
 
+    uint32_t audioSSRC = publisher->getAudioSourceSSRC();
+    uint32_t videoSSRC = publisher->getVideoSourceSSRC();
+
+    OutOfProcessMixerMessage msg;
     char buf[1024];
-    int len = sizeof(msg) + participantId.length();
+    int len = sizeof(msg) + id.length();
     assert(len <= 1024);
 
-    memcpy(buf, &msg, sizeof(msg));
-    memcpy(buf + sizeof(msg), participantId.c_str(), participantId.length());
+    if (audioSSRC) {
+        msg.setType(ADD_AUDIO);
+        msg.setMediaSource(audioSSRC);
 
-    return m_messageOutput->write(buf, len);
-}
+        memcpy(buf, &msg, sizeof(msg));
+        memcpy(buf + sizeof(msg), id.c_str(), id.length());
 
-int32_t OutOfProcessMixerProxy::removeSource(uint32_t id, bool isAudio)
-{
-    OutOfProcessMixerMessage msg;
-    msg.setType(isAudio ? REMOVE_AUDIO : REMOVE_VIDEO);
-    msg.setMediaSource(id);
+        m_messageOutput->write(buf, len);
+    }
 
-    return m_messageOutput->write(reinterpret_cast<char*>(&msg), sizeof(msg));
-}
+    if (videoSSRC) {
+        msg.setType(ADD_VIDEO);
+        msg.setMediaSource(videoSSRC);
 
-int32_t OutOfProcessMixerProxy::bindAV(uint32_t audioId, uint32_t videoId)
-{
-    OutOfProcessMixerMessage msg;
-    msg.setType(BIND);
-    msg.setMediaSource(audioId);
+        memcpy(buf, &msg, sizeof(msg));
+        memcpy(buf + sizeof(msg), id.c_str(), id.length());
 
-    char buf[1024];
-    int len = sizeof(msg) + sizeof(uint32_t);
+        m_messageOutput->write(buf, len);
+    }
+
+    len = sizeof(msg) + sizeof(uint32_t);
     assert(len <= 1024);
+    if (audioSSRC && videoSSRC) {
+        msg.setType(BIND);
+        msg.setMediaSource(audioSSRC);
 
-    memcpy(buf, &msg, sizeof(msg));
-    memcpy(buf + sizeof(msg), &videoId, sizeof(uint32_t));
+        memcpy(buf, &msg, sizeof(msg));
+        memcpy(buf + sizeof(msg), &videoSSRC, sizeof(uint32_t));
 
-    return m_messageOutput->write(buf, len);
+        m_messageOutput->write(buf, len);
+    }
+
+    publisher->setVideoSink(this);
+    publisher->setAudioSink(this);
+
+    m_publishers[id] = publisher;
+    return true;
+}
+
+void OutOfProcessMixerProxy::removePublisher(const std::string& id)
+{
+    std::map<std::string, MediaSource*>::iterator it = m_publishers.find(id);
+    if (it == m_publishers.end())
+        return;
+
+    int audioSSRC = it->second->getAudioSourceSSRC();
+    int videoSSRC = it->second->getVideoSourceSSRC();
+
+    OutOfProcessMixerMessage msg;
+
+    if (audioSSRC) {
+        msg.setMediaSource(audioSSRC);
+        msg.setType(REMOVE_AUDIO);
+        m_messageOutput->write(reinterpret_cast<char*>(&msg), sizeof(msg));
+    }
+
+    if (videoSSRC) {
+        msg.setMediaSource(videoSSRC);
+        msg.setType(REMOVE_VIDEO);
+        m_messageOutput->write(reinterpret_cast<char*>(&msg), sizeof(msg));
+    }
 }
 
 int OutOfProcessMixerProxy::deliverAudioData(char* buf, int len)
