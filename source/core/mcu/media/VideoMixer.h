@@ -51,7 +51,7 @@ static const int MIXED_H264_VIDEO_STREAM_ID = 3;
 /**
  * Receives media from several sources, mixed into one stream and retransmits it to the RTPDataReceiver.
  */
-class VideoMixer : public woogeen_base::MediaSourceConsumer, public woogeen_base::MediaRecording, public erizo::MediaSink, public erizo::FeedbackSink, public VCMInputProcessorCallback {
+class VideoMixer : public woogeen_base::MediaSourceConsumer, public woogeen_base::MediaRecording, public erizo::FeedbackSink, public VCMInputProcessorCallback {
     DECLARE_LOGGER();
 
 public:
@@ -66,18 +66,11 @@ public:
 
     // Video input related methods.
     int32_t bindAudio(uint32_t sourceId, int voiceChannelId, webrtc::VoEVideoSync*);
-
-    // New AddSource API.
-    int32_t addSource(erizo::MediaSource*);
+    boost::shared_ptr<erizo::MediaSink> getMediaSink(uint32_t from);
 
     // Implements MediaSourceConsumer.
-    int32_t addSource(uint32_t from, bool isAudio, erizo::FeedbackSink*, const std::string& participantId);
-    int32_t removeSource(uint32_t from, bool isAudio);
-    erizo::MediaSink* mediaSink() { return this; }
-
-    // Implements MediaSink.
-    int deliverAudioData(char* buf, int len);
-    int deliverVideoData(char* buf, int len);
+    erizo::MediaSink* addSource(uint32_t from, bool isAudio, erizo::DataContentType, erizo::FeedbackSink*, const std::string& participantId);
+    void removeSource(uint32_t from, bool isAudio);
 
     // Implements FeedbackSink.
     int deliverFeedback(char* buf, int len);

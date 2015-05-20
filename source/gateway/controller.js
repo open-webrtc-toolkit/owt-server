@@ -11,6 +11,7 @@ exports = module.exports = function () {
         customParam,
         subscribers = [],
         publisher,
+        publisherId,
         gateway,
 
         externalOutputs = {},
@@ -89,19 +90,6 @@ exports = module.exports = function () {
         return answer;
     };
 
-    that.clientJoin = function (uri) {
-        logger.info('Connecting to', uri);
-
-        if (gateway === undefined) {
-            gateway = new addon.Gateway(customParam);
-        }
-
-        if (!gateway.clientJoin(uri)) {
-            gateway.close();
-            gateway = undefined;
-        }
-    }
-
     that.addExternalInput = function (from, url, callback) { // TODO: change gateway creation
         if (publisher === undefined) {
             logger.info("Adding external input peer_id ", from);
@@ -175,13 +163,14 @@ exports = module.exports = function () {
             resolution = '';
         }
 
-        if (gateway.setPublisher(wrtc, from, resolution)) {
+        if (gateway.addPublisher(wrtc, from, resolution)) {
             var overridenOnReady = function () {
-                gateway.publishStream(true);
-                gateway.publishStream(false);
+                gateway.publishStream(from, true);
+                gateway.publishStream(from, false);
                 onReady();
             };
             publisher = wrtc;
+            publisherId = from;
             initWebRtcConnection(wrtc, sdp, callback, overridenOnReady);
         } else {
             logger.info("Failed to publish ", from);
@@ -219,7 +208,7 @@ exports = module.exports = function () {
     that.removePublisher = function (from) {
         if (gateway !== undefined && publisher !== undefined) {
             logger.info('Removing publisher ', from);
-            gateway.unsetPublisher();
+            gateway.removePublisher(from);
         }
         publisher = undefined;
     };
@@ -310,25 +299,25 @@ exports = module.exports = function () {
 
     that['video-out-on'] = function () {
         if (typeof gateway === 'object' && gateway !== null) {
-            gateway.publishStream(false);
+            gateway.publishStream(publisherId, false);
         }
     };
 
     that['audio-out-on'] = function () {
         if (typeof gateway === 'object' && gateway !== null) {
-            gateway.publishStream(true);
+            gateway.publishStream(publisherId, true);
         }
     };
 
     that['video-out-off'] = function () {
         if (typeof gateway === 'object' && gateway !== null) {
-            gateway.unpublishStream(false);
+            gateway.unpublishStream(publisherId, false);
         }
     };
 
     that['audio-out-off'] = function () {
         if (typeof gateway === 'object' && gateway !== null) {
-            gateway.unpublishStream(true);
+            gateway.unpublishStream(publisherId, true);
         }
     };
 

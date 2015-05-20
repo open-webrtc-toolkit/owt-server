@@ -24,7 +24,6 @@
 
 #include "Gateway.h"
 
-#include "MediaSourceConsumer.h"
 #include "NodeEventRegistry.h"
 
 using namespace v8;
@@ -40,12 +39,10 @@ void Gateway::Init(Handle<Object> target) {
   // Prototype
   tpl->PrototypeTemplate()->Set(String::NewSymbol("close"),
       FunctionTemplate::New(close)->GetFunction());
-  tpl->PrototypeTemplate()->Set(String::NewSymbol("setPublisher"),
-      FunctionTemplate::New(setPublisher)->GetFunction());
-  tpl->PrototypeTemplate()->Set(String::NewSymbol("unsetPublisher"),
-      FunctionTemplate::New(unsetPublisher)->GetFunction());
-  tpl->PrototypeTemplate()->Set(String::NewSymbol("addExternalSource"),
-      FunctionTemplate::New(addExternalSource)->GetFunction());
+  tpl->PrototypeTemplate()->Set(String::NewSymbol("addPublisher"),
+      FunctionTemplate::New(addPublisher)->GetFunction());
+  tpl->PrototypeTemplate()->Set(String::NewSymbol("removePublisher"),
+      FunctionTemplate::New(removePublisher)->GetFunction());
   tpl->PrototypeTemplate()->Set(String::NewSymbol("addSubscriber"),
       FunctionTemplate::New(addSubscriber)->GetFunction());
   tpl->PrototypeTemplate()->Set(String::NewSymbol("removeSubscriber"),
@@ -54,16 +51,14 @@ void Gateway::Init(Handle<Object> target) {
       FunctionTemplate::New(addExternalOutput)->GetFunction());
   tpl->PrototypeTemplate()->Set(String::NewSymbol("removeExternalOutput"),
       FunctionTemplate::New(removeExternalOutput)->GetFunction());
-  tpl->PrototypeTemplate()->Set(String::NewSymbol("setExternalPublisher"),
-      FunctionTemplate::New(setExternalPublisher)->GetFunction());
+  tpl->PrototypeTemplate()->Set(String::NewSymbol("addExternalPublisher"),
+      FunctionTemplate::New(addExternalPublisher)->GetFunction());
   tpl->PrototypeTemplate()->Set(String::NewSymbol("addEventListener"),
       FunctionTemplate::New(addEventListener)->GetFunction());
   tpl->PrototypeTemplate()->Set(String::NewSymbol("customMessage"),
       FunctionTemplate::New(customMessage)->GetFunction());
-  tpl->PrototypeTemplate()->Set(String::NewSymbol("clientJoin"),
-      FunctionTemplate::New(clientJoin)->GetFunction());
-  tpl->PrototypeTemplate()->Set(String::NewSymbol("retrieveGatewayStatistics"),
-      FunctionTemplate::New(retrieveGatewayStatistics)->GetFunction());
+  tpl->PrototypeTemplate()->Set(String::NewSymbol("retrieveStatistics"),
+      FunctionTemplate::New(retrieveStatistics)->GetFunction());
 
   tpl->PrototypeTemplate()->Set(String::NewSymbol("subscribeStream"),
       FunctionTemplate::New(subscribeStream)->GetFunction());
@@ -73,9 +68,6 @@ void Gateway::Init(Handle<Object> target) {
       FunctionTemplate::New(publishStream)->GetFunction());
   tpl->PrototypeTemplate()->Set(String::NewSymbol("unpublishStream"),
       FunctionTemplate::New(unpublishStream)->GetFunction());
-
-  tpl->PrototypeTemplate()->Set(String::NewSymbol("setMixer"),
-      FunctionTemplate::New(setMixer)->GetFunction());
 
   Persistent<Function> constructor =
       Persistent<Function>::New(tpl->GetFunction());
@@ -96,16 +88,6 @@ Handle<Value> Gateway::New(const Arguments& args) {
   return args.This();
 }
 
-Handle<Value> Gateway::clientJoin(const Arguments& args) {
-  HandleScope scope;
-  v8::String::Utf8Value str(args[0]->ToString());
-  std::string clientJoinUri = std::string(*str);
-  Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.This());
-  woogeen_base::Gateway* me = obj->me;
-  bool joined = me->clientJoin(clientJoinUri);
-  return scope.Close(Boolean::New(joined));
-}
-
 Handle<Value> Gateway::close(const Arguments& args) {
   HandleScope scope;
   Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.This());
@@ -117,7 +99,7 @@ Handle<Value> Gateway::close(const Arguments& args) {
   return scope.Close(Null());
 }
 
-Handle<Value> Gateway::setPublisher(const Arguments& args) {
+Handle<Value> Gateway::addPublisher(const Arguments& args) {
   HandleScope scope;
 
   Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.This());
@@ -133,12 +115,12 @@ Handle<Value> Gateway::setPublisher(const Arguments& args) {
   String::Utf8Value param2(args[2]->ToString());
   std::string videoResolution = std::string(*param2);
 
-  bool added = me->setPublisher(wr, clientId, videoResolution);
+  bool added = me->addPublisher(wr, clientId, videoResolution);
 
   return scope.Close(Boolean::New(added));
 }
 
-Handle<Value> Gateway::setExternalPublisher(const Arguments& args) {
+Handle<Value> Gateway::addExternalPublisher(const Arguments& args) {
   HandleScope scope;
 
   Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.This());
@@ -150,34 +132,20 @@ Handle<Value> Gateway::setExternalPublisher(const Arguments& args) {
   String::Utf8Value param1(args[1]->ToString());
   std::string clientId = std::string(*param1);
 
-  erizo::MediaSource* ms = dynamic_cast<erizo::MediaSource*>(wr);
-  bool added = me->setPublisher(ms, clientId);
+  bool added = me->addPublisher(wr, clientId);
 
   return scope.Close(Boolean::New(added));
 }
 
-Handle<Value> Gateway::addExternalSource(const Arguments& args) {
+Handle<Value> Gateway::removePublisher(const Arguments& args) {
   HandleScope scope;
 
   Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.This());
   woogeen_base::Gateway* me = obj->me;
+  String::Utf8Value param(args[0]->ToString());
+  std::string id = std::string(*param);
 
-  ExternalInput* param = ObjectWrap::Unwrap<ExternalInput>(args[0]->ToObject());
-  erizo::ExternalInput* ei = (erizo::ExternalInput*)param->me;
-
-  erizo::MediaSource* ms = dynamic_cast<erizo::MediaSource*>(ei);
-  me->addSource(ms);
-
-  return scope.Close(Null());
-}
-
-Handle<Value> Gateway::unsetPublisher(const Arguments& args) {
-  HandleScope scope;
-
-  Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.This());
-  woogeen_base::Gateway* me = obj->me;
-
-  me->unsetPublisher();
+  me->removePublisher(id);
 
   return scope.Close(Null());
 }
@@ -192,14 +160,12 @@ Handle<Value> Gateway::addSubscriber(const Arguments& args) {
       ObjectWrap::Unwrap<WebRtcConnection>(args[0]->ToObject());
   erizo::WebRtcConnection* wr = param->me;
 
-  erizo::MediaSink* ms = dynamic_cast<erizo::MediaSink*>(wr);
-
   // get the param
   v8::String::Utf8Value param1(args[1]->ToString());
 
   // convert it to string
   std::string peerId = std::string(*param1);
-  me->addSubscriber(ms, peerId);
+  me->addSubscriber(wr, peerId);
 
   return scope.Close(Null());
 }
@@ -284,13 +250,13 @@ Handle<Value> Gateway::customMessage(const Arguments& args) {
   return scope.Close(Undefined());
 }
 
-Handle<Value> Gateway::retrieveGatewayStatistics(const Arguments& args) {
+Handle<Value> Gateway::retrieveStatistics(const Arguments& args) {
   HandleScope scope;
 
   Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.This());
   woogeen_base::Gateway *me = obj->me;
 
-  std::string stats = me->retrieveGatewayStatistics();
+  std::string stats = me->retrieveStatistics();
 
   return scope.Close(String::NewSymbol(stats.c_str()));
 }
@@ -321,8 +287,10 @@ Handle<Value> Gateway::publishStream(const Arguments& args) {
   HandleScope scope;
   Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.This());
   woogeen_base::Gateway* me = obj->me;
-  bool isAudio = args[0]->BooleanValue();
-  me->publishStream(isAudio);
+  v8::String::Utf8Value param(args[0]->ToString());
+  std::string id = std::string(*param);
+  bool isAudio = args[1]->BooleanValue();
+  me->publishStream(id, isAudio);
   return scope.Close(Undefined());
 }
 
@@ -330,23 +298,9 @@ Handle<Value> Gateway::unpublishStream(const Arguments& args) {
   HandleScope scope;
   Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.This());
   woogeen_base::Gateway* me = obj->me;
-  bool isAudio = args[0]->BooleanValue();
-  me->unpublishStream(isAudio);
-  return scope.Close(Undefined());
-}
-
-Handle<Value> Gateway::setMixer(const Arguments& args) {
-  HandleScope scope;
-
-  Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.This());
-  woogeen_base::Gateway* me = obj->me;
-
-  // FIXME!
-  MediaSourceConsumer* param =
-      ObjectWrap::Unwrap<MediaSourceConsumer>(args[0]->ToObject());
-  woogeen_base::MediaSourceConsumer* mixer = param->me;
-
-  me->setAdditionalSourceConsumer(mixer);
-
+  v8::String::Utf8Value param(args[0]->ToString());
+  std::string id = std::string(*param);
+  bool isAudio = args[1]->BooleanValue();
+  me->unpublishStream(id, isAudio);
   return scope.Close(Undefined());
 }

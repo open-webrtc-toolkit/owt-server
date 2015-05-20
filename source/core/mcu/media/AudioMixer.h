@@ -47,13 +47,9 @@ public:
     AudioMixer(erizo::RTPDataReceiver*, AudioMixerVADCallback* callback, bool enableVAD = false);
     virtual ~AudioMixer();
 
-    // New AddSource API.
-    int32_t addSource(erizo::MediaSource* audioSource);
-
     // Implements MediaSourceConsumer.
-    int32_t addSource(uint32_t id, bool isAudio, erizo::FeedbackSink*, const std::string& participantId);
-    int32_t removeSource(uint32_t id, bool isAudio);
-    erizo::MediaSink* mediaSink() { return this; }
+    erizo::MediaSink* addSource(uint32_t id, bool isAudio, erizo::DataContentType, erizo::FeedbackSink*, const std::string& participantId);
+    void removeSource(uint32_t id, bool isAudio);
 
     // Implements MediaSink.
     int deliverAudioData(char* buf, int len);

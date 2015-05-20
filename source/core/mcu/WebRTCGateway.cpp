@@ -29,8 +29,7 @@ namespace mcu {
 DEFINE_LOGGER(WebRTCGateway, "mcu.WebRTCGateway");
 
 WebRTCGateway::WebRTCGateway()
-    : m_mixer(nullptr)
-    , m_pendingIFrameRequests(0)
+    : m_pendingIFrameRequests(0)
 {
 }
 
@@ -44,12 +43,13 @@ int WebRTCGateway::deliverAudioData(char* buf, int len)
     if (len <= 0)
         return 0;
 
-    m_audioReceiver->deliverAudioData(buf, len);
+    {
+        boost::shared_lock<boost::shared_mutex> lock(m_sinkMutex);
+        if (audioSink_)
+            audioSink_->deliverAudioData(buf, len);
+    }
 
-    if (m_mixer && m_mixer->mediaSink())
-        m_mixer->mediaSink()->deliverAudioData(buf, len);
-
-    return len;
+    return m_audioReceiver->deliverAudioData(buf, len);
 }
 
 int WebRTCGateway::deliverVideoData(char* buf, int len)
@@ -57,12 +57,13 @@ int WebRTCGateway::deliverVideoData(char* buf, int len)
     if (len <= 0)
         return 0;
 
-    m_videoReceiver->deliverVideoData(buf, len);
+    {
+        boost::shared_lock<boost::shared_mutex> lock(m_sinkMutex);
+        if (videoSink_)
+            videoSink_->deliverVideoData(buf, len);
+    }
 
-    if (m_mixer && m_mixer->mediaSink())
-        m_mixer->mediaSink()->deliverVideoData(buf, len);
-
-    return len;
+    return m_videoReceiver->deliverVideoData(buf, len);
 }
 
 void WebRTCGateway::receiveRtpData(char* rtpdata, int len, DataType type, uint32_t streamId)
@@ -132,7 +133,7 @@ void WebRTCGateway::handleIntraFrameRequest()
     ++m_pendingIFrameRequests;
 }
 
-bool WebRTCGateway::setPublisher(MediaSource* publisher, const std::string& id)
+bool WebRTCGateway::addPublisher(MediaSource* publisher, const std::string& id)
 {
     if (m_publisher) {
         ELOG_WARN("Publisher already exists: %p, id %s, ignoring the new set request (%p, %s)",
@@ -160,6 +161,10 @@ bool WebRTCGateway::setPublisher(MediaSource* publisher, const std::string& id)
     if (fbSource)
         fbSource->setFeedbackSink(feedbackSink);
 
+    videoSourceSSRC_ = publisher->getVideoSourceSSRC();
+    audioSourceSSRC_ = publisher->getAudioSourceSSRC();
+    sourcefbSink_ = feedbackSink;
+
     publisher->setAudioSink(this);
     publisher->setVideoSink(this);
 
@@ -168,9 +173,9 @@ bool WebRTCGateway::setPublisher(MediaSource* publisher, const std::string& id)
     return true;
 }
 
-void WebRTCGateway::unsetPublisher()
+void WebRTCGateway::removePublisher(const std::string& id)
 {
-    if (!m_publisher) {
+    if (!m_publisher || id != m_participantId) {
         ELOG_WARN("Publisher doesn't exist; can't unset the publisher");
         return;
     }
@@ -180,17 +185,9 @@ void WebRTCGateway::unsetPublisher()
         return;
     }
 
-    if (m_mixer) {
-        m_mixer->removeSource(m_publisher->getAudioSourceSSRC(), true);
-        m_mixer->removeSource(m_publisher->getVideoSourceSSRC(), false);
-    }
-
     m_feedbackTimer->stop();
 
     m_publisher.reset();
-    // The mixer reference and feedback processor need to be resetted because
-    // they rely on the valid publisher information like the SSRCs.
-    m_mixer = nullptr;
 }
 
 void WebRTCGateway::addSubscriber(MediaSink* subscriber, const std::string& id)
@@ -245,27 +242,31 @@ void WebRTCGateway::removeSubscriber(const std::string& id)
     lock.unlock();
 }
 
-void WebRTCGateway::setAdditionalSourceConsumer(woogeen_base::MediaSourceConsumer* mixer)
+void WebRTCGateway::setAudioSink(MediaSink* sink)
 {
-    m_mixer = mixer;
+    boost::unique_lock<boost::shared_mutex> lock(m_sinkMutex);
+    audioSink_ = sink;
+}
 
-    uint32_t audioSSRC = m_publisher->getAudioSourceSSRC();
-    uint32_t videoSSRC = m_publisher->getVideoSourceSSRC();
-    FeedbackSink* feedback = m_publisher->getFeedbackSink();
+void WebRTCGateway::setVideoSink(MediaSink* sink)
+{
+    boost::unique_lock<boost::shared_mutex> lock(m_sinkMutex);
+    videoSink_ = sink;
+}
 
-    if (audioSSRC)
-        mixer->addSource(audioSSRC, true, feedback, m_participantId);
-    if (videoSSRC)
-        mixer->addSource(videoSSRC, false, feedback, m_participantId);
+int WebRTCGateway::sendFirPacket()
+{
+    return m_publisher ? m_publisher->sendFirPacket() : -1;
+}
 
-    if (audioSSRC && videoSSRC)
-        mixer->bindAV(audioSSRC, videoSSRC);
+int WebRTCGateway::setVideoCodec(const std::string& codecName, unsigned int clockRate)
+{
+    return m_publisher ? m_publisher->setVideoCodec(codecName, clockRate) : -1;
+}
 
-    if (m_mixer->mediaSink()) {
-        // Disable NACK of the RTPReceiver(s).
-        m_audioReceiver->setNACKStatus(false);
-        m_videoReceiver->setNACKStatus(false);
-    }
+int WebRTCGateway::setAudioCodec(const std::string& codecName, unsigned int clockRate)
+{
+    return m_publisher ? m_publisher->setAudioCodec(codecName, clockRate) : -1;
 }
 
 bool WebRTCGateway::addExternalOutput(const std::string& configParam)
@@ -290,13 +291,6 @@ void WebRTCGateway::onTimeout()
     }
 
     // Secondly, send the feedback from Gateway to the WebRTC client.
-
-    // If the stream will be handed over to another source consumer (usually a mixer),
-    // we skip the feedback from the subscribers because the source consumer is responsible
-    // for generating the feedback to the publisher.
-    if (m_mixer && m_mixer->mediaSink())
-        return;
-
     FeedbackSink* feedback = m_publisher->getFeedbackSink();
     char buf[MAX_DATA_PACKET_SIZE];
     // Deliver the video feedback.
@@ -328,7 +322,7 @@ void WebRTCGateway::closeAll()
     m_subscribers.clear();
     subscriberLock.unlock();
 
-    unsetPublisher();
+    removePublisher(m_participantId);
 }
 
 }/* namespace mcu */

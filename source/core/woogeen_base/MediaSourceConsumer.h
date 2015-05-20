@@ -30,11 +30,9 @@ public:
     DLL_PUBLIC static MediaSourceConsumer* createMediaSourceConsumerInstance();
     DLL_PUBLIC virtual ~MediaSourceConsumer() { }
 
-    virtual int32_t addSource(uint32_t id, bool isAudio, erizo::FeedbackSink*, const std::string& participantId) = 0;
-    virtual int32_t removeSource(uint32_t id, bool isAudio) = 0;
+    virtual erizo::MediaSink* addSource(uint32_t id, bool isAudio, erizo::DataContentType, erizo::FeedbackSink*, const std::string& participantId) = 0;
+    virtual void removeSource(uint32_t id, bool isAudio) = 0;
     virtual int32_t bindAV(uint32_t audioSource, uint32_t videoSource) { return -1; }
-
-    virtual erizo::MediaSink* mediaSink() { return nullptr; }
 };
 
 } /* namespace woogeen_base */

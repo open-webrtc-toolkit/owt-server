@@ -104,13 +104,15 @@ public:
     virtual ~WebRTCGateway();
 
     // Implements Gateway.
-    bool setPublisher(erizo::MediaSource*, const std::string& participantId);
-    bool setPublisher(erizo::MediaSource* source, const std::string& participantId, const std::string& videoResolution) { return setPublisher(source, participantId); }
-    void unsetPublisher();
+    bool addPublisher(erizo::MediaSource*, const std::string& participantId);
+    bool addPublisher(erizo::MediaSource* source, const std::string& participantId, const std::string& videoResolution) { return addPublisher(source, participantId); }
+    void removePublisher(const std::string& participantId);
 
     void addSubscriber(erizo::MediaSink*, const std::string& id);
     void removeSubscriber(const std::string& id);
 
+    // TODO: implement the below interfaces to support async event notification
+    // from the native layer to the JS (controller) layer.
     void setupAsyncEvent(const std::string& event, woogeen_base::EventRegistry* handler)
     {
         m_asyncHandler.reset(handler);
@@ -118,17 +120,25 @@ public:
     }
     void destroyAsyncEvents() { m_asyncHandler.reset(); }
 
-    bool clientJoin(const std::string& clientJoinUri) { return true; }
     void customMessage(const std::string& message) { }
 
-    std::string retrieveGatewayStatistics() { return ""; }
+    // TODO: implement the below interface to support Gateway statistics retrieval,
+    // which can be used to monitor the gateway. Refer to ooVoo Gateway for example.
+    std::string retrieveStatistics() { return ""; }
 
+    // TODO: implement the below interfaces to support media play/pause.
     void subscribeStream(const std::string& id, bool isAudio) { }
     void unsubscribeStream(const std::string& id, bool isAudio) { }
-    void publishStream(bool isAudio) { }
-    void unpublishStream(bool isAudio) { }
+    void publishStream(const std::string& id, bool isAudio) { }
+    void unpublishStream(const std::string& id, bool isAudio) { }
 
-    void setAdditionalSourceConsumer(woogeen_base::MediaSourceConsumer*);
+    // TODO: It's ugly to override setAudioSink/setVideoSink,
+    // but we need to explicitly manage the synchronization of the sink setting/getting now,
+    void setAudioSink(erizo::MediaSink*);
+    void setVideoSink(erizo::MediaSink*);
+    int sendFirPacket();
+    int setVideoCodec(const std::string& codecName, unsigned int clockRate);
+    int setAudioCodec(const std::string& codecName, unsigned int clockRate);
 
     bool addExternalOutput(const std::string& configParam);
     bool removeExternalOutput(const std::string& outputId);
@@ -161,7 +171,7 @@ private:
     boost::shared_mutex m_subscriberMutex;
     std::map<std::string, SubscriberInfo> m_subscribers;
 
-    woogeen_base::MediaSourceConsumer* m_mixer;
+    boost::shared_mutex m_sinkMutex;
 
     // TODO: Use it for async event notification from the worker thread to the main node thread.
     boost::shared_ptr<woogeen_base::EventRegistry> m_asyncHandler;

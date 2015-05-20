@@ -88,21 +88,14 @@ AudioMixer::~AudioMixer()
     VoiceEngine::Delete(m_voiceEngine);
 }
 
-int32_t AudioMixer::addSource(erizo::MediaSource* audioSource)
-{
-    //TODO Add logic to handle audio frame.
-
-    return 0;
-}
-
-int32_t AudioMixer::addSource(uint32_t from, bool isAudio, erizo::FeedbackSink* feedback, const std::string& participantId)
+erizo::MediaSink* AudioMixer::addSource(uint32_t from, bool isAudio, erizo::DataContentType, erizo::FeedbackSink* feedback, const std::string& participantId)
 {
     assert(isAudio);
 
     boost::upgrade_lock<boost::shared_mutex> lock(m_sourceMutex);
     std::map<uint32_t, VoiceChannel>::iterator it = m_sourceChannels.find(from);
     if (it != m_sourceChannels.end())
-        return it->second.id;
+        return nullptr;
 
     int channel = -1;
     boost::shared_ptr<woogeen_base::WebRTCTransport<erizo::AUDIO>> transport;
@@ -125,7 +118,7 @@ int32_t AudioMixer::addSource(uint32_t from, bool isAudio, erizo::FeedbackSink* 
             // Set the Feedback sink for the transport, because this channel is going to be a source channel.
             transport->setFeedbackSink(feedback);
             if (voe->StartReceive(channel) == -1 || voe->StartPlayout(channel) == -1)
-                return -1;
+                return nullptr;
         } else {
             VoENetwork* network = VoENetwork::GetInterface(m_voiceEngine);
             transport.reset(new woogeen_base::WebRTCTransport<erizo::AUDIO>(m_dataReceiver, feedback));
@@ -133,7 +126,7 @@ int32_t AudioMixer::addSource(uint32_t from, bool isAudio, erizo::FeedbackSink* 
                 || voe->StartReceive(channel) == -1
                 || voe->StartPlayout(channel) == -1) {
                 voe->DeleteChannel(channel);
-                return -1;
+                return nullptr;
             }
             boost::upgrade_to_unique_lock<boost::shared_mutex> uniquePartLock(outputLock);
             m_outputChannels[participantId] = {channel, transport};
@@ -148,10 +141,10 @@ int32_t AudioMixer::addSource(uint32_t from, bool isAudio, erizo::FeedbackSink* 
         boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
         m_sourceChannels[from] = {channel, transport};
     }
-    return channel;
+    return this;
 }
 
-int32_t AudioMixer::removeSource(uint32_t from, bool isAudio)
+void AudioMixer::removeSource(uint32_t from, bool isAudio)
 {
     assert(isAudio);
 
@@ -185,11 +178,7 @@ int32_t AudioMixer::removeSource(uint32_t from, bool isAudio)
 
         boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
         m_sourceChannels.erase(it);
-
-        return 0;
     }
-
-    return -1;
 }
 
 #define global_ns

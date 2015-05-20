@@ -36,6 +36,65 @@ OutOfProcessMixer::~OutOfProcessMixer()
 {
 }
 
+erizo::MediaSink* OutOfProcessMixer::addSource(uint32_t id, bool isAudio, erizo::DataContentType type, erizo::FeedbackSink* feedback, const std::string& participantId)
+{
+    if (isAudio)
+        return m_audioMixer->addSource(id, true, type, feedback, participantId);
+
+    return m_videoMixer->addSource(id, false, type, feedback, participantId);
+}
+
+void OutOfProcessMixer::removeSource(uint32_t source, bool isAudio)
+{
+    if (isAudio) {
+        boost::unique_lock<boost::shared_mutex> lock(m_avBindingsMutex);
+        m_avBindings.erase(source);
+        m_audioMixer->removeSource(source, true);
+    } else
+        m_videoMixer->removeSource(source, false);
+}
+
+int32_t OutOfProcessMixer::bindAV(uint32_t audioSource, uint32_t videoSource)
+{
+    {
+        boost::unique_lock<boost::shared_mutex> lock(m_avBindingsMutex);
+        m_avBindings[audioSource] = videoSource;
+    }
+
+    return m_videoMixer->bindAudio(videoSource, m_audioMixer->getChannelId(audioSource), m_audioMixer->avSyncInterface());
+}
+
+#define global_ns
+
+/**
+ * Multiple sources may call this method simultaneously from different threads.
+ * The incoming buffer is a rtp packet.
+ */
+int OutOfProcessMixer::deliverVideoData(char* buf, int len)
+{
+    uint32_t id = 0;
+    RTCPHeader* chead = reinterpret_cast<RTCPHeader*>(buf);
+    uint8_t packetType = chead->getPacketType();
+    assert(packetType != RTCP_Receiver_PT && packetType != RTCP_PS_Feedback_PT && packetType != RTCP_RTP_Feedback_PT);
+    if (packetType == RTCP_Sender_PT)
+        id = chead->getSSRC();
+    else {
+        global_ns::RTPHeader* head = reinterpret_cast<global_ns::RTPHeader*>(buf);
+        id = head->getSSRC();
+    }
+
+    boost::shared_ptr<MediaSink> sink = m_videoMixer->getMediaSink(id);
+    if (sink)
+        return sink->deliverVideoData(buf, len);
+
+    return 0;
+}
+
+int OutOfProcessMixer::deliverAudioData(char* buf, int len)
+{
+    return m_audioMixer->deliverAudioData(buf, len);
+}
+
 AudioDataReader::AudioDataReader(erizo::MediaSink* sink)
     : m_sink(sink)
 {
@@ -102,7 +161,7 @@ void MessageReader::onTransportData(char* buf, int len, woogeen_base::Protocol p
     case ADD_VIDEO: {
         std::string participant(buf + sizeof(*msg), len - sizeof(*msg));
         // TODO: FeedbackSink.
-        m_consumer->addSource(msg->mediaSource(), msg->type() == ADD_AUDIO, nullptr, participant);
+        m_consumer->addSource(msg->mediaSource(), msg->type() == ADD_AUDIO, erizo::DataContentType::RTP, nullptr, participant);
         break;
     }
     case REMOVE_AUDIO:

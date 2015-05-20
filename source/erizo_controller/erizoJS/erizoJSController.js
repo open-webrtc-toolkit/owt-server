@@ -13,12 +13,10 @@ exports.ErizoJSController = function (spec) {
     "use strict";
 
     var that = {},
-        // {id: array of subscribers}
         subscribers = {},
-        // {id: Gateway}
         publishers = {},
-        // {id: MediaSourceConsumer}
-        mixerProxies = {},
+        mixers = {},
+        mixerProxy,
 
         INTERVAL_TIME_SDP = 100,
         INTERVAL_TIME_FIR = 100,
@@ -42,6 +40,7 @@ exports.ErizoJSController = function (spec) {
                 var config = {
                     "mixer": true,
                     "oop": oop,
+                    "proxy": false,
                     "video": {
                         "hardware": hardwareAccelerated,
                         "avcoordinate": roomConfig.video.avCoordinated,
@@ -52,7 +51,7 @@ exports.ErizoJSController = function (spec) {
                         "templates": roomConfig.video.layout
                     }
                 };
-                var mixer = new addon.Gateway(JSON.stringify(config));
+                var mixer = new addon.Mixer(JSON.stringify(config));
 
                 publishers[id] = mixer;
                 subscribers[id] = [];
@@ -142,11 +141,12 @@ exports.ErizoJSController = function (spec) {
             if (id_mixer) {
               var mixer = publishers[id_mixer];
               if (mixer) {
-                publishers[id_pub].setMixer(mixer);
+                mixer.addPublisher(publishers[id_pub], id_pub);
+                mixers[id_pub] = mixer;
               } else {
-                var mixerProxy = mixerProxies[id_pub];
                 if (mixerProxy) {
-                  publishers[id_pub].setMixer(mixerProxy);
+                  mixerProxy.addPublisher(publishers[id_pub], id_pub);
+                  mixers[id_pub] = mixerProxy;
                 }
               }
             }
@@ -214,7 +214,7 @@ exports.ErizoJSController = function (spec) {
             if (mixer.id) {
               var mixerObj = publishers[mixer.id];
               if (mixerObj) {
-                mixerObj.addExternalSource(ei);
+                mixerObj.addExternalPublisher(ei, from);
               }
             }
 
@@ -286,11 +286,17 @@ exports.ErizoJSController = function (spec) {
                     publishers[from] = muxer;
                     subscribers[from] = [];
 
-                    if (mixer.id && mixer.oop)
-                        mixerProxies[from] = new addon.MediaSourceConsumer();
+                    if (mixer.id && mixer.oop && mixerProxy === undefined) {
+                        var config = {
+                            "mixer": true,
+                            "oop": true,
+                            "proxy": true,
+                        };
+                        mixerProxy = new addon.Mixer(JSON.stringify(config));
+                    }
 
                     initWebRtcConnection(wrtc, sdp, mixer.id, callback, from);
-                    muxer.setPublisher(wrtc, from);
+                    muxer.addPublisher(wrtc, from);
                 } else {
                     log.warn('Failed to publish the stream:', err);
                 }
@@ -338,16 +344,15 @@ exports.ErizoJSController = function (spec) {
 
         if (subscribers[from] !== undefined && publishers[from] !== undefined) {
             log.info('Removing muxer', from);
+            if (mixers[from]) {
+                mixers[from].removePublisher(from);
+                delete mixers[from];
+            }
             publishers[from].close();
             log.info('Removing subscribers', from);
             delete subscribers[from];
             log.info('Removing publisher', from);
             delete publishers[from];
-            if (mixerProxies[from] !== undefined) {
-                log.info('Removing mixer proxy', from);
-                mixerProxies[from].close();
-                delete mixerProxies[from];
-            }
 
             var count = 0;
             for (var k in publishers) {
@@ -358,6 +363,10 @@ exports.ErizoJSController = function (spec) {
 
             log.info("Publishers: ", count);
             if (count === 0) {
+                if (mixerProxy !== undefined) {
+                    log.info('Removing mixer proxy', from);
+                    mixerProxy.close();
+                }
                 log.info('Removed all publishers. Killing process.');
                 process.exit(0);
             }
