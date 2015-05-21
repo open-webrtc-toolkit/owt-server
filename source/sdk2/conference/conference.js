@@ -63,6 +63,12 @@ Woogeen.ConferenceClient = (function () {
       L.Logger.debug("None!");
       throw "WebRTC stack not available";
     }
+    if (!that.updateSpec){
+      that.updateSpec = function(newSpec, callback){
+        L.Logger.error("Update Configuration not implemented in this platform");
+        callback ("unimplemented");
+      };
+    }
 
     return that;
   }

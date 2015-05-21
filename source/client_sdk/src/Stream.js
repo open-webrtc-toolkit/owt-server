@@ -14,6 +14,9 @@ Erizo.Stream = function (spec) {
     that.audio = spec.audio;
     that.screen = spec.screen;
     that.videoSize = spec.videoSize;
+    that.videoBW = spec.videoBW;
+    that.audioBW = spec.audioBW;
+
     if (that.videoSize !== undefined && (!(that.videoSize instanceof Array) || that.videoSize.length !== 4)) {
         throw Error("Invalid Video Size");
     }
@@ -309,6 +312,15 @@ Erizo.Stream = function (spec) {
         }
         if (typeof onFailure === 'function') {
             onFailure('unable to call pauseVideo');
+        }
+    };
+
+    that.updateConfiguration = function (config, callback) {
+        if (config === undefined) {
+            return;
+        }
+        if (that.pc) {
+            that.pc.updateSpec(config, callback);
         }
     };
 
