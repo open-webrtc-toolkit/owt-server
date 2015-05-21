@@ -113,8 +113,8 @@ L.Logger.info('stream is from screen?', stream.isScreen());
       return (!!spec.video) && (spec.video.device === 'screen'); // device: 'camera', 'screen'
     };
     this.bitRate = {
-      maxVideoBW: undefined,
-      maxAudioBW: undefined
+      maxVideoBW: spec.videoBW,
+      maxAudioBW: spec.audioBW
     }; // mutable;
     this.toJson = function () {
       return {
@@ -307,6 +307,15 @@ stream.enableVideo();
       }
     }
     return false;
+  };
+
+  WoogeenStream.prototype.updateConfiguration = function (config, callback) {
+    if (config === undefined) {
+      return;
+    }
+    if (this.channel) {
+      this.channel.updateSpec(config, callback);
+    }
   };
 
   function WoogeenLocalStream (spec) {

@@ -45,6 +45,7 @@ Erizo.ChromeStableStack = function (spec) {
     var setMaxBW = function (sdp) {
         var a, r;
         if (spec.video && spec.maxVideoBW) {
+            sdp = sdp.replace(/b=AS:.*\r\n/g, "");
             a = sdp.match(/m=video.*\r\n/);
             if (a == null){
               a = sdp.match(/m=video.*\n/);
@@ -123,6 +124,7 @@ Erizo.ChromeStableStack = function (spec) {
     };
 
     var localDesc;
+    var remoteDesc;
 
     var setLocalDesc = function (sessionDescription) {
         sessionDescription.sdp = setMaxBW(sessionDescription.sdp);
@@ -144,6 +146,30 @@ Erizo.ChromeStableStack = function (spec) {
         });
         localDesc = sessionDescription;
         that.peerConnection.setLocalDescription(sessionDescription);
+    };
+
+    that.updateSpec = function (config, callback){
+        if (config.maxVideoBW || config.maxAudioBW ){
+            if (config.maxVideoBW) {
+                spec.maxVideoBW = config.maxVideoBW; 
+            }
+            if (config.maxAudioBW) {
+                spec.maxAudioBW = config.maxAudioBW;
+            }
+
+            localDesc.sdp = setMaxBW(localDesc.sdp);
+            that.peerConnection.setLocalDescription(localDesc, function(){
+                remoteDesc.sdp = setMaxBW(remoteDesc.sdp);
+                that.peerConnection.setRemoteDescription(new RTCSessionDescription(remoteDesc), function() {
+                    spec.remoteDescriptionSet = true;
+                    if (callback) {
+                        callback("success");
+                    }
+
+                });
+            });
+        }
+        
     };
 
     that.createOffer = function (isSubscribe) {
@@ -183,6 +209,7 @@ Erizo.ChromeStableStack = function (spec) {
 
             msg.sdp = setMaxBW(msg.sdp);
 
+            remoteDesc = msg;
             that.peerConnection.setLocalDescription(localDesc, function(){
               that.peerConnection.setRemoteDescription(new RTCSessionDescription(msg), function() {
                 spec.remoteDescriptionSet = true;
