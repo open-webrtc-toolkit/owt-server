@@ -65,8 +65,10 @@ Woogeen.ConferenceClient = (function () {
     }
     if (!that.updateSpec){
       that.updateSpec = function(newSpec, callback){
-        L.Logger.error("Update Configuration not implemented in this platform");
-        callback ("unimplemented");
+        L.Logger.error("Update Configuration not implemented in this browser");
+        if (callback) {
+            callback ("unimplemented");
+        }
       };
     }
 
@@ -346,7 +348,9 @@ conference.join(token, function(response) {...}, function(error) {...});
             stunServerUrl: self.connSettings.stun,
             turnServer: self.connSettings.turn,
             maxAudioBW: self.connSettings.maxAudioBW,
-            maxVideoBW: self.connSettings.maxVideoBW
+            maxVideoBW: self.connSettings.maxVideoBW,
+            limitMaxAudioBW: self.connSettings.maxAudioBW,
+            limitMaxVideoBW: self.connSettings.maxVideoBW
           });
 
           stream.channel.onaddstream = function (evt) {
@@ -723,6 +727,8 @@ conference.publish(localStream, {maxVideoBW: 300}, function (st) {
           turnServer: self.connSettings.turn,
           maxAudioBW: options.maxAudioBW,
           maxVideoBW: options.maxVideoBW,
+          limitMaxAudioBW: self.connSettings.maxAudioBW,
+          limitMaxVideoBW: self.connSettings.maxVideoBW,
           videoCodec: options.videoCodec
         });
 

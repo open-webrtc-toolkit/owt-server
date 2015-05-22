@@ -150,11 +150,19 @@ Erizo.ChromeStableStack = function (spec) {
 
     that.updateSpec = function (config, callback){
         if (config.maxVideoBW || config.maxAudioBW ){
-            if (config.maxVideoBW) {
+            if (config.maxVideoBW){
+                console.log ("Maxvideo Requested", config.maxVideoBW, "limit", spec.limitMaxVideoBW);
+                if (config.maxVideoBW > spec.limitMaxVideoBW) {
+                    config.maxVideoBW = spec.limitMaxVideoBW;
+                }
                 spec.maxVideoBW = config.maxVideoBW; 
+                console.log ("Result", spec.maxVideoBW);
             }
-            if (config.maxAudioBW) {
-                spec.maxAudioBW = config.maxAudioBW;
+            if (config.maxAudioBW){
+                if (config.maxAudioBW > spec.limitMaxAudioBW) {
+                    config.maxAudioBW = spec.limitMaxAudioBW;
+                }
+                spec.maxAudioBW = config.maxAudioBW; 
             }
 
             localDesc.sdp = setMaxBW(localDesc.sdp);

@@ -463,7 +463,7 @@ Erizo.Client = function (spec) {
 
                             stream.pc.processSignalingMessage(answer);
                         });
-                    }, iceServers: that.userSetIceServers, stunServerUrl: that.stunServerUrl, turnServer: that.turnServer, maxAudioBW: options.maxAudioBW, maxVideoBW: options.maxVideoBW});
+                    }, iceServers: that.userSetIceServers, stunServerUrl: that.stunServerUrl, turnServer: that.turnServer, maxAudioBW: options.maxAudioBW, maxVideoBW: options.maxVideoBW, limitMaxAudioBW: spec.maxAudioBW, limitMaxVideoBW: spec.maxVideoBW});
 
                     stream.pc.addStream(stream.stream);
                 }
