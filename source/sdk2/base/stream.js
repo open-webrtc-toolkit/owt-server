@@ -113,8 +113,8 @@ L.Logger.info('stream is from screen?', stream.isScreen());
       return (!!spec.video) && (spec.video.device === 'screen'); // device: 'camera', 'screen'
     };
     this.bitRate = {
-      maxVideoBW: spec.videoBW,
-      maxAudioBW: spec.audioBW
+      maxVideoBW: undefined,
+      maxAudioBW: undefined
     }; // mutable;
     this.toJson = function () {
       return {
@@ -315,6 +315,8 @@ stream.enableVideo();
     }
     if (this.channel) {
       this.channel.updateSpec(config, callback);
+    } else {
+      return ("This stream has not been published, ignoring");
     }
   };
 
