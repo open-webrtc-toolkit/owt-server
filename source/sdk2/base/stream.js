@@ -677,7 +677,11 @@ if (stream.isMixed()) {
 
     if (option.video && option.video.device === 'screen') {
       if (isFirefox()) {
-        mediaOption = { video: { mediaSource: 'window' || 'screen' }};
+        if (mediaOption.video !== undefined) {
+          mediaOption.video.mediaSource = "'window' || 'screen'";
+        } else {
+          mediaOption.video = { mediaSource: 'window' || 'screen' };
+        }
         getMedia.apply(navigator, [mediaOption, onSuccess, onFailure]);
         return;
       }
