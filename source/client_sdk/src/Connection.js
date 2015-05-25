@@ -78,7 +78,7 @@ Erizo.GetUserMedia = function (config, callback, error) {
                 var theConfig = {};
                 if(config.video !== undefined){
                     theConfig.video = config.video;
-                    theConfig.video.mediaSource = "'window' || 'screen'";
+                    theConfig.video.mediaSource = 'window' || 'screen';
                 }else{
                     theConfig = { video: { mediaSource: 'window' || 'screen' }};
                 }
