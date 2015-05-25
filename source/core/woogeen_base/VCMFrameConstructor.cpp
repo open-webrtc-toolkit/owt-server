@@ -56,6 +56,7 @@ VCMFrameConstructor::~VCMFrameConstructor()
 
 bool VCMFrameConstructor::initialize(WebRTCTransport<erizo::VIDEO>* transport, boost::shared_ptr<WebRTCTaskRunner> taskRunner)
 {
+    m_videoTransport.reset(transport);
     m_taskRunner = taskRunner;
 
     m_vcm = VideoCodingModule::Create();
