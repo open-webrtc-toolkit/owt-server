@@ -52,6 +52,8 @@ void Gateway::Init(Handle<Object> target) {
       FunctionTemplate::New(removeSubscriber)->GetFunction());
   tpl->PrototypeTemplate()->Set(String::NewSymbol("addExternalOutput"),
       FunctionTemplate::New(addExternalOutput)->GetFunction());
+  tpl->PrototypeTemplate()->Set(String::NewSymbol("removeExternalOutput"),
+      FunctionTemplate::New(removeExternalOutput)->GetFunction());
   tpl->PrototypeTemplate()->Set(String::NewSymbol("setExternalPublisher"),
       FunctionTemplate::New(setExternalPublisher)->GetFunction());
   tpl->PrototypeTemplate()->Set(String::NewSymbol("addEventListener"),
@@ -71,11 +73,6 @@ void Gateway::Init(Handle<Object> target) {
       FunctionTemplate::New(publishStream)->GetFunction());
   tpl->PrototypeTemplate()->Set(String::NewSymbol("unpublishStream"),
       FunctionTemplate::New(unpublishStream)->GetFunction());
-
-  tpl->PrototypeTemplate()->Set(String::NewSymbol("setRecorder"),
-      FunctionTemplate::New(setRecorder)->GetFunction());
-  tpl->PrototypeTemplate()->Set(String::NewSymbol("unsetRecorder"),
-      FunctionTemplate::New(unsetRecorder)->GetFunction());
 
   tpl->PrototypeTemplate()->Set(String::NewSymbol("setMixer"),
       FunctionTemplate::New(setMixer)->GetFunction());
@@ -207,27 +204,6 @@ Handle<Value> Gateway::addSubscriber(const Arguments& args) {
   return scope.Close(Null());
 }
 
-Handle<Value> Gateway::addExternalOutput(const Arguments& args) {
-  HandleScope scope;
-
-  Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.This());
-  woogeen_base::Gateway* me = obj->me;
-
-  ExternalOutput* out = ObjectWrap::Unwrap<ExternalOutput>(args[0]->ToObject());
-  erizo::ExternalOutput* output = out->me;
-
-  erizo::MediaSink* ms = dynamic_cast<erizo::MediaSink*>(output);
-
-  // get the param
-  v8::String::Utf8Value param1(args[1]->ToString());
-
-  // convert it to string
-  std::string peerId = std::string(*param1);
-  me->addSubscriber(ms, peerId);
-
-  return scope.Close(Null());
-}
-
 Handle<Value> Gateway::removeSubscriber(const Arguments& args) {
   HandleScope scope;
 
@@ -242,6 +218,36 @@ Handle<Value> Gateway::removeSubscriber(const Arguments& args) {
   me->removeSubscriber(peerId);
 
   return scope.Close(Null());
+}
+
+Handle<Value> Gateway::addExternalOutput(const Arguments& args) {
+  HandleScope scope;
+
+  Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.This());
+  woogeen_base::Gateway* me = obj->me;
+
+  String::Utf8Value param(args[0]->ToString());
+  std::string configParam = std::string(*param);
+
+  bool succeeded = me->addExternalOutput(configParam);
+
+  return scope.Close(Boolean::New(succeeded));
+}
+
+Handle<Value> Gateway::removeExternalOutput(const Arguments& args) {
+  HandleScope scope;
+
+  Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.This());
+  woogeen_base::Gateway* me = obj->me;
+
+  // get the param
+  v8::String::Utf8Value param(args[0]->ToString());
+
+  // convert it to string
+  std::string outputId = std::string(*param);
+  bool succeeded = me->removeExternalOutput(outputId);
+
+  return scope.Close(Boolean::New(succeeded));
 }
 
 Handle<Value> Gateway::addEventListener(const Arguments& args) {
@@ -327,31 +333,6 @@ Handle<Value> Gateway::unpublishStream(const Arguments& args) {
   bool isAudio = args[0]->BooleanValue();
   me->unpublishStream(isAudio);
   return scope.Close(Undefined());
-}
-
-Handle<Value> Gateway::setRecorder(const Arguments& args) {
-  HandleScope scope;
-
-  Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.This());
-  woogeen_base::Gateway* me = obj->me;
-
-  String::Utf8Value param0(args[0]->ToString());
-  std::string recordPath = std::string(*param0);
-  int snapshotInterval = args[1]->IntegerValue();
-  bool set = me->setRecorder(recordPath, snapshotInterval);
-
-  return scope.Close(Boolean::New(set));
-}
-
-Handle<Value> Gateway::unsetRecorder(const Arguments& args) {
-  HandleScope scope;
-
-  Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.This());
-  woogeen_base::Gateway* me = obj->me;
-
-  me->unsetRecorder();
-
-  return scope.Close(Null());
 }
 
 Handle<Value> Gateway::setMixer(const Arguments& args) {

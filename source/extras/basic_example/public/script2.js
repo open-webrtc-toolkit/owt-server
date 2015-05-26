@@ -114,7 +114,7 @@
 
   conference.on('stream-removed', function (event) {
     var stream = event.stream;
-    L.Logger.info('stream removed:' ,stream.id());
+    L.Logger.info('stream removed: ', stream.id());
     var id = stream.elementId !==undefined ? stream.elementId : 'test' + stream.id();
     if (id !== undefined) {
       var element = document.getElementById(id);

@@ -20,9 +20,6 @@ exports.ErizoJSController = function (spec) {
         // {id: MediaSourceConsumer}
         mixerProxies = {},
 
-        // {id: ExternalOutput}
-        externalOutputs = {},
-
         INTERVAL_TIME_SDP = 100,
         INTERVAL_TIME_FIR = 100,
         INTERVAL_TIME_KILL = 30*60*1000, // Timeout to kill itself after a timeout since the publisher leaves room.
@@ -227,22 +224,34 @@ exports.ErizoJSController = function (spec) {
         }
     };
 
-    that.addExternalOutput = function (to, url) {
+    that.addExternalOutput = function (to, from, url, interval, callback) {
         if (publishers[to] !== undefined) {
             log.info("Adding ExternalOutput to " + to + " url " + url);
-            var externalOutput = new addon.ExternalOutput(url);
-            externalOutput.init();
-            publishers[to].addExternalOutput(externalOutput, url);
-            externalOutputs[url] = externalOutput;
+
+            var config = {
+                "id": from,
+                "url": url,
+                "interval": interval
+            };
+
+            // recordingId here is used as the peerId
+            if (publishers[to].addExternalOutput(JSON.stringify(config))) {
+                return callback('callback', 'success');
+            }
         }
+
+        callback('callback', 'error');
     };
 
-    that.removeExternalOutput = function (to, url) {
-      if (externalOutputs[url] !== undefined && publishers[to]!=undefined) {
-        log.info("Stopping ExternalOutput: url " + url);
-        publishers[to].removeSubscriber(url);
-        delete externalOutputs[url];
-      }
+    that.removeExternalOutput = function (to, from, callback) {
+        if (publishers[to] !== undefined) {
+            log.info("Stopping ExternalOutput: " + from);
+            if (publishers[to].removeExternalOutput(from)) {
+                return callback('callback', 'success');
+            }
+        }
+
+        callback('callback', 'error');
     };
 
     /*
@@ -385,24 +394,6 @@ exports.ErizoJSController = function (spec) {
                     subscribers[key].splice(index, 1);
                 }
             }
-        }
-    };
-
-    that.startRecorder = function (mixer, url, interval, callback) {
-        if (publishers[mixer] !== undefined) {
-            publishers[mixer].setRecorder(url, interval);
-            callback('callback', 'success');
-        } else {
-            callback('callback', 'error');
-        }
-    };
-
-    that.stopRecorder = function (mixer, callback) {
-        if (publishers[mixer] !== undefined) {
-            publishers[mixer].unsetRecorder();
-            callback('callback', 'success');
-        } else {
-            callback('callback', 'error');
         }
     };
 

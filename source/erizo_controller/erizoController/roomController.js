@@ -5,7 +5,6 @@ var logger = require('./../common/logger').logger;
 // Logger
 var log = logger.getLogger("RoomController");
 
-
 exports.RoomController = function (spec) {
     "use strict";
 
@@ -26,8 +25,6 @@ exports.RoomController = function (spec) {
     var KEEPALIVE_INTERVAL = 5*1000;
 
     var eventListeners = [];
-
-    var recordingUrl = null;
 
     var callbackFor = function(erizo_id, publisher_id) {
         return function(ok) {
@@ -130,40 +127,80 @@ exports.RoomController = function (spec) {
         }
     };
 
-    that.addExternalOutput = function (publisher_id, url, callback) {
+    that.addExternalOutput = function (publisher_id, recorder_id, url, interval, callback) {
         if (publishers[publisher_id] !== undefined) {
-            log.info("Adding ExternalOutput to " + publisher_id + " url " + url);
+            log.info("Adding ExternalOutput to " + publisher_id + " with url: " + url);
 
-            var args = [publisher_id, url];
+            if (externalOutputs[recorder_id] === publishers[publisher_id]) {
+                return callback({
+                    success: false,
+                    text: 'recorder busy'
+                });
+            }
 
-            rpc.callRpc(getErizoQueue(publisher_id), "addExternalOutput", args, undefined);
+            var args = [publisher_id, recorder_id, url, interval];
 
-            // Track external outputs
-            externalOutputs[url] = publisher_id;
+            rpc.callRpc(getErizoQueue(publisher_id), "addExternalOutput", args, {callback: function (result) {
+                if (result === 'success') {
+                    // Track external outputs
+                    externalOutputs[recorder_id] = publisher_id;
 
-            // Track publisher locally
-            publishers[publisher_id] = publisher_id;
-            subscribers[publisher_id] = [];
-            callback('success');
+                    // Track publisher locally
+                    publishers[publisher_id] = publisher_id;
+                    subscribers[publisher_id] = [];
+
+                    return callback({
+                        success: true,
+                        text: url
+                    });
+                }
+
+                callback({
+                    success: false,
+                    text: 'start recorder failed'
+                });
+            }});
         } else {
-            callback('error');
+            callback({
+                success: false,
+                text: 'target record stream not found'
+            });
         }
     };
 
-    that.removeExternalOutput = function (url, callback) {
-        var publisher_id = externalOutputs[url];
+    that.removeExternalOutput = function (recorder_id, callback) {
+        var publisher_id = externalOutputs[recorder_id];
+        if (!publisher_id) {
+            return callback({
+                success: false,
+                text: 'no recorder ongoing'
+            });
+        }
 
-        if (publisher_id !== undefined && publishers[publisher_id] != undefined) {
-            log.info("Stopping ExternalOutput: url " + url);
+        if (publishers[publisher_id] !== undefined) {
+            log.info("Stopping ExternalOutput: " + recorder_id);
 
-            var args = [publisher_id, url];
-            rpc.callRpc(getErizoQueue(publisher_id), "removeExternalOutput", args, undefined);
+            var args = [publisher_id, recorder_id];
+            rpc.callRpc(getErizoQueue(publisher_id), "removeExternalOutput", args, {callback: function (result) {
+                if (result === 'success') {
+                    // Remove the track
+                    delete externalOutputs[recorder_id];
+                    return callback({
+                        success: true,
+                        text: recorder_id
+                    });
+                }
 
-            // Remove track
-            delete externalOutputs[url];
-            callback('success');
+                callback({
+                    success: false,
+                    text: 'stop recorder failed'
+                });
+            }});
         } else {
-            callback('error', 'This stream is not being recorded');
+            callback({
+                success: false,
+                text: 'stream is not being recorded'
+            });
         }
     };
 
@@ -293,66 +330,6 @@ exports.RoomController = function (spec) {
                     subscribers[publisher_id].splice(index, 1);
                 }
             }
-        }
-    };
-
-    that.startRecorder = function (mixer_id, url, interval, callback) {
-        if (publishers[mixer_id] !== undefined) {
-            if (recordingUrl) {
-                return callback({
-                    success: false,
-                    text: 'recorder busy'
-                });
-            }
-            recordingUrl = url;
-            rpc.callRpc(getErizoQueue(mixer_id), 'startRecorder', [mixer_id, url, interval], {callback: function (result) {
-                if (result === 'success') {
-                    return callback({
-                        success: true,
-                        text: recordingUrl
-                    });
-                }
-                recordingUrl = null;
-                callback({
-                    success: false,
-                    text: 'recorder failed'
-                });
-            }});
-        } else {
-            callback({
-                success: false,
-                text: 'mixer not found'
-            });
-        }
-    };
-
-    that.stopRecorder = function (mixer_id, callback) {
-        if (publishers[mixer_id] !== undefined) {
-            if (!recordingUrl) {
-                return callback({
-                    success: false,
-                    text: 'no recorder process'
-                });
-            }
-            rpc.callRpc(getErizoQueue(mixer_id), 'stopRecorder', [mixer_id], {callback: function (result) {
-                if (result === 'success') {
-                    callback({
-                        success: true,
-                        text: recordingUrl
-                    });
-                    recordingUrl = null;
-                    return;
-                }
-                callback({
-                    success: false,
-                    text: 'recorder failed'
-                });
-            }});
-        } else {
-            callback({
-                success: false,
-                text: 'mixer not found'
-            });
         }
     };
 

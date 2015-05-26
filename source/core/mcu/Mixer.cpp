@@ -108,6 +108,38 @@ void Mixer::onPositiveAudioSources(std::vector<uint32_t>& audioSources)
     m_videoMixer->promoteSources(videoSources);
 }
 
+bool Mixer::addExternalOutput(const std::string& configParam)
+{
+    if (!m_recorder && configParam != "" && configParam != "undefined") {
+        boost::property_tree::ptree pt;
+        std::istringstream is(configParam);
+        boost::property_tree::read_json(is, pt);
+        const std::string recordPath = pt.get<std::string>("url");
+        int snapshotInterval = pt.get<int>("interval");
+
+        // outputId here could be used as the ID of multiple outputs in the future
+        m_recorder.reset(new MediaRecorder(m_videoMixer.get(), m_audioMixer.get(), recordPath, snapshotInterval));
+        m_recorder->startRecording();
+
+        ELOG_DEBUG("Media recording has already been started.");
+        return true;
+    }
+
+    return false;
+}
+
+bool Mixer::removeExternalOutput(const std::string& outputId)
+{
+    // outputId here could be used as the ID of multiple outputs in the future
+    if (m_recorder) {
+        m_recorder->stopRecording();
+        m_recorder.reset();
+        return true;
+    }
+
+    return false;
+}
+
 void Mixer::addSource(erizo::MediaSource* mediaSource)
 {
     if (mediaSource->getAudioSourceSSRC()) {
@@ -134,25 +166,6 @@ int32_t Mixer::bindAV(uint32_t audioSource, uint32_t videoSource)
     }
 
     return m_videoMixer->bindAudio(videoSource, m_audioMixer->getChannelId(audioSource), m_audioMixer->avSyncInterface());
-}
-
-bool Mixer::setRecorder(const std::string& recordPath, int snapshotInterval/*, RecordFormat format*/)
-{
-    if (!m_recorder) {
-        m_recorder.reset(new MediaRecorder(m_videoMixer.get(), m_audioMixer.get(), recordPath, snapshotInterval));
-        return m_recorder->startRecording();
-    }
-
-    ELOG_DEBUG("Media recording has already been started.");
-    return false;
-}
-
-void Mixer::unsetRecorder()
-{
-    if (m_recorder) {
-        m_recorder->stopRecording();
-        m_recorder.reset();
-    }
 }
 
 void Mixer::addSubscriber(MediaSink* subscriber, const std::string& peerId)
