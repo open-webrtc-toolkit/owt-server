@@ -59,14 +59,14 @@ public:
      */
     DLL_PUBLIC virtual void unsetPublisher() = 0;
     /**
-     * Sets the subscriber
+     * Adds the subscriber
      * @param sink the MediaSink of the subscriber
-     * @param id the id for the subscriber
+     * @param id the peer id for the subscriber
      */
     DLL_PUBLIC virtual void addSubscriber(erizo::MediaSink*, const std::string& id) = 0;
     /**
      * Eliminates the subscriber given its peer id
-     * @param id the id for the subscriber
+     * @param id the peer id for the subscriber
      */
     DLL_PUBLIC virtual void removeSubscriber(const std::string& id) = 0;
     /**
@@ -89,57 +89,49 @@ public:
      * @param message
      */
     DLL_PUBLIC virtual void customMessage(const std::string& message) = 0;
-
     /**
      * Retrieve the Gateway statistics including the number of packets received
      * and lost, the average RTT between Gateway and browser, etc.
      * @return the JSON formatted string of the statistics.
      */
     DLL_PUBLIC virtual std::string retrieveGatewayStatistics() = 0;
-
     /**
      * Start subscribing audio or video
      * @param id the subscriber id
      * @param isAudio subscribe audio or video
      */
     DLL_PUBLIC virtual void subscribeStream(const std::string& id, bool isAudio) = 0;
-
     /**
      * Stop subscribing audio or video
      * @param id the subscriber id
      * @param isAudio unsubscrib audio or video
      */
     DLL_PUBLIC virtual void unsubscribeStream(const std::string& id, bool isAudio) = 0;
-
     /**
      * Start publishing audio or video
      * @param isAudio publish audio or video
      */
     DLL_PUBLIC virtual void publishStream(bool isAudio) = 0;
-
     /**
      * Stop publishing audio or video
      * @param isAudio unpublish audio or video
      */
     DLL_PUBLIC virtual void unpublishStream(bool isAudio) = 0;
-
     /**
      * Set the additional media source consumer which consumes the publisher of this Gateway
      * @param mediaSourceConsumer
      */
     DLL_PUBLIC virtual void setAdditionalSourceConsumer(MediaSourceConsumer*) = 0;
-
     /**
-     * Sets the media recorder
-     * @param file path for media recording
-     * @return true if the media recorder is set successfully
+     * Adds the external output
+     * @param configParam the configuration of the external output
      */
-    DLL_PUBLIC virtual bool setRecorder(const std::string& recordPath, int snapshotInterval) { return false; }
+    DLL_PUBLIC virtual bool addExternalOutput(const std::string& configParam) { return false; }
     /**
-     * Unsets the media recorder
+     * Eliminates the external output given its output id
+     * @param id the output id for the external output
      */
-    DLL_PUBLIC virtual void unsetRecorder() {}
-
+    DLL_PUBLIC virtual bool removeExternalOutput(const std::string& id) { return false; }
     /**
      * Add the media source to compose the virtual Publisher
      * @param source the MediaSource for publishing

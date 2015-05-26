@@ -268,6 +268,18 @@ void WebRTCGateway::setAdditionalSourceConsumer(woogeen_base::MediaSourceConsume
     }
 }
 
+bool WebRTCGateway::addExternalOutput(const std::string& configParam)
+{
+    // FIXME: Chunbo to add external output implementation
+    return false;
+}
+
+bool WebRTCGateway::removeExternalOutput(const std::string& outputId)
+{
+    // FIXME: Chunbo to add external output implementation
+    return false;
+}
+
 void WebRTCGateway::onTimeout()
 {
     // Firstly, send the I-Frame requests to the publisher.

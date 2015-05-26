@@ -25,6 +25,7 @@
 #include "media/MediaRecorder.h"
 #include "media/VideoMixer.h"
 
+#include <boost/property_tree/json_parser.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/shared_mutex.hpp>
 #include <Gateway.h>
@@ -69,6 +70,9 @@ public:
 
     void setAdditionalSourceConsumer(woogeen_base::MediaSourceConsumer*) { }
 
+    bool addExternalOutput(const std::string& configParam);
+    bool removeExternalOutput(const std::string& outputId);
+
     // New addSource interface, and others legacy ones should be changed to this one in future
     void addSource(erizo::MediaSource*);
 
@@ -76,9 +80,6 @@ public:
     int32_t removeSource(uint32_t id, bool isAudio);
     int32_t bindAV(uint32_t audioSource, uint32_t videoSource);
     erizo::MediaSink* mediaSink() { return this; }
-
-    bool setRecorder(const std::string& recordPath, int snapshotInterval/*, RecordFormat format*/);
-    void unsetRecorder();
 
     // Implements MediaSink.
     int deliverAudioData(char* buf, int len);

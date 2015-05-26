@@ -21,6 +21,7 @@
 #ifndef WebRTCGateway_h
 #define WebRTCGateway_h
 
+#include <boost/property_tree/json_parser.hpp>
 #include <boost/thread/shared_mutex.hpp>
 #include <Gateway.h>
 #include <JobTimer.h>
@@ -128,6 +129,9 @@ public:
     void unpublishStream(bool isAudio) { }
 
     void setAdditionalSourceConsumer(woogeen_base::MediaSourceConsumer*);
+
+    bool addExternalOutput(const std::string& configParam);
+    bool removeExternalOutput(const std::string& outputId);
 
     // Implements JobTimerListener.
     void onTimeout();
