@@ -31,7 +31,6 @@
 #include <MediaSourceConsumer.h>
 #include <WebRTCTransport.h>
 #include <webrtc/modules/audio_device/include/fake_audio_device.h>
-#include <webrtc/voice_engine/include/voe_base.h>
 #include <webrtc/voice_engine/include/voe_video_sync.h>
 
 namespace mcu {
@@ -39,31 +38,6 @@ namespace mcu {
 class AudioMixerVADCallback {
 public:
     virtual void onPositiveAudioSources(std::vector<uint32_t>& sources) = 0;
-};
-
-class AudioEncodedFrameCallbackAdapter : public webrtc::AudioEncodedFrameCallback {
-    DECLARE_LOGGER();
-
-public:
-    AudioEncodedFrameCallbackAdapter(woogeen_base::MediaFrameQueue* audioQueue)
-        : m_audioQueue(audioQueue)
-    {
-    }
-
-    virtual ~AudioEncodedFrameCallbackAdapter() { }
-
-    virtual int32_t Encoded(webrtc::FrameType frameType, uint8_t payloadType,
-                            uint32_t timeStamp, const uint8_t* payloadData,
-                            uint16_t payloadSize)
-    {
-        if (payloadSize > 0 && m_audioQueue)
-            m_audioQueue->pushFrame(payloadData, payloadSize, timeStamp);
-
-        return 0;
-    }
-
-private:
-    woogeen_base::MediaFrameQueue* m_audioQueue;
 };
 
 class AudioMixer : public woogeen_base::MediaSourceConsumer, public woogeen_base::MediaRecording, public erizo::MediaSink, public erizo::FeedbackSink, public woogeen_base::JobTimerListener {
@@ -129,7 +103,7 @@ private:
     boost::shared_mutex m_outputMutex;
 
     int32_t m_recordChannelId;
-    boost::scoped_ptr<AudioEncodedFrameCallbackAdapter> m_encodedFrameCallback;
+    boost::scoped_ptr<woogeen_base::AudioEncodedFrameCallbackAdapter> m_encodedFrameCallback;
     boost::scoped_ptr<woogeen_base::JobTimer> m_jobTimer;
 };
 
