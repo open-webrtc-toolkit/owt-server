@@ -376,7 +376,7 @@ void AudioMixer::startRecording(woogeen_base::MediaFrameQueue& audioQueue)
         m_recordChannelId = addOutput(RECORD_CHANNEL, recordPayloadType());
 
     if (m_recordChannelId != -1) {
-        m_encodedFrameCallback.reset(new AudioEncodedFrameCallbackAdapter(&audioQueue));
+        m_encodedFrameCallback.reset(new woogeen_base::AudioEncodedFrameCallbackAdapter(&audioQueue));
         VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);
         voe->RegisterPostEncodeFrameCallback(m_recordChannelId, m_encodedFrameCallback.get());
     }

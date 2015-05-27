@@ -26,6 +26,7 @@
 #include <Compiler.h>
 #include <SharedQueue.h>
 #include <webrtc/video/encoded_frame_callback_adapter.h>
+#include <webrtc/voice_engine/include/voe_base.h>
 
 namespace woogeen_base {
 
@@ -106,14 +107,14 @@ private:
     int64_t m_timeOffsetMsec;
 };
 
-class EncodedFrameCallbackAdapter : public webrtc::EncodedImageCallback {
+class VideoEncodedFrameCallbackAdapter : public webrtc::EncodedImageCallback {
 public:
-    EncodedFrameCallbackAdapter(MediaFrameQueue* videoQueue)
+    VideoEncodedFrameCallbackAdapter(MediaFrameQueue* videoQueue)
         : m_videoQueue(videoQueue)
     {
     }
 
-    virtual ~EncodedFrameCallbackAdapter() { }
+    virtual ~VideoEncodedFrameCallbackAdapter() { }
 
     virtual int32_t Encoded(const webrtc::EncodedImage& encodedImage,
                             const webrtc::CodecSpecificInfo* codecSpecificInfo,
@@ -127,6 +128,29 @@ public:
 
 private:
     MediaFrameQueue* m_videoQueue;
+};
+
+class AudioEncodedFrameCallbackAdapter : public webrtc::AudioEncodedFrameCallback {
+public:
+    AudioEncodedFrameCallbackAdapter(MediaFrameQueue* audioQueue)
+        : m_audioQueue(audioQueue)
+    {
+    }
+
+    virtual ~AudioEncodedFrameCallbackAdapter() { }
+
+    virtual int32_t Encoded(webrtc::FrameType frameType, uint8_t payloadType,
+                            uint32_t timeStamp, const uint8_t* payloadData,
+                            uint16_t payloadSize)
+    {
+        if (payloadSize > 0 && m_audioQueue)
+            m_audioQueue->pushFrame(payloadData, payloadSize, timeStamp);
+
+        return 0;
+    }
+
+private:
+    MediaFrameQueue* m_audioQueue;
 };
 
 class MediaRecording {

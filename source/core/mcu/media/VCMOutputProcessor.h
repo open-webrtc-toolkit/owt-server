@@ -86,7 +86,7 @@ private:
     boost::shared_ptr<woogeen_base::WebRTCTaskRunner> m_taskRunner;
     boost::shared_ptr<woogeen_base::VideoFrameProvider> m_source;
 
-    boost::scoped_ptr<woogeen_base::EncodedFrameCallbackAdapter> m_encodedFrameCallback;
+    boost::scoped_ptr<woogeen_base::VideoEncodedFrameCallbackAdapter> m_encodedFrameCallback;
 };
 
 } /* namespace mcu */

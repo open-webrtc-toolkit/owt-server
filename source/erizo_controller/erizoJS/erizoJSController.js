@@ -120,7 +120,7 @@ exports.ErizoJSController = function (spec) {
           }
 
           var localSdp, answer;
-          log.info("webrtc Addon status" + newStatus );
+          log.info("webrtc Addon status" + newStatus);
 
           if (GLOBAL.config.erizoController.sendStats) {
             var timeStamp = new Date();

@@ -626,7 +626,7 @@ namespace erizo {
           break;
       }
 
-    } while(totalLength < len);
+    } while (totalLength < len);
   }
 
   void WebRtcConnection::sendLoop() {
@@ -640,8 +640,8 @@ namespace erizo {
                       return;
                   }
               }
-              if(sendQueue_.front().comp ==-1){
-                  sending_ =  false;
+              if (sendQueue_.front().comp ==-1) {
+                  sending_ = false;
                   ELOG_DEBUG("Finishing send Thread, packet -1");
                   sendQueue_.pop();
                   return;
