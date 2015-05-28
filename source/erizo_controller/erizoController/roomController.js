@@ -337,5 +337,28 @@ exports.RoomController = function (spec) {
         return Object.keys(publishers).length;
     };
 
+    that.getRegion = function (mixer_id, publisher_id, callback) {
+        var args = [mixer_id, publisher_id];
+        rpc.callRpc(getErizoQueue(publisher_id), "getRegion", args, {callback: function (result) {
+            if (result) {
+                return callback({
+                    success: true,
+                    text: result
+                });
+            }
+
+            callback({
+                success: false,
+                text: 'Cannot find the participant in the mixed video'
+            });
+        }});
+        // rpc.callRpc(getErizoQueue(mixer_id), "getRegion", args, {callback: callback});
+    };
+
+    that.setRegion = function (mixer_id, publisher_id, region_id, callback) {
+        var args = [mixer_id, publisher_id, region_id];
+        rpc.callRpc(getErizoQueue(mixer_id), "setRegion", args, {callback: callback});
+    };
+
     return that;
 };

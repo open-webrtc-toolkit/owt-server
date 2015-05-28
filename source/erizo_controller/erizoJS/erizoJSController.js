@@ -406,5 +406,25 @@ exports.ErizoJSController = function (spec) {
         }
     };
 
+    that.getRegion = function (mixer, publisher, callback) {
+        if (publishers[mixer] !== undefined) {
+            log.info("get the Region of " + publisher + " in mixer " + mixer);
+            var ret = publishers[mixer].getRegion(publisher);
+            return callback('callback', ret);
+        }
+
+        callback('callback');
+    };
+
+    that.setRegion = function (mixer, publisher, region, callback) {
+        if (publishers[mixer] !== undefined) {
+            log.info("set the Region of " + publisher + " to " + region  + " in mixer " + mixer);
+            if (publishers[mixer].setRegion(publisher, region)) {
+                return callback('callback', 'success');
+            }
+        }
+
+        callback('callback', 'error');
+    };
     return that;
 };

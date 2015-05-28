@@ -219,24 +219,41 @@ void VideoLayoutProcessor::promoteInputs(std::vector<int>& inputs)
     }
 }
 
-void VideoLayoutProcessor::specifyInputRegion(int input, std::string& regionID)
+bool VideoLayoutProcessor::specifyInputRegion(int input, const std::string& regionID)
 {
     std::vector<int>::iterator itOldPosition = std::find(m_inputPositions.begin(), m_inputPositions.end(), input);
     std::vector<int>::iterator itNewPosition = m_inputPositions.begin();
 
+    if (itOldPosition == m_inputPositions.end())
+        return false;
+
     std::vector<Region>::iterator itRegion = m_currentRegions->begin();
     for (; itRegion != m_currentRegions->end(); ++itRegion) {
-        if (itNewPosition != m_inputPositions.end())
-            itNewPosition++;
         if (itRegion->id == regionID)
             break;
+        if (itNewPosition != m_inputPositions.end())
+            ++itNewPosition;
     }
 
-    if (itOldPosition != m_inputPositions.end() && itRegion != m_currentRegions->end()) {
-        m_inputPositions.insert(itNewPosition, input);
-        m_inputPositions.erase(itOldPosition);
+    if (itNewPosition != m_inputPositions.end() && itRegion != m_currentRegions->end()) {
+        *itOldPosition = *itNewPosition;
+        *itNewPosition = input;
         updateInputPositions();
+        return true;
     }
+
+    return false;
+}
+
+std::string VideoLayoutProcessor::getInputRegion(int input)
+{
+    std::vector<int>::iterator inputIt = std::find(m_inputPositions.begin(), m_inputPositions.end(), input);
+    if (inputIt != m_inputPositions.end()) {
+        uint32_t position = inputIt - m_inputPositions.begin();
+        assert(m_currentRegions->size() > position);
+        return m_currentRegions->at(position).id;
+    }
+    return "";
 }
 
 void VideoLayoutProcessor::updateInputPositions()

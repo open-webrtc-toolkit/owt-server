@@ -51,6 +51,10 @@ void Mixer::Init(Handle<Object> target) {
       FunctionTemplate::New(removeExternalOutput)->GetFunction());
   tpl->PrototypeTemplate()->Set(String::NewSymbol("addExternalPublisher"),
       FunctionTemplate::New(addExternalPublisher)->GetFunction());
+  tpl->PrototypeTemplate()->Set(String::NewSymbol("getRegion"),
+      FunctionTemplate::New(getRegion)->GetFunction());
+  tpl->PrototypeTemplate()->Set(String::NewSymbol("setRegion"),
+      FunctionTemplate::New(setRegion)->GetFunction());
 
   Persistent<Function> constructor =
       Persistent<Function>::New(tpl->GetFunction());
@@ -197,4 +201,34 @@ Handle<Value> Mixer::removeExternalOutput(const Arguments& args) {
   bool succeeded = me->removeExternalOutput(outputId);
 
   return scope.Close(Boolean::New(succeeded));
+}
+
+Handle<Value> Mixer::getRegion(const Arguments& args) {
+  HandleScope scope;
+
+  Mixer* obj = ObjectWrap::Unwrap<Mixer>(args.This());
+  mcu::MixerInterface* me = obj->me;
+
+  String::Utf8Value param(args[0]->ToString());
+  std::string id = std::string(*param);
+
+  std::string region = me->getRegion(id);
+
+  return scope.Close(String::New(region.c_str()));
+}
+
+Handle<Value> Mixer::setRegion(const Arguments& args) {
+  HandleScope scope;
+
+  Mixer* obj = ObjectWrap::Unwrap<Mixer>(args.This());
+  mcu::MixerInterface* me = obj->me;
+
+  String::Utf8Value param(args[0]->ToString());
+  std::string id = std::string(*param);
+  String::Utf8Value param1(args[1]->ToString());
+  std::string region = std::string(*param1);
+
+  bool ret = me->setRegion(id, region);
+
+  return scope.Close(Boolean::New(ret));
 }

@@ -84,8 +84,8 @@ public:
 
     // TODO: implement the below interfaces to support video layout related
     // information retrieval and setting.
-    std::string getRegion(const std::string& participantId) { return ""; }
-    void setRegion(const std::string& participantId, const std::string& regionId) { }
+    std::string getRegion(const std::string& participantId);
+    bool setRegion(const std::string& participantId, const std::string& regionId);
 
     // Implements FeedbackSink.
     int deliverFeedback(char* buf, int len);
