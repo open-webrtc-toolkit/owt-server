@@ -33,6 +33,7 @@ DEFINE_LOGGER(VCMFrameConstructor, "woogeen.VCMFrameConstructor");
 VCMFrameConstructor::VCMFrameConstructor(int index)
     : m_index(index)
     , m_decoderRegistered(false)
+    , m_ssrc(0)
     , m_vcm(nullptr)
 {
 }
@@ -138,6 +139,18 @@ void VCMFrameConstructor::syncWithAudio(int32_t voiceChannelId, VoEVideoSync* vo
     }
 }
 
+bool VCMFrameConstructor::setBitrate(uint32_t kbps)
+{
+    if (!m_ssrc)
+        return false;
+
+    m_rtpRtcp->SetREMBStatus(true);
+    std::vector<uint32_t> ssrcs;
+    ssrcs.push_back(m_ssrc);
+    m_rtpRtcp->SetREMBData(kbps * 1000, ssrcs);
+    return true;
+}
+
 int32_t VCMFrameConstructor::ResendPackets(const uint16_t* sequenceNumbers, uint16_t length)
 {
     return m_rtpRtcp->SendNACK(sequenceNumbers, length);
@@ -167,6 +180,7 @@ int32_t VCMFrameConstructor::OnInitializeDecoder(
 void VCMFrameConstructor::OnIncomingSSRCChanged(const int32_t id, const uint32_t ssrc)
 {
     m_rtpRtcp->SetRemoteSSRC(ssrc);
+    m_ssrc = ssrc;
 }
 
 void VCMFrameConstructor::ResetStatistics(uint32_t ssrc)

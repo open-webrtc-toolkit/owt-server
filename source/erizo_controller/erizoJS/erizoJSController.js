@@ -426,5 +426,17 @@ exports.ErizoJSController = function (spec) {
 
         callback('callback', 'error');
     };
+
+    that.setVideoBitrate = function (mixer, publisher, bitrate, callback) {
+        if (publishers[mixer] !== undefined) {
+            log.info("set the bitrate of " + publisher + " to " + bitrate  + " in mixer " + mixer);
+            if (publishers[mixer].setVideoBitrate(publisher, bitrate)) {
+                return callback('callback', 'success');
+            }
+        }
+
+        callback('callback', 'error');
+    };
+
     return that;
 };
