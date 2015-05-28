@@ -678,7 +678,7 @@ if (stream.isMixed()) {
     if (option.video && option.video.device === 'screen') {
       if (isFirefox()) {
         if (mediaOption.video !== undefined) {
-          mediaOption.video.mediaSource = "'window' || 'screen'";
+          mediaOption.video.mediaSource = 'window' || 'screen';
         } else {
           mediaOption.video = { mediaSource: 'window' || 'screen' };
         }
