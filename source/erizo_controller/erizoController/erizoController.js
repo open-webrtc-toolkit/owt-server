@@ -957,6 +957,25 @@ var listen = function () {
             }
         });
 
+        socket.on('setVideoBitrate', function (options, callback) {
+            if (typeof options === 'function') {
+                callback = options;
+                options = {};
+            } else if (typeof options !== 'object' || options === null) {
+                options = {};
+            }
+
+            // TODO: Currently setVideoBitrate only works when the mixer is available.
+            // We need to add the support in pure forwarding mode later.
+            if (options.id && options.bitrate && socket.room.mixer) {
+                socket.room.controller.setVideoBitrate(socket.room.mixer, options.id, options.bitrate, function (result) {
+                    safeCall(callback, result);
+                });
+            } else {
+                safeCall(callback, 'error', 'Invalid participant id/bitrate or mixer not available.');
+            }
+        });
+
         //Gets 'unpublish' messages on the socket in order to remove a stream from the room.
         socket.on('unpublish', function (streamId, callback) {
             if (socket.user === undefined || !socket.user.permissions[Permission.PUBLISH]) {

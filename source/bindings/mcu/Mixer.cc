@@ -55,6 +55,8 @@ void Mixer::Init(Handle<Object> target) {
       FunctionTemplate::New(getRegion)->GetFunction());
   tpl->PrototypeTemplate()->Set(String::NewSymbol("setRegion"),
       FunctionTemplate::New(setRegion)->GetFunction());
+  tpl->PrototypeTemplate()->Set(String::NewSymbol("setVideoBitrate"),
+      FunctionTemplate::New(setVideoBitrate)->GetFunction());
 
   Persistent<Function> constructor =
       Persistent<Function>::New(tpl->GetFunction());
@@ -229,6 +231,21 @@ Handle<Value> Mixer::setRegion(const Arguments& args) {
   std::string region = std::string(*param1);
 
   bool ret = me->setRegion(id, region);
+
+  return scope.Close(Boolean::New(ret));
+}
+
+Handle<Value> Mixer::setVideoBitrate(const Arguments& args) {
+  HandleScope scope;
+
+  Mixer* obj = ObjectWrap::Unwrap<Mixer>(args.This());
+  mcu::MixerInterface* me = obj->me;
+
+  String::Utf8Value param(args[0]->ToString());
+  std::string id = std::string(*param);
+  int bitrate = args[1]->IntegerValue();
+
+  bool ret = me->setVideoBitrate(id, bitrate);
 
   return scope.Close(Boolean::New(ret));
 }

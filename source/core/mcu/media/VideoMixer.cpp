@@ -289,6 +289,31 @@ uint32_t VideoMixer::getSendSSRC(int payloadType, bool nack, bool fec)
     return 0;
 }
 
+int32_t VideoMixer::bindAudio(uint32_t id, int voiceChannelId, VoEVideoSync* voeVideoSync)
+{
+    boost::shared_lock<boost::shared_mutex> lock(m_sourceMutex);
+    std::map<uint32_t, boost::shared_ptr<MediaSink>>::iterator it = m_sinksForSources.find(id);
+    if (it != m_sinksForSources.end() && it->second) {
+        VCMInputProcessor* input = dynamic_cast<VCMInputProcessor*>(it->second.get());
+        input->bindAudioForSync(voiceChannelId, voeVideoSync);
+        return 0;
+    }
+    return -1;
+}
+
+bool VideoMixer::setSourceBitrate(uint32_t from, uint32_t kbps)
+{
+    boost::shared_lock<boost::shared_mutex> lock(m_sourceMutex);
+    std::map<uint32_t, boost::shared_ptr<MediaSink>>::iterator it = m_sinksForSources.find(from);
+    if (it != m_sinksForSources.end() && it->second) {
+        VCMInputProcessor* input = dynamic_cast<VCMInputProcessor*>(it->second.get());
+        input->setBitrate(kbps);
+        return true;
+    }
+
+    return false;
+}
+
 boost::shared_ptr<MediaSink> VideoMixer::getMediaSink(uint32_t from)
 {
     boost::shared_lock<boost::shared_mutex> lock(m_sourceMutex);
@@ -335,20 +360,6 @@ MediaSink* VideoMixer::addSource(uint32_t from, bool isAudio, DataContentType ty
 
     assert("new source added with InputProcessor still available");    // should not go there
     return nullptr;
-}
-
-int32_t VideoMixer::bindAudio(uint32_t id, int voiceChannelId, VoEVideoSync* voeVideoSync)
-{
-    boost::shared_lock<boost::shared_mutex> lock(m_sourceMutex);
-    std::map<uint32_t, boost::shared_ptr<MediaSink>>::iterator it = m_sinksForSources.find(id);
-    if (it != m_sinksForSources.end() && it->second) {
-        VCMInputProcessor* vcm = dynamic_cast<VCMInputProcessor*>(it->second.get());
-        if (vcm != nullptr) {
-            vcm->bindAudioForSync(voiceChannelId, voeVideoSync);
-            return 0;
-        }
-    }
-    return -1;
 }
 
 void VideoMixer::removeSource(uint32_t from, bool isAudio)

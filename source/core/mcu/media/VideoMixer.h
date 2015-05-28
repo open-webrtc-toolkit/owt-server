@@ -66,6 +66,7 @@ public:
 
     // Video input related methods.
     int32_t bindAudio(uint32_t sourceId, int voiceChannelId, webrtc::VoEVideoSync*);
+    bool setSourceBitrate(uint32_t from, uint32_t kbps);
     boost::shared_ptr<erizo::MediaSink> getMediaSink(uint32_t from);
 
     // Implements MediaSourceConsumer.

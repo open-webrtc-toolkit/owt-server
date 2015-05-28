@@ -76,16 +76,18 @@ public:
     bool addExternalOutput(const std::string& configParam);
     bool removeExternalOutput(const std::string& outputId);
 
-    // TODO: we currently don't accept the below requests to the mixer as a MediaSource.
-    // We may reconsider it later to see if it's valuable to support them.
-    int sendFirPacket() { return -1; }
-    int setVideoCodec(const std::string& codecName, unsigned int clockRate) { return -1; }
-    int setAudioCodec(const std::string& codecName, unsigned int clockRate) { return -1; }
+    bool setVideoBitrate(const std::string& id, uint32_t kbps);
 
     // TODO: implement the below interfaces to support video layout related
     // information retrieval and setting.
     std::string getRegion(const std::string& participantId);
     bool setRegion(const std::string& participantId, const std::string& regionId);
+
+    // TODO: we currently don't accept the below requests to the mixer as a MediaSource.
+    // We may reconsider it later to see if it's valuable to support them.
+    int sendFirPacket() { return -1; }
+    int setVideoCodec(const std::string& codecName, unsigned int clockRate) { return -1; }
+    int setAudioCodec(const std::string& codecName, unsigned int clockRate) { return -1; }
 
     // Implements FeedbackSink.
     int deliverFeedback(char* buf, int len);

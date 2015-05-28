@@ -132,6 +132,9 @@ public:
     void publishStream(const std::string& id, bool isAudio) { }
     void unpublishStream(const std::string& id, bool isAudio) { }
 
+    bool addExternalOutput(const std::string& configParam);
+    bool removeExternalOutput(const std::string& outputId);
+
     // TODO: It's ugly to override setAudioSink/setVideoSink,
     // but we need to explicitly manage the synchronization of the sink setting/getting now,
     void setAudioSink(erizo::MediaSink*);
@@ -139,9 +142,6 @@ public:
     int sendFirPacket();
     int setVideoCodec(const std::string& codecName, unsigned int clockRate);
     int setAudioCodec(const std::string& codecName, unsigned int clockRate);
-
-    bool addExternalOutput(const std::string& configParam);
-    bool removeExternalOutput(const std::string& outputId);
 
     // Implements JobTimerListener.
     void onTimeout();

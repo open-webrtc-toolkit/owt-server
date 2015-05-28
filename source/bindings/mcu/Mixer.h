@@ -85,16 +85,22 @@ class Mixer : public node::ObjectWrap {
    */
   static v8::Handle<v8::Value> addExternalPublisher(const v8::Arguments& args);
   /*
-   * Gets the region of the publisher in the mixer
+   * Gets the region of a publisher in the mixer
    * Param: the publisher id
    */
   static v8::Handle<v8::Value> getRegion(const v8::Arguments& args);
   /*
-   * Sets the region of the publisher in the mixer
+   * Sets the region of a publisher in the mixer
    * Param1: the publisher id
    * Param2: the region id
    */
   static v8::Handle<v8::Value> setRegion(const v8::Arguments& args);
+  /*
+   * Changes the bitrate of a publisher in the mixer
+   * Param1: the publisher id
+   * Param2: the bitrate
+   */
+  static v8::Handle<v8::Value> setVideoBitrate(const v8::Arguments& args);
 };
 
 #endif

@@ -130,12 +130,12 @@ public:
      */
     DLL_PUBLIC virtual bool removeExternalOutput(const std::string& id) { return false; }
     /**
-     * Change the bitrate of a video stream
+     * Sets the bitrate of a video stream
      * @param id the publisher id
      * @param id the suggested new bitrate
-     * @return true if the bitrate change request is accepted
+     * @return true if the bitrate setting request is accepted
      */
-    DLL_PUBLIC virtual bool changeVideoBitrate(const std::string& id, uint32_t bitrate) { return false; }
+    DLL_PUBLIC virtual bool setVideoBitrate(const std::string& id, uint32_t kbps) { return false; }
 };
 
 } /* namespace woogeen_base */

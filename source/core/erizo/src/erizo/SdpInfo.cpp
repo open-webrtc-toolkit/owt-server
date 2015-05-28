@@ -471,7 +471,7 @@ namespace erizo {
             if (nackEnabled) {
               sdp << "a=rtcp-fb:"<< payloadType<<" nack\n";
             }
-            // sdp << "a=rtcp-fb:"<< rtp.payloadType<<" goog-remb\n";
+            sdp << "a=rtcp-fb:"<< rtp.payloadType<<" goog-remb\n";
           }
         }
       }

@@ -231,6 +231,16 @@ void Mixer::removeSubscriber(const std::string& peerId)
     lock.unlock();
 }
 
+bool Mixer::setVideoBitrate(const std::string& id, uint32_t kbps)
+{
+    std::map<std::string, MediaSource*>::iterator it = m_publishers.find(id);
+    if (it == m_publishers.end())
+        return false;
+
+    uint32_t videoSource = it->second->getVideoSourceSSRC();
+    return m_videoMixer->setSourceBitrate(videoSource, kbps);
+}
+
 std::string Mixer::getRegion(const std::string& participantId)
 {
     std::map<std::string, MediaSource*>::iterator it = m_publishers.find(participantId);

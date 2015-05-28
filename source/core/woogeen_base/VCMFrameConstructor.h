@@ -82,10 +82,12 @@ public:
     void deRegisterPreDecodeImageCallback();
 
     void syncWithAudio(int32_t voiceChannelId, webrtc::VoEVideoSync*);
+    bool setBitrate(uint32_t kbps);
 
 private:
     int m_index;
     bool m_decoderRegistered;
+    uint32_t m_ssrc;
 
     webrtc::VideoCodingModule* m_vcm;
     boost::scoped_ptr<webrtc::RemoteBitrateObserver> m_remoteBitrateObserver;

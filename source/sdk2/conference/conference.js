@@ -833,6 +833,22 @@ Woogeen.ConferenceClient = (function () {
     });
   };
 
+  WoogeenConference.prototype.setVideoBitrate = function (options, onSuccess, onFailure) {
+    var self = this;
+    if (typeof options === 'function') {
+      onFailure = onSuccess;
+      onSuccess = options;
+      options = {};
+    } else if (typeof options !== 'object' || options === null) {
+      options = {};
+    }
+
+    sendMsg(self.socket, 'setVideoBitrate', options, function (err, resp) {
+      if (err) {return safeCall(onFailure, err);}
+      safeCall(onSuccess, resp);
+    });
+  };
+
   WoogeenConference.create = function factory (spec) { // factory, not in prototype
     return new WoogeenConference(spec);
   };

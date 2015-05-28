@@ -360,5 +360,10 @@ exports.RoomController = function (spec) {
         rpc.callRpc(getErizoQueue(mixer_id), "setRegion", args, {callback: callback});
     };
 
+    that.setVideoBitrate = function (mixer_id, publisher_id, bitrate, callback) {
+        var args = [mixer_id, publisher_id, bitrate];
+        rpc.callRpc(getErizoQueue(mixer_id), "setVideoBitrate", args, {callback: callback});
+    };
+
     return that;
 };
