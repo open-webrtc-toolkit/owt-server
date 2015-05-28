@@ -916,6 +916,47 @@ var listen = function () {
             }
         });
 
+        socket.on('getRegion', function (options, callback) {
+            if (typeof options === 'function') {
+                callback = options;
+                options = {};
+            } else if (typeof options !== 'object' || options === null) {
+                options = {};
+            }
+
+            if (options.id && socket.room.mixer) {
+                socket.room.controller.getRegion(socket.room.mixer, options.id, function (result) {
+                    if (result.success) {
+                        log.info('Region for ', options.id, ': ', result.text);
+                        safeCall(callback, 'success', {
+                            region: result.text
+                        });
+                    } else {
+                        safeCall(callback, 'error', 'Error in getRegion: ' + result.text);
+                    }
+                });
+            } else {
+                safeCall(callback, 'error', 'Invalid participant id or mixer not available.');
+            }
+        });
+
+        socket.on('setRegion', function (options, callback) {
+            if (typeof options === 'function') {
+                callback = options;
+                options = {};
+            } else if (typeof options !== 'object' || options === null) {
+                options = {};
+            }
+
+            if (options.id && options.region && socket.room.mixer) {
+                socket.room.controller.setRegion(socket.room.mixer, options.id, options.region, function (result) {
+                    safeCall(callback, result);
+                });
+            } else {
+                safeCall(callback, 'error', 'Invalid participant/region id or mixer not available.');
+            }
+        });
+
         //Gets 'unpublish' messages on the socket in order to remove a stream from the room.
         socket.on('unpublish', function (streamId, callback) {
             if (socket.user === undefined || !socket.user.permissions[Permission.PUBLISH]) {

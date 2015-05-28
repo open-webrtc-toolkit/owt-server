@@ -801,6 +801,38 @@ Woogeen.ConferenceClient = (function () {
     });
   };
 
+  WoogeenConference.prototype.getRegion = function (options, onSuccess, onFailure) {
+    var self = this;
+    if (typeof options === 'function') {
+      onFailure = onSuccess;
+      onSuccess = options;
+      options = {};
+    } else if (typeof options !== 'object' || options === null) {
+      options = {};
+    }
+
+    sendMsg(self.socket, 'getRegion', options, function (err, resp) {
+      if (err) {return safeCall(onFailure, err);}
+      safeCall(onSuccess, resp);
+    });
+  };
+
+  WoogeenConference.prototype.setRegion = function (options, onSuccess, onFailure) {
+    var self = this;
+    if (typeof options === 'function') {
+      onFailure = onSuccess;
+      onSuccess = options;
+      options = {};
+    } else if (typeof options !== 'object' || options === null) {
+      options = {};
+    }
+
+    sendMsg(self.socket, 'setRegion', options, function (err, resp) {
+      if (err) {return safeCall(onFailure, err);}
+      safeCall(onSuccess, resp);
+    });
+  };
+
   WoogeenConference.create = function factory (spec) { // factory, not in prototype
     return new WoogeenConference(spec);
   };

@@ -52,7 +52,8 @@ public:
     void removeInput(int input);
     void promoteInput(int input, size_t magnitude);
     void promoteInputs(std::vector<int>& inputs);
-    void specifyInputRegion(int input, std::string& regionID);
+    bool specifyInputRegion(int input, const std::string& regionID);
+    std::string getInputRegion(int input);
 
 private:
     void updateInputPositions();

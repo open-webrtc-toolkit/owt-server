@@ -231,6 +231,26 @@ void Mixer::removeSubscriber(const std::string& peerId)
     lock.unlock();
 }
 
+std::string Mixer::getRegion(const std::string& participantId)
+{
+    std::map<std::string, MediaSource*>::iterator it = m_publishers.find(participantId);
+    if (it == m_publishers.end())
+        return "";
+
+    uint32_t videoSource = it->second->getVideoSourceSSRC();
+    return m_videoMixer->getSourceRegion(videoSource);
+}
+
+bool Mixer::setRegion(const std::string& participantId, const std::string& regionId)
+{
+    std::map<std::string, MediaSource*>::iterator it = m_publishers.find(participantId);
+    if (it == m_publishers.end())
+        return false;
+
+    uint32_t videoSource = it->second->getVideoSourceSSRC();
+    return m_videoMixer->specifySourceRegion(videoSource, regionId);
+}
+
 bool Mixer::init(boost::property_tree::ptree& videoConfig)
 {
     m_videoMixer.reset(new VideoMixer(this, videoConfig));

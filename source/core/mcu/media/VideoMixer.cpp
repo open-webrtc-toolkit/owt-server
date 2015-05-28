@@ -223,16 +223,28 @@ void VideoMixer::promoteSources(std::vector<uint32_t>& sources)
         m_layoutProcessor->promoteInputs(inputs);
 }
 
-void VideoMixer::specifySourceRegion(uint32_t from, std::string& regionID)
+bool VideoMixer::specifySourceRegion(uint32_t from, const std::string& regionID)
 {
     int index = getInput(from);
     assert(index >= 0);
 
     if (index >= 0)
-        m_layoutProcessor->specifyInputRegion(index, regionID);
-    else {
-        ELOG_ERROR("specifySourceRegion - no such a source %d", from);
-    }
+        return m_layoutProcessor->specifyInputRegion(index, regionID);
+
+    ELOG_ERROR("specifySourceRegion - no such a source %d", from);
+    return false;
+}
+
+std::string VideoMixer::getSourceRegion(uint32_t from)
+{
+    int index = getInput(from);
+    assert(index >= 0);
+
+    if (index >= 0)
+        return m_layoutProcessor->getInputRegion(index);
+
+    ELOG_ERROR("getSourceRegion - no such a source %d", from);
+    return "";
 }
 
 bool VideoMixer::setResolution(const std::string& resolution)

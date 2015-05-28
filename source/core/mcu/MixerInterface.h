@@ -32,7 +32,7 @@ public:
     DLL_PUBLIC virtual ~MixerInterface() { }
 
     DLL_PUBLIC virtual std::string getRegion(const std::string& participantId) = 0;
-    DLL_PUBLIC virtual void setRegion(const std::string& participantId, const std::string& regionId) = 0;
+    DLL_PUBLIC virtual bool setRegion(const std::string& participantId, const std::string& regionId) = 0;
 };
 
 } /* namespace mcu */

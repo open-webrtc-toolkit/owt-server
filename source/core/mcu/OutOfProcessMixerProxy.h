@@ -107,15 +107,15 @@ public:
     void publishStream(const std::string& id, bool isAudio) { }
     void unpublishStream(const std::string& id, bool isAudio) { }
 
-    bool setRecorder(const std::string& recordPath, int snapshotInterval/*, RecordFormat format*/) { return false; }
-    void unsetRecorder() { }
+    bool addExternalOutput(const std::string& configParam) { return false; }
+    bool removeExternalOutput(const std::string& outputId) { return false; }
 
     int sendFirPacket() { return -1; }
     int setVideoCodec(const std::string& codecName, unsigned int clockRate) { return -1; }
     int setAudioCodec(const std::string& codecName, unsigned int clockRate) { return -1; }
 
     std::string getRegion(const std::string& participantId) { return ""; }
-    void setRegion(const std::string& participantId, const std::string& regionId) { }
+    bool setRegion(const std::string& participantId, const std::string& regionId) { return false; }
 
     // Implement MediaSink.
     int deliverAudioData(char* buf, int len);

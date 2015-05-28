@@ -79,7 +79,8 @@ public:
     void onInputProcessorInitOK(int index);
 
     // Layout related operations
-    void specifySourceRegion(uint32_t from, std::string& regionID);
+    bool specifySourceRegion(uint32_t from, const std::string& regionID);
+    std::string getSourceRegion(uint32_t from);
     void promoteSources(std::vector<uint32_t>& sources);
     bool setResolution(const std::string& resolution);
     bool setBackgroundColor(const std::string& color);
