@@ -87,7 +87,7 @@ pack_libs() {
   done
   # remove openh264 and replace with the pseudo one
   rm -f ${WOOGEEN_DIST}/lib/libopenh264*
-  cp -av $ROOT/third_party/openh264/pseudo-openh264.so ${WOOGEEN_DIST}/lib/libopenh264.so
+  cp -av $ROOT/third_party/openh264/pseudo-openh264.so ${WOOGEEN_DIST}/lib/libopenh264.so.0
   # remove libs from msdk
   rm -f ${WOOGEEN_DIST}/lib/libmfxhw*
   rm -f ${WOOGEEN_DIST}/lib/libva*

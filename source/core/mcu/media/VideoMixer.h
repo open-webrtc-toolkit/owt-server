@@ -51,7 +51,7 @@ static const int MIXED_H264_VIDEO_STREAM_ID = 3;
 /**
  * Receives media from several sources, mixed into one stream and retransmits it to the RTPDataReceiver.
  */
-class VideoMixer : public woogeen_base::MediaSourceConsumer, public woogeen_base::MediaMuxing, public erizo::FeedbackSink, public VCMInputProcessorCallback {
+class VideoMixer : public woogeen_base::MediaSourceConsumer, public woogeen_base::MediaMuxing, public erizo::FeedbackSink, public InputProcessorCallback {
     DECLARE_LOGGER();
 
 public:
@@ -70,7 +70,12 @@ public:
     boost::shared_ptr<erizo::MediaSink> getMediaSink(uint32_t from);
 
     // Implements MediaSourceConsumer.
-    erizo::MediaSink* addSource(uint32_t from, bool isAudio, erizo::DataContentType, erizo::FeedbackSink*, const std::string& participantId);
+    erizo::MediaSink* addSource(uint32_t from,
+                                bool isAudio,
+                                erizo::DataContentType,
+                                const std::string& codecName,
+                                erizo::FeedbackSink*,
+                                const std::string& participantId);
     void removeSource(uint32_t from, bool isAudio);
 
     // Implements FeedbackSink.

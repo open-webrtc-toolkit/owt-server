@@ -43,9 +43,12 @@ bool OutOfProcessMixerProxy::addPublisher(erizo::MediaSource* publisher, const s
     uint32_t audioSSRC = publisher->getAudioSourceSSRC();
     uint32_t videoSSRC = publisher->getVideoSourceSSRC();
 
+    uint8_t audioFormat = publisher->getAudioDataType();
+    uint8_t videoFormat = publisher->getVideoDataType();
+
     OutOfProcessMixerMessage msg;
     char buf[1024];
-    int len = sizeof(msg) + id.length();
+    int len = sizeof(msg) + 1 + id.length();
     assert(len <= 1024);
 
     if (audioSSRC) {
@@ -53,7 +56,8 @@ bool OutOfProcessMixerProxy::addPublisher(erizo::MediaSource* publisher, const s
         msg.setMediaSource(audioSSRC);
 
         memcpy(buf, &msg, sizeof(msg));
-        memcpy(buf + sizeof(msg), id.c_str(), id.length());
+        memcpy(buf + sizeof(msg), &audioFormat, 1);
+        memcpy(buf + sizeof(msg) + 1, id.c_str(), id.length());
 
         m_messageOutput->write(buf, len);
     }
@@ -63,14 +67,17 @@ bool OutOfProcessMixerProxy::addPublisher(erizo::MediaSource* publisher, const s
         msg.setMediaSource(videoSSRC);
 
         memcpy(buf, &msg, sizeof(msg));
-        memcpy(buf + sizeof(msg), id.c_str(), id.length());
+        memcpy(buf + sizeof(msg), &videoFormat, 1);
+        memcpy(buf + sizeof(msg) + 1, id.c_str(), id.length());
 
         m_messageOutput->write(buf, len);
     }
 
     len = sizeof(msg) + sizeof(uint32_t);
     assert(len <= 1024);
-    if (audioSSRC && videoSSRC) {
+    if (audioSSRC && videoSSRC &&
+            audioFormat == erizo::DataContentType::RTP &&
+            videoFormat == erizo::DataContentType::RTP) {
         msg.setType(BIND);
         msg.setMediaSource(audioSSRC);
 

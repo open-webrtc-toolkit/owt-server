@@ -212,7 +212,9 @@ exports.ErizoJSController = function (spec) {
             log.info("Adding external input peer_id ", from);
 
             var ei = new addon.ExternalInput(url);
+
             var answer = ei.init();
+
             if (answer < 0) {
                 callback('callback', answer);
                 return;
@@ -221,13 +223,27 @@ exports.ErizoJSController = function (spec) {
             publishers[from] = ei;
             subscribers[from] = [];
 
+            if (mixer.id && mixer.oop && mixerProxy === undefined) {
+                var config = {
+                    "mixer": true,
+                    "oop": true,
+                    "proxy": true,
+                };
+                mixerProxy = new addon.Mixer(JSON.stringify(config));
+            }
+
             if (mixer.id) {
               var mixerObj = publishers[mixer.id];
               if (mixerObj) {
                 mixerObj.addExternalPublisher(ei, from);
+                mixers[from] = mixerObj;
+              } else {
+                if (mixerProxy) {
+                  mixerProxy.addExternalPublisher(ei, from);
+                  mixers[from] = mixerProxy;
+                }
               }
             }
-
             callback('callback', 'success');
         } else {
             log.info("Publisher already set for", from);

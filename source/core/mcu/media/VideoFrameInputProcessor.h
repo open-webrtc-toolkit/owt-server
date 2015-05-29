@@ -18,18 +18,68 @@
  * and approved by Intel in writing.
  */
 
-#ifndef VIDEOFRAMEINPUTPROCESSOR_H_
-#define VIDEOFRAMEINPUTPROCESSOR_H_
+#ifndef VideoFrameInputProcessor_h
+#define VideoFrameInputProcessor_h
 
 #include "VideoFrameMixer.h"
+#include "VideoFramePipeline.h"
+#include "VideoInputProcessorBase.h"
 
+#include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
 #include <logger.h>
 #include <MediaDefinitions.h>
+#include <VideoFramePipeline.h>
+
+#include "webrtc/common_types.h"
+#include "webrtc/video_decoder.h"
 
 namespace mcu {
 
-class VideoFrameInputProcessor: public erizo::MediaSink {
+class DecodedFrameHandler : public webrtc::DecodedImageCallback {
+
+    DECLARE_LOGGER();
+
+public:
+   DecodedFrameHandler(int index,
+                       boost::shared_ptr<VideoFrameMixer> frameMixer,
+                       woogeen_base::VideoFrameProvider* provider,
+                       InputProcessorCallback* initCallback);
+
+   virtual ~DecodedFrameHandler();
+
+   virtual int32_t Decoded(webrtc::I420VideoFrame& decodedImage);
+
+private:
+    int m_index;
+    boost::shared_ptr<VideoFrameMixer> m_frameMixer;
+};
+
+class RawFrameDecoder {
+
+    DECLARE_LOGGER();
+
+public:
+   RawFrameDecoder(int index,
+                   boost::shared_ptr<VideoFrameMixer> frameMixer,
+                   woogeen_base::VideoFrameProvider* provider,
+                   InputProcessorCallback* initCallback);
+
+   virtual ~RawFrameDecoder();
+
+   int32_t InitDecode(const webrtc::VideoCodec* codecSettings);
+
+   int32_t Decode(unsigned char* payload, int len);
+
+private:
+    int m_index;
+    boost::shared_ptr<VideoFrameMixer> m_frameMixer;
+    woogeen_base::VideoFrameProvider* m_provider;
+    InputProcessorCallback* m_initCallback;
+};
+
+class VideoFrameInputProcessor: public erizo::MediaSink,
+                                public woogeen_base::VideoFrameProvider {
 
     DECLARE_LOGGER();
 
@@ -37,18 +87,26 @@ public:
     VideoFrameInputProcessor(int index, bool externalDecoding = false);
     virtual ~VideoFrameInputProcessor();
 
-    bool init(boost::shared_ptr<VideoFrameMixer> frameReceiver);
+    // Implements the VideoFrameProvider interface.
+    virtual void requestKeyFrame(int id = 0) {}
+    virtual void setBitrate(unsigned short kbps, int id = 0) {}
 
-    int deliverAudioData(char* buf, int len);
-    int deliverVideoData(char* buf, int len);
+    bool init(const std::string& codecName, boost::shared_ptr<VideoFrameMixer> frameReceiver, InputProcessorCallback* initCallback);
+
+    // Implements the MediaSink interface.
+    virtual int deliverAudioData(char* buf, int len);
+    virtual int deliverVideoData(char* buf, int len);
 
 private:
     int m_index;
     bool m_externalDecoding;
 
-    boost::shared_ptr<VideoFrameMixer> m_frameReceiver;
+    boost::scoped_ptr<webrtc::VideoDecoder> m_decoder;
+    boost::shared_ptr<DecodedFrameHandler> m_frameHandler;
+    boost::shared_ptr<RawFrameDecoder> m_frameDecoder;
+    boost::shared_ptr<VideoFrameMixer> m_frameMixer;
 };
 
 } /* namespace mcu */
 
-#endif /* FRAMEINPUTPROCESSOR_H_ */
+#endif /* VideoFrameInputProcessor_h */

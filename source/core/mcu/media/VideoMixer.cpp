@@ -327,7 +327,12 @@ boost::shared_ptr<MediaSink> VideoMixer::getMediaSink(uint32_t from)
 /**
  * Attach a new InputStream to the mixer
  */
-MediaSink* VideoMixer::addSource(uint32_t from, bool isAudio, DataContentType type, FeedbackSink* feedback, const std::string&)
+MediaSink* VideoMixer::addSource(uint32_t from,
+                                 bool isAudio,
+                                 DataContentType type,
+                                 const std::string& codecName,
+                                 FeedbackSink* feedback,
+                                 const std::string&)
 {
     assert(!isAudio);
 
@@ -343,9 +348,11 @@ MediaSink* VideoMixer::addSource(uint32_t from, bool isAudio, DataContentType ty
         ELOG_DEBUG("addSource - assigned input index is %d", index);
 
         MediaSink* sink = nullptr;
-        if (type == DataContentType::ENCODED_FRAME)
-            sink = new VideoFrameInputProcessor(index, m_hardwareAccelerated);
-        else {
+        if (type == DataContentType::ENCODED_FRAME) {
+            VideoFrameInputProcessor* videoInputProcessor = new VideoFrameInputProcessor(index, m_hardwareAccelerated);
+            videoInputProcessor->init(codecName, m_frameMixer, this);
+            sink = videoInputProcessor;
+        } else {
             assert(type == DataContentType::RTP);
             VCMInputProcessor* vcmInputProcessor(new VCMInputProcessor(index, m_hardwareAccelerated));
             vcmInputProcessor->init(new WebRTCTransport<erizo::VIDEO>(nullptr, feedback),

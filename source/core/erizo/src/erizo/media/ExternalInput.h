@@ -33,7 +33,6 @@ namespace erizo{
       AVPacket avpacket_;
       int video_stream_index_,video_time_base_;
       int audio_stream_index_, audio_time_base_;
-
       void receiveLoop();
   };
 }

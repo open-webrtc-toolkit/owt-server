@@ -149,11 +149,13 @@ bool Mixer::addPublisher(erizo::MediaSource* publisher, const std::string& id)
     MediaSink* videoSink = nullptr;
 
     if (audioSSRC)
-        audioSink = m_audioMixer->addSource(audioSSRC, true, publisher->getAudioDataType(), feedback, id);
+        audioSink = m_audioMixer->addSource(audioSSRC, true, publisher->getAudioDataType(), publisher->getAudioCodecName(), feedback, id);
     if (videoSSRC)
-        videoSink = m_videoMixer->addSource(videoSSRC, false, publisher->getVideoDataType(), feedback, id);
+        videoSink = m_videoMixer->addSource(videoSSRC, false, publisher->getVideoDataType(), publisher->getVideoCodecName(), feedback, id);
 
-    if (audioSSRC && videoSSRC) {
+    if (audioSSRC && videoSSRC &&
+            publisher->getAudioDataType() == DataContentType::RTP &&
+            publisher->getVideoDataType() == DataContentType::RTP) {
         {
             boost::unique_lock<boost::shared_mutex> lock(m_avBindingsMutex);
             m_avBindings[audioSSRC] = videoSSRC;

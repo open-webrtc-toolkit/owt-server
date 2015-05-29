@@ -106,10 +106,14 @@ install_openssl(){
 
 install_openh264(){
   cd $ROOT/third_party/openh264
-  curl -O http://ciscobinary.openh264.org/libopenh264-1.2.0-linux64.so.bz2
-  bzip2 -d libopenh264-1.2.0-linux64.so.bz2
-  rm -f libopenh264.so
-  ln -s libopenh264-1.2.0-linux64.so libopenh264.so
+  curl -O http://ciscobinary.openh264.org/libopenh264-1.4.0-linux64.so.bz2
+  bzip2 -d libopenh264-1.4.0-linux64.so.bz2
+  mv libopenh264-1.4.0-linux64.so libopenh264.so
+  local symbol=$(readelf -d ./libopenh264.so | grep soname | sed 's/.*\[\(.*\)\]/\1/g')
+  if [ -f "$symbol" ]; then
+    rm -f $symbol
+  fi
+  ln -s libopenh264.so ${symbol}
   cd $CURRENT_DIR
 }
 

@@ -20,12 +20,82 @@
 
 #include "VideoFrameInputProcessor.h"
 
+#include "webrtc/modules/video_coding/codecs/vp8/include/vp8.h"
+#include "webrtc/modules/video_coding/codecs/h264/include/h264.h"
+
 using namespace webrtc;
 using namespace erizo;
+using namespace woogeen_base;
 
 namespace mcu {
 
+DEFINE_LOGGER(DecodedFrameHandler, "mcu.media.DecodedFrameHandler");
+
+DEFINE_LOGGER(RawFrameDecoder, "mcu.media.RawFrameDecoder");
+
 DEFINE_LOGGER(VideoFrameInputProcessor, "mcu.media.VideoFrameInputProcessor");
+
+DecodedFrameHandler::DecodedFrameHandler(int index,
+                       boost::shared_ptr<VideoFrameMixer> frameMixer,
+                       VideoFrameProvider* provider,
+                       InputProcessorCallback* initCallback)
+        : m_index(index),
+          m_frameMixer(frameMixer)
+{
+    assert(provider);
+    assert(initCallback);
+    if (m_frameMixer->activateInput(index, FRAME_FORMAT_I420, provider)) {
+        initCallback->onInputProcessorInitOK(index);
+    }
+}
+
+DecodedFrameHandler::~DecodedFrameHandler() {
+    m_frameMixer->deActivateInput(m_index);
+}
+
+int32_t DecodedFrameHandler::Decoded(I420VideoFrame& decodedImage) {
+    m_frameMixer->pushInput(m_index, reinterpret_cast<unsigned char*>(&decodedImage), 0);
+    return 0;
+}
+
+RawFrameDecoder::RawFrameDecoder(int index,
+                       boost::shared_ptr<VideoFrameMixer> frameMixer,
+                       VideoFrameProvider* provider,
+                       InputProcessorCallback* initCallback)
+        : m_index(index),
+          m_frameMixer(frameMixer),
+          m_provider(provider),
+          m_initCallback(initCallback)
+{
+    assert(provider);
+    assert(initCallback);
+}
+
+int32_t RawFrameDecoder::InitDecode(const VideoCodec* codecSettings)
+{
+    FrameFormat frameFormat = FRAME_FORMAT_UNKNOWN;
+    if (codecSettings->codecType == webrtc::kVideoCodecVP8) {
+        frameFormat = woogeen_base::FRAME_FORMAT_VP8;
+    } else if (codecSettings->codecType == webrtc::kVideoCodecH264) {
+        frameFormat = woogeen_base::FRAME_FORMAT_H264;
+    }
+
+    if (m_frameMixer->activateInput(m_index, frameFormat, m_provider)) {
+        m_initCallback->onInputProcessorInitOK(m_index);
+        return 0;
+    }
+
+    return -1;
+}
+
+RawFrameDecoder::~RawFrameDecoder() {
+    m_frameMixer->deActivateInput(m_index);
+}
+
+int32_t RawFrameDecoder::Decode(unsigned char* payload, int len) {
+    m_frameMixer->pushInput(m_index, payload, len);
+    return 0;
+}
 
 VideoFrameInputProcessor::VideoFrameInputProcessor(int index, bool externalDecoding)
     : m_index(index)
@@ -37,16 +107,72 @@ VideoFrameInputProcessor::~VideoFrameInputProcessor()
 {
 }
 
-bool VideoFrameInputProcessor::init(boost::shared_ptr<VideoFrameMixer> frameReceiver)
+bool VideoFrameInputProcessor::init(const std::string& codecName,
+                                    boost::shared_ptr<VideoFrameMixer> frameMixer,
+                                    InputProcessorCallback* initCallback)
 {
-    m_frameReceiver = frameReceiver;
+    m_frameMixer = frameMixer;
+
+    VideoCodecType codecType = VideoCodecType::kVideoCodecH264;
+    if (!codecName.empty()) {
+        if (codecName == "VP8") {
+            codecType = VideoCodecType::kVideoCodecVP8;
+        } else if (codecName == "H264") {
+            codecType = VideoCodecType::kVideoCodecH264;
+        } else {
+            ELOG_ERROR("Unspported video codec %s", codecName.c_str());
+            return false;
+        }
+    } else {
+        ELOG_WARN("No video codec specified, use H264Decoder as default.");
+    }
+
+    VideoCodec codecSettings;
+    codecSettings.codecType = codecType;
+
+    if (!m_externalDecoding) {
+        if (codecType == VideoCodecType::kVideoCodecH264) {
+            m_decoder.reset(H264Decoder::Create());
+            ELOG_DEBUG("Created H.264 deocder for RTSP input.");
+        } else if (codecType == VideoCodecType::kVideoCodecVP8) {
+            m_decoder.reset(VP8Decoder::Create());
+            ELOG_DEBUG("Created VP8 deocder for RTSP input.");
+        }
+
+        if (m_decoder->InitDecode(&codecSettings, 0) != 0) {
+            ELOG_ERROR("Video decoder init faild.");
+            return false;
+        }
+
+        m_frameHandler.reset(new DecodedFrameHandler(m_index, m_frameMixer, this, initCallback));
+        m_decoder->RegisterDecodeCompleteCallback(m_frameHandler.get());
+    } else {
+        m_frameDecoder.reset(new RawFrameDecoder(m_index, m_frameMixer, this, initCallback));
+        if (m_frameDecoder->InitDecode(&codecSettings) != 0) {
+            return false;
+        }
+    }
+
     return true;
 }
 
 int VideoFrameInputProcessor::deliverVideoData(char* buf, int len)
 {
-    //ELOG_DEBUG("Receive video frame packet with size %d ", len);
-    return 0;
+    int ret = 0;
+    if (!m_externalDecoding) {
+        EncodedImage image((uint8_t*)buf, len, 0);
+        image._frameType = VideoFrameType::kKeyFrame;
+        image._completeFrame = true;
+        CodecSpecificInfo codecInfo;
+        codecInfo.codecType = VideoCodecType::kVideoCodecH264;
+        ret = m_decoder->Decode(image, false, nullptr, &codecInfo);
+    } else {
+        ret = m_frameDecoder->Decode((unsigned char*)buf, len);
+    }
+    if (ret != 0) {
+        ELOG_ERROR("Decode frame error: %d", ret);
+    }
+    return ret;
 }
 
 int VideoFrameInputProcessor::deliverAudioData(char* buf, int len)

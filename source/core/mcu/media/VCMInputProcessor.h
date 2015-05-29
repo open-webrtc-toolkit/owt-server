@@ -22,6 +22,7 @@
 #define VCMInputProcessor_h
 
 #include "VideoFrameMixer.h"
+#include "VideoInputProcessorBase.h"
 
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
@@ -30,17 +31,12 @@
 
 namespace mcu {
 
-class VCMInputProcessorCallback {
-public:
-    virtual void onInputProcessorInitOK(int index) = 0;
-};
-
 class ExternalRenderer : public webrtc::VCMReceiveCallback {
 public:
     ExternalRenderer(int index,
                      boost::shared_ptr<VideoFrameMixer> frameHandler,
                      woogeen_base::VideoFrameProvider* provider,
-                     VCMInputProcessorCallback* initCallback)
+                     InputProcessorCallback* initCallback)
         : m_index(index)
         , m_frameHandler(frameHandler)
     {
@@ -72,7 +68,7 @@ public:
     ExternalDecoder(int index,
                     boost::shared_ptr<VideoFrameMixer> frameHandler,
                     woogeen_base::VideoFrameProvider* provider,
-                    VCMInputProcessorCallback* initCallback)
+                    InputProcessorCallback* initCallback)
         : m_index(index)
         , m_frameHandler(frameHandler)
         , m_provider(provider)
@@ -122,7 +118,7 @@ private:
     int m_index;
     boost::shared_ptr<VideoFrameMixer> m_frameHandler;
     woogeen_base::VideoFrameProvider* m_provider;
-    VCMInputProcessorCallback* m_initCallback;
+    InputProcessorCallback* m_initCallback;
 };
 
 class VCMInputProcessor : public erizo::MediaSink,
@@ -139,7 +135,7 @@ public:
     virtual void setBitrate(unsigned short kbps, int id = 0);
     virtual void requestKeyFrame(int id = 0);
 
-    bool init(woogeen_base::WebRTCTransport<erizo::VIDEO>*, boost::shared_ptr<VideoFrameMixer>, boost::shared_ptr<woogeen_base::WebRTCTaskRunner>, VCMInputProcessorCallback*);
+    bool init(woogeen_base::WebRTCTransport<erizo::VIDEO>*, boost::shared_ptr<VideoFrameMixer>, boost::shared_ptr<woogeen_base::WebRTCTaskRunner>, InputProcessorCallback*);
 
     void bindAudioForSync(int32_t voiceChannelId, webrtc::VoEVideoSync*);
 
