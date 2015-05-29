@@ -101,12 +101,16 @@ protected:
   //SSRCs coming from the source
   unsigned int videoSourceSSRC_;
   unsigned int audioSourceSSRC_;
+
   MediaSink* videoSink_;
   MediaSink* audioSink_;
   //can it accept feedback
   FeedbackSink* sourcefbSink_;
   DataContentType videoDataType_;
   DataContentType audioDataType_;
+
+  std::string videoCodecName_;
+  std::string audioCodecName_;
 
 public:
   DLL_PUBLIC virtual void setAudioSink(MediaSink* audioSink){
@@ -122,6 +126,8 @@ public:
   virtual int sendFirPacket()=0;
   virtual int setVideoCodec(const std::string& codecName, unsigned int clockRate){return -1;};
   virtual int setAudioCodec(const std::string& codecName, unsigned int clockRate){return -1;};
+  virtual const std::string& getVideoCodecName() {return videoCodecName_;};
+  virtual const std::string& getAudioCodecName() {return audioCodecName_;};
   unsigned int getVideoSourceSSRC (){return videoSourceSSRC_;};
   void setVideoSourceSSRC (unsigned int ssrc){videoSourceSSRC_ = ssrc;};
   unsigned int getAudioSourceSSRC (){return audioSourceSSRC_;};

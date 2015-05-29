@@ -74,6 +74,11 @@ namespace erizo {
         unsigned int videoSourceId = rand();
         ELOG_DEBUG("Set video SSRC : %d ", videoSourceId);
         setVideoSourceSSRC(videoSourceId);
+        if (videoCodecId == AV_CODEC_ID_VP8) {
+            videoCodecName_ = "VP8";
+        } else if (videoCodecId == AV_CODEC_ID_H264) {
+            videoCodecName_ = "H264";
+        }
       } else {
         ELOG_WARN("Video codec %d is not supported ", st->codec->codec_id);
       }
@@ -107,6 +112,15 @@ namespace erizo {
         unsigned int audioSourceId = rand();
         ELOG_DEBUG("Set audio SSRC : %d ", audioSourceId);
         setAudioSourceSSRC(audioSourceId);
+        if (audioCodecId == AV_CODEC_ID_PCM_MULAW) {
+            audioCodecName_ = "PCMU";
+        } else if (audioCodecId == AV_CODEC_ID_PCM_ALAW) {
+            audioCodecName_ = "PCMA";
+        } else if  (audioCodecId == AV_CODEC_ID_ADPCM_G722) {
+            audioCodecName_ = "G722";
+        } else if (audioCodecId == AV_CODEC_ID_OPUS) {
+            audioCodecName_ = "OPUS";
+        }
       } else {
         ELOG_WARN("Audio codec %d is not supported ", audioCodecId);
       }

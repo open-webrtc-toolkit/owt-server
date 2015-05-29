@@ -36,12 +36,17 @@ OutOfProcessMixer::~OutOfProcessMixer()
 {
 }
 
-erizo::MediaSink* OutOfProcessMixer::addSource(uint32_t id, bool isAudio, erizo::DataContentType type, erizo::FeedbackSink* feedback, const std::string& participantId)
+erizo::MediaSink* OutOfProcessMixer::addSource(uint32_t id,
+                                               bool isAudio,
+                                               erizo::DataContentType type,
+                                               const std::string& codecName,
+                                               erizo::FeedbackSink* feedback,
+                                               const std::string& participantId)
 {
     if (isAudio)
-        return m_audioMixer->addSource(id, true, type, feedback, participantId);
+        return m_audioMixer->addSource(id, true, type, codecName, feedback, participantId);
 
-    return m_videoMixer->addSource(id, false, type, feedback, participantId);
+    return m_videoMixer->addSource(id, false, type, codecName, feedback, participantId);
 }
 
 void OutOfProcessMixer::removeSource(uint32_t source, bool isAudio)
@@ -159,9 +164,12 @@ void MessageReader::onTransportData(char* buf, int len, woogeen_base::Protocol p
     switch (msg->type()) {
     case ADD_AUDIO:
     case ADD_VIDEO: {
-        std::string participant(buf + sizeof(*msg), len - sizeof(*msg));
+        erizo::DataContentType mediaFormat = (erizo::DataContentType)(*(buf + sizeof(*msg)));
+        std::string participant(buf + sizeof(*msg) + 1, len - sizeof(*msg) - 1);
+        std::string codecName("H264");
         // TODO: FeedbackSink.
-        m_consumer->addSource(msg->mediaSource(), msg->type() == ADD_AUDIO, erizo::DataContentType::RTP, nullptr, participant);
+        // TODO: CodecName. Use H.264 video codec by default.
+        m_consumer->addSource(msg->mediaSource(), msg->type() == ADD_AUDIO, mediaFormat, codecName, nullptr, participant);
         break;
     }
     case REMOVE_AUDIO:

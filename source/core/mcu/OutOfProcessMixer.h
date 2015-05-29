@@ -82,7 +82,12 @@ public:
     ~OutOfProcessMixer();
 
     // Implements MediaSourceConsumer.
-    erizo::MediaSink* addSource(uint32_t id, bool isAudio, erizo::DataContentType, erizo::FeedbackSink*, const std::string& participantId);
+    erizo::MediaSink* addSource(uint32_t id,
+                                bool isAudio,
+                                erizo::DataContentType,
+                                const std::string& codecName,
+                                erizo::FeedbackSink*,
+                                const std::string& participantId);
     void removeSource(uint32_t id, bool isAudio);
     int32_t bindAV(uint32_t audioSource, uint32_t videoSource);
 

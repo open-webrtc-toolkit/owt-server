@@ -30,7 +30,12 @@ public:
     DLL_PUBLIC static MediaSourceConsumer* createMediaSourceConsumerInstance();
     DLL_PUBLIC virtual ~MediaSourceConsumer() { }
 
-    virtual erizo::MediaSink* addSource(uint32_t id, bool isAudio, erizo::DataContentType, erizo::FeedbackSink*, const std::string& participantId) = 0;
+    virtual erizo::MediaSink* addSource(uint32_t id,
+                                        bool isAudio,
+                                        erizo::DataContentType,
+                                        const std::string& codecName,
+                                        erizo::FeedbackSink*,
+                                        const std::string& participantId) = 0;
     virtual void removeSource(uint32_t id, bool isAudio) = 0;
     virtual int32_t bindAV(uint32_t audioSource, uint32_t videoSource) { return -1; }
 };

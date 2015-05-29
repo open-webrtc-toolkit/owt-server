@@ -84,7 +84,12 @@ AudioMixer::~AudioMixer()
     VoiceEngine::Delete(m_voiceEngine);
 }
 
-erizo::MediaSink* AudioMixer::addSource(uint32_t from, bool isAudio, erizo::DataContentType, erizo::FeedbackSink* feedback, const std::string& participantId)
+erizo::MediaSink* AudioMixer::addSource(uint32_t from,
+                                        bool isAudio,
+                                        erizo::DataContentType,
+                                        const std::string& codecName,
+                                        erizo::FeedbackSink* feedback,
+                                        const std::string& participantId)
 {
     assert(isAudio);
 

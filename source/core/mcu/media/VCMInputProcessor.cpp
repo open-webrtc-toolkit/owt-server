@@ -39,7 +39,7 @@ VCMInputProcessor::~VCMInputProcessor()
 {
 }
 
-bool VCMInputProcessor::init(woogeen_base::WebRTCTransport<erizo::VIDEO>* transport, boost::shared_ptr<VideoFrameMixer> frameReceiver, boost::shared_ptr<woogeen_base::WebRTCTaskRunner> taskRunner, VCMInputProcessorCallback* initCallback)
+bool VCMInputProcessor::init(woogeen_base::WebRTCTransport<erizo::VIDEO>* transport, boost::shared_ptr<VideoFrameMixer> frameReceiver, boost::shared_ptr<woogeen_base::WebRTCTaskRunner> taskRunner, InputProcessorCallback* initCallback)
 {
     if (!m_frameConstructor->initialize(transport, taskRunner))
         return false;
