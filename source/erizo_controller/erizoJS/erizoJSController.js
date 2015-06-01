@@ -158,7 +158,7 @@ exports.ErizoJSController = function () {
               break;
 
             case CONN_FAILED:
-              callback('callback', {type: 'failed'});
+              callback('callback', {type: 'failed', sdp: mess});
               break;
 
             case CONN_READY: {
