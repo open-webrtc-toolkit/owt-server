@@ -51,7 +51,7 @@ static const int MIXED_H264_VIDEO_STREAM_ID = 3;
 /**
  * Receives media from several sources, mixed into one stream and retransmits it to the RTPDataReceiver.
  */
-class VideoMixer : public woogeen_base::MediaSourceConsumer, public woogeen_base::MediaRecording, public woogeen_base::MediaStreaming, public erizo::FeedbackSink, public VCMInputProcessorCallback {
+class VideoMixer : public woogeen_base::MediaSourceConsumer, public woogeen_base::MediaMuxing, public erizo::FeedbackSink, public VCMInputProcessorCallback {
     DECLARE_LOGGER();
 
 public:
@@ -86,15 +86,10 @@ public:
     bool setResolution(const std::string& resolution);
     bool setBackgroundColor(const std::string& color);
 
-    // Implements MediaRecording
-    void startRecording(woogeen_base::MediaFrameQueue& videoQueue);
-    void stopRecording();
-    int recordPayloadType() const;
+    // Implements MediaMuxing
+    int32_t startMuxing(const std::string&, int codec, woogeen_base::MediaFrameQueue& videoQueue);
+    void stopMuxing(int32_t id);
     bool getVideoSize(unsigned int& width, unsigned int& height) const;
-
-    // Implements MediaStreaming
-    void startStreaming(woogeen_base::MediaFrameQueue& videoQueue);
-    void stopStreaming();
 
 private:
     void closeAll();

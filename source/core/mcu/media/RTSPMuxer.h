@@ -38,18 +38,20 @@ namespace mcu {
 class RTSPMuxer : public woogeen_base::MediaMuxer {
     DECLARE_LOGGER();
 public:
-    RTSPMuxer(const std::string&, woogeen_base::MediaStreaming*, woogeen_base::MediaStreaming*);
+    RTSPMuxer(const std::string&, woogeen_base::MediaMuxing*, woogeen_base::MediaMuxing*);
     virtual ~RTSPMuxer();
     // MediaMuxer interface
     bool start();
     void stop();
 
 private:
-    woogeen_base::MediaStreaming* m_videoSink;
-    woogeen_base::MediaStreaming* m_audioSink;
+    woogeen_base::MediaMuxing* m_videoSink;
+    woogeen_base::MediaMuxing* m_audioSink;
     AVFormatContext* m_context;
     AVStream* m_videoStream;
     AVStream* m_audioStream;
+    int32_t m_videoId, m_audioId;
+    std::string m_uri;
     void addVideoStream(enum AVCodecID codec_id);
     void addAudioStream(enum AVCodecID codec_id);
     int writeVideoFrame(uint8_t*, size_t, int);

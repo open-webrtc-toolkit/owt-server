@@ -149,35 +149,6 @@ int32_t VideoMixer::removeOutput(int payloadType)
     return -1;
 }
 
-void VideoMixer::startRecording(woogeen_base::MediaFrameQueue& videoQueue)
-{
-    int payloadType = recordPayloadType();
-    if (addOutput(payloadType, true, false) != -1) {
-        woogeen_base::VideoFrameSender* output = m_outputs[payloadType].get();
-        output->registerPreSendFrameCallback(videoQueue);
-
-        // Request an IFrame explicitly, because the recorder doesn't support active I-Frame requests.
-        IntraFrameCallback* iFrameCallback = output->iFrameCallback();
-        if (iFrameCallback)
-            iFrameCallback->handleIntraFrameRequest();
-    }
-}
-
-void VideoMixer::stopRecording()
-{
-    std::map<int, boost::shared_ptr<woogeen_base::VideoFrameSender>>::iterator it = m_outputs.find(recordPayloadType());
-    if (it != m_outputs.end())
-        it->second->deRegisterPreSendFrameCallback();
-}
-
-int VideoMixer::recordPayloadType() const
-{
-    // FIXME: Currently, ONLY VP8 to be recorded.
-    // Next step is for video mixer to automatically select an existing payload for recording.
-    // If none, then create a default output of VP8_90000_PT.
-    return VP8_90000_PT;
-}
-
 bool VideoMixer::getVideoSize(unsigned int& width, unsigned int& height) const
 {
     VideoSize videoSize;
@@ -189,10 +160,16 @@ bool VideoMixer::getVideoSize(unsigned int& width, unsigned int& height) const
     return false;
 }
 
-void VideoMixer::startStreaming(woogeen_base::MediaFrameQueue& videoQueue)
+int32_t VideoMixer::startMuxing(const std::string&/*unused*/, int codec, woogeen_base::MediaFrameQueue& videoQueue)
 {
-    if (addOutput(H264_90000_PT, true, false) != -1) {
-        woogeen_base::VideoFrameSender* output = m_outputs[H264_90000_PT].get();
+    int32_t id = -1;
+    id = addOutput(codec, true, false);
+    if (id != -1) {
+        boost::shared_lock<boost::shared_mutex> lock(m_outputMutex);
+        std::map<int, boost::shared_ptr<woogeen_base::VideoFrameSender>>::iterator it = m_outputs.find(codec);
+        if (it == m_outputs.end() || it->second->id() != id)
+            return -1;
+        woogeen_base::VideoFrameSender* output = m_outputs[codec].get();
         output->registerPreSendFrameCallback(videoQueue);
 
         // Request an IFrame explicitly, because the recorder doesn't support active I-Frame requests.
@@ -200,13 +177,19 @@ void VideoMixer::startStreaming(woogeen_base::MediaFrameQueue& videoQueue)
         if (iFrameCallback)
             iFrameCallback->handleIntraFrameRequest();
     }
+    return id;
 }
 
-void VideoMixer::stopStreaming()
+void VideoMixer::stopMuxing(int32_t id)
 {
-    std::map<int, boost::shared_ptr<woogeen_base::VideoFrameSender>>::iterator it = m_outputs.find(H264_90000_PT);
-    if (it != m_outputs.end())
-        it->second->deRegisterPreSendFrameCallback();
+    boost::shared_lock<boost::shared_mutex> lock(m_outputMutex);
+    std::map<int, boost::shared_ptr<woogeen_base::VideoFrameSender>>::iterator it = m_outputs.begin();
+    for (; it != m_outputs.end(); ++it) {
+        if (id == it->second->id()) {
+            it->second->deRegisterPreSendFrameCallback();
+            break;
+        }
+    }
 }
 
 int VideoMixer::deliverFeedback(char* buf, int len)
