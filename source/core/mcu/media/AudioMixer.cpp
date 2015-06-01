@@ -34,9 +34,6 @@ namespace mcu {
 
 DEFINE_LOGGER(AudioMixer, "mcu.media.AudioMixer");
 
-static const char* RECORD_CHANNEL = "MediaRecordingVoiceChannel";
-static const char* RTSP_CHANNEL = "RTSPMuxingVoiceChannel";
-
 AudioMixer::AudioMixer(erizo::RTPDataReceiver* receiver, AudioMixerVADCallback* callback, bool enableVAD)
     : m_dataReceiver(receiver)
     , m_vadEnabled(enableVAD)
@@ -48,9 +45,6 @@ AudioMixer::AudioMixer(erizo::RTPDataReceiver* receiver, AudioMixerVADCallback* 
 
     VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);
     voe->Init(m_adm.get());
-
-    m_recordChannelId = -1;
-    m_muxingChannelId = -1;
 
     // FIXME: hard coded timer interval.
     m_jobTimer.reset(new woogeen_base::JobTimer(100, this));
@@ -360,64 +354,31 @@ int32_t AudioMixer::removeOutput(const std::string& participant)
     return -1;
 }
 
-void AudioMixer::startRecording(woogeen_base::MediaFrameQueue& audioQueue)
+int32_t AudioMixer::startMuxing(const std::string& participant, int codec, woogeen_base::MediaFrameQueue& audioQueue)
 {
-    // Create a new voice output for recording
-    if (m_recordChannelId == -1)
-        m_recordChannelId = addOutput(RECORD_CHANNEL, recordPayloadType());
-
-    if (m_recordChannelId != -1) {
+    int32_t id = addOutput(participant, codec);
+    if (id != -1) {
         m_encodedFrameCallback.reset(new woogeen_base::AudioEncodedFrameCallbackAdapter(&audioQueue));
         VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);
-        voe->RegisterPostEncodeFrameCallback(m_recordChannelId, m_encodedFrameCallback.get());
+        voe->RegisterPostEncodeFrameCallback(id, m_encodedFrameCallback.get());
     }
+    return id;
 }
 
-void AudioMixer::stopRecording()
+void AudioMixer::stopMuxing(int32_t chanId)
 {
-    if (m_recordChannelId != -1) {
-        VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);
-        voe->DeRegisterPostEncodeFrameCallback(m_recordChannelId);
-
-        removeOutput(RECORD_CHANNEL);
-        m_recordChannelId = -1;
-    }
-}
-
-int AudioMixer::recordPayloadType() const
-{
-    // FIXME: Currently, ONLY PCMU to be recorded.
-    // Next step is for audio mixer to automatically select an existing payload for recording.
-    // If none, then create a default output of PCMU_8000_PT.
-    return PCMU_8000_PT;
-}
-
-bool AudioMixer::getVideoSize(unsigned int&, unsigned int&) const
-{
-    // No video size info from audio mixer
-    return false;
-}
-
-void AudioMixer::startStreaming(woogeen_base::MediaFrameQueue& audioQueue)
-{
-    if (m_muxingChannelId == -1)
-        m_muxingChannelId = addOutput(RTSP_CHANNEL, PCMU_8000_PT);
-
-    if (m_muxingChannelId != -1) {
-        m_encodedFrameCallback.reset(new woogeen_base::AudioEncodedFrameCallbackAdapter(&audioQueue));
-        VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);
-        voe->RegisterPostEncodeFrameCallback(m_muxingChannelId, m_encodedFrameCallback.get());
-    }
-}
-
-void AudioMixer::stopStreaming()
-{
-    if (m_muxingChannelId != -1) {
-        VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);
-        voe->DeRegisterPostEncodeFrameCallback(m_muxingChannelId);
-
-        removeOutput(RTSP_CHANNEL);
-        m_muxingChannelId = -1;
+    if (chanId == -1)
+        return;
+    boost::shared_lock<boost::shared_mutex> lock(m_outputMutex);
+    std::map<std::string, VoiceChannel>::iterator it = m_outputChannels.begin();
+    for (; it != m_outputChannels.end(); ++it) {
+        if (it->second.id == chanId) {
+            lock.unlock();
+            VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);
+            voe->DeRegisterPostEncodeFrameCallback(chanId);
+            removeOutput(it->first);
+            break;
+        }
     }
 }
 

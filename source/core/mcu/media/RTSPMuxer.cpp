@@ -19,6 +19,7 @@
  */
 
 #include "RTSPMuxer.h"
+#include <rtputils.h>
 
 extern "C" {
 #include <libavutil/avstring.h>
@@ -33,9 +34,12 @@ namespace mcu {
 
 DEFINE_LOGGER(RTSPMuxer, "mcu.media.RTSPMuxer");
 
-RTSPMuxer::RTSPMuxer(const std::string& uri, woogeen_base::MediaStreaming* video, woogeen_base::MediaStreaming* audio)
+RTSPMuxer::RTSPMuxer(const std::string& uri, woogeen_base::MediaMuxing* video, woogeen_base::MediaMuxing* audio)
     : m_videoSink(video)
     , m_audioSink(audio)
+    , m_videoId(-1)
+    , m_audioId(-1)
+    , m_uri(uri)
 {
     m_muxing = false;
     m_firstVideoTimestamp = -1;
@@ -65,8 +69,8 @@ void RTSPMuxer::stop()
     m_muxing = false;
     m_thread.join();
 
-    m_videoSink->stopStreaming();
-    m_audioSink->stopStreaming();
+    m_videoSink->stopMuxing(m_videoId);
+    m_audioSink->stopMuxing(m_audioId);
 
     av_write_trailer(m_context);
     avcodec_close(m_videoStream->codec);
@@ -77,6 +81,14 @@ void RTSPMuxer::stop()
 
 bool RTSPMuxer::start()
 {
+
+    m_videoQueue.reset(new woogeen_base::MediaFrameQueue(0));
+    m_audioQueue.reset(new woogeen_base::MediaFrameQueue(0));
+    m_videoId = m_videoSink->startMuxing(m_uri, H264_90000_PT, *m_videoQueue);
+    m_audioId = m_audioSink->startMuxing(m_uri, PCMU_8000_PT, *m_audioQueue);
+    if (m_videoId == -1 || m_audioId == -1)
+        return false;
+
     addVideoStream(AV_CODEC_ID_H264);
     addAudioStream(AV_CODEC_ID_PCM_MULAW);
     if (!(m_context->oformat->flags & AVFMT_NOFILE)) {
@@ -87,12 +99,6 @@ bool RTSPMuxer::start()
     }
     // av_dump_format(m_context, 0, m_context->filename, 1);
     avformat_write_header(m_context, nullptr);
-
-    m_videoQueue.reset(new woogeen_base::MediaFrameQueue(0));
-    m_audioQueue.reset(new woogeen_base::MediaFrameQueue(0));
-    m_videoSink->startStreaming(*m_videoQueue);
-    m_audioSink->startStreaming(*m_audioQueue);
-
     m_muxing = true;
     m_thread = boost::thread(&RTSPMuxer::loop, this);
     return true;
@@ -208,8 +214,10 @@ void RTSPMuxer::addVideoStream(enum AVCodecID codec_id)
     /* Put sample parameters. */
     c->bit_rate = 400000;
     /* Resolution must be a multiple of two. */
-    c->width    = 640;
-    c->height   = 480;
+    unsigned int width = 640, height = 480;
+    m_videoSink->getVideoSize(width, height);
+    c->width    = width;
+    c->height   = height;
     /* timebase: This is the fundamental unit of time (in seconds) in terms
     * of which frame timestamps are represented. For fixed-fps content,
     * timebase should be 1/framerate and timestamp increments should be

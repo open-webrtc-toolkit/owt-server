@@ -39,7 +39,7 @@ class MediaRecorder : public woogeen_base::MediaMuxer {
     DECLARE_LOGGER();
 
 public:
-    MediaRecorder(woogeen_base::MediaRecording* videoRecording, woogeen_base::MediaRecording* audioRecording, const std::string& recordPath, int snapshotInterval);
+    MediaRecorder(woogeen_base::MediaMuxing* videoRecording, woogeen_base::MediaMuxing* audioRecording, const std::string& recordPath, int snapshotInterval);
     virtual ~MediaRecorder();
     // MediaMuxer interface
     bool start();
@@ -51,14 +51,15 @@ private:
     void writeVideoFrame(woogeen_base::EncodedFrame& encoded_frame);
     void writeAudioFrame(woogeen_base::EncodedFrame& encoded_frame);
 
-    woogeen_base::MediaRecording* m_videoRecording;
-    woogeen_base::MediaRecording* m_audioRecording;
+    woogeen_base::MediaMuxing* m_videoRecording;
+    woogeen_base::MediaMuxing* m_audioRecording;
     AVStream* m_videoStream;
     AVStream* m_audioStream;
     AVFormatContext* m_context;
 
     std::string m_recordPath;
     int64_t m_recordStartTime;
+    int32_t m_videoId, m_audioId;
 };
 
 } /* namespace mcu */

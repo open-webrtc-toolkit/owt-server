@@ -40,7 +40,7 @@ public:
     virtual void onPositiveAudioSources(std::vector<uint32_t>& sources) = 0;
 };
 
-class AudioMixer : public woogeen_base::MediaSourceConsumer, public woogeen_base::MediaRecording, public woogeen_base::MediaStreaming, public erizo::MediaSink, public erizo::FeedbackSink, public woogeen_base::JobTimerListener {
+class AudioMixer : public woogeen_base::MediaSourceConsumer, public woogeen_base::MediaMuxing, public erizo::MediaSink, public erizo::FeedbackSink, public woogeen_base::JobTimerListener {
     DECLARE_LOGGER();
 
 public:
@@ -68,15 +68,10 @@ public:
     int32_t getChannelId(uint32_t sourceId);
     webrtc::VoEVideoSync* avSyncInterface();
 
-    // Implements MediaRecording
-    void startRecording(woogeen_base::MediaFrameQueue& audioQueue);
-    void stopRecording();
-    int recordPayloadType() const;
-    bool getVideoSize(unsigned int& width, unsigned int& height) const;
-
-    // Implements MediaStreaming
-    void startStreaming(woogeen_base::MediaFrameQueue& videoQueue);
-    void stopStreaming();
+    // Implements MediaMuxing
+    int32_t startMuxing(const std::string& participant, int codec, woogeen_base::MediaFrameQueue& audioQueue);
+    void stopMuxing(int32_t id);
+    bool getVideoSize(unsigned int& width, unsigned int& height) const { return true; } // not-used
 
 private:
     int32_t performMix();
@@ -102,9 +97,7 @@ private:
     std::map<std::string, VoiceChannel> m_outputChannels;
     boost::shared_mutex m_outputMutex;
 
-    int32_t m_recordChannelId;
     boost::scoped_ptr<woogeen_base::AudioEncodedFrameCallbackAdapter> m_encodedFrameCallback;
-    int32_t m_muxingChannelId;
     boost::scoped_ptr<woogeen_base::JobTimer> m_jobTimer;
 };
 

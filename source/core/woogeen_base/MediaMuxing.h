@@ -154,21 +154,11 @@ private:
 };
 
 
-class MediaStreaming {
+class MediaMuxing {
 public:
-    virtual ~MediaStreaming() {}
-    virtual void startStreaming(MediaFrameQueue& mediaQueue) = 0;
-    virtual void stopStreaming() = 0;
-};
-
-class MediaRecording {
-public:
-    virtual ~MediaRecording() {}
-
-    virtual void startRecording(MediaFrameQueue& mediaQueue) = 0;
-    virtual void stopRecording() = 0;
-
-    virtual int recordPayloadType() const = 0;
+    virtual ~MediaMuxing() {}
+    virtual int32_t startMuxing(const std::string& uri, int codec, MediaFrameQueue& queue) = 0;
+    virtual void stopMuxing(int32_t id) = 0;
     virtual bool getVideoSize(unsigned int& width, unsigned int& height) const = 0;
 };
 

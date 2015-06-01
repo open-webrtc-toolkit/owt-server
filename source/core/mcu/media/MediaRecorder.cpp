@@ -45,10 +45,12 @@ inline AVCodecID payloadType2AudioCodecID(int payloadType)
     }
 }
 
-MediaRecorder::MediaRecorder(woogeen_base::MediaRecording* videoRecording, woogeen_base::MediaRecording* audioRecording, const std::string& recordPath, int snapshotInterval)
+MediaRecorder::MediaRecorder(woogeen_base::MediaMuxing* videoRecording, woogeen_base::MediaMuxing* audioRecording, const std::string& recordPath, int snapshotInterval)
     : m_videoStream(NULL)
     , m_audioStream(NULL)
     , m_recordStartTime(-1)
+    , m_videoId(-1)
+    , m_audioId(-1)
 {
     m_muxing = false;
     m_firstVideoTimestamp = -1;
@@ -66,6 +68,15 @@ MediaRecorder::~MediaRecorder()
 
 bool MediaRecorder::start()
 {
+    m_videoQueue.reset(new woogeen_base::MediaFrameQueue(m_recordStartTime));
+    m_audioQueue.reset(new woogeen_base::MediaFrameQueue(m_recordStartTime));
+    // Start the recording of video and audio
+    m_videoId = m_videoRecording->startMuxing(m_recordPath, VP8_90000_PT, *m_videoQueue);
+    m_audioId = m_audioRecording->startMuxing(m_recordPath, PCMU_8000_PT, *m_audioQueue);
+
+    if (m_videoId == -1 || m_audioId == -1)
+        return false;
+
     if (m_recordStartTime == -1) {
         timeval time;
         gettimeofday(&time, nullptr);
@@ -90,18 +101,12 @@ bool MediaRecorder::start()
         return false;
     }
 
-    m_context->oformat->video_codec = payloadType2VideoCodecID(m_videoRecording->recordPayloadType());
-    m_context->oformat->audio_codec = payloadType2AudioCodecID(m_audioRecording->recordPayloadType());
+    m_context->oformat->video_codec = payloadType2VideoCodecID(VP8_90000_PT);
+    m_context->oformat->audio_codec = payloadType2AudioCodecID(PCMU_8000_PT);
 
     // Initialize the record context
     if (!initRecordContext())
         return false;
-
-    m_videoQueue.reset(new woogeen_base::MediaFrameQueue(m_recordStartTime));
-    m_audioQueue.reset(new woogeen_base::MediaFrameQueue(m_recordStartTime));
-    // Start the recording of video and audio
-    m_videoRecording->startRecording(*m_videoQueue);
-    m_audioRecording->startRecording(*m_audioQueue);
 
     // File write thread
     m_muxing = true;
@@ -115,8 +120,8 @@ void MediaRecorder::stop()
     m_muxing = false;
     m_thread.join();
 
-    m_videoRecording->stopRecording();
-    m_audioRecording->stopRecording();
+    m_videoRecording->stopMuxing(m_videoId);
+    m_audioRecording->stopMuxing(m_audioId);
 
     if (m_audioStream != NULL && m_videoStream != NULL && m_context != NULL)
         av_write_trailer(m_context);
