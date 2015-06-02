@@ -5,8 +5,6 @@
 #include <map>
 #include <queue>
 #include "../MediaDefinitions.h"
-#include "codecs/VideoCodec.h"
-#include "MediaProcessor.h"
 #include "boost/thread.hpp"
 #include <logger.h>
 
