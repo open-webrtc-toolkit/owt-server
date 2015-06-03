@@ -19,6 +19,7 @@
  */
 
 #include "WebRTCGateway.h"
+#include "media/ExternalOutput.h"
 
 #include <ProtectedRTPSender.h>
 
@@ -271,13 +272,33 @@ int WebRTCGateway::setAudioCodec(const std::string& codecName, unsigned int cloc
 
 bool WebRTCGateway::addExternalOutput(const std::string& configParam)
 {
-    // FIXME: Chunbo to add external output implementation
+    // Create an ExternalOutput here
+    if (configParam != "" && configParam != "undefined") {
+        boost::property_tree::ptree pt;
+        std::istringstream is(configParam);
+        boost::property_tree::read_json(is, pt);
+        const std::string outputId = pt.get<std::string>("id");
+
+        std::map<std::string, SubscriberInfo>::iterator it = m_subscribers.find(outputId);
+        if (it == m_subscribers.end()) {
+            // Create an external output, which will be managed as subscriber during its lifetime
+            ExternalOutput* externalOutput = new ExternalOutput(pt);
+
+            // Added as a subscriber
+            addSubscriber(externalOutput, outputId);
+
+            return true;
+        }
+    }
+
     return false;
 }
 
 bool WebRTCGateway::removeExternalOutput(const std::string& outputId)
 {
-    // FIXME: Chunbo to add external output implementation
+    // Remove the external output
+    removeSubscriber(outputId);
+
     return false;
 }
 
