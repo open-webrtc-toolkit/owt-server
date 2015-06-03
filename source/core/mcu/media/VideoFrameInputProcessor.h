@@ -27,6 +27,7 @@
 
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
+#include <boost/thread/shared_mutex.hpp>
 #include <logger.h>
 #include <MediaDefinitions.h>
 #include <VideoFramePipeline.h>
@@ -101,6 +102,7 @@ private:
     int m_index;
     bool m_externalDecoding;
 
+    boost::shared_mutex m_sinkMutex;
     boost::scoped_ptr<webrtc::VideoDecoder> m_decoder;
     boost::shared_ptr<DecodedFrameHandler> m_frameHandler;
     boost::shared_ptr<RawFrameDecoder> m_frameDecoder;
