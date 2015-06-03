@@ -110,8 +110,8 @@ namespace erizo {
           audioCodecId == AV_CODEC_ID_ADPCM_G722 ||
           audioCodecId == AV_CODEC_ID_OPUS) {
         unsigned int audioSourceId = rand();
-        ELOG_DEBUG("Audio SSRC : %d , set it as 0 temporarilly since not support RTSP audio yet.", audioSourceId);
-        setAudioSourceSSRC(0/*audioSourceId*/);
+        ELOG_DEBUG("Set audio SSRC : %d", audioSourceId);
+        setAudioSourceSSRC(audioSourceId);
         if (audioCodecId == AV_CODEC_ID_PCM_MULAW) {
             audioCodecName_ = "PCMU";
         } else if (audioCodecId == AV_CODEC_ID_PCM_ALAW) {
