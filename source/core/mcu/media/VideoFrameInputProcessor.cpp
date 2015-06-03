@@ -105,6 +105,7 @@ VideoFrameInputProcessor::VideoFrameInputProcessor(int index, bool externalDecod
 
 VideoFrameInputProcessor::~VideoFrameInputProcessor()
 {
+    boost::unique_lock<boost::shared_mutex> lock(m_sinkMutex);
 }
 
 bool VideoFrameInputProcessor::init(const std::string& codecName,
@@ -158,6 +159,7 @@ bool VideoFrameInputProcessor::init(const std::string& codecName,
 
 int VideoFrameInputProcessor::deliverVideoData(char* buf, int len)
 {
+    boost::unique_lock<boost::shared_mutex> lock(m_sinkMutex);
     int ret = 0;
     if (!m_externalDecoding) {
         EncodedImage image((uint8_t*)buf, len, 0);
