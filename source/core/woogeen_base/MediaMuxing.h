@@ -21,6 +21,7 @@
 #ifndef MediaMuxing_h
 #define MediaMuxing_h
 
+#include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/mutex.hpp>
 #include <Compiler.h>
