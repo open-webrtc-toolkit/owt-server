@@ -110,6 +110,12 @@ var recalculateEcPriority = function () {
 
     checkKAInterval = setInterval(checkKA, INTERVAL_TIME_CHECK_KA);
 
+var getErizoController = undefined;
+
+if (config.nuve.cloudHandlerPolicy) {
+    getErizoController = require('./ch_policies/' + config.nuve.cloudHandlerPolicy).getErizoController;
+}
+
 exports.addNewErizoController = function (msg, callback) {
     "use strict";
 
@@ -215,8 +221,10 @@ exports.killMe = function (ip) {
 
 };
 
-exports.getErizoControllerForRoom = function (roomId, callback) {
+exports.getErizoControllerForRoom = function (room, callback) {
     "use strict";
+
+    var roomId = room._id;
 
     if (rooms[roomId] !== undefined && rooms[roomId].ec !== undefined) {
         callback(erizoNodes[rooms[roomId].ec]);
@@ -226,7 +234,11 @@ exports.getErizoControllerForRoom = function (roomId, callback) {
     var id,
         intervarId = setInterval(function () {
 
+        if (getErizoController) {
+            id = getErizoController(room, erizoNodes, ecQueue);
+        } else {
             id = ecQueue[0];
+        }
 
             if (id !== undefined) {
 

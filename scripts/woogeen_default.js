@@ -30,6 +30,9 @@ config.nuve.superserviceID = '_auto_generated_ID_'; // default value: ''
 config.nuve.testErizoController = 'localhost:8080'; // default value: 'localhost:8080'
 config.nuve.ssl = false; //default value: false
 config.nuve.keystorePath = '../../cert/certificate.pfx';
+// Cloud Handler policies are in nuve/nuveAPI/ch_policies/ folder
+config.nuve.cloudHandlerPolicy = 'default_policy.js'; // default value: 'default_policy.js'
+
 
 /*********************************************************
  ERIZO CONTROLLER CONFIGURATION
