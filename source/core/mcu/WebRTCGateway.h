@@ -170,7 +170,6 @@ private:
     boost::shared_ptr<erizo::MediaSource> m_publisher;
     boost::shared_mutex m_subscriberMutex;
     std::map<std::string, SubscriberInfo> m_subscribers;
-
     boost::shared_mutex m_sinkMutex;
 
     // TODO: Use it for async event notification from the worker thread to the main node thread.
@@ -185,4 +184,5 @@ private:
 };
 
 } /* namespace mcu */
+
 #endif /* WebRTCGateway_h */
