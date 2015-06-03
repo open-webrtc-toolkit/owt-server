@@ -183,13 +183,19 @@ void Mixer::removePublisher(const std::string& id)
     int audioSSRC = it->second->getAudioSourceSSRC();
     int videoSSRC = it->second->getVideoSourceSSRC();
 
-    if (audioSSRC) {
+    if (audioSSRC && videoSSRC &&
+            it->second->getAudioDataType() == DataContentType::RTP &&
+            it->second->getVideoDataType() == DataContentType::RTP) {
         boost::unique_lock<boost::shared_mutex> lock(m_avBindingsMutex);
         m_avBindings.erase(audioSSRC);
+    }
+    if (audioSSRC) {
         m_audioMixer->removeSource(audioSSRC, true);
     }
 
-    m_videoMixer->removeSource(videoSSRC, false);
+    if (videoSSRC) {
+        m_videoMixer->removeSource(videoSSRC, false);
+    }
 
     m_publishers.erase(it);
 }
