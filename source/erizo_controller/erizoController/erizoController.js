@@ -451,6 +451,9 @@ var listen = function () {
                                 rpc.callRpc('stats_handler', 'event', [{room: tokenDB.room, user: socket.id, type: 'connection', timestamp:timeStamp.getTime()}]);
                             }
 
+                            // Add client socket to room socket list and start to receive room events
+                            socket.room.sockets.push(socket.id);
+
                             for (index in socket.room.streams) {
                                 if (socket.room.streams.hasOwnProperty(index)) {
                                     streamList.push(socket.room.streams[index].getPublicStream());
@@ -482,7 +485,6 @@ var listen = function () {
                                 var room = {};
                                 room.id = roomID;
                                 room.sockets = [];
-                                room.sockets.push(socket.id);
                                 room.streams = {}; //streamId: Stream
                                 rooms[roomID] = room;
                                 if (tokenDB.p2p) {
@@ -584,7 +586,6 @@ var listen = function () {
                                     return socket.disconnect();
                                 }
                             }
-                            rooms[tokenDB.room].sockets.push(socket.id);
                             validateTokenOK();
                         }
                     } else {
