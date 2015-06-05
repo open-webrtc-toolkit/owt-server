@@ -31,6 +31,7 @@
 #include <MediaSourceConsumer.h>
 #include <WebRTCTransport.h>
 #include <webrtc/modules/audio_device/include/fake_audio_device.h>
+#include <webrtc/voice_engine/include/voe_external_media.h>
 #include <webrtc/voice_engine/include/voe_video_sync.h>
 
 namespace mcu {
@@ -38,6 +39,15 @@ namespace mcu {
 class AudioMixerVADCallback {
 public:
     virtual void onPositiveAudioSources(std::vector<uint32_t>& sources) = 0;
+};
+
+class AudioProcessor : public webrtc::VoEMediaProcess {
+public:
+    AudioProcessor(woogeen_base::MediaFrameQueue& queue) : m_queue(queue) {}
+    virtual ~AudioProcessor() {}
+    virtual void Process(int channelId, webrtc::ProcessingTypes type, int16_t data[], int nbSamples, int sampleRate, bool isStereo);
+private:
+    woogeen_base::MediaFrameQueue& m_queue;
 };
 
 class AudioMixer : public woogeen_base::MediaSourceConsumer, public woogeen_base::MediaMuxing, public erizo::MediaSink, public erizo::FeedbackSink, public woogeen_base::JobTimerListener {
@@ -104,6 +114,7 @@ private:
 
     boost::scoped_ptr<woogeen_base::AudioEncodedFrameCallbackAdapter> m_encodedFrameCallback;
     boost::scoped_ptr<woogeen_base::JobTimer> m_jobTimer;
+    boost::scoped_ptr<AudioProcessor> m_audioProcessor;
 };
 
 inline webrtc::VoEVideoSync* AudioMixer::avSyncInterface()

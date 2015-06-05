@@ -31,7 +31,14 @@
 
 extern "C" {
 #include <libavformat/avformat.h>
+#include <libavresample/avresample.h>
+#include <libavutil/audio_fifo.h>
 }
+
+#ifdef DUMP_RAW
+#include <fstream>
+#include <memory>
+#endif
 
 namespace mcu {
 
@@ -43,21 +50,30 @@ public:
     // MediaMuxer interface
     bool start();
     void stop();
-
 private:
-    woogeen_base::MediaMuxing* m_videoSink;
-    woogeen_base::MediaMuxing* m_audioSink;
-    AVFormatContext* m_context;
-    AVStream* m_videoStream;
-    AVStream* m_audioStream;
-    int32_t m_videoId, m_audioId;
-    std::string m_uri;
+    woogeen_base::MediaMuxing*      m_videoSink;
+    woogeen_base::MediaMuxing*      m_audioSink;
+    AVFormatContext*                m_context;
+    AVAudioResampleContext*         m_resampleContext;
+    AVAudioFifo*                    m_audioFifo;
+    AVStream*                       m_videoStream;
+    AVStream*                       m_audioStream;
+    uint32_t                        m_pts;
+    int32_t                         m_videoId, m_audioId;
+    std::string                     m_uri;
+    boost::thread                   m_audioTransThread;
+    boost::scoped_ptr<woogeen_base::MediaFrameQueue> m_audioRawQueue;
     void addVideoStream(enum AVCodecID codec_id);
     void addAudioStream(enum AVCodecID codec_id);
     int writeVideoFrame(uint8_t*, size_t, int);
     int writeAudioFrame(uint8_t*, size_t, int);
     AVFrame* allocAudioFrame();
     void loop();
+    void encodeAudioLoop();
+    void processAudio(uint8_t* data, int nbSamples, int sampleRate = 48000, bool isStereo = true);
+#ifdef DUMP_RAW
+    std::unique_ptr<std::ofstream> m_dumpFile;
+#endif
 };
 
 }

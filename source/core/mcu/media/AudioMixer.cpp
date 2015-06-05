@@ -19,11 +19,11 @@
  */
 
 #include "AudioMixer.h"
+#include "RTSPMuxer.h"
 
 #include <rtputils.h>
 #include <webrtc/modules/interface/module_common_types.h>
 #include <webrtc/voice_engine/include/voe_codec.h>
-#include <webrtc/voice_engine/include/voe_external_media.h>
 #include <webrtc/voice_engine/include/voe_network.h>
 #include <webrtc/voice_engine/include/voe_rtp_rtcp.h>
 
@@ -133,11 +133,8 @@ erizo::MediaSink* AudioMixer::addSource(uint32_t from,
             m_outputChannels[participantId] = {channel, transport};
         }
 
-        // TODO: Another option is that we can implement
-        // an External mixer. We may need to investigate whether it's
-        // better than the current approach.
         // VoEExternalMedia* externalMedia = VoEExternalMedia::GetInterface(m_voiceEngine);
-        // externalMedia->SetExternalMixing(channel, true);
+        // externalMedia->RegisterExternalMediaProcessing(channel, kPlaybackPerChannel, *m_sourceAudioProcessor);
 
         boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
         m_sourceChannels[from] = {channel, transport};
@@ -363,15 +360,25 @@ int32_t AudioMixer::startMuxing(const std::string& participant, int codec, wooge
 {
     int32_t id = addOutput(participant, codec);
     if (id != -1) {
-        m_encodedFrameCallback.reset(new woogeen_base::AudioEncodedFrameCallbackAdapter(&audioQueue));
-        VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);
-        voe->RegisterPostEncodeFrameCallback(id, m_encodedFrameCallback.get());
+        if (codec == PCMU_8000_PT) {
+            m_encodedFrameCallback.reset(new woogeen_base::AudioEncodedFrameCallbackAdapter(&audioQueue));
+            VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);
+            voe->RegisterPostEncodeFrameCallback(id, m_encodedFrameCallback.get());
+        } else {
+            m_audioProcessor.reset(new AudioProcessor(audioQueue));
+            VoEExternalMedia* externalMedia = VoEExternalMedia::GetInterface(m_voiceEngine);
+            externalMedia->RegisterExternalMediaProcessing(id, kRecordingPerChannel, *m_audioProcessor);
+        }
     }
     return id;
 }
 
 void AudioMixer::stopMuxing(int32_t chanId)
 {
+    // FIXME: Register callback properly depending on codec.
+    // VoEExternalMedia* externalMedia = VoEExternalMedia::GetInterface(m_voiceEngine);
+    // externalMedia->RegisterExternalMediaProcessing(id, kRecordingPerChannel, nullptr);
+    // m_audioProcessor.reset();
     if (chanId == -1)
         return;
     boost::shared_lock<boost::shared_mutex> lock(m_outputMutex);
@@ -473,6 +480,16 @@ void AudioMixer::notifyActiveSources()
 
     if (m_vadCallback)
         m_vadCallback->onPositiveAudioSources(sources);
+}
+
+void AudioProcessor::Process(int channelId, webrtc::ProcessingTypes type,
+    int16_t data[], int nbSamples,
+    int sampleRate, bool isStereo)
+{
+    int channels = isStereo ? 2 : 1;
+    uint16_t length = nbSamples * channels * sizeof(int16_t);
+    m_queue.pushFrame(reinterpret_cast<const uint8_t*>(data), length, 0/*timestamp unused*/);
+    // FIXME: now we may lose the chance to init output codec correctly, e.g., sample_rate, nb_channels, nb_samples_perchannel.
 }
 
 } /* namespace mcu */
