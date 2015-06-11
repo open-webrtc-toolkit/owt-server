@@ -213,38 +213,46 @@ exports.ErizoJSController = function (spec) {
 
             var ei = new addon.ExternalInput(url);
 
-            var answer = ei.init();
-
-            if (answer < 0) {
-                callback('callback', answer);
-                return;
-            }
-
             publishers[from] = ei;
             subscribers[from] = [];
 
-            if (mixer.id && mixer.oop && mixerProxy === undefined) {
-                var config = {
-                    "mixer": true,
-                    "oop": true,
-                    "proxy": true,
-                };
-                mixerProxy = new addon.Mixer(JSON.stringify(config));
-            }
+            var answer = ei.init(function (message) {
+                if (message === "success") {
+                    log.info("External input", from, "initialization succeed");
 
-            if (mixer.id) {
-              var mixerObj = publishers[mixer.id];
-              if (mixerObj) {
-                mixerObj.addExternalPublisher(ei, from);
-                mixers[from] = mixerObj;
-              } else {
-                if (mixerProxy) {
-                  mixerProxy.addExternalPublisher(ei, from);
-                  mixers[from] = mixerProxy;
+                    if (mixer.id && mixer.oop && mixerProxy === undefined) {
+                        var config = {
+                            "mixer": true,
+                            "oop": true,
+                            "proxy": true,
+                        };
+                        mixerProxy = new addon.Mixer(JSON.stringify(config));
+                    }
+
+                    if (mixer.id) {
+                        var mixerObj = publishers[mixer.id];
+                        if (mixerObj) {
+                            mixerObj.addExternalPublisher(ei, from);
+                            mixers[from] = mixerObj;
+                        } else {
+                            if (mixerProxy) {
+                                mixerProxy.addExternalPublisher(ei, from);
+                                mixers[from] = mixerProxy;
+                            }
+                        }
+                    }
+                } else {
+                    log.error("External input", from, "initialization failed");
+                    publishers[from].close()
+                    delete publishers[from];
                 }
-              }
+                callback('callback', message);
+            });
+
+            if (answer < 0) {
+                callback('callback', "input url initialization error");
+                return;
             }
-            callback('callback', 'success');
         } else {
             log.info("Publisher already set for", from);
         }

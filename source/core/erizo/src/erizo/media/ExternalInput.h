@@ -15,6 +15,15 @@ extern "C" {
 }
 
 namespace erizo{
+
+  class ExternalInputStatusListener {
+    public:
+      virtual ~ExternalInputStatusListener() {
+      }
+
+      virtual void notifyStatus(const std::string& message) = 0;
+  };
+
   class ExternalInput : public MediaSource {
       DECLARE_LOGGER();
     public:
@@ -22,6 +31,7 @@ namespace erizo{
       virtual ~ExternalInput();
       DLL_PUBLIC int init();
       int sendFirPacket();
+      void setStatusListener(ExternalInputStatusListener* listener);
 
     private:
       std::string url_;
@@ -31,6 +41,9 @@ namespace erizo{
       AVPacket avpacket_;
       int video_stream_index_,video_time_base_;
       int audio_stream_index_, audio_time_base_;
+      ExternalInputStatusListener* statusListener_;
+
+      bool connect();
       void receiveLoop();
   };
 }

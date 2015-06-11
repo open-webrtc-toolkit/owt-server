@@ -4,7 +4,6 @@
 #include <node.h>
 #include <media/ExternalInput.h>
 #include "MediaDefinitions.h"
-#include "WebRtcConnection.h"
 
 
 /*
@@ -13,14 +12,19 @@
  * Represents a OneToMany connection.
  * Receives media from one publisher and retransmits it to every subscriber.
  */
-class ExternalInput: public node::ObjectWrap {
+class ExternalInput: public node::ObjectWrap, erizo::ExternalInputStatusListener {
  public:
   static void Init(v8::Handle<v8::Object> target);
   erizo::ExternalInput* me;
+  std::string statusMsg;
+  boost::mutex statusMutex;
 
  private:
   ExternalInput();
   ~ExternalInput();
+
+  uv_async_t async_;
+  v8::Persistent<v8::Function> statusCallback_;
 
   /*
    * Constructor.
@@ -47,6 +51,10 @@ class ExternalInput: public node::ObjectWrap {
    * Param: the MediaReceiver
    */
   static v8::Handle<v8::Value> setVideoReceiver(const v8::Arguments& args);
+
+  static void statusCallback(uv_async_t *handle, int status);
+
+  virtual void notifyStatus(const std::string& message);
 };
 
 #endif
