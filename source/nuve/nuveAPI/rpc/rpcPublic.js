@@ -52,6 +52,8 @@ exports.getRoomConfig = function (roomId, callback) {
             audio: null
         };
 
+        (room.enableMixing === undefined) && (room.enableMixing = 1);
+
         callback('callback', Room.genConfig(room));
     });
 };
