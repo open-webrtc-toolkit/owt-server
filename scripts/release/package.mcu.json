@@ -8,7 +8,7 @@
     "log4js": "*",
     "node-getopt": "*",
     "express": "*",
-    "mongojs": "*",
+    "mongojs": "^0.18.2",
     "aws-lib": "*",
     "body-parser": "*"
   }
