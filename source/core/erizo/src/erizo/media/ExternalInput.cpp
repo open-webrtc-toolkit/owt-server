@@ -1,5 +1,4 @@
 #include "ExternalInput.h"
-#include "../WebRtcConnection.h"
 #include <cstdio>
 
 #include <boost/cstdint.hpp>
@@ -14,6 +13,7 @@ namespace erizo {
     sourcefbSink_=NULL;
     context_ = NULL;
     running_ = false;
+    statusListener_ = NULL;
   }
 
   ExternalInput::~ExternalInput(){
@@ -27,7 +27,18 @@ namespace erizo {
     ELOG_DEBUG("ExternalInput closed");
   }
 
-  int ExternalInput::init(){
+  void ExternalInput::setStatusListener(ExternalInputStatusListener* listener) {
+    statusListener_ = listener;
+  }
+
+  int ExternalInput::init() {
+    thread_ = boost::thread(&ExternalInput::receiveLoop, this);
+    running_ = true;
+
+    return 0;
+  }
+
+  bool ExternalInput::connect() {
     srand((unsigned)time(NULL));
 
     context_ = avformat_alloc_context();
@@ -44,13 +55,13 @@ namespace erizo {
     if(res != 0){
       av_strerror(res, (char*)(&errbuff), 500);
       ELOG_ERROR("Error opening input %s", errbuff);
-      return res;
+      return false;
     }
     res = avformat_find_stream_info(context_,NULL);
     if(res<0){
       av_strerror(res, (char*)(&errbuff), 500);
       ELOG_ERROR("Error finding stream info %s", errbuff);
-      return res;
+      return false;
     }
 
     AVStream *st, *audio_st;
@@ -132,9 +143,6 @@ namespace erizo {
 
     av_init_packet(&avpacket_);
 
-    thread_ = boost::thread(&ExternalInput::receiveLoop, this);
-    running_ = true;
- 
     return true;
   }
 
@@ -143,6 +151,21 @@ namespace erizo {
   }
 
   void ExternalInput::receiveLoop() {
+    bool ret = connect();
+
+    std::string message;
+    if (ret) {
+        message = "success";
+    } else {
+        message = "opening input url error";
+    }
+
+    if (statusListener_ != NULL) {
+        statusListener_->notifyStatus(message);
+    }
+
+    if (!ret) return;
+
     av_read_play(context_);//play RTSP
 
     ELOG_DEBUG("Start playing external input %s", url_.c_str() );
