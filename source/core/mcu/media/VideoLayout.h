@@ -128,6 +128,17 @@ public:
         }
         return false;
     }
+
+    static bool getVideoColor(int r, int g, int b, YUVColor& color) {
+        // Make sure the RGB values make sense
+        if (r < 0 || r > 255 || g < 0 || g > 255 || b < 0 || b > 255)
+            return false;
+
+        color.y = (0.257 * r) + (0.504 * g) + (0.098 * b) + 16;
+        color.cb = -(0.148 * r) - (0.291 * g) + (0.439 * b) + 128;
+        color.cr = (0.439 * r) - (0.368 * g) - (0.071 * b) + 128;
+        return true;
+    }
 };
 
 }
