@@ -38,8 +38,16 @@ VideoLayoutProcessor::VideoLayoutProcessor(boost::property_tree::ptree& layoutCo
 
     std::string color = layoutConfig.get<std::string>("backgroundcolor");
     if (!VideoColorHelper::getVideoColor(color, m_bgColor)) {
-        ELOG_WARN("configured background color is invalid!");
-        VideoColorHelper::getVideoColor("black", m_bgColor);
+        // Try the RGB configuration mode
+        boost::property_tree::ptree pt = layoutConfig.get_child("backgroundcolor");
+        int r = pt.get<int>("r", -1);
+        int g = pt.get<int>("g", -1);
+        int b = pt.get<int>("b", -1);
+
+        if (!VideoColorHelper::getVideoColor(r, g, b, m_bgColor)) {
+            ELOG_WARN("configured background color is invalid!");
+            VideoColorHelper::getVideoColor("black", m_bgColor);
+        }
     }
 
     BOOST_FOREACH (boost::property_tree::ptree::value_type& layoutTemplate, layoutConfig.get_child("templates")) {
