@@ -28,7 +28,7 @@
 
 namespace mcu {
 
-class AudioExternalOutput : public erizo::MediaSink, public woogeen_base::MediaMuxing, public erizo::FeedbackSink, public woogeen_base::JobTimerListener {
+class AudioExternalOutput : public erizo::MediaSink, public woogeen_base::MediaMuxing, public woogeen_base::JobTimerListener {
 public:
     AudioExternalOutput();
     virtual ~AudioExternalOutput();
@@ -37,14 +37,10 @@ public:
     virtual int deliverAudioData(char* buf, int len);
     virtual int deliverVideoData(char* buf, int len);
 
-    // Implements FeedbackSink interface.
-    virtual int deliverFeedback(char* buf, int len);
-
     // Implements the MediaMuxing interfaces.
     virtual int32_t startMuxing(const std::string& participant, int codec, woogeen_base::MediaFrameQueue& audioQueue);
     virtual void stopMuxing(int32_t id);
     virtual bool getVideoSize(unsigned int& width, unsigned int& height) const;
-
 
     // Implements the JobTimerListener interface.
     void onTimeout();
@@ -58,7 +54,6 @@ private:
     boost::scoped_ptr<webrtc::FakeAudioDeviceModule> m_adm;
 
     int32_t m_inputChannelId;
-    boost::scoped_ptr<woogeen_base::WebRTCTransport<erizo::AUDIO>> m_inputTransport;
     std::map<int32_t, boost::shared_ptr<woogeen_base::AudioEncodedFrameCallbackAdapter>> m_outputTransports;
     boost::shared_mutex m_outputMutex;
 
