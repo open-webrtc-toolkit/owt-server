@@ -58,6 +58,8 @@ private:
     boost::shared_ptr<VideoFrameMixer> m_frameMixer;
 };
 
+// TODO: Have RawFrameDecoder implement the webrtc::VideoDecoder interface.
+// So that we can unify the code for external and internal decoding in VideoFrameInputProcessor.
 class RawFrameDecoder {
 
     DECLARE_LOGGER();
@@ -107,8 +109,8 @@ private:
 
     boost::shared_mutex m_sinkMutex;
     boost::scoped_ptr<webrtc::VideoDecoder> m_decoder;
-    boost::shared_ptr<DecodedFrameHandler> m_frameHandler;
-    boost::shared_ptr<RawFrameDecoder> m_frameDecoder;
+    boost::shared_ptr<DecodedFrameHandler> m_decodedFrameHandler;
+    boost::shared_ptr<RawFrameDecoder> m_externalDecoder;
     boost::shared_ptr<VideoFrameMixer> m_frameMixer;
 };
 

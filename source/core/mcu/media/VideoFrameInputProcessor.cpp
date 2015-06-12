@@ -143,11 +143,11 @@ bool VideoFrameInputProcessor::init(int payloadType,
             return false;
         }
 
-        m_frameHandler.reset(new DecodedFrameHandler(m_index, m_frameMixer, this, initCallback));
-        m_decoder->RegisterDecodeCompleteCallback(m_frameHandler.get());
+        m_decodedFrameHandler.reset(new DecodedFrameHandler(m_index, m_frameMixer, this, initCallback));
+        m_decoder->RegisterDecodeCompleteCallback(m_decodedFrameHandler.get());
     } else {
-        m_frameDecoder.reset(new RawFrameDecoder(m_index, m_frameMixer, this, initCallback));
-        if (m_frameDecoder->InitDecode(&codecSettings) != 0)
+        m_externalDecoder.reset(new RawFrameDecoder(m_index, m_frameMixer, this, initCallback));
+        if (m_externalDecoder->InitDecode(&codecSettings) != 0)
             return false;
     }
 
@@ -166,7 +166,7 @@ int VideoFrameInputProcessor::deliverVideoData(char* buf, int len)
         image._completeFrame = true;
         ret = m_decoder->Decode(image, false, nullptr, &m_codecInfo);
     } else
-        ret = m_frameDecoder->Decode((unsigned char*)buf, len);
+        ret = m_externalDecoder->Decode((unsigned char*)buf, len);
 
     if (ret != 0) {
         ELOG_ERROR("Decode frame error: %d", ret);
