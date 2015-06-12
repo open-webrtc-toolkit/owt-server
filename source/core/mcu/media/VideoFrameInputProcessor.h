@@ -33,6 +33,8 @@
 #include <VideoFramePipeline.h>
 
 #include "webrtc/common_types.h"
+#include <webrtc/modules/video_coding/codecs/h264/include/h264.h>
+#include <webrtc/modules/video_coding/codecs/vp8/include/vp8.h>
 #include "webrtc/video_decoder.h"
 
 namespace mcu {
@@ -101,6 +103,7 @@ public:
 private:
     int m_index;
     bool m_externalDecoding;
+    webrtc::CodecSpecificInfo m_codecInfo;
 
     boost::shared_mutex m_sinkMutex;
     boost::scoped_ptr<webrtc::VideoDecoder> m_decoder;

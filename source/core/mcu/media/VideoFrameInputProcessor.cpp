@@ -21,8 +21,6 @@
 #include "VideoFrameInputProcessor.h"
 
 #include <rtputils.h>
-#include <webrtc/modules/video_coding/codecs/h264/include/h264.h>
-#include <webrtc/modules/video_coding/codecs/vp8/include/vp8.h>
 
 using namespace webrtc;
 using namespace erizo;
@@ -75,11 +73,10 @@ RawFrameDecoder::RawFrameDecoder(int index,
 int32_t RawFrameDecoder::InitDecode(const VideoCodec* codecSettings)
 {
     FrameFormat frameFormat = FRAME_FORMAT_UNKNOWN;
-    if (codecSettings->codecType == webrtc::kVideoCodecVP8) {
+    if (codecSettings->codecType == webrtc::kVideoCodecVP8)
         frameFormat = woogeen_base::FRAME_FORMAT_VP8;
-    } else if (codecSettings->codecType == webrtc::kVideoCodecH264) {
+    else if (codecSettings->codecType == webrtc::kVideoCodecH264)
         frameFormat = woogeen_base::FRAME_FORMAT_H264;
-    }
 
     if (m_frameMixer->activateInput(m_index, frameFormat, m_provider)) {
         m_initCallback->onInputProcessorInitOK(m_index);
@@ -150,10 +147,11 @@ bool VideoFrameInputProcessor::init(int payloadType,
         m_decoder->RegisterDecodeCompleteCallback(m_frameHandler.get());
     } else {
         m_frameDecoder.reset(new RawFrameDecoder(m_index, m_frameMixer, this, initCallback));
-        if (m_frameDecoder->InitDecode(&codecSettings) != 0) {
+        if (m_frameDecoder->InitDecode(&codecSettings) != 0)
             return false;
-        }
     }
+
+    m_codecInfo.codecType = codecType;
 
     return true;
 }
@@ -166,12 +164,10 @@ int VideoFrameInputProcessor::deliverVideoData(char* buf, int len)
         EncodedImage image((uint8_t*)buf, len, 0);
         image._frameType = VideoFrameType::kKeyFrame;
         image._completeFrame = true;
-        CodecSpecificInfo codecInfo;
-        codecInfo.codecType = VideoCodecType::kVideoCodecH264;
-        ret = m_decoder->Decode(image, false, nullptr, &codecInfo);
-    } else {
+        ret = m_decoder->Decode(image, false, nullptr, &m_codecInfo);
+    } else
         ret = m_frameDecoder->Decode((unsigned char*)buf, len);
-    }
+
     if (ret != 0) {
         ELOG_ERROR("Decode frame error: %d", ret);
     }
