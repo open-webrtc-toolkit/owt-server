@@ -87,7 +87,7 @@ AudioMixer::~AudioMixer()
 erizo::MediaSink* AudioMixer::addSource(uint32_t from,
                                         bool isAudio,
                                         erizo::DataContentType,
-                                        const std::string& codecName,
+                                        int payloadType,
                                         erizo::FeedbackSink* feedback,
                                         const std::string& participantId)
 {

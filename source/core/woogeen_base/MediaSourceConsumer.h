@@ -33,7 +33,7 @@ public:
     virtual erizo::MediaSink* addSource(uint32_t id,
                                         bool isAudio,
                                         erizo::DataContentType,
-                                        const std::string& codecName,
+                                        int payloadType,
                                         erizo::FeedbackSink*,
                                         const std::string& participantId) = 0;
     virtual void removeSource(uint32_t id, bool isAudio) = 0;
