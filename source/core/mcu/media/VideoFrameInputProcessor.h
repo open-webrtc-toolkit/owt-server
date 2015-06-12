@@ -109,9 +109,8 @@ private:
 
     boost::shared_mutex m_sinkMutex;
     boost::scoped_ptr<webrtc::VideoDecoder> m_decoder;
-    boost::shared_ptr<DecodedFrameHandler> m_decodedFrameHandler;
+    boost::shared_ptr<webrtc::DecodedImageCallback> m_decodedFrameHandler;
     boost::shared_ptr<RawFrameDecoder> m_externalDecoder;
-    boost::shared_ptr<VideoFrameMixer> m_frameMixer;
 };
 
 } /* namespace mcu */
