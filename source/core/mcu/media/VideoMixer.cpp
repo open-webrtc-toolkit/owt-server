@@ -330,7 +330,7 @@ boost::shared_ptr<MediaSink> VideoMixer::getMediaSink(uint32_t from)
 MediaSink* VideoMixer::addSource(uint32_t from,
                                  bool isAudio,
                                  DataContentType type,
-                                 const std::string& codecName,
+                                 int payloadType,
                                  FeedbackSink* feedback,
                                  const std::string&)
 {
@@ -350,7 +350,7 @@ MediaSink* VideoMixer::addSource(uint32_t from,
         MediaSink* sink = nullptr;
         if (type == DataContentType::ENCODED_FRAME) {
             VideoFrameInputProcessor* videoInputProcessor = new VideoFrameInputProcessor(index, m_hardwareAccelerated);
-            videoInputProcessor->init(codecName, m_frameMixer, this);
+            videoInputProcessor->init(payloadType, m_frameMixer, this);
             sink = videoInputProcessor;
         } else {
             assert(type == DataContentType::RTP);

@@ -51,7 +51,7 @@ public:
     erizo::MediaSink* addSource(uint32_t id,
                                 bool isAudio,
                                 erizo::DataContentType,
-                                const std::string& codecName,
+                                int payloadType,
                                 erizo::FeedbackSink*,
                                 const std::string& participantId);
     void removeSource(uint32_t id, bool isAudio);

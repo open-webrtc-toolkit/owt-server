@@ -106,11 +106,12 @@ protected:
   MediaSink* audioSink_;
   //can it accept feedback
   FeedbackSink* sourcefbSink_;
+
   DataContentType videoDataType_;
   DataContentType audioDataType_;
 
-  std::string videoCodecName_;
-  std::string audioCodecName_;
+  int videoPayloadType_;
+  int audioPayloadType_;
 
 public:
   DLL_PUBLIC virtual void setAudioSink(MediaSink* audioSink){
@@ -126,8 +127,8 @@ public:
   virtual int sendFirPacket()=0;
   virtual int setVideoCodec(const std::string& codecName, unsigned int clockRate){return -1;};
   virtual int setAudioCodec(const std::string& codecName, unsigned int clockRate){return -1;};
-  virtual const std::string& getVideoCodecName() {return videoCodecName_;};
-  virtual const std::string& getAudioCodecName() {return audioCodecName_;};
+  virtual int getVideoPayloadType() {return videoPayloadType_;};
+  virtual int getAudioPayloadType() {return audioPayloadType_;};
   unsigned int getVideoSourceSSRC (){return videoSourceSSRC_;};
   void setVideoSourceSSRC (unsigned int ssrc){videoSourceSSRC_ = ssrc;};
   unsigned int getAudioSourceSSRC (){return audioSourceSSRC_;};
@@ -142,8 +143,10 @@ public:
                   audioSink_(nullptr), 
                   sourcefbSink_(nullptr),
                   videoDataType_(DataContentType::RTP),
-                  audioDataType_(DataContentType::RTP) {}
-  virtual ~MediaSource(){};
+                  audioDataType_(DataContentType::RTP),
+                  videoPayloadType_(-1),
+                  audioPayloadType_(-1) {}
+  virtual ~MediaSource(){}
 };
 
 /**

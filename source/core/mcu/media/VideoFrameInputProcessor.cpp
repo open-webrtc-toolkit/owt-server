@@ -20,8 +20,9 @@
 
 #include "VideoFrameInputProcessor.h"
 
-#include "webrtc/modules/video_coding/codecs/vp8/include/vp8.h"
-#include "webrtc/modules/video_coding/codecs/h264/include/h264.h"
+#include <rtputils.h>
+#include <webrtc/modules/video_coding/codecs/h264/include/h264.h>
+#include <webrtc/modules/video_coding/codecs/vp8/include/vp8.h>
 
 using namespace webrtc;
 using namespace erizo;
@@ -108,24 +109,24 @@ VideoFrameInputProcessor::~VideoFrameInputProcessor()
     boost::unique_lock<boost::shared_mutex> lock(m_sinkMutex);
 }
 
-bool VideoFrameInputProcessor::init(const std::string& codecName,
+bool VideoFrameInputProcessor::init(int payloadType,
                                     boost::shared_ptr<VideoFrameMixer> frameMixer,
                                     InputProcessorCallback* initCallback)
 {
     m_frameMixer = frameMixer;
 
-    VideoCodecType codecType = VideoCodecType::kVideoCodecH264;
-    if (!codecName.empty()) {
-        if (codecName == "VP8") {
-            codecType = VideoCodecType::kVideoCodecVP8;
-        } else if (codecName == "H264") {
-            codecType = VideoCodecType::kVideoCodecH264;
-        } else {
-            ELOG_ERROR("Unspported video codec %s", codecName.c_str());
-            return false;
-        }
-    } else {
-        ELOG_WARN("No video codec specified, use H264Decoder as default.");
+    VideoCodecType codecType = VideoCodecType::kVideoCodecUnknown;
+
+    switch (payloadType) {
+    case VP8_90000_PT:
+        codecType = VideoCodecType::kVideoCodecVP8;
+        break;
+    case H264_90000_PT:
+        codecType = VideoCodecType::kVideoCodecH264;
+        break;
+    default:
+        ELOG_ERROR("Unspported video payload type %d", payloadType);
+        return false;
     }
 
     VideoCodec codecSettings;

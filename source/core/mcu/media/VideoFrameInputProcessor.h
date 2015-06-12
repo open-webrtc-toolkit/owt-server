@@ -92,7 +92,7 @@ public:
     virtual void requestKeyFrame(int id = 0) {}
     virtual void setBitrate(unsigned short kbps, int id = 0) {}
 
-    bool init(const std::string& codecName, boost::shared_ptr<VideoFrameMixer> frameReceiver, InputProcessorCallback* initCallback);
+    bool init(int payloadType, boost::shared_ptr<VideoFrameMixer> frameReceiver, InputProcessorCallback* initCallback);
 
     // Implements the MediaSink interface.
     virtual int deliverAudioData(char* buf, int len);

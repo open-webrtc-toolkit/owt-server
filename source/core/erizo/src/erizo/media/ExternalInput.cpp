@@ -1,9 +1,10 @@
 #include "ExternalInput.h"
-#include <cstdio>
 
-#include <boost/cstdint.hpp>
-#include <sys/time.h>
 #include <arpa/inet.h>
+#include <boost/cstdint.hpp>
+#include <cstdio>
+#include <rtputils.h>
+#include <sys/time.h>
 
 namespace erizo {
   DEFINE_LOGGER(ExternalInput, "media.ExternalInput");
@@ -86,9 +87,9 @@ namespace erizo {
         ELOG_DEBUG("Set video SSRC : %d ", videoSourceId);
         setVideoSourceSSRC(videoSourceId);
         if (videoCodecId == AV_CODEC_ID_VP8) {
-            videoCodecName_ = "VP8";
+            videoPayloadType_ = VP8_90000_PT;
         } else if (videoCodecId == AV_CODEC_ID_H264) {
-            videoCodecName_ = "H264";
+            videoPayloadType_ = H264_90000_PT;
         }
       } else {
         ELOG_WARN("Video codec %d is not supported ", st->codec->codec_id);
@@ -124,13 +125,13 @@ namespace erizo {
         ELOG_DEBUG("Set audio SSRC : %d", audioSourceId);
         setAudioSourceSSRC(audioSourceId);
         if (audioCodecId == AV_CODEC_ID_PCM_MULAW) {
-            audioCodecName_ = "PCMU";
+            audioPayloadType_ = PCMU_8000_PT;
         } else if (audioCodecId == AV_CODEC_ID_PCM_ALAW) {
-            audioCodecName_ = "PCMA";
+            audioPayloadType_ = PCMA_8000_PT;
         } else if  (audioCodecId == AV_CODEC_ID_ADPCM_G722) {
-            audioCodecName_ = "G722";
+            audioPayloadType_ = INVALID_PT;
         } else if (audioCodecId == AV_CODEC_ID_OPUS) {
-            audioCodecName_ = "OPUS";
+            audioPayloadType_ = OPUS_48000_PT;
         }
       } else {
         ELOG_WARN("Audio codec %d is not supported ", audioCodecId);
