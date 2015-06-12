@@ -91,7 +91,7 @@ namespace erizo {
     isac16.clockRate = 16000;
     isac16.channels = 1;
     isac16.mediaType = AUDIO_TYPE;
-    isac16.enable = false;
+    isac16.enable = true;
     internalPayloadVector_.push_back(isac16);
 
     RtpMap isac32;
@@ -100,7 +100,7 @@ namespace erizo {
     isac32.clockRate = 32000;
     isac32.channels = 1;
     isac32.mediaType = AUDIO_TYPE;
-    isac32.enable = false;
+    isac32.enable = true;
     internalPayloadVector_.push_back(isac32);
 
     RtpMap pcmu;
@@ -118,7 +118,7 @@ namespace erizo {
     opus.clockRate = 48000;
     opus.channels = 2;
     opus.mediaType = AUDIO_TYPE;
-    opus.enable = false;
+    opus.enable = true;
     internalPayloadVector_.push_back(opus);
 /*
     RtpMap pcma;
