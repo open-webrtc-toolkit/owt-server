@@ -1,4 +1,5 @@
-/*global require, logger. setInterval, clearInterval, Buffer, exports*/
+/*global require, setInterval, clearInterval, Buffer, exports, GLOBAL, process*/
+'use strict';
 var crypto = require('crypto');
 var rpcPublic = require('./rpc/rpcPublic');
 var ST = require('./Stream');
@@ -24,12 +25,12 @@ if (config.erizoController.turnServer !== undefined) {
     GLOBAL.config.erizoController.turnServer.username = GLOBAL.config.erizoController.turnServer.username || '';
     GLOBAL.config.erizoController.turnServer.password = GLOBAL.config.erizoController.turnServer.password || '';
 }
-GLOBAL.config.erizoController.warning_n_rooms = (GLOBAL.config.erizoController.warning_n_rooms != undefined ? GLOBAL.config.erizoController.warning_n_rooms : 15);
-GLOBAL.config.erizoController.limit_n_rooms = (GLOBAL.config.erizoController.limit_n_rooms != undefined ? GLOBAL.config.erizoController.limit_n_rooms : 20);
+GLOBAL.config.erizoController.warning_n_rooms = (GLOBAL.config.erizoController.warning_n_rooms !== undefined ? GLOBAL.config.erizoController.warning_n_rooms : 15);
+GLOBAL.config.erizoController.limit_n_rooms = (GLOBAL.config.erizoController.limit_n_rooms !== undefined ? GLOBAL.config.erizoController.limit_n_rooms : 20);
 GLOBAL.config.erizoController.interval_time_keepAlive = GLOBAL.config.erizoController.interval_time_keepAlive || 1000;
 GLOBAL.config.erizoController.sendStats = GLOBAL.config.erizoController.sendStats || false;
 GLOBAL.config.erizoController.recording_path = GLOBAL.config.erizoController.recording_path || undefined;
-GLOBAL.config.erizoController.roles = GLOBAL.config.erizoController.roles || {"presenter":{"publish": true, "subscribe":true, "record":true}, "viewer":{"subscribe":true}, "viewerWithData":{"subscribe":true, "publish":{"audio":false,"video":false,"screen":false,"data":true}}};
+GLOBAL.config.erizoController.roles = GLOBAL.config.erizoController.roles || {'presenter':{'publish': true, 'subscribe':true, 'record':true}, 'viewer':{'subscribe':true}, 'viewerWithData':{'subscribe':true, 'publish':{'audio':false,'video':false,'screen':false,'data':true}}};
 
 // Parse command line arguments
 var getopt = new Getopt([
@@ -50,25 +51,25 @@ var getopt = new Getopt([
   ['h' , 'help'                       , 'display this help']
 ]);
 
-opt = getopt.parse(process.argv.slice(2));
+var opt = getopt.parse(process.argv.slice(2));
 
 for (var prop in opt.options) {
     if (opt.options.hasOwnProperty(prop)) {
         var value = opt.options[prop];
         switch (prop) {
-            case "help":
+            case 'help':
                 getopt.showHelp();
                 process.exit(0);
                 break;
-            case "rabbit-host":
+            case 'rabbit-host':
                 GLOBAL.config.rabbit = GLOBAL.config.rabbit || {};
                 GLOBAL.config.rabbit.host = value;
                 break;
-            case "rabbit-port":
+            case 'rabbit-port':
                 GLOBAL.config.rabbit = GLOBAL.config.rabbit || {};
                 GLOBAL.config.rabbit.port = value;
                 break;
-            case "logging-config-file":
+            case 'logging-config-file':
                 GLOBAL.config.logger = GLOBAL.config.logger || {};
                 GLOBAL.config.logger.config_file = value;
                 break;
@@ -85,7 +86,7 @@ var rpc = require('./../common/rpc');
 var controller = require('./roomController');
 
 // Logger
-var log = logger.getLogger("ErizoController");
+var log = logger.getLogger('ErizoController');
 
 var nuveKey;
 
@@ -101,16 +102,12 @@ var rooms = {};
 var myState;
 
 var calculateSignature = function (token) {
-    "use strict";
-
     var toSign = token.tokenId + ',' + token.host,
         signed = crypto.createHmac('sha256', nuveKey).update(toSign).digest('hex');
     return (new Buffer(signed)).toString('base64');
 };
 
 var checkSignature = function (token) {
-    "use strict";
-
     var calculatedSignature = calculateSignature(token);
 
     if (calculatedSignature !== token.signature) {
@@ -125,29 +122,21 @@ var checkSignature = function (token) {
  * Sends a message of type 'type' to all sockets in a determined room.
  */
 var sendMsgToRoom = function (room, type, arg) {
-    "use strict";
-
-    var sockets = room.sockets,
-        id;
-    for (id in sockets) {
-        if (sockets.hasOwnProperty(id)) {
-            log.info('Sending message to', sockets[id], 'in room ', room.id);
-            io.sockets.to(sockets[id]).emit(type, arg);
-        }
-    }
+    room.sockets.map(function (sock) {
+        log.info('Sending message to', sock.id, 'in room ', room.id);
+        sock.emit(type, arg);
+    });
 };
 
 var formatDate = function(date, format) {
-    "use strict";
-
     var dateTime = {
-        "M+": date.getMonth() + 1,
-        "d+": date.getDate(),
-        "h+": date.getHours(),
-        "m+": date.getMinutes(),
-        "s+": date.getSeconds(),
-        "q+": Math.floor((date.getMonth() + 3) / 3),
-        "S+": date.getMilliseconds()
+        'M+': date.getMonth() + 1,
+        'd+': date.getDate(),
+        'h+': date.getHours(),
+        'm+': date.getMinutes(),
+        's+': date.getSeconds(),
+        'q+': Math.floor((date.getMonth() + 3) / 3),
+        'S+': date.getMilliseconds()
     };
 
     if (/(y+)/i.test(format)) {
@@ -155,9 +144,9 @@ var formatDate = function(date, format) {
     }
 
     for (var k in dateTime) {
-        if (new RegExp("(" + k + ")").test(format)) {
-            format = format.replace(RegExp.$1, RegExp.$1.length == 1
-                ? dateTime[k] : ("00" + dateTime[k]).substr(("" + dateTime[k]).length));
+        if (new RegExp('(' + k + ')').test(format)) {
+            format = format.replace(RegExp.$1, RegExp.$1.length == 1 ?
+                dateTime[k] : ('00' + dateTime[k]).substr(('' + dateTime[k]).length));
         }
     }
 
@@ -168,8 +157,6 @@ var privateRegexp;
 var publicIP;
 
 var addToCloudHandler = function (callback) {
-    "use strict";
-
     var interfaces = require('os').networkInterfaces(),
         addresses = [],
         k,
@@ -261,7 +248,7 @@ var addToCloudHandler = function (callback) {
 
             var intervarId = setInterval(function () {
 
-                rpc.callRpc('nuve', 'keepAlive', myId, {"callback": function (result) {
+                rpc.callRpc('nuve', 'keepAlive', myId, {callback: function (result) {
                     if (result === 'whoareyou') {
 
                         // TODO: It should try to register again in Cloud Handler. But taking into account current rooms, users, ...
@@ -300,8 +287,6 @@ var addToCloudHandler = function (callback) {
 //            2: Available
 //*******************************************************************
 var updateMyState = function () {
-    "use strict";
-
     var nRooms = 0, newState, i, info;
 
     for (i in rooms) {
@@ -390,26 +375,24 @@ var initMixer = function (room, roomConfig, immediately) {
 };
 
 var listen = function () {
-    "use strict";
     log.info('server on');
 
     io.sockets.on('connection', function (socket) {
-        log.info("Socket connect ", socket.id);
+        log.info('Socket connect', socket.id);
 
         function sendMsgToOthersInRoom (room, type, arg) {
-            'use strict';
             room.sockets.map(function (sock) {
-                if (sock !== socket.id) {
-                    log.info('Sending message to', sock, 'in room ', room.id);
-                    io.sockets.to(sock).emit(type, arg);
+                if (sock.id !== socket.id) {
+                    log.info('Sending message to', sock.id, 'in room ', room.id);
+                    sock.emit(type, arg);
                 }
             });
-        };
+        }
         // Gets 'token' messages on the socket. Checks the signature and ask nuve if it is valid.
         // Then registers it in the room and callback to the client.
         socket.on('token', function (token, callback) {
 
-            log.debug("New token", token);
+            log.debug('New token', token);
 
             var tokenDB, user, streamList = [], index;
 
@@ -452,7 +435,7 @@ var listen = function () {
                             }
 
                             // Add client socket to room socket list and start to receive room events
-                            socket.room.sockets.push(socket.id);
+                            socket.room.sockets.push(socket);
 
                             for (index in socket.room.streams) {
                                 if (socket.room.streams.hasOwnProperty(index)) {
@@ -523,9 +506,9 @@ var listen = function () {
                                                     room.controller = controller.RoomController({rpc: rpc, agent_id: erizoAgent.id});
                                                     room.controller.addEventListener(function(type, event) {
                                                         // TODO Send message to room? Handle ErizoJS disconnection.
-                                                        if (type === "unpublish") {
+                                                        if (type === 'unpublish') {
                                                             var streamId = event;
-                                                            log.info("ErizoJS stopped", streamId);
+                                                            log.info('ErizoJS stopped', streamId);
                                                             sendMsgToRoom(room, 'onRemoveStream', {id: streamId});
                                                             room.controller.removePublisher(streamId);
 
@@ -569,7 +552,7 @@ var listen = function () {
                                         validateTokenOK();
                                     }
                                 }, 100);
-                            }
+                            };
 
                             initRoom(tokenDB.room, function () {
                                 checkRoomReady(rooms[tokenDB.room], 10);
@@ -596,7 +579,7 @@ var listen = function () {
                 }});
 
             } else {
-                log.warn("Authentication error");
+                log.warn('Authentication error');
                 safeCall(callback, 'error', 'Authentication error');
                 socket.disconnect();
             }
@@ -636,15 +619,18 @@ var listen = function () {
                     sendMsgToRoom(socket.room, 'onCustomMessage', data);
                     return safeCall(callback, 'success');
                 } else {
-                    if (socket.room.sockets.indexOf(receiver) === -1) {
-                        return safeCall(callback, 'error', 'invalid receiver');
+                    for (var k in socket.room.sockets) {
+                        if (socket.room.sockets[k].id === receiver) {
+                            try {
+                                socket.room.sockets[k].emit('onCustomMessage', data);
+                                safeCall(callback, 'success');
+                            } catch (err) {
+                                safeCall(callback, 'error', err);
+                            }
+                            return;
+                        }
                     }
-                    try {
-                        io.sockets.to(receiver).emit('onCustomMessage', data);
-                        safeCall(callback, 'success');
-                    } catch (err) {
-                        safeCall(callback, 'error', err);
-                    }
+                    return safeCall(callback, 'error', 'invalid receiver');
                 }
                 break;
             default: // do nothing
@@ -655,38 +641,29 @@ var listen = function () {
         //Gets 'sendDataStream' messages on the socket in order to write a message in a dataStream.
         socket.on('sendDataStream', function (msg) {
             if (msg.id !== undefined && socket.room.streams[msg.id]) {
-                var sockets = socket.room.streams[msg.id].getDataSubscribers(), id;
-                for (id in sockets) {
-                    if (sockets.hasOwnProperty(id)) {
-                        log.info('Sending dataStream to', sockets[id], 'in stream ', msg.id);
-                        io.sockets.to(sockets[id]).emit('onDataStream', msg);
-                    }
-                }
+                socket.room.streams[msg.id].getDataSubscribers().map(function (sockid) {
+                    log.info('Sending dataStream to', sockid, 'in stream ', msg.id);
+                    io.sockets.to(sockid).emit('onDataStream', msg);
+                });
             }
 
             // send to mix stream subscribers
             var mixer = socket.room.mixer;
             if (mixer && socket.room.streams[mixer]) {
-                var sockets = socket.room.streams[mixer].getDataSubscribers(), id;
-                for (id in sockets) {
-                    if (sockets.hasOwnProperty(id)) {
-                        log.info('Sending dataStream to', sockets[id], 'in stream ', mixer);
-                        io.sockets.to(sockets[id]).emit('onDataStream', msg);
-                    }
-                }
+                socket.room.streams[mixer].getDataSubscribers().map(function (sockid) {
+                    log.info('Sending dataStream to', sockid, 'in stream ', mixer);
+                    io.sockets.to(sockid).emit('onDataStream', msg);
+                });
             }
         });
 
         //Gets 'updateStreamAttributes' messages on the socket in order to update attributes from the stream.
         socket.on('updateStreamAttributes', function (msg) {
-            var sockets = socket.room.streams[msg.id].getDataSubscribers(), id;
             socket.room.streams[msg.id].setAttributes(msg.attrs);
-            for (id in sockets) {
-                if (sockets.hasOwnProperty(id)) {
-                    log.info('Sending new attributes to', sockets[id], 'in stream ', msg.id);
-                    io.sockets.to(sockets[id]).emit('onUpdateAttributeStream', msg);
-                }
-            }
+            socket.room.streams[msg.id].getDataSubscribers().map(function (sockid) {
+                log.info('Sending new attributes to', sockid, 'in stream ', msg.id);
+                io.sockets.to(sockid).emit('onUpdateAttributeStream', msg);
+            });
         });
 
         //Gets 'publish' messages on the socket in order to add new stream to the room.
@@ -704,7 +681,6 @@ var listen = function () {
             }
             if (options.state === 'url' || options.state === 'recording') {
                 id = socket.id;
-                var mixer = socket.room.mixer;
                 var url = sdp;
                 if (options.state === 'recording') {
                     var recordingId = sdp;
@@ -714,7 +690,7 @@ var listen = function () {
                         url = '/tmp/' + recordingId + '.mkv';
                     }
                 }
-                socket.room.controller.addExternalInput(id, url, mixer, function (result) {
+                socket.room.controller.addExternalInput(id, url, socket.room.mixer, function (result) {
                     if (result === 'success') {
                         st = new ST.Stream({id: id, socket: socket.id, audio: options.audio, video: options.video, data: options.data, attributes: options.attributes, from: url});
                         socket.streams.push(id);
@@ -761,7 +737,7 @@ var listen = function () {
                         // Double check if this socket is still in the room.
                         // It can be removed from the room if the socket is disconnected
                         // before the publish succeeds.
-                        var index = socket.room.sockets.indexOf(socket.id);
+                        var index = socket.room.sockets.indexOf(socket);
                         if (index === -1) {
                             return;
                         }
@@ -836,7 +812,7 @@ var listen = function () {
                         answer = answer.replace(privateRegexp, publicIP);
                         safeCall(callback, answer, errText);
                     }, function() {
-                        log.info("Subscriber added");
+                        log.info('Subscriber added');
                     });
                 }
             } else {
@@ -1025,7 +1001,7 @@ var listen = function () {
                         var timeStamp = new Date();
                         rpc.callRpc('stats_handler', 'event', [{room: socket.room.id, user: socket.id, type: 'unsubscribe', stream: to, timestamp:timeStamp.getTime()}]);
                     }
-                };
+                }
             }
             safeCall(callback, 'success');
         });
@@ -1050,7 +1026,7 @@ var listen = function () {
                     }
                 }
 
-                index = socket.room.sockets.indexOf(socket.id);
+                index = socket.room.sockets.indexOf(socket);
                 if (index !== -1) {
                     socket.room.sockets.splice(index, 1);
                 }
@@ -1065,8 +1041,7 @@ var listen = function () {
                         if (!socket.room.p2p) {
                             socket.room.controller.removePublisher(id);
                             if (GLOBAL.config.erizoController.sendStats) {
-                                var timeStamp = new Date();
-                                rpc.callRpc('stats_handler', 'event', [{room: socket.room.id, user: socket.id, type: 'unpublish', stream: id, timestamp: timeStamp.getTime()}]);
+                                rpc.callRpc('stats_handler', 'event', [{room: socket.room.id, user: socket.id, type: 'unpublish', stream: id, timestamp: (new Date()).getTime()}]);
                             }
                         }
 
@@ -1078,8 +1053,7 @@ var listen = function () {
             }
 
             if (socket.room !== undefined && !socket.room.p2p && GLOBAL.config.erizoController.sendStats) {
-                var timeStamp = new Date();
-                rpc.callRpc('stats_handler', 'event', [{room: socket.room.id, user: socket.id, type: 'disconnection', timestamp: timeStamp.getTime()}]);
+                rpc.callRpc('stats_handler', 'event', [{room: socket.room.id, user: socket.id, type: 'disconnection', timestamp: (new Date()).getTime()}]);
             }
 
             if (socket.room !== undefined && socket.room.sockets.length === 0) {
@@ -1119,20 +1093,13 @@ var listen = function () {
  *Gets a list of users in a determined room.
  */
 exports.getUsersInRoom = function (room, callback) {
-    "use strict";
-
-    var users = [], sockets, id;
     if (rooms[room] === undefined) {
         return safeCall(callback, undefined);
     }
-
-    sockets = rooms[room].sockets;
-
-    for (id in sockets) {
-        if (sockets.hasOwnProperty(id)) {
-            users.push(io.sockets.to(sockets[id]).user);
-        }
-    }
+    var users = [];
+    rooms[room].sockets.map(function (sock) {
+        users.push(sock.user);
+    });
 
     safeCall(callback, users);
 };
@@ -1141,38 +1108,24 @@ exports.getUsersInRoom = function (room, callback) {
  *Delete a user in a determined room.
  */
 exports.deleteUser = function (user, room, callback) {
-    "use strict";
-
-    var sockets, id;
-
      if (rooms[room] === undefined) {
          return safeCall(callback, 'Success');
      }
-
-    sockets = rooms[room].sockets;
     var sockets_to_delete = [];
-
-    for (id in sockets) {
-        if (sockets.hasOwnProperty(id)) {
-            if (io.sockets.to(sockets[id]).user.name === user){
-                sockets_to_delete.push(sockets[id]);
-            }
+    rooms[room].sockets.map(function (sock) {
+        if (sock.user.name === user) {
+            sockets_to_delete.push(sock);
         }
-    }
-
-    for (var s in sockets_to_delete) {
-
-        log.info('Deleted user', io.sockets.to(sockets_to_delete[s]).user.name);
-        io.sockets.to(sockets_to_delete[s]).disconnect();
-    }
-
-    if (sockets_to_delete.length !== 0) {
-        return safeCall(callback, 'Success');
-    }
-    else {
+    });
+    if (sockets_to_delete.length === 0) {
         log.error('User', user, 'does not exist');
         return safeCall(callback, 'User does not exist', 404);
     }
+    sockets_to_delete.map(function (sock) {
+        log.info('Deleted user', sock.user.name);
+        sock.disconnect();
+    });
+    return safeCall(callback, 'Success');
 };
 
 
@@ -1180,10 +1133,6 @@ exports.deleteUser = function (user, room, callback) {
  * Delete a determined room.
  */
 exports.deleteRoom = function (roomId, callback) {
-    "use strict";
-
-    var sockets, streams, id, j;
-
     log.info('Deleting room ', roomId);
 
     var room = rooms[roomId];
@@ -1191,21 +1140,19 @@ exports.deleteRoom = function (roomId, callback) {
         return safeCall(callback, 'Success');
     }
 
-    sockets = room.sockets;
-    for (id in sockets) {
-        if (sockets.hasOwnProperty(id)) {
-            room.controller.removeSubscriptions(sockets[id]);
-        }
-    }
+    room.sockets.map(function (sock) {
+        room.controller.removeSubscriptions(sock.id);
+    });
 
-    streams = room.streams;
-    for (j in streams) {
+    var streams = room.streams;
+    for (var j in streams) {
         if (streams[j].hasAudio() || streams[j].hasVideo() || streams[j].hasScreen()) {
             if (!room.p2p) {
                 room.controller.removePublisher(j);
             }
         }
     }
+
     if (room.agent !== undefined) {
         rpc.callRpc('nuve', 'freeErizoAgent', room.agent);
     }
@@ -1241,13 +1188,12 @@ exports.getConfig = function (callback) {
 });
 
 (function validateLocalConfig () {
-    if (LIMIT_N_ROOMS == 0) {
-        log.info("Invalid config: limit_n_rooms == 0");
+    if (LIMIT_N_ROOMS === 0) {
+        log.info('Invalid config: limit_n_rooms == 0');
     } else if (WARNING_N_ROOMS >= LIMIT_N_ROOMS) {
-        log.info("Invalid config: warning_n_rooms >= limit_n_rooms");
+        log.info('Invalid config: warning_n_rooms >= limit_n_rooms');
     } else {
         rpc.connect(function () {
-            "use strict";
             try {
                 rpc.setPublicRPC(rpcPublic);
                 addToCloudHandler(function () {
@@ -1255,9 +1201,8 @@ exports.getConfig = function (callback) {
                     rpc.bind(rpcID, listen);
                 });
             } catch (error) {
-                log.info("Error in Erizo Controller: ", error);
+                log.info('Error in Erizo Controller:', error);
             }
         });
     }
 })();
-
