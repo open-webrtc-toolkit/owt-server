@@ -110,8 +110,6 @@ bool VideoFrameInputProcessor::init(int payloadType,
                                     boost::shared_ptr<VideoFrameMixer> frameMixer,
                                     InputProcessorCallback* initCallback)
 {
-    m_frameMixer = frameMixer;
-
     VideoCodecType codecType = VideoCodecType::kVideoCodecUnknown;
 
     switch (payloadType) {
@@ -143,10 +141,10 @@ bool VideoFrameInputProcessor::init(int payloadType,
             return false;
         }
 
-        m_decodedFrameHandler.reset(new DecodedFrameHandler(m_index, m_frameMixer, this, initCallback));
+        m_decodedFrameHandler.reset(new DecodedFrameHandler(m_index, frameMixer, this, initCallback));
         m_decoder->RegisterDecodeCompleteCallback(m_decodedFrameHandler.get());
     } else {
-        m_externalDecoder.reset(new RawFrameDecoder(m_index, m_frameMixer, this, initCallback));
+        m_externalDecoder.reset(new RawFrameDecoder(m_index, frameMixer, this, initCallback));
         if (m_externalDecoder->InitDecode(&codecSettings) != 0)
             return false;
     }
