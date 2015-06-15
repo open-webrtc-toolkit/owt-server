@@ -30,7 +30,7 @@ namespace mcu {
 
 DEFINE_LOGGER(DecodedFrameHandler, "mcu.media.DecodedFrameHandler");
 
-DEFINE_LOGGER(RawFrameDecoder, "mcu.media.RawFrameDecoder");
+DEFINE_LOGGER(FakedFrameDecoder, "mcu.media.FakedFrameDecoder");
 
 DEFINE_LOGGER(VideoFrameInputProcessor, "mcu.media.VideoFrameInputProcessor");
 
@@ -48,16 +48,18 @@ DecodedFrameHandler::DecodedFrameHandler(int index,
     }
 }
 
-DecodedFrameHandler::~DecodedFrameHandler() {
+DecodedFrameHandler::~DecodedFrameHandler()
+{
     m_frameMixer->deActivateInput(m_index);
 }
 
-int32_t DecodedFrameHandler::Decoded(I420VideoFrame& decodedImage) {
+int32_t DecodedFrameHandler::Decoded(I420VideoFrame& decodedImage)
+{
     m_frameMixer->pushInput(m_index, reinterpret_cast<unsigned char*>(&decodedImage), 0);
     return 0;
 }
 
-RawFrameDecoder::RawFrameDecoder(int index,
+FakedFrameDecoder::FakedFrameDecoder(int index,
                        boost::shared_ptr<VideoFrameMixer> frameMixer,
                        VideoFrameProvider* provider,
                        InputProcessorCallback* initCallback)
@@ -70,7 +72,7 @@ RawFrameDecoder::RawFrameDecoder(int index,
     assert(initCallback);
 }
 
-int32_t RawFrameDecoder::InitDecode(const VideoCodec* codecSettings)
+int32_t FakedFrameDecoder::InitDecode(const VideoCodec* codecSettings)
 {
     FrameFormat frameFormat = FRAME_FORMAT_UNKNOWN;
     if (codecSettings->codecType == webrtc::kVideoCodecVP8)
@@ -86,11 +88,13 @@ int32_t RawFrameDecoder::InitDecode(const VideoCodec* codecSettings)
     return -1;
 }
 
-RawFrameDecoder::~RawFrameDecoder() {
+FakedFrameDecoder::~FakedFrameDecoder()
+{
     m_frameMixer->deActivateInput(m_index);
 }
 
-int32_t RawFrameDecoder::Decode(unsigned char* payload, int len) {
+int32_t FakedFrameDecoder::Decode(unsigned char* payload, int len)
+{
     m_frameMixer->pushInput(m_index, payload, len);
     return 0;
 }
@@ -144,7 +148,7 @@ bool VideoFrameInputProcessor::init(int payloadType,
         m_decodedFrameHandler.reset(new DecodedFrameHandler(m_index, frameMixer, this, initCallback));
         m_decoder->RegisterDecodeCompleteCallback(m_decodedFrameHandler.get());
     } else {
-        m_externalDecoder.reset(new RawFrameDecoder(m_index, frameMixer, this, initCallback));
+        m_externalDecoder.reset(new FakedFrameDecoder(m_index, frameMixer, this, initCallback));
         if (m_externalDecoder->InitDecode(&codecSettings) != 0)
             return false;
     }
