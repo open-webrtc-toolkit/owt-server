@@ -695,9 +695,7 @@ var listen = function () {
                         st = new ST.Stream({id: id, socket: socket.id, audio: options.audio, video: options.video, data: options.data, attributes: options.attributes, from: url});
                         socket.streams.push(id);
                         socket.room.streams[id] = st;
-                        //Temporarilly not disclose the external input to end user for subscribing,
-                        //but only as input to mix stream now.
-                        //sendMsgToRoom(socket.room, 'onAddStream', st.getPublicStream());
+                        sendMsgToRoom(socket.room, 'onAddStream', st.getPublicStream());
                     }
                     safeCall(callback, result, id);
                 });

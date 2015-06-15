@@ -59,13 +59,16 @@ int32_t DecodedFrameHandler::Decoded(I420VideoFrame& decodedImage)
 }
 
 VCMFrameDecoder::VCMFrameDecoder(boost::shared_ptr<VideoFrameConsumer> consumer)
-    : m_decodedFrameConsumer(consumer)
+    : m_needDecode(false)
+    , m_decodedFrameConsumer(consumer)
 {
 }
 
 VCMFrameDecoder::~VCMFrameDecoder()
 {
-    m_decoder->RegisterDecodeCompleteCallback(nullptr);
+    m_needDecode = false;
+    if (m_decoder)
+        m_decoder->RegisterDecodeCompleteCallback(nullptr);
 }
 
 bool VCMFrameDecoder::setInput(FrameFormat format, VideoFrameProvider* provider)
@@ -99,26 +102,26 @@ bool VCMFrameDecoder::setInput(FrameFormat format, VideoFrameProvider* provider)
     m_decodedFrameHandler.reset(new DecodedFrameHandler(m_decodedFrameConsumer));
     m_decoder->RegisterDecodeCompleteCallback(m_decodedFrameHandler.get());
 
+    m_needDecode = true;
     m_codecInfo.codecType = codecType;
     return true;
 }
 
 void VCMFrameDecoder::unsetInput()
 {
-    m_decoder->RegisterDecodeCompleteCallback(nullptr);
-    m_decodedFrameHandler.reset();
-    m_decoder.reset();
+    m_needDecode = false;
 }
 
 void VCMFrameDecoder::onFrame(const Frame& frame)
 {
-    int ret = 0;
+    if (!m_needDecode)
+        return;
 
     EncodedImage image(reinterpret_cast<uint8_t*>(frame.payload), frame.length, 0);
     image._frameType = VideoFrameType::kKeyFrame;
     image._completeFrame = true;
     image._timeStamp = frame.timeStamp;
-    ret = m_decoder->Decode(image, false, nullptr, &m_codecInfo);
+    int ret = m_decoder->Decode(image, false, nullptr, &m_codecInfo);
 
     if (ret != 0) {
         ELOG_ERROR("Decode frame error: %d", ret);

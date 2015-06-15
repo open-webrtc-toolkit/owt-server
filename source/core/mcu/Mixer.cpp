@@ -189,13 +189,11 @@ void Mixer::removePublisher(const std::string& id)
         boost::unique_lock<boost::shared_mutex> lock(m_avBindingsMutex);
         m_avBindings.erase(audioSSRC);
     }
-    if (audioSSRC) {
+    if (audioSSRC)
         m_audioMixer->removeSource(audioSSRC, true);
-    }
 
-    if (videoSSRC) {
+    if (videoSSRC)
         m_videoMixer->removeSource(videoSSRC, false);
-    }
 
     m_publishers.erase(it);
 }
