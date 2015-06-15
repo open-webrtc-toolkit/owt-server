@@ -58,6 +58,7 @@ public:
 
 private:
     webrtc::CodecSpecificInfo m_codecInfo;
+    bool m_needDecode;
     boost::scoped_ptr<webrtc::VideoDecoder> m_decoder;
     boost::shared_ptr<VideoFrameConsumer> m_decodedFrameConsumer;
     boost::scoped_ptr<webrtc::DecodedImageCallback> m_decodedFrameHandler;

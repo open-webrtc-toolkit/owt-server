@@ -165,6 +165,10 @@ bool WebRTCGateway::addPublisher(MediaSource* publisher, const std::string& id)
     videoSourceSSRC_ = publisher->getVideoSourceSSRC();
     audioSourceSSRC_ = publisher->getAudioSourceSSRC();
     sourcefbSink_ = feedbackSink;
+    videoDataType_ = publisher->getVideoDataType();
+    audioDataType_ = publisher->getAudioDataType();
+    videoPayloadType_ = publisher->getVideoPayloadType();
+    audioPayloadType_ = publisher->getAudioPayloadType();
 
     publisher->setAudioSink(this);
     publisher->setVideoSink(this);

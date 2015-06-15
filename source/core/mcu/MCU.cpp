@@ -18,6 +18,7 @@
  * and approved by Intel in writing.
  */
 
+#include "ExternalInputGateway.h"
 #include "InProcessMixer.h"
 #include "OutOfProcessMixer.h"
 #include "OutOfProcessMixerProxy.h"
@@ -33,12 +34,12 @@ woogeen_base::Gateway* woogeen_base::Gateway::createGatewayInstance(const std::s
         boost::property_tree::ptree pt;
         std::istringstream is(customParams);
         boost::property_tree::read_json(is, pt);
-        bool isMixer = pt.get<bool>("mixer");
+        bool isMixer = pt.get<bool>("mixer", false);
  
         if (isMixer) {
-            bool outOfProcess = pt.get<bool>("oop");
+            bool outOfProcess = pt.get<bool>("oop", false);
             if (outOfProcess) {
-                bool isProxy = pt.get<bool>("proxy");
+                bool isProxy = pt.get<bool>("proxy", false);
                 if (!isProxy)
                     return new mcu::OutOfProcessMixer(pt.get_child("video"));
 
@@ -47,6 +48,10 @@ woogeen_base::Gateway* woogeen_base::Gateway::createGatewayInstance(const std::s
 
             return new mcu::InProcessMixer(pt.get_child("video"));
         }
+
+        bool externalInput = pt.get<bool>("externalInput", false);
+        if (externalInput)
+            return new mcu::ExternalInputGateway();
     }
 
     return new mcu::WebRTCGateway();

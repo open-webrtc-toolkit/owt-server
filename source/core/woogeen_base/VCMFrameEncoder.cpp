@@ -89,6 +89,9 @@ void VCMFrameEncoder::onFrame(const Frame& frame)
         // Currently we should only receive I420 format frame.
         I420VideoFrame* rawFrame = reinterpret_cast<I420VideoFrame*>(frame.payload);
         initializeEncoder(rawFrame->width(), rawFrame->height());
+        if (!m_encoderInitialized)
+            break;
+
         const int kMsToRtpTimestamp = 90;
         const uint32_t time_stamp =
             kMsToRtpTimestamp *
