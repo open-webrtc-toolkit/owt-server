@@ -58,19 +58,19 @@ private:
     boost::shared_ptr<VideoFrameMixer> m_frameMixer;
 };
 
-// TODO: Have RawFrameDecoder implement the webrtc::VideoDecoder interface.
+// TODO: Have FakedFrameDecoder implement the webrtc::VideoDecoder interface.
 // So that we can unify the code for external and internal decoding in VideoFrameInputProcessor.
-class RawFrameDecoder {
+class FakedFrameDecoder {
 
     DECLARE_LOGGER();
 
 public:
-   RawFrameDecoder(int index,
+   FakedFrameDecoder(int index,
                    boost::shared_ptr<VideoFrameMixer> frameMixer,
                    woogeen_base::VideoFrameProvider* provider,
                    InputProcessorCallback* initCallback);
 
-   virtual ~RawFrameDecoder();
+   virtual ~FakedFrameDecoder();
 
    int32_t InitDecode(const webrtc::VideoCodec* codecSettings);
 
@@ -110,7 +110,7 @@ private:
     boost::shared_mutex m_sinkMutex;
     boost::scoped_ptr<webrtc::VideoDecoder> m_decoder;
     boost::shared_ptr<webrtc::DecodedImageCallback> m_decodedFrameHandler;
-    boost::shared_ptr<RawFrameDecoder> m_externalDecoder;
+    boost::shared_ptr<FakedFrameDecoder> m_externalDecoder;
 };
 
 } /* namespace mcu */
