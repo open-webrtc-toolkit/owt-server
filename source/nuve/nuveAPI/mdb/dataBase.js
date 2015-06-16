@@ -12,7 +12,7 @@ var databaseUrl = config.nuve.dataBaseURL;
 
 /*
  * Data base collections and its fields are:
- * 
+ *
  * room {name: '', [p2p: bool], [data: {}], _id: ObjectId}
  *
  * service {name: '', key: '', rooms: Array[room], testRoom: room, testToken: token, _id: ObjectId}
@@ -21,7 +21,7 @@ var databaseUrl = config.nuve.dataBaseURL;
  *
  */
 var collections = ['rooms', 'tokens', 'services'];
-exports.db = require('mongojs').connect(databaseUrl, collections);
+exports.db = require('mongojs')(databaseUrl, collections);
 
 // Superservice ID
 exports.superService = config.nuve.superserviceID;

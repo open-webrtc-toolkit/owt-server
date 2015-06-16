@@ -13,8 +13,7 @@ if (!dbURL) {
 var path = require('path');
 var destConfigFile = path.join(HOME, 'etc/woogeen_config.js');
 var configFile = destConfigFile;
-var mongojs = require('mongojs');
-var db = mongojs.connect(dbURL, ['services']);
+var db = require('mongojs')(dbURL, ['services']);
 var cipher = require('../common/cipher');
 
 function prepareService (serviceName, next) {
