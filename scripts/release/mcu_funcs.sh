@@ -91,6 +91,12 @@ pack_libs() {
   # remove libs from msdk
   rm -f ${WOOGEEN_DIST}/lib/libmfxhw*
   rm -f ${WOOGEEN_DIST}/lib/libva*
+  # remove libs from libav/ffmpeg if needed
+  if ldd ${WOOGEEN_DIST}/lib/libavcodec* | grep aac -q -s; then # nonfree, not redistributable
+    rm -f ${WOOGEEN_DIST}/lib/libav*
+  fi
+  # remove libfdk-aac
+  rm -f ${WOOGEEN_DIST}/lib/libfdk-aac*
 }
 
 pack_scripts() {
