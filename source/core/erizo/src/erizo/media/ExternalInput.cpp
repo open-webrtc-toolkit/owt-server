@@ -8,9 +8,11 @@
 
 namespace erizo {
   DEFINE_LOGGER(ExternalInput, "media.ExternalInput");
-  ExternalInput::ExternalInput(const std::string& inputUrl):url_(inputUrl){
-    setVideoDataType(DataContentType::ENCODED_FRAME);
-    setAudioDataType(DataContentType::ENCODED_FRAME);
+  ExternalInput::ExternalInput(const std::string& inputUrl)
+      : url_(inputUrl)
+      , audio_sequence_number_(0) {
+    videoDataType_ = DataContentType::ENCODED_FRAME;
+    audioDataType_ = DataContentType::RTP;
     sourcefbSink_=NULL;
     context_ = NULL;
     running_ = false;
@@ -138,7 +140,7 @@ namespace erizo {
       }
     }
 
-    if (!getVideoSourceSSRC() && !getAudioSourceSSRC()) {
+    if (!videoSourceSSRC_ && !audioSourceSSRC_) {
       return false;
     }
 
@@ -174,13 +176,24 @@ namespace erizo {
       AVPacket orig_pkt = avpacket_;
       if (avpacket_.stream_index == video_stream_index_) { //packet is video
         //ELOG_DEBUG("Receive video frame packet with size %d ", avpacket_.size);
-        if (getVideoSourceSSRC() && videoSink_!=NULL) {
+        if (videoSourceSSRC_ && videoSink_!=NULL) {
           videoSink_->deliverVideoData((char*)avpacket_.data, avpacket_.size);
         }
       } else if (avpacket_.stream_index == audio_stream_index_) { //packet is audio
         //ELOG_DEBUG("Receive audio frame packet with size %d ", avpacket_.size);
-        if (getAudioSourceSSRC() && audioSink_!=NULL) {
-          audioSink_->deliverAudioData((char*)avpacket_.data, avpacket_.size);
+        if (audioSourceSSRC_ && audioSink_!=NULL) {
+          char buf[MAX_DATA_PACKET_SIZE];
+          RTPHeader* head = reinterpret_cast<RTPHeader*>(buf);
+          memset(head, 0, sizeof(RTPHeader));
+          head->setVersion(2);
+          head->setSSRC(audioSourceSSRC_);
+          head->setPayloadType(audioPayloadType_);
+          head->setTimestamp(avpacket_.dts);
+          head->setSeqNumber(audio_sequence_number_++);
+          head->setMarker(false); // not used.
+          memcpy(&buf[head->getHeaderLength()], avpacket_.data, avpacket_.size);
+
+          audioSink_->deliverAudioData(buf, avpacket_.size + head->getHeaderLength());
         }
       }
       av_free_packet(&orig_pkt);

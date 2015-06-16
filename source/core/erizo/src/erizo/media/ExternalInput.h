@@ -39,8 +39,9 @@ namespace erizo{
       boost::thread thread_;
       AVFormatContext* context_;
       AVPacket avpacket_;
-      int video_stream_index_,video_time_base_;
+      int video_stream_index_, video_time_base_;
       int audio_stream_index_, audio_time_base_;
+      uint32_t audio_sequence_number_;
       ExternalInputStatusListener* statusListener_;
 
       bool connect();
