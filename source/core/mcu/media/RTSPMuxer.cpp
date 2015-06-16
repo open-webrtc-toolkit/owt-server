@@ -113,7 +113,9 @@ bool RTSPMuxer::start()
         }
     }
     av_dump_format(m_context, 0, m_context->filename, 1);
-    avformat_write_header(m_context, nullptr);
+    if (avformat_write_header(m_context, nullptr) < 0) {
+        return false;
+    }
     m_muxing = true;
     m_thread = boost::thread(&RTSPMuxer::loop, this);
     m_audioTransThread = boost::thread(&RTSPMuxer::encodeAudioLoop, this);
