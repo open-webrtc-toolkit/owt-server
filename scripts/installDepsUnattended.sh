@@ -12,8 +12,8 @@ PREFIX_DIR=$LIB_DIR/build/
 parse_arguments(){
   while [ "$1" != "" ]; do
     case $1 in
-      "--enable-gpl")
-        ENABLE_GPL=true
+      "--disable-nonfree")
+        DISABLE_NONFREE=true
         ;;
       "--cleanup")
         CLEANUP=true
@@ -51,10 +51,10 @@ check_proxy
 if [ "$NIGHTLY" != "true" ]; then
   install_opus
 
-  if [ "$ENABLE_GPL" = "true" ]; then
+  if [ "$DISABLE_NONFREE" = "true" ]; then
     install_mediadeps
   else
-    install_mediadeps_nogpl
+    install_mediadeps_nonfree
   fi
 
   install_node_tools
