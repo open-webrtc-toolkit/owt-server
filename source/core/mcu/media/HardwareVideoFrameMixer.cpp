@@ -108,7 +108,15 @@ void HardwareVideoFrameMixerOutput::onTimeout()
         int len = m_engine->pullOutput(m_index, (unsigned char*)&m_esBuffer);
         if (len > 0) {
             m_outCount++;
-            m_receiver->onFrame(m_outFormat, (unsigned char*)&m_esBuffer, len, m_outCount * (1000 / m_frameRate) * 90);
+
+            woogeen_base::Frame frame;
+            memset(&frame, 0, sizeof(frame));
+            frame.format = m_outFormat;
+            frame.payload = reinterpret_cast<uint8_t*>(&m_esBuffer);
+            frame.length = len;
+            frame.timeStamp = m_outCount * (1000 / m_frameRate) * 90;
+
+            m_receiver->onFrame(frame);
         } else
             break;
     } while (1);

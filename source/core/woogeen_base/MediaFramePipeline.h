@@ -21,6 +21,8 @@
 #ifndef MediaFramePipeline_h
 #define MediaFramePipeline_h
 
+#include <stdint.h>
+
 namespace woogeen_base {
 
 enum FrameFormat {
@@ -35,6 +37,28 @@ enum FrameFormat {
     FRAME_FORMAT_OPUS
 };
 
+struct VideoFrameSpecificInfo {
+    uint16_t width;
+    uint16_t height;
+};
+
+struct AudioFrameSpecificInfo {
+    uint32_t nbSamples;
+    uint32_t sampleRate;
+    uint8_t channels;
+};
+
+struct Frame {
+    FrameFormat format;
+    uint8_t* payload;
+    uint32_t length;
+    uint32_t timeStamp;
+    union {
+        VideoFrameSpecificInfo video;
+        AudioFrameSpecificInfo audio;
+    } additionalInfo;
+};
+
 class FrameProvider {
 public:
     virtual ~FrameProvider() { }
@@ -46,7 +70,7 @@ class FrameConsumer {
 public:
     virtual ~FrameConsumer() { }
 
-    virtual void onFrame(FrameFormat, unsigned char* payload, int len, unsigned int ts) = 0;
+    virtual void onFrame(const Frame&) = 0;
     virtual bool acceptRawFrame() { return true; }
     virtual bool acceptEncodedFrame() { return true; }
 };

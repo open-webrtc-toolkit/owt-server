@@ -141,14 +141,14 @@ void MediaRecorder::stop()
     ELOG_DEBUG("Media recording is closed successfully.");
 }
 
-void MediaRecorder::onFrame(woogeen_base::FrameFormat format, unsigned char* payload, int len, unsigned int ts)
+void MediaRecorder::onFrame(const woogeen_base::Frame& frame)
 {
-    switch (format) {
+    switch (frame.format) {
     case woogeen_base::FRAME_FORMAT_VP8:
-        m_videoQueue->pushFrame(payload, len, ts);
+        m_videoQueue->pushFrame(frame.payload, frame.length, frame.timeStamp);
         break;
     case woogeen_base::FRAME_FORMAT_PCMU:
-        m_audioQueue->pushFrame(payload, len, ts);
+        m_audioQueue->pushFrame(frame.payload, frame.length, frame.timeStamp);
         break;
     default:
         break;

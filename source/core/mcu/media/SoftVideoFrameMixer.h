@@ -71,7 +71,7 @@ public:
     CompositedFrameDispatcher(SoftVideoFrameMixer* mixer);
     ~CompositedFrameDispatcher();
 
-    void onFrame(woogeen_base::FrameFormat format, unsigned char* payload, int len, unsigned int ts);
+    void onFrame(const woogeen_base::Frame&);
 
 private:
     SoftVideoFrameMixer* m_mixer;
@@ -127,8 +127,16 @@ inline void SoftVideoFrameMixer::pushInput(int input, unsigned char* payload, in
 {
     boost::shared_lock<boost::shared_mutex> lock(m_decoderMutex);
     std::map<int, boost::shared_ptr<woogeen_base::VideoFrameDecoder>>::iterator it = m_decoders.find(input);
-    if (it != m_decoders.end())
-        it->second->onFrame(woogeen_base::FRAME_FORMAT_I420, payload, len, 0);
+    if (it != m_decoders.end()) {
+        woogeen_base::Frame frame;
+        memset(&frame, 0, sizeof(frame));
+        frame.format = woogeen_base::FRAME_FORMAT_I420;
+        frame.payload = payload;
+        frame.length = len;
+        frame.timeStamp = 0; // unused.
+
+        it->second->onFrame(frame);
+    }
 }
 
 inline void SoftVideoFrameMixer::updateRootSize(VideoSize& rootSize)
@@ -202,13 +210,13 @@ CompositedFrameDispatcher::~CompositedFrameDispatcher()
     m_mixer->m_compositor->unsetOutput();
 }
 
-inline void CompositedFrameDispatcher::onFrame(woogeen_base::FrameFormat format, unsigned char* payload, int len, unsigned int ts)
+inline void CompositedFrameDispatcher::onFrame(const woogeen_base::Frame& frame)
 {
-    assert(format == woogeen_base::FRAME_FORMAT_I420);
+    assert(frame.format == woogeen_base::FRAME_FORMAT_I420);
     boost::shared_lock<boost::shared_mutex> lock(m_mixer->m_encoderMutex);
     std::map<int, boost::shared_ptr<woogeen_base::VideoFrameEncoder>>::iterator it = m_mixer->m_encoders.begin();
     for (; it != m_mixer->m_encoders.end(); ++it)
-        it->second->onFrame(format, payload, len, ts);
+        it->second->onFrame(frame);
 }
 
 }

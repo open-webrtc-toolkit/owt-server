@@ -40,7 +40,7 @@ public:
 
     void setBitrate(unsigned short kbps, int id = 0);
     void requestKeyFrame(int id);
-    void onFrame(woogeen_base::FrameFormat, unsigned char* payload, int len, unsigned int ts);
+    void onFrame(const woogeen_base::Frame&);
 
 private:
     std::map<int, woogeen_base::VideoFrameConsumer*> m_consumers;
@@ -65,13 +65,13 @@ inline void FakedVideoFrameEncoder::requestKeyFrame(int id)
 {
 }
 
-inline void FakedVideoFrameEncoder::onFrame(woogeen_base::FrameFormat format, unsigned char* payload, int len, unsigned int ts)
+inline void FakedVideoFrameEncoder::onFrame(const woogeen_base::Frame& frame)
 {
     boost::shared_lock<boost::shared_mutex> lock(m_consumerMutex);
     if (!m_consumers.empty()) {
         std::map<int, woogeen_base::VideoFrameConsumer*>::iterator it = m_consumers.begin();
         for (; it != m_consumers.end(); ++it)
-            it->second->onFrame(format, payload, 0, 0);
+            it->second->onFrame(frame);
     }
 }
 

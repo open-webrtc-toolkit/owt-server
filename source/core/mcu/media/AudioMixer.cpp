@@ -488,8 +488,18 @@ void AudioProcessor::Process(int channelId, webrtc::ProcessingTypes type,
 {
     int channels = isStereo ? 2 : 1;
     uint16_t length = nbSamples * channels * sizeof(int16_t);
-    m_frameConsumer->onFrame(woogeen_base::FRAME_FORMAT_PCM_RAW, reinterpret_cast<uint8_t*>(data), length, 0/*timestamp unused*/);
-    // FIXME: now we may lose the chance to init output codec correctly, e.g., sample_rate, nb_channels, nb_samples_perchannel.
+
+    woogeen_base::Frame frame;
+    memset(&frame, 0, sizeof(frame));
+    frame.format = woogeen_base::FRAME_FORMAT_PCM_RAW;
+    frame.payload = reinterpret_cast<uint8_t*>(data);
+    frame.length = length;
+    frame.timeStamp = 0; // unused.
+    frame.additionalInfo.audio.nbSamples = nbSamples;
+    frame.additionalInfo.audio.sampleRate = sampleRate;
+    frame.additionalInfo.audio.channels = channels;
+
+    m_frameConsumer->onFrame(frame);
 }
 
 } /* namespace mcu */
