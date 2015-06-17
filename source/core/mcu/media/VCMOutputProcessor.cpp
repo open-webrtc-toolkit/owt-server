@@ -228,17 +228,17 @@ uint32_t VCMOutputProcessor::sendSSRC(bool nack, bool fec)
     return 0;
 }
 
-void VCMOutputProcessor::onFrame(woogeen_base::FrameFormat format, unsigned char* payload, int len, unsigned int ts)
+void VCMOutputProcessor::onFrame(const woogeen_base::Frame& frame)
 {
-    if (format != woogeen_base::FRAME_FORMAT_I420 && format != m_sendFormat) {
-        ELOG_INFO("Frame format %d is not supported, ignored.", format);
+    if (frame.format != woogeen_base::FRAME_FORMAT_I420 && frame.format != m_sendFormat) {
+        ELOG_INFO("Frame format %d is not supported, ignored.", frame.format);
         return;
     }
 
-    switch (format) {
+    switch (frame.format) {
     case woogeen_base::FRAME_FORMAT_I420: {
         // Currently we should only receive I420 format frame.
-        I420VideoFrame* compositedFrame = reinterpret_cast<I420VideoFrame*>(payload);
+        I420VideoFrame* compositedFrame = reinterpret_cast<I420VideoFrame*>(frame.payload);
         std::vector<uint32_t> csrcs;
         m_videoEncoder->DeliverFrame(m_id, compositedFrame, csrcs);
         break;

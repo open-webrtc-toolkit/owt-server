@@ -52,7 +52,7 @@ public:
     bool start();
     void stop();
 
-    void onFrame(woogeen_base::FrameFormat, unsigned char* payload, int len, unsigned int ts);
+    void onFrame(const woogeen_base::Frame&);
 
 private:
     woogeen_base::FrameDispatcher*  m_videoSource;

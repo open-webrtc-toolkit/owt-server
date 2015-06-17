@@ -136,7 +136,17 @@ public:
             default:
                 break;
             }
-            m_frameConsumer->onFrame(format, encodedImage._buffer, encodedImage._length, encodedImage._timeStamp);
+
+            Frame frame;
+            memset(&frame, 0, sizeof(frame));
+            frame.format = format;
+            frame.payload = encodedImage._buffer;
+            frame.length = encodedImage._length;
+            frame.timeStamp = encodedImage._timeStamp;
+            frame.additionalInfo.video.width = encodedImage._encodedWidth;
+            frame.additionalInfo.video.height = encodedImage._encodedHeight;
+
+            m_frameConsumer->onFrame(frame);
         }
 
         return 0;
@@ -171,7 +181,15 @@ public:
             default:
                 break;
             }
-            m_frameConsumer->onFrame(format, const_cast<uint8_t*>(payloadData), payloadSize, timeStamp);
+
+            Frame frame;
+            memset(&frame, 0, sizeof(frame));
+            frame.format = format;
+            frame.payload = const_cast<uint8_t*>(payloadData);
+            frame.length = payloadSize;
+            frame.timeStamp = timeStamp;
+
+            m_frameConsumer->onFrame(frame);
         }
 
         return 0;
@@ -187,6 +205,9 @@ public:
     virtual ~FrameDispatcher() { }
     virtual int32_t addFrameConsumer(const std::string& name, int payloadType, FrameConsumer*) = 0;
     virtual void removeFrameConsumer(int32_t id) = 0;
+
+    // TODO: Remove this interface. The video size information should be retrieved
+    // from the frames dispatched to the consumer.
     virtual bool getVideoSize(unsigned int& width, unsigned int& height) const = 0;
 };
 

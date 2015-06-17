@@ -122,15 +122,15 @@ bool RTSPMuxer::start()
     return true;
 }
 
-void RTSPMuxer::onFrame(woogeen_base::FrameFormat format, unsigned char* payload, int len, unsigned int ts)
+void RTSPMuxer::onFrame(const woogeen_base::Frame& frame)
 {
-    switch (format) {
+    switch (frame.format) {
     case woogeen_base::FRAME_FORMAT_H264:
-        m_videoQueue->pushFrame(payload, len, ts);
+        m_videoQueue->pushFrame(frame.payload, frame.length, frame.timeStamp);
         break;
     case woogeen_base::FRAME_FORMAT_PCM_RAW:
         // TODO: Get rid of the raw audio queue. The data should be pushed into the av audio fifo directly.
-        m_audioRawQueue->pushFrame(payload, len, ts);
+        m_audioRawQueue->pushFrame(frame.payload, frame.length, frame.timeStamp);
         break;
     default:
         break;

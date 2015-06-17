@@ -50,7 +50,7 @@ public:
     VCMFrameDecoder(boost::shared_ptr<VideoFrameConsumer>);
     ~VCMFrameDecoder();
 
-    void onFrame(FrameFormat, unsigned char* payload, int len, unsigned int ts);
+    void onFrame(const Frame&);
     bool acceptRawFrame() { return false; }
 
     bool setInput(FrameFormat, VideoFrameProvider*);

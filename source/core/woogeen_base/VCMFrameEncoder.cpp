@@ -82,12 +82,12 @@ void VCMFrameEncoder::requestKeyFrame(int id)
     m_vcm->IntraFrameRequest(0);
 }
 
-void VCMFrameEncoder::onFrame(FrameFormat format, unsigned char* payload, int len, unsigned int ts)
+void VCMFrameEncoder::onFrame(const Frame& frame)
 {
-    switch (format) {
+    switch (frame.format) {
     case FRAME_FORMAT_I420: {
         // Currently we should only receive I420 format frame.
-        I420VideoFrame* rawFrame = reinterpret_cast<I420VideoFrame*>(payload);
+        I420VideoFrame* rawFrame = reinterpret_cast<I420VideoFrame*>(frame.payload);
         initializeEncoder(rawFrame->width(), rawFrame->height());
         const int kMsToRtpTimestamp = 90;
         const uint32_t time_stamp =
@@ -115,7 +115,16 @@ int32_t VCMFrameEncoder::SendData(
 {
     // New encoded data, hand over to the frame consumer.
     if (m_encodedFrameConsumer) {
-        m_encodedFrameConsumer->onFrame(m_encodeFormat, encoded_image._buffer, encoded_image._length, encoded_image._timeStamp);
+        Frame frame;
+        memset(&frame, 0, sizeof(frame));
+        frame.format = m_encodeFormat;
+        frame.payload = encoded_image._buffer;
+        frame.length = encoded_image._length;
+        frame.timeStamp = encoded_image._timeStamp;
+        frame.additionalInfo.video.width = encoded_image._encodedWidth;
+        frame.additionalInfo.video.height = encoded_image._encodedHeight;
+
+        m_encodedFrameConsumer->onFrame(frame);
         return 0;
     }
 

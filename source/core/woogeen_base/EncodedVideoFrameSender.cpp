@@ -127,20 +127,20 @@ void EncodedVideoFrameSender::OnNetworkChanged(const uint32_t target_bitrate, co
     m_source->setBitrate(target_bitrate / 1000, m_id);
 }
 
-void EncodedVideoFrameSender::onFrame(FrameFormat format, unsigned char* payload, int len, unsigned int ts)
+void EncodedVideoFrameSender::onFrame(const Frame& frame)
 {
     webrtc::RTPVideoHeader h;
 
-    if (format == FRAME_FORMAT_VP8) {
+    if (frame.format == FRAME_FORMAT_VP8) {
         h.codec = webrtc::kRtpVideoVp8;
         h.codecHeader.VP8.InitRTPVideoHeaderVP8();
-        if (len > 0 && m_frameConsumer)
-            m_frameConsumer->onFrame(format, payload, len, ts);
-        m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, VP8_90000_PT, ts, ts / 90, payload, len, nullptr, &h);
-    } else if (format == FRAME_FORMAT_H264) {
+        if (frame.length > 0 && m_frameConsumer)
+            m_frameConsumer->onFrame(frame);
+        m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, VP8_90000_PT, frame.timeStamp, frame.timeStamp / 90, frame.payload, frame.length, nullptr, &h);
+    } else if (frame.format == FRAME_FORMAT_H264) {
         int nalu_found_length = 0;
-        unsigned char* buffer_start = payload;
-        int buffer_length = len;
+        uint8_t* buffer_start = frame.payload;
+        int buffer_length = frame.length;
         int nalu_start_offset = 0;
         int nalu_end_offset = 0;
         RTPFragmentationHeader frag_info;
@@ -155,13 +155,13 @@ void EncodedVideoFrameSender::onFrame(FrameFormat format, unsigned char* payload
                 /* SPS, PPS, I, P*/
                 uint16_t last = frag_info.fragmentationVectorSize;
                 frag_info.VerifyAndAllocateFragmentationHeader(last + 1);
-                frag_info.fragmentationOffset[last] = nalu_start_offset + (buffer_start - payload);
+                frag_info.fragmentationOffset[last] = nalu_start_offset + (buffer_start - frame.payload);
                 frag_info.fragmentationLength[last] = nalu_found_length;
                 buffer_start += (nalu_start_offset + nalu_found_length);
                 buffer_length -= (nalu_start_offset + nalu_found_length);
             }
         }
-        m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, H264_90000_PT, ts, ts / 90, payload, len, &frag_info, &h);
+        m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, H264_90000_PT, frame.timeStamp, frame.timeStamp / 90, frame.payload, frame.length, &frag_info, &h);
     }
 }
 

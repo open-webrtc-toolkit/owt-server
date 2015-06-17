@@ -35,7 +35,7 @@ public:
 
     bool setInput(woogeen_base::FrameFormat, woogeen_base::VideoFrameProvider*);
     void unsetInput();
-    void onFrame(woogeen_base::FrameFormat, unsigned char* payload, int len, unsigned int ts);
+    void onFrame(const woogeen_base::Frame&);
     bool acceptEncodedFrame() { return false; }
 
 private:
@@ -55,11 +55,11 @@ I420VideoFrameDecoder::~I420VideoFrameDecoder()
     m_compositor->deActivateInput(m_input);
 }
 
-inline void I420VideoFrameDecoder::onFrame(woogeen_base::FrameFormat format, unsigned char* payload, int len, unsigned int ts)
+inline void I420VideoFrameDecoder::onFrame(const woogeen_base::Frame& frame)
 {
-    assert(format == woogeen_base::FRAME_FORMAT_I420);
-    webrtc::I420VideoFrame* frame = reinterpret_cast<webrtc::I420VideoFrame*>(payload);
-    m_compositor->pushInput(m_input, frame);
+    assert(frame.format == woogeen_base::FRAME_FORMAT_I420);
+    webrtc::I420VideoFrame* i420Frame = reinterpret_cast<webrtc::I420VideoFrame*>(frame.payload);
+    m_compositor->pushInput(m_input, i420Frame);
 }
 
 inline bool I420VideoFrameDecoder::setInput(woogeen_base::FrameFormat format, woogeen_base::VideoFrameProvider*)

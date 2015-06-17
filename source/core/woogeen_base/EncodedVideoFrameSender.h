@@ -50,7 +50,7 @@ public:
     ~EncodedVideoFrameSender();
 
     // Implements VideoFrameSender.
-    void onFrame(FrameFormat, unsigned char* payload, int len, unsigned int ts);
+    void onFrame(const Frame&);
     bool setSendCodec(FrameFormat, unsigned int width, unsigned int height);
     bool updateVideoSize(unsigned int width, unsigned int height);
     bool startSend(bool nack, bool fec) { return true; }

@@ -44,7 +44,17 @@ DecodedFrameHandler::~DecodedFrameHandler()
 int32_t DecodedFrameHandler::Decoded(I420VideoFrame& decodedImage)
 {
     decodedImage.set_render_time_ms(TickTime::MillisecondTimestamp() - m_ntpDelta);
-    m_consumer->onFrame(FRAME_FORMAT_I420, reinterpret_cast<unsigned char*>(&decodedImage), 0, decodedImage.timestamp());
+
+    Frame frame;
+    memset(&frame, 0, sizeof(frame));
+    frame.format = FRAME_FORMAT_I420;
+    frame.payload = reinterpret_cast<uint8_t*>(&decodedImage);
+    frame.length = 0;
+    frame.timeStamp = decodedImage.timestamp();
+    frame.additionalInfo.video.width = decodedImage.width();
+    frame.additionalInfo.video.height = decodedImage.height();
+
+    m_consumer->onFrame(frame);
     return 0;
 }
 
@@ -100,14 +110,14 @@ void VCMFrameDecoder::unsetInput()
     m_decoder.reset();
 }
 
-void VCMFrameDecoder::onFrame(FrameFormat format, unsigned char* payload, int len, unsigned int ts)
+void VCMFrameDecoder::onFrame(const Frame& frame)
 {
     int ret = 0;
 
-    EncodedImage image(payload, len, 0);
+    EncodedImage image(reinterpret_cast<uint8_t*>(frame.payload), frame.length, 0);
     image._frameType = VideoFrameType::kKeyFrame;
     image._completeFrame = true;
-    image._timeStamp = ts;
+    image._timeStamp = frame.timeStamp;
     ret = m_decoder->Decode(image, false, nullptr, &m_codecInfo);
 
     if (ret != 0) {

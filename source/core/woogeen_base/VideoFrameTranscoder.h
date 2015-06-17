@@ -39,7 +39,7 @@ public:
     void unsetInput();
 
     // Implements VideoFrameConsumer.
-    void onFrame(FrameFormat, unsigned char* payload, int len, unsigned int ts);
+    void onFrame(const Frame&);
     bool acceptRawFrame() { return false; }
 
     // Implements VideoFrameProvider.
@@ -74,9 +74,9 @@ inline void VideoFrameTranscoder::unsetInput()
     m_decoder->unsetInput();
 }
 
-inline void VideoFrameTranscoder::onFrame(FrameFormat format, unsigned char* payload, int len, unsigned int ts)
+inline void VideoFrameTranscoder::onFrame(const Frame& frame)
 {
-    m_decoder->onFrame(format, payload, len, ts);
+    m_decoder->onFrame(frame);
 }
 
 inline void VideoFrameTranscoder::setBitrate(unsigned short kbps, int id)
