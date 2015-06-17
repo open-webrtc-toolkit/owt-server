@@ -45,9 +45,12 @@ inline AVCodecID payloadType2AudioCodecID(int payloadType)
     }
 }
 
-MediaRecorder::MediaRecorder(woogeen_base::MediaMuxing* videoRecording, woogeen_base::MediaMuxing* audioRecording, const std::string& recordPath, int snapshotInterval)
-    : m_videoStream(NULL)
+MediaRecorder::MediaRecorder(woogeen_base::FrameDispatcher* videoSource, woogeen_base::FrameDispatcher* audioSource, const std::string& recordPath, int snapshotInterval)
+    : m_videoSource(videoSource)
+    , m_audioSource(audioSource)
+    , m_videoStream(NULL)
     , m_audioStream(NULL)
+    , m_recordPath(recordPath)
     , m_recordStartTime(-1)
     , m_videoId(-1)
     , m_audioId(-1)
@@ -55,9 +58,6 @@ MediaRecorder::MediaRecorder(woogeen_base::MediaMuxing* videoRecording, woogeen_
     m_muxing = false;
     m_firstVideoTimestamp = -1;
     m_firstAudioTimestamp = -1;
-    m_videoRecording = videoRecording;
-    m_audioRecording = audioRecording;
-    m_recordPath = recordPath;
 }
 
 MediaRecorder::~MediaRecorder()
@@ -71,8 +71,8 @@ bool MediaRecorder::start()
     m_videoQueue.reset(new woogeen_base::MediaFrameQueue(m_recordStartTime));
     m_audioQueue.reset(new woogeen_base::MediaFrameQueue(m_recordStartTime));
     // Start the recording of video and audio
-    m_videoId = m_videoRecording->startMuxing(m_recordPath, VP8_90000_PT, *m_videoQueue);
-    m_audioId = m_audioRecording->startMuxing(m_recordPath, PCMU_8000_PT, *m_audioQueue);
+    m_videoId = m_videoSource->addFrameConsumer(m_recordPath, VP8_90000_PT, this);
+    m_audioId = m_audioSource->addFrameConsumer(m_recordPath, PCMU_8000_PT, this);
 
     if (m_videoId == -1 || m_audioId == -1)
         return false;
@@ -120,8 +120,8 @@ void MediaRecorder::stop()
     m_muxing = false;
     m_thread.join();
 
-    m_videoRecording->stopMuxing(m_videoId);
-    m_audioRecording->stopMuxing(m_audioId);
+    m_videoSource->removeFrameConsumer(m_videoId);
+    m_audioSource->removeFrameConsumer(m_audioId);
 
     if (m_audioStream != NULL && m_videoStream != NULL && m_context != NULL)
         av_write_trailer(m_context);
@@ -141,6 +141,20 @@ void MediaRecorder::stop()
     ELOG_DEBUG("Media recording is closed successfully.");
 }
 
+void MediaRecorder::onFrame(woogeen_base::FrameFormat format, unsigned char* payload, int len, unsigned int ts)
+{
+    switch (format) {
+    case woogeen_base::FRAME_FORMAT_VP8:
+        m_videoQueue->pushFrame(payload, len, ts);
+        break;
+    case woogeen_base::FRAME_FORMAT_PCMU:
+        m_audioQueue->pushFrame(payload, len, ts);
+        break;
+    default:
+        break;
+    }
+}
+
 bool MediaRecorder::initRecordContext()
 {
     if (m_context->oformat->video_codec != AV_CODEC_ID_NONE
@@ -158,7 +172,7 @@ bool MediaRecorder::initRecordContext()
 
         unsigned int width = 0;
         unsigned int height = 0;
-        if (m_videoRecording->getVideoSize(width, height)) {
+        if (m_videoSource->getVideoSize(width, height)) {
             m_videoStream->codec->width = width;
             m_videoStream->codec->height = height;
         } else {

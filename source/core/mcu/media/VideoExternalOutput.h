@@ -23,12 +23,12 @@
 
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
-#include <MediaMuxing.h>
+#include <MediaMuxer.h>
 #include <VCMFrameConstructor.h>
 
 namespace mcu {
 
-class VideoExternalOutput : public erizo::MediaSink, public woogeen_base::MediaMuxing {
+class VideoExternalOutput : public erizo::MediaSink, public woogeen_base::FrameDispatcher {
 public:
     VideoExternalOutput();
     virtual ~VideoExternalOutput();
@@ -37,9 +37,9 @@ public:
     virtual int deliverAudioData(char* buf, int len);
     virtual int deliverVideoData(char* buf, int len);
 
-    // Implements the MediaMuxing interfaces.
-    virtual int32_t startMuxing(const std::string& participant, int codec, woogeen_base::MediaFrameQueue& videoQueue);
-    virtual void stopMuxing(int32_t id);
+    // Implements the FrameDispatcher interfaces.
+    virtual int32_t addFrameConsumer(const std::string& name, int payloadType, woogeen_base::FrameConsumer*);
+    virtual void removeFrameConsumer(int32_t id);
     virtual bool getVideoSize(unsigned int& width, unsigned int& height) const;
 
 private:

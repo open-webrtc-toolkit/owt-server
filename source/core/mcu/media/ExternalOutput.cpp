@@ -20,8 +20,6 @@
 
 #include "ExternalOutput.h"
 
-#include <rtputils.h>
-
 namespace mcu {
 
 DEFINE_LOGGER(ExternalOutput, "mcu.media.ExternalOutput");
@@ -45,19 +43,11 @@ ExternalOutput::~ExternalOutput()
 
 int ExternalOutput::deliverAudioData(char* buf, int len)
 {
-    RTCPHeader* chead = reinterpret_cast<RTCPHeader*>(buf);
-    uint8_t packetType = chead->getPacketType();
-    assert(packetType != RTCP_Receiver_PT && packetType != RTCP_PS_Feedback_PT && packetType != RTCP_RTP_Feedback_PT);
-
     return m_audioExternalOutput->deliverAudioData(buf, len);
 }
 
 int ExternalOutput::deliverVideoData(char* buf, int len)
 {
-    RTCPHeader* chead = reinterpret_cast<RTCPHeader*>(buf);
-    uint8_t packetType = chead->getPacketType();
-    assert(packetType != RTCP_Receiver_PT && packetType != RTCP_PS_Feedback_PT && packetType != RTCP_RTP_Feedback_PT);
-
     return m_videoExternalOutput->deliverVideoData(buf, len);
 }
 

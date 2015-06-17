@@ -23,7 +23,7 @@
 
 #include "VideoLayout.h"
 
-#include <VideoFramePipeline.h>
+#include <MediaFramePipeline.h>
 #include <webrtc/common_video/interface/i420_video_frame.h>
 
 namespace mcu {

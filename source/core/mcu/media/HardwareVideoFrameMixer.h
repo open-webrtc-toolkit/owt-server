@@ -32,9 +32,9 @@
 #include <JobTimer.h>
 #include <logger.h>
 #include <map>
+#include <MediaFramePipeline.h>
 #include <set>
 #include <string>
-#include <VideoFramePipeline.h>
 
 namespace mcu {
 

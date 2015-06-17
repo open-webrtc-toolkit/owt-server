@@ -279,9 +279,9 @@ bool VCMOutputProcessor::init(woogeen_base::WebRTCTransport<erizo::VIDEO>* trans
     return true;
 }
 
-void VCMOutputProcessor::registerPreSendFrameCallback(woogeen_base::MediaFrameQueue& videoQueue)
+void VCMOutputProcessor::registerPreSendFrameCallback(woogeen_base::FrameConsumer* frameConsumer)
 {
-    m_encodedFrameCallback.reset(new woogeen_base::VideoEncodedFrameCallbackAdapter(&videoQueue));
+    m_encodedFrameCallback.reset(new woogeen_base::VideoEncodedFrameCallbackAdapter(frameConsumer));
     m_videoEncoder->RegisterPostEncodeImageCallback(m_encodedFrameCallback.get());
 }
 

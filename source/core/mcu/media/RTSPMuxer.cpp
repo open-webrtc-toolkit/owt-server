@@ -34,9 +34,9 @@ namespace mcu {
 
 DEFINE_LOGGER(RTSPMuxer, "mcu.media.RTSPMuxer");
 
-RTSPMuxer::RTSPMuxer(const std::string& uri, woogeen_base::MediaMuxing* video, woogeen_base::MediaMuxing* audio)
-    : m_videoSink(video)
-    , m_audioSink(audio)
+RTSPMuxer::RTSPMuxer(const std::string& uri, woogeen_base::FrameDispatcher* video, woogeen_base::FrameDispatcher* audio)
+    : m_videoSource(video)
+    , m_audioSource(audio)
     , m_resampleContext(nullptr)
     , m_audioFifo(nullptr)
     , m_pts(0)
@@ -79,8 +79,8 @@ void RTSPMuxer::stop()
     m_thread.join();
     m_audioTransThread.join();
 
-    m_videoSink->stopMuxing(m_videoId);
-    m_audioSink->stopMuxing(m_audioId);
+    m_videoSource->removeFrameConsumer(m_videoId);
+    m_audioSource->removeFrameConsumer(m_audioId);
     if (m_audioFifo)
         av_audio_fifo_free(m_audioFifo);
     if (m_resampleContext) {
@@ -99,8 +99,8 @@ bool RTSPMuxer::start()
     m_videoQueue.reset(new woogeen_base::MediaFrameQueue(0));
     m_audioQueue.reset(new woogeen_base::MediaFrameQueue(0));
     m_audioRawQueue.reset(new woogeen_base::MediaFrameQueue(0));
-    m_videoId = m_videoSink->startMuxing(m_uri, H264_90000_PT, *m_videoQueue);
-    m_audioId = m_audioSink->startMuxing(m_uri, OPUS_48000_PT, *m_audioRawQueue); // FIXME: should be AAC_44100_PT or so.
+    m_videoId = m_videoSource->addFrameConsumer(m_uri, H264_90000_PT, this);
+    m_audioId = m_audioSource->addFrameConsumer(m_uri, OPUS_48000_PT, this); // FIXME: should be AAC_44100_PT or so.
     if (m_videoId == -1 || m_audioId == -1)
         return false;
 
@@ -120,6 +120,21 @@ bool RTSPMuxer::start()
     m_thread = boost::thread(&RTSPMuxer::loop, this);
     m_audioTransThread = boost::thread(&RTSPMuxer::encodeAudioLoop, this);
     return true;
+}
+
+void RTSPMuxer::onFrame(woogeen_base::FrameFormat format, unsigned char* payload, int len, unsigned int ts)
+{
+    switch (format) {
+    case woogeen_base::FRAME_FORMAT_H264:
+        m_videoQueue->pushFrame(payload, len, ts);
+        break;
+    case woogeen_base::FRAME_FORMAT_PCM_RAW:
+        // TODO: Get rid of the raw audio queue. The data should be pushed into the av audio fifo directly.
+        m_audioRawQueue->pushFrame(payload, len, ts);
+        break;
+    default:
+        break;
+    }
 }
 
 int RTSPMuxer::writeVideoFrame(uint8_t* data, size_t size, int timestamp)
@@ -362,7 +377,7 @@ void RTSPMuxer::addVideoStream(enum AVCodecID codec_id)
     c->bit_rate = 400000;
     /* Resolution must be a multiple of two. */
     unsigned int width = 640, height = 480;
-    m_videoSink->getVideoSize(width, height);
+    m_videoSource->getVideoSize(width, height);
     c->width    = width;
     c->height   = height;
     /* timebase: This is the fundamental unit of time (in seconds) in terms

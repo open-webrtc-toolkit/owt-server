@@ -53,15 +53,15 @@ int VideoExternalOutput::deliverAudioData(char* buf, int len)
     return 0;
 }
 
-int32_t VideoExternalOutput::startMuxing(const std::string& participant, int codec, woogeen_base::MediaFrameQueue& videoQueue)
+int32_t VideoExternalOutput::addFrameConsumer(const std::string& name, int payloadType, woogeen_base::FrameConsumer* frameConsumer)
 {
     // Start the recording of video frames
-    m_encodedFrameCallback.reset(new woogeen_base::VideoEncodedFrameCallbackAdapter(&videoQueue));
+    m_encodedFrameCallback.reset(new woogeen_base::VideoEncodedFrameCallbackAdapter(frameConsumer));
     m_frameConstructor->registerPreDecodeImageCallback(m_encodedFrameCallback);
     return 0;
 }
 
-void VideoExternalOutput::stopMuxing(int32_t id)
+void VideoExternalOutput::removeFrameConsumer(int32_t id)
 {
     // Stop the recording of video frames
     m_frameConstructor->deRegisterPreDecodeImageCallback();

@@ -21,7 +21,7 @@
 #ifndef VideoFrameSender_h
 #define VideoFrameSender_h
 
-#include "VideoFramePipeline.h"
+#include "MediaFramePipeline.h"
 #include "WebRTCFeedbackProcessor.h"
 
 #include <MediaDefinitions.h>
@@ -49,7 +49,7 @@ public:
     virtual erizo::FeedbackSink* feedbackSink() = 0;
     virtual int id() { return m_id; }
 
-    virtual void registerPreSendFrameCallback(MediaFrameQueue& mediaQueue) { }
+    virtual void registerPreSendFrameCallback(FrameConsumer*) { }
     virtual void deRegisterPreSendFrameCallback() { }
 
 protected:

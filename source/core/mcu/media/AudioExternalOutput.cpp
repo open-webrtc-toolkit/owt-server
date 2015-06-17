@@ -141,15 +141,13 @@ int AudioExternalOutput::deliverAudioData(char* buf, int len)
     return network->ReceivedRTPPacket(m_inputChannelId, buf, len) == -1 ? 0 : len;
 }
 
-int32_t AudioExternalOutput::startMuxing(const std::string& participant, int codec, woogeen_base::MediaFrameQueue& audioQueue)
+int32_t AudioExternalOutput::addFrameConsumer(const std::string& name, int payloadType, woogeen_base::FrameConsumer* consumer)
 {
-    // Start the recording of audio frames
-    return addOutput(codec, audioQueue);
+    return addOutput(payloadType, consumer);
 }
 
-void AudioExternalOutput::stopMuxing(int32_t id)
+void AudioExternalOutput::removeFrameConsumer(int32_t id)
 {
-    // Stop the recording of audio frames
     if (id != -1)
         removeOutput(id);
 }
@@ -191,7 +189,7 @@ void AudioExternalOutput::onTimeout() {
     }
 }
 
-int32_t AudioExternalOutput::addOutput(int codec, woogeen_base::MediaFrameQueue& audioQueue)
+int32_t AudioExternalOutput::addOutput(int payloadType, woogeen_base::FrameConsumer* consumer)
 {
     int32_t outputChannelId = -1;
     VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);
@@ -199,14 +197,14 @@ int32_t AudioExternalOutput::addOutput(int codec, woogeen_base::MediaFrameQueue&
     if (outputChannelId != -1) {
         VoECodec* voECodec = VoECodec::GetInterface(m_voiceEngine);
         CodecInst audioCodec;
-        bool validCodec = fillAudioCodec(codec, audioCodec);
+        bool validCodec = fillAudioCodec(payloadType, audioCodec);
         if (!validCodec || voECodec->SetSendCodec(outputChannelId, audioCodec) == -1
             || voe->StartSend(outputChannelId) == -1) {
             voe->DeleteChannel(outputChannelId);
             return -1;
         }
 
-        boost::shared_ptr<woogeen_base::AudioEncodedFrameCallbackAdapter> audioEncodedFrameCallback(new woogeen_base::AudioEncodedFrameCallbackAdapter(&audioQueue));
+        boost::shared_ptr<woogeen_base::AudioEncodedFrameCallbackAdapter> audioEncodedFrameCallback(new woogeen_base::AudioEncodedFrameCallbackAdapter(consumer));
         voe->RegisterPostEncodeFrameCallback(outputChannelId, audioEncodedFrameCallback.get());
 
         boost::unique_lock<boost::shared_mutex> lock(m_outputMutex);

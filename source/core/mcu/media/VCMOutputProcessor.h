@@ -27,7 +27,7 @@
 #include <boost/shared_ptr.hpp>
 #include <logger.h>
 #include <MediaDefinitions.h>
-#include <MediaMuxing.h>
+#include <MediaMuxer.h>
 #include <VideoFrameSender.h>
 #include <WebRTCTaskRunner.h>
 #include <WebRTCTransport.h>
@@ -60,7 +60,7 @@ public:
     woogeen_base::IntraFrameCallback* iFrameCallback() { return this; }
     erizo::FeedbackSink* feedbackSink() { return this; }
 
-    void registerPreSendFrameCallback(woogeen_base::MediaFrameQueue& videoQueue);
+    void registerPreSendFrameCallback(woogeen_base::FrameConsumer*);
     void deRegisterPreSendFrameCallback();
 
     // Implements FeedbackSink.

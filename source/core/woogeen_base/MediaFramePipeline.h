@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Intel Corporation All Rights Reserved. 
+ * Copyright 2015 Intel Corporation All Rights Reserved. 
  * 
  * The source code contained or described herein and all documents related to the 
  * source code ("Material") are owned by Intel Corporation or its suppliers or 
@@ -18,34 +18,47 @@
  * and approved by Intel in writing.
  */
 
-#ifndef VideoFramePipeline_h
-#define VideoFramePipeline_h
+#ifndef MediaFramePipeline_h
+#define MediaFramePipeline_h
 
 namespace woogeen_base {
 
 enum FrameFormat {
     FRAME_FORMAT_UNKNOWN,
+
     FRAME_FORMAT_I420,
     FRAME_FORMAT_VP8,
-    FRAME_FORMAT_H264
+    FRAME_FORMAT_H264,
+
+    FRAME_FORMAT_PCM_RAW,
+    FRAME_FORMAT_PCMU,
+    FRAME_FORMAT_OPUS
 };
 
-class VideoFrameProvider {
+class FrameProvider {
 public:
-    virtual ~VideoFrameProvider() { }
+    virtual ~FrameProvider() { }
 
     virtual void setBitrate(unsigned short kbps, int id = 0) = 0;
-    virtual void requestKeyFrame(int id = 0) = 0;
 };
 
-class VideoFrameConsumer {
+class FrameConsumer {
 public:
-    virtual ~VideoFrameConsumer() { }
+    virtual ~FrameConsumer() { }
 
     virtual void onFrame(FrameFormat, unsigned char* payload, int len, unsigned int ts) = 0;
     virtual bool acceptRawFrame() { return true; }
     virtual bool acceptEncodedFrame() { return true; }
 };
+
+class VideoFrameProvider : public FrameProvider {
+public:
+    virtual ~VideoFrameProvider() { }
+
+    virtual void requestKeyFrame(int id = 0) = 0;
+};
+
+typedef FrameConsumer VideoFrameConsumer;
 
 // VideoFrameDecoder accepts the input data from exactly one VideoFrameProvider
 // and decodes it into raw I420VideoFrame.
@@ -55,7 +68,7 @@ public:
     virtual void unsetInput() = 0;
 };
 
-// VideoFrameEncoder consumes the I420VideoFrame and encodes it into the
+// VideoFrameEncoder consumes the I420 video frame and encodes it into the
 // given FrameFormat. It can have multiple outputs with different FrameFormat
 // or framerate/bitrate settings.
 class VideoFrameEncoder : public VideoFrameConsumer, public VideoFrameProvider {

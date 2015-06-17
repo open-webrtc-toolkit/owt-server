@@ -22,13 +22,13 @@
 #define AudioExternalOutput_h
 
 #include <JobTimer.h>
-#include <MediaMuxing.h>
+#include <MediaMuxer.h>
 #include <webrtc/modules/audio_device/include/fake_audio_device.h>
 #include <WebRTCTransport.h>
 
 namespace mcu {
 
-class AudioExternalOutput : public erizo::MediaSink, public woogeen_base::MediaMuxing, public woogeen_base::JobTimerListener {
+class AudioExternalOutput : public erizo::MediaSink, public woogeen_base::FrameDispatcher, public woogeen_base::JobTimerListener {
 public:
     AudioExternalOutput();
     virtual ~AudioExternalOutput();
@@ -37,9 +37,9 @@ public:
     virtual int deliverAudioData(char* buf, int len);
     virtual int deliverVideoData(char* buf, int len);
 
-    // Implements the MediaMuxing interfaces.
-    virtual int32_t startMuxing(const std::string& participant, int codec, woogeen_base::MediaFrameQueue& audioQueue);
-    virtual void stopMuxing(int32_t id);
+    // Implements the FrameDispatcher interfaces.
+    virtual int32_t addFrameConsumer(const std::string& name, int payloadType, woogeen_base::FrameConsumer*);
+    virtual void removeFrameConsumer(int32_t id);
     virtual bool getVideoSize(unsigned int& width, unsigned int& height) const;
 
     // Implements the JobTimerListener interface.
@@ -47,7 +47,7 @@ public:
 
 private:
     void init();
-    int32_t addOutput(int codec, woogeen_base::MediaFrameQueue& audioQueue);
+    int32_t addOutput(int payloadType, woogeen_base::FrameConsumer*);
     void removeOutput(int32_t channelId);
 
     webrtc::VoiceEngine* m_voiceEngine;

@@ -30,8 +30,8 @@
 #include <boost/thread/shared_mutex.hpp>
 #include <JobTimer.h>
 #include <logger.h>
+#include <MediaFramePipeline.h>
 #include <vector>
-#include <VideoFramePipeline.h>
 
 namespace webrtc {
 class I420VideoFrame;

@@ -30,7 +30,7 @@
 #include <logger.h>
 #include <map>
 #include <MediaDefinitions.h>
-#include <MediaMuxing.h>
+#include <MediaMuxer.h>
 #include <MediaSourceConsumer.h>
 #include <WebRTCFeedbackProcessor.h>
 #include <WebRTCTaskRunner.h>
@@ -51,7 +51,7 @@ static const int MIXED_H264_VIDEO_STREAM_ID = 3;
 /**
  * Receives media from several sources, mixed into one stream and retransmits it to the RTPDataReceiver.
  */
-class VideoMixer : public woogeen_base::MediaSourceConsumer, public woogeen_base::MediaMuxing, public erizo::FeedbackSink, public InputProcessorCallback {
+class VideoMixer : public woogeen_base::MediaSourceConsumer, public woogeen_base::FrameDispatcher, public erizo::FeedbackSink, public InputProcessorCallback {
     DECLARE_LOGGER();
 
 public:
@@ -91,9 +91,9 @@ public:
     bool setResolution(const std::string& resolution);
     bool setBackgroundColor(const std::string& color);
 
-    // Implements MediaMuxing
-    int32_t startMuxing(const std::string&, int codec, woogeen_base::MediaFrameQueue& videoQueue);
-    void stopMuxing(int32_t id);
+    // Implements FrameDispatcher
+    int32_t addFrameConsumer(const std::string&, int payloadType, woogeen_base::FrameConsumer*);
+    void removeFrameConsumer(int32_t id);
     bool getVideoSize(unsigned int& width, unsigned int& height) const;
 
 private:
