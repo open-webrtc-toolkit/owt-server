@@ -21,7 +21,7 @@
 #ifndef VCMFrameEncoder_h
 #define VCMFrameEncoder_h
 
-#include "VideoFramePipeline.h"
+#include "MediaFramePipeline.h"
 #include "WebRTCTaskRunner.h"
 
 #include <boost/shared_ptr.hpp>

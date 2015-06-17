@@ -24,7 +24,7 @@
 #include <boost/scoped_ptr.hpp>
 #include <boost/thread.hpp>
 #include <logger.h>
-#include <MediaMuxing.h>
+#include <MediaMuxer.h>
 #include <MediaUtilities.h>
 #include <string>
 
@@ -39,11 +39,14 @@ class MediaRecorder : public woogeen_base::MediaMuxer {
     DECLARE_LOGGER();
 
 public:
-    MediaRecorder(woogeen_base::MediaMuxing* videoRecording, woogeen_base::MediaMuxing* audioRecording, const std::string& recordPath, int snapshotInterval);
-    virtual ~MediaRecorder();
+    MediaRecorder(woogeen_base::FrameDispatcher* videoRecording, woogeen_base::FrameDispatcher* audioRecording, const std::string& recordPath, int snapshotInterval);
+    ~MediaRecorder();
+
     // MediaMuxer interface
     bool start();
     void stop();
+
+    void onFrame(woogeen_base::FrameFormat, unsigned char* payload, int len, unsigned int ts);
 
 private:
     bool initRecordContext();
@@ -51,8 +54,8 @@ private:
     void writeVideoFrame(woogeen_base::EncodedFrame& encoded_frame);
     void writeAudioFrame(woogeen_base::EncodedFrame& encoded_frame);
 
-    woogeen_base::MediaMuxing* m_videoRecording;
-    woogeen_base::MediaMuxing* m_audioRecording;
+    woogeen_base::FrameDispatcher* m_videoSource;
+    woogeen_base::FrameDispatcher* m_audioSource;
     AVStream* m_videoStream;
     AVStream* m_audioStream;
     AVFormatContext* m_context;

@@ -21,7 +21,7 @@
 #ifndef RTSPMuxer_h
 #define RTSPMuxer_h
 
-#include "MediaMuxing.h"
+#include "MediaMuxer.h"
 #include "MediaUtilities.h"
 
 #include <boost/scoped_ptr.hpp>
@@ -45,14 +45,18 @@ namespace mcu {
 class RTSPMuxer : public woogeen_base::MediaMuxer {
     DECLARE_LOGGER();
 public:
-    RTSPMuxer(const std::string&, woogeen_base::MediaMuxing*, woogeen_base::MediaMuxing*);
-    virtual ~RTSPMuxer();
+    RTSPMuxer(const std::string&, woogeen_base::FrameDispatcher*, woogeen_base::FrameDispatcher*);
+    ~RTSPMuxer();
+
     // MediaMuxer interface
     bool start();
     void stop();
+
+    void onFrame(woogeen_base::FrameFormat, unsigned char* payload, int len, unsigned int ts);
+
 private:
-    woogeen_base::MediaMuxing*      m_videoSink;
-    woogeen_base::MediaMuxing*      m_audioSink;
+    woogeen_base::FrameDispatcher*  m_videoSource;
+    woogeen_base::FrameDispatcher*  m_audioSource;
     AVFormatContext*                m_context;
     AVAudioResampleContext*         m_resampleContext;
     AVAudioFifo*                    m_audioFifo;

@@ -29,8 +29,8 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/shared_mutex.hpp>
 #include <map>
+#include <MediaFramePipeline.h>
 #include <VCMFrameEncoder.h>
-#include <VideoFramePipeline.h>
 
 namespace mcu {
 

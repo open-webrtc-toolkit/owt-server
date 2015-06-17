@@ -21,7 +21,6 @@
 #ifndef EncodedVideoFrameSender_h
 #define EncodedVideoFrameSender_h
 
-#include "MediaMuxing.h"
 #include "VideoFrameSender.h"
 #include "WebRTCTaskRunner.h"
 #include "WebRTCTransport.h"
@@ -60,7 +59,7 @@ public:
     IntraFrameCallback* iFrameCallback() { return this; }
     erizo::FeedbackSink* feedbackSink() { return this; }
     bool acceptRawFrame() { return false; }
-    void registerPreSendFrameCallback(MediaFrameQueue& videoQueue);
+    void registerPreSendFrameCallback(FrameConsumer*);
     void deRegisterPreSendFrameCallback();
 
     // Implements FeedbackSink.
@@ -92,7 +91,7 @@ private:
     FrameFormat m_frameFormat;
     int m_targetKbps;
 
-    MediaFrameQueue* m_videoQueue;
+    FrameConsumer* m_frameConsumer;
 };
 
 }

@@ -356,16 +356,16 @@ int32_t AudioMixer::removeOutput(const std::string& participant)
     return -1;
 }
 
-int32_t AudioMixer::startMuxing(const std::string& participant, int codec, woogeen_base::MediaFrameQueue& audioQueue)
+int32_t AudioMixer::addFrameConsumer(const std::string& name, int payloadType, woogeen_base::FrameConsumer* frameConsumer)
 {
-    int32_t id = addOutput(participant, codec);
+    int32_t id = addOutput(name, payloadType);
     if (id != -1) {
-        if (codec == PCMU_8000_PT) {
-            m_encodedFrameCallback.reset(new woogeen_base::AudioEncodedFrameCallbackAdapter(&audioQueue));
+        if (payloadType == PCMU_8000_PT) {
+            m_encodedFrameCallback.reset(new woogeen_base::AudioEncodedFrameCallbackAdapter(frameConsumer));
             VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);
             voe->RegisterPostEncodeFrameCallback(id, m_encodedFrameCallback.get());
         } else {
-            m_audioProcessor.reset(new AudioProcessor(audioQueue));
+            m_audioProcessor.reset(new AudioProcessor(frameConsumer));
             VoEExternalMedia* externalMedia = VoEExternalMedia::GetInterface(m_voiceEngine);
             externalMedia->RegisterExternalMediaProcessing(id, kRecordingPerChannel, *m_audioProcessor);
         }
@@ -373,21 +373,21 @@ int32_t AudioMixer::startMuxing(const std::string& participant, int codec, wooge
     return id;
 }
 
-void AudioMixer::stopMuxing(int32_t chanId)
+void AudioMixer::removeFrameConsumer(int32_t channelId)
 {
     // FIXME: Register callback properly depending on codec.
     // VoEExternalMedia* externalMedia = VoEExternalMedia::GetInterface(m_voiceEngine);
     // externalMedia->RegisterExternalMediaProcessing(id, kRecordingPerChannel, nullptr);
     // m_audioProcessor.reset();
-    if (chanId == -1)
+    if (channelId == -1)
         return;
     boost::shared_lock<boost::shared_mutex> lock(m_outputMutex);
     std::map<std::string, VoiceChannel>::iterator it = m_outputChannels.begin();
     for (; it != m_outputChannels.end(); ++it) {
-        if (it->second.id == chanId) {
+        if (it->second.id == channelId) {
             lock.unlock();
             VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);
-            voe->DeRegisterPostEncodeFrameCallback(chanId);
+            voe->DeRegisterPostEncodeFrameCallback(channelId);
             removeOutput(it->first);
             break;
         }
@@ -488,7 +488,7 @@ void AudioProcessor::Process(int channelId, webrtc::ProcessingTypes type,
 {
     int channels = isStereo ? 2 : 1;
     uint16_t length = nbSamples * channels * sizeof(int16_t);
-    m_queue.pushFrame(reinterpret_cast<const uint8_t*>(data), length, 0/*timestamp unused*/);
+    m_frameConsumer->onFrame(woogeen_base::FRAME_FORMAT_PCM_RAW, reinterpret_cast<uint8_t*>(data), length, 0/*timestamp unused*/);
     // FIXME: now we may lose the chance to init output codec correctly, e.g., sample_rate, nb_channels, nb_samples_perchannel.
 }
 

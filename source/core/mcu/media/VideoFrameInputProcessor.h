@@ -22,7 +22,6 @@
 #define VideoFrameInputProcessor_h
 
 #include "VideoFrameMixer.h"
-#include "VideoFramePipeline.h"
 #include "VideoInputProcessorBase.h"
 
 #include <boost/scoped_ptr.hpp>
@@ -30,12 +29,12 @@
 #include <boost/thread/shared_mutex.hpp>
 #include <logger.h>
 #include <MediaDefinitions.h>
-#include <VideoFramePipeline.h>
+#include <MediaFramePipeline.h>
 
-#include "webrtc/common_types.h"
+#include <webrtc/common_types.h>
 #include <webrtc/modules/video_coding/codecs/h264/include/h264.h>
 #include <webrtc/modules/video_coding/codecs/vp8/include/vp8.h>
-#include "webrtc/video_decoder.h"
+#include <webrtc/video_decoder.h>
 
 namespace mcu {
 

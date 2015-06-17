@@ -27,7 +27,7 @@
 #include <JobTimer.h>
 #include <logger.h>
 #include <MediaDefinitions.h>
-#include <MediaMuxing.h>
+#include <MediaMuxer.h>
 #include <MediaSourceConsumer.h>
 #include <WebRTCTransport.h>
 #include <webrtc/modules/audio_device/include/fake_audio_device.h>
@@ -43,14 +43,14 @@ public:
 
 class AudioProcessor : public webrtc::VoEMediaProcess {
 public:
-    AudioProcessor(woogeen_base::MediaFrameQueue& queue) : m_queue(queue) {}
-    virtual ~AudioProcessor() {}
-    virtual void Process(int channelId, webrtc::ProcessingTypes type, int16_t data[], int nbSamples, int sampleRate, bool isStereo);
+    AudioProcessor(woogeen_base::FrameConsumer* consumer) : m_frameConsumer(consumer) { }
+    ~AudioProcessor() { }
+    void Process(int channelId, webrtc::ProcessingTypes type, int16_t data[], int nbSamples, int sampleRate, bool isStereo);
 private:
-    woogeen_base::MediaFrameQueue& m_queue;
+    woogeen_base::FrameConsumer* m_frameConsumer;
 };
 
-class AudioMixer : public woogeen_base::MediaSourceConsumer, public woogeen_base::MediaMuxing, public erizo::MediaSink, public erizo::FeedbackSink, public woogeen_base::JobTimerListener {
+class AudioMixer : public woogeen_base::MediaSourceConsumer, public woogeen_base::FrameDispatcher, public erizo::MediaSink, public erizo::FeedbackSink, public woogeen_base::JobTimerListener {
     DECLARE_LOGGER();
 
 public:
@@ -83,9 +83,9 @@ public:
     int32_t getChannelId(uint32_t sourceId);
     webrtc::VoEVideoSync* avSyncInterface();
 
-    // Implements MediaMuxing
-    int32_t startMuxing(const std::string& participant, int codec, woogeen_base::MediaFrameQueue& audioQueue);
-    void stopMuxing(int32_t id);
+    // Implements FrameDispatcher
+    int32_t addFrameConsumer(const std::string& name, int payloadType, woogeen_base::FrameConsumer*);
+    void removeFrameConsumer(int32_t id);
     bool getVideoSize(unsigned int& width, unsigned int& height) const { return true; } // not-used
 
 private:

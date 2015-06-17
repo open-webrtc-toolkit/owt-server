@@ -18,13 +18,16 @@
  * and approved by Intel in writing.
  */
 
-#ifndef MediaMuxing_h
-#define MediaMuxing_h
+#ifndef MediaMuxer_h
+#define MediaMuxer_h
+
+#include "MediaFramePipeline.h"
 
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/mutex.hpp>
 #include <Compiler.h>
+#include <rtputils.h>
 #include <SharedQueue.h>
 #include <webrtc/video/encoded_frame_callback_adapter.h>
 #include <webrtc/voice_engine/include/voe_base.h>
@@ -110,8 +113,8 @@ private:
 
 class VideoEncodedFrameCallbackAdapter : public webrtc::EncodedImageCallback {
 public:
-    VideoEncodedFrameCallbackAdapter(MediaFrameQueue* videoQueue)
-        : m_videoQueue(videoQueue)
+    VideoEncodedFrameCallbackAdapter(FrameConsumer* consumer)
+        : m_frameConsumer(consumer)
     {
     }
 
@@ -121,20 +124,32 @@ public:
                             const webrtc::CodecSpecificInfo* codecSpecificInfo,
                             const webrtc::RTPFragmentationHeader* fragmentation)
     {
-        if (encodedImage._length > 0 && m_videoQueue)
-            m_videoQueue->pushFrame(encodedImage._buffer, encodedImage._length, encodedImage._timeStamp);
+        if (encodedImage._length > 0 && m_frameConsumer) {
+            FrameFormat format = FRAME_FORMAT_UNKNOWN;
+            switch (codecSpecificInfo->codecType) {
+            case webrtc::kVideoCodecVP8:
+                format = FRAME_FORMAT_VP8;
+                break;
+            case webrtc::kVideoCodecH264:
+                format = FRAME_FORMAT_H264;
+                break;
+            default:
+                break;
+            }
+            m_frameConsumer->onFrame(format, encodedImage._buffer, encodedImage._length, encodedImage._timeStamp);
+        }
 
         return 0;
     }
 
 private:
-    MediaFrameQueue* m_videoQueue;
+    FrameConsumer* m_frameConsumer;
 };
 
 class AudioEncodedFrameCallbackAdapter : public webrtc::AudioEncodedFrameCallback {
 public:
-    AudioEncodedFrameCallbackAdapter(MediaFrameQueue* audioQueue)
-        : m_audioQueue(audioQueue)
+    AudioEncodedFrameCallbackAdapter(FrameConsumer* consumer)
+        : m_frameConsumer(consumer)
     {
     }
 
@@ -144,31 +159,44 @@ public:
                             uint32_t timeStamp, const uint8_t* payloadData,
                             uint16_t payloadSize)
     {
-        if (payloadSize > 0 && m_audioQueue)
-            m_audioQueue->pushFrame(payloadData, payloadSize, timeStamp);
+        if (payloadSize > 0 && m_frameConsumer) {
+            FrameFormat format = FRAME_FORMAT_UNKNOWN;
+            switch (payloadType) {
+            case PCMU_8000_PT:
+                format = FRAME_FORMAT_PCMU;
+                break;
+            case OPUS_48000_PT:
+                format = FRAME_FORMAT_OPUS;
+                break;
+            default:
+                break;
+            }
+            m_frameConsumer->onFrame(format, const_cast<uint8_t*>(payloadData), payloadSize, timeStamp);
+        }
 
         return 0;
     }
 
 private:
-    MediaFrameQueue* m_audioQueue;
+    FrameConsumer* m_frameConsumer;
 };
 
 
-class MediaMuxing {
+class FrameDispatcher {
 public:
-    virtual ~MediaMuxing() {}
-    virtual int32_t startMuxing(const std::string& uri, int codec, MediaFrameQueue& queue) = 0;
-    virtual void stopMuxing(int32_t id) = 0;
+    virtual ~FrameDispatcher() { }
+    virtual int32_t addFrameConsumer(const std::string& name, int payloadType, FrameConsumer*) = 0;
+    virtual void removeFrameConsumer(int32_t id) = 0;
     virtual bool getVideoSize(unsigned int& width, unsigned int& height) const = 0;
 };
 
-class MediaMuxer {
+class MediaMuxer : public FrameConsumer {
 public:
-    MediaMuxer() {}
-    virtual ~MediaMuxer() {}
+    MediaMuxer() { }
+    virtual ~MediaMuxer() { }
     virtual bool start() = 0;
     virtual void stop() = 0;
+
 protected:
     bool m_muxing;
     boost::thread m_thread;
@@ -180,4 +208,4 @@ protected:
 
 } /* namespace woogeen_base */
 
-#endif /* MediaMuxing_h */
+#endif /* MediaMuxer_h */

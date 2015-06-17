@@ -38,7 +38,7 @@ EncodedVideoFrameSender::EncodedVideoFrameSender(int id, boost::shared_ptr<Video
     , m_source(source)
     , m_frameFormat(frameFormat)
     , m_targetKbps(targetKbps)
-    , m_videoQueue(nullptr)
+    , m_frameConsumer(nullptr)
 {
     init(transport, taskRunner);
 }
@@ -134,8 +134,8 @@ void EncodedVideoFrameSender::onFrame(FrameFormat format, unsigned char* payload
     if (format == FRAME_FORMAT_VP8) {
         h.codec = webrtc::kRtpVideoVp8;
         h.codecHeader.VP8.InitRTPVideoHeaderVP8();
-        if (len > 0 && m_videoQueue)
-            m_videoQueue->pushFrame(payload, len, ts * 90);
+        if (len > 0 && m_frameConsumer)
+            m_frameConsumer->onFrame(format, payload, len, ts);
         m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, VP8_90000_PT, ts, ts / 90, payload, len, nullptr, &h);
     } else if (format == FRAME_FORMAT_H264) {
         int nalu_found_length = 0;
@@ -195,14 +195,14 @@ bool EncodedVideoFrameSender::init(WebRTCTransport<erizo::VIDEO>* transport, boo
     return true;
 }
 
-void EncodedVideoFrameSender::registerPreSendFrameCallback(MediaFrameQueue& videoQueue)
+void EncodedVideoFrameSender::registerPreSendFrameCallback(FrameConsumer* frameConsumer)
 {
-    m_videoQueue = &videoQueue;
+    m_frameConsumer = frameConsumer;
 }
 
 void EncodedVideoFrameSender::deRegisterPreSendFrameCallback()
 {
-    m_videoQueue = nullptr;
+    m_frameConsumer = nullptr;
 }
 
 void EncodedVideoFrameSender::close()

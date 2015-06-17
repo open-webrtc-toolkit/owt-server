@@ -24,7 +24,7 @@
 #include "VideoFrameMixer.h"
 
 #include <boost/shared_ptr.hpp>
-#include <VideoFramePipeline.h>
+#include <MediaFramePipeline.h>
 
 namespace mcu {
 

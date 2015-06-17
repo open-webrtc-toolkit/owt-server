@@ -160,17 +160,17 @@ bool VideoMixer::getVideoSize(unsigned int& width, unsigned int& height) const
     return false;
 }
 
-int32_t VideoMixer::startMuxing(const std::string&/*unused*/, int codec, woogeen_base::MediaFrameQueue& videoQueue)
+int32_t VideoMixer::addFrameConsumer(const std::string&/*unused*/, int payloadType, woogeen_base::FrameConsumer* frameConsumer)
 {
     int32_t id = -1;
-    id = addOutput(codec, true, false);
+    id = addOutput(payloadType, true, false);
     if (id != -1) {
         boost::shared_lock<boost::shared_mutex> lock(m_outputMutex);
-        std::map<int, boost::shared_ptr<woogeen_base::VideoFrameSender>>::iterator it = m_outputs.find(codec);
+        std::map<int, boost::shared_ptr<woogeen_base::VideoFrameSender>>::iterator it = m_outputs.find(payloadType);
         if (it == m_outputs.end() || it->second->id() != id)
             return -1;
-        woogeen_base::VideoFrameSender* output = m_outputs[codec].get();
-        output->registerPreSendFrameCallback(videoQueue);
+        woogeen_base::VideoFrameSender* output = m_outputs[payloadType].get();
+        output->registerPreSendFrameCallback(frameConsumer);
 
         // Request an IFrame explicitly, because the recorder doesn't support active I-Frame requests.
         IntraFrameCallback* iFrameCallback = output->iFrameCallback();
@@ -180,7 +180,7 @@ int32_t VideoMixer::startMuxing(const std::string&/*unused*/, int codec, woogeen
     return id;
 }
 
-void VideoMixer::stopMuxing(int32_t id)
+void VideoMixer::removeFrameConsumer(int32_t id)
 {
     boost::shared_lock<boost::shared_mutex> lock(m_outputMutex);
     std::map<int, boost::shared_ptr<woogeen_base::VideoFrameSender>>::iterator it = m_outputs.begin();
