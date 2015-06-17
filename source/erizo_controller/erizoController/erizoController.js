@@ -738,6 +738,10 @@ var listen = function () {
                         mixer = undefined;
                     }
 
+                    if (options.unmix === true) {
+                        mixer = undefined;
+                    }
+
                     if (socket.streams.indexOf(id) !== -1) {
                         return safeCall(callback, 'error', 'already published');
                     }
