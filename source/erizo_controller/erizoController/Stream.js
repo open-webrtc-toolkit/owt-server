@@ -3,6 +3,7 @@ exports.Stream = function (spec) {
     "use strict";
 
     var that = {},
+        recorder = '',
         dataSubscribers = [];
 
     that.getID = function () {
@@ -61,6 +62,16 @@ exports.Stream = function (spec) {
         if (index !== -1) {
             dataSubscribers.splice(index, 1);
         }
+    };
+
+    // Gets the stream recorder
+    that.getRecorder = function() {
+        return recorder;
+    };
+
+    // Sets the stream recorder
+    that.setRecorder = function(rec) {
+        recorder = rec;
     };
 
     // Returns the public specification of this stream
