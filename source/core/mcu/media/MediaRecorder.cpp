@@ -145,10 +145,6 @@ void MediaRecorder::onFrame(const woogeen_base::Frame& frame)
 {
     switch (frame.format) {
     case woogeen_base::FRAME_FORMAT_VP8:
-        // TODO: Should we set the width/height only ONCE when the first frame arrives?
-        // What if the frame width/height is changed?
-        m_videoStream->codec->width = frame.additionalInfo.video.width;
-        m_videoStream->codec->height = frame.additionalInfo.video.height;
         m_videoQueue->pushFrame(frame.payload, frame.length, frame.timeStamp);
         break;
     case woogeen_base::FRAME_FORMAT_PCMU:
@@ -173,6 +169,17 @@ bool MediaRecorder::initRecordContext()
         m_videoStream = avformat_new_stream(m_context, videoCodec);
         m_videoStream->id = 0;
         m_videoStream->codec->codec_id = m_context->oformat->video_codec;
+
+        unsigned int width = 0;
+        unsigned int height = 0;
+        if (m_videoSource->getVideoSize(width, height)) {
+            m_videoStream->codec->width = width;
+            m_videoStream->codec->height = height;
+        } else {
+            // Default record size is VGA
+            m_videoStream->codec->width = 640;
+            m_videoStream->codec->height = 480;
+        }
 
         // A decent guess here suffices; if processing the file with ffmpeg, use -vsync 0 to force it not to duplicate frames.
         m_videoStream->codec->time_base = (AVRational){1,30};
