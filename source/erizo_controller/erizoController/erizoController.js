@@ -388,6 +388,7 @@ var listen = function () {
                 }
             });
         }
+
         // Gets 'token' messages on the socket. Checks the signature and ask nuve if it is valid.
         // Then registers it in the room and callback to the client.
         socket.on('token', function (token, callback) {
@@ -585,7 +586,7 @@ var listen = function () {
             }
         });
 
-
+        // Gets 'customMessage' messages on the socket.
         socket.on('customMessage', function (msg, callback) {
             switch (msg.type) {
             case 'login': // reserved
@@ -873,21 +874,31 @@ var listen = function () {
                 return safeCall(callback, 'error', 'unauthorized');
             }
 
-            var path = require('path');
-            var timeStamp = new Date();
-            var recordingId = options.id || formatDate(timeStamp, 'yyyyMMddhhmmssSS');
-
-            var url = path.join((options.path || GLOBAL.config.erizoController.recording_path || '/tmp'),
-                'room' + socket.room.id + '_' + recordingId + '.mkv');
-            var interval = (options.interval && options.interval > 0) ? options.interval : -1;
-
             // Start recording stream
             var recordStreamId = options.to || socket.room.mixer;
-            if (recordStreamId && socket.room.streams[recordStreamId] &&
-                (socket.room.streams[recordStreamId].hasAudio() || socket.room.streams[recordStreamId].hasVideo() || socket.room.streams[recordStreamId].hasScreen())) {
+            var recordStream = socket.room.streams[recordStreamId]
+            if (recordStream === undefined) {
+                return safeCall(callback, 'error', 'Target record stream does not exist.');
+            }
+
+            var recorder = recordStream.getRecorder();
+            if (recorder !== undefined && recorder !== '') {
+                return safeCall(callback, 'error', 'Stream recording is going on.');
+            }
+
+            if (recordStream.hasAudio() || recordStream.hasVideo() || recordStream.hasScreen()) {
+                var timeStamp = new Date();
+                var recordingId = options.id || formatDate(timeStamp, 'yyyyMMddhhmmssSS');
+                var url = require('path').join((options.path || GLOBAL.config.erizoController.recording_path || '/tmp'),
+                    'room' + socket.room.id + '_' + recordingId + '.mkv');
+                var interval = (options.interval && options.interval > 0) ? options.interval : -1;
+
                 socket.room.controller.addExternalOutput(recordStreamId, recordingId, url, interval, function (result) {
                     if (result.success) {
+                        recordStream.setRecorder(recordingId);
+
                         log.info('Recorder started: ', url);
+
                         safeCall(callback, 'success', {
                             id : recordingId,
                             host: publicIP,
@@ -919,7 +930,15 @@ var listen = function () {
             if (options.id) {
                 socket.room.controller.removeExternalOutput(options.id, function (result) {
                     if (result.success) {
+                        for (var i in socket.room.streams) {
+                            if (socket.room.streams.hasOwnProperty(i) && socket.room.streams[i].getRecorder() === options.id+'') {
+                                socket.room.streams[i].setRecorder('');
+                                break;
+                            }
+                        }
+
                         log.info('Recorder stopped: ', result.text);
+
                         safeCall(callback, 'success', {
                             host: publicIP,
                             path: result.text
@@ -1128,7 +1147,6 @@ var listen = function () {
     });
 };
 
-
 /*
  *Gets a list of users in a determined room.
  */
@@ -1167,7 +1185,6 @@ exports.deleteUser = function (user, room, callback) {
     });
     return safeCall(callback, 'Success');
 };
-
 
 /*
  * Delete a determined room.
