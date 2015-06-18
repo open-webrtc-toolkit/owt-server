@@ -67,13 +67,4 @@ void VideoExternalOutput::removeFrameConsumer(int32_t id)
     m_frameConstructor->deRegisterPreDecodeImageCallback();
 }
 
-bool VideoExternalOutput::getVideoSize(unsigned int& width, unsigned int& height) const
-{
-    // FIXME: Currently, ONLY VGA to be recorded.
-    width = 640;
-    height = 480;
-
-    return true;
-}
-
 } /* namespace mcu */
