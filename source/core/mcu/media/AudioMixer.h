@@ -41,10 +41,10 @@ public:
     virtual void onPositiveAudioSources(std::vector<uint32_t>& sources) = 0;
 };
 
-class AudioProcessor : public webrtc::VoEMediaProcess {
+class RawAudioOutput : public webrtc::VoEMediaProcess {
 public:
-    AudioProcessor(woogeen_base::FrameConsumer* consumer) : m_frameConsumer(consumer) { }
-    ~AudioProcessor() { }
+    RawAudioOutput(woogeen_base::FrameConsumer* consumer) : m_frameConsumer(consumer) { }
+    ~RawAudioOutput() { }
     void Process(int channelId, webrtc::ProcessingTypes type, int16_t data[], int nbSamples, int sampleRate, bool isStereo);
 private:
     woogeen_base::FrameConsumer* m_frameConsumer;
@@ -113,7 +113,7 @@ private:
 
     boost::scoped_ptr<woogeen_base::AudioEncodedFrameCallbackAdapter> m_encodedFrameCallback;
     boost::scoped_ptr<woogeen_base::JobTimer> m_jobTimer;
-    boost::scoped_ptr<AudioProcessor> m_audioProcessor;
+    boost::scoped_ptr<RawAudioOutput> m_rawAudioOutput;
 };
 
 inline webrtc::VoEVideoSync* AudioMixer::avSyncInterface()

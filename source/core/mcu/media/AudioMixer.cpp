@@ -365,9 +365,9 @@ int32_t AudioMixer::addFrameConsumer(const std::string& name, int payloadType, w
             VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);
             voe->RegisterPostEncodeFrameCallback(id, m_encodedFrameCallback.get());
         } else {
-            m_audioProcessor.reset(new AudioProcessor(frameConsumer));
+            m_rawAudioOutput.reset(new RawAudioOutput(frameConsumer));
             VoEExternalMedia* externalMedia = VoEExternalMedia::GetInterface(m_voiceEngine);
-            externalMedia->RegisterExternalMediaProcessing(id, kRecordingPerChannel, *m_audioProcessor);
+            externalMedia->RegisterExternalMediaProcessing(id, kRecordingPerChannel, *m_rawAudioOutput);
         }
     }
     return id;
@@ -378,7 +378,7 @@ void AudioMixer::removeFrameConsumer(int32_t channelId)
     // FIXME: Register callback properly depending on codec.
     // VoEExternalMedia* externalMedia = VoEExternalMedia::GetInterface(m_voiceEngine);
     // externalMedia->RegisterExternalMediaProcessing(id, kRecordingPerChannel, nullptr);
-    // m_audioProcessor.reset();
+    // m_rawAudioOutput.reset();
     if (channelId == -1)
         return;
     boost::shared_lock<boost::shared_mutex> lock(m_outputMutex);
@@ -482,7 +482,7 @@ void AudioMixer::notifyActiveSources()
         m_vadCallback->onPositiveAudioSources(sources);
 }
 
-void AudioProcessor::Process(int channelId, webrtc::ProcessingTypes type,
+void RawAudioOutput::Process(int channelId, webrtc::ProcessingTypes type,
     int16_t data[], int nbSamples,
     int sampleRate, bool isStereo)
 {
