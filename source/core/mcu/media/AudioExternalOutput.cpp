@@ -152,6 +152,12 @@ void AudioExternalOutput::removeFrameConsumer(int32_t id)
         removeOutput(id);
 }
 
+bool AudioExternalOutput::getVideoSize(unsigned int&, unsigned int&) const
+{
+    assert(false);
+    return false;
+}
+
 void AudioExternalOutput::onTimeout() {
     VoECodec* codec = VoECodec::GetInterface(m_voiceEngine);
     VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);

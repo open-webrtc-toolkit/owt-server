@@ -205,6 +205,10 @@ public:
     virtual ~FrameDispatcher() { }
     virtual int32_t addFrameConsumer(const std::string& name, int payloadType, FrameConsumer*) = 0;
     virtual void removeFrameConsumer(int32_t id) = 0;
+
+    // TODO: Remove this interface. The video size information should be retrieved
+    // from the frames dispatched to the consumer.
+    virtual bool getVideoSize(unsigned int& width, unsigned int& height) const = 0;
 };
 
 class MediaMuxer : public FrameConsumer {
