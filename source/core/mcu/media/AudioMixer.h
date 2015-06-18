@@ -86,7 +86,6 @@ public:
     // Implements FrameDispatcher
     int32_t addFrameConsumer(const std::string& name, int payloadType, woogeen_base::FrameConsumer*);
     void removeFrameConsumer(int32_t id);
-    bool getVideoSize(unsigned int& width, unsigned int& height) const { return true; } // not-used
 
 private:
     int32_t performMix();

@@ -126,6 +126,10 @@ void RTSPMuxer::onFrame(const woogeen_base::Frame& frame)
 {
     switch (frame.format) {
     case woogeen_base::FRAME_FORMAT_H264:
+        // TODO: Should we set the width/height only ONCE when the first frame arrives?
+        // What if the frame width/height is changed?
+        m_videoStream->codec->width = frame.additionalInfo.video.width;
+        m_videoStream->codec->height = frame.additionalInfo.video.height;
         m_videoQueue->pushFrame(frame.payload, frame.length, frame.timeStamp);
         break;
     case woogeen_base::FRAME_FORMAT_PCM_RAW:
@@ -375,11 +379,6 @@ void RTSPMuxer::addVideoStream(enum AVCodecID codec_id)
     c->codec_type = AVMEDIA_TYPE_VIDEO;
     /* Put sample parameters. */
     c->bit_rate = 400000;
-    /* Resolution must be a multiple of two. */
-    unsigned int width = 640, height = 480;
-    m_videoSource->getVideoSize(width, height);
-    c->width    = width;
-    c->height   = height;
     /* timebase: This is the fundamental unit of time (in seconds) in terms
     * of which frame timestamps are represented. For fixed-fps content,
     * timebase should be 1/framerate and timestamp increments should be
