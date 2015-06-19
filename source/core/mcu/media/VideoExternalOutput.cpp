@@ -69,9 +69,9 @@ void VideoExternalOutput::removeFrameConsumer(int32_t id)
 
 bool VideoExternalOutput::getVideoSize(unsigned int& width, unsigned int& height) const
 {
-    // FIXME: Currently, ONLY VGA to be recorded.
-    width = 640;
-    height = 480;
+    // FIXME: Currently, ONLY 720p to be recorded.
+    width = 1280;
+    height = 720;
 
     return true;
 }
