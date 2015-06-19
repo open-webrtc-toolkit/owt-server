@@ -476,6 +476,32 @@ exports.ErizoJSController = function (spec) {
         }
     };
 
+    that.addToMixer = function addToMixer (publisher_id, mixer_id, callback) {
+        if (mixers[publisher_id]) {
+            return callback('callback', 'already added to mix');
+        }
+        var mixer = publishers[mixer_id];
+        if (mixer) {
+            mixer.addPublisher(publishers[publisher_id], publisher_id);
+            mixers[publisher_id] = mixer;
+        } else {
+            if (mixerProxy) {
+                mixerProxy.addPublisher(publishers[publisher_id], publisher_id);
+                mixers[publisher_id] = mixerProxy;
+            }
+        }
+        callback('callback');
+    };
+
+    that.removeFromMixer = function removeFromMixer (publisher_id, mixer_id, callback) {
+        if (!mixers[publisher_id]) {
+            return callback('callback', 'already removed from mix');
+        }
+        mixers[publisher_id].removePublisher(publisher_id);
+        delete mixers[publisher_id];
+        callback('callback');
+    };
+
     that.getRegion = function (mixer, publisher, callback) {
         if (publishers[mixer] !== undefined) {
             log.info("get the Region of " + publisher + " in mixer " + mixer);

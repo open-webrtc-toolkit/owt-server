@@ -615,6 +615,26 @@ Woogeen.ConferenceClient = (function () {
     }
   };
 
+  WoogeenConference.prototype.mix = function(stream, onSuccess, onFailure) {
+    if (!(stream instanceof Woogeen.LocalStream)) {
+      return safeCall(onFailure, 'invalid stream');
+    }
+    sendMsg(this.socket, 'addToMixer', stream.id(), function (err) {
+      if (err) { return safeCall(onFailure, err); }
+      safeCall(onSuccess, null);
+    });
+  };
+
+  WoogeenConference.prototype.unmix = function(stream, onSuccess, onFailure) {
+    if (!(stream instanceof Woogeen.LocalStream)) {
+      return safeCall(onFailure, 'invalid stream');
+    }
+    sendMsg(this.socket, 'removeFromMixer', stream.id(), function (err) {
+      if (err) { return safeCall(onFailure, err); }
+      safeCall(onSuccess, null);
+    });
+  };
+
   WoogeenConference.prototype.unpublish = function (stream, onSuccess, onFailure) {
     var self = this;
     if (!(stream instanceof Woogeen.LocalStream)) {
