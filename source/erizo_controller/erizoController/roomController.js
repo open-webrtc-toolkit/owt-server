@@ -218,17 +218,17 @@ exports.RoomController = function (spec) {
 
         if (publishers[publisher_id] === undefined) {
 
-            log.info("Adding publisher peer_id ", publisher_id);
+            log.info('Adding publisher peer_id', publisher_id);
 
             sdp = unescapeSdp(sdp);
 
             // We create a new ErizoJS with the publisher_id.
-            createErizoJS(publisher_id, mixer_id, function(erizo_id) {
-                log.info("Erizo created");
+            createErizoJS(publisher_id, mixer_id, function () {
+                log.info('Erizo created');
                 // then we call its addPublisher method.
                 var mixer = {id: mixer_id, oop: GLOBAL.config.erizoController.outOfProcessMixer};
                 var args = [publisher_id, sdp, mixer];
-                rpc.callRpc(getErizoQueue(publisher_id), "addPublisher", args, {callback: callback, onReady: onReady});
+                rpc.callRpc(getErizoQueue(publisher_id), 'addPublisher', args, {callback: callback, onReady: onReady});
 
                 // Track publisher locally
                 publishers[publisher_id] = publisher_id;
@@ -236,7 +236,8 @@ exports.RoomController = function (spec) {
             });
 
         } else {
-            log.info("Publisher already set for", publisher_id);
+            log.info('Publisher already set for', publisher_id);
+            callback('error', 'publisher already added');
         }
     };
 
@@ -336,6 +337,21 @@ exports.RoomController = function (spec) {
                 }
             }
         }
+    };
+
+    that.addToMixer = function addToMixer (publisher_id, mixer_id, callback) {
+        if (publishers[publisher_id] === undefined) {
+            return callback('error', 'stream not published');
+        }
+        rpc.callRpc(getErizoQueue(publisher_id), 'addToMixer', [publisher_id, mixer_id], {callback: callback});
+
+    };
+
+    that.removeFromMixer = function removeFromMixer (publisher_id, mixer_id, callback) {
+        if (publishers[publisher_id] === undefined) {
+            return callback('error', 'stream not published');
+        }
+        rpc.callRpc(getErizoQueue(publisher_id), 'removeFromMixer', [publisher_id, mixer_id], {callback: callback});
     };
 
     that.publisherNum = function () {

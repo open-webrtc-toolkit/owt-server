@@ -663,6 +663,48 @@ var listen = function () {
             });
         });
 
+        // Gets 'addToMixer' messages on the socket in order to put the published stream into the mix stream.
+        socket.on('addToMixer', function (streamId, callback) {
+            if (socket.user === undefined || !socket.user.permissions[Permission.PUBLISH]) {
+                return safeCall(callback, 'error', 'unauthorized');
+            }
+            if (socket.room.enableMixing !== true || !socket.room.mixer) {
+                return safeCall(callback, 'error', 'no mix stream found');
+            }
+            var stream = socket.room.streams[streamId];
+            if (!stream) {
+                return safeCall(callback, 'error', 'stream does not exist');
+            }
+            if (socket.room.p2p) {
+                return safeCall(callback, 'error', 'p2p room does not support this action');
+            }
+            socket.room.controller.addToMixer(streamId, socket.room.mixer, function (err) {
+                if (err) return safeCall(callback, 'error', err);
+                safeCall(callback, 'success');
+            });
+        });
+
+        // Gets 'removeFromMixer' messages on the socket in order to remove the published stream from the mix stream.
+        socket.on('removeFromMixer', function (streamId, callback) {
+            if (socket.user === undefined || !socket.user.permissions[Permission.PUBLISH]) {
+                return safeCall(callback, 'error', 'unauthorized');
+            }
+            if (socket.room.enableMixing !== true || !socket.room.mixer) {
+                return safeCall(callback, 'error', 'no mix stream found');
+            }
+            var stream = socket.room.streams[streamId];
+            if (!stream) {
+                return safeCall(callback, 'error', 'stream does not exist');
+            }
+            if (socket.room.p2p) {
+                return safeCall(callback, 'error', 'p2p room does not support this action');
+            }
+            socket.room.controller.removeFromMixer(streamId, socket.room.mixer, function (err) {
+                if (err) return safeCall(callback, 'error', err);
+                safeCall(callback, 'success');
+            });
+        });
+
         //Gets 'publish' messages on the socket in order to add new stream to the room.
         socket.on('publish', function (options, sdp, callback) {
             var id, st;

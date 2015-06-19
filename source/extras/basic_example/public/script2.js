@@ -235,7 +235,7 @@
     });
   };
 
- window.onbeforeunload = function() {
+  window.onbeforeunload = function() {
     if (localStream){
       localStream.close();
       if (localStream.channel && typeof localStream.channel.close === 'function') {
