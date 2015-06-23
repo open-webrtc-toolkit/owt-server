@@ -70,6 +70,16 @@ class Mixer : public node::ObjectWrap {
    */
   static v8::Handle<v8::Value> removeSubscriber(const v8::Arguments& args);
   /*
+   * Enable a subscriber given its peer id
+   * Param: peerId, isAudio
+   */
+  static v8::Handle<v8::Value> subscribeStream(const v8::Arguments& args);
+  /*
+   * Disable a subscriber given its peer id
+   * Param: peerId, isAudio
+   */
+  static v8::Handle<v8::Value> unsubscribeStream(const v8::Arguments& args);
+  /*
    * Adds an ExternalOutput
    * Param: The ExternalOutput uri and options
    */

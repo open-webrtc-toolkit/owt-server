@@ -45,6 +45,10 @@ void Mixer::Init(Handle<Object> target) {
       FunctionTemplate::New(addSubscriber)->GetFunction());
   tpl->PrototypeTemplate()->Set(String::NewSymbol("removeSubscriber"),
       FunctionTemplate::New(removeSubscriber)->GetFunction());
+  tpl->PrototypeTemplate()->Set(String::NewSymbol("subscribeStream"),
+      FunctionTemplate::New(subscribeStream)->GetFunction());
+  tpl->PrototypeTemplate()->Set(String::NewSymbol("unsubscribeStream"),
+      FunctionTemplate::New(unsubscribeStream)->GetFunction());
   tpl->PrototypeTemplate()->Set(String::NewSymbol("addExternalOutput"),
       FunctionTemplate::New(addExternalOutput)->GetFunction());
   tpl->PrototypeTemplate()->Set(String::NewSymbol("removeExternalOutput"),
@@ -171,6 +175,34 @@ Handle<Value> Mixer::removeSubscriber(const Arguments& args) {
   // convert it to string
   std::string peerId = std::string(*param);
   me->removeSubscriber(peerId);
+
+  return scope.Close(Null());
+}
+
+Handle<Value> Mixer::subscribeStream(const Arguments& args) {
+  HandleScope scope;
+
+  Mixer* obj = ObjectWrap::Unwrap<Mixer>(args.This());
+  mcu::MixerInterface* me = obj->me;
+
+  v8::String::Utf8Value param(args[0]->ToString());
+  std::string peerId = std::string(*param);
+  bool isAudio = args[1]->BooleanValue();
+  me->subscribeStream(peerId, isAudio);
+
+  return scope.Close(Null());
+}
+
+Handle<Value> Mixer::unsubscribeStream(const Arguments& args) {
+  HandleScope scope;
+
+  Mixer* obj = ObjectWrap::Unwrap<Mixer>(args.This());
+  mcu::MixerInterface* me = obj->me;
+
+  v8::String::Utf8Value param(args[0]->ToString());
+  std::string peerId = std::string(*param);
+  bool isAudio = args[1]->BooleanValue();
+  me->unsubscribeStream(peerId, isAudio);
 
   return scope.Close(Null());
 }

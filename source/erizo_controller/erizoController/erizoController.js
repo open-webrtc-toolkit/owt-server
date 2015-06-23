@@ -594,16 +594,13 @@ var listen = function () {
                 if (typeof msg.payload === 'object' && msg.payload !== null) {
                     var action = msg.payload.action;
                     if (/^((audio)|(video))-((in)|(out))-((on)|(off))$/.test(action)) {
-                    //     var streamId = msg.payload.streamId;
-                    //     action = socket.room.controller[action];
-                    //     if (typeof streamId === 'string') {
-                    //         streamId = parseInt(streamId, 10);
-                    //     }
-                    //     if (typeof action === 'function') {
-                    //         action(streamId);
-                    //         if (typeof callback === 'function') callback('success');
-                    //         return;
-                    //     }
+                        var streamId = msg.payload.streamId + '';
+                        action = socket.room.controller[action];
+                        if (typeof action === 'function') {
+                            return action(streamId, socket.id, function (err) {
+                                if (typeof callback === 'function') callback(err||'success');
+                            });
+                        }
                     }
                 }
                 if (typeof callback === 'function') callback('error');

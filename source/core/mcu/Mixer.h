@@ -34,8 +34,24 @@
 #include <logger.h>
 #include <map>
 #include <MediaDefinitions.h>
+#include <utility> // std::pair
 
 namespace mcu {
+
+class MediaEnabling {
+public:
+    enum {Enable_NONE = 0x00, Enable_AUDIO = 0x01, Enable_VIDEO = 0x10, Enable_ALL = 0x11};
+    MediaEnabling() : m_value(Enable_ALL) {}
+    ~MediaEnabling() {}
+    const bool hasVideo() const { return m_value & Enable_VIDEO; }
+    const bool hasAudio() const { return m_value & Enable_AUDIO; }
+    void disableVideo() { m_value &= ~Enable_VIDEO; }
+    void disableAudio() { m_value &= ~Enable_AUDIO; }
+    void enableVideo() { m_value |= Enable_VIDEO; }
+    void enableAudio() { m_value |= Enable_AUDIO; }
+private:
+    int m_value;
+};
 
 /**
  * A Mixer refers to a media mixer acting as a woogeen_base::Gateway.
@@ -68,9 +84,9 @@ public:
     // which can be used to monitor the mixer.
     std::string retrieveStatistics() { return ""; }
 
+    void subscribeStream(const std::string& id, bool isAudio);
+    void unsubscribeStream(const std::string& id, bool isAudio);
     // TODO: implement the below interfaces to support media play/pause.
-    void subscribeStream(const std::string& id, bool isAudio) { }
-    void unsubscribeStream(const std::string& id, bool isAudio) { }
     void publishStream(const std::string& id, bool isAudio) { }
     void unpublishStream(const std::string& id, bool isAudio) { }
 
@@ -113,7 +129,7 @@ private:
     void closeAll();
 
     boost::shared_mutex m_subscriberMutex;
-    std::map<std::string, boost::shared_ptr<erizo::MediaSink>> m_subscribers;
+    std::map<std::string, std::pair<boost::shared_ptr<erizo::MediaSink>, MediaEnabling>> m_subscribers;
     std::map<std::string, erizo::MediaSource*> m_publishers;
 
     std::map<std::string, boost::shared_ptr<woogeen_base::MediaMuxer>> m_muxers;

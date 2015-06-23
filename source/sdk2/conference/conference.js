@@ -439,7 +439,7 @@ Woogeen.ConferenceClient = (function () {
         streamId: streamId
       }
     };
-    sendMsg(socket, 'onCustomMessage', payload, function(err, resp) {
+    sendMsg(socket, 'customMessage', payload, function(err, resp) {
       if (err) {
         return safeCall(onFailure, err);
       }
