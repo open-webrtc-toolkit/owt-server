@@ -381,5 +381,45 @@ exports.RoomController = function (spec) {
         }
     };
 
+    that['audio-in-on'] = function (publisher_id, subscriber_id, callback) {
+        var index = subscribers[publisher_id].indexOf(subscriber_id);
+        if (index !== -1) {
+            log.info('Enabling [audio] subscriber', subscriber_id, 'in', publisher_id);
+            rpc.callRpc(getErizoQueue(publisher_id), 'subscribeStream', [publisher_id, subscriber_id, true], {callback: callback});
+        } else {
+            callback('error');
+        }
+    };
+
+    that['audio-in-off'] = function (publisher_id, subscriber_id, callback) {
+        var index = subscribers[publisher_id].indexOf(subscriber_id);
+        if (index !== -1) {
+            log.info('Disabling [audio] subscriber', subscriber_id, 'in', publisher_id);
+            rpc.callRpc(getErizoQueue(publisher_id), 'unsubscribeStream', [publisher_id, subscriber_id, true], {callback: callback});
+        } else {
+            callback('error');
+        }
+    };
+
+    that['video-in-on'] = function (publisher_id, subscriber_id, callback) {
+        var index = subscribers[publisher_id].indexOf(subscriber_id);
+        if (index !== -1) {
+            log.info('Enabling [video] subscriber', subscriber_id, 'in', publisher_id);
+            rpc.callRpc(getErizoQueue(publisher_id), 'subscribeStream', [publisher_id, subscriber_id, false], {callback: callback});
+        } else {
+            callback('error');
+        }
+    };
+
+    that['video-in-off'] = function (publisher_id, subscriber_id, callback) {
+        var index = subscribers[publisher_id].indexOf(subscriber_id);
+        if (index !== -1) {
+            log.info('Disabling [video] subscriber', subscriber_id, 'in', publisher_id);
+            rpc.callRpc(getErizoQueue(publisher_id), 'unsubscribeStream', [publisher_id, subscriber_id, false], {callback: callback});
+        } else {
+            callback('error');
+        }
+    };
+
     return that;
 };

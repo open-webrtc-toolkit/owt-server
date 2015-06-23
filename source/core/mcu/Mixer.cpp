@@ -62,22 +62,26 @@ void Mixer::receiveRtpData(char* buf, int len, erizo::DataType type, uint32_t st
         ssrc = head->getSSRC();
     }
 
-    std::map<std::string, boost::shared_ptr<MediaSink>>::iterator it;
+    std::map<std::string, std::pair<boost::shared_ptr<erizo::MediaSink>, MediaEnabling>>::iterator it;
     boost::shared_lock<boost::shared_mutex> lock(m_subscriberMutex);
     switch (type) {
     case erizo::AUDIO: {
         for (it = m_subscribers.begin(); it != m_subscribers.end(); ++it) {
-            MediaSink* sink = it->second.get();
-            if (sink && sink->getAudioSinkSSRC() == ssrc)
-                sink->deliverAudioData(buf, len);
+            if (it->second.second.hasAudio()) {
+                MediaSink* sink = it->second.first.get();
+                if (sink && sink->getAudioSinkSSRC() == ssrc)
+                    sink->deliverAudioData(buf, len);
+            }
         }
         break;
     }
     case erizo::VIDEO: {
         for (it = m_subscribers.begin(); it != m_subscribers.end(); ++it) {
-            MediaSink* sink = it->second.get();
-            if (sink && sink->getVideoSinkSSRC() == ssrc)
-                sink->deliverVideoData(buf, len);
+            if (it->second.second.hasVideo()) {
+                MediaSink* sink = it->second.first.get();
+                if (sink && sink->getVideoSinkSSRC() == ssrc)
+                    sink->deliverVideoData(buf, len);
+            }
         }
         break;
     }
@@ -226,7 +230,8 @@ void Mixer::addSubscriber(MediaSink* subscriber, const std::string& peerId)
     }
 
     boost::unique_lock<boost::shared_mutex> lock(m_subscriberMutex);
-    m_subscribers[peerId] = boost::shared_ptr<MediaSink>(subscriber);
+    m_subscribers[peerId] = std::pair<boost::shared_ptr<erizo::MediaSink>,
+                                MediaEnabling>(boost::shared_ptr<MediaSink>(subscriber), MediaEnabling());
 }
 
 void Mixer::removeSubscriber(const std::string& peerId)
@@ -236,10 +241,33 @@ void Mixer::removeSubscriber(const std::string& peerId)
 
     std::vector<boost::shared_ptr<MediaSink>> removedSubscribers;
     boost::unique_lock<boost::shared_mutex> lock(m_subscriberMutex);
-    std::map<std::string, boost::shared_ptr<MediaSink>>::iterator it = m_subscribers.find(peerId);
+    std::map<std::string, std::pair<boost::shared_ptr<erizo::MediaSink>,
+        MediaEnabling>>::iterator it = m_subscribers.find(peerId);
     if (it != m_subscribers.end()) {
-        removedSubscribers.push_back(it->second);
+        removedSubscribers.push_back(it->second.first);
         m_subscribers.erase(it);
+    }
+    lock.unlock();
+}
+
+void Mixer::subscribeStream(const std::string& id, bool isAudio)
+{
+    boost::unique_lock<boost::shared_mutex> lock(m_subscriberMutex);
+    std::map<std::string, std::pair<boost::shared_ptr<erizo::MediaSink>,
+        MediaEnabling>>::iterator it = m_subscribers.find(id);
+    if (it != m_subscribers.end()) {
+        isAudio ? it->second.second.enableAudio() : it->second.second.enableVideo();
+    }
+    lock.unlock();
+}
+
+void Mixer::unsubscribeStream(const std::string& id, bool isAudio)
+{
+    boost::unique_lock<boost::shared_mutex> lock(m_subscriberMutex);
+    std::map<std::string, std::pair<boost::shared_ptr<erizo::MediaSink>,
+        MediaEnabling>>::iterator it = m_subscribers.find(id);
+    if (it != m_subscribers.end()) {
+        isAudio ? it->second.second.disableAudio() : it->second.second.disableVideo();
     }
     lock.unlock();
 }
@@ -289,9 +317,10 @@ void Mixer::closeAll()
 
     std::vector<boost::shared_ptr<MediaSink>> removedSubscribers;
     boost::unique_lock<boost::shared_mutex> subscriberLock(m_subscriberMutex);
-    std::map<std::string, boost::shared_ptr<MediaSink>>::iterator subscriberItor = m_subscribers.begin();
+    std::map<std::string, std::pair<boost::shared_ptr<erizo::MediaSink>,
+        MediaEnabling>>::iterator subscriberItor = m_subscribers.begin();
     while (subscriberItor != m_subscribers.end()) {
-        boost::shared_ptr<MediaSink>& subscriber = subscriberItor->second;
+        boost::shared_ptr<MediaSink>& subscriber = subscriberItor->second.first;
         if (subscriber) {
             FeedbackSource* fbsource = subscriber->getFeedbackSource();
             if (fbsource)

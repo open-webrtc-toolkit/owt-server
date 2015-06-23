@@ -165,22 +165,8 @@
     return false;
   };
 
-  /*
-  WoogeenStream.prototype.playAudio = function(tracknum, onSuccess, onFailure) {
-    if (typeof tracknum === 'function') {
-      onFailure = onSuccess;
-      onSuccess = tracknum;
-      tracknum = undefined;
-    }
-    if (tracknum === -1) {
-      this.enableAudio(-1).map(function (result) {
-        if (result === true && typeof this.signalOnPlayAudio === 'function') {
-          this.signalOnPlayAudio(onSuccess, onFailure);
-        }
-      });
-      return;
-    }
-    if (this.enableAudio(tracknum) && typeof this.signalOnPlayAudio === 'function') {
+  WoogeenStream.prototype.playAudio = function(onSuccess, onFailure) {
+    if (typeof this.signalOnPlayAudio === 'function') {
       return this.signalOnPlayAudio(onSuccess, onFailure);
     }
     if (typeof onFailure === 'function') {
@@ -188,22 +174,8 @@
     }
   };
 
-
-  WoogeenStream.prototype.pauseAudio = function(tracknum, onSuccess, onFailure) {
-    if (typeof tracknum === 'function') {
-      onFailure = onSuccess;
-      onSuccess = tracknum;
-      tracknum = undefined;
-    }
-    if (tracknum === -1) {
-      this.disableAudio(-1).map(function (result) {
-        if (result === true && typeof this.signalOnPauseAudio === 'function') {
-          this.signalOnPauseAudio(onSuccess, onFailure);
-        }
-      });
-      return;
-    }
-    if (this.disableAudio() && typeof this.signalOnPauseAudio === 'function') {
+  WoogeenStream.prototype.pauseAudio = function(onSuccess, onFailure) {
+    if (typeof this.signalOnPauseAudio === 'function') {
       return this.signalOnPauseAudio(onSuccess, onFailure);
     }
     if (typeof onFailure === 'function') {
@@ -211,21 +183,8 @@
     }
   };
 
-  WoogeenStream.prototype.playVideo = function(tracknum, onSuccess, onFailure) {
-    if (typeof tracknum === 'function') {
-      onFailure = onSuccess;
-      onSuccess = tracknum;
-      tracknum = undefined;
-    }
-    if (tracknum === -1) {
-      this.enableVideo(-1).map(function (result) {
-        if (result === true && typeof this.signalOnPlayVideo === 'function') {
-          this.signalOnPlayVideo(onSuccess, onFailure);
-        }
-      });
-      return;
-    }
-    if (this.enableVideo() && typeof this.signalOnPlayVideo === 'function') {
+  WoogeenStream.prototype.playVideo = function(onSuccess, onFailure) {
+    if (typeof this.signalOnPlayVideo === 'function') {
       return this.signalOnPlayVideo(onSuccess, onFailure);
     }
     if (typeof onFailure === 'function') {
@@ -233,28 +192,14 @@
     }
   };
 
-  WoogeenStream.prototype.pauseVideo = function(tracknum, onSuccess, onFailure) {
-    if (typeof tracknum === 'function') {
-      onFailure = onSuccess;
-      onSuccess = tracknum;
-      tracknum = undefined;
-    }
-    if (tracknum === -1) {
-      this.disableVideo(-1).map(function (result) {
-        if (result === true && typeof this.signalOnPauseVideo === 'function') {
-          this.signalOnPauseVideo(onSuccess, onFailure);
-        }
-      });
-      return;
-    }
-    if (this.disableVideo() && typeof this.signalOnPauseVideo === 'function') {
+  WoogeenStream.prototype.pauseVideo = function(onSuccess, onFailure) {
+    if (typeof this.signalOnPauseVideo === 'function') {
       return this.signalOnPauseVideo(onSuccess, onFailure);
     }
     if (typeof onFailure === 'function') {
       onFailure('unable to call pauseVideo');
     }
   };
-  */
 
   function WoogeenLocalStream (spec) {
     WoogeenStream.call(this, spec);
@@ -279,8 +224,8 @@
   }
 
   function isLegacyIE () {
-    return window.navigator.appVersion.indexOf("Trident") > -1 &&
-      window.navigator.appVersion.indexOf("rv") > -1;
+    return window.navigator.appVersion.indexOf('Trident') > -1 &&
+      window.navigator.appVersion.indexOf('rv') > -1;
   }
 
   function getReso(w, h) {

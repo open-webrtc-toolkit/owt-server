@@ -436,6 +436,26 @@ exports.ErizoJSController = function (spec) {
         }
     };
 
+    that.subscribeStream = function subscribeStream (publisher_id, subscriber_id, isAudio, callback) {
+        var index = subscribers[publisher_id].indexOf(subscriber_id);
+        if (index !== -1) {
+            log.info('Enabling subscriber', subscriber_id, 'in', publisher_id);
+            publishers[publisher_id].subscribeStream(subscriber_id, isAudio);
+            return callback('callback');
+        }
+        callback('callback', 'error');
+    };
+
+    that.unsubscribeStream = function unsubscribeStream (publisher_id, subscriber_id, isAudio, callback) {
+        var index = subscribers[publisher_id].indexOf(subscriber_id);
+        if (index !== -1) {
+            log.info('Disabling subscriber', subscriber_id, 'in', publisher_id);
+            publishers[publisher_id].unsubscribeStream(subscriber_id, isAudio);
+            return callback('callback');
+        }
+        callback('callback', 'error');
+    };
+
     /*
      * Removes all the subscribers related with a client.
      */
