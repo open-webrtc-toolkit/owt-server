@@ -597,10 +597,13 @@ var listen = function () {
                         var streamId = msg.payload.streamId + '';
                         action = socket.room.controller[action];
                         if (typeof action === 'function') {
-                            return action(streamId, socket.id, function (err) {
+                            action(streamId, socket.id, function (err) {
                                 if (typeof callback === 'function') callback(err||'success');
                             });
+                        } else {
+                            if (typeof callback === 'function') callback('not implemented');
                         }
+                        return;
                     }
                 }
                 if (typeof callback === 'function') callback('error');
