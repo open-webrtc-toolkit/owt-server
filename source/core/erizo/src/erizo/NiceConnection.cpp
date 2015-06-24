@@ -282,7 +282,7 @@ namespace erizo {
       for (unsigned int it = 0; it < candidates.size(); it++) {
         NiceCandidateType nice_cand_type;
         CandidateInfo cinfo = candidates[it];
-        if (cinfo.mediaType != this->mediaType
+        if ((!cinfo.isBundle && cinfo.mediaType != this->mediaType)
             || cinfo.componentId != compId)
           continue;
 
