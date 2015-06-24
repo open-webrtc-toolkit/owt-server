@@ -493,7 +493,7 @@ function tableHandlerRoom(rooms) {
       return notify('error', 'Add Room', 'Empty room name');
     }
     var roomName = p.find('td.roomName').text();
-    var roomMode = p.find('td.roomMode').editable('getValue').roomMode;
+    var roomMode = p.find('td.roomMode').text();
     var publishLimit = parseInt(p.find('td.publishLimit').text(), 10);
     var userLimit = parseInt(p.find('td.userLimit').text(), 10);
     var room = {
