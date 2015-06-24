@@ -1,0 +1,13 @@
+diff --git a/agent/conncheck.c b/agent/conncheck.c
+index 47164b7..ecd4402 100644
+--- a/agent/conncheck.c
++++ b/agent/conncheck.c
+@@ -1976,7 +1976,7 @@ static CandidateCheckPair *priv_add_peer_reflexive_pair (NiceAgent *agent, guint
+   else
+     pair->priority = nice_candidate_pair_priority (pair->remote->priority,
+         pair->local->priority);
+-  pair->nominated = FALSE;
++  pair->nominated = parent_pair->nominated;
+   pair->controlling = agent->controlling_mode;
+   nice_debug ("Agent %p : added a new peer-discovered pair with foundation of '%s'.",  agent, pair->foundation);
+ 
