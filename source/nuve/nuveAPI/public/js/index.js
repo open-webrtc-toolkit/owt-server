@@ -496,12 +496,14 @@ function tableHandlerRoom(rooms) {
     var roomMode = p.find('td.roomMode').text();
     var publishLimit = parseInt(p.find('td.publishLimit').text(), 10);
     var userLimit = parseInt(p.find('td.userLimit').text(), 10);
+    var enableMixing = p.find('td.enableMixing').text() === 'true' ? 0 : 1;
     var room = {
       name: roomName,
       options: {
         mode: roomMode,
         publishLimit: publishLimit,
         userLimit: userLimit,
+	enableMixing: enableMixing,
         mediaMixing: null
       }
     };
