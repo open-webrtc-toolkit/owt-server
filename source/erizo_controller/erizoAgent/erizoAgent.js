@@ -122,23 +122,23 @@ var launchErizoJS = function() {
 };
 
 var dropErizoJS = function(erizo_id, callback) {
-   if (processes.hasOwnProperty(erizo_id)) {
-      var process = processes[erizo_id];
-      process.kill();
-      delete processes[erizo_id];
+    if (processes.hasOwnProperty(erizo_id)) {
+        var process = processes[erizo_id];
+        process.kill();
+        delete processes[erizo_id];
 
-      var index = erizos.indexOf(erizo_id);
-      if (index !== -1) {
-          erizos.splice(index, 1);
-      }
+        var index = erizos.indexOf(erizo_id);
+        if (index !== -1) {
+            erizos.splice(index, 1);
+        }
 
-      var idleIndex = idle_erizos.indexOf(erizo_id);
-      if (idleIndex !== -1) {
-          idle_erizos.splice(idleIndex, 1);
-      }
-
-      callback("callback", "ok");
-   }
+        var idleIndex = idle_erizos.indexOf(erizo_id);
+        if (idleIndex !== -1) {
+            idle_erizos.splice(idleIndex, 1);
+        }
+        return callback('callback', 'ok');
+    }
+    callback('callback', 'not found');
 };
 
 var fillErizos = function() {
@@ -279,7 +279,7 @@ rpc.connect(function () {
 
 process.on('exit', function () {
     Object.keys(processes).map(function (k) {
-        dropErizoJS(k, function(status){
+        dropErizoJS(k, function (unused, status) {
             log.info('Terminate ErizoJS', k, status);
         });
     });
