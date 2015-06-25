@@ -101,7 +101,7 @@ Erizo.ChromeStableStack = function (spec) {
                 spec.callback({type: 'candidate', candidate: candidateObject});
             } else {
                 spec.localCandidates.push(candidateObject);
-                console.log("Local Candidates stored: ", spec.localCandidates.length, spec.localCandidates);
+                L.Logger.info("Storing candidate: ", spec.localCandidates.length, candidateObject);
             }
 
         } else {
@@ -143,7 +143,6 @@ Erizo.ChromeStableStack = function (spec) {
 
     var setLocalDescp2p = function (sessionDescription) {
         sessionDescription.sdp = setMaxBW(sessionDescription.sdp);
-        sessionDescription.sdp = sessionDescription.sdp.replace(/a=ice-options:google-ice\r\n/g, "");
         spec.callback({
             type: sessionDescription.type,
             sdp: sessionDescription.sdp
@@ -200,7 +199,7 @@ Erizo.ChromeStableStack = function (spec) {
     spec.remoteDescriptionSet = false;
 
     that.processSignalingMessage = function (msg) {
-        //console.log("Process Signaling Message", msg);
+        //L.Logger.info("Process Signaling Message", msg);
 
         if (msg.type === 'offer') {
             msg.sdp = setMaxBW(msg.sdp);
