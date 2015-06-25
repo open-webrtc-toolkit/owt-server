@@ -275,7 +275,7 @@ void Mixer::unsubscribeStream(const std::string& id, bool isAudio)
 bool Mixer::setVideoBitrate(const std::string& id, uint32_t kbps)
 {
     std::map<std::string, MediaSource*>::iterator it = m_publishers.find(id);
-    if (it == m_publishers.end())
+    if (it == m_publishers.end() || it->second->getVideoDataType() == DataContentType::ENCODED_FRAME)
         return false;
 
     uint32_t videoSource = it->second->getVideoSourceSSRC();
