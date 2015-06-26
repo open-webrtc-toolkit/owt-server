@@ -875,7 +875,7 @@ var listen = function () {
 
             var path = require('path');
             var timeStamp = new Date();
-            var recordingId = formatDate(timeStamp, 'yyyyMMddhhmmssSS');
+            var recordingId = options.id || formatDate(timeStamp, 'yyyyMMddhhmmssSS');
 
             var url = path.join((options.path || GLOBAL.config.erizoController.recording_path || '/tmp'),
                 'room' + socket.room.id + '_' + recordingId + '.mkv');

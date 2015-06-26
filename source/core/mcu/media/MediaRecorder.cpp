@@ -20,7 +20,7 @@
 
 #include "MediaRecorder.h"
 
-#include <Compiler.h>
+
 #include <rtputils.h>
 
 namespace mcu {
@@ -45,45 +45,66 @@ inline AVCodecID payloadType2AudioCodecID(int payloadType)
     }
 }
 
-MediaRecorder::MediaRecorder(woogeen_base::FrameDispatcher* videoSource, woogeen_base::FrameDispatcher* audioSource, const std::string& recordPath, int snapshotInterval)
-    : m_videoSource(videoSource)
-    , m_audioSource(audioSource)
-    , m_videoStream(NULL)
-    , m_audioStream(NULL)
-    , m_recordPath(recordPath)
-    , m_recordStartTime(-1)
+MediaRecorder::MediaRecorder(const std::string& recordUrl, int snapshotInterval)
+    : m_videoSource(nullptr)
+    , m_audioSource(nullptr)
+    , m_videoStream(nullptr)
+    , m_audioStream(nullptr)
+    , m_context(nullptr)
     , m_videoId(-1)
     , m_audioId(-1)
+    , m_recordPath(recordUrl)
+    , m_snapshotInterval(snapshotInterval)
 {
     m_muxing = false;
     m_firstVideoTimestamp = -1;
     m_firstAudioTimestamp = -1;
+
+    m_videoQueue.reset(new woogeen_base::MediaFrameQueue(0));
+    m_audioQueue.reset(new woogeen_base::MediaFrameQueue(0));
+
+    init();
 }
 
 MediaRecorder::~MediaRecorder()
 {
     if (m_muxing)
-        stop();
+        close();
 }
 
-bool MediaRecorder::start()
+bool MediaRecorder::setMediaSource(woogeen_base::FrameDispatcher* videoSource, woogeen_base::FrameDispatcher* audioSource)
 {
-    m_videoQueue.reset(new woogeen_base::MediaFrameQueue(m_recordStartTime));
-    m_audioQueue.reset(new woogeen_base::MediaFrameQueue(m_recordStartTime));
+    // Reset the media queues
+    m_videoQueue.reset(new woogeen_base::MediaFrameQueue(0));
+    m_audioQueue.reset(new woogeen_base::MediaFrameQueue(0));
+
+    if (m_videoSource && m_videoId != -1)
+        m_videoSource->removeFrameConsumer(m_videoId);
+
+    if (m_audioSource && m_audioId != -1)
+        m_audioSource->removeFrameConsumer(m_audioId);
+
+    m_videoSource = videoSource;
+    m_audioSource = audioSource;
+
     // Start the recording of video and audio
     m_videoId = m_videoSource->addFrameConsumer(m_recordPath, VP8_90000_PT, this);
     m_audioId = m_audioSource->addFrameConsumer(m_recordPath, PCMU_8000_PT, this);
 
-    if (m_videoId == -1 || m_audioId == -1)
-        return false;
+    return true;
+}
 
-    if (m_recordStartTime == -1) {
-        timeval time;
-        gettimeofday(&time, nullptr);
+void MediaRecorder::removeMediaSource()
+{
+    if (m_videoSource && m_videoId != -1)
+        m_videoSource->removeFrameConsumer(m_videoId);
 
-        m_recordStartTime = (time.tv_sec * 1000) + (time.tv_usec / 1000);
-    }
+    if (m_audioSource && m_audioId != -1)
+        m_audioSource->removeFrameConsumer(m_audioId);
+}
 
+bool MediaRecorder::init()
+{
     // FIXME: These should really only be called once per application run
     av_register_all();
     avcodec_register_all();
@@ -115,13 +136,10 @@ bool MediaRecorder::start()
     return true;
 }
 
-void MediaRecorder::stop()
+void MediaRecorder::close()
 {
     m_muxing = false;
     m_thread.join();
-
-    m_videoSource->removeFrameConsumer(m_videoId);
-    m_audioSource->removeFrameConsumer(m_audioId);
 
     if (m_audioStream != NULL && m_videoStream != NULL && m_context != NULL)
         av_write_trailer(m_context);
@@ -170,16 +188,16 @@ bool MediaRecorder::initRecordContext()
         m_videoStream->id = 0;
         m_videoStream->codec->codec_id = m_context->oformat->video_codec;
 
-        unsigned int width = 0;
-        unsigned int height = 0;
-        if (m_videoSource->getVideoSize(width, height)) {
-            m_videoStream->codec->width = width;
-            m_videoStream->codec->height = height;
-        } else {
-            // Default record size is VGA
-            m_videoStream->codec->width = 640;
-            m_videoStream->codec->height = 480;
-        }
+        // unsigned int width = 0;
+        // unsigned int height = 0;
+        // if (m_videoSource->getVideoSize(width, height)) {
+        //     m_videoStream->codec->width = width;
+        //     m_videoStream->codec->height = height;
+        // } else {
+            // FIXME: Currently, ONLY 720p to be recorded.
+            m_videoStream->codec->width = 1280;
+            m_videoStream->codec->height = 720;
+        //}
 
         // A decent guess here suffices; if processing the file with ffmpeg, use -vsync 0 to force it not to duplicate frames.
         m_videoStream->codec->time_base = (AVRational){1,30};

@@ -19,6 +19,7 @@
  */
 
 #include "WebRTCGateway.h"
+#include "MediaMuxerFactory.h"
 #include "media/ExternalOutput.h"
 
 #include <ProtectedRTPSender.h>
@@ -281,17 +282,20 @@ bool WebRTCGateway::addExternalOutput(const std::string& configParam)
         boost::property_tree::ptree pt;
         std::istringstream is(configParam);
         boost::property_tree::read_json(is, pt);
-        const std::string outputId = pt.get<std::string>("id");
+        const std::string outputId = pt.get<std::string>("id", "");
 
         std::map<std::string, SubscriberInfo>::iterator it = m_subscribers.find(outputId);
         if (it == m_subscribers.end()) {
-            // Create an external output, which will be managed as subscriber during its lifetime
-            ExternalOutput* externalOutput = new ExternalOutput(pt);
+            woogeen_base::MediaMuxer* muxer = MediaMuxerFactory::getMediaMuxer(outputId, configParam);
+            if (muxer) {
+                // Create an external output, which will be managed as subscriber during its lifetime
+                ExternalOutput* externalOutput = new ExternalOutput(muxer);
 
-            // Added as a subscriber
-            addSubscriber(externalOutput, outputId);
+                // Added as a subscriber
+                addSubscriber(externalOutput, outputId);
 
-            return true;
+                return true;
+            }
         }
     }
 
@@ -303,7 +307,8 @@ bool WebRTCGateway::removeExternalOutput(const std::string& outputId)
     // Remove the external output
     removeSubscriber(outputId);
 
-    return false;
+    // Remove the media muxer
+    return MediaMuxerFactory::removeMediaMuxer(outputId);
 }
 
 void WebRTCGateway::onTimeout()
@@ -350,4 +355,4 @@ void WebRTCGateway::closeAll()
     removePublisher(m_participantId);
 }
 
-}/* namespace mcu */
+} /* namespace mcu */

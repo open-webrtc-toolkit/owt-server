@@ -19,6 +19,7 @@
  */
 
 #include "ExternalInputGateway.h"
+#include "MediaMuxerFactory.h"
 #include "media/ExternalOutput.h"
 
 #include <boost/property_tree/json_parser.hpp>
@@ -299,17 +300,20 @@ bool ExternalInputGateway::addExternalOutput(const std::string& configParam)
         boost::property_tree::ptree pt;
         std::istringstream is(configParam);
         boost::property_tree::read_json(is, pt);
-        const std::string outputId = pt.get<std::string>("id");
+        const std::string outputId = pt.get<std::string>("id", "");
 
         std::map<std::string, boost::shared_ptr<erizo::MediaSink>>::iterator it = m_subscribers.find(outputId);
         if (it == m_subscribers.end()) {
-            // Create an external output, which will be managed as subscriber during its lifetime
-            ExternalOutput* externalOutput = new ExternalOutput(pt);
+            woogeen_base::MediaMuxer* muxer = MediaMuxerFactory::getMediaMuxer(configParam);
+            if (muxer) {
+                // Create an external output, which will be managed as subscriber during its lifetime
+                ExternalOutput* externalOutput = new ExternalOutput(muxer);
 
-            // Added as a subscriber
-            addSubscriber(externalOutput, outputId);
+                // Added as a subscriber
+                addSubscriber(externalOutput, outputId);
 
-            return true;
+                return true;
+            }
         }
     }
 
@@ -321,7 +325,8 @@ bool ExternalInputGateway::removeExternalOutput(const std::string& outputId)
     // Remove the external output
     removeSubscriber(outputId);
 
-    return false;
+    // Remove the media muxer
+    return MediaMuxerFactory::removeMediaMuxer(outputId);
 }
 
 void ExternalInputGateway::closeAll()

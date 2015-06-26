@@ -18,6 +18,7 @@
  * and approved by Intel in writing.
  */
 
+#include "MediaMuxerFactory.h"
 #include "Mixer.h"
 
 using namespace woogeen_base;
@@ -108,37 +109,24 @@ bool Mixer::addExternalOutput(const std::string& configParam)
         boost::property_tree::ptree pt;
         std::istringstream is(configParam);
         boost::property_tree::read_json(is, pt);
-        const std::string id = pt.get<std::string>("id");
+        const std::string id = pt.get<std::string>("id", "");
 
-        if (m_muxers.find(id) != m_muxers.end()) {
-            ELOG_DEBUG("add external output error: muxer already on");
-            return false;
-        }
-
-        const std::string url = pt.get<std::string>("url");
-        woogeen_base::MediaMuxer* muxer = nullptr;
-        if (url.compare(0, 7, "rtsp://") == 0) {
-            muxer = new RTSPMuxer(url, m_videoMixer.get(), m_audioMixer.get());
-        } else {
-            int snapshotInterval = pt.get<int>("interval");
-            muxer = new MediaRecorder(m_videoMixer.get(), m_audioMixer.get(), url, snapshotInterval);
-        }
-        m_muxers[id] = boost::shared_ptr<woogeen_base::MediaMuxer>(muxer);
-        return muxer->start();
+        woogeen_base::MediaMuxer* muxer = MediaMuxerFactory::getMediaMuxer(id, configParam);
+        if (muxer)
+            return muxer->setMediaSource(m_videoMixer.get(), m_audioMixer.get());
     }
+
     ELOG_DEBUG("add external output error: invalid config");
     return false;
 }
 
 bool Mixer::removeExternalOutput(const std::string& outputId)
 {
-    std::map<std::string, boost::shared_ptr<woogeen_base::MediaMuxer>>::iterator it = m_muxers.find(outputId);
-    if (it != m_muxers.end()) {
-        it->second->stop();
-        m_muxers.erase(it);
-        return true;
-    }
-    return false;
+    woogeen_base::MediaMuxer* muxer = MediaMuxerFactory::getMediaMuxer(outputId);
+    if (muxer)
+        muxer->removeMediaSource();
+
+    return MediaMuxerFactory::removeMediaMuxer(outputId);
 }
 
 bool Mixer::addPublisher(erizo::MediaSource* publisher, const std::string& id)
@@ -333,4 +321,4 @@ void Mixer::closeAll()
     subscriberLock.unlock();
 }
 
-}/* namespace mcu */
+} /* namespace mcu */
