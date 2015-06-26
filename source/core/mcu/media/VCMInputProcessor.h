@@ -132,8 +132,11 @@ public:
     int deliverVideoData(char*, int len);
 
     // Implements the VideoFrameProvider interface.
-    virtual void setBitrate(unsigned short kbps, int id = 0);
-    virtual void requestKeyFrame(int id = 0);
+    // There should be no direct consumer to this input.
+    int32_t addFrameConsumer(const std::string& name, woogeen_base::FrameFormat, woogeen_base::FrameConsumer*) { return -1; }
+    void removeFrameConsumer(int32_t id) { }
+    void setBitrate(unsigned short kbps, int id = 0);
+    void requestKeyFrame(int id = 0);
 
     bool init(woogeen_base::WebRTCTransport<erizo::VIDEO>*, boost::shared_ptr<VideoFrameMixer>, boost::shared_ptr<woogeen_base::WebRTCTaskRunner>, InputProcessorCallback*);
 

@@ -47,21 +47,27 @@ public:
     void deActivateInput(int input);
     void pushInput(int input, unsigned char* payload, int len);
 
+    int32_t addFrameConsumer(const std::string& name, woogeen_base::FrameFormat, woogeen_base::VideoFrameConsumer*);
+    void removeFrameConsumer(int32_t id);
     void setBitrate(unsigned short kbps, int id);
     void requestKeyFrame(int id);
-    bool activateOutput(int id, woogeen_base::FrameFormat, unsigned int framerate, unsigned short kbps, woogeen_base::VideoFrameConsumer*);
-    void deActivateOutput(int id);
 
     void updateRootSize(VideoSize& rootSize);
     void updateBackgroundColor(YUVColor& bgColor);
     void updateLayoutSolution(LayoutSolution& solution);
 
 private:
+    struct FrameOutput {
+        boost::shared_ptr<woogeen_base::VideoFrameEncoder> encoder;
+        int outputId;
+        bool reuseEncoder;
+    };
+
     boost::shared_ptr<VideoFrameCompositor> m_compositor;
     std::map<int, boost::shared_ptr<woogeen_base::VideoFrameDecoder>> m_decoders;
-    std::map<int, boost::shared_ptr<woogeen_base::VideoFrameEncoder>> m_encoders;
+    std::list<FrameOutput> m_outputs;
     boost::shared_mutex m_decoderMutex;
-    boost::shared_mutex m_encoderMutex;
+    boost::shared_mutex m_outputMutex;
     boost::shared_ptr<woogeen_base::WebRTCTaskRunner> m_taskRunner;
     boost::scoped_ptr<CompositedFrameDispatcher> m_dispatcher;
 };
@@ -92,8 +98,8 @@ SoftVideoFrameMixer::~SoftVideoFrameMixer()
     }
 
     {
-        boost::unique_lock<boost::shared_mutex> lock(m_encoderMutex);
-        m_encoders.clear();
+        boost::unique_lock<boost::shared_mutex> lock(m_outputMutex);
+        m_outputs.clear();
     }
 }
 
@@ -156,46 +162,86 @@ inline void SoftVideoFrameMixer::updateLayoutSolution(LayoutSolution& solution)
 
 inline void SoftVideoFrameMixer::setBitrate(unsigned short kbps, int id)
 {
-    boost::shared_lock<boost::shared_mutex> lock(m_encoderMutex);
-    std::map<int, boost::shared_ptr<woogeen_base::VideoFrameEncoder>>::iterator it = m_encoders.find(id);
-    if (it != m_encoders.end())
-        it->second->setBitrate(kbps, id);
+    boost::shared_lock<boost::shared_mutex> lock(m_outputMutex);
+    if (id < 0 || static_cast<size_t>(id) >= m_outputs.size())
+        return;
+
+    std::list<FrameOutput>::iterator it = m_outputs.begin();
+    advance(it, id);
+    if (it->encoder)
+        it->encoder->setBitrate(kbps, it->outputId);
 }
 
 inline void SoftVideoFrameMixer::requestKeyFrame(int id)
 {
-    boost::shared_lock<boost::shared_mutex> lock(m_encoderMutex);
-    std::map<int, boost::shared_ptr<woogeen_base::VideoFrameEncoder>>::iterator it = m_encoders.find(id);
-    if (it != m_encoders.end())
-        it->second->requestKeyFrame(id);
+    boost::shared_lock<boost::shared_mutex> lock(m_outputMutex);
+    if (id < 0 || static_cast<size_t>(id) >= m_outputs.size())
+        return;
+
+    std::list<FrameOutput>::iterator it = m_outputs.begin();
+    advance(it, id);
+    if (it->encoder)
+        it->encoder->requestKeyFrame(it->outputId);
 }
 
-inline bool SoftVideoFrameMixer::activateOutput(int id, woogeen_base::FrameFormat format, unsigned int framerate, unsigned short kbps, woogeen_base::VideoFrameConsumer* consumer)
+inline int32_t SoftVideoFrameMixer::addFrameConsumer(const std::string& name, woogeen_base::FrameFormat format, woogeen_base::VideoFrameConsumer* consumer)
 {
-    boost::upgrade_lock<boost::shared_mutex> lock(m_encoderMutex);
-    std::map<int, boost::shared_ptr<woogeen_base::VideoFrameEncoder>>::iterator it = m_encoders.find(id);
-    if (it != m_encoders.end())
-        return false;
+    boost::shared_ptr<woogeen_base::VideoFrameEncoder> encoder;
+    int internalId = -1;
+    bool reuseEncoder = false;
 
-    woogeen_base::VideoFrameEncoder* encoder = nullptr;
-    if (consumer->acceptRawFrame())
-        encoder = new FakedVideoFrameEncoder();
-    else
-        encoder = new woogeen_base::VCMFrameEncoder(m_taskRunner);
+    boost::upgrade_lock<boost::shared_mutex> lock(m_outputMutex);
+    std::list<FrameOutput>::iterator it = m_outputs.begin();
+    for (; it != m_outputs.end(); ++it) {
+        encoder = it->encoder;
+        if (encoder) {
+            internalId = encoder->addFrameConsumer(name, format, consumer);
+            if (internalId != -1) {
+                reuseEncoder = true;
+                break;
+            }
+        }
+    }
+
+    if (internalId == -1) {
+        if (consumer->acceptRawFrame())
+            encoder.reset(new FakedVideoFrameEncoder());
+        else
+            encoder.reset(new woogeen_base::VCMFrameEncoder(m_taskRunner));
+
+        internalId = encoder->addFrameConsumer(name, format, consumer);
+    }
 
     boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
-    m_encoders[id].reset(encoder);
-    return encoder->activateOutput(id, format, framerate, kbps, consumer);
+    m_outputs.push_back({encoder, internalId, reuseEncoder});
+    return m_outputs.size() - 1;
 }
 
-inline void SoftVideoFrameMixer::deActivateOutput(int id)
+inline void SoftVideoFrameMixer::removeFrameConsumer(int32_t id)
 {
-    boost::upgrade_lock<boost::shared_mutex> lock(m_encoderMutex);
-    std::map<int, boost::shared_ptr<woogeen_base::VideoFrameEncoder>>::iterator it = m_encoders.find(id);
-    if (it != m_encoders.end()) {
-        it->second->deActivateOutput(id);
-        boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
-        m_encoders.erase(it);
+    boost::upgrade_lock<boost::shared_mutex> lock(m_outputMutex);
+    if (id < 0 || static_cast<size_t>(id) >= m_outputs.size())
+        return;
+
+    std::list<FrameOutput>::iterator it = m_outputs.begin();
+    advance(it, id);
+    if (it->encoder)
+        it->encoder->removeFrameConsumer(it->outputId);
+    boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
+    boost::shared_ptr<woogeen_base::VideoFrameEncoder> encoder = it->encoder;
+    it->encoder.reset();
+    it->outputId = -1;
+    if (!it->reuseEncoder) {
+        // In case we remove the first output of an encoder,
+        // we need to check if there're other outputs which reuse this encoder,
+        // and reset the reuseEncoder flag for the first found one.
+        for (it = m_outputs.begin(); it != m_outputs.end(); ++it) {
+            if (it->encoder == encoder) {
+                assert(it->reuseEncoder == true);
+                it->reuseEncoder = false;
+                break;
+            }
+        }
     }
 }
 
@@ -213,10 +259,12 @@ CompositedFrameDispatcher::~CompositedFrameDispatcher()
 inline void CompositedFrameDispatcher::onFrame(const woogeen_base::Frame& frame)
 {
     assert(frame.format == woogeen_base::FRAME_FORMAT_I420);
-    boost::shared_lock<boost::shared_mutex> lock(m_mixer->m_encoderMutex);
-    std::map<int, boost::shared_ptr<woogeen_base::VideoFrameEncoder>>::iterator it = m_mixer->m_encoders.begin();
-    for (; it != m_mixer->m_encoders.end(); ++it)
-        it->second->onFrame(frame);
+    boost::shared_lock<boost::shared_mutex> lock(m_mixer->m_outputMutex);
+    std::list<SoftVideoFrameMixer::FrameOutput>::iterator it = m_mixer->m_outputs.begin();
+    for (; it != m_mixer->m_outputs.end(); ++it) {
+        if (it->encoder && !it->reuseEncoder && it->outputId != -1)
+            it->encoder->onFrame(frame);
+    }
 }
 
 }

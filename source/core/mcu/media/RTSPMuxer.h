@@ -48,7 +48,7 @@ public:
     ~RTSPMuxer();
 
     // MediaMuxer interface
-    void setMediaSource(woogeen_base::FrameDispatcher* videoDispatcher, woogeen_base::FrameDispatcher* audioDispatcher);
+    void setMediaSource(woogeen_base::FrameProvider* videoProvider, woogeen_base::FrameProvider* audioProvider);
     void unsetMediaSource();
     void onFrame(const woogeen_base::Frame&);
     void onTimeout();
@@ -63,8 +63,8 @@ private:
     void encodeAudio();
     void processAudio(uint8_t* data, int nbSamples, int nbChannels = 2, int sampleRate = 48000);
 
-    woogeen_base::FrameDispatcher*                  m_videoSource;
-    woogeen_base::FrameDispatcher*                  m_audioSource;
+    woogeen_base::FrameProvider*                    m_videoSource;
+    woogeen_base::FrameProvider*                    m_audioSource;
     AVFormatContext*                                m_context;
     SwrContext*                                     m_resampleContext;
     AVAudioFifo*                                    m_audioFifo;

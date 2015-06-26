@@ -93,19 +93,16 @@ int32_t VideoMixer::addOutput(int payloadType, bool nack, bool fec)
     std::map<int, boost::shared_ptr<woogeen_base::VideoFrameSender>>::iterator it = m_outputs.find(payloadType);
     if (it != m_outputs.end()) {
         it->second->startSend(nack, fec);
-        return it->second->id();
+        return it->second->streamId();
     }
 
     woogeen_base::FrameFormat outputFormat = woogeen_base::FRAME_FORMAT_UNKNOWN;
-    int outputId = -1;
     switch (payloadType) {
     case VP8_90000_PT:
         outputFormat = woogeen_base::FRAME_FORMAT_VP8;
-        outputId = MIXED_VP8_VIDEO_STREAM_ID;
         break;
     case H264_90000_PT:
         outputFormat = woogeen_base::FRAME_FORMAT_H264;
-        outputId = MIXED_H264_VIDEO_STREAM_ID;
         break;
     default:
         return -1;
@@ -118,10 +115,9 @@ int32_t VideoMixer::addOutput(int payloadType, bool nack, bool fec)
     // compound VCMOutputProcessor (w/ both encoder and sender capability) provides
     // better QoS control.
     if (m_hardwareAccelerated)
-        output = new woogeen_base::EncodedVideoFrameSender(outputId, m_frameMixer, outputFormat, m_outputKbps, transport, m_taskRunner);
+        output = new woogeen_base::EncodedVideoFrameSender(m_frameMixer, outputFormat, m_outputKbps, transport, m_taskRunner);
     else
-        output = new VCMOutputProcessor(outputId, m_frameMixer, m_outputKbps, transport, m_taskRunner);
-    m_frameMixer->activateOutput(outputId, outputFormat, 30, 500, output);
+        output = new VCMOutputProcessor(m_frameMixer, m_outputKbps, transport, m_taskRunner);
 
     // Fetch video size.
     // TODO: The size should be identical to the composited video size.
@@ -132,7 +128,7 @@ int32_t VideoMixer::addOutput(int payloadType, bool nack, bool fec)
     boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
     m_outputs[payloadType].reset(output);
 
-    return output->id();
+    return output->streamId();
 }
 
 int32_t VideoMixer::removeOutput(int payloadType)
@@ -140,8 +136,7 @@ int32_t VideoMixer::removeOutput(int payloadType)
     boost::unique_lock<boost::shared_mutex> lock(m_outputMutex);
     std::map<int, boost::shared_ptr<woogeen_base::VideoFrameSender>>::iterator it = m_outputs.find(payloadType);
     if (it != m_outputs.end()) {
-        int32_t id = it->second->id();
-        m_frameMixer->deActivateOutput(id);
+        int32_t id = it->second->streamId();
         m_outputs.erase(it);
         return id;
     }
@@ -149,14 +144,26 @@ int32_t VideoMixer::removeOutput(int payloadType)
     return -1;
 }
 
-int32_t VideoMixer::addFrameConsumer(const std::string&/*unused*/, int payloadType, woogeen_base::FrameConsumer* frameConsumer)
+int32_t VideoMixer::addFrameConsumer(const std::string&/*unused*/, woogeen_base::FrameFormat format, woogeen_base::FrameConsumer* frameConsumer)
 {
+    int payloadType = INVALID_PT;
+    switch (format) {
+    case FRAME_FORMAT_VP8:
+        payloadType = VP8_90000_PT;
+        break;
+    case FRAME_FORMAT_H264:
+        payloadType = H264_90000_PT;
+        break;
+    default:
+        break;
+    }
+
     int32_t id = -1;
     id = addOutput(payloadType, true, false);
     if (id != -1) {
         boost::shared_lock<boost::shared_mutex> lock(m_outputMutex);
         std::map<int, boost::shared_ptr<woogeen_base::VideoFrameSender>>::iterator it = m_outputs.find(payloadType);
-        if (it == m_outputs.end() || it->second->id() != id)
+        if (it == m_outputs.end() || it->second->streamId() != id)
             return -1;
         woogeen_base::VideoFrameSender* output = m_outputs[payloadType].get();
         output->registerPreSendFrameCallback(frameConsumer);
@@ -174,7 +181,7 @@ void VideoMixer::removeFrameConsumer(int32_t id)
     boost::shared_lock<boost::shared_mutex> lock(m_outputMutex);
     std::map<int, boost::shared_ptr<woogeen_base::VideoFrameSender>>::iterator it = m_outputs.begin();
     for (; it != m_outputs.end(); ++it) {
-        if (id == it->second->id()) {
+        if (id == it->second->streamId()) {
             it->second->deRegisterPreSendFrameCallback();
             break;
         }
@@ -399,8 +406,6 @@ void VideoMixer::closeAll()
 
     boost::unique_lock<boost::shared_mutex> outputLock(m_outputMutex);
     std::map<int, boost::shared_ptr<woogeen_base::VideoFrameSender>>::iterator it = m_outputs.begin();
-    for (; it != m_outputs.end(); ++it)
-        m_frameMixer->deActivateOutput(it->second->id());
     m_outputs.clear();
     outputLock.unlock();
 

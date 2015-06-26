@@ -71,7 +71,7 @@ MediaRecorder::~MediaRecorder()
     close();
 }
 
-void MediaRecorder::setMediaSource(woogeen_base::FrameDispatcher* videoSource, woogeen_base::FrameDispatcher* audioSource)
+void MediaRecorder::setMediaSource(woogeen_base::FrameProvider* videoSource, woogeen_base::FrameProvider* audioSource)
 {
     if (m_status == woogeen_base::MediaMuxer::Context_READY) {
         callback("success");
@@ -87,10 +87,10 @@ void MediaRecorder::setMediaSource(woogeen_base::FrameDispatcher* videoSource, w
 
     // Start the recording of video and audio
     if (m_videoSource)
-        m_videoId = m_videoSource->addFrameConsumer(m_recordPath, VP8_90000_PT, this);
+        m_videoId = m_videoSource->addFrameConsumer(m_recordPath, woogeen_base::FRAME_FORMAT_VP8, this);
 
     if (m_audioSource)
-        m_audioId = m_audioSource->addFrameConsumer(m_recordPath, PCMU_8000_PT, this);
+        m_audioId = m_audioSource->addFrameConsumer(m_recordPath, woogeen_base::FRAME_FORMAT_PCMU, this);
 }
 
 void MediaRecorder::unsetMediaSource()

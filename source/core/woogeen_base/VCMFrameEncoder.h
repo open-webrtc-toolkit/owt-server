@@ -25,6 +25,8 @@
 #include "WebRTCTaskRunner.h"
 
 #include <boost/shared_ptr.hpp>
+#include <boost/thread/shared_mutex.hpp>
+#include <list>
 #include <webrtc/modules/video_coding/main/interface/video_coding.h>
 
 namespace woogeen_base {
@@ -38,8 +40,8 @@ public:
     ~VCMFrameEncoder();
 
     // Implements VideoFrameEncoder.
-    bool activateOutput(int id, FrameFormat, unsigned int framerate, unsigned short kbps, VideoFrameConsumer*);
-    void deActivateOutput(int id);
+    int32_t addFrameConsumer(const std::string& name, FrameFormat, FrameConsumer*);
+    void removeFrameConsumer(int32_t id);
     void onFrame(const Frame&);
     void setBitrate(unsigned short kbps, int id = 0);
     void requestKeyFrame(int id = 0);
@@ -56,11 +58,10 @@ private:
 
     webrtc::VideoCodingModule* m_vcm;
     bool m_encoderInitialized;
-    uint16_t m_initialKbps;
     FrameFormat m_encodeFormat;
     boost::shared_ptr<WebRTCTaskRunner> m_taskRunner;
-    VideoFrameConsumer* m_encodedFrameConsumer;
-    int m_consumerId;
+    std::list<VideoFrameConsumer*> m_consumers;
+    boost::shared_mutex m_mutex;
 };
 
 } /* namespace woogeen_base */

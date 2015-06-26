@@ -356,11 +356,24 @@ int32_t AudioMixer::removeOutput(const std::string& participant)
     return -1;
 }
 
-int32_t AudioMixer::addFrameConsumer(const std::string& name, int payloadType, woogeen_base::FrameConsumer* frameConsumer)
+int32_t AudioMixer::addFrameConsumer(const std::string& name, woogeen_base::FrameFormat format, woogeen_base::FrameConsumer* frameConsumer)
 {
+    int payloadType = INVALID_PT;
+    switch (format) {
+    case woogeen_base::FRAME_FORMAT_PCMU:
+        payloadType = PCMU_8000_PT;
+        break;
+    case woogeen_base::FRAME_FORMAT_OPUS:
+    case woogeen_base::FRAME_FORMAT_PCM_RAW: // TODO: When raw frames are required, we should omit encoding.
+        payloadType = OPUS_48000_PT;
+        break;
+    default:
+        break;
+    }
+
     int32_t id = addOutput(name, payloadType);
     if (id != -1) {
-        if (payloadType == PCMU_8000_PT) {
+        if (format != woogeen_base::FRAME_FORMAT_PCM_RAW) {
             m_encodedFrameCallback.reset(new woogeen_base::AudioEncodedFrameCallbackAdapter(frameConsumer));
             VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);
             voe->RegisterPostEncodeFrameCallback(id, m_encodedFrameCallback.get());

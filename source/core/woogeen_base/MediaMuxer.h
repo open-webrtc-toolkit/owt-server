@@ -202,14 +202,6 @@ private:
     FrameConsumer* m_frameConsumer;
 };
 
-
-class FrameDispatcher {
-public:
-    virtual ~FrameDispatcher() { }
-    virtual int32_t addFrameConsumer(const std::string& name, int payloadType, FrameConsumer*) = 0;
-    virtual void removeFrameConsumer(int32_t id) = 0;
-};
-
 class MediaMuxer : public FrameConsumer, public JobTimerListener {
 public:
     enum Status { Context_ERROR = -1, Context_EMPTY = 0, Context_READY = 1 };
@@ -230,7 +222,7 @@ public:
     }
 
     // FrameConsumer
-    virtual void setMediaSource(FrameDispatcher* videoDispatcher, FrameDispatcher* audioDispatcher) = 0;
+    virtual void setMediaSource(FrameProvider* videoProvider, FrameProvider* audioProvider) = 0;
     virtual void unsetMediaSource() = 0;
     // JobTimerListener
     virtual void onTimeout() = 0;

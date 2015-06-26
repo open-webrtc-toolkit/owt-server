@@ -50,7 +50,7 @@ private:
     woogeen_base::FrameConsumer* m_frameConsumer;
 };
 
-class AudioMixer : public woogeen_base::MediaSourceConsumer, public woogeen_base::FrameDispatcher, public erizo::MediaSink, public erizo::FeedbackSink, public woogeen_base::JobTimerListener {
+class AudioMixer : public woogeen_base::MediaSourceConsumer, public woogeen_base::FrameProvider, public erizo::MediaSink, public erizo::FeedbackSink, public woogeen_base::JobTimerListener {
     DECLARE_LOGGER();
 
 public:
@@ -83,9 +83,11 @@ public:
     int32_t getChannelId(uint32_t sourceId);
     webrtc::VoEVideoSync* avSyncInterface();
 
-    // Implements FrameDispatcher
-    int32_t addFrameConsumer(const std::string& name, int payloadType, woogeen_base::FrameConsumer*);
+    // Implements FrameProvider
+    int32_t addFrameConsumer(const std::string& name, woogeen_base::FrameFormat, woogeen_base::FrameConsumer*);
     void removeFrameConsumer(int32_t id);
+    // TODO: Implement it.
+    virtual void setBitrate(unsigned short kbps, int id = 0) { }
 
 private:
     int32_t performMix();

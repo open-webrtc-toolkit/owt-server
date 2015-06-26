@@ -28,7 +28,7 @@
 
 namespace mcu {
 
-class VideoExternalOutput : public erizo::MediaSink, public woogeen_base::FrameDispatcher {
+class VideoExternalOutput : public erizo::MediaSink, public woogeen_base::FrameProvider {
 public:
     VideoExternalOutput();
     virtual ~VideoExternalOutput();
@@ -37,9 +37,11 @@ public:
     virtual int deliverAudioData(char* buf, int len);
     virtual int deliverVideoData(char* buf, int len);
 
-    // Implements the FrameDispatcher interfaces.
-    virtual int32_t addFrameConsumer(const std::string& name, int payloadType, woogeen_base::FrameConsumer*);
+    // Implements the FrameProvider interfaces.
+    virtual int32_t addFrameConsumer(const std::string& name, woogeen_base::FrameFormat, woogeen_base::FrameConsumer*);
     virtual void removeFrameConsumer(int32_t id);
+    // TODO: Implement it.
+    virtual void setBitrate(unsigned short kbps, int id = 0) { }
 
 private:
     void init();

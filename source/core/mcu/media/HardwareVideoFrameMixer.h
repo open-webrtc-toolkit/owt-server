@@ -70,9 +70,10 @@ public:
     void requestKeyFrame();
 
     // Implement the JobTimerListener interface.
-    virtual void onTimeout();
+    void onTimeout();
 
-    virtual void notifyFrameReady(OutputIndex index);
+    void notifyFrameReady(OutputIndex index);
+    woogeen_base::VideoFrameConsumer* receiver() { return m_receiver; }
 
 private:
     unsigned char m_esBuffer[1024 * 1024];
@@ -98,10 +99,10 @@ public:
     void deActivateInput(int input);
     void pushInput(int input, unsigned char* payload, int len);
 
+    int32_t addFrameConsumer(const std::string& name, woogeen_base::FrameFormat, woogeen_base::VideoFrameConsumer*);
+    void removeFrameConsumer(int32_t id);
     void setBitrate(unsigned short kbps, int id);
     void requestKeyFrame(int id);
-    bool activateOutput(int id, woogeen_base::FrameFormat, unsigned int framerate, unsigned short kbps, woogeen_base::VideoFrameConsumer*);
-    void deActivateOutput(int id);
 
     void updateRootSize(VideoSize& rootSize);
     void updateBackgroundColor(YUVColor& bgColor);
@@ -111,7 +112,7 @@ private:
     boost::shared_ptr<VideoMixEngine> m_engine;
     std::map<int, boost::shared_ptr<HardwareVideoFrameMixerInput>> m_inputs;
     boost::shared_mutex m_inputMutex;
-    std::map<int, boost::shared_ptr<HardwareVideoFrameMixerOutput>> m_outputs;
+    std::list<boost::shared_ptr<HardwareVideoFrameMixerOutput>> m_outputs;
     boost::shared_mutex m_outputMutex;
 };
 

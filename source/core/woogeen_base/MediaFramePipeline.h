@@ -22,6 +22,7 @@
 #define MediaFramePipeline_h
 
 #include <stdint.h>
+#include <string>
 
 namespace woogeen_base {
 
@@ -59,13 +60,6 @@ struct Frame {
     } additionalInfo;
 };
 
-class FrameProvider {
-public:
-    virtual ~FrameProvider() { }
-
-    virtual void setBitrate(unsigned short kbps, int id = 0) = 0;
-};
-
 class FrameConsumer {
 public:
     virtual ~FrameConsumer() { }
@@ -75,14 +69,22 @@ public:
     virtual bool acceptEncodedFrame() { return true; }
 };
 
-class VideoFrameProvider : public FrameProvider {
-public:
-    virtual ~VideoFrameProvider() { }
+typedef FrameConsumer VideoFrameConsumer;
 
-    virtual void requestKeyFrame(int id = 0) = 0;
+class FrameProvider {
+public:
+    virtual ~FrameProvider() { }
+
+    virtual int32_t addFrameConsumer(const std::string& name, FrameFormat, FrameConsumer*) = 0;
+    virtual void removeFrameConsumer(int32_t id) = 0;
+
+    virtual void setBitrate(unsigned short kbps, int id = 0) = 0;
 };
 
-typedef FrameConsumer VideoFrameConsumer;
+class VideoFrameProvider : public FrameProvider {
+public:
+    virtual void requestKeyFrame(int id = 0) = 0;
+};
 
 // VideoFrameDecoder accepts the input data from exactly one VideoFrameProvider
 // and decodes it into raw I420VideoFrame.
@@ -93,12 +95,8 @@ public:
 };
 
 // VideoFrameEncoder consumes the I420 video frame and encodes it into the
-// given FrameFormat. It can have multiple outputs with different FrameFormat
-// or framerate/bitrate settings.
+// given FrameFormat.
 class VideoFrameEncoder : public VideoFrameConsumer, public VideoFrameProvider {
-public:
-    virtual bool activateOutput(int id, FrameFormat, unsigned int framerate, unsigned short kbps, VideoFrameConsumer*) = 0;
-    virtual void deActivateOutput(int id) = 0;
 };
 
 }
