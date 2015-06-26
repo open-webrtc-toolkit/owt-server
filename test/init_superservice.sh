@@ -43,6 +43,8 @@ install_config() {
   fi
   local SERVID=$(mongo ${dbURL} --quiet --eval 'db.services.findOne({"name":"superService"})._id')
   local SERVKEY=$(mongo ${dbURL} --quiet --eval 'db.services.findOne({"name":"superService"}).key')
+  local SAMPLESERVID=$(mongo ${dbURL} --quiet --eval 'db.services.findOne({"name":"sampleService"})._id')
+  local SAMPLESERVKEY=$(mongo ${dbURL} --quiet --eval 'db.services.findOne({"name":"sampleService"}).key')
   [[ -f ${LogDir}/mongo.log ]] && cat ${LogDir}/mongo.log
   echo "SuperService ID: ${SERVID}"
   echo "SuperService KEY: ${SERVKEY}"
@@ -50,6 +52,8 @@ install_config() {
   sed -i s/_auto_generated_KEY_/${SERVKEY}/ ${WOOGEEN_HOME}/extras/basic_example/basicServer.js
   sed -i s/_auto_generated_ID_/${SERVID}/ ${WOOGEEN_HOME}/../test/nuve-api-spec.js
   sed -i s/_auto_generated_KEY_/${SERVKEY}/ ${WOOGEEN_HOME}/../test/nuve-api-spec.js
+  sed -i s/_auto_generated_SAMPLE_ID_/${SAMPLESERVID}/ ${WOOGEEN_HOME}/../test/nuve-api-spec.js
+  sed -i s/_auto_generated_SAMPLE_KEY_/${SAMPLESERVKEY}/ ${WOOGEEN_HOME}/../test/nuve-api-spec.js
 }
 
 
