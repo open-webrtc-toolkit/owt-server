@@ -37,10 +37,12 @@ AudioExternalOutput::AudioExternalOutput()
 AudioExternalOutput::~AudioExternalOutput()
 {
     VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);
+    VoENetwork* network = VoENetwork::GetInterface(m_voiceEngine);
 
     if (m_inputChannelId != -1) {
         voe->StopPlayout(m_inputChannelId);
         voe->StopReceive(m_inputChannelId);
+        network->DeRegisterExternalTransport(m_inputChannelId);
         voe->DeleteChannel(m_inputChannelId);
     }
 
@@ -51,6 +53,7 @@ AudioExternalOutput::~AudioExternalOutput()
         voe->DeRegisterPostEncodeFrameCallback(channel);
 
         voe->StopSend(channel);
+        network->DeRegisterExternalTransport(channel);
         voe->DeleteChannel(channel);
     }
     m_outputTransports.clear();
@@ -74,7 +77,11 @@ void AudioExternalOutput::init()
 
     m_inputChannelId = voe->CreateChannel();
     if (m_inputChannelId != -1) {
-        if (voe->StartReceive(m_inputChannelId) == -1 || voe->StartPlayout(m_inputChannelId) == -1) {
+        VoENetwork* network = VoENetwork::GetInterface(m_voiceEngine);
+        m_inputTransport.reset(new woogeen_base::WebRTCTransport<erizo::AUDIO>(nullptr, this));
+
+        if (network->RegisterExternalTransport(m_inputChannelId, *(m_inputTransport.get())) == -1
+            || voe->StartReceive(m_inputChannelId) == -1 || voe->StartPlayout(m_inputChannelId) == -1) {
             voe->DeleteChannel(m_inputChannelId);
             return;
         }
@@ -139,6 +146,12 @@ int AudioExternalOutput::deliverAudioData(char* buf, int len)
         return network->ReceivedRTCPPacket(m_inputChannelId, buf, len) == -1 ? 0 : len;
 
     return network->ReceivedRTPPacket(m_inputChannelId, buf, len) == -1 ? 0 : len;
+}
+
+int AudioExternalOutput::deliverFeedback(char* buf, int len)
+{
+    // The incoming feedback might be useful for the future external output
+    return -1;
 }
 
 int32_t AudioExternalOutput::addFrameConsumer(const std::string& name, int payloadType, woogeen_base::FrameConsumer* consumer)
@@ -217,6 +230,7 @@ int32_t AudioExternalOutput::addOutput(int payloadType, woogeen_base::FrameConsu
 void AudioExternalOutput::removeOutput(int32_t channelId)
 {
     VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);
+    VoENetwork* network = VoENetwork::GetInterface(m_voiceEngine);
 
     boost::upgrade_lock<boost::shared_mutex> lock(m_outputMutex);
     std::map<int32_t, boost::shared_ptr<woogeen_base::AudioEncodedFrameCallbackAdapter>>::iterator it = m_outputTransports.find(channelId);
@@ -224,6 +238,7 @@ void AudioExternalOutput::removeOutput(int32_t channelId)
         voe->DeRegisterPostEncodeFrameCallback(channelId);
 
         voe->StopSend(channelId);
+        network->DeRegisterExternalTransport(channelId);
         voe->DeleteChannel(channelId);
         boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
         m_outputTransports.erase(it);
