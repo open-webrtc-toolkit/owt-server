@@ -23,7 +23,7 @@
 
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/shared_mutex.hpp>
-#include <map>
+#include <list>
 #include <MediaFramePipeline.h>
 
 namespace mcu {
@@ -35,15 +35,15 @@ public:
     FakedVideoFrameEncoder();
     ~FakedVideoFrameEncoder();
 
-    bool activateOutput(int id, woogeen_base::FrameFormat, unsigned int framerate, unsigned short kbps, woogeen_base::VideoFrameConsumer*);
-    void deActivateOutput(int id);
+    int32_t addFrameConsumer(const std::string& name, woogeen_base::FrameFormat, woogeen_base::FrameConsumer*);
+    void removeFrameConsumer(int32_t id);
 
     void setBitrate(unsigned short kbps, int id = 0);
     void requestKeyFrame(int id);
     void onFrame(const woogeen_base::Frame&);
 
 private:
-    std::map<int, woogeen_base::VideoFrameConsumer*> m_consumers;
+    std::list<woogeen_base::VideoFrameConsumer*> m_consumers;
     boost::shared_mutex m_consumerMutex;
 };
 
@@ -69,32 +69,38 @@ inline void FakedVideoFrameEncoder::onFrame(const woogeen_base::Frame& frame)
 {
     boost::shared_lock<boost::shared_mutex> lock(m_consumerMutex);
     if (!m_consumers.empty()) {
-        std::map<int, woogeen_base::VideoFrameConsumer*>::iterator it = m_consumers.begin();
-        for (; it != m_consumers.end(); ++it)
-            it->second->onFrame(frame);
+        std::list<woogeen_base::VideoFrameConsumer*>::iterator it = m_consumers.begin();
+        for (; it != m_consumers.end(); ++it) {
+            if (*it)
+                (*it)->onFrame(frame);
+        }
     }
 }
 
-inline bool FakedVideoFrameEncoder::activateOutput(int id, woogeen_base::FrameFormat format, unsigned int framerate, unsigned short kbps, woogeen_base::VideoFrameConsumer* consumer)
+inline int32_t FakedVideoFrameEncoder::addFrameConsumer(const std::string&, woogeen_base::FrameFormat format, woogeen_base::VideoFrameConsumer* consumer)
 {
     boost::upgrade_lock<boost::shared_mutex> lock(m_consumerMutex);
-    std::map<int, woogeen_base::VideoFrameConsumer*>::iterator it = m_consumers.find(id);
-    if (it != m_consumers.end())
-        return false;
+    std::list<woogeen_base::VideoFrameConsumer*>::iterator it = m_consumers.begin();
+    for (; it != m_consumers.end(); ++it) {
+        if (*it == consumer)
+            return -1;
+    }
 
     boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
-    m_consumers[id] = consumer;
-    return true;
+    m_consumers.push_back(consumer);
+    return m_consumers.size() - 1;
 }
 
-inline void FakedVideoFrameEncoder::deActivateOutput(int id)
+inline void FakedVideoFrameEncoder::removeFrameConsumer(int id)
 {
     boost::upgrade_lock<boost::shared_mutex> lock(m_consumerMutex);
-    std::map<int, woogeen_base::VideoFrameConsumer*>::iterator it = m_consumers.find(id);
-    if (it != m_consumers.end()) {
-        boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
-        m_consumers.erase(it);
-    }
+    if (id < 0 || static_cast<size_t>(id) >= m_consumers.size())
+        return;
+
+    std::list<woogeen_base::VideoFrameConsumer*>::iterator it = m_consumers.begin();
+    advance(it, id);
+    boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
+    *it = nullptr;
 }
 
 }

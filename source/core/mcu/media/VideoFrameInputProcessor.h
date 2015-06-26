@@ -92,8 +92,11 @@ public:
     virtual ~VideoFrameInputProcessor();
 
     // Implements the VideoFrameProvider interface.
-    virtual void requestKeyFrame(int id = 0) {}
-    virtual void setBitrate(unsigned short kbps, int id = 0) {}
+    // There should be no direct consumer to this input.
+    int32_t addFrameConsumer(const std::string& name, woogeen_base::FrameFormat, woogeen_base::FrameConsumer*) { return -1; }
+    void removeFrameConsumer(int32_t id) { }
+    void requestKeyFrame(int id = 0) {}
+    void setBitrate(unsigned short kbps, int id = 0) {}
 
     bool init(int payloadType, boost::shared_ptr<VideoFrameMixer> frameReceiver, InputProcessorCallback* initCallback);
 

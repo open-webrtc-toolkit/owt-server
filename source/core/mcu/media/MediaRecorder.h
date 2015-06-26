@@ -41,7 +41,7 @@ public:
     ~MediaRecorder();
 
     // MediaMuxer interface
-    void setMediaSource(woogeen_base::FrameDispatcher* videoDispatcher, woogeen_base::FrameDispatcher* audioDispatcher);
+    void setMediaSource(woogeen_base::FrameProvider* videoProvider, woogeen_base::FrameProvider* audioProvider);
     void unsetMediaSource();
     void onFrame(const woogeen_base::Frame&);
     void onTimeout();
@@ -54,8 +54,8 @@ private:
     void writeVideoFrame(woogeen_base::EncodedFrame& encoded_frame);
     void writeAudioFrame(woogeen_base::EncodedFrame& encoded_frame);
 
-    woogeen_base::FrameDispatcher* m_videoSource;
-    woogeen_base::FrameDispatcher* m_audioSource;
+    woogeen_base::FrameProvider* m_videoSource;
+    woogeen_base::FrameProvider* m_audioSource;
     AVStream* m_videoStream;
     AVStream* m_audioStream;
     AVFormatContext* m_context;

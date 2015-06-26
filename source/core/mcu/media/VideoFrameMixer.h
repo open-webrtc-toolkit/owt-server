@@ -48,9 +48,6 @@ public:
     virtual bool activateInput(int input, woogeen_base::FrameFormat, woogeen_base::VideoFrameProvider*) = 0;
     virtual void deActivateInput(int input) = 0;
     virtual void pushInput(int input, unsigned char* payload, int len) = 0;
-
-    virtual bool activateOutput(int id, woogeen_base::FrameFormat, unsigned int framerate, unsigned short kbps, woogeen_base::VideoFrameConsumer*) = 0;
-    virtual void deActivateOutput(int id) = 0;
 };
 
 }

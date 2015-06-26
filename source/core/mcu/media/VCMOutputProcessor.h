@@ -47,7 +47,7 @@ class VCMOutputProcessor : public woogeen_base::VideoFrameSender, public erizo::
     DECLARE_LOGGER();
 
 public:
-    VCMOutputProcessor(int id, boost::shared_ptr<woogeen_base::VideoFrameProvider>, int targetKbps, woogeen_base::WebRTCTransport<erizo::VIDEO>*, boost::shared_ptr<woogeen_base::WebRTCTaskRunner>);
+    VCMOutputProcessor(boost::shared_ptr<woogeen_base::VideoFrameProvider>, int targetKbps, woogeen_base::WebRTCTransport<erizo::VIDEO>*, boost::shared_ptr<woogeen_base::WebRTCTaskRunner>);
     ~VCMOutputProcessor();
 
     // Implements VideoFrameSender.
@@ -59,6 +59,7 @@ public:
     uint32_t sendSSRC(bool nack, bool fec);
     woogeen_base::IntraFrameCallback* iFrameCallback() { return this; }
     erizo::FeedbackSink* feedbackSink() { return this; }
+    virtual int streamId() { return m_id; }
 
     void registerPreSendFrameCallback(woogeen_base::FrameConsumer*);
     void deRegisterPreSendFrameCallback();
@@ -73,6 +74,7 @@ private:
     bool init(woogeen_base::WebRTCTransport<erizo::VIDEO>*, boost::shared_ptr<woogeen_base::WebRTCTaskRunner>);
     void close();
 
+    int m_id;
     woogeen_base::FrameFormat m_sendFormat;
     int m_targetKbps;
 

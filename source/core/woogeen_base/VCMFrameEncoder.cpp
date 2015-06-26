@@ -20,6 +20,8 @@
 
 #include "VCMFrameEncoder.h"
 
+#include "MediaUtilities.h"
+
 using namespace webrtc;
 
 namespace woogeen_base {
@@ -27,11 +29,8 @@ namespace woogeen_base {
 VCMFrameEncoder::VCMFrameEncoder(boost::shared_ptr<WebRTCTaskRunner> taskRunner)
     : m_vcm(VideoCodingModule::Create())
     , m_encoderInitialized(false)
-    , m_initialKbps(0)
     , m_encodeFormat(FRAME_FORMAT_UNKNOWN)
     , m_taskRunner(taskRunner)
-    , m_encodedFrameConsumer(nullptr)
-    , m_consumerId(-1)
 {
     m_vcm->InitializeSender();
     m_vcm->RegisterTransportCallback(this);
@@ -49,25 +48,30 @@ VCMFrameEncoder::~VCMFrameEncoder()
     m_vcm = nullptr;
 }
 
-bool VCMFrameEncoder::activateOutput(int id, FrameFormat format, unsigned int framerate, unsigned short kbps, VideoFrameConsumer* consumer)
+int32_t VCMFrameEncoder::addFrameConsumer(const std::string& name, FrameFormat format, FrameConsumer* consumer)
 {
-    if (m_encodedFrameConsumer)
-        return false;
+    boost::upgrade_lock<boost::shared_mutex> lock(m_mutex);
+    // For now we only support the consumers requiring the same frame format.
+    if (m_encodeFormat != FRAME_FORMAT_UNKNOWN && m_encodeFormat != format)
+        return -1;
 
-    m_encodedFrameConsumer = consumer;
-    m_consumerId = id;
+    boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
     m_encodeFormat = format;
-    m_initialKbps = kbps;
-    return true;
+    m_consumers.push_back(consumer);
+
+    return m_consumers.size() - 1;
 }
 
-void VCMFrameEncoder::deActivateOutput(int id)
+void VCMFrameEncoder::removeFrameConsumer(int id)
 {
-    if (m_consumerId == id) {
-        assert(m_encodedFrameConsumer);
-        m_encodedFrameConsumer = nullptr;
-        m_consumerId = -1;
-    }
+    boost::upgrade_lock<boost::shared_mutex> lock(m_mutex);
+    if (id < 0 || static_cast<size_t>(id) >= m_consumers.size())
+        return;
+
+    std::list<woogeen_base::VideoFrameConsumer*>::iterator it = m_consumers.begin();
+    advance(it, id);
+    boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
+    *it = nullptr;
 }
 
 void VCMFrameEncoder::setBitrate(unsigned short kbps, int id)
@@ -117,7 +121,8 @@ int32_t VCMFrameEncoder::SendData(
     const RTPVideoHeader* rtpVideoHdr)
 {
     // New encoded data, hand over to the frame consumer.
-    if (m_encodedFrameConsumer) {
+    boost::shared_lock<boost::shared_mutex> lock(m_mutex);
+    if (!m_consumers.empty()) {
         Frame frame;
         memset(&frame, 0, sizeof(frame));
         frame.format = m_encodeFormat;
@@ -127,7 +132,11 @@ int32_t VCMFrameEncoder::SendData(
         frame.additionalInfo.video.width = encoded_image._encodedWidth;
         frame.additionalInfo.video.height = encoded_image._encodedHeight;
 
-        m_encodedFrameConsumer->onFrame(frame);
+        std::list<VideoFrameConsumer*>::iterator it = m_consumers.begin();
+        for (; it != m_consumers.end(); ++it) {
+            if (*it)
+                (*it)->onFrame(frame);
+        }
         return 0;
     }
 
@@ -136,7 +145,8 @@ int32_t VCMFrameEncoder::SendData(
 
 bool VCMFrameEncoder::initializeEncoder(uint32_t width, uint32_t height)
 {
-    if (m_encoderInitialized || !m_encodedFrameConsumer)
+    boost::upgrade_lock<boost::shared_mutex> lock(m_mutex);
+    if (m_encoderInitialized || m_encodeFormat == FRAME_FORMAT_UNKNOWN)
         return m_encoderInitialized;
 
     VideoCodec videoCodec;
@@ -154,16 +164,18 @@ bool VCMFrameEncoder::initializeEncoder(uint32_t width, uint32_t height)
     }
 
     if (!supportedCodec) {
-        m_encodedFrameConsumer = nullptr;
-        m_consumerId = -1;
+        boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
+        m_encodeFormat = FRAME_FORMAT_UNKNOWN;
+        m_consumers.clear();
         return false;
     }
 
     videoCodec.width = width;
     videoCodec.height = height;
-    videoCodec.startBitrate = m_initialKbps;
-    videoCodec.maxBitrate = m_initialKbps;
-    videoCodec.minBitrate = m_initialKbps / 4;
+    uint32_t targetKbps = calcBitrate(width, height) * (m_encodeFormat == FRAME_FORMAT_VP8 ? 0.9 : 1);
+    videoCodec.startBitrate = targetKbps;
+    videoCodec.maxBitrate = targetKbps;
+    videoCodec.minBitrate = targetKbps / 4;
 
     m_vcm->RegisterSendCodec(&videoCodec, 1, 1400);
     m_encoderInitialized = true;

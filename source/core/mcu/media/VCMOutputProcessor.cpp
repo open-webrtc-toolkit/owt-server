@@ -32,8 +32,8 @@ namespace mcu {
 
 DEFINE_LOGGER(VCMOutputProcessor, "mcu.media.VCMOutputProcessor");
 
-VCMOutputProcessor::VCMOutputProcessor(int id, boost::shared_ptr<woogeen_base::VideoFrameProvider> source, int targetKbps, woogeen_base::WebRTCTransport<erizo::VIDEO>* transport, boost::shared_ptr<woogeen_base::WebRTCTaskRunner> taskRunner)
-    : woogeen_base::VideoFrameSender(id)
+VCMOutputProcessor::VCMOutputProcessor(boost::shared_ptr<woogeen_base::VideoFrameProvider> source, int targetKbps, woogeen_base::WebRTCTransport<erizo::VIDEO>* transport, boost::shared_ptr<woogeen_base::WebRTCTaskRunner> taskRunner)
+    : m_id(-1)
     , m_sendFormat(woogeen_base::FRAME_FORMAT_UNKNOWN)
     , m_targetKbps(targetKbps)
     , m_source(source)
@@ -265,6 +265,7 @@ bool VCMOutputProcessor::init(woogeen_base::WebRTCTransport<erizo::VIDEO>* trans
 {
     m_taskRunner = taskRunner;
     m_videoTransport.reset(transport);
+    m_id = m_source->addFrameConsumer("VCMOutputProcessor", woogeen_base::FRAME_FORMAT_I420, this);
 
     m_bitrateController.reset(webrtc::BitrateController::CreateBitrateController(Clock::GetRealTimeClock(), true));
     m_bandwidthObserver.reset(m_bitrateController->CreateRtcpBandwidthObserver());

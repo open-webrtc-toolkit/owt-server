@@ -45,13 +45,10 @@ namespace mcu {
 
 class VideoLayoutProcessor;
 
-static const int MIXED_VP8_VIDEO_STREAM_ID = 2;
-static const int MIXED_H264_VIDEO_STREAM_ID = 3;
-
 /**
  * Receives media from several sources, mixed into one stream and retransmits it to the RTPDataReceiver.
  */
-class VideoMixer : public woogeen_base::MediaSourceConsumer, public woogeen_base::FrameDispatcher, public erizo::FeedbackSink, public InputProcessorCallback, public woogeen_base::Notification {
+class VideoMixer : public woogeen_base::MediaSourceConsumer, public woogeen_base::FrameProvider, public erizo::FeedbackSink, public InputProcessorCallback, public woogeen_base::Notification {
     DECLARE_LOGGER();
 
 public:
@@ -91,9 +88,11 @@ public:
     bool setResolution(const std::string& resolution);
     bool setBackgroundColor(const std::string& color);
 
-    // Implements FrameDispatcher
-    int32_t addFrameConsumer(const std::string&, int payloadType, woogeen_base::FrameConsumer*);
+    // Implements FrameProivder
+    int32_t addFrameConsumer(const std::string&, woogeen_base::FrameFormat, woogeen_base::FrameConsumer*);
     void removeFrameConsumer(int32_t id);
+    // TODO: Implement it.
+    virtual void setBitrate(unsigned short kbps, int id = 0) { }
 
     // Implements Notification
     void setupNotification(std::function<void (const std::string&, const std::string&)> f);

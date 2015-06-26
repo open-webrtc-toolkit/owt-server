@@ -28,7 +28,7 @@
 
 namespace mcu {
 
-class AudioExternalOutput : public erizo::MediaSink, public woogeen_base::FrameDispatcher, public erizo::FeedbackSink, public woogeen_base::JobTimerListener {
+class AudioExternalOutput : public erizo::MediaSink, public woogeen_base::FrameProvider, public erizo::FeedbackSink, public woogeen_base::JobTimerListener {
 public:
     AudioExternalOutput();
     virtual ~AudioExternalOutput();
@@ -40,9 +40,11 @@ public:
     // Implements FeedbackSink interface.
     virtual int deliverFeedback(char* buf, int len);
 
-    // Implements the FrameDispatcher interfaces.
-    virtual int32_t addFrameConsumer(const std::string& name, int payloadType, woogeen_base::FrameConsumer*);
+    // Implements the FrameProvider interfaces.
+    virtual int32_t addFrameConsumer(const std::string& name, woogeen_base::FrameFormat, woogeen_base::FrameConsumer*);
     virtual void removeFrameConsumer(int32_t id);
+    // TODO: Implement it.
+    virtual void setBitrate(unsigned short kbps, int id = 0) { }
 
     // Implements the JobTimerListener interface.
     void onTimeout();

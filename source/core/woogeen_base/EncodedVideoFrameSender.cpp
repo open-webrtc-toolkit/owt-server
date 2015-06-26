@@ -33,10 +33,10 @@ static const int TRANSMISSION_MAXBITRATE_MULTIPLIER = 2;
 
 DEFINE_LOGGER(EncodedVideoFrameSender, "woogeen.EncodedVideoFrameSender");
 
-EncodedVideoFrameSender::EncodedVideoFrameSender(int id, boost::shared_ptr<VideoFrameProvider> source, FrameFormat frameFormat, int targetKbps, WebRTCTransport<erizo::VIDEO>* transport, boost::shared_ptr<WebRTCTaskRunner> taskRunner)
-    : VideoFrameSender(id)
-    , m_source(source)
+EncodedVideoFrameSender::EncodedVideoFrameSender(boost::shared_ptr<VideoFrameProvider> source, FrameFormat frameFormat, int targetKbps, WebRTCTransport<erizo::VIDEO>* transport, boost::shared_ptr<WebRTCTaskRunner> taskRunner)
+    : m_source(source)
     , m_frameFormat(frameFormat)
+    , m_id(-1)
     , m_targetKbps(targetKbps)
     , m_frameConsumer(nullptr)
 {
@@ -45,6 +45,7 @@ EncodedVideoFrameSender::EncodedVideoFrameSender(int id, boost::shared_ptr<Video
 
 EncodedVideoFrameSender::~EncodedVideoFrameSender()
 {
+    m_source->removeFrameConsumer(m_id);
     close();
 }
 
@@ -169,6 +170,7 @@ bool EncodedVideoFrameSender::init(WebRTCTransport<erizo::VIDEO>* transport, boo
 {
     m_taskRunner = taskRunner;
     m_videoTransport.reset(transport);
+    m_id = m_source->addFrameConsumer("packetizer", m_frameFormat, this);
 
     m_bitrateController.reset(webrtc::BitrateController::CreateBitrateController(Clock::GetRealTimeClock(), true));
     m_bandwidthObserver.reset(m_bitrateController->CreateRtcpBandwidthObserver());

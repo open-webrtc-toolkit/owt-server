@@ -33,11 +33,6 @@ namespace woogeen_base {
  */
 class VideoFrameSender : public VideoFrameConsumer {
 public:
-    VideoFrameSender(int id)
-        : m_id(id)
-    {
-    }
-
     virtual ~VideoFrameSender() { }
 
     virtual bool setSendCodec(FrameFormat, unsigned int width, unsigned int height) = 0;
@@ -47,13 +42,12 @@ public:
     virtual uint32_t sendSSRC(bool nack, bool fec) = 0;
     virtual IntraFrameCallback* iFrameCallback() = 0;
     virtual erizo::FeedbackSink* feedbackSink() = 0;
-    virtual int id() { return m_id; }
+    virtual int streamId() = 0;
 
     virtual void registerPreSendFrameCallback(FrameConsumer*) { }
     virtual void deRegisterPreSendFrameCallback() { }
 
 protected:
-    int m_id;
 };
 
 }

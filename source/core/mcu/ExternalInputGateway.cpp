@@ -392,9 +392,6 @@ void ExternalInputGateway::closeAll()
     removePublisher(m_participantId);
 }
 
-static const int OUTPUT_VP8_VIDEO_STREAM_ID = 0;
-static const int OUTPUT_H264_VIDEO_STREAM_ID = 1;
-
 uint32_t ExternalInputGateway::addVideoOutput(int payloadType, bool nack, bool fec)
 {
     boost::upgrade_lock<boost::shared_mutex> lock(m_videoOutputMutex);
@@ -405,15 +402,12 @@ uint32_t ExternalInputGateway::addVideoOutput(int payloadType, bool nack, bool f
     }
 
     woogeen_base::FrameFormat outputFormat = woogeen_base::FRAME_FORMAT_UNKNOWN;
-    int outputId = -1;
     switch (payloadType) {
     case VP8_90000_PT:
         outputFormat = woogeen_base::FRAME_FORMAT_VP8;
-        outputId = OUTPUT_VP8_VIDEO_STREAM_ID;
         break;
     case H264_90000_PT:
         outputFormat = woogeen_base::FRAME_FORMAT_H264;
-        outputId = OUTPUT_H264_VIDEO_STREAM_ID;
         break;
     default:
         return 0;
@@ -427,8 +421,7 @@ uint32_t ExternalInputGateway::addVideoOutput(int payloadType, bool nack, bool f
     videoTranscoder->setInput(m_incomingVideoFormat, nullptr);
 
     woogeen_base::WebRTCTransport<erizo::VIDEO>* transport = new woogeen_base::WebRTCTransport<erizo::VIDEO>(this, nullptr);
-    woogeen_base::VideoFrameSender* output = new woogeen_base::EncodedVideoFrameSender(outputId, videoTranscoder, outputFormat, m_videoOutputKbps, transport, m_taskRunner);
-    videoTranscoder->activateOutput(outputId, outputFormat, 30, 500, output);
+    woogeen_base::VideoFrameSender* output = new woogeen_base::EncodedVideoFrameSender(videoTranscoder, outputFormat, m_videoOutputKbps, transport, m_taskRunner);
 
     {
         boost::unique_lock<boost::shared_mutex> transcoderLock(m_videoTranscoderMutex);
@@ -446,8 +439,20 @@ uint32_t ExternalInputGateway::addVideoOutput(int payloadType, bool nack, bool f
 }
 
 // Video ONLY here for the frame consumer
-int32_t ExternalInputGateway::addFrameConsumer(const std::string&/*unused*/, int payloadType, woogeen_base::FrameConsumer* frameConsumer)
+int32_t ExternalInputGateway::addFrameConsumer(const std::string&/*unused*/, woogeen_base::FrameFormat format, woogeen_base::FrameConsumer* frameConsumer)
 {
+    int payloadType = INVALID_PT;
+    switch (format) {
+    case woogeen_base::FRAME_FORMAT_VP8:
+        payloadType = VP8_90000_PT;
+        break;
+    case woogeen_base::FRAME_FORMAT_H264:
+        payloadType = H264_90000_PT;
+        break;
+    default:
+        break;
+    }
+
     // May delay this to the VideoFrameSender???
     addVideoOutput(payloadType, false, false);
 
@@ -462,7 +467,7 @@ int32_t ExternalInputGateway::addFrameConsumer(const std::string&/*unused*/, int
         if (iFrameCallback)
             iFrameCallback->handleIntraFrameRequest();
 
-        outputId = it->second->id();
+        outputId = it->second->streamId();
     }
 
     return outputId;
@@ -475,7 +480,7 @@ void ExternalInputGateway::removeFrameConsumer(int32_t id)
     boost::shared_lock<boost::shared_mutex> lock(m_videoOutputMutex);
     std::map<int, boost::shared_ptr<woogeen_base::VideoFrameSender>>::iterator it = m_videoOutputs.begin();
     for (; it != m_videoOutputs.end(); ++it) {
-        if (id == it->second->id()) {
+        if (id == it->second->streamId()) {
             it->second->deRegisterPreSendFrameCallback();
             break;
         }

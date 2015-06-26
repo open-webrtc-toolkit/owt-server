@@ -53,7 +53,7 @@ int VideoExternalOutput::deliverAudioData(char* buf, int len)
     return 0;
 }
 
-int32_t VideoExternalOutput::addFrameConsumer(const std::string& name, int payloadType, woogeen_base::FrameConsumer* frameConsumer)
+int32_t VideoExternalOutput::addFrameConsumer(const std::string& name, woogeen_base::FrameFormat, woogeen_base::FrameConsumer* frameConsumer)
 {
     // Start the recording of video frames
     m_encodedFrameCallback.reset(new woogeen_base::VideoEncodedFrameCallbackAdapter(frameConsumer));

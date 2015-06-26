@@ -43,11 +43,10 @@ public:
     bool acceptRawFrame() { return false; }
 
     // Implements VideoFrameProvider.
+    int32_t addFrameConsumer(const std::string& name, FrameFormat, FrameConsumer*);
+    void removeFrameConsumer(int32_t id);
     void setBitrate(unsigned short kbps, int id = 0);
     void requestKeyFrame(int id = 0);
-
-    bool activateOutput(int id, FrameFormat, unsigned int framerate, unsigned short kbps, VideoFrameConsumer*);
-    void deActivateOutput(int id);
 
 private:
     boost::shared_ptr<VideoFrameEncoder> m_encoder;
@@ -89,14 +88,14 @@ inline void VideoFrameTranscoder::requestKeyFrame(int id)
     m_encoder->requestKeyFrame(id);
 }
 
-inline bool VideoFrameTranscoder::activateOutput(int id, FrameFormat format, unsigned int framerate, unsigned short kbps, VideoFrameConsumer* consumer)
+inline int32_t VideoFrameTranscoder::addFrameConsumer(const std::string& name, FrameFormat format, VideoFrameConsumer* consumer)
 {
-    return m_encoder->activateOutput(id, format, framerate, kbps, consumer);
+    return m_encoder->addFrameConsumer(name, format, consumer);
 }
 
-inline void VideoFrameTranscoder::deActivateOutput(int id)
+inline void VideoFrameTranscoder::removeFrameConsumer(int32_t id)
 {
-    m_encoder->deActivateOutput(id);
+    m_encoder->removeFrameConsumer(id);
 }
 
 } /* namespace woogeen_base */

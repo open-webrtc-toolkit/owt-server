@@ -76,7 +76,7 @@ RTSPMuxer::~RTSPMuxer()
 #endif
 }
 
-void RTSPMuxer::setMediaSource(woogeen_base::FrameDispatcher* videoSource, woogeen_base::FrameDispatcher* audioSource)
+void RTSPMuxer::setMediaSource(woogeen_base::FrameProvider* videoSource, woogeen_base::FrameProvider* audioSource)
 {
     if (m_status == woogeen_base::MediaMuxer::Context_READY) {
         callback("success");
@@ -92,10 +92,10 @@ void RTSPMuxer::setMediaSource(woogeen_base::FrameDispatcher* videoSource, wooge
 
     // Start the recording of video and audio
     if (m_videoSource)
-        m_videoId = m_videoSource->addFrameConsumer(m_uri, H264_90000_PT, this);
+        m_videoId = m_videoSource->addFrameConsumer(m_uri, woogeen_base::FRAME_FORMAT_H264, this);
 
     if (m_audioSource)
-        m_audioId = m_audioSource->addFrameConsumer(m_uri, OPUS_48000_PT, this); // FIXME: should be AAC_48000_PT or so.
+        m_audioId = m_audioSource->addFrameConsumer(m_uri, woogeen_base::FRAME_FORMAT_PCM_RAW, this);
 }
 
 void RTSPMuxer::unsetMediaSource()
