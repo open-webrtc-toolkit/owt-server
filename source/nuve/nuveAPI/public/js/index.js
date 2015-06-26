@@ -36,6 +36,7 @@ var ENUMERATE = {
 };
 var serviceId = "";
 var serviceKey = "";
+var lastColor = "rgb(255, 255, 255)";
 
 function checkProfile(callback) {
   var serviceId = getCookie('serviceId') === '' ? top.serviceId : getCookie('serviceId');
@@ -354,6 +355,8 @@ function tableHandlerRoom(rooms) {
       }
     };
 
+    videoSetting.bkColor = changeObj2RGB(videoSetting.bkColor);
+
     var view = Mustache.render('<tr>\
           <td rowspan="7">video</td>\
           <td colspan="2">resolution</td>\
@@ -365,7 +368,7 @@ function tableHandlerRoom(rooms) {
         </tr>\
         <tr>\
           <td colspan="2">bkColor</td>\
-          <td id="bkColor" class="value-num-edit" data-value={{bkColor}}></td>\
+          <td id="bkColor" class="value-num-edit" data-value={{bkColor}}><input id="color" style="border: 0px; outline: 0px;"></td>\
         </tr>\
         <tr>\
           <td colspan="2">maxInput</td>\
@@ -397,17 +400,31 @@ function tableHandlerRoom(rooms) {
     // <audio not supported now>
     $('#myModal3 .modal-footer button:first').click(function() {
       var unsaved = $('#myModal3 tbody .editable-unsaved');
-      if (unsaved.length === 0) return;
+      if (unsaved.length === 0 && $('#myModal3 tbody td#bkColor input#color').val() === lastColor) return;
       unsaved.map(function(index, each) {
         var id = $(each).attr('id');
         var val = $(each).editable('getValue')[id];
         setVal(videoSetting, id, val);
       });
+      if($('#myModal3 tbody td#bkColor input#color').val() !== lastColor) {
+        lastColor = $('#myModal3 tbody td#bkColor input#color').val();
+        setVal(videoSetting, "bkColor", changeRGBA2RGB(lastColor));
+      }
       room.mediaMixing = room.mediaMixing || {};
       room.mediaMixing.video = videoSetting;
       p.addClass('editable-unsaved');
       p.editable('setValue', room.mediaMixing);
       p.text('object');
+    });
+
+    $('#myModal3 tbody td#bkColor input#color').val(changeRGBA(videoSetting.bkColor));
+
+    $('#myModal3 tbody td#bkColor input#color').ColorPickerSliders({
+      color: "rgb(255, 255, 255)",
+        flat: false,
+        sliders: false,
+        swatches: false,
+        hsvpanel: true
     });
   };
 
@@ -424,7 +441,7 @@ function tableHandlerRoom(rooms) {
     });
     $('#myModal3 tbody td#bitrate').editable(numberHandle);
     $('#myModal3 tbody td#maxInput').editable(numberHandle);
-    $('#myModal3 tbody td#bkColor').editable();
+    // $('#myModal3 tbody td#bkColor').editable(numberHandle);
     $('#myModal3 tbody td#avCoordinated').editable({
       mode: 'inline',
       type: 'select',
@@ -496,14 +513,14 @@ function tableHandlerRoom(rooms) {
     var roomMode = p.find('td.roomMode').text();
     var publishLimit = parseInt(p.find('td.publishLimit').text(), 10);
     var userLimit = parseInt(p.find('td.userLimit').text(), 10);
-    var enableMixing = p.find('td.enableMixing').text() === 'true' ? 0 : 1;
+    var enableMixing = p.find('td.enableMixing').text() === 'true' ? 1 : 0;
     var room = {
       name: roomName,
       options: {
         mode: roomMode,
         publishLimit: publishLimit,
         userLimit: userLimit,
-	enableMixing: enableMixing,
+        enableMixing: enableMixing,
         mediaMixing: null
       }
     };
@@ -708,4 +725,38 @@ function a_click(nowList, dom) {
       checkProfile(renderCluster);
       break;
   }
+}
+
+function changeRGBA2RGB (color) {
+  if(color.toLowerCase().indexOf("rgba") > -1) {
+    color = color.replace("rgba", "rgb");
+  }
+  if(color.toLowerCase().indexOf("rgb") > -1) {
+    color = color.replace("(", ", ");
+    color = color.replace(")", "");
+    var tmp = color.split(", ");
+    color = {
+      r: tmp[1],
+      g: tmp[2],
+      b: tmp[3]
+    };
+  }
+  return color;
+}
+
+
+function changeRGBA (str) {
+  switch (str){
+    case "black": 
+      return "rgb(0, 0, 0)";
+    case "white":
+      return "rgb(255, 255, 255)";
+    default:
+      return str;
+  }
+}
+
+function changeObj2RGB(obj) {
+  if(typeof obj === "object") 
+    return "rgb(" + obj.r + ", " + obj.g + ", " + obj.b + ")";
 }
