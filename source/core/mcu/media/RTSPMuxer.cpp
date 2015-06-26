@@ -19,6 +19,7 @@
  */
 
 #include "RTSPMuxer.h"
+
 #include <rtputils.h>
 
 extern "C" {
@@ -34,15 +35,15 @@ namespace mcu {
 
 DEFINE_LOGGER(RTSPMuxer, "mcu.media.RTSPMuxer");
 
-RTSPMuxer::RTSPMuxer(const std::string& uri, woogeen_base::FrameDispatcher* video, woogeen_base::FrameDispatcher* audio)
-    : m_videoSource(video)
-    , m_audioSource(audio)
+RTSPMuxer::RTSPMuxer(const std::string& url)
+    : m_videoSource(nullptr)
+    , m_audioSource(nullptr)
     , m_resampleContext(nullptr)
     , m_audioFifo(nullptr)
     , m_pts(0)
     , m_videoId(-1)
     , m_audioId(-1)
-    , m_uri(uri)
+    , m_uri(url)
 {
     m_muxing = false;
     m_firstVideoTimestamp = -1;
@@ -55,55 +56,64 @@ RTSPMuxer::RTSPMuxer(const std::string& uri, woogeen_base::FrameDispatcher* vide
     m_context = avformat_alloc_context();
     assert (m_context);
 
-    m_context->oformat = av_guess_format("rtsp", uri.c_str(), nullptr);
+    m_context->oformat = av_guess_format("rtsp", m_uri.c_str(), nullptr);
     assert (m_context->oformat);
 
-    av_strlcpy(m_context->filename, uri.c_str(), sizeof(m_context->filename));
+    av_strlcpy(m_context->filename, m_uri.c_str(), sizeof(m_context->filename));
 #ifdef DUMP_RAW
     m_dumpFile.reset(new std::ofstream("/tmp/rtspAudioRaw.pcm", std::ios::binary));
 #endif
+
+    m_videoQueue.reset(new woogeen_base::MediaFrameQueue(0));
+    m_audioQueue.reset(new woogeen_base::MediaFrameQueue(0));
+    m_audioRawQueue.reset(new woogeen_base::MediaFrameQueue(0));
+
+    init();
 }
 
 RTSPMuxer::~RTSPMuxer()
 {
     if (m_muxing)
-        stop();
+        close();
 #ifdef DUMP_RAW
     m_dumpFile.reset();
 #endif
 }
 
-void RTSPMuxer::stop()
+bool RTSPMuxer::setMediaSource(woogeen_base::FrameDispatcher* videoSource, woogeen_base::FrameDispatcher* audioSource)
 {
-    m_muxing = false;
-    m_thread.join();
-    m_audioTransThread.join();
-
-    m_videoSource->removeFrameConsumer(m_videoId);
-    m_audioSource->removeFrameConsumer(m_audioId);
-    if (m_audioFifo)
-        av_audio_fifo_free(m_audioFifo);
-    if (m_resampleContext) {
-        avresample_close(m_resampleContext);
-        avresample_free(&m_resampleContext);
-    }
-    av_write_trailer(m_context);
-    avcodec_close(m_audioStream->codec);
-    if (!(m_context->oformat->flags & AVFMT_NOFILE))
-        avio_close(m_context->pb);
-    avformat_free_context(m_context);
-}
-
-bool RTSPMuxer::start()
-{
+    // Reset the media queues
     m_videoQueue.reset(new woogeen_base::MediaFrameQueue(0));
     m_audioQueue.reset(new woogeen_base::MediaFrameQueue(0));
     m_audioRawQueue.reset(new woogeen_base::MediaFrameQueue(0));
+
+    if (m_videoSource && m_videoId != -1)
+        m_videoSource->removeFrameConsumer(m_videoId);
+
+    if (m_audioSource && m_audioId != -1)
+        m_audioSource->removeFrameConsumer(m_audioId);
+
+    m_videoSource = videoSource;
+    m_audioSource = audioSource;
+
+    // Start the recording of video and audio
     m_videoId = m_videoSource->addFrameConsumer(m_uri, H264_90000_PT, this);
     m_audioId = m_audioSource->addFrameConsumer(m_uri, OPUS_48000_PT, this); // FIXME: should be AAC_44100_PT or so.
-    if (m_videoId == -1 || m_audioId == -1)
-        return false;
 
+    return true;
+}
+
+void RTSPMuxer::removeMediaSource()
+{
+    if (m_videoSource && m_videoId != -1)
+        m_videoSource->removeFrameConsumer(m_videoId);
+
+    if (m_audioSource && m_audioId != -1)
+        m_audioSource->removeFrameConsumer(m_audioId);
+}
+
+bool RTSPMuxer::init()
+{
     addVideoStream(AV_CODEC_ID_H264);
     addAudioStream(AV_CODEC_ID_AAC);
     if (!(m_context->oformat->flags & AVFMT_NOFILE)) {
@@ -120,6 +130,25 @@ bool RTSPMuxer::start()
     m_thread = boost::thread(&RTSPMuxer::loop, this);
     m_audioTransThread = boost::thread(&RTSPMuxer::encodeAudioLoop, this);
     return true;
+}
+
+void RTSPMuxer::close()
+{
+    m_muxing = false;
+    m_thread.join();
+    m_audioTransThread.join();
+
+    if (m_audioFifo)
+        av_audio_fifo_free(m_audioFifo);
+    if (m_resampleContext) {
+        avresample_close(m_resampleContext);
+        avresample_free(&m_resampleContext);
+    }
+    av_write_trailer(m_context);
+    avcodec_close(m_audioStream->codec);
+    if (!(m_context->oformat->flags & AVFMT_NOFILE))
+        avio_close(m_context->pb);
+    avformat_free_context(m_context);
 }
 
 void RTSPMuxer::onFrame(const woogeen_base::Frame& frame)
@@ -376,8 +405,9 @@ void RTSPMuxer::addVideoStream(enum AVCodecID codec_id)
     /* Put sample parameters. */
     c->bit_rate = 400000;
     /* Resolution must be a multiple of two. */
-    unsigned int width = 640, height = 480;
-    m_videoSource->getVideoSize(width, height);
+    // FIXME: Currently, ONLY 720p to be recorded.
+    unsigned int width = 1280, height = 720;
+    //m_videoSource->getVideoSize(width, height);
     c->width    = width;
     c->height   = height;
     /* timebase: This is the fundamental unit of time (in seconds) in terms

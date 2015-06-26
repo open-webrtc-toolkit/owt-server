@@ -215,8 +215,8 @@ class MediaMuxer : public FrameConsumer {
 public:
     MediaMuxer() { }
     virtual ~MediaMuxer() { }
-    virtual bool start() = 0;
-    virtual void stop() = 0;
+    virtual bool setMediaSource(FrameDispatcher* videoDispatcher, FrameDispatcher* audioDispatcher) = 0;
+    virtual void removeMediaSource() = 0;
 
 protected:
     bool m_muxing;

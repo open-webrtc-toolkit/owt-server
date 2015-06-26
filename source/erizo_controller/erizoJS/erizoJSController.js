@@ -290,6 +290,7 @@ exports.ErizoJSController = function (spec) {
             }
         }
 
+        log.error('Failed adding ExternalOutput to ' + to + ' with url ' + url);
         callback('callback', 'error');
     };
 

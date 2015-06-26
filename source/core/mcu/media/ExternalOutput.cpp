@@ -24,21 +24,19 @@ namespace mcu {
 
 DEFINE_LOGGER(ExternalOutput, "mcu.media.ExternalOutput");
 
-ExternalOutput::ExternalOutput(boost::property_tree::ptree& outputConfig)
+ExternalOutput::ExternalOutput(woogeen_base::MediaMuxer* muxer) : m_muxer(muxer)
 {
     m_videoExternalOutput.reset(new VideoExternalOutput());
     m_audioExternalOutput.reset(new AudioExternalOutput());
 
-    const std::string outputUrl = outputConfig.get<std::string>("url");
-    int snapshotInterval = outputConfig.get<int>("interval");
-    m_recorder.reset(new MediaRecorder(m_videoExternalOutput.get(), m_audioExternalOutput.get(), outputUrl, snapshotInterval));
-    m_recorder->start();
+    if (m_muxer)
+        m_muxer->setMediaSource(m_videoExternalOutput.get(), m_audioExternalOutput.get());
 }
 
 ExternalOutput::~ExternalOutput()
 {
-    if (m_recorder)
-        m_recorder->stop();
+    if (m_muxer)
+        m_muxer->removeMediaSource();
 }
 
 int ExternalOutput::deliverAudioData(char* buf, int len)

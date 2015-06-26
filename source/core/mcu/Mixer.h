@@ -131,8 +131,6 @@ private:
     boost::shared_mutex m_subscriberMutex;
     std::map<std::string, std::pair<boost::shared_ptr<erizo::MediaSink>, MediaEnabling>> m_subscribers;
     std::map<std::string, erizo::MediaSource*> m_publishers;
-
-    std::map<std::string, boost::shared_ptr<woogeen_base::MediaMuxer>> m_muxers;
 };
 
 } /* namespace mcu */

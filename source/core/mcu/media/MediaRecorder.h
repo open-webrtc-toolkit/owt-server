@@ -21,7 +21,6 @@
 #ifndef MediaRecorder_h
 #define MediaRecorder_h
 
-#include <boost/scoped_ptr.hpp>
 #include <boost/thread.hpp>
 #include <logger.h>
 #include <MediaMuxer.h>
@@ -39,16 +38,17 @@ class MediaRecorder : public woogeen_base::MediaMuxer {
     DECLARE_LOGGER();
 
 public:
-    MediaRecorder(woogeen_base::FrameDispatcher* videoRecording, woogeen_base::FrameDispatcher* audioRecording, const std::string& recordPath, int snapshotInterval);
+    MediaRecorder(const std::string& recordUrl, int snapshotInterval);
     ~MediaRecorder();
 
     // MediaMuxer interface
-    bool start();
-    void stop();
-
+    bool setMediaSource(woogeen_base::FrameDispatcher* videoDispatcher, woogeen_base::FrameDispatcher* audioDispatcher);
+    void removeMediaSource();
     void onFrame(const woogeen_base::Frame&);
 
 private:
+    bool init();
+    void close();
     bool initRecordContext();
     void recordLoop();
     void writeVideoFrame(woogeen_base::EncodedFrame& encoded_frame);
@@ -60,9 +60,11 @@ private:
     AVStream* m_audioStream;
     AVFormatContext* m_context;
 
-    std::string m_recordPath;
-    int64_t m_recordStartTime;
     int32_t m_videoId, m_audioId;
+
+    std::string m_recordPath;
+    // FIXME: snapshot interval for the future usage
+    int m_snapshotInterval;
 };
 
 } /* namespace mcu */

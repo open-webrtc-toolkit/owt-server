@@ -18,41 +18,22 @@
  * and approved by Intel in writing.
  */
 
-#ifndef ExternalOutput_h
-#define ExternalOutput_h
-
-#include "AudioExternalOutput.h"
-#include "MediaRecorder.h"
-#include "VideoExternalOutput.h"
-
 #include <boost/shared_ptr.hpp>
 #include <logger.h>
+#include <MediaMuxer.h>
 
 namespace mcu {
 
-// The ExternalOutput class can also be exposed to Node addon, just like the mcu::Mixer
-class ExternalOutput : public erizo::MediaSink {
+class MediaMuxerFactory {
     DECLARE_LOGGER();
 
 public:
-    ExternalOutput(woogeen_base::MediaMuxer* muxer);
-    virtual ~ExternalOutput();
-
-    // Implements the MediaSink interfaces.
-    // TODO: This is hard coded!
-    int preferredAudioPayloadType() { return PCMU_8000_PT; }
-    int preferredVideoPayloadType() { return VP8_90000_PT; }
-
-    int deliverAudioData(char* buf, int len);
-    int deliverVideoData(char* buf, int len);
+    static woogeen_base::MediaMuxer* getMediaMuxer(const std::string& id, const std::string& configParam);
+    static woogeen_base::MediaMuxer* getMediaMuxer(const std::string& id);
+    static bool removeMediaMuxer(const std::string& id);
 
 private:
-    boost::shared_ptr<VideoExternalOutput> m_videoExternalOutput;
-    boost::shared_ptr<AudioExternalOutput> m_audioExternalOutput;
-
-    woogeen_base::MediaMuxer* m_muxer;
+    static std::map<std::string, boost::shared_ptr<woogeen_base::MediaMuxer>> m_muxers;
 };
 
-} /* namespace mcu */
-
-#endif /* ExternalOutput_h */
+}

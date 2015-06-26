@@ -45,16 +45,26 @@ namespace mcu {
 class RTSPMuxer : public woogeen_base::MediaMuxer {
     DECLARE_LOGGER();
 public:
-    RTSPMuxer(const std::string&, woogeen_base::FrameDispatcher*, woogeen_base::FrameDispatcher*);
+    RTSPMuxer(const std::string& url);
     ~RTSPMuxer();
 
     // MediaMuxer interface
-    bool start();
-    void stop();
-
+    bool setMediaSource(woogeen_base::FrameDispatcher* videoDispatcher, woogeen_base::FrameDispatcher* audioDispatcher);
+    void removeMediaSource();
     void onFrame(const woogeen_base::Frame&);
 
 private:
+    bool init();
+    void close();
+    void addVideoStream(enum AVCodecID codec_id);
+    void addAudioStream(enum AVCodecID codec_id);
+    int writeVideoFrame(uint8_t*, size_t, int);
+    int writeAudioFrame(uint8_t*, size_t, int);
+    AVFrame* allocAudioFrame();
+    void loop();
+    void encodeAudioLoop();
+    void processAudio(uint8_t* data, int nbSamples, int sampleRate = 48000, bool isStereo = true);
+
     woogeen_base::FrameDispatcher*  m_videoSource;
     woogeen_base::FrameDispatcher*  m_audioSource;
     AVFormatContext*                m_context;
@@ -67,14 +77,6 @@ private:
     std::string                     m_uri;
     boost::thread                   m_audioTransThread;
     boost::scoped_ptr<woogeen_base::MediaFrameQueue> m_audioRawQueue;
-    void addVideoStream(enum AVCodecID codec_id);
-    void addAudioStream(enum AVCodecID codec_id);
-    int writeVideoFrame(uint8_t*, size_t, int);
-    int writeAudioFrame(uint8_t*, size_t, int);
-    AVFrame* allocAudioFrame();
-    void loop();
-    void encodeAudioLoop();
-    void processAudio(uint8_t* data, int nbSamples, int sampleRate = 48000, bool isStereo = true);
 #ifdef DUMP_RAW
     std::unique_ptr<std::ofstream> m_dumpFile;
 #endif
