@@ -54,16 +54,15 @@ public:
     void onFrame(const woogeen_base::Frame&);
 
 private:
-    bool init();
     void close();
-    void addVideoStream(enum AVCodecID codec_id);
-    void addAudioStream(enum AVCodecID codec_id);
+    void addVideoStream(enum AVCodecID codec_id, unsigned int width = 640, unsigned int height = 480);
+    void addAudioStream(enum AVCodecID codec_id, int nbChannels = 2, int sampleRate = 48000);
     int writeVideoFrame(uint8_t*, size_t, int);
     int writeAudioFrame(uint8_t*, size_t, int);
-    AVFrame* allocAudioFrame();
+    AVFrame* allocAudioFrame(AVCodecContext*);
     void loop();
     void encodeAudioLoop();
-    void processAudio(uint8_t* data, int nbSamples, int sampleRate = 48000, bool isStereo = true);
+    void processAudio(uint8_t* data, int nbSamples, int nbChannels = 2, int sampleRate = 48000);
 
     woogeen_base::FrameDispatcher*  m_videoSource;
     woogeen_base::FrameDispatcher*  m_audioSource;
@@ -75,8 +74,8 @@ private:
     uint32_t                        m_pts;
     int32_t                         m_videoId, m_audioId;
     std::string                     m_uri;
+    boost::mutex                    m_contextMutex;
     boost::thread                   m_audioTransThread;
-    boost::scoped_ptr<woogeen_base::MediaFrameQueue> m_audioRawQueue;
 #ifdef DUMP_RAW
     std::unique_ptr<std::ofstream> m_dumpFile;
 #endif

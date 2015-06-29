@@ -149,17 +149,6 @@ int32_t VideoMixer::removeOutput(int payloadType)
     return -1;
 }
 
-bool VideoMixer::getVideoSize(unsigned int& width, unsigned int& height) const
-{
-    VideoSize videoSize;
-    if (m_layoutProcessor->getRootSize(videoSize)) {
-        width = videoSize.width;
-        height = videoSize.height;
-        return true;
-    }
-    return false;
-}
-
 int32_t VideoMixer::addFrameConsumer(const std::string&/*unused*/, int payloadType, woogeen_base::FrameConsumer* frameConsumer)
 {
     int32_t id = -1;

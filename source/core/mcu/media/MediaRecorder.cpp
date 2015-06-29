@@ -19,9 +19,11 @@
  */
 
 #include "MediaRecorder.h"
-
-
 #include <rtputils.h>
+
+extern "C" {
+#include <libavutil/channel_layout.h>
+}
 
 namespace mcu {
 
@@ -56,10 +58,6 @@ MediaRecorder::MediaRecorder(const std::string& recordUrl, int snapshotInterval)
     , m_recordPath(recordUrl)
     , m_snapshotInterval(snapshotInterval)
 {
-    m_muxing = false;
-    m_firstVideoTimestamp = -1;
-    m_firstAudioTimestamp = -1;
-
     timeval time;
     gettimeofday(&time, nullptr);
     m_recordStartTime = (time.tv_sec * 1000) + (time.tv_usec / 1000);
@@ -68,6 +66,7 @@ MediaRecorder::MediaRecorder(const std::string& recordUrl, int snapshotInterval)
     m_audioQueue.reset(new woogeen_base::MediaFrameQueue(m_recordStartTime));
 
     init();
+    ELOG_DEBUG("created");
 }
 
 MediaRecorder::~MediaRecorder()
@@ -114,6 +113,7 @@ bool MediaRecorder::init()
     // FIXME: These should really only be called once per application run
     av_register_all();
     avcodec_register_all();
+    av_log_set_level(AV_LOG_WARNING);
 
     m_context = avformat_alloc_context();
     if (m_context == NULL) {
@@ -127,13 +127,6 @@ bool MediaRecorder::init()
         ELOG_ERROR("Error guessing recording file format %s", m_context->filename);
         return false;
     }
-
-    m_context->oformat->video_codec = payloadType2VideoCodecID(VP8_90000_PT);
-    m_context->oformat->audio_codec = payloadType2AudioCodecID(PCMU_8000_PT);
-
-    // Initialize the record context
-    if (!initRecordContext())
-        return false;
 
     // File write thread
     m_muxing = true;
@@ -157,21 +150,31 @@ void MediaRecorder::close()
         avcodec_close(m_audioStream->codec);
 
     if (m_context != NULL){
-        avio_close(m_context->pb);
+        if (!(m_context->oformat->flags & AVFMT_NOFILE))
+            avio_close(m_context->pb);
         avformat_free_context(m_context);
         m_context = NULL;
     }
-
-    ELOG_DEBUG("Media recording is closed successfully.");
+    ELOG_DEBUG("closed");
 }
 
 void MediaRecorder::onFrame(const woogeen_base::Frame& frame)
 {
+    if (m_status == woogeen_base::MediaMuxer::Context_ERROR)
+        return;
     switch (frame.format) {
     case woogeen_base::FRAME_FORMAT_VP8:
+        if (!m_videoStream) {
+            addVideoStream(payloadType2VideoCodecID(VP8_90000_PT), frame.additionalInfo.video.width, frame.additionalInfo.video.height);
+            ELOG_DEBUG("video stream added: %dx%d", frame.additionalInfo.video.width, frame.additionalInfo.video.height);
+        }
         m_videoQueue->pushFrame(frame.payload, frame.length, frame.timeStamp);
         break;
     case woogeen_base::FRAME_FORMAT_PCMU:
+        if (m_videoStream && !m_audioStream) { // make sure video stream is added first.
+            addAudioStream(payloadType2AudioCodecID(PCMU_8000_PT), frame.additionalInfo.audio.channels, frame.additionalInfo.audio.sampleRate);
+            ELOG_DEBUG("audio stream added: %d channel(s), %d Hz", frame.additionalInfo.audio.channels, frame.additionalInfo.audio.sampleRate);
+        }
         m_audioQueue->pushFrame(frame.payload, frame.length, frame.timeStamp);
         break;
     default:
@@ -179,77 +182,90 @@ void MediaRecorder::onFrame(const woogeen_base::Frame& frame)
     }
 }
 
-bool MediaRecorder::initRecordContext()
+void MediaRecorder::addAudioStream(enum AVCodecID codec_id, int nbChannels, int sampleRate)
 {
-    if (m_context->oformat->video_codec != AV_CODEC_ID_NONE
-        && m_context->oformat->audio_codec != AV_CODEC_ID_NONE
-        && m_videoStream == NULL && m_audioStream == NULL) {
-        AVCodec* videoCodec = avcodec_find_encoder(m_context->oformat->video_codec);
-        if (videoCodec == NULL) {
-            ELOG_ERROR("Media recording could not find video codec.");
-            return false;
-        }
-
-        m_videoStream = avformat_new_stream(m_context, videoCodec);
-        m_videoStream->id = 0;
-        m_videoStream->codec->codec_id = m_context->oformat->video_codec;
-
-        // unsigned int width = 0;
-        // unsigned int height = 0;
-        // if (m_videoSource->getVideoSize(width, height)) {
-        //     m_videoStream->codec->width = width;
-        //     m_videoStream->codec->height = height;
-        // } else {
-            // FIXME: Currently, ONLY 720p to be recorded.
-            m_videoStream->codec->width = 1280;
-            m_videoStream->codec->height = 720;
-        //}
-
-        // A decent guess here suffices; if processing the file with ffmpeg, use -vsync 0 to force it not to duplicate frames.
-        m_videoStream->codec->time_base = (AVRational){1,30};
-        m_videoStream->codec->pix_fmt = PIX_FMT_YUV420P;
-
-        if (m_context->oformat->flags & AVFMT_GLOBALHEADER)
-            m_videoStream->codec->flags|=CODEC_FLAG_GLOBAL_HEADER;
-
-        m_context->oformat->flags |= AVFMT_VARIABLE_FPS;
-
-        AVCodec* audioCodec = avcodec_find_encoder(m_context->oformat->audio_codec);
-        if (audioCodec == NULL) {
-            ELOG_ERROR("Media recording could not find audio codec.");
-            return false;
-        }
-
-        m_audioStream = avformat_new_stream(m_context, audioCodec);
-        m_audioStream->id = 1;
-        m_audioStream->codec->codec_id = m_context->oformat->audio_codec;
-        // FIXME: Chunbo to set this kind of codec information from AudioMixer
-        m_audioStream->codec->sample_rate = m_context->oformat->audio_codec == AV_CODEC_ID_PCM_MULAW ? 8000 : 48000; // FIXME: Is it always 48 khz for opus?
-        m_audioStream->codec->time_base = (AVRational) {1, m_audioStream->codec->sample_rate};
-        m_audioStream->codec->channels = m_context->oformat->audio_codec == AV_CODEC_ID_PCM_MULAW ? 1 : 2;   // FIXME: Is it always two channels for opus?
-        if (m_context->oformat->flags & AVFMT_GLOBALHEADER)
-            m_audioStream->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
-
-        m_context->streams[0] = m_videoStream;
-        m_context->streams[1] = m_audioStream;
-        if (avio_open(&m_context->pb, m_context->filename, AVIO_FLAG_WRITE) < 0) {
-            ELOG_ERROR("Media recording error when opening output file.");
-            return false;
-        }
-
-        if (avformat_write_header(m_context, NULL) < 0) {
-            ELOG_ERROR("Media recording error during writing header");
-            return false;
-        }
+    boost::lock_guard<boost::mutex> lock(m_contextMutex);
+    AVStream* stream = avformat_new_stream(m_context, nullptr);
+    if (!stream) {
+        ELOG_ERROR("cannot add audio stream");
+        m_status = woogeen_base::MediaMuxer::Context_ERROR;
+        return;
     }
+    AVCodecContext* c = stream->codec;
+    c->codec_id       = codec_id;
+    c->codec_type     = AVMEDIA_TYPE_AUDIO;
+    c->channels       = nbChannels;
+    c->channel_layout = av_get_default_channel_layout(nbChannels);
+    c->sample_rate    = sampleRate;
+    c->sample_fmt     = AV_SAMPLE_FMT_S16;
+    stream->time_base = (AVRational){ 1, c->sample_rate };
 
-    ELOG_DEBUG("Media recording has been initialized successfully.");
-    return true;
+    if (m_context->oformat->flags & AVFMT_GLOBALHEADER)
+        c->flags |= CODEC_FLAG_GLOBAL_HEADER;
+    m_audioStream = stream;
+}
+
+void MediaRecorder::addVideoStream(enum AVCodecID codec_id, unsigned int width, unsigned int height)
+{
+    boost::lock_guard<boost::mutex> lock(m_contextMutex);
+    m_context->oformat->video_codec = codec_id;
+    AVStream* stream = avformat_new_stream(m_context, nullptr);
+    if (!stream) {
+        ELOG_ERROR("cannot add video stream");
+        m_status = woogeen_base::MediaMuxer::Context_ERROR;
+        return;
+    }
+    AVCodecContext* c = stream->codec;
+    c->codec_id   = codec_id;
+    c->codec_type = AVMEDIA_TYPE_VIDEO;
+    c->width      = width;
+    c->height     = height;
+    /* timebase: This is the fundamental unit of time (in seconds) in terms
+    * of which frame timestamps are represented. For fixed-fps content,
+    * timebase should be 1/framerate and timestamp increments should be
+    * identical to 1. */
+    stream->time_base = (AVRational){ 1, 30 };
+    c->time_base      = stream->time_base;
+    c->pix_fmt        = AV_PIX_FMT_YUV420P;
+    /* Some formats want stream headers to be separate. */
+    if (m_context->oformat->flags & AVFMT_GLOBALHEADER)
+        c->flags |= CODEC_FLAG_GLOBAL_HEADER;
+    m_context->oformat->flags |= AVFMT_VARIABLE_FPS;
+    m_videoStream = stream;
 }
 
 void MediaRecorder::recordLoop()
 {
     while (m_muxing) {
+        switch (m_status) {
+        case woogeen_base::MediaMuxer::Context_EMPTY:
+            if (m_audioStream && m_videoStream) {
+                if (!(m_context->oformat->flags & AVFMT_NOFILE)) {
+                    if (avio_open(&m_context->pb, m_context->filename, AVIO_FLAG_WRITE) < 0) {
+                        ELOG_ERROR("open output file failed");
+                        m_status = woogeen_base::MediaMuxer::Context_ERROR;
+                        return;
+                    }
+                }
+                av_dump_format(m_context, 0, m_context->filename, 1);
+                if (avformat_write_header(m_context, nullptr) < 0) {
+                    m_status = woogeen_base::MediaMuxer::Context_ERROR;
+                    return;
+                }
+                m_status = woogeen_base::MediaMuxer::Context_READY;
+                ELOG_DEBUG("context ready");
+            } else {
+                usleep(1000);
+                continue;
+            }
+            break;
+        case woogeen_base::MediaMuxer::Context_READY:
+            break;
+        case woogeen_base::MediaMuxer::Context_ERROR:
+        default:
+            ELOG_ERROR("loop exit on error");
+            return;
+        }
         boost::shared_ptr<woogeen_base::EncodedFrame> mediaFrame;
         while (mediaFrame = m_audioQueue->popFrame())
             this->writeAudioFrame(*mediaFrame);

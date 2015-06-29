@@ -49,8 +49,9 @@ public:
 private:
     bool init();
     void close();
-    bool initRecordContext();
     void recordLoop();
+    void addVideoStream(enum AVCodecID codec_id, unsigned int width = 1280, unsigned int height = 720);
+    void addAudioStream(enum AVCodecID codec_id, int nbChannels = 1, int sampleRate = 8000);
     void writeVideoFrame(woogeen_base::EncodedFrame& encoded_frame);
     void writeAudioFrame(woogeen_base::EncodedFrame& encoded_frame);
 
@@ -59,6 +60,7 @@ private:
     AVStream* m_videoStream;
     AVStream* m_audioStream;
     AVFormatContext* m_context;
+    boost::mutex m_contextMutex;
 
     int32_t m_videoId, m_audioId;
 
