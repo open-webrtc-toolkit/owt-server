@@ -40,7 +40,6 @@ public:
     // Implements the FrameDispatcher interfaces.
     virtual int32_t addFrameConsumer(const std::string& name, int payloadType, woogeen_base::FrameConsumer*);
     virtual void removeFrameConsumer(int32_t id);
-    virtual bool getVideoSize(unsigned int& width, unsigned int& height) const;
 
 private:
     void init();

@@ -67,13 +67,4 @@ void VideoExternalOutput::removeFrameConsumer(int32_t id)
     m_frameConstructor->deRegisterPreDecodeImageCallback();
 }
 
-bool VideoExternalOutput::getVideoSize(unsigned int& width, unsigned int& height) const
-{
-    // FIXME: Currently, ONLY 720p to be recorded.
-    width = 1280;
-    height = 720;
-
-    return true;
-}
-
 } /* namespace mcu */

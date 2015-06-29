@@ -171,19 +171,23 @@ public:
     {
         if (payloadSize > 0 && m_frameConsumer) {
             FrameFormat format = FRAME_FORMAT_UNKNOWN;
+            Frame frame;
+            memset(&frame, 0, sizeof(frame));
             switch (payloadType) {
             case PCMU_8000_PT:
                 format = FRAME_FORMAT_PCMU;
+                frame.additionalInfo.audio.channels = 1; // FIXME: retrieve codec info from VOE?
+                frame.additionalInfo.audio.sampleRate = 8000;
                 break;
             case OPUS_48000_PT:
                 format = FRAME_FORMAT_OPUS;
+                frame.additionalInfo.audio.channels = 2;
+                frame.additionalInfo.audio.sampleRate = 48000;
                 break;
             default:
                 break;
             }
 
-            Frame frame;
-            memset(&frame, 0, sizeof(frame));
             frame.format = format;
             frame.payload = const_cast<uint8_t*>(payloadData);
             frame.length = payloadSize;
@@ -205,24 +209,22 @@ public:
     virtual ~FrameDispatcher() { }
     virtual int32_t addFrameConsumer(const std::string& name, int payloadType, FrameConsumer*) = 0;
     virtual void removeFrameConsumer(int32_t id) = 0;
-
-    // TODO: Remove this interface. The video size information should be retrieved
-    // from the frames dispatched to the consumer.
-    virtual bool getVideoSize(unsigned int& width, unsigned int& height) const = 0;
 };
 
 class MediaMuxer : public FrameConsumer {
 public:
-    MediaMuxer() { }
+    enum Status { Context_ERROR = -1, Context_EMPTY = 0, Context_READY = 1 };
+    MediaMuxer() : m_muxing(false), m_status(Context_EMPTY), m_firstVideoTimestamp(-1), m_firstAudioTimestamp(-1) { }
     virtual ~MediaMuxer() { }
     virtual bool setMediaSource(FrameDispatcher* videoDispatcher, FrameDispatcher* audioDispatcher) = 0;
     virtual void unsetMediaSource() = 0;
 
 protected:
     bool m_muxing;
-    boost::thread m_thread;
+    Status m_status;
     int64_t m_firstVideoTimestamp;
     int64_t m_firstAudioTimestamp;
+    boost::thread m_thread;
     boost::scoped_ptr<woogeen_base::MediaFrameQueue> m_videoQueue;
     boost::scoped_ptr<woogeen_base::MediaFrameQueue> m_audioQueue;
 };
