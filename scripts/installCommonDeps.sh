@@ -23,7 +23,7 @@ check_proxy(){
 install_opus(){
   [ -d $LIB_DIR ] || mkdir -p $LIB_DIR
   cd $LIB_DIR
-  curl -O http://downloads.xiph.org/releases/opus/opus-1.1.tar.gz
+  wget -c http://downloads.xiph.org/releases/opus/opus-1.1.tar.gz
   tar -zxvf opus-1.1.tar.gz
   cd opus-1.1
   ./configure --prefix=$PREFIX_DIR
@@ -79,7 +79,7 @@ install_libav(){
 install_libnice(){
   if [ -d $LIB_DIR ]; then
     cd $LIB_DIR
-    curl -O http://nice.freedesktop.org/releases/libnice-0.1.4.tar.gz
+    wget -c http://nice.freedesktop.org/releases/libnice-0.1.4.tar.gz
     tar -zxvf libnice-0.1.4.tar.gz
     cd libnice-0.1.4
     patch -R ./agent/conncheck.c < $PATHNAME/libnice-014.patch0
@@ -96,7 +96,7 @@ install_openssl(){
   if [ -d $LIB_DIR ]; then
     local SSL_VERSION="1.0.2a"
     cd $LIB_DIR
-    curl -O http://www.openssl.org/source/openssl-${SSL_VERSION}.tar.gz
+    wget -c http://www.openssl.org/source/old/1.0.2/openssl-${SSL_VERSION}.tar.gz
     tar xf openssl-${SSL_VERSION}.tar.gz
     cd openssl-${SSL_VERSION}
     ./config no-ssl3 --prefix=$PREFIX_DIR -fPIC
@@ -112,7 +112,7 @@ install_openssl(){
 
 install_openh264(){
   cd $ROOT/third_party/openh264
-  curl -O http://ciscobinary.openh264.org/libopenh264-1.4.0-linux64.so.bz2
+  wget -c http://ciscobinary.openh264.org/libopenh264-1.4.0-linux64.so.bz2
   bzip2 -d libopenh264-1.4.0-linux64.so.bz2
   mv libopenh264-1.4.0-linux64.so libopenh264.so
   local symbol=$(readelf -d ./libopenh264.so | grep soname | sed 's/.*\[\(.*\)\]/\1/g')
@@ -134,6 +134,7 @@ install_libsrtp(){
 }
 
 install_webrtc(){
+  export GIT_SSL_NO_VERIFY=1
   cd $ROOT/third_party/webrtc
   if [ -d src ]; then
     rm -rf src
@@ -183,7 +184,7 @@ install_oovoosdk(){
 install_tcmalloc(){
   if [ -d $LIB_DIR ]; then
     cd $LIB_DIR
-    curl -O http://gperftools.googlecode.com/files/gperftools-2.1.tar.gz
+    wget -c http://gperftools.googlecode.com/files/gperftools-2.1.tar.gz
     tar -zxf gperftools-2.1.tar.gz
     cd gperftools-2.1
     ./configure --prefix=$PREFIX_DIR --disable-cpu-profiler --disable-heap-profiler --disable-heap-checker --disable-debugalloc
