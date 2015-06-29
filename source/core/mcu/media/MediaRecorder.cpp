@@ -60,8 +60,12 @@ MediaRecorder::MediaRecorder(const std::string& recordUrl, int snapshotInterval)
     m_firstVideoTimestamp = -1;
     m_firstAudioTimestamp = -1;
 
-    m_videoQueue.reset(new woogeen_base::MediaFrameQueue(0));
-    m_audioQueue.reset(new woogeen_base::MediaFrameQueue(0));
+    timeval time;
+    gettimeofday(&time, nullptr);
+    m_recordStartTime = (time.tv_sec * 1000) + (time.tv_usec / 1000);
+
+    m_videoQueue.reset(new woogeen_base::MediaFrameQueue(m_recordStartTime));
+    m_audioQueue.reset(new woogeen_base::MediaFrameQueue(m_recordStartTime));
 
     init();
 }
@@ -74,10 +78,6 @@ MediaRecorder::~MediaRecorder()
 
 bool MediaRecorder::setMediaSource(woogeen_base::FrameDispatcher* videoSource, woogeen_base::FrameDispatcher* audioSource)
 {
-    // Reset the media queues
-    m_videoQueue.reset(new woogeen_base::MediaFrameQueue(0));
-    m_audioQueue.reset(new woogeen_base::MediaFrameQueue(0));
-
     if (m_videoSource && m_videoId != -1)
         m_videoSource->removeFrameConsumer(m_videoId);
 
@@ -254,23 +254,14 @@ void MediaRecorder::recordLoop()
 }
 
 void MediaRecorder::writeVideoFrame(woogeen_base::EncodedFrame& encodedVideoFrame) {
-    if (m_videoStream == NULL) {
+    if (m_videoStream == NULL)
         // could not init our context yet.
         return;
-    }
 
-    if (m_firstVideoTimestamp == -1)
-        m_firstVideoTimestamp = encodedVideoFrame.m_timeStamp;
-
-    long long currentTimestamp = encodedVideoFrame.m_timeStamp;
-    if (currentTimestamp - m_firstVideoTimestamp < 0) {
-        // We wrapped and added 2^32 to correct this. We only handle a single wrap around since that's ~13 hours of recording, minimum.
-        currentTimestamp += 0xFFFFFFFF;
-    }
-
-    long long timestampToWrite = (currentTimestamp - m_firstVideoTimestamp) / (90000 / m_videoStream->time_base.den);  // All of our video offerings are using a 90khz clock.
-    // Adjust for the start time offset
-    timestampToWrite += encodedVideoFrame.m_offsetMsec / (1000 / m_videoStream->time_base.den);   //In practice, our timebase den is 1000, so this operation is a no-op.
+    timeval time;
+    gettimeofday(&time, nullptr);
+    long long timestampToWrite = ((time.tv_sec * 1000) + (time.tv_usec / 1000)) - m_recordStartTime;
+    timestampToWrite  = timestampToWrite / (1000 / m_videoStream->time_base.den);
 
     AVPacket avpkt;
     av_init_packet(&avpkt);
@@ -283,23 +274,14 @@ void MediaRecorder::writeVideoFrame(woogeen_base::EncodedFrame& encodedVideoFram
 }
 
 void MediaRecorder::writeAudioFrame(woogeen_base::EncodedFrame& encodedAudioFrame) {
-    if (m_audioStream == NULL) {
+    if (m_audioStream == NULL)
         // No audio stream has been initialized
         return;
-    }
 
-    if (m_firstAudioTimestamp == -1)
-        m_firstAudioTimestamp = encodedAudioFrame.m_timeStamp;
-
-    long long currentTimestamp = encodedAudioFrame.m_timeStamp;
-    if (currentTimestamp - m_firstAudioTimestamp < 0) {
-      // We wrapped and added 2^32 to correct this.  We only handle a single wrap around since that's ~13 hours of recording, minimum.
-      currentTimestamp += 0xFFFFFFFF;
-    }
-
-    long long timestampToWrite = (currentTimestamp - m_firstAudioTimestamp) / (m_audioStream->codec->time_base.den / m_audioStream->time_base.den);
-    // Adjust for our start time offset
-    timestampToWrite += encodedAudioFrame.m_offsetMsec / (1000 / m_audioStream->time_base.den);   // In practice, our timebase den is 1000, so this operation is a no-op.
+    timeval time;
+    gettimeofday(&time, nullptr);
+    long long timestampToWrite = ((time.tv_sec * 1000) + (time.tv_usec / 1000)) - m_recordStartTime;
+    timestampToWrite  = timestampToWrite / (1000 / m_videoStream->time_base.den);
 
     AVPacket avpkt;
     av_init_packet(&avpkt);

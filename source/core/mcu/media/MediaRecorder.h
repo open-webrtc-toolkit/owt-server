@@ -65,6 +65,7 @@ private:
     std::string m_recordPath;
     // FIXME: snapshot interval for the future usage
     int m_snapshotInterval;
+    int64_t m_recordStartTime;
 };
 
 } /* namespace mcu */
