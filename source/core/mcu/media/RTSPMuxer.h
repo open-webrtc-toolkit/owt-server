@@ -50,7 +50,7 @@ public:
 
     // MediaMuxer interface
     bool setMediaSource(woogeen_base::FrameDispatcher* videoDispatcher, woogeen_base::FrameDispatcher* audioDispatcher);
-    void removeMediaSource();
+    void unsetMediaSource();
     void onFrame(const woogeen_base::Frame&);
 
 private:

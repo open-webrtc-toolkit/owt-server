@@ -19,8 +19,9 @@
  */
 
 #include "MediaMuxerFactory.h"
-#include "media/RTSPMuxer.h"
+
 #include "media/MediaRecorder.h"
+#include "media/RTSPMuxer.h"
 
 #include <boost/property_tree/json_parser.hpp>
 
@@ -28,14 +29,14 @@ namespace mcu {
 
 DEFINE_LOGGER(MediaMuxerFactory, "mcu.MediaMuxerFactory");
 
-std::map<std::string, boost::shared_ptr<woogeen_base::MediaMuxer>> MediaMuxerFactory::m_muxers;
+std::map<std::string, boost::shared_ptr<woogeen_base::MediaMuxer>> MediaMuxerFactory::s_muxers;
 
-woogeen_base::MediaMuxer* MediaMuxerFactory::getMediaMuxer(const std::string& id, const std::string& configParam)
+woogeen_base::MediaMuxer* MediaMuxerFactory::createMediaMuxer(const std::string& id, const std::string& configParam)
 {
     if (id != "") {
-        std::map<std::string, boost::shared_ptr<woogeen_base::MediaMuxer>>::iterator it = m_muxers.find(id);
-        if (it != m_muxers.end()) {
-            return m_muxers[id].get();
+        std::map<std::string, boost::shared_ptr<woogeen_base::MediaMuxer>>::iterator it = s_muxers.find(id);
+        if (it != s_muxers.end()) {
+            return s_muxers[id].get();
         }
 
         if (configParam != "" && configParam != "undefined") {
@@ -53,7 +54,7 @@ woogeen_base::MediaMuxer* MediaMuxerFactory::getMediaMuxer(const std::string& id
                 muxer = new MediaRecorder(url, snapshotInterval);
             }
 
-            m_muxers[id] = boost::shared_ptr<woogeen_base::MediaMuxer>(muxer);
+            s_muxers[id] = boost::shared_ptr<woogeen_base::MediaMuxer>(muxer);
 
             return muxer;
         }
@@ -63,24 +64,23 @@ woogeen_base::MediaMuxer* MediaMuxerFactory::getMediaMuxer(const std::string& id
     return nullptr;
 }
 
-woogeen_base::MediaMuxer* MediaMuxerFactory::getMediaMuxer(const std::string& id)
+woogeen_base::MediaMuxer* MediaMuxerFactory::findMediaMuxer(const std::string& id)
 {
     if (id != "") {
-        std::map<std::string, boost::shared_ptr<woogeen_base::MediaMuxer>>::iterator it = m_muxers.find(id);
-        if (it != m_muxers.end()) {
-            return m_muxers[id].get();
-        }
+        std::map<std::string, boost::shared_ptr<woogeen_base::MediaMuxer>>::iterator it = s_muxers.find(id);
+        if (it != s_muxers.end())
+            return s_muxers[id].get();
     }
 
     ELOG_DEBUG("No media muxer can be found with id: %s.", id.c_str());
     return nullptr;
 }
 
-bool MediaMuxerFactory::removeMediaMuxer(const std::string& id)
+bool MediaMuxerFactory::recycleMediaMuxer(const std::string& id)
 {
-    std::map<std::string, boost::shared_ptr<woogeen_base::MediaMuxer>>::iterator it = m_muxers.find(id);
-    if (it != m_muxers.end()) {
-        m_muxers.erase(it);
+    std::map<std::string, boost::shared_ptr<woogeen_base::MediaMuxer>>::iterator it = s_muxers.find(id);
+    if (it != s_muxers.end()) {
+        s_muxers.erase(it);
         return true;
     }
 
