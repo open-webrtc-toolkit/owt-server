@@ -294,6 +294,9 @@ bool WebRTCGateway::addExternalOutput(const std::string& configParam)
                 // Added as a subscriber
                 addSubscriber(externalOutput, outputId);
 
+                // Send I-Frame request to the publisher.
+                ++m_pendingIFrameRequests;
+
                 return true;
             }
         }
