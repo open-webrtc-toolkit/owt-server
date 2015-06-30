@@ -144,7 +144,20 @@ Room.prototype.validate = function() {
             this.mediaMixing.video.bkColor === '') {
             this.mediaMixing.video.bkColor = 'black';
         } else if (typeof this.mediaMixing.video.bkColor !== 'string') {
-            return null;
+            this.mediaMixing.video.bkColor.r = validateRGBValue(this.mediaMixing.video.bkColor.r);
+            if (this.mediaMixing.video.bkColor.r < 0) {
+                return null;
+            }
+
+            this.mediaMixing.video.bkColor.g = validateRGBValue(this.mediaMixing.video.bkColor.g);
+            if (this.mediaMixing.video.bkColor.g < 0) {
+                return null;
+            }
+
+            this.mediaMixing.video.bkColor.b = validateRGBValue(this.mediaMixing.video.bkColor.b);
+            if (this.mediaMixing.video.bkColor.b < 0) {
+                return null;
+            }
         } else {
             var bkColor = this.mediaMixing.video.bkColor.toLowerCase();
             if (meta.mediaMixing.video.bkColor.indexOf(bkColor) === -1) {
@@ -292,7 +305,11 @@ module.exports = Room;
     "video": {
       "resolution": "vga", // type string
       "bitrate": 0, // type numer
-      "bkColor": "black", // type string
+      "bkColor": {  // or just use "black" with type string
+        "r": 255, // type number
+        "g": 255, // type number
+        "b": 255  // type number
+      },
       "maxInput": 16, // type number
       "avCoordinated": 0, // type number: 0/1
       "layout": { // type object
@@ -305,6 +322,25 @@ module.exports = Room;
   }
 }
 */
+
+function validateRGBValue(rgbValue) {
+    if (rgbValue === undefined || rgbValue === null) {
+        rgbValue = 0;
+    } else if (typeof rgbValue === 'string') {
+        rgbValue = parseInt(rgbValue, 10);
+        if (isNaN(rgbValue) || rgbValue < 0) {
+            return -1;
+        }
+    } else if (typeof rgbValue !== 'number') {
+        return -1;
+    }
+
+    if (rgbValue > 255) {
+        return -1;
+    }
+
+    return rgbValue;
+}
 
 function generateLectureTemplates (maxInput) {
     var result = [ {region:[{id: '1', left: 0, top: 0, relativesize: 1.0, priority: 1.0}]},
