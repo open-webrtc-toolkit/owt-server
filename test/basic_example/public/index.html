@@ -104,7 +104,14 @@ div#localContainer {
               <li align='left'><a href="#" onClick="unsub('forward')"><span class="glyphicon glyphicon-off"></span> unsubscribe forward remote</a></li>
               <li class="divider"></li>
               <li align='left'><a href="#" onClick="startRecording(true)"><span class="glyphicon glyphicon-off"></span>start Recording</a></li>
+              stream:<input type="text" id="to"><br>
+              fileId:<input type="text" id="fileId">
               <li align='left'><a href="#" onClick="startRecording(false)"><span class="glyphicon glyphicon-off"></span>stop Recording</a></li>
+              Bitrate:<input type="text" id="bitrate"> <button type="button" id="bitrate" onclick="setVideoBitrate()">Set video bit rate</button>
+              <button type="button" id="region" onclick="setRegion()">Set region</button><br>
+              Region:<input type="text" id="region"><br> 
+              ClientId:<input type="text" id="clientId"><br> 
+              <button type="button" onclick="getRegion()>Get region</button>
             <!--/ul-->
           </div>
           <div class="btn-group">
