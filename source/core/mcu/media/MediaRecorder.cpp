@@ -72,7 +72,6 @@ MediaRecorder::MediaRecorder(const std::string& recordUrl, int snapshotInterval)
 
 MediaRecorder::~MediaRecorder()
 {
-    unsetMediaSource();
     if (m_muxing)
         close();
 }

@@ -73,7 +73,6 @@ RTSPMuxer::RTSPMuxer(const std::string& url)
 
 RTSPMuxer::~RTSPMuxer()
 {
-    unsetMediaSource();
     if (m_muxing)
         close();
 #ifdef DUMP_RAW
