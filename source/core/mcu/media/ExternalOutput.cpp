@@ -36,7 +36,7 @@ ExternalOutput::ExternalOutput(woogeen_base::MediaMuxer* muxer) : m_muxer(muxer)
 ExternalOutput::~ExternalOutput()
 {
     if (m_muxer)
-        m_muxer->removeMediaSource();
+        m_muxer->unsetMediaSource();
 }
 
 int ExternalOutput::deliverAudioData(char* buf, int len)

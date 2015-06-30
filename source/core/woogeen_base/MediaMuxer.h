@@ -216,7 +216,7 @@ public:
     MediaMuxer() { }
     virtual ~MediaMuxer() { }
     virtual bool setMediaSource(FrameDispatcher* videoDispatcher, FrameDispatcher* audioDispatcher) = 0;
-    virtual void removeMediaSource() = 0;
+    virtual void unsetMediaSource() = 0;
 
 protected:
     bool m_muxing;

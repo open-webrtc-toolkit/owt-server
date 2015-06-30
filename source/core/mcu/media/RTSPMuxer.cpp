@@ -73,6 +73,7 @@ RTSPMuxer::RTSPMuxer(const std::string& url)
 
 RTSPMuxer::~RTSPMuxer()
 {
+    unsetMediaSource();
     if (m_muxing)
         close();
 #ifdef DUMP_RAW
@@ -103,13 +104,19 @@ bool RTSPMuxer::setMediaSource(woogeen_base::FrameDispatcher* videoSource, wooge
     return true;
 }
 
-void RTSPMuxer::removeMediaSource()
+void RTSPMuxer::unsetMediaSource()
 {
     if (m_videoSource && m_videoId != -1)
         m_videoSource->removeFrameConsumer(m_videoId);
 
+    m_videoSource = nullptr;
+    m_videoId = -1;
+
     if (m_audioSource && m_audioId != -1)
         m_audioSource->removeFrameConsumer(m_audioId);
+
+    m_audioSource = nullptr;
+    m_audioId = -1;
 }
 
 bool RTSPMuxer::init()

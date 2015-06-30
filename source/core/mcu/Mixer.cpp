@@ -111,7 +111,7 @@ bool Mixer::addExternalOutput(const std::string& configParam)
         boost::property_tree::read_json(is, pt);
         const std::string id = pt.get<std::string>("id", "");
 
-        woogeen_base::MediaMuxer* muxer = MediaMuxerFactory::getMediaMuxer(id, configParam);
+        woogeen_base::MediaMuxer* muxer = MediaMuxerFactory::createMediaMuxer(id, configParam);
         if (muxer)
             return muxer->setMediaSource(m_videoMixer.get(), m_audioMixer.get());
     }
@@ -122,11 +122,11 @@ bool Mixer::addExternalOutput(const std::string& configParam)
 
 bool Mixer::removeExternalOutput(const std::string& outputId)
 {
-    woogeen_base::MediaMuxer* muxer = MediaMuxerFactory::getMediaMuxer(outputId);
+    woogeen_base::MediaMuxer* muxer = MediaMuxerFactory::findMediaMuxer(outputId);
     if (muxer)
-        muxer->removeMediaSource();
+        muxer->unsetMediaSource();
 
-    return MediaMuxerFactory::removeMediaMuxer(outputId);
+    return MediaMuxerFactory::recycleMediaMuxer(outputId);
 }
 
 bool Mixer::addPublisher(erizo::MediaSource* publisher, const std::string& id)

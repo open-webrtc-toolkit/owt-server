@@ -72,6 +72,7 @@ MediaRecorder::MediaRecorder(const std::string& recordUrl, int snapshotInterval)
 
 MediaRecorder::~MediaRecorder()
 {
+    unsetMediaSource();
     if (m_muxing)
         close();
 }
@@ -94,13 +95,19 @@ bool MediaRecorder::setMediaSource(woogeen_base::FrameDispatcher* videoSource, w
     return true;
 }
 
-void MediaRecorder::removeMediaSource()
+void MediaRecorder::unsetMediaSource()
 {
     if (m_videoSource && m_videoId != -1)
         m_videoSource->removeFrameConsumer(m_videoId);
 
+    m_videoSource = nullptr;
+    m_videoId = -1;
+
     if (m_audioSource && m_audioId != -1)
         m_audioSource->removeFrameConsumer(m_audioId);
+
+    m_audioSource = nullptr;
+    m_audioId = -1;
 }
 
 bool MediaRecorder::init()

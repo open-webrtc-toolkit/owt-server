@@ -18,6 +18,9 @@
  * and approved by Intel in writing.
  */
 
+#ifndef MediaMuxerFactory_h
+#define MediaMuxerFactory_h
+
 #include <boost/shared_ptr.hpp>
 #include <logger.h>
 #include <MediaMuxer.h>
@@ -28,12 +31,14 @@ class MediaMuxerFactory {
     DECLARE_LOGGER();
 
 public:
-    static woogeen_base::MediaMuxer* getMediaMuxer(const std::string& id, const std::string& configParam);
-    static woogeen_base::MediaMuxer* getMediaMuxer(const std::string& id);
-    static bool removeMediaMuxer(const std::string& id);
+    static woogeen_base::MediaMuxer* createMediaMuxer(const std::string& id, const std::string& configParam);
+    static woogeen_base::MediaMuxer* findMediaMuxer(const std::string& id);
+    static bool recycleMediaMuxer(const std::string& id);
 
 private:
-    static std::map<std::string, boost::shared_ptr<woogeen_base::MediaMuxer>> m_muxers;
+    static std::map<std::string, boost::shared_ptr<woogeen_base::MediaMuxer>> s_muxers;
 };
 
 }
+
+#endif

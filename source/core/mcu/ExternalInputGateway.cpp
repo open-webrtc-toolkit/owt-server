@@ -304,7 +304,7 @@ bool ExternalInputGateway::addExternalOutput(const std::string& configParam)
 
         std::map<std::string, boost::shared_ptr<erizo::MediaSink>>::iterator it = m_subscribers.find(outputId);
         if (it == m_subscribers.end()) {
-            woogeen_base::MediaMuxer* muxer = MediaMuxerFactory::getMediaMuxer(outputId, configParam);
+            woogeen_base::MediaMuxer* muxer = MediaMuxerFactory::createMediaMuxer(outputId, configParam);
             if (muxer) {
                 // Create an external output, which will be managed as subscriber during its lifetime
                 ExternalOutput* externalOutput = new ExternalOutput(muxer);
@@ -326,7 +326,7 @@ bool ExternalInputGateway::removeExternalOutput(const std::string& outputId)
     removeSubscriber(outputId);
 
     // Remove the media muxer
-    return MediaMuxerFactory::removeMediaMuxer(outputId);
+    return MediaMuxerFactory::recycleMediaMuxer(outputId);
 }
 
 void ExternalInputGateway::closeAll()
