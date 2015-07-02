@@ -77,5 +77,15 @@ prepareService('superService', function (service) {
          if (err) return console.log(err);
       });
     });
+    var sampleAppFile2 = path.join(HOME, 'extras/rtsp-client.js');
+    fs.readFile(sampleAppFile2, 'utf8', function (err, data) {
+      if (err) {
+        return console.log(err);
+      }
+      data = data.replace(/nuve\.init\('[^']*', '[^']*'/, 'nuve.init(\''+sampleServiceId+'\', \''+sampleServiceKey+'\'');
+      fs.writeFile(sampleAppFile2, data, 'utf8', function (err) {
+         if (err) return console.log(err);
+      });
+    });
   });
 });
