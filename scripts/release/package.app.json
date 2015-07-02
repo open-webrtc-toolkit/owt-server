@@ -6,6 +6,7 @@
     "express": "*",
     "body-parser": "*",
     "morgan": "*",
+    "socket.io-client": "*",
     "errorhandler": "*"
   }
 }

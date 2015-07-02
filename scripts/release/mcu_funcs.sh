@@ -51,6 +51,7 @@ pack_runtime() {
   # sample
   mkdir -p ${WOOGEEN_DIST}/extras
   cp -av ${SOURCE}/extras/basic_example ${WOOGEEN_DIST}/extras
+  cp -av ${SOURCE}/extras/rtsp-client.js ${WOOGEEN_DIST}/extras
 }
 
 pack_common() {
