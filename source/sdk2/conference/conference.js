@@ -789,6 +789,12 @@ Woogeen.ConferenceClient = (function () {
     });
   };
 
+  /*
+  options: {
+    streamId: xxxxxx,
+    recorderId: yyyyyy
+  }
+  */
   WoogeenConference.prototype.startRecorder = function (options, onSuccess, onFailure) {
     var self = this;
     if (typeof options === 'function') {
@@ -805,6 +811,11 @@ Woogeen.ConferenceClient = (function () {
     });
   };
 
+  /*
+  options: {
+    recorderId: xxxxxx
+  }
+  */
   WoogeenConference.prototype.stopRecorder = function (options, onSuccess, onFailure) {
     var self = this;
     if (typeof options === 'function') {

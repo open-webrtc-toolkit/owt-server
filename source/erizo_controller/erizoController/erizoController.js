@@ -875,7 +875,7 @@ var listen = function () {
             }
 
             // Start recording stream
-            var recordStreamId = options.to || socket.room.mixer;
+            var recordStreamId = options.streamId || socket.room.mixer;
             var recordStream = socket.room.streams[recordStreamId]
             if (recordStream === undefined) {
                 return safeCall(callback, 'error', 'Target record stream does not exist.');
@@ -888,19 +888,19 @@ var listen = function () {
 
             if (recordStream.hasAudio() || recordStream.hasVideo() || recordStream.hasScreen()) {
                 var timeStamp = new Date();
-                var recordingId = options.id || formatDate(timeStamp, 'yyyyMMddhhmmssSS');
+                var recorderId = options.recorderId || formatDate(timeStamp, 'yyyyMMddhhmmssSS');
                 var url = require('path').join((options.path || GLOBAL.config.erizoController.recording_path || '/tmp'),
-                    'room' + socket.room.id + '_' + recordingId + '.mkv');
+                    'room' + socket.room.id + '_' + recorderId + '.mkv');
                 var interval = (options.interval && options.interval > 0) ? options.interval : -1;
 
-                socket.room.controller.addExternalOutput(recordStreamId, recordingId, url, interval, function (result) {
+                socket.room.controller.addExternalOutput(recordStreamId, recorderId, url, interval, function (result) {
                     if (result.success) {
-                        recordStream.setRecorder(recordingId);
+                        recordStream.setRecorder(recorderId);
 
                         log.info('Recorder started: ', url);
 
                         safeCall(callback, 'success', {
-                            id : recordingId,
+                            id : recorderId,
                             host: publicIP,
                             path: url
                         });
@@ -927,11 +927,11 @@ var listen = function () {
             }
 
             // Stop recording stream
-            if (options.id) {
-                socket.room.controller.removeExternalOutput(options.id, function (result) {
+            if (options.recorderId) {
+                socket.room.controller.removeExternalOutput(options.recorderId, function (result) {
                     if (result.success) {
                         for (var i in socket.room.streams) {
-                            if (socket.room.streams.hasOwnProperty(i) && socket.room.streams[i].getRecorder() === options.id+'') {
+                            if (socket.room.streams.hasOwnProperty(i) && socket.room.streams[i].getRecorder() === options.recorderId+'') {
                                 socket.room.streams[i].setRecorder('');
                                 break;
                             }
