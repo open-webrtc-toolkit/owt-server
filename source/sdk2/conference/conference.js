@@ -391,7 +391,7 @@ Woogeen.ConferenceClient = (function () {
               self.remoteStreams[st.id] = new Woogeen.RemoteStream(st);
               return self.remoteStreams[st.id];
             });
-            return safeCall(onSuccess, {streams: streams});
+            return safeCall(onSuccess, {streams: streams, users: resp.users});
           }
           return safeCall(onFailure, resp||'response error');
         });
