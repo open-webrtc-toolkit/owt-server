@@ -229,6 +229,12 @@
             L.Logger.info('won`t subscribe', stream.id());
           }
         });
+        var users = resp.users;
+        if (users instanceof Array) {
+          users.map(function (u) {
+            L.Logger.info('user in conference:', u);
+          });
+        }
       }, function (err) {
         L.Logger.error('server connection failed:', err);
       });

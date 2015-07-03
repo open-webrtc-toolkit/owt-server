@@ -447,6 +447,9 @@ var listen = function () {
                             safeCall(callback, 'success', {streams: streamList,
                                                 id: socket.room.id,
                                                 clientId: socket.id,
+                                                users: socket.room.sockets.map(function (sock) {
+                                                    return sock.user;
+                                                }),
                                                 p2p: socket.room.p2p,
                                                 defaultVideoBW: GLOBAL.config.erizoController.defaultVideoBW,
                                                 maxVideoBW: GLOBAL.config.erizoController.maxVideoBW,
