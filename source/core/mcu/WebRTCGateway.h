@@ -135,7 +135,7 @@ public:
     void unpublishStream(const std::string& id, bool isAudio) { }
 
     bool addExternalOutput(const std::string& configParam);
-    bool removeExternalOutput(const std::string& outputId);
+    bool removeExternalOutput(const std::string& outputId, bool close);
 
     // TODO: It's ugly to override setAudioSink/setVideoSink,
     // but we need to explicitly manage the synchronization of the sink setting/getting now,

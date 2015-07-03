@@ -314,19 +314,23 @@ bool ExternalInputGateway::addExternalOutput(const std::string& configParam)
 
                 return true;
             }
+        } else {
+            ELOG_DEBUG("External output with id %s has already been occupied.", outputId.c_str());
         }
     }
 
     return false;
 }
 
-bool ExternalInputGateway::removeExternalOutput(const std::string& outputId)
+bool ExternalInputGateway::removeExternalOutput(const std::string& outputId, bool close)
 {
     // Remove the external output
     removeSubscriber(outputId);
 
-    // Remove the media muxer
-    return MediaMuxerFactory::recycleMediaMuxer(outputId);
+    if (close)
+        return MediaMuxerFactory::recycleMediaMuxer(outputId); // Remove the media muxer
+
+    return true;
 }
 
 void ExternalInputGateway::closeAll()

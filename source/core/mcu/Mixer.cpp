@@ -120,13 +120,16 @@ bool Mixer::addExternalOutput(const std::string& configParam)
     return false;
 }
 
-bool Mixer::removeExternalOutput(const std::string& outputId)
+bool Mixer::removeExternalOutput(const std::string& outputId, bool close)
 {
     woogeen_base::MediaMuxer* muxer = MediaMuxerFactory::findMediaMuxer(outputId);
     if (muxer)
         muxer->unsetMediaSource();
 
-    return MediaMuxerFactory::recycleMediaMuxer(outputId);
+    if (close)
+        return MediaMuxerFactory::recycleMediaMuxer(outputId); // Remove the media muxer
+
+    return true;
 }
 
 bool Mixer::addPublisher(erizo::MediaSource* publisher, const std::string& id)

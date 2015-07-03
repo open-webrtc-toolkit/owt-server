@@ -312,6 +312,7 @@ bool WebRTCGateway::addExternalOutput(const std::string& configParam)
 
         std::map<std::string, SubscriberInfo>::iterator it = m_subscribers.find(outputId);
         if (it == m_subscribers.end()) {
+            // Create or fetch from MediaMuxerFactory
             woogeen_base::MediaMuxer* muxer = MediaMuxerFactory::createMediaMuxer(outputId, configParam);
             if (muxer) {
                 // Create an external output, which will be managed as subscriber during its lifetime
@@ -325,19 +326,23 @@ bool WebRTCGateway::addExternalOutput(const std::string& configParam)
 
                 return true;
             }
+        } else{
+            ELOG_DEBUG("External output with id %s has already be occupied.", outputId.c_str());
         }
     }
 
     return false;
 }
 
-bool WebRTCGateway::removeExternalOutput(const std::string& outputId)
+bool WebRTCGateway::removeExternalOutput(const std::string& outputId, bool close)
 {
     // Remove the external output
     removeSubscriber(outputId);
 
-    // Remove the media muxer
-    return MediaMuxerFactory::recycleMediaMuxer(outputId);
+    if (close)
+        return MediaMuxerFactory::recycleMediaMuxer(outputId); // Remove the media muxer
+
+    return true;
 }
 
 void WebRTCGateway::onTimeout()
