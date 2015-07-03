@@ -52,7 +52,14 @@ namespace erizo {
     av_init_packet(&avpacket_);
     avpacket_.data = NULL;
     ELOG_DEBUG("Trying to open input from url %s", url_.c_str());
-    int res = avformat_open_input(&context_, url_.c_str(),NULL,NULL);
+
+    // Temporarilly force RTSP transport protocol to TCP because currently it hard-coded
+    // UDP max recv buffer to 64K which will cause RTP packet loss for HD video streams.
+    // Libav patch for this issue has been submitted and may exist in its next release.
+    // https://git.libav.org/?p=libav.git;a=commit;h=e3ec6fe7bb2a622a863e3912181717a659eb1bad
+    AVDictionary *opts = NULL;
+    av_dict_set(&opts, "rtsp_transport", "tcp", 0);
+    int res = avformat_open_input(&context_, url_.c_str(), NULL, &opts);
     char errbuff[500];
     printf ("RES %d\n", res);
     if(res != 0){
@@ -173,7 +180,6 @@ namespace erizo {
 
     ELOG_DEBUG("Start playing external input %s", url_.c_str() );
     while (av_read_frame(context_, &avpacket_)>=0 && running_==true) {
-      AVPacket orig_pkt = avpacket_;
       if (avpacket_.stream_index == video_stream_index_) { //packet is video
         //ELOG_DEBUG("Receive video frame packet with size %d ", avpacket_.size);
         if (videoSourceSSRC_ && videoSink_!=NULL) {
@@ -196,7 +202,8 @@ namespace erizo {
           audioSink_->deliverAudioData(buf, avpacket_.size + head->getHeaderLength());
         }
       }
-      av_free_packet(&orig_pkt);
+      av_free_packet(&avpacket_);
+      av_init_packet(&avpacket_);
     }
     running_=false;
     av_read_pause(context_);
