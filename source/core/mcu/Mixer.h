@@ -77,7 +77,7 @@ public:
     void unpublishStream(const std::string& id, bool isAudio) { }
 
     bool addExternalOutput(const std::string& configParam);
-    bool removeExternalOutput(const std::string& outputId);
+    bool removeExternalOutput(const std::string& outputId, bool close);
 
     bool setVideoBitrate(const std::string& id, uint32_t kbps);
 

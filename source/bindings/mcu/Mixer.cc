@@ -232,7 +232,10 @@ Handle<Value> Mixer::removeExternalOutput(const Arguments& args) {
 
   // convert it to string
   std::string outputId = std::string(*param);
-  bool succeeded = me->removeExternalOutput(outputId);
+
+  bool close = args[1]->BooleanValue();
+
+  bool succeeded = me->removeExternalOutput(outputId, close);
 
   return scope.Close(Boolean::New(succeeded));
 }

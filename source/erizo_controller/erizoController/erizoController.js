@@ -877,7 +877,7 @@ var listen = function () {
                 return safeCall(callback, 'error', 'unauthorized');
             }
 
-            // Start recording stream
+            // Check the stream to be recorded
             var recordStreamId = options.streamId || socket.room.mixer;
             var recordStream = socket.room.streams[recordStreamId]
             if (recordStream === undefined) {
@@ -898,19 +898,35 @@ var listen = function () {
                         var url = require('path').join(recorderPath, 'room' + socket.room.id + '_' + recorderId + '.mkv');
                         var interval = (options.interval && options.interval > 0) ? options.interval : -1;
 
-                        socket.room.controller.addExternalOutput(recordStreamId, recorderId, url, interval, function (result) {
+                        // Make sure the recording context clean
+                        socket.room.controller.removeExternalOutput(recorderId, false, function (result) {
                             if (result.success) {
-                                recordStream.setRecorder(recorderId);
+                                for (var i in socket.room.streams) {
+                                    if (socket.room.streams.hasOwnProperty(i) && socket.room.streams[i].getRecorder() === recorderId+'') {
+                                        socket.room.streams[i].setRecorder('');
+                                    }
+                                }
 
-                                log.info('Recorder started: ', url);
+                                log.info('Recorder context cleaned: ', result.text);
 
-                                safeCall(callback, 'success', {
-                                    recorderId : recorderId,
-                                    host: publicIP,
-                                    path: url
+                                // Start the recorder
+                                socket.room.controller.addExternalOutput(recordStreamId, recorderId, url, interval, function (result) {
+                                    if (result.success) {
+                                        recordStream.setRecorder(recorderId);
+
+                                        log.info('Recorder started: ', url);
+
+                                        safeCall(callback, 'success', {
+                                            recorderId : recorderId,
+                                            host: publicIP,
+                                            path: url
+                                        });
+                                    } else {
+                                        safeCall(callback, 'error', 'Error in start recording: ' + result.text);
+                                    }
                                 });
                             } else {
-                                safeCall(callback, 'error', 'Error in start recording: ' + result.text);
+                                safeCall(callback, 'error', 'Error during cleaning recording: ' + result.text);
                             }
                         });
                     } else {
@@ -937,7 +953,7 @@ var listen = function () {
 
             // Stop recording stream
             if (options.recorderId) {
-                socket.room.controller.removeExternalOutput(options.recorderId, function (result) {
+                socket.room.controller.removeExternalOutput(options.recorderId, true, function (result) {
                     if (result.success) {
                         for (var i in socket.room.streams) {
                             if (socket.room.streams.hasOwnProperty(i) && socket.room.streams[i].getRecorder() === options.recorderId+'') {

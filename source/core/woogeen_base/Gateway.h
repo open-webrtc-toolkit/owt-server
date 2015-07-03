@@ -128,7 +128,7 @@ public:
      * Eliminates the external output given its output id
      * @param id the output id for the external output
      */
-    DLL_PUBLIC virtual bool removeExternalOutput(const std::string& id) { return false; }
+    DLL_PUBLIC virtual bool removeExternalOutput(const std::string& id, bool close) { return false; }
     /**
      * Sets the bitrate of a video stream
      * @param id the publisher id

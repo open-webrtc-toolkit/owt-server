@@ -169,9 +169,20 @@ exports.RoomController = function (spec) {
         }
     };
 
-    that.removeExternalOutput = function (recorder_id, callback) {
+    that.removeExternalOutput = function (recorder_id, close, callback) {
+        if (close === undefined) {
+            close = true;
+        }
+
         var publisher_id = externalOutputs[recorder_id];
         if (!publisher_id) {
+            if (!close) {
+                return callback({
+                    success: true,
+                    text: 'no recording context needs to be cleaned'
+                });
+            }
+
             return callback({
                 success: false,
                 text: 'no recorder ongoing'
@@ -181,7 +192,7 @@ exports.RoomController = function (spec) {
         if (publishers[publisher_id] !== undefined) {
             log.info("Stopping ExternalOutput: " + recorder_id);
 
-            var args = [publisher_id, recorder_id];
+            var args = [publisher_id, recorder_id, close];
             rpc.callRpc(getErizoQueue(publisher_id), "removeExternalOutput", args, {callback: function (result) {
                 if (result === 'success') {
                     // Remove the track

@@ -108,7 +108,7 @@ public:
     void unpublishStream(const std::string& id, bool isAudio) { }
 
     bool addExternalOutput(const std::string& configParam) { return false; }
-    bool removeExternalOutput(const std::string& outputId) { return false; }
+    bool removeExternalOutput(const std::string& outputId, bool close) { return false; }
 
     int sendFirPacket() { return -1; }
     int setVideoCodec(const std::string& codecName, unsigned int clockRate) { return -1; }

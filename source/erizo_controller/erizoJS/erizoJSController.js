@@ -294,10 +294,10 @@ exports.ErizoJSController = function (spec) {
         callback('callback', 'error');
     };
 
-    that.removeExternalOutput = function (to, from, callback) {
+    that.removeExternalOutput = function (to, from, close, callback) {
         if (publishers[to] !== undefined) {
             log.info("Stopping ExternalOutput: " + from);
-            if (publishers[to].removeExternalOutput(from)) {
+            if (publishers[to].removeExternalOutput(from, close)) {
                 return callback('callback', 'success');
             }
         }
