@@ -28,6 +28,7 @@
 #include <logger.h>
 #include <map>
 #include <MediaDefinitions.h>
+#include <MediaEnabling.h>
 #include <ProtectedRTPReceiver.h>
 #include <ProtectedRTPSender.h>
 #include <string>
@@ -126,9 +127,10 @@ public:
     // which can be used to monitor the gateway. Refer to ooVoo Gateway for example.
     std::string retrieveStatistics() { return ""; }
 
+    void subscribeStream(const std::string& id, bool isAudio);
+    void unsubscribeStream(const std::string& id, bool isAudio);
+
     // TODO: implement the below interfaces to support media play/pause.
-    void subscribeStream(const std::string& id, bool isAudio) { }
-    void unsubscribeStream(const std::string& id, bool isAudio) { }
     void publishStream(const std::string& id, bool isAudio) { }
     void unpublishStream(const std::string& id, bool isAudio) { }
 
@@ -164,6 +166,7 @@ private:
         boost::shared_ptr<OutgoingRTPBridge> mediaBridge;
         boost::shared_ptr<woogeen_base::ProtectedRTPSender> videoSender;
         boost::shared_ptr<woogeen_base::ProtectedRTPSender> audioSender;
+        woogeen_base::MediaEnabling status;
     };
 
     std::string m_participantId;

@@ -63,7 +63,7 @@ void Mixer::receiveRtpData(char* buf, int len, erizo::DataType type, uint32_t st
         ssrc = head->getSSRC();
     }
 
-    std::map<std::string, std::pair<boost::shared_ptr<erizo::MediaSink>, MediaEnabling>>::iterator it;
+    std::map<std::string, std::pair<boost::shared_ptr<erizo::MediaSink>, woogeen_base::MediaEnabling>>::iterator it;
     boost::shared_lock<boost::shared_mutex> lock(m_subscriberMutex);
     switch (type) {
     case erizo::AUDIO: {
@@ -219,7 +219,7 @@ void Mixer::addSubscriber(MediaSink* subscriber, const std::string& peerId)
 
     boost::unique_lock<boost::shared_mutex> lock(m_subscriberMutex);
     m_subscribers[peerId] = std::pair<boost::shared_ptr<erizo::MediaSink>,
-                                MediaEnabling>(boost::shared_ptr<MediaSink>(subscriber), MediaEnabling());
+                                woogeen_base::MediaEnabling>(boost::shared_ptr<MediaSink>(subscriber), woogeen_base::MediaEnabling());
 }
 
 void Mixer::removeSubscriber(const std::string& peerId)
@@ -230,7 +230,7 @@ void Mixer::removeSubscriber(const std::string& peerId)
     std::vector<boost::shared_ptr<MediaSink>> removedSubscribers;
     boost::unique_lock<boost::shared_mutex> lock(m_subscriberMutex);
     std::map<std::string, std::pair<boost::shared_ptr<erizo::MediaSink>,
-        MediaEnabling>>::iterator it = m_subscribers.find(peerId);
+        woogeen_base::MediaEnabling>>::iterator it = m_subscribers.find(peerId);
     if (it != m_subscribers.end()) {
         removedSubscribers.push_back(it->second.first);
         m_subscribers.erase(it);
@@ -242,7 +242,7 @@ void Mixer::subscribeStream(const std::string& id, bool isAudio)
 {
     boost::unique_lock<boost::shared_mutex> lock(m_subscriberMutex);
     std::map<std::string, std::pair<boost::shared_ptr<erizo::MediaSink>,
-        MediaEnabling>>::iterator it = m_subscribers.find(id);
+        woogeen_base::MediaEnabling>>::iterator it = m_subscribers.find(id);
     if (it != m_subscribers.end()) {
         isAudio ? it->second.second.enableAudio() : it->second.second.enableVideo();
     }
@@ -253,7 +253,7 @@ void Mixer::unsubscribeStream(const std::string& id, bool isAudio)
 {
     boost::unique_lock<boost::shared_mutex> lock(m_subscriberMutex);
     std::map<std::string, std::pair<boost::shared_ptr<erizo::MediaSink>,
-        MediaEnabling>>::iterator it = m_subscribers.find(id);
+        woogeen_base::MediaEnabling>>::iterator it = m_subscribers.find(id);
     if (it != m_subscribers.end()) {
         isAudio ? it->second.second.disableAudio() : it->second.second.disableVideo();
     }
@@ -306,7 +306,7 @@ void Mixer::closeAll()
     std::vector<boost::shared_ptr<MediaSink>> removedSubscribers;
     boost::unique_lock<boost::shared_mutex> subscriberLock(m_subscriberMutex);
     std::map<std::string, std::pair<boost::shared_ptr<erizo::MediaSink>,
-        MediaEnabling>>::iterator subscriberItor = m_subscribers.begin();
+        woogeen_base::MediaEnabling>>::iterator subscriberItor = m_subscribers.begin();
     while (subscriberItor != m_subscribers.end()) {
         boost::shared_ptr<MediaSink>& subscriber = subscriberItor->second.first;
         if (subscriber) {

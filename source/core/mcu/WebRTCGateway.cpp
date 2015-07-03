@@ -83,7 +83,7 @@ void WebRTCGateway::receiveRtpData(char* rtpdata, int len, DataType type, uint32
         boost::shared_lock<boost::shared_mutex> lock(m_subscriberMutex);
         for (it = m_subscribers.begin(); it != m_subscribers.end(); ++it) {
             woogeen_base::ProtectedRTPSender* sender = type == erizo::VIDEO ? it->second.videoSender.get() : it->second.audioSender.get();
-            if (sender)
+            if (sender && (type == erizo::VIDEO ? it->second.status.hasVideo() : it->second.status.hasAudio()))
                 sender->sendSenderReport(rtpdata, len, type);
         }
         return;
@@ -96,6 +96,8 @@ void WebRTCGateway::receiveRtpData(char* rtpdata, int len, DataType type, uint32
         std::map<std::string, SubscriberInfo>::iterator it;
         boost::shared_lock<boost::shared_mutex> lock(m_subscriberMutex);
         for (it = m_subscribers.begin(); it != m_subscribers.end(); ++it) {
+            if (!it->second.status.hasAudio())
+                continue;
             woogeen_base::ProtectedRTPSender* sender = it->second.audioSender.get();
             if (sender)
                 sender->sendPacket(rtpdata, len - headerLength, headerLength, type);
@@ -120,6 +122,8 @@ void WebRTCGateway::receiveRtpData(char* rtpdata, int len, DataType type, uint32
     std::map<std::string, SubscriberInfo>::iterator it;
     boost::shared_lock<boost::shared_mutex> lock(m_subscriberMutex);
     for (it = m_subscribers.begin(); it != m_subscribers.end(); ++it) {
+        if (!it->second.status.hasVideo())
+            continue;
         woogeen_base::ProtectedRTPSender* sender = it->second.videoSender.get();
         if (sender) {
             if (sender->encapsulatedRTPDataEnabled() && len < MAX_DATA_PACKET_SIZE)
@@ -226,7 +230,7 @@ void WebRTCGateway::addSubscriber(MediaSink* subscriber, const std::string& id)
     }
 
     boost::unique_lock<boost::shared_mutex> lock(m_subscriberMutex);
-    m_subscribers[id] = {feedback, mediaBridge, videoSender, audioSender};
+    m_subscribers[id] = {feedback, mediaBridge, videoSender, audioSender, woogeen_base::MediaEnabling()};
 }
 
 void WebRTCGateway::removeSubscriber(const std::string& id)
@@ -244,6 +248,28 @@ void WebRTCGateway::removeSubscriber(const std::string& id)
         }
         removedSubscribers.push_back(subscriber);
         m_subscribers.erase(it);
+    }
+    lock.unlock();
+}
+
+void WebRTCGateway::subscribeStream(const std::string& id, bool isAudio)
+{
+    boost::unique_lock<boost::shared_mutex> lock(m_subscriberMutex);
+    std::map<std::string, SubscriberInfo>::iterator it = m_subscribers.find(id);
+    if (it != m_subscribers.end()) {
+        SubscriberInfo& subscriber = it->second;
+        isAudio ? subscriber.status.enableAudio() : subscriber.status.enableVideo();
+    }
+    lock.unlock();
+}
+
+void WebRTCGateway::unsubscribeStream(const std::string& id, bool isAudio)
+{
+    boost::unique_lock<boost::shared_mutex> lock(m_subscriberMutex);
+    std::map<std::string, SubscriberInfo>::iterator it = m_subscribers.find(id);
+    if (it != m_subscribers.end()) {
+        SubscriberInfo& subscriber = it->second;
+        isAudio ? subscriber.status.disableAudio() : subscriber.status.disableVideo();
     }
     lock.unlock();
 }
