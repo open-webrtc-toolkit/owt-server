@@ -194,8 +194,12 @@ Handle<Value> Gateway::addExternalOutput(const Arguments& args) {
 
   String::Utf8Value param(args[0]->ToString());
   std::string configParam = std::string(*param);
-
-  bool succeeded = me->addExternalOutput(configParam);
+  NodeEventRegistry* callback = nullptr;
+  if (args.Length() > 1 && args[1]->IsFunction()) {
+    Persistent<Function> cb = Persistent<Function>::New(Local<Function>::Cast(args[1]));
+    callback = new NodeEventRegistry(cb);
+  }
+  bool succeeded = me->addExternalOutput(configParam, callback);
 
   return scope.Close(Boolean::New(succeeded));
 }

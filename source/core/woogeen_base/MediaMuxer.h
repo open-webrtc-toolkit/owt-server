@@ -27,6 +27,7 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/mutex.hpp>
 #include <Compiler.h>
+#include <EventRegistry.h>
 #include <rtputils.h>
 #include <SharedQueue.h>
 #include <webrtc/video/encoded_frame_callback_adapter.h>
@@ -214,8 +215,8 @@ public:
 class MediaMuxer : public FrameConsumer {
 public:
     enum Status { Context_ERROR = -1, Context_EMPTY = 0, Context_READY = 1 };
-    MediaMuxer() : m_muxing(false), m_status(Context_EMPTY), m_firstVideoTimestamp(-1), m_firstAudioTimestamp(-1) { }
-    virtual ~MediaMuxer() { }
+    MediaMuxer(EventRegistry* registry = nullptr) : m_muxing(false), m_status(Context_EMPTY), m_firstVideoTimestamp(-1), m_firstAudioTimestamp(-1), m_callback(registry), m_callbackCalled(false) { }
+    virtual ~MediaMuxer() { if (m_callback) delete m_callback; }
     virtual bool setMediaSource(FrameDispatcher* videoDispatcher, FrameDispatcher* audioDispatcher) = 0;
     virtual void unsetMediaSource() = 0;
 
@@ -227,6 +228,15 @@ protected:
     boost::thread m_thread;
     boost::scoped_ptr<woogeen_base::MediaFrameQueue> m_videoQueue;
     boost::scoped_ptr<woogeen_base::MediaFrameQueue> m_audioQueue;
+    void callback(const std::string& data) { // executed *ONCE*, should be called by m_thread only;
+        if (m_callback && (!m_callbackCalled)) {
+            m_callbackCalled = true;
+            m_callback->notify(data);
+        }
+    }
+private:
+    EventRegistry* m_callback;
+    bool m_callbackCalled;
 };
 
 } /* namespace woogeen_base */

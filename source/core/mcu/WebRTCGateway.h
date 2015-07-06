@@ -134,7 +134,7 @@ public:
     void publishStream(const std::string& id, bool isAudio) { }
     void unpublishStream(const std::string& id, bool isAudio) { }
 
-    bool addExternalOutput(const std::string& configParam);
+    bool addExternalOutput(const std::string& configParam, woogeen_base::EventRegistry* callback = nullptr);
     bool removeExternalOutput(const std::string& outputId, bool close);
 
     // TODO: It's ugly to override setAudioSink/setVideoSink,

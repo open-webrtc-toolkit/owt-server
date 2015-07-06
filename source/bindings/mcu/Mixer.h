@@ -95,6 +95,10 @@ class Mixer : public node::ObjectWrap {
    */
   static v8::Handle<v8::Value> addExternalPublisher(const v8::Arguments& args);
   /*
+   * add Event Listener
+   */
+  static v8::Handle<v8::Value> addEventListener(const v8::Arguments& args);
+  /*
    * Gets the region of a publisher in the mixer
    * Param: the publisher id
    */

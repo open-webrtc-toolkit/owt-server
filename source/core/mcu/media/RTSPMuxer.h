@@ -45,7 +45,7 @@ namespace mcu {
 class RTSPMuxer : public woogeen_base::MediaMuxer {
     DECLARE_LOGGER();
 public:
-    RTSPMuxer(const std::string& url);
+    RTSPMuxer(const std::string& url, woogeen_base::EventRegistry* callback = nullptr);
     ~RTSPMuxer();
 
     // MediaMuxer interface

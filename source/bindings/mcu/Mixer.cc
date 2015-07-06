@@ -24,6 +24,8 @@
 
 #include "Mixer.h"
 
+#include "../woogeen_base/NodeEventRegistry.h"
+
 using namespace v8;
 
 Mixer::Mixer() {};
@@ -55,6 +57,8 @@ void Mixer::Init(Handle<Object> target) {
       FunctionTemplate::New(removeExternalOutput)->GetFunction());
   tpl->PrototypeTemplate()->Set(String::NewSymbol("addExternalPublisher"),
       FunctionTemplate::New(addExternalPublisher)->GetFunction());
+  tpl->PrototypeTemplate()->Set(String::NewSymbol("addEventListener"),
+      FunctionTemplate::New(addEventListener)->GetFunction());
   tpl->PrototypeTemplate()->Set(String::NewSymbol("getRegion"),
       FunctionTemplate::New(getRegion)->GetFunction());
   tpl->PrototypeTemplate()->Set(String::NewSymbol("setRegion"),
@@ -215,8 +219,12 @@ Handle<Value> Mixer::addExternalOutput(const Arguments& args) {
 
   String::Utf8Value param(args[0]->ToString());
   std::string configParam = std::string(*param);
-
-  bool succeeded = me->addExternalOutput(configParam);
+  NodeEventRegistry* callback = nullptr;
+  if (args.Length() > 1 && args[1]->IsFunction()) {
+    Persistent<Function> cb = Persistent<Function>::New(Local<Function>::Cast(args[1]));
+    callback = new NodeEventRegistry(cb);
+  }
+  bool succeeded = me->addExternalOutput(configParam, callback);
 
   return scope.Close(Boolean::New(succeeded));
 }
@@ -238,6 +246,24 @@ Handle<Value> Mixer::removeExternalOutput(const Arguments& args) {
   bool succeeded = me->removeExternalOutput(outputId, close);
 
   return scope.Close(Boolean::New(succeeded));
+}
+
+Handle<Value> Mixer::addEventListener(const Arguments& args) {
+  HandleScope scope;
+  if (args.Length() < 2 || !args[0]->IsString() || !args[1]->IsFunction()) {
+    return ThrowException(Exception::TypeError(String::New("Wrong arguments")));
+  }
+  // setup node event listener
+  v8::String::Utf8Value str(args[0]->ToString());
+  std::string key = std::string(*str);
+  Persistent<Function> cb = Persistent<Function>::New(Local<Function>::Cast(args[1]));
+  NodeEventRegistry* registry = new NodeEventRegistry(cb);
+  // setup notification in core
+  Mixer* obj = ObjectWrap::Unwrap<Mixer>(args.This());
+  mcu::MixerInterface* me = obj->me;
+  me->setupAsyncEvent(key, registry);
+
+  return scope.Close(Undefined());
 }
 
 Handle<Value> Mixer::getRegion(const Arguments& args) {

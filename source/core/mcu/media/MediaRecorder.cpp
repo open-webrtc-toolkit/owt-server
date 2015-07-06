@@ -47,8 +47,9 @@ inline AVCodecID payloadType2AudioCodecID(int payloadType)
     }
 }
 
-MediaRecorder::MediaRecorder(const std::string& recordUrl, int snapshotInterval)
-    : m_videoSource(nullptr)
+MediaRecorder::MediaRecorder(const std::string& recordUrl, int snapshotInterval, woogeen_base::EventRegistry* cb)
+    : woogeen_base::MediaMuxer(cb)
+    , m_videoSource(nullptr)
     , m_audioSource(nullptr)
     , m_videoStream(nullptr)
     , m_audioStream(nullptr)
@@ -244,15 +245,19 @@ void MediaRecorder::recordLoop()
                     if (avio_open(&m_context->pb, m_context->filename, AVIO_FLAG_WRITE) < 0) {
                         ELOG_ERROR("open output file failed");
                         m_status = woogeen_base::MediaMuxer::Context_ERROR;
+                        callback("cannot open output file");
                         return;
                     }
                 }
                 av_dump_format(m_context, 0, m_context->filename, 1);
                 if (avformat_write_header(m_context, nullptr) < 0) {
                     m_status = woogeen_base::MediaMuxer::Context_ERROR;
+                    callback("write file header error");
+                    ELOG_ERROR("avformat_write_header failed");
                     return;
                 }
                 m_status = woogeen_base::MediaMuxer::Context_READY;
+                callback("success");
                 ELOG_DEBUG("context ready");
             } else {
                 usleep(1000);
@@ -263,6 +268,7 @@ void MediaRecorder::recordLoop()
             break;
         case woogeen_base::MediaMuxer::Context_ERROR:
         default:
+            callback("init failed");
             ELOG_ERROR("loop exit on error");
             return;
         }
@@ -273,6 +279,7 @@ void MediaRecorder::recordLoop()
         while (mediaFrame = m_videoQueue->popFrame())
             this->writeVideoFrame(*mediaFrame);
     }
+    callback("unexpected error"); // fatal guard: make sure callback would be executed eventually.
 }
 
 void MediaRecorder::writeVideoFrame(woogeen_base::EncodedFrame& encodedVideoFrame) {

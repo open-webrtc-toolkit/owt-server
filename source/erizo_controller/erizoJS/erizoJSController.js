@@ -275,19 +275,18 @@ exports.ErizoJSController = function (spec) {
                 }
                 config.url = [rtsp_prefix, 'room_', to, '.sdp'].join('');
                 config.id = config.url;
-                if (publishers[to].addExternalOutput(JSON.stringify(config))) {
-                    callback('callback', 'success');
-                    return;
-                }
-                callback('callback', 'error');
+                publishers[to].addExternalOutput(JSON.stringify(config), function (resp) {
+                    callback('callback', resp);
+                });
                 return;
             }
             log.info('Adding ExternalOutput to ' + to + ' url ' + url);
 
             // recordingId here is used as the peerId
-            if (publishers[to].addExternalOutput(JSON.stringify(config))) {
-                return callback('callback', 'success');
-            }
+            publishers[to].addExternalOutput(JSON.stringify(config), function (resp) {
+                callback('callback', resp);
+            });
+            return;
         }
 
         log.error('Failed adding ExternalOutput to ' + to + ' with url ' + url);
