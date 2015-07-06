@@ -208,7 +208,7 @@
   function WoogeenRemoteStream (spec) {
     WoogeenStream.call(this, spec);
     this.isMixed = function () {
-      return (!!spec.video) && (spec.video.category === 'mix'); // category: 'mix', 'single'
+      return (!!spec.video) && (spec.video.device === 'mcu');
     };
     this.from = spec.from;
   }

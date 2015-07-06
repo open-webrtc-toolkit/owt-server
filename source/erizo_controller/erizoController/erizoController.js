@@ -328,7 +328,7 @@ var initMixer = function (room, roomConfig, immediately) {
         if (immediately) {
             room.controller.initMixer(id, roomConfig.mediaMixing, function (result) {
                 if (result === 'success') {
-                    var st = new ST.Stream({id: id, socket: '', audio: true, video: {category: 'mix'}, data: true, from: ''});
+                    var st = new ST.Stream({id: id, socket: '', audio: true, video: {device: 'mcu', resolution: roomConfig.mediaMixing.video.resolution}, from: '', attributes: null});
                     room.streams[id] = st;
                     room.mixer = id;
                     sendMsgToRoom(room, 'onAddStream', st.getPublicStream());
@@ -355,7 +355,7 @@ var initMixer = function (room, roomConfig, immediately) {
 
             room.controller.initMixer(id, roomConfig.mediaMixing, function (result) {
                 if (result === 'success') {
-                    var st = new ST.Stream({id: id, socket: '', audio: true, video: {category: 'mix'}, data: true, from: ''});
+                    var st = new ST.Stream({id: id, socket: '', audio: true, video: {device: 'mcu', resolution: roomConfig.mediaMixing.video.resolution}, from: '', attributes: null});
                     room.streams[id] = st;
                     room.mixer = id;
                     sendMsgToRoom(room, 'onAddStream', st.getPublicStream());
@@ -642,25 +642,6 @@ var listen = function () {
             }
         });
 
-        //Gets 'sendDataStream' messages on the socket in order to write a message in a dataStream.
-        socket.on('sendDataStream', function (msg) {
-            if (msg.id !== undefined && socket.room.streams[msg.id]) {
-                socket.room.streams[msg.id].getDataSubscribers().map(function (sockid) {
-                    log.info('Sending dataStream to', sockid, 'in stream ', msg.id);
-                    io.sockets.to(sockid).emit('onDataStream', msg);
-                });
-            }
-
-            // send to mix stream subscribers
-            var mixer = socket.room.mixer;
-            if (mixer && socket.room.streams[mixer]) {
-                socket.room.streams[mixer].getDataSubscribers().map(function (sockid) {
-                    log.info('Sending dataStream to', sockid, 'in stream ', mixer);
-                    io.sockets.to(sockid).emit('onDataStream', msg);
-                });
-            }
-        });
-
         //Gets 'updateStreamAttributes' messages on the socket in order to update attributes from the stream.
         socket.on('updateStreamAttributes', function (msg) {
             socket.room.streams[msg.id].setAttributes(msg.attrs);
@@ -738,7 +719,7 @@ var listen = function () {
                 }
                 socket.room.controller.addExternalInput(id, url, socket.room.mixer, function (result) {
                     if (result === 'success') {
-                        st = new ST.Stream({id: id, socket: socket.id, audio: options.audio, video: options.video, data: options.data, attributes: options.attributes, from: url});
+                        st = new ST.Stream({id: id, socket: socket.id, audio: options.audio, video: options.video, attributes: options.attributes, from: url});
                         socket.streams.push(id);
                         socket.room.streams[id] = st;
                         sendMsgToRoom(socket.room, 'onAddStream', st.getPublicStream());
@@ -786,7 +767,7 @@ var listen = function () {
                             return;
                         }
 
-                        st = new ST.Stream({id: id, audio: options.audio, video: options.video, data: options.data, screen: hasScreen, attributes: options.attributes, from: socket.id});
+                        st = new ST.Stream({id: id, audio: options.audio, video: options.video, attributes: options.attributes, from: socket.id});
                         socket.state = 'sleeping';
                         socket.room.streams[id] = st;
 
@@ -804,11 +785,7 @@ var listen = function () {
                 });
             } else {
                 id = Math.random() * 1000000000000000000;
-                var hasScreen = false;
-                if (options.video && options.video.device === 'screen') {
-                    hasScreen = true;
-                }
-                st = new ST.Stream({id: id, socket: socket.id, audio: options.audio, video: options.video, data: options.data, screen: hasScreen, attributes: options.attributes, from: socket.id});
+                st = new ST.Stream({id: id, socket: socket.id, audio: options.audio, video: options.video, attributes: options.attributes, from: socket.id});
                 socket.streams.push(id);
                 socket.room.streams[id] = st;
                 safeCall(callback, undefined, id);
@@ -839,7 +816,7 @@ var listen = function () {
                 stream.addDataSubscriber(socket.id);
             }
 
-            if (stream.hasAudio() || stream.hasVideo() || stream.hasScreen()) {
+            if (stream.hasAudio() || stream.hasVideo()) {
 
                 if (socket.room.p2p) {
                     var s = stream.getSocket();
@@ -889,7 +866,7 @@ var listen = function () {
                 return safeCall(callback, 'error', 'Stream recording is going on.');
             }
 
-            if (recordStream.hasAudio() || recordStream.hasVideo() || recordStream.hasScreen()) {
+            if (recordStream.hasAudio() || recordStream.hasVideo()) {
                 var recorderPath = options.path || GLOBAL.config.erizoController.recording_path || '/tmp';
                 require('fs').lstat(recorderPath, function(err, stats) {
                     if (!err && stats.isDirectory()) {
@@ -1078,7 +1055,7 @@ var listen = function () {
 
             socket.room.streams[to].removeDataSubscriber(socket.id);
 
-            if (socket.room.streams[to].hasAudio() || socket.room.streams[to].hasVideo() || socket.room.streams[to].hasScreen()) {
+            if (socket.room.streams[to].hasAudio() || socket.room.streams[to].hasVideo()) {
                 if (!socket.room.p2p) {
                     socket.room.controller.removeSubscriber(socket.id, to);
                     if (GLOBAL.config.erizoController.sendStats) {
@@ -1228,7 +1205,7 @@ exports.deleteRoom = function (roomId, callback) {
 
     var streams = room.streams;
     for (var j in streams) {
-        if (streams[j].hasAudio() || streams[j].hasVideo() || streams[j].hasScreen()) {
+        if (streams[j].hasAudio() || streams[j].hasVideo()) {
             if (!room.p2p) {
                 room.controller.removePublisher(j);
             }
