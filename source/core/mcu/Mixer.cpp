@@ -324,4 +324,51 @@ void Mixer::closeAll()
     subscriberLock.unlock();
 }
 
+// The main thread
+void Mixer::setupAsyncEvent(const std::string& event, EventRegistry* handle)
+{
+    std::map<std::string, EventRegistry*>::iterator it = m_asyncHandles.find(event);
+    if (it != m_asyncHandles.end()) {
+        delete it->second;
+        it->second = handle;
+        ELOG_DEBUG("setupAsyncEvent - replace old listener for %s", event.c_str());
+    } else {
+        m_asyncHandles[event] = handle;
+        ELOG_DEBUG("setupAsyncEvent - add listener for %s##%p", event.c_str(), handle);
+    }
+}
+
+// The main thread
+void Mixer::destroyAsyncEvents()
+{
+    // This method should be invoked by the main thread when the WebRTC client
+    // (browser) disconnects and the main thread are closing the uv async handles.
+    // Other threads should check the existence of the event before async send.
+    boost::lock_guard<boost::mutex> lock(m_asyncMutex);
+    std::map<std::string, EventRegistry*>::iterator it;
+    for (it = m_asyncHandles.begin(); it != m_asyncHandles.end(); it++) {
+        delete it->second;
+        m_asyncHandles.erase(it);
+    }
+}
+
+void Mixer::notifyAsyncEvent(const std::string& event, const std::string& data)
+{
+    boost::lock_guard<boost::mutex> lock(m_asyncMutex);
+    std::map<std::string, EventRegistry*>::iterator it = m_asyncHandles.find(event);
+    if (it != m_asyncHandles.end()) {
+        bool sent = it->second->notify(data);
+        ELOG_DEBUG("notifyAsyncEvent - event: %s; sent? %d", event.c_str(), sent);
+    } else {
+        ELOG_DEBUG("notifyAsyncEvent - missing event handler: %s", event.c_str());
+    }
+}
+
+void Mixer::notifyAsyncEvent(const std::string& event, uint32_t data)
+{
+    std::ostringstream message;
+    message << data;
+    notifyAsyncEvent(event, message.str());
+}
+
 } /* namespace mcu */

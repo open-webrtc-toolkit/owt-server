@@ -59,10 +59,9 @@ public:
     void addSubscriber(erizo::MediaSink*, const std::string& id);
     void removeSubscriber(const std::string& id);
 
-    // TODO: implement the below interfaces to support async event notification
-    // from the native layer to the JS (controller) layer.
-    void setupAsyncEvent(const std::string& event, woogeen_base::EventRegistry*) { }
-    void destroyAsyncEvents() { }
+    // Implement async event notification
+    void setupAsyncEvent(const std::string& event, woogeen_base::EventRegistry*);
+    void destroyAsyncEvents();
 
     void customMessage(const std::string& message) { }
 
@@ -117,6 +116,12 @@ private:
     boost::shared_mutex m_subscriberMutex;
     std::map<std::string, std::pair<boost::shared_ptr<erizo::MediaSink>, woogeen_base::MediaEnabling>> m_subscribers;
     std::map<std::string, erizo::MediaSource*> m_publishers;
+
+    // async event notification
+    void notifyAsyncEvent(const std::string& event, const std::string& data);
+    void notifyAsyncEvent(const std::string& event, uint32_t data);
+    std::map<std::string, woogeen_base::EventRegistry*> m_asyncHandles;
+    boost::mutex m_asyncMutex;
 };
 
 } /* namespace mcu */
