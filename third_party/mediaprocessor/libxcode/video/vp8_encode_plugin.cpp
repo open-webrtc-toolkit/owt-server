@@ -27,6 +27,8 @@ enum VP8FILETYPE {
     WEBM_FILE
 };
 
+pthread_mutex_t VP8EncPlugin::plugin_mutex_ = PTHREAD_MUTEX_INITIALIZER;
+static bool plugin_mutex_init = VP8EncPlugin::MutexInit();
 
 void PlgPutMem16(char *mem, unsigned int val) {
     mem[0] = val;
@@ -312,6 +314,11 @@ mfxStatus VP8EncPlugin::Execute(mfxThreadTask task, mfxU32 , mfxU32 uid_a)
     const vpx_codec_cx_pkt_t *pkt;
     int flags = 0;
 
+    if (pthread_mutex_lock(&VP8EncPlugin::plugin_mutex_)) {
+        printf("Failed to get lock\n");
+        assert(0);
+    }
+
     mfxFrameSurface1* surf_in = pTask->surfaceIn;
     sts = m_pAlloc->Lock(m_pAlloc->pthis, surf_in->Data.MemId, &surf_in->Data);
     if (sts != MFX_ERR_NONE) {
@@ -323,6 +330,17 @@ mfxStatus VP8EncPlugin::Execute(mfxThreadTask task, mfxU32 , mfxU32 uid_a)
     sts = GetInputYUV(surf_in);
     if (MFX_ERR_NONE != sts) {
         printf("Get yuv failed\n");
+        assert(0);
+    }
+
+    sts = m_pAlloc->Unlock(m_pAlloc->pthis, surf_in->Data.MemId, &surf_in->Data);
+    if (sts != MFX_ERR_NONE) {
+        printf("Unlock return %d\n", sts);
+        assert(sts == MFX_ERR_NONE);
+    }
+
+    if (pthread_mutex_unlock(&VP8EncPlugin::plugin_mutex_)) {
+        printf("Failed to release lock\n");
         assert(0);
     }
 
@@ -367,7 +385,6 @@ mfxStatus VP8EncPlugin::Execute(mfxThreadTask task, mfxU32 , mfxU32 uid_a)
     }
 
     frame_cnt_ ++;
-    m_pAlloc->Unlock(m_pAlloc->pthis, surf_in->Data.MemId, &surf_in->Data);
     return MFX_TASK_DONE;
 }
 

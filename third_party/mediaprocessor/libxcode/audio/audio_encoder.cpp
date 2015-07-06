@@ -63,12 +63,10 @@ bool AudioEncoder::Init(void* cfg, ElementMode element_mode)
     if (m_CodecType == STREAM_TYPE_AUDIO_MP3) {
         m_StreamInfo.codec_id = 1;
         m_pAudioCodecParams = reinterpret_cast<UMC::AudioEncoderParams*>(&m_mp3enc_params);
-    }
-    else if (m_CodecType == STREAM_TYPE_AUDIO_AAC) {
+    } else if (m_CodecType == STREAM_TYPE_AUDIO_AAC) {
         m_StreamInfo.codec_id = 2;
         m_pAudioCodecParams = reinterpret_cast<UMC::AudioEncoderParams*>(&m_aacenc_params);
-    }
-    else {
+    } else {
         printf("ERROR: Not support the audio format\n");
     }
 
@@ -166,8 +164,7 @@ int AudioEncoder::Encode(AudioPayload* pIn)
     unsigned int frameSize;
     if (pIn->payload_length > dataOffset) {
         frameSize = pIn->payload_length - dataOffset;
-    }
-    else {
+    } else {
         printf("%s: input payload size (%d) is lower than data dataOffset(%d)\n",
                     __FUNCTION__, pIn->payload_length, dataOffset);
         frameSize = 0;
@@ -182,7 +179,11 @@ int AudioEncoder::Encode(AudioPayload* pIn)
     }
 #endif
 
-    APP_TRACE_DEBUG("%s: inputWaveInfo chans=%d res=%d s_rate=%d\n", __FUNCTION__, inputWaveInfo.channels_number, inputWaveInfo.resolution, inputWaveInfo.sample_rate);
+    APP_TRACE_DEBUG("%s: inputWaveInfo chans=%d res=%d s_rate=%d\n",
+                    __FUNCTION__,
+                    inputWaveInfo.channels_number,
+                    inputWaveInfo.resolution,
+                    inputWaveInfo.sample_rate);
     if (m_bInitDone == false) {
         m_pAudioCodecParams->m_info.streamType = UMC::PCM_AUDIO;  // Input is wav so lets set the codec input stream type
         m_pAudioCodecParams->m_info.audioInfo.m_iSampleFrequency = inputWaveInfo.sample_rate;
@@ -221,8 +222,7 @@ int AudioEncoder::Encode(AudioPayload* pIn)
                 return UMC::UMC_ERR_FAILED;
             }
             m_pOut = new UMC::MediaData();
-        }
-        else {
+        } else {
             // Assign m_pOut a new memory block to hold the transcode output data
             m_pOut = new UMC::MediaData();
             m_pOut->Alloc(m_pAudioCodecParams->m_iSuggestedOutputSize);
@@ -271,13 +271,12 @@ int AudioEncoder::Encode(AudioPayload* pIn)
 
         if (inputWaveInfo.resolution == 16) {
             needSize = needSize & (~1);
-        }
-        else if (inputWaveInfo.resolution == 24) {
+        } else if (inputWaveInfo.resolution == 24) {
             needSize = (needSize / 3) * 3;
-        }
-
-        if (inputWaveInfo.resolution == 32) {
+        } else if (inputWaveInfo.resolution == 32) {
             needSize = needSize & (~3);
+        } else {
+            printf("Audio Encoder doesn't support %dbit input.\n", inputWaveInfo.resolution);
         }
         APP_TRACE_INFO("%s: needSize=%d\n", __FUNCTION__, (int)needSize);
 
@@ -306,20 +305,17 @@ int AudioEncoder::Encode(AudioPayload* pIn)
             }
 
             m_InMediaData.SetDataSize(2*(frameSize/3));
-        }
-        else if (inputWaveInfo.resolution == 32) {
+        } else if (inputWaveInfo.resolution == 32) {
             Ipp32s *in32 = (Ipp32s*)(pIn->payload + dataOffset);
             for (ii = 0; ii < frameSize/4; ii++) {
                 dest16[ii] = (Ipp16s)(SHIFT_RIGHT((in32[ii] + 32768),16));
             }
 
             m_InMediaData.SetDataSize(2*(frameSize/4));
-        }
-        else if (inputWaveInfo.resolution == 16) {
-            UMC::Status sts;
+        } else if (inputWaveInfo.resolution == 16) {
             memcpy(dest16, pIn->payload + dataOffset, frameSize);
 
-            sts = m_InMediaData.SetDataSize(frameSize);
+            m_InMediaData.SetDataSize(frameSize);
         }
 
         m_InMediaData.m_fPTSStart = -1;  // This will let the encoder derive the PTS from the number of incoming sample of raw PCM
@@ -364,16 +360,14 @@ int AudioEncoder::Encode(AudioPayload* pIn)
 #ifdef AUDIO_ENC_TIMING
                     t_dur = (vm_time_get_tick() - t_start);
 #endif
-                }
-                else {
+                } else {
                     APP_TRACE_INFO("%s: InMediaBuffer.LockOutputBuffer() -> sts=%d - Partial input\n",
                                 __FUNCTION__, in_sts);
                     // Partial input packet. Need to read more!
                     enc_sts = in_sts;
                     enc_err = 0;
                 }
-            }
-            else {
+            } else {
                 APP_TRACE_INFO("%s: m_pOut before GetFrame(): buf=%p data=%p size=%d\n", __FUNCTION__,
                             m_pOut->GetBufferPointer(), m_pOut->GetDataPointer(), (int)m_pOut->GetDataSize());
 
@@ -448,12 +442,10 @@ int AudioEncoder::Encode(AudioPayload* pIn)
 #endif
                 m_pStream->WriteBlock(m_pOut->GetDataPointer(), m_pOut->GetDataSize());
                 outPackets++;
-            }
-            else if (enc_sts == UMC::UMC_ERR_NOT_ENOUGH_BUFFER) {
+            } else if (enc_sts == UMC::UMC_ERR_NOT_ENOUGH_BUFFER) {
                 if (m_pOutMediaBuffer) {
                     enc_err = -1;
-                }
-                else {
+                } else {
                     delete m_pOut;
 
                     enc_sts = m_pUMCEncoder->GetInfo(m_pAudioCodecParams);
@@ -470,8 +462,7 @@ int AudioEncoder::Encode(AudioPayload* pIn)
                         return -1;
                     }
                 }
-            }
-            else if (enc_sts == UMC::UMC_ERR_NOT_ENOUGH_DATA) {
+            } else if (enc_sts == UMC::UMC_ERR_NOT_ENOUGH_DATA) {
                 APP_TRACE_INFO("%s: enc_sts=UMC_ERR_NOT_ENOUGH_DATA && outPackets=%d\n", __FUNCTION__, outPackets);
                 enc_err = (outPackets > 0) ? 0 : -1;
                 // Will exit as enc_sts != UMC_OK
@@ -521,11 +512,9 @@ int AudioEncoder::Reset()
 
     if (m_StreamInfo.codec_id == 1) {
         m_pUMCEncoder = new UMC::MP3Encoder();
-    }
-    else if (m_StreamInfo.codec_id == 2) {
+    } else if (m_StreamInfo.codec_id == 2) {
         m_pUMCEncoder = new UMC::AACEncoder();
-    }
-    else {
+    } else {
         printf("%s: ERROR - Unknown codec value (%d)\n", __FUNCTION__, m_StreamInfo.codec_id);
         return -1;
     }

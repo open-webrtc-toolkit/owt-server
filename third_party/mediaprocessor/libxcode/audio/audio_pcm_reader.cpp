@@ -9,15 +9,19 @@
 #include "base/trace.h"
 #include "base/measurement.h"
 
+#ifdef ENABLE_AUDIO_CODEC
+#include "pcm_tablegen.h"
+#endif
+
 //#define DUMP_AUDIO_PCM_INPUT    // Customized option for debugging in WebRTC scenario
 
 AudioPCMReader::AudioPCMReader(MemPool* mp, char* input) :
-    m_pMempool(mp),
-    m_pDumpOutFile(NULL),
-    m_nDataSize(0)
+    mem_pool_(mp),
+    dump_out_file_(NULL),
+    total_data_size_(0)
 {
     for (int i = 0; i < AUDIO_OUTPUT_QUEUE_SIZE; i++) {
-        m_Output[i].payload = NULL;
+        output_payload_[i].payload = NULL;
     }
 }
 
@@ -29,41 +33,39 @@ AudioPCMReader::~AudioPCMReader()
 void AudioPCMReader::Release()
 {
     for (int i = 0; i < AUDIO_OUTPUT_QUEUE_SIZE; i++) {
-        if(m_Output[i].payload) {
-            free(m_Output[i].payload);
-            m_Output[i].payload_length = 0;
+        if(output_payload_[i].payload) {
+            free(output_payload_[i].payload);
+            output_payload_[i].payload_length = 0;
         }
     }
 #ifdef DUMP_AUDIO_PCM_INPUT
-    if (m_pDumpOutFile) {
-        m_pDumpOutFile->SetStreamAttribute(FILE_HEAD);
-        m_WaveInfoOut.channels_number = 2;
-        m_WaveHeader.Populate(&m_WaveInfoOut, m_nDataSize);
-        m_pDumpOutFile->WriteBlock(&m_WaveHeader, m_WaveHeader.GetHeaderSize());
-        delete m_pDumpOutFile;
+    if (dump_out_file_) {
+        dump_out_file_->SetStreamAttribute(FILE_HEAD);
+        wav_info_.channels_number = 2;
+        wav_header_.Populate(&wav_info_, total_data_size_);
+        dump_out_file_->WriteBlock(&wav_header_, wav_header_.GetHeaderSize());
+        delete dump_out_file_;
     }
 #endif
 }
 
 bool AudioPCMReader::Init(void* cfg, ElementMode element_mode)
 {
-    sAudioParams* audio_params;
-    audio_params = static_cast<sAudioParams*>(cfg);
     element_mode_ = element_mode;
 
 #ifdef DUMP_AUDIO_PCM_INPUT
-    m_pDumpOutFile = new Stream;
+    dump_out_file_ = new Stream;
     bool status = false;
     char file_name[FILENAME_MAX] = {0};
     sprintf(file_name, "dump_input_%p.wav", this);
-    if (m_pDumpOutFile) {
-        status = m_pDumpOutFile->Open(file_name, true);
+    if (dump_out_file_) {
+        status = dump_out_file_->Open(file_name, true);
     }
 
     if (!status) {
-        if (m_pDumpOutFile) {
-            delete m_pDumpOutFile;
-            m_pDumpOutFile = NULL;
+        if (dump_out_file_) {
+            delete dump_out_file_;
+            dump_out_file_ = NULL;
         }
     }
     printf("[%p]: Dump input pcm file to: %s\n", this, file_name);
@@ -85,7 +87,7 @@ int AudioPCMReader::Recycle(MediaBuf &buf)
     payload.isFirstPacket = buf.isFirstPacket;
 
     if (payload.payload) {
-        m_output_queue.Push(payload);
+        output_queue_.Push(payload);
     } else {
         return -1;
     }
@@ -95,7 +97,7 @@ int AudioPCMReader::Recycle(MediaBuf &buf)
 
 int AudioPCMReader::HandleProcess()
 {
-    bool isFirstPacket = true;
+    bool is_first_packet = true;
     int ret;
     AudioPayload payload_out;
     AudioPayload payload_in;
@@ -117,10 +119,10 @@ int AudioPCMReader::HandleProcess()
     while (is_running_) {
 
         // step 1: check if there is available coded stream
-        unsigned int mem_size = m_pMempool->GetFlatBufFullness();
+        unsigned int mem_size = mem_pool_->GetFlatBufFullness();
         buffer_size = (mem_size < frame_size) ? mem_size : frame_size;
 
-        unsigned int eof = m_pMempool->GetDataEof();
+        unsigned int eof = mem_pool_->GetDataEof();
         if ((buffer_size == 0) && (eof == true)) {
             printf("PCMReader: [%p] Got the end of stream.\n", this);
             buf.payload = NULL;
@@ -136,8 +138,8 @@ int AudioPCMReader::HandleProcess()
         }
 
         // step 2: parse wav header.
-        if (isFirstPacket) {
-            payload_in.payload = m_pMempool->GetReadPtr();
+        if (is_first_packet) {
+            payload_in.payload = mem_pool_->GetReadPtr();
             payload_in.payload_length = 1024;
             ret = ParseWAVHeader(&payload_in);
             if (ret == -1) {
@@ -148,47 +150,60 @@ int AudioPCMReader::HandleProcess()
                 break;
             }
 #ifdef DUMP_AUDIO_PCM_INPUT
-            if (m_pDumpOutFile) {
-                m_WaveInfoOut.channels_number = 2;    // Special case for debugging in WebRTC scenario
-                m_WaveHeader.Populate(&m_WaveInfoOut, 0xFFFFFFFF);
-                m_pDumpOutFile->WriteBlock(&m_WaveHeader, m_WaveHeader.GetHeaderSize());
-                m_WaveInfoOut.channels_number = 1;    // Special case for debugging in WebRTC scenario
-                m_WaveHeader.Populate(&m_WaveInfoOut, 0xFFFFFFFF);
+            if (dump_out_file_) {
+                wav_info_.channels_number = 2;    // Special case for debugging in WebRTC scenario
+                wav_header_.Populate(&wav_info_, 0xFFFFFFFF);
+                dump_out_file_->WriteBlock(&wav_header_, wav_header_.GetHeaderSize());
+                wav_info_.channels_number = 1;    // Special case for debugging in WebRTC scenario
+                wav_header_.Populate(&wav_info_, 0xFFFFFFFF);
             }
 #endif
-            m_pMempool->UpdateReadPtr(m_nDataOffset);
-            m_nDataSize += m_nDataOffset;
+            mem_pool_->UpdateReadPtr(data_offset_);
+            total_data_size_ += data_offset_;
             // 30ms as one audio frame
-            frame_size = m_WaveInfoOut.channels_number *
-                         m_WaveInfoOut.sample_rate * 3 *
-                         (m_WaveInfoOut.resolution >> 3) / 50;
+            frame_size = wav_info_.channels_number *
+                         wav_info_.sample_rate * 3 *
+                         (wav_info_.resolution >> 3) / 50;
             APP_TRACE_DEBUG("AudioPCMReader[%p]: frame_size = %d\n", this, frame_size);
             buffer_size = (mem_size < frame_size) ? mem_size : frame_size;
-            // allocate memory for audio payload
+            // allocate memory for audio payload.
             for (i = 0; i < AUDIO_OUTPUT_QUEUE_SIZE; i++) {
-                m_Output[i].payload = reinterpret_cast<unsigned char*>
-                                      (malloc(frame_size + sizeof(WaveHeader)));
-                if (!m_Output[i].payload) {
+                // For G.711 inputs, the output frame size should be (frame_size * 2) after decoded.
+                switch (dec_type_) {
+#ifdef ENABLE_AUDIO_CODEC
+                case STREAM_TYPE_AUDIO_ALAW:
+                case STREAM_TYPE_AUDIO_MULAW:
+                    output_payload_[i].payload = reinterpret_cast<unsigned char*>
+                                                 (malloc(frame_size * 2 + sizeof(WaveHeader)));
+                    break;
+#endif
+                case STREAM_TYPE_AUDIO_PCM:
+                default:
+                    output_payload_[i].payload = reinterpret_cast<unsigned char*>
+                                                 (malloc(frame_size + sizeof(WaveHeader)));
+                    break;
+                }
+                if (!output_payload_[i].payload) {
                     printf("AudioPCMReader[%p]: Failed to allocate memory for payload!\n", this);
                     continue;
                 }
-                m_Output[i].payload_length  = 0;
-                m_output_queue.Push(m_Output[i]);
+                output_payload_[i].payload_length  = 0;
+                output_queue_.Push(output_payload_[i]);
             }
         }
 
         // step 3: check if there is free buffer for decoded wav.
-        if (m_output_queue.Pop(payload_out) == false || (NULL == payload_out.payload)) {
+        if (output_queue_.Pop(payload_out) == false || (NULL == payload_out.payload)) {
             APP_TRACE_INFO("There is no empty buffer for PCM reader(%p).\n", this);
             usleep(10 * 1000);
             continue;
         }
 
         // step 4: get PCM frame data.
-        payload_in.payload = m_pMempool->GetReadPtr();
+        payload_in.payload = mem_pool_->GetReadPtr();
         payload_in.payload_length = buffer_size;
         data_consumed = 0;
-        ret = PCMRead(&payload_out, &payload_in, isFirstPacket, &data_consumed);
+        ret = PCMRead(&payload_out, &payload_in, is_first_packet, &data_consumed);
         if (ret == -1) {
             printf("AudioPCMReader[%p]: PCMRead error, return.\n", this);
             buf.payload = NULL;
@@ -197,8 +212,8 @@ int AudioPCMReader::HandleProcess()
             break;
         }
 #ifdef DUMP_AUDIO_PCM_INPUT
-        if (m_pDumpOutFile) {
-            m_pDumpOutFile->WriteBlock(m_pMempool->GetReadPtr(), buffer_size);
+        if (dump_out_file_) {
+            dump_out_file_->WriteBlock(mem_pool_->GetReadPtr(), buffer_size);
         }
 #endif
         frame_count++;
@@ -209,9 +224,9 @@ int AudioPCMReader::HandleProcess()
             frame_count = 0;
         }
 
-        m_nDataSize += data_consumed;
-        m_pMempool->UpdateReadPtr(data_consumed);
-        isFirstPacket = false;
+        total_data_size_ += data_consumed;
+        mem_pool_->UpdateReadPtr(data_consumed);
+        is_first_packet = false;
 
         // step 4: send decoded stream to next element
         buf.payload = payload_out.payload;
@@ -224,47 +239,102 @@ int AudioPCMReader::HandleProcess()
     return 0;
 }
 
-int AudioPCMReader::ParseWAVHeader(AudioPayload *pIn)
+int AudioPCMReader::ParseWAVHeader(AudioPayload *payload_in)
 {
-    m_nDataOffset = m_WaveHeader.Interpret(pIn->payload, &m_WaveInfoOut, pIn->payload_length);
-    if (m_nDataOffset <= 0) {
+    data_offset_ = wav_header_.Interpret(payload_in->payload, &wav_info_, payload_in->payload_length);
+    if (data_offset_ <= 0) {
         printf("AudioPCMReader[%p]: Invalid or unsupported wav format! DataOffset(%d)\n",
                this,
-               m_nDataOffset);
+               data_offset_);
         return -1;
     }
-    unsigned int inputDataSize = pIn->payload_length - m_nDataOffset;
-    // Create a RIFF header to prepend to the PCM samples
-    m_WaveHeader.Populate(&m_WaveInfoOut, inputDataSize);
+
     printf("AudioPCMReader[%p] %s: channel:sample_frequency:bit_per_sample:channel_mask is %d:%d:%d:%d\n",
            this,
            __FUNCTION__,
-           m_WaveInfoOut.channels_number,
-           m_WaveInfoOut.sample_rate,
-           m_WaveInfoOut.resolution,
-           m_WaveInfoOut.channel_mask);
+           wav_info_.channels_number,
+           wav_info_.sample_rate,
+           wav_info_.resolution,
+           wav_info_.channel_mask);
+
+    switch (wav_info_.format_tag) {
+#ifdef ENABLE_AUDIO_CODEC
+    case WAVE_FORMAT_ALAW:
+        dec_type_ = STREAM_TYPE_AUDIO_ALAW;
+        for (int i = 0; i < 256; i++) {
+            g711_table_[i] = alaw2linear(i);
+        }
+        printf("AudioPCMReader[%p]: input format is G.711 A-Law\n", this);
+        break;
+    case WAVE_FORMAT_MULAW:
+        dec_type_ = STREAM_TYPE_AUDIO_MULAW;
+        for (int i = 0; i < 256; i++) {
+            g711_table_[i] = ulaw2linear(i);
+        }
+        printf("AudioPCMReader[%p]: input format is G.711 Mu-Law\n", this);
+        break;
+#endif
+    case WAVE_FORMAT_PCM:
+    default:
+        dec_type_ = STREAM_TYPE_AUDIO_PCM;
+        printf("AudioPCMReader[%p]: input format is Linear PCM\n", this);
+        break;
+    }
+    // Set the output wav format to PCM.
+    wav_info_.format_tag = WAVE_FORMAT_PCM;
+    wav_info_.resolution = 16;
+
+    unsigned int input_data_size = payload_in->payload_length - data_offset_;
+    // Create a RIFF header to prepend to the PCM samples
+    wav_header_.Populate(&wav_info_, input_data_size);
 
     return 0;
 }
 
 // PCMRead: Generate PCM frame
-int AudioPCMReader::PCMRead(AudioPayload *pOut, AudioPayload *pIn, bool isFirstPacket, unsigned int* DataConsumed)
+int AudioPCMReader::PCMRead(AudioPayload *payload_out, AudioPayload *payload_in, bool is_first_packet, unsigned int* data_consumed)
 {
-    unsigned char *inputData;
-    unsigned int inputDataSize;
+    unsigned char *input_data;
+    unsigned int input_data_size;
+    short *output_data;
 
-    inputData = pIn->payload;
-    inputDataSize = pIn->payload_length;
+    input_data = payload_in->payload;
+    input_data_size = payload_in->payload_length;
+    output_data = (short *)(payload_out->payload + wav_header_.GetHeaderSize());
 
-    if ((inputData) && (inputDataSize > 0)) {
-        // Assemble RIFF header and data into a new PayloadInfo
-        pOut->payload_length = m_WaveHeader.GetHeaderSize() + inputDataSize;
-        memcpy(pOut->payload, (unsigned char *) &m_WaveHeader, m_WaveHeader.GetHeaderSize());
-        memcpy(pOut->payload + m_WaveHeader.GetHeaderSize(), inputData, inputDataSize);
-        APP_TRACE_INFO("%s: The wave %p header size is %d\n", __FUNCTION__, &m_WaveHeader, m_WaveHeader.GetHeaderSize());
-        pOut->isFirstPacket = isFirstPacket;
+    if ((input_data) && (input_data_size > 0)) {
+        // Put RIFF header to payload out.
+        memcpy(payload_out->payload, (unsigned char *) &wav_header_, wav_header_.GetHeaderSize());
+        switch (dec_type_) {
+#ifdef ENABLE_AUDIO_CODEC
+        case STREAM_TYPE_AUDIO_ALAW:
+        case STREAM_TYPE_AUDIO_MULAW:
+            unsigned char *sample_g711;
+            short *sample_raw_pcm;
+            int num, value;
+            // Set the payload length.
+            payload_out->payload_length = wav_header_.GetHeaderSize() + input_data_size * 2;
+            // G.711 a-law and mu-law decoding.
+            sample_g711 = input_data;
+            sample_raw_pcm = output_data;
+            num = input_data_size;
+            for (; num > 0; num--) {
+                value = *sample_g711++;
+                *sample_raw_pcm++ = g711_table_[value];
+            }
+            break;
+#endif
+        case STREAM_TYPE_AUDIO_PCM:
+        default:
+            payload_out->payload_length = wav_header_.GetHeaderSize() + input_data_size;
+            // Put input raw PCM data to payload out.
+            memcpy(output_data, input_data, input_data_size);
+            break;
+        }
+        APP_TRACE_INFO("%s: The wave %p header size is %d\n", __FUNCTION__, &wav_header_, wav_header_.GetHeaderSize());
+        payload_out->isFirstPacket = is_first_packet;
     }
 
-    *DataConsumed = pIn->payload_length;
+    *data_consumed = payload_in->payload_length;
     return 0;
 }

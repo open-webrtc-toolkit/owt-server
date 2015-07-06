@@ -44,6 +44,8 @@ typedef struct {
     unsigned int audio_vad_prob;
     unsigned int audio_channel_number_in;
     unsigned int audio_channel_number;
+    unsigned int audio_bit_depth_in;
+    unsigned int audio_bit_depth_mix;
     WaveHeader wav_header_in;
     Info wav_info_in;
     WaveHeader wav_header_out;
@@ -55,10 +57,12 @@ typedef struct {
     short *buf_front_resample;
     short *buf_back_resample;
     short *buf_mix;
-    int mix_buf_size;
     short *buf_channel_convert;
+    short *buf_bit_depth_conv_front;
+    short *buf_bit_depth_conv_back;
     int *buf_psd;
     int psd_buf_size;
+    int mix_buf_size;
 } APPInputBuffers;
 
 typedef struct {
@@ -83,6 +87,9 @@ typedef struct {
     SpeexResamplerState *front_end_resampler;
     SpeexResamplerState *back_end_resampler;
     SpeexEchoState *echo_state;
+#ifdef DUMP_APP_OUT_PCM
+    FILE *dump_file;
+#endif
 } APPMediaInput;
 
 typedef struct {
@@ -110,18 +117,6 @@ public:
 
     bool Destroy();
 
-    int EnableVAD(bool enable, unsigned int vad_prob_start_value);
-
-    int EnableAGC(bool enable, unsigned int agc_level_value);
-
-    int EnableFrontEndDenoise(bool enable);
-    int EnableBackEndDenoise(bool enable);
-
-    int EnableFrontEndResample(bool enable, unsigned int new_sample_rate_value);
-    int EnableBackEndResample(bool enable, unsigned int new_sample_rate_value);
-
-    int EnableMixing(bool enable);
-
     void* GetActiveInputHandle();
 
     int GetInputActiveStatus(void *input_handle);
@@ -139,17 +134,20 @@ private:
     int StreamingModeHandleProcess();
     bool ProcessInput();
     int ComposeAudioFrame();
-    int FrontEndProcessRun(APPMediaInput *media_input, unsigned int input_id, AudioPayload *payload);
-    int BackEndProcessRun(APPMediaInput *media_input, unsigned int input_id, AudioPayload *payload);
-    int FrontEndResample(APPMediaInput *media_input, unsigned int input_id, AudioPayload *payload);
-    int BackEndResample(APPMediaInput *media_input, unsigned int input_id, AudioPayload *payload);
-    int ChannelNumberConvert(APPMediaInput *media_input, unsigned int input_id, AudioPayload *payload);
+    int FrontEndProcessRun(APPMediaInput *media_input, AudioPayload *payload);
+    int BackEndProcessRun(APPMediaInput *media_input, AudioPayload *payload);
+    int FrontEndResample(APPMediaInput *media_input, AudioPayload *payload);
+    int BackEndResample(APPMediaInput *media_input, AudioPayload *payload);
+    int ChannelNumberConvert(APPMediaInput *media_input, AudioPayload *payload);
+    int FrontEndBitDepthConvert(APPMediaInput *media_input, AudioPayload *payload);
+    int BackEndBitDepthConvert(APPMediaInput *media_input, AudioPayload *payload);
     int AudioMix(APPMediaInput *media_input, MediaBuf &buffer, int input_id);
     int UpdateMediaInput(APPMediaInput *media_input, MediaBuf &buf);
     int PrepareParameter(APPMediaInput *media_input, MediaBuf &buffer, unsigned int input_id);
     void ReleaseBuffer(MediaBuf *out);
     int SpeechCheck(CheckContext *ctx, MediaBuf &buffer);
     void VADSort();
+    void ReleaseMediaInput(APPMediaInput *media_input);
 
     std::list<APPMediaInput *> media_input_list_;
     APPMediaInput *host_input_;
@@ -160,8 +158,8 @@ private:
     int active_input_id_;
     unsigned long long total_frame_count_;
     unsigned char *buf_silence_;
-    VADSortContext vad_sort_ctx_[MAX_APP_INPUT];
-    FILE **file_dump_app_;
+    VADSortContext *vad_sort_ctx_;
+    MediaBuf *out_buf_;
 };
 
 #endif

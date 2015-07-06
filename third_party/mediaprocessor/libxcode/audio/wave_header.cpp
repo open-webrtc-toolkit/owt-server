@@ -64,22 +64,23 @@ struct wav_header_ex {
 
 bool WaveHeader::Populate(Info* m_info, unsigned long long m_data_size)
 {
-    int bits = 16;
+    int bits = m_info->resolution;
     int nCh = m_info->channels_number;
-    int CntFrameMulLenFrame = m_data_size / nCh / 2;
+    int CntFrameMulLenFrame = m_data_size / nCh >> 1;
+    int nType = m_info->format_tag;
 
     this->id_riff = BIG_ENDIAN_SWAP32(0x46464952);
-    this->len_riff = BIG_ENDIAN_SWAP32(sizeof(WaveHeader) + ((CntFrameMulLenFrame) << 1) * nCh - 8);
+    this->len_riff = BIG_ENDIAN_SWAP32(sizeof(WaveHeader) + (CntFrameMulLenFrame << 1) * nCh - 8);
 
     this->id_chuck = BIG_ENDIAN_SWAP32(0x45564157);
     this->fmt = BIG_ENDIAN_SWAP32(0x20746D66);
     this->len_chuck = BIG_ENDIAN_SWAP32(0x00000010);
 
-    this->type = BIG_ENDIAN_SWAP16(0x0001);
+    this->type = BIG_ENDIAN_SWAP16((uint16_t)nType);
     this->channels = BIG_ENDIAN_SWAP16((uint16_t)nCh);
     this->freq = BIG_ENDIAN_SWAP32((unsigned int)(m_info->sample_rate));
-    this->bytes = BIG_ENDIAN_SWAP32((m_info->sample_rate << 1) * nCh);
-    this->align = BIG_ENDIAN_SWAP16((uint16_t)((nCh * bits) / 8));
+    this->bytes = BIG_ENDIAN_SWAP32(m_info->sample_rate * nCh * (bits >> 3));
+    this->align = BIG_ENDIAN_SWAP16((uint16_t)(nCh * bits >> 3));
     this->bits = BIG_ENDIAN_SWAP16((uint16_t)bits);
 
     this->id_data = BIG_ENDIAN_SWAP32(0x61746164);

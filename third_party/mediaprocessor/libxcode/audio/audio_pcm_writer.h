@@ -25,18 +25,20 @@ public:
 private:
     AudioPCMWriter();
     void Release();
-    int PCMWrite(AudioPayload* pIn);
+    int PCMWrite(AudioPayload* payload_in);
 protected:
-    Stream*                       m_pStream;
-    AudioStreamInfo               m_StreamInfo;
-    Info                          m_WaveInfo;
-    WaveHeader                    m_WaveHeader;
-    Stream*                       m_pDumpOutFile;
-    unsigned long long            m_nDataSize;
-    unsigned int                  m_nFrameCount;
-    Measurement                   m_Measure;
-    unsigned long                 m_nCurTime;
-    unsigned long                 m_nLastTime;
+    Stream*                       stream_writer_;
+    AudioStreamInfo               stream_info_;
+    Info                          wav_info_;
+    WaveHeader                    wav_header_;
+    Stream*                       dump_output_;
+    unsigned long long            data_size_;
+    unsigned int                  frame_count_;
+    Measurement                   measure_;
+    unsigned long                 cur_time_;
+    unsigned long                 start_time_;
+    StreamType                    enc_type_;
+    unsigned char                 *buf_enc_;
 };
 
 #endif // __AUDIOPCMWRITER_H__

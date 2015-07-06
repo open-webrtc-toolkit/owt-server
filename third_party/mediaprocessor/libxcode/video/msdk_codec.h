@@ -8,6 +8,9 @@
 #include <stdio.h>
 #include <mfxvideo++.h>
 #include <mfxplugin++.h>
+#ifdef MFX_DISPATCHER_EXPOSED_PREFIX
+#include <mfxvp8.h>
+#endif
 
 #ifdef MSDK_FEI
 #include <mfxfei.h>
@@ -24,10 +27,16 @@
 #include "general_allocator.h"
 
 #ifdef ENABLE_VA
+#include "base/frame_meta.h"
+#endif
+
+#if defined(ENABLE_VA) || defined(LIBVA_X11_SUPPORT) || defined(LIBVA_DRM_SUPPORT)
 #include "vaapi_device.h"
 #endif
 
+#ifndef MFX_DISPATCHER_EXPOSED_PREFIX
 #define MFX_CODEC_VP8 101
+#endif
 #define MFX_CODEC_STRING 102
 #define MFX_CODEC_PICTURE 103
 // number of video enhancement filters (denoise, procamp, detail, video_analysis, image stab)
@@ -60,13 +69,20 @@ struct iTask {
 };
 #endif
 
+#ifdef ENABLE_VA
+typedef enum {
+    FORMAT_TXT,
+    FORMAT_VECTOR
+} VA_OUTPUT_FORMAT;
+#endif
+
 typedef enum {
     ELEMENT_DECODER,
     ELEMENT_ENCODER,
     ELEMENT_VPP,
     ELEMENT_VA,
-    ELEMENT_VP8_DEC,
-    ELEMENT_VP8_ENC,
+    ELEMENT_VP8_DEC, //vp8 sw decoder
+    ELEMENT_VP8_ENC, //vp8 sw encoder
     ELEMENT_SW_DEC,
     ELEMENT_SW_ENC,
     ELEMENT_YUV_WRITER,
@@ -110,6 +126,9 @@ typedef struct {
     bool bDump;
     int  va_interval;
     VAType va_type;
+    VA_OUTPUT_FORMAT output_format;
+#endif
+#if defined(LIBVA_DRM_SUPPORT) || defined(LIBVA_X11_SUPPORT)
     CHWDevice *hwdev;
 #endif
 #ifdef MSDK_FEI
@@ -167,6 +186,11 @@ public:
      */
     virtual bool Init(void *cfg, ElementMode element_mode);
 
+#ifdef ENABLE_VA
+    int SetVARegion(FrameMeta* frame);
+    int Step(FrameMeta* input);
+#endif
+
     int SetVPPCompRect(BaseElement *element, VppRect *rect);
 
     ElementType GetCodecType();
@@ -183,8 +207,7 @@ public:
 
     int ConfigVppCombo(ComboType combo_type, void *master_handle);
 
-    //If vpp layout is set as COMBO_CUSTOM, the inputs are not displayed before this API is called with bApply=true
-    int SetCompRegion(void *dec_dis, Region &info, bool bApply);
+    int SetCompRegion(const CustomLayout *layout);
 
     int SetBgColor(BgColorInfo *bgColorInfo);
 
@@ -246,7 +269,6 @@ private:
     mfxFrameAllocResponse m_mfxDecResponse;  // memory allocation response for decoder
     std::vector<mfxExtBuffer *> m_DecExtParams;
     bool is_eos_;
-    bool refresh_flag_;
 
     // Encoder
     MFXVideoENCODE *mfx_enc_;
@@ -272,9 +294,7 @@ private:
     bool comp_info_change_;    //denote whether info for composition changed
     unsigned long vppframe_num_;
     ComboType combo_type_;
-    std::map<MediaPad *, Region> dec_region_map_; //for COMBO_CUSTOM mode only. Apply to
-                                                  //vpp_comp_map_ if(apply_region_info_flag_)
-    bool apply_region_info_flag_; //For COMBO_CUSTOM only, indicate Region infos are ready to apply
+    CustomLayout dec_region_list_; //for COMBO_CUSTOM mode only.
     void *combo_master_;
     bool reinit_vpp_flag_;
     bool res_change_flag_;
@@ -285,11 +305,6 @@ private:
     //res of pre-allocated surfaces, following res change can't exceed it.
     unsigned int frame_width_;
     unsigned int frame_height_;
-    //In COMBO_CUSTOM mode, when res changes, the following 2 parameters are needed to
-    //calculate the new comp info for every streams. "Region"(s) in dec_region_map_ may be under
-    //updating and can't be used yet.
-    unsigned int old_out_width_;
-    unsigned int old_out_height_;
     BgColorInfo bg_color_info;
 
 #ifdef MSDK_FEI
@@ -319,8 +334,12 @@ private:
 #ifdef ENABLE_VA
     // VA plugin
     MFXGenericPlugin *user_va_;
-    CHWDevice *m_hwdev;
     mfxExtBuffer **extbuf_;
+    VA_OUTPUT_FORMAT output_format_;
+    FrameMeta* in_;
+#endif
+#if defined(LIBVA_DRM_SUPPORT) || defined(LIBVA_X11_SUPPORT)
+    CHWDevice *m_hwdev;
 #endif
     void *aux_param_;
     int aux_param_size_;
@@ -356,6 +375,8 @@ private:
     mfxStatus InitVpp(MediaBuf &buf);
 #ifdef ENABLE_VA
     mfxStatus InitVA(MediaBuf &buf);
+#endif
+#if defined(LIBVA_DRM_SUPPORT) || defined(LIBVA_X11_SUPPORT)
     mfxStatus InitRender(MediaBuf &buf);
 #endif
     void UpdateMemPool();
@@ -378,6 +399,8 @@ private:
     int HandleProcessVA();
     int ProcessChainVA(MediaBuf &buf);
     mfxStatus DoingVA(mfxFrameSurface1 *in_surf);
+#endif
+#if defined(LIBVA_DRM_SUPPORT) || defined(LIBVA_X11_SUPPORT)
     int HandleProcessRender();
     int ProcessChainRender(MediaBuf &buf);
     mfxStatus DoingRender(mfxFrameSurface1 *in_surf);

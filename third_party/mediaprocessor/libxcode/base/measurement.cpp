@@ -150,10 +150,16 @@ codecdata* Measurement::GetCodecData(StampType st, void *id)
     return &(cgrp->back());
 }
 
-void Measurement::SetElementInfo(StampType st, void *hdl, pipelineinfo *pif)
+int Measurement::SetElementInfo(StampType st, void *hdl, pipelineinfo *pif)
 {
     codecdata *codec_d = GetCodecData(st, hdl);
+    if(codec_d == NULL) {
+        MSMT_TRACE_ERROR("codec time stamp data allocate error.");
+        return MEASUREMNT_ERROR_CODECDATA;
+    }
+
     codec_d->pinfo = *pif;
+    return MEASUREMNT_ERROR_NONE;
 }
 
 int Measurement::TimeStpStart(StampType st, void *hdl)

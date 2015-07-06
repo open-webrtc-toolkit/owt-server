@@ -39,9 +39,11 @@ enum StampType {
     ENC_FRAME_TIME_STAMP = 1, //record time cost of each frame
     VPP_FRAME_TIME_STAMP,
     DEC_FRAME_TIME_STAMP,
+    VA_FRAME_TIME_STAMP,
     ENC_ENDURATION_TIME_STAMP, //the enduration of the element
     VPP_ENDURATION_TIME_STAMP, //the enduration of the element
     DEC_ENDURATION_TIME_STAMP, //the enduration of the element
+    VA_ENDURATION_TIME_STAMP,
     ENC_INIT_TIME_STAMP,
     VPP_INIT_TIME_STAMP,
     DEC_INIT_TIME_STAMP
@@ -94,7 +96,7 @@ public:
 
     int TimeStpFinish(StampType st, void *hdl);
 
-    void SetElementInfo(StampType st, void *hdl, pipelineinfo *pif);
+    int SetElementInfo(StampType st, void *hdl, pipelineinfo *pif);
 
     //show the performance data, or do something user wanted with the data
     void ShowPerformanceInfo();
