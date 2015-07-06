@@ -103,7 +103,7 @@ void Mixer::onPositiveAudioSources(std::vector<uint32_t>& audioSources)
     m_videoMixer->promoteSources(videoSources);
 }
 
-bool Mixer::addExternalOutput(const std::string& configParam)
+bool Mixer::addExternalOutput(const std::string& configParam, woogeen_base::EventRegistry* callback)
 {
     if (configParam != "" && configParam != "undefined") {
         boost::property_tree::ptree pt;
@@ -111,7 +111,7 @@ bool Mixer::addExternalOutput(const std::string& configParam)
         boost::property_tree::read_json(is, pt);
         const std::string id = pt.get<std::string>("id", "");
 
-        woogeen_base::MediaMuxer* muxer = MediaMuxerFactory::createMediaMuxer(id, configParam);
+        woogeen_base::MediaMuxer* muxer = MediaMuxerFactory::createMediaMuxer(id, configParam, callback);
         if (muxer)
             return muxer->setMediaSource(m_videoMixer.get(), m_audioMixer.get());
     }

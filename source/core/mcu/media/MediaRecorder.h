@@ -38,7 +38,7 @@ class MediaRecorder : public woogeen_base::MediaMuxer {
     DECLARE_LOGGER();
 
 public:
-    MediaRecorder(const std::string& recordUrl, int snapshotInterval);
+    MediaRecorder(const std::string& recordUrl, int snapshotInterval, woogeen_base::EventRegistry* callback = nullptr);
     ~MediaRecorder();
 
     // MediaMuxer interface

@@ -301,7 +301,7 @@ int WebRTCGateway::setAudioCodec(const std::string& codecName, unsigned int cloc
     return m_publisher ? m_publisher->setAudioCodec(codecName, clockRate) : -1;
 }
 
-bool WebRTCGateway::addExternalOutput(const std::string& configParam)
+bool WebRTCGateway::addExternalOutput(const std::string& configParam, woogeen_base::EventRegistry* callback)
 {
     // Create an ExternalOutput here
     if (configParam != "" && configParam != "undefined") {
@@ -313,7 +313,7 @@ bool WebRTCGateway::addExternalOutput(const std::string& configParam)
         std::map<std::string, SubscriberInfo>::iterator it = m_subscribers.find(outputId);
         if (it == m_subscribers.end()) {
             // Create or fetch from MediaMuxerFactory
-            woogeen_base::MediaMuxer* muxer = MediaMuxerFactory::createMediaMuxer(outputId, configParam);
+            woogeen_base::MediaMuxer* muxer = MediaMuxerFactory::createMediaMuxer(outputId, configParam, callback);
             if (muxer) {
                 // Create an external output, which will be managed as subscriber during its lifetime
                 ExternalOutput* externalOutput = new ExternalOutput(muxer);

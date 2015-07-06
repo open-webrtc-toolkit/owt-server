@@ -123,7 +123,7 @@ public:
      * Adds the external output
      * @param configParam the configuration of the external output
      */
-    DLL_PUBLIC virtual bool addExternalOutput(const std::string& configParam) { return false; }
+    DLL_PUBLIC virtual bool addExternalOutput(const std::string& configParam, EventRegistry* callback = nullptr) { return false; }
     /**
      * Eliminates the external output given its output id
      * @param id the output id for the external output

@@ -35,8 +35,9 @@ namespace mcu {
 
 DEFINE_LOGGER(RTSPMuxer, "mcu.media.RTSPMuxer");
 
-RTSPMuxer::RTSPMuxer(const std::string& url)
-    : m_videoSource(nullptr)
+RTSPMuxer::RTSPMuxer(const std::string& url, woogeen_base::EventRegistry* cb)
+    : woogeen_base::MediaMuxer(cb)
+    , m_videoSource(nullptr)
     , m_audioSource(nullptr)
     , m_context(nullptr)
     , m_resampleContext(nullptr)
@@ -313,17 +314,21 @@ void RTSPMuxer::loop()
             if (m_audioStream && m_videoStream) {
                 if (!(m_context->oformat->flags & AVFMT_NOFILE)) {
                     if (avio_open(&m_context->pb, m_context->filename, AVIO_FLAG_WRITE) < 0) {
-                        ELOG_ERROR("open output file failed");
+                        ELOG_ERROR("avio_open failed");
                         m_status = woogeen_base::MediaMuxer::Context_ERROR;
+                        callback("cannot open output file");
                         return;
                     }
                 }
                 av_dump_format(m_context, 0, m_context->filename, 1);
                 if (avformat_write_header(m_context, nullptr) < 0) {
                     m_status = woogeen_base::MediaMuxer::Context_ERROR;
+                    callback("cannot setup connection");
+                    ELOG_ERROR("avformat_write_header failed");
                     return;
                 }
                 m_status = woogeen_base::MediaMuxer::Context_READY;
+                callback("success");
                 ELOG_DEBUG("context ready");
             } else {
                 usleep(1000);
@@ -334,6 +339,7 @@ void RTSPMuxer::loop()
             break;
         case woogeen_base::MediaMuxer::Context_ERROR:
         default:
+            callback("init failed");
             ELOG_ERROR("loop exit on error");
             return;
         }
@@ -360,6 +366,7 @@ void RTSPMuxer::loop()
             }
         }
     }
+    callback("unexpected error"); // fatal guard: make sure callback would be executed eventually.
 }
 
 void RTSPMuxer::addAudioStream(enum AVCodecID codec_id, int nbChannels, int sampleRate)
