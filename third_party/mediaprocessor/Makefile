@@ -1,7 +1,7 @@
 # <COPYRIGHT_TAG>
 
 DIRS = imports libxcode
-SRCS = libxcode
+SRCS = libxcode app
 
 ifeq (README, $(wildcard README))
 	TARGET=help
@@ -72,7 +72,7 @@ asta:
 
 vcsa:
 	@for dir in $(DIRS); \
-		do $(MAKE) -C $$dir vcsa; \
+		do $(MAKE) -C $$dir vcsa RENDER_ENABLE=1 LIBDISPATCH_ENABLE=1; \
 	done
 
 adec:
@@ -87,7 +87,7 @@ vcsa_audio:
 
 vcsa_video:
 	@for dir in $(DIRS); \
-		do $(MAKE) -C $$dir vcsa_video; \
+		do $(MAKE) -C $$dir vcsa_video RENDER_ENABLE=1 LIBDISPATCH_ENABLE=1; \
 	done
 
 xcoder:

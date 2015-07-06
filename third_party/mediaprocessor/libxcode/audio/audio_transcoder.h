@@ -45,20 +45,20 @@ public:
 
     /**
      * \brief Initialise transcoder object.
-     * \param decCfg optional pointer that will pe passed to Decoder
+     * \param dec_cfg optional pointer that will pe passed to Decoder
      * initialisation function. Can contain decoder configuration.
-     * \param encCfg optional pointer that will pe passed to Encoder
+     * \param enc_cfg optional pointer that will pe passed to Encoder
      *  initialisation function. Can contain encoder configuration.
      * \param vppCfg optional pointer that will pe passed to VPP
      *  initialisation function. Can contain vpp configuration.
      */
-    void* Init(void *decCfg, void *appCfg, void *encCfg);
+    void* Init(void *dec_cfg, void *app_cfg, void *enc_cfg);
 
     /**
      * \brief attach input function
      * returns decoder handle
      */
-    void* AttachInputStream(void *decCfg);
+    void* AttachInputStream(void *dec_cfg);
 
     /**
      * \brief detach input function
@@ -69,7 +69,7 @@ public:
      * \brief attach output function
      * returns encoder handle
      */
-    void* AttachOutputStream(void *encCfg);
+    void* AttachOutputStream(void *enc_cfg);
 
     /**
      * \brief detach output function
@@ -119,18 +119,17 @@ private:
         return *this;
     }
 
-    std::list<Stream *>      mInputStream_list_;
-    std::list<MemPool *>     mMemPool_list_;
-    std::list<BaseElement *> mDecoder_list_;
-    std::list<Stream *>      mOutputStream_list_;
-    std::list<BaseElement *> mEncoder_list_;
-
-    BaseElement*         mAPP_;
-
-    pthread_mutex_t xcoder_mutex_;  /**< \brief API entry mutex*/
-    bool is_running_;               /**< \brief xcoder running status*/
-    bool is_from_file_;
-    bool done_init_;
+    std::list<Stream *>      input_stream_list_;
+    std::list<MemPool *>     mem_pool_list_;
+    std::list<BaseElement *> decoder_list_;
+    std::list<Stream *>      output_stream_list_;
+    std::list<BaseElement *> encoder_list_;
+    BaseElement              *element_app_;
+    BaseElement              *element_dec_;
+    pthread_mutex_t          xcoder_mutex_;  /**< \brief API entry mutex*/
+    bool                     is_running_;    /**< \brief xcoder running status*/
+    bool                     is_from_file_;
+    bool                     done_init_;
 };
 
 #endif /* AUDIO_TRANSCODER_H_ */

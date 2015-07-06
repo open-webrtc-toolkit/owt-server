@@ -10,6 +10,7 @@
 #include "base/partially_linear_bitrate.h"
 #include "msdk_codec.h"
 #include "vaapi_allocator.h"
+#include "mfxplugin.h"
 
 #ifdef ENABLE_VPX_CODEC
 #include "vp8_decode_plugin.h"
@@ -119,15 +120,15 @@ MSDKCodec::MSDKCodec(ElementType type, MFXVideoSession *session, MFXFrameAllocat
     combo_master_ = NULL;
     reinit_vpp_flag_ = false;
     res_change_flag_ = false;
-    apply_region_info_flag_ = false;
     stream_cnt_ = 0;
     string_cnt_ = 0;
     pic_cnt_ = 0;
     eos_cnt = 0;
     is_eos_ = false;
-    refresh_flag_ = false;
 #ifdef ENABLE_VA
     user_va_ = NULL;
+    output_format_ = FORMAT_TXT;
+    in_ = NULL;
 #endif
 #ifdef ENABLE_VPX_CODEC
     user_dec_ = NULL;
@@ -179,8 +180,6 @@ MSDKCodec::MSDKCodec(ElementType type, MFXVideoSession *session, MFXFrameAllocat
     comp_info_change_ = false;
     frame_width_ = 0;
     frame_height_ = 0;
-    old_out_width_ = 0;
-    old_out_height_ = 0;
     memset(&bg_color_info, 0, sizeof(bg_color_info));
     m_nFramesProcessed = 0;
     m_bMarkLTR = false;
@@ -275,6 +274,13 @@ MSDKCodec::~MSDKCodec()
             mfx_enc_ = NULL;
         }
 
+#ifdef MFX_DISPATCHER_EXPOSED_PREFIX
+        //to unload vp8 encode plugin
+        if (mfx_video_param_.mfx.CodecId == MFX_CODEC_VP8) {
+            mfxPluginUID uid = MFX_PLUGINID_VP8E_HW;
+            MFXVideoUSER_UnLoad(*mfx_session_, &uid);
+        }
+#endif
 #ifdef ENABLE_VPX_CODEC
     } else if (ELEMENT_VP8_ENC == element_type_) {
         if (user_enc_) {
@@ -321,15 +327,28 @@ MSDKCodec::~MSDKCodec()
         if (element_type_ != ELEMENT_DECODER && element_type_ != ELEMENT_STRING_DEC && element_type_ != ELEMENT_BMP_DEC) {
             assert(surface_pool_[i]->Data.Locked == 0);
         }
+#if ENABLE_VA
+        if (element_type_ == ELEMENT_VPP) {
+            mfxExtBuffer **ext_buf = surface_pool_[i]->Data.ExtParam;
+            VAPluginData* plugin_data = (VAPluginData*)(*ext_buf);
+            if (plugin_data) {
+                FrameMeta* out = plugin_data->Out;
+                if (out) {
+                    LIST_ROI::iterator it;
+                    for(it = out->ROIList.begin(); it != out->ROIList.end(); it++) {
+                        if (*it)
+                            delete *it;
+                    }
+                    out->ROIList.clear();
+                    delete out;
+                    out = NULL;
+                }
+                delete plugin_data;
+            }
+        }
+#endif
         delete surface_pool_[i];
         surface_pool_[i] = NULL;
-#if VA_ENABLE
-        mfxExtBuffer **ext_buf = surface_pool_[i]->ExtParam;
-        VAPluginData* plugin_data = (VAPluginData*)(*ext_buf);
-        unsigned int* vector = plugin_data->Vector;
-        delete vector;
-        delete plugin_data;
-#endif
     }
 
     if (surface_pool_) {
@@ -531,9 +550,15 @@ bool MSDKCodec::Init(void *cfg, ElementMode element_mode)
         mfx_video_param_.vpp.Out.FrameRateExtD = ele_param->VppParams.vpp.Out.FrameRateExtD;
         mfx_video_param_.AsyncDepth = 1;
 
+/*
         bg_color_info.Y = 0;
         bg_color_info.U = 128;
         bg_color_info.V = 128;
+*/
+        //workaround for CQ VCSD 100022500 - background color is not set correctly
+        bg_color_info.Y = 0;
+        bg_color_info.U = 0;
+        bg_color_info.V = 0;
 
 #ifdef ENABLE_VA
     }  else if (ELEMENT_VA == element_type_) {
@@ -547,6 +572,7 @@ bool MSDKCodec::Init(void *cfg, ElementMode element_mode)
         }
 
         output_stream_ = ele_param->output_stream;
+        output_format_ = ele_param->output_format;
         VAPluginParam *va_param;
         va_param = new VAPluginParam();
         va_param->bDump = ele_param->bDump;
@@ -555,10 +581,24 @@ bool MSDKCodec::Init(void *cfg, ElementMode element_mode)
         va_param->VaType = ele_param->va_type;
         aux_param_ = (void *)va_param;
         aux_param_size_ = sizeof(VAPluginParam);
+#endif
+#if defined(LIBVA_DRM_SUPPORT) || defined(LIBVA_X11_SUPPORT)
     }  else if (ELEMENT_RENDER == element_type_) {
         m_hwdev = ele_param->hwdev;
 #endif
     } else if (ELEMENT_ENCODER == element_type_) {
+#ifdef MFX_DISPATCHER_EXPOSED_PREFIX
+        //load vp8 hybrid encode plugin
+        if (ele_param->EncParams.mfx.CodecId == MFX_CODEC_VP8) {
+            mfxPluginUID uid = MFX_PLUGINID_VP8E_HW;
+            mfxStatus sts = MFXVideoUSER_Load(*mfx_session_, &uid, 1/*version*/);
+            assert(sts == MFX_ERR_NONE);
+            if (sts != MFX_ERR_NONE) {
+                printf("failed to load vp8 hybrid encode plugin\n");
+                return false;
+            }
+        }
+#endif
         mfx_enc_ = new MFXVideoENCODE(*mfx_session_);
         mfx_video_param_.mfx.CodecId = ele_param->EncParams.mfx.CodecId;
         mfx_video_param_.mfx.CodecProfile = ele_param->EncParams.mfx.CodecProfile;
@@ -759,18 +799,142 @@ int MSDKCodec::Recycle(MediaBuf &buf)
 
 int MSDKCodec::ProcessChainDecode()
 {
+#ifdef ENABLE_VA
+    mfxStatus sts = MFX_ERR_NONE;
+    MediaBuf buf;
+    MediaPad *srcpad = *(this->srcpads_.begin());
+    mfxSyncPoint syncpD;
+    mfxFrameSurface1 *pmfxOutSurface = NULL;
+
+    input_bs_.DataFlag = MFX_BITSTREAM_COMPLETE_FRAME;
+    // Preprae the bit stream for frame.
+    // check if the decoder initialized.
+    while (1) {
+        if (!codec_init_) {
+            if (measuremnt) {
+                measuremnt->GetLock();
+                measuremnt->TimeStpStart(DEC_INIT_TIME_STAMP, this);
+                measuremnt->RelLock();
+            }
+
+            sts = InitDecoder();
+
+            if (measuremnt) {
+                measuremnt->GetLock();
+                measuremnt->TimeStpFinish(DEC_INIT_TIME_STAMP, this);
+                measuremnt->RelLock();
+            }
+
+            if (MFX_ERR_NONE == sts) {
+                codec_init_ = true;
+                if (measuremnt) {
+                    measuremnt->GetLock();
+                    pipelineinfo einfo;
+                    einfo.mElementType = element_type_;
+                    einfo.mChannelNum = MSDKCodec::mNumOfDecChannels;
+                    MSDKCodec::mNumOfDecChannels++;
+                    if (input_mp_) {
+                        einfo.mInputName.append(input_mp_->GetInputName());
+                    }
+                    measuremnt->SetElementInfo(DEC_ENDURATION_TIME_STAMP, this, &einfo);
+                    measuremnt->RelLock();
+                }
+            } else {
+                printf("Decode create failed: %d\n", sts);
+                return -1;
+            }
+        }
+
+        UpdateBitStream();
+        // prepare the surface for the decoder.
+        int nIndex = 0;
+        nIndex = GetFreeSurfaceIndex(surface_pool_, num_of_surf_);
+        if (MFX_ERR_NOT_FOUND == nIndex) {
+            printf("Failed to get the output surface\n");
+            return -1;
+        }
+
+        sts = mfx_dec_->DecodeFrameAsync(&input_bs_, surface_pool_[nIndex],
+                                               &pmfxOutSurface, &syncpD);
+        UpdateMemPool();
+        if (MFX_ERR_NONE < sts && syncpD) {
+            sts = MFX_ERR_NONE;
+        }
+
+        if (MFX_ERR_NONE == sts) {
+            if (measuremnt) {
+                measuremnt->GetLock();
+                measuremnt->TimeStpFinish(DEC_FRAME_TIME_STAMP, this);
+                measuremnt->RelLock();
+            }
+            buf.msdk_surface = pmfxOutSurface;
+
+            if (buf.msdk_surface) {
+                mfxFrameSurface1 *msdk_surface =
+                       (mfxFrameSurface1 *)buf.msdk_surface;
+                msdk_surface->Data.Locked++;
+            }
+
+            buf.mWidth = mfx_video_param_.mfx.FrameInfo.CropW;
+            buf.mHeight = mfx_video_param_.mfx.FrameInfo.CropH;
+            buf.is_eos = 0;
+
+            if (m_bUseOpaqueMemory) {
+                buf.ext_opaque_alloc = &ext_opaque_alloc_;
+            }
+
+            sts = mfx_session_->SyncOperation(syncpD, 60000);
+
+            srcpad->PushBufToPeerPad(buf);
+            if (measuremnt) {
+                measuremnt->GetLock();
+                measuremnt->UpdateCodecNum();
+                measuremnt->RelLock();
+            }
+            break;
+        } else if (sts < MFX_ERR_NONE){
+            printf("return sts %d\n", sts);
+            break;
+        }
+    }
+    return 0;
+#else
     return -1;
+#endif
 }
+
+#ifdef ENABLE_VA
+int MSDKCodec::SetVARegion(FrameMeta* frame)
+{
+    //configure the analytics region.
+    in_ = frame;
+    return 0;
+}
+
+int MSDKCodec::Step(FrameMeta* input)
+{
+    int sts;
+    if (ELEMENT_DECODER == element_type_) {
+        sts = ProcessChainDecode();
+        return sts;
+    }
+    return 0;
+}
+#endif
 
 int MSDKCodec::SetVppCompParam(mfxExtVPPComposite *vpp_comp)
 {
     memset(vpp_comp, 0, sizeof(mfxExtVPPComposite));
     vpp_comp->Header.BufferId = MFX_EXTBUFF_VPP_COMPOSITE;
     vpp_comp->Header.BufferSz = sizeof(mfxExtVPPComposite);
-    vpp_comp->NumInputStream = (mfxU16)vpp_comp_map_.size();
     vpp_comp->Y = bg_color_info.Y;
     vpp_comp->U = bg_color_info.U;
     vpp_comp->V = bg_color_info.V;
+    if (combo_type_ == COMBO_CUSTOM) {
+        vpp_comp->NumInputStream = (mfxU16)dec_region_list_.size();
+    } else {
+        vpp_comp->NumInputStream = (mfxU16)vpp_comp_map_.size();
+    }
     vpp_comp->InputStream = new mfxVPPCompInputStream[vpp_comp->NumInputStream];
     memset(vpp_comp->InputStream, 0 , sizeof(mfxVPPCompInputStream) * vpp_comp->NumInputStream);
     printf("About to set composition parameter, number of stream is %d\n",
@@ -864,89 +1028,28 @@ int MSDKCodec::SetVppCompParam(mfxExtVPPComposite *vpp_comp)
         }
     }
 
-    //Set comp info for "stream" inputs according to the combo_type_
-    VPPCompInfo *info;
     if (combo_type_ == COMBO_CUSTOM) {
-        if (apply_region_info_flag_) {
-            //Set VPPCompInfo->VppRect
-            for (vid_idx = 0, it_sinkpad = this->sinkpads_.begin();
-                 vid_idx < stream_cnt && it_sinkpad != this->sinkpads_.end();
-                 ++it_sinkpad) {
-                info = &vpp_comp_map_[*it_sinkpad];
-                if (!info->str_info.text && !info->pic_info.bmp) {
-                    assert(dec_region_map_.find(*it_sinkpad) != dec_region_map_.end());
-                    info->dst_rect.x = dec_region_map_[*it_sinkpad].left * output_width;
-                    info->dst_rect.y = dec_region_map_[*it_sinkpad].top * output_height;
-                    info->dst_rect.w = dec_region_map_[*it_sinkpad].width_ratio * output_width;
-                    if (info->dst_rect.w == 0) {
-                        info->dst_rect.w = 1;
-                    }
-                    info->dst_rect.h = dec_region_map_[*it_sinkpad].height_ratio * output_height;
-                    if (info->dst_rect.h == 0) {
-                        info->dst_rect.h = 1;
-                    }
+        CustomLayout::iterator it = dec_region_list_.begin();
+        for (vid_idx = 0; it != dec_region_list_.end(); ++it) {
+            Region region = it->region;
+            vpp_comp->InputStream[vid_idx].DstX = (unsigned int)output_width * region.left;
+            vpp_comp->InputStream[vid_idx].DstY = (unsigned int)output_height * region.top;
+            vpp_comp->InputStream[vid_idx].DstW = (unsigned int)output_width * region.width_ratio;
+            vpp_comp->InputStream[vid_idx].DstH = (unsigned int)output_height * region.height_ratio;
 
-                    vid_idx++;
-                }
-            }
-
-            apply_region_info_flag_ = false;
-
-            //If apply_region_info_flag_ and res_change_flag_ are enabled at the same time
-            if (res_change_flag_) {
-                res_change_flag_ = false;
-            }
-        }
-
-        if (res_change_flag_) {
-            assert(old_out_width_ && old_out_height_);
-            float width_scale = (float)output_width / old_out_width_;
-            float height_scale = (float)output_height / old_out_height_;
-
-            for (vid_idx = 0, it_sinkpad = this->sinkpads_.begin();
-                 vid_idx < stream_cnt && it_sinkpad != this->sinkpads_.end();
-                 ++it_sinkpad) {
-                info = &vpp_comp_map_[*it_sinkpad];
-                if (!info->str_info.text && !info->pic_info.bmp) {
-                    VppRect *rect = &(info->dst_rect);
-                    rect->x = (unsigned int)rect->x * width_scale;
-                    rect->y = (unsigned int)rect->y * height_scale;
-                    assert(rect->w && rect->h);
-                    //if(w==1 && h==1), then this video should be hidden, so don't scale it
-                    if (rect->w > 1 && rect->h > 1) {
-                        rect->w = (unsigned int)rect->w * width_scale;
-                        rect->h = (unsigned int)rect->h * height_scale;
-                    }
-
-                    vid_idx++;
-                }
-            }
-        }
-
-        //Set vpp_comp->InputStream
-        for (vid_idx = 0, it_sinkpad = this->sinkpads_.begin();
-             vid_idx < stream_cnt && it_sinkpad != this->sinkpads_.end();
-             ++it_sinkpad) {
-            info = &vpp_comp_map_[*it_sinkpad];
-            if (!info->str_info.text && !info->pic_info.bmp) {
-                vpp_comp->InputStream[vid_idx].DstX = info->dst_rect.x;
-                vpp_comp->InputStream[vid_idx].DstY = info->dst_rect.y;
-                assert(info->dst_rect.w && info->dst_rect.h);
-                vpp_comp->InputStream[vid_idx].DstW = info->dst_rect.w;
-                vpp_comp->InputStream[vid_idx].DstH = info->dst_rect.h;
-
-                vid_idx++;
-            }
+            vid_idx++;
         }
     } else if (combo_type_ == COMBO_MASTER) {
+        //dj - workaround for bug#388, for master layout only. The first input is set as
+        //background. It doesn't happen on CentOS+16.4preview3.
         int master_vid_idx = -1; //master's index in video streams
         int sequence = 0;
         int line_size = 0;
 
-        if (stream_cnt <= 6) {
+        if (stream_cnt <= 7) {
             line_size = 3;
-        } else if (stream_cnt > 6 && stream_cnt <= 16) {
-            line_size = (stream_cnt + 1) / 2;
+        } else if (stream_cnt > 7 && stream_cnt <= 16) {
+            line_size = stream_cnt / 2;
         }
 
         //find the index for master stream input
@@ -967,11 +1070,17 @@ int MSDKCodec::SetVppCompParam(mfxExtVPPComposite *vpp_comp)
             //happens when master is detached.
             //TODO: how to handle this gently?
             printf("master doesn't exist, set the first input as master\n");
-            master_vid_idx = 0;
+            master_vid_idx = 1;
         }
         assert(master_vid_idx >= 0 && master_vid_idx < stream_cnt);
 
-        for (vid_idx = 0; vid_idx < stream_cnt; vid_idx++) {
+        vpp_comp->InputStream[stream_idx[0]].DstX = 0;
+        vpp_comp->InputStream[stream_idx[0]].DstY = 0;
+        vpp_comp->InputStream[stream_idx[0]].DstW = output_width;
+        vpp_comp->InputStream[stream_idx[0]].DstH = output_height;
+        vpp_comp->InputStream[stream_idx[0]].LumaKeyEnable = 1;
+
+        for (vid_idx = 1; vid_idx < stream_cnt; vid_idx++) {
             if (vid_idx == master_vid_idx) {
                 vpp_comp->InputStream[stream_idx[vid_idx]].DstX = 0;
                 vpp_comp->InputStream[stream_idx[vid_idx]].DstY = 0;
@@ -980,7 +1089,7 @@ int MSDKCodec::SetVppCompParam(mfxExtVPPComposite *vpp_comp)
                 continue;
             }
 
-            sequence = (vid_idx > master_vid_idx) ? vid_idx : (vid_idx + 1);
+            sequence = (vid_idx > master_vid_idx) ? (vid_idx - 1) : vid_idx;
             if (sequence <= line_size) {
                 vpp_comp->InputStream[stream_idx[vid_idx]].DstX = (sequence - 1) * output_width / line_size;
                 vpp_comp->InputStream[stream_idx[vid_idx]].DstY = output_height * (line_size - 1) / line_size;
@@ -1033,13 +1142,16 @@ int MSDKCodec::SetVppCompParam(mfxExtVPPComposite *vpp_comp)
     delete [] stream_idx;
     return 0;
 }
-#ifdef ENABLE_VA
+
+#if defined(LIBVA_DRM_SUPPORT) || defined(LIBVA_X11_SUPPORT)
 mfxStatus MSDKCodec::InitRender(MediaBuf &buf)
 {
     mfxStatus sts = MFX_ERR_NONE;
     return sts;
 }
+#endif
 
+#ifdef ENABLE_VA
 mfxStatus MSDKCodec::InitVA(MediaBuf &buf)
 {
     mfxStatus sts = MFX_ERR_NONE;
@@ -1155,7 +1267,7 @@ mfxStatus MSDKCodec::InitVpp(MediaBuf &buf)
         mfx_video_param_.vpp.Out.PicStruct  = mfx_video_param_.vpp.In.PicStruct;
     }
 
-    printf("---Init VPP, in dst %d/%d\n", mfx_video_param_.vpp.In.CropW, \
+    printf("---Init VPP, in res %d/%d\n", mfx_video_param_.vpp.In.CropW, \
            mfx_video_param_.vpp.In.CropH);
 
     if (mfx_video_param_.vpp.Out.CropW > 4096 || \
@@ -1170,6 +1282,9 @@ mfxStatus MSDKCodec::InitVpp(MediaBuf &buf)
         mfx_video_param_.vpp.Out.CropW = mfx_video_param_.vpp.In.CropW;
         mfx_video_param_.vpp.Out.CropH = mfx_video_param_.vpp.In.CropH;
     }
+
+    printf("---Init VPP, out res %d/%d\n", mfx_video_param_.vpp.Out.CropW, \
+           mfx_video_param_.vpp.Out.CropH);
 
     // width must be a multiple of 16.
     // height must be a multiple of 16 in case of frame picture and a multiple of 32 in case of field picture.
@@ -1206,8 +1321,8 @@ mfxStatus MSDKCodec::InitVpp(MediaBuf &buf)
     if (surface_pool_ == NULL) {
         printf("Creating VPP surface pool, surface num %d\n", num_of_surf_);
         sts = AllocFrames(&VPPRequest[1], false);
-        frame_width_ = VPPRequest[1].Info.Width;
-        frame_height_ = VPPRequest[1].Info.Height;
+        frame_width_ = VPPRequest[1].Info.CropW;
+        frame_height_ = VPPRequest[1].Info.CropH;
     } else {
         //if VPP re-init without res change, don't do the following
         if (res_change_flag_) {
@@ -1343,8 +1458,6 @@ mfxStatus MSDKCodec::InitEncoder(MediaBuf &buf)
         coding_opt.AUDelimiter = MFX_CODINGOPTION_OFF;//No AUD
         coding_opt.RecoveryPointSEI = MFX_CODINGOPTION_OFF;//No SEI
         coding_opt.PicTimingSEI = MFX_CODINGOPTION_OFF;
-        //when cVuiNalHrdParameters = MFX_CODINGOPTION_OFF
-        //cause that the ouptu file unusual when setup the NumSlice > 1
         coding_opt.VuiNalHrdParameters = MFX_CODINGOPTION_OFF;
         coding_opt.VuiVclHrdParameters = MFX_CODINGOPTION_OFF;
         m_EncExtParams.push_back(reinterpret_cast<mfxExtBuffer *>(&coding_opt));
@@ -1589,7 +1702,7 @@ int MSDKCodec::ProcessChainEncode(MediaBuf &buf)
 
             reset_res_flag_ = true;
             printf("Info: to reset encoder res as %d x %d\n",
-                   mfx_video_param_.mfx.FrameInfo.Width, mfx_video_param_.mfx.FrameInfo.Height);
+                   mfx_video_param_.mfx.FrameInfo.CropW, mfx_video_param_.mfx.FrameInfo.CropH);
         }
 
         //mark the frame order for incoming surface.
@@ -1641,8 +1754,8 @@ int MSDKCodec::ProcessChainEncode(MediaBuf &buf)
             mfx_enc_->GetVideoParam(&par);
             par.mfx.FrameInfo.CropW = mfx_video_param_.mfx.FrameInfo.CropW;
             par.mfx.FrameInfo.CropH = mfx_video_param_.mfx.FrameInfo.CropH;
-            par.mfx.FrameInfo.Width = mfx_video_param_.mfx.FrameInfo.CropW;
-            par.mfx.FrameInfo.Height = mfx_video_param_.mfx.FrameInfo.CropH;
+            par.mfx.FrameInfo.Width = mfx_video_param_.mfx.FrameInfo.Width;
+            par.mfx.FrameInfo.Height = mfx_video_param_.mfx.FrameInfo.Height;
 
             //need to complete encoding with current settings
             for (;;) {
@@ -1685,6 +1798,9 @@ int MSDKCodec::ProcessChainEncode(MediaBuf &buf)
         if (ELEMENT_ENCODER == element_type_) {
             memset(&enc_ctrl_, 0, sizeof(enc_ctrl_));
             enc_ctrl_.FrameType = MFX_FRAMETYPE_I | MFX_FRAMETYPE_IDR | MFX_FRAMETYPE_REF;
+            //workaround, bug tracked by CQ VCSD100022643
+            if (mfx_video_param_.mfx.CodecId == MFX_CODEC_VP8)
+                enc_ctrl_.FrameType = MFX_FRAMETYPE_I;
             enc_ctrl = &enc_ctrl_;
 #ifdef ENABLE_VPX_CODEC
         } else {
@@ -1753,7 +1869,8 @@ int MSDKCodec::ProcessChainEncode(MediaBuf &buf)
             }
         }
 
-        if (MFX_ERR_NONE == sts) {
+        //Klockwork issue #531: if is_running_ == false in this do-while loop, syncpE is uninitialized.
+        if (MFX_ERR_NONE == sts && is_running_) {
             sts = mfx_session_->SyncOperation(syncpE, 60000);
 
             if (measuremnt) {
@@ -1768,6 +1885,11 @@ int MSDKCodec::ProcessChainEncode(MediaBuf &buf)
 
             OnFrameEncoded(&output_bs_);
             m_nFramesProcessed++;
+        }
+
+        if (is_running_ == false) {
+            //break the loop
+            break;
         }
     } while (pmfxInSurface == NULL && sts >= MFX_ERR_NONE);
 
@@ -1832,19 +1954,28 @@ mfxStatus ReadBitStreamData(mfxBitstream *pBS, FILE *fSource)
     pBS->DataLength += nBytesRead;
     return MFX_ERR_NONE;
 }
-#ifdef ENABLE_VA
+
+#if defined(LIBVA_DRM_SUPPORT) || defined(LIBVA_X11_SUPPORT)
 mfxStatus MSDKCodec::DoingRender(mfxFrameSurface1 *in_surf)
 {
     mfxStatus sts = MFX_ERR_NONE;
     m_hwdev->RenderFrame(in_surf, m_pMFXAllocator);
     return sts;
 }
+#endif
 
+#ifdef ENABLE_VA
 mfxStatus MSDKCodec::DoingVA(mfxFrameSurface1 *in_surf)
 {
     mfxStatus sts = MFX_ERR_NONE;
     mfxSyncPoint syncpV;
 
+    if (in_) {
+        // In step mode, cofigure the in.
+        mfxExtBuffer **ext_buf = in_surf->Data.ExtParam;
+        VAPluginData* plugin_data = (VAPluginData*)(*ext_buf);
+        plugin_data->In = in_;
+    }
     do {
         for (;;) {
             // Process a frame asychronously (returns immediately).
@@ -1878,49 +2009,69 @@ mfxStatus MSDKCodec::DoingVA(mfxFrameSurface1 *in_surf)
             sts = MFX_ERR_NONE;
         }
         if (sts == MFX_ERR_NONE) {
-            if (output_stream_) {
-                char buffer[256];
-                int len;
-                mfxU32 nBytesWritten;
-                mfxExtBuffer **ext_buf = in_surf->Data.ExtParam;
-                VAPluginData* plugin_data = (VAPluginData*)(*ext_buf);
-                mfxU32 size = plugin_data->Size;
-                mfxU32 FId = plugin_data->FId;
-                mfxU32 ObjectNum = plugin_data->ObjectNum;
-                mfxU32 ObjectSize = plugin_data->ObjectSize;
-                len = snprintf(buffer, 256, "the frame #%d is detected %d objects\n", FId, ObjectNum);
-                if (len > 256) {
-                    len = 256;
-                }
-                nBytesWritten = output_stream_->WriteBlock(buffer, len);
-                if (nBytesWritten != len) {
-                    sts = MFX_ERR_UNDEFINED_BEHAVIOR;
-                }
-
-                for (int i = 0; i < ObjectNum; i++) {
-                    unsigned int tl_x, tl_y, br_x, br_y;
-                    unsigned int* ptr = plugin_data->Vector + i * 4;
-                    tl_x = *ptr;
-                    tl_y = *(ptr + 1);
-                    br_x = *(ptr + 2);
-                    br_y = *(ptr + 3);
-                    len = snprintf(buffer, 256, "    tl(%d:%d), br(%d:%d)\n", tl_x, tl_y, br_x, br_y);
-                    if (len > 256) {
-                        len = 256;
+            VAPluginParam *va_param = (VAPluginParam *)aux_param_;
+            if (output_stream_ && va_param && (va_param->VaInterval >= 0)) {
+                if (output_format_ == FORMAT_VECTOR) {
+                    mfxExtBuffer **ext_buf = in_surf->Data.ExtParam;
+                    VAPluginData* plugin_data = (VAPluginData*)(*ext_buf);
+                    FrameMeta* out = plugin_data->Out;
+                    int len = VectorStreamSize(out);
+                    char* meta = (char*)malloc(len);
+                    int ret = Vector2Stream(out, meta, len);
+                    if(ret == -1) {
+                        sts = MFX_ERR_UNDEFINED_BEHAVIOR;
                     }
-                    nBytesWritten = output_stream_->WriteBlock(buffer, len);
+                    mfxU32 nBytesWritten = output_stream_->WriteBlock(meta, len);
                     if (nBytesWritten != len) {
                         sts = MFX_ERR_UNDEFINED_BEHAVIOR;
                     }
-                }
-
-                len = snprintf(buffer, 256, "\n");
-                if (len > 256) {
-                    len = 256;
-                }
-                nBytesWritten = output_stream_->WriteBlock(buffer, len);
-                if (nBytesWritten != len) {
-                    sts = MFX_ERR_UNDEFINED_BEHAVIOR;
+                    // release output frame meta.
+                    LIST_ROI::iterator i;
+                    for(i = out->ROIList.begin(); i != out->ROIList.end(); i++){
+                        delete *i;
+                    }
+                    out->ROIList.clear();
+                } else {
+                    char buffer[1024];
+                    int len;
+                    unsigned int total = 0;
+                    mfxU32 nBytesWritten;
+                    mfxExtBuffer **ext_buf = in_surf->Data.ExtParam;
+                    VAPluginData* plugin_data = (VAPluginData*)(*ext_buf);
+                    FrameMeta* out = plugin_data->Out;
+                    mfxU32 FId = 0;
+                    mfxU32 ObjectNum = out->ROIList.size();
+                    len = snprintf(buffer + total, 1024, "the frame is detected %d objects\n", ObjectNum);
+                    if (len > 1024) {
+                        len = 1024;
+                    }
+                    total = total + len;
+                    LIST_ROI::iterator i;
+                    for (i = out->ROIList.begin(); i != out->ROIList.end(); i++) {
+                        unsigned int tl_x, tl_y, br_x, br_y;
+                        tl_x = (*i)->tl_x;
+                        tl_y = (*i)->tl_y;
+                        br_x = (*i)->br_x;
+                        br_y = (*i)->br_y;
+                        if (total < 960){
+                            len = snprintf(buffer + total, 1024, "    tl(%d:%d), br(%d:%d)\n", tl_x, tl_y, br_x, br_y);
+                            if (len > 1024) {
+                                len = 1024;
+                            }
+                            total = total + len;
+                        }
+                        delete *i;
+                    }
+                    out->ROIList.clear();
+                    len = snprintf(buffer + total, 1024, "\n");
+                    if (len > 1024) {
+                        len = 1024;
+                    }
+                    total = total + len;
+                    nBytesWritten = output_stream_->WriteBlock(buffer, total);
+                    if (nBytesWritten != total) {
+                        sts = MFX_ERR_UNDEFINED_BEHAVIOR;
+                    }
                 }
             }
         }
@@ -1959,6 +2110,11 @@ mfxStatus MSDKCodec::DoingVpp(mfxFrameSurface1* in_surf, mfxFrameSurface1* out_s
         if (MFX_ERR_MORE_DATA == sts && NULL != in_surf) {
             // Composite case, direct return
             break;
+        }
+
+        //If vpp connects to render, then sync the surface
+        if (mfx_video_param_.vpp.Out.FourCC == MFX_FOURCC_RGB4) {
+            mfx_session_->SyncOperation(syncpV, 60000);
         }
 
         if (MFX_ERR_NONE < sts && syncpV) {
@@ -2067,7 +2223,7 @@ int MSDKCodec::ProcessChainVpp(MediaBuf &buf)
     return 0;
 }
 
-#ifdef ENABLE_VA
+#if defined(LIBVA_DRM_SUPPORT) || defined(LIBVA_X11_SUPPORT)
 int MSDKCodec::ProcessChainRender(MediaBuf &buf)
 {
     mfxStatus sts = MFX_ERR_NONE;
@@ -2101,7 +2257,9 @@ int MSDKCodec::ProcessChainRender(MediaBuf &buf)
 
     return 0;
 }
+#endif
 
+#ifdef ENABLE_VA
 int MSDKCodec::ProcessChainVA(MediaBuf &buf)
 {
     mfxStatus sts = MFX_ERR_NONE;
@@ -2121,16 +2279,17 @@ int MSDKCodec::ProcessChainVA(MediaBuf &buf)
 
     if (measuremnt) {
         measuremnt->GetLock();
-        measuremnt->TimeStpStart(VPP_FRAME_TIME_STAMP, this);
+        measuremnt->TimeStpStart(VA_FRAME_TIME_STAMP, this);
         measuremnt->RelLock();
     }
 
     if (pmfxInSurface) {
         DoingVA(pmfxInSurface);
     }
+
     if (measuremnt) {
         measuremnt->GetLock();
-        measuremnt->TimeStpFinish(VPP_FRAME_TIME_STAMP, this);
+        measuremnt->TimeStpFinish(VA_FRAME_TIME_STAMP, this);
         measuremnt->RelLock();
     }
 
@@ -2159,6 +2318,8 @@ int MSDKCodec::ProcessChain(MediaPad *pad, MediaBuf &buf)
 #ifdef ENABLE_VA
     } else if (ELEMENT_VA == element_type_) {
         return ProcessChainVA(buf);
+#endif
+#if defined(LIBVA_DRM_SUPPORT) || defined(LIBVA_X11_SUPPORT)
     } else if (ELEMENT_RENDER == element_type_) {
         return ProcessChainRender(buf);
 #endif
@@ -2442,11 +2603,8 @@ int MSDKCodec::HandleProcessDecode()
                 }
             } else {
                 if (ELEMENT_DECODER == element_type_) {
-                    if (input_bs_.DataLength > 0) {
-                        sts = mfx_dec_->DecodeFrameAsync(&input_bs_, surface_pool_[nIndex],
-                                                         &pmfxOutSurface, &syncpD);
-                        refresh_flag_ = true;
-                    }
+                    sts = mfx_dec_->DecodeFrameAsync(&input_bs_, surface_pool_[nIndex],
+                                                     &pmfxOutSurface, &syncpD);
                 } else {
                     sts = MFXVideoUSER_ProcessFrameAsync(*mfx_session_,
                                                          (mfxHDL *) &input_bs_, 1, (mfxHDL *) &surface_pool_[nIndex], 1, &syncpD);
@@ -2459,34 +2617,6 @@ int MSDKCodec::HandleProcessDecode()
                         }
                         bEndOfDecoder = true;
                     }
-                }
-            }
-
-            if (ELEMENT_DECODER == element_type_) {
-                if (refresh_flag_) {
-                    int index = 0;
-                    do {
-                        while (is_running_) {
-                            index = GetFreeSurfaceIndex(surface_pool_, num_of_surf_);
-                            if (MFX_ERR_NOT_FOUND == index) {
-                                usleep(10000);
-                            } else {
-                                break;
-                            }
-                        }
-                        if (!is_running_) {
-                            break;
-                        }
-                        sts = mfx_dec_->DecodeFrameAsync(NULL, surface_pool_[index],
-                                                         &pmfxOutSurface, &syncpD);
-                        if (MFX_WRN_DEVICE_BUSY == sts)
-                        {
-                            usleep(1000);
-                        }
-                    } while (MFX_ERR_MORE_SURFACE == sts || MFX_WRN_DEVICE_BUSY == sts);
-                    refresh_flag_ = false;
-                } else {
-                    continue;
                 }
             }
 
@@ -3210,13 +3340,16 @@ int MSDKCodec::HandleProcessVA()
     //TODO: handle the vpp plugin process.
     return 0;
 }
+#endif
 
+#if defined(LIBVA_DRM_SUPPORT) || defined(LIBVA_X11_SUPPORT)
 int MSDKCodec::HandleProcessRender()
 {
     //TODO: handle the vpp plugin process.
     return 0;
 }
 #endif
+
 int MSDKCodec::HandleProcessVpp()
 {
     std::list<MediaPad *>::iterator it_sinkpad;
@@ -3323,11 +3456,20 @@ int MSDKCodec::HandleProcessVpp()
             measuremnt->RelLock();
         }
 
-        for (it_sinkpad = this->sinkpads_.begin();
-                it_sinkpad != this->sinkpads_.end();
-                ++it_sinkpad) {
-            sts = DoingVpp((mfxFrameSurface1 *)vpp_comp_map_[*it_sinkpad].ready_surface.msdk_surface,
+        if (combo_type_ == COMBO_CUSTOM) {
+            CustomLayout::iterator it = dec_region_list_.begin();
+            for (; it != dec_region_list_.end(); ++it) {
+                MediaPad *pad = (MediaPad *)it->handle;
+                sts = DoingVpp((mfxFrameSurface1 *)vpp_comp_map_[pad].ready_surface.msdk_surface,
+                               surface_pool_[nIndex]);
+            }
+        } else {
+            for (it_sinkpad = this->sinkpads_.begin();
+                 it_sinkpad != this->sinkpads_.end();
+                 ++it_sinkpad) {
+                sts = DoingVpp((mfxFrameSurface1 *)vpp_comp_map_[*it_sinkpad].ready_surface.msdk_surface,
                            surface_pool_[nIndex]);
+            }
         }
         if (measuremnt) {
             measuremnt->GetLock();
@@ -3425,10 +3567,16 @@ void MSDKCodec::PadRemoved(MediaPad *pad)
 
         vpp_comp_map_.erase(pad);
 
-        //remove the Region info from dec_region_info_
+        //remove this pad from dec_region_list_
         if (combo_type_ == COMBO_CUSTOM) {
-            assert(dec_region_map_.find(pad) != dec_region_map_.end());
-            dec_region_map_.erase(pad);
+            CustomLayout::iterator it = dec_region_list_.begin();
+            for (; it != dec_region_list_.end(); it++) {
+                if (it->handle == (void *)pad) {
+                    dec_region_list_.erase(it);
+                    break;
+                }
+            }
+            assert(it != dec_region_list_.end());
         }
 
         //if master is removed
@@ -3473,16 +3621,6 @@ void MSDKCodec::NewPadAdded(MediaPad *pad)
         }
 
         vpp_comp_map_[pad] = pad_info;
-
-        //used for CUSTOM layout
-        Region info;
-        info.left = 0.0;
-        info.top = 0.0;
-        //When pad is newly added, don't display it.
-        //They will be set as 1 in SetVppCompParam() then.
-        info.width_ratio = 0.0;
-        info.height_ratio = 0.0;
-        dec_region_map_[pad] = info;
     }
 
     return;
@@ -3558,7 +3696,8 @@ mfxStatus MSDKCodec::AllocFrames(mfxFrameAllocRequest *pRequest, bool isDecAlloc
         {
             VAPluginData* plugData = new VAPluginData;
             extbuf_[i] = (mfxExtBuffer*)(plugData);
-            plugData->Vector = new unsigned int[MAX_VECTOR_SIZE];
+            plugData->Out = new FrameMeta;
+            plugData->In = NULL;
             plugData->Header.BufferId = MFX_EXTBUFF_VA_PLUGIN_PARAM;
             plugData->Header.BufferSz = sizeof(VAPluginData);
             surface_pool_[i]->Data.NumExtParam = 1;
@@ -3587,10 +3726,6 @@ int MSDKCodec::SetRes(unsigned int width, unsigned int height)
         return 0;
     }
 
-    width = MSDK_ALIGN16(width);
-    height = (MFX_PICSTRUCT_PROGRESSIVE == mfx_video_param_.vpp.Out.PicStruct) ?
-             MSDK_ALIGN16(height) : MSDK_ALIGN32(height);
-
     if (width > frame_width_) {
         printf("War: specified width %d exceeds max supported width %d.\n", width, frame_width_);
         width = frame_width_;
@@ -3600,11 +3735,9 @@ int MSDKCodec::SetRes(unsigned int width, unsigned int height)
         height = frame_height_;
     }
 
-    if (width != mfx_video_param_.vpp.Out.Width ||
-        height != mfx_video_param_.vpp.Out.Height) {
+    if (width != mfx_video_param_.vpp.Out.CropW ||
+        height != mfx_video_param_.vpp.Out.CropH) {
         printf("Info: reset vpp res to %dx%d\n", width, height);
-        old_out_width_ = mfx_video_param_.vpp.Out.CropW;
-        old_out_height_ = mfx_video_param_.vpp.Out.CropH;
         mfx_video_param_.vpp.Out.CropW = width;
         mfx_video_param_.vpp.Out.CropH = height;
 
@@ -3617,15 +3750,15 @@ int MSDKCodec::SetRes(unsigned int width, unsigned int height)
 }
 
 /*
- * Set rendering region for input "dec_dis" in VPP. Used only in COMBO_CUSTOM mode.
+ * This function sets the information of the rendering objects, including: which inputs
+ * to render(so maybe not all attached inputs are rendered); rendering area; z-order to render, etc
+ * z-order to render is based on the sequence in input list "layout".
  * Returns: 0 - Successful
  *          1 - Warning, it does't apply to non-vpp element
  *          2 - Warning, VPP is not in COMBO_CUSTOM mode
- *          3 - Warning, vpp has not finished the last request.
- *         -1 - Invalid inputs
- *         -2 - Decoder is not linked to this vpp
+ *         -1 - No valid inputs to composite in VPP
  */
-int MSDKCodec::SetCompRegion(void *dec_dis, Region &info, bool bApply)
+int MSDKCodec::SetCompRegion(const CustomLayout *layout)
 {
     if (ELEMENT_VPP != element_type_) {
         printf("War: %s is for ELEMENT_VPP only\n", __func__);
@@ -3637,53 +3770,42 @@ int MSDKCodec::SetCompRegion(void *dec_dis, Region &info, bool bApply)
         return 2;
     }
 
-    if (!dec_dis) {
-        printf("Err: null input dec_dis\n");
-        return -1;
-    }
-
-    if (info.left < 0.0 || info.left >= 1.0 ||
-        info.top < 0.0 || info.top >= 1.0 ||
-        info.width_ratio <= 0.0 || info.width_ratio > 1.0 ||
-        info.height_ratio <= 0.0 || info.height_ratio > 1.0 ||
-        info.left + info.width_ratio > 1.0 ||
-        info.top + info.height_ratio > 1.0) {
-        printf("War: invalid Region infomation, left:%.2f, top:%.2f, width_ratio:%.2f, height_ratio:%.2f\n", \
-            info.left, info.top, info.width_ratio, info.height_ratio);
-    }
-
-    if (bApply && apply_region_info_flag_ == true) {
-        printf("War: vpp has not finished applying the last request.\n");
-        return 3;
-    }
-
-    //map dec_dis to sink_pad
-    std::list<MediaPad *>::iterator it_sinkpad;
     WaitSinkMutex();
-    for (it_sinkpad = this->sinkpads_.begin(); it_sinkpad != this->sinkpads_.end(); ++it_sinkpad) {
-        if (dec_dis == (*it_sinkpad)->get_peer_pad()->get_parent()) {
-            assert(apply_region_info_flag_ == false);
-            dec_region_map_[*it_sinkpad] = info;
+    //first, clear dec_region_list_
+    dec_region_list_.clear();
+    std::list<MediaPad *>::iterator it_sinkpad;
+    void *handle = NULL;
+    //map dec_dis to sink_pad
+    for (CustomLayout::const_iterator it = layout->begin(); it != layout->end(); ++it) {
+        //check if the input dispatcher handle is valid and attached to vpp
+        for (it_sinkpad = this->sinkpads_.begin(); it_sinkpad != this->sinkpads_.end(); ++it_sinkpad) {
+            handle = (*it_sinkpad)->get_peer_pad()->get_parent();
+            if (it->handle == handle) break;
+        }
+        assert(it_sinkpad != this->sinkpads_.end());
 
-            // if(bApply), indicate VPP to reinit and apply the changes.
-            if (bApply) {
-                apply_region_info_flag_ = true;
+        //no need to check if the region info is valid, it was done in MsdkXcoder
 
-                //if vpp is already initialied, re-init it
-                if (codec_init_) {
-                    reinit_vpp_flag_ = true;
-                }
-            }
-
-            ReleaseSinkMutex();
-            return 0;
+        //add one instance in dec_region_list_
+        if (it_sinkpad != this->sinkpads_.end()) {
+            CompRegion input = {*it_sinkpad, it->region};
+            dec_region_list_.push_back(input);
+        } else {
+            printf("Err: input handle %p is invalid\n", it->handle);
         }
     }
 
-    //not found in sinkpads_
-    ReleaseSinkMutex();
-    printf("Err: the decoder is not linked to this VPP\n");
-    return -2;
+    if (dec_region_list_.size() == 0) {
+        printf("Err: no valid inputs to composite in VPP\n");
+        ReleaseSinkMutex();
+        return -1;
+    } else {
+        if (codec_init_)
+            reinit_vpp_flag_ = true;
+
+        ReleaseSinkMutex();
+        return 0;
+    }
 }
 
 int MSDKCodec::SetBgColor(BgColorInfo *bgColorInfo)

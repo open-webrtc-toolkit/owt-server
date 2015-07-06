@@ -60,8 +60,6 @@ void AudioDecoder::Release()
 
 bool AudioDecoder::Init(void* cfg, ElementMode element_mode)
 {
-    sAudioParams* audio_params;
-    audio_params = static_cast<sAudioParams*>(cfg);
     element_mode_ = element_mode;
 
     if (NULL == m_pUMCDecoder) {
@@ -117,6 +115,7 @@ int AudioDecoder::Recycle(MediaBuf &buf)
 int AudioDecoder::HandleProcess()
 {
     bool isFirstPacket = true;
+    bool is_first_packet_out = true;
     static int total_size = 0;
     int ret;
     AudioPayload payload_out;
@@ -175,7 +174,6 @@ int AudioDecoder::HandleProcess()
 
         // step 3: build output payload
         while (m_pRawDataMP->GetFlatBufFullness() >= raw_data_frame_size) {
-            unsigned int raw_data_buf_size = m_pRawDataMP->GetFlatBufFullness();
             unsigned int eof_raw_buf = m_pRawDataMP->GetDataEof();
             if (eof_raw_buf) {
                 break;
@@ -196,7 +194,8 @@ int AudioDecoder::HandleProcess()
             payload_out.payload_length = wave.GetHeaderSize() + raw_data_frame_size;
             memcpy(payload_out.payload, (Ipp8u *) &wave, wave.GetHeaderSize());
             memcpy(payload_out.payload + wave.GetHeaderSize(), m_pRawDataMP->GetReadPtr(), raw_data_frame_size);
-            payload_out.isFirstPacket = isFirstPacket;
+            payload_out.isFirstPacket = is_first_packet_out;
+            is_first_packet_out = false;
 
             // Push decoded frame to next element
             buf.payload = payload_out.payload;
@@ -407,7 +406,7 @@ int AudioDecoder::Decode(AudioPayload *pIn, bool isFirstPacket, unsigned int* Da
     if (dec_sts == UMC::UMC_OK) {
         if (m_pOut->GetDataSize()) {
             // Write decoded audio data to mempool
-            int mempool_freeflat = m_pRawDataMP->GetFreeFlatBufSize();
+            unsigned int mempool_freeflat = m_pRawDataMP->GetFreeFlatBufSize();
             unsigned char *mempool_wrptr = m_pRawDataMP->GetWritePtr();
             if (mempool_freeflat >= m_pOut->GetDataSize()) {
                 memcpy(mempool_wrptr, m_pOut->GetBufferPointer(), m_pOut->GetDataSize());

@@ -2,6 +2,7 @@
 #ifndef MEDIA_COMMON_H
 #define MEDIA_COMMON_H
 #include <stdio.h>
+#include <list>
 
 typedef enum {
     STREAM_TYPE_INVALID = 0,
@@ -14,6 +15,8 @@ typedef enum {
     STREAM_TYPE_AUDIO_AAC,
     STREAM_TYPE_AUDIO_MP3,
     STREAM_TYPE_AUDIO_PCM,
+    STREAM_TYPE_AUDIO_ALAW,
+    STREAM_TYPE_AUDIO_MULAW,
     STREAM_TYPE_AUDIO_LAST,
 //HW CODEC
     STREAM_TYPE_VIDEO_FIRST,
@@ -187,6 +190,11 @@ typedef struct PicInfo {
     };
 } PicInfo;
 
+//COMBO_CUSTOM mode is for upper level to configure/control the composition
+//1. Inputs to render maybe a subset of inputs attached to VPP.
+//2. VPP only composite inputs set by SetCompRegion();
+//3. VPP renders the inputs according to their sequence in the list
+//3. String/Pic inputs are not supported in this mode.
 typedef enum {
     COMBO_BLOCKS, //default type
     COMBO_MASTER,
@@ -199,5 +207,12 @@ typedef struct {
     float width_ratio;     //"width / WIDTH"
     float height_ratio;    //"height / HEIGHT"
 } Region;
+
+typedef struct {
+    void *handle;          //pointer, may point to dec handle, dis handle, or pad handle
+    Region region;
+} CompRegion;
+
+typedef std::list<CompRegion> CustomLayout; //covers the inputs to composite, including z-order
 
 #endif

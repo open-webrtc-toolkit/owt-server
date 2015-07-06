@@ -25,24 +25,25 @@ public:
     virtual int Recycle(MediaBuf &buf);
     virtual int HandleProcess();
     virtual int ProcessChain(MediaPad* pad, MediaBuf &buf);
-    void Release(void);
 
 private:
+    void Release();
     AudioPCMReader();
-    int ParseWAVHeader(AudioPayload *pIn);
-    int PCMRead(AudioPayload* pIn, AudioPayload* pOut, bool isFirstPacket, unsigned int* DataConsumed);
+    int ParseWAVHeader(AudioPayload *payload_in);
+    int PCMRead(AudioPayload* payload_in, AudioPayload* payload_out, bool is_first_packet, unsigned int* data_consumed);
 
 protected:
-    MemPool*                   m_pMempool;
-    char*                      m_DecoderName;
-    Info                       m_WaveInfoOut;
-    WaveHeader                 m_WaveHeader;
-    int                        m_nDataOffset;
+    MemPool*                   mem_pool_;
+    Info                       wav_info_;
+    WaveHeader                 wav_header_;
+    int                        data_offset_;
 
-    AudioPayload               m_Output[AUDIO_OUTPUT_QUEUE_SIZE];
-    RingBuffer<AudioPayload, AUDIO_OUTPUT_QUEUE_SIZE>   m_output_queue;
-    Stream*                    m_pDumpOutFile;
-    unsigned long long         m_nDataSize;
+    AudioPayload               output_payload_[AUDIO_OUTPUT_QUEUE_SIZE];
+    RingBuffer<AudioPayload, AUDIO_OUTPUT_QUEUE_SIZE>   output_queue_;
+    Stream*                    dump_out_file_;
+    unsigned long long         total_data_size_;
+    short                      g711_table_[256];
+    StreamType                 dec_type_;
 };
 
 #endif // __AUDIOPCMREADER_H__

@@ -7,8 +7,12 @@
 #include "base/mem_pool.h"
 #include "base/stream.h"
 #include "base/measurement.h"
+#include "msdk_codec.h"
+#include "mfxvideo++.h"
+#if defined(LIBVA_DRM_SUPPORT) || defined(LIBVA_X11_SUPPORT)
+#include "hw_device.h"
+#endif
 
-class MSDKCodec;
 class MFXVideoSession;
 class GeneralAllocator;
 class Dispatcher;
@@ -23,6 +27,11 @@ typedef enum {
     CODEC_TYPE_VIDEO_LAST,
     CODEC_TYPE_OTHER
 } CodecType;
+
+typedef enum {
+    DECODER,
+    ENCODER
+} CoderType;
 
 /* background color*/
 typedef struct {
@@ -95,6 +104,15 @@ typedef struct VppOptions_ {
  */
 typedef struct EncOptions_ {
     CodecType output_codec_type;
+
+    /**
+     * \ brief Codec Flag
+     * \ note To indicate if sw code is preferred
+     *     If it's true, MsdkXoder will try to use SW codec
+     *     or else, it would use HW codec if it exists
+     * Default value: false
+     */
+    bool swCodecPref;
 
     /**
      * \brief Encoding profile.
@@ -214,9 +232,9 @@ public:
 
     int Init(DecOptions *dec_cfg, VppOptions *vpp_cfg, EncOptions *enc_cfg);
 
-    int ForceKeyFrame(CodecType type);
+    int ForceKeyFrame(void *ouput_handle);
 
-    int SetBitrate(CodecType type, unsigned short bitrate);
+    int SetBitrate(void *output_handle, unsigned short bitrate);
 
     int MarkLTR(void *encHandle);
 
@@ -224,19 +242,19 @@ public:
 
     int SetComboType(ComboType type, void *vpp, void* master);
 
-    void AttachInput(DecOptions *dec_cfg, void *vppHandle);
+    int AttachInput(DecOptions *dec_cfg, void *vppHandle);
 
     int DetachInput(void* input_handle);
 
-    int SetRegionInfo(void *vppHandle, void *decHandle, Region &info, bool bApply);
+    int SetCustomLayout(void *vppHandle, const CustomLayout *layout);
 
     int SetBackgroundColor(void *vppHandle, BgColor *bgColor);
 
-    void AttachVpp(VppOptions *vpp_cfg, EncOptions *enc_cfg);
+    int AttachVpp(DecOptions *dec_cfg, VppOptions *vpp_cfg, EncOptions *enc_cfg);
 
     int DetachVpp(void* vpp_handle);
 
-    void AttachOutput(EncOptions *enc_cfg, void *vppHandle);
+    int AttachOutput(EncOptions *enc_cfg, void *vppHandle);
 
     int DetachOutput(void* output_handle);
 
@@ -271,6 +289,7 @@ private:
     void CloseMsdkSession(MFXVideoSession *session);
     void CreateSessionAllocator(MFXVideoSession **session, GeneralAllocator **allocator);
     void CleanUpResource();
+    ElementType GetElementType(CoderType type, unsigned int file_type, bool swCodecPref);
 
     void ReadDecConfig(DecOptions *dec_cfg, void *decCfg);
     void ReadVppConfig(VppOptions *vpp_cfg, void *vppCfg);
@@ -283,6 +302,9 @@ private:
     MFXVideoSession* main_session_;
     int dri_fd_;
     static void *va_dpy_;       /**< \brief va diaplay handle*/
+#if defined(LIBVA_DRM_SUPPORT) || defined(LIBVA_X11_SUPPORT)
+    CHWDevice *hwdev_;
+#endif
     bool is_running_;               /**< \brief xcoder running status*/
     bool done_init_;
     Mutex mutex;
@@ -303,6 +325,8 @@ private:
     MSDKCodec *enc_;
     std::multimap<MSDKCodec*, MSDKCodec*> enc_multimap_;
 
+    MSDKCodec *render_;
+    bool m_bRender_;
 };
 
 #endif /* TEE_TRANSCODER_H_ */

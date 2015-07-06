@@ -48,8 +48,8 @@ install_boost(){
 
 installYumDeps(){
   sudo -E yum groupinstall " Development Tools" "Development Libraries " -y
-  sudo -E yum install zlib-devel pkgconfig git subversion libcurl-devel.x86_64 curl log4cxx-devel yasm libvpx-devel -y
-  sudo -E yum install gcc gcc-c++ bzip2 bzip2-devel bzip2-libs python-devel gyp nodejs npm nasm -y
+  sudo -E yum install zlib-devel pkgconfig git subversion libcurl-devel.x86_64 curl log4cxx-devel yasm -y
+  sudo -E yum install gcc gcc-c++ bzip2 bzip2-devel bzip2-libs python-devel gyp nodejs npm nasm libX11-devel -y
   sudo -E yum install rabbitmq-server mongodb mongodb-server java-1.7.0-openjdk -y
 
   read -p "Installing glib2... [Yes/no]" yn

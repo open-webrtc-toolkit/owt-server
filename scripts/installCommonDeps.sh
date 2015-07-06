@@ -69,8 +69,8 @@ install_libav(){
   tar xf ${SRC}
   pushd libav-${VERSION}
   [[ "${DISABLE_NONFREE}" == "true" ]] && \
-  PKG_CONFIG_PATH=${PREFIX_DIR}/lib/pkgconfig ./configure --prefix=${PREFIX_DIR} --enable-shared --enable-libvpx --enable-libopus || \
-  PKG_CONFIG_PATH=${PREFIX_DIR}/lib/pkgconfig ./configure --prefix=${PREFIX_DIR} --enable-shared --enable-libvpx --enable-libopus --enable-libfdk-aac --enable-nonfree && \
+  PKG_CONFIG_PATH=${PREFIX_DIR}/lib/pkgconfig ./configure --prefix=${PREFIX_DIR} --enable-shared --disable-libvpx --enable-libopus || \
+  PKG_CONFIG_PATH=${PREFIX_DIR}/lib/pkgconfig ./configure --prefix=${PREFIX_DIR} --enable-shared --disable-libvpx --enable-libopus --enable-libfdk-aac --enable-nonfree && \
   make -j4 -s V=0 && make install
   popd
   popd

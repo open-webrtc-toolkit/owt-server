@@ -31,6 +31,11 @@ MsdkXcoder::MsdkXcoder()
     vpp_ = NULL;
     vpp_dis_ = NULL;
     enc_ = NULL;
+#if defined(LIBVA_DRM_SUPPORT) || defined(LIBVA_X11_SUPPORT)
+    hwdev_ = NULL;
+#endif
+    render_ = NULL;
+    m_bRender_ = false;
 }
 
 MsdkXcoder::~MsdkXcoder()
@@ -44,7 +49,8 @@ int MsdkXcoder::InitVaDisp()
     int ret = VA_STATUS_SUCCESS;
 
     pthread_mutex_lock(&MsdkXcoder::va_mutex_);
-    if (NULL == MsdkXcoder::va_dpy_) {
+    assert(NULL == MsdkXcoder::va_dpy_);
+    if (m_bRender_ == false) {
         dri_fd_ = open("/dev/dri/card0", O_RDWR);
         if (-1 == dri_fd_) {
             printf("Open dri failed!\n");
@@ -59,7 +65,36 @@ int MsdkXcoder::InitVaDisp()
             pthread_mutex_unlock(&MsdkXcoder::va_mutex_);
             return -1;
         }
+    //Render: to create the X11 device
+    } else {
+#if defined(LIBVA_DRM_SUPPORT) || defined(LIBVA_X11_SUPPORT)
+        int sts = 0;
+        printf ("createVAAPIDevice!\n");
+        // Create the device here.
+        // Use x11 display. Need render the frame.
+        hwdev_ = CreateVAAPIDevice();
+        if (hwdev_ == NULL) {
+            printf ("createVAAPIDevice fail!\n");
+            return MFX_ERR_MEMORY_ALLOC;
+        }
+
+        sts = hwdev_->Init(NULL, 1, 0);
+        if (sts != MFX_ERR_NONE) {
+            printf("hwdevice initialized failed\n");
+            return MFX_ERR_UNKNOWN;
+        }
+
+        printf("hwdev->GetHandle!\n");
+        sts = hwdev_->GetHandle(MFX_HANDLE_VA_DISPLAY, (mfxHDL*)&(MsdkXcoder::va_dpy_));
+        if (sts != MFX_ERR_NONE) {
+            printf("get handle failed\n");
+        }
+#else
+        printf("Err: to support rendering, you need to define LIBVA_X11_SUPPORT in Makefile\n");
+        return -1;
+#endif
     }
+
     pthread_mutex_unlock(&MsdkXcoder::va_mutex_);
 
     return 0;
@@ -68,13 +103,24 @@ int MsdkXcoder::InitVaDisp()
 void MsdkXcoder::DestroyVaDisp()
 {
     pthread_mutex_lock(&MsdkXcoder::va_mutex_);
-    if (NULL != MsdkXcoder::va_dpy_) {
-        vaTerminate(MsdkXcoder::va_dpy_);
+    if (m_bRender_ == false) {
+        if (NULL != MsdkXcoder::va_dpy_) {
+            vaTerminate(MsdkXcoder::va_dpy_);
+            MsdkXcoder::va_dpy_ = NULL;
+        }
+        if (dri_fd_) {
+            close(dri_fd_);
+            dri_fd_ = -1;
+        }
+    } else {
+#if defined(LIBVA_DRM_SUPPORT) || defined(LIBVA_X11_SUPPORT)
+        if (hwdev_) {
+            hwdev_->Close();
+            delete hwdev_;
+            hwdev_ = NULL;
+        }
+#endif
         MsdkXcoder::va_dpy_ = NULL;
-    }
-    if (dri_fd_) {
-        close(dri_fd_);
-        dri_fd_ = -1;
     }
     pthread_mutex_unlock(&MsdkXcoder::va_mutex_);
     return;
@@ -147,6 +193,7 @@ void MsdkXcoder::CreateSessionAllocator(MFXVideoSession **session, GeneralAlloca
         delete pAllocator;
         return;
     }
+    m_pAllocArray.push_back(pAllocator);
 
     MFXVideoSession *pSession = GenMsdkSession();
     if (!pSession) {
@@ -192,6 +239,7 @@ void MsdkXcoder::ReadVppConfig(VppOptions *vpp_cfg, void *cfg)
     ElementCfg *vppCfg = static_cast<ElementCfg *>(cfg);
     vppCfg->VppParams.vpp.Out.CropW = vpp_cfg->out_width;
     vppCfg->VppParams.vpp.Out.CropH = vpp_cfg->out_height;
+    vppCfg->VppParams.vpp.Out.FourCC = vpp_cfg->colorFormat;
     vppCfg->measuremnt = vpp_cfg->measuremnt;
 }
 
@@ -203,6 +251,7 @@ void MsdkXcoder::ReadEncConfig(EncOptions *enc_cfg, void *cfg)
         encCfg->EncParams.mfx.CodecId = MFX_CODEC_AVC;
         encCfg->EncParams.mfx.CodecProfile = enc_cfg->profile;
         encCfg->EncParams.mfx.NumRefFrame = enc_cfg->numRefFrame;
+        encCfg->EncParams.mfx.TargetUsage = enc_cfg->targetUsage;
         encCfg->EncParams.mfx.GopRefDist = enc_cfg->gopRefDist;
         encCfg->EncParams.mfx.IdrInterval= enc_cfg->idrInterval;
         encCfg->EncParams.mfx.GopPicSize = enc_cfg->intraPeriod;
@@ -218,14 +267,17 @@ void MsdkXcoder::ReadEncConfig(EncOptions *enc_cfg, void *cfg)
 int MsdkXcoder::Init(DecOptions *dec_cfg, VppOptions *vpp_cfg, EncOptions *enc_cfg)
 {
     Locker<Mutex> lock(mutex);
-    if (!dec_cfg || !vpp_cfg || !enc_cfg) {
+    if (!dec_cfg || !vpp_cfg || (!enc_cfg && (vpp_cfg->colorFormat != MFX_FOURCC_RGB4))) {
         printf("Init parameter invalid, return\n");
         return -1;
     }
     dec_cfg->DecHandle = NULL;
     vpp_cfg->VppHandle = NULL;
-    enc_cfg->EncHandle = NULL;
+    if (enc_cfg) {
+        enc_cfg->EncHandle = NULL;
+    }
 
+    m_bRender_ = (vpp_cfg->colorFormat == MFX_FOURCC_RGB4) ? true : false;
     if (0 != InitVaDisp()) {
         printf("Init VA display failed\n");
         return -1;
@@ -234,22 +286,30 @@ int MsdkXcoder::Init(DecOptions *dec_cfg, VppOptions *vpp_cfg, EncOptions *enc_c
     ElementCfg decCfg;
     memset(&decCfg, 0, sizeof(decCfg));
     ReadDecConfig(dec_cfg, &decCfg);
+    int in_file_type = decCfg.DecParams.mfx.CodecId;
 
     ElementCfg vppCfg;
     memset(&vppCfg, 0, sizeof(vppCfg));
     ReadVppConfig(vpp_cfg, &vppCfg);
 
+    int out_file_type = 0;
+    ElementCfg renderCfg;
     ElementCfg encCfg;
-    memset(&encCfg, 0, sizeof(encCfg));
-    ReadEncConfig(enc_cfg, &encCfg);
+    if (m_bRender_) {
+        memset(&renderCfg, 0, sizeof(renderCfg));
+#if defined(LIBVA_DRM_SUPPORT) || defined(LIBVA_X11_SUPPORT)
+        renderCfg.hwdev = hwdev_;
+#endif
+    } else {
+        memset(&encCfg, 0, sizeof(encCfg));
+        ReadEncConfig(enc_cfg, &encCfg);
+        out_file_type = encCfg.EncParams.mfx.CodecId;
+    }
 
-    int in_file_type = decCfg.DecParams.mfx.CodecId;
-    int out_file_type = encCfg.EncParams.mfx.CodecId;
 
     main_session_ = GenMsdkSession();
     if (!main_session_) {
         printf("Init Session failed\n");
-        DestroyVaDisp();
         return -1;
     }
 
@@ -258,8 +318,6 @@ int MsdkXcoder::Init(DecOptions *dec_cfg, VppOptions *vpp_cfg, EncOptions *enc_c
     GeneralAllocator *pAllocatorDec = NULL;
     CreateSessionAllocator(&dec_session, &pAllocatorDec);
     if (!dec_session || !pAllocatorDec) {
-        CloseMsdkSession(main_session_);
-        DestroyVaDisp();
         return -1;
     }
 
@@ -268,25 +326,25 @@ int MsdkXcoder::Init(DecOptions *dec_cfg, VppOptions *vpp_cfg, EncOptions *enc_c
     GeneralAllocator *pAllocatorVpp = NULL;
     CreateSessionAllocator(&vpp_session, &pAllocatorVpp);
     if (!vpp_session || !pAllocatorVpp) {
-        delete pAllocatorDec;
-        CloseMsdkSession(dec_session);
-        CloseMsdkSession(main_session_);
-        DestroyVaDisp();
         return -1;
     }
 
     //encoder session and allocator
     MFXVideoSession *enc_session = NULL;
     GeneralAllocator *pAllocatorEnc = NULL;
-    CreateSessionAllocator(&enc_session, &pAllocatorEnc);
-    if (!enc_session || !pAllocatorEnc) {
-        delete pAllocatorVpp;
-        delete pAllocatorDec;
-        CloseMsdkSession(vpp_session);
-        CloseMsdkSession(dec_session);
-        CloseMsdkSession(main_session_);
-        DestroyVaDisp();
-        return -1;
+    //render session and allocator
+    MFXVideoSession *render_session = NULL;
+    GeneralAllocator *pAllocatorRender = NULL;
+    if (!m_bRender_) {
+        CreateSessionAllocator(&enc_session, &pAllocatorEnc);
+        if (!enc_session || !pAllocatorEnc) {
+            return -1;
+        }
+    } else {
+        CreateSessionAllocator(&render_session, &pAllocatorRender);
+        if (!render_session || !pAllocatorRender) {
+            return -1;
+        }
     }
 
 
@@ -302,14 +360,6 @@ int MsdkXcoder::Init(DecOptions *dec_cfg, VppOptions *vpp_cfg, EncOptions *enc_c
     if (dec_) {
         dec_->Init(&decCfg, ELEMENT_MODE_ACTIVE);
     } else {
-        delete pAllocatorEnc;
-        delete pAllocatorVpp;
-        delete pAllocatorDec;
-        CloseMsdkSession(enc_session);
-        CloseMsdkSession(vpp_session);
-        CloseMsdkSession(dec_session);
-        CloseMsdkSession(main_session_);
-        DestroyVaDisp();
         return -1;
     }
 
@@ -317,16 +367,12 @@ int MsdkXcoder::Init(DecOptions *dec_cfg, VppOptions *vpp_cfg, EncOptions *enc_c
     if (dec_dis_) {
         dec_dis_->Init(NULL, ELEMENT_MODE_PASSIVE);
     } else {
-        delete pAllocatorEnc;
-        delete pAllocatorVpp;
-        delete pAllocatorDec;
-        CloseMsdkSession(enc_session);
-        CloseMsdkSession(vpp_session);
-        CloseMsdkSession(dec_session);
-        CloseMsdkSession(main_session_);
-        DestroyVaDisp();
         return -1;
     }
+
+    dec_list_.push_back(dec_);
+    dec_dis_map_[dec_] = dec_dis_;
+    main_session_->JoinSession(*dec_session);
 
     vpp_ = new MSDKCodec(ELEMENT_VPP, vpp_session, pAllocatorVpp);
     if (vpp_) {
@@ -334,14 +380,6 @@ int MsdkXcoder::Init(DecOptions *dec_cfg, VppOptions *vpp_cfg, EncOptions *enc_c
         vpp_->SetStrInfo(dec_->GetStrInfo());
         vpp_->SetPicInfo(dec_->GetPicInfo());
     } else {
-        delete pAllocatorEnc;
-        delete pAllocatorVpp;
-        delete pAllocatorDec;
-        CloseMsdkSession(enc_session);
-        CloseMsdkSession(vpp_session);
-        CloseMsdkSession(dec_session);
-        CloseMsdkSession(main_session_);
-        DestroyVaDisp();
         return -1;
     }
 
@@ -349,92 +387,78 @@ int MsdkXcoder::Init(DecOptions *dec_cfg, VppOptions *vpp_cfg, EncOptions *enc_c
     if (vpp_dis_) {
         vpp_dis_->Init(NULL, ELEMENT_MODE_PASSIVE);
     } else {
-        delete pAllocatorEnc;
-        delete pAllocatorVpp;
-        delete pAllocatorDec;
-        CloseMsdkSession(enc_session);
-        CloseMsdkSession(vpp_session);
-        CloseMsdkSession(dec_session);
-        CloseMsdkSession(main_session_);
-        DestroyVaDisp();
         return -1;
     }
 
-    if (MFX_CODEC_VP8 == out_file_type) {
-        enc_ = new MSDKCodec(ELEMENT_VP8_ENC, enc_session, pAllocatorEnc);
-    } else {
-        enc_ = new MSDKCodec(ELEMENT_ENCODER, enc_session, pAllocatorEnc);
-    }
-    if (enc_) {
-        enc_->Init(&encCfg, ELEMENT_MODE_ACTIVE);
-    } else {
-        delete pAllocatorEnc;
-        delete pAllocatorVpp;
-        delete pAllocatorDec;
-        CloseMsdkSession(enc_session);
-        CloseMsdkSession(vpp_session);
-        CloseMsdkSession(dec_session);
-        CloseMsdkSession(main_session_);
-        DestroyVaDisp();
-        return -1;
-    }
-
-    dec_list_.push_back(dec_);
-    dec_dis_map_[dec_] = dec_dis_;
     vpp_list_.push_back(vpp_);
     vpp_dis_map_[vpp_] = vpp_dis_;
-    enc_multimap_.insert(std::make_pair(vpp_, enc_));
-
-    main_session_->JoinSession(*dec_session);
     main_session_->JoinSession(*vpp_session);
-    main_session_->JoinSession(*enc_session);
-    m_pAllocArray.push_back(pAllocatorDec);
-    m_pAllocArray.push_back(pAllocatorVpp);
-    m_pAllocArray.push_back(pAllocatorEnc);
 
+    if (!m_bRender_) {
+        ElementType type = GetElementType(ENCODER, out_file_type, enc_cfg->swCodecPref);
+        enc_ = new MSDKCodec(type, enc_session, pAllocatorEnc);
+
+        if (enc_) {
+            enc_->Init(&encCfg, ELEMENT_MODE_ACTIVE);
+        } else {
+            return -1;
+        }
+
+        enc_multimap_.insert(std::make_pair(vpp_, enc_));
+        main_session_->JoinSession(*enc_session);
+    } else {
+        render_ = new MSDKCodec(ELEMENT_RENDER, render_session, pAllocatorRender);
+        main_session_->JoinSession(*render_session);
+        render_->Init(&renderCfg, ELEMENT_MODE_PASSIVE);
+
+        main_session_->JoinSession(*render_session);
+    }
+
+    //to link the elements
     dec_->LinkNextElement(dec_dis_);
     dec_dis_->LinkNextElement(vpp_);
     vpp_->LinkNextElement(vpp_dis_);
-    vpp_dis_->LinkNextElement(enc_);
+    if (m_bRender_) {
+        vpp_dis_->LinkNextElement(render_);
+    } else {
+        vpp_dis_->LinkNextElement(enc_);
+    }
 
     dec_cfg->DecHandle = dec_;
     vpp_cfg->VppHandle = vpp_;
-    enc_cfg->EncHandle = enc_;
+    if (!m_bRender_) {
+        enc_cfg->EncHandle = enc_;
+    }
 
     done_init_ = true;
-    printf("[%s]Init Decoder:%p, VPP:%p, Encoder:%p Done.\n", \
-        __FUNCTION__, dec_, vpp_, enc_);
+    printf("[%s] MsdkXcoder Init Done.\n", __FUNCTION__);
     return 0;
 }
 
-int MsdkXcoder::ForceKeyFrame(CodecType ctype)
+int MsdkXcoder::ForceKeyFrame(void *output_handle)
 {
     Locker<Mutex> lock(mutex);
+
     if (!done_init_) {
         printf("Force key frame before initialization\n");
         return -1;
     }
 
-    ElementType type = ELEMENT_ENCODER; //default value
-
-    if (ctype == CODEC_TYPE_VIDEO_VP8) {
-        type = ELEMENT_VP8_ENC;
-    }
-
     MSDKCodec *enc = NULL;
-    for(std::multimap<MSDKCodec*, MSDKCodec*>::iterator it_enc = enc_multimap_.begin(); \
-            it_enc != enc_multimap_.end(); \
-            ++it_enc) {
-        if((it_enc->second)->GetCodecType() == type) {
+    std::multimap<MSDKCodec*, MSDKCodec*>::iterator it_enc;
+    for(it_enc = enc_multimap_.begin(); it_enc != enc_multimap_.end(); ++it_enc) {
+        if(it_enc->second == (MSDKCodec *)output_handle) {
             enc = it_enc->second;
             enc->SetForceKeyFrame();
+            break;
         }
     }
+    assert(it_enc != enc_multimap_.end());
 
     return 0;
 }
 
-int MsdkXcoder::SetBitrate(CodecType ctype, unsigned short bitrate)
+int MsdkXcoder::SetBitrate(void *output_handle, unsigned short bitrate)
 {
     Locker<Mutex> lock(mutex);
     if (!done_init_) {
@@ -442,22 +466,17 @@ int MsdkXcoder::SetBitrate(CodecType ctype, unsigned short bitrate)
         return -1;
     }
 
-    ElementType type = ELEMENT_ENCODER; //default value
-
-    if (ctype == CODEC_TYPE_VIDEO_VP8) {
-        type = ELEMENT_VP8_ENC;
-    }
-
     MSDKCodec *enc = NULL;
-    for(std::multimap<MSDKCodec*, MSDKCodec*>::iterator it_enc = enc_multimap_.begin(); \
-            it_enc != enc_multimap_.end(); \
-            ++it_enc) {
-        if((it_enc->second)->GetCodecType() == type) {
+    std::multimap<MSDKCodec*, MSDKCodec*>::iterator it_enc;
+    for(it_enc = enc_multimap_.begin(); it_enc != enc_multimap_.end(); ++it_enc) {
+        if(it_enc->second == (MSDKCodec *)output_handle) {
             enc = it_enc->second;
             enc->SetBitrate(bitrate);
             enc->SetResetBitrateFlag();
+            break;
         }
     }
+    assert(it_enc != enc_multimap_.end());
 
     return 0;
 }
@@ -660,7 +679,7 @@ int MsdkXcoder::DetachInput(void* input_handle)
     return 0;
 }
 
-void MsdkXcoder::AttachInput(DecOptions *dec_cfg, void *vppHandle)
+int MsdkXcoder::AttachInput(DecOptions *dec_cfg, void *vppHandle)
 {
     Locker<Mutex> lock(mutex);
     bool vpp_found = false;
@@ -668,12 +687,12 @@ void MsdkXcoder::AttachInput(DecOptions *dec_cfg, void *vppHandle)
 
     if (!done_init_) {
         printf("[%s]Attach new stream before initialization\n", __FUNCTION__);
-        return;
+        return -1;
     }
 
     if (!dec_cfg) {
         printf("[%s]Invalid input parameters\n", __FUNCTION__);
-        return;
+        return -1;
     }
     dec_cfg->DecHandle = NULL;
 
@@ -698,11 +717,11 @@ void MsdkXcoder::AttachInput(DecOptions *dec_cfg, void *vppHandle)
         }
         if (!vpp_found) {
             printf("[%s]Can't find the vpp handle\n", __FUNCTION__);
-            return;
+            return -1;
         }
         if (is_running_ && !vpp->is_running_) {
             printf("[%s]Vpp has been exit, can't attach input\n", __FUNCTION__);
-            return;
+            return -1;
         }
     } else {
         for (vpp_it = vpp_list_.begin(); \
@@ -710,7 +729,7 @@ void MsdkXcoder::AttachInput(DecOptions *dec_cfg, void *vppHandle)
                 ++vpp_it) {
             if (is_running_ && !((*vpp_it)->is_running_)) {
                 printf("[%s]One vpp has been exit, can't attach input\n", __FUNCTION__);
-                return;
+                return -1;
             }
         }
     }
@@ -724,7 +743,7 @@ void MsdkXcoder::AttachInput(DecOptions *dec_cfg, void *vppHandle)
     CreateSessionAllocator(&dec_session, &pAllocatorDec);
     if (!dec_session || !pAllocatorDec) {
         printf("[%s]Create decoder session or allocator failed\n", __FUNCTION__);
-        return;
+        return -1;
     }
 
     dec_ = NULL;
@@ -741,9 +760,7 @@ void MsdkXcoder::AttachInput(DecOptions *dec_cfg, void *vppHandle)
         dec_->Init(&decCfg, ELEMENT_MODE_ACTIVE);
     } else {
         printf("[%s]Create decoder failed\n", __FUNCTION__);
-        delete pAllocatorDec;
-        CloseMsdkSession(dec_session);
-        return;
+        return -1;
     }
 
     dec_dis_ = NULL;
@@ -752,16 +769,13 @@ void MsdkXcoder::AttachInput(DecOptions *dec_cfg, void *vppHandle)
         dec_dis_->Init(NULL, ELEMENT_MODE_PASSIVE);
     } else {
         printf("[%s]Create decoder dispatch failed\n", __FUNCTION__);
-        delete pAllocatorDec;
-        CloseMsdkSession(dec_session);
-        return;
+        return -1;
     }
 
     dec_list_.push_back(dec_);
     dec_dis_map_[dec_] = dec_dis_;
 
     main_session_->JoinSession(*dec_session);
-    m_pAllocArray.push_back(pAllocatorDec);
 
     dec_->LinkNextElement(dec_dis_);
     if (vpp) {
@@ -787,12 +801,18 @@ void MsdkXcoder::AttachInput(DecOptions *dec_cfg, void *vppHandle)
 
     dec_cfg->DecHandle = dec_;
     printf("[%s]Attach Decoder:%p Done.\n", __FUNCTION__, dec_);
-    return;
+    return 0;
 }
 
 int MsdkXcoder::DetachVpp(void* vpp_handle)
 {
     Locker<Mutex> lock(mutex);
+
+    if (m_bRender_) {
+        printf("Xcoder is in local rendering mode\n");
+        return -1;
+    }
+
     MSDKCodec *vpp = NULL;
     bool vpp_found = false;
     Dispatcher *vpp_dis = NULL;
@@ -881,19 +901,25 @@ int MsdkXcoder::DetachVpp(void* vpp_handle)
     return 0;
 }
 
-void MsdkXcoder::AttachVpp(VppOptions *vpp_cfg, EncOptions *enc_cfg)
+int MsdkXcoder::AttachVpp(DecOptions *dec_cfg, VppOptions *vpp_cfg, EncOptions *enc_cfg)
 {
     Locker<Mutex> lock(mutex);
 
-    if (!done_init_) {
-        printf("[%s]Attach new vpp before initialization\n", __FUNCTION__);
-        return;
+    if (m_bRender_) {
+        printf("Xcoder is in local rendering mode\n");
+        return -1;
     }
 
-    if (!vpp_cfg || !enc_cfg) {
-        printf("[%s]Invalid input parameters\n", __FUNCTION__);
-        return;
+    if (!done_init_) {
+        printf("[%s]Attach new vpp before initialization\n", __FUNCTION__);
+        return -1;
     }
+
+    if (!vpp_cfg || !enc_cfg || !dec_cfg) {
+        printf("[%s]Invalid input parameters\n", __FUNCTION__);
+        return -1;
+    }
+    dec_cfg->DecHandle = NULL;
     vpp_cfg->VppHandle = NULL;
     enc_cfg->EncHandle = NULL;
 
@@ -903,7 +929,7 @@ void MsdkXcoder::AttachVpp(VppOptions *vpp_cfg, EncOptions *enc_cfg)
             ++vpp_it) {
         if (is_running_ && !((*vpp_it)->is_running_)) {
             printf("[%s]One vpp have been exit, shouldn't attach new vpp\n", __FUNCTION__);
-            return;
+            return -1;
         }
     }
 
@@ -915,13 +941,17 @@ void MsdkXcoder::AttachVpp(VppOptions *vpp_cfg, EncOptions *enc_cfg)
     memset(&encCfg, 0, sizeof(encCfg));
     ReadEncConfig(enc_cfg, &encCfg);
 
+    ElementCfg decCfg;
+    memset(&decCfg, 0, sizeof(decCfg));
+    ReadDecConfig(dec_cfg, &decCfg);
+
     /*vpp allocator, session*/
     GeneralAllocator *pAllocatorVpp = NULL;
     MFXVideoSession *vpp_session = NULL;
     CreateSessionAllocator(&vpp_session, &pAllocatorVpp);
     if (!vpp_session || !pAllocatorVpp) {
         printf("[%s]Create vpp session or allocator failed\n", __FUNCTION__);
-        return;
+        return -1;
     }
 
     /*enc allocator, session*/
@@ -930,9 +960,16 @@ void MsdkXcoder::AttachVpp(VppOptions *vpp_cfg, EncOptions *enc_cfg)
     CreateSessionAllocator(&enc_session, &pAllocatorEnc);
     if (!enc_session || !pAllocatorEnc) {
         printf("[%s]Create encoder session or allocator failed\n", __FUNCTION__);
-        delete pAllocatorVpp;
-        CloseMsdkSession(vpp_session);
-        return;
+        return -1;
+    }
+
+    /* dec allocator, session*/
+    GeneralAllocator *pAllocatorDec = NULL;
+    MFXVideoSession *dec_session = NULL;
+    CreateSessionAllocator(&dec_session, &pAllocatorDec);
+    if (!dec_session || !pAllocatorDec) {
+        printf("[%s]Create decoder session or allocator failed\n", __FUNCTION__);
+        return -1;
     }
 
     vpp_ = NULL;
@@ -941,11 +978,7 @@ void MsdkXcoder::AttachVpp(VppOptions *vpp_cfg, EncOptions *enc_cfg)
         vpp_->Init(&vppCfg, ELEMENT_MODE_ACTIVE);
     } else {
         printf("[%s]Create vpp failed\n", __FUNCTION__);
-        delete pAllocatorEnc;
-        delete pAllocatorVpp;
-        CloseMsdkSession(enc_session);
-        CloseMsdkSession(vpp_session);
-        return;
+        return -1;
     }
 
     vpp_dis_ = NULL;
@@ -954,44 +987,58 @@ void MsdkXcoder::AttachVpp(VppOptions *vpp_cfg, EncOptions *enc_cfg)
         vpp_dis_->Init(NULL, ELEMENT_MODE_PASSIVE);
     } else {
         printf("[%s]Create vpp dispatch failed\n", __FUNCTION__);
-        delete pAllocatorEnc;
-        delete pAllocatorVpp;
-        CloseMsdkSession(enc_session);
-        CloseMsdkSession(vpp_session);
-        return;
+        return -1;
     }
 
     int out_file_type = encCfg.EncParams.mfx.CodecId;
+    ElementType type = GetElementType(ENCODER, out_file_type, enc_cfg->swCodecPref);
     enc_ = NULL;
-    if (MFX_CODEC_VP8 == out_file_type) {
-        enc_ = new MSDKCodec(ELEMENT_VP8_ENC, enc_session, pAllocatorEnc);
-    } else {
-        enc_ = new MSDKCodec(ELEMENT_ENCODER, enc_session, pAllocatorEnc);
-    }
+    enc_ = new MSDKCodec(type, enc_session, pAllocatorEnc);
     if (enc_) {
         enc_->Init(&encCfg, ELEMENT_MODE_ACTIVE);
     } else {
         printf("[%s]Create encoder failed\n", __FUNCTION__);
-        delete pAllocatorEnc;
-        delete pAllocatorVpp;
-        CloseMsdkSession(enc_session);
-        CloseMsdkSession(vpp_session);
-        return;
+        return -1;
     }
 
+    dec_ = NULL;
+    if (MFX_CODEC_VP8 == decCfg.DecParams.mfx.CodecId) {
+        dec_ = new MSDKCodec(ELEMENT_VP8_DEC, dec_session, pAllocatorDec);
+    } else if (MFX_CODEC_STRING == decCfg.DecParams.mfx.CodecId) {
+        dec_ = new MSDKCodec(ELEMENT_STRING_DEC, dec_session, pAllocatorDec);
+    } else if (MFX_CODEC_PICTURE == decCfg.DecParams.mfx.CodecId) {
+        dec_ = new MSDKCodec(ELEMENT_BMP_DEC, dec_session, pAllocatorDec);
+    } else {
+        dec_ = new MSDKCodec(ELEMENT_DECODER, dec_session, pAllocatorDec);
+    }
+    if (dec_) {
+        dec_->Init(&decCfg, ELEMENT_MODE_ACTIVE);
+    } else {
+        printf("[%s]Create decoder failed\n", __FUNCTION__);
+        return -1;
+    }
+
+    dec_dis_ = NULL;
+    dec_dis_ = new Dispatcher;
+    if (dec_dis_) {
+        dec_dis_->Init(NULL, ELEMENT_MODE_PASSIVE);
+    } else {
+        printf("[%s]Create decoder dispatch failed\n", __FUNCTION__);
+        return -1;
+    }
+
+    dec_list_.push_back(dec_);
+    dec_dis_map_[dec_] = dec_dis_;
     vpp_list_.push_back(vpp_);
     vpp_dis_map_[vpp_] = vpp_dis_;
     enc_multimap_.insert(std::make_pair(vpp_, enc_));
 
     main_session_->JoinSession(*vpp_session);
-    m_pAllocArray.push_back(pAllocatorVpp);
     main_session_->JoinSession(*enc_session);
-    m_pAllocArray.push_back(pAllocatorEnc);
+    main_session_->JoinSession(*dec_session);
 
-    std::map<MSDKCodec*, Dispatcher *>::iterator dec_dis_i;
-    for (dec_dis_i = dec_dis_map_.begin(); dec_dis_i != dec_dis_map_.end(); ++dec_dis_i) {
-        (dec_dis_i->second)->LinkNextElement(vpp_);
-    }
+    dec_->LinkNextElement(dec_dis_);
+    dec_dis_->LinkNextElement(vpp_);
     vpp_->LinkNextElement(vpp_dis_);
     vpp_dis_->LinkNextElement(enc_);
 
@@ -999,12 +1046,15 @@ void MsdkXcoder::AttachVpp(VppOptions *vpp_cfg, EncOptions *enc_cfg)
         enc_->Start();
         vpp_dis_->Start();
         vpp_->Start();
+        dec_dis_->Start();
+        dec_->Start();
     }
 
+    dec_cfg->DecHandle = dec_;
     vpp_cfg->VppHandle = vpp_;
     enc_cfg->EncHandle = enc_;
     printf("[%s]Attach VPP:%p, Encoder:%p Done.\n", __FUNCTION__, vpp_, enc_);
-    return;
+    return 0;
 }
 
 int MsdkXcoder::DetachOutput(void* output_handle)
@@ -1062,9 +1112,15 @@ int MsdkXcoder::DetachOutput(void* output_handle)
     return 0;
 }
 
-void MsdkXcoder::AttachOutput(EncOptions *enc_cfg, void *vppHandle)
+int MsdkXcoder::AttachOutput(EncOptions *enc_cfg, void *vppHandle)
 {
     Locker<Mutex> lock(mutex);
+
+    if (m_bRender_) {
+        printf("Xcoder is in local rendering mode\n");
+        return -1;
+    }
+
     bool vpp_found = false;
     bool vpp_dis_found = false;
     std::list<MSDKCodec*>::iterator vpp_it;
@@ -1072,12 +1128,12 @@ void MsdkXcoder::AttachOutput(EncOptions *enc_cfg, void *vppHandle)
 
     if (!done_init_) {
         printf("[%s]Attach new stream before initialization\n", __FUNCTION__);
-        return;
+        return -1;
     }
 
     if (!enc_cfg || !vppHandle) {
         printf("[%s]Invalid input parameters\n", __FUNCTION__);
-        return;
+        return -1;
     }
     enc_cfg->EncHandle = NULL;
 
@@ -1096,11 +1152,11 @@ void MsdkXcoder::AttachOutput(EncOptions *enc_cfg, void *vppHandle)
     }
     if (!vpp_found) {
         printf("[%s]Can't find the vpp handle\n", __FUNCTION__);
-        return;
+        return -1;
     }
     if (is_running_ && !vpp->is_running_) {
         printf("[%s]Vpp has been exit, can't attach output\n", __FUNCTION__);
-        return;
+        return -1;
     }
 
     Dispatcher *vpp_dis = NULL;
@@ -1114,7 +1170,7 @@ void MsdkXcoder::AttachOutput(EncOptions *enc_cfg, void *vppHandle)
     }
     if (!vpp_dis_found || !vpp_dis) {
         printf("[%s]Can't find the vpp dispatch handle\n", __FUNCTION__);
-        return;
+        return -1;
     }
 
     GeneralAllocator *pAllocatorEnc = NULL;
@@ -1122,30 +1178,23 @@ void MsdkXcoder::AttachOutput(EncOptions *enc_cfg, void *vppHandle)
     CreateSessionAllocator(&enc_session, &pAllocatorEnc);
     if (!enc_session || !pAllocatorEnc) {
         printf("[%s]Create encoder session or allocator failed\n", __FUNCTION__);
-        return;
+        return -1;
     }
 
-    int out_file_type = encCfg.EncParams.mfx.CodecId;
-
+    unsigned int out_file_type = encCfg.EncParams.mfx.CodecId;
+    ElementType type = GetElementType(ENCODER, out_file_type, enc_cfg->swCodecPref);
     enc_ = NULL;
-    if (MFX_CODEC_VP8 == out_file_type) {
-        enc_ = new MSDKCodec(ELEMENT_VP8_ENC, enc_session, pAllocatorEnc);
-    } else {
-        enc_ = new MSDKCodec(ELEMENT_ENCODER, enc_session, pAllocatorEnc);
-    }
+    enc_ = new MSDKCodec(type, enc_session, pAllocatorEnc);
     if (enc_) {
         enc_->Init(&encCfg, ELEMENT_MODE_ACTIVE);
     } else {
         printf("[%s]Create encoder failed\n", __FUNCTION__);
-        delete pAllocatorEnc;
-        CloseMsdkSession(enc_session);
-        return;
+        return -1;
     }
 
     enc_multimap_.insert(std::make_pair(vpp, enc_));
 
     main_session_->JoinSession(*enc_session);
-    m_pAllocArray.push_back(pAllocatorEnc);
 
     vpp_dis->LinkNextElement(enc_);
     if (is_running_) {
@@ -1154,7 +1203,7 @@ void MsdkXcoder::AttachOutput(EncOptions *enc_cfg, void *vppHandle)
 
     enc_cfg->EncHandle = enc_;
     printf("[%s]Attach Encoder:%p Done.\n", __FUNCTION__, enc_);
-    return;
+    return 0;
 }
 /***********************************************************************/
 /* time: begins from transcoding start, and unit is second */
@@ -1336,6 +1385,7 @@ void MsdkXcoder::StringOperateChange(DecOptions *dec_cfg, void *vppHandle, unsig
         printf("Change at once.\n");
 
         DetachInput(old_dec);
+        usleep(10000); //to make sure vpp can re-init
         AttachInput(dec_cfg, vppHandle);
         vpp->SetCompInfoChe(true);
     } else {
@@ -1348,6 +1398,7 @@ void MsdkXcoder::StringOperateChange(DecOptions *dec_cfg, void *vppHandle, unsig
         printf("Can change now.\n");
 
         DetachInput(old_dec);
+        usleep(10000);
         AttachInput(dec_cfg, vppHandle);
         vpp->SetCompInfoChe(true);
     }
@@ -1533,6 +1584,7 @@ void MsdkXcoder::PicOperateChange(DecOptions *dec_cfg, void *vppHandle, unsigned
         printf("Change at once.\n");
 
         DetachInput(old_dec);
+        usleep(10000);
         AttachInput(dec_cfg, vppHandle);
         vpp->SetCompInfoChe(true);
     } else {
@@ -1545,6 +1597,7 @@ void MsdkXcoder::PicOperateChange(DecOptions *dec_cfg, void *vppHandle, unsigned
         printf("Can change now.\n");
 
         DetachInput(old_dec);
+        usleep(10000);
         AttachInput(dec_cfg, vppHandle);
         vpp->SetCompInfoChe(true);
     }
@@ -1562,6 +1615,11 @@ bool MsdkXcoder::Start()
 
     bool res = true;
     printf("Starting Xcoder...\n");
+
+    if (m_bRender_) {
+        assert(render_);
+        render_->Start();
+    }
 
     /*start encoder*/
     for (enc_itor = enc_multimap_.begin(); \
@@ -1614,6 +1672,11 @@ void MsdkXcoder::CleanUpResource()
     std::multimap<MSDKCodec*, MSDKCodec*>::iterator enc_itor;
     std::list<MFXVideoSession*>::reverse_iterator sess_i;
     std::vector<GeneralAllocator*>::iterator pAllocArray_i;
+
+    if (m_bRender_) {
+        delete render_;
+        render_ = NULL;
+    }
 
     for (enc_itor = enc_multimap_.begin(); \
             enc_itor != enc_multimap_.end(); \
@@ -1852,35 +1915,25 @@ int MsdkXcoder::SetResolution(void *vppHandle, unsigned int width, unsigned int 
 }
 
 /*
- * Set rendering region "info" for input "decHandle" in "vpHandle".
- * if(bApply), apply the setting, or it means there are more "decHandle"(s) to set.
+ * Set layout for CUSTOM mode
  * Returns: 0 - Successful
  *          1 - Warning, it does't apply to non-vpp element
  *          2 - Warning, VPP is not in COMBO_CUSTOM mode
  *          3 - Warnign, vpp has not finished the last request.
  *         -1 - Invalid inputs
  */
-int MsdkXcoder::SetRegionInfo(void *vppHandle, void *decHandle, Region &info, bool bApply)
+int MsdkXcoder::SetCustomLayout(void *vppHandle, const CustomLayout* layout)
 {
     Locker<Mutex> lock(mutex);
     int ret_val = 0;
 
-    //Check if the inputs are valid
-    if (!vppHandle || !decHandle) {
+    //Check if the inputs are null
+    if (!vppHandle || !layout) {
         printf("Err: null input\n");
         return -1;
     }
 
-    if (info.left < 0.0 || info.left >= 1.0 ||
-        info.top < 0.0 || info.top >= 1.0 ||
-        info.width_ratio <= 0.0 || info.width_ratio > 1.0 ||
-        info.height_ratio <= 0.0 || info.height_ratio > 1.0 ||
-        info.left + info.width_ratio > 1.0 ||
-        info.top + info.height_ratio > 1.0) {
-        printf("War: invalid Region infomation, left:%.2f, top:%.2f, width_ratio:%.2f, height_ratio:%.2f\n", \
-            info.left, info.top, info.width_ratio, info.height_ratio);
-    }
-
+    //Check if the vppHandle is valid
     MSDKCodec *vpp = static_cast<MSDKCodec *>(vppHandle);
     std::list<MSDKCodec*>::iterator it_vpp;
     for (it_vpp = vpp_list_.begin(); it_vpp != vpp_list_.end(); ++it_vpp) {
@@ -1893,22 +1946,31 @@ int MsdkXcoder::SetRegionInfo(void *vppHandle, void *decHandle, Region &info, bo
         return -1;
     }
 
-    MSDKCodec *dec = static_cast<MSDKCodec *>(decHandle);
-    Dispatcher *dec_dis = NULL;
-    std::map<MSDKCodec*, Dispatcher*>::iterator it_dec_dis;
-    assert(dec_dis_map_.size());
-    for(it_dec_dis = dec_dis_map_.begin(); it_dec_dis != dec_dis_map_.end(); ++it_dec_dis) {
-        if (dec == it_dec_dis->first) {
-            dec_dis = it_dec_dis->second;
-            break;
+    //The input parameter "layout" maps Region to "decoder handle",
+    //Create one CustomLayout instance to map Region to "decoder dispatcher handle".
+    CustomLayout dis_layout;
+    for(CustomLayout::const_iterator it = layout->begin(); it != layout->end(); ++it) {
+        if(dec_dis_map_.find((MSDKCodec *)it->handle) == dec_dis_map_.end()) {
+            printf("handle %p is not found in dec_dis_map_\n", it->handle);
+            continue;
         }
-    }
-    if (!dec_dis) {
-        printf("Err: input decHandle %p is not valid\n", decHandle);
-        return -1;
+        //check the region information
+        Region info = it->region;
+        if (info.left < 0.0 || info.left >= 1.0 ||
+            info.top < 0.0 || info.top >= 1.0 ||
+            info.width_ratio <= 0.0 || info.width_ratio > 1.0 ||
+            info.height_ratio <= 0.0 || info.height_ratio > 1.0 ||
+            info.left + info.width_ratio > 1.0 ||
+            info.top + info.height_ratio > 1.0) {
+            printf("War: invalid Region infomation, left:%.2f, top:%.2f, width_ratio:%.2f, height_ratio:%.2f\n", \
+                info.left, info.top, info.width_ratio, info.height_ratio);
+        }
+
+        CompRegion input = {dec_dis_map_[(MSDKCodec *)it->handle], it->region};
+        dis_layout.push_back(input);
     }
 
-    ret_val = vpp->SetCompRegion((void *)dec_dis, info, bApply);
+    ret_val = vpp->SetCompRegion(&dis_layout);
     assert(ret_val >= 0);
 
     return ret_val;
@@ -1950,4 +2012,52 @@ int MsdkXcoder::SetBackgroundColor(void *vppHandle, BgColor *bgColor)
     return -1;
 }
 
+/*
+ * To get the element type to use.
+ */
+ElementType MsdkXcoder::GetElementType(CoderType type, unsigned int codec_type, bool swCodecPref)
+{
+    ElementType ret;
 
+    if (type == ENCODER) {
+        switch (codec_type) {
+        case MFX_CODEC_VP8:
+            //check if vp8 hw codec exists
+#ifdef MFX_DISPATCHER_EXPOSED_PREFIX
+            if (!swCodecPref) {
+                assert(main_session_);
+                mfxPluginUID uid = MFX_PLUGINID_VP8E_HW;
+                mfxStatus sts = MFXVideoUSER_Load(*main_session_, &uid, 1/*version*/);
+                if (sts == MFX_ERR_NONE) {
+                    ret = ELEMENT_ENCODER;
+                    mfxPluginUID uid = MFX_PLUGINID_VP8E_HW;
+                    MFXVideoUSER_UnLoad(*main_session_, &uid);
+                } else
+                ret = ELEMENT_VP8_ENC;
+            } else
+#endif
+                ret = ELEMENT_VP8_ENC;
+            break;
+        case MFX_CODEC_AVC:
+            ret = ELEMENT_ENCODER;
+            break;
+        default:
+            ret = ELEMENT_ENCODER;
+            break;
+        }
+    } else {
+        switch (codec_type) {
+        case MFX_CODEC_VP8:
+            ret = ELEMENT_VP8_DEC;
+            break;
+        case MFX_CODEC_AVC:
+            ret = ELEMENT_DECODER;
+            break;
+        default:
+            ret = ELEMENT_DECODER;
+            break;
+        }
+    }
+
+    return ret;
+}

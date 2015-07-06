@@ -7,6 +7,7 @@
 #include "mfxplugin++.h"
 #include "vpx/vpx_encoder.h"
 #include "vpx/vp8cx.h"
+#include <pthread.h>
 
 /**
  * \brief Encoder configuration.
@@ -203,6 +204,8 @@ public:
     void VP8ForceKeyFrame();
     void VP8ResetBitrate(unsigned int bitrate);
     int  VP8ResetRes(unsigned int width, unsigned int height);
+    static bool MutexInit() { pthread_mutex_init(&plugin_mutex_, NULL); return true; }
+    static pthread_mutex_t plugin_mutex_;
 
 protected:
     mfxCoreInterface*   m_pmfxCore;         // Pointer to mfxCoreInterface. used to increase-decrease reference for in-out frames

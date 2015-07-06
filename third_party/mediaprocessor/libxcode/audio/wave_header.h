@@ -31,9 +31,9 @@ struct WaveHeader
     unsigned short type;
     unsigned short channels;
     unsigned int freq;
-    unsigned int bytes;
-    unsigned short align;
-    unsigned short bits;
+    unsigned int bytes;    // bytes per second
+    unsigned short align;  // bytes per sample
+    unsigned short bits;   // bits per sample
 
     unsigned int id_data;
     unsigned int len_data;

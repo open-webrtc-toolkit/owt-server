@@ -117,41 +117,33 @@ void VideoMixEngineImp::setLayout(const CustomLayoutInfo* layoutMapping)
         return;
 
     std::map<InputIndex, RegionInfo>::const_iterator it_dec = layoutMapping->begin();
-    std::map<InputIndex, RegionInfo>::const_reverse_iterator re_it_dec = layoutMapping->rbegin();
-    bool set_combo_type = false;
     int ret = -1;
 
     boost::shared_lock<boost::shared_mutex> inputLock(m_inputMutex);
+    //first, set vpp as COMBO_CUSTOM mode
+    ret = m_xcoder->SetComboType(COMBO_CUSTOM, m_vpp->vppHandle, NULL);
+    if (ret != 0) {
+        printf("[%s]Fail to set combo type\n", __FUNCTION__);
+        return;
+    }
+    //second, set the layout information
+    CustomLayout layout;
     for(; it_dec != layoutMapping->end(); ++it_dec) {
         std::map<InputIndex, InputInfo>::iterator it = m_inputs.find(it_dec->first);
         if (it != m_inputs.end() && it->second.decHandle != NULL) {
-            if (!set_combo_type) {
-                ret = m_xcoder->SetComboType(COMBO_CUSTOM, m_vpp->vppHandle, NULL);
-                if (ret != 0) {
-                    printf("[%s]Fail to set combo type\n", __FUNCTION__);
-                    break;
-                } else
-                    set_combo_type = true;
-            }
-
             Region regionInfo = {it_dec->second.left, it_dec->second.top,
                 it_dec->second.width_ratio, it_dec->second.height_ratio};
-            if (it_dec->first == re_it_dec->first) {
-                // TODO: Make the Region parameter constant in SetRegionInfo in VCSA
-                ret = m_xcoder->SetRegionInfo(m_vpp->vppHandle, it->second.decHandle, regionInfo, true);
-                if (ret < 0) {
-                    printf("[%s]Fail to set region, input index:%d\n", __FUNCTION__, it_dec->first);
-                    break;
-                } else
-                    printf("[%s]End set dynamic layout\n", __FUNCTION__);
-            } else {
-                // TODO: Make the Region parameter constant in SetRegionInfo in VCSA
-                ret = m_xcoder->SetRegionInfo(m_vpp->vppHandle, it->second.decHandle, regionInfo, false);
-                if (ret < 0) {
-                    printf("[%s]Fail to set region, input index:%d\n", __FUNCTION__, it_dec->first);
-                    break;
-                }
-            }
+            CompRegion input = {it->second.decHandle, regionInfo};
+            layout.push_back(input);
+        }
+    }
+    if (layout.size() == 0) {
+        printf("[%s]No valid inputs in layoutMapping\n", __FUNCTION__);
+        return;
+    } else {
+        ret = m_xcoder->SetCustomLayout(m_vpp->vppHandle, &layout);
+        if (ret < 0) {
+            printf("[%s]Fail to set region\n", __FUNCTION__);
         }
     }
 }
@@ -306,7 +298,7 @@ void VideoMixEngineImp::forceKeyFrame(OutputIndex index)
     std::map<OutputIndex, OutputInfo>::iterator it = m_outputs.find(index);
     if (it != m_outputs.end()) {
         if (m_xcoder) {
-            if (0 != m_xcoder->ForceKeyFrame(codec_type_dict[it->second.codec]))
+            if (0 != m_xcoder->ForceKeyFrame(it->second.encHandle))
                 printf("[%s]Fail to force key frame.\n", __FUNCTION__);
         } else
             printf("[%s]NULL pointer.\n", __FUNCTION__);
@@ -323,7 +315,7 @@ void VideoMixEngineImp::setBitrate(OutputIndex index, unsigned short bitrate)
     std::map<OutputIndex, OutputInfo>::iterator it = m_outputs.find(index);
     if (it != m_outputs.end()) {
         if (m_xcoder) {
-            if (0 != m_xcoder->SetBitrate(codec_type_dict[it->second.codec], bitrate)) {
+            if (0 != m_xcoder->SetBitrate(it->second.encHandle, bitrate)) {
                 printf("[%s]Fail to set bit rate.\n", __FUNCTION__);
             } else {
                 // in case: pipeline created but not initialized
@@ -572,6 +564,8 @@ void VideoMixEngineImp::setupOutputCfg(EncOptions* enc_cfg, OutputInfo* output)
             enc_cfg->output_codec_type = codec_type_dict[output->codec];
             enc_cfg->bitrate = output->bitrate;
             enc_cfg->numRefFrame = 1;
+            //set this field to select vp8 sw encoder or vp8 hybrid encoder
+            enc_cfg->swCodecPref = true;
             enc_cfg->measuremnt = NULL;
             if (output->codec == VCT_MIX_H264) {
                 enc_cfg->profile = 66;

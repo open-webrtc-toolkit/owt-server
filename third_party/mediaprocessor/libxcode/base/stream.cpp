@@ -51,6 +51,10 @@ Stream::~Stream()
 bool Stream::Open(const char *filename, bool openWrite)
 {
     mStreamType = STREAM_TYPE_FILE;
+    if (mFile) {
+        fclose(mFile);
+        mFile = NULL;
+    }
     mFile = fopen(filename, openWrite ? "wb" : "rb");
     mFileName = filename;
 

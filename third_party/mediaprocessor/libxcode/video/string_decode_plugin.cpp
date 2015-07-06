@@ -477,11 +477,11 @@ mfxStatus StringDecPlugin::RenderString(StringInfo *stringInfo)
     bmp_width_ = 0;
     bmp_height_ = plsize + pen_y;
     text_data_ = (char **)malloc(sizeof(char *) * bmp_height_);
-
     if (text_data_ == NULL) {
         printf("Error in malloc bmp.\n");
         return MFX_ERR_UNKNOWN;
     }
+    memset(text_data_, 0, sizeof(char *) * bmp_height_);
 
     for (n = 0; n < num_chars; n++) {
         if (string[n] == ' ') {
@@ -521,7 +521,18 @@ mfxStatus StringDecPlugin::RenderString(StringInfo *stringInfo)
             error = FT_Load_Glyph(font_face_, glyph_idx, FT_LOAD_DEFAULT);
 
             if (error) {
-                continue; // ignore errors
+                printf("Error in lodding glyph.\n");
+
+                for (k = 0; k < bmp_height_; k++) {
+                    if (text_data_[k]) {
+                        free(text_data_[k]);
+                        text_data_[k] = NULL;
+                    }
+                }
+
+                free(text_data_);
+                text_data_ = NULL;
+                return MFX_ERR_UNKNOWN;
             }
 
             FT_Glyph glyph;
