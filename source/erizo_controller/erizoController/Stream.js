@@ -1,6 +1,6 @@
 /*global exports*/
 exports.Stream = function (spec) {
-    "use strict";
+    'use strict';
 
     var that = {},
         recorder = '',
@@ -31,7 +31,7 @@ exports.Stream = function (spec) {
 
     // Indicates if the stream has screen activated
     that.hasScreen = function () {
-        return spec.screen;
+        return spec.video && spec.video.device === 'screen';
     };
 
     // Retrieves attributes from stream
@@ -76,7 +76,7 @@ exports.Stream = function (spec) {
 
     // Returns the public specification of this stream
     that.getPublicStream = function () {
-        return {id: spec.id, audio: spec.audio, video: spec.video, data: spec.data, screen: spec.screen, from: spec.from, attributes: spec.attributes};
+        return {id: spec.id, audio: spec.audio, video: spec.video, data: spec.data, from: spec.from, attributes: spec.attributes};
     };
 
     return that;
