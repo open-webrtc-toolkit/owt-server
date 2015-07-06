@@ -150,10 +150,6 @@ exports.RoomController = function (spec) {
                     // Track external outputs
                     externalOutputs[recorder_id] = publisher_id;
 
-                    // Track publisher locally
-                    publishers[publisher_id] = publisher_id;
-                    subscribers[publisher_id] = [];
-
                     return callback({
                         success: true,
                         text: url
