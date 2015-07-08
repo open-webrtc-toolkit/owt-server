@@ -213,7 +213,7 @@ namespace erizo {
     avpkt.data = inBuff;
     avpkt.size = inBuffLen;
 
-    int got_picture;
+    int got_picture = 0;
     int len;
 
     while (avpkt.size > 0) {
