@@ -45,13 +45,15 @@ int WebRTCGateway::deliverAudioData(char* buf, int len)
     if (len <= 0)
         return 0;
 
+    m_audioReceiver->deliverAudioData(buf, len);
+
     {
         boost::shared_lock<boost::shared_mutex> lock(m_sinkMutex);
         if (audioSink_)
             audioSink_->deliverAudioData(buf, len);
     }
 
-    return m_audioReceiver->deliverAudioData(buf, len);
+    return len;
 }
 
 int WebRTCGateway::deliverVideoData(char* buf, int len)
@@ -59,13 +61,18 @@ int WebRTCGateway::deliverVideoData(char* buf, int len)
     if (len <= 0)
         return 0;
 
+    // Forward this packet before handing it over to the next processing
+    // stage (like mixing). Otherwise Firefox won't be happy with H264 forwarding.
+    // This is super strange, but we definitely need to understand the root cause.
+    m_videoReceiver->deliverVideoData(buf, len);
+
     {
         boost::shared_lock<boost::shared_mutex> lock(m_sinkMutex);
         if (videoSink_)
             videoSink_->deliverVideoData(buf, len);
     }
 
-    return m_videoReceiver->deliverVideoData(buf, len);
+    return len;
 }
 
 void WebRTCGateway::receiveRtpData(char* rtpdata, int len, DataType type, uint32_t streamId)
