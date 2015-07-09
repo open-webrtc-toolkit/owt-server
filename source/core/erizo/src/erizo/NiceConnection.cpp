@@ -145,20 +145,22 @@ namespace erizo {
     m_Thread_ = boost::thread(&NiceConnection::init, this);
   }
 
-  void NiceConnection::queueData(unsigned int component_id, char* buf, int len){
+  void NiceConnection::queueData(unsigned int component_id, char* buf, int len) {
     if (this->checkIceState() == NICE_READY && running_){
       boost::mutex::scoped_lock(queueMutex_);
       if (niceQueue_.size() < 1000 ) {
-        packetPtr p_ (new dataPacket());
-        memcpy(p_->data, buf, len);
-        p_->comp = component_id;
-        p_->length = len;
-        niceQueue_.push(p_);
-        cond_.notify_one();
+        packetPtr p_(new dataPacket());
+        if (p_) {
+          memcpy(p_->data, buf, len);
+          p_->comp = component_id;
+          p_->length = len;
+          niceQueue_.push(p_);
+          cond_.notify_one();
+        }
       }
     }
-  
   }
+
   int NiceConnection::sendData(unsigned int compId, const void* buf, int len) {
     int val = -1;
     if (this->checkIceState() == NICE_READY && running_) {
