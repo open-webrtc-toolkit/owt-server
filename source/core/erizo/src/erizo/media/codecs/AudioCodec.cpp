@@ -168,7 +168,7 @@ namespace erizo {
 
 
     AVPacket avpkt;
-    int outSize;
+    int outSize = 0;
     int decSize = 0;
     int len = -1;
     uint8_t *decBuff = (uint8_t*) malloc(16000);
