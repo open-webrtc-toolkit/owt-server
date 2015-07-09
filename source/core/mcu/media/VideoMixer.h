@@ -51,7 +51,7 @@ static const int MIXED_H264_VIDEO_STREAM_ID = 3;
 /**
  * Receives media from several sources, mixed into one stream and retransmits it to the RTPDataReceiver.
  */
-class VideoMixer : public woogeen_base::MediaSourceConsumer, public woogeen_base::FrameDispatcher, public erizo::FeedbackSink, public InputProcessorCallback {
+class VideoMixer : public woogeen_base::MediaSourceConsumer, public woogeen_base::FrameDispatcher, public erizo::FeedbackSink, public InputProcessorCallback, public woogeen_base::Notification {
     DECLARE_LOGGER();
 
 public:
@@ -95,6 +95,8 @@ public:
     int32_t addFrameConsumer(const std::string&, int payloadType, woogeen_base::FrameConsumer*);
     void removeFrameConsumer(int32_t id);
 
+    // Implements Notification
+    void setupNotification(std::function<void (const std::string&, const std::string&)> f);
 private:
     void closeAll();
 

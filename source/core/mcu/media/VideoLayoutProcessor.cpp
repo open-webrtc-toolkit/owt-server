@@ -292,6 +292,7 @@ void VideoLayoutProcessor::updateInputPositions()
     std::list<boost::shared_ptr<LayoutConsumer>>::iterator it = m_consumers.begin();
     for (; it != m_consumers.end(); ++it)
         (*it)->updateLayoutSolution(solution);
+    notify("UpdateStream", "VideoLayoutChanged");
 }
 
 void VideoLayoutProcessor::chooseRegions()

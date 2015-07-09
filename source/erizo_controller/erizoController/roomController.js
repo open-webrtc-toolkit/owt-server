@@ -62,6 +62,7 @@ exports.RoomController = function (spec) {
             log.debug("Answer", erizo_id);
             erizos[publisher_id] = erizo_id;
             callback();
+            rpc.callRpc('ErizoJS_'+erizo_id, 'setControllerId', [exports.myId], {});
         }});
     };
 

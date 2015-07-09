@@ -44,3 +44,8 @@ exports.getConfig = function (callback) {
         callback('callback', result);
     });
 };
+
+exports.eventReport = function (event, type, data) {
+    'use strict';
+    erizoController.handleEventReport(event, type, data);
+}

@@ -298,7 +298,9 @@ bool Mixer::init(boost::property_tree::ptree& videoConfig)
     m_videoMixer.reset(new VideoMixer(this, videoConfig));
     bool avCoordinated = videoConfig.get<bool>("avcoordinate");
     m_audioMixer.reset(new AudioMixer(this, this, avCoordinated));
-
+    m_videoMixer->setupNotification([this](const std::string& event, const std::string& data) {
+        this->notifyAsyncEvent(event, data);
+    });
     return true;
 }
 

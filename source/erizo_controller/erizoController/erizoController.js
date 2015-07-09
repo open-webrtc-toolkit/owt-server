@@ -128,6 +128,21 @@ var sendMsgToRoom = function (room, type, arg) {
     });
 };
 
+var eventReportHandlers = {
+    'updateStream': function (event, data) {
+        for (var i in rooms) {
+            if (rooms.hasOwnProperty(i) && rooms[i].mixer === data) {
+                sendMsgToRoom(rooms[i], 'onUpdateStream', {
+                    event: event,
+                    id: data,
+                    data: data
+                });
+                break;
+            }
+        }
+    }
+};
+
 var formatDate = function(date, format) {
     var dateTime = {
         'M+': date.getMonth() + 1,
@@ -1243,6 +1258,13 @@ exports.getConfig = function (callback) {
     });
 };
 
+exports.handleEventReport = function (event, type, data) {
+    log.debug(event, type, data);
+    if (typeof eventReportHandlers[event] === 'function') {
+        eventReportHandlers[event](type, data);
+    }
+};
+
 ['SIGINT', 'SIGTERM'].map(function (sig) {
     process.on(sig, function () {
         log.warn('Exiting on', sig);
@@ -1262,6 +1284,7 @@ exports.getConfig = function (callback) {
                 addToCloudHandler(function () {
                     var rpcID = 'erizoController_' + myId;
                     rpc.bind(rpcID, listen);
+                    controller.myId = 'erizoController_' + myId;
                 });
             } catch (error) {
                 log.info('Error in Erizo Controller:', error);
