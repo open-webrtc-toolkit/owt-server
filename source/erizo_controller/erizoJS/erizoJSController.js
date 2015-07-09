@@ -519,22 +519,22 @@ exports.ErizoJSController = function () {
         if (publishers[mixer] !== undefined) {
             log.info('set the Region of ' + publisher + ' to ' + region  + ' in mixer ' + mixer);
             if (publishers[mixer].setRegion(publisher, region)) {
-                return callback('callback', 'success');
+                return callback('callback');
             }
         }
 
-        callback('callback', 'error');
+        callback('callback', 'failed');
     };
 
     that.setVideoBitrate = function (mixer, publisher, bitrate, callback) {
         if (publishers[mixer] !== undefined) {
             log.info('set the bitrate of ' + publisher + ' to ' + bitrate  + ' in mixer ' + mixer);
             if (publishers[mixer].setVideoBitrate(publisher, bitrate)) {
-                return callback('callback', 'success');
+                return callback('callback');
             }
         }
 
-        callback('callback', 'error');
+        callback('callback', 'failed');
     };
 
     that.setControllerId = function (id) {

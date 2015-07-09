@@ -367,8 +367,20 @@ exports.RoomController = function (spec) {
     };
 
     that.getRegion = function (mixer_id, publisher_id, callback) {
+        if (publishers[publisher_id] === undefined) {
+            return callback({
+                success: false,
+                text: 'stream not published'
+            });
+        }
+        if (publishers[mixer_id] === undefined) {
+            return callback({
+                success: false,
+                text: 'mixer is not available'
+            });
+        }
         var args = [mixer_id, publisher_id];
-        rpc.callRpc(getErizoQueue(publisher_id), "getRegion", args, {callback: function (result) {
+        rpc.callRpc(getErizoQueue(mixer_id), "getRegion", args, {callback: function (result) {
             if (result) {
                 return callback({
                     success: true,
@@ -381,15 +393,26 @@ exports.RoomController = function (spec) {
                 text: 'Cannot find the participant in the mixed video'
             });
         }});
-        // rpc.callRpc(getErizoQueue(mixer_id), "getRegion", args, {callback: callback});
     };
 
     that.setRegion = function (mixer_id, publisher_id, region_id, callback) {
+        if (publishers[publisher_id] === undefined) {
+            return callback('stream not published');
+        }
+        if (publishers[mixer_id] === undefined) {
+            return callback('mixer is not available');
+        }
         var args = [mixer_id, publisher_id, region_id];
         rpc.callRpc(getErizoQueue(mixer_id), "setRegion", args, {callback: callback});
     };
 
     that.setVideoBitrate = function (mixer_id, publisher_id, bitrate, callback) {
+        if (publishers[publisher_id] === undefined) {
+            return callback('stream not published');
+        }
+        if (publishers[mixer_id] === undefined) {
+            return callback('mixer is not available');
+        }
         var args = [mixer_id, publisher_id, bitrate];
         rpc.callRpc(getErizoQueue(mixer_id), "setVideoBitrate", args, {callback: callback});
     };
