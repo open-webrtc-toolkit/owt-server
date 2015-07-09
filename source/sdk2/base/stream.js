@@ -327,7 +327,7 @@
     if (typeof getMedia !== 'function' && !isLegacyIE()) {
       if (typeof callback === 'function') {
         callback({
-          code: 4100,
+          code: 1100,
           msg: 'webrtc support not available'
         });
       }
@@ -345,7 +345,7 @@
           if (window.navigator.appVersion.match(/Chrome\/([\w\W]*?)\./)[1] < 34) {
             if (typeof callback === 'function') {
               callback({
-                code: 4101,
+                code: 1103,
                 msg: 'browser screen sharing not supported'
               });
               return;
@@ -367,7 +367,7 @@
     } else {
       if (typeof callback === 'function') {
         callback({
-          code: 4109,
+          code: 1104,
           msg: 'invalid media option'
         });
         return;
@@ -410,7 +410,7 @@
     };
 
     var onFailure = function (error) {
-      var err = {type: 'error', msg: error.name || error};
+      var err = {code: 1100, msg: error.name || error};
       switch (err.msg) {
       // below - internally handled
       case 'Starting video failed':       // firefox: camera possessed by other process?
@@ -426,22 +426,28 @@
           return;
         } else {
           err.msg = 'MEDIA_OPTION_INVALID';
+          err.code = 1104;
         }
         break;
       // below - exposed
       case 'DevicesNotFoundError':        // chrome
         err.msg = 'DEVICES_NOT_FOUND';
+        err.code = 1102;
         break;
       case 'NotSupportedError':           // chrome
         err.msg = 'NOT_SUPPORTED';
+        err.code = 1105;
         break;
       case 'PermissionDeniedError':       // chrome
         err.msg = 'PERMISSION_DENIED';
+        err.code = 1101;
         break;
       case 'PERMISSION_DENIED':           // firefox
+        err.code = 1101;
         break;
       case 'ConstraintNotSatisfiedError': // chrome
         err.msg = 'CONSTRAINT_NOT_SATISFIED';
+        err.code = 1106;
         break;
       default:
         if (!err.msg) {
@@ -458,6 +464,15 @@
       mediaOption.audio = false;
       try {
         chrome.runtime.sendMessage(extensionId, {getStream: true}, function (response) {
+          if (response === undefined) {
+            if (typeof callback === 'function') {
+              callback({
+                code: 1103,
+                msg: 'screen sharing plugin inaccessible'
+              });
+            }
+            return;
+          }
           mediaOption.video.mandatory.chromeMediaSource = 'desktop';
           mediaOption.video.mandatory.chromeMediaSourceId = response.streamId;
           getMedia.apply(navigator, [mediaOption, onSuccess, onFailure]);
@@ -465,7 +480,7 @@
       } catch (err) {
         if (typeof callback === 'function') {
           callback({
-            code: 4102,
+            code: 1103,
             msg: 'screen sharing plugin inaccessible',
             err: err
           });
