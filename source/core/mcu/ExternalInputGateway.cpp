@@ -401,7 +401,7 @@ uint32_t ExternalInputGateway::addVideoOutput(int payloadType, bool nack, bool f
 
     // Fetch video size.
     // TODO: The size should be identical to the published video size.
-    output->setSendCodec(outputFormat, 640, 480);
+    output->setSendCodec(outputFormat, 1280, 720);
     output->startSend(nack, fec);
     boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
     m_videoOutputs[payloadType].reset(output);
