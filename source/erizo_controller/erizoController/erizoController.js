@@ -1006,8 +1006,9 @@ var listen = function () {
             }
 
             if (options.id && options.region && socket.room.mixer) {
-                socket.room.controller.setRegion(socket.room.mixer, options.id, options.region, function (result) {
-                    safeCall(callback, result);
+                socket.room.controller.setRegion(socket.room.mixer, options.id, options.region, function (err) {
+                    if (err) return safeCall(callback, 'error', err);
+                    safeCall(callback, 'success');
                 });
             } else {
                 safeCall(callback, 'error', 'Invalid participant/region id or mixer not available.');
@@ -1025,8 +1026,9 @@ var listen = function () {
             // TODO: Currently setVideoBitrate only works when the mixer is available.
             // We need to add the support in pure forwarding mode later.
             if (options.id && options.bitrate && socket.room.mixer) {
-                socket.room.controller.setVideoBitrate(socket.room.mixer, options.id, options.bitrate, function (result) {
-                    safeCall(callback, result);
+                socket.room.controller.setVideoBitrate(socket.room.mixer, options.id, options.bitrate, function (err) {
+                    if (err) return safeCall(callback, 'error', err);
+                    safeCall(callback, 'success');
                 });
             } else {
                 safeCall(callback, 'error', 'Invalid participant id/bitrate or mixer not available.');
