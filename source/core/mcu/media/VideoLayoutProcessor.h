@@ -25,6 +25,7 @@
 
 #include <boost/property_tree/ptree.hpp>
 #include <boost/shared_ptr.hpp>
+#include <EventRegistry.h>
 #include <list>
 #include <logger.h>
 #include <map>
@@ -32,7 +33,7 @@
 
 namespace mcu {
 
-class VideoLayoutProcessor{
+class VideoLayoutProcessor : public woogeen_base::Notification {
     DECLARE_LOGGER();
 public:
     VideoLayoutProcessor(boost::property_tree::ptree& layoutConfig);

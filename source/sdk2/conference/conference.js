@@ -149,6 +149,10 @@ Woogeen.ConferenceClient = (function () {
         });
 
         self.socket.on('onAddStream', function (spec) {
+          if (self.remoteStreams[spec.id] !== undefined) {
+            L.Logger.warning('stream already added:', spec.id);
+            return;
+          }
           var stream = new Woogeen.RemoteStream({
             video: spec.video,
             audio: spec.audio,
@@ -156,27 +160,7 @@ Woogeen.ConferenceClient = (function () {
             from: spec.from,
             attributes: spec.attributes
           });
-          var evt;
-          if (self.remoteStreams[spec.id] !== undefined) {
-            stream.mediaStream = self.remoteStreams[spec.id].mediaStream;
-            evt = new Woogeen.StreamEvent({type: 'stream-updated', stream: stream});
-          } else {
-            evt = new Woogeen.StreamEvent({type: 'stream-added', stream: stream});
-          }
-          self.remoteStreams[spec.id] = stream;
-          self.dispatchEvent(evt);
-        });
-
-        self.socket.on('onUpdateStream', function (spec) {
-          var stream = new Woogeen.RemoteStream({
-            video: spec.video,
-            audio: spec.audio,
-            id: spec.id,
-            from: spec.from,
-            attributes: spec.attributes,
-            mediaStream: (self.remoteStreams[spec.id] || {}).mediaStream
-          });
-          var evt = new Woogeen.StreamEvent({type: 'stream-updated', stream: stream});
+          var evt = new Woogeen.StreamEvent({type: 'stream-added', stream: stream});
           self.remoteStreams[spec.id] = stream;
           self.dispatchEvent(evt);
         });
@@ -311,35 +295,11 @@ Woogeen.ConferenceClient = (function () {
           }
         });
 
-        self.socket.on('onVideoOn', function (spec) {
-          var stream = self.localStreams[spec.id];
+        self.socket.on('onUpdateStream', function (spec) {
+          // Handle: 'VideoEnabled', 'VideoDisabled', 'AudioEnabled', 'AudioDisabled', 'VideoLayoutChanged', [etc]
+          var stream = self.remoteStreams[spec.id];
           if (stream) {
-            var evt = new Woogeen.StreamEvent({type: 'video-on', stream: stream});
-            self.dispatchEvent(evt);
-          }
-        });
-
-        self.socket.on('onVideoOff', function (spec) {
-          var stream = self.localStreams[spec.id];
-          if (stream) {
-            var evt = new Woogeen.StreamEvent({type: 'video-off', stream: stream});
-            self.dispatchEvent(evt);
-          }
-        });
-
-        self.socket.on('onAudioOn', function (spec) {
-          var stream = self.localStreams[spec.id];
-          if (stream) {
-            var evt = new Woogeen.StreamEvent({type: 'audio-on', stream: stream});
-            self.dispatchEvent(evt);
-          }
-        });
-
-        self.socket.on('onAudioOff', function (spec) {
-          var stream = self.localStreams[spec.id];
-          if (stream) {
-            var evt = new Woogeen.StreamEvent({type: 'audio-off', stream: stream});
-            self.dispatchEvent(evt);
+            stream.emit(spec.event, spec.data);
           }
         });
 

@@ -110,6 +110,11 @@
     } else {
       L.Logger.info('won`t subscribe', stream.id());
     }
+    if (stream.isMixed()) {
+      stream.on('VideoLayoutChanged', function () {
+        L.Logger.info('stream', stream.id(), 'VideoLayoutChanged');
+      });
+    }
   });
 
   conference.on('stream-removed', function (event) {
@@ -225,8 +230,13 @@
             }, function (err) {
               L.Logger.error(stream.id(), 'subscribe failed:', err);
             });
-          }  else {
+          } else {
             L.Logger.info('won`t subscribe', stream.id());
+          }
+          if (stream.isMixed()) {
+            stream.on('VideoLayoutChanged', function () {
+              L.Logger.info('stream', stream.id(), 'VideoLayoutChanged');
+            });
           }
         });
         var users = resp.users;

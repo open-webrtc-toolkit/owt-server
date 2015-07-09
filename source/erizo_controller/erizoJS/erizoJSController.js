@@ -1,5 +1,5 @@
-/*global require, exports, setInterval, clearInterval, GLOBAL*/
-
+/*global require, exports, setInterval, clearInterval, GLOBAL, process*/
+'use strict';
 var addon = require('./../../bindings/mcu/build/Release/addon');
 
 var logger = require('./../common/logger').logger;
@@ -19,18 +19,16 @@ if (GLOBAL.config.erizo.rtsp) {
     rtsp_prefix += 'localhost:1935/live/';
 }
 
-exports.ErizoJSController = function (spec) {
-    "use strict";
-
+exports.ErizoJSController = function () {
     var that = {},
         subscribers = {},
         publishers = {},
         mixers = {},
         mixerProxy,
-
-        INTERVAL_TIME_SDP = 100,
+        erizoControllerId,
+        // INTERVAL_TIME_SDP = 100,
         INTERVAL_TIME_FIR = 100,
-        INTERVAL_TIME_KILL = 30*60*1000, // Timeout to kill itself after a timeout since the publisher leaves room.
+        // INTERVAL_TIME_KILL = 30*60*1000, // Timeout to kill itself after a timeout since the publisher leaves room.
         waitForFIR,
         initWebRtcConnection,
         getSdp,
@@ -48,21 +46,26 @@ exports.ErizoJSController = function (spec) {
 
             var doInitMixer = function(hardwareAccelerated) {
                 var config = {
-                    "mixer": true,
-                    "oop": oop,
-                    "proxy": false,
-                    "video": {
-                        "hardware": hardwareAccelerated,
-                        "avcoordinate": roomConfig.video.avCoordinated,
-                        "maxinput": roomConfig.video.maxInput,
-                        "bitrate": roomConfig.video.bitrate,
-                        "resolution": roomConfig.video.resolution,
-                        "backgroundcolor": roomConfig.video.bkColor,
-                        "templates": roomConfig.video.layout
+                    mixer: true,
+                    oop: oop,
+                    proxy: false,
+                    video: {
+                        hardware: hardwareAccelerated,
+                        avcoordinate: roomConfig.video.avCoordinated,
+                        maxinput: roomConfig.video.maxInput,
+                        bitrate: roomConfig.video.bitrate,
+                        resolution: roomConfig.video.resolution,
+                        backgroundcolor: roomConfig.video.bkColor,
+                        templates: roomConfig.video.layout
                     }
                 };
                 var mixer = new addon.Mixer(JSON.stringify(config));
-
+                // setup event listeners
+                mixer.addEventListener('UpdateStream', function (evt) {
+                    if (erizoControllerId !== undefined) {
+                        rpc.callRpc(erizoControllerId, 'eventReport', ['updateStream', evt, id]);
+                    }
+                });
                 publishers[id] = mixer;
                 subscribers[id] = [];
                 callback('callback', 'success');
@@ -70,21 +73,21 @@ exports.ErizoJSController = function (spec) {
 
             if (useHardware) {
                 // Query the hardware capability only if we want to try it.
-                require('child_process').exec('vainfo', function (err, stdout, stderr) {
-                    var info = "";
+                require('child_process').exec('vainfo', function (err, stdout) {
+                    var info = '';
                     if (err) {
                         info = err.toString();
                     } else if(stdout.length > 0) {
                         info = stdout.toString();
                     }
                     // Check whether hardware codec should be used for this room
-                    useHardware = (info.indexOf('VA-API version 0.34.0') != -1)
-                                   || (info.indexOf('VA-API version: 0.34') != -1);
+                    useHardware = (info.indexOf('VA-API version 0.34.0') != -1) ||
+                                    (info.indexOf('VA-API version: 0.34') != -1);
                 });
             }
             doInitMixer(useHardware);
         } else {
-            log.info("Mixer already set for", id);
+            log.info('Mixer already set for', id);
         }
     };
 
@@ -114,7 +117,7 @@ exports.ErizoJSController = function (spec) {
 
         if (GLOBAL.config.erizoController.sendStats) {
             wrtc.getStats(function (newStats){
-                log.info("Received RTCP stats: ", newStats);
+                log.info('Received RTCP stats:', newStats);
                 var timeStamp = new Date();
                 rpc.callRpc('stats_handler', 'stats', [{pub: id_pub, subs: id_sub, stats: JSON.parse(newStats), timestamp:timeStamp.getTime()}]);
             });
@@ -129,7 +132,7 @@ exports.ErizoJSController = function (spec) {
           }
 
           var localSdp, answer;
-          log.info("webrtc Addon status" + newStatus);
+          log.info('webrtc Addon status', newStatus);
 
           if (GLOBAL.config.erizoController.sendStats) {
             var timeStamp = new Date();
@@ -194,7 +197,7 @@ exports.ErizoJSController = function (spec) {
 
         var reg1 = new RegExp(/\n/g),
             offererSessionId = offerRoap.match(/("offererSessionId":)(.+?)(,)/)[0],
-            answererSessionId = "106",
+            answererSessionId = '106',
             answer = ('\n{\n \"messageType\":\"ANSWER\",\n');
 
         sdp = sdp.replace(reg1, '\\r\\n');
@@ -209,23 +212,23 @@ exports.ErizoJSController = function (spec) {
 
         if (publishers[from] === undefined) {
 
-            log.info("Adding external input peer_id ", from);
+            log.info('Adding external input peer_id', from);
 
             var ei = new addon.ExternalInput(url);
-            var muxer = new addon.Gateway(JSON.stringify({"externalInput": true}));
+            var muxer = new addon.Gateway(JSON.stringify({externalInput: true}));
 
             publishers[from] = muxer;
             subscribers[from] = [];
 
             var answer = ei.init(function (message) {
-                if (message === "success") {
-                    log.info("External input", from, "initialization succeed");
+                if (message === 'success') {
+                    log.info('External input', from, 'initialization succeed');
 
                     if (mixer.id && mixer.oop && mixerProxy === undefined) {
                         var config = {
-                            "mixer": true,
-                            "oop": true,
-                            "proxy": true,
+                            mixer: true,
+                            oop: true,
+                            proxy: true,
                         };
                         mixerProxy = new addon.Mixer(JSON.stringify(config));
                     }
@@ -235,7 +238,7 @@ exports.ErizoJSController = function (spec) {
                     if (mixer.id) {
                         var mixerObj = publishers[mixer.id];
                         if (mixerObj) {
-                            mixerObj.addPublisher(muxer, from)
+                            mixerObj.addPublisher(muxer, from);
                             mixers[from] = mixerObj;
                         } else {
                             if (mixerProxy) {
@@ -245,19 +248,19 @@ exports.ErizoJSController = function (spec) {
                         }
                     }
                 } else {
-                    log.error("External input", from, "initialization failed");
-                    publishers[from].close()
+                    log.error('External input', from, 'initialization failed');
+                    publishers[from].close();
                     delete publishers[from];
                 }
                 callback('callback', message);
             });
 
             if (answer < 0) {
-                callback('callback', "input url initialization error");
+                callback('callback', 'input url initialization error');
                 return;
             }
         } else {
-            log.info("Publisher already set for", from);
+            log.info('Publisher already set for', from);
         }
     };
 
@@ -295,7 +298,7 @@ exports.ErizoJSController = function (spec) {
 
     that.removeExternalOutput = function (to, from, close, callback) {
         if (publishers[to] !== undefined) {
-            log.info("Stopping ExternalOutput: " + from);
+            log.info('Stopping ExternalOutput:' + from);
             if (publishers[to].removeExternalOutput(from, close)) {
                 return callback('callback', 'success');
             }
@@ -312,7 +315,7 @@ exports.ErizoJSController = function (spec) {
     that.addPublisher = function (from, sdp, mixer, callback) {
 
         if (publishers[from] === undefined) {
-            log.info("Adding publisher peer_id ", from);
+            log.info('Adding publisher peer_id', from);
             cipher.unlock(cipher.k, '../../cert/.woogeen.keystore', function cb (err, obj) {
                 if (!err) {
                     var erizoPassPhrase = obj.erizo;
@@ -338,9 +341,9 @@ exports.ErizoJSController = function (spec) {
 
                     if (mixer.id && mixer.oop && mixerProxy === undefined) {
                         var config = {
-                            "mixer": true,
-                            "oop": true,
-                            "proxy": true,
+                            mixer: true,
+                            oop: true,
+                            proxy: true,
                         };
                         mixerProxy = new addon.Mixer(JSON.stringify(config));
                     }
@@ -352,7 +355,7 @@ exports.ErizoJSController = function (spec) {
                 }
             });
         } else {
-            log.info("Publisher already set for", from);
+            log.info('Publisher already set for', from);
         }
     };
 
@@ -365,7 +368,7 @@ exports.ErizoJSController = function (spec) {
         if (typeof sdp != 'string') sdp = JSON.stringify(sdp);
 
         if (publishers[to] !== undefined && subscribers[to].indexOf(from) === -1 && sdp.match('OFFER') !== null) {
-            log.info("Adding subscriber from ", from, 'to ', to, 'audio', audio, 'video', video);
+            log.info('Adding subscriber from', from, 'to', to, 'audio', audio, 'video', video);
             cipher.unlock(cipher.k, '../../cert/.woogeen.keystore', function cb (err, obj) {
                 if (!err) {
                     var erizoPassPhrase = obj.erizo;
@@ -411,7 +414,7 @@ exports.ErizoJSController = function (spec) {
                 }
             }
 
-            log.info("Publishers: ", count);
+            log.info('Publishers:', count);
             if (count === 0) {
                 if (mixerProxy !== undefined) {
                     log.info('Removing mixer proxy', from);
@@ -504,7 +507,7 @@ exports.ErizoJSController = function (spec) {
 
     that.getRegion = function (mixer, publisher, callback) {
         if (publishers[mixer] !== undefined) {
-            log.info("get the Region of " + publisher + " in mixer " + mixer);
+            log.info('get the Region of ' + publisher + ' in mixer ' + mixer);
             var ret = publishers[mixer].getRegion(publisher);
             return callback('callback', ret);
         }
@@ -514,7 +517,7 @@ exports.ErizoJSController = function (spec) {
 
     that.setRegion = function (mixer, publisher, region, callback) {
         if (publishers[mixer] !== undefined) {
-            log.info("set the Region of " + publisher + " to " + region  + " in mixer " + mixer);
+            log.info('set the Region of ' + publisher + ' to ' + region  + ' in mixer ' + mixer);
             if (publishers[mixer].setRegion(publisher, region)) {
                 return callback('callback', 'success');
             }
@@ -525,13 +528,17 @@ exports.ErizoJSController = function (spec) {
 
     that.setVideoBitrate = function (mixer, publisher, bitrate, callback) {
         if (publishers[mixer] !== undefined) {
-            log.info("set the bitrate of " + publisher + " to " + bitrate  + " in mixer " + mixer);
+            log.info('set the bitrate of ' + publisher + ' to ' + bitrate  + ' in mixer ' + mixer);
             if (publishers[mixer].setVideoBitrate(publisher, bitrate)) {
                 return callback('callback', 'success');
             }
         }
 
         callback('callback', 'error');
+    };
+
+    that.setControllerId = function (id) {
+        erizoControllerId = id;
     };
 
     return that;

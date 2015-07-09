@@ -407,4 +407,10 @@ void VideoMixer::closeAll()
     ELOG_DEBUG("Closed all media in this Mixer");
 }
 
+void VideoMixer::setupNotification(std::function<void (const std::string&, const std::string&)> f)
+{
+    m_layoutProcessor->setupNotification(f);
+    // setup others if needed.
+}
+
 }/* namespace mcu */

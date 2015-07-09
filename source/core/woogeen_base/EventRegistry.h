@@ -24,6 +24,7 @@
 #include <boost/thread/locks.hpp>
 #include <boost/thread/mutex.hpp>
 #include <Compiler.h>
+#include <functional>
 #include <queue>
 #include <stdlib.h>
 #include <string>
@@ -46,6 +47,16 @@ private:
     static void closeCallback(uv_handle_t*);
     static void callback(uv_async_t*, int status); // libuv <stable>
     static void callback(uv_async_t*); // libuv <HEAD>
+};
+
+class Notification {
+public:
+    virtual ~Notification() { }
+    virtual void setupNotification(std::function<void (const std::string&, const std::string&)> f) { m_fn = f; }
+    void notify(const std::string& event, const std::string& data) { if (m_fn) m_fn(event, data); }
+protected:
+    std::function<void (const std::string&, const std::string&)> m_fn;
+    Notification(std::function<void (const std::string&, const std::string&)> f = nullptr) : m_fn (f) { }
 };
 
 } /* namespace woogeen_base */

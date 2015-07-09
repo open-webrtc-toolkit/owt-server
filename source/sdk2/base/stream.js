@@ -211,6 +211,58 @@
       return (!!spec.video) && (spec.video.device === 'mcu');
     };
     this.from = spec.from;
+    var listeners = {};
+    var self = this;
+    Object.defineProperties(this, {
+      on: {
+        get: function () {
+          return function (event, listener) {
+            listeners[event] = listeners[event] || [];
+            listeners[event].push(listener);
+            return self;
+          };
+        }
+      },
+      emit: {
+        get: function () {
+          return function (event) {
+            if (listeners[event]) {
+              var args = [].slice.call(arguments, 1);
+              listeners[event].map(function (fn) {
+                fn.apply(self, args);
+              });
+            }
+            return self;
+          };
+        }
+      },
+      removeListener: {
+        get: function () {
+          return function (event, cb) {
+            if (cb === undefined) {
+              listeners[event] = [];
+            } else {
+              if (listeners[event]) {
+                listeners[event].map(function (fn, index) {
+                  if (fn === cb) {
+                    listeners[event].splice(index, 1);
+                  }
+                });
+              }
+            }
+            return self;
+          };
+        }
+      },
+      clearListeners: {
+        get: function () {
+          return function () {
+            listeners = {};
+            return self;
+          };
+        }
+      }
+    });
   }
 
   WoogeenLocalStream.prototype = Object.create(WoogeenStream.prototype);
