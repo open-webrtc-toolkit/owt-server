@@ -153,7 +153,7 @@ void SoftVideoCompositor::generateFrame()
 {
     if (m_consumer) {
         I420VideoFrame* compositeFrame = layout();
-        compositeFrame->set_render_time_ms(TickTime::MillisecondTimestamp() - m_ntpDelta);
+        compositeFrame->set_render_time_ms(TickTime::MillisecondTimestamp() + m_ntpDelta);
 
         if (m_consumer) {
             woogeen_base::Frame frame;

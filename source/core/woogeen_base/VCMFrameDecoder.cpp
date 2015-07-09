@@ -43,7 +43,7 @@ DecodedFrameHandler::~DecodedFrameHandler()
 
 int32_t DecodedFrameHandler::Decoded(I420VideoFrame& decodedImage)
 {
-    decodedImage.set_render_time_ms(TickTime::MillisecondTimestamp() - m_ntpDelta);
+    decodedImage.set_render_time_ms(TickTime::MillisecondTimestamp() + m_ntpDelta);
 
     Frame frame;
     memset(&frame, 0, sizeof(frame));
