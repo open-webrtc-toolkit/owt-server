@@ -71,7 +71,7 @@ var WoogeenNodeConference = (function () {
 
             self.publish = function publish (url, callback) {
               try {
-                self.socket.emit('publish', {state: 'url'}, url, function (status, resp) {
+                self.socket.emit('publish', {state: 'url', audio: true, video: true}, url, function (status, resp) {
                   if (status !== 'success') {
                     return safeCall(callback, status, resp);
                   }
