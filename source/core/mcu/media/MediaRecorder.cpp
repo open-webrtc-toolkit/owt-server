@@ -78,6 +78,11 @@ MediaRecorder::~MediaRecorder()
 
 bool MediaRecorder::setMediaSource(woogeen_base::FrameDispatcher* videoSource, woogeen_base::FrameDispatcher* audioSource)
 {
+    if (m_status == woogeen_base::MediaMuxer::Context_READY) {
+        callback("success");
+        ELOG_DEBUG("continuous recording");
+    }
+
     if (m_videoSource && m_videoId != -1)
         m_videoSource->removeFrameConsumer(m_videoId);
 

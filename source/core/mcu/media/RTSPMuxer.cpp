@@ -80,6 +80,11 @@ RTSPMuxer::~RTSPMuxer()
 
 bool RTSPMuxer::setMediaSource(woogeen_base::FrameDispatcher* videoSource, woogeen_base::FrameDispatcher* audioSource)
 {
+    if (m_status == woogeen_base::MediaMuxer::Context_READY) {
+        callback("success");
+        ELOG_DEBUG("continuous RTSP output");
+    }
+
     // Reset the media queues
     m_videoQueue.reset(new woogeen_base::MediaFrameQueue(0));
     m_audioQueue.reset(new woogeen_base::MediaFrameQueue(0));
