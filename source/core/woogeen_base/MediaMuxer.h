@@ -217,6 +217,20 @@ public:
     enum Status { Context_ERROR = -1, Context_EMPTY = 0, Context_READY = 1 };
     MediaMuxer(EventRegistry* registry = nullptr) : m_muxing(false), m_status(Context_EMPTY), m_firstVideoTimestamp(-1), m_firstAudioTimestamp(-1), m_callback(registry), m_callbackCalled(false) { }
     virtual ~MediaMuxer() { if (m_callback) delete m_callback; }
+    virtual bool resetEventRegistry(EventRegistry* newRegistry)
+    {
+        if (!newRegistry || m_callback == newRegistry)
+            return false;
+
+        if (m_callback)
+            delete m_callback;
+
+        m_callback = newRegistry;
+        m_callbackCalled = false;
+
+        return true;
+    }
+
     virtual bool setMediaSource(FrameDispatcher* videoDispatcher, FrameDispatcher* audioDispatcher) = 0;
     virtual void unsetMediaSource() = 0;
 

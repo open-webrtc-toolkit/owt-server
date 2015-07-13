@@ -36,6 +36,7 @@ woogeen_base::MediaMuxer* MediaMuxerFactory::createMediaMuxer(const std::string&
     if (id != "") {
         std::map<std::string, boost::shared_ptr<woogeen_base::MediaMuxer>>::iterator it = s_muxers.find(id);
         if (it != s_muxers.end()) {
+            s_muxers[id]->resetEventRegistry(callback);
             return s_muxers[id].get();
         }
 
