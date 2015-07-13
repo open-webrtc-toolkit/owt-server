@@ -21,7 +21,6 @@
 #ifndef MediaRecorder_h
 #define MediaRecorder_h
 
-#include <boost/thread.hpp>
 #include <logger.h>
 #include <MediaMuxer.h>
 #include <MediaUtilities.h>
@@ -45,11 +44,11 @@ public:
     bool setMediaSource(woogeen_base::FrameDispatcher* videoDispatcher, woogeen_base::FrameDispatcher* audioDispatcher);
     void unsetMediaSource();
     void onFrame(const woogeen_base::Frame&);
+    void onTimeout();
 
 private:
     bool init();
     void close();
-    void recordLoop();
     void addVideoStream(enum AVCodecID codec_id, unsigned int width = 1280, unsigned int height = 720);
     void addAudioStream(enum AVCodecID codec_id, int nbChannels = 1, int sampleRate = 8000);
     void writeVideoFrame(woogeen_base::EncodedFrame& encoded_frame);
@@ -67,7 +66,6 @@ private:
     std::string m_recordPath;
     // FIXME: snapshot interval for the future usage
     int m_snapshotInterval;
-    int64_t m_recordStartTime;
 };
 
 } /* namespace mcu */

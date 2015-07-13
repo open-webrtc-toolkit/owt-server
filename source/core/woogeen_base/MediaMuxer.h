@@ -28,6 +28,7 @@
 #include <boost/thread/mutex.hpp>
 #include <Compiler.h>
 #include <EventRegistry.h>
+#include <JobTimer.h>
 #include <rtputils.h>
 #include <SharedQueue.h>
 #include <webrtc/video/encoded_frame_callback_adapter.h>
@@ -35,12 +36,19 @@
 
 namespace woogeen_base {
 
+static inline int64_t currentTimeMillis() {
+    timeval time;
+    gettimeofday(&time, nullptr);
+    return ((time.tv_sec * 1000) + (time.tv_usec / 1000));
+}
+
 class EncodedFrame
 {
 public:
-    EncodedFrame(const uint8_t* data, uint16_t length, uint32_t timeStamp, long long offsetMsec)
-        : m_offsetMsec(offsetMsec), m_timeStamp(timeStamp)
-        , m_payloadData(nullptr), m_payloadSize(length)
+    EncodedFrame(const uint8_t* data, uint16_t length, int64_t timeStamp)
+        : m_timeStamp(timeStamp)
+        , m_payloadData(nullptr)
+        , m_payloadSize(length)
     {
         // copy the encoded frame
         m_payloadData = new uint8_t[length];
@@ -55,8 +63,7 @@ public:
         }
     }
 
-    long long m_offsetMsec;
-    uint32_t m_timeStamp;
+    int64_t m_timeStamp;
     uint8_t* m_payloadData;
     uint16_t m_payloadSize;
 };
@@ -66,10 +73,9 @@ static const unsigned int DEFAULT_QUEUE_MAX = 10;
 class MediaFrameQueue
 {
 public:
-    MediaFrameQueue(int64_t startTime, unsigned int max = DEFAULT_QUEUE_MAX)
+    MediaFrameQueue(unsigned int max = DEFAULT_QUEUE_MAX)
         : m_max(max)
-        , m_startTimeMsec(startTime)
-        , m_timeOffsetMsec(-1)
+        , m_startTimeOffset(currentTimeMillis())
     {
     }
 
@@ -77,16 +83,10 @@ public:
     {
     }
 
-    void pushFrame(const uint8_t* data, uint16_t length, uint32_t timeStamp)
+    void pushFrame(const uint8_t* data, uint16_t length)
     {
-        if (m_timeOffsetMsec == -1) {
-            timeval time;
-            gettimeofday(&time, nullptr);
-
-            m_timeOffsetMsec = ((time.tv_sec * 1000) + (time.tv_usec / 1000)) - m_startTimeMsec;
-        }
-
-        boost::shared_ptr<EncodedFrame> newFrame(new EncodedFrame(data, length, timeStamp, m_timeOffsetMsec));
+        int64_t timestamp = currentTimeMillis() - m_startTimeOffset;
+        boost::shared_ptr<EncodedFrame> newFrame(new EncodedFrame(data, length, timestamp));
         m_queue.push(newFrame);
 
         // Enforce our max queue size
@@ -105,11 +105,9 @@ public:
 private:
     // frames in this queue can be used to store decoded frame
     SharedQueue<boost::shared_ptr<EncodedFrame>> m_queue;
-
     // The max size we allow the queue to grow before discarding frames
     unsigned int m_max;
-    int64_t m_startTimeMsec;
-    int64_t m_timeOffsetMsec;
+    int64_t m_startTimeOffset;
 };
 
 class VideoEncodedFrameCallbackAdapter : public webrtc::EncodedImageCallback {
@@ -212,10 +210,10 @@ public:
     virtual void removeFrameConsumer(int32_t id) = 0;
 };
 
-class MediaMuxer : public FrameConsumer {
+class MediaMuxer : public FrameConsumer, public JobTimerListener {
 public:
     enum Status { Context_ERROR = -1, Context_EMPTY = 0, Context_READY = 1 };
-    MediaMuxer(EventRegistry* registry = nullptr) : m_muxing(false), m_status(Context_EMPTY), m_firstVideoTimestamp(-1), m_firstAudioTimestamp(-1), m_callback(registry), m_callbackCalled(false) { }
+    MediaMuxer(EventRegistry* registry = nullptr) : m_status(Context_EMPTY), m_callback(registry), m_callbackCalled(false) { }
     virtual ~MediaMuxer() { if (m_callback) delete m_callback; }
     virtual bool resetEventRegistry(EventRegistry* newRegistry)
     {
@@ -231,17 +229,18 @@ public:
         return true;
     }
 
+    // FrameConsumer
     virtual bool setMediaSource(FrameDispatcher* videoDispatcher, FrameDispatcher* audioDispatcher) = 0;
     virtual void unsetMediaSource() = 0;
+    // JobTimerListener
+    virtual void onTimeout() = 0;
 
 protected:
-    bool m_muxing;
     Status m_status;
-    int64_t m_firstVideoTimestamp;
-    int64_t m_firstAudioTimestamp;
-    boost::thread m_thread;
-    boost::scoped_ptr<woogeen_base::MediaFrameQueue> m_videoQueue;
-    boost::scoped_ptr<woogeen_base::MediaFrameQueue> m_audioQueue;
+    boost::scoped_ptr<MediaFrameQueue> m_videoQueue;
+    boost::scoped_ptr<MediaFrameQueue> m_audioQueue;
+    boost::scoped_ptr<JobTimer> m_jobTimer;
+
     void callback(const std::string& data) { // executed *ONCE*, should be called by m_thread only;
         if (m_callback && (!m_callbackCalled)) {
             m_callbackCalled = true;

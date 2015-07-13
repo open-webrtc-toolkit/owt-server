@@ -25,7 +25,6 @@
 #include "MediaUtilities.h"
 
 #include <boost/scoped_ptr.hpp>
-#include <boost/thread.hpp>
 #include <logger.h>
 #include <string>
 
@@ -52,32 +51,31 @@ public:
     bool setMediaSource(woogeen_base::FrameDispatcher* videoDispatcher, woogeen_base::FrameDispatcher* audioDispatcher);
     void unsetMediaSource();
     void onFrame(const woogeen_base::Frame&);
+    void onTimeout();
 
 private:
     void close();
     void addVideoStream(enum AVCodecID codec_id, unsigned int width = 640, unsigned int height = 480);
     void addAudioStream(enum AVCodecID codec_id, int nbChannels = 2, int sampleRate = 48000);
-    int writeVideoFrame(uint8_t*, size_t, int);
-    int writeAudioFrame(uint8_t*, size_t, int);
+    int writeVideoFrame(uint8_t*, size_t, int64_t);
+    int writeAudioFrame(uint8_t*, size_t, int64_t);
     AVFrame* allocAudioFrame(AVCodecContext*);
-    void loop();
-    void encodeAudioLoop();
+    void encodeAudio();
     void processAudio(uint8_t* data, int nbSamples, int nbChannels = 2, int sampleRate = 48000);
 
-    woogeen_base::FrameDispatcher*  m_videoSource;
-    woogeen_base::FrameDispatcher*  m_audioSource;
-    AVFormatContext*                m_context;
-    AVAudioResampleContext*         m_resampleContext;
-    AVAudioFifo*                    m_audioFifo;
-    AVStream*                       m_videoStream;
-    AVStream*                       m_audioStream;
-    uint32_t                        m_pts;
-    int32_t                         m_videoId, m_audioId;
-    std::string                     m_uri;
-    boost::mutex                    m_contextMutex;
-    boost::thread                   m_audioTransThread;
+    woogeen_base::FrameDispatcher*                  m_videoSource;
+    woogeen_base::FrameDispatcher*                  m_audioSource;
+    AVFormatContext*                                m_context;
+    AVAudioResampleContext*                         m_resampleContext;
+    AVAudioFifo*                                    m_audioFifo;
+    AVStream*                                       m_videoStream;
+    AVStream*                                       m_audioStream;
+    int32_t                                         m_videoId, m_audioId;
+    std::string                                     m_uri;
+    AVFrame*                                        m_audioEncodingFrame;
+    boost::mutex                                    m_contextMutex;
 #ifdef DUMP_RAW
-    std::unique_ptr<std::ofstream> m_dumpFile;
+    std::unique_ptr<std::ofstream>                  m_dumpFile;
 #endif
 };
 
