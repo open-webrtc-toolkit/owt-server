@@ -3,7 +3,7 @@
   'use strict';
 
 /**
- * @class Woogeen.Stream
+ * @namespace Woogeen.Stream
  * @classDesc Handles the WebRTC (audio, video) stream, identifies the stream, and identifies the location where the stream should be displayed. There are two stream classes: LocalStream and RemoteStream.
  */
   function WoogeenStream (spec) {
@@ -21,7 +21,8 @@
 /**
    * @function hasVideo
    * @desc This function returns true when stream has video track otherwise false.
-   * @memberOf Woogeen.Stream#
+   * @memberOf Woogeen.Stream
+   * @instance
    * @return true The stream has video.<br>false The stream does not have video.
    * @example
 <script type="text/JavaScript”>
@@ -34,7 +35,8 @@ L.Logger.info('stream hasVideo:', stream.hasVideo());
 /**
    * @function hasAudio
    * @desc This function returns true when stream has audio track otherwise false.
-   * @memberOf Woogeen.Stream#
+   * @memberOf Woogeen.Stream
+   * @instance
    * @return true The stream has audio.<br>false The stream does not have audio.
    * @example
 <script type="text/JavaScript”>
@@ -47,7 +49,8 @@ L.Logger.info('stream hasAudio:', stream.hasAudio());
 /**
    * @function attributes
    * @desc This function returns all user-defined attributes in stream.
-   * @memberOf Woogeen.Stream#
+   * @memberOf Woogeen.Stream
+   * @instance
    * @return All the user-defined attributes.
    * @example
 <script type="text/JavaScript”>
@@ -60,7 +63,8 @@ L.Logger.info('stream attibutes:', stream.attributes());
 /**
    * @function attr
    * @desc This function sets user-defined value in attributes when value is provided; otherwise returns corresponding attribute.
-   * @memberOf Woogeen.Stream#
+   * @memberOf Woogeen.Stream
+   * @instance
    * @param {string} key attribute key.
    * @param {string} value attribute value.
    * @return Existing attribute value if it’s not specified in parameter
@@ -80,7 +84,8 @@ stream.attr(“custom_key”, “custom_value”);
    * @desc This function returns stream Id assigned by server.
 <br><b>Remarks:</b><br>
 For local stream, it returns undefined if the stream has not been published; once published, stream Id should be updated by server.
-   * @memberOf Woogeen.Stream#
+   * @memberOf Woogeen.Stream
+   * @instance
    * @return {string} Stream Id assigned by server.
    * @example
 <script type="text/JavaScript”>
@@ -94,7 +99,8 @@ L.Logger.info('stream added:', stream.id());
 /**
    * @function isScreen
    * @desc This function returns true when stream's video track is from screen sharing otherwise false.
-   * @memberOf Woogeen.Stream#
+   * @memberOf Woogeen.Stream
+   * @instance
    * @return {boolean} true The stream has screen.<br>false The stream does not have screen.
    * @example
 <script type="text/JavaScript”>
@@ -122,7 +128,8 @@ L.Logger.info('stream hasScreen:', stream.hasScreen());
    * @desc This function closes the stream.
 <br><b>Remarks:</b><br>
 The local stream closes once it’s done. If the stream has audio and/or video, it also stops capturing camera/microphone. If the stream is published, the function also un-publishes it. If the stream is showing in an HTML element, the stream would be hidden. Once a LocalStream is closed, it is no longer usable.
-   * @memberOf Woogeen.Stream#
+   * @memberOf Woogeen.Stream
+   * @instance
    * @example
 <script type="text/JavaScript”>
 var stream = Woogeen.Stream({audio:true, video:true, data: false, attributes:
@@ -155,7 +162,8 @@ stream.close();
    * @desc This function disables underlying audio track in the stream if it has audio capacity; otherwise it does nothing.
 <br><b>Remarks:</b><br>
 For local stream, it stops sending audio packets; for remote stream, it stops decoding audio.
-   * @memberOf Woogeen.Stream#
+   * @memberOf Woogeen.Stream
+   * @instance
    * @return {TYPE} DESCRIPTION
    * @example
 <script type="text/JavaScript”>
@@ -191,7 +199,8 @@ stream.disableAudio();
    * @desc This function enables underlying audio track in the stream if it has audio capacity.
 <br><b>Remarks:</b><br>
 For local stream, it continues sending audio; for remote stream, it continues decoding audio.
-   * @memberOf Woogeen.Stream#
+   * @memberOf Woogeen.Stream
+   * @instance
    * @return {TYPE} DESCRIPTION
    * @example
 <script type="text/JavaScript”>
@@ -228,7 +237,8 @@ stream.enableAudio();
    * @desc This function disables underlying video track in the stream if it has video capacity; otherwise it does nothing.
 <br><b>Remarks:</b><br>
 For local stream, it stops sending video packets; for remote stream, it stops decoding video.
-   * @memberOf Woogeen.Stream#
+   * @memberOf Woogeen.Stream
+   * @instance
    * @return {TYPE} DESCRIPTION
    * @example
 <script type="text/JavaScript”>
@@ -265,7 +275,8 @@ stream.disableVideo();
    * @desc This function enables underlying video track in the stream if it has video capacity.
 <br><b>Remarks:</b><br>
 For local stream, it continues sending video; for remote stream, it continues decoding video.
-   * @memberOf Woogeen.Stream#
+   * @memberOf Woogeen.Stream
+   * @instance
    * @return {TYPE} DESCRIPTION
    * @example
 <script type="text/JavaScript”>
@@ -343,7 +354,8 @@ stream.enableVideo();
    * @desc This function returns true when stream's video track is mixed by server otherwise false.
 <br><b>Remarks:</b><br>
 Only for Woogeen.RemoteStream.
-   * @memberOf Woogeen.Stream#
+   * @memberOf Woogeen.RemoteStream
+   * @instance
    * @return {boolean} true The stream is mixed stream.<br>false The stream is not mixed stream
    * @example
 <script type="text/JavaScript”>
@@ -650,9 +662,7 @@ When the video/audio parameters are not supported by the browser, a fallback par
     <li><b>STREAM_HAS_NO_MEDIA_ATTRIBUTES</b> – both audio and video are false.</li>
     <li><b>UNDEFINED</b> – uncategorized.</li>
 </ul>
-   * @memberOf Woogeen.Stream#
-   * @param {json} options Share screen options.
-   * @desc options:
+<br>parameter 'options':
 <ul>
     <li>audio: true/false.</li>
     <li>video: device, resolution, frameRate.</li>
@@ -676,6 +686,9 @@ When the video/audio parameters are not supported by the browser, a fallback par
             <li><b>Note</b>: Firefox currently does not fully support resolution or frameRate setting.</li>
         </ul>
 </ul>
+   * @memberOf Woogeen.LocalStream
+   * @static
+   * @param {json} options Share screen options.
    * @param {function} callback callback(err, localStream) will be invoked when LocalStream creation is done.
    * @return {Woogeen.LocalStream} An instance of Woogeen.LocalStream.
    * @example
@@ -706,7 +719,18 @@ console.log('stream added:', stream.id());
   };
 
   Woogeen.Stream = WoogeenStream;
+  //TODO: fill description of LocalSteam and RemoteStream
+/**
+ * @namespace Woogeen.LocalStream
+ * @extends Woogeen.Stream
+ * @classDesc To be filled...
+ */
   Woogeen.LocalStream = WoogeenLocalStream;
+/**
+ * @namespace Woogeen.RemoteStream
+ * @extends Woogeen.Stream
+ * @classDesc To be filled...
+ */
   Woogeen.RemoteStream = WoogeenRemoteStream;
 
   // return {

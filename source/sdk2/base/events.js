@@ -15,7 +15,8 @@ Woogeen.EventDispatcher = function (spec) {
 /**
    * @function addEventListener
    * @desc This function registers a callback function as a handler for the corresponding event.
-   * @memberOf Woogeen.ConferenceClient#
+   * @memberOf Woogeen.ConferenceClient
+   * @instance
    * @param {string} eventType Event string.
    * @param {function} listener Callback function.
    * @example
@@ -31,11 +32,12 @@ conference.leave();
     }
     spec.dispatcher.eventListeners[eventType].push(listener);
   };
-//TODO:Bean alias, redirect to addEventListener not solved.
+
 /**
    * @function on
-   * @desc This function equals to addEventListener.
-   * @memberOf Woogeen.ConferenceClient#
+   * @desc This function equals to {@link Woogeen.ConferenceClient#addEventListener|addEventListener}.
+   * @memberOf Woogeen.ConferenceClient
+   * @instance
    * @param {string} eventType Event string.
    * @param {function} listener Callback function.
 */
