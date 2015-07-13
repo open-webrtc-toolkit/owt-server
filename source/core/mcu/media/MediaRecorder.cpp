@@ -59,12 +59,8 @@ MediaRecorder::MediaRecorder(const std::string& recordUrl, int snapshotInterval,
     , m_recordPath(recordUrl)
     , m_snapshotInterval(snapshotInterval)
 {
-    timeval time;
-    gettimeofday(&time, nullptr);
-    m_recordStartTime = (time.tv_sec * 1000) + (time.tv_usec / 1000);
-
-    m_videoQueue.reset(new woogeen_base::MediaFrameQueue(m_recordStartTime));
-    m_audioQueue.reset(new woogeen_base::MediaFrameQueue(m_recordStartTime));
+    m_videoQueue.reset(new woogeen_base::MediaFrameQueue());
+    m_audioQueue.reset(new woogeen_base::MediaFrameQueue());
 
     init();
     ELOG_DEBUG("created");
@@ -72,8 +68,7 @@ MediaRecorder::MediaRecorder(const std::string& recordUrl, int snapshotInterval,
 
 MediaRecorder::~MediaRecorder()
 {
-    if (m_muxing)
-        close();
+    close();
 }
 
 bool MediaRecorder::setMediaSource(woogeen_base::FrameDispatcher* videoSource, woogeen_base::FrameDispatcher* audioSource)
@@ -134,17 +129,13 @@ bool MediaRecorder::init()
         return false;
     }
 
-    // File write thread
-    m_muxing = true;
-    m_thread = boost::thread(&MediaRecorder::recordLoop, this);
-
+    m_jobTimer.reset(new woogeen_base::JobTimer(100, this));
     return true;
 }
 
 void MediaRecorder::close()
 {
-    m_muxing = false;
-    m_thread.join();
+    m_jobTimer->stop();
 
     if (m_audioStream != NULL && m_videoStream != NULL && m_context != NULL)
         av_write_trailer(m_context);
@@ -174,14 +165,14 @@ void MediaRecorder::onFrame(const woogeen_base::Frame& frame)
             addVideoStream(payloadType2VideoCodecID(VP8_90000_PT), frame.additionalInfo.video.width, frame.additionalInfo.video.height);
             ELOG_DEBUG("video stream added: %dx%d", frame.additionalInfo.video.width, frame.additionalInfo.video.height);
         }
-        m_videoQueue->pushFrame(frame.payload, frame.length, frame.timeStamp);
+        m_videoQueue->pushFrame(frame.payload, frame.length);
         break;
     case woogeen_base::FRAME_FORMAT_PCMU:
         if (m_videoStream && !m_audioStream) { // make sure video stream is added first.
             addAudioStream(payloadType2AudioCodecID(PCMU_8000_PT), frame.additionalInfo.audio.channels, frame.additionalInfo.audio.sampleRate);
             ELOG_DEBUG("audio stream added: %d channel(s), %d Hz", frame.additionalInfo.audio.channels, frame.additionalInfo.audio.sampleRate);
         }
-        m_audioQueue->pushFrame(frame.payload, frame.length, frame.timeStamp);
+        m_audioQueue->pushFrame(frame.payload, frame.length);
         break;
     default:
         break;
@@ -204,7 +195,6 @@ void MediaRecorder::addAudioStream(enum AVCodecID codec_id, int nbChannels, int 
     c->channel_layout = av_get_default_channel_layout(nbChannels);
     c->sample_rate    = sampleRate;
     c->sample_fmt     = AV_SAMPLE_FMT_S16;
-    stream->time_base = (AVRational){ 1, c->sample_rate };
 
     if (m_context->oformat->flags & AVFMT_GLOBALHEADER)
         c->flags |= CODEC_FLAG_GLOBAL_HEADER;
@@ -226,13 +216,7 @@ void MediaRecorder::addVideoStream(enum AVCodecID codec_id, unsigned int width, 
     c->codec_type = AVMEDIA_TYPE_VIDEO;
     c->width      = width;
     c->height     = height;
-    /* timebase: This is the fundamental unit of time (in seconds) in terms
-    * of which frame timestamps are represented. For fixed-fps content,
-    * timebase should be 1/framerate and timestamp increments should be
-    * identical to 1. */
-    stream->time_base = (AVRational){ 1, 30 };
-    c->time_base      = stream->time_base;
-    c->pix_fmt        = AV_PIX_FMT_YUV420P;
+    c->pix_fmt    = AV_PIX_FMT_YUV420P;
     /* Some formats want stream headers to be separate. */
     if (m_context->oformat->flags & AVFMT_GLOBALHEADER)
         c->flags |= CODEC_FLAG_GLOBAL_HEADER;
@@ -240,88 +224,65 @@ void MediaRecorder::addVideoStream(enum AVCodecID codec_id, unsigned int width, 
     m_videoStream = stream;
 }
 
-void MediaRecorder::recordLoop()
+void MediaRecorder::onTimeout()
 {
-    while (m_muxing) {
-        switch (m_status) {
-        case woogeen_base::MediaMuxer::Context_EMPTY:
-            if (m_audioStream && m_videoStream) {
-                if (!(m_context->oformat->flags & AVFMT_NOFILE)) {
-                    if (avio_open(&m_context->pb, m_context->filename, AVIO_FLAG_WRITE) < 0) {
-                        ELOG_ERROR("open output file failed");
-                        m_status = woogeen_base::MediaMuxer::Context_ERROR;
-                        callback("cannot open output file");
-                        return;
-                    }
-                }
-                av_dump_format(m_context, 0, m_context->filename, 1);
-                if (avformat_write_header(m_context, nullptr) < 0) {
+    switch (m_status) {
+    case woogeen_base::MediaMuxer::Context_EMPTY:
+        if (m_audioStream && m_videoStream) {
+            if (!(m_context->oformat->flags & AVFMT_NOFILE)) {
+                if (avio_open(&m_context->pb, m_context->filename, AVIO_FLAG_WRITE) < 0) {
+                    ELOG_ERROR("open output file failed");
                     m_status = woogeen_base::MediaMuxer::Context_ERROR;
-                    callback("write file header error");
-                    ELOG_ERROR("avformat_write_header failed");
+                    callback("cannot open output file");
                     return;
                 }
-                m_status = woogeen_base::MediaMuxer::Context_READY;
-                callback("success");
-                ELOG_DEBUG("context ready");
-            } else {
-                usleep(1000);
-                continue;
             }
-            break;
-        case woogeen_base::MediaMuxer::Context_READY:
-            break;
-        case woogeen_base::MediaMuxer::Context_ERROR:
-        default:
-            callback("init failed");
-            ELOG_ERROR("loop exit on error");
+            av_dump_format(m_context, 0, m_context->filename, 1);
+            if (avformat_write_header(m_context, nullptr) < 0) {
+                m_status = woogeen_base::MediaMuxer::Context_ERROR;
+                callback("write file header error");
+                ELOG_ERROR("avformat_write_header failed");
+                return;
+            }
+            m_status = woogeen_base::MediaMuxer::Context_READY;
+            callback("success");
+            ELOG_DEBUG("context ready");
+        } else
             return;
-        }
-        boost::shared_ptr<woogeen_base::EncodedFrame> mediaFrame;
-        while (mediaFrame = m_audioQueue->popFrame())
-            this->writeAudioFrame(*mediaFrame);
-
-        while (mediaFrame = m_videoQueue->popFrame())
-            this->writeVideoFrame(*mediaFrame);
+        break;
+    case woogeen_base::MediaMuxer::Context_READY:
+        break;
+    case woogeen_base::MediaMuxer::Context_ERROR:
+    default:
+        callback("init failed");
+        ELOG_ERROR("context error");
+        return;
     }
-    callback("unexpected error"); // fatal guard: make sure callback would be executed eventually.
+    boost::shared_ptr<woogeen_base::EncodedFrame> mediaFrame;
+    while (mediaFrame = m_audioQueue->popFrame())
+        this->writeAudioFrame(*mediaFrame);
+
+    while (mediaFrame = m_videoQueue->popFrame())
+        this->writeVideoFrame(*mediaFrame);
 }
 
 void MediaRecorder::writeVideoFrame(woogeen_base::EncodedFrame& encodedVideoFrame) {
-    if (m_videoStream == NULL)
-        // could not init our context yet.
-        return;
-
-    timeval time;
-    gettimeofday(&time, nullptr);
-    long long timestampToWrite = ((time.tv_sec * 1000) + (time.tv_usec / 1000)) - m_recordStartTime;
-    timestampToWrite  = timestampToWrite / (1000 / m_videoStream->time_base.den);
-
     AVPacket avpkt;
     av_init_packet(&avpkt);
     avpkt.data = encodedVideoFrame.m_payloadData;
     avpkt.size = encodedVideoFrame.m_payloadSize;
-    avpkt.pts = timestampToWrite;
+    avpkt.pts = (int64_t)(encodedVideoFrame.m_timeStamp / (av_q2d(m_videoStream->time_base) * 1000));
     avpkt.stream_index = 0;
     av_write_frame(m_context, &avpkt);
     av_free_packet(&avpkt);
 }
 
 void MediaRecorder::writeAudioFrame(woogeen_base::EncodedFrame& encodedAudioFrame) {
-    if (m_audioStream == NULL)
-        // No audio stream has been initialized
-        return;
-
-    timeval time;
-    gettimeofday(&time, nullptr);
-    long long timestampToWrite = ((time.tv_sec * 1000) + (time.tv_usec / 1000)) - m_recordStartTime;
-    timestampToWrite  = timestampToWrite / (1000 / m_videoStream->time_base.den);
-
     AVPacket avpkt;
     av_init_packet(&avpkt);
     avpkt.data = encodedAudioFrame.m_payloadData;
     avpkt.size = encodedAudioFrame.m_payloadSize;
-    avpkt.pts = timestampToWrite;
+    avpkt.pts = (int64_t)(encodedAudioFrame.m_timeStamp / (av_q2d(m_audioStream->time_base) * 1000));
     avpkt.stream_index = 1;
     av_write_frame(m_context, &avpkt);
     av_free_packet(&avpkt);
