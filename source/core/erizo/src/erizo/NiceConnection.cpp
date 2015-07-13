@@ -85,30 +85,34 @@ namespace erizo {
   };
   packetPtr NiceConnection::getPacket(){
       if(this->checkIceState()==NICE_FINISHED || !running_) {
-          packetPtr p (new dataPacket());
-          p->length=-1;
+          packetPtr p(new dataPacket());
+          if (p)
+            p->length=-1;
           return p;
       }
       boost::unique_lock<boost::mutex> lock(queueMutex_);
       boost::system_time const timeout=boost::get_system_time()+ boost::posix_time::milliseconds(300);
       if(!cond_.timed_wait(lock,timeout, queue_not_empty(niceQueue_))){
-        packetPtr p (new dataPacket());
-        p->length=0;
+        packetPtr p(new dataPacket());
+        if (p)
+          p->length=0;
         return p;
       }
 
       if(this->checkIceState()==NICE_FINISHED || !running_) {
-          packetPtr p (new dataPacket());
-          p->length=-1;
+          packetPtr p(new dataPacket());
+          if (p)
+            p->length=-1;
           return p;
       }
       if(!niceQueue_.empty()){
-        packetPtr p (niceQueue_.front());
+        packetPtr p(niceQueue_.front());
         niceQueue_.pop();
         return  p;
       }
-      packetPtr p (new dataPacket());
-      p->length=0;
+      packetPtr p(new dataPacket());
+      if (p)
+        p->length=0;
       return p;
   }
 
