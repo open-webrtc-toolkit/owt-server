@@ -12,13 +12,33 @@ Woogeen.EventDispatcher = function (spec) {
   // Public functions
 
   // It adds an event listener attached to an event type.
+/**
+   * @function addEventListener
+   * @desc This function registers a callback function as a handler for the corresponding event.
+   * @memberOf Woogeen.ConferenceClient#
+   * @param {string} eventType Event string.
+   * @param {function} listener Callback function.
+   * @example
+<script type="text/JavaScript”>
+var conference = Woogeen.ConferenceClient.create({});
+conference.addEventListener("server-disconnected", function (evt) {...});
+conference.leave();
+</script>
+   */
   that.addEventListener = function (eventType, listener) {
     if (spec.dispatcher.eventListeners[eventType] === undefined) {
       spec.dispatcher.eventListeners[eventType] = [];
     }
     spec.dispatcher.eventListeners[eventType].push(listener);
   };
-
+//TODO:Bean alias, redirect to addEventListener not solved.
+/**
+   * @function on
+   * @desc This function equals to addEventListener.
+   * @memberOf Woogeen.ConferenceClient#
+   * @param {string} eventType Event string.
+   * @param {function} listener Callback function.
+*/
   that.on = that.addEventListener;
 
   // It removes an available event listener.
