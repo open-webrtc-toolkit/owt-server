@@ -555,16 +555,69 @@ function createToken(room, userName, role, callback) {
 
 var recording;
 
+function setVideoBitrate() {
+  var bitrate = document.getElementById("bitrate").value;
+
+  console.log("=====Set bitrate to:", bitrate);
+  var options = {
+    id: ClientId.id,
+    bitrate: bitrate
+  };
+
+  conference.setVideoBitrate(options, function(result) {
+    console.log("Successfully set video bitrate with result:", result);
+  }, function(err) {
+    console.log("Fail to set video bitrate with err:", err);
+ });
+}
+
+function setRegion() {
+  var region = document.getElementById("region").value;
+  var clientId = document.getElementById("clientId").value;
+
+  var options = {
+    id: clientId,
+    region: region
+  };
+
+  console.log("User id is:", clientId);
+  console.log("Region is:", region);
+  conference.setRegion(options, function(result) {
+    console.log("Successfully set region with result:", result);
+  }, function(err) {
+    console.log("Fail to set region with err:", err);
+  });
+
+
+}
+
+function getRegion() {
+  var clientId = document.getElementById("clientId").value;
+  var options = {
+    id: clientId
+  };
+
+  console.log("User id is:", clientId);
+  conference.getRegion(options, function(result) {
+    console.log("Successfully get region:", result);
+  }, function(err) {
+    console.log("Fail to get region with err:", err);
+  });
+
+}
+
 function startRecording(recording) {
   if (conference !== undefined) {
+    var to = document.getElementById("to").value;
+    var id = document.getElementById("fileId").value;
     if (recording) {
-      conference.startRecorder({}, function(info) {
+      conference.startRecorder({to:to,id:id}, function(info) {
         console.log("recording successful ", info);
       }, function(err) {
         console.log("recording error", err);
       });
     } else {
-      conference.stopRecorder({}, function(info) {
+      conference.stopRecorder({id:id}, function(info) {
         console.log("recording stop succesful", info);
       }, function(err) {
         console.log("recording stop error", err);
@@ -655,6 +708,7 @@ window.onload = function() {
   var subscribeMix = getParameterByName("subscribeMix") || true;
   var subscribeForward = getParameterByName("subscribeForward") || true;
   var codec = getParameterByName("codec") || 'vp8';
+  var mediaUrl = getParameterByName('url');
 
   console.log('myrole is ' + myrole);
   myCodec = codec;
@@ -689,7 +743,23 @@ window.onload = function() {
   createToken(myRoom, 'user', myrole, function(response) {
     var token = response;
     conference.join(token, function(resp) {
-      if (shareScreen === false) {
+       if (typeof mediaUrl === 'string' && mediaUrl !== '') {
+            Woogeen.LocalStream.create({
+            video: true,
+            audio: true,
+            url: mediaUrl
+          }, function (err, stream) {
+            if (err) {
+              return L.Logger.error('create LocalStream failed:', err);
+            }
+            localStream = stream;
+            conference.publish(localStream, {}, function (st) {
+              L.Logger.info('stream published:', st.id());
+            }, function (err) {
+               L.Logger.error('publish failed:', err);
+            });
+          });
+        } if (shareScreen === false) {
         Woogeen.LocalStream.create({
           video: {
             device: 'camera',
