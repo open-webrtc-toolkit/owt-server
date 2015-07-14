@@ -12,7 +12,8 @@ Woogeen.Images = {
    * @desc This function displays the stream on HTML in the container with id elementId.
    <br><b>Remarks:</b><br>
    Tag with id value elementId should be pre-created.
-   * @memberOf Woogeen.Stream#
+   * @memberOf Woogeen.Stream
+   * @instance
    * @param {string} elementId tag id of the element on HTML.
    * @param {TYPE} options DESCRIPTION
    * @return {boolean} DESCRIPTION
@@ -39,7 +40,8 @@ Woogeen.Stream.prototype.show = function(elementId, options) {
 /**
    * @function hide
    * @desc This function removes the stream on HTML from its container.
-   * @memberOf Woogeen.Stream#
+   * @memberOf Woogeen.Stream
+   * @instance
    * @example
 <script type="text/JavaScript”>
 stream.hide();
