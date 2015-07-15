@@ -159,7 +159,7 @@ exports.RoomController = function (spec) {
 
                 callback({
                     success: false,
-                    text: 'start recorder failed'
+                    text: result
                 });
             }});
         } else {
