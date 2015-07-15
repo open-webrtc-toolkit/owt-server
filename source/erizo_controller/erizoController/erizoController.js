@@ -886,47 +886,41 @@ var listen = function () {
             }
 
             if (recordStream.hasAudio() || recordStream.hasVideo()) {
+                var timeStamp = new Date();
+                var recorderId = options.recorderId || formatDate(timeStamp, 'yyyyMMddhhmmssSS');
                 var recorderPath = options.path || GLOBAL.config.erizoController.recording_path || '/tmp';
-                require('fs').lstat(recorderPath, function(err, stats) {
-                    if (!err && stats.isDirectory()) {
-                        var timeStamp = new Date();
-                        var recorderId = options.recorderId || formatDate(timeStamp, 'yyyyMMddhhmmssSS');
-                        var url = require('path').join(recorderPath, 'room' + socket.room.id + '_' + recorderId + '.mkv');
-                        var interval = (options.interval && options.interval > 0) ? options.interval : -1;
+                var url = require('path').join(recorderPath, 'room' + socket.room.id + '_' + recorderId + '.mkv');
+                var interval = (options.interval && options.interval > 0) ? options.interval : -1;
 
-                        // Make sure the recording context clean
-                        socket.room.controller.removeExternalOutput(recorderId, false, function (result) {
+                // Make sure the recording context clean
+                socket.room.controller.removeExternalOutput(recorderId, false, function (result) {
+                    if (result.success) {
+                        for (var i in socket.room.streams) {
+                            if (socket.room.streams.hasOwnProperty(i) && socket.room.streams[i].getRecorder() === recorderId+'') {
+                                socket.room.streams[i].setRecorder('');
+                            }
+                        }
+
+                        log.info('Recorder context cleaned: ', result.text);
+
+                        // Start the recorder
+                        socket.room.controller.addExternalOutput(recordStreamId, recorderId, url, interval, function (result) {
                             if (result.success) {
-                                for (var i in socket.room.streams) {
-                                    if (socket.room.streams.hasOwnProperty(i) && socket.room.streams[i].getRecorder() === recorderId+'') {
-                                        socket.room.streams[i].setRecorder('');
-                                    }
-                                }
+                                recordStream.setRecorder(recorderId);
 
-                                log.info('Recorder context cleaned: ', result.text);
+                                log.info('Recorder started: ', url);
 
-                                // Start the recorder
-                                socket.room.controller.addExternalOutput(recordStreamId, recorderId, url, interval, function (result) {
-                                    if (result.success) {
-                                        recordStream.setRecorder(recorderId);
-
-                                        log.info('Recorder started: ', url);
-
-                                        safeCall(callback, 'success', {
-                                            recorderId : recorderId,
-                                            host: publicIP,
-                                            path: url
-                                        });
-                                    } else {
-                                        safeCall(callback, 'error', 'Error in start recording: ' + result.text);
-                                    }
+                                safeCall(callback, 'success', {
+                                    recorderId : recorderId,
+                                    host: publicIP,
+                                    path: url
                                 });
                             } else {
-                                safeCall(callback, 'error', 'Error during cleaning recording: ' + result.text);
+                                safeCall(callback, 'error', 'Error in start recording: ' + result.text);
                             }
                         });
                     } else {
-                        safeCall(callback, 'error', 'Stream recording path does not exist.');
+                        safeCall(callback, 'error', 'Error during cleaning recording: ' + result.text);
                     }
                 });
             } else {
