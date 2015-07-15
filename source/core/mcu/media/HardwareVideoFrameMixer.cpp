@@ -168,8 +168,7 @@ void HardwareVideoFrameMixer::updateLayoutSolution(LayoutSolution& solution)
         boost::shared_lock<boost::shared_mutex> lock(m_inputMutex);
         std::map<int, boost::shared_ptr<HardwareVideoFrameMixerInput>>::iterator it2 = m_inputs.find(it->input);
         if (it2 != m_inputs.end()) {
-            RegionInfo region = {it->region.left, it->region.top, it->region.relativeSize, it->region.relativeSize};
-            layout[it2->second->index()] = region;
+            layout.push_back({it2->second->index(), {it->region.left, it->region.top, it->region.relativeSize, it->region.relativeSize}});
         }
     }
     m_engine->setLayout(&layout);

@@ -2,8 +2,7 @@
 #define VideoMixEngine_h
 
 #include <string>
-#include <map>
-#include <vector>
+#include <list>
 
 #define INVALID_INPUT_INDEX -1
 #define INVALID_OUTPUT_INDEX INVALID_INPUT_INDEX
@@ -46,7 +45,12 @@ struct RegionInfo {
     float height_ratio;    //"height / HEIGHT"
 };
 
-typedef std::map<InputIndex, RegionInfo> CustomLayoutInfo;
+struct InputReginInfo {
+    InputIndex input;
+    RegionInfo region;
+};
+
+typedef std::list<InputReginInfo> CustomLayoutInfo;
 
 class VideoMixEngineImp;
 class VideoMixEngine {
