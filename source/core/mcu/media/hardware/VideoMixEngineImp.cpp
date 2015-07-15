@@ -116,7 +116,7 @@ void VideoMixEngineImp::setLayout(const CustomLayoutInfo* layoutMapping)
     if (m_state != IN_SERVICE)
         return;
 
-    std::map<InputIndex, RegionInfo>::const_iterator it_dec = layoutMapping->begin();
+    std::list<InputReginInfo>::const_iterator it_dec = layoutMapping->begin();
     int ret = -1;
 
     boost::shared_lock<boost::shared_mutex> inputLock(m_inputMutex);
@@ -129,10 +129,10 @@ void VideoMixEngineImp::setLayout(const CustomLayoutInfo* layoutMapping)
     //second, set the layout information
     CustomLayout layout;
     for(; it_dec != layoutMapping->end(); ++it_dec) {
-        std::map<InputIndex, InputInfo>::iterator it = m_inputs.find(it_dec->first);
+        std::map<InputIndex, InputInfo>::iterator it = m_inputs.find(it_dec->input);
         if (it != m_inputs.end() && it->second.decHandle != NULL) {
-            Region regionInfo = {it_dec->second.left, it_dec->second.top,
-                it_dec->second.width_ratio, it_dec->second.height_ratio};
+            Region regionInfo = {it_dec->region.left, it_dec->region.top,
+                it_dec->region.width_ratio, it_dec->region.height_ratio};
             CompRegion input = {it->second.decHandle, regionInfo};
             layout.push_back(input);
         }
