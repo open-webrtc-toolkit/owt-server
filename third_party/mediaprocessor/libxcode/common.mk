@@ -6,9 +6,9 @@ export STATIC_LIBRARY_LINK=ar cr
 export LIB_PREFIX=libxcode
 
 ifeq ($(ver), debug)
-	CXXFLAGS += -g
+	CXXFLAGS += -g -std=c++11
 else
-	CXXFLAGS += -DNDEBUG
+	CXXFLAGS += -DNDEBUG -std=c++11
 endif
 
 LIB_NAME=$(shell basename `pwd`)
