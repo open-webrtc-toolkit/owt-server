@@ -107,7 +107,7 @@ public:
     void publishStream(const std::string& id, bool isAudio) { }
     void unpublishStream(const std::string& id, bool isAudio) { }
 
-    bool addExternalOutput(const std::string& configParam) { return false; }
+    bool addExternalOutput(const std::string& configParam, woogeen_base::EventRegistry* callback = nullptr) { return false; }
     bool removeExternalOutput(const std::string& outputId, bool close) { return false; }
 
     int sendFirPacket() { return -1; }
