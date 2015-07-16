@@ -20,10 +20,9 @@ set(UV_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/../../../third_party/libuv")
 set(WEBRTC_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/../../../third_party/webrtc")
 set(H264_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/../../../third_party/openh264")
 set(MEDIAPROCESSOR_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../third_party/mediaprocessor")
-set(MSS_DIR "/opt/intel/mediasdk")
 
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}" "${LIB_DIRS}../include/" "${UV_DIRS}/include/" "${WEBRTC_DIRS}/src")
-include_directories("${MEDIAPROCESSOR_DIR}/libxcode/video/" "${MEDIAPROCESSOR_DIR}/libxcode/" "${MSS_DIR}/include/")
+include_directories("${MEDIAPROCESSOR_DIR}/libxcode/video/" "${MEDIAPROCESSOR_DIR}/libxcode/")
 
 add_definitions(-DWEBRTC_POSIX -DWEBRTC_LINUX)
 

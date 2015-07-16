@@ -7,12 +7,13 @@
 #include "base/mem_pool.h"
 #include "base/stream.h"
 #include "base/measurement.h"
-#include "msdk_codec.h"
-#include "mfxvideo++.h"
+
 #if defined(LIBVA_DRM_SUPPORT) || defined(LIBVA_X11_SUPPORT)
-#include "hw_device.h"
+class CHWDevice;
 #endif
 
+enum ElementType : unsigned int;
+class MSDKCodec;
 class MFXVideoSession;
 class GeneralAllocator;
 class Dispatcher;

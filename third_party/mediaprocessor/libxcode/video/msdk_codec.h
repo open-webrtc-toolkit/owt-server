@@ -76,7 +76,7 @@ typedef enum {
 } VA_OUTPUT_FORMAT;
 #endif
 
-typedef enum {
+enum ElementType : unsigned int {
     ELEMENT_DECODER,
     ELEMENT_ENCODER,
     ELEMENT_VPP,
@@ -91,7 +91,7 @@ typedef enum {
     ELEMENT_RENDER,
     ELEMENT_CUSTOM_PLUGIN,
     ELEMENT_FEI_PREENC
-} ElementType;
+};
 
 typedef struct {
     bool bMBBRC;
