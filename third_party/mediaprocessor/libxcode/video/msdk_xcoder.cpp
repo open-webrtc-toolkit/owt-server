@@ -15,11 +15,6 @@
 #include "base/measurement.h"
 #include "msdk_codec.h"
 #include "msdk_xcoder.h"
-#include "mfxvideo++.h"
- 
-#if defined(LIBVA_DRM_SUPPORT) || defined(LIBVA_X11_SUPPORT)
-#include "hw_device.h"
-#endif
 
 VADisplay MsdkXcoder::va_dpy_ = NULL;
 pthread_mutex_t MsdkXcoder::va_mutex_ = PTHREAD_MUTEX_INITIALIZER;
