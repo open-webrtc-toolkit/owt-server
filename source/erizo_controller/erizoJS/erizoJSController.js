@@ -247,20 +247,23 @@ exports.ErizoJSController = function () {
                             }
                         }
                     }
+
+                    callback('onReady');
                 } else {
                     log.error('External input', from, 'initialization failed');
                     publishers[from].close();
                     delete publishers[from];
                 }
-                callback('callback', message);
             });
 
             if (answer < 0) {
                 callback('callback', 'input url initialization error');
-                return;
+            } else {
+                callback('callback', 'success');
             }
         } else {
             log.info('Publisher already set for', from);
+            callback('callback', 'external input already existed');
         }
     };
 

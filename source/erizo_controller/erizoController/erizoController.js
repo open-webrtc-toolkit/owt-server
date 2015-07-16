@@ -733,13 +733,21 @@ var listen = function () {
                     }
                 }
                 socket.room.controller.addExternalInput(id, url, socket.room.mixer, function (result) {
-                    if (result === 'success') {
-                        st = new ST.Stream({id: id, socket: socket.id, audio: options.audio, video: options.video, attributes: options.attributes, from: url});
-                        socket.streams.push(id);
-                        socket.room.streams[id] = st;
-                        sendMsgToRoom(socket.room, 'onAddStream', st.getPublicStream());
-                    }
+                    log.info(result);
                     safeCall(callback, result, id);
+                }, function () {
+                    // Double check if this socket is still in the room.
+                    // It can be removed from the room if the socket is disconnected
+                    // before the publish succeeds.
+                    var index = socket.room.sockets.indexOf(socket);
+                    if (index === -1) {
+                        return;
+                    }
+
+                    st = new ST.Stream({id: id, socket: socket.id, audio: options.audio, video: options.video, attributes: options.attributes, from: url});
+                    socket.streams.push(id);
+                    socket.room.streams[id] = st;
+                    sendMsgToRoom(socket.room, 'onAddStream', st.getPublicStream());
                 });
             } else if (options.state !== 'data' && !socket.room.p2p) {
                 if (options.state === 'offer' && socket.state === 'sleeping') {
