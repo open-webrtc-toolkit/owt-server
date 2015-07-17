@@ -20,10 +20,10 @@
 
 #include "ExternalInputGateway.h"
 #include "MediaMuxerFactory.h"
-#include "media/ExternalOutput.h"
 
 #include <boost/property_tree/json_parser.hpp>
 #include <EncodedVideoFrameSender.h>
+#include <WebRTCFeedbackProcessor.h>
 
 using namespace erizo;
 
@@ -302,30 +302,20 @@ bool ExternalInputGateway::addExternalOutput(const std::string& configParam, woo
         boost::property_tree::read_json(is, pt);
         const std::string outputId = pt.get<std::string>("id", "");
 
-        std::map<std::string, boost::shared_ptr<erizo::MediaSink>>::iterator it = m_subscribers.find(outputId);
-        if (it == m_subscribers.end()) {
-            woogeen_base::MediaMuxer* muxer = MediaMuxerFactory::createMediaMuxer(outputId, configParam, callback);
-            if (muxer) {
-                // Create an external output, which will be managed as subscriber during its lifetime
-                ExternalOutput* externalOutput = new ExternalOutput(muxer);
-
-                // Added as a subscriber
-                addSubscriber(externalOutput, outputId);
-
-                return true;
-            }
-        } else {
-            ELOG_DEBUG("External output with id %s has already been occupied.", outputId.c_str());
-        }
+        woogeen_base::MediaMuxer* muxer = MediaMuxerFactory::createMediaMuxer(outputId, configParam, callback);
+        if (muxer)
+            return muxer->setMediaSource(this, m_audioTranscoder.get());
     }
 
+    ELOG_DEBUG("add external output error: invalid config");
     return false;
 }
 
 bool ExternalInputGateway::removeExternalOutput(const std::string& outputId, bool close)
 {
-    // Remove the external output
-    removeSubscriber(outputId);
+    woogeen_base::MediaMuxer* muxer = MediaMuxerFactory::findMediaMuxer(outputId);
+    if (muxer)
+        muxer->unsetMediaSource();
 
     if (close)
         return MediaMuxerFactory::recycleMediaMuxer(outputId); // Remove the media muxer
@@ -409,4 +399,41 @@ uint32_t ExternalInputGateway::addVideoOutput(int payloadType, bool nack, bool f
     return output->sendSSRC(nack, fec);
 }
 
-}/* namespace mcu */
+// Video ONLY here for the frame consumer
+int32_t ExternalInputGateway::addFrameConsumer(const std::string&/*unused*/, int payloadType, woogeen_base::FrameConsumer* frameConsumer)
+{
+    // May delay this to the VideoFrameSender???
+    addVideoOutput(payloadType, false, false);
+
+    boost::shared_lock<boost::shared_mutex> lock(m_videoOutputMutex);
+    int outputId = -1;
+    std::map<int, boost::shared_ptr<woogeen_base::VideoFrameSender>>::iterator it = m_videoOutputs.find(payloadType);
+    if (it != m_videoOutputs.end()) {
+        it->second->registerPreSendFrameCallback(frameConsumer);
+
+        // Request an IFrame explicitly, because the recorder doesn't support active I-Frame requests.
+        woogeen_base::IntraFrameCallback* iFrameCallback = it->second->iFrameCallback();
+        if (iFrameCallback)
+            iFrameCallback->handleIntraFrameRequest();
+
+        outputId = it->second->id();
+    }
+
+    return outputId;
+}
+
+// Video ONLY here for the frame consumer
+void ExternalInputGateway::removeFrameConsumer(int32_t id)
+{
+    // May delay this to the VideoFrameSender???
+    boost::shared_lock<boost::shared_mutex> lock(m_videoOutputMutex);
+    std::map<int, boost::shared_ptr<woogeen_base::VideoFrameSender>>::iterator it = m_videoOutputs.begin();
+    for (; it != m_videoOutputs.end(); ++it) {
+        if (id == it->second->id()) {
+            it->second->deRegisterPreSendFrameCallback();
+            break;
+        }
+    }
+}
+
+} /* namespace mcu */
