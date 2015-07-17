@@ -1,4 +1,4 @@
-/* global io, console */
+/* global io */
 
 /**
  * @class Woogeen.ConferenceClient
@@ -47,8 +47,6 @@ Woogeen.ConferenceClient = (function () {
     this.remoteStreams = {};
     this.localStreams = {};
     that.state = DISCONNECTED;
-//TODO: no param function, but there is a description in API doc.
-//TODO: fill return type
 /**
    * @function setIceServers
    * @desc This function establishes a connection to server and joins a certain conference.
@@ -61,10 +59,10 @@ This method accepts string, object, or array (multiple ones) type of ice server 
 Each time this method is called, previous saved value would be discarded. Specifically, if parameter servers is not provided, the result would be an empty array, meaning any predefined servers are discarded.
    * @instance
    * @memberOf Woogeen.ConferenceClient
-   * @param {TYPE} servers turn or stun server configuration.
-   * @return {TYPE} Result of the user-set of ice servers.
+   * @param {string, object, or array} servers turn or stun server configuration.
+   * @return {array} Result of the user-set of ice servers.
    * @example
-<script type="text/JavaScript”>
+<script type="text/JavaScript">
 room.setIceServers([{
       url: "turn:61.152.239.56:4478?transport=udp",
       username: "woogeen",
@@ -108,7 +106,6 @@ room.setIceServers([{
       }
     });
 
-//TODO:fill return description
 /**
    * @function join
    * @instance
@@ -117,11 +114,16 @@ room.setIceServers([{
 On success, successCallback is called (if provided); otherwise, failureCallback is called (if provided).
    * @memberOf Woogeen.ConferenceClient
    * @param {string} token Token used to join conference room.
-   * @param {function} onSuccess (optional) Success callback function.
-   * @param {function} onFailure (optional) Failure callback function.
-   * @return {TYPE} DESCRIPTION
+   * @param {function} onSuccess(resp) (optional) Success callback function.
+   * @desc resp:
+{<br>
+ streams:, an array of remote streams that have been published in the conference.<br>
+ users:, an array of users that have joined in the conference.<br>
+}
+   * @param {function} onFailure(err) (optional) Failure callback function.
+   * @return {undefined}
    * @example
-<script type="text/JavaScript”>
+<script type="text/JavaScript">
 conference.join(token, function(response) {...}, function(error) {...});
 </script>
    */
@@ -462,11 +464,11 @@ conference.join(token, function(response) {...}, function(error) {...});
 /**
    * @function leave
    * @instance
-   * @desc This function leaves conference and disconnects from server. Once it is done, ‘server-disconnected’ event would be triggered.
+   * @desc This function leaves conference and disconnects from server. Once it is done, 'server-disconnected' event would be triggered.
    * @memberOf Woogeen.ConferenceClient
    * @example
-<script type="text/JavaScript”>
-var conference = Woogeen.ConferenceClient.create({});
+<script type="text/JavaScript">
+var conference = Woogeen.ConferenceClient.create();
 // ......
 conference.leave();
 </script>
@@ -475,20 +477,19 @@ conference.leave();
     var evt = new Woogeen.ClientEvent({type: 'server-disconnected'});
     this.dispatchEvent(evt);
   };
-  //TODO: fill return description and type
 /**
    * @function send
    * @instance
-   * @desc This function send message to conference room. The receiver should be a valid clientId, which is carried by ‘user-joined’ event; or default 0, which means send to all participants in the conference (broadcast) except himself.
+   * @desc This function send message to conference room. The receiver should be a valid clientId, which is carried by 'user-joined' event; or default 0, which means send to all participants in the conference (broadcast) except himself.
    * @memberOf Woogeen.ConferenceClient
    * @param {string/function} data Message/object to send.
    * @param {string/function} receiver Receiver, optional, with default value 0.
-   * @param {function} onSuccess (optional)Success callback.
-   * @param {function} onFailure (optional)Failure callback.
-   * @return {TYPE} DESCRIPTION
+   * @param {function} onSuccess() (optional) Success callback.
+   * @param {function} onFailure(err) (optional) Failure callback.
+   * @return {undefined}
    * @example
-<script type="text/JavaScript”>
-var conference = Woogeen.ConferenceClient.create({});
+<script type="text/JavaScript">
+var conference = Woogeen.ConferenceClient.create();
 // ……
 conference.send(message, receiver, function (obj) {
     L.Logger.info('object sent:', obj.id());
@@ -526,38 +527,27 @@ conference.send(message, receiver, function (obj) {
     });
   };
 
-  /*
-  options: {
-    audio: true/false,
-    video: true/false,
-    maxVideoBW: xxx,
-    maxAudioBW: xxx,
-    unmix: false/true, // if true, this stream would not be included in mix stream
-    videoCodec: 'h264' // not for p2p room
-  }
-  */
-
-//TODO: fill return description and type
 /**
    * @function publish
    * @instance
-   * @desc This function publishes the local stream to the server. The stream should be a valid LocalStream instance. ‘stream-added’ event would be triggered when the stream is published successfully
+   * @desc This function publishes the local stream to the server. The stream should be a valid LocalStream instance. 'stream-added' event would be triggered when the stream is published successfully
    * @memberOf Woogeen.ConferenceClient
    * @param {stream} stream Stream to publish.
    * @param {json} options Publish options.
-   * @desc Options:<br>
+   * @desc options:<br>
 {<br>
 video: true/false,<br>
 audio: true/false,<br>
 maxVideoBW: xxx,<br>
-videoCodec: ‘h264’/’vp8’ // not applicable for p2p room<br>
+unmix: false/true, // if true, this stream would not be included in mix stream<br>
+videoCodec: 'h264'/'vp8' // not applicable for p2p room<br>
 }
-   * @param {function} onSuccess (optional) Success callback.
-   * @param {function} onFailure (optional) Failure callback.
-   * @return {TYPE} DESCRIPTION
+   * @param {function} onSuccess(stream) (optional) Success callback.
+   * @param {function} onFailure(err) (optional) Failure callback.
+   * @return {undefined}
    * @example
-<script type="text/JavaScript”>
-var conference = Woogeen.ConferenceClient.create({});
+<script type="text/JavaScript">
+var conference = Woogeen.ConferenceClient.create();
 // ……
 conference.publish(localStream, {maxVideoBW: 300}, function (st) {
     L.Logger.info('stream published:', st.id());
@@ -694,6 +684,27 @@ conference.publish(localStream, {maxVideoBW: 300}, function (st) {
     }
   };
 
+/**
+   * @function mix
+   * @instance
+   * @desc This function tells server to add published LocalStream to mix stream.
+   * @memberOf Woogeen.ConferenceClient
+   * @param {stream} stream LocalStream instance; it should be published before this call.
+   * @param {function} onSuccess() (optional) Success callback.
+   * @param {function} onFailure(err) (optional) Failure callback.
+   * @return {undefined}
+   * @example
+<script type="text/JavaScript">
+var conference = Woogeen.ConferenceClient.create();
+// ……
+conference.mix(localStream, function () {
+    L.Logger.info('success');
+  }, function (err) {
+    L.Logger.error('failed:', err);
+  }
+);
+</script>
+   */
   WoogeenConference.prototype.mix = function(stream, onSuccess, onFailure) {
     if (!(stream instanceof Woogeen.LocalStream)) {
       return safeCall(onFailure, 'invalid stream');
@@ -704,6 +715,27 @@ conference.publish(localStream, {maxVideoBW: 300}, function (st) {
     });
   };
 
+/**
+   * @function unmix
+   * @instance
+   * @desc This function tells server to remove published LocalStream from mix stream.
+   * @memberOf Woogeen.ConferenceClient
+   * @param {stream} stream LocalStream instance; it should be published before this call.
+   * @param {function} onSuccess() (optional) Success callback.
+   * @param {function} onFailure(err) (optional) Failure callback.
+   * @return {undefined}
+   * @example
+<script type="text/JavaScript">
+var conference = Woogeen.ConferenceClient.create();
+// ……
+conference.unmix(localStream, function () {
+    L.Logger.info('success');
+  }, function (err) {
+    L.Logger.error('failed:', err);
+  }
+);
+</script>
+   */
   WoogeenConference.prototype.unmix = function(stream, onSuccess, onFailure) {
     if (!(stream instanceof Woogeen.LocalStream)) {
       return safeCall(onFailure, 'invalid stream');
@@ -714,19 +746,18 @@ conference.publish(localStream, {maxVideoBW: 300}, function (st) {
     });
   };
 
-  //TODO: fill return description and type
 /**
    * @function unpublish
    * @instance
-   * @desc This function unpublishes the local stream. ‘stream-removed’ event would be triggered when the stream is removed from server.
+   * @desc This function unpublishes the local stream. 'stream-removed' event would be triggered when the stream is removed from server.
    * @memberOf Woogeen.ConferenceClient
    * @param {stream} stream Stream to un-publish.
-   * @param {function} onSuccess (optional) Success callback.
-   * @param {function} onFailure (optional) Failure callback.
-   * @return {TYPE} DESCRIPTION
+   * @param {function} onSuccess() (optional) Success callback.
+   * @param {function} onFailure(err) (optional) Failure callback.
+   * @return {undefined}
    * @example
-<script type="text/JavaScript”>
-var conference = Woogeen.ConferenceClient.create({});
+<script type="text/JavaScript">
+var conference = Woogeen.ConferenceClient.create();
 // ……
 conference.unpublish(localStream, function (st) {
     L.Logger.info('stream unpublished:', st.id());
@@ -758,33 +789,25 @@ conference.unpublish(localStream, function (st) {
     });
   };
 
-  /*
-  options: {
-    audio: true/false,
-    video: true/false,
-    videoCodec: 'h264' // not for p2p room
-  }
-  */
-  //TODO: fill return description and type
 /**
    * @function subscribe
    * @instance
    * @desc This function subscribes to a remote stream. The stream should be a RemoteStream instance.
-<br><b>Remarks:</b><br>
+   * @memberOf Woogeen.ConferenceClient
+   * @param {stream} stream Stream to subscribe.
+   * @param {string} options (optional) Subscribe options.
+   * @desc options:
 {<br>
 video: true/false,<br>
 audio: true/false,<br>
-videoCodec: ‘h264’/’vp8’ // not for p2p room<br>
+videoCodec: 'h264'/'vp8' // not for p2p room<br>
 }
-   * @memberOf Woogeen.ConferenceClient
-   * @param {stream} stream Stream to subscribe.
-   * @param {string} options (optional)Subscribe options.
-   * @param {function} onSuccess (optional)Success callback.
-   * @param {function} onFailure (optional)Failure callback.
-   * @return {TYPE} DESCRIPTION
+   * @param {function} onSuccess(stream) (optional) Success callback.
+   * @param {function} onFailure(err) (optional) Failure callback.
+   * @return {undefined}
    * @example
-<script type="text/JavaScript”>
-var conference = Woogeen.ConferenceClient.create({});
+<script type="text/JavaScript">
+var conference = Woogeen.ConferenceClient.create();
 // ……
 conference.subscribe(remoteStream, function (st) {
     L.Logger.info('stream subscribed:', st.id());
@@ -870,19 +893,18 @@ conference.subscribe(remoteStream, function (st) {
     };
   };
 
-  //TODO: fill explanation for parameter 'param'
 /**
    * @function unsubscribe
    * @instance
    * @desc This function unsubscribes the remote stream.
    * @memberOf Woogeen.ConferenceClient
    * @param {stream} stream Stream to unsubscribe.
-   * @param {function} onSuccess (optional)Success callback.
-   * @param {function} onFailure (optional)Failure callback.
-   * @return {TYPE} DESCRIPTION
+   * @param {function} onSuccess() (optional) Success callback.
+   * @param {function} onFailure(err) (optional) Failure callback.
+   * @return {undefined}
    * @example
-<script type="text/JavaScript”>
-var conference = Woogeen.ConferenceClient.create({});
+<script type="text/JavaScript">
+var conference = Woogeen.ConferenceClient.create();
 // ……
 conference.unsubscribe(remoteStream, function (st) {
     L.Logger.info('stream unsubscribed:', st.id());
@@ -907,16 +929,17 @@ conference.unsubscribe(remoteStream, function (st) {
       safeCall(onSuccess, resp);
     });
   };
+
 /**
-   * @function onMessage
+   * @function onMessage(callback)
    * @instance
-   * @desc This function is the shortcut of on(‘message-received’, callback). 
-<br><b>Remarks:</b><br>Once the message is received, this function is invoked.
+   * @desc This function is the shortcut of on('message-received', callback). 
+<br><b>Remarks:</b><br>Once the message is received, the callback is invoked.
    * @memberOf Woogeen.ConferenceClient
    * @param {function} callback callback function to the message.
    * @example
-<script type="text/JavaScript”>
-  var conference = Woogeen.ConferenceClient.create({});
+<script type="text/JavaScript">
+  var conference = Woogeen.ConferenceClient.create();
 // ……
   conference.onMessage(function (event) {
     L.Logger.info('Message Received:', event.msg);
@@ -928,22 +951,23 @@ conference.unsubscribe(remoteStream, function (st) {
       this.on('message-received', callback);
     }
   };
+
 /**
    * @function shareScreen
    * @instance
-   * @desc This function creates a LocalStream from screen and publishes it to the　server. The options are similar to that used to create a LocalStream.
+   * @desc This function creates a LocalStream from screen and publishes it to the　server.
    * @memberOf Woogeen.ConferenceClient
-   * @param {string} options (optional)Share screen options.
-   * @param {function} onSuccess (optional)Success callback.
-   * @param {function} onFailure (optional)Failure callback.
+   * @param {string} options (optional) Share screen options, similar to video option that used to create a LocalStream.
+   * @param {function} onSuccess(stream) (optional) Success callback.
+   * @param {function} onFailure(err) (optional) Failure callback. See details about error definition in LocalStream.create().
    * @example
-<script type="text/JavaScript”>
-var conference = Woogeen.ConferenceClient.create({});
+<script type="text/JavaScript">
+var conference = Woogeen.ConferenceClient.create();
 // ……
-conference.shareScreen(options, function (stream) {
-    L.Logger.info('screen shared:', stream.id());
+conference.shareScreen({resolution: 'hd720p'}, function (st) {
+    L.Logger.info('screen shared:', st.id());
   }, function (err) {
-    L.Logger.error('screen share failed:', err);
+    L.Logger.error('sharing failed:', err);
   }
 );
 </script>
@@ -975,24 +999,24 @@ conference.shareScreen(options, function (stream) {
     });
   };
 
-  //TODO: fill return description and type
 /**
    * @function startRecorder
    * @instance
-   * @desc This function starts the mixed audio stream and video stream recording on the conference room and saves it to a .mkv file on the server, according to the configurable “config.erizoController.recording_path”. The options are reserved currently for future usage.
-   <br><b>Remarks:</b><br>
-   options: {<br>
-    streamId: xxxxxx,<br>
-    recorderId: yyyyyy<br>
-  }
+   * @desc This function starts the mixed audio stream and video stream recording on the conference room and saves it to a .mkv file on the server, according to the configurable "config.erizoController.recording_path". The options are reserved currently for future usage.
    * @memberOf Woogeen.ConferenceClient
    * @param {string} options (optional)Media recorder options.
-   * @param {function} onSuccess (optional)Success callback.
-   * @param {function} onFailure (optional)Failure callback.
-   * @return {TYPE} DESCRIPTION
+   * @desc options:
+{<br>
+  streamId: xxxxxx,<br>
+  recorderId: yyyyyy<br>
+}
+   * @param {function} onSuccess(resp) (optional) Success callback.
+   * @desc resp: {FIXME}
+   * @param {function} onFailure(err) (optional) Failure callback.
+   * @return {undefined}
    * @example
-<script type="text/JavaScript”>
-var conference = Woogeen.ConferenceClient.create({});
+<script type="text/JavaScript">
+var conference = Woogeen.ConferenceClient.create();
 // ……
 conference.startRecorder({to: streamId}, function (file) {
     L.Logger.info('Stream recorded with recorder ID: ', file.id);
@@ -1018,25 +1042,25 @@ conference.startRecorder({to: streamId}, function (file) {
     });
   };
 
-//TODO: fill return description and type
 /**
    * @function stopRecorder
    * @instance
-   * @desc This function stops the mixed audio stream and video stream recording on　the conference room and saves it to a .mkv file on the server, according to　the configurable “config.erizoController.recording_path”.
-   <br><b>Remarks:</b><br>
-   options: {<br>
-    recorderId: xxxxxx<br>
-  }
+   * @desc This function stops the mixed audio stream and video stream recording on　the conference room and saves it to a .mkv file on the server, according to　the configurable "config.erizoController.recording_path".
    * @memberOf Woogeen.ConferenceClient
-   * @param {string} options (optional)Media recorder options.
-   * @param {function} onSuccess (optional)Success callback.
-   * @param {function} onFailure (optional)Failure callback.
-   * @return {TYPE} DESCRIPTION
+   * @param {string} options (optional) Media recording options.
+   * @desc options:
+{<br>
+  recorderId: xxxxxx<br>
+}
+   * @param {function} onSuccess(resp) (optional) Success callback.
+   * @desc resp: {FIXME}
+   * @param {function} onFailure(error) (optional) Failure callback.
+   * @return {undefined}
    * @example
-<script type="text/JavaScript”>
-var conference = Woogeen.ConferenceClient.create({});
+<script type="text/JavaScript">
+var conference = Woogeen.ConferenceClient.create();
 // ……
-conference.stopRecorder({id: recorderId}, function (file) {
+conference.stopRecorder({id: recorderId}, function (file) {// FIXME
     L.Logger.info('Recorded stream to ', file.path);
   }, function (err) {
     L.Logger.error('Media recorder cannot stop with failure: ', err);
@@ -1060,6 +1084,7 @@ conference.stopRecorder({id: recorderId}, function (file) {
     });
   };
 
+  // TODO
   WoogeenConference.prototype.getRegion = function (options, onSuccess, onFailure) {
     var self = this;
     if (typeof options === 'function') {
@@ -1076,6 +1101,7 @@ conference.stopRecorder({id: recorderId}, function (file) {
     });
   };
 
+  // TODO
   WoogeenConference.prototype.setRegion = function (options, onSuccess, onFailure) {
     var self = this;
     if (typeof options === 'function') {
@@ -1092,6 +1118,7 @@ conference.stopRecorder({id: recorderId}, function (file) {
     });
   };
 
+  // TODO
   WoogeenConference.prototype.setVideoBitrate = function (options, onSuccess, onFailure) {
     var self = this;
     if (typeof options === 'function') {
@@ -1110,12 +1137,14 @@ conference.stopRecorder({id: recorderId}, function (file) {
 
 /**
    * @function create
-   * @desc This factory returns a Woogeen.ConferenceClient object.
+   * @desc This factory returns a Woogeen.ConferenceClient instance.
    * @memberOf Woogeen.ConferenceClient
    * @static
    * @return {Woogeen.ConferenceClient} An instance of Woogeen.ConferenceClient.
    * @example
-var conference = Woogeen.ConferenceClient.create({});
+<script type="text/JavaScript">
+var conference = Woogeen.ConferenceClient.create();
+</script>
    */
   WoogeenConference.create = function factory (spec) { // factory, not in prototype
     return new WoogeenConference(spec);
