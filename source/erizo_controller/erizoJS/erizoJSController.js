@@ -221,6 +221,11 @@ exports.ErizoJSController = function () {
             subscribers[from] = [];
 
             var answer = ei.init(function (message) {
+                if (publishers[from] === undefined) {
+                    log.info('External input', from, 'removed before initialized');
+                    return;
+                }
+
                 if (message === 'success') {
                     log.info('External input', from, 'initialization succeed');
 
@@ -251,13 +256,14 @@ exports.ErizoJSController = function () {
                     callback('onReady');
                 } else {
                     log.error('External input', from, 'initialization failed');
-                    publishers[from].close();
-                    delete publishers[from];
                 }
             });
 
             if (answer < 0) {
                 callback('callback', 'input url initialization error');
+                publishers[from].close();
+                delete subscribers[from];
+                delete publishers[from];
             } else {
                 callback('callback', 'success');
             }
