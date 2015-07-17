@@ -1,6 +1,6 @@
 {
   "name": "WooGeen-MCU-Sample-app",
-  "version": "2.1.1",
+  "version": "2.5.0",
   "description": "Intel CS for WebRTC",
   "dependencies": {
     "express": "*",
@@ -10,7 +10,3 @@
     "errorhandler": "*"
   }
 }
-
-
-
-
