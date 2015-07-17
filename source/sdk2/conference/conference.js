@@ -1,9 +1,10 @@
 /* global io, console */
 
 /**
- * @namespace Woogeen.ConferenceClient
+ * @class Woogeen.ConferenceClient
  * @classDesc Provides connection, local stream publication, and remote stream　subscription for a video conference. The conference client is　created by the server side API. The conference client is retrieved　by the client API with the access token for the connection.
  */
+
 Woogeen.ConferenceClient = (function () {
   'use strict';
 
@@ -939,10 +940,10 @@ conference.unsubscribe(remoteStream, function (st) {
 <script type="text/JavaScript”>
 var conference = Woogeen.ConferenceClient.create({});
 // ……
-conference.publish(localStream, {maxVideoBW: 300}, function (st) {
-    L.Logger.info('stream published:', st.id());
+conference.shareScreen(options, function (stream) {
+    L.Logger.info('screen shared:', stream.id());
   }, function (err) {
-    L.Logger.error('publish failed:', err);
+    L.Logger.error('screen share failed:', err);
   }
 );
 </script>
