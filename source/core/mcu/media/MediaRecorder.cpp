@@ -159,6 +159,7 @@ void MediaRecorder::onFrame(const woogeen_base::Frame& frame)
 {
     if (m_status == woogeen_base::MediaMuxer::Context_ERROR)
         return;
+
     switch (frame.format) {
     case woogeen_base::FRAME_FORMAT_VP8:
         if (!m_videoStream) {
@@ -258,6 +259,7 @@ void MediaRecorder::onTimeout()
         ELOG_ERROR("context error");
         return;
     }
+
     boost::shared_ptr<woogeen_base::EncodedFrame> mediaFrame;
     while (mediaFrame = m_audioQueue->popFrame())
         this->writeAudioFrame(*mediaFrame);
@@ -266,7 +268,8 @@ void MediaRecorder::onTimeout()
         this->writeVideoFrame(*mediaFrame);
 }
 
-void MediaRecorder::writeVideoFrame(woogeen_base::EncodedFrame& encodedVideoFrame) {
+void MediaRecorder::writeVideoFrame(woogeen_base::EncodedFrame& encodedVideoFrame)
+{
     AVPacket avpkt;
     av_init_packet(&avpkt);
     avpkt.data = encodedVideoFrame.m_payloadData;
@@ -277,7 +280,8 @@ void MediaRecorder::writeVideoFrame(woogeen_base::EncodedFrame& encodedVideoFram
     av_free_packet(&avpkt);
 }
 
-void MediaRecorder::writeAudioFrame(woogeen_base::EncodedFrame& encodedAudioFrame) {
+void MediaRecorder::writeAudioFrame(woogeen_base::EncodedFrame& encodedAudioFrame)
+{
     AVPacket avpkt;
     av_init_packet(&avpkt);
     avpkt.data = encodedAudioFrame.m_payloadData;

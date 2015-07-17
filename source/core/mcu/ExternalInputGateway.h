@@ -38,7 +38,7 @@ namespace mcu {
  * Represents a gateway between an ExternalInput publisher (e.g., RTSP) and WebRTC subscribers.
  * Receives media from the ExternalInput and dispatches it to others.
  */
-class ExternalInputGateway : public woogeen_base::Gateway, public erizo::MediaSink, public erizo::FeedbackSink, public erizo::RTPDataReceiver {
+class ExternalInputGateway : public woogeen_base::Gateway, public erizo::MediaSink, public erizo::FeedbackSink, public erizo::RTPDataReceiver, public woogeen_base::FrameDispatcher {
     DECLARE_LOGGER();
 
 public:
@@ -94,6 +94,10 @@ public:
 
     // Implements RTPDataReceiver.
     void receiveRtpData(char*, int len, erizo::DataType, uint32_t streamId);
+
+    // FIXME: Chunbo - Implements FrameDispatcher for video frame consumer
+    int32_t addFrameConsumer(const std::string&, int payloadType, woogeen_base::FrameConsumer*);
+    void removeFrameConsumer(int32_t id);
 
 private:
     void closeAll();
