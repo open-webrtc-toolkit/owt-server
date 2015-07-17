@@ -16,7 +16,6 @@ N.API = (function (N) {
         url: undefined,
         rejectUnauthorizedCert: undefined
     };
-    //TODO: fill return type
 /**
    * @function rejectUnauthorizedCert
    * @desc This function sets rejectUnauthorized option for https requests.
@@ -24,7 +23,7 @@ N.API = (function (N) {
 This function is only needed when server is configured with untrusted certificates and you want to ignore server certificate verification against trusted CAs. Read https://nodejs.org/api/tls.html for details.
    * @memberOf N.API
    * @param {boolean} bool true or false. Default value is true.
-   * @return {TYPE} Value of rejectUnauthorized stored.
+   * @return {boolean} stored value.
    * @example
 N.API.rejectUnauthorizedCert(false);
    */
@@ -37,23 +36,28 @@ N.API.rejectUnauthorizedCert(false);
    * @function init
    * @desc This function completes the essential configuration.
    * @memberOf N.API
-   * @param {string} serviceID The ID of your service.
+   * @param {string} service The ID of your service.
    * @param {string} key The key of your service
-   * @param {string} url (host)The address of the machine on which the nuve runs.
+   * @param {string} url The address of the machine on which the nuve runs.
    * @example
-N.API.init(‘5188b9af6e53c84ffd600413’, ‘21989’, 'http://61.129.90.140:3000/')
+N.API.init('5188b9af6e53c84ffd600413', '21989', 'http://61.129.90.140:3000/')
    */
     init = function (service, key, url) {
         N.API.params.service = service;
         N.API.params.key = key;
         N.API.params.url = url;
     };
-//TODO: fill explanation for parameter 'param'
+
 /**
    * @function createRoom
    * @desc This function creates a room.
-<br><b>Remarks:</b><br>
-Room configuration:<br>
+   * @memberOf N.API
+   * @param {string} name Room name.
+   * @param {function} callback(room) Callback function on success.
+   * @param {function} callbackError(err) Callback function on error.
+   * @param {json} options Room configuration.
+   * @desc options:
+<br>
 <ul>
     <li><b>mode:</b>"hybrid" for room with mixing and forward streams; "p2p" for p2p room.</li>
     <li><b>publishLimit:</b>limiting number of publishers in the room. Value should be equal to or greater than -1. -1 for unlimited.</li>
@@ -78,42 +82,37 @@ Room configuration:<br>
             <li>bkColor sets the background color, "black" or "white"</li>
             <li>layout describes video layout in mix stream</li>
                 <ul>
-                    <li>“base” is the base template (choose from "void", "fluid", "lecture")</li>
-                    <li>“custom” is user-defined customized video layout (Read section 3.5 in Conference Server Guide for details)</li>
+                    <li>"base" is the base template (choose from "void", "fluid", "lecture")</li>
+                    <li>"custom" is user-defined customized video layout (Read section 3.5 in Conference Server Guide for details)</li>
                     <li>MCU would try to combine the two entries for mixing video if user sets both.</li>
                 </ul>
         </ul>
     </ul>
 </ul>
-Omitted entries are set with default values; failureCallback is invoked when user-input is invalid.
-   * @memberOf N.API
-   * @param {string} name Room name.
-   * @param {function} callback Callback function on success.
-   * @param {function} callbackError Callback function on error.
-   * @param {json} options Room configuration.
-   * @param {TYPE} params DESCRIPTION
+Omitted entries are set with default values.
+   * @return {undefined}
    * @example
-N.API.createRoom(“myRoom”,
+N.API.createRoom('myRoom',
 , function (res) {
-  console.log (‘Room’, res.name, ‘created with id:’, res._id);
+  console.log ('Room', res.name, 'created with id:', res._id);
 }, function (err) {
-  console.log (‘Error:’, err);
+  console.log ('Error:', err);
 }, {
-  "mode": "hybrid",
-  "publishLimit": -1,
-  "userLimit": 30,
-  "mediaMixing": {
-    "video": {
-      "avCoordinated": 1,
-      "maxInput": 15,
-      "resolution": "hd720p",
-      "bitrate": 0,
-      "bkColor": "white",
-      "layout": {
-        "base": "fluid",
+  mode: 'hybrid',
+  publishLimit: -1,
+  userLimit: 30,
+  mediaMixing: {
+    video: {
+      avCoordinated: 1,
+      maxInput: 15,
+      resolution: 'hd720p',
+      bitrate: 0,
+      bkColor: 'white',
+      layout: {
+        base: 'fluid',
       }
     },
-    "audio": null
+    audio: null
   },
 });
    */
@@ -129,260 +128,236 @@ N.API.createRoom(“myRoom”,
         }, callbackError, 'POST', {name: name, options: options}, 'rooms', params);
     };
 
-//TODO: fill explanation for parameter 'param'
 /**
    * @function getRooms
    * @desc This function lists the rooms in your service.
    * @memberOf N.API
-   * @param {function} callback Callback function on success
-   * @param {function} callbackError Callback function on error
-   * @param {TYPE} params DESCRIPTION
+   * @param {function} callback(rooms) Callback function on success
+   * @param {function} callbackError(err) Callback function on error
    * @example
 N.API.getRooms(function(rooms) {
-for(var i in rooms) {
-console.log(‘Room ’, i, ‘:’, rooms[i].name);
-}
+  for(var i in rooms) {
+    console.log('Room', i, ':', rooms[i].name);
+  }
 }, errorCallback);
    */
     getRooms = function (callback, callbackError, params) {
         send(callback, callbackError, 'GET', undefined, 'rooms', params);
     };
 
-//TODO: fill explanation for parameter 'param'
 /**
    * @function getRoom
    * @desc This function returns information on the specified room.
    * @memberOf N.API
    * @param {string} room Room ID
-   * @param {function} callback Callback function on success
-   * @param {function} callbackError Callback function on error
-   * @param {TYPE} params DESCRIPTION
+   * @param {function} callback(room) Callback function on success
+   * @param {function} callbackError(err) Callback function on error
    * @example
-var roomID = ‘51c10d86909ad1f939000001’;
+var roomID = '51c10d86909ad1f939000001';
 N.API.getRoom(roomID, function(room) {
-console.log(‘Room name: ’, room.name);
+  console.log('Room name:', room.name);
 }, errorCallback);
    */
     getRoom = function (room, callback, callbackError, params) {
         send(callback, callbackError, 'GET', undefined, 'rooms/' + room, params);
     };
 
-//TODO: fill explanation for parameter 'param'
 /**
    * @function deleteRoom
    * @desc This function deletes the specified room.
    * @memberOf N.API
    * @param {string} room Room ID to be deleted
-   * @param {function} callback Callback function on success
-   * @param {function} callbackError Callback function on error
-   * @param {TYPE} params DESCRIPTION
+   * @param {function} callback(result) Callback function on success
+   * @param {function} callbackError(err) Callback function on error
    * @example
-var room = ‘51c10d86909ad1f939000001’;
+var room = '51c10d86909ad1f939000001';
 N.API.deleteRoom(room, function(result) {
-console.log (‘Result:’ result);
+  console.log ('Result:' result);
 }, errorCallback);
    */
     deleteRoom = function (room, callback, callbackError, params) {
         send(callback, callbackError, 'DELETE', undefined, 'rooms/' + room, params);
     };
-//TODO: fill explanation for parameter 'param'
+
 /**
    * @function updateRoom
    * @desc This function updates a room.
-   <br><b>Remarks:</b><br>
-   Refer room configuration in “createRoom”.
    * @memberOf N.API
    * @param {string} roomId DESCRIPTION
-   * @param {json} options Room configuration
-   * @param {function} callback Callback function on success
-   * @param {function} callbackError Callback function on error
-   * @param {TYPE} params DESCRIPTION
+   * @param {json} options Room configuration. See details about options in {@link N.API.createRoom|createRoom(name, callback, callbackError, options)}.
+   * @param {function} callback(room) Callback function on success
+   * @param {function} callbackError(err) Callback function on error
    * @example
 N.API.updateRoom(XXXXXXXXXX, {
-  "publishLimit": -1,
-  "userLimit": -1,
-  "mediaMixing": {
-    "video": {
-      "avCoordinated": 1,
-      "maxInput": 15,
-      "resolution": "hd720p",
-      "bitrate": 0,
-      "bkColor": "white",
-      "layout": {
-        "base": "lecture",
+  publishLimit: -1,
+  userLimit: -1,
+  mediaMixing: {
+    video: {
+      avCoordinated: 1,
+      maxInput: 15,
+      resolution: 'hd720p',
+      bitrate: 0,
+      bkColor: 'white',
+      layout: {
+        base: 'lecture',
       }
     },
-    "audio": null
+    audio: null
   },
 }, function (res) {
-  console.log (‘Room’, res._id, ‘updated’);
+  console.log ('Room', res._id, 'updated');
 }, function (err) {
-  console.log (‘Error:’, err);
+  console.log ('Error:', err);
 });
    */
     updateRoom = function (roomId, options, callback, callbackError, params) {
         send(callback, callbackError, 'PUT', (options || {}), 'rooms/' + roomId, params);
     };
 
-//TODO: fill explanation for parameter 'param'
 /**
    * @function createToken
    * @desc This function creates a new token when a new participant to a room needs to be added.
    * @memberOf N.API
    * @param {string} room Room ID
-   * @param {string} username Participant’s name
-   * @param {string} role Participant’s role
-   * @param {function} callback Callback function on success
-   * @param {function} callbackError Callback function on error
-   * @param {TYPE} params DESCRIPTION
+   * @param {string} username Participant's name
+   * @param {string} role Participant's role
+   * @param {function} callback(token) Callback function on success
+   * @param {function} callbackError(err) Callback function on error
    * @example
-var roomID = ‘51c10d86909ad1f939000001’;
-var name = ‘john’;
-var role = ‘guest’;
+var roomID = '51c10d86909ad1f939000001';
+var name = 'john';
+var role = 'guest';
 N.API.createToken(roomID, name, role, function(token) {
-console.log (‘Token created:’ token);
+  console.log ('Token created:' token);
 }, errorCallback);
    */
     createToken = function (room, username, role, callback, callbackError, params) {
         send(callback, callbackError, 'POST', undefined, 'rooms/' + room + '/tokens', params, username, role);
     };
 
-//TODO: fill explanation for parameter 'param'
 /**
    * @function createService
    * @desc This function creates a new service.
    * @memberOf N.API
    * @param {string} name Service name
    * @param {string} key Service key
-   * @param {function} callback Callback function on success
-   * @param {function} callbackError Callback function on error
-   * @param {TYPE} params DESCRIPTION
+   * @param {function} callback(service) Callback function on success
+   * @param {function} callbackError(err) Callback function on error
    * @example
-var name = ‘service1’;
-var key = ‘66510cd6989cd1f9565371’;
+var name = 'service1';
+var key = '66510cd6989cd1f9565371';
 N.API.createService(name, key, function(service) {
-console.log (‘Service created:’, service);
+  console.log ('Service created:', service);
 }, errorCallback);
    */
     createService = function (name, key, callback, callbackError, params) {
         send(callback, callbackError, 'POST', {name: name, key: key}, 'services/', params);
     };
-//TODO: fill explanation for parameter 'param'
+
 /**
    * @function getServices
    * @desc This function lists the services in your server.
    * @memberOf N.API
-   * @param {function} callback Callback function on success
-   * @param {function} callbackError Callback function on error
-   * @param {TYPE} params DESCRIPTION
+   * @param {function} callback(services) Callback function on success
+   * @param {function} callbackError(err) Callback function on error
    * @example
 N.API.getServices(function(services) {
-for(var i in services) {
-console.log(‘Service ’, i, ‘:’, services[i].name);
-}
+  for(var i in services) {
+    console.log('Service ', i, ':', services[i].name);
+  }
 }, errorCallback);
    */
     getServices = function (callback, callbackError, params) {
         send(callback, callbackError, 'GET', undefined, 'services/', params);
     };
 
-//TODO: fill explanation for parameter 'param'
 /**
    * @function getService
    * @desc This function returns information on the specified service.
    * @memberOf N.API
    * @param {string} service service ID, service information
-   * @param {function} callback Callback function on success
-   * @param {function} callbackError Callback function on error
-   * @param {TYPE} params DESCRIPTION
+   * @param {function} callback(service) Callback function on success
+   * @param {function} callbackError(err) Callback function on error
    * @example
-var service = ‘43243cda543efd5436789dd651’;
+var service = '43243cda543efd5436789dd651';
 N.API.getService(service, function(service) {
-console.log(‘Service name: ’, service.name);
+  console.log('Service name: ', service.name);
 }, errorCallback);
    */
     getService = function (service, callback, callbackError, params) {
         send(callback, callbackError, 'GET', undefined, 'services/' + service, params);
     };
 
-//TODO: fill explanation for parameter 'param'
 /**
    * @function deleteService
    * @desc This function deletes the specified service.
    * @memberOf N.API
    * @param {string} service service to be deleted
-   * @param {function} callback Callback function on success
-   * @param {function} callbackError Callback function on error
-   * @param {TYPE} params DESCRIPTION
+   * @param {function} callback(result) Callback function on success
+   * @param {function} callbackError(err) Callback function on error
    * @example
-var service = ‘51c10d86909ad1f939000001’;
+var service = '51c10d86909ad1f939000001';
 N.API.deleteService(service, function(result) {
-console.log (‘Result:’ result);
+  console.log ('Result:' result);
 }, errorCallback);
    */
     deleteService = function (service, callback, callbackError, params) {
         send(callback, callbackError, 'DELETE', undefined, 'services/' + service, params);
     };
 
-//TODO: fill explanation for parameter 'param'
 /**
    * @function getUsers
    * @desc This function lists the users in a specified room.
    * @memberOf N.API
    * @param {string} room Room ID
-   * @param {function} callback Callback function on success
-   * @param {function} callbackError Callback function on error
-   * @param {TYPE} params DESCRIPTION
+   * @param {function} callback(users) Callback function on success
+   * @param {function} callbackError(err) Callback function on error
    * @example
-var roomID = ‘51c10d86909ad1f939000001’;
+var roomID = '51c10d86909ad1f939000001';
 N.API.getUsers(roomID, function(users) {
-var userlist = JSON.parse(users);
-console.log (‘This room has ’, userslist.length, ‘users’);
-for (var i in userlist) {
-console.log(‘User ‘, i, ‘:’, userlist[i].name, userlist[i].role);
-}
+  var userlist = JSON.parse(users);
+  console.log ('This room has ', userslist.length, 'users');
+  for (var i in userlist) {
+    console.log('User ', i, ':', userlist[i].name, userlist[i].role);
+  }
 }, errorCallback);
    */
     getUsers = function (room, callback, callbackError, params) {
         send(callback, callbackError, 'GET', undefined, 'rooms/' + room + '/users/', params);
     };
 
-//TODO: fill explanation for parameter 'param'
 /**
    * @function getUser
-   * @desc This function gets a user’s information from a specified room.
+   * @desc This function gets a user's information from a specified room.
    * @memberOf N.API
    * @param {string} room Room ID
-   * @param {string} user User’s name
-   * @param {function} callback Callback function on success
-   * @param {function} callbackError Callback function on error
-   * @param {TYPE} params DESCRIPTION
+   * @param {string} user User's name
+   * @param {function} callback(user) Callback function on success
+   * @param {function} callbackError(err) Callback function on error
    * @example
-var roomID = ‘51c10d86909ad1f939000001’;
-var name = ‘john’;
+var roomID = '51c10d86909ad1f939000001';
+var name = 'john';
 N.API.getUser(roomID, name, function(user) {
-console.log(‘User:’, name, ‘Role:’, user.role);
+  console.log('User:', name, 'Role:', user.role);
 }, errorCallback);
    */
     getUser = function (room, user, callback, callbackError, params) {
         send(callback, callbackError, 'GET', undefined, 'rooms/' + room + '/users/' + user, params);
     };
 
-//TODO: fill explanation for parameter 'param'
 /**
    * @function deleteUser
    * @desc This function deletes a user from a room.
    * @memberOf N.API
    * @param {string} room Room ID
-   * @param {string} user User’s name
-   * @param {function} callback Callback function on success
-   * @param {function} callbackError Callback function on error
-   * @param {TYPE} params DESCRIPTION
+   * @param {string} user User's name
+   * @param {function} callback(result) Callback function on success
+   * @param {function} callbackError(err) Callback function on error
    * @example
-var roomID = ‘51c10d86909ad1f939000001’;
-var name = ‘john’;
-N.API.deleteUser(roomID, name, function(user) {
-console.log(‘User’, name, ‘in room’, roomID, ‘deleted’);
+var roomID = '51c10d86909ad1f939000001';
+var name = 'john';
+N.API.deleteUser(roomID, name, function(res) {
+  console.log('User', name, 'in room', roomID, 'deleted');
 }, errorCallback);
    */
     deleteUser = function (room, user, callback, callbackError, params) {
