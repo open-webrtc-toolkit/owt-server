@@ -1,9 +1,12 @@
 /* global webkitURL, chrome */
 (function () {
   'use strict';
-
 /**
- * @namespace Woogeen.Stream
+    *@namespace Woogeen
+    *@desc TODO:Description of namespace Woogeen.
+    */
+/**
+ * @class Woogeen.Stream
  * @classDesc Handles the WebRTC (audio, video) stream, identifies the stream, and identifies the location where the stream should be displayed. There are two stream classes: LocalStream and RemoteStream.
  */
   function WoogeenStream (spec) {
@@ -721,13 +724,13 @@ console.log('stream added:', stream.id());
   Woogeen.Stream = WoogeenStream;
   //TODO: fill description of LocalSteam and RemoteStream
 /**
- * @namespace Woogeen.LocalStream
+ * @class Woogeen.LocalStream
  * @extends Woogeen.Stream
  * @classDesc To be filled...
  */
   Woogeen.LocalStream = WoogeenLocalStream;
 /**
- * @namespace Woogeen.RemoteStream
+ * @class Woogeen.RemoteStream
  * @extends Woogeen.Stream
  * @classDesc To be filled...
  */
