@@ -741,6 +741,7 @@ var listen = function () {
                     // before the publish succeeds.
                     var index = socket.room.sockets.indexOf(socket);
                     if (index === -1) {
+                        socket.room.controller.removePublisher(id);
                         return;
                     }
 
@@ -791,6 +792,7 @@ var listen = function () {
                         // before the publish succeeds.
                         var index = socket.room.sockets.indexOf(socket);
                         if (index === -1) {
+                            socket.room.controller.removePublisher(id);
                             return;
                         }
 
