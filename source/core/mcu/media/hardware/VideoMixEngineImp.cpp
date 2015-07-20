@@ -610,6 +610,10 @@ void VideoMixEngineImp::setupPipeline()
         it_output->second.encHandle = enc_cfg.EncHandle;
         it_output->second.stream = enc_cfg.outputStream;
         m_vpp->vppHandle = vpp_cfg.VppHandle;
+
+        VideoMixEngineInput* producer = it_input->second.producer;
+        if (producer)
+            producer->requestKeyFrame(it_input->first);
     }
 
     for (++it_input; it_input != m_inputs.end(); ++it_input)
