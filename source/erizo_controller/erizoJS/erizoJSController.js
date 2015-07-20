@@ -255,12 +255,23 @@ exports.ErizoJSController = function () {
 
                     callback('onReady');
                 } else {
+                    // Reclaim the native resource.
+                    // TODO: In normal (successful) case the native resource of
+                    // the ExternalInput is managed implicitly by the muxer. We
+                    // may need to think about whether it would be better to
+                    // have it also managed explicitly in the JS layer.
+                    // Similar cases apply to the normal WebRTC publishers/subscribers.
+                    ei.close();
+                    publishers[from].close();
+                    delete subscribers[from];
+                    delete publishers[from];
                     log.error('External input', from, 'initialization failed');
                 }
             });
 
             if (answer < 0) {
                 callback('callback', 'input url initialization error');
+                ei.close();
                 publishers[from].close();
                 delete subscribers[from];
                 delete publishers[from];
