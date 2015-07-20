@@ -3233,6 +3233,10 @@ int MSDKCodec::PrepareVppCompFrames()
                     max_comp_framerate_ = vpp_comp_map_[sinkpad].frame_rate;
                     printf("------- Set max_comp_framerate_ to %f\n", max_comp_framerate_);
                 }
+            } else {
+                //if it goes here, means that decoder was stopped before
+                //it generated and put the first valid surface to vpp
+                printf("The first surface from decoder is eos\n");
             }
         }
     } else {
@@ -3384,7 +3388,22 @@ int MSDKCodec::HandleProcessVpp()
         }
 
         if (!codec_init_) {
-            sts = InitVpp(vpp_comp_map_[*sinkpads_.begin()].ready_surface);
+            for (it_sinkpad = sinkpads_.begin(); it_sinkpad != sinkpads_.end(); ++it_sinkpad) {
+                //find the first valid surface to initialize vpp
+                if (vpp_comp_map_[*it_sinkpad].ready_surface.msdk_surface) {
+                    break;
+                }
+            }
+            if (it_sinkpad == sinkpads_.end()) {
+                //decoders eos before any valid surface arrives.
+                //for this case, stop the vpp directly.
+                ReleaseSinkMutex();
+                all_eos = true;
+                is_running_ = false;
+                break;
+            }
+
+            sts = InitVpp(vpp_comp_map_[*it_sinkpad].ready_surface);
 
             if (MFX_ERR_NONE == sts) {
                 printf("[%p]VPP element init successfully\n", this);
