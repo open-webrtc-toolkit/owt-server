@@ -70,7 +70,7 @@ L.Logger.info('stream attibutes:', stream.attributes());
    * @instance
    * @param {string} key attribute key.
    * @param {string} value attribute value.
-   * @return Existing attribute value if it’s not specified in parameter
+   * @return Existing attribute value if it's not specified in parameter
    * @example
 <script type="text/JavaScript">
 stream.attr("custom_key", "custom_value");
@@ -314,7 +314,6 @@ Conerence mode only. The audio track of the stream should be enabled to be playe
    * @param {function} onSuccess() (optional) Success callback.
    * @param {function} onFailure(err) (optional) Failure callback.
    * @instance
-   * @return {undefined}
    */
   WoogeenStream.prototype.playAudio = function(onSuccess, onFailure) {
     if (typeof this.signalOnPlayAudio === 'function') {
@@ -334,7 +333,6 @@ Conerence mode only. Upon success, the audio of the stream would be hold, and yo
    * @param {function} onSuccess() (optional) Success callback.
    * @param {function} onFailure(err) (optional) Failure callback.
    * @instance
-   * @return {undefined}
    */
   WoogeenStream.prototype.pauseAudio = function(onSuccess, onFailure) {
     if (typeof this.signalOnPauseAudio === 'function') {
@@ -354,7 +352,6 @@ Conerence mode only. The video track of the stream should be enabled to be playe
    * @param {function} onSuccess() (optional) Success callback.
    * @param {function} onFailure(err) (optional) Failure callback.
    * @instance
-   * @return {undefined}
    */
   WoogeenStream.prototype.playVideo = function(onSuccess, onFailure) {
     if (typeof this.signalOnPlayVideo === 'function') {
@@ -374,7 +371,6 @@ Conerence mode only. Upon success, the video of the stream would be hold, and yo
    * @param {function} onSuccess() (optional) Success callback.
    * @param {function} onFailure(err) (optional) Failure callback.
    * @instance
-   * @return {undefined}
    */
   WoogeenStream.prototype.pauseVideo = function(onSuccess, onFailure) {
     if (typeof this.signalOnPauseVideo === 'function') {
@@ -414,13 +410,8 @@ L.Logger.info('stream isMixed:', stream.isMixed());
 /**
    * @function on(event, listener)
    * @desc This function registers a listener for a specified event, which would be called when the event occurred.
-   * @memberOf Woogeen.Stream
-   * @param {string} event Event name.
-   * @param {function} listener(data) Callback function.
-   * @instance
-   * @return {undefined}
 <br><b>Remarks:</b><br>
-Reserved events from MCU:
+Reserved events from MCU:<br>
 <table>
 <thead>
   <tr><th align="center">Event Name</th><th align="center">Description</th><th align="center">Status</th></tr>
@@ -434,6 +425,10 @@ Reserved events from MCU:
 </tbody>
 </table>
 User-defined events and listeners are also supported, by using with <code>stream.emit()</code> combined.
+   * @memberOf Woogeen.Stream
+   * @param {string} event Event name.
+   * @param {function} listener(data) Callback function.
+   * @instance
    * @example
 <script type="text/JavaScript">
 if (stream.isMixed()) {
@@ -455,12 +450,10 @@ if (stream.isMixed()) {
 /**
    * @function emit(event, data)
    * @desc This function triggers a specified event, which would invoke corresponding event listener(s).
-<br><b>Remarks:</b><br>
    * @memberOf Woogeen.Stream
    * @param {string} event Event name.
    * @param {user-defined} data Data fed to listener function.
    * @instance
-   * @return {undefined}
    */
       emit: {
         get: function () {
@@ -478,12 +471,10 @@ if (stream.isMixed()) {
 /**
    * @function removeListener(event, listener)
    * @desc This function removes listener(s) for a specified event. If listener is unspecified, all the listener(s) of the event would be removed; or if the listener is in the event listener list, it would be removed; otherwise this function does nothing.
-<br><b>Remarks:</b><br>
    * @memberOf Woogeen.Stream
    * @param {string} event Event name.
    * @param {function} listener Corresponding callback function (optional).
    * @instance
-   * @return {undefined}
    */
       removeListener: {
         get: function () {
@@ -506,10 +497,8 @@ if (stream.isMixed()) {
 /**
    * @function clearListeners
    * @desc This function removes all registered listener(s) for all events on the stream.
-<br><b>Remarks:</b><br>
    * @memberOf Woogeen.Stream
    * @instance
-   * @return {undefined}
    */
       clearListeners: {
         get: function () {
@@ -752,14 +741,11 @@ if (stream.isMixed()) {
     }
   }
 /**
-   * @function create(options, callback)
+   * @function create
    * @desc This factory returns a Woogeen.LocalStream instance with user defined options.<br>
 <br><b>Remarks:</b><br>
 When the video/audio parameters are not supported by the browser, a fallback parameter set will be used; if the fallback also fails, the callback (if specified) is invoked with an error. See details in callback description.
-   * @memberOf Woogeen.LocalStream
-   * @static
-   * @param {json} options Stream creation options.
-   * @desc options:
+<br><b>options:</b>
 <ul>
     <li>audio: true/false.</li>
     <li>video: device, resolution, frameRate.</li>
@@ -783,8 +769,7 @@ When the video/audio parameters are not supported by the browser, a fallback par
             <li><b>Note</b>: Firefox currently does not fully support resolution or frameRate setting.</li>
         </ul>
 </ul>
-   * @param {function} callback callback(err, localStream) will be invoked when LocalStream creation is done.
-   * @desc callback:
+<br><b>callback:</b>
 <br>Upon success, err is null, and localStream is an instance of Woogeen.LocalStream; upon failure localStream is undefined and err is one of the following:<br>
 <ul>
   <li><b>{code: 1100, msg: xxx}</b> - general stream creation error, e.g., no WebRTC support in browser, uncategorized error, etc.</li>
@@ -796,9 +781,12 @@ When the video/audio parameters are not supported by the browser, a fallback par
   <li><b>{code: 1106, msg: 'CONSTRAINT_NOT_SATISFIED'}</b> – one of the mandatory constraints could not be satisfied.</li>
   <li><b>{code: 1107, msg: 'USER_INPUT_INVALID'}</b> – user input media option is invalid.</li>
 </ul>
-   * @return {undefined}
+   * @memberOf Woogeen.LocalStream
+   * @static
+   * @param {json} options Stream creation options.
+   * @param {function} callback callback(err, localStream) will be invoked when LocalStream creation is done.
    * @example
-<script type="text/javascript>
+<script type="text/javascript">
 // LocalStream
 var localStream;
 Woogeen.LocalStream.create({
@@ -832,7 +820,7 @@ Woogeen.LocalStream.create({
  * @extends Woogeen.Stream
  * @classDesc Stream from server retrieved by 'stream-added' event. RemoteStreams are automatically constructed upon the occurrence of the event.
  * @example
-<script type="text/javascript>
+<script type="text/javascript">
 conference.on('stream-added', function (event) {
   var remoteStream = event.stream;
 console.log('stream added:', stream.id());
