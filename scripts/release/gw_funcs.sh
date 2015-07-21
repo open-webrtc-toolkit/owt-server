@@ -52,7 +52,7 @@ pack_runtime() {
 pack_libs() {
   [[ -s ${WOOGEEN_DIST}/lib/liboovoo_gateway.so ]] && \
   LD_LIBRARY_PATH=$ROOT/build/libdeps/build/lib:$ROOT/build/libdeps/build/lib64 ldd ${WOOGEEN_DIST}/lib/liboovoo_gateway.so | grep '=>' | awk '{print $3}' | while read line; do
-    if ! uname -a | grep [Uu]buntu -q -s; then # CentOS
+    if ! lsb_release -i | grep [Uu]buntu -q -s; then # CentOS
       [[ -s "${line}" ]] && [[ -z `rpm -qf ${line} 2>/dev/null | grep 'glibc'` ]] && cp -Lv ${line} ${WOOGEEN_DIST}/lib
     else # Ubuntu
       [[ -s "${line}" ]] && [[ -z `dpkg -S ${line} 2>/dev/null | grep 'libc6\|libselinux'` ]] && cp -Lv ${line} ${WOOGEEN_DIST}/lib

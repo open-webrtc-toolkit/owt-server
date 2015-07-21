@@ -33,7 +33,7 @@ cd $PATHNAME
 
 mkdir -p $PREFIX_DIR
 
-if ! uname -a | grep [Uu]buntu -q -s; then
+if ! lsb_release -i | grep [Uu]buntu -q -s; then
   . installCentOSDeps.sh
   if [ "$NIGHTLY" != "true" ]; then
     installRepo
