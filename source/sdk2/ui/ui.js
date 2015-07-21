@@ -18,7 +18,7 @@ Woogeen.Images = {
    * @param {TYPE} options DESCRIPTION
    * @return {boolean} DESCRIPTION
    * @example
-<script type="text/JavaScript”>
+<script type="text/JavaScript">
 stream.show('stream-div');
 </script>
    */
@@ -43,7 +43,7 @@ Woogeen.Stream.prototype.show = function(elementId, options) {
    * @memberOf Woogeen.Stream
    * @instance
    * @example
-<script type="text/JavaScript”>
+<script type="text/JavaScript">
 stream.hide();
 </script>
    */
