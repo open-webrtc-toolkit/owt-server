@@ -28,7 +28,7 @@ cd $PATHNAME
 
 mkdir -p $PREFIX_DIR
 
-if ! uname -a | grep [Uu]buntu -q -s; then
+if ! lsb_release -i | grep [Uu]buntu -q -s; then
   . installCentOSDeps.sh
   read -p "Add EPEL repository to yum? [Yes/no]" yn
   case $yn in

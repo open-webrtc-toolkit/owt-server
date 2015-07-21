@@ -174,7 +174,7 @@ install_libuv() {
 
 install_oovoosdk(){
   mkdir -p $PREFIX_DIR/lib
-  if uname -a | grep [Uu]buntu -q -s; then
+  if lsb_release -i | grep [Uu]buntu -q -s; then
     cp -av $ROOT/third_party/liboovoosdk-ubuntu.so $PREFIX_DIR/lib/liboovoosdk.so
   else
     cp -av $ROOT/third_party/liboovoosdk-el.so $PREFIX_DIR/lib/liboovoosdk.so
