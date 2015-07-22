@@ -81,8 +81,8 @@ exports.ErizoJSController = function () {
                         info = stdout.toString();
                     }
                     // Check whether hardware codec should be used for this room
-                    useHardware = (info.indexOf('VA-API version 0.34.0') != -1) ||
-                                    (info.indexOf('VA-API version: 0.34') != -1);
+                    useHardware = (info.indexOf('VA-API version 0.35.0') != -1) ||
+                                    (info.indexOf('VA-API version: 0.35') != -1);
                 });
             }
             doInitMixer(useHardware);
