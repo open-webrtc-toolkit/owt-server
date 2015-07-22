@@ -624,8 +624,8 @@ conference.publish(localStream, {maxVideoBW: 300}, function (st) {
             if (answer === 'timeout') {
               return safeCall(onFailure, answer);
             }
-            stream.channel.onsignalingmessage = function () {
-              stream.channel.onsignalingmessage = function () {};
+            stream.channel.onsignalingmessage = function () {};
+            var onChannelReady = function () {
               stream.id = function () {
                 return id;
               };
@@ -646,21 +646,30 @@ conference.publish(localStream, {maxVideoBW: 300}, function (st) {
                 self.unpublish(stream, onSuccess, onFailure);
               };
               safeCall(onSuccess, stream);
+              onChannelReady = function () {};
+              onChannelFailed = function () {};
             };
-
+            var onChannelFailed = function () {
+              sendMsg(self.socket, 'unpublish', id, function () {}, function () {}); // FIXME: still need this?
+              stream.channel.close();
+              stream.channel = undefined;
+              safeCall(onFailure, 'peer connection failed');
+              onChannelReady = function () {};
+              onChannelFailed = function () {};
+            };
             stream.channel.oniceconnectionstatechange = function (state) {
-              if (state === 'failed') {
-                sendMsg(self.socket, 'unpublish', stream.id(), function () {}, function () {});
-                stream.channel.close();
-                stream.channel = undefined;
-                delete self.localStreams[stream.id()];
-                stream.id = function () { return null; };
-                stream.signalOnPlayAudio = undefined;
-                stream.signalOnPauseAudio = undefined;
-                stream.signalOnPlayVideo = undefined;
-                stream.signalOnPauseVideo = undefined;
-                delete stream.unpublish;
-                safeCall(onFailure, 'peer connection failed');
+              switch (state) {
+              case 'completed': // chrome
+              case 'connected': // firefox
+                onChannelReady();
+                break;
+              case 'checking':
+                break;
+              case 'failed':
+                onChannelFailed();
+                break;
+              default:
+                L.Logger.warning('unknown ice connection state:', state);
               }
             };
             stream.channel.processSignalingMessage(answer);
@@ -855,7 +864,7 @@ conference.subscribe(remoteStream, function (st) {
 
     stream.channel.onaddstream = function (evt) {
       stream.mediaStream = evt.stream;
-      if(navigator.appVersion.indexOf('Trident') > -1){
+      if (navigator.appVersion.indexOf('Trident') > -1) {
         stream.pcid = evt.pcid;
       }
       safeCall(onSuccess, stream);
