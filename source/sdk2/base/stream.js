@@ -86,7 +86,7 @@ stream.attr("custom_key", "custom_value");
    * @function id
    * @desc This function returns stream Id assigned by server.
 <br><b>Remarks:</b><br>
-For local stream, it returns undefined if the stream has not been published; once published, stream Id should be updated by server.
+For local stream, it returns null if the stream has not been published; once published, stream Id should be updated by server.
    * @memberOf Woogeen.Stream
    * @instance
    * @return {string} Stream Id assigned by server.
@@ -96,7 +96,7 @@ L.Logger.info('stream added:', stream.id());
 </script>
    */
     this.id = function () {
-      return spec.id;
+      return spec.id || null;
     };
 /**
    * @function isScreen
