@@ -111,6 +111,11 @@ void SoftVideoCompositor::updateLayoutSolution(LayoutSolution& solution)
 
 bool SoftVideoCompositor::activateInput(int input)
 {
+    // Clean-up the last frame which may be left by last user of this slot.
+    I420VideoFrame* busyFrame = m_bufferManager->postFreeBuffer(nullptr, input);
+    if (busyFrame)
+        m_bufferManager->releaseBuffer(busyFrame);
+
     m_bufferManager->setActive(input, true);
     return true;
 }
