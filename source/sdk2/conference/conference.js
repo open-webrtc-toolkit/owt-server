@@ -1083,7 +1083,30 @@ conference.stopRecorder({id: recorderId}, function (file) {// FIXME
     });
   };
 
-  // TODO
+/**
+   * @function getRegion
+   * @instance
+   * @desc This function gets the region ID of the given participant in the mixed stream.
+   <br><b>options:</b><br>
+{<br>
+  id: 'the participant id'<br>
+}
+   * @memberOf Woogeen.ConferenceClient
+   * @param {json} options getRegion options.
+   * @param {function} onSuccess(resp) (optional) Success callback.
+   * @param {function} onFailure(error) (optional) Failure callback.
+   * @example
+<script type="text/JavaScript">
+var conference = Woogeen.ConferenceClient.create();
+// ......
+conference.getRegion({id: 'participantId'}, function (resp) {
+    L.Logger.info('Region for participantId: ', resp.region);
+  }, function (err) {
+    L.Logger.error('getRegion failed:', err);
+  }
+);
+</script>
+ */
   WoogeenConference.prototype.getRegion = function (options, onSuccess, onFailure) {
     var self = this;
     if (typeof options === 'function') {
@@ -1100,7 +1123,31 @@ conference.stopRecorder({id: recorderId}, function (file) {// FIXME
     });
   };
 
-  // TODO
+/**
+   * @function setRegion
+   * @instance
+   * @desc This function sets the region for the given participant in the mixed stream with the given region id.
+   <br><b>options:</b><br>
+{<br>
+  id: 'the participant id'<br>
+  region: 'the region id'<br>
+}
+   * @memberOf Woogeen.ConferenceClient
+   * @param {json} options setRegion options.
+   * @param {function} onSuccess(resp) (optional) Success callback.
+   * @param {function} onFailure(error) (optional) Failure callback.
+   * @example
+<script type="text/JavaScript">
+var conference = Woogeen.ConferenceClient.create();
+// ......
+conference.setRegion({id: 'participantId', region: 'regionId'}, function (resp) {
+    L.Logger.info('setRegion succeeds for participantId: ', resp);
+  }, function (err) {
+    L.Logger.error('setRegion failed:', err);
+  }
+);
+</script>
+ */
   WoogeenConference.prototype.setRegion = function (options, onSuccess, onFailure) {
     var self = this;
     if (typeof options === 'function') {
@@ -1117,7 +1164,31 @@ conference.stopRecorder({id: recorderId}, function (file) {// FIXME
     });
   };
 
-  // TODO
+/**
+   * @function setVideoBitrate
+   * @instance
+   * @desc This function sets the video bitrate (kbps) for the given participant. Currently it works only if the participant's video stream is being mixed in the conference.
+   <br><b>options:</b><br>
+{<br>
+  id: 'the participant id'<br>
+  bitrate: an integer value with the unit in kbps, e.g., 300<br>
+}
+   * @memberOf Woogeen.ConferenceClient
+   * @param {json} options setVideoBitrate options.
+   * @param {function} onSuccess(resp) (optional) Success callback.
+   * @param {function} onFailure(error) (optional) Failure callback.
+   * @example
+<script type="text/JavaScript">
+var conference = Woogeen.ConferenceClient.create();
+// ......
+conference.setVideoBitrate({id: 'participantId', bitrate: 300}, function (resp) {
+    L.Logger.info('setVideoBitrate succeeds for participantId: ', resp);
+  }, function (err) {
+    L.Logger.error('setVideoBitrate failed:', err);
+  }
+);
+</script>
+ */
   WoogeenConference.prototype.setVideoBitrate = function (options, onSuccess, onFailure) {
     var self = this;
     if (typeof options === 'function') {
