@@ -1648,6 +1648,11 @@ int MSDKCodec::ProcessChainEncode(MediaBuf &buf)
     mfxEncodeCtrl *enc_ctrl = NULL;
 
     if (!codec_init_) {
+        if (buf.msdk_surface == NULL && buf.is_eos) {
+            //The first buf encoder received is eos
+            return -1;
+        }
+
         sts = InitEncoder(buf);
 
         if (MFX_ERR_NONE == sts) {
@@ -2775,8 +2780,10 @@ int MSDKCodec::HandleProcessEncode()
             continue;
         }
 
-        ProcessChain(sinkpad, buf);
-        sinkpad->ReturnBufToPeerPad(buf);
+        int ret = ProcessChain(sinkpad, buf);
+        if (ret == 0) {
+            sinkpad->ReturnBufToPeerPad(buf);
+        }
     }
 
     if (!is_running_) {
@@ -3184,6 +3191,12 @@ int MSDKCodec::HandleProcessPreENC()
 }
 #endif
 
+/*
+ * return 0 - successful
+ *        1 - all eos
+ *       -1 - thread is stopped
+ *        2 - failed to get buf within 10ms during initialization
+ */
 int MSDKCodec::PrepareVppCompFrames()
 {
     MediaBuf buf;
@@ -3191,6 +3204,7 @@ int MSDKCodec::PrepareVppCompFrames()
     MediaPad *sinkpad = NULL;
 
     if (0 == comp_stc_) {
+        unsigned int tick;
         // Init stage.
         // Wait for all the frame to generate the 1st composited one.
         for (it_sinkpad = this->sinkpads_.begin();
@@ -3198,12 +3212,16 @@ int MSDKCodec::PrepareVppCompFrames()
                 ++it_sinkpad) {
             sinkpad = *it_sinkpad;
 
+            tick = 0;
             while (sinkpad->GetBufData(buf) != 0) {
                 // No data, just sleep and wait
                 if (!is_running_) {
                     return -1;
                 }
                 usleep(1000);
+                tick++;
+                //wait for ~10ms and return, or else it may hold the sink mutex infinitely
+                if (tick > 10) return 2;
                 continue;
             }
 
@@ -3244,7 +3262,11 @@ int MSDKCodec::PrepareVppCompFrames()
         // How to end, what if input surface is NULL.
         bool out_of_time = false;
         int pad_cursor = 1;
-        int pad_size = this->sinkpads_.size();
+        int pad_size = 0;
+        if (combo_type_ == COMBO_CUSTOM)
+            pad_size = dec_region_list_.size();
+        else
+            pad_size = this->sinkpads_.size();
         if (pad_size == 0 ) {
             return -1;
         }
@@ -3253,76 +3275,133 @@ int MSDKCodec::PrepareVppCompFrames()
         int pad_comp_time = (FRAME_RATE_CTRL_TIMER / (max_comp_framerate_ + FRAME_RATE_CTRL_PADDING)) - (pad_com_start - comp_stc_);
         int pad_comp_timer = (pad_comp_time < 0) ? 0 : pad_comp_time / pad_size;
 
-        for (it_sinkpad = this->sinkpads_.begin();
-                it_sinkpad != this->sinkpads_.end();
-                ++it_sinkpad, ++pad_cursor) {
-            sinkpad = *it_sinkpad;
+        if (combo_type_ == COMBO_CUSTOM) {
+            CustomLayout::iterator it = dec_region_list_.begin();
+            for (; it != dec_region_list_.end(); ++it, ++pad_cursor) {
+                MediaPad *pad = (MediaPad *)it->handle;
 
-            if ((vpp_comp_map_[sinkpad].ready_surface.msdk_surface == NULL && \
-                    vpp_comp_map_[sinkpad].ready_surface.is_eos)) {
-                continue;
-            }
+                while (pad->GetBufData(buf) != 0) {
+                    // No data, just sleep and wait
+                    if (!is_running_) {
+                        //return -1 and then it would return the queued buffers in HandleProcessVpp()
+                        return -1;
+                    }
+                    unsigned tmp_cur_time = GetSysTimeInUs();
 
-            while (sinkpad->GetBufData(buf) != 0) {
-                // No data, just sleep and wait
-                if (!is_running_) {
-                    //return -1 and then it would return the queued buffers in HandleProcessVpp()
-                    return -1;
+                    if (tmp_cur_time - pad_com_start > pad_cursor * pad_comp_timer) {
+                        if (vpp_comp_map_[pad].ready_surface.msdk_surface == NULL &&
+                            vpp_comp_map_[pad].ready_surface.is_eos == 0) {
+                            // Newly attached stream doesn't have decoded frame yet, wait...
+                        } else {
+                            out_of_time = true;
+                            printf("[%p]-frame comes late from pad %p, diff %u, framerate %f\n",
+                                   this, pad, tmp_cur_time - comp_stc_, max_comp_framerate_);
+                            break;
+                        }
+                    }
+
+                    usleep(200);
                 }
-                unsigned tmp_cur_time = GetSysTimeInUs();
 
-                if (tmp_cur_time - pad_com_start > pad_cursor * pad_comp_timer) {
-                    if (vpp_comp_map_[sinkpad].ready_surface.msdk_surface == NULL &&
-                            vpp_comp_map_[sinkpad].ready_surface.is_eos == 0) {
-                        // Newly attached stream doesn't have decoded frame yet, wait...
-                    } else {
-                        out_of_time = true;
-                        printf("[%p]-frame comes late from pad %p, diff %u, framerate %f\n",
-                               this,
-                               sinkpad,
-                               tmp_cur_time - comp_stc_,
-                               max_comp_framerate_);
-                        break;
+                if (out_of_time) {
+                    // Frames comes late.
+                    // Use last surface, drop 1 frame in future.
+                    vpp_comp_map_[pad].drop_frame_num++;
+                    out_of_time = false;
+                } else {
+                    // Update ready surface and release last surface.
+                    pad->ReturnBufToPeerPad(vpp_comp_map_[pad].ready_surface);
+                    vpp_comp_map_[pad].ready_surface = buf;
+
+                    // Check if need to drop frame.
+                    while (vpp_comp_map_[pad].drop_frame_num > 0) {
+                        if (pad->GetBufQueueSize() > 1) {
+                            // Drop frames.
+                            // Only drop frame if it has more than 1, don't drop all of them
+                            MediaBuf drop_buf;
+                            pad->GetBufData(drop_buf);
+                            pad->ReturnBufToPeerPad(drop_buf);
+                            vpp_comp_map_[pad].total_dropped_frames++;
+                            printf("[%p]-sinkpad %p drop 1 frame\n", this, pad);
+                            vpp_comp_map_[pad].drop_frame_num--;
+                        } else {
+                            break;
+                        }
+                    }
+                }
+            }
+        } else {
+            for (it_sinkpad = this->sinkpads_.begin();
+                    it_sinkpad != this->sinkpads_.end();
+                    ++it_sinkpad, ++pad_cursor) {
+                sinkpad = *it_sinkpad;
+
+                if ((vpp_comp_map_[sinkpad].ready_surface.msdk_surface == NULL && \
+                        vpp_comp_map_[sinkpad].ready_surface.is_eos)) {
+                    continue;
+                }
+
+                while (sinkpad->GetBufData(buf) != 0) {
+                    // No data, just sleep and wait
+                    if (!is_running_) {
+                        //return -1 and then it would return the queued buffers in HandleProcessVpp()
+                        return -1;
+                    }
+                    unsigned tmp_cur_time = GetSysTimeInUs();
+
+                    if (tmp_cur_time - pad_com_start > pad_cursor * pad_comp_timer) {
+                        if (vpp_comp_map_[sinkpad].ready_surface.msdk_surface == NULL &&
+                                vpp_comp_map_[sinkpad].ready_surface.is_eos == 0) {
+                            // Newly attached stream doesn't have decoded frame yet, wait...
+                        } else {
+                            out_of_time = true;
+                            printf("[%p]-frame comes late from pad %p, diff %u, framerate %f\n",
+                                   this,
+                                   sinkpad,
+                                   tmp_cur_time - comp_stc_,
+                                   max_comp_framerate_);
+                            break;
+                        }
+                    }
+
+                    usleep(200);
+                }
+
+                if (!vpp_comp_map_[sinkpad].str_info.text && !vpp_comp_map_[sinkpad].pic_info.bmp) { //this sinkpad corresponds to video stream
+                    if (buf.is_eos) {
+                        eos_cnt += buf.is_eos;
+                    }
+                    if (stream_cnt_ == eos_cnt) {
+                        printf("All video streams EOS, can end VPP now. stream_cnt: %d, eos_cnt: %d\n", stream_cnt_, eos_cnt);
+                        stream_cnt_ = 0;
+                        return 1;
                     }
                 }
 
-                usleep(200);
-            }
+                if (out_of_time) {
+                    // Frames comes late.
+                    // Use last surface, drop 1 frame in future.
+                    vpp_comp_map_[sinkpad].drop_frame_num++;
+                    out_of_time = false;
+                } else {
+                    // Update ready surface and release last surface.
+                    sinkpad->ReturnBufToPeerPad(vpp_comp_map_[sinkpad].ready_surface);
+                    vpp_comp_map_[sinkpad].ready_surface = buf;
 
-            if (!vpp_comp_map_[sinkpad].str_info.text && !vpp_comp_map_[sinkpad].pic_info.bmp) { //this sinkpad corresponds to video stream
-                if (buf.is_eos) {
-                    eos_cnt += buf.is_eos;
-                }
-                if (stream_cnt_ == eos_cnt) {
-                    printf("All video streams EOS, can end VPP now. stream_cnt: %d, eos_cnt: %d\n", stream_cnt_, eos_cnt);
-                    stream_cnt_ = 0;
-                    return 1;
-                }
-            }
-
-            if (out_of_time) {
-                // Frames comes late.
-                // Use last surface, drop 1 frame in future.
-                vpp_comp_map_[sinkpad].drop_frame_num++;
-                out_of_time = false;
-            } else {
-                // Update ready surface and release last surface.
-                sinkpad->ReturnBufToPeerPad(vpp_comp_map_[sinkpad].ready_surface);
-                vpp_comp_map_[sinkpad].ready_surface = buf;
-
-                // Check if need to drop frame.
-                while (vpp_comp_map_[sinkpad].drop_frame_num > 0) {
-                    if (sinkpad->GetBufQueueSize() > 1) {
-                        // Drop frames.
-                        // Only drop frame if it has more than 1, don't drop all of them
-                        MediaBuf drop_buf;
-                        sinkpad->GetBufData(drop_buf);
-                        sinkpad->ReturnBufToPeerPad(drop_buf);
-                        vpp_comp_map_[sinkpad].total_dropped_frames++;
-                        printf("[%p]-sinkpad %p drop 1 frame\n", this, sinkpad);
-                        vpp_comp_map_[sinkpad].drop_frame_num--;
-                    } else {
-                        break;
+                    // Check if need to drop frame.
+                    while (vpp_comp_map_[sinkpad].drop_frame_num > 0) {
+                        if (sinkpad->GetBufQueueSize() > 1) {
+                            // Drop frames.
+                            // Only drop frame if it has more than 1, don't drop all of them
+                            MediaBuf drop_buf;
+                            sinkpad->GetBufData(drop_buf);
+                            sinkpad->ReturnBufToPeerPad(drop_buf);
+                            vpp_comp_map_[sinkpad].total_dropped_frames++;
+                            printf("[%p]-sinkpad %p drop 1 frame\n", this, sinkpad);
+                            vpp_comp_map_[sinkpad].drop_frame_num--;
+                        } else {
+                            break;
+                        }
                     }
                 }
             }
@@ -3385,6 +3464,10 @@ int MSDKCodec::HandleProcessVpp()
             all_eos = true;
             is_running_ = false;
             break;
+        } else if (prepare_result == 2) {
+            //release mutex for now
+            ReleaseSinkMutex();
+            continue;
         }
 
         if (!codec_init_) {
