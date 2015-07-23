@@ -111,11 +111,6 @@ void SoftVideoCompositor::updateLayoutSolution(LayoutSolution& solution)
 
 bool SoftVideoCompositor::activateInput(int input)
 {
-    // Clean-up the last frame which may be left by last user of this slot.
-    I420VideoFrame* busyFrame = m_bufferManager->postFreeBuffer(nullptr, input);
-    if (busyFrame)
-        m_bufferManager->releaseBuffer(busyFrame);
-
     m_bufferManager->setActive(input, true);
     return true;
 }
@@ -123,6 +118,11 @@ bool SoftVideoCompositor::activateInput(int input)
 void SoftVideoCompositor::deActivateInput(int input)
 {
     m_bufferManager->setActive(input, false);
+
+    // Clean-up the last frame in this slot.
+    I420VideoFrame* busyFrame = m_bufferManager->postFreeBuffer(nullptr, input);
+    if (busyFrame)
+        m_bufferManager->releaseBuffer(busyFrame);
 }
 
 void SoftVideoCompositor::pushInput(int input, webrtc::I420VideoFrame* frame)
