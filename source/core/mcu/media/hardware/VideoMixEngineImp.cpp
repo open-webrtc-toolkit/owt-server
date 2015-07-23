@@ -111,6 +111,12 @@ void VideoMixEngineImp::setResolution(unsigned int width, unsigned int height)
         printf("[%s]NULL pointer.\n", __FUNCTION__);
 }
 
+void VideoMixEngineImp::getResolution(unsigned int& width, unsigned int& height)
+{
+    width = m_vpp->width;
+    height = m_vpp->height;
+}
+
 void VideoMixEngineImp::setLayout(const CustomLayoutInfo* layoutMapping)
 {
     if (m_state != IN_SERVICE)
