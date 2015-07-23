@@ -116,6 +116,12 @@ void HardwareVideoFrameMixerOutput::onTimeout()
             frame.length = len;
             frame.timeStamp = m_outCount * (1000 / m_frameRate) * 90;
 
+            unsigned int width = 640;
+            unsigned int height = 480;
+            m_engine->getResolution(width, height);
+            frame.additionalInfo.video.width = width;
+            frame.additionalInfo.video.height = height;
+
             m_receiver->onFrame(frame);
         } else
             break;

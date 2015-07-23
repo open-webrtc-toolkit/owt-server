@@ -62,6 +62,7 @@ public:
 
     void setBackgroundColor(const BackgroundColor* bgColor);
     void setResolution(unsigned int width, unsigned int height);
+    void getResolution(unsigned int& width, unsigned int& height);
     void setLayout(const CustomLayoutInfo* layout);
 
     InputIndex enableInput(VideoMixCodecType codec, VideoMixEngineInput* producer);

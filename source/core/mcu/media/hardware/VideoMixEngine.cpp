@@ -28,6 +28,11 @@ void VideoMixEngine::setResolution(unsigned int width, unsigned int height)
     m_imp->setResolution(width, height);
 }
 
+void VideoMixEngine::getResolution(unsigned int& width, unsigned int& height)
+{
+    m_imp->getResolution(width, height);
+}
+
 void VideoMixEngine::setLayout(const CustomLayoutInfo* layout)
 {
     m_imp->setLayout(layout);
