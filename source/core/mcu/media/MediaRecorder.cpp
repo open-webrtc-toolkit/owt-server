@@ -234,7 +234,7 @@ void MediaRecorder::onTimeout()
                 if (avio_open(&m_context->pb, m_context->filename, AVIO_FLAG_WRITE) < 0) {
                     ELOG_ERROR("open output file failed");
                     m_status = woogeen_base::MediaMuxer::Context_ERROR;
-                    callback("cannot open output file");
+                    callback("output file does not exist or cannot be opened for write");
                     return;
                 }
             }
