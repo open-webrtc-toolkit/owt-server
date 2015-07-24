@@ -825,6 +825,7 @@ conference.on('stream-added', function (event) {
   var remoteStream = event.stream;
 console.log('stream added:', stream.id());
 });
+</script>
  */
   Woogeen.RemoteStream = WoogeenRemoteStream;
 

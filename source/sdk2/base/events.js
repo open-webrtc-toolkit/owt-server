@@ -21,7 +21,7 @@ Woogeen.EventDispatcher = function (spec) {
    * @param {function} listener Callback function.
    * @example
 <script type="text/JavaScript">
-var conference = Woogeen.ConferenceClient.create({});
+var conference = Woogeen.ConferenceClient.create();
 conference.addEventListener("server-disconnected", function (evt) {...});
 conference.leave();
 </script>

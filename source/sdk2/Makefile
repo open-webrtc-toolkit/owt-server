@@ -20,3 +20,6 @@ dep:
 
 clean:
 	@cd $(current_dir) && rm -f ../extras/basic_example/public/woogeen.sdk*.js
+
+dist-clean: clean
+	@cd $(current_dir)/scripts/dist && rm -f woogeen.sdk*.js
