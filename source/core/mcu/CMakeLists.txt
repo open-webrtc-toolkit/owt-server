@@ -41,10 +41,6 @@ test_lib(${WEBRTC})
 
 #set(WEBRTC "-rdynamic -Wl,--whole-archive ${WEBRTC} -Wl,--no-whole-archive")
 
-# VPX
-find_library(VPX vpx)
-test_lib(${VPX})
-
 # H264
 find_library(H264 openh264 HINTS "${H264_DIRS}")
 test_lib(${H264})
@@ -56,7 +52,11 @@ if($ENV{BUILD_WITH_MSDK})
 
   find_library(XCODER_VIDEO xcodevideo HINTS "${MEDIAPROCESSOR_DIR}/dist")
   test_lib(${XCODER_VIDEO})
-  set(VCSA_LIBS ${XCODER_BASE} ${XCODER_VIDEO})
+
+  find_library(VPX vpx HINTS "${MEDIAPROCESSOR_DIR}/dist")
+  test_lib(${VPX})
+
+  set(VCSA_LIBS ${XCODER_BASE} ${XCODER_VIDEO} ${VPX})
 endif()
 
 # LIBAV
@@ -67,4 +67,4 @@ find_library(AVFORMAT avformat HINTS "${LIB_DIRS}")
 test_lib(${AVFORMAT})
 set (LIBAV_LIBS ${AVCODEC} ${AVFORMAT})
 
-target_link_libraries(mcu ${EXTRA_LIBS} ${WEBRTC} ${VPX} ${H264} ${VCSA_LIBS} ${LIBAV_LIBS})
+target_link_libraries(mcu ${EXTRA_LIBS} ${WEBRTC} ${H264} ${VCSA_LIBS} ${LIBAV_LIBS})
