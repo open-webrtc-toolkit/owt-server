@@ -63,15 +63,16 @@ Each time this method is called, previous saved value would be discarded. Specif
    * @return {array} Result of the user-set of ice servers.
    * @example
 <script type="text/JavaScript">
-room.setIceServers([{
-      url: "turn:61.152.239.56:4478?transport=udp",
-      username: "woogeen",
-      credential: "master"
-    }, {
-      url: "turn:61.152.239.56:443?transport=tcp",
-      username: "woogeen",
-      credential: "master"
-    }]);
+var conference = Woogeen.ConferenceClient.create();
+conference.setIceServers([{
+    url: "turn:61.152.239.56:4478?transport=udp",
+    username: "woogeen",
+    credential: "master"
+  }, {
+    url: "turn:61.152.239.56:443?transport=tcp",
+    username: "woogeen",
+    credential: "master"
+  }]);
 </script>
    */
     this.setIceServers = function () {
