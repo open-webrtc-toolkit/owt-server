@@ -10,10 +10,10 @@ namespace erizo {
   DEFINE_LOGGER(ExternalInput, "media.ExternalInput");
   ExternalInput::ExternalInput(const std::string& inputUrl)
       : url_(inputUrl)
+      , timeoutHandler_(NULL)
       , audio_sequence_number_(0) {
     videoDataType_ = DataContentType::ENCODED_FRAME;
     audioDataType_ = DataContentType::RTP;
-    sourcefbSink_=NULL;
     context_ = NULL;
     running_ = false;
     statusListener_ = NULL;
@@ -27,6 +27,10 @@ namespace erizo {
     av_free_packet(&avpacket_);
     if (context_!=NULL)
       avformat_free_context(context_);
+    if (timeoutHandler_!=NULL) {
+      delete timeoutHandler_;
+      timeoutHandler_ = NULL;
+    }
     ELOG_DEBUG("ExternalInput closed");
   }
 
@@ -45,6 +49,8 @@ namespace erizo {
     srand((unsigned)time(NULL));
 
     context_ = avformat_alloc_context();
+    timeoutHandler_ = new TimeoutHandler(20000);
+    context_->interrupt_callback = {&TimeoutHandler::check_interrupt, timeoutHandler_};
     av_register_all();
     avcodec_register_all();
     avformat_network_init();
@@ -92,9 +98,11 @@ namespace erizo {
       ELOG_DEBUG("AV_CODEC_ID_H264: %d ", AV_CODEC_ID_H264);
       int videoCodecId = st->codec->codec_id;
       if(videoCodecId == AV_CODEC_ID_VP8 || videoCodecId == AV_CODEC_ID_H264) {
-        unsigned int videoSourceId = rand();
-        ELOG_DEBUG("Set video SSRC : %d ", videoSourceId);
-        setVideoSourceSSRC(videoSourceId);
+        if (!videoSourceSSRC_) {
+          unsigned int videoSourceId = rand();
+          ELOG_DEBUG("Set video SSRC : %d ", videoSourceId);
+          setVideoSourceSSRC(videoSourceId);
+        }
         if (videoCodecId == AV_CODEC_ID_VP8) {
             videoPayloadType_ = VP8_90000_PT;
         } else if (videoCodecId == AV_CODEC_ID_H264) {
@@ -130,9 +138,11 @@ namespace erizo {
           audioCodecId == AV_CODEC_ID_PCM_ALAW ||
           audioCodecId == AV_CODEC_ID_ADPCM_G722 ||
           audioCodecId == AV_CODEC_ID_OPUS) {
-        unsigned int audioSourceId = rand();
-        ELOG_DEBUG("Set audio SSRC : %d", audioSourceId);
-        setAudioSourceSSRC(audioSourceId);
+        if (!audioSourceSSRC_) {
+          unsigned int audioSourceId = rand();
+          ELOG_DEBUG("Set audio SSRC : %d", audioSourceId);
+          setAudioSourceSSRC(audioSourceId);
+        }
         if (audioCodecId == AV_CODEC_ID_PCM_MULAW) {
             audioPayloadType_ = PCMU_8000_PT;
         } else if (audioCodecId == AV_CODEC_ID_PCM_ALAW) {
@@ -179,7 +189,24 @@ namespace erizo {
     av_read_play(context_);//play RTSP
 
     ELOG_DEBUG("Start playing external input %s", url_.c_str() );
-    while (av_read_frame(context_, &avpacket_)>=0 && running_==true) {
+    while (running_) {
+      timeoutHandler_->reset(1000);
+      if (av_read_frame(context_, &avpacket_)<0) {
+        // Try to re-open the input - silently.
+        avformat_close_input(&context_);
+        AVDictionary *opts = NULL;
+        av_dict_set(&opts, "rtsp_transport", "tcp", 0);
+        timeoutHandler_->reset(10000);
+        int res = avformat_open_input(&context_, url_.c_str(), NULL, &opts);
+        char errbuff[500];
+        if(res != 0){
+          av_strerror(res, (char*)(&errbuff), 500);
+          ELOG_ERROR("Error opening input %s", errbuff);
+          break;
+        }
+        continue;
+      }
+
       if (avpacket_.stream_index == video_stream_index_) { //packet is video
         //ELOG_DEBUG("Receive video frame packet with size %d ", avpacket_.size);
         if (videoSourceSSRC_ && videoSink_!=NULL) {

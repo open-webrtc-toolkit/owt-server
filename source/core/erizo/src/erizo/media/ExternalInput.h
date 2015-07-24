@@ -1,12 +1,13 @@
 #ifndef EXTERNALINPUT_H_
 #define EXTERNALINPUT_H_
 
-#include <string> 
+#include "../MediaDefinitions.h"
+
+#include <boost/thread.hpp>
+#include <logger.h>
 #include <map>
 #include <queue>
-#include "../MediaDefinitions.h"
-#include "boost/thread.hpp"
-#include <logger.h>
+#include <string>
 
 extern "C" {
 #include <libavcodec/avcodec.h>
@@ -15,6 +16,35 @@ extern "C" {
 }
 
 namespace erizo{
+
+  static inline int64_t currentTimeMillis() {
+    timeval time;
+    gettimeofday(&time, nullptr);
+    return ((time.tv_sec * 1000) + (time.tv_usec / 1000));
+  }
+
+  class TimeoutHandler {
+    public:
+      TimeoutHandler(int32_t timeout) : timeout_ms_(timeout), lastTime_(currentTimeMillis()) { }
+
+      void reset(int32_t timeout) {
+        timeout_ms_ = timeout;
+        lastTime_ = currentTimeMillis();
+      }
+
+      static int check_interrupt(void* handler) {
+        return handler && static_cast<TimeoutHandler *>(handler)->is_timeout();
+      }
+
+    private:
+      bool is_timeout() {
+        int32_t delay = currentTimeMillis() - lastTime_;
+        return delay > timeout_ms_;
+      }
+
+      int32_t timeout_ms_;
+      int64_t lastTime_;
+  };
 
   class ExternalInputStatusListener {
     public:
@@ -38,6 +68,7 @@ namespace erizo{
       bool running_;
       boost::thread thread_;
       AVFormatContext* context_;
+      TimeoutHandler* timeoutHandler_;
       AVPacket avpacket_;
       int video_stream_index_, video_time_base_;
       int audio_stream_index_, audio_time_base_;
