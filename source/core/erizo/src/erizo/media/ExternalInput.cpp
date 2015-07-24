@@ -194,6 +194,7 @@ namespace erizo {
       if (av_read_frame(context_, &avpacket_)<0) {
         // Try to re-open the input - silently.
         avformat_close_input(&context_);
+        ELOG_WARN("Read input data failed; trying to reopen input from url %s", url_.c_str());
         AVDictionary *opts = NULL;
         av_dict_set(&opts, "rtsp_transport", "tcp", 0);
         timeoutHandler_->reset(10000);
