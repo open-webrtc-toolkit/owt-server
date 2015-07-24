@@ -960,7 +960,7 @@ conference.unsubscribe(remoteStream, function (st) {
    * @memberOf Woogeen.ConferenceClient
    * @param {string} options (optional) Share screen options, similar to video option that used to create a LocalStream.
    * @param {function} onSuccess(stream) (optional) Success callback.
-   * @param {function} onFailure(err) (optional) Failure callback. See details about error definition in LocalStream.create().
+   * @param {function} onFailure(err) (optional) Failure callback. See details about error definition in {@link Woogeen.LocalStream.create|LocalStream.create}.
    * @example
 <script type="text/JavaScript">
 var conference = Woogeen.ConferenceClient.create();
