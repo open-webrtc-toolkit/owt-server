@@ -306,7 +306,7 @@ stream.enableVideo();
   };
 
 /**
-   * @function playAudio(onSuccess, onFailure)
+   * @function playAudio
    * @desc This function tells server to continue sending audio data of the subscribed RemoteStream.
 <br><b>Remarks:</b><br>
 Conerence mode only. The audio track of the stream should be enabled to be played correctly.
@@ -408,11 +408,11 @@ L.Logger.info('stream isMixed:', stream.isMixed());
     var self = this;
     Object.defineProperties(this, {
 /**
-   * @function on(event, listener)
+   * @function on
    * @desc This function registers a listener for a specified event, which would be called when the event occurred.
 <br><b>Remarks:</b><br>
 Reserved events from MCU:<br>
-<table>
+<table class="params table table-striped">
 <thead>
   <tr><th align="center">Event Name</th><th align="center">Description</th><th align="center">Status</th></tr>
 </thead>
@@ -424,7 +424,8 @@ Reserved events from MCU:<br>
   <tr><td align="center"><code>AudioDisabled</code></td><td align="center">Audio track of a remote stream disabled</td><td align="center">reserved</td></tr>
 </tbody>
 </table>
-User-defined events and listeners are also supported, by using with <code>stream.emit()</code> combined.
+User-defined events and listeners are also supported, See {@link Woogeen.Stream#emit|stream.emit(eve
+nt, data)} method.
    * @memberOf Woogeen.Stream
    * @param {string} event Event name.
    * @param {function} listener(data) Callback function.
@@ -448,7 +449,7 @@ if (stream.isMixed()) {
         }
       },
 /**
-   * @function emit(event, data)
+   * @function emit
    * @desc This function triggers a specified event, which would invoke corresponding event listener(s).
    * @memberOf Woogeen.Stream
    * @param {string} event Event name.
@@ -469,7 +470,7 @@ if (stream.isMixed()) {
         }
       },
 /**
-   * @function removeListener(event, listener)
+   * @function removeListener
    * @desc This function removes listener(s) for a specified event. If listener is unspecified, all the listener(s) of the event would be removed; or if the listener is in the event listener list, it would be removed; otherwise this function does nothing.
    * @memberOf Woogeen.Stream
    * @param {string} event Event name.
@@ -768,6 +769,7 @@ When the video/audio parameters are not supported by the browser, a fallback par
             <li>frameRate should be an array as [min_frame_rate, max_frame_rate], in which each element should be a proper number, e.g., [20, 30].</li>
             <li><b>Note</b>: Firefox currently does not fully support resolution or frameRate setting.</li>
         </ul>
+    <li>url: RTSP stream URL</li>
 </ul>
 <br><b>callback:</b>
 <br>Upon success, err is null, and localStream is an instance of Woogeen.LocalStream; upon failure localStream is undefined and err is one of the following:<br>
@@ -812,20 +814,22 @@ Woogeen.LocalStream.create({
 /**
  * @class Woogeen.LocalStream
  * @extends Woogeen.Stream
- * @classDesc Stream from browser constructed from camera, screen, external input(e.g. rtsp)... Use create() factory to create an instance.
+ * @classDesc Stream from browser constructed from camera, screen, external input(e.g. rtsp)... Use create(options, callback) factory to create an instance.
  */
   Woogeen.LocalStream = WoogeenLocalStream;
 /**
  * @class Woogeen.RemoteStream
  * @extends Woogeen.Stream
  * @classDesc Stream from server retrieved by 'stream-added' event. RemoteStreams are automatically constructed upon the occurrence of the event.
- * @example
+<br><b>Example:</b>
+```
 <script type="text/javascript">
 conference.on('stream-added', function (event) {
   var remoteStream = event.stream;
 console.log('stream added:', stream.id());
 });
 </script>
+```
  */
   Woogeen.RemoteStream = WoogeenRemoteStream;
 

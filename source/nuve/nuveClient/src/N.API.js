@@ -2,7 +2,7 @@
 var N = N || {};
 
 /**@namespace N
- * @classDesc TODO:Nuve namespace...
+ * @classDesc
  */
 /**
  * @class N.API
@@ -78,7 +78,7 @@ N.API.init('5188b9af6e53c84ffd600413', '21989', 'http://61.129.90.140:3000/')
                     <li>'hd1080p'</li>
                 </ul>
             <li>bitrate indicates video bitrate of the mix stream, in Kbit unit. Default value 0, meaning that MCU could use its own calculated default value.</li>
-            <li>bkColor sets the background color, "black" or "white"</li>
+            <li>bkColor sets the background color, supporting RGB color format: {"r":red-value, "g":green-value, "b":blue-value}.</li>
             <li>layout describes video layout in mix stream</li>
                 <ul>
                     <li>"base" is the base template (choose from "void", "fluid", "lecture")</li>
@@ -110,7 +110,7 @@ N.API.createRoom('myRoom',
       maxInput: 15,
       resolution: 'hd720p',
       bitrate: 0,
-      bkColor: 'white',
+      bkColor: {"r":1, "g":2, "b":255},
       layout: {
         base: 'fluid',
       }
