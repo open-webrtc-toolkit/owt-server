@@ -1,0 +1,27 @@
+{
+  "tags": {
+    "allowUnknownTags": true
+  },
+  "plugins": ["plugins/markdown"],
+  "templates": {
+    "cleverLinks": false,
+    "monospaceLinks": false,
+    "dateFormat": "ddd MMM Do YYYY",
+    "outputSourceFiles": false,
+    "outputSourcePath": false,
+    "systemName": "WebRTC Javascript SDK2.5",
+    "footer": "",
+    "copyright": "Copyright © 2015 Intel Corporation. All Rights Reserved. ",
+    "navType": "vertical",
+    "theme": "cosmo",
+    "linenums": true,
+    "collapseSymbols": false,
+    "inverseNav": true,
+    "highlightTutorialCode": true,
+    "protocol": "html://"
+  },
+  "markdown": {
+    "parser": "gfm",
+    "hardwrap": true
+  }
+}
