@@ -193,6 +193,8 @@ namespace erizo {
       timeoutHandler_->reset(1000);
       if (av_read_frame(context_, &avpacket_)<0) {
         // Try to re-open the input - silently.
+        timeoutHandler_->reset(10000);
+        av_read_pause(context_);
         avformat_close_input(&context_);
         ELOG_WARN("Read input data failed; trying to reopen input from url %s", url_.c_str());
         AVDictionary *opts = NULL;
@@ -203,8 +205,10 @@ namespace erizo {
         if(res != 0){
           av_strerror(res, (char*)(&errbuff), 500);
           ELOG_ERROR("Error opening input %s", errbuff);
-          break;
+          running_ = false;
+          return;
         }
+        av_read_play(context_);
         continue;
       }
 
