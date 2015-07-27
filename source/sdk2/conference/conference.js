@@ -140,6 +140,9 @@ conference.join(token, function(response) {...}, function(error) {...});
       if (typeof host !== 'string') {
         return safeCall(onFailure, 'invalid host');
       }
+      if (host.indexOf('http') === -1) {
+        host = isSecured ? ('https://' + host) : ('http://' + host);
+      }
       // check connection>host< state
       if (self.state !== DISCONNECTED) {
         return safeCall(onFailure, 'connection state invalid');
