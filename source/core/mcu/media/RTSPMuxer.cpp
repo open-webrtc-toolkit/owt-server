@@ -123,8 +123,8 @@ void RTSPMuxer::close()
     if (m_audioFifo)
         av_audio_fifo_free(m_audioFifo);
     if (m_resampleContext) {
-        avresample_close(m_resampleContext);
-        avresample_free(&m_resampleContext);
+        swr_close(m_resampleContext);
+        swr_free(&m_resampleContext);
     }
     av_write_trailer(m_context);
     avcodec_close(m_audioStream->codec);
@@ -189,6 +189,10 @@ void RTSPMuxer::processAudio(uint8_t* data, int nbSamples, int nbChannels, int s
         ELOG_ERROR("cannot not write data to fifo");
     }
 #else
+    if (!m_resampleContext) {
+        ELOG_ERROR("resample context not initialized");
+        return;
+    }
     uint8_t* converted_input_samples = nullptr;
     if (!(converted_input_samples = reinterpret_cast<uint8_t*>(calloc(nbChannels, sizeof(converted_input_samples))))) {
         ELOG_ERROR("cannot allocate converted input sample pointers");
@@ -199,13 +203,9 @@ void RTSPMuxer::processAudio(uint8_t* data, int nbSamples, int nbChannels, int s
         ELOG_ERROR("cannot allocate converted input samples");
         goto done;
     }
-    if (avresample_convert(m_resampleContext, &converted_input_samples, 0,
-                            nbSamples, reinterpret_cast<uint8_t**>(&data), 0, nbSamples) < 0) {
+    if (swr_convert(m_resampleContext, &converted_input_samples, nbSamples,
+                    const_cast<const uint8_t**>(&data), nbSamples) < 0) {
         ELOG_ERROR("cannot convert input samples");
-        goto done;
-    }
-    if (avresample_available(m_resampleContext)) {
-        ELOG_WARN("converted samples left over");
         goto done;
     }
     if (av_audio_fifo_realloc(m_audioFifo, av_audio_fifo_size(m_audioFifo) + nbSamples) < 0) {
@@ -359,23 +359,18 @@ void RTSPMuxer::addAudioStream(enum AVCodecID codec_id, int nbChannels, int samp
     if (avcodec_open2(c, codec, nullptr) < 0)
         ELOG_ERROR("cannot open output codec.");
 #ifdef FORCE_RESAMPLE
-    m_resampleContext = avresample_alloc_context();
+    m_resampleContext = swr_alloc_set_opts(nullptr,
+                                  av_get_default_channel_layout(nbChannels),
+                                  AV_SAMPLE_FMT_S16,
+                                  c->sample_rate,
+                                  av_get_default_channel_layout(nbChannels),
+                                  c->sample_fmt,
+                                  c->sample_rate,
+                                  0, nullptr);
     if (m_resampleContext) {
-        av_opt_set_int(m_resampleContext, "in_channel_layout",
-                       av_get_default_channel_layout(nbChannels), 0);
-        av_opt_set_int(m_resampleContext, "out_channel_layout",
-                       av_get_default_channel_layout(nbChannels), 0);
-        av_opt_set_int(m_resampleContext, "in_sample_rate",
-                       sampleRate, 0);
-        av_opt_set_int(m_resampleContext, "out_sample_rate",
-                       c->sample_rate, 0);
-        av_opt_set_int(m_resampleContext, "in_sample_fmt",
-                       AV_SAMPLE_FMT_S16, 0);
-        av_opt_set_int(m_resampleContext, "out_sample_fmt",
-                       AV_SAMPLE_FMT_S16, 0);
-        if (avresample_open(m_resampleContext) < 0) {
+        if (swr_init(m_resampleContext) < 0) {
             ELOG_ERROR("cannot open resample context");
-            avresample_free(&m_resampleContext);
+            swr_free(&m_resampleContext);
             m_resampleContext = nullptr;
         }
     }
