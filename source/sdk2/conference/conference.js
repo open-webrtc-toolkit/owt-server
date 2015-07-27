@@ -2,7 +2,7 @@
 
 /**
  * @class Woogeen.ConferenceClient
- * @classDesc Provides connection, local stream publication, and remote stream　subscription for a video conference. The conference client is　created by the server side API. The conference client is retrieved　by the client API with the access token for the connection.
+ * @classDesc Provides connection, local stream publication, and remote stream subscription for a video conference. The conference client is created by the server side API. The conference client is retrieved by the client API with the access token for the connection.
  */
 
 Woogeen.ConferenceClient = (function () {
@@ -699,7 +699,7 @@ conference.publish(localStream, {maxVideoBW: 300}, function (st) {
    * @instance
    * @desc This function tells server to add published LocalStream to mix stream.
    * @memberOf Woogeen.ConferenceClient
-   * @param {stream} stream LocalStream instance; it should be published before this call.
+   * @param {LocalStream} stream LocalStream instance; it should be published before this call.
    * @param {function} onSuccess() (optional) Success callback.
    * @param {function} onFailure(err) (optional) Failure callback.
    * @example
@@ -936,9 +936,9 @@ conference.unsubscribe(remoteStream, function (st) {
   };
 
 /**
-   * @function onMessage(callback)
+   * @function onMessage
    * @instance
-   * @desc This function is the shortcut of on('message-received', callback). 
+   * @desc This function is the shortcut of on('message-received', callback).
 <br><b>Remarks:</b><br>Once the message is received, the callback is invoked.
    * @memberOf Woogeen.ConferenceClient
    * @param {function} callback callback function to the message.
@@ -1013,20 +1013,31 @@ conference.shareScreen({resolution: 'hd720p'}, function (st) {
   streamId: xxxxxx,<br>
   recorderId: yyyyyy<br>
   }
-  <br>resp: {FIXME}
    * @memberOf Woogeen.ConferenceClient
-   * @param {string} options (optional)Media recorder options.
-   * @param {function} onSuccess(resp) (optional) Success callback.
+   * @param {string} options (optional)Media recorder options. If unspecified, the mixed stream will be recorded as default.<br>
+    <ul>
+   <li>streamId: stream id to be recorded.</li>
+   <li>recorderId: recorder id to be reused.</li>
+   </ul>
+   Important Note: In the case of continuous media recording among different streams, the recorderId is the key to make sure each the switched stream go to the same recording url. Do not stop the recorder when you want the continuous media recording, unless all the required media content has been recorded successfully.<br>
+The recommendation is to invoke another startRecorder with new streamId (default to mixed stream) right after the previous call of startRecorder with old streamId, but the same recorderId should be kept.
+   * @param {function} onSuccess(resp) (optional) Success callback. The following information will be
+ returned as well:<br>
+    <ul>
+   <li>recorderId: recorder id.</li>
+   <li>host: Host server address.</li>
+   <li>path: Recorded file path </li>
+   </ul>
    * @param {function} onFailure(err) (optional) Failure callback.
    * @example
 <script type="text/JavaScript">
 var conference = Woogeen.ConferenceClient.create();
 // ……
-conference.startRecorder({to: streamId}, function (file) {
-    L.Logger.info('Stream recorded with recorder ID: ', file.id);
-  }, function (err) {
-    L.Logger.error('Media recorder failed:', err);
-  }
+conference.startRecorder({streamId: streamIdToRec}, function (file) {
+    L.Logger.info('Stream recording with recorder ID: ', file.recorderId);
+  }, function (err) {
+    L.Logger.error('Media recorder failed:', err);
+  }
 );
 </script>
    */
@@ -1049,25 +1060,28 @@ conference.startRecorder({to: streamId}, function (file) {
 /**
    * @function stopRecorder
    * @instance
-   * @desc This function stops the mixed audio stream and video stream recording on　the conference room and saves it to a .mkv file on the server, according to　the configurable "config.erizoController.recording_path".
+   * @desc This function stops the mixed audio stream and video stream recording on the conference room and saves it to a .mkv file on the server, according to the configurable "config.erizoController.recording_path".
    <br><b>options:</b><br>
 {<br>
   recorderId: xxxxxx<br>
 }
-<br>resp: {FIXME}
    * @memberOf Woogeen.ConferenceClient
-   * @param {string} options (optional) Media recording options.
-   * @param {function} onSuccess(resp) (optional) Success callback.
+   * @param {string} options (optional) Media recording options. RecorderId: recorder id to be stopped.
+   * @param {function} onSuccess(resp) (optional) Success callback. The following information will be returned as well:
+   <ul>
+   <li>recorderId: recorder id.</li>
+   <li>host: Host server address.</li>
+   </ul>
    * @param {function} onFailure(error) (optional) Failure callback.
    * @example
 <script type="text/JavaScript">
 var conference = Woogeen.ConferenceClient.create();
 // ……
-conference.stopRecorder({id: recorderId}, function (file) {// FIXME
-    L.Logger.info('Recorded stream to ', file.path);
-  }, function (err) {
-    L.Logger.error('Media recorder cannot stop with failure: ', err);
-  }
+conference.stopRecorder({recorderId: recorderIdToStop}, function (file) {
+    L.Logger.info('Stream recorded with recorder ID: ', file.recorderId);
+  }, function (err) {
+    L.Logger.error('Media recorder cannot stop with failure: ', err);
+  }
 );
 </script>
  */
