@@ -94,11 +94,11 @@ installRepo(){
 
 install_mediadeps_nonfree(){
   install_fdkaac
-  install_libav
+  install_ffmpeg
 }
 
 install_mediadeps(){
-  install_libav
+  install_ffmpeg
 }
 
 install_glibc(){

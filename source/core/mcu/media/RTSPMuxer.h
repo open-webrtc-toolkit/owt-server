@@ -30,7 +30,7 @@
 
 extern "C" {
 #include <libavformat/avformat.h>
-#include <libavresample/avresample.h>
+#include <libswresample/swresample.h>
 #include <libavutil/audio_fifo.h>
 }
 
@@ -66,7 +66,7 @@ private:
     woogeen_base::FrameDispatcher*                  m_videoSource;
     woogeen_base::FrameDispatcher*                  m_audioSource;
     AVFormatContext*                                m_context;
-    AVAudioResampleContext*                         m_resampleContext;
+    SwrContext*                                     m_resampleContext;
     AVAudioFifo*                                    m_audioFifo;
     AVStream*                                       m_videoStream;
     AVStream*                                       m_audioStream;
