@@ -6,6 +6,8 @@
 #include <rtputils.h>
 #include <sys/time.h>
 
+#define BUFFER_SIZE 16777216
+
 namespace erizo {
   DEFINE_LOGGER(ExternalInput, "media.ExternalInput");
   ExternalInput::ExternalInput(const std::string& inputUrl)
@@ -59,15 +61,13 @@ namespace erizo {
     avpacket_.data = NULL;
     ELOG_DEBUG("Trying to open input from url %s", url_.c_str());
 
-    // Temporarilly force RTSP transport protocol to TCP because currently it hard-coded
-    // UDP max recv buffer to 64K which will cause RTP packet loss for HD video streams.
-    // Libav patch for this issue has been submitted and may exist in its next release.
-    // https://git.libav.org/?p=libav.git;a=commit;h=e3ec6fe7bb2a622a863e3912181717a659eb1bad
     AVDictionary *opts = NULL;
-    av_dict_set(&opts, "rtsp_transport", "tcp", 0);
+    char buf[256];
+    snprintf(buf, sizeof(buf), "%d", BUFFER_SIZE);
+    av_dict_set(&opts, "buffer_size", buf, 0);
     int res = avformat_open_input(&context_, url_.c_str(), NULL, &opts);
+    ELOG_DEBUG("avformat_open_input - %d", res);
     char errbuff[500];
-    printf ("RES %d\n", res);
     if(res != 0){
       av_strerror(res, (char*)(&errbuff), 500);
       ELOG_ERROR("Error opening input %s", errbuff);
@@ -81,7 +81,6 @@ namespace erizo {
     }
 
     AVStream *st, *audio_st;
-    
     int streamNo = av_find_best_stream(context_, AVMEDIA_TYPE_VIDEO, -1, -1, NULL, 0);
     if (streamNo < 0){
       ELOG_WARN("No Video stream found");
@@ -198,7 +197,9 @@ namespace erizo {
         avformat_close_input(&context_);
         ELOG_WARN("Read input data failed; trying to reopen input from url %s", url_.c_str());
         AVDictionary *opts = NULL;
-        av_dict_set(&opts, "rtsp_transport", "tcp", 0);
+        char buf[256];
+        snprintf(buf, sizeof(buf), "%d", BUFFER_SIZE);
+        av_dict_set(&opts, "buffer_size", buf, 0);
         timeoutHandler_->reset(10000);
         int res = avformat_open_input(&context_, url_.c_str(), NULL, &opts);
         char errbuff[500];
