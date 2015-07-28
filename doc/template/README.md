@@ -3,7 +3,7 @@ Intel® Collaboration Suite for WebRTC Client JavaScript* SDK
 
 Introduction
 -------------
-The Intel® Collaboration Suite for WebRTC(Intel® CS for WebRTC) Client JavaScript SDK provides tools to help you develop Web applications. The SDK is distributed in the CS_WebRTC_Client_SDK_JavaScript.<ver>.zip  release package. The SDK consists of client-side and server-side APIs, as well as sample Web applications:
+The Intel® CS for WebRTC Client SDK for JavaScript SDK provides tools to help you develop Web applications. The SDK is distributed in the CS_WebRTC_Client_SDK_JavaScript.&lt;ver&gt;.zip  release package. The SDK consists of client-side and server-side APIs, as well as sample Web applications:
 
  - Client-side APIs:  Manage how to act with the peer client, room, and stream.
  - Server-side APIs:  Manage how to create a token, room, and service.
@@ -24,7 +24,7 @@ The following table lists the basic JavaScript objects provided in the JavaScrip
             <td>Provides different signaling methods (socket.io, XMPP) for P2P chat.</td>
         </tr>
          <tr>
-            <td>Woogeen.sdk.js</td>
+            <td>woogeen.sdk.js</td>
             <td>Defines basic objects used throughout the SDK code.</td>
         </tr>
          <tr>
@@ -36,12 +36,12 @@ The following table lists the basic JavaScript objects provided in the JavaScrip
 
 Refer to the SDK release notes for the latest information on the SDK release package, including features, supported browsers, bug fixes, and known issues.
 
-Supported platforms
+Browser requirement
 -------------
 The Intel CS for WebRTC Client JavaScript SDK has been tested on the following browsers and operating systems:
 <!--table class="params"-->
 <table class="params table table-striped">
-<caption><b>table 2: Server requirements</b></caption>
+<caption><b>table 2: Browser requirements</b></caption>
 	<tbody>
 	<thead>
 		<tr>
@@ -56,13 +56,13 @@ The Intel CS for WebRTC Client JavaScript SDK has been tested on the following b
 			<td><b>Android\*</b></td>
 		</tr>
 		<tr width="12pt">
-			<td>Chrome\* 41/42</td>
+			<td>Chrome\* 43/44</td>
 			<td>&radic;</td>
 			<td>&radic;</td>
 			<td>&radic;</td>
 		</tr>
 		<tr>
-			<td>Firefox\* 36/37</td>
+			<td>Firefox\* 38/39</td>
 			<td>&radic;</td>
 			<td>&radic;</td>
 			<td>&radic;</td>
@@ -80,13 +80,7 @@ The Intel CS for WebRTC Client JavaScript SDK has been tested on the following b
 			<td><b>Android</b></td>
 		</tr>
 		<tr>
-			<td>Chrome 41/42</td>
-			<td>&radic;</td>
-			<td>&radic;</td>
-			<td>&radic;</td>
-		</tr>
-		<tr>
-			<td>Firefox* 36/37</td>
+			<td>Chrome 43/44</td>
 			<td>&radic;</td>
 			<td>&radic;</td>
 			<td>&radic;</td>
@@ -138,7 +132,7 @@ To enable P2P chat, copy and paste the following code into the head section of y
 ```
 The SDK supports the following signaling channels in P2P mode:
 
- - Web sockets as a signaling channel:  Include gab.websocket.js and socket.io.js in your HTML files. Please include socket.io.js after woogeen.js.
+ - Web sockets as a signaling channel:  Include sc.websocket.js and socket.io.js in your HTML files. Please include socket.io.js after woogeen.p2p.js.
  - XMPP as a signaling channel:  Include gab.xmpp.xxx.js and strophe.js in your HTML files. You need to set up your own XMPP server as Openfire.*
 
 **P2P direct call chat**
@@ -549,7 +543,7 @@ The JavaScript objects (described earlier in this section) throw events using Ev
 
 <p>&nbsp;</p>
 
-**Examples**
+**Example for conference:**
 
 ```
 <script type="text/JavaScript">
@@ -577,7 +571,7 @@ conference.subscribe(stream, function () {
 </script>
 ```
 
-**Examples**
+**Example for p2p:**
 
 ```
 <script type="text/JavaScript">
