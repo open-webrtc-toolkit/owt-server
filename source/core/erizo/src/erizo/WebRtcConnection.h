@@ -103,6 +103,9 @@ public:
 	 */
 	int setVideoCodec(const std::string& codecName, unsigned int clockRate);
 
+	int getVideoPayloadType();
+	int getAudioPayloadType();
+
 	int deliverAudioData(char* buf, int len);
 	int deliverVideoData(char* buf, int len);
 
