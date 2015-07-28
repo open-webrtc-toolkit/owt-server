@@ -1,4 +1,4 @@
-Intel® Collaboration Suite for WebRTC Client JavaScript* SDK
+Intel® CS for WebRTC Client JavaScript* SDK
 ===================
 
 Introduction
@@ -20,8 +20,8 @@ The following table lists the basic JavaScript objects provided in the JavaScrip
         </tr>
     </thead>
         <tr>
-            <td>sc.*.js</td>
-            <td>Provides different signaling methods (socket.io, XMPP) for P2P chat.</td>
+            <td>sc.websocket.js</td>
+            <td>Provides socket.io signaling method for P2P chat.</td>
         </tr>
          <tr>
             <td>woogeen.sdk.js</td>
@@ -127,13 +127,10 @@ Peer-to-peer (P2P) mode
 -------------
 To enable P2P chat, copy and paste the following code into the head section of your HTML document:
 ```
-<script type="text/JavaScript" src="gab.<websocket|xmpp>.js"></script>
+<script type="text/JavaScript" src="sc.websocket.js"></script>
 <script type="text/JavaScript" src="woogeen.p2p.js"></script>
 ```
-The SDK supports the following signaling channels in P2P mode:
-
- - Web sockets as a signaling channel:  Include sc.websocket.js and socket.io.js in your HTML files. Please include socket.io.js after woogeen.p2p.js.
- - XMPP as a signaling channel:  Include gab.xmpp.xxx.js and strophe.js in your HTML files. You need to set up your own XMPP server as Openfire.*
+The SDK supports Web sockets signaling channel in P2P mode; You need to include sc.websocket.js and socket.io.js in your HTML files. Please include socket.io.js after woogeen.p2p.js.
 
 **P2P direct call chat**
 
@@ -143,9 +140,9 @@ Direct call chat refers to the discovery of another client by chatting with that
 var serverAddress='http://61.152.239.56:8095/';  // Please change it to signaling server's address.
 var p2p=new Woogeen.PeerClient({
   iceServers : [ {
-    urls : "stun:61.152.239.56"
+    urls : "stun:61.152.239.60"
   }, {
-    urls : ["turn:61.152.239.56:4478?transport=udp","turn:61.152.239.56:443?transport=udp","turn:61.152.239.56:4478?transport=tcp","turn:61.152.239.56:443?transport=tcp"],
+    urls : ["turn:61.152.239.60:4478?transport=udp","turn:61.152.239.60:443?transport=udp","turn:61.152.239.60:4478?transport=tcp","turn:61.152.239.60:443?transport=tcp"],
     credential : "master",
     username : "woogeen"
   } ]
@@ -418,9 +415,9 @@ The following table describes the objects provided in the JavaScript SDK.
 <script type="text/JavaScript">
   var peer = new Woogeen.PeerClient({
     iceServers : [{
-      urls : "stun: 61.152.239.56"
+      urls : "stun: 61.152.239.60"
      } , {
-      urls : ["turn:61.152.239.56:4478?transport=udp", "turn:61.152.239.56:443?transport=tcp"],
+      urls : ["turn:61.152.239.60:4478?transport=udp", "turn:61.152.239.60:443?transport=tcp"],
       username : "woogeen",
       credential : "master"
      }

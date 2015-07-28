@@ -65,11 +65,11 @@ Each time this method is called, previous saved value would be discarded. Specif
 <script type="text/JavaScript">
 var conference = Woogeen.ConferenceClient.create();
 conference.setIceServers([{
-    url: "turn:61.152.239.56:4478?transport=udp",
+    url: "turn:61.152.239.60:4478?transport=udp",
     username: "woogeen",
     credential: "master"
   }, {
-    url: "turn:61.152.239.56:443?transport=tcp",
+    url: "turn:61.152.239.60:443?transport=tcp",
     username: "woogeen",
     credential: "master"
   }]);
