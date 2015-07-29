@@ -307,17 +307,6 @@ int WebRTCGateway::setAudioCodec(const std::string& codecName, unsigned int cloc
 
 bool WebRTCGateway::addExternalOutput(const std::string& configParam, woogeen_base::EventRegistry* callback)
 {
-    // FIXME - Chunbo: Currently no transcoding for video frames in external output
-    if (videoPayloadType_ != VP8_90000_PT) {
-        ELOG_DEBUG("External output with video payload type %d is not supported yet.", videoPayloadType_);
-        if (callback) {
-            delete callback;
-            callback = nullptr;
-        }
-
-        return false;
-    }
-
     // Create an ExternalOutput here
     if (configParam != "" && configParam != "undefined") {
         boost::property_tree::ptree pt;

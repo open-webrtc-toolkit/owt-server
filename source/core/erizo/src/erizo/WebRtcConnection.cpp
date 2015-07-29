@@ -102,22 +102,6 @@ namespace erizo {
     return payloadType;
   }
 
-  int WebRtcConnection::getVideoPayloadType() {
-    int payloadType = remoteSdp_.preferredPayloadType(VIDEO_TYPE);
-    if (localSdp_.supportPayloadType(payloadType))
-      return payloadType;
-
-    return INVALID_PT;
-  }
-
-  int WebRtcConnection::getAudioPayloadType() {
-    int payloadType = remoteSdp_.preferredPayloadType(AUDIO_TYPE);
-    if (localSdp_.supportPayloadType(payloadType))
-      return payloadType;
-
-    return INVALID_PT;
-  }
-
   bool WebRtcConnection::setRemoteSdp(const std::string& sdp) {
     ELOG_DEBUG("Set Remote SDP %s", sdp.c_str());
     remoteSdp_.initWithSdp(sdp);
