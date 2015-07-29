@@ -1,9 +1,9 @@
 Intel® CS for WebRTC Client JavaScript* SDK
-===================
+------------------
 
 Introduction
 -------------
-The Intel® CS for WebRTC Client SDK for JavaScript SDK provides tools to help you develop Web applications. The SDK is distributed in the CS_WebRTC_Client_SDK_JavaScript.&lt;ver&gt;.zip  release package. The SDK consists of client-side and server-side APIs, as well as sample Web applications:
+The Intel® CS for WebRTC Client SDK for JavaScript provides tools to help you develop Web applications. The SDK is distributed in the CS_WebRTC_Client_SDK_JavaScript.&lt;ver&gt;.zip  release package. The SDK consists of client-side and server-side APIs, as well as sample Web applications:
 
  - Client-side APIs:  Manage how to act with the peer client, room, and stream.
  - Server-side APIs:  Manage how to create a token, room, and service.
@@ -86,7 +86,7 @@ The Intel CS for WebRTC Client JavaScript SDK has been tested on the following b
 			<td>&radic;</td>
 		</tr>
 		<tr>
-			<td>Internet Explorer* 10/11</td>
+			<td>Internet Explorer\* 10/11</td>
 			<td>&radic;</td>
 			<td>&nbsp;</td>
 			<td>&nbsp;</td>
@@ -94,8 +94,8 @@ The Intel CS for WebRTC Client JavaScript SDK has been tested on the following b
 	</tbody>
 </table>
 
-Support for Firefox is limited by its own limitation and you can't publish or unpublish stream after invite/accept.  Please publish stream with inviteWithStream and acceptWithStream methods.  For web applications that only need to be compatible with Chrome, please avoid using those two methods.
-Internet Explorer* (IE) does not support WebRTC natively.  End user needs to install the IE plugin provided in the Intel CS for WebRTC package in order to enable WebRTC capability.
+Support for Firefox is limited by its own limitation and you can't publish or unpublish streams after invite/accept.  Please publish stream with inviteWithStream and acceptWithStream methods.  For web applications that only need to be compatible with Chrome, please avoid using those two methods.
+Internet Explorer\* (IE) does not support WebRTC natively.  End user needs to install the IE plugin provided in the Intel CS for WebRTC package in order to enable WebRTC capability.
 
 Plugin for Internet Explorer (IE)
 -------------

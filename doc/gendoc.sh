@@ -34,3 +34,4 @@ echo ">>>>>>$DOC_DIR"
 java JornalProcess $DOC_DIR > postprocess.rec
 rm postprocess.rec
 echo "======Post process: done..."
+cp intellogo.png $DOC_DIR
