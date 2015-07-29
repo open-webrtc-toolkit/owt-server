@@ -29,10 +29,10 @@ Handle<Value> ExternalInput::New(const Arguments& args) {
   HandleScope scope;
 
   v8::String::Utf8Value param(args[0]->ToString());
-  std::string url = std::string(*param);
+  std::string options = std::string(*param);
 
   ExternalInput* obj = new ExternalInput();
-  obj->me = new erizo::ExternalInput(url);
+  obj->me = new erizo::ExternalInput(options);
   obj->me->setStatusListener(obj);
 
   obj->Wrap(args.This());

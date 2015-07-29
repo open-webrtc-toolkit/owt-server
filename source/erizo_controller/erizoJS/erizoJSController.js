@@ -207,14 +207,18 @@ exports.ErizoJSController = function () {
 
         return answer;
     };
-
-    that.addExternalInput = function (from, url, mixer, callback) {
+    /*options: {
+        url: 'xxx',
+        transport: 'tcp'/'udp',
+        buffer_size: 1024*1024*2
+    }*/
+    that.addExternalInput = function (from, options, mixer, callback) {
 
         if (publishers[from] === undefined) {
 
             log.info('Adding external input peer_id', from);
 
-            var ei = new addon.ExternalInput(url);
+            var ei = new addon.ExternalInput(JSON.stringify(options));
             var muxer = new addon.Gateway(JSON.stringify({externalInput: true}));
 
             publishers[from] = muxer;

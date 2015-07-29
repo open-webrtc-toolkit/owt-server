@@ -111,7 +111,7 @@ exports.RoomController = function (spec) {
         });
     };
 
-    that.addExternalInput = function (publisher_id, url, mixer_id, callback, onReady) {
+    that.addExternalInput = function (publisher_id, options, mixer_id, callback, onReady) {
 
         if (publishers[publisher_id] === undefined) {
 
@@ -120,7 +120,7 @@ exports.RoomController = function (spec) {
             createErizoJS(publisher_id, mixer_id, function() {
                 // then we call its addExternalInput method.
                 var mixer = {id: mixer_id, oop: GLOBAL.config.erizoController.outOfProcessMixer};
-                var args = [publisher_id, url, mixer];
+                var args = [publisher_id, options, mixer];
                 rpc.callRpc(getErizoQueue(publisher_id), "addExternalInput", args, {callback: callback, onReady: onReady});
 
                 // Track publisher locally

@@ -2,28 +2,50 @@
 
 #include <arpa/inet.h>
 #include <boost/cstdint.hpp>
+#include <boost/property_tree/json_parser.hpp>
+#include <boost/property_tree/ptree.hpp>
 #include <cstdio>
 #include <rtputils.h>
 #include <sys/time.h>
 
-#define BUFFER_SIZE 16777216
-
 namespace erizo {
+  const uint32_t BUFFER_SIZE = 2*1024*1024;
   DEFINE_LOGGER(ExternalInput, "media.ExternalInput");
-  ExternalInput::ExternalInput(const std::string& inputUrl)
-      : url_(inputUrl)
+  /*
+  options: {
+    url: 'xxx',
+    transport: 'tcp'/'udp',
+    buffer_size: 1024*1024*4
+  }
+  */
+  ExternalInput::ExternalInput(const std::string& options)
+      : transport_opts_(NULL)
+      , running_(false)
+      , context_(NULL)
       , timeoutHandler_(NULL)
-      , audio_sequence_number_(0) {
+      , audio_sequence_number_(0)
+      , statusListener_(NULL) {
+    boost::property_tree::ptree pt;
+    std::istringstream is(options);
+    boost::property_tree::read_json(is, pt);
+    url_ = pt.get<std::string>("url", "");
+    std::string transport = pt.get<std::string>("transport", "udp");
+    if (transport.compare("tcp") == 0) {
+      av_dict_set(&transport_opts_, "rtsp_transport", "tcp", 0);
+      ELOG_DEBUG("url: %s, transport::tcp", url_.c_str());
+    } else {
+      char buf[256];
+      uint32_t buffer_size = pt.get<uint32_t>("buffer_size", BUFFER_SIZE);
+      snprintf(buf, sizeof(buf), "%u", buffer_size);
+      av_dict_set(&transport_opts_, "buffer_size", buf, 0);
+      ELOG_DEBUG("url: %s, transport::%s, buffer_size: %u", url_.c_str(), transport.c_str(), buffer_size);
+    }
     videoDataType_ = DataContentType::ENCODED_FRAME;
     audioDataType_ = DataContentType::RTP;
-    context_ = NULL;
-    running_ = false;
-    statusListener_ = NULL;
   }
 
   ExternalInput::~ExternalInput(){
-    ELOG_DEBUG("Destructor ExternalInput %s" , url_.c_str());
-    ELOG_DEBUG("Closing ExternalInput");
+    ELOG_DEBUG("closing %s" , url_.c_str());
     running_ = false;
     thread_.join();
     av_free_packet(&avpacket_);
@@ -33,7 +55,8 @@ namespace erizo {
       delete timeoutHandler_;
       timeoutHandler_ = NULL;
     }
-    ELOG_DEBUG("ExternalInput closed");
+    av_dict_free(&transport_opts_);
+    ELOG_DEBUG("closed");
   }
 
   void ExternalInput::setStatusListener(ExternalInputStatusListener* listener) {
@@ -59,14 +82,7 @@ namespace erizo {
     //open rtsp
     av_init_packet(&avpacket_);
     avpacket_.data = NULL;
-    ELOG_DEBUG("Trying to open input from url %s", url_.c_str());
-
-    AVDictionary *opts = NULL;
-    char buf[256];
-    snprintf(buf, sizeof(buf), "%d", BUFFER_SIZE);
-    av_dict_set(&opts, "buffer_size", buf, 0);
-    int res = avformat_open_input(&context_, url_.c_str(), NULL, &opts);
-    ELOG_DEBUG("avformat_open_input - %d", res);
+    int res = avformat_open_input(&context_, url_.c_str(), NULL, &transport_opts_);
     char errbuff[500];
     if(res != 0){
       av_strerror(res, (char*)(&errbuff), 500);
@@ -93,8 +109,7 @@ namespace erizo {
                   st->time_base.num,
                   st->time_base.den,
                   st->codec->codec_id);
-      ELOG_DEBUG("AV_CODEC_ID_VP8: %d ", AV_CODEC_ID_VP8);
-      ELOG_DEBUG("AV_CODEC_ID_H264: %d ", AV_CODEC_ID_H264);
+
       int videoCodecId = st->codec->codec_id;
       if(videoCodecId == AV_CODEC_ID_VP8 || videoCodecId == AV_CODEC_ID_H264) {
         if (!videoSourceSSRC_) {
@@ -124,13 +139,6 @@ namespace erizo {
                   audio_st->time_base.num,
                   audio_st->time_base.den,
                   audio_st->codec->codec_id);
-      ELOG_DEBUG("AV_CODEC_ID_PCM_MULAW: %d ", AV_CODEC_ID_PCM_MULAW);
-      ELOG_DEBUG("AV_CODEC_ID_PCM_ALAW: %d ", AV_CODEC_ID_PCM_ALAW);
-      ELOG_DEBUG("AV_CODEC_ID_ADPCM_G722: %d ", AV_CODEC_ID_ADPCM_G722);
-      ELOG_DEBUG("AV_CODEC_ID_OPUS: %d ", AV_CODEC_ID_OPUS);
-
-      audio_time_base_ = audio_st->time_base.den;
-      ELOG_DEBUG("Audio Time base %d", audio_time_base_);
 
       int audioCodecId = audio_st->codec->codec_id;
       if (audioCodecId == AV_CODEC_ID_PCM_MULAW ||
@@ -171,7 +179,6 @@ namespace erizo {
 
   void ExternalInput::receiveLoop() {
     bool ret = connect();
-
     std::string message;
     if (ret) {
         message = "success";
@@ -187,7 +194,7 @@ namespace erizo {
 
     av_read_play(context_);//play RTSP
 
-    ELOG_DEBUG("Start playing external input %s", url_.c_str() );
+    ELOG_DEBUG("Start playing %s", url_.c_str() );
     while (running_) {
       timeoutHandler_->reset(1000);
       if (av_read_frame(context_, &avpacket_)<0) {
@@ -196,12 +203,8 @@ namespace erizo {
         av_read_pause(context_);
         avformat_close_input(&context_);
         ELOG_WARN("Read input data failed; trying to reopen input from url %s", url_.c_str());
-        AVDictionary *opts = NULL;
-        char buf[256];
-        snprintf(buf, sizeof(buf), "%d", BUFFER_SIZE);
-        av_dict_set(&opts, "buffer_size", buf, 0);
         timeoutHandler_->reset(10000);
-        int res = avformat_open_input(&context_, url_.c_str(), NULL, &opts);
+        int res = avformat_open_input(&context_, url_.c_str(), NULL, &transport_opts_);
         char errbuff[500];
         if(res != 0){
           av_strerror(res, (char*)(&errbuff), 500);

@@ -732,7 +732,11 @@ var listen = function () {
                         url = '/tmp/' + recordingId + '.mkv';
                     }
                 }
-                socket.room.controller.addExternalInput(id, url, socket.room.mixer, function (result) {
+                socket.room.controller.addExternalInput(id, {
+                    url: url,
+                    transport: options.transport,
+                    buffer_size: options.bufferSize
+                }, socket.room.mixer, function (result) {
                     log.info(result);
                     safeCall(callback, result, id);
                 }, function () {
