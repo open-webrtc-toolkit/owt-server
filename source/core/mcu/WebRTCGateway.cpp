@@ -61,9 +61,6 @@ int WebRTCGateway::deliverVideoData(char* buf, int len)
     if (len <= 0)
         return 0;
 
-    // Forward this packet before handing it over to the next processing
-    // stage (like mixing). Otherwise Firefox won't be happy with H264 forwarding.
-    // This is super strange, but we definitely need to understand the root cause.
     m_videoReceiver->deliverVideoData(buf, len);
 
     {
