@@ -104,7 +104,7 @@ Follow these steps for web application that require IE browser compatibility:
 
  1.  ieMediaStream.p2p.js and adapter.p2p.js must be included in the HTML pages which are visited by IE P2P users.
  2. ieMediaStream.js and adapter.js must be included in the HTML pages which are visited by IE conference users.
- 
+
 >**Note:** Canvas is used to render the WebRTC streams since IE's video tag cannot render them; and performance may not be as comparable to what you get with Chrome and FireFox.  Also, you must close the local stream and stop all conversations when the tab is closed. The following code is for reference.
 
 
