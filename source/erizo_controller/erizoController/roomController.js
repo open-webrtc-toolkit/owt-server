@@ -222,7 +222,7 @@ exports.RoomController = function (spec) {
      * and a new WebRtcConnection. This WebRtcConnection will be the publisher
      * of the OneToManyProcessor.
      */
-    that.addPublisher = function (publisher_id, sdp, mixer_id, callback, onReady) {
+    that.addPublisher = function (publisher_id, sdp, mixer_id, unmix, callback, onReady) {
 
         if (publishers[publisher_id] === undefined) {
 
@@ -235,7 +235,7 @@ exports.RoomController = function (spec) {
                 log.info('Erizo created');
                 // then we call its addPublisher method.
                 var mixer = {id: mixer_id, oop: GLOBAL.config.erizoController.outOfProcessMixer};
-                var args = [publisher_id, sdp, mixer];
+                var args = [publisher_id, sdp, mixer, unmix];
                 rpc.callRpc(getErizoQueue(publisher_id), 'addPublisher', args, {callback: callback, onReady: onReady});
 
                 // Track publisher locally
