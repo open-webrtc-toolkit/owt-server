@@ -758,18 +758,14 @@ var listen = function () {
                 });
             } else if (options.state !== 'data' && !socket.room.p2p) {
                 if (options.state === 'offer' && socket.state === 'sleeping') {
-                    // id = Math.random() * 1000000000000000000;
                     id = socket.id;
                     var mixer = socket.room.mixer;
                     var hasScreen = false;
+                    var unmix = options.unmix;
                     if (options.video && options.video.device === 'screen') {
                         hasScreen = true;
                         id = id.slice(0, -8) + '_SCREEN_';
-                        mixer = undefined;
-                    }
-
-                    if (options.unmix === true) {
-                        mixer = undefined;
+                        unmix = true;
                     }
 
                     if (socket.streams.indexOf(id) !== -1) {
@@ -788,7 +784,7 @@ var listen = function () {
                         rpc.callRpc('stats_handler', 'event', [{room: socket.room.id, user: socket.id, type: 'publish', stream: id, timestamp: timeStamp.getTime()}]);
                     }
 
-                    socket.room.controller.addPublisher(id, sdp, mixer, function (answer) {
+                    socket.room.controller.addPublisher(id, sdp, mixer, unmix, function (answer) {
                         socket.state = 'waitingOk';
                         answer = answer.replace(privateRegexp, publicIP);
                         safeCall(callback, answer, id);

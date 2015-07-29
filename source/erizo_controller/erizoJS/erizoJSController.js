@@ -99,7 +99,7 @@ exports.ErizoJSController = function () {
         if (publishers[to] !== undefined) {
             var intervarId = setInterval(function () {
               if (publishers[to]!==undefined){
-                if (wrtc.getCurrentState() >= 103 && publishers[to].getPublisherState() >=103) {
+                if (wrtc.getCurrentState() >= 103 && publishers[to].getPublisherState() >= 103) {
                     publishers[to].sendFIR();
                     clearInterval(intervarId);
                 }
@@ -112,7 +112,7 @@ exports.ErizoJSController = function () {
     /*
      * Given a WebRtcConnection waits for the state CANDIDATES_GATHERED for set remote SDP.
      */
-    initWebRtcConnection = function (wrtc, sdp, id_mixer, callback, id_pub, id_sub) {
+    initWebRtcConnection = function (wrtc, sdp, id_mixer, unmix, callback, id_pub, id_sub) {
         if(typeof sdp != 'string') sdp = JSON.stringify(sdp); // fixes some issues with sending json object as json, and not as string
 
         if (GLOBAL.config.erizoController.sendStats) {
@@ -139,19 +139,19 @@ exports.ErizoJSController = function () {
             rpc.callRpc('stats_handler', 'event', [{pub: id_pub, subs: id_sub, type: 'connection_status', status: newStatus, timestamp:timeStamp.getTime()}]);
           }
 
-          if (newStatus === 104) {
+          if (newStatus === 104) { // Connection Finished
             terminated = true;
           }
-          if (newStatus === 102 && !sdpDelivered) {
+          if (newStatus === 102 && !sdpDelivered) { // Connection Started
             localSdp = wrtc.getLocalSdp();
             answer = getRoap(localSdp, roap);
             callback('callback', answer);
             sdpDelivered = true;
 
           }
-          if (newStatus === 103) {
+          if (newStatus === 103) { // Connection Ready
             // Perform the additional work for publishers.
-            if (id_mixer) {
+            if (id_mixer && !(unmix === true)) {
               var mixer = publishers[id_mixer];
               if (mixer) {
                 mixer.addPublisher(publishers[id_pub], id_pub);
@@ -328,7 +328,7 @@ exports.ErizoJSController = function () {
      * and a new WebRtcConnection. This WebRtcConnection will be the publisher
      * of the Gateway.
      */
-    that.addPublisher = function (from, sdp, mixer, callback) {
+    that.addPublisher = function (from, sdp, mixer, unmix, callback) {
 
         if (publishers[from] === undefined) {
             log.info('Adding publisher peer_id', from);
@@ -364,7 +364,7 @@ exports.ErizoJSController = function () {
                         mixerProxy = new addon.Mixer(JSON.stringify(config));
                     }
 
-                    initWebRtcConnection(wrtc, sdp, mixer.id, callback, from);
+                    initWebRtcConnection(wrtc, sdp, mixer.id, unmix, callback, from);
                     muxer.addPublisher(wrtc, from);
                 } else {
                     log.warn('Failed to publish the stream:', err);
@@ -395,7 +395,7 @@ exports.ErizoJSController = function () {
                     }
                     var wrtc = new addon.WebRtcConnection(audio, video, hasH264, GLOBAL.config.erizo.stunserver, GLOBAL.config.erizo.stunport, GLOBAL.config.erizo.minport, GLOBAL.config.erizo.maxport, GLOBAL.config.erizo.keystorePath, GLOBAL.config.erizo.keystorePath, erizoPassPhrase, true, true, true, true);
 
-                    initWebRtcConnection(wrtc, sdp, undefined, callback, to, from);
+                    initWebRtcConnection(wrtc, sdp, undefined, undefined, callback, to, from);
 
                     subscribers[to].push(from);
                     publishers[to].addSubscriber(wrtc, from);
