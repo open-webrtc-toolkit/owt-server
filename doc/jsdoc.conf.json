@@ -9,7 +9,7 @@
     "dateFormat": "ddd MMM Do YYYY",
     "outputSourceFiles": false,
     "outputSourcePath": false,
-    "systemName": "Intel® Collaboration Suite for WebRTC(Intel® CS for WebRTC) Client JavaScript* SDK  version2.5",
+    "systemName": "Intel® Collaboration Suite for WebRTC (Intel® CS for WebRTC) Client SDK for JavaScript* <sub style=\"font-size: 10pt;\">version 2.5<sub></sub></sub>",
     "footer": "",
     "copyright": "Copyright © 2015 Intel Corporation. All Rights Reserved. ",
     "navType": "vertical",
