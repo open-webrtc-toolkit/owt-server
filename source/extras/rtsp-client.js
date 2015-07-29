@@ -69,9 +69,10 @@ var WoogeenNodeConference = (function () {
             self.p2p = resp.p2p;
             that.state = CONNECTED;
 
-            self.publish = function publish (url, callback) {
+            self.publish = function publish (url, options, callback) {
               try {
-                self.socket.emit('publish', {state: 'url', audio: true, video: true}, url, function (status, resp) {
+                self.socket.emit('publish', {state: 'url', audio: true, video: true, transport: options.transport,
+                  bufferSize: options.bufferSize}, url, function (status, resp) {
                   if (status !== 'success') {
                     return safeCall(callback, status, resp);
                   }
@@ -180,24 +181,32 @@ nuve.getRooms(function (resp) {
         return process.exit();
       }
       console.log('room joined:', resp);
-      client.publish('rtsp://10.239.61.102:554/rtsp_tunnel', function (err, resp) {
-        if (err) {
-          console.log('error in publishing stream:', err);
-          return process.exit();
-        }
-        console.log('stream published:', resp);
+      var rtspUrl = process.argv[2];
+      if (typeof rtspUrl === 'string') {
+        client.publish(rtspUrl, {transport:'udp', bufferSize:1024*1024*2}, function (err, resp) {
+          if (err) {
+            console.log('error in publishing stream:', err);
+            return process.exit();
+          }
+          console.log('stream published:', resp);
+          setTimeout(function () {
+            console.log('try unpublishing...');
+            client.unpublish(resp, function (err) {
+              if (err) {
+                console.log('error in unpublishing stream:', err);
+                return process.exit();
+              }
+              console.log('stream unpublished');
+              client.leave();
+            });
+          }, 50000);
+        });
+      } else {
+        console.log('leaving room in 5 seconds...');
         setTimeout(function () {
-          console.log('try unpublishing...');
-          client.unpublish(resp, function (err) {
-            if (err) {
-              console.log('error in unpublishing stream:', err);
-              return process.exit();
-            }
-            console.log('stream unpublished');
-            client.leave();
-          });
-        }, 10000);
-      });
+          client.leave();
+        }, 5000);
+      }
     });
   }, function (err) {
     console.log('error in retrieving token:', err);

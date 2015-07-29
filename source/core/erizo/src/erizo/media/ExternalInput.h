@@ -57,7 +57,7 @@ namespace erizo{
   class ExternalInput : public MediaSource {
       DECLARE_LOGGER();
     public:
-      DLL_PUBLIC ExternalInput (const std::string& inputUrl);
+      DLL_PUBLIC ExternalInput (const std::string& options);
       virtual ~ExternalInput();
       DLL_PUBLIC int init();
       int sendFirPacket();
@@ -65,13 +65,14 @@ namespace erizo{
 
     private:
       std::string url_;
+      AVDictionary* transport_opts_;
       bool running_;
       boost::thread thread_;
       AVFormatContext* context_;
       TimeoutHandler* timeoutHandler_;
       AVPacket avpacket_;
-      int video_stream_index_, video_time_base_;
-      int audio_stream_index_, audio_time_base_;
+      int video_stream_index_;
+      int audio_stream_index_;
       uint32_t audio_sequence_number_;
       ExternalInputStatusListener* statusListener_;
 
