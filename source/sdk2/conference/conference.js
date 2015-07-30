@@ -875,7 +875,8 @@ conference.subscribe(remoteStream, function (st) {
       if (navigator.appVersion.indexOf('Trident') > -1) {
         stream.pcid = evt.pcid;
       }
-      safeCall(onSuccess, stream);
+    };
+    var onChannelReady = function () {
       stream.signalOnPlayAudio = function (onSuccess, onFailure) {
         sendCtrlPayload(self.socket, 'audio-in-on', stream.id(), onSuccess, onFailure);
       };
@@ -888,17 +889,34 @@ conference.subscribe(remoteStream, function (st) {
       stream.signalOnPauseVideo = function (onSuccess, onFailure) {
         sendCtrlPayload(self.socket, 'video-in-off', stream.id(), onSuccess, onFailure);
       };
+      safeCall(onSuccess, stream);
+      onChannelReady = function () {};
+      onChannelFailed = function () {};
     };
-
+    var onChannelFailed = function () {
+      sendMsg(self.socket, 'unsubscribe', stream.id(), function () {}, function () {});
+      stream.close();
+      stream.signalOnPlayAudio = undefined;
+      stream.signalOnPauseAudio = undefined;
+      stream.signalOnPlayVideo = undefined;
+      stream.signalOnPauseVideo = undefined;
+      safeCall(onFailure, 'peer connection failed');
+      onChannelReady = function () {};
+      onChannelFailed = function () {};
+    };
     stream.channel.oniceconnectionstatechange = function (state) {
-      if (state === 'failed') {
-        sendMsg(self.socket, 'unsubscribe', stream.id(), function () {}, function () {});
-        stream.close();
-        stream.signalOnPlayAudio = undefined;
-        stream.signalOnPauseAudio = undefined;
-        stream.signalOnPlayVideo = undefined;
-        stream.signalOnPauseVideo = undefined;
-        safeCall(onFailure, 'peer connection failed');
+      switch (state) {
+      case 'completed': // chrome
+      case 'connected': // firefox
+        onChannelReady();
+        break;
+      case 'checking':
+        break;
+      case 'failed':
+        onChannelFailed();
+        break;
+      default:
+        L.Logger.warning('unknown ice connection state:', state);
       }
     };
   };
