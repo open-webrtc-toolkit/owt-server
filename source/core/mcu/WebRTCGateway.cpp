@@ -329,10 +329,14 @@ bool WebRTCGateway::addExternalOutput(const std::string& configParam, woogeen_ba
                 ++m_pendingIFrameRequests;
 
                 return true;
+            } else {
+                ELOG_ERROR("no media muxer is available.");
             }
-        } else{
-            ELOG_DEBUG("External output with id %s has already be occupied.", outputId.c_str());
+        } else {
+            ELOG_DEBUG("external output with id %s has already be occupied.", outputId.c_str());
         }
+    } else {
+        ELOG_ERROR("add external output error: invalid config.");
     }
 
     return false;

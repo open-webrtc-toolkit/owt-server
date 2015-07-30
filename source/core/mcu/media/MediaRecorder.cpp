@@ -71,27 +71,26 @@ MediaRecorder::~MediaRecorder()
     close();
 }
 
-bool MediaRecorder::setMediaSource(woogeen_base::FrameDispatcher* videoSource, woogeen_base::FrameDispatcher* audioSource)
+void MediaRecorder::setMediaSource(woogeen_base::FrameDispatcher* videoSource, woogeen_base::FrameDispatcher* audioSource)
 {
     if (m_status == woogeen_base::MediaMuxer::Context_READY) {
         callback("success");
         ELOG_DEBUG("continuous recording");
     }
 
-    if (m_videoSource && m_videoId != -1)
-        m_videoSource->removeFrameConsumer(m_videoId);
+    // Reset media source
+    unsetMediaSource();
 
-    if (m_audioSource && m_audioId != -1)
-        m_audioSource->removeFrameConsumer(m_audioId);
-
+    // Assign new media source
     m_videoSource = videoSource;
     m_audioSource = audioSource;
 
     // Start the recording of video and audio
-    m_videoId = m_videoSource->addFrameConsumer(m_recordPath, VP8_90000_PT, this);
-    m_audioId = m_audioSource->addFrameConsumer(m_recordPath, PCMU_8000_PT, this);
+    if (m_videoSource)
+        m_videoId = m_videoSource->addFrameConsumer(m_recordPath, VP8_90000_PT, this);
 
-    return true;
+    if (m_audioSource)
+        m_audioId = m_audioSource->addFrameConsumer(m_recordPath, PCMU_8000_PT, this);
 }
 
 void MediaRecorder::unsetMediaSource()
@@ -176,6 +175,8 @@ void MediaRecorder::onFrame(const woogeen_base::Frame& frame)
         m_audioQueue->pushFrame(frame.payload, frame.length);
         break;
     default:
+        ELOG_ERROR("improper frame format. only VP8 and PCM_MULAW can be recorded currently");
+        m_status = woogeen_base::MediaMuxer::Context_ERROR;
         break;
     }
 }
@@ -255,7 +256,7 @@ void MediaRecorder::onTimeout()
         break;
     case woogeen_base::MediaMuxer::Context_ERROR:
     default:
-        callback("init failed");
+        callback("context initialization failed");
         ELOG_ERROR("context error");
         return;
     }
@@ -292,4 +293,4 @@ void MediaRecorder::writeAudioFrame(woogeen_base::EncodedFrame& encodedAudioFram
     av_free_packet(&avpkt);
 }
 
-}/* namespace mcu */
+} /* namespace mcu */

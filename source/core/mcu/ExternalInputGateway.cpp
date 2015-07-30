@@ -333,11 +333,16 @@ bool ExternalInputGateway::addExternalOutput(const std::string& configParam, woo
         const std::string outputId = pt.get<std::string>("id", "");
 
         woogeen_base::MediaMuxer* muxer = MediaMuxerFactory::createMediaMuxer(outputId, configParam, callback);
-        if (muxer)
-            return muxer->setMediaSource(this, m_audioTranscoder.get());
+        if (muxer) {
+            muxer->setMediaSource(this, m_audioTranscoder.get());
+            return true;
+        } else {
+            ELOG_ERROR("no media muxer is available.");
+        }
+    } else {
+        ELOG_DEBUG("add external output error: invalid config");
     }
 
-    ELOG_DEBUG("add external output error: invalid config");
     return false;
 }
 

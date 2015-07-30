@@ -47,6 +47,9 @@ RTSPMuxer::RTSPMuxer(const std::string& url, woogeen_base::EventRegistry* cb)
     , m_uri(url)
     , m_audioEncodingFrame(nullptr)
 {
+    m_videoQueue.reset(new woogeen_base::MediaFrameQueue());
+    m_audioQueue.reset(new woogeen_base::MediaFrameQueue());
+
     av_register_all();
     avformat_network_init();
     av_log_set_level(AV_LOG_WARNING);
@@ -73,31 +76,26 @@ RTSPMuxer::~RTSPMuxer()
 #endif
 }
 
-bool RTSPMuxer::setMediaSource(woogeen_base::FrameDispatcher* videoSource, woogeen_base::FrameDispatcher* audioSource)
+void RTSPMuxer::setMediaSource(woogeen_base::FrameDispatcher* videoSource, woogeen_base::FrameDispatcher* audioSource)
 {
     if (m_status == woogeen_base::MediaMuxer::Context_READY) {
         callback("success");
         ELOG_DEBUG("continuous RTSP output");
     }
 
-    // Reset the media queues
-    m_videoQueue.reset(new woogeen_base::MediaFrameQueue());
-    m_audioQueue.reset(new woogeen_base::MediaFrameQueue());
+    // Reset media source
+    unsetMediaSource();
 
-    if (m_videoSource && m_videoId != -1)
-        m_videoSource->removeFrameConsumer(m_videoId);
-
-    if (m_audioSource && m_audioId != -1)
-        m_audioSource->removeFrameConsumer(m_audioId);
-
+    // Assign new media source
     m_videoSource = videoSource;
     m_audioSource = audioSource;
 
     // Start the recording of video and audio
-    m_videoId = m_videoSource->addFrameConsumer(m_uri, H264_90000_PT, this);
-    m_audioId = m_audioSource->addFrameConsumer(m_uri, OPUS_48000_PT, this); // FIXME: should be AAC_48000_PT or so.
+    if (m_videoSource)
+        m_videoId = m_videoSource->addFrameConsumer(m_uri, H264_90000_PT, this);
 
-    return true;
+    if (m_audioSource)
+        m_audioId = m_audioSource->addFrameConsumer(m_uri, OPUS_48000_PT, this); // FIXME: should be AAC_48000_PT or so.
 }
 
 void RTSPMuxer::unsetMediaSource()

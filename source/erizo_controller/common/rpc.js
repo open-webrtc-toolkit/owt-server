@@ -31,6 +31,8 @@ if (GLOBAL.config.rabbit.url !== undefined) {
     addr.port = GLOBAL.config.rabbit.port;
 }
 
+exports.timeout = TIMEOUT;
+
 exports.setPublicRPC = function(methods) {
     rpcPublic = methods;
 };
@@ -118,7 +120,6 @@ exports.callRpc = function(to, method, args, callbacks) {
     exc.publish(to, {method: method, args: args, corrID: corrID, replyTo: clientQueue.name});
 
 }
-
 
 var callbackError = function(corrID) {
     for (var i in map[corrID].fn) {

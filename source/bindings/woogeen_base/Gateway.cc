@@ -200,6 +200,9 @@ Handle<Value> Gateway::addExternalOutput(const Arguments& args) {
     callback = new NodeEventRegistry(cb);
   }
   bool succeeded = me->addExternalOutput(configParam, callback);
+  if (!succeeded && callback) {
+    delete callback;
+  }
 
   return scope.Close(Boolean::New(succeeded));
 }
