@@ -287,6 +287,7 @@ exports.ErizoJSController = function () {
                 url: url,
                 interval: interval
             };
+
             if (from === '' && url === '' && interval === 0) { // rtsp out
                 if (GLOBAL.config.erizo.rtsp.enabled !== true) {
                     callback('callback', 'not enabled');
@@ -294,15 +295,27 @@ exports.ErizoJSController = function () {
                 }
                 config.url = [rtsp_prefix, 'room_', to, '.sdp'].join('');
                 config.id = config.url;
-                publishers[to].addExternalOutput(JSON.stringify(config), function (resp) {
-                    callback('callback', resp);
-                });
-                return;
             }
+
             log.info('Adding ExternalOutput to ' + to + ' url ' + url);
 
-            // recordingId here is used as the peerId
+            // Timer is used here since the callback for addExternalOutput might not be invoked anyway
+            var timer = setTimeout(function() {
+                            log.error('addExternalOutput timeout');
+
+                            // Remove the possible external output if timeout
+                            publishers[to].removeExternalOutput(config.id, true);
+                        }, rpc.timeout);
+
             publishers[to].addExternalOutput(JSON.stringify(config), function (resp) {
+                // Clear the timer if the callback is invoked
+                clearTimeout(timer);
+
+                if (resp !== 'success') {
+                    // Remove the possible external output
+                    publishers[to].removeExternalOutput(config.id, true);
+                }
+
                 callback('callback', resp);
             });
             return;

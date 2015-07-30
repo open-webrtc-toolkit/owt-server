@@ -230,7 +230,7 @@ public:
     }
 
     // FrameConsumer
-    virtual bool setMediaSource(FrameDispatcher* videoDispatcher, FrameDispatcher* audioDispatcher) = 0;
+    virtual void setMediaSource(FrameDispatcher* videoDispatcher, FrameDispatcher* audioDispatcher) = 0;
     virtual void unsetMediaSource() = 0;
     // JobTimerListener
     virtual void onTimeout() = 0;

@@ -105,18 +105,24 @@ void Mixer::onPositiveAudioSources(std::vector<uint32_t>& audioSources)
 
 bool Mixer::addExternalOutput(const std::string& configParam, woogeen_base::EventRegistry* callback)
 {
+    // Create an ExternalOutput here
     if (configParam != "" && configParam != "undefined") {
         boost::property_tree::ptree pt;
         std::istringstream is(configParam);
         boost::property_tree::read_json(is, pt);
-        const std::string id = pt.get<std::string>("id", "");
+        const std::string outputId = pt.get<std::string>("id", "");
 
-        woogeen_base::MediaMuxer* muxer = MediaMuxerFactory::createMediaMuxer(id, configParam, callback);
-        if (muxer)
-            return muxer->setMediaSource(m_videoMixer.get(), m_audioMixer.get());
+        woogeen_base::MediaMuxer* muxer = MediaMuxerFactory::createMediaMuxer(outputId, configParam, callback);
+        if (muxer) {
+            muxer->setMediaSource(m_videoMixer.get(), m_audioMixer.get());
+            return true;
+        } else {
+            ELOG_ERROR("no media muxer is available.");
+        }
+    } else {
+        ELOG_DEBUG("add external output error: invalid config");
     }
 
-    ELOG_DEBUG("add external output error: invalid config");
     return false;
 }
 
