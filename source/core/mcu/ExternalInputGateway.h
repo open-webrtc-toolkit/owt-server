@@ -28,7 +28,9 @@
 #include <logger.h>
 #include <map>
 #include <MediaDefinitions.h>
+#include <MediaEnabling.h>
 #include <string>
+#include <utility> // std::pair
 #include <VideoFrameSender.h>
 #include <VideoFrameTranscoder.h>
 
@@ -68,9 +70,10 @@ public:
     // which can be used to monitor the gateway. Refer to ooVoo Gateway for example.
     std::string retrieveStatistics() { return ""; }
 
+    void subscribeStream(const std::string& id, bool isAudio);
+    void unsubscribeStream(const std::string& id, bool isAudio);
+
     // TODO: implement the below interfaces to support media play/pause.
-    void subscribeStream(const std::string& id, bool isAudio) { }
-    void unsubscribeStream(const std::string& id, bool isAudio) { }
     void publishStream(const std::string& id, bool isAudio) { }
     void unpublishStream(const std::string& id, bool isAudio) { }
 
@@ -119,7 +122,7 @@ private:
     std::string m_participantId;
     boost::shared_ptr<erizo::MediaSource> m_publisher;
     boost::shared_mutex m_subscriberMutex;
-    std::map<std::string, boost::shared_ptr<erizo::MediaSink>> m_subscribers;
+    std::map<std::string, std::pair<boost::shared_ptr<erizo::MediaSink>, woogeen_base::MediaEnabling>> m_subscribers;
     boost::shared_mutex m_sinkMutex;
 
     // TODO: Use it for async event notification from the worker thread to the main node thread.
