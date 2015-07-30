@@ -59,7 +59,7 @@ VideoLayoutProcessor::VideoLayoutProcessor(boost::property_tree::ptree& layoutCo
             region.left = regionPair.second.get<float>("left");
             region.top = regionPair.second.get<float>("top");
             region.relativeSize = regionPair.second.get<float>("relativesize");
-            region.priority = regionPair.second.get<float>("priority");
+            //region.priority = regionPair.second.get<float>("priority");
             if (region.left < 0.0 || region.left > 1.0
                 || region.top < 0.0 || region.top > 1.0
                 || region.relativeSize < 0.0 || region.relativeSize > 1.0) {
