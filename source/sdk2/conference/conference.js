@@ -672,6 +672,7 @@ conference.publish(localStream, {maxVideoBW: 300}, function (st) {
                 onChannelReady();
                 break;
               case 'checking':
+              case 'closed':
                 break;
               case 'failed':
                 onChannelFailed();
@@ -911,6 +912,7 @@ conference.subscribe(remoteStream, function (st) {
         onChannelReady();
         break;
       case 'checking':
+      case 'closed':
         break;
       case 'failed':
         onChannelFailed();
