@@ -2,7 +2,7 @@ The Intel(R) Collaboration Suite for WebRTC MCU Server redistributes the followi
 
 All are compiled from source code without change and used through dynamic link.
 
-1. FFmpeg, LGPL2.1, download source code from https://github.com/FFmpeg/FFmpeg/archive/n0.10.2.zip
+1. FFmpeg, LGPL2.1, download source code from http://ffmpeg.org/releases/ffmpeg-2.7.2.tar.bz2
 
 2. PNotify, MPL1.1, download source code from http://sciactive.github.io/pnotify/#download
 
