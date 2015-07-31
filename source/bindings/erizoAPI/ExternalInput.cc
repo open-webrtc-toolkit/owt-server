@@ -59,10 +59,10 @@ Handle<Value> ExternalInput::init(const Arguments& args) {
   ExternalInput* obj = ObjectWrap::Unwrap<ExternalInput>(args.This());
   erizo::ExternalInput *me = (erizo::ExternalInput*) obj->me;
 
-  int r = me->init();
+  me->init();
   obj->statusCallback_ = Persistent<Function>::New(Local<Function>::Cast(args[0]));
 
-  return scope.Close(Integer::New(r));
+  return scope.Close(Null());
 }
 
 Handle<Value> ExternalInput::setAudioReceiver(const Arguments& args) {

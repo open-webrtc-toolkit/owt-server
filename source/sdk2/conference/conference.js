@@ -586,17 +586,17 @@ conference.publish(localStream, {maxVideoBW: 300}, function (st) {
         opt.transport = options.transport;
         opt.bufferSize = options.bufferSize;
         sendSdp(self.socket, 'publish', opt, stream.url(), function (answer, id) {
-            if (answer !== 'success') {
-              return safeCall(onFailure, answer);
-            }
-            stream.id = function () {
-              return id;
-            };
-            stream.unpublish = function (onSuccess, onFailure) {
-              self.unpublish(stream, onSuccess, onFailure);
-            };
-            self.localStreams[id] = stream;
-            safeCall(onSuccess, stream);
+          if (answer !== 'success') {
+            return safeCall(onFailure, answer);
+          }
+          stream.id = function () {
+            return id;
+          };
+          stream.unpublish = function (onSuccess, onFailure) {
+            self.unpublish(stream, onSuccess, onFailure);
+          };
+          self.localStreams[id] = stream;
+          safeCall(onSuccess, stream);
         });
         return;
       } else if (self.p2p) {
