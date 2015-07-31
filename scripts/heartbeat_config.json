@@ -1,10 +1,10 @@
 {
-    "active": "true",
-    "enabled": true,
+    "active": "false",
+    "enabled": false,
     "useProxy": true,
     "backend": "https://api-sdk.oovoo.com/gw/1.0/iamalive",
     "interval": 12,
     "gw_key": "987654321",
     "id": "",
-    "version": "0.10.2"
+    "version": "0.11.0"
 }
