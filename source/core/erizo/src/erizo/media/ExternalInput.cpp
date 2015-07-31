@@ -63,11 +63,9 @@ namespace erizo {
     statusListener_ = listener;
   }
 
-  int ExternalInput::init() {
-    thread_ = boost::thread(&ExternalInput::receiveLoop, this);
+  void ExternalInput::init() {
     running_ = true;
-
-    return 0;
+    thread_ = boost::thread(&ExternalInput::receiveLoop, this);
   }
 
   bool ExternalInput::connect() {

@@ -737,8 +737,9 @@ var listen = function () {
                     transport: options.transport,
                     buffer_size: options.bufferSize
                 }, socket.room.mixer, function (result) {
-                    log.info(result);
-                    safeCall(callback, result, id);
+                    if (result !== 'success') {
+                        safeCall(callback, result); // TODO: ensure `callback' is accurately invoked once and only once.
+                    }
                 }, function () {
                     // Double check if this socket is still in the room.
                     // It can be removed from the room if the socket is disconnected
@@ -753,6 +754,7 @@ var listen = function () {
                     socket.streams.push(id);
                     socket.room.streams[id] = st;
                     sendMsgToRoom(socket.room, 'onAddStream', st.getPublicStream());
+                    safeCall(callback, 'success', id);
                 });
             } else if (options.state !== 'data' && !socket.room.p2p) {
                 if (options.state === 'offer' && socket.state === 'sleeping') {

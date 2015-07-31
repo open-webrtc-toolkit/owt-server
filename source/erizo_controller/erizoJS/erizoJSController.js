@@ -224,7 +224,7 @@ exports.ErizoJSController = function () {
             publishers[from] = muxer;
             subscribers[from] = [];
 
-            var answer = ei.init(function (message) {
+            ei.init(function (message) {
                 if (publishers[from] === undefined) {
                     log.info('External input', from, 'removed before initialized');
                     return;
@@ -270,18 +270,10 @@ exports.ErizoJSController = function () {
                     delete subscribers[from];
                     delete publishers[from];
                     log.error('External input', from, 'initialization failed');
+                    callback('callback', message);
                 }
             });
-
-            if (answer < 0) {
-                callback('callback', 'input url initialization error');
-                ei.close();
-                publishers[from].close();
-                delete subscribers[from];
-                delete publishers[from];
-            } else {
-                callback('callback', 'success');
-            }
+            callback('callback', 'success'); // avoid rpc timeout
         } else {
             log.info('Publisher already set for', from);
             callback('callback', 'external input already existed');

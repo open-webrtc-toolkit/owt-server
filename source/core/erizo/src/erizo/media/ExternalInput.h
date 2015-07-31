@@ -59,7 +59,7 @@ namespace erizo{
     public:
       DLL_PUBLIC ExternalInput (const std::string& options);
       virtual ~ExternalInput();
-      DLL_PUBLIC int init();
+      DLL_PUBLIC void init();
       int sendFirPacket();
       void setStatusListener(ExternalInputStatusListener* listener);
 
