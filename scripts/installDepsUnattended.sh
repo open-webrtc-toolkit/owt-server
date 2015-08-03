@@ -38,6 +38,7 @@ if ! lsb_release -i | grep [Uu]buntu -q -s; then
   if [ "$NIGHTLY" != "true" ]; then
     installRepo
     installYumDeps
+    install_gcc
   fi
 else
   . installUbuntuDeps.sh
