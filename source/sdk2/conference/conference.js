@@ -540,8 +540,8 @@ audio: true/false,<br>
 maxVideoBW: xxx,<br>
 unmix: false/true, // if true, this stream would not be included in mix stream<br>
 videoCodec: 'h264'/'vp8' // not applicable for p2p room<br>
-transport: 'udp'/'tcp' // rtsp connection transport type, default 'udp'; only for rtsp input
-bufferSize: integer number in bytes // udp receving buffer size, default 2 MB; only for rtsp input (udp transport)
+transport: 'udp'/'tcp' // rtsp connection transport type, default 'udp'; only for rtsp input<br>
+bufferSize: integer number in bytes // udp receving buffer size, default 2 MB; only for rtsp input (udp transport)<br>
 }
    * @memberOf Woogeen.ConferenceClient
    * @param {stream} stream Stream to publish.
