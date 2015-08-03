@@ -52,33 +52,9 @@ installYumDeps(){
   sudo -E yum install gcc gcc-c++ bzip2 bzip2-devel bzip2-libs python-devel gyp nodejs npm nasm libX11-devel -y
   sudo -E yum install rabbitmq-server mongodb mongodb-server java-1.7.0-openjdk -y
 
-  read -p "Installing glib2... [Yes/no]" yn
-  case $yn in
-    [Nn]* ) ;;
-    [Yy]* ) install_glib2;;
-    * ) install_glib2;;
-  esac
+  install_glib2
 
-  read -p "Installing boost... [Yes/no]" yn
-  case $yn in
-    [Nn]* ) ;;
-    [yY]* ) install_boost;;
-    * ) install_boost;;
-  esac
-
-  read -p "Install nvm/node? [No/yes] NOTE: This will install a specific Nodejs version managed by nvm. You're highly recommended to just PRESS ENTER to skip this step." yn
-  case $yn in
-    [Yy]* ) install_node;;
-    [Nn]* ) ;;
-    * ) ;;
-  esac
-
-  read -p "Installing glibc... [No/yes] WARNING: You're highly recommended to just PRESS ENTER to skip this step. Press Y/y ONLY IF YOU EXACTLY KNOW WHAT YOU'RE DOING!" yn
-  case $yn in
-    [Yy]* ) install_glibc;;
-    [nN]* ) ;;
-    * ) ;;
-  esac
+  install_boost
 }
 
 installRepo(){
