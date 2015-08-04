@@ -90,6 +90,10 @@ void VP8EncPlugin::VP8ForceKeyFrame()
 void VP8EncPlugin::VP8ResetBitrate(unsigned int bitrate)
 {
     cfg->rc_target_bitrate = bitrate;
+
+    //this api may be called before codec's initialized
+    if (!vpx_init_flag_) return;
+
     /* Reinit codec config */
     if(vpx_codec_enc_config_set(&vpx_codec_, cfg)) {
         printf("VP8 Failed to change bitrate\n");
