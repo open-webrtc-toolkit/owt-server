@@ -340,37 +340,40 @@ MSDKCodec::~MSDKCodec()
         m_DecExtParams.clear();
     }
 
-    for (unsigned int i = 0; i < num_of_surf_; i++) {
-        //when element is deleted, all pre-allocated surfaces should have already been recycled.
-        //dj: workaround here, surface not unlocked by msdk. Try "p d <end> q" to reproduce
-        if (element_type_ != ELEMENT_DECODER && element_type_ != ELEMENT_STRING_DEC && element_type_ != ELEMENT_BMP_DEC) {
-            assert(surface_pool_[i]->Data.Locked == 0);
-        }
-#if ENABLE_VA
-        if (element_type_ == ELEMENT_VPP) {
-            mfxExtBuffer **ext_buf = surface_pool_[i]->Data.ExtParam;
-            VAPluginData* plugin_data = (VAPluginData*)(*ext_buf);
-            if (plugin_data) {
-                FrameMeta* out = plugin_data->Out;
-                if (out) {
-                    LIST_ROI::iterator it;
-                    for(it = out->ROIList.begin(); it != out->ROIList.end(); it++) {
-                        if (*it)
-                            delete *it;
-                    }
-                    out->ROIList.clear();
-                    delete out;
-                    out = NULL;
-                }
-                delete plugin_data;
-            }
-        }
-#endif
-        delete surface_pool_[i];
-        surface_pool_[i] = NULL;
-    }
 
     if (surface_pool_) {
+        for (unsigned int i = 0; i < num_of_surf_; i++) {
+            if (surface_pool_[i]) {
+#if ENABLE_VA
+                if (element_type_ == ELEMENT_VPP) {
+                    mfxExtBuffer **ext_buf = surface_pool_[i]->Data.ExtParam;
+                    VAPluginData* plugin_data = (VAPluginData*)(*ext_buf);
+                    if (plugin_data) {
+                        FrameMeta* out = plugin_data->Out;
+                        if (out) {
+                            LIST_ROI::iterator it;
+                            for(it = out->ROIList.begin(); it != out->ROIList.end(); it++) {
+                                if (*it)
+                                    delete *it;
+                            }
+                            out->ROIList.clear();
+                            delete out;
+                            out = NULL;
+                        }
+                        delete plugin_data;
+                    }
+                }
+#endif
+                //when element is deleted, all pre-allocated surfaces should have already been recycled.
+                //dj: workaround here, surface not unlocked by msdk. Try "p d <end> q" to reproduce
+                //if (element_type_ != ELEMENT_DECODER && element_type_ != ELEMENT_STRING_DEC &&
+                //    element_type_ != ELEMENT_BMP_DEC) {
+                //    assert(surface_pool_[i]->Data.Locked == 0);
+                //}
+                delete surface_pool_[i];
+                surface_pool_[i] = NULL;
+            }
+        }
         delete surface_pool_;
         surface_pool_ = NULL;
     }
@@ -382,10 +385,12 @@ MSDKCodec::~MSDKCodec()
 
     if (m_pMFXAllocator && !m_bUseOpaqueMemory && (ELEMENT_DECODER == element_type_ || ELEMENT_VP8_DEC == element_type_ || ELEMENT_STRING_DEC == element_type_ || ELEMENT_BMP_DEC == element_type_)) {
         m_pMFXAllocator->Free(m_pMFXAllocator->pthis, &m_mfxDecResponse);
+        m_pMFXAllocator = NULL;
     }
 
     if (m_pMFXAllocator && !m_bUseOpaqueMemory && ELEMENT_VPP == element_type_) {
         m_pMFXAllocator->Free(m_pMFXAllocator->pthis, &m_mfxEncResponse);
+        m_pMFXAllocator = NULL;
     }
 }
 
