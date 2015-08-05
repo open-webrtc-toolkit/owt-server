@@ -965,7 +965,7 @@ int MSDKCodec::SetVppCompParam(mfxExtVPPComposite *vpp_comp)
         }
     }
     printf("Input comp count is %d,video streams %d,text strings %d, picture %d\n",
-           vpp_comp->NumInputStream, stream_cnt_, string_cnt_, pic_cnt_);
+           vpp_comp->NumInputStream, stream_cnt, string_cnt, pic_cnt);
 
     //there should be at least one stream
     assert(stream_cnt);
