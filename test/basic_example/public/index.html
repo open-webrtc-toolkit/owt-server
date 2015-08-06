@@ -87,6 +87,8 @@ div#localContainer {
               <li align='left'><a href="#" onClick="recreateLocal(true)" >create local stream  </a></li>
               <li align='left'><a href="#" onClick="recreateLocal(false)" >create audio only local stream  </a></li>
               <li align='left'><a href="#" onClick="createNewToken('presenter')" >create new token and role is presenter </a></li>
+	      <li align='left'><a href="#" onClick="createNewToken('viewer')" >create new token and role is viewer </a></li>
+	      <li align='left'><a href="#" onClick="createNewToken('viewerWithData')" >create new token and role is viewerWithData </a></li>
               <li align='left'><a href="#" onClick="joinRoom()" >rejoin the room </a></li>
               <li align='left'><a href="#" onClick="pub('vp8')"><span class="glyphicon glyphicon-ok"></span> publish local vp8</a></li>
               <li align='left'><a href="#" onClick="pub('h264')"><span class="glyphicon glyphicon-ok"></span> publish local h264</a></li>
@@ -99,19 +101,23 @@ div#localContainer {
               <li align='left'><a href="#" onClick="subs('all','h264')"><span class="glyphicon glyphicon-play-circle"></span> subscribe all remote h264</a></li>
               <li align='left'><a href="#" onClick="subs('mix','h264')"><span class="glyphicon glyphicon-play-circle"></span> subscribe mix remote h264</a></li>
               <li align='left'><a href="#" onClick="subs('forward','h264')"><span class="glyphicon glyphicon-play-circle"></span> subscribe forward remote h264</a></li>
+	      <li align='left'><a href="#" onClick="subs('shareScreen','h264')"><span class="glyphicon glyphicon-play-circle"></span> subscribe shareScreen remote</a></li>
               <li align='left'><a href="#" onClick="unsub()"><span class="glyphicon glyphicon-off"></span> unsubscribe remote</a></li>
               <li align='left'><a href="#" onClick="unsub('mix')"><span class="glyphicon glyphicon-off"></span> unsubscribe mix remote</a></li>
               <li align='left'><a href="#" onClick="unsub('forward')"><span class="glyphicon glyphicon-off"></span> unsubscribe forward remote</a></li>
+	      <li align='left'><a href="#" onClick="unsub('shareScreen')"><span class="glyphicon glyphicon-off"></span> unsubscribe shareScreen remote</a></li>
               <li class="divider"></li>
-              <li align='left'><a href="#" onClick="startRecording(true)"><span class="glyphicon glyphicon-off"></span>start Recording</a></li>
-              stream:<input type="text" id="to"><br>
-              fileId:<input type="text" id="fileId">
-              <li align='left'><a href="#" onClick="startRecording(false)"><span class="glyphicon glyphicon-off"></span>stop Recording</a></li>
-              Bitrate:<input type="text" id="bitrate"> <button type="button" id="bitrate" onclick="setVideoBitrate()">Set video bit rate</button>
+              streamId:<input type="text" id="streamId"><br>
+              <button type="button" onClick="mixLocal()">Mix local stream</button><br>
+              <button type="button" onClick="unmixLocal()">Unmix local</button><br>
+              <button type="button" onClick="startRecording(true)">start Recording</button><br>
+              recorderId:<input type="text" id="recorderId"><br>
+              <button type="button" onClick="startRecording(false)">stop Recording</button><br>
+              Bitrate:<input type="text" id="bitrate"><br>
+              <button type="button" id="setBitrate" onclick="setVideoBitrate()">Set video bitrate</button><br>
               <button type="button" id="region" onclick="setRegion()">Set region</button><br>
-              Region:<input type="text" id="region"><br> 
-              ClientId:<input type="text" id="clientId"><br> 
-              <button type="button" onclick="getRegion()>Get region</button>
+              Region:<input type="text" id="regionId"><br>
+              <button type="button" onclick="getRegion()">Get region</button>
             <!--/ul-->
           </div>
           <div class="btn-group">
