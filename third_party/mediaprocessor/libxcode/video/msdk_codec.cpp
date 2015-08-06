@@ -3202,9 +3202,9 @@ int MSDKCodec::PrepareVppCompFrames()
     MediaBuf buf;
     std::list<MediaPad *>::iterator it_sinkpad;
     MediaPad *sinkpad = NULL;
+    unsigned int tick;
 
     if (0 == comp_stc_) {
-        unsigned int tick;
         // Init stage.
         // Wait for all the frame to generate the 1st composited one.
         for (it_sinkpad = this->sinkpads_.begin();
@@ -3280,6 +3280,7 @@ int MSDKCodec::PrepareVppCompFrames()
             for (; it != dec_region_list_.end(); ++it, ++pad_cursor) {
                 MediaPad *pad = (MediaPad *)it->handle;
 
+                tick = 0;
                 while (pad->GetBufData(buf) != 0) {
                     // No data, just sleep and wait
                     if (!is_running_) {
@@ -3292,6 +3293,10 @@ int MSDKCodec::PrepareVppCompFrames()
                         if (vpp_comp_map_[pad].ready_surface.msdk_surface == NULL &&
                             vpp_comp_map_[pad].ready_surface.is_eos == 0) {
                             // Newly attached stream doesn't have decoded frame yet, wait...
+                            tick++;
+                            //wait for ~10ms and return, or else it "may" hold the sink mutex infinitely
+                            //if when decoder is attached, but never send any frame (even EOS)
+                            if (tick > 50) return 2;
                         } else {
                             out_of_time = true;
                             printf("[%p]-frame comes late from pad %p, diff %u, framerate %f\n",
