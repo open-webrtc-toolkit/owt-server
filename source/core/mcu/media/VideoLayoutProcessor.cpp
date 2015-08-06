@@ -149,14 +149,27 @@ bool VideoLayoutProcessor::setBgColor(const std::string& color)
 void VideoLayoutProcessor::addInput(int input, bool toFront)
 {
     ELOG_DEBUG("addInput, input: %d", input);
+
+    std::vector<int>::iterator it = std::find(m_inputPositions.begin(), m_inputPositions.end(), input);
+    if (it != m_inputPositions.end()) {
+        m_inputPositions.erase(it);
+    }
+
     if (toFront)
         m_inputPositions.insert(m_inputPositions.begin(), input);
-    m_inputPositions.push_back(input);
+    else
+        m_inputPositions.push_back(input);
+
     updateInputPositions();
 }
 
 void VideoLayoutProcessor::addInput(int input, std::string& specifiedRegionID)
 {
+    std::vector<int>::iterator it = std::find(m_inputPositions.begin(), m_inputPositions.end(), input);
+    if (it != m_inputPositions.end()) {
+        m_inputPositions.erase(it);
+    }
+
     std::vector<int>::iterator pos = m_inputPositions.begin();
     std::vector<Region>::iterator itRegion = m_currentRegions->begin();
     for (; itRegion != m_currentRegions->end(); ++itRegion) {
