@@ -263,7 +263,7 @@ exports = module.exports = function () {
 
     that.retrieveGatewayStatistics = function () {
         if (gateway !== undefined) {
-            var statsStr = gateway.retrieveGatewayStatistics();
+            var statsStr = gateway.retrieveStatistics();
             if (statsStr !== "") {
                 var stats = JSON.parse(statsStr);
                 logger.debug('Gateway statistics: packets received ', stats.packetsReceived, "packets lost ", stats.packetsLost, "average RTT ", stats.averageRTT);
