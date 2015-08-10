@@ -21,6 +21,9 @@ parse_arguments(){
       "--nightly")
         NIGHTLY=true
         ;;
+      "--no-internal")
+        NO_INTERNAL=true
+        ;;
     esac
     shift
   done
@@ -73,7 +76,7 @@ if [ "$NIGHTLY" != "true" ]; then
   install_openh264
 fi
 
-install_webrtc
+${NO_INTERNAL} || install_webrtc
 
 install_mediaprocessor
 
