@@ -18,6 +18,9 @@ parse_arguments(){
       "--cleanup")
         CLEANUP=true
         ;;
+      "--no-internal")
+        NO_INTERNAL=true
+        ;;
     esac
     shift
   done
@@ -83,12 +86,7 @@ install_openssl
 pause "Installing libsrtp library...  [press Enter]"
 install_libsrtp
 
-read -p "Installing webrtc library? [Yes/no]" yn
-case $yn in
-  [Nn]* ) ;;
-  [Yy]* ) install_webrtc;;
-  * ) install_webrtc;;
-esac
+${NO_INTERNAL} || (pause "Installing webrtc library... [press Enter]" && install_webrtc)
 
 pause "Installing ooVoo SDK library...  [press Enter]"
 install_oovoosdk

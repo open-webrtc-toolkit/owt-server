@@ -159,10 +159,8 @@ install_libsrtp(){
 
 install_webrtc(){
   export GIT_SSL_NO_VERIFY=1
-  cd $ROOT/third_party/webrtc
-  if [ -d src ]; then
-    rm -rf src
-  fi
+  pushd ${ROOT}/third_party/webrtc
+  rm -rf src #TODO: git-update
   local GIT_ACCOUNT="lab_webrtctest"
   local WOOGEEN_GIT_URL=`git config --get remote.origin.url`
   if [ ! -z "$WOOGEEN_GIT_URL" ]; then
@@ -174,13 +172,14 @@ install_webrtc(){
   fi
   # git clone --recursive -b 42-mcu ssh://${GIT_ACCOUNT}@git-ccr-1.devtools.intel.com:29418/webrtc-webrtcstack src
   git clone -b 42-mcu ssh://${GIT_ACCOUNT}@git-ccr-1.devtools.intel.com:29418/webrtc-webrtcstack src
-  cd src
+  pushd src
   sed -i 's/lab_webrtctest/'${GIT_ACCOUNT}'/g' .gitmodules
   git submodule init
   git submodule update
   ./build.sh
   mv libwebrtc.a ../
-  cd $CURRENT_DIR
+  popd
+  popd
 }
 
 install_libuv() {
