@@ -32,7 +32,7 @@ Handle<Value> ExternalInput::New(const Arguments& args) {
   std::string options = std::string(*param);
 
   ExternalInput* obj = new ExternalInput();
-  obj->me = new erizo::ExternalInput(options);
+  obj->me = new woogeen_base::ExternalInput(options);
   obj->me->setStatusListener(obj);
 
   obj->Wrap(args.This());
@@ -46,7 +46,7 @@ Handle<Value> ExternalInput::close(const Arguments& args) {
   HandleScope scope;
 
   ExternalInput* obj = ObjectWrap::Unwrap<ExternalInput>(args.This());
-  erizo::ExternalInput *me = (erizo::ExternalInput*)obj->me;
+  woogeen_base::ExternalInput *me = (woogeen_base::ExternalInput*)obj->me;
 
   delete me;
 
@@ -57,7 +57,7 @@ Handle<Value> ExternalInput::init(const Arguments& args) {
   HandleScope scope;
 
   ExternalInput* obj = ObjectWrap::Unwrap<ExternalInput>(args.This());
-  erizo::ExternalInput *me = (erizo::ExternalInput*) obj->me;
+  woogeen_base::ExternalInput *me = (woogeen_base::ExternalInput*) obj->me;
 
   me->init();
   obj->statusCallback_ = Persistent<Function>::New(Local<Function>::Cast(args[0]));
@@ -69,7 +69,7 @@ Handle<Value> ExternalInput::setAudioReceiver(const Arguments& args) {
   HandleScope scope;
 
   ExternalInput* obj = ObjectWrap::Unwrap<ExternalInput>(args.This());
-  erizo::ExternalInput *me = (erizo::ExternalInput*)obj->me;
+  woogeen_base::ExternalInput *me = (woogeen_base::ExternalInput*)obj->me;
 
   MediaSink* param = ObjectWrap::Unwrap<MediaSink>(args[0]->ToObject());
   erizo::MediaSink *mr = param->msink;
@@ -83,7 +83,7 @@ Handle<Value> ExternalInput::setVideoReceiver(const Arguments& args) {
   HandleScope scope;
 
   ExternalInput* obj = ObjectWrap::Unwrap<ExternalInput>(args.This());
-  erizo::ExternalInput *me = (erizo::ExternalInput*)obj->me;
+  woogeen_base::ExternalInput *me = (woogeen_base::ExternalInput*)obj->me;
 
   MediaSink* param = ObjectWrap::Unwrap<MediaSink>(args[0]->ToObject());
   erizo::MediaSink *mr = param->msink;

@@ -1,21 +1,18 @@
 #ifndef EXTERNALINPUT_H
 #define EXTERNALINPUT_H
 
+#include "../erizoAPI/MediaDefinitions.h"
 #include <node.h>
-#include <media/ExternalInput.h>
-#include "MediaDefinitions.h"
+#include <ExternalInput.h>
 
 
 /*
- * Wrapper class of erizo::ExternalInput
- *
- * Represents a OneToMany connection.
- * Receives media from one publisher and retransmits it to every subscriber.
+ * Wrapper class of woogeen_base::ExternalInput
  */
-class ExternalInput: public node::ObjectWrap, erizo::ExternalInputStatusListener {
+class ExternalInput: public node::ObjectWrap, woogeen_base::ExternalInputStatusListener {
  public:
   static void Init(v8::Handle<v8::Object> target);
-  erizo::ExternalInput* me;
+  woogeen_base::ExternalInput* me;
   std::string statusMsg;
   boost::mutex statusMutex;
 

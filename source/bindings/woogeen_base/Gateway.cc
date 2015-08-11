@@ -127,7 +127,7 @@ Handle<Value> Gateway::addExternalPublisher(const Arguments& args) {
   woogeen_base::Gateway* me = obj->me;
 
   ExternalInput* param = ObjectWrap::Unwrap<ExternalInput>(args[0]->ToObject());
-  erizo::ExternalInput* wr = (erizo::ExternalInput*)param->me;
+  woogeen_base::ExternalInput* wr = (woogeen_base::ExternalInput*)param->me;
 
   String::Utf8Value param1(args[1]->ToString());
   std::string clientId = std::string(*param1);
