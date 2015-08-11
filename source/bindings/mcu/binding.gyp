@@ -2,9 +2,9 @@
   'targets': [
   {
     'target_name': 'addon',
-      'sources': [ 'addon.cc', 'Mixer.cc', '../erizoAPI/WebRtcConnection.cc', '../erizoAPI/ExternalInput.cc', '../erizoAPI/ExternalOutput.cc', '../woogeen_base/Gateway.cc' ],
+      'sources': [ 'addon.cc', 'Mixer.cc', '../erizoAPI/WebRtcConnection.cc', '../woogeen_base/ExternalInput.cc', '../woogeen_base/Gateway.cc' ],
       'include_dirs' : ['$(CORE_HOME)/common', '$(CORE_HOME)/erizo/src/erizo', '$(CORE_HOME)/woogeen_base', '$(CORE_HOME)/mcu', '$(CORE_HOME)/../../build/libdeps/build/include', '$(CORE_HOME)/../../third_party/libuv/include'],
-      'libraries': ['-L$(CORE_HOME)/build/mcu', '-lmcu', '-L$(CORE_HOME)/build/erizo/src/erizo', '-lerizo', '-L$(CORE_HOME)/../../third_party/libuv', '-luv'],
+      'libraries': ['-L$(CORE_HOME)/build/mcu', '-lmcu', '-L$(CORE_HOME)/build/woogeen_base', '-lwoogeen_base', '-L$(CORE_HOME)/build/erizo/src/erizo', '-lerizo', '-L$(CORE_HOME)/../../third_party/libuv', '-luv'],
       'conditions': [
         [ 'OS=="mac"', {
           'xcode_settings': {

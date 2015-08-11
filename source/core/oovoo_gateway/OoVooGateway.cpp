@@ -21,7 +21,6 @@
 #include "OoVooGateway.h"
 
 #include "OoVooConnection.h"
-#include <media/ExternalOutput.h>
 #include <rtputils.h>
 
 using namespace erizo;

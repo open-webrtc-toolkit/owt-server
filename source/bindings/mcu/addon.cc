@@ -3,9 +3,8 @@
 #endif
 #include <node.h>
 #include "Mixer.h"
-#include "../erizoAPI/ExternalInput.h"
-#include "../erizoAPI/ExternalOutput.h"
 #include "../erizoAPI/WebRtcConnection.h"
+#include "../woogeen_base/ExternalInput.h"
 #include "../woogeen_base/Gateway.h"
 
 using namespace v8;
@@ -15,7 +14,6 @@ void InitAll(Handle<Object> target) {
   Gateway::Init(target);
   Mixer::Init(target);
   ExternalInput::Init(target);
-  ExternalOutput::Init(target);
 }
 
 NODE_MODULE(addon, InitAll)
