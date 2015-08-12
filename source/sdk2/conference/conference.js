@@ -541,7 +541,7 @@ maxVideoBW: xxx,<br>
 unmix: false/true, // if true, this stream would not be included in mix stream<br>
 videoCodec: 'h264'/'vp8' // not applicable for p2p room<br>
 transport: 'udp'/'tcp' // rtsp connection transport type, default 'udp'; only for rtsp input<br>
-bufferSize: integer number in bytes // udp receving buffer size, default 2 MB; only for rtsp input (udp transport)<br>
+bufferSize: integer number in bytes // udp receiving buffer size, default 2 MB; only for rtsp input (udp transport)<br>
 }
    * @memberOf Woogeen.ConferenceClient
    * @param {stream} stream Stream to publish.
@@ -1026,6 +1026,87 @@ conference.shareScreen({resolution: 'hd720p'}, function (st) {
         safeCall(onFailure, err);
       });
     });
+  };
+
+
+/**
+   * @function playAudio
+   * @desc This function tells server to continue sending/receiving audio data of the RemoteStream/LocalStream.
+<br><b>Remarks:</b><br>
+The audio track of the stream should be enabled to be played correctly. For RemoteStream, it should be subscribed; for LocalStream, it should be published.
+   * @memberOf Woogeen.ConferenceClient
+   * @param {WoogeenStream} stream instance.
+   * @param {function} onSuccess() (optional) Success callback.
+   * @param {function} onFailure(err) (optional) Failure callback.
+   * @instance
+   */
+  WoogeenConference.prototype.playAudio = function(stream, onSuccess, onFailure) {
+    if ((stream instanceof Woogeen.Stream) && stream.hasAudio() && typeof stream.signalOnPlayAudio === 'function') {
+      return stream.signalOnPlayAudio(onSuccess, onFailure);
+    }
+    if (typeof onFailure === 'function') {
+      onFailure('unable to call playAudio');
+    }
+  };
+
+/**
+   * @function pauseAudio
+   * @desc This function tells server to stop sending/receiving audio data of the subscribed RemoteStream/LocalStream.
+<br><b>Remarks:</b><br>
+Upon success, the audio of the stream would be hold, and you can call disableAudio() method to disable the audio track locally to stop playing. For RemoteStream, it should be subscribed; for LocalStream, it should be published.
+   * @memberOf Woogeen.ConferenceClient
+   * @param {WoogeenStream} stream instance.
+   * @param {function} onSuccess() (optional) Success callback.
+   * @param {function} onFailure(err) (optional) Failure callback.
+   * @instance
+   */
+  WoogeenConference.prototype.pauseAudio = function(stream, onSuccess, onFailure) {
+    if ((stream instanceof Woogeen.Stream) && stream.hasAudio() && typeof stream.signalOnPauseAudio === 'function') {
+      return stream.signalOnPauseAudio(onSuccess, onFailure);
+    }
+    if (typeof onFailure === 'function') {
+      onFailure('unable to call pauseAudio');
+    }
+  };
+
+/**
+   * @function playVideo
+   * @desc This function tells server to continue sending/receiving video data of the subscribed RemoteStream/LocalStream.
+<br><b>Remarks:</b><br>
+The video track of the stream should be enabled to be played correctly. For RemoteStream, it should be subscribed; for LocalStream, it should be published.
+   * @memberOf Woogeen.ConferenceClient
+   * @param {WoogeenStream} stream instance.
+   * @param {function} onSuccess() (optional) Success callback.
+   * @param {function} onFailure(err) (optional) Failure callback.
+   * @instance
+   */
+  WoogeenConference.prototype.playVideo = function(stream, onSuccess, onFailure) {
+    if ((stream instanceof Woogeen.Stream) && stream.hasVideo() && typeof stream.signalOnPlayVideo === 'function') {
+      return stream.signalOnPlayVideo(onSuccess, onFailure);
+    }
+    if (typeof onFailure === 'function') {
+      onFailure('unable to call playVideo');
+    }
+  };
+
+/**
+   * @function pauseVideo
+   * @desc This function tells server to stop sending/receiving video data of the subscribed RemoteStream/LocalStream.
+<br><b>Remarks:</b><br>
+Upon success, the video of the stream would be hold, and you can call disableVideo() method to disable the video track locally to stop playing. For RemoteStream, it should be subscribed; for LocalStream, it should be published.
+   * @memberOf Woogeen.ConferenceClient
+   * @param {WoogeenStream} stream instance.
+   * @param {function} onSuccess() (optional) Success callback.
+   * @param {function} onFailure(err) (optional) Failure callback.
+   * @instance
+   */
+  WoogeenConference.prototype.pauseVideo = function(stream, onSuccess, onFailure) {
+    if ((stream instanceof Woogeen.Stream) && stream.hasVideo() && typeof stream.signalOnPauseVideo === 'function') {
+      return stream.signalOnPauseVideo(onSuccess, onFailure);
+    }
+    if (typeof onFailure === 'function') {
+      onFailure('unable to call pauseVideo');
+    }
   };
 
 /**

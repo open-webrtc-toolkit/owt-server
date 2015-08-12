@@ -129,16 +129,15 @@ var sendMsgToRoom = function (room, type, arg) {
 };
 
 var eventReportHandlers = {
-    'updateStream': function (event, data) {
-        for (var i in rooms) {
-            if (rooms.hasOwnProperty(i) && rooms[i].mixer === data) {
-                sendMsgToRoom(rooms[i], 'onUpdateStream', {
-                    event: event,
-                    id: data,
-                    data: data
-                });
-                break;
-            }
+    'updateStream': function (roomId, event, data) {
+        if (rooms[roomId]) {
+            sendMsgToRoom(rooms[roomId], 'onUpdateStream', {
+                event: event,
+                id: data,
+                data: data
+            });
+        } else {
+            log.warn('room not found:', roomId);
         }
     }
 };
@@ -522,7 +521,7 @@ var listen = function () {
                                                     on_error();
                                                 } else {
                                                     room.agent = erizoAgent.id;
-                                                    room.controller = controller.RoomController({rpc: rpc, agent_id: erizoAgent.id});
+                                                    room.controller = controller.RoomController({rpc: rpc, agent_id: erizoAgent.id, id: room.id});
                                                     room.controller.addEventListener(function(type, event) {
                                                         // TODO Send message to room? Handle ErizoJS disconnection.
                                                         if (type === 'unpublish') {
@@ -1266,10 +1265,10 @@ exports.getConfig = function (callback) {
     });
 };
 
-exports.handleEventReport = function (event, type, data) {
-    log.debug(event, type, data);
+exports.handleEventReport = function (event, room, type, data) {
+    log.debug(event, room, type, data);
     if (typeof eventReportHandlers[event] === 'function') {
-        eventReportHandlers[event](type, data);
+        eventReportHandlers[event](room, type, data);
     }
 };
 

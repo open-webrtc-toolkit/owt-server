@@ -42,7 +42,7 @@ WebRTCGateway::~WebRTCGateway()
 
 int WebRTCGateway::deliverAudioData(char* buf, int len)
 {
-    if (len <= 0)
+    if (len <= 0 || !m_publisherStatus.hasAudio())
         return 0;
 
     m_audioReceiver->deliverAudioData(buf, len);
@@ -58,7 +58,7 @@ int WebRTCGateway::deliverAudioData(char* buf, int len)
 
 int WebRTCGateway::deliverVideoData(char* buf, int len)
 {
-    if (len <= 0)
+    if (len <= 0 || !m_publisherStatus.hasVideo())
         return 0;
 
     m_videoReceiver->deliverVideoData(buf, len);
@@ -276,6 +276,16 @@ void WebRTCGateway::unsubscribeStream(const std::string& id, bool isAudio)
         isAudio ? subscriber.status.disableAudio() : subscriber.status.disableVideo();
     }
     lock.unlock();
+}
+
+void WebRTCGateway::publishStream(const std::string& id, bool isAudio)
+{
+    isAudio ? m_publisherStatus.enableAudio() : m_publisherStatus.enableVideo();
+}
+
+void WebRTCGateway::unpublishStream(const std::string& id, bool isAudio)
+{
+    isAudio ? m_publisherStatus.disableAudio() : m_publisherStatus.disableVideo();
 }
 
 void WebRTCGateway::setAudioSink(MediaSink* sink)
