@@ -25,6 +25,7 @@ exports.ErizoJSController = function () {
         publishers = {},
         mixers = {},
         mixerProxy,
+        roomId,
         erizoControllerId,
         // INTERVAL_TIME_SDP = 100,
         INTERVAL_TIME_FIR = 100,
@@ -63,7 +64,7 @@ exports.ErizoJSController = function () {
                 // setup event listeners
                 mixer.addEventListener('UpdateStream', function (evt) {
                     if (erizoControllerId !== undefined) {
-                        rpc.callRpc(erizoControllerId, 'eventReport', ['updateStream', evt, id]);
+                        rpc.callRpc(erizoControllerId, 'eventReport', ['updateStream', roomId, evt, id]);
                     }
                 });
                 publishers[id] = mixer;
@@ -151,7 +152,7 @@ exports.ErizoJSController = function () {
           }
           if (newStatus === 103) { // Connection Ready
             // Perform the additional work for publishers.
-            if (id_mixer && !(unmix === true)) {
+            if (id_mixer && (unmix !== true)) {
               var mixer = publishers[id_mixer];
               if (mixer) {
                 mixer.addPublisher(publishers[id_pub], id_pub);
@@ -471,7 +472,7 @@ exports.ErizoJSController = function () {
     that.subscribeStream = function subscribeStream (publisher_id, subscriber_id, isAudio, callback) {
         var index = subscribers[publisher_id].indexOf(subscriber_id);
         if (index !== -1) {
-            log.info('Enabling subscriber', subscriber_id, 'in', publisher_id);
+            log.info('Enabling subscriber', subscriber_id, 'in', publisher_id, isAudio ? '[audio]' : '[video]');
             publishers[publisher_id].subscribeStream(subscriber_id, isAudio);
             return callback('callback');
         }
@@ -481,8 +482,32 @@ exports.ErizoJSController = function () {
     that.unsubscribeStream = function unsubscribeStream (publisher_id, subscriber_id, isAudio, callback) {
         var index = subscribers[publisher_id].indexOf(subscriber_id);
         if (index !== -1) {
-            log.info('Disabling subscriber', subscriber_id, 'in', publisher_id);
+            log.info('Disabling subscriber', subscriber_id, 'in', publisher_id, isAudio ? '[audio]' : '[video]');
             publishers[publisher_id].unsubscribeStream(subscriber_id, isAudio);
+            return callback('callback');
+        }
+        callback('callback', 'error');
+    };
+
+    that.publishStream = function publishStream (publisher_id, isAudio, callback) {
+        if (publishers[publisher_id] !== undefined) {
+            log.info('Enabling publisher', publisher_id, isAudio ? '[audio]' : '[video]');
+            publishers[publisher_id].publishStream(publisher_id, isAudio);
+            if (erizoControllerId !== undefined) {
+                rpc.callRpc(erizoControllerId, 'eventReport', ['updateStream', roomId, (isAudio ? 'AudioEnabled' : 'VideoEnabled'), publisher_id]);
+            }
+            return callback('callback');
+        }
+        callback('callback', 'error');
+    };
+
+    that.unpublishStream = function unpublishStream (publisher_id, isAudio, callback) {
+        if (publishers[publisher_id] !== undefined) {
+            log.info('Disabling publisher', publisher_id, isAudio ? '[audio]' : '[video]');
+            publishers[publisher_id].unpublishStream(publisher_id, isAudio);
+            if (erizoControllerId !== undefined) {
+                rpc.callRpc(erizoControllerId, 'eventReport', ['updateStream', roomId, (isAudio ? 'AudioDisabled' : 'VideoDisabled'), publisher_id]);
+            }
             return callback('callback');
         }
         callback('callback', 'error');
@@ -566,8 +591,9 @@ exports.ErizoJSController = function () {
         callback('callback', 'failed');
     };
 
-    that.setControllerId = function (id) {
+    that.setControllerId = function (id, room_id) {
         erizoControllerId = id;
+        roomId = room_id;
     };
 
     return that;

@@ -21,6 +21,7 @@ exports.RoomController = function (spec) {
 
     var rpc = spec.rpc;
     var agentId = spec.agent_id;
+    var roomId = spec.id;
 
     var KEEPALIVE_INTERVAL = 5*1000;
 
@@ -62,7 +63,7 @@ exports.RoomController = function (spec) {
             log.debug("Answer", erizo_id);
             erizos[publisher_id] = erizo_id;
             callback();
-            rpc.callRpc('ErizoJS_'+erizo_id, 'setControllerId', [exports.myId], {});
+            rpc.callRpc('ErizoJS_'+erizo_id, 'setControllerId', [exports.myId, roomId], {});
         }});
     };
 
@@ -463,6 +464,42 @@ exports.RoomController = function (spec) {
         if (index !== -1) {
             log.info('Disabling [video] subscriber', subscriber_id, 'in', publisher_id);
             rpc.callRpc(getErizoQueue(publisher_id), 'unsubscribeStream', [publisher_id, subscriber_id, false], {callback: callback});
+        } else {
+            callback('error');
+        }
+    };
+
+    that['audio-out-on'] = function (publisher_id, unused, callback) {
+        if (publishers[publisher_id] !== undefined) {
+            log.info('Enabling [audio] publisher', publisher_id);
+            rpc.callRpc(getErizoQueue(publisher_id), 'publishStream', [publisher_id, true], {callback: callback});
+        } else {
+            callback('error');
+        }
+    };
+
+    that['audio-out-off'] = function (publisher_id, unused, callback) {
+        if (publishers[publisher_id] !== undefined) {
+            log.info('Disabling [audio] publisher', publisher_id);
+            rpc.callRpc(getErizoQueue(publisher_id), 'unpublishStream', [publisher_id, true], {callback: callback});
+        } else {
+            callback('error');
+        }
+    };
+
+    that['video-out-on'] = function (publisher_id, unused, callback) {
+        if (publishers[publisher_id] !== undefined) {
+            log.info('Enabling [video] publisher', publisher_id);
+            rpc.callRpc(getErizoQueue(publisher_id), 'publishStream', [publisher_id, false], {callback: callback});
+        } else {
+            callback('error');
+        }
+    };
+
+    that['video-out-off'] = function (publisher_id, unused, callback) {
+        if (publishers[publisher_id] !== undefined) {
+            log.info('Disabling [video] publisher', publisher_id);
+            rpc.callRpc(getErizoQueue(publisher_id), 'unpublishStream', [publisher_id, false], {callback: callback});
         } else {
             callback('error');
         }

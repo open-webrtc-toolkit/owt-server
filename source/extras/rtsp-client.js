@@ -9,6 +9,27 @@ var WoogeenNodeConference = (function () {
       callback.apply(null, args);
     }
   }
+
+  function sendCtrlPayload(socket, action, streamId, callback) {
+    var payload = {
+      type: 'control',
+      payload: {
+        action: action,
+        streamId: streamId
+      }
+    };
+    try {
+      socket.emit('customMessage', payload, function (resp, mesg) {
+        if (resp === 'success') {
+          return safeCall(callback, null, mesg);
+        }
+        return safeCall(callback, mesg||'response error');
+      });
+    } catch (e) {
+      safeCall(callback, e);
+    }
+  }
+
   var DISCONNECTED = 0, CONNECTING = 1, CONNECTED = 2;
   function WoogeenNodeConference (spec) {
     var that = {};
@@ -143,6 +164,22 @@ var WoogeenNodeConference = (function () {
               }
             };
 
+            self.playVideo = function playVideo (streamId, callback) {
+              sendCtrlPayload(self.socket, 'video-out-on', streamId, callback);
+            };
+
+            self.pauseVideo = function pauseVideo (streamId, callback) {
+              sendCtrlPayload(self.socket, 'video-out-off', streamId, callback);
+            };
+
+            self.playAudio = function playAudio (streamId, callback) {
+              sendCtrlPayload(self.socket, 'audio-out-on', streamId, callback);
+            };
+
+            self.pauseAudio = function pauseAudio (streamId, callback) {
+              sendCtrlPayload(self.socket, 'audio-out-off', streamId, callback);
+            };
+
             return safeCall(callback, null, {streams: resp.streams});
           }
           return safeCall(callback, resp||'response error');
@@ -189,6 +226,22 @@ nuve.getRooms(function (resp) {
             return process.exit();
           }
           console.log('stream published:', resp);
+          setTimeout(function () {
+            console.log('try pauseVideo...');
+            client.pauseVideo(resp, function (err) {
+              if (err) {
+                return console.log('pauseVideo failed:', err);
+              }
+              setTimeout(function () {
+              console.log('try playVideo...');
+                client.playVideo(resp, function (err) {
+                  if (err) {
+                    return console.log('playVideo failed:', err);
+                  }
+                });
+              }, 3000);
+            });
+          }, 3000);
           setTimeout(function () {
             console.log('try unpublishing...');
             client.unpublish(resp, function (err) {

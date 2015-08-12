@@ -70,12 +70,11 @@ public:
     // which can be used to monitor the gateway. Refer to ooVoo Gateway for example.
     std::string retrieveStatistics() { return ""; }
 
+    // Interfaces to support media play/pause.
     void subscribeStream(const std::string& id, bool isAudio);
     void unsubscribeStream(const std::string& id, bool isAudio);
-
-    // TODO: implement the below interfaces to support media play/pause.
-    void publishStream(const std::string& id, bool isAudio) { }
-    void unpublishStream(const std::string& id, bool isAudio) { }
+    void publishStream(const std::string& id, bool isAudio);
+    void unpublishStream(const std::string& id, bool isAudio);
 
     bool addExternalOutput(const std::string& configParam, woogeen_base::EventRegistry* callback = nullptr);
     bool removeExternalOutput(const std::string& outputId, bool close);
@@ -121,6 +120,7 @@ private:
 
     std::string m_participantId;
     boost::shared_ptr<erizo::MediaSource> m_publisher;
+    woogeen_base::MediaEnabling m_publisherStatus;
     boost::shared_mutex m_subscriberMutex;
     std::map<std::string, std::pair<boost::shared_ptr<erizo::MediaSink>, woogeen_base::MediaEnabling>> m_subscribers;
     boost::shared_mutex m_sinkMutex;

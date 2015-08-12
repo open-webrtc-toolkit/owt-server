@@ -48,7 +48,7 @@ ExternalInputGateway::~ExternalInputGateway()
 
 int ExternalInputGateway::deliverAudioData(char* buf, int len)
 {
-    if (len <= 0)
+    if (len <= 0 || !m_publisherStatus.hasAudio())
         return 0;
 
     {
@@ -65,7 +65,7 @@ int ExternalInputGateway::deliverAudioData(char* buf, int len)
 
 int ExternalInputGateway::deliverVideoData(char* buf, int len)
 {
-    if (len <= 0)
+    if (len <= 0 || !m_publisherStatus.hasVideo())
         return 0;
 
     {
@@ -294,6 +294,16 @@ void ExternalInputGateway::unsubscribeStream(const std::string& id, bool isAudio
         isAudio ? it->second.second.disableAudio() : it->second.second.disableVideo();
     }
     lock.unlock();
+}
+
+void ExternalInputGateway::publishStream(const std::string& id, bool isAudio)
+{
+    isAudio ? m_publisherStatus.enableAudio() : m_publisherStatus.enableVideo();
+}
+
+void ExternalInputGateway::unpublishStream(const std::string& id, bool isAudio)
+{
+    isAudio ? m_publisherStatus.disableAudio() : m_publisherStatus.disableVideo();
 }
 
 void ExternalInputGateway::setAudioSink(MediaSink* sink)
