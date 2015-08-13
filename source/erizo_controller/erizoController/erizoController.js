@@ -129,12 +129,36 @@ var sendMsgToRoom = function (room, type, arg) {
 };
 
 var eventReportHandlers = {
-    'updateStream': function (roomId, event) {
+    'updateStream': function (roomId, spec) {
         if (rooms[roomId]) {
-            sendMsgToRoom(rooms[roomId], 'onUpdateStream', event);
+            sendMsgToRoom(rooms[roomId], 'onUpdateStream', spec);
         } else {
             log.warn('room not found:', roomId);
         }
+    },
+    'unpublish': function (roomId, spec) {
+        var room = rooms[roomId];
+        if (!room) {
+            log.warn('room not found:', roomId);
+            return;
+        }
+
+        var streamId = spec.id;
+        log.info('Unpublishing stream:', streamId);
+        room.controller.removePublisher(streamId);
+
+        room.sockets.map(function (socket) {
+            var index = socket.streams.indexOf(streamId);
+            if (index !== -1) {
+                socket.streams.splice(index, 1);
+            }
+        });
+
+        if (room.streams[streamId]) {
+            delete room.streams[streamId];
+        }
+
+        sendMsgToRoom(room, 'onRemoveStream', {id: streamId});
     }
 };
 

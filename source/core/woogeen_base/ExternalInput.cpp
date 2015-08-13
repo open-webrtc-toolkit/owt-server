@@ -233,6 +233,9 @@ void ExternalInput::receiveLoop()
                 av_strerror(res, (char*)(&errbuff), 500);
                 ELOG_ERROR("Error opening input %s", errbuff);
                 m_running = false;
+                if (m_statusListener)
+                    m_statusListener->notifyStatus("reopening input url error");
+
                 return;
             }
             av_read_play(m_context);
