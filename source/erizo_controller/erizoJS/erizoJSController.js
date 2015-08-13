@@ -225,6 +225,7 @@ exports.ErizoJSController = function () {
             publishers[from] = muxer;
             subscribers[from] = [];
 
+            var initialized = false;
             ei.init(function (message) {
                 if (publishers[from] === undefined) {
                     log.info('External input', from, 'removed before initialized');
@@ -258,8 +259,9 @@ exports.ErizoJSController = function () {
                         }
                     }
 
+                    initialized = true;
                     callback('onReady');
-                } else {
+                } else if (!initialized) {
                     // Reclaim the native resource.
                     // TODO: In normal (successful) case the native resource of
                     // the ExternalInput is managed implicitly by the muxer. We
@@ -272,6 +274,12 @@ exports.ErizoJSController = function () {
                     delete publishers[from];
                     log.error('External input', from, 'initialization failed');
                     callback('callback', message);
+                } else {
+                    // Some errors happen after the external input has been initialized.
+                    log.warn('External input', from, 'encounters following error after initialized:', message);
+                    if (erizoControllerId !== undefined) {
+                        rpc.callRpc(erizoControllerId, 'eventReport', ['unpublish', roomId, {event: '', id: from, data: null}]);
+                    }
                 }
             });
             callback('callback', 'success'); // avoid rpc timeout
