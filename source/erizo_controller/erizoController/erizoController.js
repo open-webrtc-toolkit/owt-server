@@ -129,13 +129,9 @@ var sendMsgToRoom = function (room, type, arg) {
 };
 
 var eventReportHandlers = {
-    'updateStream': function (roomId, event, data) {
+    'updateStream': function (roomId, event) {
         if (rooms[roomId]) {
-            sendMsgToRoom(rooms[roomId], 'onUpdateStream', {
-                event: event,
-                id: data,
-                data: data
-            });
+            sendMsgToRoom(rooms[roomId], 'onUpdateStream', event);
         } else {
             log.warn('room not found:', roomId);
         }
@@ -1265,10 +1261,10 @@ exports.getConfig = function (callback) {
     });
 };
 
-exports.handleEventReport = function (event, room, type, data) {
-    log.debug(event, room, type, data);
+exports.handleEventReport = function (event, room, spec) {
+    log.debug(event, room, spec);
     if (typeof eventReportHandlers[event] === 'function') {
-        eventReportHandlers[event](room, type, data);
+        eventReportHandlers[event](room, spec);
     }
 };
 
