@@ -45,7 +45,7 @@ exports.getConfig = function (callback) {
     });
 };
 
-exports.eventReport = function (event, room, type, data) {
+exports.eventReport = function (event, room, spec) {
     'use strict';
-    erizoController.handleEventReport(event, room, type, data);
+    erizoController.handleEventReport(event, room, spec);
 }

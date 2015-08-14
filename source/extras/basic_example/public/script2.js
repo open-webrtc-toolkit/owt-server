@@ -116,8 +116,8 @@
       });
     } else {
       ['VideoEnabled', 'AudioEnabled', 'VideoDisabled', 'AudioDisabled'].map(function (event_name) {
-        stream.on(event_name, function (id) {
-          L.Logger.info('stream', id, event_name);
+        stream.on(event_name, function () {
+          L.Logger.info('stream', stream.id(), event_name);
         });
       });
     }

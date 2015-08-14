@@ -1,13 +1,12 @@
-/*global require, exports, console, setInterval, clearInterval*/
+/*global require, exports, setInterval*/
+'use strict';
 
 var logger = require('./../common/logger').logger;
-
+var erizoController = require('./erizoController');
 // Logger
-var log = logger.getLogger("RoomController");
+var log = logger.getLogger('RoomController');
 
 exports.RoomController = function (spec) {
-    "use strict";
-
     var that = {},
         // {id: array of subscribers}
         subscribers = {},
@@ -472,7 +471,12 @@ exports.RoomController = function (spec) {
     that['audio-out-on'] = function (publisher_id, unused, callback) {
         if (publishers[publisher_id] !== undefined) {
             log.info('Enabling [audio] publisher', publisher_id);
-            rpc.callRpc(getErizoQueue(publisher_id), 'publishStream', [publisher_id, true], {callback: callback});
+            rpc.callRpc(getErizoQueue(publisher_id), 'publishStream', [publisher_id, true], {callback: function (err) {
+                if (!err) {
+                    erizoController.handleEventReport('updateStream', roomId, {event: 'AudioEnabled', id: publisher_id, data: null});
+                }
+                callback(err);
+            }});
         } else {
             callback('error');
         }
@@ -481,7 +485,12 @@ exports.RoomController = function (spec) {
     that['audio-out-off'] = function (publisher_id, unused, callback) {
         if (publishers[publisher_id] !== undefined) {
             log.info('Disabling [audio] publisher', publisher_id);
-            rpc.callRpc(getErizoQueue(publisher_id), 'unpublishStream', [publisher_id, true], {callback: callback});
+            rpc.callRpc(getErizoQueue(publisher_id), 'unpublishStream', [publisher_id, true], {callback: function (err) {
+                if (!err) {
+                    erizoController.handleEventReport('updateStream', roomId, {event: 'AudioDisabled', id: publisher_id, data: null});
+                }
+                callback(err);
+            }});
         } else {
             callback('error');
         }
@@ -490,7 +499,12 @@ exports.RoomController = function (spec) {
     that['video-out-on'] = function (publisher_id, unused, callback) {
         if (publishers[publisher_id] !== undefined) {
             log.info('Enabling [video] publisher', publisher_id);
-            rpc.callRpc(getErizoQueue(publisher_id), 'publishStream', [publisher_id, false], {callback: callback});
+            rpc.callRpc(getErizoQueue(publisher_id), 'publishStream', [publisher_id, false], {callback: function (err) {
+                if (!err) {
+                    erizoController.handleEventReport('updateStream', roomId, {event: 'VideoEnabled', id: publisher_id, data: null});
+                }
+                callback(err);
+            }});
         } else {
             callback('error');
         }
@@ -499,7 +513,12 @@ exports.RoomController = function (spec) {
     that['video-out-off'] = function (publisher_id, unused, callback) {
         if (publishers[publisher_id] !== undefined) {
             log.info('Disabling [video] publisher', publisher_id);
-            rpc.callRpc(getErizoQueue(publisher_id), 'unpublishStream', [publisher_id, false], {callback: callback});
+            rpc.callRpc(getErizoQueue(publisher_id), 'unpublishStream', [publisher_id, false], {callback: function (err) {
+                if (!err) {
+                    erizoController.handleEventReport('updateStream', roomId, {event: 'VideoDisabled', id: publisher_id, data: null});
+                }
+                callback(err);
+            }});
         } else {
             callback('error');
         }

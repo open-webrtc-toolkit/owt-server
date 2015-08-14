@@ -64,7 +64,7 @@ exports.ErizoJSController = function () {
                 // setup event listeners
                 mixer.addEventListener('UpdateStream', function (evt) {
                     if (erizoControllerId !== undefined) {
-                        rpc.callRpc(erizoControllerId, 'eventReport', ['updateStream', roomId, evt, id]);
+                        rpc.callRpc(erizoControllerId, 'eventReport', ['updateStream', roomId, {event: evt, id: id, data: null}]);
                     }
                 });
                 publishers[id] = mixer;
@@ -493,9 +493,6 @@ exports.ErizoJSController = function () {
         if (publishers[publisher_id] !== undefined) {
             log.info('Enabling publisher', publisher_id, isAudio ? '[audio]' : '[video]');
             publishers[publisher_id].publishStream(publisher_id, isAudio);
-            if (erizoControllerId !== undefined) {
-                rpc.callRpc(erizoControllerId, 'eventReport', ['updateStream', roomId, (isAudio ? 'AudioEnabled' : 'VideoEnabled'), publisher_id]);
-            }
             return callback('callback');
         }
         callback('callback', 'error');
@@ -505,9 +502,6 @@ exports.ErizoJSController = function () {
         if (publishers[publisher_id] !== undefined) {
             log.info('Disabling publisher', publisher_id, isAudio ? '[audio]' : '[video]');
             publishers[publisher_id].unpublishStream(publisher_id, isAudio);
-            if (erizoControllerId !== undefined) {
-                rpc.callRpc(erizoControllerId, 'eventReport', ['updateStream', roomId, (isAudio ? 'AudioDisabled' : 'VideoDisabled'), publisher_id]);
-            }
             return callback('callback');
         }
         callback('callback', 'error');
