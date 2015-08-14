@@ -1012,6 +1012,7 @@ conference.shareScreen({resolution: 'hd720p'}, function (st) {
     Woogeen.LocalStream.create({
       video: {
         device: 'screen',
+        extensionId: option.extensionId,
         resolution: option.resolution,
         frameRate: option.frameRate
       },
