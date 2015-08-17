@@ -42,56 +42,56 @@ The Intel CS for WebRTC Client SDK for JavaScript has been tested on the followi
 <!--table class="params"-->
 <table class="params table table-striped">
 <caption><b>table 2: Browser requirements</b></caption>
-	<tbody>
-	<thead>
-		<tr>
-			<th><b>Browser</b></th>
-			<th colspan="3"><b>OS</b></th>
-		</tr>
+    <tbody>
+    <thead>
+        <tr>
+            <th><b>Browser</b></th>
+            <th colspan="3"><b>OS</b></th>
+        </tr>
     </thead>
-		<tr>
-			<td><b>Conference Mode</b></td>
-			<td><b>Windows\*</b></td>
-			<td><b>Ubuntu\*</b></td>
-			<td><b>Android\*</b></td>
-		</tr>
-		<tr width="12pt">
-			<td>Chrome\* 43/44</td>
-			<td>&radic;</td>
-			<td>&radic;</td>
-			<td>&radic;</td>
-		</tr>
-		<tr>
-			<td>Firefox\* 38/39</td>
-			<td>&radic;</td>
-			<td>&radic;</td>
-			<td>&radic;</td>
-		</tr>
-		<tr>
-			<td>Internet Explorer\* 9/10/11</td>
-			<td>&radic;</td>
-			<td>&nbsp;</td>
-			<td>&nbsp;</td>
-		</tr>
-		<tr>
-			<td><b>P2P Mode</b></td>
-			<td><b>Windows</b></td>
-			<td><b>Ubuntu</b></td>
-			<td><b>Android</b></td>
-		</tr>
-		<tr>
-			<td>Chrome 43/44</td>
-			<td>&radic;</td>
-			<td>&radic;</td>
-			<td>&radic;</td>
-		</tr>
-		<tr>
-			<td>Internet Explorer 9/10/11</td>
-			<td>&radic;</td>
-			<td>&nbsp;</td>
-			<td>&nbsp;</td>
-		</tr>
-	</tbody>
+        <tr>
+            <td><b>Conference Mode</b></td>
+            <td><b>Windows\*</b></td>
+            <td><b>Ubuntu\*</b></td>
+            <td><b>Android\*</b></td>
+        </tr>
+        <tr width="12pt">
+            <td>Chrome\* 43/44</td>
+            <td>&radic;</td>
+            <td>&radic;</td>
+            <td>&radic;</td>
+        </tr>
+        <tr>
+            <td>Firefox\* 38/39</td>
+            <td>&radic;</td>
+            <td>&radic;</td>
+            <td>&radic;</td>
+        </tr>
+        <tr>
+            <td>Internet Explorer\* 9/10/11</td>
+            <td>&radic;</td>
+            <td>&nbsp;</td>
+            <td>&nbsp;</td>
+        </tr>
+        <tr>
+            <td><b>P2P Mode</b></td>
+            <td><b>Windows</b></td>
+            <td><b>Ubuntu</b></td>
+            <td><b>Android</b></td>
+        </tr>
+        <tr>
+            <td>Chrome 43/44</td>
+            <td>&radic;</td>
+            <td>&radic;</td>
+            <td>&radic;</td>
+        </tr>
+        <tr>
+            <td>Internet Explorer 9/10/11</td>
+            <td>&radic;</td>
+            <td>&nbsp;</td>
+            <td>&nbsp;</td>
+        </tr>
+    </tbody>
 </table>
 
 Internet Explorer (IE) does not support WebRTC natively.  End user needs to install the IE plugin provided in the Intel CS for WebRTC package in order to enable WebRTC capability.
@@ -436,9 +436,9 @@ The following table describes the objects provided in the JavaScript SDK.
 
 ```
 <script type="text/javascript">
-	// LocalStream
-	var localStream;
-	Woogeen.LocalStream.create({
+    // LocalStream
+    var localStream;
+    Woogeen.LocalStream.create({
           video: {
               device: 'camera',
               resolution: 'vga',
@@ -449,91 +449,91 @@ The following table describes the objects provided in the JavaScript SDK.
               return console.log('create LocalStream failed:', err);
           }
           localStream = stream;
-	});
-	// RemoteStream
-	conference.on('stream-added', function (event) {
+    });
+    // RemoteStream
+    conference.on('stream-added', function (event) {
           var remoteStream = event.stream;
-    	    console.log('stream added:', stream.id());
-	});
+            console.log('stream added:', stream.id());
+    });
 </script>
 ```
 
-**Events**
+<h2 class="name" id="Events">**Events**</h2>
 
 The JavaScript objects (described earlier in this section) throw events using EventDispatchers. The following table describes all events which can be handled by registering event handlers with the addEventListener() function.
 <!--table class="params"-->
 <table class="params table table-striped">
     <caption>Table 4: Events that can be handled by registering event handlers</caption>
-	<thead>
-		<tr valign="top">
-			<th><b>Type</b></th>
-			<th><b>Event name</b></th>
-			<th><b>Description</b></th>
-		</tr>
-	</thead>
-		<tr valign="top">
-			<td rowspan="9">PeerClient</td>
-			<td>server-connected</td>
-			<td>Sets up one-to-one video chat for two clients. This event provides methods to initialize or stop a video call or to join a chat room. It can start a chat when another client joins the same chat room.</p></td>
-		</tr>
-		<tr valign="top">
-		   <td>server-connectfailed</td>
-			<td>The client is failed to connect to signaling server.</td>
-		</tr>
-		<tr valign="top">
-		   <td>server-disconnected</td>
-			<td>The client is disconnected from the peer server.</td>
-		</tr>
-		<tr valign="top">
-		    <td>chat-invited</td>
-		    <td>Received an invitation from a remote user. Parameter: senderId for the remote user's ID.</td>
-		</tr>
-		<tr valign="top">
-		    <td>chat-denied</td>
-		    <td>Remote user denied the invitation. Parameter: senderId for the remote user's ID.</td>
-		</tr>
-		<tr valign="top">
-		    <td>chat-started</td>
-		    <td>A new chat is started. Parameter: peerId for the remote user's ID.</td>
-		</tr>
-		<tr valign="top">
-		    <td>chat-stopped</td>
-		    <td>Current chat is stopped. This event is triggered when the chat is stopped by current user. Parameter: peerId for the remote user's ID and senderID for the event sender's ID.</td>
-		</tr>
-		<tr valign="top">
-		    <td>stream-added</td>
-		    <td>A stream is ready to show. Parameter: stream for remote stream, which is an instance of Woogeen.RemoteStream.</td>
-		</tr>
-		<tr valign="top">
-		    <td>data-received</td>
-		    <td>Indicates there is new data content arrived which is sent by peer through data channel.</td>
-		</tr>
-		<tr valign="top">
-			<td rowspan="6" width="115">ConferenceClient
-			</td>
-		    <td>server-disconnected</td>
-		    <td>Indicates the client has been disconnected to the server.</td>
-		</tr>
-		<tr valign="top">
-		    <td>user-joined</td>
-		    <td>Indicates that there is a new user joined. </td>
-		</tr>
-		<tr valign="top">
-		    <td>user-left</td>
-		    <td>Indicates that a user has left conference.</td>
-		</tr>
-		<tr valign="top">
-		    <td>message-received</td>
-		    <td>Indicates there is a new message delivered by server</td>
-		</tr>
-		<tr valign="top">
-		    <td>stream-added</td>
-		    <td>Indicates there is a new stream available.</td>
-		</tr>
-		<tr valign="top">
-		    <td>stream-removed </td>
-		    <td>Indicates one existed stream has been removed. </td>
-		</tr>
+    <thead>
+        <tr valign="top">
+            <th><b>Type</b></th>
+            <th><b>Event name</b></th>
+            <th><b>Description</b></th>
+        </tr>
+    </thead>
+        <tr valign="top">
+            <td rowspan="9">PeerClient</td>
+            <td>server-connected</td>
+            <td>Sets up one-to-one video chat for two clients. This event provides methods to initialize or stop a video call or to join a chat room. It can start a chat when another client joins the same chat room.</p></td>
+        </tr>
+        <tr valign="top">
+           <td>server-connectfailed</td>
+            <td>The client is failed to connect to signaling server.</td>
+        </tr>
+        <tr valign="top">
+           <td>server-disconnected</td>
+            <td>The client is disconnected from the peer server.</td>
+        </tr>
+        <tr valign="top">
+            <td>chat-invited</td>
+            <td>Received an invitation from a remote user. Parameter: senderId for the remote user's ID.</td>
+        </tr>
+        <tr valign="top">
+            <td>chat-denied</td>
+            <td>Remote user denied the invitation. Parameter: senderId for the remote user's ID.</td>
+        </tr>
+        <tr valign="top">
+            <td>chat-started</td>
+            <td>A new chat is started. Parameter: peerId for the remote user's ID.</td>
+        </tr>
+        <tr valign="top">
+            <td>chat-stopped</td>
+            <td>Current chat is stopped. This event is triggered when the chat is stopped by current user. Parameter: peerId for the remote user's ID and senderID for the event sender's ID.</td>
+        </tr>
+        <tr valign="top">
+            <td>stream-added</td>
+            <td>A stream is ready to show. Parameter: stream for remote stream, which is an instance of Woogeen.RemoteStream.</td>
+        </tr>
+        <tr valign="top">
+            <td>data-received</td>
+            <td>Indicates there is new data content arrived which is sent by peer through data channel.</td>
+        </tr>
+        <tr valign="top">
+            <td rowspan="6" width="115">ConferenceClient
+            </td>
+            <td>server-disconnected</td>
+            <td>Indicates the client has been disconnected to the server.</td>
+        </tr>
+        <tr valign="top">
+            <td>user-joined</td>
+            <td>Indicates that there is a new user joined. </td>
+        </tr>
+        <tr valign="top">
+            <td>user-left</td>
+            <td>Indicates that a user has left conference.</td>
+        </tr>
+        <tr valign="top">
+            <td>message-received</td>
+            <td>Indicates there is a new message delivered by server</td>
+        </tr>
+        <tr valign="top">
+            <td>stream-added</td>
+            <td>Indicates there is a new stream available.</td>
+        </tr>
+        <tr valign="top">
+            <td>stream-removed </td>
+            <td>Indicates one existed stream has been removed. </td>
+        </tr>
 </table>
 
 <p>&nbsp;</p>

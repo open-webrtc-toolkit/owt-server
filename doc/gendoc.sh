@@ -31,7 +31,9 @@ echo "======Genrate Doc: done.In package:"
 echo ">>>>>>$DOC_DIR"
 
 #3. post process
-java JornalProcess $DOC_DIR > postprocess.rec
+javac CosmoProcess.java
+java CosmoProcess $DOC_DIR > postprocess.rec
 rm postprocess.rec
 echo "======Post process: done..."
 cp intellogo.png $DOC_DIR
+cp head.css $DOC_DIR/styles
