@@ -813,7 +813,7 @@ videoCodec: 'h264'/'vp8' // not for p2p room<br>
 }
    * @memberOf Woogeen.ConferenceClient
    * @param {stream} stream Stream to subscribe.
-   * @param {string} options (optional) Subscribe options.
+   * @param {json} options (optional) Subscribe options.
    * @param {function} onSuccess(stream) (optional) Success callback.
    * @param {function} onFailure(err) (optional) Failure callback.
    * @example

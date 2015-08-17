@@ -221,7 +221,7 @@ install_tcmalloc(){
 }
 
 install_node_tools() {
-  sudo -E npm install -g --loglevel error node-gyp grunt-cli underscore
+  sudo -E npm install -g --loglevel error node-gyp grunt-cli underscore jsdoc
   local SDK_DIR="${ROOT}/source/sdk2"
   cd ${SDK_DIR} && make dep
   local GATEWAY_SDK_DIR="${ROOT}/source/client_sdk"
