@@ -5,3 +5,4 @@ source/etc/
 third_party/node-v0.*
 third_party/libuv*
 doc/webrtc-jsdoc-cosmo/
+doc/*.class
