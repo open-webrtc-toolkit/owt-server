@@ -8,6 +8,10 @@ CURRENT_DIR=`pwd`
 
 LIB_DIR=$BUILD_DIR/libdeps
 PREFIX_DIR=$LIB_DIR/build/
+DISABLE_NONFREE=false
+CLEANUP=false
+NIGHTLY=false
+NO_INTERNAL=false
 
 parse_arguments(){
   while [ "$1" != "" ]; do
