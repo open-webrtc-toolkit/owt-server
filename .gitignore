@@ -4,5 +4,4 @@ source/etc/
 .DS_Store
 third_party/node-v0.*
 third_party/libuv*
-third_party/mediaprocessor/
 doc/webrtc-jsdoc-cosmo/
