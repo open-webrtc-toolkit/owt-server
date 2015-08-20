@@ -44,6 +44,25 @@
 #define FRAME_RATE_CTRL_TIMER (1000 * 1000)
 #define FRAME_RATE_CTRL_PADDING (3)
 
+static mfxU16 msdk_atomic_add16(volatile mfxU16 *mem, mfxU16 val)
+{
+    asm volatile ("lock; xaddw %0,%1"
+                  : "=r" (val), "=m" (*mem)
+                  : "0" (val), "m" (*mem)
+                  : "memory", "cc");
+    return val;
+}
+
+/* Thread-safe 16-bit variable incrementing */
+static mfxU16 msdk_atomic_inc16(volatile mfxU16 *pVariable) {
+    return msdk_atomic_add16(pVariable, 1) + 1;
+}
+
+/* Thread-safe 16-bit variable decrementing */
+static mfxU16 msdk_atomic_dec16(volatile mfxU16 *pVariable) {
+    return msdk_atomic_add16(pVariable, (mfxU16)-1) + 1;
+}
+
 static unsigned int GetSysTimeInUs()
 {
     struct timeval tv;
@@ -758,7 +777,7 @@ int MSDKCodec::Recycle(MediaBuf &buf)
         for (i = 0; i < num_of_surf_; i++) {
             if (surface_pool_[i] == buf.msdk_surface) {
                 mfxFrameSurface1 *msdk_surface = (mfxFrameSurface1 *)buf.msdk_surface;
-                msdk_surface->Data.Locked--;
+                msdk_atomic_dec16((volatile mfxU16*)(&(msdk_surface->Data.Locked)));
                 break;
             }
         }
@@ -789,7 +808,7 @@ int MSDKCodec::Recycle(MediaBuf &buf)
         mfxFrameSurface1 *msdk_surface = (mfxFrameSurface1 *)buf.msdk_surface;
 
         if (msdk_surface) {
-            msdk_surface->Data.Locked--;
+            msdk_atomic_dec16((volatile mfxU16*)(&(msdk_surface->Data.Locked)));
         }
     }
 
@@ -872,7 +891,7 @@ int MSDKCodec::ProcessChainDecode()
             if (buf.msdk_surface) {
                 mfxFrameSurface1 *msdk_surface =
                        (mfxFrameSurface1 *)buf.msdk_surface;
-                msdk_surface->Data.Locked++;
+                msdk_atomic_inc16((volatile mfxU16*)(&(msdk_surface->Data.Locked)));
             }
 
             buf.mWidth = mfx_video_param_.mfx.FrameInfo.CropW;
@@ -2131,7 +2150,7 @@ mfxStatus MSDKCodec::DoingVpp(mfxFrameSurface1* in_surf, mfxFrameSurface1* out_s
 
             if (out_buf.msdk_surface) {
                 // Increase the lock count within the surface
-                out_surf->Data.Locked++;
+                msdk_atomic_inc16((volatile mfxU16*)(&(out_surf->Data.Locked)));
             }
 
             out_buf.mWidth = mfx_video_param_.vpp.Out.CropW;
@@ -2645,7 +2664,7 @@ int MSDKCodec::HandleProcessDecode()
                 if (buf.msdk_surface) {
                     mfxFrameSurface1 *msdk_surface =
                         (mfxFrameSurface1 *)buf.msdk_surface;
-                    msdk_surface->Data.Locked++;
+                    msdk_atomic_inc16((volatile mfxU16*)(&(msdk_surface->Data.Locked)));
                 }
 
                 buf.mWidth = mfx_video_param_.mfx.FrameInfo.CropW;
@@ -2669,7 +2688,7 @@ int MSDKCodec::HandleProcessDecode()
                     if (buf.msdk_surface) {
                         mfxFrameSurface1 *msdk_surface =
                             (mfxFrameSurface1 *)buf.msdk_surface;
-                        msdk_surface->Data.Locked--;
+                        msdk_atomic_dec16((volatile mfxU16*)(&(msdk_surface->Data.Locked)));
                     }
                 }
             }
@@ -2694,7 +2713,7 @@ int MSDKCodec::HandleProcessDecode()
                if (buf.msdk_surface) {
                    mfxFrameSurface1* msdk_surface =
                     (mfxFrameSurface1*)buf.msdk_surface;
-                   msdk_surface->Data.Locked++;
+                   msdk_atomic_inc16((volatile mfxU16*)(&(msdk_surface->Data.Locked)));
                }
                buf.mWidth = mfx_video_param_.mfx.FrameInfo.CropW;
                buf.mHeight = mfx_video_param_.mfx.FrameInfo.CropH;
@@ -2708,7 +2727,7 @@ int MSDKCodec::HandleProcessDecode()
                    if (buf.msdk_surface) {
                        mfxFrameSurface1* msdk_surface =
                         (mfxFrameSurface1*)buf.msdk_surface;
-                        msdk_surface->Data.Locked--;
+                        msdk_atomic_dec16((volatile mfxU16*)(&(msdk_surface->Data.Locked)));
                    }
                 }
             }
@@ -2733,7 +2752,7 @@ int MSDKCodec::HandleProcessDecode()
                 if (buf.msdk_surface) {
                     mfxFrameSurface1* msdk_surface =
                      (mfxFrameSurface1*)buf.msdk_surface;
-                    msdk_surface->Data.Locked++;
+                    msdk_atomic_inc16((volatile mfxU16*)(&(msdk_surface->Data.Locked)));
                 }
                 buf.mWidth = mfx_video_param_.mfx.FrameInfo.CropW;
                 buf.mHeight = mfx_video_param_.mfx.FrameInfo.CropH;
@@ -2747,7 +2766,7 @@ int MSDKCodec::HandleProcessDecode()
                     if (buf.msdk_surface) {
                         mfxFrameSurface1* msdk_surface =
                          (mfxFrameSurface1*)buf.msdk_surface;
-                        msdk_surface->Data.Locked--;
+                        msdk_atomic_dec16((volatile mfxU16*)(&(msdk_surface->Data.Locked)));
                     }
                 }
             }
@@ -3108,7 +3127,7 @@ int MSDKCodec::HandleProcessPreENC()
         eTask->encoded = 0;
         mfx_fei_frame_seq_++;
         mfxFrameSurface1 *pSurf = (mfxFrameSurface1 *)buf.msdk_surface;
-        pSurf->Data.Locked++;
+        msdk_atomic_inc16((volatile mfxU16*)(&(pSurf->Data.Locked)));
         eTask->in.InSurface = pSurf;
         mfx_fei_input_tasks_.push_back(eTask); //mfx_fei_input_tasks_ in display order
         eTask = findFrameToEncode();
@@ -3148,11 +3167,11 @@ int MSDKCodec::HandleProcessPreENC()
         // TODO:
         // The Locked doesn't decrease after syncOperation
         // Decrease by 1 manually
-        eTask->in.InSurface->Data.Locked--;
+        msdk_atomic_dec16((volatile mfxU16*)(&(eTask->in.InSurface->Data.Locked)));
         eTask->encoded = 1;
 
         if ((this->mfx_fei_ref_dist_ * 2) == mfx_fei_input_tasks_.size()) {
-            mfx_fei_input_tasks_.front()->in.InSurface->Data.Locked--;
+            msdk_atomic_dec16((volatile mfxU16*)(&(mfx_fei_input_tasks_.front()->in.InSurface->Data.Locked)));
             delete mfx_fei_input_tasks_.front();
             mfx_fei_input_tasks_.pop_front();
         }
@@ -3178,7 +3197,7 @@ int MSDKCodec::HandleProcessPreENC()
 
         if (ret == 0) {
             mfxFrameSurface1 *msdk_surface = (mfxFrameSurface1 *)buf.msdk_surface;
-            msdk_surface->Data.Locked++;
+            msdk_atomic_inc16((volatile mfxU16*)(&(msdk_surface->Data.Locked)));
             MediaPad *srcpad = *(this->srcpads_.begin());
             srcpad->PushBufToPeerPad(buf);
         }
