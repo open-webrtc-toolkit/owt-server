@@ -607,7 +607,7 @@ void VideoMixEngineImp::setupPipeline()
         memset(&enc_cfg, 0, sizeof(enc_cfg));
         setupOutputCfg(&enc_cfg, &(it_output->second));
 
-        m_xcoder = new MsdkXcoder;
+        m_xcoder = MsdkXcoder::create();
         m_xcoder->Init(&dec_cfg, &vpp_cfg, &enc_cfg);
         m_xcoder->Start();
 
@@ -635,7 +635,7 @@ void VideoMixEngineImp::demolishPipeline()
 {
     if (m_xcoder) {
         m_xcoder->Stop();
-        delete m_xcoder;
+        MsdkXcoder::destroy(m_xcoder);
         m_xcoder = NULL;
         m_vpp->vppHandle = NULL;
     }
