@@ -37,6 +37,7 @@ VCMOutputProcessor::VCMOutputProcessor(boost::shared_ptr<woogeen_base::VideoFram
     , m_sendFormat(woogeen_base::FRAME_FORMAT_UNKNOWN)
     , m_targetKbps(targetKbps)
     , m_source(source)
+    , m_encoding(false)
 {
     init(transport, taskRunner);
 }
@@ -230,6 +231,10 @@ uint32_t VCMOutputProcessor::sendSSRC(bool nack, bool fec)
 
 void VCMOutputProcessor::onFrame(const woogeen_base::Frame& frame)
 {
+    boost::shared_lock<boost::shared_mutex> lock(m_encodingMutex);
+    if (!m_encoding)
+        return;
+
     if (frame.format != woogeen_base::FRAME_FORMAT_I420 && frame.format != m_sendFormat) {
         ELOG_INFO("Frame format %d is not supported, ignored.", frame.format);
         return;
@@ -277,6 +282,8 @@ bool VCMOutputProcessor::init(woogeen_base::WebRTCTransport<erizo::VIDEO>* trans
     m_videoEncoder->Init();
     m_videoEncoder->StartThreadsAndSetSendPayloadRouter(m_payloadRouter);
 
+    boost::unique_lock<boost::shared_mutex> lock(m_encodingMutex);
+    m_encoding = true;
     return true;
 }
 
@@ -294,6 +301,9 @@ void VCMOutputProcessor::deRegisterPreSendFrameCallback()
 
 void VCMOutputProcessor::close()
 {
+    boost::unique_lock<boost::shared_mutex> lock(m_encodingMutex);
+    m_encoding = false;
+
     deRegisterPreSendFrameCallback();
 
     m_videoEncoder->StopThreadsAndRemovePayloadRouter();

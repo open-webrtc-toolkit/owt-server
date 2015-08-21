@@ -25,6 +25,7 @@
 
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
+#include <boost/thread/shared_mutex.hpp>
 #include <logger.h>
 #include <MediaDefinitions.h>
 #include <MediaMuxer.h>
@@ -89,6 +90,9 @@ private:
     boost::shared_ptr<woogeen_base::VideoFrameProvider> m_source;
 
     boost::scoped_ptr<woogeen_base::VideoEncodedFrameCallbackAdapter> m_encodedFrameCallback;
+
+    bool m_encoding;
+    boost::shared_mutex m_encodingMutex;
 };
 
 } /* namespace mcu */
