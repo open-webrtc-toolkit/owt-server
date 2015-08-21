@@ -15,7 +15,7 @@ pack_runtime() {
   [[ -s ${GATEWAY_ADDON} ]] && \
   mkdir -p ${WOOGEEN_DIST}/bindings/gateway/build/Release && \
   cp -av ${GATEWAY_ADDON} ${WOOGEEN_DIST}/bindings/gateway/build/Release && \
-  strip ${WOOGEEN_DIST}/bindings/gateway/build/Release/addon.node
+  ${ENCRYPT} && strip ${WOOGEEN_DIST}/bindings/gateway/build/Release/addon.node
   # gateway
   mkdir -p ${WOOGEEN_DIST}/gateway/util
   cp -av ${SOURCE}/gateway/oovoo_gateway.js ${WOOGEEN_DIST}/gateway/
