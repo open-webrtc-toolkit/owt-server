@@ -2066,3 +2066,15 @@ ElementType MsdkXcoder::GetElementType(CoderType type, unsigned int codec_type, 
 
     return ret;
 }
+
+
+MsdkXcoder* MsdkXcoder::create()
+{
+    return new MsdkXcoder;
+}
+
+void MsdkXcoder::destroy(MsdkXcoder* xcoder)
+{
+    if (xcoder)
+        delete xcoder;
+}

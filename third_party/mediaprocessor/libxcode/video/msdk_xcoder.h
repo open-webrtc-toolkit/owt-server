@@ -231,6 +231,9 @@ public:
     MsdkXcoder();
     virtual ~MsdkXcoder();
 
+    static MsdkXcoder* create();
+    static void destroy(MsdkXcoder*);
+
     int Init(DecOptions *dec_cfg, VppOptions *vpp_cfg, EncOptions *enc_cfg);
 
     int ForceKeyFrame(void *ouput_handle);
