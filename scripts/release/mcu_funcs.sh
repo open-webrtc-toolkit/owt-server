@@ -22,7 +22,7 @@ pack_runtime() {
   [[ -s ${ADDON} ]] && \
   mkdir -p ${WOOGEEN_DIST}/bindings/mcu/build/Release && \
   cp -av ${ADDON} ${WOOGEEN_DIST}/bindings/mcu/build/Release && \
-  strip ${WOOGEEN_DIST}/bindings/mcu/build/Release/addon.node
+  ${ENCRYPT} && strip ${WOOGEEN_DIST}/bindings/mcu/build/Release/addon.node
   # mcu
   mkdir -p ${WOOGEEN_DIST}/mcu/
   cd ${WOOGEEN_DIST}/mcu/ && \
