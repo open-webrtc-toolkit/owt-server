@@ -408,7 +408,7 @@ exports.ErizoJSController = function () {
         if (publishers[to] !== undefined && subscribers[to].indexOf(from) === -1 && sdp.match('OFFER') !== null) {
             log.info('Adding subscriber from', from, 'to', to, 'audio', audio, 'video', video);
             cipher.unlock(cipher.k, '../../cert/.woogeen.keystore', function cb (err, obj) {
-                if (!err) {
+                if (!err && publishers[to] !== undefined && subscribers[to].indexOf(from) === -1) {
                     var erizoPassPhrase = obj.erizo;
 
                     var hasH264 = true;
@@ -468,6 +468,9 @@ exports.ErizoJSController = function () {
      * Removes a subscriber from the room. This also removes it from the associated Gateway.
      */
     that.removeSubscriber = function (from, to) {
+        if (subscribers[to] === undefined) {
+            return;
+        }
 
         var index = subscribers[to].indexOf(from);
         if (index !== -1) {
@@ -478,8 +481,7 @@ exports.ErizoJSController = function () {
     };
 
     that.subscribeStream = function subscribeStream (publisher_id, subscriber_id, isAudio, callback) {
-        var index = subscribers[publisher_id].indexOf(subscriber_id);
-        if (index !== -1) {
+        if (subscribers[publisher_id] !== undefined && subscribers[publisher_id].indexOf(subscriber_id) !== -1) {
             log.info('Enabling subscriber', subscriber_id, 'in', publisher_id, isAudio ? '[audio]' : '[video]');
             publishers[publisher_id].subscribeStream(subscriber_id, isAudio);
             return callback('callback');
@@ -488,8 +490,7 @@ exports.ErizoJSController = function () {
     };
 
     that.unsubscribeStream = function unsubscribeStream (publisher_id, subscriber_id, isAudio, callback) {
-        var index = subscribers[publisher_id].indexOf(subscriber_id);
-        if (index !== -1) {
+        if (subscribers[publisher_id] !== undefined && subscribers[publisher_id].indexOf(subscriber_id) !== -1) {
             log.info('Disabling subscriber', subscriber_id, 'in', publisher_id, isAudio ? '[audio]' : '[video]');
             publishers[publisher_id].unsubscribeStream(subscriber_id, isAudio);
             return callback('callback');
