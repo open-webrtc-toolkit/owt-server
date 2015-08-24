@@ -32,6 +32,7 @@
 #include <MediaDefinitions.h>
 #include <MediaMuxer.h>
 #include <MediaSourceConsumer.h>
+#include <tuple>
 #include <WebRTCFeedbackProcessor.h>
 #include <WebRTCTaskRunner.h>
 #include <vector>
@@ -44,20 +45,20 @@ class VoEVideoSync;
 namespace mcu {
 
 class VideoLayoutProcessor;
+typedef std::tuple<int, unsigned int, unsigned int> ExtendedKey;
 
 /**
  * Receives media from several sources, mixed into one stream and retransmits it to the RTPDataReceiver.
  */
 class VideoMixer : public woogeen_base::MediaSourceConsumer, public woogeen_base::FrameProvider, public erizo::FeedbackSink, public InputProcessorCallback, public woogeen_base::Notification {
     DECLARE_LOGGER();
-
 public:
     VideoMixer(erizo::RTPDataReceiver*, boost::property_tree::ptree& config);
     virtual ~VideoMixer();
 
     // Video output related methods.
-    int32_t addOutput(int payloadType, bool nack, bool fec);
-    int32_t removeOutput(int payloadType);
+    int32_t addOutput(int payloadType, bool nack, bool fec, const VideoSize& size);
+    int32_t removeOutput(int payloadType, const VideoSize& size);
     woogeen_base::IntraFrameCallback* getIFrameCallback(int payloadType);
     uint32_t getSendSSRC(int payloadType, bool nack, bool fec);
 
@@ -117,7 +118,7 @@ private:
     int m_outputKbps;
     boost::shared_ptr<VideoFrameMixer> m_frameMixer;
     boost::shared_mutex m_outputMutex;
-    std::map<int, boost::shared_ptr<woogeen_base::VideoFrameSender>> m_outputs;
+    std::map<ExtendedKey, boost::shared_ptr<woogeen_base::VideoFrameSender>> m_outputs;
 };
 
 inline int VideoMixer::assignInput(uint32_t source)

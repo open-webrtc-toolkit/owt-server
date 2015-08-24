@@ -207,7 +207,8 @@ void Mixer::addSubscriber(MediaSink* subscriber, const std::string& peerId)
     // RTP packets for a single encoded stream elegantly.
     bool enableNACK = true || subscriber->acceptResentData();
     bool enableFEC = false && subscriber->acceptFEC();
-    m_videoMixer->addOutput(videoPayloadType, enableNACK, enableFEC);
+    VideoSize size {0,0};
+    m_videoMixer->addOutput(videoPayloadType, enableNACK, enableFEC, size);
     subscriber->setVideoSinkSSRC(m_videoMixer->getSendSSRC(videoPayloadType, enableNACK, enableFEC));
 
     int audioPayloadType = subscriber->preferredAudioPayloadType();
