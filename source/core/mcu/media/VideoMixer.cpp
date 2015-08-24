@@ -22,11 +22,11 @@
 
 #include "HardwareVideoFrameMixer.h"
 #include "SoftVideoFrameMixer.h"
-#include "VCMOutputProcessor.h"
 #include "VideoLayoutProcessor.h"
 #include "VideoFrameInputProcessor.h"
 #include <EncodedVideoFrameSender.h>
 #include <WebRTCTransport.h>
+#include <webrtc/modules/video_coding/codecs/vp8/vp8_factory.h>
 #include <webrtc/system_wrappers/interface/trace.h>
 
 using namespace webrtc;
@@ -38,6 +38,11 @@ using namespace erizo;
 namespace mcu {
 
 DEFINE_LOGGER(VideoMixer, "mcu.media.VideoMixer");
+
+static ExtendedKey makeExtendedKey(int type, unsigned int width, unsigned int height)
+{
+    return static_cast<ExtendedKey>(std::make_tuple(type, width, height));
+}
 
 VideoMixer::VideoMixer(erizo::RTPDataReceiver* receiver, boost::property_tree::ptree& config)
     : m_participants(0)
@@ -87,10 +92,14 @@ VideoMixer::~VideoMixer()
     m_outputReceiver = nullptr;
 }
 
-int32_t VideoMixer::addOutput(int payloadType, bool nack, bool fec)
+int32_t VideoMixer::addOutput(int payloadType, bool nack, bool fec, const VideoSize& size)
 {
+    VideoSize outputSize = size;
+    if (size.width == 0 || size.height == 0 || !webrtc::VP8EncoderFactoryConfig::use_simulcast_adapter())
+        m_layoutProcessor->getRootSize(outputSize);
+    auto key = makeExtendedKey(payloadType, outputSize.width, outputSize.height);
     boost::upgrade_lock<boost::shared_mutex> lock(m_outputMutex);
-    std::map<int, boost::shared_ptr<woogeen_base::VideoFrameSender>>::iterator it = m_outputs.find(payloadType);
+    auto it = m_outputs.find(key);
     if (it != m_outputs.end()) {
         it->second->startSend(nack, fec);
         return it->second->streamId();
@@ -110,31 +119,32 @@ int32_t VideoMixer::addOutput(int payloadType, bool nack, bool fec)
 
     WebRTCTransport<erizo::VIDEO>* transport = new WebRTCTransport<erizo::VIDEO>(m_outputReceiver, nullptr);
 
-    woogeen_base::VideoFrameSender* output = nullptr;
-    // Software mode can also use the EncodedVideoFrameSender, but using the
-    // compound VCMOutputProcessor (w/ both encoder and sender capability) provides
-    // better QoS control.
-    if (m_hardwareAccelerated)
-        output = new woogeen_base::EncodedVideoFrameSender(m_frameMixer, outputFormat, m_outputKbps, transport, m_taskRunner);
-    else
-        output = new VCMOutputProcessor(m_frameMixer, m_outputKbps, transport, m_taskRunner);
+    // EncodedVideoFrameSender employed for simulcast.
+    // Software mode can also use the compound VCMOutputProcessor
+    // (w/ both encoder and sender capability) which provides better QoS control.
+    woogeen_base::VideoFrameSender* output = new woogeen_base::EncodedVideoFrameSender(
+                                                m_frameMixer,
+                                                outputFormat,
+                                                m_outputKbps,
+                                                transport,
+                                                m_taskRunner);
 
-    // Fetch video size.
-    // TODO: The size should be identical to the composited video size.
-    VideoSize outputSize;
-    m_layoutProcessor->getRootSize(outputSize);
     output->setSendCodec(outputFormat, outputSize.width, outputSize.height);
     output->startSend(nack, fec);
     boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
-    m_outputs[payloadType].reset(output);
+    m_outputs[key].reset(output);
 
     return output->streamId();
 }
 
-int32_t VideoMixer::removeOutput(int payloadType)
+int32_t VideoMixer::removeOutput(int payloadType, const VideoSize& size)
 {
+    VideoSize outputSize = size;
+    if (size.width == 0 || size.height == 0 || !webrtc::VP8EncoderFactoryConfig::use_simulcast_adapter())
+        m_layoutProcessor->getRootSize(outputSize);
+    auto key = makeExtendedKey(payloadType, outputSize.width, outputSize.height);
     boost::unique_lock<boost::shared_mutex> lock(m_outputMutex);
-    std::map<int, boost::shared_ptr<woogeen_base::VideoFrameSender>>::iterator it = m_outputs.find(payloadType);
+    auto it = m_outputs.find(key);
     if (it != m_outputs.end()) {
         int32_t id = it->second->streamId();
         m_outputs.erase(it);
@@ -159,13 +169,16 @@ int32_t VideoMixer::addFrameConsumer(const std::string&/*unused*/, woogeen_base:
     }
 
     int32_t id = -1;
-    id = addOutput(payloadType, true, false);
+    VideoSize size;
+    m_layoutProcessor->getRootSize(size);
+    id = addOutput(payloadType, true, false, size);
     if (id != -1) {
+        auto key = makeExtendedKey(payloadType, size.width, size.height);
         boost::shared_lock<boost::shared_mutex> lock(m_outputMutex);
-        std::map<int, boost::shared_ptr<woogeen_base::VideoFrameSender>>::iterator it = m_outputs.find(payloadType);
+        auto it = m_outputs.find(key);
         if (it == m_outputs.end() || it->second->streamId() != id)
             return -1;
-        woogeen_base::VideoFrameSender* output = m_outputs[payloadType].get();
+        woogeen_base::VideoFrameSender* output = m_outputs[key].get();
         output->registerPreSendFrameCallback(frameConsumer);
 
         // Request an IFrame explicitly, because the recorder doesn't support active I-Frame requests.
@@ -179,7 +192,7 @@ int32_t VideoMixer::addFrameConsumer(const std::string&/*unused*/, woogeen_base:
 void VideoMixer::removeFrameConsumer(int32_t id)
 {
     boost::shared_lock<boost::shared_mutex> lock(m_outputMutex);
-    std::map<int, boost::shared_ptr<woogeen_base::VideoFrameSender>>::iterator it = m_outputs.begin();
+    auto it = m_outputs.begin();
     for (; it != m_outputs.end(); ++it) {
         if (id == it->second->streamId()) {
             it->second->deRegisterPreSendFrameCallback();
@@ -194,7 +207,7 @@ int VideoMixer::deliverFeedback(char* buf, int len)
     // The output processor will filter out the feedback which does not belong
     // to it. In the future we may do the filtering at a higher level?
     boost::shared_lock<boost::shared_mutex> lock(m_outputMutex);
-    std::map<int, boost::shared_ptr<woogeen_base::VideoFrameSender>>::iterator it = m_outputs.begin();
+    auto it = m_outputs.begin();
     for (; it != m_outputs.end(); ++it) {
         FeedbackSink* feedbackSink = it->second->feedbackSink();
         if (feedbackSink)
@@ -253,7 +266,7 @@ bool VideoMixer::setResolution(const std::string& resolution)
 
     bool ret = true;
     boost::shared_lock<boost::shared_mutex> lock(m_outputMutex);
-    std::map<int, boost::shared_ptr<woogeen_base::VideoFrameSender>>::iterator it = m_outputs.begin();
+    auto it = m_outputs.begin();
     for (; it != m_outputs.end(); ++it) {
         VideoSize outputSize;
         m_layoutProcessor->getRootSize(outputSize);
@@ -271,7 +284,10 @@ bool VideoMixer::setBackgroundColor(const std::string& color)
 IntraFrameCallback* VideoMixer::getIFrameCallback(int payloadType)
 {
     boost::shared_lock<boost::shared_mutex> lock(m_outputMutex);
-    std::map<int, boost::shared_ptr<woogeen_base::VideoFrameSender>>::iterator it = m_outputs.find(payloadType);
+    VideoSize size;
+    m_layoutProcessor->getRootSize(size);
+    auto key = makeExtendedKey(payloadType, size.width, size.height);
+    auto it = m_outputs.find(key);
     if (it != m_outputs.end())
         return it->second->iFrameCallback();
 
@@ -281,7 +297,10 @@ IntraFrameCallback* VideoMixer::getIFrameCallback(int payloadType)
 uint32_t VideoMixer::getSendSSRC(int payloadType, bool nack, bool fec)
 {
     boost::shared_lock<boost::shared_mutex> lock(m_outputMutex);
-    std::map<int, boost::shared_ptr<woogeen_base::VideoFrameSender>>::iterator it = m_outputs.find(payloadType);
+    VideoSize size;
+    m_layoutProcessor->getRootSize(size);
+    auto key = makeExtendedKey(payloadType, size.width, size.height);
+    auto it = m_outputs.find(key);
     if (it != m_outputs.end())
         return it->second->sendSSRC(nack, fec);
 
@@ -405,7 +424,6 @@ void VideoMixer::closeAll()
     sourceLock.unlock();
 
     boost::unique_lock<boost::shared_mutex> outputLock(m_outputMutex);
-    std::map<int, boost::shared_ptr<woogeen_base::VideoFrameSender>>::iterator it = m_outputs.begin();
     m_outputs.clear();
     outputLock.unlock();
 
