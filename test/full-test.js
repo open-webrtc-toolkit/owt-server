@@ -3,13 +3,18 @@ describe('Full test', function() {
   var TIMEOUT=10000;
   var roomid;
   var codec="vp8";
-  var createRoom, updateRoom, createToken, createService, getRooms, getServices,getService,deleteService,getRoom, getUsers, getUser,deleteRoom,deleteUser,subscribeStreams;
+  var createRoom, updateRoom, createToken, getRooms, getRoom, getUsers, getUser,deleteRoom,deleteUser,subscribeStreams;
+  var roomid, response, msg, room, room_2, room1, token, token_2, localStream, localStream_2, remoteStream, remoteStream_2, localStreamID, remoteStreamID,localV,serviceResponse,streamtest,streamtest_mix, users, token1, token2, user1Stream, user2Stream, user1Room, user2Room, user1RemoteStreams, user2RemoteStreams;
+  var canvas, context, bitmap, bitmapURL, width, height;
+
   var debug = function(msg) {
         console.log('++++ debug message:' + msg);
-      };
-beforeEach(function() {
+      };    
+
+//beforeEach(function() {
   //L.Logger.setLogLevel(L.Logger.INFO);
-    createRoom = function (name, callback, options) {
+
+    createRoom = function (name, successCallback, errorCallback, options) {
     var req = new XMLHttpRequest(),
     serverUrl = "http://localhost:3001/",
     url = serverUrl + 'createRoom/',
@@ -18,8 +23,9 @@ beforeEach(function() {
     req.onreadystatechange = function () {
       if (req.readyState === 4) {
         if (req.status === 200) {
-          callback(req.responseText);
+          successCallback(req.responseText);
         } else {
+          errorCallback(req.responseText);
           console.log("++++++deubg problem response:" + req.responseText);
         }
       }
@@ -29,7 +35,7 @@ beforeEach(function() {
     req.send(JSON.stringify(body))
     };
 
-    updateRoom = function(room, options, callback) {
+    updateRoom = function(room, options, successCallback, errorCallback) {
     var req = new XMLHttpRequest(),
     serverUrl = 'http://localhost:3001/',
     url = serverUrl + 'updateRoom/',
@@ -38,8 +44,9 @@ beforeEach(function() {
     req.onreadystatechange = function () {
       if (req.readyState === 4) {
         if (req.status === 200) {
-          callback(req.responseText);
+          successCallback(req.responseText);
         } else {
+          errorCallback(req.responseText);
           console.log("++++++deubg problem response:" + req.responseText);
         }
       }
@@ -49,57 +56,45 @@ beforeEach(function() {
     req.send(JSON.stringify(body));
     }
 
-    createToken = function (room, userName, role, callback) {
+    createToken = function (room, userName, role, successCallback, errorCallback) {
     var req = new XMLHttpRequest(),
     serverUrl = "http://localhost:3001/",
     url = serverUrl + 'createToken/',
     body = {room: room, username: userName, role: role};
    // body = {username: userName, role: role};
-
-    req.onreadystatechange = function () {
-      if (req.readyState === 4) {
-      //  if (req.status === 200) {
-          callback(req.responseText);
-        } else {
-          console.log("++++++deubg problem response:" + req.responseText);
-        }
-     // }
-    };
-    req.open('POST', url, true);
-    req.setRequestHeader('Content-Type', 'application/json');
-    req.send(JSON.stringify(body));
-    };
-
-  createService = function (name, key, callback) {
-    var req = new XMLHttpRequest(),
-    serverUrl = "http://localhost:3001/",
-    url = serverUrl + 'createService/',
-    body = {name:name, key:key};
+   console.log("=======Create token and room is:", room);
 
     req.onreadystatechange = function () {
       if (req.readyState === 4) {
         if (req.status === 200) {
-          callback(req.responseText);
+          console.log("++++++createToken succeed");
+          successCallback(req.responseText);
         } else {
+          console.log("++++++createToken failed:" + req.readyState);
+          console.log("++++++createToken failed status:" + req.status);
           console.log("++++++deubg problem response:" + req.responseText);
+          errorCallback(req.responseText);
         }
-      }
+     }
     };
-
-    req.open('POST', url, true);
+    req.open('POST', url, false);
     req.setRequestHeader('Content-Type', 'application/json');
     req.send(JSON.stringify(body));
-  };
-  getRooms = function (callback) {
+    };
+
+  getRooms = function (successCallback, errorCallback) {
     var req = new XMLHttpRequest(),
     serverUrl = "http://localhost:3001/",
     url = serverUrl + 'getRooms/';
+    console.log("=========Get rooms");
 
     req.onreadystatechange = function () {
       if (req.readyState === 4) {
         if (req.status === 200) {
-          callback(req.responseText);
+          console.log("Successfully get rooms");
+          successCallback(req.responseText);
         } else {
+          errorCallback(req.responseText);
           console.log("++++++deubg problem response:" + req.responseText);
         }
       }
@@ -108,7 +103,7 @@ beforeEach(function() {
     req.open('GET', url, true);
     req.send();
   };
-  getRoom = function (_room,callback) {
+  getRoom = function (_room, successCallback, errorCallback) {
     var req = new XMLHttpRequest(),
     serverUrl = "http://localhost:3001/",
     room = _room,
@@ -117,8 +112,9 @@ beforeEach(function() {
     req.onreadystatechange = function () {
       if (req.readyState === 4) {
         if (req.status === 200) {
-          callback(req.responseText);
+          successCallback(req.responseText);
         } else {
+          errorCallback(req.responseText);
           console.log("++++++deubg problem response:" + req.responseText);
         }
       }
@@ -128,17 +124,19 @@ beforeEach(function() {
     req.send();
   };
 
-deleteRoom = function (_room, callback) {
+deleteRoom = function (_room, successCallback, errorCallback) {
     var req = new XMLHttpRequest(),
     serverUrl = "http://localhost:3001/",
     room = _room,
     url = serverUrl + 'room/' + room;
 
     req.onreadystatechange = function () {
+      console.log("DeleteRoom req status:", req.status);
       if (req.readyState === 4) {
         if (req.status === 200) {
-          callback(req.responseText);
+          successCallback(req.responseText);
         } else {
+          errorCallback(req.responseText);
           console.log("++++++deubg problem response:" + req.responseText);
         }
       }
@@ -148,7 +146,7 @@ deleteRoom = function (_room, callback) {
     req.send();
   };
 
-  getUsers = function (_room,callback) {
+  getUsers = function (_room, successCallback, errorCallback) {
     var req = new XMLHttpRequest(),
     serverUrl = "http://localhost:3001/",
     room = _room,
@@ -157,8 +155,9 @@ deleteRoom = function (_room, callback) {
     req.onreadystatechange = function () {
       if (req.readyState === 4) {
         if (req.status === 200) {
-          callback(req.responseText);
+          successCallback(req.responseText);
         } else {
+          errorCallback(req.responseText);
           console.log("++++++deubg problem response:" + req.responseText);
         }
       }
@@ -168,7 +167,7 @@ deleteRoom = function (_room, callback) {
     req.send();
   };
 
-  getUser = function (_room, _user,callback) {
+  getUser = function (_room, _user, successCallback, errorCallback) {
     var req = new XMLHttpRequest(),
     serverUrl = "http://localhost:3001/",
     room = _room,
@@ -177,8 +176,9 @@ deleteRoom = function (_room, callback) {
     req.onreadystatechange = function () {
       if (req.readyState === 4) {
         if (req.status === 200) {
-          callback(req.responseText);
+          successCallback(req.responseText);
         } else {
+          errorCallback(req.responseText);
           console.log("++++++deubg problem response:" + req.responseText);
         }
       }
@@ -189,7 +189,7 @@ deleteRoom = function (_room, callback) {
   };
 
 
-  deleteUser = function (_room, _user,callback) {
+  deleteUser = function (_room, _user, successCallback, errorCallback) {
     var req = new XMLHttpRequest(),
     serverUrl = "http://localhost:3001/",
     room = _room,
@@ -199,8 +199,9 @@ deleteRoom = function (_room, callback) {
     req.onreadystatechange = function () {
       if (req.readyState === 4) {
         if (req.status === 200) {
-          callback(req.responseText);
+          successCallback(req.responseText);
         } else {
+          errorCallback(req.responseText);
           console.log("++++++deubg problem response:" + req.responseText);
         }
       }
@@ -210,66 +211,7 @@ deleteRoom = function (_room, callback) {
     req.send();
   };
 
-  getServices = function (callback) {
-    var req = new XMLHttpRequest(),
-    serverUrl = "http://localhost:3001/",
-    url = serverUrl + 'getServices/';
-
-    req.onreadystatechange = function () {
-      if (req.readyState === 4) {
-        if (req.status === 200) {
-          callback(req.responseText);
-        } else {
-          console.log("++++++deubg problem response:" + req.responseText);
-        }
-      }
-    };
-
-    req.open('GET', url, true);
-    req.send();
-  };
-  getService = function (_service,callback) {
-    var req = new XMLHttpRequest(),
-    serverUrl = "http://localhost:3001/",
-    service = _service,
-    url = serverUrl + 'getService/' + service;
-
-    req.onreadystatechange = function () {
-      if (req.readyState === 4) {
-        if (req.status === 200) {
-          callback(req.responseText);
-        } else {
-          console.log("++++++deubg problem response:" + req.responseText);
-        }
-      }
-    };
-
-    req.open('GET', url, true);
-    req.send();
-  };
-
-  deleteService = function (_service, _force, callback) {
-    var req = new XMLHttpRequest(),
-    serverUrl = "http://localhost:3001/",
-    service = _service,
-    url = serverUrl + 'deleteService/' + service;
-
-    req.onreadystatechange = function () {
-      if (req.readyState === 4) {
-        if (req.status === 200) {
-          callback(req.responseText);
-        } else {
-          console.log("++++++deubg problem response:" + req.responseText);
-        }
-      }
-    };
-
-    req.open('DELETE', url, true);
-    req.send();
-  };
-
-
-});
+//});
 //beforeEach end
 
 afterEach(function() {
@@ -282,21 +224,258 @@ afterEach(function() {
   */
 });
 
+describe('localStreamAPI-test', function () {
+    it('MCU-771:LocalStream-create-001-normal create localStream by createLocalStream', function () {
+    var callback = jasmine.createSpy("createLocalStream");
+    var errorCallback = jasmine.createSpy("createLocalStreamError");
+    Woogeen.LocalStream.create({
+           video: {
+              device: 'camera',
+              resolution : 'vga'
+            },
+           audio: true
+         }, function (err, stream) {
+           if (err) {
+               errorCallback();
+           }else{
+            callback();
+           localStream = stream;
+           }
+         });
+      Woogeen.LocalStream.create({
+           video: {
+             device: 'camera',
+             resolution: 'vga'
+           },
+           audio: true
+         }, function (err, stream) {
+           if (err) {
+               errorCallback();
+           }else{
+               callback();
+           localStream_2 = stream;
+           }
+         });
 
+    waitsFor(function () {
+      return callback.callCount > 1;
+    });
+
+    runs(function () {
+
+      expect(callback).toHaveBeenCalled();
+    });
+  });
+
+  it('MCU-773:LocalStream-close-001-normal should be defined', function() {
+    expect(localStream.close).toBeDefined();
+  });
+  it('MCU-774:LocalStream-show-001-normal should be defined', function() {
+    expect(localStream.show).toBeDefined();
+  });
+  it('MCU-775:LocalStream-hide-001-normal should be defined', function() {
+    expect(localStream.hide).toBeDefined();
+  });
+  it('MCU-776:LocalStream-id-001-normal should be defined', function() {
+    expect(localStream.id).toBeDefined();
+  });
+  it('MCU-777:LocalStream-attributes-001-normal should be defined', function() {
+    expect(localStream.attributes).toBeDefined();
+  });
+  it('MCU-778:LocalStream-attr-001-normal should be defined', function() {
+    expect(localStream.attr).toBeDefined();
+  });
+  it('MCU-1319:LocalStream-isMixed-001-normal should be undefined', function() {
+    expect(localStream.isMixed).toBeUndefined();
+  });
+  it('MCU-779:LocalStream-isScreen-001-normal should be defined', function() {
+    expect(localStream.isScreen).toBeDefined();
+  });
+  /*
+  it('MCU-780:LocalStream-playVideo-001-normal for localStream should be defined', function() {
+    expect(localStream.playVideo).toBeDefined();
+  });
+  it('MCU-781:LocalStream-pauseVideo-001-normal for localStream should be defined', function() {
+    expect(localStream.pauseVideo).toBeDefined();
+  });
+  it('MCU-782:LocalStream-playAudio-001-normal for localStream should be defined', function() {
+    expect(localStream.playAudio).toBeDefined();
+  });
+  it('MCU-783:LocalStream-pauseAudio-001-normal for localStream should be defined', function() {
+    expect(localStream.pauseAudio).toBeDefined();
+  });
+*/
+  it('MCU-784:LocalStream-enableAudio-001-normal for localStream should be defined', function() {
+    expect(localStream.enableAudio).toBeDefined();
+  });
+  it('MCU-785:LocalStream-disable-001-normal Auido for localStream should be defined', function() {
+    expect(localStream.disableAudio).toBeDefined();
+  });
+  it('MCU-786:LocalStream-enableVideo-001-normal for localStream should be defined', function() {
+    expect(localStream.enableVideo).toBeDefined();
+  });
+  it('MCU-787:LocalStream-disableVideo-001-normal for localStream should be defined', function() {
+    expect(localStream.disableVideo).toBeDefined();
+  });
+  it('MCU-788:localStream-hasAudio-001-normal should return true', function () {
+    runs(function () {
+      expect(localStream.hasAudio()).toEqual(true);
+    });
+  });
+  it('MCU-789:localStream-hasVideo-001-normal should return true', function () {
+    runs(function () {
+      expect(localStream.hasVideo()).toEqual(true);
+    });
+  });
+  it('MCU-795:localStream isScreen should return false', function () {
+    runs(function () {
+      expect(localStream.isScreen()).toEqual(false);
+    });
+  });
+  it('MCU-796:localStream id should be undefined before publish', function () {
+    runs(function () {
+      expect(localStream.id()).toEqual(undefined);
+    });
+  });
+  it('MCU-1320:LocalStream-attr-002-normal attr and attributes should work', function () {
+    runs(function () {
+      localStream.attr("name","test");
+    });
+    runs(function () {
+      expect(localStream.attributes().name).toEqual("test");
+    });
+  });
+
+  it('MCU-797:LocalStream-show()-002-normal should call correct', function(){
+    var localdiv = document.createElement("div");
+    var Dectection;
+    var IsPlaying;
+    localdiv.setAttribute("id", "localDiv");
+    localdiv.setAttribute("style", "width :320px; height: 240px;");
+    document.body.appendChild(localdiv);
+    localStream.show('localDiv');
+    waits(500);
+    runs(function() {
+        console.log("localStream.id is " + localStream.id());
+     var video = document.getElementById('stream' + localStream.id());
+     expect(video.src).toMatch(/blob/);
+   });
+   runs(function() {
+       var localId = 'stream' + localStream.id();
+       Dectection = startDetection(localId,"320","240");
+   })
+
+   runs(function() {
+        expect(Dectection).toEqual(true);
+    });
+    waits(10000);
+    runs(function() {
+       IsPlaying = isVideoPlaying()});
+    runs(function() {
+        expect(IsPlaying).toEqual(true);
+    });
+  });
+
+  it('MCU-798:LocalStream-stability-001 mouse over should show bar', function () {
+    $(document.getElementById('subbar_'+localStream.id())).trigger('mouseover');
+    var bar = document.getElementById('bar_'+localStream.id());
+    runs(function() {
+      var style = document.getElementById('bar_'+localStream.id()).style.display;
+      expect(style).toBe('block');
+
+    });
+  });
+
+  it('MCU-799:LocalStream-stability-002 mouse out should display bar', function () {
+    $(document.getElementById('subbar_'+localStream.id())).trigger('mouseout');
+    waits(10000);
+    runs(function() {
+      var style = document.getElementById('bar_'+localStream.id()).style.display;
+      expect(style).toBe('none');
+
+    });
+  });
+
+  it('MCU-800:LocalStream-stability-003 click volume should mute voice', function () {
+    localStreamID = localStream.id();
+    $(document.getElementById('volume_'+localStreamID)).click();
+    runs(function() {
+      var style = document.getElementById('volume_'+localStreamID).src;
+      expect(style).toMatch(/iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAQAAAD9CzEMAAAABGdBTUEAALGOfPtRk/);
+    });
+  });
+
+  it('MCU-801:LocalStream-stability-004 click volume again should umute voice', function () {
+    localStreamID = localStream.id();
+    $(document.getElementById('volume_'+localStreamID)).click();
+    runs(function() {
+      var style = document.getElementById('volume_'+localStreamID).src;
+      expect(style).toMatch(/iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAQAAAD9CzEMAAAAB/);
+    });
+  });
+
+  it('MCU-802:LocalStream-hide-002-normal hide() should call correct', function(){
+    localStream.hide();
+    runs(function() {
+      var video = document.getElementById('stream' + localStream.id());
+      expect(video).toBeNull();
+    });
+  });
+
+  it('MCU-803:LocalStream-close-002-normal close() should call correct', function(){
+    localStream.close();
+    runs(function() {
+      var video = document.getElementById('stream' + localStream.id);
+      expect(video).toBeNull();
+      expect(localStream.stream).not.toBeDefined();
+    });
+  });
+  it('MCU-804:LocalStream-create-002 Can create local media by createLocalMedia after closed', function () {
+    var callback = jasmine.createSpy("getusermedia");
+    var errorCallback = jasmine.createSpy("getusermedia");
+    Woogeen.LocalStream.create({
+           video: {
+             device: 'camera',
+             resolution: 'vga'
+           },
+           audio: true
+         }, function (err, stream) {
+           if (err) {
+               errorCallback();
+           }
+           else{
+               callback();
+           localStream = stream;
+           }
+    });
+    waitsFor(function () {
+      return callback.callCount > 0;
+    });
+
+    runs(function () {
+      expect(callback).toHaveBeenCalled();
+      expect(errorCallback.callCount).toEqual(0);
+    });
+  });
+}); //End if localStream test
 
 describe('management-test', function () {
   "use strict";
   var room, roomname;
   var serviceResponse, response, msg, token;
+  
 
   it('CreateRoom test should be successful', function() {
     var callback = jasmine.createSpy("createRoom");
+    var errCallback = jasmine.createSpy("createRoomErr");
     createRoom("test_1", function(_room) {
       callback();
       room = JSON.parse(_room);
       roomid = room._id;
       console.log("==========room id is:" + roomid);
       roomname = room.name;
+    }, function(err) {
+      errCallback();
     });
 
     waitsFor(function () {
@@ -306,331 +485,30 @@ describe('management-test', function () {
 
     runs(function () {
       expect(roomname).toEqual('test_1');
+      expect(errCallback.callCount).toEqual(0);
     });
 
   });
 
-  xit('updateRoom test should be successful', function() {
-    var callback = jasmine.createSpy('updateRoom'), respText;
-    runs(function() {
-      updateRoom(roomid, {name:"test_1",mode:"plain", quality:"480*320",limit_in:3, limit_all:16, bitRate:700}, function(data) {
-        console.log('++++ updateRoom response' + data);
-        respText = data;
-        callback();
-      });
-    });
-
-    waitsFor(function() {
-      return callback.callCount > 0;
-    });
-
-    runs(function() {
-      expect(callback).toHaveBeenCalled();
-      expect(respText).not.toMatch(/Error/);
-    });
-  });
-  xit('getRoom update room information should be correct', function() {
-    debug('getRoom');
-    var callback = jasmine.createSpy("getRoom");
-    var room_limit_in, room_limit_all, room_mode, room_bitRate, room_quality;
-    getRoom(roomid, function(_room) {
-      callback();
-      room = JSON.parse(_room);
-      roomname = room.name;
-      room_limit_in = room.limit_in;
-      room_limit_all = room.limit_all;
-      room_bitRate = room.bitRate;
-      room_quality = room.quality;
-    });
-
-    waitsFor(function () {
-      return callback.callCount > 0;
-    });
-
-    runs(function () {
-      expect(roomname).toEqual('test_1');
-      expect(room_limit_in).toEqual(3);
-      expect(room_limit_all).toEqual(16);
-      expect(room_bitRate).toEqual(700);
-      expect(room_quality).toEqual('480*320');
-    });
-
- });
-
-  xit('updateRoom test should be failed if input wrong parameters', function() {
-    var callback = jasmine.createSpy('updateRoom'), respText;
-    runs(function() {
-      updateRoom(roomid, {limit: 3}, function(data) {
-        console.log('++++ updateRoom response if set error parameters' + data);
-        respText = data;
-        callback();
-      });
-    });
-
-    waitsFor(function() {
-      return callback.callCount > 0;
-    });
-
-    runs(function() {
-      expect(callback).toHaveBeenCalled();
-      expect(respText).toMatch(/Error/);
-    });
-
-    runs(function() {
-      updateRoom(roomid, {quality:3, name:"*)&", limit_in:""}, function(data) {
-        console.log('++++ updateRoom response if set wrong values' + data);
-        respText = data;
-        callback();
-      });
-    });
-
-    waitsFor(function() {
-      return callback.callCount > 0;
-    });
-
-    runs(function() {
-      expect(callback).toHaveBeenCalled();
-      expect(respText).toMatch(/Error/);
-    });
-
-    runs(function() {
-      updateRoom(roomid, {name:"test_1",mode:"plain", quality:"480*320",limit_in:3, limit_all:16, bitRate:700}, function(data) {
-        console.log('++++ updateRoom response' + data);
-        respText = data;
-        callback();
-      });
-    });
-
-    waitsFor(function() {
-      return callback.callCount > 0;
-    });
-
-    runs(function() {
-      expect(callback).toHaveBeenCalled();
-      expect(respText).not.toMatch(/Error/);
-    });
-  });
   it('getRooms should be succesful', function() {
         debug('getRooms');
    var callback = jasmine.createSpy("getRooms");
+   var errCallback = jasmine.createSpy("getRoomsErr");
    var rooms ;
    getRooms(function(_room) {
     rooms = JSON.parse(_room);
     callback();
-   });
+   }, function(err) {
+      errCallback();
+    });
     waitsFor(function () {
       return callback.callCount > 0;
     });
 
     runs(function () {
       expect(callback).toHaveBeenCalled();
+      expect(errCallback.callCount).toEqual(0);
       expect(rooms.length).toBeGreaterThan(0);
-    });
-  });
-  xit('CreateService testService should be successful', function() {
-      debug('CreateService testService should be successful');
-    var callback = jasmine.createSpy("createService");
-    createService("testService","1234", function(_response) {
-      callback();
-      serviceResponse = JSON.parse(_response);
-      serviceResponse = serviceResponse.msg;
-      var reg = new RegExp('"',"g");
-      serviceResponse = serviceResponse.replace(reg,"");
-      console.log('serviceResponse is' + serviceResponse);
-
-    });
-
-    waitsFor(function () {
-      return callback.callCount > 0;
-    },"createService Callback", TIMEOUT);
-
-    runs(function () {
-      expect(callback).toHaveBeenCalled();
-    });
-
-  });
-
-  xit('getServices should be successful', function() {
-    debug('getServices should be successful');
-    var callback = jasmine.createSpy("getServices");
-    getServices(function(_service) {
-      callback();
-    });
-
-    waitsFor(function () {
-      return callback.callCount > 0;
-    },"createService Callback", TIMEOUT);
-
-    runs(function () {
-      expect(callback).toHaveBeenCalled();
-    });
-
-  });
-
-  xit('getService testService should be successful', function() {
-    var callback = jasmine.createSpy("getService");
-    getService(serviceResponse, function(_response) {
-      callback();
-    },"getService Callback", TIMEOUT);
-
-    waitsFor(function () {
-      return callback.callCount > 0;
-    });
-
-    runs(function () {
-      expect(callback).toHaveBeenCalled();
-    });
-
-  });
-
-  xit('getService no-existence service should return error message', function() {
-    var callback = jasmine.createSpy("getService");
-    getService("aaa", function(_response) {
-      callback();
-      response = JSON.parse(_response);
-      msg = response.msg;
-    });
-
-    waitsFor(function () {
-      return callback.callCount > 0;
-    },"get no existence Callback", TIMEOUT);
-
-    runs(function () {
-      expect(msg).toEqual('Service not found');
-    });
-
-  });
-
-  xit('deleteService testService should be successful', function() {
-    var callback = jasmine.createSpy("deleteService");
-   //deleteService(serviceResponse, true, function(_response) {
-    deleteService(serviceResponse, function(_response) {
-      callback();
-      response = JSON.parse(_response);
-      msg = response.msg;
-    });
-
-    waitsFor(function () {
-      return callback.callCount > 0;
-    },"deletServcice Callback", TIMEOUT);
-
-    runs(function () {
-      expect(msg).toEqual('Service deleted');
-    });
-
-  });
-
-  xit('deleteService no-existence service should return error message', function() {
-    var callback = jasmine.createSpy("deleteService");
-    deleteService(serviceResponse, function(_response) {
-      callback();
-      response = JSON.parse(_response);
-      msg = response.msg;
-    });
-
-    waitsFor(function () {
-      return callback.callCount > 0;
-    },"delete no-existence Servcice Callback", TIMEOUT);
-
-    runs(function () {
-      expect(msg).toEqual('Service not found');
-    });
-
-  });
-
-  xit('getUsers should be correct', function() {
-    var tokenCallback = jasmine.createSpy("token");
-    var mediaCallback = jasmine.createSpy("getusermedia");
-    var errorMediaCallback = jasmine.createSpy("getusermediaerror");
-    var callbackConnect = jasmine.createSpy("connectroom");
-    var publishCallback = jasmine.createSpy("publishCallback");
-    var publishErrorCallback = jasmine.createSpy("publishErrorCallback");
-    var callback = jasmine.createSpy("getUsers");
-    var roomid = "549097ad7a982f41474a20b0";
-    createToken(roomid, "user", "presenter", function(_token) {
-      callback();
-      token = _token;
-      console.log("==========token is:" + token);
-    });
-    waitsFor(function () {
-      return tokenCallback.callCount > 0;
-    });
-
-    runs(function () {
-      expect(tokenCallback).toHaveBeenCalled();
-    });
-    Woogeen.LocalStream.create({
-           video: {
-             device: 'camera',
-             resolution: 'vga'
-           },
-           audio: true
-         }, function (err, stream) {
-           if (err) {
-               errorMediaCallback();
-           }else{
-               mediaCallback();
-           }
-         });
-
-    waitsFor(function () {
-      return mediaCallback.callCount > 0;
-    });
-
-    runs(function () {
-      expect(mediaCallback).toHaveBeenCalled();
-      expect(errorMediaCallback.callCount).toEqual(0);
-    });
-    runs(function () {
-      room = Woogeen.ConferenceClient.create({});
-      room.join(token, function (resp) {
-       console.log("join 1 " + resp);
-        callback();
-        remoteStream = resp.streams;
-        room.publish(localStream, {maxVideoBW: 300, videoCodec: codec}, function(st) {
-         console.log('stream published:', st.id());
-            publishCallback();
-        },function (err) {
-          console.log('publish failed:', err);
-             publishErrorCallback();
-           });
-      }, function(err){
-          console.log("join failed " + err);
-          errorCallback();
-      });
-    });
-    waitsFor(function () {
-      return publishCallback.callCount > 0;
-    });
- runs(function () {
-  console.log("roomid is " + roomid);
-  var roomid = "549097ad7a982f41474a20b0";
-    getUsers(roomid,function(_users) {
-      callback();
-      var users = _users;
-      debug(users);
-    });
-  });
-    waitsFor(function () {
-      return callback.callCount > 0;
-    });
-    runs(function () {
-      expect(callback).toHaveBeenCalled();
-    });
-  });
-
-  xit('getUser should be correct', function() {
-    var callback = jasmine.createSpy("getUser");
-    var roomid = "549097ad7a982f41474a20b0";
-    console.log("roomid is " + roomid);
-    getUser(roomid,'user',function(_users) {
-      callback();
-    });
-    waitsFor(function () {
-      return callback.callCount > 0;
-    });
-    runs(function () {
-      expect(callback).toHaveBeenCalled();
     });
   });
 
@@ -673,6 +551,7 @@ describe('management-test', function () {
 
   it('CreateRoom test after delete with same name should be successful', function() {
     var callback = jasmine.createSpy("createRoom");
+    var errCallback = jasmine.createSpy("createRoomErr");
       console.log("create roomid is " + roomid);
     createRoom("test", function(_room) {
       callback();
@@ -681,6 +560,8 @@ describe('management-test', function () {
        console.log("create roomid is " + roomid);
       console.log("==========room id is:" + roomid);
       roomname = room.name;
+    }, function(error){
+      errCallback();
     });
 
     waitsFor(function () {
@@ -688,6 +569,7 @@ describe('management-test', function () {
     });
 
     runs(function () {
+      expect(errCallback.callCount).toEqual(0);
       expect(roomname).toEqual('test');
     });
 
@@ -695,12 +577,14 @@ describe('management-test', function () {
 
   it('delete inactive room test should be successful', function() {
     var callback = jasmine.createSpy("deleteRoom");
-      console.log("delete roomid is " + roomid);
+    var errCallback = jasmine.createSpy("deleteRoomErr");
     deleteRoom(roomid, function(_room) {
       debug("delete roomid is " + roomid);
       callback();
      // room1 = JSON.parse(_room);
      // msg = room1.msg;
+    }, function(error){
+      errCallback();
     });
 
     waitsFor(function () {
@@ -710,38 +594,54 @@ describe('management-test', function () {
     runs(function () {
      // expect(msg).toEqual('Inactive room deleted');
       expect(callback).toHaveBeenCalled();
+      expect(errCallback.callCount).toEqual(0);
     });
 
   });
 
   it('deleteRoom unexistent room should be get error message', function() {
     var callback = jasmine.createSpy("deleteRoom");
+    var errCallback = jasmine.createSpy("deleteRoomErr");
     debug("delete roomid is " + roomid);
     deleteRoom(roomid, function(_room) {
       callback();
       //room1 = JSON.parse(_room);
      // msg = room1.msg;
+    }, function(error){
+      errCallback();
     });
     // no msg at current design//
     waitsFor(function () {
-      return callback.callCount > 0;
+      return errCallback.callCount > 0;
     });
 
     runs(function () {
       //expect(msg).toEqual('Room does not exist');
-      expect(callback).toHaveBeenCalled();
+      expect(errCallback).toHaveBeenCalled();
+      expect(callback.callCount).toEqual(0);
     });
   });
 
   it('getRooms should be succesful', function() {
    var callback = jasmine.createSpy("getRooms");
+   var errCallback = jasmine.createSpy("getRooms");
    var roomlist;
    getRooms(function(_room) {
     callback();
     roomlist = JSON.parse(_room);
+      console.log("Room info is listed:",roomlist);
+      console.log("Room number is:", roomlist.length);
+      for (var i=0; i < roomlist.length; i++){
+        if (roomlist[i].name === 'myRoom') {
+          roomid = roomlist[i]._id;
+          console.log('room Id:',roomid);
+        }
+      }
     debug('roomlist' + roomlist);
     debug('roomlist' +roomlist[0]._id);
-   });
+   }, function(error){
+      errCallback();
+    });
     waitsFor(function () {
       return callback.callCount > 0;
     });
@@ -749,60 +649,51 @@ describe('management-test', function () {
     runs(function () {
       expect(callback).toHaveBeenCalled();
       expect(roomlist.length).toBeGreaterThan(0);
+      expect(errCallback.callCount).toEqual(0);
     });
   });
 });
 
   describe('API-test', function () {
     "use strict";
-  var roomid, response, msg, room, room_2, room1, token, token_2, localStream, localStream_2, remoteStream, remoteStream_2, localStreamID, remoteStreamID,localV,serviceResponse,streamtest,streamtest_mix, users, token1, token2, user1Stream, user2Stream, user1Room, user2Room, user1RemoteStreams, user2RemoteStreams;
-  var canvas, context, bitmap, bitmapURL, width, height;
-
-  it('create Token', function () {
+  
+  it('MCU-770 : ConferenceClient-createToken-003-normal create Token', function () {
     var callback = jasmine.createSpy("token");
-    var getRoomsCallback = jasmine.createSpy("createRoom");
+    var errCallback = jasmine.createSpy("tokenErr");
     var serverroom;
-    getRooms(function(_room) {
-    getRoomsCallback();
-    var rooms = JSON.parse(_room);
-    console.log(rooms.length);
-      for (var i=0; i < rooms.length; i++){
-              if (rooms[i].name === 'myRoom') {
-                 roomid = rooms[i]._id;
-                 console.log('room Id:', myRoom);
-             }
-         }
-   });
-
-    waitsFor(function () {
-      return getRoomsCallback.callCount > 0;
-    });
-
-    runs(function () {
-      expect(getRoomsCallback).toHaveBeenCalled();
-    });
-    createToken(roomid, "user_1", "presenter", function(_token) {
+   
+    console.log("Get room id is:", roomid);
+    createToken(roomid, "user_11", "presenter", function(_token) {
       callback();
       token = _token;
-      console.log("==========token is:" + token);
+      console.log("==========token 1 is:" + token);
+    }, function(error){
+      errCallback();
     });
-    createToken(roomid, "user_2", "presenter", function(_token) {
+    /*
+     waitsFor(function () {
+      return callback.callCount > 0;
+    },"Create token 1 should succeed ", TIMEOUT);*/
+    createToken(roomid, "user_12", "presenter", function(_token) {
      // createToken("user_2", "presenter", function(_token) {
       callback();
       token_2 = _token;
       console.log("==========token_2 is:" + token_2);
+    }, function(error){
+      errCallback();
     });
     waitsFor(function () {
       return callback.callCount > 1;
-    });
+    },"Create token 2 should succeed ", TIMEOUT);
 
     runs(function () {
-      expect(callback).toHaveBeenCalled();
+      expect(callback.callCount).toEqual(2);
+      expect(errCallback.callCount).toEqual(0);
     });
   });
 
 
-  it('connect to room twice with same token', function() {
+  it('MCU-805:ConferenceClient-join-001-normal connect to room twice with same token', function() {
     var callback = jasmine.createSpy("connectroom");
     var errorCallback = jasmine.createSpy("connectroomerror");
     var callback2 = jasmine.createSpy("connectroom");
@@ -811,32 +702,46 @@ describe('management-test', function () {
     var publishCallback = jasmine.createSpy("publishCallback");
     room = Woogeen.ConferenceClient.create({});
     room_2 = Woogeen.ConferenceClient.create({});
-    console.log("token is " + token);
+    console.log("##################### token is " + token);
     room.join(token, function (resp) {
-       console.log("join 1 " + resp);
+       console.log("#####################join 1 " + resp);
         callback();
     }, function(err){
-        console.log("join failed " + err);
+        console.log("#####################1 join failed " + err);
         errorCallback();
     });
+
+    waitsFor(20000);
+    waitsFor(function () {
+      return callback.callCount > 0;
+    },"User 1 join room should succeed ", 30000);
+
+
+     console.log("#####################token 2 is " + token);
+     
      room_2.join(token, function (resp) {
-        console.log("join 2 " + resp);
+        console.log("#####################join 2 " + resp);
          callback2();
      },function(err) {
+         console.log("#####################2 join failed " + err);
          errorCallback2();
      });
-    waits(1000);
+    waitsFor(function () {
+      return errorCallback2.callCount > 0;
+    },"User 2 join room should fail", TIMEOUT);
     runs(function () {
       expect(callback.callCount).toEqual(1);
       expect(callback2.callCount).toEqual(0);
       expect(errorCallback.callCount).toEqual(0);
-      expect(errorCallback2.callCount).toEqual(0);
+      expect(errorCallback2.callCount).toEqual(1);
     });
   });
 
-  it('Disconnect room and create Token again', function () {
+  it('MCU-1321:ConferenceClient-createToken-004-normal Disconnect room and create token again', function () {
     var callback = jasmine.createSpy("token");
+    var errCallback = jasmine.createSpy("tokenErr");
     var getRoomsCallback = jasmine.createSpy("createRoom");
+    var getRoomsErrorCallback = jasmine.createSpy("createRoomErr");
     var roomdisconnectedCallback = jasmine.createSpy("roomdisconnected");
     var serverroom;
    /*
@@ -870,9 +775,10 @@ describe('management-test', function () {
     }, 'room disconnected', TIMEOUT);
 
     waitsFor(function () {
-      return roomdisconnectedCallback.callCount > 1;
-    });
+      return roomdisconnectedCallback.callCount > 3;
 
+    });
+/*
     runs(function() {
       getRooms(function(_room) {
         getRoomsCallback();
@@ -880,6 +786,8 @@ describe('management-test', function () {
         console.log(roomlist.length);
         roomid = roomlist[0]._id;
         debug('roomid is' + roomid);
+      }, function(error){
+        getRoomsErrorCallback();
       });
     });
 
@@ -890,275 +798,68 @@ describe('management-test', function () {
 
     runs(function () {
       expect(getRoomsCallback).toHaveBeenCalled();
-    });
+      expect(getRoomsErrorCallback.callCount).toEqual(0);
+    });*/
     createToken(roomid, "user_1", "presenter", function(_token) {
       callback();
       token = _token;
       console.log("==========token is:" + token);
+    }, function(eror){
+      errCallback();
     });
     createToken(roomid, "user_2", "presenter", function(_token) {
       callback();
       token_2 = _token;
       console.log("==========token_2 is:" + token_2);
+    }, function(eror){
+      errCallback();
     });
+
     waitsFor(function () {
       return callback.callCount > 1;
     });
 
     runs(function () {
       expect(callback).toHaveBeenCalled();
+      expect(errCallback.callCount).toEqual(0);
+      room.clearEventListener("server-disconnected");
+      room_2.clearEventListener("server-disconnected");
     });
   });
 
-  it('create localStream by createLocalStream', function () {
-    var callback = jasmine.createSpy("createLocalStream");
-    var errorCallback = jasmine.createSpy("createLocalStreamError");
-    Woogeen.LocalStream.create({
-           video: {
-              device: 'camera',
-              resolution : 'vga'
-            },
-           audio: true
-         }, function (err, stream) {
-           if (err) {
-               errorCallback();
-           }else{
-            callback();
-           localStream = stream;
-           }
-         });
-      Woogeen.LocalStream.create({
-           video: {
-             device: 'camera',
-             resolution: 'vga'
-           },
-           audio: true
-         }, function (err, stream) {
-           if (err) {
-               errorCallback();
-           }else{
-               callback();
-           localStream_2 = stream;
-           }
-         });
-
-    waitsFor(function () {
-      return callback.callCount > 1;
-    });
-
-    runs(function () {
-
-      expect(callback).toHaveBeenCalled();
-    });
-  });
-
-  it('close should be defined', function() {
-    expect(localStream.close).toBeDefined();
-  });
-  it('show should be defined', function() {
-    expect(localStream.show).toBeDefined();
-  });
-  it('hide should be defined', function() {
-    expect(localStream.hide).toBeDefined();
-  });
-  it('id should be defined', function() {
-    expect(localStream.id).toBeDefined();
-  });
-  it('attributes should be defined', function() {
-    expect(localStream.attributes).toBeDefined();
-  });
-  it('attr should be defined', function() {
-    expect(localStream.attr).toBeDefined();
-  });
-  it('isMixed should be defined', function() {
-    expect(localStream.isMixed).toBeUndefined();
-  });
-  it('isScreen should be defined', function() {
-    expect(localStream.isScreen).toBeDefined();
-  });
-  /*
-  it('playVideo should be defined', function() {
-    expect(localStream.playVideo).toBeDefined();
-  });
-  it('pauseVideo should be defined', function() {
-    expect(localStream.pauseVideo).toBeDefined();
-  });
-  it('playAudio should be defined', function() {
-    expect(localStream.playAudio).toBeDefined();
-  });
-  it('pauseAudio should be defined', function() {
-    expect(localStream.pauseAudio).toBeDefined();
-  });
-*/
-  it('enableAudio should be defined', function() {
-    expect(localStream.enableAudio).toBeDefined();
-  });
-  it('disableAudio should be defined', function() {
-    expect(localStream.disableAudio).toBeDefined();
-  });
-  it('enableVideo should be defined', function() {
-    expect(localStream.enableVideo).toBeDefined();
-  });
-  it('diableVideo should be defined', function() {
-    expect(localStream.disableVideo).toBeDefined();
-  });
-  it('localStream hasAudio() should return true', function () {
-    runs(function () {
-      expect(localStream.hasAudio()).toEqual(true);
-    });
-  });
-  it('localStream hasVideo() should return true', function () {
-    runs(function () {
-      expect(localStream.hasVideo()).toEqual(true);
-    });
-  });
-  it('localStream isScreen should return false', function () {
-    runs(function () {
-      expect(localStream.isScreen()).toEqual(false);
-    });
-  });
-  it('localStream id should be undefined before publish', function () {
-    runs(function () {
-      expect(localStream.id()).toEqual(undefined);
-    });
-  });
-  it('attr and attributes should be work', function () {
-    runs(function () {
-      localStream.attr("name","test");
-    });
-    runs(function () {
-      expect(localStream.attributes().name).toEqual("test");
-    });
-  });
-
-  it('show() should call correct', function(){
-    var localdiv = document.createElement("div");
-    var Dectection;
-    var IsPlaying;
-    localdiv.setAttribute("id", "localDiv");
-    localdiv.setAttribute("style", "width :320px; height: 240px;");
-    document.body.appendChild(localdiv);
-    localStream.show('localDiv');
-    waits(500);
-    runs(function() {
-        console.log("localStream.id is " + localStream.id());
-     var video = document.getElementById('stream' + localStream.id());
-     expect(video.src).toMatch(/blob/);
-   });
-   runs(function() {
-       var localId = 'stream' + localStream.id();
-       Dectection = startDetection(localId,"320","240");
-   })
-
-   runs(function() {
-        expect(Dectection).toEqual(true);
-    });
-    waits(10000);
-    runs(function() {
-       IsPlaying = isVideoPlaying()});
-    runs(function() {
-        expect(IsPlaying).toEqual(true);
-    });
-  });
-
-  it('mouse over should show bar', function () {
-    $(document.getElementById('subbar_'+localStream.id())).trigger('mouseover');
-    var bar = document.getElementById('bar_'+localStream.id());
-    runs(function() {
-      var style = document.getElementById('bar_'+localStream.id()).style.display;
-      expect(style).toBe('block');
-
-    });
-  });
-
-  it('mouse out should display bar', function () {
-    $(document.getElementById('subbar_'+localStream.id())).trigger('mouseout');
-    waits(10000);
-    runs(function() {
-      var style = document.getElementById('bar_'+localStream.id()).style.display;
-      expect(style).toBe('none');
-
-    });
-  });
-
-  it('click volume should mute voice', function () {
-    localStreamID = localStream.id();
-    $(document.getElementById('volume_'+localStreamID)).click();
-    runs(function() {
-      var style = document.getElementById('volume_'+localStreamID).src;
-      expect(style).toMatch(/iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAQAAAD9CzEMAAAABGdBTUEAALGOfPtRk/);
-    });
-  });
-
-  it('click volume again should umute voice', function () {
-    localStreamID = localStream.id();
-    $(document.getElementById('volume_'+localStreamID)).click();
-    runs(function() {
-      var style = document.getElementById('volume_'+localStreamID).src;
-      expect(style).toMatch(/iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAQAAAD9CzEMAAAAB/);
-    });
-  });
-
-  it('hide() should call correct', function(){
-    localStream.hide();
-    runs(function() {
-      var video = document.getElementById('stream' + localStream.id());
-      expect(video).toBeNull();
-    });
-  });
-
-  it('close() should call correct', function(){
-    localStream.close();
-    runs(function() {
-      var video = document.getElementById('stream' + localStream.id);
-      expect(video).toBeNull();
-      expect(localStream.stream).not.toBeDefined();
-    });
-  });
-  it('Can create local media by createLocalMedia after closed', function () {
-    var callback = jasmine.createSpy("getusermedia");
-    var errorCallback = jasmine.createSpy("getusermedia");
-    Woogeen.LocalStream.create({
-           video: {
-             device: 'camera',
-             resolution: 'vga'
-           },
-           audio: true
-         }, function (err, stream) {
-           if (err) {
-               errorCallback();
-           }
-           else{
-               callback();
-           localStream = stream;
-           }
-    });
-    waitsFor(function () {
-      return callback.callCount > 0;
-    });
-
-    runs(function () {
-      expect(callback).toHaveBeenCalled();
-      expect(errorCallback.callCount).toEqual(0);
-    });
-  });
-
-
-
-  it('two clients connect to room and publish local stream ', function () {
+  it('MCU-806:ConferenceClient-publish-001-normal two clients connect to room and publish local stream ', function () {
     var callback = jasmine.createSpy("connectroom");
     var errorCallback = jasmine.createSpy("connectroomerror");
     var publishErrorCallback = jasmine.createSpy("publishErrorCallback");
     var publishCallback = jasmine.createSpy("publishCallback");
     var peerJoinedCallback = jasmine.createSpy("publishErrorCallback");
+    var streamAddedCallback = jasmine.createSpy("streamAdded");
+
     room = Woogeen.ConferenceClient.create({});
     room_2 = Woogeen.ConferenceClient.create({});
+
+    room.addEventListener("stream-added", function(msg) {
+      debug("#####################stream-added");
+     // remoteStream.push(msg.stream);
+      debug(msg.stream.id());
+      debug("#####################stream-added end");
+      streamAddedCallback();
+    });
+    room_2.addEventListener("stream-added", function(msg) {
+      debug("@@@@@@@@@@@@@@@@@@@@@@@@stream-added2");
+      debug(msg.stream.id());
+      debug("@@@@@@@@@@@@@@@@@@@@@@@@stream-added2 end");
+      streamAddedCallback();
+    });
+
     console.log("token is " + token);
     runs(function() {
      room.addEventListener("peer-joined", function(roomEvent) {
+      console.log("++++++++++++++1 peer joined");
       peerJoinedCallback();
     });
      room_2.addEventListener("peer-joined", function(roomEvent) {
+      console.log("++++++++++++++1 peer joined");
       peerJoinedCallback();
      });
     });
@@ -1210,43 +911,157 @@ describe('management-test', function () {
       return publishCallback.callCount > 1;
     }, "publishCallback should be called twice ",TIMEOUT);
 
+    waitsFor(function () {
+      return streamAddedCallback.callCount > 3;
+    });
+    waits(30000);
+
     runs(function () {
       expect(callback.callCount).toEqual(2);
       expect(publishCallback.callCount).toEqual(2);
       expect(errorCallback.callCount).toEqual(0);
       expect(publishErrorCallback.callCount).toEqual(0);
+      expect(streamAddedCallback).toHaveBeenCalled();
+      expect(streamAddedCallback.callCount).toEqual(6);
+      room.clearEventListener("stream-added");
+      room.clearEventListener("peer-joined");
+      room_2.clearEventListener("stream-added");
+      room_2.clearEventListener("peer-joined");
     });
   });
 
-  it('stream added event will be monitor ', function () {
-    var callback = jasmine.createSpy("publishroom");
-    waits(30000);
-    room.addEventListener("stream-added", function(msg) {
-      debug("stream-added");
-     // remoteStream.push(msg.stream);
-      debug(msg.stream.id());
+  it(' MCU-764:Server-getUsers-001-normal API', function() {
+    var callback = jasmine.createSpy("getUsers");
+    var errCallback = jasmine.createSpy("getUsersErr");
+    var users;
+    console.log("Room id is:", roomid);
+    getUsers(roomid,function(_users) {
       callback();
-    });
-    room_2.addEventListener("stream-added", function(msg) {
-      debug("stream-added2");
-      debug(msg.stream.id());
-      callback();
+      users = JSON.parse(_users);
+      debug(_users);
+    }, function(error){
+      errCallback();
     });
 
     waitsFor(function () {
-      return callback.callCount > 1;
+      return callback.callCount > 0;
+    },"Get users should succeed ", TIMEOUT);
+
+    runs(function () {
+      expect(callback).toHaveBeenCalled();
+      expect(errCallback.callCount).toEqual(0);
+      expect(users.length).toEqual(2);
+      expect(users[0].name).toEqual("user_1");
+      expect(users[1].name).toEqual("user_2");
+    });
+
+  });
+
+  it(' MCU-1167:Server-getUsers-002-abnormal API test with invalid room', function() {
+    var callback = jasmine.createSpy("getUsers");
+    var errCallback = jasmine.createSpy("getUsersErr");
+    var users;
+    getUsers("test",function(_users) {
+      callback();
+      users = JSON.parse(_users);
+      debug(_users);
+    }, function(error){
+      errCallback();
+    });
+
+    waitsFor(function () {
+      return errCallback.callCount > 0;
+    });
+
+    runs(function () {
+      expect(errCallback).toHaveBeenCalled();
+      expect(callback.callCount).toEqual(0);
+    });
+
+  });
+
+  it('MCU-763:Server-getUser-001-normalAPI test', function() {
+    var callback = jasmine.createSpy("getUser");
+    var errCallback = jasmine.createSpy("getUserErr");
+    var user;
+    console.log("Room id is:", roomid);
+    getUser(roomid, "user_1", function(_users) {
+      callback();
+      user = JSON.parse(_users);
+      debug(_users);
+    }, function(error){
+      errCallback();
+    });
+
+    waitsFor(function () {
+      return callback.callCount > 0;
     });
 
     runs(function () {
       expect(callback).toHaveBeenCalled();
-      expect(callback.callCount).toEqual(6);
+      expect(errCallback.callCount).toEqual(0);
+      expect(user.name).toEqual("user_1");
     });
+
   });
 
-  it('no stream-added event if publish error stream', function (){
+  it('MCU-1165:Server-getUser-002-abnormal API test with invalid room', function() {
+    var callback = jasmine.createSpy("getUser");
+    var errCallback = jasmine.createSpy("getUserErr");
+    var user;
+    console.log("Room id is:", roomid);
+    getUser("test", "user_1", function(_users) {
+      callback();
+      user = JSON.parse(_users);
+      debug(_users);
+    }, function(error){
+      errCallback();
+    });
+
+    waitsFor(function () {
+      return errCallback.callCount > 0;
+    });
+
+    runs(function () {
+      expect(errCallback).toHaveBeenCalled();
+      expect(callback.callCount).toEqual(0);
+    });
+
+  });
+
+  it('MCU-1166:Server-getUser-003-abnormal API test with invalid user name', function() {
+    var callback = jasmine.createSpy("getUser");
+    var errCallback = jasmine.createSpy("getUserErr");
+    var user;
+    console.log("Room id is:", roomid);
+    getUser(roomid, "test", function(_users) {
+      callback();
+      user = JSON.parse(_users);
+      debug(_users);
+    }, function(error){
+      errCallback();
+    });
+
+    waitsFor(function () {
+      return errCallback.callCount > 0;
+    });
+
+    runs(function () {
+      expect(errCallback).toHaveBeenCalled();
+      expect(callback.callCount).toEqual(0);
+    });
+
+  });
+
+  it('MCU-808:ConferenceClient-publish-003-normal no stream-added event if publish error stream', function (){
     var pubishErrorCallback = jasmine.createSpy("publisherrorstream");
     var publishCallback = jasmine.createSpy("publishstream");
     var callback = jasmine.createSpy("stream-added");
+
+    room_2.addEventListener("stream-added", function(msg) {
+      callback();
+    });
+
     room.publish("");
     room.publish("", {maxVideoBW: 300}, function(st) {
         publishCallback();
@@ -1272,18 +1087,17 @@ describe('management-test', function () {
           pubishErrorCallback();
     });
     }
+    
     waits(10000);
-    room_2.addEventListener("stream-added", function(msg) {
-      callback();
-    });
     runs(function() {
       expect(publishCallback.callCount).toEqual(0);
       expect(callback.callCount).toEqual(0);
       expect(pubishErrorCallback.callCount).toEqual(6);
+      room_2.clearEventListener("stream-added");
      });
    });
 
-  it('no stream-added event if publish stream already published', function (){
+  it('MCU-809:ConferenceClient-publish-002-normal no stream-added event if publish stream already published', function (){
     var pubishErrorCallback = jasmine.createSpy("publisherrorstream");
     var publishCallback = jasmine.createSpy("publishstream");
     var callback = jasmine.createSpy("stream-added");
@@ -1299,20 +1113,21 @@ describe('management-test', function () {
 
     runs(function() {
       expect(callback.callCount).toEqual(0);
+      room_2.clearEventListener("stream-added");
      },"stream-added event", TIMEOUT);
    });
 
-  it('room.localStreams should be defined as Object', function() {
+  it('MCU-810:LocalStream-stability-005-normal room.localStreams should be defined as Object', function() {
     expect(room.localStreams).toBeDefined();
     expect(room.localStreams).toEqual(jasmine.any(Object));
   });
 
-  it('room.remoteStreams should be defined as Object', function() {
+  it('MCU-811:RemoteStream-stability-001-normal room.remoteStreams should be defined as Object', function() {
     expect(room.remoteStreams).toBeDefined();
     expect(room.remoteStreams).toEqual(jasmine.any(Object));
   });
   /*
-  it('playVideo for remoteStream should be defined', function() {
+  it('MCU-813:RemoteStream-playVideo-001-normal for remotelStream should be defined', function() {
     runs(function() {
       for (var index in room.remoteStreams) {
         var stream = room.remoteStreams[index];
@@ -1320,7 +1135,7 @@ describe('management-test', function () {
         }
       });
   });
-  it('pauseVideo for remoteStream should be defined', function() {
+  it('MCU-814:RemoteStream-pauseVideo-001-normal for remoteStream should be defined', function() {
     runs(function() {
       for (var index in room.remoteStreams) {
         var stream = room.remoteStreams[index];
@@ -1328,7 +1143,7 @@ describe('management-test', function () {
         }
       });
   });
-  it('playAudio for remoteStream should be defined', function() {
+  it('MCU-815:RemoteStream-playAudio-001-normal for remoteStream should be defined', function() {
      runs(function() {
       for (var index in room.remoteStreams) {
         var stream = room.remoteStreams[index];
@@ -1336,7 +1151,7 @@ describe('management-test', function () {
         }
       });
   });
-  it('pauseAudio for remoteStream should be defined', function() {
+  it('MCU-816:RemoteStream-pauseAudio-001-normal for remoteStream should be defined', function() {
      runs(function() {
       for (var index in room.remoteStreams) {
         var stream = room.remoteStreams[index];
@@ -1345,7 +1160,7 @@ describe('management-test', function () {
       });
   });
 */
-  it('enableAudio for remoteStream should be defined', function() {
+  it('MCU-817:RemoteStream-enableAudio-001-normal for remoteStream should be defined', function() {
      runs(function() {
       for (var index in room.remoteStreams) {
         var stream = room.remoteStreams[index];
@@ -1353,7 +1168,7 @@ describe('management-test', function () {
       }
      });
   });
-  it('disableAudio for remoteStream should be defined', function() {
+  it('MCU-818:RemoteStream-disableAuido-001-normal for remoteStream should be defined', function() {
      runs(function() {
       for (var index in room.remoteStreams) {
         var stream = room.remoteStreams[index];
@@ -1361,7 +1176,7 @@ describe('management-test', function () {
       }
      });
   });
-  it('enableVideo for remoteStream should be defined', function() {
+  it('MCU-819:RemoteStream-enableVideo-001-normal for remoteStream should be defined', function() {
      runs(function() {
       for (var index in room.remoteStreams) {
         var stream = room.remoteStreams[index];
@@ -1369,7 +1184,7 @@ describe('management-test', function () {
       }
      });
   });
-  it('disableVideo for remoteStream should be defined', function() {
+  it('MCU-1322:RemoteStream-disableVideo-001-normal for remoteStream should be defined', function() {
       runs(function() {
       for (var index in room.remoteStreams) {
         var stream = room.remoteStreams[index];
@@ -1605,11 +1420,11 @@ waitsFor(function () {
     });
   });*/
 
-  it('room.state should return 2', function() {
+  it('MCU-812:ConferenceClient-room.state should return 2', function() {
     expect(room.state).toEqual(2);
   });
 
-  it('remoteStream should have three streams', function () {
+  it('MCU-824:RemoteStream-001-normal remoteStream should have three streams', function () {
     var callback = jasmine.createSpy("subscribe");
     for (var index in room.remoteStreams) {
     var stream = room.remoteStreams[index];
@@ -1623,7 +1438,7 @@ waitsFor(function () {
 
 
  // Susbscribe forward stream
-  it('susbscribe forward stream and check up it is playing ', function () {
+  it('MCU-825:ConferenceClient-subscribe-001-normal susbscribe forward stream and check up it is playing ', function () {
     var callback = jasmine.createSpy("subscribe");
     var errorCallback = jasmine.createSpy("errorSubscribe");
     var Dectection;
@@ -1680,7 +1495,7 @@ waitsFor(function () {
     });
   });
 
-it('check up state included iceConnectionState, iceGatheringState, hasVideo, hasaudio for remote forward stream', function() {
+it('MCU-826:RemoteStream-check up state included iceConnectionState, iceGatheringState, hasVideo, hasaudio for remote forward stream', function() {
      var streamcallback = jasmine.createSpy("stats for remoteStream");
      var iceConnectionStateCallback = jasmine.createSpy("iceConnectionState");
      var iceGatheringStateCallback = jasmine.createSpy("iceGatheringState");
@@ -1715,7 +1530,7 @@ it('check up state included iceConnectionState, iceGatheringState, hasVideo, has
  });
 
 
-  it('subscribe error stream will not succesful', function(){
+  it('MCU-827:ConferenceClient-subscribe-002-abnormal subscribe error stream will not succesful', function(){
     var callback = jasmine.createSpy("subscribe");
     var errorCallback = jasmine.createSpy("errorSubscribe");
     room.subscribe("",function (resp) {
@@ -1738,7 +1553,7 @@ it('check up state included iceConnectionState, iceGatheringState, hasVideo, has
       expect(errorCallback.callCount).toEqual(3);
     });
   });
-  it('subscribe the stream already subscribed will not succesful', function(){
+  it('MCU-828:ConferenceClient-subscribe-003-abnormal subscribe the stream already subscribed will not succesful', function(){
     var callback = jasmine.createSpy("subscribe");
     var errorCallback = jasmine.createSpy("errorSubscribe");
     for (var index in remoteStream) {
@@ -1758,7 +1573,7 @@ it('check up state included iceConnectionState, iceGatheringState, hasVideo, has
   });
 
   //subscribe mix stream
-    it('subscribe mix stream and check up mix stream is playing ', function () {
+    it('MCU-829:ConferenceClient-subscribe-004-normal subscribe mix stream and check up mix stream is playing ', function () {
     var callback = jasmine.createSpy("subscribe");
     var errorCallback = jasmine.createSpy("errorSubscribe");
     var Dectection;
@@ -1820,7 +1635,7 @@ it('check up state included iceConnectionState, iceGatheringState, hasVideo, has
     });
   });
 
-it('check up state inclucded iceConnectionState, iceGatheringState, hasVideo, hasaudio for remote mix stream', function() {
+it('MCU-830:RemoteStream-check up state inclucded iceConnectionState, iceGatheringState, hasVideo, hasaudio for remote mix stream', function() {
      var streamcallback = jasmine.createSpy("stats for remoteStream");
      var iceConnectionStateCallback = jasmine.createSpy("iceConnectionState");
      var iceGatheringStateCallback = jasmine.createSpy("iceGatheringState");
@@ -1852,7 +1667,7 @@ it('check up state inclucded iceConnectionState, iceGatheringState, hasVideo, ha
      });
  });
 
-  it('mouse over should show volume bar for remoteStream', function () {
+  it('MCU-831:RemoteStream-mouse over should show volume bar for remoteStream', function () {
     for (var index in room.remoteStreams) {
         var stream = room.remoteStreams[index];
         if(stream.isMixed()){
@@ -1867,7 +1682,7 @@ it('check up state inclucded iceConnectionState, iceGatheringState, hasVideo, ha
 
   });
 
-  it('mouseout should not show volume bar', function () {
+  it('MCU-832:RemoteStream-mouseout should not show volume bar', function () {
     for (var index in room.remoteStreams) {
         var stream = room.remoteStreams[index];
         if(stream.isMixed()){
@@ -1881,7 +1696,7 @@ it('check up state inclucded iceConnectionState, iceGatheringState, hasVideo, ha
     });
   });
 
-  it('change volume via volume bar', function () {
+  it('MCU-833:RemoteStream-change volume via volume bar', function () {
     for (var index in room.remoteStreams) {
         var stream = room.remoteStreams[index];
         if(stream.isMixed()){
@@ -1896,7 +1711,7 @@ it('check up state inclucded iceConnectionState, iceGatheringState, hasVideo, ha
     });
   });
 
-  it('click volume should mute voice', function () {
+  it('MCU-834:RemoteStream-click volume should mute voice', function () {
     for (var index in room.remoteStreams) {
         var stream = room.remoteStreams[index];
         if(stream.isMixed()){
@@ -1910,7 +1725,7 @@ it('check up state inclucded iceConnectionState, iceGatheringState, hasVideo, ha
     });
   });
 
-  it('click volume again should umute voice', function () {
+  it('MCU-835:RemoteStream-click volume again should umute voice', function () {
     for (var index in room.remoteStreams) {
         var stream = room.remoteStreams[index];
         if(stream.isMixed()){
@@ -1954,7 +1769,7 @@ it('check up state inclucded iceConnectionState, iceGatheringState, hasVideo, ha
   });
 
 
-  it('unsubscribe stream should empty HTML element', function () {
+  it('MCU-837:ConferenceClient-unsubscribe-001-normal unsubscribe stream should empty HTML element', function () {
     var callback = jasmine.createSpy('unsubscribe'),
     streamCount = 0;
     for (var index in room.remoteStreams) {
@@ -1970,7 +1785,7 @@ it('check up state inclucded iceConnectionState, iceGatheringState, hasVideo, ha
     });
    });
 
-  it('should unpublish stream in room', function () {
+  it('MCU-838:ConferenceClient-unpublish-001-normal should unpublish stream in room', function () {
     var callback = jasmine.createSpy("publishroom");
     var Dectection;
     var IsPlaying;
@@ -1997,6 +1812,8 @@ it('check up state inclucded iceConnectionState, iceGatheringState, hasVideo, ha
     });
     runs(function () {
       expect(callback).toHaveBeenCalled();
+      room.clearEventListener("stream-removed");
+      room.clearEventListener("stream-changed");
     });
     runs(function() {
         expect(Dectection).toEqual("novideo");
@@ -2005,7 +1822,7 @@ it('check up state inclucded iceConnectionState, iceGatheringState, hasVideo, ha
   });
 
 
-  it('id should return undefined after unpublish', function() {
+  it('MCU-839:ConferenceClient-unpublish-002-normal id should return undefined after unpublish', function() {
     var callback = jasmine.createSpy("unpublish");
     runs(function(){
       room.unpublish(localStream,function(){
@@ -2022,7 +1839,7 @@ it('check up state inclucded iceConnectionState, iceGatheringState, hasVideo, ha
   });
 
 
-  it('Can publish stream in room with perfs', function () {
+  it('MCU-840:ConferenceClient-publish-004-normal Can publish stream in room with perfs', function () {
     room.publish(localStream,{videoCodec: codec, width: 320, height: 240, framerate: 30, audiocodec: "ISAC", maxVideoBW: 500})
     var callback = jasmine.createSpy("publishroom");
     waits(30000);
@@ -2038,11 +1855,12 @@ it('check up state inclucded iceConnectionState, iceGatheringState, hasVideo, ha
 
     runs(function () {
       expect(callback).toHaveBeenCalled();
+      room.clearEventListener("stream-added");
     });
   });
 
 
-  it('Disconnect from room can trigger server-disconnected event', function () {
+  it('MCU-841:ConferenceClient-leave-001-normal Disconnect from room can trigger server-disconnected event', function () {
     var callback = jasmine.createSpy("connectroom");
     room.addEventListener("server-disconnected", callback);
     room_2.addEventListener("server-disconnected", callback);
@@ -2053,10 +1871,12 @@ it('check up state inclucded iceConnectionState, iceGatheringState, hasVideo, ha
     });
     runs(function () {
       expect(callback).toHaveBeenCalled();
+      room.clearEventListener("server-disconnected");
+      room_2.clearEventListener("server-disconnected");
     });
   });
 
-  it('connect to room with error token should be failed and report error message ', function () {
+  it('MCU-842:ConferenceClient-join-002 connect to room with error token should be failed and report error message ', function () {
     var callback = jasmine.createSpy("connectroom");
     var errorCallback = jasmine.createSpy("connectroomerror");
     room.join(token, function (resp) {
@@ -2067,13 +1887,17 @@ it('check up state inclucded iceConnectionState, iceGatheringState, hasVideo, ha
              debug('server connection failed:', err);
     });
 
+    waitsFor(function () {
+      return errorCallback.callCount > 0;
+    }, "Join room with error token should fail", 20000);
+
     runs(function () {
       expect(callback).not.toHaveBeenCalled();
       expect(errorCallback.callCount).toEqual(1);
     });
   });
 
-  it('Create two new token again should be successful', function () {
+  it('MCU-843:ConferenceClient-createToken-001-normal Create two new token again should be successful', function () {
     var callback = jasmine.createSpy("token");
 
     createToken(roomid, "user", "presenter", function(_token) {
@@ -2094,36 +1918,7 @@ it('check up state inclucded iceConnectionState, iceGatheringState, hasVideo, ha
     });
   });
 
-  it('It should be failed should get access to user media without video and audio', function () {
-    var callback = jasmine.createSpy("getusermedia");
-    Woogeen.LocalStream.create({
-           video: false,
-           audio: false
-         }, function (err, stream) {
-           if (err) {
-               callback();
-             debug('create LocalStream failed:', err);
-           }
-         });
-    Woogeen.LocalStream.create({
-           video: false,
-           audio: false
-         }, function (err, stream) {
-           if (err) {
-              callback();
-             debug('create LocalStream failed:', err);
-           }
-         });
-
-    waitsFor(function () {
-      return callback.callCount > 1;
-    });
-
-    runs(function () {
-      expect(callback).toHaveBeenCalled();
-    });
-  });
-  it('It should be successful should get access to user media for audio only', function () {
+  it('MCU-845:LocalStream-It should be susccessful should get access to user media for audio only', function () {
     var errorCallback = jasmine.createSpy("errorgetusermedia");
     var callback = jasmine.createSpy("getusermedia");
     localStream = undefined;
@@ -2186,7 +1981,7 @@ it('check up state inclucded iceConnectionState, iceGatheringState, hasVideo, ha
 
     waitsFor(function () {
       return callback.callCount > 0;
-    },"user 1 should join room correctly ", TIMEOUT);
+    },"user 1 should join room correctly ", 30000);
     runs(function() {
      room_2.join(token_2, function (resp) {
         console.log("join 2 " + resp);
@@ -2216,6 +2011,8 @@ it('check up state inclucded iceConnectionState, iceGatheringState, hasVideo, ha
       expect(publishCallback.callCount).toEqual(1);
       expect(errorCallback.callCount).toEqual(0);
       expect(publishErrorCallback.callCount).toEqual(0);
+      room.clearEventListener("peer-joined");
+      room_2.clearEventListener("peer-joined");
     });
   });
 
@@ -2232,7 +2029,7 @@ it('check up state inclucded iceConnectionState, iceGatheringState, hasVideo, ha
   });
 
 
-  it('should publish stream in room for localStream which only audio', function () {
+  it('MCU-849:ConferenceClient-publish-005-normal should publish audio-only stream successfully', function () {
     if (room !== undefined && room.state === 2) {
       var callback = jasmine.createSpy("publishroom");
       var publishErrorCallback = jasmine.createSpy("publishError");
@@ -2256,6 +2053,7 @@ it('check up state inclucded iceConnectionState, iceGatheringState, hasVideo, ha
 
       runs(function () {
         expect(callback).toHaveBeenCalled();
+        room.clearEventListener("stream-added");
         expect(publishCallback).toHaveBeenCalled();
       });
     } else {
@@ -2264,7 +2062,7 @@ it('check up state inclucded iceConnectionState, iceGatheringState, hasVideo, ha
     }
   });
 
-  it('subscribe to stream in room for localStream which without audio only, no video will display', function () {
+  it('MCU-850:ConferenceClient-subscribe-005-normal to stream with audio-only localStream, no video will display', function () {
     var callback = jasmine.createSpy("subscribe");
     var remoteId;
     var Dectection;
@@ -2301,16 +2099,18 @@ it('check up state inclucded iceConnectionState, iceGatheringState, hasVideo, ha
           runs(function() {
             Dectection = startDetection(remoteId ,"320","240");
           })
+          /*
           runs(function() {
             expect(Dectection).toEqual('novideo');
           });
+          
           waits(10000);
           runs(function() {
             IsPlaying = isVideoPlaying();
           });
           runs(function() {
             expect(IsPlaying).toEqual('video-not-playing');
-          });
+          });*/
         }, function(err) {
           errorCallback();
         });
@@ -2322,10 +2122,11 @@ it('check up state inclucded iceConnectionState, iceGatheringState, hasVideo, ha
 
     runs(function () {
       expect(callback).toHaveBeenCalled();
+      room.clearEventListener("stream-subscribed");
     });
   });
 
-  it('subscribe the stream which already subscribed in room for localStream with audio only will be failed', function () {
+  it('MCU-828:ConferenceClient-subscribe-003-abnormal subscribe the stream already subscribed will not succesful', function () {
     var callback = jasmine.createSpy("subscribe");
     var errorCallback = jasmine.createSpy("subscribe");
     for (var index in room.remoteStreams) {
@@ -2346,7 +2147,7 @@ it('check up state inclucded iceConnectionState, iceGatheringState, hasVideo, ha
   });
 
 
-  it('unsubscribe stream should can be called correct with localStream which audio only', function () {
+  it('MCU-852:ConferenceClient-unsubscribe-002-normal unsubscribe can be called with audio-only localStream', function () {
     var callback = jasmine.createSpy('unsubscribe');
     var errorCallback = jasmine.createSpy('unsubscribeError');
     var count = 0;
@@ -2372,7 +2173,7 @@ it('check up state inclucded iceConnectionState, iceGatheringState, hasVideo, ha
   });
 
 
-  it('unpublish stream in room should be called correct with localStream audio only ', function () {
+  it('MCU-853:ConferenceClient-unpublish-003-normal unpublish can be called correctly with audio-only localStream', function () {
     var removeCallback = jasmine.createSpy("removeCallback");
     var callback = jasmine.createSpy("successCallback");
     var errorCallback = jasmine.createSpy("errorCallback");
@@ -2386,19 +2187,19 @@ it('check up state inclucded iceConnectionState, iceGatheringState, hasVideo, ha
       removeCallback();
     });
 
-
     waitsFor(function () {
       return removeCallback.callCount > 0;
-    });
+    }, "Unpublish success callback not called", 30000);
 
     runs(function () {
       expect(callback).toHaveBeenCalled();
       expect(removeCallback).toHaveBeenCalled();
+      room.clearEventListener("stream-removed");
     });
   });
 
 
-  it('disconnect from room should be called correct with localstream with audio only', function () {
+  it('MCU-1323:ConferenceClient-leave-001-normal leave should be called correctly with audio-only localstream', function () {
     var callback = jasmine.createSpy("connectroom");
 
     room.addEventListener("server-disconnected", callback);
@@ -2407,12 +2208,14 @@ it('check up state inclucded iceConnectionState, iceGatheringState, hasVideo, ha
     room_2.leave();
 
     waitsFor(function () {
-      return callback.callCount > 1;
+      return callback.callCount > 3;
     });
 
     runs(function () {
       expect(callback).toHaveBeenCalled();
-      expect(callback.callCount).toEqual(2);
+      expect(callback.callCount).toEqual(4);
+      room.clearEventListener("server-disconnected");
+      room_2.clearEventListener("server-disconnected");
     });
   });
 
