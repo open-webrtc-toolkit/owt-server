@@ -290,6 +290,23 @@ exports.RoomController = function (spec) {
 
         if (subscribers[publisher_id] !== undefined && publishers[publisher_id] !== undefined) {
 
+            var recorder_id = -1;
+            for (var i in externalOutputs) {
+                if (externalOutputs.hasOwnProperty(i) && externalOutputs[i] === publisher_id) {
+                    recorder_id = i;
+                    break;
+                }
+            }
+
+            if (recorder_id !== -1) {
+                log.info('Removing recorder', recorder_id);
+                var args = [publisher_id, recorder_id, false];
+                rpc.callRpc(getErizoQueue(publisher_id), "removeExternalOutput", args, {callback: function (result) {}});
+
+                // Remove the external output track anyway
+                delete externalOutputs[recorder_id];
+            }
+
             var args = [publisher_id];
             rpc.callRpc(getErizoQueue(publisher_id), "removePublisher", args, undefined);
 
