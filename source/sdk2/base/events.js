@@ -11,7 +11,6 @@ Woogeen.EventDispatcher = function (spec) {
 
   // Public functions
 
-  // It adds an event listener attached to an event type.
 /**
    * @function addEventListener
    * @desc This function registers a callback function as a handler for the corresponding event. See <a href="index.html#Events">eventType</a> description.
@@ -43,7 +42,14 @@ conference.leave();
 */
   that.on = that.addEventListener;
 
-  // It removes an available event listener.
+/**
+   * @function removeEventListener
+   * @desc This function removes a registered event listener.
+   * @memberOf Woogeen.ConferenceClient
+   * @instance
+   * @param {string} eventType Event string.
+   * @param {function} listener Callback function.
+   */
   that.removeEventListener = function (eventType, listener) {
     if (!spec.dispatcher.eventListeners[eventType]) {return;}
     var index = spec.dispatcher.eventListeners[eventType].indexOf(listener);
@@ -52,7 +58,13 @@ conference.leave();
     }
   };
 
-  // It removes all event listeners for one type.
+/**
+   * @function clearEventListener
+   * @desc This function removes all event listeners for one type.
+   * @memberOf Woogeen.ConferenceClient
+   * @instance
+   * @param {string} eventType Event string.
+   */
   that.clearEventListener = function (eventType) {
     spec.dispatcher.eventListeners[eventType] = [];
   };
