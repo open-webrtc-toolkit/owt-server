@@ -281,12 +281,13 @@ bool VideoMixer::setBackgroundColor(const std::string& color)
     return m_layoutProcessor->setBgColor(color);
 }
 
-IntraFrameCallback* VideoMixer::getIFrameCallback(int payloadType)
+IntraFrameCallback* VideoMixer::getIFrameCallback(int payloadType, const VideoSize& size)
 {
+    VideoSize outputSize = size;
+    if (size.width == 0 || size.height == 0 || !webrtc::VP8EncoderFactoryConfig::use_simulcast_adapter())
+        m_layoutProcessor->getRootSize(outputSize);
+    auto key = makeExtendedKey(payloadType, outputSize.width, outputSize.height);
     boost::shared_lock<boost::shared_mutex> lock(m_outputMutex);
-    VideoSize size;
-    m_layoutProcessor->getRootSize(size);
-    auto key = makeExtendedKey(payloadType, size.width, size.height);
     auto it = m_outputs.find(key);
     if (it != m_outputs.end())
         return it->second->iFrameCallback();
@@ -294,12 +295,13 @@ IntraFrameCallback* VideoMixer::getIFrameCallback(int payloadType)
     return nullptr;
 }
 
-uint32_t VideoMixer::getSendSSRC(int payloadType, bool nack, bool fec)
+uint32_t VideoMixer::getSendSSRC(int payloadType, bool nack, bool fec, const VideoSize& size)
 {
+    VideoSize outputSize = size;
+    if (size.width == 0 || size.height == 0 || !webrtc::VP8EncoderFactoryConfig::use_simulcast_adapter())
+        m_layoutProcessor->getRootSize(outputSize);
+    auto key = makeExtendedKey(payloadType, outputSize.width, outputSize.height);
     boost::shared_lock<boost::shared_mutex> lock(m_outputMutex);
-    VideoSize size;
-    m_layoutProcessor->getRootSize(size);
-    auto key = makeExtendedKey(payloadType, size.width, size.height);
     auto it = m_outputs.find(key);
     if (it != m_outputs.end())
         return it->second->sendSSRC(nack, fec);
