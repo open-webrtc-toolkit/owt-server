@@ -59,8 +59,8 @@ public:
     // Video output related methods.
     int32_t addOutput(int payloadType, bool nack, bool fec, const VideoSize& size);
     int32_t removeOutput(int payloadType, const VideoSize& size);
-    woogeen_base::IntraFrameCallback* getIFrameCallback(int payloadType);
-    uint32_t getSendSSRC(int payloadType, bool nack, bool fec);
+    woogeen_base::IntraFrameCallback* getIFrameCallback(int payloadType, const VideoSize& size);
+    uint32_t getSendSSRC(int payloadType, bool nack, bool fec, const VideoSize& size);
 
     // Video input related methods.
     int32_t bindAudio(uint32_t sourceId, int voiceChannelId, webrtc::VoEVideoSync*);
