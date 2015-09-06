@@ -535,8 +535,6 @@ conference.send(message, receiver, function (obj) {
    * @desc This function publishes the local stream to the server. The stream should be a valid LocalStream instance. 'stream-added' event would be triggered when the stream is published successfully.
    <br><b>options:</b><br>
    {<br>
-video: true/false,<br>
-audio: true/false,<br>
 maxVideoBW: xxx,<br>
 unmix: false/true, // if true, this stream would not be included in mix stream<br>
 videoCodec: 'h264'/'vp8' // not applicable for p2p room<br>
@@ -684,8 +682,8 @@ conference.publish(localStream, {maxVideoBW: 300}, function (st) {
             stream.channel.processSignalingMessage(answer);
           });
         },
-        video: stream.hasVideo() && (options.video !== false),
-        audio: stream.hasAudio() && (options.audio !== false),
+        video: stream.hasVideo(),
+        audio: stream.hasAudio(),
         iceServers: self.getIceServers(),
         stunServerUrl: self.connSettings.stun,
         turnServer: self.connSettings.turn,
@@ -849,13 +847,17 @@ conference.subscribe(remoteStream, function (st) {
       return;
     }
 
+    if (options.audio === false && options.video === false) {
+      return safeCall(onFailure, 'no audio or video to subscribe.');
+    }
+
     stream.channel = createChannel({
       callback: function (offer) {
         if (JSON.parse(offer).messageType !== 'OFFER') {return;} // filter out 'sendOK'
         sendSdp(self.socket, 'subscribe', {
           streamId: stream.id(),
-          audio: stream.hasAudio(),
-          video: stream.hasVideo()
+          audio: stream.hasAudio() && (options.audio !== false),
+          video: stream.hasVideo() && (options.video !== false)
         }, offer, function (answer, errText) {
           if (answer === 'error' || answer === 'timeout') {
             return safeCall(onFailure, errText || answer);
