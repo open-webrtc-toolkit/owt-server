@@ -109,7 +109,7 @@ public:
     bool addPublisher(erizo::MediaSource* source, const std::string& participantId, const std::string& videoResolution) { return addPublisher(source, participantId); }
     void removePublisher(const std::string& participantId);
 
-    void addSubscriber(erizo::MediaSink*, const std::string& id);
+    void addSubscriber(erizo::MediaSink*, const std::string& id, const std::string& options);
     void removeSubscriber(const std::string& id);
 
     // TODO: implement the below interfaces to support async event notification

@@ -416,12 +416,12 @@ exports.ErizoJSController = function () {
                     if (!useHardware && !openh264Enabled) {
                         hasH264 = false;
                     }
-                    var wrtc = new addon.WebRtcConnection(audio, video, hasH264, GLOBAL.config.erizo.stunserver, GLOBAL.config.erizo.stunport, GLOBAL.config.erizo.minport, GLOBAL.config.erizo.maxport, GLOBAL.config.erizo.keystorePath, GLOBAL.config.erizo.keystorePath, erizoPassPhrase, true, true, true, true);
+                    var wrtc = new addon.WebRtcConnection(audio, (!!video), hasH264, GLOBAL.config.erizo.stunserver, GLOBAL.config.erizo.stunport, GLOBAL.config.erizo.minport, GLOBAL.config.erizo.maxport, GLOBAL.config.erizo.keystorePath, GLOBAL.config.erizo.keystorePath, erizoPassPhrase, true, true, true, true);
 
                     initWebRtcConnection(wrtc, sdp, undefined, undefined, callback, to, from);
 
                     subscribers[to].push(from);
-                    publishers[to].addSubscriber(wrtc, from);
+                    publishers[to].addSubscriber(wrtc, from, JSON.stringify(video.resolution));
                 } else {
                     log.warn('Failed to subscribe the stream:', err);
                 }

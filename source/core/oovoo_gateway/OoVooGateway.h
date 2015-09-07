@@ -67,7 +67,7 @@ public:
     bool addPublisher(erizo::MediaSource*, const std::string& id, const std::string& videoResolution);
     bool addPublisher(erizo::MediaSource*, const std::string& id);
     void removePublisher(const std::string& id);
-    void addSubscriber(erizo::MediaSink*, const std::string& id);
+    void addSubscriber(erizo::MediaSink*, const std::string& id, const std::string& options);
     void removeSubscriber(const std::string& id);
     void setupAsyncEvent(const std::string& event, woogeen_base::EventRegistry*);
     void destroyAsyncEvents();

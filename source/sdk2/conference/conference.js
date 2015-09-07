@@ -805,7 +805,7 @@ conference.unpublish(localStream, function (st) {
    * @desc This function subscribes to a remote stream. The stream should be a RemoteStream instance.
    <br><b>options:</b><br>
 {<br>
-video: true/false,<br>
+video: true/false, {resolution: {width:xxx, height:xxx}},<br>
 audio: true/false,<br>
 videoCodec: 'h264'/'vp8' // not for p2p room<br>
 }
@@ -857,7 +857,7 @@ conference.subscribe(remoteStream, function (st) {
         sendSdp(self.socket, 'subscribe', {
           streamId: stream.id(),
           audio: stream.hasAudio() && (options.audio !== false),
-          video: stream.hasVideo() && (options.video !== false)
+          video: stream.hasVideo() && options.video
         }, offer, function (answer, errText) {
           if (answer === 'error' || answer === 'timeout') {
             return safeCall(onFailure, errText || answer);

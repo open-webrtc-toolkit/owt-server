@@ -451,7 +451,7 @@ void OoVooGateway::removePublisher(const std::string&)
 }
 
 // The main thread
-void OoVooGateway::addSubscriber(MediaSink* sink, const std::string& subscriberId)
+void OoVooGateway::addSubscriber(MediaSink* sink, const std::string& subscriberId, const std::string& options)
 {
     ELOG_DEBUG("Adding subscriber");
 

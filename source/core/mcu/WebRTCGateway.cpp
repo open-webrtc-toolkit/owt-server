@@ -204,7 +204,7 @@ void WebRTCGateway::removePublisher(const std::string& id)
     m_publisher.reset();
 }
 
-void WebRTCGateway::addSubscriber(MediaSink* subscriber, const std::string& id)
+void WebRTCGateway::addSubscriber(MediaSink* subscriber, const std::string& id, const std::string& options)
 {
     ELOG_DEBUG("Adding subscriber to %u(a), %u(v)", m_publisher->getAudioSourceSSRC(), m_publisher->getVideoSourceSSRC());
 
@@ -333,7 +333,7 @@ bool WebRTCGateway::addExternalOutput(const std::string& configParam, woogeen_ba
                 ExternalOutput* externalOutput = new ExternalOutput(muxer);
 
                 // Added as a subscriber
-                addSubscriber(externalOutput, outputId);
+                addSubscriber(externalOutput, outputId, "");
 
                 // Send I-Frame request to the publisher.
                 ++m_pendingIFrameRequests;

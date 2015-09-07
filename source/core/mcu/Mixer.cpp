@@ -199,7 +199,7 @@ void Mixer::removePublisher(const std::string& id)
     m_publishers.erase(it);
 }
 
-void Mixer::addSubscriber(MediaSink* subscriber, const std::string& peerId)
+void Mixer::addSubscriber(MediaSink* subscriber, const std::string& peerId, const std::string& options)
 {
     int videoPayloadType = subscriber->preferredVideoPayloadType();
     // FIXME: Now we hard code the output to be NACK enabled and FEC disabled,
@@ -207,7 +207,22 @@ void Mixer::addSubscriber(MediaSink* subscriber, const std::string& peerId)
     // RTP packets for a single encoded stream elegantly.
     bool enableNACK = true || subscriber->acceptResentData();
     bool enableFEC = false && subscriber->acceptFEC();
-    VideoSize size {0,0};
+
+    unsigned int width {0};
+    unsigned int height {0};
+    try {
+        boost::property_tree::ptree resolution;
+        std::istringstream is(options);
+        boost::property_tree::read_json(is, resolution);
+        width = resolution.get("width", 0);
+        height = resolution.get("height", 0);
+    } catch (std::exception const& e) {
+        ELOG_DEBUG("ignore error in parsing addSubscriber options: %s", e.what());
+        width = 0;
+        height = 0;
+    }
+    VideoSize size {width, height};
+
     m_videoMixer->addOutput(videoPayloadType, enableNACK, enableFEC, size);
     subscriber->setVideoSinkSSRC(m_videoMixer->getSendSSRC(videoPayloadType, enableNACK, enableFEC, size));
 

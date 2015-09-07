@@ -84,7 +84,7 @@ To publish a stream add the publisher WebRtcConnection to the OneToManyProcessor
 To subscribe to a stream add a subscriber WebRtcConnection to the OneToManyProcessor. OneToManyProcessor needs an unique peer identifier for each subscriber.
 
 <pre>
-    muxer.addSubscriber(wrtc, peerId);
+    muxer.addSubscriber(wrtc, peerId, options);
 </pre> 
 
 In order to start correctly the communication send a FIR packet to the publisher. Make sure the ICE state is READY (wrtc.getCurrentState() > 2)

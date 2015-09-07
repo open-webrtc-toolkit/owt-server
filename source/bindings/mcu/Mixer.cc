@@ -157,12 +157,14 @@ Handle<Value> Mixer::addSubscriber(const Arguments& args) {
       ObjectWrap::Unwrap<WebRtcConnection>(args[0]->ToObject());
   erizo::WebRtcConnection* wr = param->me;
 
-  // get the param
   v8::String::Utf8Value param1(args[1]->ToString());
-
-  // convert it to string
   std::string peerId = std::string(*param1);
-  me->addSubscriber(wr, peerId);
+  std::string options {""};
+  if (args.Length() > 2 && args[2]->IsString()) {
+    v8::String::Utf8Value param(args[2]->ToString());
+    options = std::string(*param);
+  }
+  me->addSubscriber(wr, peerId, options);
 
   return scope.Close(Null());
 }
