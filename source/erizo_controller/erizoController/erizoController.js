@@ -355,14 +355,40 @@ function safeCall () {
     }
 }
 
+var VideoResolutionMap = { // definition adopted from VideoLayout.h
+    'cif':      [{width: 352, height: 288}],
+    'vga':      [{width: 640, height: 480}, {width: 320, height: 240}],
+    'svga':     [{width: 800, height: 600}, {width: 320, height: 240}],
+    'xga':      [{width: 1024, height: 768}, {width: 320, height: 240}],
+    'hd720p':   [{width: 1280, height: 720}, {width: 640, height: 360}],
+    'sif':      [{width: 320, height: 240}],
+    'hvga':     [{width: 480, height: 320}],
+    'r480x360': [{width: 480, height: 360}, {width: 320, height: 240}],
+    'qcif':     [{width: 176, height: 144}],
+    'r192x144': [{width: 192, height: 144}],
+    'hd1080p':  [{width: 1920, height: 1080}, {width: 1280, height: 720}, {width: 640, height: 360}],
+    'uhd_4k':   [{width: 3840, height: 2160}, {width: 1280, height: 720}, {width: 640, height: 360}]
+};
+
+function calculateResolutions(rootResolution, useSimulcast) {
+    var base = VideoResolutionMap[rootResolution.toLowerCase()];
+    if (!base) return [];
+    if (!useSimulcast) return [base[0]];
+    return base.map(function (r) {
+        return r;
+    });
+}
+
 var initMixer = function (room, roomConfig, immediately) {
     if (roomConfig.enableMixing && room.mixer === undefined && room.initMixerTimer === undefined) {
         var id = room.id;
         room.enableMixing = true;
+        var resolutions = calculateResolutions(roomConfig.mediaMixing.video.resolution, roomConfig.mediaMixing.video.simulcast);
         if (immediately) {
             room.controller.initMixer(id, roomConfig.mediaMixing, function (result) {
+                // TODO: Better to utilize 'result' to retrieve information from mixer to create the mix-stream.
                 if (result === 'success') {
-                    var st = new ST.Stream({id: id, socket: '', audio: true, video: {device: 'mcu', resolution: roomConfig.mediaMixing.video.resolution}, from: '', attributes: null});
+                    var st = new ST.Stream({id: id, socket: '', audio: true, video: {device: 'mcu', resolutions: resolutions}, from: '', attributes: null});
                     room.streams[id] = st;
                     room.mixer = id;
                     sendMsgToRoom(room, 'onAddStream', st.getPublicStream());
@@ -388,8 +414,9 @@ var initMixer = function (room, roomConfig, immediately) {
             }
 
             room.controller.initMixer(id, roomConfig.mediaMixing, function (result) {
+                // TODO: Better to utilize 'result' to retrieve information from mixer to create the mix-stream.
                 if (result === 'success') {
-                    var st = new ST.Stream({id: id, socket: '', audio: true, video: {device: 'mcu', resolution: roomConfig.mediaMixing.video.resolution}, from: '', attributes: null});
+                    var st = new ST.Stream({id: id, socket: '', audio: true, video: {device: 'mcu', resolutions: resolutions}, from: '', attributes: null});
                     room.streams[id] = st;
                     room.mixer = id;
                     sendMsgToRoom(room, 'onAddStream', st.getPublicStream());
@@ -879,6 +906,11 @@ var listen = function () {
                         var timeStamp = new Date();
                         rpc.callRpc('stats_handler', 'event', [{room: socket.room.id, user: socket.id, type: 'subscribe', stream: options.streamId, timestamp: timeStamp.getTime()}]);
                     }
+                    if (typeof options.video === 'object' && options.video !== null) {
+                        if (!stream.hasResolution(options.video.resolution)) {
+                            options.video = true;
+                        }
+                    }
                     socket.room.controller.addSubscriber(socket.id, options.streamId, options.audio, options.video, sdp, function (answer, errText) {
                         answer = answer.replace(privateRegexp, publicIP);
                         safeCall(callback, answer, errText);
@@ -906,7 +938,7 @@ var listen = function () {
 
             // Check the stream to be recorded
             var recordStreamId = options.streamId || socket.room.mixer;
-            var recordStream = socket.room.streams[recordStreamId]
+            var recordStream = socket.room.streams[recordStreamId];
             if (recordStream === undefined) {
                 return safeCall(callback, 'error', 'Target record stream does not exist.');
             }

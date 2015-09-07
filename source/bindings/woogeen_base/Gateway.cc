@@ -165,7 +165,7 @@ Handle<Value> Gateway::addSubscriber(const Arguments& args) {
 
   // convert it to string
   std::string peerId = std::string(*param1);
-  me->addSubscriber(wr, peerId);
+  me->addSubscriber(wr, peerId, "");
 
   return scope.Close(Null());
 }

@@ -91,7 +91,7 @@ public:
     bool addPublisher(erizo::MediaSource* source, const std::string& id, const std::string& videoResolution) { return addPublisher(source, id); }
     void removePublisher(const std::string& id);
 
-    void addSubscriber(erizo::MediaSink*, const std::string& id) { }
+    void addSubscriber(erizo::MediaSink*, const std::string& id, const std::string& options) { }
     void removeSubscriber(const std::string& id) { }
 
     // TODO: reconsider the role and usage of this class.

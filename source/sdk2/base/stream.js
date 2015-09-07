@@ -327,6 +327,23 @@ L.Logger.info('stream isMixed:', stream.isMixed());
     this.isMixed = function () {
       return (!!spec.video) && (spec.video.device === 'mcu');
     };
+/**
+   * @function resolutions
+   * @desc This function returns an array of supported resolutions for mixed stream.
+<br><b>Remarks:</b><br>
+Only for Woogeen.RemoteStream.
+   * @memberOf Woogeen.RemoteStream
+   * @instance
+   * @return {Array}
+   */
+    this.resolutions = function () {
+      if (this.isMixed() && spec.video.resolutions instanceof Array) {
+        return spec.video.resolutions.map(function (resolution) {
+          return resolution;
+        });
+      }
+      return [];
+    };
     this.from = spec.from;
     var listeners = {};
     var self = this;

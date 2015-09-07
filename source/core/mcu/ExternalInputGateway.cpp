@@ -223,7 +223,7 @@ void ExternalInputGateway::removePublisher(const std::string& id)
     m_publisher.reset();
 }
 
-void ExternalInputGateway::addSubscriber(MediaSink* subscriber, const std::string& id)
+void ExternalInputGateway::addSubscriber(MediaSink* subscriber, const std::string& id, const std::string& options)
 {
     int videoPayloadType = subscriber->preferredVideoPayloadType();
     // FIXME: Now we hard code the output to be NACK enabled and FEC disabled,

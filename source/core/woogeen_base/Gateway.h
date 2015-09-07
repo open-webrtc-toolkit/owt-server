@@ -64,8 +64,9 @@ public:
      * Adds a subscriber
      * @param sink the MediaSink of the subscriber
      * @param id the peer id for the subscriber
+     * @param options additional options for the subscriber
      */
-    DLL_PUBLIC virtual void addSubscriber(erizo::MediaSink*, const std::string& id) = 0;
+    DLL_PUBLIC virtual void addSubscriber(erizo::MediaSink*, const std::string& id, const std::string& options) = 0;
     /**
      * Eliminates the subscriber given its peer id
      * @param id the peer id for the subscriber
