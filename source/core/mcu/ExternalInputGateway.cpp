@@ -421,7 +421,7 @@ uint32_t ExternalInputGateway::addVideoOutput(int payloadType, bool nack, bool f
     videoTranscoder->setInput(m_incomingVideoFormat, nullptr);
 
     woogeen_base::WebRTCTransport<erizo::VIDEO>* transport = new woogeen_base::WebRTCTransport<erizo::VIDEO>(this, nullptr);
-    woogeen_base::VideoFrameSender* output = new woogeen_base::EncodedVideoFrameSender(videoTranscoder, outputFormat, m_videoOutputKbps, transport, m_taskRunner);
+    woogeen_base::VideoFrameSender* output = new woogeen_base::EncodedVideoFrameSender(videoTranscoder, outputFormat, m_videoOutputKbps, transport, m_taskRunner, 1280, 720);
 
     {
         boost::unique_lock<boost::shared_mutex> transcoderLock(m_videoTranscoderMutex);
@@ -430,7 +430,6 @@ uint32_t ExternalInputGateway::addVideoOutput(int payloadType, bool nack, bool f
 
     // Fetch video size.
     // TODO: The size should be identical to the published video size.
-    output->setSendCodec(outputFormat, 1280, 720);
     output->startSend(nack, fec);
     boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
     m_videoOutputs[payloadType].reset(output);
@@ -439,7 +438,7 @@ uint32_t ExternalInputGateway::addVideoOutput(int payloadType, bool nack, bool f
 }
 
 // Video ONLY here for the frame consumer
-int32_t ExternalInputGateway::addFrameConsumer(const std::string&/*unused*/, woogeen_base::FrameFormat format, woogeen_base::FrameConsumer* frameConsumer)
+int32_t ExternalInputGateway::addFrameConsumer(const std::string&/*unused*/, woogeen_base::FrameFormat format, woogeen_base::FrameConsumer* frameConsumer, const woogeen_base::MediaSpecInfo&)
 {
     int payloadType = INVALID_PT;
     switch (format) {

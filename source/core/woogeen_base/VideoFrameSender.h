@@ -35,7 +35,6 @@ class VideoFrameSender : public VideoFrameConsumer {
 public:
     virtual ~VideoFrameSender() { }
 
-    virtual bool setSendCodec(FrameFormat, unsigned int width, unsigned int height) = 0;
     virtual bool updateVideoSize(unsigned int width, unsigned int height) = 0;
     virtual bool startSend(bool nack, bool fec) = 0;
     virtual bool stopSend(bool nack, bool fec) = 0;

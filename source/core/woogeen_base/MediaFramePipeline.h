@@ -49,15 +49,17 @@ struct AudioFrameSpecificInfo {
     uint8_t channels;
 };
 
+typedef union MediaSpecInfo {
+    VideoFrameSpecificInfo video;
+    AudioFrameSpecificInfo audio;
+} MediaSpecInfo;
+
 struct Frame {
-    FrameFormat format;
-    uint8_t* payload;
-    uint32_t length;
-    uint32_t timeStamp;
-    union {
-        VideoFrameSpecificInfo video;
-        AudioFrameSpecificInfo audio;
-    } additionalInfo;
+    FrameFormat     format;
+    uint8_t*        payload;
+    uint32_t        length;
+    uint32_t        timeStamp;
+    MediaSpecInfo   additionalInfo;
 };
 
 class FrameConsumer {
@@ -75,7 +77,7 @@ class FrameProvider {
 public:
     virtual ~FrameProvider() { }
 
-    virtual int32_t addFrameConsumer(const std::string& name, FrameFormat, FrameConsumer*) = 0;
+    virtual int32_t addFrameConsumer(const std::string& name, FrameFormat fmt, FrameConsumer* consumer, const MediaSpecInfo&) = 0;
     virtual void removeFrameConsumer(int32_t id) = 0;
 
     virtual void setBitrate(unsigned short kbps, int id = 0) = 0;

@@ -133,7 +133,7 @@ public:
 
     // Implements the VideoFrameProvider interface.
     // There should be no direct consumer to this input.
-    int32_t addFrameConsumer(const std::string& name, woogeen_base::FrameFormat, woogeen_base::FrameConsumer*) { return -1; }
+    int32_t addFrameConsumer(const std::string& name, woogeen_base::FrameFormat, woogeen_base::FrameConsumer*, const woogeen_base::MediaSpecInfo&) { return -1; }
     void removeFrameConsumer(int32_t id) { }
     void setBitrate(unsigned short kbps, int id = 0);
     void requestKeyFrame(int id = 0);

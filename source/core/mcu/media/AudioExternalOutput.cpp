@@ -154,7 +154,7 @@ int AudioExternalOutput::deliverFeedback(char* buf, int len)
     return -1;
 }
 
-int32_t AudioExternalOutput::addFrameConsumer(const std::string& name, woogeen_base::FrameFormat format, woogeen_base::FrameConsumer* consumer)
+int32_t AudioExternalOutput::addFrameConsumer(const std::string& name, woogeen_base::FrameFormat format, woogeen_base::FrameConsumer* consumer, const woogeen_base::MediaSpecInfo&)
 {
     int payloadType = INVALID_PT;
     switch (format) {

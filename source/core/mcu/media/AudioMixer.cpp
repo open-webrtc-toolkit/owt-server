@@ -356,7 +356,7 @@ int32_t AudioMixer::removeOutput(const std::string& participant)
     return -1;
 }
 
-int32_t AudioMixer::addFrameConsumer(const std::string& name, woogeen_base::FrameFormat format, woogeen_base::FrameConsumer* frameConsumer)
+int32_t AudioMixer::addFrameConsumer(const std::string& name, woogeen_base::FrameFormat format, woogeen_base::FrameConsumer* frameConsumer, const woogeen_base::MediaSpecInfo&)
 {
     int payloadType = INVALID_PT;
     switch (format) {

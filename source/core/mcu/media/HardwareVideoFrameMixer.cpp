@@ -234,7 +234,7 @@ void HardwareVideoFrameMixer::requestKeyFrame(int id)
         (*it)->requestKeyFrame();
 }
 
-int32_t HardwareVideoFrameMixer::addFrameConsumer(const std::string& name, woogeen_base::FrameFormat format, woogeen_base::VideoFrameConsumer* receiver)
+int32_t HardwareVideoFrameMixer::addFrameConsumer(const std::string& name, woogeen_base::FrameFormat format, woogeen_base::VideoFrameConsumer* receiver, const woogeen_base::MediaSpecInfo&)
 {
     boost::upgrade_lock<boost::shared_mutex> lock(m_outputMutex);
     std::list<boost::shared_ptr<HardwareVideoFrameMixerOutput>>::iterator it = m_outputs.begin();

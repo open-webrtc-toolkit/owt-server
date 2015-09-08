@@ -86,11 +86,12 @@ void MediaRecorder::setMediaSource(woogeen_base::FrameProvider* videoSource, woo
     m_audioSource = audioSource;
 
     // Start the recording of video and audio
+    woogeen_base::MediaSpecInfo info {0};
     if (m_videoSource)
-        m_videoId = m_videoSource->addFrameConsumer(m_recordPath, woogeen_base::FRAME_FORMAT_VP8, this);
+        m_videoId = m_videoSource->addFrameConsumer(m_recordPath, woogeen_base::FRAME_FORMAT_VP8, this, info);
 
     if (m_audioSource)
-        m_audioId = m_audioSource->addFrameConsumer(m_recordPath, woogeen_base::FRAME_FORMAT_PCMU, this);
+        m_audioId = m_audioSource->addFrameConsumer(m_recordPath, woogeen_base::FRAME_FORMAT_PCMU, this, info);
 }
 
 void MediaRecorder::unsetMediaSource()

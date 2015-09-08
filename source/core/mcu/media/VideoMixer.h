@@ -90,7 +90,7 @@ public:
     bool setBackgroundColor(const std::string& color);
 
     // Implements FrameProivder
-    int32_t addFrameConsumer(const std::string&, woogeen_base::FrameFormat, woogeen_base::FrameConsumer*);
+    int32_t addFrameConsumer(const std::string&, woogeen_base::FrameFormat, woogeen_base::FrameConsumer*, const woogeen_base::MediaSpecInfo&);
     void removeFrameConsumer(int32_t id);
     // TODO: Implement it.
     virtual void setBitrate(unsigned short kbps, int id = 0) { }
