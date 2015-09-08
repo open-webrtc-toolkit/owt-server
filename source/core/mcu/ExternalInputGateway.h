@@ -98,7 +98,7 @@ public:
     void receiveRtpData(char*, int len, erizo::DataType, uint32_t streamId);
 
     // FIXME: Chunbo - Implements FrameProvider for video frame consumer
-    int32_t addFrameConsumer(const std::string&, woogeen_base::FrameFormat, woogeen_base::FrameConsumer*);
+    int32_t addFrameConsumer(const std::string&, woogeen_base::FrameFormat, woogeen_base::FrameConsumer*, const woogeen_base::MediaSpecInfo&);
     void removeFrameConsumer(int32_t id);
     // TODO: Implement it.
     virtual void setBitrate(unsigned short kbps, int id = 0) { }

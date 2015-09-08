@@ -35,7 +35,7 @@ public:
     FakedVideoFrameEncoder();
     ~FakedVideoFrameEncoder();
 
-    int32_t addFrameConsumer(const std::string& name, woogeen_base::FrameFormat, woogeen_base::FrameConsumer*);
+    int32_t addFrameConsumer(const std::string& name, woogeen_base::FrameFormat, woogeen_base::FrameConsumer*, const woogeen_base::MediaSpecInfo&);
     void removeFrameConsumer(int32_t id);
 
     void setBitrate(unsigned short kbps, int id = 0);
@@ -77,7 +77,7 @@ inline void FakedVideoFrameEncoder::onFrame(const woogeen_base::Frame& frame)
     }
 }
 
-inline int32_t FakedVideoFrameEncoder::addFrameConsumer(const std::string&, woogeen_base::FrameFormat format, woogeen_base::VideoFrameConsumer* consumer)
+inline int32_t FakedVideoFrameEncoder::addFrameConsumer(const std::string&, woogeen_base::FrameFormat format, woogeen_base::VideoFrameConsumer* consumer, const woogeen_base::MediaSpecInfo&)
 {
     boost::upgrade_lock<boost::shared_mutex> lock(m_consumerMutex);
     std::list<woogeen_base::VideoFrameConsumer*>::iterator it = m_consumers.begin();

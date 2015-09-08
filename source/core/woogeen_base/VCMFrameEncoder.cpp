@@ -21,14 +21,16 @@
 #include "VCMFrameEncoder.h"
 
 #include "MediaUtilities.h"
+#include <webrtc/modules/video_coding/codecs/vp8/vp8_factory.h>
 
 using namespace webrtc;
 
 namespace woogeen_base {
 
+DEFINE_LOGGER(VCMFrameEncoder, "woogeen.VCMFrameEncoder");
+
 VCMFrameEncoder::VCMFrameEncoder(boost::shared_ptr<WebRTCTaskRunner> taskRunner)
     : m_vcm(VideoCodingModule::Create())
-    , m_encoderInitialized(false)
     , m_encodeFormat(FRAME_FORMAT_UNKNOWN)
     , m_taskRunner(taskRunner)
 {
@@ -48,17 +50,128 @@ VCMFrameEncoder::~VCMFrameEncoder()
     m_vcm = nullptr;
 }
 
-int32_t VCMFrameEncoder::addFrameConsumer(const std::string& name, FrameFormat format, FrameConsumer* consumer)
+int32_t VCMFrameEncoder::addFrameConsumer(const std::string& name, FrameFormat format, FrameConsumer* consumer, const MediaSpecInfo& info)
 {
     boost::upgrade_lock<boost::shared_mutex> lock(m_mutex);
-    // For now we only support the consumers requiring the same frame format.
-    if (m_encodeFormat != FRAME_FORMAT_UNKNOWN && m_encodeFormat != format)
-        return -1;
+    if (!webrtc::VP8EncoderFactoryConfig::use_simulcast_adapter() && m_encodeFormat != FRAME_FORMAT_UNKNOWN) {
+        if (m_encodeFormat != format)
+            return -1;
 
+        boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
+        m_consumers.push_back({consumer, 0});
+        return m_consumers.size() - 1;
+    }
+
+    VideoCodec videoCodec;
+    uint16_t width {info.video.width};
+    uint16_t height {info.video.height};
+    uint8_t simulcastId {0};
+    if (m_encodeFormat != FRAME_FORMAT_UNKNOWN) { // already initialized
+        if (m_encodeFormat != format)
+            return -1;
+        videoCodec = m_vcm->GetSendCodec();
+        bool reuse {false};
+        if (videoCodec.numberOfSimulcastStreams >= kMaxSimulcastStreams)
+            reuse = true; // in current cases, actually [REUSE] would only occur here; see VideoMixer::addOutput().
+        else {
+            for (int i = 0; i < videoCodec.numberOfSimulcastStreams; ++i) {
+                if (videoCodec.simulcastStream[i].width == width) {
+                    if (videoCodec.simulcastStream[i].height != height) {
+                        ELOG_ERROR("resolution not compatible: %dx%d != %dx%d",
+                            videoCodec.simulcastStream[i].width, videoCodec.simulcastStream[i].height,
+                            width, height);
+                        return -1;
+                    } else {
+                        reuse = true;
+                        simulcastId = i;
+                        break;
+                    }
+                }
+            }
+        }
+        if (reuse) {
+            boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
+            m_consumers.push_back({consumer, simulcastId});
+            ELOG_DEBUG("addFrameConsumer[%p]: {.width=%d, .height=%d}, simulcastId=%d", this, width, height, simulcastId);
+            return m_consumers.size() - 1;
+        }
+    } else {
+        switch (format) {
+        case FRAME_FORMAT_VP8:
+            if (VideoCodingModule::Codec(kVideoCodecVP8, &videoCodec) != VCM_OK)
+                return -1;
+            break;
+        case FRAME_FORMAT_H264:
+            if (VideoCodingModule::Codec(kVideoCodecH264, &videoCodec) != VCM_OK)
+                return -1;
+            break;
+        case FRAME_FORMAT_I420:
+        default:
+            return -1;
+        }
+    }
+
+    VideoCodec fbVideoCodec = videoCodec;
+    uint32_t targetKbps = calcBitrate(width, height) * (format == FRAME_FORMAT_VP8 ? 0.9 : 1);
+
+    for (; simulcastId < videoCodec.numberOfSimulcastStreams; ++simulcastId) {
+        if (videoCodec.simulcastStream[simulcastId].width > width)
+            break;
+    }
+    if (simulcastId < videoCodec.numberOfSimulcastStreams) {
+        uint8_t j = videoCodec.numberOfSimulcastStreams;
+        while (j > simulcastId) {
+            memcpy(&videoCodec.simulcastStream[j], &videoCodec.simulcastStream[j-1], sizeof(SimulcastStream));
+            --j;
+        }
+    } else {
+        videoCodec.width = width;
+        videoCodec.height = height;
+    }
+
+    videoCodec.simulcastStream[simulcastId] = SimulcastStream{
+        .width = width,
+        .height = height,
+        .numberOfTemporalLayers = 0,
+        .maxBitrate = targetKbps,
+        .targetBitrate = targetKbps,
+        .minBitrate = targetKbps / 4,
+        .qpMax = videoCodec.qpMax
+    };
+    ++videoCodec.numberOfSimulcastStreams;
+
+    uint32_t newTargetBitrate = videoCodec.simulcastStream[videoCodec.numberOfSimulcastStreams-1].targetBitrate;
+    uint32_t newMaxBitrate = videoCodec.simulcastStream[videoCodec.numberOfSimulcastStreams-1].maxBitrate;
+    uint32_t newMinBitrate = videoCodec.simulcastStream[videoCodec.numberOfSimulcastStreams-1].minBitrate;
+    for (uint8_t i = 0; i < videoCodec.numberOfSimulcastStreams-1; ++i) {
+        newTargetBitrate += videoCodec.simulcastStream[i].targetBitrate;
+        newMaxBitrate += videoCodec.simulcastStream[i].maxBitrate;
+        newMinBitrate += videoCodec.simulcastStream[i].targetBitrate;
+    }
+    videoCodec.startBitrate = newMaxBitrate;
+    videoCodec.targetBitrate = newTargetBitrate;
+    videoCodec.maxBitrate = newMaxBitrate;
+    videoCodec.minBitrate = newMinBitrate;
+
+    int32_t ret = m_vcm->RegisterSendCodec(&videoCodec, 1, 1400);
     boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
+    if (ret != VCM_OK) {
+        ELOG_ERROR("RegisterSendCodec error: %d", ret);
+        ELOG_DEBUG("Try fallback to previous video codec");
+        m_vcm->RegisterSendCodec(&fbVideoCodec, 1, 1400);
+        simulcastId = 0;
+    } else {
+        if (simulcastId != videoCodec.numberOfSimulcastStreams-1) {
+            auto it = m_consumers.begin();
+            for (; it != m_consumers.end(); ++it) {
+                if ((*it).streamId >= simulcastId)
+                    (*it).streamId++;
+            }
+        }
+    }
     m_encodeFormat = format;
-    m_consumers.push_back(consumer);
-
+    m_consumers.push_back({consumer, simulcastId});
+    ELOG_DEBUG("addFrameConsumer[%p]: {.width=%d, .height=%d}, simulcastId=%d", this, width, height, simulcastId);
     return m_consumers.size() - 1;
 }
 
@@ -68,10 +181,10 @@ void VCMFrameEncoder::removeFrameConsumer(int id)
     if (id < 0 || static_cast<size_t>(id) >= m_consumers.size())
         return;
 
-    std::list<woogeen_base::VideoFrameConsumer*>::iterator it = m_consumers.begin();
+    auto it = m_consumers.begin();
     advance(it, id);
     boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
-    *it = nullptr;
+    (*it).consumer = nullptr;
 }
 
 void VCMFrameEncoder::setBitrate(unsigned short kbps, int id)
@@ -83,19 +196,24 @@ void VCMFrameEncoder::setBitrate(unsigned short kbps, int id)
 
 void VCMFrameEncoder::requestKeyFrame(int id)
 {
-    m_vcm->IntraFrameRequest(0);
+    boost::shared_lock<boost::shared_mutex> lock(m_mutex);
+    if (id < 0 || static_cast<size_t>(id) >= m_consumers.size())
+        return;
+
+    auto it = m_consumers.begin();
+    advance(it, id);
+    if (it->consumer)
+        m_vcm->IntraFrameRequest(it->streamId);
 }
 
 void VCMFrameEncoder::onFrame(const Frame& frame)
 {
     switch (frame.format) {
     case FRAME_FORMAT_I420: {
+        if (m_encodeFormat == FRAME_FORMAT_UNKNOWN)
+            return;
         // Currently we should only receive I420 format frame.
         I420VideoFrame* rawFrame = reinterpret_cast<I420VideoFrame*>(frame.payload);
-        initializeEncoder(rawFrame->width(), rawFrame->height());
-        if (!m_encoderInitialized)
-            break;
-
         const int kMsToRtpTimestamp = 90;
         const uint32_t time_stamp =
             kMsToRtpTimestamp *
@@ -132,10 +250,10 @@ int32_t VCMFrameEncoder::SendData(
         frame.additionalInfo.video.width = encoded_image._encodedWidth;
         frame.additionalInfo.video.height = encoded_image._encodedHeight;
 
-        std::list<VideoFrameConsumer*>::iterator it = m_consumers.begin();
+        auto it = m_consumers.begin();
         for (; it != m_consumers.end(); ++it) {
-            if (*it)
-                (*it)->onFrame(frame);
+            if ((*it).consumer && (*it).streamId == rtpVideoHdr->simulcastIdx)
+                ((*it).consumer)->onFrame(frame);
         }
         return 0;
     }
@@ -143,43 +261,4 @@ int32_t VCMFrameEncoder::SendData(
     return -1;
 }
 
-bool VCMFrameEncoder::initializeEncoder(uint32_t width, uint32_t height)
-{
-    boost::upgrade_lock<boost::shared_mutex> lock(m_mutex);
-    if (m_encoderInitialized || m_encodeFormat == FRAME_FORMAT_UNKNOWN)
-        return m_encoderInitialized;
-
-    VideoCodec videoCodec;
-    bool supportedCodec = false;
-    switch (m_encodeFormat) {
-    case FRAME_FORMAT_VP8:
-        supportedCodec = (VideoCodingModule::Codec(webrtc::kVideoCodecVP8, &videoCodec) == VCM_OK);
-        break;
-    case FRAME_FORMAT_H264:
-        supportedCodec = (VideoCodingModule::Codec(webrtc::kVideoCodecH264, &videoCodec) == VCM_OK);
-        break;
-    case FRAME_FORMAT_I420:
-    default:
-        break;
-    }
-
-    if (!supportedCodec) {
-        boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
-        m_encodeFormat = FRAME_FORMAT_UNKNOWN;
-        m_consumers.clear();
-        return false;
-    }
-
-    videoCodec.width = width;
-    videoCodec.height = height;
-    uint32_t targetKbps = calcBitrate(width, height) * (m_encodeFormat == FRAME_FORMAT_VP8 ? 0.9 : 1);
-    videoCodec.startBitrate = targetKbps;
-    videoCodec.maxBitrate = targetKbps;
-    videoCodec.minBitrate = targetKbps / 4;
-
-    m_vcm->RegisterSendCodec(&videoCodec, 1, 1400);
-    m_encoderInitialized = true;
-    return true;
-}
-
-}
+} // namespace woogeen_base

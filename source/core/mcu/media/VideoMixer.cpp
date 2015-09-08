@@ -127,9 +127,10 @@ int32_t VideoMixer::addOutput(int payloadType, bool nack, bool fec, const VideoS
                                                 outputFormat,
                                                 m_outputKbps,
                                                 transport,
-                                                m_taskRunner);
+                                                m_taskRunner,
+                                                static_cast<uint16_t>(outputSize.width),
+                                                static_cast<uint16_t>(outputSize.height));
 
-    output->setSendCodec(outputFormat, outputSize.width, outputSize.height);
     output->startSend(nack, fec);
     boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
     m_outputs[key].reset(output);
@@ -154,7 +155,7 @@ int32_t VideoMixer::removeOutput(int payloadType, const VideoSize& size)
     return -1;
 }
 
-int32_t VideoMixer::addFrameConsumer(const std::string&/*unused*/, woogeen_base::FrameFormat format, woogeen_base::FrameConsumer* frameConsumer)
+int32_t VideoMixer::addFrameConsumer(const std::string&/*unused*/, woogeen_base::FrameFormat format, woogeen_base::FrameConsumer* frameConsumer, const woogeen_base::MediaSpecInfo& info)
 {
     int payloadType = INVALID_PT;
     switch (format) {
@@ -169,8 +170,9 @@ int32_t VideoMixer::addFrameConsumer(const std::string&/*unused*/, woogeen_base:
     }
 
     int32_t id = -1;
-    VideoSize size;
-    m_layoutProcessor->getRootSize(size);
+    VideoSize size {info.video.width, info.video.height};
+    if (size.width == 0 || size.height == 0 || !webrtc::VP8EncoderFactoryConfig::use_simulcast_adapter())
+        m_layoutProcessor->getRootSize(size);
     id = addOutput(payloadType, true, false, size);
     if (id != -1) {
         auto key = makeExtendedKey(payloadType, size.width, size.height);

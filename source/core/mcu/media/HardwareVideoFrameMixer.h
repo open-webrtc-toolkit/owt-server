@@ -99,7 +99,7 @@ public:
     void deActivateInput(int input);
     void pushInput(int input, unsigned char* payload, int len);
 
-    int32_t addFrameConsumer(const std::string& name, woogeen_base::FrameFormat, woogeen_base::VideoFrameConsumer*);
+    int32_t addFrameConsumer(const std::string& name, woogeen_base::FrameFormat, woogeen_base::VideoFrameConsumer*, const woogeen_base::MediaSpecInfo&);
     void removeFrameConsumer(int32_t id);
     void setBitrate(unsigned short kbps, int id);
     void requestKeyFrame(int id);

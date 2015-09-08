@@ -46,12 +46,11 @@ class EncodedVideoFrameSender : public VideoFrameSender,
     DECLARE_LOGGER();
 
 public:
-    EncodedVideoFrameSender(boost::shared_ptr<VideoFrameProvider>, FrameFormat, int targetKbps, WebRTCTransport<erizo::VIDEO>*, boost::shared_ptr<WebRTCTaskRunner>);
+    EncodedVideoFrameSender(boost::shared_ptr<VideoFrameProvider>, FrameFormat, int targetKbps, WebRTCTransport<erizo::VIDEO>*, boost::shared_ptr<WebRTCTaskRunner>, uint16_t, uint16_t);
     ~EncodedVideoFrameSender();
 
     // Implements VideoFrameSender.
     void onFrame(const Frame&);
-    bool setSendCodec(FrameFormat, unsigned int width, unsigned int height);
     bool updateVideoSize(unsigned int width, unsigned int height);
     bool startSend(bool nack, bool fec) { return true; }
     bool stopSend(bool nack, bool fec) { return true; }
@@ -81,6 +80,7 @@ public:
 private:
     bool init(WebRTCTransport<erizo::VIDEO>*, boost::shared_ptr<WebRTCTaskRunner>);
     void close();
+    bool setSendCodec(FrameFormat, unsigned int width, unsigned int height);
 
     boost::scoped_ptr<webrtc::BitrateController> m_bitrateController;
     boost::scoped_ptr<webrtc::RtcpBandwidthObserver> m_bandwidthObserver;
@@ -92,6 +92,7 @@ private:
     FrameFormat m_frameFormat;
     int m_id;
     int m_targetKbps;
+    MediaSpecInfo m_mediaSpecInfo;
 
     FrameConsumer* m_frameConsumer;
 };

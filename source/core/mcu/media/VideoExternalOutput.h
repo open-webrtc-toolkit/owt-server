@@ -38,7 +38,7 @@ public:
     virtual int deliverVideoData(char* buf, int len);
 
     // Implements the FrameProvider interfaces.
-    virtual int32_t addFrameConsumer(const std::string& name, woogeen_base::FrameFormat, woogeen_base::FrameConsumer*);
+    virtual int32_t addFrameConsumer(const std::string& name, woogeen_base::FrameFormat, woogeen_base::FrameConsumer*, const woogeen_base::MediaSpecInfo&);
     virtual void removeFrameConsumer(int32_t id);
     // TODO: Implement it.
     virtual void setBitrate(unsigned short kbps, int id = 0) { }

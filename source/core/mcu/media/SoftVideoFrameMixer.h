@@ -47,7 +47,7 @@ public:
     void deActivateInput(int input);
     void pushInput(int input, unsigned char* payload, int len);
 
-    int32_t addFrameConsumer(const std::string& name, woogeen_base::FrameFormat, woogeen_base::VideoFrameConsumer*);
+    int32_t addFrameConsumer(const std::string& name, woogeen_base::FrameFormat, woogeen_base::VideoFrameConsumer*, const woogeen_base::MediaSpecInfo&);
     void removeFrameConsumer(int32_t id);
     void setBitrate(unsigned short kbps, int id);
     void requestKeyFrame(int id);
@@ -184,7 +184,10 @@ inline void SoftVideoFrameMixer::requestKeyFrame(int id)
         it->encoder->requestKeyFrame(it->outputId);
 }
 
-inline int32_t SoftVideoFrameMixer::addFrameConsumer(const std::string& name, woogeen_base::FrameFormat format, woogeen_base::VideoFrameConsumer* consumer)
+inline int32_t SoftVideoFrameMixer::addFrameConsumer(const std::string& name,
+                                                    woogeen_base::FrameFormat format,
+                                                    woogeen_base::VideoFrameConsumer* consumer,
+                                                    const woogeen_base::MediaSpecInfo& info)
 {
     boost::shared_ptr<woogeen_base::VideoFrameEncoder> encoder;
     int internalId = -1;
@@ -195,7 +198,7 @@ inline int32_t SoftVideoFrameMixer::addFrameConsumer(const std::string& name, wo
     for (; it != m_outputs.end(); ++it) {
         encoder = it->encoder;
         if (encoder) {
-            internalId = encoder->addFrameConsumer(name, format, consumer);
+            internalId = encoder->addFrameConsumer(name, format, consumer, info);
             if (internalId != -1) {
                 reuseEncoder = true;
                 break;
@@ -209,7 +212,7 @@ inline int32_t SoftVideoFrameMixer::addFrameConsumer(const std::string& name, wo
         else
             encoder.reset(new woogeen_base::VCMFrameEncoder(m_taskRunner));
 
-        internalId = encoder->addFrameConsumer(name, format, consumer);
+        internalId = encoder->addFrameConsumer(name, format, consumer, info);
     }
 
     boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);

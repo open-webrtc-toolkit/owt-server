@@ -270,7 +270,8 @@ bool VCMOutputProcessor::init(woogeen_base::WebRTCTransport<erizo::VIDEO>* trans
 {
     m_taskRunner = taskRunner;
     m_videoTransport.reset(transport);
-    m_id = m_source->addFrameConsumer("VCMOutputProcessor", woogeen_base::FRAME_FORMAT_I420, this);
+    woogeen_base::MediaSpecInfo info {0};
+    m_id = m_source->addFrameConsumer("VCMOutputProcessor", woogeen_base::FRAME_FORMAT_I420, this, info);
 
     m_bitrateController.reset(webrtc::BitrateController::CreateBitrateController(Clock::GetRealTimeClock(), true));
     m_bandwidthObserver.reset(m_bitrateController->CreateRtcpBandwidthObserver());

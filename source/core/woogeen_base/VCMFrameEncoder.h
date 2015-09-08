@@ -27,6 +27,7 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/shared_mutex.hpp>
 #include <list>
+#include <logger.h>
 #include <webrtc/modules/video_coding/main/interface/video_coding.h>
 
 namespace woogeen_base {
@@ -35,12 +36,14 @@ namespace woogeen_base {
  * This is the class to accept the raw frame and encode it to the given format.
  */
 class VCMFrameEncoder : public VideoFrameEncoder, public webrtc::VCMPacketizationCallback {
+    DECLARE_LOGGER();
+
 public:
     VCMFrameEncoder(boost::shared_ptr<WebRTCTaskRunner>);
     ~VCMFrameEncoder();
 
     // Implements VideoFrameEncoder.
-    int32_t addFrameConsumer(const std::string& name, FrameFormat, FrameConsumer*);
+    int32_t addFrameConsumer(const std::string& name, FrameFormat, FrameConsumer*, const MediaSpecInfo&);
     void removeFrameConsumer(int32_t id);
     void onFrame(const Frame&);
     void setBitrate(unsigned short kbps, int id = 0);
@@ -54,13 +57,14 @@ public:
         const webrtc::RTPVideoHeader* rtpVideoHdr);
 
 private:
-    bool initializeEncoder(uint32_t width, uint32_t height);
-
+    struct Consumer {
+        VideoFrameConsumer* consumer;
+        uint8_t streamId;
+    };
     webrtc::VideoCodingModule* m_vcm;
-    bool m_encoderInitialized;
     FrameFormat m_encodeFormat;
     boost::shared_ptr<WebRTCTaskRunner> m_taskRunner;
-    std::list<VideoFrameConsumer*> m_consumers;
+    std::list<struct Consumer> m_consumers;
     boost::shared_mutex m_mutex;
 };
 

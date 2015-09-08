@@ -33,13 +33,17 @@ static const int TRANSMISSION_MAXBITRATE_MULTIPLIER = 2;
 
 DEFINE_LOGGER(EncodedVideoFrameSender, "woogeen.EncodedVideoFrameSender");
 
-EncodedVideoFrameSender::EncodedVideoFrameSender(boost::shared_ptr<VideoFrameProvider> source, FrameFormat frameFormat, int targetKbps, WebRTCTransport<erizo::VIDEO>* transport, boost::shared_ptr<WebRTCTaskRunner> taskRunner)
+EncodedVideoFrameSender::EncodedVideoFrameSender(boost::shared_ptr<VideoFrameProvider> source, FrameFormat frameFormat, int targetKbps, WebRTCTransport<erizo::VIDEO>* transport, boost::shared_ptr<WebRTCTaskRunner> taskRunner, uint16_t width, uint16_t height)
     : m_source(source)
     , m_frameFormat(frameFormat)
     , m_id(-1)
     , m_targetKbps(targetKbps)
     , m_frameConsumer(nullptr)
 {
+    m_mediaSpecInfo.video = VideoFrameSpecificInfo{
+        .width = width,
+        .height = height
+    };
     init(transport, taskRunner);
 }
 
@@ -170,15 +174,13 @@ bool EncodedVideoFrameSender::init(WebRTCTransport<erizo::VIDEO>* transport, boo
 {
     m_taskRunner = taskRunner;
     m_videoTransport.reset(transport);
-    m_id = m_source->addFrameConsumer("packetizer", m_frameFormat, this);
-
     m_bitrateController.reset(webrtc::BitrateController::CreateBitrateController(Clock::GetRealTimeClock(), true));
     m_bandwidthObserver.reset(m_bitrateController->CreateRtcpBandwidthObserver());
     // FIXME: Provide the correct bitrate settings (start, min and max bitrates).
     m_bitrateController->SetBitrateObserver(this, 300 * 1000, 0, 0);
 
     RtpRtcp::Configuration configuration;
-    configuration.id = m_id;
+    // configuration.id = m_id;
     configuration.outgoing_transport = transport;
     configuration.audio = false;  // Video.
     configuration.intra_frame_callback = this;
@@ -194,6 +196,9 @@ bool EncodedVideoFrameSender::init(WebRTCTransport<erizo::VIDEO>* transport, boo
 
     m_taskRunner->RegisterModule(m_rtpRtcp.get());
 
+    setSendCodec(m_frameFormat, m_mediaSpecInfo.video.width, m_mediaSpecInfo.video.height);
+
+    m_id = m_source->addFrameConsumer("packetizer", m_frameFormat, this, m_mediaSpecInfo);
     return true;
 }
 

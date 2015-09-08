@@ -43,7 +43,7 @@ public:
     bool acceptRawFrame() { return false; }
 
     // Implements VideoFrameProvider.
-    int32_t addFrameConsumer(const std::string& name, FrameFormat, FrameConsumer*);
+    int32_t addFrameConsumer(const std::string& name, FrameFormat, FrameConsumer*, const woogeen_base::MediaSpecInfo&);
     void removeFrameConsumer(int32_t id);
     void setBitrate(unsigned short kbps, int id = 0);
     void requestKeyFrame(int id = 0);
@@ -88,9 +88,9 @@ inline void VideoFrameTranscoder::requestKeyFrame(int id)
     m_encoder->requestKeyFrame(id);
 }
 
-inline int32_t VideoFrameTranscoder::addFrameConsumer(const std::string& name, FrameFormat format, VideoFrameConsumer* consumer)
+inline int32_t VideoFrameTranscoder::addFrameConsumer(const std::string& name, FrameFormat format, VideoFrameConsumer* consumer, const woogeen_base::MediaSpecInfo& info)
 {
-    return m_encoder->addFrameConsumer(name, format, consumer);
+    return m_encoder->addFrameConsumer(name, format, consumer, info);
 }
 
 inline void VideoFrameTranscoder::removeFrameConsumer(int32_t id)
