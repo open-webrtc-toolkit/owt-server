@@ -9,6 +9,7 @@ function defaultMediaMixing () {
             avCoordinated: 0,
             maxInput: 16,
             resolution: 'vga',
+            simulcast: 0,
             bitrate: 0,
             bkColor: 'black',
             layout: {
@@ -96,6 +97,14 @@ Room.prototype.validate = function() {
             this.mediaMixing.video.avCoordinated = 1;
         } else {
             this.mediaMixing.video.avCoordinated = 0;
+        }
+
+        if (this.mediaMixing.video.simulcast === '1' ||
+            this.mediaMixing.video.simulcast === 1 ||
+            this.mediaMixing.video.simulcast === true) {
+            this.mediaMixing.video.simulcast = 1;
+        } else {
+            this.mediaMixing.video.simulcast = 0;
         }
 
         if (this.mediaMixing.video.maxInput === undefined ||
@@ -273,10 +282,11 @@ Room.genConfig = function (room) {
         mode: room.mode,
         publishLimit: room.publishLimit,
         userLimit: room.userLimit,
-        enableMixing: room.enableMixing,
+        enableMixing: room.enableMixing === 1,
         mediaMixing: {
             video: {
-                avCoordinated: room.mediaMixing.video.avCoordinated === 1 ? true : false,
+                avCoordinated: room.mediaMixing.video.avCoordinated === 1,
+                simulcast: room.mediaMixing.video.simulcast === 1,
                 maxInput: maxInput,
                 bitrate: room.mediaMixing.video.bitrate || 0,
                 resolution: room.mediaMixing.video.resolution || 'vga',
@@ -312,6 +322,7 @@ module.exports = Room;
       },
       "maxInput": 16, // type number
       "avCoordinated": 0, // type number: 0/1
+      "simulcast": 0, // type number: 0/1
       "layout": { // type object
         "base": "fluid", // type string
         "custom": [ // type object::Array or null

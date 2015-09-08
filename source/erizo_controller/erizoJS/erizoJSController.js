@@ -57,6 +57,7 @@ exports.ErizoJSController = function () {
                         bitrate: roomConfig.video.bitrate,
                         resolution: roomConfig.video.resolution,
                         backgroundcolor: roomConfig.video.bkColor,
+                        simulcast: roomConfig.video.simulcast===true,
                         templates: roomConfig.video.layout
                     }
                 };

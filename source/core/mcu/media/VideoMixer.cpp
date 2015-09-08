@@ -53,6 +53,7 @@ VideoMixer::VideoMixer(erizo::RTPDataReceiver* receiver, boost::property_tree::p
     m_hardwareAccelerated = config.get<bool>("hardware");
     m_maxInputCount = config.get<uint32_t>("maxinput");
     m_outputKbps = config.get<int>("bitrate");
+    webrtc::VP8EncoderFactoryConfig::set_use_simulcast_adapter(config.get<bool>("simulcast"));
 
     m_layoutProcessor.reset(new VideoLayoutProcessor(config));
     VideoSize rootSize;
