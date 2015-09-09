@@ -20,6 +20,7 @@
 
 #include "ExternalInputGateway.h"
 #include "InProcessMixer.h"
+#include "MediaMuxerFactory.h"
 #include "OutOfProcessMixer.h"
 #include "OutOfProcessMixerProxy.h"
 #include "WebRTCGateway.h"
@@ -55,4 +56,25 @@ woogeen_base::Gateway* woogeen_base::Gateway::createGatewayInstance(const std::s
     }
 
     return new mcu::WebRTCGateway();
+}
+
+woogeen_base::MediaMuxer* woogeen_base::MediaMuxer::createMediaMuxerInstance(const std::string& configParam, woogeen_base::EventRegistry* callback)
+{
+    // Create a MediaMuxer
+    if (configParam != "" && configParam != "undefined") {
+        boost::property_tree::ptree pt;
+        std::istringstream is(configParam);
+        boost::property_tree::read_json(is, pt);
+        const std::string outputId = pt.get<std::string>("id", "");
+
+        return mcu::MediaMuxerFactory::createMediaMuxer(outputId, configParam, callback);
+    }
+
+    return nullptr;
+}
+
+bool woogeen_base::MediaMuxer::recycleMediaMuxerInstance(const std::string& outputId)
+{
+    // Recycle the media muxer
+    return mcu::MediaMuxerFactory::recycleMediaMuxer(outputId);
 }

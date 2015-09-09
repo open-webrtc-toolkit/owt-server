@@ -47,10 +47,6 @@ void Gateway::Init(Handle<Object> target) {
       FunctionTemplate::New(addSubscriber)->GetFunction());
   tpl->PrototypeTemplate()->Set(String::NewSymbol("removeSubscriber"),
       FunctionTemplate::New(removeSubscriber)->GetFunction());
-  tpl->PrototypeTemplate()->Set(String::NewSymbol("addExternalOutput"),
-      FunctionTemplate::New(addExternalOutput)->GetFunction());
-  tpl->PrototypeTemplate()->Set(String::NewSymbol("removeExternalOutput"),
-      FunctionTemplate::New(removeExternalOutput)->GetFunction());
   tpl->PrototypeTemplate()->Set(String::NewSymbol("addExternalPublisher"),
       FunctionTemplate::New(addExternalPublisher)->GetFunction());
   tpl->PrototypeTemplate()->Set(String::NewSymbol("addEventListener"),
@@ -184,46 +180,6 @@ Handle<Value> Gateway::removeSubscriber(const Arguments& args) {
   me->removeSubscriber(peerId);
 
   return scope.Close(Null());
-}
-
-Handle<Value> Gateway::addExternalOutput(const Arguments& args) {
-  HandleScope scope;
-
-  Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.This());
-  woogeen_base::Gateway* me = obj->me;
-
-  String::Utf8Value param(args[0]->ToString());
-  std::string configParam = std::string(*param);
-  NodeEventRegistry* callback = nullptr;
-  if (args.Length() > 1 && args[1]->IsFunction()) {
-    Persistent<Function> cb = Persistent<Function>::New(Local<Function>::Cast(args[1]));
-    callback = new NodeEventRegistry(cb);
-  }
-  bool succeeded = me->addExternalOutput(configParam, callback);
-  if (!succeeded && callback) {
-    delete callback;
-  }
-
-  return scope.Close(Boolean::New(succeeded));
-}
-
-Handle<Value> Gateway::removeExternalOutput(const Arguments& args) {
-  HandleScope scope;
-
-  Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.This());
-  woogeen_base::Gateway* me = obj->me;
-
-  // get the param
-  v8::String::Utf8Value param(args[0]->ToString());
-
-  // convert it to string
-  std::string outputId = std::string(*param);
-
-  bool close = args[1]->BooleanValue();
-
-  bool succeeded = me->removeExternalOutput(outputId, close);
-
-  return scope.Close(Boolean::New(succeeded));
 }
 
 Handle<Value> Gateway::addEventListener(const Arguments& args) {

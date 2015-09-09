@@ -47,7 +47,7 @@ int Mixer::deliverFeedback(char* buf, int len)
     return 0;
 }
 
-void Mixer::receiveRtpData(char* buf, int len, erizo::DataType type, uint32_t streamId)
+void Mixer::receiveRtpData(char* buf, int len, DataType type, uint32_t streamId)
 {
     if (m_subscribers.empty() || len <= 0)
         return;
@@ -63,10 +63,10 @@ void Mixer::receiveRtpData(char* buf, int len, erizo::DataType type, uint32_t st
         ssrc = head->getSSRC();
     }
 
-    std::map<std::string, std::pair<boost::shared_ptr<erizo::MediaSink>, woogeen_base::MediaEnabling>>::iterator it;
+    std::map<std::string, std::pair<boost::shared_ptr<MediaSink>, MediaEnabling>>::iterator it;
     boost::shared_lock<boost::shared_mutex> lock(m_subscriberMutex);
     switch (type) {
-    case erizo::AUDIO: {
+    case AUDIO: {
         for (it = m_subscribers.begin(); it != m_subscribers.end(); ++it) {
             if (it->second.second.hasAudio()) {
                 MediaSink* sink = it->second.first.get();
@@ -76,7 +76,7 @@ void Mixer::receiveRtpData(char* buf, int len, erizo::DataType type, uint32_t st
         }
         break;
     }
-    case erizo::VIDEO: {
+    case VIDEO: {
         for (it = m_subscribers.begin(); it != m_subscribers.end(); ++it) {
             if (it->second.second.hasVideo()) {
                 MediaSink* sink = it->second.first.get();
@@ -103,42 +103,17 @@ void Mixer::onPositiveAudioSources(std::vector<uint32_t>& audioSources)
     m_videoMixer->promoteSources(videoSources);
 }
 
-bool Mixer::addExternalOutput(const std::string& configParam, woogeen_base::EventRegistry* callback)
+FrameProvider* Mixer::getVideoFrameProvider()
 {
-    // Create an ExternalOutput here
-    if (configParam != "" && configParam != "undefined") {
-        boost::property_tree::ptree pt;
-        std::istringstream is(configParam);
-        boost::property_tree::read_json(is, pt);
-        const std::string outputId = pt.get<std::string>("id", "");
-
-        woogeen_base::MediaMuxer* muxer = MediaMuxerFactory::createMediaMuxer(outputId, configParam, callback);
-        if (muxer) {
-            muxer->setMediaSource(m_videoMixer.get(), m_audioMixer.get());
-            return true;
-        } else {
-            ELOG_ERROR("no media muxer is available.");
-        }
-    } else {
-        ELOG_DEBUG("add external output error: invalid config");
-    }
-
-    return false;
+    return m_videoMixer.get();
 }
 
-bool Mixer::removeExternalOutput(const std::string& outputId, bool close)
+FrameProvider* Mixer::getAudioFrameProvider()
 {
-    woogeen_base::MediaMuxer* muxer = MediaMuxerFactory::findMediaMuxer(outputId);
-    if (muxer)
-        muxer->unsetMediaSource();
-
-    if (close)
-        return MediaMuxerFactory::recycleMediaMuxer(outputId); // Remove the media muxer
-
-    return true;
+    return m_audioMixer.get();
 }
 
-bool Mixer::addPublisher(erizo::MediaSource* publisher, const std::string& id)
+bool Mixer::addPublisher(MediaSource* publisher, const std::string& id)
 {
     if (m_publishers.find(id) != m_publishers.end())
         return false;
@@ -243,8 +218,8 @@ void Mixer::addSubscriber(MediaSink* subscriber, const std::string& peerId, cons
     }
 
     boost::unique_lock<boost::shared_mutex> lock(m_subscriberMutex);
-    m_subscribers[peerId] = std::pair<boost::shared_ptr<erizo::MediaSink>,
-                                woogeen_base::MediaEnabling>(boost::shared_ptr<MediaSink>(subscriber), woogeen_base::MediaEnabling());
+    m_subscribers[peerId] = std::pair<boost::shared_ptr<MediaSink>,
+                                MediaEnabling>(boost::shared_ptr<MediaSink>(subscriber), MediaEnabling());
 }
 
 void Mixer::removeSubscriber(const std::string& peerId)

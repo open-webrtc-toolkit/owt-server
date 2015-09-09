@@ -122,10 +122,10 @@ void ExternalInputGateway::receiveRtpData(char* buf, int len, DataType type, uin
         ssrc = head->getSSRC();
     }
 
-    std::map<std::string, std::pair<boost::shared_ptr<erizo::MediaSink>, woogeen_base::MediaEnabling>>::iterator it;
+    std::map<std::string, std::pair<boost::shared_ptr<MediaSink>, woogeen_base::MediaEnabling>>::iterator it;
     boost::shared_lock<boost::shared_mutex> lock(m_subscriberMutex);
     switch (type) {
-    case erizo::AUDIO: {
+    case AUDIO: {
         for (it = m_subscribers.begin(); it != m_subscribers.end(); ++it) {
             if (it->second.second.hasAudio()) {
                 MediaSink* sink = it->second.first.get();
@@ -135,7 +135,7 @@ void ExternalInputGateway::receiveRtpData(char* buf, int len, DataType type, uin
         }
         break;
     }
-    case erizo::VIDEO: {
+    case VIDEO: {
         for (it = m_subscribers.begin(); it != m_subscribers.end(); ++it) {
             if (it->second.second.hasVideo()) {
                 MediaSink* sink = it->second.first.get();
@@ -176,7 +176,7 @@ bool ExternalInputGateway::addPublisher(MediaSource* publisher, const std::strin
         break;
     }
 
-    erizo::FeedbackSink* feedbackSink = publisher->getFeedbackSink();
+    FeedbackSink* feedbackSink = publisher->getFeedbackSink();
     uint32_t audioSSRC = publisher->getAudioSourceSSRC();
 
     if (audioSSRC)
@@ -247,7 +247,7 @@ void ExternalInputGateway::addSubscriber(MediaSink* subscriber, const std::strin
     }
 
     boost::unique_lock<boost::shared_mutex> lock(m_subscriberMutex);
-    m_subscribers[id] = std::pair<boost::shared_ptr<erizo::MediaSink>,
+    m_subscribers[id] = std::pair<boost::shared_ptr<MediaSink>,
                             woogeen_base::MediaEnabling>(boost::shared_ptr<MediaSink>(subscriber), woogeen_base::MediaEnabling());
 }
 
@@ -257,7 +257,7 @@ void ExternalInputGateway::removeSubscriber(const std::string& id)
 
     std::vector<boost::shared_ptr<MediaSink>> removedSubscribers;
     boost::unique_lock<boost::shared_mutex> lock(m_subscriberMutex);
-    std::map<std::string, std::pair<boost::shared_ptr<erizo::MediaSink>,
+    std::map<std::string, std::pair<boost::shared_ptr<MediaSink>,
         woogeen_base::MediaEnabling>>::iterator it = m_subscribers.find(id);
     if (it != m_subscribers.end()) {
         boost::shared_ptr<MediaSink>& subscriber = it->second.first;
@@ -275,7 +275,7 @@ void ExternalInputGateway::removeSubscriber(const std::string& id)
 void ExternalInputGateway::subscribeStream(const std::string& id, bool isAudio)
 {
     boost::unique_lock<boost::shared_mutex> lock(m_subscriberMutex);
-    std::map<std::string, std::pair<boost::shared_ptr<erizo::MediaSink>,
+    std::map<std::string, std::pair<boost::shared_ptr<MediaSink>,
         woogeen_base::MediaEnabling>>::iterator it = m_subscribers.find(id);
     if (it != m_subscribers.end()) {
         ELOG_DEBUG("subscriber %s - %s", id.c_str(), isAudio ? "playAudio" : "playVideo");
@@ -287,7 +287,7 @@ void ExternalInputGateway::subscribeStream(const std::string& id, bool isAudio)
 void ExternalInputGateway::unsubscribeStream(const std::string& id, bool isAudio)
 {
     boost::unique_lock<boost::shared_mutex> lock(m_subscriberMutex);
-    std::map<std::string, std::pair<boost::shared_ptr<erizo::MediaSink>,
+    std::map<std::string, std::pair<boost::shared_ptr<MediaSink>,
         woogeen_base::MediaEnabling>>::iterator it = m_subscribers.find(id);
     if (it != m_subscribers.end()) {
         ELOG_DEBUG("subscriber %s - %s", id.c_str(), isAudio ? "pauseAudio" : "pauseVideo");
@@ -333,39 +333,14 @@ int ExternalInputGateway::setAudioCodec(const std::string& codecName, unsigned i
     return m_publisher ? m_publisher->setAudioCodec(codecName, clockRate) : -1;
 }
 
-bool ExternalInputGateway::addExternalOutput(const std::string& configParam, woogeen_base::EventRegistry* callback)
+woogeen_base::FrameProvider* ExternalInputGateway::getVideoFrameProvider()
 {
-    // Create an ExternalOutput here
-    if (configParam != "" && configParam != "undefined") {
-        boost::property_tree::ptree pt;
-        std::istringstream is(configParam);
-        boost::property_tree::read_json(is, pt);
-        const std::string outputId = pt.get<std::string>("id", "");
-
-        woogeen_base::MediaMuxer* muxer = MediaMuxerFactory::createMediaMuxer(outputId, configParam, callback);
-        if (muxer) {
-            muxer->setMediaSource(this, m_audioTranscoder.get());
-            return true;
-        } else {
-            ELOG_ERROR("no media muxer is available.");
-        }
-    } else {
-        ELOG_DEBUG("add external output error: invalid config");
-    }
-
-    return false;
+    return this;
 }
 
-bool ExternalInputGateway::removeExternalOutput(const std::string& outputId, bool close)
+woogeen_base::FrameProvider* ExternalInputGateway::getAudioFrameProvider()
 {
-    woogeen_base::MediaMuxer* muxer = MediaMuxerFactory::findMediaMuxer(outputId);
-    if (muxer)
-        muxer->unsetMediaSource();
-
-    if (close)
-        return MediaMuxerFactory::recycleMediaMuxer(outputId); // Remove the media muxer
-
-    return true;
+    return m_audioTranscoder.get();
 }
 
 void ExternalInputGateway::closeAll()
@@ -374,7 +349,7 @@ void ExternalInputGateway::closeAll()
 
     std::vector<boost::shared_ptr<MediaSink>> removedSubscribers;
     boost::unique_lock<boost::shared_mutex> subscriberLock(m_subscriberMutex);
-    std::map<std::string, std::pair<boost::shared_ptr<erizo::MediaSink>,
+    std::map<std::string, std::pair<boost::shared_ptr<MediaSink>,
         woogeen_base::MediaEnabling>>::iterator subscriberItor = m_subscribers.begin();
     while (subscriberItor != m_subscribers.end()) {
         boost::shared_ptr<MediaSink>& subscriber = subscriberItor->second.first;
@@ -420,7 +395,7 @@ uint32_t ExternalInputGateway::addVideoOutput(int payloadType, bool nack, bool f
     boost::shared_ptr<woogeen_base::VideoFrameTranscoder> videoTranscoder(new woogeen_base::VideoFrameTranscoder(m_taskRunner));
     videoTranscoder->setInput(m_incomingVideoFormat, nullptr);
 
-    woogeen_base::WebRTCTransport<erizo::VIDEO>* transport = new woogeen_base::WebRTCTransport<erizo::VIDEO>(this, nullptr);
+    woogeen_base::WebRTCTransport<VIDEO>* transport = new woogeen_base::WebRTCTransport<VIDEO>(this, nullptr);
     woogeen_base::VideoFrameSender* output = new woogeen_base::EncodedVideoFrameSender(videoTranscoder, outputFormat, m_videoOutputKbps, transport, m_taskRunner, 1280, 720);
 
     {

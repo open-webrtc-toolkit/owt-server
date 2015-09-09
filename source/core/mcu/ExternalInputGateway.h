@@ -76,8 +76,8 @@ public:
     void publishStream(const std::string& id, bool isAudio);
     void unpublishStream(const std::string& id, bool isAudio);
 
-    bool addExternalOutput(const std::string& configParam, woogeen_base::EventRegistry* callback = nullptr);
-    bool removeExternalOutput(const std::string& outputId, bool close);
+    woogeen_base::FrameProvider* getVideoFrameProvider();
+    woogeen_base::FrameProvider* getAudioFrameProvider();
 
     // TODO: It's ugly to override setAudioSink/setVideoSink,
     // but we need to explicitly manage the synchronization of the sink setting/getting now,
@@ -101,7 +101,7 @@ public:
     int32_t addFrameConsumer(const std::string&, woogeen_base::FrameFormat, woogeen_base::FrameConsumer*, const woogeen_base::MediaSpecInfo&);
     void removeFrameConsumer(int32_t id);
     // TODO: Implement it.
-    virtual void setBitrate(unsigned short kbps, int id = 0) { }
+    void setBitrate(unsigned short kbps, int id = 0) { }
 
 private:
     void closeAll();

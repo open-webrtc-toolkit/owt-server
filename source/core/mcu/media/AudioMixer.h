@@ -27,6 +27,7 @@
 #include <JobTimer.h>
 #include <logger.h>
 #include <MediaDefinitions.h>
+#include <MediaFrameCallback.h>
 #include <MediaMuxer.h>
 #include <MediaSourceConsumer.h>
 #include <WebRTCTransport.h>

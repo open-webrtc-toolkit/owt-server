@@ -65,18 +65,6 @@ woogeen_base::MediaMuxer* MediaMuxerFactory::createMediaMuxer(const std::string&
     return nullptr;
 }
 
-woogeen_base::MediaMuxer* MediaMuxerFactory::findMediaMuxer(const std::string& id)
-{
-    if (id != "") {
-        std::map<std::string, boost::shared_ptr<woogeen_base::MediaMuxer>>::iterator it = s_muxers.find(id);
-        if (it != s_muxers.end())
-            return s_muxers[id].get();
-    }
-
-    ELOG_DEBUG("No media muxer can be found with id: %s.", id.c_str());
-    return nullptr;
-}
-
 bool MediaMuxerFactory::recycleMediaMuxer(const std::string& id)
 {
     std::map<std::string, boost::shared_ptr<woogeen_base::MediaMuxer>>::iterator it = s_muxers.find(id);

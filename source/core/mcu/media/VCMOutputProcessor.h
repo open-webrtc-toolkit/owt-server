@@ -28,6 +28,7 @@
 #include <boost/thread/shared_mutex.hpp>
 #include <logger.h>
 #include <MediaDefinitions.h>
+#include <MediaFrameCallback.h>
 #include <MediaMuxer.h>
 #include <VideoFrameSender.h>
 #include <WebRTCTaskRunner.h>

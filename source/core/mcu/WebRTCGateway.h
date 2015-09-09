@@ -21,6 +21,8 @@
 #ifndef WebRTCGateway_h
 #define WebRTCGateway_h
 
+#include "media/ExternalOutput.h"
+
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/thread/shared_mutex.hpp>
 #include <Gateway.h>
@@ -133,8 +135,8 @@ public:
     void publishStream(const std::string& id, bool isAudio);
     void unpublishStream(const std::string& id, bool isAudio);
 
-    bool addExternalOutput(const std::string& configParam, woogeen_base::EventRegistry* callback = nullptr);
-    bool removeExternalOutput(const std::string& outputId, bool close);
+    woogeen_base::FrameProvider* getVideoFrameProvider();
+    woogeen_base::FrameProvider* getAudioFrameProvider();
 
     // TODO: It's ugly to override setAudioSink/setVideoSink,
     // but we need to explicitly manage the synchronization of the sink setting/getting now,
@@ -184,6 +186,8 @@ private:
     boost::scoped_ptr<woogeen_base::ProtectedRTPReceiver> m_audioReceiver;
     boost::scoped_ptr<woogeen_base::JobTimer> m_feedbackTimer;
     uint32_t m_pendingIFrameRequests;
+
+    boost::shared_ptr<ExternalOutput> m_externalOutput;
 };
 
 } /* namespace mcu */

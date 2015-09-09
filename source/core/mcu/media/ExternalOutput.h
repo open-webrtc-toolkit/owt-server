@@ -35,11 +35,14 @@ class ExternalOutput : public erizo::MediaSink {
     DECLARE_LOGGER();
 
 public:
-    ExternalOutput(woogeen_base::MediaMuxer* muxer);
+    ExternalOutput();
     virtual ~ExternalOutput();
 
+    woogeen_base::FrameProvider* getVideoFrameProvider();
+    woogeen_base::FrameProvider* getAudioFrameProvider();
+
     // Implements the MediaSink interfaces.
-    // TODO: This is hard coded!
+    // FIXME: This is hard coded!
     int preferredAudioPayloadType() { return PCMU_8000_PT; }
     int preferredVideoPayloadType() { return VP8_90000_PT; }
 
@@ -49,8 +52,6 @@ public:
 private:
     boost::shared_ptr<VideoExternalOutput> m_videoExternalOutput;
     boost::shared_ptr<AudioExternalOutput> m_audioExternalOutput;
-
-    woogeen_base::MediaMuxer* m_muxer;
 };
 
 } /* namespace mcu */
