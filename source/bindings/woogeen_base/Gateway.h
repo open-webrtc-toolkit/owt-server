@@ -77,16 +77,6 @@ class Gateway : public node::ObjectWrap {
    */
   static v8::Handle<v8::Value> removeSubscriber(const v8::Arguments& args);
   /*
-   * Adds an ExternalOutput
-   * Param: The ExternalOutput   
-   */
-  static v8::Handle<v8::Value> addExternalOutput(const v8::Arguments& args);
-  /*
-   * Removes an ExternalOutput given its peer id
-   * Param: the peerId
-   */
-  static v8::Handle<v8::Value> removeExternalOutput(const v8::Arguments& args);
-  /*
    * Adds an External Publisher
    * Param: the ExternalInput of the Publisher
    */

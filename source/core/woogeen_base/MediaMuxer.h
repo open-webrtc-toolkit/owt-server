@@ -31,12 +31,10 @@
 #include <JobTimer.h>
 #include <rtputils.h>
 #include <SharedQueue.h>
-#include <webrtc/video/encoded_frame_callback_adapter.h>
-#include <webrtc/voice_engine/include/voe_base.h>
 
 namespace woogeen_base {
 
-static inline int64_t currentTimeMillis() {
+static inline int64_t currentTimeMs() {
     timeval time;
     gettimeofday(&time, nullptr);
     return ((time.tv_sec * 1000) + (time.tv_usec / 1000));
@@ -75,7 +73,7 @@ class MediaFrameQueue
 public:
     MediaFrameQueue(unsigned int max = DEFAULT_QUEUE_MAX)
         : m_max(max)
-        , m_startTimeOffset(currentTimeMillis())
+        , m_startTimeOffset(currentTimeMs())
     {
     }
 
@@ -85,7 +83,7 @@ public:
 
     void pushFrame(const uint8_t* data, uint16_t length)
     {
-        int64_t timestamp = currentTimeMillis() - m_startTimeOffset;
+        int64_t timestamp = currentTimeMs() - m_startTimeOffset;
         boost::shared_ptr<EncodedFrame> newFrame(new EncodedFrame(data, length, timestamp));
         m_queue.push(newFrame);
 
@@ -110,101 +108,13 @@ private:
     int64_t m_startTimeOffset;
 };
 
-class VideoEncodedFrameCallbackAdapter : public webrtc::EncodedImageCallback {
-public:
-    VideoEncodedFrameCallbackAdapter(FrameConsumer* consumer)
-        : m_frameConsumer(consumer)
-    {
-    }
-
-    virtual ~VideoEncodedFrameCallbackAdapter() { }
-
-    virtual int32_t Encoded(const webrtc::EncodedImage& encodedImage,
-                            const webrtc::CodecSpecificInfo* codecSpecificInfo,
-                            const webrtc::RTPFragmentationHeader* fragmentation)
-    {
-        if (encodedImage._length > 0 && m_frameConsumer) {
-            FrameFormat format = FRAME_FORMAT_UNKNOWN;
-            switch (codecSpecificInfo->codecType) {
-            case webrtc::kVideoCodecVP8:
-                format = FRAME_FORMAT_VP8;
-                break;
-            case webrtc::kVideoCodecH264:
-                format = FRAME_FORMAT_H264;
-                break;
-            default:
-                break;
-            }
-
-            Frame frame;
-            memset(&frame, 0, sizeof(frame));
-            frame.format = format;
-            frame.payload = encodedImage._buffer;
-            frame.length = encodedImage._length;
-            frame.timeStamp = encodedImage._timeStamp;
-            frame.additionalInfo.video.width = encodedImage._encodedWidth;
-            frame.additionalInfo.video.height = encodedImage._encodedHeight;
-
-            m_frameConsumer->onFrame(frame);
-        }
-
-        return 0;
-    }
-
-private:
-    FrameConsumer* m_frameConsumer;
-};
-
-class AudioEncodedFrameCallbackAdapter : public webrtc::AudioEncodedFrameCallback {
-public:
-    AudioEncodedFrameCallbackAdapter(FrameConsumer* consumer)
-        : m_frameConsumer(consumer)
-    {
-    }
-
-    virtual ~AudioEncodedFrameCallbackAdapter() { }
-
-    virtual int32_t Encoded(webrtc::FrameType frameType, uint8_t payloadType,
-                            uint32_t timeStamp, const uint8_t* payloadData,
-                            uint16_t payloadSize)
-    {
-        if (payloadSize > 0 && m_frameConsumer) {
-            FrameFormat format = FRAME_FORMAT_UNKNOWN;
-            Frame frame;
-            memset(&frame, 0, sizeof(frame));
-            switch (payloadType) {
-            case PCMU_8000_PT:
-                format = FRAME_FORMAT_PCMU;
-                frame.additionalInfo.audio.channels = 1; // FIXME: retrieve codec info from VOE?
-                frame.additionalInfo.audio.sampleRate = 8000;
-                break;
-            case OPUS_48000_PT:
-                format = FRAME_FORMAT_OPUS;
-                frame.additionalInfo.audio.channels = 2;
-                frame.additionalInfo.audio.sampleRate = 48000;
-                break;
-            default:
-                break;
-            }
-
-            frame.format = format;
-            frame.payload = const_cast<uint8_t*>(payloadData);
-            frame.length = payloadSize;
-            frame.timeStamp = timeStamp;
-
-            m_frameConsumer->onFrame(frame);
-        }
-
-        return 0;
-    }
-
-private:
-    FrameConsumer* m_frameConsumer;
-};
-
 class MediaMuxer : public FrameConsumer, public JobTimerListener {
 public:
     enum Status { Context_ERROR = -1, Context_EMPTY = 0, Context_READY = 1 };
+
+    DLL_PUBLIC static MediaMuxer* createMediaMuxerInstance(const std::string& customParam, EventRegistry* callback);
+    DLL_PUBLIC static bool recycleMediaMuxerInstance(const std::string& outputId);
+
     MediaMuxer(EventRegistry* registry = nullptr) : m_status(Context_EMPTY), m_callback(registry), m_callbackCalled(false) { }
     virtual ~MediaMuxer() { if (m_callback) delete m_callback; }
     virtual bool resetEventRegistry(EventRegistry* newRegistry)
@@ -221,9 +131,12 @@ public:
         return true;
     }
 
+    DLL_PUBLIC virtual void setMediaSource(FrameProvider* videoProvider, FrameProvider* audioProvider) = 0;
+    DLL_PUBLIC virtual void unsetMediaSource() = 0;
+
     // FrameConsumer
-    virtual void setMediaSource(FrameProvider* videoProvider, FrameProvider* audioProvider) = 0;
-    virtual void unsetMediaSource() = 0;
+    virtual void onFrame(const Frame&) = 0;
+
     // JobTimerListener
     virtual void onTimeout() = 0;
 

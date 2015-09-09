@@ -25,6 +25,7 @@
 
 #include <Compiler.h>
 #include <MediaDefinitions.h>
+#include <MediaFramePipeline.h>
 
 namespace woogeen_base {
 
@@ -77,7 +78,7 @@ public:
      * Set async event handler
      * @param event name, handle
      */
-    DLL_PUBLIC virtual void setupAsyncEvent(const std::string& event, woogeen_base::EventRegistry*) = 0;
+    DLL_PUBLIC virtual void setupAsyncEvent(const std::string& event, EventRegistry*) = 0;
     /**
      * Destroy async event handlers
      */
@@ -119,17 +120,16 @@ public:
      * @param isAudio unpublish audio or video
      */
     DLL_PUBLIC virtual void unpublishStream(const std::string& id, bool isAudio) = 0;
-
     /**
-     * Adds the external output
-     * @param configParam the configuration of the external output
+     * Retrieve the video frame provider from the Gateway
+     * @return the video frame provider.
      */
-    DLL_PUBLIC virtual bool addExternalOutput(const std::string& configParam, EventRegistry* callback = nullptr) { return false; }
+    DLL_PUBLIC virtual FrameProvider* getVideoFrameProvider() = 0;
     /**
-     * Eliminates the external output given its output id
-     * @param id the output id for the external output
+     * Retrieve the audio frame provider from the Gateway
+     * @return the audio frame provider.
      */
-    DLL_PUBLIC virtual bool removeExternalOutput(const std::string& id, bool close) { return false; }
+    DLL_PUBLIC virtual FrameProvider* getAudioFrameProvider() = 0;
     /**
      * Sets the bitrate of a video stream
      * @param id the publisher id

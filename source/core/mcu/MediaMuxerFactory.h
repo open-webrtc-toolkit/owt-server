@@ -32,7 +32,6 @@ class MediaMuxerFactory {
 
 public:
     static woogeen_base::MediaMuxer* createMediaMuxer(const std::string& id, const std::string& configParam, woogeen_base::EventRegistry* callback = nullptr);
-    static woogeen_base::MediaMuxer* findMediaMuxer(const std::string& id);
     static bool recycleMediaMuxer(const std::string& id);
 
 private:

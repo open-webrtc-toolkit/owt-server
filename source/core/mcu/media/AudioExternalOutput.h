@@ -22,6 +22,7 @@
 #define AudioExternalOutput_h
 
 #include <JobTimer.h>
+#include <MediaFrameCallback.h>
 #include <MediaMuxer.h>
 #include <webrtc/modules/audio_device/include/fake_audio_device.h>
 #include <WebRTCTransport.h>

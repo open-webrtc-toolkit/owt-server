@@ -107,12 +107,12 @@ public:
     void publishStream(const std::string& id, bool isAudio) { }
     void unpublishStream(const std::string& id, bool isAudio) { }
 
-    bool addExternalOutput(const std::string& configParam, woogeen_base::EventRegistry* callback = nullptr) { return false; }
-    bool removeExternalOutput(const std::string& outputId, bool close) { return false; }
-
     int sendFirPacket() { return -1; }
     int setVideoCodec(const std::string& codecName, unsigned int clockRate) { return -1; }
     int setAudioCodec(const std::string& codecName, unsigned int clockRate) { return -1; }
+
+    woogeen_base::FrameProvider* getVideoFrameProvider() { return nullptr; }
+    woogeen_base::FrameProvider* getAudioFrameProvider() { return nullptr; }
 
     std::string getRegion(const std::string& participantId) { return ""; }
     bool setRegion(const std::string& participantId, const std::string& regionId) { return false; }

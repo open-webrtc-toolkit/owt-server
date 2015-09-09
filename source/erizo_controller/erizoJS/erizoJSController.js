@@ -23,6 +23,7 @@ exports.ErizoJSController = function () {
     var that = {},
         subscribers = {},
         publishers = {},
+        externalOutputs = {},
         mixers = {},
         mixerProxy,
         roomId,
@@ -290,57 +291,49 @@ exports.ErizoJSController = function () {
         }
     };
 
-    that.addExternalOutput = function (to, from, url, interval, callback) {
-        if (publishers[to] !== undefined) {
+    that.addExternalOutput = function (video_publisher_id, audio_publisher_id, output_id, url, interval, callback) {
+        if (publishers[video_publisher_id] !== undefined && publishers[audio_publisher_id] !== undefined) {
             var config = {
-                id: from,
+                id: output_id,
                 url: url,
                 interval: interval
             };
 
-            if (from === '' && url === '' && interval === 0) { // rtsp out
+            if (output_id === '' && url === '' && interval === 0) { // rtsp out
+                // FIXME: Currently, ONLY mixed stream can be used for RTSP output
+                // which means video_publisher_id equals to audio_publisher_id
                 if (GLOBAL.config.erizo.rtsp.enabled !== true) {
                     callback('callback', 'not enabled');
                     return;
                 }
-                config.url = [rtsp_prefix, 'room_', to, '.sdp'].join('');
+                config.url = [rtsp_prefix, 'room_', video_publisher_id, '.sdp'].join('');
                 config.id = config.url;
             }
 
-            log.info('Adding ExternalOutput to ' + to + ' url ' + url);
+            log.info('Adding ExternalOutput to ' + video_publisher_id + " and " + audio_publisher_id + " with url: " + url);
 
-            // Timer is used here since the callback for addExternalOutput might not be invoked anyway
-            var timer = setTimeout(function() {
-                            log.error('addExternalOutput timeout');
+            // FIXME: Callback to the native layer is needed as well as the timeout timer
+            if (externalOutputs[output_id] === undefined) {
+                externalOutputs[output_id] = new addon.ExternalOutput(JSON.stringify(config));
+            }
 
-                            // Remove the possible external output if timeout
-                            publishers[to].removeExternalOutput(config.id, true);
-                        }, rpc.timeout);
+            // FIXME: Callback to the native layer is needed as well as the timeout timer
+            externalOutputs[output_id].setMediaSource(publishers[video_publisher_id], publishers[audio_publisher_id]);
 
-            publishers[to].addExternalOutput(JSON.stringify(config), function (resp) {
-                // Clear the timer if the callback is invoked
-                clearTimeout(timer);
-
-                if (resp !== 'success') {
-                    // Remove the possible external output
-                    publishers[to].removeExternalOutput(config.id, true);
-                }
-
-                callback('callback', resp);
-            });
+            callback('callback', 'success');
             return;
         }
 
-        log.error('Failed adding ExternalOutput to ' + to + ' with url ' + url);
+        log.error('Failed adding ExternalOutput to ' + video_publisher_id + " and " + audio_publisher_id + ' with url ' + url);
         callback('callback', 'error');
     };
 
-    that.removeExternalOutput = function (to, from, close, callback) {
-        if (publishers[to] !== undefined) {
-            log.info('Stopping ExternalOutput:' + from);
-            if (publishers[to].removeExternalOutput(from, close)) {
-                return callback('callback', 'success');
-            }
+    that.removeExternalOutput = function (output_id, close, callback) {
+        log.info('Stopping ExternalOutput:' + output_id);
+
+        if (externalOutputs[output_id].unsetMediaSource(output_id, close)) {
+            delete externalOutputs[output_id];
+            return callback('callback', 'success');
         }
 
         callback('callback', 'error');

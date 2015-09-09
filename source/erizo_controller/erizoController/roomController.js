@@ -133,86 +133,117 @@ exports.RoomController = function (spec) {
         }
     };
 
-    that.addExternalOutput = function (publisher_id, recorder_id, url, interval, callback) {
-        if (publishers[publisher_id] !== undefined) {
-            log.info("Adding ExternalOutput to " + publisher_id + " with url: " + url);
+    that.addExternalOutput = function (video_publisher_id, audio_publisher_id, output_id, mixer_id, url, interval, callback) {
+        if (publishers[video_publisher_id] !== undefined && publishers[audio_publisher_id] !== undefined) {
+            log.info("Adding ExternalOutput to " + video_publisher_id + " and " + audio_publisher_id + " with url: " + url);
 
-            if (externalOutputs[recorder_id] === publishers[publisher_id]) {
-                return callback({
-                    success: false,
-                    text: 'recorder busy'
-                });
-            }
-
-            var args = [publisher_id, recorder_id, url, interval];
-
-            rpc.callRpc(getErizoQueue(publisher_id), "addExternalOutput", args, {callback: function (result) {
-                if (result === 'success') {
-                    // Track external outputs
-                    externalOutputs[recorder_id] = publisher_id;
-
+            createErizoJS(output_id, mixer_id, function() {
+                var externalOutput = externalOutputs[output_id];
+                if (externalOutput) {
                     return callback({
-                        success: true,
-                        text: url
+                        success: false,
+                        text: 'the external output is busy'
                     });
                 }
 
-                callback({
-                    success: false,
-                    text: result
-                });
-            }});
+                var erizoVideo = getErizoQueue(video_publisher_id);
+                var erizoAudio = getErizoQueue(audio_publisher_id);
+                if (erizoVideo !== erizoAudio) {
+                    return callback({
+                        success: false,
+                        text: 'cannot make external output for video and audio from different erizo nodes'
+                    });
+                }
+
+                var args = [video_publisher_id, audio_publisher_id, output_id, url, interval];
+
+                rpc.callRpc(getErizoQueue(output_id), "addExternalOutput", args, {callback: function (result) {
+                    if (result === 'success') {
+                        // Track external outputs
+                        externalOutputs[output_id] = {video: video_publisher_id, audio: audio_publisher_id};
+
+                        return callback({
+                            success: true,
+                            text: url
+                        });
+                    }
+
+                    callback({
+                        success: false,
+                        text: result
+                    });
+                }});
+            });
         } else {
             callback({
                 success: false,
-                text: 'target record stream not found'
+                text: 'target stream(s) not found'
             });
         }
     };
 
-    that.removeExternalOutput = function (recorder_id, close, callback) {
+    that.removeExternalOutput = function (output_id, close, callback) {
+        // FIXME: It seems there is no need to verify the video_publisher_id and audio_publisher_id
         if (close === undefined) {
             close = true;
         }
 
-        var publisher_id = externalOutputs[recorder_id];
-        if (!publisher_id) {
+        var externalOutput = externalOutputs[output_id];
+        var video_publisher_id = null;
+        var audio_publisher_id = null;
+
+        if (externalOutput) {
+            video_publisher_id = externalOutput.video;
+            audio_publisher_id = externalOutput.audio;
+        }
+
+        if (!externalOutput || !video_publisher_id || !audio_publisher_id) {
             if (!close) {
                 return callback({
                     success: true,
-                    text: 'no recording context needs to be cleaned'
+                    text: 'no external output context needs to be cleaned'
                 });
             }
 
             return callback({
                 success: false,
-                text: 'no recorder ongoing'
+                text: 'no external output ongoing'
             });
         }
 
-        if (publishers[publisher_id] !== undefined) {
-            log.info("Stopping ExternalOutput: " + recorder_id);
+        var erizoVideo = getErizoQueue(video_publisher_id);
+        var erizoAudio = getErizoQueue(audio_publisher_id);
+        if (erizoVideo !== erizoAudio) {
+            return callback({
+                success: false,
+                text: 'cannot stop video and audio external output from different erizo nodes'
+            });
+        }
 
-            var args = [publisher_id, recorder_id, close];
-            rpc.callRpc(getErizoQueue(publisher_id), "removeExternalOutput", args, {callback: function (result) {
+        if (publishers[video_publisher_id] !== undefined && publishers[audio_publisher_id] !== undefined) {
+            log.info("Stopping ExternalOutput: " + output_id);
+
+            var args = [output_id, close];
+
+            rpc.callRpc(getErizoQueue(output_id), "removeExternalOutput", args, {callback: function (result) {
                 if (result === 'success') {
                     // Remove the track
-                    delete externalOutputs[recorder_id];
+                    delete externalOutputs[output_id];
                     return callback({
                         success: true,
-                        text: recorder_id
+                        text: output_id
                     });
                 }
 
                 callback({
                     success: false,
-                    text: 'stop recorder failed'
+                    text: 'stop external output failed'
                 });
             }});
         } else {
             callback({
                 success: false,
-                text: 'stream is not being recorded'
+                text: 'Not valid external output to stop'
             });
         }
     };
@@ -290,21 +321,21 @@ exports.RoomController = function (spec) {
 
         if (subscribers[publisher_id] !== undefined && publishers[publisher_id] !== undefined) {
 
-            var recorder_id = -1;
+            var output_id = -1;
             for (var i in externalOutputs) {
-                if (externalOutputs.hasOwnProperty(i) && externalOutputs[i] === publisher_id) {
-                    recorder_id = i;
+                if (externalOutputs.hasOwnProperty(i) && (externalOutputs[i].video === publisher_id || externalOutputs[i].audio === publisher_id)) {
+                    output_id = i;
                     break;
                 }
             }
 
-            if (recorder_id !== -1) {
-                log.info('Removing recorder', recorder_id);
-                var args = [publisher_id, recorder_id, false];
-                rpc.callRpc(getErizoQueue(publisher_id), "removeExternalOutput", args, {callback: function (result) {}});
+            if (output_id !== -1) {
+                log.info('Removing external output', output_id);
+                var args = [output_id, false];
+                rpc.callRpc(getErizoQueue(output_id), "removeExternalOutput", args, {callback: function (result) {}});
 
                 // Remove the external output track anyway
-                delete externalOutputs[recorder_id];
+                delete externalOutputs[output_id];
             }
 
             var args = [publisher_id];
@@ -436,7 +467,7 @@ exports.RoomController = function (spec) {
 
     that.addRTSPOut = function (mixer_id, callback) {
         if (publishers[mixer_id] !== undefined) {
-            var args = [mixer_id, '', '', 0];
+            var args = [mixer_id, mixer_id, '', '', 0];
             rpc.callRpc(getErizoQueue(mixer_id), 'addExternalOutput', args, {callback: function (result) {
                 callback(result);
             }});

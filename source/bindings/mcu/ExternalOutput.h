@@ -18,40 +18,47 @@
  * and approved by Intel in writing.
  */
 
-#include "ExternalOutput.h"
+#ifndef EXTERNALOUTPUT_H
+#define EXTERNALOUTPUT_H
 
-namespace mcu {
+#include <node.h>
+#include <MediaMuxer.h>
 
-DEFINE_LOGGER(ExternalOutput, "mcu.media.ExternalOutput");
+/*
+ * Wrapper class of woogeen_base::MediaMuxer
+ * Note: MediaMuxer instances are managed by the native layer
+ */
+class ExternalOutput : public node::ObjectWrap {
+ public:
+  static void Init(v8::Handle<v8::Object> target);
+  woogeen_base::MediaMuxer* me;
 
-ExternalOutput::ExternalOutput()
-{
-    m_videoExternalOutput.reset(new VideoExternalOutput());
-    m_audioExternalOutput.reset(new AudioExternalOutput());
-}
+ private:
+  ExternalOutput();
+  ~ExternalOutput();
 
-ExternalOutput::~ExternalOutput()
-{
-}
+  /*
+   * Constructor.
+   * Constructs an ExternalOutput
+   */
+  static v8::Handle<v8::Value> New(const v8::Arguments& args);
+  /*
+   * Closes the ExternalOutput.
+   * The object cannot be used after this call
+   */
+  static v8::Handle<v8::Value> close(const v8::Arguments& args);
 
-int ExternalOutput::deliverAudioData(char* buf, int len)
-{
-    return m_audioExternalOutput->deliverAudioData(buf, len);
-}
+  /*
+   * Sets MediaSources that provide both video and audio frames
+   * Param: the Gateway/Mixer to provide frames.
+   */
+  static v8::Handle<v8::Value> setMediaSource(const v8::Arguments& args);
 
-int ExternalOutput::deliverVideoData(char* buf, int len)
-{
-    return m_videoExternalOutput->deliverVideoData(buf, len);
-}
+  /*
+   * Unset MediaSource that provide both video and audio frames
+   * Param: the MediaMuxer to unset, and the flag of recycle
+   */
+  static v8::Handle<v8::Value> unsetMediaSource(const v8::Arguments& args);
+};
 
-woogeen_base::FrameProvider* ExternalOutput::getVideoFrameProvider()
-{
-	return m_videoExternalOutput.get();
-}
-
-woogeen_base::FrameProvider* ExternalOutput::getAudioFrameProvider()
-{
-	return m_audioExternalOutput.get();
-}
-
-} /* namespace mcu */
+#endif

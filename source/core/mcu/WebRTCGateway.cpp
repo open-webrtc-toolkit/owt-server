@@ -20,7 +20,6 @@
 
 #include "WebRTCGateway.h"
 #include "MediaMuxerFactory.h"
-#include "media/ExternalOutput.h"
 
 #include <ProtectedRTPSender.h>
 
@@ -29,6 +28,8 @@ using namespace erizo;
 namespace mcu {
 
 DEFINE_LOGGER(WebRTCGateway, "mcu.WebRTCGateway");
+
+const std::string EXTERNALOUTPUT_ID = "ExternalOutput";
 
 WebRTCGateway::WebRTCGateway()
     : m_pendingIFrameRequests(0)
@@ -77,7 +78,7 @@ void WebRTCGateway::receiveRtpData(char* rtpdata, int len, DataType type, uint32
     if (m_subscribers.empty() || len <= 0)
         return;
 
-    assert(type == erizo::VIDEO || type == erizo::AUDIO);
+    assert(type == VIDEO || type == AUDIO);
 
     RTCPHeader* chead = reinterpret_cast<RTCPHeader*>(rtpdata);
     uint8_t packetType = chead->getPacketType();
@@ -86,8 +87,8 @@ void WebRTCGateway::receiveRtpData(char* rtpdata, int len, DataType type, uint32
         std::map<std::string, SubscriberInfo>::iterator it;
         boost::shared_lock<boost::shared_mutex> lock(m_subscriberMutex);
         for (it = m_subscribers.begin(); it != m_subscribers.end(); ++it) {
-            woogeen_base::ProtectedRTPSender* sender = type == erizo::VIDEO ? it->second.videoSender.get() : it->second.audioSender.get();
-            if (sender && (type == erizo::VIDEO ? it->second.status.hasVideo() : it->second.status.hasAudio()))
+            woogeen_base::ProtectedRTPSender* sender = type == VIDEO ? it->second.videoSender.get() : it->second.audioSender.get();
+            if (sender && (type == VIDEO ? it->second.status.hasVideo() : it->second.status.hasAudio()))
                 sender->sendSenderReport(rtpdata, len, type);
         }
         return;
@@ -96,7 +97,7 @@ void WebRTCGateway::receiveRtpData(char* rtpdata, int len, DataType type, uint32
     RTPHeader* rtp = reinterpret_cast<RTPHeader*>(rtpdata);
     int headerLength = rtp->getHeaderLength();
     assert(headerLength <= len);
-    if (type == erizo::AUDIO) {
+    if (type == AUDIO) {
         std::map<std::string, SubscriberInfo>::iterator it;
         boost::shared_lock<boost::shared_mutex> lock(m_subscriberMutex);
         for (it = m_subscribers.begin(); it != m_subscribers.end(); ++it) {
@@ -109,7 +110,7 @@ void WebRTCGateway::receiveRtpData(char* rtpdata, int len, DataType type, uint32
         return;
     }
 
-    assert(type == erizo::VIDEO);
+    assert(type == VIDEO);
     char encapsulated[MAX_DATA_PACKET_SIZE];
     if (len < MAX_DATA_PACKET_SIZE) {
         memcpy(encapsulated, rtpdata, headerLength);
@@ -159,7 +160,7 @@ bool WebRTCGateway::addPublisher(MediaSource* publisher, const std::string& id)
     m_publisher.reset(publisher);
 
     // Set the NACK status of the RTPReceiver(s).
-    erizo::FeedbackSink* feedbackSink = m_publisher->getFeedbackSink();
+    FeedbackSink* feedbackSink = m_publisher->getFeedbackSink();
     bool enableNack = feedbackSink && feedbackSink->acceptNACK();
     m_audioReceiver->setNACKStatus(enableNack);
     m_videoReceiver->setNACKStatus(enableNack);
@@ -315,52 +316,38 @@ int WebRTCGateway::setAudioCodec(const std::string& codecName, unsigned int cloc
     return m_publisher ? m_publisher->setAudioCodec(codecName, clockRate) : -1;
 }
 
-bool WebRTCGateway::addExternalOutput(const std::string& configParam, woogeen_base::EventRegistry* callback)
+// FIXME: No subscriber removal until WebRTCGateway's gone
+woogeen_base::FrameProvider* WebRTCGateway::getVideoFrameProvider()
 {
-    // Create an ExternalOutput here
-    if (configParam != "" && configParam != "undefined") {
-        boost::property_tree::ptree pt;
-        std::istringstream is(configParam);
-        boost::property_tree::read_json(is, pt);
-        const std::string outputId = pt.get<std::string>("id", "");
+    // Create an external output instance
+    if (!m_externalOutput) {
+        m_externalOutput.reset(new ExternalOutput());
 
-        std::map<std::string, SubscriberInfo>::iterator it = m_subscribers.find(outputId);
-        if (it == m_subscribers.end()) {
-            // Create or fetch from MediaMuxerFactory
-            woogeen_base::MediaMuxer* muxer = MediaMuxerFactory::createMediaMuxer(outputId, configParam, callback);
-            if (muxer) {
-                // Create an external output, which will be managed as subscriber during its lifetime
-                ExternalOutput* externalOutput = new ExternalOutput(muxer);
+        // FIXME - 0 is used as the id of the external output
+        addSubscriber(m_externalOutput.get(), EXTERNALOUTPUT_ID, "");
 
-                // Added as a subscriber
-                addSubscriber(externalOutput, outputId, "");
-
-                // Send I-Frame request to the publisher.
-                ++m_pendingIFrameRequests;
-
-                return true;
-            } else {
-                ELOG_ERROR("no media muxer is available.");
-            }
-        } else {
-            ELOG_DEBUG("external output with id %s has already be occupied.", outputId.c_str());
-        }
-    } else {
-        ELOG_ERROR("add external output error: invalid config.");
+        // Send I-Frame request to the publisher
+        ++m_pendingIFrameRequests;
     }
 
-    return false;
+    return m_externalOutput->getVideoFrameProvider();
 }
 
-bool WebRTCGateway::removeExternalOutput(const std::string& outputId, bool close)
+// FIXME: No subscriber removal until WebRTCGateway's gone
+woogeen_base::FrameProvider* WebRTCGateway::getAudioFrameProvider()
 {
-    // Remove the external output
-    removeSubscriber(outputId);
+    // Create an external output instance
+    if (!m_externalOutput) {
+        m_externalOutput.reset(new ExternalOutput());
 
-    if (close)
-        return MediaMuxerFactory::recycleMediaMuxer(outputId); // Remove the media muxer
+        // FIXME - 0 is used as the id of the external output
+        addSubscriber(m_externalOutput.get(), EXTERNALOUTPUT_ID, "");
 
-    return true;
+        // Send I-Frame request to the publisher
+        ++m_pendingIFrameRequests;
+    }
+
+    return m_externalOutput->getAudioFrameProvider();
 }
 
 void WebRTCGateway::onTimeout()

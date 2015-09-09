@@ -75,10 +75,10 @@ public:
     void publishStream(const std::string& id, bool isAudio);
     void unpublishStream(const std::string& id, bool isAudio);
 
-    bool addExternalOutput(const std::string& configParam, woogeen_base::EventRegistry* callback = nullptr);
-    bool removeExternalOutput(const std::string& outputId, bool close);
-
     bool setVideoBitrate(const std::string& id, uint32_t kbps);
+
+    woogeen_base::FrameProvider* getVideoFrameProvider();
+    woogeen_base::FrameProvider* getAudioFrameProvider();
 
     // TODO: implement the below interfaces to support video layout related
     // information retrieval and setting.
