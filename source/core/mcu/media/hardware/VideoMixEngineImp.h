@@ -18,6 +18,7 @@ struct OutputInfo {
     VideoMixCodecType codec;
     VideoMixEngineOutput* consumer;
     unsigned short bitrate;
+    VppIndex vppIndex;
     void* encHandle;
     Stream* stream;
 };
@@ -54,6 +55,7 @@ public:
     void pushInput(InputIndex index, unsigned char* data, int len);
 
     OutputIndex enableOutput(VideoMixCodecType codec, unsigned short bitrate, VideoMixEngineOutput* consumer);
+    OutputIndex enableOutput(VideoMixCodecType codec, unsigned short bitrate, VideoMixEngineOutput* consumer, FrameSize frameSize);
     void disableOutput(OutputIndex index);
     void forceKeyFrame(OutputIndex index);
     void setBitrate(OutputIndex index, unsigned short bitrate);
@@ -68,7 +70,7 @@ private:
     void resetInput();
     int removeInput(InputIndex index);
 
-    OutputIndex scheduleOutput(VideoMixCodecType codec, unsigned short bitrate, VideoMixEngineOutput* consumer);
+    OutputIndex scheduleOutput(VideoMixCodecType codec, unsigned short bitrate, VideoMixEngineOutput* consumer, FrameSize frameSize);
     void installOutput(OutputIndex index);
     void attachOutput(OutputInfo* output);
     void detachOutput(OutputInfo* output);
@@ -77,22 +79,24 @@ private:
     int removeOutput(OutputIndex index);
 
     void setupInputCfg(DecOptions* dec_cfg, InputInfo* input);
-    void setupVppCfg(VppOptions* vpp_cfg);
+    void setupVppCfg(VppOptions* vpp_cfg, VppInfo* vpp);
     void setupOutputCfg(EncOptions* enc_cfg, OutputInfo* output);
     void setupPipeline();
     void demolishPipeline();
 
-    bool isCodecAlreadyInUse(VideoMixCodecType codec);
+    bool isCodecAlreadyInUse(VideoMixCodecType codec, FrameSize frameSize);
 
 private:
     PipelineState m_state;
     unsigned int m_inputIndex;
+    unsigned int m_vppIndex;
     unsigned int m_outputIndex;
     MsdkXcoder* m_xcoder;
-    VppInfo* m_vpp;
     std::map<InputIndex, InputInfo> m_inputs;
+    std::map<VppIndex, VppInfo> m_vpps;
     std::map<OutputIndex, OutputInfo> m_outputs;
     boost::shared_mutex m_inputMutex;
+    boost::shared_mutex m_vppMutex;
     boost::shared_mutex m_outputMutex;
     boost::shared_mutex m_stateMutex;
 };

@@ -10,9 +10,9 @@ const CodecType codec_type_dict[] = {CODEC_TYPE_VIDEO_VP8, CODEC_TYPE_VIDEO_AVC}
 VideoMixEngineImp::VideoMixEngineImp()
     : m_state(UN_INITIALIZED)
     , m_inputIndex(0)
+    , m_vppIndex(1)
     , m_outputIndex(0)
     , m_xcoder(NULL)
-    , m_vpp(NULL)
 {
 }
 
@@ -36,6 +36,11 @@ VideoMixEngineImp::~VideoMixEngineImp()
         }
 
         {
+            boost::unique_lock<boost::shared_mutex> vppLock(m_vppMutex);
+            m_vpps.clear();
+        }
+
+        {
             boost::unique_lock<boost::shared_mutex> inputLock(m_inputMutex);
             for(std::map<InputIndex, InputInfo>::iterator it = m_inputs.begin(); it != m_inputs.end();) {
                 if (it->second.mp) {
@@ -44,11 +49,6 @@ VideoMixEngineImp::~VideoMixEngineImp()
                 }
                 m_inputs.erase(it++);
             }
-        }
-
-        if (m_vpp) {
-            delete m_vpp;
-            m_vpp = NULL;
         }
 
         m_state = UN_INITIALIZED;
@@ -61,14 +61,15 @@ bool VideoMixEngineImp::init(BackgroundColor bgColor, FrameSize frameSize)
 {
     boost::unique_lock<boost::shared_mutex> stateLock(m_stateMutex);
     if (m_state == UN_INITIALIZED) {
-        m_vpp = new VppInfo;
-        if (m_vpp) {
-            m_vpp->bgColor = bgColor;
-            m_vpp->width = frameSize.width;
-            m_vpp->height = frameSize.height;
-            m_state = IDLE;
-            return true;
-        }
+        VppInfo vpp;
+        vpp.bgColor = bgColor;
+        vpp.width = frameSize.width;
+        vpp.height = frameSize.height;
+        boost::unique_lock<boost::shared_mutex> vppLock(m_vppMutex);
+        VppIndex index = 0;
+        m_vpps[index] = vpp;
+        m_state = IDLE;
+        return true;
     }
     return false;
 }
@@ -83,13 +84,16 @@ void VideoMixEngineImp::setBackgroundColor(const BackgroundColor* bgColor)
         bg_color.Y = bgColor->y;
         bg_color.U = bgColor->cb;
         bg_color.V = bgColor->cr;
-        if (m_xcoder && m_vpp) {
-            if (0 == m_xcoder->SetBackgroundColor(m_vpp->vppHandle, &bg_color)) {
-                m_vpp->bgColor.y = bgColor->y;
-                m_vpp->bgColor.cb = bgColor->cb;
-                m_vpp->bgColor.cr = bgColor->cr;
-            } else
-                printf("[%s]Fail to set bg color.\n", __FUNCTION__);
+        if (m_xcoder && !m_vpps.empty()) {
+            boost::unique_lock<boost::shared_mutex> vppLock(m_vppMutex);
+            for(std::map<VppIndex, VppInfo>::iterator it = m_vpps.begin(); it != m_vpps.end();) {
+                if (0 == m_xcoder->SetBackgroundColor(it->second.vppHandle, &bg_color)) {
+                    it->second.bgColor.y = bgColor->y;
+                    it->second.bgColor.cb = bgColor->cb;
+                    it->second.bgColor.cr = bgColor->cr;
+                } else
+                    printf("[%s]Fail to set bg color.\n", __FUNCTION__);
+            }
         } else
             printf("[%s]NULL pointer.\n", __FUNCTION__);
     } else
@@ -100,11 +104,12 @@ void VideoMixEngineImp::setResolution(unsigned int width, unsigned int height)
 {
     if (m_state != IN_SERVICE)
         return;
-
-    if (m_xcoder && m_vpp) {
-        if (0 == m_xcoder->SetResolution(m_vpp->vppHandle, width, height)) {
-            m_vpp->width = width;
-            m_vpp->height = height;
+    boost::unique_lock<boost::shared_mutex> vppLock(m_vppMutex);
+    std::map<VppIndex, VppInfo>::iterator vppIt = m_vpps.find(0);
+    if (m_xcoder && vppIt != m_vpps.end()) {
+        if (0 == m_xcoder->SetResolution(vppIt->second.vppHandle, width, height)) {
+            vppIt->second.width = width;
+            vppIt->second.height = height;
         } else
             printf("[%s]Fail to set resolution.\n", __FUNCTION__);
     } else
@@ -113,8 +118,12 @@ void VideoMixEngineImp::setResolution(unsigned int width, unsigned int height)
 
 void VideoMixEngineImp::getResolution(unsigned int& width, unsigned int& height)
 {
-    width = m_vpp->width;
-    height = m_vpp->height;
+    boost::shared_lock<boost::shared_mutex> vppLock(m_vppMutex);
+    std::map<VppIndex, VppInfo>::iterator vppIt = m_vpps.find(0);
+    if (vppIt != m_vpps.end()) {
+        width = vppIt->second.width;
+        height = vppIt->second.height;
+    }
 }
 
 void VideoMixEngineImp::setLayout(const CustomLayoutInfo* layoutMapping)
@@ -125,31 +134,36 @@ void VideoMixEngineImp::setLayout(const CustomLayoutInfo* layoutMapping)
     std::list<InputReginInfo>::const_iterator it_dec = layoutMapping->begin();
     int ret = -1;
 
-    boost::shared_lock<boost::shared_mutex> inputLock(m_inputMutex);
-    //first, set vpp as COMBO_CUSTOM mode
-    ret = m_xcoder->SetComboType(COMBO_CUSTOM, m_vpp->vppHandle, NULL);
-    if (ret != 0) {
-        printf("[%s]Fail to set combo type\n", __FUNCTION__);
-        return;
-    }
-    //second, set the layout information
     CustomLayout layout;
-    for(; it_dec != layoutMapping->end(); ++it_dec) {
-        std::map<InputIndex, InputInfo>::iterator it = m_inputs.find(it_dec->input);
-        if (it != m_inputs.end() && it->second.decHandle != NULL) {
-            Region regionInfo = {it_dec->region.left, it_dec->region.top,
-                it_dec->region.width_ratio, it_dec->region.height_ratio};
-            CompRegion input = {it->second.decHandle, regionInfo};
-            layout.push_back(input);
+    {
+        boost::shared_lock<boost::shared_mutex> inputLock(m_inputMutex);
+        //second, set the layout information
+        for(; it_dec != layoutMapping->end(); ++it_dec) {
+            std::map<InputIndex, InputInfo>::iterator it = m_inputs.find(it_dec->input);
+            if (it != m_inputs.end() && it->second.decHandle != NULL) {
+                Region regionInfo = {it_dec->region.left, it_dec->region.top,
+                    it_dec->region.width_ratio, it_dec->region.height_ratio};
+                CompRegion input = {it->second.decHandle, regionInfo};
+                layout.push_back(input);
+            }
         }
     }
     if (layout.size() == 0) {
         printf("[%s]No valid inputs in layoutMapping\n", __FUNCTION__);
         return;
     } else {
-        ret = m_xcoder->SetCustomLayout(m_vpp->vppHandle, &layout);
-        if (ret < 0) {
-            printf("[%s]Fail to set region\n", __FUNCTION__);
+        boost::shared_lock<boost::shared_mutex> vppLock(m_vppMutex);
+        for(std::map<VppIndex, VppInfo>::iterator it = m_vpps.begin(); it != m_vpps.end(); it++) {
+            //first, set vpp as COMBO_CUSTOM mode
+            ret = m_xcoder->SetComboType(COMBO_CUSTOM, it->second.vppHandle, NULL);
+            if (ret != 0) {
+                printf("[%s]Fail to set combo type\n", __FUNCTION__);
+                return;
+            }
+            ret = m_xcoder->SetCustomLayout(it->second.vppHandle, &layout);
+            if (ret < 0) {
+                printf("[%s]Fail to set region\n", __FUNCTION__);
+            }
         }
     }
 }
@@ -238,35 +252,40 @@ void VideoMixEngineImp::pushInput(InputIndex index, unsigned char* data, int len
         printf("[%s]Invalid input parameter.\n", __FUNCTION__);
 }
 
-OutputIndex VideoMixEngineImp::enableOutput(VideoMixCodecType codec, unsigned short bitrate, VideoMixEngineOutput* consumer)
+OutputIndex VideoMixEngineImp::enableOutput(VideoMixCodecType codec, unsigned short bitrate, VideoMixEngineOutput* consumer, FrameSize frameSize)
 {
     OutputIndex index = INVALID_OUTPUT_INDEX;
 
-    if (isCodecAlreadyInUse(codec))
+    if (isCodecAlreadyInUse(codec, frameSize))
         return index;
-
     boost::unique_lock<boost::shared_mutex> stateLock(m_stateMutex);
     switch (m_state) {
         case UN_INITIALIZED:
             break;
         case IDLE:
         case WAITING_FOR_INPUT:
-            index = scheduleOutput(codec, bitrate, consumer);
+            index = scheduleOutput(codec, bitrate, consumer, frameSize);
             m_state = WAITING_FOR_INPUT;
             break;
         case WAITING_FOR_OUTPUT:
-            index = scheduleOutput(codec, bitrate, consumer);
+            index = scheduleOutput(codec, bitrate, consumer, frameSize);
             setupPipeline();
             m_state = IN_SERVICE;
             break;
         case IN_SERVICE:
-            index = scheduleOutput(codec, bitrate, consumer);
+            index = scheduleOutput(codec, bitrate, consumer, frameSize);
             installOutput(index);
             break;
         default:
             break;
     }
     return index;
+}
+
+OutputIndex VideoMixEngineImp::enableOutput(VideoMixCodecType codec, unsigned short bitrate, VideoMixEngineOutput* consumer)
+{
+    FrameSize frameSize = {0, 0};
+    return enableOutput(codec, bitrate, consumer, frameSize);
 }
 
 void VideoMixEngineImp::disableOutput(OutputIndex index)
@@ -375,7 +394,7 @@ void VideoMixEngineImp::attachInput(InputIndex index, InputInfo* input)
         memset(&dec_cfg, 0, sizeof(dec_cfg));
         setupInputCfg(&dec_cfg, input);
 
-        m_xcoder->AttachInput(&dec_cfg, m_vpp->vppHandle);
+        m_xcoder->AttachInput(&dec_cfg, NULL);
         input->decHandle = dec_cfg.DecHandle;
         input->mp = dec_cfg.inputStream;
 
@@ -451,12 +470,41 @@ int VideoMixEngineImp::removeInput(InputIndex index)
     return m_inputs.size();
 }
 
-OutputIndex VideoMixEngineImp::scheduleOutput(VideoMixCodecType codec, unsigned short bitrate, VideoMixEngineOutput* consumer)
+OutputIndex VideoMixEngineImp::scheduleOutput(VideoMixCodecType codec, unsigned short bitrate, VideoMixEngineOutput* consumer, FrameSize frameSize)
 {
+    VppIndex vppIndex = INVALID_VPP_INDEX;
+    if (frameSize.width == 0 && frameSize.height == 0) {
+        vppIndex = 0;
+    } else {
+        boost::unique_lock<boost::shared_mutex> vppLock(m_vppMutex);
+        std::map<VppIndex, VppInfo>::iterator initVpp = m_vpps.find(0);
+        std::map<VppIndex, VppInfo>::iterator it = m_vpps.begin();
+        for (; it != m_vpps.end(); it++) {
+            if (it->second.width == frameSize.width && it->second.height == frameSize.height) {
+                vppIndex = it->first;
+                break;
+            }
+        }
+        if (it == m_vpps.end()) {
+            vppIndex = m_vppIndex++;
+            VppInfo vppInfo;
+            memset(&vppInfo, 0, sizeof(vppInfo));
+            vppInfo.width = frameSize.width;
+            vppInfo.height = frameSize.height;
+            if (initVpp != m_vpps.end()) {
+                vppInfo.bgColor.cb = initVpp->second.bgColor.cb;
+                vppInfo.bgColor.cr = initVpp->second.bgColor.cr;
+                vppInfo.bgColor.y = initVpp->second.bgColor.y;
+            }
+            m_vpps[vppIndex] = vppInfo;
+        }
+    }
+
     boost::unique_lock<boost::shared_mutex> outputLock(m_outputMutex);
     OutputIndex i = m_outputIndex++;
-    OutputInfo output = {codec, consumer, bitrate};
+    OutputInfo output = {codec, consumer, bitrate, vppIndex};
     m_outputs[i] = output;
+
     return i;
 }
 
@@ -466,10 +514,21 @@ void VideoMixEngineImp::attachOutput(OutputInfo* output)
         EncOptions enc_cfg;
         memset(&enc_cfg, 0, sizeof(enc_cfg));
         setupOutputCfg(&enc_cfg, output);
-
-        m_xcoder->AttachOutput(&enc_cfg, m_vpp->vppHandle);
-        output->encHandle = enc_cfg.EncHandle;
-        output->stream = enc_cfg.outputStream;
+        boost::shared_lock<boost::shared_mutex> vppLock(m_vppMutex);
+        std::map<VppIndex, VppInfo>::iterator vppIt = m_vpps.find(output->vppIndex);
+        if (vppIt != m_vpps.end()) {
+            if (vppIt->second.vppHandle) {
+                m_xcoder->AttachOutput(&enc_cfg, vppIt->second.vppHandle);
+            } else {
+                VppOptions vpp_cfg;
+                memset(&vpp_cfg, 0, sizeof(vpp_cfg));
+                setupVppCfg(&vpp_cfg, &(vppIt->second));
+                m_xcoder->AttachVpp(&vpp_cfg, &enc_cfg);
+                vppIt->second.vppHandle = vpp_cfg.VppHandle;
+            }
+            output->encHandle = enc_cfg.EncHandle;
+            output->stream = enc_cfg.outputStream;
+        }
     }
 }
 
@@ -551,11 +610,11 @@ void VideoMixEngineImp::setupInputCfg(DecOptions* dec_cfg, InputInfo* input)
     }
 }
 
-void VideoMixEngineImp::setupVppCfg(VppOptions* vpp_cfg)
+void VideoMixEngineImp::setupVppCfg(VppOptions* vpp_cfg, VppInfo* vpp)
 {
-    if (vpp_cfg && m_vpp) {
-        vpp_cfg->out_width = m_vpp->width;
-        vpp_cfg->out_height = m_vpp->height;
+    if (vpp_cfg && vpp) {
+        vpp_cfg->out_width = vpp->width;
+        vpp_cfg->out_height = vpp->height;
         vpp_cfg->measuremnt = NULL;
     }
 }
@@ -594,32 +653,36 @@ void VideoMixEngineImp::setupPipeline()
     boost::shared_lock<boost::shared_mutex> outputLock(m_outputMutex);
     std::map<InputIndex, InputInfo>::iterator it_input = m_inputs.begin();
     std::map<OutputIndex, OutputInfo>::iterator it_output = m_outputs.begin();
-    if (it_input != m_inputs.end() && it_output != m_outputs.end() && m_vpp) {
-        DecOptions dec_cfg;
-        memset(&dec_cfg, 0, sizeof(dec_cfg));
-        setupInputCfg(&dec_cfg, &(it_input->second));
+    {
+        boost::shared_lock<boost::shared_mutex> vppLock(m_vppMutex);
+        std::map<VppIndex, VppInfo>::iterator it_vpp = m_vpps.find(0);
+        if (it_input != m_inputs.end() && it_output != m_outputs.end() && it_vpp != m_vpps.end()) {
+            DecOptions dec_cfg;
+            memset(&dec_cfg, 0, sizeof(dec_cfg));
+            setupInputCfg(&dec_cfg, &(it_input->second));
 
-        VppOptions vpp_cfg;
-        memset(&vpp_cfg, 0, sizeof(vpp_cfg));
-        setupVppCfg(&vpp_cfg);
+            VppOptions vpp_cfg;
+            memset(&vpp_cfg, 0, sizeof(vpp_cfg));
+            setupVppCfg(&vpp_cfg, &(it_vpp->second));
 
-        EncOptions enc_cfg;
-        memset(&enc_cfg, 0, sizeof(enc_cfg));
-        setupOutputCfg(&enc_cfg, &(it_output->second));
+            EncOptions enc_cfg;
+            memset(&enc_cfg, 0, sizeof(enc_cfg));
+            setupOutputCfg(&enc_cfg, &(it_output->second));
 
-        m_xcoder = MsdkXcoder::create();
-        m_xcoder->Init(&dec_cfg, &vpp_cfg, &enc_cfg);
-        m_xcoder->Start();
+            m_xcoder = MsdkXcoder::create();
+            m_xcoder->Init(&dec_cfg, &vpp_cfg, &enc_cfg);
+            m_xcoder->Start();
 
-        it_input->second.decHandle = dec_cfg.DecHandle;
-        it_input->second.mp = dec_cfg.inputStream;
-        it_output->second.encHandle = enc_cfg.EncHandle;
-        it_output->second.stream = enc_cfg.outputStream;
-        m_vpp->vppHandle = vpp_cfg.VppHandle;
+            it_input->second.decHandle = dec_cfg.DecHandle;
+            it_input->second.mp = dec_cfg.inputStream;
+            it_output->second.encHandle = enc_cfg.EncHandle;
+            it_output->second.stream = enc_cfg.outputStream;
+            it_vpp->second.vppHandle = vpp_cfg.VppHandle;
 
-        VideoMixEngineInput* producer = it_input->second.producer;
-        if (producer)
-            producer->requestKeyFrame(it_input->first);
+            VideoMixEngineInput* producer = it_input->second.producer;
+            if (producer)
+                producer->requestKeyFrame(it_input->first);
+        }
     }
 
     for (++it_input; it_input != m_inputs.end(); ++it_input)
@@ -637,15 +700,26 @@ void VideoMixEngineImp::demolishPipeline()
         m_xcoder->Stop();
         MsdkXcoder::destroy(m_xcoder);
         m_xcoder = NULL;
-        m_vpp->vppHandle = NULL;
     }
 }
 
-bool VideoMixEngineImp::isCodecAlreadyInUse(VideoMixCodecType codec)
+bool VideoMixEngineImp::isCodecAlreadyInUse(VideoMixCodecType codec, FrameSize frameSize)
 {
+    VppIndex vppIndex = INVALID_VPP_INDEX;
+    if (frameSize.width == 0 && frameSize.height == 0) {
+        vppIndex = 0;
+    } else {
+        boost::shared_lock<boost::shared_mutex> vppLock(m_vppMutex);
+        for(std::map<VppIndex, VppInfo>::iterator it = m_vpps.begin(); it != m_vpps.end(); it++) {
+            if (it->second.width == frameSize.width && it->second.height == frameSize.height) {
+                vppIndex = it->first;
+                break;
+            }
+        }
+    }
     boost::shared_lock<boost::shared_mutex> outputLock(m_outputMutex);
     for (std::map<OutputIndex, OutputInfo>::iterator it = m_outputs.begin(); it != m_outputs.end(); ++it) {
-        if (it->second.codec == codec)
+        if (it->second.codec == codec && it->second.vppIndex == vppIndex)
             return true;
     }
 

@@ -5,10 +5,12 @@
 #include <list>
 
 #define INVALID_INPUT_INDEX -1
+#define INVALID_VPP_INDEX INVALID_INPUT_INDEX
 #define INVALID_OUTPUT_INDEX INVALID_INPUT_INDEX
 
 typedef int InputIndex;
 typedef int OutputIndex;
+typedef int VppIndex;
 
 class VideoMixEngineInput {
 public:
@@ -70,6 +72,7 @@ public:
     void pushInput(InputIndex index, unsigned char* data, int len);
 
     OutputIndex enableOutput(VideoMixCodecType codec, unsigned short bitrate, VideoMixEngineOutput* consumer);
+    OutputIndex enableOutput(VideoMixCodecType codec, unsigned short bitrate, VideoMixEngineOutput* consumer, FrameSize frameSize);
     void disableOutput(OutputIndex index);
     void forceKeyFrame(OutputIndex index);
     void setBitrate(OutputIndex index, unsigned short bitrate);

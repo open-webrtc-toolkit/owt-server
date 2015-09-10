@@ -64,6 +64,14 @@ OutputIndex VideoMixEngine::enableOutput(VideoMixCodecType codec, unsigned short
     return m_imp->enableOutput(codec, bitrate, consumer);
 }
 
+OutputIndex VideoMixEngine::enableOutput(VideoMixCodecType codec, unsigned short bitrate, VideoMixEngineOutput* consumer, FrameSize frameSize)
+{
+    if (codec != VCT_MIX_VP8 && codec != VCT_MIX_H264)
+        return INVALID_OUTPUT_INDEX;
+
+    return m_imp->enableOutput(codec, bitrate, consumer, frameSize);
+}
+
 void VideoMixEngine::disableOutput(OutputIndex index)
 {
     m_imp->disableOutput(index);

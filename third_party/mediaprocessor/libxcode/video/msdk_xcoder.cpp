@@ -1062,6 +1062,124 @@ int MsdkXcoder::AttachVpp(DecOptions *dec_cfg, VppOptions *vpp_cfg, EncOptions *
     return 0;
 }
 
+void MsdkXcoder::AttachVpp(VppOptions *vpp_cfg, EncOptions *enc_cfg)
+{
+    Locker<Mutex> lock(mutex);
+
+    if (!done_init_) {
+        printf("[%s]Attach new vpp before initialization\n", __FUNCTION__);
+        return;
+    }
+
+    if (!vpp_cfg || !enc_cfg) {
+        printf("[%s]Invalid input parameters\n", __FUNCTION__);
+        return;
+    }
+    vpp_cfg->VppHandle = NULL;
+    enc_cfg->EncHandle = NULL;
+
+    std::list<MSDKCodec*>::iterator vpp_it;
+    for (vpp_it = vpp_list_.begin(); \
+            vpp_it != vpp_list_.end(); \
+            ++vpp_it) {
+        if (is_running_ && !((*vpp_it)->is_running_)) {
+            printf("[%s]One vpp have been exit, shouldn't attach new vpp\n", __FUNCTION__);
+            return;
+        }
+    }
+
+    ElementCfg vppCfg;
+    memset(&vppCfg, 0, sizeof(vppCfg));
+    ReadVppConfig(vpp_cfg, &vppCfg);
+
+    ElementCfg encCfg;
+    memset(&encCfg, 0, sizeof(encCfg));
+    ReadEncConfig(enc_cfg, &encCfg);
+
+    /*vpp allocator, session*/
+    GeneralAllocator *pAllocatorVpp = NULL;
+    MFXVideoSession *vpp_session = NULL;
+    CreateSessionAllocator(&vpp_session, &pAllocatorVpp);
+    if (!vpp_session || !pAllocatorVpp) {
+        printf("[%s]Create vpp session or allocator failed\n", __FUNCTION__);
+        return;
+    }
+
+    /*enc allocator, session*/
+    GeneralAllocator *pAllocatorEnc = NULL;
+    MFXVideoSession *enc_session = NULL;
+    CreateSessionAllocator(&enc_session, &pAllocatorEnc);
+    if (!enc_session || !pAllocatorEnc) {
+        printf("[%s]Create encoder session or allocator failed\n", __FUNCTION__);
+        delete pAllocatorVpp;
+        CloseMsdkSession(vpp_session);
+        return;
+    }
+
+    vpp_ = NULL;
+    vpp_ = new MSDKCodec(ELEMENT_VPP, vpp_session, pAllocatorVpp);
+    if (vpp_) {
+        vpp_->Init(&vppCfg, ELEMENT_MODE_ACTIVE);
+    } else {
+        printf("[%s]Create vpp failed\n", __FUNCTION__);
+        CloseMsdkSession(enc_session);
+        CloseMsdkSession(vpp_session);
+        return;
+    }
+
+    vpp_dis_ = NULL;
+    vpp_dis_ = new Dispatcher;
+    if (vpp_dis_) {
+        vpp_dis_->Init(NULL, ELEMENT_MODE_PASSIVE);
+    } else {
+        printf("[%s]Create vpp dispatch failed\n", __FUNCTION__);
+        CloseMsdkSession(enc_session);
+        CloseMsdkSession(vpp_session);
+        return;
+    }
+
+    int out_file_type = encCfg.EncParams.mfx.CodecId;
+    enc_ = NULL;
+    if (MFX_CODEC_VP8 == out_file_type) {
+        enc_ = new MSDKCodec(ELEMENT_VP8_ENC, enc_session, pAllocatorEnc);
+    } else {
+        enc_ = new MSDKCodec(ELEMENT_ENCODER, enc_session, pAllocatorEnc);
+    }
+    if (enc_) {
+        enc_->Init(&encCfg, ELEMENT_MODE_ACTIVE);
+    } else {
+        printf("[%s]Create encoder failed\n", __FUNCTION__);
+        CloseMsdkSession(enc_session);
+        CloseMsdkSession(vpp_session);
+        return;
+    }
+
+    vpp_list_.push_back(vpp_);
+    vpp_dis_map_[vpp_] = vpp_dis_;
+    enc_multimap_.insert(std::make_pair(vpp_, enc_));
+
+    main_session_->JoinSession(*vpp_session);
+    main_session_->JoinSession(*enc_session);
+
+    std::map<MSDKCodec*, Dispatcher *>::iterator dec_dis_i;
+    for (dec_dis_i = dec_dis_map_.begin(); dec_dis_i != dec_dis_map_.end(); ++dec_dis_i) {
+        (dec_dis_i->second)->LinkNextElement(vpp_);
+    }
+    vpp_->LinkNextElement(vpp_dis_);
+    vpp_dis_->LinkNextElement(enc_);
+
+    if (is_running_) {
+        enc_->Start();
+        vpp_dis_->Start();
+        vpp_->Start();
+    }
+
+    vpp_cfg->VppHandle = vpp_;
+    enc_cfg->EncHandle = enc_;
+    printf("[%s]Attach VPP:%p, Encoder:%p Done.\n", __FUNCTION__, vpp_, enc_);
+    return;
+}
+
 int MsdkXcoder::DetachOutput(void* output_handle)
 {
     Locker<Mutex> lock(mutex);
