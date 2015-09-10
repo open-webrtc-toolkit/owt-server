@@ -256,6 +256,8 @@ public:
 
     int AttachVpp(DecOptions *dec_cfg, VppOptions *vpp_cfg, EncOptions *enc_cfg);
 
+    void AttachVpp(VppOptions *vpp_cfg, EncOptions *enc_cfg);
+
     int DetachVpp(void* vpp_handle);
 
     int AttachOutput(EncOptions *enc_cfg, void *vppHandle);
