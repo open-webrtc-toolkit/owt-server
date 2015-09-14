@@ -1235,15 +1235,12 @@ conference.getRegion({id: 'participantId'}, function (resp) {
  */
   WoogeenConference.prototype.getRegion = function (options, onSuccess, onFailure) {
     var self = this;
-    if (typeof options === 'function') {
-      onFailure = onSuccess;
-      onSuccess = options;
-      options = {};
-    } else if (typeof options !== 'object' || options === null) {
-      options = {};
+    if (typeof options !== 'object' || options === null ||
+        typeof options.id !== 'string' || options.id === '') {
+      return safeCall(onFailure, 'invalid options');
     }
 
-    sendMsg(self.socket, 'getRegion', options, function (err, resp) {
+    sendMsg(self.socket, 'getRegion', {id: options.id}, function (err, resp) {
       if (err) {return safeCall(onFailure, err);}
       safeCall(onSuccess, resp);
     });
@@ -1260,14 +1257,14 @@ conference.getRegion({id: 'participantId'}, function (resp) {
 }
    * @memberOf Woogeen.ConferenceClient
    * @param {json} options setRegion options.
-   * @param {function} onSuccess(resp) (optional) Success callback.
+   * @param {function} onSuccess() (optional) Success callback.
    * @param {function} onFailure(error) (optional) Failure callback.
    * @example
 <script type="text/JavaScript">
 var conference = Woogeen.ConferenceClient.create();
 // ......
-conference.setRegion({id: 'participantId', region: 'regionId'}, function (resp) {
-    L.Logger.info('setRegion succeeds for participantId: ', resp);
+conference.setRegion({id: 'participantId', region: 'regionId'}, function () {
+    L.Logger.info('setRegion succeeded');
   }, function (err) {
     L.Logger.error('setRegion failed:', err);
   }
@@ -1276,15 +1273,13 @@ conference.setRegion({id: 'participantId', region: 'regionId'}, function (resp) 
  */
   WoogeenConference.prototype.setRegion = function (options, onSuccess, onFailure) {
     var self = this;
-    if (typeof options === 'function') {
-      onFailure = onSuccess;
-      onSuccess = options;
-      options = {};
-    } else if (typeof options !== 'object' || options === null) {
-      options = {};
+    if (typeof options !== 'object' || options === null ||
+        typeof options.id !== 'string' || options.id === '' ||
+        typeof options.region !== 'string' || options.region === '') {
+      return safeCall(onFailure, 'invalid options');
     }
 
-    sendMsg(self.socket, 'setRegion', options, function (err, resp) {
+    sendMsg(self.socket, 'setRegion', {id: options.id, region: options.region}, function (err, resp) {
       if (err) {return safeCall(onFailure, err);}
       safeCall(onSuccess, resp);
     });
