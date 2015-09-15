@@ -187,7 +187,7 @@ private:
     boost::scoped_ptr<woogeen_base::JobTimer> m_feedbackTimer;
     uint32_t m_pendingIFrameRequests;
 
-    boost::shared_ptr<ExternalOutput> m_externalOutput;
+    ExternalOutput* m_externalOutput;
 };
 
 } /* namespace mcu */
