@@ -32,7 +32,6 @@ namespace mcu {
 VPMPool::VPMPool(unsigned int size)
     : m_size(size)
 {
-    m_subVideSize.resize(size);
     m_vpms = new VideoProcessingModule*[size];
     for (unsigned int i = 0; i < m_size; i++) {
         VideoProcessingModule* vpm = VideoProcessingModule::Create(i);
@@ -58,7 +57,6 @@ VideoProcessingModule* VPMPool::get(unsigned int input)
 
 void VPMPool::update(unsigned int input, VideoSize& videoSize)
 {
-    m_subVideSize[input] = videoSize;
     // FIXME: Get rid of the hard coded fps here.
     // Also it may need to be associated with the layout timer interval configured in VideoCompositor.
     if (m_vpms[input])
@@ -192,13 +190,6 @@ bool SoftVideoCompositor::commitLayout()
     // Update the current video layout
     // m_compositeSize = m_newCompositeSize;
     m_currentLayout = m_newLayout;
-    for (LayoutSolution::iterator it = m_currentLayout.begin(); it != m_currentLayout.end(); ++it) {
-        VideoSize videoSize;
-        videoSize.width = (int)(m_compositeSize.width * it->region.relativeSize);
-        videoSize.height = (int)(m_compositeSize.height * it->region.relativeSize);
-        m_vpmPool->update(it->input, videoSize);
-    }
-
     ELOG_DEBUG("commit customlayout");
 
     m_solutionState = IN_WORK;
@@ -256,25 +247,31 @@ webrtc::I420VideoFrame* SoftVideoCompositor::customLayout()
                     sub_width/2);
             }
         } else {
+            uint32_t cropped_sub_width = std::min(sub_width, sub_image->width() * sub_height / sub_image->height());
+            uint32_t cropped_sub_height = std::min(sub_height, sub_image->height() * sub_width / sub_image->width());
+            offset_width += ((sub_width - cropped_sub_width) / 2) & ~1;
+            offset_height += ((sub_height - cropped_sub_height) / 2) & ~1;
+            VideoSize sub_size {cropped_sub_width, cropped_sub_height};
+            m_vpmPool->update(index, sub_size);
             I420VideoFrame* processedFrame = nullptr;
             int ret = m_vpmPool->get((unsigned int)index)->PreprocessFrame(*sub_image, &processedFrame);
             if (ret == VPM_OK) {
                 if (!processedFrame)
                     processedFrame = sub_image;
 
-                for (unsigned int i = 0; i < sub_height; i++) {
+                for (unsigned int i = 0; i < cropped_sub_height; i++) {
                     memcpy(target->buffer(webrtc::kYPlane) + (i+offset_height) * target->stride(webrtc::kYPlane) + offset_width,
                         processedFrame->buffer(webrtc::kYPlane) + i * processedFrame->stride(webrtc::kYPlane),
-                        sub_width);
+                        cropped_sub_width);
                 }
 
-                for (unsigned int i = 0; i < sub_height/2; i++) {
+                for (unsigned int i = 0; i < cropped_sub_height/2; i++) {
                     memcpy(target->buffer(webrtc::kUPlane) + (i+offset_height/2) * target->stride(webrtc::kUPlane) + offset_width/2,
                         processedFrame->buffer(webrtc::kUPlane) + i * processedFrame->stride(webrtc::kUPlane),
-                        sub_width/2);
+                        cropped_sub_width/2);
                     memcpy(target->buffer(webrtc::kVPlane) + (i+offset_height/2) * target->stride(webrtc::kVPlane) + offset_width/2,
                         processedFrame->buffer(webrtc::kVPlane) + i * processedFrame->stride(webrtc::kVPlane),
-                        sub_width/2);
+                        cropped_sub_width/2);
                 }
             }
             // if return busy frame failed, which means a new busy frame has been posted

@@ -54,7 +54,6 @@ public:
 private:
     webrtc::VideoProcessingModule** m_vpms;
     unsigned int m_size;    // total pool capacity
-    std::vector<VideoSize> m_subVideSize;
 };
 
 /**
