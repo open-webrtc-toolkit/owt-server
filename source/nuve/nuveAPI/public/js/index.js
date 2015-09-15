@@ -1,28 +1,28 @@
 /*
-* Copyright © 2015 Intel Corporation. All Rights Reserved.
-*
-* Redistribution and use in source and binary forms, with or without
-* modification, are permitted provided that the following conditions are met:
-*
-* 1. Redistributions of source code must retain the above copyright notice,
-*    this list of conditions and the following disclaimer.
-* 2. Redistributions in binary form must reproduce the above copyright notice,
-*    this list of conditions and the following disclaimer in the documentation
-*    and/or other materials provided with the distribution.
-* 3. The name of the author may not be used to endorse or promote products
-*    derived from this software without specific prior written permission.
-*
-* THIS SOFTWARE IS PROVIDED BY THE AUTHOR "AS IS" AND ANY EXPRESS OR IMPLIED
-* WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
-* MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO
-* EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-* SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-* PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
-* OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
-* WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
-* OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
-* ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
+ * Copyright © 2015 Intel Corporation. All Rights Reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR "AS IS" AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO
+ * EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+ * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
 
 'use strict';
 
@@ -165,7 +165,7 @@ function graphicHandlerService(services) {
     $('div#service_' + id + ' img').click(function() {
       tableHandlerService(service.rooms, service.name);
     });
-    if(id === serviceId) $('div#service_' + id + ' button.close').hide();
+    if (id === serviceId) $('div#service_' + id + ' button.close').hide();
     $('div#service_' + id + ' button.close').click(function() {
       notifyConfirm('Delete Service', 'Are you sure want to delete service ' + id, function() {
         nuve.deleteService(id, function(err, resp) {
@@ -241,7 +241,7 @@ function tableHandlerRoom(rooms) {
         var id = $(each).attr('id');
         updates[key] = valueObj[id];
       });
-      if(updates.enableMixing){
+      if (updates.enableMixing) {
         updates.enableMixing = updates.enableMixing === "0" ? false : true;
       }
       nuve.updateRoom(roomId, updates, function(err, resp) {
@@ -348,6 +348,7 @@ function tableHandlerRoom(rooms) {
       bitrate: 0,
       bkColor: 'black',
       avCoordinated: false,
+      simulcast: 0,
       maxInput: 16,
       layout: {
         base: 'fluid',
@@ -358,7 +359,7 @@ function tableHandlerRoom(rooms) {
     videoSetting.bkColor = changeObj2RGB(videoSetting.bkColor);
 
     var view = Mustache.render('<tr>\
-          <td rowspan="7">video</td>\
+          <td rowspan="8">video</td>\
           <td colspan="2">resolution</td>\
           <td id="resolution" class="value-num-edit" data-value={{resolution}}></td>\
         </tr>\
@@ -377,6 +378,10 @@ function tableHandlerRoom(rooms) {
         <tr>\
           <td colspan="2">avCoordinated</td>\
           <td id="avCoordinated" class="value-num-edit" data-value={{avCoordinated}}></td>\
+        </tr>\
+        <tr>\
+          <td colspan="2">simulcast</td>\
+          <td id="simulcast" class="value-num-edit" data-value={{simulcast}}></td>\
         </tr>\
         <tr>\
           <td rowspan="2">layout</td>\
@@ -406,7 +411,7 @@ function tableHandlerRoom(rooms) {
         var val = $(each).editable('getValue')[id];
         setVal(videoSetting, id, val);
       });
-      if($('#myModal3 tbody td#bkColor input#color').val() !== lastColor) {
+      if ($('#myModal3 tbody td#bkColor input#color').val() !== lastColor) {
         lastColor = $('#myModal3 tbody td#bkColor input#color').val();
         setVal(videoSetting, "bkColor", changeRGBA2RGB(lastColor));
       }
@@ -421,15 +426,15 @@ function tableHandlerRoom(rooms) {
 
     $('#myModal3 tbody td#bkColor input#color').ColorPickerSliders({
       color: "rgb(255, 255, 255)",
-        flat: false,
-        sliders: false,
-        swatches: false,
-        hsvpanel: true
+      flat: false,
+      sliders: false,
+      swatches: false,
+      hsvpanel: true
     });
   };
 
-  var enabledMixing = function (videoSetting) {
-     $('#myModal3 tbody td#resolution').editable({
+  var enabledMixing = function(videoSetting) {
+    $('#myModal3 tbody td#resolution').editable({
       mode: 'inline',
       type: 'select',
       source: metadata.mediaMixing.video.resolution.map(function(v) {
@@ -463,6 +468,17 @@ function tableHandlerRoom(rooms) {
         };
       })
     });
+    $('#myModal3 tbody td#simulcast').editable({
+      mode: 'inline',
+      type: 'select',
+      source: [{
+        value: 0,
+        text: 'false'
+      }, {
+        value: 1,
+        text: 'true'
+      }]
+    });
     $('#myModal3 tbody td.value-obj-edit').editable({
       title: 'Input a stringified JSON object',
       validate: function(value) {
@@ -482,7 +498,7 @@ function tableHandlerRoom(rooms) {
     });
   }
 
-  var disabledMixing = function () {
+  var disabledMixing = function() {
     $('#myModal3 tbody td#resolution').editable(disabledHandle);
     $('#myModal3 tbody td#bitrate').editable(disabledHandle);
     $('#myModal3 tbody td#maxInput').editable(disabledHandle);
@@ -727,11 +743,11 @@ function a_click(nowList, dom) {
   }
 }
 
-function changeRGBA2RGB (color) {
-  if(color.toLowerCase().indexOf("rgba") > -1) {
+function changeRGBA2RGB(color) {
+  if (color.toLowerCase().indexOf("rgba") > -1) {
     color = color.replace("rgba", "rgb");
   }
-  if(color.toLowerCase().indexOf("rgb") > -1) {
+  if (color.toLowerCase().indexOf("rgb") > -1) {
     color = color.replace("(", ", ");
     color = color.replace(")", "");
     var tmp = color.split(", ");
@@ -745,9 +761,9 @@ function changeRGBA2RGB (color) {
 }
 
 
-function changeRGBA (str) {
-  switch (str){
-    case "black": 
+function changeRGBA(str) {
+  switch (str) {
+    case "black":
       return "rgb(0, 0, 0)";
     case "white":
       return "rgb(255, 255, 255)";
@@ -757,6 +773,6 @@ function changeRGBA (str) {
 }
 
 function changeObj2RGB(obj) {
-  if(typeof obj === "object") 
+  if (typeof obj === "object")
     return "rgb(" + obj.r + ", " + obj.g + ", " + obj.b + ")";
 }
