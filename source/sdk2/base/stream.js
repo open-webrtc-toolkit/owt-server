@@ -365,9 +365,8 @@ Reserved events from MCU:<br>
   <tr><td align="center"><code>AudioDisabled</code></td><td align="center">Audio track of a remote stream disabled</td><td align="center">reserved</td></tr>
 </tbody>
 </table>
-User-defined events and listeners are also supported, See {@link Woogeen.Stream#emit|stream.emit(eve
-nt, data)} method.
-   * @memberOf Woogeen.Stream
+User-defined events and listeners are also supported, See {@link Woogeen.RemoteStream#emit|stream.emit(event, data)} method.
+   * @memberOf Woogeen.RemoteStream
    * @param {string} event Event name.
    * @param {function} listener(data) Callback function.
    * @instance
@@ -392,7 +391,7 @@ if (stream.isMixed()) {
 /**
    * @function emit
    * @desc This function triggers a specified event, which would invoke corresponding event listener(s).
-   * @memberOf Woogeen.Stream
+   * @memberOf Woogeen.RemoteStream
    * @param {string} event Event name.
    * @param {user-defined} data Data fed to listener function.
    * @instance
@@ -413,7 +412,7 @@ if (stream.isMixed()) {
 /**
    * @function removeListener
    * @desc This function removes listener(s) for a specified event. If listener is unspecified, all the listener(s) of the event would be removed; or if the listener is in the event listener list, it would be removed; otherwise this function does nothing.
-   * @memberOf Woogeen.Stream
+   * @memberOf Woogeen.RemoteStream
    * @param {string} event Event name.
    * @param {function} listener Corresponding callback function (optional).
    * @instance
@@ -439,7 +438,7 @@ if (stream.isMixed()) {
 /**
    * @function clearListeners
    * @desc This function removes all registered listener(s) for all events on the stream.
-   * @memberOf Woogeen.Stream
+   * @memberOf Woogeen.RemoteStream
    * @instance
    */
       clearListeners: {
