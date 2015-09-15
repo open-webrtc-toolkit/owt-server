@@ -33,6 +33,7 @@ const std::string EXTERNALOUTPUT_ID = "ExternalOutput";
 
 WebRTCGateway::WebRTCGateway()
     : m_pendingIFrameRequests(0)
+    , m_externalOutput(nullptr)
 {
 }
 
@@ -321,10 +322,10 @@ woogeen_base::FrameProvider* WebRTCGateway::getVideoFrameProvider()
 {
     // Create an external output instance
     if (!m_externalOutput) {
-        m_externalOutput.reset(new ExternalOutput());
+        // m_externalOutput acts as a subscriber
+        m_externalOutput = new ExternalOutput();
 
-        // FIXME - 0 is used as the id of the external output
-        addSubscriber(m_externalOutput.get(), EXTERNALOUTPUT_ID, "");
+        addSubscriber(m_externalOutput, EXTERNALOUTPUT_ID, "");
 
         // Send I-Frame request to the publisher
         ++m_pendingIFrameRequests;
@@ -338,10 +339,10 @@ woogeen_base::FrameProvider* WebRTCGateway::getAudioFrameProvider()
 {
     // Create an external output instance
     if (!m_externalOutput) {
-        m_externalOutput.reset(new ExternalOutput());
+        // m_externalOutput acts as a subscriber
+        m_externalOutput = new ExternalOutput();
 
-        // FIXME - 0 is used as the id of the external output
-        addSubscriber(m_externalOutput.get(), EXTERNALOUTPUT_ID, "");
+        addSubscriber(m_externalOutput, EXTERNALOUTPUT_ID, "");
 
         // Send I-Frame request to the publisher
         ++m_pendingIFrameRequests;
