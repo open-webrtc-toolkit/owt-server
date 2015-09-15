@@ -315,7 +315,7 @@ stream.enableVideo();
    * @function isMixed
    * @desc This function returns true when stream's video track is mixed by server otherwise false.
 <br><b>Remarks:</b><br>
-Only for Woogeen.RemoteStream.
+Deprecated, use <code>instanceof Woogeen.MixedStream</code> instead.
    * @memberOf Woogeen.RemoteStream
    * @instance
    * @return {boolean} true The stream is mixed stream.<br>false The stream is not mixed stream
@@ -325,25 +325,9 @@ L.Logger.info('stream isMixed:', stream.isMixed());
 </script>
    */
     this.isMixed = function () {
-      return (!!spec.video) && (spec.video.device === 'mcu');
+      return false;
     };
-/**
-   * @function resolutions
-   * @desc This function returns an array of supported resolutions for mixed stream.
-<br><b>Remarks:</b><br>
-Only for Woogeen.RemoteStream.
-   * @memberOf Woogeen.RemoteStream
-   * @instance
-   * @return {Array}
-   */
-    this.resolutions = function () {
-      if (this.isMixed() && spec.video.resolutions instanceof Array) {
-        return spec.video.resolutions.map(function (resolution) {
-          return resolution;
-        });
-      }
-      return [];
-    };
+
     this.from = spec.from;
     var listeners = {};
     var self = this;
@@ -452,10 +436,36 @@ if (stream.isMixed()) {
     });
   }
 
+  function WoogeenMixedStream (spec) {
+    WoogeenRemoteStream.call(this, spec);
+/**
+   * @function resolutions
+   * @desc This function returns an array of supported resolutions for mixed stream.
+   * @memberOf Woogeen.MixedStream
+   * @instance
+   * @return {Array}
+   */
+    this.resolutions = function () {
+      if (spec.video.resolutions instanceof Array) {
+        return spec.video.resolutions.map(function (resolution) {
+          return resolution;
+        });
+      }
+      return [];
+    };
+
+    this.isMixed = function () {
+      return true;
+    };
+  }
+
   WoogeenLocalStream.prototype = Object.create(WoogeenStream.prototype);
   WoogeenRemoteStream.prototype = Object.create(WoogeenStream.prototype);
+  WoogeenMixedStream.prototype = Object.create(WoogeenRemoteStream.prototype);
   WoogeenLocalStream.prototype.constructor = WoogeenLocalStream;
   WoogeenRemoteStream.prototype.constructor = WoogeenRemoteStream;
+  WoogeenMixedStream.prototype.constructor = WoogeenMixedStream;
+
 
   function isLegacyChrome () {
     return window.navigator.appVersion.match(/Chrome\/([\w\W]*?)\./) !== null &&
@@ -773,10 +783,11 @@ console.log('stream added:', stream.id());
 ```
  */
   Woogeen.RemoteStream = WoogeenRemoteStream;
+/**
+ * @class Woogeen.MixedStream
+ * @extends Woogeen.RemoteStream
+ * @classDesc A RemoteStream whose video track is mixed by server.
+ */
+  Woogeen.MixedStream = WoogeenMixedStream;
 
-  // return {
-  //   Stream: WoogeenStream,
-  //   LocalStream: WoogeenLocalStream,
-  //   RemoteStream: WoogeenRemoteStream
-  // };
 }());

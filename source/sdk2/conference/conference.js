@@ -39,6 +39,18 @@ Woogeen.ConferenceClient = (function () {
     return that;
   }
 
+  function createRemoteStream (spec) {
+    if (!spec.video) {
+      return new Woogeen.RemoteStream(spec);
+    }
+    switch (spec.video.device) {
+    case 'mcu':
+      return new Woogeen.MixedStream(spec);
+    default:
+      return new Woogeen.RemoteStream(spec);
+    }
+  }
+
   var DISCONNECTED = 0, CONNECTING = 1, CONNECTED = 2;
   var internalDispatcher = Woogeen.EventDispatcher({});
 
@@ -209,7 +221,7 @@ conference.join(token, function(response) {...}, function(error) {...});
             L.Logger.warning('stream already added:', spec.id);
             return;
           }
-          var stream = new Woogeen.RemoteStream({
+          var stream = createRemoteStream({
             video: spec.video,
             audio: spec.audio,
             id: spec.id,
@@ -404,7 +416,7 @@ conference.join(token, function(response) {...}, function(error) {...});
             self.p2p = resp.p2p;
             that.state = CONNECTED;
             var streams = resp.streams.map(function (st) {
-              self.remoteStreams[st.id] = new Woogeen.RemoteStream(st);
+              self.remoteStreams[st.id] = createRemoteStream(st);
               return self.remoteStreams[st.id];
             });
             return safeCall(onSuccess, {streams: streams, users: resp.users});
