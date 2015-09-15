@@ -87,7 +87,7 @@ namespace erizo {
   }
 
   int WebRtcConnection::setAudioCodec(const std::string& codecName, unsigned int clockRate) {
-    int payloadType = localSdp_.forceCodecSupportByName(codecName, clockRate, AUDIO_TYPE);
+    int payloadType = remoteSdp_.forceCodecSupportByName(codecName, clockRate, AUDIO_TYPE);
     if (payloadType == INVALID_PT) {
       ELOG_WARN("Fail to set audio codec %s, clock rate %u", codecName.c_str(), clockRate);
     }
@@ -95,7 +95,7 @@ namespace erizo {
   }
 
   int WebRtcConnection::setVideoCodec(const std::string& codecName, unsigned int clockRate) {
-    int payloadType = localSdp_.forceCodecSupportByName(codecName, clockRate, VIDEO_TYPE);
+    int payloadType = remoteSdp_.forceCodecSupportByName(codecName, clockRate, VIDEO_TYPE);
     if (payloadType == INVALID_PT) {
       ELOG_WARN("Fail to set video codec %s, clock rate %u", codecName.c_str(), clockRate);
     }
