@@ -85,6 +85,8 @@ public:
 
 private:
     std::string m_url;
+    bool m_needAudio;
+    bool m_needVideo;
     AVDictionary* m_transportOpts;
     bool m_running;
     boost::thread m_thread;

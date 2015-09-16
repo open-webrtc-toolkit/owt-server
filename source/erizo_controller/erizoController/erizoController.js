@@ -784,6 +784,8 @@ var listen = function () {
                 }
                 socket.room.controller.addExternalInput(id, {
                     url: url,
+                    audio: options.audio,
+                    video: options.video,
                     transport: options.transport,
                     buffer_size: options.bufferSize
                 }, socket.room.mixer, function (result) {
