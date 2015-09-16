@@ -39,6 +39,10 @@
 #include <ProtectedRTPReceiver.h>
 #include <WebRTCFeedbackProcessor.h>
 
+namespace woogeen_base {
+class FrameProvider;
+}
+
 namespace oovoo_gateway {
 
 class OoVooConnection;
@@ -77,6 +81,8 @@ public:
     void unsubscribeStream(const std::string& id, bool isAudio);
     void publishStream(const std::string& id, bool isAudio);
     void unpublishStream(const std::string& id, bool isAudio);
+    woogeen_base::FrameProvider* getVideoFrameProvider() { return nullptr; }
+    woogeen_base::FrameProvider* getAudioFrameProvider() { return nullptr; }
 
     int sendFirPacket();
     int setVideoCodec(const std::string& codecName, unsigned int clockRate);

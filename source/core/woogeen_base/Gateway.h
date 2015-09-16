@@ -25,9 +25,10 @@
 
 #include <Compiler.h>
 #include <MediaDefinitions.h>
-#include <MediaFramePipeline.h>
 
 namespace woogeen_base {
+
+class FrameProvider;
 
 /**
  * Represents connection between different WebRTC clients, or between a WebRTC client and other third-party clients.
