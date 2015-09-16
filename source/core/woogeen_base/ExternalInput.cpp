@@ -54,16 +54,19 @@ ExternalInput::ExternalInput(const std::string& options)
     std::istringstream is(options);
     boost::property_tree::read_json(is, pt);
     m_url = pt.get<std::string>("url", "");
+    m_needAudio = pt.get<bool>("audio", false);
+    m_needVideo = pt.get<bool>("video", false);
     std::string transport = pt.get<std::string>("transport", "udp");
     if (transport.compare("tcp") == 0) {
         av_dict_set(&m_transportOpts, "rtsp_transport", "tcp", 0);
-        ELOG_DEBUG("url: %s, transport::tcp", m_url.c_str());
+        ELOG_DEBUG("url: %s, audio: %d, video: %d, transport::tcp", m_url.c_str(), m_needAudio, m_needVideo);
     } else {
         char buf[256];
         uint32_t buffer_size = pt.get<uint32_t>("buffer_size", BUFFER_SIZE);
         snprintf(buf, sizeof(buf), "%u", buffer_size);
         av_dict_set(&m_transportOpts, "buffer_size", buf, 0);
-        ELOG_DEBUG("url: %s, transport::%s, buffer_size: %u", m_url.c_str(), transport.c_str(), buffer_size);
+        ELOG_DEBUG("url: %s, audio: %d, video: %d, transport::%s, buffer_size: %u",
+                   m_url.c_str(), m_needAudio, m_needVideo, transport.c_str(), buffer_size);
     }
     videoDataType_ = DataContentType::ENCODED_FRAME;
     audioDataType_ = DataContentType::RTP;
@@ -124,68 +127,69 @@ bool ExternalInput::connect()
     }
 
     AVStream *st, *audio_st;
-    int streamNo = av_find_best_stream(m_context, AVMEDIA_TYPE_VIDEO, -1, -1, nullptr, 0);
-    if (streamNo < 0) {
-        ELOG_WARN("No Video stream found");
-    } else {
-        m_videoStreamIndex = streamNo;
-        st = m_context->streams[streamNo];
-        ELOG_DEBUG("Has video, video stream number %d. time base = %d / %d, codec type = %d ",
-                  m_videoStreamIndex,
-                  st->time_base.num,
-                  st->time_base.den,
-                  st->codec->codec_id);
-
-        int videoCodecId = st->codec->codec_id;
-        if (videoCodecId == AV_CODEC_ID_VP8 || videoCodecId == AV_CODEC_ID_H264) {
-            if (!videoSourceSSRC_) {
-                unsigned int videoSourceId = rand();
-                ELOG_DEBUG("Set video SSRC : %d ", videoSourceId);
-                setVideoSourceSSRC(videoSourceId);
-            }
-
-            if (videoCodecId == AV_CODEC_ID_VP8)
-                videoPayloadType_ = VP8_90000_PT;
-            else if (videoCodecId == AV_CODEC_ID_H264)
-                videoPayloadType_ = H264_90000_PT;
+    if (m_needVideo) {
+        int streamNo = av_find_best_stream(m_context, AVMEDIA_TYPE_VIDEO, -1, -1, nullptr, 0);
+        if (streamNo < 0) {
+            ELOG_WARN("No Video stream found");
         } else {
-            ELOG_WARN("Video codec %d is not supported ", st->codec->codec_id);
+            m_videoStreamIndex = streamNo;
+            st = m_context->streams[streamNo];
+            ELOG_DEBUG("Has video, video stream number %d. time base = %d / %d, codec type = %d ",
+                      m_videoStreamIndex,
+                      st->time_base.num,
+                      st->time_base.den,
+                      st->codec->codec_id);
+
+            int videoCodecId = st->codec->codec_id;
+            if (videoCodecId == AV_CODEC_ID_VP8 || videoCodecId == AV_CODEC_ID_H264) {
+                if (!videoSourceSSRC_) {
+                    unsigned int videoSourceId = rand();
+                    ELOG_DEBUG("Set video SSRC : %d ", videoSourceId);
+                    setVideoSourceSSRC(videoSourceId);
+                }
+
+                if (videoCodecId == AV_CODEC_ID_VP8)
+                    videoPayloadType_ = VP8_90000_PT;
+                else if (videoCodecId == AV_CODEC_ID_H264)
+                    videoPayloadType_ = H264_90000_PT;
+            } else {
+                ELOG_WARN("Video codec %d is not supported ", st->codec->codec_id);
+            }
         }
     }
 
-    int audioStreamNo = av_find_best_stream(m_context, AVMEDIA_TYPE_AUDIO, -1, -1, nullptr, 0);
-    if (audioStreamNo < 0) {
-        ELOG_WARN("No Audio stream found");
-    } else {
-        m_audioStreamIndex = audioStreamNo;
-        audio_st = m_context->streams[m_audioStreamIndex];
-        ELOG_DEBUG("Has audio, audio stream number %d. time base = %d / %d, codec type = %d ",
-                  m_audioStreamIndex,
-                  audio_st->time_base.num,
-                  audio_st->time_base.den,
-                  audio_st->codec->codec_id);
-
-        int audioCodecId = audio_st->codec->codec_id;
-        if (audioCodecId == AV_CODEC_ID_PCM_MULAW ||
-            audioCodecId == AV_CODEC_ID_PCM_ALAW ||
-            audioCodecId == AV_CODEC_ID_ADPCM_G722 ||
-            audioCodecId == AV_CODEC_ID_OPUS) {
-            if (!audioSourceSSRC_) {
-                unsigned int audioSourceId = rand();
-                ELOG_DEBUG("Set audio SSRC : %d", audioSourceId);
-                setAudioSourceSSRC(audioSourceId);
-            }
-
-            if (audioCodecId == AV_CODEC_ID_PCM_MULAW)
-                audioPayloadType_ = PCMU_8000_PT;
-            else if (audioCodecId == AV_CODEC_ID_PCM_ALAW)
-                audioPayloadType_ = PCMA_8000_PT;
-            else if (audioCodecId == AV_CODEC_ID_ADPCM_G722)
-                audioPayloadType_ = INVALID_PT;
-            else if (audioCodecId == AV_CODEC_ID_OPUS)
-                audioPayloadType_ = OPUS_48000_PT;
+    if (m_needAudio) {
+        int audioStreamNo = av_find_best_stream(m_context, AVMEDIA_TYPE_AUDIO, -1, -1, nullptr, 0);
+        if (audioStreamNo < 0) {
+            ELOG_WARN("No Audio stream found");
         } else {
-            ELOG_WARN("Audio codec %d is not supported ", audioCodecId);
+            m_audioStreamIndex = audioStreamNo;
+            audio_st = m_context->streams[m_audioStreamIndex];
+            ELOG_DEBUG("Has audio, audio stream number %d. time base = %d / %d, codec type = %d ",
+                      m_audioStreamIndex,
+                      audio_st->time_base.num,
+                      audio_st->time_base.den,
+                      audio_st->codec->codec_id);
+
+            int audioCodecId = audio_st->codec->codec_id;
+            if (audioCodecId == AV_CODEC_ID_PCM_MULAW ||
+                audioCodecId == AV_CODEC_ID_PCM_ALAW ||
+                audioCodecId == AV_CODEC_ID_OPUS) {
+                if (!audioSourceSSRC_) {
+                    unsigned int audioSourceId = rand();
+                    ELOG_DEBUG("Set audio SSRC : %d", audioSourceId);
+                    setAudioSourceSSRC(audioSourceId);
+                }
+
+                if (audioCodecId == AV_CODEC_ID_PCM_MULAW)
+                    audioPayloadType_ = PCMU_8000_PT;
+                else if (audioCodecId == AV_CODEC_ID_PCM_ALAW)
+                    audioPayloadType_ = PCMA_8000_PT;
+                else if (audioCodecId == AV_CODEC_ID_OPUS)
+                    audioPayloadType_ = OPUS_48000_PT;
+            } else {
+                ELOG_WARN("Audio codec %d is not supported ", audioCodecId);
+            }
         }
     }
 
@@ -194,7 +198,7 @@ bool ExternalInput::connect()
 
     av_init_packet(&m_avPacket);
     return true;
-  }
+}
 
 int ExternalInput::sendFirPacket()
 {
