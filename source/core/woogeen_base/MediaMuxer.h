@@ -112,26 +112,13 @@ class MediaMuxer : public FrameConsumer, public JobTimerListener {
 public:
     enum Status { Context_ERROR = -1, Context_EMPTY = 0, Context_READY = 1 };
 
-    DLL_PUBLIC static MediaMuxer* createMediaMuxerInstance(const std::string& customParam, EventRegistry* callback);
+    DLL_PUBLIC static MediaMuxer* createMediaMuxerInstance(const std::string& customParam);
     DLL_PUBLIC static bool recycleMediaMuxerInstance(const std::string& outputId);
 
-    MediaMuxer(EventRegistry* registry = nullptr) : m_status(Context_EMPTY), m_callback(registry), m_callbackCalled(false) { }
+    MediaMuxer() : m_status(Context_EMPTY), m_callback(nullptr), m_callbackCalled(false) { }
     virtual ~MediaMuxer() { if (m_callback) delete m_callback; }
-    virtual bool resetEventRegistry(EventRegistry* newRegistry)
-    {
-        if (!newRegistry || m_callback == newRegistry)
-            return false;
 
-        if (m_callback)
-            delete m_callback;
-
-        m_callback = newRegistry;
-        m_callbackCalled = false;
-
-        return true;
-    }
-
-    DLL_PUBLIC virtual void setMediaSource(FrameProvider* videoProvider, FrameProvider* audioProvider) = 0;
+    DLL_PUBLIC virtual void setMediaSource(FrameProvider* videoProvider, FrameProvider* audioProvider, EventRegistry* callback) = 0;
     DLL_PUBLIC virtual void unsetMediaSource() = 0;
 
     // FrameConsumer
@@ -152,6 +139,20 @@ protected:
             m_callback->notify(data);
         }
     }
+
+    bool setEventRegistry(EventRegistry* callback) {
+        if (!callback || m_callback == callback)
+            return false;
+
+        if (m_callback)
+            delete m_callback;
+
+        m_callback = callback;
+        m_callbackCalled = false;
+
+        return true;
+    }
+
 private:
     EventRegistry* m_callback;
     bool m_callbackCalled;

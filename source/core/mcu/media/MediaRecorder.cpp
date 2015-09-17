@@ -47,9 +47,8 @@ inline AVCodecID payloadType2AudioCodecID(int payloadType)
     }
 }
 
-MediaRecorder::MediaRecorder(const std::string& recordUrl, int snapshotInterval, woogeen_base::EventRegistry* cb)
-    : woogeen_base::MediaMuxer(cb)
-    , m_videoSource(nullptr)
+MediaRecorder::MediaRecorder(const std::string& recordUrl, int snapshotInterval)
+    : m_videoSource(nullptr)
     , m_audioSource(nullptr)
     , m_videoStream(nullptr)
     , m_audioStream(nullptr)
@@ -71,8 +70,10 @@ MediaRecorder::~MediaRecorder()
     close();
 }
 
-void MediaRecorder::setMediaSource(woogeen_base::FrameProvider* videoSource, woogeen_base::FrameProvider* audioSource)
+void MediaRecorder::setMediaSource(woogeen_base::FrameProvider* videoSource, woogeen_base::FrameProvider* audioSource, woogeen_base::EventRegistry* cb)
 {
+    setEventRegistry(cb);
+
     if (m_status == woogeen_base::MediaMuxer::Context_READY) {
         callback("success");
         ELOG_DEBUG("continuous recording");
