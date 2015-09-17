@@ -111,6 +111,11 @@ div#localContainer {
               <button type="button" onClick="mixLocal()">Mix local stream</button><br>
               <button type="button" onClick="unmixLocal()">Unmix local</button><br>
               <button type="button" onClick="startRecording(true)">start Recording</button><br>
+              <button type="button" onClick="automatedTest('testBasic')">automate test basic</button><br>
+              <button type="button" onClick="automatedTest('testDeep')">automate test Deep</button><br>
+              <button type="button" onClick="automatedTest('unpublish_unsubscribe')">automate test unpublish_unsubscribe</button><br>
+              timeDuration:<input type="text" id="timeDuration">minute<br>
+              <button type="button" onClick="automatedTest('shareScreen')">automate test shareScreen</button><br>
               recorderId:<input type="text" id="recorderId"><br>
               <button type="button" onClick="startRecording(false)">stop Recording</button><br>
               Bitrate:<input type="text" id="bitrate"><br>
@@ -182,6 +187,12 @@ div#localContainer {
   <script type="text/javascript" src="adapter.js"></script>
   <script type="text/javascript" src="woogeen.sdk.js"></script>
   <script type="text/javascript" src="woogeen.sdk.ui.js"></script>
+  <!--
   <script type="text/javascript" src="script2.js"></script>
+  
+  automate record method
+  --> 
+  <script type="text/javascript" src="script2-forRecord.js"></script>
+  
 </body>
 </html>
