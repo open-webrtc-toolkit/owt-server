@@ -782,6 +782,10 @@ var listen = function () {
                         url = '/tmp/' + recordingId + '.mkv';
                     }
                 }
+                if (!!options.audio === false && !!options.video === false) {
+                    return safeCall(callback, 'error', 'no media input is specified to publish');
+                }
+
                 socket.room.controller.addExternalInput(id, {
                     url: url,
                     audio: options.audio,
