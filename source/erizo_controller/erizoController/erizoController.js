@@ -478,6 +478,10 @@ var listen = function () {
                         }
                         tokenDB = resp;
                         var validateTokenOK = function () {
+                            if (socket.disconnected) {
+                                log.warn('Client already disconnected');
+                                return;
+                            }
                             user = {name: tokenDB.userName, role: tokenDB.role, id: socket.id};
                             socket.user = user;
                             var permissions = GLOBAL.config.erizoController.roles[tokenDB.role] || [];
