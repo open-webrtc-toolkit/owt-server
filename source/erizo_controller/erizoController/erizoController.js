@@ -956,7 +956,7 @@ var listen = function () {
 
             var videoStream = socket.room.streams[videoStreamId];
             var audioStream = socket.room.streams[audioStreamId];
-            if (videoStream === undefined || videoStream === undefined) {
+            if (videoStream === undefined || audioStream === undefined) {
                 return safeCall(callback, 'error', 'Target video or audio record stream does not exist.');
             }
 
