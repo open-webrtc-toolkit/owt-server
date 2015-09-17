@@ -312,15 +312,34 @@ exports.ErizoJSController = function () {
 
             log.info('Adding ExternalOutput to ' + video_publisher_id + " and " + audio_publisher_id + " with url: " + url);
 
-            // FIXME: Callback to the native layer is needed as well as the timeout timer
             if (externalOutputs[output_id] === undefined) {
                 externalOutputs[output_id] = new addon.ExternalOutput(JSON.stringify(config));
             }
 
-            // FIXME: Callback to the native layer is needed as well as the timeout timer
-            externalOutputs[output_id].setMediaSource(publishers[video_publisher_id], publishers[audio_publisher_id]);
+            // Timer is used here since the callback for setMediaSource might not be invoked anyway
+            var timer = setTimeout(function() {
+                            // Remove the possible external output if timeout
+                            if (externalOutputs[output_id].unsetMediaSource(output_id, true)) {
+                                delete externalOutputs[output_id];
+                            }
 
-            callback('callback', 'success');
+                            callback('callback', 'setMediaSource timeout');
+                        }, rpc.timeout);
+
+            externalOutputs[output_id].setMediaSource(publishers[video_publisher_id],
+                                                      publishers[audio_publisher_id],
+                                                      function (resp) {
+                                                          // Clear the timer if the callback is invoked
+                                                          clearTimeout(timer);
+
+                                                          if (resp !== 'success' && externalOutputs[output_id].unsetMediaSource(output_id, true)) {
+                                                              // Remove the possible external output
+                                                              delete externalOutputs[output_id];
+                                                          }
+
+                                                          callback('callback', resp);
+                                                      });
+
             return;
         }
 

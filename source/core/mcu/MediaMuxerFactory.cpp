@@ -31,12 +31,11 @@ DEFINE_LOGGER(MediaMuxerFactory, "mcu.MediaMuxerFactory");
 
 std::map<std::string, boost::shared_ptr<woogeen_base::MediaMuxer>> MediaMuxerFactory::s_muxers;
 
-woogeen_base::MediaMuxer* MediaMuxerFactory::createMediaMuxer(const std::string& id, const std::string& configParam, woogeen_base::EventRegistry* callback)
+woogeen_base::MediaMuxer* MediaMuxerFactory::createMediaMuxer(const std::string& id, const std::string& configParam)
 {
     if (id != "") {
         std::map<std::string, boost::shared_ptr<woogeen_base::MediaMuxer>>::iterator it = s_muxers.find(id);
         if (it != s_muxers.end()) {
-            s_muxers[id]->resetEventRegistry(callback);
             return s_muxers[id].get();
         }
 
@@ -50,9 +49,9 @@ woogeen_base::MediaMuxer* MediaMuxerFactory::createMediaMuxer(const std::string&
             // Create a new MediaMuxer
             woogeen_base::MediaMuxer* muxer = nullptr;
             if (url.compare(0, 7, "rtsp://") == 0) {
-                muxer = new RTSPMuxer(url, callback);
+                muxer = new RTSPMuxer(url);
             } else {
-                muxer = new MediaRecorder(url, snapshotInterval, callback);
+                muxer = new MediaRecorder(url, snapshotInterval);
             }
 
             s_muxers[id] = boost::shared_ptr<woogeen_base::MediaMuxer>(muxer);

@@ -37,11 +37,11 @@ class MediaRecorder : public woogeen_base::MediaMuxer {
     DECLARE_LOGGER();
 
 public:
-    MediaRecorder(const std::string& recordUrl, int snapshotInterval, woogeen_base::EventRegistry* callback = nullptr);
+    MediaRecorder(const std::string& recordUrl, int snapshotInterval);
     ~MediaRecorder();
 
     // MediaMuxer interface
-    void setMediaSource(woogeen_base::FrameProvider* videoProvider, woogeen_base::FrameProvider* audioProvider);
+    void setMediaSource(woogeen_base::FrameProvider* videoProvider, woogeen_base::FrameProvider* audioProvider, woogeen_base::EventRegistry* callback = nullptr);
     void unsetMediaSource();
     void onFrame(const woogeen_base::Frame&);
     void onTimeout();

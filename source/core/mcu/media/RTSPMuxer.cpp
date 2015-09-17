@@ -33,9 +33,8 @@ namespace mcu {
 
 DEFINE_LOGGER(RTSPMuxer, "mcu.media.RTSPMuxer");
 
-RTSPMuxer::RTSPMuxer(const std::string& url, woogeen_base::EventRegistry* cb)
-    : woogeen_base::MediaMuxer(cb)
-    , m_videoSource(nullptr)
+RTSPMuxer::RTSPMuxer(const std::string& url)
+    : m_videoSource(nullptr)
     , m_audioSource(nullptr)
     , m_context(nullptr)
     , m_resampleContext(nullptr)
@@ -76,8 +75,10 @@ RTSPMuxer::~RTSPMuxer()
 #endif
 }
 
-void RTSPMuxer::setMediaSource(woogeen_base::FrameProvider* videoSource, woogeen_base::FrameProvider* audioSource)
+void RTSPMuxer::setMediaSource(woogeen_base::FrameProvider* videoSource, woogeen_base::FrameProvider* audioSource, woogeen_base::EventRegistry* cb)
 {
+    setEventRegistry(cb);
+
     if (m_status == woogeen_base::MediaMuxer::Context_READY) {
         callback("success");
         ELOG_DEBUG("continuous RTSP output");

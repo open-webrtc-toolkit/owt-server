@@ -58,7 +58,7 @@ woogeen_base::Gateway* woogeen_base::Gateway::createGatewayInstance(const std::s
     return new mcu::WebRTCGateway();
 }
 
-woogeen_base::MediaMuxer* woogeen_base::MediaMuxer::createMediaMuxerInstance(const std::string& configParam, woogeen_base::EventRegistry* callback)
+woogeen_base::MediaMuxer* woogeen_base::MediaMuxer::createMediaMuxerInstance(const std::string& configParam)
 {
     // Create a MediaMuxer
     if (configParam != "" && configParam != "undefined") {
@@ -67,7 +67,7 @@ woogeen_base::MediaMuxer* woogeen_base::MediaMuxer::createMediaMuxerInstance(con
         boost::property_tree::read_json(is, pt);
         const std::string outputId = pt.get<std::string>("id", "");
 
-        return mcu::MediaMuxerFactory::createMediaMuxer(outputId, configParam, callback);
+        return mcu::MediaMuxerFactory::createMediaMuxer(outputId, configParam);
     }
 
     return nullptr;

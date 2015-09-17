@@ -44,11 +44,11 @@ namespace mcu {
 class RTSPMuxer : public woogeen_base::MediaMuxer {
     DECLARE_LOGGER();
 public:
-    RTSPMuxer(const std::string& url, woogeen_base::EventRegistry* callback = nullptr);
+    RTSPMuxer(const std::string& url);
     ~RTSPMuxer();
 
     // MediaMuxer interface
-    void setMediaSource(woogeen_base::FrameProvider* videoProvider, woogeen_base::FrameProvider* audioProvider);
+    void setMediaSource(woogeen_base::FrameProvider* videoProvider, woogeen_base::FrameProvider* audioProvider, woogeen_base::EventRegistry* callback = nullptr);
     void unsetMediaSource();
     void onFrame(const woogeen_base::Frame&);
     void onTimeout();

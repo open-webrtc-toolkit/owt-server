@@ -54,14 +54,9 @@ Handle<Value> ExternalOutput::New(const Arguments& args) {
 
   v8::String::Utf8Value param(args[0]->ToString());
   std::string configParam = std::string(*param);
-  NodeEventRegistry* callback = nullptr;
-  if (args.Length() > 1 && args[1]->IsFunction()) {
-    Persistent<Function> cb = Persistent<Function>::New(Local<Function>::Cast(args[1]));
-    callback = new NodeEventRegistry(cb);
-  }
 
   ExternalOutput* obj = new ExternalOutput();
-  obj->me = woogeen_base::MediaMuxer::createMediaMuxerInstance(configParam, callback);
+  obj->me = woogeen_base::MediaMuxer::createMediaMuxerInstance(configParam);
 
   obj->Wrap(args.This());
 
@@ -100,7 +95,13 @@ Handle<Value> ExternalOutput::setMediaSource(const Arguments& args) {
     audioSource = mixer1->me;
   }
 
-  me->setMediaSource(videoSource->getVideoFrameProvider(), audioSource->getAudioFrameProvider());
+  NodeEventRegistry* callback = nullptr;
+  if (args.Length() > 2 && args[2]->IsFunction()) {
+    Persistent<Function> cb = Persistent<Function>::New(Local<Function>::Cast(args[2]));
+    callback = new NodeEventRegistry(cb);
+  }
+
+  me->setMediaSource(videoSource->getVideoFrameProvider(), audioSource->getAudioFrameProvider(), callback);
 
   return scope.Close(Null());
 }
