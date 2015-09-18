@@ -129,7 +129,7 @@ L.Logger.info('stream is from screen?', stream.isScreen());
    * @function close
    * @desc This function closes the stream.
 <br><b>Remarks:</b><br>
-If the stream has audio and/or video, it also stops capturing camera/microphone. If the stream is published, the function also un-publishes it. If the stream is showing in an HTML element, the stream would be hidden. Once a LocalStream is closed, it is no longer usable.
+If the stream has audio and/or video, it also stops capturing camera/microphone. If the stream is published to a conference, the function also un-publishes it. If the stream is published to a P2P session, the function does NOT un-publish it. If the stream is showing in an HTML element, the stream would be hidden. Once a LocalStream is closed, it is no longer usable.
    * @memberOf Woogeen.Stream
    * @instance
    * @example
