@@ -77,7 +77,16 @@ public:
 class ExternalInput : public erizo::MediaSource {
     DECLARE_LOGGER();
 public:
-    DLL_PUBLIC ExternalInput (const std::string& options);
+    struct Options {
+        std::string url;
+        std::string transport;
+        uint32_t bufferSize;
+        bool enableAudio;
+        bool enableVideo;
+        bool enableH264;
+    };
+
+    DLL_PUBLIC ExternalInput (const Options&);
     virtual ~ExternalInput();
     DLL_PUBLIC void init();
     int sendFirPacket();
@@ -88,6 +97,7 @@ private:
     bool m_needAudio;
     bool m_needVideo;
     AVDictionary* m_transportOpts;
+    bool m_enableH264;
     bool m_running;
     boost::thread m_thread;
     AVFormatContext* m_context;

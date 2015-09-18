@@ -4,6 +4,8 @@
 #include <node.h>
 #include "ExternalInput.h"
 
+#include <boost/property_tree/json_parser.hpp>
+#include <boost/property_tree/ptree.hpp>
 
 using namespace v8;
 
@@ -29,7 +31,18 @@ Handle<Value> ExternalInput::New(const Arguments& args) {
   HandleScope scope;
 
   v8::String::Utf8Value param(args[0]->ToString());
-  std::string options = std::string(*param);
+  std::string optionjson = std::string(*param);
+  boost::property_tree::ptree pt;
+  std::istringstream is(optionjson);
+  boost::property_tree::read_json(is, pt);
+
+  woogeen_base::ExternalInput::Options options;
+  options.url = pt.get<std::string>("url", "");
+  options.transport = pt.get<std::string>("transport", "udp");
+  options.bufferSize = pt.get<uint32_t>("buffer_size", 2*1024*1024);
+  options.enableAudio = pt.get<bool>("audio", false);
+  options.enableVideo = pt.get<bool>("video", false);
+  options.enableH264 = pt.get<bool>("h264", false);
 
   ExternalInput* obj = new ExternalInput();
   obj->me = new woogeen_base::ExternalInput(options);

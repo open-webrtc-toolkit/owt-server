@@ -20,8 +20,6 @@
 
 #include "ExternalInput.h"
 
-#include <boost/property_tree/json_parser.hpp>
-#include <boost/property_tree/ptree.hpp>
 #include <cstdio>
 #include <rtputils.h>
 #include <sys/time.h>
@@ -30,18 +28,14 @@ using namespace erizo;
 
 namespace woogeen_base {
 
-const uint32_t BUFFER_SIZE = 2*1024*1024;
 DEFINE_LOGGER(ExternalInput, "woogeen.ExternalInput");
 
-/*
-  options: {
-    url: 'xxx',
-    transport: 'tcp'/'udp',
-    buffer_size: 1024*1024*4
-  }
-*/
-ExternalInput::ExternalInput(const std::string& options)
-    : m_transportOpts(nullptr)
+ExternalInput::ExternalInput(const Options& options)
+    : m_url(options.url)
+    , m_needAudio(options.enableAudio)
+    , m_needVideo(options.enableVideo)
+    , m_transportOpts(nullptr)
+    , m_enableH264(options.enableH264)
     , m_running(false)
     , m_context(nullptr)
     , m_timeoutHandler(nullptr)
@@ -50,23 +44,15 @@ ExternalInput::ExternalInput(const std::string& options)
     , m_audioSeqNumber(0)
     , m_statusListener(nullptr)
 {
-    boost::property_tree::ptree pt;
-    std::istringstream is(options);
-    boost::property_tree::read_json(is, pt);
-    m_url = pt.get<std::string>("url", "");
-    m_needAudio = pt.get<bool>("audio", false);
-    m_needVideo = pt.get<bool>("video", false);
-    std::string transport = pt.get<std::string>("transport", "udp");
-    if (transport.compare("tcp") == 0) {
+    if (options.transport.compare("tcp") == 0) {
         av_dict_set(&m_transportOpts, "rtsp_transport", "tcp", 0);
         ELOG_DEBUG("url: %s, audio: %d, video: %d, transport::tcp", m_url.c_str(), m_needAudio, m_needVideo);
     } else {
         char buf[256];
-        uint32_t buffer_size = pt.get<uint32_t>("buffer_size", BUFFER_SIZE);
-        snprintf(buf, sizeof(buf), "%u", buffer_size);
+        snprintf(buf, sizeof(buf), "%u", options.bufferSize);
         av_dict_set(&m_transportOpts, "buffer_size", buf, 0);
         ELOG_DEBUG("url: %s, audio: %d, video: %d, transport::%s, buffer_size: %u",
-                   m_url.c_str(), m_needAudio, m_needVideo, transport.c_str(), buffer_size);
+                   m_url.c_str(), m_needAudio, m_needVideo, options.transport.c_str(), options.bufferSize);
     }
     videoDataType_ = DataContentType::ENCODED_FRAME;
     audioDataType_ = DataContentType::RTP;
@@ -141,7 +127,7 @@ bool ExternalInput::connect()
                       st->codec->codec_id);
 
             int videoCodecId = st->codec->codec_id;
-            if (videoCodecId == AV_CODEC_ID_VP8 || videoCodecId == AV_CODEC_ID_H264) {
+            if (videoCodecId == AV_CODEC_ID_VP8 || (m_enableH264 && videoCodecId == AV_CODEC_ID_H264)) {
                 if (!videoSourceSSRC_) {
                     unsigned int videoSourceId = rand();
                     ELOG_DEBUG("Set video SSRC : %d ", videoSourceId);
