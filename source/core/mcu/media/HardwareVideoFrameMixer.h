@@ -61,6 +61,7 @@ class HardwareVideoFrameMixerOutput : public VideoMixEngineOutput, public woogee
 public:
     HardwareVideoFrameMixerOutput(boost::shared_ptr<VideoMixEngine> engine,
                                   woogeen_base::FrameFormat outFormat,
+                                  FrameSize size,
                                   unsigned int framerate,
                                   unsigned short bitrate,
                                   woogeen_base::VideoFrameConsumer* receiver);
