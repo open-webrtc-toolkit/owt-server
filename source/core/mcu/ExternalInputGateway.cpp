@@ -396,6 +396,8 @@ uint32_t ExternalInputGateway::addVideoOutput(int payloadType, bool nack, bool f
     videoTranscoder->setInput(m_incomingVideoFormat, nullptr);
 
     woogeen_base::WebRTCTransport<VIDEO>* transport = new woogeen_base::WebRTCTransport<VIDEO>(this, nullptr);
+    // Fetch video size.
+    // TODO: The size should be identical to the published video size.
     woogeen_base::VideoFrameSender* output = new woogeen_base::EncodedVideoFrameSender(videoTranscoder, outputFormat, m_videoOutputKbps, transport, m_taskRunner, 1280, 720);
 
     {
@@ -403,8 +405,6 @@ uint32_t ExternalInputGateway::addVideoOutput(int payloadType, bool nack, bool f
         m_videoTranscoders.push_back(videoTranscoder);
     }
 
-    // Fetch video size.
-    // TODO: The size should be identical to the published video size.
     output->startSend(nack, fec);
     boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
     m_videoOutputs[payloadType].reset(output);
