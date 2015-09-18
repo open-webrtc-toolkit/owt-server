@@ -213,7 +213,10 @@ exports.ErizoJSController = function () {
     /*options: {
         url: 'xxx',
         transport: 'tcp'/'udp',
-        buffer_size: 1024*1024*2
+        buffer_size: 1024*1024*2,
+        audio: true/false,
+        video: true/false,
+        h264: true/false
     }*/
     that.addExternalInput = function (from, options, mixer, callback) {
 
@@ -221,7 +224,7 @@ exports.ErizoJSController = function () {
 
             log.info('Adding external input peer_id', from);
 
-            var ei = new addon.ExternalInput(JSON.stringify(options));
+            var ei = new addon.ExternalInput(JSON.stringify({url: options.url, transport: options.transport, buffer_size: options.buffer_size, audio: !!options.audio, video: !!options.video, h264: !!openh264Enabled}));
             var muxer = new addon.Gateway(JSON.stringify({externalInput: true}));
 
             publishers[from] = muxer;
