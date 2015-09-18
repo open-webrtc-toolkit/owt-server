@@ -526,10 +526,10 @@ function tableHandlerRoom(rooms) {
       return notify('error', 'Add Room', 'Empty room name');
     }
     var roomName = p.find('td.roomName').text();
-    var roomMode = p.find('td.roomMode').text();
+    var roomMode = p.find('td.roomMode').text() == "Empty" ? undefined : p.find('td.roomMode').text();
     var publishLimit = parseInt(p.find('td.publishLimit').text(), 10);
     var userLimit = parseInt(p.find('td.userLimit').text(), 10);
-    var enableMixing = p.find('td.enableMixing').text() === 'true' ? 1 : 0;
+    var enableMixing = p.find('td.enableMixing').text() === 'false' ? 0 : 1;
     var room = {
       name: roomName,
       options: {
