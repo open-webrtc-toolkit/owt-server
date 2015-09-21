@@ -224,7 +224,14 @@ exports.ErizoJSController = function () {
 
             log.info('Adding external input peer_id', from);
 
-            var ei = new addon.ExternalInput(JSON.stringify({url: options.url, transport: options.transport, buffer_size: options.buffer_size, audio: !!options.audio, video: !!options.video, h264: !!openh264Enabled}));
+            var ei = new addon.ExternalInput({
+                url: options.url,
+                transport: options.transport,
+                buffer_size: options.buffer_size,
+                audio: !!options.audio,
+                video: !!options.video,
+                h264: !!openh264Enabled
+            });
             var muxer = new addon.Gateway(JSON.stringify({externalInput: true}));
 
             publishers[from] = muxer;
