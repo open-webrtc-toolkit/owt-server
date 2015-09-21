@@ -114,7 +114,7 @@ namespace erizo {
 
     bool videoTransportNeeded = videoEnabled_ && remoteSdp_.videoDirection >= RECVONLY;
     bool audioTransportNeeded = audioEnabled_ && remoteSdp_.audioDirection >= RECVONLY && (!remoteSdp_.isBundle || !videoTransportNeeded);
-    bundle_ = audioEnabled_ && !audioTransportNeeded;
+    bundle_ = audioEnabled_ && remoteSdp_.audioDirection >= RECVONLY && remoteSdp_.isBundle && videoTransportNeeded;
 
     localSdp_.getPayloadInfos() = remoteSdp_.getPayloadInfos();
     localSdp_.isBundle = bundle_;
