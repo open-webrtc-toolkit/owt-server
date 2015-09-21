@@ -84,6 +84,7 @@ public:
         bool enableAudio;
         bool enableVideo;
         bool enableH264;
+        DLL_PUBLIC Options() : url{""}, transport{"udp"}, bufferSize{2*1024*1024}, enableAudio{false}, enableVideo{false}, enableH264{false} { }
     };
 
     DLL_PUBLIC ExternalInput (const Options&);

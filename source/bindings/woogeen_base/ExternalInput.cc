@@ -4,9 +4,6 @@
 #include <node.h>
 #include "ExternalInput.h"
 
-#include <boost/property_tree/json_parser.hpp>
-#include <boost/property_tree/ptree.hpp>
-
 using namespace v8;
 
 ExternalInput::ExternalInput() {};
@@ -30,19 +27,32 @@ void ExternalInput::Init(Handle<Object> target) {
 Handle<Value> ExternalInput::New(const Arguments& args) {
   HandleScope scope;
 
-  v8::String::Utf8Value param(args[0]->ToString());
-  std::string optionjson = std::string(*param);
-  boost::property_tree::ptree pt;
-  std::istringstream is(optionjson);
-  boost::property_tree::read_json(is, pt);
+  if (args.Length() == 0 || !args[0]->IsObject()) {
+    return ThrowException(Exception::TypeError(String::New("Wrong arguments")));
+  }
 
-  woogeen_base::ExternalInput::Options options;
-  options.url = pt.get<std::string>("url", "");
-  options.transport = pt.get<std::string>("transport", "udp");
-  options.bufferSize = pt.get<uint32_t>("buffer_size", 2*1024*1024);
-  options.enableAudio = pt.get<bool>("audio", false);
-  options.enableVideo = pt.get<bool>("video", false);
-  options.enableH264 = pt.get<bool>("h264", false);
+  Local<Object> optionObject = args[0]->ToObject();
+  woogeen_base::ExternalInput::Options options{};
+
+  Handle<String> keyUrl = String::New("url");
+  Handle<String> keyTransport = String::New("transport");
+  Handle<String> keyBufferSize = String::New("buffer_size");
+  Handle<String> keyAudio = String::New("audio");
+  Handle<String> keyVideo = String::New("video");
+  Handle<String> keyH264 = String::New("h264");
+
+  if (optionObject->Has(keyUrl))
+    options.url = std::string(*String::Utf8Value(optionObject->Get(keyUrl)->ToString()));
+  if (optionObject->Has(keyTransport))
+    options.transport = std::string(*String::Utf8Value(optionObject->Get(keyTransport)->ToString()));
+  if (optionObject->Has(keyBufferSize))
+    options.bufferSize = optionObject->Get(keyBufferSize)->Uint32Value();
+  if (optionObject->Has(keyAudio))
+    options.enableAudio = *optionObject->Get(keyAudio)->ToBoolean();
+  if (optionObject->Has(keyVideo))
+    options.enableVideo = *optionObject->Get(keyVideo)->ToBoolean();
+  if (optionObject->Has(keyH264))
+    options.enableH264 = *optionObject->Get(keyH264)->ToBoolean();
 
   ExternalInput* obj = new ExternalInput();
   obj->me = new woogeen_base::ExternalInput(options);
