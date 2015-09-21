@@ -141,8 +141,12 @@ stream.close();
    */
   WoogeenStream.prototype.close = function() {
     if (typeof this.hide === 'function') {this.hide();}
-    if (this.mediaStream && typeof this.mediaStream.stop === 'function') {
-      this.mediaStream.stop();
+    if (this.mediaStream) {
+      this.mediaStream.getTracks().map(function(track) {
+        if (typeof track.stop === 'function') {
+          track.stop();
+        }
+      });
     }
     this.mediaStream = null;
     if (typeof this.unpublish === 'function') {
