@@ -60,6 +60,7 @@ private:
     AVStream* m_audioStream;
     AVFormatContext* m_context;
     boost::mutex m_contextMutex;
+    bool m_avTrailerNeeded;
 
     int32_t m_videoId, m_audioId;
 

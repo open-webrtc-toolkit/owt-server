@@ -53,6 +53,7 @@ MediaRecorder::MediaRecorder(const std::string& recordUrl, int snapshotInterval)
     , m_videoStream(nullptr)
     , m_audioStream(nullptr)
     , m_context(nullptr)
+    , m_avTrailerNeeded(false)
     , m_videoId(-1)
     , m_audioId(-1)
     , m_recordPath(recordUrl)
@@ -138,7 +139,7 @@ void MediaRecorder::close()
 {
     m_jobTimer->stop();
 
-    if (m_audioStream != NULL && m_videoStream != NULL && m_context != NULL)
+    if (m_context != NULL && m_avTrailerNeeded)
         av_write_trailer(m_context);
 
     if (m_videoStream && m_videoStream->codec != NULL)
@@ -147,12 +148,13 @@ void MediaRecorder::close()
     if (m_audioStream && m_audioStream->codec != NULL)
         avcodec_close(m_audioStream->codec);
 
-    if (m_context != NULL){
+    if (m_context != NULL) {
         if (!(m_context->oformat->flags & AVFMT_NOFILE))
             avio_close(m_context->pb);
         avformat_free_context(m_context);
         m_context = NULL;
     }
+
     ELOG_DEBUG("closed");
 }
 
@@ -235,9 +237,9 @@ void MediaRecorder::onTimeout()
         if (m_audioStream && m_videoStream) {
             if (!(m_context->oformat->flags & AVFMT_NOFILE)) {
                 if (avio_open(&m_context->pb, m_context->filename, AVIO_FLAG_WRITE) < 0) {
-                    ELOG_ERROR("open output file failed");
                     m_status = woogeen_base::MediaMuxer::Context_ERROR;
                     callback("output file does not exist or cannot be opened for write");
+                    ELOG_ERROR("open output file failed");
                     return;
                 }
             }
@@ -248,6 +250,7 @@ void MediaRecorder::onTimeout()
                 ELOG_ERROR("avformat_write_header failed");
                 return;
             }
+            m_avTrailerNeeded = true;
             m_status = woogeen_base::MediaMuxer::Context_READY;
             callback("success");
             ELOG_DEBUG("context ready");
