@@ -972,24 +972,30 @@ var listen = function () {
                 return safeCall(callback, 'error', 'No audio data from the audio stream.');
             }
 
-            var videoRecorder = videoStream.getRecorder();
-            var audioRecorder = audioStream.getRecorder();
-            if ((videoRecorder !== undefined && videoRecorder !== '') || (audioRecorder !== undefined && audioRecorder !== '')) {
-                return safeCall(callback, 'error', 'Stream recording is going on.');
-            }
-
             var timeStamp = new Date();
             var recorderId = options.recorderId || formatDate(timeStamp, 'yyyyMMddhhmmssSS');
             var recorderPath = options.path || GLOBAL.config.erizoController.recording_path || '/tmp';
             var url = require('path').join(recorderPath, 'room' + socket.room.id + '_' + recorderId + '.mkv');
             var interval = (options.interval && options.interval > 0) ? options.interval : -1;
 
+            var videoRecorder = videoStream.getVideoRecorder();
+            var audioRecorder = audioStream.getAudioRecorder();
+            if ((videoRecorder && videoRecorder !== recorderId) || (audioRecorder && audioRecorder !== recorderId)) {
+                return safeCall(callback, 'error', 'Media recording is going on.');
+            }
+
             // Make sure the recording context clean for this 'startRecorder'
             socket.room.controller.removeExternalOutput(recorderId, false, function (result) {
                 if (result.success) {
                     for (var i in socket.room.streams) {
-                        if (socket.room.streams.hasOwnProperty(i) && socket.room.streams[i].getRecorder() === recorderId+'') {
-                            socket.room.streams[i].setRecorder('');
+                        if (socket.room.streams.hasOwnProperty(i)) {
+                            if (socket.room.streams[i].getVideoRecorder() === recorderId+'') {
+                                socket.room.streams[i].setVideoRecorder('');
+                            }
+
+                            if (socket.room.streams[i].getAudioRecorder() === recorderId+'') {
+                                socket.room.streams[i].setAudioRecorder('');
+                            }
                         }
                     }
 
@@ -998,8 +1004,8 @@ var listen = function () {
                     // Start the recorder
                     socket.room.controller.addExternalOutput(videoStreamId, audioStreamId, recorderId, socket.room.mixer, url, interval, function (result) {
                         if (result.success) {
-                            videoStream.setRecorder(recorderId);
-                            audioStream.setRecorder(recorderId);
+                            videoStream.setVideoRecorder(recorderId);
+                            audioStream.setAudioRecorder(recorderId);
 
                             log.info('Recorder started: ', url);
 
@@ -1036,8 +1042,14 @@ var listen = function () {
                 socket.room.controller.removeExternalOutput(options.recorderId, true, function (result) {
                     if (result.success) {
                         for (var i in socket.room.streams) {
-                            if (socket.room.streams.hasOwnProperty(i) && socket.room.streams[i].getRecorder() === options.recorderId+'') {
-                                socket.room.streams[i].setRecorder('');
+                            if (socket.room.streams.hasOwnProperty(i)) {
+                                if (socket.room.streams[i].getVideoRecorder() === options.recorderId+'') {
+                                    socket.room.streams[i].setVideoRecorder('');
+                                }
+
+                                if (socket.room.streams[i].getAudioRecorder() === options.recorderId+'') {
+                                    socket.room.streams[i].setAudioRecorder('');
+                                }
                             }
                         }
 
