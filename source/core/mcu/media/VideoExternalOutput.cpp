@@ -55,7 +55,10 @@ int VideoExternalOutput::deliverAudioData(char* buf, int len)
 
 int32_t VideoExternalOutput::addFrameConsumer(const std::string& name, woogeen_base::FrameFormat, woogeen_base::FrameConsumer* frameConsumer, const woogeen_base::MediaSpecInfo&)
 {
-    // Start the recording of video frames
+    // First to stop the callback of video frames
+    m_frameConstructor->deRegisterPreDecodeImageCallback();
+
+    // Start the callback of video frames
     m_encodedFrameCallback.reset(new woogeen_base::VideoEncodedFrameCallbackAdapter(frameConsumer));
     m_frameConstructor->registerPreDecodeImageCallback(m_encodedFrameCallback);
     return 0;
@@ -63,7 +66,7 @@ int32_t VideoExternalOutput::addFrameConsumer(const std::string& name, woogeen_b
 
 void VideoExternalOutput::removeFrameConsumer(int32_t id)
 {
-    // Stop the recording of video frames
+    // Stop the callback of video frames
     m_frameConstructor->deRegisterPreDecodeImageCallback();
 }
 

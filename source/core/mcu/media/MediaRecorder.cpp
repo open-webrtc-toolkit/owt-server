@@ -166,9 +166,13 @@ void MediaRecorder::onFrame(const woogeen_base::Frame& frame)
     switch (frame.format) {
     case woogeen_base::FRAME_FORMAT_VP8:
         if (!m_videoStream) {
-            addVideoStream(payloadType2VideoCodecID(VP8_90000_PT), frame.additionalInfo.video.width, frame.additionalInfo.video.height);
-            ELOG_DEBUG("video stream added: %dx%d", frame.additionalInfo.video.width, frame.additionalInfo.video.height);
+            if (frame.additionalInfo.video.width > 0 && frame.additionalInfo.video.height > 0) {
+                addVideoStream(payloadType2VideoCodecID(VP8_90000_PT), frame.additionalInfo.video.width, frame.additionalInfo.video.height);
+                ELOG_DEBUG("video stream added: %dx%d", frame.additionalInfo.video.width, frame.additionalInfo.video.height);
+            } else
+                break;
         }
+
         m_videoQueue->pushFrame(frame.payload, frame.length);
         break;
     case woogeen_base::FRAME_FORMAT_PCMU:
