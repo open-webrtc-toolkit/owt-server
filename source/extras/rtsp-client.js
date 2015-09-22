@@ -92,8 +92,14 @@ var WoogeenNodeConference = (function () {
 
             self.publish = function publish (url, options, callback) {
               try {
-                self.socket.emit('publish', {state: 'url', audio: true, video: true, transport: options.transport,
-                  bufferSize: options.bufferSize}, url, function (status, resp) {
+                self.socket.emit('publish', {
+                  state: 'url',
+                  audio: options.audio,
+                  video: options.video,
+                  unmix: options.unmix,
+                  transport: options.transport,
+                  bufferSize: options.bufferSize
+                }, url, function (status, resp) {
                   if (status !== 'success') {
                     return safeCall(callback, status, resp);
                   }
@@ -220,7 +226,7 @@ nuve.getRooms(function (resp) {
       console.log('room joined:', resp);
       var rtspUrl = process.argv[2];
       if (typeof rtspUrl === 'string') {
-        client.publish(rtspUrl, {transport:'udp', bufferSize:1024*1024*2}, function (err, resp) {
+        client.publish(rtspUrl, {transport:'udp', bufferSize:1024*1024*2, video:true, audio:true}, function (err, resp) {
           if (err) {
             console.log('error in publishing stream:', err);
             return process.exit();

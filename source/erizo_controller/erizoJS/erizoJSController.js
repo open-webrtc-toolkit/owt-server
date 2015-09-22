@@ -258,7 +258,7 @@ exports.ErizoJSController = function () {
 
                     muxer.addExternalPublisher(ei, from);
 
-                    if (mixer.id) {
+                    if (mixer.id && options.unmix !== true) {
                         var mixerObj = publishers[mixer.id];
                         if (mixerObj) {
                             mixerObj.addPublisher(muxer, from);
@@ -320,7 +320,7 @@ exports.ErizoJSController = function () {
                 config.id = config.url;
             }
 
-            log.info('Adding ExternalOutput to ' + video_publisher_id + " and " + audio_publisher_id + " with url: " + url);
+            log.info('Adding ExternalOutput to ' + video_publisher_id + ' and ' + audio_publisher_id + ' with url: ' + url);
 
             if (externalOutputs[output_id] === undefined) {
                 externalOutputs[output_id] = new addon.ExternalOutput(JSON.stringify(config));
@@ -353,7 +353,7 @@ exports.ErizoJSController = function () {
             return;
         }
 
-        log.error('Failed adding ExternalOutput to ' + video_publisher_id + " and " + audio_publisher_id + ' with url ' + url);
+        log.error('Failed adding ExternalOutput to ' + video_publisher_id + ' and ' + audio_publisher_id + ' with url ' + url);
         callback('callback', 'error');
     };
 
