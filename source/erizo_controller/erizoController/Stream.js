@@ -3,7 +3,8 @@ exports.Stream = function (spec) {
     'use strict';
 
     var that = {},
-        recorder = '',
+        videoRecorder = '',
+        audioRecorder = '',
         dataSubscribers = [];
 
     that.getID = function () {
@@ -81,14 +82,24 @@ exports.Stream = function (spec) {
         }
     };
 
-    // Gets the stream recorder
-    that.getRecorder = function() {
-        return recorder;
+    // Gets the video recorder
+    that.getVideoRecorder = function() {
+        return videoRecorder;
     };
 
-    // Sets the stream recorder
-    that.setRecorder = function(rec) {
-        recorder = rec;
+    // Gets the audio recorder
+    that.getAudioRecorder = function() {
+        return audioRecorder;
+    };
+
+    // Sets the video recorder
+    that.setVideoRecorder = function(rec) {
+        videoRecorder = rec;
+    };
+
+    // Sets the audio recorder
+    that.setAudioRecorder = function(rec) {
+        audioRecorder = rec;
     };
 
     // Returns the public specification of this stream
