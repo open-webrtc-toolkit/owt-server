@@ -326,11 +326,12 @@ woogeen_base::FrameProvider* WebRTCGateway::getVideoFrameProvider()
         m_externalOutput = new ExternalOutput();
 
         addSubscriber(m_externalOutput, EXTERNALOUTPUT_ID, "");
-
-        // Send I-Frame request to the publisher
-        ++m_pendingIFrameRequests;
     }
 
+    // Send I-Frame request to the publisher
+    ++m_pendingIFrameRequests;
+
+    ELOG_DEBUG("Get the VideoFrameProvider");
     return m_externalOutput->getVideoFrameProvider();
 }
 
@@ -343,11 +344,9 @@ woogeen_base::FrameProvider* WebRTCGateway::getAudioFrameProvider()
         m_externalOutput = new ExternalOutput();
 
         addSubscriber(m_externalOutput, EXTERNALOUTPUT_ID, "");
-
-        // Send I-Frame request to the publisher
-        ++m_pendingIFrameRequests;
     }
 
+    ELOG_DEBUG("Get the AudioFrameProvider");
     return m_externalOutput->getAudioFrameProvider();
 }
 
