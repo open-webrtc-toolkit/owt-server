@@ -782,7 +782,7 @@ var listen = function () {
                         url = '/tmp/' + recordingId + '.mkv';
                     }
                 }
-                if (!!options.audio === false && !!options.video === false) {
+                if (!options.audio && !options.video) {
                     return safeCall(callback, 'error', 'no media input is specified to publish');
                 }
 
@@ -790,6 +790,7 @@ var listen = function () {
                     url: url,
                     audio: options.audio,
                     video: options.video,
+                    unmix: options.unmix,
                     transport: options.transport,
                     buffer_size: options.bufferSize
                 }, socket.room.mixer, function (result) {
