@@ -45,7 +45,7 @@ Woogeen.ConferenceClient = (function () {
     }
     switch (spec.video.device) {
     case 'mcu':
-      return new Woogeen.MixedStream(spec);
+      return new Woogeen.RemoteMixedStream(spec);
     default:
       return new Woogeen.RemoteStream(spec);
     }

@@ -319,7 +319,7 @@ stream.enableVideo();
    * @function isMixed
    * @desc This function returns true when stream's video track is mixed by server otherwise false.
 <br><b>Remarks:</b><br>
-Deprecated, use <code>instanceof Woogeen.MixedStream</code> instead.
+Deprecated, use <code>instanceof Woogeen.RemoteMixedStream</code> instead.
    * @memberOf Woogeen.RemoteStream
    * @instance
    * @return {boolean} true The stream is mixed stream.<br>false The stream is not mixed stream
@@ -440,12 +440,12 @@ if (stream.isMixed()) {
     });
   }
 
-  function WoogeenMixedStream (spec) {
+  function WoogeenRemoteMixedStream (spec) {
     WoogeenRemoteStream.call(this, spec);
 /**
    * @function resolutions
    * @desc This function returns an array of supported resolutions for mixed stream.
-   * @memberOf Woogeen.MixedStream
+   * @memberOf Woogeen.RemoteMixedStream
    * @instance
    * @return {Array}
    */
@@ -465,10 +465,10 @@ if (stream.isMixed()) {
 
   WoogeenLocalStream.prototype = Object.create(WoogeenStream.prototype);
   WoogeenRemoteStream.prototype = Object.create(WoogeenStream.prototype);
-  WoogeenMixedStream.prototype = Object.create(WoogeenRemoteStream.prototype);
+  WoogeenRemoteMixedStream.prototype = Object.create(WoogeenRemoteStream.prototype);
   WoogeenLocalStream.prototype.constructor = WoogeenLocalStream;
   WoogeenRemoteStream.prototype.constructor = WoogeenRemoteStream;
-  WoogeenMixedStream.prototype.constructor = WoogeenMixedStream;
+  WoogeenRemoteMixedStream.prototype.constructor = WoogeenRemoteMixedStream;
 
 
   function isLegacyChrome () {
@@ -788,10 +788,10 @@ console.log('stream added:', stream.id());
  */
   Woogeen.RemoteStream = WoogeenRemoteStream;
 /**
- * @class Woogeen.MixedStream
+ * @class Woogeen.RemoteMixedStream
  * @extends Woogeen.RemoteStream
  * @classDesc A RemoteStream whose video track is mixed by server.
  */
-  Woogeen.MixedStream = WoogeenMixedStream;
+  Woogeen.RemoteMixedStream = WoogeenRemoteMixedStream;
 
 }());
