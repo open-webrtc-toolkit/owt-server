@@ -321,21 +321,38 @@ exports.RoomController = function (spec) {
 
         if (subscribers[publisher_id] !== undefined && publishers[publisher_id] !== undefined) {
 
-            var output_id = -1;
+            var video_output_id = -1;
+            var audio_output_id = -1;
             for (var i in externalOutputs) {
-                if (externalOutputs.hasOwnProperty(i) && (externalOutputs[i].video === publisher_id || externalOutputs[i].audio === publisher_id)) {
-                    output_id = i;
-                    break;
+                if (externalOutputs.hasOwnProperty(i)) {
+                    if (externalOutputs[i].video === publisher_id) {
+                        video_output_id = i;
+                    }
+
+                    if (externalOutputs[i].audio === publisher_id) {
+                        audio_output_id = i;
+                    }
                 }
             }
 
-            if (output_id !== -1) {
-                log.info('Removing external output', output_id);
-                var args = [output_id, false];
-                rpc.callRpc(getErizoQueue(output_id), "removeExternalOutput", args, {callback: function (result) {}});
+            // Stop the video related output
+            if (video_output_id !== -1) {
+                log.info('Removing external output', video_output_id);
+                var args = [video_output_id, false];
+                rpc.callRpc(getErizoQueue(video_output_id), "removeExternalOutput", args, {callback: function (result) {}});
 
                 // Remove the external output track anyway
-                delete externalOutputs[output_id];
+                delete externalOutputs[video_output_id];
+            }
+
+            // Stop the audio related output
+            if (audio_output_id !== -1 && audio_output_id !== video_output_id) {
+                log.info('Removing external output', audio_output_id);
+                var args = [audio_output_id, false];
+                rpc.callRpc(getErizoQueue(audio_output_id), "removeExternalOutput", args, {callback: function (result) {}});
+
+                // Remove the external output track anyway
+                delete externalOutputs[audio_output_id];
             }
 
             var args = [publisher_id];
