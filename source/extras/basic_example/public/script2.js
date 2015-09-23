@@ -45,7 +45,7 @@
   function displayStream (stream, resolution) {
     var div = document.createElement('div');
     var streamId = stream.id();
-    if (stream instanceof Woogeen.MixedStream) {
+    if (stream instanceof Woogeen.RemoteMixedStream) {
       resolution = resolution || {width: 640, height: 480};
     } else {
       resolution = resolution || {width: 320, height: 240};
@@ -72,7 +72,7 @@
   }
 
   function trySubscribeStream (stream) {
-    if (stream instanceof Woogeen.MixedStream) {
+    if (stream instanceof Woogeen.RemoteMixedStream) {
       stream.on('VideoLayoutChanged', function () {
         L.Logger.info('stream', stream.id(), 'VideoLayoutChanged');
       });
