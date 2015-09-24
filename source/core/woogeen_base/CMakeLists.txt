@@ -34,10 +34,6 @@ add_library(woogeen_base STATIC ${WOOGEEN_BASE_SOURCES})
 find_library(WEBRTC webrtc HINTS "${WEBRTC_DIRS}")
 test_lib(${WEBRTC})
 
-# libuv
-find_library(LIBUV uv HINTS "${LIB_DIRS}")
-test_lib(${LIBUV})
-
 # LIBAV
 find_library(AVCODEC avcodec HINTS "${LIB_DIRS}")
 test_lib(${AVCODEC})
@@ -46,4 +42,4 @@ find_library(AVFORMAT avformat HINTS "${LIB_DIRS}")
 test_lib(${AVFORMAT})
 set (LIBAV_LIBS ${AVCODEC} ${AVFORMAT})
 
-target_link_libraries(woogeen_base ${EXTRA_LIBS} ${WEBRTC} ${LIBUV} ${LIBAV_LIBS})
+target_link_libraries(woogeen_base ${EXTRA_LIBS} ${WEBRTC} ${LIBAV_LIBS})

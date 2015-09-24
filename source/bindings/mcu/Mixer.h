@@ -21,6 +21,8 @@
 #ifndef MIXER_H
 #define MIXER_H
 
+#include "../woogeen_base/Gateway.h"
+#include "../woogeen_base/NodeEventRegistry.h"
 #include <MixerInterface.h>
 #include <node.h>
 #include <node_object_wrap.h>
@@ -28,9 +30,9 @@
 /*
  * Wrapper class of mcu::MixerInterface
  */
-class Mixer : public node::ObjectWrap {
+class Mixer : public NodeEventedObjectWrap {
  public:
-  static void Init(v8::Handle<v8::Object> exports);
+  static void Init(v8::Local<v8::Object> exports);
   mcu::MixerInterface* me;
 
  private:
@@ -83,10 +85,6 @@ class Mixer : public node::ObjectWrap {
    * Param: the ExternalInput of the Publisher
    */
   static void addExternalPublisher(const v8::FunctionCallbackInfo<v8::Value>& args);
-  /*
-   * add Event Listener
-   */
-  static void addEventListener(const v8::FunctionCallbackInfo<v8::Value>& args);
   /*
    * Gets the region of a publisher in the mixer
    * Param: the publisher id

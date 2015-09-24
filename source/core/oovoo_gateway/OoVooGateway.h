@@ -73,8 +73,7 @@ public:
     void removePublisher(const std::string& id);
     void addSubscriber(erizo::MediaSink*, const std::string& id, const std::string& options);
     void removeSubscriber(const std::string& id);
-    void setupAsyncEvent(const std::string& event, woogeen_base::EventRegistry*);
-    void destroyAsyncEvents();
+    void setEventRegistry(woogeen_base::EventRegistry*);
     void customMessage(const std::string& message);
     std::string retrieveStatistics();
     void subscribeStream(const std::string& id, bool isAudio);
@@ -163,8 +162,7 @@ private:
     // libuv - uv_async_send() to notify node thread
     void notifyAsyncEvent(const std::string& event, const std::string& data);
     void notifyAsyncEvent(const std::string& event, uint32_t data);
-    std::map<std::string, woogeen_base::EventRegistry*> m_asyncHandles;
-    boost::mutex m_asyncMutex;
+    woogeen_base::EventRegistry* m_asyncHandle;
 
     boost::shared_mutex m_publisherMutex;
 

@@ -11,7 +11,7 @@
  */
 class ExternalInput: public node::ObjectWrap, woogeen_base::ExternalInputStatusListener {
  public:
-  static void Init(v8::Handle<v8::Object> exports);
+  static void Init(v8::Local<v8::Object> exports);
   woogeen_base::ExternalInput* me;
   std::string statusMsg;
   boost::mutex statusMutex;

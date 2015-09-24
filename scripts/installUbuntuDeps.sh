@@ -6,7 +6,6 @@ install_apt_deps(){
   sudo -E add-apt-repository ppa:chris-lea/node.js
   sudo -E apt-get update
   sudo -E apt-get install git make gcc g++ libssl-dev cmake libglib2.0-dev pkg-config nodejs libboost-regex-dev libboost-thread-dev libboost-system-dev liblog4cxx10-dev rabbitmq-server mongodb openjdk-6-jre curl libboost-test-dev nasm yasm gyp libx11-dev
-  sudo -E apt-get install automake autoconf libtool # tools for building libuv-1.x; remove this line after libuv dep eliminated.
 }
 
 install_mediadeps_nonfree(){

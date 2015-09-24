@@ -75,8 +75,6 @@ if [ "$NIGHTLY" != "true" ]; then
 
   install_oovoosdk
 
-  install_libuv
-
   install_openh264
 fi
 

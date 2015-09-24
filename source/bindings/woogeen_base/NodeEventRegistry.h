@@ -22,33 +22,54 @@
 #define NODEEVENTREGISTRY_H
 
 #include <EventRegistry.h>
+#include <memory>
+#include <mutex>
 #include <node.h>
+#include <node_object_wrap.h>
+#include <queue>
 #include <string>
+#include <uv.h>
 
 // Implement woogeen_base::EventRegistry interface
-class NodeEventRegistry: public woogeen_base::EventRegistry
-{
+class NodeEventRegistry : public woogeen_base::EventRegistry {
 public:
-  NodeEventRegistry(const v8::Local<v8::Function>& f) {
-    m_func.Reset(v8::Isolate::GetCurrent(), f);
-  };
-  ~NodeEventRegistry() {};
-  void process(const std::string& data)
-  {
-    v8::Isolate* isolate = v8::Isolate::GetCurrent();
-    v8::HandleScope scope(isolate);
-    const unsigned argc = 1;
-    v8::Local<v8::Value> argv[argc] = {
-      v8::String::NewFromUtf8(isolate, data.c_str())
-    };
-    v8::TryCatch try_catch;
-    v8::Local<v8::Function>::New(isolate, m_func)->Call(isolate->GetCurrentContext()->Global(), argc, argv);
-    if (try_catch.HasCaught()) {
-      node::FatalException(isolate, try_catch);
-    }
-  };
+    static NodeEventRegistry* New(v8::Isolate*, const v8::Local<v8::Function>&);
+    static NodeEventRegistry* New(const v8::Local<v8::Function>&);
+
+    virtual ~NodeEventRegistry();
+    bool notifyAsyncEvent(const std::string& event, const std::string& data);
+
+protected:
+    explicit NodeEventRegistry();
+    explicit NodeEventRegistry(v8::Isolate*, const v8::Local<v8::Function>&);
+
+    typedef struct {
+        std::string event, message;
+    } Data;
+    v8::Persistent<v8::Object> m_store;
+
 private:
-  v8::Persistent<v8::Function> m_func;
+    uv_async_t* m_uvHandle;
+    std::mutex m_lock;
+    std::queue<Data> m_buffer;
+    Data m_data;
+    void process();
+    void process(const Data& data);
+    static void closeCallback(uv_handle_t*);
+    static void callback(uv_async_t*);
+};
+
+class NodeEventedObjectWrap : public node::ObjectWrap, public NodeEventRegistry {
+public:
+    inline static void SETUP_EVENTED_PROTOTYPE_METHODS(v8::Local<v8::FunctionTemplate> tmpl)
+    {
+        NODE_SET_PROTOTYPE_METHOD(tmpl, "addEventListener", addEventListener);
+    }
+
+protected:
+    explicit NodeEventedObjectWrap();
+    virtual ~NodeEventedObjectWrap();
+    static void addEventListener(const v8::FunctionCallbackInfo<v8::Value>& args);
 };
 
 #endif

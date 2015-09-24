@@ -95,8 +95,7 @@ public:
     void removeSubscriber(const std::string& id) { }
 
     // TODO: reconsider the role and usage of this class.
-    void setupAsyncEvent(const std::string& event, woogeen_base::EventRegistry*) { }
-    void destroyAsyncEvents() { }
+    void setEventRegistry(woogeen_base::EventRegistry*) { }
 
     void customMessage(const std::string& message) { }
 

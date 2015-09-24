@@ -94,13 +94,6 @@ ${NO_INTERNAL} || (pause "Installing webrtc library... [press Enter]" && install
 pause "Installing ooVoo SDK library...  [press Enter]"
 install_oovoosdk
 
-read -p "Building libuv? [Yes/no]" yn
-case $yn in
-  [Nn]* ) ;;
-  [Yy]* ) install_libuv;;
-  * ) install_libuv;;
-esac
-
 read -p "Installing tcmalloc library? [No/yes]" yn
 case $yn in
   [Yy]* ) install_tcmalloc;;

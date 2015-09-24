@@ -31,20 +31,20 @@ Persistent<Function> Gateway::constructor;
 Gateway::Gateway() {};
 Gateway::~Gateway() {};
 
-void Gateway::Init(Handle<Object> exports) {
+void Gateway::Init(Local<Object> exports) {
   Isolate* isolate = Isolate::GetCurrent();
   // Prepare constructor template
   Local<FunctionTemplate> tpl = FunctionTemplate::New(isolate, New);
   tpl->SetClassName(String::NewFromUtf8(isolate, "Gateway"));
   tpl->InstanceTemplate()->SetInternalFieldCount(1);
   // Prototype
+  SETUP_EVENTED_PROTOTYPE_METHODS(tpl);
   NODE_SET_PROTOTYPE_METHOD(tpl, "close", close);
   NODE_SET_PROTOTYPE_METHOD(tpl, "addPublisher", addPublisher);
   NODE_SET_PROTOTYPE_METHOD(tpl, "removePublisher", removePublisher);
   NODE_SET_PROTOTYPE_METHOD(tpl, "addSubscriber", addSubscriber);
   NODE_SET_PROTOTYPE_METHOD(tpl, "removeSubscriber", removeSubscriber);
   NODE_SET_PROTOTYPE_METHOD(tpl, "addExternalPublisher", addExternalPublisher);
-  NODE_SET_PROTOTYPE_METHOD(tpl, "addEventListener", addEventListener);
   NODE_SET_PROTOTYPE_METHOD(tpl, "customMessage", customMessage);
   NODE_SET_PROTOTYPE_METHOD(tpl, "retrieveStatistics", retrieveStatistics);
   NODE_SET_PROTOTYPE_METHOD(tpl, "subscribeStream", subscribeStream);
@@ -65,7 +65,7 @@ void Gateway::New(const FunctionCallbackInfo<Value>& args) {
 
   Gateway* obj = new Gateway();
   obj->me = woogeen_base::Gateway::createGatewayInstance(customParam);
-
+  obj->me->setEventRegistry(obj);
   obj->Wrap(args.This());
 
   args.GetReturnValue().Set(args.This());
@@ -76,8 +76,6 @@ void Gateway::close(const FunctionCallbackInfo<Value>& args) {
   HandleScope scope(isolate);
   Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.Holder());
   woogeen_base::Gateway* me = obj->me;
-
-  me->destroyAsyncEvents();
   delete me;
 }
 
@@ -165,24 +163,6 @@ void Gateway::removeSubscriber(const FunctionCallbackInfo<Value>& args) {
   // convert it to string
   std::string peerId = std::string(*param);
   me->removeSubscriber(peerId);
-}
-
-void Gateway::addEventListener(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = Isolate::GetCurrent();
-  HandleScope scope(isolate);
-  if (args.Length() < 2 || !args[0]->IsString() || !args[1]->IsFunction()) {
-    isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Wrong arguments")));
-    return;
-  }
-
-  // setup node event listener
-  v8::String::Utf8Value str(args[0]->ToString());
-  std::string key = std::string(*str);
-  NodeEventRegistry* registry = new NodeEventRegistry(Local<Function>::Cast(args[1]));
-  // setup notification in core
-  Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.Holder());
-  woogeen_base::Gateway* me = obj->me;
-  me->setupAsyncEvent(key, registry);
 }
 
 void Gateway::customMessage(const FunctionCallbackInfo<Value>& args) {

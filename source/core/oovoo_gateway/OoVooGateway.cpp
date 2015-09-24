@@ -906,55 +906,32 @@ void OoVooGateway::onSyncMsg(uint64_t ntp, uint64_t rtp, bool isAudio, uint32_t 
 }
 
 // The main thread
-void OoVooGateway::setupAsyncEvent(const std::string& event, EventRegistry* handle)
+void OoVooGateway::setEventRegistry(EventRegistry* handle)
 {
-    // We should not acquire a lock here because of potential dead lock.
-    // This method should be invoked by the main thread at the very beginning
-    // when the WebRTC client (browser) connects to the Gateway so we're safe
-    // to do the following tasks without acquiring a lock.
-    std::map<std::string, EventRegistry*>::iterator it = m_asyncHandles.find(event);
-    if (it != m_asyncHandles.end()) {
-        delete it->second;
-        it->second = handle;
-        ELOG_DEBUG("setupAsyncEvent - replace old listener for %s", event.c_str());
-    } else {
-        m_asyncHandles[event] = handle;
-        ELOG_DEBUG("setupAsyncEvent - add listener for %s##%p", event.c_str(), handle);
-    }
-}
-
-// The main thread
-void OoVooGateway::destroyAsyncEvents()
-{
-    // This method should be invoked by the main thread when the WebRTC client
-    // (browser) disconnects to the Gateway and the main thread are closing the uv async handles.
-    // Other threads should check the existence of the event before async send.
-    boost::lock_guard<boost::mutex> lock(m_asyncMutex);
-    std::map<std::string, EventRegistry*>::iterator it;
-    for (it = m_asyncHandles.begin(); it != m_asyncHandles.end(); it++) {
-        delete it->second;
-        m_asyncHandles.erase(it);
-    }
-    ELOG_DEBUG("destroyAsyncEvents [%u]", m_webRTCClientId);
+    m_asyncHandle = handle;
+    ELOG_DEBUG("setEventRegistry - add listener %p", handle);
 }
 
 void OoVooGateway::notifyAsyncEvent(const std::string& event, const std::string& data)
 {
-    boost::lock_guard<boost::mutex> lock(m_asyncMutex);
-    std::map<std::string, EventRegistry*>::iterator it = m_asyncHandles.find(event);
-    if (it != m_asyncHandles.end()) {
-        bool sent = it->second->notify(data);
-        ELOG_DEBUG("notifyAsyncEvent [%u] - event: %s; sent? %d", m_webRTCClientId, event.c_str(), sent);
+    if (m_asyncHandle) {
+        m_asyncHandle->notifyAsyncEvent(event, data);
+        ELOG_DEBUG("notifyAsyncEvent - event: %s", event.c_str());
     } else {
-        ELOG_DEBUG("notifyAsyncEvent [%u] - missing event handler: %s", m_webRTCClientId, event.c_str());
+        ELOG_DEBUG("notifyAsyncEvent - handler not set");
     }
 }
 
 void OoVooGateway::notifyAsyncEvent(const std::string& event, uint32_t data)
 {
-    std::ostringstream message;
-    message << data;
-    notifyAsyncEvent(event, message.str());
+    if (m_asyncHandle) {
+        std::ostringstream message;
+        message << data;
+        m_asyncHandle->notifyAsyncEvent(event, message.str());
+        ELOG_DEBUG("notifyAsyncEvent - event: %s", event.c_str());
+    } else {
+        ELOG_DEBUG("notifyAsyncEvent - handler not set");
+    }
 }
 
 int OoVooGateway::sendFirPacket()

@@ -115,7 +115,7 @@ public:
     DLL_PUBLIC static MediaMuxer* createMediaMuxerInstance(const std::string& customParam);
     DLL_PUBLIC static bool recycleMediaMuxerInstance(const std::string& outputId);
 
-    MediaMuxer() : m_status(Context_EMPTY), m_callback(nullptr), m_callbackCalled(false) { }
+    MediaMuxer() : m_status(Context_EMPTY), m_callback(nullptr) { }
     virtual ~MediaMuxer() { if (m_callback) delete m_callback; }
 
     DLL_PUBLIC virtual void setMediaSource(FrameProvider* videoProvider, FrameProvider* audioProvider, EventRegistry* callback) = 0;
@@ -134,10 +134,8 @@ protected:
     boost::scoped_ptr<JobTimer> m_jobTimer;
 
     void callback(const std::string& data) { // executed *ONCE*, should be called by m_thread only;
-        if (m_callback && (!m_callbackCalled)) {
-            m_callbackCalled = true;
-            m_callback->notify(data);
-        }
+        if (m_callback)
+            m_callback->notifyAsyncEvent("", data);
     }
 
     bool setEventRegistry(EventRegistry* callback) {
@@ -148,14 +146,11 @@ protected:
             delete m_callback;
 
         m_callback = callback;
-        m_callbackCalled = false;
-
         return true;
     }
 
 private:
     EventRegistry* m_callback;
-    bool m_callbackCalled;
 };
 
 } /* namespace woogeen_base */

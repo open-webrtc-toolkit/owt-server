@@ -182,20 +182,6 @@ install_webrtc(){
   popd
 }
 
-install_libuv() {
-  local UV_VERSION="1.7.4"
-  local UV_SRC="https://github.com/libuv/libuv/archive/v${UV_VERSION}.tar.gz"
-  local UV_DST="libuv-${UV_VERSION}.tar.gz"
-  mkdir -p ${LIB_DIR}
-  pushd ${LIB_DIR}
-  [[ ! -s ${UV_DST} ]] && wget -c ${UV_SRC} -O ${UV_DST}
-  tar xf ${UV_DST}
-  pushd libuv-${UV_VERSION}
-  ./autogen.sh && ./configure --prefix=${PREFIX_DIR} && make && make install
-  popd
-  popd
-}
-
 install_oovoosdk(){
   mkdir -p $PREFIX_DIR/lib
   if lsb_release -i | grep [Uu]buntu -q -s; then

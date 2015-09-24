@@ -76,14 +76,10 @@ public:
     DLL_PUBLIC virtual void removeSubscriber(const std::string& id) = 0;
 
     /**
-     * Set async event handler
-     * @param event name, handle
+     * Set async event handle
+     * @param handle
      */
-    DLL_PUBLIC virtual void setupAsyncEvent(const std::string& event, EventRegistry*) = 0;
-    /**
-     * Destroy async event handlers
-     */
-    DLL_PUBLIC virtual void destroyAsyncEvents() = 0;
+    DLL_PUBLIC virtual void setEventRegistry(EventRegistry*) = 0;
 
     /**
      * Pass 'custom' messages such as text messages
