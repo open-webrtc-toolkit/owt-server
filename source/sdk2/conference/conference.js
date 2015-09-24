@@ -1127,20 +1127,22 @@ Upon success, the video of the stream would be hold, and you can call disableVid
 /**
    * @function startRecorder
    * @instance
-   * @desc This function starts the mixed audio stream and video stream recording on the conference room and saves it to a .mkv file on the server, according to the configurable "config.erizoController.recording_path". The options are reserved currently for future usage.
+   * @desc This function starts the recording of a video stream and an audio stream in the conference room and saves it to a .mkv file, according to the configurable "config.erizoController.recording_path".
    <br><b>options:</b><br>
    {<br>
-  streamId: xxxxxx,<br>
-  recorderId: yyyyyy<br>
+  videoStreamId: xxxxxx,<br>
+  audioStreamId: yyyyyy,<br>
+  recorderId: zzzzzz<br>
   }
    * @memberOf Woogeen.ConferenceClient
    * @param {string} options (optional)Media recorder options. If unspecified, the mixed stream will be recorded as default.<br>
     <ul>
-   <li>streamId: stream id to be recorded.</li>
+   <li>videoStreamId: video stream id to be recorded. If unspecified and audioStreamId is valid, audioStreamId will be used by default.</li>
+   <li>audioStreamId: audio stream id to be recorded. If unspecified and videoStreamId is valid, videoStreamId will be used by default.</li>
    <li>recorderId: recorder id to be reused.</li>
    </ul>
-   Important Note: In the case of continuous media recording among different streams, the recorderId is the key to make sure each the switched stream go to the same recording url. Do not stop the recorder when you want the continuous media recording, unless all the required media content has been recorded successfully.<br>
-The recommendation is to invoke another startRecorder with new streamId (default to mixed stream) right after the previous call of startRecorder with old streamId, but the same recorderId should be kept.
+   Important Note: In the case of continuous media recording among different streams, the recorderId is the key to make sure each switched stream go to the same recording url. Do not stop the recorder when you want the continuous media recording functionality, unless all the required media content has been recorded successfully.<br>
+The recommendation is to invoke another startRecorder with new videoStreamId and audioStreamId (default to mixed stream) right after the previous call of startRecorder, but the same recorderId should be kept.
    * @param {function} onSuccess(resp) (optional) Success callback. The following information will be
  returned as well:<br>
     <ul>
@@ -1153,7 +1155,7 @@ The recommendation is to invoke another startRecorder with new streamId (default
 <script type="text/JavaScript">
 var conference = Woogeen.ConferenceClient.create();
 // ……
-conference.startRecorder({streamId: streamIdToRec}, function (file) {
+conference.startRecorder({videoStreamId: videoStreamIdToRec, audioStreamId: audioStreamIdToRec}, function (file) {
     L.Logger.info('Stream recording with recorder ID: ', file.recorderId);
   }, function (err) {
     L.Logger.error('Media recorder failed:', err);
@@ -1180,17 +1182,17 @@ conference.startRecorder({streamId: streamIdToRec}, function (file) {
 /**
    * @function stopRecorder
    * @instance
-   * @desc This function stops the mixed audio stream and video stream recording on the conference room and saves it to a .mkv file on the server, according to the configurable "config.erizoController.recording_path".
+   * @desc This function stops the recording of a video stream and an audio stream in the conference room and saves it to a .mkv file, according to the configurable "config.erizoController.recording_path".
    <br><b>options:</b><br>
 {<br>
   recorderId: xxxxxx<br>
 }
    * @memberOf Woogeen.ConferenceClient
-   * @param {string} options (optional) Media recording options. RecorderId: recorder id to be stopped.
+   * @param {string} options (required) Media recording options. recorderId: recorder id to be stopped.
    * @param {function} onSuccess(resp) (optional) Success callback. The following information will be returned as well:
    <ul>
-   <li>recorderId: recorder id.</li>
    <li>host: Host server address.</li>
+   <li>recorderId: recorder id.</li>
    </ul>
    * @param {function} onFailure(error) (optional) Failure callback.
    * @example
