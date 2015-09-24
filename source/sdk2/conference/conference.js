@@ -840,6 +840,7 @@ conference.subscribe(remoteStream, function (st) {
    */
   WoogeenConference.prototype.subscribe = function (stream, options, onSuccess, onFailure) {
     var self = this;
+    var mediaStreamIsReady = false;
     if (typeof options === 'function') {
       onFailure = onSuccess;
       onSuccess = options;
@@ -890,6 +891,11 @@ conference.subscribe(remoteStream, function (st) {
       if (navigator.appVersion.indexOf('Trident') > -1) {
         stream.pcid = evt.pcid;
       }
+      if (mediaStreamIsReady) {
+         safeCall(onSuccess, stream);
+      } else {
+         mediaStreamIsReady = true;
+      }
     };
     var onChannelReady = function () {
       stream.signalOnPlayAudio = function (onSuccess, onFailure) {
@@ -904,7 +910,11 @@ conference.subscribe(remoteStream, function (st) {
       stream.signalOnPauseVideo = function (onSuccess, onFailure) {
         sendCtrlPayload(self.socket, 'video-in-off', stream.id(), onSuccess, onFailure);
       };
-      safeCall(onSuccess, stream);
+      if (mediaStreamIsReady) {
+         safeCall(onSuccess, stream);
+      } else {
+         mediaStreamIsReady = true;
+      }
       onChannelReady = function () {};
       onChannelFailed = function () {};
     };
