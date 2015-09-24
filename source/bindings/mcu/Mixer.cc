@@ -31,13 +31,14 @@ Persistent<Function> Mixer::constructor;
 Mixer::Mixer() {};
 Mixer::~Mixer() {};
 
-void Mixer::Init(Handle<Object> exports) {
+void Mixer::Init(Local<Object> exports) {
   Isolate* isolate = Isolate::GetCurrent();
   // Prepare constructor template
   Local<FunctionTemplate> tpl = FunctionTemplate::New(isolate, New);
   tpl->SetClassName(String::NewFromUtf8(isolate, "Mixer"));
   tpl->InstanceTemplate()->SetInternalFieldCount(1);
   // Prototype
+  SETUP_EVENTED_PROTOTYPE_METHODS(tpl);
   NODE_SET_PROTOTYPE_METHOD(tpl, "close", close);
   NODE_SET_PROTOTYPE_METHOD(tpl, "addPublisher", addPublisher);
   NODE_SET_PROTOTYPE_METHOD(tpl, "removePublisher", removePublisher);
@@ -46,7 +47,6 @@ void Mixer::Init(Handle<Object> exports) {
   NODE_SET_PROTOTYPE_METHOD(tpl, "subscribeStream", subscribeStream);
   NODE_SET_PROTOTYPE_METHOD(tpl, "unsubscribeStream", unsubscribeStream);
   NODE_SET_PROTOTYPE_METHOD(tpl, "addExternalPublisher", addExternalPublisher);
-  NODE_SET_PROTOTYPE_METHOD(tpl, "addEventListener", addEventListener);
   NODE_SET_PROTOTYPE_METHOD(tpl, "getRegion", getRegion);
   NODE_SET_PROTOTYPE_METHOD(tpl, "setRegion", setRegion);
   NODE_SET_PROTOTYPE_METHOD(tpl, "setVideoBitrate", setVideoBitrate);
@@ -64,7 +64,7 @@ void Mixer::New(const FunctionCallbackInfo<Value>& args) {
 
   Mixer* obj = new Mixer();
   obj->me = dynamic_cast<mcu::MixerInterface*>(woogeen_base::Gateway::createGatewayInstance(customParam));
-
+  obj->me->setEventRegistry(obj);
   obj->Wrap(args.This());
 
   args.GetReturnValue().Set(args.This());
@@ -75,8 +75,6 @@ void Mixer::close(const FunctionCallbackInfo<Value>& args) {
   HandleScope scope(isolate);
   Mixer* obj = ObjectWrap::Unwrap<Mixer>(args.This());
   mcu::MixerInterface* me = obj->me;
-
-  me->destroyAsyncEvents();
   delete me;
 }
 
@@ -192,23 +190,6 @@ void Mixer::unsubscribeStream(const FunctionCallbackInfo<Value>& args) {
   std::string peerId = std::string(*param);
   bool isAudio = args[1]->BooleanValue();
   me->unsubscribeStream(peerId, isAudio);
-}
-
-void Mixer::addEventListener(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = Isolate::GetCurrent();
-  HandleScope scope(isolate);
-  if (args.Length() < 2 || !args[0]->IsString() || !args[1]->IsFunction()) {
-    isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Wrong arguments")));
-    return;
-  }
-  // setup node event listener
-  v8::String::Utf8Value str(args[0]->ToString());
-  std::string key = std::string(*str);
-  NodeEventRegistry* registry = new NodeEventRegistry(Local<Function>::Cast(args[1]));
-  // setup notification in core
-  Mixer* obj = ObjectWrap::Unwrap<Mixer>(args.This());
-  mcu::MixerInterface* me = obj->me;
-  me->setupAsyncEvent(key, registry);
 }
 
 void Mixer::getRegion(const FunctionCallbackInfo<Value>& args) {

@@ -14,7 +14,7 @@
  */
 class WebRtcConnection : public node::ObjectWrap, erizo::WebRtcConnectionEventListener, erizo::WebRtcConnectionStatsListener  {
  public:
-  static void Init(v8::Handle<v8::Object> exports);
+  static void Init(v8::Local<v8::Object> exports);
 
   erizo::WebRtcConnection *me;
   std::list<int> eventSts;

@@ -21,6 +21,10 @@
 #ifndef GATEWAY_H
 #define GATEWAY_H
 
+#include "ExternalInput.h"
+#include "../erizoAPI/MediaDefinitions.h"
+#include "../erizoAPI/WebRtcConnection.h"
+#include "NodeEventRegistry.h"
 #include <Gateway.h>
 #include <node.h>
 #include <node_object_wrap.h>
@@ -33,12 +37,12 @@
  * Receives media from the WebRTC client and retransmits it to others,
  * or receives media from other clients and retransmits it to the WebRTC client.
  */
-class Gateway : public node::ObjectWrap {
- public:
-  static void Init(v8::Handle<v8::Object> exports);
+class Gateway : public NodeEventedObjectWrap {
+public:
+  static void Init(v8::Local<v8::Object> exports);
   woogeen_base::Gateway* me;
 
- private:
+private:
   Gateway();
   ~Gateway();
   static v8::Persistent<v8::Function> constructor;
@@ -78,11 +82,6 @@ class Gateway : public node::ObjectWrap {
    * Param: the ExternalInput of the Publisher
    */
   static void addExternalPublisher(const v8::FunctionCallbackInfo<v8::Value>& args);
-
-  /*
-   * add Event Listener
-   */
-  static void addEventListener(const v8::FunctionCallbackInfo<v8::Value>& args);
   /*
    * pass custom message
    */

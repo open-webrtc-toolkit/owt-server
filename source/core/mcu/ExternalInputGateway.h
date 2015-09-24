@@ -57,12 +57,10 @@ public:
 
     // TODO: implement the below interfaces to support async event notification
     // from the native layer to the JS (controller) layer.
-    void setupAsyncEvent(const std::string& event, woogeen_base::EventRegistry* handler)
+    void setEventRegistry(woogeen_base::EventRegistry* handler)
     {
-        m_asyncHandler.reset(handler);
-        m_asyncHandler->notify("");
+        m_asyncHandler = handler;
     }
-    void destroyAsyncEvents() { m_asyncHandler.reset(); }
 
     void customMessage(const std::string& message) { }
 
@@ -126,8 +124,8 @@ private:
     std::map<std::string, std::pair<boost::shared_ptr<erizo::MediaSink>, woogeen_base::MediaEnabling>> m_subscribers;
     boost::shared_mutex m_sinkMutex;
 
-    // TODO: Use it for async event notification from the worker thread to the main node thread.
-    boost::shared_ptr<woogeen_base::EventRegistry> m_asyncHandler;
+    // Use it for async event notification from the worker thread to the main node thread.
+    woogeen_base::EventRegistry* m_asyncHandler;
 };
 
 } /* namespace mcu */

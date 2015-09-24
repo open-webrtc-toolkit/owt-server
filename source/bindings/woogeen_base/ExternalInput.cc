@@ -7,7 +7,7 @@ Persistent<Function> ExternalInput::constructor;
 ExternalInput::ExternalInput() {};
 ExternalInput::~ExternalInput() {};
 
-void ExternalInput::Init(Handle<Object> exports) {
+void ExternalInput::Init(Local<Object> exports) {
   Isolate* isolate = Isolate::GetCurrent();
   // Prepare constructor template
   Local<FunctionTemplate> tpl = FunctionTemplate::New(isolate, New);
@@ -35,12 +35,12 @@ void ExternalInput::New(const FunctionCallbackInfo<Value>& args) {
   Local<Object> optionObject = args[0]->ToObject();
   woogeen_base::ExternalInput::Options options{};
 
-  Handle<String> keyUrl = String::NewFromUtf8(isolate, "url");
-  Handle<String> keyTransport = String::NewFromUtf8(isolate, "transport");
-  Handle<String> keyBufferSize = String::NewFromUtf8(isolate, "buffer_size");
-  Handle<String> keyAudio = String::NewFromUtf8(isolate, "audio");
-  Handle<String> keyVideo = String::NewFromUtf8(isolate, "video");
-  Handle<String> keyH264 = String::NewFromUtf8(isolate, "h264");
+  Local<String> keyUrl = String::NewFromUtf8(isolate, "url");
+  Local<String> keyTransport = String::NewFromUtf8(isolate, "transport");
+  Local<String> keyBufferSize = String::NewFromUtf8(isolate, "buffer_size");
+  Local<String> keyAudio = String::NewFromUtf8(isolate, "audio");
+  Local<String> keyVideo = String::NewFromUtf8(isolate, "video");
+  Local<String> keyH264 = String::NewFromUtf8(isolate, "h264");
 
   if (optionObject->Has(keyUrl))
     options.url = std::string(*String::Utf8Value(optionObject->Get(keyUrl)->ToString()));

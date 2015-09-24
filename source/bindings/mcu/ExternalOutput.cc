@@ -32,7 +32,7 @@ Persistent<Function> ExternalOutput::constructor;
 ExternalOutput::ExternalOutput() {};
 ExternalOutput::~ExternalOutput() {};
 
-void ExternalOutput::Init(Handle<Object> exports) {
+void ExternalOutput::Init(Local<Object> exports) {
   Isolate* isolate = Isolate::GetCurrent();
   // Prepare constructor template
   Local<FunctionTemplate> tpl = FunctionTemplate::New(isolate, New);
@@ -96,7 +96,7 @@ void ExternalOutput::setMediaSource(const FunctionCallbackInfo<Value>& args) {
 
   NodeEventRegistry* callback = nullptr;
   if (args.Length() > 2 && args[2]->IsFunction()) {
-    callback = new NodeEventRegistry(Local<Function>::Cast(args[2]));
+    callback = NodeEventRegistry::New(isolate, Local<Function>::Cast(args[2]));
   }
 
   me->setMediaSource(videoSource->getVideoFrameProvider(), audioSource->getAudioFrameProvider(), callback);

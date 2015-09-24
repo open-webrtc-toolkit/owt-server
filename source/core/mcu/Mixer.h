@@ -60,8 +60,7 @@ public:
     void removeSubscriber(const std::string& id);
 
     // Implement async event notification
-    void setupAsyncEvent(const std::string& event, woogeen_base::EventRegistry*);
-    void destroyAsyncEvents();
+    void setEventRegistry(woogeen_base::EventRegistry*);
 
     void customMessage(const std::string& message) { }
 
@@ -118,8 +117,7 @@ private:
     // async event notification
     void notifyAsyncEvent(const std::string& event, const std::string& data);
     void notifyAsyncEvent(const std::string& event, uint32_t data);
-    std::map<std::string, woogeen_base::EventRegistry*> m_asyncHandles;
-    boost::mutex m_asyncMutex;
+    woogeen_base::EventRegistry* m_asyncHandle;
 };
 
 } /* namespace mcu */

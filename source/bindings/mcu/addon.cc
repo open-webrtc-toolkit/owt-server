@@ -8,7 +8,7 @@
 
 using namespace v8;
 
-void InitAll(Handle<Object> exports) {
+void InitAll(Local<Object> exports) {
   WebRtcConnection::Init(exports);
   Gateway::Init(exports);
   Mixer::Init(exports);

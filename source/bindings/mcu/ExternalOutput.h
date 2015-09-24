@@ -31,7 +31,7 @@
  */
 class ExternalOutput : public node::ObjectWrap {
  public:
-  static void Init(v8::Handle<v8::Object> exports);
+  static void Init(v8::Local<v8::Object> exports);
   woogeen_base::MediaMuxer* me;
 
  private:

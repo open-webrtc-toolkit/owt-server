@@ -157,17 +157,15 @@ pack_node() {
   mv ${CURRENT_DIR}/lib/webrtc_mcu/erizoJS.js ${CURRENT_DIR}/lib/_third_party_main.js
   sed -i "s/webrtc_mcu\/erizoJS\.js/_third_party_main.js/g" node.gyp
 
-  local UV_OPT=
-  [[ -s ${PREFIX_DIR}/lib/libuv.so ]] && UV_OPT="--shared-libuv"
   # fix node's configure for dynamic-linking libraries
   patch -p0 < ../node4-configure.patch
 
   local LIBTCMALLOC="${PREFIX_DIR}/lib/libtcmalloc_minimal.so"
   if [ -s ${LIBTCMALLOC} ]; then
     patch -p0 < ../node4-configure-tcmalloc.patch
-    PKG_CONFIG_PATH=${PREFIX_DIR}/lib/pkgconfig:${PREFIX_DIR}/lib64/pkgconfig:${PKG_CONFIG_PATH} ./configure --without-npm --prefix=${PREFIX_DIR} ${UV_OPT} --shared-openssl --shared-tcmalloc --shared-tcmalloc-libpath=${PREFIX_DIR}/lib --shared-tcmalloc-libname=tcmalloc_minimal,dl
+    PKG_CONFIG_PATH=${PREFIX_DIR}/lib/pkgconfig:${PREFIX_DIR}/lib64/pkgconfig:${PKG_CONFIG_PATH} ./configure --without-npm --prefix=${PREFIX_DIR} --shared-openssl --shared-tcmalloc --shared-tcmalloc-libpath=${PREFIX_DIR}/lib --shared-tcmalloc-libname=tcmalloc_minimal,dl
   else
-    PKG_CONFIG_PATH=${PREFIX_DIR}/lib/pkgconfig:${PREFIX_DIR}/lib64/pkgconfig:${PKG_CONFIG_PATH} ./configure --without-npm --prefix=${PREFIX_DIR} ${UV_OPT} --shared-openssl
+    PKG_CONFIG_PATH=${PREFIX_DIR}/lib/pkgconfig:${PREFIX_DIR}/lib64/pkgconfig:${PKG_CONFIG_PATH} ./configure --without-npm --prefix=${PREFIX_DIR} --shared-openssl
   fi
   LD_LIBRARY_PATH=${PREFIX_DIR}/lib:${LD_LIBRARY_PATH} make V= -j5
   make uninstall
