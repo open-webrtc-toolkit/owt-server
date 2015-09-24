@@ -581,7 +581,7 @@ var listen = function () {
                                                             sendMsgToRoom(room, 'onRemoveStream', {id: streamId});
                                                             room.controller.removePublisher(streamId);
 
-                                                            var index = socket.streams.indexOf(streamId);
+                                                            var index = socket.streams instanceof Array ? socket.streams.indexOf(streamId) : -1;
                                                             if (index !== -1) {
                                                                 socket.streams.splice(index, 1);
                                                             }
