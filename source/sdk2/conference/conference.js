@@ -821,6 +821,43 @@ video: true/false, {resolution: {width:xxx, height:xxx}},<br>
 audio: true/false,<br>
 videoCodec: 'h264'/'vp8' // not for p2p room<br>
 }
+<br><b>Remarks:</b><br>
+Video resolution is only for subscribing {@link Woogeen.RemoteMixedStream|Woogeen.RemoteMixedStream} when multistreaming output is enabled.<br>
+<table class="params table table-striped">
+<caption><b>Table : All surported resolutions</b></caption>
+    <tbody>
+    <thead>
+        <tr>
+            <th><b>Base resolution</b></th>
+            <th><b>Resolution list</b></th>
+        </tr>
+    </thead>
+        <tr>
+            <td>vga</td>
+            <td>{width: 640, height: 480}, {width: 320, height: 240}</td>
+        </tr>
+         <tr>
+            <td>sif</td>
+            <td>{width: 320, height: 240}</td>
+        </tr>
+        <tr>
+            <td>xga</td>
+            <td>{width: 1024, height: 768}, {width: 320, height: 240}</td>
+        </tr>
+        <tr>
+            <td>svga</td>
+            <td>{width: 800, height: 600}, {width: 320, height: 240}</td>
+        </tr>
+        <tr>
+            <td>hd720p</td>
+            <td>{width: 1280, height: 720}, {width: 640, height: 360}</td>
+        </tr>
+        <tr>
+            <td>hd1080p</td>
+            <td>{width: 1920, height: 1080}, {width: 1280, height: 720}, {width: 640, height: 360}</td>
+        </tr>
+    </tbody>
+</table>
    * @memberOf Woogeen.ConferenceClient
    * @param {stream} stream Stream to subscribe.
    * @param {json} options (optional) Subscribe options.
