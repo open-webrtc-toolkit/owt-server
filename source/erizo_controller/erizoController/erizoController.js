@@ -370,10 +370,10 @@ var VideoResolutionMap = { // definition adopted from VideoLayout.h
     'uhd_4k':   [{width: 3840, height: 2160}, {width: 1280, height: 720}, {width: 640, height: 360}]
 };
 
-function calculateResolutions(rootResolution, useSimulcast) {
+function calculateResolutions(rootResolution, useMultistreaming) {
     var base = VideoResolutionMap[rootResolution.toLowerCase()];
     if (!base) return [];
-    if (!useSimulcast) return [base[0]];
+    if (!useMultistreaming) return [base[0]];
     return base.map(function (r) {
         return r;
     });
@@ -383,7 +383,7 @@ var initMixer = function (room, roomConfig, immediately) {
     if (roomConfig.enableMixing && room.mixer === undefined && room.initMixerTimer === undefined) {
         var id = room.id;
         room.enableMixing = true;
-        var resolutions = calculateResolutions(roomConfig.mediaMixing.video.resolution, roomConfig.mediaMixing.video.simulcast);
+        var resolutions = calculateResolutions(roomConfig.mediaMixing.video.resolution, roomConfig.mediaMixing.video.multistreaming);
         if (immediately) {
             room.controller.initMixer(id, roomConfig.mediaMixing, function (result) {
                 // TODO: Better to utilize 'result' to retrieve information from mixer to create the mix-stream.

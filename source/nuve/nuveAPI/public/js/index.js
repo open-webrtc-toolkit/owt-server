@@ -348,7 +348,7 @@ function tableHandlerRoom(rooms) {
       bitrate: 0,
       bkColor: 'black',
       avCoordinated: false,
-      simulcast: 0,
+      multistreaming: 0,
       maxInput: 16,
       layout: {
         base: 'fluid',
@@ -380,8 +380,8 @@ function tableHandlerRoom(rooms) {
           <td id="avCoordinated" class="value-num-edit" data-value={{avCoordinated}}></td>\
         </tr>\
         <tr>\
-          <td colspan="2">simulcast</td>\
-          <td id="simulcast" class="value-num-edit" data-value={{simulcast}}></td>\
+          <td colspan="2">multistreaming</td>\
+          <td id="multistreaming" class="value-num-edit" data-value={{multistreaming}}></td>\
         </tr>\
         <tr>\
           <td rowspan="2">layout</td>\
@@ -468,7 +468,7 @@ function tableHandlerRoom(rooms) {
         };
       })
     });
-    $('#myModal3 tbody td#simulcast').editable({
+    $('#myModal3 tbody td#multistreaming').editable({
       mode: 'inline',
       type: 'select',
       source: [{
