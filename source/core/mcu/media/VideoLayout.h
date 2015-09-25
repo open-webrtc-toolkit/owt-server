@@ -66,7 +66,7 @@ struct Region {
     float left; // percentage
     float top;    // percentage
     float relativeSize;    //fraction
-    float priority;
+    //float priority;
 };
 
 struct InputRegion {
