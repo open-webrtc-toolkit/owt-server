@@ -223,16 +223,21 @@ void WebRTCGateway::addSubscriber(MediaSink* subscriber, const std::string& id, 
     boost::shared_ptr<woogeen_base::ProtectedRTPSender> audioSender(new woogeen_base::ProtectedRTPSender(0, mediaBridge.get()));
     boost::shared_ptr<woogeen_base::WebRTCFeedbackProcessor> feedback(new woogeen_base::WebRTCFeedbackProcessor(0));
 
-    videoSender->setNACKStatus(subscriber->acceptResentData());
-    videoSender->enableEncapsulatedRTPData(subscriber->acceptEncapsulatedRTPData());
-    videoSender->setFecStatus(subscriber->acceptFEC());
-    feedback->initVideoFeedbackReactor(0, videoSSRC, videoSender, m_iFrameRequestBridge);
-    feedback->initAudioFeedbackReactor(0, audioSSRC, audioSender);
+    if (videoSender) {
+        videoSender->setNACKStatus(subscriber->acceptResentData());
+        videoSender->enableEncapsulatedRTPData(subscriber->acceptEncapsulatedRTPData());
+        videoSender->setFecStatus(subscriber->acceptFEC());
+    }
 
-    FeedbackSource* fbsource = subscriber->getFeedbackSource();
-    if (fbsource) {
-        ELOG_DEBUG("adding fbsource");
-        fbsource->setFeedbackSink(feedback.get());
+    if (feedback) {
+        feedback->initVideoFeedbackReactor(0, videoSSRC, videoSender, m_iFrameRequestBridge);
+        feedback->initAudioFeedbackReactor(0, audioSSRC, audioSender);
+
+        FeedbackSource* fbsource = subscriber->getFeedbackSource();
+        if (fbsource) {
+            ELOG_DEBUG("adding fbsource");
+            fbsource->setFeedbackSink(feedback.get());
+        }
     }
 
     boost::unique_lock<boost::shared_mutex> lock(m_subscriberMutex);
