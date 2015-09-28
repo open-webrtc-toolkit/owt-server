@@ -66,7 +66,6 @@ N.API.init('5188b9af6e53c84ffd600413', '21989', 'http://61.129.90.140:3000/')
         <li>audio: null</li>
         <li>video: avCoordinated, maxInput, resolution, bitrate , bkColor, layout</li>
         <ul>
-            <li>avCoordinated (0 or 1) is for disabling/enabling VAD</li>
             <li>maxInput is for maximum number of slots in the mix stream</li>
             <li>resolution denotes the resolution of the video size of mix stream.Valid resolution list:</li>
                 <ul>
@@ -77,18 +76,56 @@ N.API.init('5188b9af6e53c84ffd600413', '21989', 'http://61.129.90.140:3000/')
                     <li>'hd720p'</li>
                     <li>'hd1080p'</li>
                 </ul>
+            <li>multistreaming(0 or 1) indicates whether the MCU mix stream outputs multiple resolutions for different devices. The additional stream's resolutions are determined by MCU according to the base resolution user specified, no customizations is allowed yet. Please see the following table for detailed mapping.</li>
             <li>bitrate indicates video bitrate of the mix stream, in Kbit unit. Default value 0, meaning that MCU could use its own calculated default value.</li>
             <li>bkColor sets the background color, supporting RGB color format: {"r":red-value, "g":green-value, "b":blue-value}.</li>
             <li>layout describes video layout in mix stream</li>
                 <ul>
                     <li>"base" is the base template (choose from "void", "fluid", "lecture")</li>
-                    <li>"custom" is user-defined customized video layout (Read section 3.5 in Conference Server Guide for details)</li>
+                    <li>"custom" is user-defined customized video layout. Here we give out an example to show you the details of a valid customized video layout.A valid customized video layout should be a JSON string which represents an array of video layout definition. More details see <a href="layout.html">customized video layout</a></li>
                     <li>MCU would try to combine the two entries for mixing video if user sets both.</li>
                 </ul>
+            <li>avCoordinated (0 or 1) is for disabling/enabling VAD(Voice activity detection). When VAD is applied, main pane(layout id=1) will be filled with the user stream which is the most active in voice currently.</li>
         </ul>
     </ul>
 </ul>
 Omitted entries are set with default values.
+All supported resolutions are list in the following table.
+<table class="params table table-striped">
+<caption><b>Table : Resolution Mapping for Multistreaming</b></caption>
+    <tbody>
+    <thead>
+        <tr>
+            <th><b>Base resolution</b></th>
+            <th><b>Available resolution list</b></th>
+        </tr>
+    </thead>
+        <tr>
+            <td>vga</td>
+            <td>{width: 640, height: 480}, {width: 320, height: 240}</td>
+        </tr>
+         <tr>
+            <td>sif</td>
+            <td>{width: 320, height: 240}</td>
+        </tr>
+        <tr>
+            <td>xga</td>
+            <td>{width: 1024, height: 768}, {width: 320, height: 240}</td>
+        </tr>
+        <tr>
+            <td>svga</td>
+            <td>{width: 800, height: 600}, {width: 320, height: 240}</td>
+        </tr>
+        <tr>
+            <td>hd720p</td>
+            <td>{width: 1280, height: 720}, {width: 640, height: 360}</td>
+        </tr>
+        <tr>
+            <td>hd1080p</td>
+            <td>{width: 1920, height: 1080}, {width: 1280, height: 720}, {width: 640, height: 360}</td>
+        </tr>
+    </tbody>
+</table>
    * @memberOf N.API
    * @param {string} name Room name.
    * @param {function} callback(room) Callback function on success.
@@ -109,6 +146,7 @@ N.API.createRoom('myRoom',
       avCoordinated: 1,
       maxInput: 15,
       resolution: 'hd720p',
+      multistreaming: 1,
       bitrate: 0,
       bkColor: {"r":1, "g":2, "b":255},
       layout: {
@@ -199,6 +237,7 @@ N.API.updateRoom(XXXXXXXXXX, {
       avCoordinated: 1,
       maxInput: 15,
       resolution: 'hd720p',
+      multistreaming: 1,
       bitrate: 0,
       bkColor: 'white',
       layout: {
