@@ -678,6 +678,15 @@ var listen = function () {
                 if (typeof callback === 'function') callback('error');
                 break;
             case 'data':
+                if (socket.user === undefined || !socket.user.permissions[Permission.PUBLISH]) {
+                    return safeCall(callback, 'error', 'unauthorized');
+                }
+                if (socket.user.permissions[Permission.PUBLISH] !== true) {
+                    var permissions = socket.user.permissions[Permission.PUBLISH];
+                    if (permissions['data'] === false)
+                        return safeCall(callback, 'error', 'unauthorized');
+                }
+
                 var receiver = msg.receiver;
                 var data = {
                     data: msg.data,
