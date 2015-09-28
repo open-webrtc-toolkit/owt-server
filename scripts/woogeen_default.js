@@ -57,6 +57,7 @@ config.erizoController.keystorePath = '../../cert/certificate.pfx';
 // config.erizoController.networkInterface = 'eth1' // default value: undefined
 
 //Use undefined to run clients without Turn
+//url example: 'turn:ip_address:port_number?transport=tcp'
 config.erizoController.turnServer = {}; // default value: undefined
 config.erizoController.turnServer.url = ''; // default value: null
 config.erizoController.turnServer.username = ''; // default value: null
