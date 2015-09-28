@@ -48,11 +48,11 @@ Handle<Value> ExternalInput::New(const Arguments& args) {
   if (optionObject->Has(keyBufferSize))
     options.bufferSize = optionObject->Get(keyBufferSize)->Uint32Value();
   if (optionObject->Has(keyAudio))
-    options.enableAudio = *optionObject->Get(keyAudio)->ToBoolean();
+    options.enableAudio = (*optionObject->Get(keyAudio)->ToBoolean())->BooleanValue();
   if (optionObject->Has(keyVideo))
-    options.enableVideo = *optionObject->Get(keyVideo)->ToBoolean();
+    options.enableVideo = (*optionObject->Get(keyVideo)->ToBoolean())->BooleanValue();
   if (optionObject->Has(keyH264))
-    options.enableH264 = *optionObject->Get(keyH264)->ToBoolean();
+    options.enableH264 = (*optionObject->Get(keyH264)->ToBoolean())->BooleanValue();
 
   ExternalInput* obj = new ExternalInput();
   obj->me = new woogeen_base::ExternalInput(options);
