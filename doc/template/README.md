@@ -270,6 +270,13 @@ p2p.on('data-received',function(e){  // Received data from datachannel.
 });
 </script>
 ```
+
+**Customize Signaling Channel**
+
+Signaling channel is an implementation to transmit signaling data for creating a WebRTC session. Signaling channel for P2P sessions can be customized by writing your own `sc.*.js`. The default Socket.IO signaling channel has been provided in the release package with name `sc.websocket.js`.
+
+In the customized signaling channel, you need to implement `connect`, `disconnect` and `sendMessage`, invoke `onMessage` when a new message arrives, and invoke `onServerDisconnected` when the connection is lost. Then include your customized `sc.*.js` into the HTML page.
+
 Conference mode
 -------------
 Conference mode is designed for applications with more than three participants. The JavaScript SDK includes a demo application for this.
