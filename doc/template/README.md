@@ -98,7 +98,7 @@ Internet Explorer (IE) does not support WebRTC natively.  End user needs to inst
 
 Plugin for Internet Explorer (IE)
 -------------
-If you are developing a WebRTC web app which is intended to support IE browser, your end users must install the WebRTC IE plugin package provided in the CS_WebRTC_Client_SDK_JavaScript.<ver>.zip file to enable WebRTC capability. 
+If you are developing a WebRTC web app which is intended to support IE browser, your end users must install the WebRTC IE plugin package provided in the CS_WebRTC_Client_SDK_JavaScript.&lt;ver&gt;.zip file to enable WebRTC capability.
 Follow these steps for web application that require IE browser compatibility:
 
  1.  ieMediaStream.p2p.js and adapter.p2p.js must be included in the HTML pages which are visited by IE P2P users.
@@ -279,7 +279,7 @@ In the customized signaling channel, you need to implement `connect`, `disconnec
 
 Conference mode
 -------------
-Conference mode is designed for applications with more than three participants. The JavaScript SDK includes a demo application for this.
+Conference mode is designed for applications with multiple participants. The JavaScript SDK includes a demo application for this.
 
 **Create a room from the server side**
 
@@ -427,7 +427,7 @@ The following table describes the objects provided in the JavaScript SDK.
       username : "woogeen",
       credential : "master"
      }
-]
+    ]
   });
 </script>
 ```
