@@ -3,8 +3,8 @@
   {
     'target_name': 'addon',
       'sources': [ 'addon.cc', '../erizoAPI/WebRtcConnection.cc', '../woogeen_base/Gateway.cc' ],
-      'include_dirs' : ['$(CORE_HOME)/common', '$(CORE_HOME)/erizo/src/erizo', '$(CORE_HOME)/woogeen_base', '$(CORE_HOME)/../../build/libdeps/build/include', '$(CORE_HOME)/../../third_party/libuv/include'],
-      'libraries': ['-L$(CORE_HOME)/build/oovoo_gateway', '-loovoo_gateway', '-L$(CORE_HOME)/../../third_party/libuv', '-luv'],
+      'include_dirs' : ['$(CORE_HOME)/common', '$(CORE_HOME)/erizo/src/erizo', '$(CORE_HOME)/woogeen_base', '$(CORE_HOME)/../../build/libdeps/build/include'],
+      'libraries': ['-L$(CORE_HOME)/build/oovoo_gateway', '-loovoo_gateway', '-L$(CORE_HOME)/../../build/libdeps/build/lib', '-luv'],
       'conditions': [
         [ 'OS=="mac"', {
           'xcode_settings': {
