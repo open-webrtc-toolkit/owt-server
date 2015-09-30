@@ -84,49 +84,54 @@ ${bin}/start-all.sh
 }
 
 pack_node() {
-  NODE_VERSION=
+  local NODE_VERSION=
   . ${this}/../.conf
   echo "node version: ${NODE_VERSION}"
 
-  local PREFIX_DIR=$ROOT/build/libdeps/build/
-  cd $ROOT/third_party
+  local PREFIX_DIR=${ROOT}/build/libdeps/build/
+  pushd ${ROOT}/third_party
   [[ ! -s node-${NODE_VERSION}.tar.gz ]] && curl -O http://nodejs.org/dist/${NODE_VERSION}/node-${NODE_VERSION}.tar.gz
-  tar -xzf node-${NODE_VERSION}.tar.gz
-  cd node-${NODE_VERSION}
+  tar -xzf node-${NODE_VERSION}.tar.gz && \
+  pushd node-${NODE_VERSION} || (echo "invalid nodejs source."; popd; return -1)
+  local CURRENT_DIR=$(pwd)
   mkdir -p lib/webrtc_gateway
 
   find ${WOOGEEN_DIST}/gateway -type f -name "*.js" | while read line; do
     # This is kind of fragile - we assume that the occurrences of "require" are
     # always the keyword for module loading in the original JavaScript file.
     sed -i.origin "s/require('.*\//Module\._load('/g; s/require('/Module\._load('/g" "${line}"
+    sed -i "s/Module\._load('\(controller\|oovoo_heartbeat\|logger\|permission\|Stream\)/Module\._load('webrtc_gateway\/\1/g" "${line}"
     sed -i "1 i var Module = require('module');" "${line}"
-    mv ${line} `pwd`/lib/webrtc_gateway/
-    local BASENAME=`basename ${line}`
-    sed -i "/lib\/zlib.js/a 'lib/webrtc_gateway/${BASENAME}'," node.gyp
+    mv ${line} ${CURRENT_DIR}/lib/webrtc_gateway/
+    sed -i "/lib\/zlib.js/a 'lib/webrtc_gateway/$(basename ${line})'," node.gyp
     mv "${line}.origin" "${line}" # revert to original
   done
   # The entry
-  mv `pwd`/lib/webrtc_gateway/oovoo_gateway.js `pwd`/lib/_third_party_main.js
+  mv ${CURRENT_DIR}/lib/webrtc_gateway/oovoo_gateway.js ${CURRENT_DIR}/lib/_third_party_main.js
   sed -i "s/webrtc_gateway\/oovoo_gateway\.js/_third_party_main.js/g" node.gyp
 
   local UV_OPT=
-  [[ -s ${UV_DIR}/libuv.so ]] && UV_OPT="--shared-libuv --shared-libuv-includes=${UV_DIR}/include --shared-libuv-libpath=${UV_DIR}"
+  [[ -s ${PREFIX_DIR}/lib/libuv.so ]] && UV_OPT="--shared-libuv"
+  # fix node's configure for dynamic-linking libraries
+  patch -p0 < ../node4-configure.patch
 
-  patch -p0 < ../node-configure-tcmalloc.patch
   local LIBTCMALLOC="${PREFIX_DIR}/lib/libtcmalloc_minimal.so"
   if [ -s ${LIBTCMALLOC} ]; then
+    patch -p0 < ../node4-configure-tcmalloc.patch
     cp -av ${LIBTCMALLOC}* ${WOOGEEN_DIST}/lib/
-    PKG_CONFIG_PATH=${PREFIX_DIR}/lib/pkgconfig:${PREFIX_DIR}/lib64/pkgconfig:$PKG_CONFIG_PATH ./configure --without-npm --prefix=${PREFIX_DIR} ${UV_OPT} --shared-openssl --shared-openssl-includes=${PREFIX_DIR}/include --shared-openssl-libpath=${PREFIX_DIR}/lib --shared-tcmalloc --shared-tcmalloc-libpath=${PREFIX_DIR}/lib --shared-tcmalloc-libname=tcmalloc_minimal
+    PKG_CONFIG_PATH=${PREFIX_DIR}/lib/pkgconfig:${PREFIX_DIR}/lib64/pkgconfig:${PKG_CONFIG_PATH} ./configure --without-npm --prefix=${PREFIX_DIR} ${UV_OPT} --shared-openssl --shared-tcmalloc --shared-tcmalloc-libpath=${PREFIX_DIR}/lib --shared-tcmalloc-libname=tcmalloc_minimal,dl
   else
-    PKG_CONFIG_PATH=${PREFIX_DIR}/lib/pkgconfig:${PREFIX_DIR}/lib64/pkgconfig:$PKG_CONFIG_PATH ./configure --without-npm --prefix=${PREFIX_DIR} ${UV_OPT} --shared-openssl --shared-openssl-includes=${PREFIX_DIR}/include --shared-openssl-libpath=${PREFIX_DIR}/lib
+    PKG_CONFIG_PATH=${PREFIX_DIR}/lib/pkgconfig:${PREFIX_DIR}/lib64/pkgconfig:${PKG_CONFIG_PATH} ./configure --without-npm --prefix=${PREFIX_DIR} ${UV_OPT} --shared-openssl
   fi
-  LD_LIBRARY_PATH=${PREFIX_DIR}/lib:${UV_DIR}:$LD_LIBRARY_PATH make V=
+  LD_LIBRARY_PATH=${PREFIX_DIR}/lib:${LD_LIBRARY_PATH} make V=
   make uninstall
   make install
   mkdir -p ${WOOGEEN_DIST}/sbin
   cp -av ${PREFIX_DIR}/bin/node ${WOOGEEN_DIST}/sbin/webrtc_gateway && \
   strip ${WOOGEEN_DIST}/sbin/webrtc_gateway
   make uninstall
+  popd
+  popd
 
   sed -i 's/\/gateway\//\/sbin\//g' "${WOOGEEN_DIST}/bin/daemon.sh"
   sed -i 's/node oovoo_gateway\.js/\.\/webrtc_gateway/g' "${WOOGEEN_DIST}/bin/daemon.sh"

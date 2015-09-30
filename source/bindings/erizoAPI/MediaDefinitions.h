@@ -2,6 +2,7 @@
 #define MEDIARECEIVER_H
 
 #include <node.h>
+#include <node_object_wrap.h>
 #include <MediaDefinitions.h>
 
 

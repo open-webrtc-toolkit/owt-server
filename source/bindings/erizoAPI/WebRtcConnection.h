@@ -2,9 +2,9 @@
 #define WEBRTCCONNECTION_H
 
 #include <node.h>
+#include <node_object_wrap.h>
+#include <uv.h>
 #include <WebRtcConnection.h>
-#include "MediaDefinitions.h"
-
 
 /*
  * Wrapper class of erizo::WebRtcConnection
@@ -14,7 +14,7 @@
  */
 class WebRtcConnection : public node::ObjectWrap, erizo::WebRtcConnectionEventListener, erizo::WebRtcConnectionStatsListener  {
  public:
-  static void Init(v8::Handle<v8::Object> target);
+  static void Init(v8::Handle<v8::Object> exports);
 
   erizo::WebRtcConnection *me;
   std::list<int> eventSts;
@@ -25,6 +25,7 @@ class WebRtcConnection : public node::ObjectWrap, erizo::WebRtcConnectionEventLi
  private:
   WebRtcConnection();
   ~WebRtcConnection();
+  static v8::Persistent<v8::Function> constructor;
   
   v8::Persistent<v8::Function> eventCallback_;
   v8::Persistent<v8::Function> statsCallback_;
@@ -36,49 +37,49 @@ class WebRtcConnection : public node::ObjectWrap, erizo::WebRtcConnectionEventLi
    * Constructor.
    * Constructs an empty WebRtcConnection without any configuration.
    */
-  static v8::Handle<v8::Value> New(const v8::Arguments& args);
+  static void New(const v8::FunctionCallbackInfo<v8::Value>& args);
   /*
    * Closes the webRTC connection.
    * The object cannot be used after this call.
    */
-  static v8::Handle<v8::Value> close(const v8::Arguments& args);
+  static void close(const v8::FunctionCallbackInfo<v8::Value>& args);
   /*
    * Inits the WebRtcConnection and passes the callback to get Events.
    * Returns true if the candidates are gathered.
    */
-  static v8::Handle<v8::Value> init(const v8::Arguments& args);  
+  static void init(const v8::FunctionCallbackInfo<v8::Value>& args);
   /*
    * Sets the SDP of the remote peer.
    * Param: the SDP.
    * Returns true if the SDP was received correctly.
    */
-  static v8::Handle<v8::Value> setRemoteSdp(const v8::Arguments& args);
+  static void setRemoteSdp(const v8::FunctionCallbackInfo<v8::Value>& args);
   /*
    * Obtains the local SDP.
    * Returns the SDP as a string.
    */
-  static v8::Handle<v8::Value> getLocalSdp(const v8::Arguments& args);
+  static void getLocalSdp(const v8::FunctionCallbackInfo<v8::Value>& args);
   /*
    * Sets a MediaReceiver that is going to receive Audio Data
    * Param: the MediaReceiver to send audio to.
    */
-  static v8::Handle<v8::Value> setAudioReceiver(const v8::Arguments& args);
+  static void setAudioReceiver(const v8::FunctionCallbackInfo<v8::Value>& args);
   /*
    * Sets a MediaReceiver that is going to receive Video Data
    * Param: the MediaReceiver
    */
-  static v8::Handle<v8::Value> setVideoReceiver(const v8::Arguments& args);
+  static void setVideoReceiver(const v8::FunctionCallbackInfo<v8::Value>& args);
   /*
    * Gets the current state of the Ice Connection
    * Returns the state.
    */
-  static v8::Handle<v8::Value> getCurrentState(const v8::Arguments& args);
+  static void getCurrentState(const v8::FunctionCallbackInfo<v8::Value>& args);
 
 
-  static v8::Handle<v8::Value> getStats(const v8::Arguments& args);
+  static void getStats(const v8::FunctionCallbackInfo<v8::Value>& args);
   
-  static void eventsCallback(uv_async_t *handle, int status);
-  static void statsCallback(uv_async_t *handle, int status);
+  static void eventsCallback(uv_async_t *handle);
+  static void statsCallback(uv_async_t *handle);
  
 	virtual void notifyEvent(erizo::WebRTCEvent event, const std::string& message="", bool prompt=false);
 	virtual void notifyStats(const std::string& message);
