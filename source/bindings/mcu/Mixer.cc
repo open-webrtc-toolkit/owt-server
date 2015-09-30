@@ -18,57 +18,46 @@
  * and approved by Intel in writing.
  */
 
-#ifndef BUILDING_NODE_EXTENSION
-#define BUILDING_NODE_EXTENSION
-#endif
-
 #include "Mixer.h"
-
+#include "../woogeen_base/ExternalInput.h"
+#include "../woogeen_base/Gateway.h"
 #include "../woogeen_base/NodeEventRegistry.h"
+#include "../erizoAPI/MediaDefinitions.h"
+#include "../erizoAPI/WebRtcConnection.h"
 
 using namespace v8;
 
+Persistent<Function> Mixer::constructor;
 Mixer::Mixer() {};
 Mixer::~Mixer() {};
 
-void Mixer::Init(Handle<Object> target) {
+void Mixer::Init(Handle<Object> exports) {
+  Isolate* isolate = Isolate::GetCurrent();
   // Prepare constructor template
-  Local<FunctionTemplate> tpl = FunctionTemplate::New(New);
-  tpl->SetClassName(String::NewSymbol("Mixer"));
+  Local<FunctionTemplate> tpl = FunctionTemplate::New(isolate, New);
+  tpl->SetClassName(String::NewFromUtf8(isolate, "Mixer"));
   tpl->InstanceTemplate()->SetInternalFieldCount(1);
   // Prototype
-  tpl->PrototypeTemplate()->Set(String::NewSymbol("close"),
-      FunctionTemplate::New(close)->GetFunction());
-  tpl->PrototypeTemplate()->Set(String::NewSymbol("addPublisher"),
-      FunctionTemplate::New(addPublisher)->GetFunction());
-  tpl->PrototypeTemplate()->Set(String::NewSymbol("removePublisher"),
-      FunctionTemplate::New(removePublisher)->GetFunction());
-  tpl->PrototypeTemplate()->Set(String::NewSymbol("addSubscriber"),
-      FunctionTemplate::New(addSubscriber)->GetFunction());
-  tpl->PrototypeTemplate()->Set(String::NewSymbol("removeSubscriber"),
-      FunctionTemplate::New(removeSubscriber)->GetFunction());
-  tpl->PrototypeTemplate()->Set(String::NewSymbol("subscribeStream"),
-      FunctionTemplate::New(subscribeStream)->GetFunction());
-  tpl->PrototypeTemplate()->Set(String::NewSymbol("unsubscribeStream"),
-      FunctionTemplate::New(unsubscribeStream)->GetFunction());
-  tpl->PrototypeTemplate()->Set(String::NewSymbol("addExternalPublisher"),
-      FunctionTemplate::New(addExternalPublisher)->GetFunction());
-  tpl->PrototypeTemplate()->Set(String::NewSymbol("addEventListener"),
-      FunctionTemplate::New(addEventListener)->GetFunction());
-  tpl->PrototypeTemplate()->Set(String::NewSymbol("getRegion"),
-      FunctionTemplate::New(getRegion)->GetFunction());
-  tpl->PrototypeTemplate()->Set(String::NewSymbol("setRegion"),
-      FunctionTemplate::New(setRegion)->GetFunction());
-  tpl->PrototypeTemplate()->Set(String::NewSymbol("setVideoBitrate"),
-      FunctionTemplate::New(setVideoBitrate)->GetFunction());
+  NODE_SET_PROTOTYPE_METHOD(tpl, "close", close);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "addPublisher", addPublisher);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "removePublisher", removePublisher);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "addSubscriber", addSubscriber);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "removeSubscriber", removeSubscriber);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "subscribeStream", subscribeStream);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "unsubscribeStream", unsubscribeStream);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "addExternalPublisher", addExternalPublisher);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "addEventListener", addEventListener);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "getRegion", getRegion);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "setRegion", setRegion);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "setVideoBitrate", setVideoBitrate);
 
-  Persistent<Function> constructor =
-      Persistent<Function>::New(tpl->GetFunction());
-  target->Set(String::NewSymbol("Mixer"), constructor);
+  constructor.Reset(isolate, tpl->GetFunction());
+  exports->Set(String::NewFromUtf8(isolate, "Mixer"), tpl->GetFunction());
 }
 
-Handle<Value> Mixer::New(const Arguments& args) {
-  HandleScope scope;
+void Mixer::New(const FunctionCallbackInfo<Value>& args) {
+  Isolate* isolate = Isolate::GetCurrent();
+  HandleScope scope(isolate);
 
   String::Utf8Value param(args[0]->ToString());
   std::string customParam = std::string(*param);
@@ -78,22 +67,22 @@ Handle<Value> Mixer::New(const Arguments& args) {
 
   obj->Wrap(args.This());
 
-  return args.This();
+  args.GetReturnValue().Set(args.This());
 }
 
-Handle<Value> Mixer::close(const Arguments& args) {
-  HandleScope scope;
+void Mixer::close(const FunctionCallbackInfo<Value>& args) {
+  Isolate* isolate = Isolate::GetCurrent();
+  HandleScope scope(isolate);
   Mixer* obj = ObjectWrap::Unwrap<Mixer>(args.This());
   mcu::MixerInterface* me = obj->me;
 
   me->destroyAsyncEvents();
   delete me;
-
-  return scope.Close(Null());
 }
 
-Handle<Value> Mixer::addPublisher(const Arguments& args) {
-  HandleScope scope;
+void Mixer::addPublisher(const FunctionCallbackInfo<Value>& args) {
+  Isolate* isolate = Isolate::GetCurrent();
+  HandleScope scope(isolate);
 
   Mixer* obj = ObjectWrap::Unwrap<Mixer>(args.This());
   mcu::MixerInterface* me = obj->me;
@@ -110,11 +99,12 @@ Handle<Value> Mixer::addPublisher(const Arguments& args) {
 
   bool added = me->addPublisher(wr, clientId, videoResolution);
 
-  return scope.Close(Boolean::New(added));
+  args.GetReturnValue().Set(Boolean::New(isolate, added));
 }
 
-Handle<Value> Mixer::addExternalPublisher(const Arguments& args) {
-  HandleScope scope;
+void Mixer::addExternalPublisher(const FunctionCallbackInfo<Value>& args) {
+  Isolate* isolate = Isolate::GetCurrent();
+  HandleScope scope(isolate);
 
   Mixer* obj = ObjectWrap::Unwrap<Mixer>(args.This());
   mcu::MixerInterface* me = obj->me;
@@ -127,11 +117,12 @@ Handle<Value> Mixer::addExternalPublisher(const Arguments& args) {
 
   bool added = me->addPublisher(wr, clientId);
 
-  return scope.Close(Boolean::New(added));
+  args.GetReturnValue().Set(Boolean::New(isolate, added));
 }
 
-Handle<Value> Mixer::removePublisher(const Arguments& args) {
-  HandleScope scope;
+void Mixer::removePublisher(const FunctionCallbackInfo<Value>& args) {
+  Isolate* isolate = Isolate::GetCurrent();
+  HandleScope scope(isolate);
 
   Mixer* obj = ObjectWrap::Unwrap<Mixer>(args.This());
   mcu::MixerInterface* me = obj->me;
@@ -139,12 +130,11 @@ Handle<Value> Mixer::removePublisher(const Arguments& args) {
   std::string id = std::string(*param);
 
   me->removePublisher(id);
-
-  return scope.Close(Null());
 }
 
-Handle<Value> Mixer::addSubscriber(const Arguments& args) {
-  HandleScope scope;
+void Mixer::addSubscriber(const FunctionCallbackInfo<Value>& args) {
+  Isolate* isolate = Isolate::GetCurrent();
+  HandleScope scope(isolate);
 
   Mixer* obj = ObjectWrap::Unwrap<Mixer>(args.This());
   mcu::MixerInterface* me = obj->me;
@@ -161,12 +151,11 @@ Handle<Value> Mixer::addSubscriber(const Arguments& args) {
     options = std::string(*param);
   }
   me->addSubscriber(wr, peerId, options);
-
-  return scope.Close(Null());
 }
 
-Handle<Value> Mixer::removeSubscriber(const Arguments& args) {
-  HandleScope scope;
+void Mixer::removeSubscriber(const FunctionCallbackInfo<Value>& args) {
+  Isolate* isolate = Isolate::GetCurrent();
+  HandleScope scope(isolate);
 
   Mixer* obj = ObjectWrap::Unwrap<Mixer>(args.This());
   mcu::MixerInterface* me = obj->me;
@@ -177,12 +166,11 @@ Handle<Value> Mixer::removeSubscriber(const Arguments& args) {
   // convert it to string
   std::string peerId = std::string(*param);
   me->removeSubscriber(peerId);
-
-  return scope.Close(Null());
 }
 
-Handle<Value> Mixer::subscribeStream(const Arguments& args) {
-  HandleScope scope;
+void Mixer::subscribeStream(const FunctionCallbackInfo<Value>& args) {
+  Isolate* isolate = Isolate::GetCurrent();
+  HandleScope scope(isolate);
 
   Mixer* obj = ObjectWrap::Unwrap<Mixer>(args.This());
   mcu::MixerInterface* me = obj->me;
@@ -191,12 +179,11 @@ Handle<Value> Mixer::subscribeStream(const Arguments& args) {
   std::string peerId = std::string(*param);
   bool isAudio = args[1]->BooleanValue();
   me->subscribeStream(peerId, isAudio);
-
-  return scope.Close(Null());
 }
 
-Handle<Value> Mixer::unsubscribeStream(const Arguments& args) {
-  HandleScope scope;
+void Mixer::unsubscribeStream(const FunctionCallbackInfo<Value>& args) {
+  Isolate* isolate = Isolate::GetCurrent();
+  HandleScope scope(isolate);
 
   Mixer* obj = ObjectWrap::Unwrap<Mixer>(args.This());
   mcu::MixerInterface* me = obj->me;
@@ -205,30 +192,28 @@ Handle<Value> Mixer::unsubscribeStream(const Arguments& args) {
   std::string peerId = std::string(*param);
   bool isAudio = args[1]->BooleanValue();
   me->unsubscribeStream(peerId, isAudio);
-
-  return scope.Close(Null());
 }
 
-Handle<Value> Mixer::addEventListener(const Arguments& args) {
-  HandleScope scope;
+void Mixer::addEventListener(const FunctionCallbackInfo<Value>& args) {
+  Isolate* isolate = Isolate::GetCurrent();
+  HandleScope scope(isolate);
   if (args.Length() < 2 || !args[0]->IsString() || !args[1]->IsFunction()) {
-    return ThrowException(Exception::TypeError(String::New("Wrong arguments")));
+    isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Wrong arguments")));
+    return;
   }
   // setup node event listener
   v8::String::Utf8Value str(args[0]->ToString());
   std::string key = std::string(*str);
-  Persistent<Function> cb = Persistent<Function>::New(Local<Function>::Cast(args[1]));
-  NodeEventRegistry* registry = new NodeEventRegistry(cb);
+  NodeEventRegistry* registry = new NodeEventRegistry(Local<Function>::Cast(args[1]));
   // setup notification in core
   Mixer* obj = ObjectWrap::Unwrap<Mixer>(args.This());
   mcu::MixerInterface* me = obj->me;
   me->setupAsyncEvent(key, registry);
-
-  return scope.Close(Undefined());
 }
 
-Handle<Value> Mixer::getRegion(const Arguments& args) {
-  HandleScope scope;
+void Mixer::getRegion(const FunctionCallbackInfo<Value>& args) {
+  Isolate* isolate = Isolate::GetCurrent();
+  HandleScope scope(isolate);
 
   Mixer* obj = ObjectWrap::Unwrap<Mixer>(args.This());
   mcu::MixerInterface* me = obj->me;
@@ -238,11 +223,12 @@ Handle<Value> Mixer::getRegion(const Arguments& args) {
 
   std::string region = me->getRegion(id);
 
-  return scope.Close(String::New(region.c_str()));
+  args.GetReturnValue().Set(String::NewFromUtf8(isolate, region.c_str()));
 }
 
-Handle<Value> Mixer::setRegion(const Arguments& args) {
-  HandleScope scope;
+void Mixer::setRegion(const FunctionCallbackInfo<Value>& args) {
+  Isolate* isolate = Isolate::GetCurrent();
+  HandleScope scope(isolate);
 
   Mixer* obj = ObjectWrap::Unwrap<Mixer>(args.This());
   mcu::MixerInterface* me = obj->me;
@@ -254,11 +240,12 @@ Handle<Value> Mixer::setRegion(const Arguments& args) {
 
   bool ret = me->setRegion(id, region);
 
-  return scope.Close(Boolean::New(ret));
+  args.GetReturnValue().Set(Boolean::New(isolate, ret));
 }
 
-Handle<Value> Mixer::setVideoBitrate(const Arguments& args) {
-  HandleScope scope;
+void Mixer::setVideoBitrate(const FunctionCallbackInfo<Value>& args) {
+  Isolate* isolate = Isolate::GetCurrent();
+  HandleScope scope(isolate);
 
   Mixer* obj = ObjectWrap::Unwrap<Mixer>(args.This());
   mcu::MixerInterface* me = obj->me;
@@ -269,5 +256,5 @@ Handle<Value> Mixer::setVideoBitrate(const Arguments& args) {
 
   bool ret = me->setVideoBitrate(id, bitrate);
 
-  return scope.Close(Boolean::New(ret));
+  args.GetReturnValue().Set(Boolean::New(isolate, ret));
 }

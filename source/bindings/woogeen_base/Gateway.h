@@ -21,13 +21,9 @@
 #ifndef GATEWAY_H
 #define GATEWAY_H
 
-#include "ExternalInput.h"
-#include "../erizoAPI/MediaDefinitions.h"
-#include "../erizoAPI/WebRtcConnection.h"
-
 #include <Gateway.h>
 #include <node.h>
-#include <string>
+#include <node_object_wrap.h>
 
 /*
  * Wrapper class of woogeen_base::Gateway
@@ -39,72 +35,73 @@
  */
 class Gateway : public node::ObjectWrap {
  public:
-  static void Init(v8::Handle<v8::Object> target);
+  static void Init(v8::Handle<v8::Object> exports);
   woogeen_base::Gateway* me;
 
  private:
   Gateway();
   ~Gateway();
+  static v8::Persistent<v8::Function> constructor;
 
   /*
    * Constructor.
    * Constructs a Gateway
    */
-  static v8::Handle<v8::Value> New(const v8::Arguments& args);
+  static void New(const v8::FunctionCallbackInfo<v8::Value>& args);
   /*
    * Closes the Gateway.
    * The object cannot be used after this call
    */
-  static v8::Handle<v8::Value> close(const v8::Arguments& args);
+  static void close(const v8::FunctionCallbackInfo<v8::Value>& args);
   /*
    * Adds a Publisher
    * Param: the WebRtcConnection of the Publisher
    */
-  static v8::Handle<v8::Value> addPublisher(const v8::Arguments& args);
+  static void addPublisher(const v8::FunctionCallbackInfo<v8::Value>& args);
   /*
    * Removes a Publisher
    */
-  static v8::Handle<v8::Value> removePublisher(const v8::Arguments& args);
+  static void removePublisher(const v8::FunctionCallbackInfo<v8::Value>& args);
   /*
    * Adds a subscriber
    * Param1: the WebRtcConnection of the subscriber
    * Param2: an unique Id for the subscriber
    */
-  static v8::Handle<v8::Value> addSubscriber(const v8::Arguments& args);
+  static void addSubscriber(const v8::FunctionCallbackInfo<v8::Value>& args);
   /*
    * Removes a subscriber given its peer id
    * Param: the peerId
    */
-  static v8::Handle<v8::Value> removeSubscriber(const v8::Arguments& args);
+  static void removeSubscriber(const v8::FunctionCallbackInfo<v8::Value>& args);
   /*
    * Adds an External Publisher
    * Param: the ExternalInput of the Publisher
    */
-  static v8::Handle<v8::Value> addExternalPublisher(const v8::Arguments& args);
+  static void addExternalPublisher(const v8::FunctionCallbackInfo<v8::Value>& args);
 
   /*
    * add Event Listener
    */
-  static v8::Handle<v8::Value> addEventListener(const v8::Arguments& args);
+  static void addEventListener(const v8::FunctionCallbackInfo<v8::Value>& args);
   /*
    * pass custom message
    */
-  static v8::Handle<v8::Value> customMessage(const v8::Arguments& args);
+  static void customMessage(const v8::FunctionCallbackInfo<v8::Value>& args);
   /*
    * Gets the gateway statistics
    */
-  static v8::Handle<v8::Value> retrieveStatistics(const v8::Arguments& args);
+  static void retrieveStatistics(const v8::FunctionCallbackInfo<v8::Value>& args);
 
   /*
    * Start/stop subscribing video or audio
    */
-  static v8::Handle<v8::Value> subscribeStream(const v8::Arguments& args);
-  static v8::Handle<v8::Value> unsubscribeStream(const v8::Arguments& args);
+  static void subscribeStream(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void unsubscribeStream(const v8::FunctionCallbackInfo<v8::Value>& args);
   /*
    * Start/stop publishing video or audio
    */
-  static v8::Handle<v8::Value> publishStream(const v8::Arguments& args);
-  static v8::Handle<v8::Value> unpublishStream(const v8::Arguments& args);
+  static void publishStream(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void unpublishStream(const v8::FunctionCallbackInfo<v8::Value>& args);
 };
 
 #endif
