@@ -18,6 +18,10 @@
  * and approved by Intel in writing.
  */
 
+#ifndef BUILDING_NODE_EXTENSION
+#define BUILDING_NODE_EXTENSION
+#endif
+
 #include "ExternalOutput.h"
 
 #include "../woogeen_base/Gateway.h"
@@ -28,28 +32,25 @@
 
 using namespace v8;
 
-Persistent<Function> ExternalOutput::constructor;
 ExternalOutput::ExternalOutput() {};
 ExternalOutput::~ExternalOutput() {};
 
-void ExternalOutput::Init(Handle<Object> exports) {
-  Isolate* isolate = Isolate::GetCurrent();
+void ExternalOutput::Init(Handle<Object> target) {
   // Prepare constructor template
-  Local<FunctionTemplate> tpl = FunctionTemplate::New(isolate, New);
-  tpl->SetClassName(String::NewFromUtf8(isolate, "ExternalOutput"));
+  Local<FunctionTemplate> tpl = FunctionTemplate::New(New);
+  tpl->SetClassName(String::NewSymbol("ExternalOutput"));
   tpl->InstanceTemplate()->SetInternalFieldCount(1);
   // Prototype
-  NODE_SET_PROTOTYPE_METHOD(tpl, "close", close);
-  NODE_SET_PROTOTYPE_METHOD(tpl, "setMediaSource", setMediaSource);
-  NODE_SET_PROTOTYPE_METHOD(tpl, "unsetMediaSource", unsetMediaSource);
+  tpl->PrototypeTemplate()->Set(String::NewSymbol("close"), FunctionTemplate::New(close)->GetFunction());
+  tpl->PrototypeTemplate()->Set(String::NewSymbol("setMediaSource"), FunctionTemplate::New(setMediaSource)->GetFunction());
+  tpl->PrototypeTemplate()->Set(String::NewSymbol("unsetMediaSource"), FunctionTemplate::New(unsetMediaSource)->GetFunction());
 
-  constructor.Reset(isolate, tpl->GetFunction());
-  exports->Set(String::NewFromUtf8(isolate, "ExternalOutput"), tpl->GetFunction());
+  Persistent<Function> constructor = Persistent<Function>::New(tpl->GetFunction());
+  target->Set(String::NewSymbol("ExternalOutput"), constructor);
 }
 
-void ExternalOutput::New(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = Isolate::GetCurrent();
-  HandleScope scope(isolate);
+Handle<Value> ExternalOutput::New(const Arguments& args) {
+  HandleScope scope;
 
   v8::String::Utf8Value param(args[0]->ToString());
   std::string configParam = std::string(*param);
@@ -59,19 +60,19 @@ void ExternalOutput::New(const FunctionCallbackInfo<Value>& args) {
 
   obj->Wrap(args.This());
 
-  args.GetReturnValue().Set(args.This());
+  return args.This();
 }
 
-void ExternalOutput::close(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = Isolate::GetCurrent();
-  HandleScope scope(isolate);
+Handle<Value> ExternalOutput::close(const Arguments& args) {
+  HandleScope scope;
 
   // FIXME: Possibly, some closing events can be added here.
+
+  return scope.Close(Null());
 }
 
-void ExternalOutput::setMediaSource(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = Isolate::GetCurrent();
-  HandleScope scope(isolate);
+Handle<Value> ExternalOutput::setMediaSource(const Arguments& args) {
+  HandleScope scope;
 
   ExternalOutput* obj = ObjectWrap::Unwrap<ExternalOutput>(args.This());
   woogeen_base::MediaMuxer* me = (woogeen_base::MediaMuxer*)obj->me;
@@ -96,15 +97,17 @@ void ExternalOutput::setMediaSource(const FunctionCallbackInfo<Value>& args) {
 
   NodeEventRegistry* callback = nullptr;
   if (args.Length() > 2 && args[2]->IsFunction()) {
-    callback = new NodeEventRegistry(Local<Function>::Cast(args[2]));
+    Persistent<Function> cb = Persistent<Function>::New(Local<Function>::Cast(args[2]));
+    callback = new NodeEventRegistry(cb);
   }
 
   me->setMediaSource(videoSource->getVideoFrameProvider(), audioSource->getAudioFrameProvider(), callback);
+
+  return scope.Close(Null());
 }
 
-void ExternalOutput::unsetMediaSource(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = Isolate::GetCurrent();
-  HandleScope scope(isolate);
+Handle<Value> ExternalOutput::unsetMediaSource(const Arguments& args) {
+  HandleScope scope;
 
   ExternalOutput* obj = ObjectWrap::Unwrap<ExternalOutput>(args.This());
   woogeen_base::MediaMuxer* me = obj->me;
@@ -119,5 +122,5 @@ void ExternalOutput::unsetMediaSource(const FunctionCallbackInfo<Value>& args) {
     succeeded = woogeen_base::MediaMuxer::recycleMediaMuxerInstance(outputId);
   }
 
-  args.GetReturnValue().Set(Boolean::New(isolate, succeeded));
+  return scope.Close(Boolean::New(succeeded));
 }

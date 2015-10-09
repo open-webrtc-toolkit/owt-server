@@ -183,17 +183,16 @@ install_webrtc(){
 }
 
 install_libuv() {
-  local UV_VERSION="1.7.4"
+  local UV_VERSION="0.10.36"
   local UV_SRC="https://github.com/libuv/libuv/archive/v${UV_VERSION}.tar.gz"
   local UV_DST="libuv-${UV_VERSION}.tar.gz"
-  mkdir -p ${LIB_DIR}
-  pushd ${LIB_DIR}
+  cd $ROOT/third_party
   [[ ! -s ${UV_DST} ]] && wget -c ${UV_SRC} -O ${UV_DST}
   tar xf ${UV_DST}
-  pushd libuv-${UV_VERSION}
-  ./autogen.sh && ./configure --prefix=${PREFIX_DIR} && make && make install
-  popd
-  popd
+  cd libuv-${UV_VERSION} && make
+  local symbol=$(readelf -d ./libuv.so | grep soname | sed 's/.*\[\(.*\)\]/\1/g')
+  ln -s libuv.so ${symbol}
+  cd .. && rm -f libuv && ln -s libuv-${UV_VERSION} libuv
 }
 
 install_oovoosdk(){

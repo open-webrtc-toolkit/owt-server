@@ -14,9 +14,10 @@ set(WOOGEEN_BASE_VERSION_MINOR 1)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility=hidden -fPIC")
 
 set(LIB_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/../../../build/libdeps/build/lib/")
+set(UV_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/../../../third_party/libuv")
 set(WEBRTC_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/../../../third_party/webrtc")
 
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}" "${LIB_DIRS}../include/" "${WEBRTC_DIRS}/src")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}" "${LIB_DIRS}../include/" "${UV_DIRS}/include/" "${WEBRTC_DIRS}/src")
 
 add_definitions(-DWEBRTC_POSIX -DWEBRTC_LINUX)
 
@@ -35,7 +36,7 @@ find_library(WEBRTC webrtc HINTS "${WEBRTC_DIRS}")
 test_lib(${WEBRTC})
 
 # libuv
-find_library(LIBUV uv HINTS "${LIB_DIRS}")
+find_library(LIBUV uv HINTS "${UV_DIRS}/")
 test_lib(${LIBUV})
 
 # LIBAV

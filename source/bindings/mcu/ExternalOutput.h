@@ -21,9 +21,8 @@
 #ifndef EXTERNALOUTPUT_H
 #define EXTERNALOUTPUT_H
 
-#include <MediaMuxer.h>
 #include <node.h>
-#include <node_object_wrap.h>
+#include <MediaMuxer.h>
 
 /*
  * Wrapper class of woogeen_base::MediaMuxer
@@ -31,36 +30,35 @@
  */
 class ExternalOutput : public node::ObjectWrap {
  public:
-  static void Init(v8::Handle<v8::Object> exports);
+  static void Init(v8::Handle<v8::Object> target);
   woogeen_base::MediaMuxer* me;
 
  private:
   ExternalOutput();
   ~ExternalOutput();
-  static v8::Persistent<v8::Function> constructor;
 
   /*
    * Constructor.
    * Constructs an ExternalOutput
    */
-  static void New(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static v8::Handle<v8::Value> New(const v8::Arguments& args);
   /*
    * Closes the ExternalOutput.
    * The object cannot be used after this call
    */
-  static void close(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static v8::Handle<v8::Value> close(const v8::Arguments& args);
 
   /*
    * Sets MediaSources that provide both video and audio frames
    * Param: the Gateway/Mixer to provide frames.
    */
-  static void setMediaSource(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static v8::Handle<v8::Value> setMediaSource(const v8::Arguments& args);
 
   /*
    * Unset MediaSource that provide both video and audio frames
    * Param: the MediaMuxer to unset, and the flag of recycle
    */
-  static void unsetMediaSource(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static v8::Handle<v8::Value> unsetMediaSource(const v8::Arguments& args);
 };
 
 #endif
