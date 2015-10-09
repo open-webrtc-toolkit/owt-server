@@ -1,0 +1,67 @@
+--- configure.orig	2015-04-08 08:49:39.644033932 +0800
++++ configure	2015-04-08 08:58:42.552027068 +0800
+@@ -142,6 +142,26 @@
+     dest="shared_zlib_libname",
+     help="Alternative lib name to link to (default: 'z')")
+ 
++parser.add_option("--shared-tcmalloc",
++    action="store_true",
++    dest="shared_tcmalloc",
++    help="Link to a shared tcmalloc DLL")
++
++parser.add_option("--shared-tcmalloc-includes",
++    action="store",
++    dest="shared_tcmalloc_includes",
++    help="Directory containing tcmalloc header files")
++
++parser.add_option("--shared-tcmalloc-libpath",
++    action="store",
++    dest="shared_tcmalloc_libpath",
++    help="A directory to search for the shared tcmalloc DLL")
++
++parser.add_option("--shared-tcmalloc-libname",
++    action="store",
++    dest="shared_tcmalloc_libname",
++    help="Alternative lib name to link to (default: 'tcmalloc')")
++
+ parser.add_option("--shared-http-parser",
+     action="store_true",
+     dest="shared_http_parser",
+@@ -559,6 +579,20 @@
+     o['include_dirs'] += [options.shared_zlib_includes]
+ 
+ 
++def configure_libtcmalloc(o):
++  o['variables']['node_shared_tcmalloc'] = b(options.shared_tcmalloc)
++
++  # assume shared_tcmalloc if one of these is set?
++  if options.shared_tcmalloc_libpath:
++    o['libraries'] += ['-L%s' % options.shared_tcmalloc_libpath]
++  if options.shared_tcmalloc_libname:
++    o['libraries'] += ['-l%s' % options.shared_tcmalloc_libname]
++  elif options.shared_tcmalloc:
++    o['libraries'] += ['-ltcmalloc']
++  if options.shared_tcmalloc_includes:
++    o['include_dirs'] += [options.shared_tcmalloc_includes]
++
++
+ def configure_http_parser(o):
+     o['variables']['node_shared_http_parser'] = b(options.shared_http_parser)
+ 
+@@ -680,6 +714,7 @@
+ 
+ configure_node(output)
+ configure_libz(output)
++configure_libtcmalloc(output)
+ configure_http_parser(output)
+ configure_cares(output)
+ configure_libuv(output)
+@@ -687,6 +722,8 @@
+ configure_openssl(output)
+ configure_winsdk(output)
+ 
++output['libraries'] += ['-ldl']
++
+ # variables should be a root level element,
+ # move everything else to target_defaults
+ variables = output['variables']

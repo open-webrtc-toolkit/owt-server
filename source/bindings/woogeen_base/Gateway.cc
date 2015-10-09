@@ -18,47 +18,60 @@
  * and approved by Intel in writing.
  */
 
+#ifndef BUILDING_NODE_EXTENSION
+#define BUILDING_NODE_EXTENSION
+#endif
+
 #include "Gateway.h"
 
 #include "NodeEventRegistry.h"
-#include "ExternalInput.h"
-#include "../erizoAPI/MediaDefinitions.h"
-#include "../erizoAPI/WebRtcConnection.h"
 
 using namespace v8;
 
-Persistent<Function> Gateway::constructor;
 Gateway::Gateway() {};
 Gateway::~Gateway() {};
 
-void Gateway::Init(Handle<Object> exports) {
-  Isolate* isolate = Isolate::GetCurrent();
+void Gateway::Init(Handle<Object> target) {
   // Prepare constructor template
-  Local<FunctionTemplate> tpl = FunctionTemplate::New(isolate, New);
-  tpl->SetClassName(String::NewFromUtf8(isolate, "Gateway"));
+  Local<FunctionTemplate> tpl = FunctionTemplate::New(New);
+  tpl->SetClassName(String::NewSymbol("Gateway"));
   tpl->InstanceTemplate()->SetInternalFieldCount(1);
   // Prototype
-  NODE_SET_PROTOTYPE_METHOD(tpl, "close", close);
-  NODE_SET_PROTOTYPE_METHOD(tpl, "addPublisher", addPublisher);
-  NODE_SET_PROTOTYPE_METHOD(tpl, "removePublisher", removePublisher);
-  NODE_SET_PROTOTYPE_METHOD(tpl, "addSubscriber", addSubscriber);
-  NODE_SET_PROTOTYPE_METHOD(tpl, "removeSubscriber", removeSubscriber);
-  NODE_SET_PROTOTYPE_METHOD(tpl, "addExternalPublisher", addExternalPublisher);
-  NODE_SET_PROTOTYPE_METHOD(tpl, "addEventListener", addEventListener);
-  NODE_SET_PROTOTYPE_METHOD(tpl, "customMessage", customMessage);
-  NODE_SET_PROTOTYPE_METHOD(tpl, "retrieveStatistics", retrieveStatistics);
-  NODE_SET_PROTOTYPE_METHOD(tpl, "subscribeStream", subscribeStream);
-  NODE_SET_PROTOTYPE_METHOD(tpl, "unsubscribeStream", unsubscribeStream);
-  NODE_SET_PROTOTYPE_METHOD(tpl, "publishStream", publishStream);
-  NODE_SET_PROTOTYPE_METHOD(tpl, "unpublishStream", unpublishStream);
+  tpl->PrototypeTemplate()->Set(String::NewSymbol("close"),
+      FunctionTemplate::New(close)->GetFunction());
+  tpl->PrototypeTemplate()->Set(String::NewSymbol("addPublisher"),
+      FunctionTemplate::New(addPublisher)->GetFunction());
+  tpl->PrototypeTemplate()->Set(String::NewSymbol("removePublisher"),
+      FunctionTemplate::New(removePublisher)->GetFunction());
+  tpl->PrototypeTemplate()->Set(String::NewSymbol("addSubscriber"),
+      FunctionTemplate::New(addSubscriber)->GetFunction());
+  tpl->PrototypeTemplate()->Set(String::NewSymbol("removeSubscriber"),
+      FunctionTemplate::New(removeSubscriber)->GetFunction());
+  tpl->PrototypeTemplate()->Set(String::NewSymbol("addExternalPublisher"),
+      FunctionTemplate::New(addExternalPublisher)->GetFunction());
+  tpl->PrototypeTemplate()->Set(String::NewSymbol("addEventListener"),
+      FunctionTemplate::New(addEventListener)->GetFunction());
+  tpl->PrototypeTemplate()->Set(String::NewSymbol("customMessage"),
+      FunctionTemplate::New(customMessage)->GetFunction());
+  tpl->PrototypeTemplate()->Set(String::NewSymbol("retrieveStatistics"),
+      FunctionTemplate::New(retrieveStatistics)->GetFunction());
 
-  constructor.Reset(isolate, tpl->GetFunction());
-  exports->Set(String::NewFromUtf8(isolate, "Gateway"), tpl->GetFunction());
+  tpl->PrototypeTemplate()->Set(String::NewSymbol("subscribeStream"),
+      FunctionTemplate::New(subscribeStream)->GetFunction());
+  tpl->PrototypeTemplate()->Set(String::NewSymbol("unsubscribeStream"),
+      FunctionTemplate::New(unsubscribeStream)->GetFunction());
+  tpl->PrototypeTemplate()->Set(String::NewSymbol("publishStream"),
+      FunctionTemplate::New(publishStream)->GetFunction());
+  tpl->PrototypeTemplate()->Set(String::NewSymbol("unpublishStream"),
+      FunctionTemplate::New(unpublishStream)->GetFunction());
+
+  Persistent<Function> constructor =
+      Persistent<Function>::New(tpl->GetFunction());
+  target->Set(String::NewSymbol("Gateway"), constructor);
 }
 
-void Gateway::New(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = Isolate::GetCurrent();
-  HandleScope scope(isolate);
+Handle<Value> Gateway::New(const Arguments& args) {
+  HandleScope scope;
 
   String::Utf8Value param(args[0]->ToString());
   std::string customParam = std::string(*param);
@@ -68,24 +81,24 @@ void Gateway::New(const FunctionCallbackInfo<Value>& args) {
 
   obj->Wrap(args.This());
 
-  args.GetReturnValue().Set(args.This());
+  return args.This();
 }
 
-void Gateway::close(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = Isolate::GetCurrent();
-  HandleScope scope(isolate);
-  Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.Holder());
+Handle<Value> Gateway::close(const Arguments& args) {
+  HandleScope scope;
+  Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.This());
   woogeen_base::Gateway* me = obj->me;
 
   me->destroyAsyncEvents();
   delete me;
+
+  return scope.Close(Null());
 }
 
-void Gateway::addPublisher(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = Isolate::GetCurrent();
-  HandleScope scope(isolate);
+Handle<Value> Gateway::addPublisher(const Arguments& args) {
+  HandleScope scope;
 
-  Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.Holder());
+  Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.This());
   woogeen_base::Gateway* me = obj->me;
 
   WebRtcConnection* param0 =
@@ -100,14 +113,13 @@ void Gateway::addPublisher(const FunctionCallbackInfo<Value>& args) {
 
   bool added = me->addPublisher(wr, clientId, videoResolution);
 
-  args.GetReturnValue().Set(Boolean::New(isolate, added));
+  return scope.Close(Boolean::New(added));
 }
 
-void Gateway::addExternalPublisher(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = Isolate::GetCurrent();
-  HandleScope scope(isolate);
+Handle<Value> Gateway::addExternalPublisher(const Arguments& args) {
+  HandleScope scope;
 
-  Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.Holder());
+  Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.This());
   woogeen_base::Gateway* me = obj->me;
 
   ExternalInput* param = ObjectWrap::Unwrap<ExternalInput>(args[0]->ToObject());
@@ -118,26 +130,26 @@ void Gateway::addExternalPublisher(const FunctionCallbackInfo<Value>& args) {
 
   bool added = me->addPublisher(wr, clientId);
 
-  args.GetReturnValue().Set(Boolean::New(isolate, added));
+  return scope.Close(Boolean::New(added));
 }
 
-void Gateway::removePublisher(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = Isolate::GetCurrent();
-  HandleScope scope(isolate);
+Handle<Value> Gateway::removePublisher(const Arguments& args) {
+  HandleScope scope;
 
-  Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.Holder());
+  Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.This());
   woogeen_base::Gateway* me = obj->me;
   String::Utf8Value param(args[0]->ToString());
   std::string id = std::string(*param);
 
   me->removePublisher(id);
+
+  return scope.Close(Null());
 }
 
-void Gateway::addSubscriber(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = Isolate::GetCurrent();
-  HandleScope scope(isolate);
+Handle<Value> Gateway::addSubscriber(const Arguments& args) {
+  HandleScope scope;
 
-  Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.Holder());
+  Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.This());
   woogeen_base::Gateway* me = obj->me;
 
   WebRtcConnection* param =
@@ -150,13 +162,14 @@ void Gateway::addSubscriber(const FunctionCallbackInfo<Value>& args) {
   // convert it to string
   std::string peerId = std::string(*param1);
   me->addSubscriber(wr, peerId, "");
+
+  return scope.Close(Null());
 }
 
-void Gateway::removeSubscriber(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = Isolate::GetCurrent();
-  HandleScope scope(isolate);
+Handle<Value> Gateway::removeSubscriber(const Arguments& args) {
+  HandleScope scope;
 
-  Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.Holder());
+  Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.This());
   woogeen_base::Gateway* me = obj->me;
 
   // get the param
@@ -165,93 +178,95 @@ void Gateway::removeSubscriber(const FunctionCallbackInfo<Value>& args) {
   // convert it to string
   std::string peerId = std::string(*param);
   me->removeSubscriber(peerId);
+
+  return scope.Close(Null());
 }
 
-void Gateway::addEventListener(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = Isolate::GetCurrent();
-  HandleScope scope(isolate);
+Handle<Value> Gateway::addEventListener(const Arguments& args) {
+  HandleScope scope;
   if (args.Length() < 2 || !args[0]->IsString() || !args[1]->IsFunction()) {
-    isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Wrong arguments")));
-    return;
+    return ThrowException(Exception::TypeError(String::New("Wrong arguments")));
   }
 
   // setup node event listener
   v8::String::Utf8Value str(args[0]->ToString());
   std::string key = std::string(*str);
-  NodeEventRegistry* registry = new NodeEventRegistry(Local<Function>::Cast(args[1]));
+  Persistent<Function> cb = Persistent<Function>::New(Local<Function>::Cast(args[1]));
+  NodeEventRegistry* registry = new NodeEventRegistry(cb);
   // setup notification in core
-  Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.Holder());
+  Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.This());
   woogeen_base::Gateway* me = obj->me;
   me->setupAsyncEvent(key, registry);
+
+  return scope.Close(Undefined());
 }
 
-void Gateway::customMessage(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = Isolate::GetCurrent();
-  HandleScope scope(isolate);
+Handle<Value> Gateway::customMessage(const Arguments& args) {
+  HandleScope scope;
   if (args.Length() < 1 || !args[0]->IsString() ) {
-    isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Wrong arguments")));
-    return;
+    return ThrowException(Exception::TypeError(String::New("Wrong arguments")));
   }
 
-  Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.Holder());
+  Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.This());
   woogeen_base::Gateway* me = obj->me;
   v8::String::Utf8Value str(args[0]->ToString());
   std::string message = std::string(*str);
   me->customMessage(message);
+
+  return scope.Close(Undefined());
 }
 
-void Gateway::retrieveStatistics(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = Isolate::GetCurrent();
-  HandleScope scope(isolate);
+Handle<Value> Gateway::retrieveStatistics(const Arguments& args) {
+  HandleScope scope;
 
-  Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.Holder());
+  Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.This());
   woogeen_base::Gateway *me = obj->me;
 
   std::string stats = me->retrieveStatistics();
 
-  args.GetReturnValue().Set(String::NewFromUtf8(isolate, stats.c_str()));
+  return scope.Close(String::NewSymbol(stats.c_str()));
 }
 
-void Gateway::subscribeStream(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = Isolate::GetCurrent();
-  HandleScope scope(isolate);
-  Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.Holder());
+Handle<Value> Gateway::subscribeStream(const Arguments& args) {
+  HandleScope scope;
+  Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.This());
   woogeen_base::Gateway* me = obj->me;
   v8::String::Utf8Value param(args[0]->ToString());
   std::string id = std::string(*param);
   bool isAudio = args[1]->BooleanValue();
   me->subscribeStream(id, isAudio);
+  return scope.Close(Undefined());
 }
 
-void Gateway::unsubscribeStream(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = Isolate::GetCurrent();
-  HandleScope scope(isolate);
-  Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.Holder());
+Handle<Value> Gateway::unsubscribeStream(const Arguments& args) {
+  HandleScope scope;
+  Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.This());
   woogeen_base::Gateway* me = obj->me;
   v8::String::Utf8Value param(args[0]->ToString());
   std::string id = std::string(*param);
   bool isAudio = args[1]->BooleanValue();
   me->unsubscribeStream(id, isAudio);
+  return scope.Close(Undefined());
 }
 
-void Gateway::publishStream(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = Isolate::GetCurrent();
-  HandleScope scope(isolate);
-  Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.Holder());
+Handle<Value> Gateway::publishStream(const Arguments& args) {
+  HandleScope scope;
+  Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.This());
   woogeen_base::Gateway* me = obj->me;
   v8::String::Utf8Value param(args[0]->ToString());
   std::string id = std::string(*param);
   bool isAudio = args[1]->BooleanValue();
   me->publishStream(id, isAudio);
+  return scope.Close(Undefined());
 }
 
-void Gateway::unpublishStream(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = Isolate::GetCurrent();
-  HandleScope scope(isolate);
-  Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.Holder());
+Handle<Value> Gateway::unpublishStream(const Arguments& args) {
+  HandleScope scope;
+  Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.This());
   woogeen_base::Gateway* me = obj->me;
   v8::String::Utf8Value param(args[0]->ToString());
   std::string id = std::string(*param);
   bool isAudio = args[1]->BooleanValue();
   me->unpublishStream(id, isAudio);
+  return scope.Close(Undefined());
 }

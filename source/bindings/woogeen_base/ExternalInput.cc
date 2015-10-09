@@ -1,46 +1,45 @@
+#ifndef BUILDING_NODE_EXTENSION
+#define BUILDING_NODE_EXTENSION
+#endif
+#include <node.h>
 #include "ExternalInput.h"
-#include "../erizoAPI/MediaDefinitions.h"
 
 using namespace v8;
 
-Persistent<Function> ExternalInput::constructor;
 ExternalInput::ExternalInput() {};
 ExternalInput::~ExternalInput() {};
 
-void ExternalInput::Init(Handle<Object> exports) {
-  Isolate* isolate = Isolate::GetCurrent();
+void ExternalInput::Init(Handle<Object> target) {
   // Prepare constructor template
-  Local<FunctionTemplate> tpl = FunctionTemplate::New(isolate, New);
-  tpl->SetClassName(String::NewFromUtf8(isolate, "ExternalInput"));
+  Local<FunctionTemplate> tpl = FunctionTemplate::New(New);
+  tpl->SetClassName(String::NewSymbol("ExternalInput"));
   tpl->InstanceTemplate()->SetInternalFieldCount(1);
   // Prototype
-  NODE_SET_PROTOTYPE_METHOD(tpl, "close", close);
-  NODE_SET_PROTOTYPE_METHOD(tpl, "init", init);
-  NODE_SET_PROTOTYPE_METHOD(tpl, "setAudioReceiver", setAudioReceiver);
-  NODE_SET_PROTOTYPE_METHOD(tpl, "setVideoReceiver", setVideoReceiver);
+  tpl->PrototypeTemplate()->Set(String::NewSymbol("close"), FunctionTemplate::New(close)->GetFunction());
+  tpl->PrototypeTemplate()->Set(String::NewSymbol("init"), FunctionTemplate::New(init)->GetFunction());
+  tpl->PrototypeTemplate()->Set(String::NewSymbol("setAudioReceiver"), FunctionTemplate::New(setAudioReceiver)->GetFunction());
+  tpl->PrototypeTemplate()->Set(String::NewSymbol("setVideoReceiver"), FunctionTemplate::New(setVideoReceiver)->GetFunction());
 
-  constructor.Reset(isolate, tpl->GetFunction());
-  exports->Set(String::NewFromUtf8(isolate, "ExternalInput"), tpl->GetFunction());
+  Persistent<Function> constructor = Persistent<Function>::New(tpl->GetFunction());
+  target->Set(String::NewSymbol("ExternalInput"), constructor);
 }
 
-void ExternalInput::New(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = Isolate::GetCurrent();
-  HandleScope scope(isolate);
+Handle<Value> ExternalInput::New(const Arguments& args) {
+  HandleScope scope;
 
   if (args.Length() == 0 || !args[0]->IsObject()) {
-    isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Wrong arguments")));
-    return;
+    return ThrowException(Exception::TypeError(String::New("Wrong arguments")));
   }
 
   Local<Object> optionObject = args[0]->ToObject();
   woogeen_base::ExternalInput::Options options{};
 
-  Handle<String> keyUrl = String::NewFromUtf8(isolate, "url");
-  Handle<String> keyTransport = String::NewFromUtf8(isolate, "transport");
-  Handle<String> keyBufferSize = String::NewFromUtf8(isolate, "buffer_size");
-  Handle<String> keyAudio = String::NewFromUtf8(isolate, "audio");
-  Handle<String> keyVideo = String::NewFromUtf8(isolate, "video");
-  Handle<String> keyH264 = String::NewFromUtf8(isolate, "h264");
+  Handle<String> keyUrl = String::New("url");
+  Handle<String> keyTransport = String::New("transport");
+  Handle<String> keyBufferSize = String::New("buffer_size");
+  Handle<String> keyAudio = String::New("audio");
+  Handle<String> keyVideo = String::New("video");
+  Handle<String> keyH264 = String::New("h264");
 
   if (optionObject->Has(keyUrl))
     options.url = std::string(*String::Utf8Value(optionObject->Get(keyUrl)->ToString()));
@@ -63,70 +62,73 @@ void ExternalInput::New(const FunctionCallbackInfo<Value>& args) {
 
   uv_async_init(uv_default_loop(), &obj->async_, &ExternalInput::statusCallback);
 
-  args.GetReturnValue().Set(args.This());
+  return args.This();
 }
 
-void ExternalInput::close(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = Isolate::GetCurrent();
-  HandleScope scope(isolate);
+Handle<Value> ExternalInput::close(const Arguments& args) {
+  HandleScope scope;
 
-  ExternalInput* obj = ObjectWrap::Unwrap<ExternalInput>(args.Holder());
+  ExternalInput* obj = ObjectWrap::Unwrap<ExternalInput>(args.This());
   woogeen_base::ExternalInput *me = (woogeen_base::ExternalInput*)obj->me;
 
   delete me;
+
+  return scope.Close(Null());
 }
 
-void ExternalInput::init(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = Isolate::GetCurrent();
-  HandleScope scope(isolate);
+Handle<Value> ExternalInput::init(const Arguments& args) {
+  HandleScope scope;
 
-  ExternalInput* obj = ObjectWrap::Unwrap<ExternalInput>(args.Holder());
+  ExternalInput* obj = ObjectWrap::Unwrap<ExternalInput>(args.This());
   woogeen_base::ExternalInput *me = (woogeen_base::ExternalInput*) obj->me;
 
   me->init();
-  obj->statusCallback_.Reset(isolate, Local<Function>::Cast(args[0]));
+  obj->statusCallback_ = Persistent<Function>::New(Local<Function>::Cast(args[0]));
+
+  return scope.Close(Null());
 }
 
-void ExternalInput::setAudioReceiver(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = Isolate::GetCurrent();
-  HandleScope scope(isolate);
+Handle<Value> ExternalInput::setAudioReceiver(const Arguments& args) {
+  HandleScope scope;
 
-  ExternalInput* obj = ObjectWrap::Unwrap<ExternalInput>(args.Holder());
+  ExternalInput* obj = ObjectWrap::Unwrap<ExternalInput>(args.This());
   woogeen_base::ExternalInput *me = (woogeen_base::ExternalInput*)obj->me;
 
   MediaSink* param = ObjectWrap::Unwrap<MediaSink>(args[0]->ToObject());
   erizo::MediaSink *mr = param->msink;
 
   me->setAudioSink(mr);
+
+  return scope.Close(Null());
 }
 
-void ExternalInput::setVideoReceiver(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = Isolate::GetCurrent();
-  HandleScope scope(isolate);
+Handle<Value> ExternalInput::setVideoReceiver(const Arguments& args) {
+  HandleScope scope;
 
-  ExternalInput* obj = ObjectWrap::Unwrap<ExternalInput>(args.Holder());
+  ExternalInput* obj = ObjectWrap::Unwrap<ExternalInput>(args.This());
   woogeen_base::ExternalInput *me = (woogeen_base::ExternalInput*)obj->me;
 
   MediaSink* param = ObjectWrap::Unwrap<MediaSink>(args[0]->ToObject());
   erizo::MediaSink *mr = param->msink;
 
   me->setVideoSink(mr);
+
+  return scope.Close(Null());
 }
 
 void ExternalInput::notifyStatus(const std::string& message) {
   boost::mutex::scoped_lock lock(statusMutex);
   this->statusMsg = message;
   async_.data = this;
-  uv_async_send(&async_);
+  uv_async_send (&async_);
 }
 
-void ExternalInput::statusCallback(uv_async_t *handle) {
-  Isolate* isolate = Isolate::GetCurrent();
-  HandleScope scope(isolate);
+void ExternalInput::statusCallback(uv_async_t *handle, int status){
+  HandleScope scope;
   ExternalInput* obj = (ExternalInput*)handle->data;
   if (!obj)
     return;
   boost::mutex::scoped_lock lock(obj->statusMutex);
-  Local<Value> args[] = {String::NewFromUtf8(isolate, obj->statusMsg.c_str())};
-  Local<Function>::New(isolate, obj->statusCallback_)->Call(isolate->GetCurrentContext()->Global(), 1, args);
+  Local<Value> args[] = {String::NewSymbol(obj->statusMsg.c_str())};
+  obj->statusCallback_->Call(Context::GetCurrent()->Global(), 1, args);
 }

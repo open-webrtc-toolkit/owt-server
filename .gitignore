@@ -2,7 +2,7 @@ build/
 dist/
 source/etc/
 .DS_Store
-third_party/node-v*
+third_party/node-v0.*
 third_party/libuv*
 doc/webrtc-jsdoc-cosmo/
 doc/*.class

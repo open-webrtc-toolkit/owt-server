@@ -16,11 +16,12 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility=hidden")
 # TODO: Make a clean interface for the woogeen_base module so that we don't need
 # to add such misc. ugly include paths.
 set(LIB_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/../../../build/libdeps/build/lib/")
+set(UV_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/../../../third_party/libuv")
 set(WEBRTC_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/../../../third_party/webrtc")
 set(H264_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/../../../third_party/openh264")
 set(MEDIAPROCESSOR_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../third_party/mediaprocessor")
 
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}" "${LIB_DIRS}../include/" "${WEBRTC_DIRS}/src")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}" "${LIB_DIRS}../include/" "${UV_DIRS}/include/" "${WEBRTC_DIRS}/src")
 include_directories("${MEDIAPROCESSOR_DIR}/libxcode/video/" "${MEDIAPROCESSOR_DIR}/libxcode/")
 
 add_definitions(-DWEBRTC_POSIX -DWEBRTC_LINUX)

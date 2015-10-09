@@ -29,22 +29,19 @@
 class NodeEventRegistry: public woogeen_base::EventRegistry
 {
 public:
-  NodeEventRegistry(const v8::Local<v8::Function>& f) {
-    m_func.Reset(v8::Isolate::GetCurrent(), f);
-  };
+  NodeEventRegistry(const v8::Persistent<v8::Function>& f): m_func(f) {};
   ~NodeEventRegistry() {};
   void process(const std::string& data)
   {
-    v8::Isolate* isolate = v8::Isolate::GetCurrent();
-    v8::HandleScope scope(isolate);
+    v8::HandleScope scope;
     const unsigned argc = 1;
     v8::Local<v8::Value> argv[argc] = {
-      v8::String::NewFromUtf8(isolate, data.c_str())
+      v8::Local<v8::Value>::New(v8::String::New(data.c_str()))
     };
     v8::TryCatch try_catch;
-    v8::Local<v8::Function>::New(isolate, m_func)->Call(isolate->GetCurrentContext()->Global(), argc, argv);
+    m_func->Call(v8::Context::GetCurrent()->Global(), argc, argv);
     if (try_catch.HasCaught()) {
-      node::FatalException(isolate, try_catch);
+      node::FatalException(try_catch);
     }
   };
 private:

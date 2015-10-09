@@ -21,89 +21,90 @@
 #ifndef MIXER_H
 #define MIXER_H
 
+#include "../woogeen_base/Gateway.h"
+
 #include <MixerInterface.h>
 #include <node.h>
-#include <node_object_wrap.h>
+#include <string>
 
 /*
  * Wrapper class of mcu::MixerInterface
  */
 class Mixer : public node::ObjectWrap {
  public:
-  static void Init(v8::Handle<v8::Object> exports);
+  static void Init(v8::Handle<v8::Object> target);
   mcu::MixerInterface* me;
 
  private:
   Mixer();
   ~Mixer();
-  static v8::Persistent<v8::Function> constructor;
 
   /*
    * Constructor.
    * Constructs a Mixer
    */
-  static void New(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static v8::Handle<v8::Value> New(const v8::Arguments& args);
   /*
    * Closes the Mixer.
    * The object cannot be used after this call
    */
-  static void close(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static v8::Handle<v8::Value> close(const v8::Arguments& args);
   /*
    * Adds a Publisher
    * Param: the WebRtcConnection of the Publisher
    */
-  static void addPublisher(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static v8::Handle<v8::Value> addPublisher(const v8::Arguments& args);
   /*
    * Removes a Publisher
    */
-  static void removePublisher(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static v8::Handle<v8::Value> removePublisher(const v8::Arguments& args);
   /*
    * Adds a subscriber
    * Param1: the WebRtcConnection of the subscriber
    * Param2: an unique Id for the subscriber
    */
-  static void addSubscriber(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static v8::Handle<v8::Value> addSubscriber(const v8::Arguments& args);
   /*
    * Removes a subscriber given its peer id
    * Param: the peerId
    */
-  static void removeSubscriber(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static v8::Handle<v8::Value> removeSubscriber(const v8::Arguments& args);
   /*
    * Enable a subscriber given its peer id
    * Param: peerId, isAudio
    */
-  static void subscribeStream(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static v8::Handle<v8::Value> subscribeStream(const v8::Arguments& args);
   /*
    * Disable a subscriber given its peer id
    * Param: peerId, isAudio
    */
-  static void unsubscribeStream(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static v8::Handle<v8::Value> unsubscribeStream(const v8::Arguments& args);
   /*
    * Adds an External Publisher
    * Param: the ExternalInput of the Publisher
    */
-  static void addExternalPublisher(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static v8::Handle<v8::Value> addExternalPublisher(const v8::Arguments& args);
   /*
    * add Event Listener
    */
-  static void addEventListener(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static v8::Handle<v8::Value> addEventListener(const v8::Arguments& args);
   /*
    * Gets the region of a publisher in the mixer
    * Param: the publisher id
    */
-  static void getRegion(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static v8::Handle<v8::Value> getRegion(const v8::Arguments& args);
   /*
    * Sets the region of a publisher in the mixer
    * Param1: the publisher id
    * Param2: the region id
    */
-  static void setRegion(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static v8::Handle<v8::Value> setRegion(const v8::Arguments& args);
   /*
    * Changes the bitrate of a publisher in the mixer
    * Param1: the publisher id
    * Param2: the bitrate
    */
-  static void setVideoBitrate(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static v8::Handle<v8::Value> setVideoBitrate(const v8::Arguments& args);
 };
 
 #endif

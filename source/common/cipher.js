@@ -58,7 +58,7 @@ function unlock (password, filename, cb) {
 module.exports = {
   encrypt: encrypt,
   decrypt: decrypt,
-  k: crypto.pbkdf2Sync('woogeen', 'mcu', 4000, 128),
+  k: crypto.pbkdf2Sync('woogeen', 'mcu', 4000, 128, 'sha256'),
   lock: lock,
   unlock: unlock
 };
