@@ -82,6 +82,20 @@ namespace erizo {
   }
 
   bool WebRtcConnection::init() {
+    // In case both audio and video transports are needed, we need to start
+    // the transports after they are both created because the WebRtcConnection
+    // state update needs information from both.
+    if (videoTransport_ != NULL)
+      videoTransport_->start();
+    if (audioTransport_ != NULL)
+      audioTransport_->start();
+
+    if (trickleEnabled_) {
+      std::string object = this->getLocalSdp();
+      if (connEventListener_)
+        connEventListener_->notifyEvent(CONN_SDP, object);
+    }
+
     return true;
   }
 
@@ -116,7 +130,6 @@ namespace erizo {
 
     localSdp_.getPayloadInfos() = remoteSdp_.getPayloadInfos();
     localSdp_.isBundle = bundle_;
-    localSdp_.isRtcpMux = remoteSdp_.isRtcpMux;
     localSdp_.setOfferSdp(remoteSdp_);
 
     ELOG_DEBUG("Video %d videossrc %u Audio %d audio ssrc %u Bundle %d", videoEnabled_, remoteSdp_.videoSsrc, audioEnabled_, remoteSdp_.audioSsrc,  bundle_);
@@ -143,20 +156,6 @@ namespace erizo {
           audioTransport_ = new DtlsTransport(AUDIO_TYPE, "audio", false, remoteSdp_.isRtcpMux, this, stunServer_, stunPort_, minPort_, maxPort_, certFile_, keyFile_, privatePasswd_, username, password);
         }
       }
-
-      // In case both audio and video transports are needed, we need to start
-      // the transports after they are both created because the WebRtcConnection
-      // state update needs information from both.
-      if (videoTransport_ != NULL)
-        videoTransport_->start();
-      if (audioTransport_ != NULL)
-        audioTransport_->start();
-    }
-
-    if (trickleEnabled_) {
-      std::string object = this->getLocalSdp();
-      if (connEventListener_)
-        connEventListener_->notifyEvent(CONN_SDP, object);
     }
 
     if (!remoteSdp_.getCandidateInfos().empty()){

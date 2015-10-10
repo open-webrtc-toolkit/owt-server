@@ -45,7 +45,6 @@ class WebRtcConnection : public node::ObjectWrap, erizo::WebRtcConnectionEventLi
   static void close(const v8::FunctionCallbackInfo<v8::Value>& args);
   /*
    * Inits the WebRtcConnection and passes the callback to get Events.
-   * Returns true if the candidates are gathered.
    */
   static void init(const v8::FunctionCallbackInfo<v8::Value>& args);
   /*
@@ -54,6 +53,10 @@ class WebRtcConnection : public node::ObjectWrap, erizo::WebRtcConnectionEventLi
    * Returns true if the SDP was received correctly.
    */
   static void setRemoteSdp(const v8::FunctionCallbackInfo<v8::Value>& args);
+  /*
+   * Starts the WebRtcConnection ICE Candidate Gathering.
+   */
+  static void start(const v8::FunctionCallbackInfo<v8::Value>& args);
   /**
      * Add new remote candidate (from remote peer).
      * @param sdp The candidate in SDP format.
