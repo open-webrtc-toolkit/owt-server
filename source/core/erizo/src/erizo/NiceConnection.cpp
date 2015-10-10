@@ -168,12 +168,8 @@ namespace erizo {
       for (unsigned int i = 1; i<=iceComponents_; i++){
         nice_agent_attach_recv(agent_, 1, i, context_, cb_nice_recv, this);
       }
-      running_ = true;
     }
-    else{
-      running_=false;
-    }
-  m_Thread_ = boost::thread(&NiceConnection::init, this);
+    running_=false;
 }
 
   NiceConnection::~NiceConnection() {
@@ -243,8 +239,10 @@ namespace erizo {
   }
 
   void NiceConnection::start() {
-    running_ = true;
-    m_Thread_ = boost::thread(&NiceConnection::init, this);
+    if(agent_){
+      running_ = true;
+      m_Thread_ = boost::thread(&NiceConnection::init, this);
+    }
   }
 
   void NiceConnection::queueData(unsigned int component_id, char* buf, int len) {

@@ -166,11 +166,11 @@ exports.ErizoJSController = function () {
               if (id_mixer && (unmix !== true)) {
                 var mixer = publishers[id_mixer] ? publishers[id_mixer].muxer : undefined;
                 if (mixer) {
-                  mixer.addPublisher(publishers[id_pub], id_pub);
+                  mixer.addPublisher(publishers[id_pub].muxer, id_pub);
                   mixers[id_pub] = mixer;
                 } else {
                   if (mixerProxy) {
-                    mixerProxy.addPublisher(publishers[id_pub], id_pub);
+                    mixerProxy.addPublisher(publishers[id_pub].muxer, id_pub);
                     mixers[id_pub] = mixerProxy;
                   }
                 }
@@ -393,17 +393,24 @@ exports.ErizoJSController = function () {
         
         if (publishers[streamId] !== undefined) {
 
-            
+            var subscriber = subscribers[streamId][peerId];
 
-            if (subscribers[streamId][peerId]) {
+            if (subscriber) {
                 if (msg.type === 'offer') {
-                    subscribers[streamId][peerId].setRemoteSdp(msg.sdp);
+                    subscriber.wrtc.setRemoteSdp(msg.sdp);
+                    // Postpone the addSubscriber operation to the point when
+                    // the offer SDP is received, because the offer SDP carries
+                    // some subscribe option information.
+                    publishers[streamId].muxer.addSubscriber(subscriber.wrtc, peerId, subscriber.resolution);
+                    subscriber.wrtc.start();
                 } else if (msg.type === 'candidate') {
-                    subscribers[streamId][peerId].addRemoteCandidate(msg.candidate.sdpMid, msg.candidate.sdpMLineIndex, msg.candidate.candidate);
+                    subscriber.wrtc.addRemoteCandidate(msg.candidate.sdpMid, msg.candidate.sdpMLineIndex, msg.candidate.candidate);
                 } 
             } else {
                 if (msg.type === 'offer') {
                     publishers[streamId].wrtc.setRemoteSdp(msg.sdp);
+                    publishers[streamId].muxer.addPublisher(publishers[streamId].wrtc, streamId);
+                    publishers[streamId].wrtc.start();
                 } else if (msg.type === 'candidate') {
                     console.log('PROCESS CAND', msg);
                     publishers[streamId].wrtc.addRemoteCandidate(msg.candidate.sdpMid, msg.candidate.sdpMLineIndex, msg.candidate.candidate);
@@ -445,7 +452,7 @@ exports.ErizoJSController = function () {
                     }
 
                     initWebRtcConnection(wrtc, mixer.id, unmix, callback, from);
-                    muxer.addPublisher(wrtc, from);
+                    // muxer.addPublisher(wrtc, from);
                 } else {
                     log.warn('Failed to publish the stream:', err);
                 }
@@ -475,8 +482,8 @@ exports.ErizoJSController = function () {
 
                     initWebRtcConnection(wrtc, undefined, undefined, callback, to, from, options.browser);
 
-                    subscribers[to][from] = wrtc;
-                    publishers[to].muxer.addSubscriber(wrtc, from, JSON.stringify(options.video.resolution));
+                    subscribers[to][from] = {wrtc: wrtc, resolution: JSON.stringify(options.video.resolution)};
+                    // publishers[to].muxer.addSubscriber(wrtc, from, JSON.stringify(options.video.resolution));
                 } else {
                     log.warn('Failed to subscribe the stream:', err);
                 }
@@ -494,7 +501,7 @@ exports.ErizoJSController = function () {
             for (var key in subscribers[from]) {
               if (subscribers[from].hasOwnProperty(key)){
                 log.info("Iterating and closing ", key,  subscribers[from], subscribers[from][key]);
-                subscribers[from][key].close();
+                subscribers[from][key].wrtc.close();
               }
             }
             if (mixers[from]) {
@@ -537,7 +544,7 @@ exports.ErizoJSController = function () {
 
         if (subscribers[to][from]) {
             log.info('Removing subscriber ', from, 'to muxer ', to);
-            subscribers[to][from].close();
+            subscribers[to][from].wrtc.close();
             publishers[to].muxer.removeSubscriber(from);
             delete subscribers[to][from];
         }

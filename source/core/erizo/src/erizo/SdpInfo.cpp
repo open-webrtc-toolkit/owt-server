@@ -374,7 +374,7 @@ namespace erizo {
     }
     //crypto audio
 */
-    bool printedAudio = false, printedVideo = false;
+    bool printedAudio = true, printedVideo = true;
 
     if (printedAudio && this->hasAudio) {
       sdp << "m=audio 1 RTP/" << (profile==SAVPF?"SAVPF ":"AVPF ");// << "103 104 0 8 106 105 13 126\n"

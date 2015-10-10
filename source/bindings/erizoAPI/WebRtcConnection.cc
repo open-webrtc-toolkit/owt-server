@@ -19,6 +19,7 @@ void WebRtcConnection::Init(Local<Object> exports) {
   NODE_SET_PROTOTYPE_METHOD(tpl, "close", close);
   NODE_SET_PROTOTYPE_METHOD(tpl, "init", init);
   NODE_SET_PROTOTYPE_METHOD(tpl, "setRemoteSdp", setRemoteSdp);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "start", start);
   NODE_SET_PROTOTYPE_METHOD(tpl, "addRemoteCandidate", addRemoteCandidate);
   NODE_SET_PROTOTYPE_METHOD(tpl, "getLocalSdp", getLocalSdp);
   NODE_SET_PROTOTYPE_METHOD(tpl, "setAudioReceiver", setAudioReceiver);
@@ -95,12 +96,7 @@ void WebRtcConnection::init(const FunctionCallbackInfo<Value>& args) {
   HandleScope scope(isolate);
 
   WebRtcConnection* obj = ObjectWrap::Unwrap<WebRtcConnection>(args.Holder());
-  erizo::WebRtcConnection *me = obj->me;
-
-  bool r = me->init();
   obj->eventCallback_.Reset(isolate, Local<Function>::Cast(args[0]));
-
-  args.GetReturnValue().Set(Boolean::New(isolate, r));
 }
 
 void WebRtcConnection::setRemoteSdp(const FunctionCallbackInfo<Value>& args) {
@@ -114,6 +110,17 @@ void WebRtcConnection::setRemoteSdp(const FunctionCallbackInfo<Value>& args) {
   std::string sdp = std::string(*param);
 
   bool r = me->setRemoteSdp(sdp);
+
+  args.GetReturnValue().Set(Boolean::New(isolate, r));
+}
+
+void WebRtcConnection::start(const FunctionCallbackInfo<Value>& args) {
+  Isolate* isolate = Isolate::GetCurrent();
+  HandleScope scope(isolate);
+
+  WebRtcConnection* obj = ObjectWrap::Unwrap<WebRtcConnection>(args.Holder());
+  erizo::WebRtcConnection *me = obj->me;
+  bool r = me->init();
 
   args.GetReturnValue().Set(Boolean::New(isolate, r));
 }
