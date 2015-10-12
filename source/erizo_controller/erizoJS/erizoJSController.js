@@ -508,7 +508,9 @@ exports.ErizoJSController = function () {
                 mixers[from].removePublisher(from);
                 delete mixers[from];
             }
-            publishers[from].wrtc.close();
+            if (publishers[from].wrtc) {
+                publishers[from].wrtc.close();
+            }
             publishers[from].muxer.close();
             log.info('Removing subscribers', from);
             delete subscribers[from];
