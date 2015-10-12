@@ -107,6 +107,12 @@ Erizo.BowserStack = function (spec) {
         }
     };
     
+    that.peerConnection.oniceconnectionstatechange = function (e) {
+        if (that.oniceconnectionstatechange) {
+            that.oniceconnectionstatechange(e.currentTarget.iceConnectionState);
+        }
+    };
+
     var errorCallback = function(message){
       console.log("Error in Stack ", message);
     };
