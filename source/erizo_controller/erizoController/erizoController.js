@@ -905,62 +905,6 @@ var listen = function () {
                 });
 
                 socket.streams.push(id);
-/*
-            } else if (options.state !== 'data' && !socket.room.p2p) {
-                if (options.state === 'offer' && socket.state === 'sleeping') {
-                    id = socket.id;
-                    var mixer = socket.room.mixer;
-                    var hasScreen = false;
-                    var unmix = options.unmix;
-                    if (options.video && options.video.device === 'screen') {
-                        hasScreen = true;
-                        id = id.slice(0, -8) + '_SCREEN_';
-                        unmix = true;
-                    }
-
-                    if (socket.streams.indexOf(id) !== -1) {
-                        return safeCall(callback, 'error', 'already published');
-                    }
-
-                    if (socket.room.config) {
-                        if (socket.room.config.publishLimit >= 0 &&
-                            socket.room.controller.publisherNum() >= socket.room.config.publishLimit) {
-                            return safeCall(callback, 'error', 'max publishers');
-                        }
-                    }
-
-                    if (GLOBAL.config.erizoController.report.session_events) {
-                        var timeStamp = new Date();
-                        amqper.callRpc('stats_handler', 'event', [{room: socket.room.id, user: socket.id, type: 'publish', stream: id, timestamp: timeStamp.getTime()}]);
-                    }
-
-                    socket.room.controller.addPublisher(id, sdp, mixer, unmix, function (answer) {
-                        socket.state = 'waitingOk';
-                        answer = answer.replace(privateRegexp, publicIP);
-                        safeCall(callback, answer, id);
-                    }, function() {
-                        // Double check if this socket is still in the room.
-                        // It can be removed from the room if the socket is disconnected
-                        // before the publish succeeds.
-                        var index = socket.room.sockets.indexOf(socket);
-                        if (index === -1) {
-                            socket.room.controller.removePublisher(id);
-                            return;
-                        }
-
-                        st = new ST.Stream({id: id, audio: options.audio, video: options.video, attributes: options.attributes, from: socket.id});
-                        socket.state = 'sleeping';
-                        socket.room.streams[id] = st;
-
-                        if (socket.room.streams[id] !== undefined) {
-                            sendMsgToRoom(socket.room, 'onAddStream', socket.room.streams[id].getPublicStream());
-                        }
-                    });
-
-                    socket.streams.push(id);
-                } else if (options.state === 'ok' && socket.state === 'waitingOk') {
-                }
-*/
             } else {
                 id = Math.random() * 1000000000000000000;
                 st = new ST.Stream({id: id, socket: socket.id, audio: options.audio, video: options.video, attributes: options.attributes, from: socket.id});
