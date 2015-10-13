@@ -381,7 +381,7 @@ exports.ErizoJSController = function () {
     that.removeExternalOutput = function (output_id, close, callback) {
         log.info('Stopping ExternalOutput:' + output_id);
 
-        if (externalOutputs[output_id].unsetMediaSource(output_id, close)) {
+        if (externalOutputs[output_id] && externalOutputs[output_id].unsetMediaSource(output_id, close)) {
             delete externalOutputs[output_id];
             return callback('callback', 'success');
         }
