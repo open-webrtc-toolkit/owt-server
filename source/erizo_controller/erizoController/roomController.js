@@ -194,7 +194,7 @@ exports.RoomController = function (spec) {
 
                 var args = [video_publisher_id, audio_publisher_id, output_id, url, interval];
 
-                amqper.callRpc(erizo_id, "addExternalOutput", args, {callback: function (result) {
+                amqper.callRpc('ErizoJS_' + erizo_id, "addExternalOutput", args, {callback: function (result) {
                     if (result === 'success') {
                         // Track external outputs
                         externalOutputs[output_id] = {video: video_publisher_id, audio: audio_publisher_id, erizo: erizo_id};
@@ -262,7 +262,7 @@ exports.RoomController = function (spec) {
 
             var args = [output_id, close];
 
-            amqper.callRpc(externalOutput.erizo, "removeExternalOutput", args, {callback: function (result) {
+            amqper.callRpc('ErizoJS_' + externalOutput.erizo, "removeExternalOutput", args, {callback: function (result) {
                 if (result === 'success') {
                     // Remove the track
                     delete externalOutputs[output_id];
@@ -390,7 +390,7 @@ exports.RoomController = function (spec) {
             if (video_output_id !== -1) {
                 log.info('Removing external output', video_output_id);
                 var args = [video_output_id, false];
-                amqper.callRpc(getErizoQueue(video_output_id), "removeExternalOutput", args, {callback: function (result) {}});
+                amqper.callRpc('ErizoJS_' + externalOutputs[video_output_id].erizo, "removeExternalOutput", args, {callback: function (result) {}});
 
                 // Remove the external output track anyway
                 delete externalOutputs[video_output_id];
@@ -400,7 +400,7 @@ exports.RoomController = function (spec) {
             if (audio_output_id !== -1 && audio_output_id !== video_output_id) {
                 log.info('Removing external output', audio_output_id);
                 var args = [audio_output_id, false];
-                amqper.callRpc(getErizoQueue(audio_output_id), "removeExternalOutput", args, {callback: function (result) {}});
+                amqper.callRpc('ErizoJS_' + externalOutputs[audio_output_id].erizo, "removeExternalOutput", args, {callback: function (result) {}});
 
                 // Remove the external output track anyway
                 delete externalOutputs[audio_output_id];
