@@ -180,7 +180,9 @@ Erizo.FirefoxStack = function (spec) {
      */
     that.close = function () {
         that.state = 'closed';
-        that.peerConnection.close();
+        if (that.peerConnection.signalingState !== 'closed') {
+            that.peerConnection.close();
+        }
     };
 
     that.processSignalingMessage = function (msg) {
