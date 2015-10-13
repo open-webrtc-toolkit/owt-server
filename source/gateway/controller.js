@@ -9,85 +9,70 @@ exports = module.exports = function () {
 
     var that = {},
         customParam,
-        subscribers = [],
+        subscribers = {},
         publisher,
         publisherId,
         gateway,
 
         externalOutputs = {},
 
-        INTERVAL_TIME_SDP = 100,
-        initWebRtcConnection,
-        getSdp,
-        getRoap;
-
+        initWebRtcConnection;
 
     that.init = function (customGatewayParam) {
         customParam = customGatewayParam;
         gateway = new addon.Gateway(customParam);
     };
 
+    var CONN_INITIAL = 101, CONN_STARTED = 102, CONN_GATHERED = 103, CONN_READY = 104, CONN_FINISHED = 105, CONN_CANDIDATE = 201, CONN_SDP = 202, CONN_FAILED = 500;
+
     /*
      * Given a WebRtcConnection waits for the state CANDIDATES_GATHERED for set remote SDP. 
      */
-    initWebRtcConnection = function (wrtc, sdp, callback, onReady) {
+    initWebRtcConnection = function (wrtc, callback, onReady) {
         var terminated = false;
 
-        wrtc.init(function (newStatus) {
+        wrtc.init(function (newStatus, mess) {
             if (terminated) {
                 return;
             }
 
-            var localSdp, answer;
-            logger.info("webrtc Addon status: " + newStatus);
-            if (newStatus === 104) {
+            logger.info("webrtc Addon status: " + newStatus + mess);
+
+            switch (newStatus) {
+            case CONN_FINISHED:
                 terminated = true;
-            }
-            if (newStatus === 102 && !sdpDelivered) {
-                localSdp = wrtc.getLocalSdp();
-                answer = getRoap(localSdp, roap);
-                callback(answer);
-                sdpDelivered = true;
-            }
-            if (newStatus === 103) {
-                if (onReady != undefined) {
-                    onReady();
-                }
+                break;
+
+            case CONN_INITIAL:
+                callback({type: 'started'});
+                break;
+
+            case CONN_SDP:
+            case CONN_GATHERED:
+                logger.debug('Sending SDP', mess);
+                mess = mess.replace(that.privateRegexp, that.publicIP);
+                callback({type: 'answer', sdp: mess});
+                break;
+
+            case CONN_CANDIDATE:
+                mess = mess.replace(that.privateRegexp, that.publicIP);
+                callback({type: 'candidate', candidate: mess});
+                break;
+
+            case CONN_FAILED:
+                callback({type: 'failed', sdp: mess});
+                break;
+
+            case CONN_READY:
+                if (typeof onReady === 'function') onReady();
+                break;
+
+            default:
+                break;
             }
         });
 
-        var roap = sdp,
-            remoteSdp = getSdp(roap);
-        wrtc.setRemoteSdp(remoteSdp);
-
-        var sdpDelivered = false;
-    };
-
-    /*
-     * Gets SDP from roap message.
-     */
-    getSdp = function (roap) {
-        var reg = new RegExp(/\\r/g);
-        var string = roap.replace(reg, '');
-        var jsonObj = JSON.parse(string);
-        return jsonObj.sdp;
-    };
-
-    /*
-     * Gets roap message from SDP.
-     */
-    getRoap = function (sdp, offerRoap) {
-        var reg1 = new RegExp(/\n/g),
-            offererSessionId = offerRoap.match(/("offererSessionId":)(.+?)(,)/)[0],
-            answererSessionId = "106",
-            answer = ('\n{\n \"messageType\":\"ANSWER\",\n');
-
-        sdp = sdp.replace(reg1, '\\r\\n');
-        answer += ' \"sdp\":\"' + sdp + '\",\n';
-        answer += ' ' + offererSessionId + '\n';
-        answer += ' \"answererSessionId\":' + answererSessionId + ',\n \"seq\" : 1\n}\n';
-
-        return answer;
+        callback({type: 'initializing'});
     };
 
     that.addExternalInput = function (from, url, callback) { // TODO: change gateway creation
@@ -132,11 +117,30 @@ exports = module.exports = function () {
         }
     };
 
+    that.processSignaling = function (streamId, peerId, msg) {
+        logger.info("Process Signaling message: ", streamId, peerId, msg);
+        if (publisherId === streamId) {
+            if (msg.type === 'offer') {
+                publisher.setRemoteSdp(msg.sdp);
+                publisher.start();
+            } else if (msg.type === 'candidate') {
+                publisher.addRemoteCandidate(msg.candidate.sdpMid, msg.candidate.sdpMLineIndex, msg.candidate.candidate);
+            }
+        } else if (subscribers[streamId]) {
+            if (msg.type === 'offer') {
+                subscribers[streamId].setRemoteSdp(msg.sdp);
+                subscribers[streamId].start();
+            } else if (msg.type === 'candidate') {
+                subscribers[streamId].addRemoteCandidate(msg.candidate.sdpMid, msg.candidate.sdpMLineIndex, msg.candidate.candidate);
+            }
+        }
+    };
+
     /*
      * Adds a publisher to the Gateway. This creates a new WebRtcConnection.
      * This WebRtcConnection will be the WebRTC publisher of the Gateway.
      */
-    that.addPublisher = function (from, sdp, callback, onReady, resolution) {
+    that.addPublisher = function (from, callback, resolution) {
         if (publisher !== undefined) {
             logger.info("Publisher already set");
             return;
@@ -148,16 +152,8 @@ exports = module.exports = function () {
         }
 
         logger.info("Adding publisher peer_id ", from);
-        var hasAudio = false;
-        var hasVideo = false;
-        if (sdp.indexOf('m=audio') !== -1) {
-            hasAudio = true;
-        }
-        if (sdp.indexOf('m=video') !== -1) {
-            hasVideo = true;
-        }
 
-        var wrtc = new addon.WebRtcConnection(hasAudio, hasVideo, false, config.core.stunserver, config.core.stunport, config.core.minport, config.core.maxport, config.core.certificate.cert, config.core.certificate.key, config.core.certificate.passphrase, config.core.red, config.core.fec, config.core.nack_sender, config.core.nack_receiver);
+        var wrtc = new addon.WebRtcConnection(true, true, false, config.core.stunserver, config.core.stunport, config.core.minport, config.core.maxport, config.core.certificate.cert, config.core.certificate.key, config.core.certificate.passphrase, config.core.red, config.core.fec, config.core.nack_sender, config.core.nack_receiver, false);
 
         if (typeof resolution !== 'string') {
             resolution = '';
@@ -167,11 +163,11 @@ exports = module.exports = function () {
             var overridenOnReady = function () {
                 gateway.publishStream(from, true);
                 gateway.publishStream(from, false);
-                onReady();
+                callback({type: 'ready'});
             };
             publisher = wrtc;
             publisherId = from;
-            initWebRtcConnection(wrtc, sdp, callback, overridenOnReady);
+            initWebRtcConnection(wrtc, callback, overridenOnReady);
         } else {
             logger.info("Failed to publish ", from);
             // TODO: We should notify the browser if there's anything wrong with its stream publishing
@@ -182,13 +178,13 @@ exports = module.exports = function () {
      * Adds a subscriber to the Gateway. This creates a new WebRtcConnection.
      * This WebRtcConnection will be added to the subscribers list of the Gateway.
      */
-    that.addSubscriber = function (from, to, audio, video, sdp, callback) {
-        if (gateway !== undefined && subscribers.indexOf(to) === -1 && sdp.match('OFFER') !== null) {
+    that.addSubscriber = function (from, to, audio, video, callback) {
+        if (gateway !== undefined && subscribers[to] === undefined) {
             logger.info("Adding subscriber from ", from, 'to ', to);
 
-            var wrtc = new addon.WebRtcConnection(audio, video, false, config.core.stunserver, config.core.stunport, config.core.minport, config.core.maxport, config.core.certificate.cert, config.core.certificate.key, config.core.certificate.passphrase, config.core.red, config.core.fec, config.core.nack_sender, config.core.nack_receiver);
+            var wrtc = new addon.WebRtcConnection(audio, video, false, config.core.stunserver, config.core.stunport, config.core.minport, config.core.maxport, config.core.certificate.cert, config.core.certificate.key, config.core.certificate.passphrase, config.core.red, config.core.fec, config.core.nack_sender, config.core.nack_receiver, false);
 
-            subscribers.push(to);
+            subscribers[to] = wrtc;
             gateway.addSubscriber(wrtc, to);
 
             var onReady = function () {
@@ -196,9 +192,10 @@ exports = module.exports = function () {
                 gateway.subscribeStream(to, true);
                 // Automatically subscribe video if any.
                 gateway.subscribeStream(to, false);
+                callback({type: 'ready'});
             };
 
-            initWebRtcConnection(wrtc, sdp, callback, onReady);
+            initWebRtcConnection(wrtc, callback, onReady);
         }
     };
 
@@ -208,6 +205,7 @@ exports = module.exports = function () {
     that.removePublisher = function (from) {
         if (gateway !== undefined && publisher !== undefined) {
             logger.info('Removing publisher ', from);
+            publisher.close();
             gateway.removePublisher(from);
         }
         publisher = undefined;
@@ -218,11 +216,11 @@ exports = module.exports = function () {
      */
     that.removeSubscriber = function (from, to) {
         if (gateway !== undefined) {
-            var index = subscribers.indexOf(to);
-            if (index !== -1) {
+            if (subscribers[to]) {
                 logger.info('Removing subscriber ', from, 'to ', to);
+                subscribers[to].close()
                 gateway.removeSubscriber(to);
-                subscribers.splice(index, 1);
+                delete subscribers[to];
             }
         }
     };
@@ -234,8 +232,17 @@ exports = module.exports = function () {
         logger.info('Removing client ', from);
         if (gateway !== undefined) {
             logger.info('Removing gateway ', from);
+            for (var key in subscribers) {
+                if (subscribers.hasOwnProperty(key)){
+                    logger.info("Iterating and closing ", key, subscribers, subscribers[key]);
+                    subscribers[key].close();
+                }
+            }
+            if (publisher) {
+                publisher.close();
+            }
             gateway.close();
-            subscribers = [];
+            subscribers = {};
             publisher = undefined;
             gateway = undefined;
         }

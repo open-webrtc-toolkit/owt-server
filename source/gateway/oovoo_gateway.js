@@ -241,6 +241,10 @@ var listen = function (io) {
             }
         };
 
+        socket.on('signaling_message', function (msg) {
+            socket.conn.controller.processSignaling(msg.streamId, socket.id, msg.msg);
+        });
+
         //Gets 'publish' messages on the socket in order to add new stream to the conn.
         socket.on('publish', function (options, sdp, callback) {
             if (!ison) {
@@ -264,6 +268,25 @@ var listen = function (io) {
                     }
                 });
             } else {
+                if (options.state === 'erizo') {
+                    options.attributes = options.attributes || {};
+                    var resolution = options.attributes.resolution || '';
+                    socket.conn.controller.addPublisher(id, function (signMess) {
+                        if (signMess.type === 'initializing') {
+                            if (typeof callback === 'function') callback('initializing', {id: id});
+                            st = new ST.Stream({id: id, audio: options.audio, video: options.video, screen: options.screen, attributes: options.attributes});
+                            return;
+                        }
+
+                        if (signMess.type === 'ready') {
+                            socket.conn.streams[id] = st;
+                            notify(socket, 'onPublishStream', {id: id});
+                        }
+
+                        socket.emit('signaling_message_erizo', {mess: signMess, streamId: id});
+                    }, resolution);
+                }
+                /*
                 if (options.state === 'offer' && socket.state === 'sleeping') {
                     options.attributes = options.attributes || {};
                     var resolution = options.attributes.resolution || '';
@@ -280,6 +303,7 @@ var listen = function (io) {
                     socket.state = 'sleeping';
                     socket.conn.streams[id] = st;
                 }
+                */
             }
         });
 
@@ -301,10 +325,19 @@ var listen = function (io) {
             }
 
             if (stream.hasAudio() || stream.hasVideo() || stream.hasScreen()) {
+                socket.conn.controller.addSubscriber(socket.id, options.streamId, options.audio, options.video, function (signMess) {
+                    if (signMess.type === 'initializing') {
+                        if (typeof callback === 'function') callback('initializing');
+                        return;
+                    }
+                    socket.emit('signaling_message_erizo', {mess: signMess, peerId: options.streamId});
+                });
+                /*
                 socket.conn.controller.addSubscriber(socket.id, options.streamId, options.audio, options.video, sdp, function (answer) {
                     answer = answer.replace(privateRegexp, publicIP);
                     if (typeof callback === 'function') callback(answer);
                 });
+                */
             } else {
                 if (typeof callback === 'function') callback(undefined);
             }

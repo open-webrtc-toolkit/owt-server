@@ -461,7 +461,7 @@ conference.join(token, function(response) {...}, function(error) {...});
           L.Logger.info("ICE Connection Failed");
           if (that.state !== DISCONNECTED) {
             var disconnectEvt = new Woogeen.StreamEvent({type: 'stream-failed'});
-            that.dispatchEvent(disconnectEvt);
+            self.dispatchEvent(disconnectEvt);
           }
         });
 
