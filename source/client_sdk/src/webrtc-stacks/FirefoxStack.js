@@ -90,6 +90,11 @@ Erizo.FirefoxStack = function (spec) {
         }
     };
 
+    that.peerConnection.oniceconnectionstatechange = function (e) {
+        if (that.oniceconnectionstatechange) {
+            that.oniceconnectionstatechange(e.currentTarget.iceConnectionState);
+        }
+    };
 
     var setMaxBW = function (sdp) {
         var a, r;

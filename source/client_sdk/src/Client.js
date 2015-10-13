@@ -135,6 +135,19 @@ Erizo.Client = function (spec) {
                 that.dispatchEvent(evt);
             });
 
+            that.socket.on('signaling_message_erizo', function (arg) {
+                var stream;
+                if (arg.peerId) {
+                    stream = that.remoteStreams[arg.peerId];
+                } else {
+                    stream = that.localStreams[arg.streamId];
+                }
+
+                if (stream) {
+                    stream.pc.processSignalingMessage(arg.mess);
+                }
+            });
+
             // We receive an event of local stream published
             that.socket.on('onPublishStream', function (arg) {
                 L.Logger.info('Stream published');
@@ -273,6 +286,14 @@ Erizo.Client = function (spec) {
 
             that.socket.on('error', function(e) {
                 error(e || 'connection_error');
+            });
+
+            that.socket.on('connection_failed', function() {
+                L.Logger.info("ICE Connection Failed");
+                if (that.state !== DISCONNECTED) {
+                    var disconnectEvt = new Erizo.StreamEvent({type: 'stream-failed'});
+                    that.dispatchEvent(disconnectEvt);
+                }
             });
         }
 
@@ -415,57 +436,80 @@ Erizo.Client = function (spec) {
                     });
 
                 } else {
-                    stream.pc = Erizo.Connection({callback: function (offer) {
-                        sendSDPSocket('publish', {state: 'offer', audio: stream.hasAudio(), video: stream.hasVideo(), attributes: stream.getAttributes()}, offer, function (answer, info) {
-                            if (answer === 'error') {
-                                safeCall(onFailure, answer);
-                                return;
-                            }
-                            stream.pc.onsignalingmessage = function (ok) {
-                                stream.pc.onsignalingmessage = function () {};
-                                sendSDPSocket('publish', {state: 'ok', audio: stream.hasAudio(), video: stream.hasVideo(), screen: stream.hasScreen(), attributes: stream.getAttributes()}, ok);
-                                stream.getId = function () {
-                                    return info.id;
-                                };
-                                that.localStreams[info.id] = stream;
-                                stream.onClose = function() {
-                                    that.unpublish(stream);
-                                };
-                                stream.signalOnPlayAudio = function (onSuccess, onFailure) {
-                                    that.send(mkCtrlPayload('audio-out-on'), onSuccess, onFailure);
-                                };
-                                stream.signalOnPauseAudio = function (onSuccess, onFailure) {
-                                    that.send(mkCtrlPayload('audio-out-off'), onSuccess, onFailure);
-                                };
-                                stream.signalOnPlayVideo = function (onSuccess, onFailure) {
-                                    that.send(mkCtrlPayload('video-out-on'), onSuccess, onFailure);
-                                };
-                                stream.signalOnPauseVideo = function (onSuccess, onFailure) {
-                                    that.send(mkCtrlPayload('video-out-off'), onSuccess, onFailure);
-                                };
-                            };
+                    sendSDPSocket('publish', {state: 'erizo', audio: stream.hasAudio(), video: stream.hasVideo(), attributes: stream.getAttributes()}, undefined, function (answer, info) {
+                        if (answer === 'error') {
+                            return safeCall(onFailure, info.id);
+                        }
+                        stream.getId = function () {
+                            return info.id;
+                        };
+                        that.localStreams[info.id] = stream;
 
-                            stream.pc.oniceconnectionstatechange = function (state) {
-                                if (state === 'failed') {
-                                    sendMessageSocket('unpublish', stream.getId(), function(){}, function(){});
-                                    stream.pc.close();
-                                    stream.pc = undefined;
-                                    delete that.localStreams[stream.getId()];
-                                    stream.getId = function () { return null; };
-                                    stream.onClose = undefined;
-                                    stream.signalOnPlayAudio = undefined;
-                                    stream.signalOnPauseAudio = undefined;
-                                    stream.signalOnPlayVideo = undefined;
-                                    stream.signalOnPauseVideo = undefined;
-                                    safeCall(onFailure, 'peer connection failed');
-                                }
-                            };
-
-                            stream.pc.processSignalingMessage(answer);
+                        stream.pc = Erizo.Connection({
+                            callback: function (message) {
+                                console.log("Sending message", message);
+                                sendSDPSocket('signaling_message', {streamId: info.id, msg: message}, undefined, function () {});
+                            },
+                            video: stream.hasVideo(),
+                            audio: stream.hasAudio(),
+                            iceServers: that.userSetIceServers,
+                            stunServerUrl: that.stunServerUrl,
+                            turnServer: that.turnServer,
+                            maxAudioBW: options.maxAudioBW,
+                            maxVideoBW: options.maxVideoBW,
+                            limitMaxAudioBW: spec.maxAudioBW,
+                            limitMaxVideoBW: spec.maxVideoBW
                         });
-                    }, iceServers: that.userSetIceServers, stunServerUrl: that.stunServerUrl, turnServer: that.turnServer, maxAudioBW: options.maxAudioBW, maxVideoBW: options.maxVideoBW, limitMaxAudioBW: spec.maxAudioBW, limitMaxVideoBW: spec.maxVideoBW});
 
-                    stream.pc.addStream(stream.stream);
+                        var onChannelReady = function () {
+                            stream.onClose = function() {
+                                that.unpublish(stream);
+                            };
+                            stream.signalOnPlayAudio = function (onSuccess, onFailure) {
+                                that.send(mkCtrlPayload('audio-out-on'), onSuccess, onFailure);
+                            };
+                            stream.signalOnPauseAudio = function (onSuccess, onFailure) {
+                                that.send(mkCtrlPayload('audio-out-off'), onSuccess, onFailure);
+                            };
+                            stream.signalOnPlayVideo = function (onSuccess, onFailure) {
+                                that.send(mkCtrlPayload('video-out-on'), onSuccess, onFailure);
+                            };
+                            stream.signalOnPauseVideo = function (onSuccess, onFailure) {
+                                that.send(mkCtrlPayload('video-out-off'), onSuccess, onFailure);
+                            };
+                            onChannelReady = function () {};
+                            onChannelFailed = function () {};
+                        };
+                        var onChannelFailed = function () {
+                            sendMessageSocket('unpublish', stream.getId(), function(){}, function(){});
+                            stream.pc.close();
+                            stream.pc = undefined;
+                            delete that.localStreams[stream.getId()];
+                            stream.getId = function () { return null; };
+                            safeCall(onFailure, 'peer connection failed');
+                            onChannelReady = function () {};
+                            onChannelFailed = function () {};
+                        };
+                        stream.pc.oniceconnectionstatechange = function (state) {
+                            switch (state) {
+                            case 'completed': // chrome
+                            case 'connected': // firefox
+                                onChannelReady();
+                                break;
+                            case 'checking':
+                            case 'closed':
+                                break;
+                            case 'failed':
+                                onChannelFailed();
+                                break;
+                            default:
+                                L.Logger.warning('unknown ice connection state:', state);
+                            }
+                        };
+
+                        stream.pc.addStream(stream.stream);
+                        stream.pc.createOffer();
+                    });
                 }
             }
         }
@@ -506,45 +550,59 @@ Erizo.Client = function (spec) {
         }
         if (!stream.local) {
             if (stream.hasVideo() || stream.hasAudio() || stream.hasScreen()) { // TODO: screen
-                stream.pc = Erizo.Connection({callback: function (offer) {
-                    sendSDPSocket('subscribe', {streamId: stream.getId(), audio: stream.hasAudio(), video: stream.hasVideo()}, offer, function (answer) {
-                        if (answer === 'error') {
-                            safeCall(onFailure, answer);
-                            return;
-                        }
-/*
-                        // For compatibility with only audio in Firefox
-                        if (answer.match(/a=ssrc:55543/)) {
-                            answer = answer.replace(/a=sendrecv\\r\\na=mid:video/, 'a=recvonly\\r\\na=mid:video');
-                            answer = answer.split('a=ssrc:55543')[0] + '"}';
-                        }
-*/                            
-                        stream.pc.processSignalingMessage(answer);
+                L.Logger.info("Subscribing to: " + stream.getId());
+
+                sendSDPSocket('subscribe', {
+                    streamId: stream.getId(),
+                    audio: stream.hasAudio(),
+                    video: stream.hasVideo(),
+                    browser: Erizo.getBrowser()
+                }, undefined, function (answer, errText) {
+                    if (answer === 'error' || answer === 'timeout') {
+                        return safeCall(onFailure, errText || answer);
+                    }
+
+                    stream.pc = Erizo.Connection({
+                        callback: function (message) {
+                            sendSDPSocket('signaling_message', {
+                                streamId: stream.getId(),
+                                msg: message,
+                                browser: stream.pc.browser
+                            }, undefined, function () {});
+                        },
+                        audio: stream.hasAudio(),
+                        video: stream.hasVideo(),
+                        iceServers: that.userSetIceServers,
+                        stunServerUrl: that.stunServerUrl,
+                        turnServer: that.turnServer
                     });
-                }, nop2p: true, audio: stream.hasAudio(), video: stream.hasVideo(), iceServers: that.userSetIceServers, stunServerUrl: that.stunServerUrl, turnServer: that.turnServer});
 
-                stream.pc.onaddstream = function (evt) {
-                    // Draw on html
-                    L.Logger.info('Stream subscribed');
-                    stream.stream = evt.stream;
-                    var evt2 = Erizo.StreamEvent({type: 'stream-subscribed', stream: stream});
-                    that.dispatchEvent(evt2);
-                    stream.signalOnPlayAudio = function (onSuccess, onFailure) {
-                        that.send(mkCtrlPayload('audio-in-on', stream.getId()), onSuccess, onFailure);
+                    stream.pc.onaddstream = function (evt) {
+                        stream.stream = evt.stream;
+                        if (navigator.appVersion.indexOf('Trident') > -1) {
+                            stream.pcid = evt.pcid;
+                        }
                     };
-                    stream.signalOnPauseAudio = function (onSuccess, onFailure) {
-                        that.send(mkCtrlPayload('audio-in-off', stream.getId()), onSuccess, onFailure);
+                    var onChannelReady = function () {
+                        L.Logger.info('Stream subscribed');
+                        var evt2 = Erizo.StreamEvent({type: 'stream-subscribed', stream: stream});
+                        that.dispatchEvent(evt2);
+                        stream.signalOnPlayAudio = function (onSuccess, onFailure) {
+                            that.send(mkCtrlPayload('audio-in-on', stream.getId()), onSuccess, onFailure);
+                        };
+                        stream.signalOnPauseAudio = function (onSuccess, onFailure) {
+                            that.send(mkCtrlPayload('audio-in-off', stream.getId()), onSuccess, onFailure);
+                        };
+                        stream.signalOnPlayVideo = function (onSuccess, onFailure) {
+                            that.send(mkCtrlPayload('video-in-on', stream.getId()), onSuccess, onFailure);
+                        };
+                        stream.signalOnPauseVideo = function (onSuccess, onFailure) {
+                            that.send(mkCtrlPayload('video-in-off', stream.getId()), onSuccess, onFailure);
+                        };
+                        onChannelReady = function () {};
+                        onChannelFailed = function () {};
                     };
-                    stream.signalOnPlayVideo = function (onSuccess, onFailure) {
-                        that.send(mkCtrlPayload('video-in-on', stream.getId()), onSuccess, onFailure);
-                    };
-                    stream.signalOnPauseVideo = function (onSuccess, onFailure) {
-                        that.send(mkCtrlPayload('video-in-off', stream.getId()), onSuccess, onFailure);
-                    };
-                };
-
-                stream.pc.oniceconnectionstatechange = function (state) {
-                    if (state === 'failed') {
+                    var onChannelFailed = function () {
                         sendMessageSocket('unsubscribe', stream.getId(), function(){}, function(){});
                         removeStream(stream);
                         stream.signalOnPlayAudio = undefined;
@@ -552,10 +610,27 @@ Erizo.Client = function (spec) {
                         stream.signalOnPlayVideo = undefined;
                         stream.signalOnPauseVideo = undefined;
                         safeCall(onFailure, 'peer connection failed');
-                    }
-                };
-
-                L.Logger.info("Subscribing to: " + stream.getId());
+                        onChannelReady = function () {};
+                        onChannelFailed = function () {};
+                    };
+                    stream.pc.oniceconnectionstatechange = function (state) {
+                        switch (state) {
+                        case 'completed': // chrome
+                        case 'connected': // firefox
+                            onChannelReady();
+                            break;
+                        case 'checking':
+                        case 'closed':
+                            break;
+                        case 'failed':
+                            onChannelFailed();
+                            break;
+                        default:
+                            L.Logger.warning('unknown ice connection state:', state);
+                        }
+                    };
+                    stream.pc.createOffer(true);
+                });
             } else {
                 safeCall(onFailure, 'stream does not has video/audio/screen');
             }
