@@ -26,7 +26,7 @@ pack_runtime() {
   # mcu
   mkdir -p ${WOOGEEN_DIST}/mcu/
   cd ${WOOGEEN_DIST}/mcu/ && \
-  mkdir -p common erizoAgent erizoController/rpc erizoJS/rpc
+  mkdir -p common erizoAgent erizoController/rpc erizoJS
   cd ${SOURCE}/erizo_controller && \
   find . -type f -not -name "*.log" -not -name "in*.sh" -exec cp '{}' "${WOOGEEN_DIST}/mcu/{}" \;
   pack_nuve
@@ -147,7 +147,7 @@ pack_node() {
     # This is kind of fragile - we assume that the occurrences of "require" are
     # always the keyword for module loading in the original JavaScript file.
     sed -i.origin "s/require('.*\//Module\._load('/g; s/require('/Module\._load('/g" "${line}"
-    sed -i "s/Module\._load('\(rpc\|logger\|erizoJSController\)/Module\._load('webrtc_mcu\/\1/g" "${line}"
+    sed -i "s/Module\._load('\(amqper\|logger\|erizoJSController\)/Module\._load('webrtc_mcu\/\1/g" "${line}"
     sed -i "1 i var Module = require('module');" "${line}"
     mv ${line} ${CURRENT_DIR}/lib/webrtc_mcu/
     sed -i "/lib\/zlib.js/a 'lib/webrtc_mcu/$(basename ${line})'," node.gyp
