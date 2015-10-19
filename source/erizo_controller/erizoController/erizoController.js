@@ -868,7 +868,7 @@ var listen = function () {
 
                 socket.room.controller.addPublisher(id, mixer, unmix, function (signMess) {
                     if (signMess.type === 'initializing') {
-                        safeCall(callback, undefined, id);
+                        safeCall(callback, 'initializing', id);
                         st = new ST.Stream({id: id, audio: options.audio, video: options.video, attributes: options.attributes, from: socket.id});
                         return;
                     }
@@ -910,7 +910,7 @@ var listen = function () {
                 st = new ST.Stream({id: id, socket: socket.id, audio: options.audio, video: options.video, attributes: options.attributes, from: socket.id});
                 socket.streams.push(id);
                 socket.room.streams[id] = st;
-                safeCall(callback, undefined, id);
+                safeCall(callback, '', id);
                 sendMsgToRoom(socket.room, 'onAddStream', st.getPublicStream());
             }
         });
@@ -970,7 +970,7 @@ var listen = function () {
                     // safeCall(callback, '');
                 }
             } else {
-                safeCall(callback, undefined);
+                safeCall(callback, '');
             }
         });
 
