@@ -50,8 +50,9 @@ typedef std::tuple<int, unsigned int, unsigned int> ExtendedKey;
 /**
  * Receives media from several sources, mixed into one stream and retransmits it to the RTPDataReceiver.
  */
-class VideoMixer : public woogeen_base::MediaSourceConsumer, public woogeen_base::FrameProvider, public erizo::FeedbackSink, public InputProcessorCallback, public woogeen_base::Notification {
+class VideoMixer : public woogeen_base::MediaSourceConsumer, public woogeen_base::FrameProvider, public erizo::FeedbackSink, public InputProcessorCallback {
     DECLARE_LOGGER();
+
 public:
     VideoMixer(erizo::RTPDataReceiver*, boost::property_tree::ptree& config);
     virtual ~VideoMixer();
@@ -69,11 +70,11 @@ public:
 
     // Implements MediaSourceConsumer.
     erizo::MediaSink* addSource(uint32_t from,
-                                bool isAudio,
-                                erizo::DataContentType,
-                                int payloadType,
-                                erizo::FeedbackSink*,
-                                const std::string& participantId);
+        bool isAudio,
+        erizo::DataContentType,
+        int payloadType,
+        erizo::FeedbackSink*,
+        const std::string& participantId);
     void removeSource(uint32_t from, bool isAudio);
 
     // Implements FeedbackSink.
@@ -93,10 +94,10 @@ public:
     int32_t addFrameConsumer(const std::string&, woogeen_base::FrameFormat, woogeen_base::FrameConsumer*, const woogeen_base::MediaSpecInfo&);
     void removeFrameConsumer(int32_t id);
     // TODO: Implement it.
-    virtual void setBitrate(unsigned short kbps, int id = 0) { }
+    virtual void setBitrate(unsigned short kbps, int id = 0) {}
 
-    // Implements Notification
-    void setupNotification(std::function<void (const std::string&, const std::string&)> f);
+    void setEventRegistry(woogeen_base::EventRegistry*);
+
 private:
     void closeAll();
 
@@ -111,7 +112,7 @@ private:
     erizo::RTPDataReceiver* m_outputReceiver;
     boost::shared_mutex m_sourceMutex;
     std::map<uint32_t, boost::shared_ptr<erizo::MediaSink>> m_sinksForSources;
-    std::vector<uint32_t> m_sourceInputMap;    // each source will be allocated one index
+    std::vector<uint32_t> m_sourceInputMap; // each source will be allocated one index
     boost::scoped_ptr<VideoLayoutProcessor> m_layoutProcessor;
     bool m_hardwareAccelerated;
     uint32_t m_maxInputCount;

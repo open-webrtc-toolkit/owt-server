@@ -183,8 +183,8 @@ void Mixer::addSubscriber(MediaSink* subscriber, const std::string& peerId, cons
     bool enableNACK = true || subscriber->acceptResentData();
     bool enableFEC = false && subscriber->acceptFEC();
 
-    unsigned int width {0};
-    unsigned int height {0};
+    unsigned int width{ 0 };
+    unsigned int height{ 0 };
     try {
         boost::property_tree::ptree resolution;
         std::istringstream is(options);
@@ -196,7 +196,7 @@ void Mixer::addSubscriber(MediaSink* subscriber, const std::string& peerId, cons
         width = 0;
         height = 0;
     }
-    VideoSize size {width, height};
+    VideoSize size{ width, height };
 
     m_videoMixer->addOutput(videoPayloadType, enableNACK, enableFEC, size);
     subscriber->setVideoSinkSSRC(m_videoMixer->getSendSSRC(videoPayloadType, enableNACK, enableFEC, size));
@@ -219,7 +219,7 @@ void Mixer::addSubscriber(MediaSink* subscriber, const std::string& peerId, cons
 
     boost::unique_lock<boost::shared_mutex> lock(m_subscriberMutex);
     m_subscribers[peerId] = std::pair<boost::shared_ptr<MediaSink>,
-                                MediaEnabling>(boost::shared_ptr<MediaSink>(subscriber), MediaEnabling());
+        MediaEnabling>(boost::shared_ptr<MediaSink>(subscriber), MediaEnabling());
 }
 
 void Mixer::removeSubscriber(const std::string& peerId)
@@ -300,9 +300,7 @@ bool Mixer::init(boost::property_tree::ptree& videoConfig)
     m_videoMixer.reset(new VideoMixer(this, videoConfig));
     bool avCoordinated = videoConfig.get<bool>("avcoordinate");
     m_audioMixer.reset(new AudioMixer(this, this, avCoordinated));
-    m_videoMixer->setupNotification([this](const std::string& event, const std::string& data) {
-        this->notifyAsyncEvent(event, data);
-    });
+    m_videoMixer->setEventRegistry(this);
     return true;
 }
 
@@ -334,25 +332,15 @@ void Mixer::setEventRegistry(EventRegistry* handle)
     ELOG_DEBUG("setEventRegistry - add listener %p", handle);
 }
 
-void Mixer::notifyAsyncEvent(const std::string& event, const std::string& data)
+bool Mixer::notifyAsyncEvent(const std::string& event, const std::string& data)
 {
     if (m_asyncHandle) {
-        m_asyncHandle->notifyAsyncEvent(event, data);
+        bool r = m_asyncHandle->notifyAsyncEvent(event, data);
         ELOG_DEBUG("notifyAsyncEvent - event: %s", event.c_str());
+        return r;
     } else {
         ELOG_DEBUG("notifyAsyncEvent - handler not set");
-    }
-}
-
-void Mixer::notifyAsyncEvent(const std::string& event, uint32_t data)
-{
-    if (m_asyncHandle) {
-        std::ostringstream message;
-        message << data;
-        m_asyncHandle->notifyAsyncEvent(event, message.str());
-        ELOG_DEBUG("notifyAsyncEvent - event: %s", event.c_str());
-    } else {
-        ELOG_DEBUG("notifyAsyncEvent - handler not set");
+        return false;
     }
 }
 

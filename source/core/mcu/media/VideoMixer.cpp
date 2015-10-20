@@ -435,9 +435,9 @@ void VideoMixer::closeAll()
     ELOG_DEBUG("Closed all media in this Mixer");
 }
 
-void VideoMixer::setupNotification(std::function<void (const std::string&, const std::string&)> f)
+void VideoMixer::setEventRegistry(woogeen_base::EventRegistry* handle)
 {
-    m_layoutProcessor->setupNotification(f);
+    m_layoutProcessor->setEventRegistry(handle);
     // setup others if needed.
 }
 

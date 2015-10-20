@@ -28,7 +28,8 @@ namespace mcu {
 DEFINE_LOGGER(VideoLayoutProcessor, "mcu.media.VideoLayoutProcessor");
 
 VideoLayoutProcessor::VideoLayoutProcessor(boost::property_tree::ptree& layoutConfig)
-    : m_currentRegions(nullptr)
+    : m_currentRegions{ nullptr }
+    , m_eventHandle{ nullptr }
 {
     std::string resolution = layoutConfig.get<std::string>("resolution");
     if (!VideoResolutionHelper::getVideoSize(resolution, m_rootSize)) {
@@ -295,7 +296,7 @@ void VideoLayoutProcessor::updateInputPositions()
     if (!m_inputPositions.empty()) {
         unsigned int pos = 0;
         for (std::vector<Region>::iterator itReg = m_currentRegions->begin(); itReg != m_currentRegions->end(); ++itReg) {
-            InputRegion input = {m_inputPositions[pos++], *itReg};
+            InputRegion input = { m_inputPositions[pos++], *itReg };
             solution.push_back(input);
             if (pos >= m_inputPositions.size())
                 break;
@@ -305,7 +306,8 @@ void VideoLayoutProcessor::updateInputPositions()
     std::list<boost::shared_ptr<LayoutConsumer>>::iterator it = m_consumers.begin();
     for (; it != m_consumers.end(); ++it)
         (*it)->updateLayoutSolution(solution);
-    notify("UpdateStream", "VideoLayoutChanged");
+    if (m_eventHandle)
+        m_eventHandle->notifyAsyncEvent("UpdateStream", "VideoLayoutChanged");
 }
 
 void VideoLayoutProcessor::chooseRegions()
@@ -322,6 +324,4 @@ void VideoLayoutProcessor::chooseRegions()
     }
     m_currentRegions = &(lastCover->second);
 }
-
 }
-

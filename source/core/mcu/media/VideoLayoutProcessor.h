@@ -33,8 +33,9 @@
 
 namespace mcu {
 
-class VideoLayoutProcessor : public woogeen_base::Notification {
+class VideoLayoutProcessor {
     DECLARE_LOGGER();
+
 public:
     VideoLayoutProcessor(boost::property_tree::ptree& layoutConfig);
     virtual ~VideoLayoutProcessor();
@@ -55,6 +56,7 @@ public:
     void promoteInputs(std::vector<int>& inputs);
     bool specifyInputRegion(int input, const std::string& regionID);
     std::string getInputRegion(int input);
+    void setEventRegistry(woogeen_base::EventRegistry* handle) { m_eventHandle = handle; }
 
 private:
     void updateInputPositions();
@@ -66,9 +68,8 @@ private:
     YUVColor m_bgColor;
     std::vector<int> m_inputPositions;
     std::vector<Region>* m_currentRegions;
-    std::map<size_t/*MaxInputCount*/, std::vector<Region>> m_templates;
+    std::map<size_t /*MaxInputCount*/, std::vector<Region>> m_templates;
+    woogeen_base::EventRegistry* m_eventHandle;
 };
-
-
 }
 #endif
