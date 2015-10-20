@@ -44,7 +44,7 @@ namespace mcu {
  * It receives media from several sources through the WebRTCGateways, mixed them into one stream and retransmits
  * it to every subscriber.
  */
-class Mixer : public MixerInterface, public erizo::FeedbackSink, public erizo::RTPDataReceiver, AudioMixerVADCallback {
+class Mixer : public MixerInterface, public erizo::FeedbackSink, public erizo::RTPDataReceiver, AudioMixerVADCallback, public woogeen_base::EventRegistry {
     DECLARE_LOGGER();
 
 public:
@@ -97,6 +97,9 @@ public:
     // Implements AudioMixerVADCallback
     void onPositiveAudioSources(std::vector<uint32_t>& sources);
 
+    // Implements woogeen_base::EventRegistry
+    bool notifyAsyncEvent(const std::string& event, const std::string& data);
+
 protected:
     boost::shared_ptr<VideoMixer> m_videoMixer;
     boost::shared_ptr<AudioMixer> m_audioMixer;
@@ -113,10 +116,6 @@ private:
     boost::shared_mutex m_subscriberMutex;
     std::map<std::string, std::pair<boost::shared_ptr<erizo::MediaSink>, woogeen_base::MediaEnabling>> m_subscribers;
     std::map<std::string, erizo::MediaSource*> m_publishers;
-
-    // async event notification
-    void notifyAsyncEvent(const std::string& event, const std::string& data);
-    void notifyAsyncEvent(const std::string& event, uint32_t data);
     woogeen_base::EventRegistry* m_asyncHandle;
 };
 

@@ -22,33 +22,14 @@
 #define EventRegistry_h
 
 #include <Compiler.h>
-#include <functional>
 #include <string>
 
 namespace woogeen_base {
 
 class DLL_PUBLIC EventRegistry {
 public:
-    virtual ~EventRegistry() { }
+    virtual ~EventRegistry() {}
     virtual bool notifyAsyncEvent(const std::string& event, const std::string& data) = 0;
-};
-
-class Notification {
-public:
-    virtual ~Notification() {}
-    virtual void setupNotification(std::function<void(const std::string&, const std::string&)> f) { m_fn = f; }
-    void notify(const std::string& event, const std::string& data)
-    {
-        if (m_fn)
-            m_fn(event, data);
-    }
-
-protected:
-    std::function<void(const std::string&, const std::string&)> m_fn;
-    Notification(std::function<void(const std::string&, const std::string&)> f = nullptr)
-        : m_fn(f)
-    {
-    }
 };
 
 } /* namespace woogeen_base */
