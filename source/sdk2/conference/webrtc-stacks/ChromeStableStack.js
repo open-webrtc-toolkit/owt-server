@@ -284,8 +284,8 @@ Erizo.ChromeStableStack = function (spec) {
                 if (spec.remoteDescriptionSet) {
                     that.peerConnection.addIceCandidate(candidate);
                 } else {
-                    spec.candidates.push(candidate);
-                    console.log("Candidates stored: ", spec.candidates.length, spec.candidates);
+                    spec.remoteCandidates.push(candidate);
+                    console.log("Candidates stored: ", spec.remoteCandidates.length, spec.remoteCandidates);
                 }
             } catch (e) {
                 L.Logger.error("Error parsing candidate", msg.candidate);
