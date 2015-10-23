@@ -36,6 +36,8 @@ AudioExternalOutput::AudioExternalOutput()
 
 AudioExternalOutput::~AudioExternalOutput()
 {
+    m_jobTimer->stop();
+
     VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);
     VoENetwork* network = VoENetwork::GetInterface(m_voiceEngine);
 
@@ -61,15 +63,10 @@ AudioExternalOutput::~AudioExternalOutput()
 
     voe->Terminate();
     VoiceEngine::Delete(m_voiceEngine);
-
-    m_jobTimer->stop();
 }
 
 void AudioExternalOutput::init()
 {
-    // FIXME: hard coded timer interval.
-    m_jobTimer.reset(new woogeen_base::JobTimer(100, this));
-
     m_voiceEngine = VoiceEngine::Create();
     m_adm.reset(new FakeAudioDeviceModule);
     VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);
@@ -86,6 +83,9 @@ void AudioExternalOutput::init()
             return;
         }
     }
+
+    // FIXME: hard coded timer interval.
+    m_jobTimer.reset(new woogeen_base::JobTimer(100, this));
 }
 
 static bool fillAudioCodec(int payloadType, CodecInst& audioCodec)
