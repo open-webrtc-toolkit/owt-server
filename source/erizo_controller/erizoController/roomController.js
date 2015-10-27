@@ -156,14 +156,21 @@ exports.RoomController = function (spec) {
                 // Track publisher locally
                 publishers[publisher_id] = erizo_id;
                 subscribers[publisher_id] = [];
+                erizos[erizo_id].publishers.push(publisher_id);
 
                 // then we call its addExternalInput method.
                 var mixer = {id: mixer_id, oop: GLOBAL.config.erizoController.outOfProcessMixer};
                 var args = [publisher_id, options, mixer];
-                amqper.callRpc(getErizoQueue(publisher_id), "addExternalInput", args, {callback: callback, onReady: onReady});
-
-                erizos[erizo_id].publishers.push(publisher_id);
-
+                amqper.callRpc(getErizoQueue(publisher_id), "addExternalInput", args, {callback: function (result) {
+                    if (result !== 'success') {
+                        // Remove tracks
+                        var index = erizos[erizo_id].publishers.indexOf(publisher_id);
+                        erizos[erizo_id].publishers.splice(index, 1);
+                        delete subscribers[publisher_id];
+                        delete publishers[publisher_id];
+                    }
+                    callback(result);
+                }, onReady: onReady});
             });
         } else {
             log.info("Publisher already set for", publisher_id);
