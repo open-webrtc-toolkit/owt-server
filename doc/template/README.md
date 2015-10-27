@@ -512,6 +512,10 @@ The JavaScript objects (described earlier in this section) throw events using Ev
             <td>A stream is ready to show. Parameter: stream for remote stream, which is an instance of Woogeen.RemoteStream.</td>
         </tr>
         <tr valign="top">
+            <td>stream-removed</td>
+            <td>A stream has been removed. Parameter: stream for remote stream, which is an instance of Woogeen.RemoteStream.</td>
+        </tr>
+        <tr valign="top">
             <td>data-received</td>
             <td>Indicates there is new data content arrived which is sent by peer through data channel.</td>
         </tr>
