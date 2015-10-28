@@ -74,27 +74,7 @@ exports.RoomController = function (spec) {
             amqper.callRpc('ErizoJS_'+erizo_id, 'setControllerId', [exports.myId, roomId], {});
         }});
     };
-/*
-    var createErizoJS = function(publisher_id, mixer_id, callback) {
-        if (erizos[publisher_id] !== undefined) {
-            callback();
-            return;
-        }
-        // Currently we want to make sure the publishers and the mixer they associate with
-        // are run in the same process. This is the requirement of in-process mixer.
-        if (!GLOBAL.config.erizoController.outOfProcessMixer && mixer_id !== undefined && erizos[mixer_id] !== undefined) {
-            erizos[publisher_id] = erizos[mixer_id];
-            callback();
-            return;
-        }
-        amqper.callRpc("ErizoAgent_" + agentId, "createErizoJS", [publisher_id], {callback: function(erizo_id) {
-            log.debug("Answer", erizo_id);
-            erizos[publisher_id] = erizo_id;
-            callback();
-            amqper.callRpc('ErizoJS_'+erizo_id, 'setControllerId', [exports.myId, roomId], {});
-        }});
-    };
-*/
+
     var getErizoQueue = function(publisher_id) {
         return "ErizoJS_" + publishers[publisher_id];
     };
