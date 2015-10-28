@@ -61,10 +61,11 @@ N.API.init('5188b9af6e53c84ffd600413', '21989', 'http://61.129.90.140:3000/')
     <li><b>mode:</b>"hybrid" for room with mixing and forward streams; "p2p" for p2p room.</li>
     <li><b>publishLimit:</b>limiting number of publishers in the room. Value should be equal to or greater than -1. -1 for unlimited.</li>
     <li><b>userLimit:</b>limiting number of users in the room. Value should be equal to or greater than -1. -1 for unlimited.</li>
-    <li><b>mediaMixing:</b>media setting for mix stream in the room. Value should be a JSON object contains two entries: "video" and "audio". Audio entry is currently not used and should be null.</li>
+    <li><b>enableMixing:</b>control whether to enable media mixing in the room, with value choices 0 or 1.</li>
+    <li><b>mediaMixing:</b>media setting for mixed stream in the room if mixing is enabled. Value should be a JSON object contains two entries: "video" and "audio". Audio entry is currently not used and should be null.</li>
     <ul>
         <li>audio: null</li>
-        <li>video: avCoordinated, maxInput, resolution, bitrate , bkColor, layout</li>
+        <li>video: maxInput, resolution, multistreaming, bitrate , bkColor, layout, avCoordinate</li>
         <ul>
             <li>maxInput is for maximum number of slots in the mix stream</li>
             <li>resolution denotes the resolution of the video size of mix stream.Valid resolution list:</li>
@@ -143,7 +144,6 @@ N.API.createRoom('myRoom',
   userLimit: 30,
   mediaMixing: {
     video: {
-      avCoordinated: 1,
       maxInput: 15,
       resolution: 'hd720p',
       multistreaming: 1,
@@ -151,7 +151,8 @@ N.API.createRoom('myRoom',
       bkColor: {"r":1, "g":2, "b":255},
       layout: {
         base: 'fluid',
-      }
+      },
+      avCoordinated: 1
     },
     audio: null
   },
@@ -232,17 +233,18 @@ N.API.deleteRoom(room, function(result) {
 N.API.updateRoom(XXXXXXXXXX, {
   publishLimit: -1,
   userLimit: -1,
+  enableMixing: 1,
   mediaMixing: {
     video: {
-      avCoordinated: 1,
       maxInput: 15,
       resolution: 'hd720p',
       multistreaming: 1,
       bitrate: 0,
-      bkColor: 'white',
+      bkColor: {"r":1, "g":2, "b":255},
       layout: {
         base: 'lecture',
-      }
+      },
+      avCoordinated: 1
     },
     audio: null
   },
