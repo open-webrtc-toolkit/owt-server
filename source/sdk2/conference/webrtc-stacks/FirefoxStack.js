@@ -12,13 +12,8 @@ Erizo.FirefoxStack = function (spec) {
         iceServers: []
     };
 
-    // currently firefox does not support turn
     if (spec.iceServers instanceof Array) {
-        spec.iceServers.map(function (server) {
-            if (server.url.indexOf('stun:') === 0) {
-                that.pc_config.iceServers.push({url: server.url});
-            }
-        });
+        that.pc_config.iceServers = spec.iceServers;
     } else {
         if (spec.stunServerUrl) {
             if (spec.stunServerUrl instanceof Array) {
@@ -31,10 +26,26 @@ Erizo.FirefoxStack = function (spec) {
                 that.pc_config.iceServers.push({url: spec.stunServerUrl});
             }
         }
-    }
 
-    if ((spec.turnServer || {}).url) {
-        that.pc_config.iceServers.push({"username": spec.turnServer.username, "credential": spec.turnServer.password, "url": spec.turnServer.url});
+        if (spec.turnServer) {
+            if (spec.turnServer instanceof Array) {
+                spec.turnServer.map(function (turn) {
+                    if (typeof turn.url === 'string' && turn.url !== '') {
+                        that.pc_config.iceServers.push({
+                            username: turn.username,
+                            credential: turn.password,
+                            url: turn.url
+                        });
+                    }
+                });
+            } else if (typeof spec.turnServer.url === 'string' && spec.turnServer.url !== '') {
+                that.pc_config.iceServers.push({
+                    username: spec.turnServer.username,
+                    credential: spec.turnServer.password,
+                    url: spec.turnServer.url
+                });
+            }
+        }
     }
 
     if (spec.audio === undefined) {
