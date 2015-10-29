@@ -44,9 +44,9 @@ void ExternalInput::New(const FunctionCallbackInfo<Value>& args) {
 
   if (optionObject->Has(keyUrl))
     options.url = std::string(*String::Utf8Value(optionObject->Get(keyUrl)->ToString()));
-  if (optionObject->Has(keyTransport))
+  if (optionObject->Has(keyTransport) && !optionObject->Get(keyTransport)->IsUndefined())
     options.transport = std::string(*String::Utf8Value(optionObject->Get(keyTransport)->ToString()));
-  if (optionObject->Has(keyBufferSize))
+  if (optionObject->Has(keyBufferSize) && !optionObject->Get(keyBufferSize)->IsUndefined())
     options.bufferSize = optionObject->Get(keyBufferSize)->Uint32Value();
   if (optionObject->Has(keyAudio))
     options.enableAudio = (*optionObject->Get(keyAudio)->ToBoolean())->BooleanValue();
