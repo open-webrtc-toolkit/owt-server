@@ -137,7 +137,7 @@ pack_node() {
 
   local PREFIX_DIR=${ROOT}/build/libdeps/build/
   pushd ${ROOT}/third_party
-  [[ ! -s node-${NODE_VERSION}.tar.gz ]] && curl -O http://nodejs.org/dist/${NODE_VERSION}/node-${NODE_VERSION}.tar.gz
+  wget -c http://nodejs.org/dist/${NODE_VERSION}/node-${NODE_VERSION}.tar.gz
   tar -xzf node-${NODE_VERSION}.tar.gz && \
   pushd node-${NODE_VERSION} || (echo "invalid nodejs source."; popd; return -1)
   local CURRENT_DIR=$(pwd)
