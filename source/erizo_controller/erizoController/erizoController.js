@@ -367,7 +367,7 @@ var VideoResolutionMap = { // definition adopted from VideoLayout.h
     'qcif':     [{width: 176, height: 144}],
     'r192x144': [{width: 192, height: 144}],
     'hd1080p':  [{width: 1920, height: 1080}, {width: 1280, height: 720}, {width: 640, height: 360}],
-    'uhd_4k':   [{width: 3840, height: 2160}, {width: 1280, height: 720}, {width: 640, height: 360}]
+    'uhd_4k':   [{width: 3840, height: 2160}, {width: 1920, height: 1080}, {width: 1280, height: 720}, {width: 640, height: 360}]
 };
 
 function calculateResolutions(rootResolution, useMultistreaming) {
