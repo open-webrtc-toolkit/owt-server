@@ -38,8 +38,12 @@ exports.RoomController = function (spec) {
 
                 if (erizos[erizo_id].ka_count > TIMEOUT_LIMIT) {
 
-                    for (var p in erizos[erizo_id].publishers) {
-                        dispatchEvent("unpublish", erizos[erizo_id].publishers[p]);
+                    var publishers = erizos[erizo_id].publishers;
+                    // Iterate the array in reverse order, because the element
+                    // will be removed from the array when it's processed. The
+                    // reverse order iteration will keep the index still valid.
+                    for (var i = publishers.length - 1; i >= 0; --i) {
+                        dispatchEvent("unpublish", publishers[i]);
                     }
                     amqper.callRpc("ErizoAgent", "deleteErizoJS", [erizo_id], {callback: function(){}}); 
                     delete erizos[erizo_id];
