@@ -20,6 +20,8 @@
 
 #include "HardwareVideoFrameMixer.h"
 
+#include "MediaUtilities.h"
+
 namespace mcu {
 
 VideoMixCodecType Frameformat2CodecType(woogeen_base::FrameFormat format)
@@ -246,8 +248,9 @@ int32_t HardwareVideoFrameMixer::addFrameConsumer(const std::string& name, wooge
         }
     }
     FrameSize size {info.video.width, info.video.height};
-    ELOG_DEBUG("addFrameConsumer OK, format: %s", ((format == woogeen_base::FRAME_FORMAT_VP8)? "VP8" : "H264"));
-    boost::shared_ptr<HardwareVideoFrameMixerOutput> newOutput(new HardwareVideoFrameMixerOutput(m_engine, format, size, 30, 500, receiver));
+    unsigned short bitrate = woogeen_base::calcBitrate(info.video.width, info.video.height, 30) * (format == woogeen_base::FRAME_FORMAT_VP8 ? 0.9 : 1);
+    ELOG_DEBUG("addFrameConsumer OK, format: %s, size: (%u, %u), bitrate: %u", ((format == woogeen_base::FRAME_FORMAT_VP8)? "VP8" : "H264"), info.video.width, info.video.height, bitrate);
+    boost::shared_ptr<HardwareVideoFrameMixerOutput> newOutput(new HardwareVideoFrameMixerOutput(m_engine, format, size, 30, bitrate, receiver));
 
     boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
     m_outputs.push_back(newOutput);

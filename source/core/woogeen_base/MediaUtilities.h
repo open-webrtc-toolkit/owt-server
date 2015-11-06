@@ -24,7 +24,7 @@
 namespace woogeen_base {
 
 static int partial_linear_bitrate[][2] = {
-    {0, 0}, {76800, 400}, {307200, 800}, {921600, 2000}, {2073600, 4000}
+    {0, 0}, {76800, 400}, {307200, 800}, {921600, 2000}, {2073600, 4000}, {8294400, 16000}
 };
 
 inline unsigned int calcBitrate(unsigned int width, unsigned int height, float framerate = 30) {
@@ -48,7 +48,7 @@ inline unsigned int calcBitrate(unsigned int width, unsigned int height, float f
 
     // set default bitrate for over large resolution
     if (0 == bitrate)
-        bitrate = 5000;
+        bitrate = 8000;
 
     return bitrate;
 }
