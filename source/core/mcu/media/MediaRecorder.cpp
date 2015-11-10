@@ -29,20 +29,20 @@ namespace mcu {
 
 DEFINE_LOGGER(MediaRecorder, "mcu.media.MediaRecorder");
 
-inline AVCodecID payloadType2VideoCodecID(int payloadType)
+inline AVCodecID frameFormat2VideoCodecID(int frameFormat)
 {
-    switch (payloadType) {
-        case VP8_90000_PT: return AV_CODEC_ID_VP8;
-        case H264_90000_PT: return AV_CODEC_ID_H264;
+    switch (frameFormat) {
+        case woogeen_base::FRAME_FORMAT_VP8: return AV_CODEC_ID_VP8;
+        case woogeen_base::FRAME_FORMAT_H264: return AV_CODEC_ID_H264;
         default: return AV_CODEC_ID_VP8;
     }
 }
 
-inline AVCodecID payloadType2AudioCodecID(int payloadType)
+inline AVCodecID frameFormat2AudioCodecID(int frameFormat)
 {
-    switch (payloadType) {
-        case PCMU_8000_PT: return AV_CODEC_ID_PCM_MULAW;
-        case OPUS_48000_PT: return AV_CODEC_ID_OPUS;
+    switch (frameFormat) {
+        case woogeen_base::FRAME_FORMAT_PCMU: return AV_CODEC_ID_PCM_MULAW;
+        case woogeen_base::FRAME_FORMAT_OPUS: return AV_CODEC_ID_OPUS;
         default: return AV_CODEC_ID_PCM_MULAW;
     }
 }
@@ -87,7 +87,8 @@ void MediaRecorder::setMediaSource(woogeen_base::FrameProvider* videoSource, woo
     m_videoSource = videoSource;
     m_audioSource = audioSource;
 
-    // Start the recording of video and audio
+    // Start the recording of video and audio - VP8 and PCMU are preferred
+    // Currently, we do not provide video transcoding for forward mode recording
     woogeen_base::MediaSpecInfo info {0};
     if (m_videoSource)
         m_videoId = m_videoSource->addFrameConsumer(m_recordPath, woogeen_base::FRAME_FORMAT_VP8, this, info);
@@ -165,25 +166,26 @@ void MediaRecorder::onFrame(const woogeen_base::Frame& frame)
 
     switch (frame.format) {
     case woogeen_base::FRAME_FORMAT_VP8:
+    case woogeen_base::FRAME_FORMAT_H264:
         if (!m_videoStream) {
             if (frame.additionalInfo.video.width > 0 && frame.additionalInfo.video.height > 0) {
-                addVideoStream(payloadType2VideoCodecID(VP8_90000_PT), frame.additionalInfo.video.width, frame.additionalInfo.video.height);
+                addVideoStream(frameFormat2VideoCodecID(frame.format), frame.additionalInfo.video.width, frame.additionalInfo.video.height);
                 ELOG_DEBUG("video stream added: %dx%d", frame.additionalInfo.video.width, frame.additionalInfo.video.height);
             } else
                 break;
         }
-
         m_videoQueue->pushFrame(frame.payload, frame.length);
         break;
+
     case woogeen_base::FRAME_FORMAT_PCMU:
         if (m_videoStream && !m_audioStream) { // make sure video stream is added first.
-            addAudioStream(payloadType2AudioCodecID(PCMU_8000_PT), frame.additionalInfo.audio.channels, frame.additionalInfo.audio.sampleRate);
+            addAudioStream(frameFormat2AudioCodecID(frame.format), frame.additionalInfo.audio.channels, frame.additionalInfo.audio.sampleRate);
             ELOG_DEBUG("audio stream added: %d channel(s), %d Hz", frame.additionalInfo.audio.channels, frame.additionalInfo.audio.sampleRate);
         }
         m_audioQueue->pushFrame(frame.payload, frame.length);
         break;
     default:
-        ELOG_ERROR("improper frame format. only VP8 and PCM_MULAW can be recorded currently");
+        ELOG_ERROR("improper frame format. only VP8/H264 and PCM_MULAW can be recorded currently");
         m_status = woogeen_base::MediaMuxer::Context_ERROR;
         break;
     }

@@ -42,10 +42,6 @@ public:
     woogeen_base::FrameProvider* getAudioFrameProvider();
 
     // Implements the MediaSink interfaces.
-    // FIXME: This is hard coded!
-    int preferredAudioPayloadType() { return PCMU_8000_PT; }
-    int preferredVideoPayloadType() { return VP8_90000_PT; }
-
     int deliverAudioData(char* buf, int len);
     int deliverVideoData(char* buf, int len);
 
