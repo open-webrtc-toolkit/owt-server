@@ -62,7 +62,8 @@ private:
     boost::mutex m_contextMutex;
     bool m_avTrailerNeeded;
 
-    int32_t m_videoId, m_audioId;
+    int32_t m_videoId;
+    int32_t m_audioId;
 
     std::string m_recordPath;
     // FIXME: snapshot interval for the future usage

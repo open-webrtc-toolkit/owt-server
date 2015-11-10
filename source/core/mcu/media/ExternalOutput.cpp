@@ -46,12 +46,12 @@ int ExternalOutput::deliverVideoData(char* buf, int len)
 
 woogeen_base::FrameProvider* ExternalOutput::getVideoFrameProvider()
 {
-	return m_videoExternalOutput.get();
+    return m_videoExternalOutput.get();
 }
 
 woogeen_base::FrameProvider* ExternalOutput::getAudioFrameProvider()
 {
-	return m_audioExternalOutput.get();
+    return m_audioExternalOutput.get();
 }
 
 } /* namespace mcu */
