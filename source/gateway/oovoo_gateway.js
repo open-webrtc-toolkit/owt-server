@@ -99,9 +99,11 @@ var listen = function (io) {
             socket.conn.controller.addEventListener('ClientLeave', function(userId) {
                 ison = false;
                 logger.info('Client leaving:', userId);
-                socket.conn.controller.keepAlive = true;
-                leaveConn();
-                socket.conn.controller.keepAlive = false;
+                if (socket.conn) {
+                    socket.conn.controller.keepAlive = true;
+                    leaveConn();
+                    socket.conn.controller.keepAlive = false;
+                }
             });
             socket.conn.controller.addEventListener('InboundVideoCreate', function(streamId) {
                 logger.debug('Inbound Video Create:', streamId);
@@ -155,11 +157,13 @@ var listen = function (io) {
             socket.conn.controller.addEventListener('CloseInboundClient', function(userId) {
                 logger.info('Close Inbound Client:', userId);
                 var id = parseInt(userId, 10);
-                socket.conn.controller.removeSubscriber(socket.id, id);
-                notify(socket, 'onRemoveStream', {id: id});
-                if (socket.conn.streams[id]) {
-                    delete socket.conn.streams[id];
+                if (socket.conn) {
+                    socket.conn.controller.removeSubscriber(socket.id, id);
+                    if (socket.conn.streams[id]) {
+                        delete socket.conn.streams[id];
+                    }
                 }
+                notify(socket, 'onRemoveStream', {id: id});
                 notify(socket, 'onClientLeave', {user: userId});
             });
             socket.conn.controller.addEventListener('CustomMessage', function(msg) {
