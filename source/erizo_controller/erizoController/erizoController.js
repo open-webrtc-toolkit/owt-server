@@ -360,14 +360,14 @@ var VideoResolutionMap = { // definition adopted from VideoLayout.h
     'vga':      [{width: 640, height: 480}, {width: 320, height: 240}],
     'svga':     [{width: 800, height: 600}, {width: 320, height: 240}],
     'xga':      [{width: 1024, height: 768}, {width: 320, height: 240}],
-    'hd720p':   [{width: 1280, height: 720}, {width: 640, height: 360}],
+    'hd720p':   [{width: 1280, height: 720}, {width: 640, height: 480}, {width: 640, height: 360}],
     'sif':      [{width: 320, height: 240}],
     'hvga':     [{width: 480, height: 320}],
     'r480x360': [{width: 480, height: 360}, {width: 320, height: 240}],
     'qcif':     [{width: 176, height: 144}],
     'r192x144': [{width: 192, height: 144}],
-    'hd1080p':  [{width: 1920, height: 1080}, {width: 1280, height: 720}, {width: 640, height: 360}],
-    'uhd_4k':   [{width: 3840, height: 2160}, {width: 1920, height: 1080}, {width: 1280, height: 720}, {width: 640, height: 360}]
+    'hd1080p':  [{width: 1920, height: 1080}, {width: 1280, height: 720}, {width: 800, height: 600}, {width: 640, height: 480}, {width: 640, height: 360}],
+    'uhd_4k':   [{width: 3840, height: 2160}, {width: 1920, height: 1080}, {width: 1280, height: 720}, {width: 800, height: 600}, {width: 640, height: 480}, {width: 640, height: 360}]
 };
 
 function calculateResolutions(rootResolution, useMultistreaming) {

@@ -70,22 +70,20 @@ int32_t VCMFrameEncoder::addFrameConsumer(const std::string& name, FrameFormat f
         if (m_encodeFormat != format)
             return -1;
         videoCodec = m_vcm->GetSendCodec();
+        if (videoCodec.width * height != videoCodec.height * width) {
+            ELOG_DEBUG("resolution (%dx%d) has different aspect ratio from this FrameEncoder (%dx%d)",
+                width, height, videoCodec.width, videoCodec.height);
+            return -1;
+        }
         bool reuse {false};
         if (videoCodec.numberOfSimulcastStreams >= kMaxSimulcastStreams)
             reuse = true; // in current cases, actually [REUSE] would only occur here; see VideoMixer::addOutput().
         else {
             for (int i = 0; i < videoCodec.numberOfSimulcastStreams; ++i) {
                 if (videoCodec.simulcastStream[i].width == width) {
-                    if (videoCodec.simulcastStream[i].height != height) {
-                        ELOG_ERROR("resolution not compatible: %dx%d != %dx%d",
-                            videoCodec.simulcastStream[i].width, videoCodec.simulcastStream[i].height,
-                            width, height);
-                        return -1;
-                    } else {
-                        reuse = true;
-                        simulcastId = i;
-                        break;
-                    }
+                    reuse = true;
+                    simulcastId = i;
+                    break;
                 }
             }
         }

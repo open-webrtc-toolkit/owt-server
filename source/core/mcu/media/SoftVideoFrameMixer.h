@@ -213,6 +213,10 @@ inline int32_t SoftVideoFrameMixer::addFrameConsumer(const std::string& name,
             encoder.reset(new woogeen_base::VCMFrameEncoder(m_taskRunner));
 
         internalId = encoder->addFrameConsumer(name, format, consumer, info);
+        if (internalId == -1) { // sanity check. TODO: add error log
+            encoder.reset();
+            return -1;
+        }
     }
 
     boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
