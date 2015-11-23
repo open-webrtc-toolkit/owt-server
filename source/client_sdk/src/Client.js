@@ -577,16 +577,34 @@ Erizo.Client = function (spec) {
                         turnServer: that.turnServer
                     });
 
+                    var mediaStreamAdded = false;
+                    var channelReady = false;
+                    var notifySubscribed = function () {
+                        L.Logger.info('Stream subscribed');
+                        var evt2 = Erizo.StreamEvent({type: 'stream-subscribed', stream: stream});
+                        that.dispatchEvent(evt2);
+                    };
+    
                     stream.pc.onaddstream = function (evt) {
                         stream.stream = evt.stream;
                         if (navigator.appVersion.indexOf('Trident') > -1) {
                             stream.pcid = evt.pcid;
                         }
+                        // According to the WebRTC spec, the onaddstream should be triggered as early
+                        // as possible after the setRemoteDescription. But Firefox seems doesn't
+                        // follow this strictly. It can happens even after the ICE connection is
+                        // completed. In this case we need to trigger stream-subscribed when the
+                        // media stream and the peer connection channel are both ready.
+                        mediaStreamAdded = true;
+                        if (channelReady) {
+                            notifySubscribed();
+                        }
                     };
                     var onChannelReady = function () {
-                        L.Logger.info('Stream subscribed');
-                        var evt2 = Erizo.StreamEvent({type: 'stream-subscribed', stream: stream});
-                        that.dispatchEvent(evt2);
+                        channelReady = true;
+                        if (mediaStreamAdded) {
+                            notifySubscribed();
+                        }
                         stream.signalOnPlayAudio = function (onSuccess, onFailure) {
                             that.send(mkCtrlPayload('audio-in-on', stream.getId()), onSuccess, onFailure);
                         };
