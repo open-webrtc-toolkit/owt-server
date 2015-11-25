@@ -101,8 +101,8 @@ Woogeen.ConferenceClient = (function () {
 <br><b>Remarks:</b><br>
 This method accepts string, object, or array (multiple ones) type of ice server item as argument. Typical description of each valid value should be as below:<br>
 <ul>
-<li>For turn: {url: "url", username: "username", credential: "password"}.</li>
-<li>For stun: {url: "url"}, or simply "url" string.</li>
+<li>For turn: {urls: "url", username: "username", credential: "password"}.</li>
+<li>For stun: {urls: "url"}, or simply "url" string.</li>
 </ul>
 Each time this method is called, previous saved value would be discarded. Specifically, if parameter servers is not provided, the result would be an empty array, meaning any predefined servers are discarded.
    * @instance
@@ -113,11 +113,11 @@ Each time this method is called, previous saved value would be discarded. Specif
 <script type="text/JavaScript">
 var conference = Woogeen.ConferenceClient.create();
 conference.setIceServers([{
-    url: "turn:61.152.239.60:4478?transport=udp",
+    urls: "turn:61.152.239.60:4478?transport=udp",
     username: "woogeen",
     credential: "master"
   }, {
-    url: "turn:61.152.239.60:443?transport=tcp",
+    urls: "turn:61.152.239.60:443?transport=tcp",
     username: "woogeen",
     credential: "master"
   }]);
@@ -128,16 +128,28 @@ conference.setIceServers([{
       Array.prototype.slice.call(arguments, 0).map(function (arg) {
         if (arg instanceof Array) {
           arg.map(function (server) {
-            if (typeof server === 'object' && server !== null && typeof server.url === 'string' && server.url !== '') {
-              that.userSetIceServers.push(server);
+            if (typeof server === 'object' && server !== null) {
+              if (typeof server.urls === 'string' && server.urls !== '' || server.urls instanceof Array) {
+                that.userSetIceServers.push(server);
+              } else if (typeof server.url === 'string' && server.url !== '') {
+                server.urls = server.url;
+                delete server.url;
+                that.userSetIceServers.push(server);
+              }
             } else if (typeof server === 'string' && server !== '') {
-              that.userSetIceServers.push({url: server});
+              that.userSetIceServers.push({urls: server});
             }
           });
-        } else if (typeof arg === 'object' && arg !== null && typeof arg.url === 'string' && arg.url !== '') {
-          that.userSetIceServers.push(arg);
+        } else if (typeof arg === 'object' && arg !== null) {
+          if (typeof arg.urls === 'string' && arg.urls !== '' || arg.urls instanceof Array) {
+            that.userSetIceServers.push(arg);
+          } else if (typeof arg.url === 'string' && arg.url !== '') {
+            arg.urls = arg.url;
+            delete arg.url;
+            that.userSetIceServers.push(arg);
+          }
         } else if (typeof arg === 'string' && arg !== '') {
-          that.userSetIceServers.push({url: arg});
+          that.userSetIceServers.push({urls: arg});
         }
       });
       return that.userSetIceServers;

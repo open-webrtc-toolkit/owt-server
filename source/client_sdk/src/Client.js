@@ -698,24 +698,36 @@ Erizo.Client = function (spec) {
         sendMessageSocket("customMessage", msg, onSuccess, onFailure);
     };
 
-    // turn: {"username": username, "credential": password, "url": url}
-    // stun: {"url": url}
+    // turn: {"username": username, "credential": password, "urls": url}
+    // stun: {"urls": url}
     that.setIceServers = function() {
         that.userSetIceServers = [];
         var args = Array.prototype.slice.call(arguments, 0);
         args.map(function (arg) {
             if (arg instanceof Array) {
                 arg.map(function (server) {
-                    if (typeof server === 'object' && server !== null && typeof server.url === 'string' && server.url !== '') {
-                        that.userSetIceServers.push(server);
+                    if (typeof server === 'object' && server !== null) {
+                        if (typeof server.urls === 'string' && server.urls !== '' || server.urls instanceof Array) {
+                            that.userSetIceServers.push(server);
+                        } else if (typeof server.url === 'string' && server.url !== '') {
+                            server.urls = server.url;
+                            delete server.url;
+                            that.userSetIceServers.push(server);
+                        }
                     } else if (typeof server === 'string' && server !== '') {
-                        that.userSetIceServers.push({"url": server});
+                        that.userSetIceServers.push({"urls": server});
                     }
                 });
-            } else if (typeof arg === 'object' && arg !== null && typeof arg.url === 'string' && arg.url !== '') {
-                that.userSetIceServers.push(arg);
+            } else if (typeof arg === 'object' && arg !== null) {
+                if (typeof arg.urls === 'string' && arg.urls !== '' || arg.urls instanceof Array) {
+                    that.userSetIceServers.push(arg);
+                } else if (typeof arg.url === 'string' && arg.url !== '') {
+                    arg.urls = arg.url;
+                    delete arg.url;
+                    that.userSetIceServers.push(arg);
+                }
             } else if (typeof arg === 'string' && arg !== '') {
-                that.userSetIceServers.push({"url": arg});
+                that.userSetIceServers.push({"urls": arg});
             }
         });
         return that.userSetIceServers;

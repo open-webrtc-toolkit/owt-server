@@ -19,11 +19,11 @@ Erizo.ChromeRoapStack = function (spec) {
             if (spec.stunServerUrl instanceof Array) {
                 spec.stunServerUrl.map(function (url) {
                     if (typeof url === 'string' && url !== '') {
-                        that.pc_config.iceServers.push({url: url});
+                        that.pc_config.iceServers.push({urls: url});
                     }
                 });
             } else if (typeof spec.stunServerUrl === 'string' && spec.stunServerUrl !== '') {
-                that.pc_config.iceServers.push({url: spec.stunServerUrl});
+                that.pc_config.iceServers.push({urls: spec.stunServerUrl});
             }
         }
 
@@ -34,7 +34,7 @@ Erizo.ChromeRoapStack = function (spec) {
                         that.pc_config.iceServers.push({
                             username: turn.username,
                             credential: turn.password,
-                            url: turn.url
+                            urls: turn.url
                         });
                     }
                 });
@@ -42,7 +42,7 @@ Erizo.ChromeRoapStack = function (spec) {
                 that.pc_config.iceServers.push({
                     username: spec.turnServer.username,
                     credential: spec.turnServer.password,
-                    url: spec.turnServer.url
+                    urls: spec.turnServer.url
                 });
             }
         }

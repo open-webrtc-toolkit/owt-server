@@ -13,11 +13,11 @@ Erizo.BowserStack = function (spec) {
     that.con = {'optional': [{'DtlsSrtpKeyAgreement': true}]};
 
     if (spec.stunServerUrl !== undefined) {
-        that.pc_config.iceServers.push({"url": spec.stunServerUrl});
+        that.pc_config.iceServers.push({"urls": spec.stunServerUrl});
     } 
 
     if ((spec.turnServer || {}).url) {
-        that.pc_config.iceServers.push({"username": spec.turnServer.username, "credential": spec.turnServer.password, "url": spec.turnServer.url});
+        that.pc_config.iceServers.push({"username": spec.turnServer.username, "credential": spec.turnServer.password, "urls": spec.turnServer.url});
     }
 
     if (spec.audio === undefined) {
