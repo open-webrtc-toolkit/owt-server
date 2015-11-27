@@ -320,6 +320,7 @@ namespace erizo {
           break;
       }
       NiceCandidate* thecandidate = nice_candidate_new(nice_cand_type);
+      g_strlcpy(thecandidate->foundation, cinfo.foundation.c_str(), NICE_CANDIDATE_MAX_FOUNDATION);
       thecandidate->username = strdup(cinfo.username.c_str());
       thecandidate->password = strdup(cinfo.password.c_str());
       thecandidate->stream_id = (guint) 1;
