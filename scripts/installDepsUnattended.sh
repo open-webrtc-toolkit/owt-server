@@ -35,24 +35,30 @@ parse_arguments(){
 
 parse_arguments $*
 
+OS=`$PATHNAME/detectOS.sh | awk '{print tolower($0)}'`
+echo $OS
+
 cd $PATHNAME
 . installCommonDeps.sh
 
 mkdir -p $PREFIX_DIR
 
-if ! lsb_release -i | grep [Uu]buntu -q -s; then
+if [[ "$OS" =~ .*centos.* ]]
+then
   . installCentOSDeps.sh
   if [ "$NIGHTLY" != "true" ]; then
     installRepo
     installYumDeps
-    install_gcc
   fi
-else
+elif [[ "$OS" =~ .*ubuntu.* ]]
+then
   . installUbuntuDeps.sh
   if [ "$NIGHTLY" != "true" ]; then
     install_apt_deps
   fi
 fi
+
+install_node
 
 check_proxy
 

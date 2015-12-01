@@ -184,9 +184,11 @@ install_webrtc(){
 
 install_oovoosdk(){
   mkdir -p $PREFIX_DIR/lib
-  if lsb_release -i | grep [Uu]buntu -q -s; then
+  if [[ "$OS" =~ .*ubuntu.* ]]
+  then
     cp -av $ROOT/third_party/liboovoosdk-ubuntu.so $PREFIX_DIR/lib/liboovoosdk.so
-  else
+  elif [[ "$OS" =~ .*centos.* ]]
+  then
     cp -av $ROOT/third_party/liboovoosdk-el.so $PREFIX_DIR/lib/liboovoosdk.so
   fi
 }
@@ -207,14 +209,31 @@ install_tcmalloc(){
   fi
 }
 
+install_node() {
+  local NODE_VERSION=
+  . ${PATHNAME}/.conf
+  echo -e "\x1b[32mInstalling nvm...\x1b[0m"
+  NVM_DIR="${HOME}/.nvm"
+
+  #install nvm
+  bash "${PATHNAME}/install_nvm.sh"
+  #install node
+  [[ -s "${NVM_DIR}/nvm.sh" ]] && . "${NVM_DIR}/nvm.sh"
+  echo -e "\x1b[32mInstalling node ${NODE_VERSION}...\x1b[0m"
+  if ! grep -qc 'nvm use' ~/.bash_profile; then
+   echo -e 'nvm use '${NODE_VERSION} >> ~/.bash_profile
+  fi
+  nvm install ${NODE_VERSION}
+  nvm use ${NODE_VERSION}
+}
+
 install_node_tools() {
-  sudo -E npm install -g --loglevel error node-gyp grunt-cli underscore jsdoc
+  npm install -g --loglevel error node-gyp grunt-cli underscore jsdoc
   local SDK_DIR="${ROOT}/source/sdk2"
   cd ${SDK_DIR} && make dep
   local GATEWAY_SDK_DIR="${ROOT}/source/client_sdk"
   cd ${GATEWAY_SDK_DIR}
-  mkdir -p node_modules && sudo -E npm install --prefix . --development --loglevel error
-  sudo chown -R `whoami` ~/.npm ~/tmp/
+  mkdir -p node_modules && npm install --prefix . --development --loglevel error
 }
 
 install_mediaprocessor() {
