@@ -48,24 +48,41 @@ install_boost(){
 
 installYumDeps(){
   sudo -E yum groupinstall " Development Tools" "Development Libraries " -y
-  sudo -E yum install zlib-devel pkgconfig git subversion libcurl-devel.x86_64 curl log4cxx-devel yasm -y
-  sudo -E yum install gcc gcc-c++ bzip2 bzip2-devel bzip2-libs python-devel gyp nodejs npm nasm libX11-devel -y
-  sudo -E yum install rabbitmq-server mongodb mongodb-server java-1.7.0-openjdk -y
+  sudo -E yum install zlib-devel pkgconfig git libcurl-devel.x86_64 curl log4cxx-devel gcc gcc-c++ bzip2 bzip2-devel bzip2-libs python-devel nasm libX11-devel yasm -y
+  sudo -E yum install rabbitmq-server java-1.7.0-openjdk gyp -y
 
-  install_glib2
-
-  install_boost
+  if [[ "$OS" =~ .*6.* ]] # CentOS 6.x
+  then
+    sudo -E yum install mongodb mongodb-server -y
+    install_glib2
+    install_boost
+    install_gcc
+  elif [[ "$OS" =~ .*7.* ]] # CentOS 7.x
+  then
+    sudo -E yum install mongodb-org mongodb-org-server glib2-devel boost-devel -y
+  fi
 }
 
 installRepo(){
-  wget -c http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm
-  wget -c http://rpms.famillecollet.com/enterprise/remi-release-6.rpm
-  sudo rpm -Uvh remi-release-6*.rpm epel-release-6*.rpm
-  wget -c http://dl.atrpms.net/el6-x86_64/atrpms/stable/atrpms-repo-6-7.el6.x86_64.rpm
-  sudo rpm -Uvh atrpms-repo*rpm
-  sudo -E yum --enablerepo=atrpms-testing install cmake -y
-  sudo -E wget -c -qO- http://people.redhat.com/bkabrda/scl_python27.repo >> /etc/yum.repos.d/scl.repo
-  rm *.rpm
+  if [[ "$OS" =~ .*6.* ]] # CentOS 6.x
+  then
+    wget -c http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm
+    wget -c http://rpms.famillecollet.com/enterprise/remi-release-6.rpm
+    sudo rpm -Uvh remi-release-6*.rpm epel-release-6*.rpm
+    wget -c http://dl.atrpms.net/el6-x86_64/atrpms/stable/atrpms-repo-6-7.el6.x86_64.rpm
+    sudo rpm -Uvh atrpms-repo*rpm
+    sudo -E yum --enablerepo=atrpms-testing install cmake -y
+    sudo -E wget -c -qO- http://people.redhat.com/bkabrda/scl_python27.repo >> /etc/yum.repos.d/scl.repo
+    rm *.rpm
+  elif [[ "$OS" =~ .*7.* ]] # CentOS 7.x
+  then
+    wget -c http://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+    wget -c http://rpms.famillecollet.com/enterprise/remi-release-7.rpm
+    sudo rpm -Uvh remi-release-7*.rpm epel-release-latest-7*.rpm
+    sudo sed -i 's/https/http/g' /etc/yum.repos.d/epel.repo
+    sudo -E yum install cmake -y
+    rm *.rpm
+  fi
 }
 
 install_mediadeps_nonfree(){
@@ -85,24 +102,6 @@ install_glibc(){
   mkdir build && cd build/
   ../configure --prefix=$PREFIX_DIR
   make -j4 -s && make install
-}
-
-install_node() {
-  local NODE_VERSION=
-  . ${PATHNAME}/.conf
-  echo -e "\x1b[32mInstalling nvm...\x1b[0m"
-  NVM_DIR="${HOME}/.nvm"
- 
-  #install nvm
-  bash "${PATHNAME}/install_nvm.sh"
-  #install node
-  [[ -s "${NVM_DIR}/nvm.sh" ]] && . "${NVM_DIR}/nvm.sh"
-  echo -e "\x1b[32mInstalling node ${NODE_VERSION}...\x1b[0m"
-  if ! grep -qc 'nvm use' ~/.bash_profile; then
-   echo -e 'nvm use '${NODE_VERSION} >> ~/.bash_profile
-  fi
-  nvm install ${NODE_VERSION}
-  nvm use ${NODE_VERSION}
 }
 
 cleanup(){

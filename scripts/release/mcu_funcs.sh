@@ -79,10 +79,15 @@ pack_sdk() {
 }
 
 pack_libs() {
+  local OS=`$ROOT/scripts/detectOS.sh | awk '{print tolower($0)}'`
+  echo $OS
+
   LD_LIBRARY_PATH=$ROOT/build/libdeps/build/lib:$ROOT/build/libdeps/build/lib64:${LD_LIBRARY_PATH} ldd ${WOOGEEN_DIST}/sbin/webrtc_mcu ${WOOGEEN_DIST}/lib/libmcu{,_sw,_hw}.so ${WOOGEEN_DIST}/lib/liberizo.so | grep '=>' | awk '{print $3}' | sort | uniq | while read line; do
-    if ! lsb_release -i | grep [Uu]buntu -q -s; then # CentOS
+    if [[ "$OS" =~ .*centos.* ]]
+    then
       [[ -s "${line}" ]] && [[ -z `rpm -qf ${line} 2>/dev/null | grep 'glibc'` ]] && cp -Lv ${line} ${WOOGEEN_DIST}/lib
-    else # Ubuntu
+    elif [[ "$OS" =~ .*ubuntu.* ]]
+    then
       [[ -s "${line}" ]] && [[ -z `dpkg -S ${line} 2>/dev/null | grep 'libc6\|libselinux'` ]] && cp -Lv ${line} ${WOOGEEN_DIST}/lib
     fi
   done

@@ -29,12 +29,16 @@ parse_arguments(){
   done
 }
 
+OS=`$PATHNAME/detectOS.sh | awk '{print tolower($0)}'`
+echo $OS
+
 cd $PATHNAME
 . installCommonDeps.sh
 
 mkdir -p $PREFIX_DIR
 
-if ! lsb_release -i | grep [Uu]buntu -q -s; then
+if [[ "$OS" =~ .*centos.* ]]
+then
   . installCentOSDeps.sh
   read -p "Add EPEL repository to yum? [Yes/no]" yn
   case $yn in
@@ -49,13 +53,17 @@ if ! lsb_release -i | grep [Uu]buntu -q -s; then
     [Yy]* ) installYumDeps;;
     * ) installYumDeps;;
   esac
-else
+elif [[ "$OS" =~ .*ubuntu.* ]]
+then
   . installUbuntuDeps.sh
   pause "Installing deps via apt-get... [press Enter]"
   install_apt_deps
 fi
 
 parse_arguments $*
+
+pause "Installing Node.js ... [press Enter]"
+install_node
 
 check_proxy
 
