@@ -49,15 +49,16 @@ RTSPMuxer::RTSPMuxer(const std::string& url)
     m_videoQueue.reset(new woogeen_base::MediaFrameQueue());
     m_audioQueue.reset(new woogeen_base::MediaFrameQueue());
 
+    // FIXME: These should really only be called once per application run
     av_register_all();
     avformat_network_init();
     av_log_set_level(AV_LOG_WARNING);
 
     m_context = avformat_alloc_context();
-    assert (m_context);
+    assert(m_context);
 
     m_context->oformat = av_guess_format("rtsp", m_uri.c_str(), nullptr);
-    assert (m_context->oformat);
+    assert(m_context->oformat);
 
     av_strlcpy(m_context->filename, m_uri.c_str(), sizeof(m_context->filename));
 #ifdef DUMP_RAW
@@ -75,12 +76,9 @@ RTSPMuxer::~RTSPMuxer()
 #endif
 }
 
-void RTSPMuxer::setMediaSource(woogeen_base::FrameProvider* videoSource, woogeen_base::FrameProvider* audioSource, woogeen_base::EventRegistry* cb)
+void RTSPMuxer::setMediaSource(woogeen_base::FrameProvider* videoSource, woogeen_base::FrameProvider* audioSource)
 {
-    setEventRegistry(cb);
-
     if (m_status == woogeen_base::MediaMuxer::Context_READY) {
-        callback("success");
         ELOG_DEBUG("continuous RTSP output");
     }
 
@@ -141,15 +139,17 @@ void RTSPMuxer::onFrame(const woogeen_base::Frame& frame)
     switch (frame.format) {
     case woogeen_base::FRAME_FORMAT_H264:
         if (!m_videoStream) {
-            addVideoStream(AV_CODEC_ID_H264, frame.additionalInfo.video.width, frame.additionalInfo.video.height);
-            ELOG_DEBUG("video stream added: %dx%d", frame.additionalInfo.video.width, frame.additionalInfo.video.height);
+            if (addVideoStream(AV_CODEC_ID_H264, frame.additionalInfo.video.width, frame.additionalInfo.video.height)) {
+                ELOG_DEBUG("video stream added: %dx%d", frame.additionalInfo.video.width, frame.additionalInfo.video.height);
+            }
         }
         m_videoQueue->pushFrame(frame.payload, frame.length);
         break;
     case woogeen_base::FRAME_FORMAT_PCM_RAW:
         if (m_videoStream && !m_audioStream) { // make sure video stream is added first.
-            addAudioStream(AV_CODEC_ID_AAC, frame.additionalInfo.audio.channels, frame.additionalInfo.audio.sampleRate);
-            ELOG_DEBUG("audio stream added: %d channel(s), %d Hz", frame.additionalInfo.audio.channels, frame.additionalInfo.audio.sampleRate);
+            if (addAudioStream(AV_CODEC_ID_AAC, frame.additionalInfo.audio.channels, frame.additionalInfo.audio.sampleRate)) {
+                ELOG_DEBUG("audio stream added: %d channel(s), %d Hz", frame.additionalInfo.audio.channels, frame.additionalInfo.audio.sampleRate);
+            }
         }
         processAudio(frame.payload,
                     frame.additionalInfo.audio.nbSamples,
@@ -289,19 +289,18 @@ void RTSPMuxer::onTimeout()
                 if (avio_open(&m_context->pb, m_context->filename, AVIO_FLAG_WRITE) < 0) {
                     ELOG_ERROR("avio_open failed");
                     m_status = woogeen_base::MediaMuxer::Context_ERROR;
-                    callback("cannot open output file");
+                    notifyAsyncEvent("RTSPStream", "cannot open output file");
                     return;
                 }
             }
             av_dump_format(m_context, 0, m_context->filename, 1);
             if (avformat_write_header(m_context, nullptr) < 0) {
                 m_status = woogeen_base::MediaMuxer::Context_ERROR;
-                callback("cannot setup connection");
+                notifyAsyncEvent("RTSPStream", "cannot setup connection");
                 ELOG_ERROR("avformat_write_header failed");
                 return;
             }
             m_status = woogeen_base::MediaMuxer::Context_READY;
-            callback("success");
             ELOG_DEBUG("context ready");
         } else
             return;
@@ -310,7 +309,7 @@ void RTSPMuxer::onTimeout()
         break;
     case woogeen_base::MediaMuxer::Context_ERROR:
     default:
-        callback("init failed");
+        notifyAsyncEvent("RTSPStream", "init failed");
         ELOG_ERROR("context error");
         return;
     }
@@ -327,20 +326,20 @@ void RTSPMuxer::onTimeout()
         writeVideoFrame(videoFrame->m_payloadData, videoFrame->m_payloadSize, (int64_t)(videoFrame->m_timeStamp / (av_q2d(m_videoStream->time_base) * 1000)));
 }
 
-void RTSPMuxer::addAudioStream(enum AVCodecID codec_id, int nbChannels, int sampleRate)
+bool RTSPMuxer::addAudioStream(enum AVCodecID codec_id, int nbChannels, int sampleRate)
 {
     boost::lock_guard<boost::mutex> lock(m_contextMutex);
     AVCodec* codec = avcodec_find_encoder(codec_id);
     if (!codec) {
         ELOG_ERROR("cannot find audio encoder %d", codec_id);
         m_status = woogeen_base::MediaMuxer::Context_ERROR;
-        return;
+        return false;
     }
     AVStream* stream = avformat_new_stream(m_context, codec);
     if (!stream) {
         ELOG_ERROR("cannot add audio stream");
         m_status = woogeen_base::MediaMuxer::Context_ERROR;
-        return;
+        return false;
     }
 
     AVCodecContext* c = stream->codec;
@@ -381,9 +380,11 @@ void RTSPMuxer::addAudioStream(enum AVCodecID codec_id, int nbChannels, int samp
         }
     }
     m_audioStream = stream;
+
+    return true;
 }
 
-void RTSPMuxer::addVideoStream(enum AVCodecID codec_id, unsigned int width, unsigned int height)
+bool RTSPMuxer::addVideoStream(enum AVCodecID codec_id, unsigned int width, unsigned int height)
 {
     boost::lock_guard<boost::mutex> lock(m_contextMutex);
     m_context->oformat->video_codec = codec_id;
@@ -391,7 +392,7 @@ void RTSPMuxer::addVideoStream(enum AVCodecID codec_id, unsigned int width, unsi
     if (!stream) {
         ELOG_ERROR("cannot add video stream");
         m_status = woogeen_base::MediaMuxer::Context_ERROR;
-        return;
+        return false;
     }
     AVCodecContext* c = stream->codec;
     c->codec_id   = codec_id;
@@ -405,6 +406,8 @@ void RTSPMuxer::addVideoStream(enum AVCodecID codec_id, unsigned int width, unsi
     if (m_context->oformat->flags & AVFMT_GLOBALHEADER)
         c->flags |= CODEC_FLAG_GLOBAL_HEADER;
     m_videoStream = stream;
+
+    return true;
 }
 
 } /* namespace mcu */

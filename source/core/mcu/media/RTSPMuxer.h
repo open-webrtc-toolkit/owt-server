@@ -48,15 +48,15 @@ public:
     ~RTSPMuxer();
 
     // MediaMuxer interface
-    void setMediaSource(woogeen_base::FrameProvider* videoProvider, woogeen_base::FrameProvider* audioProvider, woogeen_base::EventRegistry* callback = nullptr);
+    void setMediaSource(woogeen_base::FrameProvider* videoProvider, woogeen_base::FrameProvider* audioProvider);
     void unsetMediaSource();
     void onFrame(const woogeen_base::Frame&);
     void onTimeout();
 
 private:
     void close();
-    void addVideoStream(enum AVCodecID codec_id, unsigned int width = 640, unsigned int height = 480);
-    void addAudioStream(enum AVCodecID codec_id, int nbChannels = 2, int sampleRate = 48000);
+    bool addVideoStream(enum AVCodecID codec_id, unsigned int width = 640, unsigned int height = 480);
+    bool addAudioStream(enum AVCodecID codec_id, int nbChannels = 2, int sampleRate = 48000);
     int writeVideoFrame(uint8_t*, size_t, int64_t);
     int writeAudioFrame(uint8_t*, size_t, int64_t);
     AVFrame* allocAudioFrame(AVCodecContext*);

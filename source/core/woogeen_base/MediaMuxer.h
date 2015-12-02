@@ -101,25 +101,26 @@ public:
     }
 
 private:
-    // frames in this queue can be used to store decoded frame
+    // This queue can be used to store decoded frames
     SharedQueue<boost::shared_ptr<EncodedFrame>> m_queue;
     // The max size we allow the queue to grow before discarding frames
     unsigned int m_max;
     int64_t m_startTimeOffset;
 };
 
-class MediaMuxer : public FrameConsumer, public JobTimerListener {
+class MediaMuxer : public FrameConsumer, public JobTimerListener, public EventRegistry {
 public:
     enum Status { Context_ERROR = -1, Context_EMPTY = 0, Context_READY = 1 };
 
     DLL_PUBLIC static MediaMuxer* createMediaMuxerInstance(const std::string& customParam);
     DLL_PUBLIC static bool recycleMediaMuxerInstance(const std::string& outputId);
 
-    MediaMuxer() : m_status(Context_EMPTY), m_callback(nullptr) { }
-    virtual ~MediaMuxer() { if (m_callback) delete m_callback; }
+    MediaMuxer() : m_status(Context_EMPTY) { }
+    virtual ~MediaMuxer() { }
 
-    DLL_PUBLIC virtual void setMediaSource(FrameProvider* videoProvider, FrameProvider* audioProvider, EventRegistry* callback) = 0;
+    DLL_PUBLIC virtual void setMediaSource(FrameProvider* videoProvider, FrameProvider* audioProvider) = 0;
     DLL_PUBLIC virtual void unsetMediaSource() = 0;
+    DLL_PUBLIC void setEventRegistry(EventRegistry* handle) { m_asyncHandle = handle; }
 
     // FrameConsumer
     virtual void onFrame(const Frame&) = 0;
@@ -133,24 +134,17 @@ protected:
     boost::scoped_ptr<MediaFrameQueue> m_audioQueue;
     boost::scoped_ptr<JobTimer> m_jobTimer;
 
-    void callback(const std::string& data) { // executed *ONCE*, should be called by m_thread only;
-        if (m_callback)
-            m_callback->notifyAsyncEvent("", data);
-    }
+    // EventRegistry
+    virtual bool notifyAsyncEvent(const std::string& event, const std::string& data)
+    {
+        if (m_asyncHandle)
+            return m_asyncHandle->notifyAsyncEvent(event, data);
 
-    bool setEventRegistry(EventRegistry* callback) {
-        if (!callback || m_callback == callback)
-            return false;
-
-        if (m_callback)
-            delete m_callback;
-
-        m_callback = callback;
-        return true;
+        return false;
     }
 
 private:
-    EventRegistry* m_callback;
+    EventRegistry* m_asyncHandle;
 };
 
 } /* namespace woogeen_base */

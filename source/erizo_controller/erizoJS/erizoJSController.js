@@ -345,32 +345,21 @@ exports.ErizoJSController = function () {
 
             if (externalOutputs[output_id] === undefined) {
                 externalOutputs[output_id] = new addon.ExternalOutput(JSON.stringify(config));
+
+                // setup event listener from media recording
+                externalOutputs[output_id].addEventListener('RecordingStream', function (message) {
+                    log.error('External output for media recording error occurs.');
+
+                    if (erizoControllerId !== undefined) {
+                        amqper.callRpc(erizoControllerId, 'eventReport', ['deleteExternalOutput', roomId, {message: message, id: output_id, data: null}]);
+                    }
+                });
             }
 
-            // Timer is used here since the callback for setMediaSource might not be invoked anyway
-            var timer = setTimeout(function() {
-                            // Remove the possible external output if timeout
-                            if (externalOutputs[output_id].unsetMediaSource(output_id, true)) {
-                                delete externalOutputs[output_id];
-                            }
-
-                            callback('callback', 'setMediaSource timeout');
-                        }, amqper.timeout);
-
             externalOutputs[output_id].setMediaSource(publishers[video_publisher_id].muxer,
-                                                      publishers[audio_publisher_id].muxer,
-                                                      function (resp) {
-                                                          // Clear the timer if the callback is invoked
-                                                          clearTimeout(timer);
+                                                      publishers[audio_publisher_id].muxer);
 
-                                                          if (resp !== 'success' && externalOutputs[output_id].unsetMediaSource(output_id, true)) {
-                                                              // Remove the possible external output
-                                                              delete externalOutputs[output_id];
-                                                          }
-
-                                                          callback('callback', resp);
-                                                      });
-
+            callback('callback', 'success');
             return;
         }
 
