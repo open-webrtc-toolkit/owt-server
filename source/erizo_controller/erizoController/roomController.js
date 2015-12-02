@@ -185,7 +185,7 @@ exports.RoomController = function (spec) {
 
                 var args = [video_publisher_id, audio_publisher_id, output_id, url, interval];
 
-                amqper.callRpc('ErizoJS_' + erizo_id, "addExternalOutput", args, {callback: function (result) {
+                amqper.callRpc('ErizoJS_' + erizo_id, 'addExternalOutput', args, {callback: function (result) {
                     if (result === 'success') {
                         // Track external outputs
                         externalOutputs[output_id] = {video: video_publisher_id, audio: audio_publisher_id, erizo: erizo_id};
@@ -253,7 +253,7 @@ exports.RoomController = function (spec) {
 
             var args = [output_id, close];
 
-            amqper.callRpc('ErizoJS_' + externalOutput.erizo, "removeExternalOutput", args, {callback: function (result) {
+            amqper.callRpc('ErizoJS_' + externalOutput.erizo, 'removeExternalOutput', args, {callback: function (result) {
                 if (result === 'success') {
                     // Remove the track
                     delete externalOutputs[output_id];

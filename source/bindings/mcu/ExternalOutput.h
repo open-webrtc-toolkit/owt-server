@@ -21,6 +21,8 @@
 #ifndef EXTERNALOUTPUT_H
 #define EXTERNALOUTPUT_H
 
+#include "../woogeen_base/NodeEventRegistry.h"
+
 #include <MediaMuxer.h>
 #include <node.h>
 #include <node_object_wrap.h>
@@ -29,7 +31,7 @@
  * Wrapper class of woogeen_base::MediaMuxer
  * Note: MediaMuxer instances are managed by the native layer
  */
-class ExternalOutput : public node::ObjectWrap {
+class ExternalOutput : public NodeEventedObjectWrap {
  public:
   static void Init(v8::Local<v8::Object> exports);
   woogeen_base::MediaMuxer* me;

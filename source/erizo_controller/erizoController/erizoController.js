@@ -159,6 +159,34 @@ var eventReportHandlers = {
         }
 
         sendMsgToRoom(room, 'onRemoveStream', {id: streamId});
+    },
+    'deleteExternalOutput': function (roomId, spec) {
+        var room = rooms[roomId];
+        if (!room) {
+            log.warn('room not found:', roomId);
+            return;
+        }
+
+        var recorderId = spec.id;
+        room.controller.removeExternalOutput(recorderId, true, function (result) {
+            if (result.success) {
+                for (var i in room.streams) {
+                    if (room.streams.hasOwnProperty(i)) {
+                        if (room.streams[i].getVideoRecorder() === recorderId+'') {
+                            room.streams[i].setVideoRecorder('');
+                        }
+
+                        if (room.streams[i].getAudioRecorder() === recorderId+'') {
+                            room.streams[i].setAudioRecorder('');
+                        }
+                    }
+                }
+
+                log.info('Recorder has been deleted since', spec.message);
+            } else {
+                log.warn('Failed to delete recorder because', result.text);
+            }
+        });
     }
 };
 

@@ -41,16 +41,15 @@ public:
     ~MediaRecorder();
 
     // MediaMuxer interface
-    void setMediaSource(woogeen_base::FrameProvider* videoProvider, woogeen_base::FrameProvider* audioProvider, woogeen_base::EventRegistry* callback = nullptr);
+    void setMediaSource(woogeen_base::FrameProvider* videoProvider, woogeen_base::FrameProvider* audioProvider);
     void unsetMediaSource();
     void onFrame(const woogeen_base::Frame&);
     void onTimeout();
 
 private:
-    bool init();
     void close();
-    void addVideoStream(enum AVCodecID codec_id, unsigned int width = 1280, unsigned int height = 720);
-    void addAudioStream(enum AVCodecID codec_id, int nbChannels = 1, int sampleRate = 8000);
+    bool addVideoStream(enum AVCodecID codec_id, unsigned int width = 1280, unsigned int height = 720);
+    bool addAudioStream(enum AVCodecID codec_id, int nbChannels = 1, int sampleRate = 8000);
     void writeVideoFrame(woogeen_base::EncodedFrame& encoded_frame);
     void writeAudioFrame(woogeen_base::EncodedFrame& encoded_frame);
 

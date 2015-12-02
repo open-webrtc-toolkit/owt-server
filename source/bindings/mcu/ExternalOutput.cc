@@ -19,10 +19,8 @@
  */
 
 #include "ExternalOutput.h"
-
-#include "../woogeen_base/Gateway.h"
-#include "../woogeen_base/NodeEventRegistry.h"
 #include "Mixer.h"
+#include "../woogeen_base/Gateway.h"
 
 #include <Gateway.h>
 
@@ -39,6 +37,7 @@ void ExternalOutput::Init(Local<Object> exports) {
   tpl->SetClassName(String::NewFromUtf8(isolate, "ExternalOutput"));
   tpl->InstanceTemplate()->SetInternalFieldCount(1);
   // Prototype
+  SETUP_EVENTED_PROTOTYPE_METHODS(tpl);
   NODE_SET_PROTOTYPE_METHOD(tpl, "close", close);
   NODE_SET_PROTOTYPE_METHOD(tpl, "setMediaSource", setMediaSource);
   NODE_SET_PROTOTYPE_METHOD(tpl, "unsetMediaSource", unsetMediaSource);
@@ -56,7 +55,7 @@ void ExternalOutput::New(const FunctionCallbackInfo<Value>& args) {
 
   ExternalOutput* obj = new ExternalOutput();
   obj->me = woogeen_base::MediaMuxer::createMediaMuxerInstance(configParam);
-
+  obj->me->setEventRegistry(obj);
   obj->Wrap(args.This());
 
   args.GetReturnValue().Set(args.This());
@@ -94,12 +93,7 @@ void ExternalOutput::setMediaSource(const FunctionCallbackInfo<Value>& args) {
     audioSource = mixer1->me;
   }
 
-  NodeEventRegistry* callback = nullptr;
-  if (args.Length() > 2 && args[2]->IsFunction()) {
-    callback = NodeEventRegistry::New(isolate, Local<Function>::Cast(args[2]));
-  }
-
-  me->setMediaSource(videoSource->getVideoFrameProvider(), audioSource->getAudioFrameProvider(), callback);
+  me->setMediaSource(videoSource->getVideoFrameProvider(), audioSource->getAudioFrameProvider());
 }
 
 void ExternalOutput::unsetMediaSource(const FunctionCallbackInfo<Value>& args) {
