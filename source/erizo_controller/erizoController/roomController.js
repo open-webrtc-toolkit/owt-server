@@ -45,7 +45,7 @@ exports.RoomController = function (spec) {
                     for (var i = publishers.length - 1; i >= 0; --i) {
                         dispatchEvent("unpublish", publishers[i]);
                     }
-                    amqper.callRpc("ErizoAgent", "deleteErizoJS", [erizo_id], {callback: function(){}}); 
+                    amqper.callRpc("ErizoAgent_" + agentId, "deleteErizoJS", [erizo_id], {callback: function(){}});
                     delete erizos[erizo_id];
                 }
             } else {
