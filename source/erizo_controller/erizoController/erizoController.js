@@ -183,6 +183,7 @@ var eventReportHandlers = {
                 }
 
                 log.info('Recorder has been deleted since', spec.message);
+                sendMsgToRoom(room, 'onRemoveRecorder', {id: recorderId});
             } else {
                 log.warn('Failed to delete recorder because', result.text);
             }
@@ -1056,14 +1057,17 @@ var listen = function () {
             // Make sure the recording context clean for this 'startRecorder'
             socket.room.controller.removeExternalOutput(recorderId, false, function (result) {
                 if (result.success) {
+                    var isContinuous = false;
                     for (var i in socket.room.streams) {
                         if (socket.room.streams.hasOwnProperty(i)) {
                             if (socket.room.streams[i].getVideoRecorder() === recorderId+'') {
                                 socket.room.streams[i].setVideoRecorder('');
+                                isContinuous = true;
                             }
 
                             if (socket.room.streams[i].getAudioRecorder() === recorderId+'') {
                                 socket.room.streams[i].setAudioRecorder('');
+                                isContinuous = true;
                             }
                         }
                     }
@@ -1076,7 +1080,13 @@ var listen = function () {
                             videoStream.setVideoRecorder(recorderId);
                             audioStream.setAudioRecorder(recorderId);
 
-                            log.info('Recorder started: ', url);
+                            log.info('Media recording to ', url);
+
+                            if (isContinuous) {
+                                sendMsgToRoom(socket.room, 'onContinuousRecorder', {id: recorderId});
+                            } else {
+                                sendMsgToRoom(socket.room, 'onAddRecorder', {id: recorderId});
+                            }
 
                             safeCall(callback, 'success', {
                                 recorderId : recorderId,
@@ -1123,6 +1133,7 @@ var listen = function () {
                         }
 
                         log.info('Recorder stopped: ', result.text);
+                        sendMsgToRoom(socket.room, 'onRemoveRecorder', {id: options.recorderId});
 
                         safeCall(callback, 'success', {
                             host: publicIP,
