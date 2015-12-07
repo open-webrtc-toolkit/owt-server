@@ -351,6 +351,21 @@ conference.join(token, function(response) {...}, function(error) {...});
           myStream.channel[spec.peerSocket].createOffer();
         });
 
+        self.socket.on('onAddRecorder', function (spec) {
+          var evt = new Woogeen.RecorderEvent({type: 'recorder-added', id: spec.id});
+          self.dispatchEvent(evt);
+        });
+
+        self.socket.on('onContinuousRecorder', function (spec) {
+          var evt = new Woogeen.RecorderEvent({type: 'recorder-continued', id: spec.id});
+          self.dispatchEvent(evt);
+        });
+
+        self.socket.on('onRemoveRecorder', function (spec) {
+          var evt = new Woogeen.RecorderEvent({type: 'recorder-removed', id: spec.id});
+          self.dispatchEvent(evt);
+        });
+
         var create_remote_pc = function (stream, peerSocket) {
 
           stream.channel = createChannel({

@@ -150,6 +150,15 @@ Woogeen.DataEvent = function WoogeenDataEvent (spec) {
   this.data = spec.data;
 };
 
+/*
+ * Class RecorderEvent represents an event related to media recording.
+ */
+Woogeen.RecorderEvent = function WoogeenRecorderEvent (spec) {
+  'use strict';
+  WoogeenEvent.call(this, spec);
+  this.recorderId = spec.id;
+};
+
 // inheritance
 Woogeen.StreamEvent.prototype = Object.create(WoogeenEvent.prototype);
 Woogeen.StreamEvent.prototype.constructor = Woogeen.StreamEvent;
@@ -161,3 +170,5 @@ Woogeen.ChatEvent.prototype = Object.create(WoogeenEvent.prototype);
 Woogeen.ChatEvent.prototype.constructor = Woogeen.ChatEvent;
 Woogeen.DataEvent.prototype = Object.create(WoogeenEvent.prototype);
 Woogeen.DataEvent.prototype.constructor = Woogeen.DataEvent;
+Woogeen.RecorderEvent.prototype = Object.create(WoogeenEvent.prototype);
+Woogeen.RecorderEvent.prototype.constructor = Woogeen.RecorderEvent;
