@@ -19,11 +19,9 @@
  */
 
 #include "Mixer.h"
-#include "../woogeen_base/ExternalInput.h"
-#include "../woogeen_base/Gateway.h"
-#include "../woogeen_base/NodeEventRegistry.h"
 #include "../erizoAPI/MediaDefinitions.h"
 #include "../erizoAPI/WebRtcConnection.h"
+#include "../woogeen_base/ExternalInput.h"
 
 using namespace v8;
 
