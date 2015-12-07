@@ -23,6 +23,7 @@
 
 #include "../woogeen_base/Gateway.h"
 #include "../woogeen_base/NodeEventRegistry.h"
+
 #include <MixerInterface.h>
 #include <node.h>
 #include <node_object_wrap.h>

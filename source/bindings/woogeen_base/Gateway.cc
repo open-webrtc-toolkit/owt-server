@@ -20,11 +20,6 @@
 
 #include "Gateway.h"
 
-#include "NodeEventRegistry.h"
-#include "ExternalInput.h"
-#include "../erizoAPI/MediaDefinitions.h"
-#include "../erizoAPI/WebRtcConnection.h"
-
 using namespace v8;
 
 Persistent<Function> Gateway::constructor;
