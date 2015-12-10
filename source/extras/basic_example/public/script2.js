@@ -24,22 +24,6 @@
     req.send(JSON.stringify(body));
   }
 
-  // var recording;
-  // var recordingId;
-  // function startRecording () {
-  //   if (room !== undefined){
-  //     if (!recording){
-  //       room.startRecording(localStream, function(id) {
-  //         recording = true;
-  //         recordingId = id;
-  //       });
-  //     } else {
-  //       room.stopRecording(recordingId);
-  //       recording = false;
-  //     }
-  //   }
-  // }
-
   var conference = Woogeen.ConferenceClient.create({});
 
   function displayStream (stream, resolution) {
