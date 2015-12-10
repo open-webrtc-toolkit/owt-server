@@ -131,7 +131,7 @@ var sendMsgToRoom = function (room, type, arg) {
 var eventReportHandlers = {
     'updateStream': function (roomId, spec) {
         if (rooms[roomId]) {
-            sendMsgToRoom(rooms[roomId], 'onUpdateStream', spec);
+            sendMsgToRoom(rooms[roomId], 'update_stream', spec);
         } else {
             log.warn('room not found:', roomId);
         }
@@ -158,7 +158,7 @@ var eventReportHandlers = {
             delete room.streams[streamId];
         }
 
-        sendMsgToRoom(room, 'onRemoveStream', {id: streamId});
+        sendMsgToRoom(room, 'remove_stream', {id: streamId});
     },
     'deleteExternalOutput': function (roomId, spec) {
         var room = rooms[roomId];
@@ -183,7 +183,7 @@ var eventReportHandlers = {
                 }
 
                 log.info('Recorder has been deleted since', spec.message);
-                sendMsgToRoom(room, 'onRemoveRecorder', {id: recorderId});
+                sendMsgToRoom(room, 'remove_recorder', {id: recorderId});
             } else {
                 log.warn('Failed to delete recorder because', result.text);
             }
@@ -420,7 +420,7 @@ var initMixer = function (room, roomConfig, immediately) {
                     var st = new ST.Stream({id: id, socket: '', audio: true, video: {device: 'mcu', resolutions: resolutions}, from: '', attributes: null});
                     room.streams[id] = st;
                     room.mixer = id;
-                    sendMsgToRoom(room, 'onAddStream', st.getPublicStream());
+                    sendMsgToRoom(room, 'add_stream', st.getPublicStream());
                     if (room.config && room.config.publishLimit > 0) {
                         room.config.publishLimit++;
                     }
@@ -448,7 +448,7 @@ var initMixer = function (room, roomConfig, immediately) {
                     var st = new ST.Stream({id: id, socket: '', audio: true, video: {device: 'mcu', resolutions: resolutions}, from: '', attributes: null});
                     room.streams[id] = st;
                     room.mixer = id;
-                    sendMsgToRoom(room, 'onAddStream', st.getPublicStream());
+                    sendMsgToRoom(room, 'add_stream', st.getPublicStream());
                     clearInterval(room.initMixerTimer);
                     room.initMixerTimer = undefined;
                     if (room.config && room.config.publishLimit > 0) {
@@ -550,7 +550,7 @@ var listen = function () {
                                                 stunServerUrl: GLOBAL.config.erizoController.stunServerUrl,
                                                 turnServer: GLOBAL.config.erizoController.turnServer
                                                 });
-                            sendMsgToOthersInRoom(socket.room, 'onUserJoin', {user: user});
+                            sendMsgToOthersInRoom(socket.room, 'user_join', {user: user});
                         };
 
                         if (rooms[tokenDB.room] === undefined) {
@@ -607,7 +607,7 @@ var listen = function () {
                                                         if (type === 'unpublish') {
                                                             var streamId = event;
                                                             log.info('ErizoJS stopped', streamId);
-                                                            sendMsgToRoom(room, 'onRemoveStream', {id: streamId});
+                                                            sendMsgToRoom(room, 'remove_stream', {id: streamId});
                                                             room.controller.removePublisher(streamId);
 
                                                             for (var s in room.sockets) {
@@ -727,13 +727,13 @@ var listen = function () {
                     to: receiver
                 };
                 if (receiver === 'all') {
-                    sendMsgToRoom(socket.room, 'onCustomMessage', data);
+                    sendMsgToRoom(socket.room, 'custom_message', data);
                     return safeCall(callback, 'success');
                 } else {
                     for (var k in socket.room.sockets) {
                         if (socket.room.sockets[k].id === receiver) {
                             try {
-                                socket.room.sockets[k].emit('onCustomMessage', data);
+                                socket.room.sockets[k].emit('custom_message', data);
                                 safeCall(callback, 'success');
                             } catch (err) {
                                 safeCall(callback, 'error', err);
@@ -864,7 +864,7 @@ var listen = function () {
                     st = new ST.Stream({id: id, socket: socket.id, audio: options.audio, video: options.video, attributes: options.attributes, from: url});
                     socket.streams.push(id);
                     socket.room.streams[id] = st;
-                    sendMsgToRoom(socket.room, 'onAddStream', st.getPublicStream());
+                    sendMsgToRoom(socket.room, 'add_stream', st.getPublicStream());
                     safeCall(callback, 'success', id);
                 });
             } else if (options.state === 'erizo') {
@@ -925,7 +925,7 @@ var listen = function () {
 
                     if (signMess.type === 'ready') {
                         socket.room.streams[id] = st;
-                        sendMsgToRoom(socket.room, 'onAddStream', st.getPublicStream());
+                        sendMsgToRoom(socket.room, 'add_stream', st.getPublicStream());
                     } else if (signMess.type === 'timeout') {
                         safeCall(callback, 'error', 'No ErizoAgent available');
                     }
@@ -940,7 +940,7 @@ var listen = function () {
                 socket.streams.push(id);
                 socket.room.streams[id] = st;
                 safeCall(callback, '', id);
-                sendMsgToRoom(socket.room, 'onAddStream', st.getPublicStream());
+                sendMsgToRoom(socket.room, 'add_stream', st.getPublicStream());
             }
         });
 
@@ -1083,9 +1083,9 @@ var listen = function () {
                             log.info('Media recording to ', url);
 
                             if (isContinuous) {
-                                sendMsgToRoom(socket.room, 'onContinuousRecorder', {id: recorderId});
+                                sendMsgToRoom(socket.room, 'reuse_recorder', {id: recorderId});
                             } else {
-                                sendMsgToRoom(socket.room, 'onAddRecorder', {id: recorderId});
+                                sendMsgToRoom(socket.room, 'add_recorder', {id: recorderId});
                             }
 
                             safeCall(callback, 'success', {
@@ -1133,7 +1133,7 @@ var listen = function () {
                         }
 
                         log.info('Recorder stopped: ', result.text);
-                        sendMsgToRoom(socket.room, 'onRemoveRecorder', {id: options.recorderId});
+                        sendMsgToRoom(socket.room, 'remove_recorder', {id: options.recorderId});
 
                         safeCall(callback, 'success', {
                             host: publicIP,
@@ -1222,7 +1222,7 @@ var listen = function () {
                 return safeCall(callback, 'error', 'stream does not exist');
             }
 
-            sendMsgToRoom(socket.room, 'onRemoveStream', {id: streamId});
+            sendMsgToRoom(socket.room, 'remove_stream', {id: streamId});
 
             socket.state = 'sleeping';
             if (!socket.room.p2p) {
@@ -1271,7 +1271,7 @@ var listen = function () {
 
             for (i in socket.streams) {
                 if (socket.streams.hasOwnProperty(i)) {
-                    sendMsgToRoom(socket.room, 'onRemoveStream', {id: socket.streams[i]});
+                    sendMsgToRoom(socket.room, 'remove_stream', {id: socket.streams[i]});
                 }
             }
 
@@ -1339,7 +1339,7 @@ var listen = function () {
                 delete rooms[socket.room.id];
                 updateMyState();
             } else if (socket.room !== undefined) {
-                sendMsgToOthersInRoom(socket.room, 'onUserLeave', {user: socket.user});
+                sendMsgToOthersInRoom(socket.room, 'user_leave', {user: socket.user});
             }
         });
     });

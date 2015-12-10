@@ -245,17 +245,25 @@ conference.join(token, function(response) {...}, function(error) {...});
       if (self.socket !== undefined) { // whether reconnect
         self.socket.connect();
       } else {
-        var dispatchEventAfterSubscribed = function (event) {
-          var remoteStream = event.stream;
-          if (remoteStream.channel && typeof remoteStream.signalOnPlayAudio === 'function') {
-            self.dispatchEvent(event);
-          } else if (remoteStream.channel && remoteStream.channel.state !== 'closed') {
-            setTimeout(function () {
-              dispatchEventAfterSubscribed(event);
-            }, 20);
-          } else {
-            L.Logger.warning('event missed:', event.type);
-          }
+        var create_remote_pc = function (stream, peerSocket) {
+          stream.channel = createChannel({
+            callback: function (msg) {
+              sendSdp(self.socket, 'signaling_message', {streamId: stream.id(), peerSocket: peerSocket, msg: msg});
+            },
+            stunServerUrl: self.connSettings.stun,
+            turnServer: self.connSettings.turn,
+            maxAudioBW: self.connSettings.maxAudioBW,
+            maxVideoBW: self.connSettings.maxVideoBW,
+            limitMaxAudioBW: self.connSettings.maxAudioBW,
+            limitMaxVideoBW: self.connSettings.maxVideoBW
+          });
+
+          stream.channel.onaddstream = function (evt) {
+            // Draw on html
+            L.Logger.info('Stream subscribed');
+            stream.mediaStream = evt.stream;
+            internalDispatcher.dispatchEvent(new Woogeen.StreamEvent({type: 'p2p-stream-subscribed', stream: stream}));
+          };
         };
 
         self.socket = io.connect(host, {
@@ -264,7 +272,7 @@ conference.join(token, function(response) {...}, function(error) {...});
           'force new connection': true
         });
 
-        self.socket.on('onAddStream', function (spec) {
+        self.socket.on('add_stream', function (spec) {
           if (self.remoteStreams[spec.id] !== undefined) {
             L.Logger.warning('stream already added:', spec.id);
             return;
@@ -281,7 +289,15 @@ conference.join(token, function(response) {...}, function(error) {...});
           self.dispatchEvent(evt);
         });
 
-        self.socket.on('onRemoveStream', function (spec) {
+        self.socket.on('update_stream', function (spec) {
+          // Handle: 'VideoEnabled', 'VideoDisabled', 'AudioEnabled', 'AudioDisabled', 'VideoLayoutChanged', [etc]
+          var stream = self.remoteStreams[spec.id];
+          if (stream) {
+            stream.emit(spec.event, spec.data);
+          }
+        });
+
+        self.socket.on('remove_stream', function (spec) {
           var stream = self.remoteStreams[spec.id];
           if (stream) {
             stream.close(); // >removeStream<
@@ -351,107 +367,19 @@ conference.join(token, function(response) {...}, function(error) {...});
           myStream.channel[spec.peerSocket].createOffer();
         });
 
-        self.socket.on('onAddRecorder', function (spec) {
+        self.socket.on('add_recorder', function (spec) {
           var evt = new Woogeen.RecorderEvent({type: 'recorder-added', id: spec.id});
           self.dispatchEvent(evt);
         });
 
-        self.socket.on('onContinuousRecorder', function (spec) {
+        self.socket.on('reuse_recorder', function (spec) {
           var evt = new Woogeen.RecorderEvent({type: 'recorder-continued', id: spec.id});
           self.dispatchEvent(evt);
         });
 
-        self.socket.on('onRemoveRecorder', function (spec) {
+        self.socket.on('remove_recorder', function (spec) {
           var evt = new Woogeen.RecorderEvent({type: 'recorder-removed', id: spec.id});
           self.dispatchEvent(evt);
-        });
-
-        var create_remote_pc = function (stream, peerSocket) {
-
-          stream.channel = createChannel({
-            callback: function (msg) {
-              sendSdp(self.socket, 'signaling_message', {streamId: stream.id(), peerSocket: peerSocket, msg: msg});
-            },
-            stunServerUrl: self.connSettings.stun,
-            turnServer: self.connSettings.turn,
-            maxAudioBW: self.connSettings.maxAudioBW,
-            maxVideoBW: self.connSettings.maxVideoBW,
-            limitMaxAudioBW: self.connSettings.maxAudioBW,
-            limitMaxVideoBW: self.connSettings.maxVideoBW
-          });
-
-          stream.channel.onaddstream = function (evt) {
-            // Draw on html
-            L.Logger.info('Stream subscribed');
-            stream.mediaStream = evt.stream;
-            internalDispatcher.dispatchEvent(new Woogeen.StreamEvent({type: 'p2p-stream-subscribed', stream: stream}));
-          };
-        };
-
-        // We receive an event of remote video stream paused
-        self.socket.on('onVideoHold', function (spec) {
-          var stream = self.remoteStreams[spec.id];
-          if (stream) {
-            var evt = new Woogeen.StreamEvent({type: 'video-hold', stream: stream});
-            dispatchEventAfterSubscribed(evt);
-          }
-        });
-
-        // We receive an event of remote video stream resumed
-        self.socket.on('onVideoReady', function (spec) {
-          var stream = self.remoteStreams[spec.id];
-          if (stream) {
-            var evt = new Woogeen.StreamEvent({type: 'video-ready', stream: stream});
-            dispatchEventAfterSubscribed(evt);
-          }
-        });
-
-        // We receive an event of remote audio stream paused
-        self.socket.on('onAudioHold', function (spec) {
-          var stream = self.remoteStreams[spec.id];
-          if (stream) {
-            var evt = new Woogeen.StreamEvent({type: 'audio-hold', stream: stream});
-            dispatchEventAfterSubscribed(evt);
-          }
-        });
-
-        // We receive an event of remote audio stream resumed
-        self.socket.on('onAudioReady', function (spec) {
-          var stream = self.remoteStreams[spec.id];
-          if (stream) {
-            var evt = new Woogeen.StreamEvent({type: 'audio-ready', stream: stream});
-            dispatchEventAfterSubscribed(evt);
-          }
-        });
-
-        // We receive an event of all the remote audio streams paused
-        self.socket.on('onAllAudioHold', function () {
-          for (var index in self.remoteStreams) {
-            if (self.remoteStreams.hasOwnProperty(index)) {
-              var stream = self.remoteStreams[index];
-              var evt = new Woogeen.StreamEvent({type: 'audio-hold', stream: stream});
-              dispatchEventAfterSubscribed(evt);
-            }
-          }
-        });
-
-        // We receive an event of all the remote audio streams resumed
-        self.socket.on('onAllAudioReady', function () {
-          for (var index in self.remoteStreams) {
-            if (self.remoteStreams.hasOwnProperty(index)) {
-              var stream = self.remoteStreams[index];
-              var evt = new Woogeen.StreamEvent({type: 'audio-ready', stream: stream});
-              dispatchEventAfterSubscribed(evt);
-            }
-          }
-        });
-
-        self.socket.on('onUpdateStream', function (spec) {
-          // Handle: 'VideoEnabled', 'VideoDisabled', 'AudioEnabled', 'AudioDisabled', 'VideoLayoutChanged', [etc]
-          var stream = self.remoteStreams[spec.id];
-          if (stream) {
-            stream.emit(spec.event, spec.data);
-          }
         });
 
         self.socket.on('disconnect', function () {
@@ -461,17 +389,17 @@ conference.join(token, function(response) {...}, function(error) {...});
           }
         });
 
-        self.socket.on('onUserJoin', function (spec) {
+        self.socket.on('user_join', function (spec) {
           var evt = new Woogeen.ClientEvent({type: 'user-joined', user: spec.user});
           self.dispatchEvent(evt);
         });
 
-        self.socket.on('onUserLeave', function (spec) {
+        self.socket.on('user_leave', function (spec) {
           var evt = new Woogeen.ClientEvent({type: 'user-left', user: spec.user});
           self.dispatchEvent(evt);
         });
 
-        self.socket.on('onCustomMessage', function (spec) {
+        self.socket.on('custom_message', function (spec) {
           var evt = new Woogeen.MessageEvent({type: 'message-received', msg: spec});
           self.dispatchEvent(evt);
         });
