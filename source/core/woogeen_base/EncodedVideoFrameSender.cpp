@@ -166,6 +166,9 @@ void EncodedVideoFrameSender::onFrame(const Frame& frame)
                 buffer_length -= (nalu_start_offset + nalu_found_length);
             }
         }
+
+        if (frame.length > 0 && m_frameConsumer)
+            m_frameConsumer->onFrame(frame);
         m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, H264_90000_PT, frame.timeStamp, frame.timeStamp / 90, frame.payload, frame.length, &frag_info, &h);
     }
 }
