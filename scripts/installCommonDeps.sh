@@ -53,29 +53,6 @@ install_fdkaac(){
   popd
 }
 
-install_libav(){
-  local VERSION="11.3"
-  local SRC="libav-${VERSION}.tar.gz"
-  local SRC_URL="https://www.libav.org/releases/${SRC}"
-  local SRC_MD5SUM="1a2eb461b98e0f1d1d6c4d892d51ac9b"
-  mkdir -p ${LIB_DIR}
-  pushd ${LIB_DIR}
-  [[ ! -s ${SRC} ]] && wget -c ${SRC_URL}
-  if ! (echo "${SRC_MD5SUM} ${SRC}" | md5sum --check) ; then
-    rm -f ${SRC} && wget -c ${SRC_URL} # try download again
-    (echo "${SRC_MD5SUM} ${SRC}" | md5sum --check) || (echo "Downloaded file ${SRC} is corrupted." && return 1)
-  fi
-  rm -fr libav-${VERSION}
-  tar xf ${SRC}
-  pushd libav-${VERSION}
-  [[ "${DISABLE_NONFREE}" == "true" ]] && \
-  PKG_CONFIG_PATH=${PREFIX_DIR}/lib/pkgconfig ./configure --prefix=${PREFIX_DIR} --enable-shared --disable-libvpx --enable-libopus || \
-  PKG_CONFIG_PATH=${PREFIX_DIR}/lib/pkgconfig ./configure --prefix=${PREFIX_DIR} --enable-shared --disable-libvpx --enable-libopus --enable-libfdk-aac --enable-nonfree && \
-  make -j4 -s V=0 && make install
-  popd
-  popd
-}
-
 install_ffmpeg(){
   local VERSION="2.7.2"
   local DIR="ffmpeg-${VERSION}"
