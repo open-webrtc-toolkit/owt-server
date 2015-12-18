@@ -43,6 +43,8 @@ woogeen_base::MediaMuxer* MediaMuxerFactory::createMediaMuxer(const std::string&
             boost::property_tree::ptree pt;
             std::istringstream is(configParam);
             boost::property_tree::read_json(is, pt);
+            const std::string preferredVideoCodec = pt.get<std::string>("preferredVideoCodec", "vp8");
+            const std::string preferredAudioCodec = pt.get<std::string>("preferredAudioCodec", "pcmu");
             const std::string url = pt.get<std::string>("url", "");
             int snapshotInterval = pt.get<int>("interval", -1);
 
@@ -51,7 +53,7 @@ woogeen_base::MediaMuxer* MediaMuxerFactory::createMediaMuxer(const std::string&
             if (url.compare(0, 7, "rtsp://") == 0) {
                 muxer = new RTSPMuxer(url);
             } else {
-                muxer = new MediaRecorder(url, snapshotInterval);
+                muxer = new MediaRecorder(preferredVideoCodec, preferredAudioCodec, url, snapshotInterval);
             }
 
             s_muxers[id] = boost::shared_ptr<woogeen_base::MediaMuxer>(muxer);

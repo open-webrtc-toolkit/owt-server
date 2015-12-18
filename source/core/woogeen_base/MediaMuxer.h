@@ -147,6 +147,26 @@ private:
     EventRegistry* m_asyncHandle;
 };
 
+// Frame formats definition
+const std::map<std::string, FrameFormat> FrameFormats =
+    {{"VP8", FRAME_FORMAT_VP8},
+     {"H264", FRAME_FORMAT_H264},
+     {"PCMU", FRAME_FORMAT_PCMU},
+     {"OPUS", FRAME_FORMAT_OPUS}};
+
+class MediaMuxerHelper {
+public:
+    static bool getFrameFormat(const std::string& name, FrameFormat& format) {
+        std::map<std::string, FrameFormat>::const_iterator it = FrameFormats.find(name);
+        if (it != FrameFormats.end()) {
+            format = it->second;
+            return true;
+        }
+
+        return false;
+    }
+};
+
 } /* namespace woogeen_base */
 
 #endif /* MediaMuxer_h */

@@ -322,9 +322,11 @@ exports.ErizoJSController = function () {
         }
     };
 
-    that.addExternalOutput = function (video_publisher_id, audio_publisher_id, output_id, url, interval, callback) {
+    that.addExternalOutput = function (video_publisher_id, audio_publisher_id, preferred_video_codec, preferred_audio_codec, output_id, url, interval, callback) {
         if (publishers[video_publisher_id] !== undefined && publishers[audio_publisher_id] !== undefined) {
             var config = {
+                preferredVideoCodec: preferred_video_codec,
+                preferredAudioCodec: preferred_audio_codec,
                 id: output_id,
                 url: url,
                 interval: interval

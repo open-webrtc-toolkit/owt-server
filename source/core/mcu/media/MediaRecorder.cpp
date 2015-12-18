@@ -19,6 +19,8 @@
  */
 
 #include "MediaRecorder.h"
+
+#include <boost/algorithm/string.hpp>
 #include <rtputils.h>
 
 extern "C" {
@@ -47,7 +49,7 @@ inline AVCodecID frameFormat2AudioCodecID(int frameFormat)
     }
 }
 
-MediaRecorder::MediaRecorder(const std::string& recordUrl, int snapshotInterval)
+MediaRecorder::MediaRecorder(const std::string& preferredVideoCodec, const std::string& preferredAudioCodec, const std::string& recordUrl, int snapshotInterval)
     : m_videoSource(nullptr)
     , m_audioSource(nullptr)
     , m_videoStream(nullptr)
@@ -69,6 +71,16 @@ MediaRecorder::MediaRecorder(const std::string& recordUrl, int snapshotInterval)
 
     m_context = avformat_alloc_context();
     assert(m_context);
+
+    if (!woogeen_base::MediaMuxerHelper::getFrameFormat(boost::to_upper_copy(preferredVideoCodec), m_preferredVideoCodec)) {
+        ELOG_WARN("preferred video codec is invalid! Using vp8 as default.");
+        woogeen_base::MediaMuxerHelper::getFrameFormat("VP8", m_preferredVideoCodec);
+    }
+
+    if (!woogeen_base::MediaMuxerHelper::getFrameFormat(boost::to_upper_copy(preferredAudioCodec), m_preferredAudioCodec)) {
+        ELOG_WARN("preferred audio codec is invalid! Using pcmu as default.");
+        woogeen_base::MediaMuxerHelper::getFrameFormat("PCMU", m_preferredAudioCodec);
+    }
 
     m_recordPath.copy(m_context->filename, sizeof(m_context->filename), 0);
     m_context->oformat = av_guess_format(NULL, m_context->filename, NULL);
@@ -101,10 +113,10 @@ void MediaRecorder::setMediaSource(woogeen_base::FrameProvider* videoSource, woo
     // Currently, we do not provide video transcoding for forward mode recording
     woogeen_base::MediaSpecInfo info {0};
     if (m_videoSource)
-        m_videoId = m_videoSource->addFrameConsumer(m_recordPath, woogeen_base::FRAME_FORMAT_VP8, this, info);
+        m_videoId = m_videoSource->addFrameConsumer(m_recordPath, m_preferredVideoCodec, this, info);
 
     if (m_audioSource)
-        m_audioId = m_audioSource->addFrameConsumer(m_recordPath, woogeen_base::FRAME_FORMAT_PCMU, this, info);
+        m_audioId = m_audioSource->addFrameConsumer(m_recordPath, m_preferredAudioCodec, this, info);
 }
 
 void MediaRecorder::unsetMediaSource()
@@ -165,9 +177,11 @@ void MediaRecorder::onFrame(const woogeen_base::Frame& frame)
             m_status = woogeen_base::MediaMuxer::Context_ERROR;
             break;
         }
+
         m_videoQueue->pushFrame(frame.payload, frame.length);
         break;
     case woogeen_base::FRAME_FORMAT_PCMU:
+    case woogeen_base::FRAME_FORMAT_OPUS:
         if (m_videoStream && !m_audioStream) { // make sure video stream is added first.
             if (addAudioStream(frameFormat2AudioCodecID(frame.format), frame.additionalInfo.audio.channels, frame.additionalInfo.audio.sampleRate)) {
                 ELOG_DEBUG("audio stream added: %d channel(s), %d Hz", frame.additionalInfo.audio.channels, frame.additionalInfo.audio.sampleRate);
@@ -177,10 +191,11 @@ void MediaRecorder::onFrame(const woogeen_base::Frame& frame)
             m_status = woogeen_base::MediaMuxer::Context_ERROR;
             break;
         }
+
         m_audioQueue->pushFrame(frame.payload, frame.length);
         break;
     default:
-        ELOG_ERROR("improper frame format. only VP8/H264 and PCM_MULAW can be recorded currently");
+        ELOG_ERROR("improper frame format. only VP8/H264 and PCMU/OPUS can be recorded currently");
         m_status = woogeen_base::MediaMuxer::Context_ERROR;
         break;
     }
@@ -201,7 +216,10 @@ bool MediaRecorder::addAudioStream(enum AVCodecID codec_id, int nbChannels, int 
     c->channels       = nbChannels;
     c->channel_layout = av_get_default_channel_layout(nbChannels);
     c->sample_rate    = sampleRate;
-    c->sample_fmt     = AV_SAMPLE_FMT_S16;
+    if (codec_id == AV_CODEC_ID_OPUS)
+        c->sample_fmt = AV_SAMPLE_FMT_FLT;
+    else
+        c->sample_fmt = AV_SAMPLE_FMT_S16;
 
     if (m_context->oformat->flags & AVFMT_GLOBALHEADER)
         c->flags |= CODEC_FLAG_GLOBAL_HEADER;
