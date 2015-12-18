@@ -1047,6 +1047,8 @@ var listen = function () {
             var recorderPath = options.path || GLOBAL.config.erizoController.recording_path || '/tmp';
             var url = require('path').join(recorderPath, 'room' + socket.room.id + '_' + recorderId + '.mkv');
             var interval = (options.interval && options.interval > 0) ? options.interval : -1;
+            var preferredVideoCodec = options.preferredVideoCodec || 'vp8';
+            var preferredAudioCodec = options.preferredAudioCodec || 'pcmu';;
 
             var videoRecorder = videoStream.getVideoRecorder();
             var audioRecorder = audioStream.getAudioRecorder();
@@ -1075,7 +1077,7 @@ var listen = function () {
                     log.info('Recorder context cleaned: ', result.text);
 
                     // Start the recorder
-                    socket.room.controller.addExternalOutput(videoStreamId, audioStreamId, recorderId, socket.room.mixer, url, interval, function (result) {
+                    socket.room.controller.addExternalOutput(videoStreamId, audioStreamId, preferredVideoCodec, preferredAudioCodec, recorderId, socket.room.mixer, url, interval, function (result) {
                         if (result.success) {
                             videoStream.setVideoRecorder(recorderId);
                             audioStream.setAudioRecorder(recorderId);

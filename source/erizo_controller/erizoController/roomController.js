@@ -161,7 +161,7 @@ exports.RoomController = function (spec) {
         }
     };
 
-    that.addExternalOutput = function (video_publisher_id, audio_publisher_id, output_id, mixer_id, url, interval, callback) {
+    that.addExternalOutput = function (video_publisher_id, audio_publisher_id, preferred_video_codec, preferred_audio_codec, output_id, mixer_id, url, interval, callback) {
         if (publishers[video_publisher_id] !== undefined && publishers[audio_publisher_id] !== undefined) {
             log.info("Adding ExternalOutput to " + video_publisher_id + " and " + audio_publisher_id + " with url: " + url);
 
@@ -183,7 +183,7 @@ exports.RoomController = function (spec) {
                     });
                 }
 
-                var args = [video_publisher_id, audio_publisher_id, output_id, url, interval];
+                var args = [video_publisher_id, audio_publisher_id, preferred_video_codec, preferred_audio_codec, output_id, url, interval];
 
                 amqper.callRpc('ErizoJS_' + erizo_id, 'addExternalOutput', args, {callback: function (result) {
                     if (result === 'success') {
@@ -528,7 +528,7 @@ exports.RoomController = function (spec) {
 
     that.addRTSPOut = function (mixer_id, callback) {
         if (publishers[mixer_id] !== undefined) {
-            var args = [mixer_id, mixer_id, '', '', 0];
+            var args = [mixer_id, mixer_id, '', '', '', '', 0];
             amqper.callRpc(getErizoQueue(mixer_id), 'addExternalOutput', args, {callback: function (result) {
                 callback(result);
             }});
