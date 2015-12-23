@@ -87,7 +87,7 @@ public:
 const VideoSize DEFAULT_VIDEO_SIZE = {640, 480};
 const YUVColor DEFAULT_VIDEO_BG_COLOR = {0x00, 0x80, 0x80};
 
-const std::map<std::string, VideoSize> VideoResolution =
+const std::map<std::string, VideoSize> VideoResolutions =
     {{"cif", {352, 288}},
      {"vga", {640, 480}},
      {"svga", {800, 600}},
@@ -104,8 +104,8 @@ const std::map<std::string, VideoSize> VideoResolution =
 class VideoResolutionHelper {
 public:
     static bool getVideoSize(const std::string& resolution, VideoSize& videoSize) {
-        std::map<std::string, VideoSize>::const_iterator it = VideoResolution.find(resolution);
-        if (it != VideoResolution.end()) {
+        std::map<std::string, VideoSize>::const_iterator it = VideoResolutions.find(resolution);
+        if (it != VideoResolutions.end()) {
             videoSize = it->second;
             return true;
         }
