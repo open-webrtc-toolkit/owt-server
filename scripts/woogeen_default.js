@@ -53,7 +53,7 @@ config.erizoController.publicIP = ''; //default value: ''
 config.erizoController.hostname = ''; //default value: ''
 config.erizoController.port = 8080; //default value: 8080
 // Use true if clients communicate with erizoController over SSL
-config.erizoController.ssl = false; //default value: false
+config.erizoController.ssl = true; //default value: true
 config.erizoController.keystorePath = '../../cert/certificate.pfx';
 
 // Use the name of the inferface you want to bind to for websockets
