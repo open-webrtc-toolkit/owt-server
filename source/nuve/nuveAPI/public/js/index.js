@@ -364,7 +364,7 @@ function tableHandlerRoom(rooms) {
           <td id="resolution" class="value-num-edit" data-value={{resolution}}></td>\
         </tr>\
         <tr>\
-          <td colspan="2">bitrate</td>\
+          <td colspan="2">bitrate(Kbit)</td>\
           <td id="bitrate" class="value-num-edit" data-value={{bitrate}}></td>\
         </tr>\
         <tr>\
