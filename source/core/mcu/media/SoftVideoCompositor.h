@@ -74,9 +74,6 @@ public:
     void deActivateInput(int input);
     void pushInput(int input, webrtc::I420VideoFrame*);
 
-    bool setOutput(woogeen_base::VideoFrameConsumer*);
-    void unsetOutput();
-
     void updateRootSize(VideoSize& rootSize);
     void updateBackgroundColor(YUVColor& bgColor);
     void updateLayoutSolution(LayoutSolution& solution);
@@ -100,7 +97,6 @@ private:
     LayoutSolution m_currentLayout;
     LayoutSolution m_newLayout;
     LayoutSolutionState m_solutionState;
-    woogeen_base::VideoFrameConsumer* m_consumer;
     /*
      * Each incoming channel will store the decoded frame in this array, and the composition
      * thread will scan this array and composite the frames into one frame.

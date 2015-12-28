@@ -21,22 +21,15 @@
 #ifndef VideoMixer_h
 #define VideoMixer_h
 
-#include "VCMInputProcessor.h"
-#include "VideoFrameMixer.h"
-
-#include <boost/property_tree/ptree.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/shared_mutex.hpp>
+#include <boost/scoped_ptr.hpp>
 #include <logger.h>
 #include <map>
-#include <MediaDefinitions.h>
-#include <MediaMuxer.h>
-#include <MediaSourceConsumer.h>
-#include <tuple>
-#include <WebRTCFeedbackProcessor.h>
-#include <WebRTCTaskRunner.h>
 #include <vector>
-#include <VideoFrameSender.h>
+
+#include "VideoFrameMixer.h"
+#include "WebRTCTaskRunner.h"
 
 namespace webrtc {
 class VoEVideoSync;
@@ -45,103 +38,51 @@ class VoEVideoSync;
 namespace mcu {
 
 class VideoLayoutProcessor;
-typedef std::tuple<int, unsigned int, unsigned int> ExtendedKey;
 
-/**
- * Receives media from several sources, mixed into one stream and retransmits it to the RTPDataReceiver.
- */
-class VideoMixer : public woogeen_base::MediaSourceConsumer, public woogeen_base::FrameProvider, public erizo::FeedbackSink, public InputProcessorCallback {
+class VideoMixer {
     DECLARE_LOGGER();
 
 public:
-    VideoMixer(erizo::RTPDataReceiver*, boost::property_tree::ptree& config);
+    DLL_PUBLIC VideoMixer(const std::string& config);
     virtual ~VideoMixer();
 
-    // Video output related methods.
-    int32_t addOutput(int payloadType, bool nack, bool fec, const VideoSize& size);
-    int32_t removeOutput(int payloadType, const VideoSize& size);
-    woogeen_base::IntraFrameCallback* getIFrameCallback(int payloadType, const VideoSize& size);
-    uint32_t getSendSSRC(int payloadType, bool nack, bool fec, const VideoSize& size);
+    DLL_PUBLIC bool addInput(const std::string& inStreamID, const std::string& codec, woogeen_base::FrameSource* source);
+    DLL_PUBLIC void removeInput(const std::string& inStreamID);
+    DLL_PUBLIC void setRegion(const std::string& inStreamID, const std::string& regionID);
+    DLL_PUBLIC std::string getRegion(const std::string& inStreamID);
+    DLL_PUBLIC void setPrimary(const std::string& inStreamID);
 
-    // Video input related methods.
-    int32_t bindAudio(uint32_t sourceId, int voiceChannelId, webrtc::VoEVideoSync*);
-    bool setSourceBitrate(uint32_t from, uint32_t kbps);
-    boost::shared_ptr<erizo::MediaSink> getMediaSink(uint32_t from);
+    DLL_PUBLIC bool addOutput(const std::string& outStreamID, const std::string& codec, const std::string& resolution, woogeen_base::FrameDestination* dest);
+    DLL_PUBLIC void removeOutput(const std::string& outStreamID);
 
-    // Implements MediaSourceConsumer.
-    erizo::MediaSink* addSource(uint32_t from,
-        bool isAudio,
-        erizo::DataContentType,
-        int payloadType,
-        erizo::FeedbackSink*,
-        const std::string& participantId);
-    void removeSource(uint32_t from, bool isAudio);
-
-    // Implements FeedbackSink.
-    int deliverFeedback(char* buf, int len);
-
-    // Implements VCMInputProcessorInitCallback
-    void onInputProcessorInitOK(int index);
-
-    // Layout related operations
-    bool specifySourceRegion(uint32_t from, const std::string& regionID);
-    std::string getSourceRegion(uint32_t from);
-    void promoteSources(std::vector<uint32_t>& sources);
-    bool setResolution(const std::string& resolution);
-    bool setBackgroundColor(const std::string& color);
-
-    // Implements FrameProivder
-    int32_t addFrameConsumer(const std::string&, woogeen_base::FrameFormat, woogeen_base::FrameConsumer*, const woogeen_base::MediaSpecInfo&);
-    void removeFrameConsumer(int32_t id);
-    // TODO: Implement it.
-    virtual void setBitrate(unsigned short kbps, int id = 0) {}
-
-    void setEventRegistry(woogeen_base::EventRegistry*);
+    int32_t bindAudio(uint32_t sourceId, int voiceChannelId, webrtc::VoEVideoSync*)
+    {
+        //TODO: Establish another data path to guarantee the a/v sync of input streams.
+        return -1;
+    }
 
 private:
+    int getFreeInputIndex();
     void closeAll();
 
-    int assignInput(uint32_t source);
-    // Find the slot number for the corresponding source
-    // return -1 if not found
-    int getInput(uint32_t source);
+    int m_nextOutputIndex;
 
-    uint32_t m_participants;
-
-    boost::shared_ptr<woogeen_base::WebRTCTaskRunner> m_taskRunner;
-    erizo::RTPDataReceiver* m_outputReceiver;
-    boost::shared_mutex m_sourceMutex;
-    std::map<uint32_t, boost::shared_ptr<erizo::MediaSink>> m_sinksForSources;
-    std::vector<uint32_t> m_sourceInputMap; // each source will be allocated one index
-    boost::scoped_ptr<VideoLayoutProcessor> m_layoutProcessor;
-    bool m_hardwareAccelerated;
+    uint32_t m_inputCount;
     uint32_t m_maxInputCount;
-    int m_outputKbps;
+
+    unsigned short m_outputKbps;
     boost::shared_ptr<VideoFrameMixer> m_frameMixer;
-    boost::shared_mutex m_outputMutex;
-    std::map<ExtendedKey, boost::shared_ptr<woogeen_base::VideoFrameSender>> m_outputs;
+    boost::shared_ptr<woogeen_base::WebRTCTaskRunner> m_taskRunner;
+
+    boost::shared_mutex m_inputsMutex;
+    std::map<std::string, int> m_inputs;
+
+    boost::scoped_ptr<VideoLayoutProcessor> m_layoutProcessor;
+
+    boost::shared_mutex m_outputsMutex;
+    std::map<std::string, int32_t> m_outputs;
 };
 
-inline int VideoMixer::assignInput(uint32_t source)
-{
-    for (uint32_t i = 0; i < m_sourceInputMap.size(); i++) {
-        if (!m_sourceInputMap[i]) {
-            m_sourceInputMap[i] = source;
-            return i;
-        }
-    }
-    m_sourceInputMap.push_back(source);
-    return m_sourceInputMap.size() - 1;
-}
-
-inline int VideoMixer::getInput(uint32_t source)
-{
-    for (uint32_t i = 0; i < m_sourceInputMap.size(); i++) {
-        if (m_sourceInputMap[i] == source)
-            return i;
-    }
-    return -1;
-}
 
 } /* namespace mcu */
 #endif /* VideoMixer_h */

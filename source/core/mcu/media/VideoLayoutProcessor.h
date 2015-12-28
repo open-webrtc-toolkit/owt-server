@@ -44,10 +44,8 @@ public:
     void deregisterConsumer(boost::shared_ptr<LayoutConsumer>);
 
     bool getRootSize(VideoSize& rootSize);
-    bool setRootSize(const std::string& resolution);
 
     bool getBgColor(YUVColor& bgColor);
-    bool setBgColor(const std::string& color);
 
     void addInput(int input, bool toFront = false);
     void addInput(int input, std::string& specifiedRegionID);

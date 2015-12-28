@@ -1,6 +1,7 @@
 build/
 dist/
 source/etc/
+source/core/sip_gateway
 .DS_Store
 third_party/node-v*
 third_party/libuv*

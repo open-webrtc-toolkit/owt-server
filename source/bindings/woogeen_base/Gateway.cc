@@ -230,3 +230,4 @@ void Gateway::unpublishStream(const FunctionCallbackInfo<Value>& args) {
   bool isAudio = args[1]->BooleanValue();
   me->unpublishStream(id, isAudio);
 }
+

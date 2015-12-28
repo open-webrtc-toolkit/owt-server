@@ -88,9 +88,6 @@ config.erizoController.report = {
 // If undefined, the path will be /tmp/
 config.erizoController.recording_path = undefined; // default value: undefined
 
-// If true and the maxProcesses allows, the mixer will be run in a dedicated process.
-config.erizoController.outOfProcessMixer = false;
-
 /*********************************************************
  ERIZO AGENT CONFIGURATION
 **********************************************************/

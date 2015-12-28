@@ -72,16 +72,9 @@ exports.addNewErizoAgent = function(msg, callback) {
     });
 };
 
-exports.allocErizoAgent = function(msg, callback) {
+exports.getErizoAgent = function(msg, callback) {
     'use strict';
-    cloudHandler.allocErizoAgent(msg, function (ea) {
-        callback('callback', ea);
-    });
-};
-
-exports.freeErizoAgent = function(msg, callback) {
-    'use strict';
-    cloudHandler.freeErizoAgent(msg, function (ea) {
+    cloudHandler.getErizoAgent(msg, function (ea) {
         callback('callback', ea);
     });
 };

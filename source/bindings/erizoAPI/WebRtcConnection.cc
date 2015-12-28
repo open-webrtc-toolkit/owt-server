@@ -89,6 +89,14 @@ void WebRtcConnection::close(const FunctionCallbackInfo<Value>& args) {
     uv_close((uv_handle_t*)&obj->asyncStats_, NULL);
   }
 
+  // The erizo::WebRtcConnection lifetime is now managed explicitly in JS
+  // controller layer now, instead of being implicitly managed in native layer
+  // as before.
+  // TODO: Double check the destroy sequence issue of the WebRtcConnection
+  // and the Demuxer/Mixer.
+  // FIXME: The gateway controller and native layers need to be updated to
+  // adapt to this new rule.
+  delete obj->me;
 }
 
 void WebRtcConnection::init(const FunctionCallbackInfo<Value>& args) {
@@ -212,6 +220,30 @@ void WebRtcConnection::getStats(const FunctionCallbackInfo<Value>& args){
   }
 }
 
+void WebRtcConnection::enableAudio(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+  Isolate* isolate = Isolate::GetCurrent();
+  HandleScope scope(isolate);
+
+  WebRtcConnection* obj = ObjectWrap::Unwrap<WebRtcConnection>(args.Holder());
+  erizo::WebRtcConnection *me = obj->me;
+
+  bool b = (args[0]->ToBoolean())->BooleanValue();
+  me->enableAudio(b);
+}
+
+void WebRtcConnection::enableVideo(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+  Isolate* isolate = Isolate::GetCurrent();
+  HandleScope scope(isolate);
+
+  WebRtcConnection* obj = ObjectWrap::Unwrap<WebRtcConnection>(args.Holder());
+  erizo::WebRtcConnection *me = obj->me;
+
+  bool b = (args[0]->ToBoolean())->BooleanValue();
+  me->enableVideo(b);
+}
+
 void WebRtcConnection::notifyEvent(erizo::WebRTCEvent event, const std::string& message, bool prompt) {
   boost::mutex::scoped_lock lock(eventsMutex);
   if (prompt) {
@@ -266,3 +298,4 @@ void WebRtcConnection::statsCallback(uv_async_t *handle){
     }
   }
 }
+

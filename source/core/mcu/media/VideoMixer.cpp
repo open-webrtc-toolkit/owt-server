@@ -23,11 +23,12 @@
 #include "HardwareVideoFrameMixer.h"
 #include "SoftVideoFrameMixer.h"
 #include "VideoLayoutProcessor.h"
-#include "VideoFrameInputProcessor.h"
-#include <EncodedVideoFrameSender.h>
 #include <WebRTCTransport.h>
 #include <webrtc/modules/video_coding/codecs/vp8/vp8_factory.h>
 #include <webrtc/system_wrappers/interface/trace.h>
+
+#include <boost/property_tree/json_parser.hpp>
+#include <boost/property_tree/ptree.hpp>
 
 using namespace webrtc;
 using namespace woogeen_base;
@@ -39,20 +40,19 @@ namespace mcu {
 
 DEFINE_LOGGER(VideoMixer, "mcu.media.VideoMixer");
 
-static ExtendedKey makeExtendedKey(int type, unsigned int width, unsigned int height)
-{
-    return static_cast<ExtendedKey>(std::make_tuple(type, width, height));
-}
-
-VideoMixer::VideoMixer(erizo::RTPDataReceiver* receiver, boost::property_tree::ptree& config)
-    : m_participants(0)
-    , m_outputReceiver(receiver)
+VideoMixer::VideoMixer(const std::string& configStr)
+    : m_nextOutputIndex(0)
+    , m_inputCount(0)
     , m_maxInputCount(0)
-    , m_outputKbps(0)
+    , m_outputKbps(0) //TODO: It needs more consideration about specifying the outputKbps with multi-streaming.
 {
-    m_hardwareAccelerated = config.get<bool>("hardware");
-    m_maxInputCount = config.get<uint32_t>("maxinput");
-    m_outputKbps = config.get<int>("bitrate");
+    boost::property_tree::ptree config;
+    std::istringstream is(configStr);
+    boost::property_tree::read_json(is, config);
+
+    bool hardwareAccelerated = config.get<bool>("hardware", false);
+    m_maxInputCount = config.get<uint32_t>("maxinput", 16);
+    m_outputKbps = config.get<int>("bitrate", 0);
     webrtc::VP8EncoderFactoryConfig::set_use_simulcast_adapter(config.get<bool>("simulcast"));
 
     m_layoutProcessor.reset(new VideoLayoutProcessor(config));
@@ -65,7 +65,7 @@ VideoMixer::VideoMixer(erizo::RTPDataReceiver* receiver, boost::property_tree::p
 
     m_taskRunner.reset(new woogeen_base::WebRTCTaskRunner());
 
-    if (m_hardwareAccelerated)
+    if (hardwareAccelerated)
         m_frameMixer.reset(new HardwareVideoFrameMixer(rootSize, bgColor));
     else
         m_frameMixer.reset(new SoftVideoFrameMixer(m_maxInputCount, rootSize, bgColor, m_taskRunner));
@@ -90,355 +90,190 @@ VideoMixer::~VideoMixer()
 #endif
 
     m_layoutProcessor->deregisterConsumer(m_frameMixer);
-    m_outputReceiver = nullptr;
 }
 
-int32_t VideoMixer::addOutput(int payloadType, bool nack, bool fec, const VideoSize& size)
-{
-    VideoSize outputSize = size;
-    if (size.width == 0 || size.height == 0 || !webrtc::VP8EncoderFactoryConfig::use_simulcast_adapter())
-        m_layoutProcessor->getRootSize(outputSize);
-    auto key = makeExtendedKey(payloadType, outputSize.width, outputSize.height);
-    boost::upgrade_lock<boost::shared_mutex> lock(m_outputMutex);
-    auto it = m_outputs.find(key);
-    if (it != m_outputs.end()) {
-        it->second->startSend(nack, fec);
-        return it->second->streamId();
+static woogeen_base::FrameFormat getFormat(const std::string& codec) {
+    if (codec == "vp8") {
+        return woogeen_base::FRAME_FORMAT_VP8;
+    } else if (codec == "h264") {
+        return woogeen_base::FRAME_FORMAT_H264;
+    } else {
+        return woogeen_base::FRAME_FORMAT_UNKNOWN;
     }
-
-    woogeen_base::FrameFormat outputFormat = woogeen_base::FRAME_FORMAT_UNKNOWN;
-    switch (payloadType) {
-    case VP8_90000_PT:
-        outputFormat = woogeen_base::FRAME_FORMAT_VP8;
-        break;
-    case H264_90000_PT:
-        outputFormat = woogeen_base::FRAME_FORMAT_H264;
-        break;
-    default:
-        return -1;
-    }
-
-    WebRTCTransport<erizo::VIDEO>* transport = new WebRTCTransport<erizo::VIDEO>(m_outputReceiver, nullptr);
-
-    // EncodedVideoFrameSender employed for simulcast.
-    // Software mode can also use the compound VCMOutputProcessor
-    // (w/ both encoder and sender capability) which provides better QoS control.
-    woogeen_base::VideoFrameSender* output = new woogeen_base::EncodedVideoFrameSender(
-                                                m_frameMixer,
-                                                outputFormat,
-                                                m_outputKbps,
-                                                transport,
-                                                m_taskRunner,
-                                                static_cast<uint16_t>(outputSize.width),
-                                                static_cast<uint16_t>(outputSize.height));
-
-    output->startSend(nack, fec);
-    boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
-    m_outputs[key].reset(output);
-
-    return output->streamId();
 }
 
-int32_t VideoMixer::removeOutput(int payloadType, const VideoSize& size)
+bool VideoMixer::addInput(const std::string& inStreamID, const std::string& codec, woogeen_base::FrameSource* source)
 {
-    VideoSize outputSize = size;
-    if (size.width == 0 || size.height == 0 || !webrtc::VP8EncoderFactoryConfig::use_simulcast_adapter())
-        m_layoutProcessor->getRootSize(outputSize);
-    auto key = makeExtendedKey(payloadType, outputSize.width, outputSize.height);
-    boost::unique_lock<boost::shared_mutex> lock(m_outputMutex);
-    auto it = m_outputs.find(key);
-    if (it != m_outputs.end()) {
-        int32_t id = it->second->streamId();
-        m_outputs.erase(it);
-        return id;
+    if (m_inputCount == m_maxInputCount) {
+        ELOG_WARN("Exceeding maximum number of sources (%u), ignoring the addSource request", m_maxInputCount);
+        return false;
     }
 
-    return -1;
-}
+    woogeen_base::FrameFormat format = getFormat(codec);
 
-int32_t VideoMixer::addFrameConsumer(const std::string&/*unused*/, woogeen_base::FrameFormat format, woogeen_base::FrameConsumer* frameConsumer, const woogeen_base::MediaSpecInfo& info)
-{
-    int payloadType = INVALID_PT;
-    switch (format) {
-    case FRAME_FORMAT_VP8:
-        payloadType = VP8_90000_PT;
-        break;
-    case FRAME_FORMAT_H264:
-        payloadType = H264_90000_PT;
-        break;
-    default:
-        break;
-    }
+    boost::upgrade_lock<boost::shared_mutex> lock(m_inputsMutex);
+    auto it = m_inputs.find(inStreamID);
+    if (it == m_inputs.end() || !it->second) {
+        int index = getFreeInputIndex();
+        ELOG_DEBUG("addSource - assigned input index is %d", index);
 
-    int32_t id = -1;
-    VideoSize size {info.video.width, info.video.height};
-    if (size.width == 0 || size.height == 0 || !webrtc::VP8EncoderFactoryConfig::use_simulcast_adapter())
-        m_layoutProcessor->getRootSize(size);
-    id = addOutput(payloadType, true, false, size);
-    if (id != -1) {
-        auto key = makeExtendedKey(payloadType, size.width, size.height);
-        boost::shared_lock<boost::shared_mutex> lock(m_outputMutex);
-        auto it = m_outputs.find(key);
-        if (it == m_outputs.end() || it->second->streamId() != id)
-            return -1;
-        woogeen_base::VideoFrameSender* output = m_outputs[key].get();
-        output->registerPreSendFrameCallback(frameConsumer);
-
-        // Request an IFrame explicitly, because the recorder doesn't support active I-Frame requests.
-        IntraFrameCallback* iFrameCallback = output->iFrameCallback();
-        if (iFrameCallback)
-            iFrameCallback->handleIntraFrameRequest();
-    }
-    return id;
-}
-
-void VideoMixer::removeFrameConsumer(int32_t id)
-{
-    boost::shared_lock<boost::shared_mutex> lock(m_outputMutex);
-    auto it = m_outputs.begin();
-    for (; it != m_outputs.end(); ++it) {
-        if (id == it->second->streamId()) {
-            it->second->deRegisterPreSendFrameCallback();
-            break;
+        if (m_frameMixer->addInput(index, format, source)) {
+            m_layoutProcessor->addInput(index);
+            boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
+            m_inputs[inStreamID] = index;
         }
-    }
-}
-
-int VideoMixer::deliverFeedback(char* buf, int len)
-{
-    // TODO: For now we just send the feedback to all of the output processors.
-    // The output processor will filter out the feedback which does not belong
-    // to it. In the future we may do the filtering at a higher level?
-    boost::shared_lock<boost::shared_mutex> lock(m_outputMutex);
-    auto it = m_outputs.begin();
-    for (; it != m_outputs.end(); ++it) {
-        FeedbackSink* feedbackSink = it->second->feedbackSink();
-        if (feedbackSink)
-            feedbackSink->deliverFeedback(buf, len);
+        ++m_inputCount;
+        return true;
     }
 
-    return len;
-}
-
-void VideoMixer::onInputProcessorInitOK(int index)
-{
-    ELOG_DEBUG("onInputProcessorInitOK - index: %d", index);
-    m_layoutProcessor->addInput(index);
-}
-
-void VideoMixer::promoteSources(std::vector<uint32_t>& sources)
-{
-    std::vector<int> inputs;
-    for (std::vector<uint32_t>::iterator it = sources.begin(); it != sources.end(); ++it) {
-        int index = getInput(*it);
-        if (index >= 0)
-            inputs.push_back(index);
-    }
-    if (inputs.size() > 0)
-        m_layoutProcessor->promoteInputs(inputs);
-}
-
-bool VideoMixer::specifySourceRegion(uint32_t from, const std::string& regionID)
-{
-    int index = getInput(from);
-    assert(index >= 0);
-
-    if (index >= 0)
-        return m_layoutProcessor->specifyInputRegion(index, regionID);
-
-    ELOG_ERROR("specifySourceRegion - no such a source %d", from);
+    assert("new source added with InputProcessor still available");    // should not go there
     return false;
 }
 
-std::string VideoMixer::getSourceRegion(uint32_t from)
+void VideoMixer::removeInput(const std::string& inStreamID)
 {
-    int index = getInput(from);
-    assert(index >= 0);
+    int index = -1;
+    boost::unique_lock<boost::shared_mutex> lock(m_inputsMutex);
+    auto it = m_inputs.find(inStreamID);
+    if (it != m_inputs.end()) {
+        index = it->second;
+        m_inputs.erase(it);
+    }
+    lock.unlock();
+
+    if (index >= 0) {
+        m_frameMixer->removeInput(index);
+        m_layoutProcessor->removeInput(index);
+        --m_inputCount;
+    }
+}
+
+void VideoMixer::setRegion(const std::string& inStreamID, const std::string& regionID)
+{
+    int index = -1;
+
+    boost::shared_lock<boost::shared_mutex> lock(m_inputsMutex);
+    auto it = m_inputs.find(inStreamID);
+    if (it != m_inputs.end()) {
+        index = it->second;
+    }
+    lock.unlock();
+
+    if (index >= 0) {
+        m_layoutProcessor->specifyInputRegion(index, regionID);
+    } else {
+        ELOG_ERROR("specifySourceRegion - no such an input stream: %s", inStreamID.c_str());
+    }
+}
+
+std::string VideoMixer::getRegion(const std::string& inStreamID)
+{
+    int index = -1;
+
+    boost::shared_lock<boost::shared_mutex> lock(m_inputsMutex);
+    auto it = m_inputs.find(inStreamID);
+    if (it != m_inputs.end()) {
+        index = it->second;
+    }
+    lock.unlock();
 
     if (index >= 0)
         return m_layoutProcessor->getInputRegion(index);
 
-    ELOG_ERROR("getSourceRegion - no such a source %d", from);
+    ELOG_ERROR("getSourceRegion - no such an input stream: %s", inStreamID.c_str());
     return "";
 }
 
-bool VideoMixer::setResolution(const std::string& resolution)
+void VideoMixer::setPrimary(const std::string& inStreamID)
 {
-    if (!m_layoutProcessor->setRootSize(resolution))
-        return false;
+    std::vector<int> inputs;
 
-    bool ret = true;
-    boost::shared_lock<boost::shared_mutex> lock(m_outputMutex);
-    auto it = m_outputs.begin();
-    for (; it != m_outputs.end(); ++it) {
-        VideoSize outputSize;
-        m_layoutProcessor->getRootSize(outputSize);
-        ret &= (it->second->updateVideoSize(outputSize.width, outputSize.height));
+    boost::shared_lock<boost::shared_mutex> lock(m_inputsMutex);
+    auto it = m_inputs.find(inStreamID);
+    if (it != m_inputs.end()) {
+        inputs.push_back(it->second);
     }
+    lock.unlock();
 
-    return ret;
+    if (inputs.size() > 0)
+        m_layoutProcessor->promoteInputs(inputs);
 }
 
-bool VideoMixer::setBackgroundColor(const std::string& color)
+bool VideoMixer::addOutput(const std::string& outStreamID, const std::string& codec, const std::string& resolution, woogeen_base::FrameDestination* dest)
 {
-    return m_layoutProcessor->setBgColor(color);
-}
+    woogeen_base::FrameFormat format = getFormat(codec);
+    VideoSize vSize;
+    VideoResolutionHelper::getVideoSize(resolution, vSize);
 
-IntraFrameCallback* VideoMixer::getIFrameCallback(int payloadType, const VideoSize& size)
-{
-    VideoSize outputSize = size;
-    if (size.width == 0 || size.height == 0 || !webrtc::VP8EncoderFactoryConfig::use_simulcast_adapter())
-        m_layoutProcessor->getRootSize(outputSize);
-    auto key = makeExtendedKey(payloadType, outputSize.width, outputSize.height);
-    boost::shared_lock<boost::shared_mutex> lock(m_outputMutex);
-    auto it = m_outputs.find(key);
-    if (it != m_outputs.end())
-        return it->second->iFrameCallback();
-
-    return nullptr;
-}
-
-uint32_t VideoMixer::getSendSSRC(int payloadType, bool nack, bool fec, const VideoSize& size)
-{
-    VideoSize outputSize = size;
-    if (size.width == 0 || size.height == 0 || !webrtc::VP8EncoderFactoryConfig::use_simulcast_adapter())
-        m_layoutProcessor->getRootSize(outputSize);
-    auto key = makeExtendedKey(payloadType, outputSize.width, outputSize.height);
-    boost::shared_lock<boost::shared_mutex> lock(m_outputMutex);
-    auto it = m_outputs.find(key);
-    if (it != m_outputs.end())
-        return it->second->sendSSRC(nack, fec);
-
-    return 0;
-}
-
-int32_t VideoMixer::bindAudio(uint32_t id, int voiceChannelId, VoEVideoSync* voeVideoSync)
-{
-    boost::shared_lock<boost::shared_mutex> lock(m_sourceMutex);
-    std::map<uint32_t, boost::shared_ptr<MediaSink>>::iterator it = m_sinksForSources.find(id);
-    if (it != m_sinksForSources.end() && it->second) {
-        VCMInputProcessor* input = dynamic_cast<VCMInputProcessor*>(it->second.get());
-        input->bindAudioForSync(voiceChannelId, voeVideoSync);
-        return 0;
-    }
-    return -1;
-}
-
-bool VideoMixer::setSourceBitrate(uint32_t from, uint32_t kbps)
-{
-    boost::shared_lock<boost::shared_mutex> lock(m_sourceMutex);
-    std::map<uint32_t, boost::shared_ptr<MediaSink>>::iterator it = m_sinksForSources.find(from);
-    if (it != m_sinksForSources.end() && it->second) {
-        VCMInputProcessor* input = dynamic_cast<VCMInputProcessor*>(it->second.get());
-        input->setBitrate(kbps);
+    if (m_frameMixer->addOutput(m_nextOutputIndex, format, vSize, dest)) {
+        boost::unique_lock<boost::shared_mutex> lock(m_outputsMutex);
+        m_outputs[outStreamID] = m_nextOutputIndex++;
         return true;
     }
-
     return false;
 }
 
-boost::shared_ptr<MediaSink> VideoMixer::getMediaSink(uint32_t from)
+void VideoMixer::removeOutput(const std::string& outStreamID)
 {
-    boost::shared_lock<boost::shared_mutex> lock(m_sourceMutex);
-    std::map<uint32_t, boost::shared_ptr<MediaSink>>::iterator it = m_sinksForSources.find(from);
-    return it == m_sinksForSources.end() ? boost::shared_ptr<MediaSink>() : it->second;
+    int32_t index = -1;
+    boost::unique_lock<boost::shared_mutex> lock(m_outputsMutex);
+    auto it = m_outputs.find(outStreamID);
+    if (it != m_outputs.end()) {
+        index = it->second;
+        m_outputs.erase(it);
+    }
+    lock.unlock();
+
+    if (index != -1) {
+        m_frameMixer->removeOutput(index);
+    }
 }
 
-/**
- * Attach a new InputStream to the mixer
- */
-MediaSink* VideoMixer::addSource(uint32_t from,
-                                 bool isAudio,
-                                 DataContentType type,
-                                 int payloadType,
-                                 FeedbackSink* feedback,
-                                 const std::string&)
+int VideoMixer::getFreeInputIndex()
 {
-    assert(!isAudio);
-
-    if (m_participants == m_maxInputCount) {
-        ELOG_WARN("Exceeding maximum number of sources (%u), ignoring the addSource request", m_maxInputCount);
-        return nullptr;
+    std::list<int> indexes;
+    for (int i = 0; i < static_cast<int>(m_maxInputCount); ++i) {
+        indexes.push_back(i);
     }
 
-    boost::upgrade_lock<boost::shared_mutex> lock(m_sourceMutex);
-    std::map<uint32_t, boost::shared_ptr<MediaSink>>::iterator it = m_sinksForSources.find(from);
-    if (it == m_sinksForSources.end() || !it->second) {
-        int index = assignInput(from);
-        ELOG_DEBUG("addSource - assigned input index is %d", index);
-
-        MediaSink* sink = nullptr;
-        if (type == DataContentType::ENCODED_FRAME) {
-            VideoFrameInputProcessor* videoInputProcessor = new VideoFrameInputProcessor(index, m_hardwareAccelerated);
-            videoInputProcessor->init(payloadType, m_frameMixer, this);
-            sink = videoInputProcessor;
-        } else {
-            assert(type == DataContentType::RTP);
-            VCMInputProcessor* vcmInputProcessor(new VCMInputProcessor(index, m_hardwareAccelerated));
-            vcmInputProcessor->init(new WebRTCTransport<erizo::VIDEO>(nullptr, feedback),
-                                    m_frameMixer,
-                                    m_taskRunner,
-                                    this);
-            sink = vcmInputProcessor;
-        }
-
-        boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
-        m_sinksForSources[from].reset(sink);
-        ++m_participants;
-        return sink;
+    for(auto it = m_inputs.begin(); it != m_inputs.end(); ++it) {
+        indexes.remove(it->second);
     }
 
-    assert("new source added with InputProcessor still available");    // should not go there
-    return nullptr;
-}
+    assert(indexes.size() > 0);
 
-void VideoMixer::removeSource(uint32_t from, bool isAudio)
-{
-    assert(!isAudio);
-
-    boost::unique_lock<boost::shared_mutex> lock(m_sourceMutex);
-    std::map<uint32_t, boost::shared_ptr<MediaSink>>::iterator it = m_sinksForSources.find(from);
-    if (it != m_sinksForSources.end()) {
-        m_sinksForSources.erase(it);
-        lock.unlock();
-
-        int index = getInput(from);
-        assert(index >= 0);
-        m_sourceInputMap[index] = 0;
-        m_layoutProcessor->removeInput(index);
-        --m_participants;
-    }
+    return *(indexes.begin());
 }
 
 void VideoMixer::closeAll()
 {
     ELOG_DEBUG("closeAll");
+    {
+        boost::upgrade_lock<boost::shared_mutex> inputLock(m_inputsMutex);
+        auto it = m_inputs.begin();
+        while (it != m_inputs.end()) {
+            int index = it->second;
+            m_frameMixer->removeInput(index);
+            m_layoutProcessor->removeInput(index);
+        }
+        boost::upgrade_to_unique_lock<boost::shared_mutex> inputLock1(inputLock);
+        m_inputs.clear();
 
-    boost::unique_lock<boost::shared_mutex> sourceLock(m_sourceMutex);
-    std::map<uint32_t, boost::shared_ptr<MediaSink>>::iterator sourceItor = m_sinksForSources.begin();
-    while (sourceItor != m_sinksForSources.end()) {
-        uint32_t source = sourceItor->first;
-        m_sinksForSources.erase(sourceItor++);
-        int index = getInput(source);
-        assert(index >= 0);
-        m_sourceInputMap[index] = 0;
-        m_layoutProcessor->removeInput(index);
+        m_inputCount = 0;
     }
-    m_sinksForSources.clear();
-    m_participants = 0;
-    sourceLock.unlock();
 
-    boost::unique_lock<boost::shared_mutex> outputLock(m_outputMutex);
-    m_outputs.clear();
-    outputLock.unlock();
+    {    
+        boost::upgrade_lock<boost::shared_mutex> outputLock(m_outputsMutex);
+        auto it = m_outputs.begin();
+        while (it != m_outputs.end()) {
+            int32_t index = it->second;
+            m_frameMixer->removeOutput(index);
+        }
+        boost::upgrade_to_unique_lock<boost::shared_mutex> outputLock1(outputLock);
+        m_outputs.clear();
+    }
 
     ELOG_DEBUG("Closed all media in this Mixer");
-}
-
-void VideoMixer::setEventRegistry(woogeen_base::EventRegistry* handle)
-{
-    m_layoutProcessor->setEventRegistry(handle);
-    // setup others if needed.
 }
 
 }/* namespace mcu */

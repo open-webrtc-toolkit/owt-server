@@ -15,11 +15,10 @@ var MAX_KA_COUNT = 10;
 
 var erizoNodes = {};
 var rooms = {}; // roomId: erizoControllerId
-var ecQueue = [];
-var eaTop = undefined;
+var nodesQueue = [];
 var idIndex = 0;
 
-var recalculateEcPriority = function () {
+var recalculatePriority = function () {
     "use strict";
 
     //*******************************************************************
@@ -29,92 +28,61 @@ var recalculateEcPriority = function () {
     //  2: Available 
     //*******************************************************************
 
-    var newQueue = [],
+    var newNodesQueue = [],
         available = 0,
         warnings = 0,
-        ecea;
+        ec;
 
-    for (ecea in erizoNodes) {
-        if (erizoNodes.hasOwnProperty(ecea)) {
-            if (erizoNodes[ecea].state === 2 && erizoNodes[ecea].purpose === 'reception') {
-                newQueue.push(ecea);
+    for (ec in erizoNodes) {
+        if (erizoNodes.hasOwnProperty(ec)) {
+            if (erizoNodes[ec].state === 2) {
+                newNodesQueue.push(ec);
                 available += 1;
             }
         }
     }
 
-    for (ecea in erizoNodes) {
-        if (erizoNodes.hasOwnProperty(ecea)) {
-            if (erizoNodes[ecea].state === 1 && erizoNodes[ecea].purpose === 'reception') {
-                newQueue.push(ecea);
+    for (ec in erizoNodes) {
+        if (erizoNodes.hasOwnProperty(ec)) {
+            if (erizoNodes[ec].state === 1) {
+                newNodesQueue.push(ec);
                 warnings += 1;
             }
         }
     }
 
-    ecQueue = newQueue;
+    nodesQueue = newNodesQueue;
 
-    if (ecQueue.length === 0 || (available === 0 && warnings < 2)) {
-        log.info('[CLOUD HANDLER]: Warning! No erizoController is available.');
+    if (nodesQueue.length === 0 || (available === 0 && warnings < 2)) {
+        log.info('[CLOUD HANDLER]: Warning! No erizoNode is available.');
     }
+
 },
-
-    recalculateEaPriority = function () {
-        eaTop = undefined;
-
-        for (ecea in erizoNodes) {
-            if (erizoNodes.hasOwnProperty(ecea)) {
-                if (erizoNodes[ecea].purpose === 'general-use') {
-                    if (eaTop === undefined || (erizoNodes[ecea].load < erizoNodes[eaTop].load)) {
-                        eaTop = ecea;
-                    }
-                }
-            }
-        }
-
-        if (eaTop === undefined) {
-            log.info('[CLOUD HANDLER]: Warning! No erizoAgent is available.');
-        }
-    },
 
     checkKA = function () {
         "use strict";
-        var ecea, room;
+        var ec, room;
 
-        for (ecea in erizoNodes) {
-            if (erizoNodes.hasOwnProperty(ecea)) {
-                erizoNodes[ecea].keepAlive += 1;
-                if (erizoNodes[ecea].keepAlive > MAX_KA_COUNT) {
-                    log.info((erizoNodes[ecea].purpose === 'reception' ? 'ErizoController' : 'ErizoAgent'), ecea, ' in ', erizoNodes[ecea].ip, 'does not respond. Deleting it.');
-                    delete erizoNodes[ecea];
+        for (ec in erizoNodes) {
+            if (erizoNodes.hasOwnProperty(ec)) {
+                erizoNodes[ec].keepAlive += 1;
+                if (erizoNodes[ec].keepAlive > MAX_KA_COUNT) {
+                    log.info('ErizoNode', ec, ' in ', erizoNodes[ec].ip, 'does not respond. Deleting it.');
+                    delete erizoNodes[ec];
                     for (room in rooms) {
                         if (rooms.hasOwnProperty(room)) {
-                            if (rooms[room].ec === ecea) {
-                                rooms[room].ec = undefined;
-                            }
-                            if (rooms[room].ea === ecea) {
-                                rooms[room].ea = undefined;
-                            }
-
-                            if (rooms[room].ec === undefined && rooms[room].ea === undefined) {
+                            if (rooms[room] === ec) {
                                 delete rooms[room];
                             }
                         }
                     }
-                    recalculateEcPriority();
-                    recalculateEaPriority();
+                    recalculatePriority();
                 }
             }
         }
     },
 
     checkKAInterval = setInterval(checkKA, INTERVAL_TIME_CHECK_KA);
-
-var getErizoController = undefined;
-
-if (config.nuve.cloudHandlerPolicy) {
-    getErizoController = require('./ch_policies/' + config.nuve.cloudHandlerPolicy).getErizoController;
-}
 
 exports.addNewErizoController = function (msg, callback) {
     "use strict";
@@ -158,8 +126,8 @@ var addNewPrivateErizoController = function (ip, hostname, port, ssl, callback) 
     var id = idIndex,
         rpcID = 'erizoController_' + id;
     erizoNodes[id] = {
-        ip: ip,
         purpose: 'reception',
+        ip: ip,
         rpcID: rpcID,
         state: 2,
         keepAlive: 0,
@@ -167,8 +135,8 @@ var addNewPrivateErizoController = function (ip, hostname, port, ssl, callback) 
         port: port,
         ssl: ssl
     };
-    log.info('New erizocontroller (', id, ') in: ', erizoNodes[id].ip);
-    recalculateEcPriority();
+    log.info('New erizoController (', id, ') in: ', erizoNodes[id].ip);
+    recalculatePriority();
     callback({id: id, publicIP: ip, hostname: hostname, port: port, ssl: ssl});
 };
 
@@ -179,7 +147,7 @@ exports.addNewErizoAgent = function (msg, callback) {
         rpcID = 'ErizoAgent_' + id;
     erizoNodes[id] = {
         id: id,
-        purpose: 'general-use',
+        purpose: msg.purpose,
         ip: msg.ip,
         rpcID: rpcID,
         state: 2,
@@ -187,7 +155,7 @@ exports.addNewErizoAgent = function (msg, callback) {
         keepAlive: 0
     };
     log.info('New erizoAgent (', id, ') in: ', erizoNodes[id].ip);
-    recalculateEaPriority();
+    recalculatePriority();
     callback({id: id, privateIP: msg.ip});
 };
 
@@ -197,7 +165,7 @@ exports.keepAlive = function (id, callback) {
 
     if (erizoNodes[id] === undefined) {
         result = 'whoareyou';
-        log.info('I received a keepAlive mess from a removed erizoController');
+        log.info('I received a keepAlive mess from a removed erizoNode');
     } else {
         erizoNodes[id].keepAlive = 0;
         result = 'ok';
@@ -210,46 +178,47 @@ exports.setInfo = function (params) {
     "use strict";
 
     log.info('Received info ', params,    '.Recalculating erizoNodes priority');
-    erizoNodes[params.id].state = params.state;
-    recalculateEcPriority();
+    erizoNodes[params.id].state = params.state || erizoNodes[params.id].state;
+    if (params.load !== undefined) {
+        erizoNodes[params.id].load = params.load;
+    }
+    recalculatePriority();
 };
 
 exports.killMe = function (ip) {
     "use strict";
 
-    log.info('[CLOUD HANDLER]: ErizoController in host ', ip, 'does not respond.');
+    log.info('[CLOUD HANDLER]: ErizoNode in host ', ip, 'does not respond.');
 
 };
 
-exports.getErizoControllerForRoom = function (room, callback) {
+exports.getErizoControllerForRoom = function (roomId, callback) {
     "use strict";
 
-    var roomId = room._id;
-
-    if (rooms[roomId] !== undefined && rooms[roomId].ec !== undefined) {
-        callback(erizoNodes[rooms[roomId].ec]);
+    if (rooms[roomId] !== undefined) {
+        callback(erizoNodes[rooms[roomId]]);
         return;
     }
 
     var id,
         intervarId = setInterval(function () {
 
-        if (getErizoController) {
-            id = getErizoController(room, erizoNodes, ecQueue);
-        } else {
-            id = ecQueue[0];
-        }
+            id = undefined;
+            for (var i in nodesQueue) {
+                var temp_id = nodesQueue[i];
+
+                if (erizoNodes[temp_id].purpose === 'reception') {
+                    id = temp_id;
+                    break;
+                }
+            }
 
             if (id !== undefined) {
 
-                if (rooms[roomId] === undefined) {
-                    rooms[roomId] = {};
-                }
-
-                rooms[roomId].ec = id;
+                rooms[roomId] = id;
                 callback(erizoNodes[id]);
 
-                recalculateEcPriority();
+                recalculatePriority();
                 clearInterval(intervarId);
             }
 
@@ -257,58 +226,37 @@ exports.getErizoControllerForRoom = function (room, callback) {
 
 };
 
-exports.allocErizoAgent = function(msg, callback) {
+exports.getErizoAgent = function(msg, callback) {
     "use strict";
-
-    var roomId = msg;
-    if (rooms[roomId] !== undefined && rooms[roomId].ea !== undefined) {
-        callback(erizoNodes[rooms[roomId].ea]);
-        return;
-    }
-
     var id,
         intervarId = setInterval(function () {
 
-            id = eaTop;
+            id = undefined;
+            for (var i in nodesQueue) {
+                var temp_id = nodesQueue[i];
+                if ((erizoNodes[temp_id].purpose === msg.purpose)
+                    && ((id === undefined) || (erizoNodes[temp_id].load < erizoNodes[id].load))) {
+                        id = temp_id;
+                }
+            }
 
             if (id !== undefined) {
-
-                if (rooms[roomId] === undefined) {
-                    rooms[roomId] = {};
-                }
-
-                rooms[roomId].ea = id;
                 callback(erizoNodes[id]);
-
-                erizoNodes[id].load += 1;
-
-                recalculateEaPriority();
                 clearInterval(intervarId);
             }
 
         }, INTERVAL_TIME_EC_READY);
-};
-
-exports.freeErizoAgent = function(msg, callback) {
-    "use strict";
-
-    var ea = msg;
-    if (rooms[ea] !== undefined) {
-        erizoNodes[ea].load -= 1;
-        recalculateEaPriority();
-    }
-
 };
 
 exports.getUsersInRoom = function (roomId, callback) {
     "use strict";
 
-    if (rooms[roomId] === undefined || rooms[roomId].ec === undefined) {
+    if (rooms[roomId] === undefined) {
         callback('error');
         return;
     }
 
-    var rpcID = erizoNodes[rooms[roomId].ec].rpcID;
+    var rpcID = erizoNodes[rooms[roomId]].rpcID;
     rpc.callRpc(rpcID, 'getUsersInRoom', [roomId], {"callback": function (users) {
         if (users === 'timeout') {
             users = '?';
@@ -320,12 +268,12 @@ exports.getUsersInRoom = function (roomId, callback) {
 exports.deleteRoom = function (roomId, callback) {
     "use strict";
 
-    if (rooms[roomId] === undefined || rooms[roomId].ec === undefined) {
+    if (rooms[roomId] === undefined) {
         callback('Success');
         return;
     }
 
-    var rpcID = erizoNodes[rooms[roomId].ec].rpcID;
+    var rpcID = erizoNodes[rooms[roomId]].rpcID;
     rpc.callRpc(rpcID, 'deleteRoom', [roomId], {"callback": function (result) {
         callback(result);
     }});
@@ -334,12 +282,7 @@ exports.deleteRoom = function (roomId, callback) {
 exports.deleteUser = function (user, roomId, callback) {
     "use strict";
 
-    if (rooms[roomId] === undefined || rooms[roomId].ec === undefined) {
-        callback('Success');
-        return;
-    }
-
-    var rpcID = erizoNodes[rooms[roomId].ec].rpcID;
+    var rpcID = erizoNodes[rooms[roomId]].rpcID;
     rpc.callRpc(rpcID, 'deleteUser', [{user: user, roomId:roomId}], {"callback": function (result) {
         callback(result);
     }});
@@ -350,7 +293,7 @@ exports.getEcQueue = function getEcQueue (idx) {
     if (arguments.length > 0) {
         return erizoNodes[idx];
     }
-    return ecQueue.map(function (id) {
+    return nodesQueue.map(function (id) {
         return erizoNodes[id];
     });
 };
@@ -367,8 +310,7 @@ exports.getHostedRooms = function getHostedRooms () {
     return Object.keys(rooms).map(function (rid) {
         return {
             id: rid,
-            ec: rooms[rid].ec,
-            ea: rooms[rid].ea
+            ec: rooms[rid]
         };
     });
 };

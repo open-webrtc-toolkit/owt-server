@@ -69,7 +69,6 @@ SoftVideoCompositor::SoftVideoCompositor(uint32_t maxInput, VideoSize rootSize, 
     : m_compositeSize(rootSize)
     , m_bgColor(bgColor)
     , m_solutionState(UN_INITIALIZED)
-    , m_consumer(nullptr)
 {
     m_ntpDelta = Clock::GetRealTimeClock()->CurrentNtpInMilliseconds() - TickTime::MillisecondTimestamp();
     m_vpmPool.reset(new VPMPool(maxInput));
@@ -80,12 +79,12 @@ SoftVideoCompositor::SoftVideoCompositor(uint32_t maxInput, VideoSize rootSize, 
     m_bufferManager.reset(new BufferManager(maxInput, m_compositeSize.width, m_compositeSize.height));
 
     m_jobTimer.reset(new woogeen_base::JobTimer(30, this));
+    m_jobTimer->start();
 }
 
 SoftVideoCompositor::~SoftVideoCompositor()
 {
     m_jobTimer->stop();
-    m_consumer = nullptr;
 }
 
 void SoftVideoCompositor::updateRootSize(VideoSize& videoSize)
@@ -134,19 +133,6 @@ void SoftVideoCompositor::pushInput(int input, webrtc::I420VideoFrame* frame)
     }
 }
 
-bool SoftVideoCompositor::setOutput(woogeen_base::VideoFrameConsumer* consumer)
-{
-    m_consumer = consumer;
-    m_jobTimer->start();
-    return true;
-}
-
-void SoftVideoCompositor::unsetOutput()
-{
-    m_jobTimer->stop();
-    m_consumer = nullptr;
-}
-
 void SoftVideoCompositor::onTimeout()
 {
     generateFrame();
@@ -154,23 +140,19 @@ void SoftVideoCompositor::onTimeout()
 
 void SoftVideoCompositor::generateFrame()
 {
-    if (m_consumer) {
-        I420VideoFrame* compositeFrame = layout();
-        compositeFrame->set_render_time_ms(TickTime::MillisecondTimestamp() + m_ntpDelta);
+    I420VideoFrame* compositeFrame = layout();
+    compositeFrame->set_render_time_ms(TickTime::MillisecondTimestamp() + m_ntpDelta);
 
-        if (m_consumer) {
-            woogeen_base::Frame frame;
-            memset(&frame, 0, sizeof(frame));
-            frame.format = woogeen_base::FRAME_FORMAT_I420;
-            frame.payload = reinterpret_cast<uint8_t*>(compositeFrame);
-            frame.length = 0; // unused.
-            frame.timeStamp = compositeFrame->timestamp();
-            frame.additionalInfo.video.width = compositeFrame->width();
-            frame.additionalInfo.video.height = compositeFrame->height();
+    woogeen_base::Frame frame;
+    memset(&frame, 0, sizeof(frame));
+    frame.format = woogeen_base::FRAME_FORMAT_I420;
+    frame.payload = reinterpret_cast<uint8_t*>(compositeFrame);
+    frame.length = 0; // unused.
+    frame.timeStamp = compositeFrame->timestamp();
+    frame.additionalInfo.video.width = compositeFrame->width();
+    frame.additionalInfo.video.height = compositeFrame->height();
 
-            m_consumer->onFrame(frame);
-        }
-    }
+    deliverFrame(frame);
 }
 
 void SoftVideoCompositor::setBackgroundColor()

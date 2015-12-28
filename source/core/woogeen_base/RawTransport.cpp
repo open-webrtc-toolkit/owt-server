@@ -29,8 +29,10 @@ using boost::asio::ip::tcp;
 
 DEFINE_LOGGER(RawTransport, "woogeen.RawTransport");
 
-RawTransport::RawTransport(RawTransportListener* listener) 
-    : m_isClosing(false)
+RawTransport::RawTransport(RawTransportListener* listener, Protocol proto)
+    : m_protocol(proto)
+    , m_isClosing(false)
+    , m_connectedUdp(false)
     , m_listener(listener)
 {
 }
@@ -38,6 +40,8 @@ RawTransport::RawTransport(RawTransportListener* listener)
 RawTransport::~RawTransport()
 {
     // We need to wait for the work thread to finish its job.
+    if (m_tcpAcceptor)
+        m_tcpAcceptor->close();
     if (m_tcpSocket)
         m_tcpSocket->close();
     if (m_udpSocket)
@@ -52,20 +56,20 @@ void RawTransport::close()
     m_isClosing = true;
 }
 
-void RawTransport::createConnection(const std::string& ip, uint32_t port, Protocol prot)
+void RawTransport::createConnection(const std::string& ip, uint32_t port)
 {
-    switch (prot) {
+    switch (m_protocol) {
     case TCP: {
         if (m_tcpSocket) {
             ELOG_WARN("TCP transport existed, ignoring the connection request for ip %s port %d\n", ip.c_str(), port);
         } else {
-            m_tcpSocket.reset(new tcp::socket(m_io_service));
-            tcp::resolver resolver(m_io_service);
+            m_tcpSocket.reset(new tcp::socket(m_ioService));
+            tcp::resolver resolver(m_ioService);
             tcp::resolver::query query(tcp::v4(), ip.c_str(), boost::to_string(port).c_str());
             tcp::resolver::iterator iterator = resolver.resolve(query);
 
             m_tcpSocket->async_connect(*iterator,
-                boost::bind(&RawTransport::connectHandler, this, TCP,
+                boost::bind(&RawTransport::connectHandler, this,
                     boost::asio::placeholders::error));
         }
         break;
@@ -74,13 +78,15 @@ void RawTransport::createConnection(const std::string& ip, uint32_t port, Protoc
         if (m_udpSocket) {
             ELOG_WARN("UDP transport existed, ignoring the connection request for ip %s port %d\n", ip.c_str(), port);
         } else {
-            m_udpSocket.reset(new udp::socket(m_io_service));
-            udp::resolver resolver(m_io_service);
+            m_udpSocket.reset(new udp::socket(m_ioService));
+            udp::resolver resolver(m_ioService);
             udp::resolver::query query(udp::v4(), ip.c_str(), boost::to_string(port).c_str());
             udp::resolver::iterator iterator = resolver.resolve(query);
 
+            m_udpRemoteEndpoint = *iterator;
+
             m_udpSocket->async_connect(*iterator,
-                boost::bind(&RawTransport::connectHandler, this, UDP,
+                boost::bind(&RawTransport::connectHandler, this,
                     boost::asio::placeholders::error));
         }
         break;
@@ -90,13 +96,13 @@ void RawTransport::createConnection(const std::string& ip, uint32_t port, Protoc
     }
 
     if (m_workThread.get_id() == boost::thread::id()) // Not-A-Thread
-        m_workThread = boost::thread(boost::bind(&boost::asio::io_service::run, &m_io_service));
+        m_workThread = boost::thread(boost::bind(&boost::asio::io_service::run, &m_ioService));
 }
 
-void RawTransport::connectHandler(Protocol prot, const boost::system::error_code& ec)
+void RawTransport::connectHandler(const boost::system::error_code& ec)
 {
     if (!ec) {
-        switch (prot) {
+        switch (m_protocol) {
         case TCP:
             ELOG_DEBUG("Local TCP port: %d", m_tcpSocket->local_endpoint().port());
             // Disable Nagle's algorithm in the underlying TCP stack.
@@ -106,35 +112,73 @@ void RawTransport::connectHandler(Protocol prot, const boost::system::error_code
             break;
         case UDP:
             ELOG_DEBUG("Local UDP port: %d", m_udpSocket->local_endpoint().port());
+            m_connectedUdp = true;
             break;
         default:
             break;
         }
 
-        m_listener->onTransportConnected(prot);
+        m_listener->onTransportConnected();
         if (!m_isClosing)
-            receiveData(prot);
+            receiveData();
     } else {
-        ELOG_DEBUG("Error establishing the %s connection: %s", prot == UDP ? "UDP" : "TCP", ec.message().c_str());
+        ELOG_DEBUG("Error establishing the %s connection: %s", m_protocol == UDP ? "UDP" : "TCP", ec.message().c_str());
         // Notify the listener about the socket error if the listener is not closing me.
         if (!m_isClosing)
-            m_listener->onTransportError(prot);
+            m_listener->onTransportError();
     }
 }
 
-void RawTransport::listenTo(uint32_t port, Protocol prot)
+void RawTransport::acceptHandler(const boost::system::error_code& ec)
 {
-    switch (prot) {
+    if (!ec) {
+        switch (m_protocol) {
+        case TCP:
+            ELOG_DEBUG("Local TCP port: %d", m_tcpSocket->local_endpoint().port());
+            // Disable Nagle's algorithm in the underlying TCP stack.
+            // FIXME: Re-enable it later if we prove that the remote endpoing can correctly handle TCP reassembly
+            // because that should improve the transmission efficiency.
+            m_tcpSocket->set_option(tcp::no_delay(true));
+            break;
+        case UDP:
+            ELOG_DEBUG("No need to accept via UDP");
+            break;
+        default:
+            break;
+        }
+
+        m_listener->onTransportConnected();
+        if (!m_isClosing)
+            receiveData();
+    } else {
+        ELOG_DEBUG("Error accepting the %s connection: %s", m_protocol == UDP ? "UDP" : "TCP", ec.message().c_str());
+        // Notify the listener about the socket error if the listener is not closing me.
+        if (!m_isClosing)
+            m_listener->onTransportError();
+    }
+}
+
+void RawTransport::listenTo(uint32_t port)
+{
+    switch (m_protocol) {
     case TCP: {
-        ELOG_WARN("NOT IMPLEMENTED, ignoring the TCP listening request for port %d\n", port);
+        if (m_tcpSocket) {
+            ELOG_WARN("TCP transport existed, ignoring the listening request for port %d\n", port);
+        } else {
+            m_tcpSocket.reset(new tcp::socket(m_ioService));
+            m_tcpAcceptor.reset(new tcp::acceptor(m_ioService, tcp::endpoint(tcp::v4(), port)));
+            m_tcpAcceptor->async_accept(*(m_tcpSocket.get()),
+                boost::bind(&RawTransport::acceptHandler, this,
+                    boost::asio::placeholders::error));
+        }
         break;
     }
     case UDP: {
         if (m_udpSocket) {
             ELOG_WARN("UDP transport existed, ignoring the listening request for port %d\n", port);
         } else {
-            m_udpSocket.reset(new udp::socket(m_io_service, udp::endpoint(udp::v4(), port)));
-            receiveData(UDP);
+            m_udpSocket.reset(new udp::socket(m_ioService, udp::endpoint(udp::v4(), port)));
+            receiveData();
         }
         break;
     }
@@ -143,52 +187,154 @@ void RawTransport::listenTo(uint32_t port, Protocol prot)
     }
 
     if (m_workThread.get_id() == boost::thread::id()) // Not-A-Thread
-        m_workThread = boost::thread(boost::bind(&boost::asio::io_service::run, &m_io_service));
+        m_workThread = boost::thread(boost::bind(&boost::asio::io_service::run, &m_ioService));
 }
 
-void RawTransport::readHandler(Protocol prot, const boost::system::error_code& ec, std::size_t bytes)
+unsigned short RawTransport::getListeningPort()
+{
+    unsigned short port = 0;
+    switch (m_protocol) {
+    case TCP: {
+        if (m_tcpAcceptor)
+            port = m_tcpAcceptor->local_endpoint().port();
+        break;
+    }
+    case UDP: {
+        if (m_udpSocket)
+            port = m_udpSocket->local_endpoint().port();
+        break;
+    }
+    default:
+        break;
+    }
+    return port;
+}
+
+void RawTransport::readHandler(const boost::system::error_code& ec, std::size_t bytes)
 {
     if (!ec || ec == boost::asio::error::message_size) {
-        switch (prot) {
+        uint32_t payloadlen = 0;
+
+        switch (m_protocol) {
         case TCP:
-            m_listener->onTransportData(m_tcpReceiveData.buffer, bytes, TCP);
+            assert(m_tcpSocket);
+
+            payloadlen = ntohl(*(reinterpret_cast<uint32_t*>(m_readHeader)));
+            if (payloadlen > TRANSPORT_BUFFER_SIZE) {
+                ELOG_WARN("Payload length is too big:%u", payloadlen);
+                payloadlen = TRANSPORT_BUFFER_SIZE;
+            }
+            ELOG_DEBUG("readHandler(%zu):[%x,%x,%x,%x], payloadlen:%u", bytes, m_readHeader[0], m_readHeader[1], (unsigned char)m_readHeader[2], (unsigned char)m_readHeader[3], payloadlen);
+
+            m_tcpSocket->async_read_some(boost::asio::buffer(m_tcpReceiveData.buffer, payloadlen),
+                boost::bind(&RawTransport::readPacketHandler, this,
+                    boost::asio::placeholders::error,
+                    boost::asio::placeholders::bytes_transferred));
             break;
         case UDP:
-            m_listener->onTransportData(m_udpReceiveData.buffer, bytes, UDP);
+            assert(m_udpSocket);
+
+            payloadlen = ntohl(*(reinterpret_cast<uint32_t*>(m_udpReceiveData.buffer)));
+            if (bytes != payloadlen + 4) {
+                ELOG_WARN("Packet incomplete. with payloadlen:%u, bytes:%zu", payloadlen, bytes);
+            } else {
+                unsigned char *p = reinterpret_cast<unsigned char*>(&m_udpReceiveData.buffer[4]);
+                ELOG_DEBUG("readHandler(%zu): [%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x...%x,%x,%x,%x]", bytes, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], p[10], p[11], p[12], p[13], p[14], p[15], p[payloadlen-4], p[payloadlen-3], p[payloadlen-2], p[payloadlen-1]);
+                m_listener->onTransportData(m_udpReceiveData.buffer + 4, payloadlen);
+            }
+
+            if (!m_isClosing)
+                receiveData();
+            break;
+        default:
+            break;
+        }
+    } else {
+        ELOG_DEBUG("Error receiving %s data: %s", m_protocol == UDP ? "UDP" : "TCP", ec.message().c_str());
+        // Notify the listener about the socket error if the listener is not closing me.
+        if (!m_isClosing)
+            m_listener->onTransportError();
+    }
+}
+
+void RawTransport::readPacketHandler(const boost::system::error_code& ec, std::size_t bytes)
+{
+    unsigned char *p = reinterpret_cast<unsigned char*>(&m_udpReceiveData.buffer[0]);
+    ELOG_DEBUG("readHandler(%zu): [%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x...%x,%x,%x,%x]", bytes, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], p[10], p[11], p[12], p[13], p[14], p[15], p[bytes-4], p[bytes-3], p[bytes-2], p[bytes-1]);
+    if (!ec || ec == boost::asio::error::message_size) {
+        switch (m_protocol) {
+        case TCP:
+            m_listener->onTransportData(m_tcpReceiveData.buffer, bytes);
+            break;
+        case UDP:
+            ELOG_WARN("Should not run into readPacketHandler under udp mode");
             break;
         default:
             break;
         }
 
         if (!m_isClosing)
-            receiveData(prot);
+            receiveData();
     } else {
-        ELOG_DEBUG("Error receiving %s data: %s", prot == UDP ? "UDP" : "TCP", ec.message().c_str());
+        ELOG_DEBUG("Error receiving %s data: %s", m_protocol == UDP ? "UDP" : "TCP", ec.message().c_str());
         // Notify the listener about the socket error if the listener is not closing me.
         if (!m_isClosing)
-            m_listener->onTransportError(prot);
+            m_listener->onTransportError();
     }
 }
 
-void RawTransport::writeHandler(Protocol prot, const boost::system::error_code& ec, std::size_t bytes)
+void RawTransport::doSend()
 {
-    if (ec) {
-        ELOG_DEBUG("%s wrote data error: %s", prot == UDP ? "UDP" : "TCP", ec.message().c_str());
-    }
+    TransportData& data = m_sendQueue.front();
 
-    if (prot == TCP) {
-        boost::lock_guard<boost::mutex> lock(m_tcpSendQueueMutex);
-        assert(m_tcpSendQueue.size() > 0);
-        m_tcpSendQueue.pop();
+    unsigned char *p = reinterpret_cast<unsigned char *>(&data.buffer[0]);
+    ELOG_DEBUG("doSend(%d): [%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x...%x,%x,%x,%x]", data.length, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], p[10], p[11], p[12], p[13], p[14], p[15], p[data.length-4], p[data.length-3], p[data.length-2], p[data.length-1]);
 
-        if (m_tcpSendQueue.size() > 0) {
-            // If there're pending send requests in the queue, we proactively
-            // process them without waiting for another external request.
-            TransportData& data = m_tcpSendQueue.front();
-            boost::asio::async_write(*m_tcpSocket, boost::asio::buffer(data.buffer, data.length),
-                boost::bind(&RawTransport::writeHandler, this, TCP,
+    switch (m_protocol) {
+    case TCP:
+        assert(m_tcpSocket);
+        boost::asio::async_write(*m_tcpSocket, boost::asio::buffer(data.buffer, data.length),
+            boost::bind(&RawTransport::writeHandler, this,
+                boost::asio::placeholders::error,
+                boost::asio::placeholders::bytes_transferred));
+        break;
+    case UDP:
+        assert(m_udpSocket);
+        if (m_connectedUdp) {
+            boost::system::error_code ignored_error;
+            m_udpSocket->async_send(boost::asio::buffer(data.buffer, data.length),
+                boost::bind(&RawTransport::writeHandler, this,
                     boost::asio::placeholders::error,
                     boost::asio::placeholders::bytes_transferred));
+        } else {
+            boost::system::error_code ignored_error;
+            m_udpSocket->async_send_to(boost::asio::buffer(data.buffer, data.length),
+                m_udpRemoteEndpoint,
+                boost::bind(&RawTransport::writeHandler, this,
+                    boost::asio::placeholders::error,
+                    boost::asio::placeholders::bytes_transferred));
+        }
+        break;
+    default:
+        break;
+    }
+}
+
+void RawTransport::writeHandler(const boost::system::error_code& ec, std::size_t bytes)
+{
+    if (ec) {
+        ELOG_DEBUG("%s wrote data error: %s", m_protocol == UDP ? "UDP" : "TCP", ec.message().c_str());
+    }
+
+    ELOG_DEBUG("writeHandler(%zu)", bytes);
+
+    if (m_protocol == TCP || m_protocol == UDP) {
+        boost::lock_guard<boost::mutex> lock(m_sendQueueMutex);
+        assert(m_sendQueue.size() > 0);
+        m_sendQueue.pop();
+
+        if (m_sendQueue.size() > 0) {
+            doSend();
         }
     }
 }
@@ -225,78 +371,54 @@ void RawTransport::dumpTcpSSLv3Header(const char* buf, int len)
     }
 }
 
-void RawTransport::sendData(const char* buf, int len, Protocol prot)
+void RawTransport::sendData(const char* buf, int len)
 {
     if (len > TRANSPORT_BUFFER_SIZE) {
         ELOG_WARN("Discarding the %s message as the length %d exceeds the allowed maximum size.",
-            prot == UDP ? "UDP" : "TCP", len);
+            m_protocol == UDP ? "UDP" : "TCP", len);
         return;
     }
 
-    switch (prot) {
-    case TCP: {
-        assert(m_tcpSocket);
+    unsigned char *p = reinterpret_cast<unsigned char *>(const_cast<char *>(buf));
+    ELOG_DEBUG("sendData(%d): [%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x...%x,%x,%x,%x]", len, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], p[10], p[11], p[12], p[13], p[14], p[15], p[len-4], p[len-3], p[len-2], p[len-1]);
 
-        dumpTcpSSLv3Header(buf, len);
-        // For data transported over the TCP protocol, we try to provide more
-        // assurances to make the same data received by the destination.
-        // So we use async_write to make sure every byte in the send buffer to
-        // be sent out before the write handler is invoked, and use a queue to
-        // make every message being processed one after another without
-        // polluting each other.
-        TransportData data;
-        memcpy(data.buffer, buf, len);
-        data.length = len;
 
-        boost::lock_guard<boost::mutex> lock(m_tcpSendQueueMutex);
-        m_tcpSendQueue.push(data);
-        if (m_tcpSendQueue.size() == 1) {
-            // We should hand over a new message to the TCP socket only if
-            // the pending messages in the message queue have been processed.
-            TransportData& data = m_tcpSendQueue.front();
-            boost::asio::async_write(*m_tcpSocket, boost::asio::buffer(data.buffer, data.length),
-                boost::bind(&RawTransport::writeHandler, this, TCP,
-                    boost::asio::placeholders::error,
-                    boost::asio::placeholders::bytes_transferred));
-        }
-        break;
-    }
-    case UDP:
-        assert(m_udpSocket);
+    TransportData data;
+    *(reinterpret_cast<uint32_t*>(data.buffer)) = htonl(len);
+    memcpy(data.buffer + 4, buf, len);
+    data.length = len + 4;
 
-        // We may revisit here later to see if we should adopt similar approach
-        // with the TCP socket.
-
-        // We need to make sure the buffer not being deleted before the write
-        // handler is invoked, which is required by boost asio. So the safest
-        // way is to copy it into a buffer owned by the transport.
-        memcpy(m_udpSendData.buffer, buf, len);
-        m_udpSocket->async_send(boost::asio::buffer(m_udpSendData.buffer, len),
-            boost::bind(&RawTransport::writeHandler, this, UDP,
-                boost::asio::placeholders::error,
-                boost::asio::placeholders::bytes_transferred));
-        break;
-    default:
-        break;
+    boost::lock_guard<boost::mutex> lock(m_sendQueueMutex);
+    m_sendQueue.push(data);
+    if (m_sendQueue.size() == 1) {
+        doSend();
     }
 }
 
-void RawTransport::receiveData(Protocol prot)
+void RawTransport::receiveData()
 {
-    switch (prot) {
+    switch (m_protocol) {
     case TCP:
         assert(m_tcpSocket);
-        m_tcpSocket->async_read_some(boost::asio::buffer(m_tcpReceiveData.buffer, TRANSPORT_BUFFER_SIZE),
-            boost::bind(&RawTransport::readHandler, this, TCP,
+        m_tcpSocket->async_read_some(boost::asio::buffer(m_readHeader, 4),
+            boost::bind(&RawTransport::readHandler, this,
                 boost::asio::placeholders::error,
                 boost::asio::placeholders::bytes_transferred));
         break;
     case UDP:
         assert(m_udpSocket);
-        m_udpSocket->async_receive(boost::asio::buffer(m_udpReceiveData.buffer, TRANSPORT_BUFFER_SIZE),
-            boost::bind(&RawTransport::readHandler, this, UDP,
-                boost::asio::placeholders::error,
-                boost::asio::placeholders::bytes_transferred));
+        if (m_connectedUdp) {
+            m_udpSocket->async_receive(boost::asio::buffer(m_udpReceiveData.buffer, TRANSPORT_BUFFER_SIZE),
+                boost::bind(&RawTransport::readHandler, this,
+                    boost::asio::placeholders::error,
+                    boost::asio::placeholders::bytes_transferred));
+        } else {
+            m_udpSocket->async_receive_from(boost::asio::buffer(m_udpReceiveData.buffer, TRANSPORT_BUFFER_SIZE),
+                m_udpRemoteEndpoint,
+                boost::bind(&RawTransport::readHandler, this,
+                    boost::asio::placeholders::error,
+                    boost::asio::placeholders::bytes_transferred));
+        }
         break;
     default:
         break;

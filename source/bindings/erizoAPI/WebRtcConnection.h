@@ -86,6 +86,9 @@ class WebRtcConnection : public node::ObjectWrap, erizo::WebRtcConnectionEventLi
 
 
   static void getStats(const v8::FunctionCallbackInfo<v8::Value>& args);
+
+  static void enableAudio(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void enableVideo(const v8::FunctionCallbackInfo<v8::Value>& args);
   
   static void eventsCallback(uv_async_t *handle);
   static void statsCallback(uv_async_t *handle);

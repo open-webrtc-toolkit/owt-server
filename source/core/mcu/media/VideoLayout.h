@@ -78,8 +78,6 @@ typedef std::list<InputRegion> LayoutSolution;
 
 class LayoutConsumer {
 public:
-    virtual void updateRootSize(VideoSize& rootSize) = 0;
-    virtual void updateBackgroundColor(YUVColor& bgColor) = 0;
     virtual void updateLayoutSolution(LayoutSolution& solution) = 0;
 };
 

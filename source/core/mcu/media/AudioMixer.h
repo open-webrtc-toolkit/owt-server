@@ -21,102 +21,122 @@
 #ifndef AudioMixer_h
 #define AudioMixer_h
 
+#include <utility>
+#include <string>
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/shared_mutex.hpp>
-#include <JobTimer.h>
-#include <logger.h>
-#include <MediaDefinitions.h>
-#include <MediaFrameCallback.h>
-#include <MediaMuxer.h>
-#include <MediaSourceConsumer.h>
-#include <WebRTCTransport.h>
 #include <webrtc/modules/audio_device/include/fake_audio_device.h>
 #include <webrtc/voice_engine/include/voe_external_media.h>
 #include <webrtc/voice_engine/include/voe_video_sync.h>
+#include <webrtc/voice_engine/include/voe_base.h>
+
+#include <logger.h>
+#include "MediaFramePipeline.h"
+#include "JobTimer.h"
+#include "WebRTCTransport.h"
+#include "AudioFrame2RtpPacketConverter.h"
+
+namespace woogeen_base {
+    struct Frame;
+    enum FrameFormat;
+}
 
 namespace mcu {
 
-class AudioMixerVADCallback {
+using namespace woogeen_base;
+
+class VADListener {
 public:
-    virtual void onPositiveAudioSources(std::vector<uint32_t>& sources) = 0;
+    virtual void notifyVAD(const std::string& activeParticipant) = 0;
 };
 
-class RawAudioOutput : public webrtc::VoEMediaProcess {
+class AudioChannel : public webrtc::AudioEncodedFrameCallback,
+                     public webrtc::VoEMediaProcess,
+                     public woogeen_base::FrameSource,
+                     public woogeen_base::FrameDestination {
 public:
-    RawAudioOutput(woogeen_base::FrameConsumer* consumer) : m_frameConsumer(consumer) { }
-    ~RawAudioOutput() { }
+    AudioChannel(webrtc::VoiceEngine* engine);
+    virtual ~AudioChannel();
+
+    bool init();
+    int32_t id() {return m_channel;}
+
+    // Implements webrtc::AudioEncodedFrameCallback.
+    int32_t Encoded(webrtc::FrameType frameType, uint8_t payloadType,
+                    uint32_t timeStamp, const uint8_t* payloadData,
+                    uint16_t payloadSize);
+
+    // Implements webrtc::VoEMediaProcess.
     void Process(int channelId, webrtc::ProcessingTypes type, int16_t data[], int nbSamples, int sampleRate, bool isStereo);
+
+    // Implements woogeen_base::FrameSource.
+    void onFeedback(const woogeen_base::FeedbackMsg& msg);
+
+    // Implements woogeen_base::FrameDestination.
+    void onFrame(const Frame& frame);
+
+    bool setOutput(FrameFormat format, woogeen_base::FrameDestination* destination);
+    void unsetOutput();
+    bool setInput(woogeen_base::FrameSource* source);
+    void unsetInput();
+
+    bool isIdle();
+
+    void performMix(bool isCommon);
+
 private:
-    woogeen_base::FrameConsumer* m_frameConsumer;
+    int32_t m_channel;
+    webrtc::VoiceEngine* m_engine;
+    boost::shared_ptr<woogeen_base::WebRTCTransport<erizo::AUDIO>> m_transport;
+    woogeen_base::FrameSource* m_source;
+    boost::shared_mutex m_sourceMutex;
+    woogeen_base::FrameDestination* m_destination;
+    boost::shared_mutex m_destinationMutex;
+    FrameFormat m_outFormat;
+    AudioFrame2RtpPacketConverter m_converter; //FIXME: Temporarily convert audio frame to rtp-packets due to the premature AudioFrameConstructor implementation.
 };
 
-class AudioMixer : public woogeen_base::MediaSourceConsumer, public woogeen_base::FrameProvider, public erizo::MediaSink, public erizo::FeedbackSink, public woogeen_base::JobTimerListener {
+class AudioMixer : public woogeen_base::JobTimerListener {
     DECLARE_LOGGER();
 
 public:
-    AudioMixer(erizo::RTPDataReceiver*, AudioMixerVADCallback* callback, bool enableVAD = false);
+    DLL_PUBLIC AudioMixer(const std::string& config);
     virtual ~AudioMixer();
-
-    // Implements MediaSourceConsumer.
-    erizo::MediaSink* addSource(uint32_t id,
-                                bool isAudio,
-                                erizo::DataContentType,
-                                int payloadType,
-                                erizo::FeedbackSink*,
-                                const std::string& participantId);
-    void removeSource(uint32_t id, bool isAudio);
-
-    // Implements MediaSink.
-    int deliverAudioData(char* buf, int len);
-    int deliverVideoData(char* buf, int len);
-
-    // Implements FeedbackSink.
-    int deliverFeedback(char* buf, int len);
 
     // Implements JobTimerListener.
     void onTimeout();
 
-    int32_t addOutput(const std::string& participant, int payloadType);
-    int32_t removeOutput(const std::string& particpant);
-    uint32_t getSendSSRC(int32_t channelId);
+    DLL_PUBLIC void enableVAD(uint32_t period, VADListener* vadCallback);
+    DLL_PUBLIC void disableVAD();
+    DLL_PUBLIC bool addInput(const std::string& participant, const std::string& codec, woogeen_base::FrameSource* source);
+    DLL_PUBLIC void removeInput(const std::string& participant);
+    DLL_PUBLIC bool addOutput(const std::string& participant, const std::string& codec, woogeen_base::FrameDestination* dest);
+    DLL_PUBLIC void removeOutput(const std::string& participant);
 
-    int32_t getChannelId(uint32_t sourceId);
     webrtc::VoEVideoSync* avSyncInterface();
 
-    // Implements FrameProvider
-    int32_t addFrameConsumer(const std::string& name, woogeen_base::FrameFormat, woogeen_base::FrameConsumer*, const woogeen_base::MediaSpecInfo&);
-    void removeFrameConsumer(int32_t id);
-    // TODO: Implement it.
-    virtual void setBitrate(unsigned short kbps, int id = 0) { }
-
 private:
-    int32_t performMix();
-    int32_t updateAudioFrame();
-    void detectActiveSources();
-    void notifyActiveSources();
+    bool addChannel(const std::string& participant);
+    void removeChannel(const std::string& participant);
 
-    struct VoiceChannel {
-        int32_t id;
-        boost::shared_ptr<woogeen_base::WebRTCTransport<erizo::AUDIO>> transport;
-    };
+    void performVAD();
+    void notifyVAD();
 
     webrtc::VoiceEngine* m_voiceEngine;
     boost::scoped_ptr<webrtc::FakeAudioDeviceModule> m_adm;
 
-    erizo::RTPDataReceiver* m_dataReceiver;
     bool m_vadEnabled;
-    AudioMixerVADCallback* m_vadCallback;
-    uint32_t m_jitterHoldCount;
+    VADListener* m_vadCallback;
+    uint32_t m_jitterCount;
+    uint32_t m_jitterHold;
+    int32_t m_mostActiveChannel;
     std::vector<int32_t> m_activeChannels;
-    std::map<uint32_t, VoiceChannel> m_sourceChannels; // TODO: revisit here - shall we use ChannelManager?
-    boost::shared_mutex m_sourceMutex;
-    std::map<std::string, VoiceChannel> m_outputChannels;
-    boost::shared_mutex m_outputMutex;
 
-    boost::scoped_ptr<woogeen_base::AudioEncodedFrameCallbackAdapter> m_encodedFrameCallback;
+    std::map<std::string, boost::shared_ptr<AudioChannel>> m_channels;
+    boost::shared_mutex m_channelsMutex;
+
     boost::scoped_ptr<woogeen_base::JobTimer> m_jobTimer;
-    boost::scoped_ptr<RawAudioOutput> m_rawAudioOutput;
 };
 
 inline webrtc::VoEVideoSync* AudioMixer::avSyncInterface()
