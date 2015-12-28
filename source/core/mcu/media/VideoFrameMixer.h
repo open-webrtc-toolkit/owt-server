@@ -31,23 +31,24 @@ namespace mcu {
 // VideoFrameCompositor accepts the raw I420VideoFrame from multiple inputs and
 // composites them into one I420VideoFrame with the given VideoLayout.
 // The composited I420VideoFrame will be handed over to one VideoFrameConsumer.
-class VideoFrameCompositor : public LayoutConsumer {
+class VideoFrameCompositor : public LayoutConsumer, public woogeen_base::FrameSource {
 public:
     virtual bool activateInput(int input) = 0;
     virtual void deActivateInput(int input) = 0;
     virtual void pushInput(int input, webrtc::I420VideoFrame*) = 0;
-
-    virtual bool setOutput(woogeen_base::VideoFrameConsumer*) = 0;
-    virtual void unsetOutput() = 0;
 };
 
 // VideoFrameMixer accepts frames from multiple inputs and mixes them.
 // It can have multiple outputs with different FrameFormat or framerate/bitrate settings.
-class VideoFrameMixer : public LayoutConsumer, public woogeen_base::VideoFrameProvider {
+class VideoFrameMixer : public LayoutConsumer {
 public:
-    virtual bool activateInput(int input, woogeen_base::FrameFormat, woogeen_base::VideoFrameProvider*) = 0;
-    virtual void deActivateInput(int input) = 0;
-    virtual void pushInput(int input, unsigned char* payload, int len) = 0;
+    virtual bool addInput(int input, woogeen_base::FrameFormat, woogeen_base::FrameSource*) = 0;
+    virtual void removeInput(int input) = 0;
+
+    virtual bool addOutput(int output, woogeen_base::FrameFormat, const VideoSize&, woogeen_base::FrameDestination*) = 0;
+    virtual void removeOutput(int output) = 0;
+    virtual void setBitrate(unsigned short kbps, int output) = 0;
+    virtual void requestKeyFrame(int output) = 0;
 };
 
 }

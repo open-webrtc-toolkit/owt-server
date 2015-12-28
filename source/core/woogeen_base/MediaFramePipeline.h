@@ -21,8 +21,12 @@
 #ifndef MediaFramePipeline_h
 #define MediaFramePipeline_h
 
+#include <Compiler.h>
 #include <stdint.h>
+#include <list>
+#include <map>
 #include <string>
+#include <boost/thread/shared_mutex.hpp>
 
 namespace woogeen_base {
 
@@ -35,7 +39,10 @@ enum FrameFormat {
 
     FRAME_FORMAT_PCM_RAW,
     FRAME_FORMAT_PCMU,
-    FRAME_FORMAT_OPUS
+    FRAME_FORMAT_PCMA,
+    FRAME_FORMAT_OPUS,
+    FRAME_FORMAT_ISAC16,
+    FRAME_FORMAT_ISAC32
 };
 
 struct VideoFrameSpecificInfo {
@@ -44,6 +51,8 @@ struct VideoFrameSpecificInfo {
 };
 
 struct AudioFrameSpecificInfo {
+    /*AudioFrameSpecificInfo() : isRtpPacket(false) {}*/
+    uint8_t isRtpPacket; // FIXME: Temporarily use Frame to carry rtp-packets due to the premature AudioFrameConstructor implementation.
     uint32_t nbSamples;
     uint32_t sampleRate;
     uint8_t channels;
@@ -62,43 +71,94 @@ struct Frame {
     MediaSpecInfo   additionalInfo;
 };
 
-class FrameConsumer {
-public:
-    virtual ~FrameConsumer() { }
-
-    virtual void onFrame(const Frame&) = 0;
-    virtual bool acceptRawFrame() { return true; }
-    virtual bool acceptEncodedFrame() { return true; }
+enum FeedbackType {
+    VIDEO_FEEDBACK,
+    AUDIO_FEEDBACK
 };
 
-typedef FrameConsumer VideoFrameConsumer;
-
-class FrameProvider {
-public:
-    virtual ~FrameProvider() { }
-
-    virtual int32_t addFrameConsumer(const std::string& name, FrameFormat fmt, FrameConsumer* consumer, const MediaSpecInfo&) = 0;
-    virtual void removeFrameConsumer(int32_t id) = 0;
-
-    virtual void setBitrate(unsigned short kbps, int id = 0) = 0;
+enum FeedbackCmd {
+    REQUEST_KEY_FRAME,
+    SET_BITRATE,
+    RTCP_PACKET  // FIXME: Temporarily use FeedbackMsg to carry audio rtcp-packets due to the premature AudioFrameConstructor implementation.
 };
 
-class VideoFrameProvider : public FrameProvider {
-public:
-    virtual void requestKeyFrame(int id = 0) = 0;
+struct FeedbackMsg {
+    FeedbackType type;
+    FeedbackCmd  cmd;
+    union {
+        unsigned short kbps;
+        struct RtcpPacket{// FIXME: Temporarily use FeedbackMsg to carry audio rtcp-packets due to the premature AudioFrameConstructor implementation.
+            uint32_t len;
+            char     buf[128];
+        } rtcp;
+    } data;
 };
 
-// VideoFrameDecoder accepts the input data from exactly one VideoFrameProvider
-// and decodes it into raw I420VideoFrame.
-class VideoFrameDecoder : public VideoFrameConsumer {
+class FrameDestination;
+class FrameSource {
 public:
-    virtual bool setInput(FrameFormat, VideoFrameProvider*) = 0;
-    virtual void unsetInput() = 0;
+    FrameSource() {}
+    virtual ~FrameSource();
+
+    virtual void onFeedback(const FeedbackMsg&) {};
+
+    DLL_PUBLIC void addAudioDestination(FrameDestination* dest);
+    DLL_PUBLIC void removeAudioDestination(FrameDestination* dest);
+
+    DLL_PUBLIC void addVideoDestination(FrameDestination* dest);
+    DLL_PUBLIC void removeVideoDestination(FrameDestination* dest);
+
+protected:
+    void deliverFrame(const Frame& frame);
+
+private:
+    std::list<FrameDestination*> m_audio_dests;
+    boost::shared_mutex m_audio_dests_mutex;
+    std::list<FrameDestination*> m_video_dests;
+    boost::shared_mutex m_video_dests_mutex;
 };
 
-// VideoFrameEncoder consumes the I420 video frame and encodes it into the
-// given FrameFormat.
-class VideoFrameEncoder : public VideoFrameConsumer, public VideoFrameProvider {
+
+class FrameDestination {
+public:
+    FrameDestination() : m_audio_src(nullptr), m_video_src(nullptr) {}
+    virtual ~FrameDestination() {}
+
+    virtual void onFrame(const Frame& frame) = 0;
+
+    void setAudioSource(FrameSource* src);
+    void unsetAudioSource();
+
+    void setVideoSource(FrameSource* src);
+    void unsetVideoSource();
+
+protected:
+    void deliverFeedbackMsg(const FeedbackMsg& msg);
+
+private:
+    FrameSource* m_audio_src;
+    boost::shared_mutex m_audio_src_mutex;
+    FrameSource* m_video_src;
+    boost::shared_mutex m_video_src_mutex;
+};
+
+class VideoFrameDecoder : public FrameSource, public FrameDestination {
+public:
+    virtual ~VideoFrameDecoder() {}
+    virtual bool init(FrameFormat format) = 0;
+};
+
+class VideoFrameEncoder : public FrameDestination {
+public:
+    virtual ~VideoFrameEncoder() {}
+
+    virtual bool canSimulcastFor(FrameFormat format, uint32_t width, uint32_t height) = 0;
+    virtual bool isIdle() = 0;
+    virtual int32_t generateStream(uint32_t width, uint32_t height, FrameDestination* dest) = 0;
+    virtual void degenerateStream(int32_t streamId) = 0;
+    virtual void setBitrate(unsigned short kbps, int32_t streamId) = 0;
+    virtual void requestKeyFrame(int32_t streamId) = 0;
+
 };
 
 }

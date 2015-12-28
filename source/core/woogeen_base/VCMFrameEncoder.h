@@ -26,11 +26,42 @@
 
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/shared_mutex.hpp>
-#include <list>
+#include <map>
+#include <tuple>
 #include <logger.h>
 #include <webrtc/modules/video_coding/main/interface/video_coding.h>
 
 namespace woogeen_base {
+
+class EncodeOut : public FrameSource {
+public:
+    EncodeOut(int32_t streamId, woogeen_base::VideoFrameEncoder* owner, woogeen_base::FrameDestination* dest)
+        : m_streamId(streamId), m_owner(owner), m_out(dest) {
+        addVideoDestination(dest);
+    }
+    virtual ~EncodeOut() {
+        removeVideoDestination(m_out);
+    }
+
+    void onFeedback(const woogeen_base::FeedbackMsg& msg) {
+        if (msg.type == woogeen_base::VIDEO_FEEDBACK) {
+            if (msg.cmd == REQUEST_KEY_FRAME) {
+                m_owner->requestKeyFrame(m_streamId);
+            } else if (msg.cmd == SET_BITRATE) {
+                m_owner->setBitrate(msg.data.kbps, m_streamId);
+            }
+        }
+    }
+
+    void onEncoded(const woogeen_base::Frame& frame) {
+        deliverFrame(frame);
+    }
+
+private:
+    int32_t m_streamId;
+    woogeen_base::VideoFrameEncoder* m_owner;
+    woogeen_base::FrameDestination* m_out;
+};
 
 /**
  * This is the class to accept the raw frame and encode it to the given format.
@@ -39,15 +70,17 @@ class VCMFrameEncoder : public VideoFrameEncoder, public webrtc::VCMPacketizatio
     DECLARE_LOGGER();
 
 public:
-    VCMFrameEncoder(boost::shared_ptr<WebRTCTaskRunner>);
+    VCMFrameEncoder(FrameFormat format, boost::shared_ptr<WebRTCTaskRunner>);
     ~VCMFrameEncoder();
 
     // Implements VideoFrameEncoder.
-    int32_t addFrameConsumer(const std::string& name, FrameFormat, FrameConsumer*, const MediaSpecInfo&);
-    void removeFrameConsumer(int32_t id);
     void onFrame(const Frame&);
-    void setBitrate(unsigned short kbps, int id = 0);
-    void requestKeyFrame(int id = 0);
+    bool canSimulcastFor(FrameFormat format, uint32_t width, uint32_t height);
+    bool isIdle();
+    int32_t generateStream(uint32_t width, uint32_t height, FrameDestination* dest);
+    void degenerateStream(int32_t streamId);
+    void setBitrate(unsigned short kbps, int32_t streamId);
+    void requestKeyFrame(int32_t streamId);
 
     // Implements VCMPacketizationCallback.
     virtual int32_t SendData(
@@ -57,14 +90,19 @@ public:
         const webrtc::RTPVideoHeader* rtpVideoHdr);
 
 private:
-    struct Consumer {
-        VideoFrameConsumer* consumer;
-        uint8_t streamId;
+    struct OutStream {
+        uint32_t width;
+        uint32_t height;
+        int32_t  simulcastId;
+        boost::shared_ptr<EncodeOut> encodeOut;
     };
+
+    int32_t m_streamId;
     webrtc::VideoCodingModule* m_vcm;
     FrameFormat m_encodeFormat;
     boost::shared_ptr<WebRTCTaskRunner> m_taskRunner;
-    std::list<struct Consumer> m_consumers;
+
+    std::map<int32_t/*streamId*/, OutStream> m_streams;
     boost::shared_mutex m_mutex;
 };
 

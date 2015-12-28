@@ -59,7 +59,7 @@ exports.connect = function(callback) {
                             if(map[message.corrID] !== undefined) {
                                 log.debug("Callback", message.type, " - ", message.data);
                                 clearTimeout(map[message.corrID].to);
-                                if (message.type === "onReady") map[message.corrID].fn[message.type].call({});
+                                if (message.type === "onReady") map[message.corrID].fn[message.type].call({}, message.data);
                                 else map[message.corrID].fn[message.type].call({}, message.data);
                                 setTimeout(function() {
                                     if (map[message.corrID] !== undefined) delete map[message.corrID];
@@ -104,6 +104,7 @@ exports.bind = function(id, callback) {
                     });
                     rpcPublic[message.method].apply(rpcPublic, message.args);
                 } catch (error) {
+                    log.error("message:", message);
                     log.error("Error processing call: ", error);
                 }
 

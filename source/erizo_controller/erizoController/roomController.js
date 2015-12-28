@@ -2,647 +2,1150 @@
 'use strict';
 
 var logger = require('./../common/logger').logger;
-var erizoController = require('./erizoController');
+var makeRPC = require('./../common/makeRPC').makeRPC;
+var ErizoManager = require('./erizoManager').ErizoManager;
+
 // Logger
-var log = logger.getLogger('RoomController');
+var log = logger.getLogger("RoomController");
 
-exports.RoomController = function (spec) {
-    var that = {},
-        // {id: array of subscribers}
-        subscribers = {},
-        // {id: erizoJS_id}
-        publishers = {},
+exports.RoomController = function (spec, on_init_ok, on_init_failed) {
 
-        // {erizoJS_id: {publishers: [ids], ka_count: count}}
-        erizos = {},
+    var that = {};
 
-        // {id: ExternalOutput}
-        externalOutputs = {};
+    var amqper = spec.amqper,
+        config = spec.config,
+        room_id = spec.room,
+        mixed_stream_id = spec.room,
+        supported_audio_codecs = [],
+        supported_video_codecs = [],
+        supported_video_resolutions = [],
 
-    var amqper = spec.amqper;
-    var agentId = spec.agent_id;
-    var roomId = spec.id;
+        audio_mixer = undefined,
+        video_mixer = undefined;
 
-    var KEEPALIVE_INTERVAL = 5*1000;
-    var TIMEOUT_LIMIT = 2;
+    /*{ErizoID: {addr: Address}}*/
+    var erizos = {};
 
-    var eventListeners = [];
-
-    var callbackFor = function(erizo_id) {
-
-        return function(ok) {
-            if (!erizos[erizo_id]) return;
-
-            if (ok !== true) {
-                erizos[erizo_id].ka_count ++;
-
-                if (erizos[erizo_id].ka_count > TIMEOUT_LIMIT) {
-
-                    var publishers = erizos[erizo_id].publishers;
-                    // Iterate the array in reverse order, because the element
-                    // will be removed from the array when it's processed. The
-                    // reverse order iteration will keep the index still valid.
-                    for (var i = publishers.length - 1; i >= 0; --i) {
-                        dispatchEvent('unpublish', publishers[i]);
+    /* {terminalID: {type: 'webrtc' | 'rtsp' | 'file' | 'amixer' | 'axcoder' | 'vmixer' | 'vxcoder',
+                     erizo: ErizoID,
+                     published:[StreamID],
+                     subscribed:{SubscriptionID: {audio: StreamID | undefined, video: StreamID | undefined}}
                     }
-                    amqper.callRpc('ErizoAgent_' + agentId, 'deleteErizoJS', [erizo_id], {callback: function(){}});
-                    delete erizos[erizo_id];
-                }
+       }*/
+    var terminals = {};
+
+    /* {StreamID: {owner: terminalID,
+                   audio: {codec: 'pcmu' | 'pcma' | 'isac_16000' | 'isac_32000' | 'opus_48000_2' |...,
+                           subscribers: [terminalID]
+                          } | undefined,
+                   video: {codec: 'h264' | 'vp8' |...,
+                           resolution: 'cif' | 'vga' | 'svga' | 'xga' | 'hd720p' | 'sif' | 'hvga' | 'r640x360' | 'r480x360' | 'qcif' | 'r192x144' | 'hd1080p' | 'uhd_4k' |...,
+                           framerate: Number(1~120) | undefined,
+                           subscribers: [terminalID]
+                          } | undefined,
+                   spread: [ErizoID]
+                  }
+       }*/
+    var streams = {};
+
+    var erizoManager = ErizoManager({amqper: amqper, room_id: room_id, on_broken: function (erizo_id, erizo_purpose) {
+        if (erizos[erizo_id]) {
+            if (erizo_purpose === 'audio'
+                || erizo_purpose === 'video') {
+                rebuildErizo(erizo_id);
             } else {
-                erizos[erizo_id].ka_count = 0;
+                cleanErizo(erizo_id);
             }
-        };
-    };
+        }
+    }});
 
-    var sendKeepAlive = function() {
-        for (var e in erizos) {
-            amqper.callRpc('ErizoJS_' + e, 'keepAlive', [], {callback: callbackFor(e)});
+    var enableAVCoordination = function () {
+        if (config.enableMixing && audio_mixer && video_mixer) {
+            makeRPC(
+                amqper,
+                'ErizoJS_' + terminals[audio_mixer],
+                "enableVAD",
+                [1000],
+                function (activeTerminal) {
+                    for (var i in terminals[activeTerminal].published) {
+                        var stream_id = terminals[activeTerminal].published[i];
+                        if (streams[stream_id] && streams[stream_id].video && (streams[stream_id].video.subscribers.indexOf(video_mixer) !== -1)) {
+                            makeRPC(
+                                amqper,
+                                'ErizoJS_' + terminals[video_mixer],
+                                "setPrimary",
+                                [stream_id]);
+                            return;
+                        }
+                    }
+                }
+            );
         }
     };
 
-    setInterval(sendKeepAlive, KEEPALIVE_INTERVAL);
+    var initialize = function () {
+        log.debug("initialize...");
+        if (config.enableMixing) {
+            audio_mixer = Math.random() * 1000000000000000000 + '';
+            newTerminal(audio_mixer, 'amixer', function () {
+                log.debug("new audio mixer ok. audio_mixer:", audio_mixer);
+                makeRPC(
+                    amqper,
+                    'ErizoJS_' + terminals[audio_mixer].erizo,
+                    "init",
+                    ['mixing', config.mediaMixing.audio],
+                    function (supported_audio) {
+                        log.debug("init audio mixer ok.");
+                        video_mixer = Math.random() * 1000000000000000000 + '';
+                        newTerminal(video_mixer, 'vmixer', function () {
+                            log.debug("new video mixer ok. video_mixer:", video_mixer);
+                            makeRPC(
+                                amqper,
+                                'ErizoJS_' + terminals[video_mixer].erizo,
+                                "init",
+                                ['mixing', config.mediaMixing.video],
+                                function (supported_video) {
+                                    log.debug("init video mixer ok.");
+                                    supported_audio_codecs = supported_audio.codecs;
+                                    supported_video_codecs = supported_video.codecs;
+                                    supported_video_resolutions = supported_video.resolutions;
 
-    var getErizoJS = function(mixer_id, callback) {
-        // Currently we want to make sure the publishers and the mixer they associate with
-        // are run in the same process. This is the requirement of in-process mixer.
-        if (!GLOBAL.config.erizoController.outOfProcessMixer && mixer_id !== undefined && publishers[mixer_id] !== undefined) {
-            callback(publishers[mixer_id]);
-            return;
-        }
-        amqper.callRpc('ErizoAgent_' + agentId, 'createErizoJS', [], {callback: function(erizo_id) {
-            log.debug('Answer', erizo_id);
-            if (erizo_id !== 'timeout' && !erizos[erizo_id]) {
-                erizos[erizo_id] = {publishers: [], ka_count: 0};
-            }
-            callback(erizo_id);
-            amqper.callRpc('ErizoJS_'+erizo_id, 'setControllerId', [exports.myId, roomId], {});
-        }});
-    };
-
-    var getErizoQueue = function(publisher_id) {
-        return 'ErizoJS_' + publishers[publisher_id];
-    };
-
-    var dispatchEvent = function(type, event) {
-        for (var event_id in eventListeners) {
-            eventListeners[event_id](type, event);
-        }
-    };
-
-    /*var unescapeSdp = function(sdp) {
-        var reg = new RegExp(/\\\//g);
-        var newSdp = sdp.replace(reg, '/');
-        return newSdp;
-    };*/
-
-    that.addEventListener = function(eventListener) {
-        eventListeners.push(eventListener);
-    };
-
-    /*
-     * Initialize the mixer in the room.
-     */
-    that.initMixer = function (id, roomConfig, callback) {
-        log.info('Adding mixer id ', id);
-
-        if (publishers[id] !== undefined)
-            return;
-
-        // We create a new ErizoJS with the id.
-        getErizoJS(id, function(erizo_id) {
-            log.info('Erizo created');
-            // Track publisher locally
-            publishers[id] = erizo_id;
-            subscribers[id] = [];
-
-            // then we call its initMixer method.
-            var args = [id, GLOBAL.config.erizoController.outOfProcessMixer, roomConfig];
-            amqper.callRpc(getErizoQueue(id), 'initMixer', args, {callback: callback});
-
-            erizos[erizo_id].publishers.push(id);
-
-            setTimeout(function () {
-                that.addRTSPOut(id, function (resp) {
-                    log.info('rtsp streaming', id, '->', resp);
+                                    if (typeof on_init_ok === 'function') on_init_ok(supported_video_resolutions);
+                                    if (config.mediaMixing.video.avCoordinated) {
+                                        enableAVCoordination();
+                                    }
+                                }, function (error_reason) {
+                                    deleteTerminal(video_mixer);
+                                    makeRPC(
+                                        amqper,
+                                        'ErizoJS_' + terminals[audio_mixer].erizo,
+                                        "deinit",
+                                        [audio_mixer]);
+                                    deleteTerminal(audio_mixer);
+                                    audio_mixer = undefined;
+                                    video_mixer = undefined;
+                                    if (typeof on_init_failed === 'function') on_init_failed(error_reason);
+                                });
+                            }, function (error_reason) {
+                                makeRPC(
+                                    amqper,
+                                    'ErizoJS_' + terminals[audio_mixer].erizo,
+                                    "deinit",
+                                    [audio_mixer]);
+                                deleteTerminal(audio_mixer);
+                                audio_mixer = undefined;
+                                video_mixer = undefined;
+                                if (typeof on_init_failed === 'function') on_init_failed(error_reason);
+                            });
+                }, function (error_reason) {
+                    audio_mixer = undefined;
+                    if (typeof on_init_failed === 'function') on_init_failed(error_reason);
                 });
-            }, 1);
+            }, function(error_reason) {
+                audio_mixer = undefined;
+                if (typeof on_init_failed === 'function') on_init_failed(error_reason);
+            });
+        } else {
+            if (typeof on_init_ok === 'function') on_init_ok();
+        }
+        return that;
+    };
+
+    var deinitialize = function () {
+        log.debug("deinitialize");
+
+        for (var terminal_id in terminals) {
+            if (terminals[terminal_id].type === 'webrtc'
+                || terminals[terminal_id].type === 'rtsp'
+                || terminals[terminal_id].type === 'file') {
+                terminals[terminal_id].published.map(function (stream_id) {
+                    unpublishStream(stream_id);
+                });
+            } else if (terminals[terminal_id].type === 'amixer'
+                       || terminals[terminal_id].type === 'vmixer'
+                       || terminals[terminal_id].type === 'axcoder'
+                       || terminals[terminal_id].type === 'vxcoder') {
+                makeRPC(
+                    amqper,
+                    'ErizoJS_' + terminals[terminal_id].erizo,
+                    "deinit",
+                    [terminal_id]);
+            }
+            deleteTerminal(terminal_id);
+        }
+
+        supported_audio_codecs = [];
+        supported_video_codecs = [];
+        supported_video_resolutions = [];
+
+        audio_mixer = undefined;
+        video_mixer = undefined;
+
+        terminals = {};
+        streams = {};
+    };
+
+    var rebuildErizo = function (erizo_id) {
+        //TODO: clean the old erizo and rebuild a new one to resume the biz.
+    };
+
+    var cleanErizo = function (erizo_id) {
+        //TODO: clean up the connections related to the erizo.
+    };
+
+    var isErizoFree = function (erizo_id) {
+        for (var terminal_id in terminals) {
+            if (terminals[terminal_id].erizo === erizo_id) {
+                return false;
+            }
+        }
+        return true;
+    };
+
+    var newTerminal = function (terminal_id, terminal_type, on_ok, on_error) {
+        log.debug("newTerminal:", terminal_id, "terminal_type:", terminal_type);
+        if (terminals[terminal_id] === undefined) {
+            var purpose = (terminal_type === 'vmixer' || terminal_type === 'vxcoder') ? 'video'
+                          : ((terminal_type === 'amixer' || terminal_type === 'axcoder') ? 'audio' : terminal_type);
+            erizoManager.allocateErizo(
+                purpose,
+                {room: room_id, user: 'TODO: fill user_id'},
+                function (erizo) {
+                    if (erizos[erizo.id] === undefined) {
+                        erizos[erizo.id] = {addr: erizo.addr};
+                    }
+                    terminals[terminal_id] = {type: terminal_type,
+                                              erizo: erizo.id,
+                                              published: [],
+                                              subscribed: {}};
+                    on_ok();
+                },
+                on_error);
+        } else {
+            on_ok();
+        }
+    };
+
+    var deleteTerminal = function (terminal_id) {
+        log.debug("deleteTerminal:", terminal_id);
+        var erizo = terminals[terminal_id] ? terminals[terminal_id].erizo : undefined;
+        delete terminals[terminal_id];
+
+        if (erizo && isErizoFree(erizo)) {
+            erizoManager.deallocateErizo(erizo);
+            delete erizos[erizo];
+        }
+    };
+
+    var isTerminalFree = function (terminal_id) {
+        return  terminals[terminal_id]
+                && (terminals[terminal_id].published.length === 0
+                    && Object.keys(terminals[terminal_id].subscribed).length === 0)
+                && (terminals[terminal_id].type !== 'amixer'
+                    && terminals[terminal_id].type !== 'vmixer');
+    };
+
+    var spreadStream = function (stream_id, target_erizo_id, audio, video, on_ok, on_error) {
+        var stream_owner = streams[stream_id].owner,
+            original_erizo = terminals[stream_owner].erizo,
+            hasAudio = audio && !!streams[stream_id].audio,
+            hasVideo = video && !!streams[stream_id].video,
+            audio_codec = hasAudio ? streams[stream_id].audio.codec : undefined,
+            video_codec = hasVideo ? streams[stream_id].video.codec : undefined;
+        log.debug("spreadStream:", stream_id, "@", original_erizo, "to: ", target_erizo_id);
+        if (!hasAudio && !hasVideo) {
+            on_error("Can't spread stream without audio/video.");
+            return;
+        }
+
+        if (hasStreamBeenSpread(stream_id, target_erizo_id)) {
+            on_ok();
+            return;
+        }
+        log.debug("spreadStream:", stream_id, "audio:", audio, "audio_codec:", audio_codec, "video:", video, "video_codec:", video_codec);
+        makeRPC(
+            amqper,
+            'ErizoJS_' + target_erizo_id,
+            "publish",
+            [stream_id, 'internal', {owner: stream_owner, has_audio: hasAudio, audio_codec: audio_codec, has_video: hasVideo, video_codec: video_codec, protocol: 'udp'}],
+            function (dest_port) {
+                log.debug("internally publish ok, dest_port:", dest_port);
+                var dest_ip = erizos[target_erizo_id].addr;
+                makeRPC(
+                    amqper,
+                    'ErizoJS_' + original_erizo,
+                    "subscribe",
+                    [stream_id+'@'+target_erizo_id, 'internal', hasAudio ? stream_id : undefined, hasVideo ? stream_id : undefined, {require_audio: hasAudio, require_video: hasVideo, dest_ip: dest_ip, dest_port: dest_port, protocol: 'udp'}],
+                    function () {
+                        log.debug("internally subscribe ok");
+                        streams[stream_id].spread.push(target_erizo_id);
+                        on_ok();
+                    },
+                    function (error_reason) {
+                        makeRPC(
+                            amqper,
+                            'ErizoJS_' + target_erizo_id,
+                            "unpublish",
+                            [stream_id]);
+                        on_error(error_reason);
+                    });
+            },
+            on_error);
+    };
+
+    var shrinkStream = function (stream_id, target_erizo_id) {
+        var i = streams[stream_id].spread.indexOf(target_erizo_id);
+        if (i !== -1) {
+            log.debug("shrinkStream:", stream_id, "target_erizo_id:", target_erizo_id);
+            var stream_owner = streams[stream_id].owner,
+                original_erizo = terminals[stream_owner].erizo;
+
+            makeRPC(
+                amqper,
+                'ErizoJS_' + original_erizo,
+                "unsubscribe",
+                [stream_id+'@'+target_erizo_id]);
+
+            makeRPC(
+                amqper,
+                'ErizoJS_' + target_erizo_id,
+                "unpublish",
+                [stream_id]);
+
+            streams[stream_id].spread.splice(i, 1);
+        }
+    };
+
+    var hasStreamBeenSpread = function (stream_id, erizo_id) {
+        if (streams[stream_id]
+            && ((terminals[streams[stream_id].owner] && terminals[streams[stream_id].owner].erizo === erizo_id)
+                || (streams[stream_id].spread.indexOf(erizo_id) !== -1))) {
+            return true;
+        }
+
+        return false;
+    };
+
+    var isSpreadNeeded = function (stream_id, erizo_id) {
+        var audio_subscribers = (streams[stream_id] && streams[stream_id].audio && streams[stream_id].audio.subscribers) || [],
+            video_subscribers = (streams[stream_id] && streams[stream_id].video && streams[stream_id].video.subscribers) || [],
+            subscribers = audio_subscribers.concat(video_subscribers.filter(function (item) { return audio_subscribers.indexOf(item) < 0;}));
+
+        for (var i in subscribers) {
+            if (terminals[subscribers[i]] && terminals[subscribers[i]].erizo === erizo_id) {
+                return true;
+            }
+        }
+
+        return false;
+    };
+
+    var mixAudio = function (stream_id, on_ok, on_error) {
+        log.debug("to mix audio of stream:", stream_id);
+        spreadStream(stream_id, terminals[audio_mixer].erizo, true, false, function () {
+            streams[stream_id].audio.subscribers.push(audio_mixer);
+            terminals[audio_mixer].subscribed[stream_id] = {audio: stream_id, video: undefined};
+            on_ok();
+        }, on_error);
+    };
+
+    var unmixAudio = function (stream_id) {
+        shrinkStream(stream_id, terminals[audio_mixer].erizo);
+        var i = streams[stream_id] && streams[stream_id].audio && streams[stream_id].audio.subscribers.indexOf(audio_mixer);
+        if (i !== -1) {
+            streams[stream_id].audio.subscribers.splice(i, 1);
+        }
+        delete terminals[audio_mixer].subscribed[stream_id];
+    };
+
+    var mixVideo = function (stream_id, on_ok, on_error) {
+        log.debug("to mix video of stream:", stream_id);
+        spreadStream(stream_id, terminals[video_mixer].erizo, false, true, function () {
+            streams[stream_id].video.subscribers.push(video_mixer);
+            terminals[video_mixer].subscribed[stream_id] = {audio: undefined, video: stream_id};
+            on_ok();
+        }, on_error);
+    };
+
+    var unmixVideo = function (stream_id) {
+        shrinkStream(stream_id, terminals[video_mixer].erizo);
+        var i = streams[stream_id] && streams[stream_id].video && streams[stream_id].video.subscribers.indexOf(audio_mixer);
+        if (i !== -1) {
+            streams[stream_id].video.subscribers.splice(i, 1);
+        }
+        delete terminals[video_mixer].subscribed[stream_id];
+    };
+
+    var mixStream = function (stream_id, on_ok, on_error) {
+        log.debug("to mix stream:", stream_id);
+        if (streams[stream_id].audio) {
+            mixAudio(stream_id, function () {
+                if (streams[stream_id].video) {
+                    mixVideo(stream_id, on_ok, function (error_reason) {
+                        unmixAudio(stream_id);
+                        on_error(error_reason);
+                    });
+                }
+            }, on_error);
+        } else if (streams[stream_id].video) {
+            mixVideo(stream_id, on_ok, on_error);
+        }
+    };
+
+    var unmixStream = function (stream_id) {
+        if (streams[stream_id].audio) {
+            unmixAudio(stream_id);
+        }
+
+        if (streams[stream_id].video) {
+            unmixVideo(stream_id);
+        }
+    };
+
+    var spawnMixedAudio = function (terminal_id, audio_codec, on_ok, on_error) {
+        var amixer_erizo = terminals[audio_mixer].erizo;
+        log.debug("spawnMixedAudio, for terminal:", terminal_id, "audio_codec:", audio_codec);
+        makeRPC(
+            amqper,
+            'ErizoJS_' + amixer_erizo,
+            "generate",
+            [terminal_id, audio_codec],
+            function (stream_id) {
+                log.debug("spawnMixedAudio ok, stream_id:", stream_id);
+                if (streams[stream_id] === undefined) {
+                    streams[stream_id] = {owner: audio_mixer,
+                                          audio: {codec: audio_codec,
+                                                  subscribers: []},
+                                          video: undefined,
+                                          spread: []};
+                    terminals[audio_mixer].published.push(stream_id);
+                }
+                on_ok(stream_id);
+            }, on_error);
+    };
+
+    var spawnMixedVideo = function (video_codec, video_resolution, on_ok, on_error) {
+        var vmixer_erizo = terminals[video_mixer].erizo;
+        makeRPC(
+            amqper,
+            'ErizoJS_' + vmixer_erizo,
+            "generate",
+            [video_codec, video_resolution],
+            function (stream_id) {
+                if (streams[stream_id] === undefined) {
+                    streams[stream_id] = {owner: video_mixer,
+                                          audio: undefined,
+                                          video: {codec: video_codec,
+                                                  resolution: video_resolution,
+                                                  subscribers: []},
+                                          spread: []};
+                    terminals[video_mixer].published.push(stream_id);
+                }
+                on_ok(stream_id);
+            },
+            on_error);
+    };
+
+    var getMixedAudio = function (terminal_id, audio_codec, on_ok, on_error) {
+        spawnMixedAudio(terminal_id,
+                        audio_codec,
+                        on_ok,
+                        on_error);
+    };
+
+    var getMixedVideo = function (video_codec, video_resolution, on_ok, on_error) {
+        var candidates = Object.keys(streams).filter(
+            function (stream_id) { return streams[stream_id].owner === video_mixer
+                                          && streams[stream_id].video
+                                          && streams[stream_id].video.codec === video_codec
+                                          && (streams[stream_id].video.resolution === video_resolution);
+            });
+        if (candidates.length > 0) {
+            on_ok(candidates[0]);
+        } else {
+            spawnMixedVideo(video_codec,
+                            video_resolution,
+                            on_ok,
+                            on_error);
+        }
+    };
+
+    var spawnTranscodedAudio = function (axcoder, audio_codec, on_ok, on_error) {
+        var axcoder_erizo = terminals[axcoder].erizo;
+        log.debug("spawnTranscodedAudio, audio_codec:", audio_codec);
+        makeRPC(
+            amqper,
+            'ErizoJS_' + axcoder_erizo,
+            "generate",
+            [audio_codec, audio_codec],
+            function (stream_id) {
+                log.debug("spawnTranscodedAudio ok, stream_id:", stream_id);
+                if (streams[stream_id] === undefined) {
+                    streams[stream_id] = {owner: axcoder,
+                                          audio: {codec: audio_codec,
+                                                  subscribers: []},
+                                          video: undefined,
+                                          spread: []};
+                    terminals[axcoder].published.push(stream_id);
+                }
+                on_ok(stream_id);
+            }, on_error);
+    };
+
+    var findExistingTranscodedAudio = function (axcoder, audio_codec, on_ok, on_error) {
+        var published = terminals[axcoder].published;
+        for (var j in published) {
+            if (streams[published[j]] && streams[published[j]].audio && streams[published[j]].audio.codec === audio_codec) {
+                on_ok(published[j]);
+                return;
+            }
+        }
+        on_error();
+    };
+
+    var findExistingAudioTranscoder = function (stream_id, on_ok, on_error) {
+        var subscribers = streams[stream_id].audio.subscribers
+        for (var i in subscribers) {
+            if (terminals[subscribers[i]] && terminals[subscribers[i]].type === 'axcoder') {
+                on_ok(subscribers[i]);
+                return;
+            }
+        }
+        on_error();
+    };
+
+    var getAudioTranscoder = function (stream_id, on_ok, on_error) {
+        findExistingAudioTranscoder(stream_id, on_ok, function () {
+            var axcoder = Math.random() * 1000000000000000000 + '';
+            newTerminal(axcoder, 'axcoder', function () {
+                var on_failed = function (reason) {
+                    makeRPC(
+                        amqper,
+                        'ErizoJS_' + terminals[axcoder].erizo,
+                        "deinit",
+                        [axcoder]);
+                    deleteTerminal(axcoder);
+                    on_error(error_reason);
+                };
+
+                makeRPC(
+                    amqper,
+                    'ErizoJS_' + terminals[axcoder].erizo,
+                    "init",
+                    ['transcoding'],
+                    function (supported_audio) {
+                        spreadStream(stream_id, terminals[axcoder].erizo, true, false, function () {
+                            streams[stream_id].audio.subscribers.push(axcoder);
+                            terminals[axcoder].subscribed[stream_id] = {audio: stream_id, video: undefined};
+                            on_ok(axcoder);
+                        }, on_failed);
+                    }, on_error);
+            }, on_error);
         });
     };
 
-    that.addExternalInput = function (publisher_id, options, mixer_id, callback, onReady) {
-
-        if (publishers[publisher_id] === undefined) {
-
-            log.info('Adding external input peer_id ', publisher_id, ', mixer id', mixer_id);
-
-            getErizoJS(mixer_id, function(erizo_id) {
-                // Track publisher locally
-                publishers[publisher_id] = erizo_id;
-                subscribers[publisher_id] = [];
-                erizos[erizo_id].publishers.push(publisher_id);
-
-                // then we call its addExternalInput method.
-                var mixer = {id: mixer_id, oop: GLOBAL.config.erizoController.outOfProcessMixer};
-                var args = [publisher_id, options, mixer];
-                amqper.callRpc(getErizoQueue(publisher_id), 'addExternalInput', args, {callback: function (result) {
-                    if (result !== 'success') {
-                        // Remove tracks
-                        var index = erizos[erizo_id].publishers.indexOf(publisher_id);
-                        erizos[erizo_id].publishers.splice(index, 1);
-                        delete subscribers[publisher_id];
-                        delete publishers[publisher_id];
-                    }
-                    callback(result);
-                }, onReady: onReady});
+    var getTranscodedAudio = function (audio_codec, stream_id, on_ok, on_error) {
+        getAudioTranscoder(stream_id, function (axcoder) {
+            findExistingTranscodedAudio(axcoder, audio_codec, on_ok, function () {
+                spawnTranscodedAudio(axcoder, audio_codec, on_ok, on_error);
             });
-        } else {
-            log.info('Publisher already set for', publisher_id);
-        }
+        }, on_error);
     };
 
-    that.addExternalOutput = function (video_publisher_id, audio_publisher_id, preferred_video_codec, preferred_audio_codec, output_id, mixer_id, url, interval, callback) {
-        if (publishers[video_publisher_id] !== undefined && publishers[audio_publisher_id] !== undefined) {
-            log.info('Adding ExternalOutput to ' + video_publisher_id + ' and ' + audio_publisher_id + ' with url: ' + url);
+    var spawnTranscodedVideo = function (vxcoder, video_codec, video_resolution, on_ok, on_error) {
+        var vxcoder_erizo = terminals[vxcoder].erizo;
+        log.debug("spawnTranscodedVideo, video_codec:", video_codec, "video_resolution:", video_resolution);
+        makeRPC(
+            amqper,
+            'ErizoJS_' + vxcoder_erizo,
+            "generate",
+            [video_codec, video_resolution],
+            function (stream_id) {
+                log.debug("spawnTranscodedVideo ok, stream_id:", stream_id);
+                if (streams[stream_id] === undefined) {
+                    streams[stream_id] = {owner: vxcoder,
+                                          audio: undefined,
+                                          video: {codec: video_codec,
+                                                  resolution: video_resolution,
+                                                  subscribers: []},
+                                          spread: []};
+                    terminals[vxcoder].published.push(stream_id);
+                }
+                on_ok(stream_id);
+            }, on_error);
+    };
 
-            var externalOutput = externalOutputs[output_id];
-            if (externalOutput) {
-                return callback({
-                    success: false,
-                    text: 'the external output is busy'
-                });
+    var findExistingTranscodedVideo = function (vxcoder, video_codec, video_resolution, on_ok, on_error) {
+        var published = terminals[vxcoder].published;
+        for (var j in published) {
+            if (streams[published[j]] && streams[published[j]].video && streams[published[j]].video.codec === video_codec && streams[published[j]].video.resolution === video_resolution) {
+                on_ok(published[j]);
+                return;
+            }
+        }
+        on_error();
+    };
+
+    var findExistingVideoTranscoder = function (stream_id, on_ok, on_error) {
+        var subscribers = streams[stream_id].video.subscribers
+        for (var i in subscribers) {
+            if (terminals[subscribers[i]] && terminals[subscribers[i]].type === 'vxcoder') {
+                on_ok(subscribers[i]);
+                return;
+            }
+        }
+        on_error();
+    };
+
+    var getVideoTranscoder = function (stream_id, on_ok, on_error) {
+        findExistingVideoTranscoder(stream_id, on_ok, function () {
+            var vxcoder = Math.random() * 1000000000000000000 + '';
+            newTerminal(vxcoder, 'vxcoder', function () {
+                var on_failed = function (reason) {
+                    makeRPC(
+                        amqper,
+                        'ErizoJS_' + terminals[vxcoder].erizo,
+                        "deinit",
+                        [vxcoder]);
+                    deleteTerminal(vxcoder);
+                    on_error(error_reason);
+                };
+
+                makeRPC(
+                    amqper,
+                    'ErizoJS_' + terminals[vxcoder].erizo,
+                    "init",
+                    ['transcoding'],
+                    function (supported_audio) {
+                        spreadStream(stream_id, terminals[vxcoder].erizo, false, true, function () {
+                            streams[stream_id].video.subscribers.push(vxcoder);
+                            terminals[vxcoder].subscribed[stream_id] = {audio: undefined, video: stream_id};
+                            on_ok(vxcoder);
+                        }, on_failed);
+                    }, on_error);
+            }, on_error);
+        });
+    };
+
+    var getTranscodedVideo = function (video_codec, video_resolution, stream_id, on_ok, on_error) {
+        getVideoTranscoder(stream_id, function (vxcoder) {
+            findExistingTranscodedVideo(vxcoder, video_codec, video_resolution, on_ok, function () {
+                spawnTranscodedVideo(vxcoder, video_codec, video_resolution, on_ok, on_error);
+            });
+        }, on_error);
+    };
+
+    var terminateTemporaryStream = function (stream_id) {
+        var owner = streams[stream_id].owner;
+        var erizo = terminals[owner].erizo;
+        makeRPC(
+            amqper,
+            'ErizoJS_' + erizo,
+            "degenerate",
+            [stream_id]);
+        delete streams[stream_id];
+
+        var i = terminals[owner].published.indexOf(stream_id);
+        terminals[owner].published.splice(i ,1);
+
+        if (terminals[owner].published.length === 0 && (terminals[owner].type === 'axcoder' || terminals[owner].type === 'axcoder')) {
+            for (var subscription_id in terminals[owner].subscribed) {
+                unsubscribeStream(owner, subscription_id);
             }
 
-            getErizoJS(mixer_id, function(erizo_id) {
-                var erizoVideo = getErizoQueue(video_publisher_id);
-                var erizoAudio = getErizoQueue(audio_publisher_id);
-                if (erizoVideo !== erizoAudio) {
-                    return callback({
-                        success: false,
-                        text: 'cannot make external output for video and audio from different erizo nodes'
-                    });
-                }
-
-                var args = [video_publisher_id, audio_publisher_id, preferred_video_codec, preferred_audio_codec, output_id, url, interval];
-
-                amqper.callRpc('ErizoJS_' + erizo_id, 'addExternalOutput', args, {callback: function (result) {
-                    if (result === 'success') {
-                        // Track external outputs
-                        externalOutputs[output_id] = {video: video_publisher_id, audio: audio_publisher_id, erizo: erizo_id};
-
-                        return callback({
-                            success: true,
-                            text: url
-                        });
-                    }
-
-                    callback({
-                        success: false,
-                        text: result
-                    });
-                }});
-            });
-        } else {
-            callback({
-                success: false,
-                text: 'target stream(s) not found'
-            });
+            deleteTerminal(owner);
         }
     };
 
-    that.removeExternalOutput = function (output_id, close, callback) {
-        // FIXME: It seems there is no need to verify the video_publisher_id and audio_publisher_id
-        if (close === undefined) {
-            close = true;
+    var recycleTemporaryAudio = function (stream_id) {
+        if (streams[stream_id]
+            && streams[stream_id].audio
+            && streams[stream_id].audio.subscribers.length === 0
+            && streams[stream_id].spread.length === 0) {
+
+            var terminal_type = terminals[streams[stream_id].owner].type;
+            if (terminal_type === 'amixer' || terminal_type === 'axcoder') {
+                terminateTemporaryStream(stream_id);
+            }
+        }
+    };
+
+    var recycleTemporaryVideo = function (stream_id) {
+        if (streams[stream_id]
+            && streams[stream_id].video
+            && streams[stream_id].video.subscribers.length === 0
+            && streams[stream_id].spread.length === 0) {
+
+            var terminal_type = terminals[streams[stream_id].owner].type;
+            if (terminal_type === 'vmixer' || terminal_type === 'vxcoder') {
+                terminateTemporaryStream(stream_id);
+            }
+        }
+    };
+
+    var getAudioStream = function (terminal_id, stream_id, audio_codec, on_ok, on_error) {
+        if (stream_id === mixed_stream_id) {
+            getMixedAudio(terminal_id, audio_codec, function (streamID) {
+                log.debug("Got mixed audio:", streamID);
+                on_ok(streamID);
+            }, on_error);
+        } else if (streams[stream_id]) {
+            if (streams[stream_id].audio) {
+                if (streams[stream_id].audio.codec === audio_codec) {
+                    on_ok(stream_id);
+                } else {
+                    getTranscodedAudio(audio_codec, stream_id, function (streamID) {
+                        on_ok(streamID);
+                    }, on_error);
+                }
+            } else {
+                on_error('Stream:'+stream_id+' has no audio track.');
+            }
+        } else {
+            on_error('No such an audio stream:'+stream_id);
+        }
+    };
+
+    var getVideoStream = function (stream_id, video_codec, video_resolution, on_ok, on_error) {
+        if (stream_id === mixed_stream_id) {
+            getMixedVideo(video_codec, video_resolution, function (streamID) {
+                on_ok(streamID);
+            }, on_error);
+        } else if (streams[stream_id]) {
+            if (streams[stream_id].video) {
+                if (streams[stream_id].video.codec === video_codec && streams[stream_id].video.resolution === video_resolution) {
+                    on_ok(stream_id);
+                } else {
+                    getTranscodedVideo(video_codec, video_resolution, stream_id, function (streamID) {
+                        on_ok(streamID);
+                    }, on_error);
+                }
+            } else {
+                on_error('Stream:'+stream_id+' has no video track.');
+            }
+        } else {
+            on_error('No such a video stream:'+stream_id);
+        }
+    };
+
+    var publishStream = function (terminal_id, stream_id, stream_type, stream_info, onResponse, on_error) {
+        makeRPC(
+            amqper,
+            'ErizoJS_' + terminals[terminal_id].erizo,
+            "publish",
+            [stream_id, stream_type, stream_info],
+            onResponse, on_error);
+    };
+
+    var unpublishStream = function (stream_id) {
+        log.debug("unpublishStream:", stream_id, "stream.owner:", streams[stream_id].owner);
+        var stream = streams[stream_id],
+            terminal_id = stream.owner,
+            erizo = terminals[terminal_id].erizo;
+
+        var i = terminals[terminal_id].published.indexOf(stream_id);
+        if (i !== -1) {
+            makeRPC(
+                amqper,
+                'ErizoJS_' + erizo,
+                "unpublish",
+                [stream_id]);
+
+            unmixStream(stream_id);
+            removeSubscriptions(stream_id);
+            terminals[terminal_id].published.splice(i, 1);
         }
 
-        var externalOutput = externalOutputs[output_id];
-        var video_publisher_id = null;
-        var audio_publisher_id = null;
+        delete streams[stream_id];
 
-        if (externalOutput) {
-            video_publisher_id = externalOutput.video;
-            audio_publisher_id = externalOutput.audio;
+        if (isTerminalFree(terminal_id)) {
+            deleteTerminal(terminal_id);
+        }
+    };
+
+    var subscribeStream = function (subscriber, subscription_id, audio_stream, video_stream, options, on_ok, on_error) {
+        log.debug("subscribeStream, subscriber:", subscriber, "subscription_id:", subscription_id, "audio_stream:", audio_stream, "video_stream:", video_stream);
+        if (audio_stream === video_stream || audio_stream === undefined || video_stream === undefined) {
+            var stream_id = audio_stream || video_stream;
+            spreadStream(stream_id, terminals[subscriber].erizo, true, true, function () {
+                var audioStream = options.require_audio ? stream_id : undefined,
+                    videoStream = options.require_video ? stream_id : undefined;
+
+                makeRPC(
+                    amqper,
+                    'ErizoJS_' + terminals[subscriber].erizo,
+                    "subscribe",
+                    [subscription_id, terminals[subscriber].type, audioStream, videoStream, options],
+                    on_ok,
+                    on_error);
+            }, on_error);
+        } else {
+            spreadStream(audio_stream, terminals[subscriber].erizo, true, false, function () {
+                log.debug("spread audio_stream:", audio_stream, " ok.");
+                spreadStream(video_stream, terminals[subscriber].erizo, false, true, function () {
+                    log.debug("spread video_stream:", video_stream, " ok.");
+                    makeRPC(
+                        amqper,
+                        'ErizoJS_' + terminals[subscriber].erizo,
+                        "subscribe",
+                        [subscription_id, terminals[subscriber].type, audio_stream, video_stream, options],
+                        on_ok,
+                        on_error);
+                }, on_error);
+            }, on_error);
+        }
+    };
+
+    var unsubscribeStream = function (subscriber, subscription_id) {
+        var erizo_id = terminals[subscriber].erizo,
+            subscription = terminals[subscriber].subscribed[subscription_id],
+            audio_stream = subscription && subscription.audio,
+            video_stream = subscription && subscription.video;
+
+        makeRPC(
+            amqper,
+            'ErizoJS_' + erizo_id,
+            "unsubscribe",
+            [subscription_id]);
+
+        if (audio_stream) {
+            if (streams[audio_stream] && streams[audio_stream].audio) {
+                var i = streams[audio_stream].audio.subscribers.indexOf(subscriber);
+                streams[audio_stream].audio.subscribers.splice(i, 1);
+                subscription.audio = undefined
+            }
+            if (!isSpreadNeeded(audio_stream, erizo_id)) {
+                shrinkStream(audio_stream, erizo_id);
+            }
         }
 
-        if (!externalOutput || !video_publisher_id || !audio_publisher_id) {
-            if (!close) {
-                return callback({
-                    success: true,
-                    text: 'no external output context needs to be cleaned'
-                });
+        if (video_stream) {
+            if (streams[video_stream] && streams[video_stream].video) {
+                var i = streams[video_stream].video.subscribers.indexOf(subscriber);
+                streams[video_stream].video.subscribers.splice(i, 1);
+                subscription.video = undefined;
             }
 
-            return callback({
-                success: false,
-                text: 'no external output ongoing'
-            });
+            if ((!audio_stream || video_stream !== audio_stream)
+                && !isSpreadNeeded(video_stream, erizo_id)) {
+                shrinkStream(video_stream, erizo_id);
+            }
         }
 
-        var erizoVideo = getErizoQueue(video_publisher_id);
-        var erizoAudio = getErizoQueue(audio_publisher_id);
-        if (erizoVideo !== erizoAudio) {
-            return callback({
-                success: false,
-                text: 'cannot stop video and audio external output from different erizo nodes'
-            });
+        if (subscription_id === subscriber+'-'+mixed_stream_id) {
+            if (audio_stream) {
+                recycleTemporaryAudio(audio_stream);
+            }
+
+            if (video_stream) {
+                recycleTemporaryVideo(video_stream);
+            }
         }
 
-        if (publishers[video_publisher_id] !== undefined && publishers[audio_publisher_id] !== undefined) {
-            log.info('Stopping ExternalOutput: ' + output_id);
+        delete terminals[subscriber].subscribed[subscription_id];
 
-            var args = [output_id, close];
+        if (isTerminalFree(subscriber)) {
+            deleteTerminal(subscriber);
+        }
+    };
 
-            amqper.callRpc('ErizoJS_' + externalOutput.erizo, 'removeExternalOutput', args, {callback: function (result) {
-                if (result === 'success') {
-                    // Remove the track
-                    delete externalOutputs[output_id];
-                    return callback({
-                        success: true,
-                        text: output_id
-                    });
-                }
+    var removeSubscriptions = function (stream_id) {
+        var audio_subscribers = (streams[stream_id] && streams[stream_id].audio && streams[stream_id].audio.subscribers) || [],
+            video_subscribers = (streams[stream_id] && streams[stream_id].video && streams[stream_id].video.subscribers) || [],
+            subscribers = audio_subscribers.concat(video_subscribers.filter(function (item) { return audio_subscribers.indexOf(item) < 0;}));
 
-                callback({
-                    success: false,
-                    text: 'stop external output failed'
+        subscribers.map(function(i) {unsubscribeStream(i, i+'-'+stream_id);});
+    };
+
+    // External interfaces.
+    that.destroy = function () {
+        deinitialize();
+    };
+
+    that.publish = function (terminal_id, stream_id, stream_type, stream_info, enable_mixing, onResponse) {
+        log.debug("publish, terminal_id:", terminal_id, "stream_id:", stream_id, "stream_type:", stream_type, "enable_mixing:", enable_mixing);
+        var doPublish = function () {
+            var erizo_id = terminals[terminal_id].erizo,
+                audio_codec = undefined,
+                video_codec = undefined;
+
+            publishStream(
+                terminal_id,
+                stream_id,
+                stream_type,
+                stream_info,
+                function (response) {
+                    log.debug("publish response:", response);
+                    if (response.type === 'ready') {
+                        audio_codec = response.audio_codecs && response.audio_codecs.length > 0 && response.audio_codecs[0];
+                        video_codec = response.video_codecs && response.video_codecs.length > 0 && response.video_codecs[0];
+                        streams[stream_id] = {owner: terminal_id,
+                                              audio: (stream_info.has_audio && audio_codec) ? {codec: audio_codec,
+                                                                                               subscribers: []} : undefined,
+                                              video: (stream_info.has_video && video_codec) ? {codec: video_codec,
+                                                                                               resolution: undefined, //FIXME: the publication should carry resolution info.
+                                                                                               framerate: undefined,  //FIXME: the publication should carry frame-rate info.
+                                                                                               subscribers: []} : undefined,
+                                              spread: []
+                                              };
+
+                        terminals[terminal_id].published.push(stream_id);
+
+                        if (enable_mixing && config.enableMixing) {
+                            mixStream(stream_id, function () {
+                                log.info("Mix stream["+stream_id+"] successfully.");
+                            }, function (error_reason) {
+                                log.error(error_reason);
+                            });
+                        } else {
+                            log.debug("publish ok, will not mix in.");
+                        }
+                        onResponse(response);
+                    } else {
+                        onResponse(response);
+                    }
+                }, function (error_reason) {
+                    log.debug("publish failed, reason:", error_reason);
+                    onResponse({type: 'failed', reason: error_reason});
                 });
-            }});
+        };
+
+        if (streams[stream_id] === undefined) {
+            newTerminal(terminal_id, stream_type, function () {
+                doPublish();
+            }, function (error_reason) {onResponse({type: 'failed', reason: error_reason});});
         } else {
-            callback({
-                success: false,
-                text: 'Not valid external output to stop'
-            });
+            onResponse({type: 'failed', reason: "Stream[" + stream_id + "] already set for " + terminal_id});
         }
     };
 
-    that.processSignaling = function (streamId, peerId, msg) {
-        if (publishers[streamId] !== undefined) {
-
-            log.info('Sending signaling mess to erizoJS of st', streamId, 'of peer', peerId);
-
-            var args = [streamId, peerId, msg];
-
-            amqper.callRpc(getErizoQueue(streamId), 'processSignaling', args, {});
-
+    that.unpublish = function (stream_id) {
+        log.debug("unpublish, stream_id:", stream_id);
+        if (streams[stream_id]) {
+            unpublishStream(stream_id);
         }
     };
 
-    /*
-     * Adds a publisher to the room. This creates a new OneToManyProcessor
-     * and a new WebRtcConnection. This WebRtcConnection will be the publisher
-     * of the OneToManyProcessor.
-     */
-    that.addPublisher = function (publisher_id, mixer_id, unmix, callback) {
+    that.subscribeSelectively = function (terminal_id, subscription_id, subscription_type, audio_stream_id, video_stream_id, options, onResponse) {
+        var audio_codec = options.audio_codec || (streams[video_stream_id] && streams[video_stream_id].audio && streams[video_stream_id].audio.codec) || supported_audio_codecs[0],
+            video_codec = options.video_codec || (streams[video_stream_id] && streams[video_stream_id].video && streams[video_stream_id].video.codec) || supported_video_codecs[0],
+            video_resolution = options.video_resolution || (streams[video_stream_id] && streams[video_stream_id].video && streams[video_stream_id].video.resolution) || supported_video_resolutions[0];
 
-        if (publishers[publisher_id] === undefined) {
-
-            log.info('Adding publisher peer_id', publisher_id);
-
-            // We create a new ErizoJS with the publisher_id.
-            getErizoJS(mixer_id, function (erizo_id) {
-
-                if (erizo_id === 'timeout') {
-                    log.error('No Agents Available');
-                    callback({type: 'timeout'}, 'No ErizoAgent available');
-                    return;
-                }
-
-                // Track publisher locally
-                publishers[publisher_id] = erizo_id;
-                subscribers[publisher_id] = [];
-
-                // then we call its addPublisher method.
-                var mixer = {id: mixer_id, oop: GLOBAL.config.erizoController.outOfProcessMixer};
-                var args = [publisher_id, mixer, unmix];
-	            amqper.callRpc(getErizoQueue(publisher_id), 'addPublisher', args, {callback: callback});
-
-                erizos[erizo_id].publishers.push(publisher_id);
-            });
-
-        } else {
-            log.info('Publisher already set for', publisher_id);
-            callback({type: 'error'}, 'publisher already added');
-        }
-    };
-
-    /*
-     * Adds a subscriber to the room. This creates a new WebRtcConnection.
-     * This WebRtcConnection will be added to the subscribers list of the
-     * OneToManyProcessor.
-     */
-    that.addSubscriber = function (subscriber_id, publisher_id, options, callback) {
-        if (subscriber_id === null) {
-            callback({type: 'error'}, 'invalid id');
+        if ((options.require_audio && !audio_stream_id) || (options.require_video && !video_stream_id)) {
+            onResponse({type: 'failed', reason: 'Invalid subscribe request.'});
             return;
         }
 
-        if (publishers[publisher_id] !== undefined && subscribers[publisher_id].indexOf(subscriber_id) === -1) {
+        var doSubscribe = function () {
+            var audio_stream = undefined, video_stream = undefined;
 
-            log.info('Adding subscriber', subscriber_id, 'to publisher', publisher_id);
+            var on_ok = function (audioStream, videoStream) {
+                return function () {
+                    log.debug("subscribe ok, audioStream:", audioStream, "videoStream", videoStream);
+                    streams[audio_stream] && streams[audio_stream].audio.subscribers.push(terminal_id);
+                    streams[video_stream] && streams[video_stream].video.subscribers.push(terminal_id);
+                    terminals[terminal_id].subscribed[subscription_id] = {audio: audioStream, video: videoStream};
+                    onResponse({type: 'ready'});
+                }};
 
-            if (options.audio === undefined) options.audio = true;
-            if (options.video === undefined) options.video = true;
+            var on_error = function (error_reason) {
+                log.debug("subscribe failed, reason:", error_reason);
+                makeRPC(
+                    amqper,
+                    'ErizoJS_' + terminals[terminal_id].erizo,
+                    "disconnect",
+                    [subscription_id]);
+                onResponse({type: 'failed', reason: error_reason});
+            };
 
-            var args = [subscriber_id, publisher_id, options];
-
-            amqper.callRpc(getErizoQueue(publisher_id), 'addSubscriber', args, {callback: callback});
-
-            // Track subscriber locally
-            subscribers[publisher_id].push(subscriber_id);
-        } else {
-            log.info('subscriber', subscriber_id, 'already added');
-            callback({type: 'error'}, 'subscriber already added');
-        }
-    };
-
-    /*
-     * Removes a publisher from the room. This also deletes the associated OneToManyProcessor.
-     */
-    that.removePublisher = function (publisher_id) {
-
-        if (subscribers[publisher_id] !== undefined && publishers[publisher_id] !== undefined) {
-
-            var video_output_id = -1;
-            var audio_output_id = -1;
-            for (var i in externalOutputs) {
-                if (externalOutputs.hasOwnProperty(i)) {
-                    if (externalOutputs[i].video === publisher_id) {
-                        video_output_id = i;
+            if (options.require_audio && audio_stream_id) {
+                log.debug("require audio track of stream:", audio_stream_id);
+                getAudioStream(terminal_id, audio_stream_id, audio_codec, function (streamID) {
+                    audio_stream = streamID;
+                    log.debug("Got audio stream:", audio_stream);
+                    if (options.require_video && video_stream_id) {
+                        log.debug("require video track of stream:", video_stream_id);
+                        getVideoStream(video_stream_id, video_codec, video_resolution, function (streamID) {
+                            video_stream = streamID;
+                            log.debug("Got video stream:", video_stream);
+                            subscribeStream(terminal_id, subscription_id, audio_stream, video_stream, options, on_ok(audio_stream, video_stream), function (error_reason) {
+                                recycleTemporaryVideo(video_stream);
+                                recycleTemporaryAudio(audio_stream);
+                                on_error(error_reason);
+                            });
+                        }, function (error_reason) {
+                            recycleTemporaryAudio(audio_stream);
+                            on_error(error_reason);
+                        })
+                    } else {
+                        subscribeStream(terminal_id, subscription_id, audio_stream, undefined, options, on_ok(audio_stream, undefined), function (error_reason) {
+                            recycleTemporaryAudio(audio_stream);
+                            on_error(error_reason);
+                        });
                     }
+                }, on_error);
+            } else if (options.require_video && video_stream_id) {
+                log.debug("require video track of stream:", video_stream_id);
+                getVideoStream(video_stream_id, video_codec, video_resolution, function (streamID) {
+                    video_stream = streamID;
+                    subscribeStream(terminal_id, subscription_id, undefined, video_stream, options, on_ok(undefined, video_stream), function (error_reason) {
+                        recycleTemporaryVideo(video_stream);
+                        on_error(error_reason);
+                    });
+                }, on_error);
+            } else {
+                log.debug("No audio or video is required.");
+                on_error("No audio or video is required.");
+            }
+        };
 
-                    if (externalOutputs[i].audio === publisher_id) {
-                        audio_output_id = i;
+        var doConnect = function () {
+            makeRPC(
+                amqper,
+                'ErizoJS_' + terminals[terminal_id].erizo,
+                "connect",
+                [subscription_id, subscription_type, options],
+                function (response) {
+                    if (response.type === 'ready') {
+                        audio_codec = response.audio_codecs && response.audio_codecs.length > 0 && response.audio_codecs[0];
+                        video_codec = response.video_codecs && response.video_codecs.length > 0 && response.video_codecs[0];
+                        log.debug("subscriber connected ok.");
+                        doSubscribe();
+                    } else {
+                        onResponse(response);
                     }
-                }
-            }
+                },
+                onResponse);
+        };
 
-            // Stop the video related output
-            if (video_output_id !== -1) {
-                log.info('Removing external output', video_output_id);
-                var args = [video_output_id, false];
-                amqper.callRpc('ErizoJS_' + externalOutputs[video_output_id].erizo, 'removeExternalOutput', args, {callback: function (result) {}});
+        newTerminal(terminal_id, subscription_type, function () {
+            doConnect();
+        }, function (error_reason) {onResponse({type: 'failed', reason: error_reason});});
+    };
 
-                // Remove the external output track anyway
-                delete externalOutputs[video_output_id];
-            }
-
-            // Stop the audio related output
-            if (audio_output_id !== -1 && audio_output_id !== video_output_id) {
-                log.info('Removing external output', audio_output_id);
-                var args = [audio_output_id, false];
-                amqper.callRpc('ErizoJS_' + externalOutputs[audio_output_id].erizo, 'removeExternalOutput', args, {callback: function (result) {}});
-
-                // Remove the external output track anyway
-                delete externalOutputs[audio_output_id];
-            }
-
-            var args = [publisher_id];
-            amqper.callRpc(getErizoQueue(publisher_id), 'removePublisher', args, undefined);
-
-            // Remove tracks
-            var index = erizos[publishers[publisher_id]].publishers.indexOf(publisher_id);
-            erizos[publishers[publisher_id]].publishers.splice(index, 1);
-
-            log.info('Removing subscribers', publisher_id);
-            delete subscribers[publisher_id];
-            log.info('Removing publisher', publisher_id);
-            delete publishers[publisher_id];
-            log.info('Removed all');
-            log.info('Removing muxer', publisher_id, ' muxers left ', Object.keys(publishers).length );
+    that.subscribe = function (terminal_id, subscription_type, stream_id, options, onResponse) {
+        if (streams[stream_id] || stream_id === mixed_stream_id) {
+            var subscription_id = terminal_id+'-'+stream_id;
+            that.subscribeSelectively(
+                terminal_id,
+                subscription_id,
+                subscription_type,
+                options.require_audio ? stream_id : undefined,
+                options.require_video ? stream_id : undefined,
+                options,
+                onResponse);
         }
     };
 
-    /*
-     * Removes a subscriber from the room. This also removes it from the associated OneToManyProcessor.
-     */
-    that.removeSubscriber = function (subscriber_id, publisher_id) {
-
-        var index = subscribers[publisher_id].indexOf(subscriber_id);
-        if (index !== -1) {
-            log.info('Removing subscriber ', subscriber_id, 'to muxer ', publisher_id);
-
-            var args = [subscriber_id, publisher_id];
-            amqper.callRpc(getErizoQueue(publisher_id), 'removeSubscriber', args, undefined);
-
-            // Remove track
-            subscribers[publisher_id].splice(index, 1);
+    that.unsubscribe = function (terminal_id, stream_id) {
+        if (terminals[terminal_id]) {
+            unsubscribeStream(terminal_id, terminal_id+'-'+stream_id);
         }
     };
 
-    /*
-     * Removes all the subscribers related with a client.
-     */
-    that.removeSubscriptions = function (subscriber_id) {
-
-        var publisher_id, index;
-
-        log.info('Removing subscriptions of ', subscriber_id);
-
-
-        for (publisher_id in subscribers) {
-            if (subscribers.hasOwnProperty(publisher_id)) {
-                index = subscribers[publisher_id].indexOf(subscriber_id);
-                if (index !== -1) {
-                    log.info('Removing subscriber ', subscriber_id, 'to muxer ', publisher_id);
-
-                    var args = [subscriber_id, publisher_id];
-                    amqper.callRpc(getErizoQueue(publisher_id), 'removeSubscriber', args, undefined);
-
-                    // Remove tracks
-                    subscribers[publisher_id].splice(index, 1);
-                }
-            }
-        }
-    };
-
-    that.addToMixer = function addToMixer (publisher_id, mixer_id, callback) {
-        if (publishers[publisher_id] === undefined) {
-            return callback('error', 'stream not published');
-        }
-        amqper.callRpc(getErizoQueue(publisher_id), 'addToMixer', [publisher_id, mixer_id], {callback: callback});
-
-    };
-
-    that.removeFromMixer = function removeFromMixer (publisher_id, mixer_id, callback) {
-        if (publishers[publisher_id] === undefined) {
-            return callback('error', 'stream not published');
-        }
-        amqper.callRpc(getErizoQueue(publisher_id), 'removeFromMixer', [publisher_id, mixer_id], {callback: callback});
-    };
-
-    that.publisherNum = function () {
-        return Object.keys(publishers).length;
-    };
-
-    that.getRegion = function (mixer_id, publisher_id, callback) {
-        if (publishers[publisher_id] === undefined) {
-            return callback({
-                success: false,
-                text: 'stream not published'
+    that.unsubscribeAll = function (terminal_id) {
+        log.debug("unsubscribeAll for terminal:", terminal_id);
+        if (terminals[terminal_id]) {
+            Object.keys(terminals[terminal_id].subscribed).map(function (subscription_id) {
+                unsubscribeStream(terminal_id, subscription_id);
             });
         }
-        if (publishers[mixer_id] === undefined) {
-            return callback({
-                success: false,
-                text: 'mixer is not available'
-            });
+    };
+
+    that.mix = function (stream_id, on_ok, on_error) {
+        if (streams[stream_id]) {
+            mixStream(stream_id, on_ok, on_error);
+        } else {
+            on_error("Stream does not exist:"+stream_id);
         }
-        if (publisher_id === mixer_id) {
-            return callback({
-                success: false,
-                text: 'invalid publisher id'
-            });
+    };
+
+    that.unmix = function (stream_id, on_ok, on_error) {
+        if (streams[stream_id]) {
+            unmixStream(stream_id);
+            on_ok();
+        } else {
+            on_error("Stream does not exist:"+stream_id);
         }
-        var args = [mixer_id, publisher_id];
-        amqper.callRpc(getErizoQueue(mixer_id), 'getRegion', args, {callback: function (result) {
-            if (result) {
-                return callback({
-                    success: true,
-                    text: result
-                });
+    };
+
+    that.onConnectionSignalling = function (terminal_id, stream_id, msg) {
+        log.debug("onConnectionSignalling, terminal_id:", terminal_id, "stream_id:", stream_id/*, "msg:", msg*/);
+        if (terminals[terminal_id] && terminals[terminal_id].type === 'webrtc') {
+            //FIXME: It is better to pass connection_id instead of {terminal_id, stream_id} to Erizo
+            //var connection_id = streams[stream_id] ? stream_id : terminal_id+'-'+stream_id;
+            makeRPC(
+                amqper,
+                'ErizoJS_' + terminals[terminal_id].erizo,
+                "onConnectionSignalling",
+                [terminal_id, stream_id, msg]);
+        }
+    };
+
+    that.onTrackControl = function (terminal_id, stream_id, track, direction, action, on_ok, on_error) {
+        if (terminals[terminal_id] && terminals[terminal_id].type === 'webrtc') {
+            if ((direction === 'out' && (!streams[stream_id]
+                                         || (track === 'audio' && !streams[stream_id].audio)
+                                         || (track === 'video' && !streams[stream_id].video)))
+                || ((direction === 'in') && (!terminals[terminal_id].subscribed[terminal_id+'-'+stream_id]
+                                             || (track === 'audio' && !terminals[terminal_id].subscribed[terminal_id+'-'+stream_id].audio)
+                                             || (track === 'video' && !terminals[terminal_id].subscribed[terminal_id+'_'+stream_id].video)))) {
+
+                on_error("No such a(n) "+track+" track "+direction);
+            } else {
+                //FIXME: It is better to pass connection_id instead of {terminal_id, stream_id} to Erizo
+                //var connection_id = streams[stream_id] ? stream_id : terminal_id+'-'+stream_id;
+                makeRPC(
+                    amqper,
+                    'ErizoJS_' + terminals[terminal_id].erizo,
+                    "onTrackControl",
+                    [terminal_id, stream_id, track, direction, action],
+                    on_ok,
+                    on_error);
             }
-
-            callback({
-                success: false,
-                text: 'Cannot find the participant in the mixed video'
-            });
-        }});
-    };
-
-    that.setRegion = function (mixer_id, publisher_id, region_id, callback) {
-        if (publishers[publisher_id] === undefined) {
-            return callback('stream not published');
-        }
-        if (publishers[mixer_id] === undefined) {
-            return callback('mixer is not available');
-        }
-        if (mixer_id === publisher_id) {
-            return callback('invalid publisher id');
-        }
-        var args = [mixer_id, publisher_id, region_id];
-        amqper.callRpc(getErizoQueue(mixer_id), 'setRegion', args, {callback: callback});
-    };
-
-    that.setVideoBitrate = function (mixer_id, publisher_id, bitrate, callback) {
-        if (publishers[publisher_id] === undefined) {
-            return callback('stream not published');
-        }
-        if (publishers[mixer_id] === undefined) {
-            return callback('mixer is not available');
-        }
-        if (mixer_id === publisher_id) {
-            return callback('invalid publisher id');
-        }
-        var args = [mixer_id, publisher_id, bitrate];
-        amqper.callRpc(getErizoQueue(mixer_id), 'setVideoBitrate', args, {callback: callback});
-    };
-
-    that.addRTSPOut = function (mixer_id, callback) {
-        if (publishers[mixer_id] !== undefined) {
-            var args = [mixer_id, mixer_id, '', '', '', '', 0];
-            amqper.callRpc(getErizoQueue(mixer_id), 'addExternalOutput', args, {callback: function (result) {
-                callback(result);
-            }});
         } else {
-            callback('mixer not found');
+            on_error("Not support track control upon non-webrtc streams.");
         }
     };
 
-    that['audio-in-on'] = function (publisher_id, subscriber_id, callback) {
-        var index = subscribers[publisher_id].indexOf(subscriber_id);
-        if (index !== -1) {
-            log.info('Enabling [audio] subscriber', subscriber_id, 'in', publisher_id);
-            amqper.callRpc(getErizoQueue(publisher_id), 'subscribeStream', [publisher_id, subscriber_id, true], {callback: callback});
+    that.setVideoBitrate = function (stream_id, bitrate, on_ok, on_error) {
+        if (streams[stream_id] && terminals[streams[stream_id].owner] && terminals[streams[stream_id].owner].type === 'webrtc') {
+            //FIXME: It is better to pass connection_id instead of {terminal_id, stream_id} to Erizo
+            //var connection_id = streams[stream_id] ? stream_id : terminal_id+'-'+stream_id;
+            makeRPC(
+                amqper,
+                'ErizoJS_' + terminals[streams[stream_id].owner].erizo,
+                "setVideoBitrate",
+                [stream_id, bitrate]);
+            on_ok();
         } else {
-            callback('error');
+            on_error("Not support dynamically setting the publishing video bitrate upon non-webrtc streams.");
         }
     };
 
-    that['audio-in-off'] = function (publisher_id, subscriber_id, callback) {
-        var index = subscribers[publisher_id].indexOf(subscriber_id);
-        if (index !== -1) {
-            log.info('Disabling [audio] subscriber', subscriber_id, 'in', publisher_id);
-            amqper.callRpc(getErizoQueue(publisher_id), 'unsubscribeStream', [publisher_id, subscriber_id, true], {callback: callback});
-        } else {
-            callback('error');
+    that.getRegion = function (stream_id, on_ok, on_error) {
+        if (vmixer) {
+            makeRPC(
+                amqper,
+                'ErizoJS_' + terminals[vmixer].erizo,
+                "getRegion",
+                [stream_id],
+                on_ok,
+                on_error);
         }
     };
 
-    that['video-in-on'] = function (publisher_id, subscriber_id, callback) {
-        var index = subscribers[publisher_id].indexOf(subscriber_id);
-        if (index !== -1) {
-            log.info('Enabling [video] subscriber', subscriber_id, 'in', publisher_id);
-            amqper.callRpc(getErizoQueue(publisher_id), 'subscribeStream', [publisher_id, subscriber_id, false], {callback: callback});
-        } else {
-            callback('error');
+    that.setRegion = function (stream_id, region, on_ok, on_error) {
+        if (vmixer) {
+            makeRPC(
+                amqper,
+                'ErizoJS_' + terminals[vmixer].erizo,
+                "setRegion",
+                [stream_id, region],
+                on_ok,
+                on_error);
         }
     };
 
-    that['video-in-off'] = function (publisher_id, subscriber_id, callback) {
-        var index = subscribers[publisher_id].indexOf(subscriber_id);
-        if (index !== -1) {
-            log.info('Disabling [video] subscriber', subscriber_id, 'in', publisher_id);
-            amqper.callRpc(getErizoQueue(publisher_id), 'unsubscribeStream', [publisher_id, subscriber_id, false], {callback: callback});
-        } else {
-            callback('error');
-        }
-    };
-
-    that['audio-out-on'] = function (publisher_id, unused, callback) {
-        if (publishers[publisher_id] !== undefined) {
-            log.info('Enabling [audio] publisher', publisher_id);
-            amqper.callRpc(getErizoQueue(publisher_id), 'publishStream', [publisher_id, true], {callback: function (err) {
-                if (!err) {
-                    erizoController.handleEventReport('updateStream', roomId, {event: 'AudioEnabled', id: publisher_id, data: null});
-                }
-                callback(err);
-            }});
-        } else {
-            callback('error');
-        }
-    };
-
-    that['audio-out-off'] = function (publisher_id, unused, callback) {
-        if (publishers[publisher_id] !== undefined) {
-            log.info('Disabling [audio] publisher', publisher_id);
-            amqper.callRpc(getErizoQueue(publisher_id), 'unpublishStream', [publisher_id, true], {callback: function (err) {
-                if (!err) {
-                    erizoController.handleEventReport('updateStream', roomId, {event: 'AudioDisabled', id: publisher_id, data: null});
-                }
-                callback(err);
-            }});
-        } else {
-            callback('error');
-        }
-    };
-
-    that['video-out-on'] = function (publisher_id, unused, callback) {
-        if (publishers[publisher_id] !== undefined) {
-            log.info('Enabling [video] publisher', publisher_id);
-            amqper.callRpc(getErizoQueue(publisher_id), 'publishStream', [publisher_id, false], {callback: function (err) {
-                if (!err) {
-                    erizoController.handleEventReport('updateStream', roomId, {event: 'VideoEnabled', id: publisher_id, data: null});
-                }
-                callback(err);
-            }});
-        } else {
-            callback('error');
-        }
-    };
-
-    that['video-out-off'] = function (publisher_id, unused, callback) {
-        if (publishers[publisher_id] !== undefined) {
-            log.info('Disabling [video] publisher', publisher_id);
-            amqper.callRpc(getErizoQueue(publisher_id), 'unpublishStream', [publisher_id, false], {callback: function (err) {
-                if (!err) {
-                    erizoController.handleEventReport('updateStream', roomId, {event: 'VideoDisabled', id: publisher_id, data: null});
-                }
-                callback(err);
-            }});
-        } else {
-            callback('error');
-        }
-    };
-
-    return that;
+    return initialize();
 };

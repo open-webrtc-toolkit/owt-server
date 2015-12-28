@@ -110,7 +110,7 @@ case $startStop in
         echo $! > ${pid}
         sleep 5
         ;;
-      mcu )
+      portal )
         export PATH=${PATH}:${WOOGEEN_HOME}/sbin
         export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${WOOGEEN_HOME}/lib
         export LOG4CXX_CONFIGURATION=${WOOGEEN_HOME}/etc/mcu/log4cxx.properties
@@ -119,12 +119,48 @@ case $startStop in
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
-      agent )
+      webrtc-agent )
         export PATH=${PATH}:${WOOGEEN_HOME}/sbin
         export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${WOOGEEN_HOME}/lib
         export LOG4CXX_CONFIGURATION=${WOOGEEN_HOME}/etc/mcu/log4cxx.properties
         cd ${WOOGEEN_HOME}/mcu/erizoAgent
-        nohup nice -n ${WOOGEEN_NICENESS} node erizoAgent.js \
+        nohup nice -n ${WOOGEEN_NICENESS} node erizoAgent.js -U webrtc\
+          > "${stdout}" 2>&1 </dev/null &
+        echo $! > ${pid}
+        ;;
+      rtsp-agent )
+        export PATH=${PATH}:${WOOGEEN_HOME}/sbin
+        export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${WOOGEEN_HOME}/lib
+        export LOG4CXX_CONFIGURATION=${WOOGEEN_HOME}/etc/mcu/log4cxx.properties
+        cd ${WOOGEEN_HOME}/mcu/erizoAgent
+        nohup nice -n ${WOOGEEN_NICENESS} node erizoAgent.js -U rtsp\
+          > "${stdout}" 2>&1 </dev/null &
+        echo $! > ${pid}
+        ;;
+      recording-agent )
+        export PATH=${PATH}:${WOOGEEN_HOME}/sbin
+        export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${WOOGEEN_HOME}/lib
+        export LOG4CXX_CONFIGURATION=${WOOGEEN_HOME}/etc/mcu/log4cxx.properties
+        cd ${WOOGEEN_HOME}/mcu/erizoAgent
+        nohup nice -n ${WOOGEEN_NICENESS} node erizoAgent.js -U file\
+          > "${stdout}" 2>&1 </dev/null &
+        echo $! > ${pid}
+        ;;
+      audio-agent )
+        export PATH=${PATH}:${WOOGEEN_HOME}/sbin
+        export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${WOOGEEN_HOME}/lib
+        export LOG4CXX_CONFIGURATION=${WOOGEEN_HOME}/etc/mcu/log4cxx.properties
+        cd ${WOOGEEN_HOME}/mcu/erizoAgent
+        nohup nice -n ${WOOGEEN_NICENESS} node erizoAgent.js -U audio\
+          > "${stdout}" 2>&1 </dev/null &
+        echo $! > ${pid}
+        ;;
+      video-agent )
+        export PATH=${PATH}:${WOOGEEN_HOME}/sbin
+        export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${WOOGEEN_HOME}/lib
+        export LOG4CXX_CONFIGURATION=${WOOGEEN_HOME}/etc/mcu/log4cxx.properties
+        cd ${WOOGEEN_HOME}/mcu/erizoAgent
+        nohup nice -n ${WOOGEEN_NICENESS} node erizoAgent.js -U video\
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;

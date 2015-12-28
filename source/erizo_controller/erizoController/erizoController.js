@@ -145,7 +145,7 @@ var eventReportHandlers = {
 
         var streamId = spec.id;
         log.info('Unpublishing stream:', streamId);
-        room.controller.removePublisher(streamId);
+        room.controller.unpublish(streamId);
 
         room.sockets.map(function (socket) {
             var index = socket.streams.indexOf(streamId);
@@ -167,26 +167,22 @@ var eventReportHandlers = {
         }
 
         var recorderId = spec.id;
-        room.controller.removeExternalOutput(recorderId, true, function (result) {
-            if (result.success) {
-                for (var i in room.streams) {
-                    if (room.streams.hasOwnProperty(i)) {
-                        if (room.streams[i].getVideoRecorder() === recorderId+'') {
-                            room.streams[i].setVideoRecorder('');
-                        }
+        room.controller.unsubscribe(room.id, recorderId);
 
-                        if (room.streams[i].getAudioRecorder() === recorderId+'') {
-                            room.streams[i].setAudioRecorder('');
-                        }
-                    }
+        log.info('Recorder has been deleted since', spec.message);
+
+        sendMsgToRoom(room, 'remove_recorder', {id: recorderId});
+        for (var i in room.streams) {
+            if (room.streams.hasOwnProperty(i)) {
+                if (room.streams[i].getVideoRecorder() === recorderId+'') {
+                    room.streams[i].setVideoRecorder('');
                 }
 
-                log.info('Recorder has been deleted since', spec.message);
-                sendMsgToRoom(room, 'remove_recorder', {id: recorderId});
-            } else {
-                log.warn('Failed to delete recorder because', result.text);
+                if (room.streams[i].getAudioRecorder() === recorderId+'') {
+                    room.streams[i].setAudioRecorder('');
+                }
             }
-        });
+        }
     }
 };
 
@@ -240,8 +236,6 @@ var addToCloudHandler = function (callback) {
             }
         }
     }
-
-    privateRegexp = new RegExp(addresses[0], 'g');
 
     if (GLOBAL.config.erizoController.publicIP === '' || GLOBAL.config.erizoController.publicIP === undefined){
         publicIP = addresses[0];
@@ -383,86 +377,6 @@ function safeCall () {
     }
 }
 
-var VideoResolutionMap = { // definition adopted from VideoLayout.h
-    'cif':      [{width: 352, height: 288}],
-    'vga':      [{width: 640, height: 480}, {width: 320, height: 240}],
-    'svga':     [{width: 800, height: 600}, {width: 320, height: 240}],
-    'xga':      [{width: 1024, height: 768}, {width: 320, height: 240}],
-    'hd720p':   [{width: 1280, height: 720}, {width: 640, height: 480}, {width: 640, height: 360}],
-    'sif':      [{width: 320, height: 240}],
-    'hvga':     [{width: 480, height: 320}],
-    'r480x360': [{width: 480, height: 360}, {width: 320, height: 240}],
-    'qcif':     [{width: 176, height: 144}],
-    'r192x144': [{width: 192, height: 144}],
-    'hd1080p':  [{width: 1920, height: 1080}, {width: 1280, height: 720}, {width: 800, height: 600}, {width: 640, height: 480}, {width: 640, height: 360}],
-    'uhd_4k':   [{width: 3840, height: 2160}, {width: 1920, height: 1080}, {width: 1280, height: 720}, {width: 800, height: 600}, {width: 640, height: 480}, {width: 640, height: 360}]
-};
-
-function calculateResolutions(rootResolution, useMultistreaming) {
-    var base = VideoResolutionMap[rootResolution.toLowerCase()];
-    if (!base) return [];
-    if (!useMultistreaming) return [base[0]];
-    return base.map(function (r) {
-        return r;
-    });
-}
-
-var initMixer = function (room, roomConfig, immediately) {
-    if (roomConfig.enableMixing && room.mixer === undefined && room.initMixerTimer === undefined) {
-        var id = room.id;
-        room.enableMixing = true;
-        var resolutions = calculateResolutions(roomConfig.mediaMixing.video.resolution, roomConfig.mediaMixing.video.multistreaming);
-        if (immediately) {
-            room.controller.initMixer(id, roomConfig.mediaMixing, function (result) {
-                // TODO: Better to utilize 'result' to retrieve information from mixer to create the mix-stream.
-                if (result === 'success') {
-                    var st = new ST.Stream({id: id, socket: '', audio: true, video: {device: 'mcu', resolutions: resolutions}, from: '', attributes: null});
-                    room.streams[id] = st;
-                    room.mixer = id;
-                    sendMsgToRoom(room, 'add_stream', st.getPublicStream());
-                    if (room.config && room.config.publishLimit > 0) {
-                        room.config.publishLimit++;
-                    }
-                }
-            });
-        }
-        // In case we need to do an RPC call to initialize the mixer when the first
-        // client is connected, we may need to wait for a while because the room may
-        // still be dirty at this moment (due to the fact that there's currently no
-        // inter process synchronization for room deletion). This could happen when
-        // the last user in the room refreshes the web page.
-        // TODO: Revisit here for a better solution.
-        var tryOut = 10;
-        room.initMixerTimer = setInterval(function() {
-            if (room.mixer !== undefined) {
-                log.info('Mixer already existed in Room ', room.id);
-                clearInterval(room.initMixerTimer);
-                room.initMixerTimer = undefined;
-                return;
-            }
-
-            room.controller.initMixer(id, roomConfig.mediaMixing, function (result) {
-                // TODO: Better to utilize 'result' to retrieve information from mixer to create the mix-stream.
-                if (result === 'success') {
-                    var st = new ST.Stream({id: id, socket: '', audio: true, video: {device: 'mcu', resolutions: resolutions}, from: '', attributes: null});
-                    room.streams[id] = st;
-                    room.mixer = id;
-                    sendMsgToRoom(room, 'add_stream', st.getPublicStream());
-                    clearInterval(room.initMixerTimer);
-                    room.initMixerTimer = undefined;
-                    if (room.config && room.config.publishLimit > 0) {
-                        room.config.publishLimit++;
-                    }
-                } else if (--tryOut === 0) {
-                    log.info('Mixer initialization failed in Room ', room.id);
-                    clearInterval(room.initMixerTimer);
-                    room.initMixerTimer = undefined;
-                }
-            });
-        }, 100);
-    }
-};
-
 var listen = function () {
     log.info('server on');
 
@@ -487,7 +401,6 @@ var listen = function () {
             var tokenDB, user, streamList = [], index;
 
             if (checkSignature(token)) {
-
                 amqper.callRpc('nuve', 'deleteToken', token.tokenId, {callback: function (resp) {
                     if (resp === 'error') {
                         log.info('Token does not exist');
@@ -589,74 +502,36 @@ var listen = function () {
                                                 delete rooms[roomID];
                                                 return on_error();
                                             }
-                                            amqper.callRpc('nuve', 'allocErizoAgent', room.id, {callback: function (erizoAgent) {
-                                                if (erizoAgent === 'error') {
-                                                    log.error('Alloc ErizoAgent error.');
-                                                    delete rooms[roomID];
-                                                    on_error();
-                                                } else if (erizoAgent === 'timeout') {
-                                                    log.error('Alloc ErizoAgent timeout.');
-                                                    delete rooms[roomID];
-                                                    on_error();
-                                                } else {
-                                                    room.agent = erizoAgent.id;
-                                                    room.controller = controller.RoomController({amqper: amqper, agent_id: erizoAgent.id, id: room.id});
-                                                    room.controller.addEventListener(function(type, event) {
-                                                        // TODO Send message to room? Handle ErizoJS disconnection.
-                                                        if (type === 'unpublish') {
-                                                            var streamId = event;
-                                                            log.info('ErizoJS stopped', streamId);
-                                                            room.controller.removePublisher(streamId);
-
-                                                            for (var s in room.sockets) {
-                                                                var streams = io.sockets.to(room.sockets[s]).streams;
-                                                                var index = streams instanceof Array ? streams.indexOf(streamId) : -1;
-                                                                if (index !== -1) {
-                                                                    streams.splice(index, 1);
-                                                                }
-                                                            }
-
-                                                            if (room.streams[streamId]) {
-                                                                sendMsgToRoom(room, 'remove_stream', {id: streamId});
-                                                                delete room.streams[streamId];
-                                                            }
-
-                                                            if (room.mixer !== undefined && room.mixer === streamId) {
-                                                                room.mixer = undefined;
-                                                                // Re-initialize the mixer in the room.
-                                                                // Don't do it immediately because we want to wait for 
-                                                                // the original mixer being cleaned-up.
-                                                                initMixer(room, resp, false);
-                                                            }
-                                                        }
-
-                                                    });
-
-                                                    initMixer(room, resp, true);
+                                            room.controller = controller.RoomController(
+                                                {amqper: amqper, room:roomID, config: resp}, 
+                                                function (resolutions) {
                                                     on_ok();
-                                                }
-                                            }});
+                                                    if (resp.enableMixing) {
+                                                        //var st = new ST.Stream({id: roomID, socket: '', audio: true, video: {category: 'mix'}, data: true, from: ''});
+                                                        var st = new ST.Stream({id: roomID, socket: '', audio: true, video: {device: 'mcu', resolutions: resolutions}, from: '', attributes: null});
+                                                        room.streams[roomID] = st;
+                                                        room.mixer = roomID;
+                                                        sendMsgToRoom(room, 'add_stream', st.getPublicStream());
+                                                        if (room.config && room.config.publishLimit > 0) {
+                                                            room.config.publishLimit++;
+                                                        }
+                                                    } else {
+                                                        on_ok();
+                                                    }
+                                                },
+                                                function (reason) {
+                                                    log.error('RoomController init failed.', reason);
+                                                    delete rooms[roomID];
+                                                    on_error();
+                                                });
                                         }
                                     }});
                                 }
                             };
 
-                            var checkRoomReady = function(room, num) {
-                                setTimeout(function () {
-                                    if (room.enableMixing && room.mixer === undefined && num > 0) {
-                                        if (num === 1) {
-                                            log.warn('room initialzation is not ready before room connection return.');
-                                        }
-                                        checkRoomReady(room, num-1);
-                                    } else {
-                                        updateMyState();
-                                        validateTokenOK();
-                                    }
-                                }, 100);
-                            };
-
                             initRoom(tokenDB.room, function () {
-                                checkRoomReady(rooms[tokenDB.room], 10);
+                                updateMyState();
+                                validateTokenOK();
                             }, function () {
                                 log.warn('initRoom failed.');
                                 safeCall(callback, 'error', 'initRoom failed.');
@@ -695,19 +570,24 @@ var listen = function () {
                 if (typeof msg.payload === 'object' && msg.payload !== null) {
                     var action = msg.payload.action;
                     if (/^((audio)|(video))-((in)|(out))-((on)|(off))$/.test(action)) {
-                        var streamId = msg.payload.streamId + '';
-                        action = socket.room.controller[action];
-                        if (typeof action === 'function') {
-                            action(streamId, socket.id, function (err) {
-                                if (typeof callback === 'function') callback(err||'success');
-                            });
-                        } else {
-                            if (typeof callback === 'function') callback('not implemented');
-                        }
-                        return;
+                        var cmdOpts = action.split('-'),
+                            streamId = msg.payload.streamId + '';
+                        socket.room.controller.onTrackControl(
+                            socket.id,
+                            streamId,
+                            cmdOpts[0],
+                            cmdOpts[1],
+                            cmdOpts[2],
+                            function () {
+                                safeCall(callback, 'success');
+                            }, function (error_reason) {
+                                safeCall(callback, 'error', error_reason);
+                            }
+                        );
                     }
+                } else {
+                    safeCall(callback, 'error', "Invalid control message.");
                 }
-                if (typeof callback === 'function') callback('error');
                 break;
             case 'data':
                 if (socket.user === undefined || !socket.user.permissions[Permission.PUBLISH]) {
@@ -776,9 +656,10 @@ var listen = function () {
             if (socket.room.p2p) {
                 return safeCall(callback, 'error', 'p2p room does not support this action');
             }
-            socket.room.controller.addToMixer(streamId, socket.room.mixer, function (err) {
-                if (err) return safeCall(callback, 'error', err);
-                safeCall(callback, 'success');
+            socket.room.controller.mix(streamId, function () {
+                return safeCall(callback, 'success');
+            }, function (err) {
+                return safeCall(callback, 'error', err);
             });
         });
 
@@ -797,9 +678,10 @@ var listen = function () {
             if (socket.room.p2p) {
                 return safeCall(callback, 'error', 'p2p room does not support this action');
             }
-            socket.room.controller.removeFromMixer(streamId, socket.room.mixer, function (err) {
-                if (err) return safeCall(callback, 'error', err);
-                safeCall(callback, 'success');
+            socket.room.controller.unmix(streamId, function () {
+                return safeCall(callback, 'success');
+            }, function (err) {
+                return safeCall(callback, 'error', err);
             });
         });
 
@@ -807,7 +689,7 @@ var listen = function () {
             if (socket.room.p2p) {
                 io.sockets.to(msg.peerSocket).emit('signaling_message_peer', {streamId: msg.streamId, peerSocket: socket.id, msg: msg.msg});
             } else {
-                socket.room.controller.processSignaling(msg.streamId, socket.id, msg.msg);
+                socket.room.controller.onConnectionSignalling(socket.id, msg.streamId, msg.msg);
             }
         });
 
@@ -842,7 +724,8 @@ var listen = function () {
             }
             if (options.state === 'url' || options.state === 'recording') {
                 id = socket.id;
-                var url = sdp;
+                var url = sdp,
+                    stream_type = 'rtsp';
                 if (options.state === 'recording') {
                     var recordingId = sdp;
                     if (GLOBAL.config.erizoController.recording_path) {
@@ -850,38 +733,43 @@ var listen = function () {
                     } else {
                         url = '/tmp/' + recordingId + '.mkv';
                     }
+                    stream_type = 'file';
                 }
                 if (!options.audio && !options.video) {
                     return safeCall(callback, 'error', 'no media input is specified to publish');
                 }
 
-                socket.room.controller.addExternalInput(id, {
-                    url: url,
-                    audio: options.audio,
-                    video: options.video,
-                    unmix: options.unmix,
-                    transport: options.transport,
-                    buffer_size: options.bufferSize
-                }, socket.room.mixer, function (result) {
-                    if (result !== 'success') {
-                        safeCall(callback, result); // TODO: ensure `callback' is accurately invoked once and only once.
-                    }
-                }, function () {
-                    // Double check if this socket is still in the room.
-                    // It can be removed from the room if the socket is disconnected
-                    // before the publish succeeds.
-                    var index = socket.room.sockets.indexOf(socket);
-                    if (index === -1) {
-                        socket.room.controller.removePublisher(id);
-                        return;
-                    }
+                socket.room.controller.publish(
+                    socket.id,
+                    id,
+                    stream_type,
+                    {url: url,
+                     has_audio: options.audio,
+                     has_video: options.video,
+                     transport: options.transport,
+                     buffer_size: options.bufferSize},
+                    socket.room.enableMixing && !options.unmix,
+                    function (response) {
+                        if (response.type === 'ready') {
+                            // Double check if this socket is still in the room.
+                            // It can be removed from the room if the socket is disconnected
+                            // before the publish succeeds.
+                            var index = socket.room.sockets.indexOf(socket);
+                            if (index === -1) {
+                                socket.room.controller.unpublish(id);
+                                return;
+                            }
 
-                    st = new ST.Stream({id: id, socket: socket.id, audio: options.audio, video: options.video, attributes: options.attributes, from: url});
-                    socket.streams.push(id);
-                    socket.room.streams[id] = st;
-                    sendMsgToRoom(socket.room, 'add_stream', st.getPublicStream());
-                    safeCall(callback, 'success', id);
-                });
+                            st = new ST.Stream({id: id, socket: socket.id, audio: options.audio, video: options.video, attributes: options.attributes, from: url});
+                            socket.streams.push(id);
+                            socket.room.streams[id] = st;
+                            sendMsgToRoom(socket.room, 'add_stream', st.getPublicStream());
+                            safeCall(callback, 'success', id);
+                        } else {
+                            safeCall(callback, response);
+                        }
+                    }
+                );
             } else if (options.state === 'erizo') {
                 log.info('New publisher');
                 id = socket.id;
@@ -910,43 +798,61 @@ var listen = function () {
                     amqper.broadcast('event', [{room: socket.room.id, user: socket.id, name: socket.user.name, type: 'publish', stream: id, timestamp: timeStamp.getTime()}]);
                 }
 
-                socket.room.controller.addPublisher(id, mixer, unmix, function (signMess, errText) {
-                    if (typeof signMess !== 'object' || signMess === null) {
-                        return safeCall(callback, 'error', 'unexpected error');
-                    }
-                    switch (signMess.type) {
-                    case 'initializing':
-                        safeCall(callback, 'initializing', id);
-                        st = new ST.Stream({id: id, audio: options.audio, video: options.video, attributes: options.attributes, from: socket.id});
-                        return;
-                    case 'failed': // If the connection failed we remove the stream
-                        log.info('IceConnection Failed on publisher, removing', id);
-                        socket.emit('connection_failed', {});
-                        socket.state = 'sleeping';
-                        if (!socket.room.p2p) {
-                            socket.room.controller.removePublisher(id);
-                            if (GLOBAL.config.erizoController.report.session_events) {
-                                var timeStamp = new Date();
-                                amqper.broadcast('event', {room: socket.room.id, user: socket.id, type: 'failed', stream: id, sdp: signMess.sdp, timestamp: timeStamp.getTime()});
+                socket.room.controller.publish(
+                    socket.id,
+                    id,
+                    'webrtc',
+                    {has_audio: options.audio, has_video: options.video},
+                    !unmix,
+                    function (signMess) {
+                        if (typeof signMess !== 'object' || signMess === null) {
+                            safeCall(callback, 'error', 'unexpected error');
+                            return;
+                        }
+                        switch (signMess.type) {
+                        case 'initializing':
+                            safeCall(callback, 'initializing', id);
+                            st = new ST.Stream({id: id, audio: options.audio, video: options.video, attributes: options.attributes, from: socket.id});
+                            return;
+                        case 'failed': // If the connection failed we remove the stream
+                            log.info(signMess.reason, "removing " , id);
+                            socket.emit('connection_failed',{});
+
+                            socket.state = 'sleeping';
+                            if (!socket.room.p2p) {
+                                socket.room.controller.unpublish(id);
+                                if (GLOBAL.config.erizoController.report.session_events) {
+                                    var timeStamp = new Date();
+                                    amqper.broadcast('event', {room: socket.room.id, user: socket.id, type: 'failed', stream: id, sdp: signMess.sdp, timestamp: timeStamp.getTime()});
+                                }
                             }
-                        }
 
-                        var index = socket.streams.indexOf(id);
-                        if (index !== -1) {
-                            socket.streams.splice(index, 1);
+                            var index = socket.streams.indexOf(id);
+                            if (index !== -1) {
+                                socket.streams.splice(index, 1);
+                            }
+                            safeCall(callback, 'error', signMess.reason);
+                            return;
+<<<<<<< HEAD
+                        case 'ready':
+                            // Double check if this socket is still in the room.
+                            // It can be removed from the room if the socket is disconnected
+                            // before the publish succeeds.
+                            var index = socket.room.sockets.indexOf(socket);
+                            if (index === -1) {
+                                socket.room.controller.unpublish(id);
+                                return;
+                            }
+
+                            socket.room.streams[id] = st;
+                            sendMsgToRoom(socket.room, 'add_stream', st.getPublicStream());
+                            break;
+                        default:
+                            break;
                         }
-                        return;
-                    case 'ready':
-                        socket.room.streams[id] = st;
-                        sendMsgToRoom(socket.room, 'add_stream', st.getPublicStream());
-                        break;
-                    case 'timeout':
-                    case 'error':
-                        return safeCall(callback, 'error', errText);
+                        socket.emit('signaling_message_erizo', {mess: signMess, streamId: id});
                     }
-                    socket.emit('signaling_message_erizo', {mess: signMess, streamId: id});
-                });
-
+                );
                 socket.streams.push(id);
             } else {
                 id = Math.random() * 1000000000000000000;
@@ -997,24 +903,33 @@ var listen = function () {
                             options.video = true;
                         }
                     }
-                    socket.room.controller.addSubscriber(socket.id, options.streamId, options, function (signMess, errText) {
-                        if (typeof signMess !== 'object' || signMess === null) {
-                            return safeCall(callback, 'error', 'unexpected error');
+                    socket.room.controller.subscribe(
+                        socket.id,
+                        'webrtc',
+                        options.streamId,
+                        {require_audio: !!options.audio, require_video: !!options.video, video_resolution: (options.video && options.video.resolution) ? options.video.resolution : undefined},
+                        function (signMess) {
+                            if (typeof signMess !== 'object' || signMess === null) {
+                                safeCall(callback, 'error', 'unexpected error');
+                                return;
+                            }
+                            switch (signMess.type) {
+                            case 'initializing':
+                                log.info('Initializing subscriber');
+                                safeCall(callback, 'initializing');
+                                return;
+                            case 'candidate':
+                                // signMess.candidate = signMess.candidate.replace(privateRegexp, publicIP);
+                                break;
+                            case 'failed':
+                                safeCall(callback, 'error', signMess.reason);
+                                return;
+                            default:
+                                break;
+                            }
+                            socket.emit('signaling_message_erizo', {mess: signMess, peerId: options.streamId});
                         }
-                        switch (signMess.type) {
-                        case 'initializing':
-                            log.info('Initializing subscriber');
-                            safeCall(callback, 'initializing');
-                            return;
-                        case 'candidate':
-                            // signMess.candidate = signMess.candidate.replace(privateRegexp, publicIP);
-                            break;
-                        case 'timeout':
-                        case 'error':
-                            return safeCall(callback, 'error', errText);
-                        }
-                        socket.emit('signaling_message_erizo', {mess: signMess, peerId: options.streamId});
-                    });
+                    );
                     log.info('Subscriber added');
                     // safeCall(callback, '');
                 }
@@ -1077,52 +992,58 @@ var listen = function () {
             }
 
             // Make sure the recording context clean for this 'startRecorder'
-            socket.room.controller.removeExternalOutput(recorderId, false, function (result) {
-                if (result.success) {
-                    var isContinuous = false;
-                    for (var i in socket.room.streams) {
-                        if (socket.room.streams.hasOwnProperty(i)) {
-                            if (socket.room.streams[i].getVideoRecorder() === recorderId+'') {
-                                socket.room.streams[i].setVideoRecorder('');
-                                isContinuous = true;
-                            }
-
-                            if (socket.room.streams[i].getAudioRecorder() === recorderId+'') {
-                                socket.room.streams[i].setAudioRecorder('');
-                                isContinuous = true;
-                            }
-                        }
+            socket.room.controller.unsubscribe(socket.room.id, recorderId);
+            var isContinuous = false;
+            for (var i in socket.room.streams) {
+                if (socket.room.streams.hasOwnProperty(i)) {
+                    if (socket.room.streams[i].getVideoRecorder() === recorderId+'') {
+                        socket.room.streams[i].setVideoRecorder('');
+                        isContinuous = true;
                     }
 
-                    log.info('Recorder context cleaned: ', result.text);
-
-                    // Start the recorder
-                    socket.room.controller.addExternalOutput(videoStreamId, audioStreamId, preferredVideoCodec, preferredAudioCodec, recorderId, socket.room.mixer, url, interval, function (result) {
-                        if (result.success) {
-                            videoStream.setVideoRecorder(recorderId);
-                            audioStream.setAudioRecorder(recorderId);
-
-                            log.info('Media recording to ', url);
-
-                            if (isContinuous) {
-                                sendMsgToRoom(socket.room, 'reuse_recorder', {id: recorderId});
-                            } else {
-                                sendMsgToRoom(socket.room, 'add_recorder', {id: recorderId});
-                            }
-
-                            safeCall(callback, 'success', {
-                                recorderId : recorderId,
-                                host: publicIP,
-                                path: url
-                            });
-                        } else {
-                            safeCall(callback, 'error', 'Error in start recording: ' + result.text);
-                        }
-                    });
-                } else {
-                    safeCall(callback, 'error', 'Error during cleaning recording: ' + result.text);
+                    if (socket.room.streams[i].getAudioRecorder() === recorderId+'') {
+                        socket.room.streams[i].setAudioRecorder('');
+                        isContinuous = true;
+                    }
                 }
-            });
+            }
+
+            socket.room.controller.subscribeSelectively(
+                socket.room.id,
+                recorderId,
+                'file',
+                audioStreamId,
+                videoStreamId,
+                {require_audio: !!options.audioStreamId,
+                 audio_codec: preferredAudioCodec,
+                 require_video: !!options.videoStreamId,
+                 video_codec: preferredVideoCodec,
+                 interval: interval,
+                 observer: 'erizoController_' + myId,
+                 room_id: socket.room.id},
+                function (response) {
+                    if (response.type === 'ready') {
+                        videoStream.setVideoRecorder(recorderId);
+                        audioStream.setAudioRecorder(recorderId);
+
+                        log.info('Media recording to ', url);
+
+                        if (isContinuous) {
+                            sendMsgToRoom(socket.room, 'reuse_recorder', {id: recorderId});
+                        } else {
+                            sendMsgToRoom(socket.room, 'add_recorder', {id: recorderId});
+                        }
+
+                        safeCall(callback, 'success', {
+                            recorderId : recorderId,
+                            host: publicIP,
+                            path: url
+                        });
+                    } else if (response.type === 'failed') {
+                        safeCall(callback, 'error', response.reason);
+                    }
+                }
+            );
         });
 
         //Gets 'stopRecorder' messages
@@ -1140,31 +1061,27 @@ var listen = function () {
 
             // Stop recorder
             if (options.recorderId) {
-                socket.room.controller.removeExternalOutput(options.recorderId, true, function (result) {
-                    if (result.success) {
-                        for (var i in socket.room.streams) {
-                            if (socket.room.streams.hasOwnProperty(i)) {
-                                if (socket.room.streams[i].getVideoRecorder() === options.recorderId+'') {
-                                    socket.room.streams[i].setVideoRecorder('');
-                                }
-
-                                if (socket.room.streams[i].getAudioRecorder() === options.recorderId+'') {
-                                    socket.room.streams[i].setAudioRecorder('');
-                                }
-                            }
+                socket.room.controller.unsubscribe(socket.room.id, options.recorderId);
+                for (var i in socket.room.streams) {
+                    if (socket.room.streams.hasOwnProperty(i)) {
+                        if (socket.room.streams[i].getVideoRecorder() === options.recorderId+'') {
+                            socket.room.streams[i].setVideoRecorder('');
                         }
 
-                        log.info('Recorder stopped: ', result.text);
-                        sendMsgToRoom(socket.room, 'remove_recorder', {id: options.recorderId});
-
-                        safeCall(callback, 'success', {
-                            host: publicIP,
-                            recorderId: result.text
-                        });
-                    } else {
-                        safeCall(callback, 'error', 'Error in stop recording: ' + result.text);
+                        if (socket.room.streams[i].getAudioRecorder() === options.recorderId+'') {
+                            socket.room.streams[i].setAudioRecorder('');
+                        }
                     }
-                });
+                }
+
+                log.info('Recorder stopped: ', result.text);
+
+                sendMsgToRoom(socket.room, 'remove_recorder', {id: options.recorderId});
+
+                safeCall(callback, 'success', {
+                            host: publicIP,
+                            recorderId: options.recorderId
+                        });
             } else {
                 safeCall(callback, 'error', 'No recorder to stop.');
             }
@@ -1179,15 +1096,11 @@ var listen = function () {
             }
 
             if (options.id && socket.room.mixer) {
-                socket.room.controller.getRegion(socket.room.mixer, options.id, function (result) {
-                    if (result.success) {
-                        log.info('Region for ', options.id, ': ', result.text);
-                        safeCall(callback, 'success', {
-                            region: result.text
-                        });
-                    } else {
-                        safeCall(callback, 'error', 'Error in getRegion: ' + result.text);
-                    }
+                socket.room.controller.getRegion(options.id, function (region) {
+                    log.info('Region for ', options.id, ': ', result.text);
+                    safeCall(callback, 'success', {region: region});
+                },function (error_reason) {
+                    safeCall(callback, 'error', 'Error in getRegion: ' + error_reason);
                 });
             } else {
                 safeCall(callback, 'error', 'Invalid participant id or mixer not available.');
@@ -1203,9 +1116,10 @@ var listen = function () {
             }
 
             if (options.id && options.region && socket.room.mixer) {
-                socket.room.controller.setRegion(socket.room.mixer, options.id, options.region, function (err) {
-                    if (err) return safeCall(callback, 'error', err);
+                socket.room.controller.setRegion(options.id, options.region, function () {
                     safeCall(callback, 'success');
+                },function (error_reason) {
+                    safeCall(callback, 'error', error_reason);
                 });
             } else {
                 safeCall(callback, 'error', 'Invalid participant/region id or mixer not available.');
@@ -1223,9 +1137,10 @@ var listen = function () {
             // TODO: Currently setVideoBitrate only works when the mixer is available.
             // We need to add the support in pure forwarding mode later.
             if (options.id && options.bitrate && socket.room.mixer) {
-                socket.room.controller.setVideoBitrate(socket.room.mixer, options.id, options.bitrate, function (err) {
-                    if (err) return safeCall(callback, 'error', err);
+                socket.room.controller.setVideoBitrate(options.id, options.bitrate, function () {
                     safeCall(callback, 'success');
+                }, function (error_reason) {
+                    safeCall(callback, 'error', error_reason);
                 });
             } else {
                 safeCall(callback, 'error', 'Invalid participant id/bitrate or mixer not available.');
@@ -1246,7 +1161,7 @@ var listen = function () {
 
             socket.state = 'sleeping';
             if (!socket.room.p2p) {
-                socket.room.controller.removePublisher(streamId);
+                socket.room.controller.unpublish(streamId);
                 if (GLOBAL.config.erizoController.report.session_events) {
                     var timeStamp = new Date();
                     amqper.broadcast('event', {room: socket.room.id, user: socket.id, type: 'unpublish', stream: streamId, timestamp: timeStamp.getTime()});
@@ -1274,7 +1189,7 @@ var listen = function () {
 
             if (socket.room.streams[to].hasAudio() || socket.room.streams[to].hasVideo()) {
                 if (!socket.room.p2p) {
-                    socket.room.controller.removeSubscriber(socket.id, to);
+                    socket.room.controller.unsubscribe(socket.id, to);
                     if (GLOBAL.config.erizoController.report.session_events) {
                         var timeStamp = new Date();
                         amqper.broadcast('event', {room: socket.room.id, user: socket.id, type: 'unsubscribe', stream: to, timestamp:timeStamp.getTime()});
@@ -1304,14 +1219,14 @@ var listen = function () {
                 }
 
                 if (socket.room.controller) {
-                    socket.room.controller.removeSubscriptions(socket.id);
+                    socket.room.controller.unsubscribeAll(socket.id);
                 }
 
                 for (i in socket.streams) {
                     if (socket.streams.hasOwnProperty(i)) {
                         id = socket.streams[i];
                         if (!socket.room.p2p) {
-                            socket.room.controller.removePublisher(id);
+                            socket.room.controller.unpublish(id);
                             if (GLOBAL.config.erizoController.report.session_events) {
                                 amqper.broadcast('event', {room: socket.room.id, user: socket.id, type: 'unpublish', stream: id, timestamp: (new Date()).getTime()});
                             }
@@ -1332,25 +1247,15 @@ var listen = function () {
             if (socket.room !== undefined && socket.room.sockets.length === 0) {
                 log.info('Empty room ', socket.room.id, '. Deleting it');
                 if (!socket.room.p2p) {
-                    if (socket.room.initMixerTimer !== undefined) {
-                        clearInterval(socket.room.initMixerTimer);
-                        socket.room.initMixerTimer = undefined;
+                    if (socket.room.mixer !== undefined) {
+                        if (socket.room.controller && typeof socket.room.controller.destroy === 'function') {
+                            socket.room.controller.destroy();
+                        }
+                        if (socket.room.streams[socket.room.mixer]) {
+                            delete socket.room.streams[socket.room.mixer];
+                        }
+                        socket.room.mixer = undefined;
                     }
-
-                    if (socket.room.mixer === undefined) {
-                        return;
-                    }
-
-                    if (socket.room.controller && typeof socket.room.controller.removePublisher === 'function') {
-                        socket.room.controller.removePublisher(socket.room.mixer);
-                    }
-                    if (socket.room.streams[socket.room.mixer]) {
-                        delete socket.room.streams[socket.room.mixer];
-                    }
-                    socket.room.mixer = undefined;
-                }
-                if (socket.room.agent !== undefined) {
-                    amqper.callRpc('nuve', 'freeErizoAgent', socket.room.agent);
                 }
                 delete rooms[socket.room.id];
                 updateMyState();
@@ -1412,21 +1317,22 @@ exports.deleteRoom = function (roomId, callback) {
     }
 
     room.sockets.map(function (sock) {
-        room.controller.removeSubscriptions(sock.id);
+        room.controller.unsubscribeAll(sock.id);
     });
 
     var streams = room.streams;
     for (var j in streams) {
         if (streams[j].hasAudio() || streams[j].hasVideo()) {
             if (!room.p2p) {
-                room.controller.removePublisher(j);
+                room.controller.unpublish(j);
             }
         }
     }
 
-    if (room.agent !== undefined) {
-        amqper.callRpc('nuve', 'freeErizoAgent', room.agent);
+    if (room.controller && typeof room.controller.destroy === 'function') {
+        room.controller.destroy();
     }
+
     delete rooms[roomId];
     updateMyState();
     log.info('Deleted room ', roomId, rooms);
@@ -1458,9 +1364,17 @@ exports.handleEventReport = function (event, room, spec) {
     }
 };
 
+var onTerminate = function () {
+    for (var roomId in rooms) {
+        exports.deleteRoom(roomId, function (){});
+    }
+    rooms = {};
+};
+
 ['SIGINT', 'SIGTERM'].map(function (sig) {
     process.on(sig, function () {
         log.warn('Exiting on', sig);
+        onTerminate();
         process.exit();
     });
 });

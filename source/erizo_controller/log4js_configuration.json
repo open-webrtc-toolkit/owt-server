@@ -10,9 +10,15 @@
     }
   ],
   "levels": {
-  	"ErizoController": "DEBUG",
-  	"AMQPER": "INFO",
-    "ErizoJS": "DEBUG", 
-    "ErizoJSController": "DEBUG"
+    "ErizoController": "INFO",
+    "RoomController": "INFO",
+    "ErizoManager": "INFO",
+    "AMQPER": "INFO",
+    "ErizoJS": "INFO",
+    "AccessNode": "INFO",
+    "AudioNode": "INFO",
+    "VideoNode": "INFO",
+    "WrtcConnection": "INFO",
+    "RtspIn": "INFO"
   }
 }

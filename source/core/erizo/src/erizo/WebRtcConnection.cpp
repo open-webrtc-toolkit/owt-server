@@ -437,7 +437,9 @@ namespace erizo {
             this->setAudioSourceSSRC(recvSSRC);
             this->updateState(TRANSPORT_READY, transport);
           }
-          audioSink_->deliverAudioData(buf, length);
+          if (audioEnabled_) {
+            audioSink_->deliverAudioData(buf, length);
+          }
         }
       } else if (transport->mediaType == VIDEO_TYPE) {
         if (videoSink_ != NULL) {
@@ -449,7 +451,9 @@ namespace erizo {
             this->updateState(TRANSPORT_READY, transport);
           }
 
-          videoSink_->deliverVideoData(buf, length);
+          if (videoEnabled_) {
+            videoSink_->deliverVideoData(buf, length);
+          }
         }
       }
     }

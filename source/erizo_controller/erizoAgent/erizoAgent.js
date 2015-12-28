@@ -9,10 +9,7 @@ var config = require('./../../etc/woogeen_config');
 GLOBAL.config = config || {};
 GLOBAL.config.erizoAgent = GLOBAL.config.erizoAgent || {};
 GLOBAL.config.erizoAgent.maxProcesses = GLOBAL.config.erizoAgent.maxProcesses || 1;
-GLOBAL.config.erizoAgent.prerunProcesses = GLOBAL.config.erizoAgent.prerunProcesses === undefined ? 1 : GLOBAL.config.erizoAgent.prerunProcesses;
-GLOBAL.config.erizoAgent.publicIP = GLOBAL.config.erizoAgent.publicIP || '';
-
-var BINDED_INTERFACE_NAME = GLOBAL.config.erizoAgent.networkInterface;
+GLOBAL.config.erizoAgent.prerunProcesses = GLOBAL.config.erizoAgent.prerunProcesses || 1;
 
 // Parse command line arguments
 var getopt = new Getopt([
@@ -21,12 +18,14 @@ var getopt = new Getopt([
   ['l' , 'logging-config-file=ARG'    , 'Logging Config File'],
   ['M' , 'maxProcesses=ARG'           , 'Stun Server URL'],
   ['P' , 'prerunProcesses=ARG'        , 'Default video Bandwidth'],
+  ['U' , 'my-purpose=ARG'             , 'Purpose of this agent'],
   ['h' , 'help'                       , 'display this help']
 ]);
 
 var myId = '';
-var myPurpose = 'general-use';
+var myPurpose = 'webrtc';
 var myState = 2;
+var reuse = true;
 
 var opt = getopt.parse(process.argv.slice(2));
 
@@ -50,8 +49,16 @@ for (var prop in opt.options) {
                 GLOBAL.config.logger = GLOBAL.config.logger || {};
                 GLOBAL.config.logger.config_file = value;
                 break;
-            case 'my-id':
-                myId = value;
+            case 'my-purpose':
+                if (value === 'webrtc'
+                    || value === 'rtsp'
+                    || value === 'file'
+                    || value === 'audio'
+                    || value === 'video') {
+                    myPurpose = value;
+                } else {
+                    process.exit(0);
+                }
                 break;
             default:
                 GLOBAL.config.erizoAgent[prop] = value;
@@ -62,15 +69,13 @@ for (var prop in opt.options) {
 
 // Load submodules with updated config
 var logger = require('./../common/logger').logger;
-var amqper = require('./../common/amqper');
+var rpc = require('./../common/amqper');
 
 // Logger
 var log = logger.getLogger("ErizoAgent");
 
 var INTERVAL_TIME_KEEPALIVE = GLOBAL.config.erizoAgent.interval_time_keepAlive;
 var BINDED_INTERFACE_NAME = GLOBAL.config.erizoAgent.networkInterface;
-
-var childs = [];
 
 var SEARCH_INTERVAL = 5000;
 
@@ -79,6 +84,7 @@ var idle_erizos = [];
 var erizos = [];
 
 var processes = {};
+var loads = {}; // {erizo_id: [RoomID]}
 
 var guid = (function() {
   function s4() {
@@ -92,13 +98,13 @@ var guid = (function() {
   };
 })();
 
-var saveChild = function(id) {
-    childs.push(id);
-};
-
-var removeChild = function(id) {
-    childs.push(id);
-};
+var reportLoad = function() {
+    var load = 0;
+    for (eid in loads) {
+        load += loads[eid].length;
+    }
+    rpc.callRpc('nuve', 'setInfo', {id: myId, load: load}, {callback: function (msg) {}});
+}
 
 var launchErizoJS = function() {
     console.log("Running process");
@@ -106,126 +112,140 @@ var launchErizoJS = function() {
     var fs = require('fs');
     var out = fs.openSync('../../logs/erizo-' + id + '.log', 'a');
     var err = fs.openSync('../../logs/erizo-' + id + '.log', 'a');
-    var erizoProcess = spawn('node', ['./../erizoJS/erizoJS.js', id, privateIP, publicIP], { detached: true, stdio: [ 'ignore', out, err ] });
+    var erizoProcess = spawn('node', ['./../erizoJS/erizoJS.js', id, myPurpose], { detached: true, stdio: [ 'ignore', out, err ] });
     erizoProcess.unref();
     erizoProcess.on('close', function (code) {
         var index = idle_erizos.indexOf(id);
         var index2 = erizos.indexOf(id);
         if (index > -1) {
             idle_erizos.splice(index, 1);
+            launchErizoJS();
         } else if (index2 > -1) {
             erizos.splice(index2, 1);
         }
         delete processes[id];
+        delete loads[id];
         fillErizos();
     });
     processes[id] = erizoProcess;
+    loads[id] = [];
     idle_erizos.push(id);
 };
 
 var dropErizoJS = function(erizo_id, callback) {
-    if (processes.hasOwnProperty(erizo_id)) {
-        var process = processes[erizo_id];
-        process.kill();
-        delete processes[erizo_id];
+   if (processes.hasOwnProperty(erizo_id)) {
+      var process = processes[erizo_id];
+      process.kill();
+      delete processes[erizo_id];
+      delete loads[erizo_id];
 
-        var index = erizos.indexOf(erizo_id);
-        if (index !== -1) {
-            erizos.splice(index, 1);
-        }
+      var index = erizos.indexOf(erizo_id);
+      if (index !== -1) {
+          erizos.splice(index, 1);
+      }
 
-        var idleIndex = idle_erizos.indexOf(erizo_id);
-        if (idleIndex !== -1) {
-            idle_erizos.splice(idleIndex, 1);
-        }
-        return callback('callback', 'ok');
-    }
-    callback('callback', 'not found');
+      var idleIndex = idle_erizos.indexOf(erizo_id);
+      if (idleIndex !== -1) {
+          idle_erizos.splice(idleIndex, 1);
+      }
+
+      callback("callback", "ok");
+   }
 };
 
 var fillErizos = function() {
-    if (erizos.length + idle_erizos.length < GLOBAL.config.erizoAgent.maxProcesses) {
-        if (idle_erizos.length < GLOBAL.config.erizoAgent.prerunProcesses) {
-            launchErizoJS();
-            fillErizos();
-        }
+    for (var i = idle_erizos.length; i < GLOBAL.config.erizoAgent.prerunProcesses; i++) {
+        launchErizoJS();
     }
-};
-
-var getErizo = function () {
-
-    var erizo_id = idle_erizos.shift();
-
-    if (!erizo_id) {
-        if (erizos.length < GLOBAL.config.erizoAgent.maxProcesses) {
-            launchErizoJS();
-            return getErizo();
-        } else {
-            erizo_id = erizos.shift();
-        }
-    }
-
-    return erizo_id;
 };
 
 var api = {
-    createErizoJS: function(callback) {
+
+    getErizoJS: function(room_id, callback) {
         try {
-            var erizo_id = getErizo();
+            for (var i in erizos) {
+                var erizo_id = erizos[i];
+                if (loads[erizo_id] !== undefined && loads[erizo_id].indexOf(room_id) !== -1) {
+                    callback("callback", erizo_id);
+                    return;
+                }
+            }
+
+            for (var i in idle_erizos) {
+                var erizo_id = idle_erizos[i];
+                if (loads[erizo_id] !== undefined && loads[erizo_id].indexOf(room_id) !== -1) {
+                    callback("callback", erizo_id);
+                    return;
+                }
+            }
+
+            var erizo_id = idle_erizos.shift();
             callback("callback", erizo_id);
 
+            loads[erizo_id].push(room_id);
             erizos.push(erizo_id);
-            fillErizos();
 
+            if (reuse && ((erizos.length + idle_erizos.length + 1) >= GLOBAL.config.erizoAgent.maxProcesses)) {
+                // We re-use Erizos
+                var reused_erizo = erizos.shift();
+                idle_erizos.push(reused_erizo);
+            } else {
+                // We launch more processes
+                fillErizos();
+            }
         } catch (error) {
             console.log("Error in ErizoAgent:", error);
         }
+        reportLoad();
     },
-    deleteErizoJS: function(id, callback) {
+
+    recycleErizoJS: function(id, room_id, callback) {
         try {
-            dropErizoJS(id, callback);
+            if (loads[id]) {
+                var i = loads[id].indexOf(room_id);
+                if (i !== -1) {
+                    loads[id].splice(i, 1);
+                }
+
+                if (loads[id].length === 0) {
+                    dropErizoJS(id, callback);
+                }
+            }
         } catch(err) {
             log.error("Error stopping ErizoJS");
         }
+        reportLoad();
     }
 };
 
-var interfaces = require('os').networkInterfaces(),
-    addresses = [],
-    k,
-    k2,
-    address, 
-    privateIP, 
-    publicIP;
+var privateIP;
+
+var addToCloudHandler = function (callback) {
+    "use strict";
+
+    var interfaces = require('os').networkInterfaces(),
+        addresses = [],
+        k,
+        k2,
+        address;
 
 
-for (k in interfaces) {
-    if (interfaces.hasOwnProperty(k)) {
-        for (k2 in interfaces[k]) {
-            if (interfaces[k].hasOwnProperty(k2)) {
-                address = interfaces[k][k2];
-                if (address.family === 'IPv4' && !address.internal) {
-                    if (k === BINDED_INTERFACE_NAME || !BINDED_INTERFACE_NAME) {
-                        addresses.push(address.address);
+    for (k in interfaces) {
+        if (interfaces.hasOwnProperty(k)) {
+            for (k2 in interfaces[k]) {
+                if (interfaces[k].hasOwnProperty(k2)) {
+                    address = interfaces[k][k2];
+                    if (address.family === 'IPv4' && !address.internal) {
+                        if (k === BINDED_INTERFACE_NAME || !BINDED_INTERFACE_NAME) {
+                            addresses.push(address.address);
+                        }
                     }
                 }
             }
         }
     }
-}
 
-privateIP = addresses[0];
-
-if (GLOBAL.config.erizoAgent.publicIP === '' || GLOBAL.config.erizoAgent.publicIP === undefined){
-    publicIP = addresses[0];
-} else {
-    publicIP = GLOBAL.config.erizoAgent.publicIP;
-}
-
-fillErizos();
-
-var addToCloudHandler = function (callback) {
-    "use strict";
+    privateIP = addresses[0];
 
     var addEAToCloudHandler = function(attempt) {
         if (attempt <= 0) {
@@ -237,7 +257,7 @@ var addToCloudHandler = function (callback) {
             purpose: myPurpose
         };
 
-        amqper.callRpc('nuve', 'addNewErizoAgent', controller, {callback: function (msg) {
+        rpc.callRpc('nuve', 'addNewErizoAgent', controller, {callback: function (msg) {
 
             if (msg === 'timeout') {
                 log.info('CloudHandler does not respond');
@@ -259,13 +279,13 @@ var addToCloudHandler = function (callback) {
 
             var intervarId = setInterval(function () {
 
-                amqper.callRpc('nuve', 'keepAlive', myId, {"callback": function (result) {
+                rpc.callRpc('nuve', 'keepAlive', myId, {"callback": function (result) {
                     if (result === 'whoareyou') {
 
                         // TODO: It should try to register again in Cloud Handler. But taking into account current rooms, users, ...
                         log.info('I don`t exist in cloudHandler. I`m going to be killed');
                         clearInterval(intervarId);
-                        amqper.callRpc('nuve', 'killMe', privateIP, {callback: function () {}});
+                        rpc.callRpc('nuve', 'killMe', privateIP, {callback: function () {}});
                     }
                 }});
 
@@ -278,13 +298,20 @@ var addToCloudHandler = function (callback) {
     addEAToCloudHandler(5);
 };
 
-amqper.connect(function () {
+(function init_env() {
     'use strict';
-    amqper.setPublicRPC(api);
+
+    reuse = (myPurpose === 'audio' || myPurpose === 'video') ? false : true;
+})();
+
+rpc.connect(function () {
+    'use strict';
+    rpc.setPublicRPC(api);
     log.info("Adding agent to cloudhandler, purpose:", myPurpose);
+
     addToCloudHandler(function () {
       var rpcID = 'ErizoAgent_' + myId;
-      amqper.bind(rpcID, function callback () {
+      rpc.bind(rpcID, function callback () {
         log.info('ErizoAgent rpcID:', rpcID);
       });
       fillErizos();

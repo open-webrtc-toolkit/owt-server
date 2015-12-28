@@ -31,36 +31,9 @@ namespace woogeen_base {
 
 DEFINE_LOGGER(VCMFrameDecoder, "woogeen.VCMFrameDecoder");
 
-DecodedFrameHandler::DecodedFrameHandler(boost::shared_ptr<VideoFrameConsumer> consumer)
-    : m_ntpDelta(Clock::GetRealTimeClock()->CurrentNtpInMilliseconds() - TickTime::MillisecondTimestamp())
-    , m_consumer(consumer)
-{
-}
-
-DecodedFrameHandler::~DecodedFrameHandler()
-{
-}
-
-int32_t DecodedFrameHandler::Decoded(I420VideoFrame& decodedImage)
-{
-    decodedImage.set_render_time_ms(TickTime::MillisecondTimestamp() + m_ntpDelta);
-
-    Frame frame;
-    memset(&frame, 0, sizeof(frame));
-    frame.format = FRAME_FORMAT_I420;
-    frame.payload = reinterpret_cast<uint8_t*>(&decodedImage);
-    frame.length = 0;
-    frame.timeStamp = decodedImage.timestamp();
-    frame.additionalInfo.video.width = decodedImage.width();
-    frame.additionalInfo.video.height = decodedImage.height();
-
-    m_consumer->onFrame(frame);
-    return 0;
-}
-
-VCMFrameDecoder::VCMFrameDecoder(boost::shared_ptr<VideoFrameConsumer> consumer)
+VCMFrameDecoder::VCMFrameDecoder(FrameFormat format)
     : m_needDecode(false)
-    , m_decodedFrameConsumer(consumer)
+    , m_ntpDelta(Clock::GetRealTimeClock()->CurrentNtpInMilliseconds() - TickTime::MillisecondTimestamp())
 {
 }
 
@@ -71,7 +44,7 @@ VCMFrameDecoder::~VCMFrameDecoder()
         m_decoder->RegisterDecodeCompleteCallback(nullptr);
 }
 
-bool VCMFrameDecoder::setInput(FrameFormat format, VideoFrameProvider* provider)
+bool VCMFrameDecoder::init(FrameFormat format)
 {
     VideoCodecType codecType = VideoCodecType::kVideoCodecUnknown;
 
@@ -99,17 +72,28 @@ bool VCMFrameDecoder::setInput(FrameFormat format, VideoFrameProvider* provider)
         return false;
     }
 
-    m_decodedFrameHandler.reset(new DecodedFrameHandler(m_decodedFrameConsumer));
-    m_decoder->RegisterDecodeCompleteCallback(m_decodedFrameHandler.get());
+    m_decoder->RegisterDecodeCompleteCallback(this);
 
     m_needDecode = true;
     m_codecInfo.codecType = codecType;
     return true;
 }
 
-void VCMFrameDecoder::unsetInput()
+int32_t VCMFrameDecoder::Decoded(I420VideoFrame& decodedImage)
 {
-    m_needDecode = false;
+    decodedImage.set_render_time_ms(TickTime::MillisecondTimestamp() + m_ntpDelta);
+
+    Frame frame;
+    memset(&frame, 0, sizeof(frame));
+    frame.format = FRAME_FORMAT_I420;
+    frame.payload = reinterpret_cast<uint8_t*>(&decodedImage);
+    frame.length = 0;
+    frame.timeStamp = decodedImage.timestamp();
+    frame.additionalInfo.video.width = decodedImage.width();
+    frame.additionalInfo.video.height = decodedImage.height();
+
+    deliverFrame(frame);
+    return 0;
 }
 
 void VCMFrameDecoder::onFrame(const Frame& frame)
@@ -125,6 +109,8 @@ void VCMFrameDecoder::onFrame(const Frame& frame)
 
     if (ret != 0) {
         ELOG_ERROR("Decode frame error: %d", ret);
+        FeedbackMsg msg {.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME};
+        deliverFeedbackMsg(msg);
     }
 }
 

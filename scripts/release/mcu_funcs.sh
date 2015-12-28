@@ -108,14 +108,22 @@ pack_scripts() {
   cp -av {${this},${WOOGEEN_DIST}/bin}/initcert.js && chmod +x ${WOOGEEN_DIST}/bin/initcert.js
   echo '
 ${bin}/daemon.sh start nuve
-${bin}/daemon.sh start mcu
-${bin}/daemon.sh start agent
+${bin}/daemon.sh start portal
+${bin}/daemon.sh start webrtc-agent
+${bin}/daemon.sh start rtsp-agent
+${bin}/daemon.sh start recording-agent
+${bin}/daemon.sh start audio-agent
+${bin}/daemon.sh start video-agent
 ${bin}/daemon.sh start app
 ' >> ${WOOGEEN_DIST}/bin/start-all.sh
   echo '
 ${bin}/daemon.sh stop nuve
-${bin}/daemon.sh stop mcu
-${bin}/daemon.sh stop agent
+${bin}/daemon.sh stop portal
+${bin}/daemon.sh stop webrtc-agent
+${bin}/daemon.sh stop rtsp-agent
+${bin}/daemon.sh stop recording-agent
+${bin}/daemon.sh stop audio-agent
+${bin}/daemon.sh stop video-agent
 ${bin}/daemon.sh stop app
 ' >> ${WOOGEEN_DIST}/bin/stop-all.sh
   echo '
@@ -142,7 +150,7 @@ pack_node() {
     # This is kind of fragile - we assume that the occurrences of "require" are
     # always the keyword for module loading in the original JavaScript file.
     sed -i.origin "s/require('.*\//Module\._load('/g; s/require('/Module\._load('/g" "${line}"
-    sed -i "s/Module\._load('\(amqper\|logger\|erizoJSController\)/Module\._load('webrtc_mcu\/\1/g" "${line}"
+    sed -i "s/Module\._load('\(amqper\|logger\|makeRPC\|accessNode\|audioNode\|videoNode\|wrtcConnection\|rtspIn\)/Module\._load('webrtc_mcu\/\1/g" "${line}"
     sed -i "1 i var Module = require('module');" "${line}"
     mv ${line} ${CURRENT_DIR}/lib/webrtc_mcu/
     sed -i "/lib\/zlib.js/a 'lib/webrtc_mcu/$(basename ${line})'," node.gyp

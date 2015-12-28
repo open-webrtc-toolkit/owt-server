@@ -51,7 +51,7 @@ VideoLayoutProcessor::VideoLayoutProcessor(boost::property_tree::ptree& layoutCo
         }
     }
 
-    BOOST_FOREACH (boost::property_tree::ptree::value_type& layoutTemplate, layoutConfig.get_child("templates")) {
+    BOOST_FOREACH (boost::property_tree::ptree::value_type& layoutTemplate, layoutConfig.get_child("layout")) {
         std::vector<Region> regions;
 
         BOOST_FOREACH (boost::property_tree::ptree::value_type& regionPair, layoutTemplate.second.get_child("region")) {
@@ -111,40 +111,10 @@ bool VideoLayoutProcessor::getRootSize(VideoSize& rootSize)
     return true;
 }
 
-bool VideoLayoutProcessor::setRootSize(const std::string& resolution)
-{
-    VideoSize newSize;
-    if (VideoResolutionHelper::getVideoSize(resolution, newSize)) {
-        if (!(m_rootSize.width == newSize.width && m_rootSize.height == newSize.height)) {
-            m_rootSize = newSize;
-            std::list<boost::shared_ptr<LayoutConsumer>>::iterator it = m_consumers.begin();
-            for (; it != m_consumers.end(); ++it)
-                (*it)->updateRootSize(m_rootSize);
-        }
-        return true;
-    }
-    return false;
-}
-
 bool VideoLayoutProcessor::getBgColor(YUVColor& bgColor)
 {
     bgColor = m_bgColor;
     return true;
-}
-
-bool VideoLayoutProcessor::setBgColor(const std::string& color)
-{
-    YUVColor newColor;
-    if (VideoColorHelper::getVideoColor(color, newColor)) {
-        if (!(m_bgColor.y == newColor.y && m_bgColor.cb == newColor.cb && m_bgColor.cr == newColor.cr)) {
-            m_bgColor = newColor;
-            std::list<boost::shared_ptr<LayoutConsumer>>::iterator it = m_consumers.begin();
-            for (; it != m_consumers.end(); ++it)
-                (*it)->updateBackgroundColor(m_bgColor);
-        }
-        return true;
-    }
-    return false;
 }
 
 void VideoLayoutProcessor::addInput(int input, bool toFront)
