@@ -271,6 +271,10 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
             function (dest_port) {
                 log.debug("internally publish ok, dest_port:", dest_port);
                 var dest_ip = erizos[target_erizo_id].addr;
+                //FIXME: Hard coded for VCA
+                if (/\b(172).(31).(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?).(1)\b/g.test(erizos[original_erizo].addr)) {
+                    dest_ip = erizos[original_erizo].addr.replace(/.1$/g, ".254");
+                }
                 makeRPC(
                     amqper,
                     'ErizoJS_' + original_erizo,
