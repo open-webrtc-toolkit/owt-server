@@ -38,6 +38,7 @@ void RtspIn::Init(v8::Local<v8::Object> exports) {
   tpl->InstanceTemplate()->SetInternalFieldCount(1);
   // Prototype
   NODE_SET_PROTOTYPE_METHOD(tpl, "close", close);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "init", init);
   NODE_SET_PROTOTYPE_METHOD(tpl, "addDestination", addDestination);
   NODE_SET_PROTOTYPE_METHOD(tpl, "removeDestination", removeDestination);
 
@@ -85,8 +86,8 @@ void RtspIn::init(const FunctionCallbackInfo<Value>& args) {
   RtspIn* obj = ObjectWrap::Unwrap<RtspIn>(args.Holder());
   woogeen_base::RtspIn *me = (woogeen_base::RtspIn*) obj->me;
 
-  me->init();
   obj->statusCallback_.Reset(isolate, Local<Function>::Cast(args[0]));
+  me->init();
 }
 
 void RtspIn::addDestination(const FunctionCallbackInfo<Value>& args) {
@@ -131,7 +132,7 @@ void RtspIn::removeDestination(const FunctionCallbackInfo<Value>& args) {
 
 void RtspIn::notifyStatus(const std::string& message) {
   boost::mutex::scoped_lock lock(statusMutex);
-  this->statusMsg = message;
+  this->statsMsgs.push(message);
   async_.data = this;
   uv_async_send(&async_);
 }
@@ -143,7 +144,10 @@ void RtspIn::statusCallback(uv_async_t *handle) {
   if (!obj)
     return;
   boost::mutex::scoped_lock lock(obj->statusMutex);
-  Local<Value> args[] = {String::NewFromUtf8(isolate, obj->statusMsg.c_str())};
-  Local<Function>::New(isolate, obj->statusCallback_)->Call(isolate->GetCurrentContext()->Global(), 1, args);
+  while(!obj->statsMsgs.empty()){
+    Local<Value> args[] = {String::NewFromUtf8(isolate, obj->statsMsgs.front().c_str())};
+    Local<Function>::New(isolate, obj->statusCallback_)->Call(isolate->GetCurrentContext()->Global(), 1, args);
+    obj->statsMsgs.pop();
+  }
 }
 
