@@ -58,6 +58,7 @@ HardwareVideoFrameMixerInput::~HardwareVideoFrameMixerInput()
         m_engine->disableInput(m_index);
         m_index = INVALID_INPUT_INDEX;
     }
+    m_source->removeVideoDestination(this);
     m_source = nullptr;
 }
 
