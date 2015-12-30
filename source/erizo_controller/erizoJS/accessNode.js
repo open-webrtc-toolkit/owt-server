@@ -2,7 +2,7 @@
 'use strict';
 var addon = require('./../../bindings/mcu/build/Release/addon');
 var WrtcConnection = require('./wrtcConnection').WrtcConnection;
-var RtspIn = require('./rtspIn');
+var RtspIn = require('./rtspIn').RtspIn;
 var logger = require('./../common/logger').logger;
 var amqper = require('./../common/amqper');
 

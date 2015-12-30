@@ -207,7 +207,7 @@ var WoogeenNodeConference = (function () {
 
 
 var client = new WoogeenNodeConference({
-  host: 'http://localhost:8080'
+  host: 'https://localhost:8080'
 });
 
 var nuve = require('./basic_example/nuve').API;

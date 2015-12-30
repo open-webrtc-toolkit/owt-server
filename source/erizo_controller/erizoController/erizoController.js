@@ -505,6 +505,7 @@ var listen = function () {
                                             room.controller = controller.RoomController(
                                                 {amqper: amqper, room:roomID, config: resp}, 
                                                 function (resolutions) {
+                                                    room.enableMixing = resp.enableMixing;
                                                     on_ok();
                                                     if (resp.enableMixing) {
                                                         //var st = new ST.Stream({id: roomID, socket: '', audio: true, video: {category: 'mix'}, data: true, from: ''});
@@ -515,8 +516,6 @@ var listen = function () {
                                                         if (room.config && room.config.publishLimit > 0) {
                                                             room.config.publishLimit++;
                                                         }
-                                                    } else {
-                                                        on_ok();
                                                     }
                                                 },
                                                 function (reason) {
@@ -765,7 +764,7 @@ var listen = function () {
                             socket.room.streams[id] = st;
                             sendMsgToRoom(socket.room, 'add_stream', st.getPublicStream());
                             safeCall(callback, 'success', id);
-                        } else {
+                        } else if (response.type !== 'initializing') {
                             safeCall(callback, response);
                         }
                     }

@@ -25,6 +25,7 @@
 #include <RtspIn.h>
 #include <node.h>
 #include <node_object_wrap.h>
+#include <queue>
 #include <uv.h>
 
 
@@ -35,7 +36,7 @@ class RtspIn : public FrameSource, woogeen_base::RtspInStatusListener {
  public:
   static void Init(v8::Local<v8::Object> exports);
   woogeen_base::RtspIn* me;
-  std::string statusMsg;
+  std::queue<std::string> statsMsgs;
   boost::mutex statusMutex;
 
  private:
