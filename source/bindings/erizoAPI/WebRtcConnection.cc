@@ -4,10 +4,11 @@
 using namespace v8;
 
 Persistent<Function> WebRtcConnection::constructor;
-WebRtcConnection::WebRtcConnection() {
-};
+WebRtcConnection::WebRtcConnection()
+  : refCount(0) {
+}
 WebRtcConnection::~WebRtcConnection(){
-};
+}
 
 void WebRtcConnection::Init(Local<Object> exports) {
   Isolate* isolate = Isolate::GetCurrent();
@@ -79,6 +80,11 @@ void WebRtcConnection::close(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
   WebRtcConnection* obj = ObjectWrap::Unwrap<WebRtcConnection>(args.Holder());
+  if (obj->unref() > 0) {
+    return;
+  }
+
+  delete obj->me;
   obj->me = NULL;
   obj->hasCallback_ = false;
   
@@ -89,14 +95,6 @@ void WebRtcConnection::close(const FunctionCallbackInfo<Value>& args) {
     uv_close((uv_handle_t*)&obj->asyncStats_, NULL);
   }
 
-  // The erizo::WebRtcConnection lifetime is now managed explicitly in JS
-  // controller layer now, instead of being implicitly managed in native layer
-  // as before.
-  // TODO: Double check the destroy sequence issue of the WebRtcConnection
-  // and the Demuxer/Mixer.
-  // FIXME: The gateway controller and native layers need to be updated to
-  // adapt to this new rule.
-  delete obj->me;
 }
 
 void WebRtcConnection::init(const FunctionCallbackInfo<Value>& args) {

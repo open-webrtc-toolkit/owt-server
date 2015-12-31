@@ -82,6 +82,7 @@ void Gateway::addPublisher(const FunctionCallbackInfo<Value>& args) {
 
   WebRtcConnection* param0 =
       ObjectWrap::Unwrap<WebRtcConnection>(args[0]->ToObject());
+  param0->ref();
   erizo::WebRtcConnection* wr = (erizo::WebRtcConnection*)param0->me;
 
   String::Utf8Value param1(args[1]->ToString());
@@ -116,6 +117,7 @@ void Gateway::addSubscriber(const FunctionCallbackInfo<Value>& args) {
 
   WebRtcConnection* param =
       ObjectWrap::Unwrap<WebRtcConnection>(args[0]->ToObject());
+  param->ref();
   erizo::WebRtcConnection* wr = param->me;
 
   // get the param

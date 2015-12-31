@@ -137,7 +137,7 @@ public:
 
     virtual void onSyncMsg(uint64_t ntp, uint64_t rtp, bool isAudio, uint32_t streamId);
 
-    boost::shared_ptr<erizo::MediaSource> publisher;
+    erizo::MediaSource* publisher;
 
 private:
     typedef struct {
@@ -166,7 +166,7 @@ private:
 
     boost::shared_mutex m_publisherMutex;
 
-    std::map<uint32_t, std::vector<boost::shared_ptr<erizo::MediaSink>>> m_subscribers;
+    std::map<uint32_t, std::vector<erizo::MediaSink*>> m_subscribers;
     boost::shared_mutex m_subscriberMutex;
     erizo::FeedbackSink* m_feedbackSink;
     std::atomic<bool> m_isClientLeaving;

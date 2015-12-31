@@ -206,8 +206,8 @@ exports = module.exports = function () {
     that.removePublisher = function (from) {
         if (gateway !== undefined && publisher !== undefined) {
             logger.info('Removing publisher ', from);
-            publisher.close();
             gateway.removePublisher(from);
+            publisher.close();
         }
         publisher = undefined;
     };
@@ -219,8 +219,8 @@ exports = module.exports = function () {
         if (gateway !== undefined) {
             if (subscribers[to]) {
                 logger.info('Removing subscriber ', from, 'to ', to);
-                subscribers[to].close()
                 gateway.removeSubscriber(to);
+                subscribers[to].close()
                 delete subscribers[to];
             }
         }
@@ -236,10 +236,12 @@ exports = module.exports = function () {
             for (var key in subscribers) {
                 if (subscribers.hasOwnProperty(key)){
                     logger.info("Iterating and closing ", key, subscribers, subscribers[key]);
+                    gateway.removeSubscriber(key);
                     subscribers[key].close();
                 }
             }
             if (publisher) {
+                gateway.removePublisher(from);
                 publisher.close();
             }
             gateway.close();
