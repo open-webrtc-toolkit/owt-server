@@ -74,8 +74,8 @@ private:
     // reverse order they were created.
     boost::scoped_ptr<AVSTransportListener<woogeen_base::TCP>> m_tcpListener;
     boost::scoped_ptr<AVSTransportListener<woogeen_base::UDP>> m_udpListener;
-    boost::scoped_ptr<woogeen_base::RawTransport> m_tcpTransport;
-    boost::scoped_ptr<woogeen_base::RawTransport> m_udpTransport;
+    boost::scoped_ptr<woogeen_base::RawTransport<woogeen_base::TCP>> m_tcpTransport;
+    boost::scoped_ptr<woogeen_base::RawTransport<woogeen_base::UDP>> m_udpTransport;
 };
 
 } /* namespace oovoo_gateway */

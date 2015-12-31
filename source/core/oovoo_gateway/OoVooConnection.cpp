@@ -30,9 +30,9 @@ OoVooConnection::OoVooConnection(boost::shared_ptr<OoVooProtocolStack> ooVoo)
 {
     ELOG_WARN("OoVooConnection constructor");
     m_tcpListener.reset(new AVSTransportListener<TCP>(ooVoo));
-    m_tcpTransport.reset(new RawTransport(m_tcpListener.get(), TCP, false));
+    m_tcpTransport.reset(new RawTransport<TCP>(m_tcpListener.get(), false));
     m_udpListener.reset(new AVSTransportListener<UDP>(ooVoo));
-    m_udpTransport.reset(new RawTransport(m_udpListener.get(), UDP, false));
+    m_udpTransport.reset(new RawTransport<UDP>(m_udpListener.get(), false));
 }
 
 OoVooConnection::~OoVooConnection()

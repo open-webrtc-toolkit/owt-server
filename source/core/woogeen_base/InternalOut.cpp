@@ -24,9 +24,11 @@ namespace woogeen_base {
 
 InternalOut::InternalOut(const std::string& protocol, const std::string& dest_ip, unsigned int dest_port)
 {
-    Protocol proto = (protocol == "tcp") ? woogeen_base::TCP : woogeen_base::UDP;
+    if (protocol == "tcp")
+        m_transport.reset(new woogeen_base::RawTransport<TCP>(this));
+    else
+        m_transport.reset(new woogeen_base::RawTransport<UDP>(this));
 
-    m_transport.reset(new woogeen_base::RawTransport(this, proto));
     m_transport->createConnection(dest_ip, dest_port);
 }
 

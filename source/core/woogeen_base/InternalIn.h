@@ -42,7 +42,7 @@ public:
     void onTransportConnected() { }
 
 private:
-    boost::scoped_ptr<woogeen_base::RawTransport> m_transport;
+    boost::shared_ptr<woogeen_base::RawTransportInterface> m_transport;
 };
 
 } /* namespace woogeen_base */
