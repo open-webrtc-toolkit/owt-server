@@ -18,7 +18,6 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility=hidden")
 set(LIB_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/../../../build/libdeps/build/lib/")
 set(UV_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/../../../third_party/libuv")
 set(WEBRTC_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/../../../third_party/webrtc")
-set(H264_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/../../../third_party/openh264")
 set(MEDIAPROCESSOR_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../third_party/mediaprocessor")
 set(MSS_DIR "/opt/intel/mediasdk")
 
@@ -42,10 +41,6 @@ test_lib(${WEBRTC})
 
 #set(WEBRTC "-rdynamic -Wl,--whole-archive ${WEBRTC} -Wl,--no-whole-archive")
 
-# H264
-find_library(H264 openh264 HINTS "${H264_DIRS}")
-test_lib(${H264})
-
 set(VCSA_LIBS "")
 if($ENV{BUILD_WITH_MSDK})
   find_library(XCODER_BASE xcodebase HINTS "${MEDIAPROCESSOR_DIR}/dist")
@@ -60,12 +55,4 @@ if($ENV{BUILD_WITH_MSDK})
   set(VCSA_LIBS ${XCODER_BASE} ${XCODER_VIDEO} ${VPX})
 endif()
 
-# LIBAV
-find_library(AVCODEC avcodec HINTS "${LIB_DIRS}")
-test_lib(${AVCODEC})
-
-find_library(AVFORMAT avformat HINTS "${LIB_DIRS}")
-test_lib(${AVFORMAT})
-set (LIBAV_LIBS ${AVCODEC} ${AVFORMAT})
-
-target_link_libraries(mcu ${EXTRA_LIBS} ${WEBRTC} ${H264} ${VCSA_LIBS} ${LIBAV_LIBS})
+target_link_libraries(mcu ${EXTRA_LIBS} ${WEBRTC} ${VCSA_LIBS})
