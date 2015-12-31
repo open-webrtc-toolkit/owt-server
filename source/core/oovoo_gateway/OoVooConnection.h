@@ -30,11 +30,30 @@
 
 namespace oovoo_gateway {
 
+template <woogeen_base::Protocol prot>
+class AVSTransportListener : public woogeen_base::RawTransportListener {
+    DECLARE_LOGGER();
+
+public:
+    AVSTransportListener(boost::shared_ptr<OoVooProtocolStack> ooVoo)
+        : m_ooVoo(ooVoo)
+    {
+    }
+    ~AVSTransportListener() { }
+
+    void onTransportData(char*, int len);
+    void onTransportError();
+    void onTransportConnected();
+
+private:
+    boost::shared_ptr<OoVooProtocolStack> m_ooVoo;
+};
+
 /**
  * A ooVoo Connection. This class represents a simple connection between the GW and AVS server.
  * it comprises all the necessary Transport components.
  */
-class OoVooConnection : public woogeen_base::RawTransportListener {
+class OoVooConnection {
     DECLARE_LOGGER();
 public:
     OoVooConnection(boost::shared_ptr<OoVooProtocolStack> ooVoo);
@@ -44,21 +63,19 @@ public:
     int sendData(const char*, int len, bool isUdp);
     void close();
 
-    virtual void onTransportData(char*, int len, woogeen_base::Protocol);
-    virtual void onTransportError(woogeen_base::Protocol);
-    virtual void onTransportConnected(woogeen_base::Protocol);
-
 private:
     // We need to ensure the order of the object destructions. In this case we
-    // want to keep the m_ooVoo object alive until the transport is dead,
+    // want to keep the listener objects alive until the transport is dead,
     // because in the transport destructor it may wait for the pending work to
     // be finished, and the pending work may trigger the transport listener (me)
     // to do something which requires the existence of m_ooVoo. Although m_ooVoo
     // is ref counted, it can be only referenced by me when I'm destructed.
     // According to C++ standard the non-static members are destructed in the
     // reverse order they were created.
-    boost::shared_ptr<OoVooProtocolStack> m_ooVoo;
-    boost::scoped_ptr<woogeen_base::RawTransport> m_transport;
+    boost::scoped_ptr<AVSTransportListener<woogeen_base::TCP>> m_tcpListener;
+    boost::scoped_ptr<AVSTransportListener<woogeen_base::UDP>> m_udpListener;
+    boost::scoped_ptr<woogeen_base::RawTransport> m_tcpTransport;
+    boost::scoped_ptr<woogeen_base::RawTransport> m_udpTransport;
 };
 
 } /* namespace oovoo_gateway */

@@ -27,10 +27,12 @@ namespace oovoo_gateway {
 DEFINE_LOGGER(OoVooConnection, "ooVoo.OoVooConnection");
 
 OoVooConnection::OoVooConnection(boost::shared_ptr<OoVooProtocolStack> ooVoo)
-    : m_ooVoo(ooVoo)
 {
     ELOG_WARN("OoVooConnection constructor");
-    m_transport.reset(new RawTransport(this));
+    m_tcpListener.reset(new AVSTransportListener<TCP>(ooVoo));
+    m_tcpTransport.reset(new RawTransport(m_tcpListener.get(), TCP, false));
+    m_udpListener.reset(new AVSTransportListener<UDP>(ooVoo));
+    m_udpTransport.reset(new RawTransport(m_udpListener.get(), UDP, false));
 }
 
 OoVooConnection::~OoVooConnection()
@@ -40,29 +42,34 @@ OoVooConnection::~OoVooConnection()
 
 void OoVooConnection::connect(const std::string& ip, uint32_t port, bool isUdp)
 {
-    assert(m_transport);
-    m_transport->createConnection(ip, port, isUdp ? UDP : TCP);
+    if (isUdp)
+        m_udpTransport->createConnection(ip, port);
+    else
+        m_tcpTransport->createConnection(ip, port);
 }
 
 int OoVooConnection::sendData(const char* buf, int len, bool isUdp)
 {
-    assert(m_transport);
     if (isUdp) {
         ELOG_TRACE("Sending UDP message to AVS, length %d", len);
+        m_udpTransport->sendData(buf, len);
     } else {
         ELOG_DEBUG("Sending TCP message to AVS, length %d", len);
+        m_tcpTransport->sendData(buf, len);
     }
-    m_transport->sendData(buf, len, isUdp ? UDP : TCP);
     return len;
 }
 
 void OoVooConnection::close()
 {
-    assert(m_transport);
-    m_transport->close();
+    m_udpTransport->close();
+    m_tcpTransport->close();
 }
 
-void OoVooConnection::onTransportData(char* buf, int len, Protocol prot)
+DEFINE_TEMPLATE_LOGGER(template<Protocol prot>, AVSTransportListener<prot>, "ooVoo.OoVooConnection");
+
+template<Protocol prot>
+void AVSTransportListener<prot>::onTransportData(char* buf, int len)
 {
     // This means we received data from AVS.
     switch (prot) {
@@ -78,13 +85,15 @@ void OoVooConnection::onTransportData(char* buf, int len, Protocol prot)
     m_ooVoo->dataAvailable(buf, len, prot == UDP);
 }
 
-void OoVooConnection::onTransportError(Protocol prot)
+template<Protocol prot>
+void AVSTransportListener<prot>::onTransportError()
 {
     ELOG_WARN("Error with %s connection to AVS", prot == UDP ? "UDP" : "TCP");
     m_ooVoo->avsConnectionFail(prot == UDP);
 }
 
-void OoVooConnection::onTransportConnected(Protocol prot)
+template<Protocol prot>
+void AVSTransportListener<prot>::onTransportConnected()
 {
     ELOG_DEBUG("%s connection established with AVS", prot == UDP ? "UDP" : "TCP");
     m_ooVoo->avsConnectionSuccess(prot == UDP);

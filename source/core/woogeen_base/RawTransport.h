@@ -62,7 +62,7 @@ typedef struct {
 class RawTransport {
     DECLARE_LOGGER();
 public:
-    RawTransport(RawTransportListener* listener, Protocol proto);
+    RawTransport(RawTransportListener* listener, Protocol proto, bool tag = true);
     ~RawTransport();
 
     void createConnection(const std::string& ip, uint32_t port);
@@ -84,6 +84,7 @@ private:
 
     Protocol m_protocol;
     bool m_isClosing;
+    bool m_tag;
     char m_readHeader[4];
     TransportData m_udpReceiveData;
     TransportData m_tcpReceiveData;
