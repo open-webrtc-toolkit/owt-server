@@ -16,11 +16,15 @@ class WebRtcConnection : public node::ObjectWrap, erizo::WebRtcConnectionEventLi
  public:
   static void Init(v8::Local<v8::Object> exports);
 
+  int ref() { return ++refCount; }
+  int unref() { return --refCount; }
+
   erizo::WebRtcConnection *me;
   std::list<int> eventSts;
   std::list<std::string> eventMsgs;
   std::queue<std::string> statsMsgs;
   boost::mutex statsMutex, eventsMutex;
+  int refCount;
 
  private:
   WebRtcConnection();

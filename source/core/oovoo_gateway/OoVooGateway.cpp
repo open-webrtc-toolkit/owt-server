@@ -40,7 +40,8 @@ static const uint32_t PERIODIC_FIR_MULTIPLIER = 3; // FEEDBACK_TIMER_INTERVALs
 static const uint32_t MINIMUM_IFRAME_INTERVAL = 30; // frames
 
 OoVooGateway::OoVooGateway(const std::string& ooVooCustomParam)
-    : m_feedbackSink(nullptr)
+    : publisher(nullptr)
+    , m_feedbackSink(nullptr)
     , m_isClientLeaving(false)
     , m_webRTCClientId(0)
     , m_webRTCVideoStreamId(NOT_A_OOVOO_STREAM_ID)
@@ -142,7 +143,7 @@ void OoVooGateway::receiveRtpData(char* rtpdata, int len, DataType type, uint32_
     uint8_t packetType = chead->getPacketType();
     assert(packetType != RTCP_Receiver_PT && packetType != RTCP_PS_Feedback_PT && packetType != RTCP_RTP_Feedback_PT);
 
-    std::map<uint32_t, std::vector<boost::shared_ptr<MediaSink>>>::iterator it;
+    std::map<uint32_t, std::vector<MediaSink*>>::iterator it;
 
     if (streamId == static_cast<uint32_t>(MIXED_OOVOO_AUDIO_STREAM_ID)) {
         assert(type == AUDIO);
@@ -155,14 +156,14 @@ void OoVooGateway::receiveRtpData(char* rtpdata, int len, DataType type, uint32_
             } else {
                 ELOG_TRACE("Sending mixed ooVoo audio stream to the WebRTC subscriber to %u", (*it).first);
             }
-            std::vector<boost::shared_ptr<MediaSink>>& sub = (*it).second;
+            std::vector<MediaSink*>& sub = (*it).second;
             for (uint32_t i = 0; i < sub.size(); ++i)
                 sub[i]->deliverAudioData(rtpdata, len);
             ++it;
         }
 
         for (; it != m_subscribers.end(); ++it) {
-            std::vector<boost::shared_ptr<MediaSink>>& sub = (*it).second;
+            std::vector<MediaSink*>& sub = (*it).second;
 
             if (packetType == RTCP_Sender_PT) { // Sender Report
                 ELOG_TRACE("Sending audio sender report to the WebRTC subscriber to %u", (*it).first);
@@ -219,7 +220,7 @@ void OoVooGateway::receiveRtpData(char* rtpdata, int len, DataType type, uint32_
             ELOG_TRACE("Sending %s stream %u to the WebRTC subscriber to %u",
                 type == AUDIO ? "AUDIO" : "VIDEO", streamId, userId);
         }
-        std::vector<boost::shared_ptr<MediaSink>>& sub = (*it).second;
+        std::vector<MediaSink*>& sub = (*it).second;
         for (uint32_t i = 0; i < sub.size(); ++i) {
             if (type == AUDIO)
                 sub[i]->deliverAudioData(rtpdata, len);
@@ -336,7 +337,7 @@ bool OoVooGateway::addPublisher(erizo::MediaSource* source, const std::string& i
     m_audioReceiver.reset(new ProtectedRTPReceiver(m_outboundStreamProcessor));
     m_videoReceiver.reset(new ProtectedRTPReceiver(m_outboundStreamProcessor));
     boost::unique_lock<boost::shared_mutex> lock(m_publisherMutex);
-    publisher.reset(source);
+    publisher = source;
     // Set the NACK status of the RTPReceiver(s).
     m_feedbackSink = publisher->getFeedbackSink();
     bool enableNack = m_feedbackSink && m_feedbackSink->acceptNACK();
@@ -416,10 +417,10 @@ void OoVooGateway::removePublisher(const std::string&)
     // We don't wait for the onOutboundStreamClose response from ooVoo
     // to destruct the publisher.
 
-    boost::shared_ptr<erizo::MediaSource> dyingPublisher = publisher;
+    erizo::MediaSource* dyingPublisher = publisher;
     // We need to reset the publisher earlier to let the other working thread
     // know that we're in the unpublishing process.
-    publisher.reset();
+    publisher = nullptr;
     m_ooVooTimer->cancelFeedbackTimer();
 
     if (m_outboundStreamProcessor->unmapSsrc(dyingPublisher->getVideoSourceSSRC()) != m_webRTCVideoStreamId) {
@@ -443,7 +444,7 @@ void OoVooGateway::removePublisher(const std::string&)
     lock.unlock();
 
     m_feedbackSink = nullptr;
-    dyingPublisher.reset();
+    dyingPublisher = nullptr;
     m_videoReceiver.reset();
     m_audioReceiver.reset();
     m_gatewayStats.packetsReceived = 0;
@@ -476,25 +477,26 @@ void OoVooGateway::addSubscriber(MediaSink* sink, const std::string& subscriberI
         fbsource->setFeedbackSink(fbSink);
     }
     boost::lock_guard<boost::shared_mutex> subscriberLock(m_subscriberMutex);
-    m_subscribers[id].push_back(boost::shared_ptr<MediaSink>(sink));
+    m_subscribers[id].push_back(sink);
 }
 
 // The main thread
 void OoVooGateway::removeSubscriber(const std::string& subscriberId)
 {
     uint32_t id = std::stoi(subscriberId);
-    std::vector<boost::shared_ptr<MediaSink>> removedSubscribers;
 
     boost::unique_lock<boost::shared_mutex> subscriberLock(m_subscriberMutex);
-    // Firstly, copy the removed subscribers to a local vector before removing
-    // them from the subscribers map, then we release the lock for the map.
-    // This allows we destroying the subscribers after releasing the map lock
-    // which avoids potential dead-locks between the main thread (destroying
-    // the subscribers) and the WebRTC threads (receiving and sending streams).
-    std::map<uint32_t, std::vector<boost::shared_ptr<MediaSink>>>::iterator it = m_subscribers.find(id);
+    std::map<uint32_t, std::vector<MediaSink*>>::iterator it = m_subscribers.find(id);
     if (it != m_subscribers.end()) {
-        removedSubscribers.insert(removedSubscribers.begin(), it->second.begin(), it->second.end());
-        it->second.clear();
+        std::vector<MediaSink*>& subscribers = it->second;
+        for (std::vector<MediaSink*>::iterator subIt = subscribers.begin(); subIt != subscribers.end(); ++subIt) {
+            MediaSink* sink = *subIt;
+            FeedbackSource* fbsource = sink->getFeedbackSource();
+            if (fbsource)
+                fbsource->setFeedbackSink(nullptr);
+        }
+
+        subscribers.clear();
         m_subscribers.erase(it);
     }
     subscriberLock.unlock();
@@ -510,7 +512,6 @@ void OoVooGateway::removeSubscriber(const std::string& subscriberId)
     }
     streamInfoLock.unlock();
 
-    removedSubscribers.clear();
     boost::upgrade_lock<boost::shared_mutex> feedbackLock(m_feedbackMutex);
     std::map<uint32_t, boost::shared_ptr<WebRTCFeedbackProcessor>>::iterator feedbackIter = m_feedbackProcessors.find(id);
     if (feedbackIter != m_feedbackProcessors.end()) {
@@ -618,20 +619,19 @@ void OoVooGateway::unpublishStream(const std::string&, bool isAudio) {
 void OoVooGateway::closeAllSubscribers()
 {
     ELOG_DEBUG("closeAllSubscribers");
-    std::vector<boost::shared_ptr<MediaSink>> removedSubscribers;
 
     boost::unique_lock<boost::shared_mutex> subscriberLock(m_subscriberMutex);
-    // Firstly, copy the removed subscribers to a local vector before removing
-    // them from the subscribers map, then we release the lock for the map.
-    // This allows we destroying the subscribers after releasing the map lock
-    // which avoids potential dead-locks between the main thread (destroying
-    // the subscribers) and the WebRTC threads (receiving and sending streams).
-    std::map<uint32_t, std::vector<boost::shared_ptr<MediaSink>>>::iterator it = m_subscribers.begin();
+    std::map<uint32_t, std::vector<MediaSink*>>::iterator it = m_subscribers.begin();
     for (; it != m_subscribers.end(); ++it) {
-        // Always insert elements after the last element in the vector to avoid
-        // moving existing elements;
-        removedSubscribers.insert(removedSubscribers.begin() + removedSubscribers.size(), it->second.begin(), it->second.end());
-        it->second.clear();
+        std::vector<MediaSink*>& subscribers = it->second;
+        for (std::vector<MediaSink*>::iterator subIt = subscribers.begin(); subIt != subscribers.end(); ++subIt) {
+            MediaSink* sink = *subIt;
+            FeedbackSource* fbsource = sink->getFeedbackSource();
+            if (fbsource)
+                fbsource->setFeedbackSink(nullptr);
+        }
+
+        subscribers.clear();
     }
     m_subscribers.clear();
     subscriberLock.unlock();
@@ -654,10 +654,8 @@ void OoVooGateway::closeWebRTCClient()
         // so we use a temporary local variable to hold the pointer, which will
         // increase the reference count temporarily before we exit this scope.
         boost::unique_lock<boost::shared_mutex> lock(m_publisherMutex);
-        boost::shared_ptr<erizo::MediaSource> dyingPublisher = publisher;
-        publisher.reset();
+        publisher = nullptr;
         lock.unlock();
-        dyingPublisher.reset();
     }
 }
 
@@ -804,9 +802,9 @@ void OoVooGateway::onInboundStreamCreate(uint32_t userId, uint32_t streamId, boo
     boost::shared_ptr<ProtectedRTPSender> rtpSender = m_inboundStreamProcessor->createRTPSender(streamId, this);
 
     boost::shared_lock<boost::shared_mutex> lock(m_subscriberMutex);
-    std::map<uint32_t, std::vector<boost::shared_ptr<MediaSink>>>::iterator subIter = m_subscribers.find(userId);
+    std::map<uint32_t, std::vector<MediaSink*>>::iterator subIter = m_subscribers.find(userId);
     if (subIter != m_subscribers.end()) {
-        std::vector<boost::shared_ptr<MediaSink>>& sub = subIter->second;
+        std::vector<MediaSink*>& sub = subIter->second;
         // We must have a valid subscriber for this stream till now.
         assert(sub.size() == 1);
         rtpSender->enableEncapsulatedRTPData(sub[0]->acceptEncapsulatedRTPData());
