@@ -24,8 +24,11 @@ namespace woogeen_base {
 
 InternalIn::InternalIn(const std::string& protocol)
 {
-    Protocol proto = (protocol == "tcp") ? woogeen_base::TCP : woogeen_base::UDP;
-    m_transport.reset(new woogeen_base::RawTransport(this, proto));
+    if (protocol == "tcp")
+        m_transport.reset(new woogeen_base::RawTransport<TCP>(this));
+    else
+        m_transport.reset(new woogeen_base::RawTransport<UDP>(this));
+
     m_transport->listenTo(0);
 }
 

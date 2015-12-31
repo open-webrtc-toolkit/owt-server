@@ -30,8 +30,6 @@
 
 namespace woogeen_base {
 
-class RawTransport;
-
 const char TDT_FEEDBACK_MSG = 0x5A;
 const char TDT_MEDIA_FRAME = 0x8F;
 
@@ -42,13 +40,22 @@ enum Protocol {
 
 class RawTransportListener {
 public:
-    virtual ~RawTransportListener() = 0;
+    virtual ~RawTransportListener() { }
     virtual void onTransportData(char*, int len) = 0;
     virtual void onTransportError() = 0;
     virtual void onTransportConnected() = 0;
 };
 
-inline RawTransportListener::~RawTransportListener() { }
+class RawTransportInterface {
+public:
+    virtual ~RawTransportInterface() { }
+    virtual void createConnection(const std::string& ip, uint32_t port) = 0;
+    virtual void listenTo(uint32_t port) = 0;
+    virtual void sendData(const char*, int len) = 0;
+    virtual void close() = 0;
+
+    virtual unsigned short getListeningPort() = 0;
+};
 
 // The buffer with this size should be enough to hold one message from/to the
 // network based on the MTU of network protocols.
@@ -59,10 +66,11 @@ typedef struct {
     int length;
 } TransportData;
 
-class RawTransport {
+template<Protocol prot>
+class RawTransport : public RawTransportInterface {
     DECLARE_LOGGER();
 public:
-    RawTransport(RawTransportListener* listener, Protocol proto, bool tag = true);
+    RawTransport(RawTransportListener* listener, bool tag = true);
     ~RawTransport();
 
     void createConnection(const std::string& ip, uint32_t port);
@@ -82,13 +90,10 @@ private:
     void acceptHandler(const boost::system::error_code&);
     void dumpTcpSSLv3Header(const char*, int len);
 
-    Protocol m_protocol;
     bool m_isClosing;
     bool m_tag;
     char m_readHeader[4];
-    TransportData m_udpReceiveData;
-    TransportData m_tcpReceiveData;
-    TransportData m_udpSendData;
+    TransportData m_receiveData;
     std::queue<TransportData> m_sendQueue;
     boost::mutex m_sendQueueMutex;
 
@@ -104,11 +109,26 @@ private:
     // introduces unnecessary complexity.
     boost::asio::io_service m_ioService;
     boost::thread m_workThread;
-    boost::scoped_ptr<boost::asio::ip::udp::socket> m_udpSocket;
-    bool m_connectedUdp;
-    boost::asio::ip::udp::endpoint m_udpRemoteEndpoint;
-    boost::scoped_ptr<boost::asio::ip::tcp::socket> m_tcpSocket;
-    boost::scoped_ptr<boost::asio::ip::tcp::acceptor> m_tcpAcceptor;
+    union Socket {
+        Socket() { }
+        ~Socket() { }
+
+        struct UDPSocket {
+            UDPSocket() : connected(false) { }
+            ~UDPSocket() { }
+
+            boost::scoped_ptr<boost::asio::ip::udp::socket> socket;
+            bool connected;
+            boost::asio::ip::udp::endpoint remoteEndpoint;
+        } udp;
+        struct TCPSocket {
+            TCPSocket() { }
+            ~TCPSocket() { }
+
+            boost::scoped_ptr<boost::asio::ip::tcp::socket> socket;
+            boost::scoped_ptr<boost::asio::ip::tcp::acceptor> acceptor;
+        } tcp;
+    } m_socket;
 
     RawTransportListener* m_listener;
 };
