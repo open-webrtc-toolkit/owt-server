@@ -39,7 +39,6 @@ void Gateway::Init(Local<Object> exports) {
   NODE_SET_PROTOTYPE_METHOD(tpl, "removePublisher", removePublisher);
   NODE_SET_PROTOTYPE_METHOD(tpl, "addSubscriber", addSubscriber);
   NODE_SET_PROTOTYPE_METHOD(tpl, "removeSubscriber", removeSubscriber);
-  NODE_SET_PROTOTYPE_METHOD(tpl, "addExternalPublisher", addExternalPublisher);
   NODE_SET_PROTOTYPE_METHOD(tpl, "customMessage", customMessage);
   NODE_SET_PROTOTYPE_METHOD(tpl, "retrieveStatistics", retrieveStatistics);
   NODE_SET_PROTOTYPE_METHOD(tpl, "subscribeStream", subscribeStream);
@@ -92,24 +91,6 @@ void Gateway::addPublisher(const FunctionCallbackInfo<Value>& args) {
   std::string videoResolution = std::string(*param2);
 
   bool added = me->addPublisher(wr, clientId, videoResolution);
-
-  args.GetReturnValue().Set(Boolean::New(isolate, added));
-}
-
-void Gateway::addExternalPublisher(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = Isolate::GetCurrent();
-  HandleScope scope(isolate);
-
-  Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.Holder());
-  woogeen_base::Gateway* me = obj->me;
-
-  ExternalInput* param = ObjectWrap::Unwrap<ExternalInput>(args[0]->ToObject());
-  woogeen_base::ExternalInput* wr = (woogeen_base::ExternalInput*)param->me;
-
-  String::Utf8Value param1(args[1]->ToString());
-  std::string clientId = std::string(*param1);
-
-  bool added = me->addPublisher(wr, clientId);
 
   args.GetReturnValue().Set(Boolean::New(isolate, added));
 }

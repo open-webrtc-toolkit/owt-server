@@ -21,7 +21,6 @@
 #ifndef GATEWAY_H
 #define GATEWAY_H
 
-#include "ExternalInput.h"
 #include "../erizoAPI/MediaDefinitions.h"
 #include "../erizoAPI/WebRtcConnection.h"
 #include "NodeEventRegistry.h"
@@ -77,11 +76,6 @@ private:
    * Param: the peerId
    */
   static void removeSubscriber(const v8::FunctionCallbackInfo<v8::Value>& args);
-  /*
-   * Adds an External Publisher
-   * Param: the ExternalInput of the Publisher
-   */
-  static void addExternalPublisher(const v8::FunctionCallbackInfo<v8::Value>& args);
   /*
    * pass custom message
    */

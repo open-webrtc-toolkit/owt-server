@@ -29,9 +29,10 @@ using boost::asio::ip::tcp;
 
 DEFINE_LOGGER(RawTransport, "woogeen.RawTransport");
 
-RawTransport::RawTransport(RawTransportListener* listener, Protocol proto)
+RawTransport::RawTransport(RawTransportListener* listener, Protocol proto, bool tag)
     : m_protocol(proto)
     , m_isClosing(false)
+    , m_tag(tag)
     , m_connectedUdp(false)
     , m_listener(listener)
 {
@@ -213,6 +214,24 @@ unsigned short RawTransport::getListeningPort()
 void RawTransport::readHandler(const boost::system::error_code& ec, std::size_t bytes)
 {
     if (!ec || ec == boost::asio::error::message_size) {
+        if (!m_tag) {
+            switch (m_protocol) {
+            case TCP:
+                m_listener->onTransportData(m_tcpReceiveData.buffer, bytes);
+                break;
+            case UDP:
+                m_listener->onTransportData(m_udpReceiveData.buffer, bytes);
+                break;
+            default:
+                break;
+            }
+
+            if (!m_isClosing)
+                receiveData();
+
+            return;
+        }
+
         uint32_t payloadlen = 0;
 
         switch (m_protocol) {
@@ -259,7 +278,7 @@ void RawTransport::readHandler(const boost::system::error_code& ec, std::size_t 
 
 void RawTransport::readPacketHandler(const boost::system::error_code& ec, std::size_t bytes)
 {
-    unsigned char *p = reinterpret_cast<unsigned char*>(&m_udpReceiveData.buffer[0]);
+    unsigned char *p = reinterpret_cast<unsigned char*>(&m_tcpReceiveData.buffer[0]);
     ELOG_DEBUG("readHandler(%zu): [%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x...%x,%x,%x,%x]", bytes, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], p[10], p[11], p[12], p[13], p[14], p[15], p[bytes-4], p[bytes-3], p[bytes-2], p[bytes-1]);
     if (!ec || ec == boost::asio::error::message_size) {
         switch (m_protocol) {
@@ -384,9 +403,14 @@ void RawTransport::sendData(const char* buf, int len)
 
 
     TransportData data;
-    *(reinterpret_cast<uint32_t*>(data.buffer)) = htonl(len);
-    memcpy(data.buffer + 4, buf, len);
-    data.length = len + 4;
+    if (m_tag) {
+        *(reinterpret_cast<uint32_t*>(data.buffer)) = htonl(len);
+        memcpy(data.buffer + 4, buf, len);
+        data.length = len + 4;
+    } else {
+        memcpy(data.buffer, buf, len);
+        data.length = len;
+    }
 
     boost::lock_guard<boost::mutex> lock(m_sendQueueMutex);
     m_sendQueue.push(data);
@@ -400,10 +424,17 @@ void RawTransport::receiveData()
     switch (m_protocol) {
     case TCP:
         assert(m_tcpSocket);
-        m_tcpSocket->async_read_some(boost::asio::buffer(m_readHeader, 4),
-            boost::bind(&RawTransport::readHandler, this,
-                boost::asio::placeholders::error,
-                boost::asio::placeholders::bytes_transferred));
+        if (m_tag) {
+            m_tcpSocket->async_read_some(boost::asio::buffer(m_readHeader, 4),
+                boost::bind(&RawTransport::readHandler, this,
+                    boost::asio::placeholders::error,
+                    boost::asio::placeholders::bytes_transferred));
+        } else {
+            m_tcpSocket->async_read_some(boost::asio::buffer(m_tcpReceiveData.buffer, TRANSPORT_BUFFER_SIZE),
+                boost::bind(&RawTransport::readHandler, this,
+                    boost::asio::placeholders::error,
+                    boost::asio::placeholders::bytes_transferred));
+        }
         break;
     case UDP:
         assert(m_udpSocket);

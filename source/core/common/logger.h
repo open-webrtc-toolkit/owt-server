@@ -31,6 +31,9 @@
  #define DEFINE_LOGGER(namespace, logName) \
  log4cxx::LoggerPtr namespace::logger = log4cxx::Logger::getLogger( logName );
 
+ #define DEFINE_TEMPLATE_LOGGER(templateArg, namespace, logName) \
+ templateArg log4cxx::LoggerPtr namespace::logger = log4cxx::Logger::getLogger( logName );
+
 #define ELOG_MAX_BUFFER_SIZE 30000
 
 #define SPRINTF_ELOG_MSG(buffer, fmt, args...) \
