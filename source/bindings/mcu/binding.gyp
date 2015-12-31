@@ -24,13 +24,8 @@
                         '$(CORE_HOME)/mcu/media',
                         '$(CORE_HOME)/../../build/libdeps/build/include',
                         '$(CORE_HOME)/../../third_party/webrtc/src'],
-      'libraries': ['-rdynamic -Wl,--whole-archive',
-                    '-L$(CORE_HOME)/../../third_party/webrtc', '-lwebrtc',
-                    '-Wl,--no-whole-archive',
-                    '-L$(CORE_HOME)/build/mcu', '-lmcu',
+      'libraries': ['-L$(CORE_HOME)/build/mcu', '-lmcu',
                     '-L$(CORE_HOME)/build/woogeen_base', '-lwoogeen_base',
-                    '-L$(CORE_HOME)/../../build/libdeps/build/lib', '-lavformat',
-                    '-L$(CORE_HOME)/../../build/libdeps/build/lib', '-lavcodec',
                     '-L$(CORE_HOME)/build/erizo/src/erizo', '-lerizo'],
       'conditions': [
         [ 'OS=="mac"', {
