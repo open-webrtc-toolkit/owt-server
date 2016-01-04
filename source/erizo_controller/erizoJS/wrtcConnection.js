@@ -195,7 +195,11 @@ exports.WrtcConnection = function (spec) {
     };
 
     that.close = function () {
+        audio && audioFramePacketizer && audioFramePacketizer.close();
+        video && videoFramePacketizer && videoFramePacketizer.close();
         wrtc.close();
+        audio && audioFrameConstructor && audioFrameConstructor.close();
+        video && videoFrameConstructor && videoFrameConstructor.close();
     };
 
     that.onSignalling = function (msg) {
