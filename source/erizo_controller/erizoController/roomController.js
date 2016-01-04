@@ -1042,13 +1042,14 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
     };
 
     that.unsubscribe = function (terminal_id, stream_id) {
+        log.debug("unsubscribe by terminal:", termminal_id, "to stream:", stream_id);
         if (terminals[terminal_id]) {
             unsubscribeStream(terminal_id, terminal_id+'-'+stream_id);
         }
     };
 
     that.unsubscribeAll = function (terminal_id) {
-        log.debug("unsubscribeAll for terminal:", terminal_id);
+        log.debug("unsubscribeAll by terminal:", terminal_id);
         if (terminals[terminal_id]) {
             Object.keys(terminals[terminal_id].subscribed).map(function (subscription_id) {
                 unsubscribeStream(terminal_id, subscription_id);

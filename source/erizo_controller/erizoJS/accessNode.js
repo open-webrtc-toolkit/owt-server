@@ -64,6 +64,7 @@ exports.AccessNode = function (spec) {
     };
 
     that.publish = function (stream_id, stream_type, options, callback) {
+        log.debug("publish, stream_id:", stream_id, ", stream_type:", stream_type, ", audio:", options.has_audio, ", video:", options.has_video);
         if (streams[stream_id]) {
             log.error("Stream already exists:"+stream_id);
             callback('callback', {type: 'failed', reason: "Stream already exists:"+stream_id});
@@ -102,6 +103,7 @@ exports.AccessNode = function (spec) {
     };
 
     that.unpublish = function (stream_id) {
+        log.debug("unpublish, stream_id:", stream_id);
         if (streams[stream_id]) {
             for (var subscription_id in subscriptions) {
                 if (subscriptions[subscription_id].audio === stream_id) {
@@ -122,6 +124,8 @@ exports.AccessNode = function (spec) {
 
             streams[stream_id].connection.close();
             delete streams[stream_id];
+        } else {
+            log.warn("stream["+stream_id+"] doesn't exist.");
         }
     };
 
@@ -163,6 +167,7 @@ exports.AccessNode = function (spec) {
     };
 
     that.subscribe = function (subscription_id, subscription_type, audio_stream_id, video_stream_id, options, callback) {
+        log.debug("subscribe, subscription_id:", subscription_id, ", subscription_type:", subscription_type, ", audio_stream_id:", audio_stream_id, ", video_stream_id:", video_stream_id);
         if (audio_stream_id && streams[audio_stream_id] === undefined) {
             log.error("Audio stream does not exist:"+audio_stream_id);
             callback('callback', {type: 'failed', reason: "Audio stream does not exist:"+audio_stream_id});
@@ -218,15 +223,20 @@ exports.AccessNode = function (spec) {
     };
 
     that.unsubscribe = function (subscription_id) {
+        log.debug("unsubscribe, subscription_id:", subscription_id);
         if (subscriptions[subscription_id] !== undefined) {
             if (subscriptions[subscription_id].audio
                 && streams[subscriptions[subscription_id].audio]) {
-                streams[subscriptions[subscription_id].audio].connection.removeDestination("audio", subscriptions[subscription_id].type === 'webrtc' ? subscriptions[subscription_id].connection.receiver("audio") : subscriptions[subscription_id].connection);
+                log.debug("remove audio:", subscriptions[subscription_id].audio);
+                var dest = subscriptions[subscription_id].type === 'webrtc' ? subscriptions[subscription_id].connection.receiver("audio") : subscriptions[subscription_id].connection;
+                streams[subscriptions[subscription_id].audio].connection.removeDestination("audio", dest);
             }
 
             if (subscriptions[subscription_id].video
                 && streams[subscriptions[subscription_id].video]) {
-                streams[subscriptions[subscription_id].video].connection.removeDestination("video", subscriptions[subscription_id].type === 'webrtc' ? subscriptions[subscription_id].connection.receiver("audio") : subscriptions[subscription_id].connection);
+                log.debug("remove video:", subscriptions[subscription_id].video);
+                var dest = subscriptions[subscription_id].type === 'webrtc' ? subscriptions[subscription_id].connection.receiver("video") : subscriptions[subscription_id].connection;
+                streams[subscriptions[subscription_id].video].connection.removeDestination("video", dest);
             }
 
             subscriptions[subscription_id].connection.close();
