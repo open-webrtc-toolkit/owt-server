@@ -68,10 +68,10 @@ void HardwareVideoFrameMixerInput::onFrame(const woogeen_base::Frame& frame)
 }
 
 void HardwareVideoFrameMixerInput::requestKeyFrame(InputIndex index) {
-    if (index == m_index) {
+    //if (index == m_index) {
         FeedbackMsg msg {.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME};
         m_source->onFeedback(msg);
-    }
+    //}
 }
 
 HardwareVideoFrameMixerOutput::HardwareVideoFrameMixerOutput(boost::shared_ptr<VideoMixEngine> engine,
