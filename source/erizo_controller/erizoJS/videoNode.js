@@ -161,7 +161,7 @@ var VideoEngine = function (spec) {
     that.generate = function (codec, resolution, callback) {
         log.debug("generate, codec:", codec, "resolution:", resolution);
         for (var stream_id in outputs) {
-            if (outputs[stream_id].codec === options.codec && outputs[stream_id].resolution === resolution) {
+            if (outputs[stream_id].codec === codec && outputs[stream_id].resolution === resolution) {
                 callback('callback', stream_id);
                 return;
             }
