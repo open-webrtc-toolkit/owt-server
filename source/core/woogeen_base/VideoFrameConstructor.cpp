@@ -37,6 +37,7 @@ VideoFrameConstructor::VideoFrameConstructor(erizo::FeedbackSink* feedback)
 {
     m_videoTransport.reset(new WebRTCTransport<erizo::VIDEO>(nullptr, feedback));
     m_taskRunner.reset(new woogeen_base::WebRTCTaskRunner());
+    m_taskRunner->Start();
     init();
 }
 
@@ -231,25 +232,8 @@ int32_t VideoFrameConstructor::Decode(const webrtc::EncodedImage& encodedImage,
     return 0;
 }
 
-int VideoFrameConstructor::deliverVideoData(char* packet, int len)
+int VideoFrameConstructor::deliverVideoData(char* buf, int len)
 {
-    // FIXME! Important! We need to copy the original packet buffer.
-    // If the video stream is an H264 stream, now the rtp receiver for H264 stream
-    // implementation in the webrtc stack we used (the one used in Chrome 42) will
-    // modify the packet content - which is TOO BAD but before the webrtc stack
-    // fixed this issue, we need to perform a memcpy to avoid the original packet
-    // being modified unintentionally. In the MCU scenario, the same packet may need
-    // to be handed over to multiple receivers so we need to make sure the original
-    // packet is untouched.
-    //
-    // The webrtc stack implementation uses a VERY BAD const_cast to modify the
-    // packet crudely, when parsing an H264 Fua Nalu in the packet:
-    //    uint8_t* payload = const_cast<uint8_t*>(payload_data + *offset);
-    //    payload[0] = original_nal_header;
-    //
-    char buf[MAX_DATA_PACKET_SIZE];
-    memcpy(buf, packet, len);
-
     RTCPHeader* chead = reinterpret_cast<RTCPHeader*>(buf);
     uint8_t packetType = chead->getPacketType();
     assert(packetType != RTCP_Receiver_PT && packetType != RTCP_PS_Feedback_PT && packetType != RTCP_RTP_Feedback_PT);
