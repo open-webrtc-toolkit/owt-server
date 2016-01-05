@@ -58,7 +58,7 @@ private:
 
 class SoftVideoFrameMixer : public VideoFrameMixer {
 public:
-    SoftVideoFrameMixer(uint32_t maxInput, VideoSize rootSize, YUVColor bgColor, boost::shared_ptr<woogeen_base::WebRTCTaskRunner>);
+    SoftVideoFrameMixer(uint32_t maxInput, VideoSize rootSize, YUVColor bgColor, boost::shared_ptr<woogeen_base::WebRTCTaskRunner>, bool useSimulcast);
     ~SoftVideoFrameMixer();
 
     bool addInput(int input, woogeen_base::FrameFormat, woogeen_base::FrameSource*);
@@ -92,10 +92,12 @@ private:
     boost::shared_mutex m_outputMutex;
 
     boost::shared_ptr<woogeen_base::WebRTCTaskRunner> m_taskRunner;
+    bool m_useSimulcast;
 };
 
-SoftVideoFrameMixer::SoftVideoFrameMixer(uint32_t maxInput, VideoSize rootSize, YUVColor bgColor, boost::shared_ptr<woogeen_base::WebRTCTaskRunner> taskRunner)
+SoftVideoFrameMixer::SoftVideoFrameMixer(uint32_t maxInput, VideoSize rootSize, YUVColor bgColor, boost::shared_ptr<woogeen_base::WebRTCTaskRunner> taskRunner, bool useSimulcast)
     : m_taskRunner(taskRunner)
+    , m_useSimulcast(useSimulcast)
 {
     m_compositor.reset(new SoftVideoCompositor(maxInput, rootSize, bgColor));
 }
@@ -214,7 +216,7 @@ inline bool SoftVideoFrameMixer::addOutput(int output,
             return false;
         }
     } else { //Never found a reusable encoder.
-        encoder.reset(new woogeen_base::VCMFrameEncoder(format, m_taskRunner));
+        encoder.reset(new woogeen_base::VCMFrameEncoder(format, m_taskRunner, m_useSimulcast));
         streamId = encoder->generateStream(rootSize.width, rootSize.height, dest);
         if (streamId < 0){
             return false;
