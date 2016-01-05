@@ -15,6 +15,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
     var amqper = spec.amqper,
         config = spec.config,
         room_id = spec.room,
+        observer = spec.observer,
         mixed_stream_id = spec.room,
         supported_audio_codecs = [],
         supported_video_codecs = [],
@@ -60,26 +61,14 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
     }});
 
     var enableAVCoordination = function () {
+        log.debug("enableAVCoordination");
         if (config.enableMixing && audio_mixer && video_mixer) {
+            log.debug("enableAVCoordination 1");
             makeRPC(
                 amqper,
-                'ErizoJS_' + terminals[audio_mixer],
+                'ErizoJS_' + terminals[audio_mixer].erizo,
                 "enableVAD",
-                [1000],
-                function (activeTerminal) {
-                    for (var i in terminals[activeTerminal].published) {
-                        var stream_id = terminals[activeTerminal].published[i];
-                        if (streams[stream_id] && streams[stream_id].video && (streams[stream_id].video.subscribers.indexOf(video_mixer) !== -1)) {
-                            makeRPC(
-                                amqper,
-                                'ErizoJS_' + terminals[video_mixer],
-                                "setPrimary",
-                                [stream_id]);
-                            return;
-                        }
-                    }
-                }
-            );
+                [1000, room_id, observer]);
         }
     };
 
@@ -1042,7 +1031,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
     };
 
     that.unsubscribe = function (terminal_id, stream_id) {
-        log.debug("unsubscribe by terminal:", termminal_id, "to stream:", stream_id);
+        log.debug("unsubscribe by terminal:", terminal_id, "to stream:", stream_id);
         if (terminals[terminal_id]) {
             unsubscribeStream(terminal_id, terminal_id+'-'+stream_id);
         }
@@ -1149,6 +1138,21 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
                 [stream_id, region],
                 on_ok,
                 on_error);
+        }
+    };
+
+    that.setPrimary = function (terminal_id) {
+        log.debug("setPrimary:", terminal_id);
+        for (var i in terminals[terminal_id].published) {
+            var stream_id = terminals[terminal_id].published[i];
+            if (streams[stream_id] && streams[stream_id].video && (streams[stream_id].video.subscribers.indexOf(video_mixer) !== -1)) {
+                makeRPC(
+                    amqper,
+                    'ErizoJS_' + terminals[video_mixer].erizo,
+                    "setPrimary",
+                    [stream_id]);
+                return;
+            }
         }
     };
 

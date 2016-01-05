@@ -183,6 +183,17 @@ var eventReportHandlers = {
                 }
             }
         }
+    },
+    'vad': function (roomId, spec) {
+        var room = rooms[roomId];
+        if (!room) {
+            log.warn('room not found:', roomId);
+            return;
+        }
+
+        var activeTerminal = spec.active_terminal;
+        log.info('vad:', activeTerminal);
+        room.controller.setPrimary(activeTerminal);
     }
 };
 
@@ -503,7 +514,7 @@ var listen = function () {
                                                 return on_error();
                                             }
                                             room.controller = controller.RoomController(
-                                                {amqper: amqper, room:roomID, config: resp}, 
+                                                {amqper: amqper, room:roomID, config: resp, observer: 'erizoController_' + myId},
                                                 function (resolutions) {
                                                     room.enableMixing = resp.enableMixing;
                                                     on_ok();

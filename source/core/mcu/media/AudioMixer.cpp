@@ -430,6 +430,7 @@ void AudioMixer::onTimeout()
 
 void AudioMixer::enableVAD(uint32_t period, VADListener* vadCallback)
 {
+    ELOG_DEBUG("enableVAD, period:%u", period);
     m_vadCallback = vadCallback;
     m_jitterHold = period / 10;
     m_vadEnabled = true;
@@ -437,6 +438,7 @@ void AudioMixer::enableVAD(uint32_t period, VADListener* vadCallback)
 
 void AudioMixer::disableVAD()
 {
+    ELOG_DEBUG("disableVAD.");
     m_vadEnabled = false;
 }
 

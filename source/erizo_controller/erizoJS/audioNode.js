@@ -2,6 +2,7 @@
 'use strict';
 var addon = require('./../../bindings/mcu/build/Release/addon');
 var logger = require('./../common/logger').logger;
+var amqper = require('./../common/amqper');
 
 // Logger
 var log = logger.getLogger("AudioNode");
@@ -172,9 +173,10 @@ var AudioMixer = function (spec) {
         }
     };
 
-    that.enableVAD = function (periodMS, callback) {
+    that.enableVAD = function (periodMS, roomId, observer) {
         engine.enableVAD(periodMS, function (activeParticipant) {
-            callback('callback', activeParticipant);
+            log.debug("enableVAD, activeParticipant:", activeParticipant);
+            amqper.callRpc(observer, 'eventReport', ['vad', roomId, {active_terminal: activeParticipant, data: null}]);
         });
     };
 
