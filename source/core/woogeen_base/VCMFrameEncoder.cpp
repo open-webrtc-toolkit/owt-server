@@ -29,12 +29,13 @@ namespace woogeen_base {
 
 DEFINE_LOGGER(VCMFrameEncoder, "woogeen.VCMFrameEncoder");
 
-VCMFrameEncoder::VCMFrameEncoder(FrameFormat format, boost::shared_ptr<WebRTCTaskRunner> taskRunner)
+VCMFrameEncoder::VCMFrameEncoder(FrameFormat format, boost::shared_ptr<WebRTCTaskRunner> taskRunner, bool useSimulcast)
     : m_streamId(0)
     , m_vcm(VideoCodingModule::Create())
     , m_encodeFormat(format)
     , m_taskRunner(taskRunner)
 {
+    webrtc::VP8EncoderFactoryConfig::set_use_simulcast_adapter(useSimulcast);
     m_vcm->InitializeSender();
     m_vcm->RegisterTransportCallback(this);
     m_vcm->EnableFrameDropper(false);
@@ -58,8 +59,7 @@ bool VCMFrameEncoder::canSimulcastFor(FrameFormat format, uint32_t width, uint32
     videoCodec = m_vcm->GetSendCodec();
     return webrtc::VP8EncoderFactoryConfig::use_simulcast_adapter()
            && m_encodeFormat == format
-           && videoCodec.width * height == videoCodec.height * width
-           && videoCodec.width < width;
+           && videoCodec.width * height == videoCodec.height * width;
 }
 
 bool VCMFrameEncoder::isIdle()
@@ -245,7 +245,7 @@ int32_t VCMFrameEncoder::SendData(
 
         auto it = m_streams.begin();
         for (; it != m_streams.end(); ++it) {
-            if (it->second.encodeOut.get() && it->first == rtpVideoHdr->simulcastIdx)
+            if (it->second.encodeOut.get() && it->second.simulcastId == rtpVideoHdr->simulcastIdx)
                 it->second.encodeOut->onEncoded(frame);
         }
         return 0;

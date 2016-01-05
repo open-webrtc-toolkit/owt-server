@@ -70,7 +70,7 @@ class VCMFrameEncoder : public VideoFrameEncoder, public webrtc::VCMPacketizatio
     DECLARE_LOGGER();
 
 public:
-    VCMFrameEncoder(FrameFormat format, boost::shared_ptr<WebRTCTaskRunner>);
+    VCMFrameEncoder(FrameFormat format, boost::shared_ptr<WebRTCTaskRunner>, bool useSimulcast = false);
     ~VCMFrameEncoder();
 
     // Implements VideoFrameEncoder.
