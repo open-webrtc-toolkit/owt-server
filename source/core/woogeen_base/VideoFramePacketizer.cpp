@@ -41,7 +41,6 @@ VideoFramePacketizer::VideoFramePacketizer(erizo::MediaSink* videoSink, erizo::F
     setVideoSink(videoSink);
     m_videoTransport.reset(new WebRTCTransport<erizo::VIDEO>(this, nullptr));
     m_taskRunner.reset(new woogeen_base::WebRTCTaskRunner());
-    m_taskRunner->Start();
     init();
     fbSource->setFeedbackSink(this);
 }

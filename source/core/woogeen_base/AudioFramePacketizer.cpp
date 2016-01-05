@@ -35,7 +35,6 @@ AudioFramePacketizer::AudioFramePacketizer(erizo::MediaSink* audioSink, erizo::F
     setAudioSink(audioSink);
     m_audioTransport.reset(new WebRTCTransport<erizo::AUDIO>(this, nullptr));
     m_taskRunner.reset(new woogeen_base::WebRTCTaskRunner());
-    m_taskRunner->Start();
     init();
     fbSource->setFeedbackSink(this);
 }
