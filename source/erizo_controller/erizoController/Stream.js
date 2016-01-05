@@ -42,10 +42,9 @@ exports.Stream = function (spec) {
 
     // Indicates if the stream has the resolution
     that.hasResolution = function (resolution) {
-        if (that.isMixed() && spec.video.resolutions instanceof Array && typeof resolution === 'object' && resolution !== null) {
+        if (that.isMixed() && spec.video.resolutions instanceof Array && typeof resolution === 'string') {
             for (var i in spec.video.resolutions) {
-                if (spec.video.resolutions[i].width === resolution.width &&
-                    spec.video.resolutions[i].height === resolution.height)
+                if (spec.video.resolutions[i] === resolution)
                     return true;
             }
         }
