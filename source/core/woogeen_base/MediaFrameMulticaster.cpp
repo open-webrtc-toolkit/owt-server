@@ -50,6 +50,7 @@ void MediaFrameMulticaster::onTimeout()
     if (m_pendingKeyFrameRequests > 0) {
         FeedbackMsg msg = {VIDEO_FEEDBACK, REQUEST_KEY_FRAME};
         deliverFeedbackMsg(msg);
+        m_pendingKeyFrameRequests = 0;
     }
 }
 

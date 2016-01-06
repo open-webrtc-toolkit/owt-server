@@ -34,6 +34,7 @@ RawTransport<prot>::RawTransport(RawTransportListener* listener, bool tag)
     : m_isClosing(false)
     , m_tag(tag)
     , m_listener(listener)
+    , m_receivedBytes(0)
 {
     memset(&m_socket, 0, sizeof(m_socket));
 }
@@ -286,11 +287,25 @@ template<Protocol prot>
 void RawTransport<prot>::readPacketHandler(const boost::system::error_code& ec, std::size_t bytes)
 {
     unsigned char *p = reinterpret_cast<unsigned char*>(&m_receiveData.buffer[0]);
-    ELOG_DEBUG("readHandler(%zu): [%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x...%x,%x,%x,%x]", bytes, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], p[10], p[11], p[12], p[13], p[14], p[15], p[bytes-4], p[bytes-3], p[bytes-2], p[bytes-1]);
+    ELOG_DEBUG("readPacketHandler(%zu): [%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x...%x,%x,%x,%x]", bytes, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], p[10], p[11], p[12], p[13], p[14], p[15], p[bytes-4], p[bytes-3], p[bytes-2], p[bytes-1]);
+    uint32_t expectedLen = ntohl(*(reinterpret_cast<uint32_t*>(m_readHeader)));
     if (!ec || ec == boost::asio::error::message_size) {
         switch (prot) {
         case TCP:
-            m_listener->onTransportData(m_receiveData.buffer, bytes);
+            m_receivedBytes += bytes;
+            if (expectedLen > m_receivedBytes) {
+                ELOG_WARN("Expect to receive %u bytes, but actually received %zu bytes.", expectedLen, bytes);
+                ELOG_INFO("Continue receiving %u bytes.", expectedLen - m_receivedBytes);
+                m_socket.tcp.socket->async_read_some(boost::asio::buffer(m_receiveData.buffer + m_receivedBytes, expectedLen - m_receivedBytes),
+                        boost::bind(&RawTransport::readPacketHandler, this,
+                            boost::asio::placeholders::error,
+                            boost::asio::placeholders::bytes_transferred));
+            } else {
+                m_receivedBytes = 0;
+                m_listener->onTransportData(m_receiveData.buffer, expectedLen);
+                if (!m_isClosing)
+                    receiveData();
+            }
             break;
         case UDP:
             ELOG_WARN("Should not run into readPacketHandler under udp mode");
@@ -298,9 +313,6 @@ void RawTransport<prot>::readPacketHandler(const boost::system::error_code& ec, 
         default:
             break;
         }
-
-        if (!m_isClosing)
-            receiveData();
     } else {
         ELOG_DEBUG("Error receiving %s data: %s", prot == UDP ? "UDP" : "TCP", ec.message().c_str());
         // Notify the listener about the socket error if the listener is not closing me.
