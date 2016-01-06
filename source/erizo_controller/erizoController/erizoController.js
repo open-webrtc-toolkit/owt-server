@@ -167,7 +167,7 @@ var eventReportHandlers = {
         }
 
         var recorderId = spec.id;
-        room.controller.unsubscribe(room.id, recorderId);
+        room.controller.unsubscribeBySubscriptionId(room.id, recorderId);
 
         log.info('Recorder has been deleted since', spec.message);
 
@@ -1002,7 +1002,7 @@ var listen = function () {
             }
 
             // Make sure the recording context clean for this 'startRecorder'
-            socket.room.controller.unsubscribe(socket.room.id, recorderId);
+            socket.room.controller.unsubscribeBySubscriptionId(socket.room.id, recorderId);
             var isContinuous = false;
             for (var i in socket.room.streams) {
                 if (socket.room.streams.hasOwnProperty(i)) {
@@ -1028,6 +1028,7 @@ var listen = function () {
                  audio_codec: preferredAudioCodec,
                  require_video: !!options.videoStreamId,
                  video_codec: preferredVideoCodec,
+                 path: url,
                  interval: interval,
                  observer: 'erizoController_' + myId,
                  room_id: socket.room.id},
@@ -1071,7 +1072,7 @@ var listen = function () {
 
             // Stop recorder
             if (options.recorderId) {
-                socket.room.controller.unsubscribe(socket.room.id, options.recorderId);
+                socket.room.controller.unsubscribeBySubscriptionId(socket.room.id, options.recorderId);
                 for (var i in socket.room.streams) {
                     if (socket.room.streams.hasOwnProperty(i)) {
                         if (socket.room.streams[i].getVideoRecorder() === options.recorderId+'') {
@@ -1084,7 +1085,7 @@ var listen = function () {
                     }
                 }
 
-                log.info('Recorder stopped: ', result.text);
+                log.info('Recorder stopped: ', options.recorderId);
 
                 sendMsgToRoom(socket.room, 'remove_recorder', {id: options.recorderId});
 

@@ -145,9 +145,21 @@ exports.AccessNode = function (spec) {
             conn.init(options.require_audio, options.require_video, function (response) {
                 callback('callback', response);
             });
-        } else{
-            log.error("Pre-subscription, Subscription type invalid:"+subscription_type);
-            callback('callback', {type: 'failed', reason: "Pre-subscription, Subscription type invalid:"+subscription_type});
+        } else if (subscription_type === 'rtsp') {
+            conn = new addon.RtspOut(options.url);
+            callback('callback', {type: 'ready', audio_codecs: [options.audio_codec], video_codecs: [options.video_codec]});
+        } else if (subscription_type === 'file') {
+            conn = new addon.MediaFileOut(options.path, options.interval);
+            conn.addEventListener('RecordingStream', function (message) {
+                log.error('External output for media recording error occurs.');
+                if (options.observer !== undefined) {
+                    amqper.callRpc(options.observer, 'eventReport', ['deleteExternalOutput', options.room_id, {message: message, id: subscription_id, data: null}]);
+                }
+            });
+            callback('callback', {type: 'ready', audio_codecs: [options.audio_codec], video_codecs: [options.video_codec]});
+        } else {
+            log.error("Pre-subscription, Subscription type invalid:" + subscription_type);
+            callback('callback', {type: 'failed', reason: "Pre-subscription, Subscription type invalid:" + subscription_type});
             return;
         }
 
@@ -183,27 +195,22 @@ exports.AccessNode = function (spec) {
         var conn = subscriptions[subscription_id] && subscriptions[subscription_id].connection || undefined;
 
         if (!conn) {
-            if (subscription_type === 'webrtc') {
-                log.error("Subscription connection does not exist:"+subscription_id);
-                callback('callback', {type: 'failed', reason: "Subscription connection does not exist:"+subscription_id});
-                return;
-            } else if (subscription_type === 'internal') {
-                conn = new addon.InternalOut(options.protocol, options.dest_ip, options.dest_port);
-            } else if (subscription_type === 'rtsp') {
-                conn = new addon.RtspOut(options.url);
-            } else if (subscription_type === 'file') {
-                conn = new addon.MediaFileOut(options.path, options.interval);
-                conn.addEventListener('RecordingStream', function (message) {
-                    log.error('External output for media recording error occurs.');
-                    if (options.observer !== undefined) {
-                        amqper.callRpc(options.observer, 'eventReport', ['deleteExternalOutput', options.room_id, {message: message, id: subscription_id, data: null}]);
-                    }
-                });
-            } else {
-                log.error("Subscription type invalid:"+subscription_type);
-                callback('callback', {type: 'failed', reason: "Subscription type invalid:"+subscription_type});
-                return;
+            switch (subscription_type) {
+                case 'webrtc':
+                case 'file':
+                case 'rtsp':
+                    log.error("Subscription connection does not exist:" + subscription_id);
+                    callback('callback', {type: 'failed', reason: "Subscription connection does not exist:"+subscription_id});
+                    return;
+                case 'internal':
+                    conn = new addon.InternalOut(options.protocol, options.dest_ip, options.dest_port);
+                    break;
+                default:
+                    log.error("Subscription type invalid:" + subscription_type);
+                    callback('callback', {type: 'failed', reason: "Subscription type invalid:" + subscription_type});
+                    return;
             }
+
             subscriptions[subscription_id] = {type: subscription_type,
                                               audio: undefined,
                                               video: undefined,
