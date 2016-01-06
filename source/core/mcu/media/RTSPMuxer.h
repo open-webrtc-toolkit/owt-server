@@ -48,7 +48,7 @@ public:
     ~RTSPMuxer();
 
     // MediaMuxer interface
-    void setMediaSource(woogeen_base::FrameProvider* videoProvider, woogeen_base::FrameProvider* audioProvider);
+    void setMediaSource(woogeen_base::FrameProvider* videoProvider, woogeen_base::FrameProvider* audioProvider, const std::string& preferredVideoCodec, const std::string& preferredAudioCodec);
     void unsetMediaSource();
     void onFrame(const woogeen_base::Frame&);
     void onTimeout();

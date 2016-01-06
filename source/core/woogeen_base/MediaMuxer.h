@@ -118,7 +118,7 @@ public:
     MediaMuxer() : m_status(Context_EMPTY) { }
     virtual ~MediaMuxer() { }
 
-    DLL_PUBLIC virtual void setMediaSource(FrameProvider* videoProvider, FrameProvider* audioProvider) = 0;
+    DLL_PUBLIC virtual void setMediaSource(FrameProvider* videoProvider, FrameProvider* audioProvider, const std::string& preferredVideoCodec, const std::string& preferredAudioCodec) = 0;
     DLL_PUBLIC virtual void unsetMediaSource() = 0;
     DLL_PUBLIC void setEventRegistry(EventRegistry* handle) { m_asyncHandle = handle; }
 

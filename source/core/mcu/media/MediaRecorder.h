@@ -37,11 +37,11 @@ class MediaRecorder : public woogeen_base::MediaMuxer {
     DECLARE_LOGGER();
 
 public:
-    MediaRecorder(const std::string& preferredVideoCodec, const std::string& preferredAudioCodec, const std::string& recordUrl, int snapshotInterval);
+    MediaRecorder(const std::string& recordUrl, int snapshotInterval);
     ~MediaRecorder();
 
     // MediaMuxer interface
-    void setMediaSource(woogeen_base::FrameProvider* videoProvider, woogeen_base::FrameProvider* audioProvider);
+    void setMediaSource(woogeen_base::FrameProvider* videoProvider, woogeen_base::FrameProvider* audioProvider, const std::string& preferredVideoCodec, const std::string& preferredAudioCodec);
     void unsetMediaSource();
     void onFrame(const woogeen_base::Frame&);
     void onTimeout();
@@ -64,8 +64,8 @@ private:
     int32_t m_videoId;
     int32_t m_audioId;
 
-    woogeen_base::FrameFormat m_preferredVideoCodec;
-    woogeen_base::FrameFormat m_preferredAudioCodec;
+    woogeen_base::FrameFormat m_videoFrameFormat;
+    woogeen_base::FrameFormat m_audioFrameFormat;
     std::string m_recordPath;
     // FIXME: snapshot interval for the future usage
     int m_snapshotInterval;
