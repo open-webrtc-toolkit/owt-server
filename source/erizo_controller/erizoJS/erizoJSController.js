@@ -325,8 +325,6 @@ exports.ErizoJSController = function () {
     that.addExternalOutput = function (video_publisher_id, audio_publisher_id, preferred_video_codec, preferred_audio_codec, output_id, url, interval, callback) {
         if (publishers[video_publisher_id] !== undefined && publishers[audio_publisher_id] !== undefined) {
             var config = {
-                preferredVideoCodec: preferred_video_codec,
-                preferredAudioCodec: preferred_audio_codec,
                 id: output_id,
                 url: url,
                 interval: interval
@@ -359,7 +357,9 @@ exports.ErizoJSController = function () {
             }
 
             externalOutputs[output_id].setMediaSource(publishers[video_publisher_id].muxer,
-                                                      publishers[audio_publisher_id].muxer);
+                                                      publishers[audio_publisher_id].muxer,
+                                                      preferred_video_codec,
+                                                      preferred_audio_codec);
 
             callback('callback', 'success');
             return;

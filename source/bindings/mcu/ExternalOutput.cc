@@ -93,7 +93,13 @@ void ExternalOutput::setMediaSource(const FunctionCallbackInfo<Value>& args) {
     audioSource = mixer1->me;
   }
 
-  me->setMediaSource(videoSource->getVideoFrameProvider(), audioSource->getAudioFrameProvider());
+  String::Utf8Value param2(args[2]->ToString());
+  std::string preferredVideoCodec = std::string(*param2);
+
+  String::Utf8Value param3(args[3]->ToString());
+  std::string preferredAudioCodec = std::string(*param3);
+
+  me->setMediaSource(videoSource->getVideoFrameProvider(), audioSource->getAudioFrameProvider(), preferredVideoCodec, preferredAudioCodec);
 }
 
 void ExternalOutput::unsetMediaSource(const FunctionCallbackInfo<Value>& args) {

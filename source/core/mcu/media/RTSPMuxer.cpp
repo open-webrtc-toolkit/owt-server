@@ -76,7 +76,7 @@ RTSPMuxer::~RTSPMuxer()
 #endif
 }
 
-void RTSPMuxer::setMediaSource(woogeen_base::FrameProvider* videoSource, woogeen_base::FrameProvider* audioSource)
+void RTSPMuxer::setMediaSource(woogeen_base::FrameProvider* videoSource, woogeen_base::FrameProvider* audioSource, const std::string& preferredVideoCodec, const std::string& preferredAudioCodec)
 {
     if (m_status == woogeen_base::MediaMuxer::Context_READY) {
         ELOG_DEBUG("continuous RTSP output");
@@ -90,7 +90,7 @@ void RTSPMuxer::setMediaSource(woogeen_base::FrameProvider* videoSource, woogeen
     m_audioSource = audioSource;
 
     woogeen_base::MediaSpecInfo info {0};
-    // Start the recording of video and audio
+    // Start the RTSP output of video and audio from hard-coded H264 and PCM
     if (m_videoSource)
         m_videoId = m_videoSource->addFrameConsumer(m_uri, woogeen_base::FRAME_FORMAT_H264, this, info);
 
