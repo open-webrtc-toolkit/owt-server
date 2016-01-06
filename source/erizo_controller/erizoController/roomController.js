@@ -256,7 +256,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
             amqper,
             'ErizoJS_' + target_erizo_id,
             "publish",
-            [stream_id, 'internal', {owner: stream_owner, has_audio: hasAudio, audio_codec: audio_codec, has_video: hasVideo, video_codec: video_codec, protocol: 'udp'}],
+            [stream_id, 'internal', {owner: stream_owner, has_audio: hasAudio, audio_codec: audio_codec, has_video: hasVideo, video_codec: video_codec, protocol: 'tcp'}],
             function (dest_port) {
                 log.debug("internally publish ok, dest_port:", dest_port);
                 var dest_ip = erizos[target_erizo_id].addr;
@@ -268,7 +268,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
                     amqper,
                     'ErizoJS_' + original_erizo,
                     "subscribe",
-                    [stream_id+'@'+target_erizo_id, 'internal', hasAudio ? stream_id : undefined, hasVideo ? stream_id : undefined, {require_audio: hasAudio, require_video: hasVideo, dest_ip: dest_ip, dest_port: dest_port, protocol: 'udp'}],
+                    [stream_id+'@'+target_erizo_id, 'internal', hasAudio ? stream_id : undefined, hasVideo ? stream_id : undefined, {require_audio: hasAudio, require_video: hasVideo, dest_ip: dest_ip, dest_port: dest_port, protocol: 'tcp'}],
                     function () {
                         log.debug("internally subscribe ok");
                         streams[stream_id].spread.push(target_erizo_id);

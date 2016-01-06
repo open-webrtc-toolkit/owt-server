@@ -59,7 +59,7 @@ public:
 
 // The buffer with this size should be enough to hold one message from/to the
 // network based on the MTU of network protocols.
-static const int TRANSPORT_BUFFER_SIZE = 64*1024;
+static const int TRANSPORT_BUFFER_SIZE = 128*1024;
 
 typedef struct {
     char buffer[TRANSPORT_BUFFER_SIZE];
@@ -131,6 +131,7 @@ private:
     } m_socket;
 
     RawTransportListener* m_listener;
+    uint32_t m_receivedBytes;
 };
 
 } /* namespace woogeen_base */
