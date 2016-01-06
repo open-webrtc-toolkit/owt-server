@@ -441,7 +441,8 @@ int32_t ExternalInputGateway::addFrameConsumer(const std::string&/*unused*/, woo
         if (iFrameCallback)
             iFrameCallback->handleIntraFrameRequest();
 
-        outputId = it->second->streamId();
+        // Use the different payload type as the output id for frame consumers
+        outputId = payloadType;
     }
 
     return outputId;
@@ -454,7 +455,7 @@ void ExternalInputGateway::removeFrameConsumer(int32_t id)
     boost::shared_lock<boost::shared_mutex> lock(m_videoOutputMutex);
     std::map<int, boost::shared_ptr<woogeen_base::VideoFrameSender>>::iterator it = m_videoOutputs.begin();
     for (; it != m_videoOutputs.end(); ++it) {
-        if (id == it->second->streamId()) {
+        if (id == it->first) {
             it->second->deRegisterPreSendFrameCallback();
             break;
         }
