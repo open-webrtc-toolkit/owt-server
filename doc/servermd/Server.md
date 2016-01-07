@@ -1,8 +1,8 @@
 Conference Server User Guide
 ----------------------
 
-# 1 Overview {#section1}
-## 1.1 Introduction {#section1_1}
+# 1 Overview {#Conferencesection1}
+## 1.1 Introduction {#Conferencesection1_1}
 Welcome to the Conference Server User Guide for the Intel® Collaboration Suite for WebRTC (Intel® CS for WebRTC). This guide describes how to install and configure the Intel CS for WebRTC multipoint control unit (MCU). This guide also explains how to install and launch the peer server.
 
 The Intel CS for WebRTC Conference Server provides an efficient WebRTC-based video conference service that scales a single WebRTC stream out to many endpoints. The following list briefly explains the purpose of each section in this guide:
@@ -14,34 +14,7 @@ The Intel CS for WebRTC Conference Server provides an efficient WebRTC-based vid
 
 Installation requirements and dependencies for the MCU, sample application server, and peer server are described in their associated sections.
 
-## 1.2 Conventions {#section1_2}
-This guide uses several pseudo-code and typographic conventions.
-
-### 1.2.1 Pseudo-code conventions {#section1_2_1}
-Pseudo code is presented to describe algorithms in a more concise form. The algorithms in this document are not intended to be compiled directly. The code is presented at a level corresponding to the surrounding text.
-
-In describing variables, a list is an unordered collection of homogeneous objects. A queue is an ordered list of homogeneous objects. Unless otherwise noted, the ordering is assumed to be first-in-first-out (FIFO).
-
-Pseudo code is presented in a C-like format, using C conventions where appropriate.
-
-The coding style, particularly the indentation style, is used for readability and does not necessarily comply with an implementation of Android* or JavaScript*.
-
-### 1.2.2 Conventions {#section1_2_2}
-This document uses these conventions:
-
-TODO
-
-**Table 1: Styled Table**
-
-  Form       |  Convention
--------------|--------------
-Plain text(blue)|Indicates an active link.
-Bold            |Identifies a processor register name or a command.
-Monospace       |Indicates computer code, example code segments, pseudo code, or a prototype code segment. These code listings typically appear in one or more separate paragraphs, though words or segments can also be embedded in a normal text paragraph.
-italic Monospace|Indicates placeholder names for variable information (i.e., arguments) that must be supplied.
-foo@foo:~$      |A user-defined command prompt for Linux-based command lines used in the examples in this manual.
-
-##1.3 Terminology {#section1_3}
+##1.2 Terminology {#Conferencesection1_2}
 This manual uses the following acronyms and terms:
 
   Abbreviation       |  Full Name
@@ -66,7 +39,7 @@ SIP|Session Initiation Protocol
 XMPP|Extensible Messaging and Presence Protocol
 WebRTC|Web real-time communication
 
-##1.4 For more information {#section1_4}
+##1.3 For more information {#Conferencesection1_3}
 For more information, visit the following Web pages:
 
  - Intel HTML Developer Zone:
@@ -82,23 +55,24 @@ http://www.w3.org/2011/04/webrtc/
  - WebRTC Open Project:
 http://www.webrtc.org
 
-# 2 MCU Installation {#section2}
+# 2 MCU Installation {#Conferencesection2}
 
-## 2.1 Introduction {#section2_1}
+## 2.1 Introduction {#Conferencesection2_1}
 
 This section describes the system requirements for installing the MCU server, and the compatibility with its client.
 
-> **Note**:	Installation requirements for the peer server are described in <a href="#section5">section 5</a> of this guide.
+> **Note**:	Installation requirements for the peer server are described in <a href="#Conferencesection5">section 5</a> of this guide.
 
-## 2.2 Requirements and compatibility {#section2_2}
+## 2.2 Requirements and compatibility {#Conferencesection2_2}
 
 Table 2-1 describes the system requirements for installing the MCU server. Table 2-2 gives an overview of MCU compatibility with the client.
+
 **Table 2-1. Server requirements**
 Application name|OS version
 -------------|--------------
 MCU server|Ubuntu 14.04 LTS* 64-bit
 
-H.264 support in MCU system requires the deployment of OpenH264 library, see [Deploy Cisco OpenH264* Library section](#section2_3_4) for more details.
+H.264 support in MCU system requires the deployment of OpenH264 library, see [Deploy Cisco OpenH264* Library section](#Conferencesection2_3_4) for more details.
 
 > **Note**: OpenH264 library is not required for GPU-accelerated MCU when forward RTSP stream subscription is not used.
 If you need to set up mix mode video conferences which require GPU-accelerated media processing, you must install the following server side SDK:
@@ -112,9 +86,9 @@ Application Name|Google Chrome* 46|Mozilla Firefox* 41|Microsoft Internet Explor
 MCU Client|YES|YES|YES|YES
 Management Console|YES|YES|N/A|N/A
 
-## 2.3 Install the MCU server {#section2_3}
+## 2.3 Install the MCU server {#Conferencesection2_3}
 This section describes the dependencies and steps for installing the MCU.
-### 2.3.1 Dependencies {#section2_3_1}
+### 2.3.1 Dependencies {#Conferencesection2_3_1}
 **Table 2-3. Dependencies**
 Name|Version|Remarks
 --------|--------|--------
@@ -131,7 +105,7 @@ Regarding Node.js*, make sure it's installed in your system prior to installing 
 
 Before installing the MCU, make sure your login account has sys-admin privileges; i.e. the ability to execute `sudo`.
 
-### 2.3.2 Configure the MCU server machine {#section2_3_2}
+### 2.3.2 Configure the MCU server machine {#Conferencesection2_3_2}
 
 In order for the MCU server to deliver the best performance on video conferencing, the following system configuration is recommended:
 
@@ -159,7 +133,7 @@ In order for the MCU server to deliver the best performance on video conferencin
 4. Now run command /sbin/sysctl -p to activate the new configuration, or just restart your MCU machine.
 5. You can run command "ulimit -a" to make sure the new setting in limits.conf is correct as you set.f
 
-### 2.3.3 Install the MCU package {#section2_3_3}
+### 2.3.3 Install the MCU package {#Conferencesection2_3_3}
 
 In the server machine, un-archive the package file first, and then invoke init.sh to initialize the package.
 ~~~~~~{.js}
@@ -168,7 +142,7 @@ cd Release-<Version>/
 bin/init.sh --deps [--hardware]
 ~~~~~~
 > **Note**: 	If you have already installed the required system libraries, you can omit the **--deps** option. What's more, if you want to run the GPU-accelerated video conferences, add **--hardware** to the init command.
-### 2.3.4 Deploy Cisco OpenH264* Library {#section2_3_4}
+### 2.3.4 Deploy Cisco OpenH264* Library {#Conferencesection2_3_4}
 The default H.264 library installed is a pseudo one without any media logic. To enable H.264 support in non GPU-accelerated MCU system, the deployment of Cisco OpenH264 library is required; follow these steps:
 1. Go to the following URL and get the binary package:
     http://ciscobinary.openh264.org/libopenh264-1.4.0-linux64.so.bz2.
@@ -183,7 +157,7 @@ The default H.264 library installed is a pseudo one without any media logic. To 
 
 4. Edit etc/woogeen_config.js file under Release-<Version> folder, set the value of key config.erizo.openh264Enbaled to be true.
 
-### 2.3.5 Use your own certificate {#section2_3_5}
+### 2.3.5 Use your own certificate {#Conferencesection2_3_5}
 
 The default certificate (certificate.pfx) for the MCU is located in the Release-<Version>/cert folder.
 When using HTTPS and/or secure socket.io connection, you should use your own certificate for each server. First you should edit etc/woogeen_config.js to provide the path of each certificate for each server, under the key config.XXX.keystorePath. E.g., config.nuve.keystorePath is for nuve HTTPS server. See below table for details. If etc/woogeen_config.js does not exist, use `bin/init.sh` to create it.
@@ -199,7 +173,7 @@ After editing the configuration file, you should run `bin/initcert.js all` to in
 | DTLS-SRTP | config.erizo.keystorePath | erizo |
 | Sample App HTTPS | N/A | sample |
 
-### 2.3.6 Launch the MCU server {#section2_3_6}
+### 2.3.6 Launch the MCU server {#Conferencesection2_3_6}
 To launch the MCU server, follow steps below:
 
 1. Run the following commands to start the MCU:
@@ -211,17 +185,17 @@ To launch the MCU server, follow steps below:
 
 **Note** that the procedures in this guide use the default room in the sample.
 
-### 2.3.7 Stop the MCU server {#section2_3_7}
+### 2.3.7 Stop the MCU server {#Conferencesection2_3_7}
 Run the following commands to stop the MCU:
 
         cd Release-<Version>/
         bin/stop-all.sh
 
-### 2.3.8 Set up the MCU cluster {#section2_3_8}
+### 2.3.8 Set up the MCU cluster {#Conferencesection2_3_8}
 Follow the steps below to set up an MCU cluster which comprises several runtime nodes:
-1. Make sure you have installed the MCU package on each machine before launching the cluster which has been described in section [Install the MCU package](#section2_3_3).
+1. Make sure you have installed the MCU package on each machine before launching the cluster which has been described in section [Install the MCU package](#Conferencesection2_3_3).
 2. Choose a primary machine.
-3. Start all components as described earlier, in section [Launch the MCU server](#section2_3_6). Alternatively, you can run nuve, mcu controller and the application on the primary machine without a MCU runtime by running the following commands:
+3. Start all components as described earlier, in section [Launch the MCU server](#Conferencesection2_3_6). Alternatively, you can run nuve, mcu controller and the application on the primary machine without a MCU runtime by running the following commands:
 
         cd Release-<Version>/
         bin/daemon.sh start nuve
@@ -231,15 +205,17 @@ Follow the steps below to set up an MCU cluster which comprises several runtime 
 4. Choose a slave machine.
 5. Edit the configuration file
 Release-<Version>/etc/woogeen_config.js on the slave machines:
-i. Make sure the config.rabbit.port and config.rabbit.host point to the RabbitMQ server. (TODO)
+
+    i. Make sure the config.rabbit.port and config.rabbit.host point to the RabbitMQ server. (TODO)
+
 6. Run the following commands to launch the MCU runtime nodes on the slave machines:
 
         cd Release-<Version>/
         bin/daemon.sh start agent
 
 7. Repeat step 4 to 6 to launch as many MCU slave machines as you need.
-### 2.3.9 Stop the MCU cluster {#section2_3_9}
-To stop the MCU cluster, run the stop command on each machine including primary and slave node as described in section [Stop the MCU server](#section2_3_7).
+### 2.3.9 Stop the MCU cluster {#Conferencesection2_3_9}
+To stop the MCU cluster, run the stop command on each machine including primary and slave node as described in section [Stop the MCU server](#Conferencesection2_3_7).
 1. Run the following commands:
 
         cd Release-<Version>/
@@ -252,7 +228,7 @@ To stop the MCU cluster, run the stop command on each machine including primary 
         cd Release-<Version>/
         bin/daemon.sh stop agent
 
-## 2.4 Security Recommendations {#section2_4}
+## 2.4 Security Recommendations {#Conferencesection2_4}
 Intel Corporation does not host any conference cluster/service, instead, the entire suite is provided so you can build your own video conference system and host your own server cluster.
 
 Customers must be familiar with industry standards and best practices for deploying server clusters. Intel Corporation assumes no responsibility for loss caused from potential improper deployment and mismanagement.
@@ -278,21 +254,23 @@ The following instructions are provided only as recommendations regarding securi
 17. During server and client development, suggest running some kind of security development lifecycle/process and conduct internal and external security testing and static code analysis with tools by trusted roles.
 18. If all possible, backup all the log data to a dedicated log server with protection.
 19. Deploy MCU cluster(Manager + Workers) inside Demilitarized Zone(DMZ) area, utilize external firewall A to protect them against possible attacks, e.g. DoS attack; Deploy Mongo DB and RabbitMQ behind DMZ, configure internal firewall B to make sure only cluster machines can connect to RabbitMQ server and access to MongoDB data resources.
-TODO pic
+
+**Figure 2-1. Security Recommendations Picture**
 ![Security Recommendations Picture](./pic/deploy.png)
 
-## 2.5 FAQ {#section2_5}
+## 2.5 FAQ {#Conferencesection2_5}
 1. Sudden low volume when connecting Chrome on Windows to MCU
     **Resolution**:
 
     Both the Chrome browser and Windows system itself can reduce the volume during a connection to the MCU server. To resolve this issue, disable the following Communications feature found in the Sound Settings using the Windows Control Panel.
-    TODO: pic
+
+    **Figure 2-2. Sound Settings**
     ![Sound Settings](./pic/soundsettings.png)
 2. Failed to start MCU server, and receive the following error message: "child_process.js:948; throw errnoException(process._errno, 'spawn'); Error: spawn EMFILE"
 
     **Resolution**:
 
-    Use the proper Node.js version as outlined in the [Dependencies](#section2_3_1) section.
+    Use the proper Node.js version as outlined in the [Dependencies](#Conferencesection2_3_1) section.
 
 3. Failed to start MCU server, and receive the following error message: "Creating superservice in localhost/nuvedb SuperService ID: Sat Feb 7 19:10:32.456 TypeError: Cannot read property '_id' of null SuperService KEY: Sat Feb  7 19:10:32.479 TypeError: Cannot read property 'key' of null"
 
@@ -308,10 +286,10 @@ TODO pic
         sudo setcap cap_net_bind_service=+ep ~/.nvm/v0.10.38/bin/node
 
     If you are still not able to bypass the 1024 port limitation, remember to put the **MCU library path into /etc/ld.so.conf.d**.
-# 3 MCU Management Console Brief Guide {#section3}
-## 3.1 Introduction {#section3_1}
+# 3 MCU Management Console Brief Guide {#Conferencesection3}
+## 3.1 Introduction {#Conferencesection3_1}
 The MCU Management Console is the frontend console to manage the MCU server. It is built with MCU's server-side APIs and it provides the management interface to MCU administrators.
-## 3.2 Access {#section3_2}
+## 3.2 Access {#Conferencesection3_2}
 Once you have launched MCU servers, you can then access the console via a browser at http://XXXX:3000/console/. You will be asked for your the service-id and service-key in order to access the service.
 
 After inputting your service-id and service-key in the dialog prompt, choose ‘remember me' and click ‘save changes' to save your session. If you want to switch to another service, click the ‘profile' button on the upper-right corner to get in this dialog prompt and do the similar procedure again. If you want log out the management console, click the red ‘clear cookie' button in the dialog prompt.
@@ -321,22 +299,23 @@ If you have not launched MCU severs, you should launch the nuve server before ac
         cd Release-<Version>/
         bin/daemon.sh start nuve
 
-## 3.3 Source Code {#section3_3}
+## 3.3 Source Code {#Conferencesection3_3}
 The source code of the management console is in Release-<Version>/nuve/nuveAPI/public/.
-## 3.4 Service Management {#section3_4}
+## 3.4 Service Management {#Conferencesection3_4}
 Only super service user can access service management, in the ‘overview' tab to create or delete services. Note that super service cannot be deleted.
-## 3.5 Room Management {#section3_5}
+## 3.5 Room Management {#Conferencesection3_5}
 Any service user can do room management inside the service, including create, delete or modify rooms.
 
 Specifically for modifying rooms, user can choose room mode, room publish limit, user limit and media mixing configuration (only for hybrid mode) for its own preference. When room mode is hybrid, user can define a configuration set for media mixing: resolution, bitrate, background color, layout, etc. For VAD, set avCoordinated to true to enable VAD in the room. Enabling multistreaming can let MCU generate two or more mixed streams with different resolutions to fullfill different devices. For layout, use can choose a base layout template and customize its own preferred ones, which would be combined as a whole for rendering mixed video.
 
 **Note that** if base layout is set to 'void', user must input customized layout for the room, otherwise the video layout would be treated as invalid. Read 3.5.1 for details of customized layout. maxInput indicates the maximum number of video frame inputs for the video layout definition.
 
-### 3.5.1 Customized video layout {#section3_5_1}
+### 3.5.1 Customized video layout {#Conferencesection3_5_1}
 The MCU server supports the mixed video layout configuration which is compliant with RFC5707 Media Server Markup Language (MSML).
 A valid customized video layout should be a JSON string which represents an array of video layout definition.
 The following example shows the details:
 
+**Figure 3-1. Example Layout**
 ![Example layout](./pic/layout.jpg)
 
 ~~~~~~{.js}
@@ -402,55 +381,58 @@ The size of a region is specified relative to the size of the root mixed stream 
 
 Regions are located on the root window based on the value of the position attributes "top" and "left".  These attributes define the position of the top left corner of the region as an offset from the top left corner of the root mixed stream, which is a percent of the vertical or horizontal dimension of the root mixed stream.
 
-## 3.6 Runtime Configuration {#section3_6}
+## 3.6 Runtime Configuration {#Conferencesection3_6}
 Only super service user can access runtime configuration. Current management console implementation just provides the MCU cluster runtime configuration viewer.
 
-## 3.7 Special Notes {#section3_7}
+## 3.7 Special Notes {#Conferencesection3_7}
 Due to server-side APIs' security consideration, API calls from a service should be synchronized and sequential. Otherwise, server may respond with 401 if the request's timestamp is earlier than the previous request. As a result, API calls of single service are from different machines while these machines' time are not calibrated, one or another machine would encounter server response with 401 since their timestamps are messed.
-# 4 MCU Sample Application Server User Guide  {#section4}
-## 4.1 Introduction {#section4_1}
-The MCU sample application server is a Web application demo that shows how to host audio/video conference services powered by the Intel CS for WebRTC MCU. The sample application server is based on MCU runtime components. Refer to [Section 2](#section2) of this guide, for system requirements and launch/stop instructions.
+# 4 MCU Sample Application Server User Guide  {#Conferencesection4}
+## 4.1 Introduction {#Conferencesection4_1}
+The MCU sample application server is a Web application demo that shows how to host audio/video conference services powered by the Intel CS for WebRTC MCU. The sample application server is based on MCU runtime components. Refer to [Section 2](#Conferencesection2) of this guide, for system requirements and launch/stop instructions.
 
 This section explains how to start a conference and then connect to a conference using different qualifiers, such as a specific video resolution.
 
-## 4.2 Start a conference through the MCU sample application server {#section4_2}
+## 4.2 Start a conference through the MCU sample application server {#Conferencesection4_2}
 These general steps show how to start a conference:
 
 1. Start up the MCU server components.
 2. Launch your Google Chrome* browser from the client machine.
 3. Connect to the MCU sample application server at: http://XXXXX:3001. Replace XXXXX with the IP address or machine name of the MCU sample application server.
     As soon as the MCU sample application server is connected successfully, the system displays a pop-up media device access confirmation:
-    TODO
+
+    **Figure 4-1. Pop-up Media Device Access Confirmation**
     ![popupconfirm](./pic/popupconfirm.png)
 4. Click **Allow** to start your conference.
 
 > **Note**:	The examples in this section use the default room created by the
 > sample application server.
 
-### 4.2.1 Connect to an MCU conference  with specific room {#section4_2_1}
+### 4.2.1 Connect to an MCU conference  with specific room {#Conferencesection4_2_1}
 You can connect to a particular conference room. To do this, simply specify your room ID via a query string in your URL: room.
 For example, connect to the MCU sample application server XXXXX with the following URL:
 
         http://XXXXX:3001/?room=some_particular_room_id
 This will direct the conference connection to the MCU room with the ID some_particular_room_id.
-### 4.2.2 Connect to an MCU conference to subscribe mix or forward streams {#section4_2_2}
+### 4.2.2 Connect to an MCU conference to subscribe mix or forward streams {#Conferencesection4_2_2}
 Since MCU room can now produce both forward streams and mix stream at the same time, including the screen sharing stream, the client is able to subscribe specified stream(s) by a query string in your URL: mix. The default value for the key word is true.
 
 For example, to subscribe mix stream and screen sharing stream from MCU, connect to the MCU sample application server XXXXX with the following URL:
 
         http://XXXXX:3001/?mix=true
 
-### 4.2.3 Connect to an MCU conference with screen sharing {#section4_2_3}
+### 4.2.3 Connect to an MCU conference with screen sharing {#Conferencesection4_2_3}
 The client can connect to the MCU conference with screen sharing stream.
 To share your screen, use a query string in your URL, via the key word: screen. The default value for the key word is false.
 To do this, connect to the MCU sample application server XXXXX with the following URL:
 
         https://XXXXX:3004/?screen=true
 
+
 > **Note**:	The screen sharing example in this section requires the Chrome
 > extension, one such extension sample source code is provided in
 > Javascript SDK package for reference.
-### 4.2.4 Connect to an MCU conference with a specific video resolution {#section4_2_4}
+### 4.2.4 Connect to an MCU conference with a specific video resolution {#Conferencesection4_2_4}
+
 In most cases, you can customize the video capture device on the client machine to produce video streams with different resolutions. To specify your local video resolution and send that resolution value to the MCU, use a query string in your URL with the key word "resolution".
 
 The supported video resolution list includes:
@@ -463,19 +445,20 @@ For example, if you want to generate a 720P local video stream and publish that 
 
 > **Note**	The specified resolution acts only as a target value. This means that the actual generated video resolution might be different
 > depending on the hardware of your local media capture device.
-### 4.2.5 Connect to an MCU conference with a RTSP input {#section4_2_5}
+### 4.2.5 Connect to an MCU conference with a RTSP input {#Conferencesection4_2_5}
 The MCU conference supports external stream input from devices that support RTSP protocol, like IP Camera.
 For example, connect to the MCU sample application server XXXXX with the following URL:
 
         http://XXXXX:3001/?url=rtsp_stream_url
 
-# 5 Peer Server {#section5}
-## 5.1 Introduction {#section5_1}
+# 5 Peer Server {#Conferencesection5}
+## 5.1 Introduction {#Conferencesection5_1}
 The peer server is the default signaling server of the Intel CS for WebRTC. The peer server provides the ability to exchange WebRTC signaling messages over Socket.IO between different clients, as well as provides chat room management.
-TODO pic
+
+**Figure 5-1. Peer Server Framework**
 <img src="./pic/framework.png" alt="Framework" style="width: 600px;">
 
-## 5.2 Installation requirements {#section5_2}
+## 5.2 Installation requirements {#Conferencesection5_2}
 The installation requirements for the peer server are listed in Table 5-1 and 5-2.
 **Table 5-1. Installation requirements**
 Component name | OS version
@@ -490,7 +473,7 @@ Node.js | 0.10.* | Website: http://nodejs.org/
 Node modules | Specified | N/A
 
 Regarding Node.js*, make sure it's installed in your system prior to installing the Peer Server. We recommend version 0.10.38. Refer to http://nodejs.org/ for installation details.
-## 5.3 Installation {#section5_3}
+## 5.3 Installation {#Conferencesection5_3}
 On the server machine, unpack the peer server release package, and install node modules
 
         tar –zxvf CS_WebRTC_Conference_Server_Peer.v<Version>.tgz
@@ -498,13 +481,13 @@ On the server machine, unpack the peer server release package, and install node 
         npm install
 
 The default http port is 8095, and the default secured port is 8096.  Those default values can be modified in the file config.json.
-## 5.4 Use your own certificate  {#section5_4}
+## 5.4 Use your own certificate  {#Conferencesection5_4}
 If you want to use a secured socket.io connection, you should use your own certificate for the service. A default certificate is stored in cert with two files: cert.pem and key.pem. Replace these files with your own certificate and key files.
-## 5.5 Launch the peer server {#section5_5}
+## 5.5 Launch the peer server {#Conferencesection5_5}
 Run the following commands to launch the peer server:
 
         cd PeerServer-Release-<Version>
         node peerserver.js
 
-## 5.6 Stop the peer server {#section5_6}
+## 5.6 Stop the peer server {#Conferencesection5_6}
 Run the **kill** command directly from the terminal to stop the peer server.

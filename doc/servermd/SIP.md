@@ -1,9 +1,9 @@
 Gateway for SIP User Guide
 --------------------------
 
-# 1 Overview {#section1}
+# 1 Overview {#SIPsection1}
 
-## 1.1 Introduction {#section1_1}
+## 1.1 Introduction {#SIPsection1_1}
 Welcome to the user guide for the Intel® Collaboration Service for WebRTC (Intel® CS for WebRTC) Gateway for SIP. The gateway enables the WebRTC interoperability with traditional RTC systems.
 This guide describes how to install and launch the gateway server for Session Initiation Protocol (SIP). This guide then provides details of the interfaces available in the gateway SDK for SIP. This guide includes these sections:
 
@@ -11,30 +11,7 @@ This guide describes how to install and launch the gateway server for Session In
  - Section 2. Installing, launching, and stopping the Intel CS for WebRTC Gateway Server.
  - Section 3. Interfaces provided with the Intel CS for WebRTC Gateway SDK for SIP.
 
-
-## 1.2 Conventions {#section1_2}
- This guide uses several pseudo-code and typographic conventions.
-### 1.2.1 Pseudo-code conventions {#section1_2_1}
-Pseudo code is presented to describe algorithms in a more concise form. The algorithms in this document are not intended to be compiled directly. The code is presented at a level corresponding to the surrounding text.
-
-In describing variables, a list is an unordered collection of homogeneous objects. A queue is an ordered list of homogeneous objects. Unless otherwise noted, the ordering is assumed to be first-in-first-out (FIFO).
-
-Pseudo code is presented in a C-like format, using C conventions where appropriate.
-
-The coding style, particularly the indentation style, is used for readability and does not necessarily comply with an implementation of Android* or JavaScript.*
-### 1.2.2 Conventions {#section1_2_2}
-This document uses these conventions:
-TODO
-
-  Form       |  Convention
--------------|--------------
-Plain text(blue)|Indicates an active link.
-Bold            |Identifies a processor register name or a command.
-Monospace       |Indicates computer code, example code segments, pseudo code, or a prototype code segment. These code listings typically appear in one or more separate paragraphs, though words or segments can also be embedded in a normal text paragraph.
-italic Monospace|Indicates placeholder names for variable information (i.e., arguments) that must be supplied.
-foo@foo:~$      |A user-defined command prompt for Linux-based command lines used in the examples in this manual.
-
-##1.3 Terminology {#section1_3}
+##1.2 Terminology {#SIPsection1_2}
 This manual uses the following acronyms and terms:
   Abbreviation       |  Full Name
 -------------|--------------
@@ -56,7 +33,7 @@ SIP | Session Initiation Protocol
 XMPP | Extensible Messaging and Presence Protocol
 WebRTC | Web real-time communication
 
-## 1.4 For more information  {#section1_4}
+## 1.3 For more information  {#SIPsection1_3}
 For more information, visit the following Web pages:
 
 - Intel HTML Developer Zone:
@@ -76,17 +53,17 @@ For more information, visit the following Web pages:
 - WebRTC Open Project:
 
     http://www.webrtc.org
-# 2 Gateway Installation for SIP  {#section2}
-## 2.1 Introduction {#section2_1}
+# 2 Gateway Installation for SIP  {#SIPsection2}
+## 2.1 Introduction {#SIPsection2_1}
 This section briefly lists the requirements, test environment, and dependencies for the gateway. This section then briefly explains how to configure, install, launch, and stop the gateway.
-## 2.2 Requirements and test environment {#section2_2}
+## 2.2 Requirements and test environment {#SIPsection2_2}
 Table 2-1 describes the system requirements for installing the Intel CS for WebRTC Gateway for SIP. .
 **Table 2-1. Server requirements**
 Application name | OS version
 ----|----
 MCU server | Ubuntu 14.04 LTS* 64-bit
 
-Install the OpenH264 library to support H.264 in the gateway for SIP when required, refer to the [Install the Cisco OpenH264 Library](#section2_2_1) section for more details.
+Install the OpenH264 library to support H.264 in the gateway for SIP when required, refer to the [Install the Cisco OpenH264 Library](#SIPsection2_2_1) section for more details.
 
 If you need to set up mix mode video conferences, which require GPU-accelerated media processing, you must install the following server side SDK:
 
@@ -139,7 +116,7 @@ H264:
 </table>
 @endhtmlonly
 
-### 2.2.1 Install the Cisco OpenH264 Library {#section2_2_1}
+### 2.2.1 Install the Cisco OpenH264 Library {#SIPsection2_2_1}
 The default H.264 library does not provide any media logic. To enable H.264 support in non GPU-accelerated gateway system, you must install the Cisco OpenH264 library.
 
 Follow these steps to install the library:
@@ -155,7 +132,7 @@ Follow these steps to install the library:
  3. Copy the lib file libopenh264-1.4.0-linux64.so to Release-<Version>/lib folder, and rename it to libopenh264.so.0 to replace the existing pseudo one.
  4. Edit etc/woogeen_config.js file under Release-<Version> folder, set the value of key config.erizo.openh264Enbaled to be true.
 
-## 2.3 Configure the gateway machine  {#section2_3}
+## 2.3 Configure the gateway machine  {#SIPsection2_3}
 To optimize the gateway server for best performance, we strongly recommend that you configure the system as shown in these simple steps:
 
  -  Add or update the maximum numbers of open files to a large enough number by adding the following two lines to /etc/security/limits.conf:
@@ -176,16 +153,16 @@ If you only want to target these setting to specific user or group rather than a
 
  - Now run the command /sbin/sysctl -p to activate the configuration, or just restart your Gateway machine.
 
-## 2.4 Install the gateway package {#section2_4}
+## 2.4 Install the gateway package {#SIPsection2_4}
 To install the gateway package, simply unpack the package on the server machine:
 
         tar xf CS_WebRTC_Gateway_SIP.<Version>.tgz
         cd Release-<Version>/
 
-## 2.5 Turn GPU acceleration On/Off {#section2_5}
+## 2.5 Turn GPU acceleration On/Off {#SIPsection2_5}
 To turn GPU acceleration on for gateway, edit the gateway_config.json file located in the folder "Release-<Version>/etc/" and modify the value of item "sip.hardwareAccelerated" to "true".  The default value is "false".
 
-## 2.6 Launch the gateway server {#section2_6}
+## 2.6 Launch the gateway server {#SIPsection2_6}
 You can launch the gateway by itself, or you can launch the gateway and the sample Web application together.
 To launch both the gateway and the sample web application, use the start-all command as shown here:
 
@@ -196,7 +173,7 @@ To launch only the gateway, use this command:
         bin/daemon.sh start gateway
 
 You can then access the sample application by launching your browser with URL: http://XXXXX:3001. Replace "XXXXX" with the IP address or machine name of the server on which Gateway and the sample application run.
-## 2.7 Stop the gateway server {#section2_7}
+## 2.7 Stop the gateway server {#SIPsection2_7}
 Run the following commands to stop the gateway:
 
         bin/stop-all.sh
@@ -205,29 +182,29 @@ or stop it alone:
 
         bin/daemon.sh stop gateway
 
-# 3 Gateway SDK for SIP　{#section3}
-## 3.1 Introduction {#section3_1}
+# 3 Gateway SDK for SIP　{#SIPsection3}
+## 3.1 Introduction {#SIPsection3_1}
 This section describes the interfaces provided in the Intel CS for WebRTC Gateway for SIP SDK.
-### 3.1.1 Initialize your code so you can access the gateway {#section3_1_1}
+### 3.1.1 Initialize your code so you can access the gateway {#SIPsection3_1_1}
 Before you can use the gateway, you must initialize your HTML code to allow your files to connect to the gateway. To do this, copy and paste the following code into the head section of your HTML document:
 ~~~~~~~{.js}
     <script type="text/javascript" src="erizoclient.min.js"></script>
 ~~~~~~~
-### 3.1.2 SDK special considerations {#section3_1_2}
+### 3.1.2 SDK special considerations {#SIPsection3_1_2}
  - When constructing a client, you should initialize the client with type ‘sip’ (explained in the next section of this guide).
  - Once connected to the gateway, the client must register with the DIP server. To do this, the client should send a custom message with authentication information to the gateway.
  - Once registered with the SIP server, the client must make a call or accept incoming calls before publishing its local stream to the gateway; otherwise, the stream publishing fails.
 
-## 3.2 Objects {#section3_2}
+## 3.2 Objects {#SIPsection3_2}
 The MSDK includes two JavaScript objects: Client and Stream. Web applications use the objects to connect to the gateway and manage handling of audio/video streams and events.
 ~~~~{.js}
-<script type="text/javascript">
-var client = Erizo.Client({
-username: 'foo',
-role: 'bar',
-host: '127.0.0.1:8080',
-type: 'sip'
-});
+<script type = "text/javascript">
+    var client = Erizo.Client({
+        username: 'foo',
+        role: 'bar',
+        host: '127.0.0.1:8080',
+        type: 'sip'
+    });
 </script>
 ~~~~
 **Notes**:
@@ -236,11 +213,11 @@ type: 'sip'
  - type indicates the gateway to connect to the corresponding service.
 
 ~~~~{.js}
-<script type="text/javascript">
-var localStream = Erizo.Stream({
-audio: true,
-video: true
-});
+<script type = "text/javascript" >
+    var localStream = Erizo.Stream({
+        audio: true,
+        video: true
+    });
 </script>
 ~~~~
 **Notes**:
@@ -249,7 +226,7 @@ video: true
  - You should set either audio or video to true.
  - Remote streams are carried by event messages.
 
-##3.3 Events {#section3_3}
+##3.3 Events {#SIPsection3_3}
 Objects Client and Stream may trigger different events that can be handled by the application when corresponding event handlers are registered. Table 3-1 lists the events that may be triggered.
 @htmlonly
 <table class="doxtable">
@@ -323,60 +300,60 @@ Objects Client and Stream may trigger different events that can be handled by th
 </tbody>
 </table>
 @endhtmlonly
-## 3.4 Methods {#section3_4}
-### 3.4.1 Client {#section3_4_1}
-####connect(onFailure) {#section3_4_1_1}
+## 3.4 Methods {#SIPsection3_4}
+### 3.4.1 Client {#SIPsection3_4_1}
+####connect(onFailure) {#SIPsection3_4_1_1}
 This function establishes a connection to the gateway. Once the connection is completed, a client-connected event is triggered.
 
 onFailure are user-defined callbacks. If provided, these callbacks are invoked when connect() is failed.
-####addEventListener(string, callback) {#section3_4_1_2}
+####addEventListener(string, callback) {#SIPsection3_4_1_2}
 This function registers a callback function as a handler for a corresponding event.
-####on(string, callback) {#section3_4_1_3}
+####on(string, callback) {#SIPsection3_4_1_3}
 Equivalent to addEventListener.
-####onMessage(callback) {#section3_4_1_4}
+####onMessage(callback) {#SIPsection3_4_1_4}
 Shortcut of on(‘message-received’, callback).
-####disconnect() {#section3_4_1_5}
+####disconnect() {#SIPsection3_4_1_5}
 This function disconnects from the gateway. A client-disconnected event is then triggered.
-####publish(Stream, onFailure) {#section3_4_1_6}
+####publish(Stream, onFailure) {#SIPsection3_4_1_6}
 This function publishes the local stream to the gateway. The stream must be initialized before publishing. Once initialization is complete, a stream-added event is triggered.
 
 onFailure are user-defined callbacks. If provided, it would be invoked when publish() is failed.
-####unpublish(Stream, onFailure) {#section3_4_1_7}
+####unpublish(Stream, onFailure) {#SIPsection3_4_1_7}
 This function unpublishes the local stream. Once the stream is unpublished, a stream-removed event is triggered.
 
 onFailure are user-defined callbacks. If provided, it would be invoked when unpublish() is failed.
-####subscribe(Stream, onFailure) {#section3_4_1_8}
+####subscribe(Stream, onFailure) {#SIPsection3_4_1_8}
 This function subscribes to a remote stream. Once subscription is complete, a stream-subscribed event is triggered
 
 **Note:**	Make sure the function is subscribing to a remote stream.
 
 onFailure are user-defined callbacks. If provided, it would be invoked when subscribe() is failed.
-####unsubscribe(Stream, onFailure) {#section3_4_1_9}
+####unsubscribe(Stream, onFailure) {#SIPsection3_4_1_9}
 This function unsubscribes to a remote stream.
 **Note**:	Make sure the stream is a remote stream.
 
 onFailure are user-defined callbacks. If provided, it would be invoked when unsubscribe() is failed.
-####send(string/Object, onSuccess, onFailure) {#section3_4_1_10}
+####send(string/Object, onSuccess, onFailure) {#SIPsection3_4_1_10}
 This function send a message to the gateway.
 
 onSuccess and onFailure are user-defined callbacks. If provided, they would be invoked when send() is successful or failed respectively.
-###3.4.2 Stream {#section3_4_2}
-####init()#### {#section3_4_2_1}
+###3.4.2 Stream {#SIPsection3_4_2}
+####init()#### {#SIPsection3_4_2_1}
 This function initializes the local stream and tries to retrieve permission to access local video/audio devices. Once completed, an access-accepted or access-denied event is triggered.
-####close()#### {#section3_4_2_2}
+####close()#### {#SIPsection3_4_2_2}
 This function closes the local stream. If the stream has audio and/or video, the function also stops capturing camera/microphone. If the stream is published, the function also unpublishes the stream. If the stream is showing in an HTML element, the stream would be hidden after the function completes.
-####show(string, Object) {#section3_4_2_3}
+####show(string, Object) {#SIPsection3_4_2_3}
 This function shows the video at the given element ID (string). The stream is then displayed on given HTML element. A volume slider can be optionally hidden by {speaker: false}.
-####hide() {#section3_4_2_4}
+####hide() {#SIPsection3_4_2_4}
 This function stops displaying the video in the HTML page.
-####getId() {#section3_4_2_5}
+####getId() {#SIPsection3_4_2_5}
 This function returns the stream ID assigned by gateway. For the local stream, it returns undefined if the stream has not been published; once published, the stream ID is updated by the gateway.
-####addEventListener(string, callback) {#section3_4_2_6}
+####addEventListener(string, callback) {#SIPsection3_4_2_6}
 This function registers a callback function as a handler for a corresponding event.
-####on(string, callback) {#section3_4_2_7}
+####on(string, callback) {#SIPsection3_4_2_7}
 This function is equivalent to addEventListener.
-###3.4.3 Miscellaneous {#section3_4_3}
-####Logger.setLogLevel(Number) {#section3_4_3_1}
+###3.4.3 Miscellaneous {#SIPsection3_4_3}
+####Logger.setLogLevel(Number) {#SIPsection3_4_3_1}
 This function sets the log level. There are 6 log levels:
 
  - Logger.DEBUG (default)
@@ -385,80 +362,79 @@ This function sets the log level. There are 6 log levels:
  - Logger.WARNING
  - Logger.ERROR
  - Logger.NONE
-##3.5 Call procedure {#section3_5}
-###3.5.1 Register to a SIP server {#section3_5_1}
+##3.5 Call procedure {#SIPsection3_5}
+###3.5.1 Register to a SIP server {#SIPsection3_5_1}
 To register to a SIP server, the client should send a message to the gateway with type ‘login’ and a proper payload:
 
 ~~~~{.js}
 client.send({
-type: 'login',
+    type: 'login',
     payload: {
-display_name: "user1",
-sip_uri: "user1",
-sip_password: "password",
-sip_server: "127.0.0.1",
-}
-}, function(){//...
+        display_name: "user1",
+        sip_uri: "user1",
+        sip_password: "password",
+        sip_server: "127.0.0.1",
+    }
+}, function() { //...
 });
 ~~~~
 
 The sip_uri is the username of a SIP user. The gateway constructs the final SIP URI from the payload.
-###3.5.2 Make a call {#section3_5_2}
+###3.5.2 Make a call {#SIPsection3_5_2}
 To make a call with peer, the client should send a message with type ‘makeCall’:
 
 ~~~~{.js}
-function makeCall (option) {
-client.send({
-      type: 'makeCall',
-  	payload: {
-	calleeURI: option.calleeURI,
-	audio: option.audio,
-	video: option.video
-	}
-}, function (msg) {
-localStream.init();
-});
+function makeCall(option) {
+    client.send({
+        type: 'makeCall',
+        payload: {
+            calleeURI: option.calleeURI,
+            audio: option.audio,
+            video: option.video
+        }
+    }, function(msg) {
+        localStream.init();
+    });
 }
 ~~~~
 
 To detect a `'callAbort’` when the peer is denied a calling, the client should listen for a specified message:
 
 ~~~~{.js}
-client.onMessage(function (evt) {
-var msg = evt.attr;
-if (typeof msg === 'object' &&
-msg !== null &&
-	msg.type === 'callAbort') {
-	// call cancelled
-	return;
-}
-	// other msg handling
+client.onMessage(function(evt) {
+    var msg = evt.attr;
+    if (typeof msg === 'object' &&
+        msg !== null &&
+        msg.type === 'callAbort') {
+        // call cancelled
+        return;
+    }
+    // other msg handling
 });
 ~~~~
-###3.5.3 Accept a call {#section3_5_3}
+###3.5.3 Accept a call {#SIPsection3_5_3}
 To accept a call from the peer, the client should send a message with type `'acceptCall'`:
 ~~~~{.js}
-function acceptCall () {
-client.send({
-      type: 'acceptCall',
-      payload: {}
-    }, function (msg) {
-      localStream.init();
-});
+function acceptCall() {
+    client.send({
+        type: 'acceptCall',
+        payload: {}
+    }, function(msg) {
+        localStream.init();
+    });
 }
 ~~~~
-###3.5.4 Reject a call {#section3_5_4}
+###3.5.4 Reject a call {#SIPsection3_5_4}
 To reject a call from the peer, the client should send a message with type `'rejectCall'`:
 ~~~~{.js}
-function rejectCall () {
-client.send({
-      type: 'rejectCall',
-      payload: {}
-    }, function (msg) {
-});
+function rejectCall() {
+    client.send({
+        type: 'rejectCall',
+        payload: {}
+    }, function(msg) {});
 }
 ~~~~
-##3.6 Code snips {#section3_6}
+##3.6 Code snips {#SIPsection3_6}
 Here is a snip from the sample application. For details about this code snip, refer to the sample application provided with the SDK.
 
 ~~~~{.js}
@@ -466,46 +442,45 @@ Here is a snip from the sample application. For details about this code snip, re
 <script type="text/javascript">
 L.Logger.setLogLevel(L.Logger.INFO);
 
-function makeCall (option) {
-client.send({
+function makeCall(option) {
+    client.send({
         type: 'makeCall',
-  	payload: {
-	calleeURI: option.calleeURI,
-	audio: option.audio,
-	video: option.video
-	}
-	}, function (msg) {
-	localStream.init();
+        payload: {
+            calleeURI: option.calleeURI,
+            audio: option.audio,
+            video: option.video
+        }
+    }, function(msg) {
+        localStream.init();
     });
 }
 
-function acceptCall () {
-client.send({
-type: 'acceptCall',
-  	payload: {}
- 	}, function (msg) {
-  	localStream.init();
+function acceptCall() {
+    client.send({
+        type: 'acceptCall',
+        payload: {}
+    }, function(msg) {
+        localStream.init();
     });
 }
 
-function rejectCall () {
+function rejectCall() {
     client.send({
         type: 'rejectCall',
-  	payload: {}
- 	}, function (msg) {
-    });
+        payload: {}
+    }, function(msg) {});
 }
 
-  client.on("client-connected", function (e) {
-client.send({
+client.on("client-connected", function(e) {
+    client.send({
         type: 'login',
-   	 payload: accinfo
-  	}, function(){//...
+        payload: accinfo
+    }, function() { //...
+    });
 });
-  });
 
 client.on("stream-subscribed", function(e) {
-var stream = e.stream;
+    var stream = e.stream;
     var div = document.createElement('div');
     div.setAttribute("style", "width: 320px; height: 240px;");
     div.setAttribute("id", "remote" + stream.getId());
@@ -513,40 +488,42 @@ var stream = e.stream;
     stream.show("remote" + stream.getId());
 });
 
-client.on("stream-added", function (e) {
-    //...
-  });
-
-client.on("stream-removed", function (e) {
-    //...
-  });
-
-  client.on('client-joined', function (e) {
-    //...
-  });
-
-client.on('client-left', function (e) {
-    //...
-  });
-
-client.on('client-id', function (e) {
+client.on("stream-added", function(e) {
     //...
 });
 
-client.onMessage(function (e) {
+client.on("stream-removed", function(e) {
     //...
-  });
-
-client.connect(function(err){
-//...
 });
 
-localStream.on("access-accepted", function () {
-localStream.show("myVideo");
-client.publish(localStream, {maxVideoBW: maxVideoBW},
-function(err) {
-	L.Logger.error(err);
-     });
+client.on('client-joined', function(e) {
+    //...
+});
+
+client.on('client-left', function(e) {
+    //...
+});
+
+client.on('client-id', function(e) {
+    //...
+});
+
+client.onMessage(function(e) {
+    //...
+});
+
+client.connect(function(err) {
+    //...
+});
+
+localStream.on("access-accepted", function() {
+    localStream.show("myVideo");
+    client.publish(localStream, {
+            maxVideoBW: maxVideoBW
+        },
+        function(err) {
+            L.Logger.error(err);
+        });
 });
 
 localStream.init();
