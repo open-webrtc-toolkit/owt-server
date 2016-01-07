@@ -218,12 +218,15 @@ exports.AccessNode = function (spec) {
         }
 
         if (audio_stream_id) {
-            streams[audio_stream_id].connection.addDestination("audio", subscription_type === 'webrtc' ? conn.receiver("audio") : conn);
+            var dest = subscription_type === 'webrtc' ? conn.receiver("audio") : conn;
+            streams[audio_stream_id].connection.addDestination("audio", dest);
             subscriptions[subscription_id].audio = audio_stream_id;
         }
 
         if (video_stream_id) {
-            streams[video_stream_id].connection.addDestination("video", subscription_type === 'webrtc' ? conn.receiver("video") : conn);
+            var dest = subscription_type === 'webrtc' ? conn.receiver("video") : conn;
+            streams[video_stream_id].connection.addDestination("video", dest);
+            if (streams[video_stream_id].type === 'webrtc') {streams[video_stream_id].connection.requestKeyFrame();}//FIXME: Temporarily add this interface to workround the hardware mode's absence of feedback mechanism.
             subscriptions[subscription_id].video = video_stream_id;
         }
         callback('callback', {type: 'ready'});

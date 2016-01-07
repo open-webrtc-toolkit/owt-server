@@ -284,5 +284,12 @@ exports.WrtcConnection = function (spec) {
         }
     };
 
+    //FIXME: Temporarily add this interface to workround the hardware mode's absence of feedback mechanism.
+    that.requestKeyFrame = function () {
+        if (direction === 'in' && video) {
+            videoFrameConstructor.requestKeyFrame();
+        }
+    };
+
     return that;
 };
