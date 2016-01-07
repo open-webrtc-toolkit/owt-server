@@ -43,6 +43,7 @@ void VideoFrameConstructor::Init(v8::Local<v8::Object> exports) {
   NODE_SET_PROTOTYPE_METHOD(tpl, "addDestination", addDestination);
   NODE_SET_PROTOTYPE_METHOD(tpl, "removeDestination", removeDestination);
   NODE_SET_PROTOTYPE_METHOD(tpl, "setBitrate", setBitrate);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "requestKeyFrame", requestKeyFrame);
 
   constructor.Reset(isolate, tpl->GetFunction());
   exports->Set(String::NewFromUtf8(isolate, "VideoFrameConstructor"), tpl->GetFunction());
@@ -108,5 +109,15 @@ void VideoFrameConstructor::setBitrate(const FunctionCallbackInfo<Value>& args) 
   int bitrate = args[0]->IntegerValue();
 
   me->setBitrate(bitrate);
+}
+
+void VideoFrameConstructor::requestKeyFrame(const FunctionCallbackInfo<Value>& args) {
+  Isolate* isolate = Isolate::GetCurrent();
+  HandleScope scope(isolate);
+
+  VideoFrameConstructor* obj = ObjectWrap::Unwrap<VideoFrameConstructor>(args.Holder());
+  woogeen_base::VideoFrameConstructor* me = obj->me;
+
+  me->RequestKeyFrame();
 }
 
