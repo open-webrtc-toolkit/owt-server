@@ -1,9 +1,9 @@
 WebRTC RESTAPI
 -------
-# 1 Introduction {#section1}
+# 1 Introduction {#RESTAPIsection1}
 Intel WebRTC solution provides a set of REST APIs for conference management. Manager clients can be implemented by different programming languages.
 
-# 2 Authentication and Authorization {#section2}
+# 2 Authentication and Authorization {#RESTAPIsection2}
 Each request should be a HTTP request with "Authorization" field in the header. So the server can determine whether it is a valid client. The value of "Authorization" is something like
 MAuth　realm=http://webrtc.intel.com,mauth_signature_method=HMAC_SHA1,mauth_username=test,mauth_role=role,mauth_serviceid=53c74879209ee7f96e5cbc9c,mauth_cnonce=87428,mauth_timestamp=1406079112038,mauth_signature=ZjA5NTJlMjE0ZTY4NzhmZWRjZDkxYjNmZjkyOTIxYzMyZjg3NDBjZA==
 MAuth realm=http://webrtc.intel.com,mauth_signature_method=HMAC_SHA1 is a constant string which should not be changed.
@@ -32,9 +32,9 @@ def calculateSignature(self, toSign, key):
 
 toSign is the signature.
 
-# 3 APIs {#section3}
+# 3 APIs {#RESTAPIsection3}
 
-## 3.1 Get Rooms {#section3_1}
+## 3.1 Get Rooms {#RESTAPIsection3_1}
 
 This API lists all the rooms that available in current service.
 
@@ -61,7 +61,7 @@ This API lists all the rooms that available in current service.
   'quality': 'Unspecified'}]
 ~~~~~~~~~~~~~
 
-## 3.2 Create Room {#section3_2}
+## 3.2 Create Room {#RESTAPIsection3_2}
 
 This API creates a room in current service.
 
@@ -87,7 +87,7 @@ This API creates a room in current service.
 'quality': 'Unspecified'}
 ~~~~~~~~~~~~~
 
-## 3.3 Create Token {#section3_3}
+## 3.3 Create Token {#RESTAPIsection3_3}
 
 This API creates a token for given user. Client can connect to specified room by this token.
 
@@ -109,7 +109,7 @@ eyJ0b2tlbklkIjoiNTNjZGNkMWU1Y2UzMTkxMjIyOWFjYTRjIiwiaG9zdCI6IjE5Mi4xNjguNDIuODg6
 
 The token returned is encrypted with base 64. Client should decrypt it to get a JSON object. It has a property named host which is the hostname of the worker.
 
-## 3.4 Get User List {#section3_4}
+## 3.4 Get User List {#RESTAPIsection3_4}
 
 This API lists all the users who joined the room of room ID.
 
