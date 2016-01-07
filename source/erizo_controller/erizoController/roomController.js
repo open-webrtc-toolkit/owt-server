@@ -608,8 +608,8 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
                     amqper,
                     'ErizoJS_' + terminals[vxcoder].erizo,
                     "init",
-                    ['transcoding'],
-                    function (supported_audio) {
+                    ['transcoding', {resolution: streams[stream_id].video.resolution}],
+                    function (supported_video) {
                         spreadStream(stream_id, terminals[vxcoder].erizo, false, true, function () {
                             streams[stream_id].video.subscribers.push(vxcoder);
                             terminals[vxcoder].subscribed[stream_id] = {audio: undefined, video: stream_id};
@@ -677,6 +677,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
     };
 
     var getAudioStream = function (terminal_id, stream_id, audio_codec, on_ok, on_error) {
+        log.debug("getAudioStream, terminal_id:", terminal_id, "stream:", streams[stream_id], "audio_codec:", audio_codec);
         if (stream_id === mixed_stream_id) {
             getMixedAudio(terminal_id, audio_codec, function (streamID) {
                 log.debug("Got mixed audio:", streamID);
@@ -700,13 +701,15 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
     };
 
     var getVideoStream = function (stream_id, video_codec, video_resolution, on_ok, on_error) {
+        log.debug("getVideoStream, stream:", streams[stream_id], "video_codec:", video_codec, "video_resolution:", video_resolution);
         if (stream_id === mixed_stream_id) {
             getMixedVideo(video_codec, video_resolution, function (streamID) {
+                log.debug("Got mixed video:", streamID);
                 on_ok(streamID);
             }, on_error);
         } else if (streams[stream_id]) {
             if (streams[stream_id].video) {
-                if (streams[stream_id].video.codec === video_codec && streams[stream_id].video.resolution === video_resolution) {
+                if (streams[stream_id].video.codec === video_codec && (!video_resolution || streams[stream_id].video.resolution === video_resolution)) {
                     on_ok(stream_id);
                 } else {
                     getTranscodedVideo(video_codec, video_resolution, stream_id, function (streamID) {
@@ -843,11 +846,13 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
     };
 
     var removeSubscriptions = function (stream_id) {
-        var audio_subscribers = (streams[stream_id] && streams[stream_id].audio && streams[stream_id].audio.subscribers) || [],
-            video_subscribers = (streams[stream_id] && streams[stream_id].video && streams[stream_id].video.subscribers) || [],
-            subscribers = audio_subscribers.concat(video_subscribers.filter(function (item) { return audio_subscribers.indexOf(item) < 0;}));
-
-        subscribers.map(function(i) {unsubscribeStream(i, i+'-'+stream_id);});
+        for (var terminal_id in terminals) {
+            for (var subscription_id in terminals[terminal_id].subscribed) {
+                if (terminals[terminal_id].subscribed[subscription_id].audio === stream_id || terminals[terminal_id].subscribed[subscription_id].video === stream_id) {
+                    unsubscribeStream(terminal_id, subscription_id);
+                }
+            }
+        }
     };
 
     // External interfaces.
@@ -920,9 +925,25 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
     };
 
     that.subscribeSelectively = function (terminal_id, subscription_id, subscription_type, audio_stream_id, video_stream_id, options, onResponse) {
-        var audio_codec = options.audio_codec || (streams[video_stream_id] && streams[video_stream_id].audio && streams[video_stream_id].audio.codec) || supported_audio_codecs[0],
-            video_codec = options.video_codec || (streams[video_stream_id] && streams[video_stream_id].video && streams[video_stream_id].video.codec) || supported_video_codecs[0],
-            video_resolution = options.video_resolution || (streams[video_stream_id] && streams[video_stream_id].video && streams[video_stream_id].video.resolution) || supported_video_resolutions[0];
+        var audio_codec = options.audio_codec
+                       || (audio_stream_id === mixed_stream_id && supported_audio_codecs[0])
+                       || (streams[video_stream_id] && streams[video_stream_id].audio && streams[video_stream_id].audio.codec)
+                       || undefined,
+
+            video_codec = options.video_codec
+                       || (video_stream_id === mixed_stream_id && supported_video_codecs[0])
+                       || (streams[video_stream_id] && streams[video_stream_id].video && streams[video_stream_id].video.codec)
+                       || undefined,
+
+            video_resolution = options.video_resolution
+                       || (video_stream_id === mixed_stream_id && supported_video_resolutions[0])
+                       || (streams[video_stream_id] && streams[video_stream_id].video && streams[video_stream_id].video.resolution)
+                       || undefined;
+
+        if (!audio_codec || !video_codec) {
+            onResponse({type: 'failed', reason: 'No proper audio/video codec.'});
+            return;
+        }
 
         if ((options.require_audio && !audio_stream_id) || (options.require_video && !video_stream_id)) {
             onResponse({type: 'failed', reason: 'Invalid subscribe request.'});
@@ -1016,9 +1037,8 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
         }, function (error_reason) {onResponse({type: 'failed', reason: error_reason});});
     };
 
-    that.subscribe = function (terminal_id, subscription_type, stream_id, options, onResponse) {
+    that.subscribe = function (terminal_id, subscription_id, subscription_type, stream_id, options, onResponse) {
         if (streams[stream_id] || stream_id === mixed_stream_id) {
-            var subscription_id = terminal_id+'-'+stream_id;
             that.subscribeSelectively(
                 terminal_id,
                 subscription_id,
@@ -1030,14 +1050,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
         }
     };
 
-    that.unsubscribe = function (terminal_id, stream_id) {
-        log.debug("unsubscribe from terminal:", terminal_id, "to stream:", stream_id);
-        if (terminals[terminal_id]) {
-            unsubscribeStream(terminal_id, terminal_id+'-'+stream_id);
-        }
-    };
-
-    that.unsubscribeBySubscriptionId = function (terminal_id, subscription_id) {
+    that.unsubscribe = function (terminal_id, subscription_id) {
         log.debug("unsubscribe from terminal:", terminal_id, "for subscription:", subscription_id);
         if (terminals[terminal_id]) {
             unsubscribeStream(terminal_id, subscription_id);
@@ -1070,40 +1083,26 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
         }
     };
 
-    that.onConnectionSignalling = function (terminal_id, stream_id, msg) {
-        log.debug("onConnectionSignalling, terminal_id:", terminal_id, "stream_id:", stream_id/*, "msg:", msg*/);
+    that.onConnectionSignalling = function (terminal_id, connection_id, msg) {
+        log.debug("onConnectionSignalling, terminal_id:", terminal_id, "connection_id:", connection_id/*, "msg:", msg*/);
         if (terminals[terminal_id] && terminals[terminal_id].type === 'webrtc') {
-            //FIXME: It is better to pass connection_id instead of {terminal_id, stream_id} to Erizo
-            //var connection_id = streams[stream_id] ? stream_id : terminal_id+'-'+stream_id;
             makeRPC(
                 amqper,
                 'ErizoJS_' + terminals[terminal_id].erizo,
                 "onConnectionSignalling",
-                [terminal_id, stream_id, msg]);
+                [connection_id, msg]);
         }
     };
 
-    that.onTrackControl = function (terminal_id, stream_id, track, direction, action, on_ok, on_error) {
+    that.onTrackControl = function (terminal_id, connection_id, track, direction, action, on_ok, on_error) {
         if (terminals[terminal_id] && terminals[terminal_id].type === 'webrtc') {
-            if ((direction === 'out' && (!streams[stream_id]
-                                         || (track === 'audio' && !streams[stream_id].audio)
-                                         || (track === 'video' && !streams[stream_id].video)))
-                || ((direction === 'in') && (!terminals[terminal_id].subscribed[terminal_id+'-'+stream_id]
-                                             || (track === 'audio' && !terminals[terminal_id].subscribed[terminal_id+'-'+stream_id].audio)
-                                             || (track === 'video' && !terminals[terminal_id].subscribed[terminal_id+'_'+stream_id].video)))) {
-
-                on_error("No such a(n) "+track+" track "+direction);
-            } else {
-                //FIXME: It is better to pass connection_id instead of {terminal_id, stream_id} to Erizo
-                //var connection_id = streams[stream_id] ? stream_id : terminal_id+'-'+stream_id;
-                makeRPC(
-                    amqper,
-                    'ErizoJS_' + terminals[terminal_id].erizo,
-                    "onTrackControl",
-                    [terminal_id, stream_id, track, direction, action],
-                    on_ok,
-                    on_error);
-            }
+            makeRPC(
+                amqper,
+                'ErizoJS_' + terminals[terminal_id].erizo,
+                "onTrackControl",
+                [connection_id, track, direction, action],
+                on_ok,
+                on_error);
         } else {
             on_error("Not support track control upon non-webrtc streams.");
         }
@@ -1111,8 +1110,6 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
 
     that.setVideoBitrate = function (stream_id, bitrate, on_ok, on_error) {
         if (streams[stream_id] && terminals[streams[stream_id].owner] && terminals[streams[stream_id].owner].type === 'webrtc') {
-            //FIXME: It is better to pass connection_id instead of {terminal_id, stream_id} to Erizo
-            //var connection_id = streams[stream_id] ? stream_id : terminal_id+'-'+stream_id;
             makeRPC(
                 amqper,
                 'ErizoJS_' + terminals[streams[stream_id].owner].erizo,

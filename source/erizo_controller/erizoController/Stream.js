@@ -106,5 +106,17 @@ exports.Stream = function (spec) {
         return {id: spec.id, audio: spec.audio, video: spec.video, data: spec.data, from: spec.from, attributes: spec.attributes};
     };
 
+    that.getOwner = function () {
+        return spec.from;
+    };
+
+    that.getStatus = function () {
+        return spec.status === 'initializing' ? 'initializing' : 'ready';
+    };
+
+    that.setStatus = function (status) {
+        spec.status = status;
+    };
+
     return that;
 };
