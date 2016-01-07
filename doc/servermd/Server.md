@@ -3,7 +3,7 @@ Conference Server User Guide
 
 # 1 Overview {#Conferencesection1}
 ## 1.1 Introduction {#Conferencesection1_1}
-Welcome to the Conference Server User Guide for the Intel® Collaboration Suite for WebRTC (Intel® CS for WebRTC). This guide describes how to install and configure the Intel CS for WebRTC multipoint control unit (MCU). This guide also explains how to install and launch the peer server.
+Welcome to the Conference Server User Guide for the Intel<sup>®</sup> Collaboration Suite for WebRTC (Intel<sup>®</sup> CS for WebRTC). This guide describes how to install and configure the Intel CS for WebRTC multipoint control unit (MCU). This guide also explains how to install and launch the peer server.
 
 The Intel CS for WebRTC Conference Server provides an efficient WebRTC-based video conference service that scales a single WebRTC stream out to many endpoints. The following list briefly explains the purpose of each section in this guide:
 
@@ -48,7 +48,7 @@ https://software.intel.com/en-us/html5/tools
 https://software.intel.com/webrtc
 https://software.intel.com/en-us/forums/webrtc
 https://software.intel.com/zh-cn/forums/webrtc
- - The Internet Engineering Task Force (IETF®) Working Group:
+ - The Internet Engineering Task Force (IETF<sup>®</sup>) Working Group:
 http://tools.ietf.org/wg/rtcweb/
  - W3C WebRTC Working Group:
 http://www.w3.org/2011/04/webrtc/
@@ -77,7 +77,7 @@ H.264 support in MCU system requires the deployment of OpenH264 library, see [De
 > **Note**: OpenH264 library is not required for GPU-accelerated MCU when forward RTSP stream subscription is not used.
 If you need to set up mix mode video conferences which require GPU-accelerated media processing, you must install the following server side SDK:
 
- - Intel® Media Server Studio 2015 for Linux*
+ - Intel<sup>®</sup> Media Server Studio 2015 for Linux*
  If you want the Media Server Studio package for Ubuntu14.04 download or installation instructions, please contact [webrtc_support@intel.com](mailto://webrtc_support@intel.com).
 
  **Table 2-2. Client compatibility**

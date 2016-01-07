@@ -4,7 +4,7 @@ Gateway for SIP User Guide
 # 1 Overview {#SIPsection1}
 
 ## 1.1 Introduction {#SIPsection1_1}
-Welcome to the user guide for the Intel® Collaboration Service for WebRTC (Intel® CS for WebRTC) Gateway for SIP. The gateway enables the WebRTC interoperability with traditional RTC systems.
+Welcome to the user guide for the Intel<sup>®</sup> Collaboration Service for WebRTC (Intel<sup>®</sup> CS for WebRTC) Gateway for SIP. The gateway enables the WebRTC interoperability with traditional RTC systems.
 This guide describes how to install and launch the gateway server for Session Initiation Protocol (SIP). This guide then provides details of the interfaces available in the gateway SDK for SIP. This guide includes these sections:
 
  - Section 1. Introduction and conventions used in this guide.
@@ -39,12 +39,12 @@ For more information, visit the following Web pages:
 - Intel HTML Developer Zone:
 
     https://software.intel.com/en-us/html5/tools
-- Intel® Collaboration Service for WebRTC:
+- Intel<sup>®</sup> Collaboration Service for WebRTC:
 
     https://software.intel.com/webrtc
 
     https://software.intel.com/en-us/forums/webrtc
-- Internet Engineering Task Force (IETF®) Working Group:
+- Internet Engineering Task Force (IETF<sup>®</sup>) Working Group:
 
     http://tools.ietf.org/wg/rtcweb/
 - W3C WebRTC Working Group:
@@ -67,11 +67,11 @@ Install the OpenH264 library to support H.264 in the gateway for SIP when requir
 
 If you need to set up mix mode video conferences, which require GPU-accelerated media processing, you must install the following server side SDK:
 
- - Intel® Media Server Studio 2015 for Linux*
+ - Intel<sup>®</sup> Media Server Studio 2015 for Linux*
 
 > **Note**: The OpenH264 library is not required for GPU-accelerated gateway.
 
-> **Note**: For download and installation instructions of the Intel® Media Server Studio package for Ubuntu 14.04, please contact [webrtc_support@intel.com](mailto://webrtc_support@intel.com).
+> **Note**: For download and installation instructions of the Intel<sup>®</sup> Media Server Studio package for Ubuntu 14.04, please contact [webrtc_support@intel.com](mailto://webrtc_support@intel.com).
 
 The gateway for SIP has been tested in the environment listed in Table 2-2.
 
