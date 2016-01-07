@@ -272,7 +272,7 @@ exports.VideoNode = function () {
         } else if (service === 'transcoding') {
             var videoConfig = {maxInput: 1,
                                bitrate: 0,
-                               resolution: config.input.resolution,
+                               resolution: config.resolution,
                                backgroundcolor: 'black',
                                simulcast: true,
                                layout: [{region: [{id: '1', left: 0, top: 0, relativesize: 1}]}]};

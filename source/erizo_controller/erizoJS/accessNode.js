@@ -253,22 +253,22 @@ exports.AccessNode = function (spec) {
         }
     };
 
-    that.onConnectionSignalling = function (terminal_id, stream_id, msg) {
-        log.debug("onConnectionSignalling, stream_id:", stream_id, "msg:", msg);
-        if (streams[stream_id] && streams[stream_id].type === 'webrtc') {
+    that.onConnectionSignalling = function (connection_id, msg) {
+        log.debug("onConnectionSignalling, connection_id:", connection_id, "msg:", msg);
+        if (streams[connection_id] && streams[connection_id].type === 'webrtc') {
             log.debug("on publisher's ConnectionSignalling");
-            streams[stream_id].connection.onSignalling(msg);
-        } else if (subscriptions[terminal_id+'-'+stream_id] && subscriptions[terminal_id+'-'+stream_id].type === 'webrtc') {
+            streams[connection_id].connection.onSignalling(msg);
+        } else if (subscriptions[connection_id] && subscriptions[connection_id].type === 'webrtc') {
             log.debug("on subscriber's ConnectionSignalling");
-            subscriptions[terminal_id+'-'+stream_id].connection.onSignalling(msg);
+            subscriptions[connection_id].connection.onSignalling(msg);
         }
     };
 
-    that.onTrackControl = function (terminal_id, stream_id, track, direction, action, callback) {
-        if (streams[stream_id] && streams[stream_id].type === 'webrtc') {
-            streams[stream_id].connection.onTrackControl(track, direction, action, function () {callback('callback', 'ok');}, function (error_reason) {callback('callback', 'error', error_reason);});
-        } else if (subscriptions[terminal_id+'-'+stream_id] && subscriptions[terminal_id+'-'+stream_id].type === 'webrtc') {
-            subscriptions[terminal_id+'-'+stream_id].connection.onTrackControl(track, direction, action, function () {callback('callback', 'ok');}, function (error_reason) {callback('callback', 'error', error_reason);});
+    that.onTrackControl = function (connection_id, track, direction, action, callback) {
+        if (streams[connection_id] && streams[connection_id].type === 'webrtc') {
+            streams[connection_id].connection.onTrackControl(track, direction, action, function () {callback('callback', 'ok');}, function (error_reason) {callback('callback', 'error', error_reason);});
+        } else if (subscriptions[connection_id] && subscriptions[connection_id].type === 'webrtc') {
+            subscriptions[connection_id].connection.onTrackControl(track, direction, action, function () {callback('callback', 'ok');}, function (error_reason) {callback('callback', 'error', error_reason);});
         } else {
             callback('callback', 'error', 'No such a connection.');
         }

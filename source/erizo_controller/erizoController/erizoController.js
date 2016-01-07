@@ -167,7 +167,7 @@ var eventReportHandlers = {
         }
 
         var recorderId = spec.id;
-        room.controller.unsubscribeBySubscriptionId(room.id, recorderId);
+        room.controller.unsubscribe(room.id, recorderId);
 
         log.info('Recorder has been deleted since', spec.message);
 
@@ -456,7 +456,7 @@ var listen = function () {
                             socket.room.sockets.push(socket);
 
                             for (index in socket.room.streams) {
-                                if (socket.room.streams.hasOwnProperty(index)) {
+                                if (socket.room.streams.hasOwnProperty(index) && (socket.room.streams[index].getStatus() === 'ready')) {
                                     streamList.push(socket.room.streams[index].getPublicStream());
                                 }
                             }
@@ -581,10 +581,11 @@ var listen = function () {
                     var action = msg.payload.action;
                     if (/^((audio)|(video))-((in)|(out))-((on)|(off))$/.test(action)) {
                         var cmdOpts = action.split('-'),
-                            streamId = msg.payload.streamId + '';
+                            streamId = msg.payload.streamId/*FIXME: to be modified to msg.payload.connectionId along with client side.*/ + '',
+                            connectionId = socket.room.streams[streamId] && socket.room.streams[streamId].getOwner() === socket.id ? streamId : socket.id + '-' + streamId;
                         socket.room.controller.onTrackControl(
                             socket.id,
-                            streamId,
+                            connectionId,
                             cmdOpts[0],
                             cmdOpts[1],
                             cmdOpts[2],
@@ -699,7 +700,10 @@ var listen = function () {
             if (socket.room.p2p) {
                 io.sockets.to(msg.peerSocket).emit('signaling_message_peer', {streamId: msg.streamId, peerSocket: socket.id, msg: msg.msg});
             } else {
-                socket.room.controller.onConnectionSignalling(socket.id, msg.streamId, msg.msg);
+                log.debug('signaling_message, stream:', msg.streamId, 'owner:', socket.room.streams[msg.streamId].getPublicStream().from, 'self:', socket.id);
+                /*FIXME: to modify msg.streamId to msg.connectionId along with client side.*/
+                var connectionId = socket.room.streams[msg.streamId] && socket.room.streams[msg.streamId].getOwner() === socket.id ? msg.streamId : socket.id + '-' + msg.streamId;
+                socket.room.controller.onConnectionSignalling(socket.id, connectionId, msg.msg);
             }
         });
 
@@ -822,7 +826,8 @@ var listen = function () {
                         switch (signMess.type) {
                         case 'initializing':
                             safeCall(callback, 'initializing', id);
-                            st = new ST.Stream({id: id, audio: options.audio, video: options.video, attributes: options.attributes, from: socket.id});
+                            st = new ST.Stream({id: id, audio: options.audio, video: options.video, attributes: options.attributes, from: socket.id, status: 'initializing'});
+                            socket.room.streams[id] = st;
                             return;
                         case 'failed': // If the connection failed we remove the stream
                             log.info(signMess.reason, "removing " , id);
@@ -841,9 +846,9 @@ var listen = function () {
                             if (index !== -1) {
                                 socket.streams.splice(index, 1);
                             }
+                            delete socket.room.streams[id];
                             safeCall(callback, 'error', signMess.reason);
                             return;
-<<<<<<< HEAD
                         case 'ready':
                             // Double check if this socket is still in the room.
                             // It can be removed from the room if the socket is disconnected
@@ -854,7 +859,7 @@ var listen = function () {
                                 return;
                             }
 
-                            socket.room.streams[id] = st;
+                            st.setStatus('ready');
                             sendMsgToRoom(socket.room, 'add_stream', st.getPublicStream());
                             break;
                         default:
@@ -915,6 +920,7 @@ var listen = function () {
                     }
                     socket.room.controller.subscribe(
                         socket.id,
+                        socket.id + '-' + options.streamId,
                         'webrtc',
                         options.streamId,
                         {require_audio: !!options.audio, require_video: !!options.video, video_resolution: (options.video && options.video.resolution) ? options.video.resolution : undefined},
@@ -1002,7 +1008,7 @@ var listen = function () {
             }
 
             // Make sure the recording context clean for this 'startRecorder'
-            socket.room.controller.unsubscribeBySubscriptionId(socket.room.id, recorderId);
+            socket.room.controller.unsubscribe(socket.room.id, recorderId);
             var isContinuous = false;
             for (var i in socket.room.streams) {
                 if (socket.room.streams.hasOwnProperty(i)) {
@@ -1072,7 +1078,7 @@ var listen = function () {
 
             // Stop recorder
             if (options.recorderId) {
-                socket.room.controller.unsubscribeBySubscriptionId(socket.room.id, options.recorderId);
+                socket.room.controller.unsubscribe(socket.room.id, options.recorderId);
                 for (var i in socket.room.streams) {
                     if (socket.room.streams.hasOwnProperty(i)) {
                         if (socket.room.streams[i].getVideoRecorder() === options.recorderId+'') {
@@ -1200,7 +1206,7 @@ var listen = function () {
 
             if (socket.room.streams[to].hasAudio() || socket.room.streams[to].hasVideo()) {
                 if (!socket.room.p2p) {
-                    socket.room.controller.unsubscribe(socket.id, to);
+                    socket.room.controller.unsubscribe(socket.id, socket.id + '-' + to);
                     if (GLOBAL.config.erizoController.report.session_events) {
                         var timeStamp = new Date();
                         amqper.broadcast('event', {room: socket.room.id, user: socket.id, type: 'unsubscribe', stream: to, timestamp:timeStamp.getTime()});
