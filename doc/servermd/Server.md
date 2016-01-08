@@ -429,8 +429,10 @@ To do this, connect to the MCU sample application server XXXXX with the followin
 
 
 > **Note**:	The screen sharing example in this section requires the Chrome
-> extension, one such extension sample source code is provided in
-> Javascript SDK package for reference.
+> extension. Source code of such extension sample is provided in
+> Javascript SDK package for reference. Also there are steps in the user guide
+> for you to follow from the main page of Intel CS for WebRTC Client SDK for
+> JavaScript.
 ### 4.2.4 Connect to an MCU conference with a specific video resolution {#Conferencesection4_2_4}
 
 In most cases, you can customize the video capture device on the client machine to produce video streams with different resolutions. To specify your local video resolution and send that resolution value to the MCU, use a query string in your URL with the key word "resolution".
