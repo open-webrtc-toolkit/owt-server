@@ -815,6 +815,18 @@ var listen = function () {
         //Gets 'publish' messages on the socket in order to add new stream to the room.
         socket.on('publish', function (options, sdp, callback) {
             var id, st;
+
+            // format options
+            if (options.audio === undefined) {
+              options.audio = true;
+            }
+            if (options.video === undefined || (typeof options.video !== 'object' && !!options.video)) {
+              options.video = Object.create();
+            }
+            if (typeof options.video.device !== 'string') {
+              options.video.device = 'unknown';
+            }
+
             if (socket.user === undefined || !socket.user.permissions[Permission.PUBLISH]) {
                 return safeCall(callback, 'error', 'unauthorized');
             }
