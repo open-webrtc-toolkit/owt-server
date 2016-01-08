@@ -62,7 +62,7 @@ public:
     }
 
 private:
-    int getFreeInputIndex();
+    int useAFreeInputIndex();
     void closeAll();
 
     int m_nextOutputIndex;
@@ -76,6 +76,7 @@ private:
 
     boost::shared_mutex m_inputsMutex;
     std::map<std::string, int> m_inputs;
+    std::vector<bool> m_freeInputIndexes;
 
     boost::scoped_ptr<VideoLayoutProcessor> m_layoutProcessor;
 
