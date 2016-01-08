@@ -9,7 +9,7 @@ var readline = require('readline').createInterface({
 var cipher = require('../common/cipher');
 var collection;
 var keystore = path.resolve(__dirname, '..', 'cert/.woogeen.keystore');
-var allComps = ['erizo', 'nuve', 'erizoController', 'sample'];
+var allComps = ['erizo', 'nuve', 'erizoController'];
 var args = process.argv;
 args.splice(0, 2);
 

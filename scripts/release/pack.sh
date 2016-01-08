@@ -17,6 +17,7 @@ PACK_MODULE=true
 ENCRYPT=false
 ENCRYPT_CAND_PATH=
 PACKAGE_VERSION=
+SRC_SAMPLE_PATH=
 
 cd ${this}
 . common.sh
@@ -41,6 +42,10 @@ while [[ $# -gt 0 ]]; do
     *(-)encrypt )
       ENCRYPT=true
       ;;
+    *(-)src-sample-path=* )
+      SRC_SAMPLE_PATH=${1##*(-)}
+      SRC_SAMPLE_PATH=${SRC_SAMPLE_PATH:16}
+      ;;
     *(-)help )
       usage
       exit 0
@@ -60,7 +65,7 @@ if ! hash pack_runtime 2>/dev/null; then
   exit 0
 fi
 echo "Cleaning ${WOOGEEN_DIST}/ ..."; rm -fr ${WOOGEEN_DIST}/
-pack_runtime
+SRC_SAMPLE_PATH="${SRC_SAMPLE_PATH}" pack_runtime
 pack_scripts
 ${PACK_MODULE} && install_module
 ${PACK_NODE} && pack_node
