@@ -923,7 +923,7 @@ var listen = function () {
                         socket.id + '-' + options.streamId,
                         'webrtc',
                         options.streamId,
-                        {require_audio: !!options.audio, require_video: !!options.video, video_resolution: (options.video && options.video.resolution) ? options.video.resolution : undefined},
+                        {require_audio: options.audio === undefined || !!options.audio, require_video: options.video === undefined || !!options.video, video_resolution: (options.video && options.video.resolution) ? options.video.resolution : undefined},
                         function (signMess) {
                             if (typeof signMess !== 'object' || signMess === null) {
                                 safeCall(callback, 'error', 'unexpected error');
