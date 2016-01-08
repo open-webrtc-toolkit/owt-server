@@ -107,12 +107,16 @@ exports.AccessNode = function (spec) {
         if (streams[stream_id]) {
             for (var subscription_id in subscriptions) {
                 if (subscriptions[subscription_id].audio === stream_id) {
-                    streams[stream_id].connection.removeDestination("audio", subscriptions[subscription_id].connection);
+                    log.debug("remove audio:", subscriptions[subscription_id].audio);
+                    var dest = subscriptions[subscription_id].type === 'webrtc' ? subscriptions[subscription_id].connection.receiver("audio") : subscriptions[subscription_id].connection;
+                    streams[stream_id].connection.removeDestination("audio", dest);
                     subscriptions[subscription_id].audio = undefined;
                 }
 
                 if (subscriptions[subscription_id].video === stream_id) {
-                    streams[stream_id].connection.removeDestination("video", subscriptions[subscription_id].connection);
+                    log.debug("remove video:", subscriptions[subscription_id].video);
+                    var dest = subscriptions[subscription_id].type === 'webrtc' ? subscriptions[subscription_id].connection.receiver("video") : subscriptions[subscription_id].connection;
+                    streams[stream_id].connection.removeDestination("video", dest);
                     subscriptions[subscription_id].video = undefined;
                 }
 
