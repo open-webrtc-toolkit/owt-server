@@ -525,7 +525,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
                     amqper,
                     'ErizoJS_' + terminals[axcoder].erizo,
                     "init",
-                    ['transcoding'],
+                    ['transcoding', {}],
                     function (supported_audio) {
                         spreadStream(stream_id, terminals[axcoder].erizo, true, false, function () {
                             streams[stream_id].audio.subscribers.push(axcoder);
