@@ -47,7 +47,7 @@ pack_runtime() {
   ln -s ../etc/nuve/log4js_configuration.json ${WOOGEEN_DIST}/nuve/log4js_configuration.json
   # certificates
   mkdir -p ${WOOGEEN_DIST}/cert
-  cp -av ${ROOT}/cert/{*.pem,*.pfx,.woogeen.keystore} ${WOOGEEN_DIST}/cert
+  cp -av ${ROOT}/cert/{*.pfx,.woogeen.keystore} ${WOOGEEN_DIST}/cert
   # sample
   mkdir -p ${WOOGEEN_DIST}/extras
   cp -av ${SOURCE}/extras/basic_example ${WOOGEEN_DIST}/extras
