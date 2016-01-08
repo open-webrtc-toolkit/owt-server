@@ -50,8 +50,12 @@ VideoMixer::VideoMixer(const std::string& configStr)
     std::istringstream is(configStr);
     boost::property_tree::read_json(is, config);
 
-    bool hardwareAccelerated = config.get<bool>("hardware", false);
     m_maxInputCount = config.get<uint32_t>("maxinput", 16);
+    m_freeInputIndexes.reserve(m_maxInputCount);
+    for (size_t i = 0; i < m_maxInputCount; ++i)
+        m_freeInputIndexes.push_back(true);
+
+    bool hardwareAccelerated = config.get<bool>("hardware", false);
     m_outputKbps = config.get<int>("bitrate", 0);
     bool useSimulcast = config.get<bool>("simulcast");
     webrtc::VP8EncoderFactoryConfig::set_use_simulcast_adapter(useSimulcast);
@@ -115,7 +119,7 @@ bool VideoMixer::addInput(const std::string& inStreamID, const std::string& code
     boost::upgrade_lock<boost::shared_mutex> lock(m_inputsMutex);
     auto it = m_inputs.find(inStreamID);
     if (it == m_inputs.end() || !it->second) {
-        int index = getFreeInputIndex();
+        int index = useAFreeInputIndex();
         ELOG_DEBUG("addSource - assigned input index is %d", index);
 
         if (m_frameMixer->addInput(index, format, source)) {
@@ -145,6 +149,7 @@ void VideoMixer::removeInput(const std::string& inStreamID)
     if (index >= 0) {
         m_frameMixer->removeInput(index);
         m_layoutProcessor->removeInput(index);
+        m_freeInputIndexes[index] = true;
         --m_inputCount;
     }
 }
@@ -230,20 +235,16 @@ void VideoMixer::removeOutput(const std::string& outStreamID)
     }
 }
 
-int VideoMixer::getFreeInputIndex()
+int VideoMixer::useAFreeInputIndex()
 {
-    std::list<int> indexes;
-    for (int i = 0; i < static_cast<int>(m_maxInputCount); ++i) {
-        indexes.push_back(i);
+    for (size_t i = 0; i < m_freeInputIndexes.size(); ++i) {
+        if (m_freeInputIndexes[i]) {
+            m_freeInputIndexes[i] = false;
+            return i;
+        }
     }
 
-    for(auto it = m_inputs.begin(); it != m_inputs.end(); ++it) {
-        indexes.remove(it->second);
-    }
-
-    assert(indexes.size() > 0);
-
-    return *(indexes.begin());
+    return -1;
 }
 
 void VideoMixer::closeAll()
