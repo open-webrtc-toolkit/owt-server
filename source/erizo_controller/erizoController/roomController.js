@@ -927,7 +927,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
     that.subscribeSelectively = function (terminal_id, subscription_id, subscription_type, audio_stream_id, video_stream_id, options, onResponse) {
         var audio_codec = options.audio_codec
                        || (audio_stream_id === mixed_stream_id && supported_audio_codecs[0])
-                       || (streams[video_stream_id] && streams[video_stream_id].audio && streams[video_stream_id].audio.codec)
+                       || (streams[audio_stream_id] && streams[audio_stream_id].audio && streams[audio_stream_id].audio.codec)
                        || undefined,
 
             video_codec = options.video_codec
