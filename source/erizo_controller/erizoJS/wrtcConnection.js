@@ -278,9 +278,9 @@ exports.WrtcConnection = function (spec) {
         return undefined;
     };
 
-    that.setVideoBiterate = function (bitrateKBPS) {
+    that.setVideoBitrate = function (bitrateKBPS) {
         if (video) {
-            videoFrameConstructor.setBiterate(bitrateKBPS);
+            videoFrameConstructor.setBitrate(bitrateKBPS);
         }
     };
 
