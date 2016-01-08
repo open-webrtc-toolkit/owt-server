@@ -50,7 +50,10 @@ pack_runtime() {
   cp -av ${ROOT}/cert/{*.pfx,.woogeen.keystore} ${WOOGEEN_DIST}/cert
   # sample
   mkdir -p ${WOOGEEN_DIST}/extras
-  cp -av ${SOURCE}/extras/basic_example ${WOOGEEN_DIST}/extras
+  [[ ! -z ${SRC_SAMPLE_PATH} && -d ${SRC_SAMPLE_PATH} ]] && \
+    cp -av ${SRC_SAMPLE_PATH} ${WOOGEEN_DIST}/extras/basic_example
+  [[ -s ${WOOGEEN_DIST}/extras/basic_example/initcert.js ]] && \
+    chmod +x ${WOOGEEN_DIST}/extras/basic_example/initcert.js
   cp -av ${SOURCE}/extras/rtsp-client.js ${WOOGEEN_DIST}/extras
 }
 
