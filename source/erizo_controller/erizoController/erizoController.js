@@ -388,6 +388,38 @@ function safeCall () {
     }
 }
 
+//FIXME: to keep compatible to previous MCU, should be removed later.
+var resolutionName2Value = {
+    'cif': {width: 352, height: 288},
+    'vga': {width: 640, height: 480},
+    'svga': {width: 800, height: 600},
+    'xga': {width: 1024, height: 768},
+    'r640x360': {width: 640, height: 360},
+    'hd720p': {width: 1280, height: 720},
+    'sif': {width: 320, height: 240},
+    'hvga': {width: 480, height: 320},
+    'r480x360': {width: 480, height: 360},
+    'qcif': {width: 176, height: 144},
+    'r192x144': {width: 192, height: 144},
+    'hd1080p': {width: 1920, height: 1080},
+    'uhd_4k': {width: 3840, height: 2160}
+};
+var resolutionValue2Name = {
+    'r352x288': 'cif',
+    'r640x480': 'vga',
+    'r800x600': 'svga',
+    'r1024x768': 'xga',
+    'r640x360': 'r640x360',
+    'r1280x720': 'hd720p',
+    'r320x240': 'sif',
+    'r480x320': 'hvga',
+    'r480x360': 'r480x360',
+    'r176x144': 'qcif',
+    'r192x144': 'r192x144',
+    'r1920x1080': 'hd1080p',
+    'r3840x2160': 'uhd_4k'
+};
+
 var listen = function () {
     log.info('server on');
 
@@ -457,7 +489,9 @@ var listen = function () {
 
                             for (index in socket.room.streams) {
                                 if (socket.room.streams.hasOwnProperty(index) && (socket.room.streams[index].getStatus() === 'ready')) {
-                                    streamList.push(socket.room.streams[index].getPublicStream());
+                                    var st = socket.room.streams[index].getPublicStream();
+                                    st.video && st.video.resolutions && (st.video.resolutions = st.video.resolutions.map(function (n) {return resolutionName2Value[n];}));//FIXME: to keep compatible to previous MCU, should be removed later.
+                                    streamList.push(st);
                                 }
                             }
 
@@ -584,7 +618,7 @@ var listen = function () {
                             streamId = msg.payload.streamId/*FIXME: to be modified to msg.payload.connectionId along with client side.*/ + '',
                             connectionId = socket.room.streams[streamId] && socket.room.streams[streamId].getOwner() === socket.id ? streamId : socket.id + '-' + streamId;
                         socket.room.controller.onTrackControl(
-                            socket.id,
+                            'webrtc#'+socket.id/*FIXME: hard code terminalID*/,
                             connectionId,
                             cmdOpts[0],
                             cmdOpts[1],
@@ -703,7 +737,7 @@ var listen = function () {
                 log.debug('signaling_message, stream:', msg.streamId, 'owner:', socket.room.streams[msg.streamId].getPublicStream().from, 'self:', socket.id);
                 /*FIXME: to modify msg.streamId to msg.connectionId along with client side.*/
                 var connectionId = socket.room.streams[msg.streamId] && socket.room.streams[msg.streamId].getOwner() === socket.id ? msg.streamId : socket.id + '-' + msg.streamId;
-                socket.room.controller.onConnectionSignalling(socket.id, connectionId, msg.msg);
+                socket.room.controller.onConnectionSignalling('webrtc#'+socket.id/*FIXME: hard code terminalID*/, connectionId, msg.msg);
             }
         });
 
@@ -754,7 +788,7 @@ var listen = function () {
                 }
 
                 socket.room.controller.publish(
-                    socket.id,
+                    stream_type+'#'+socket.id/*FIXME: hard code terminalID*/,
                     id,
                     stream_type,
                     {url: url,
@@ -813,7 +847,7 @@ var listen = function () {
                 }
 
                 socket.room.controller.publish(
-                    socket.id,
+                    'webrtc#'+socket.id/*FIXME: hard code terminalID*/,
                     id,
                     'webrtc',
                     {has_audio: options.audio, has_video: options.video},
@@ -913,13 +947,15 @@ var listen = function () {
                         var timeStamp = new Date();
                         amqper.broadcast('event', {room: socket.room.id, user: socket.id, name: socket.user.name, type: 'subscribe', stream: options.streamId, timestamp: timeStamp.getTime()});
                     }
-                    if (typeof options.video === 'object' && options.video !== null) {
-                        if (!stream.hasResolution(options.video.resolution)) {
+                    if (typeof options.video === 'object' && options.video !== null && options.video.resolution) {
+                        if (!stream.hasResolution(resolutionValue2Name['r'+options.video.resolution.width+'x'+options.video.resolution.height])) {//FIXME: to keep compatible to previous MCU, should be removed later.
+                        //if (!stream.hasResolution(options.video.resolution)) {
                             options.video = true;
                         }
                     }
+
                     socket.room.controller.subscribe(
-                        socket.id,
+                        'webrtc#'+socket.id/*FIXME: hard code terminalID*/,
                         socket.id + '-' + options.streamId,
                         'webrtc',
                         options.streamId,
@@ -1008,7 +1044,7 @@ var listen = function () {
             }
 
             // Make sure the recording context clean for this 'startRecorder'
-            socket.room.controller.unsubscribe(socket.room.id, recorderId);
+            socket.room.controller.unsubscribe('file#'+socket.room.id/*FIXME: hard code terminalID*/, recorderId);
             var isContinuous = false;
             for (var i in socket.room.streams) {
                 if (socket.room.streams.hasOwnProperty(i)) {
@@ -1025,7 +1061,7 @@ var listen = function () {
             }
 
             socket.room.controller.subscribeSelectively(
-                socket.room.id,
+                'file#'+socket.room.id/*FIXME: hard code terminalID*/,
                 recorderId,
                 'file',
                 audioStreamId,
@@ -1078,7 +1114,7 @@ var listen = function () {
 
             // Stop recorder
             if (options.recorderId) {
-                socket.room.controller.unsubscribe(socket.room.id, options.recorderId);
+                socket.room.controller.unsubscribe('file#'+socket.room.id/*FIXME: hard code terminalID*/, options.recorderId);
                 for (var i in socket.room.streams) {
                     if (socket.room.streams.hasOwnProperty(i)) {
                         if (socket.room.streams[i].getVideoRecorder() === options.recorderId+'') {
@@ -1206,7 +1242,7 @@ var listen = function () {
 
             if (socket.room.streams[to].hasAudio() || socket.room.streams[to].hasVideo()) {
                 if (!socket.room.p2p) {
-                    socket.room.controller.unsubscribe(socket.id, socket.id + '-' + to);
+                    socket.room.controller.unsubscribe('webrtc#'+socket.id/*FIXME: hard code terminalID*/, socket.id + '-' + to);
                     if (GLOBAL.config.erizoController.report.session_events) {
                         var timeStamp = new Date();
                         amqper.broadcast('event', {room: socket.room.id, user: socket.id, type: 'unsubscribe', stream: to, timestamp:timeStamp.getTime()});
@@ -1236,7 +1272,7 @@ var listen = function () {
                 }
 
                 if (socket.room.controller) {
-                    socket.room.controller.unsubscribeAll(socket.id);
+                    socket.room.controller.unsubscribeAll('webrtc#'+socket.id/*FIXME: hard code terminalID*/);
                 }
 
                 for (i in socket.streams) {

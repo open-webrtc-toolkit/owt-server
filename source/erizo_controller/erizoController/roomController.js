@@ -235,13 +235,14 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
     };
 
     var spreadStream = function (stream_id, target_erizo_id, audio, video, on_ok, on_error) {
+        log.debug("spreadStream, stream_id:", stream_id, "target_erizo_id:", target_erizo_id, "audio:", audio, "video:", video);
+        log.debug("original stream(streams[stream_id]):", streams[stream_id]);
         var stream_owner = streams[stream_id].owner,
             original_erizo = terminals[stream_owner].erizo,
             hasAudio = audio && !!streams[stream_id].audio,
             hasVideo = video && !!streams[stream_id].video,
             audio_codec = hasAudio ? streams[stream_id].audio.codec : undefined,
             video_codec = hasVideo ? streams[stream_id].video.codec : undefined;
-        log.debug("spreadStream:", stream_id, "@", original_erizo, "to: ", target_erizo_id);
         if (!hasAudio && !hasVideo) {
             on_error("Can't spread stream without audio/video.");
             return;
@@ -474,6 +475,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
             function (stream_id) {
                 log.debug("spawnTranscodedAudio ok, stream_id:", stream_id);
                 if (streams[stream_id] === undefined) {
+                    log.debug("add to streams.");
                     streams[stream_id] = {owner: axcoder,
                                           audio: {codec: audio_codec,
                                                   subscribers: []},
@@ -556,6 +558,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
             function (stream_id) {
                 log.debug("spawnTranscodedVideo ok, stream_id:", stream_id);
                 if (streams[stream_id] === undefined) {
+                    log.debug("add to streams.");
                     streams[stream_id] = {owner: vxcoder,
                                           audio: undefined,
                                           video: {codec: video_codec,
@@ -608,7 +611,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
                     amqper,
                     'ErizoJS_' + terminals[vxcoder].erizo,
                     "init",
-                    ['transcoding', {resolution: streams[stream_id].video.resolution}],
+                    ['transcoding', {resolution: streams[stream_id].video.resolution || 'hd1080p'/*FIXME: hard code*/}],
                     function (supported_video) {
                         spreadStream(stream_id, terminals[vxcoder].erizo, false, true, function () {
                             streams[stream_id].video.subscribers.push(vxcoder);
@@ -776,6 +779,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
                     on_error);
             }, on_error);
         } else {
+            log.debug("spread audio and video stream independently.");
             spreadStream(audio_stream, terminals[subscriber].erizo, true, false, function () {
                 log.debug("spread audio_stream:", audio_stream, " ok.");
                 spreadStream(video_stream, terminals[subscriber].erizo, false, true, function () {
@@ -938,7 +942,8 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
             video_resolution = options.video_resolution
                        || (video_stream_id === mixed_stream_id && supported_video_resolutions[0])
                        || (streams[video_stream_id] && streams[video_stream_id].video && streams[video_stream_id].video.resolution)
-                       || undefined;
+                       //|| undefined;
+                       || supported_video_resolutions[0];//FIXME: resolution should be specified when subscribing.
 
         if (!audio_codec || !video_codec) {
             onResponse({type: 'failed', reason: 'No proper audio/video codec.'});
@@ -1085,7 +1090,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
 
     that.onConnectionSignalling = function (terminal_id, connection_id, msg) {
         log.debug("onConnectionSignalling, terminal_id:", terminal_id, "connection_id:", connection_id/*, "msg:", msg*/);
-        if (terminals[terminal_id] && terminals[terminal_id].type === 'webrtc') {
+        if (terminals[terminal_id]) {
             makeRPC(
                 amqper,
                 'ErizoJS_' + terminals[terminal_id].erizo,
@@ -1095,7 +1100,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
     };
 
     that.onTrackControl = function (terminal_id, connection_id, track, direction, action, on_ok, on_error) {
-        if (terminals[terminal_id] && terminals[terminal_id].type === 'webrtc') {
+        if (terminals[terminal_id]) {
             makeRPC(
                 amqper,
                 'ErizoJS_' + terminals[terminal_id].erizo,
@@ -1104,12 +1109,12 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
                 on_ok,
                 on_error);
         } else {
-            on_error("Not support track control upon non-webrtc streams.");
+            on_error("No such a terminal:"+terminal_id);
         }
     };
 
     that.setVideoBitrate = function (stream_id, bitrate, on_ok, on_error) {
-        if (streams[stream_id] && terminals[streams[stream_id].owner] && terminals[streams[stream_id].owner].type === 'webrtc') {
+        if (streams[stream_id] && terminals[streams[stream_id].owner]) {
             makeRPC(
                 amqper,
                 'ErizoJS_' + terminals[streams[stream_id].owner].erizo,
@@ -1117,7 +1122,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
                 [stream_id, bitrate]);
             on_ok();
         } else {
-            on_error("Not support dynamically setting the publishing video bitrate upon non-webrtc streams.");
+            on_error("No such a stream:"+stream_id);
         }
     };
 
