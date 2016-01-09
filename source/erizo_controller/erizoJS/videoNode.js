@@ -170,6 +170,7 @@ var VideoEngine = function (spec) {
         if (supported_codecs.indexOf(codec) === -1 || supported_resolutions.indexOf(resolution) === -1) {
             log.error('Not supported codec or resolution:'+codec+', '+resolution);
             callback('callback', 'error', 'Not supported codec or resolution.');
+            return;
         }
 
         addOutput(codec, resolution, function (stream_id) {
@@ -273,8 +274,8 @@ exports.VideoNode = function () {
             var videoConfig = {maxInput: 1,
                                bitrate: 0,
                                resolution: config.resolution,
-                               backgroundcolor: 'black',
-                               simulcast: true,
+                               bkColor: 'black',
+                               multistreaming: true,
                                layout: [{region: [{id: '1', left: 0, top: 0, relativesize: 1}]}]};
             that.initEngine(videoConfig, callback);
         } else {

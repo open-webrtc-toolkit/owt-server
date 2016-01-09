@@ -165,7 +165,7 @@ var api = {
         try {
             for (var i in erizos) {
                 var erizo_id = erizos[i];
-                if (loads[erizo_id] !== undefined && loads[erizo_id].indexOf(room_id) !== -1) {
+                if (reuse && loads[erizo_id] !== undefined && loads[erizo_id].indexOf(room_id) !== -1) {
                     callback("callback", erizo_id);
                     return;
                 }
@@ -173,7 +173,7 @@ var api = {
 
             for (var i in idle_erizos) {
                 var erizo_id = idle_erizos[i];
-                if (loads[erizo_id] !== undefined && loads[erizo_id].indexOf(room_id) !== -1) {
+                if (reuse && loads[erizo_id] !== undefined && loads[erizo_id].indexOf(room_id) !== -1) {
                     callback("callback", erizo_id);
                     return;
                 }
