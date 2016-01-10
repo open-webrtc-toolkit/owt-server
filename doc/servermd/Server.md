@@ -164,14 +164,15 @@ When using HTTPS and/or secure socket.io connection, you should use your own cer
 
 We use PFX formatted certificates in MCU. See https://nodejs.org/api/tls.html for how to generate a self-signed certificate by openssl utility. We recommend using 2048-bits private key for the certificates.
 
-After editing the configuration file, you should run `bin/initcert.js all` to input your passphrases for the certificates, which would then store them in an encrypted file. Be aware that you should have node binary in your shell's $PATH to run the JS script. bin/initcert.js accepts ‘nuve', ‘erizo', erizoController', and ‘sample' (or ‘all' for all) as parameters to update the passphrase for a certain certificate.
+After editing the configuration file, you should run `bin/initcert.js all` to input your passphrases for the certificates, which would then store them in an encrypted file. Be aware that you should have node binary in your shell's $PATH to run the JS script. bin/initcert.js accepts ‘nuve', ‘erizo' and 'erizoController' (or ‘all' for all) as parameters to update the passphrase for a certain certificate.
 
 |  |key in configuration file|initcert.js parameter|
 |--------|--------|--------|
 | nuve HTTPS | config.nuve.keystorePath | nuve |
 | erizoController secured Socket.io | config.erizoController.keystorePath | erizoController |
 | DTLS-SRTP | config.erizo.keystorePath | erizo |
-| Sample App HTTPS | N/A | sample |
+
+For MCU sample application's certificate configuration, please follow the instruction file 'README.md' located at Release-<Version>/extras/basic_example/.
 
 ### 2.3.6 Launch the MCU server {#Conferencesection2_3_6}
 To launch the MCU server, follow steps below:
