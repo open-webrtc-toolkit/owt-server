@@ -44,7 +44,7 @@ exports.Stream = function (spec) {
     that.hasResolution = function (resolution) {
         if (that.isMixed() && spec.video.resolutions instanceof Array && typeof resolution === 'object') {
             for (var i in spec.video.resolutions) {
-                if (spec.video.resolutions[i].width === resolution.width && spec.video.resolution[i].height === resolution.height)
+                if (spec.video.resolutions[i].width === resolution.width && spec.video.resolutions[i].height === resolution.height)
                     return true;
             }
         }
