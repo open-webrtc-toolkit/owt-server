@@ -488,6 +488,12 @@ exports.RoomController = function (spec) {
                 text: 'mixer is not available'
             });
         }
+        if (publisher_id === mixer_id) {
+            return callback({
+                success: false,
+                text: 'invalid publisher id'
+            });
+        }
         var args = [mixer_id, publisher_id];
         amqper.callRpc(getErizoQueue(mixer_id), "getRegion", args, {callback: function (result) {
             if (result) {
@@ -511,6 +517,9 @@ exports.RoomController = function (spec) {
         if (publishers[mixer_id] === undefined) {
             return callback('mixer is not available');
         }
+        if (mixer_id === publisher_id) {
+            return callback('invalid publisher id');
+        }
         var args = [mixer_id, publisher_id, region_id];
         amqper.callRpc(getErizoQueue(mixer_id), "setRegion", args, {callback: callback});
     };
@@ -521,6 +530,9 @@ exports.RoomController = function (spec) {
         }
         if (publishers[mixer_id] === undefined) {
             return callback('mixer is not available');
+        }
+        if (mixer_id === publisher_id) {
+            return callback('invalid publisher id');
         }
         var args = [mixer_id, publisher_id, bitrate];
         amqper.callRpc(getErizoQueue(mixer_id), "setVideoBitrate", args, {callback: callback});
