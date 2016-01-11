@@ -945,7 +945,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
                        //|| undefined;
                        || supported_video_resolutions[0];//FIXME: resolution should be specified when subscribing.
 
-        if (!audio_codec || !video_codec) {
+        if ((options.require_audio && !audio_codec) || (options.require_video && !video_codec)) {
             onResponse({type: 'failed', reason: 'No proper audio/video codec.'});
             return;
         }
