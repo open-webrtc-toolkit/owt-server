@@ -489,9 +489,7 @@ var listen = function () {
 
                             for (index in socket.room.streams) {
                                 if (socket.room.streams.hasOwnProperty(index) && (socket.room.streams[index].getStatus() === 'ready')) {
-                                    var st = socket.room.streams[index].getPublicStream();
-                                    st.video && st.video.resolutions && (st.video.resolutions = st.video.resolutions.map(function (n) {return resolutionName2Value[n];}));//FIXME: to keep compatible to previous MCU, should be removed later.
-                                    streamList.push(st);
+                                    streamList.push(socket.room.streams[index].getPublicStream());
                                 }
                             }
 
@@ -554,7 +552,7 @@ var listen = function () {
                                                     on_ok();
                                                     if (resp.enableMixing) {
                                                         //var st = new ST.Stream({id: roomID, socket: '', audio: true, video: {category: 'mix'}, data: true, from: ''});
-                                                        var st = new ST.Stream({id: roomID, socket: '', audio: true, video: {device: 'mcu', resolutions: resolutions}, from: '', attributes: null});
+                                                        var st = new ST.Stream({id: roomID, socket: '', audio: true, video: {device: 'mcu', resolutions: resolutions.map(function (n) {return resolutionName2Value[n];})/*FIXME: to keep compatible to previous MCU, should be removed later.*/}, from: '', attributes: null});
                                                         room.streams[roomID] = st;
                                                         room.mixer = roomID;
                                                         sendMsgToRoom(room, 'add_stream', st.getPublicStream());
@@ -948,9 +946,11 @@ var listen = function () {
                         amqper.broadcast('event', {room: socket.room.id, user: socket.id, name: socket.user.name, type: 'subscribe', stream: options.streamId, timestamp: timeStamp.getTime()});
                     }
                     if (typeof options.video === 'object' && options.video !== null && options.video.resolution) {
-                        if (!stream.hasResolution(resolutionValue2Name['r'+options.video.resolution.width+'x'+options.video.resolution.height])) {//FIXME: to keep compatible to previous MCU, should be removed later.
+                        if (!stream.hasResolution(options.video.resolution)) {
                         //if (!stream.hasResolution(options.video.resolution)) {
                             options.video = true;
+                        } else {
+                            options.video.resolution = resolutionValue2Name['r'+options.video.resolution.width+'x'+options.video.resolution.height];//FIXME: to keep compatible to previous MCU, should be removed later.
                         }
                     }
 
