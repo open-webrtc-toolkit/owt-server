@@ -555,6 +555,7 @@ var listen = function () {
                                                         var st = new ST.Stream({id: roomID, socket: '', audio: true, video: {device: 'mcu', resolutions: resolutions.map(function (n) {return resolutionName2Value[n];})/*FIXME: to keep compatible to previous MCU, should be removed later.*/}, from: '', attributes: null});
                                                         room.streams[roomID] = st;
                                                         room.mixer = roomID;
+                                                        log.debug("Mixed stream info:", st.getPublicStream(), "resolutions:", st.getPublicStream().video.resolutions);
                                                         sendMsgToRoom(room, 'add_stream', st.getPublicStream());
                                                         if (room.config && room.config.publishLimit > 0) {
                                                             room.config.publishLimit++;
@@ -945,9 +946,10 @@ var listen = function () {
                         var timeStamp = new Date();
                         amqper.broadcast('event', {room: socket.room.id, user: socket.id, name: socket.user.name, type: 'subscribe', stream: options.streamId, timestamp: timeStamp.getTime()});
                     }
-                    if (typeof options.video === 'object' && options.video !== null && options.video.resolution) {
+                    log.debug("Subscribe, options.video:", options.video);
+                    if (typeof options.video === 'object' && options.video !== null && options.video.resolution && options.video.resolution.width) {
+                        log.debug("Subscribe a multistreaming stream(its resolutions:", stream.video && stream.video.resolutions, ") with resolution:", options.video.resolution);
                         if (!stream.hasResolution(options.video.resolution)) {
-                        //if (!stream.hasResolution(options.video.resolution)) {
                             options.video = true;
                         } else {
                             options.video.resolution = resolutionValue2Name['r'+options.video.resolution.width+'x'+options.video.resolution.height];//FIXME: to keep compatible to previous MCU, should be removed later.
