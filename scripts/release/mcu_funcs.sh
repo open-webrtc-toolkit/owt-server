@@ -32,7 +32,6 @@ pack_runtime() {
   pack_nuve
   pack_common
   ENCRYPT_CAND_PATH=("${WOOGEEN_DIST}/mcu" "${WOOGEEN_DIST}/nuve/nuveAPI" "${WOOGEEN_DIST}/common")
-  pack_sdk
   # config
   mkdir -p ${WOOGEEN_DIST}/etc/nuve
   mkdir -p ${WOOGEEN_DIST}/etc/mcu
@@ -66,19 +65,6 @@ pack_nuve() {
   mkdir -p ${WOOGEEN_DIST}/nuve
   cp -av ${SOURCE}/nuve/nuveAPI ${WOOGEEN_DIST}/nuve/
   cp -av ${SOURCE}/nuve/log4js_configuration.json ${WOOGEEN_DIST}/nuve/
-}
-
-pack_sdk() {
-  # woogeen.js
-  local WOOGEENJS="${SOURCE}/sdk2/scripts/dist"
-  local version=$(grep "version" ${SOURCE}/sdk2/scripts/package.json | cut -d '"' -f 4)
-  mkdir -p ${WOOGEEN_DIST}/sdk/woogeen/
-  cp -v ${WOOGEENJS}/woogeen.sdk-${version}.min.js ${WOOGEEN_DIST}/sdk/woogeen/
-  cp -v ${WOOGEENJS}/woogeen.sdk.ui-${version}.min.js ${WOOGEEN_DIST}/sdk/woogeen/
-  # nuve.js
-  local NUVEJS="${SOURCE}/nuve/nuveClient/dist/nuve.js"
-  mkdir -p ${WOOGEEN_DIST}/sdk/nuve/
-  [[ -s ${NUVEJS} ]] && cp -av ${NUVEJS} ${WOOGEEN_DIST}/sdk/nuve/
 }
 
 pack_libs() {
