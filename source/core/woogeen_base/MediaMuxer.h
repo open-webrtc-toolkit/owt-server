@@ -43,7 +43,7 @@ static inline int64_t currentTimeMs() {
 class EncodedFrame
 {
 public:
-    EncodedFrame(const uint8_t* data, uint16_t length, int64_t timeStamp)
+    EncodedFrame(const uint8_t* data, size_t length, int64_t timeStamp)
         : m_timeStamp(timeStamp)
         , m_payloadData(nullptr)
         , m_payloadSize(length)
@@ -63,7 +63,7 @@ public:
 
     int64_t m_timeStamp;
     uint8_t* m_payloadData;
-    uint16_t m_payloadSize;
+    size_t m_payloadSize;
 };
 
 static const unsigned int DEFAULT_QUEUE_MAX = 10;
@@ -81,7 +81,7 @@ public:
     {
     }
 
-    void pushFrame(const uint8_t* data, uint16_t length)
+    void pushFrame(const uint8_t* data, size_t length)
     {
         int64_t timestamp = currentTimeMs() - m_startTimeOffset;
         boost::shared_ptr<EncodedFrame> newFrame(new EncodedFrame(data, length, timestamp));
