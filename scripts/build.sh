@@ -15,7 +15,6 @@ usage() {
   echo "    --mcu (software)                    build mcu runtime library & addon without msdk"
   echo "    --mcu-hardware                      build mcu runtime library & addon with msdk"
   echo "    --mcu-all                           build mcu runtime library & addon both with and without msdk"
-  echo "    --sdk                               build sdk"
   echo "    --all                               build all components"
   echo "    --help                              print this help"
   echo "Example:"
@@ -33,7 +32,6 @@ BUILD_GATEWAY_RUNTIME=false
 BUILD_MCU_RUNTIME_SW=false
 BUILD_MCU_RUNTIME_HW=false
 BUILD_MCU_BUNDLE=false
-BUILD_SDK=false
 BUILDTYPE="Release"
 BUILD_ROOT="${ROOT}/build"
 DEPS_ROOT="${ROOT}/build/libdeps/build"
@@ -51,7 +49,6 @@ while [[ $# -gt 0 ]]; do
       BUILD_GATEWAY_RUNTIME=true
       BUILD_MCU_RUNTIME_SW=true
       BUILD_MCU_RUNTIME_HW=true
-      BUILD_SDK=true
       ;;
     *(-)gateway )
       BUILD_GATEWAY_RUNTIME=true
@@ -65,9 +62,6 @@ while [[ $# -gt 0 ]]; do
     *(-)mcu-all )
       BUILD_MCU_RUNTIME_SW=true
       BUILD_MCU_RUNTIME_HW=true
-      ;;
-    *(-)sdk )
-      BUILD_SDK=true
       ;;
     *(-)help )
       usage
@@ -140,35 +134,6 @@ build_runtime() {
   cd ${this}
 }
 
-build_mcu_client_sdk() {
-  local CLIENTSDK_DIR="${SOURCE}/client_sdk"
-  rm -f ${BUILD_ROOT}/sdk/*.js
-  rm -f ${CLIENTSDK_DIR}/dist/*.js
-  cd ${CLIENTSDK_DIR}
-  grunt --force
-  cp -av ${CLIENTSDK_DIR}/dist/*.js ${BUILD_ROOT}/sdk/
-
-  cd ${ROOT}/source/sdk2
-  if [ "$BUILDTYPE" != "Debug" ]; then
-    make
-  else
-    make debug
-  fi
-}
-
-build_mcu_server_sdk() {
-  local SERVERSDK_DIR="${SOURCE}/nuve/nuveClient"
-  # nuve.js
-  cd ${SERVERSDK_DIR}/tools
-  if [ "$BUILDTYPE" != "Debug" ]; then
-    ./compile.sh
-  else
-    ./compileDebug.sh
-  fi
-  echo [nuve] Done, nuve.js compiled
-  cp -av ${SERVERSDK_DIR}/dist/nuve.js ${SOURCE}/extras/basic_example/
-}
-
 build() {
   export CFLAGS="-fstack-protector -D_FORTIFY_SOURCE=2 -Wformat -Wformat-security"
   export CXXFLAGS=$CFLAGS
@@ -188,11 +153,6 @@ build() {
   fi
   if ${BUILD_MCU_RUNTIME_HW} ; then
     build_mcu_runtime_hw
-    ((DONE++))
-  fi
-  if ${BUILD_SDK} ; then
-    build_mcu_client_sdk
-    build_mcu_server_sdk
     ((DONE++))
   fi
   if [[ ${DONE} -eq 0 ]]; then
