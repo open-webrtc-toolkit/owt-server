@@ -868,7 +868,7 @@ var listen = function () {
                     safeCall(callback, 'success', id);
                 });
             } else if (options.state === 'erizo') {
-                log.info("New publisher");
+                log.info('New publisher');
                 id = socket.id;
                 var mixer = socket.room.mixer;
                 var hasScreen = false;
@@ -895,18 +895,18 @@ var listen = function () {
                     amqper.broadcast('event', [{room: socket.room.id, user: socket.id, name: socket.user.name, type: 'publish', stream: id, timestamp: timeStamp.getTime()}]);
                 }
 
-                socket.room.controller.addPublisher(id, mixer, unmix, function (signMess) {
-                    if (signMess.type === 'initializing') {
+                socket.room.controller.addPublisher(id, mixer, unmix, function (signMess, errText) {
+                    if (typeof signMess !== 'object' || signMess === null) {
+                        return safeCall(callback, 'error', 'unexpected error');
+                    }
+                    switch (signMess.type) {
+                    case 'initializing':
                         safeCall(callback, 'initializing', id);
                         st = new ST.Stream({id: id, audio: options.audio, video: options.video, attributes: options.attributes, from: socket.id});
                         return;
-                    }
-
-                    // If the connection failed we remove the stream
-                    if (signMess.type ==='failed'){ 
-                        log.info("IceConnection Failed on publisher, removing " , id);
-                        socket.emit('connection_failed',{});
-
+                    case 'failed': // If the connection failed we remove the stream
+                        log.info('IceConnection Failed on publisher, removing', id);
+                        socket.emit('connection_failed', {});
                         socket.state = 'sleeping';
                         if (!socket.room.p2p) {
                             socket.room.controller.removePublisher(id);
@@ -921,15 +921,14 @@ var listen = function () {
                             socket.streams.splice(index, 1);
                         }
                         return;
-                    }
-
-                    if (signMess.type === 'ready') {
+                    case 'ready':
                         socket.room.streams[id] = st;
                         sendMsgToRoom(socket.room, 'add_stream', st.getPublicStream());
-                    } else if (signMess.type === 'timeout') {
-                        safeCall(callback, 'error', 'No ErizoAgent available');
+                        break;
+                    case 'timeout':
+                    case 'error':
+                        return safeCall(callback, 'error', errText);
                     }
-
                     socket.emit('signaling_message_erizo', {mess: signMess, streamId: id});
                 });
 
@@ -984,14 +983,20 @@ var listen = function () {
                         }
                     }
                     socket.room.controller.addSubscriber(socket.id, options.streamId, options, function (signMess, errText) {
-                        if (signMess.type === 'initializing') {
-                            log.info("Initializing subscriber");
+                        if (typeof signMess !== 'object' || signMess === null) {
+                            return safeCall(callback, 'error', 'unexpected error');
+                        }
+                        switch (signMess.type) {
+                        case 'initializing':
+                            log.info('Initializing subscriber');
                             safeCall(callback, 'initializing');
                             return;
-                        }
-
-                        if (signMess.type === 'candidate') {
+                        case 'candidate':
                             // signMess.candidate = signMess.candidate.replace(privateRegexp, publicIP);
+                            break;
+                        case 'timeout':
+                        case 'error':
+                            return safeCall(callback, 'error', errText);
                         }
                         socket.emit('signaling_message_erizo', {mess: signMess, peerId: options.streamId});
                     });
