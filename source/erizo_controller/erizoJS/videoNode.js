@@ -13,14 +13,14 @@ var VideoResolutionMap = { // definition adopted from VideoLayout.h
     'svga':     ['svga', 'sif'],
     'xga':      ['xga', 'sif'],
     'r640x360': ['r640x360'],
-    'hd720p':   ['hd720p', 'r640x360'],
+    'hd720p':   ['hd720p', 'vga', 'r640x360'],
     'sif':      ['sif'],
     'hvga':     ['hvga'],
     'r480x360': ['r480x360', 'sif'],
     'qcif':     ['qcif'],
     'r192x144': ['r192x144'],
-    'hd1080p':  ['hd1080p', 'hd720p', 'r640x360'],
-    'uhd_4k':   ['uhd_4k', 'hd1080p', 'hd720p', 'r640x360']
+    'hd1080p':  ['hd1080p', 'hd720p', 'svga', 'vga', 'r640x360'],
+    'uhd_4k':   ['uhd_4k', 'hd1080p', 'hd720p', 'svga', 'vga', 'r640x360']
 };
 
 function calculateResolutions(rootResolution, useMultistreaming) {
