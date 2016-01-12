@@ -215,4 +215,11 @@ typedef struct {
 
 typedef std::list<CompRegion> CustomLayout; //covers the inputs to composite, including z-order
 
+class MsdkCoderEventCallback {
+public:
+    MsdkCoderEventCallback(){}
+    virtual ~MsdkCoderEventCallback(){}
+
+    virtual void DecodeHeaderFailEvent(void *DecHandle = 0) = 0;
+};
 #endif

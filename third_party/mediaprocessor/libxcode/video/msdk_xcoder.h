@@ -14,6 +14,7 @@ class CHWDevice;
 
 enum ElementType : unsigned int;
 class MSDKCodec;
+class MsdkCoderEventCallback;
 class MFXVideoSession;
 class GeneralAllocator;
 class Dispatcher;
@@ -220,7 +221,6 @@ typedef struct EncOptions_ {
     Measurement *measuremnt;
 } EncOptions;
 
-
 /**
  * \brief MsdkXcoder class.
  * \details Manages decoder and encoder objects.
@@ -228,10 +228,10 @@ typedef struct EncOptions_ {
 class MsdkXcoder
 {
 public:
-    MsdkXcoder();
+    MsdkXcoder(MsdkCoderEventCallback *callback = 0);
     virtual ~MsdkXcoder();
 
-    static MsdkXcoder* create();
+    static MsdkXcoder* create(MsdkCoderEventCallback *callback = 0);
     static void destroy(MsdkXcoder*);
 
     int Init(DecOptions *dec_cfg, VppOptions *vpp_cfg, EncOptions *enc_cfg);
@@ -282,9 +282,6 @@ public:
 
     bool Join();
 
-    static bool MutexInit() { pthread_mutex_init(&va_mutex_, NULL); return true; }
-
-    static pthread_mutex_t va_mutex_;  /**< \brief va entry mutex*/
 private:
     MsdkXcoder(const MsdkXcoder&);
     MsdkXcoder& operator=(const MsdkXcoder&);
@@ -307,7 +304,8 @@ private:
     std::vector<GeneralAllocator*> m_pAllocArray;
     MFXVideoSession* main_session_;
     int dri_fd_;
-    static void *va_dpy_;       /**< \brief va diaplay handle*/
+    void *va_dpy_;       /**< \brief va diaplay handle*/
+    pthread_mutex_t va_mutex_;
 #if defined(LIBVA_DRM_SUPPORT) || defined(LIBVA_X11_SUPPORT)
     CHWDevice *hwdev_;
 #endif
@@ -333,6 +331,8 @@ private:
 
     MSDKCodec *render_;
     bool m_bRender_;
+
+    MsdkCoderEventCallback *callback_;
 };
 
 #endif /* TEE_TRANSCODER_H_ */

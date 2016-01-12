@@ -118,7 +118,7 @@ static mfxU16 CalDefBitrate(mfxU32 nCodecId, mfxU32 nTargetUsage, mfxU32 nWidth,
     return (mfxU16)bitrate;
 }
 
-MSDKCodec::MSDKCodec(ElementType type, MFXVideoSession *session, MFXFrameAllocator *pMFXAllocator):
+MSDKCodec::MSDKCodec(ElementType type, MFXVideoSession *session, MFXFrameAllocator *pMFXAllocator, MsdkCoderEventCallback *callback):
     element_type_(type), mfx_session_(session)
 {
     codec_init_ = false;
@@ -144,6 +144,8 @@ MSDKCodec::MSDKCodec(ElementType type, MFXVideoSession *session, MFXFrameAllocat
     pic_cnt_ = 0;
     eos_cnt = 0;
     is_eos_ = false;
+    callback_= callback;
+    measuremnt = NULL;
 #ifdef ENABLE_VA
     user_va_ = NULL;
     output_format_ = FORMAT_TXT;
@@ -2392,6 +2394,9 @@ mfxStatus MSDKCodec::InitDecoder()
         UpdateMemPool();
 
         if (MFX_ERR_MORE_DATA == sts) {
+            if (callback_) {
+                callback_->DecodeHeaderFailEvent(this);
+            }
             usleep(100000);
             return sts;
         } else if (MFX_ERR_NONE == sts) {
@@ -3291,8 +3296,13 @@ int MSDKCodec::PrepareVppCompFrames()
             pad_size = dec_region_list_.size();
         else
             pad_size = this->sinkpads_.size();
-        if (pad_size == 0 ) {
+        if (this->sinkpads_.size() == 0) {
+            printf("no sink pad return -1\n");
             return -1;
+        }
+        if (dec_region_list_.size() == 0 && combo_type_ == COMBO_CUSTOM) {
+            printf("wait custom layout SetCompRegion");
+            return 2;
         }
 
         unsigned pad_com_start = GetSysTimeInUs();

@@ -378,6 +378,21 @@ int VideoMixEngineImp::pullOutput(OutputIndex index, unsigned char* buf)
     return 0;
 }
 
+void VideoMixEngineImp::DecodeHeaderFailEvent(void *DecHandle)
+{
+    boost::shared_lock<boost::shared_mutex> inputLock(m_inputMutex);
+    for(std::map<InputIndex, InputInfo>::iterator it = m_inputs.begin(); it != m_inputs.end(); ++it) {
+        if (it->second.decHandle == DecHandle) {
+            printf("[%s]VideoMixEngineImp::DecodeHeaderFailEvent find decode [%d].\n", __FUNCTION__, it->first);
+            VideoMixEngineInput* producer = it->second.producer;
+            if (producer) {
+                producer->requestKeyFrame(it->first);
+            }
+            break;
+        }
+    }
+}
+
 InputIndex VideoMixEngineImp::scheduleInput(VideoMixCodecType codec, VideoMixEngineInput* producer)
 {
     boost::unique_lock<boost::shared_mutex> inputLock(m_inputMutex);
@@ -669,7 +684,7 @@ void VideoMixEngineImp::setupPipeline()
             memset(&enc_cfg, 0, sizeof(enc_cfg));
             setupOutputCfg(&enc_cfg, &(it_output->second));
 
-            m_xcoder = MsdkXcoder::create();
+            m_xcoder = MsdkXcoder::create(this);
             m_xcoder->Init(&dec_cfg, &vpp_cfg, &enc_cfg);
             m_xcoder->Start();
 

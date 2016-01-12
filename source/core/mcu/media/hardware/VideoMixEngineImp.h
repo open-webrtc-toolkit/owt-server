@@ -30,7 +30,7 @@ struct VppInfo {
     void* vppHandle;
 };
 
-class VideoMixEngineImp {
+class VideoMixEngineImp : public MsdkCoderEventCallback {
     typedef enum {
         UN_INITIALIZED = 0,
         IDLE,
@@ -60,6 +60,7 @@ public:
     void forceKeyFrame(OutputIndex index);
     void setBitrate(OutputIndex index, unsigned short bitrate);
     int pullOutput(OutputIndex index, unsigned char* buf);
+    virtual void DecodeHeaderFailEvent(void *DecHandle = 0);
 
 private:
     InputIndex scheduleInput(VideoMixCodecType codec, VideoMixEngineInput* producer);
