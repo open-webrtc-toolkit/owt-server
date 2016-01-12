@@ -21,11 +21,7 @@
 #include "hw_device.h"
 #endif
 
-VADisplay MsdkXcoder::va_dpy_ = NULL;
-pthread_mutex_t MsdkXcoder::va_mutex_ = PTHREAD_MUTEX_INITIALIZER;
-static bool va_mutex_init = MsdkXcoder::MutexInit();
-
-MsdkXcoder::MsdkXcoder()
+MsdkXcoder::MsdkXcoder(MsdkCoderEventCallback *callback)
 {
     main_session_ = NULL;
     dri_fd_ = -1;
@@ -41,6 +37,10 @@ MsdkXcoder::MsdkXcoder()
 #endif
     render_ = NULL;
     m_bRender_ = false;
+    va_dpy_ = NULL;
+    va_mutex_ = PTHREAD_MUTEX_INITIALIZER;
+    pthread_mutex_init(&va_mutex_, NULL);
+    callback_ = callback;
 }
 
 MsdkXcoder::~MsdkXcoder()
@@ -53,21 +53,21 @@ int MsdkXcoder::InitVaDisp()
     int major_version, minor_version;
     int ret = VA_STATUS_SUCCESS;
 
-    pthread_mutex_lock(&MsdkXcoder::va_mutex_);
-    assert(NULL == MsdkXcoder::va_dpy_);
+    pthread_mutex_lock(&va_mutex_);
+    assert(NULL == va_dpy_);
     if (m_bRender_ == false) {
         dri_fd_ = open("/dev/dri/card0", O_RDWR);
         if (-1 == dri_fd_) {
             printf("Open dri failed!\n");
-            pthread_mutex_unlock(&MsdkXcoder::va_mutex_);
+            pthread_mutex_unlock(&va_mutex_);
             return -1;
         }
 
-        MsdkXcoder::va_dpy_ = vaGetDisplayDRM(dri_fd_);
-        ret = vaInitialize(MsdkXcoder::va_dpy_, &major_version, &minor_version);
+        va_dpy_ = vaGetDisplayDRM(dri_fd_);
+        ret = vaInitialize(va_dpy_, &major_version, &minor_version);
         if (VA_STATUS_SUCCESS != ret) {
             printf("vaInitialize failed\n");
-            pthread_mutex_unlock(&MsdkXcoder::va_mutex_);
+            pthread_mutex_unlock(&va_mutex_);
             return -1;
         }
     //Render: to create the X11 device
@@ -80,12 +80,14 @@ int MsdkXcoder::InitVaDisp()
         hwdev_ = CreateVAAPIDevice();
         if (hwdev_ == NULL) {
             printf ("createVAAPIDevice fail!\n");
+            pthread_mutex_unlock(&va_mutex_);
             return MFX_ERR_MEMORY_ALLOC;
         }
 
         sts = hwdev_->Init(NULL, 1, 0);
         if (sts != MFX_ERR_NONE) {
             printf("hwdevice initialized failed\n");
+            pthread_mutex_unlock(&va_mutex_);
             return MFX_ERR_UNKNOWN;
         }
 
@@ -100,18 +102,18 @@ int MsdkXcoder::InitVaDisp()
 #endif
     }
 
-    pthread_mutex_unlock(&MsdkXcoder::va_mutex_);
+    pthread_mutex_unlock(&va_mutex_);
 
     return 0;
 }
 
 void MsdkXcoder::DestroyVaDisp()
 {
-    pthread_mutex_lock(&MsdkXcoder::va_mutex_);
+    pthread_mutex_lock(&va_mutex_);
     if (m_bRender_ == false) {
-        if (NULL != MsdkXcoder::va_dpy_) {
-            vaTerminate(MsdkXcoder::va_dpy_);
-            MsdkXcoder::va_dpy_ = NULL;
+        if (NULL != va_dpy_) {
+            vaTerminate(va_dpy_);
+            va_dpy_ = NULL;
         }
         if (dri_fd_) {
             close(dri_fd_);
@@ -125,9 +127,9 @@ void MsdkXcoder::DestroyVaDisp()
             hwdev_ = NULL;
         }
 #endif
-        MsdkXcoder::va_dpy_ = NULL;
+        va_dpy_ = NULL;
     }
-    pthread_mutex_unlock(&MsdkXcoder::va_mutex_);
+    pthread_mutex_unlock(&va_mutex_);
     return;
 }
 
@@ -354,13 +356,13 @@ int MsdkXcoder::Init(DecOptions *dec_cfg, VppOptions *vpp_cfg, EncOptions *enc_c
 
 
     if (MFX_CODEC_VP8 == in_file_type) {
-        dec_ = new MSDKCodec(ELEMENT_VP8_DEC, dec_session, pAllocatorDec);
+        dec_ = new MSDKCodec(ELEMENT_VP8_DEC, dec_session, pAllocatorDec, callback_);
     } else if (MFX_CODEC_STRING == in_file_type) {
         dec_ = new MSDKCodec(ELEMENT_STRING_DEC, dec_session, pAllocatorDec);
     } else if (MFX_CODEC_PICTURE == in_file_type) {
         dec_ = new MSDKCodec(ELEMENT_BMP_DEC, dec_session, pAllocatorDec);
     } else {
-        dec_ = new MSDKCodec(ELEMENT_DECODER, dec_session, pAllocatorDec);
+        dec_ = new MSDKCodec(ELEMENT_DECODER, dec_session, pAllocatorDec, callback_);
     }
     if (dec_) {
         dec_->Init(&decCfg, ELEMENT_MODE_ACTIVE);
@@ -753,13 +755,13 @@ int MsdkXcoder::AttachInput(DecOptions *dec_cfg, void *vppHandle)
 
     dec_ = NULL;
     if (MFX_CODEC_VP8 == decCfg.DecParams.mfx.CodecId) {
-        dec_ = new MSDKCodec(ELEMENT_VP8_DEC, dec_session, pAllocatorDec);
+        dec_ = new MSDKCodec(ELEMENT_VP8_DEC, dec_session, pAllocatorDec, callback_);
     } else if (MFX_CODEC_STRING == decCfg.DecParams.mfx.CodecId) {
         dec_ = new MSDKCodec(ELEMENT_STRING_DEC, dec_session, pAllocatorDec);
     } else if (MFX_CODEC_PICTURE == decCfg.DecParams.mfx.CodecId) {
         dec_ = new MSDKCodec(ELEMENT_BMP_DEC, dec_session, pAllocatorDec);
     } else {
-        dec_ = new MSDKCodec(ELEMENT_DECODER, dec_session, pAllocatorDec);
+        dec_ = new MSDKCodec(ELEMENT_DECODER, dec_session, pAllocatorDec, callback_);
     }
     if (dec_) {
         dec_->Init(&decCfg, ELEMENT_MODE_ACTIVE);
@@ -1008,13 +1010,13 @@ int MsdkXcoder::AttachVpp(DecOptions *dec_cfg, VppOptions *vpp_cfg, EncOptions *
 
     dec_ = NULL;
     if (MFX_CODEC_VP8 == decCfg.DecParams.mfx.CodecId) {
-        dec_ = new MSDKCodec(ELEMENT_VP8_DEC, dec_session, pAllocatorDec);
+        dec_ = new MSDKCodec(ELEMENT_VP8_DEC, dec_session, pAllocatorDec, callback_);
     } else if (MFX_CODEC_STRING == decCfg.DecParams.mfx.CodecId) {
         dec_ = new MSDKCodec(ELEMENT_STRING_DEC, dec_session, pAllocatorDec);
     } else if (MFX_CODEC_PICTURE == decCfg.DecParams.mfx.CodecId) {
         dec_ = new MSDKCodec(ELEMENT_BMP_DEC, dec_session, pAllocatorDec);
     } else {
-        dec_ = new MSDKCodec(ELEMENT_DECODER, dec_session, pAllocatorDec);
+        dec_ = new MSDKCodec(ELEMENT_DECODER, dec_session, pAllocatorDec, callback_);
     }
     if (dec_) {
         dec_->Init(&decCfg, ELEMENT_MODE_ACTIVE);
@@ -2186,9 +2188,9 @@ ElementType MsdkXcoder::GetElementType(CoderType type, unsigned int codec_type, 
 }
 
 
-MsdkXcoder* MsdkXcoder::create()
+MsdkXcoder* MsdkXcoder::create(MsdkCoderEventCallback *callback)
 {
-    return new MsdkXcoder;
+    return new MsdkXcoder(callback);
 }
 
 void MsdkXcoder::destroy(MsdkXcoder* xcoder)

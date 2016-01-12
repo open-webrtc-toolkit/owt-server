@@ -167,6 +167,8 @@ typedef struct {
     unsigned short V;
 } BgColorInfo;
 
+class MsdkCoderEventCallback;
+
 class MSDKCodec: public BaseElement
 {
 public:
@@ -175,7 +177,7 @@ public:
      *  @param[in]: element_type, specify the type of element, see @ElementType
      *  @param[in]: session, session of this element.
      */
-    MSDKCodec(ElementType element_type, MFXVideoSession *session, MFXFrameAllocator *pMFXAllocator = NULL);
+    MSDKCodec(ElementType element_type, MFXVideoSession *session, MFXFrameAllocator *pMFXAllocator = NULL, MsdkCoderEventCallback *callback = NULL);
 
     virtual ~MSDKCodec();
 
@@ -306,6 +308,7 @@ private:
     unsigned int frame_width_;
     unsigned int frame_height_;
     BgColorInfo bg_color_info;
+    MsdkCoderEventCallback *callback_;
 
 #ifdef MSDK_FEI
     MFXVideoENC *mfx_fei_preenc_;
