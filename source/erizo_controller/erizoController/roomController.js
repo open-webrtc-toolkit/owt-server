@@ -259,6 +259,14 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
             "publish",
             [stream_id, 'internal', {owner: stream_owner, has_audio: hasAudio, audio_codec: audio_codec, has_video: hasVideo, video_codec: video_codec, protocol: 'tcp'}],
             function (dest_port) {
+                if (!erizos[target_erizo_id] || !erizos[original_erizo]) {
+                    makeRPC(
+                            amqper,
+                            'ErizoJS_' + target_erizo_id,
+                            "unpublish",
+                            [stream_id]);
+                    on_error("Late coming callback for spreading stream.");
+                }
                 log.debug("internally publish ok, dest_port:", dest_port);
                 var dest_ip = erizos[target_erizo_id].addr;
                 //FIXME: Hard coded for VCA
@@ -272,8 +280,23 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
                     [stream_id+'@'+target_erizo_id, 'internal', hasAudio ? stream_id : undefined, hasVideo ? stream_id : undefined, {require_audio: hasAudio, require_video: hasVideo, dest_ip: dest_ip, dest_port: dest_port, protocol: 'tcp'}],
                     function () {
                         log.debug("internally subscribe ok");
-                        streams[stream_id].spread.push(target_erizo_id);
-                        on_ok();
+                        if (streams[stream_id] && erizos[target_erizo_id] && erizos[original_erizo]) {
+                            streams[stream_id].spread.push(target_erizo_id);
+                            on_ok();
+                        } else {
+                            makeRPC(
+                                amqper,
+                                'ErizoJS_' + original_erizo,
+                                "unsubscribe",
+                                [stream_id+'@'+target_erizo_id]);
+
+                            makeRPC(
+                                amqper,
+                                'ErizoJS_' + target_erizo_id,
+                                "unpublish",
+                                [stream_id]);
+                            on_error("Late coming callback for spreading stream.");
+                        }
                     },
                     function (error_reason) {
                         makeRPC(
