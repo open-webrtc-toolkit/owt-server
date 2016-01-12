@@ -288,7 +288,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
     };
 
     var shrinkStream = function (stream_id, target_erizo_id) {
-        var i = streams[stream_id].spread.indexOf(target_erizo_id);
+        var i = streams[stream_id] ? streams[stream_id].spread.indexOf(target_erizo_id) : -1;
         if (i !== -1) {
             log.debug("shrinkStream:", stream_id, "target_erizo_id:", target_erizo_id);
             var stream_owner = streams[stream_id].owner,
