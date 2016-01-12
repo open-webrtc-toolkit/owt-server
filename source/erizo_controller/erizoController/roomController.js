@@ -597,7 +597,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
         findExistingVideoTranscoder(stream_id, on_ok, function () {
             var vxcoder = Math.random() * 1000000000000000000 + '';
             newTerminal(vxcoder, 'vxcoder', function () {
-                var on_failed = function (reason) {
+                var on_failed = function (error_reason) {
                     makeRPC(
                         amqper,
                         'ErizoJS_' + terminals[vxcoder].erizo,
