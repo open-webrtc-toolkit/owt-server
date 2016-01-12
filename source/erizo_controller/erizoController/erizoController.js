@@ -807,7 +807,7 @@ var listen = function () {
                                 return;
                             }
 
-                            st = new ST.Stream({id: id, socket: socket.id, audio: options.audio, video: options.video, attributes: options.attributes, from: url});
+                            st = new ST.Stream({id: id, socket: socket.id, audio: response.audio_codecs.length > 0 ? options.audio : false, video: response.video_codecs.length > 0 ? options.video : false, attributes: options.attributes, from: url});
                             socket.streams.push(id);
                             socket.room.streams[id] = st;
                             sendMsgToRoom(socket.room, 'add_stream', st.getPublicStream());
