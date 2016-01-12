@@ -272,6 +272,7 @@ exports.AccessNode = function (spec) {
     };
 
     that.onTrackControl = function (connection_id, track, direction, action, callback) {
+        log.debug("onTrackControl, connection_id:", connection_id, "track:", track, "direction:", direction, "action:", action);
         if (streams[connection_id] && streams[connection_id].type === 'webrtc') {
             streams[connection_id].connection.onTrackControl(track, direction, action, function () {callback('callback', 'ok');}, function (error_reason) {callback('callback', 'error', error_reason);});
         } else if (subscriptions[connection_id] && subscriptions[connection_id].type === 'webrtc') {

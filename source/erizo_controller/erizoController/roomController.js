@@ -865,7 +865,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
     };
 
     that.publish = function (terminal_id, stream_id, stream_type, stream_info, enable_mixing, onResponse) {
-        log.debug("publish, terminal_id:", terminal_id, "stream_id:", stream_id, "stream_type:", stream_type, "enable_mixing:", enable_mixing);
+        log.debug("publish, terminal_id:", terminal_id, "stream_id:", stream_id, "stream_type:", stream_type, "enable_mixing:", enable_mixing, "stream_info:", stream_info);
         var doPublish = function () {
             var erizo_id = terminals[terminal_id].erizo,
                 audio_codec = undefined,
@@ -929,6 +929,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
     };
 
     that.subscribeSelectively = function (terminal_id, subscription_id, subscription_type, audio_stream_id, video_stream_id, options, onResponse) {
+        log.debug("subscribe, terminal_id:", terminal_id, ", subscription_id:", subscription_id, ", subscription_type:", subscription_type, ", audio_stream_id:", audio_stream_id, ", video_stream_id:", video_stream_id, ", options:", options);
         var audio_codec = options.audio_codec
                        || (audio_stream_id === mixed_stream_id && supported_audio_codecs[0])
                        || (streams[audio_stream_id] && streams[audio_stream_id].audio && streams[audio_stream_id].audio.codec)

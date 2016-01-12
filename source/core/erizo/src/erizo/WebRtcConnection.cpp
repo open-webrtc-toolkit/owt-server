@@ -420,11 +420,15 @@ namespace erizo {
         if (recvSSRC==this->getVideoSourceSSRC() || recvSSRC==this->getVideoSinkSSRC()) {
           parseIncomingPayloadType(buf, len, VIDEO_PACKET);
           if (videoSink_ != NULL)
-            videoSink_->deliverVideoData(buf, len);
+            if (videoEnabled_) {
+              videoSink_->deliverVideoData(buf, len);
+            }
         } else if (recvSSRC==this->getAudioSourceSSRC() || recvSSRC==this->getAudioSinkSSRC()) {
           parseIncomingPayloadType(buf, len, AUDIO_PACKET);
           if (audioSink_ != NULL)
-            audioSink_->deliverAudioData(buf, len);
+            if (audioEnabled_) {
+              audioSink_->deliverAudioData(buf, len);
+            }
         } else {
           ELOG_ERROR("Unknown SSRC %u, localVideo %u, remoteVideo %u, ignoring", recvSSRC, this->getVideoSourceSSRC(), this->getVideoSinkSSRC());
         }

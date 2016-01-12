@@ -27,6 +27,8 @@ void WebRtcConnection::Init(Local<Object> exports) {
   NODE_SET_PROTOTYPE_METHOD(tpl, "setVideoReceiver", setVideoReceiver);
   NODE_SET_PROTOTYPE_METHOD(tpl, "getCurrentState", getCurrentState);
   NODE_SET_PROTOTYPE_METHOD(tpl, "getStats", getStats);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "enableVideo", enableVideo);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "enableAudio", enableAudio);
 
   constructor.Reset(isolate, tpl->GetFunction());
   exports->Set(String::NewFromUtf8(isolate, "WebRtcConnection"), tpl->GetFunction());
