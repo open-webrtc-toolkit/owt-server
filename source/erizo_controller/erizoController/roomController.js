@@ -1126,10 +1126,10 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
     };
 
     that.getRegion = function (stream_id, on_ok, on_error) {
-        if (vmixer) {
+        if (video_mixer) {
             makeRPC(
                 amqper,
-                'ErizoJS_' + terminals[vmixer].erizo,
+                'ErizoJS_' + terminals[video_mixer].erizo,
                 "getRegion",
                 [stream_id],
                 on_ok,
@@ -1138,10 +1138,10 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
     };
 
     that.setRegion = function (stream_id, region, on_ok, on_error) {
-        if (vmixer) {
+        if (video_mixer) {
             makeRPC(
                 amqper,
-                'ErizoJS_' + terminals[vmixer].erizo,
+                'ErizoJS_' + terminals[video_mixer].erizo,
                 "setRegion",
                 [stream_id, region],
                 on_ok,
