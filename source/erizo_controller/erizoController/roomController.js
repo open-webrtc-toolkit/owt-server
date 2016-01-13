@@ -988,27 +988,43 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
             return;
         }
 
-        var doSubscribe = function () {
-            var audio_stream = undefined, video_stream = undefined;
-
-            var on_ok = function (audioStream, videoStream) {
-                return function () {
-                    log.debug("subscribe ok, audioStream:", audioStream, "videoStream", videoStream);
-                    streams[audio_stream] && streams[audio_stream].audio.subscribers.push(terminal_id);
-                    streams[video_stream] && streams[video_stream].video.subscribers.push(terminal_id);
-                    terminals[terminal_id].subscribed[subscription_id] = {audio: audioStream, video: videoStream};
-                    onResponse({type: 'ready'});
-                }};
-
-            var on_error = function (error_reason) {
-                log.debug("subscribe failed, reason:", error_reason);
+        var on_error = function (error_reason) {
+            log.debug("subscribe failed, reason:", error_reason);
+            if (terminals[terminal_id]) {
                 makeRPC(
                     amqper,
                     'ErizoJS_' + terminals[terminal_id].erizo,
                     "disconnect",
                     [subscription_id]);
-                onResponse({type: 'failed', reason: error_reason});
-            };
+                
+                delete terminals[terminal_id].subscribed[subscription_id];
+                if (isTerminalFree(terminal_id)) {
+                    deleteTerminal(terminal_id);
+                }
+            }
+            onResponse({type: 'failed', reason: error_reason});
+        };
+
+        var on_ok = function (audioStream, videoStream) {
+            return function () {
+                log.debug("subscribe ok, audioStream:", audioStream, "videoStream", videoStream);
+                if (terminals[terminal_id] && terminals[terminal_id].subscribed[subscription_id]
+                    && (!audioStream || streams[audioStream])
+                    && (!videoStream || streams[videoStream])) {
+                    audioStream && streams[audioStream] && streams[audioStream].audio.subscribers.push(terminal_id);
+                    videoStream && streams[videoStream] && streams[videoStream].video.subscribers.push(terminal_id);
+                    terminals[terminal_id].subscribed[subscription_id].audio = audioStream;
+                    terminals[terminal_id].subscribed[subscription_id].video = videoStream;
+                    onResponse({type: 'ready'});
+                } else {
+                    audioStream && recycleTemporaryAudio(audioStream);
+                    videoStream && recycleTemporaryVideo(videoStream);
+                    on_error("The subscribed stream has been broken. Canceling it.");
+                }
+            }};
+
+        var doSubscribe = function () {
+            var audio_stream = undefined, video_stream = undefined;
 
             if (options.require_audio && audio_stream_id) {
                 log.debug("require audio track of stream:", audio_stream_id);
@@ -1062,15 +1078,20 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
                         audio_codec = response.audio_codecs && response.audio_codecs.length > 0 && response.audio_codecs[0];
                         video_codec = response.video_codecs && response.video_codecs.length > 0 && response.video_codecs[0];
                         log.debug("subscriber connected ok.");
-                        doSubscribe();
+                        if (terminals[terminal_id] && terminals[terminal_id].subscribed[subscription_id]) {
+                            doSubscribe();
+                        } else {
+                            on_error("Subscription["+subscription_id+"] was canceled.");
+                        }
                     } else {
                         onResponse(response);
                     }
                 },
-                onResponse);
+                on_error);
         };
 
         newTerminal(terminal_id, subscription_type, function () {
+            terminals[terminal_id].subscribed[subscription_id] = {audio: undefined, video: undefined};
             doConnect();
         }, function (error_reason) {onResponse({type: 'failed', reason: error_reason});});
     };
