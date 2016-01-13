@@ -48,27 +48,43 @@ int AudioFrameConstructor::deliverVideoData(char* packet, int len)
 int AudioFrameConstructor::deliverAudioData(char* buf, int len)
 {
     FrameFormat frameFormat;
+    Frame frame {};
+    memset(&frame, 0, sizeof(frame));
     RTPHeader* head = (RTPHeader*) buf;
     switch (head->getPayloadType()) {
     case PCMU_8000_PT:
         frameFormat = FRAME_FORMAT_PCMU;
+        frame.additionalInfo.audio.channels = 1;
+        frame.additionalInfo.audio.sampleRate = 8000;
         break;
     case PCMA_8000_PT:
         frameFormat = FRAME_FORMAT_PCMA;
+        frame.additionalInfo.audio.channels = 1;
+        frame.additionalInfo.audio.sampleRate = 8000;
+        break;
+    case ISAC_16000_PT:
+        frameFormat = FRAME_FORMAT_ISAC16;
+        frame.additionalInfo.audio.channels = 1;
+        frame.additionalInfo.audio.sampleRate = 16000;
+        break;
+    case ISAC_32000_PT:
+        frameFormat = FRAME_FORMAT_ISAC32;
+        frame.additionalInfo.audio.channels = 1;
+        frame.additionalInfo.audio.sampleRate = 32000;
         break;
     case OPUS_48000_PT:
         frameFormat = FRAME_FORMAT_OPUS;
+        frame.additionalInfo.audio.channels = 2;
+        frame.additionalInfo.audio.sampleRate = 48000;
         break;
     default:
         return 0;
     }
 
-    Frame frame {};
-    memset(&frame, 0, sizeof(frame));
     frame.format = frameFormat;
     frame.payload = reinterpret_cast<uint8_t*>(buf);
     frame.length = len;
-    frame.timeStamp = 0;
+    frame.timeStamp = head->getTimestamp();
     frame.additionalInfo.audio.isRtpPacket = 1;
 
     deliverFrame(frame);

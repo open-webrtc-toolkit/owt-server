@@ -135,7 +135,7 @@ void MediaFileOut::onFrame(const Frame& frame)
         break;
 
     case FRAME_FORMAT_PCMU:
-    case FRAME_FORMAT_OPUS:
+    case FRAME_FORMAT_OPUS: {
         if (m_videoStream && !m_audioStream) { // make sure video stream is added first.
             if (addAudioStream(frameFormat2AudioCodecID(frame.format), frame.additionalInfo.audio.channels, frame.additionalInfo.audio.sampleRate)) {
                 ELOG_DEBUG("audio stream added: %d channel(s), %d Hz, %s", frame.additionalInfo.audio.channels, frame.additionalInfo.audio.sampleRate,
@@ -148,8 +148,19 @@ void MediaFileOut::onFrame(const Frame& frame)
             break;
         }
 
-        m_audioQueue->pushFrame(frame.payload, frame.length);
+        uint8_t* payload = frame.payload;
+        uint32_t length = frame.length;
+        if (frame.additionalInfo.audio.isRtpPacket) {
+            RTPHeader* rtp = reinterpret_cast<RTPHeader*>(payload);
+            uint32_t headerLength = rtp->getHeaderLength();
+            assert(length >= headerLength);
+            payload += headerLength;
+            length -= headerLength;
+        }
+
+        m_audioQueue->pushFrame(payload, length);
         break;
+    }
     default:
         ELOG_ERROR("improper frame format. only VP8/H264 and PCMU/OPUS can be recorded currently");
         m_status = AVStreamOut::Context_ERROR;
