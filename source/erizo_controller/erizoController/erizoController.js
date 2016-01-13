@@ -733,10 +733,15 @@ var listen = function () {
             if (socket.room.p2p) {
                 io.sockets.to(msg.peerSocket).emit('signaling_message_peer', {streamId: msg.streamId, peerSocket: socket.id, msg: msg.msg});
             } else {
-                log.debug('signaling_message, stream:', msg.streamId, 'owner:', socket.room.streams[msg.streamId].getPublicStream().from, 'self:', socket.id);
-                /*FIXME: to modify msg.streamId to msg.connectionId along with client side.*/
-                var connectionId = socket.room.streams[msg.streamId] && socket.room.streams[msg.streamId].getOwner() === socket.id ? msg.streamId : socket.id + '-' + msg.streamId;
-                socket.room.controller.onConnectionSignalling('webrtc#'+socket.id/*FIXME: hard code terminalID*/, connectionId, msg.msg);
+                var st = socket.room.streams[msg.streamId];
+                if (st) {
+                    log.debug('signaling_message, stream:', msg.streamId, 'owner:', st.getPublicStream().from, 'self:', socket.id);
+                    /*FIXME: to modify msg.streamId to msg.connectionId along with client side.*/
+                    var connectionId = st.getOwner() === socket.id ? msg.streamId : socket.id + '-' + msg.streamId;
+                    socket.room.controller.onConnectionSignalling('webrtc#'+socket.id/*FIXME: hard code terminalID*/, connectionId, msg.msg);
+                } else {
+                   log.info('signaling_message, stream['+msg.streamId+'] does not exist');
+                }
             }
         });
 
