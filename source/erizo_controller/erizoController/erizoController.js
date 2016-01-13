@@ -1157,7 +1157,7 @@ var listen = function () {
 
             if (options.id && socket.room.mixer) {
                 socket.room.controller.getRegion(options.id, function (region) {
-                    log.info('Region for ', options.id, ': ', result.text);
+                    log.info('Region for ', options.id, ': ', region);
                     safeCall(callback, 'success', {region: region});
                 },function (error_reason) {
                     safeCall(callback, 'error', 'Error in getRegion: ' + error_reason);
