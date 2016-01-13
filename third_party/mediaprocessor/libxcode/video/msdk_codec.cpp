@@ -2397,7 +2397,11 @@ mfxStatus MSDKCodec::InitDecoder()
             if (callback_) {
                 callback_->DecodeHeaderFailEvent(this);
             }
-            usleep(100000);
+            if (input_bs_.DataLength > 0) {
+                usleep(20000);
+            } else {
+                usleep(100000);
+            }
             return sts;
         } else if (MFX_ERR_NONE == sts) {
             mfxFrameAllocRequest DecRequest;
@@ -3313,7 +3317,8 @@ int MSDKCodec::PrepareVppCompFrames()
             CustomLayout::iterator it = dec_region_list_.begin();
             for (; it != dec_region_list_.end(); ++it, ++pad_cursor) {
                 MediaPad *pad = (MediaPad *)it->handle;
-
+                buf.msdk_surface = NULL;
+                buf.is_eos = 0;
                 tick = 0;
                 while (pad->GetBufData(buf) != 0) {
                     // No data, just sleep and wait
@@ -3330,7 +3335,7 @@ int MSDKCodec::PrepareVppCompFrames()
                             tick++;
                             //wait for ~10ms and return, or else it "may" hold the sink mutex infinitely
                             //if when decoder is attached, but never send any frame (even EOS)
-                            if (tick > 50) return 2;
+                            if (tick > 50) break;
                         } else {
                             out_of_time = true;
                             printf("[%p]-frame comes late from pad %p, diff %u, framerate %f\n",
@@ -3374,7 +3379,8 @@ int MSDKCodec::PrepareVppCompFrames()
                     it_sinkpad != this->sinkpads_.end();
                     ++it_sinkpad, ++pad_cursor) {
                 sinkpad = *it_sinkpad;
-
+                buf.msdk_surface = NULL;
+                buf.is_eos = 0;
                 if ((vpp_comp_map_[sinkpad].ready_surface.msdk_surface == NULL && \
                         vpp_comp_map_[sinkpad].ready_surface.is_eos)) {
                     continue;
@@ -3393,11 +3399,11 @@ int MSDKCodec::PrepareVppCompFrames()
                         if (vpp_comp_map_[sinkpad].ready_surface.msdk_surface == NULL &&
                                 vpp_comp_map_[sinkpad].ready_surface.is_eos == 0) {
                             // Newly attached stream doesn't have decoded frame yet, wait...
-                            printf("Newly attached stream doesn't have decoded frame yet, wait...\n");
+                            //printf("Newly attached stream doesn't have decoded frame yet, wait...\n");
                             tick++;
                             //wait for ~10ms and return, or else it "may" hold the sink mutex infinitely
                             //if when decoder is attached, but never send any frame (even EOS)
-                            if (tick > 50) return 2;
+                            if (tick > 50) break;
                         } else {
                             out_of_time = true;
                             printf("[%p]-frame comes late from pad %p, diff %u, framerate %f\n",
