@@ -30,9 +30,10 @@ using boost::asio::ip::tcp;
 DEFINE_TEMPLATE_LOGGER(template<Protocol prot>, RawTransport<prot>, "woogeen.RawTransport");
 
 template<Protocol prot>
-RawTransport<prot>::RawTransport(RawTransportListener* listener, bool tag)
+RawTransport<prot>::RawTransport(RawTransportListener* listener, size_t bufferSize, bool tag)
     : m_isClosing(false)
     , m_tag(tag)
+    , m_bufferSize(bufferSize)
     , m_listener(listener)
     , m_receivedBytes(0)
 {
@@ -232,7 +233,7 @@ void RawTransport<prot>::readHandler(const boost::system::error_code& ec, std::s
 {
     if (!ec || ec == boost::asio::error::message_size) {
         if (!m_tag) {
-            m_listener->onTransportData(m_receiveData.buffer, bytes);
+            m_listener->onTransportData(m_receiveData.buffer.get(), bytes);
             if (!m_isClosing)
                 receiveData();
 
@@ -246,13 +247,13 @@ void RawTransport<prot>::readHandler(const boost::system::error_code& ec, std::s
             assert(m_socket.tcp.socket);
 
             payloadlen = ntohl(*(reinterpret_cast<uint32_t*>(m_readHeader)));
-            if (payloadlen > TRANSPORT_BUFFER_SIZE) {
+            if (payloadlen > m_bufferSize) {
                 ELOG_WARN("Payload length is too big:%u", payloadlen);
-                payloadlen = TRANSPORT_BUFFER_SIZE;
+                payloadlen = m_bufferSize;
             }
             ELOG_DEBUG("readHandler(%zu):[%x,%x,%x,%x], payloadlen:%u", bytes, m_readHeader[0], m_readHeader[1], (unsigned char)m_readHeader[2], (unsigned char)m_readHeader[3], payloadlen);
 
-            m_socket.tcp.socket->async_read_some(boost::asio::buffer(m_receiveData.buffer, payloadlen),
+            m_socket.tcp.socket->async_read_some(boost::asio::buffer(m_receiveData.buffer.get(), payloadlen),
                 boost::bind(&RawTransport::readPacketHandler, this,
                     boost::asio::placeholders::error,
                     boost::asio::placeholders::bytes_transferred));
@@ -260,13 +261,13 @@ void RawTransport<prot>::readHandler(const boost::system::error_code& ec, std::s
         case UDP:
             assert(m_socket.udp.socket);
 
-            payloadlen = ntohl(*(reinterpret_cast<uint32_t*>(m_receiveData.buffer)));
+            payloadlen = ntohl(*(reinterpret_cast<uint32_t*>(m_receiveData.buffer.get())));
             if (bytes != payloadlen + 4) {
                 ELOG_WARN("Packet incomplete. with payloadlen:%u, bytes:%zu", payloadlen, bytes);
             } else {
-                unsigned char *p = reinterpret_cast<unsigned char*>(&m_receiveData.buffer[4]);
+                unsigned char *p = reinterpret_cast<unsigned char*>(&(m_receiveData.buffer.get())[4]);
                 ELOG_DEBUG("readHandler(%zu): [%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x...%x,%x,%x,%x]", bytes, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], p[10], p[11], p[12], p[13], p[14], p[15], p[payloadlen-4], p[payloadlen-3], p[payloadlen-2], p[payloadlen-1]);
-                m_listener->onTransportData(m_receiveData.buffer + 4, payloadlen);
+                m_listener->onTransportData(m_receiveData.buffer.get() + 4, payloadlen);
             }
 
             if (!m_isClosing)
@@ -286,7 +287,7 @@ void RawTransport<prot>::readHandler(const boost::system::error_code& ec, std::s
 template<Protocol prot>
 void RawTransport<prot>::readPacketHandler(const boost::system::error_code& ec, std::size_t bytes)
 {
-    unsigned char *p = reinterpret_cast<unsigned char*>(&m_receiveData.buffer[0]);
+    unsigned char *p = reinterpret_cast<unsigned char*>(&(m_receiveData.buffer.get())[0]);
     ELOG_DEBUG("readPacketHandler(%zu): [%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x...%x,%x,%x,%x]", bytes, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], p[10], p[11], p[12], p[13], p[14], p[15], p[bytes-4], p[bytes-3], p[bytes-2], p[bytes-1]);
     uint32_t expectedLen = ntohl(*(reinterpret_cast<uint32_t*>(m_readHeader)));
     if (!ec || ec == boost::asio::error::message_size) {
@@ -296,13 +297,13 @@ void RawTransport<prot>::readPacketHandler(const boost::system::error_code& ec, 
             if (expectedLen > m_receivedBytes) {
                 ELOG_WARN("Expect to receive %u bytes, but actually received %zu bytes.", expectedLen, bytes);
                 ELOG_INFO("Continue receiving %u bytes.", expectedLen - m_receivedBytes);
-                m_socket.tcp.socket->async_read_some(boost::asio::buffer(m_receiveData.buffer + m_receivedBytes, expectedLen - m_receivedBytes),
+                m_socket.tcp.socket->async_read_some(boost::asio::buffer(m_receiveData.buffer.get() + m_receivedBytes, expectedLen - m_receivedBytes),
                         boost::bind(&RawTransport::readPacketHandler, this,
                             boost::asio::placeholders::error,
                             boost::asio::placeholders::bytes_transferred));
             } else {
                 m_receivedBytes = 0;
-                m_listener->onTransportData(m_receiveData.buffer, expectedLen);
+                m_listener->onTransportData(m_receiveData.buffer.get(), expectedLen);
                 if (!m_isClosing)
                     receiveData();
             }
@@ -326,13 +327,13 @@ void RawTransport<prot>::doSend()
 {
     TransportData& data = m_sendQueue.front();
 
-    unsigned char *p = reinterpret_cast<unsigned char *>(&data.buffer[0]);
+    unsigned char *p = reinterpret_cast<unsigned char *>(&(data.buffer.get())[0]);
     ELOG_DEBUG("doSend(%d): [%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x...%x,%x,%x,%x]", data.length, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], p[10], p[11], p[12], p[13], p[14], p[15], p[data.length-4], p[data.length-3], p[data.length-2], p[data.length-1]);
 
     switch (prot) {
     case TCP:
         assert(m_socket.tcp.socket);
-        boost::asio::async_write(*(m_socket.tcp.socket), boost::asio::buffer(data.buffer, data.length),
+        boost::asio::async_write(*(m_socket.tcp.socket), boost::asio::buffer(data.buffer.get(), data.length),
             boost::bind(&RawTransport::writeHandler, this,
                 boost::asio::placeholders::error,
                 boost::asio::placeholders::bytes_transferred));
@@ -341,13 +342,13 @@ void RawTransport<prot>::doSend()
         assert(m_socket.udp.socket);
         if (!m_socket.udp.connected) {
             boost::system::error_code ignored_error;
-            m_socket.udp.socket->async_send(boost::asio::buffer(data.buffer, data.length),
+            m_socket.udp.socket->async_send(boost::asio::buffer(data.buffer.get(), data.length),
                 boost::bind(&RawTransport::writeHandler, this,
                     boost::asio::placeholders::error,
                     boost::asio::placeholders::bytes_transferred));
         } else {
             boost::system::error_code ignored_error;
-            m_socket.udp.socket->async_send_to(boost::asio::buffer(data.buffer, data.length),
+            m_socket.udp.socket->async_send_to(boost::asio::buffer(data.buffer.get(), data.length),
                 m_socket.udp.remoteEndpoint,
                 boost::bind(&RawTransport::writeHandler, this,
                     boost::asio::placeholders::error,
@@ -412,7 +413,7 @@ void RawTransport<prot>::dumpTcpSSLv3Header(const char* buf, int len)
 template<Protocol prot>
 void RawTransport<prot>::sendData(const char* buf, int len)
 {
-    if (len > TRANSPORT_BUFFER_SIZE) {
+    if (len > m_bufferSize) {
         ELOG_WARN("Discarding the %s message as the length %d exceeds the allowed maximum size.",
             prot == UDP ? "UDP" : "TCP", len);
         return;
@@ -423,11 +424,13 @@ void RawTransport<prot>::sendData(const char* buf, int len)
 
     TransportData data;
     if (m_tag) {
-        *(reinterpret_cast<uint32_t*>(data.buffer)) = htonl(len);
-        memcpy(data.buffer + 4, buf, len);
+        data.buffer.reset(new char[len + 4]);
+        *(reinterpret_cast<uint32_t*>(data.buffer.get())) = htonl(len);
+        memcpy(data.buffer.get() + 4, buf, len);
         data.length = len + 4;
     } else {
-        memcpy(data.buffer, buf, len);
+        data.buffer.reset(new char[len]);
+        memcpy(data.buffer.get(), buf, len);
         data.length = len;
     }
 
@@ -440,6 +443,9 @@ void RawTransport<prot>::sendData(const char* buf, int len)
 template<Protocol prot>
 void RawTransport<prot>::receiveData()
 {
+    if (!m_receiveData.buffer)
+        m_receiveData.buffer.reset(new char[m_bufferSize]);
+
     switch (prot) {
     case TCP:
         assert(m_socket.tcp.socket);
@@ -449,7 +455,7 @@ void RawTransport<prot>::receiveData()
                     boost::asio::placeholders::error,
                     boost::asio::placeholders::bytes_transferred));
         } else {
-            m_socket.tcp.socket->async_read_some(boost::asio::buffer(m_receiveData.buffer, TRANSPORT_BUFFER_SIZE),
+            m_socket.tcp.socket->async_read_some(boost::asio::buffer(m_receiveData.buffer.get(), m_bufferSize),
                 boost::bind(&RawTransport::readHandler, this,
                     boost::asio::placeholders::error,
                     boost::asio::placeholders::bytes_transferred));
@@ -458,12 +464,12 @@ void RawTransport<prot>::receiveData()
     case UDP:
         assert(m_socket.udp.socket);
         if (!m_socket.udp.connected) {
-            m_socket.udp.socket->async_receive(boost::asio::buffer(m_receiveData.buffer, TRANSPORT_BUFFER_SIZE),
+            m_socket.udp.socket->async_receive(boost::asio::buffer(m_receiveData.buffer.get(), m_bufferSize),
                 boost::bind(&RawTransport::readHandler, this,
                     boost::asio::placeholders::error,
                     boost::asio::placeholders::bytes_transferred));
         } else {
-            m_socket.udp.socket->async_receive_from(boost::asio::buffer(m_receiveData.buffer, TRANSPORT_BUFFER_SIZE),
+            m_socket.udp.socket->async_receive_from(boost::asio::buffer(m_receiveData.buffer.get(), m_bufferSize),
                 m_socket.udp.remoteEndpoint,
                 boost::bind(&RawTransport::readHandler, this,
                     boost::asio::placeholders::error,
