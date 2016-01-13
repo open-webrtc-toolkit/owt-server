@@ -899,6 +899,9 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
                 audio_codec = undefined,
                 video_codec = undefined;
 
+            streams[stream_id] = {owner: terminal_id, audio: undefined, video: undefined, spread: []};
+            terminals[terminal_id].published.push(stream_id);
+
             publishStream(
                 terminal_id,
                 stream_id,
@@ -907,34 +910,36 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
                 function (response) {
                     log.debug("publish response:", response);
                     if (response.type === 'ready') {
-                        audio_codec = response.audio_codecs && response.audio_codecs.length > 0 && response.audio_codecs[0];
-                        video_codec = response.video_codecs && response.video_codecs.length > 0 && response.video_codecs[0];
-                        streams[stream_id] = {owner: terminal_id,
-                                              audio: (stream_info.has_audio && audio_codec) ? {codec: audio_codec,
-                                                                                               subscribers: []} : undefined,
-                                              video: (stream_info.has_video && video_codec) ? {codec: video_codec,
-                                                                                               resolution: undefined, //FIXME: the publication should carry resolution info.
-                                                                                               framerate: undefined,  //FIXME: the publication should carry frame-rate info.
-                                                                                               subscribers: []} : undefined,
-                                              spread: []
-                                              };
-
-                        terminals[terminal_id].published.push(stream_id);
-
-                        if (enable_mixing && config.enableMixing) {
-                            mixStream(stream_id, function () {
-                                log.info("Mix stream["+stream_id+"] successfully.");
-                            }, function (error_reason) {
-                                log.error(error_reason);
-                            });
+                        if (streams[stream_id] && terminals[terminal_id] && terminals[terminal_id].published.indexOf(stream_id) !== -1) {
+                            audio_codec = response.audio_codecs && response.audio_codecs.length > 0 && response.audio_codecs[0];
+                            video_codec = response.video_codecs && response.video_codecs.length > 0 && response.video_codecs[0];
+                            streams[stream_id].audio = (stream_info.has_audio && audio_codec) ? {codec: audio_codec,
+                                                                                                 subscribers: []} : undefined;
+                            streams[stream_id].video = (stream_info.has_video && video_codec) ? {codec: video_codec,
+                                                                                                 resolution: undefined, //FIXME: the publication should carry resolution info.
+                                                                                                 framerate: undefined,  //FIXME: the publication should carry frame-rate info.
+                                                                                                 subscribers: []} : undefined;
+                            if (enable_mixing && config.enableMixing) {
+                                mixStream(stream_id, function () {
+                                    log.info("Mix stream["+stream_id+"] successfully.");
+                                }, function (error_reason) {
+                                    log.error(error_reason);
+                                });
+                            } else {
+                                log.debug("publish ok, will not mix in.");
+                            }
+                            onResponse(response);
                         } else {
-                            log.debug("publish ok, will not mix in.");
+                           log.info("Late coming publish response.");
                         }
+                    } else if (response.type === 'failed') {
+                        unpublishStream(stream_id);
                         onResponse(response);
                     } else {
                         onResponse(response);
                     }
                 }, function (error_reason) {
+                    unpublishStream(stream_id);
                     log.debug("publish failed, reason:", error_reason);
                     onResponse({type: 'failed', reason: error_reason});
                 });
