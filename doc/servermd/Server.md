@@ -75,7 +75,7 @@ MCU server|Ubuntu 14.04 LTS* 64-bit
 H.264 support in MCU system requires the deployment of OpenH264 library, see [Deploy Cisco OpenH264* Library section](#Conferencesection2_3_4) for more details.
 
 > **Note**: OpenH264 library is not required for GPU-accelerated MCU when forward RTSP stream subscription is not used.
-If you need to set up mix mode video conferences which require GPU-accelerated media processing, you must install the following server side SDK:
+If you need to set up video conference server with the ability of GPU-accelerated media processing, you must install the following server side SDK:
 
  - Intel<sup>®</sup> Media Server Studio 2015 for Linux*
  If you want the Media Server Studio package for Ubuntu14.04 download or installation instructions, please contact [webrtc_support@intel.com](mailto://webrtc_support@intel.com).
