@@ -95,7 +95,7 @@ install_libnice(){
 
 install_openssl(){
   if [ -d $LIB_DIR ]; then
-    local SSL_VERSION="1.0.2d"
+    local SSL_VERSION="1.0.2e"
     cd $LIB_DIR
     wget -c http://www.openssl.org/source/openssl-${SSL_VERSION}.tar.gz
     tar xf openssl-${SSL_VERSION}.tar.gz
