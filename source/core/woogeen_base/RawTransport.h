@@ -62,7 +62,7 @@ template<Protocol prot>
 class RawTransport : public RawTransportInterface {
     DECLARE_LOGGER();
 public:
-    RawTransport(RawTransportListener* listener, size_t bufferSize = 128 * 1024, bool tag = true);
+    RawTransport(RawTransportListener* listener, size_t bufferSize = 256 * 1024, bool tag = true);
     ~RawTransport();
 
     void createConnection(const std::string& ip, uint32_t port);
