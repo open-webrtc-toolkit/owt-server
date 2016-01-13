@@ -200,13 +200,18 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
                 purpose,
                 {room: room_id, user: 'TODO: fill user_id'},
                 function (erizo) {
-                    if (erizos[erizo.id] === undefined) {
-                        erizos[erizo.id] = {addr: erizo.addr};
+                    if (terminals[terminal_id] === undefined) {
+                        if (erizos[erizo.id] === undefined) {
+                            erizos[erizo.id] = {addr: erizo.addr};
+                        }
+                        terminals[terminal_id] = {type: terminal_type,
+                                                  erizo: erizo.id,
+                                                  published: [],
+                                                  subscribed: {}};
+                    } else {
+                        log.debug("A previous erizo has been allocated for terminal:", terminal_id);
+                        erizoManager.deallocateErizo(erizo);
                     }
-                    terminals[terminal_id] = {type: terminal_type,
-                                              erizo: erizo.id,
-                                              published: [],
-                                              subscribed: {}};
                     on_ok();
                 },
                 on_error);
