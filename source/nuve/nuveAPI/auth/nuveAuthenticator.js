@@ -1,6 +1,5 @@
-/*global require, exports */
+/*global require, exports, Buffer*/
 'use strict';
-var superServiceId = require('./../mdb/dataBase').superService;
 var serviceRegistry = require('./../mdb/serviceRegistry');
 var mauthParser = require('./mauthParser');
 var cipher = require('../../../common/cipher');
@@ -8,16 +7,15 @@ var logger = require('./../logger').logger;
 
 // Logger
 var log = logger.getLogger('NuveAuthenticator');
+var config = require('./../../../etc/woogeen_config').nuve || {};
 
 var cache = {};
 
 var checkTimestamp = function (ser, params) {
-    var serviceId = ser._id + '';
-    if (serviceId === superServiceId) {
-        // disable timestamp checking for superService;
+    if (config.timestampCheck !== true) {
         return true;
     }
-
+    var serviceId = ser._id + '';
     var lastParams = cache[serviceId],
         lastTS,
         newTS = (new Date(parseInt(params.timestamp, 10))).getTime(),

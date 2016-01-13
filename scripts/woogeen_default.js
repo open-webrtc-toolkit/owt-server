@@ -28,8 +28,10 @@ config.nuve = {};
 config.nuve.dataBaseURL = 'localhost/nuvedb'; // default value: 'localhost/nuvedb'
 config.nuve.superserviceID = '_auto_generated_ID_'; // default value: ''
 config.nuve.testErizoController = 'localhost:8080'; // default value: 'localhost:8080'
-config.nuve.ssl = false; //default value: false
+config.nuve.ssl = false; // default value: false
 config.nuve.keystorePath = '../../cert/certificate.pfx';
+// Timestamp check protects the nuve service from those massive requests with out of order timestamps, so that only sequential requests are accepted
+config.nuve.timestampCheck = false; // default value: false
 // Cloud Handler policies are in nuve/nuveAPI/ch_policies/ folder
 config.nuve.cloudHandlerPolicy = 'default_policy.js'; // default value: 'default_policy.js'
 
