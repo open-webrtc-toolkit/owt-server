@@ -41,7 +41,7 @@ InternalOut::~InternalOut()
 // or calculated from the codec description, and may replace the stack
 // allocation of sendBuffer with heap allocation in case the data would
 // be very big.
-static const int TRANSPORT_BUFFER_SIZE = 128*1024;
+static const int TRANSPORT_BUFFER_SIZE = 256 * 1024;
 
 void InternalOut::onFrame(const Frame& frame)
 {
