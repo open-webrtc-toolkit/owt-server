@@ -23,6 +23,7 @@
 
 #include <boost/asio.hpp>
 #include <boost/scoped_ptr.hpp>
+#include <boost/shared_ptr.hpp>
 #include <boost/thread.hpp>
 #include <boost/thread/mutex.hpp>
 #include <logger.h>
@@ -57,20 +58,11 @@ public:
     virtual unsigned short getListeningPort() = 0;
 };
 
-// The buffer with this size should be enough to hold one message from/to the
-// network based on the MTU of network protocols.
-static const int TRANSPORT_BUFFER_SIZE = 128*1024;
-
-typedef struct {
-    char buffer[TRANSPORT_BUFFER_SIZE];
-    int length;
-} TransportData;
-
 template<Protocol prot>
 class RawTransport : public RawTransportInterface {
     DECLARE_LOGGER();
 public:
-    RawTransport(RawTransportListener* listener, bool tag = true);
+    RawTransport(RawTransportListener* listener, size_t bufferSize = 128 * 1024, bool tag = true);
     ~RawTransport();
 
     void createConnection(const std::string& ip, uint32_t port);
@@ -81,6 +73,11 @@ public:
     unsigned short getListeningPort();
 
 private:
+    typedef struct {
+        boost::shared_ptr<char> buffer;
+        int length;
+    } TransportData;
+
     void doSend();
     void receiveData();
     void readHandler(const boost::system::error_code&, std::size_t);
@@ -93,6 +90,7 @@ private:
     bool m_isClosing;
     bool m_tag;
     char m_readHeader[4];
+    size_t m_bufferSize;
     TransportData m_receiveData;
     std::queue<TransportData> m_sendQueue;
     boost::mutex m_sendQueueMutex;
