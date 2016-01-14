@@ -374,10 +374,13 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
     var unmixAudio = function (stream_id) {
         shrinkStream(stream_id, terminals[audio_mixer].erizo);
         var i = streams[stream_id] && streams[stream_id].audio && streams[stream_id].audio.subscribers.indexOf(audio_mixer);
-        if (i !== -1) {
+        if (i !== undefined && i !== -1) {
             streams[stream_id].audio.subscribers.splice(i, 1);
         }
-        delete terminals[audio_mixer].subscribed[stream_id];
+
+        if (terminals[audio_mixer] && terminals[audio_mixer].subscribed[stream_id]) {
+            delete terminals[audio_mixer].subscribed[stream_id];
+        }
     };
 
     var mixVideo = function (stream_id, on_ok, on_error) {
@@ -391,11 +394,14 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
 
     var unmixVideo = function (stream_id) {
         shrinkStream(stream_id, terminals[video_mixer].erizo);
-        var i = streams[stream_id] && streams[stream_id].video && streams[stream_id].video.subscribers.indexOf(audio_mixer);
-        if (i !== -1) {
+        var i = streams[stream_id] && streams[stream_id].video && streams[stream_id].video.subscribers.indexOf(video_mixer);
+        if (i !== undefined && i !== -1) {
             streams[stream_id].video.subscribers.splice(i, 1);
         }
-        delete terminals[video_mixer].subscribed[stream_id];
+
+        if (terminals[video_mixer] && terminals[video_mixer].subscribed[stream_id]) {
+            delete terminals[video_mixer].subscribed[stream_id];
+        }
     };
 
     var mixStream = function (stream_id, on_ok, on_error) {
