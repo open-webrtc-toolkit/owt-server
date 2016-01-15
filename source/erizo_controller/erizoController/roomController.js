@@ -888,6 +888,12 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
             for (var subscription_id in terminals[terminal_id].subscribed) {
                 if (terminals[terminal_id].subscribed[subscription_id].audio === stream_id || terminals[terminal_id].subscribed[subscription_id].video === stream_id) {
                     unsubscribeStream(terminal_id, subscription_id);
+
+                    if (terminals[terminal_id].type === 'axcoder' || terminals[terminal_id].type === 'vxcoder') {
+                        for (var i in terminals[terminal_id].published) {
+                            unpublishStream(terminals[terminal_id].published[i])
+                        }
+                    }
                 }
             }
         }
