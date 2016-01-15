@@ -155,10 +155,9 @@ var eventReportHandlers = {
         });
 
         if (room.streams[streamId]) {
+            sendMsgToRoom(room, 'remove_stream', {id: streamId});
             delete room.streams[streamId];
         }
-
-        sendMsgToRoom(room, 'remove_stream', {id: streamId});
     },
     'deleteExternalOutput': function (roomId, spec) {
         var room = rooms[roomId];
@@ -607,7 +606,6 @@ var listen = function () {
                                                         if (type === 'unpublish') {
                                                             var streamId = event;
                                                             log.info('ErizoJS stopped', streamId);
-                                                            sendMsgToRoom(room, 'remove_stream', {id: streamId});
                                                             room.controller.removePublisher(streamId);
 
                                                             for (var s in room.sockets) {
@@ -619,6 +617,7 @@ var listen = function () {
                                                             }
 
                                                             if (room.streams[streamId]) {
+                                                                sendMsgToRoom(room, 'remove_stream', {id: streamId});
                                                                 delete room.streams[streamId];
                                                             }
 
@@ -1241,8 +1240,6 @@ var listen = function () {
                 return safeCall(callback, 'error', 'stream does not exist');
             }
 
-            sendMsgToRoom(socket.room, 'remove_stream', {id: streamId});
-
             socket.state = 'sleeping';
             if (!socket.room.p2p) {
                 socket.room.controller.removePublisher(streamId);
@@ -1254,6 +1251,7 @@ var listen = function () {
 
             socket.streams.splice(index, 1);
             if (socket.room.streams[streamId]) {
+                sendMsgToRoom(socket.room, 'remove_stream', {id: streamId});
                 delete socket.room.streams[streamId];
             }
             safeCall(callback, 'success');
@@ -1288,12 +1286,6 @@ var listen = function () {
 
             log.info('Socket disconnect ', socket.id);
 
-            for (i in socket.streams) {
-                if (socket.streams.hasOwnProperty(i)) {
-                    sendMsgToRoom(socket.room, 'remove_stream', {id: socket.streams[i]});
-                }
-            }
-
             if (socket.room !== undefined) {
 
                 for (i in socket.room.streams) {
@@ -1322,6 +1314,7 @@ var listen = function () {
                         }
 
                         if (socket.room.streams[id]) {
+                            sendMsgToRoom(socket.room, 'remove_stream', {id: id});
                             delete socket.room.streams[id];
                         }
                     }
