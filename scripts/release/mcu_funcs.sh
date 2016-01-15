@@ -183,13 +183,15 @@ pack_node() {
 
 install_module() {
   echo -e "\x1b[32mInstalling node_modules ...\x1b[0m"
+  local SAMPLE_DIR=${SAMPLE_DIR}
   if hash npm 2>/dev/null; then
     mkdir -p ${WOOGEEN_DIST}/node_modules
     cp -av ${this}/package.mcu.json ${WOOGEEN_DIST}/package.json
     cd ${WOOGEEN_DIST} && npm install --prefix ${WOOGEEN_DIST} --production --loglevel error
-    mkdir -p ${WOOGEEN_DIST}/extras/node_modules
-    cp -av ${this}/package.app.json ${WOOGEEN_DIST}/extras/package.json
-    cd ${WOOGEEN_DIST}/extras && npm install --prefix ${WOOGEEN_DIST}/extras --production --loglevel error
+
+    [[ -d ${SAMPLE_DIR} ]] && \
+    mkdir -p ${SAMPLE_DIR}/node_modules && \
+    cd ${SAMPLE_DIR} && npm install --prefix ${SAMPLE_DIR} --production --loglevel error
   else
     echo >&2 "npm not found."
     echo >&2 "You need to install node first."
