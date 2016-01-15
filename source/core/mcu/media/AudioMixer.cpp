@@ -518,7 +518,7 @@ void AudioMixer::removeOutput(const std::string& participant)
 bool AudioMixer::addChannel(const std::string& participant)
 {
     boost::shared_ptr<AudioChannel> channel(new AudioChannel(m_voiceEngine));
-    if (channel->init()) {
+    if (channel && channel->init()) {
         m_channels[participant] = channel;
         return true;
     }
