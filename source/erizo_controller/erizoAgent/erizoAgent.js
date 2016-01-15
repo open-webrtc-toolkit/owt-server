@@ -77,6 +77,8 @@ var log = logger.getLogger("ErizoAgent");
 var INTERVAL_TIME_KEEPALIVE = GLOBAL.config.erizoAgent.interval_time_keepAlive;
 var BINDED_INTERFACE_NAME = GLOBAL.config.erizoAgent.networkInterface;
 
+GLOBAL.config.erizo.hardwareAccelerated = !!GLOBAL.config.erizo.hardwareAccelerated;
+
 var SEARCH_INTERVAL = 5000;
 
 var idle_erizos = [];
@@ -98,13 +100,121 @@ var guid = (function() {
   };
 })();
 
+var os = require("os");
+var getCPULoad = function (on_result) {
+    on_result(os.loadavg()[0]);
+};
+
+var getGPULoad = function (on_result) {
+    //FIXME: Here is just an roughly estimation of the GPU load. A formal way is needed to get the acurate load data.
+    var maxVideoNodes = 32/*FIXME: hard coded. the max count of mixers or transcoders this agent can hold.*/;
+    on_result((Object.keys(loads).length)/maxVideoNodes);
+};
+
+var receiveSpeed = 0, sendSpeed  = 0;
+var queryNetworkInterval = undefined;
+
+var startQueryNetwork = function (interf, period) {
+    var firstTry = true;
+    queryNetworkInterval = setInterval(function () {
+        require('child_process').exec('ifstat ' + interf, function (err, stdout, stderr) {
+            function string2MBytes (s) {
+                if (s.endsWith('K')) {
+                    return Number(s.slice(0, s.length -1)) / 1024;
+                } else if (s.endsWith('M')) {
+                    return Number(s.slice(0, s.length -1));
+                } else if (s.endsWith('G')) {
+                    return Number(s.slice(0, s.length -1)) * 1024;
+                } else {
+                    return Number(s) / (1024 * 1024);
+                }
+            }
+            if (firstTry) {
+                firstTry = false;
+                return;
+            }
+
+            if (err) {
+                log.error(stderr);
+            } else {
+                var pattern = new RegExp('^(' + interf + '\\s+.*)$', 'gm');
+                var line = stdout.toString().match(pattern)[0].split(/\s+/g);
+                receiveSpeed = string2MBytes(line[5]) * 8 / period;
+                sendSpeed = string2MBytes(line[7]) * 8 / period;
+           }
+       });
+    }, period * 1000);
+};
+
+var stopQueryNetwork = function () {
+    queryNetworkInterval && clearInterval(queryNetworkInterval);
+    receiveSpeed = 0;
+    sendSpeed = 0;
+};
+
+var getNetworkLoad = function (on_result) {
+    var maxReceiveBandwidth = 100, maxSendBandwidth = 100;/*FIXME: hard coded. the max r/s bandwidth.*/;
+    on_result(Math.max(receiveSpeed / maxReceiveBandwidth, sendSpeed / maxSendBandwidth));
+};
+
+var diskUsage = 0;
+var queryDiskInterval = undefined;
+var startQueryDisk = function (drive, period) {
+    queryDiskInterval = setInterval(function () {
+       var total = 1, free = 0;
+       require('child_process').exec("df -k '" + drive.replace(/'/g,"'\\''") + "'", function(err, stdout, stderr) {
+            if (err) {
+                log.error(stderr);
+            } else {
+                var lines = stdout.trim().split("\n");
+
+                var str_disk_info = lines[lines.length - 1].replace( /[\s\n\r]+/g,' ');
+                var disk_info = str_disk_info.split(' ');
+
+                total = disk_info[1];
+                free = disk_info[3];
+                diskUsage = 1.0 - free / total;
+            }
+       });
+    }, period * 1000);
+};
+
+var stopQueryDisk = function () {
+    queryDiskInterval && clearInterval(queryDiskInterval);
+    diskUsage = 0;
+};
+
+var getStorageLoad = function (on_result) {
+    on_result(diskUsage);
+};
+
 var reportLoad = function() {
     var load = 0;
-    for (eid in loads) {
-        load += loads[eid].length;
+
+    var onResult = function (load) {
+        var loadPercentage = Math.round(load * 100) / 100;
+        log.debug('report load:', loadPercentage);
+        rpc.callRpc('nuve', 'setInfo', {id: myId, load: loadPercentage}, {callback: function (msg) {}});
+    };
+
+    switch (myPurpose) {
+        case 'webrtc':
+        case 'rtsp':
+            getNetworkLoad(onResult);
+            break;
+        case 'file':
+            getStorageLoad(onResult);
+            break;
+        case 'audio':
+            getCPULoad(onResult);
+            break;
+        case 'video':
+            GLOBAL.config.erizo.hardwareAccelerated/*FIXME: should be double checked whether hardware acceleration is actually running*/ ? getGPULoad(onResult) : getCPULoad(onResult);
+            break;
+        default:
+            break;
     }
-    rpc.callRpc('nuve', 'setInfo', {id: myId, load: load}, {callback: function (msg) {}});
-}
+};
 
 var launchErizoJS = function() {
     console.log("Running process");
@@ -196,7 +306,6 @@ var api = {
         } catch (error) {
             console.log("Error in ErizoAgent:", error);
         }
-        reportLoad();
     },
 
     recycleErizoJS: function(id, room_id, callback) {
@@ -214,7 +323,6 @@ var api = {
         } catch(err) {
             log.error("Error stopping ErizoJS");
         }
-        reportLoad();
     }
 };
 
@@ -302,8 +410,21 @@ var addToCloudHandler = function (callback) {
     'use strict';
 
     reuse = (myPurpose === 'audio' || myPurpose === 'video') ? false : true;
+
+    switch (myPurpose) {
+        case 'webrtc':
+        case 'rtsp':
+            startQueryNetwork(BINDED_INTERFACE_NAME || Object.keys(os.networkInterfaces())[0], 5/*S*/);
+            break;
+        case 'file':
+            startQueryDisk('/tmp', 10/*S*/);
+            break;
+        default:
+            break;
+    }
 })();
 
+var reportInterval = undefined;
 rpc.connect(function () {
     'use strict';
     rpc.setPublicRPC(api);
@@ -313,6 +434,7 @@ rpc.connect(function () {
       var rpcID = 'ErizoAgent_' + myId;
       rpc.bind(rpcID, function callback () {
         log.info('ErizoAgent rpcID:', rpcID);
+        reportInterval = setInterval(reportLoad, 5 * 1000);
       });
       fillErizos();
     });
@@ -326,6 +448,9 @@ rpc.connect(function () {
 });
 
 process.on('exit', function () {
+    stopQueryNetwork();
+    stopQueryDisk();
+    reportInterval && clearInterval(reportInterval);
     Object.keys(processes).map(function (k) {
         dropErizoJS(k, function (unused, status) {
             log.info('Terminate ErizoJS', k, status);
