@@ -253,7 +253,7 @@ namespace erizo {
     object["sdpMid"] = mid;
     object["candidate"] = sdp;
     char lineIndex[1];
-    sprintf(lineIndex,"%d",(mid.compare("video")?localSdp_.audioSdpMLine:localSdp_.videoSdpMLine));
+    snprintf(lineIndex, 1, "%d", (mid.compare("video")?localSdp_.audioSdpMLine:localSdp_.videoSdpMLine));
     object["sdpMLineIndex"] = std::string(lineIndex);
 
     std::ostringstream theString;
