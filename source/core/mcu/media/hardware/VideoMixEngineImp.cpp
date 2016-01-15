@@ -445,6 +445,7 @@ int VideoMixEngineImp::uninstallInput(InputIndex index)
     int input_size = m_inputs.size();
     std::map<InputIndex, InputInfo>::iterator it = m_inputs.find(index);
     if (it != m_inputs.end()) {
+        boost::upgrade_to_unique_lock<boost::shared_mutex> lock(inputLock);
         if (input_size > 1)
             detachInput(&(it->second));
         else if (input_size == 1) {
@@ -457,7 +458,6 @@ int VideoMixEngineImp::uninstallInput(InputIndex index)
                 it->second.mp = NULL;
             }
         }
-        boost::upgrade_to_unique_lock<boost::shared_mutex> lock(inputLock);
         m_inputs.erase(it);
     }
     return m_inputs.size();
@@ -465,7 +465,7 @@ int VideoMixEngineImp::uninstallInput(InputIndex index)
 
 void VideoMixEngineImp::resetInput()
 {
-    boost::shared_lock<boost::shared_mutex> inputLock(m_inputMutex);
+    boost::unique_lock<boost::shared_mutex> inputLock(m_inputMutex);
     for(std::map<InputIndex, InputInfo>::iterator it = m_inputs.begin(); it != m_inputs.end(); ++it) {
         if (it->second.mp) {
             delete it->second.mp;
@@ -572,6 +572,7 @@ int VideoMixEngineImp::uninstallOutput(OutputIndex index)
     int output_size = m_outputs.size();
     std::map<OutputIndex, OutputInfo>::iterator it = m_outputs.find(index);
     if (it != m_outputs.end()) {
+        boost::upgrade_to_unique_lock<boost::shared_mutex> lock(outputLock);
         if (output_size > 1)
             detachOutput(&(it->second));
         else if (output_size == 1) {
@@ -584,7 +585,6 @@ int VideoMixEngineImp::uninstallOutput(OutputIndex index)
                 it->second.stream = NULL;
             }
         }
-        boost::upgrade_to_unique_lock<boost::shared_mutex> lock(outputLock);
         m_outputs.erase(it);
     }
     return m_outputs.size();
@@ -592,7 +592,7 @@ int VideoMixEngineImp::uninstallOutput(OutputIndex index)
 
 void VideoMixEngineImp::resetOutput()
 {
-    boost::shared_lock<boost::shared_mutex> outputLock(m_outputMutex);
+    boost::unique_lock<boost::shared_mutex> outputLock(m_outputMutex);
     for(std::map<OutputIndex, OutputInfo>::iterator it = m_outputs.begin(); it != m_outputs.end(); ++it) {
         if (it->second.stream) {
             delete it->second.stream;
