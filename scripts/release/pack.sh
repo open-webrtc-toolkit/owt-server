@@ -18,6 +18,7 @@ ENCRYPT=false
 ENCRYPT_CAND_PATH=
 PACKAGE_VERSION=
 SRC_SAMPLE_PATH=
+PREVIOUS_DIR=$(pwd)
 
 cd ${this}
 . common.sh
@@ -45,6 +46,7 @@ while [[ $# -gt 0 ]]; do
     *(-)src-sample-path=* )
       SRC_SAMPLE_PATH=${1##*(-)}
       SRC_SAMPLE_PATH=${SRC_SAMPLE_PATH:16}
+      [[ ${SRC_SAMPLE_PATH:0:1} == "/" ]] || SRC_SAMPLE_PATH="${PREVIOUS_DIR}/${SRC_SAMPLE_PATH}"
       ;;
     *(-)help )
       usage
