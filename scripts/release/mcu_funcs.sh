@@ -183,7 +183,7 @@ pack_node() {
 
 install_module() {
   echo -e "\x1b[32mInstalling node_modules ...\x1b[0m"
-  local SAMPLE_DIR=${SAMPLE_DIR}
+  local SAMPLE_DIR=${WOOGEEN_DIST}/extras/basic_example
   if hash npm 2>/dev/null; then
     mkdir -p ${WOOGEEN_DIST}/node_modules
     cp -av ${this}/package.mcu.json ${WOOGEEN_DIST}/package.json
