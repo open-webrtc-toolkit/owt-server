@@ -259,7 +259,6 @@ void RtspIn::receiveLoop()
             frame.additionalInfo.video.width = 1920; //FIXME: should be fetched previously when connecting.
             frame.additionalInfo.video.height = 1080; //FIXME: should be fetched previously when connecting.
             deliverFrame(frame);
-
         } else if (m_avPacket.stream_index == m_audioStreamIndex) { //packet is audio
             //ELOG_DEBUG("Receive audio frame packet with size %d ", m_avPacket.size);
             Frame frame = {};
@@ -273,21 +272,6 @@ void RtspIn::receiveLoop()
             frame.additionalInfo.audio.sampleRate = m_audioFormat == FRAME_FORMAT_OPUS ? 48000 : 8000;
             frame.additionalInfo.audio.channels = m_audioFormat == FRAME_FORMAT_OPUS ? 2 : 1;
             deliverFrame(frame);
-
-            /*if (audioSourceSSRC_ && audioSink_) {
-                char buf[MAX_DATA_PACKET_SIZE];
-                RTPHeader* head = reinterpret_cast<RTPHeader*>(buf);
-                memset(head, 0, sizeof(RTPHeader));
-                head->setVersion(2);
-                head->setSSRC(audioSourceSSRC_);
-                head->setPayloadType(audioPayloadType_);
-                head->setTimestamp(m_avPacket.dts);
-                head->setSeqNumber(m_audioSeqNumber++);
-                head->setMarker(false); // not used.
-                memcpy(&buf[head->getHeaderLength()], m_avPacket.data, m_avPacket.size);
-
-                audioSink_->deliverAudioData(buf, m_avPacket.size + head->getHeaderLength());
-            }*/
         }
         av_free_packet(&m_avPacket);
         av_init_packet(&m_avPacket);
