@@ -816,9 +816,13 @@ var listen = function () {
             var id, st;
 
             // format options
+            // audio should be a boolean value to indicate whether audio is enabled or not.
             if (options.audio === undefined) {
               options.audio = true;
+            } else {
+              options.audio = !!options.audio;
             }
+            // video should be an object containing video tracks detailed information if it is enabled.
             if (options.video === undefined || (typeof options.video !== 'object' && !!options.video)) {
               options.video = Object.create();
             }
