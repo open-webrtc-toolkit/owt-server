@@ -364,43 +364,57 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
 
     var mixAudio = function (stream_id, on_ok, on_error) {
         log.debug("to mix audio of stream:", stream_id);
-        spreadStream(stream_id, terminals[audio_mixer].erizo, true, false, function () {
-            streams[stream_id].audio.subscribers.push(audio_mixer);
-            terminals[audio_mixer].subscribed[stream_id] = {audio: stream_id, video: undefined};
-            on_ok();
-        }, on_error);
+        if (audio_mixer && terminals[audio_mixer]) {
+            spreadStream(stream_id, terminals[audio_mixer].erizo, true, false, function () {
+                streams[stream_id].audio.subscribers.push(audio_mixer);
+                terminals[audio_mixer].subscribed[stream_id] = {audio: stream_id, video: undefined};
+                on_ok();
+            }, on_error);
+        } else {
+            log.error("Audio mixer is NOT ready.");
+            on_error("Audio mixer is NOT ready.");
+        }
     };
 
     var unmixAudio = function (stream_id) {
-        shrinkStream(stream_id, terminals[audio_mixer].erizo);
-        var i = streams[stream_id] && streams[stream_id].audio && streams[stream_id].audio.subscribers.indexOf(audio_mixer);
-        if (i !== undefined && i !== -1) {
-            streams[stream_id].audio.subscribers.splice(i, 1);
-        }
+        if (audio_mixer && terminals[audio_mixer]) {
+            shrinkStream(stream_id, terminals[audio_mixer].erizo);
+            var i = streams[stream_id] && streams[stream_id].audio && streams[stream_id].audio.subscribers.indexOf(audio_mixer);
+            if (i !== undefined && i !== -1) {
+                streams[stream_id].audio.subscribers.splice(i, 1);
+            }
 
-        if (terminals[audio_mixer] && terminals[audio_mixer].subscribed[stream_id]) {
-            delete terminals[audio_mixer].subscribed[stream_id];
+            if (terminals[audio_mixer] && terminals[audio_mixer].subscribed[stream_id]) {
+                delete terminals[audio_mixer].subscribed[stream_id];
+            }
         }
     };
 
     var mixVideo = function (stream_id, on_ok, on_error) {
         log.debug("to mix video of stream:", stream_id);
-        spreadStream(stream_id, terminals[video_mixer].erizo, false, true, function () {
-            streams[stream_id].video.subscribers.push(video_mixer);
-            terminals[video_mixer].subscribed[stream_id] = {audio: undefined, video: stream_id};
-            on_ok();
-        }, on_error);
+        if (video_mixer && terminals[video_mixer]) {
+            spreadStream(stream_id, terminals[video_mixer].erizo, false, true, function () {
+                streams[stream_id].video.subscribers.push(video_mixer);
+                terminals[video_mixer].subscribed[stream_id] = {audio: undefined, video: stream_id};
+                on_ok();
+            }, on_error);
+        } else {
+            log.error("Video mixer is NOT ready.");
+            on_error("Video mixer is NOT ready.");
+        }
     };
 
     var unmixVideo = function (stream_id) {
-        shrinkStream(stream_id, terminals[video_mixer].erizo);
-        var i = streams[stream_id] && streams[stream_id].video && streams[stream_id].video.subscribers.indexOf(video_mixer);
-        if (i !== undefined && i !== -1) {
-            streams[stream_id].video.subscribers.splice(i, 1);
-        }
+        if (video_mixer && terminals[video_mixer]) {
+            shrinkStream(stream_id, terminals[video_mixer].erizo);
+            var i = streams[stream_id] && streams[stream_id].video && streams[stream_id].video.subscribers.indexOf(video_mixer);
+            if (i !== undefined && i !== -1) {
+                streams[stream_id].video.subscribers.splice(i, 1);
+            }
 
-        if (terminals[video_mixer] && terminals[video_mixer].subscribed[stream_id]) {
-            delete terminals[video_mixer].subscribed[stream_id];
+            if (terminals[video_mixer] && terminals[video_mixer].subscribed[stream_id]) {
+                delete terminals[video_mixer].subscribed[stream_id];
+            }
         }
     };
 
@@ -693,9 +707,11 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
             && streams[stream_id].audio.subscribers.length === 0
             && streams[stream_id].spread.length === 0) {
 
-            var terminal_type = terminals[streams[stream_id].owner].type;
-            if (terminal_type === 'amixer' || terminal_type === 'axcoder') {
-                terminateTemporaryStream(stream_id);
+            if (terminals[streams[stream_id].owner]) {
+                var terminal_type = terminals[streams[stream_id].owner].type;
+                if (terminal_type === 'amixer' || terminal_type === 'axcoder') {
+                    terminateTemporaryStream(stream_id);
+                }
             }
         }
     };
@@ -706,9 +722,11 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
             && streams[stream_id].video.subscribers.length === 0
             && streams[stream_id].spread.length === 0) {
 
-            var terminal_type = terminals[streams[stream_id].owner].type;
-            if (terminal_type === 'vmixer' || terminal_type === 'vxcoder') {
-                terminateTemporaryStream(stream_id);
+            if (terminals[streams[stream_id].owner]) {
+                var terminal_type = terminals[streams[stream_id].owner].type;
+                if (terminal_type === 'vmixer' || terminal_type === 'vxcoder') {
+                    terminateTemporaryStream(stream_id);
+                }
             }
         }
     };
@@ -887,13 +905,13 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
         for (var terminal_id in terminals) {
             for (var subscription_id in terminals[terminal_id].subscribed) {
                 if (terminals[terminal_id].subscribed[subscription_id].audio === stream_id || terminals[terminal_id].subscribed[subscription_id].video === stream_id) {
-                    unsubscribeStream(terminal_id, subscription_id);
-
                     if (terminals[terminal_id].type === 'axcoder' || terminals[terminal_id].type === 'vxcoder') {
                         for (var i in terminals[terminal_id].published) {
                             unpublishStream(terminals[terminal_id].published[i])
                         }
                     }
+
+                    unsubscribeStream(terminal_id, subscription_id);
                 }
             }
         }
