@@ -53,6 +53,7 @@ public:
     virtual void createConnection(const std::string& ip, uint32_t port) = 0;
     virtual void listenTo(uint32_t port) = 0;
     virtual void sendData(const char*, int len) = 0;
+    virtual void sendData(const char* header, int headerLength, const char* payload, int payloadLength) = 0;
     virtual void close() = 0;
 
     virtual unsigned short getListeningPort() = 0;
@@ -62,12 +63,13 @@ template<Protocol prot>
 class RawTransport : public RawTransportInterface {
     DECLARE_LOGGER();
 public:
-    RawTransport(RawTransportListener* listener, size_t bufferSize = 256 * 1024, bool tag = true);
+    RawTransport(RawTransportListener* listener, size_t initialBufferSize = 1600, bool tag = true);
     ~RawTransport();
 
     void createConnection(const std::string& ip, uint32_t port);
     void listenTo(uint32_t port);
     void sendData(const char*, int len);
+    void sendData(const char* header, int headerLength, const char* payload, int payloadLength);
     void close();
 
     unsigned short getListeningPort();

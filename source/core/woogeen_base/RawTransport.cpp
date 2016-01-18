@@ -30,10 +30,10 @@ using boost::asio::ip::tcp;
 DEFINE_TEMPLATE_LOGGER(template<Protocol prot>, RawTransport<prot>, "woogeen.RawTransport");
 
 template<Protocol prot>
-RawTransport<prot>::RawTransport(RawTransportListener* listener, size_t bufferSize, bool tag)
+RawTransport<prot>::RawTransport(RawTransportListener* listener, size_t initialBufferSize, bool tag)
     : m_isClosing(false)
     , m_tag(tag)
-    , m_bufferSize(bufferSize)
+    , m_bufferSize(initialBufferSize)
     , m_listener(listener)
     , m_receivedBytes(0)
 {
@@ -228,6 +228,9 @@ unsigned short RawTransport<prot>::getListeningPort()
     return port;
 }
 
+static const int BUFFER_ALIGNMENT = 16;
+static const double BUFFER_EXPANSION_MULTIPLIER = 1.3;
+
 template<Protocol prot>
 void RawTransport<prot>::readHandler(const boost::system::error_code& ec, std::size_t bytes)
 {
@@ -248,8 +251,9 @@ void RawTransport<prot>::readHandler(const boost::system::error_code& ec, std::s
 
             payloadlen = ntohl(*(reinterpret_cast<uint32_t*>(m_readHeader)));
             if (payloadlen > m_bufferSize) {
-                ELOG_WARN("Payload length is too big:%u", payloadlen);
-                payloadlen = m_bufferSize;
+                m_bufferSize = ((payloadlen * BUFFER_EXPANSION_MULTIPLIER + BUFFER_ALIGNMENT - 1) / BUFFER_ALIGNMENT) * BUFFER_ALIGNMENT;
+                ELOG_INFO("Increasing the buffer size: %zu", m_bufferSize);
+                m_receiveData.buffer.reset(new char[m_bufferSize]);
             }
             ELOG_DEBUG("readHandler(%zu):[%x,%x,%x,%x], payloadlen:%u", bytes, m_readHeader[0], m_readHeader[1], (unsigned char)m_readHeader[2], (unsigned char)m_readHeader[3], payloadlen);
 
@@ -263,6 +267,7 @@ void RawTransport<prot>::readHandler(const boost::system::error_code& ec, std::s
 
             payloadlen = ntohl(*(reinterpret_cast<uint32_t*>(m_receiveData.buffer.get())));
             if (bytes != payloadlen + 4) {
+                // FIXME: Make UDP work with large packets.
                 ELOG_WARN("Packet incomplete. with payloadlen:%u, bytes:%zu", payloadlen, bytes);
             } else {
                 unsigned char *p = reinterpret_cast<unsigned char*>(&(m_receiveData.buffer.get())[4]);
@@ -413,12 +418,6 @@ void RawTransport<prot>::dumpTcpSSLv3Header(const char* buf, int len)
 template<Protocol prot>
 void RawTransport<prot>::sendData(const char* buf, int len)
 {
-    if (len > m_bufferSize) {
-        ELOG_WARN("Discarding the %s message as the length %d exceeds the allowed maximum size.",
-            prot == UDP ? "UDP" : "TCP", len);
-        return;
-    }
-
     unsigned char *p = reinterpret_cast<unsigned char *>(const_cast<char *>(buf));
     ELOG_DEBUG("sendData(%d): [%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x...%x,%x,%x,%x]", len, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], p[10], p[11], p[12], p[13], p[14], p[15], p[len-4], p[len-3], p[len-2], p[len-1]);
 
@@ -432,6 +431,29 @@ void RawTransport<prot>::sendData(const char* buf, int len)
         data.buffer.reset(new char[len]);
         memcpy(data.buffer.get(), buf, len);
         data.length = len;
+    }
+
+    boost::lock_guard<boost::mutex> lock(m_sendQueueMutex);
+    m_sendQueue.push(data);
+    if (m_sendQueue.size() == 1)
+        doSend();
+}
+
+template<Protocol prot>
+void RawTransport<prot>::sendData(const char* header, int headerLength, const char* payload, int payloadLength)
+{
+    TransportData data;
+    if (m_tag) {
+        data.buffer.reset(new char[headerLength + payloadLength + 4]);
+        *(reinterpret_cast<uint32_t*>(data.buffer.get())) = htonl(headerLength + payloadLength);
+        memcpy(data.buffer.get() + 4, header, headerLength);
+        memcpy(data.buffer.get() + 4 + headerLength, payload, payloadLength);
+        data.length = headerLength + payloadLength + 4;
+    } else {
+        data.buffer.reset(new char[headerLength + payloadLength]);
+        memcpy(data.buffer.get(), header, headerLength);
+        memcpy(data.buffer.get() + headerLength, payload, payloadLength);
+        data.length = headerLength + payloadLength;
     }
 
     boost::lock_guard<boost::mutex> lock(m_sendQueueMutex);
