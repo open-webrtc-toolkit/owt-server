@@ -70,15 +70,17 @@ Table 2-1 describes the system requirements for installing the MCU server. Table
 **Table 2-1. Server requirements**
 Application name|OS version
 -------------|--------------
-MCU server|Ubuntu 14.04 LTS* 64-bit
+General MCU server|Ubuntu 14.04 LTS* 64-bit
+GPU-accelerated MCU server|CentOS* 7.1
 
 H.264 support in MCU system requires the deployment of OpenH264 library, see [Deploy Cisco OpenH264* Library section](#Conferencesection2_3_4) for more details.
 
 > **Note**: OpenH264 library is not required for GPU-accelerated MCU when forward RTSP stream subscription is not used.
-If you need to set up video conference server with the ability of GPU-accelerated media processing, you must install the following server side SDK:
+If you want to set up video conference service powered by GPU-accelerated MCU server, the following server side SDK needs to be installed:
 
- - Intel<sup>®</sup> Media Server Studio 2015 for Linux*
- If you want the Media Server Studio package for Ubuntu14.04 download or installation instructions, please contact [webrtc_support@intel.com](mailto://webrtc_support@intel.com).
+ - Intel<sup>®</sup> Media Server Studio for Linux* version 2015 R6
+
+Either Professional Edition or Community Edition is applicable. For download or installation instructions, please visit its website at https://software.intel.com/en-us/intel-media-server-studio.
 
  **Table 2-2. Client compatibility**
 Application Name|Google Chrome* 46|Mozilla Firefox* 41|Microsoft Internet Explorer* (IE) 9， 10， 11|Intel CS for WebRTC Client SDK for Android
@@ -89,7 +91,7 @@ Management Console|YES|YES|N/A|N/A
 ## 2.3 Install the MCU server {#Conferencesection2_3}
 This section describes the dependencies and steps for installing the MCU.
 ### 2.3.1 Dependencies {#Conferencesection2_3_1}
-**Table 2-3. Dependencies**
+**Table 2-3. MCU Dependencies**
 Name|Version|Remarks
 --------|--------|--------
 Node.js |0.10.*|Website: http://nodejs.org/
@@ -141,7 +143,7 @@ tar xf CS_WebRTC_Conference_Server_MCU.v<Version>.tgz
 cd Release-<Version>/
 bin/init.sh --deps [--hardware]
 ~~~~~~
-> **Note**: 	If you have already installed the required system libraries, you can omit the **--deps** option. What's more, if you want to run the GPU-accelerated video conferences, add **--hardware** to the init command.
+> **Note**: 	If you have already installed the required system libraries, you can omit the **--deps** option. What's more, if you want to run the GPU-accelerated MCU, add **--hardware** to the init command.
 ### 2.3.4 Deploy Cisco OpenH264* Library {#Conferencesection2_3_4}
 The default H.264 library installed is a pseudo one without any media logic. To enable H.264 support in non GPU-accelerated MCU system, the deployment of Cisco OpenH264 library is required; follow these steps:
 1. Go to the following URL and get the binary package:
@@ -166,6 +168,7 @@ We use PFX formatted certificates in MCU. See https://nodejs.org/api/tls.html fo
 
 After editing the configuration file, you should run `bin/initcert.js all` to input your passphrases for the certificates, which would then store them in an encrypted file. Be aware that you should have node binary in your shell's $PATH to run the JS script. bin/initcert.js accepts ‘nuve', ‘erizo' and 'erizoController' (or ‘all' for all) as parameters to update the passphrase for a certain certificate.
 
+ **Table 2-4. MCU certificates configuration**
 |  |key in configuration file|initcert.js parameter|
 |--------|--------|--------|
 | nuve HTTPS | config.nuve.keystorePath | nuve |
@@ -174,15 +177,15 @@ After editing the configuration file, you should run `bin/initcert.js all` to in
 
 For MCU sample application's certificate configuration, please follow the instruction file 'README.md' located at Release-<Version>/extras/basic_example/.
 
-### 2.3.6 Launch the MCU server {#Conferencesection2_3_6}
-To launch the MCU server, follow steps below:
+### 2.3.6 Launch the MCU server as single node {#Conferencesection2_3_6}
+To launch the MCU server on one machine, follow steps below:
 
 1. Run the following commands to start the MCU:
 
         cd Release-<Version>/
         bin/start-all.sh
 
-2. To verify whether the server started successfully, launch your browser and connect to the MCU server at http://XXXXX:3001. Replace XXXXX with the IP address or machine name of your MCU server.
+2. To verify whether the server started successfully, launch your browser and connect to the MCU server at https://XXXXX:3004. Replace XXXXX with the IP address or machine name of your MCU server.
 
 **Note** that the procedures in this guide use the default room in the sample.
 
@@ -192,11 +195,11 @@ Run the following commands to stop the MCU:
         cd Release-<Version>/
         bin/stop-all.sh
 
-### 2.3.8 Set up the MCU cluster {#Conferencesection2_3_8}
-Follow the steps below to set up an MCU cluster which comprises several runtime nodes:
+### 2.3.8 Set up the General MCU cluster {#Conferencesection2_3_8}
+Follow the steps below to set up an MCU cluster which comprises multiple worker nodes:
 1. Make sure you have installed the MCU package on each machine before launching the cluster which has been described in section [Install the MCU package](#Conferencesection2_3_3).
 2. Choose a primary machine.
-3. Start all components as described earlier, in section [Launch the MCU server](#Conferencesection2_3_6). Alternatively, you can run nuve, mcu controller and the application on the primary machine without a MCU runtime by running the following commands:
+3. Rou can run nuve, mcu controller and the application on the primary machine without any MCU worker node by running the following commands:
 
         cd Release-<Version>/
         bin/daemon.sh start nuve
@@ -207,27 +210,78 @@ Follow the steps below to set up an MCU cluster which comprises several runtime 
 5. Edit the configuration file
 Release-<Version>/etc/woogeen_config.js on the slave machines:
 
-    i. Make sure the config.rabbit.port and config.rabbit.host point to the RabbitMQ server. (TODO)
+    i. Make sure the config.rabbit.port and config.rabbit.host point to the RabbitMQ server.
 
-6. Run the following commands to launch the MCU runtime nodes on the slave machines:
+6. Run the following commands to launch the MCU worker node on this slave machine:
 
         cd Release-<Version>/
         bin/daemon.sh start agent
 
 7. Repeat step 4 to 6 to launch as many MCU slave machines as you need.
-### 2.3.9 Stop the MCU cluster {#Conferencesection2_3_9}
-To stop the MCU cluster, run the stop command on each machine including primary and slave node as described in section [Stop the MCU server](#Conferencesection2_3_7).
-1. Run the following commands:
+### 2.3.9 Stop the General MCU cluster {#Conferencesection2_3_9}
+To stop the MCU cluster, do as following:
+1. Run the following commands on primary node to stop the application, MCU controller and nuve.
 
         cd Release-<Version>/
         bin/daemon.sh stop app
         bin/daemon.sh stop mcu
         bin/daemon.sh stop nuve
- to stop the sample web application, mcu controller and nuve.
-2. Run the following commands to stop the MCU runtime node.
+2. Run the following commands on slave node to stop MCU worker node.
 
         cd Release-<Version>/
         bin/daemon.sh stop agent
+
+### 2.3.10 Set up the GPU-accelerated MCU cluster {#Conferencesection2_3_10}
+To better fullfill the large scale video conference deployment and utilize Intel media acceleration platforms, like Intel Visual Compute Accelerator(VCA), Intel CS for WebRTC architecture are evolving to be more distributed. GPU-accelerated MCU was firstly got upgrade to this new distributed architecture, and it will further expand to the General MCU version on next release.
+
+ **Table 2-5. Distributed MCU components**
+Component Name|Deployment Number|Responsibility
+--------|--------|--------
+nuve|1|The manager of the MCU, keeping the configurations of all rooms, generating and verifying the tokens, allocating and deallocating accessing nodes and media processing nodes for conferences
+portal|1 or many|The signaling server and room controller, handling service requests from and responding to the clients
+webrtc-agent|1 or many|This agent spawning webrtc accessing nodes which establish peer-connections with webrtc clients, receive media streams from and send media streams to webrtc clients
+rtsp-agent|1 or many|This agent spawning rtsp accessing nodes which pull rtsp streams from rtsp sources and push rtsp streams to rtsp destinations
+recording-agent|1 or many|This agent spawning recording nodes which record the specified audio/video streams to permanent storage facilities
+audio-agent|1 or many|This agent spawning audio processing nodes which perform audio transcoding and mixing
+video-agent|1 or many|This agent spawning video processing nodes which perform video transcoding and mixing
+app|0 or 1|The sample web application for reference, users should use their own application server
+
+Follow the steps below to set up an GPU-accelerated MCU cluster:
+1. Make sure you have installed the MCU package on each machine before launching the cluster which has been described in section [Install the MCU package](#Conferencesection2_3_3).
+2. Choose a primary machine.
+3. You can run MCU manager nuve and the application on the primary machine without any MCU worker node with following commands:
+
+        cd Release-<Version>/
+        bin/daemon.sh start nuve
+        bin/daemon.sh start app
+
+4. Choose a slave machine.
+5. Edit the configuration file
+Release-<Version>/etc/woogeen_config.js on the slave machines:
+
+    1) Make sure the config.rabbit.port and config.rabbit.host point to the RabbitMQ server.
+    2) For portal node, make sure the config.erizoController.networkInterface is specified to the correct network interface which the clients’ signaling and control messages are expected to connect through.
+    3) For any agent node, make sure the config.erizoAgent.networkInterface is specified to the correct network interface which the media streams are expected to be transmitted.
+
+6. Run the following commands to launch one or multiple MCU worker nodes on this slave machine:
+
+        cd Release-<Version>/
+        bin/daemon.sh start start portal/webrtc-agent/rtsp-agent/audio-agent/video-agent/recording-agent
+
+7. Repeat step 4 to 6 to launch as many MCU slave machines as you need.
+
+### 2.3.11 Stop the GPU-accelerated MCU cluster {#Conferencesection2_3_11}
+
+To stop the GPU-accelerated MCU cluster, do as following:
+1. Run the following commands on primary node to stop the application and MCU manager nuve:
+
+        cd Release-<Version>/
+        bin/daemon.sh stop app
+        bin/daemon.sh stop nuve
+2. Run the following commands on slave node to stop MCU worker nodes installed on this node:
+
+        cd Release-<Version>/
+        bin/daemon.sh stop portal/webrtc-agent/rtsp-agent/audio-agent/video-agent/recording-agent
 
 ## 2.4 Security Recommendations {#Conferencesection2_4}
 Intel Corporation does not host any conference cluster/service, instead, the entire suite is provided so you can build your own video conference system and host your own server cluster.
@@ -398,28 +452,23 @@ These general steps show how to start a conference:
 
 1. Start up the MCU server components.
 2. Launch your Google Chrome* browser from the client machine.
-3. Connect to the MCU sample application server at: http://XXXXX:3001. Replace XXXXX with the IP address or machine name of the MCU sample application server.
-    As soon as the MCU sample application server is connected successfully, the system displays a pop-up media device access confirmation:
+3. Connect to the MCU sample application server at: http://XXXXX:3001 or https://XXXXX:3004. Replace XXXXX with the IP address or machine name of the MCU sample application server.
 
-    **Figure 4-1. Pop-up Media Device Access Confirmation**
-    ![popupconfirm](./pic/popupconfirm.png)
-4. Click **Allow** to start your conference.
+   **Note**: Latest Chrome browser versions from v47 force https access on WebRTC applications. You will got SSL warning page with default certificates, replace them with your own trusted ones.
+4. Start your conference with the default room created by the sample application server.
 
-> **Note**:	The examples in this section use the default room created by the
-> sample application server.
-
-### 4.2.1 Connect to an MCU conference  with specific room {#Conferencesection4_2_1}
+### 4.2.1 Connect to an MCU conference with specific room {#Conferencesection4_2_1}
 You can connect to a particular conference room. To do this, simply specify your room ID via a query string in your URL: room.
 For example, connect to the MCU sample application server XXXXX with the following URL:
 
-        http://XXXXX:3001/?room=some_particular_room_id
+        https://XXXXX:3004/?room=some_particular_room_id
 This will direct the conference connection to the MCU room with the ID some_particular_room_id.
 ### 4.2.2 Connect to an MCU conference to subscribe mix or forward streams {#Conferencesection4_2_2}
 Since MCU room can now produce both forward streams and mix stream at the same time, including the screen sharing stream, the client is able to subscribe specified stream(s) by a query string in your URL: mix. The default value for the key word is true.
 
 For example, to subscribe mix stream and screen sharing stream from MCU, connect to the MCU sample application server XXXXX with the following URL:
 
-        http://XXXXX:3001/?mix=true
+        https://XXXXX:3004/?mix=true
 
 ### 4.2.3 Connect to an MCU conference with screen sharing {#Conferencesection4_2_3}
 The client can connect to the MCU conference with screen sharing stream.
@@ -444,7 +493,7 @@ The supported video resolution list includes:
 
 For example, if you want to generate a 720P local video stream and publish that to MCU server, you can connect to the MCU sample application server XXXXX with the following URL:
 
-        http://XXXXX:3001/?resolution=hd720p
+        https://XXXXX:3004/?resolution=hd720p
 
 > **Note**	The specified resolution acts only as a target value. This means that the actual generated video resolution might be different
 > depending on the hardware of your local media capture device.
@@ -452,7 +501,7 @@ For example, if you want to generate a 720P local video stream and publish that 
 The MCU conference supports external stream input from devices that support RTSP protocol, like IP Camera.
 For example, connect to the MCU sample application server XXXXX with the following URL:
 
-        http://XXXXX:3001/?url=rtsp_stream_url
+        https://XXXXX:3004/?url=rtsp_stream_url
 
 # 5 Peer Server {#Conferencesection5}
 ## 5.1 Introduction {#Conferencesection5_1}
@@ -463,13 +512,14 @@ The peer server is the default signaling server of the Intel CS for WebRTC. The 
 
 ## 5.2 Installation requirements {#Conferencesection5_2}
 The installation requirements for the peer server are listed in Table 5-1 and 5-2.
+
 **Table 5-1. Installation requirements**
 Component name | OS version
 ----|-----
 Peer server | Ubuntu 14.04 LTS, 64-bit
 
 > **Note**: 	The peer server has been fully tested on Ubuntu14.04 LTS,64-bit.
-**Table 5-2. Dependencies**
+**Table 5-2. Peer Server Dependencies**
 Name | Version | Remarks
 -----|----|----
 Node.js | 0.10.* | Website: http://nodejs.org/
