@@ -27,7 +27,7 @@ InternalIn::InternalIn(const std::string& protocol)
     if (protocol == "tcp")
         m_transport.reset(new woogeen_base::RawTransport<TCP>(this));
     else
-        m_transport.reset(new woogeen_base::RawTransport<UDP>(this));
+        m_transport.reset(new woogeen_base::RawTransport<UDP>(this, 64 * 1024));
 
     m_transport->listenTo(0);
 }

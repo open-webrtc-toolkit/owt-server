@@ -37,25 +37,14 @@ InternalOut::~InternalOut()
     m_transport->close();
 }
 
-// FIXME: Replace this const with a value passed from the higher layer
-// or calculated from the codec description, and may replace the stack
-// allocation of sendBuffer with heap allocation in case the data would
-// be very big.
-static const int TRANSPORT_BUFFER_SIZE = 256 * 1024;
-
 void InternalOut::onFrame(const Frame& frame)
 {
-    char sendBuffer[TRANSPORT_BUFFER_SIZE];
+    char sendBuffer[sizeof(Frame) + 1];
     size_t header_len = sizeof(Frame);
-    if (header_len + frame.length + 1 > TRANSPORT_BUFFER_SIZE) {
-        //TODO: frame too big, log warn here.
-        return;
-    }
 
     sendBuffer[0] = TDT_MEDIA_FRAME;
     memcpy(&sendBuffer[1], reinterpret_cast<char*>(const_cast<Frame*>(&frame)), header_len);
-    memcpy(&sendBuffer[1+header_len], reinterpret_cast<char*>(frame.payload), frame.length);
-    m_transport->sendData(sendBuffer, header_len + frame.length + 1);
+    m_transport->sendData(sendBuffer, header_len + 1, reinterpret_cast<char*>(const_cast<uint8_t*>(frame.payload)), frame.length);
 }
 
 void InternalOut::onTransportData(char* buf, int len)
