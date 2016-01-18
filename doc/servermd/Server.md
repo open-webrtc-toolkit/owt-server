@@ -455,7 +455,7 @@ These general steps show how to start a conference:
 3. Connect to the MCU sample application server at: http://XXXXX:3001 or https://XXXXX:3004. Replace XXXXX with the IP address or machine name of the MCU sample application server.
 
    **Note**: Latest Chrome browser versions from v47 force https access on WebRTC applications. You will got SSL warning page with default certificates, replace them with your own trusted ones.
-4. Start your conference with the default room created by the sample application server.
+4. Start your conference with this default room created by the sample application server.
 
 ### 4.2.1 Connect to an MCU conference with specific room {#Conferencesection4_2_1}
 You can connect to a particular conference room. To do this, simply specify your room ID via a query string in your URL: room.

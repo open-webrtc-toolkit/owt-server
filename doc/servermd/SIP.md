@@ -61,17 +61,18 @@ Table 2-1 describes the system requirements for installing the Intel CS for WebR
 **Table 2-1. Server requirements**
 Application name | OS version
 ----|----
-MCU server | Ubuntu 14.04 LTS* 64-bit
+General Gateway Server | Ubuntu 14.04 LTS* 64-bit
+GPU-accelerated Gateway Server | CentOS* 7.1
 
 Install the OpenH264 library to support H.264 in the gateway for SIP when required, refer to the [Install the Cisco OpenH264 Library](#SIPsection2_2_1) section for more details.
 
-If you need to set up mix mode video conferences, which require GPU-accelerated media processing, you must install the following server side SDK:
+> **Note**: The OpenH264 library is not required for GPU-accelerated Gateway.
 
- - Intel<sup>®</sup> Media Server Studio 2015 for Linux*
+If you want to set up gateway service powered by GPU-accelerated Gateway server, the following server side SDK needs to be installed:
 
-> **Note**: The OpenH264 library is not required for GPU-accelerated gateway.
+ - Intel<sup>®</sup> Media Server Studio for Linux* version 2015 R6
 
-> **Note**: For download and installation instructions of the Intel<sup>®</sup> Media Server Studio package for Ubuntu 14.04, please contact [webrtc_support@intel.com](mailto://webrtc_support@intel.com).
+Either Professional Edition or Community Edition is applicable. For download or installation instructions, please visit its website at https://software.intel.com/en-us/intel-media-server-studio.
 
 The gateway for SIP has been tested in the environment listed in Table 2-2.
 
@@ -153,14 +154,16 @@ If you only want to target these setting to specific user or group rather than a
 
  - Now run the command /sbin/sysctl -p to activate the configuration, or just restart your Gateway machine.
 
-## 2.4 Install the gateway package {#SIPsection2_4}
+## 2.4 Install the General Gateway package {#SIPsection2_4}
 To install the gateway package, simply unpack the package on the server machine:
 
         tar xf CS_WebRTC_Gateway_SIP.<Version>.tgz
         cd Release-<Version>/
 
-## 2.5 Turn GPU acceleration On/Off {#SIPsection2_5}
-To turn GPU acceleration on for gateway, edit the gateway_config.json file located in the folder "Release-<Version>/etc/" and modify the value of item "sip.hardwareAccelerated" to "true".  The default value is "false".
+## 2.5 Turn GPU-accelerated Gateway package {#SIPsection2_5}
+
+        tar xf CS_WebRTC_Gateway_SIP.<Version>.hw.tgz
+        cd Release-<Version>/
 
 ## 2.6 Launch the gateway server {#SIPsection2_6}
 You can launch the gateway by itself, or you can launch the gateway and the sample Web application together.
@@ -172,7 +175,10 @@ To launch only the gateway, use this command:
 
         bin/daemon.sh start gateway
 
-You can then access the sample application by launching your browser with URL: http://XXXXX:3001. Replace "XXXXX" with the IP address or machine name of the server on which Gateway and the sample application run.
+You can then access the sample application by launching your browser with URL: http://XXXXX:3001 or https://XXXXX:3004. Replace "XXXXX" with the IP address or machine name of the server on which Gateway and the sample application run.
+
+**Note**: Latest Chrome browser versions from v47 force https access on WebRTC applications. You will got SSL warning page with default certificates, replace them with your own trusted ones.
+
 ## 2.7 Stop the gateway server {#SIPsection2_7}
 Run the following commands to stop the gateway:
 
