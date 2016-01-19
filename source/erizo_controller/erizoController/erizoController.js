@@ -824,7 +824,7 @@ var listen = function () {
             }
             // video should be an object containing video tracks detailed information if it is enabled.
             if (options.video === undefined || (typeof options.video !== 'object' && !!options.video)) {
-              options.video = Object.create();
+              options.video = {};
             }
             if (typeof options.video.device !== 'string') {
               options.video.device = 'unknown';
