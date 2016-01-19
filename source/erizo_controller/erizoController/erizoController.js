@@ -826,7 +826,7 @@ var listen = function () {
             if (options.video === undefined || (typeof options.video !== 'object' && !!options.video)) {
               options.video = {};
             }
-            if (typeof options.video.device !== 'string') {
+            if (typeof options.video === 'object' && typeof options.video.device !== 'string') {
               options.video.device = 'unknown';
             }
 
