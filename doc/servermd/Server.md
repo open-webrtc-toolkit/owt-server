@@ -9,8 +9,9 @@ The Intel CS for WebRTC Conference Server provides an efficient WebRTC-based vid
 
  - Section 1. Introduction and conventions used in this guide.
  - Section 2. Installing and configuring the MCU.
- - Section 3. Installing the MCU sample application server.
- - Section 4. Installing and launching the peer server.
+ - Section 3. Brief guide of MCU manangement console.
+ - Section 4. Installing the MCU sample application server.
+ - Section 5. Installing and launching the peer server.
 
 Installation requirements and dependencies for the MCU, sample application server, and peer server are described in their associated sections.
 
