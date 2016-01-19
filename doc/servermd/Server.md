@@ -161,8 +161,7 @@ bin/init.sh --deps [--hardware]
 > **Note**: 	If you have already installed the required system libraries, you can omit the **--deps** option. What's more, if you want to run the GPU-accelerated MCU, add **--hardware** to the init command.
 ### 2.3.4 Deploy Cisco OpenH264* Library {#Conferencesection2_3_4}
 The default H.264 library installed is a pseudo one without any media logic. To enable H.264 support in non GPU-accelerated MCU system, the deployment of Cisco OpenH264 library is required; follow these steps:
-1. Go to the following URL and get the binary package:
-    http://ciscobinary.openh264.org/libopenh264-1.4.0-linux64.so.bz2.
+1. Go to the following URL and get the binary package: http://ciscobinary.openh264.org/libopenh264-1.4.0-linux64.so.bz2.
 
         curl –O http://ciscobinary.openh264.org/libopenh264-1.4.0-linux64.so.bz2
 
@@ -207,8 +206,8 @@ To launch the MCU server on one machine, follow steps below:
 ### 2.3.7 Stop the MCU server {#Conferencesection2_3_7}
 Run the following commands to stop the MCU:
 
-        cd Release-<Version>/
-        bin/stop-all.sh
+    cd Release-<Version>/
+    bin/stop-all.sh
 
 ### 2.3.8 Set up the General MCU cluster {#Conferencesection2_3_8}
 Follow the steps below to set up an MCU cluster which comprises multiple worker nodes:
@@ -366,8 +365,8 @@ After inputting your service-id and service-key in the dialog prompt, choose ‘
 
 If you have not launched MCU severs, you should launch the nuve server before accessing the management console:
 
-        cd Release-<Version>/
-        bin/daemon.sh start nuve
+    cd Release-<Version>/
+    bin/daemon.sh start nuve
 
 ## 3.3 Source Code {#Conferencesection3_3}
 The source code of the management console is in Release-<Version>/nuve/nuveAPI/public/.
