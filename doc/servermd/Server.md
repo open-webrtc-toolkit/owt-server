@@ -111,10 +111,14 @@ Before installing the MCU, make sure your login account has sys-admin privileges
 
 In order for the MCU server to deliver the best performance on video conferencing, the following system configuration is recommended:
 
-1. Add or update the maximum numbers of open files to a large enough number by adding the following two lines to /etc/security/limits.conf:
+1. Add or update the following lines in /etc/security/limits.conf, in order to set the maximum numbers of open files, running processes and maximum stack size to a large enough number:
 
+        * hard nproc unlimited
+        * soft nproc unlimited
         * hard nofile 163840
         * soft nofile 163840
+        * hard stack 1024
+        * soft stack 1024
 
    If you only want to target these setting to specific user or group rather than all with "*", please follow the configuration rules of the /etc/security/limits.conf file.
 
@@ -123,7 +127,13 @@ In order for the MCU server to deliver the best performance on video conferencin
         session required pam_limits.so
 
    So that the updated limits.conf takes effect after your next login.
-3. Add or update the following lines to /etc/sysctl.conf:
+
+3. If you run MCU on CentOS, add or update the following two lines in /etc/security/limits.d/xx-nproc.conf as well:
+
+        * soft nproc unlimited
+        * hard nproc unlimited
+
+4. Add or update the following lines in /etc/sysctl.conf:
 
         fs.file-max=200000
         net.core.rmem_max=16777216
@@ -131,9 +141,13 @@ In order for the MCU server to deliver the best performance on video conferencin
         net.core.rmem_default=16777216
         net.core.wmem_default=16777216
         net.ipv4.udp_mem = 4096 87380 16777216
+        net.ipv4.tcp_rmem=4096 87380 16777216
+        net.ipv4.tcp_wmem=4096 65536 16777216
+        net.ipv4.tcp_mem=8388608 8388608 16777216
 
-4. Now run command /sbin/sysctl -p to activate the new configuration, or just restart your MCU machine.
-5. You can run command "ulimit -a" to make sure the new setting in limits.conf is correct as you set.f
+5. Now run command /sbin/sysctl -p to activate the new configuration, or just restart your MCU machine.
+
+6. You can run command "ulimit -a" to make sure the new setting in limits.conf is correct as you set.
 
 ### 2.3.3 Install the MCU package {#Conferencesection2_3_3}
 
