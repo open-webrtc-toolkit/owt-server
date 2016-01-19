@@ -83,7 +83,7 @@ If you want to set up video conference service powered by GPU-accelerated MCU se
 Either Professional Edition or Community Edition is applicable. For download or installation instructions, please visit its website at https://software.intel.com/en-us/intel-media-server-studio.
 
  **Table 2-2. Client compatibility**
-Application Name|Google Chrome* 46|Mozilla Firefox* 41|Microsoft Internet Explorer* (IE) 9， 10， 11|Intel CS for WebRTC Client SDK for Android
+Application Name|Google Chrome* 47|Mozilla Firefox* 43|Microsoft Internet Explorer* (IE) 9， 10， 11|Intel CS for WebRTC Client SDK for Android
 --------|--------|--------|--------|--------
 MCU Client|YES|YES|YES|YES
 Management Console|YES|YES|N/A|N/A
@@ -94,16 +94,16 @@ This section describes the dependencies and steps for installing the MCU.
 **Table 2-3. MCU Dependencies**
 Name|Version|Remarks
 --------|--------|--------
-Node.js |0.10.*|Website: http://nodejs.org/
+Node.js |4.*|Website: http://nodejs.org/
 Node modules|Specified|N/A
 MongoDB| 2.4.9 |Website: http://mongodb.org
 System libraries|Latest|N/A
 
 All dependencies, except system libraries and node, are provided with the release package.
 
-All essential system libraries are installed when you install the MCU package using the Ubuntu's package management system, aka, apt-get or aptitude.
+All essential system libraries are installed when you install the MCU package using the Ubuntu or CentOS's package management system.
 
-Regarding Node.js*, make sure it's installed in your system prior to installing the MCU. We recommend version 0.10.38. Refer to http://nodejs.org/ for the details and installation.
+Regarding Node.js*, make sure it's installed in your system prior to installing the MCU. We recommend version 4.1.2. Refer to http://nodejs.org/ for the details and installation.
 
 Before installing the MCU, make sure your login account has sys-admin privileges; i.e. the ability to execute `sudo`.
 
@@ -338,7 +338,7 @@ The following instructions are provided only as recommendations regarding securi
 
     In the MCU server, the following default ports have been assigned for MCU usage: 5672 (configurable), 8080 (configurable), 3000. Make sure they are always available for MCU. Also, in order to configure the two configurable ports above to a value smaller than the 1024 limitation, use the following command to enable it:
 
-        sudo setcap cap_net_bind_service=+ep ~/.nvm/v0.10.38/bin/node
+        sudo setcap cap_net_bind_service=+ep $(which node)
 
     If you are still not able to bypass the 1024 port limitation, remember to put the **MCU library path into /etc/ld.so.conf.d**.
 # 3 MCU Management Console Brief Guide {#Conferencesection3}
@@ -522,10 +522,10 @@ Peer server | Ubuntu 14.04 LTS, 64-bit
 **Table 5-2. Peer Server Dependencies**
 Name | Version | Remarks
 -----|----|----
-Node.js | 0.10.* | Website: http://nodejs.org/
+Node.js | 4.* | Website: http://nodejs.org/
 Node modules | Specified | N/A
 
-Regarding Node.js*, make sure it's installed in your system prior to installing the Peer Server. We recommend version 0.10.38. Refer to http://nodejs.org/ for installation details.
+Regarding Node.js*, make sure it's installed in your system prior to installing the Peer Server. We recommend version 4.1.2. Refer to http://nodejs.org/ for installation details.
 ## 5.3 Installation {#Conferencesection5_3}
 On the server machine, unpack the peer server release package, and install node modules
 

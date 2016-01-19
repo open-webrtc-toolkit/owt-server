@@ -109,8 +109,8 @@ H264:
 </tr>
 <tr>
 <td>Web browser</td>
-<td><ul><li>Google Chrome* v46</li>
-<li>Firefox* v41</li></ul>
+<td><ul><li>Google Chrome* v47</li>
+<li>Firefox* v43</li></ul>
 </td>
 </tr>
 </tbody>
