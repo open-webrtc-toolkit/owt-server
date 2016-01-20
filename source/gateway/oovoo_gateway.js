@@ -1,7 +1,8 @@
 /*global require, logger. setInterval, clearInterval, Buffer, exports*/
 var Controller = require('./controller');
 var ST = require('./util/Stream');
-var logger = require('./util/logger').logger;
+var Logger = require('log4cxx');
+var logger = new Logger('oovoo_gateway');
 var Permission = require('./util/permission');
 var config = require('./../etc/gateway_config');
 var fs = require("fs");

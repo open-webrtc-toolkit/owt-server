@@ -2,7 +2,8 @@
 
 var addon = require('./../bindings/gateway/build/Release/addon');
 var config = require('./../etc/gateway_config');
-var logger = require('./util/logger').logger;
+var Logger = require('log4cxx');
+var logger = new Logger('controller');
 
 exports = module.exports = function () {
     "use strict";
