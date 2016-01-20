@@ -57,7 +57,8 @@ For more information, visit the following Web pages:
 ## 2.1 Introduction {#SIPsection2_1}
 This section briefly lists the requirements, test environment, and dependencies for the gateway. This section then briefly explains how to configure, install, launch, and stop the gateway.
 ## 2.2 Requirements and test environment {#SIPsection2_2}
-Table 2-1 describes the system requirements for installing the Intel CS for WebRTC Gateway for SIP. .
+Table 2-1 describes the system requirements for installing the Intel CS for WebRTC Gateway for SIP.
+
 **Table 2-1. Server requirements**
 Application name | OS version
 ----|----
@@ -91,21 +92,21 @@ The gateway for SIP has been tested in the environment listed in Table 2-2.
 <tr>
 <td>SIP client</td>
 <td><ul><li>AVer EVC3000*</li>
-<li>Jitsi v2.5*</li></td>
+<li>Jitsi v2.5* or later</li></td>
 </tr>
 <tr>
 <td>Video codec</td>
 <td>
-VP8: <ul><li>Jitsi v2.5</li></ul><br>
+VP8: <ul><li>Jitsi v2.5 or later</li></ul><br>
 H264:
 <ul><li>Aver EVC3000</li>
-<li>Jitsi v2.5</li></ul>
+<li>Jitsi v2.5 or later</li></ul>
 </td>
 </tr>
 <tr>
 <td>Audio codec</td>
 <td><ul><li>G.711*</li>
-<li>opus</li></ul></td>
+<li>Opus</li></ul></td>
 </tr>
 <tr>
 <td>Web browser</td>
@@ -128,22 +129,36 @@ Follow these steps to install the library:
 
  2. Unzip this package with following command:
 
-		bzip2 -d libopenh264-1.4.0-linux64.so.bz2
+        bzip2 -d libopenh264-1.4.0-linux64.so.bz2
 
  3. Copy the lib file libopenh264-1.4.0-linux64.so to Release-<Version>/lib folder, and rename it to libopenh264.so.0 to replace the existing pseudo one.
- 4. Edit etc/woogeen_config.js file under Release-<Version> folder, set the value of key config.erizo.openh264Enbaled to be true.
 
 ## 2.3 Configure the gateway machine  {#SIPsection2_3}
 To optimize the gateway server for best performance, we strongly recommend that you configure the system as shown in these simple steps:
 
- -  Add or update the maximum numbers of open files to a large enough number by adding the following two lines to /etc/security/limits.conf:
+1. Add or update the following lines in /etc/security/limits.conf, in order to set the maximum numbers of open files, running processes and maximum stack size to a large enough number:
 
+        * hard nproc unlimited
+        * soft nproc unlimited
         * hard nofile 163840
         * soft nofile 163840
+        * hard stack 1024
+        * soft stack 1024
 
-If you only want to target these setting to specific user or group rather than all with "*", please do it following the configuration rules of the limits.conf file.
+   If you only want to target these setting to specific user or group rather than all with "*", please follow the configuration rules of the /etc/security/limits.conf file.
 
- - Add or update the following lines to /etc/sysctl.conf:
+2. Make sure pam_limits.so appears in /etc/pam.d/login as following:
+
+        session required pam_limits.so
+
+   So that the updated limits.conf takes effect after your next login.
+
+3. If you run gateway on CentOS, add or update the following two lines in /etc/security/limits.d/xx-nproc.conf as well:
+
+        * soft nproc unlimited
+        * hard nproc unlimited
+
+4. Add or update the following lines in /etc/sysctl.conf:
 
         fs.file-max=200000
         net.core.rmem_max=16777216
@@ -152,20 +167,22 @@ If you only want to target these setting to specific user or group rather than a
         net.core.wmem_default=16777216
         net.ipv4.udp_mem = 4096 87380 16777216
 
- - Now run the command /sbin/sysctl -p to activate the configuration, or just restart your Gateway machine.
+5. Now run command /sbin/sysctl -p to activate the new configuration, or just restart your gateway machine.
 
-## 2.4 Install the General Gateway package {#SIPsection2_4}
-To install the gateway package, simply unpack the package on the server machine:
+6. You can run command "ulimit -a" to make sure the new setting in limits.conf is correct as you set.
+
+## 2.4 Install the gateway package {#SIPsection2_4}
+For general gateway server on Ubuntu, do as following:
 
         tar xf CS_WebRTC_Gateway_SIP.<Version>.tgz
         cd Release-<Version>/
 
-## 2.5 Turn GPU-accelerated Gateway package {#SIPsection2_5}
+For GPU-accelerated gateway server on CentOS, do as following:
 
         tar xf CS_WebRTC_Gateway_SIP.<Version>.hw.tgz
         cd Release-<Version>/
 
-## 2.6 Launch the gateway server {#SIPsection2_6}
+## 2.5 Launch the gateway server {#SIPsection2_5}
 You can launch the gateway by itself, or you can launch the gateway and the sample Web application together.
 To launch both the gateway and the sample web application, use the start-all command as shown here:
 
@@ -179,7 +196,7 @@ You can then access the sample application by launching your browser with URL: h
 
 **Note**: Latest Chrome browser versions from v47 force https access on WebRTC applications. You will got SSL warning page with default certificates, replace them with your own trusted ones.
 
-## 2.7 Stop the gateway server {#SIPsection2_7}
+## 2.6 Stop the gateway server {#SIPsection2_6}
 Run the following commands to stop the gateway:
 
         bin/stop-all.sh

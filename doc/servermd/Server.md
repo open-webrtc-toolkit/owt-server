@@ -84,10 +84,10 @@ If you want to set up video conference service powered by GPU-accelerated MCU se
 Either Professional Edition or Community Edition is applicable. For download or installation instructions, please visit its website at https://software.intel.com/en-us/intel-media-server-studio.
 
  **Table 2-2. Client compatibility**
-Application Name|Google Chrome* 47|Mozilla Firefox* 43|Microsoft Internet Explorer* (IE) 9， 10， 11|Intel CS for WebRTC Client SDK for Android
---------|--------|--------|--------|--------
-MCU Client|YES|YES|YES|YES
-Management Console|YES|YES|N/A|N/A
+Application Name|Google Chrome* 47|Mozilla Firefox* 43|Microsoft Internet Explorer* (IE) 9， 10， 11|Intel CS for WebRTC Client SDK for Android | Intel CS for WebRTC Client SDK for iOS | Intel CS for WebRTC Client SDK for C++
+--------|--------|--------|--------|--------|--------|--------
+MCU Client|YES|YES|YES|YES|YES|YES
+Management Console|YES|YES|N/A|N/A|N/A|N/A
 
 ## 2.3 Install the MCU server {#Conferencesection2_3}
 This section describes the dependencies and steps for installing the MCU.
@@ -153,12 +153,20 @@ In order for the MCU server to deliver the best performance on video conferencin
 ### 2.3.3 Install the MCU package {#Conferencesection2_3_3}
 
 In the server machine, un-archive the package file first, and then invoke init.sh to initialize the package.
+
+For General MCU Server installation on Ubuntu, do as following:
 ~~~~~~{.js}
 tar xf CS_WebRTC_Conference_Server_MCU.v<Version>.tgz
 cd Release-<Version>/
-bin/init.sh --deps [--hardware]
+bin/init.sh --deps
 ~~~~~~
-> **Note**: 	If you have already installed the required system libraries, you can omit the **--deps** option. What's more, if you want to run the GPU-accelerated MCU, add **--hardware** to the init command.
+For GPU-accelerated MCU Server installation on CentOS, do as following:
+~~~~~~{.js}
+tar xf CS_WebRTC_Conference_Server_MCU.v<Version>.hw.tgz
+cd Release-<Version>/
+bin/init.sh --deps --hardware
+~~~~~~
+> **Note**: 	If you have already installed the required system libraries, you can omit the **--deps** option.
 ### 2.3.4 Deploy Cisco OpenH264* Library {#Conferencesection2_3_4}
 The default H.264 library installed is a pseudo one without any media logic. To enable H.264 support in non GPU-accelerated MCU system, the deployment of Cisco OpenH264 library is required; follow these steps:
 1. Go to the following URL and get the binary package: http://ciscobinary.openh264.org/libopenh264-1.4.0-linux64.so.bz2.
