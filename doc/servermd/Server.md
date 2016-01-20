@@ -166,7 +166,7 @@ tar xf CS_WebRTC_Conference_Server_MCU.v<Version>.hw.tgz
 cd Release-<Version>/
 bin/init.sh --deps --hardware
 ~~~~~~
-> **Note**: 	If you have already installed the required system libraries, you can omit the **--deps** option.
+> **Note**: If you have already installed the required system libraries, you can omit the **--deps** option.
 ### 2.3.4 Deploy Cisco OpenH264* Library {#Conferencesection2_3_4}
 The default H.264 library installed is a pseudo one without any media logic. To enable H.264 support in non GPU-accelerated MCU system, the deployment of Cisco OpenH264 library is required; follow these steps:
 1. Go to the following URL and get the binary package: http://ciscobinary.openh264.org/libopenh264-1.4.0-linux64.so.bz2.
@@ -209,7 +209,7 @@ To launch the MCU server on one machine, follow steps below:
 
 2. To verify whether the server started successfully, launch your browser and connect to the MCU server at https://XXXXX:3004. Replace XXXXX with the IP address or machine name of your MCU server.
 
-**Note** that the procedures in this guide use the default room in the sample.
+> **Note**: The procedures in this guide use the default room in the sample.
 
 ### 2.3.7 Stop the MCU server {#Conferencesection2_3_7}
 Run the following commands to stop the MCU:
@@ -379,13 +379,14 @@ If you have not launched MCU severs, you should launch the nuve server before ac
 ## 3.3 Source Code {#Conferencesection3_3}
 The source code of the management console is in Release-<Version>/nuve/nuveAPI/public/.
 ## 3.4 Service Management {#Conferencesection3_4}
-Only super service user can access service management, in the ‘overview' tab to create or delete services. Note that super service cannot be deleted.
+Only super service user can access service management, in the ‘overview' tab to create or delete services.
+> **Note**: Super service cannot be deleted.
 ## 3.5 Room Management {#Conferencesection3_5}
 Any service user can do room management inside the service, including create, delete or modify rooms.
 
 Specifically for modifying rooms, user can choose room mode, room publish limit, user limit and media mixing configuration (only for hybrid mode) for its own preference. When room mode is hybrid, user can define a configuration set for media mixing: resolution, bitrate, background color, layout, etc. For VAD, set avCoordinated to true to enable VAD in the room. Enabling multistreaming can let MCU generate two or more mixed streams with different resolutions to fullfill different devices. For layout, use can choose a base layout template and customize its own preferred ones, which would be combined as a whole for rendering mixed video.
 
-**Note that** if base layout is set to 'void', user must input customized layout for the room, otherwise the video layout would be treated as invalid. Read 3.5.1 for details of customized layout. maxInput indicates the maximum number of video frame inputs for the video layout definition.
+> **Note**: If base layout is set to 'void', user must input customized layout for the room, otherwise the video layout would be treated as invalid. Read 3.5.1 for details of customized layout. maxInput indicates the maximum number of video frame inputs for the video layout definition.
 
 ### 3.5.1 Customized video layout {#Conferencesection3_5_1}
 The MCU server supports the mixed video layout configuration which is compliant with RFC5707 Media Server Markup Language (MSML).
@@ -476,7 +477,7 @@ These general steps show how to start a conference:
 2. Launch your Google Chrome* browser from the client machine.
 3. Connect to the MCU sample application server at: http://XXXXX:3001 or https://XXXXX:3004. Replace XXXXX with the IP address or machine name of the MCU sample application server.
 
-   **Note**: Latest Chrome browser versions from v47 force https access on WebRTC applications. You will got SSL warning page with default certificates, replace them with your own trusted ones.
+> **Note**: Latest Chrome browser versions from v47 force https access on WebRTC applications. You will got SSL warning page with default certificates, replace them with your own trusted ones.
 4. Start your conference with this default room created by the sample application server.
 
 ### 4.2.1 Connect to an MCU conference with specific room {#Conferencesection4_2_1}
@@ -540,7 +541,7 @@ Component name | OS version
 ----|-----
 Peer server | Ubuntu 14.04 LTS, 64-bit
 
-> **Note**: 	The peer server has been fully tested on Ubuntu14.04 LTS,64-bit.
+> **Note**: The peer server has been fully tested on Ubuntu14.04 LTS,64-bit.
 **Table 5-2. Peer Server Dependencies**
 Name | Version | Remarks
 -----|----|----
