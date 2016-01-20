@@ -21,7 +21,6 @@ pack_runtime() {
   cp -av ${SOURCE}/gateway/oovoo_gateway.js ${WOOGEEN_DIST}/gateway/
   cp -av ${SOURCE}/gateway/controller.js ${WOOGEEN_DIST}/gateway/
   cp -av ${SOURCE}/gateway/oovoo_heartbeat.js ${WOOGEEN_DIST}/gateway/
-  cp -av ${SOURCE}/gateway/util/logger.js ${WOOGEEN_DIST}/gateway/util/
   cp -av ${SOURCE}/erizo_controller/erizoController/permission.js ${WOOGEEN_DIST}/gateway/util/
   cp -av ${SOURCE}/erizo_controller/erizoController/Stream.js ${WOOGEEN_DIST}/gateway/util/
   ENCRYPT_CAND_PATH=("${WOOGEEN_DIST}/gateway")
@@ -105,7 +104,7 @@ pack_node() {
     # This is kind of fragile - we assume that the occurrences of "require" are
     # always the keyword for module loading in the original JavaScript file.
     sed -i.origin "s/require('.*\//Module\._load('/g; s/require('/Module\._load('/g" "${line}"
-    sed -i "s/Module\._load('\(controller\|oovoo_heartbeat\|logger\|permission\|Stream\)/Module\._load('webrtc_gateway\/\1/g" "${line}"
+    sed -i "s/Module\._load('\(controller\|oovoo_heartbeat\|permission\|Stream\)/Module\._load('webrtc_gateway\/\1/g" "${line}"
     sed -i "1 i var Module = require('module');" "${line}"
     mv ${line} ${CURRENT_DIR}/lib/webrtc_gateway/
     sed -i "/lib\/zlib.js/a 'lib/webrtc_gateway/$(basename ${line})'," node.gyp
@@ -152,7 +151,7 @@ install_module() {
   echo -e "\x1b[32mInstalling node_modules ...\x1b[0m"
   if hash npm 2>/dev/null; then
     mkdir -p ${WOOGEEN_DIST}/node_modules
-    npm install --prefix ${WOOGEEN_DIST} --production --loglevel error socket.io@0.9.17 winston request
+    npm install --prefix ${WOOGEEN_DIST} --production --loglevel error socket.io@0.9.17 request log4cxx
     mkdir -p ${WOOGEEN_DIST}/extras/node_modules
     npm install --prefix ${WOOGEEN_DIST}/extras --production --loglevel error express@3.4.8 request
   else
