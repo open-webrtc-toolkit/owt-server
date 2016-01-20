@@ -221,7 +221,7 @@ Run the following commands to stop the MCU:
 Follow the steps below to set up an MCU cluster which comprises multiple worker nodes:
 1. Make sure you have installed the MCU package on each machine before launching the cluster which has been described in section [Install the MCU package](#Conferencesection2_3_3).
 2. Choose a primary machine.
-3. Rou can run nuve, mcu controller and the application on the primary machine without any MCU worker node by running the following commands:
+3. You can run nuve, mcu controller and the application on the primary machine without any MCU worker node by running the following commands:
 
         cd Release-<Version>/
         bin/daemon.sh start nuve
