@@ -230,9 +230,7 @@ Follow the steps below to set up an MCU cluster which comprises multiple worker 
 
 4. Choose a slave machine.
 5. Edit the configuration file
-Release-<Version>/etc/woogeen_config.js on the slave machines:
-
-    i. Make sure the config.rabbit.port and config.rabbit.host point to the RabbitMQ server.
+Release-<Version>/etc/woogeen_config.js on the slave machines, in order to make sure the config.rabbit.port and config.rabbit.host point to the RabbitMQ server.
 
 6. Run the following commands to launch the MCU worker node on this slave machine:
 
