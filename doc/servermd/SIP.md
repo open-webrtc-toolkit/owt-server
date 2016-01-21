@@ -4,8 +4,8 @@ Gateway for SIP User Guide
 # 1 Overview {#SIPsection1}
 
 ## 1.1 Introduction {#SIPsection1_1}
-Welcome to the user guide for the Intel<sup>®</sup> Collaboration Service for WebRTC (Intel<sup>®</sup> CS for WebRTC) Gateway for SIP. The gateway enables the WebRTC interoperability with traditional RTC systems.
-This guide describes how to install and launch the gateway server for Session Initiation Protocol (SIP). This guide then provides details of the interfaces available in the gateway SDK for SIP. This guide includes these sections:
+Welcome to the user guide for the Intel<sup>®</sup> Collaboration Suite for WebRTC (Intel<sup>®</sup> CS for WebRTC) Gateway for SIP. The gateway enables the WebRTC interoperability with traditional RTC systems.
+This guide describes how to install and launch the gateway server for Session Initiation Protocol (SIP), and it provides details of the interfaces available in the gateway SDK for SIP. This guide includes these sections:
 
  - Section 1. Introduction and conventions used in this guide.
  - Section 2. Installing, launching, and stopping the Intel CS for WebRTC Gateway Server.
@@ -36,23 +36,15 @@ WebRTC | Web real-time communication
 ## 1.3 For more information  {#SIPsection1_3}
 For more information, visit the following Web pages:
 
-- Intel HTML Developer Zone:
+ - Intel HTML Developer Zone: https://software.intel.com/en-us/html5/tools
+ - Intel Collaboration Suite for WebRTC:
+    1. https://software.intel.com/webrtc
+    2. https://software.intel.com/en-us/forums/webrtc
+    3. https://software.intel.com/zh-cn/forums/webrtc
+ - The Internet Engineering Task Force (IETF<sup>®</sup>) Working Group: http://tools.ietf.org/wg/rtcweb/
+ - W3C WebRTC Working Group: http://www.w3.org/2011/04/webrtc/
+ - WebRTC Open Project: http://www.webrtc.org
 
-    https://software.intel.com/en-us/html5/tools
-- Intel<sup>®</sup> Collaboration Service for WebRTC:
-
-    https://software.intel.com/webrtc
-
-    https://software.intel.com/en-us/forums/webrtc
-- Internet Engineering Task Force (IETF<sup>®</sup>) Working Group:
-
-    http://tools.ietf.org/wg/rtcweb/
-- W3C WebRTC Working Group:
-
-    http://www.w3.org/2011/04/webrtc/
-- WebRTC Open Project:
-
-    http://www.webrtc.org
 # 2 Gateway Installation for SIP  {#SIPsection2}
 ## 2.1 Introduction {#SIPsection2_1}
 This section briefly lists the requirements, test environment, and dependencies for the gateway. This section then briefly explains how to configure, install, launch, and stop the gateway.
@@ -69,7 +61,7 @@ Install the OpenH264 library to support H.264 in the gateway for SIP when requir
 
 > **Note**: The OpenH264 library is not required for GPU-accelerated Gateway.
 
-If you want to set up gateway service powered by GPU-accelerated Gateway server, the following server side SDK needs to be installed:
+If you want to set up gateway service powered by GPU-accelerated Gateway server, the following server side SDK needs to be installed on CentOS* 7.1:
 
  - Intel<sup>®</sup> Media Server Studio for Linux* version 2015 R6
 
@@ -215,11 +207,11 @@ Before you can use the gateway, you must initialize your HTML code to allow your
 ~~~~~~~
 ### 3.1.2 SDK special considerations {#SIPsection3_1_2}
  - When constructing a client, you should initialize the client with type ‘sip’ (explained in the next section of this guide).
- - Once connected to the gateway, the client must register with the DIP server. To do this, the client should send a custom message with authentication information to the gateway.
+ - Once connected to the gateway, the client must register with the SIP server. To do this, the client should send a custom message with authentication information to the gateway.
  - Once registered with the SIP server, the client must make a call or accept incoming calls before publishing its local stream to the gateway; otherwise, the stream publishing fails.
 
 ## 3.2 Objects {#SIPsection3_2}
-The MSDK includes two JavaScript objects: Client and Stream. Web applications use the objects to connect to the gateway and manage handling of audio/video streams and events.
+The SDK includes two JavaScript objects: Client and Stream. Web applications use the objects to connect to the gateway and manage handling of audio/video streams and events.
 ~~~~{.js}
 <script type = "text/javascript">
     var client = Erizo.Client({
