@@ -43,18 +43,14 @@ WebRTC|Web real-time communication
 ##1.3 For more information {#Conferencesection1_3}
 For more information, visit the following Web pages:
 
- - Intel HTML Developer Zone:
-https://software.intel.com/en-us/html5/tools
+ - Intel HTML Developer Zone: https://software.intel.com/en-us/html5/tools
  - Intel Collaboration Suite for WebRTC:
-https://software.intel.com/webrtc
-https://software.intel.com/en-us/forums/webrtc
-https://software.intel.com/zh-cn/forums/webrtc
- - The Internet Engineering Task Force (IETF<sup>®</sup>) Working Group:
-http://tools.ietf.org/wg/rtcweb/
- - W3C WebRTC Working Group:
-http://www.w3.org/2011/04/webrtc/
- - WebRTC Open Project:
-http://www.webrtc.org
+    1. https://software.intel.com/webrtc
+    2. https://software.intel.com/en-us/forums/webrtc
+    3. https://software.intel.com/zh-cn/forums/webrtc
+ - The Internet Engineering Task Force (IETF<sup>®</sup>) Working Group: http://tools.ietf.org/wg/rtcweb/
+ - W3C WebRTC Working Group: http://www.w3.org/2011/04/webrtc/
+ - WebRTC Open Project: http://www.webrtc.org
 
 # 2 MCU Installation {#Conferencesection2}
 
@@ -77,7 +73,7 @@ GPU-accelerated MCU server|CentOS* 7.1
 H.264 support in MCU system requires the deployment of OpenH264 library, see [Deploy Cisco OpenH264* Library section](#Conferencesection2_3_4) for more details.
 
 > **Note**: OpenH264 library is not required for GPU-accelerated MCU when forward RTSP stream subscription is not used.
-If you want to set up video conference service powered by GPU-accelerated MCU server, the following server side SDK needs to be installed:
+If you want to set up video conference service powered by GPU-accelerated MCU server, the following server side SDK needs to be installed on CentOS* 7.1:
 
  - Intel<sup>®</sup> Media Server Studio for Linux* version 2015 R6
 
@@ -154,13 +150,13 @@ In order for the MCU server to deliver the best performance on video conferencin
 
 In the server machine, un-archive the package file first, and then invoke init.sh to initialize the package.
 
-For General MCU Server installation on Ubuntu, do as following:
+For General MCU Server installation on Ubuntu, follow these steps:
 ~~~~~~{.js}
 tar xf CS_WebRTC_Conference_Server_MCU.v<Version>.tgz
 cd Release-<Version>/
 bin/init.sh --deps
 ~~~~~~
-For GPU-accelerated MCU Server installation on CentOS, do as following:
+For GPU-accelerated MCU Server installation on CentOS, follow these steps:
 ~~~~~~{.js}
 tar xf CS_WebRTC_Conference_Server_MCU.v<Version>.hw.tgz
 cd Release-<Version>/
@@ -239,7 +235,7 @@ Release-<Version>/etc/woogeen_config.js on the slave machines, in order to make 
 
 7. Repeat step 4 to 6 to launch as many MCU slave machines as you need.
 ### 2.3.9 Stop the General MCU cluster {#Conferencesection2_3_9}
-To stop the MCU cluster, do as following:
+To stop the MCU cluster, follow these steps:
 1. Run the following commands on primary node to stop the application, MCU controller and nuve.
 
         cd Release-<Version>/
@@ -252,7 +248,7 @@ To stop the MCU cluster, do as following:
         bin/daemon.sh stop agent
 
 ### 2.3.10 Set up the GPU-accelerated MCU cluster {#Conferencesection2_3_10}
-To better fullfill the large scale video conference deployment and utilize Intel media acceleration platforms, like Intel Visual Compute Accelerator(VCA), Intel CS for WebRTC architecture are evolving to be more distributed. GPU-accelerated MCU was firstly got upgrade to this new distributed architecture, and it will further expand to the General MCU version on next release.
+To better fullfill large scale video conference deployments and to fully utilize Intel media acceleration platforms, such as Intel<sup>®</sup> Visual Compute Accelerator card, Intel CS for WebRTC architecture is evolving to be more distributed. GPU-accelerated MCU is the first component to employ a distributed architecture and soon the General MCU component will follow.
 
  **Table 2-5. Distributed MCU components**
 Component Name|Deployment Number|Responsibility
@@ -292,7 +288,7 @@ Release-<Version>/etc/woogeen_config.js on the slave machines:
 
 ### 2.3.11 Stop the GPU-accelerated MCU cluster {#Conferencesection2_3_11}
 
-To stop the GPU-accelerated MCU cluster, do as following:
+To stop the GPU-accelerated MCU cluster, follow these steps:
 1. Run the following commands on primary node to stop the application and MCU manager nuve:
 
         cd Release-<Version>/
