@@ -49,17 +49,16 @@ install_boost(){
 installYumDeps(){
   sudo -E yum groupinstall " Development Tools" "Development Libraries " -y
   sudo -E yum install zlib-devel pkgconfig git libcurl-devel.x86_64 curl log4cxx-devel gcc gcc-c++ bzip2 bzip2-devel bzip2-libs python-devel nasm libX11-devel yasm -y
-  sudo -E yum install rabbitmq-server java-1.7.0-openjdk gyp -y
+  sudo -E yum install rabbitmq-server mongodb mongodb-server java-1.7.0-openjdk gyp -y
 
   if [[ "$OS" =~ .*6.* ]] # CentOS 6.x
   then
-    sudo -E yum install mongodb mongodb-server -y
     install_glib2
     install_boost
     install_gcc
   elif [[ "$OS" =~ .*7.* ]] # CentOS 7.x
   then
-    sudo -E yum install mongodb-org mongodb-org-server glib2-devel boost-devel -y
+    sudo -E yum install glib2-devel boost-devel -y
   fi
 }
 
