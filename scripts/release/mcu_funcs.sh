@@ -103,6 +103,7 @@ pack_scripts() {
   cp -av ${this}/launch-base.sh ${WOOGEEN_DIST}/bin/stop-all.sh
   cp -av ${this}/launch-base.sh ${WOOGEEN_DIST}/bin/restart-all.sh
   cp -av ${this}/mcu-init.sh ${WOOGEEN_DIST}/bin/init.sh
+  cp -av ${ROOT}/scripts/detectOS.sh ${WOOGEEN_DIST}/bin/detectOS.sh
   cp -av ${this}/initdb.js ${WOOGEEN_DIST}/bin/initdb.js
   cp -av {${this},${WOOGEEN_DIST}/bin}/initcert.js && chmod +x ${WOOGEEN_DIST}/bin/initcert.js
   echo '

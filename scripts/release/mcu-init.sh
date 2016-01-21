@@ -29,9 +29,31 @@ usage() {
 }
 
 install_deps() {
-  echo -e "\x1b[32mInstalling dependent components and libraries via apt-get...\x1b[0m"
-  sudo apt-get update
-  sudo apt-get install rabbitmq-server mongodb #TODO: pick-up libraries
+  local OS=`${this}/detectOS.sh | awk '{print tolower($0)}'`
+  echo $OS
+
+  if [[ "$OS" =~ .*centos.* ]]
+  then
+    echo -e "\x1b[32mInstalling dependent components and libraries via yum...\x1b[0m"
+    if [[ "$OS" =~ .*6.* ]] # CentOS 6.x
+    then
+      wget -c http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm
+      sudo rpm -Uvh epel-release-6*.rpm
+    elif [[ "$OS" =~ .*7.* ]] # CentOS 7.x
+    then
+      wget -c http://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+      sudo rpm -Uvh epel-release-latest-7*.rpm
+    fi
+    sudo sed -i 's/https/http/g' /etc/yum.repos.d/epel.repo
+    sudo -E yum install mongodb mongodb-server rabbitmq-server -y
+  elif [[ "$OS" =~ .*ubuntu.* ]]
+  then
+    echo -e "\x1b[32mInstalling dependent components and libraries via apt-get...\x1b[0m"
+    sudo apt-get update
+    sudo apt-get install rabbitmq-server mongodb #TODO: pick-up libraries
+  else
+    echo -e "\x1b[32mUnsupported platform...\x1b[0m"
+  fi
 }
 
 install_db() {
