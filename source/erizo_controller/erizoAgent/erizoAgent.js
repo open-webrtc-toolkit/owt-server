@@ -9,6 +9,7 @@ GLOBAL.config = config || {};
 GLOBAL.config.erizoAgent = GLOBAL.config.erizoAgent || {};
 GLOBAL.config.erizoAgent.maxProcesses = GLOBAL.config.erizoAgent.maxProcesses || 1;
 GLOBAL.config.erizoAgent.prerunProcesses = GLOBAL.config.erizoAgent.prerunProcesses || 1;
+GLOBAL.config.erizoAgent.publicIP = GLOBAL.config.erizoAgent.publicIP || '';
 
 // Parse command line arguments
 var getopt = new Getopt([
@@ -74,7 +75,8 @@ var rpc = require('./../common/amqper');
 var log = logger.getLogger('ErizoAgent');
 
 var INTERVAL_TIME_KEEPALIVE = GLOBAL.config.erizoAgent.interval_time_keepAlive;
-var BINDED_INTERFACE_NAME = GLOBAL.config.erizoAgent.networkInterface;
+var EXTERNAL_INTERFACE_NAME = GLOBAL.config.erizoAgent.externalNetworkInterface;
+var INTERNAL_INTERFACE_NAME = GLOBAL.config.erizoAgent.internalNetworkInterface;
 
 GLOBAL.config.erizo.hardwareAccelerated = !!GLOBAL.config.erizo.hardwareAccelerated;
 
@@ -215,7 +217,7 @@ var launchErizoJS = function() {
     var fs = require('fs');
     var out = fs.openSync('../../logs/erizo-' + id + '.log', 'a');
     var err = fs.openSync('../../logs/erizo-' + id + '.log', 'a');
-    var erizoProcess = spawn('node', ['./../erizoJS/erizoJS.js', id, myPurpose], { detached: true, stdio: [ 'ignore', out, err ] });
+    var erizoProcess = spawn('node', ['./../erizoJS/erizoJS.js', id, myPurpose, privateIP, publicIP], { detached: true, stdio: [ 'ignore', out, err ] });
     erizoProcess.unref();
     erizoProcess.on('close', function (code) {
         var index = idle_erizos.indexOf(id);
@@ -320,11 +322,12 @@ var api = {
     }
 };
 
-var privateIP;
+var privateIP, publicIP;
 
 var addToCloudHandler = function (callback) {
     var interfaces = require('os').networkInterfaces(),
-        addresses = [],
+        externalAddresses = [],
+        internalAddresses = [],
         k,
         k2,
         address;
@@ -335,8 +338,11 @@ var addToCloudHandler = function (callback) {
                 if (interfaces[k].hasOwnProperty(k2)) {
                     address = interfaces[k][k2];
                     if (address.family === 'IPv4' && !address.internal) {
-                        if (k === BINDED_INTERFACE_NAME || !BINDED_INTERFACE_NAME) {
-                            addresses.push(address.address);
+                        if (k === EXTERNAL_INTERFACE_NAME || !EXTERNAL_INTERFACE_NAME) {
+                            externalAddresses.push(address.address);
+                        }
+                        if (k === INTERNAL_INTERFACE_NAME || !INTERNAL_INTERFACE_NAME) {
+                            internalAddresses.push(address.address);
                         }
                     }
                 }
@@ -344,15 +350,23 @@ var addToCloudHandler = function (callback) {
         }
     }
 
-    privateIP = addresses[0];
+    privateIP = externalAddresses[0];
+
+    if (GLOBAL.config.erizoAgent.publicIP === '' || GLOBAL.config.erizoAgent.publicIP === undefined){
+        publicIP = externalAddresses[0];
+    } else {
+        publicIP = GLOBAL.config.erizoAgent.publicIP;
+    }
 
     var addEAToCloudHandler = function(attempt) {
+        var internalIP = internalAddresses[0];
+
         if (attempt <= 0) {
             return;
         }
 
         var controller = {
-            ip: privateIP,
+            ip: internalIP,
             purpose: myPurpose
         };
 
@@ -372,7 +386,7 @@ var addToCloudHandler = function (callback) {
                 log.info('Error in communication with cloudProvider');
             }
 
-            privateIP = msg.privateIP;
+            internalIP = msg.privateIP;
             myId = msg.id;
             myState = 2;
 
@@ -383,7 +397,7 @@ var addToCloudHandler = function (callback) {
                         // TODO: It should try to register again in Cloud Handler. But taking into account current rooms, users, ...
                         log.info('I don`t exist in cloudHandler. I`m going to be killed');
                         clearInterval(intervarId);
-                        rpc.callRpc('nuve', 'killMe', privateIP, {callback: function () {}});
+                        rpc.callRpc('nuve', 'killMe', internalIP, {callback: function () {}});
                     }
                 }});
             }, INTERVAL_TIME_KEEPALIVE);
@@ -399,7 +413,11 @@ var addToCloudHandler = function (callback) {
     switch (myPurpose) {
         case 'webrtc':
         case 'rtsp':
-            startQueryNetwork(BINDED_INTERFACE_NAME || Object.keys(os.networkInterfaces())[0], 5/*S*/);
+            var internalNetworkInterface = INTERNAL_INTERFACE_NAME || Object.keys(os.networkInterfaces())[0];
+            startQueryNetwork(internalNetworkInterface, 5);
+            if (EXTERNAL_INTERFACE_NAME && EXTERNAL_INTERFACE_NAME !== internalNetworkInterface) {
+                startQueryNetwork(EXTERNAL_INTERFACE_NAME, 5);
+            }
             break;
         case 'file':
             startQueryDisk('/tmp', 10/*S*/);

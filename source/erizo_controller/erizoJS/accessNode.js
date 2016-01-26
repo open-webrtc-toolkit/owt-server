@@ -9,10 +9,6 @@ var amqper = require('./../common/amqper');
 // Logger
 var log = logger.getLogger('AccessNode');
 
-var BINDED_INTERFACE_NAME = GLOBAL.config.erizoController.networkInterface;
-var privateRegexp;
-var publicIP;
-
 exports.AccessNode = function () {
     var that = {},
         /*{StreamID: {type: 'webrtc' | 'rtsp' | 'file' | 'internal',
@@ -30,39 +26,6 @@ exports.AccessNode = function () {
         */
         subscriptions = {};
 
-
-    var collectIPAddr = function () {
-        var interfaces = require('os').networkInterfaces(),
-            addresses = [],
-            k,
-            k2,
-            address;
-
-
-        for (k in interfaces) {
-            if (interfaces.hasOwnProperty(k)) {
-                for (k2 in interfaces[k]) {
-                    if (interfaces[k].hasOwnProperty(k2)) {
-                        address = interfaces[k][k2];
-                        if (address.family === 'IPv4' && !address.internal) {
-                            if (k === BINDED_INTERFACE_NAME || !BINDED_INTERFACE_NAME) {
-                                addresses.push(address.address);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        privateRegexp = new RegExp(addresses[0], 'g');
-
-        if (GLOBAL.config.erizoController.publicIP === '' || GLOBAL.config.erizoController.publicIP === undefined){
-            publicIP = addresses[0];
-        } else {
-            publicIP = GLOBAL.config.erizoController.publicIP;
-        }
-    };
-
     that.publish = function (stream_id, stream_type, options, callback) {
         log.debug('publish, stream_id:', stream_id, ', stream_type:', stream_type, ', audio:', options.has_audio, ', video:', options.has_video);
         if (streams[stream_id]) {
@@ -75,8 +38,8 @@ exports.AccessNode = function () {
 
         if (stream_type === 'webrtc') {
             conn = new WrtcConnection({direction: 'in',
-                                       private_ip_regexp: privateRegexp,
-                                       public_ip: publicIP});
+                                       private_ip_regexp: that.privateRegexp,
+                                       public_ip: that.publicIP});
             conn.init(options.has_audio, options.has_video, function (response) {
                 callback('callback', response);
             });
@@ -144,8 +107,8 @@ exports.AccessNode = function () {
 
         if (subscription_type === 'webrtc') {
             conn = new WrtcConnection({direction: 'out',
-                                       private_ip_regexp: privateRegexp,
-                                       public_ip: publicIP});
+                                       private_ip_regexp: that.privateRegexp,
+                                       public_ip: that.publicIP});
             conn.init(options.require_audio, options.require_video, function (response) {
                 callback('callback', response);
             });
@@ -291,6 +254,5 @@ exports.AccessNode = function () {
         }
     };
 
-    collectIPAddr();
     return that;
 };

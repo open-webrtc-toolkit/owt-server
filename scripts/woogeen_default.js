@@ -94,7 +94,6 @@ config.erizoController.recording_path = undefined; // default value: undefined
 config.erizoAgent = {};
 
 config.erizoAgent.interval_time_keepAlive = 1000; // default value: 1000
-// config.erizoAgent.networkInterface = 'eth0' // default value: undefined
 
 // Max processes that ErizoAgent can run
 config.erizoAgent.maxProcesses = 13; // default value: 13
@@ -105,7 +104,9 @@ config.erizoAgent.prerunProcesses = 2; // default value: 2
 // Use '' to automatically get IP from the interface
 config.erizoAgent.publicIP = ''; //default value: ''
 // Use the name of the inferface you want to bind for ICE candidates
-// config.erizoAgent.networkInterface = 'eth1' // default value: undefined
+// config.erizoAgent.externalNetworkInterface = 'eth1' // default value: undefined
+// Use the name of the inferface you want to bind for cluster internal communication
+// config.erizoAgent.internalNetworkInterface = 'eth0' // default value: undefined
 
 /*********************************************************
  ERIZO JS CONFIGURATION
