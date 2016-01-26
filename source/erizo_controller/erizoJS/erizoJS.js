@@ -99,6 +99,9 @@ rpc.connect(function () {
         }
 
         var ejsController = Controller();
+        ejsController.privateRegexp = new RegExp(process.argv[4], 'g');
+        ejsController.publicIP = process.argv[5];
+
         rpc.setPublicRPC(ejsController);
 
         ejsController.keepAlive = function(callback) {
