@@ -34,7 +34,7 @@ exports.RtspIn = function (spec) {
           } else if (msg === 'success') {
               on_status({type: 'ready', audio_codecs: audio_codec_list, video_codecs: video_codec_list});
           } else {
-              on_status(msg);
+              on_status({type: 'failed', reason: msg});
           }
         });
 

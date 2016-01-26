@@ -1043,8 +1043,8 @@ var listen = function () {
             var recorderPath = options.path || GLOBAL.config.erizoController.recording_path || '/tmp';
             var url = require('path').join(recorderPath, 'room' + socket.room.id + '_' + recorderId + '.mkv');
             var interval = (options.interval && options.interval > 0) ? options.interval : -1;
-            var preferredVideoCodec = options.videoCodec || '';
-            var preferredAudioCodec = options.audioCodec || '';;
+            var preferredVideoCodec = options.videoCodec || 'vp8';
+            var preferredAudioCodec = options.audioCodec || 'pcmu';;
 
             var videoRecorder = videoStream.getVideoRecorder();
             var audioRecorder = audioStream.getAudioRecorder();
