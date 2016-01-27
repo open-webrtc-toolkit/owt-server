@@ -1,12 +1,12 @@
-/*global exports, require, console, Buffer, setTimeout, clearTimeout*/
-var sys = require('util');
+/*global exports, require, setTimeout, clearTimeout*/
+'use strict';
 var amqp = require('amqp');
 var rpcPublic = require('./rpcPublic');
 var config = require('./../../../etc/woogeen_config');
 var logger = require('./../logger').logger;
 
 // Logger
-var log = logger.getLogger("RPC");
+var log = logger.getLogger('RPC');
 
 // Configuration default values
 config.rabbit = config.rabbit || {};
@@ -32,12 +32,8 @@ if (config.rabbit.url !== undefined) {
 }
 
 exports.connect = function () {
-
     connection = amqp.createConnection(addr);
-
     connection.on('ready', function () {
-        "use strict";
-
         log.info('Conected to rabbitMQ server');
 
         //Create a direct exchange 
@@ -50,58 +46,43 @@ exports.connect = function () {
 
                 q.bind('rpcExchange', 'nuve');
                 q.subscribe(function (message) {
-
                     rpcPublic[message.method](message.args, function (type, result) {
                         exc.publish(message.replyTo, {data: result, corrID: message.corrID, type: type});
                     });
-
                 });
             });
 
             //Create the queue for send messages
             clientQueue = connection.queue('', function (q) {
                 log.info('ClientQueue ' + q.name + ' is open');
-
                 clientQueue.bind('rpcExchange', clientQueue.name);
-
                 clientQueue.subscribe(function (message) {
-
                     if (map[message.corrID] !== undefined) {
-
                         map[message.corrID].fn[message.type](message.data);
                         clearTimeout(map[message.corrID].to);
                         delete map[message.corrID];
                     }
                 });
-
             });
         });
-
     });
-}
+};
 
 var callbackError = function (corrID) {
-    "use strict";
     for (var i in map[corrID].fn) {
         map[corrID].fn[i]('timeout');
     }
     delete map[corrID];
-}
+};
 
 /*
  * Calls remotely the 'method' function defined in rpcPublic of 'to'.
  */
 exports.callRpc = function (to, method, args, callbacks) {
-    "use strict";
-
     corrID += 1;
     map[corrID] = {};
     map[corrID].fn = callbacks;
     map[corrID].to = setTimeout(callbackError, TIMEOUT, corrID);
-
     var send = {method: method, args: args, corrID: corrID, replyTo: clientQueue.name};
-
     exc.publish(to, send);
-
 };
-

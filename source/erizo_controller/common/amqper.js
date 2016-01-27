@@ -1,9 +1,10 @@
-var sys = require('util');
+/*global GLOBAL, require, exports*/
+'use strict';
 var amqp = require('amqp');
 var logger = require('./logger').logger;
 
 // Logger
-var log = logger.getLogger("AMQPER");
+var log = logger.getLogger('AMQPER');
 
 // Configuration default values
 GLOBAL.config.rabbit = GLOBAL.config.rabbit || {};
@@ -54,25 +55,24 @@ exports.connect = function(callback) {
 
                     clientQueue.subscribe(function (message) {
                         try {
-                            log.debug("New message received", message);
+                            log.debug('New message received', message);
 
                             if(map[message.corrID] !== undefined) {
-                                log.debug("Callback", message.type, " - ", message.data);
+                                log.debug('Callback', message.type, ' - ', message.data);
                                 clearTimeout(map[message.corrID].to);
-                                if (message.type === "onReady") map[message.corrID].fn[message.type].call({}, message.data);
+                                if (message.type === 'onReady') map[message.corrID].fn[message.type].call({}, message.data);
                                 else map[message.corrID].fn[message.type].call({}, message.data);
                                 setTimeout(function() {
                                     if (map[message.corrID] !== undefined) delete map[message.corrID];
                                 }, REMOVAL_TIMEOUT);
                             }
                         } catch(err) {
-                            log.error("Error processing response: ", err);
+                            log.error('Error processing response: ', err);
                         }
                     });
-
                 });
             } catch (err) {
-                log.error("Error in exchange ", exchange.name, " - error - ", err);
+                log.error('Error in exchange ', exchange.name, ' - error - ', err);
             }
         });
 
@@ -85,7 +85,7 @@ exports.connect = function(callback) {
     connection.on('error', function(e) {
        log.error('Connection error...', e);
     });
-}
+};
 
 exports.bind = function(id, callback) {
 
@@ -97,24 +97,22 @@ exports.bind = function(id, callback) {
             q.bind('rpcExchange', id, callback);
             q.subscribe(function (message) {
                 try {
-                    log.debug("New message received", message);
+                    log.debug('New message received', message);
                     message.args = message.args || [];
                     message.args.push(function(type, result) {
                         rpc_exc.publish(message.replyTo, {data: result, corrID: message.corrID, type: type});
                     });
                     rpcPublic[message.method].apply(rpcPublic, message.args);
                 } catch (error) {
-                    log.error("message:", message);
-                    log.error("Error processing call: ", error);
+                    log.error('message:', message);
+                    log.error('Error processing call: ', error);
                 }
-
             });
         } catch (err) {
-            log.error("Error in exchange ", exchange.name, " - error - ", err);
+            log.error('Error in exchange ', queueCreated.name, ' - error - ', err);
         }
-
     });
-}
+};
 
 //Subscribe to 'topic'
 exports.bind_broadcast = function(id, callback) {
@@ -123,36 +121,31 @@ exports.bind_broadcast = function(id, callback) {
     var q = connection.queue('', function (queueCreated) {
         try {
             log.info('Queue ' + queueCreated.name + ' is open');
-
             q.bind('broadcastExchange', id);
-            q.subscribe(function (m){callback(m)});
-            
+            q.subscribe(function (m) {callback(m);});
         } catch (err) {
-            log.error("Error in exchange ", exchange.name, " - error - ", err);
+            log.error('Error in exchange ', queueCreated.name, ' - error - ', err);
         }
-
     });
-}
+};
 
 /*
  * Publish broadcast messages to 'topic'
  */
 exports.broadcast = function(topic, message) {
     broadcast_exc.publish(topic, message);
-}
+};
 
 /*
  * Calls remotely the 'method' function defined in rpcPublic of 'to'.
  */
 exports.callRpc = function(to, method, args, callbacks) {
-
     corrID ++;
     map[corrID] = {};
     map[corrID].fn = callbacks;
     map[corrID].to = setTimeout(callbackError, TIMEOUT, corrID);
     rpc_exc.publish(to, {method: method, args: args, corrID: corrID, replyTo: clientQueue.name});
-
-}
+};
 
 
 var callbackError = function(corrID) {
@@ -160,4 +153,4 @@ var callbackError = function(corrID) {
         map[corrID].fn[i]('timeout');
     }
     delete map[corrID];
-}
+};

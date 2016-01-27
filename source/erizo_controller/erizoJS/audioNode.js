@@ -1,16 +1,16 @@
-/*global require, exports, , setInterval, clearInterval*/
+/*global require, exports*/
 'use strict';
 var addon = require('./../../bindings/mcu/build/Release/addon');
 var logger = require('./../common/logger').logger;
 var amqper = require('./../common/amqper');
 
 // Logger
-var log = logger.getLogger("AudioNode");
+var log = logger.getLogger('AudioNode');
 
-var AudioMixer = function (spec) {
+var AudioMixer = function () {
     var that = {},
-        engine = undefined,
-        observer = undefined,
+        engine,
+        observer,
 
         supported_codecs = [],
 
@@ -32,13 +32,13 @@ var AudioMixer = function (spec) {
             if (engine.addInput(for_whom, codec, conn)) {
                 inputs[stream_id] = {owner: for_whom,
                                      connection: conn};
-                log.debug("addInput ok, for:", for_whom, "codec:", codec, "protocol:", protocol);
+                log.debug('addInput ok, for:', for_whom, 'codec:', codec, 'protocol:', protocol);
                 on_ok(stream_id);
             } else {
-                on_error("Failed in adding input to audio-engine.");
+                on_error('Failed in adding input to audio-engine.');
             }
         } else {
-            on_error("Audio-mixer engine is not ready.");
+            on_error('Audio-mixer engine is not ready.');
         }            
     };
 
@@ -61,10 +61,10 @@ var AudioMixer = function (spec) {
                                       subscriptions: {}};
                 on_ok(stream_id);
             } else {
-                on_error("Failed in adding output to audio-engine");
+                on_error('Failed in adding output to audio-engine');
             }
         } else {
-            on_error("Audio-mixer engine is not ready.");
+            on_error('Audio-mixer engine is not ready.');
         }
     };
 
@@ -80,17 +80,16 @@ var AudioMixer = function (spec) {
             output.dispatcher.close();
             delete outputs[stream_id];
         }
-    }
+    };
 
     that.initEngine = function (config, callback) {
-        var config = {};
         engine = new addon.AudioMixer(JSON.stringify(config));
 
         // FIXME: The supported codec list should be a sub-list of those querried from the engine
         // and filterred out according to config.
         supported_codecs = ['pcmu', 'opus_48000_2', 'pcm_raw'/*, 'pcma', 'isac_16000', 'isac_32000'*/];
 
-        log.info("AudioMixer.init OK");
+        log.info('AudioMixer.init OK');
         callback('callback', {codecs: supported_codecs});
     };
 
@@ -109,18 +108,18 @@ var AudioMixer = function (spec) {
     };
 
     that.generate = function (for_whom, codec, callback) {
-        log.debug("generate, for_whom:", for_whom, "codec:", codec);
+        log.debug('generate, for_whom:', for_whom, 'codec:', codec);
 
         for (var stream_id in outputs) {
             if (outputs[stream_id].owner === for_whom && outputs[stream_id].codec === codec) {
-                log.debug("generate, got stream:", stream_id);
+                log.debug('generate, got stream:', stream_id);
                 callback('callback', stream_id);
                 return;
             }
         }
 
         addOutput(for_whom, codec, function (stream_id) {
-            log.debug("generate, got stream:", stream_id);
+            log.debug('generate, got stream:', stream_id);
             callback('callback', stream_id);
         }, function (error_reason) {
             log.error(error_reason);
@@ -134,7 +133,7 @@ var AudioMixer = function (spec) {
 
     that.publish = function (stream_id, stream_type, options, callback) {
         if (inputs[stream_id] === undefined) {
-            log.debug("publish stream:", stream_id, "stream_type:", stream_type);
+            log.debug('publish stream:', stream_id, 'stream_type:', stream_type);
             addInput(stream_id, options.owner, options.audio_codec, options.protocol, function () {
                 callback('callback', inputs[stream_id].connection.getListeningPort());
             }, function (error_reason) {
@@ -153,14 +152,14 @@ var AudioMixer = function (spec) {
 
     that.subscribe = function (subscription_id, subscription_type, audio_stream_id, video_stream_id, options, callback) {
         if (outputs[audio_stream_id]) {
-            log.debug("subscribe, subscription_id:", subscription_id, "subscription_type:", subscription_type, "audio_stream_id:", audio_stream_id, "options:", options);
+            log.debug('subscribe, subscription_id:', subscription_id, 'subscription_type:', subscription_type, 'audio_stream_id:', audio_stream_id, 'options:', options);
             var conn = new addon.InternalOut(options.protocol, options.dest_ip, options.dest_port);
             outputs[audio_stream_id].dispatcher.addDestination('audio', conn);
             outputs[audio_stream_id].subscriptions[subscription_id] = conn;
             callback('callback', 'ok');
         } else {
-            log.error("Stream does not exist!", audio_stream_id);
-            callback('callback', 'error', "Stream does not exist!");
+            log.error('Stream does not exist!', audio_stream_id);
+            callback('callback', 'error', 'Stream does not exist!');
         }
     };
 
@@ -175,7 +174,7 @@ var AudioMixer = function (spec) {
 
     that.enableVAD = function (periodMS, roomId, observer) {
         engine.enableVAD(periodMS, function (activeParticipant) {
-            log.debug("enableVAD, activeParticipant:", activeParticipant);
+            log.debug('enableVAD, activeParticipant:', activeParticipant);
             amqper.callRpc(observer, 'eventReport', ['vad', roomId, {active_terminal: activeParticipant, data: null}]);
         });
     };
@@ -184,8 +183,7 @@ var AudioMixer = function (spec) {
 };
 
 exports.AudioNode = function (spec) {
-    var that = new AudioMixer(spec),
-        mixers = {};
+    var that = new AudioMixer(spec);
 
     that.init = function (service, config, callback) {
         if (service === 'mixing') {
@@ -194,10 +192,10 @@ exports.AudioNode = function (spec) {
             var audioConfig = {};
             that.initEngine(audioConfig, callback);
         } else {
-            log.error("Unknown service type to init an audio node:", service);
-            callback('callback', 'error', "Unknown service type to init an audio node.");
+            log.error('Unknown service type to init an audio node:', service);
+            callback('callback', 'error', 'Unknown service type to init an audio node.');
         }
     };
 
     return that;
-}
+};

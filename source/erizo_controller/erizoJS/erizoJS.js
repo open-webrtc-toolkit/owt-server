@@ -57,7 +57,6 @@ for (var prop in opt.options) {
 // Load submodules with updated config
 var logger = require('./../common/logger').logger;
 var rpc = require('./../common/amqper');
-var Controller;
 
 // Logger
 var log = logger.getLogger("ErizoJS");
@@ -87,7 +86,7 @@ rpc.connect(function () {
         var rpcID = process.argv[2];
         var purpose = process.argv[3];
 
-        var Controller = undefined;
+        var Controller;
         if (purpose === 'audio') {
             Controller = require('./audioNode').AudioNode;
         } else if (purpose === 'video') {

@@ -1,12 +1,12 @@
-/*global exports, require, console, Buffer*/
-var roomRegistry = require('./../mdb/roomRegistry');
+/*global exports, require*/
+'use strict';
 var serviceRegistry = require('./../mdb/serviceRegistry');
 var cloudHandler = require('../cloudHandler');
 
 var logger = require('./../logger').logger;
 
 // Logger
-var log = logger.getLogger("UserResource");
+var log = logger.getLogger('UserResource');
 
 var currentService;
 var currentRoom;
@@ -15,24 +15,18 @@ var currentRoom;
  * Gets the service and the room for the proccess of the request.
  */
 var doInit = function (roomId, callback) {
-    "use strict";
     currentService = require('./../auth/nuveAuthenticator').service;
-
     serviceRegistry.getRoomForService(roomId, currentService, function (room) {
         currentRoom = room;
         callback();
     });
-
 };
 
 /*
  * Get User. Represent a determined user of a room. This is consulted to erizoController using RabbitMQ RPC call.
  */
 exports.getUser = function (req, res) {
-    "use strict";
-
     doInit(req.params.room, function () {
-
         if (currentService === undefined) {
             res.status(404).send('Service not found');
             return;
@@ -66,10 +60,7 @@ exports.getUser = function (req, res) {
  * Delete User. Removes a determined user from a room. This order is sent to erizoController using RabbitMQ RPC call.
  */
 exports.deleteUser = function (req, res) {
-    "use strict";
-
     doInit(req.params.room, function () {
-
         if (currentService === undefined) {
             res.status(404).send('Service not found');
             return;
@@ -80,20 +71,13 @@ exports.deleteUser = function (req, res) {
         }
 
         var user = req.params.user;
-        
-
-
-        cloudHandler.deleteUser (user, currentRoom._id, function(result){
-            if(result === 'User does not exist'){
+        cloudHandler.deleteUser(user, currentRoom._id, function (result) {
+            if (result === 'User does not exist') {
                 res.status(404).send(result);
-            }
-            else {
+            } else {
                 res.send(result);
                 return;
             }
         });
-        
-
-        //Consultar RabbitMQ
     });
 };

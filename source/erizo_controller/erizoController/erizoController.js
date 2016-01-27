@@ -222,7 +222,7 @@ var formatDate = function(date, format) {
     return format;
 };
 
-var privateRegexp;
+// var privateRegexp;
 var publicIP;
 
 var addToCloudHandler = function (callback) {
@@ -555,7 +555,7 @@ var listen = function () {
                                                         var st = new ST.Stream({id: roomID, socket: '', audio: true, video: {device: 'mcu', resolutions: resolutions.map(function (n) {return resolutionName2Value[n];})/*FIXME: to keep compatible to previous MCU, should be removed later.*/}, from: '', attributes: null});
                                                         room.streams[roomID] = st;
                                                         room.mixer = roomID;
-                                                        log.debug("Mixed stream info:", st.getPublicStream(), "resolutions:", st.getPublicStream().video.resolutions);
+                                                        log.debug('Mixed stream info:', st.getPublicStream(), 'resolutions:', st.getPublicStream().video.resolutions);
                                                         sendMsgToRoom(room, 'add_stream', st.getPublicStream());
                                                         if (room.config && room.config.publishLimit > 0) {
                                                             room.config.publishLimit++;
@@ -630,7 +630,7 @@ var listen = function () {
                         );
                     }
                 } else {
-                    safeCall(callback, 'error', "Invalid control message.");
+                    safeCall(callback, 'error', 'Invalid control message.');
                 }
                 break;
             case 'data':
@@ -639,7 +639,7 @@ var listen = function () {
                 }
                 if (socket.user.permissions[Permission.PUBLISH] !== true) {
                     var permissions = socket.user.permissions[Permission.PUBLISH];
-                    if (permissions['data'] === false)
+                    if (permissions.data === false)
                         return safeCall(callback, 'error', 'unauthorized');
                 }
 
@@ -825,7 +825,6 @@ var listen = function () {
             } else if (options.state === 'erizo') {
                 log.info('New publisher');
                 id = socket.id;
-                var mixer = socket.room.mixer;
                 var hasScreen = false;
                 var unmix = options.unmix;
                 if (options.video && options.video.device === 'screen') {
@@ -868,7 +867,7 @@ var listen = function () {
                             socket.room.streams[id] = st;
                             return;
                         case 'failed': // If the connection failed we remove the stream
-                            log.info(signMess.reason, "removing " , id);
+                            log.info(signMess.reason, 'removing', id);
                             socket.emit('connection_failed',{});
 
                             socket.state = 'sleeping';
@@ -891,8 +890,7 @@ var listen = function () {
                             // Double check if this socket is still in the room.
                             // It can be removed from the room if the socket is disconnected
                             // before the publish succeeds.
-                            var index = socket.room.sockets.indexOf(socket);
-                            if (index === -1) {
+                            if (socket.room.sockets.indexOf(socket) === -1) {
                                 socket.room.controller.unpublish(id);
                                 return;
                             }
@@ -951,9 +949,9 @@ var listen = function () {
                         var timeStamp = new Date();
                         amqper.broadcast('event', {room: socket.room.id, user: socket.id, name: socket.user.name, type: 'subscribe', stream: options.streamId, timestamp: timeStamp.getTime()});
                     }
-                    log.debug("Subscribe, options.video:", options.video);
+                    log.debug('Subscribe, options.video:', options.video);
                     if (typeof options.video === 'object' && options.video !== null && options.video.resolution && options.video.resolution.width) {
-                        log.debug("Subscribe a multistreaming stream(its resolutions:", stream.video && stream.video.resolutions, ") with resolution:", options.video.resolution);
+                        log.debug('Subscribe a multistreaming stream(its resolutions:', stream.video && stream.video.resolutions, ') with resolution:', options.video.resolution);
                         if (!stream.hasResolution(options.video.resolution)) {
                             options.video = true;
                         } else {
@@ -1044,7 +1042,7 @@ var listen = function () {
             var url = require('path').join(recorderPath, 'room' + socket.room.id + '_' + recorderId + '.mkv');
             var interval = (options.interval && options.interval > 0) ? options.interval : -1;
             var preferredVideoCodec = options.videoCodec || 'vp8';
-            var preferredAudioCodec = options.audioCodec || 'pcmu';;
+            var preferredAudioCodec = options.audioCodec || 'pcmu';
 
             var videoRecorder = videoStream.getVideoRecorder();
             var audioRecorder = audioStream.getAudioRecorder();

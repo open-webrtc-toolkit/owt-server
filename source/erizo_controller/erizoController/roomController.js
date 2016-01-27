@@ -1,12 +1,12 @@
-/*global require, exports, setInterval, GLOBAL*/
+/*global require, exports*/
 'use strict';
 
 var logger = require('./../common/logger').logger;
 var makeRPC = require('./../common/makeRPC').makeRPC;
-var ErizoManager = require('./erizoManager').ErizoManager;
+var createErizoManager = require('./erizoManager');
 
 // Logger
-var log = logger.getLogger("RoomController");
+var log = logger.getLogger('RoomController');
 
 exports.RoomController = function (spec, on_init_ok, on_init_failed) {
 
@@ -20,9 +20,8 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
         supported_audio_codecs = [],
         supported_video_codecs = [],
         supported_video_resolutions = [],
-
-        audio_mixer = undefined,
-        video_mixer = undefined;
+        audio_mixer,
+        video_mixer;
 
     /*{ErizoID: {addr: Address}}*/
     var erizos = {};
@@ -49,10 +48,9 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
        }*/
     var streams = {};
 
-    var erizoManager = ErizoManager({amqper: amqper, room_id: room_id, on_broken: function (erizo_id, erizo_purpose) {
+    var erizoManager = createErizoManager({amqper: amqper, room_id: room_id, on_broken: function (erizo_id, erizo_purpose) {
         if (erizos[erizo_id]) {
-            if (erizo_purpose === 'audio'
-                || erizo_purpose === 'video') {
+            if (erizo_purpose === 'audio' || erizo_purpose === 'video') {
                 rebuildErizo(erizo_id);
             } else {
                 cleanErizo(erizo_id);
@@ -61,40 +59,40 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
     }});
 
     var enableAVCoordination = function () {
-        log.debug("enableAVCoordination");
+        log.debug('enableAVCoordination');
         if (config.enableMixing && audio_mixer && video_mixer) {
-            log.debug("enableAVCoordination 1");
+            log.debug('enableAVCoordination 1');
             makeRPC(
                 amqper,
                 'ErizoJS_' + terminals[audio_mixer].erizo,
-                "enableVAD",
+                'enableVAD',
                 [1000, room_id, observer]);
         }
     };
 
     var initialize = function () {
-        log.debug("initialize...");
+        log.debug('initialize...');
         if (config.enableMixing) {
             audio_mixer = Math.random() * 1000000000000000000 + '';
             newTerminal(audio_mixer, 'amixer', function () {
-                log.debug("new audio mixer ok. audio_mixer:", audio_mixer);
+                log.debug('new audio mixer ok. audio_mixer:', audio_mixer);
                 makeRPC(
                     amqper,
                     'ErizoJS_' + terminals[audio_mixer].erizo,
-                    "init",
+                    'init',
                     ['mixing', config.mediaMixing.audio],
                     function (supported_audio) {
-                        log.debug("init audio mixer ok.");
+                        log.debug('init audio mixer ok.');
                         video_mixer = Math.random() * 1000000000000000000 + '';
                         newTerminal(video_mixer, 'vmixer', function () {
-                            log.debug("new video mixer ok. video_mixer:", video_mixer);
+                            log.debug('new video mixer ok. video_mixer:', video_mixer);
                             makeRPC(
                                 amqper,
                                 'ErizoJS_' + terminals[video_mixer].erizo,
-                                "init",
+                                'init',
                                 ['mixing', config.mediaMixing.video],
                                 function (supported_video) {
-                                    log.debug("init video mixer ok.");
+                                    log.debug('init video mixer ok.');
                                     supported_audio_codecs = supported_audio.codecs;
                                     supported_video_codecs = supported_video.codecs;
                                     supported_video_resolutions = supported_video.resolutions;
@@ -108,7 +106,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
                                     makeRPC(
                                         amqper,
                                         'ErizoJS_' + terminals[audio_mixer].erizo,
-                                        "deinit",
+                                        'deinit',
                                         [audio_mixer]);
                                     deleteTerminal(audio_mixer);
                                     audio_mixer = undefined;
@@ -119,7 +117,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
                                 makeRPC(
                                     amqper,
                                     'ErizoJS_' + terminals[audio_mixer].erizo,
-                                    "deinit",
+                                    'deinit',
                                     [audio_mixer]);
                                 deleteTerminal(audio_mixer);
                                 audio_mixer = undefined;
@@ -141,7 +139,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
     };
 
     var deinitialize = function () {
-        log.debug("deinitialize");
+        log.debug('deinitialize');
 
         for (var terminal_id in terminals) {
             if (terminals[terminal_id].type === 'webrtc'
@@ -157,7 +155,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
                 makeRPC(
                     amqper,
                     'ErizoJS_' + terminals[terminal_id].erizo,
-                    "deinit",
+                    'deinit',
                     [terminal_id]);
             }
             deleteTerminal(terminal_id);
@@ -192,7 +190,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
     };
 
     var newTerminal = function (terminal_id, terminal_type, on_ok, on_error) {
-        log.debug("newTerminal:", terminal_id, "terminal_type:", terminal_type);
+        log.debug('newTerminal:', terminal_id, 'terminal_type:', terminal_type);
         if (terminals[terminal_id] === undefined) {
             var purpose = (terminal_type === 'vmixer' || terminal_type === 'vxcoder') ? 'video'
                           : ((terminal_type === 'amixer' || terminal_type === 'axcoder') ? 'audio' : terminal_type);
@@ -209,7 +207,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
                                                   published: [],
                                                   subscribed: {}};
                     } else {
-                        log.debug("A previous erizo has been allocated for terminal:", terminal_id);
+                        log.debug('A previous erizo has been allocated for terminal:', terminal_id);
                         erizoManager.deallocateErizo(erizo);
                     }
                     on_ok();
@@ -221,7 +219,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
     };
 
     var deleteTerminal = function (terminal_id) {
-        log.debug("deleteTerminal:", terminal_id);
+        log.debug('deleteTerminal:', terminal_id);
         var erizo = terminals[terminal_id] ? terminals[terminal_id].erizo : undefined;
         delete terminals[terminal_id];
 
@@ -240,8 +238,8 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
     };
 
     var spreadStream = function (stream_id, target_erizo_id, audio, video, on_ok, on_error) {
-        log.debug("spreadStream, stream_id:", stream_id, "target_erizo_id:", target_erizo_id, "audio:", audio, "video:", video);
-        log.debug("original stream(streams[stream_id]):", streams[stream_id]);
+        log.debug('spreadStream, stream_id:', stream_id, 'target_erizo_id:', target_erizo_id, 'audio:', audio, 'video:', video);
+        log.debug('original stream(streams[stream_id]):', streams[stream_id]);
         var stream_owner = streams[stream_id].owner,
             original_erizo = terminals[stream_owner].erizo,
             hasAudio = audio && !!streams[stream_id].audio,
@@ -249,7 +247,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
             audio_codec = hasAudio ? streams[stream_id].audio.codec : undefined,
             video_codec = hasVideo ? streams[stream_id].video.codec : undefined;
         if (!hasAudio && !hasVideo) {
-            on_error("Can't spread stream without audio/video.");
+            on_error('Cannot spread stream without audio/video.');
             return;
         }
 
@@ -257,34 +255,34 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
             on_ok();
             return;
         }
-        log.debug("spreadStream:", stream_id, "audio:", audio, "audio_codec:", audio_codec, "video:", video, "video_codec:", video_codec);
+        log.debug('spreadStream:', stream_id, 'audio:', audio, 'audio_codec:', audio_codec, 'video:', video, 'video_codec:', video_codec);
         makeRPC(
             amqper,
             'ErizoJS_' + target_erizo_id,
-            "publish",
+            'publish',
             [stream_id, 'internal', {owner: stream_owner, has_audio: hasAudio, audio_codec: audio_codec, has_video: hasVideo, video_codec: video_codec, protocol: 'tcp'}],
             function (dest_port) {
                 if (!erizos[target_erizo_id] || !erizos[original_erizo]) {
                     makeRPC(
                             amqper,
                             'ErizoJS_' + target_erizo_id,
-                            "unpublish",
+                            'unpublish',
                             [stream_id]);
-                    on_error("Late coming callback for spreading stream.");
+                    on_error('Late coming callback for spreading stream.');
                 }
-                log.debug("internally publish ok, dest_port:", dest_port);
+                log.debug('internally publish ok, dest_port:', dest_port);
                 var dest_ip = erizos[target_erizo_id].addr;
                 //FIXME: Hard coded for VCA
                 if (/\b(172).(31).(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?).(1)\b/g.test(erizos[original_erizo].addr)) {
-                    dest_ip = erizos[original_erizo].addr.replace(/.1$/g, ".254");
+                    dest_ip = erizos[original_erizo].addr.replace(/.1$/g, '.254');
                 }
                 makeRPC(
                     amqper,
                     'ErizoJS_' + original_erizo,
-                    "subscribe",
+                    'subscribe',
                     [stream_id+'@'+target_erizo_id, 'internal', hasAudio ? stream_id : undefined, hasVideo ? stream_id : undefined, {require_audio: hasAudio, require_video: hasVideo, dest_ip: dest_ip, dest_port: dest_port, protocol: 'tcp'}],
                     function () {
-                        log.debug("internally subscribe ok");
+                        log.debug('internally subscribe ok');
                         if (streams[stream_id] && erizos[target_erizo_id] && erizos[original_erizo]) {
                             streams[stream_id].spread.push(target_erizo_id);
                             on_ok();
@@ -292,22 +290,22 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
                             makeRPC(
                                 amqper,
                                 'ErizoJS_' + original_erizo,
-                                "unsubscribe",
+                                'unsubscribe',
                                 [stream_id+'@'+target_erizo_id]);
 
                             makeRPC(
                                 amqper,
                                 'ErizoJS_' + target_erizo_id,
-                                "unpublish",
+                                'unpublish',
                                 [stream_id]);
-                            on_error("Late coming callback for spreading stream.");
+                            on_error('Late coming callback for spreading stream.');
                         }
                     },
                     function (error_reason) {
                         makeRPC(
                             amqper,
                             'ErizoJS_' + target_erizo_id,
-                            "unpublish",
+                            'unpublish',
                             [stream_id]);
                         on_error(error_reason);
                     });
@@ -318,20 +316,20 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
     var shrinkStream = function (stream_id, target_erizo_id) {
         var i = streams[stream_id] ? streams[stream_id].spread.indexOf(target_erizo_id) : -1;
         if (i !== -1) {
-            log.debug("shrinkStream:", stream_id, "target_erizo_id:", target_erizo_id);
+            log.debug('shrinkStream:', stream_id, 'target_erizo_id:', target_erizo_id);
             var stream_owner = streams[stream_id].owner,
                 original_erizo = terminals[stream_owner].erizo;
 
             makeRPC(
                 amqper,
                 'ErizoJS_' + original_erizo,
-                "unsubscribe",
+                'unsubscribe',
                 [stream_id+'@'+target_erizo_id]);
 
             makeRPC(
                 amqper,
                 'ErizoJS_' + target_erizo_id,
-                "unpublish",
+                'unpublish',
                 [stream_id]);
 
             streams[stream_id].spread.splice(i, 1);
@@ -363,7 +361,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
     };
 
     var mixAudio = function (stream_id, on_ok, on_error) {
-        log.debug("to mix audio of stream:", stream_id);
+        log.debug('to mix audio of stream:', stream_id);
         if (audio_mixer && terminals[audio_mixer]) {
             spreadStream(stream_id, terminals[audio_mixer].erizo, true, false, function () {
                 streams[stream_id].audio.subscribers.push(audio_mixer);
@@ -371,8 +369,8 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
                 on_ok();
             }, on_error);
         } else {
-            log.error("Audio mixer is NOT ready.");
-            on_error("Audio mixer is NOT ready.");
+            log.error('Audio mixer is NOT ready.');
+            on_error('Audio mixer is NOT ready.');
         }
     };
 
@@ -391,7 +389,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
     };
 
     var mixVideo = function (stream_id, on_ok, on_error) {
-        log.debug("to mix video of stream:", stream_id);
+        log.debug('to mix video of stream:', stream_id);
         if (video_mixer && terminals[video_mixer]) {
             spreadStream(stream_id, terminals[video_mixer].erizo, false, true, function () {
                 streams[stream_id].video.subscribers.push(video_mixer);
@@ -399,8 +397,8 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
                 on_ok();
             }, on_error);
         } else {
-            log.error("Video mixer is NOT ready.");
-            on_error("Video mixer is NOT ready.");
+            log.error('Video mixer is NOT ready.');
+            on_error('Video mixer is NOT ready.');
         }
     };
 
@@ -419,7 +417,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
     };
 
     var mixStream = function (stream_id, on_ok, on_error) {
-        log.debug("to mix stream:", stream_id);
+        log.debug('to mix stream:', stream_id);
         if (streams[stream_id].audio) {
             mixAudio(stream_id, function () {
                 if (streams[stream_id].video) {
@@ -446,14 +444,14 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
 
     var spawnMixedAudio = function (terminal_id, audio_codec, on_ok, on_error) {
         var amixer_erizo = terminals[audio_mixer].erizo;
-        log.debug("spawnMixedAudio, for terminal:", terminal_id, "audio_codec:", audio_codec);
+        log.debug('spawnMixedAudio, for terminal:', terminal_id, 'audio_codec:', audio_codec);
         makeRPC(
             amqper,
             'ErizoJS_' + amixer_erizo,
-            "generate",
+            'generate',
             [terminal_id, audio_codec],
             function (stream_id) {
-                log.debug("spawnMixedAudio ok, stream_id:", stream_id);
+                log.debug('spawnMixedAudio ok, stream_id:', stream_id);
                 if (streams[stream_id] === undefined) {
                     streams[stream_id] = {owner: audio_mixer,
                                           audio: {codec: audio_codec,
@@ -471,7 +469,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
         makeRPC(
             amqper,
             'ErizoJS_' + vmixer_erizo,
-            "generate",
+            'generate',
             [video_codec, video_resolution],
             function (stream_id) {
                 if (streams[stream_id] === undefined) {
@@ -514,16 +512,16 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
 
     var spawnTranscodedAudio = function (axcoder, audio_codec, on_ok, on_error) {
         var axcoder_erizo = terminals[axcoder].erizo;
-        log.debug("spawnTranscodedAudio, audio_codec:", audio_codec);
+        log.debug('spawnTranscodedAudio, audio_codec:', audio_codec);
         makeRPC(
             amqper,
             'ErizoJS_' + axcoder_erizo,
-            "generate",
+            'generate',
             [audio_codec, audio_codec],
             function (stream_id) {
-                log.debug("spawnTranscodedAudio ok, stream_id:", stream_id);
+                log.debug('spawnTranscodedAudio ok, stream_id:', stream_id);
                 if (streams[stream_id] === undefined) {
-                    log.debug("add to streams.");
+                    log.debug('add to streams.');
                     streams[stream_id] = {owner: axcoder,
                                           audio: {codec: audio_codec,
                                                   subscribers: []},
@@ -547,7 +545,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
     };
 
     var findExistingAudioTranscoder = function (stream_id, on_ok, on_error) {
-        var subscribers = streams[stream_id].audio.subscribers
+        var subscribers = streams[stream_id].audio.subscribers;
         for (var i in subscribers) {
             if (terminals[subscribers[i]] && terminals[subscribers[i]].type === 'axcoder') {
                 on_ok(subscribers[i]);
@@ -565,7 +563,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
                     makeRPC(
                         amqper,
                         'ErizoJS_' + terminals[axcoder].erizo,
-                        "deinit",
+                        'deinit',
                         [axcoder]);
                     deleteTerminal(axcoder);
                     on_error(error_reason);
@@ -574,7 +572,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
                 makeRPC(
                     amqper,
                     'ErizoJS_' + terminals[axcoder].erizo,
-                    "init",
+                    'init',
                     ['transcoding', {}],
                     function (supported_audio) {
                         spreadStream(stream_id, terminals[axcoder].erizo, true, false, function () {
@@ -597,16 +595,16 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
 
     var spawnTranscodedVideo = function (vxcoder, video_codec, video_resolution, on_ok, on_error) {
         var vxcoder_erizo = terminals[vxcoder].erizo;
-        log.debug("spawnTranscodedVideo, video_codec:", video_codec, "video_resolution:", video_resolution);
+        log.debug('spawnTranscodedVideo, video_codec:', video_codec, 'video_resolution:', video_resolution);
         makeRPC(
             amqper,
             'ErizoJS_' + vxcoder_erizo,
-            "generate",
+            'generate',
             [video_codec, video_resolution],
             function (stream_id) {
-                log.debug("spawnTranscodedVideo ok, stream_id:", stream_id);
+                log.debug('spawnTranscodedVideo ok, stream_id:', stream_id);
                 if (streams[stream_id] === undefined) {
-                    log.debug("add to streams.");
+                    log.debug('add to streams.');
                     streams[stream_id] = {owner: vxcoder,
                                           audio: undefined,
                                           video: {codec: video_codec,
@@ -631,7 +629,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
     };
 
     var findExistingVideoTranscoder = function (stream_id, on_ok, on_error) {
-        var subscribers = streams[stream_id].video.subscribers
+        var subscribers = streams[stream_id].video.subscribers;
         for (var i in subscribers) {
             if (terminals[subscribers[i]] && terminals[subscribers[i]].type === 'vxcoder') {
                 on_ok(subscribers[i]);
@@ -649,7 +647,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
                     makeRPC(
                         amqper,
                         'ErizoJS_' + terminals[vxcoder].erizo,
-                        "deinit",
+                        'deinit',
                         [vxcoder]);
                     deleteTerminal(vxcoder);
                     on_error(error_reason);
@@ -658,7 +656,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
                 makeRPC(
                     amqper,
                     'ErizoJS_' + terminals[vxcoder].erizo,
-                    "init",
+                    'init',
                     ['transcoding', {resolution: streams[stream_id].video.resolution || 'hd1080p'/*FIXME: hard code*/}],
                     function (supported_video) {
                         spreadStream(stream_id, terminals[vxcoder].erizo, false, true, function () {
@@ -685,7 +683,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
         makeRPC(
             amqper,
             'ErizoJS_' + erizo,
-            "degenerate",
+            'degenerate',
             [stream_id]);
         delete streams[stream_id];
 
@@ -732,10 +730,10 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
     };
 
     var getAudioStream = function (terminal_id, stream_id, audio_codec, on_ok, on_error) {
-        log.debug("getAudioStream, terminal_id:", terminal_id, "stream:", streams[stream_id], "audio_codec:", audio_codec);
+        log.debug('getAudioStream, terminal_id:', terminal_id, 'stream:', streams[stream_id], 'audio_codec:', audio_codec);
         if (stream_id === mixed_stream_id) {
             getMixedAudio(terminal_id, audio_codec, function (streamID) {
-                log.debug("Got mixed audio:", streamID);
+                log.debug('Got mixed audio:', streamID);
                 on_ok(streamID);
             }, on_error);
         } else if (streams[stream_id]) {
@@ -756,10 +754,10 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
     };
 
     var getVideoStream = function (stream_id, video_codec, video_resolution, on_ok, on_error) {
-        log.debug("getVideoStream, stream:", streams[stream_id], "video_codec:", video_codec, "video_resolution:", video_resolution);
+        log.debug('getVideoStream, stream:', streams[stream_id], 'video_codec:', video_codec, 'video_resolution:', video_resolution);
         if (stream_id === mixed_stream_id) {
             getMixedVideo(video_codec, video_resolution, function (streamID) {
-                log.debug("Got mixed video:", streamID);
+                log.debug('Got mixed video:', streamID);
                 on_ok(streamID);
             }, on_error);
         } else if (streams[stream_id]) {
@@ -783,13 +781,13 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
         makeRPC(
             amqper,
             'ErizoJS_' + terminals[terminal_id].erizo,
-            "publish",
+            'publish',
             [stream_id, stream_type, stream_info],
             onResponse, on_error);
     };
 
     var unpublishStream = function (stream_id) {
-        log.debug("unpublishStream:", stream_id, "stream.owner:", streams[stream_id].owner);
+        log.debug('unpublishStream:', stream_id, 'stream.owner:', streams[stream_id].owner);
         var stream = streams[stream_id],
             terminal_id = stream.owner,
             erizo = terminals[terminal_id].erizo;
@@ -799,7 +797,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
             makeRPC(
                 amqper,
                 'ErizoJS_' + erizo,
-                "unpublish",
+                'unpublish',
                 [stream_id]);
 
             unmixStream(stream_id);
@@ -815,7 +813,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
     };
 
     var subscribeStream = function (subscriber, subscription_id, audio_stream, video_stream, options, on_ok, on_error) {
-        log.debug("subscribeStream, subscriber:", subscriber, "subscription_id:", subscription_id, "audio_stream:", audio_stream, "video_stream:", video_stream);
+        log.debug('subscribeStream, subscriber:', subscriber, 'subscription_id:', subscription_id, 'audio_stream:', audio_stream, 'video_stream:', video_stream);
         if (audio_stream === video_stream || audio_stream === undefined || video_stream === undefined) {
             var stream_id = audio_stream || video_stream;
             spreadStream(stream_id, terminals[subscriber].erizo, true, true, function () {
@@ -825,21 +823,21 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
                 makeRPC(
                     amqper,
                     'ErizoJS_' + terminals[subscriber].erizo,
-                    "subscribe",
+                    'subscribe',
                     [subscription_id, terminals[subscriber].type, audioStream, videoStream, options],
                     on_ok,
                     on_error);
             }, on_error);
         } else {
-            log.debug("spread audio and video stream independently.");
+            log.debug('spread audio and video stream independently.');
             spreadStream(audio_stream, terminals[subscriber].erizo, true, false, function () {
-                log.debug("spread audio_stream:", audio_stream, " ok.");
+                log.debug('spread audio_stream:', audio_stream, ' ok.');
                 spreadStream(video_stream, terminals[subscriber].erizo, false, true, function () {
-                    log.debug("spread video_stream:", video_stream, " ok.");
+                    log.debug('spread video_stream:', video_stream, ' ok.');
                     makeRPC(
                         amqper,
                         'ErizoJS_' + terminals[subscriber].erizo,
-                        "subscribe",
+                        'subscribe',
                         [subscription_id, terminals[subscriber].type, audio_stream, video_stream, options],
                         on_ok,
                         on_error);
@@ -857,14 +855,14 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
         makeRPC(
             amqper,
             'ErizoJS_' + erizo_id,
-            "unsubscribe",
+            'unsubscribe',
             [subscription_id]);
 
         if (audio_stream) {
             if (streams[audio_stream] && streams[audio_stream].audio) {
                 var i = streams[audio_stream].audio.subscribers.indexOf(subscriber);
                 streams[audio_stream].audio.subscribers.splice(i, 1);
-                subscription.audio = undefined
+                subscription.audio = undefined;
             }
             if (!isSpreadNeeded(audio_stream, erizo_id)) {
                 shrinkStream(audio_stream, erizo_id);
@@ -907,7 +905,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
                 if (terminals[terminal_id].subscribed[subscription_id].audio === stream_id || terminals[terminal_id].subscribed[subscription_id].video === stream_id) {
                     if (terminals[terminal_id].type === 'axcoder' || terminals[terminal_id].type === 'vxcoder') {
                         for (var i in terminals[terminal_id].published) {
-                            unpublishStream(terminals[terminal_id].published[i])
+                            unpublishStream(terminals[terminal_id].published[i]);
                         }
                     }
 
@@ -923,11 +921,11 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
     };
 
     that.publish = function (terminal_id, stream_id, stream_type, stream_info, enable_mixing, onResponse) {
-        log.debug("publish, terminal_id:", terminal_id, "stream_id:", stream_id, "stream_type:", stream_type, "enable_mixing:", enable_mixing, "stream_info:", stream_info);
+        log.debug('publish, terminal_id:', terminal_id, 'stream_id:', stream_id, 'stream_type:', stream_type, 'enable_mixing:', enable_mixing, 'stream_info:', stream_info);
         var doPublish = function () {
             var erizo_id = terminals[terminal_id].erizo,
-                audio_codec = undefined,
-                video_codec = undefined;
+                audio_codec,
+                video_codec;
 
             streams[stream_id] = {owner: terminal_id, audio: undefined, video: undefined, spread: []};
             terminals[terminal_id].published.push(stream_id);
@@ -938,7 +936,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
                 stream_type,
                 stream_info,
                 function (response) {
-                    log.debug("publish response:", response);
+                    log.debug('publish response:', response);
                     if (response.type === 'ready') {
                         if (streams[stream_id] && terminals[terminal_id] && terminals[terminal_id].published.indexOf(stream_id) !== -1) {
                             audio_codec = response.audio_codecs && response.audio_codecs.length > 0 && response.audio_codecs[0];
@@ -951,16 +949,16 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
                                                                                                  subscribers: []} : undefined;
                             if (enable_mixing && config.enableMixing) {
                                 mixStream(stream_id, function () {
-                                    log.info("Mix stream["+stream_id+"] successfully.");
+                                    log.info('Mix stream['+stream_id+'] successfully.');
                                 }, function (error_reason) {
                                     log.error(error_reason);
                                 });
                             } else {
-                                log.debug("publish ok, will not mix in.");
+                                log.debug('publish ok, will not mix in.');
                             }
                             onResponse(response);
                         } else {
-                           log.info("Late coming publish response.");
+                           log.info('Late coming publish response.');
                         }
                     } else if (response.type === 'failed') {
                         unpublishStream(stream_id);
@@ -970,7 +968,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
                     }
                 }, function (error_reason) {
                     unpublishStream(stream_id);
-                    log.debug("publish failed, reason:", error_reason);
+                    log.debug('publish failed, reason:', error_reason);
                     onResponse({type: 'failed', reason: error_reason});
                 });
         };
@@ -980,19 +978,19 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
                 doPublish();
             }, function (error_reason) {onResponse({type: 'failed', reason: error_reason});});
         } else {
-            onResponse({type: 'failed', reason: "Stream[" + stream_id + "] already set for " + terminal_id});
+            onResponse({type: 'failed', reason: 'Stream[' + stream_id + '] already set for ' + terminal_id});
         }
     };
 
     that.unpublish = function (stream_id) {
-        log.debug("unpublish, stream_id:", stream_id);
+        log.debug('unpublish, stream_id:', stream_id);
         if (streams[stream_id]) {
             unpublishStream(stream_id);
         }
     };
 
     that.subscribeSelectively = function (terminal_id, subscription_id, subscription_type, audio_stream_id, video_stream_id, options, onResponse) {
-        log.debug("subscribe, terminal_id:", terminal_id, ", subscription_id:", subscription_id, ", subscription_type:", subscription_type, ", audio_stream_id:", audio_stream_id, ", video_stream_id:", video_stream_id, ", options:", options);
+        log.debug('subscribe, terminal_id:', terminal_id, ', subscription_id:', subscription_id, ', subscription_type:', subscription_type, ', audio_stream_id:', audio_stream_id, ', video_stream_id:', video_stream_id, ', options:', options);
         var audio_codec = options.audio_codec
                        || (audio_stream_id === mixed_stream_id && supported_audio_codecs[0])
                        || (streams[audio_stream_id] && streams[audio_stream_id].audio && streams[audio_stream_id].audio.codec)
@@ -1019,12 +1017,12 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
         }
 
         var on_error = function (error_reason) {
-            log.debug("subscribe failed, reason:", error_reason);
+            log.debug('subscribe failed, reason:', error_reason);
             if (terminals[terminal_id]) {
                 makeRPC(
                     amqper,
                     'ErizoJS_' + terminals[terminal_id].erizo,
-                    "disconnect",
+                    'disconnect',
                     [subscription_id]);
                 
                 delete terminals[terminal_id].subscribed[subscription_id];
@@ -1037,7 +1035,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
 
         var on_ok = function (audioStream, videoStream) {
             return function () {
-                log.debug("subscribe ok, audioStream:", audioStream, "videoStream", videoStream);
+                log.debug('subscribe ok, audioStream:', audioStream, 'videoStream', videoStream);
                 if (terminals[terminal_id] && terminals[terminal_id].subscribed[subscription_id]
                     && (!audioStream || streams[audioStream])
                     && (!videoStream || streams[videoStream])) {
@@ -1049,23 +1047,24 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
                 } else {
                     audioStream && recycleTemporaryAudio(audioStream);
                     videoStream && recycleTemporaryVideo(videoStream);
-                    on_error("The subscribed stream has been broken. Canceling it.");
+                    on_error('The subscribed stream has been broken. Canceling it.');
                 }
-            }};
+            };
+        };
 
         var doSubscribe = function () {
-            var audio_stream = undefined, video_stream = undefined;
+            var audio_stream, video_stream;
 
             if (options.require_audio && audio_stream_id) {
-                log.debug("require audio track of stream:", audio_stream_id);
+                log.debug('require audio track of stream:', audio_stream_id);
                 getAudioStream(terminal_id, audio_stream_id, audio_codec, function (streamID) {
                     audio_stream = streamID;
-                    log.debug("Got audio stream:", audio_stream);
+                    log.debug('Got audio stream:', audio_stream);
                     if (options.require_video && video_stream_id) {
-                        log.debug("require video track of stream:", video_stream_id);
+                        log.debug('require video track of stream:', video_stream_id);
                         getVideoStream(video_stream_id, video_codec, video_resolution, function (streamID) {
                             video_stream = streamID;
-                            log.debug("Got video stream:", video_stream);
+                            log.debug('Got video stream:', video_stream);
                             subscribeStream(terminal_id, subscription_id, audio_stream, video_stream, options, on_ok(audio_stream, video_stream), function (error_reason) {
                                 recycleTemporaryVideo(video_stream);
                                 recycleTemporaryAudio(audio_stream);
@@ -1074,7 +1073,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
                         }, function (error_reason) {
                             recycleTemporaryAudio(audio_stream);
                             on_error(error_reason);
-                        })
+                        });
                     } else {
                         subscribeStream(terminal_id, subscription_id, audio_stream, undefined, options, on_ok(audio_stream, undefined), function (error_reason) {
                             recycleTemporaryAudio(audio_stream);
@@ -1083,7 +1082,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
                     }
                 }, on_error);
             } else if (options.require_video && video_stream_id) {
-                log.debug("require video track of stream:", video_stream_id);
+                log.debug('require video track of stream:', video_stream_id);
                 getVideoStream(video_stream_id, video_codec, video_resolution, function (streamID) {
                     video_stream = streamID;
                     subscribeStream(terminal_id, subscription_id, undefined, video_stream, options, on_ok(undefined, video_stream), function (error_reason) {
@@ -1092,8 +1091,8 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
                     });
                 }, on_error);
             } else {
-                log.debug("No audio or video is required.");
-                on_error("No audio or video is required.");
+                log.debug('No audio or video is required.');
+                on_error('No audio or video is required.');
             }
         };
 
@@ -1101,17 +1100,17 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
             makeRPC(
                 amqper,
                 'ErizoJS_' + terminals[terminal_id].erizo,
-                "connect",
+                'connect',
                 [subscription_id, subscription_type, options],
                 function (response) {
                     if (response.type === 'ready') {
                         audio_codec = response.audio_codecs && response.audio_codecs.length > 0 && response.audio_codecs[0];
                         video_codec = response.video_codecs && response.video_codecs.length > 0 && response.video_codecs[0];
-                        log.debug("subscriber connected ok.");
+                        log.debug('subscriber connected ok.');
                         if (terminals[terminal_id] && terminals[terminal_id].subscribed[subscription_id]) {
                             doSubscribe();
                         } else {
-                            on_error("Subscription["+subscription_id+"] was canceled.");
+                            on_error('Subscription['+subscription_id+'] was canceled.');
                         }
                     } else {
                         onResponse(response);
@@ -1140,14 +1139,14 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
     };
 
     that.unsubscribe = function (terminal_id, subscription_id) {
-        log.debug("unsubscribe from terminal:", terminal_id, "for subscription:", subscription_id);
+        log.debug('unsubscribe from terminal:', terminal_id, 'for subscription:', subscription_id);
         if (terminals[terminal_id]) {
             unsubscribeStream(terminal_id, subscription_id);
         }
     };
 
     that.unsubscribeAll = function (terminal_id) {
-        log.debug("unsubscribeAll from terminal:", terminal_id);
+        log.debug('unsubscribeAll from terminal:', terminal_id);
         if (terminals[terminal_id]) {
             Object.keys(terminals[terminal_id].subscribed).map(function (subscription_id) {
                 unsubscribeStream(terminal_id, subscription_id);
@@ -1159,7 +1158,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
         if (streams[stream_id]) {
             mixStream(stream_id, on_ok, on_error);
         } else {
-            on_error("Stream does not exist:"+stream_id);
+            on_error('Stream does not exist:'+stream_id);
         }
     };
 
@@ -1168,17 +1167,17 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
             unmixStream(stream_id);
             on_ok();
         } else {
-            on_error("Stream does not exist:"+stream_id);
+            on_error('Stream does not exist:'+stream_id);
         }
     };
 
     that.onConnectionSignalling = function (terminal_id, connection_id, msg) {
-        log.debug("onConnectionSignalling, terminal_id:", terminal_id, "connection_id:", connection_id/*, "msg:", msg*/);
+        log.debug('onConnectionSignalling, terminal_id:', terminal_id, 'connection_id:', connection_id/*, 'msg:', msg*/);
         if (terminals[terminal_id]) {
             makeRPC(
                 amqper,
                 'ErizoJS_' + terminals[terminal_id].erizo,
-                "onConnectionSignalling",
+                'onConnectionSignalling',
                 [connection_id, msg]);
         }
     };
@@ -1188,12 +1187,12 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
             makeRPC(
                 amqper,
                 'ErizoJS_' + terminals[terminal_id].erizo,
-                "onTrackControl",
+                'onTrackControl',
                 [connection_id, track, direction, action],
                 on_ok,
                 on_error);
         } else {
-            on_error("No such a terminal:"+terminal_id);
+            on_error('No such a terminal:'+terminal_id);
         }
     };
 
@@ -1202,11 +1201,11 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
             makeRPC(
                 amqper,
                 'ErizoJS_' + terminals[streams[stream_id].owner].erizo,
-                "setVideoBitrate",
+                'setVideoBitrate',
                 [stream_id, bitrate]);
             on_ok();
         } else {
-            on_error("No such a stream:"+stream_id);
+            on_error('No such a stream:'+stream_id);
         }
     };
 
@@ -1215,7 +1214,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
             makeRPC(
                 amqper,
                 'ErizoJS_' + terminals[video_mixer].erizo,
-                "getRegion",
+                'getRegion',
                 [stream_id],
                 on_ok,
                 on_error);
@@ -1227,7 +1226,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
             makeRPC(
                 amqper,
                 'ErizoJS_' + terminals[video_mixer].erizo,
-                "setRegion",
+                'setRegion',
                 [stream_id, region],
                 on_ok,
                 on_error);
@@ -1235,14 +1234,14 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
     };
 
     that.setPrimary = function (terminal_id) {
-        log.debug("setPrimary:", terminal_id);
+        log.debug('setPrimary:', terminal_id);
         for (var i in terminals[terminal_id].published) {
             var stream_id = terminals[terminal_id].published[i];
             if (streams[stream_id] && streams[stream_id].video && (streams[stream_id].video.subscribers.indexOf(video_mixer) !== -1)) {
                 makeRPC(
                     amqper,
                     'ErizoJS_' + terminals[video_mixer].erizo,
-                    "setPrimary",
+                    'setPrimary',
                     [stream_id]);
                 return;
             }

@@ -1,3 +1,4 @@
+/*global exports*/
 'use strict';
 
 exports.makeRPC = function (rpc, remote_node, remote_function, parameters_list, on_ok, on_error) {
@@ -9,7 +10,7 @@ exports.makeRPC = function (rpc, remote_node, remote_function, parameters_list, 
             if (result === 'error') {
                 typeof on_error === 'function' && on_error(error_reason);
             } else if (result === 'timeout') {
-                typeof on_error === 'function' && on_error("Timeout to make rpc to " + remote_node + "." + remote_function);
+                typeof on_error === 'function' && on_error('Timeout to make rpc to ' + remote_node + '.' + remote_function);
             } else {
                 typeof on_ok === 'function' && on_ok(result);
             }

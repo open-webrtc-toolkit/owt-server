@@ -1,31 +1,27 @@
-/*global require, exports, , setInterval, clearInterval*/
+/*global require, exports*/
+'use strict';
 
 var addon = require('./../../bindings/mcu/build/Release/addon');
 var logger = require('./../common/logger').logger;
 
 // Logger
-var log = logger.getLogger("RtspIn");
+var log = logger.getLogger('RtspIn');
 
-exports.RtspIn = function (spec) {
-    "use strict";
-
+exports.RtspIn = function () {
     var that = {},
         audio = false,
         video = false,
-        rtspClient = undefined;
+        rtspClient;
 
     /*
      * Given a WebRtcConnection waits for the state CANDIDATES_GATHERED for set remote SDP.
      */
     var initRtspClient = function (rtspClient, on_status) {
-        var terminated = false;
         var audio_codec_list = [],
             video_codec_list = [];
 
         rtspClient.init(function (msg){
-
-          var localSdp, answer;
-          log.info("RtspIn Addon status:" + msg);
+          log.info('RtspIn Addon status:' + msg);
 
           if (msg.startsWith('videoCodec')) {
               video_codec_list.push(msg.split(':')[1]);
@@ -62,7 +58,7 @@ exports.RtspIn = function (spec) {
             rtspClient.addDestination('video', dest);
             return;
         } else {
-            log.warn("Wrong track:"+track);
+            log.warn('Wrong track:'+track);
         }
     };
 
@@ -75,7 +71,7 @@ exports.RtspIn = function (spec) {
             return;
         }
 
-        log.warn("Wrong track:"+track);
+        log.warn('Wrong track:'+track);
     };
 
     return that;
