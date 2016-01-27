@@ -1,4 +1,6 @@
-/* 
+/*global exports*/
+'use strict';
+/*
 Params
  
 	room: room to which we need to assing a erizoController.
@@ -30,4 +32,4 @@ Returns
 exports.getErizoController = function (room, ec_list, ec_queue) {
 	var erizoControllerId = ec_queue[0];
 	return erizoControllerId;
-}
+};

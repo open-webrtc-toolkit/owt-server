@@ -1,26 +1,25 @@
-/*global require, exports, , setInterval, clearInterval*/
+/*global require, exports, GLOBAL*/
 'use strict';
 var addon = require('./../../bindings/mcu/build/Release/addon');
 var logger = require('./../common/logger').logger;
 
 // Logger
-var log = logger.getLogger("VideoNode");
-
+var log = logger.getLogger('VideoNode');
 
 var VideoResolutionMap = { // definition adopted from VideoLayout.h
-    'cif':      ['cif'],
-    'vga':      ['vga', 'sif'],
-    'svga':     ['svga', 'sif'],
-    'xga':      ['xga', 'sif'],
-    'r640x360': ['r640x360'],
-    'hd720p':   ['hd720p', 'vga', 'r640x360'],
-    'sif':      ['sif'],
-    'hvga':     ['hvga'],
-    'r480x360': ['r480x360', 'sif'],
-    'qcif':     ['qcif'],
-    'r192x144': ['r192x144'],
-    'hd1080p':  ['hd1080p', 'hd720p', 'svga', 'vga', 'r640x360'],
-    'uhd_4k':   ['uhd_4k', 'hd1080p', 'hd720p', 'svga', 'vga', 'r640x360']
+    cif:      ['cif'],
+    vga:      ['vga', 'sif'],
+    svga:     ['svga', 'sif'],
+    xga:      ['xga', 'sif'],
+    r640x360: ['r640x360'],
+    hd720p:   ['hd720p', 'vga', 'r640x360'],
+    sif:      ['sif'],
+    hvga:     ['hvga'],
+    r480x360: ['r480x360', 'sif'],
+    qcif:     ['qcif'],
+    r192x144: ['r192x144'],
+    hd1080p:  ['hd1080p', 'hd720p', 'svga', 'vga', 'r640x360'],
+    uhd_4k:   ['uhd_4k', 'hd1080p', 'hd720p', 'svga', 'vga', 'r640x360']
 };
 
 function calculateResolutions(rootResolution, useMultistreaming) {
@@ -32,7 +31,7 @@ function calculateResolutions(rootResolution, useMultistreaming) {
     });
 }
 
-var VideoEngine = function (spec) {
+var VideoEngine = function () {
     var that = {},
         engine,
 
@@ -59,14 +58,14 @@ var VideoEngine = function (spec) {
             var conn = new addon.InternalIn(protocol);
             if (engine.addInput(stream_id, codec, conn)) {
                 inputs[stream_id] = conn;
-                log.debug("addInput ok, stream_id:", stream_id, "codec:", codec, "protocol:", protocol);
+                log.debug('addInput ok, stream_id:', stream_id, 'codec:', codec, 'protocol:', protocol);
                 on_ok(stream_id);
             } else {
                 conn.close();
-                on_error("Failed in adding input to video-engine.");
+                on_error('Failed in adding input to video-engine.');
             }
         } else {
-            on_error("Video-mixer engine is not ready.");
+            on_error('Video-mixer engine is not ready.');
         }
     };
 
@@ -80,9 +79,9 @@ var VideoEngine = function (spec) {
 
     var addOutput = function (codec, resolution, on_ok, on_error) {
         if (engine) {
-            for (var stream_id in outputs) {
-                if (outputs[stream_id].codec === codec && outputs[stream_id].resolution === resolution) {
-                    return on_ok(stream_id);
+            for (var id in outputs) {
+                if (outputs[id].codec === codec && outputs[id].resolution === resolution) {
+                    return on_ok(id);
                 }
             }
 
@@ -93,13 +92,13 @@ var VideoEngine = function (spec) {
                                       resolution: resolution,
                                       dispatcher: dispatcher,
                                       subscriptions: {}};
-                log.debug("addOutput ok, stream_id:", stream_id);
+                log.debug('addOutput ok, stream_id:', stream_id);
                 on_ok(stream_id);
             } else {
-                on_error("Failed in adding output to video-engine");
+                on_error('Failed in adding output to video-engine');
             }
         } else {
-            on_error("Video-mixer engine is not ready.");
+            on_error('Video-mixer engine is not ready.');
         }
     };
 
@@ -115,18 +114,18 @@ var VideoEngine = function (spec) {
             output.dispatcher.close();
             delete outputs[stream_id];
         }
-    }
+    };
 
     that.initEngine = function (videoConfig, callback) {
-        log.debug("initEngine, videoConfig:", videoConfig);
+        log.debug('initEngine, videoConfig:', videoConfig);
         var config = {
-            "hardware": useHardware,
-            "maxinput": videoConfig.maxInput,
-            "bitrate": videoConfig.bitrate,
-            "resolution": videoConfig.resolution,
-            "backgroundcolor": videoConfig.bkColor,
-            "layout": videoConfig.layout,
-            "simulcast": videoConfig.multistreaming
+            'hardware': useHardware,
+            'maxinput': videoConfig.maxInput,
+            'bitrate': videoConfig.bitrate,
+            'resolution': videoConfig.resolution,
+            'backgroundcolor': videoConfig.bkColor,
+            'layout': videoConfig.layout,
+            'simulcast': videoConfig.multistreaming
         };
 
         engine = new addon.VideoMixer(JSON.stringify(config));
@@ -141,7 +140,7 @@ var VideoEngine = function (spec) {
 
         supported_resolutions = calculateResolutions(videoConfig.resolution, videoConfig.multistreaming);
 
-        log.info("Video engine init OK");
+        log.info('Video engine init OK');
         callback('callback', {codecs: supported_codecs, resolutions: supported_resolutions});
     };
 
@@ -159,7 +158,7 @@ var VideoEngine = function (spec) {
     };
 
     that.generate = function (codec, resolution, callback) {
-        log.debug("generate, codec:", codec, "resolution:", resolution);
+        log.debug('generate, codec:', codec, 'resolution:', resolution);
         resolution = resolution || supported_resolutions[0];
         for (var stream_id in outputs) {
             if (outputs[stream_id].codec === codec && outputs[stream_id].resolution === resolution) {
@@ -188,7 +187,7 @@ var VideoEngine = function (spec) {
 
     that.publish = function (stream_id, stream_type, options, callback) {
         if (inputs[stream_id] === undefined) {
-            log.debug("inputs.length:", Object.keys(inputs).length, "maxInputNum:", maxInputNum);
+            log.debug('inputs.length:', Object.keys(inputs).length, 'maxInputNum:', maxInputNum);
             if (Object.keys(inputs).length < maxInputNum) {
                 addInput(stream_id, options.video_codec, options.protocol, function () {
                     callback('callback', inputs[stream_id].getListeningPort());
@@ -217,8 +216,8 @@ var VideoEngine = function (spec) {
             outputs[video_stream_id].subscriptions[subscription_id] = conn;
             callback('callback', 'ok');
         } else {
-            log.error("Stream does not exist!", audio_stream_id);
-            callback('callback', 'error', "Stream does not exist!");
+            log.error('Stream does not exist!', audio_stream_id);
+            callback('callback', 'error', 'Stream does not exist!');
         }
     };
 
@@ -280,11 +279,10 @@ exports.VideoNode = function () {
                                layout: [{region: [{id: '1', left: 0, top: 0, relativesize: 1}]}]};
             that.initEngine(videoConfig, callback);
         } else {
-            log.error("Unknown service type to init a video node:", service);
-            callback('callback', 'error', "Unknown service type to init a video node.");
+            log.error('Unknown service type to init a video node:', service);
+            callback('callback', 'error', 'Unknown service type to init a video node.');
         }
     };
 
     return that;
-}
-
+};

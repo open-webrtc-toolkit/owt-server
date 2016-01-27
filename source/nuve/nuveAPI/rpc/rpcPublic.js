@@ -1,6 +1,6 @@
-/*global exports, require, console, Buffer, setTimeout, clearTimeout*/
+/*global exports, require*/
+'use strict';
 var tokenRegistry = require('./../mdb/tokenRegistry');
-var serviceRegistry = require('./../mdb/serviceRegistry');
 var roomRegistry = require('./../mdb/roomRegistry');
 var cloudHandler = require('./../cloudHandler');
 var logger = require('../logger').logger;
@@ -14,10 +14,7 @@ var log = logger.getLogger('RPCPublic');
  * Also it removes old tokens.
  */
 exports.deleteToken = function (id, callback) {
-    'use strict';
-
     tokenRegistry.removeOldTokens();
-
     tokenRegistry.removeToken(id, function (err, token) {
         if (!err) {
             log.info('Consumed token ', token._id, 'from room ', token.room, ' of service ', token.service);
@@ -30,7 +27,6 @@ exports.deleteToken = function (id, callback) {
 };
 
 exports.getRoomConfig = function (roomId, callback) {
-    'use strict';
 
     roomRegistry.getRoom(roomId, function (room) {
         if (room === undefined) {
@@ -59,52 +55,44 @@ exports.getRoomConfig = function (roomId, callback) {
 };
 
 exports.addNewErizoController = function(msg, callback) {
-    'use strict';
     cloudHandler.addNewErizoController(msg, function (ec) {
         callback('callback', ec);
     });
 };
 
 exports.addNewErizoAgent = function(msg, callback) {
-    'use strict';
     cloudHandler.addNewErizoAgent(msg, function (ea) {
         callback('callback', ea);
     });
 };
 
 exports.getErizoAgent = function(msg, callback) {
-    'use strict';
     cloudHandler.getErizoAgent(msg, function (ea) {
         callback('callback', ea);
     });
 };
 
 exports.keepAlive = function(id, callback) {
-    'use strict';
     cloudHandler.keepAlive(id, function(result) {
         callback('callback', result);
     });
 };
 
 exports.setInfo = function(params, callback) {
-    'use strict';
     cloudHandler.setInfo(params);
     callback('callback');
 };
 
 exports.killMe = function(ip, callback) {
-    'use strict';
     cloudHandler.killMe(ip);
     callback('callback');
 };
 
 exports.reschedule = function (room, callback) { // ensure room is empty before calling this
-    'use strict';
     cloudHandler.reschedule(room);
     callback('callback');
 };
 
 exports.getKey = function (id, callback) {
-    'use strict';
     callback('callback', cloudHandler.getKey(id));
 };

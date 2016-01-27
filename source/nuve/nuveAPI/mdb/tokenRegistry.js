@@ -1,17 +1,15 @@
-/*global require, exports, console*/
+/*global require, exports*/
+'use strict';
 var db = require('./dataBase').db;
-
 var logger = require('./../logger').logger;
 
 // Logger
-var log = logger.getLogger("TokenRegistry");
+var log = logger.getLogger('TokenRegistry');
 
 /*
  * Gets a list of the tokens in the data base.
  */
-var getList = exports.getList = function (callback) {
-    "use strict";
-
+exports.getList = function (callback) {
     db.tokens.find({}).toArray(function (err, tokens) {
         if (err || !tokens) {
             log.info('Empty list');
@@ -22,8 +20,6 @@ var getList = exports.getList = function (callback) {
 };
 
 var getToken = exports.getToken = function (id, callback) {
-    "use strict";
-
     db.tokens.findOne({_id: db.ObjectId(id)}, function (err, token) {
         if (token == null) {
             token = undefined;
@@ -35,9 +31,7 @@ var getToken = exports.getToken = function (id, callback) {
     });
 };
 
-var hasToken = exports.hasToken = function (id, callback) {
-    "use strict";
-
+exports.hasToken = function (id, callback) {
     getToken(id, function (token) {
         if (token === undefined) {
             callback(false);
@@ -52,8 +46,6 @@ var hasToken = exports.hasToken = function (id, callback) {
  * Adds a new token to the data base.
  */
 exports.addToken = function (token, callback) {
-    "use strict";
-
     db.tokens.save(token, function (error, saved) {
         if (error) log.info('MongoDB: Error adding token: ', error);
         callback(saved._id);
@@ -64,8 +56,6 @@ exports.addToken = function (token, callback) {
  * Removes a token from the data base.
  */
 var removeToken = exports.removeToken = function (id, callback) {
-    "use strict";
-
     getToken(id, function (token) {
         if (token) {
             db.tokens.remove({_id: db.ObjectId(id)}, function (error, removed) {
@@ -89,21 +79,15 @@ var removeToken = exports.removeToken = function (id, callback) {
  * Updates a determined token in the data base.
  */
 exports.updateToken = function (token) {
-    "use strict";
-
     db.tokens.save(token, function (error, saved) {
         if (error) log.info('MongoDB: Error updating token: ', error);
     });
 };
 
 exports.removeOldTokens = function () {
-    "use strict";
-
     var i, token, time, tokenTime, dif;
-
     db.tokens.find({'use':{$exists:false}}).toArray(function (err, tokens) {
         if (err || !tokens) {
-            
         } else {
             for (i in tokens) {
                 token = tokens[i];

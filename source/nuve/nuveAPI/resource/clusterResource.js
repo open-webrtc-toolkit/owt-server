@@ -1,16 +1,15 @@
 /* global exports, require */
+'use strict';
 var cloudHandler = require('../cloudHandler');
 var superService = require('./../mdb/dataBase').superService;
 
 function authorized (callback) {
-  'use strict';
   var service = require('./../auth/nuveAuthenticator').service;
   service._id = service._id + '';
   callback(service._id === superService);
 }
 
 exports.getNodes = function (req, res) {
-  'use strict';
   authorized(function (ok) {
     if (ok) {
       return res.send(cloudHandler.getEcQueue());
@@ -20,7 +19,6 @@ exports.getNodes = function (req, res) {
 };
 
 exports.getNode = function (req, res) {
-  'use strict';
   var node = req.params.node;
   authorized(function (ok) {
     if (ok) {
@@ -31,7 +29,6 @@ exports.getNode = function (req, res) {
 };
 
 exports.getNodeConfig = function (req, res) {
-  'use strict';
   var node = req.params.node;
   authorized(function (ok) {
     if (ok) {
@@ -44,7 +41,6 @@ exports.getNodeConfig = function (req, res) {
 };
 
 exports.getRooms = function (req, res) {
-  'use strict';
   authorized(function (ok) {
     if (ok) {
       return res.send(cloudHandler.getHostedRooms());

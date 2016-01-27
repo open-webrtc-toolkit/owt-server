@@ -1,4 +1,5 @@
-/*global exports, require, console*/
+/*global exports, require*/
+'use strict';
 var roomRegistry = require('./../mdb/roomRegistry');
 var serviceRegistry = require('./../mdb/serviceRegistry');
 var cloudHandler = require('../cloudHandler');
@@ -6,7 +7,7 @@ var Room = require('./room');
 var logger = require('./../logger').logger;
 
 // Logger
-var log = logger.getLogger("RoomResource");
+var log = logger.getLogger('RoomResource');
 
 var currentService;
 
@@ -14,10 +15,7 @@ var currentService;
  * Gets the service and the room for the proccess of the request.
  */
 var doInit = function (roomId, callback) {
-    "use strict";
-
     currentService = require('./../auth/nuveAuthenticator').service;
-
     serviceRegistry.getRoomForService(roomId, currentService, callback);
 };
 
@@ -25,8 +23,6 @@ var doInit = function (roomId, callback) {
  * Get Room. Represents a determined room.
  */
 exports.represent = function (req, res) {
-    "use strict";
-
     doInit(req.params.room, function (room) {
         if (currentService === undefined) {
             res.status(401).send('Client unathorized');
@@ -44,8 +40,6 @@ exports.represent = function (req, res) {
  * Delete Room. Removes a determined room from the data base and asks cloudHandler to remove it from erizoController.
  */
 exports.deleteRoom = function (req, res) {
-    "use strict";
-
     doInit(req.params.room, function (room) {
         if (currentService === undefined) {
             res.status(401).send('Client unathorized');
@@ -70,7 +64,6 @@ exports.deleteRoom = function (req, res) {
 };
 
 exports.updateRoom = function (req, res) {
-    'use strict';
     doInit(req.params.room, function (room) {
         if (currentService === undefined) {
             res.status(401).send('Client unathorized');

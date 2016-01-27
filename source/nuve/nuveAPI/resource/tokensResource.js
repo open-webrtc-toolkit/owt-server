@@ -1,5 +1,5 @@
-/*global exports, require, console, Buffer*/
-var roomRegistry = require('./../mdb/roomRegistry');
+/*global exports, require, Buffer*/
+'use strict';
 var tokenRegistry = require('./../mdb/tokenRegistry');
 var serviceRegistry = require('./../mdb/serviceRegistry');
 var dataBase = require('./../mdb/dataBase');
@@ -8,7 +8,7 @@ var cloudHandler = require('../cloudHandler');
 var logger = require('./../logger').logger;
 
 // Logger
-var log = logger.getLogger("TokensResource");
+var log = logger.getLogger('TokensResource');
 
 var currentService;
 var currentRoom;
@@ -17,10 +17,7 @@ var currentRoom;
  * Gets the service and the room for the proccess of the request.
  */
 var doInit = function (roomId, callback) {
-    "use strict";
-
     currentService = require('./../auth/nuveAuthenticator').service;
-
     serviceRegistry.getRoomForService(roomId, currentService, function (room) {
         //log.info(room);
         currentRoom = room;
@@ -29,8 +26,6 @@ var doInit = function (roomId, callback) {
 };
 
 var getTokenString = function (id, token) {
-    "use strict";
-
     var toSign = id + ',' + token.host,
         hex = crypto.createHmac('sha256', dataBase.nuveKey).update(toSign).digest('hex'),
         signed = (new Buffer(hex)).toString('base64'),
@@ -52,8 +47,6 @@ var getTokenString = function (id, token) {
  * {tokenId: id, host: erizoController host, signature: signature of the token};
  */
 var generateToken = function (callback) {
-    "use strict";
-
     var user = require('./../auth/nuveAuthenticator').user,
         role = require('./../auth/nuveAuthenticator').role,
         r,
@@ -90,7 +83,6 @@ var generateToken = function (callback) {
     }
 
     if (tr === r) {
-
         if (currentService.testToken === undefined) {
             token.use = 0;
             token.host = dataBase.testErizoController;
@@ -98,26 +90,19 @@ var generateToken = function (callback) {
             log.info('Creating testToken');
 
             tokenRegistry.addToken(token, function (id) {
-
                 token._id = id;
                 currentService.testToken = token;
                 serviceRegistry.updateService(currentService);
-
                 tokenS = getTokenString(id, token);
                 callback(tokenS);
                 return;
             });
-
         } else {
-
             token = currentService.testToken;
-
             log.info('TestToken already exists, sending it', token);
-
             tokenS = getTokenString(token._id, token);
             callback(tokenS);
             return;
-
         }
     } else {
 
@@ -138,7 +123,6 @@ var generateToken = function (callback) {
             token.host += ':' + ec.port;
 
             tokenRegistry.addToken(token, function (id) {
-
                 var tokenS = getTokenString(id, token);
                 callback(tokenS);
             });
@@ -150,10 +134,7 @@ var generateToken = function (callback) {
  * Post Token. Creates a new token for a determined room of a service.
  */
 exports.create = function (req, res) {
-    "use strict";
-
     doInit(req.params.room, function () {
-
         if (currentService === undefined) {
             log.info('Service not found');
             res.status(404).send('Service not found');
@@ -165,7 +146,6 @@ exports.create = function (req, res) {
         }
 
         generateToken(function (tokenS) {
-
             if (tokenS === undefined) {
                 res.status(401).send('Name and role?');
                 return;

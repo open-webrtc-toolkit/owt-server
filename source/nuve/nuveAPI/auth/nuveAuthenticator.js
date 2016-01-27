@@ -39,7 +39,6 @@ var checkTimestamp = function (ser, params) {
         log.info('Last cnonce: ', lastC, ' and new: ', newC);
         return false;
     }
-
     return true;
 };
 
@@ -68,7 +67,6 @@ exports.authenticate = function (req, res, next) {
         params;
 
     if (authHeader !== undefined) {
-
         params = mauthParser.parseHeader(authHeader);
 
         // Get the service from the data base.
@@ -93,7 +91,6 @@ exports.authenticate = function (req, res, next) {
 
             // Check if the signature is valid.
             if (checkSignature(params, key)) {
-
                 if (params.username !== undefined && params.role !== undefined) {
                     exports.user = (new Buffer(params.username, 'base64').toString('utf8'));
                     exports.role = params.role;
@@ -104,15 +101,12 @@ exports.authenticate = function (req, res, next) {
 
                 // If everything in the authentication is valid continue with the request.
                 next();
-
             } else {
                 log.info('[Auth] Wrong credentials');
                 res.status(401).send({'WWW-Authenticate': challengeReq});
                 return;
             }
-
         });
-
     } else {
         log.info('[Auth] MAuth header not presented');
         res.status(401).send({'WWW-Authenticate': challengeReq});
