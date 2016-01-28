@@ -43,29 +43,22 @@ exports.getUser = function (req, res) {
         }
 
         var user = req.params.user;
-
-        
-        cloudHandler.getUsersInRoom (currentRoom._id, function (users) {
+        cloudHandler.getUsersInRoom(currentRoom._id, function (users) {
             if (users === 'error') {
-                res.status(401).send('CloudHandler does not respond');
+                res.status(404).send('User does not exist');
                 return;
             }
-            for (var index in users){
-                
-                if (users[index].name === user){
+            for (var index in users) {
+                if (users[index].name === user) {
                     log.info('Found user', user);
                     res.send(users[index]);
                     return;
                 }
-
             }
-            log.error('User', req.params.user, 'does not exist')
+            log.error('User', req.params.user, 'does not exist');
             res.status(404).send('User does not exist');
             return;
-            
-
         });
-
     });
 };
 

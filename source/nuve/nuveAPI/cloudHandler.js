@@ -192,9 +192,10 @@ exports.killMe = function (ip) {
 
 };
 
-exports.getErizoControllerForRoom = function (roomId, callback) {
+exports.getErizoControllerForRoom = function (room, callback) {
     "use strict";
 
+    var roomId = room._id;
     if (rooms[roomId] !== undefined) {
         callback(erizoNodes[rooms[roomId]]);
         return;
