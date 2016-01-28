@@ -33,7 +33,6 @@ exports.getList = function (req, res) {
     "use strict";
 
     doInit(req.params.room, function () {
-
         if (currentService === undefined) {
             res.status(404).send('Service not found');
             return;
@@ -51,7 +50,5 @@ exports.getList = function (req, res) {
             }
             res.send(users);
         });
-
     });
-
 };
