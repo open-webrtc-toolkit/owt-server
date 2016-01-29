@@ -88,8 +88,7 @@ ${bin}/start-all.sh
 }
 
 pack_node() {
-  local NODE_VERSION=
-  . ${this}/../.conf
+  local NODE_VERSION=v$(node -e "process.stdout.write(require('${WOOGEEN_DIST}/package.json').engine.node)")
   echo "node version: ${NODE_VERSION}"
 
   local PREFIX_DIR=${ROOT}/build/libdeps/build/

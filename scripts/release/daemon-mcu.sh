@@ -45,13 +45,12 @@ rotate_log ()
 
 check_node_version()
 {
-  local NODE_VERSION=
-  . ${bin}/.conf
-  NODE_VERSION=$(echo ${NODE_VERSION} | cut -d '.' -f 1)
   if ! hash node 2>/dev/null; then
     echo >&2 "Error: node not found. Please install node ${NODE_VERSION} first."
     return 1
   fi
+  local NODE_VERSION=v$(node -e "process.stdout.write(require('${ROOT}/package.json').engine.node)")
+  NODE_VERSION=$(echo ${NODE_VERSION} | cut -d '.' -f 1)
   local NODE_VERSION_USE=$(node --version | cut -d '.' -f 1)
   [[ ${NODE_VERSION} == ${NODE_VERSION_USE} ]] && return 0 || (echo "node version not match. Please use node ${NODE_VERSION}"; return 1;)
 }
