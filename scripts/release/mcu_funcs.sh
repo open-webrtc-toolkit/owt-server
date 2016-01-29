@@ -96,7 +96,6 @@ pack_libs() {
 
 pack_scripts() {
   mkdir -p ${WOOGEEN_DIST}/bin/
-  cp -av ${ROOT}/scripts/.conf ${WOOGEEN_DIST}/bin/
   cp -av ${ROOT}/scripts/woogeen_default.js ${WOOGEEN_DIST}/etc/.woogeen_default.js
   cp -av ${this}/daemon-mcu.sh ${WOOGEEN_DIST}/bin/daemon.sh
   cp -av ${this}/launch-base.sh ${WOOGEEN_DIST}/bin/start-all.sh
@@ -134,8 +133,7 @@ ${bin}/start-all.sh
 }
 
 pack_node() {
-  local NODE_VERSION=
-  . ${this}/../.conf
+  local NODE_VERSION=v$(node -e "process.stdout.write(require('${WOOGEEN_DIST}/package.json').engine.node)")
   echo "node version: ${NODE_VERSION}"
 
   local PREFIX_DIR=${ROOT}/build/libdeps/build/
@@ -195,7 +193,7 @@ install_module() {
   local SAMPLE_DIR=${WOOGEEN_DIST}/extras/basic_example
   if hash npm 2>/dev/null; then
     mkdir -p ${WOOGEEN_DIST}/node_modules
-    cp -av ${this}/package.mcu.json ${WOOGEEN_DIST}/package.json
+    cp -av ${this}/package.json ${WOOGEEN_DIST}/package.json
     cd ${WOOGEEN_DIST} && npm install --prefix ${WOOGEEN_DIST} --production --loglevel error
 
     [[ -d ${SAMPLE_DIR} ]] && \
