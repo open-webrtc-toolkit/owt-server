@@ -122,10 +122,12 @@ var checkSignature = function (token) {
  * Sends a message of type 'type' to all sockets in a determined room.
  */
 var sendMsgToRoom = function (room, type, arg) {
-    room.sockets.map(function (sock) {
-        log.info('Sending message to', sock.id, 'in room ', room.id);
-        sock.emit(type, arg);
-    });
+    if (room && room.sockets) {
+        room.sockets.map(function (sock) {
+            log.info('Sending message to', sock.id, 'in room ', room.id);
+            sock.emit(type, arg);
+        });
+    }
 };
 
 var eventReportHandlers = {
