@@ -72,7 +72,7 @@ private:
      // Creates a DTLS SSL Context and enables srtp extension, also sets the private and public key cert
 
      SSL_CTX* mContext;
-     std::auto_ptr<DtlsTimerContext> mTimerContext;
+     std::unique_ptr<DtlsTimerContext> mTimerContext;
 
 
 

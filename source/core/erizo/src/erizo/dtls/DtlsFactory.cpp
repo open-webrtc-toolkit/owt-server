@@ -302,7 +302,7 @@ DtlsFactory::DtlsFactory(const std::string& certFile, const std::string& keyFile
 {
     DtlsFactory::Init(certFile, keyFile, privatePasswd);
 
-    mTimerContext = std::auto_ptr<TestTimerContext>(new TestTimerContext());
+    mTimerContext = std::unique_ptr<TestTimerContext>(new TestTimerContext());
 
 
     ELOG_DEBUG("Creating Dtls factory");
