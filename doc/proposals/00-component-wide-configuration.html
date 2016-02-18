@@ -1,0 +1,124 @@
+<h1 id="proposal-component-wide-configuration">[PROPOSAL] Component Wide Configuration</h1>
+<p>Markus, Feb 2016.</p>
+<pre><code>    Disclaimer:
+    This document is not finalized and the real implementation may slightly differ to work around with obstacles, keep pace with coworkers, etc.
+    This design is mainly for WooGeen 3.1 release.
+    Further effort is required for future developement after 3.1.</code></pre>
+<h2 id="goals">Goals</h2>
+<ul>
+<li>Each component has their own configuration file.</li>
+<li>Each component can be released/distributed alone.
+<ul>
+<li>Nuve</li>
+<li>Portal</li>
+<li>Agent
+<ul>
+<li>accessNode</li>
+<li>audioNode</li>
+<li>videoNode</li>
+</ul></li>
+</ul></li>
+</ul>
+<h2 id="directory-structure">Directory Structure</h2>
+<pre><code>.
+├── contrib                             - configuration templates, patches, certifications, etc.
+├── doc                                 - documentation for architecture, usage, design, etc.
+├── scripts                             - helper scripts.
+├── source
+│   ├── common                          - common node modules.
+│   ├── portal                          - Portal.
+│   ├── agent                           - Agent.
+│   │   ├── access                      - accessNode.
+│   │   │   ├── rtspIn                  - woogeen-rtsp-in module.
+│   │   │   ├── rtspOut                 - woogeen-rtsp-out module.
+│   │   │   ├── mediaFile               - woogeen-mediafile-io module.
+│   │   │   └── webrtc                  - woogeen-webrtc module.
+│   │   ├── audio                       - audioNode.
+│   │   │   └── audioMixer              - woogeen-audiomixer module.
+│   │   ├── video                       - videoNode.
+│   │   │   └── videoMixer              - woogeen-videomixer module.
+│   │   └── addons                      - videoNode.
+│   │       ├── internal                - woogeen-internal-io module.
+│   │       └── mediaFrameMulticaster   - woogeen-mediaframemulticaster module.
+│   ├── lib
+│   │   ├── liberizo                    - liberizo.so.
+│   │   ├── woogeen_base                - libwoogeen_base.so.
+│   │   └── mcu                         - libmcu.so.
+│   └── nuve
+├── test
+└── third_party             - only *source code*
+    ├── mediaprocessor
+    ├── srtp
+    └── webrtc</code></pre>
+<h3 id="phase-out">Phase out</h3>
+<ul>
+<li><code>source/client_sdk</code>: should be merged with primary JS SDK, and/or maintained in SDK repo.</li>
+<li><code>source/extras</code>: should be maintained in SDK repo.</li>
+<li><code>source/sdk2</code>: [as above]</li>
+<li><code>source/product</code>: [as above]</li>
+</ul>
+<h2 id="addons-in-sourceerizo">Addons in <code>source/erizo</code></h2>
+<p>Current Dependencies:</p>
+<pre><code>  Node.js Layer         Node.js Layer               Node Addon Functionality
+
+
+  accessNode     -&gt;                     -&gt;          Internal{In,Out}
+                                                    MediaFile{In,Out}
+                                                    RtspOut
+                        rtspIn          -&gt;          RtspIn
+                        wrtcConnection  -&gt;          WebRtcConnection
+                                                    AudioFrameConstructor
+                                                    VideoFrameConstructor
+                                                    AudioFramePacketizer
+                                                    VideoFramePacketizer
+
+
+  audioNode      -&gt;                                 Internal{In,Out}
+                                                    MediaFrameMulticaster
+                                                    AudioMixer
+
+  videoNode      -&gt;                                 Internal{In,Out}
+                                                    MediaFrameMulticaster
+                                                    VideoMixer</code></pre>
+<p>The addon would become these modules:</p>
+<ul>
+<li><code>woogeen-rtsp-in</code>
+<ul>
+<li><code>RtspIn</code></li>
+</ul></li>
+<li><code>woogeen-rtsp-out</code>
+<ul>
+<li><code>RtspOut</code></li>
+</ul></li>
+<li><code>woogeen-mediafile-io</code>
+<ul>
+<li><code>MediaFileIn</code></li>
+<li><code>MediaFileOut</code></li>
+</ul></li>
+<li><code>woogeen-internal-io</code>
+<ul>
+<li><code>InternalIn</code></li>
+<li><code>InternalOut</code></li>
+</ul></li>
+<li><code>woogeen-mediaframemulticaster</code>
+<ul>
+<li><code>MediaFrameMulticaster</code></li>
+</ul></li>
+<li><code>woogeen-audiomixer</code>
+<ul>
+<li><code>AudioMixer</code></li>
+</ul></li>
+<li><code>woogeen-videomixer</code>
+<ul>
+<li><code>VideoMixer</code></li>
+</ul></li>
+<li><code>woogeen-webrtc</code>
+<ul>
+<li><code>WebRtcConnection</code></li>
+<li><code>AudioFrameConstructor</code></li>
+<li><code>VideoFrameConstructor</code></li>
+<li><code>AudioFramePacketizer</code></li>
+<li><code>VideoFramePacketizer</code></li>
+</ul></li>
+</ul>
+<p>The C++ Layer would remain untouched, or have minimal modifications.</p>
