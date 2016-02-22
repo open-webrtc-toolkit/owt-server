@@ -256,6 +256,34 @@ var addToCloudHandler = function (callback) {
         publicIP = GLOBAL.config.erizoController.publicIP;
     }
 
+    var onIOReady = function () {
+        var intervarId = setInterval(function () {
+
+            amqper.callRpc('nuve', 'keepAlive', myId, {callback: function (result) {
+                if (result === 'whoareyou') {
+
+                    // TODO: It should try to register again in Cloud Handler. But taking into account current rooms, users, ...
+                    log.info('I don`t exist in cloudHandler. I`m going to be killed');
+                    clearInterval(intervarId);
+                    amqper.callRpc('nuve', 'killMe', publicIP, {callback: function () {}});
+                }
+            }});
+
+        }, INTERVAL_TIME_KEEPALIVE);
+
+        amqper.callRpc('nuve', 'getKey', myId, {
+            callback: function (key) {
+                if (key === 'error' || key === 'timeout') {
+                    amqper.callRpc('nuve', 'killMe', publicIP, {callback: function () {}});
+                    log.info('Failed to join nuve network.');
+                    return process.exit();
+                }
+                nuveKey = key;
+                callback();
+            }
+        });
+    };
+
     var addECToCloudHandler = function(attempt) {
         if (attempt <= 0) {
             return;
@@ -309,38 +337,13 @@ var addToCloudHandler = function (callback) {
                         return process.exit();
                     }
                     io = require('socket.io').listen(server);
+                    onIOReady();
                 });
             } else {
                 server = require('http').createServer().listen(msg.port);
                 io = require('socket.io').listen(server);
+                onIOReady();
             }
-
-            var intervarId = setInterval(function () {
-
-                amqper.callRpc('nuve', 'keepAlive', myId, {callback: function (result) {
-                    if (result === 'whoareyou') {
-
-                        // TODO: It should try to register again in Cloud Handler. But taking into account current rooms, users, ...
-                        log.info('I don`t exist in cloudHandler. I`m going to be killed');
-                        clearInterval(intervarId);
-                        amqper.callRpc('nuve', 'killMe', publicIP, {callback: function () {}});
-                    }
-                }});
-
-            }, INTERVAL_TIME_KEEPALIVE);
-
-            amqper.callRpc('nuve', 'getKey', myId, {
-                callback: function (key) {
-                    if (key === 'error' || key === 'timeout') {
-                        amqper.callRpc('nuve', 'killMe', publicIP, {callback: function () {}});
-                        log.info('Failed to join nuve network.');
-                        return process.exit();
-                    }
-                    nuveKey = key;
-                    callback();
-                }
-            });
-
         }});
     };
     addECToCloudHandler(5);
@@ -429,7 +432,7 @@ var listen = function () {
         log.info('Socket connect', socket.id);
 
         function sendMsgToOthersInRoom (room, type, arg) {
-            room.sockets.map(function (sock) {
+            room && room.sockets && room.sockets.map(function (sock) {
                 if (sock.id !== socket.id) {
                     log.info('Sending message to', sock.id, 'in room ', room.id);
                     sock.emit(type, arg);
