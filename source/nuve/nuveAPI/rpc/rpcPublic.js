@@ -2,7 +2,7 @@
 'use strict';
 var tokenRegistry = require('./../mdb/tokenRegistry');
 var roomRegistry = require('./../mdb/roomRegistry');
-var cloudHandler = require('./../cloudHandler');
+var nuveKey = require('./../mdb/dataBase').nuveKey;
 var logger = require('../logger').logger;
 var Room = require('../resource/room');
 
@@ -54,45 +54,6 @@ exports.getRoomConfig = function (roomId, callback) {
     });
 };
 
-exports.addNewErizoController = function(msg, callback) {
-    cloudHandler.addNewErizoController(msg, function (ec) {
-        callback('callback', ec);
-    });
-};
-
-exports.addNewErizoAgent = function(msg, callback) {
-    cloudHandler.addNewErizoAgent(msg, function (ea) {
-        callback('callback', ea);
-    });
-};
-
-exports.getErizoAgent = function(msg, callback) {
-    cloudHandler.getErizoAgent(msg, function (ea) {
-        callback('callback', ea);
-    });
-};
-
-exports.keepAlive = function(id, callback) {
-    cloudHandler.keepAlive(id, function(result) {
-        callback('callback', result);
-    });
-};
-
-exports.setInfo = function(params, callback) {
-    cloudHandler.setInfo(params);
-    callback('callback');
-};
-
-exports.killMe = function(ip, callback) {
-    cloudHandler.killMe(ip);
-    callback('callback');
-};
-
-exports.reschedule = function (room, callback) { // ensure room is empty before calling this
-    cloudHandler.reschedule(room);
-    callback('callback');
-};
-
 exports.getKey = function (id, callback) {
-    callback('callback', cloudHandler.getKey(id));
+    callback('callback', nuveKey);
 };

@@ -69,7 +69,10 @@ for (var prop in opt.options) {
 
 // Load submodules with updated config
 var logger = require('./../common/logger').logger;
+var Worker = require('./../common/clusterWorker').ClusterWorker;
 var rpc = require('./../common/amqper');
+
+var worker = undefined;
 
 // Logger
 var log = logger.getLogger('ErizoAgent');
@@ -83,7 +86,7 @@ GLOBAL.config.erizo.hardwareAccelerated = !!GLOBAL.config.erizo.hardwareAccelera
 var idle_erizos = [];
 var erizos = [];
 var processes = {};
-var loads = {}; // {erizo_id: [RoomID]}
+var tasks = {}; // {erizo_id: [RoomID]}
 
 var guid = (function() {
   function s4() {
@@ -105,7 +108,7 @@ var getCPULoad = function (on_result) {
 var getGPULoad = function (on_result) {
     //FIXME: Here is just an roughly estimation of the GPU load. A formal way is needed to get the acurate load data.
     var maxVideoNodes = 32/*FIXME: hard coded. the max count of mixers or transcoders this agent can hold.*/;
-    on_result((Object.keys(loads).length)/maxVideoNodes);
+    on_result((Object.keys(tasks).length)/maxVideoNodes);
 };
 
 var receiveSpeed = 0, sendSpeed  = 0;
@@ -189,7 +192,7 @@ var reportLoad = function() {
     var onResult = function (load) {
         var loadPercentage = Math.round(load * 100) / 100;
         log.debug('report load:', loadPercentage);
-        rpc.callRpc('nuve', 'setInfo', {id: myId, load: loadPercentage}, {callback: function () {}});
+        rpc.callRpc(GLOBAL.config.cluster_name || 'woogeenCluster', 'reportLoad', [myId, loadPercentage], {callback: function () {}});
     };
 
     switch (myPurpose) {
@@ -229,12 +232,12 @@ var launchErizoJS = function() {
             erizos.splice(index2, 1);
         }
         delete processes[id];
-        delete loads[id];
+        delete tasks[id];
         log.info(id, 'exit with', code);
         fillErizos();
     });
     processes[id] = erizoProcess;
-    loads[id] = [];
+    tasks[id] = [];
     idle_erizos.push(id);
 };
 
@@ -243,7 +246,7 @@ var dropErizoJS = function(erizo_id, callback) {
       var process = processes[erizo_id];
       process.kill();
       delete processes[erizo_id];
-      delete loads[erizo_id];
+      delete tasks[erizo_id];
 
       var index = erizos.indexOf(erizo_id);
       if (index !== -1) {
@@ -271,24 +274,27 @@ var api = {
         try {
             for (var i in erizos) {
                 var erizo_id = erizos[i];
-                if (reuse && loads[erizo_id] !== undefined && loads[erizo_id].indexOf(room_id) !== -1) {
+                if (reuse && tasks[erizo_id] !== undefined && tasks[erizo_id].indexOf(room_id) !== -1) {
                     callback('callback', erizo_id);
+                    worker && worker.addTask(room_id);
                     return;
                 }
             }
 
             for (var i in idle_erizos) {
                 var erizo_id = idle_erizos[i];
-                if (reuse && loads[erizo_id] !== undefined && loads[erizo_id].indexOf(room_id) !== -1) {
+                if (reuse && tasks[erizo_id] !== undefined && tasks[erizo_id].indexOf(room_id) !== -1) {
                     callback('callback', erizo_id);
+                    worker && worker.addTask(room_id);
                     return;
                 }
             }
 
             var erizo_id = idle_erizos.shift();
+            worker && worker.addTask(room_id);
             callback('callback', erizo_id);
 
-            loads[erizo_id].push(room_id);
+            tasks[erizo_id].push(room_id);
             erizos.push(erizo_id);
 
             if (reuse && ((erizos.length + idle_erizos.length + 1) >= GLOBAL.config.erizoAgent.maxProcesses)) {
@@ -306,25 +312,33 @@ var api = {
 
     recycleErizoJS: function(id, room_id, callback) {
         try {
-            if (loads[id]) {
-                var i = loads[id].indexOf(room_id);
+            if (tasks[id]) {
+                var i = tasks[id].indexOf(room_id);
                 if (i !== -1) {
-                    loads[id].splice(i, 1);
+                    tasks[id].splice(i, 1);
                 }
 
-                if (loads[id].length === 0) {
+                if (tasks[id].length === 0) {
                     dropErizoJS(id, callback);
                 }
             }
+
+            var stillInUse = false;
+            for (var eid in tasks) {
+                if (tasks[eid].indexOf(room_id) !== -1) {
+                    stillInUse = true;
+                    break;
+                }
+            }
+            !stillInUse && worker && worker.removeTask(room_id);
         } catch(err) {
             log.error('Error stopping ErizoJS');
         }
     }
 };
 
-var privateIP, publicIP;
-
-var addToCloudHandler = function (callback) {
+var privateIP, publicIP, clusterIP;
+(function collectIPs () {
     var interfaces = require('os').networkInterfaces(),
         externalAddresses = [],
         internalAddresses = [],
@@ -358,53 +372,51 @@ var addToCloudHandler = function (callback) {
         publicIP = GLOBAL.config.erizoAgent.publicIP;
     }
 
-    var addEAToCloudHandler = function(attempt) {
-        var internalIP = internalAddresses[0];
+    clusterIP = internalAddresses[0];
+})();
 
-        if (attempt <= 0) {
-            return;
-        }
-
-        var controller = {
-            ip: internalIP,
-            purpose: myPurpose
-        };
-
-        rpc.callRpc('nuve', 'addNewErizoAgent', controller, {callback: function (msg) {
-
-            if (msg === 'timeout') {
-                log.info('CloudHandler does not respond');
-
-                // We'll try it more!
-                setTimeout(function() {
-                    attempt = attempt - 1;
-                    addEAToCloudHandler(attempt);
-                }, 3000);
-                return;
-            }
-            if (msg == 'error') {
-                log.info('Error in communication with cloudProvider');
-            }
-
-            internalIP = msg.privateIP;
-            myId = msg.id;
-            myState = 2;
-
-            var intervarId = setInterval(function () {
-                rpc.callRpc('nuve', 'keepAlive', myId, {callback: function (result) {
-                    if (result === 'whoareyou') {
-
-                        // TODO: It should try to register again in Cloud Handler. But taking into account current rooms, users, ...
-                        log.info('I don`t exist in cloudHandler. I`m going to be killed');
-                        clearInterval(intervarId);
-                        rpc.callRpc('nuve', 'killMe', internalIP, {callback: function () {}});
-                    }
-                }});
-            }, INTERVAL_TIME_KEEPALIVE);
-            callback('callback');
-        }});
+var reportInterval = undefined;
+var joinCluster = function (on_ok) {
+    var joinOK = function (id) {
+        myId = id;
+        myState = 2;
+        log.info(myPurpose, 'agent join cluster ok.');
+        on_ok(id);
+        reportInterval = setInterval(reportLoad, 5 * 1000);
     };
-    addEAToCloudHandler(5);
+
+    var joinFailed = function (reason) {
+        log.error(myPurpose, 'agent join cluster failed. reason:', reason);
+        worker && worker.quit();
+    };
+
+    var loss = function () {
+        log.info(myPurpose, 'agent lost.');
+    };
+
+    var recovery = function () {
+        log.info(myPurpose, 'agent recovered.');
+    };
+
+    var spec = {amqper: rpc,
+                purpose: myPurpose,
+                clusterName: GLOBAL.config.cluster_name || 'woogeenCluster',
+                joinRery: GLOBAL.config.join_cluster_retry || 5,
+                joinPeriod: GLOBAL.config.join_cluster_period || 3000,
+                recoveryPeriod: GLOBAL.config.recover_cluster_period || 1000,
+                keepAlivePeriod: GLOBAL.config.erizoAgent.interval_time_keepAlive/*config.keep_alive_period*/ || 5000,
+                info: {ip: clusterIP,
+                       purpose: myPurpose,
+                       state: 2,
+                       max_load: GLOBAL.config.max_load || 0.85
+                      },
+                onJoinOK: joinOK,
+                onJoinFailed: joinFailed,
+                onLoss: loss,
+                onRecovery: recovery
+               };
+
+    worker = new Worker(spec);
 };
 
 (function init_env() {
@@ -427,16 +439,13 @@ var addToCloudHandler = function (callback) {
     }
 })();
 
-var reportInterval;
 rpc.connect(function () {
     rpc.setPublicRPC(api);
     log.info('Adding agent to cloudhandler, purpose:', myPurpose);
 
-    addToCloudHandler(function () {
-      var rpcID = 'ErizoAgent_' + myId;
-      rpc.bind(rpcID, function callback () {
+    joinCluster(function (rpcID) {
+      rpc.bind(rpcID, function () {
         log.info('ErizoAgent rpcID:', rpcID);
-        reportInterval = setInterval(reportLoad, 5 * 1000);
       });
       fillErizos();
     });
@@ -452,6 +461,7 @@ rpc.connect(function () {
 process.on('exit', function () {
     stopQueryNetwork();
     stopQueryDisk();
+    worker && worker.quit();
     reportInterval && clearInterval(reportInterval);
     Object.keys(processes).map(function (k) {
         dropErizoJS(k, function (unused, status) {

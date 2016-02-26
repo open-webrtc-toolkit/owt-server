@@ -83,17 +83,19 @@ for (var prop in opt.options) {
 // Load submodules with updated config
 var logger = require('./../common/logger').logger;
 var amqper = require('./../common/amqper');
+var Worker = require('./../common/clusterWorker').ClusterWorker;
 var controller = require('./roomController');
+
+var worker = undefined;
 
 // Logger
 var log = logger.getLogger('ErizoController');
 
-var nuveKey;
+var tokenKey;
 
 var WARNING_N_ROOMS = GLOBAL.config.erizoController.warning_n_rooms;
 var LIMIT_N_ROOMS = GLOBAL.config.erizoController.limit_n_rooms;
 
-var INTERVAL_TIME_KEEPALIVE = GLOBAL.config.erizoController.interval_time_keepAlive;
 
 var BINDED_INTERFACE_NAME = GLOBAL.config.erizoController.networkInterface;
 
@@ -103,7 +105,7 @@ var myState;
 
 var calculateSignature = function (token) {
     var toSign = token.tokenId + ',' + token.host,
-        signed = crypto.createHmac('sha256', nuveKey).update(toSign).digest('hex');
+        signed = crypto.createHmac('sha256', tokenKey).update(toSign).digest('hex');
     return (new Buffer(signed)).toString('base64');
 };
 
@@ -226,8 +228,7 @@ var formatDate = function(date, format) {
 
 // var privateRegexp;
 var publicIP;
-
-var addToCloudHandler = function (callback) {
+(function getPublicIP () {
     var interfaces = require('os').networkInterfaces(),
         addresses = [],
         k,
@@ -255,98 +256,99 @@ var addToCloudHandler = function (callback) {
     } else {
         publicIP = GLOBAL.config.erizoController.publicIP;
     }
+})();
 
-    var onIOReady = function () {
-        var intervarId = setInterval(function () {
+var joinCluster = function (on_ok) {
+    var joinOK = function (id) {
+        var onIOReady = function () {
+            var reportLoadInterval = setInterval(function () {
+                var cpu_load = require('os').loadavg()[0];
+                worker && worker.reportLoad(cpu_load);
+            }, config.report_load_period || 5000);
 
-            amqper.callRpc('nuve', 'keepAlive', myId, {callback: function (result) {
-                if (result === 'whoareyou') {
-
-                    // TODO: It should try to register again in Cloud Handler. But taking into account current rooms, users, ...
-                    log.info('I don`t exist in cloudHandler. I`m going to be killed');
-                    clearInterval(intervarId);
-                    amqper.callRpc('nuve', 'killMe', publicIP, {callback: function () {}});
-                }
-            }});
-
-        }, INTERVAL_TIME_KEEPALIVE);
-
-        amqper.callRpc('nuve', 'getKey', myId, {
-            callback: function (key) {
-                if (key === 'error' || key === 'timeout') {
-                    amqper.callRpc('nuve', 'killMe', publicIP, {callback: function () {}});
-                    log.info('Failed to join nuve network.');
-                    return process.exit();
-                }
-                nuveKey = key;
-                callback();
-            }
-        });
-    };
-
-    var addECToCloudHandler = function(attempt) {
-        if (attempt <= 0) {
-            return;
-        }
-
-        var controller = {
-            cloudProvider: GLOBAL.config.cloudProvider.name,
-            ip: publicIP,
-            hostname: GLOBAL.config.erizoController.hostname,
-            port: GLOBAL.config.erizoController.port,
-            ssl: GLOBAL.config.erizoController.ssl
-        };
-        amqper.callRpc('nuve', 'addNewErizoController', controller, {callback: function (msg) {
-
-            if (msg === 'timeout') {
-                log.info('CloudHandler does not respond');
-
-                // We'll try it more!
-                setTimeout(function() {
-                    attempt = attempt - 1;
-                    addECToCloudHandler(attempt);
-                }, 3000);
-                return;
-            }
-            if (msg == 'error') {
-                log.info('Error in communication with cloudProvider');
-            }
-
-            publicIP = msg.publicIP;
-            myId = msg.id;
-            myState = 2;
-
-            var enableSSL = msg.ssl;
-            var server;
-            if (enableSSL === true) {
-                log.info('SSL enabled!');
-                var cipher = require('../../common/cipher');
-                cipher.unlock(cipher.k, '../../cert/.woogeen.keystore', function cb (err, obj) {
-                    if (!err) {
-                        try {
-                            server = require('https').createServer({
-                                pfx: require('fs').readFileSync(config.erizoController.keystorePath),
-                                passphrase: obj.erizoController
-                            }).listen(msg.port);
-                        } catch (e) {
-                            err = e;
-                        }
-                    }
-                    if (err) {
-                        log.warn('Failed to setup secured server:', err);
+            amqper.callRpc('nuve', 'getKey', id, {
+                callback: function (key) {
+                    if (key === 'error' || key === 'timeout') {
+                        log.info('Failed to get token key.');
+                        clearInterval(reportLoadInterval);
+                        worker && worker.quit();
                         return process.exit();
                     }
-                    io = require('socket.io').listen(server);
-                    onIOReady();
-                });
-            } else {
-                server = require('http').createServer().listen(msg.port);
+                    tokenKey = key;
+                    on_ok(id);
+                }
+            });
+        };
+
+        myId = id;
+        myState = 2;
+
+        var enableSSL = GLOBAL.config.erizoController.ssl;
+        var server;
+        if (enableSSL === true) {
+            log.info('SSL enabled!');
+            var cipher = require('../../common/cipher');
+            cipher.unlock(cipher.k, '../../cert/.woogeen.keystore', function cb (err, obj) {
+                if (!err) {
+                    try {
+                        server = require('https').createServer({
+                            pfx: require('fs').readFileSync(config.erizoController.keystorePath),
+                            passphrase: obj.erizoController
+                        }).listen(GLOBAL.config.erizoController.port);
+                    } catch (e) {
+                        err = e;
+                    }
+                }
+                if (err) {
+                   log.warn('Failed to setup secured server:', err);
+                    worker && worker.quit();
+                    return process.exit();
+                }
                 io = require('socket.io').listen(server);
                 onIOReady();
-            }
-        }});
+            });
+        } else {
+            server = require('http').createServer().listen(GLOBAL.config.erizoController.port);
+            io = require('socket.io').listen(server);
+            onIOReady();
+        }
     };
-    addECToCloudHandler(5);
+
+    var joinFailed = function (reason) {
+        log.error('portal join cluster failed. reason:', reason);
+        worker && worker.quit();
+    };
+
+    var loss = function () {
+        log.info('portal lost.');
+    };
+
+    var recovery = function () {
+        log.info('portal recovered.');
+    };
+
+    var spec = {amqper: amqper,
+                purpose: 'portal',
+                clusterName: GLOBAL.config.cluster_name || 'woogeenCluster',
+                joinRery: GLOBAL.config.join_cluster_retry || 5,
+                joinPeriod: GLOBAL.config.join_cluster_period || 3000,
+                recoveryPeriod: GLOBAL.config.recover_cluster_period || 1000,
+                keepAlivePeriod: GLOBAL.config.erizoController.interval_time_keepAlive/*config.keep_alive_period*/ || 5000,
+                info: {cloudProvider: GLOBAL.config.cloudProvider.name,
+                       ip: publicIP,
+                       hostname: GLOBAL.config.erizoController.hostname,
+                       port: GLOBAL.config.erizoController.port,
+                       ssl: GLOBAL.config.erizoController.ssl,
+                       state: 2,
+                       max_load: GLOBAL.config.max_load || 0.85
+                      },
+                onJoinOK: joinOK,
+                onJoinFailed: joinFailed,
+                onLoss: loss,
+                onRecovery: recovery
+               };
+
+    worker = new Worker(spec);
 };
 
 //*******************************************************************
@@ -381,8 +383,7 @@ var updateMyState = function () {
 
     myState = newState;
 
-    info = {id: myId, state: myState};
-    amqper.callRpc('nuve', 'setInfo', info, {callback: function () {}});
+    worker && worker.reportState(myState);
 };
 
 function safeCall () {
@@ -515,12 +516,11 @@ var listen = function () {
 
                         if (rooms[tokenDB.room] === undefined) {
                             if (myState === 0) {
-                                return amqper.callRpc('nuve', 'reschedule', tokenDB.room, {callback: function () {
-                                    var errMsg = 'Erizo: out of capacity';
-                                    log.warn(errMsg);
-                                    safeCall(callback, 'error', errMsg);
-                                    socket.disconnect();
-                                }});
+                                worker && worker.rejectTask(tokenDB.room);
+                                var errMsg = 'Erizo: out of capacity';
+                                log.warn(errMsg);
+                                safeCall(callback, 'error', errMsg);
+                                socket.disconnect();
                             }
                             var initRoom = function (roomID, on_ok, on_error) {
                                 var room = {};
@@ -551,7 +551,11 @@ var listen = function () {
                                                 return on_error();
                                             }
                                             room.controller = controller.RoomController(
-                                                {amqper: amqper, room:roomID, config: resp, observer: 'erizoController_' + myId},
+                                                {cluster: GLOBAL.config.cluster_name || 'woogeenCluster',
+                                                 amqper: amqper,
+                                                 room: roomID,
+                                                 config: resp,
+                                                 observer: myId},
                                                 function (resolutions) {
                                                     room.enableMixing = resp.enableMixing;
                                                     on_ok();
@@ -578,6 +582,7 @@ var listen = function () {
                             };
 
                             initRoom(tokenDB.room, function () {
+                                worker && worker.addTask(tokenDB.room);
                                 updateMyState();
                                 validateTokenOK();
                             }, function () {
@@ -1084,7 +1089,7 @@ var listen = function () {
                  video_codec: preferredVideoCodec,
                  path: url,
                  interval: interval,
-                 observer: 'erizoController_' + myId,
+                 observer: myId,
                  room_id: socket.room.id},
                 function (response) {
                     if (response.type === 'ready') {
@@ -1323,6 +1328,7 @@ var listen = function () {
                     }
                 }
                 delete rooms[socket.room.id];
+                worker && worker.removeTask(socket.room.id);
                 updateMyState();
             } else if (socket.room !== undefined) {
                 sendMsgToOthersInRoom(socket.room, 'user_leave', {user: socket.user});
@@ -1399,6 +1405,7 @@ exports.deleteRoom = function (roomId, callback) {
     }
 
     delete rooms[roomId];
+    worker && worker.removeTask(roomId);
     updateMyState();
     log.info('Deleted room ', roomId, rooms);
     safeCall(callback, 'Success');
@@ -1440,26 +1447,27 @@ var onTerminate = function () {
     process.on(sig, function () {
         log.warn('Exiting on', sig);
         onTerminate();
+        worker && worker.quit();
         process.exit();
     });
 });
 
 (function validateLocalConfig () {
     if (LIMIT_N_ROOMS === 0) {
-        log.info('Invalid config: limit_n_rooms == 0');
+        log.error('Invalid config: limit_n_rooms == 0');
     } else if (WARNING_N_ROOMS >= LIMIT_N_ROOMS) {
-        log.info('Invalid config: warning_n_rooms >= limit_n_rooms');
+        log.error('Invalid config: warning_n_rooms >= limit_n_rooms');
     } else {
         amqper.connect(function () {
             try {
                 amqper.setPublicRPC(rpcPublic);
-                addToCloudHandler(function () {
-                    var rpcID = 'erizoController_' + myId;
+                joinCluster(function (rpcID) {
+                    log.info('portal join cluster ok, with rpcID:', rpcID);
                     amqper.bind(rpcID, listen);
-                    controller.myId = 'erizoController_' + myId;
+                    controller.myId = rpcID;
                 });
             } catch (error) {
-                log.info('Error in Erizo Controller:', error);
+                log.error('Error in Erizo Controller:', error);
             }
         });
     }

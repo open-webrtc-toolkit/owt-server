@@ -12,7 +12,9 @@ function authorized (callback) {
 exports.getNodes = function (req, res) {
   authorized(function (ok) {
     if (ok) {
-      return res.send(cloudHandler.getEcQueue());
+      return cloudHandler.getPortals(function (portals) {
+        res.send(portals);
+      });
     }
     return res.status(401).send('Service not authorized for this action');
   });
@@ -22,7 +24,9 @@ exports.getNode = function (req, res) {
   var node = req.params.node;
   authorized(function (ok) {
     if (ok) {
-      return res.send(cloudHandler.getEcQueue()[node]);
+      return cloudHandler.getPortal(node, function (attr) {
+        res.send(attr);
+      });
     }
     return res.status(401).send('Service not authorized for this action');
   });
@@ -43,7 +47,9 @@ exports.getNodeConfig = function (req, res) {
 exports.getRooms = function (req, res) {
   authorized(function (ok) {
     if (ok) {
-      return res.send(cloudHandler.getHostedRooms());
+      return cloudHandler.getHostedRooms(function (rooms) {
+        res.send(rooms);
+      });
     }
     return res.status(401).send('Service not authorized for this action');
   });

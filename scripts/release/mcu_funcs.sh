@@ -65,6 +65,7 @@ pack_nuve() {
   mkdir -p ${WOOGEEN_DIST}/nuve
   cp -av ${SOURCE}/nuve/nuveAPI ${WOOGEEN_DIST}/nuve/
   cp -av ${SOURCE}/nuve/log4js_configuration.json ${WOOGEEN_DIST}/nuve/
+  cp -av ${SOURCE}/cluster_manager ${WOOGEEN_DIST}/
 }
 
 pack_libs() {
@@ -107,6 +108,7 @@ pack_scripts() {
   cp -av {${this},${WOOGEEN_DIST}/bin}/initcert.js && chmod +x ${WOOGEEN_DIST}/bin/initcert.js
   echo '
 ${bin}/daemon.sh start nuve
+${bin}/daemon.sh start cluster-manager
 ${bin}/daemon.sh start portal
 ${bin}/daemon.sh start webrtc-agent
 ${bin}/daemon.sh start rtsp-agent
@@ -117,6 +119,7 @@ ${bin}/daemon.sh start app
 ' >> ${WOOGEEN_DIST}/bin/start-all.sh
   echo '
 ${bin}/daemon.sh stop nuve
+${bin}/daemon.sh stop cluster-manager
 ${bin}/daemon.sh stop portal
 ${bin}/daemon.sh stop webrtc-agent
 ${bin}/daemon.sh stop rtsp-agent

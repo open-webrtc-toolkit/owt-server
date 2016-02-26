@@ -12,7 +12,8 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
 
     var that = {};
 
-    var amqper = spec.amqper,
+    var cluster = spec.cluster,
+        amqper = spec.amqper,
         config = spec.config,
         room_id = spec.room,
         observer = spec.observer,
@@ -48,7 +49,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
        }*/
     var streams = {};
 
-    var erizoManager = createErizoManager({amqper: amqper, room_id: room_id, on_broken: function (erizo_id, erizo_purpose) {
+    var erizoManager = createErizoManager({cluster: cluster, amqper: amqper, room_id: room_id, on_broken: function (erizo_id, erizo_purpose) {
         if (erizos[erizo_id]) {
             if (erizo_purpose === 'audio' || erizo_purpose === 'video') {
                 rebuildErizo(erizo_id);
