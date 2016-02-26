@@ -109,6 +109,13 @@ case $startStop in
         echo $! > ${pid}
         sleep 5
         ;;
+      cluster-manager )
+        cd ${WOOGEEN_HOME}/cluster_manager
+        nohup nice -n ${WOOGEEN_NICENESS} node main.js \
+          > "${stdout}" 2>&1 </dev/null &
+        echo $! > ${pid}
+        sleep 12
+        ;;
       portal )
         export PATH=${PATH}:${WOOGEEN_HOME}/sbin
         export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${WOOGEEN_HOME}/lib

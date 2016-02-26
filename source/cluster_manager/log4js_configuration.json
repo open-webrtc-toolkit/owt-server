@@ -1,0 +1,19 @@
+{
+  "appenders": [
+    {
+      "type": "console",
+      "layout": {
+        "type": "pattern",
+        "pattern": "%d  - %p: %c - %m",
+        "replaceConsole": true
+      }
+    }
+  ],
+  "levels": {
+        "AMQPER": "ERROR",
+        "Main": "DEBUG",
+        "ClusterManager": "INFO",
+        "Scheduler": "INFO",
+        "Strategy": "INFO"
+  }
+}

@@ -13,7 +13,8 @@ module.exports = function (spec) {
          /*{ErizoId: {agent: AgentId, purpose: 'webrtc' | 'sip' | 'rtsp' | 'file' | 'audio&mixing' | 'video&mixing'}*/
         erizos = {};
 
-    var amqper = spec.amqper,
+    var cluster = spec.cluster,
+        amqper = spec.amqper,
         room_id = spec.room_id,
         on_erizo_broken = spec.on_broken;
 
@@ -52,11 +53,11 @@ module.exports = function (spec) {
 
     var getAgent = function (purpose, for_whom, on_ok, on_failed) {
         makeRPC(amqper,
-                'nuve',
-                'getErizoAgent',
-                {purpose: purpose, for_whom: for_whom},
+                cluster,
+                'schedule',
+                [purpose, room_id/*FIXME: use room_id as taskId temporarily, should use for_whom instead later.*/, 10 * 1000],
                 function (result) {
-                    on_ok({id: result.id, addr: result.ip});
+                    on_ok({id: result.id, addr: result.info.ip});
                 },
                 on_failed);
         //setTimeout(function () {on_ok({id: (purpose === 'mixing' ? exports.mixAgentId : exports.accessAgentId), addr: 'localhost'});}, 10);
@@ -65,7 +66,7 @@ module.exports = function (spec) {
     that.allocateErizo = function (purpose, for_whom, on_ok, on_failed) {
         getAgent(purpose, for_whom, function(result) {
             makeRPC(amqper,
-                    'ErizoAgent_' + result.id,
+                    result.id,
                     'getErizoJS',
                     [room_id],
                     function(erizo_id) {
@@ -81,7 +82,7 @@ module.exports = function (spec) {
     that.deallocateErizo = function (erizo_id) {
         if (erizos[erizo_id] !== undefined) {
             makeRPC(amqper,
-                    'ErizoAgent_' + erizos[erizo_id].agent,
+                    erizos[erizo_id].agent,
                     'recycleErizoJS',
                     [erizo_id, room_id],
                     function() {
