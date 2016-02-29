@@ -134,6 +134,16 @@ install_libsrtp(){
   cd $CURRENT_DIR
 }
 
+install_libyami(){
+  cd $ROOT/third_party/libyami
+  ./autogen.sh --prefix=$PREFIX_DIR
+  make clean
+  make -s V=0
+  make uninstall
+  make install
+  cd $CURRENT_DIR
+}
+
 install_webrtc(){
   export GIT_SSL_NO_VERIFY=1
   pushd ${ROOT}/third_party/webrtc

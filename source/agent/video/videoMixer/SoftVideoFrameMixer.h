@@ -1,20 +1,20 @@
 /*
- * Copyright 2014 Intel Corporation All Rights Reserved. 
- * 
- * The source code contained or described herein and all documents related to the 
- * source code ("Material") are owned by Intel Corporation or its suppliers or 
- * licensors. Title to the Material remains with Intel Corporation or its suppliers 
- * and licensors. The Material contains trade secrets and proprietary and 
- * confidential information of Intel or its suppliers and licensors. The Material 
- * is protected by worldwide copyright and trade secret laws and treaty provisions. 
- * No part of the Material may be used, copied, reproduced, modified, published, 
- * uploaded, posted, transmitted, distributed, or disclosed in any way without 
+ * Copyright 2014 Intel Corporation All Rights Reserved.
+ *
+ * The source code contained or described herein and all documents related to the
+ * source code ("Material") are owned by Intel Corporation or its suppliers or
+ * licensors. Title to the Material remains with Intel Corporation or its suppliers
+ * and licensors. The Material contains trade secrets and proprietary and
+ * confidential information of Intel or its suppliers and licensors. The Material
+ * is protected by worldwide copyright and trade secret laws and treaty provisions.
+ * No part of the Material may be used, copied, reproduced, modified, published,
+ * uploaded, posted, transmitted, distributed, or disclosed in any way without
  * Intel's prior express written permission.
- * 
- * No license under any patent, copyright, trade secret or other intellectual 
- * property right is granted to or conferred upon you by disclosure or delivery of 
- * the Materials, either expressly, by implication, inducement, estoppel or 
- * otherwise. Any license under such intellectual property rights must be express 
+ *
+ * No license under any patent, copyright, trade secret or other intellectual
+ * property right is granted to or conferred upon you by disclosure or delivery of
+ * the Materials, either expressly, by implication, inducement, estoppel or
+ * otherwise. Any license under such intellectual property rights must be express
  * and approved by Intel in writing.
  */
 
@@ -22,16 +22,22 @@
 #define SoftVideoFrameMixer_h
 
 #include "I420VideoFrameDecoder.h"
-#include "SoftVideoCompositor.h"
 
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/shared_mutex.hpp>
 #include <map>
 #include <MediaFramePipeline.h>
+
+#ifdef ENABLE_YAMI
+#include "YamiVideoCompositor.h"
+#include <YamiFrameDecoder.h>
+#include <YamiFrameEncoder.h>
+#else
+#include "SoftVideoCompositor.h"
 #include <VCMFrameDecoder.h>
 #include <VCMFrameEncoder.h>
-
+#endif
 namespace mcu {
 
 class CompositeIn : public woogeen_base::FrameDestination
@@ -46,9 +52,13 @@ public:
     }
 
     void onFrame(const woogeen_base::Frame& frame) {
+#ifndef ENABLE_YAMI
         assert(frame.format == woogeen_base::FRAME_FORMAT_I420);
         webrtc::I420VideoFrame* i420Frame = reinterpret_cast<webrtc::I420VideoFrame*>(frame.payload);
         m_compositor->pushInput(m_index, i420Frame);
+#else
+        m_compositor->pushInput(m_index, frame);
+#endif
     }
 
 private:
@@ -72,6 +82,7 @@ public:
     void updateLayoutSolution(LayoutSolution& solution);
 
 private:
+    DECLARE_LOGGER();
     struct Input {
         woogeen_base::FrameSource* source;
         boost::shared_ptr<woogeen_base::VideoFrameDecoder> decoder;
@@ -95,11 +106,17 @@ private:
     bool m_useSimulcast;
 };
 
+DEFINE_LOGGER(SoftVideoFrameMixer, "mcu.media.SoftVideoFrameMixer");
+
 SoftVideoFrameMixer::SoftVideoFrameMixer(uint32_t maxInput, VideoSize rootSize, YUVColor bgColor, boost::shared_ptr<woogeen_base::WebRTCTaskRunner> taskRunner, bool useSimulcast, bool crop)
     : m_taskRunner(taskRunner)
     , m_useSimulcast(useSimulcast)
 {
+#ifndef ENABLE_YAMI
     m_compositor.reset(new SoftVideoCompositor(maxInput, rootSize, bgColor, crop));
+#else
+    m_compositor.reset(new YamiVideoCompositor(maxInput, rootSize, bgColor));
+#endif
 }
 
 SoftVideoFrameMixer::~SoftVideoFrameMixer()
@@ -128,6 +145,7 @@ SoftVideoFrameMixer::~SoftVideoFrameMixer()
 inline bool SoftVideoFrameMixer::addInput(int input, woogeen_base::FrameFormat format, woogeen_base::FrameSource* source)
 {
     assert(source);
+      ELOG_DEBUG("+addInput input = %d, format = %d", input, format);
 
     boost::upgrade_lock<boost::shared_mutex> lock(m_inputMutex);
     auto it = m_inputs.find(input);
@@ -139,20 +157,26 @@ inline bool SoftVideoFrameMixer::addInput(int input, woogeen_base::FrameFormat f
     if (format == woogeen_base::FRAME_FORMAT_I420) {
         decoder.reset(new I420VideoFrameDecoder());
     } else {
+#ifdef ENABLE_YAMI
+        decoder.reset(new woogeen_base::YamiFrameDecoder());
+#else
         decoder.reset(new woogeen_base::VCMFrameDecoder(format));
+#endif
     }
 
     if (decoder->init(format)) {
         boost::shared_ptr<CompositeIn> compositorIn(new CompositeIn(input, m_compositor));
-    
+
         source->addVideoDestination(decoder.get());
         decoder->addVideoDestination(compositorIn.get());
 
         boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
         Input in{.source = source, .decoder = decoder, .compositorIn = compositorIn};
         m_inputs[input] = in;
+        ELOG_DEBUG("-addInput return true");
         return true;
     } else {
+            ELOG_DEBUG("-addInput return false");
         return false;
     }
 }
@@ -171,11 +195,14 @@ inline void SoftVideoFrameMixer::removeInput(int input)
 
 inline void SoftVideoFrameMixer::updateLayoutSolution(LayoutSolution& solution)
 {
+    ELOG_DEBUG("+updateLayoutSolution");
     m_compositor->updateLayoutSolution(solution);
+    ELOG_DEBUG("-updateLayoutSolution");
 }
 
 inline void SoftVideoFrameMixer::setBitrate(unsigned short kbps, int output)
 {
+     ELOG_DEBUG("+setBitrate");
     boost::shared_lock<boost::shared_mutex> lock(m_outputMutex);
     auto it = m_outputs.find(output);
     if (it != m_outputs.end()) {
@@ -185,6 +212,7 @@ inline void SoftVideoFrameMixer::setBitrate(unsigned short kbps, int output)
 
 inline void SoftVideoFrameMixer::requestKeyFrame(int output)
 {
+         ELOG_DEBUG("+requestKeyFrame");
     boost::shared_lock<boost::shared_mutex> lock(m_outputMutex);
     auto it = m_outputs.find(output);
     if (it != m_outputs.end()) {
@@ -199,6 +227,7 @@ inline bool SoftVideoFrameMixer::addOutput(int output,
 {
     boost::shared_ptr<woogeen_base::VideoFrameEncoder> encoder;
     boost::upgrade_lock<boost::shared_mutex> lock(m_outputMutex);
+    ELOG_DEBUG("+add output %d, %d, %dx%d", output, format, rootSize.width, rootSize.height);
 
     // find a reusable encoder.
     auto it = m_outputs.begin();
@@ -216,7 +245,11 @@ inline bool SoftVideoFrameMixer::addOutput(int output,
             return false;
         }
     } else { //Never found a reusable encoder.
+#ifdef ENABLE_YAMI
+        encoder.reset(new woogeen_base::YamiFrameEncoder(format, m_useSimulcast));
+#else
         encoder.reset(new woogeen_base::VCMFrameEncoder(format, m_taskRunner, m_useSimulcast));
+#endif
         streamId = encoder->generateStream(rootSize.width, rootSize.height, dest);
         if (streamId < 0){
             return false;
@@ -227,6 +260,7 @@ inline bool SoftVideoFrameMixer::addOutput(int output,
     boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
     Output out{.encoder = encoder, .streamId = streamId};
     m_outputs[output] = out;
+        ELOG_DEBUG("-add output %d, %d, %dx%d", output, format, rootSize.width, rootSize.height);
     return true;
 }
 
