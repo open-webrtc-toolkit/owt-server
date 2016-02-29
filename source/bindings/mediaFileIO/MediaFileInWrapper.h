@@ -18,32 +18,31 @@
  * and approved by Intel in writing.
  */
 
-#ifndef INTERNALINWRAPPER_H
-#define INTERNALINWRAPPER_H
+#ifndef MEDIAFILEINWRAPPER_H
+#define MEDIAFILEINWRAPPER_H
 
-#include "MediaFramePipelineWrapper.h"
-#include <InternalIn.h>
+#include "../woogeen_base/MediaFramePipelineWrapper.h"
+#include <MediaFileIn.h>
 #include <node.h>
 #include <node_object_wrap.h>
 
 
 /*
- * Wrapper class of woogeen_base::InternalIn
+ * Wrapper class of woogeen_base::MediaFileIn
  */
-class InternalIn : public FrameSource {
+class MediaFileIn : public FrameSource {
  public:
   static void Init(v8::Local<v8::Object> exports);
-  woogeen_base::InternalIn* me;
+  woogeen_base::MediaFileIn* me;
 
  private:
-  InternalIn();
-  ~InternalIn();
+  MediaFileIn();
+  ~MediaFileIn();
   static v8::Persistent<v8::Function> constructor;
 
   static void New(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void close(const v8::FunctionCallbackInfo<v8::Value>& args);
 
-  static void getListeningPort(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void addDestination(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void removeDestination(const v8::FunctionCallbackInfo<v8::Value>& args);
 };

@@ -1,15 +1,12 @@
 {
   'targets': [{
-    'target_name': 'addon',
-    'sources': ['addon.cc',
-                '../webrtc/WebRtcConnection.cc',
-                '../woogeen_base/Gateway.cc',
-                '../woogeen_base/NodeEventRegistry.cc'],
-    'include_dirs': ['$(CORE_HOME)/common',
-                     '$(CORE_HOME)/erizo/src/erizo',
-                     '$(CORE_HOME)/woogeen_base',
-                     '$(CORE_HOME)/../../build/libdeps/build/include'],
-    'libraries': ['-L$(CORE_HOME)/build/oovoo_gateway', '-loovoo_gateway'],
+    'target_name': 'rtspIn',
+    'sources': [ 'addon.cc',
+                 'RtspInWrapper.cc'],
+    'include_dirs': [ '$(CORE_HOME)/common',
+                      '$(CORE_HOME)/erizo/src/erizo',
+                      '$(CORE_HOME)/woogeen_base'],
+    'libraries': ['-L$(CORE_HOME)/build/woogeen_base', '-lwoogeen_base'],
     'conditions': [
       [ 'OS=="mac"', {
         'xcode_settings': {

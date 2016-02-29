@@ -1,7 +1,13 @@
 /*global require, exports, GLOBAL*/
 'use strict';
 
-var addon = require('./../../bindings/mcu/build/Release/addon');
+var woogeenWebrtc = require('./../../bindings/webrtc/build/Release/webrtc');
+var WebRtcConnection = woogeenWebrtc.WebRtcConnection;
+var AudioFrameConstructor = woogeenWebrtc.AudioFrameConstructor;
+var VideoFrameConstructor = woogeenWebrtc.VideoFrameConstructor;
+var AudioFramePacketizer = woogeenWebrtc.AudioFramePacketizer;
+var VideoFramePacketizer = woogeenWebrtc.VideoFramePacketizer;
+
 var logger = require('./../common/logger').logger;
 var cipher = require('../../common/cipher');
 // Logger
@@ -135,27 +141,27 @@ exports.WrtcConnection = function (spec) {
         cipher.unlock(cipher.k, '../../cert/.woogeen.keystore', function cb (err, obj) {
             if (!err) {
                 var erizoPassPhrase = obj.erizo;
-                wrtc = new addon.WebRtcConnection(!!audio, !!video, true/*FIXME: hash264:hard coded*/, GLOBAL.config.erizo.stunserver, GLOBAL.config.erizo.stunport, GLOBAL.config.erizo.minport, GLOBAL.config.erizo.maxport, GLOBAL.config.erizo.keystorePath, GLOBAL.config.erizo.keystorePath, erizoPassPhrase, true, true, true, true, false);
+                wrtc = new WebRtcConnection(!!audio, !!video, true/*FIXME: hash264:hard coded*/, GLOBAL.config.erizo.stunserver, GLOBAL.config.erizo.stunport, GLOBAL.config.erizo.minport, GLOBAL.config.erizo.maxport, GLOBAL.config.erizo.keystorePath, GLOBAL.config.erizo.keystorePath, erizoPassPhrase, true, true, true, true, false);
 
                 if (direction === 'in') {
                     if (audio) {
-                        audioFrameConstructor = new addon.AudioFrameConstructor(wrtc);
+                        audioFrameConstructor = new AudioFrameConstructor(wrtc);
                         wrtc.setAudioReceiver(audioFrameConstructor);
                     }
 
                     if (video) {
-                        videoFrameConstructor = new addon.VideoFrameConstructor(wrtc);
+                        videoFrameConstructor = new VideoFrameConstructor(wrtc);
                         wrtc.setVideoReceiver(videoFrameConstructor);
                     }
                 }
 
                 if (direction === 'out') {
                     if (audio) {
-                        audioFramePacketizer = new addon.AudioFramePacketizer(wrtc);
+                        audioFramePacketizer = new AudioFramePacketizer(wrtc);
                     }
 
                     if (video) {
-                        videoFramePacketizer = new addon.VideoFramePacketizer(wrtc);
+                        videoFramePacketizer = new VideoFramePacketizer(wrtc);
                         //video.resolution && wrtc.setSendResolution(video.resolution);
                     }
                 }

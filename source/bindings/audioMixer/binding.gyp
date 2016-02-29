@@ -1,15 +1,14 @@
 {
   'targets': [{
-    'target_name': 'addon',
-    'sources': ['addon.cc',
-                '../webrtc/WebRtcConnection.cc',
-                '../woogeen_base/Gateway.cc',
-                '../woogeen_base/NodeEventRegistry.cc'],
-    'include_dirs': ['$(CORE_HOME)/common',
-                     '$(CORE_HOME)/erizo/src/erizo',
-                     '$(CORE_HOME)/woogeen_base',
-                     '$(CORE_HOME)/../../build/libdeps/build/include'],
-    'libraries': ['-L$(CORE_HOME)/build/oovoo_gateway', '-loovoo_gateway'],
+    'target_name': 'audioMixer',
+    'sources': [ 'addon.cc',
+                 'AudioMixerWrapper.cc' ],
+    'include_dirs': [ '$(CORE_HOME)/common',
+                      '$(CORE_HOME)/erizo/src/erizo',
+                      '$(CORE_HOME)/mcu/media',
+                      '$(CORE_HOME)/woogeen_base',
+                      '$(CORE_HOME)/../../third_party/webrtc/src'],
+    'libraries': ['-L$(CORE_HOME)/build/mcu', '-lmcu'],
     'conditions': [
       [ 'OS=="mac"', {
         'xcode_settings': {

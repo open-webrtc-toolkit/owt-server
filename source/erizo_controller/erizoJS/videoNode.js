@@ -1,6 +1,12 @@
 /*global require, exports, GLOBAL*/
 'use strict';
-var addon = require('./../../bindings/mcu/build/Release/addon');
+
+var woogeenInternalIO = require('./../../bindings/internalIO/build/Release/internalIO');
+var InternalIn = woogeenInternalIO.InternalIn;
+var InternalOut = woogeenInternalIO.InternalOut;
+var MediaFrameMulticaster = require('./../../bindings/mediaFrameMulticaster/build/Release/mediaFrameMulticaster').MediaFrameMulticaster;
+var VideoMixer = require('./../../bindings/videoMixer/build/Release/videoMixer').VideoMixer;
+
 var logger = require('./../common/logger').logger;
 
 // Logger
@@ -55,7 +61,7 @@ var VideoEngine = function () {
 
     var addInput = function (stream_id, codec, protocol, on_ok, on_error) {
         if (engine) {
-            var conn = new addon.InternalIn(protocol);
+            var conn = new InternalIn(protocol);
             if (engine.addInput(stream_id, codec, conn)) {
                 inputs[stream_id] = conn;
                 log.debug('addInput ok, stream_id:', stream_id, 'codec:', codec, 'protocol:', protocol);
@@ -86,7 +92,7 @@ var VideoEngine = function () {
             }
 
             var stream_id = Math.random() * 1000000000000000000 + '';
-            var dispatcher = new addon.MediaFrameMulticaster();
+            var dispatcher = new MediaFrameMulticaster();
             if (engine.addOutput(stream_id, codec, resolution, dispatcher)) {
                 outputs[stream_id] = {codec: codec,
                                       resolution: resolution,
@@ -128,7 +134,7 @@ var VideoEngine = function () {
             'simulcast': videoConfig.multistreaming
         };
 
-        engine = new addon.VideoMixer(JSON.stringify(config));
+        engine = new VideoMixer(JSON.stringify(config));
         maxInputNum = videoConfig.maxInput;
 
         // FIXME: The supported codec list should be a sub-list of those querried from the engine
@@ -213,7 +219,7 @@ var VideoEngine = function () {
 
     that.subscribe = function (subscription_id, subscription_type, audio_stream_id, video_stream_id, options, callback) {
         if (outputs[video_stream_id]) {
-            var conn = new addon.InternalOut(options.protocol, options.dest_ip, options.dest_port);
+            var conn = new InternalOut(options.protocol, options.dest_ip, options.dest_port);
             outputs[video_stream_id].dispatcher.addDestination('video', conn);
             outputs[video_stream_id].subscriptions[subscription_id] = conn;
             callback('callback', 'ok');

@@ -18,29 +18,32 @@
  * and approved by Intel in writing.
  */
 
-#ifndef INTERNALOUTWRAPPER_H
-#define INTERNALOUTWRAPPER_H
+#ifndef MEDIAFILEOUTWRAPPER_H
+#define MEDIAFILEOUTWRAPPER_H
 
-#include "MediaFramePipelineWrapper.h"
-#include <InternalOut.h>
+#include "../woogeen_base/NodeEventRegistry.h"
+#include "../woogeen_base/MediaFramePipelineWrapper.h"
+#include <MediaFileOut.h>
 #include <node.h>
 #include <node_object_wrap.h>
 
 /*
- * Wrapper class of woogeen_base::InternalOut
+ * Wrapper class of woogeen_base::MediaFileOut
  */
-class InternalOut : public FrameDestination {
+class MediaFileOut : public FrameDestination, public NodeEventRegistry {
  public:
   static void Init(v8::Local<v8::Object> exports);
-  woogeen_base::InternalOut* me;
+  woogeen_base::MediaFileOut* me;
 
  private:
-  InternalOut();
-  ~InternalOut();
+  MediaFileOut();
+  ~MediaFileOut();
   static v8::Persistent<v8::Function> constructor;
 
   static void New(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void close(const v8::FunctionCallbackInfo<v8::Value>& args);
+
+  static void addEventListener(const v8::FunctionCallbackInfo<v8::Value>& args);
 };
 
 #endif
