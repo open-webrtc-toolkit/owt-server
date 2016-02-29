@@ -18,33 +18,29 @@
  * and approved by Intel in writing.
  */
 
-#ifndef AUDIOFRAMECONSTRUCTORWRAPPER_H
-#define AUDIOFRAMECONSTRUCTORWRAPPER_H
+#ifndef INTERNALOUTWRAPPER_H
+#define INTERNALOUTWRAPPER_H
 
-#include "../erizoAPI/MediaDefinitions.h"
-#include <AudioFrameConstructor.h>
+#include "../woogeen_base/MediaFramePipelineWrapper.h"
+#include <InternalOut.h>
 #include <node.h>
 #include <node_object_wrap.h>
 
 /*
- * Wrapper class of woogeen_base::AudioFrameConstructor
+ * Wrapper class of woogeen_base::InternalOut
  */
-class AudioFrameConstructor : public MediaSink {
+class InternalOut : public FrameDestination {
  public:
   static void Init(v8::Local<v8::Object> exports);
-  woogeen_base::AudioFrameConstructor* me;
-  woogeen_base::FrameSource* src;
+  woogeen_base::InternalOut* me;
 
  private:
-  AudioFrameConstructor();
-  ~AudioFrameConstructor();
+  InternalOut();
+  ~InternalOut();
   static v8::Persistent<v8::Function> constructor;
 
   static void New(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void close(const v8::FunctionCallbackInfo<v8::Value>& args);
-
-  static void addDestination(const v8::FunctionCallbackInfo<v8::Value>& args);
-  static void removeDestination(const v8::FunctionCallbackInfo<v8::Value>& args);
 };
 
 #endif

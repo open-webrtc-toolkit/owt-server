@@ -1,13 +1,19 @@
 /*global require, exports*/
 'use strict';
-var addon = require('./../../bindings/mcu/build/Release/addon');
+
+var woogeenInternalIO = require('./../../bindings/internalIO/build/Release/internalIO');
+var InternalIn = woogeenInternalIO.InternalIn;
+var InternalOut = woogeenInternalIO.InternalOut;
+var MediaFrameMulticaster = require('./../../bindings/mediaFrameMulticaster/build/Release/mediaFrameMulticaster').MediaFrameMulticaster;
+var AudioMixer = require('./../../bindings/audioMixer/build/Release/audioMixer').AudioMixer;
+
 var logger = require('./../common/logger').logger;
 var amqper = require('./../common/amqper');
 
 // Logger
 var log = logger.getLogger('AudioNode');
 
-var AudioMixer = function () {
+var AudioEngine = function () {
     var that = {},
         engine,
         observer,
@@ -28,7 +34,7 @@ var AudioMixer = function () {
 
     var addInput = function (stream_id, for_whom, codec, protocol, on_ok, on_error) {
         if (engine) {
-            var conn = new addon.InternalIn(protocol);
+            var conn = new InternalIn(protocol);
             if (engine.addInput(for_whom, codec, conn)) {
                 inputs[stream_id] = {owner: for_whom,
                                      connection: conn};
@@ -39,7 +45,7 @@ var AudioMixer = function () {
             }
         } else {
             on_error('Audio-mixer engine is not ready.');
-        }            
+        }
     };
 
     var removeInput = function (stream_id) {
@@ -53,7 +59,7 @@ var AudioMixer = function () {
     var addOutput = function (for_whom, codec, on_ok, on_error) {
         var stream_id = Math.random() * 1000000000000000000 + '';
         if (engine) {
-            var dispatcher = new addon.MediaFrameMulticaster();
+            var dispatcher = new MediaFrameMulticaster();
             if (engine.addOutput(for_whom, codec, dispatcher)) {
                 outputs[stream_id] = {owner: for_whom,
                                       codec: codec,
@@ -83,7 +89,7 @@ var AudioMixer = function () {
     };
 
     that.initEngine = function (config, callback) {
-        engine = new addon.AudioMixer(JSON.stringify(config));
+        engine = new AudioMixer(JSON.stringify(config));
 
         // FIXME: The supported codec list should be a sub-list of those querried from the engine
         // and filterred out according to config.
@@ -153,7 +159,7 @@ var AudioMixer = function () {
     that.subscribe = function (subscription_id, subscription_type, audio_stream_id, video_stream_id, options, callback) {
         if (outputs[audio_stream_id]) {
             log.debug('subscribe, subscription_id:', subscription_id, 'subscription_type:', subscription_type, 'audio_stream_id:', audio_stream_id, 'options:', options);
-            var conn = new addon.InternalOut(options.protocol, options.dest_ip, options.dest_port);
+            var conn = new InternalOut(options.protocol, options.dest_ip, options.dest_port);
             outputs[audio_stream_id].dispatcher.addDestination('audio', conn);
             outputs[audio_stream_id].subscriptions[subscription_id] = conn;
             callback('callback', 'ok');
@@ -182,8 +188,8 @@ var AudioMixer = function () {
     return that;
 };
 
-exports.AudioNode = function (spec) {
-    var that = new AudioMixer(spec);
+exports.AudioNode = function () {
+    var that = new AudioEngine();
 
     that.init = function (service, config, callback) {
         if (service === 'mixing') {

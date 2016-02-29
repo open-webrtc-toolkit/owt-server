@@ -1,6 +1,13 @@
-/*global require, exports, GLOBAL*/
+/*global require, exports*/
 'use strict';
-var addon = require('./../../bindings/mcu/build/Release/addon');
+
+var woogeenInternalIO = require('./../../bindings/internalIO/build/Release/internalIO');
+var woogeenMediaFileIO = require('./../../bindings/mediaFileIO/build/Release/mediaFileIO');
+var InternalIn = woogeenInternalIO.InternalIn;
+var InternalOut = woogeenInternalIO.InternalOut;
+var MediaFileIn = woogeenMediaFileIO.MediaFileIn;
+var MediaFileOut = woogeenMediaFileIO.MediaFileOut;
+var RtspOut = require('./../../bindings/rtspOut/build/Release/rtspOut').RtspOut;
 var WrtcConnection = require('./wrtcConnection').WrtcConnection;
 var RtspIn = require('./rtspIn').RtspIn;
 var logger = require('./../common/logger').logger;
@@ -44,7 +51,7 @@ exports.AccessNode = function () {
                 callback('callback', response);
             });
         } else if (stream_type === 'internal') {
-            conn = new addon.InternalIn(options.protocol);
+            conn = new InternalIn(options.protocol);
             callback('callback', conn.getListeningPort());
         } else if (stream_type === 'rtsp') {
             conn = new RtspIn();
@@ -52,7 +59,7 @@ exports.AccessNode = function () {
                 callback('callback', response);
             });
         } else if (stream_type === 'file') {
-            conn = new addon.MediaFileIn(options.path, options.has_audio, options.has_video);
+            conn = new MediaFileIn(options.path, options.has_audio, options.has_video);
             // FIXME: There should be a better chance to start playing.
             setTimeout(function () {conn.startPlay();}, 6000);
             callback('callback', {type: 'ready'});
@@ -113,10 +120,10 @@ exports.AccessNode = function () {
                 callback('callback', response);
             });
         } else if (subscription_type === 'rtsp') {
-            conn = new addon.RtspOut(options.url);
+            conn = new RtspOut(options.url);
             callback('callback', {type: 'ready', audio_codecs: [options.audio_codec], video_codecs: [options.video_codec]});
         } else if (subscription_type === 'file') {
-            conn = new addon.MediaFileOut(options.path, options.interval);
+            conn = new MediaFileOut(options.path, options.interval);
             conn.addEventListener('RecordingStream', function (message) {
                 log.error('External output for media recording error occurs.');
                 if (options.observer !== undefined) {
@@ -170,7 +177,7 @@ exports.AccessNode = function () {
                     callback('callback', {type: 'failed', reason: 'Subscription connection does not exist:'+subscription_id});
                     return;
                 case 'internal':
-                    conn = new addon.InternalOut(options.protocol, options.dest_ip, options.dest_port);
+                    conn = new InternalOut(options.protocol, options.dest_ip, options.dest_port);
                     break;
                 default:
                     log.error('Subscription type invalid:' + subscription_type);

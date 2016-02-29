@@ -1,7 +1,7 @@
 /*global require, exports*/
 'use strict';
 
-var addon = require('./../../bindings/mcu/build/Release/addon');
+var RtspIn = require('./../../bindings/rtspIn/build/Release/rtspIn').RtspIn;
 var logger = require('./../common/logger').logger;
 
 // Logger
@@ -41,7 +41,7 @@ exports.RtspIn = function () {
     that.init = function (url, expect_audio, expect_video, transport, buffer_size, on_status) {
         audio = expect_audio;
         video = expect_video;
-        rtspClient = new addon.RtspIn(url, audio, video, transport, buffer_size);
+        rtspClient = new RtspIn(url, audio, video, transport, buffer_size);
 
         initRtspClient(rtspClient, on_status);
     };

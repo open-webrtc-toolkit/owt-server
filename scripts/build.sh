@@ -84,13 +84,15 @@ ${BUILD_MCU_RUNTIME_HW} && ${BUILD_MCU_RUNTIME_SW} && BUILD_MCU_BUNDLE=true
 
 build_gateway_runtime() {
   CMAKE_ADDITIONAL_OPTIONS="-DCOMPILE_OOVOO_GATEWAY=ON"
-  RUNTIME_ADDON_SRC_DIR="${SOURCE}/bindings/oovoo_gateway"
+  RUNTIME_ADDON_SRC_DIR="${SOURCE}/bindings"
+  ADDON_LIST="oovoo_gateway"
   build_runtime
 }
 
 build_mcu_runtime() {
   CMAKE_ADDITIONAL_OPTIONS="-DCOMPILE_MCU=ON"
-  RUNTIME_ADDON_SRC_DIR="${SOURCE}/bindings/mcu"
+  RUNTIME_ADDON_SRC_DIR="${SOURCE}/bindings"
+  ADDON_LIST="audioMixer internalIO mediaFileIO mediaFrameMulticaster rtspIn rtspOut videoMixer webrtc"
   build_runtime
 }
 
@@ -115,29 +117,32 @@ build_runtime() {
   # rm -fr "${RUNTIME_LIB_SRC_DIR}/build"
   mkdir -p "${RUNTIME_LIB_SRC_DIR}/build"
   # runtime lib
-  cd "${RUNTIME_LIB_SRC_DIR}/build"
+  pushd "${RUNTIME_LIB_SRC_DIR}/build" >/dev/null
   if [[ -x $CCOMPILER && -x $CXXCOMPILER ]]; then
     LD_LIBRARY_PATH=${DEPS_ROOT}/lib:$LD_LIBRARY_PATH PKG_CONFIG_PATH=${DEPS_ROOT}/lib/pkgconfig:$PKG_CONFIG_PATH BOOST_ROOT=${DEPS_ROOT} CC=$CCOMPILER CXX=$CXXCOMPILER cmake -DCMAKE_BUILD_TYPE=${BUILDTYPE} $CMAKE_ADDITIONAL_OPTIONS ..
   else
     LD_LIBRARY_PATH=${DEPS_ROOT}/lib:$LD_LIBRARY_PATH PKG_CONFIG_PATH=${DEPS_ROOT}/lib/pkgconfig:$PKG_CONFIG_PATH BOOST_ROOT=${DEPS_ROOT} cmake -DCMAKE_BUILD_TYPE=${BUILDTYPE} $CMAKE_ADDITIONAL_OPTIONS ..
   fi
   LD_LIBRARY_PATH=${DEPS_ROOT}/lib:$LD_LIBRARY_PATH make
+  popd >/dev/null
   # runtime addon
   if hash node-gyp 2>/dev/null; then
-    echo 'building with node-gyp...'
-    cd "${RUNTIME_ADDON_SRC_DIR}"
-    if [[ -x $CCOMPILER && -x $CXXCOMPILER ]]; then
-      LD_LIBRARY_PATH=${DEPS_ROOT}/lib:$LD_LIBRARY_PATH CORE_HOME="${RUNTIME_LIB_SRC_DIR}" CC=$CCOMPILER CXX=$CXXCOMPILER node-gyp rebuild
-    else
-      LD_LIBRARY_PATH=${DEPS_ROOT}/lib:$LD_LIBRARY_PATH CORE_HOME="${RUNTIME_LIB_SRC_DIR}" node-gyp rebuild
-    fi
+    pushd ${RUNTIME_ADDON_SRC_DIR} >/dev/null
+    for ADDON in ${ADDON_LIST}; do
+      pushd ${ADDON} >/dev/null
+      if [[ -x $CCOMPILER && -x $CXXCOMPILER ]]; then
+        CORE_HOME="${RUNTIME_LIB_SRC_DIR}" CC=$CCOMPILER CXX=$CXXCOMPILER node-gyp rebuild --loglevel=error
+      else
+        CORE_HOME="${RUNTIME_LIB_SRC_DIR}" node-gyp rebuild --loglevel=error
+      fi
+      popd >/dev/null
+    done
+    popd >/dev/null
   else
     echo >&2 "Appropriate building tool not found."
     echo >&2 "You need to install node-gyp."
     return 1
   fi
-  # [ -s "${RUNTIME_ADDON_SRC_DIR}/build/Release/addon.node" ] && cp -av "${RUNTIME_ADDON_SRC_DIR}/build/Release/addon.node" "${BUILD_ROOT}/"
-  cd ${this}
 }
 
 build_mcu_client_sdk() {

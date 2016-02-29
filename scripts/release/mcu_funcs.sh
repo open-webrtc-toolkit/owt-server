@@ -5,13 +5,16 @@
 # */
 #
 
+ADDON_LIST="audioMixer internalIO mediaFileIO mediaFrameMulticaster rtspIn rtspOut videoMixer webrtc"
+DIST_ADDON_DIR="${WOOGEEN_DIST}/bindings"
+
 pack_runtime() {
   mkdir -p ${WOOGEEN_DIST}/lib
   local LIBERIZO="${SOURCE}/core/build/erizo/src/erizo/liberizo.so"
   local LIBMCU="${SOURCE}/core/build/mcu/libmcu.so"
   local LIBMCU_HW="${SOURCE}/core/build/mcu/libmcu_hw.so"
   local LIBMCU_SW="${SOURCE}/core/build/mcu/libmcu_sw.so"
-  local ADDON="${SOURCE}/bindings/mcu/build/Release/addon.node"
+  local SOURCE_ADDON_DIR="${SOURCE}/bindings"
   [[ -s ${LIBERIZO} ]] && cp -av ${LIBERIZO} ${WOOGEEN_DIST}/lib
   if [[ -s ${LIBMCU_SW} ]] && [[ -s ${LIBMCU_HW} ]]; then
     cp -av ${LIBMCU_HW} ${WOOGEEN_DIST}/lib
@@ -19,10 +22,13 @@ pack_runtime() {
   else
     [[ -s ${LIBMCU} ]] && cp -av ${LIBMCU} ${WOOGEEN_DIST}/lib
   fi
-  [[ -s ${ADDON} ]] && \
-  mkdir -p ${WOOGEEN_DIST}/bindings/mcu/build/Release && \
-  cp -av ${ADDON} ${WOOGEEN_DIST}/bindings/mcu/build/Release && \
-  ${ENCRYPT} && strip ${WOOGEEN_DIST}/bindings/mcu/build/Release/addon.node
+  # addons
+  for ADDON in ${ADDON_LIST}; do
+    [[ -s ${SOURCE_ADDON_DIR}/${ADDON}/build/Release/${ADDON}.node ]] && \
+    mkdir -p ${DIST_ADDON_DIR}/${ADDON}/build/Release && \
+    cp -av {${SOURCE_ADDON_DIR},${DIST_ADDON_DIR}}/${ADDON}/build/Release/${ADDON}.node && \
+    ${ENCRYPT} && strip ${DIST_ADDON_DIR}/${ADDON}/build/Release/${ADDON}.node
+  done
   # mcu
   mkdir -p ${WOOGEEN_DIST}/mcu/
   cd ${WOOGEEN_DIST}/mcu/ && \
@@ -72,7 +78,11 @@ pack_libs() {
   local OS=`$ROOT/scripts/detectOS.sh | awk '{print tolower($0)}'`
   echo $OS
 
-  LD_LIBRARY_PATH=$ROOT/build/libdeps/build/lib:$ROOT/build/libdeps/build/lib64:${LD_LIBRARY_PATH} ldd ${WOOGEEN_DIST}/sbin/webrtc_mcu ${WOOGEEN_DIST}/bindings/mcu/build/Release/addon.node ${WOOGEEN_DIST}/lib/node/addon.node ${WOOGEEN_DIST}/lib/libmcu{,_sw,_hw}.so ${WOOGEEN_DIST}/lib/liberizo.so | grep '=>' | awk '{print $3}' | sort | uniq | while read line; do
+  LD_LIBRARY_PATH=$ROOT/build/libdeps/build/lib:$ROOT/build/libdeps/build/lib64:${LD_LIBRARY_PATH} \
+  ldd ${WOOGEEN_DIST}/sbin/webrtc_mcu \
+      ${WOOGEEN_DIST}/lib/libmcu{,_sw,_hw}.so \
+      ${WOOGEEN_DIST}/lib/libwoogeen_base.so \
+      ${WOOGEEN_DIST}/lib/liberizo.so 2>/dev/null | grep '=>' | awk '{print $3}' | sort | uniq | while read line; do
     if [[ "$OS" =~ .*centos.* ]]
     then
       [[ -s "${line}" ]] && [[ -z `rpm -qf ${line} 2>/dev/null | grep 'glibc'` ]] && cp -Lv ${line} ${WOOGEEN_DIST}/lib
@@ -185,10 +195,12 @@ pack_node() {
   ln -s ../node_modules ${WOOGEEN_DIST}/lib/node
   ln -s ../etc/woogeen_config.js ${WOOGEEN_DIST}/node_modules/
   ln -s ../common/cipher.js ${WOOGEEN_DIST}/node_modules/
-  mv ${WOOGEEN_DIST}/bindings/mcu/build/Release/addon.node ${WOOGEEN_DIST}/lib/node/
+  for ADDON in ${ADDON_LIST}; do
+    mv ${DIST_ADDON_DIR}/${ADDON}/build/Release/${ADDON}.node ${WOOGEEN_DIST}/lib/node/
+  done
 
   rm -rf ${WOOGEEN_DIST}/mcu/erizoJS
-  rm -rf ${WOOGEEN_DIST}/bindings
+  rm -rf ${DIST_ADDON_DIR}
 }
 
 install_module() {

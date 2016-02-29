@@ -1,5 +1,5 @@
 #include <node.h>
-#include "../erizoAPI/WebRtcConnection.h"
+#include "../webrtc/WebRtcConnection.h"
 #include "../woogeen_base/Gateway.h"
 
 using namespace v8;
