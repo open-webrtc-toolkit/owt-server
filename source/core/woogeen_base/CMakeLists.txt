@@ -17,7 +17,9 @@ set(LIB_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/../../../build/libdeps/build/lib/")
 set(WEBRTC_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/../../../third_party/webrtc")
 set(H264_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/../../../third_party/openh264")
 
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}" "${LIB_DIRS}../include/" "${WEBRTC_DIRS}/src")
+pkg_check_modules(PC_YAMI libyami)
+
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}" "${LIB_DIRS}../include/" "${WEBRTC_DIRS}/src" "${PC_YAMI_INCLUDE_DIRS}")
 
 add_definitions(-DWEBRTC_POSIX -DWEBRTC_LINUX)
 
@@ -56,4 +58,6 @@ target_link_libraries(woogeen_base ${Boost_LIBRARIES})
 find_library(LOG log4cxx)
 test_lib(${LOG})
 
-target_link_libraries(woogeen_base ${EXTRA_LIBS} ${WEBRTC} ${H264} ${LIBAV_LIBS} ${LOG})
+find_library(YAMI yami HINTS ${PC_YAMI_LIBRARY_DIRS})
+
+target_link_libraries(woogeen_base ${EXTRA_LIBS} ${WEBRTC} ${H264} ${LIBAV_LIBS} ${LOG} ${YAMI})
