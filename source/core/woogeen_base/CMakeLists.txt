@@ -47,4 +47,13 @@ find_library(AVFORMAT avformat HINTS "${LIB_DIRS}")
 test_lib(${AVFORMAT})
 set (LIBAV_LIBS ${AVCODEC} ${AVFORMAT})
 
-target_link_libraries(woogeen_base ${EXTRA_LIBS} ${WEBRTC} ${H264} ${LIBAV_LIBS})
+# BOOST
+set (BOOST_LIBS thread)
+find_package(Boost COMPONENTS ${BOOST_LIBS} REQUIRED)
+target_link_libraries(woogeen_base ${Boost_LIBRARIES})
+
+# LOG4CXX
+find_library(LOG log4cxx)
+test_lib(${LOG})
+
+target_link_libraries(woogeen_base ${EXTRA_LIBS} ${WEBRTC} ${H264} ${LIBAV_LIBS} ${LOG})
