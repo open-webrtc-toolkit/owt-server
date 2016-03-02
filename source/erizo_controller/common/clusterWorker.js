@@ -23,7 +23,7 @@ var genID = (function() {
     };
 })();
 
-module.exports.ClusterWorker = function (spec) {
+module.exports = function (spec) {
     var that = {};
 
     /*'unregistered' | 'registered' | 'recovering'*/

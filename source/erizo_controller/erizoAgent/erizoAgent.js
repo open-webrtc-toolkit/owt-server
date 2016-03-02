@@ -50,11 +50,11 @@ for (var prop in opt.options) {
                 GLOBAL.config.logger.config_file = value;
                 break;
             case 'my-purpose':
-                if (value === 'webrtc'
-                    || value === 'rtsp'
-                    || value === 'file'
-                    || value === 'audio'
-                    || value === 'video') {
+                if (value === 'webrtc' ||
+                    value === 'rtsp' ||
+                    value === 'file' ||
+                    value === 'audio' ||
+                    value === 'video') {
                     myPurpose = value;
                 } else {
                     process.exit(0);
@@ -69,15 +69,15 @@ for (var prop in opt.options) {
 
 // Load submodules with updated config
 var logger = require('./../common/logger').logger;
-var Worker = require('./../common/clusterWorker').ClusterWorker;
+var clusterWorker = require('./../common/clusterWorker');
 var rpc = require('./../common/amqper');
 
-var worker = undefined;
+var worker;
 
 // Logger
 var log = logger.getLogger('ErizoAgent');
 
-var INTERVAL_TIME_KEEPALIVE = GLOBAL.config.erizoAgent.interval_time_keepAlive;
+const INTERVAL_TIME_REPORT = GLOBAL.config.erizoAgent.interval_time_report;
 var EXTERNAL_INTERFACE_NAME = GLOBAL.config.erizoAgent.externalNetworkInterface;
 var INTERNAL_INTERFACE_NAME = GLOBAL.config.erizoAgent.internalNetworkInterface;
 
@@ -194,24 +194,26 @@ var reportLoad = function() {
         log.debug('report load:', loadPercentage);
         rpc.callRpc(GLOBAL.config.cluster_name || 'woogeenCluster', 'reportLoad', [myId, loadPercentage], {callback: function () {}});
     };
-
+    var report;
     switch (myPurpose) {
         case 'webrtc':
         case 'rtsp':
-            getNetworkLoad(onResult);
+            report = getNetworkLoad;
             break;
         case 'file':
-            getStorageLoad(onResult);
+            report = getStorageLoad;
             break;
         case 'audio':
-            getCPULoad(onResult);
+            report = getCPULoad;
             break;
         case 'video':
-            GLOBAL.config.erizo.hardwareAccelerated/*FIXME: should be double checked whether hardware acceleration is actually running*/ ? getGPULoad(onResult) : getCPULoad(onResult);
+            /*FIXME: should be double checked whether hardware acceleration is actually running*/
+            report = (GLOBAL.config.erizo.hardwareAccelerated ? getGPULoad : getCPULoad);
             break;
         default:
-            break;
+            return;
     }
+    report(onResult);
 };
 
 var launchErizoJS = function() {
@@ -272,8 +274,9 @@ var api = {
 
     getErizoJS: function(room_id, callback) {
         try {
-            for (var i in erizos) {
-                var erizo_id = erizos[i];
+            var i, erizo_id;
+            for (i in erizos) {
+                erizo_id = erizos[i];
                 if (reuse && tasks[erizo_id] !== undefined && tasks[erizo_id].indexOf(room_id) !== -1) {
                     callback('callback', erizo_id);
                     worker && worker.addTask(room_id);
@@ -281,8 +284,8 @@ var api = {
                 }
             }
 
-            for (var i in idle_erizos) {
-                var erizo_id = idle_erizos[i];
+            for (i in idle_erizos) {
+                erizo_id = idle_erizos[i];
                 if (reuse && tasks[erizo_id] !== undefined && tasks[erizo_id].indexOf(room_id) !== -1) {
                     callback('callback', erizo_id);
                     worker && worker.addTask(room_id);
@@ -290,7 +293,7 @@ var api = {
                 }
             }
 
-            var erizo_id = idle_erizos.shift();
+            erizo_id = idle_erizos.shift();
             worker && worker.addTask(room_id);
             callback('callback', erizo_id);
 
@@ -375,14 +378,14 @@ var privateIP, publicIP, clusterIP;
     clusterIP = internalAddresses[0];
 })();
 
-var reportInterval = undefined;
+var reportInterval;
 var joinCluster = function (on_ok) {
     var joinOK = function (id) {
         myId = id;
         myState = 2;
         log.info(myPurpose, 'agent join cluster ok.');
         on_ok(id);
-        reportInterval = setInterval(reportLoad, 5 * 1000);
+        reportInterval = setInterval(reportLoad, INTERVAL_TIME_REPORT);
     };
 
     var joinFailed = function (reason) {
@@ -400,15 +403,15 @@ var joinCluster = function (on_ok) {
 
     var spec = {amqper: rpc,
                 purpose: myPurpose,
-                clusterName: GLOBAL.config.cluster_name || 'woogeenCluster',
-                joinRery: GLOBAL.config.join_cluster_retry || 5,
-                joinPeriod: GLOBAL.config.join_cluster_period || 3000,
-                recoveryPeriod: GLOBAL.config.recover_cluster_period || 1000,
-                keepAlivePeriod: GLOBAL.config.erizoAgent.interval_time_keepAlive/*config.keep_alive_period*/ || 5000,
+                clusterName: GLOBAL.config.erizoAgent.cluster_name || 'woogeenCluster',
+                joinRery: GLOBAL.config.erizoAgent.join_cluster_retry || 5,
+                joinPeriod: GLOBAL.config.erizoAgent.join_cluster_period || 3000,
+                recoveryPeriod: GLOBAL.config.erizoAgent.recover_cluster_period || 1000,
+                keepAlivePeriod: GLOBAL.config.erizoAgent.interval_time_keepAlive || 1000,
                 info: {ip: clusterIP,
                        purpose: myPurpose,
                        state: 2,
-                       max_load: GLOBAL.config.max_load || 0.85
+                       max_load: GLOBAL.config.erizoAgent.max_load || 0.85
                       },
                 onJoinOK: joinOK,
                 onJoinFailed: joinFailed,
@@ -416,7 +419,7 @@ var joinCluster = function (on_ok) {
                 onRecovery: recovery
                };
 
-    worker = new Worker(spec);
+    worker = clusterWorker(spec);
 };
 
 (function init_env() {

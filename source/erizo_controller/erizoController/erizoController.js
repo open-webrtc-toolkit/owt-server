@@ -83,10 +83,10 @@ for (var prop in opt.options) {
 // Load submodules with updated config
 var logger = require('./../common/logger').logger;
 var amqper = require('./../common/amqper');
-var Worker = require('./../common/clusterWorker').ClusterWorker;
+var clusterWorker = require('./../common/clusterWorker');
 var controller = require('./roomController');
 
-var worker = undefined;
+var worker;
 
 // Logger
 var log = logger.getLogger('ErizoController');
@@ -348,7 +348,7 @@ var joinCluster = function (on_ok) {
                 onRecovery: recovery
                };
 
-    worker = new Worker(spec);
+    worker = clusterWorker(spec);
 };
 
 //*******************************************************************
