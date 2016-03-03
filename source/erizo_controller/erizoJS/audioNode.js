@@ -108,8 +108,8 @@ var AudioMixer = function () {
     };
 
     that.generate = function (for_whom, codec, callback) {
+        codec = codec.toLowerCase();
         log.debug('generate, for_whom:', for_whom, 'codec:', codec);
-
         for (var stream_id in outputs) {
             if (outputs[stream_id].owner === for_whom && outputs[stream_id].codec === codec) {
                 log.debug('generate, got stream:', stream_id);
