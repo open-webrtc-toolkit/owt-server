@@ -144,3 +144,5 @@ else
   ln -s libmcu_sw.so libmcu.so
   sed -i 's/config\.erizo\.hardwareAccelerated = true/config\.erizo\.hardwareAccelerated = false/' ${ROOT}/etc/woogeen_config.js
 fi
+
+[[ -L ${ROOT}/node_modules/woogeen_config.js ]] || ln -s ../etc/woogeen_config.js ${ROOT}/node_modules/
