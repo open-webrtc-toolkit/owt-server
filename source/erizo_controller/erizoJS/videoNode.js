@@ -158,6 +158,8 @@ var VideoEngine = function () {
     };
 
     that.generate = function (codec, resolution, callback) {
+        codec = codec.toLowerCase();
+        resolution = resolution.toLowerCase();
         log.debug('generate, codec:', codec, 'resolution:', resolution);
         resolution = resolution || supported_resolutions[0];
         for (var stream_id in outputs) {
