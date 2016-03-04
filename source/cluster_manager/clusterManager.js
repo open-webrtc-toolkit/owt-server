@@ -88,9 +88,11 @@ var ClusterManager = function (spec) {
                     on_ok(worker, workers[worker].info);
                 }, on_error);
             } else {
+                log.warn('No scheduler for purpose:', purpose);
                 on_error('No scheduler for purpose: ' + purpose);
             }
         } else {
+           log.warn('cluster manager is not ready.');
            on_error('cluster manager is not ready.');
         }
     };

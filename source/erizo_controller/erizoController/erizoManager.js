@@ -52,15 +52,30 @@ module.exports = function (spec) {
     setInterval(sendKeepAlive, KEEPALIVE_INTERVAL);
 
     var getAgent = function (purpose, for_whom, on_ok, on_failed) {
-        makeRPC(amqper,
+        var keepTrying = true;
+
+        var tryFetchingAgent = function (attempt) {
+            if (attempt <= 0) {
+                return on_failed('Failed in scheduling a(n)', purpose, 'agent.');
+            }
+
+            makeRPC(
+                amqper,
                 cluster,
                 'schedule',
                 [purpose, room_id/*FIXME: use room_id as taskId temporarily, should use for_whom instead later.*/, 10 * 1000],
                 function (result) {
                     on_ok({id: result.id, addr: result.info.ip});
-                },
-                on_failed);
-        //setTimeout(function () {on_ok({id: (purpose === 'mixing' ? exports.mixAgentId : exports.accessAgentId), addr: 'localhost'});}, 10);
+                    keepTrying = false;
+                }, function (reason) {
+                    if (keepTrying) {
+                        log.warn('Failed in scheduling a(n)', purpose, 'agent, keep trying.');
+                        setTimeout(function () {tryFetchingAgent(attempt - (reason.startWith('Timeout') ? 6 : 1));}, 200);
+                    }
+                });
+        };
+
+        tryFetchingAgent(25);
     };
 
     that.allocateErizo = function (purpose, for_whom, on_ok, on_failed) {

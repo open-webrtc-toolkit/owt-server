@@ -114,7 +114,6 @@ case $startStop in
         nohup nice -n ${WOOGEEN_NICENESS} node main.js \
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
-        sleep 12
         ;;
       portal )
         export PATH=${PATH}:${WOOGEEN_HOME}/sbin
