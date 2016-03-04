@@ -10,15 +10,28 @@ var log = logger.getLogger('CloudHandler');
 var cluster_name = config.clusterName || 'woogeenCluster';
 
 exports.getErizoControllerForRoom = function (room, callback) {
-    var roomId = room._id;
+    var roomId = room._id,
+        keepTrying = true;
 
-    rpc.callRpc(cluster_name, 'schedule', ['portal', roomId, 60 * 1000], {callback: function (result) {
-        if (result === 'timeout' || result === 'error') {
-            callback('timeout');
-        } else {
-            callback(result.info);
+    var tryFetchingPortal = function (attempts) {
+        if (attempts <= 0) {
+            return callback('timeout');
         }
-    }});
+
+        rpc.callRpc(cluster_name, 'schedule', ['portal', roomId, 60 * 1000], {callback: function (result) {
+            if (result === 'timeout' || result === 'error') {
+                if (keepTrying) {
+                    log.info('Faild in scheduling portal for', roomId, ', keep trying.');
+                    setTimeout(function () {tryFetchingPortal(attempts - (result === 'timeout' ? 4 : 1));}, 1000);
+                }
+            } else {
+                callback(result.info);
+                keepTrying = false;
+            }
+        }});
+    };
+
+    tryFetchingPortal(60);
 };
 
 exports.getUsersInRoom = function (roomId, callback) {

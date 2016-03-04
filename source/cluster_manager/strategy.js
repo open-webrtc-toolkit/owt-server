@@ -109,7 +109,7 @@ module.exports.create = function (strategy) {
         case 'randomly-pick':
             return new randomlyPick();
         default:
-            log.warn('Invalid specified scheduling strategy, apply "randomly-pick" instead.');
+            log.warn('Invalid specified scheduling strategy:', strategy, ', apply "randomly-pick" instead.');
             return new randomlyPick();
     }
 };
