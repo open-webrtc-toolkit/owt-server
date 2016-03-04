@@ -475,9 +475,9 @@ static woogeen_base::FrameFormat getFormat(const std::string& codec) {
         return woogeen_base::FRAME_FORMAT_PCMU;
     } else if (codec == "pcma") {
         return woogeen_base::FRAME_FORMAT_PCMA;
-    } else if (codec == "isac_1600") {
+    } else if (codec == "isac_16000") {
         return woogeen_base::FRAME_FORMAT_ISAC16;
-    } else if (codec == "isac_3200") {
+    } else if (codec == "isac_32000") {
         return woogeen_base::FRAME_FORMAT_ISAC32;
     } else if (codec == "opus_48000_2") {
         return woogeen_base::FRAME_FORMAT_OPUS;
