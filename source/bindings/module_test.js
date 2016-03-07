@@ -2,7 +2,9 @@
 'use strict';
 
 if (!process.env.LD_LIBRARY_PATH) {
-  process.env.LD_LIBRARY_PATH = require('path').resolve(__dirname, '../../dist/lib');
+  process.env.LD_LIBRARY_PATH = ['woogeen_base', 'mcu', 'erizo/src/erizo'].map(function (dir) {
+    return require('path').resolve(__dirname, '../core/build/'+dir);
+  }).join(':');
   require('child_process').fork(__dirname+'/module_test.js');
 } else {
   ['audioMixer',
