@@ -350,6 +350,7 @@ function tableHandlerRoom(rooms) {
       avCoordinated: false,
       multistreaming: 0,
       maxInput: 16,
+      crop: false,
       layout: {
         base: 'fluid',
         custom: []
@@ -382,6 +383,10 @@ function tableHandlerRoom(rooms) {
         <tr>\
           <td colspan="2">multistreaming</td>\
           <td id="multistreaming" class="value-num-edit" data-value={{multistreaming}}></td>\
+        </tr>\
+        <tr>\
+          <td colspan="2">crop</td>\
+          <td id="crop" class="value-num-edit" data-value={{crop}}></td>\
         </tr>\
         <tr>\
           <td rowspan="2">layout</td>\
@@ -479,6 +484,17 @@ function tableHandlerRoom(rooms) {
         text: 'true'
       }]
     });
+    $('#myModal3 tbody td#crop').editable({
+      mode: 'inline',
+      type: 'select',
+      source: [{
+        value: 0,
+        text: 'false'
+      }, {
+        value: 1,
+        text: 'true'
+      }]
+    });
     $('#myModal3 tbody td.value-obj-edit').editable({
       title: 'Input a stringified JSON object',
       validate: function(value) {
@@ -504,6 +520,7 @@ function tableHandlerRoom(rooms) {
     $('#myModal3 tbody td#maxInput').editable(disabledHandle);
     $('#myModal3 tbody td#bkColor').editable(disabledHandle);
     $('#myModal3 tbody td#avCoordinated').editable(disabledHandle);
+    $('#myModal3 tbody td#crop').editable(disabledHandle);
     $('#myModal3 tbody td.value-num-edit:last').editable(disabledHandle);
     $('#myModal3 tbody td.value-obj-edit').editable(disabledHandle);
   }

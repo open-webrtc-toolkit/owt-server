@@ -67,7 +67,7 @@ class SoftVideoCompositor : public VideoFrameCompositor,
     DECLARE_LOGGER();
     enum LayoutSolutionState{UN_INITIALIZED = 0, CHANGING, IN_WORK};
 public:
-    SoftVideoCompositor(uint32_t maxInput, VideoSize rootSize, YUVColor bgColor);
+    SoftVideoCompositor(uint32_t maxInput, VideoSize rootSize, YUVColor bgColor, bool crop);
     ~SoftVideoCompositor();
 
     bool activateInput(int input);
@@ -97,6 +97,7 @@ private:
     LayoutSolution m_currentLayout;
     LayoutSolution m_newLayout;
     LayoutSolutionState m_solutionState;
+    bool m_crop;
     /*
      * Each incoming channel will store the decoded frame in this array, and the composition
      * thread will scan this array and composite the frames into one frame.

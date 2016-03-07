@@ -12,6 +12,7 @@ function defaultMediaMixing () {
             multistreaming: 0,
             bitrate: 0,
             bkColor: 'black',
+            crop: 0,
             layout: {
                 base: 'fluid',
                 custom: []
@@ -175,6 +176,14 @@ Room.prototype.validate = function() {
             this.mediaMixing.video.bkColor = bkColor;
         }
 
+        if (this.mediaMixing.video.crop === '1' ||
+            this.mediaMixing.video.crop === 1 ||
+            this.mediaMixing.video.crop === true) {
+            this.mediaMixing.video.crop = 1;
+        } else {
+            this.mediaMixing.video.crop = 0;
+        }
+
         if (this.mediaMixing.video.layout === undefined ||
             this.mediaMixing.video.layout === null) {
             this.mediaMixing.video.layout = defaultMediaMixing().video.layout;
@@ -291,6 +300,7 @@ Room.genConfig = function (room) {
                 bitrate: room.mediaMixing.video.bitrate || 0,
                 resolution: room.mediaMixing.video.resolution || 'vga',
                 bkColor: room.mediaMixing.video.bkColor || 'black',
+                crop: room.mediaMixing.video.crop === 1,
                 layout: layoutTemplates
             },
             audio: null
@@ -323,6 +333,7 @@ module.exports = Room;
       "maxInput": 16, // type number
       "avCoordinated": 0, // type number: 0/1
       "multistreaming": 0, // type number: 0/1
+      "crop": 0, // type number: 0/1
       "layout": { // type object
         "base": "fluid", // type string
         "custom": [ // type object::Array or null
