@@ -1054,6 +1054,11 @@ var listen = function () {
             var preferredVideoCodec = options.videoCodec || 'vp8';
             var preferredAudioCodec = options.audioCodec || 'pcmu';
 
+            if (preferredAudioCodec.toLowerCase() === 'opus') {
+                // Translate the incoming codec to internal codec by default
+                preferredAudioCodec = 'opus_48000_2';
+            }
+
             var videoRecorder = videoStream.getVideoRecorder();
             var audioRecorder = audioStream.getAudioRecorder();
             if ((videoRecorder && videoRecorder !== recorderId) || (audioRecorder && audioRecorder !== recorderId)) {
