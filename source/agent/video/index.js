@@ -1,13 +1,13 @@
 /*global require, exports, GLOBAL*/
 'use strict';
 
-var woogeenInternalIO = require('./../../bindings/internalIO/build/Release/internalIO');
+var woogeenInternalIO = require('../../../bindings/internalIO/build/Release/internalIO');
 var InternalIn = woogeenInternalIO.InternalIn;
 var InternalOut = woogeenInternalIO.InternalOut;
-var MediaFrameMulticaster = require('./../../bindings/mediaFrameMulticaster/build/Release/mediaFrameMulticaster').MediaFrameMulticaster;
-var VideoMixer = require('./../../bindings/videoMixer/build/Release/videoMixer').VideoMixer;
+var MediaFrameMulticaster = require('../../../bindings/mediaFrameMulticaster/build/Release/mediaFrameMulticaster').MediaFrameMulticaster;
+var VideoMixer = require('../../../bindings/videoMixer/build/Release/videoMixer').VideoMixer;
 
-var logger = require('./../common/logger').logger;
+var logger = require('../../../common/logger').logger;
 
 // Logger
 var log = logger.getLogger('VideoNode');

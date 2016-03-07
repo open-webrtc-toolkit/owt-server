@@ -32,22 +32,24 @@ pack_runtime() {
   # mcu
   mkdir -p ${WOOGEEN_DIST}/mcu/
   cd ${WOOGEEN_DIST}/mcu/ && \
-  mkdir -p common erizoAgent erizoController/rpc erizoJS
-  cd ${SOURCE}/erizo_controller && \
-  find . -type f -not -name "*.log" -not -name "in*.sh" -exec cp '{}' "${WOOGEEN_DIST}/mcu/{}" \;
+  mkdir -p agent/{access,audio,video} controller/rpc
+  cd ${SOURCE}/controller && \
+  find . -type f -not -name "*.log" -not -name "in*.sh" -exec cp '{}' "${WOOGEEN_DIST}/mcu/controller/{}" \;
+  cd ${SOURCE}/agent && \
+  find . -type f -not -name "*.log" -not -name "in*.sh" -exec cp '{}' "${WOOGEEN_DIST}/mcu/agent/{}" \;
   pack_nuve
   pack_common
   ENCRYPT_CAND_PATH=("${WOOGEEN_DIST}/mcu" "${WOOGEEN_DIST}/nuve/nuveAPI" "${WOOGEEN_DIST}/common")
   # config
   mkdir -p ${WOOGEEN_DIST}/etc/nuve
   mkdir -p ${WOOGEEN_DIST}/etc/mcu
-  cp -av ${SOURCE}/erizo_controller/log4js_configuration.json ${WOOGEEN_DIST}/etc/mcu
-  cp -av ${SOURCE}/erizo_controller/erizoAgent/log4cxx.properties ${WOOGEEN_DIST}/etc/mcu
+  cp -av ${SOURCE}/controller/log4js_configuration.json ${WOOGEEN_DIST}/etc/mcu
+  cp -av ${SOURCE}/agent/log4cxx.properties ${WOOGEEN_DIST}/etc/mcu
   cp -av ${SOURCE}/nuve/log4js_configuration.json ${WOOGEEN_DIST}/etc/nuve
-  rm -f ${WOOGEEN_DIST}/mcu/erizoAgent/log4cxx.properties
-  rm -f ${WOOGEEN_DIST}/mcu/log4js_configuration.json
+  rm -f ${WOOGEEN_DIST}/mcu/agent/log4cxx.properties
+  rm -f ${WOOGEEN_DIST}/mcu/controller/log4js_configuration.json
   rm -f ${WOOGEEN_DIST}/nuve/log4js_configuration.json
-  ln -s ../../etc/mcu/log4cxx.properties ${WOOGEEN_DIST}/mcu/erizoAgent/log4cxx.properties
+  ln -s ../../etc/mcu/log4cxx.properties ${WOOGEEN_DIST}/mcu/agent/log4cxx.properties
   ln -s ../etc/mcu/log4js_configuration.json ${WOOGEEN_DIST}/mcu/log4js_configuration.json
   ln -s ../etc/nuve/log4js_configuration.json ${WOOGEEN_DIST}/nuve/log4js_configuration.json
   # certificates
@@ -155,17 +157,23 @@ pack_node() {
   tar -xzf node-${NODE_VERSION}.tar.gz && \
   pushd node-${NODE_VERSION} || (echo "invalid nodejs source."; popd; return -1)
   local CURRENT_DIR=$(pwd)
+  rm -rf lib/webrtc_mcu # cleanup
   mkdir -p lib/webrtc_mcu
 
-  find ${WOOGEEN_DIST}/mcu/common ${WOOGEEN_DIST}/mcu/erizoJS -type f -name "*.js" | while read line; do
+  local THIRD_PARTY_MODULES=$(node -e "process.stdout.write(Object.keys(require('${ROOT}/scripts/release/package.json').dependencies).join(' '))")
+  cp -av ${WOOGEEN_DIST}/mcu/agent/{audio,video,access,erizoJS.js} lib/webrtc_mcu/
+  find lib/webrtc_mcu/ -type f -name "*.js" | while read line; do
     # This is kind of fragile - we assume that the occurrences of "require" are
     # always the keyword for module loading in the original JavaScript file.
-    sed -i.origin "s/require('.*\//Module\._load('/g; s/require('/Module\._load('/g" "${line}"
-    sed -i "s/Module\._load('\(amqper\|logger\|makeRPC\|accessNode\|audioNode\|videoNode\|wrtcConnection\|rtspIn\)/Module\._load('webrtc_mcu\/\1/g" "${line}"
+    # Use 'Module._load' for 3rd party js lib ONLY.
+    for JSMODULE in ${THIRD_PARTY_MODULES}; do
+      sed -i "s/require('\(\b${JSMODULE}\b\)/Module\._load('\1/g" "${line}"
+    done
+    sed -i "s/require('.*\//Module\._load('/g" "${line}"
+    sed -i "s/Module\._load('\(\baccess\b\|\baudio\b\|\bvideo\b\)/require('webrtc_mcu\/\1\/index/g" "${line}"
+    sed -i "s/Module\._load('\(\bwrtcConnection\b\|\brtspIn\b\)/require('webrtc_mcu\/access\/\1/g" "${line}"
     sed -i "1 i var Module = require('module');" "${line}"
-    mv ${line} ${CURRENT_DIR}/lib/webrtc_mcu/
-    sed -i "/lib\/zlib.js/a 'lib/webrtc_mcu/$(basename ${line})'," node.gyp
-    mv "${line}.origin" "${line}" # revert to original
+    sed -i "/lib\/zlib.js/a '${line}'," node.gyp
   done
   # The entry
   mv ${CURRENT_DIR}/lib/webrtc_mcu/erizoJS.js ${CURRENT_DIR}/lib/_third_party_main.js
@@ -190,16 +198,16 @@ pack_node() {
   popd
   popd
 
-  sed -i "s/spawn('node'/spawn('webrtc_mcu'/g" "${WOOGEEN_DIST}/mcu/erizoAgent/erizoAgent.js"
+  sed -i "s/spawn('node'/spawn('webrtc_mcu'/g" "${WOOGEEN_DIST}/mcu/agent/index.js"
 
   ln -s ../node_modules ${WOOGEEN_DIST}/lib/node
   ln -s ../etc/woogeen_config.js ${WOOGEEN_DIST}/node_modules/
-  ln -s ../common/cipher.js ${WOOGEEN_DIST}/node_modules/
+  ln -s ../common/{amqper,cipher,clusterWorker,logger,makeRPC}.js ${WOOGEEN_DIST}/node_modules/
   for ADDON in ${ADDON_LIST}; do
     mv ${DIST_ADDON_DIR}/${ADDON}/build/Release/${ADDON}.node ${WOOGEEN_DIST}/lib/node/
   done
 
-  rm -rf ${WOOGEEN_DIST}/mcu/erizoJS
+  rm -rf ${WOOGEEN_DIST}/mcu/agent/{erizoJS.js,access/,audio/,video/}
   rm -rf ${DIST_ADDON_DIR}
 }
 

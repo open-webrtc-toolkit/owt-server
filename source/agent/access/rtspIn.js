@@ -1,8 +1,8 @@
 /*global require, exports*/
 'use strict';
 
-var RtspIn = require('./../../bindings/rtspIn/build/Release/rtspIn').RtspIn;
-var logger = require('./../common/logger').logger;
+var RtspIn = require('../../../bindings/rtspIn/build/Release/rtspIn').RtspIn;
+var logger = require('../../../common/logger').logger;
 
 // Logger
 var log = logger.getLogger('RtspIn');

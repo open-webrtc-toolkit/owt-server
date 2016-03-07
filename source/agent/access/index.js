@@ -1,17 +1,17 @@
 /*global require, exports*/
 'use strict';
 
-var woogeenInternalIO = require('./../../bindings/internalIO/build/Release/internalIO');
-var woogeenMediaFileIO = require('./../../bindings/mediaFileIO/build/Release/mediaFileIO');
+var woogeenInternalIO = require('../../../bindings/internalIO/build/Release/internalIO');
+var woogeenMediaFileIO = require('../../../bindings/mediaFileIO/build/Release/mediaFileIO');
 var InternalIn = woogeenInternalIO.InternalIn;
 var InternalOut = woogeenInternalIO.InternalOut;
 var MediaFileIn = woogeenMediaFileIO.MediaFileIn;
 var MediaFileOut = woogeenMediaFileIO.MediaFileOut;
-var RtspOut = require('./../../bindings/rtspOut/build/Release/rtspOut').RtspOut;
+var RtspOut = require('../../../bindings/rtspOut/build/Release/rtspOut').RtspOut;
 var WrtcConnection = require('./wrtcConnection').WrtcConnection;
 var RtspIn = require('./rtspIn').RtspIn;
-var logger = require('./../common/logger').logger;
-var amqper = require('./../common/amqper');
+var logger = require('../../../common/logger').logger;
+var amqper = require('../../../common/amqper');
 
 // Logger
 var log = logger.getLogger('AccessNode');

@@ -119,7 +119,7 @@ case $startStop in
         export PATH=${PATH}:${WOOGEEN_HOME}/sbin
         export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${WOOGEEN_HOME}/lib
         export LOG4CXX_CONFIGURATION=${WOOGEEN_HOME}/etc/mcu/log4cxx.properties
-        cd ${WOOGEEN_HOME}/mcu/erizoController
+        cd ${WOOGEEN_HOME}/mcu/controller
         nohup nice -n ${WOOGEEN_NICENESS} node erizoController.js \
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
@@ -128,8 +128,8 @@ case $startStop in
         export PATH=${PATH}:${WOOGEEN_HOME}/sbin
         export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${WOOGEEN_HOME}/lib
         export LOG4CXX_CONFIGURATION=${WOOGEEN_HOME}/etc/mcu/log4cxx.properties
-        cd ${WOOGEEN_HOME}/mcu/erizoAgent
-        nohup nice -n ${WOOGEEN_NICENESS} node erizoAgent.js -U webrtc\
+        cd ${WOOGEEN_HOME}/mcu/agent
+        nohup nice -n ${WOOGEEN_NICENESS} node . -U webrtc\
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
@@ -137,8 +137,8 @@ case $startStop in
         export PATH=${PATH}:${WOOGEEN_HOME}/sbin
         export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${WOOGEEN_HOME}/lib
         export LOG4CXX_CONFIGURATION=${WOOGEEN_HOME}/etc/mcu/log4cxx.properties
-        cd ${WOOGEEN_HOME}/mcu/erizoAgent
-        nohup nice -n ${WOOGEEN_NICENESS} node erizoAgent.js -U rtsp\
+        cd ${WOOGEEN_HOME}/mcu/agent
+        nohup nice -n ${WOOGEEN_NICENESS} node . -U rtsp\
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
@@ -146,8 +146,8 @@ case $startStop in
         export PATH=${PATH}:${WOOGEEN_HOME}/sbin
         export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${WOOGEEN_HOME}/lib
         export LOG4CXX_CONFIGURATION=${WOOGEEN_HOME}/etc/mcu/log4cxx.properties
-        cd ${WOOGEEN_HOME}/mcu/erizoAgent
-        nohup nice -n ${WOOGEEN_NICENESS} node erizoAgent.js -U file\
+        cd ${WOOGEEN_HOME}/mcu/agent
+        nohup nice -n ${WOOGEEN_NICENESS} node . -U file\
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
@@ -155,8 +155,8 @@ case $startStop in
         export PATH=${PATH}:${WOOGEEN_HOME}/sbin
         export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${WOOGEEN_HOME}/lib
         export LOG4CXX_CONFIGURATION=${WOOGEEN_HOME}/etc/mcu/log4cxx.properties
-        cd ${WOOGEEN_HOME}/mcu/erizoAgent
-        nohup nice -n ${WOOGEEN_NICENESS} node erizoAgent.js -U audio\
+        cd ${WOOGEEN_HOME}/mcu/agent
+        nohup nice -n ${WOOGEEN_NICENESS} node . -U audio\
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
@@ -164,8 +164,8 @@ case $startStop in
         export PATH=${PATH}:${WOOGEEN_HOME}/sbin
         export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${WOOGEEN_HOME}/lib
         export LOG4CXX_CONFIGURATION=${WOOGEEN_HOME}/etc/mcu/log4cxx.properties
-        cd ${WOOGEEN_HOME}/mcu/erizoAgent
-        nohup nice -n ${WOOGEEN_NICENESS} node erizoAgent.js -U video\
+        cd ${WOOGEEN_HOME}/mcu/agent
+        nohup nice -n ${WOOGEEN_NICENESS} node . -U video\
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;

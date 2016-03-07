@@ -1,15 +1,15 @@
 /*global require, exports, GLOBAL*/
 'use strict';
 
-var woogeenWebrtc = require('./../../bindings/webrtc/build/Release/webrtc');
+var woogeenWebrtc = require('../../../bindings/webrtc/build/Release/webrtc');
 var WebRtcConnection = woogeenWebrtc.WebRtcConnection;
 var AudioFrameConstructor = woogeenWebrtc.AudioFrameConstructor;
 var VideoFrameConstructor = woogeenWebrtc.VideoFrameConstructor;
 var AudioFramePacketizer = woogeenWebrtc.AudioFramePacketizer;
 var VideoFramePacketizer = woogeenWebrtc.VideoFramePacketizer;
 
-var logger = require('./../common/logger').logger;
-var cipher = require('../../common/cipher');
+var logger = require('../../../common/logger').logger;
+var cipher = require('../../../common/cipher');
 // Logger
 var log = logger.getLogger('WrtcConnection');
 

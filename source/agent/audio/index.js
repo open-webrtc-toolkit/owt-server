@@ -1,14 +1,14 @@
 /*global require, exports*/
 'use strict';
 
-var woogeenInternalIO = require('./../../bindings/internalIO/build/Release/internalIO');
+var woogeenInternalIO = require('../../../bindings/internalIO/build/Release/internalIO');
 var InternalIn = woogeenInternalIO.InternalIn;
 var InternalOut = woogeenInternalIO.InternalOut;
-var MediaFrameMulticaster = require('./../../bindings/mediaFrameMulticaster/build/Release/mediaFrameMulticaster').MediaFrameMulticaster;
-var AudioMixer = require('./../../bindings/audioMixer/build/Release/audioMixer').AudioMixer;
+var MediaFrameMulticaster = require('../../../bindings/mediaFrameMulticaster/build/Release/mediaFrameMulticaster').MediaFrameMulticaster;
+var AudioMixer = require('../../../bindings/audioMixer/build/Release/audioMixer').AudioMixer;
 
-var logger = require('./../common/logger').logger;
-var amqper = require('./../common/amqper');
+var logger = require('../../../common/logger').logger;
+var amqper = require('../../../common/amqper');
 
 // Logger
 var log = logger.getLogger('AudioNode');
