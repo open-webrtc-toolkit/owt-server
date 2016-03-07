@@ -58,7 +58,7 @@ private:
 
 class SoftVideoFrameMixer : public VideoFrameMixer {
 public:
-    SoftVideoFrameMixer(uint32_t maxInput, VideoSize rootSize, YUVColor bgColor, boost::shared_ptr<woogeen_base::WebRTCTaskRunner>, bool useSimulcast);
+    SoftVideoFrameMixer(uint32_t maxInput, VideoSize rootSize, YUVColor bgColor, boost::shared_ptr<woogeen_base::WebRTCTaskRunner>, bool useSimulcast, bool crop);
     ~SoftVideoFrameMixer();
 
     bool addInput(int input, woogeen_base::FrameFormat, woogeen_base::FrameSource*);
@@ -95,11 +95,11 @@ private:
     bool m_useSimulcast;
 };
 
-SoftVideoFrameMixer::SoftVideoFrameMixer(uint32_t maxInput, VideoSize rootSize, YUVColor bgColor, boost::shared_ptr<woogeen_base::WebRTCTaskRunner> taskRunner, bool useSimulcast)
+SoftVideoFrameMixer::SoftVideoFrameMixer(uint32_t maxInput, VideoSize rootSize, YUVColor bgColor, boost::shared_ptr<woogeen_base::WebRTCTaskRunner> taskRunner, bool useSimulcast, bool crop)
     : m_taskRunner(taskRunner)
     , m_useSimulcast(useSimulcast)
 {
-    m_compositor.reset(new SoftVideoCompositor(maxInput, rootSize, bgColor));
+    m_compositor.reset(new SoftVideoCompositor(maxInput, rootSize, bgColor, crop));
 }
 
 SoftVideoFrameMixer::~SoftVideoFrameMixer()

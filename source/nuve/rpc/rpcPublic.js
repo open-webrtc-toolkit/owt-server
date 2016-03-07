@@ -40,6 +40,7 @@ exports.getRoomConfig = function (roomId, callback) {
                 resolution: 0,
                 bitrate: 0,
                 bkColor: 0,
+                crop: 0,
                 layout: {
                     base: 0,
                     custom: null

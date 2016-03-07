@@ -59,6 +59,7 @@ VideoMixer::VideoMixer(const std::string& configStr)
     m_outputKbps = config.get<int>("bitrate", 0);
     bool useSimulcast = config.get<bool>("simulcast");
     webrtc::VP8EncoderFactoryConfig::set_use_simulcast_adapter(useSimulcast);
+    bool cropVideo = config.get<bool>("crop");
 
     m_layoutProcessor.reset(new VideoLayoutProcessor(config));
     VideoSize rootSize;
@@ -73,7 +74,7 @@ VideoMixer::VideoMixer(const std::string& configStr)
     if (hardwareAccelerated)
         m_frameMixer.reset(new HardwareVideoFrameMixer(rootSize, bgColor));
     else
-        m_frameMixer.reset(new SoftVideoFrameMixer(m_maxInputCount, rootSize, bgColor, m_taskRunner, useSimulcast));
+        m_frameMixer.reset(new SoftVideoFrameMixer(m_maxInputCount, rootSize, bgColor, m_taskRunner, useSimulcast, cropVideo));
     m_layoutProcessor->registerConsumer(m_frameMixer);
 
     m_taskRunner->Start();

@@ -131,7 +131,8 @@ var VideoEngine = function () {
             'resolution': videoConfig.resolution,
             'backgroundcolor': videoConfig.bkColor,
             'layout': videoConfig.layout,
-            'simulcast': videoConfig.multistreaming
+            'simulcast': videoConfig.multistreaming,
+            'crop': videoConfig.crop
         };
 
         engine = new VideoMixer(JSON.stringify(config));

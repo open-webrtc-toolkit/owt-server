@@ -65,10 +65,11 @@ void VPMPool::update(unsigned int input, VideoSize& videoSize)
 
 DEFINE_LOGGER(SoftVideoCompositor, "mcu.media.SoftVideoCompositor");
 
-SoftVideoCompositor::SoftVideoCompositor(uint32_t maxInput, VideoSize rootSize, YUVColor bgColor)
+SoftVideoCompositor::SoftVideoCompositor(uint32_t maxInput, VideoSize rootSize, YUVColor bgColor, bool crop)
     : m_compositeSize(rootSize)
     , m_bgColor(bgColor)
     , m_solutionState(UN_INITIALIZED)
+    , m_crop(crop)
 {
     m_ntpDelta = Clock::GetRealTimeClock()->CurrentNtpInMilliseconds() - TickTime::MillisecondTimestamp();
     m_vpmPool.reset(new VPMPool(maxInput));
@@ -229,8 +230,14 @@ webrtc::I420VideoFrame* SoftVideoCompositor::customLayout()
                     sub_width/2);
             }
         } else {
-            uint32_t cropped_sub_width = std::min(sub_width, sub_image->width() * sub_height / sub_image->height());
-            uint32_t cropped_sub_height = std::min(sub_height, sub_image->height() * sub_width / sub_image->width());
+            uint32_t cropped_sub_width = sub_width;
+            uint32_t cropped_sub_height = sub_height;
+            if (!m_crop) {
+                // If we are *not* required to crop the video input to fit in its region,
+                // we need to adjust the region to be filled to match the input's width/height.
+                cropped_sub_width = std::min(sub_width, sub_image->width() * sub_height / sub_image->height());
+                cropped_sub_height = std::min(sub_height, sub_image->height() * sub_width / sub_image->width());
+            }
             offset_width += ((sub_width - cropped_sub_width) / 2) & ~1;
             offset_height += ((sub_height - cropped_sub_height) / 2) & ~1;
             VideoSize sub_size {cropped_sub_width, cropped_sub_height};
