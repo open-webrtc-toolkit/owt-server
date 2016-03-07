@@ -68,9 +68,9 @@ for (var prop in opt.options) {
 }
 
 // Load submodules with updated config
-var logger = require('./../common/logger').logger;
-var clusterWorker = require('./../common/clusterWorker');
-var rpc = require('./../common/amqper');
+var logger = require('../../common/logger').logger;
+var clusterWorker = require('../../common/clusterWorker');
+var rpc = require('../../common/amqper');
 
 var worker;
 
@@ -222,7 +222,7 @@ var launchErizoJS = function() {
     var fs = require('fs');
     var out = fs.openSync('../../logs/erizo-' + id + '.log', 'a');
     var err = fs.openSync('../../logs/erizo-' + id + '.log', 'a');
-    var erizoProcess = spawn('node', ['./../erizoJS/erizoJS.js', id, myPurpose, privateIP, publicIP], { detached: true, stdio: [ 'ignore', out, err ] });
+    var erizoProcess = spawn('node', ['./erizoJS.js', id, myPurpose, privateIP, publicIP], { detached: true, stdio: [ 'ignore', out, err ] });
     erizoProcess.unref();
     erizoProcess.on('close', function (code) {
         var index = idle_erizos.indexOf(id);

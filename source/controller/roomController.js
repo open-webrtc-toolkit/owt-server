@@ -1,8 +1,8 @@
 /*global require, exports*/
 'use strict';
 
-var logger = require('./../common/logger').logger;
-var makeRPC = require('./../common/makeRPC').makeRPC;
+var logger = require('../../common/logger').logger;
+var makeRPC = require('../../common/makeRPC').makeRPC;
 var createErizoManager = require('./erizoManager');
 
 // Logger
@@ -1025,7 +1025,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
                     'ErizoJS_' + terminals[terminal_id].erizo,
                     'disconnect',
                     [subscription_id]);
-                
+
                 delete terminals[terminal_id].subscribed[subscription_id];
                 if (isTerminalFree(terminal_id)) {
                     deleteTerminal(terminal_id);
