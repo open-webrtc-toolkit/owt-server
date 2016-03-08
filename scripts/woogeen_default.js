@@ -27,7 +27,7 @@ config.nuve.dataBaseURL = 'localhost/nuvedb'; // default value: 'localhost/nuved
 config.nuve.superserviceID = '_auto_generated_ID_'; // default value: ''
 config.nuve.testErizoController = 'localhost:8080'; // default value: 'localhost:8080'
 config.nuve.ssl = false; // default value: false
-config.nuve.keystorePath = '../../cert/certificate.pfx';
+config.nuve.keystorePath = '../cert/certificate.pfx';
 // Timestamp check protects the nuve service from those massive requests with out of order timestamps, so that only sequential requests are accepted
 config.nuve.timestampCheck = false; // default value: false
 // Cloud Handler policies are in nuve/ch_policies/ folder
@@ -54,7 +54,7 @@ config.erizoController.hostname = ''; //default value: ''
 config.erizoController.port = 8080; //default value: 8080
 // Use true if clients communicate with erizoController over SSL
 config.erizoController.ssl = true; //default value: true
-config.erizoController.keystorePath = '../../cert/certificate.pfx';
+config.erizoController.keystorePath = '../cert/certificate.pfx';
 
 // Use the name of the inferface you want to bind to for websockets
 // config.erizoController.networkInterface = 'eth1' // default value: undefined
@@ -128,7 +128,7 @@ config.erizo.hardwareAccelerated = false;
 // "true" means OpenH264 is deployed for H.264. Otherwise no support of H.264 in MCU.
 config.erizo.openh264Enabled = false;
 
-config.erizo.keystorePath = '../../cert/certificate.pfx';
+config.erizo.keystorePath = '../cert/certificate.pfx';
 
 // This configuration is only for RTSP muxing.
 // e.g.: 'rtsp://localhost:1935/live/xxx.sdp'

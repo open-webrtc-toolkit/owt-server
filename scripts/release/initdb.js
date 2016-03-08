@@ -14,7 +14,7 @@ var path = require('path');
 var destConfigFile = path.join(HOME, 'etc/woogeen_config.js');
 var configFile = destConfigFile;
 var db = require('mongojs')(dbURL, ['services']);
-var cipher = require('../common/cipher');
+var cipher = require('./cipher');
 
 function prepareService (serviceName, next) {
   db.services.findOne({name: serviceName}, function cb (err, service) {

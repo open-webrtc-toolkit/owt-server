@@ -18,44 +18,39 @@
  * and approved by Intel in writing.
  */
 
-#ifndef RTSPINWRAPPER_H
-#define RTSPINWRAPPER_H
+#ifndef VIDEOMIXERWRAPPER_H
+#define VIDEOMIXERWRAPPER_H
 
-#include "../woogeen_base/MediaFramePipelineWrapper.h"
-#include <RtspIn.h>
+#include "../../addons/woogeen_base/MediaFramePipelineWrapper.h"
+#include <VideoMixer.h>
 #include <node.h>
 #include <node_object_wrap.h>
-#include <queue>
 #include <uv.h>
 
-
 /*
- * Wrapper class of woogeen_base::RtspIn
+ * Wrapper class of mcu::VideoMixer
  */
-class RtspIn : public FrameSource, woogeen_base::RtspInStatusListener {
+class VideoMixer : public node::ObjectWrap {
  public:
   static void Init(v8::Local<v8::Object> exports);
-  woogeen_base::RtspIn* me;
-  std::queue<std::string> statsMsgs;
-  boost::mutex statusMutex;
+  mcu::VideoMixer* me;
 
  private:
-  RtspIn();
-  ~RtspIn();
+  VideoMixer();
+  ~VideoMixer();
   static v8::Persistent<v8::Function> constructor;
-
-  uv_async_t async_;
-  v8::Persistent<v8::Function> statusCallback_;
 
   static void New(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void close(const v8::FunctionCallbackInfo<v8::Value>& args);
 
-  static void init(const v8::FunctionCallbackInfo<v8::Value>& args);
-  static void addDestination(const v8::FunctionCallbackInfo<v8::Value>& args);
-  static void removeDestination(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void addInput(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void removeInput(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void addOutput(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void removeOutput(const v8::FunctionCallbackInfo<v8::Value>& args);
 
-  static void statusCallback(uv_async_t *handle);
-  virtual void notifyStatus(const std::string& message);
+  static void setRegion(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void getRegion(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void setPrimary(const v8::FunctionCallbackInfo<v8::Value>& args);
 };
 
 #endif

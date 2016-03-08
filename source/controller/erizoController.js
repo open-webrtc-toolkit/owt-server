@@ -3,7 +3,7 @@
 var crypto = require('crypto');
 var rpcPublic = require('./rpc/rpcPublic');
 var ST = require('./Stream');
-var config = require('./../../etc/woogeen_config');
+var config = require('./../etc/woogeen_config');
 var Permission = require('./permission');
 var Getopt = require('node-getopt');
 var io;
@@ -77,9 +77,9 @@ for (var prop in opt.options) {
 }
 
 // Load submodules with updated config
-var logger = require('../../common/logger').logger;
-var amqper = require('../../common/amqper');
-var clusterWorker = require('../../common/clusterWorker');
+var logger = require('./logger').logger;
+var amqper = require('./amqper');
+var clusterWorker = require('./clusterWorker');
 var controller = require('./roomController');
 
 var worker;
@@ -284,8 +284,8 @@ var joinCluster = function (on_ok) {
         var server;
         if (enableSSL === true) {
             log.info('SSL enabled!');
-            var cipher = require('../../common/cipher');
-            cipher.unlock(cipher.k, '../../cert/.woogeen.keystore', function cb (err, obj) {
+            var cipher = require('./cipher');
+            cipher.unlock(cipher.k, '../cert/.woogeen.keystore', function cb (err, obj) {
                 if (!err) {
                     try {
                         server = require('https').createServer({

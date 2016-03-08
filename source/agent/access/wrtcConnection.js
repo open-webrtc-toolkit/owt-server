@@ -1,15 +1,15 @@
 /*global require, exports, GLOBAL*/
 'use strict';
 
-var woogeenWebrtc = require('../../../bindings/webrtc/build/Release/webrtc');
+var woogeenWebrtc = require('./webrtc/build/Release/webrtc');
 var WebRtcConnection = woogeenWebrtc.WebRtcConnection;
 var AudioFrameConstructor = woogeenWebrtc.AudioFrameConstructor;
 var VideoFrameConstructor = woogeenWebrtc.VideoFrameConstructor;
 var AudioFramePacketizer = woogeenWebrtc.AudioFramePacketizer;
 var VideoFramePacketizer = woogeenWebrtc.VideoFramePacketizer;
 
-var logger = require('../../../common/logger').logger;
-var cipher = require('../../../common/cipher');
+var logger = require('./logger').logger;
+var cipher = require('./cipher');
 // Logger
 var log = logger.getLogger('WrtcConnection');
 
@@ -138,7 +138,7 @@ exports.WrtcConnection = function (spec) {
     that.init = function (audio_info, video_info, on_status) {
         audio = audio_info;
         video = video_info;
-        cipher.unlock(cipher.k, '../../cert/.woogeen.keystore', function cb (err, obj) {
+        cipher.unlock(cipher.k, '../cert/.woogeen.keystore', function cb (err, obj) {
             if (!err) {
                 var erizoPassPhrase = obj.erizo;
                 wrtc = new WebRtcConnection(!!audio, !!video, true/*FIXME: hash264:hard coded*/, GLOBAL.config.erizo.stunserver, GLOBAL.config.erizo.stunport, GLOBAL.config.erizo.minport, GLOBAL.config.erizo.maxport, GLOBAL.config.erizo.keystorePath, GLOBAL.config.erizo.keystorePath, erizoPassPhrase, true, true, true, true, false);
@@ -167,6 +167,8 @@ exports.WrtcConnection = function (spec) {
                 }
 
                 initWebRtcConnection(wrtc, on_status);
+            } else {
+                log.error('init error:', err);
             }
         });
     };
@@ -174,7 +176,7 @@ exports.WrtcConnection = function (spec) {
     that.close = function () {
         audio && audioFramePacketizer && audioFramePacketizer.close();
         video && videoFramePacketizer && videoFramePacketizer.close();
-        wrtc.close();
+        wrtc && wrtc.close();
         audio && audioFrameConstructor && audioFrameConstructor.close();
         video && videoFrameConstructor && videoFrameConstructor.close();
     };

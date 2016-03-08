@@ -84,15 +84,13 @@ ${BUILD_MCU_RUNTIME_HW} && ${BUILD_MCU_RUNTIME_SW} && BUILD_MCU_BUNDLE=true
 
 build_gateway_runtime() {
   CMAKE_ADDITIONAL_OPTIONS="-DCOMPILE_OOVOO_GATEWAY=ON"
-  RUNTIME_ADDON_SRC_DIR="${SOURCE}/bindings"
-  ADDON_LIST="oovoo_gateway"
+  RUNTIME_ADDON_SRC_DIR="${SOURCE}/gateway"
   build_runtime
 }
 
 build_mcu_runtime() {
   CMAKE_ADDITIONAL_OPTIONS="-DCOMPILE_MCU=ON"
-  RUNTIME_ADDON_SRC_DIR="${SOURCE}/bindings"
-  ADDON_LIST="audioMixer internalIO mediaFileIO mediaFrameMulticaster rtspIn rtspOut videoMixer webrtc"
+  RUNTIME_ADDON_SRC_DIR="${SOURCE}/agent"
   build_runtime
 }
 
@@ -128,8 +126,9 @@ build_runtime() {
   # runtime addon
   local NODE_VERSION=v$(node -e "process.stdout.write(require('${ROOT}/scripts/release/package.json').engine.node)")
   if [[ ${NODE_VERSION} == $(node --version) ]] && hash node-gyp 2>/dev/null; then
-    pushd ${RUNTIME_ADDON_SRC_DIR} >/dev/null
+    ADDON_LIST=$(find ${RUNTIME_ADDON_SRC_DIR} -type f -name "binding.gyp" | xargs dirname)
     for ADDON in ${ADDON_LIST}; do
+      echo -e "building addon \e[32m$(basename ${ADDON})\e[0m"
       pushd ${ADDON} >/dev/null
       if [[ -x $CCOMPILER && -x $CXXCOMPILER ]]; then
         CORE_HOME="${RUNTIME_LIB_SRC_DIR}" CC=$CCOMPILER CXX=$CXXCOMPILER node-gyp rebuild --loglevel=error
@@ -138,7 +137,7 @@ build_runtime() {
       fi
       popd >/dev/null
     done
-    popd >/dev/null
+
   else
     echo >&2 "You need to install Node.js ${NODE_VERSION} toolchain:"
     echo >&2 "  nvm install ${NODE_VERSION}"
@@ -149,6 +148,7 @@ build_runtime() {
 }
 
 build_mcu_client_sdk() {
+  mkdir -p "${BUILD_ROOT}/sdk"
   local CLIENTSDK_DIR="${SOURCE}/client_sdk"
   rm -f ${BUILD_ROOT}/sdk/*.js
   rm -f ${CLIENTSDK_DIR}/dist/*.js
@@ -164,7 +164,6 @@ build() {
   export LDFLAGS="-z noexecstack -z relro"
 
   local DONE=0
-  mkdir -p "${BUILD_ROOT}/sdk"
   # Job
   if ${BUILD_GATEWAY_RUNTIME} ; then
     build_gateway_runtime

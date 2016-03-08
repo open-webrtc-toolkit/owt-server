@@ -11,7 +11,6 @@ ROOT=`cd "${this}/../.."; pwd`
 SOURCE="${ROOT}/source"
 
 export WOOGEEN_DIST="${ROOT}/dist"
-PACK_NODE=true
 PACK_ARCH=false
 PACK_MODULE=true
 ENCRYPT=false
@@ -30,9 +29,6 @@ while [[ $# -gt 0 ]]; do
       ;;
     *(-)gateway )
       . gw_funcs.sh #set target to gateway
-      ;;
-    *(-)no-node )
-      PACK_NODE=false
       ;;
     *(-)no-module )
       PACK_MODULE=false
@@ -70,7 +66,7 @@ echo "Cleaning ${WOOGEEN_DIST}/ ..."; rm -fr ${WOOGEEN_DIST}/
 SRC_SAMPLE_PATH="${SRC_SAMPLE_PATH}" pack_runtime
 pack_scripts
 ${PACK_MODULE} && install_module
-${PACK_NODE} && pack_node
+pack_node
 pack_libs
 pack_license
 ${PACK_ARCH} && archive

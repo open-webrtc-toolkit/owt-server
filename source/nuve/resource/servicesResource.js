@@ -3,7 +3,7 @@
 
 var serviceRegistry = require('./../mdb/serviceRegistry');
 var logger = require('./../logger').logger;
-var cipher = require('../../common/cipher');
+var cipher = require('../cipher');
 
 // Logger
 var log = logger.getLogger('ServicesResource');
