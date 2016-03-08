@@ -45,10 +45,6 @@ for (var prop in opt.options) {
                 GLOBAL.config.rabbit = GLOBAL.config.rabbit || {};
                 GLOBAL.config.rabbit.port = value;
                 break;
-            case 'logging-config-file':
-                GLOBAL.config.logger = GLOBAL.config.logger || {};
-                GLOBAL.config.logger.config_file = value;
-                break;
             case 'my-purpose':
                 if (value === 'webrtc' ||
                     value === 'rtsp' ||

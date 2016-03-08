@@ -7,8 +7,6 @@ var config = {};
 config.rabbit = {};
 config.rabbit.host = 'localhost'; //default value: 'localhost'
 config.rabbit.port = 5672; //default value: 5672
-config.logger = {};
-config.logger.config_file = '../log4js_configuration.json'; //default value: "../log4js_configuration.json"
 
 /*********************************************************
  CLOUD PROVIDER CONFIGURATION

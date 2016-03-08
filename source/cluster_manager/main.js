@@ -1,27 +1,26 @@
 /*global require*/
-'use strict'
+'use strict';
 
-GLOBAL.config = require('./config');
-
+var config = require('./config');
 var amqper = require('./amqper');
 var logger = require('./logger').logger;
 var ClusterManager = require('./clusterManager');
 
 var log = logger.getLogger('Main');
 
-var startup = function () {
+function startup () {
     var enableService = function () {
-        var spec = {initialTime: GLOBAL.config.initial_time || 10 * 1000/*MS*/,
-                    checkAlivePeriod: GLOBAL.config.check_alive_period || 1000/*MS*/,
-                    checkAliveCount: GLOBAL.config.check_alive_count || 10,
-                    scheduleKeepTime: GLOBAL.config.schedule_reserve_time || 60 * 1000/*MS*/,
-                    generalStrategy: GLOBAL.config.strategy.general || 'last-used',
-                    portalStrategy: GLOBAL.config.strategy.portal || 'last-used',
-                    webrtcStrategy: GLOBAL.config.strategy.webrtc || 'last-used',
-                    rtspStrategy: GLOBAL.config.strategy.rtsp || 'round-robin',
-                    fileStrategy: GLOBAL.config.strategy.file || 'randomly-pick',
-                    audioStrategy: GLOBAL.config.strategy.audio || 'most-used',
-                    videoStrategy: GLOBAL.config.strategy.video || 'least-used'
+        var spec = {initialTime: config.initial_time || 10 * 1000/*MS*/,
+                    checkAlivePeriod: config.check_alive_period || 1000/*MS*/,
+                    checkAliveCount: config.check_alive_count || 10,
+                    scheduleKeepTime: config.schedule_reserve_time || 60 * 1000/*MS*/,
+                    generalStrategy: config.strategy.general || 'last-used',
+                    portalStrategy: config.strategy.portal || 'last-used',
+                    webrtcStrategy: config.strategy.webrtc || 'last-used',
+                    rtspStrategy: config.strategy.rtsp || 'round-robin',
+                    fileStrategy: config.strategy.file || 'randomly-pick',
+                    audioStrategy: config.strategy.audio || 'most-used',
+                    videoStrategy: config.strategy.video || 'least-used'
                    };
         var api = new ClusterManager.API(spec);
         amqper.setPublicRPC(api);
@@ -33,6 +32,6 @@ var startup = function () {
             enableService();
         });
     });
-};
+}
 
 startup();
