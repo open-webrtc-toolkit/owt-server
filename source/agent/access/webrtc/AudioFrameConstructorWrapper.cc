@@ -23,7 +23,7 @@
 #endif
 
 #include "AudioFrameConstructorWrapper.h"
-#include "../woogeen_base/MediaFramePipelineWrapper.h"
+#include "../../addons/woogeen_base/MediaFramePipelineWrapper.h"
 #include "WebRtcConnection.h"
 
 using namespace v8;

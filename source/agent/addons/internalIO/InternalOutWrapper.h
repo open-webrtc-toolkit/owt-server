@@ -18,31 +18,29 @@
  * and approved by Intel in writing.
  */
 
-#ifndef VIDEOFRAMEPACKETIZERWRAPPER_H
-#define VIDEOFRAMEPACKETIZERWRAPPER_H
+#ifndef INTERNALOUTWRAPPER_H
+#define INTERNALOUTWRAPPER_H
 
-#include "../woogeen_base/MediaFramePipelineWrapper.h"
-#include <VideoFramePacketizer.h>
+#include "../../addons/woogeen_base/MediaFramePipelineWrapper.h"
+#include <InternalOut.h>
 #include <node.h>
 #include <node_object_wrap.h>
 
 /*
- * Wrapper class of woogeen_base::VideoFramePacketizer
+ * Wrapper class of woogeen_base::InternalOut
  */
-class VideoFramePacketizer : public FrameDestination {
+class InternalOut : public FrameDestination {
  public:
   static void Init(v8::Local<v8::Object> exports);
-  woogeen_base::VideoFramePacketizer* me;
+  woogeen_base::InternalOut* me;
 
  private:
-  VideoFramePacketizer();
-  ~VideoFramePacketizer();
+  InternalOut();
+  ~InternalOut();
   static v8::Persistent<v8::Function> constructor;
 
   static void New(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void close(const v8::FunctionCallbackInfo<v8::Value>& args);
-
-  static void setVideoReceiver(const v8::FunctionCallbackInfo<v8::Value>& args);
 };
 
 #endif

@@ -2,7 +2,7 @@
 'use strict';
 var Getopt = require('node-getopt');
 var spawn = require('child_process').spawn;
-var config = require('./../../etc/woogeen_config');
+var config = require('../etc/woogeen_config');
 
 // Configuration default values
 GLOBAL.config = config || {};
@@ -64,9 +64,9 @@ for (var prop in opt.options) {
 }
 
 // Load submodules with updated config
-var logger = require('../../common/logger').logger;
-var clusterWorker = require('../../common/clusterWorker');
-var rpc = require('../../common/amqper');
+var logger = require('./logger').logger;
+var clusterWorker = require('./clusterWorker');
+var rpc = require('./amqper');
 
 var worker;
 
@@ -238,8 +238,8 @@ var launchErizoJS = function() {
     log.info('Running process');
     var id = guid();
     var fs = require('fs');
-    var out = fs.openSync('../../logs/erizo-' + id + '.log', 'a');
-    var err = fs.openSync('../../logs/erizo-' + id + '.log', 'a');
+    var out = fs.openSync('../logs/erizo-' + id + '.log', 'a');
+    var err = fs.openSync('../logs/erizo-' + id + '.log', 'a');
     var erizoProcess = spawn('node', ['./erizoJS.js', id, myPurpose, privateIP, publicIP], { detached: true, stdio: [ 'ignore', out, err ] });
     erizoProcess.unref();
     erizoProcess.on('close', function (code) {

@@ -11,9 +11,20 @@
   ],
   "levels": {
     "ClusterWorker": "INFO",
-    "ErizoController": "INFO",
-    "RoomController": "INFO",
-    "ErizoManager": "INFO",
-    "AMQPER": "INFO"
+    "AMQPER": "INFO",
+    "ErizoJS": "INFO",
+    "AudioNode": "INFO",
+    "ErizoAgent": "INFO",
+    "VideoNode": "INFO",
+    "RtspIn": "INFO",
+    "WrtcConnection": "INFO",
+    "AccessNode": "INFO"
   }
 }
+
+
+
+
+
+
+

@@ -21,8 +21,8 @@
 #ifndef GATEWAY_H
 #define GATEWAY_H
 
-#include "../webrtc/MediaDefinitions.h"
-#include "../webrtc/WebRtcConnection.h"
+#include "../../access/webrtc/MediaDefinitions.h"
+#include "../../access/webrtc/WebRtcConnection.h"
 #include "NodeEventRegistry.h"
 #include <Gateway.h>
 #include <node.h>

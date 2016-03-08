@@ -5,8 +5,7 @@
 # */
 #
 
-ADDON_LIST="audioMixer internalIO mediaFileIO mediaFrameMulticaster rtspIn rtspOut videoMixer webrtc"
-DIST_ADDON_DIR="${WOOGEEN_DIST}/bindings"
+WOOGEEN_AGENTS="access audio video"
 
 pack_runtime() {
   mkdir -p ${WOOGEEN_DIST}/lib
@@ -14,7 +13,6 @@ pack_runtime() {
   local LIBMCU="${SOURCE}/core/build/mcu/libmcu.so"
   local LIBMCU_HW="${SOURCE}/core/build/mcu/libmcu_hw.so"
   local LIBMCU_SW="${SOURCE}/core/build/mcu/libmcu_sw.so"
-  local SOURCE_ADDON_DIR="${SOURCE}/bindings"
   [[ -s ${LIBERIZO} ]] && cp -av ${LIBERIZO} ${WOOGEEN_DIST}/lib
   if [[ -s ${LIBMCU_SW} ]] && [[ -s ${LIBMCU_HW} ]]; then
     cp -av ${LIBMCU_HW} ${WOOGEEN_DIST}/lib
@@ -22,36 +20,18 @@ pack_runtime() {
   else
     [[ -s ${LIBMCU} ]] && cp -av ${LIBMCU} ${WOOGEEN_DIST}/lib
   fi
-  # addons
-  for ADDON in ${ADDON_LIST}; do
-    [[ -s ${SOURCE_ADDON_DIR}/${ADDON}/build/Release/${ADDON}.node ]] && \
-    mkdir -p ${DIST_ADDON_DIR}/${ADDON}/build/Release && \
-    cp -av {${SOURCE_ADDON_DIR},${DIST_ADDON_DIR}}/${ADDON}/build/Release/${ADDON}.node && \
-    ${ENCRYPT} && strip ${DIST_ADDON_DIR}/${ADDON}/build/Release/${ADDON}.node
-  done
+
   # mcu
-  mkdir -p ${WOOGEEN_DIST}/mcu/
-  cd ${WOOGEEN_DIST}/mcu/ && \
-  mkdir -p agent/{access,audio,video} controller/rpc
-  cd ${SOURCE}/controller && \
-  find . -type f -not -name "*.log" -not -name "in*.sh" -exec cp '{}' "${WOOGEEN_DIST}/mcu/controller/{}" \;
-  cd ${SOURCE}/agent && \
-  find . -type f -not -name "*.log" -not -name "in*.sh" -exec cp '{}' "${WOOGEEN_DIST}/mcu/agent/{}" \;
+  pack_controller
+  pack_agents
   pack_nuve
   pack_common
-  ENCRYPT_CAND_PATH=("${WOOGEEN_DIST}/mcu" "${WOOGEEN_DIST}/nuve" "${WOOGEEN_DIST}/common")
+  ENCRYPT_CAND_PATH=("${WOOGEEN_DIST}/controller" "${WOOGEEN_DIST}/cluster_manager" "${WOOGEEN_DIST}/nuve")
+  for AGENT in ${WOOGEEN_AGENTS}; do
+    ENCRYPT_CAND_PATH+=("${WOOGEEN_DIST}/${AGENT}_agent")
+  done
   # config
-  mkdir -p ${WOOGEEN_DIST}/etc/nuve
-  mkdir -p ${WOOGEEN_DIST}/etc/mcu
-  cp -av ${SOURCE}/controller/log4js_configuration.json ${WOOGEEN_DIST}/etc/mcu
-  cp -av ${SOURCE}/agent/log4cxx.properties ${WOOGEEN_DIST}/etc/mcu
-  cp -av ${SOURCE}/nuve/log4js_configuration.json ${WOOGEEN_DIST}/etc/nuve
-  rm -f ${WOOGEEN_DIST}/mcu/agent/log4cxx.properties
-  rm -f ${WOOGEEN_DIST}/mcu/controller/log4js_configuration.json
-  rm -f ${WOOGEEN_DIST}/nuve/log4js_configuration.json
-  ln -s ../../etc/mcu/log4cxx.properties ${WOOGEEN_DIST}/mcu/agent/log4cxx.properties
-  ln -s ../etc/mcu/log4js_configuration.json ${WOOGEEN_DIST}/mcu/log4js_configuration.json
-  ln -s ../etc/nuve/log4js_configuration.json ${WOOGEEN_DIST}/nuve/log4js_configuration.json
+  mkdir -p ${WOOGEEN_DIST}/etc
   # certificates
   mkdir -p ${WOOGEEN_DIST}/cert
   cp -av ${ROOT}/cert/{*.pfx,.woogeen.keystore} ${WOOGEEN_DIST}/cert
@@ -64,9 +44,59 @@ pack_runtime() {
   cp -av ${SOURCE}/extras/rtsp-client.js ${WOOGEEN_DIST}/extras
 }
 
+pack_controller() {
+  mkdir -p ${WOOGEEN_DIST}/controller/rpc
+  pushd ${SOURCE}/controller >/dev/null
+  find . -type f -not -name "*.log" -not -name "in*.sh" -not -name "*.md" -exec cp '{}' "${WOOGEEN_DIST}/controller/{}" \;
+  popd >/dev/null
+}
+
+pack_agents() {
+  pushd ${SOURCE}/agent >/dev/null
+  for AGENT in ${WOOGEEN_AGENTS}; do
+    mkdir -p ${WOOGEEN_DIST}/${AGENT}_agent/${AGENT}
+    find ${AGENT} -type f -name "*.js" -exec cp '{}' "${WOOGEEN_DIST}/${AGENT}_agent/{}" \;
+    find . -type f -maxdepth 1 -not -name "*.log" -not -name "in*.sh" -exec cp '{}' "${WOOGEEN_DIST}/${AGENT}_agent/{}" \;
+    pack_addons "${WOOGEEN_DIST}/${AGENT}_agent"
+  done
+  popd >/dev/null
+}
+
+pack_addons() {
+  local ADDON_LIST=$(find ${SOURCE}/agent -type f -name "binding.gyp" | xargs dirname)
+  local DIST_ADDON_DIR=$1
+  [[ -z ${DIST_ADDON_DIR} ]] && return 1
+  for ADDON in ${ADDON_LIST}; do
+    pushd ${ADDON} >/dev/null
+    ADDON=$(basename ${ADDON})
+    if grep -RInqs "require.*\b${ADDON}\b" ${DIST_ADDON_DIR}; then
+      [[ -s build/Release/${ADDON}.node ]] && \
+      mkdir -p ${DIST_ADDON_DIR}/${ADDON}/build/Release && \
+      cp -av {.,${DIST_ADDON_DIR}/${ADDON}}/build/Release/${ADDON}.node && \
+      ${ENCRYPT} && strip ${DIST_ADDON_DIR}/${ADDON}/build/Release/${ADDON}.node
+    fi
+    popd >/dev/null
+  done
+}
+
 pack_common() {
-  mkdir -p ${WOOGEEN_DIST}/common
-  cp -av ${SOURCE}/common/* ${WOOGEEN_DIST}/common/
+  local TARGETS="controller nuve access_agent audio_agent video_agent"
+  pushd ${SOURCE}/common >/dev/null
+  local COMMON_MODULES=$(find . -type f -name "*.js" | cut -d '/' -f 2 | cut -d '.' -f 1)
+  for TARGET in ${TARGETS}; do
+    TARGET=${WOOGEEN_DIST}/${TARGET}
+    if [[ -d ${TARGET} ]]; then
+      for MODULE in ${COMMON_MODULES}; do
+        if grep -RInqs "require.*\b${MODULE}\b" ${TARGET}; then
+          for DEP in $(grep -RIn "require('\.\/" ${MODULE}.js | sed "s|.*require('\./\(.*\)').*|\1|g"); do
+            cp -av ${DEP}.js ${TARGET}/
+          done
+          cp -av ${MODULE}.js ${TARGET}/
+        fi
+      done
+    fi
+  done
+  popd >/dev/null
 }
 
 pack_nuve() {
@@ -79,8 +109,7 @@ pack_libs() {
   echo $OS
 
   LD_LIBRARY_PATH=$ROOT/build/libdeps/build/lib:$ROOT/build/libdeps/build/lib64:${LD_LIBRARY_PATH} \
-  ldd ${WOOGEEN_DIST}/sbin/webrtc_mcu \
-      ${WOOGEEN_DIST}/lib/libmcu{,_sw,_hw}.so \
+  ldd ${WOOGEEN_DIST}/lib/libmcu{,_sw,_hw}.so \
       ${WOOGEEN_DIST}/lib/libwoogeen_base.so \
       ${WOOGEEN_DIST}/lib/liberizo.so 2>/dev/null | grep '=>' | awk '{print $3}' | sort | uniq | while read line; do
     if [[ "$OS" =~ .*centos.* ]]
@@ -116,6 +145,7 @@ pack_scripts() {
   cp -av ${ROOT}/scripts/detectOS.sh ${WOOGEEN_DIST}/bin/detectOS.sh
   cp -av ${this}/initdb.js ${WOOGEEN_DIST}/bin/initdb.js
   cp -av {${this},${WOOGEEN_DIST}/bin}/initcert.js && chmod +x ${WOOGEEN_DIST}/bin/initcert.js
+  cp -av ${SOURCE}/common/cipher.js ${WOOGEEN_DIST}/bin
   echo '
 ${bin}/daemon.sh start nuve
 ${bin}/daemon.sh start cluster-manager
@@ -148,65 +178,60 @@ ${bin}/start-all.sh
 pack_node() {
   local NODE_VERSION=v$(node -e "process.stdout.write(require('${WOOGEEN_DIST}/package.json').engine.node)")
   echo "node version: ${NODE_VERSION}"
-
   local PREFIX_DIR=${ROOT}/build/libdeps/build/
+  local THIRD_PARTY_MODULES=$(node -e "process.stdout.write(Object.keys(require('${ROOT}/scripts/release/package.json').dependencies).join(' '))")
+
   pushd ${ROOT}/third_party
   wget -c http://nodejs.org/dist/${NODE_VERSION}/node-${NODE_VERSION}.tar.gz
-  tar -xzf node-${NODE_VERSION}.tar.gz && \
-  pushd node-${NODE_VERSION} || (echo "invalid nodejs source."; popd; return -1)
-  local CURRENT_DIR=$(pwd)
-  rm -rf lib/webrtc_mcu # cleanup
-  mkdir -p lib/webrtc_mcu
 
-  local THIRD_PARTY_MODULES=$(node -e "process.stdout.write(Object.keys(require('${ROOT}/scripts/release/package.json').dependencies).join(' '))")
-  cp -av ${WOOGEEN_DIST}/mcu/agent/{audio,video,access,erizoJS.js} lib/webrtc_mcu/
-  find lib/webrtc_mcu/ -type f -name "*.js" | while read line; do
-    # This is kind of fragile - we assume that the occurrences of "require" are
-    # always the keyword for module loading in the original JavaScript file.
-    # Use 'Module._load' for 3rd party js lib ONLY.
-    for JSMODULE in ${THIRD_PARTY_MODULES}; do
-      sed -i "s/require('\(\b${JSMODULE}\b\)/Module\._load('\1/g" "${line}"
+  for AGENT in ${WOOGEEN_AGENTS}; do
+    tar -xzf node-${NODE_VERSION}.tar.gz && \
+    pushd node-${NODE_VERSION} || (echo "invalid nodejs source."; popd; return -1)
+    rm -rf lib/woogeen # cleanup
+    mkdir -p lib/woogeen/${AGENT}
+    mv -v ${WOOGEEN_DIST}/${AGENT}_agent/${AGENT}/* lib/woogeen/${AGENT}/
+    mv -v ${WOOGEEN_DIST}/${AGENT}_agent/erizoJS.js lib/woogeen/
+    rmdir ${WOOGEEN_DIST}/${AGENT}_agent/${AGENT}
+    find lib/woogeen/ -type f -name "*.js" | while read line; do
+      # This is kind of fragile - we assume that the occurrences of "require" are
+      # always the keyword for module loading in the original JavaScript file.
+      # Use 'Module._load' for 3rd party js lib ONLY.
+      for JSMODULE in ${THIRD_PARTY_MODULES}; do
+        sed -i "s/require('\(\b${JSMODULE}\b\)/Module\._load('\1/g" "${line}"
+      done
+      sed -i "s/require('\.\//Module\._load('\.\//g" "${line}"
+      sed -i "s/Module\._load('.*\(\baccess\b\|\baudio\b\|\bvideo\b\)/require('woogeen\/\1\/index/g" "${line}"
+      sed -i "s/Module\._load('.*\(\bwrtcConnection\b\|\brtspIn\b\)/require('woogeen\/access\/\1/g" "${line}"
+      sed -i "1 i var Module = require('module');" "${line}"
+      sed -i "/lib\/zlib.js/a '${line}'," node.gyp
     done
-    sed -i "s/require('.*\//Module\._load('/g" "${line}"
-    sed -i "s/Module\._load('\(\baccess\b\|\baudio\b\|\bvideo\b\)/require('webrtc_mcu\/\1\/index/g" "${line}"
-    sed -i "s/Module\._load('\(\bwrtcConnection\b\|\brtspIn\b\)/require('webrtc_mcu\/access\/\1/g" "${line}"
-    sed -i "1 i var Module = require('module');" "${line}"
-    sed -i "/lib\/zlib.js/a '${line}'," node.gyp
+    # The entry
+    mv lib/woogeen/erizoJS.js lib/_third_party_main.js
+    sed -i "s/woogeen\/erizoJS\.js/_third_party_main.js/g" node.gyp
+
+    # fix node's configure for dynamic-linking libraries
+    patch -p0 < ../node4-configure.patch
+
+    local LIBTCMALLOC="${PREFIX_DIR}/lib/libtcmalloc_minimal.so"
+    if [ -s ${LIBTCMALLOC} ]; then
+      patch -p0 < ../node4-configure-tcmalloc.patch
+      PKG_CONFIG_PATH=${PREFIX_DIR}/lib/pkgconfig:${PREFIX_DIR}/lib64/pkgconfig:${PKG_CONFIG_PATH} ./configure --without-npm --prefix=${PREFIX_DIR} --shared-openssl --shared-tcmalloc --shared-tcmalloc-libpath=${PREFIX_DIR}/lib --shared-tcmalloc-libname=tcmalloc_minimal,dl
+    else
+      PKG_CONFIG_PATH=${PREFIX_DIR}/lib/pkgconfig:${PREFIX_DIR}/lib64/pkgconfig:${PKG_CONFIG_PATH} ./configure --without-npm --prefix=${PREFIX_DIR} --shared-openssl
+    fi
+    LD_LIBRARY_PATH=${PREFIX_DIR}/lib:${LD_LIBRARY_PATH} make V= -j5
+    make uninstall >/dev/null
+    make install >/dev/null
+
+    cp -av ${PREFIX_DIR}/bin/node ${WOOGEEN_DIST}/${AGENT}_agent/woogeen_${AGENT}
+    make uninstall >/dev/null
+    sed -i "s/spawn('node'/spawn('\.\/woogeen_${AGENT}'/g" "${WOOGEEN_DIST}/${AGENT}_agent/index.js"
+    popd >/dev/null
   done
-  # The entry
-  mv ${CURRENT_DIR}/lib/webrtc_mcu/erizoJS.js ${CURRENT_DIR}/lib/_third_party_main.js
-  sed -i "s/webrtc_mcu\/erizoJS\.js/_third_party_main.js/g" node.gyp
-
-  # fix node's configure for dynamic-linking libraries
-  patch -p0 < ../node4-configure.patch
-
-  local LIBTCMALLOC="${PREFIX_DIR}/lib/libtcmalloc_minimal.so"
-  if [ -s ${LIBTCMALLOC} ]; then
-    patch -p0 < ../node4-configure-tcmalloc.patch
-    PKG_CONFIG_PATH=${PREFIX_DIR}/lib/pkgconfig:${PREFIX_DIR}/lib64/pkgconfig:${PKG_CONFIG_PATH} ./configure --without-npm --prefix=${PREFIX_DIR} --shared-openssl --shared-tcmalloc --shared-tcmalloc-libpath=${PREFIX_DIR}/lib --shared-tcmalloc-libname=tcmalloc_minimal,dl
-  else
-    PKG_CONFIG_PATH=${PREFIX_DIR}/lib/pkgconfig:${PREFIX_DIR}/lib64/pkgconfig:${PKG_CONFIG_PATH} ./configure --without-npm --prefix=${PREFIX_DIR} --shared-openssl
-  fi
-  LD_LIBRARY_PATH=${PREFIX_DIR}/lib:${LD_LIBRARY_PATH} make V= -j5
-  make uninstall
-  make install
-  mkdir -p ${WOOGEEN_DIST}/sbin
-  cp -av ${PREFIX_DIR}/bin/node ${WOOGEEN_DIST}/sbin/webrtc_mcu
-  make uninstall
-  popd
-  popd
-
-  sed -i "s/spawn('node'/spawn('webrtc_mcu'/g" "${WOOGEEN_DIST}/mcu/agent/index.js"
+  popd >/dev/null
 
   ln -s ../node_modules ${WOOGEEN_DIST}/lib/node
   ln -s ../etc/woogeen_config.js ${WOOGEEN_DIST}/node_modules/
-  ln -s ../common/{amqper,cipher,clusterWorker,logger,makeRPC}.js ${WOOGEEN_DIST}/node_modules/
-  for ADDON in ${ADDON_LIST}; do
-    mv ${DIST_ADDON_DIR}/${ADDON}/build/Release/${ADDON}.node ${WOOGEEN_DIST}/lib/node/
-  done
-
-  rm -rf ${WOOGEEN_DIST}/mcu/agent/{erizoJS.js,access/,audio/,video/}
-  rm -rf ${DIST_ADDON_DIR}
 }
 
 install_module() {

@@ -1,8 +1,8 @@
 /*global require, setInterval, module*/
 'use strict';
 
-var logger = require('../../common/logger').logger;
-var makeRPC = require('../../common/makeRPC').makeRPC;
+var logger = require('./logger').logger;
+var makeRPC = require('./makeRPC').makeRPC;
 
 // Logger
 var log = logger.getLogger('ErizoManager');

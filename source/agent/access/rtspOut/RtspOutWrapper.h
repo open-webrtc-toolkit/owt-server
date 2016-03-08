@@ -21,8 +21,8 @@
 #ifndef RTSPOUTWRAPPER_H
 #define RTSPOUTWRAPPER_H
 
-#include "../woogeen_base/NodeEventRegistry.h"
-#include "../woogeen_base/MediaFramePipelineWrapper.h"
+#include "../../addons/woogeen_base/NodeEventRegistry.h"
+#include "../../addons/woogeen_base/MediaFramePipelineWrapper.h"
 #include <RtspOut.h>
 #include <node.h>
 #include <node_object_wrap.h>

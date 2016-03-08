@@ -6,7 +6,7 @@ var readline = require('readline').createInterface({
   input: process.stdin,
   output: process.stdout
 });
-var cipher = require('../common/cipher');
+var cipher = require('./cipher');
 var collection;
 var keystore = path.resolve(__dirname, '..', 'cert/.woogeen.keystore');
 var allComps = ['erizo', 'nuve', 'erizoController'];

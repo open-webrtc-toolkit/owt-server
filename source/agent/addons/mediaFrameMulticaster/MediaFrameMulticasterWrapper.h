@@ -18,27 +18,26 @@
  * and approved by Intel in writing.
  */
 
-#ifndef VIDEOFRAMECONSTRUCTORWRAPPER_H
-#define VIDEOFRAMECONSTRUCTORWRAPPER_H
+#ifndef FRAMEMULTICASTERERWRAPPER_H
+#define FRAMEMULTICASTERERWRAPPER_H
 
-#include "MediaDefinitions.h"
-#include "../woogeen_base/MediaFramePipelineWrapper.h"
-#include <VideoFrameConstructor.h>
+#include "../../addons/woogeen_base/MediaFramePipelineWrapper.h"
+#include <MediaFrameMulticaster.h>
 #include <node.h>
 #include <node_object_wrap.h>
 
+
 /*
- * Wrapper class of woogeen_base::VideoFrameConstructor
+ * Wrapper class of woogeen_base::MediaFrameMulticaster
  */
-class VideoFrameConstructor : public MediaSink {
+class MediaFrameMulticaster : public FrameDestination {
  public:
   static void Init(v8::Local<v8::Object> exports);
-  woogeen_base::VideoFrameConstructor* me;
-  woogeen_base::FrameSource* src;
+  woogeen_base::MediaFrameMulticaster* me;
 
  private:
-  VideoFrameConstructor();
-  ~VideoFrameConstructor();
+  MediaFrameMulticaster();
+  ~MediaFrameMulticaster();
   static v8::Persistent<v8::Function> constructor;
 
   static void New(const v8::FunctionCallbackInfo<v8::Value>& args);
@@ -46,11 +45,6 @@ class VideoFrameConstructor : public MediaSink {
 
   static void addDestination(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void removeDestination(const v8::FunctionCallbackInfo<v8::Value>& args);
-
-  static void setBitrate(const v8::FunctionCallbackInfo<v8::Value>& args);
-
-  //FIXME: Temporarily add this interface to workround the hardware mode's absence of feedback mechanism.
-  static void requestKeyFrame(const v8::FunctionCallbackInfo<v8::Value>& args);
 };
 
 #endif

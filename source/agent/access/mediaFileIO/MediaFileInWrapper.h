@@ -18,31 +18,33 @@
  * and approved by Intel in writing.
  */
 
-#ifndef AUDIOFRAMEPACKETIZERWRAPPER_H
-#define AUDIOFRAMEPACKETIZERWRAPPER_H
+#ifndef MEDIAFILEINWRAPPER_H
+#define MEDIAFILEINWRAPPER_H
 
-#include "../woogeen_base/MediaFramePipelineWrapper.h"
-#include <AudioFramePacketizer.h>
+#include "../../addons/woogeen_base/MediaFramePipelineWrapper.h"
+#include <MediaFileIn.h>
 #include <node.h>
 #include <node_object_wrap.h>
 
+
 /*
- * Wrapper class of woogeen_base::AudioFramePacketizer
+ * Wrapper class of woogeen_base::MediaFileIn
  */
-class AudioFramePacketizer : public FrameDestination {
+class MediaFileIn : public FrameSource {
  public:
   static void Init(v8::Local<v8::Object> exports);
-  woogeen_base::AudioFramePacketizer* me;
+  woogeen_base::MediaFileIn* me;
 
  private:
-  AudioFramePacketizer();
-  ~AudioFramePacketizer();
+  MediaFileIn();
+  ~MediaFileIn();
   static v8::Persistent<v8::Function> constructor;
 
   static void New(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void close(const v8::FunctionCallbackInfo<v8::Value>& args);
 
-  static void setAudioReceiver(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void addDestination(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void removeDestination(const v8::FunctionCallbackInfo<v8::Value>& args);
 };
 
 #endif

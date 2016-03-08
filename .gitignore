@@ -7,3 +7,4 @@ third_party/node-v*
 third_party/libuv*
 doc/webrtc-jsdoc-cosmo/
 doc/*.class
+node_modules

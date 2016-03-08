@@ -1,6 +1,6 @@
 #include <node.h>
-#include "../webrtc/WebRtcConnection.h"
-#include "../woogeen_base/Gateway.h"
+#include "../../agent/access/webrtc/WebRtcConnection.h"
+#include "../../agent/addons/woogeen_base/Gateway.h"
 
 using namespace v8;
 

@@ -76,8 +76,8 @@ app.get('/cluster/rooms', clusterResource.getRooms);
 app.get('/cluster/nodes/:node/config', clusterResource.getNodeConfig);
 
 if (config.nuve.ssl === true) {
-    var cipher = require('../common/cipher');
-    cipher.unlock(cipher.k, '../../cert/.woogeen.keystore', function cb (err, obj) {
+    var cipher = require('./cipher');
+    cipher.unlock(cipher.k, '../cert/.woogeen.keystore', function cb (err, obj) {
         if (!err) {
             try {
                 require('https').createServer({

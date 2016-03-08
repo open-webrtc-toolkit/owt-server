@@ -2,7 +2,7 @@
 'use strict';
 var serviceRegistry = require('./../mdb/serviceRegistry');
 var mauthParser = require('./mauthParser');
-var cipher = require('../../common/cipher');
+var cipher = require('../cipher');
 var logger = require('./../logger').logger;
 
 // Logger

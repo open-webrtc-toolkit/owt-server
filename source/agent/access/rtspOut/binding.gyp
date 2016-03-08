@@ -3,7 +3,7 @@
     'target_name': 'rtspOut',
     'sources': [ 'addon.cc',
                  'RtspOutWrapper.cc',
-                 '../woogeen_base/NodeEventRegistry.cc' ],
+                 '../../addons/woogeen_base/NodeEventRegistry.cc' ],
     'include_dirs': [ '$(CORE_HOME)/common',
                       '$(CORE_HOME)/woogeen_base',
                       '$(CORE_HOME)/../../build/libdeps/build/include' ],

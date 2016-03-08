@@ -116,55 +116,43 @@ case $startStop in
         echo $! > ${pid}
         ;;
       portal )
-        export PATH=${PATH}:${WOOGEEN_HOME}/sbin
         export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${WOOGEEN_HOME}/lib
-        export LOG4CXX_CONFIGURATION=${WOOGEEN_HOME}/etc/mcu/log4cxx.properties
-        cd ${WOOGEEN_HOME}/mcu/controller
+        cd ${WOOGEEN_HOME}/controller
         nohup nice -n ${WOOGEEN_NICENESS} node erizoController.js \
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
       webrtc-agent )
-        export PATH=${PATH}:${WOOGEEN_HOME}/sbin
         export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${WOOGEEN_HOME}/lib
-        export LOG4CXX_CONFIGURATION=${WOOGEEN_HOME}/etc/mcu/log4cxx.properties
-        cd ${WOOGEEN_HOME}/mcu/agent
+        cd ${WOOGEEN_HOME}/access_agent
         nohup nice -n ${WOOGEEN_NICENESS} node . -U webrtc\
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
       rtsp-agent )
-        export PATH=${PATH}:${WOOGEEN_HOME}/sbin
         export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${WOOGEEN_HOME}/lib
-        export LOG4CXX_CONFIGURATION=${WOOGEEN_HOME}/etc/mcu/log4cxx.properties
-        cd ${WOOGEEN_HOME}/mcu/agent
+        cd ${WOOGEEN_HOME}/access_agent
         nohup nice -n ${WOOGEEN_NICENESS} node . -U rtsp\
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
       recording-agent )
-        export PATH=${PATH}:${WOOGEEN_HOME}/sbin
         export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${WOOGEEN_HOME}/lib
-        export LOG4CXX_CONFIGURATION=${WOOGEEN_HOME}/etc/mcu/log4cxx.properties
-        cd ${WOOGEEN_HOME}/mcu/agent
+        cd ${WOOGEEN_HOME}/access_agent
         nohup nice -n ${WOOGEEN_NICENESS} node . -U file\
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
       audio-agent )
-        export PATH=${PATH}:${WOOGEEN_HOME}/sbin
         export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${WOOGEEN_HOME}/lib
-        export LOG4CXX_CONFIGURATION=${WOOGEEN_HOME}/etc/mcu/log4cxx.properties
-        cd ${WOOGEEN_HOME}/mcu/agent
+        cd ${WOOGEEN_HOME}/audio_agent
         nohup nice -n ${WOOGEEN_NICENESS} node . -U audio\
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
       video-agent )
-        export PATH=${PATH}:${WOOGEEN_HOME}/sbin
         export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${WOOGEEN_HOME}/lib
-        export LOG4CXX_CONFIGURATION=${WOOGEEN_HOME}/etc/mcu/log4cxx.properties
-        cd ${WOOGEEN_HOME}/mcu/agent
+        cd ${WOOGEEN_HOME}/video_agent
         nohup nice -n ${WOOGEEN_NICENESS} node . -U video\
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}

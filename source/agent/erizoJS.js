@@ -1,7 +1,7 @@
 /*global require, GLOBAL, process*/
 'use strict';
 var Getopt = require('node-getopt');
-var config = require('./../../etc/woogeen_config');
+var config = require('./woogeen_config');
 
 GLOBAL.config = config || {};
 GLOBAL.config.erizo = GLOBAL.config.erizo || {};
@@ -52,8 +52,8 @@ for (var prop in opt.options) {
 }
 
 // Load submodules with updated config
-var logger = require('../../common/logger').logger;
-var rpc = require('../../common/amqper');
+var logger = require('./logger').logger;
+var rpc = require('./amqper');
 
 // Logger
 var log = logger.getLogger("ErizoJS");
