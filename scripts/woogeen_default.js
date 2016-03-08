@@ -32,7 +32,7 @@ config.nuve.ssl = false; // default value: false
 config.nuve.keystorePath = '../../cert/certificate.pfx';
 // Timestamp check protects the nuve service from those massive requests with out of order timestamps, so that only sequential requests are accepted
 config.nuve.timestampCheck = false; // default value: false
-// Cloud Handler policies are in nuve/nuveAPI/ch_policies/ folder
+// Cloud Handler policies are in nuve/ch_policies/ folder
 config.nuve.cloudHandlerPolicy = 'default_policy.js'; // default value: 'default_policy.js'
 
 
