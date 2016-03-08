@@ -126,7 +126,8 @@ build_runtime() {
   LD_LIBRARY_PATH=${DEPS_ROOT}/lib:$LD_LIBRARY_PATH make
   popd >/dev/null
   # runtime addon
-  if hash node-gyp 2>/dev/null; then
+  local NODE_VERSION=v$(node -e "process.stdout.write(require('${ROOT}/scripts/release/package.json').engine.node)")
+  if [[ ${NODE_VERSION} == $(node --version) ]] && hash node-gyp 2>/dev/null; then
     pushd ${RUNTIME_ADDON_SRC_DIR} >/dev/null
     for ADDON in ${ADDON_LIST}; do
       pushd ${ADDON} >/dev/null
@@ -139,8 +140,10 @@ build_runtime() {
     done
     popd >/dev/null
   else
-    echo >&2 "Appropriate building tool not found."
-    echo >&2 "You need to install node-gyp."
+    echo >&2 "You need to install Node.js ${NODE_VERSION} toolchain:"
+    echo >&2 "  nvm install ${NODE_VERSION}"
+    echo >&2 "  npm install -g node-gyp"
+    echo >&2 "  node-gyp install ${NODE_VERSION}"
     return 1
   fi
 }
