@@ -58,9 +58,12 @@ exports.createRoom = function (req, res) {
         }
         roomRegistry.addRoom(room, function (result) {
             currentService.rooms.push(result);
-            serviceRegistry.updateService(currentService);
-            log.info('Room created:', req.body.name, 'for service', currentService.name);
-            res.send(result);
+            serviceRegistry.updateService(currentService, function () {
+                log.info('Room created:', req.body.name, 'for service', currentService.name);
+                res.send(result);
+            }, function (reason) {
+                res.status(400).send(reason);
+            });
         });
     }
 };
