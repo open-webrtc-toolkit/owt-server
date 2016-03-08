@@ -4,9 +4,6 @@ config.rabbit = {};
 config.rabbit.host = 'localhost';
 config.rabbit.port = 5672;
 
-config.logger = {};
-config.logger.config_file = './log4js_configuration.json';
-
 config.initial_time = 10 * 1000/*MS*/;
 config.check_alive_period = 1000/*MS*/;
 config.check_alive_count = 10;
