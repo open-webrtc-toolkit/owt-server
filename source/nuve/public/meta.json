@@ -1,0 +1,14 @@
+{
+  "mode": ["hybrid", "p2p"],
+  "mediaMixing": {
+    "video": {
+      "resolution": ["vga", "sif", "xga", "svga", "hd720p", "hd1080p", "uhd_4k"],
+      "bitrate": [],
+      "bkColor": ["black", "white"],
+      "layout": {
+        "base": ["fluid", "lecture", "void"]
+      }
+    },
+    "audio": {}
+  }
+}

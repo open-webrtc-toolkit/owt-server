@@ -1,6 +1,6 @@
 {
   "appenders": [
-    { 
+    {
       "type": "console",
       "layout": {
         "type": "pattern",
@@ -10,7 +10,21 @@
     }
   ],
   "levels": {
-  	"ErizoController": "INFO",
-  	"RPC": "INFO"
+    "ServiceRegistry": "INFO",
+    "RoomRegistry": "INFO",
+    "TokenRegistry": "INFO",
+    "ServicesResource": "INFO",
+    "ServiceResource": "INFO",
+    "RoomsResource": "INFO",
+    "RoomResource": "INFO",
+    "UsersResource": "INFO",
+    "UserResource": "INFO",
+    "TokensResource": "INFO",
+    "NuveAuthenticator": "INFO",
+    "CloudHandler": "INFO",
+    "RPCPublic": "INFO",
+    "RPC": "INFO",
+    "Nuve": "INFO",
+    "Room": "INFO"
   }
 }

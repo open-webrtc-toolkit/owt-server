@@ -103,7 +103,7 @@ case $startStop in
           sudo echo
           sudo rabbitmq-server > ${LogDir}/rabbit.log &
         fi
-        cd ${WOOGEEN_HOME}/nuve/nuveAPI
+        cd ${WOOGEEN_HOME}/nuve
         nohup nice -n ${WOOGEEN_NICENESS} node nuve.js \
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}

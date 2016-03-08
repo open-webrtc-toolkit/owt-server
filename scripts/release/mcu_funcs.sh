@@ -39,7 +39,7 @@ pack_runtime() {
   find . -type f -not -name "*.log" -not -name "in*.sh" -exec cp '{}' "${WOOGEEN_DIST}/mcu/agent/{}" \;
   pack_nuve
   pack_common
-  ENCRYPT_CAND_PATH=("${WOOGEEN_DIST}/mcu" "${WOOGEEN_DIST}/nuve/nuveAPI" "${WOOGEEN_DIST}/common")
+  ENCRYPT_CAND_PATH=("${WOOGEEN_DIST}/mcu" "${WOOGEEN_DIST}/nuve" "${WOOGEEN_DIST}/common")
   # config
   mkdir -p ${WOOGEEN_DIST}/etc/nuve
   mkdir -p ${WOOGEEN_DIST}/etc/mcu
@@ -70,9 +70,7 @@ pack_common() {
 }
 
 pack_nuve() {
-  mkdir -p ${WOOGEEN_DIST}/nuve
-  cp -av ${SOURCE}/nuve/nuveAPI ${WOOGEEN_DIST}/nuve/
-  cp -av ${SOURCE}/nuve/log4js_configuration.json ${WOOGEEN_DIST}/nuve/
+  cp -av ${SOURCE}/nuve ${WOOGEEN_DIST}/
   cp -av ${SOURCE}/cluster_manager ${WOOGEEN_DIST}/
 }
 
