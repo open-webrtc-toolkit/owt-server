@@ -70,7 +70,7 @@ module.exports = function (spec) {
                 }, function (reason) {
                     if (keepTrying) {
                         log.warn('Failed in scheduling a(n)', purpose, 'agent, keep trying.');
-                        setTimeout(function () {tryFetchingAgent(attempt - (reason.startsWith('Timeout') ? 6 : 1));}, 200);
+                        setTimeout(function () {tryFetchingAgent(attempt - ((typeof reason === 'string') && reason.startsWith('Timeout') ? 6 : 1));}, 200);
                     }
                 });
         };

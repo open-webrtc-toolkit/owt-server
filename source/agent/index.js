@@ -98,7 +98,7 @@ var guid = (function() {
 
 var os = require('os');
 var getCPULoad = function (on_result) {
-    on_result(os.loadavg()[0]);
+    on_result(os.loadavg()[0] / os.cpus().length);
 };
 
 var getGPULoad = function (on_result) {

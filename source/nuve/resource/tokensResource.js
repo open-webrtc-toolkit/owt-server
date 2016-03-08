@@ -147,10 +147,12 @@ exports.create = function (req, res) {
 
         generateToken(function (tokenS) {
             if (tokenS === undefined) {
+                log.info('Name and role?');
                 res.status(401).send('Name and role?');
                 return;
             }
             if (tokenS === 'error') {
+                log.info('CloudHandler does not respond');
                 res.status(401).send('CloudHandler does not respond');
                 return;
             }

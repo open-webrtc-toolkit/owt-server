@@ -63,9 +63,14 @@ exports.addService = function (service, callback) {
 /*
  * Updates a determined service in the data base.
  */
-exports.updateService = function (service) {
+exports.updateService = function (service, on_ok, on_error) {
     db.services.save(service, function (error, saved) {
-        if (error) log.info('MongoDB: Error updating service: ', error);
+        if (error || !saved) {
+            log.info('MongoDB: Error updating service: ', error);
+            if (typeof on_error === 'function') on_error('Error updating service.');
+        } else {
+            if (typeof on_ok === 'function') on_ok();
+        }
     });
 };
 
