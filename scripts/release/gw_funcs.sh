@@ -21,8 +21,8 @@ pack_runtime() {
   cp -av ${SOURCE}/gateway/oovoo_gateway.js ${WOOGEEN_DIST}/gateway/
   cp -av ${SOURCE}/gateway/controller.js ${WOOGEEN_DIST}/gateway/
   cp -av ${SOURCE}/gateway/oovoo_heartbeat.js ${WOOGEEN_DIST}/gateway/
-  cp -av ${SOURCE}/erizo_controller/erizoController/permission.js ${WOOGEEN_DIST}/gateway/util/
-  cp -av ${SOURCE}/erizo_controller/erizoController/Stream.js ${WOOGEEN_DIST}/gateway/util/
+  cp -av ${SOURCE}/controller/permission.js ${WOOGEEN_DIST}/gateway/util/
+  cp -av ${SOURCE}/controller/Stream.js ${WOOGEEN_DIST}/gateway/util/
   ENCRYPT_CAND_PATH=("${WOOGEEN_DIST}/gateway")
   # config
   mkdir -p ${WOOGEEN_DIST}/etc
@@ -150,9 +150,10 @@ install_module() {
   echo -e "\x1b[32mInstalling node_modules ...\x1b[0m"
   if hash npm 2>/dev/null; then
     mkdir -p ${WOOGEEN_DIST}/node_modules
-    npm install --prefix ${WOOGEEN_DIST} --production --loglevel error socket.io@0.9.17 request log4cxx
-    mkdir -p ${WOOGEEN_DIST}/extras/node_modules
-    npm install --prefix ${WOOGEEN_DIST}/extras --production --loglevel error express@3.4.8 request
+    cp -av ${this}/package.gw.json ${WOOGEEN_DIST}/package.json
+    cd ${WOOGEEN_DIST} && npm install --prefix ${WOOGEEN_DIST} --production --loglevel error
+    mkdir -p ${WOOGEEN_DIST}/extras/sdk_sample/node_modules
+    cd ${WOOGEEN_DIST}/extras/sdk_sample && npm install --prefix ${WOOGEEN_DIST}/extras/sdk_sample --production --loglevel error
   else
     echo >&2 "npm not found."
     echo >&2 "You need to install node first."
