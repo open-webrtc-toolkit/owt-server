@@ -97,7 +97,9 @@ const std::map<std::string, VideoSize> VideoResolutions =
      {"qcif", {176, 144}},
      {"r192x144", {192, 144}},
      {"hd1080p", {1920, 1080}},
-     {"uhd_4k", {3840, 2160}}};
+     {"uhd_4k", {3840, 2160}},
+     {"r720x720", {720, 720}}
+    };
 
 class VideoResolutionHelper {
 public:

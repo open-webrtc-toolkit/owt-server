@@ -25,7 +25,8 @@ var VideoResolutionMap = { // definition adopted from VideoLayout.h
     qcif:     ['qcif'],
     r192x144: ['r192x144'],
     hd1080p:  ['hd1080p', 'hd720p', 'svga', 'vga', 'r640x360'],
-    uhd_4k:   ['uhd_4k', 'hd1080p', 'hd720p', 'svga', 'vga', 'r640x360']
+    uhd_4k:   ['uhd_4k', 'hd1080p', 'hd720p', 'svga', 'vga', 'r640x360'],
+    r720x720: ['r720x720']
 };
 
 function calculateResolutions(rootResolution, useMultistreaming) {
@@ -45,7 +46,7 @@ var VideoEngine = function () {
         supported_resolutions = [],
 
         /*{StreamID : {codec: 'vp8' | 'h264' |...,
-                       resolution: 'cif' | 'vga' | 'svga' | 'xga' | 'hd720p' | 'sif' | 'hvga' | 'r640x360' | 'r480x360' | 'qcif' | 'r192x144' | 'hd1080p' | 'uhd_4k' |...,
+                       resolution: 'cif' | 'vga' | 'svga' | 'xga' | 'hd720p' | 'sif' | 'hvga' | 'r640x360' | 'r480x360' | 'qcif' | 'r192x144' | 'hd1080p' | 'uhd_4k' | 'r720x720' ...,
                        framerate: Number(1~120) | undefined,
                        dispatcher: Dispather,
                        subscriptions: {SubscriptionID: InternalOut}
