@@ -10,14 +10,14 @@ check_proxy(){
   else
     echo "http proxy configured, configuring npm"
     npm config set proxy $http_proxy
-  fi  
+  fi
 
   if [ -z "$https_proxy" ]; then
     echo "No https proxy set, doing nothing"
   else
     echo "https proxy configured, configuring npm"
     npm config set https-proxy $https_proxy
-  fi  
+  fi
 }
 
 install_opus(){
@@ -95,7 +95,7 @@ install_libnice(){
 
 install_openssl(){
   if [ -d $LIB_DIR ]; then
-    local SSL_VERSION="1.0.2f"
+    local SSL_VERSION="1.0.2g"
     cd $LIB_DIR
     wget -c http://www.openssl.org/source/openssl-${SSL_VERSION}.tar.gz
     tar xf openssl-${SSL_VERSION}.tar.gz
@@ -247,7 +247,7 @@ install_gcc(){
   fi
 }
 
-cleanup_common(){  
+cleanup_common(){
   if [ -d $LIB_DIR ]; then
     cd $LIB_DIR
     rm -r openssl*
