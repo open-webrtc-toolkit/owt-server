@@ -27,7 +27,7 @@ var mostUsed = function () {
     this.allocate = function (workers, on_ok, on_error) {
         var most = 0, found = undefined;
         for (var id in workers) {
-            if (workers[id].load > most && isWorkerAvailable(workers[id])) {
+            if (workers[id].load >= most && isWorkerAvailable(workers[id])) {
                 most = workers[id].load;
                 found = id;
             }
