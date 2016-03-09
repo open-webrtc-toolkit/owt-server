@@ -1,7 +1,7 @@
 {
   "name": "WooGeen-MCU",
   "version": "3.0.0",
-  "description": "Intel CS for WebRTC",
+  "description": "Intel CS for WebRTC Conference Server",
   "dependencies": {
     "amqp": "*",
     "socket.io": "^1.3.5",

@@ -179,7 +179,7 @@ pack_node() {
   local NODE_VERSION=v$(node -e "process.stdout.write(require('${WOOGEEN_DIST}/package.json').engine.node)")
   echo "node version: ${NODE_VERSION}"
   local PREFIX_DIR=${ROOT}/build/libdeps/build/
-  local THIRD_PARTY_MODULES=$(node -e "process.stdout.write(Object.keys(require('${ROOT}/scripts/release/package.json').dependencies).join(' '))")
+  local THIRD_PARTY_MODULES=$(node -e "process.stdout.write(Object.keys(require('${ROOT}/scripts/release/package.mcu.json').dependencies).join(' '))")
 
   pushd ${ROOT}/third_party
   wget -c http://nodejs.org/dist/${NODE_VERSION}/node-${NODE_VERSION}.tar.gz
@@ -239,7 +239,7 @@ install_module() {
   local SAMPLE_DIR=${WOOGEEN_DIST}/extras/basic_example
   if hash npm 2>/dev/null; then
     mkdir -p ${WOOGEEN_DIST}/node_modules
-    cp -av ${this}/package.json ${WOOGEEN_DIST}/package.json
+    cp -av ${this}/package.mcu.json ${WOOGEEN_DIST}/package.json
     cd ${WOOGEEN_DIST} && npm install --prefix ${WOOGEEN_DIST} --production --loglevel error
 
     [[ -d ${SAMPLE_DIR} ]] && \

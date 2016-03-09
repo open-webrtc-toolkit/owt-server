@@ -1,0 +1,12 @@
+{
+  "name": "WooGeen-Gateway-ooVoo-Sample",
+  "version": "0.12.3",
+  "description": "Intel CS for WebRTC Gateway to ooVoo sample application",
+  "dependencies": {
+    "express": "3.4.8",
+    "request": "*"
+  },
+  "engine": {
+    "node": "4.2.3"
+  }
+}
