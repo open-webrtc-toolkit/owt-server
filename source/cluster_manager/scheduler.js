@@ -1,4 +1,4 @@
-/*global require, setTimeout, clearTimeout, setInterval, clearInterval, exports*/
+/*global require, setTimeout, clearTimeout, exports*/
 'use strict';
 var logger = require('./logger').logger;
 var Strategy = require('./strategy');
@@ -7,7 +7,7 @@ var Strategy = require('./strategy');
 var log = logger.getLogger('Scheduler');
 
 
-module.exports.Scheduler = function(spec) {
+exports.Scheduler = function(spec) {
     var that = {};
 
     /*State <- [0 | 1 | 2]*/

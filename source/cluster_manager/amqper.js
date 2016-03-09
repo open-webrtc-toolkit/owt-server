@@ -1,4 +1,4 @@
-/*global GLOBAL, require, exports*/
+/*global require, exports*/
 'use strict';
 var amqp = require('amqp');
 var logger = require('./logger').logger;
@@ -7,9 +7,9 @@ var logger = require('./logger').logger;
 var log = logger.getLogger('AMQPER');
 
 // Configuration default values
-GLOBAL.config.rabbit = GLOBAL.config.rabbit || {};
-GLOBAL.config.rabbit.host = GLOBAL.config.rabbit.host || 'localhost';
-GLOBAL.config.rabbit.port = GLOBAL.config.rabbit.port || 5672;
+var config = require('./config').rabbit || {};
+config.host = config.host || 'localhost';
+config.port = config.port || 5672;
 
 var TIMEOUT = 5000;
 
@@ -20,15 +20,8 @@ var corrID = 0;
 var map = {};   //{corrID: {fn: callback, to: timeout}}
 var connection, rpc_exc, broadcast_exc, clientQueue;
 
-var addr = {};
+var addr = config.url ? {url: config.url} : {host: config.host, port: config.port};
 var rpcPublic = {};
-
-if (GLOBAL.config.rabbit.url !== undefined) {
-    addr.url = GLOBAL.config.rabbit.url;
-} else {
-    addr.host = GLOBAL.config.rabbit.host;
-    addr.port = GLOBAL.config.rabbit.port;
-}
 
 exports.timeout = TIMEOUT;
 
