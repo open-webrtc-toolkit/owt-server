@@ -257,8 +257,9 @@ var publicIP;
 var joinCluster = function (on_ok) {
     var joinOK = function (id) {
         var onIOReady = function () {
+            var os = require('os');
             var reportLoadInterval = setInterval(function () {
-                var cpu_load = require('os').loadavg()[0];
+                var cpu_load = os.loadavg()[0] / os.cpus().length;
                 worker && worker.reportLoad(cpu_load);
             }, config.report_load_period || 5000);
 
