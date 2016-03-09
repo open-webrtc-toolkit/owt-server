@@ -1,4 +1,4 @@
-/*global require, setTimeout, setInterval, clearInterval, exports*/
+/*global require, setTimeout, setInterval, exports*/
 'use strict';
 var logger = require('./logger').logger;
 var Scheduler = require('./scheduler').Scheduler;
@@ -154,7 +154,7 @@ var ClusterManager = function (spec) {
     return that;
 };
 
-module.exports.API = function (spec) {
+exports.API = function (spec) {
     var manager = new ClusterManager(spec);
     var that = {};
 

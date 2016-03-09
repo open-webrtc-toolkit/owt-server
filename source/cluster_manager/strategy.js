@@ -96,7 +96,7 @@ var randomlyPick = function () {
     };
 };
 
-module.exports.create = function (strategy) {
+exports.create = function (strategy) {
     switch (strategy) {
         case 'least-used':
             return new leastUsed();
