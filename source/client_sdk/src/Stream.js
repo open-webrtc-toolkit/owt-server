@@ -238,7 +238,12 @@ Erizo.Stream = function (spec) {
                 that.onClose();
             }
             if (that.stream !== undefined) {
-                that.stream.stop();
+                var tracks = that.stream.getTracks();
+                if (tracks !== undefined) {
+                    tracks.forEach(function(track) {
+                        track.stop();
+                    });
+                }
             }
             that.stream = undefined;
             that.initialized = false;
