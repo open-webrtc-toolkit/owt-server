@@ -74,7 +74,8 @@ int OoVooGateway::deliverAudioData(char* buf, int len)
     if (len <= 0)
         return 0;
 
-    return m_audioReceiver->deliverAudioData(buf, len);
+    boost::shared_lock<boost::shared_mutex> lock(m_publisherMutex);
+    return m_audioReceiver ? m_audioReceiver->deliverAudioData(buf, len) : 0;
 }
 
 // The WebRTC connection video receive thread
@@ -83,7 +84,8 @@ int OoVooGateway::deliverVideoData(char* buf, int len)
     if (len <= 0)
         return 0;
 
-    return m_videoReceiver->deliverVideoData(buf, len);
+    boost::shared_lock<boost::shared_mutex> lock(m_publisherMutex);
+    return m_videoReceiver ? m_videoReceiver->deliverVideoData(buf, len) : 0;
 }
 
 bool OoVooGateway::acceptEncapsulatedRTPData()
@@ -334,9 +336,9 @@ bool OoVooGateway::addPublisher(erizo::MediaSource* source, const std::string& i
     if (publisher)
         return false;
 
+    boost::unique_lock<boost::shared_mutex> lock(m_publisherMutex);
     m_audioReceiver.reset(new ProtectedRTPReceiver(m_outboundStreamProcessor));
     m_videoReceiver.reset(new ProtectedRTPReceiver(m_outboundStreamProcessor));
-    boost::unique_lock<boost::shared_mutex> lock(m_publisherMutex);
     publisher = source;
     // Set the NACK status of the RTPReceiver(s).
     m_feedbackSink = publisher->getFeedbackSink();
@@ -441,12 +443,12 @@ void OoVooGateway::removePublisher(const std::string&)
         m_webRTCAudioStreamId = NOT_A_OOVOO_STREAM_ID;
     }
 
-    lock.unlock();
-
     m_feedbackSink = nullptr;
     dyingPublisher = nullptr;
     m_videoReceiver.reset();
     m_audioReceiver.reset();
+    lock.unlock();
+
     m_gatewayStats.packetsReceived = 0;
     m_gatewayStats.packetsLost = 0;
 }
