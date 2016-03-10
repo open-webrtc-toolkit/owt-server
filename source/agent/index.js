@@ -108,42 +108,64 @@ var getGPULoad = function (on_result) {
 };
 
 var receiveSpeed = 0, sendSpeed  = 0;
-var queryNetworkInterval;
+var nqChild;
 
 var startQueryNetwork = function (interf, period) {
-    var firstTry = true;
-    queryNetworkInterval = setInterval(function () {
-        require('child_process').exec('ifstat ' + interf, function (err, stdout, stderr) {
-            function string2MBytes (s) {
-                if (s.endsWith('K')) {
-                    return Number(s.slice(0, s.length -1)) / 1024;
-                } else if (s.endsWith('M')) {
-                    return Number(s.slice(0, s.length -1));
-                } else if (s.endsWith('G')) {
-                    return Number(s.slice(0, s.length -1)) * 1024;
-                } else {
-                    return Number(s) / (1024 * 1024);
-                }
-            }
-            if (firstTry) {
-                firstTry = false;
+    var foundIntf = undefined,
+        sendUnit = 'K',
+        receiveUnit = 'K';
+
+    var nqChild = require('child_process').exec('bwm-ng -u bytes -t ' + period + ' -I ' + interf, function (err, stdout, stderr) {
+        if (err) {
+            log.error('error:', err)
+        }
+    });
+
+    nqChild.stdout.on('data', function (data) {
+        var segs = data.toString().split('\u001b');
+
+        if (foundIntf === undefined) {
+            var candidates = segs.filter(function (s) {return s.endsWith(interf + ':');});
+            if (candidates.length > 0) {
+                foundIntf = candidates[0].split(';')[0] + ';';
+                log.warn('foundIntf:', foundIntf);
+            } else {
+                log.info('Not found interface yet.');
                 return;
             }
+        }
 
-            if (err) {
-                log.error(stderr);
-            } else {
-                var pattern = new RegExp('^(' + interf + '\\s+.*)$', 'gm');
-                var line = stdout.toString().match(pattern)[0].split(/\s+/g);
-                receiveSpeed = string2MBytes(line[5]) * 8 / period;
-                sendSpeed = string2MBytes(line[7]) * 8 / period;
-           }
-       });
-    }, period * 1000);
+        var calcSpeed = function (base, unit) {
+            var mul = unit === 'M' ? 1 : (unit === 'K' ? 0.001 : (unit === 'G' ? 1000 : 0));
+            return base * mul;
+        };
+
+        segs.filter(function (s) { return s.startsWith(foundIntf) && !s.endsWith(interf + ':');}).forEach(function (line) {
+            var exp = new RegExp('\\' + foundIntf + '(\\d+)H\\s*(\\d+\\.?\\d*)\\s?([KMG])?.*$');
+            var result = line.match(exp);
+            if (result === null) {
+               log.info('Unrecorgnized line:', line);
+               return;
+            }
+            var pos = Number(result[1]),
+                value = Number(result[2]),
+                unit = result[3];
+            if (pos < 36) {
+                receiveUnit = unit ? unit : receiveUnit;
+                receiveSpeed = calcSpeed(value, receiveUnit) || receiveSpeed;
+                log.debug('receive speed:', receiveSpeed);
+            } else if (pos < 57) {
+                sendUnit = unit ? unit : sendUnit;
+                sendSpeed = calcSpeed(value, sendUnit) || sendSpeed;
+                log.debug('send speed:', sendSpeed);
+            }
+        });
+    });
 };
 
 var stopQueryNetwork = function () {
-    queryNetworkInterval && clearInterval(queryNetworkInterval);
+    nqChild && nqChild.kill('SIGINT');
+    nqChild = undefined;
     receiveSpeed = 0;
     sendSpeed = 0;
 };
@@ -172,7 +194,7 @@ var startQueryDisk = function (drive, period) {
                 diskUsage = 1.0 - free / total;
             }
        });
-    }, period * 1000);
+    }, period);
 };
 
 var stopQueryDisk = function () {
@@ -425,13 +447,13 @@ var joinCluster = function (on_ok) {
         case 'webrtc':
         case 'rtsp':
             var internalNetworkInterface = INTERNAL_INTERFACE_NAME || Object.keys(os.networkInterfaces())[0];
-            startQueryNetwork(internalNetworkInterface, 5);
+            startQueryNetwork(internalNetworkInterface, 5 * 1000);
             if (EXTERNAL_INTERFACE_NAME && EXTERNAL_INTERFACE_NAME !== internalNetworkInterface) {
-                startQueryNetwork(EXTERNAL_INTERFACE_NAME, 5);
+                startQueryNetwork(EXTERNAL_INTERFACE_NAME, 5 * 1000);
             }
             break;
         case 'file':
-            startQueryDisk('/tmp', 10/*S*/);
+            startQueryDisk('/tmp', 10 * 1000);
             break;
         default:
             break;
