@@ -132,6 +132,9 @@ public:
     void setVideoSource(FrameSource* src);
     void unsetVideoSource();
 
+    bool hasAudioSource() { return m_audio_src != nullptr; }
+    bool hasVideoSource() { return m_video_src != nullptr; }
+
 protected:
     void deliverFeedbackMsg(const FeedbackMsg& msg);
 

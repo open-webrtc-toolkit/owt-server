@@ -1019,29 +1019,35 @@ var listen = function () {
                 return safeCall(callback, 'error', 'unauthorized');
             }
 
-            // Check the stream to be recorded
+            // Check the streams to be recorded
+            var videoRequired = true;
+            var audioRequired = true;
             var videoStreamId = options.videoStreamId || undefined;
             var audioStreamId = options.audioStreamId || undefined;
             if (videoStreamId === undefined && audioStreamId === undefined) {
                 videoStreamId = socket.room.mixer;
                 audioStreamId = socket.room.mixer;
             } else if (videoStreamId === undefined) {
-                videoStreamId = audioStreamId;
+                videoRequired = false;
             } else if (audioStreamId === undefined){
-                audioStreamId = videoStreamId;
+                audioRequired = false;
             }
 
             var videoStream = socket.room.streams[videoStreamId];
             var audioStream = socket.room.streams[audioStreamId];
-            if (videoStream === undefined || audioStream === undefined) {
-                return safeCall(callback, 'error', 'Target video or audio record stream does not exist.');
+            if (videoRequired && videoStream === undefined) {
+                return safeCall(callback, 'error', 'Target video record stream does not exist.');
             }
 
-            if (!videoStream.hasVideo()) {
+            if (audioRequired && audioStream === undefined) {
+                return safeCall(callback, 'error', 'Target audio record stream does not exist.');
+            }
+
+            if (videoRequired && !videoStream.hasVideo()) {
                 return safeCall(callback, 'error', 'No video data from the video stream.');
             }
 
-            if (!audioStream.hasAudio()) {
+            if (audioRequired && !audioStream.hasAudio()) {
                 return safeCall(callback, 'error', 'No audio data from the audio stream.');
             }
 
@@ -1058,13 +1064,21 @@ var listen = function () {
                 preferredAudioCodec = 'opus_48000_2';
             }
 
-            var videoRecorder = videoStream.getVideoRecorder();
-            var audioRecorder = audioStream.getAudioRecorder();
-            if ((videoRecorder && videoRecorder !== recorderId) || (audioRecorder && audioRecorder !== recorderId)) {
-                return safeCall(callback, 'error', 'Media recording is going on.');
+            if (videoRequired) {
+                var videoRecorder = videoStream.getVideoRecorder();
+                if (videoRecorder && videoRecorder !== recorderId) {
+                    return safeCall(callback, 'error', 'Video media recording is going on.');
+                }
             }
 
-            // Make sure the recording context clean for this 'startRecorder'
+            if (audioRequired) {
+                var audioRecorder = audioStream.getAudioRecorder();
+                if (audioRecorder && audioRecorder !== recorderId) {
+                    return safeCall(callback, 'error', 'Audio media recording is going on.');
+                }
+            }
+
+            // Make sure the recording context clean for this 'startRecorder' subscription
             socket.room.controller.unsubscribe('file#'+socket.room.id/*FIXME: hard code terminalID*/, recorderId);
             var isContinuous = false;
             for (var i in socket.room.streams) {
@@ -1087,9 +1101,9 @@ var listen = function () {
                 'file',
                 audioStreamId,
                 videoStreamId,
-                {require_audio: true,
+                {require_audio: audioRequired,
                  audio_codec: preferredAudioCodec,
-                 require_video: true,
+                 require_video: videoRequired,
                  video_codec: preferredVideoCodec,
                  path: url,
                  interval: interval,
@@ -1097,10 +1111,15 @@ var listen = function () {
                  room_id: socket.room.id},
                 function (response) {
                     if (response.type === 'ready') {
-                        videoStream.setVideoRecorder(recorderId);
-                        audioStream.setAudioRecorder(recorderId);
-
                         log.info('Media recording to ', url);
+
+                        if (videoStream) {
+                            videoStream.setVideoRecorder(recorderId);
+                        }
+
+                        if (audioStream) {
+                            audioStream.setAudioRecorder(recorderId);
+                        }
 
                         if (isContinuous) {
                             sendMsgToRoom(socket.room, 'reuse_recorder', {id: recorderId});

@@ -136,7 +136,7 @@ void MediaFileOut::onFrame(const Frame& frame)
 
     case FRAME_FORMAT_PCMU:
     case FRAME_FORMAT_OPUS: {
-        if (m_videoStream && !m_audioStream) { // make sure video stream is added first.
+        if ((!hasVideoSource() || m_videoStream) && !m_audioStream) { // make sure video stream is added first.
             if (addAudioStream(frameFormat2AudioCodecID(frame.format), frame.additionalInfo.audio.channels, frame.additionalInfo.audio.sampleRate)) {
                 ELOG_DEBUG("audio stream added: %d channel(s), %d Hz, %s", frame.additionalInfo.audio.channels, frame.additionalInfo.audio.sampleRate,
                     (frame.format == woogeen_base::FRAME_FORMAT_PCMU) ? "PCMU" : "OPUS");
@@ -223,7 +223,9 @@ void MediaFileOut::onTimeout()
 {
     switch (m_status) {
     case AVStreamOut::Context_EMPTY:
-        if (m_audioStream && m_videoStream) {
+        if ((hasAudioSource() && m_audioStream && hasVideoSource() && m_videoStream) ||
+            (!hasVideoSource() && hasAudioSource() && m_audioStream) ||
+            (!hasAudioSource() && hasVideoSource() && m_videoStream)) {
             if (!(m_context->oformat->flags & AVFMT_NOFILE)) {
                 if (avio_open(&m_context->pb, m_context->filename, AVIO_FLAG_WRITE) < 0) {
                     m_status = AVStreamOut::Context_ERROR;
@@ -281,7 +283,7 @@ void MediaFileOut::writeAudioFrame(EncodedFrame& encodedAudioFrame)
     avpkt.data = encodedAudioFrame.m_payloadData;
     avpkt.size = encodedAudioFrame.m_payloadSize;
     avpkt.pts = (int64_t)(encodedAudioFrame.m_timeStamp / (av_q2d(m_audioStream->time_base) * 1000));
-    avpkt.stream_index = 1;
+    avpkt.stream_index = hasVideoSource() ? 1 : 0;
     av_write_frame(m_context, &avpkt);
     av_free_packet(&avpkt);
 }
