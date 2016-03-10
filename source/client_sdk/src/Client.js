@@ -74,7 +74,12 @@ Erizo.Client = function (spec) {
             // Close PC stream
             stream.pc.close();
             if (stream.local) {
-                stream.stream.stop();
+                var tracks = stream.stream.getTracks();
+                if (tracks !== undefined) {
+                    tracks.forEach(function(track) {
+                        track.stop();
+                    });
+                }
             }
         }
     };
