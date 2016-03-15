@@ -405,7 +405,8 @@ var resolutionName2Value = {
     'qcif': {width: 176, height: 144},
     'r192x144': {width: 192, height: 144},
     'hd1080p': {width: 1920, height: 1080},
-    'uhd_4k': {width: 3840, height: 2160}
+    'uhd_4k': {width: 3840, height: 2160},
+    'r720x720': {width: 720, height: 720}
 };
 var resolutionValue2Name = {
     'r352x288': 'cif',
@@ -420,7 +421,8 @@ var resolutionValue2Name = {
     'r176x144': 'qcif',
     'r192x144': 'r192x144',
     'r1920x1080': 'hd1080p',
-    'r3840x2160': 'uhd_4k'
+    'r3840x2160': 'uhd_4k',
+    'r720x720': 'r720x720'
 };
 
 var listen = function () {
