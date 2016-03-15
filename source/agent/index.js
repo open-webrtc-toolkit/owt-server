@@ -10,6 +10,7 @@ GLOBAL.config.erizoAgent = GLOBAL.config.erizoAgent || {};
 GLOBAL.config.erizoAgent.maxProcesses = GLOBAL.config.erizoAgent.maxProcesses || 1;
 GLOBAL.config.erizoAgent.prerunProcesses = GLOBAL.config.erizoAgent.prerunProcesses || 1;
 GLOBAL.config.erizoAgent.publicIP = GLOBAL.config.erizoAgent.publicIP || '';
+GLOBAL.config.erizoAgent.internalIP = GLOBAL.config.erizoAgent.internalIP || '';
 
 // Parse command line arguments
 var getopt = new Getopt([
@@ -115,7 +116,7 @@ var startQueryNetwork = function (interf, period) {
         sendUnit = 'K',
         receiveUnit = 'K';
 
-    var nqChild = require('child_process').exec('bwm-ng -u bytes -t ' + period + ' -I ' + interf, function (err, stdout, stderr) {
+    nqChild = require('child_process').exec('bwm-ng -u bytes -t ' + period + ' -I ' + interf, function (err, stdout, stderr) {
         if (err) {
             log.error('error:', err)
         }
@@ -164,7 +165,7 @@ var startQueryNetwork = function (interf, period) {
 };
 
 var stopQueryNetwork = function () {
-    nqChild && nqChild.kill('SIGINT');
+    nqChild && nqChild.kill();
     nqChild = undefined;
     receiveSpeed = 0;
     sendSpeed = 0;
@@ -359,10 +360,11 @@ var api = {
 };
 
 var privateIP, publicIP, clusterIP;
-(function collectIPs () {
+var externalInterface, internalInterface;
+function collectIPs () {
     var interfaces = require('os').networkInterfaces(),
-        externalAddresses = [],
-        internalAddresses = [],
+        externalAddress,
+        internalAddress,
         k,
         k2,
         address;
@@ -373,11 +375,13 @@ var privateIP, publicIP, clusterIP;
                 if (interfaces[k].hasOwnProperty(k2)) {
                     address = interfaces[k][k2];
                     if (address.family === 'IPv4' && !address.internal) {
-                        if (k === EXTERNAL_INTERFACE_NAME || !EXTERNAL_INTERFACE_NAME) {
-                            externalAddresses.push(address.address);
+                        if (!externalInterface && (k === EXTERNAL_INTERFACE_NAME || !EXTERNAL_INTERFACE_NAME)) {
+                            externalInterface = k;
+                            externalAddress = address.address;
                         }
-                        if (k === INTERNAL_INTERFACE_NAME || !INTERNAL_INTERFACE_NAME) {
-                            internalAddresses.push(address.address);
+                        if (!internalInterface && (k === INTERNAL_INTERFACE_NAME || !INTERNAL_INTERFACE_NAME)) {
+                            internalInterface = k;
+                            internalAddress = address.address;
                         }
                     }
                 }
@@ -385,16 +389,20 @@ var privateIP, publicIP, clusterIP;
         }
     }
 
-    privateIP = externalAddresses[0];
+    privateIP = externalAddress;
 
     if (GLOBAL.config.erizoAgent.publicIP === '' || GLOBAL.config.erizoAgent.publicIP === undefined){
-        publicIP = externalAddresses[0];
+        publicIP = externalAddress;
     } else {
         publicIP = GLOBAL.config.erizoAgent.publicIP;
     }
 
-    clusterIP = internalAddresses[0];
-})();
+    if (GLOBAL.config.erizoAgent.internalIP === '' || GLOBAL.config.erizoAgent.internalIP === undefined) {
+        clusterIP = internalAddress;
+    } else {
+        clusterIP = GLOBAL.config.erizoAgent.internalIP;
+    }
+};
 
 var reportInterval;
 var joinCluster = function (on_ok) {
@@ -443,13 +451,28 @@ var joinCluster = function (on_ok) {
 (function init_env() {
     reuse = (myPurpose === 'audio' || myPurpose === 'video') ? false : true;
 
+    collectIPs();
+
     switch (myPurpose) {
         case 'webrtc':
         case 'rtsp':
-            var internalNetworkInterface = INTERNAL_INTERFACE_NAME || Object.keys(os.networkInterfaces())[0];
-            startQueryNetwork(internalNetworkInterface, 5 * 1000);
-            if (EXTERNAL_INTERFACE_NAME && EXTERNAL_INTERFACE_NAME !== internalNetworkInterface) {
-                startQueryNetwork(EXTERNAL_INTERFACE_NAME, 5 * 1000);
+            var concernedInterface = externalInterface || internalInterface;
+            if (!concernedInterface) {
+                for (var i in os.networkInterfaces()) {
+                    for (j in os.networkInterfaces()[i]) {
+                        if (!os.networkInterfaces()[i][j].internal) {
+                            concernedInterface = i;
+                            break;
+                        }
+                    }
+                    if (concernedInterface) {
+                        break;
+                    }
+                }
+            }
+
+            if (concernedInterface) {
+                startQueryNetwork(concernedInterface, 5 * 1000);
             }
             break;
         case 'file':
@@ -459,6 +482,18 @@ var joinCluster = function (on_ok) {
             break;
     }
 })();
+
+var onTermination = function () {
+    stopQueryNetwork();
+    stopQueryDisk();
+    worker && worker.quit();
+    reportInterval && clearInterval(reportInterval);
+    Object.keys(processes).map(function (k) {
+        dropErizoJS(k, function (unused, status) {
+            log.info('Terminate ErizoJS', k, status);
+        });
+    });
+};
 
 rpc.connect(function () {
     rpc.setPublicRPC(api);
@@ -480,13 +515,5 @@ rpc.connect(function () {
 });
 
 process.on('exit', function () {
-    stopQueryNetwork();
-    stopQueryDisk();
-    worker && worker.quit();
-    reportInterval && clearInterval(reportInterval);
-    Object.keys(processes).map(function (k) {
-        dropErizoJS(k, function (unused, status) {
-            log.info('Terminate ErizoJS', k, status);
-        });
-    });
+    onTermination();
 });

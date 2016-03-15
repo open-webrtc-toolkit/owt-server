@@ -104,6 +104,10 @@ config.erizoAgent.prerunProcesses = 2; // default value: 2
 config.erizoAgent.publicIP = ''; //default value: ''
 // Use the name of the inferface you want to bind for ICE candidates
 // config.erizoAgent.externalNetworkInterface = 'eth1' // default value: undefined
+
+// Internal erizoAgent IP for among-cluster media spreading.
+// Use '' to automatically get IP from the interface
+config.erizoAgent.internalIP = ''; //default value: ''
 // Use the name of the inferface you want to bind for cluster internal communication
 // config.erizoAgent.internalNetworkInterface = 'eth0' // default value: undefined
 
