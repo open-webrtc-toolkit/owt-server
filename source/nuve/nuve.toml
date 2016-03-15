@@ -1,0 +1,13 @@
+[nuve]
+dataBaseURL = "localhost/nuvedb" #default: "localhost/nuvedb"
+keystorePath = "./cert/certificate.pfx"
+superserviceID = "_auto_generated_ID_" #default: ""
+ssl = false #default: false
+#Timestamp check protects the nuve service from those massive requests with out of order timestamps, so that only sequential requests are accepted
+timestampCheck = false #default: false
+#Cloud Handler policies are in nuve/ch_policies/ folder
+cloudHandlerPolicy = "default_policy.js"
+
+[rabbit]
+host = "localhost" #default: "localhost"
+port = 5672 #default: 5672

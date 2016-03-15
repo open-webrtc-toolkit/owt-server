@@ -1,0 +1,53 @@
+[controller]
+#Default and max video bandwidth parameters to be used by clients
+defaultVideoBW = 300 #default: 300
+maxVideoBW = 4000 #max: 4M
+interval_time_keepAlive = 1000 #default: 1000
+keystorePath = "./cert/certificate.pfx"
+hostname = "" #default: ""
+publicIP = "" #default: ""
+port = 8080 #default: 8080
+ssl = true #default: true
+limit_n_rooms = 20 #default: 20
+warning_n_rooms = 15 #default: 15
+#Use undefined to run clients without Stun
+# stunServerUrl = "stun:stun.l.google.com:19302"
+#If undefined, the path will be /tmp/
+# recording_path = "/tmp"
+#Use the name of the inferface you want to bind to for socket.io
+# networkInterface = "eth1"
+
+#If true, erizoController sends report to rabbitMQ queue "report_handler"
+[controller.report]
+connection_events = false #Connection (ICE) level events -- default: false
+rtcp_stats = false #RTCP stats -- default: false
+session_events = false #Session level events -- default: false
+
+#Roles to be used by services
+[controller.roles.presenter]
+publish = true
+record = true
+subscribe = true
+
+[controller.roles.viewer]
+subscribe = true
+
+[controller.roles.viewerWithData]
+subscribe = true
+
+[controller.roles.viewerWithData.publish]
+audio = false
+data = true
+screen = false
+video = false
+
+#Use undefined to run clients without Turn
+#url example: "turn:ip_address:port_number?transport=tcp"
+[controller.turnServer]
+password = "" #default ""
+url = "" #default ""
+username = "" #default ""
+
+[rabbit]
+host = "localhost" #default: "localhost"
+port = 5672 #default: 5672

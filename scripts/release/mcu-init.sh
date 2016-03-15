@@ -89,12 +89,6 @@ check_node_version()
 
 install_config() {
   echo -e "\x1b[32mInitializing default configuration...\x1b[0m"
-  # default configuration
-  export DEFAULT_CONFIG="${WOOGEEN_HOME}/etc/.woogeen_default.js"
-  if [[ ! -s ${DEFAULT_CONFIG} ]]; then
-    echo >&2 "Error: configuration template not found."
-    return 1
-  fi
   export DB_URL
   check_node_version && node ${this}/initdb.js || return 1
 }
@@ -136,13 +130,13 @@ if ${ENABLE_HARDWARE}; then
   [[ -s libmcu_hw.so ]] && \
   rm -f libmcu.so && \
   ln -s libmcu_hw.so libmcu.so
-  sed -i 's/config\.erizo\.hardwareAccelerated = false/config\.erizo\.hardwareAccelerated = true/' ${ROOT}/etc/woogeen_config.js
+  sed -i 's/^hardwareAccelerated = false/hardwareAccelerated = true/' ${ROOT}/video_agent/agent.toml
 else
   cd ${ROOT}/lib
   [[ -s libmcu_sw.so ]] && \
   rm -f libmcu.so && \
   ln -s libmcu_sw.so libmcu.so
-  sed -i 's/config\.erizo\.hardwareAccelerated = true/config\.erizo\.hardwareAccelerated = false/' ${ROOT}/etc/woogeen_config.js
+  sed -i 's/^hardwareAccelerated = true/hardwareAccelerated = false/' ${ROOT}/video_agent/agent.toml
 fi
 
-[[ -L ${ROOT}/node_modules/woogeen_config.js ]] || ln -s ../etc/woogeen_config.js ${ROOT}/node_modules/
+[[ -L ${ROOT}/lib/node ]] || ln -s ../node_modules ${ROOT}/lib/node

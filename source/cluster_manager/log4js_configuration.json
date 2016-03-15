@@ -10,10 +10,10 @@
     }
   ],
   "levels": {
-        "AMQPER": "ERROR",
-        "Main": "DEBUG",
-        "ClusterManager": "INFO",
-        "Scheduler": "INFO",
-        "Strategy": "INFO"
+    "AMQPER": "ERROR",
+    "Main": "DEBUG",
+    "ClusterManager": "INFO",
+    "Scheduler": "INFO",
+    "Strategy": "INFO"
   }
 }

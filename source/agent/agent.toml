@@ -1,0 +1,46 @@
+[agent]
+interval_time_keepAlive = 1000 #default: 1000
+interval_time_report = 5000 #default: 5000
+#Max processes that agent can run
+maxProcesses = 13 #default: 13
+#Number of precesses that agent runs when it starts. Always lower than or equals to maxProcesses
+prerunProcesses = 2 #default: 2
+#Public agent IP for ICE candidates (useful when behind NATs)
+#Use "" to automatically get IP from the interface
+publicIP = "" #default: ""
+#Internal agent IP for among-cluster media spreading
+#Use "" to automatically get IP from the interface
+internalIP = "" #default: ""
+#Use the name of the inferface you want to bind for ICE candidates
+# externalNetworkInterface = "eth1" # default: undefined
+#Use the name of the inferface you want to bind for cluster internal communication
+# internalNetworkInterface = "eth0" # default: undefined
+
+[erizo]
+#If true and the machine has the capability, the mixer will be accelerated by hardware graphic chips
+hardwareAccelerated = false
+keystorePath = "./cert/certificate.pfx"
+#note, this won't work with all versions of libnice. With 0 all the available ports are used
+maxport = 0 #default: 0
+minport = 0 #default: 0
+#This configuration is only for software media engine. Hardware graphic acceleration provides H.264 by default
+#true means OpenH264 is deployed for H.264. Otherwise no support of H.264 in MCU
+openh264Enabled = false
+#STUN server IP address and port to be used by the server.
+#if "" is used, the address is discovered locally
+stunport = 0 #default: 0
+stunserver = "" #default: ""
+
+#This configuration is only for RTSP muxing.
+#e.g.: "rtsp://localhost:1935/live/xxx.sdp"
+[erizo.rtsp]
+enabled = false
+addr = "localhost"
+application = "/live/" #default application name, don't forget ending slash
+port = 1935
+username = "webrtc"
+passwd = "abc123"
+
+[rabbit]
+host = "localhost" #default: "localhost"
+port = 5672 #default: 5672

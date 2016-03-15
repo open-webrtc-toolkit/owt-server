@@ -99,7 +99,7 @@ case $startStop in
     echo "starting $command, stdout -> $stdout"
     case ${command} in
       nuve )
-        if ! pgrep -f rabbitmq; then
+        if ! pgrep -f rabbitmq >/dev/null; then
           sudo echo
           sudo rabbitmq-server > ${LogDir}/rabbit.log &
         fi
@@ -111,7 +111,7 @@ case $startStop in
         ;;
       cluster-manager )
         cd ${WOOGEEN_HOME}/cluster_manager
-        nohup nice -n ${WOOGEEN_NICENESS} node main.js \
+        nohup nice -n ${WOOGEEN_NICENESS} node . \
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;

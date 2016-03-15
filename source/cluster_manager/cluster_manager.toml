@@ -1,0 +1,18 @@
+[rabbit]
+host = "localhost" #default: "localhost"
+port = 5672 #default: 5672
+
+[manager]
+initial_time = 10000 #ms
+check_alive_period = 1000 #ms
+check_alive_count = 10
+schedule_reserve_time = 60000 #ms
+
+[strategy]
+general = "last-used"
+portal = "last-used"
+webrtc = "last-used"
+rtsp = "round-robin"
+file = "randomly-pick"
+audio = "most-used"
+video = "least-used"
