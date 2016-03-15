@@ -2,15 +2,25 @@
 'use strict';
 var Getopt = require('node-getopt');
 var spawn = require('child_process').spawn;
-var config = require('../etc/woogeen_config');
+var fs = require('fs');
+var toml = require('toml');
+var log = require('./logger').logger.getLogger('ErizoAgent');
+
+var config;
+try {
+  config = toml.parse(fs.readFileSync('./agent.toml'));
+} catch (e) {
+  log.error('Parsing config error on line ' + e.line + ', column ' + e.column + ': ' + e.message);
+  process.exit(1);
+}
 
 // Configuration default values
 GLOBAL.config = config || {};
-GLOBAL.config.erizoAgent = GLOBAL.config.erizoAgent || {};
-GLOBAL.config.erizoAgent.maxProcesses = GLOBAL.config.erizoAgent.maxProcesses || 1;
-GLOBAL.config.erizoAgent.prerunProcesses = GLOBAL.config.erizoAgent.prerunProcesses || 1;
-GLOBAL.config.erizoAgent.publicIP = GLOBAL.config.erizoAgent.publicIP || '';
-GLOBAL.config.erizoAgent.internalIP = GLOBAL.config.erizoAgent.internalIP || '';
+GLOBAL.config.agent = GLOBAL.config.agent || {};
+GLOBAL.config.agent.maxProcesses = GLOBAL.config.agent.maxProcesses || 1;
+GLOBAL.config.agent.prerunProcesses = GLOBAL.config.agent.prerunProcesses || 1;
+GLOBAL.config.agent.publicIP = GLOBAL.config.agent.publicIP || '';
+GLOBAL.config.agent.internalIP = GLOBAL.config.agent.internalIP || '';
 
 // Parse command line arguments
 var getopt = new Getopt([
@@ -58,25 +68,18 @@ for (var prop in opt.options) {
                 }
                 break;
             default:
-                GLOBAL.config.erizoAgent[prop] = value;
+                GLOBAL.config.agent[prop] = value;
                 break;
         }
     }
 }
 
-// Load submodules with updated config
-var logger = require('./logger').logger;
 var clusterWorker = require('./clusterWorker');
 var rpc = require('./amqper');
 
-var worker;
-
-// Logger
-var log = logger.getLogger('ErizoAgent');
-
-const INTERVAL_TIME_REPORT = GLOBAL.config.erizoAgent.interval_time_report;
-var EXTERNAL_INTERFACE_NAME = GLOBAL.config.erizoAgent.externalNetworkInterface;
-var INTERNAL_INTERFACE_NAME = GLOBAL.config.erizoAgent.internalNetworkInterface;
+const INTERVAL_TIME_REPORT = GLOBAL.config.agent.interval_time_report;
+var EXTERNAL_INTERFACE_NAME = GLOBAL.config.agent.externalNetworkInterface;
+var INTERNAL_INTERFACE_NAME = GLOBAL.config.agent.internalNetworkInterface;
 
 GLOBAL.config.erizo.hardwareAccelerated = !!GLOBAL.config.erizo.hardwareAccelerated;
 
@@ -84,6 +87,7 @@ var idle_erizos = [];
 var erizos = [];
 var processes = {};
 var tasks = {}; // {erizo_id: [RoomID]}
+var worker;
 
 var guid = (function() {
   function s4() {
@@ -201,7 +205,6 @@ var reportLoad = function() {
 var launchErizoJS = function() {
     log.info('Running process');
     var id = guid();
-    var fs = require('fs');
     var out = fs.openSync('../logs/erizo-' + id + '.log', 'a');
     var err = fs.openSync('../logs/erizo-' + id + '.log', 'a');
     var erizoProcess = spawn('node', ['./erizoJS.js', id, myPurpose, privateIP, publicIP], { detached: true, stdio: [ 'ignore', out, err ] });
@@ -247,7 +250,7 @@ var dropErizoJS = function(erizo_id, callback) {
 };
 
 var fillErizos = function() {
-    for (var i = idle_erizos.length; i < GLOBAL.config.erizoAgent.prerunProcesses; i++) {
+    for (var i = idle_erizos.length; i < GLOBAL.config.agent.prerunProcesses; i++) {
         launchErizoJS();
     }
 };
@@ -282,7 +285,7 @@ var api = {
             tasks[erizo_id].push(room_id);
             erizos.push(erizo_id);
 
-            if (reuse && ((erizos.length + idle_erizos.length + 1) >= GLOBAL.config.erizoAgent.maxProcesses)) {
+            if (reuse && ((erizos.length + idle_erizos.length + 1) >= GLOBAL.config.agent.maxProcesses)) {
                 // We re-use Erizos
                 var reused_erizo = erizos.shift();
                 idle_erizos.push(reused_erizo);
@@ -354,18 +357,18 @@ function collectIPs () {
 
     privateIP = externalAddress;
 
-    if (GLOBAL.config.erizoAgent.publicIP === '' || GLOBAL.config.erizoAgent.publicIP === undefined){
+    if (GLOBAL.config.agent.publicIP === '' || GLOBAL.config.agent.publicIP === undefined){
         publicIP = externalAddress;
     } else {
-        publicIP = GLOBAL.config.erizoAgent.publicIP;
+        publicIP = GLOBAL.config.agent.publicIP;
     }
 
-    if (GLOBAL.config.erizoAgent.internalIP === '' || GLOBAL.config.erizoAgent.internalIP === undefined) {
+    if (GLOBAL.config.agent.internalIP === '' || GLOBAL.config.agent.internalIP === undefined) {
         clusterIP = internalAddress;
     } else {
-        clusterIP = GLOBAL.config.erizoAgent.internalIP;
+        clusterIP = GLOBAL.config.agent.internalIP;
     }
-};
+}
 
 var reportInterval;
 var joinCluster = function (on_ok) {
@@ -392,15 +395,15 @@ var joinCluster = function (on_ok) {
 
     var spec = {amqper: rpc,
                 purpose: myPurpose,
-                clusterName: GLOBAL.config.erizoAgent.cluster_name || 'woogeenCluster',
-                joinRery: GLOBAL.config.erizoAgent.join_cluster_retry || 5,
-                joinPeriod: GLOBAL.config.erizoAgent.join_cluster_period || 3000,
-                recoveryPeriod: GLOBAL.config.erizoAgent.recover_cluster_period || 1000,
-                keepAlivePeriod: GLOBAL.config.erizoAgent.interval_time_keepAlive || 1000,
+                clusterName: GLOBAL.config.agent.cluster_name || 'woogeenCluster',
+                joinRery: GLOBAL.config.agent.join_cluster_retry || 5,
+                joinPeriod: GLOBAL.config.agent.join_cluster_period || 3000,
+                recoveryPeriod: GLOBAL.config.agent.recover_cluster_period || 1000,
+                keepAlivePeriod: GLOBAL.config.agent.interval_time_keepAlive || 1000,
                 info: {ip: clusterIP,
                        purpose: myPurpose,
                        state: 2,
-                       max_load: GLOBAL.config.erizoAgent.max_load || 0.85
+                       max_load: GLOBAL.config.agent.max_load || 0.85
                       },
                 onJoinOK: joinOK,
                 onJoinFailed: joinFailed,
@@ -458,7 +461,7 @@ var onTermination = function () {
     });
 };
 
-rpc.connect(function () {
+rpc.connect(GLOBAL.config.rabbit, function () {
     rpc.setPublicRPC(api);
     log.info('Adding agent to cloudhandler, purpose:', myPurpose);
 

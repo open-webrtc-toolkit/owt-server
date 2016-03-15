@@ -1,13 +1,8 @@
-/*global require, setInterval, clearInterval, exports*/
+/*global require, exports, GLOBAL*/
 'use strict';
 var rpc = require('./rpc/rpc');
-var config = require('./../etc/woogeen_config');
-var logger = require('./logger').logger;
-
-// Logger
-var log = logger.getLogger('CloudHandler');
-
-var cluster_name = config.clusterName || 'woogeenCluster';
+var log = require('./logger').logger.getLogger('CloudHandler');
+var cluster_name = (GLOBAL.config||{}).clusterName || 'woogeenCluster';
 
 exports.getErizoControllerForRoom = function (room, callback) {
     var roomId = room._id,

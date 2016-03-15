@@ -1,34 +1,14 @@
-/*global GLOBAL, require, exports*/
+/*global require, exports*/
 'use strict';
 var amqp = require('amqp');
-var logger = require('./logger').logger;
-
-// Logger
-var log = logger.getLogger('AMQPER');
-
-// Configuration default values
-GLOBAL.config.rabbit = GLOBAL.config.rabbit || {};
-GLOBAL.config.rabbit.host = GLOBAL.config.rabbit.host || 'localhost';
-GLOBAL.config.rabbit.port = GLOBAL.config.rabbit.port || 5672;
-
+var log = require('./logger').logger.getLogger('AMQPER');
 var TIMEOUT = 5000;
-
 // This timeout shouldn't be too low because it won't listen to onReady responses from ErizoJS
 var REMOVAL_TIMEOUT = 300000;
-
 var corrID = 0;
 var map = {};   //{corrID: {fn: callback, to: timeout}}
 var connection, rpc_exc, broadcast_exc, clientQueue;
-
-var addr = {};
 var rpcPublic = {};
-
-if (GLOBAL.config.rabbit.url !== undefined) {
-    addr.url = GLOBAL.config.rabbit.url;
-} else {
-    addr.host = GLOBAL.config.rabbit.host;
-    addr.port = GLOBAL.config.rabbit.port;
-}
 
 exports.timeout = TIMEOUT;
 
@@ -36,7 +16,7 @@ exports.setPublicRPC = function(methods) {
     rpcPublic = methods;
 };
 
-exports.connect = function(callback) {
+exports.connect = function(addr, callback) {
 
     // Create the amqp connection to rabbitMQ server
     connection = amqp.createConnection(addr);

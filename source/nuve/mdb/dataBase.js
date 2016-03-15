@@ -1,14 +1,12 @@
-/*global require, exports*/
+/*global require, exports, GLOBAL*/
 'use strict';
 
-var config = require('./../../etc/woogeen_config');
+GLOBAL.config = GLOBAL.config || {};
+GLOBAL.config.nuve = GLOBAL.config.nuve || {};
+GLOBAL.config.nuve.dataBaseURL = GLOBAL.config.nuve.dataBaseURL || 'localhost/nuvedb';
+GLOBAL.config.nuve.superserviceID = GLOBAL.config.nuve.superserviceID || '';
 
-config.nuve = config.nuve || {};
-config.nuve.dataBaseURL = config.nuve.dataBaseURL || 'localhost/nuvedb';
-config.nuve.superserviceID = config.nuve.superserviceID || '';
-config.nuve.testErizoController = config.nuve.testErizoController || 'localhost:8080';
-
-var databaseUrl = config.nuve.dataBaseURL;
+var databaseUrl = GLOBAL.config.nuve.dataBaseURL;
 
 /*
  * Data base collections and its fields are:
@@ -24,8 +22,7 @@ var collections = ['rooms', 'tokens', 'services'];
 exports.db = require('mongojs')(databaseUrl, collections);
 
 // Superservice ID
-exports.superService = config.nuve.superserviceID;
+exports.superService = GLOBAL.config.nuve.superserviceID;
 
 // token key
 exports.nuveKey = require('crypto').randomBytes(64).toString('hex');
-exports.testErizoController = config.nuve.testErizoController;

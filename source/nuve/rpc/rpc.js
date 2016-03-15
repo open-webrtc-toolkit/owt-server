@@ -2,36 +2,15 @@
 'use strict';
 var amqp = require('amqp');
 var rpcPublic = require('./rpcPublic');
-var config = require('./../../etc/woogeen_config');
-var logger = require('./../logger').logger;
-
-// Logger
-var log = logger.getLogger('RPC');
-
-// Configuration default values
-config.rabbit = config.rabbit || {};
-config.rabbit.host = config.rabbit.host || 'localhost';
-config.rabbit.port = config.rabbit.port || 5672;
-
+var log = require('./../logger').logger.getLogger('RPC');
 var TIMEOUT = 3000;
-
 var corrID = 0;
 var map = {};   //{corrID: {fn: callback, to: timeout}}
 var clientQueue;
 var connection;
 var exc;
 
-// Create the amqp connection to rabbitMQ server
-var addr = {};
-
-if (config.rabbit.url !== undefined) {
-    addr.url = config.rabbit.url;
-} else {
-    addr.host = config.rabbit.host;
-    addr.port = config.rabbit.port;
-}
-
-exports.connect = function () {
+exports.connect = function (addr) {
     connection = amqp.createConnection(addr);
     connection.on('ready', function () {
         log.info('Conected to rabbitMQ server');

@@ -1,7 +1,18 @@
 /*global require, GLOBAL, process*/
 'use strict';
 var Getopt = require('node-getopt');
-var config = require('./woogeen_config');
+var fs = require('fs');
+var toml = require('toml');
+var log = require('./logger').logger.getLogger('ErizoJS');
+
+var config;
+try {
+  config = toml.parse(fs.readFileSync('./agent.toml'));
+} catch (e) {
+  log.error('Parsing config error on line ' + e.line + ', column ' + e.column + ': ' + e.message);
+  process.exit(1);
+}
+
 
 GLOBAL.config = config || {};
 GLOBAL.config.erizo = GLOBAL.config.erizo || {};
@@ -51,12 +62,7 @@ for (var prop in opt.options) {
     }
 }
 
-// Load submodules with updated config
-var logger = require('./logger').logger;
 var rpc = require('./amqper');
-
-// Logger
-var log = logger.getLogger("ErizoJS");
 
 (function init_env() {
     if (GLOBAL.config.erizo.hardwareAccelerated) {
@@ -75,7 +81,7 @@ var log = logger.getLogger("ErizoJS");
     }
 })();
 
-rpc.connect(function () {
+rpc.connect(GLOBAL.config.rabbit, function () {
     try {
         var rpcID = process.argv[2];
         var purpose = process.argv[3];

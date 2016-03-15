@@ -1,20 +1,24 @@
-/*global require, __dirname, process*/
+/*global require, __dirname, process, GLOBAL*/
 'use strict';
+
+var log = require('./logger').logger.getLogger('Nuve');
+var fs = require('fs');
+var toml = require('toml');
+
+try {
+  GLOBAL.config = toml.parse(fs.readFileSync('./nuve.toml'));
+} catch (e) {
+  log.error('Parsing config error on line ' + e.line + ', column ' + e.column + ': ' + e.message);
+  process.exit(1);
+}
+
+require('./rpc/rpc').connect(GLOBAL.config.rabbit);
 
 var express = require('express');
 var bodyParser = require('body-parser');
-
-var config = require('./../etc/woogeen_config');
-var rpc = require('./rpc/rpc');
-var logger = require('./logger').logger;
-var log = logger.getLogger('Nuve');
-
 var app = express();
 
-rpc.connect();
-
 var nuveAuthenticator = require('./auth/nuveAuthenticator');
-
 var roomsResource = require('./resource/roomsResource');
 var roomResource = require('./resource/roomResource');
 var tokensResource = require('./resource/tokensResource');
@@ -75,22 +79,23 @@ app.get('/cluster/nodes/:node', clusterResource.getNode);
 app.get('/cluster/rooms', clusterResource.getRooms);
 app.get('/cluster/nodes/:node/config', clusterResource.getNodeConfig);
 
-if (config.nuve.ssl === true) {
+if (GLOBAL.config.nuve.ssl === true) {
     var cipher = require('./cipher');
-    cipher.unlock(cipher.k, '../cert/.woogeen.keystore', function cb (err, obj) {
+    var path = require('path');
+    var keystore = path.resolve(path.dirname(GLOBAL.config.nuve.keystorePath), '.woogeen.keystore');
+    cipher.unlock(cipher.k, keystore, function cb (err, obj) {
         if (!err) {
             try {
                 require('https').createServer({
-                    pfx: require('fs').readFileSync(config.nuve.keystorePath),
+                    pfx: require('fs').readFileSync(GLOBAL.config.nuve.keystorePath),
                     passphrase: obj.nuve
                 }, app).listen(3000);
             } catch (e) {
                 err = e;
             }
-        }
-        if (err) {
+        } else {
             log.warn('Failed to setup secured server:', err);
-            return process.exit();
+            return process.exit(1);
         }
     });
 } else {

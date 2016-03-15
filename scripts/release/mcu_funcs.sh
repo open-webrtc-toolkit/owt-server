@@ -30,11 +30,6 @@ pack_runtime() {
   for AGENT in ${WOOGEEN_AGENTS}; do
     ENCRYPT_CAND_PATH+=("${WOOGEEN_DIST}/${AGENT}_agent")
   done
-  # config
-  mkdir -p ${WOOGEEN_DIST}/etc
-  # certificates
-  mkdir -p ${WOOGEEN_DIST}/cert
-  cp -av ${ROOT}/cert/{*.pfx,.woogeen.keystore} ${WOOGEEN_DIST}/cert
   # sample
   mkdir -p ${WOOGEEN_DIST}/extras
   [[ ! -z ${SRC_SAMPLE_PATH} && -d ${SRC_SAMPLE_PATH} ]] && \
@@ -49,6 +44,8 @@ pack_controller() {
   pushd ${SOURCE}/controller >/dev/null
   find . -type f -not -name "*.log" -not -name "in*.sh" -not -name "*.md" -exec cp '{}' "${WOOGEEN_DIST}/controller/{}" \;
   popd >/dev/null
+  mkdir -p ${WOOGEEN_DIST}/controller/cert
+  cp -av ${ROOT}/cert/{*.pfx,.woogeen.keystore} ${WOOGEEN_DIST}/controller/cert/
 }
 
 pack_agents() {
@@ -58,6 +55,8 @@ pack_agents() {
     find ${AGENT} -type f -name "*.js" -exec cp '{}' "${WOOGEEN_DIST}/${AGENT}_agent/{}" \;
     find . -type f -maxdepth 1 -not -name "*.log" -not -name "in*.sh" -exec cp '{}' "${WOOGEEN_DIST}/${AGENT}_agent/{}" \;
     pack_addons "${WOOGEEN_DIST}/${AGENT}_agent"
+    mkdir -p ${WOOGEEN_DIST}/${AGENT}_agent/cert
+    cp -av ${ROOT}/cert/{*.pfx,.woogeen.keystore} ${WOOGEEN_DIST}/${AGENT}_agent/cert/
   done
   popd >/dev/null
 }
@@ -80,7 +79,7 @@ pack_addons() {
 }
 
 pack_common() {
-  local TARGETS="controller nuve access_agent audio_agent video_agent"
+  local TARGETS="controller nuve cluster_manager access_agent audio_agent video_agent"
   pushd ${SOURCE}/common >/dev/null
   local COMMON_MODULES=$(find . -type f -name "*.js" | cut -d '/' -f 2 | cut -d '.' -f 1)
   for TARGET in ${TARGETS}; do
@@ -102,6 +101,8 @@ pack_common() {
 pack_nuve() {
   cp -av ${SOURCE}/nuve ${WOOGEEN_DIST}/
   cp -av ${SOURCE}/cluster_manager ${WOOGEEN_DIST}/
+  mkdir -p ${WOOGEEN_DIST}/nuve/cert
+  cp -av ${ROOT}/cert/{*.pfx,.woogeen.keystore} ${WOOGEEN_DIST}/nuve/cert/
 }
 
 pack_libs() {
@@ -136,7 +137,6 @@ pack_libs() {
 
 pack_scripts() {
   mkdir -p ${WOOGEEN_DIST}/bin/
-  cp -av ${ROOT}/scripts/woogeen_default.js ${WOOGEEN_DIST}/etc/.woogeen_default.js
   cp -av ${this}/daemon-mcu.sh ${WOOGEEN_DIST}/bin/daemon.sh
   cp -av ${this}/launch-base.sh ${WOOGEEN_DIST}/bin/start-all.sh
   cp -av ${this}/launch-base.sh ${WOOGEEN_DIST}/bin/stop-all.sh
@@ -231,7 +231,6 @@ pack_node() {
   popd >/dev/null
 
   ln -s ../node_modules ${WOOGEEN_DIST}/lib/node
-  ln -s ../etc/woogeen_config.js ${WOOGEEN_DIST}/node_modules/
 }
 
 install_module() {

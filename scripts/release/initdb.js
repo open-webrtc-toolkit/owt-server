@@ -11,7 +11,7 @@ if (!dbURL) {
 }
 
 var path = require('path');
-var destConfigFile = path.join(HOME, 'etc/woogeen_config.js');
+var destConfigFile = path.join(HOME, 'nuve/nuve.toml');
 var configFile = destConfigFile;
 var db = require('mongojs')(dbURL, ['services']);
 var cipher = require('./cipher');
@@ -54,10 +54,10 @@ prepareService('superService', function (service) {
     if (err) {
       return console.log(err);
     }
-    data = data.replace(/config\.nuve\.dataBaseURL = '[^']*';/, 'config.nuve.dataBaseURL = \''+dbURL+'\';');
-    data = data.replace(/config\.nuve\.superserviceID = '[^']*';/, 'config.nuve.superserviceID = \''+superServiceId+'\';');
+    data = data.replace(/\ndataBaseURL =[^\n]*\n/, '\ndataBaseURL = "'+dbURL+'"\n');
+    data = data.replace(/\nsuperserviceID =[^\n]*\n/, '\nsuperserviceID = "'+superServiceId+'"\n');
     fs.writeFile(destConfigFile, data, 'utf8', function (err) {
-      if (err) return console.log('Error in saving woogeen_config:', err);
+      if (err) return console.log('Error in saving configuration:', err);
     });
   });
 

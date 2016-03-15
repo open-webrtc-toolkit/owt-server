@@ -7,7 +7,7 @@ var AudioFrameConstructor = woogeenWebrtc.AudioFrameConstructor;
 var VideoFrameConstructor = woogeenWebrtc.VideoFrameConstructor;
 var AudioFramePacketizer = woogeenWebrtc.AudioFramePacketizer;
 var VideoFramePacketizer = woogeenWebrtc.VideoFramePacketizer;
-
+var path = require('path');
 var logger = require('./logger').logger;
 var cipher = require('./cipher');
 // Logger
@@ -138,7 +138,8 @@ exports.WrtcConnection = function (spec) {
     that.init = function (audio_info, video_info, on_status) {
         audio = audio_info;
         video = video_info;
-        cipher.unlock(cipher.k, '../cert/.woogeen.keystore', function cb (err, obj) {
+        var keystore = path.resolve(path.dirname(GLOBAL.config.erizo.keystorePath), '.woogeen.keystore');
+        cipher.unlock(cipher.k, keystore, function cb (err, obj) {
             if (!err) {
                 var erizoPassPhrase = obj.erizo;
                 wrtc = new WebRtcConnection(!!audio, !!video, true/*FIXME: hash264:hard coded*/, GLOBAL.config.erizo.stunserver, GLOBAL.config.erizo.stunport, GLOBAL.config.erizo.minport, GLOBAL.config.erizo.maxport, GLOBAL.config.erizo.keystorePath, GLOBAL.config.erizo.keystorePath, erizoPassPhrase, true, true, true, true, false);

@@ -10,6 +10,7 @@
     "express": "*",
     "mongojs": "",
     "aws-lib": "*",
+    "toml": "*",
     "body-parser": "*"
   },
   "engine": {

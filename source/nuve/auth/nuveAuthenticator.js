@@ -1,18 +1,14 @@
-/*global require, exports, Buffer*/
+/*global require, exports, Buffer, GLOBAL*/
 'use strict';
 var serviceRegistry = require('./../mdb/serviceRegistry');
 var mauthParser = require('./mauthParser');
 var cipher = require('../cipher');
-var logger = require('./../logger').logger;
-
-// Logger
-var log = logger.getLogger('NuveAuthenticator');
-var config = require('./../../etc/woogeen_config').nuve || {};
+var log = require('./../logger').logger.getLogger('NuveAuthenticator');
 
 var cache = {};
 
 var checkTimestamp = function (ser, params) {
-    if (config.timestampCheck !== true) {
+    if ((GLOBAL.config||{}).timestampCheck !== true) {
         return true;
     }
     var serviceId = ser._id + '';
