@@ -90,7 +90,7 @@ check_node_version()
 install_config() {
   echo -e "\x1b[32mInitializing default configuration...\x1b[0m"
   export DB_URL
-  check_node_version && node ${this}/initdb.js || return 1
+  check_node_version && [[ -s ${ROOT}/nuve/initdb.js ]] && node ${ROOT}/nuve/initdb.js || return 1
 }
 
 INSTALL_DEPS=false

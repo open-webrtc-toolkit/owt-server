@@ -1,18 +1,20 @@
 #!/usr/bin/env node
 'use strict';
 
-var HOME = process.env.WOOGEEN_HOME;
-if (!HOME) {
-  throw 'WOOGEEN_HOME not found';
-}
 var dbURL = process.env.DB_URL;
 if (!dbURL) {
   throw 'DB_URL not found';
 }
 
+var fs = require('fs');
 var path = require('path');
-var destConfigFile = path.join(HOME, 'nuve/nuve.toml');
-var configFile = destConfigFile;
+var configFile = path.join(__dirname, 'nuve.toml');
+try {
+  fs.statSync(configFile);
+} catch (e) {
+  console.error('config file not found');
+  process.exit(1);
+}
 var db = require('mongojs')(dbURL, ['services']);
 var cipher = require('./cipher');
 
@@ -40,23 +42,17 @@ function prepareService (serviceName, next) {
 }
 
 prepareService('superService', function (service) {
-  var fs = require('fs');
   var superServiceId = service._id+'';
   var superServiceKey = service.key;
   console.log('superServiceId:', superServiceId);
   console.log('superServiceKey:', superServiceKey);
-  try {
-    fs.statSync(configFile);
-  } catch (e) {
-    configFile = process.env.DEFAULT_CONFIG;
-  }
   fs.readFile(configFile, 'utf8', function (err, data) {
     if (err) {
       return console.log(err);
     }
     data = data.replace(/\ndataBaseURL =[^\n]*\n/, '\ndataBaseURL = "'+dbURL+'"\n');
     data = data.replace(/\nsuperserviceID =[^\n]*\n/, '\nsuperserviceID = "'+superServiceId+'"\n');
-    fs.writeFile(destConfigFile, data, 'utf8', function (err) {
+    fs.writeFile(configFile, data, 'utf8', function (err) {
       if (err) return console.log('Error in saving configuration:', err);
     });
   });
@@ -67,7 +63,7 @@ prepareService('superService', function (service) {
     console.log('sampleServiceId:', sampleServiceId);
     console.log('sampleServiceKey:', sampleServiceKey);
     db.close();
-    var sampleAppFile = path.join(HOME, 'extras/basic_example/basicServer.js');
+    var sampleAppFile = path.resolve(__dirname, '../extras/basic_example/basicServer.js');
     fs.readFile(sampleAppFile, 'utf8', function (err, data) {
       if (err) {
         return console.log(err);
@@ -77,7 +73,7 @@ prepareService('superService', function (service) {
          if (err) return console.log(err);
       });
     });
-    var sampleAppFile2 = path.join(HOME, 'extras/rtsp-client.js');
+    var sampleAppFile2 = path.resolve(__dirname, '../extras/rtsp-client.js');
     fs.readFile(sampleAppFile2, 'utf8', function (err, data) {
       if (err) {
         return console.log(err);
