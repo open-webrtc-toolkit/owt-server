@@ -49,7 +49,7 @@ install_boost(){
 installYumDeps(){
   sudo -E yum groupinstall " Development Tools" "Development Libraries " -y
   sudo -E yum install zlib-devel pkgconfig git libcurl-devel.x86_64 curl log4cxx-devel gcc gcc-c++ bzip2 bzip2-devel bzip2-libs python-devel nasm libX11-devel yasm -y
-  sudo -E yum install rabbitmq-server mongodb mongodb-server java-1.7.0-openjdk gyp bwm-ng -y
+  sudo -E yum install rabbitmq-server mongodb mongodb-server java-1.7.0-openjdk gyp nload -y
 
   if [[ "$OS" =~ .*6.* ]] # CentOS 6.x
   then
@@ -67,8 +67,7 @@ installRepo(){
   then
     wget -c http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm
     wget -c http://rpms.famillecollet.com/enterprise/remi-release-6.rpm
-    wget -c http://packages.sw.be/rpmforge-release/rpmforge-release-0.5.2-2.el6.rf.x86_64.rpm
-    sudo rpm -Uvh rpmforge-release-*.rpm remi-release-6*.rpm epel-release-6*.rpm
+    sudo rpm -Uvh remi-release-6*.rpm epel-release-6*.rpm
     wget -c http://dl.atrpms.net/el6-x86_64/atrpms/stable/atrpms-repo-6-7.el6.x86_64.rpm
     sudo rpm -Uvh atrpms-repo*rpm
     sudo -E yum --enablerepo=atrpms-testing install cmake -y
@@ -78,8 +77,7 @@ installRepo(){
   then
     wget -c http://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
     wget -c http://rpms.famillecollet.com/enterprise/remi-release-7.rpm
-    wget -c http://pkgs.repoforge.org/rpmforge-release/rpmforge-release-0.5.3-1.el7.rf.x86_64.rpm
-    sudo rpm -Uvh rpmforge-release-*.rpm remi-release-7*.rpm epel-release-latest-7*.rpm
+    sudo rpm -Uvh remi-release-7*.rpm epel-release-latest-7*.rpm
     sudo sed -i 's/https/http/g' /etc/yum.repos.d/epel.repo
     sudo -E yum install cmake -y
     rm *.rpm

@@ -38,21 +38,19 @@ install_deps() {
     if [[ "$OS" =~ .*6.* ]] # CentOS 6.x
     then
       wget -c http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm
-      wget -c http://packages.sw.be/rpmforge-release/rpmforge-release-0.5.2-2.el6.rf.x86_64.rpm
-      sudo rpm -Uvh rpmforge-release-*.rpm epel-release-6*.rpm
+      sudo rpm -Uvh epel-release-6*.rpm
     elif [[ "$OS" =~ .*7.* ]] # CentOS 7.x
     then
       wget -c http://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
-      wget -c http://pkgs.repoforge.org/rpmforge-release/rpmforge-release-0.5.3-1.el7.rf.x86_64.rpm
-      sudo rpm -Uvh rpmforge-release-*.rpm epel-release-latest-7*.rpm
+      sudo rpm -Uvh epel-release-latest-7*.rpm
     fi
     sudo sed -i 's/https/http/g' /etc/yum.repos.d/epel.repo
-    sudo -E yum install mongodb mongodb-server rabbitmq-server bwm-ng -y
+    sudo -E yum install mongodb mongodb-server rabbitmq-server nload -y
   elif [[ "$OS" =~ .*ubuntu.* ]]
   then
     echo -e "\x1b[32mInstalling dependent components and libraries via apt-get...\x1b[0m"
     sudo apt-get update
-    sudo apt-get install rabbitmq-server mongodb bwm-ng #TODO: pick-up libraries
+    sudo apt-get install rabbitmq-server mongodb nload #TODO: pick-up libraries
   else
     echo -e "\x1b[32mUnsupported platform...\x1b[0m"
   fi
