@@ -49,16 +49,33 @@ exports.deleteRoom = function (req, res) {
         } else {
             log.info('Preparing deleting room', room._id);
             var id = room._id + '';
-            roomRegistry.removeRoom(id);
-            currentService.rooms.map(function (r, index) {
-                if (r._id === room._id) {
-                    currentService.rooms.splice(index, 1);
-                    serviceRegistry.updateService(currentService);
-                    log.info('Room ', id, ' deleted for service ', currentService._id);
-                    cloudHandler.deleteRoom(id, function () {});
+            roomRegistry.removeRoom(id, function (removed) {
+                if (!removed) {
+                    log.info('Room ', req.params.room, ' does not exist');
+                    res.status(404).send('Room does not exist');
+                } else {
+                    var found = false;
+                    currentService.rooms.map(function (r, index) {
+                        if (r._id === room._id) {
+                            found = true;
+                            currentService.rooms.splice(index, 1);
+                            serviceRegistry.updateService(currentService, function () {
+                                log.info('Room ', id, ' deleted for service ', currentService._id);
+                                cloudHandler.deleteRoom(id, function () {});
+                                res.send('Room deleted');
+                            }, function () {
+                                log.info('Room ', req.params.room, ' does not exist');
+                                res.status(404).send('Room does not exist');
+                            });
+                        }
+                    });
+
+                    if (!found) {
+                        log.info('Room ', req.params.room, ' does not exist');
+                        res.status(404).send('Room does not exist');
+                    }
                 }
             });
-            res.send('Room deleted');
         }
     });
 };
