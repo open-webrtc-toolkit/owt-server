@@ -112,55 +112,18 @@ var receiveSpeed = 0, sendSpeed  = 0;
 var nqChild;
 
 var startQueryNetwork = function (interf, period) {
-    var foundIntf = undefined,
-        sendUnit = 'K',
-        receiveUnit = 'K';
-
-    nqChild = require('child_process').exec('bwm-ng -u bytes -t ' + period + ' -I ' + interf, function (err, stdout, stderr) {
-        if (err) {
-            log.error('error:', err)
-        }
-    });
+    nqChild = require('child_process').spawn('nload', ['-u', 'm', '-t', period + '', 'devices', interf + '']);
 
     nqChild.stdout.on('data', function (data) {
-        var segs = data.toString().split('\u001b');
-
-        if (foundIntf === undefined) {
-            var candidates = segs.filter(function (s) {return s.endsWith(interf + ':');});
-            if (candidates.length > 0) {
-                foundIntf = candidates[0].split(';')[0] + ';';
-                log.warn('foundIntf:', foundIntf);
-            } else {
-                log.info('Not found interface yet.');
-                return;
-            }
+        var concernedLine = new RegExp('(Avg:)'),
+            val = new RegExp('^.*Avg:\\s+(.*)\\s+MBit\\/s');
+        var lines = data.toString().split('\u001b').filter(function (line) {return concernedLine.test(line);});
+        if (lines.length === 2) { 
+            receiveSpeed = Number(lines[0].match(val)[1]);
+            sendSpeed = Number(lines[1].match(val)[1]);
+        } else {
+            log.debug('Not ordinary data\n', lines);
         }
-
-        var calcSpeed = function (base, unit) {
-            var mul = unit === 'M' ? 1 : (unit === 'K' ? 0.001 : (unit === 'G' ? 1000 : 0));
-            return base * mul;
-        };
-
-        segs.filter(function (s) { return s.startsWith(foundIntf) && !s.endsWith(interf + ':');}).forEach(function (line) {
-            var exp = new RegExp('\\' + foundIntf + '(\\d+)H\\s*(\\d+\\.?\\d*)\\s?([KMG])?.*$');
-            var result = line.match(exp);
-            if (result === null) {
-               log.info('Unrecorgnized line:', line);
-               return;
-            }
-            var pos = Number(result[1]),
-                value = Number(result[2]),
-                unit = result[3];
-            if (pos < 36) {
-                receiveUnit = unit ? unit : receiveUnit;
-                receiveSpeed = calcSpeed(value, receiveUnit) || receiveSpeed;
-                log.debug('receive speed:', receiveSpeed);
-            } else if (pos < 57) {
-                sendUnit = unit ? unit : sendUnit;
-                sendSpeed = calcSpeed(value, sendUnit) || sendSpeed;
-                log.debug('send speed:', sendSpeed);
-            }
-        });
     });
 };
 
