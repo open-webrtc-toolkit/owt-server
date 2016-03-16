@@ -41,11 +41,12 @@ exports.addRoom = function (room, callback) {
 /*
  * Removes a determined room from the data base.
  */
-exports.removeRoom = function (id) {
+exports.removeRoom = function (id, callback) {
     hasRoom(id, function (hasR) {
         if (hasR) {
             db.rooms.remove({_id: db.ObjectId(id)}, function (error, removed) {
                 if (error) log.warn('MongoDB: Error romoving room: ', error);
+                callback(removed);
             });
         }
     });
