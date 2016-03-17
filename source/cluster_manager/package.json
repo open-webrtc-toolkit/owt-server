@@ -1,0 +1,9 @@
+{
+  "name": "WooGeen-MCU-Cluster-Manager",
+  "version": "3.0.0",
+  "dependencies": {
+    "amqp": "*",
+    "log4js": "*",
+    "toml": "*"
+  }
+}

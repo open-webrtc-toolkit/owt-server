@@ -1,0 +1,12 @@
+{
+  "name": "WooGeen-MCU-Nuve",
+  "version": "3.0.0",
+  "dependencies": {
+    "amqp": "*",
+    "log4js": "*",
+    "express": "*",
+    "mongojs": "",
+    "toml": "*",
+    "body-parser": "*"
+  }
+}
