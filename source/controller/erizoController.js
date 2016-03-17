@@ -284,12 +284,12 @@ var joinCluster = function (on_ok) {
             log.info('SSL enabled!');
             var cipher = require('./cipher');
             var keystore = path.resolve(path.dirname(GLOBAL.config.controller.keystorePath), '.woogeen.keystore');
-            cipher.unlock(cipher.k, keystore, function cb (err, obj) {
+            cipher.unlock(cipher.k, keystore, function cb (err, passphrase) {
                 if (!err) {
                     try {
                         server = require('https').createServer({
                             pfx: require('fs').readFileSync(GLOBAL.config.controller.keystorePath),
-                            passphrase: obj.erizoController
+                            passphrase: passphrase
                         }).listen(GLOBAL.config.controller.port);
                     } catch (e) {
                         err = e;
