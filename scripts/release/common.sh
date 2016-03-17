@@ -16,7 +16,6 @@ usage() {
   echo "    --gateway                           set package target to WooGeen-Gateway"
   echo "    --archive                           archive & compress to Release-<version>.tgz"
   echo "    --encrypt                           minify, compress and encrypt js and binary files when archiving"
-  echo "    --no-node                           put js in package as is"
   echo "    --no-module                         exclude node_modules in package"
   echo "    --help                              print this help"
   echo
