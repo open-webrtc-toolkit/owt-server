@@ -46,6 +46,7 @@ pack_controller() {
   popd >/dev/null
   mkdir -p ${WOOGEEN_DIST}/controller/cert
   cp -av ${ROOT}/cert/{*.pfx,.woogeen.keystore} ${WOOGEEN_DIST}/controller/cert/
+  cp -av {${this},${WOOGEEN_DIST}/controller}/initcert.js && chmod +x ${WOOGEEN_DIST}/controller/initcert.js
 }
 
 pack_agents() {
@@ -57,6 +58,7 @@ pack_agents() {
     pack_addons "${WOOGEEN_DIST}/${AGENT}_agent"
     mkdir -p ${WOOGEEN_DIST}/${AGENT}_agent/cert
     cp -av ${ROOT}/cert/{*.pfx,.woogeen.keystore} ${WOOGEEN_DIST}/${AGENT}_agent/cert/
+    cp -av {${this},${WOOGEEN_DIST}/${AGENT}_agent}/initcert.js && chmod +x ${WOOGEEN_DIST}/${AGENT}_agent/initcert.js
   done
   popd >/dev/null
 }
@@ -103,6 +105,7 @@ pack_nuve() {
   cp -av ${SOURCE}/cluster_manager ${WOOGEEN_DIST}/
   mkdir -p ${WOOGEEN_DIST}/nuve/cert
   cp -av ${ROOT}/cert/{*.pfx,.woogeen.keystore} ${WOOGEEN_DIST}/nuve/cert/
+  cp -av {${this},${WOOGEEN_DIST}/nuve}/initcert.js && chmod +x ${WOOGEEN_DIST}/nuve/initcert.js
 }
 
 pack_libs() {
@@ -143,8 +146,6 @@ pack_scripts() {
   cp -av ${this}/launch-base.sh ${WOOGEEN_DIST}/bin/restart-all.sh
   cp -av ${this}/mcu-init.sh ${WOOGEEN_DIST}/bin/init.sh
   cp -av ${ROOT}/scripts/detectOS.sh ${WOOGEEN_DIST}/bin/detectOS.sh
-  cp -av {${this},${WOOGEEN_DIST}/bin}/initcert.js && chmod +x ${WOOGEEN_DIST}/bin/initcert.js
-  cp -av ${SOURCE}/common/cipher.js ${WOOGEEN_DIST}/bin
   echo '
 ${bin}/daemon.sh start nuve
 ${bin}/daemon.sh start cluster-manager

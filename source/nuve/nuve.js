@@ -83,12 +83,12 @@ if (GLOBAL.config.nuve.ssl === true) {
     var cipher = require('./cipher');
     var path = require('path');
     var keystore = path.resolve(path.dirname(GLOBAL.config.nuve.keystorePath), '.woogeen.keystore');
-    cipher.unlock(cipher.k, keystore, function cb (err, obj) {
+    cipher.unlock(cipher.k, keystore, function cb (err, passphrase) {
         if (!err) {
             try {
                 require('https').createServer({
                     pfx: require('fs').readFileSync(GLOBAL.config.nuve.keystorePath),
-                    passphrase: obj.nuve
+                    passphrase: passphrase
                 }, app).listen(3000);
             } catch (e) {
                 err = e;
