@@ -144,5 +144,3 @@ else
   ln -s libmcu_sw.so libmcu.so
   sed -i 's/^hardwareAccelerated = true/hardwareAccelerated = false/' ${ROOT}/video_agent/agent.toml
 fi
-
-[[ -L ${ROOT}/lib/node ]] || ln -s ../node_modules ${ROOT}/lib/node

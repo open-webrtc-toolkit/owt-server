@@ -1,0 +1,11 @@
+{
+  "name": "WooGeen-MCU-Controller",
+  "version": "3.0.0",
+  "dependencies": {
+    "amqp": "*",
+    "socket.io": "^1.3.5",
+    "log4js": "*",
+    "node-getopt": "*",
+    "toml": "*"
+  }
+}

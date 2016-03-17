@@ -1,0 +1,13 @@
+{
+  "name": "WooGeen-MCU-Agent",
+  "version": "3.0.0",
+  "dependencies": {
+    "amqp": "*",
+    "log4js": "*",
+    "node-getopt": "*",
+    "toml": "*"
+  },
+  "devDependencies": {
+    "node-gyp": "*"
+  }
+}

@@ -146,6 +146,7 @@ pack_scripts() {
   cp -av ${this}/launch-base.sh ${WOOGEEN_DIST}/bin/restart-all.sh
   cp -av ${this}/mcu-init.sh ${WOOGEEN_DIST}/bin/init.sh
   cp -av ${ROOT}/scripts/detectOS.sh ${WOOGEEN_DIST}/bin/detectOS.sh
+  cp -av ${this}/package.mcu.json ${WOOGEEN_DIST}/package.json
   echo '
 ${bin}/daemon.sh start nuve
 ${bin}/daemon.sh start cluster-manager
@@ -179,7 +180,7 @@ pack_node() {
   local NODE_VERSION=v$(node -e "process.stdout.write(require('${WOOGEEN_DIST}/package.json').engine.node)")
   echo "node version: ${NODE_VERSION}"
   local PREFIX_DIR=${ROOT}/build/libdeps/build/
-  local THIRD_PARTY_MODULES=$(node -e "process.stdout.write(Object.keys(require('${ROOT}/scripts/release/package.mcu.json').dependencies).join(' '))")
+  local THIRD_PARTY_MODULES=$(node -e "process.stdout.write(Object.keys(require('${ROOT}/source/agent/package.json').dependencies).join(' '))")
 
   pushd ${ROOT}/third_party
   wget -c http://nodejs.org/dist/${NODE_VERSION}/node-${NODE_VERSION}.tar.gz
@@ -229,25 +230,24 @@ pack_node() {
     popd >/dev/null
   done
   popd >/dev/null
-
-  ln -s ../node_modules ${WOOGEEN_DIST}/lib/node
 }
 
 install_module() {
-  echo -e "\x1b[32mInstalling node_modules ...\x1b[0m"
-  local SAMPLE_DIR=${WOOGEEN_DIST}/extras/basic_example
+  pushd ${WOOGEEN_DIST} >/dev/null
+  local TARGETS=$(find . -maxdepth 3 -type f -name "package.json" | sed "s/\/package\.json//g" | sed "s/\.\/*//g")
   if hash npm 2>/dev/null; then
-    mkdir -p ${WOOGEEN_DIST}/node_modules
-    cp -av ${this}/package.mcu.json ${WOOGEEN_DIST}/package.json
-    cd ${WOOGEEN_DIST} && npm install --prefix ${WOOGEEN_DIST} --production --loglevel error
-
-    [[ -d ${SAMPLE_DIR} ]] && \
-    mkdir -p ${SAMPLE_DIR}/node_modules && \
-    cd ${SAMPLE_DIR} && npm install --prefix ${SAMPLE_DIR} --production --loglevel error
+    for TARGET in ${TARGETS}; do
+      [[ -d ${TARGET} ]] || continue
+      echo -e "\x1b[32mInstalling node_modules for ${TARGET}...\x1b[0m"
+      pushd ${TARGET} >/dev/null
+      npm install --production --loglevel error
+      popd >/dev/null
+    done
   else
     echo >&2 "npm not found."
     echo >&2 "You need to install node first."
   fi
+  popd >/dev/null
 }
 
 pack_license() {
