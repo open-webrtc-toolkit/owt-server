@@ -206,8 +206,6 @@ install_node() {
 
 install_node_tools() {
   npm install -g --loglevel error node-gyp grunt-cli underscore jsdoc
-  local SDK_DIR="${ROOT}/source/sdk2"
-  cd ${SDK_DIR} && make dep
   local GATEWAY_SDK_DIR="${ROOT}/source/client_sdk"
   cd ${GATEWAY_SDK_DIR}
   mkdir -p node_modules && npm install --prefix . --development --loglevel error
