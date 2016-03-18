@@ -788,28 +788,30 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
     };
 
     var unpublishStream = function (stream_id) {
-        log.debug('unpublishStream:', stream_id, 'stream.owner:', streams[stream_id].owner);
-        var stream = streams[stream_id],
-            terminal_id = stream.owner,
-            erizo = terminals[terminal_id].erizo;
+        if (streams[stream_id]) {
+            log.debug('unpublishStream:', stream_id, 'stream.owner:', streams[stream_id].owner);
+            var stream = streams[stream_id],
+                terminal_id = stream.owner,
+                erizo = terminals[terminal_id].erizo;
 
-        var i = terminals[terminal_id].published.indexOf(stream_id);
-        if (i !== -1) {
-            makeRPC(
-                amqper,
-                'ErizoJS_' + erizo,
-                'unpublish',
-                [stream_id]);
+            var i = terminals[terminal_id].published.indexOf(stream_id);
+            if (i !== -1) {
+                makeRPC(
+                    amqper,
+                    'ErizoJS_' + erizo,
+                    'unpublish',
+                    [stream_id]);
 
-            unmixStream(stream_id);
-            removeSubscriptions(stream_id);
-            terminals[terminal_id].published.splice(i, 1);
-        }
+                unmixStream(stream_id);
+                removeSubscriptions(stream_id);
+                terminals[terminal_id].published.splice(i, 1);
+            }
 
-        delete streams[stream_id];
+            delete streams[stream_id];
 
-        if (isTerminalFree(terminal_id)) {
-            deleteTerminal(terminal_id);
+            if (isTerminalFree(terminal_id)) {
+                deleteTerminal(terminal_id);
+            }
         }
     };
 
@@ -832,17 +834,28 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
         } else {
             log.debug('spread audio and video stream independently.');
             spreadStream(audio_stream, terminals[subscriber].erizo, true, false, function () {
-                log.debug('spread audio_stream:', audio_stream, ' ok.');
-                spreadStream(video_stream, terminals[subscriber].erizo, false, true, function () {
-                    log.debug('spread video_stream:', video_stream, ' ok.');
-                    makeRPC(
-                        amqper,
-                        'ErizoJS_' + terminals[subscriber].erizo,
-                        'subscribe',
-                        [subscription_id, terminals[subscriber].type, audio_stream, video_stream, options],
-                        on_ok,
-                        on_error);
-                }, on_error);
+                if (streams[audio_stream] && streams[video_stream] && terminals[subscriber]) {
+                    log.debug('spread audio_stream:', audio_stream, ' ok.');
+                    spreadStream(video_stream, terminals[subscriber].erizo, false, true, function () {
+                        if (streams[audio_stream] && streams[video_stream] && terminals[subscriber]) {
+                            log.debug('spread video_stream:', video_stream, ' ok.');
+                            makeRPC(
+                                amqper,
+                                'ErizoJS_' + terminals[subscriber].erizo,
+                                'subscribe',
+                                [subscription_id, terminals[subscriber].type, audio_stream, video_stream, options],
+                                on_ok,
+                                on_error);
+                        } else {
+                            streams[video_stream] && terminals[subscriber] && shrinkStream(video_stream, terminals[subscriber].erizo);
+                            streams[audio_stream] && terminals[subscriber] && shrinkStream(audio_stream, terminals[subscriber].erizo);
+                            on_error('Uncomplished subscription.');
+                        }
+                    }, on_error);
+                } else {
+                    streams[audio_stream] && terminals[subscriber] && shrinkStream(audio_stream, terminals[subscriber].erizo);
+                    on_error('Uncomplished subscription.');
+                }
             }, on_error);
         }
     };
