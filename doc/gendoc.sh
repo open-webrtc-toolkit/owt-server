@@ -1,10 +1,14 @@
 #!/bin/bash
-
 #GENERATE
-rm -rf html
-doxygen doxygen_server.conf
+rm -rf confSverHtml
+rm -rf sipHtml
+
+doxygen doxygen_cfrc.conf
+doxygen doxygen_sip.conf
 
 #MOVE RESOURCE
-mkdir html/pic
-cp ServerPic/* html/pic
+mkdir confSverHtml/pic
+cp ServerPic/* confSverHtml/pic
 
+#KEEP PURE SERVER DOC
+./mvhtml.sh
