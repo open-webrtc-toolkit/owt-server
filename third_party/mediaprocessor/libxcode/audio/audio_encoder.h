@@ -10,6 +10,7 @@
 #include "base/base_element.h"
 #include "base/media_common.h"
 #include "base/stream.h"
+#include "base/logger.h"
 #include "wave_header.h"
 #include "audio_params.h"
 #include "umc_config.h"
@@ -24,12 +25,18 @@
 class AudioEncoder : public BaseElement
 {
 public:
+    DECLARE_MLOGINSTANCE();
     AudioEncoder(Stream* st, unsigned char* name);
     virtual ~AudioEncoder();
     virtual bool Init(void *cfg, ElementMode element_mode);
     virtual int Recycle(MediaBuf &buf);
     virtual int ProcessChain(MediaPad *pad, MediaBuf &buf);
     virtual int HandleProcess();
+#ifdef SUPPORT_SMTA
+    AudioStreamInfo& getAudioStreamInfo() { return m_StreamInfo; }
+    static void GenADTSHeader(Ipp8u *outPointer, int len,
+               int profile, int sampling_freq_id, int ch_num);
+#endif
 private:
     AudioEncoder(const AudioEncoder &enc);
 

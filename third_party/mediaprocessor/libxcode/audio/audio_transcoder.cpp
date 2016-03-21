@@ -7,9 +7,11 @@
 
 #include <assert.h>
 #include <unistd.h>
+#if not defined SUPPORT_SMTA
 #include "app.h"
 #include "audio_pcm_reader.h"
 #include "audio_pcm_writer.h"
+#endif
 
 #ifdef ENABLE_AUDIO_CODEC
 #include "audio_decoder.h"
@@ -19,6 +21,7 @@
 #include "audio_transcoder.h"
 #include "base/trace.h"
 
+DEFINE_MLOGINSTANCE_CLASS(AudioTranscoder, "AudioTranscoder");
 typedef std::list<sAudioParams *> LIST_AUDDECOPT;
 
 AudioTranscoder::AudioTranscoder():
@@ -35,7 +38,7 @@ AudioTranscoder::~AudioTranscoder()
 {
     Cleanup();
     if (pthread_mutex_destroy(&xcoder_mutex_)) {
-        printf("Error in pthread_mutex_destroy.\n");
+        MLOG_ERROR("Error in pthread_mutex_destroy.\n");
         assert(0);
     }
 }
@@ -65,7 +68,7 @@ MemPool &AudioTranscoder::OpenInput(const char *filename)
             delete infile;
         }
 
-        printf("Failed to open input file %s\n", filename);
+        MLOG_ERROR("Failed to open input file %s\n", filename);
         ReleaseMutex();
         return *((MemPool*)NULL);
     }
@@ -103,7 +106,7 @@ Stream &AudioTranscoder::OpenOutput(const char *filename)
             delete outfile;
         }
 
-        printf("Failed to open output file %s\n", filename);
+        MLOG_ERROR("Failed to open output file %s\n", filename);
         ReleaseMutex();
         return *((Stream*)NULL);
     }
@@ -128,7 +131,7 @@ Stream &AudioTranscoder::OpenOutput(string name)
             delete output;
         }
 
-        printf("Failed to open output file\n");
+        MLOG_ERROR("Failed to open output file\n");
         ReleaseMutex();
         return *((Stream*)NULL);
     }
@@ -141,23 +144,25 @@ Stream &AudioTranscoder::OpenOutput(string name)
 void* AudioTranscoder::AttachInputStream(void *dec_cfg)
 {
     if (!dec_cfg) {
-        printf("Invalid dec_cfg parameter\n");
+        MLOG_ERROR("Invalid dec_cfg parameter\n");
         return NULL;
     }
 
     BaseElement *element_dec = NULL;
     sAudioParams *audio_params = reinterpret_cast<sAudioParams *> (dec_cfg);
     audio_params->dec_handle = NULL;
-    printf("Attach input stream in AudioTrancoder %p\n", this);
+    MLOG_INFO("Attach input stream in AudioTrancoder %p\n", this);
     WaitMutex();
 
     if (!done_init_) {
         ReleaseMutex();
-        printf("Attach new audio input before initialization\n");
+        MLOG_ERROR("Attach new audio input before initialization\n");
         return NULL;
     }
     if (audio_params->nCodecType == STREAM_TYPE_AUDIO_PCM) {
+#if not defined SUPPORT_SMTA
         element_dec = new AudioPCMReader(audio_params->input_stream, NULL);
+#endif
     } else {
 #ifdef ENABLE_AUDIO_CODEC
         element_dec = new AudioDecoder(audio_params->input_stream, NULL);
@@ -166,7 +171,7 @@ void* AudioTranscoder::AttachInputStream(void *dec_cfg)
 
     if (!element_dec) {
         ReleaseMutex();
-        printf("Failed to new Decoder\n");
+        MLOG_ERROR("Failed to new Decoder\n");
         return NULL;
     }
 
@@ -174,7 +179,7 @@ void* AudioTranscoder::AttachInputStream(void *dec_cfg)
         delete element_dec;
         element_dec = NULL;
         ReleaseMutex();
-        printf("Failed to initialize Decoder\n");
+        MLOG_ERROR("Failed to initialize Decoder\n");
         return NULL;
     }
 
@@ -182,7 +187,7 @@ void* AudioTranscoder::AttachInputStream(void *dec_cfg)
 
     if (element_app_) {
         element_dec->LinkNextElement(element_app_);
-        printf("Link decoder %p to APP %p...dec list size %d\n", element_dec, element_app_, (int)decoder_list_.size());
+        MLOG_INFO("Link decoder %p to APP %p...dec list size %d\n", element_dec, element_app_, (int)decoder_list_.size());
     }
 
     if (is_running_) {
@@ -205,13 +210,13 @@ errors_t AudioTranscoder::DetachInputStream(void *input_handle)
     WaitMutex();
     if (!done_init_) {
         ReleaseMutex();
-        printf("Detach audio input before initialization\n");
+        MLOG_ERROR("Detach audio input before initialization\n");
         return ERR_INVALID_INPUT_PARAMETER;
     }
 
     if (1 == decoder_list_.size()) {
         ReleaseMutex();
-        printf("The last input handle. Please stop the audio pipeline\n");
+        MLOG_ERROR("The last input handle. Please stop the audio pipeline\n");
         return ERR_INVALID_INPUT_PARAMETER;
     }
 
@@ -230,14 +235,14 @@ errors_t AudioTranscoder::DetachInputStream(void *input_handle)
         ReleaseMutex();
         return ERR_INVALID_INPUT_PARAMETER;
     }
-    printf("Found audio dec, about to stop audio decoder %p...\n", dec);
+    MLOG_INFO("Found audio dec, about to stop audio decoder %p...\n", dec);
     dec->Stop();
-    printf("Unlinking audio decoder element ...\n");
+    MLOG_INFO("Unlinking audio decoder element ...\n");
     dec->UnlinkNextElement();
-    printf("Deleting audio dec %p...\n", dec);
+    MLOG_INFO("Deleting audio dec %p...\n", dec);
     delete dec;
     dec = NULL;
-    printf("AudioTranscoder: DetachInputStream Done\n");
+    MLOG_INFO("AudioTranscoder: DetachInputStream Done\n");
 
     ReleaseMutex();
     return ERR_NONE;
@@ -246,26 +251,28 @@ errors_t AudioTranscoder::DetachInputStream(void *input_handle)
 void* AudioTranscoder::AttachOutputStream(void *enc_cfg)
 {
     if (!enc_cfg) {
-        printf("Invalid enc_cfg parameter\n");
+        MLOG_ERROR("Invalid enc_cfg parameter\n");
         return NULL;
     }
 
     BaseElement *element_enc = NULL;
     sAudioParams *audio_params = reinterpret_cast<sAudioParams *> (enc_cfg);
     audio_params->enc_handle = NULL;
-    printf("Attach output stream in AudioTrancoder %p\n", this);
+    MLOG_INFO("Attach output stream in AudioTrancoder %p\n", this);
     WaitMutex();
 
     if (!done_init_) {
         ReleaseMutex();
-        printf("Attach new audio output before initialization\n");
+        MLOG_ERROR("Attach new audio output before initialization\n");
         return NULL;
     }
 
     if (audio_params->nCodecType == STREAM_TYPE_AUDIO_PCM ||
         audio_params->nCodecType == STREAM_TYPE_AUDIO_ALAW ||
         audio_params->nCodecType == STREAM_TYPE_AUDIO_MULAW) {
+#if not defined SUPPORT_SMTA
        element_enc = new AudioPCMWriter(audio_params->output_stream, NULL);
+#endif
     } else {
 #ifdef ENABLE_AUDIO_CODEC
        element_enc = new AudioEncoder(audio_params->output_stream, NULL);
@@ -274,7 +281,7 @@ void* AudioTranscoder::AttachOutputStream(void *enc_cfg)
 
     if (!element_enc) {
         ReleaseMutex();
-        printf("Failed to new Encoder\n");
+        MLOG_ERROR("Failed to new Encoder\n");
         return NULL;
     }
 
@@ -282,7 +289,7 @@ void* AudioTranscoder::AttachOutputStream(void *enc_cfg)
         delete element_enc;
         element_enc = NULL;
         ReleaseMutex();
-        printf("Failed to initialise Encoder\n");
+        MLOG_ERROR("Failed to initialise Encoder\n");
         return NULL;
     }
 
@@ -290,12 +297,12 @@ void* AudioTranscoder::AttachOutputStream(void *enc_cfg)
 
     if (element_app_) {
         element_app_->LinkNextElement(element_enc);
-        printf("Link APP %p to encoder %p...enc list size %d\n", element_app_, element_enc, (int)encoder_list_.size());
+        MLOG_INFO("Link APP %p to encoder %p...enc list size %d\n", element_app_, element_enc, (int)encoder_list_.size());
     } else if (element_dec_){
         element_dec_->LinkNextElement(element_enc);
-        printf("Link decoder %p to encoder %p...enc list size %d\n", element_dec_, element_enc, (int)encoder_list_.size());
+        MLOG_INFO("Link decoder %p to encoder %p...enc list size %d\n", element_dec_, element_enc, (int)encoder_list_.size());
     } else {
-        printf("Error: No valid app or decoder element!\n");
+        MLOG_ERROR("Error: No valid app or decoder element!\n");
     }
 
     audio_params->enc_handle = element_enc;
@@ -318,13 +325,13 @@ errors_t AudioTranscoder::DetachOutputStream(void *output_handle)
     WaitMutex();
     if (!done_init_) {
         ReleaseMutex();
-        printf("Detach audio output before initialization\n");
+        MLOG_ERROR("Detach audio output before initialization\n");
         return ERR_INVALID_INPUT_PARAMETER;
     }
 
     if (1 == encoder_list_.size()) {
         ReleaseMutex();
-        printf("The last output handle. Please stop the audio pipeline\n");
+        MLOG_ERROR("The last output handle. Please stop the audio pipeline\n");
         return ERR_INVALID_INPUT_PARAMETER;
     }
 
@@ -343,14 +350,14 @@ errors_t AudioTranscoder::DetachOutputStream(void *output_handle)
         ReleaseMutex();
         return ERR_INVALID_INPUT_PARAMETER;
     }
-    printf("Found audio enc, about to stop audio encoder %p...\n", enc);
+    MLOG_INFO("Found audio enc, about to stop audio encoder %p...\n", enc);
     enc->Stop();
-    printf("Unlinking audio enc element ...\n");
+    MLOG_INFO("Unlinking audio enc element ...\n");
     enc->UnlinkPrevElement();
-    printf("Deleting audio enc %p...\n", enc);
+    MLOG_INFO("Deleting audio enc %p...\n", enc);
     delete enc;
     enc = NULL;
-    printf("AudioTranscoder: DetachOutputStream Done\n");
+    MLOG_INFO("AudioTranscoder: DetachOutputStream Done\n");
 
     ReleaseMutex();
     return ERR_NONE;
@@ -359,15 +366,19 @@ errors_t AudioTranscoder::DetachOutputStream(void *output_handle)
 void* AudioTranscoder::GetActiveInputHandle()
 {
     if (IsAlive() == false) {
-        printf("AudioTranscoder is not alive.\n");
+        MLOG_ERROR("AudioTranscoder is not alive.\n");
         return NULL;
     }
     if (!element_app_) {
-        printf("AudioPostProcessing is not running.\n");
+        MLOG_ERROR("AudioPostProcessing is not running.\n");
         return NULL;
     }
 
+#if defined SUPPORT_SMTA
+    void *active_input = NULL;
+#else
     void *active_input = static_cast<AudioPostProcessing *>(element_app_)->GetActiveInputHandle();
+#endif
 
     return active_input;
 }
@@ -375,15 +386,19 @@ void* AudioTranscoder::GetActiveInputHandle()
 int AudioTranscoder::GetInputActiveStatus(void *input_handle)
 {
     if (NULL == input_handle) {
-        printf("AudioTranscoder: input_handle is NULL.\n");
+        MLOG_ERROR("AudioTranscoder: input_handle is NULL.\n");
         return -1;
     }
     if (!element_app_) {
-        printf("AudioPostProcessing is not running.\n");
+        MLOG_ERROR("AudioPostProcessing is not running.\n");
         return -1;
     }
 
+#if defined SUPPORT_SMTA
+    int status = -1;
+#else
     int status = static_cast<AudioPostProcessing *>(element_app_)->GetInputActiveStatus(input_handle);
+#endif
     return status;
 }
 
@@ -394,7 +409,7 @@ void* AudioTranscoder::Init(void *dec_cfg, void *app_cfg, void *enc_cfg)
 
     //check input parameters
     if (!dec_cfg || !enc_cfg) {
-        printf("Input parameters for decoder and encoder can not be NULL!\n");
+        MLOG_ERROR("Input parameters for decoder and encoder can not be NULL!\n");
         return NULL;
     }
 
@@ -406,7 +421,9 @@ void* AudioTranscoder::Init(void *dec_cfg, void *app_cfg, void *enc_cfg)
     dec_params->dec_handle = NULL;
 
     if (dec_params->nCodecType == STREAM_TYPE_AUDIO_PCM) {
+#if not defined SUPPORT_SMTA
         element_dec = new AudioPCMReader(dec_params->input_stream, NULL);
+#endif
     } else {
 #ifdef ENABLE_AUDIO_CODEC
         element_dec = new AudioDecoder(dec_params->input_stream, NULL);
@@ -415,7 +432,7 @@ void* AudioTranscoder::Init(void *dec_cfg, void *app_cfg, void *enc_cfg)
 
     if (!element_dec) {
         ReleaseMutex();
-        printf("Failed to new Decoder\n");
+        MLOG_ERROR("Failed to new Decoder\n");
         return NULL;
     }
 
@@ -423,20 +440,21 @@ void* AudioTranscoder::Init(void *dec_cfg, void *app_cfg, void *enc_cfg)
         delete element_dec;
         element_dec = NULL;
         ReleaseMutex();
-        printf("Failed to initialize Decoder\n");
+        MLOG_ERROR("Failed to initialize Decoder\n");
         return NULL;
     }
 
+#if not defined SUPPORT_SMTA
     //create APP object
     if (app_cfg) {
-        printf("create APP object\n");
+        MLOG_INFO("create APP object\n");
         element_app_ = new AudioPostProcessing();
-        printf("[%p] ****new APP [%p]\n", this, element_app_);
+        MLOG_INFO("[%p] ****new APP [%p]\n", this, element_app_);
         if (!element_app_) {
             delete element_dec;
             element_dec = NULL;
             ReleaseMutex();
-            printf("Failed to create APP\n");
+            MLOG_ERROR("Failed to create APP\n");
             return NULL;
         }
 
@@ -446,10 +464,11 @@ void* AudioTranscoder::Init(void *dec_cfg, void *app_cfg, void *enc_cfg)
             delete element_app_;
             element_app_ = NULL;
             ReleaseMutex();
-            printf("Failed to initialize APP\n");
+            MLOG_ERROR("Failed to initialize APP\n");
             return NULL;
         }
     }
+#endif
 
     //create encoder objects
     BaseElement *element_enc = NULL;
@@ -459,7 +478,9 @@ void* AudioTranscoder::Init(void *dec_cfg, void *app_cfg, void *enc_cfg)
     if (enc_params->nCodecType == STREAM_TYPE_AUDIO_PCM ||
         enc_params->nCodecType == STREAM_TYPE_AUDIO_ALAW ||
         enc_params->nCodecType == STREAM_TYPE_AUDIO_MULAW) {
+#if not defined SUPPORT_SMTA
        element_enc = new AudioPCMWriter(enc_params->output_stream, NULL);
+#endif
     } else {
 #ifdef ENABLE_AUDIO_CODEC
        element_enc = new AudioEncoder(enc_params->output_stream, NULL);
@@ -474,7 +495,7 @@ void* AudioTranscoder::Init(void *dec_cfg, void *app_cfg, void *enc_cfg)
             element_app_ = NULL;
         }
         ReleaseMutex();
-        printf("Failed to new Encoder\n");
+        MLOG_ERROR("Failed to new Encoder\n");
         return NULL;
     }
 
@@ -488,18 +509,18 @@ void* AudioTranscoder::Init(void *dec_cfg, void *app_cfg, void *enc_cfg)
         delete element_enc;
         element_enc = NULL;
         ReleaseMutex();
-        printf("Failed to initialise Encoder\n");
+        MLOG_ERROR("Failed to initialise Encoder\n");
         return NULL;
     }
 
     if(element_app_) {
         element_dec->LinkNextElement(element_app_);
-        printf("Link decoder %p to APP %p...\n", element_dec, element_app_);
+        MLOG_INFO("Link decoder %p to APP %p...\n", element_dec, element_app_);
         element_app_->LinkNextElement(element_enc);
-        printf("Link APP %p to encoder %p...\n", element_app_, element_enc);
+        MLOG_INFO("Link APP %p to encoder %p...\n", element_app_, element_enc);
     } else {
         element_dec->LinkNextElement(element_enc);
-        printf("Link decoder %p to encoder %p...\n", element_dec, element_enc);
+        MLOG_INFO("Link decoder %p to encoder %p...\n", element_dec, element_enc);
     }
 
     decoder_list_.push_back(element_dec);
@@ -510,7 +531,7 @@ void* AudioTranscoder::Init(void *dec_cfg, void *app_cfg, void *enc_cfg)
 
     done_init_ = true;
 
-    printf("Create pipeline done\n");
+    MLOG_INFO("Create pipeline done\n");
     ReleaseMutex();
 
     return element_dec;
@@ -615,7 +636,7 @@ bool AudioTranscoder::Start()
 {
     WaitMutex();
     //create pipeline dec->vpp->enc
-    printf("Starting pipeline... \n ");
+    MLOG_INFO("Starting pipeline... \n ");
     std::list<BaseElement *>::iterator dec_i;
     std::list<BaseElement *>::iterator enc_i;
 
@@ -680,7 +701,7 @@ bool AudioTranscoder::Start()
             }
 
             if (input_stream_list_.size() == read_finish_nums) {
-                printf("Read all files(%d) done.\n", read_finish_nums);
+                MLOG_INFO("Read all files(%d) done.\n", read_finish_nums);
                 break;
             }
 
@@ -693,7 +714,7 @@ bool AudioTranscoder::Start()
 
 bool AudioTranscoder::Join()
 {
-    printf("Processing join...\n");
+    MLOG_INFO("Processing join...\n");
     std::list<BaseElement *>::iterator dec_i;
     std::list<BaseElement *>::iterator enc_i;
 
@@ -718,13 +739,13 @@ bool AudioTranscoder::Join()
         }
     }
 
-    printf("AudioTranscoder Join: Done processing\n");
+    MLOG_INFO("AudioTranscoder Join: Done processing\n");
     return true;
 }
 
 bool AudioTranscoder::Stop()
 {
-    printf("Stopping transcoder...\n");
+    MLOG_INFO("Stopping transcoder...\n");
     WaitMutex();
     std::list<BaseElement *>::iterator dec_i;
     std::list<BaseElement *>::iterator enc_i;
@@ -749,7 +770,7 @@ bool AudioTranscoder::Stop()
         }
     }
 
-    printf("AudioTranscoder Stop: Done processing!\n");
+    MLOG_INFO("AudioTranscoder Stop: Done processing!\n");
     //set running status
     is_running_ = false;
     ReleaseMutex();
@@ -759,7 +780,7 @@ bool AudioTranscoder::Stop()
 bool AudioTranscoder::WaitMutex()
 {
     if (pthread_mutex_lock(&xcoder_mutex_)) {
-        printf("Error in pthread_mutex_lock.\n");
+        MLOG_ERROR("Error in pthread_mutex_lock.\n");
         assert(0);
     }
     return true;
@@ -768,7 +789,7 @@ bool AudioTranscoder::WaitMutex()
 bool AudioTranscoder::ReleaseMutex()
 {
     if (pthread_mutex_unlock(&xcoder_mutex_)) {
-        printf("Error in pthread_mutex_unlock.\n");
+        MLOG_ERROR("Error in pthread_mutex_unlock.\n");
         assert(0);
     }
     return true;

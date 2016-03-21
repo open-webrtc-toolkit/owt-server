@@ -112,5 +112,12 @@ private:
 #endif
 };
 
+class CodecEventCallback {
+public:
+    CodecEventCallback(){}
+    virtual ~CodecEventCallback(){}
+
+    virtual void DecodeHeaderFailEvent(void *DecHandle = 0) = 0;
+};
 #endif
 

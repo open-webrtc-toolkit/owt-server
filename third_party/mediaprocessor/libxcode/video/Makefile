@@ -64,9 +64,9 @@ VA_LIBS=-L$(VA_INSTALL_DIR)/lib -lopencv_core -lopencv_highgui -lopencv_objdetec
 EXTRA_FLAGS+= -DENABLE_VA -DLIBVA_SUPPORT -DLIBVA_X11_SUPPORT
 LIBS+=$(VA_LIBS)
 OPENCL_INSTALL_DIR=/usr/lib64
-OPENCL_LIBS=-L$(OPENCL_INSTALL_DIR) -lOpenCL -Wl,-rpath=$(OPENCL_INSTALL_DIR)
+OPENCL_LIBS=-L$(OPENCL_INSTALL_DIR) -lOpenCL -Wl,-rpath=$(OPENCL_INSTALL_DIR) -L/opt/intel/opencl -Wl,-rpath=/opt/intel/opencl
 LIBS+=$(OPENCL_LIBS)
-INCLUDES_PATH+=-I$(VA_INCLUDE_PATH)
+INCLUDES_PATH+=-I$(VA_INCLUDE_PATH) -I/opt/intel/opencl/include
 endif
 
 ifeq ($(SW_ENABLE),1)
@@ -80,6 +80,10 @@ endif
 
 ifeq ($(RAW_ENABLE),1)
 EXTRA_FLAGS+=-DENABLE_RAW_CODEC
+endif
+
+ifeq ($(SMTA_ENABLE),1)
+EXTRA_FLAGS+=-DENABLE_RAW_DECODE -DSUPPORT_INTERLACE -DSUPPORT_SMTA
 endif
 
 ifeq ($(ASTA_CONFIG_ENABLE),1)

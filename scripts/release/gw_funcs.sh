@@ -159,6 +159,10 @@ install_module() {
     echo >&2 "You need to install node first."
   fi
 }
-
+pack_mediaprocessor() {
+  # For hardware
+  [[ -s ${WOOGEEN_DIST}/lib/libxcodevideo.so ]] && \
+  cp -fv ${ROOT}/third_party/mediaprocessor/msdk_log_config.ini ${WOOGEEN_DIST}/etc/.msdk_log_config.ini
+}
 pack_license() {
 }

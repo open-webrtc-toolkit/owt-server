@@ -10,6 +10,7 @@
 #include "base/media_pad.h"
 #include "base/mem_pool.h"
 #include "base/ring_buffer.h"
+#include "base/logger.h"
 #include "wave_header.h"
 #include "audio_params.h"
 #include "umc_media_data.h"
@@ -18,6 +19,7 @@
 
 class AudioDecoder : public BaseElement {
 public:
+    DECLARE_MLOGINSTANCE();
     AudioDecoder(MemPool* mp, char* input);
     virtual ~AudioDecoder();
     virtual bool Init(void* cfg, ElementMode element_mode);

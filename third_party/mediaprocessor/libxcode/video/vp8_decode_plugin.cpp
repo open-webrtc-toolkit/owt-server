@@ -1,5 +1,6 @@
 /* <COPYRIGHT_TAG> */
 
+#include "vp8_decode_plugin.h"
 
 #ifdef ENABLE_VPX_CODEC
 #include <assert.h>
@@ -8,7 +9,6 @@
 #include <stdlib.h>
 #include "base/fast_copy.h"
 #include "general_allocator.h"
-#include "vp8_decode_plugin.h"
 
 
 #define INTERFACE (vpx_codec_vp8_dx())
@@ -19,6 +19,7 @@
 #define ALIGN16(value) (((value + 15) >> 4) << 4)
 #define SURFACE_PITCH_ALIGN 64
 
+DEFINE_MLOGINSTANCE_CLASS(VP8DecPlugin, "VP8DecPlugin");
 unsigned int PlgGetMem32(const void *vmem)
 {
     unsigned int  val;
@@ -254,7 +255,7 @@ mfxStatus VP8DecPlugin::Submit(const mfxHDL *in, mfxU32 , const mfxHDL *out, mfx
     unsigned int buffer_length = bitstream_in->DataLength;
 
     if (buffer_length < IVF_FRAME_HDR_SZ || input_eos) {
-        //printf("VP8 : No more data - %p\n", buffer_start);
+        //MLOG_INFO("VP8 : No more data - %p\n", buffer_start);
         return MFX_ERR_MORE_DATA;
     }
 
@@ -266,7 +267,7 @@ mfxStatus VP8DecPlugin::Submit(const mfxHDL *in, mfxU32 , const mfxHDL *out, mfx
     /* Frame size limit for vp8 */
     if ((new_buf_sz > 256 * 1024 * 1024) || ((new_buf_sz + hdr_size) > buffer_length)
         || (input_ctx_.kind == RAW_FILE && new_buf_sz > 256 * 1024)) {
-        printf("WARNING: Read invalid frame size (%lu), buffer length (%d)\n",
+        MLOG_WARNING(" Read invalid frame size (%lu), buffer length (%d)\n",
             new_buf_sz, buffer_length);
         return MFX_ERR_MORE_DATA;
     }
@@ -307,7 +308,7 @@ mfxStatus VP8DecPlugin::Execute(mfxThreadTask task, mfxU32 , mfxU32 uid_a)
     // Frame size limit for vp8 
     if ((new_buf_sz > 256 * 1024 * 1024) || ((new_buf_sz + hdr_size) > buffer_length)
         || (input_ctx_.kind == RAW_FILE && new_buf_sz > 256 * 1024)) {
-        printf("Error: Read invalid frame size (%lu), buffer length (%d) - %p\n",
+        MLOG_ERROR(" Read invalid frame size (%lu), buffer length (%d) - %p\n",
             new_buf_sz, buffer_length, buffer_start);
         m_pAlloc->Unlock(m_pAlloc->pthis, surf_out->Data.MemId, &surf_out->Data);
         return MFX_ERR_UNKNOWN;
@@ -319,7 +320,7 @@ mfxStatus VP8DecPlugin::Execute(mfxThreadTask task, mfxU32 , mfxU32 uid_a)
     bs_in->DataLength -= buffer_length + hdr_size;
 
     if (vpx_codec_decode(&vpx_codec_, buffer_start, buffer_length, NULL, 0)) {
-        printf("Failed to decode frame\n");
+        MLOG_ERROR("Failed to decode frame\n");
         m_pAlloc->Unlock(m_pAlloc->pthis, surf_out->Data.MemId, &surf_out->Data);
         //ignore decode fail if passed data check
         return MFX_TASK_DONE;
@@ -329,7 +330,7 @@ mfxStatus VP8DecPlugin::Execute(mfxThreadTask task, mfxU32 , mfxU32 uid_a)
         /* Upload img to surface */
         UploadToSurface(img, surf_out);
     } else {
-        printf("Failed to get decoded frame");
+        MLOG_ERROR("Failed to get decoded frame");
         m_pAlloc->Unlock(m_pAlloc->pthis, surf_out->Data.MemId, &surf_out->Data);
         return MFX_ERR_UNKNOWN;
     }
@@ -366,7 +367,7 @@ mfxStatus VP8DecPlugin::InitVpxDec()
     int flags = 0;
     /* Initialize codec */
     if(vpx_codec_dec_init(&vpx_codec_, INTERFACE, NULL, flags)) {
-        printf("Failed to initialize VP8 decoder");
+        MLOG_ERROR("Failed to initialize VP8 decoder");
         sts = MFX_ERR_UNKNOWN;
     }
 
@@ -388,7 +389,7 @@ bool VP8DecPlugin::IsIvfFile(unsigned char *raw_hdr,
         is_ivf = true;
 
         if (PlgGetMem16(raw_hdr + 4) != 0) {
-            printf("Unrecognized IVF version! This file may not decode properly\n");
+            MLOG_WARNING("Unrecognized IVF version! This file may not decode properly\n");
         }
 
         *fourcc = PlgGetMem32(raw_hdr + 8);
@@ -477,7 +478,7 @@ mfxStatus VP8DecPlugin::ParseInputType(mfxBitstream *bs)
     buffer_length = bs->DataLength;
 
     if (buffer_length < PARSE_TYPE_DATA_LENGTH) {
-        printf("VP8: header data is not enough\n");
+        MLOG_ERROR("VP8: header data is not enough\n");
         sts = MFX_ERR_MORE_DATA;
         return sts;
     }
@@ -492,7 +493,7 @@ mfxStatus VP8DecPlugin::ParseInputType(mfxBitstream *bs)
            &input_ctx_.fps_den, &input_ctx_.fps_num, &bytes_read)) {
         input_ctx_.kind = WEBM_FILE;
     } else {
-        printf("VP8: unrecognized file format, treat it as raw data\n");
+        MLOG_INFO("VP8: unrecognized file format, treat it as raw data\n");
         bytes_read = PlgGetMem32(buffer_start) + RAW_FRAME_HDR_SZ;
         sts = MFX_ERR_MORE_DATA;
     }
@@ -537,7 +538,7 @@ void VP8DecPlugin::UploadToSurface(vpx_image_t *yuv_image, mfxFrameSurface1 *sur
             v_src += yuv_image->stride[VPX_PLANE_V];
         }
     } else {
-        printf("Surface Fourcc not supported!\n");
+        MLOG_WARNING("Surface Fourcc not supported!\n");
     }
 
     surf_out->Info.CropH = yuv_image->d_h;

@@ -1,13 +1,16 @@
 /* <COPYRIGHT_TAG> */
 
-#pragma once
+#ifndef _VP8_ENCODE_PLUGIN_H_
+#define _VP8_ENCODE_PLUGIN_H_
 
 #ifdef ENABLE_VPX_CODEC
-#include "mfxvideo++.h"
-#include "mfxplugin++.h"
 #include "vpx/vpx_encoder.h"
 #include "vpx/vp8cx.h"
 #include <pthread.h>
+#include "base/logger.h"
+#include "base_allocator.h"
+#include "mfxvideo++.h"
+#include "mfxplugin++.h"
 
 /**
  * \brief Encoder configuration.
@@ -170,6 +173,7 @@ typedef struct {
 class VP8EncPlugin : public MFXGenericPlugin
 {
 public:
+	DECLARE_MLOGINSTANCE();
     VP8EncPlugin();
     void SetAllocPoint(MFXFrameAllocator *pMFXAllocator);
     virtual mfxStatus Init(mfxVideoParam *param);
@@ -232,7 +236,7 @@ protected:
     unsigned int     frame_cnt_;
     unsigned char*   frame_buf_;
     unsigned char*   swap_buf_; //local buffer for surface data read
-    
 };
 
 #endif
+#endif //_VP8_ENCODE_PLUGIN_H_

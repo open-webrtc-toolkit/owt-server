@@ -100,10 +100,11 @@ public:
 
     //show the performance data, or do something user wanted with the data
     void ShowPerformanceInfo();
+    void GetPerformanceInfo(std::string &res);
 
 protected:
 private :
-    void GetFmtTime(char *time);
+    void GetFmtTime(char *time, size_t buf_sz);
     struct timeval ttime_;
     /*codec time*/
     unsigned long frame_time_; /*codec time for one frame*/
@@ -120,4 +121,4 @@ private :
     static unsigned int cnt_bench, sum;
     static unsigned long init_enc, init_vpp, init_dec;
 };
-#endif /* _TRACE_H_*/
+#endif /* _MEASUREMENT_H_ */

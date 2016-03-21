@@ -5,8 +5,10 @@
 
 #include "media_types.h"
 #include "ring_buffer.h"
+#include "logger.h"
 
 #define FRAME_POOL_Q_SIZE 16
+#define FRAME_POOL_LOW_WATER_LEVEL (2)
 typedef int (*ElementChainFunc)(MediaBuf &buf, void *arg1, void *arg2);
 typedef int (*ElementRecycleFunc)(MediaBuf &buf, void *arg);
 
@@ -27,6 +29,7 @@ class BaseElement;
 class MediaPad
 {
 public:
+	DECLARE_MLOGINSTANCE();
     MediaPad(MediaPadDirection direction);
     virtual ~MediaPad();
 

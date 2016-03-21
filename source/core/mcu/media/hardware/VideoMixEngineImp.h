@@ -30,7 +30,7 @@ struct VppInfo {
     void* vppHandle;
 };
 
-class VideoMixEngineImp : public MsdkCoderEventCallback {
+class VideoMixEngineImp : public CodecEventCallback {
     typedef enum {
         UN_INITIALIZED = 0,
         IDLE,

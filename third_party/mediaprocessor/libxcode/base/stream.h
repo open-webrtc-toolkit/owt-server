@@ -61,6 +61,19 @@ public:
     size_t ReadBlock(void *buffer, size_t size, bool waitData = true);
 
     /**
+     *\brief Reads a block of data from the input stream Extra.
+     *\param buffer Preallocated buffer to hold the data.
+     *\param size Size in bytes.
+     *\param waitData blocks if not enough data is available until either a
+     *\packet of data is available or until a time out occurs. Setting this flag
+     *\does not guarantee that the data size read will be the data size requested.
+     *\param type Frame type.
+     *\returns Byte count actually read.
+     */
+    size_t ReadBlockEx(void *buffer, size_t size, bool waitData = true,
+                        unsigned short* type = NULL);
+
+    /**
      *\brief Writes a block of data to the output stream.
      *\param buffer Preallocated buffer that holds the data.
      *\param size Size in bytes.
@@ -72,6 +85,19 @@ public:
      */
     size_t WriteBlock(void *buffer, size_t size, bool copy = true);
 
+    /**
+     *\brief Writes a block of data to the output stream.
+     *\param buffer Preallocated buffer that holds the data.
+     *\param size Size in bytes.
+     *\param copy For memory streams only: If true the data will be copied and
+     *the input buffer will not be modified; if false then the buffer will be used as it is,
+     *and free() will be called when no longer needed, so it must be
+     *allocated with malloc() rather than new().
+     *\param type Frame type.
+     *\returns Byte count actually wrote.
+     */
+    size_t WriteBlockEx(void *buffer, size_t size, bool copy = true,
+                        unsigned short type = 0);
     /**
      *\brief returns total number of memory blocks.
      *\param dataSize optional pointer to a variable to hold total available data,
@@ -137,6 +163,7 @@ protected:
         void    *buffer;    /**<\brief buffer address.*/
         char    *indx;      /**<\brief current address.*/
         size_t  size;       /**<\brief current data size.*/
+        unsigned short frame_type; /**<\brief current frame type.*/
     } STREAM_BUFF;
 
     enum STREAM_TYPE {

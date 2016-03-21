@@ -89,6 +89,12 @@ check_node_version()
 
 install_config() {
   echo -e "\x1b[32mInitializing default configuration...\x1b[0m"
+  # install mediaproess config
+  if [[ ! -s ${WOOGEEN_HOME}/etc/.msdk_log_config.ini ]]; then
+    [[ -s /tmp/msdk_log_config.ini ]] && rm -f /tmp/msdk_log_config.ini
+    ln -sf ${WOOGEEN_HOME}/etc/.msdk_log_config.ini /tmp/msdk_log_config.ini
+  fi
+
   export DB_URL
   check_node_version && [[ -s ${ROOT}/nuve/initdb.js ]] && node ${ROOT}/nuve/initdb.js || return 1
 }

@@ -13,6 +13,7 @@
 #include "base/media_types.h"
 #include "base/media_pad.h"
 #include "base/ring_buffer.h"
+#include "base/logger.h"
 
 #ifdef FAST_COPY
 #include "base/fast_copy.h"
@@ -102,6 +103,7 @@ typedef struct {
 class AudioPostProcessing: public BaseElement
 {
 public:
+    DECLARE_MLOGINSTANCE();
     AudioPostProcessing();
     virtual ~AudioPostProcessing();
 
