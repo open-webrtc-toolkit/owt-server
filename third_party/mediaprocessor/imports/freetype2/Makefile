@@ -23,3 +23,5 @@ endif
 clean:
 	$(MAKE) -C $(DIR) distclean
 	rm -f $(DST)/libfreetype.so*
+	rm -rf $(DIR)/include/freetype2/freetype
+	rm -rf $(DIR)/include/freetype2/freetype/config

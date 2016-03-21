@@ -1,12 +1,17 @@
 /* <COPYRIGHT_TAG> */
-#pragma once
 
 #ifdef ENABLE_VPX_CODEC
-#include "mfxvideo++.h"
-#include "mfxplugin++.h"
+
+#ifndef _VP8_DECODE_PLUGIN_H_
+#define _VP8_DECODE_PLUGIN_H_
+
 #include "vpx/vpx_decoder.h"
 #include "vpx/vp8dx.h"
 #include "base/media_common.h"
+#include "base/logger.h"
+#include "base_allocator.h"
+#include "mfxvideo++.h"
+#include "mfxplugin++.h"
 
 typedef struct VP8InputCtx {
     enum VP8FILETYPE kind;
@@ -40,6 +45,7 @@ typedef struct {
 class VP8DecPlugin : public MFXGenericPlugin
 {
 public:
+	DECLARE_MLOGINSTANCE();
     VP8DecPlugin();
     void SetAllocPoint(MFXFrameAllocator *pMFXAllocator);
     virtual mfxStatus Init(mfxVideoParam *param);
@@ -98,8 +104,7 @@ protected:
     vpx_codec_ctx_t  vpx_codec_;
     bool             vpx_init_flag_;
     VP8InputCtx      input_ctx_;
-    
 };
+#endif //ifndef _VP8_DECODE_PLUGIN_H_
 #endif
-
 

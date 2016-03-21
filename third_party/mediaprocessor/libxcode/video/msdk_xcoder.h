@@ -6,27 +6,32 @@
 #include "base/media_common.h"
 #include "base/mem_pool.h"
 #include "base/stream.h"
+#include "base/logger.h"
+#include "base/base_element.h"
 #include "base/measurement.h"
-
 #if defined(LIBVA_DRM_SUPPORT) || defined(LIBVA_X11_SUPPORT)
 class CHWDevice;
 #endif
-
 enum ElementType : unsigned int;
 class MSDKCodec;
-class MsdkCoderEventCallback;
 class MFXVideoSession;
 class GeneralAllocator;
 class Dispatcher;
+class CodecEventCallback;
+
 
 typedef enum {
     CODEC_TYPE_INVALID = 0,
     CODEC_TYPE_VIDEO_FIRST,
     CODEC_TYPE_VIDEO_AVC,
     CODEC_TYPE_VIDEO_VP8,
+    CODEC_TYPE_VIDEO_JPEG,
     CODEC_TYPE_VIDEO_STRING,
     CODEC_TYPE_VIDEO_PICTURE,
+    CODEC_TYPE_VIDEO_YUV,
     CODEC_TYPE_VIDEO_LAST,
+    CODEC_TYPE_VIDEO_MPEG2,
+    CODEC_TYPE_VIDEO_HEVC,
     CODEC_TYPE_OTHER
 } CodecType;
 
@@ -57,6 +62,15 @@ typedef struct VppOptions_ {
     // The output pic/surface width/height
     unsigned short out_width;
     unsigned short out_height;
+
+    /**
+     * \brief fps of encode video.
+     * fps = out_fps_n / out_fps_d
+     * \note \note FPS Valid range 1 .. 60.<br>
+     * Default value: input's fps
+     */
+    unsigned int out_fps_n;
+    unsigned int out_fps_d;
 
     /**
      * \brief depth of the look ahead bitrate control .
@@ -219,7 +233,9 @@ typedef struct EncOptions_ {
     void *EncHandle;
 
     Measurement *measuremnt;
+
 } EncOptions;
+
 
 /**
  * \brief MsdkXcoder class.
@@ -228,13 +244,14 @@ typedef struct EncOptions_ {
 class MsdkXcoder
 {
 public:
-    MsdkXcoder(MsdkCoderEventCallback *callback = 0);
+    DECLARE_MLOGINSTANCE();
+    MsdkXcoder(CodecEventCallback *callback = NULL);
     virtual ~MsdkXcoder();
 
-    static MsdkXcoder* create(MsdkCoderEventCallback *callback = 0);
+    static MsdkXcoder* create(CodecEventCallback *callback = 0);
     static void destroy(MsdkXcoder*);
 
-    int Init(DecOptions *dec_cfg, VppOptions *vpp_cfg, EncOptions *enc_cfg);
+    int Init(DecOptions *dec_cfg, VppOptions *vpp_cfg, EncOptions *enc_cfg, CodecEventCallback *callback = NULL);
 
     int ForceKeyFrame(void *ouput_handle);
 
@@ -253,6 +270,8 @@ public:
     int SetCustomLayout(void *vppHandle, const CustomLayout *layout);
 
     int SetBackgroundColor(void *vppHandle, BgColor *bgColor);
+
+    int SetKeepRatio(void *vppHandle, bool isKeepRatio);
 
     int AttachVpp(DecOptions *dec_cfg, VppOptions *vpp_cfg, EncOptions *enc_cfg);
 
@@ -304,13 +323,14 @@ private:
     std::vector<GeneralAllocator*> m_pAllocArray;
     MFXVideoSession* main_session_;
     int dri_fd_;
-    void *va_dpy_;       /**< \brief va diaplay handle*/
     pthread_mutex_t va_mutex_;
+    void *va_dpy_;       /**< \brief va diaplay handle*/
 #if defined(LIBVA_DRM_SUPPORT) || defined(LIBVA_X11_SUPPORT)
     CHWDevice *hwdev_;
 #endif
     bool is_running_;               /**< \brief xcoder running status*/
     bool done_init_;
+    CodecEventCallback *callback_;
     Mutex mutex;
     Mutex sess_mutex;
 
@@ -331,8 +351,6 @@ private:
 
     MSDKCodec *render_;
     bool m_bRender_;
-
-    MsdkCoderEventCallback *callback_;
 };
 
 #endif /* TEE_TRANSCODER_H_ */

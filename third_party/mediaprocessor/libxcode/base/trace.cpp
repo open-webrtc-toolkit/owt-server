@@ -90,7 +90,6 @@ void Trace::operator()(TraceBase *obj, const char *fmt, ...)
     va_list args;
     va_start(args, fmt);
 #ifdef DEBUG
-
     if (snprintf(temp, MAX_DESC_LEN - 1, "%s,%d: %s", file_, line_, fmt) < 0)
 #else
     if (snprintf(temp, MAX_DESC_LEN - 1, "%s", fmt) < 0)

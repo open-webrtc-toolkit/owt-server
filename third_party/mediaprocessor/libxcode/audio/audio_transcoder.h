@@ -7,9 +7,11 @@
 #include "base/measurement.h"
 #include "base/media_common.h"
 #include "base/mem_pool.h"
+#include "base/logger.h"
 #include "base/stream.h"
 #include "audio_params.h"
 #include "wave_header.h"
+
 
 class BaseElement;
 
@@ -20,6 +22,7 @@ class BaseElement;
 class AudioTranscoder
 {
 public:
+    DECLARE_MLOGINSTANCE();
     AudioTranscoder();
     virtual ~AudioTranscoder();
 

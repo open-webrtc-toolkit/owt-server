@@ -68,5 +68,6 @@ pack_scripts
 ${PACK_MODULE} && install_module
 pack_node
 pack_libs
+pack_mediaprocessor
 pack_license
 ${PACK_ARCH} && archive

@@ -7,9 +7,12 @@
 #include "base/trace.h"
 
 #ifdef ENABLE_AUDIO_CODEC
-#include "pcm_tablegen.h"
+extern "C" {
+#include "libavcodec/pcm_tablegen.h"
+}
 #endif
 
+DEFINE_MLOGINSTANCE_CLASS(AudioPCMWriter, "AudioPCMWriter");
 //#define DUMP_AUDIO_PCM_OUTPUT    // Customized option for debugging in WebRTC scenario
 AudioPCMWriter::AudioPCMWriter(Stream* st, unsigned char* name) :
     stream_writer_(st),
@@ -69,7 +72,7 @@ bool AudioPCMWriter::Init(void* cfg, ElementMode element_mode)
 #ifdef ENABLE_AUDIO_CODEC
     if (enc_type_ == STREAM_TYPE_AUDIO_ALAW ||
         enc_type_ == STREAM_TYPE_AUDIO_MULAW) {
-        printf("AudioPCMWriter(%p): Init G.711 Table, CodecType = %d\n", this, enc_type_);
+        MLOG_INFO("AudioPCMWriter(%p): Init G.711 Table, CodecType = %d\n", this, enc_type_);
         pcm_alaw_tableinit();
         pcm_ulaw_tableinit();
     }
@@ -91,7 +94,7 @@ bool AudioPCMWriter::Init(void* cfg, ElementMode element_mode)
             dump_output_ = NULL;
         }
     }
-    printf("[%p]: Dump output pcm file to: %s\n", this, file_name);
+    MLOG_DEBUG("[%p]: Dump output pcm file to: %s\n", this, file_name);
 #endif
     return true;
 }
@@ -134,14 +137,14 @@ int AudioPCMWriter::PCMWrite(AudioPayload* payload_in)
 {
     int data_offset = wav_header_.Interpret(payload_in->payload, &wav_info_, payload_in->payload_length);
     if (data_offset <= 0) {
-        printf("AudioPCMWriter[%p]: Invalid or unsupported format! data_offset = %d, payload_length = %d\n",
+        MLOG_ERROR("AudioPCMWriter[%p]: Invalid or unsupported format! data_offset = %d, payload_length = %d\n",
                this, data_offset, payload_in->payload_length);
         return -1;
     }
 
 #ifdef ENABLE_AUDIO_CODEC
     if (wav_info_.resolution != 16 && enc_type_ != STREAM_TYPE_AUDIO_PCM) {
-        printf("G.711 Encoder doesn't support %dbit input.\n", wav_info_.resolution);
+        MLOG_ERROR("G.711 Encoder doesn't support %dbit input.\n", wav_info_.resolution);
         return -1;
     }
 #endif
@@ -151,7 +154,7 @@ int AudioPCMWriter::PCMWrite(AudioPayload* payload_in)
         frameSize = payload_in->payload_length - data_offset;
     }
     else {
-        printf("AudioPCMWriter[%p]: input payload size(%d) is lower than data_offset(%d)\n",
+        MLOG_WARNING("AudioPCMWriter[%p]: input payload size(%d) is lower than data_offset(%d)\n",
                this,
                payload_in->payload_length,
                data_offset);
@@ -159,7 +162,7 @@ int AudioPCMWriter::PCMWrite(AudioPayload* payload_in)
     }
 
     if (payload_in->isFirstPacket) {
-        printf("AudioPCMWriter[%p]: channel:sample_rate:bit_depth:channel_mask is %d:%d:%d:%d\n",
+        MLOG_INFO("AudioPCMWriter[%p]: channel:sample_rate:bit_depth:channel_mask is %d:%d:%d:%d\n",
                this,
                wav_info_.channels_number,
                wav_info_.sample_rate,

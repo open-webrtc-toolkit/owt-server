@@ -8,6 +8,7 @@
 #include "mfxvideo++.h"
 #include "mfxplugin++.h"
 #include "base/media_common.h"
+#include "base/logger.h"
 
 #include <ft2build.h>
 #include FT_FREETYPE_H
@@ -29,6 +30,7 @@ typedef struct {
 class StringDecPlugin : public MFXGenericPlugin
 {
 public:
+	DECLARE_MLOGINSTANCE();
     StringDecPlugin();
     void SetAllocPoint(MFXFrameAllocator *pMFXAllocator);
     virtual mfxStatus Init(mfxVideoParam *param);

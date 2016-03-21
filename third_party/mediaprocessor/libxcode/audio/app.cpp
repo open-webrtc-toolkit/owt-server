@@ -21,6 +21,7 @@
 ? ( (a) + (b) + ( ((a) * (b)) / ((1<<(nScale))-1 ) ) ) \
 : ( (a) + (b) - ( ((a) * (b)) / ((1<<(nScale))-1 ) ) )
 
+DEFINE_MLOGINSTANCE_CLASS(AudioPostProcessing, "AudioPostProcessing");
 static int ComparePowerSpect( const void *a, const void *b)
 {
     return (*(VADSortContext *)b).audio_power_spect - (*(VADSortContext *)a).audio_power_spect;
@@ -72,7 +73,7 @@ bool AudioPostProcessing::Destroy()
     std::list<APPMediaInput *>::iterator it_mediainput;
     APPMediaInput *input = NULL;
     if (pthread_mutex_destroy(&mutex_)) {
-        printf("Error in pthread_mutex_destroy.\n");
+        MLOG_ERROR("Error in pthread_mutex_destroy.\n");
     }
 
     if (buf_silence_) {
@@ -158,7 +159,7 @@ int AudioPostProcessing::FrontEndProcessRun(APPMediaInput *mediainput, AudioPayl
 
     if (!(mediainput->front_end_processor)) {
         // Init speex front-end process status
-        printf("APP[%p]: %s[%d], frame_size_in = %d, sample_rate_in = %d\n",
+        MLOG_INFO("APP[%p]: %s[%d], frame_size_in = %d, sample_rate_in = %d\n",
                this,
                __FUNCTION__,
                input_id,
@@ -171,7 +172,7 @@ int AudioPostProcessing::FrontEndProcessRun(APPMediaInput *mediainput, AudioPayl
             int noise_suppress_value = app_parameter_.front_end_denoise_level;
 
             if (noise_suppress_value > 100) {
-                printf("APP Warning: front_end_denoise_level > 100!");
+                MLOG_WARNING(" front_end_denoise_level > 100!");
             }
 
             speex_preprocess_ctl(mediainput->front_end_processor,
@@ -229,7 +230,7 @@ int AudioPostProcessing::FrontEndProcessRun(APPMediaInput *mediainput, AudioPayl
                                      SPEEX_PREPROCESS_GET_PSD_SIZE,
                                      &(psd_size));
                 if (mediainput->buffers->psd_buf_size < psd_size) {
-                    printf("APP[%p]: PsdSize[%d](%d) < psd_size(%d)\n",
+                    MLOG_INFO("APP[%p]: PsdSize[%d](%d) < psd_size(%d)\n",
                            this, input_id, mediainput->buffers->psd_buf_size, psd_size);
                     if (mediainput->buffers->buf_psd) {
                         free(mediainput->buffers->buf_psd);
@@ -241,7 +242,7 @@ int AudioPostProcessing::FrontEndProcessRun(APPMediaInput *mediainput, AudioPayl
                     mediainput->buffers->buf_psd = (int *)malloc(mediainput->buffers->psd_buf_size * sizeof(int));
                 }
                 if (!(mediainput->buffers->buf_psd)) {
-                    printf("APP[%p]: ERROR: Fail to malloc psd_array\n", this);
+                    MLOG_ERROR("APP[%p]: Fail to malloc psd_array\n", this);
                     return ret;
                 }
                 int *psd_buf = mediainput->buffers->buf_psd;
@@ -292,7 +293,7 @@ int AudioPostProcessing::BackEndProcessRun(APPMediaInput *mediainput, AudioPaylo
 
     if (!(mediainput->back_end_processor)) {
         // Init speex back-end process status
-        printf("APP[%p]: %s[%d]: frame_size_mix = %d, sample_rate_mix = %d\n",
+        MLOG_INFO("APP[%p]: %s[%d]: frame_size_mix = %d, sample_rate_mix = %d\n",
                this,
                __FUNCTION__,
                ctx->audio_input_id,
@@ -302,13 +303,13 @@ int AudioPostProcessing::BackEndProcessRun(APPMediaInput *mediainput, AudioPaylo
         mediainput->back_end_processor = speex_preprocess_state_init(ctx->audio_frame_size_mix >> 1,
                                                                      ctx->audio_sample_rate_mix);
         if (NULL == mediainput->back_end_processor) {
-            printf("APP [%p]: Back-end processor init failed!\n", this);
+            MLOG_ERROR("APP [%p]: Back-end processor init failed!\n", this);
             return -1;
         }
         if (app_parameter_.back_end_denoise_enable) {
             int noise_suppress_value = app_parameter_.back_end_denoise_level;
             if (noise_suppress_value > 100) {
-                printf("APP Warning: back_end_denoise_level > 100!");
+                MLOG_WARNING("APP: back_end_denoise_level > 100!");
             }
             speex_preprocess_ctl(mediainput->back_end_processor,
                                  SPEEX_PREPROCESS_SET_DENOISE,
@@ -324,10 +325,10 @@ int AudioPostProcessing::BackEndProcessRun(APPMediaInput *mediainput, AudioPaylo
             mediainput->echo_state = speex_echo_state_init(ctx->audio_frame_size_mix >> 1,
                                                            echo_tail);
             if (NULL == mediainput->echo_state) {
-                printf("APP [%p]: Failed to initialize echo state!\n", this);
+                MLOG_ERROR("APP [%p]: Failed to initialize echo state!\n", this);
                 return -2;
             } else {
-                printf("APP [%p]: Echo state initialized successfully. tail = %d\n", this, echo_tail);
+                MLOG_INFO("APP [%p]: Echo state initialized successfully. tail = %d\n", this, echo_tail);
             }
             speex_echo_ctl(mediainput->echo_state,
                            SPEEX_ECHO_SET_SAMPLING_RATE,
@@ -375,7 +376,7 @@ int AudioPostProcessing::FrontEndResample(APPMediaInput *mediainput, AudioPayloa
     }
 
     if (!(mediainput->front_end_resampler)) {
-        printf("APP: %s[%d]: sampe_rate_in(%d) -> front_end_sample_rate(%d), frame_size_in = %d\n",
+        MLOG_INFO("APP: %s[%d]: sampe_rate_in(%d) -> front_end_sample_rate(%d), frame_size_in = %d\n",
                __FUNCTION__,
                ctx->audio_input_id,
                ctx->audio_sample_rate_in,
@@ -390,7 +391,7 @@ int AudioPostProcessing::FrontEndResample(APPMediaInput *mediainput, AudioPayloa
                                                                &ret);
 
         if (!(mediainput->front_end_resampler)) {
-            printf("APP: [Error]: Resampler Init failed ret = %d!\n", ret);
+            MLOG_ERROR("APP: Resampler Init failed ret = %d!\n", ret);
         }
     }
 
@@ -404,14 +405,14 @@ int AudioPostProcessing::FrontEndResample(APPMediaInput *mediainput, AudioPayloa
 
         int size = (size_to_write << 1) + ctx->wav_data_offset;
         if (size <= 0) {
-            printf("APP: [Error]: Resampler size = %d\n", size);
+            MLOG_ERROR("APP:  Resampler size = %d\n", size);
             return -1;
         }
 
         if (!(mediainput->buffers->buf_front_resample)) {
             mediainput->buffers->buf_front_resample = (short *)malloc(sizeof(short) * size);
             if (!(mediainput->buffers->buf_front_resample)) {
-                printf("APP: [Error]: Failed to allocate memory! size_to_write = %d\n", size_to_write);
+                MLOG_ERROR("APP: Failed to allocate memory! size_to_write = %d\n", size_to_write);
                 return -1;
             }
         }
@@ -482,8 +483,7 @@ int AudioPostProcessing::BackEndResample(APPMediaInput *mediainput, AudioPayload
 
     if ((ctx->audio_sample_rate_mix <= 0) ||
         (app_parameter_.back_end_sample_rate <= 0)) {
-        printf("APP: %s[%d], sample_rate_mix(%d) -> back_end_sample_rate(%d), return\n",
-                       __FUNCTION__,
+        MLOG_INFO("APP: [%d], sample_rate_mix(%d) -> back_end_sample_rate(%d), return\n",
                        ctx->audio_input_id,
                        ctx->audio_sample_rate_mix,
                        app_parameter_.back_end_sample_rate);
@@ -491,8 +491,7 @@ int AudioPostProcessing::BackEndResample(APPMediaInput *mediainput, AudioPayload
     }
 
     if (!(mediainput->back_end_resampler)) {
-        printf("APP: %s[%d], sample_rate_mix(%d) -> back_end_sample_rate(%d), frame_size_mix = %d\n",
-               __FUNCTION__,
+        MLOG_INFO("APP: [%d], sample_rate_mix(%d) -> back_end_sample_rate(%d), frame_size_mix = %d\n",
                ctx->audio_input_id,
                ctx->audio_sample_rate_mix,
                app_parameter_.back_end_sample_rate,
@@ -506,7 +505,7 @@ int AudioPostProcessing::BackEndResample(APPMediaInput *mediainput, AudioPayload
                                                               &ret);
 
         if (!(mediainput->back_end_resampler)) {
-            printf("APP: [Error]: Resampler Init failed ret = %d!\n", ret);
+            MLOG_ERROR("APP:  Resampler Init failed ret = %d!\n", ret);
         }
     }
 
@@ -520,18 +519,18 @@ int AudioPostProcessing::BackEndResample(APPMediaInput *mediainput, AudioPayload
 
         int size = (size_to_write << 1) + ctx->wav_data_offset;
         if (size <= 0) {
-            printf("APP: [Error]: Resampler size = %d\n", size);
+            MLOG_ERROR("APP:  Resampler size = %d\n", size);
             return -1;
         }
 
         if (!(mediainput->buffers->buf_back_resample)) {
-            printf("APP: Allocate memory for %s, size = %d, read_size_16b = %d\n",
+            MLOG_INFO("APP: Allocate memory for %s, size = %d, read_size_16b = %d\n",
                    __FUNCTION__,
                    size,
                    size_to_read);
             mediainput->buffers->buf_back_resample = (short *)malloc(sizeof(short) * size);
             if (!(mediainput->buffers->buf_back_resample)) {
-                printf("APP: [Error]: Failed to allocate memory! size_write = %d\n", size_to_write);
+                MLOG_ERROR("APP:  Failed to allocate memory! size_write = %d\n", size_to_write);
                 return -1;
             }
         }
@@ -602,20 +601,20 @@ int AudioPostProcessing::ChannelNumberConvert(APPMediaInput *mediainput, AudioPa
     } else if (ctx->audio_channel_number_in == 2) { //stereo to mono
         write_size_16b = read_size_16b >> 1;
     } else {
-        printf("APP: Error: Only support conversion between mono and stereo!");
+        MLOG_ERROR("APP: Only support conversion between mono and stereo!");
         return 0;
     }
 
     int convert_buf_size = (write_size_16b << 1) + ctx->wav_data_offset;
     // Allocate buffer for channel number conversion
     if (!(mediainput->buffers->buf_channel_convert)) {
-        printf("APP: Allocate memory for %s[%d], conv_buf_size16b = %d, read_size_16b = %d\n",
+        MLOG_INFO("APP: Allocate memory for %s[%d], conv_buf_size16b = %d, read_size_16b = %d\n",
                __FUNCTION__,
                ctx->audio_input_id,
                convert_buf_size, read_size_16b);
         mediainput->buffers->buf_channel_convert = (short *)malloc(sizeof(short) * convert_buf_size);
         if (!(mediainput->buffers->buf_channel_convert)) {
-            printf("APP: [Error]: Failed to allocate memory! write_size_16b = %d\n", write_size_16b);
+            MLOG_ERROR("APP:  Failed to allocate memory! write_size_16b = %d\n", write_size_16b);
             return -1;
         }
     }
@@ -683,7 +682,7 @@ int AudioPostProcessing::FrontEndBitDepthConvert(APPMediaInput *mediainput, Audi
     } else if (ctx->audio_bit_depth_in == 16) {   // 16bit to 8bit
         write_size_16b = read_size_16b >> 1;
     } else {
-        printf("APP: Error: Only support conversion between 8bit and 16bit! audio_bit_depth_in = %d\n",
+        MLOG_ERROR("APP: Only support conversion between 8bit and 16bit! audio_bit_depth_in = %d\n",
                ctx->audio_bit_depth_in);
         return 0;
     }
@@ -691,13 +690,13 @@ int AudioPostProcessing::FrontEndBitDepthConvert(APPMediaInput *mediainput, Audi
 
     // Allocate buffer for bit depth conversion
     if (!(mediainput->buffers->buf_bit_depth_conv_front)) {
-        printf("APP: Allocate memory for %s, convert_buf_size = %d, read_size_16b = %d\n",
+        MLOG_INFO("APP: Allocate memory for %s, convert_buf_size = %d, read_size_16b = %d\n",
                __FUNCTION__,
                convert_buf_size,
                read_size_16b);
         mediainput->buffers->buf_bit_depth_conv_front = (short *)malloc(sizeof(short) * convert_buf_size);
         if (!(mediainput->buffers->buf_bit_depth_conv_front)) {
-            printf("APP: [Error]: Failed to allocate memory! write_size_16b = %d\n", write_size_16b);
+            MLOG_ERROR("APP: Failed to allocate memory! write_size_16b = %d\n", write_size_16b);
             return -1;
         }
     }
@@ -759,21 +758,21 @@ int AudioPostProcessing::BackEndBitDepthConvert(APPMediaInput *mediainput, Audio
     } else if (ctx->audio_bit_depth_mix == 16) {   // 16bit to 8bit
         write_size_16b = read_size_16b >> 1;
     } else {
-        printf("APP(%s):Error: Only support conversion between 8bit and 16bit!\n", __FUNCTION__);
+        MLOG_ERROR("APP: Only support conversion between 8bit and 16bit!\n");
         return 0;
     }
     int convert_buf_size = (write_size_16b << 1) + ctx->wav_data_offset;
 
     // Allocate buffer for bit depth conversion
     if (!(mediainput->buffers->buf_bit_depth_conv_back)) {
-        printf("APP: Allocate memory for %s[%d], convert_buf_size = %d, read_size_16b = %d\n",
+        MLOG_INFO("APP: Allocate memory for %s[%d], convert_buf_size = %d, read_size_16b = %d\n",
                __FUNCTION__,
                ctx->audio_input_id,
                convert_buf_size,
                read_size_16b);
         mediainput->buffers->buf_bit_depth_conv_back = (short *)malloc(sizeof(short) * convert_buf_size);
         if (!(mediainput->buffers->buf_bit_depth_conv_back)) {
-            printf("APP: [Error]: Failed to allocate memory! write_size_16b = %d\n", write_size_16b);
+            MLOG_ERROR("APP: Failed to allocate memory! write_size_16b = %d\n", write_size_16b);
             return -1;
         }
     }
@@ -821,7 +820,7 @@ void AudioPostProcessing::VADSort()
 void* AudioPostProcessing::GetActiveInputHandle()
 {
     if (!(app_parameter_.vad_enable)) {
-        printf("APP[%p]: VAD option is not enabled!\n", this);
+        MLOG_ERROR("APP[%p]: VAD option is not enabled!\n", this);
         return NULL;
     }
 
@@ -831,11 +830,11 @@ void* AudioPostProcessing::GetActiveInputHandle()
 
     mediainput = vad_sort_ctx_[0].media_input;
     if (!mediainput) {
-        printf("APP: %s, mediainput (%p), return NULL!\n", __FUNCTION__, mediainput);
+        MLOG_ERROR("APP:  mediainput (%p), return NULL!\n", mediainput);
         return NULL;
     }
     element_dec = mediainput->pad->get_peer_pad()->get_parent();
-    printf("APP: Active dec is %p, input_id = %d\n",
+    MLOG_INFO("APP: Active dec is %p, input_id = %d\n",
            element_dec, vad_sort_ctx_[0].audio_input_id);
 
     return element_dec;
@@ -844,7 +843,7 @@ void* AudioPostProcessing::GetActiveInputHandle()
 int AudioPostProcessing::GetInputActiveStatus(void *input_handle)
 {
     if (!(app_parameter_.vad_enable)) {
-        printf("APP[%p]: VAD option is not enabled!\n", this);
+        MLOG_ERROR("APP[%p]: VAD option is not enabled!\n", this);
         return -1;
     }
 
@@ -957,7 +956,7 @@ bool AudioPostProcessing::ProcessInput()
     num_running_input_ = 0;
     // Get every buffer from every input and prepare the input parameters.
     if (pthread_mutex_lock(&mutex_)) {
-        printf("Error in pthread_mutex_lock.\n");
+        MLOG_ERROR("Error in pthread_mutex_lock.\n");
         assert(0);
     }
 
@@ -989,7 +988,7 @@ bool AudioPostProcessing::ProcessInput()
                     audio_payload.payload, mediainput, pad, num_running_input_);
 
         if (NULL == audio_payload.payload) {
-            printf("APP: Audio payload is NULL. Input %d get EOF!\n", input_id);
+            MLOG_INFO("APP: Audio payload is NULL. Input %d get EOF!\n", input_id);
             mediainput->status = STOP;
         } else {
             eof = false;
@@ -1003,8 +1002,7 @@ bool AudioPostProcessing::ProcessInput()
                                                          audio_payload.payload_length);
             if ((audio_payload.payload_length <= mediainput->input_ctx->wav_data_offset) ||
                 (mediainput->input_ctx->wav_data_offset <= 0)) {
-                printf("APP: %s: input payload size (%d) is lower than dataOffset[%d](%d)\n",
-                       __FUNCTION__,
+                MLOG_WARNING("APP: input payload size (%d) is lower than dataOffset[%d](%d)\n",
                        audio_payload.payload_length,
                        input_id,
                        mediainput->input_ctx->wav_data_offset);
@@ -1019,7 +1017,7 @@ bool AudioPostProcessing::ProcessInput()
 
     if (num_running_input_ == 0 || ret != 0) {
         if (pthread_mutex_unlock(&mutex_) != 0) {
-            printf("APP: pthread_mutex_unlock error!\n");
+            MLOG_ERROR("APP: pthread_mutex_unlock error!\n");
         }
         return eof;
     }
@@ -1028,10 +1026,10 @@ bool AudioPostProcessing::ProcessInput()
         // Prepare vad_sort_ctx_ for VAD feature
         vad_sort_ctx_ = new VADSortContext[num_input_];
         if (!vad_sort_ctx_) {
-            printf("APP[%p]: Fail to allocate vad_sort_ctx_!\n", this);
+            MLOG_ERROR("APP[%p]: Fail to allocate vad_sort_ctx_!\n", this);
 
             if (pthread_mutex_unlock(&mutex_) != 0) {
-                printf("APP: pthread_mutex_unlock error!\n");
+                MLOG_ERROR("APP: pthread_mutex_unlock error!\n");
             }
 
             return true;
@@ -1045,7 +1043,7 @@ bool AudioPostProcessing::ProcessInput()
     ComposeAudioFrame();
 
     if (pthread_mutex_unlock(&mutex_) != 0) {
-        printf("APP: pthread_mutex_unlock error!\n");
+        MLOG_ERROR("APP: pthread_mutex_unlock error!\n");
     }
     return false;
 }
@@ -1062,7 +1060,7 @@ int AudioPostProcessing::ComposeAudioFrame()
     if (!out_buf_) {
         out_buf_ = new MediaBuf[num_input_];
         if (!out_buf_) {
-            printf("APP[%p]: Error: Fail to allocate out_buf_\n", this);
+            MLOG_ERROR("APP[%p]: Fail to allocate out_buf_\n", this);
             return -1;
         }
     }
@@ -1112,7 +1110,7 @@ int AudioPostProcessing::ComposeAudioFrame()
         }
 
         if (vad_sort_ctx_[0].audio_speech_prob > VAD_PROB_START) {
-            printf("APP: Input %d is active.\n", vad_sort_ctx_[0].audio_input_id);
+            MLOG_DEBUG("APP: Input %d is active.\n", vad_sort_ctx_[0].audio_input_id);
             APP_TRACE_DEBUG("APP: Speech Probability is %d\n", vad_sort_ctx_[0].audio_speech_prob);
         }
     }
@@ -1166,7 +1164,7 @@ int AudioPostProcessing::ComposeAudioFrame()
             char file_name[FILENAME_MAX] = {0};
             sprintf(file_name, "dump_app_out%d_%p.wav", i, this);
             mediainput->dump_file = fopen(file_name, "wb+");
-            printf("APP[%p]: Dump APP output to %s, file_dump_app[%d] = %p\n",
+            MLOG_INFO("APP[%p]: Dump APP output to %s, file_dump_app[%d] = %p\n",
                    this,
                    file_name,
                    i,
@@ -1248,7 +1246,7 @@ int AudioPostProcessing::PrepareParameter(APPMediaInput *mediainput, MediaBuf &b
             if (!app_parameter_.front_end_resample_enable) {
                 app_parameter_.front_end_resample_enable = true;
             }
-            printf("APP: [%d]: Enable front-end re-sample to support inputs with different sample rate!\n",\
+            MLOG_INFO("APP: [%d]: Enable front-end re-sample to support inputs with different sample rate!\n",\
                    input_id);
         }
         ctx->audio_sample_rate_mix = app_parameter_.front_end_sample_rate;
@@ -1261,7 +1259,7 @@ int AudioPostProcessing::PrepareParameter(APPMediaInput *mediainput, MediaBuf &b
             if (!app_parameter_.channel_number_convert_enable) {
                 app_parameter_.channel_number_convert_enable = true;
             }
-            printf("APP: [%d]: Enable channel num conversion to support inputs with different channel num!\n",
+            MLOG_INFO("APP: [%d]: Enable channel num conversion to support inputs with different channel num!\n",
                    input_id);
         }
         ctx->audio_channel_number = app_parameter_.channel_number;
@@ -1341,7 +1339,7 @@ int AudioPostProcessing::AudioMix(APPMediaInput *mediainput, MediaBuf &media_buf
     // the buffer size and re-allocate the buffer.
     if (mediainput->buffers->mix_buf_size < mediainput_m->input_ctx->audio_payload_length) {
         if (mediainput->buffers->buf_mix) {
-            printf("APP: Warning: mixer buffer size(%d) is smaller than payload length(%d)!\n",
+            MLOG_WARNING("APP: mixer buffer size(%d) is smaller than payload length(%d)!\n",
                    mediainput->buffers->mix_buf_size,
                    mediainput_m->input_ctx->audio_payload_length);
             free(mediainput->buffers->buf_mix);
@@ -1355,12 +1353,12 @@ int AudioPostProcessing::AudioMix(APPMediaInput *mediainput, MediaBuf &media_buf
             mediainput->buffers->buf_mix = (short *)malloc(sizeof(short) *
                                            (mediainput->buffers->mix_buf_size >> 1));
             if (!(mediainput->buffers->buf_mix)) {
-                printf("APP: [Error]: Failed to allocate memory! size = %d\n",
+                MLOG_ERROR("APP: Failed to allocate memory! size = %d\n",
                        mediainput->buffers->mix_buf_size >> 1);
                 return -2;
             }
         } else {
-            printf("APP: Invalid size = %d\n", mediainput->buffers->mix_buf_size >> 1);
+            MLOG_ERROR("APP: Invalid size = %d\n", mediainput->buffers->mix_buf_size >> 1);
             return -2;
         }
     }
@@ -1461,21 +1459,21 @@ void AudioPostProcessing::NewPadAdded(MediaPad *pad)
 
         mediainput->check_ctx = (CheckContext *)malloc(sizeof(CheckContext));
         if (!(mediainput->check_ctx)) {
-            printf("ERROR: fail to malloc CheckContext\n");
+            MLOG_ERROR(" fail to malloc CheckContext\n");
         } else {
             memset(mediainput->check_ctx, 0, sizeof(CheckContext));
         }
 
         mediainput->input_ctx = (APPInputContext *)malloc(sizeof(APPInputContext));
         if (!(mediainput->input_ctx)) {
-            printf("ERROR: fail to malloc APPInputContext\n");
+            MLOG_ERROR(" fail to malloc APPInputContext\n");
         } else {
             memset(mediainput->input_ctx, 0, sizeof(APPInputContext));
         }
 
         mediainput->buffers = (APPInputBuffers *)malloc(sizeof(APPInputBuffers));
         if (!(mediainput->buffers)) {
-            printf("ERROR: fail to malloc APPInputBuffers\n");
+            MLOG_ERROR(" fail to malloc APPInputBuffers\n");
         } else {
             memset(mediainput->buffers, 0, sizeof(APPInputBuffers));
         }
@@ -1532,7 +1530,7 @@ int AudioPostProcessing::SpeechCheck(CheckContext *ctx, MediaBuf &buffer)
     audio_payload.isFirstPacket = buffer.isFirstPacket;
 
     if (!ctx) {
-        printf("APP:[%s] Invalid input param\n", __FUNCTION__);
+        MLOG_ERROR("APP:Invalid input param\n");
         return ret;
     }
 
@@ -1542,8 +1540,8 @@ int AudioPostProcessing::SpeechCheck(CheckContext *ctx, MediaBuf &buffer)
                                                          &(ctx->wav_info),
                                                          audio_payload.payload_length);
             if (audio_payload.payload_length <= ctx->data_offset || ctx->data_offset <= 0) {
-                printf("APP:[%s] Input payload size (%d) is lower than dataOffset:%d\n",
-                       __FUNCTION__, audio_payload.payload_length, ctx->data_offset);
+                MLOG_WARNING("APP: Input payload size (%d) is lower than dataOffset:%d\n",
+                        audio_payload.payload_length, ctx->data_offset);
                 return ret;
             } else {
                 ctx->frame_size = audio_payload.payload_length - ctx->data_offset;
@@ -1551,8 +1549,8 @@ int AudioPostProcessing::SpeechCheck(CheckContext *ctx, MediaBuf &buffer)
                 int vad = 1;
                 ctx->processor_state = speex_preprocess_state_init(ctx->frame_size >> 1,
                                                                    ctx->wav_info.sample_rate);
-                printf("APP:[%s] frame_size = %d, sample rate = %d\n",
-                       __FUNCTION__, ctx->frame_size, ctx->wav_info.sample_rate);
+                MLOG_INFO("APP: frame_size = %d, sample rate = %d\n",
+                        ctx->frame_size, ctx->wav_info.sample_rate);
                 speex_preprocess_ctl(ctx->processor_state,
                                      SPEEX_PREPROCESS_SET_VAD,
                                      &vad);
@@ -1565,7 +1563,7 @@ int AudioPostProcessing::SpeechCheck(CheckContext *ctx, MediaBuf &buffer)
                                      &vad_prob_continue);
             }
         } else {
-            printf("APP: [%s] input payload NULL.\n", __FUNCTION__);
+            MLOG_ERROR("APP:  input payload NULL.\n");
             return ret;
         }
     }
@@ -1716,15 +1714,15 @@ int AudioPostProcessing::StreamingModeHandleProcess()
                 // padding silence data for network jitter
                 mediainput = *(media_input_list_.begin());
                 if (mediainput->input_ctx->audio_frame_size_out != 0 && input_num != 0) {
-                    printf("[%p] APP underflow %d , empty = %d\n", this, underflow, empty);
+                    MLOG_INFO("[%p] APP underflow %d , empty = %d\n", this, underflow, empty);
 #ifdef PADDING_SILENCE_FRAME    //Don't enable this option for current status
                     // Build the silence payload
                     if (!buf_silence_) {
-                        printf("[%p] APP building silence packet\n", this);
+                        MLOG_INFO("[%p] APP building silence packet\n", this);
                         buf_silence_ = (unsigned char *)malloc(sizeof(unsigned char) *
                                          mediainput->input_ctx->audio_frame_size_out);
                         if (!buf_silence_) {
-                            printf("APP: [Error]: Failed to allocate memory! size = %d\n",
+                            MLOG_ERROR("APP: [Error]: Failed to allocate memory! size = %d\n",
                                     mediainput->input_ctx->audio_frame_size_out);
                             ReleaseSinkMutex();
                             continue;
@@ -1773,7 +1771,7 @@ int AudioPostProcessing::StreamingModeHandleProcess()
                 if (pad->GetBufQueueSize() == BUF_DEPTH_OVER) {
                     pad->GetBufData(buffer);
                     pad->ReturnBufToPeerPad(buffer);
-                    printf("[%p]****Pad [%p] cache buffer overflow\n", this, pad);
+                    MLOG_INFO("[%p]****Pad [%p] cache buffer overflow\n", this, pad);
 #ifdef AUDIO_SPEECH_DETECTION
                 } else if (pad->GetBufQueueSize() >= BUF_DEPTH_HIGH &&
                            pad->GetBufQueueSize() < BUF_DEPTH_OVER) {
@@ -1781,7 +1779,7 @@ int AudioPostProcessing::StreamingModeHandleProcess()
                     if (!(SpeechCheck(mediainput->check_ctx, buffer))) { //non-speech
                         pad->GetBufData(buffer);
                         pad->ReturnBufToPeerPad(buffer);
-                        printf("[%p]****Pad [%p] drop non-speech frame\n", this, pad);
+                        MLOG_INFO("[%p]****Pad [%p] drop non-speech frame\n", this, pad);
                     }
 #endif
                 }
