@@ -173,9 +173,9 @@ namespace erizo {
 }
 
   NiceConnection::~NiceConnection() {
-    ELOG_DEBUG("NiceConnection Destructor");
+    ELOG_INFO("NiceConnection Destructor");
     this->close();
-    ELOG_DEBUG("NiceConnection Destructor END");
+    ELOG_INFO("NiceConnection Destructor END");
   }
   
   packetPtr NiceConnection::getPacket(){
