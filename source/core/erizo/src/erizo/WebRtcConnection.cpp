@@ -60,9 +60,13 @@ namespace erizo {
 
   WebRtcConnection::~WebRtcConnection() {
     ELOG_INFO("WebRtcConnection Destructor");
-    sending_ = false;
-    cond_.notify_one();
+    {
+      boost::lock_guard<boost::mutex> lock(receiveMediaMutex_);
+      sending_ = false;
+      cond_.notify_one();
+    }
     send_Thread_.join();
+
     globalState_ = CONN_FINISHED;
     if (connEventListener_ != NULL){
       // Prompt this event notification because we want the listener
@@ -79,6 +83,7 @@ namespace erizo {
     videoSink_ = NULL;
     audioSink_ = NULL;
     fbSink_ = NULL;
+    ELOG_INFO("WebRtcConnection Destructed");
   }
 
   bool WebRtcConnection::init() {
@@ -647,7 +652,7 @@ namespace erizo {
     if (comp == -1){
       sending_ = false;
       std::queue<dataPacket> empty;
-      boost::mutex::scoped_lock lock(receiveMediaMutex_);
+      boost::lock_guard<boost::mutex> lock(receiveMediaMutex_);
       std::swap(sendQueue_, empty);
       dataPacket p_;
       p_.comp = -1;
@@ -729,10 +734,10 @@ namespace erizo {
           {
               boost::unique_lock<boost::mutex> lock(receiveMediaMutex_);
               while (sendQueue_.size() == 0) {
-                  cond_.wait(lock);
                   if (!sending_) {
                       return;
                   }
+                  cond_.wait(lock);
               }
               if (sendQueue_.front().comp ==-1) {
                   sending_ = false;

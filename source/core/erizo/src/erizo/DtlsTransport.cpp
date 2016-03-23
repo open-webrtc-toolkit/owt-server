@@ -95,18 +95,18 @@ DtlsTransport::DtlsTransport(MediaType med, const std::string &transport_name, b
 }
 
 DtlsTransport::~DtlsTransport() {
-  ELOG_DEBUG("DtlsTransport destructor");
+  ELOG_INFO("DtlsTransport destructor");
   running_ = false;
   nice_->close();
 
   ELOG_DEBUG("Join thread getNice");
   getNice_Thread_.join();
-  ELOG_DEBUG("DTLSTransport destructor END");
 
   if (dtlsRtp != NULL)
     dtlsRtp->stop();
   if (dtlsRtcp != NULL)
     dtlsRtcp->stop();
+  ELOG_INFO("DTLSTransport destructor END");
 }
 
 void DtlsTransport::start() {
