@@ -57,7 +57,7 @@ NodeEventRegistry::NodeEventRegistry(Isolate* isolate, const Local<Function>& f)
 NodeEventRegistry::~NodeEventRegistry()
 {
     m_store.Reset();
-    if (m_uvHandle)
+    if (m_uvHandle && !uv_is_closing(reinterpret_cast<uv_handle_t*>(m_uvHandle)))
         uv_close(reinterpret_cast<uv_handle_t*>(m_uvHandle), closeCallback);
 }
 
