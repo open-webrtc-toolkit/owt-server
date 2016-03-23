@@ -34,8 +34,8 @@ class WebRtcConnection : public node::ObjectWrap, erizo::WebRtcConnectionEventLi
   v8::Persistent<v8::Function> eventCallback_;
   v8::Persistent<v8::Function> statsCallback_;
 
-  uv_async_t async_;
-  uv_async_t asyncStats_;
+  uv_async_t* async_;
+  uv_async_t* asyncStats_;
   bool hasCallback_;
   /*
    * Constructor.
@@ -97,6 +97,7 @@ class WebRtcConnection : public node::ObjectWrap, erizo::WebRtcConnectionEventLi
   static void eventsCallback(uv_async_t* handle);
   static void statsCallback(uv_async_t* handle);
  
+  static void closeCallback(uv_handle_t*);
 	virtual void notifyEvent(erizo::WebRTCEvent event, const std::string& message="", bool prompt=false);
 	virtual void notifyStats(const std::string& message);
 };

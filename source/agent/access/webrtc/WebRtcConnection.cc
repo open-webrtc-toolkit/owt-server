@@ -73,8 +73,16 @@ void WebRtcConnection::New(const FunctionCallbackInfo<Value>& args) {
   WebRtcConnection* obj = new WebRtcConnection();
   obj->me = new erizo::WebRtcConnection(a, v, h, stunServer,stunPort,minPort,maxPort, certFile, keyFile, privatePass, qos, t, obj);
   obj->Wrap(args.This());
-  uv_async_init(uv_default_loop(), &obj->async_, &WebRtcConnection::eventsCallback); 
-  uv_async_init(uv_default_loop(), &obj->asyncStats_, &WebRtcConnection::statsCallback); 
+  obj->async_ = reinterpret_cast<uv_async_t*>(malloc(sizeof(uv_async_t)));
+  if (obj->async_) {
+    obj->async_->close_cb = closeCallback;
+    uv_async_init(uv_default_loop(), obj->async_, &WebRtcConnection::eventsCallback);
+  }
+  obj->asyncStats_ = reinterpret_cast<uv_async_t*>(malloc(sizeof(uv_async_t)));
+  if (obj->asyncStats_) {
+    obj->asyncStats_->close_cb = closeCallback;
+    uv_async_init(uv_default_loop(), obj->asyncStats_, &WebRtcConnection::statsCallback);
+  }
   args.GetReturnValue().Set(args.This());
 }
 
@@ -90,11 +98,11 @@ void WebRtcConnection::close(const FunctionCallbackInfo<Value>& args) {
   obj->me = NULL;
   obj->hasCallback_ = false;
   
-  if(!uv_is_closing((uv_handle_t*)&obj->async_)) {
-    uv_close((uv_handle_t*)&obj->async_, NULL);
+  if(obj->async_ && !uv_is_closing(reinterpret_cast<uv_handle_t*>(obj->async_))) {
+    uv_close(reinterpret_cast<uv_handle_t*>(obj->async_), closeCallback);
   }
-  if(!uv_is_closing((uv_handle_t*)&obj->asyncStats_)) {
-    uv_close((uv_handle_t*)&obj->asyncStats_, NULL);
+  if(obj->asyncStats_ && !uv_is_closing(reinterpret_cast<uv_handle_t*>(obj->asyncStats_))) {
+    uv_close(reinterpret_cast<uv_handle_t*>(obj->asyncStats_), closeCallback);
   }
 
 }
@@ -253,8 +261,10 @@ void WebRtcConnection::notifyEvent(erizo::WebRTCEvent event, const std::string& 
     this->eventSts.push_back(event);
     this->eventMsgs.push_back(message);
   }
-  async_.data = this;
-  uv_async_send(&async_);
+  if (async_) {
+    async_->data = this;
+    uv_async_send(async_);
+  }
 }
 
 void WebRtcConnection::notifyStats(const std::string& message) {
@@ -263,8 +273,10 @@ void WebRtcConnection::notifyStats(const std::string& message) {
   }
   boost::mutex::scoped_lock lock(statsMutex);
   this->statsMsgs.push(message);
-  asyncStats_.data = this;
-  uv_async_send(&asyncStats_);
+  if (asyncStats_) {
+    asyncStats_->data = this;
+    uv_async_send(asyncStats_);
+  }
 }
 
 void WebRtcConnection::eventsCallback(uv_async_t* handle){
@@ -296,5 +308,9 @@ void WebRtcConnection::statsCallback(uv_async_t* handle){
       obj->statsMsgs.pop();
     }
   }
+}
+
+void WebRtcConnection::closeCallback(uv_handle_t* handle) {
+  free(handle);
 }
 
