@@ -100,6 +100,9 @@ void RtspOut::onFrame(const woogeen_base::Frame& frame)
     switch (frame.format) {
     case woogeen_base::FRAME_FORMAT_H264:
         if (!m_videoStream) {
+            FeedbackMsg msg {.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME};
+            deliverFeedbackMsg(msg);
+
             if (addVideoStream(AV_CODEC_ID_H264, frame.additionalInfo.video.width, frame.additionalInfo.video.height)) {
                 ELOG_DEBUG("video stream added: %dx%d", frame.additionalInfo.video.width, frame.additionalInfo.video.height);
             }

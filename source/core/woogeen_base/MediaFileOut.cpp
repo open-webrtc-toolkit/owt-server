@@ -117,6 +117,9 @@ void MediaFileOut::onFrame(const Frame& frame)
     case FRAME_FORMAT_VP8:
     case FRAME_FORMAT_H264:
         if (!m_videoStream) {
+            FeedbackMsg msg {.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME};
+            deliverFeedbackMsg(msg);
+
             if (frame.additionalInfo.video.width > 0 && frame.additionalInfo.video.height > 0) {
                 if (addVideoStream(frameFormat2VideoCodecID(frame.format), frame.additionalInfo.video.width, frame.additionalInfo.video.height)) {
                     ELOG_DEBUG("video stream added: %dx%d, %s", frame.additionalInfo.video.width, frame.additionalInfo.video.height,
