@@ -65,7 +65,7 @@ var roundRobin = function () {
 
     this.allocate = function (workers, on_ok, on_error) {
         var keys = Object.keys(workers);
-        var next_pick = keys.length > latest_used ? latest_used + 1 : 0,
+        var next_pick = keys.length > (latest_used + 1) ? latest_used + 1 : 0,
             found = false;
 
         for (var i = 0; i < keys.length; i++) {
