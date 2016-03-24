@@ -286,7 +286,8 @@ exports.VideoNode = function () {
                                resolution: config.resolution,
                                bkColor: 'black',
                                multistreaming: true,
-                               layout: [{region: [{id: '1', left: 0, top: 0, relativesize: 1}]}]};
+                               layout: [{region: [{id: '1', left: 0, top: 0, relativesize: 1}]}],
+                               crop: false};
             that.initEngine(videoConfig, callback);
         } else {
             log.error('Unknown service type to init a video node:', service);
