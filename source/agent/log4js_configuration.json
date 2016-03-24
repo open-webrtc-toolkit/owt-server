@@ -11,6 +11,7 @@
   ],
   "levels": {
     "ClusterWorker": "INFO",
+    "LoadCollector": "INFO",
     "AMQPER": "INFO",
     "ErizoJS": "INFO",
     "AudioNode": "INFO",

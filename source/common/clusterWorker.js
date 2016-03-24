@@ -3,6 +3,7 @@
 
 var logger = require('./logger').logger;
 var makeRPC = require('./makeRPC').makeRPC;
+var loadCollector = require('./loadCollector').LoadCollector;
 
 // Logger
 var log = logger.getLogger('ClusterWorker');
@@ -44,6 +45,20 @@ module.exports = function (spec) {
         on_join_failed = spec.onJoinFailed || function (reason) {log.debug('Join cluster failed. reason:', reason);},
         on_loss = spec.onLoss || function () {log.debug('Lost connection with cluster manager');},
         on_recovery = spec.onRecovery || function () {log.debug('Rejoin cluster successfully.');};
+
+    var reportLoad = function (load) {
+        if (state === 'registered') {
+            makeRPC(
+                amqper,
+                cluster_name,
+                'reportLoad',
+                [id, load]);
+        }
+    };
+
+    var load_collector = loadCollector({period: spec.loadCollection.period,
+                                        item: spec.loadCollection.item,
+                                        onLoad: reportLoad});
 
     var join = function (on_ok, on_failed) {
         makeRPC(
@@ -162,6 +177,8 @@ module.exports = function (spec) {
         } else if (state === 'recovering') {
             keep_alive_interval && clearInterval(keep_alive_interval);
         }
+
+        load_collector && load_collector.stop();
     };
 
     that.reportState = function (state) {
@@ -171,16 +188,6 @@ module.exports = function (spec) {
                 cluster_name,
                 'reportState',
                 [id, state]);
-        }
-    };
-
-    that.reportLoad = function (load) {
-        if (state === 'registered') {
-            makeRPC(
-                amqper,
-                cluster_name,
-                'reportLoad',
-                [id, load]);
         }
     };
 

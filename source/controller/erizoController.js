@@ -255,17 +255,10 @@ var publicIP;
 var joinCluster = function (on_ok) {
     var joinOK = function (id) {
         var onIOReady = function () {
-            var os = require('os');
-            var reportLoadInterval = setInterval(function () {
-                var cpu_load = os.loadavg()[0] / os.cpus().length;
-                worker && worker.reportLoad(cpu_load);
-            }, GLOBAL.config.report_load_period || 5000);
-
             amqper.callRpc('nuve', 'getKey', id, {
                 callback: function (key) {
                     if (key === 'error' || key === 'timeout') {
                         log.info('Failed to get token key.');
-                        clearInterval(reportLoadInterval);
                         worker && worker.quit();
                         return process.exit();
                     }
@@ -340,7 +333,9 @@ var joinCluster = function (on_ok) {
                 onJoinOK: joinOK,
                 onJoinFailed: joinFailed,
                 onLoss: loss,
-                onRecovery: recovery
+                onRecovery: recovery,
+                loadCollection: {period: GLOBAL.config.report_load_period || 1000,
+                                 item: {name: 'cpu'}}
                };
 
     worker = clusterWorker(spec);

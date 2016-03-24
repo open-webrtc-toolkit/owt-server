@@ -28,6 +28,18 @@ usage() {
   echo
 }
 
+enable_intel_gpu_top() {
+  # make intel-gpu-tools accessable by non-root users.
+  sudo chmod a+rw /sys/devices/pci0000:00/0000:00:02.0/resource*
+  # make the above change effect at every system startup.
+  sudo chmod +x /etc/rc.local /etc/rc.d/rc.local
+  if sudo grep -RInqs "chmod a+rw /sys/devices/pci0000:00/0000:00:02.0/resource*" /etc/rc.local; then
+     echo "intel-gpu-tools has been authorised to non-root users."
+  else
+     sudo sh -c "echo \"chmod a+rw /sys/devices/pci0000:00/0000:00:02.0/resource*\" >> /etc/rc.local"
+  fi
+}
+
 install_deps() {
   local OS=`${this}/detectOS.sh | awk '{print tolower($0)}'`
   echo $OS
@@ -45,15 +57,18 @@ install_deps() {
       sudo rpm -Uvh epel-release-latest-7*.rpm
     fi
     sudo sed -i 's/https/http/g' /etc/yum.repos.d/epel.repo
-    sudo -E yum install mongodb mongodb-server rabbitmq-server nload -y
+    sudo -E yum install mongodb mongodb-server rabbitmq-server nload intel-gpu-tools -y
   elif [[ "$OS" =~ .*ubuntu.* ]]
   then
     echo -e "\x1b[32mInstalling dependent components and libraries via apt-get...\x1b[0m"
     sudo apt-get update
-    sudo apt-get install rabbitmq-server mongodb nload #TODO: pick-up libraries
+    sudo apt-get install rabbitmq-server mongodb nload intel-gpu-tools #TODO: pick-up libraries
   else
     echo -e "\x1b[32mUnsupported platform...\x1b[0m"
   fi
+
+  # make the intel-gpu-tools accessable by non-root users.
+  enable_intel_gpu_top
 }
 
 install_db() {
