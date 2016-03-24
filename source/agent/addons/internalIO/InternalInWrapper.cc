@@ -74,9 +74,9 @@ void InternalIn::getListeningPort(const FunctionCallbackInfo<Value>& args) {
   HandleScope scope(isolate);
 
   InternalIn* obj = ObjectWrap::Unwrap<InternalIn>(args.This());
-  woogeen_base::InternalIn *me = obj->me;
+  woogeen_base::InternalIn* me = obj->me;
 
-  uint32_t port = me-> getListeningPort();
+  uint32_t port = me->getListeningPort();
 
   args.GetReturnValue().Set(Number::New(isolate, port));
 }
@@ -92,7 +92,7 @@ void InternalIn::addDestination(const FunctionCallbackInfo<Value>& args) {
   std::string track = std::string(*param0);
 
   FrameDestination* param = ObjectWrap::Unwrap<FrameDestination>(args[1]->ToObject());
-  woogeen_base::FrameDestination *dest = param->dest;
+  woogeen_base::FrameDestination* dest = param->dest;
 
   if (track == "audio") {
     me->addAudioDestination(dest);
@@ -112,7 +112,7 @@ void InternalIn::removeDestination(const FunctionCallbackInfo<Value>& args) {
   std::string track = std::string(*param0);
 
   FrameDestination* param = ObjectWrap::Unwrap<FrameDestination>(args[1]->ToObject());
-  woogeen_base::FrameDestination *dest = param->dest;
+  woogeen_base::FrameDestination* dest = param->dest;
 
   if (track == "audio") {
     me->removeAudioDestination(dest);
@@ -120,4 +120,3 @@ void InternalIn::removeDestination(const FunctionCallbackInfo<Value>& args) {
     me->removeVideoDestination(dest);
   }
 }
-

@@ -47,7 +47,7 @@ void InternalIn::onFeedback(const FeedbackMsg& msg)
     char sendBuffer[512];
     sendBuffer[0] = TDT_FEEDBACK_MSG;
     memcpy(&sendBuffer[1], reinterpret_cast<char*>(const_cast<FeedbackMsg*>(&msg)), sizeof(FeedbackMsg));
-    m_transport->sendData((char *)sendBuffer, sizeof(FeedbackMsg) + 1);
+    m_transport->sendData((char*)sendBuffer, sizeof(FeedbackMsg) + 1);
 }
 
 void InternalIn::onTransportData(char* buf, int len)
@@ -65,4 +65,3 @@ void InternalIn::onTransportData(char* buf, int len)
 }
 
 } /* namespace woogeen_base */
-
