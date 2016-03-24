@@ -399,6 +399,8 @@ var resolutionName2Value = {
     'r192x144': {width: 192, height: 144},
     'hd1080p': {width: 1920, height: 1080},
     'uhd_4k': {width: 3840, height: 2160},
+    'r360x360': {width: 360, height: 360},
+    'r480x480': {width: 480, height: 480},
     'r720x720': {width: 720, height: 720}
 };
 var resolutionValue2Name = {
@@ -415,6 +417,8 @@ var resolutionValue2Name = {
     'r192x144': 'r192x144',
     'r1920x1080': 'hd1080p',
     'r3840x2160': 'uhd_4k',
+    'r360x360': 'r360x360',
+    'r480x480': 'r480x480',
     'r720x720': 'r720x720'
 };
 
