@@ -88,6 +88,7 @@ var erizos = [];
 var processes = {};
 var tasks = {}; // {erizo_id: [RoomID]}
 var worker;
+var load_collection = {period: INTERVAL_TIME_REPORT || 1000};
 
 var guid = (function() {
   function s4() {
@@ -100,107 +101,6 @@ var guid = (function() {
            s4() + '-' + s4() + s4() + s4();
   };
 })();
-
-var os = require('os');
-var getCPULoad = function (on_result) {
-    on_result(os.loadavg()[0] / os.cpus().length);
-};
-
-var getGPULoad = function (on_result) {
-    //FIXME: Here is just an roughly estimation of the GPU load. A formal way is needed to get the acurate load data.
-    var maxVideoNodes = 32/*FIXME: hard coded. the max count of mixers or transcoders this agent can hold.*/;
-    on_result((Object.keys(tasks).length)/maxVideoNodes);
-};
-
-var receiveSpeed = 0, sendSpeed  = 0;
-var nqChild;
-
-var startQueryNetwork = function (interf, period) {
-    nqChild = require('child_process').spawn('nload', ['-u', 'm', '-t', period + '', 'devices', interf + '']);
-
-    nqChild.stdout.on('data', function (data) {
-        var concernedLine = new RegExp('(Avg:)'),
-            val = new RegExp('^.*Avg:\\s+(.*)\\s+MBit\\/s');
-        var lines = data.toString().split('\u001b').filter(function (line) {return concernedLine.test(line);});
-        if (lines.length === 2) { 
-            receiveSpeed = Number(lines[0].match(val)[1]);
-            sendSpeed = Number(lines[1].match(val)[1]);
-        } else {
-            log.debug('Not ordinary data\n', lines);
-        }
-    });
-};
-
-var stopQueryNetwork = function () {
-    nqChild && nqChild.kill();
-    nqChild = undefined;
-    receiveSpeed = 0;
-    sendSpeed = 0;
-};
-
-var getNetworkLoad = function (on_result) {
-    var maxReceiveBandwidth = 100, maxSendBandwidth = 100; /*FIXME: hard coded. the max r/s bandwidth.*/
-    on_result(Math.max(receiveSpeed / maxReceiveBandwidth, sendSpeed / maxSendBandwidth));
-};
-
-var diskUsage = 0;
-var queryDiskInterval;
-var startQueryDisk = function (drive, period) {
-    queryDiskInterval = setInterval(function () {
-       var total = 1, free = 0;
-       require('child_process').exec("df -k '" + drive.replace(/'/g,"'\\''") + "'", function(err, stdout, stderr) {
-            if (err) {
-                log.error(stderr);
-            } else {
-                var lines = stdout.trim().split('\n');
-
-                var str_disk_info = lines[lines.length - 1].replace( /[\s\n\r]+/g,' ');
-                var disk_info = str_disk_info.split(' ');
-
-                total = disk_info[1];
-                free = disk_info[3];
-                diskUsage = 1.0 - free / total;
-            }
-       });
-    }, period);
-};
-
-var stopQueryDisk = function () {
-    queryDiskInterval && clearInterval(queryDiskInterval);
-    diskUsage = 0;
-};
-
-var getStorageLoad = function (on_result) {
-    on_result(diskUsage);
-};
-
-var reportLoad = function() {
-    var onResult = function (load) {
-        var loadPercentage = Math.round(load * 100) / 100;
-        log.debug('report load:', loadPercentage);
-        rpc.callRpc(GLOBAL.config.cluster_name || 'woogeenCluster', 'reportLoad', [myId, loadPercentage], {callback: function () {}});
-    };
-    var report;
-    switch (myPurpose) {
-        case 'webrtc':
-        case 'rtsp':
-            report = getNetworkLoad;
-            break;
-        case 'file':
-            report = getStorageLoad;
-            break;
-        case 'audio':
-            report = getCPULoad;
-            break;
-        case 'video':
-            /*FIXME: should be double checked whether hardware acceleration is actually running*/
-            report = (GLOBAL.config.erizo.hardwareAccelerated ? getGPULoad : getCPULoad);
-            break;
-        default:
-            return;
-    }
-    report(onResult);
-};
 
 var launchErizoJS = function() {
     log.info('Running process');
@@ -377,7 +277,6 @@ var joinCluster = function (on_ok) {
         myState = 2;
         log.info(myPurpose, 'agent join cluster ok.');
         on_ok(id);
-        reportInterval = setInterval(reportLoad, INTERVAL_TIME_REPORT);
     };
 
     var joinFailed = function (reason) {
@@ -408,7 +307,8 @@ var joinCluster = function (on_ok) {
                 onJoinOK: joinOK,
                 onJoinFailed: joinFailed,
                 onLoss: loss,
-                onRecovery: recovery
+                onRecovery: recovery,
+                loadCollection: load_collection
                };
 
     worker = clusterWorker(spec);
@@ -437,23 +337,29 @@ var joinCluster = function (on_ok) {
                 }
             }
 
-            if (concernedInterface) {
-                startQueryNetwork(concernedInterface, 5 * 1000);
-            }
+            load_collection.item = {name: 'network',
+                                    interf: concernedInterface || 'lo',
+                                    max_scale: GLOBAL.config.agent.network_max_scale || 1000};
             break;
         case 'file':
-            startQueryDisk('/tmp', 10 * 1000);
+            load_collection.item = {name: 'disk',
+                                    drive: '/tmp'/*FIXME: hard coded recording path root*/};
+            break;
+        case 'audio':
+            load_collection.item = {name: 'cpu'};
+            break;
+        case 'video':
+            /*FIXME: should be double checked whether hardware acceleration is actually running*/
+            load_collection.item = {name: (GLOBAL.config.erizo.hardwareAccelerated ? 'gpu' : 'cpu')};
             break;
         default:
+            load_collection.item = {name: 'cpu'};
             break;
     }
 })();
 
 var onTermination = function () {
-    stopQueryNetwork();
-    stopQueryDisk();
     worker && worker.quit();
-    reportInterval && clearInterval(reportInterval);
     Object.keys(processes).map(function (k) {
         dropErizoJS(k, function (unused, status) {
             log.info('Terminate ErizoJS', k, status);

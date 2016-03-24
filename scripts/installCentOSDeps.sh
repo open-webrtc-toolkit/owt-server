@@ -46,10 +46,23 @@ install_boost(){
   fi
 }
 
+enable_intel_gpu_top() {
+  # make intel-gpu-tools accessable by non-root users.
+  sudo chmod a+rw /sys/devices/pci0000:00/0000:00:02.0/resource*
+  # make the above change effect at every system startup.
+  sudo chmod +x /etc/rc.local /etc/rc.d/rc.local
+  if sudo grep -RInqs "chmod a+rw /sys/devices/pci0000:00/0000:00:02.0/resource*" /etc/rc.local; then
+     echo "intel-gpu-tools has been authorised to non-root users."
+  else
+     sudo sh -c "echo \"chmod a+rw /sys/devices/pci0000:00/0000:00:02.0/resource*\" >> /etc/rc.local"
+  fi
+}
+
 installYumDeps(){
   sudo -E yum groupinstall " Development Tools" "Development Libraries " -y
   sudo -E yum install zlib-devel pkgconfig git libcurl-devel.x86_64 curl log4cxx-devel gcc gcc-c++ bzip2 bzip2-devel bzip2-libs python-devel nasm libX11-devel yasm -y
-  sudo -E yum install rabbitmq-server mongodb mongodb-server java-1.7.0-openjdk gyp nload -y
+  sudo -E yum install rabbitmq-server mongodb mongodb-server java-1.7.0-openjdk gyp nload intel-gpu-tools -y
+  enable_intel_gpu_top
 
   if [[ "$OS" =~ .*6.* ]] # CentOS 6.x
   then

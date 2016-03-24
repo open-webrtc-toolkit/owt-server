@@ -53,7 +53,10 @@ var ClusterManager = function (spec) {
     };
 
     that.workerQuit = function (worker) {
-        workers[worker] && schedulers[workers[worker].purpose] && schedulers[workers[worker].purpose].remove(worker);
+        if (workers[worker] && schedulers[workers[worker].purpose]) {
+            schedulers[workers[worker].purpose].remove(worker);
+            delete workers[worker];
+        }
     };
 
     that.keepAlive = function (worker, on_result) {

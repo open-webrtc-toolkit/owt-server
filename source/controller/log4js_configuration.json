@@ -11,6 +11,7 @@
   ],
   "levels": {
     "ClusterWorker": "INFO",
+    "LoadCollector": "INFO",
     "ErizoController": "INFO",
     "RoomController": "INFO",
     "ErizoManager": "INFO",
