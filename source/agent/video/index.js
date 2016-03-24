@@ -26,7 +26,7 @@ var VideoResolutionMap = { // definition adopted from VideoLayout.h
     r192x144: ['r192x144'],
     hd1080p:  ['hd1080p', 'hd720p', 'svga', 'vga', 'r640x360'],
     uhd_4k:   ['uhd_4k', 'hd1080p', 'hd720p', 'svga', 'vga', 'r640x360'],
-    r720x720: ['r720x720']
+    r720x720: ['r720x720', 'r480x480', 'r360x360']
 };
 
 function calculateResolutions(rootResolution, useMultistreaming) {
