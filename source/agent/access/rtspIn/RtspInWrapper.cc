@@ -60,7 +60,9 @@ void RtspIn::New(const FunctionCallbackInfo<Value>& args) {
   std::string transport = std::string(*param3);
 
   int buffSize = args[4]->IntegerValue();
-
+  if (buffSize <= 0) {
+    buffSize = 1024*1024*2;
+  }
   RtspIn* obj = new RtspIn();
   obj->me = new woogeen_base::RtspIn(url, transport, buffSize, a, v);
   obj->src = obj->me;
