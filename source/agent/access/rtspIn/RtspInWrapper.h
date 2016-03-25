@@ -54,7 +54,7 @@ class RtspIn : public FrameSource, woogeen_base::RtspInStatusListener {
   static void addDestination(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void removeDestination(const v8::FunctionCallbackInfo<v8::Value>& args);
 
-  static void statusCallback(uv_async_t *handle);
+  static void statusCallback(uv_async_t* handle);
   virtual void notifyStatus(const std::string& message);
 };
 

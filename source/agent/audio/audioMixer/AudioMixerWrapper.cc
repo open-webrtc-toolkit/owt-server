@@ -113,14 +113,14 @@ void AudioMixer::addInput(const v8::FunctionCallbackInfo<v8::Value>& args) {
   HandleScope scope(isolate);
 
   AudioMixer* obj = ObjectWrap::Unwrap<AudioMixer>(args.Holder());
-  mcu::AudioMixer *me = obj->me;
+  mcu::AudioMixer* me = obj->me;
 
   String::Utf8Value param0(args[0]->ToString());
   std::string participantID = std::string(*param0);
   String::Utf8Value param1(args[1]->ToString());
   std::string codec = std::string(*param1);
   FrameSource* param2 = ObjectWrap::Unwrap<FrameSource>(args[2]->ToObject());
-  woogeen_base::FrameSource *src = param2->src;
+  woogeen_base::FrameSource* src = param2->src;
 
   bool r = me->addInput(participantID, codec, src);
 
@@ -132,7 +132,7 @@ void AudioMixer::removeInput(const v8::FunctionCallbackInfo<v8::Value>& args) {
   HandleScope scope(isolate);
 
   AudioMixer* obj = ObjectWrap::Unwrap<AudioMixer>(args.Holder());
-  mcu::AudioMixer *me = obj->me;
+  mcu::AudioMixer* me = obj->me;
 
   String::Utf8Value param0(args[0]->ToString());
   std::string participantID = std::string(*param0);
@@ -145,14 +145,14 @@ void AudioMixer::addOutput(const v8::FunctionCallbackInfo<v8::Value>& args) {
   HandleScope scope(isolate);
 
   AudioMixer* obj = ObjectWrap::Unwrap<AudioMixer>(args.Holder());
-  mcu::AudioMixer *me = obj->me;
+  mcu::AudioMixer* me = obj->me;
 
   String::Utf8Value param0(args[0]->ToString());
   std::string participantID = std::string(*param0);
   String::Utf8Value param1(args[1]->ToString());
   std::string codec = std::string(*param1);
   FrameDestination* param2 = ObjectWrap::Unwrap<FrameDestination>(args[2]->ToObject());
-  woogeen_base::FrameDestination *dest = param2->dest;
+  woogeen_base::FrameDestination* dest = param2->dest;
 
   bool r = me->addOutput(participantID, codec, dest);
 
@@ -164,7 +164,7 @@ void AudioMixer::removeOutput(const v8::FunctionCallbackInfo<v8::Value>& args) {
   HandleScope scope(isolate);
 
   AudioMixer* obj = ObjectWrap::Unwrap<AudioMixer>(args.Holder());
-  mcu::AudioMixer *me = obj->me;
+  mcu::AudioMixer* me = obj->me;
 
   String::Utf8Value param0(args[0]->ToString());
   std::string participantID = std::string(*param0);
@@ -182,7 +182,7 @@ void AudioMixer::notifyVAD(const std::string& participantID) {
   uv_async_send(&asyncVAD_);
 }
 
-void AudioMixer::vadCallback(uv_async_t *handle){
+void AudioMixer::vadCallback(uv_async_t* handle){
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
   AudioMixer* obj = (AudioMixer*)handle->data;

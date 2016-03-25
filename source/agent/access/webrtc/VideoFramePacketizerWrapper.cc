@@ -52,7 +52,7 @@ void VideoFramePacketizer::New(const FunctionCallbackInfo<Value>& args) {
   HandleScope scope(isolate);
 
   WebRtcConnection* param = ObjectWrap::Unwrap<WebRtcConnection>(args[0]->ToObject());
-  erizo::WebRtcConnection *wrtc = param->me;
+  erizo::WebRtcConnection* wrtc = param->me;
 
   VideoFramePacketizer* obj = new VideoFramePacketizer();
   obj->me = new woogeen_base::VideoFramePacketizer(wrtc, wrtc);
@@ -75,10 +75,10 @@ void VideoFramePacketizer::setVideoReceiver(const FunctionCallbackInfo<Value>& a
   HandleScope scope(isolate);
 
   VideoFramePacketizer* obj = ObjectWrap::Unwrap<VideoFramePacketizer>(args.Holder());
-  woogeen_base::VideoFramePacketizer *me = obj->me;
+  woogeen_base::VideoFramePacketizer* me = obj->me;
 
   MediaSink* param = ObjectWrap::Unwrap<MediaSink>(args[0]->ToObject());
-  erizo::MediaSink *mr = param->msink;
+  erizo::MediaSink* mr = param->msink;
 
   me->setVideoSink(mr);
 }

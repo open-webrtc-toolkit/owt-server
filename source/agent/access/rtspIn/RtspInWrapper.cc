@@ -84,7 +84,7 @@ void RtspIn::init(const FunctionCallbackInfo<Value>& args) {
   HandleScope scope(isolate);
 
   RtspIn* obj = ObjectWrap::Unwrap<RtspIn>(args.Holder());
-  woogeen_base::RtspIn *me = (woogeen_base::RtspIn*) obj->me;
+  woogeen_base::RtspIn* me = (woogeen_base::RtspIn*) obj->me;
 
   obj->statusCallback_.Reset(isolate, Local<Function>::Cast(args[0]));
   me->init();
@@ -101,7 +101,7 @@ void RtspIn::addDestination(const FunctionCallbackInfo<Value>& args) {
   std::string track = std::string(*param0);
 
   FrameDestination* param = ObjectWrap::Unwrap<FrameDestination>(args[1]->ToObject());
-  woogeen_base::FrameDestination *dest = param->dest;
+  woogeen_base::FrameDestination* dest = param->dest;
 
   if (track == "audio") {
     me->addAudioDestination(dest);
@@ -121,7 +121,7 @@ void RtspIn::removeDestination(const FunctionCallbackInfo<Value>& args) {
   std::string track = std::string(*param0);
 
   FrameDestination* param = ObjectWrap::Unwrap<FrameDestination>(args[1]->ToObject());
-  woogeen_base::FrameDestination *dest = param->dest;
+  woogeen_base::FrameDestination* dest = param->dest;
 
   if (track == "audio") {
     me->removeAudioDestination(dest);
@@ -137,7 +137,7 @@ void RtspIn::notifyStatus(const std::string& message) {
   uv_async_send(&async_);
 }
 
-void RtspIn::statusCallback(uv_async_t *handle) {
+void RtspIn::statusCallback(uv_async_t* handle) {
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
   RtspIn* obj = (RtspIn*)handle->data;

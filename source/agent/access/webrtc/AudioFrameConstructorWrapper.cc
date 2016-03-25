@@ -53,7 +53,7 @@ void AudioFrameConstructor::New(const FunctionCallbackInfo<Value>& args) {
   HandleScope scope(isolate);
 
   WebRtcConnection* param = ObjectWrap::Unwrap<WebRtcConnection>(args[0]->ToObject());
-  erizo::FeedbackSink *fbSink = param->me;
+  erizo::FeedbackSink* fbSink = param->me;
 
   AudioFrameConstructor* obj = new AudioFrameConstructor();
   obj->me = new woogeen_base::AudioFrameConstructor(fbSink);
@@ -80,7 +80,7 @@ void AudioFrameConstructor::addDestination(const FunctionCallbackInfo<Value>& ar
   woogeen_base::AudioFrameConstructor* me = obj->me;
 
   FrameDestination* param = ObjectWrap::Unwrap<FrameDestination>(args[0]->ToObject());
-  woogeen_base::FrameDestination *dest = param->dest;
+  woogeen_base::FrameDestination* dest = param->dest;
 
   me->addAudioDestination(dest);
 }
@@ -93,7 +93,7 @@ void AudioFrameConstructor::removeDestination(const FunctionCallbackInfo<Value>&
   woogeen_base::AudioFrameConstructor* me = obj->me;
 
   FrameDestination* param = ObjectWrap::Unwrap<FrameDestination>(args[0]->ToObject());
-  woogeen_base::FrameDestination *dest = param->dest;
+  woogeen_base::FrameDestination* dest = param->dest;
 
   me->removeAudioDestination(dest);
 }

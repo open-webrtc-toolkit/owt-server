@@ -52,7 +52,7 @@ void AudioFramePacketizer::New(const FunctionCallbackInfo<Value>& args) {
   HandleScope scope(isolate);
 
   WebRtcConnection* param = ObjectWrap::Unwrap<WebRtcConnection>(args[0]->ToObject());
-  erizo::WebRtcConnection *wrtc = param->me;
+  erizo::WebRtcConnection* wrtc = param->me;
 
   AudioFramePacketizer* obj = new AudioFramePacketizer();
   obj->me = new woogeen_base::AudioFramePacketizer(wrtc, wrtc);
@@ -75,10 +75,10 @@ void AudioFramePacketizer::setAudioReceiver(const FunctionCallbackInfo<Value>& a
   HandleScope scope(isolate);
 
   AudioFramePacketizer* obj = ObjectWrap::Unwrap<AudioFramePacketizer>(args.Holder());
-  woogeen_base::AudioFramePacketizer *me = obj->me;
+  woogeen_base::AudioFramePacketizer* me = obj->me;
 
   MediaSink* param = ObjectWrap::Unwrap<MediaSink>(args[0]->ToObject());
-  erizo::MediaSink *mr = param->msink;
+  erizo::MediaSink* mr = param->msink;
 
   me->setAudioSink(mr);
 }
