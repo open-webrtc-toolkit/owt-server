@@ -112,7 +112,7 @@ void WebRtcConnection::setRemoteSdp(const FunctionCallbackInfo<Value>& args) {
   HandleScope scope(isolate);
 
   WebRtcConnection* obj = ObjectWrap::Unwrap<WebRtcConnection>(args.Holder());
-  erizo::WebRtcConnection *me = obj->me;
+  erizo::WebRtcConnection* me = obj->me;
 
   String::Utf8Value param(args[0]->ToString());
   std::string sdp = std::string(*param);
@@ -127,7 +127,7 @@ void WebRtcConnection::start(const FunctionCallbackInfo<Value>& args) {
   HandleScope scope(isolate);
 
   WebRtcConnection* obj = ObjectWrap::Unwrap<WebRtcConnection>(args.Holder());
-  erizo::WebRtcConnection *me = obj->me;
+  erizo::WebRtcConnection* me = obj->me;
   bool r = me->init();
 
   args.GetReturnValue().Set(Boolean::New(isolate, r));
@@ -138,7 +138,7 @@ void WebRtcConnection::addRemoteCandidate(const FunctionCallbackInfo<Value>& arg
   HandleScope scope(isolate);
 
   WebRtcConnection* obj = ObjectWrap::Unwrap<WebRtcConnection>(args.Holder());
-  erizo::WebRtcConnection *me = obj->me;
+  erizo::WebRtcConnection* me = obj->me;
 
   String::Utf8Value param(args[0]->ToString());
   std::string mid = std::string(*param);
@@ -158,7 +158,7 @@ void WebRtcConnection::getLocalSdp(const FunctionCallbackInfo<Value>& args) {
   HandleScope scope(isolate);
 
   WebRtcConnection* obj = ObjectWrap::Unwrap<WebRtcConnection>(args.Holder());
-  erizo::WebRtcConnection *me = obj->me;
+  erizo::WebRtcConnection* me = obj->me;
 
   std::string sdp = me->getLocalSdp();
 
@@ -173,7 +173,7 @@ void WebRtcConnection::setAudioReceiver(const FunctionCallbackInfo<Value>& args)
   erizo::WebRtcConnection *me = obj->me;
 
   MediaSink* param = ObjectWrap::Unwrap<MediaSink>(args[0]->ToObject());
-  erizo::MediaSink *mr = param->msink;
+  erizo::MediaSink* mr = param->msink;
 
   me->setAudioSink(mr);
 }
@@ -183,10 +183,10 @@ void WebRtcConnection::setVideoReceiver(const FunctionCallbackInfo<Value>& args)
   HandleScope scope(isolate);
 
   WebRtcConnection* obj = ObjectWrap::Unwrap<WebRtcConnection>(args.Holder());
-  erizo::WebRtcConnection *me = obj->me;
+  erizo::WebRtcConnection* me = obj->me;
 
   MediaSink* param = ObjectWrap::Unwrap<MediaSink>(args[0]->ToObject());
-  erizo::MediaSink *mr = param->msink;
+  erizo::MediaSink* mr = param->msink;
 
   me->setVideoSink(mr);
 }
@@ -196,7 +196,7 @@ void WebRtcConnection::getCurrentState(const FunctionCallbackInfo<Value>& args) 
   HandleScope scope(isolate);
 
   WebRtcConnection* obj = ObjectWrap::Unwrap<WebRtcConnection>(args.Holder());
-  erizo::WebRtcConnection *me = obj->me;
+  erizo::WebRtcConnection* me = obj->me;
 
   int state = me->getCurrentState();
 
@@ -226,7 +226,7 @@ void WebRtcConnection::enableAudio(const v8::FunctionCallbackInfo<v8::Value>& ar
   HandleScope scope(isolate);
 
   WebRtcConnection* obj = ObjectWrap::Unwrap<WebRtcConnection>(args.Holder());
-  erizo::WebRtcConnection *me = obj->me;
+  erizo::WebRtcConnection* me = obj->me;
 
   bool b = (args[0]->ToBoolean())->BooleanValue();
   me->enableAudio(b);
@@ -238,7 +238,7 @@ void WebRtcConnection::enableVideo(const v8::FunctionCallbackInfo<v8::Value>& ar
   HandleScope scope(isolate);
 
   WebRtcConnection* obj = ObjectWrap::Unwrap<WebRtcConnection>(args.Holder());
-  erizo::WebRtcConnection *me = obj->me;
+  erizo::WebRtcConnection* me = obj->me;
 
   bool b = (args[0]->ToBoolean())->BooleanValue();
   me->enableVideo(b);
@@ -267,7 +267,7 @@ void WebRtcConnection::notifyStats(const std::string& message) {
   uv_async_send(&asyncStats_);
 }
 
-void WebRtcConnection::eventsCallback(uv_async_t *handle){
+void WebRtcConnection::eventsCallback(uv_async_t* handle){
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
   WebRtcConnection* obj = (WebRtcConnection*)handle->data;
@@ -282,8 +282,7 @@ void WebRtcConnection::eventsCallback(uv_async_t *handle){
   }
 }
 
-void WebRtcConnection::statsCallback(uv_async_t *handle){
-
+void WebRtcConnection::statsCallback(uv_async_t* handle){
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
   WebRtcConnection* obj = (WebRtcConnection*)handle->data;

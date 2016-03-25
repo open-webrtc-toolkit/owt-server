@@ -54,7 +54,7 @@ void VideoFrameConstructor::New(const FunctionCallbackInfo<Value>& args) {
   HandleScope scope(isolate);
 
   WebRtcConnection* param = ObjectWrap::Unwrap<WebRtcConnection>(args[0]->ToObject());
-  erizo::FeedbackSink *fbSink = param->me;
+  erizo::FeedbackSink* fbSink = param->me;
 
   VideoFrameConstructor* obj = new VideoFrameConstructor();
   obj->me = new woogeen_base::VideoFrameConstructor(fbSink);
@@ -81,7 +81,7 @@ void VideoFrameConstructor::addDestination(const FunctionCallbackInfo<Value>& ar
   woogeen_base::VideoFrameConstructor* me = obj->me;
 
   FrameDestination* param = ObjectWrap::Unwrap<FrameDestination>(args[0]->ToObject());
-  woogeen_base::FrameDestination *dest = param->dest;
+  woogeen_base::FrameDestination* dest = param->dest;
 
   me->addVideoDestination(dest);
 }
@@ -94,7 +94,7 @@ void VideoFrameConstructor::removeDestination(const FunctionCallbackInfo<Value>&
   woogeen_base::VideoFrameConstructor* me = obj->me;
 
   FrameDestination* param = ObjectWrap::Unwrap<FrameDestination>(args[0]->ToObject());
-  woogeen_base::FrameDestination *dest = param->dest;
+  woogeen_base::FrameDestination* dest = param->dest;
 
   me->removeVideoDestination(dest);
 }

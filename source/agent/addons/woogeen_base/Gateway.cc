@@ -163,7 +163,7 @@ void Gateway::retrieveStatistics(const FunctionCallbackInfo<Value>& args) {
   HandleScope scope(isolate);
 
   Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.Holder());
-  woogeen_base::Gateway *me = obj->me;
+  woogeen_base::Gateway* me = obj->me;
 
   std::string stats = me->retrieveStatistics();
 

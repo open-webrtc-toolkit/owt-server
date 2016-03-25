@@ -11,7 +11,6 @@
  */
 class MediaSink : public node::ObjectWrap {
 public:
-
   erizo::MediaSink* msink;
 };
 

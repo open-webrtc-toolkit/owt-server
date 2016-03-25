@@ -80,14 +80,14 @@ void VideoMixer::addInput(const v8::FunctionCallbackInfo<v8::Value>& args) {
   HandleScope scope(isolate);
 
   VideoMixer* obj = ObjectWrap::Unwrap<VideoMixer>(args.Holder());
-  mcu::VideoMixer *me = obj->me;
+  mcu::VideoMixer* me = obj->me;
 
   String::Utf8Value param0(args[0]->ToString());
   std::string inStreamID = std::string(*param0);
   String::Utf8Value param1(args[1]->ToString());
   std::string codec = std::string(*param1);
   FrameSource* param2 = ObjectWrap::Unwrap<FrameSource>(args[2]->ToObject());
-  woogeen_base::FrameSource *src = param2->src;
+  woogeen_base::FrameSource* src = param2->src;
 
   bool r = me->addInput(inStreamID, codec, src);
 
@@ -99,7 +99,7 @@ void VideoMixer::removeInput(const v8::FunctionCallbackInfo<v8::Value>& args) {
   HandleScope scope(isolate);
 
   VideoMixer* obj = ObjectWrap::Unwrap<VideoMixer>(args.Holder());
-  mcu::VideoMixer *me = obj->me;
+  mcu::VideoMixer* me = obj->me;
 
   String::Utf8Value param0(args[0]->ToString());
   std::string inStreamID = std::string(*param0);
@@ -112,7 +112,7 @@ void VideoMixer::addOutput(const v8::FunctionCallbackInfo<v8::Value>& args) {
   HandleScope scope(isolate);
 
   VideoMixer* obj = ObjectWrap::Unwrap<VideoMixer>(args.Holder());
-  mcu::VideoMixer *me = obj->me;
+  mcu::VideoMixer* me = obj->me;
 
   String::Utf8Value param0(args[0]->ToString());
   std::string outStreamID = std::string(*param0);
@@ -121,7 +121,7 @@ void VideoMixer::addOutput(const v8::FunctionCallbackInfo<v8::Value>& args) {
   String::Utf8Value param2(args[2]->ToString());
   std::string resolution = std::string(*param2);
   FrameDestination* param3 = ObjectWrap::Unwrap<FrameDestination>(args[3]->ToObject());
-  woogeen_base::FrameDestination *dest = param3->dest;
+  woogeen_base::FrameDestination* dest = param3->dest;
 
   bool r = me->addOutput(outStreamID, codec, resolution, dest);
 
@@ -133,7 +133,7 @@ void VideoMixer::removeOutput(const v8::FunctionCallbackInfo<v8::Value>& args) {
   HandleScope scope(isolate);
 
   VideoMixer* obj = ObjectWrap::Unwrap<VideoMixer>(args.Holder());
-  mcu::VideoMixer *me = obj->me;
+  mcu::VideoMixer* me = obj->me;
 
   String::Utf8Value param0(args[0]->ToString());
   std::string outStreamID = std::string(*param0);
@@ -146,7 +146,7 @@ void VideoMixer::setRegion(const v8::FunctionCallbackInfo<v8::Value>& args) {
   HandleScope scope(isolate);
 
   VideoMixer* obj = ObjectWrap::Unwrap<VideoMixer>(args.Holder());
-  mcu::VideoMixer *me = obj->me;
+  mcu::VideoMixer* me = obj->me;
 
   String::Utf8Value param0(args[0]->ToString());
   std::string inStreamID = std::string(*param0);
@@ -162,7 +162,7 @@ void VideoMixer::getRegion(const v8::FunctionCallbackInfo<v8::Value>& args) {
   HandleScope scope(isolate);
 
   VideoMixer* obj = ObjectWrap::Unwrap<VideoMixer>(args.Holder());
-  mcu::VideoMixer *me = obj->me;
+  mcu::VideoMixer* me = obj->me;
 
   String::Utf8Value param0(args[0]->ToString());
   std::string inStreamID = std::string(*param0);
@@ -177,7 +177,7 @@ void VideoMixer::setPrimary(const v8::FunctionCallbackInfo<v8::Value>& args) {
   HandleScope scope(isolate);
 
   VideoMixer* obj = ObjectWrap::Unwrap<VideoMixer>(args.Holder());
-  mcu::VideoMixer *me = obj->me;
+  mcu::VideoMixer* me = obj->me;
 
   String::Utf8Value param0(args[0]->ToString());
   std::string inStreamID = std::string(*param0);

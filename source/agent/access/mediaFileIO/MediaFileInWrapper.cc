@@ -82,7 +82,7 @@ void MediaFileIn::addDestination(const FunctionCallbackInfo<Value>& args) {
   std::string track = std::string(*param0);
 
   FrameDestination* param = ObjectWrap::Unwrap<FrameDestination>(args[1]->ToObject());
-  woogeen_base::FrameDestination *dest = param->dest;
+  woogeen_base::FrameDestination* dest = param->dest;
 
   if (track == "audio") {
     me->addAudioDestination(dest);
@@ -102,7 +102,7 @@ void MediaFileIn::removeDestination(const FunctionCallbackInfo<Value>& args) {
   std::string track = std::string(*param0);
 
   FrameDestination* param = ObjectWrap::Unwrap<FrameDestination>(args[1]->ToObject());
-  woogeen_base::FrameDestination *dest = param->dest;
+  woogeen_base::FrameDestination* dest = param->dest;
 
   if (track == "audio") {
     me->removeAudioDestination(dest);

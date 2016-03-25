@@ -19,7 +19,7 @@ class WebRtcConnection : public node::ObjectWrap, erizo::WebRtcConnectionEventLi
   int ref() { return ++refCount; }
   int unref() { return --refCount; }
 
-  erizo::WebRtcConnection *me;
+  erizo::WebRtcConnection* me;
   std::list<int> eventSts;
   std::list<std::string> eventMsgs;
   std::queue<std::string> statsMsgs;
@@ -61,11 +61,11 @@ class WebRtcConnection : public node::ObjectWrap, erizo::WebRtcConnectionEventLi
    * Starts the WebRtcConnection ICE Candidate Gathering.
    */
   static void start(const v8::FunctionCallbackInfo<v8::Value>& args);
-  /**
-     * Add new remote candidate (from remote peer).
-     * @param sdp The candidate in SDP format.
-     * @return true if the SDP was received correctly.
-     */
+  /*
+   * Add new remote candidate (from remote peer).
+   * @param sdp The candidate in SDP format.
+   * @return true if the SDP was received correctly.
+   */
   static void addRemoteCandidate(const v8::FunctionCallbackInfo<v8::Value>& args);
   /*
    * Obtains the local SDP.
@@ -94,8 +94,8 @@ class WebRtcConnection : public node::ObjectWrap, erizo::WebRtcConnectionEventLi
   static void enableAudio(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void enableVideo(const v8::FunctionCallbackInfo<v8::Value>& args);
   
-  static void eventsCallback(uv_async_t *handle);
-  static void statsCallback(uv_async_t *handle);
+  static void eventsCallback(uv_async_t* handle);
+  static void statsCallback(uv_async_t* handle);
  
 	virtual void notifyEvent(erizo::WebRTCEvent event, const std::string& message="", bool prompt=false);
 	virtual void notifyStats(const std::string& message);
