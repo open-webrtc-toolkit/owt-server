@@ -28,7 +28,7 @@
 #include <map>
 #include <vector>
 
-#include "VideoFrameMixer.h"
+#include "MediaFramePipeline.h"
 #include "WebRTCTaskRunner.h"
 
 namespace webrtc {
@@ -38,6 +38,7 @@ class VoEVideoSync;
 namespace mcu {
 
 class VideoLayoutProcessor;
+class VideoFrameMixer;
 
 class VideoMixer {
     DECLARE_LOGGER();

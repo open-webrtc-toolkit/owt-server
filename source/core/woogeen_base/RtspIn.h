@@ -26,6 +26,7 @@
 #include <MediaDefinitions.h>
 #include <string>
 #include "MediaFramePipeline.h"
+#include "VideoHelper.h"
 
 extern "C" {
 #include <libavcodec/avcodec.h>
@@ -110,6 +111,7 @@ private:
     AVPacket m_avPacket;
     int m_videoStreamIndex;
     FrameFormat m_videoFormat;
+    VideoSize m_videoSize;
     int m_audioStreamIndex;
     FrameFormat m_audioFormat;
     RtspInStatusListener* m_statusListener;

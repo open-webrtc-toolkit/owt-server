@@ -18,7 +18,8 @@ exports.RtspIn = function () {
      */
     var initRtspClient = function (rtspClient, on_status) {
         var audio_codec_list = [],
-            video_codec_list = [];
+            video_codec_list = [],
+            video_resolution = undefined;
 
         rtspClient.init(function (msg){
           log.info('RtspIn Addon status:' + msg);
@@ -27,8 +28,10 @@ exports.RtspIn = function () {
               video_codec_list.push(msg.split(':')[1]);
           } else if (msg.startsWith('audioCodec')) {
               audio_codec_list.push(msg.split(':')[1]);
+          } else if (msg.startsWith('videoResolution')) {
+              video_resolution = msg.split(':')[1];
           } else if (msg === 'success') {
-              on_status({type: 'ready', audio_codecs: audio_codec_list, video_codecs: video_codec_list});
+              on_status({type: 'ready', audio_codecs: audio_codec_list, video_codecs: video_codec_list, video_resolution: video_resolution});
           } else {
               on_status({type: 'failed', reason: msg});
           }

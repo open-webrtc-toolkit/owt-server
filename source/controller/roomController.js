@@ -958,7 +958,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
                             streams[stream_id].audio = (stream_info.has_audio && audio_codec) ? {codec: audio_codec,
                                                                                                  subscribers: []} : undefined;
                             streams[stream_id].video = (stream_info.has_video && video_codec) ? {codec: video_codec,
-                                                                                                 resolution: undefined, //FIXME: the publication should carry resolution info.
+                                                                                                 resolution: response.video_resolution || (stream_info.has_video && stream_info.has_video.resolution) || undefined, //FIXME: the publication should carry resolution info.
                                                                                                  framerate: undefined,  //FIXME: the publication should carry frame-rate info.
                                                                                                  subscribers: []} : undefined;
                             if (enable_mixing && config.enableMixing) {
