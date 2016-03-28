@@ -12,6 +12,7 @@ var WrtcConnection = require('./wrtcConnection').WrtcConnection;
 var RtspIn = require('./rtspIn').RtspIn;
 var logger = require('./logger').logger;
 var amqper = require('./amqper');
+var path = require('path');
 
 // Logger
 var log = logger.getLogger('AccessNode');
@@ -59,7 +60,7 @@ exports.AccessNode = function () {
                 callback('callback', response);
             });
         } else if (stream_type === 'file') {
-            conn = new MediaFileIn(options.path, options.has_audio, options.has_video);
+            conn = new MediaFileIn(path.join(GLOBAL.config.recording.path, options.url), options.has_audio, options.has_video);
             // FIXME: There should be a better chance to start playing.
             setTimeout(function () {conn.startPlay();}, 6000);
             callback('callback', {type: 'ready'});
@@ -123,7 +124,8 @@ exports.AccessNode = function () {
             conn = new RtspOut(options.url);
             callback('callback', {type: 'ready', audio_codecs: [options.audio_codec], video_codecs: [options.video_codec]});
         } else if (subscription_type === 'file') {
-            conn = new MediaFileOut(options.path, options.interval);
+            var recordingPath = options.path ? options.path : GLOBAL.config.recording.path;
+            conn = new MediaFileOut(path.join(recordingPath, options.filename), options.interval);
             conn.addEventListener('RecordingStream', function (message) {
                 log.error('External output for media recording error occurs.');
                 if (options.observer !== undefined) {

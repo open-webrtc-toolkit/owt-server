@@ -37,7 +37,6 @@ GLOBAL.config.controller.warning_n_rooms = (GLOBAL.config.controller.warning_n_r
 GLOBAL.config.controller.limit_n_rooms = (GLOBAL.config.controller.limit_n_rooms !== undefined ? GLOBAL.config.controller.limit_n_rooms : 20);
 GLOBAL.config.controller.interval_time_keepAlive = GLOBAL.config.controller.interval_time_keepAlive || 1000;
 GLOBAL.config.controller.report.session_events = GLOBAL.config.controller.report.session_events || false;
-GLOBAL.config.controller.recording_path = GLOBAL.config.controller.recording_path || undefined;
 GLOBAL.config.controller.roles = GLOBAL.config.controller.roles || {'presenter':{'publish': true, 'subscribe':true, 'record':true}, 'viewer':{'subscribe':true}, 'viewerWithData':{'subscribe':true, 'publish':{'audio':false,'video':false,'screen':false,'data':true}}};
 
 // Parse command line arguments
@@ -55,7 +54,6 @@ var getopt = new Getopt([
   ['T' , 'turn-url'                   , 'Turn server\'s URL.'],
   ['U' , 'turn-username'              , 'Turn server\'s username.'],
   ['P' , 'turn-password'              , 'Turn server\'s password.'],
-  ['R' , 'recording_path'             , 'Recording path.'],
   ['h' , 'help'                       , 'display this help']
 ]);
 
@@ -785,12 +783,7 @@ var listen = function () {
                 var url = sdp,
                     stream_type = 'rtsp';
                 if (options.state === 'recording') {
-                    var recordingId = sdp;
-                    if (GLOBAL.config.controller.recording_path) {
-                        url = GLOBAL.config.controller.recording_path + recordingId + '.mkv';
-                    } else {
-                        url = '/tmp/' + recordingId + '.mkv';
-                    }
+                    url = sdp + '.mkv';
                     stream_type = 'file';
                 }
                 if (!options.audio && !options.video) {
@@ -1050,8 +1043,8 @@ var listen = function () {
 
             var timeStamp = new Date();
             var recorderId = options.recorderId || formatDate(timeStamp, 'yyyyMMddhhmmssSS');
-            var recorderPath = options.path || GLOBAL.config.controller.recording_path || '/tmp';
-            var url = path.join(recorderPath, 'room' + socket.room.id + '_' + recorderId + '.mkv');
+            var specifiedPath = options.path;
+            var filename = 'room' + socket.room.id + '_' + recorderId + '.mkv';
             var interval = (options.interval && options.interval > 0) ? options.interval : -1;
             var preferredVideoCodec = options.videoCodec || 'vp8';
             var preferredAudioCodec = options.audioCodec || 'pcmu';
@@ -1102,7 +1095,8 @@ var listen = function () {
                  audio_codec: preferredAudioCodec,
                  require_video: videoRequired,
                  video_codec: preferredVideoCodec,
-                 path: url,
+                 path: specifiedPath,
+                 filename: filename,
                  interval: interval,
                  observer: myId,
                  room_id: socket.room.id},
@@ -1127,7 +1121,7 @@ var listen = function () {
                         safeCall(callback, 'success', {
                             recorderId : recorderId,
                             host: publicIP,
-                            path: url
+                            path: specifiedPath ? path.join(specifiedPath, filename) : filename
                         });
                     } else if (response.type === 'failed') {
                         safeCall(callback, 'error', response.reason);

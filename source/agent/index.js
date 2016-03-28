@@ -22,6 +22,9 @@ GLOBAL.config.agent.prerunProcesses = GLOBAL.config.agent.prerunProcesses || 1;
 GLOBAL.config.agent.publicIP = GLOBAL.config.agent.publicIP || '';
 GLOBAL.config.agent.internalIP = GLOBAL.config.agent.internalIP || '';
 
+GLOBAL.config.recording = GLOBAL.config.recording || {};
+GLOBAL.config.recording.path = GLOBAL.config.recording.path || '/tmp';
+
 // Parse command line arguments
 var getopt = new Getopt([
   ['r' , 'rabbit-host=ARG'            , 'RabbitMQ Host'],
@@ -343,7 +346,7 @@ var joinCluster = function (on_ok) {
             break;
         case 'file':
             load_collection.item = {name: 'disk',
-                                    drive: '/tmp'/*FIXME: hard coded recording path root*/};
+                                    drive: GLOBAL.config.recording.path};
             break;
         case 'audio':
             load_collection.item = {name: 'cpu'};
