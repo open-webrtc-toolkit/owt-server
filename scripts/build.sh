@@ -108,9 +108,10 @@ build_mcu_runtime_hw() {
 
 build_runtime() {
   local RUNTIME_LIB_SRC_DIR="${SOURCE}/core"
-
   local CCOMPILER=${DEPS_ROOT}/bin/gcc
   local CXXCOMPILER=${DEPS_ROOT}/bin/g++
+  local OPTIMIZATION_LEVEL="3"
+  [[ BUILDTYPE == "Release" ]] || OPTIMIZATION_LEVEL="0"
 
   # rm -fr "${RUNTIME_LIB_SRC_DIR}/build"
   mkdir -p "${RUNTIME_LIB_SRC_DIR}/build"
@@ -133,12 +134,12 @@ build_runtime() {
     for ADDON in ${ADDON_LIST}; do
       echo -e "building addon \e[32m$(basename ${ADDON})\e[0m"
       pushd ${ADDON} >/dev/null
-      if [[ -x $CCOMPILER && -x $CXXCOMPILER ]]; then
-        CORE_HOME="${RUNTIME_LIB_SRC_DIR}" CC=$CCOMPILER CXX=$CXXCOMPILER node-gyp configure --loglevel=error
-        CORE_HOME="${RUNTIME_LIB_SRC_DIR}" CC=$CCOMPILER CXX=$CXXCOMPILER node-gyp build --loglevel=error
+      if [[ -x ${CCOMPILER} && -x ${CXXCOMPILER} ]]; then
+        CORE_HOME="${RUNTIME_LIB_SRC_DIR}" OPTIMIZATION_LEVEL=${OPTIMIZATION_LEVEL} PKG_CONFIG_PATH=${DEPS_ROOT}/lib/pkgconfig:${PKG_CONFIG_PATH} CC=${CCOMPILER} CXX=${CXXCOMPILER} node-gyp configure --loglevel=error
+        CORE_HOME="${RUNTIME_LIB_SRC_DIR}" OPTIMIZATION_LEVEL=${OPTIMIZATION_LEVEL} CC=${CCOMPILER} CXX=${CXXCOMPILER} node-gyp build --loglevel=error
       else
-        CORE_HOME="${RUNTIME_LIB_SRC_DIR}" node-gyp configure --loglevel=error
-        CORE_HOME="${RUNTIME_LIB_SRC_DIR}" node-gyp build --loglevel=error
+        CORE_HOME="${RUNTIME_LIB_SRC_DIR}" OPTIMIZATION_LEVEL=${OPTIMIZATION_LEVEL} PKG_CONFIG_PATH=${DEPS_ROOT}/lib/pkgconfig:${PKG_CONFIG_PATH} node-gyp configure --loglevel=error
+        CORE_HOME="${RUNTIME_LIB_SRC_DIR}" OPTIMIZATION_LEVEL=${OPTIMIZATION_LEVEL} node-gyp build --loglevel=error
       fi
       popd >/dev/null
     done
