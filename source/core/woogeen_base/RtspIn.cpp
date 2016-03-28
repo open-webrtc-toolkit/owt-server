@@ -68,6 +68,7 @@ RtspIn::RtspIn (const std::string& url, const std::string& transport, uint32_t b
     , m_timeoutHandler(nullptr)
     , m_videoStreamIndex(-1)
     , m_videoFormat(FRAME_FORMAT_UNKNOWN)
+    , m_videoSize({1920, 1080})
     , m_audioStreamIndex(-1)
     , m_audioFormat(FRAME_FORMAT_UNKNOWN)
     , m_statusListener(nullptr)
@@ -161,6 +162,10 @@ bool RtspIn::connect()
                     m_videoFormat = FRAME_FORMAT_H264;
                     notifyStatus("videoCodec:h264");
                 }
+                //FIXME: the resolution info should be retrieved from the rtsp video source.
+                std::string resolution = "hd1080p";
+                notifyStatus("videoResolution:" + resolution);
+                VideoResolutionHelper::getVideoSize(resolution, m_videoSize);
             } else {
                 ELOG_WARN("Video codec %d is not supported ", st->codec->codec_id);
             }
@@ -256,8 +261,8 @@ void RtspIn::receiveLoop()
             frame.payload = reinterpret_cast<uint8_t*>(m_avPacket.data);
             frame.length = m_avPacket.size;
             frame.timeStamp = m_avPacket.dts;
-            frame.additionalInfo.video.width = 1920; //FIXME: should be fetched previously when connecting.
-            frame.additionalInfo.video.height = 1080; //FIXME: should be fetched previously when connecting.
+            frame.additionalInfo.video.width = m_videoSize.width;
+            frame.additionalInfo.video.height = m_videoSize.height;
             deliverFrame(frame);
         } else if (m_avPacket.stream_index == m_audioStreamIndex) { //packet is audio
             //ELOG_DEBUG("Receive audio frame packet with size %d ", m_avPacket.size);

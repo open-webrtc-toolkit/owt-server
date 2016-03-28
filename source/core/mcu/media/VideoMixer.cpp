@@ -23,6 +23,7 @@
 #include "HardwareVideoFrameMixer.h"
 #include "SoftVideoFrameMixer.h"
 #include "VideoLayoutProcessor.h"
+#include "VideoFrameMixer.h"
 #include <WebRTCTransport.h>
 #include <webrtc/modules/video_coding/codecs/vp8/vp8_factory.h>
 #include <webrtc/system_wrappers/interface/trace.h>
