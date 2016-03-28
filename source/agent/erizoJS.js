@@ -25,6 +25,9 @@ GLOBAL.config.erizo.keystorePath = GLOBAL.config.erizo.keystorePath || '';
 GLOBAL.config.erizo.hardwareAccelerated = !!GLOBAL.config.erizo.hardwareAccelerated;
 GLOBAL.config.erizo.openh264Enabled = !!GLOBAL.config.erizo.openh264Enabled;
 
+GLOBAL.config.recording = GLOBAL.config.recording || {};
+GLOBAL.config.recording.path = GLOBAL.config.recording.path || '/tmp';
+
 // Parse command line arguments
 var getopt = new Getopt([
   ['r' , 'rabbit-host=ARG'            , 'RabbitMQ Host'],

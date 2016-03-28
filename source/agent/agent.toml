@@ -41,6 +41,10 @@ port = 1935
 username = "webrtc"
 passwd = "abc123"
 
+#This configuration is only for recording.
+[recording]
+path = "/tmp"
+
 [rabbit]
 host = "localhost" #default: "localhost"
 port = 5672 #default: 5672
