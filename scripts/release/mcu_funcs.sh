@@ -82,7 +82,7 @@ pack_addons() {
       BINS="${BINS} ${DIST_ADDON_DIR}/lib/libmcu.so"
     fi
   fi
-  LD_LIBRARY_PATH=${ROOT}/build/libdeps/build/lib:${SOURCE}/core/build/woogeen_base:${SOURCE}/core/build/mcu:${SOURCE}/core/build/erizo/src/erizo:${LD_LIBRARY_PATH} \
+  LD_LIBRARY_PATH=${ROOT}/build/libdeps/build/lib:${SOURCE}/core/build/woogeen_base:${SOURCE}/core/build/mcu:${LD_LIBRARY_PATH} \
   ldd ${BINS} | grep '=>' | awk '{print $3}' | sort | uniq | grep -v "^(" | \
   while read line; do
     if [[ "${OS}" =~ .*centos.* ]]; then
