@@ -166,10 +166,12 @@ var VideoEngine = function () {
     };
 
     that.generate = function (codec, resolution, callback) {
+        codec = codec || supported_codecs[0];
         codec = codec.toLowerCase();
+        resolution = resolution || supported_resolutions[0];
         resolution = resolution.toLowerCase();
         log.debug('generate, codec:', codec, 'resolution:', resolution);
-        resolution = resolution || supported_resolutions[0];
+
         for (var stream_id in outputs) {
             if (outputs[stream_id].codec === codec && outputs[stream_id].resolution === resolution) {
                 callback('callback', stream_id);
