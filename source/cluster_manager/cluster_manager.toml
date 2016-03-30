@@ -3,8 +3,9 @@ host = "localhost" #default: "localhost"
 port = 5672 #default: 5672
 
 [manager]
+name = "woogeen-cluster"
 initial_time = 10000 #ms
-check_alive_period = 1000 #ms
+check_alive_interval = 1000 #ms
 check_alive_count = 10
 schedule_reserve_time = 60000 #ms
 

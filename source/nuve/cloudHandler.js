@@ -2,7 +2,7 @@
 'use strict';
 var rpc = require('./rpc/rpc');
 var log = require('./logger').logger.getLogger('CloudHandler');
-var cluster_name = (GLOBAL.config||{}).clusterName || 'woogeenCluster';
+var cluster_name = ((GLOBAL.config || {}).cluster || {}).name || 'woogeen-cluster';
 
 exports.getErizoControllerForRoom = function (room, callback) {
     var roomId = room._id,

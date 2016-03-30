@@ -138,10 +138,10 @@ exports.WrtcConnection = function (spec) {
     that.init = function (audio_info, video_info, on_status) {
         audio = audio_info;
         video = video_info;
-        var keystore = path.resolve(path.dirname(GLOBAL.config.erizo.keystorePath), '.woogeen.keystore');
+        var keystore = path.resolve(path.dirname(GLOBAL.config.webrtc.keystorePath), '.woogeen.keystore');
         cipher.unlock(cipher.k, keystore, function cb (err, passphrase) {
             if (!err) {
-                wrtc = new WebRtcConnection(!!audio, !!video, true/*FIXME: hash264:hard coded*/, GLOBAL.config.erizo.stunserver, GLOBAL.config.erizo.stunport, GLOBAL.config.erizo.minport, GLOBAL.config.erizo.maxport, GLOBAL.config.erizo.keystorePath, GLOBAL.config.erizo.keystorePath, passphrase, true, true, true, true, false);
+                wrtc = new WebRtcConnection(!!audio, !!video, true/*FIXME: hash264:hard coded*/, GLOBAL.config.webrtc.stunserver, GLOBAL.config.webrtc.stunport, GLOBAL.config.webrtc.minport, GLOBAL.config.webrtc.maxport, GLOBAL.config.webrtc.keystorePath, GLOBAL.config.webrtc.keystorePath, passphrase, true, true, true, true, false);
 
                 if (direction === 'in') {
                     if (audio) {

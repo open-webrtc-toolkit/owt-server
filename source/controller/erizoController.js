@@ -23,7 +23,7 @@ GLOBAL.config.controller = GLOBAL.config.controller || {};
 GLOBAL.config.controller.stunServerUrl = GLOBAL.config.controller.stunServerUrl;
 GLOBAL.config.controller.defaultVideoBW = GLOBAL.config.controller.defaultVideoBW || 300;
 GLOBAL.config.controller.maxVideoBW = GLOBAL.config.controller.maxVideoBW || 300;
-GLOBAL.config.controller.publicIP = GLOBAL.config.controller.publicIP || '';
+GLOBAL.config.controller.ip_address = GLOBAL.config.controller.ip_address || '';
 GLOBAL.config.controller.hostname = GLOBAL.config.controller.hostname|| '';
 GLOBAL.config.controller.port = GLOBAL.config.controller.port || 8080;
 GLOBAL.config.controller.ssl = GLOBAL.config.controller.ssl || false;
@@ -35,9 +35,23 @@ if (GLOBAL.config.controller.turnServer !== undefined) {
 }
 GLOBAL.config.controller.warning_n_rooms = (GLOBAL.config.controller.warning_n_rooms !== undefined ? GLOBAL.config.controller.warning_n_rooms : 15);
 GLOBAL.config.controller.limit_n_rooms = (GLOBAL.config.controller.limit_n_rooms !== undefined ? GLOBAL.config.controller.limit_n_rooms : 20);
-GLOBAL.config.controller.interval_time_keepAlive = GLOBAL.config.controller.interval_time_keepAlive || 1000;
 GLOBAL.config.controller.report.session_events = GLOBAL.config.controller.report.session_events || false;
 GLOBAL.config.controller.roles = GLOBAL.config.controller.roles || {'presenter':{'publish': true, 'subscribe':true, 'record':true}, 'viewer':{'subscribe':true}, 'viewerWithData':{'subscribe':true, 'publish':{'audio':false,'video':false,'screen':false,'data':true}}};
+
+GLOBAL.config.cluster = GLOBAL.config.cluster || {};
+GLOBAL.config.cluster.name = GLOBAL.config.cluster.name || 'woogeen-cluster';
+GLOBAL.config.cluster.join_retry = GLOBAL.config.cluster.join_retry || 5;
+GLOBAL.config.cluster.join_interval = GLOBAL.config.cluster.join_interval || 3000;
+GLOBAL.config.cluster.recover_interval = GLOBAL.config.cluster.recover_interval || 1000;
+GLOBAL.config.cluster.keep_alive_interval = GLOBAL.config.cluster.keep_alive_interval || 1000;
+GLOBAL.config.cluster.report_load_interval = GLOBAL.config.cluster.report_load_interval || 1000;
+GLOBAL.config.cluster.max_load = GLOBAL.config.cluster.max_laod || 0.85;
+GLOBAL.config.cluster.network_max_scale = GLOBAL.config.cluster.network_max_scale || 1000;
+
+GLOBAL.config.rabbit = GLOBAL.config.rabbit || {};
+GLOBAL.config.rabbit.host = GLOBAL.config.host || 'localhost';
+GLOBAL.config.rabbit.port = GLOBAL.config.port || 5672;
+
 
 // Parse command line arguments
 var getopt = new Getopt([
@@ -47,7 +61,7 @@ var getopt = new Getopt([
   ['t' , 'stunServerUrl=ARG'          , 'Stun Server URL'],
   ['b' , 'defaultVideoBW=ARG'         , 'Default video Bandwidth'],
   ['M' , 'maxVideoBW=ARG'             , 'Max video bandwidth'],
-  ['i' , 'publicIP=ARG'               , 'Erizo Controller\'s public IP'],
+  ['i' , 'ip_address=ARG'               , 'Erizo Controller\'s public IP'],
   ['H' , 'hostname=ARG'               , 'Erizo Controller\'s hostname'],
   ['p' , 'port'                       , 'Port where Erizo Controller will listen to new connections.'],
   ['S' , 'ssl'                        , 'Erizo Controller\'s hostname'],
@@ -68,11 +82,9 @@ for (var prop in opt.options) {
                 process.exit(0);
                 break;
             case 'rabbit-host':
-                GLOBAL.config.rabbit = GLOBAL.config.rabbit || {};
                 GLOBAL.config.rabbit.host = value;
                 break;
             case 'rabbit-port':
-                GLOBAL.config.rabbit = GLOBAL.config.rabbit || {};
                 GLOBAL.config.rabbit.port = value;
                 break;
             default:
@@ -219,7 +231,7 @@ var formatDate = function(date, format) {
 };
 
 // var privateRegexp;
-var publicIP;
+var ip_address;
 (function getPublicIP () {
     var interfaces = require('os').networkInterfaces(),
         addresses = [],
@@ -243,10 +255,10 @@ var publicIP;
         }
     }
 
-    if (GLOBAL.config.controller.publicIP === '' || GLOBAL.config.controller.publicIP === undefined){
-        publicIP = addresses[0];
+    if (GLOBAL.config.controller.ip_address === '' || GLOBAL.config.controller.ip_address === undefined){
+        ip_address = addresses[0];
     } else {
-        publicIP = GLOBAL.config.controller.publicIP;
+        ip_address = GLOBAL.config.controller.ip_address;
     }
 })();
 
@@ -316,23 +328,23 @@ var joinCluster = function (on_ok) {
 
     var spec = {amqper: amqper,
                 purpose: 'portal',
-                clusterName: GLOBAL.config.cluster_name || 'woogeenCluster',
-                joinRery: GLOBAL.config.join_cluster_retry || 5,
-                joinPeriod: GLOBAL.config.join_cluster_period || 3000,
-                recoveryPeriod: GLOBAL.config.recover_cluster_period || 1000,
-                keepAlivePeriod: GLOBAL.config.controller.interval_time_keepAlive/*config.keep_alive_period*/ || 5000,
-                info: {ip: publicIP,
+                clusterName: GLOBAL.config.cluster.name,
+                joinRery: GLOBAL.config.cluster.join_retry,
+                joinPeriod: GLOBAL.config.cluster.join_interval,
+                recoveryPeriod: GLOBAL.config.cluster.recover_interval,
+                keepAlivePeriod: GLOBAL.config.cluster.keep_alive_interval,
+                info: {ip: ip_address,
                        hostname: GLOBAL.config.controller.hostname,
                        port: GLOBAL.config.controller.port,
                        ssl: GLOBAL.config.controller.ssl,
                        state: 2,
-                       max_load: GLOBAL.config.max_load || 0.85
+                       max_load: GLOBAL.config.cluster.max_load
                       },
                 onJoinOK: joinOK,
                 onJoinFailed: joinFailed,
                 onLoss: loss,
                 onRecovery: recovery,
-                loadCollection: {period: GLOBAL.config.report_load_period || 1000,
+                loadCollection: {period: GLOBAL.config.cluster.report_load_interval,
                                  item: {name: 'cpu'}}
                };
 
@@ -545,7 +557,7 @@ var listen = function () {
                                                 return on_error();
                                             }
                                             room.controller = controller.RoomController(
-                                                {cluster: GLOBAL.config.cluster_name || 'woogeenCluster',
+                                                {cluster: GLOBAL.config.cluster.name || 'woogeen-cluster',
                                                  amqper: amqper,
                                                  room: roomID,
                                                  config: resp,
@@ -977,7 +989,7 @@ var listen = function () {
                                 safeCall(callback, 'initializing');
                                 return;
                             case 'candidate':
-                                // signMess.candidate = signMess.candidate.replace(privateRegexp, publicIP);
+                                // signMess.candidate = signMess.candidate.replace(privateRegexp, ip_address);
                                 break;
                             case 'failed':
                                 safeCall(callback, 'error', signMess.reason);
@@ -1120,7 +1132,7 @@ var listen = function () {
 
                         safeCall(callback, 'success', {
                             recorderId : recorderId,
-                            host: publicIP,
+                            host: ip_address,
                             path: specifiedPath ? path.join(specifiedPath, filename) : filename
                         });
                     } else if (response.type === 'failed') {
@@ -1163,7 +1175,7 @@ var listen = function () {
                 sendMsgToRoom(socket.room, 'remove_recorder', {id: options.recorderId});
 
                 safeCall(callback, 'success', {
-                            host: publicIP,
+                            host: ip_address,
                             recorderId: options.recorderId
                         });
             } else {

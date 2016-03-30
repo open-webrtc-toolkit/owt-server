@@ -15,15 +15,16 @@ try {
 
 
 GLOBAL.config = config || {};
-GLOBAL.config.erizo = GLOBAL.config.erizo || {};
-GLOBAL.config.erizo.stunserver = GLOBAL.config.erizo.stunserver || '';
-GLOBAL.config.erizo.stunport = GLOBAL.config.erizo.stunport || 0;
-GLOBAL.config.erizo.minport = GLOBAL.config.erizo.minport || 0;
-GLOBAL.config.erizo.maxport = GLOBAL.config.erizo.maxport || 0;
-GLOBAL.config.erizo.keystorePath = GLOBAL.config.erizo.keystorePath || '';
+GLOBAL.config.webrtc = GLOBAL.config.webrtc || {};
+GLOBAL.config.webrtc.stunserver = GLOBAL.config.webrtc.stunserver || '';
+GLOBAL.config.webrtc.stunport = GLOBAL.config.webrtc.stunport || 0;
+GLOBAL.config.webrtc.minport = GLOBAL.config.webrtc.minport || 0;
+GLOBAL.config.webrtc.maxport = GLOBAL.config.webrtc.maxport || 0;
+GLOBAL.config.webrtc.keystorePath = GLOBAL.config.webrtc.keystorePath || '';
 
-GLOBAL.config.erizo.hardwareAccelerated = !!GLOBAL.config.erizo.hardwareAccelerated;
-GLOBAL.config.erizo.openh264Enabled = !!GLOBAL.config.erizo.openh264Enabled;
+GLOBAL.config.video = GLOBAL.config.video || {};
+GLOBAL.config.video.hardwareAccelerated = !!GLOBAL.config.video.hardwareAccelerated;
+GLOBAL.config.video.openh264Enabled = !!GLOBAL.config.video.openh264Enabled;
 
 GLOBAL.config.recording = GLOBAL.config.recording || {};
 GLOBAL.config.recording.path = GLOBAL.config.recording.path || '/tmp';
@@ -59,7 +60,7 @@ for (var prop in opt.options) {
                 GLOBAL.config.rabbit.port = value;
                 break;
             default:
-                GLOBAL.config.erizo[prop] = value;
+                GLOBAL.config.webrtc[prop] = value;
                 break;
         }
     }
@@ -68,7 +69,7 @@ for (var prop in opt.options) {
 var rpc = require('./amqper');
 
 (function init_env() {
-    if (GLOBAL.config.erizo.hardwareAccelerated) {
+    if (GLOBAL.config.video.hardwareAccelerated) {
         // Query the hardware capability only if we want to try it.
         require('child_process').exec('vainfo', function (err, stdout) {
             var info = '';
@@ -78,7 +79,7 @@ var rpc = require('./amqper');
                 info = stdout.toString();
             }
             // Check whether hardware codec should be used for this room
-            GLOBAL.config.erizo.hardwareAccelerated = (info.indexOf('VA-API version 0.35.0') != -1) ||
+            GLOBAL.config.video.hardwareAccelerated = (info.indexOf('VA-API version 0.35.0') != -1) ||
                                                         (info.indexOf('VA-API version: 0.35') != -1);
         });
     }

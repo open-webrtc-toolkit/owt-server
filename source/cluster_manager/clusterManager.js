@@ -85,11 +85,16 @@ var ClusterManager = function (spec) {
     };
 
     that.schedule = function (purpose, task, reserveTime, on_ok, on_error) {
+        log.debug('schedule, purpose:', purpose, 'task:', task, 'reserveTime:', reserveTime, 'while state:', state);
         if (state === 'in-service') {
             if (schedulers[purpose]) {
                 schedulers[purpose].schedule(task, reserveTime, function(worker) {
+                    log.debug('schedule OK, got  worker', worker);
                     on_ok(worker, workers[worker].info);
-                }, on_error);
+                }, function (reason) {
+                    log.warn('schedule failed:', reason);
+                    on_error(reason);
+                });
             } else {
                 log.warn('No scheduler for purpose:', purpose);
                 on_error('No scheduler for purpose: ' + purpose);
