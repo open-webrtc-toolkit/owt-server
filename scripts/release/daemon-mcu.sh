@@ -116,47 +116,46 @@ case $startStop in
         echo $! > ${pid}
         ;;
       portal )
-        export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${WOOGEEN_HOME}/lib
         cd ${WOOGEEN_HOME}/controller
         nohup nice -n ${WOOGEEN_NICENESS} node erizoController.js \
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
       webrtc-agent )
-        export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${WOOGEEN_HOME}/lib
         cd ${WOOGEEN_HOME}/access_agent
+        export LD_LIBRARY_PATH=./lib
         export NODE_PATH=./node_modules
         nohup nice -n ${WOOGEEN_NICENESS} node . -U webrtc\
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
       rtsp-agent )
-        export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${WOOGEEN_HOME}/lib
         cd ${WOOGEEN_HOME}/access_agent
+        export LD_LIBRARY_PATH=./lib
         export NODE_PATH=./node_modules
         nohup nice -n ${WOOGEEN_NICENESS} node . -U rtsp\
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
       recording-agent )
-        export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${WOOGEEN_HOME}/lib
         cd ${WOOGEEN_HOME}/access_agent
+        export LD_LIBRARY_PATH=./lib
         export NODE_PATH=./node_modules
         nohup nice -n ${WOOGEEN_NICENESS} node . -U file\
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
       audio-agent )
-        export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${WOOGEEN_HOME}/lib
         cd ${WOOGEEN_HOME}/audio_agent
+        export LD_LIBRARY_PATH=./lib
         export NODE_PATH=./node_modules
         nohup nice -n ${WOOGEEN_NICENESS} node . -U audio\
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
       video-agent )
-        export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${WOOGEEN_HOME}/lib
         cd ${WOOGEEN_HOME}/video_agent
+        export LD_LIBRARY_PATH=./lib
         export NODE_PATH=./node_modules
         nohup nice -n ${WOOGEEN_NICENESS} node . -U video\
           > "${stdout}" 2>&1 </dev/null &
