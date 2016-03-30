@@ -16,14 +16,33 @@ try {
 
 // Configuration default values
 GLOBAL.config = config || {};
+
 GLOBAL.config.agent = GLOBAL.config.agent || {};
 GLOBAL.config.agent.maxProcesses = GLOBAL.config.agent.maxProcesses || 1;
 GLOBAL.config.agent.prerunProcesses = GLOBAL.config.agent.prerunProcesses || 1;
-GLOBAL.config.agent.publicIP = GLOBAL.config.agent.publicIP || '';
-GLOBAL.config.agent.internalIP = GLOBAL.config.agent.internalIP || '';
+
+GLOBAL.config.cluster = GLOBAL.config.cluster || {};
+GLOBAL.config.cluster.name = GLOBAL.config.cluster.name || 'woogeen-cluster';
+GLOBAL.config.cluster.join_retry = GLOBAL.config.cluster.join_retry || 5;
+GLOBAL.config.cluster.join_interval = GLOBAL.config.cluster.join_interval || 3000;
+GLOBAL.config.cluster.recover_interval = GLOBAL.config.cluster.recover_interval || 1000;
+GLOBAL.config.cluster.keep_alive_interval = GLOBAL.config.cluster.keep_alive_interval || 1000;
+GLOBAL.config.cluster.report_load_interval = GLOBAL.config.cluster.report_load_interval || 1000;
+GLOBAL.config.cluster.max_load = GLOBAL.config.cluster.max_laod || 0.85;
+GLOBAL.config.cluster.network_max_scale = GLOBAL.config.cluster.network_max_scale || 1000;
+GLOBAL.config.cluster.ip_address = GLOBAL.config.cluster.ip_address || '';
+GLOBAL.config.cluster.network_interface = GLOBAL.config.cluster.network_interface || undefined;
+
+GLOBAL.config.webrtc = GLOBAL.config.webrtc || {};
+GLOBAL.config.webrtc.ip_address = GLOBAL.config.webrtc.ip_address || '';
+GLOBAL.config.webrtc.network_interface = GLOBAL.config.webrtc.network_interface || undefined;
 
 GLOBAL.config.recording = GLOBAL.config.recording || {};
 GLOBAL.config.recording.path = GLOBAL.config.recording.path || '/tmp';
+
+GLOBAL.config.video = GLOBAL.config.video || {};
+GLOBAL.config.video.hardwareAccelerated = !!GLOBAL.config.video.hardwareAccelerated;
+
 
 // Parse command line arguments
 var getopt = new Getopt([
@@ -80,18 +99,12 @@ for (var prop in opt.options) {
 var clusterWorker = require('./clusterWorker');
 var rpc = require('./amqper');
 
-const INTERVAL_TIME_REPORT = GLOBAL.config.agent.interval_time_report;
-var EXTERNAL_INTERFACE_NAME = GLOBAL.config.agent.externalNetworkInterface;
-var INTERNAL_INTERFACE_NAME = GLOBAL.config.agent.internalNetworkInterface;
-
-GLOBAL.config.erizo.hardwareAccelerated = !!GLOBAL.config.erizo.hardwareAccelerated;
-
 var idle_erizos = [];
 var erizos = [];
 var processes = {};
 var tasks = {}; // {erizo_id: [RoomID]}
 var worker;
-var load_collection = {period: INTERVAL_TIME_REPORT || 1000};
+var load_collection = {period: GLOBAL.config.cluster.report_load_interval};
 
 var guid = (function() {
   function s4() {
@@ -229,11 +242,11 @@ var api = {
 };
 
 var privateIP, publicIP, clusterIP;
-var externalInterface, internalInterface;
+var externalInterface, clusterInterface;
 function collectIPs () {
     var interfaces = require('os').networkInterfaces(),
         externalAddress,
-        internalAddress,
+        clusterAddress,
         k,
         k2,
         address;
@@ -244,13 +257,13 @@ function collectIPs () {
                 if (interfaces[k].hasOwnProperty(k2)) {
                     address = interfaces[k][k2];
                     if (address.family === 'IPv4' && !address.internal) {
-                        if (!externalInterface && (k === EXTERNAL_INTERFACE_NAME || !EXTERNAL_INTERFACE_NAME)) {
+                        if (!externalInterface && (k === GLOBAL.config.webrtc.network_interface || !GLOBAL.config.webrtc.network_interface)) {
                             externalInterface = k;
                             externalAddress = address.address;
                         }
-                        if (!internalInterface && (k === INTERNAL_INTERFACE_NAME || !INTERNAL_INTERFACE_NAME)) {
-                            internalInterface = k;
-                            internalAddress = address.address;
+                        if (!clusterInterface && (k === GLOBAL.config.cluster.network_interface || !GLOBAL.config.cluster.network_interface)) {
+                            clusterInterface = k;
+                            clusterAddress = address.address;
                         }
                     }
                 }
@@ -260,20 +273,19 @@ function collectIPs () {
 
     privateIP = externalAddress;
 
-    if (GLOBAL.config.agent.publicIP === '' || GLOBAL.config.agent.publicIP === undefined){
+    if (GLOBAL.config.webrtc.ip_address === '' || GLOBAL.config.webrtc.ip_address === undefined){
         publicIP = externalAddress;
     } else {
-        publicIP = GLOBAL.config.agent.publicIP;
+        publicIP = GLOBAL.config.webrtc.ip_address;
     }
 
-    if (GLOBAL.config.agent.internalIP === '' || GLOBAL.config.agent.internalIP === undefined) {
-        clusterIP = internalAddress;
+    if (GLOBAL.config.cluster.ip_address === '' || GLOBAL.config.cluster.ip_address === undefined) {
+        clusterIP = clusterAddress;
     } else {
-        clusterIP = GLOBAL.config.agent.internalIP;
+        clusterIP = GLOBAL.config.cluster.ip_address;
     }
 }
 
-var reportInterval;
 var joinCluster = function (on_ok) {
     var joinOK = function (id) {
         myId = id;
@@ -297,15 +309,15 @@ var joinCluster = function (on_ok) {
 
     var spec = {amqper: rpc,
                 purpose: myPurpose,
-                clusterName: GLOBAL.config.agent.cluster_name || 'woogeenCluster',
-                joinRery: GLOBAL.config.agent.join_cluster_retry || 5,
-                joinPeriod: GLOBAL.config.agent.join_cluster_period || 3000,
-                recoveryPeriod: GLOBAL.config.agent.recover_cluster_period || 1000,
-                keepAlivePeriod: GLOBAL.config.agent.interval_time_keepAlive || 1000,
+                clusterName: GLOBAL.config.cluster.name,
+                joinRery: GLOBAL.config.cluster.join_retry,
+                joinPeriod: GLOBAL.config.cluster.join_interval,
+                recoveryPeriod: GLOBAL.config.cluster.recover_interval,
+                keepAlivePeriod: GLOBAL.config.cluster.keep_alive_interval,
                 info: {ip: clusterIP,
                        purpose: myPurpose,
                        state: 2,
-                       max_load: GLOBAL.config.agent.max_load || 0.85
+                       max_load: GLOBAL.config.cluster.max_load
                       },
                 onJoinOK: joinOK,
                 onJoinFailed: joinFailed,
@@ -325,7 +337,7 @@ var joinCluster = function (on_ok) {
     switch (myPurpose) {
         case 'webrtc':
         case 'rtsp':
-            var concernedInterface = externalInterface || internalInterface;
+            var concernedInterface = externalInterface || clusterInterface;
             if (!concernedInterface) {
                 for (var i in os.networkInterfaces()) {
                     for (j in os.networkInterfaces()[i]) {
@@ -342,7 +354,7 @@ var joinCluster = function (on_ok) {
 
             load_collection.item = {name: 'network',
                                     interf: concernedInterface || 'lo',
-                                    max_scale: GLOBAL.config.agent.network_max_scale || 1000};
+                                    max_scale: GLOBAL.config.cluster.network_max_scale};
             break;
         case 'file':
             load_collection.item = {name: 'disk',
@@ -353,7 +365,7 @@ var joinCluster = function (on_ok) {
             break;
         case 'video':
             /*FIXME: should be double checked whether hardware acceleration is actually running*/
-            load_collection.item = {name: (GLOBAL.config.erizo.hardwareAccelerated ? 'gpu' : 'cpu')};
+            load_collection.item = {name: (GLOBAL.config.video.hardwareAccelerated ? 'gpu' : 'cpu')};
             break;
         default:
             load_collection.item = {name: 'cpu'};

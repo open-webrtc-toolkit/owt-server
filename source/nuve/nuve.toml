@@ -8,6 +8,9 @@ timestampCheck = false #default: false
 #Cloud Handler policies are in nuve/ch_policies/ folder
 cloudHandlerPolicy = "default_policy.js"
 
+[cluster]
+name = "woogeen-cluster"
+
 [rabbit]
 host = "localhost" #default: "localhost"
 port = 5672 #default: 5672

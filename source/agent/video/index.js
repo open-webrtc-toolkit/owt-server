@@ -57,8 +57,8 @@ var VideoEngine = function () {
         inputs = {},
         maxInputNum = 0,
 
-        useHardware = GLOBAL.config.erizo.hardwareAccelerated,
-        openh264Enabled = GLOBAL.config.erizo.openh264Enabled;
+        useHardware = GLOBAL.config.video.hardwareAccelerated,
+        openh264Enabled = GLOBAL.config.video.openh264Enabled;
 
     var addInput = function (stream_id, codec, protocol, on_ok, on_error) {
         if (engine) {

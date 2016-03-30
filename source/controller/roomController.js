@@ -398,7 +398,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
                     terminals[video_mixer].subscribed[stream_id] = {audio: undefined, video: stream_id};
                     on_ok();
                 } else {
-                    on_error('stream:', stream_id, 'is early released.');
+                    on_error('stream: ' + stream_id + 'is early released.');
                 }
             }, on_error);
         } else {
