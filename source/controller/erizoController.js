@@ -1102,7 +1102,7 @@ var listen = function () {
                  room_id: socket.room.id},
                 function (response) {
                     if (response.type === 'ready') {
-                        log.info('Media recording to ', url);
+                        log.info('Media recording to ', filename);
 
                         if (videoStream) {
                             videoStream.setVideoRecorder(recorderId);
