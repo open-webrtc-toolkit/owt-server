@@ -134,9 +134,11 @@ build_runtime() {
       echo -e "building addon \e[32m$(basename ${ADDON})\e[0m"
       pushd ${ADDON} >/dev/null
       if [[ -x $CCOMPILER && -x $CXXCOMPILER ]]; then
-        CORE_HOME="${RUNTIME_LIB_SRC_DIR}" CC=$CCOMPILER CXX=$CXXCOMPILER node-gyp rebuild --loglevel=error
+        CORE_HOME="${RUNTIME_LIB_SRC_DIR}" CC=$CCOMPILER CXX=$CXXCOMPILER node-gyp configure --loglevel=error
+        CORE_HOME="${RUNTIME_LIB_SRC_DIR}" CC=$CCOMPILER CXX=$CXXCOMPILER node-gyp build --loglevel=error
       else
-        CORE_HOME="${RUNTIME_LIB_SRC_DIR}" node-gyp rebuild --loglevel=error
+        CORE_HOME="${RUNTIME_LIB_SRC_DIR}" node-gyp configure --loglevel=error
+        CORE_HOME="${RUNTIME_LIB_SRC_DIR}" node-gyp build --loglevel=error
       fi
       popd >/dev/null
     done
