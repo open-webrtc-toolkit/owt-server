@@ -54,7 +54,7 @@ pack_agents() {
   for AGENT in ${WOOGEEN_AGENTS}; do
     mkdir -p ${WOOGEEN_DIST}/${AGENT}_agent/${AGENT}
     find ${AGENT} -type f -name "*.js" -exec cp '{}' "${WOOGEEN_DIST}/${AGENT}_agent/{}" \;
-    find . -type f -maxdepth 1 -not -name "*.log" -not -name "in*.sh" -exec cp '{}' "${WOOGEEN_DIST}/${AGENT}_agent/{}" \;
+    find . -maxdepth 1 -type f -not -name "*.log" -not -name "in*.sh" -exec cp '{}' "${WOOGEEN_DIST}/${AGENT}_agent/{}" \;
     pack_addons "${WOOGEEN_DIST}/${AGENT}_agent"
     mkdir -p ${WOOGEEN_DIST}/${AGENT}_agent/cert
     cp -av ${ROOT}/cert/{*.pfx,.woogeen.keystore} ${WOOGEEN_DIST}/${AGENT}_agent/cert/
@@ -78,6 +78,29 @@ pack_addons() {
     fi
     popd >/dev/null
   done
+  # now copy dep libs:
+  mkdir -p ${DIST_ADDON_DIR}/lib
+  LD_LIBRARY_PATH=${ROOT}/build/libdeps/build/lib:${SOURCE}/core/build/woogeen_base:${SOURCE}/core/build/mcu:${SOURCE}/core/build/erizo/src/erizo:${LD_LIBRARY_PATH} \
+  ldd $(find ${DIST_ADDON_DIR} -type f -name "*.node") | grep '=>' | awk '{print $3}' | sort | uniq | grep -v "^(" | \
+  while read line; do
+    if [[ "${OS}" =~ .*centos.* ]]; then
+      [[ -s "${line}" ]] && [[ -z `rpm -qf ${line} 2>/dev/null | grep 'glibc'` ]] && cp -Lv ${line} ${DIST_ADDON_DIR}/lib
+    elif [[ "${OS}" =~ .*ubuntu.* ]]; then
+      [[ -s "${line}" ]] && [[ -z `dpkg -S ${line} 2>/dev/null | grep 'libc6\|libselinux'` ]] && cp -Lv ${line} ${DIST_ADDON_DIR}/lib
+    fi
+  done
+  # remove openh264 and replace with the pseudo one
+  rm -f ${DIST_ADDON_DIR}/lib/libopenh264*
+  cp -av $ROOT/third_party/openh264/pseudo-openh264.so ${DIST_ADDON_DIR}/lib/libopenh264.so.0
+  # remove libs from msdk
+  rm -f ${DIST_ADDON_DIR}/lib/libmfxhw*
+  rm -f ${DIST_ADDON_DIR}/lib/libva*
+  # remove libs from libav/ffmpeg if needed
+  if ldd ${DIST_ADDON_DIR}/lib/libavcodec* | grep aac -q -s; then # nonfree, not redistributable
+    rm -f ${DIST_ADDON_DIR}/lib/libav*
+  fi
+  # remove libfdk-aac
+  rm -f ${DIST_ADDON_DIR}/lib/libfdk-aac*
 }
 
 pack_common() {
@@ -106,36 +129,6 @@ pack_nuve() {
   mkdir -p ${WOOGEEN_DIST}/nuve/cert
   cp -av ${ROOT}/cert/{*.pfx,.woogeen.keystore} ${WOOGEEN_DIST}/nuve/cert/
   cp -av {${this},${WOOGEEN_DIST}/nuve}/initcert.js && chmod +x ${WOOGEEN_DIST}/nuve/initcert.js
-}
-
-pack_libs() {
-  local OS=`$ROOT/scripts/detectOS.sh | awk '{print tolower($0)}'`
-  echo $OS
-
-  LD_LIBRARY_PATH=$ROOT/build/libdeps/build/lib:$ROOT/build/libdeps/build/lib64:${LD_LIBRARY_PATH} \
-  ldd ${WOOGEEN_DIST}/lib/libmcu{,_sw,_hw}.so \
-      ${WOOGEEN_DIST}/lib/libwoogeen_base.so \
-      ${WOOGEEN_DIST}/lib/liberizo.so 2>/dev/null | grep '=>' | awk '{print $3}' | sort | uniq | while read line; do
-    if [[ "$OS" =~ .*centos.* ]]
-    then
-      [[ -s "${line}" ]] && [[ -z `rpm -qf ${line} 2>/dev/null | grep 'glibc'` ]] && cp -Lv ${line} ${WOOGEEN_DIST}/lib
-    elif [[ "$OS" =~ .*ubuntu.* ]]
-    then
-      [[ -s "${line}" ]] && [[ -z `dpkg -S ${line} 2>/dev/null | grep 'libc6\|libselinux'` ]] && cp -Lv ${line} ${WOOGEEN_DIST}/lib
-    fi
-  done
-  # remove openh264 and replace with the pseudo one
-  rm -f ${WOOGEEN_DIST}/lib/libopenh264*
-  cp -av $ROOT/third_party/openh264/pseudo-openh264.so ${WOOGEEN_DIST}/lib/libopenh264.so.0
-  # remove libs from msdk
-  rm -f ${WOOGEEN_DIST}/lib/libmfxhw*
-  rm -f ${WOOGEEN_DIST}/lib/libva*
-  # remove libs from libav/ffmpeg if needed
-  if ldd ${WOOGEEN_DIST}/lib/libavcodec* | grep aac -q -s; then # nonfree, not redistributable
-    rm -f ${WOOGEEN_DIST}/lib/libav*
-  fi
-  # remove libfdk-aac
-  rm -f ${WOOGEEN_DIST}/lib/libfdk-aac*
 }
 
 pack_scripts() {

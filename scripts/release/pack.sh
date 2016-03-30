@@ -18,6 +18,7 @@ ENCRYPT_CAND_PATH=
 PACKAGE_VERSION=
 SRC_SAMPLE_PATH=
 PREVIOUS_DIR=$(pwd)
+OS=$(${ROOT}/scripts/detectOS.sh | awk '{print tolower($0)}')
 
 cd ${this}
 . common.sh
@@ -67,7 +68,7 @@ SRC_SAMPLE_PATH="${SRC_SAMPLE_PATH}" pack_runtime
 pack_scripts
 ${PACK_MODULE} && install_module
 pack_node
-pack_libs
+type pack_libs >/dev/null 2>&1 && pack_libs
 pack_mediaprocessor
 pack_license
 ${PACK_ARCH} && archive
