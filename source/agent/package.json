@@ -9,5 +9,8 @@
   },
   "devDependencies": {
     "node-gyp": "*"
+  },
+  "engine": {
+    "node": "4.2.3"
   }
 }

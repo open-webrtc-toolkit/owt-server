@@ -41,11 +41,12 @@ pack_agents() {
   for AGENT in ${WOOGEEN_AGENTS}; do
     mkdir -p ${WOOGEEN_DIST}/${AGENT}_agent/${AGENT}
     find ${AGENT} -type f -name "*.js" -exec cp '{}' "${WOOGEEN_DIST}/${AGENT}_agent/{}" \;
-    find . -maxdepth 1 -type f -not -name "*.log" -not -name "in*.sh" -exec cp '{}' "${WOOGEEN_DIST}/${AGENT}_agent/{}" \;
+    find . -maxdepth 1 -type f -not -name "*.log" -exec cp '{}' "${WOOGEEN_DIST}/${AGENT}_agent/{}" \;
     pack_addons "${WOOGEEN_DIST}/${AGENT}_agent"
     mkdir -p ${WOOGEEN_DIST}/${AGENT}_agent/cert
     cp -av ${ROOT}/cert/{*.pfx,.woogeen.keystore} ${WOOGEEN_DIST}/${AGENT}_agent/cert/
     cp -av {${this},${WOOGEEN_DIST}/${AGENT}_agent}/initcert.js && chmod +x ${WOOGEEN_DIST}/${AGENT}_agent/initcert.js
+    cp -av ${ROOT}/scripts/detectOS.sh ${WOOGEEN_DIST}/${AGENT}_agent/detectOS.sh
   done
   popd >/dev/null
 }
@@ -131,6 +132,7 @@ pack_nuve() {
   mkdir -p ${WOOGEEN_DIST}/nuve/cert
   cp -av ${ROOT}/cert/{*.pfx,.woogeen.keystore} ${WOOGEEN_DIST}/nuve/cert/
   cp -av {${this},${WOOGEEN_DIST}/nuve}/initcert.js && chmod +x ${WOOGEEN_DIST}/nuve/initcert.js
+  cp -av ${ROOT}/scripts/detectOS.sh ${WOOGEEN_DIST}/nuve/detectOS.sh
 }
 
 pack_scripts() {
@@ -140,7 +142,6 @@ pack_scripts() {
   cp -av ${this}/launch-base.sh ${WOOGEEN_DIST}/bin/stop-all.sh
   cp -av ${this}/launch-base.sh ${WOOGEEN_DIST}/bin/restart-all.sh
   cp -av ${this}/mcu-init.sh ${WOOGEEN_DIST}/bin/init.sh
-  cp -av ${ROOT}/scripts/detectOS.sh ${WOOGEEN_DIST}/bin/detectOS.sh
   cp -av ${this}/package.mcu.json ${WOOGEEN_DIST}/package.json
   echo '
 ${bin}/daemon.sh start nuve
