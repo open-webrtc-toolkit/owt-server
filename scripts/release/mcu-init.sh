@@ -105,9 +105,9 @@ check_node_version()
 install_config() {
   echo -e "\x1b[32mInitializing default configuration...\x1b[0m"
   # install mediaproess config
-  if [[ ! -s ${WOOGEEN_HOME}/etc/.msdk_log_config.ini ]]; then
+  if [[ ! -s ${WOOGEEN_HOME}/video_agent/.msdk_log_config.ini ]]; then
     [[ -s /tmp/msdk_log_config.ini ]] && rm -f /tmp/msdk_log_config.ini
-    ln -sf ${WOOGEEN_HOME}/etc/.msdk_log_config.ini /tmp/msdk_log_config.ini
+    ln -sf ${WOOGEEN_HOME}/video_agent/.msdk_log_config.ini /tmp/msdk_log_config.ini
   fi
 
   export DB_URL
@@ -147,13 +147,13 @@ install_db
 install_config
 
 if ${ENABLE_HARDWARE}; then
-  cd ${ROOT}/lib
+  cd ${ROOT}/video_agent/lib
   [[ -s libmcu_hw.so ]] && \
   rm -f libmcu.so && \
   ln -s libmcu_hw.so libmcu.so
   sed -i 's/^hardwareAccelerated = false/hardwareAccelerated = true/' ${ROOT}/video_agent/agent.toml
 else
-  cd ${ROOT}/lib
+  cd ${ROOT}/video_agent/lib
   [[ -s libmcu_sw.so ]] && \
   rm -f libmcu.so && \
   ln -s libmcu_sw.so libmcu.so
