@@ -123,7 +123,7 @@ case $startStop in
         ;;
       webrtc-agent )
         cd ${WOOGEEN_HOME}/access_agent
-        export LD_LIBRARY_PATH=./lib
+        export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:./lib
         export NODE_PATH=./node_modules
         nohup nice -n ${WOOGEEN_NICENESS} node . -U webrtc\
           > "${stdout}" 2>&1 </dev/null &
@@ -131,7 +131,7 @@ case $startStop in
         ;;
       rtsp-agent )
         cd ${WOOGEEN_HOME}/access_agent
-        export LD_LIBRARY_PATH=./lib
+        export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:./lib
         export NODE_PATH=./node_modules
         nohup nice -n ${WOOGEEN_NICENESS} node . -U rtsp\
           > "${stdout}" 2>&1 </dev/null &
@@ -139,7 +139,7 @@ case $startStop in
         ;;
       recording-agent )
         cd ${WOOGEEN_HOME}/access_agent
-        export LD_LIBRARY_PATH=./lib
+        export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:./lib
         export NODE_PATH=./node_modules
         nohup nice -n ${WOOGEEN_NICENESS} node . -U file\
           > "${stdout}" 2>&1 </dev/null &
@@ -147,7 +147,7 @@ case $startStop in
         ;;
       audio-agent )
         cd ${WOOGEEN_HOME}/audio_agent
-        export LD_LIBRARY_PATH=./lib
+        export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:./lib
         export NODE_PATH=./node_modules
         nohup nice -n ${WOOGEEN_NICENESS} node . -U audio\
           > "${stdout}" 2>&1 </dev/null &
@@ -155,7 +155,7 @@ case $startStop in
         ;;
       video-agent )
         cd ${WOOGEEN_HOME}/video_agent
-        export LD_LIBRARY_PATH=./lib
+        export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:./lib
         export NODE_PATH=./node_modules
         nohup nice -n ${WOOGEEN_NICENESS} node . -U video\
           > "${stdout}" 2>&1 </dev/null &

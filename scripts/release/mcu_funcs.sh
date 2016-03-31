@@ -8,19 +8,6 @@
 WOOGEEN_AGENTS="audio video access"
 
 pack_runtime() {
-  mkdir -p ${WOOGEEN_DIST}/lib
-  local LIBERIZO="${SOURCE}/core/build/erizo/src/erizo/liberizo.so"
-  local LIBMCU="${SOURCE}/core/build/mcu/libmcu.so"
-  local LIBMCU_HW="${SOURCE}/core/build/mcu/libmcu_hw.so"
-  local LIBMCU_SW="${SOURCE}/core/build/mcu/libmcu_sw.so"
-  [[ -s ${LIBERIZO} ]] && cp -av ${LIBERIZO} ${WOOGEEN_DIST}/lib
-  if [[ -s ${LIBMCU_SW} ]] && [[ -s ${LIBMCU_HW} ]]; then
-    cp -av ${LIBMCU_HW} ${WOOGEEN_DIST}/lib
-    cp -av ${LIBMCU_SW} ${WOOGEEN_DIST}/lib
-  else
-    [[ -s ${LIBMCU} ]] && cp -av ${LIBMCU} ${WOOGEEN_DIST}/lib
-  fi
-
   # mcu
   pack_controller
   pack_agents
@@ -79,9 +66,23 @@ pack_addons() {
     popd >/dev/null
   done
   # now copy dep libs:
+  local LIBMCU="${SOURCE}/core/build/mcu/libmcu.so"
+  local LIBMCU_HW="${SOURCE}/core/build/mcu/libmcu_hw.so"
+  local LIBMCU_SW="${SOURCE}/core/build/mcu/libmcu_sw.so"
   mkdir -p ${DIST_ADDON_DIR}/lib
+  local BINS=$(find ${DIST_ADDON_DIR} -type f -name "*.node")
+  if ldd ${BINS} | grep -q -s libmcu; then
+    if [[ -s ${LIBMCU_SW} ]] && [[ -s ${LIBMCU_HW} ]]; then
+      cp -av ${LIBMCU_HW} ${DIST_ADDON_DIR}/lib
+      cp -av ${LIBMCU_SW} ${DIST_ADDON_DIR}/lib
+      BINS="${BINS} ${DIST_ADDON_DIR}/lib/libmcu_hw.so ${DIST_ADDON_DIR}/lib/libmcu_sw.so"
+    else
+      [[ -s ${LIBMCU} ]] && cp -av ${LIBMCU} ${DIST_ADDON_DIR}/lib
+      BINS="${BINS} ${DIST_ADDON_DIR}/lib/libmcu.so"
+    fi
+  fi
   LD_LIBRARY_PATH=${ROOT}/build/libdeps/build/lib:${SOURCE}/core/build/woogeen_base:${SOURCE}/core/build/mcu:${SOURCE}/core/build/erizo/src/erizo:${LD_LIBRARY_PATH} \
-  ldd $(find ${DIST_ADDON_DIR} -type f -name "*.node") | grep '=>' | awk '{print $3}' | sort | uniq | grep -v "^(" | \
+  ldd ${BINS} | grep '=>' | awk '{print $3}' | sort | uniq | grep -v "^(" | \
   while read line; do
     if [[ "${OS}" =~ .*centos.* ]]; then
       [[ -s "${line}" ]] && [[ -z `rpm -qf ${line} 2>/dev/null | grep 'glibc'` ]] && cp -Lv ${line} ${DIST_ADDON_DIR}/lib
@@ -98,6 +99,7 @@ pack_addons() {
   # remove libs from libav/ffmpeg if needed
   if ldd ${DIST_ADDON_DIR}/lib/libavcodec* | grep aac -q -s; then # nonfree, not redistributable
     rm -f ${DIST_ADDON_DIR}/lib/libav*
+    rm -f ${DIST_ADDON_DIR}/lib/libsw*
   fi
   # remove libfdk-aac
   rm -f ${DIST_ADDON_DIR}/lib/libfdk-aac*
@@ -250,6 +252,6 @@ pack_license() {
 
 pack_mediaprocessor() {
   # For hardware
-  [[ -s ${WOOGEEN_DIST}/lib/libxcodevideo.so ]] && \
-  cp -fv ${ROOT}/third_party/mediaprocessor/msdk_log_config.ini ${WOOGEEN_DIST}/etc/.msdk_log_config.ini
+  [[ -s ${WOOGEEN_DIST}/video_agent/lib/libxcodevideo.so ]] && \
+  cp -fv ${ROOT}/third_party/mediaprocessor/msdk_log_config.ini ${WOOGEEN_DIST}/video_agent/.msdk_log_config.ini
 }
