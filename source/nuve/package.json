@@ -8,5 +8,8 @@
     "mongojs": "",
     "toml": "*",
     "body-parser": "*"
+  },
+  "engine": {
+    "node": "4.2.3"
   }
 }
