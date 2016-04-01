@@ -149,14 +149,14 @@ In order for the MCU server to deliver the best performance on video conferencin
 
 In the server machine, un-archive the package file first, and then invoke init.sh to initialize the package.
 
-For General MCU Server installation on Ubuntu, follow these steps:
-~~~~~~{.js}
+For MCU Server installation, follow these steps:
+~~~~~~{.sh}
 tar xf CS_WebRTC_Conference_Server_MCU.v<Version>.tgz
 cd Release-<Version>/
 bin/init.sh --deps
 ~~~~~~
-For GPU-accelerated MCU Server installation on CentOS, follow these steps:
-~~~~~~{.js}
+If you want to enable GPU-acceleration, follow these steps:
+~~~~~~{.sh}
 tar xf CS_WebRTC_Conference_Server_MCU.v<Version>.tgz
 cd Release-<Version>/
 bin/init.sh --deps --hardware
@@ -174,23 +174,23 @@ The default H.264 library installed is a pseudo one without any media logic. To 
 
 3. Copy the lib file libopenh264-1.4.0-linux64.so to Release-<Version>/video_agent/lib folder, and rename it to libopenh264.so.0 to replace the existing pseudo one.
 
-4. Edit etc/woogeen_config.js file under Release-<Version> folder, set the value of key config.erizo.openh264Enbaled to be true.
+4. Edit video_agent/agent.toml file under Release-<Version> folder, set the value of key openh264Enbaled to true.
 
 ### 2.3.5 Use your own certificate {#Conferencesection2_3_5}
 
-The default certificate (certificate.pfx) for the MCU is located in the Release-<Version>/cert folder.
-When using HTTPS and/or secure socket.io connection, you should use your own certificate for each server. First you should edit etc/woogeen_config.js to provide the path of each certificate for each server, under the key config.XXX.keystorePath. E.g., config.nuve.keystorePath is for nuve HTTPS server. See below table for details. If etc/woogeen_config.js does not exist, use `bin/init.sh` to create it.
+The default certificate (certificate.pfx) for the MCU is located in each component in Release-<Version> folder.
+When using HTTPS and/or secure socket.io connection, you should use your own certificate for each server. First you should edit nuve/nuve.toml, access_agent/agent.toml, controller/controller.toml to provide the path of each certificate for each server, under the key keystorePath. See below table for details.
 
 We use PFX formatted certificates in MCU. See https://nodejs.org/api/tls.html for how to generate a self-signed certificate by openssl utility. We recommend using 2048-bits private key for the certificates.
 
-After editing the configuration file, you should run `bin/initcert.js all` to input your passphrases for the certificates, which would then store them in an encrypted file. Be aware that you should have node binary in your shell's $PATH to run the JS script. bin/initcert.js accepts ‘nuve', ‘erizo' and 'erizoController' (or ‘all' for all) as parameters to update the passphrase for a certain certificate.
+After editing the configuration file, you should run `./initcert.js` inside each component to input your passphrases for the certificates, which would then store them in an encrypted file. Be aware that you should have node binary in your shell's $PATH to run the JS script.
 
  **Table 2-4. MCU certificates configuration**
-|  |key in configuration file|initcert.js parameter|
-|--------|--------|--------|
-| nuve HTTPS | config.nuve.keystorePath | nuve |
-| erizoController secured Socket.io | config.erizoController.keystorePath | erizoController |
-| DTLS-SRTP | config.erizo.keystorePath | erizo |
+|  |configuration file|
+|--------|--------|
+| nuve HTTPS | nuve/nuve.toml |
+| portal secured Socket.io | controller/controller.toml |
+| DTLS-SRTP | access_agent/agent.toml |
 
 For MCU sample application's certificate configuration, please follow the instruction file 'README.md' located at Release-<Version>/extras/basic_example/.
 
@@ -231,8 +231,7 @@ Follow the steps below to set up an MCU cluster:
 2. Choose a primary machine. This machine must be visible to clients(such as browsers and mobile apps).
 3. Edit the configuration items of nuve in Release-<Version>/nuve/nuve.toml.
 
-    1) Make sure the rabbit.port and rabbit.host point to the RabbitMQ server.
-    ===to be filled
+    - Make sure the rabbit.port and rabbit.host point to the RabbitMQ server.
 
 4. Run MCU manager nuve and the application on the primary machine with following commands:
 
@@ -241,9 +240,9 @@ Follow the steps below to set up an MCU cluster:
         bin/daemon.sh start app
 
 5. Choose a machine to run cluster_manager. This machine need not to be visible to clients, but must be visible to nuve and all workers.
-6. Edit the configurations of cluster_manager in Release-<Version>/cluster_manager.toml.
+6. Edit the configurations of cluster_manager in Release-<Version>/cluster_manager/cluster_manager.toml.
 
-   ===to be filled===
+    - Make sure the rabbit.port and rabbit.host point to the RabbitMQ server.
 
 7. Run the cluster_manager with following commands:
 
@@ -258,9 +257,9 @@ Follow the steps below to set up an MCU cluster:
     ===to be filled===
 
 10. Choose worker machines to run webrtc-agents and/or rtsp-agents and/or recording-agents and/or audio-agents and/or video-agents. These machines must be visible to each other, and if webrtc-agents are running on them, they must be visible to clients.
-11. Edit the configuration items in Release-<Version>/agent.toml.
+11. Edit the configuration items in Release-<Version>/{audio,video,access}_agent/agent.toml.
 
-    ===to be filled===
+    - Make sure the rabbit.port and rabbit.host point to the RabbitMQ server.
 
 12. Run the following commands to launch one or multiple MCU worker nodes on these work machines:
 
@@ -359,7 +358,7 @@ If you have not launched MCU severs, you should launch the nuve server before ac
     bin/daemon.sh start nuve
 
 ## 3.3 Source Code {#Conferencesection3_3}
-The source code of the management console is in Release-<Version>/nuve/nuveAPI/public/.
+The source code of the management console is in Release-<Version>/nuve/public/.
 ## 3.4 Service Management {#Conferencesection3_4}
 Only super service user can access service management, in the ‘overview' tab to create or delete services.
 > **Note**: Super service cannot be deleted.
