@@ -73,8 +73,13 @@ exports.AccessNode = function () {
         streams[stream_id] = {type: stream_type, connection: conn};
     };
 
-    that.unpublish = function (stream_id) {
+    that.unpublish = function (stream_id, reserve_subscriptions) {
         log.debug('unpublish, stream_id:', stream_id);
+
+        if (reserve_subscriptions === null || reserve_subscriptions === undefined) {
+            reserve_subscriptions = false;
+        }
+
         if (streams[stream_id]) {
             for (var subscription_id in subscriptions) {
                 if (subscriptions[subscription_id].audio === stream_id) {
@@ -91,7 +96,7 @@ exports.AccessNode = function () {
                     subscriptions[subscription_id].video = undefined;
                 }
 
-                if (subscriptions[subscription_id].audio === undefined && subscriptions[subscription_id].video === undefined) {
+                if (!reserve_subscriptions && subscriptions[subscription_id].audio === undefined && subscriptions[subscription_id].video === undefined) {
                     subscriptions[subscription_id].connection.close();
                     delete subscriptions[subscription_id];
                 }
@@ -106,9 +111,13 @@ exports.AccessNode = function () {
 
     that.connect = function (subscription_id, subscription_type, options, callback) {
         if (subscriptions[subscription_id]) {
-            log.error('Subscription already exists:'+subscription_id);
-            callback('callback', {type: 'failed', reason: 'Subscription already exists:'+subscription_id});
-            return;
+            if (subscriptions[subscription_id].type === 'file') {
+                log.debug('Continuous recording goes on.')
+            } else {
+                log.error('Subscription already exists:'+subscription_id);
+                callback('callback', {type: 'failed', reason: 'Subscription already exists:'+subscription_id});
+                return;
+            }
         }
 
         var conn;
@@ -124,14 +133,16 @@ exports.AccessNode = function () {
             conn = new RtspOut(options.url);
             callback('callback', {type: 'ready', audio_codecs: [options.audio_codec], video_codecs: [options.video_codec]});
         } else if (subscription_type === 'file') {
-            var recordingPath = options.path ? options.path : GLOBAL.config.recording.path;
-            conn = new MediaFileOut(path.join(recordingPath, options.filename), options.interval);
-            conn.addEventListener('RecordingStream', function (message) {
-                log.error('External output for media recording error occurs.');
-                if (options.observer !== undefined) {
-                    amqper.callRpc(options.observer, 'eventReport', ['deleteExternalOutput', options.room_id, {message: message, id: subscription_id, data: null}]);
-                }
-            });
+            if (!subscriptions[subscription_id]) {
+                var recordingPath = options.path ? options.path : GLOBAL.config.recording.path;
+                conn = new MediaFileOut(path.join(recordingPath, options.filename), options.interval);
+                conn.addEventListener('RecordingStream', function (message) {
+                    log.error('External output for media recording error occurs.');
+                    if (options.observer !== undefined) {
+                        amqper.callRpc(options.observer, 'eventReport', ['deleteExternalOutput', options.room_id, {message: message, id: subscription_id, data: null}]);
+                    }
+                });
+            }
             callback('callback', {type: 'ready', audio_codecs: [options.audio_codec], video_codecs: [options.video_codec]});
         } else {
             log.error('Pre-subscription, Subscription type invalid:' + subscription_type);
@@ -139,10 +150,12 @@ exports.AccessNode = function () {
             return;
         }
 
-        subscriptions[subscription_id] = {type: subscription_type,
-                                          audio: undefined,
-                                          video: undefined,
-                                          connection: conn};
+        if (!subscriptions[subscription_id]) {
+            subscriptions[subscription_id] = {type: subscription_type,
+                                              audio: undefined,
+                                              video: undefined,
+                                              connection: conn};
+        }
     };
 
     that.disconnect = function (subscription_id) {
@@ -208,8 +221,13 @@ exports.AccessNode = function () {
         callback('callback', {type: 'ready'});
     };
 
-    that.unsubscribe = function (subscription_id) {
+    that.unsubscribe = function (subscription_id, reserve_subscription) {
         log.debug('unsubscribe, subscription_id:', subscription_id);
+
+        if (reserve_subscription === null || reserve_subscription === undefined) {
+            reserve_subscription = false;
+        }
+
         if (subscriptions[subscription_id] !== undefined) {
             if (subscriptions[subscription_id].audio
                 && streams[subscriptions[subscription_id].audio]) {
@@ -225,8 +243,10 @@ exports.AccessNode = function () {
                 streams[subscriptions[subscription_id].video].connection.removeDestination('video', dest);
             }
 
-            subscriptions[subscription_id].connection.close();
-            delete subscriptions[subscription_id];
+            if (!reserve_subscription) {
+                subscriptions[subscription_id].connection.close();
+                delete subscriptions[subscription_id];
+            }
         } else {
             log.info('Subscription does NOT exist:'+subscription_id);
         }

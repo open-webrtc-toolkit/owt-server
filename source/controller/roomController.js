@@ -232,10 +232,10 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
 
     var isTerminalFree = function (terminal_id) {
         return  terminals[terminal_id]
-                && (terminals[terminal_id].published.length === 0
-                    && Object.keys(terminals[terminal_id].subscribed).length === 0)
-                && (terminals[terminal_id].type !== 'amixer'
-                    && terminals[terminal_id].type !== 'vmixer');
+                && terminals[terminal_id].published.length === 0
+                && Object.keys(terminals[terminal_id].subscribed).length === 0
+                && terminals[terminal_id].type !== 'amixer'
+                && terminals[terminal_id].type !== 'vmixer';
     };
 
     var spreadStream = function (stream_id, target_erizo_id, audio, video, on_ok, on_error) {
@@ -314,7 +314,11 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
             on_error);
     };
 
-    var shrinkStream = function (stream_id, target_erizo_id) {
+    var shrinkStream = function (stream_id, target_erizo_id, reserve_subscriptions) {
+        if (reserve_subscriptions === null || reserve_subscriptions === undefined) {
+            reserve_subscriptions = false;
+        }
+
         var i = streams[stream_id] ? streams[stream_id].spread.indexOf(target_erizo_id) : -1;
         if (i !== -1) {
             log.debug('shrinkStream:', stream_id, 'target_erizo_id:', target_erizo_id);
@@ -331,7 +335,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
                 amqper,
                 'ErizoJS_' + target_erizo_id,
                 'unpublish',
-                [stream_id]);
+                [stream_id, reserve_subscriptions]);
 
             streams[stream_id].spread.splice(i, 1);
         }
@@ -709,7 +713,6 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
             && streams[stream_id].audio
             && streams[stream_id].audio.subscribers.length === 0
             && streams[stream_id].spread.length === 0) {
-
             if (terminals[streams[stream_id].owner]) {
                 var terminal_type = terminals[streams[stream_id].owner].type;
                 if (terminal_type === 'amixer' || terminal_type === 'axcoder') {
@@ -724,7 +727,6 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
             && streams[stream_id].video
             && streams[stream_id].video.subscribers.length === 0
             && streams[stream_id].spread.length === 0) {
-
             if (terminals[streams[stream_id].owner]) {
                 var terminal_type = terminals[streams[stream_id].owner].type;
                 if (terminal_type === 'vmixer' || terminal_type === 'vxcoder') {
@@ -868,7 +870,11 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
         }
     };
 
-    var unsubscribeStream = function (subscriber, subscription_id) {
+    var unsubscribeStream = function (subscriber, subscription_id, reserve_subscription) {
+        if (reserve_subscription === null || reserve_subscription === undefined) {
+            reserve_subscription = false;
+        }
+
         var erizo_id = terminals[subscriber].erizo,
             subscription = terminals[subscriber].subscribed[subscription_id],
             audio_stream = subscription && subscription.audio,
@@ -878,7 +884,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
             amqper,
             'ErizoJS_' + erizo_id,
             'unsubscribe',
-            [subscription_id]);
+            [subscription_id, reserve_subscription]);
 
         if (audio_stream) {
             if (streams[audio_stream] && streams[audio_stream].audio) {
@@ -887,7 +893,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
                 subscription.audio = undefined;
             }
             if (!isSpreadNeeded(audio_stream, erizo_id)) {
-                shrinkStream(audio_stream, erizo_id);
+                shrinkStream(audio_stream, erizo_id, reserve_subscription);
             }
         }
 
@@ -900,7 +906,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
 
             if ((!audio_stream || video_stream !== audio_stream)
                 && !isSpreadNeeded(video_stream, erizo_id)) {
-                shrinkStream(video_stream, erizo_id);
+                shrinkStream(video_stream, erizo_id, reserve_subscription);
             }
         }
 
@@ -916,7 +922,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
 
         delete terminals[subscriber].subscribed[subscription_id];
 
-        if (isTerminalFree(subscriber)) {
+        if (!reserve_subscription && isTerminalFree(subscriber)) {
             deleteTerminal(subscriber);
         }
     };
@@ -1160,10 +1166,14 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
         }
     };
 
-    that.unsubscribe = function (terminal_id, subscription_id) {
+    that.unsubscribe = function (terminal_id, subscription_id, reserve_subscription) {
+        if (reserve_subscription === null || reserve_subscription === undefined) {
+            reserve_subscription = false;
+        }
+
         log.debug('unsubscribe from terminal:', terminal_id, 'for subscription:', subscription_id);
         if (terminals[terminal_id]) {
-            unsubscribeStream(terminal_id, subscription_id);
+            unsubscribeStream(terminal_id, subscription_id, reserve_subscription);
         }
     };
 
