@@ -2422,7 +2422,7 @@ mfxStatus MSDKCodec::DoingVpp(mfxFrameSurface1* in_surf, mfxFrameSurface1* out_s
             }
         }
 
-        if (MFX_ERR_MORE_DATA == sts) {
+        if (MFX_ERR_MORE_DATA == sts && NULL != in_surf) {
             // Composite case, direct return
             break;
         }
@@ -3619,8 +3619,6 @@ int MSDKCodec::PrepareVppCompFrames()
     unsigned int tick;
 
     if (0 == comp_stc_) {
-
-        bool all_no_data = true;
         // Init stage.
         // Wait for all the frame to generate the 1st composited one.
         for (it_sinkpad = this->sinkpads_.begin();
@@ -3629,8 +3627,6 @@ int MSDKCodec::PrepareVppCompFrames()
             sinkpad = *it_sinkpad;
 
             tick = 0;
-            buf.msdk_surface = NULL;
-            buf.is_eos = 0;
             while (sinkpad->GetBufData(buf) != 0) {
                 // No data, just sleep and wait
                 if (!is_running_) {
@@ -3639,9 +3635,8 @@ int MSDKCodec::PrepareVppCompFrames()
                 usleep(1000);
                 tick++;
                 //wait for ~10ms and return, or else it may hold the sink mutex infinitely
-                if (tick > 10) {
-                    break;
-                }
+                if (tick > 10) return 2;
+                continue;
             }
 
             // Set corresponding framerate in VPPCompInfo
@@ -3654,7 +3649,7 @@ int MSDKCodec::PrepareVppCompFrames()
                 vpp_comp_map_[sinkpad].ready_surface = buf;
                 vpp_comp_map_[sinkpad].org_width = msdk_surface->Info.Width;
                 vpp_comp_map_[sinkpad].org_height = msdk_surface->Info.Height;
-                all_no_data = false;
+
                 if (msdk_surface->Info.FrameRateExtD > 0) {
                     vpp_comp_map_[sinkpad].frame_rate = (float)msdk_surface->Info.FrameRateExtN;
                     vpp_comp_map_[sinkpad].frame_rate /= (float)msdk_surface->Info.FrameRateExtD;
@@ -3675,13 +3670,8 @@ int MSDKCodec::PrepareVppCompFrames()
             } else {
                 //if it goes here, means that decoder was stopped before
                 //it generated and put the first valid surface to vpp
-                if (buf.is_eos) {
-                    MLOG_INFO("The first surface from decoder is eos\n");
-                }
+                MLOG_INFO("The first surface from decoder is eos\n");
             }
-        }
-        if (all_no_data) {
-            return 2;
         }
     } else {
         // TODO:
