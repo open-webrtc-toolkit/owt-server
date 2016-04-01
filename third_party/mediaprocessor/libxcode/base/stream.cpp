@@ -97,7 +97,6 @@ void Stream::SetStreamAttribute(int flag) {
         printf("Don't work, it's a stream input\n");
     }
 }
-
 size_t Stream::ReadBlock(void *buffer, size_t size, bool waitData)
 {
     switch (mStreamType) {
@@ -190,96 +189,13 @@ size_t Stream::ReadBlock(void *buffer, size_t size, bool waitData)
     }
 }
 
-size_t Stream::ReadBlockEx(void *buffer, size_t size, bool waitData,
-                            unsigned short* type)
-{
-    switch (mStreamType) {
-    case STREAM_TYPE_FILE:
-
-        if (mFile) {
-            size_t rd = fread(buffer, 1, size, mFile);
-
-            if (feof(mFile)) {
-                mEndOfStream = true;
-            }
-
-            return rd;
-        } else {
-            return 0;
-        }
-
-    case STREAM_TYPE_MEMORY: {
-        size_t retValue = 0;
-
-        //waits for data to be available
-        if (waitData) {
-            bool timedOut = false;
-            {
-                Locker<Mutex> lock(mutex);
-                waitData = !mEndOfStream && (mTotalDataSize < size);
-            }
-
-            while (waitData && !timedOut) {
-                Locker<Mutex> lock(mutex);
-                if (!mEndOfStream && mTotalDataSize < size) {
-                    timedOut = mutex.TimedWait(mTimeout);
-                }
-
-                if (timedOut && (mTotalDataSize == 0)) {
-                    FRMW_TRACE_INFO("Stream %p time out!!!!!!!!!!!!!!!!\n", this);
-                    mEndOfStream = true;
-                }
-
-                waitData = !mEndOfStream && (mTotalDataSize == 0);
-            }
-
-            //throw timeout exception
-            if (timedOut) {
-                FRMW_TRACE_ERROR("Data timeout");
-                return -1;
-            }
-        }
-
-        {
-            Locker<Mutex> lock(mutex);
-            if (!mBufferList.empty()) {
-                int remainingSize = size;
-                char *pDest = (char *)buffer;
-
-                STREAM_BUFF &block = mBufferList.front();
-
-                //read from block if it has data
-                if (block.size) {
-                    retValue = MIN((int)block.size, remainingSize);
-                    memcpy(pDest, block.indx, retValue);
-
-                    if (NULL != type) {
-                        *type = block.frame_type;
-                    }
-                }
-
-                //if no more data delete the block
-                if (block.size) {
-                    free(block.buffer);
-                    mBufferList.pop_front();
-                }
-            } //if (!mBufferList.empty())
-        }
-        return retValue;
-    }
-    break;
-    default:
-        return 0;
-    }
-}
-
 
 size_t Stream::ReadBlocks(void *buffer, int count)
 {
     int retValue = 0;
 
     {
-        Locker<Mutex> lock(mutex);
+        Locker<Mutex> lock(mutex);  
         if (!mBufferList.empty()) {
             int remainingCount = count;
             char *pDest = (char *)buffer;
@@ -334,53 +250,7 @@ size_t Stream::WriteBlock(void *buffer, size_t size, bool copy)
                 inBuff = buffer;
             }
 
-            STREAM_BUFF block = {inBuff, (char *)inBuff, size, 0};
-            {
-                Locker<Mutex> lock(mutex);
-                mBufferList.push_back(block);
-                mTotalDataSize += size;
-                mutex.CondSignal();
-            }
-        }
-
-        return size;
-    default:
-        return 0;
-    }
-}
-
-size_t Stream::WriteBlockEx(void *buffer, size_t size, bool copy,
-                            unsigned short type)
-{
-    switch (mStreamType) {
-    case STREAM_TYPE_FILE:
-
-        if (mFile) {
-            return fwrite(buffer, 1, size, mFile);
-        } else {
-            return 0;
-        }
-
-    case STREAM_TYPE_MEMORY:
-
-        if (size && buffer) {
-            void *inBuff;
-
-            if (copy) {
-                //copy buffer, leave input buffer untouched
-                inBuff = malloc(size);
-
-                if (inBuff == NULL) {
-                    FRMW_TRACE_ERROR("Memory allocation failed");
-                    return -1;
-                }
-
-                memcpy(inBuff, buffer, size);
-            } else { //push the input buffer, it will be free'd when no longer needed
-                inBuff = buffer;
-            }
-
-            STREAM_BUFF block = {inBuff, (char *)inBuff, size, type};
+            STREAM_BUFF block = {inBuff, (char *)inBuff, size};
             {
                 Locker<Mutex> lock(mutex);
                 mBufferList.push_back(block);

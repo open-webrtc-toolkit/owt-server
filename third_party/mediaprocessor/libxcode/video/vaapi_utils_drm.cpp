@@ -1,9 +1,8 @@
 /* <COPYRIGHT_TAG> */
 
-#include "vaapi_utils_drm.h"
-
 #if defined(LIBVA_DRM_SUPPORT)
 
+#include "vaapi_utils_drm.h"
 #include <fcntl.h>
 
 DRMLibVA::DRMLibVA(void):

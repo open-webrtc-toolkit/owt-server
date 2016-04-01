@@ -16,14 +16,12 @@
 #include "msdk_codec.h"
 #include "msdk_xcoder.h"
 #include "mfxvideo++.h"
-#include "mfxjpeg.h"
+ 
 #if defined(LIBVA_DRM_SUPPORT) || defined(LIBVA_X11_SUPPORT)
 #include "hw_device.h"
 #endif
 
-DEFINE_MLOGINSTANCE_CLASS(MsdkXcoder, "MsdkXcoder");
-
-MsdkXcoder::MsdkXcoder(CodecEventCallback *callback)
+MsdkXcoder::MsdkXcoder(MsdkCoderEventCallback *callback)
 {
     main_session_ = NULL;
     dri_fd_ = -1;
@@ -60,7 +58,7 @@ int MsdkXcoder::InitVaDisp()
     if (m_bRender_ == false) {
         dri_fd_ = open("/dev/dri/card0", O_RDWR);
         if (-1 == dri_fd_) {
-            MLOG_FATAL("Open dri failed!\n");
+            printf("Open dri failed!\n");
             pthread_mutex_unlock(&va_mutex_);
             return -1;
         }
@@ -68,7 +66,7 @@ int MsdkXcoder::InitVaDisp()
         va_dpy_ = vaGetDisplayDRM(dri_fd_);
         ret = vaInitialize(va_dpy_, &major_version, &minor_version);
         if (VA_STATUS_SUCCESS != ret) {
-            MLOG_ERROR("vaInitialize failed\n");
+            printf("vaInitialize failed\n");
             pthread_mutex_unlock(&va_mutex_);
             return -1;
         }
@@ -76,31 +74,30 @@ int MsdkXcoder::InitVaDisp()
     } else {
 #if defined(LIBVA_DRM_SUPPORT) || defined(LIBVA_X11_SUPPORT)
         int sts = 0;
-        MLOG_INFO("createVAAPIDevice!\n");
+        printf ("createVAAPIDevice!\n");
         // Create the device here.
         // Use x11 display. Need render the frame.
         hwdev_ = CreateVAAPIDevice();
         if (hwdev_ == NULL) {
-            MLOG_ERROR("createVAAPIDevice fail!\n");
+            printf ("createVAAPIDevice fail!\n");
             pthread_mutex_unlock(&va_mutex_);
             return MFX_ERR_MEMORY_ALLOC;
         }
 
         sts = hwdev_->Init(NULL, 1, 0);
         if (sts != MFX_ERR_NONE) {
-            MLOG_ERROR("hwdevice initialized failed\n");
+            printf("hwdevice initialized failed\n");
             pthread_mutex_unlock(&va_mutex_);
             return MFX_ERR_UNKNOWN;
         }
 
-        MLOG_INFO("hwdev->GetHandle!\n");
+        printf("hwdev->GetHandle!\n");
         sts = hwdev_->GetHandle(MFX_HANDLE_VA_DISPLAY, (mfxHDL*)&(MsdkXcoder::va_dpy_));
         if (sts != MFX_ERR_NONE) {
-            MLOG_ERROR("get handle failed\n");
+            printf("get handle failed\n");
         }
 #else
-        MLOG_ERROR("to support rendering, you need to define LIBVA_X11_SUPPORT in Makefile\n");
-        pthread_mutex_unlock(&va_mutex_);
+        printf("Err: to support rendering, you need to define LIBVA_X11_SUPPORT in Makefile\n");
         return -1;
 #endif
     }
@@ -167,7 +164,7 @@ void MsdkXcoder::CloseMsdkSession(MFXVideoSession *session)
 {
     Locker<Mutex> lock(sess_mutex);
     if (!session) {
-        MLOG_ERROR("Invalid input session\n");
+        printf("Invalid input session\n");
         return;
     }
     std::list<MFXVideoSession*>::iterator sess_i;
@@ -193,13 +190,13 @@ void MsdkXcoder::CreateSessionAllocator(MFXVideoSession **session, GeneralAlloca
 
     GeneralAllocator *pAllocator = new GeneralAllocator;
     if (!pAllocator) {
-        MLOG_ERROR("Create allocator failed\n");
+        printf("Create allocator failed\n");
         return;
     }
 
     sts = pAllocator->Init(&(MsdkXcoder::va_dpy_));
     if (sts != MFX_ERR_NONE) {
-        MLOG_ERROR("Init allocator failed\n");
+        printf("Init allocator failed\n");
         delete pAllocator;
         return;
     }
@@ -207,14 +204,14 @@ void MsdkXcoder::CreateSessionAllocator(MFXVideoSession **session, GeneralAlloca
 
     MFXVideoSession *pSession = GenMsdkSession();
     if (!pSession) {
-        MLOG_ERROR("Init session failed\n");
+        printf("Init session failed\n");
         delete pAllocator;
         return;
     }
 
     sts = pSession->SetFrameAllocator(pAllocator);
     if (sts != MFX_ERR_NONE) {
-        MLOG_ERROR("Set frame allocator failed\n");
+        printf("Set frame allocator failed\n");
         delete pAllocator;
         CloseMsdkSession(pSession);
         return;
@@ -231,9 +228,6 @@ void MsdkXcoder::ReadDecConfig(DecOptions *dec_cfg, void *cfg)
     if (dec_cfg->input_codec_type == CODEC_TYPE_VIDEO_AVC) {
         decCfg->DecParams.mfx.CodecId = MFX_CODEC_AVC;
         decCfg->input_stream = dec_cfg->inputStream;
-    } else if (dec_cfg->input_codec_type == CODEC_TYPE_VIDEO_JPEG) {
-        decCfg->DecParams.mfx.CodecId = MFX_CODEC_JPEG;
-        decCfg->input_stream = dec_cfg->inputStream;
     } else if (dec_cfg->input_codec_type == CODEC_TYPE_VIDEO_VP8) {
         decCfg->DecParams.mfx.CodecId = MFX_CODEC_VP8;
         decCfg->input_stream = dec_cfg->inputStream;
@@ -243,17 +237,6 @@ void MsdkXcoder::ReadDecConfig(DecOptions *dec_cfg, void *cfg)
     } else if (dec_cfg->input_codec_type == CODEC_TYPE_VIDEO_PICTURE) {
         decCfg->DecParams.mfx.CodecId = MFX_CODEC_PICTURE;
         decCfg->input_pic = dec_cfg->inputPicture;
-    } else if (dec_cfg->input_codec_type == CODEC_TYPE_VIDEO_MPEG2) {
-        decCfg->DecParams.mfx.CodecId = MFX_CODEC_MPEG2;
-        decCfg->input_stream = dec_cfg->inputStream;
-    } else if (dec_cfg->input_codec_type == CODEC_TYPE_VIDEO_HEVC) {
-        decCfg->DecParams.mfx.CodecId = MFX_CODEC_HEVC;
-        decCfg->input_stream = dec_cfg->inputStream;
-#ifdef ENABLE_RAW_DECODE
-    } else if (dec_cfg->input_codec_type == CODEC_TYPE_VIDEO_YUV) {
-        decCfg->DecParams.mfx.CodecId = MFX_CODEC_YUV;
-        decCfg->input_pic = dec_cfg->inputPicture;
-#endif
     }
     decCfg->measuremnt = dec_cfg->measuremnt;
 }
@@ -261,16 +244,8 @@ void MsdkXcoder::ReadDecConfig(DecOptions *dec_cfg, void *cfg)
 void MsdkXcoder::ReadVppConfig(VppOptions *vpp_cfg, void *cfg)
 {
     ElementCfg *vppCfg = static_cast<ElementCfg *>(cfg);
-#if defined SUPPORT_INTERLACE
-    vppCfg->VppParams.vpp.Out.PicStruct = vpp_cfg->nPicStruct;
-#endif
     vppCfg->VppParams.vpp.Out.CropW = vpp_cfg->out_width;
     vppCfg->VppParams.vpp.Out.CropH = vpp_cfg->out_height;
-
-    if (vpp_cfg->out_fps_n > 0 && vpp_cfg->out_fps_d > 0) {
-        vppCfg->VppParams.vpp.Out.FrameRateExtN = vpp_cfg->out_fps_n;
-        vppCfg->VppParams.vpp.Out.FrameRateExtD = vpp_cfg->out_fps_d;
-    }
     vppCfg->VppParams.vpp.Out.FourCC = vpp_cfg->colorFormat;
     vppCfg->measuremnt = vpp_cfg->measuremnt;
 }
@@ -281,56 +256,27 @@ void MsdkXcoder::ReadEncConfig(EncOptions *enc_cfg, void *cfg)
     encCfg->output_stream = enc_cfg->outputStream;
     if (enc_cfg->output_codec_type == CODEC_TYPE_VIDEO_AVC) {
         encCfg->EncParams.mfx.CodecId = MFX_CODEC_AVC;
+        encCfg->EncParams.mfx.CodecProfile = enc_cfg->profile;
+        encCfg->EncParams.mfx.NumRefFrame = enc_cfg->numRefFrame;
+        encCfg->EncParams.mfx.TargetUsage = enc_cfg->targetUsage;
+        encCfg->EncParams.mfx.GopRefDist = enc_cfg->gopRefDist;
+        encCfg->EncParams.mfx.IdrInterval= enc_cfg->idrInterval;
+        encCfg->EncParams.mfx.GopPicSize = enc_cfg->intraPeriod;
+        encCfg->extParams.nMaxSliceSize = enc_cfg->nMaxSliceSize;
     } else if (enc_cfg->output_codec_type == CODEC_TYPE_VIDEO_VP8) {
         encCfg->EncParams.mfx.CodecId = MFX_CODEC_VP8;
         encCfg->EncParams.Protected = enc_cfg->vp8OutFormat;
-        encCfg->EncParams.mfx.TargetKbps = enc_cfg->bitrate;
-    } else if (enc_cfg->output_codec_type == CODEC_TYPE_VIDEO_MPEG2) {
-        encCfg->EncParams.mfx.CodecId = MFX_CODEC_MPEG2;
-    } else if (enc_cfg->output_codec_type == CODEC_TYPE_VIDEO_HEVC) {
-        encCfg->EncParams.mfx.CodecId = MFX_CODEC_HEVC;
     }
-
-    if (MFX_CODEC_MPEG2 == encCfg->EncParams.mfx.CodecId ||
-                MFX_CODEC_AVC == encCfg->EncParams.mfx.CodecId) {
-        encCfg->EncParams.mfx.TargetUsage = enc_cfg->targetUsage;
-        encCfg->EncParams.mfx.GopRefDist = enc_cfg->gopRefDist;
-        if (0 == enc_cfg->intraPeriod) {
-            encCfg->EncParams.mfx.GopPicSize = 30;
-        } else {
-            encCfg->EncParams.mfx.GopPicSize = enc_cfg->intraPeriod;
-        }
-        encCfg->EncParams.mfx.IdrInterval= enc_cfg->idrInterval;
-        encCfg->EncParams.mfx.NumSlice = enc_cfg->numSlices;
-        encCfg->EncParams.mfx.RateControlMethod = enc_cfg->ratectrl;
-        if (enc_cfg->ratectrl == MFX_RATECONTROL_CQP) {
-            encCfg->EncParams.mfx.QPI = encCfg->EncParams.mfx.QPP =
-                encCfg->EncParams.mfx.QPB = enc_cfg->qpValue;
-        } else {
-            encCfg->EncParams.mfx.TargetKbps = enc_cfg->bitrate;
-        }
-        encCfg->EncParams.mfx.NumRefFrame = enc_cfg->numRefFrame;
-    }
-
-    encCfg->EncParams.mfx.CodecLevel = enc_cfg->level;
-    encCfg->EncParams.mfx.CodecProfile = enc_cfg->profile;
-
-    encCfg->extParams.bMBBRC = enc_cfg->mbbrc_enable;
-    encCfg->extParams.nLADepth = enc_cfg->la_depth;
-    encCfg->extParams.nMaxSliceSize = enc_cfg->nMaxSliceSize;
-
+    encCfg->EncParams.mfx.TargetKbps = enc_cfg->bitrate;
     encCfg->measuremnt = enc_cfg->measuremnt;
 }
 
-int MsdkXcoder::Init(DecOptions *dec_cfg, VppOptions *vpp_cfg, EncOptions *enc_cfg, CodecEventCallback *callback)
+int MsdkXcoder::Init(DecOptions *dec_cfg, VppOptions *vpp_cfg, EncOptions *enc_cfg)
 {
     Locker<Mutex> lock(mutex);
     if (!dec_cfg || !vpp_cfg || (!enc_cfg && (vpp_cfg->colorFormat != MFX_FOURCC_RGB4))) {
-        MLOG_ERROR("Init parameter invalid, return\n");
+        printf("Init parameter invalid, return\n");
         return -1;
-    }
-    if (callback != NULL) {
-        callback_ = callback;
     }
     dec_cfg->DecHandle = NULL;
     vpp_cfg->VppHandle = NULL;
@@ -340,7 +286,7 @@ int MsdkXcoder::Init(DecOptions *dec_cfg, VppOptions *vpp_cfg, EncOptions *enc_c
 
     m_bRender_ = (vpp_cfg->colorFormat == MFX_FOURCC_RGB4) ? true : false;
     if (0 != InitVaDisp()) {
-        MLOG_ERROR("Init VA display failed\n");
+        printf("Init VA display failed\n");
         return -1;
     }
 
@@ -370,7 +316,7 @@ int MsdkXcoder::Init(DecOptions *dec_cfg, VppOptions *vpp_cfg, EncOptions *enc_c
 
     main_session_ = GenMsdkSession();
     if (!main_session_) {
-        MLOG_ERROR("Init Session failed\n");
+        printf("Init Session failed\n");
         return -1;
     }
 
@@ -410,11 +356,9 @@ int MsdkXcoder::Init(DecOptions *dec_cfg, VppOptions *vpp_cfg, EncOptions *enc_c
 
 
     if (MFX_CODEC_VP8 == in_file_type) {
-        dec_ = new MSDKCodec(ELEMENT_VP8_DEC, dec_session, pAllocatorDec,callback_);
+        dec_ = new MSDKCodec(ELEMENT_VP8_DEC, dec_session, pAllocatorDec, callback_);
     } else if (MFX_CODEC_STRING == in_file_type) {
         dec_ = new MSDKCodec(ELEMENT_STRING_DEC, dec_session, pAllocatorDec);
-    } else if (MFX_CODEC_JPEG == in_file_type) {
-        dec_ = new MSDKCodec(ELEMENT_SW_DEC, dec_session, pAllocatorDec);
     } else if (MFX_CODEC_PICTURE == in_file_type) {
         dec_ = new MSDKCodec(ELEMENT_BMP_DEC, dec_session, pAllocatorDec);
     } else {
@@ -442,9 +386,6 @@ int MsdkXcoder::Init(DecOptions *dec_cfg, VppOptions *vpp_cfg, EncOptions *enc_c
         vpp_->Init(&vppCfg, ELEMENT_MODE_ACTIVE);
         vpp_->SetStrInfo(dec_->GetStrInfo());
         vpp_->SetPicInfo(dec_->GetPicInfo());
-#if defined ENABLE_RAW_DECODE
-        vpp_->SetRawInfo(dec_->GetRawInfo());
-#endif
     } else {
         return -1;
     }
@@ -497,7 +438,7 @@ int MsdkXcoder::Init(DecOptions *dec_cfg, VppOptions *vpp_cfg, EncOptions *enc_c
     }
 
     done_init_ = true;
-    MLOG_INFO(" MsdkXcoder Init Done.\n");
+    printf("[%s] MsdkXcoder Init Done.\n", __FUNCTION__);
     return 0;
 }
 
@@ -506,7 +447,7 @@ int MsdkXcoder::ForceKeyFrame(void *output_handle)
     Locker<Mutex> lock(mutex);
 
     if (!done_init_) {
-        MLOG_ERROR("Force key frame before initialization\n");
+        printf("Force key frame before initialization\n");
         return -1;
     }
 
@@ -528,7 +469,7 @@ int MsdkXcoder::SetBitrate(void *output_handle, unsigned short bitrate)
 {
     Locker<Mutex> lock(mutex);
     if (!done_init_) {
-        MLOG_ERROR("Force change bitrate before initialization\n");
+        printf("Force change bitrate before initialization\n");
         return -1;
     }
 
@@ -559,7 +500,7 @@ int MsdkXcoder::MarkLTR(void *encHandle)
 {
     Locker<Mutex> lock(mutex);
     if (!done_init_) {
-        MLOG_ERROR(" MsdkXcoder is not initialized yet\n");
+        printf("Err: MsdkXcoder is not initialized yet\n");
         return -1;
     }
 
@@ -572,14 +513,14 @@ int MsdkXcoder::MarkLTR(void *encHandle)
                 enc = it_enc->second;
                 //1. check if encoder is ELEMENT_ENCODER
                 if (enc->GetCodecType() != ELEMENT_ENCODER) {
-                    MLOG_ERROR(" this API is for H264 hw encoder only\n");
+                    printf("Err: this API is for H264 hw encoder only\n");
                     return -2;
                 }
 
                 //2. call MSDKCodec::MarkLTR()
                 ret_val = enc->MarkLTR();
                 if (ret_val) {
-                    MLOG_ERROR("failed.\n");
+                    printf("Err: failed.\n");
                     return -3;
                 } else {
                     break;
@@ -589,19 +530,19 @@ int MsdkXcoder::MarkLTR(void *encHandle)
             //apply to all H264 ELEMENT_ENCODER
             enc = it_enc->second;
             if (enc->GetCodecType() != ELEMENT_ENCODER) {
-                MLOG_INFO(" encoder %p is not H264 HW encoder, can't mark LTR\n", encHandle);
+                printf("Info: encoder %p is not H264 HW encoder, can't mark LTR\n", encHandle);
                 continue;
             } else {
                 ret_val = enc->MarkLTR();
                 if (ret_val != 0) {
-                    MLOG_ERROR(" failed to mark LTR frame for encoder %p\n", encHandle);
+                    printf("Err: failed to mark LTR frame for encoder %p\n", encHandle);
                 }
             }
         }
     }
 
     if (encHandle && it_enc == enc_multimap_.end()) {
-        MLOG_ERROR(" invalid input encHandle %p\n", encHandle);
+        printf("Err: invalid input encHandle %p\n", encHandle);
         return -4;
     }
 
@@ -622,7 +563,7 @@ int MsdkXcoder::SetComboType(ComboType type, void *vpp_handle, void* master)
     int ret_val = 0;
 
     if (!vpp_handle || (type == COMBO_MASTER && !master)) {
-        MLOG_ERROR(" invalid inputs\n");
+        printf("Err: invalid inputs\n");
         return -1;
     }
 
@@ -639,7 +580,7 @@ int MsdkXcoder::SetComboType(ComboType type, void *vpp_handle, void* master)
         }
 
         if (dec_dis == NULL) {
-            MLOG_ERROR(" invalid input\n");
+            printf("Err: invalid input\n");
             assert(0);
             return -1;
         }
@@ -654,7 +595,7 @@ int MsdkXcoder::SetComboType(ComboType type, void *vpp_handle, void* master)
         }
     }
     if (vpp_it == vpp_list_.end()) {
-        MLOG_ERROR(" invalid vpp handle\n");
+        printf("Err: invalid vpp handle\n");
         assert(0);
         return -1;
     }
@@ -673,17 +614,17 @@ int MsdkXcoder::DetachInput(void* input_handle)
     std::map<MSDKCodec*, Dispatcher*>::iterator it_dec_dis;
 
     if (!done_init_) {
-        MLOG_ERROR("Detach new stream before initialization\n");
+        printf("[%s]Detach new stream before initialization\n", __FUNCTION__);
         return -1;
     }
 
     if (!input_handle) {
-        MLOG_ERROR("Invalid input parameters\n");
+        printf("[%s]Invalid input parameters\n", __FUNCTION__);
         return -1;
     }
 
     if (1 == dec_list_.size()) {
-        MLOG_ERROR("The last input handle, please stop the pipeline\n");
+        printf("[%s]The last input handle, please stop the pipeline\n", __FUNCTION__);
         return -1;
     }
 
@@ -699,10 +640,10 @@ int MsdkXcoder::DetachInput(void* input_handle)
     }
 
     if (dec_found && dec) {
-        MLOG_INFO("Stopping decoder...\n");
+        printf("[%s]Stopping decoder...\n", __FUNCTION__);
         dec->Stop();
     } else {
-        MLOG_ERROR("Can't find the input handle\n");
+        printf("[%s]Can't find the input handle", __FUNCTION__);
         return -1;
     }
 
@@ -718,18 +659,18 @@ int MsdkXcoder::DetachInput(void* input_handle)
     }
 
     if (dec_dis_found && dec_dis) {
-        MLOG_INFO("Stopping decoder dis...\n");
+        printf("[%s]Stopping decoder dis...\n", __FUNCTION__);
         dec_dis->Stop();
     } else {
-        MLOG_ERROR("Can't find the input dispatch handle\n");
+        printf("[%s]Can't find the input dispatch handle", __FUNCTION__);
         return -1;
     }
 
     //make sure decoder is stopped before unlinking them.
     //make sure dec_dis and vpp is unlinked in advance, so vpp can return the queued buffers
-    MLOG_INFO("Unlinking elements dec_dis and vpp ...\n");
+    printf("[%s]Unlinking elements dec_dis and vpp ...\n", __FUNCTION__);
     dec_dis->UnlinkNextElement();
-    MLOG_INFO("Unlinking elements dec and dec_dis ...\n");
+    printf("[%s]Unlinking elements dec and dec_dis ...\n", __FUNCTION__);
     dec->UnlinkNextElement();
 
     if (dec_dis) {
@@ -741,7 +682,7 @@ int MsdkXcoder::DetachInput(void* input_handle)
         del_dec_list_.push_back(dec);
     }
 
-    MLOG_INFO("Detach Decoder Done\n");
+    printf("[%s]Detach Decoder Done\n", __FUNCTION__);
     return 0;
 }
 
@@ -752,12 +693,12 @@ int MsdkXcoder::AttachInput(DecOptions *dec_cfg, void *vppHandle)
     std::list<MSDKCodec*>::iterator vpp_it;
 
     if (!done_init_) {
-        MLOG_ERROR("Attach new stream before initialization\n");
+        printf("[%s]Attach new stream before initialization\n", __FUNCTION__);
         return -1;
     }
 
     if (!dec_cfg) {
-        MLOG_ERROR("Invalid input parameters\n");
+        printf("[%s]Invalid input parameters\n", __FUNCTION__);
         return -1;
     }
     dec_cfg->DecHandle = NULL;
@@ -767,7 +708,7 @@ int MsdkXcoder::AttachInput(DecOptions *dec_cfg, void *vppHandle)
             it_del_dec != del_dec_list_.end();) {
         del_dec = *it_del_dec;
         it_del_dec = del_dec_list_.erase(it_del_dec);
-        MLOG_INFO("Deleting dec %p...\n",del_dec);
+        printf("Deleting dec %p...\n",del_dec);
         delete  del_dec;
     }
 
@@ -782,11 +723,11 @@ int MsdkXcoder::AttachInput(DecOptions *dec_cfg, void *vppHandle)
             }
         }
         if (!vpp_found) {
-            MLOG_ERROR("Can't find the vpp handle\n");
+            printf("[%s]Can't find the vpp handle\n", __FUNCTION__);
             return -1;
         }
         if (is_running_ && !vpp->is_running_) {
-            MLOG_ERROR("Vpp has been exit, can't attach input\n");
+            printf("[%s]Vpp has been exit, can't attach input\n", __FUNCTION__);
             return -1;
         }
     } else {
@@ -794,7 +735,7 @@ int MsdkXcoder::AttachInput(DecOptions *dec_cfg, void *vppHandle)
                 vpp_it != vpp_list_.end(); \
                 ++vpp_it) {
             if (is_running_ && !((*vpp_it)->is_running_)) {
-                MLOG_ERROR("One vpp has been exit, can't attach input\n");
+                printf("[%s]One vpp has been exit, can't attach input\n", __FUNCTION__);
                 return -1;
             }
         }
@@ -808,7 +749,7 @@ int MsdkXcoder::AttachInput(DecOptions *dec_cfg, void *vppHandle)
     MFXVideoSession *dec_session = NULL;
     CreateSessionAllocator(&dec_session, &pAllocatorDec);
     if (!dec_session || !pAllocatorDec) {
-        MLOG_ERROR("Create decoder session or allocator failed\n");
+        printf("[%s]Create decoder session or allocator failed\n", __FUNCTION__);
         return -1;
     }
 
@@ -819,17 +760,13 @@ int MsdkXcoder::AttachInput(DecOptions *dec_cfg, void *vppHandle)
         dec_ = new MSDKCodec(ELEMENT_STRING_DEC, dec_session, pAllocatorDec);
     } else if (MFX_CODEC_PICTURE == decCfg.DecParams.mfx.CodecId) {
         dec_ = new MSDKCodec(ELEMENT_BMP_DEC, dec_session, pAllocatorDec);
-#ifdef ENABLE_RAW_DECODE
-    } else if (MFX_CODEC_YUV == decCfg.DecParams.mfx.CodecId) {
-        dec_ = new MSDKCodec(ELEMENT_YUV_READER, dec_session, pAllocatorDec);
-#endif
     } else {
-        dec_ = new MSDKCodec(ELEMENT_DECODER, dec_session, pAllocatorDec, callback_	);
+        dec_ = new MSDKCodec(ELEMENT_DECODER, dec_session, pAllocatorDec, callback_);
     }
     if (dec_) {
         dec_->Init(&decCfg, ELEMENT_MODE_ACTIVE);
     } else {
-        MLOG_ERROR("Create decoder failed\n");
+        printf("[%s]Create decoder failed\n", __FUNCTION__);
         return -1;
     }
 
@@ -838,7 +775,7 @@ int MsdkXcoder::AttachInput(DecOptions *dec_cfg, void *vppHandle)
     if (dec_dis_) {
         dec_dis_->Init(NULL, ELEMENT_MODE_PASSIVE);
     } else {
-        MLOG_ERROR("Create decoder dispatch failed\n");
+        printf("[%s]Create decoder dispatch failed\n", __FUNCTION__);
         return -1;
     }
 
@@ -851,9 +788,6 @@ int MsdkXcoder::AttachInput(DecOptions *dec_cfg, void *vppHandle)
     if (vpp) {
         vpp->SetStrInfo(dec_->GetStrInfo());
         vpp->SetPicInfo(dec_->GetPicInfo());
-#if defined ENABLE_RAW_DECODE
-        vpp->SetRawInfo(dec_->GetRawInfo());
-#endif
         dec_dis_->LinkNextElement(vpp);
     } else {
         for (vpp_it = vpp_list_.begin(); \
@@ -862,9 +796,6 @@ int MsdkXcoder::AttachInput(DecOptions *dec_cfg, void *vppHandle)
             if (*vpp_it) {
                 (*vpp_it)->SetStrInfo(dec_->GetStrInfo());
                 (*vpp_it)->SetPicInfo(dec_->GetPicInfo());
-#if defined ENABLE_RAW_DECODE
-                (*vpp_it)->SetRawInfo(dec_->GetRawInfo());
-#endif
                 dec_dis_->LinkNextElement(*vpp_it);
             }
         }
@@ -876,7 +807,7 @@ int MsdkXcoder::AttachInput(DecOptions *dec_cfg, void *vppHandle)
     }
 
     dec_cfg->DecHandle = dec_;
-    MLOG_INFO("Attach Decoder:%p Done.\n", dec_);
+    printf("[%s]Attach Decoder:%p Done.\n", __FUNCTION__, dec_);
     return 0;
 }
 
@@ -885,7 +816,7 @@ int MsdkXcoder::DetachVpp(void* vpp_handle)
     Locker<Mutex> lock(mutex);
 
     if (m_bRender_) {
-        MLOG_ERROR("Xcoder is in local rendering mode\n");
+        printf("Xcoder is in local rendering mode\n");
         return -1;
     }
 
@@ -896,17 +827,17 @@ int MsdkXcoder::DetachVpp(void* vpp_handle)
     std::map<MSDKCodec*, Dispatcher*>::iterator it_vpp_dis;
 
     if (!done_init_) {
-        MLOG_ERROR("Detach new stream before initialization\n");
+        printf("[%s]Detach new stream before initialization\n", __FUNCTION__);
         return -1;
     }
 
     if (!vpp_handle) {
-        MLOG_ERROR("Invalid input parameters\n");
+        printf("[%s]Invalid input parameters\n", __FUNCTION__);
         return -1;
     }
 
     if (1 == vpp_list_.size()) {
-        MLOG_ERROR("The last vpp handle, please stop the pipeline\n");
+        printf("[%s]The last vpp handle, please stop the pipeline\n", __FUNCTION__);
         return -1;
     }
 
@@ -921,13 +852,13 @@ int MsdkXcoder::DetachVpp(void* vpp_handle)
         }
     }
     if (!vpp_found) {
-        MLOG_ERROR("Can't find the vpp handle\n");
+        printf("[%s]Can't find the vpp handle\n", __FUNCTION__);
         return -1;
     }
 
-    MLOG_INFO("Stopping vpp %p...\n", vpp);
+    printf("[%s]Stopping vpp %p...\n", __FUNCTION__, vpp);
     vpp->Stop();
-    MLOG_INFO("vpp->UnlinkPrevElement...\n");
+    printf("[%s]vpp->UnlinkPrevElement...\n", __FUNCTION__);
     vpp->UnlinkPrevElement();
     //don't unlink vpp with the following elements at this point.
     //Or else its surfaces can't be recycled
@@ -942,11 +873,11 @@ int MsdkXcoder::DetachVpp(void* vpp_handle)
         }
     }
     if (!vpp_dis) {
-        MLOG_ERROR("Can't find the vpp dispatch handle\n");
+        printf("[%s]Can't find the vpp dispatch handle\n", __FUNCTION__);
         return -1;
     }
 
-    MLOG_INFO("Stopping vpp dis...\n");
+    printf("[%s]Stopping vpp dis...\n", __FUNCTION__);
     vpp_dis->Stop();
 
     BaseElement *enc = NULL;
@@ -954,26 +885,26 @@ int MsdkXcoder::DetachVpp(void* vpp_handle)
     std::pair<enc_multimap_it,enc_multimap_it> p = enc_multimap_.equal_range(vpp);
     for(enc_multimap_it k = p.first; k != p.second; k++)  {
         enc = k->second;
-        MLOG_INFO("Stopping encoder ...\n");
+        printf("[%s]Stopping encoder ...\n", __FUNCTION__);
         enc->Stop();
     }
     enc_multimap_.erase(vpp);
 
     //It's safe to unlink the elements now as encoder is stopped already.
-    MLOG_INFO("Unlinking vpp_dis' next element ...\n");
+    printf("[%s]Unlinking vpp_dis' next element ...\n", __FUNCTION__);
     vpp_dis->UnlinkNextElement();
-    MLOG_INFO("Vpp->UnlinkNextElement ...\n");
+    printf("[%s]Vpp->UnlinkNextElement ...\n", __FUNCTION__);
     vpp->UnlinkNextElement();
 
     delete vpp;
     vpp = NULL;
     delete vpp_dis;
     vpp_dis = NULL;
-    MLOG_INFO("Deleting enc...\n");
+    printf("[%s]Deleting enc...\n", __FUNCTION__);
     delete enc;
     enc = NULL;
 
-    MLOG_INFO("Detach VPP Done\n");
+    printf("[%s]Detach VPP Done\n", __FUNCTION__);
     return 0;
 }
 
@@ -982,17 +913,17 @@ int MsdkXcoder::AttachVpp(DecOptions *dec_cfg, VppOptions *vpp_cfg, EncOptions *
     Locker<Mutex> lock(mutex);
 
     if (m_bRender_) {
-        MLOG_ERROR("Xcoder is in local rendering mode\n");
+        printf("Xcoder is in local rendering mode\n");
         return -1;
     }
 
     if (!done_init_) {
-        MLOG_ERROR("Attach new vpp before initialization\n");
+        printf("[%s]Attach new vpp before initialization\n", __FUNCTION__);
         return -1;
     }
 
     if (!vpp_cfg || !enc_cfg || !dec_cfg) {
-        MLOG_ERROR("Invalid input parameters\n");
+        printf("[%s]Invalid input parameters\n", __FUNCTION__);
         return -1;
     }
     dec_cfg->DecHandle = NULL;
@@ -1004,7 +935,7 @@ int MsdkXcoder::AttachVpp(DecOptions *dec_cfg, VppOptions *vpp_cfg, EncOptions *
             vpp_it != vpp_list_.end(); \
             ++vpp_it) {
         if (is_running_ && !((*vpp_it)->is_running_)) {
-            MLOG_ERROR("One vpp have been exit, shouldn't attach new vpp\n");
+            printf("[%s]One vpp have been exit, shouldn't attach new vpp\n", __FUNCTION__);
             return -1;
         }
     }
@@ -1026,7 +957,7 @@ int MsdkXcoder::AttachVpp(DecOptions *dec_cfg, VppOptions *vpp_cfg, EncOptions *
     MFXVideoSession *vpp_session = NULL;
     CreateSessionAllocator(&vpp_session, &pAllocatorVpp);
     if (!vpp_session || !pAllocatorVpp) {
-        MLOG_ERROR("Create vpp session or allocator failed\n");
+        printf("[%s]Create vpp session or allocator failed\n", __FUNCTION__);
         return -1;
     }
 
@@ -1035,7 +966,7 @@ int MsdkXcoder::AttachVpp(DecOptions *dec_cfg, VppOptions *vpp_cfg, EncOptions *
     MFXVideoSession *enc_session = NULL;
     CreateSessionAllocator(&enc_session, &pAllocatorEnc);
     if (!enc_session || !pAllocatorEnc) {
-        MLOG_ERROR("Create encoder session or allocator failed\n");
+        printf("[%s]Create encoder session or allocator failed\n", __FUNCTION__);
         return -1;
     }
 
@@ -1044,7 +975,7 @@ int MsdkXcoder::AttachVpp(DecOptions *dec_cfg, VppOptions *vpp_cfg, EncOptions *
     MFXVideoSession *dec_session = NULL;
     CreateSessionAllocator(&dec_session, &pAllocatorDec);
     if (!dec_session || !pAllocatorDec) {
-        MLOG_ERROR("Create decoder session or allocator failed\n");
+        printf("[%s]Create decoder session or allocator failed\n", __FUNCTION__);
         return -1;
     }
 
@@ -1053,7 +984,7 @@ int MsdkXcoder::AttachVpp(DecOptions *dec_cfg, VppOptions *vpp_cfg, EncOptions *
     if (vpp_) {
         vpp_->Init(&vppCfg, ELEMENT_MODE_ACTIVE);
     } else {
-        MLOG_ERROR("Create vpp failed\n");
+        printf("[%s]Create vpp failed\n", __FUNCTION__);
         return -1;
     }
 
@@ -1062,7 +993,7 @@ int MsdkXcoder::AttachVpp(DecOptions *dec_cfg, VppOptions *vpp_cfg, EncOptions *
     if (vpp_dis_) {
         vpp_dis_->Init(NULL, ELEMENT_MODE_PASSIVE);
     } else {
-        MLOG_ERROR("Create vpp dispatch failed\n");
+        printf("[%s]Create vpp dispatch failed\n", __FUNCTION__);
         return -1;
     }
 
@@ -1073,7 +1004,7 @@ int MsdkXcoder::AttachVpp(DecOptions *dec_cfg, VppOptions *vpp_cfg, EncOptions *
     if (enc_) {
         enc_->Init(&encCfg, ELEMENT_MODE_ACTIVE);
     } else {
-        MLOG_ERROR("Create encoder failed\n");
+        printf("[%s]Create encoder failed\n", __FUNCTION__);
         return -1;
     }
 
@@ -1090,7 +1021,7 @@ int MsdkXcoder::AttachVpp(DecOptions *dec_cfg, VppOptions *vpp_cfg, EncOptions *
     if (dec_) {
         dec_->Init(&decCfg, ELEMENT_MODE_ACTIVE);
     } else {
-        MLOG_ERROR("Create decoder failed\n");
+        printf("[%s]Create decoder failed\n", __FUNCTION__);
         return -1;
     }
 
@@ -1099,7 +1030,7 @@ int MsdkXcoder::AttachVpp(DecOptions *dec_cfg, VppOptions *vpp_cfg, EncOptions *
     if (dec_dis_) {
         dec_dis_->Init(NULL, ELEMENT_MODE_PASSIVE);
     } else {
-        MLOG_ERROR("Create decoder dispatch failed\n");
+        printf("[%s]Create decoder dispatch failed\n", __FUNCTION__);
         return -1;
     }
 
@@ -1129,8 +1060,126 @@ int MsdkXcoder::AttachVpp(DecOptions *dec_cfg, VppOptions *vpp_cfg, EncOptions *
     dec_cfg->DecHandle = dec_;
     vpp_cfg->VppHandle = vpp_;
     enc_cfg->EncHandle = enc_;
-    MLOG_ERROR("Attach VPP:%p, Encoder:%p Done.\n", vpp_, enc_);
+    printf("[%s]Attach VPP:%p, Encoder:%p Done.\n", __FUNCTION__, vpp_, enc_);
     return 0;
+}
+
+void MsdkXcoder::AttachVpp(VppOptions *vpp_cfg, EncOptions *enc_cfg)
+{
+    Locker<Mutex> lock(mutex);
+
+    if (!done_init_) {
+        printf("[%s]Attach new vpp before initialization\n", __FUNCTION__);
+        return;
+    }
+
+    if (!vpp_cfg || !enc_cfg) {
+        printf("[%s]Invalid input parameters\n", __FUNCTION__);
+        return;
+    }
+    vpp_cfg->VppHandle = NULL;
+    enc_cfg->EncHandle = NULL;
+
+    std::list<MSDKCodec*>::iterator vpp_it;
+    for (vpp_it = vpp_list_.begin(); \
+            vpp_it != vpp_list_.end(); \
+            ++vpp_it) {
+        if (is_running_ && !((*vpp_it)->is_running_)) {
+            printf("[%s]One vpp have been exit, shouldn't attach new vpp\n", __FUNCTION__);
+            return;
+        }
+    }
+
+    ElementCfg vppCfg;
+    memset(&vppCfg, 0, sizeof(vppCfg));
+    ReadVppConfig(vpp_cfg, &vppCfg);
+
+    ElementCfg encCfg;
+    memset(&encCfg, 0, sizeof(encCfg));
+    ReadEncConfig(enc_cfg, &encCfg);
+
+    /*vpp allocator, session*/
+    GeneralAllocator *pAllocatorVpp = NULL;
+    MFXVideoSession *vpp_session = NULL;
+    CreateSessionAllocator(&vpp_session, &pAllocatorVpp);
+    if (!vpp_session || !pAllocatorVpp) {
+        printf("[%s]Create vpp session or allocator failed\n", __FUNCTION__);
+        return;
+    }
+
+    /*enc allocator, session*/
+    GeneralAllocator *pAllocatorEnc = NULL;
+    MFXVideoSession *enc_session = NULL;
+    CreateSessionAllocator(&enc_session, &pAllocatorEnc);
+    if (!enc_session || !pAllocatorEnc) {
+        printf("[%s]Create encoder session or allocator failed\n", __FUNCTION__);
+        delete pAllocatorVpp;
+        CloseMsdkSession(vpp_session);
+        return;
+    }
+
+    vpp_ = NULL;
+    vpp_ = new MSDKCodec(ELEMENT_VPP, vpp_session, pAllocatorVpp);
+    if (vpp_) {
+        vpp_->Init(&vppCfg, ELEMENT_MODE_ACTIVE);
+    } else {
+        printf("[%s]Create vpp failed\n", __FUNCTION__);
+        CloseMsdkSession(enc_session);
+        CloseMsdkSession(vpp_session);
+        return;
+    }
+
+    vpp_dis_ = NULL;
+    vpp_dis_ = new Dispatcher;
+    if (vpp_dis_) {
+        vpp_dis_->Init(NULL, ELEMENT_MODE_PASSIVE);
+    } else {
+        printf("[%s]Create vpp dispatch failed\n", __FUNCTION__);
+        CloseMsdkSession(enc_session);
+        CloseMsdkSession(vpp_session);
+        return;
+    }
+
+    int out_file_type = encCfg.EncParams.mfx.CodecId;
+    enc_ = NULL;
+    if (MFX_CODEC_VP8 == out_file_type) {
+        enc_ = new MSDKCodec(ELEMENT_VP8_ENC, enc_session, pAllocatorEnc);
+    } else {
+        enc_ = new MSDKCodec(ELEMENT_ENCODER, enc_session, pAllocatorEnc);
+    }
+    if (enc_) {
+        enc_->Init(&encCfg, ELEMENT_MODE_ACTIVE);
+    } else {
+        printf("[%s]Create encoder failed\n", __FUNCTION__);
+        CloseMsdkSession(enc_session);
+        CloseMsdkSession(vpp_session);
+        return;
+    }
+
+    vpp_list_.push_back(vpp_);
+    vpp_dis_map_[vpp_] = vpp_dis_;
+    enc_multimap_.insert(std::make_pair(vpp_, enc_));
+
+    main_session_->JoinSession(*vpp_session);
+    main_session_->JoinSession(*enc_session);
+
+    std::map<MSDKCodec*, Dispatcher *>::iterator dec_dis_i;
+    for (dec_dis_i = dec_dis_map_.begin(); dec_dis_i != dec_dis_map_.end(); ++dec_dis_i) {
+        (dec_dis_i->second)->LinkNextElement(vpp_);
+    }
+    vpp_->LinkNextElement(vpp_dis_);
+    vpp_dis_->LinkNextElement(enc_);
+
+    if (is_running_) {
+        enc_->Start();
+        vpp_dis_->Start();
+        vpp_->Start();
+    }
+
+    vpp_cfg->VppHandle = vpp_;
+    enc_cfg->EncHandle = enc_;
+    printf("[%s]Attach VPP:%p, Encoder:%p Done.\n", __FUNCTION__, vpp_, enc_);
+    return;
 }
 
 int MsdkXcoder::DetachOutput(void* output_handle)
@@ -1140,17 +1189,17 @@ int MsdkXcoder::DetachOutput(void* output_handle)
     std::multimap<MSDKCodec*, MSDKCodec*>::iterator it_enc;
 
     if (!done_init_) {
-        MLOG_ERROR("Detach stream before initialization\n");
+        printf("[%s]Detach stream before initialization\n", __FUNCTION__);
         return -1;
     }
 
     if (!output_handle) {
-        MLOG_ERROR("Invalid input parameters\n");
+        printf("[%s]Invalid input parameters\n", __FUNCTION__);
         return -1;
     }
 
     if (1 == enc_multimap_.size()) {
-        MLOG_ERROR("The last output handle, please stop the pipeline\n");
+        printf("[%s]The last output handle, please stop the pipeline\n", __FUNCTION__);
         return -1;
     }
 
@@ -1160,17 +1209,17 @@ int MsdkXcoder::DetachOutput(void* output_handle)
             ++it_enc) {
         if (enc == it_enc->second) {
             if (1 == enc_multimap_.count(it_enc->first)) {
-                MLOG_ERROR("Last enc:%p detach frome vpp:%p, please stop this vpp\n", \
-                     enc, it_enc->first);
+                printf("[%s]Last enc:%p detach frome vpp:%p, please stop this vpp\n", \
+                    __FUNCTION__, enc, it_enc->first);
                 return -1;
             } else {
                 enc_multimap_.erase(it_enc);
-                MLOG_INFO("Stopping encoder ...\n");
+                printf("[%s]Stopping encoder ...\n", __FUNCTION__);
                 enc->Stop();
-                MLOG_INFO("Unlinking element ...\n");
+                printf("[%s]Unlinking element ...\n", __FUNCTION__);
                 //don't unlink enc from previous elements before it's stopped.
                 enc->UnlinkPrevElement();
-                MLOG_INFO("Deleting enc...\n");
+                printf("[%s]Deleting enc...\n", __FUNCTION__);
                 delete enc;
                 enc = NULL;
             }
@@ -1180,11 +1229,11 @@ int MsdkXcoder::DetachOutput(void* output_handle)
     }
 
     if (!enc_found) {
-        MLOG_ERROR("Can't find the output handle\n");
+        printf("[%s]Can't find the output handle\n", __FUNCTION__);
         return -1;
     }
 
-    MLOG_INFO("Detach Encoder Done\n");
+    printf("[%s]Detach Encoder Done\n", __FUNCTION__);
     return 0;
 }
 
@@ -1193,7 +1242,7 @@ int MsdkXcoder::AttachOutput(EncOptions *enc_cfg, void *vppHandle)
     Locker<Mutex> lock(mutex);
 
     if (m_bRender_) {
-        MLOG_ERROR("Xcoder is in local rendering mode\n");
+        printf("Xcoder is in local rendering mode\n");
         return -1;
     }
 
@@ -1203,12 +1252,12 @@ int MsdkXcoder::AttachOutput(EncOptions *enc_cfg, void *vppHandle)
     std::map<MSDKCodec*, Dispatcher*>::iterator vpp_dis_it;
 
     if (!done_init_) {
-        MLOG_ERROR("Attach new stream before initialization\n");
+        printf("[%s]Attach new stream before initialization\n", __FUNCTION__);
         return -1;
     }
 
     if (!enc_cfg || !vppHandle) {
-        MLOG_ERROR("Invalid input parameters\n");
+        printf("[%s]Invalid input parameters\n", __FUNCTION__);
         return -1;
     }
     enc_cfg->EncHandle = NULL;
@@ -1227,11 +1276,11 @@ int MsdkXcoder::AttachOutput(EncOptions *enc_cfg, void *vppHandle)
         }
     }
     if (!vpp_found) {
-        MLOG_ERROR("Can't find the vpp handle\n");
+        printf("[%s]Can't find the vpp handle\n", __FUNCTION__);
         return -1;
     }
     if (is_running_ && !vpp->is_running_) {
-        MLOG_ERROR("Vpp has been exit, can't attach output\n");
+        printf("[%s]Vpp has been exit, can't attach output\n", __FUNCTION__);
         return -1;
     }
 
@@ -1245,7 +1294,7 @@ int MsdkXcoder::AttachOutput(EncOptions *enc_cfg, void *vppHandle)
         }
     }
     if (!vpp_dis_found || !vpp_dis) {
-        MLOG_ERROR("Can't find the vpp dispatch handle\n");
+        printf("[%s]Can't find the vpp dispatch handle\n", __FUNCTION__);
         return -1;
     }
 
@@ -1253,7 +1302,7 @@ int MsdkXcoder::AttachOutput(EncOptions *enc_cfg, void *vppHandle)
     MFXVideoSession *enc_session = NULL;
     CreateSessionAllocator(&enc_session, &pAllocatorEnc);
     if (!enc_session || !pAllocatorEnc) {
-        MLOG_ERROR("Create encoder session or allocator failed\n");
+        printf("[%s]Create encoder session or allocator failed\n", __FUNCTION__);
         return -1;
     }
 
@@ -1264,7 +1313,7 @@ int MsdkXcoder::AttachOutput(EncOptions *enc_cfg, void *vppHandle)
     if (enc_) {
         enc_->Init(&encCfg, ELEMENT_MODE_ACTIVE);
     } else {
-        MLOG_ERROR("Create encoder failed\n");
+        printf("[%s]Create encoder failed\n", __FUNCTION__);
         return -1;
     }
 
@@ -1278,7 +1327,7 @@ int MsdkXcoder::AttachOutput(EncOptions *enc_cfg, void *vppHandle)
     }
 
     enc_cfg->EncHandle = enc_;
-    MLOG_INFO("Attach Encoder:%p Done.\n", enc_);
+    printf("[%s]Attach Encoder:%p Done.\n", __FUNCTION__, enc_);
     return 0;
 }
 /***********************************************************************/
@@ -1291,7 +1340,7 @@ void MsdkXcoder::StringOperateAttach(DecOptions *dec_cfg, void *vppHandle, unsig
     MSDKCodec *vpp = NULL;
 
     if (!dec_cfg || !vppHandle) {
-        MLOG_ERROR("Invalid input parameters\n");
+        printf("Invalid input parameters\n");
         return;
     }
 
@@ -1306,14 +1355,14 @@ void MsdkXcoder::StringOperateAttach(DecOptions *dec_cfg, void *vppHandle, unsig
             }
         }
         if (!vpp_found) {
-            MLOG_ERROR("Can't find VPP, please check it\n");
+            printf("Can't find VPP, please check it\n");
             return;
         }
     }
 
     int stream_cnt = vpp->QueryStreamCnt();
     if (stream_cnt == 0) {
-        MLOG_ERROR("There is no video stream attached on this vpp, so can't attach string now.\n");
+        printf("There is no video stream attached on this vpp, so can't attach string now.\n");
         return;
     }
 
@@ -1325,18 +1374,18 @@ void MsdkXcoder::StringOperateAttach(DecOptions *dec_cfg, void *vppHandle, unsig
     unsigned long vppframe_num = vpp->GetNumOfVppFrm();
 
     if (frame_num <= vppframe_num) {
-        MLOG_INFO("Vpp process %lu frames, User wants to attach a new string on %lu frames.\n", vppframe_num, frame_num);
-        MLOG_INFO("Attach at once.\n");
+        printf("Vpp process %lu frames, User wants to attach a new string on %lu frames.\n", vppframe_num, frame_num);
+        printf("Attach at once.\n");
 
         AttachInput(dec_cfg, vppHandle);
     } else {
-        MLOG_INFO("Vpp process %lu frames, User wants to attach a new string on %lu frames.\n", vppframe_num, frame_num);
-        MLOG_INFO("Wait for attach.\n");
+        printf("Vpp process %lu frames, User wants to attach a new string on %lu frames.\n", vppframe_num, frame_num);
+        printf("Wait for attach.\n");
         while (frame_num > (vppframe_num + 1)) {
             usleep(1000);
             vppframe_num = vpp->GetNumOfVppFrm();
         }
-        MLOG_INFO("Can attach now.\n");
+        printf("Can attach now.\n");
 
         AttachInput(dec_cfg, vppHandle);
     }
@@ -1354,7 +1403,7 @@ void MsdkXcoder::StringOperateDetach(DecOptions *dec_cfg, void *vppHandle, unsig
     void *old_dec = NULL;
 
     if (!dec_cfg || !vppHandle) {
-        MLOG_ERROR("Invalid input parameters\n");
+        printf("Invalid input parameters\n");
         return;
     }
 
@@ -1369,14 +1418,14 @@ void MsdkXcoder::StringOperateDetach(DecOptions *dec_cfg, void *vppHandle, unsig
             }
         }
         if (!vpp_found) {
-            MLOG_ERROR("Can't find VPP, please check it\n");
+            printf("Can't find VPP, please check it\n");
             return;
         }
     }
 
     old_dec = dec_cfg->DecHandle;
     if (!old_dec) {
-        MLOG_ERROR("Invalid old dec parameter\n");
+        printf("Invalid old dec parameter\n");
         return;
     }
 
@@ -1388,18 +1437,18 @@ void MsdkXcoder::StringOperateDetach(DecOptions *dec_cfg, void *vppHandle, unsig
     unsigned long vppframe_num = vpp->GetNumOfVppFrm();
 
     if (frame_num <= vppframe_num) {
-        MLOG_INFO("Vpp process %lu frames, User wants to detach a existed string on %lu frames.\n", vppframe_num, frame_num);
-        MLOG_INFO("Detach at once.\n");
+        printf("Vpp process %lu frames, User wants to detach a existed string on %lu frames.\n", vppframe_num, frame_num);
+        printf("Detach at once.\n");
 
         DetachInput(old_dec);
     } else {
-        MLOG_INFO("Vpp process %lu frames, User wants to detach a existed string on %lu frames.\n", vppframe_num, frame_num);
-        MLOG_INFO("Wait for detach.\n");
+        printf("Vpp process %lu frames, User wants to detach a existed string on %lu frames.\n", vppframe_num, frame_num);
+        printf("Wait for detach.\n");
         while (frame_num > (vppframe_num + 1)) {
             usleep(1000);
             vppframe_num = vpp->GetNumOfVppFrm();
         }
-        MLOG_INFO("Can detach now.\n");
+        printf("Can detach now.\n");
 
         DetachInput(old_dec);
     }
@@ -1417,7 +1466,7 @@ void MsdkXcoder::StringOperateChange(DecOptions *dec_cfg, void *vppHandle, unsig
     void *old_dec = NULL;
 
     if (!dec_cfg || !vppHandle) {
-        MLOG_ERROR("Invalid input parameters\n");
+        printf("Invalid input parameters\n");
         return;
     }
 
@@ -1432,20 +1481,20 @@ void MsdkXcoder::StringOperateChange(DecOptions *dec_cfg, void *vppHandle, unsig
             }
         }
         if (!vpp_found) {
-            MLOG_ERROR("Can't find VPP, please check it\n");
+            printf("Can't find VPP, please check it\n");
             return;
         }
     }
 
     int stream_cnt = vpp->QueryStreamCnt();
     if (stream_cnt == 0) {
-        MLOG_ERROR("There is no video stream attached on this vpp, so can't change string now.\n");
+        printf("There is no video stream attached on this vpp, so can't change string now.\n");
         return;
     }
 
     old_dec = dec_cfg->DecHandle;
     if (!old_dec) {
-        MLOG_ERROR("Invalid old dec parameter\n");
+        printf("Invalid old dec parameter\n");
         return;
     }
 
@@ -1457,21 +1506,21 @@ void MsdkXcoder::StringOperateChange(DecOptions *dec_cfg, void *vppHandle, unsig
     unsigned long vppframe_num = vpp->GetNumOfVppFrm();
 
     if (frame_num <= vppframe_num) {
-        MLOG_INFO("Vpp process %lu frames, User wants to changed on %lu frames.\n", vppframe_num, frame_num);
-        MLOG_INFO("Change at once.\n");
+        printf("Vpp process %lu frames, User wants to changed on %lu frames.\n", vppframe_num, frame_num);
+        printf("Change at once.\n");
 
         DetachInput(old_dec);
         usleep(10000); //to make sure vpp can re-init
         AttachInput(dec_cfg, vppHandle);
         vpp->SetCompInfoChe(true);
     } else {
-        MLOG_INFO("Vpp process %lu frames, User wants to changed on %lu frames.\n", vppframe_num, frame_num);
-        MLOG_INFO("Wait for change.\n");
+        printf("Vpp process %lu frames, User wants to changed on %lu frames.\n", vppframe_num, frame_num);
+        printf("Wait for change.\n");
         while (frame_num > (vppframe_num + 1)) {
             usleep(1000);
             vppframe_num = vpp->GetNumOfVppFrm();
         }
-        MLOG_INFO("Can change now.\n");
+        printf("Can change now.\n");
 
         DetachInput(old_dec);
         usleep(10000);
@@ -1491,7 +1540,7 @@ void MsdkXcoder::PicOperateAttach(DecOptions *dec_cfg, void *vppHandle, unsigned
     MSDKCodec *vpp = NULL;
 
     if (!dec_cfg || !vppHandle) {
-        MLOG_ERROR("Invalid input parameters\n");
+        printf("Invalid input parameters\n");
         return;
     }
 
@@ -1506,20 +1555,14 @@ void MsdkXcoder::PicOperateAttach(DecOptions *dec_cfg, void *vppHandle, unsigned
             }
         }
         if (!vpp_found) {
-            MLOG_ERROR("Can't find VPP, please check it\n");
+            printf("Can't find VPP, please check it\n");
             return;
         }
     }
 
-    if (0 == time) {
-        MLOG_ERROR("Vpp does not need to process frames Attach at once.\n");
-        AttachInput(dec_cfg, vppHandle);
-        return;
-    }
-
     int stream_cnt = vpp->QueryStreamCnt();
     if (stream_cnt == 0) {
-        MLOG_ERROR("There is no video stream attached on this vpp, so can't attach picture now.\n");
+        printf("There is no video stream attached on this vpp, so can't attach picture now.\n");
         return;
     }
     unsigned int fps_n = vpp->GetVppOutFpsN();
@@ -1530,18 +1573,18 @@ void MsdkXcoder::PicOperateAttach(DecOptions *dec_cfg, void *vppHandle, unsigned
     unsigned long vppframe_num = vpp->GetNumOfVppFrm();
 
     if (frame_num <= vppframe_num) {
-        MLOG_INFO("Vpp process %lu frames, User wants to attach a new picture on %lu frames.\n", vppframe_num, frame_num);
-        MLOG_INFO("Attach at once.\n");
+        printf("Vpp process %lu frames, User wants to attach a new picture on %lu frames.\n", vppframe_num, frame_num);
+        printf("Attach at once.\n");
 
         AttachInput(dec_cfg, vppHandle);
     } else {
-        MLOG_INFO("Vpp process %lu frames, User wants to attach a new picture on %lu frames.\n", vppframe_num, frame_num);
-        MLOG_INFO("Wait for attach.\n");
+        printf("Vpp process %lu frames, User wants to attach a new picture on %lu frames.\n", vppframe_num, frame_num);
+        printf("Wait for attach.\n");
         while (frame_num > (vppframe_num + 1)) {
             usleep(1000);
             vppframe_num = vpp->GetNumOfVppFrm();
         }
-        MLOG_INFO("Can attach now.\n");
+        printf("Can attach now.\n");
 
         AttachInput(dec_cfg, vppHandle);
     }
@@ -1559,7 +1602,7 @@ void MsdkXcoder::PicOperateDetach(DecOptions *dec_cfg, void *vppHandle, unsigned
     void *old_dec = NULL;
 
     if (!dec_cfg || !vppHandle) {
-        MLOG_ERROR("invalid decCfg address.\n");
+        printf("invalid decCfg address.\n");
         return;
     }
 
@@ -1574,14 +1617,14 @@ void MsdkXcoder::PicOperateDetach(DecOptions *dec_cfg, void *vppHandle, unsigned
             }
         }
         if (!vpp_found) {
-            MLOG_ERROR("Can't find VPP, please check it\n");
+            printf("Can't find VPP, please check it\n");
             return;
         }
     }
 
     old_dec = dec_cfg->DecHandle;
     if (!old_dec) {
-        MLOG_ERROR("Invalid old dec parameter\n");
+        printf("Invalid old dec parameter\n");
         return;
     }
 
@@ -1593,18 +1636,18 @@ void MsdkXcoder::PicOperateDetach(DecOptions *dec_cfg, void *vppHandle, unsigned
     unsigned long vppframe_num = vpp->GetNumOfVppFrm();
 
     if (frame_num <= vppframe_num) {
-        MLOG_INFO("Vpp process %lu frames, User wants to detach a existed picture on %lu frames.\n", vppframe_num, frame_num);
-        MLOG_INFO("Detach at once.\n");
+        printf("Vpp process %lu frames, User wants to detach a existed picture on %lu frames.\n", vppframe_num, frame_num);
+        printf("Detach at once.\n");
 
         DetachInput(old_dec);
     } else {
-        MLOG_INFO("Vpp process %lu frames, User wants to detach a existed picture on %lu frames.\n", vppframe_num, frame_num);
-        MLOG_INFO("Wait for detach.\n");
+        printf("Vpp process %lu frames, User wants to detach a existed picture on %lu frames.\n", vppframe_num, frame_num);
+        printf("Wait for detach.\n");
         while (frame_num > (vppframe_num + 1)) {
             usleep(1000);
             vppframe_num = vpp->GetNumOfVppFrm();
         }
-        MLOG_INFO("Can detach now.\n");
+        printf("Can detach now.\n");
 
         DetachInput(old_dec);
     }
@@ -1622,7 +1665,7 @@ void MsdkXcoder::PicOperateChange(DecOptions *dec_cfg, void *vppHandle, unsigned
     void *old_dec = NULL;
 
     if (!dec_cfg || !vppHandle) {
-        MLOG_ERROR("Invalid input parameters\n");
+        printf("Invalid input parameters\n");
         return;
     }
 
@@ -1637,20 +1680,20 @@ void MsdkXcoder::PicOperateChange(DecOptions *dec_cfg, void *vppHandle, unsigned
             }
         }
         if (!vpp_found) {
-            MLOG_ERROR("Can't find VPP, please check it\n");
+            printf("Can't find VPP, please check it\n");
             return;
         }
     }
 
     int stream_cnt = vpp->QueryStreamCnt();
     if (stream_cnt == 0) {
-        MLOG_ERROR("There is no video stream attached on this vpp, so can't change picture now.\n");
+        printf("There is no video stream attached on this vpp, so can't change picture now.\n");
         return;
     }
 
     old_dec = dec_cfg->DecHandle;
     if (!old_dec) {
-        MLOG_ERROR("Invalid old dec parameter\n");
+        printf("Invalid old dec parameter\n");
         return;
     }
 
@@ -1662,21 +1705,21 @@ void MsdkXcoder::PicOperateChange(DecOptions *dec_cfg, void *vppHandle, unsigned
     unsigned long vppframe_num = vpp->GetNumOfVppFrm();
 
     if (frame_num <= vppframe_num) {
-        MLOG_INFO("Vpp process %lu frames, User wants to changed on %lu frames.\n", vppframe_num, frame_num);
-        MLOG_INFO("Change at once.\n");
+        printf("Vpp process %lu frames, User wants to changed on %lu frames.\n", vppframe_num, frame_num);
+        printf("Change at once.\n");
 
         DetachInput(old_dec);
         usleep(10000);
         AttachInput(dec_cfg, vppHandle);
         vpp->SetCompInfoChe(true);
     } else {
-        MLOG_INFO("Vpp process %lu frames, User wants to changed on %lu frames.\n", vppframe_num, frame_num);
-        MLOG_INFO("Wait for change.\n");
+        printf("Vpp process %lu frames, User wants to changed on %lu frames.\n", vppframe_num, frame_num);
+        printf("Wait for change.\n");
         while (frame_num > (vppframe_num + 1)) {
             usleep(1000);
             vppframe_num = vpp->GetNumOfVppFrm();
         }
-        MLOG_INFO("Can change now.\n");
+        printf("Can change now.\n");
 
         DetachInput(old_dec);
         usleep(10000);
@@ -1696,7 +1739,7 @@ bool MsdkXcoder::Start()
     std::multimap<MSDKCodec*, MSDKCodec*>::iterator enc_itor;
 
     bool res = true;
-    MLOG_INFO("Starting Xcoder...\n");
+    printf("Starting Xcoder...\n");
 
     if (m_bRender_) {
         assert(render_);
@@ -1918,42 +1961,42 @@ bool MsdkXcoder::Stop()
     std::multimap<MSDKCodec*, MSDKCodec*>::iterator enc_itor;
     bool res  = true;
 
-    MLOG_INFO("Stopping decoders..., decoder size: %lu\n", dec_list_.size());
+    printf("Stopping decoders..., decoder size: %lu\n", dec_list_.size());
     for (dec_itor = dec_list_.begin(); \
             dec_itor != dec_list_.end(); \
             dec_itor++) {
         res &= (*dec_itor)->Stop();
     }
 
-    MLOG_INFO("Stopping dec dis..., dec dis size: %lu\n", dec_dis_map_.size());
+    printf("Stopping dec dis..., dec dis size: %lu\n", dec_dis_map_.size());
     for (dec_dis_itor = dec_dis_map_.begin(); \
             dec_dis_itor != dec_dis_map_.end(); \
             ++dec_dis_itor) {
         res &= (dec_dis_itor->second)->Stop();
     }
 
-    MLOG_INFO("Stopping vpp..., vpp size: %lu\n", vpp_list_.size());
+    printf("Stopping vpp..., vpp size: %lu\n", vpp_list_.size());
     for (vpp_itor = vpp_list_.begin(); \
             vpp_itor != vpp_list_.end(); \
             ++vpp_itor) {
         res &= (*vpp_itor)->Stop();
     }
 
-    MLOG_INFO("Stopping vpp dis..., vpp dis size: %lu\n", vpp_dis_map_.size());
+    printf("Stopping vpp dis..., vpp dis size: %lu\n", vpp_dis_map_.size());
     for (vpp_dis_itor = vpp_dis_map_.begin(); \
             vpp_dis_itor != vpp_dis_map_.end(); \
             ++vpp_dis_itor) {
         res &= (vpp_dis_itor->second)->Stop();
     }
 
-    MLOG_INFO("Stopping encoders..., encoder size: %lu\n", enc_multimap_.size());
+    printf("Stopping encoders..., encoder size: %lu\n", enc_multimap_.size());
     for (enc_itor = enc_multimap_.begin();
             enc_itor != enc_multimap_.end();
             enc_itor++) {
         res &= (enc_itor->second)->Stop();
     }
 
-    MLOG_INFO("----- Done!!!!\n");
+    printf("----- Done!!!!\n");
     is_running_ = false;
 
     return true;
@@ -1970,13 +2013,13 @@ int MsdkXcoder::SetResolution(void *vppHandle, unsigned int width, unsigned int 
     Locker<Mutex> lock(mutex);
 
     if (!done_init_) {
-        MLOG_ERROR("Force change resolution before initializaion\n");
+        printf("Force change resolution before initializaion\n");
         return -1;
     }
 
     //Check if the inputs are valid
     if (!vppHandle || !width || !height) {
-        MLOG_ERROR(" invalid input parameters.\n");
+        printf("Err: invalid input parameters.\n");
         return -2;
     }
 
@@ -1992,7 +2035,7 @@ int MsdkXcoder::SetResolution(void *vppHandle, unsigned int width, unsigned int 
         }
     }
 
-    MLOG_ERROR(" specified vppHandle is not in vpp_list_\n");
+    printf("Err: specified vppHandle is not in vpp_list_\n");
     return -2;
 }
 
@@ -2011,7 +2054,7 @@ int MsdkXcoder::SetCustomLayout(void *vppHandle, const CustomLayout* layout)
 
     //Check if the inputs are null
     if (!vppHandle || !layout) {
-        MLOG_ERROR("null input\n");
+        printf("Err: null input\n");
         return -1;
     }
 
@@ -2024,7 +2067,7 @@ int MsdkXcoder::SetCustomLayout(void *vppHandle, const CustomLayout* layout)
         }
     }
     if (it_vpp == vpp_list_.end()) {
-        MLOG_ERROR("input vppHandle %p is not valid\n", vppHandle);
+        printf("Err: input vppHandle %p is not valid\n", vppHandle);
         return -1;
     }
 
@@ -2033,7 +2076,7 @@ int MsdkXcoder::SetCustomLayout(void *vppHandle, const CustomLayout* layout)
     CustomLayout dis_layout;
     for(CustomLayout::const_iterator it = layout->begin(); it != layout->end(); ++it) {
         if(dec_dis_map_.find((MSDKCodec *)it->handle) == dec_dis_map_.end()) {
-            MLOG_INFO("handle %p is not found in dec_dis_map_\n", it->handle);
+            printf("handle %p is not found in dec_dis_map_\n", it->handle);
             continue;
         }
         //check the region information
@@ -2044,7 +2087,7 @@ int MsdkXcoder::SetCustomLayout(void *vppHandle, const CustomLayout* layout)
             info.height_ratio <= 0.0 || info.height_ratio > 1.0 ||
             info.left + info.width_ratio > 1.0 ||
             info.top + info.height_ratio > 1.0) {
-            MLOG_WARNING("invalid Region infomation, left:%.2f, top:%.2f, width_ratio:%.2f, height_ratio:%.2f\n", \
+            printf("War: invalid Region infomation, left:%.2f, top:%.2f, width_ratio:%.2f, height_ratio:%.2f\n", \
                 info.left, info.top, info.width_ratio, info.height_ratio);
         }
 
@@ -2063,12 +2106,12 @@ int MsdkXcoder::SetBackgroundColor(void *vppHandle, BgColor *bgColor)
     Locker<Mutex> lock(mutex);
 
     if (!done_init_) {
-        MLOG_ERROR("set background color before initialization\n");
+        printf("[%s]set background color before initialization\n", __FUNCTION__);
         return -1;
     }
 
     if (!vppHandle || !bgColor) {
-        MLOG_ERROR("Invalid input parameters\n");
+        printf("[%s]Invalid input parameters\n", __FUNCTION__);
         return -1;
     }
 
@@ -2082,7 +2125,7 @@ int MsdkXcoder::SetBackgroundColor(void *vppHandle, BgColor *bgColor)
             bgColorInfo.V = bgColor->V;
             int ret = (*it_vpp)->SetBgColor(&bgColorInfo);
             if (ret != 0) {
-                MLOG_ERROR("Set background error\n");
+                printf("[%s]Set background error\n", __FUNCTION__);
                 return -1;
             } else {
                 return 0;
@@ -2090,39 +2133,7 @@ int MsdkXcoder::SetBackgroundColor(void *vppHandle, BgColor *bgColor)
         }
     }
 
-    MLOG_ERROR("Can't find the vpp handle\n");
-    return -1;
-}
-
-int MsdkXcoder::SetKeepRatio(void *vppHandle, bool isKeepRatio)
-{
-    Locker<Mutex> lock(mutex);
-
-    if (!done_init_) {
-        MLOG_ERROR("set keep ratio before initialization\n");
-        return -1;
-    }
-
-    if (!vppHandle) {
-        MLOG_ERROR("Invalid input parameters vpp handle is NULL\n");
-        return -1;
-    }
-
-    MSDKCodec *vpp = static_cast<MSDKCodec*>(vppHandle);
-    std::list<MSDKCodec*>::iterator it_vpp;
-    for (it_vpp = vpp_list_.begin(); it_vpp != vpp_list_.end(); ++it_vpp) {
-        if (*it_vpp == vpp) {
-            int ret = (*it_vpp)->SetKeepRatio(isKeepRatio);
-            if (ret != 0) {
-                MLOG_ERROR("Set background error\n");
-                return -1;
-            } else {
-                return 0;
-            }
-        }
-    }
-
-    MLOG_ERROR("Can't find the vpp handle\n");
+    printf("[%s]Can't find the vpp handle\n", __FUNCTION__);
     return -1;
 }
 
@@ -2176,125 +2187,8 @@ ElementType MsdkXcoder::GetElementType(CoderType type, unsigned int codec_type, 
     return ret;
 }
 
-void MsdkXcoder::AttachVpp(VppOptions *vpp_cfg, EncOptions *enc_cfg)
-{
-    Locker<Mutex> lock(mutex);
 
-    if (!done_init_) {
-        MLOG_ERROR("Attach new vpp before initialization\n");
-        return;
-    }
-
-    if (!vpp_cfg || !enc_cfg) {
-        MLOG_ERROR("Invalid input parameters\n");
-        return;
-    }
-    vpp_cfg->VppHandle = NULL;
-    enc_cfg->EncHandle = NULL;
-
-    std::list<MSDKCodec*>::iterator vpp_it;
-    for (vpp_it = vpp_list_.begin(); \
-            vpp_it != vpp_list_.end(); \
-            ++vpp_it) {
-        if (is_running_ && !((*vpp_it)->is_running_)) {
-            MLOG_ERROR("One vpp have been exit, shouldn't attach new vpp\n");
-            return;
-        }
-    }
-
-    ElementCfg vppCfg;
-    memset(&vppCfg, 0, sizeof(vppCfg));
-    ReadVppConfig(vpp_cfg, &vppCfg);
-
-    ElementCfg encCfg;
-    memset(&encCfg, 0, sizeof(encCfg));
-    ReadEncConfig(enc_cfg, &encCfg);
-
-    /*vpp allocator, session*/
-    GeneralAllocator *pAllocatorVpp = NULL;
-    MFXVideoSession *vpp_session = NULL;
-    CreateSessionAllocator(&vpp_session, &pAllocatorVpp);
-    if (!vpp_session || !pAllocatorVpp) {
-        MLOG_ERROR("Create vpp session or allocator failed\n");
-        return;
-    }
-
-    /*enc allocator, session*/
-    GeneralAllocator *pAllocatorEnc = NULL;
-    MFXVideoSession *enc_session = NULL;
-    CreateSessionAllocator(&enc_session, &pAllocatorEnc);
-    if (!enc_session || !pAllocatorEnc) {
-        MLOG_ERROR("Create encoder session or allocator failed\n");
-        delete pAllocatorVpp;
-        CloseMsdkSession(vpp_session);
-        return;
-    }
-
-    vpp_ = NULL;
-    vpp_ = new MSDKCodec(ELEMENT_VPP, vpp_session, pAllocatorVpp);
-    if (vpp_) {
-        vpp_->Init(&vppCfg, ELEMENT_MODE_ACTIVE);
-    } else {
-        MLOG_ERROR("Create vpp failed\n");
-        CloseMsdkSession(enc_session);
-        CloseMsdkSession(vpp_session);
-        return;
-    }
-
-    vpp_dis_ = NULL;
-    vpp_dis_ = new Dispatcher;
-    if (vpp_dis_) {
-        vpp_dis_->Init(NULL, ELEMENT_MODE_PASSIVE);
-    } else {
-        MLOG_ERROR("Create vpp dispatch failed\n");
-        CloseMsdkSession(enc_session);
-        CloseMsdkSession(vpp_session);
-        return;
-    }
-
-    int out_file_type = encCfg.EncParams.mfx.CodecId;
-    enc_ = NULL;
-    if (MFX_CODEC_VP8 == out_file_type) {
-        enc_ = new MSDKCodec(ELEMENT_VP8_ENC, enc_session, pAllocatorEnc);
-    } else {
-        enc_ = new MSDKCodec(ELEMENT_ENCODER, enc_session, pAllocatorEnc);
-    }
-    if (enc_) {
-        enc_->Init(&encCfg, ELEMENT_MODE_ACTIVE);
-    } else {
-        MLOG_ERROR("Create encoder failed\n");
-        CloseMsdkSession(enc_session);
-        CloseMsdkSession(vpp_session);
-        return;
-    }
-
-    vpp_list_.push_back(vpp_);
-    vpp_dis_map_[vpp_] = vpp_dis_;
-    enc_multimap_.insert(std::make_pair(vpp_, enc_));
-
-    main_session_->JoinSession(*vpp_session);
-    main_session_->JoinSession(*enc_session);
-
-    std::map<MSDKCodec*, Dispatcher *>::iterator dec_dis_i;
-    for (dec_dis_i = dec_dis_map_.begin(); dec_dis_i != dec_dis_map_.end(); ++dec_dis_i) {
-        (dec_dis_i->second)->LinkNextElement(vpp_);
-    }
-    vpp_->LinkNextElement(vpp_dis_);
-    vpp_dis_->LinkNextElement(enc_);
-
-    if (is_running_) {
-        enc_->Start();
-        vpp_dis_->Start();
-        vpp_->Start();
-    }
-
-    vpp_cfg->VppHandle = vpp_;
-    enc_cfg->EncHandle = enc_;
-    MLOG_INFO("Attach VPP:%p, Encoder:%p Done.\n", vpp_, enc_);
-    return;
-}
-
-MsdkXcoder* MsdkXcoder::create(CodecEventCallback *callback)
+MsdkXcoder* MsdkXcoder::create(MsdkCoderEventCallback *callback)
 {
     return new MsdkXcoder(callback);
 }
@@ -2304,4 +2198,3 @@ void MsdkXcoder::destroy(MsdkXcoder* xcoder)
     if (xcoder)
         delete xcoder;
 }
-

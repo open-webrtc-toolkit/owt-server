@@ -4,8 +4,8 @@
 #define __GENERAL_ALLOCATOR_H__
 
 #include <vector>
-#include <memory>
 #include "base_allocator.h"
+#include <memory>
 
 class GeneralAllocator : public BaseFrameAllocator
 {
@@ -27,4 +27,4 @@ protected:
     std::auto_ptr<BaseFrameAllocator>       m_D3DAllocator;
 
 };
-#endif //__GENERAL_ALLOCATOR_H__
+#endif

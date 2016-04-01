@@ -12,7 +12,6 @@
 
 #define ALIGN16(value) (((value + 15) >> 4) << 4)
 
-DEFINE_MLOGINSTANCE_CLASS(PicDecPlugin, "PicDecPlugin");
 mfxExtBuffer *PicDecPlugin::GetExtBuffer(mfxExtBuffer **ebuffers, mfxU32 nbuffers, mfxU32 BufferId)
 {
     if (!ebuffers) {
@@ -89,10 +88,10 @@ mfxStatus PicDecPlugin::DecodeHeader(PicInfo *picinfo, mfxVideoParam *par)
     // Detect whether is bitmap
     char first_byte = *bmp;
     char second_byte = *(bmp + 1);
-    MLOG_INFO("first_byte is %0x, second_byte is %0x\n", first_byte, second_byte);
+    printf("first_byte is %0x, second_byte is %0x\n", first_byte, second_byte);
 
     if ((first_byte != 0x42) || (second_byte != 0x4d)) {
-        MLOG_ERROR("It is not bitmap.\n");
+        printf("It is not bitmap.\n");
         return MFX_ERR_UNKNOWN;
     }
 
@@ -103,7 +102,7 @@ mfxStatus PicDecPlugin::DecodeHeader(PicInfo *picinfo, mfxVideoParam *par)
     offset_bytes_ = (unsigned long)byte1 + ((unsigned long)byte2 << 8)
                     + ((unsigned long)byte3 << 16) + ((unsigned long)byte4 << 24);
     //if (offset_bytes_ != 54) {
-    //MLOG_INFO("This bitmap has color table, doesn't belong to processing scope.\n");
+    //printf("This bitmap has color table, doesn't belong to processing scope.\n");
     //return MFX_ERR_UNKNOWN;
     //}
     bmp_data_ = bmp + offset_bytes_;
@@ -124,17 +123,17 @@ mfxStatus PicDecPlugin::DecodeHeader(PicInfo *picinfo, mfxVideoParam *par)
     bit_cnt_ = (int)byte1 + ((int)byte2 << 8);
 
     if ((bit_cnt_ == 24) && (offset_bytes_ != 54)) {
-        MLOG_ERROR("This bitmap is 24bits/pixel but has color table, not belong to processing scope.\n");
+        printf("This bitmap is 24bits/pixel but has color table, not belong to processing scope.\n");
         return MFX_ERR_UNKNOWN;
     }
 
     if ((bit_cnt_ == 32) && (offset_bytes_ != 54)) {
-        MLOG_ERROR("This bitmap is 32bits/pixel but has color table, not belong to processing scope.\n");
+        printf("This bitmap is 32bits/pixel but has color table, not belong to processing scope.\n");
         return MFX_ERR_UNKNOWN;
     }
 
     if ((bit_cnt_ == 16) && (offset_bytes_ <= 54)) {
-        MLOG_ERROR("This bitmap is 16bits/pixel but doesn't have color table, not belong to processing scope.\n");
+        printf("This bitmap is 16bits/pixel but doesn't have color table, not belong to processing scope.\n");
         return MFX_ERR_UNKNOWN;
     }
 
@@ -144,12 +143,12 @@ mfxStatus PicDecPlugin::DecodeHeader(PicInfo *picinfo, mfxVideoParam *par)
     byte4 = (unsigned char)(*(bmp + 33));
 
     if (((byte1 != 0) || (byte2 != 0) || (byte3 != 0) || (byte4 != 0)) && ((bit_cnt_ == 24) || (bit_cnt_ == 32))) {
-        MLOG_ERROR("This bitmap is 24bits/pixel or 32bits/pixel meanwhile has been compressed, doesn't belong to processig scope.\n");
+        printf("This bitmap is 24bits/pixel or 32bits/pixel meanwhile has been compressed, doesn't belong to processig scope.\n");
         return MFX_ERR_UNKNOWN;
     }
 
     if (((byte1 == 0) && (byte2 == 0) && (byte3 == 0) && (byte4 == 0)) && (bit_cnt_ == 16)) {
-        MLOG_ERROR("This bitmap is 16bits/pixel meanwhile has not been compressed, doesn't belong to processing scope.\n");
+        printf("This bitmap is 16bits/pixel meanwhile has not been compressed, doesn't belong to processing scope.\n");
         return MFX_ERR_UNKNOWN;
     }
 
@@ -310,7 +309,7 @@ mfxStatus PicDecPlugin::Execute(mfxThreadTask task, mfxU32 uid_p, mfxU32 uid_a)
     sts = Bmp2Yuv(bmp_data_, bmp_width_, bmp_height_, pic_in);
 
     if (sts != MFX_ERR_NONE) {
-        MLOG_ERROR("Failed to convert the bmp to NV12 frame.\n");
+        printf("Failed to convert the bmp to NV12 frame.\n");
         m_pAlloc->Unlock(m_pAlloc->pthis, surf_out->Data.MemId, &surf_out->Data);
 
         if (yuv_buf_) {
@@ -324,7 +323,7 @@ mfxStatus PicDecPlugin::Execute(mfxThreadTask task, mfxU32 uid_p, mfxU32 uid_a)
     sts = UploadToSurface(yuv_buf_, surf_out);
 
     if (sts != MFX_ERR_NONE) {
-        MLOG_ERROR("Failed to upload the bmp to surface.\n");
+        printf("Failed to upload the bmp to surface.\n");
         m_pAlloc->Unlock(m_pAlloc->pthis, surf_out->Data.MemId, &surf_out->Data);
 
         if (yuv_buf_) {
@@ -366,7 +365,7 @@ mfxStatus PicDecPlugin::Bmp2Yuv(char *bmp_data, int bmp_width, int bmp_height, P
         yuv_buf_ = (unsigned char *)malloc((bmp_width * bmp_height * 3) / 2);
 
         if (yuv_buf_ == NULL) {
-            MLOG_ERROR("Error in mallocing yuv_buf_.\n");
+            printf("Error in mallocing yuv_buf_.\n");
             return MFX_ERR_UNKNOWN;
         }
     } else {
@@ -382,7 +381,7 @@ mfxStatus PicDecPlugin::Bmp2Yuv(char *bmp_data, int bmp_width, int bmp_height, P
     unsigned char *v_ptr = (unsigned char *)malloc(width * height);
 
     if (!u_ptr || !v_ptr) {
-        MLOG_ERROR("Error in mallocing u_ptr or v_ptr.\n");
+        printf("Error in mallocing u_ptr or v_ptr.\n");
 
         if (u_ptr) {
             free(u_ptr);
@@ -404,7 +403,7 @@ mfxStatus PicDecPlugin::Bmp2Yuv(char *bmp_data, int bmp_width, int bmp_height, P
     unsigned char *rgb_b = (unsigned char *)malloc(width * height);
 
     if (!rgb_r || !rgb_g || !rgb_b) {
-        MLOG_ERROR("Error in mallocing rgb_r or rgb_g or rgb_b.\n");
+        printf("Error in mallocing rgb_r or rgb_g or rgb_b.\n");
 
         if (rgb_r) {
             free(rgb_r);
@@ -429,16 +428,16 @@ mfxStatus PicDecPlugin::Bmp2Yuv(char *bmp_data, int bmp_width, int bmp_height, P
     }
 
     if (bit_cnt_ == 16) {
-        //MLOG_INFO("This bitmap is 16 bits/pixel.\n");
+        //printf("This bitmap is 16 bits/pixel.\n");
         sts = GetRGB16(data, rgb_r, rgb_g, rgb_b);
     } else if (bit_cnt_ == 24) {
-        //MLOG_INFO("This bitmap is 24 bits/pixel.\n");
+        //printf("This bitmap is 24 bits/pixel.\n");
         sts = GetRGB24(data, rgb_r, rgb_g, rgb_b);
     } else if (bit_cnt_ == 32) {
-        //MLOG_INFO("This bitmap is 32 bits/pixel.\n");
+        //printf("This bitmap is 32 bits/pixel.\n");
         sts = GetRGB32(data, rgb_r, rgb_g, rgb_b);
     } else {
-        MLOG_ERROR("This bitmap is %d bits/pixel. It doesn't belong to processing scope.\n", bit_cnt_);
+        printf("This bitmap is %d bits/pixel. It doesn't belong to processing scope.\n", bit_cnt_);
         free(u_ptr);
         u_ptr = NULL;
         free(v_ptr);
@@ -511,7 +510,7 @@ mfxStatus PicDecPlugin::Bmp2Yuv(char *bmp_data, int bmp_width, int bmp_height, P
 mfxStatus PicDecPlugin::GetRGB16(char *bmp_data, unsigned char *rgb_r, unsigned char *rgb_g, unsigned char *rgb_b)
 {
     if (!bmp_data || !rgb_r || !rgb_g || !rgb_b) {
-        MLOG_ERROR("Invalid pointer for GetRGB16.\n");
+        printf("Invalid pointer for GetRGB16.\n");
         return MFX_ERR_NULL_PTR;
     }
 
@@ -547,7 +546,7 @@ mfxStatus PicDecPlugin::GetRGB16(char *bmp_data, unsigned char *rgb_r, unsigned 
 mfxStatus PicDecPlugin::GetRGB24(char *bmp_data, unsigned char *rgb_r, unsigned char *rgb_g, unsigned char *rgb_b)
 {
     if (!bmp_data || !rgb_r || !rgb_g || !rgb_b) {
-        MLOG_ERROR("Invalid pointer for GetRGB24.\n");
+        printf("Invalid pointer for GetRGB24.\n");
         return MFX_ERR_NULL_PTR;
     }
 
@@ -580,7 +579,7 @@ mfxStatus PicDecPlugin::GetRGB24(char *bmp_data, unsigned char *rgb_r, unsigned 
 mfxStatus PicDecPlugin::GetRGB32(char *bmp_data, unsigned char *rgb_r, unsigned char *rgb_g, unsigned char *rgb_b)
 {
     if (!bmp_data || !rgb_r || !rgb_g || !rgb_b) {
-        MLOG_ERROR("Invalid pointer for GetRGB32.\n");
+        printf("Invalid pointer for GetRGB32.\n");
         return MFX_ERR_NULL_PTR;
     }
 
@@ -635,7 +634,7 @@ mfxStatus PicDecPlugin::UploadToSurface(unsigned char *yuv_buf, mfxFrameSurface1
             uv_src += bmp_width_;
         }
     } else {
-        MLOG_ERROR("Surface Fourcc not supported!\n");
+        printf("Surface Fourcc not supported!\n");
         return MFX_ERR_UNKNOWN;
     }
 

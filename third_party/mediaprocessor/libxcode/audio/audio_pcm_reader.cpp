@@ -10,14 +10,11 @@
 #include "base/measurement.h"
 
 #ifdef ENABLE_AUDIO_CODEC
-extern "C" {
-#include "libavcodec/pcm_tablegen.h"
-}
+#include "pcm_tablegen.h"
 #endif
 
 //#define DUMP_AUDIO_PCM_INPUT    // Customized option for debugging in WebRTC scenario
 
-DEFINE_MLOGINSTANCE_CLASS(AudioPCMReader, "AudioPCMReader");
 AudioPCMReader::AudioPCMReader(MemPool* mp, char* input) :
     mem_pool_(mp),
     dump_out_file_(NULL),
@@ -71,7 +68,7 @@ bool AudioPCMReader::Init(void* cfg, ElementMode element_mode)
             dump_out_file_ = NULL;
         }
     }
-    MLOG_DEBUG("[%p]: Dump input pcm file to: %s\n", this, file_name);
+    printf("[%p]: Dump input pcm file to: %s\n", this, file_name);
 #endif
 
     return true;
@@ -127,7 +124,7 @@ int AudioPCMReader::HandleProcess()
 
         unsigned int eof = mem_pool_->GetDataEof();
         if ((buffer_size == 0) && (eof == true)) {
-            MLOG_INFO("PCMReader: [%p] Got the end of stream.\n", this);
+            printf("PCMReader: [%p] Got the end of stream.\n", this);
             buf.payload = NULL;
             buf.payload_length = 0;
             srcpad->PushBufToPeerPad(buf);
@@ -146,7 +143,7 @@ int AudioPCMReader::HandleProcess()
             payload_in.payload_length = 1024;
             ret = ParseWAVHeader(&payload_in);
             if (ret == -1) {
-                MLOG_ERROR("ParsePCMHeader error, return.\n");
+                printf("ParsePCMHeader error, return.\n");
                 buf.payload = NULL;
                 buf.payload_length = 0;
                 srcpad->PushBufToPeerPad(buf);
@@ -187,7 +184,7 @@ int AudioPCMReader::HandleProcess()
                     break;
                 }
                 if (!output_payload_[i].payload) {
-                    MLOG_ERROR("AudioPCMReader[%p]: Failed to allocate memory for payload!\n", this);
+                    printf("AudioPCMReader[%p]: Failed to allocate memory for payload!\n", this);
                     continue;
                 }
                 output_payload_[i].payload_length  = 0;
@@ -208,7 +205,7 @@ int AudioPCMReader::HandleProcess()
         data_consumed = 0;
         ret = PCMRead(&payload_out, &payload_in, is_first_packet, &data_consumed);
         if (ret == -1) {
-            MLOG_ERROR("AudioPCMReader[%p]: PCMRead error, return.\n", this);
+            printf("AudioPCMReader[%p]: PCMRead error, return.\n", this);
             buf.payload = NULL;
             buf.payload_length = 0;
             srcpad->PushBufToPeerPad(buf);
@@ -246,13 +243,13 @@ int AudioPCMReader::ParseWAVHeader(AudioPayload *payload_in)
 {
     data_offset_ = wav_header_.Interpret(payload_in->payload, &wav_info_, payload_in->payload_length);
     if (data_offset_ <= 0) {
-        MLOG_ERROR("AudioPCMReader[%p]: Invalid or unsupported wav format! DataOffset(%d)\n",
+        printf("AudioPCMReader[%p]: Invalid or unsupported wav format! DataOffset(%d)\n",
                this,
                data_offset_);
         return -1;
     }
 
-    MLOG_INFO("AudioPCMReader[%p] %s: channel:sample_frequency:bit_per_sample:channel_mask is %d:%d:%d:%d\n",
+    printf("AudioPCMReader[%p] %s: channel:sample_frequency:bit_per_sample:channel_mask is %d:%d:%d:%d\n",
            this,
            __FUNCTION__,
            wav_info_.channels_number,
@@ -267,20 +264,20 @@ int AudioPCMReader::ParseWAVHeader(AudioPayload *payload_in)
         for (int i = 0; i < 256; i++) {
             g711_table_[i] = alaw2linear(i);
         }
-        MLOG_INFO("AudioPCMReader[%p]: input format is G.711 A-Law\n", this);
+        printf("AudioPCMReader[%p]: input format is G.711 A-Law\n", this);
         break;
     case WAVE_FORMAT_MULAW:
         dec_type_ = STREAM_TYPE_AUDIO_MULAW;
         for (int i = 0; i < 256; i++) {
             g711_table_[i] = ulaw2linear(i);
         }
-        MLOG_INFO("AudioPCMReader[%p]: input format is G.711 Mu-Law\n", this);
+        printf("AudioPCMReader[%p]: input format is G.711 Mu-Law\n", this);
         break;
 #endif
     case WAVE_FORMAT_PCM:
     default:
         dec_type_ = STREAM_TYPE_AUDIO_PCM;
-        MLOG_INFO("AudioPCMReader[%p]: input format is Linear PCM\n", this);
+        printf("AudioPCMReader[%p]: input format is Linear PCM\n", this);
         break;
     }
     // Set the output wav format to PCM.

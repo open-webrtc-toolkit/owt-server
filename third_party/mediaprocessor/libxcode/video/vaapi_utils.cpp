@@ -1,9 +1,8 @@
 /* <COPYRIGHT_TAG> */
 
-#include "vaapi_utils.h"
-
 #ifdef LIBVA_SUPPORT
 
+#include "vaapi_utils.h"
 #if defined(LIBVA_DRM_SUPPORT)
 #include "vaapi_utils_drm.h"
 #elif defined(LIBVA_X11_SUPPORT)

@@ -431,10 +431,7 @@ bool BaseElement::WaitSrcMutex()
 #if defined(__WIN32__) || defined(_WIN32) || defined(_WIN32_WCE)
     WaitForSingleObject(src_mutex_, INFINITE);
 #else
-    int ret = pthread_mutex_lock(&src_pad_mutex_);
-    if (0 != ret) {
-        return false;
-    }
+    pthread_mutex_lock(&src_pad_mutex_);
 #endif
     return true;
 }
@@ -444,10 +441,7 @@ bool BaseElement::ReleaseSrcMutex()
 #if defined(__WIN32__) || defined(_WIN32) || defined(_WIN32_WCE)
     ReleaseMutex(src_pad_mutex_);
 #else
-    int ret = pthread_mutex_unlock(&src_pad_mutex_);
-    if (0 != ret) {
-        return false;
-    }
+    pthread_mutex_unlock(&src_pad_mutex_);
 #endif
     return true;
 }
@@ -457,10 +451,7 @@ bool BaseElement::WaitSinkMutex()
 #if defined(__WIN32__) || defined(_WIN32) || defined(_WIN32_WCE)
     WaitForSingleObject(sink_pad_mutex_, INFINITE);
 #else
-    int ret = pthread_mutex_lock(&sink_pad_mutex_);
-    if (0 != ret) {
-        return false;
-    }
+    pthread_mutex_lock(&sink_pad_mutex_);
 #endif
     //just return
     return true;
@@ -471,10 +462,7 @@ bool BaseElement::ReleaseSinkMutex()
 #if defined(__WIN32__) || defined(_WIN32) || defined(_WIN32_WCE)
     ReleaseMutex(sink_pad_mutex_);
 #else
-    int ret = pthread_mutex_unlock(&sink_pad_mutex_);
-    if (0 != ret) {
-        return false;
-    }
+    pthread_mutex_unlock(&sink_pad_mutex_);
 #endif
     //just return
     return true;

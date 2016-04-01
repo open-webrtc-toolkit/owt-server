@@ -1,9 +1,8 @@
 /* <COPYRIGHT_TAG> */
 
-#include "vaapi_utils_x11.h"
-
 #if defined(LIBVA_X11_SUPPORT)
 
+#include "vaapi_utils_x11.h"
 #include "stdlib.h"
 #include <new>
 

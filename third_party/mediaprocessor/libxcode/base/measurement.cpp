@@ -2,7 +2,6 @@
 
 #include <pthread.h>
 #include <string.h>
-#include <stdio.h>
 #include "measurement.h"
 
 #define defaultFile "./log.txt"
@@ -96,7 +95,7 @@ void Measurement::GetCurTime(unsigned long *time)
     *time = ttime.tv_sec * 1000000 + ttime.tv_usec;
 }
 
-void Measurement::GetFmtTime(char *time, size_t buf_sz)
+void Measurement::GetFmtTime(char *time)
 {
     struct timeb tb;
     struct tm *t;
@@ -106,7 +105,7 @@ void Measurement::GetFmtTime(char *time, size_t buf_sz)
     if (t) {
         strftime(buf, 64, "%F %T ", t);
     }
-    snprintf(time, buf_sz, "%s", buf);
+    sprintf(time, "%s", buf);
 }
 
 unsigned long Measurement::CalcInterval(timerec *tr)
@@ -172,7 +171,7 @@ int Measurement::TimeStpStart(StampType st, void *hdl)
     }
 
     timerec tm;
-    timestamp *ptmstp = NULL;
+    timestamp *ptmstp;
     switch(st) {
         case ENC_ENDURATION_TIME_STAMP:
         case DEC_ENDURATION_TIME_STAMP:
@@ -209,7 +208,7 @@ int Measurement::TimeStpFinish(StampType st, void *hdl)
         MSMT_TRACE_ERROR("codec time stamp data allocate error.");
         return MEASUREMNT_ERROR_CODECDATA;
     }
-    timestamp *ptmstp = NULL;
+    timestamp *ptmstp;
     switch(st) {
         case ENC_ENDURATION_TIME_STAMP:
         case DEC_ENDURATION_TIME_STAMP:
@@ -239,7 +238,7 @@ void Measurement::ShowPerformanceInfo()
     unsigned long codecnum = 0;
 
     MSMT_TRACE_INFO("<TRANSCODER> total %zu decoder(s), %zu vpp(s), %zu encoder(s) within the pipeline.\n\
-            _____________________________________________________________________________\n",
+_____________________________________________________________________________\n",
             mDecGrp.size(), mVppGrp.size(), mEncGrp.size());
 
     for(unsigned int n = 0; n < mDecGrp.size(); n++) {
@@ -267,47 +266,31 @@ void Measurement::ShowPerformanceInfo()
             initialization += CalcInterval(&(pd->InitStp)[i]);
         }
         MSMT_TRACE_INFO("<DEC> %d\n\
-                ----------------------------\n\
-                Input               = %s\n\
-                DecodedNum          = %ld\n\
-                InitLatency         = %2ld.%2ldms\n\
-                AvgDecodeLatency    = %2ld.%2ldms\n\
-                DecoderFps          = %.2f\n",
-                pd->pinfo.mChannelNum,
-                pd->pinfo.mInputName.c_str(),
-                codecnum,
-                initialization / 1000, initialization % 1000,
-                dec_avg / 1000, dec_avg % 1000,
-                1000000.0 * codecnum / dec_l);
+                                       ----------------------------\n\
+                                       Input               = %s\n\
+                                       DecodedNum          = %ld\n\
+                                       InitLatency         = %2ld.%2ldms\n\
+                                       AvgDecodeLatency    = %2ld.%2ldms\n\
+                                       DecoderFps          = %.2f\n",
+               pd->pinfo.mChannelNum,
+               pd->pinfo.mInputName.c_str(),
+               codecnum,
+               initialization / 1000, initialization % 1000,
+               dec_avg / 1000, dec_avg % 1000,
+               1000000.0 * codecnum / dec_l);
         init_dec += initialization;
     }
 
     for(unsigned int n = 0; n < mVppGrp.size(); n++) {
         codecdata *pd = &mVppGrp[n];
         unsigned long initialization = 0;
-        unsigned long vpp_l, vpp_avg;
-        vpp_l = vpp_avg = 0;
-        codecnum = pd->FrameTimeStp.size();
-        for(unsigned long i = 0; i < codecnum; i++) {
-            vpp_l += CalcInterval(&pd->FrameTimeStp[i]);
-        }
-        if (codecnum != 0) {
-            vpp_avg = vpp_l * 1.0 / codecnum;
-        }
-
         for(unsigned int i = 0; i< pd->InitStp.size(); i++) {
             initialization += CalcInterval(&(pd->InitStp)[i]);
         }
         MSMT_TRACE_INFO("<VPP>   \n\
-                            ---------------------------\n\
-                            InitLatency         = %2ld.%3ldms\n\
-                            VppedNum            = %ld\n\
-                            AvgVppLatency       = %2ld.%2ldms\n\
-                            VppFps              = %.2f\n",
-                initialization /1000, initialization % 1000,
-                codecnum,
-                vpp_avg / 1000, vpp_avg % 1000,
-                1000000.0 * codecnum / vpp_l);
+                                       ---------------------------\n\
+                                       InitLatency         = %2ld.%3ldms\n",
+                        initialization /1000, initialization % 1000);
         init_vpp += initialization;
     }
 
@@ -347,18 +330,18 @@ void Measurement::ShowPerformanceInfo()
         }
         first_frame_latency = CalcInterval(&(pd->FrameTimeStp[0]));
         MSMT_TRACE_INFO("<ENC> %d\n\
-                ---------------------------\n\
-                Codec               = %s\n\
-                EncodedNum          = %ld\n\
-                InitLatency         = %2ld.%3ldms\n\
-                AvgEncLatency       = %2ld.%3ldms\n\
-                EncoderFPS          = %.2f\n",
-                pd->pinfo.mChannelNum,
-                pd->pinfo.mCodecName.c_str(),
-                codecnum,
-                initialization / 1000, initialization % 1000,
-                enc_avg / 1000, enc_avg % 1000,
-                1000000.0 * codecnum / enc_l);
+                                       ---------------------------\n\
+                                       Codec               = %s\n\
+                                       EncodedNum          = %ld\n\
+                                       InitLatency         = %2ld.%3ldms\n\
+                                       AvgEncLatency       = %2ld.%3ldms\n\
+                                       EncoderFPS          = %.2f\n",
+                       pd->pinfo.mChannelNum,
+                       pd->pinfo.mCodecName.c_str(),
+                       codecnum,
+                       initialization / 1000, initialization % 1000,
+                       enc_avg / 1000, enc_avg % 1000,
+                       1000000.0 * codecnum / enc_l);
         init_enc += initialization;
 
         codecdata* pd_dec = NULL;
@@ -422,18 +405,18 @@ void Measurement::ShowPerformanceInfo()
             pipe_l = pipe_l / codecnum;
         }
         MSMT_TRACE_INFO("<Pipeline> %d\n\
-                ---------------------------\n\
-                FPS                 = %.2f\n\
-                FirstFrameLatency   = %2ld.%3ldms\n\
-                MaxFrameLatency     = %2ld.%3ldms\n\
-                MinFrameLatency     = %2ld.%3ldms\n\
-                AvgFrameLatency     = %2ld.%3ldms\n",
-                pd->pinfo.mChannelNum,
-                1000000.0 * codecnum / enduration,
-                first_frame_latency / 1000, first_frame_latency % 1000,
-                max_l / 1000, max_l % 1000,
-                min_l / 1000, min_l % 1000,
-                pipe_l / 1000, pipe_l % 1000);
+                                       ---------------------------\n\
+                                       FPS                 = %.2f\n\
+                                       FirstFrameLatency   = %2ld.%3ldms\n\
+                                       MaxFrameLatency     = %2ld.%3ldms\n\
+                                       MinFrameLatency     = %2ld.%3ldms\n\
+                                       AvgFrameLatency     = %2ld.%3ldms\n",
+                       pd->pinfo.mChannelNum,
+                       1000000.0 * codecnum / enduration,
+                       first_frame_latency / 1000, first_frame_latency % 1000,
+                       max_l / 1000, max_l % 1000,
+                       min_l / 1000, min_l % 1000,
+                       pipe_l / 1000, pipe_l % 1000);
     }
 #if 0
     //for multi-session avg. init latency
@@ -449,200 +432,4 @@ void Measurement::ShowPerformanceInfo()
                 (init_enc/sum) / 1000, (init_enc/sum) % 1000);
     }
 #endif
-}
-
-void Measurement::GetPerformanceInfo(string &res)
-{
-    unsigned long codecnum = 0;
-    char tmp_r[1024 * 4];
-
-    snprintf(tmp_r, sizeof(tmp_r), "<TRANSCODER> total %zu decoder(s), %zu vpp(s), %zu encoder(s) within the pipeline.\n\
-            _____________________________________________________________________________\n",
-            mDecGrp.size(), mVppGrp.size(), mEncGrp.size());
-    res += tmp_r;
-
-    for(unsigned int n = 0; n < mDecGrp.size(); n++) {
-        codecdata *pd = &mDecGrp[n];
-        unsigned long dec_l, dec_avg, initialization;
-        dec_l = dec_avg = initialization = 0;
-        if(pd->FrameTimeStp.size() == 0 ) {
-            MSMT_TRACE_INFO("<DEC> nothing to do. Maybe bad clips.\n");
-            continue;
-        }
-        if(pd->FrameTimeStp.back().finish_t == 0) {
-            codecnum = pd->FrameTimeStp.size() - 1;
-        }
-        else {
-            codecnum = pd->FrameTimeStp.size();
-        }
-        for(unsigned long i = 0; i< codecnum; i++)
-        {
-            dec_l += CalcInterval(&pd->FrameTimeStp[i]);
-        }
-        if (codecnum != 0) {
-            dec_avg = dec_l * 1.0 / codecnum;
-        }
-        for(unsigned int i = 0; i< pd->InitStp.size(); i++) {
-            initialization += CalcInterval(&(pd->InitStp)[i]);
-        }
-        snprintf(tmp_r, sizeof(tmp_r), "<DEC> %d\n\
-                ----------------------------\n\
-                Input               = %s\n\
-                DecodedNum          = %ld\n\
-                InitLatency         = %2ld.%2ldms\n\
-                AvgDecodeLatency    = %2ld.%2ldms\n\
-                DecoderFps          = %.2f\n",
-                pd->pinfo.mChannelNum,
-                pd->pinfo.mInputName.c_str(),
-                codecnum,
-                initialization / 1000, initialization % 1000,
-                dec_avg / 1000, dec_avg % 1000,
-                1000000.0 * codecnum / dec_l);
-        res += tmp_r;
-        init_dec += initialization;
-    }
-
-    for(unsigned int n = 0; n < mVppGrp.size(); n++) {
-        codecdata *pd = &mVppGrp[n];
-        unsigned long initialization = 0;
-        for(unsigned int i = 0; i< pd->InitStp.size(); i++) {
-            initialization += CalcInterval(&(pd->InitStp)[i]);
-        }
-        snprintf(tmp_r, sizeof(tmp_r), "<VPP> %d\n\
-                ---------------------------\n\
-                InitLatency         = %2ld.%3ldms\n",
-                n,
-                initialization /1000, initialization % 1000);
-        res += tmp_r;
-        init_vpp += initialization;
-    }
-
-    for(unsigned int n = 0; n < mEncGrp.size(); n++) {
-        codecdata *pd = &mEncGrp[n];
-        //here is benchmark for encoder
-        unsigned long enc_l, enc_avg, max_l, min_l, first_frame_latency, enduration, initialization, pipe_l;
-        enc_l = enc_avg = max_l = first_frame_latency = enduration = initialization = pipe_l = 0;
-        min_l = 0xffffffff;
-        if(pd->FrameTimeStp.size() == 0 ) {
-            snprintf(tmp_r, sizeof(tmp_r), "<ENC> nothing to do. Maybe bad clips.\n");
-            res += tmp_r;
-            continue;
-        }
-        if(pd->FrameTimeStp.back().finish_t == 0) {
-            codecnum = pd->FrameTimeStp.size() - 1;
-        }
-        else {
-            codecnum = pd->FrameTimeStp.size();
-        }
-        for(unsigned long i = 0; i< codecnum; i++)
-        {
-            unsigned long tmp = CalcInterval(&pd->FrameTimeStp[i]);
-            enc_l += tmp;
-            if(tmp > max_l) {
-                max_l = tmp;
-            }
-            if(tmp < min_l) {
-                min_l = tmp;
-            }
-        }
-        enc_avg = enc_l * 1.0 / codecnum;
-        for(unsigned int i = 0; i< pd->Enduration.size(); i++) {
-            enduration += CalcInterval(&(pd->Enduration)[i]);
-        }
-        for(unsigned int i = 0; i< pd->InitStp.size(); i++) {
-            initialization += CalcInterval(&(pd->InitStp)[i]);
-        }
-        first_frame_latency = CalcInterval(&(pd->FrameTimeStp[0]));
-        snprintf(tmp_r, sizeof(tmp_r), "<ENC> %d\n\
-                ---------------------------\n\
-                Codec               = %s\n\
-                EncodedNum          = %ld\n\
-                InitLatency         = %2ld.%3ldms\n\
-                AvgEncLatency       = %2ld.%3ldms\n\
-                EncoderFPS          = %.2f\n",
-                pd->pinfo.mChannelNum,
-                pd->pinfo.mCodecName.c_str(),
-                codecnum,
-                initialization / 1000, initialization % 1000,
-                enc_avg / 1000, enc_avg % 1000,
-                1000000.0 * codecnum / enc_l);
-        res += tmp_r;
-        init_enc += initialization;
-
-        codecdata* pd_dec = NULL;
-        if(mDecGrp.size() == 1) { //1:N use case
-            pd_dec = &mDecGrp[0];
-        }
-        else if(mDecGrp.size() >= mEncGrp.size()) {
-            pd_dec = &mDecGrp[n];
-        }
-        else {
-            snprintf(tmp_r, sizeof(tmp_r), "Number of decoder is not match with encoder.");
-            res += tmp_r;
-            break;
-        }
-
-        if( mDecGrp.size() > 1 && mEncGrp.size() == 1) { //N:1 use case
-            unsigned long earliest_fst = mDecGrp[0].InitStp[0].start_t;
-            for(unsigned int n = 1; n < mDecGrp.size(); n++) {
-                codecdata *pdec = &mDecGrp[n];
-                if(earliest_fst > pdec->InitStp[0].start_t)
-                    earliest_fst = pdec->InitStp[0].start_t;
-            }
-            first_frame_latency = pd->FrameTimeStp[0].finish_t - earliest_fst;
-            max_l = min_l = first_frame_latency;
-            pipe_l += first_frame_latency; //init latency included
-            for(unsigned long i = 1; i< codecnum; i++) {
-                unsigned long earliest = 0xffffffffffffffff;
-                for(unsigned int n = 0; n < mDecGrp.size(); n++) { //find the earliest input frame in this group
-                    codecdata *pdec = &mDecGrp[n];
-                    if(pdec->FrameTimeStp.size() >= i+1) { //this decoder frame is not EOF
-                        if(earliest > pdec->FrameTimeStp[i].start_t)
-                            earliest = pdec->FrameTimeStp[i].start_t;
-                    }
-                }
-                unsigned long tmp = pd->FrameTimeStp[i].finish_t - earliest;
-                pipe_l += tmp;
-                if( tmp > max_l ) {
-                    max_l = tmp;
-                }
-                if(tmp < min_l) {
-                    min_l = tmp;
-                }
-            }
-            pipe_l = pipe_l / codecnum;
-        }
-        else { //1:N or N:N
-            first_frame_latency = pd->FrameTimeStp[0].finish_t - pd_dec->InitStp[0].start_t;
-            codecnum = (codecnum < pd_dec->FrameTimeStp.size())?codecnum:pd_dec->FrameTimeStp.size();
-            max_l = min_l = first_frame_latency;
-            pipe_l += first_frame_latency; //init latency included
-            for(unsigned long i = 1; i< codecnum; i++)
-            {
-                unsigned long tmp = pd->FrameTimeStp[i].finish_t - pd_dec->FrameTimeStp[i].start_t;
-                pipe_l += tmp;
-                if( tmp > max_l ) {
-                    max_l = tmp;
-                }
-                if(tmp < min_l) {
-                    min_l = tmp;
-                }
-            }
-            pipe_l = pipe_l / codecnum;
-        }
-        snprintf(tmp_r, sizeof(tmp_r), "<Pipeline> %d\n\
-                ---------------------------\n\
-                FPS                 = %.2f\n\
-                FirstFrameLatency   = %2ld.%3ldms\n\
-                MaxFrameLatency     = %2ld.%3ldms\n\
-                MinFrameLatency     = %2ld.%3ldms\n\
-                AvgFrameLatency     = %2ld.%3ldms\n",
-                pd->pinfo.mChannelNum,
-                1000000.0 * codecnum / enduration,
-                first_frame_latency / 1000, first_frame_latency % 1000,
-                max_l / 1000, max_l % 1000,
-                min_l / 1000, min_l % 1000,
-                pipe_l / 1000, pipe_l % 1000);
-        res += tmp_r;
-    }
 }

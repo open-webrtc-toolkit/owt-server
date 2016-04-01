@@ -6,7 +6,6 @@
 
 #include "vaapi_allocator.h"
 
-DEFINE_MLOGINSTANCE_CLASS(vaapiFrameAllocator, "vaapiFrameAllocator");
 static mfxStatus va_to_mfx_status(VAStatus va_res)
 {
     mfxStatus mfxRes = MFX_ERR_NONE;

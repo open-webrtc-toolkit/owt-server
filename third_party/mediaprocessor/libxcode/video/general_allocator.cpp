@@ -18,7 +18,10 @@ mfxStatus GeneralAllocator::Init(VADisplay *dpy)
     mfxStatus sts = MFX_ERR_NONE;
 
     m_D3DAllocator.reset(new vaapiFrameAllocator);
+
+
     sts = m_D3DAllocator.get()->Init(dpy);
+
 
     return sts;
 }
@@ -26,6 +29,7 @@ mfxStatus GeneralAllocator::Close()
 {
     mfxStatus sts = MFX_ERR_NONE;
     sts = m_D3DAllocator.get()->Close();
+
 
    return sts;
 }
@@ -64,6 +68,7 @@ mfxStatus GeneralAllocator::AllocImpl(mfxFrameAllocRequest *request, mfxFrameAll
     {
         sts = m_D3DAllocator.get()->Alloc(m_D3DAllocator.get(), request, response);
     }
-
+/*
+*/
     return sts;
 }

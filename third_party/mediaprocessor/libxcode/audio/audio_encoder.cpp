@@ -7,13 +7,9 @@
 #include "audio_encoder.h"
 #include "umc_mp3_encoder.h"
 #include "base/trace.h"
-#ifdef SUPPORT_SMTA
-#include "aaccmn_adts.h"
-#endif
 
-DEFINE_MLOGINSTANCE_CLASS(AudioEncoder, "AudioEncoder");
 AudioEncoder::AudioEncoder(Stream* st, unsigned char* name) : m_pStream(st), m_pUMCEncoder(NULL), m_pInMediaBuffer(NULL),
-                               m_pOutMediaBuffer(NULL), m_pAudioCodecParams(NULL), m_pOut(NULL)
+                               m_pOutMediaBuffer(NULL), m_pAudioCodecParams(NULL)
 {
     m_pMediaBufferParams = NULL;
     m_EncodedFrameSize = 0;
@@ -71,7 +67,7 @@ bool AudioEncoder::Init(void* cfg, ElementMode element_mode)
         m_StreamInfo.codec_id = 2;
         m_pAudioCodecParams = reinterpret_cast<UMC::AudioEncoderParams*>(&m_aacenc_params);
     } else {
-        MLOG_ERROR(" Not support the audio format\n");
+        printf("ERROR: Not support the audio format\n");
     }
 
     m_pAudioCodecParams->m_info.iBitrate = audio_params->nBitRate * 1000;
@@ -81,7 +77,7 @@ bool AudioEncoder::Init(void* cfg, ElementMode element_mode)
         m_pAudioCodecParams->m_info.audioInfo.m_iSampleFrequency = getConfigAudioSampleRate(audio_params->nSampleRate);
         APP_TRACE_INFO("sample rate is %d\n", m_pAudioCodecParams->m_info.audioInfo.m_iSampleFrequency);
         if (m_pAudioCodecParams->m_info.audioInfo.m_iSampleFrequency <= 0) {
-            MLOG_ERROR("Invalid Audio Sample Rate (%d)\n", audio_params->nSampleRate);
+            printf("ERROR:Invalid Audio Sample Rate (%d)\n", audio_params->nSampleRate);
         }
     }
 
@@ -150,10 +146,10 @@ int AudioEncoder::Encode(AudioPayload* pIn)
         m_firstPacketPending = true; // Need to remember because with some codecs, we'll need multiple input frames before we can get a first encoded frame
         int ret = Reset();
         if (ret != 0) {
-            MLOG_ERROR("Reset() failed (%d)\n", ret);
+            printf("%s: Reset() failed (%d)\n", __FUNCTION__, ret);
             return ret;
         }
-        MLOG_INFO("is first packet arrived\n");
+        printf("is first packet arrived\n");
     }
 
     // Lets populate the inputWaveInfo object with some parameters from the wav input data (remember this is not receiving a wav file JUST WAV FORMATTED DATA!!!!)
@@ -161,7 +157,7 @@ int AudioEncoder::Encode(AudioPayload* pIn)
     Info inputWaveInfo;
     int dataOffset = inputWaveHeader.Interpret(pIn->payload, &inputWaveInfo, pIn->payload_length);
     if (dataOffset <= 0) {
-        MLOG_ERROR("Encode: Invalid or unsupported header format!\n");
+        printf("Encode: Invalid or unsupported header format!\n");
         return -1;
     }
 
@@ -169,8 +165,8 @@ int AudioEncoder::Encode(AudioPayload* pIn)
     if (pIn->payload_length > dataOffset) {
         frameSize = pIn->payload_length - dataOffset;
     } else {
-        MLOG_WARNING(" input payload size (%d) is lower than data dataOffset(%d)\n",
-                     pIn->payload_length, dataOffset);
+        printf("%s: input payload size (%d) is lower than data dataOffset(%d)\n",
+                    __FUNCTION__, pIn->payload_length, dataOffset);
         frameSize = 0;
     }
     APP_TRACE_INFO("%s: frameSize=%d (payload_size=%d) WAV dataOffset=%d isFirstPacket=%d\n",
@@ -202,12 +198,12 @@ int AudioEncoder::Encode(AudioPayload* pIn)
                                 m_pAudioCodecParams->m_info.audioInfo.m_iChannelMask);
         enc_sts = m_pUMCEncoder->Init(m_pAudioCodecParams); // Check the encoder init failed.
         if (enc_sts != UMC::UMC_OK) {
-            MLOG_ERROR("ERROR - AudioEncoder audio codec Init failed\n");
+            printf("ERROR - AudioEncoder audio codec Init failed\n");
             return UMC::UMC_ERR_FAILED;
         }
         enc_sts = m_pUMCEncoder->GetInfo(m_pAudioCodecParams);
         if (enc_sts < UMC::UMC_OK) {
-            MLOG_ERROR("ERROR - AudioEncoder audio codec GetInfo failed\n");
+            printf("ERROR - AudioEncoder audio codec GetInfo failed\n");
             return UMC::UMC_ERR_FAILED;
         }
 
@@ -222,7 +218,7 @@ int AudioEncoder::Encode(AudioPayload* pIn)
                          (unsigned int)m_pMediaBufferParams->m_prefOutputBufferSize );
             enc_sts = m_pOutMediaBuffer->Init(m_pMediaBufferParams);
             if (enc_sts != UMC::UMC_OK) {
-                MLOG_ERROR("ERROR - AudioEncoder OutMediaBuffer Init failed\n");
+                printf("ERROR - AudioEncoder OutMediaBuffer Init failed\n");
                 return UMC::UMC_ERR_FAILED;
             }
             m_pOut = new UMC::MediaData();
@@ -232,7 +228,7 @@ int AudioEncoder::Encode(AudioPayload* pIn)
             m_pOut->Alloc(m_pAudioCodecParams->m_iSuggestedOutputSize);
         }
         if (NULL == m_pOut) {
-            MLOG_ERROR("ERROR - AudioEncoder Output buffer memory allocation error\n");
+            printf("ERROR - AudioEncoder Output buffer memory allocation error\n");
             return -1;
         }
         APP_TRACE_INFO("%s: Output MediaData allocated (buffer=%p Size=%d)\n",
@@ -252,7 +248,7 @@ int AudioEncoder::Encode(AudioPayload* pIn)
                      (unsigned int)m_pMediaBufferParams->m_prefOutputBufferSize);
         enc_sts = m_pInMediaBuffer->Init(m_pMediaBufferParams);
         if (enc_sts != UMC::UMC_OK) {
-            MLOG_ERROR("ERROR - AudioEncoder InMediaBuffer Init failed\n");
+            printf("ERROR - AudioEncoder InMediaBuffer Init failed\n");
             return UMC::UMC_ERR_FAILED;
         }
 
@@ -280,7 +276,7 @@ int AudioEncoder::Encode(AudioPayload* pIn)
         } else if (inputWaveInfo.resolution == 32) {
             needSize = needSize & (~3);
         } else {
-            MLOG_WARNING("Audio Encoder doesn't support %dbit input.\n", inputWaveInfo.resolution);
+            printf("Audio Encoder doesn't support %dbit input.\n", inputWaveInfo.resolution);
         }
         APP_TRACE_INFO("%s: needSize=%d\n", __FUNCTION__, (int)needSize);
 
@@ -457,12 +453,12 @@ int AudioEncoder::Encode(AudioPayload* pIn)
                                 __FUNCTION__, m_pAudioCodecParams->m_iSuggestedOutputSize);
                     m_pOut = new UMC::MediaData();
                     if (NULL == m_pOut) {
-                        MLOG_ERROR("ERROR - AudioEncoder output buffer memory allocation error\n");
+                        printf("ERROR - AudioEncoder output buffer memory allocation error\n");
                         return -1;
                     }
                     enc_sts = m_pOut->Alloc(m_pAudioCodecParams->m_iSuggestedOutputSize);
                     if (UMC::UMC_OK != enc_sts) {
-                        MLOG_ERROR("ERROR - AudioEncoder output buffer allocation error\n");
+                        printf("ERROR - AudioEncoder output buffer allocation error\n");
                         return -1;
                     }
                 }
@@ -496,7 +492,7 @@ int AudioEncoder::getConfigAudioSampleRate(int idx)
     const int numValidSrValues = sizeof(t_srMap)/sizeof(t_srMap[0]);
 
     if ( (idx < 0) || (idx >= numValidSrValues) ) {
-        MLOG_ERROR("### ERROR: sample_rate %d is out of range (0-%d)\n", idx, (numValidSrValues-1));
+        printf("### ERROR: sample_rate %d is out of range (0-%d)\n", idx, (numValidSrValues-1));
         return -1;
     }
 
@@ -519,12 +515,12 @@ int AudioEncoder::Reset()
     } else if (m_StreamInfo.codec_id == 2) {
         m_pUMCEncoder = new UMC::AACEncoder();
     } else {
-        MLOG_ERROR("ERROR - Unknown codec value (%d)\n", m_StreamInfo.codec_id);
+        printf("%s: ERROR - Unknown codec value (%d)\n", __FUNCTION__, m_StreamInfo.codec_id);
         return -1;
     }
 
     if (m_pUMCEncoder == NULL) {
-        MLOG_ERROR("ERROR - Can't create audio codec object\n");
+        printf("%s: ERROR - Can't create audio codec object\n", __FUNCTION__);
         return -1;
     }
 
@@ -533,15 +529,15 @@ int AudioEncoder::Reset()
     //       Hence is possibly overhead when all is done from one thread...
     m_pInMediaBuffer = DynamicCast < UMC::MediaBuffer > (new UMC::LinearBuffer);
     if (NULL == m_pInMediaBuffer) {
-        MLOG_ERROR("ERROR - AudioEncoder InMediaBuffer memory allocation error\n");
+        printf("ERROR - AudioEncoder InMediaBuffer memory allocation error\n");
         return -1;
     }
 
     if (m_EncodedFrameSize) {  // Forcing fixed size output frames => need to use a real MediaBuffer at output as well
-        MLOG_INFO(" Encoder using an output LinearBuffer for FrameSize=%d\n", (int)m_EncodedFrameSize);
+        printf("%s: Encoder using an output LinearBuffer for FrameSize=%d\n", __FUNCTION__, (int)m_EncodedFrameSize);
         m_pOutMediaBuffer = DynamicCast < UMC::MediaBuffer > (new UMC::LinearBuffer);
         if (NULL == m_pOutMediaBuffer) {
-            MLOG_ERROR("ERROR - AudioEncoder OutMediaBuffer memory allocation error\n");
+            printf("ERROR - AudioEncoder OutMediaBuffer memory allocation error\n");
             return -1;
         }
     }
@@ -556,66 +552,10 @@ int AudioEncoder::Reset()
     static const char* outputFileName = "audio_enc_input.raw";
     m_pDumpInFile = fopen(outputFileName, "wb");
     if (NULL == m_pDumpInFile) {
-        MLOG_ERROR("Can't create output file '%s'", outputFileName);
+        printf("Can't create output file '%S'", outputFileName);
     }
 #endif
 
     return 0;
 }
-
-#ifdef SUPPORT_SMTA
-extern "C" {
-void enc_adts_header(sAdts_fixed_header *pFixedHeader,
-                    sAdts_variable_header *pVarHeader,
-                    sBitsreamBuffer *pBS);
-}
-void AudioEncoder::GenADTSHeader(Ipp8u *outPointer, int len,
-       int profile, int sampling_freq_id, int ch_num)
-{
-    sAdts_fixed_header    adts_fixed_header;
-    sAdts_variable_header adts_variable_header;
-    sBitsreamBuffer       BS;
-    sBitsreamBuffer*      pBS = &BS;
-
-    INIT_BITSTREAM(pBS, outPointer)
-    // Put to bistream ADTS header !
-    // Fixed header.
-    adts_fixed_header.ID                        = profile >= 3? 0:1;
-    adts_fixed_header.Layer                     = 0;
-    adts_fixed_header.protection_absent         = 1;
-    adts_fixed_header.Profile                   = profile;
-    adts_fixed_header.sampling_frequency_index  = sampling_freq_id;
-    adts_fixed_header.private_bit               = 0;
-    adts_fixed_header.channel_configuration     = ch_num;
-    adts_fixed_header.original_copy             = 0;
-    adts_fixed_header.Home                      = 0;
-    if (8 == ch_num)
-        adts_fixed_header.channel_configuration = 7;
-
-    // Variable header !
-    adts_variable_header.copyright_identification_bit   = 0;
-    adts_variable_header.copyright_identification_start = 0;
-    adts_variable_header.aac_frame_length               = len;
-    adts_variable_header.adts_buffer_fullness           = 0x7FF;
-    adts_variable_header.no_raw_data_blocks_in_frame    = 0;
-
-    enc_adts_header(&adts_fixed_header, &adts_variable_header, pBS);
-    if (adts_fixed_header.protection_absent == 0)
-    {
-        PUT_BITS(pBS,0,16); /* for CRC */
-    }
-
-    SAVE_BITSTREAM(pBS)
-    Byte_alignment(pBS);
-
-    Ipp32s  headerBytes = 0;
-    GET_BITS_COUNT(pBS, headerBytes)
-    headerBytes >>= 3;
-
-    adts_variable_header.aac_frame_length = headerBytes + len;
-
-    enc_adts_header(&adts_fixed_header, &adts_variable_header, pBS);
-    SAVE_BITSTREAM(pBS)
-}
-#endif
 #endif

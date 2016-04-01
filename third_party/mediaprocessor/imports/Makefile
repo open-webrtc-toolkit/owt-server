@@ -4,7 +4,7 @@ DIRS:=$(shell find . -maxdepth 1 -type d)
 DIRS:=$(basename $(patsubst ./%,%,$(DIRS)))
 DIRS:=$(filter-out $(EXCLUDE_DIRS),$(DIRS))
 
-ASTA_DEP=freetype2 #gpac
+ASTA_DEP=ffmpeg #gpac
 VCSA_WAV_DEP=libvpx speex freetype2
 VCSA_AUD_DEP=speex
 VCSA_VID_DEP=libvpx freetype2
@@ -14,9 +14,6 @@ XCODER_SW_DEP=ffmpeg
 SNVA_DEP=ffmpeg opencv
 VIOA_DEP=libvpx freetype2
 ON_DEMAND_SERVER_DEP=live555
-SMTA=live555 platform
-SMTA_AUDIO=ipp platform
-WEBTV_DEP=ffmpeg
 
 help:
 	@echo "make asta"
@@ -30,14 +27,10 @@ help:
 	@echo "make snva"
 	@echo "make vioa"
 	@echo "make on_demand_server"
-	@echo "make smta"
-	@echo "make smta_audio"
-	@echo "make webtv"
 
 asta:$(ASTA_DEP)
-	$(MAKE) -C ffmpeg asta
 	@for dir in $^; \
-		do $(MAKE) -C $$dir; \
+		do $(MAKE) -C $$dir asta; \
 	done
 
 fei:
@@ -88,26 +81,6 @@ on_demand_server:$(ON_DEMAND_SERVER_DEP)
 		do $(MAKE) -C $$dir; \
 	done
 	@echo "Building On Demand Server Done"
-
-smta:$(SMTA)
-	$(MAKE) -C ffmpeg smta;
-	@for dir in $^; \
-		do $(MAKE) -C $$dir ; \
-	done
-	@echo "Building SMTA"
-
-smta_audio:$(SMTA_AUDIO)
-	@for dir in $^; \
-		do $(MAKE) -C $$dir ; \
-	done
-	@echo "Building SMTA AUDIO"
-
-webtv:$(WEBTV_DEP)
-	$(MAKE) -C ffmpeg webtv
-	@for dir in $^; \
-		do $(MAKE) -C $$dir; \
-	done
-	@echo "Building WebTV"
 
 clean:
 	@for dir in $(DIRS); \

@@ -1,10 +1,9 @@
 /* <COPYRIGHT_TAG> */
+#include <stdlib.h>
+#include <string>
 
 #ifndef MEM_POOL_H
 #define MEM_POOL_H
-
-#include <stdlib.h>
-#include <string>
 
 #define MEM_POOL_RETVAL_BASE            (0)
 #define MEM_POOL_RETVAL_SUCCESS         MEM_POOL_RETVAL_BASE + 0

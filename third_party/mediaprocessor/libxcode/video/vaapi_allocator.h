@@ -7,7 +7,6 @@
 #include <stdlib.h>
 #include <va/va.h>
 
-#include "base/logger.h"
 #include "base_allocator.h"
 
 // VAAPI Allocator internal Mem ID
@@ -29,7 +28,6 @@ struct vaapiAllocatorParams : mfxAllocatorParams
 class vaapiFrameAllocator: public BaseFrameAllocator
 {
 public:
-	DECLARE_MLOGINSTANCE();
     vaapiFrameAllocator();
     virtual ~vaapiFrameAllocator();
 

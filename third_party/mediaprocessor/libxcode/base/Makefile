@@ -10,7 +10,3 @@ endif
 LIBS+=-lpthread -lrt
 include ../common.mk
 
-ifeq ($(SMTA_ENABLE),1)
-EXTRA_FLAGS+=-DENABLE_RAW_DECODE
-endif
-
