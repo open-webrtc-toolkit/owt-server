@@ -67,13 +67,12 @@ Table 2-1 describes the system requirements for installing the MCU server. Table
 **Table 2-1. Server requirements**
 Application name|OS version
 -------------|--------------
-General MCU server|Ubuntu 14.04 LTS* 64-bit
-GPU-accelerated MCU server|CentOS* 7.1
+MCU server|CentOS* 7.1
 
 H.264 support in MCU system requires the deployment of OpenH264 library, see [Deploy Cisco OpenH264* Library section](#Conferencesection2_3_4) for more details.
 
 > **Note**: OpenH264 library is not required for GPU-accelerated MCU when forward RTSP stream subscription is not used.
-If you want to set up video conference service powered by GPU-accelerated MCU server, the following server side SDK needs to be installed on CentOS* 7.1:
+If you want to set up video conference service powered by GPU-accelerated MCU server, the following server side SDK needs to be installed on CentOS* 7.1 where video-agents run on:
 
  - Intel<sup>®</sup> Media Server Studio for Linux* version 2015 R6
 
@@ -158,7 +157,7 @@ bin/init.sh --deps
 ~~~~~~
 For GPU-accelerated MCU Server installation on CentOS, follow these steps:
 ~~~~~~{.js}
-tar xf CS_WebRTC_Conference_Server_MCU.v<Version>.hw.tgz
+tar xf CS_WebRTC_Conference_Server_MCU.v<Version>.tgz
 cd Release-<Version>/
 bin/init.sh --deps --hardware
 ~~~~~~
@@ -173,7 +172,7 @@ The default H.264 library installed is a pseudo one without any media logic. To 
 
         bzip2 -d libopenh264-1.4.0-linux64.so.bz2
 
-3. Copy the lib file libopenh264-1.4.0-linux64.so to Release-<Version>/lib folder, and rename it to libopenh264.so.0 to replace the existing pseudo one.
+3. Copy the lib file libopenh264-1.4.0-linux64.so to Release-<Version>/video_agent/lib folder, and rename it to libopenh264.so.0 to replace the existing pseudo one.
 
 4. Edit etc/woogeen_config.js file under Release-<Version> folder, set the value of key config.erizo.openh264Enbaled to be true.
 
@@ -213,47 +212,12 @@ Run the following commands to stop the MCU:
     cd Release-<Version>/
     bin/stop-all.sh
 
-### 2.3.8 Set up the General MCU cluster {#Conferencesection2_3_8}
-Follow the steps below to set up an MCU cluster which comprises multiple worker nodes:
-1. Make sure you have installed the MCU package on each machine before launching the cluster which has been described in section [Install the MCU package](#Conferencesection2_3_3).
-2. Choose a primary machine.
-3. You can run nuve, mcu controller and the application on the primary machine without any MCU worker node by running the following commands:
-
-        cd Release-<Version>/
-        bin/daemon.sh start nuve
-        bin/daemon.sh start mcu
-        bin/daemon.sh start app
-
-4. Choose a slave machine.
-5. Edit the configuration file
-Release-<Version>/etc/woogeen_config.js on the slave machines, in order to make sure the config.rabbit.port and config.rabbit.host point to the RabbitMQ server.
-
-6. Run the following commands to launch the MCU worker node on this slave machine:
-
-        cd Release-<Version>/
-        bin/daemon.sh start agent
-
-7. Repeat step 4 to 6 to launch as many MCU slave machines as you need.
-### 2.3.9 Stop the General MCU cluster {#Conferencesection2_3_9}
-To stop the MCU cluster, follow these steps:
-1. Run the following commands on primary node to stop the application, MCU controller and nuve.
-
-        cd Release-<Version>/
-        bin/daemon.sh stop app
-        bin/daemon.sh stop mcu
-        bin/daemon.sh stop nuve
-2. Run the following commands on slave node to stop MCU worker node.
-
-        cd Release-<Version>/
-        bin/daemon.sh stop agent
-
-### 2.3.10 Set up the GPU-accelerated MCU cluster {#Conferencesection2_3_10}
-To better fullfill large scale video conference deployments and to fully utilize Intel media acceleration platforms, such as Intel<sup>®</sup> Visual Compute Accelerator card, Intel CS for WebRTC architecture is evolving to be more distributed. GPU-accelerated MCU is the first component to employ a distributed architecture and soon the General MCU component will follow.
-
+### 2.3.8 Set up the MCU cluster {#Conferencesection2_3_8}
  **Table 2-5. Distributed MCU components**
 Component Name|Deployment Number|Responsibility
 --------|--------|--------
-nuve|1|The manager of the MCU, keeping the configurations of all rooms, generating and verifying the tokens, allocating and deallocating accessing nodes and media processing nodes for conferences
+nuve|1|The manager of the MCU, keeping the configurations of all rooms, generating and verifying the tokens
+cluster_manager|1|The manager of all active workers in the cluster, checking their lives, scheduling workers with the specified purposes according to the configured policies
 portal|1 or many|The signaling server and room controller, handling service requests from and responding to the clients
 webrtc-agent|1 or many|This agent spawning webrtc accessing nodes which establish peer-connections with webrtc clients, receive media streams from and send media streams to webrtc clients
 rtsp-agent|1 or many|This agent spawning rtsp accessing nodes which pull rtsp streams from rtsp sources and push rtsp streams to rtsp destinations
@@ -262,40 +226,64 @@ audio-agent|1 or many|This agent spawning audio processing nodes which perform a
 video-agent|1 or many|This agent spawning video processing nodes which perform video transcoding and mixing
 app|0 or 1|The sample web application for reference, users should use their own application server
 
-Follow the steps below to set up an GPU-accelerated MCU cluster:
+Follow the steps below to set up an MCU cluster:
 1. Make sure you have installed the MCU package on each machine before launching the cluster which has been described in section [Install the MCU package](#Conferencesection2_3_3).
-2. Choose a primary machine.
-3. You can run MCU manager nuve and the application on the primary machine without any MCU worker node with following commands:
+2. Choose a primary machine. This machine must be visible to clients(such as browsers and mobile apps).
+3. Edit the configuration items of nuve in Release-<Version>/nuve/nuve.toml.
+
+    1) Make sure the rabbit.port and rabbit.host point to the RabbitMQ server.
+    ===to be filled
+
+4. Run MCU manager nuve and the application on the primary machine with following commands:
 
         cd Release-<Version>/
         bin/daemon.sh start nuve
         bin/daemon.sh start app
 
-4. Choose a slave machine.
-5. Edit the configuration file
-Release-<Version>/etc/woogeen_config.js on the slave machines:
+5. Choose a machine to run cluster_manager. This machine need not to be visible to clients, but must be visible to nuve and all workers.
+6. Edit the configurations of cluster_manager in Release-<Version>/cluster_manager.toml.
 
-    1) Make sure the config.rabbit.port and config.rabbit.host point to the RabbitMQ server.
-    2) For portal node, make sure the config.erizoController.networkInterface is specified to the correct network interface which the clients’ signaling and control messages are expected to connect through.
-    3) For any agent node, make sure the config.erizoAgent.networkInterface is specified to the correct network interface which the media streams are expected to be transmitted.
+   ===to be filled===
 
-6. Run the following commands to launch one or multiple MCU worker nodes on this slave machine:
+7. Run the cluster_manager with following commands:
 
         cd Release-<Version>/
-        bin/daemon.sh start start portal/webrtc-agent/rtsp-agent/audio-agent/video-agent/recording-agent
+        bin/daemon.sh start cluster_manager
 
-7. Repeat step 4 to 6 to launch as many MCU slave machines as you need.
+8. Choose worker machines to run portals. These machines must be visible to clients.
+9. Edit the configuration items of portals in Release-<Version>/controller/controller.toml.
 
-### 2.3.11 Stop the GPU-accelerated MCU cluster {#Conferencesection2_3_11}
+    1) Make sure the rabbit.port and rabbit.host point to the RabbitMQ server.
+    2) Make sure the controller.networkInterface is specified to the correct network interface which the clients’ signaling and control messages are expected to connect through.
+    ===to be filled===
 
-To stop the GPU-accelerated MCU cluster, follow these steps:
-1. Run the following commands on primary node to stop the application and MCU manager nuve:
+10. Choose worker machines to run webrtc-agents and/or rtsp-agents and/or recording-agents and/or audio-agents and/or video-agents. These machines must be visible to each other, and if webrtc-agents are running on them, they must be visible to clients.
+11. Edit the configuration items in Release-<Version>/agent.toml.
+
+    ===to be filled===
+
+12. Run the following commands to launch one or multiple MCU worker nodes on these work machines:
+
+        cd Release-<Version>/
+        bin/daemon.sh start portal/webrtc-agent/rtsp-agent/audio-agent/video-agent/recording-agent
+
+13. Repeat step 10 to 12 to launch as many MCU worker machines as you need.
+
+### 2.3.9 Stop the MCU cluster {#Conferencesection2_3_9}
+
+To stop the MCU cluster, follow these steps:
+1. Run the following commands on primary machine to stop the application and MCU manager nuve:
 
         cd Release-<Version>/
         bin/daemon.sh stop app
         bin/daemon.sh stop nuve
-2. Run the following commands on slave node to stop MCU worker nodes installed on this node:
 
+2. Run the following commands on cluster manager machine to stop the cluster manager:
+
+        cd Release-<Version>/
+        bin/daemon.sh stop cluster_manager
+
+3. Run the following commands on worker machines to stop cluster workers:
         cd Release-<Version>/
         bin/daemon.sh stop portal/webrtc-agent/rtsp-agent/audio-agent/video-agent/recording-agent
 
@@ -453,10 +441,18 @@ The size of a region is specified relative to the size of the root mixed stream 
 
 Regions are located on the root window based on the value of the position attributes "top" and "left".  These attributes define the position of the top left corner of the region as an offset from the top left corner of the root mixed stream, which is a percent of the vertical or horizontal dimension of the root mixed stream.
 
-## 3.6 Runtime Configuration {#Conferencesection3_6}
+## 3.6 Cluster Worker Scheduling Policy Introduction {#Conferencesection3_6}
+All workers including portals, webrtc-agents, rtsp-agents, recording-agents, audio-agents, video-agents in the cluster are scheduled by the cluster_manager with respect to the configured scheduling strategies in cluster_manager/cluster_manager.toml.  For example, the configuration item "portal = last-used" means the scheduling policy of workers with purposes of "portal" are set to "last-used". The following built-in scheduling strategies are provided:
+1. last-used: If more than 1 worker with the specified purpose are alive and available, the last used one will be scheduled.
+2. least-used: If more than 1 worker with the specified purpose are alive and available, the one with the least work-load will be scheduled.
+3. most-used: If more than 1 worker with the specified purpose are alive and available, the one with the heavist work-load will be scheduled.
+4. round-robin: If more than 1 worker with the specified purpose are alive and available, they will be scheduled one by one circularly.
+5. randomly-pick: If more than 1 worker with the specified purpose are alive and available, they will be scheduled randomly.
+
+## 3.7 Runtime Configuration {#Conferencesection3_7}
 Only super service user can access runtime configuration. Current management console implementation just provides the MCU cluster runtime configuration viewer.
 
-## 3.7 Special Notes {#Conferencesection3_7}
+## 3.8 Special Notes {#Conferencesection3_8}
 Due to server-side APIs' security consideration, API calls from a service should be synchronized and sequential. Otherwise, server may respond with 401 if the request's timestamp is earlier than the previous request. As a result, API calls of single service are from different machines while these machines' time are not calibrated, one or another machine would encounter server response with 401 since their timestamps are messed.
 # 4 MCU Sample Application Server User Guide  {#Conferencesection4}
 ## 4.1 Introduction {#Conferencesection4_1}
