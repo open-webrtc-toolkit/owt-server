@@ -188,7 +188,10 @@ mfxStatus VP8EncPlugin::QueryIOSurf(mfxVideoParam *par, mfxFrameAllocRequest *in
 mfxStatus VP8EncPlugin::Close()
 {
     mfxStatus sts = MFX_ERR_NONE;
-
+    if (pthread_mutex_lock(&VP8EncPlugin::plugin_mutex_)) {
+        MLOG_ERROR("Failed to get lock\n");
+        assert(0);
+    }
     // destroy vpx decoder object
     if (vpx_init_flag_) {
         if (swap_buf_) {
@@ -197,6 +200,10 @@ mfxStatus VP8EncPlugin::Close()
         }
         vpx_img_free(&raw_);
         vpx_codec_destroy(&vpx_codec_);
+    }
+    if (pthread_mutex_unlock(&VP8EncPlugin::plugin_mutex_)) {
+        MLOG_ERROR("Failed to release lock\n");
+        assert(0);
     }
     if (m_bIsOpaque) {
         mfxExtOpaqueSurfaceAlloc *pluginOpaqueAlloc = (mfxExtOpaqueSurfaceAlloc*)GetExtBuffer(&m_ExtParam,
@@ -345,11 +352,6 @@ mfxStatus VP8EncPlugin::Execute(mfxThreadTask task, mfxU32 , mfxU32 uid_a)
         assert(sts == MFX_ERR_NONE);
     }
 
-    if (pthread_mutex_unlock(&VP8EncPlugin::plugin_mutex_)) {
-        MLOG_ERROR("Failed to release lock\n");
-        assert(0);
-    }
-
     /* encode frame */
     if (!(frame_cnt_ % keyframe_dist_)) {
         flags = VPX_EFLAG_FORCE_KF;
@@ -362,6 +364,11 @@ mfxStatus VP8EncPlugin::Execute(mfxThreadTask task, mfxU32 , mfxU32 uid_a)
 
     if(vpx_codec_encode(&vpx_codec_, &raw_, frame_cnt_, 1, flags, VPX_DL_REALTIME)) {
         MLOG_ERROR("Failed to encode frame\n");
+        assert(0);
+    }
+
+    if (pthread_mutex_unlock(&VP8EncPlugin::plugin_mutex_)) {
+        MLOG_ERROR("Failed to release lock\n");
         assert(0);
     }
 
