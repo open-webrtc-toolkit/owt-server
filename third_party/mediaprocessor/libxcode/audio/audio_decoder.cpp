@@ -9,7 +9,6 @@
 #include "audio_decoder.h"
 #include "audio_params.h"
 
-DEFINE_MLOGINSTANCE_CLASS(AudioDecoder, "AudioDecoder");
 AudioDecoder::AudioDecoder(MemPool* mp, char* input) :
     m_pMempool(mp),
     m_pRawDataMP(NULL),
@@ -81,7 +80,7 @@ bool AudioDecoder::Init(void* cfg, ElementMode element_mode)
         m_pDumpOutFile = fopen(outputFileName, "wb");
         APP_TRACE_INFO("%s: Opening %s\n", __FUNCTION__, outputFileName);
         if (NULL == m_pDumpOutFile) {
-            MLOG_ERROR("Can't create output file %s\n", outputFileName);
+            printf("Can't create output file %s\n", outputFileName);
         }
 #endif
     }
@@ -130,15 +129,15 @@ int AudioDecoder::HandleProcess()
     while (is_running_) {
         // step 1: check if there is available coded stream
         unsigned int buffer_size = m_pMempool->GetFlatBufFullness();
-        bool eof = m_pMempool->GetDataEof();
-        if ((buffer_size == 0) && eof) {
-            MLOG_INFO("Got the end of stream.\n");
+        unsigned int eof = m_pMempool->GetDataEof();
+        if ((buffer_size == 0) && (eof == true)) {
+            printf("Got the end of stream.\n");
             buf.payload = NULL;
             buf.payload_length = 0;
             srcpad->PushBufToPeerPad(buf);
             break;
         }
-        if ((buffer_size < 10 * 1024) && !eof) {
+        if ((buffer_size < 10 * 1024) && (eof != true)) {
             usleep(10 * 1000);
             continue;
         }
@@ -149,7 +148,7 @@ int AudioDecoder::HandleProcess()
         data_consumed = 0;
         ret = Decode(&payload_in, isFirstPacket, &data_consumed);
         if (ret == -1) {
-            MLOG_ERROR("Decode error, return.\n");
+            printf("Decode error, return.\n");
             buf.payload = NULL;
             buf.payload_length = 0;
             srcpad->PushBufToPeerPad(buf);
@@ -163,7 +162,7 @@ int AudioDecoder::HandleProcess()
             raw_data_frame_size = m_WaveInfoOut.channels_number *
                                   m_WaveInfoOut.sample_rate * 3 *
                                   (m_WaveInfoOut.resolution >> 3) / 50;
-            MLOG_INFO("AudioDecoder: raw_data_frame_size = %d\n", raw_data_frame_size);
+            printf("AudioDecoder: raw_data_frame_size = %d\n", raw_data_frame_size);
             // allocate memory for audio payload
             for (i = 0; i < AUDIO_OUTPUT_QUEUE_SIZE; i++) {
                 m_Output[i].payload = reinterpret_cast<unsigned char*>
@@ -182,7 +181,7 @@ int AudioDecoder::HandleProcess()
 
             // Check if there is free buffer for decoded wav.
             if (m_output_queue.Pop(payload_out) == false) {
-                MLOG_WARNING("There is no empty buffer for decoded wav.\n");
+                printf("There is no empty buffer for decoded wav.\n");
                 usleep(10*1000);
                 continue;
             }
@@ -219,7 +218,7 @@ bool AudioDecoder::FindAACFrame(unsigned char* buf, unsigned int buf_size, unsig
     unsigned int size;
     unsigned int sync_word = ptr[0] | ((ptr[1] >> 4) << 8);
     if (sync_word != 0xfff) {
-        MLOG_ERROR("invalid sync word is %x\n",sync_word);
+        printf("invalid sync word is %x\n",sync_word);
     }
 
     size = ptr[5] | (ptr[4] << 8) | (ptr[3] << 16);
@@ -245,7 +244,7 @@ int AudioDecoder::Decode(AudioPayload *pIn, bool isFirstPacket, unsigned int* Da
             m_pDumpOutFile = fopen(outputFileName, "wb");
             APP_TRACE_INFO("%s: Opening %S\n", __FUNCTION__, outputFileName);
             if (NULL == m_pDumpOutFile) {
-                MLOG_ERROR("Can't create output file '%S'", outputFileName);
+                printf("Can't create output file '%S'", outputFileName);
             }
         }
 #endif
@@ -279,7 +278,7 @@ int AudioDecoder::Decode(AudioPayload *pIn, bool isFirstPacket, unsigned int* Da
 
         m_pAudioDecoderParams = DynamicCast<UMC::AudioDecoderParams>(&m_aacdec_params);
         if (NULL == m_pAudioDecoderParams) {
-            MLOG_ERROR("AudioDecoder Memory allocation error\n");
+            printf("AudioDecoder Memory allocation error\n");
             return -1;
         }
 
@@ -291,7 +290,7 @@ int AudioDecoder::Decode(AudioPayload *pIn, bool isFirstPacket, unsigned int* Da
         if (m_pUMCDecoder == NULL) {
             m_pUMCDecoder = new UMC::AACDecoder();
             if (m_pUMCDecoder == NULL) {
-                MLOG_ERROR("AudioDecoder can't create audio codec object \n");
+                printf("AudioDecoder can't create audio codec object \n");
                 return -1;
             }
         }
@@ -304,13 +303,13 @@ int AudioDecoder::Decode(AudioPayload *pIn, bool isFirstPacket, unsigned int* Da
 
         dec_sts = m_pUMCDecoder->Init(m_pAudioDecoderParams); // Prepare the parameter here.
         if (dec_sts != UMC::UMC_OK) {
-            MLOG_ERROR("AudioDecoder audio codec Init failed\n");
+            printf("AudioDecoder audio codec Init failed\n");
             return -1;
         }
 
         dec_sts = m_pUMCDecoder->GetInfo(m_pAudioDecoderParams);
         if (dec_sts < UMC::UMC_OK) {
-            MLOG_ERROR("AudioDecoder audio codec GetInfo failed\n");
+            printf("AudioDecoder audio codec GetInfo failed\n");
             return -1;
         }
 
@@ -318,11 +317,11 @@ int AudioDecoder::Decode(AudioPayload *pIn, bool isFirstPacket, unsigned int* Da
 
         m_pOut = new UMC::MediaData();
         if (NULL == m_pOut) {
-            MLOG_ERROR("Decoder output buffer memory allocation error\n");
+            printf("Decoder output buffer memory allocation error\n");
             return -1;
         }
         if (UMC::UMC_OK != m_pOut->Alloc(m_pAudioDecoderParams->m_iSuggestedOutputSize)) {
-            MLOG_ERROR("Decoder output buffer allocation error\n");
+            printf("Decoder output buffer allocation error\n");
             return -1;
         }
     }
@@ -338,7 +337,7 @@ int AudioDecoder::Decode(AudioPayload *pIn, bool isFirstPacket, unsigned int* Da
     // Supply the data to be decoded via dec_inMediaBuffer
     // and the result of the operation will be placed in dec_pOut
     if (dec_sts != UMC::UMC_OK) {
-        MLOG_ERROR(" Unsupported or Invalid stream. GetFrame Error (%d)\n", dec_sts);
+        printf("%s: Unsupported or Invalid stream. GetFrame Error (%d)\n", __FUNCTION__, dec_sts);
         return -1;
     }
 
@@ -348,7 +347,7 @@ int AudioDecoder::Decode(AudioPayload *pIn, bool isFirstPacket, unsigned int* Da
     }
 #endif
     if(NULL == m_pOut) {
-        MLOG_ERROR(" m_pOut NULL!\n");
+        printf("%s: m_pOut NULL!\n", __FUNCTION__);
         return -1;
     }
     APP_TRACE_INFO("%s: decoded data: %d\n", __FUNCTION__, (int)m_pOut->GetDataSize());
@@ -377,12 +376,12 @@ int AudioDecoder::Decode(AudioPayload *pIn, bool isFirstPacket, unsigned int* Da
 
         m_pOut = new UMC::MediaData();
         if (NULL == m_pOut) {
-            MLOG_ERROR("AudioDecoder output buffer memory allocation error\n");
+            printf("AudioDecoder output buffer memory allocation error\n");
             return -1;
         }
         dec_sts = m_pOut->Alloc(m_pAudioDecoderParams->m_iSuggestedOutputSize);
         if (UMC::UMC_OK == dec_sts) {
-            MLOG_ERROR("AudioDecoder output buffer allocation error\n");
+            printf("AudioDecoder output buffer allocation error\n");
             return -1;
         }
     }

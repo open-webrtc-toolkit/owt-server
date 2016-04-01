@@ -1,7 +1,5 @@
 /* <COPYRIGHT_TAG> */
 
-#include "vp8_encode_plugin.h"
-
 #ifdef ENABLE_VPX_CODEC
 #include <assert.h>
 #include <string.h>
@@ -9,6 +7,7 @@
 #include <stdlib.h>
 #include "base/fast_copy.h"
 #include "general_allocator.h"
+#include "vp8_encode_plugin.h"
 
 
 #define INTERFACE (vpx_codec_vp8_cx())
@@ -22,7 +21,6 @@
 #define VA_FOURCC_I420 0x30323449
 #endif
 
-DEFINE_MLOGINSTANCE_CLASS(VP8EncPlugin, "VP8EncPlugin");
 enum VP8FILETYPE {
     RAW_FILE,
     IVF_FILE,
@@ -98,7 +96,7 @@ void VP8EncPlugin::VP8ResetBitrate(unsigned int bitrate)
 
     /* Reinit codec config */
     if(vpx_codec_enc_config_set(&vpx_codec_, cfg)) {
-        MLOG_ERROR("VP8 Failed to change bitrate\n");
+        printf("VP8 Failed to change bitrate\n");
     }
 }
 
@@ -110,14 +108,14 @@ int VP8EncPlugin::VP8ResetRes(unsigned int width, unsigned int height)
     m_height_ = height;
 
     if(vpx_codec_enc_config_set(&vpx_codec_, cfg)) {
-        MLOG_ERROR("VP8 Failed to change res\n");
+        printf("VP8 Failed to change res\n");
         return -1;
     }
 
     /* re-alloc image */
     vpx_img_free(&raw_);
     if (!vpx_img_alloc(&raw_, VPX_IMG_FMT_I420, m_width_, m_height_, 1)) {
-        MLOG_ERROR("VP8: Failed to allocate image\n");
+        printf("VP8: Failed to allocate image\n");
         return -2;
     }
     frame_buf_ = (&raw_)->planes[0];
@@ -154,7 +152,7 @@ mfxStatus VP8EncPlugin::Init(mfxVideoParam *param)
 
     /* check input parameter limits */
     if (!CheckParameters(param)) {
-        MLOG_ERROR("Input parameters have error.\n");
+        printf("Input parameters have error.\n");
         return MFX_ERR_UNKNOWN;
     }
     
@@ -321,32 +319,32 @@ mfxStatus VP8EncPlugin::Execute(mfxThreadTask task, mfxU32 , mfxU32 uid_a)
     int flags = 0;
 
     if (pthread_mutex_lock(&VP8EncPlugin::plugin_mutex_)) {
-        MLOG_ERROR("Failed to get lock\n");
+        printf("Failed to get lock\n");
         assert(0);
     }
 
     mfxFrameSurface1* surf_in = pTask->surfaceIn;
     sts = m_pAlloc->Lock(m_pAlloc->pthis, surf_in->Data.MemId, &surf_in->Data);
     if (sts != MFX_ERR_NONE) {
-        MLOG_ERROR("Lock return %d\n", sts);
+        printf("Lock return %d\n", sts);
         assert(sts == MFX_ERR_NONE);
     }
 
     /* get input frame */
     sts = GetInputYUV(surf_in);
     if (MFX_ERR_NONE != sts) {
-        MLOG_ERROR("Get yuv failed\n");
+        printf("Get yuv failed\n");
         assert(0);
     }
 
     sts = m_pAlloc->Unlock(m_pAlloc->pthis, surf_in->Data.MemId, &surf_in->Data);
     if (sts != MFX_ERR_NONE) {
-        MLOG_ERROR("Unlock return %d\n", sts);
+        printf("Unlock return %d\n", sts);
         assert(sts == MFX_ERR_NONE);
     }
 
     if (pthread_mutex_unlock(&VP8EncPlugin::plugin_mutex_)) {
-        MLOG_ERROR("Failed to release lock\n");
+        printf("Failed to release lock\n");
         assert(0);
     }
 
@@ -361,7 +359,7 @@ mfxStatus VP8EncPlugin::Execute(mfxThreadTask task, mfxU32 , mfxU32 uid_a)
     }
 
     if(vpx_codec_encode(&vpx_codec_, &raw_, frame_cnt_, 1, flags, VPX_DL_REALTIME)) {
-        MLOG_ERROR("Failed to encode frame\n");
+        printf("Failed to encode frame\n");
         assert(0);
     }
 
@@ -427,22 +425,22 @@ mfxStatus VP8EncPlugin::InitVpxEnc()
 
     /* check resolution parameters */
     if (width < 16 || width % 2 || height < 16 || height %2) {
-        MLOG_ERROR("Invalid resolutuion: %ldx%ld\n", width, height);
+        printf("Invalid resolutuion: %ldx%ld\n", width, height);
         return MFX_ERR_UNKNOWN;
     }
 
     /* alloc image */
     if (!vpx_img_alloc(&raw_, VPX_IMG_FMT_I420, width, height, 1)) {
-        MLOG_ERROR("VP8: Failed to allocate image\n");
+        printf("VP8: Failed to allocate image\n");
         return MFX_ERR_UNKNOWN;
     }
 
-    MLOG_INFO("VP8 encode using %s\n", vpx_codec_iface_name(INTERFACE));
+    printf("VP8 encode using %s\n", vpx_codec_iface_name(INTERFACE));
 
     /* populate encoder configuration */
     res = vpx_codec_enc_config_default(INTERFACE, cfg, 0);
     if (res) {
-        MLOG_ERROR("VP8 Failed to get config: %s\n", vpx_codec_err_to_string(res));
+        printf("VP8 Failed to get config: %s\n", vpx_codec_err_to_string(res));
         goto EXIT;
     }
 
@@ -476,14 +474,14 @@ mfxStatus VP8EncPlugin::InitVpxEnc()
     }
     if (encoder_options_.kf_min_dist <= 1000) {
         if (cfg->kf_mode) {
-            MLOG_WARNING("Keyframe distance could only be set when kf_mode is disabled\n");
+            printf("Keyframe distance could only be set when kf_mode is disabled\n");
         } else {
             cfg->kf_min_dist = encoder_options_.kf_min_dist;
         }
     }
     if (encoder_options_.kf_max_dist <= 1000) {
         if (cfg->kf_mode) {
-            MLOG_WARNING("Keyframe distance could only be set when kf_mode is disabled\n");
+            printf("Keyframe distance could only be set when kf_mode is disabled\n");
         } else {
             cfg->kf_max_dist = encoder_options_.kf_max_dist;
         }
@@ -499,23 +497,23 @@ mfxStatus VP8EncPlugin::InitVpxEnc()
 
     /* init codec */
     if (vpx_codec_enc_init(&vpx_codec_, INTERFACE, cfg, 0)) {
-        MLOG_ERROR("VP8 Failed to initialize encoder\n");
+        printf("VP8 Failed to initialize encoder\n");
         goto EXIT;
     }
 
     /* set cpu use parameter */
     if(vpx_codec_control(&vpx_codec_, VP8E_SET_NOISE_SENSITIVITY, 1)) {
-        MLOG_ERROR("VP8 Failed to set noise sensitivity\n");
+        printf("VP8 Failed to set noise sensitivity\n");
         goto EXIT;
     }
 
     if(vpx_codec_control(&vpx_codec_,VP8E_SET_SHARPNESS, 1)) {
-        MLOG_ERROR("VP8 Failed to set sharpness\n");
+        printf("VP8 Failed to set sharpness\n");
         goto EXIT;
     }
 
     if(vpx_codec_control(&vpx_codec_, VP8E_SET_CPUUSED, encoder_options_.cpu_speed)) {
-        MLOG_ERROR("VP8 Failed to set cpu used\n");
+        printf("VP8 Failed to set cpu used\n");
         goto EXIT;
     }
 
@@ -568,12 +566,12 @@ void VP8EncPlugin::WriteIvfFrameHeader(const vpx_codec_cx_pkt_t *pkt)
 bool VP8EncPlugin::SetBitRateCtrlMode(unsigned int mode)
 {
     if (mode != VPX_CBR && mode != VPX_VBR && mode != VPX_CQ) {
-        MLOG_ERROR("Invalid encoding rate control mode\n");
+        printf("Invalid encoding rate control mode\n");
         return false;
     }
 
     if (VPX_CBR == mode && encoder_options_.bitrate == 0) {
-        MLOG_ERROR("Can not be CBR without configured bitrate\n");
+        printf("Can not be CBR without configured bitrate\n");
         return false;
     }
 
@@ -584,7 +582,7 @@ bool VP8EncPlugin::SetBitRateCtrlMode(unsigned int mode)
 bool VP8EncPlugin::SetBitRate(unsigned int bitrate)
 {
     if (bitrate == 0) {
-        MLOG_ERROR("Bitrate should not be equal to 0\n");
+        printf("Bitrate should not be equal to 0\n");
         return false;
     }
 
@@ -596,7 +594,7 @@ bool VP8EncPlugin::SetProfile(unsigned int profile)
 {
     /* bitstream profile number : 0 - 3 */
     if (profile > 3) {
-        MLOG_ERROR("Invalid encoding profile number\n");
+        printf("Invalid encoding profile number\n");
         return false;
     }
 
@@ -652,7 +650,7 @@ bool VP8EncPlugin::SetCPUSpeed(VP8Complexity complexity_level)
 bool VP8EncPlugin::CheckParameters(mfxVideoParam *par)
 {
     if (NULL == par) {
-        MLOG_ERROR("Invalid input parameter\n");
+        printf("Invalid input parameter\n");
         return false;
     }
 
@@ -702,7 +700,7 @@ mfxStatus VP8EncPlugin::GetInputYUV(mfxFrameSurface1* surf)
         frame_buf_ = (&raw_)->planes[0];
 
         if (NULL == frame_buf_) {
-            MLOG_ERROR("Invalid allocation for yuv buffer\n");
+            printf("Invalid allocation for yuv buffer\n");
             return MFX_ERR_UNKNOWN;
         }
     }
@@ -749,12 +747,12 @@ mfxStatus VP8EncPlugin::GetInputYUV(mfxFrameSurface1* surf)
                 sUV += surf->Data.Pitch - m_width_;
             }
         } else {
-            MLOG_ERROR("Surface Fourcc not supported!\n");
+            printf("Surface Fourcc not supported!\n");
             assert(0);
         }
 
     }else {
-        MLOG_ERROR("Invalid surface!\n");
+        printf("Invalid surface!\n");
         assert(0);
     }
 

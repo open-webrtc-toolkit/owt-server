@@ -1,8 +1,9 @@
 /* <COPYRIGHT_TAG> */
 
+#if defined(LIBVA_DRM_SUPPORT) || defined(LIBVA_X11_SUPPORT) || defined(LIBVA_ANDROID_SUPPORT)
+
 #include "vaapi_device.h"
 
-#if defined(LIBVA_DRM_SUPPORT) || defined(LIBVA_X11_SUPPORT) || defined(LIBVA_ANDROID_SUPPORT)
 #if defined(LIBVA_X11_SUPPORT)
 
 #include <va/va_x11.h>

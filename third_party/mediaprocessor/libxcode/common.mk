@@ -17,7 +17,6 @@ DYN_TARGET=../../dist/$(LIB_PREFIX)$(LIB_NAME).so
 
 SRCEXT=.c .cpp
 SRC=$(wildcard $(addprefix *, $(SRCEXT)))
-SRC:=$(filter-out $(EXCLUDE_SRC) ,$(SRC))
 OBJDIR:=.objs
 OBJS:=$(patsubst %.cpp,$(OBJDIR)/%.o,$(notdir $(SRC)))
 INCLUDES_PATH+=-I. -I../

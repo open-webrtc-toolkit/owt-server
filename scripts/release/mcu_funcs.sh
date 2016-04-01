@@ -250,9 +250,3 @@ pack_license() {
   cp -v {$ROOT/third_party,${WOOGEEN_DIST}}/NOTICE
   cp -v {$ROOT/third_party,${WOOGEEN_DIST}}/ThirdpartyLicenses.txt
 }
-
-pack_mediaprocessor() {
-  # For hardware
-  [[ -s ${WOOGEEN_DIST}/video_agent/lib/libxcodevideo.so ]] && \
-  cp -fv ${ROOT}/third_party/mediaprocessor/msdk_log_config.ini ${WOOGEEN_DIST}/video_agent/.msdk_log_config.ini
-}

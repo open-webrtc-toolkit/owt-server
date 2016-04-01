@@ -7,7 +7,6 @@
 #include "mfxvideo++.h"
 #include "mfxplugin++.h"
 #include "base/media_common.h"
-#include "base/logger.h"
 
 //Task structure for plugin
 typedef struct {
@@ -24,7 +23,6 @@ typedef struct {
 class PicDecPlugin : public MFXGenericPlugin
 {
 public:
-	DECLARE_MLOGINSTANCE();
     PicDecPlugin();
     void SetAllocPoint(MFXFrameAllocator *pMFXAllocator);
     virtual mfxStatus Init(mfxVideoParam *param);

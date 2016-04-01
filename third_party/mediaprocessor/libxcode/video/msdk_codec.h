@@ -25,7 +25,6 @@
 #include "base/measurement.h"
 #include "base/trace.h"
 #include "general_allocator.h"
-#include "base/logger.h"
 
 #ifdef ENABLE_VA
 #include "base/frame_meta.h"
@@ -40,9 +39,6 @@
 #endif
 #define MFX_CODEC_STRING 102
 #define MFX_CODEC_PICTURE 103
-#ifdef ENABLE_RAW_DECODE
-#define MFX_CODEC_YUV 104
-#endif
 // number of video enhancement filters (denoise, procamp, detail, video_analysis, image stab)
 #define ENH_FILTERS_COUNT 5
 
@@ -75,7 +71,6 @@ struct iTask {
 
 #ifdef ENABLE_VA
 typedef enum {
-    FORMAT_ES,
     FORMAT_TXT,
     FORMAT_VECTOR
 } VA_OUTPUT_FORMAT;
@@ -91,7 +86,6 @@ enum ElementType : unsigned int {
     ELEMENT_SW_DEC,
     ELEMENT_SW_ENC,
     ELEMENT_YUV_WRITER,
-    ELEMENT_YUV_READER,
     ELEMENT_STRING_DEC,
     ELEMENT_BMP_DEC,
     ELEMENT_RENDER,
@@ -111,9 +105,6 @@ typedef struct {
             MemPool *input_stream;
             StringInfo *input_str; //added for string decoder
             PicInfo *input_pic; //added for picture decoder
-#if defined  ENABLE_RAW_DECODE
-            RawInfo *input_raw; //added for picture decoder
-#endif
         };
         Stream *output_stream;
     };
@@ -132,9 +123,7 @@ typedef struct {
     EncExtParams extParams;
 #ifdef ENABLE_VA
     bool bOpenCLEnable;
-    char* KernelPath;
     bool bDump;
-    bool PerfTrace;
     int  va_interval;
     VAType va_type;
     VA_OUTPUT_FORMAT output_format;
@@ -159,16 +148,11 @@ typedef struct VPPCompInfo {
     VppRect dst_rect;
     StringInfo str_info;
     PicInfo pic_info;
-#if defined  ENABLE_RAW_DECODE
-    RawInfo raw_info;
-#endif
     MediaBuf ready_surface;
     //mfxFrameSurface1* ready_surface;
     float frame_rate;
     unsigned int drop_frame_num; // Number of frames need to be dropped.
     unsigned int total_dropped_frames; // Totally dropped frames.
-    unsigned int org_width; // frame's width before composite.
-    unsigned int org_height; // frame's height before composite.
 
     VPPCompInfo():
     drop_frame_num(0),
@@ -183,6 +167,8 @@ typedef struct {
     unsigned short V;
 } BgColorInfo;
 
+class MsdkCoderEventCallback;
+
 class MSDKCodec: public BaseElement
 {
 public:
@@ -191,8 +177,7 @@ public:
      *  @param[in]: element_type, specify the type of element, see @ElementType
      *  @param[in]: session, session of this element.
      */
-DECLARE_MLOGINSTANCE();
-    MSDKCodec(ElementType element_type, MFXVideoSession *session, MFXFrameAllocator *pMFXAllocator = NULL, CodecEventCallback *callback = NULL);
+    MSDKCodec(ElementType element_type, MFXVideoSession *session, MFXFrameAllocator *pMFXAllocator = NULL, MsdkCoderEventCallback *callback = NULL);
 
     virtual ~MSDKCodec();
 
@@ -228,8 +213,6 @@ DECLARE_MLOGINSTANCE();
 
     int SetBgColor(BgColorInfo *bgColorInfo);
 
-    int SetKeepRatio(bool isKeepRatio);
-
     StringInfo *GetStrInfo() {
         return input_str_;
     }
@@ -254,14 +237,6 @@ DECLARE_MLOGINSTANCE();
     void SetPicInfo(PicInfo *picinfo) {
         input_pic_ = picinfo;
     }
-#if defined  ENABLE_RAW_DECODE
-    RawInfo *GetRawInfo() {
-        return input_raw_;
-    }
-    void SetRawInfo(RawInfo *rawinfo) {
-        input_raw_ = rawinfo;
-    }
-#endif
     int QueryStreamCnt() {
         return stream_cnt_;
     }
@@ -292,9 +267,6 @@ private:
     mfxBitstream input_bs_;
     StringInfo *input_str_;
     PicInfo *input_pic_;
-#if defined  ENABLE_RAW_DECODE
-    RawInfo *input_raw_;
-#endif
     MFXVideoDECODE *mfx_dec_;
     mfxFrameAllocResponse m_mfxDecResponse;  // memory allocation response for decoder
     std::vector<mfxExtBuffer *> m_DecExtParams;
@@ -331,15 +303,12 @@ private:
     int stream_cnt_;
     int string_cnt_;
     int pic_cnt_;
-    int raw_cnt_;
     int eos_cnt;
     //res of pre-allocated surfaces, following res change can't exceed it.
     unsigned int frame_width_;
     unsigned int frame_height_;
     BgColorInfo bg_color_info;
-    // keep width/height ratio
-    bool keep_ratio_;
-    CodecEventCallback *callback_;
+    MsdkCoderEventCallback *callback_;
 
 #ifdef MSDK_FEI
     MFXVideoENC *mfx_fei_preenc_;
@@ -396,9 +365,7 @@ private:
     MFXGenericPlugin *user_sw_dec_;
     MFXGenericPlugin *user_sw_enc_;
 #endif
-#ifdef ENABLE_RAW_DECODE
-    MFXGenericPlugin *yuv_dec_;
-#endif
+
 #ifdef ENABLE_RAW_CODEC
     MFXGenericPlugin *user_yuv_writer_;
 #endif
@@ -434,7 +401,7 @@ private:
 #ifdef ENABLE_VA
     int HandleProcessVA();
     int ProcessChainVA(MediaBuf &buf);
-    mfxStatus DoingVA(mfxFrameSurface1 *in_surf, mfxFrameSurface1 *out_surf);
+    mfxStatus DoingVA(mfxFrameSurface1 *in_surf);
 #endif
 #if defined(LIBVA_DRM_SUPPORT) || defined(LIBVA_X11_SUPPORT)
     int HandleProcessRender();
@@ -454,15 +421,6 @@ private:
     void OnFrameEncoded(mfxBitstream *pBs);
     void OnMarkLTR();
 
-    void ComputeCompPosition(unsigned int x, unsigned int y, unsigned int width, unsigned int height, unsigned int org_width, unsigned int org_height, mfxVPPCompInputStream &inputStream);
-    int GetCompBufFromPad(MediaPad *pad, bool &out_of_time
-#if not defined SUPPORT_SMTA
-            , int &pad_max_level
-            , unsigned pad_com_start
-            , int pad_comp_timer
-            , int pad_cursor
-#endif
-            );
     /**
      * \brief benchmark.
      */

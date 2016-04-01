@@ -10,7 +10,6 @@
 #include "base_element.h"
 #include "media_pad.h"
 
-DEFINE_MLOGINSTANCE_CLASS(MediaPad, "MediaPad");
 MediaPad::MediaPad()
 {
 }
@@ -53,7 +52,7 @@ int MediaPad::ProcessBuf(MediaBuf &buf)
 #else
                 usleep(10000);
 #endif
-                // MLOG_INFO("Pad %p Q is full, sleep for 10ms and check again\n", this);
+                // printf("Pad %p Q is full, sleep for 10ms and check again\n", this);
             } else {
                 break;
             }
@@ -84,7 +83,7 @@ int MediaPad::PushBufToPeerPad(MediaBuf &buf)
     if (pad_direction_ == MEDIA_PAD_SRC) {
         ret = peer_pad_->ProcessBuf(buf);
     } else {
-        MLOG_ERROR("pad direction not right\n");
+        printf("pad direction not right\n");
         ret = -1;
     }
 
@@ -98,7 +97,7 @@ int MediaPad::RecycleBuf(MediaBuf &buf)
     if (recycle_func_) {
         ret = recycle_func_(buf, recycle_func_arg_);
     } else {
-        MLOG_ERROR("Pad %p has no recycle func registered\n", this);
+        printf("Pad %p has no recycle func registered\n", this);
     }
 
     return ret;
@@ -116,7 +115,7 @@ int MediaPad::ReturnBufToPeerPad(MediaBuf &buf)
     if (pad_direction_ == MEDIA_PAD_SINK) {
         ret = peer_pad_->RecycleBuf(buf);
     } else {
-        MLOG_ERROR("pad direction not right\n");
+        printf("pad direction not right\n");
         ret = -1;
     }
 
@@ -128,7 +127,7 @@ int MediaPad::SetPeerPad(MediaPad *peer)
     assert(peer != NULL);
 
     if (this->pad_direction_ == peer->pad_direction_) {
-        MLOG_ERROR("Two pads are same direction!\n");
+        printf("Two pads are same direction!\n");
         return -1;
     }
 
@@ -148,7 +147,7 @@ int MediaPad::PushBufData(MediaBuf &buf)
 #else
             usleep(10 * 1000);
 #endif
-            MLOG_INFO("Q %p full, sleep for 10ms and check again\n", this);
+            printf("Q %p full, sleep for 10ms and check again\n", this);
         } else {
             break;
         }

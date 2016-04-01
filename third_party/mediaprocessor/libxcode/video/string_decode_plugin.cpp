@@ -11,7 +11,6 @@
 
 #define ALIGN16(value) (((value + 15) >> 4) << 4)
 
-DEFINE_MLOGINSTANCE_CLASS(StringDecPlugin, "StringDecPlugin");
 mfxExtBuffer *StringDecPlugin::GetExtBuffer(mfxExtBuffer **ebuffers, mfxU32 nbuffers, mfxU32 BufferId)
 {
     if (!ebuffers) {
@@ -87,7 +86,7 @@ mfxStatus StringDecPlugin::DecodeHeader(StringInfo *strinfo, mfxVideoParam *par)
     sts = RenderString(string_info_);
 
     if (sts != MFX_ERR_NONE) {
-        MLOG_ERROR("Failed to render the string to bmp.\n");
+        printf("Failed to render the string to bmp.\n");
 
         if (text_data_) {
             for (int i = 0; i < bmp_height_; i++) {
@@ -104,7 +103,7 @@ mfxStatus StringDecPlugin::DecodeHeader(StringInfo *strinfo, mfxVideoParam *par)
     }
 
     par->mfx.FrameInfo.Width = ALIGN16(bmp_width_ / 3);
-    MLOG_INFO("bmp_height_ is %d\n", bmp_height_);
+    printf("bmp_height_ is %d\n", bmp_height_);
     par->mfx.FrameInfo.Height = ALIGN16(bmp_height_);
     par->mfx.FrameInfo.CropW = bmp_width_ / 3;
     par->mfx.FrameInfo.CropH = bmp_height_;
@@ -273,7 +272,7 @@ mfxStatus StringDecPlugin::Execute(mfxThreadTask task, mfxU32 uid_p, mfxU32 uid_
     sts = Bmp2Yuv(text_data_, bmp_width_, bmp_height_, string_in);
 
     if (sts != MFX_ERR_NONE) {
-        MLOG_ERROR("Failed to convert the bmp to NV12 frame.\n");
+        printf("Failed to convert the bmp to NV12 frame.\n");
         m_pAlloc->Unlock(m_pAlloc->pthis, surf_out->Data.MemId, &surf_out->Data);
 
         for (int i = 0; i < bmp_height_; i++) {
@@ -293,7 +292,7 @@ mfxStatus StringDecPlugin::Execute(mfxThreadTask task, mfxU32 uid_p, mfxU32 uid_
     sts = UploadToSurface(yuv_buf_, surf_out);
 
     if (sts != MFX_ERR_NONE) {
-        MLOG_ERROR("Failed to upload the string picture to surface.\n");
+        printf("Failed to upload the string picture to surface.\n");
         m_pAlloc->Unlock(m_pAlloc->pthis, surf_out->Data.MemId, &surf_out->Data);
 
         for (int i = 0; i < bmp_height_; i++) {
@@ -339,18 +338,18 @@ mfxStatus StringDecPlugin::InitFreeType(StringInfo *strinfo)
 
     error = FT_Init_FreeType(&freetype_library_);
     if (error) {
-        MLOG_ERROR("Error in initializing FreeType library.\n");
+        printf("Error in initializing FreeType library.\n");
         return MFX_ERR_UNKNOWN;
     }
 
-    MLOG_INFO("font_file %s\n", font_file);
+    printf("font_file %s\n", font_file);
     error = FT_New_Face(freetype_library_, font_file, 0, &font_face_);
 
     if (error == FT_Err_Unknown_File_Format) {
-        MLOG_ERROR("Font file could be opened and read, but it appears its font is unsupported.\n");
+        printf("Font file could be opened and read, but it appears its font is unsupported.\n");
         return MFX_ERR_UNKNOWN;
     } else if (error) {
-        MLOG_ERROR("Error in opening or reading font file.\n");
+        printf("Error in opening or reading font file.\n");
         return MFX_ERR_UNKNOWN;
     }
 
@@ -366,7 +365,7 @@ mfxStatus StringDecPlugin::Bmp2Yuv(char **text_data, int bmp_width, int bmp_heig
     if (NULL == yuv_buf_) {
         yuv_buf_ = (unsigned char *)malloc(((bmp_width / 3) * bmp_height * 3) / 2);
         if (yuv_buf_ == NULL) {
-            MLOG_ERROR("Error in mallocing yuv_buf_.\n");
+            printf("Error in mallocing yuv_buf_.\n");
             return MFX_ERR_UNKNOWN;
         }
     } else {
@@ -382,7 +381,7 @@ mfxStatus StringDecPlugin::Bmp2Yuv(char **text_data, int bmp_width, int bmp_heig
     unsigned char *v_ptr = (unsigned char *)malloc(width * height);
 
     if (!u_ptr || !v_ptr) {
-        MLOG_ERROR("Error in mallocing u_ptr or v_ptr.\n");
+        printf("Error in mallocing u_ptr or v_ptr.\n");
         if (u_ptr) {
             free(u_ptr);
         }
@@ -411,7 +410,7 @@ mfxStatus StringDecPlugin::Bmp2Yuv(char **text_data, int bmp_width, int bmp_heig
             if (R != 0) {
                 if ((rgb_r != 255) || (rgb_g != 255) || (rgb_b != 255)) {
                     if ((rgb_r == 0) && (rgb_g == 0) && (rgb_b == 0)) {
-                        MLOG_ERROR("The color of character can't be black.\n");
+                        printf("The color of character can't be black.\n");
                         if (u_ptr) {
                             free(u_ptr);
                         }
@@ -468,7 +467,7 @@ mfxStatus StringDecPlugin::RenderString(StringInfo *stringInfo)
     error = FT_Set_Pixel_Sizes(font_face_, 0, plsize);
 
     if (error) {
-        MLOG_ERROR("Error in setting character pixel size.\n");
+        printf("Error in setting character pixel size.\n");
         return MFX_ERR_UNKNOWN;
     }
 
@@ -479,7 +478,7 @@ mfxStatus StringDecPlugin::RenderString(StringInfo *stringInfo)
     bmp_height_ = plsize + pen_y;
     text_data_ = (char **)malloc(sizeof(char *) * bmp_height_);
     if (text_data_ == NULL) {
-        MLOG_ERROR("Error in malloc bmp.\n");
+        printf("Error in malloc bmp.\n");
         return MFX_ERR_UNKNOWN;
     }
     memset(text_data_, 0, sizeof(char *) * bmp_height_);
@@ -491,7 +490,7 @@ mfxStatus StringDecPlugin::RenderString(StringInfo *stringInfo)
                     text_data_[k] = (char *)malloc(sizeof(char) * ((plsize / 2) * 3));
 
                     if (text_data_[k] == NULL) {
-                        MLOG_ERROR("Error in malloc bmp each line.\n");
+                        printf("Error in malloc bmp each line.\n");
                         return MFX_ERR_UNKNOWN;
                     }
 
@@ -504,7 +503,7 @@ mfxStatus StringDecPlugin::RenderString(StringInfo *stringInfo)
                     text_data_[k] = (char *)realloc(text_data_[k], sizeof(char) * (bmp_width_ + (plsize / 2) * 3));
 
                     if (text_data_[k] == NULL) {
-                        MLOG_ERROR("Error in realloc bmp each line.\n");
+                        printf("Error in realloc bmp each line.\n");
                         return MFX_ERR_UNKNOWN;
                     }
 
@@ -522,7 +521,7 @@ mfxStatus StringDecPlugin::RenderString(StringInfo *stringInfo)
             error = FT_Load_Glyph(font_face_, glyph_idx, FT_LOAD_DEFAULT);
 
             if (error) {
-                MLOG_ERROR("Error in lodding glyph.\n");
+                printf("Error in lodding glyph.\n");
 
                 for (k = 0; k < bmp_height_; k++) {
                     if (text_data_[k]) {
@@ -540,7 +539,7 @@ mfxStatus StringDecPlugin::RenderString(StringInfo *stringInfo)
             error = FT_Get_Glyph(font_face_->glyph, &glyph);
 
             if (error) {
-                MLOG_ERROR("Error in getting glyph.\n");
+                printf("Error in getting glyph.\n");
 
                 for (k = 0; k < bmp_height_; k++) {
                     if (text_data_[k]) {
@@ -558,7 +557,7 @@ mfxStatus StringDecPlugin::RenderString(StringInfo *stringInfo)
             error = FT_Render_Glyph(font_face_->glyph, FT_RENDER_MODE_NORMAL);
 
             if (error) {
-                MLOG_ERROR("Error in rendering glyph.\n");
+                printf("Error in rendering glyph.\n");
 
                 for (k = 0; k < bmp_height_; k++) {
                     if (text_data_[k]) {
@@ -575,7 +574,7 @@ mfxStatus StringDecPlugin::RenderString(StringInfo *stringInfo)
             error = FT_Glyph_To_Bitmap(&glyph, FT_RENDER_MODE_NORMAL, 0, 1);
 
             if (error) {
-                MLOG_ERROR("Error in converting glyph to bitmap.\n");
+                printf("Error in converting glyph to bitmap.\n");
 
                 for (k = 0; k < bmp_height_; k++) {
                     if (text_data_[k]) {
@@ -603,7 +602,7 @@ mfxStatus StringDecPlugin::RenderString(StringInfo *stringInfo)
                     text_data_[k] = (char *)malloc(sizeof(char) * ((width + pen_x) * 3));
 
                     if (text_data_[k] == NULL) {
-                        MLOG_ERROR("Error in malloc bmp each line.\n");
+                        printf("Error in malloc bmp each line.\n");
                         return MFX_ERR_UNKNOWN;
                     }
 
@@ -616,7 +615,7 @@ mfxStatus StringDecPlugin::RenderString(StringInfo *stringInfo)
                     text_data_[k] = (char *)realloc(text_data_[k], sizeof(char) * (bmp_width_ + (width + pen_x) * 3));
 
                     if (text_data_[k] == NULL) {
-                        MLOG_ERROR("Error in realloc bmp each line.\n");
+                        printf("Error in realloc bmp each line.\n");
                         return MFX_ERR_UNKNOWN;
                     }
 
@@ -674,7 +673,7 @@ mfxStatus StringDecPlugin::UploadToSurface(unsigned char *yuv_buf, mfxFrameSurfa
             uv_src += bmp_width_ / 3;
         }
     } else {
-        MLOG_ERROR("Surface Fourcc not supported!\n");
+        printf("Surface Fourcc not supported!\n");
         return MFX_ERR_UNKNOWN;
     }
     return MFX_ERR_NONE;

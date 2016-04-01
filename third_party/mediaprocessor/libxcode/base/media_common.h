@@ -34,7 +34,6 @@ typedef enum {
     STREAM_TYPE_VIDEO_SW_FIRST,
     STREAM_TYPE_VIDEO_SW_H263,
     STREAM_TYPE_VIDEO_SW_H264,
-    STREAM_TYPE_VIDEO_SW_JPEG,
     STREAM_TYPE_VIDEO_SW_LAST,
     STREAM_TYPE_OTHER
 } StreamType;
@@ -126,8 +125,7 @@ enum errors_t {
 #ifdef ENABLE_SW_CODEC
 typedef enum {
     SW_CODEC_ID_H264,
-    SW_CODEC_ID_H263,
-    SW_CODEC_ID_JPEG
+    SW_CODEC_ID_H263
 }SWCodecID;
 #endif
 
@@ -135,9 +133,7 @@ typedef enum {
 typedef enum {
     VA_PEOPLE,
     VA_FACE,
-    VA_ROI,
-    VA_CAR,
-    VA_PLATE
+    VA_ROI
 } VAType;
 #endif
 
@@ -184,80 +180,15 @@ typedef struct PicInfo {
     unsigned int height; //height of bitmap on composited output
     float        alpha;  //alpha value for blending, in the range of [0, 1.0]
 
-    // Add for pixel alpha
-    unsigned short luma_key_enable;
-    unsigned short luma_key_min;
-    unsigned short luma_key_max;
-    unsigned short global_alpha_enable;
-    unsigned short pixel_alpha_enable; 
-
     PicInfo():
     bmp(NULL),
     pos_x(0),
     pos_y(0),
     width(0),
     height(0),
-    alpha(0),
-#if defined(SUPPORT_SMTA)
-    luma_key_enable(0),
-    luma_key_min(0),
-    luma_key_max(10),
-    global_alpha_enable(0),
-    pixel_alpha_enable(0) {
-#else
-    luma_key_enable(0),
-    luma_key_min(0),
-    luma_key_max(0),
-    global_alpha_enable(1),
-    pixel_alpha_enable(0) {
-#endif
+    alpha(0) {
     };
 } PicInfo;
-
-#if defined ENABLE_RAW_DECODE
-typedef struct RawInfo {
-    char         *raw_file;
-    unsigned int fourcc;
-    unsigned int width;
-    unsigned int height;
-    unsigned int cropx;
-    unsigned int cropy;
-    unsigned int cropw;
-    unsigned int croph;
-    unsigned int dstx;
-    unsigned int dsty;
-    unsigned int dstw;
-    unsigned int dsth;
-
-    float        alpha;  //alpha value for blending, in the range of [0, 1.0]
-
-    // Add for pixel alpha
-    unsigned short luma_key_enable;
-    unsigned short luma_key_min;
-    unsigned short luma_key_max;
-    unsigned short global_alpha_enable;
-    unsigned short pixel_alpha_enable; 
-    RawInfo():
-        raw_file(NULL),
-        width(0),
-        height(0),
-        cropx(0),
-        cropy(0),
-        cropw(0),
-        croph(0),
-        dstx(0),
-        dsty(0),
-        dstw(0),
-        dsth(0),
-        alpha(0),
-        luma_key_enable(0),
-        luma_key_min(0),
-        luma_key_max(10),
-        global_alpha_enable(0),
-        pixel_alpha_enable(0) {
-    };
-} RawInfo;
-#endif
 
 //COMBO_CUSTOM mode is for upper level to configure/control the composition
 //1. Inputs to render maybe a subset of inputs attached to VPP.
@@ -284,4 +215,11 @@ typedef struct {
 
 typedef std::list<CompRegion> CustomLayout; //covers the inputs to composite, including z-order
 
+class MsdkCoderEventCallback {
+public:
+    MsdkCoderEventCallback(){}
+    virtual ~MsdkCoderEventCallback(){}
+
+    virtual void DecodeHeaderFailEvent(void *DecHandle = 0) = 0;
+};
 #endif

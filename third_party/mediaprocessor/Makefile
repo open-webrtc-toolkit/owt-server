@@ -1,7 +1,7 @@
 # <COPYRIGHT_TAG>
 
 DIRS = imports libxcode
-SRCS = libxcode
+SRCS = libxcode app
 
 ifeq (README, $(wildcard README))
 	TARGET=help
@@ -59,9 +59,6 @@ help:
 	@echo "              : snva, to build SNVA codes."
 	@echo "              : vioa, to build VIOA codes."
 	@echo "              : on_demand_server, to build On Demand Server."
-	@echo "              : smta, to build SMTA."
-	@echo "              : smta_audio, to build SMTA Audio Library."
-	@echo "              : webtv, to build webtv code."
 	@echo "              : clean, to clean the builds except imports directory"
 	@echo "              : distclean, to clean all the builds"
 	@echo "       ver=release/debug, release or debug version to build"
@@ -121,21 +118,6 @@ vioa:
 on_demand_server:
 	@for dir in $(DIRS); \
 		do $(MAKE) -C $$dir on_demand_server; \
-	done
-
-smta:
-	@for dir in $(DIRS); \
-		do $(MAKE) -C $$dir smta ADEC_ENABLE=1 LIBDISPATCH_ENABLE=1; \
-	done
-
-smta_audio:
-	@for dir in $(DIRS); \
-		do $(MAKE) -C $$dir smta_audio ADEC_ENABLE=1 LIBDISPATCH_ENABLE=1; \
-	done
-
-webtv:
-	@for dir in $(DIRS); \
-		do $(MAKE) -C $$dir webtv LIBDISPATCH_ENABLE=1; \
 	done
 
 distclean:

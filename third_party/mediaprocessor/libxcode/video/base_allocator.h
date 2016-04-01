@@ -73,10 +73,7 @@ protected:
 
         UniqueResponse()
         {
-            m_cropw = 0;
-            m_croph = 0;
-            m_refCount = 0;
-            m_type = 0;
+            memset(this, 0, sizeof(*this));
         }
 
         // compare responses by actual frame size, alignment (w and h) is up to application

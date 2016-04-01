@@ -23,12 +23,9 @@ help:
 	@echo "make fei"
 	@echo "make snva"
 	@echo "make vioa"
-	@echo "make webtv"
-	@echo "make smta"
-	@echo "make smta_audio"
 	@echo "make on_demand_server"
 
-asta:libxcodebase libxcodevideoasta
+asta:libxcodebase libxcodevideo
 	@echo "Building ASTA Done"
 
 vcsa:libxcodebase libxcodevideovpx libxcodewav
@@ -61,41 +58,17 @@ fei:libxcodebase libxcodevideofei
 on_demand_server:
 	@echo "Building On Demand Server Done"
 
-smta:libxcodebasesmta libxcodevideosmta
-	@echo "Building SMTA"
-
-smta_audio:libxcodebasesmta libxcodeaudiosmta
-	@echo "Building SMTA Audio"
-
-webtv:libxcodebase libxcodevideowebtv
-	@echo "Building WebTV Done"
-
-libxcodebasesmta:$(DIR_BASE)
-	$(MAKE) -C $(DIR_BASE) SMTA_ENABLE=1
-
-libxcodevideosmta:$(DIR_VIDEO)
-	$(MAKE) -C $(DIR_VIDEO) PIC_ENABLE=1 SMTA_ENABLE=1 LIBDISPATCH_ENABLE=1
-
-libxcodeaudiosmta:$(DIR_AUDIO)
-	$(MAKE) -C $(DIR_AUDIO) ADEC_ENABLE=1 SMTA_ENABLE=1
-
 libxcodebase:$(DIR_BASE)
 	$(MAKE) -C $(DIR_BASE)
 
 libxcodevideo:$(DIR_VIDEO)
 	$(MAKE) -C $(DIR_VIDEO)
 
-libxcodevideowebtv:$(DIR_VIDEO)
-	$(MAKE) -C $(DIR_VIDEO) SW_ENABLE=1
-
-libxcodevideoasta:$(DIR_VIDEO)
-	$(MAKE) -C $(DIR_VIDEO) STR_ENABLE=1 PIC_ENABLE=1
-
 libxcodevideovpx:$(DIR_VIDEO)
 	$(MAKE) -C $(DIR_VIDEO) VPX_ENABLE=1 STR_ENABLE=1 PIC_ENABLE=1
 
 libxcodevideoio:$(DIR_VIDEO)
-	$(MAKE) -C $(DIR_VIDEO) VPX_ENABLE=1 STR_ENABLE=1 PIC_ENABLE=1 RAW_ENABLE=1
+	$(MAKE) -C $(DIR_VIDEO) VPX_ENABLE=1 STR_ENABLE=1 PIC_ENABLE=1
 
 libxcodevideofei:$(DIR_VIDEO)
 	$(MAKE) -C $(DIR_VIDEO) FEI_ENABLE=1
