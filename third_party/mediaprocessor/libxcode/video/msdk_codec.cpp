@@ -2698,7 +2698,7 @@ mfxStatus MSDKCodec::InitDecoder()
         UpdateMemPool();
 
         if (MFX_ERR_MORE_DATA == sts) {
-            if (callback_) {
+            if (callback_ && is_running_) {
                 callback_->DecodeHeaderFailEvent(this);
             }
             usleep(10000);
