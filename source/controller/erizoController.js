@@ -1081,7 +1081,7 @@ var listen = function () {
             }
 
             // Make sure the recording context clean for this 'startRecorder' subscription
-            socket.room.controller.unsubscribe('file#'+socket.room.id/*FIXME: hard code terminalID*/, recorderId, true);
+            socket.room.controller.unsubscribe('file#'+socket.room.id/*FIXME: hard code terminalID*/, recorderId);
             var isContinuous = false;
             for (var i in socket.room.streams) {
                 if (socket.room.streams.hasOwnProperty(i)) {
