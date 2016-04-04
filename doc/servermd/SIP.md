@@ -54,8 +54,7 @@ Table 2-1 describes the system requirements for installing the Intel CS for WebR
 **Table 2-1. Server requirements**
 Application name | OS version
 ----|----
-General Gateway Server | Ubuntu 14.04 LTS* 64-bit
-GPU-accelerated Gateway Server | CentOS* 7.1
+Gateway Server | CentOS* 7.1
 
 Install the OpenH264 library to support H.264 in the gateway for SIP when required, refer to the [Install the Cisco OpenH264 Library](#SIPsection2_2_1) section for more details.
 
@@ -164,14 +163,9 @@ To optimize the gateway server for best performance, we strongly recommend that 
 6. You can run command "ulimit -a" to make sure the new setting in limits.conf is correct as you set.
 
 ## 2.4 Install the gateway package {#SIPsection2_4}
-For general gateway server on Ubuntu, do as following:
+To install gateway server, do as following:
 
         tar xf CS_WebRTC_Gateway_SIP.<Version>.tgz
-        cd Release-<Version>/
-
-For GPU-accelerated gateway server on CentOS, do as following:
-
-        tar xf CS_WebRTC_Gateway_SIP.<Version>.hw.tgz
         cd Release-<Version>/
 
 ## 2.5 Launch the gateway server {#SIPsection2_5}
