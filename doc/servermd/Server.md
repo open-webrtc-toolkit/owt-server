@@ -69,6 +69,8 @@ Application name|OS version
 -------------|--------------
 MCU server|CentOS* 7.1
 
+The evaluation version of MCU server is also provided for Ubuntu 14.04 LTS* 64-bit.
+
 H.264 support in MCU system requires the deployment of OpenH264 library, see [Deploy Cisco OpenH264* Library section](#Conferencesection2_3_4) for more details.
 
 > **Note**: OpenH264 library is not required for GPU-accelerated MCU when forward RTSP stream subscription is not used.
