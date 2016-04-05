@@ -58,7 +58,7 @@ For more information, visit the following Web pages:
 
 This section describes the system requirements for installing the MCU server, and the compatibility with its client.
 
-> **Note**:	Installation requirements for the peer server are described in <a href="#Conferencesection5">section 5</a> of this guide.
+> **Note**:    Installation requirements for the peer server are described in <a href="#Conferencesection5">section 5</a> of this guide.
 
 ## 2.2 Requirements and compatibility {#Conferencesection2_2}
 
@@ -234,7 +234,6 @@ Follow the steps below to set up an MCU cluster:
 3. Edit the configuration items of nuve in Release-<Version>/nuve/nuve.toml.
 
     - Make sure the rabbit.port and rabbit.host point to the RabbitMQ server.
-
 4. Run MCU manager nuve and the application on the primary machine with following commands:
 
         cd Release-<Version>/
@@ -258,7 +257,8 @@ Follow the steps below to set up an MCU cluster:
     2) Make sure the controller.networkInterface is specified to the correct network interface which the clients’ signaling and control messages are expected to connect through.
     ===to be filled===
 
-10. Choose worker machines to run webrtc-agents and/or rtsp-agents and/or recording-agents and/or audio-agents and/or video-agents. These machines must be visible to each other, and if webrtc-agents are running on them, they must be visible to clients.
+10. Choose worker machine to run webrtc-agent and/or rtsp-agent and/or recording-agent and/or audio-agent and/or video-agents. This machine must be visible to each other, and if webrtc-agent is running on it, it must be visible to other client. If you want to use Intel VCA card to run video agents, please follow section 2.3.9 to enable nodes of Intel VCA card as a visible seperated machines.
+
 11. Edit the configuration items in Release-<Version>/{audio,video,access}_agent/agent.toml.
 
     - Make sure the rabbit.port and rabbit.host point to the RabbitMQ server.
@@ -270,7 +270,55 @@ Follow the steps below to set up an MCU cluster:
 
 13. Repeat step 10 to 12 to launch as many MCU worker machines as you need.
 
-### 2.3.9 Stop the MCU cluster {#Conferencesection2_3_9}
+### 2.3.9 Configure VCA nodes as seperated machines to run video-agent {#Conferencesection2_3_9}
+To setup VCA nodes as seperated machines, please follow these steps:
+1. Make sure one VCA card is correctly installed and VCA nodes successfully boot up.
+2. Make sure the host machine has enough ethernet interface for VCA nodes. Eg: host IP is "10.239.44.100" and 3 ethernet interfaces for 3 nodes of 1 VCA card, and the IP of ethernet Interfaces are "10.239.44.1", "10.239.44.2", "10.239.44.3".
+3. Make sure your ip routing tables(please get it with "route -n") on host machine is like below :
+
+        Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+        0.0.0.0         10.239.44.241   0.0.0.0         UG    100    0        0 enp132s0f0
+        10.239.27.228   10.239.44.241   255.255.255.255 UGH   100    0        0 enp132s0f0
+        10.239.44.0     0.0.0.0         255.255.255.0   U     0      0        0 enp132s0f0
+        172.31.1.0      0.0.0.0         255.255.255.0   U     0      0        0 eth0
+        172.31.2.0      0.0.0.0         255.255.255.0   U     0      0        0 eth2
+        172.31.3.0      0.0.0.0         255.255.255.0   U     0      0        0 eth1
+
+   > **Note**: 10.239.27.228 is DNS server. enp132s0f0 is used for host machine and IP is "10.239.44.100".
+4. Please use "ifconfig" on host machine of VCA card to list IP of VCA nodes, you will get the VCA node IPs like "172.31.1.254", "172.31.2.254", "172.31.3.254".
+5. Configure IP soft routing policy to set VCA Node to seperated machine.
+    + 5.1 Enable ip forward and clear iptables on host machine with the following commands:
+
+            echo "1" > /proc/sys/net/ipv4/ip_forward
+            iptables -t nat -P PREROUTING ACCEPT
+            iptables -t nat -P POSTROUTING ACCEPT
+            iptables -t nat -P OUTPUT ACCEPT
+
+    + 5.2 Enable nat policy on host for 3 VCA nodes:
+
+            iptables -t nat -A PREROUTING -d 10.239.44.1 -j DNAT --to-destination 172.31.1.1
+            iptables -t nat -A POSTROUTING -s 172.31.1.1 -j SNAT --to-source 10.239.44.1
+            iptables -A OUTPUT -d 10.239.44.1 -j DNAT --to-destination 172.31.1.1
+            iptables -t nat -A PREROUTING -d 10.239.44.2 -j DNAT --to-destination 172.31.2.1
+            iptables -t nat -A POSTROUTING -s 172.31.2.1 -j SNAT --to-source 10.239.44.2
+            iptables -A OUTPUT -d 10.239.44.2 -j DNAT --to-destination 172.31.2.1
+            iptables -t nat -A PREROUTING -d 10.239.44.3 -j DNAT --to-destination 172.31.3.1
+            iptables -t nat -A POSTROUTING -s 172.31.3.1 -j SNAT --to-source 10.239.44.3
+            iptables -A OUTPUT -d 10.239.44.3 -j DNAT --to-destination 172.31.3.1
+
+    + 5.3 SSH to 3 seperated machines of VCA node:
+
+            ssh root@10.239.44.1
+            ssh root@10.239.44.2
+            ssh root@10.239.44.3
+
+    + 5.4 Disable firewall for VCA nodes after ssh login to it:
+
+            systemctl stop firewalld
+            systemctl disable firewalld
+
+
+### 2.3.10 Stop the MCU cluster {#Conferencesection2_3_10}
 
 To stop the MCU cluster, follow these steps:
 1. Run the following commands on primary machine to stop the application and MCU manager nuve:
@@ -492,7 +540,7 @@ To do this, connect to the MCU sample application server XXXXX with the followin
         https://XXXXX:3004/?screen=true
 
 
-> **Note**:	The screen sharing example in this section requires the Chrome
+> **Note**:    The screen sharing example in this section requires the Chrome
 > extension. Source code of such extension sample is provided in
 > Javascript SDK package for reference. Also there are steps in the user guide
 > for you to follow from the main page of Intel CS for WebRTC Client SDK for
@@ -509,7 +557,7 @@ For example, if you want to generate a 720P local video stream and publish that 
 
         https://XXXXX:3004/?resolution=hd720p
 
-> **Note**	The specified resolution acts only as a target value. This means that the actual generated video resolution might be different
+> **Note**    The specified resolution acts only as a target value. This means that the actual generated video resolution might be different
 > depending on the hardware of your local media capture device.
 ### 4.2.5 Connect to an MCU conference with a RTSP input {#Conferencesection4_2_5}
 The MCU conference supports external stream input from devices that support RTSP protocol, like IP Camera.
