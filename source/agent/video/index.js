@@ -62,14 +62,18 @@ var VideoEngine = function () {
 
     var addInput = function (stream_id, codec, protocol, on_ok, on_error) {
         if (engine) {
-            var conn = new InternalIn(protocol);
-            if (engine.addInput(stream_id, codec, conn)) {
-                inputs[stream_id] = conn;
-                log.debug('addInput ok, stream_id:', stream_id, 'codec:', codec, 'protocol:', protocol);
-                on_ok(stream_id);
+            if (!useHardware && !openh264Enabled && codec === 'h264') {
+                on_error('Codec ' + codec + ' is not supported by video engine.');
             } else {
-                conn.close();
-                on_error('Failed in adding input to video-engine.');
+                var conn = new InternalIn(protocol);
+                if (engine.addInput(stream_id, codec, conn)) {
+                    inputs[stream_id] = conn;
+                    log.debug('addInput ok, stream_id:', stream_id, 'codec:', codec, 'protocol:', protocol);
+                    on_ok(stream_id);
+                } else {
+                    conn.close();
+                    on_error('Failed in adding input to video-engine.');
+                }
             }
         } else {
             on_error('Video-mixer engine is not ready.');
