@@ -106,9 +106,6 @@ while [[ $# -gt 0 ]]; do
       usage
       exit 0
       ;;
-    * )
-      echo -e "\x1b[33mUnknown argument\x1b[0m: $1"
-      ;;
   esac
   shift
 done
