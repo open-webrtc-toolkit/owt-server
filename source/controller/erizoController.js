@@ -1155,20 +1155,26 @@ var listen = function () {
                 return safeCall(callback, 'error', 'unauthorized');
             }
 
-            // Stop recorder
+            var recorderExisted = false;
             if (options.recorderId) {
-                socket.room.controller.unsubscribe('file#'+socket.room.id/*FIXME: hard code terminalID*/, options.recorderId);
                 for (var i in socket.room.streams) {
                     if (socket.room.streams.hasOwnProperty(i)) {
                         if (socket.room.streams[i].getVideoRecorder() === options.recorderId+'') {
+                            recorderExisted = true;
                             socket.room.streams[i].setVideoRecorder('');
                         }
 
                         if (socket.room.streams[i].getAudioRecorder() === options.recorderId+'') {
+                            recorderExisted = true;
                             socket.room.streams[i].setAudioRecorder('');
                         }
                     }
                 }
+            }
+
+            // Stop recorder
+            if (recorderExisted) {
+                socket.room.controller.unsubscribe('file#'+socket.room.id/*FIXME: hard code terminalID*/, options.recorderId);
 
                 log.info('Recorder stopped: ', options.recorderId);
 
