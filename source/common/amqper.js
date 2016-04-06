@@ -40,8 +40,7 @@ exports.connect = function(addr, callback) {
                             if(map[message.corrID] !== undefined) {
                                 log.debug('Callback', message.type, ' - ', message.data);
                                 clearTimeout(map[message.corrID].to);
-                                if (message.type === 'onReady') map[message.corrID].fn[message.type].call({}, message.data);
-                                else map[message.corrID].fn[message.type].call({}, message.data);
+                                map[message.corrID].fn[message.type].call({}, message.data, message.err);
                                 setTimeout(function() {
                                     if (map[message.corrID] !== undefined) delete map[message.corrID];
                                 }, REMOVAL_TIMEOUT);
@@ -79,8 +78,8 @@ exports.bind = function(id, callback) {
                 try {
                     log.debug('New message received', message);
                     message.args = message.args || [];
-                    message.args.push(function(type, result) {
-                        rpc_exc.publish(message.replyTo, {data: result, corrID: message.corrID, type: type});
+                    message.args.push(function(type, result, err) {
+                        rpc_exc.publish(message.replyTo, {data: result, corrID: message.corrID, type: type, err: err});
                     });
                     rpcPublic[message.method].apply(rpcPublic, message.args);
                 } catch (error) {
