@@ -182,13 +182,7 @@ var eventReportHandlers = {
         sendMsgToRoom(room, 'remove_recorder', {id: recorderId});
         for (var i in room.streams) {
             if (room.streams.hasOwnProperty(i)) {
-                if (room.streams[i].getVideoRecorder() === recorderId+'') {
-                    room.streams[i].setVideoRecorder('');
-                }
-
-                if (room.streams[i].getAudioRecorder() === recorderId+'') {
-                    room.streams[i].setAudioRecorder('');
-                }
+                room.streams[i].removeRecorder(recorderId);
             }
         }
     },
@@ -1076,36 +1070,15 @@ var listen = function () {
                 preferredAudioCodec = 'opus_48000_2';
             }
 
-            if (videoRequired) {
-                var videoRecorder = videoStream.getVideoRecorder();
-                if (videoRecorder && videoRecorder !== recorderId) {
-                    return safeCall(callback, 'error', 'Video media recording is going on.');
-                }
-            }
-
-            if (audioRequired) {
-                var audioRecorder = audioStream.getAudioRecorder();
-                if (audioRecorder && audioRecorder !== recorderId) {
-                    return safeCall(callback, 'error', 'Audio media recording is going on.');
+            var isContinuous = false;
+            for (var i in socket.room.streams) {
+                if (socket.room.streams.hasOwnProperty(i) && socket.room.streams[i].removeRecorder(recorderId)) {
+                    isContinuous = true;
                 }
             }
 
             // Make sure the recording context clean for this 'startRecorder' subscription
             socket.room.controller.unsubscribe('file#'+socket.room.id/*FIXME: hard code terminalID*/, recorderId, true);
-            var isContinuous = false;
-            for (var i in socket.room.streams) {
-                if (socket.room.streams.hasOwnProperty(i)) {
-                    if (socket.room.streams[i].getVideoRecorder() === recorderId+'') {
-                        socket.room.streams[i].setVideoRecorder('');
-                        isContinuous = true;
-                    }
-
-                    if (socket.room.streams[i].getAudioRecorder() === recorderId+'') {
-                        socket.room.streams[i].setAudioRecorder('');
-                        isContinuous = true;
-                    }
-                }
-            }
 
             socket.room.controller.subscribeSelectively(
                 'file#'+socket.room.id/*FIXME: hard code terminalID*/,
@@ -1127,11 +1100,11 @@ var listen = function () {
                         log.info('Media recording to ', filename);
 
                         if (videoStream) {
-                            videoStream.setVideoRecorder(recorderId);
+                            videoStream.addRecorder(recorderId);
                         }
 
                         if (audioStream) {
-                            audioStream.setAudioRecorder(recorderId);
+                            audioStream.addRecorder(recorderId);
                         }
 
                         if (isContinuous) {
@@ -1168,16 +1141,8 @@ var listen = function () {
             var recorderExisted = false;
             if (options.recorderId) {
                 for (var i in socket.room.streams) {
-                    if (socket.room.streams.hasOwnProperty(i)) {
-                        if (socket.room.streams[i].getVideoRecorder() === options.recorderId+'') {
-                            recorderExisted = true;
-                            socket.room.streams[i].setVideoRecorder('');
-                        }
-
-                        if (socket.room.streams[i].getAudioRecorder() === options.recorderId+'') {
-                            recorderExisted = true;
-                            socket.room.streams[i].setAudioRecorder('');
-                        }
+                    if (socket.room.streams.hasOwnProperty(i) && socket.room.streams[i].removeRecorder(options.recorderId)) {
+                        recorderExisted = true;
                     }
                 }
             }
