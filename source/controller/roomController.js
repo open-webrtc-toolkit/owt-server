@@ -91,7 +91,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
                                 amqper,
                                 'ErizoJS_' + terminals[video_mixer].erizo,
                                 'init',
-                                ['mixing', config.mediaMixing.video],
+                                ['mixing', config.mediaMixing.video, room_id, observer],
                                 function (supported_video) {
                                     log.debug('init video mixer ok.');
                                     supported_audio_codecs = supported_audio.codecs;
@@ -666,7 +666,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
                     amqper,
                     'ErizoJS_' + terminals[vxcoder].erizo,
                     'init',
-                    ['transcoding', {resolution: streams[stream_id].video.resolution || 'hd1080p'/*FIXME: hard code*/}],
+                    ['transcoding', {resolution: streams[stream_id].video.resolution || 'hd1080p'/*FIXME: hard code*/}, room_id, undefined],
                     function (supported_video) {
                         spreadStream(stream_id, terminals[vxcoder].erizo, false, true, function () {
                             streams[stream_id].video.subscribers.push(vxcoder);
