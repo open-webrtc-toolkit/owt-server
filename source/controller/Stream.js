@@ -3,8 +3,7 @@ exports.Stream = function (spec) {
     'use strict';
 
     var that = {},
-        videoRecorder = '',
-        audioRecorder = '',
+        recorders = [],
         dataSubscribers = [];
 
     that.getID = function () {
@@ -56,7 +55,7 @@ exports.Stream = function (spec) {
         return spec.attributes;
     };
 
-    // Set attributes for this stream
+    // Sets attributes for this stream
     that.setAttributes = function (attrs) {
         spec.attributes = attrs;
     };
@@ -66,7 +65,7 @@ exports.Stream = function (spec) {
         return dataSubscribers;
     };
 
-    // Add a new data subscriber to this stream
+    // Adds a new data subscriber to this stream
     that.addDataSubscriber = function (id) {
         if (dataSubscribers.indexOf(id) === -1) {
             dataSubscribers.push(id);
@@ -81,24 +80,22 @@ exports.Stream = function (spec) {
         }
     };
 
-    // Gets the video recorder
-    that.getVideoRecorder = function() {
-        return videoRecorder;
+    // Adds a new media recorder to this stream
+    that.addRecorder = function (id) {
+        if (recorders.indexOf(id) === -1) {
+            recorders.push(id);
+        }
     };
 
-    // Gets the audio recorder
-    that.getAudioRecorder = function() {
-        return audioRecorder;
-    };
+    // Removes a media recorder from this stream
+    that.removeRecorder = function (id) {
+        var index = recorders.indexOf(id);
+        if (index !== -1) {
+            recorders.splice(index, 1);
+            return true;
+        }
 
-    // Sets the video recorder
-    that.setVideoRecorder = function(rec) {
-        videoRecorder = rec;
-    };
-
-    // Sets the audio recorder
-    that.setAudioRecorder = function(rec) {
-        audioRecorder = rec;
+        return false;
     };
 
     // Returns the public specification of this stream
