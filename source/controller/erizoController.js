@@ -1,4 +1,4 @@
-/*global require, setInterval, clearInterval, Buffer, exports, GLOBAL, process*/
+/*global require, Buffer, exports, GLOBAL, process*/
 'use strict';
 var crypto = require('crypto');
 var rpcPublic = require('./rpc/rpcPublic');
@@ -640,6 +640,16 @@ var listen = function () {
                             cmdOpts[2],
                             function () {
                                 safeCall(callback, 'success');
+                                if (cmdOpts[1] === 'out') {
+                                    var event = cmdOpts[0] === 'audio' ? 'Audio' : 'Video';
+                                    event += cmdOpts[2] === 'on' ? 'Enabled' : 'Disabled';
+                                    log.debug(socket.room.id, streamId, event);
+                                    exports.handleEventReport('updateStream', socket.room.id, {
+                                        event: event,
+                                        id: streamId,
+                                        data: null
+                                    });
+                                }
                             }, function (error_reason) {
                                 safeCall(callback, 'error', error_reason);
                             }
