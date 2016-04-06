@@ -7,6 +7,7 @@ var InternalOut = woogeenInternalIO.InternalOut;
 var MediaFrameMulticaster = require('./mediaFrameMulticaster/build/Release/mediaFrameMulticaster').MediaFrameMulticaster;
 var VideoMixer = require('./videoMixer/build/Release/videoMixer').VideoMixer;
 
+var amqper = require('./amqper');
 var logger = require('./logger').logger;
 
 // Logger
@@ -41,6 +42,8 @@ function calculateResolutions(rootResolution, useMultistreaming) {
 var VideoEngine = function () {
     var that = {},
         engine,
+        session_id,
+        observer,
 
         supported_codecs = [],
         supported_resolutions = [],
@@ -70,6 +73,7 @@ var VideoEngine = function () {
                     inputs[stream_id] = conn;
                     log.debug('addInput ok, stream_id:', stream_id, 'codec:', codec, 'protocol:', protocol);
                     on_ok(stream_id);
+                    notifyLayoutChange();
                 } else {
                     conn.close();
                     on_error('Failed in adding input to video-engine.');
@@ -85,6 +89,8 @@ var VideoEngine = function () {
             engine.removeInput(stream_id);
             inputs[stream_id].close();
             delete inputs[stream_id];
+
+            notifyLayoutChange();
         }
     };
 
@@ -127,7 +133,16 @@ var VideoEngine = function () {
         }
     };
 
-    that.initEngine = function (videoConfig, callback) {
+    var notifyLayoutChange = function () {
+        if (observer) {
+            amqper.callRpc(
+                observer,
+                'eventReport',
+                ['updateStream', session_id, {event: 'VideoLayoutChanged', id: session_id, data: null}]);
+        }
+    };
+
+    that.initEngine = function (videoConfig, sessionId, layoutObserver, callback) {
         log.debug('initEngine, videoConfig:', videoConfig);
         var config = {
             'hardware': useHardware,
@@ -141,6 +156,8 @@ var VideoEngine = function () {
         };
 
         engine = new VideoMixer(JSON.stringify(config));
+        session_id = sessionId;
+        observer = layoutObserver;
         maxInputNum = videoConfig.maxInput;
 
         // FIXME: The supported codec list should be a sub-list of those querried from the engine
@@ -255,6 +272,7 @@ var VideoEngine = function () {
         if (inputs[stream_id]) {
             engine.setPrimary(stream_id);
             callback('callback', 'ok');
+            notifyLayoutChange();
         }
         callback('callback', 'error', 'Invalid input stream_id.');
     };
@@ -264,6 +282,7 @@ var VideoEngine = function () {
         if (inputs[stream_id]) {
             engine.setRegion(stream_id, region_id);
             callback('callback', 'ok');
+            notifyLayoutChange();
         }
         callback('callback', 'error', 'Invalid input stream_id.');
     };
@@ -283,9 +302,9 @@ var VideoEngine = function () {
 exports.VideoNode = function () {
     var that = new VideoEngine();
 
-    that.init = function (service, config, callback) {
+    that.init = function (service, config, sessionId, observer, callback) {
         if (service === 'mixing') {
-            that.initEngine(config, callback);
+            that.initEngine(config, sessionId, observer, callback);
         } else if (service === 'transcoding') {
             var videoConfig = {maxInput: 1,
                                bitrate: 0,
@@ -294,7 +313,7 @@ exports.VideoNode = function () {
                                multistreaming: true,
                                layout: [{region: [{id: '1', left: 0, top: 0, relativesize: 1}]}],
                                crop: false};
-            that.initEngine(videoConfig, callback);
+            that.initEngine(videoConfig, sessionId, observer, callback);
         } else {
             log.error('Unknown service type to init a video node:', service);
             callback('callback', 'error', 'Unknown service type to init a video node.');
