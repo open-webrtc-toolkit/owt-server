@@ -81,7 +81,7 @@ If you want to set up video conference service powered by GPU-accelerated MCU se
 Either Professional Edition or Community Edition is applicable. For download or installation instructions, please visit its website at https://software.intel.com/en-us/intel-media-server-studio.
 
  **Table 2-2. Client compatibility**
-Application Name|Google Chrome* 47|Mozilla Firefox* 43|Microsoft Internet Explorer* (IE) 9， 10， 11|Intel CS for WebRTC Client SDK for Android | Intel CS for WebRTC Client SDK for iOS | Intel CS for WebRTC Client SDK for C++
+Application Name|Google Chrome* 49|Mozilla Firefox* 45|Microsoft Internet Explorer* (IE) 9， 10， 11|Intel CS for WebRTC Client SDK for Android | Intel CS for WebRTC Client SDK for iOS | Intel CS for WebRTC Client SDK for C++
 --------|--------|--------|--------|--------|--------|--------
 MCU Client|YES|YES|YES|YES|YES|YES
 Management Console|YES|YES|N/A|N/A|N/A|N/A
@@ -106,6 +106,8 @@ Regarding Node.js*, make sure it's installed in your system prior to installing 
 Before installing the MCU, make sure your login account has sys-admin privileges; i.e. the ability to execute `sudo`.
 
 ### 2.3.2 Configure the MCU server machine {#Conferencesection2_3_2}
+
+If you run MCU on CentOS, configure the system firewall well to make sure all ports requires by MCU server components are open.
 
 In order for the MCU server to deliver the best performance on video conferencing, the following system configuration is recommended:
 
@@ -149,21 +151,12 @@ In order for the MCU server to deliver the best performance on video conferencin
 
 ### 2.3.3 Install the MCU package {#Conferencesection2_3_3}
 
-In the server machine, un-archive the package file first, and then invoke init.sh to initialize the package.
+On the server machine, directly un-archive the package file.
 
-For MCU Server installation, follow these steps:
 ~~~~~~{.sh}
-tar xf CS_WebRTC_Conference_Server_MCU.v<Version>.tgz
-cd Release-<Version>/
-bin/init.sh --deps
+    tar xf CS_WebRTC_Conference_Server_MCU.v<Version>.tgz
 ~~~~~~
-If you want to enable GPU-acceleration, follow these steps:
-~~~~~~{.sh}
-tar xf CS_WebRTC_Conference_Server_MCU.v<Version>.tgz
-cd Release-<Version>/
-bin/init.sh --deps --hardware
-~~~~~~
-> **Note**: If you have already installed the required system libraries, you can omit the **--deps** option.
+
 ### 2.3.4 Deploy Cisco OpenH264* Library {#Conferencesection2_3_4}
 The default H.264 library installed is a pseudo one without any media logic. To enable H.264 support in non GPU-accelerated MCU system, the deployment of Cisco OpenH264 library is required; follow these steps:
 1. Go to the following URL and get the binary package: http://ciscobinary.openh264.org/libopenh264-1.4.0-linux64.so.bz2.
@@ -199,12 +192,25 @@ For MCU sample application's certificate configuration, please follow the instru
 ### 2.3.6 Launch the MCU server as single node {#Conferencesection2_3_6}
 To launch the MCU server on one machine, follow steps below:
 
-1. Run the following commands to start the MCU:
+1. Initialize the MCU package for the first time execution.
+
+    For general MCU Server installation, follow these steps:
+
+        cd Release-<Version>/
+        bin/init.sh --deps
+
+    If you want to enable GPU-acceleration, follow these steps:
+
+        cd Release-<Version>/
+        bin/init.sh --deps --hardware
+> **Note**: If you have already installed the required system libraries, you can omit the **--deps** option.
+
+2. Run the following commands to start the MCU:
 
         cd Release-<Version>/
         bin/start-all.sh
 
-2. To verify whether the server started successfully, launch your browser and connect to the MCU server at https://XXXXX:3004. Replace XXXXX with the IP address or machine name of your MCU server.
+3. To verify whether the server started successfully, launch your browser and connect to the MCU server at https://XXXXX:3004. Replace XXXXX with the IP address or machine name of your MCU server.
 
 > **Note**: The procedures in this guide use the default room in the sample.
 
@@ -234,7 +240,16 @@ Follow the steps below to set up an MCU cluster:
 3. Edit the configuration items of nuve in Release-<Version>/nuve/nuve.toml.
 
     - Make sure the rabbit.port and rabbit.host point to the RabbitMQ server.
-4. Run MCU manager nuve and the application on the primary machine with following commands:
+4. Initialize and run MCU manager nuve and the sample application on the primary machine.
+
+    1) Initialize MCU manager nuve for the first time execution:
+
+        cd Release-<Version>/
+        nuve/init.sh --deps
+
+    2) Initialize sample application for the first time execution following instructions at Release-<Version>/extras/basic_example/README.md.
+
+    3) Run MCU manager nuve and the sample application with following commands:
 
         cd Release-<Version>/
         bin/daemon.sh start nuve
@@ -255,7 +270,6 @@ Follow the steps below to set up an MCU cluster:
 
     1) Make sure the rabbit.port and rabbit.host point to the RabbitMQ server.
     2) Make sure the controller.networkInterface is specified to the correct network interface which the clients’ signaling and control messages are expected to connect through.
-    ===to be filled===
 
 10. Choose worker machine to run webrtc-agent and/or rtsp-agent and/or recording-agent and/or audio-agent and/or video-agents. This machine must be visible to each other, and if webrtc-agent is running on it, it must be visible to other client. If you want to use Intel VCA card to run video agents, please follow section 2.3.9 to enable nodes of Intel VCA card as a visible seperated machines.
 
@@ -263,12 +277,24 @@ Follow the steps below to set up an MCU cluster:
 
     - Make sure the rabbit.port and rabbit.host point to the RabbitMQ server.
 
-12. Run the following commands to launch one or multiple MCU worker nodes on these work machines:
+12. Do initialization if you choose video or audio agent.
+
+       For general video or audio agents, follow these steps:
+
+           cd Release-<Version>/
+           {audio,video}_agent/init.sh --deps
+
+       If you want to enable GPU-acceleration for video agent, follow these steps:
+
+           cd Release-<Version>/
+           video_agent/init.sh --deps --hardware
+
+13. Run the following commands to launch one or multiple MCU worker nodes on these work machines:
 
         cd Release-<Version>/
-        bin/daemon.sh start portal/webrtc-agent/rtsp-agent/audio-agent/video-agent/recording-agent
+        bin/daemon.sh start [portal/webrtc-agent/rtsp-agent/audio-agent/video-agent/recording-agent]
 
-13. Repeat step 10 to 12 to launch as many MCU worker machines as you need.
+14. Repeat step 10 to 12 to launch as many MCU worker machines as you need.
 
 ### 2.3.9 Configure VCA nodes as seperated machines to run video-agent {#Conferencesection2_3_9}
 To setup VCA nodes as seperated machines, please follow these steps:
@@ -334,7 +360,7 @@ To stop the MCU cluster, follow these steps:
 
 3. Run the following commands on worker machines to stop cluster workers:
         cd Release-<Version>/
-        bin/daemon.sh stop portal/webrtc-agent/rtsp-agent/audio-agent/video-agent/recording-agent
+        bin/daemon.sh stop [portal/webrtc-agent/rtsp-agent/audio-agent/video-agent/recording-agent]
 
 ## 2.4 Security Recommendations {#Conferencesection2_4}
 Intel Corporation does not host any conference cluster/service, instead, the entire suite is provided so you can build your own video conference system and host your own server cluster.
@@ -361,7 +387,7 @@ The following instructions are provided only as recommendations regarding securi
 16. Avoid excessive error specificity and verbose details that reveal how the MCU server works.
 17. During server and client development, suggest running some kind of security development lifecycle/process and conduct internal and external security testing and static code analysis with tools by trusted roles.
 18. If all possible, backup all the log data to a dedicated log server with protection.
-19. Deploy MCU cluster(Manager + Workers) inside Demilitarized Zone(DMZ) area, utilize external firewall A to protect them against possible attacks, e.g. DoS attack; Deploy Mongo DB and RabbitMQ behind DMZ, configure internal firewall B to make sure only cluster machines can connect to RabbitMQ server and access to MongoDB data resources.
+19. Deploy MCU cluster(Managers + Workers) inside Demilitarized Zone(DMZ) area, utilize external firewall A to protect them against possible attacks, e.g. DoS attack; Deploy Mongo DB and RabbitMQ behind DMZ, configure internal firewall B to make sure only cluster machines can connect to RabbitMQ server and access to MongoDB data resources.
 
 **Figure 2-1. Security Recommendations Picture**
 ![Security Recommendations Picture](./pic/deploy.png)
