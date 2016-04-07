@@ -357,6 +357,13 @@ var joinCluster = function (on_ok) {
                                     max_scale: GLOBAL.config.cluster.network_max_scale};
             break;
         case 'file':
+            try {
+                fs.accessSync(GLOBAL.config.recording.path, fs.F_OK);
+            } catch (e) {
+                log.error('The configured recording path is not accessible.');
+                process.exit(1);
+            }
+
             load_collection.item = {name: 'disk',
                                     drive: GLOBAL.config.recording.path};
             break;
