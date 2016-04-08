@@ -267,9 +267,8 @@ Follow the steps below to set up an MCU cluster:
 
 8. Choose worker machines to run portals. These machines must be visible to clients.
 9. Edit the configuration items of portals in Release-<Version>/controller/controller.toml.
-
-    1) Make sure the rabbit.port and rabbit.host point to the RabbitMQ server.
-    2) Make sure the controller.networkInterface is specified to the correct network interface which the clients’ signaling and control messages are expected to connect through.
+    + Make sure the rabbit.port and rabbit.host point to the RabbitMQ
+    + Make sure the controller.networkInterface is specified to the correct network interface which the clients’ signaling and control messages are expected to connect through.
 
 10. Choose worker machine to run webrtc-agent and/or rtsp-agent and/or recording-agent and/or audio-agent and/or video-agents. This machine must be visible to each other, and if webrtc-agent is running on it, it must be visible to other client. If you want to use Intel VCA card to run video agents, please follow section 2.3.9 to enable nodes of Intel VCA card as a visible seperated machines.
 
@@ -314,7 +313,6 @@ To setup VCA nodes as seperated machines, please follow these steps:
         172.31.1.0      0.0.0.0         255.255.255.0   U     0      0        0 eth0
         172.31.2.0      0.0.0.0         255.255.255.0   U     0      0        0 eth2
         172.31.3.0      0.0.0.0         255.255.255.0   U     0      0        0 eth1
-
    > **Note**: 10.239.27.228 is DNS server. enp132s0f0 is used for host machine and IP is "10.239.44.100".
 4. Please use "ifconfig" on host machine of VCA card to list IP of VCA nodes, you will get the VCA node IPs like "172.31.1.254", "172.31.2.254", "172.31.3.254".
 5. Configure IP soft routing policy to set VCA Node to seperated machine.
@@ -344,10 +342,8 @@ To setup VCA nodes as seperated machines, please follow these steps:
             ssh root@10.239.44.3
 
     + 5.4 Disable firewall for VCA nodes after ssh login to it:
-
             systemctl stop firewalld
             systemctl disable firewalld
-
 
 ### 2.3.10 Stop the MCU cluster {#Conferencesection2_3_10}
 
@@ -364,6 +360,7 @@ To stop the MCU cluster, follow these steps:
         bin/daemon.sh stop cluster_manager
 
 3. Run the following commands on worker machines to stop cluster workers:
+
         cd Release-<Version>/
         bin/daemon.sh stop [portal/webrtc-agent/rtsp-agent/audio-agent/video-agent/recording-agent]
 
@@ -546,7 +543,6 @@ These general steps show how to start a conference:
 1. Start up the MCU server components.
 2. Launch your Google Chrome* browser from the client machine.
 3. Connect to the MCU sample application server at: http://XXXXX:3001 or https://XXXXX:3004. Replace XXXXX with the IP address or machine name of the MCU sample application server.
-
 > **Note**: Latest Chrome browser versions from v47 force https access on WebRTC applications. You will got SSL warning page with default certificates, replace them with your own trusted ones.
 4. Start your conference with this default room created by the sample application server.
 
