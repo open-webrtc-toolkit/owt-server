@@ -178,6 +178,10 @@ To launch only the gateway, use this command:
 
         bin/daemon.sh start gateway
 
+To launch GPU-accelerated gateway, you need first change the value of "hardwareAccelerated" in etc/gateway_config.json as below, and run start-all.sh.
+
+        "hardwareAccelerated": true
+
 You can then access the sample application by launching your browser with URL: http://XXXXX:3001 or https://XXXXX:3004. Replace "XXXXX" with the IP address or machine name of the server on which Gateway and the sample application run.
 
 **Note**: Latest Chrome browser versions from v47 force https access on WebRTC applications. You will got SSL warning page with default certificates, replace them with your own trusted ones.
