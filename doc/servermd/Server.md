@@ -279,10 +279,15 @@ Follow the steps below to set up an MCU cluster:
 
 12. Do initialization if you choose video or audio agent.
 
-       For general video or audio agents, follow these steps:
+       For audio agent, follow these steps:
 
            cd Release-<Version>/
-           {audio,video}_agent/init.sh --deps
+           audio_agent/init.sh --deps
+
+       For general video agent, follow these steps:
+
+           cd Release-<Version>/
+           video_agent/init.sh --deps
 
        If you want to enable GPU-acceleration for video agent, follow these steps:
 
