@@ -43,11 +43,11 @@ archive() {
     fi
     for i in "${ENCRYPT_CAND_PATH[@]}"
     do
-      find "$i" -path "${i}/public" -prune -o -type f -name "*.js" -print | while read line; do
+      find "$i" -path "${i}/public" -prune -o -path "${i}/node_modules" -prune -o -type f -name "*.js" -print | while read line; do
         encrypt_js "$line"
       done
     done
-    for file in ${WOOGEEN_DIST}/lib/* ; do strip -s "$file" ; done
+    for file in ${WOOGEEN_DIST}/*_agent/lib/* ; do strip -s "$file" ; done
   fi
   local VER="trunk"
   local DIR=$(dirname ${WOOGEEN_DIST})
