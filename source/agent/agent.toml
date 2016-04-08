@@ -78,6 +78,7 @@ passwd = "abc123"
 
 
 #########################################################################################
+#The storage availability of the recording path needs to be guaranteed when using media recording.
 [recording]
 path = "/tmp"
 
