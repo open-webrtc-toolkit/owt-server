@@ -48,6 +48,9 @@ For more information, visit the following Web pages:
     1. https://software.intel.com/webrtc
     2. https://software.intel.com/en-us/forums/webrtc
     3. https://software.intel.com/zh-cn/forums/webrtc
+ - Intel Visual Compute Accelerator:
+    1. http://www.intel.com/content/www/us/en/servers/media-and-graphics/visual-compute-accelerator.html
+    2. http://www.intel.com/visualcloud
  - The Internet Engineering Task Force (IETF<sup>®</sup>) Working Group: http://tools.ietf.org/wg/rtcweb/
  - W3C WebRTC Working Group: http://www.w3.org/2011/04/webrtc/
  - WebRTC Open Project: http://www.webrtc.org
@@ -270,7 +273,9 @@ Follow the steps below to set up an MCU cluster:
     + Make sure the rabbit.port and rabbit.host point to the RabbitMQ
     + Make sure the controller.networkInterface is specified to the correct network interface which the clients’ signaling and control messages are expected to connect through.
 
-10. Choose worker machine to run webrtc-agent and/or rtsp-agent and/or recording-agent and/or audio-agent and/or video-agents. This machine must be visible to each other, and if webrtc-agent is running on it, it must be visible to other client. If you want to use Intel VCA card to run video agents, please follow section 2.3.9 to enable nodes of Intel VCA card as a visible seperated machines.
+10. Choose worker machine to run webrtc-agent and/or rtsp-agent and/or recording-agent and/or audio-agent and/or video-agents. This machine must be visible to each other, and if webrtc-agent is running on it, it must be visible to other client.
+
+    - If you want to use Intel<sup>®</sup> Visual Compute Accelerator (VCA) to run video agents, please follow section [Configure VCA nodes](#Conferencesection2_3_9) to enable nodes of Intel VCA as a visible seperated machines.
 
 11. Edit the configuration items in Release-<Version>/{audio,video,access}_agent/agent.toml.
 
