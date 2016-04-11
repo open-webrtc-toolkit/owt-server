@@ -154,7 +154,9 @@ void VideoMixer::setRegion(const v8::FunctionCallbackInfo<v8::Value>& args) {
   String::Utf8Value param1(args[1]->ToString());
   std::string regionID = std::string(*param1);
 
-  me->setRegion(inStreamID, regionID);
+  bool r = me->setRegion(inStreamID, regionID);
+
+  args.GetReturnValue().Set(Boolean::New(isolate, r));
 }
 
 void VideoMixer::getRegion(const v8::FunctionCallbackInfo<v8::Value>& args) {

@@ -49,7 +49,7 @@ public:
 
     DLL_PUBLIC bool addInput(const std::string& inStreamID, const std::string& codec, woogeen_base::FrameSource* source);
     DLL_PUBLIC void removeInput(const std::string& inStreamID);
-    DLL_PUBLIC void setRegion(const std::string& inStreamID, const std::string& regionID);
+    DLL_PUBLIC bool setRegion(const std::string& inStreamID, const std::string& regionID);
     DLL_PUBLIC std::string getRegion(const std::string& inStreamID);
     DLL_PUBLIC void setPrimary(const std::string& inStreamID);
 
