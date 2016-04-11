@@ -156,7 +156,7 @@ void VideoMixer::removeInput(const std::string& inStreamID)
     }
 }
 
-void VideoMixer::setRegion(const std::string& inStreamID, const std::string& regionID)
+bool VideoMixer::setRegion(const std::string& inStreamID, const std::string& regionID)
 {
     int index = -1;
 
@@ -168,10 +168,11 @@ void VideoMixer::setRegion(const std::string& inStreamID, const std::string& reg
     lock.unlock();
 
     if (index >= 0) {
-        m_layoutProcessor->specifyInputRegion(index, regionID);
-    } else {
-        ELOG_ERROR("specifySourceRegion - no such an input stream: %s", inStreamID.c_str());
+        return m_layoutProcessor->specifyInputRegion(index, regionID);
     }
+
+    ELOG_ERROR("specifySourceRegion - no such an input stream: %s", inStreamID.c_str());
+    return false;
 }
 
 std::string VideoMixer::getRegion(const std::string& inStreamID)
