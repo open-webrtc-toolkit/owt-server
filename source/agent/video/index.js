@@ -280,7 +280,7 @@ var VideoEngine = function () {
     that.setRegion = function (stream_id, region_id, callback) {
         //TODO: implement the layout processor in node.js layer.
         if (inputs[stream_id]) {
-            var old_region_id = engine.getRegin(stream_id);
+            var old_region_id = engine.getRegion(stream_id);
             if (old_region_id !== '' && (old_region_id === region_id)) {
                 callback('callback', 'ok');
             } else if (engine.setRegion(stream_id, region_id)) {
