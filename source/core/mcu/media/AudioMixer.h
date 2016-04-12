@@ -109,6 +109,7 @@ public:
 
     DLL_PUBLIC void enableVAD(uint32_t period, VADListener* vadCallback);
     DLL_PUBLIC void disableVAD();
+    DLL_PUBLIC void resetVAD();
     DLL_PUBLIC bool addInput(const std::string& participant, const std::string& codec, woogeen_base::FrameSource* source);
     DLL_PUBLIC void removeInput(const std::string& participant);
     DLL_PUBLIC bool addOutput(const std::string& participant, const std::string& codec, woogeen_base::FrameDestination* dest);

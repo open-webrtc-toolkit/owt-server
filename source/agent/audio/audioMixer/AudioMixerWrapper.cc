@@ -40,6 +40,7 @@ void AudioMixer::Init(v8::Local<v8::Object> exports) {
   NODE_SET_PROTOTYPE_METHOD(tpl, "close", close);
   NODE_SET_PROTOTYPE_METHOD(tpl, "enableVAD", enableVAD);
   NODE_SET_PROTOTYPE_METHOD(tpl, "disableVAD", disableVAD);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "resetVAD", resetVAD);
   NODE_SET_PROTOTYPE_METHOD(tpl, "addInput", addInput);
   NODE_SET_PROTOTYPE_METHOD(tpl, "removeInput", removeInput);
   NODE_SET_PROTOTYPE_METHOD(tpl, "addOutput", addOutput);
@@ -106,6 +107,14 @@ void AudioMixer::disableVAD(const v8::FunctionCallbackInfo<v8::Value>& args) {
     obj->vadMsgs.clear();
     obj->hasCallback_ = false;
   }
+}
+
+void AudioMixer::resetVAD(const v8::FunctionCallbackInfo<v8::Value>& args) {
+  Isolate* isolate = Isolate::GetCurrent();
+  HandleScope scope(isolate);
+  AudioMixer* obj = ObjectWrap::Unwrap<AudioMixer>(args.Holder());
+
+  obj->me->resetVAD();
 }
 
 void AudioMixer::addInput(const v8::FunctionCallbackInfo<v8::Value>& args) {

@@ -185,6 +185,10 @@ var AudioEngine = function () {
         });
     };
 
+    that.resetVAD = function () {
+        engine.resetVAD();
+    };
+
     return that;
 };
 

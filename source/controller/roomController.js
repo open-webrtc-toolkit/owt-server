@@ -71,6 +71,17 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
         }
     };
 
+    var resetVAD = function () {
+        if (config.enableMixing && config.mediaMixing && config.mediaMixing.video && config.mediaMixing.video.avCoordinated
+            && audio_mixer && video_mixer) {
+            makeRPC(
+                amqper,
+                'ErizoJS_' + terminals[audio_mixer].erizo,
+                'resetVAD',
+                []);
+        }
+    };
+
     var initialize = function () {
         log.debug('initialize...');
         if (config.enableMixing) {
@@ -1260,8 +1271,10 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
                 'ErizoJS_' + terminals[video_mixer].erizo,
                 'setRegion',
                 [stream_id, region],
-                on_ok,
-                on_error);
+                function (data) {
+                    on_ok(data);
+                    resetVAD();
+                }, on_error);
         }
     };
 
