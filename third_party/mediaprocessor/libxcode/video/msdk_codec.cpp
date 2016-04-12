@@ -3321,6 +3321,7 @@ int MSDKCodec::PrepareVppCompFrames()
         unsigned pad_com_start = GetSysTimeInUs();
         int pad_comp_time = (FRAME_RATE_CTRL_TIMER / (max_comp_framerate_ + FRAME_RATE_CTRL_PADDING)) - (pad_com_start - comp_stc_);
         int pad_comp_timer = (pad_comp_time < 0) ? 0 : pad_comp_time / pad_size;
+        int sink_pad_max_level = 0;
 
         if (combo_type_ == COMBO_CUSTOM) {
             CustomLayout::iterator it = dec_region_list_.begin();
@@ -3355,7 +3356,20 @@ int MSDKCodec::PrepareVppCompFrames()
 
                     usleep(200);
                 }
-
+                if (buf.msdk_surface) {
+                    if (vpp_comp_map_[pad].frame_rate == 0) {
+                        if (((mfxFrameSurface1 *)buf.msdk_surface)->Info.FrameRateExtD > 0) {
+                            vpp_comp_map_[pad].frame_rate = (float)((mfxFrameSurface1 *)buf.msdk_surface)->Info.FrameRateExtN;
+                            vpp_comp_map_[pad].frame_rate /= (float)((mfxFrameSurface1 *)buf.msdk_surface)->Info.FrameRateExtD;
+                        } else {
+                            vpp_comp_map_[pad].frame_rate = 30;
+                        }
+                        if (vpp_comp_map_[pad].frame_rate > max_comp_framerate_) {
+                            max_comp_framerate_ = vpp_comp_map_[pad].frame_rate;
+                            printf("------- Set max_comp_framerate_ to %f\n", max_comp_framerate_);
+                        }
+                    }
+                }
                 if (out_of_time) {
                     // Frames comes late.
                     // Use last surface, drop 1 frame in future.
@@ -3381,6 +3395,10 @@ int MSDKCodec::PrepareVppCompFrames()
                             break;
                         }
                     }
+                }
+                int bufCount = pad->GetBufQueueSize();
+                if (bufCount > sink_pad_max_level) {
+                    sink_pad_max_level = bufCount;
                 }
             }
         } else {
@@ -3426,7 +3444,20 @@ int MSDKCodec::PrepareVppCompFrames()
 
                     usleep(200);
                 }
-
+                if (buf.msdk_surface) {
+                    if (vpp_comp_map_[sinkpad].frame_rate == 0) {
+                        if (((mfxFrameSurface1 *)buf.msdk_surface)->Info.FrameRateExtD > 0) {
+                            vpp_comp_map_[sinkpad].frame_rate = (float)((mfxFrameSurface1 *)buf.msdk_surface)->Info.FrameRateExtN;
+                            vpp_comp_map_[sinkpad].frame_rate /= (float)((mfxFrameSurface1 *)buf.msdk_surface)->Info.FrameRateExtD;
+                        } else {
+                            vpp_comp_map_[sinkpad].frame_rate = 30;
+                        }
+                        if (vpp_comp_map_[sinkpad].frame_rate > max_comp_framerate_) {
+                            max_comp_framerate_ = vpp_comp_map_[sinkpad].frame_rate;
+                            printf("------- Set max_comp_framerate_ to %f\n", max_comp_framerate_);
+                        }
+                    }
+                }
                 if (!vpp_comp_map_[sinkpad].str_info.text && !vpp_comp_map_[sinkpad].pic_info.bmp) { //this sinkpad corresponds to video stream
                     if (buf.is_eos) {
                         eos_cnt += buf.is_eos;
@@ -3464,11 +3495,18 @@ int MSDKCodec::PrepareVppCompFrames()
                         }
                     }
                 }
+                int bufCount = sinkpad->GetBufQueueSize();
+                if (bufCount > sink_pad_max_level) {
+                    sink_pad_max_level = bufCount;
+                }
             }
         }
         unsigned pad_comp_end = GetSysTimeInUs();
         int need_sleep = 0;
         need_sleep = pad_size * pad_comp_timer - (pad_comp_end - pad_com_start);
+        if (sink_pad_max_level >= 1) {
+            need_sleep = 0;
+        }
         if (need_sleep > 0) {
             usleep(need_sleep);
         }
@@ -3587,7 +3625,10 @@ int MSDKCodec::HandleProcessVpp()
 
             //initialize vpp
             sts = InitVpp(vpp_comp_map_[*it_sinkpad].ready_surface);
-
+            max_comp_framerate_ = vpp_comp_map_[*it_sinkpad].frame_rate;
+            if (max_comp_framerate_ == 0) {
+                max_comp_framerate_ = 30;
+            }
             current_comp_number_ = sinkpads_.size();
             comp_info_change_ = false;
             reinit_vpp_flag_ = false;
@@ -3774,6 +3815,7 @@ void MSDKCodec::NewPadAdded(MediaPad *pad)
         pad_info.dst_rect.h = 1;
         pad_info.ready_surface.msdk_surface = NULL;
         pad_info.ready_surface.is_eos = 0;
+        pad_info.frame_rate = 0;
 
         if (input_str_) {
             pad_info.str_info = *input_str_;
