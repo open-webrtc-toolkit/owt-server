@@ -51,6 +51,7 @@ class AudioMixer : public node::ObjectWrap, public mcu::VADListener {
 
   static void enableVAD(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void disableVAD(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void resetVAD(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void addInput(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void removeInput(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void addOutput(const v8::FunctionCallbackInfo<v8::Value>& args);

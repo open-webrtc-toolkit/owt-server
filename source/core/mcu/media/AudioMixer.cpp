@@ -442,6 +442,12 @@ void AudioMixer::disableVAD()
     m_vadEnabled = false;
 }
 
+void AudioMixer::resetVAD()
+{
+    ELOG_DEBUG("resetVAD");
+    m_mostActiveChannel = -1;
+}
+
 bool  AudioMixer::addInput(const std::string& participant, const std::string& codec, woogeen_base::FrameSource* source)
 {
     assert(source);
