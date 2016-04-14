@@ -154,6 +154,10 @@ void VideoMixEngineImp::setLayout(const CustomLayoutInfo* layoutMapping)
     } else {
         boost::shared_lock<boost::shared_mutex> vppLock(m_vppMutex);
         for(std::map<VppIndex, VppInfo>::iterator it = m_vpps.begin(); it != m_vpps.end(); it++) {
+            if (it->second.vppHandle == NULL) {
+                printf("[%s]vpp handle invalid width [%u] height [%u] vpp size [%lu]\n", __FUNCTION__, it->second.width, it->second.height, m_vpps.size());
+                continue;
+            }
             //first, set vpp as COMBO_CUSTOM mode
             ret = m_xcoder->SetComboType(COMBO_CUSTOM, it->second.vppHandle, NULL);
             if (ret != 0) {
