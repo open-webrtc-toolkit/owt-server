@@ -182,8 +182,10 @@ var VideoEngine = function () {
             removeInput(stream_id);
         }
 
-        engine.close();
-        engine = undefined;
+        if (engine) {
+            engine.close();
+            engine = undefined;
+        }
     };
 
     that.generate = function (codec, resolution, callback) {
