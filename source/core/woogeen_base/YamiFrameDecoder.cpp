@@ -20,6 +20,7 @@
 
 #include "YamiFrameDecoder.h"
 
+#include "YamiVideoDisplay.h"
 #include "YamiVideoFrame.h"
 #include <webrtc/modules/video_coding/codecs/h264/include/h264.h>
 #include <webrtc/modules/video_coding/codecs/vp8/include/vp8.h>
@@ -91,9 +92,15 @@ bool YamiFrameDecoder::init(FrameFormat format)
         ELOG_ERROR("Failed to create %d", format);
         return false;
     }
+    SharedPtr<VADisplay> vaDisplay = YamiGetVADisplay();
+    if (!vaDisplay) {
+        ELOG_ERROR("get va display failed");
+        return false;
+    }
+
     NativeDisplay display;
-    display.type = NATIVE_DISPLAY_DRM;
-    display.handle = -1;
+    display.type = NATIVE_DISPLAY_VA;
+    display.handle = (intptr_t)*vaDisplay;
     m_decoder->setNativeDisplay(&display);
 
     VideoConfigBuffer config;

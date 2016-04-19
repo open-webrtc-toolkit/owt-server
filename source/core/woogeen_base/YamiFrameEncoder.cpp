@@ -20,6 +20,7 @@
 
 #include "YamiFrameEncoder.h"
 
+#include "YamiVideoDisplay.h"
 #include "YamiVideoFrame.h"
 #include "MediaUtilities.h"
 #include <webrtc/modules/video_coding/codecs/vp8/vp8_factory.h>
@@ -77,9 +78,15 @@ public:
 
         setEncoderParams();
 
+        SharedPtr<VADisplay> vaDisplay = YamiGetVADisplay();
+        if (!vaDisplay) {
+            ELOG_ERROR("get va display failed");
+            return false;
+        }
+
         NativeDisplay display;
-        display.type = NATIVE_DISPLAY_DRM;
-        display.handle = -1;
+        display.type = NATIVE_DISPLAY_VA;
+        display.handle = (intptr_t)*vaDisplay;
         m_encoder->setNativeDisplay(&display);
 
         Encode_Status status = m_encoder->start();
@@ -93,17 +100,12 @@ public:
     {
       ELOG_ERROR("onFrame");
         Encode_Status status = m_encoder->encode(input);
-	if (input) { 
-	  ELOG_ERROR("surface = %p", input->surface);
-	}
-	else { 
-	  ELOG_ERROR("input = null");
-	}
         if (status != ENCODE_SUCCESS) {
             ELOG_DEBUG("encode status = %d", status);
             return;
         }
         status = m_encoder->getOutput(&m_output);
+        ELOG_DEBUG("output format = %d", m_output.format);
 
         Frame frame;
         memset(&frame, 0, sizeof(frame));
@@ -118,7 +120,14 @@ public:
             static int i;
             i++;
             frame.timeStamp = i*1000/30*90;
-            ELOG_DEBUG("time: %d, %lu", frame.timeStamp, m_output.timeStamp);
+            ELOG_DEBUG("time: %d, %lu, len = %d", frame.timeStamp, m_output.timeStamp, frame.length);
+            FILE* fp = fopen("/home/webrtc/yxian/webrtc-woogeen-2.latest/a.264", "ab");
+            if (fp) {
+                fwrite( m_output.data, 1, frame.length, fp);
+                fclose(fp);
+            } else {
+            ELOG_DEBUG("open failed");
+            }
             deliverFrame(frame);
             //get next output
             status = m_encoder->getOutput(&m_output);
