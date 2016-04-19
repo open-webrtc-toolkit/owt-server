@@ -123,21 +123,21 @@ public:
     bool setFormat(uint32_t fourcc, int width, int height)
     {
         if (m_surfaces.size()) {
-	  ELOG_ERROR("you can only set format for once");
+            ELOG_ERROR("you can only set format for once");
             return false;
         }
         m_surfaces.resize(m_poolsize);
-	/*     VASurfaceAttrib attrib;
+/*        VASurfaceAttrib attrib;
         attrib.flags = VA_SURFACE_ATTRIB_SETTABLE;
         attrib.type = VASurfaceAttribPixelFormat;
         attrib.value.type = VAGenericValueTypeInteger;
         attrib.value.value.i = fourcc;
-	*/
+*/
         VAStatus status = vaCreateSurfaces(*m_display, VA_RT_FORMAT_YUV420, width, height,
                                            &m_surfaces[0], m_surfaces.size(),
-					   NULL, 0);//&attrib, 1);
+                                           NULL, 0);
         if (status != VA_STATUS_SUCCESS) {
-	  ELOG_ERROR("create surface failed fourcc = %p, %s", fourcc, vaErrorStr(status));
+            ELOG_ERROR("create surface failed fourcc = %p, %s", fourcc, vaErrorStr(status));
             m_surfaces.clear();
             return false;
         }
@@ -272,27 +272,23 @@ YamiVideoCompositor::YamiVideoCompositor(uint32_t maxInput, VideoSize rootSize, 
     ELOG_ERROR("set size to %dx%d, input = %d", rootSize.width, rootSize.height, maxInput);
     m_inputs.resize(maxInput);
     for (auto& input : m_inputs) {
-        ELOG_ERROR("++new input");
         input.reset(new VideoInput());
-        ELOG_ERROR("new input");
         input->updateRootSize(rootSize);
-        ELOG_ERROR("-new input");
     }
-    ELOG_ERROR("1");
+
     m_display = createVADisplay();
     NativeDisplay nativeDisplay;
     nativeDisplay.type = NATIVE_DISPLAY_VA;
     nativeDisplay.handle = (intptr_t)*m_display;
-    ELOG_ERROR("2");
     m_vpp.reset(createVideoPostProcess(YAMI_VPP_SCALER), releaseVideoPostProcess);
     m_vpp->setNativeDisplay(nativeDisplay);
-        ELOG_ERROR("3");
 
     m_allocator.reset(new PooledFrameAllocator(m_display, 5));
-    if (!m_allocator->setFormat(YAMI_FOURCC('N', 'V', '1', '2'), 640, 480)) {
-      ELOG_ERROR("set to 640x480 faied");
+
+    if (!m_allocator->setFormat(YAMI_FOURCC('N', 'V', '1', '2'),
+        m_compositeSize.width, m_compositeSize.width)) {
+        ELOG_ERROR("set to %dx%d ", m_compositeSize.width, m_compositeSize.width);
     }
-    ELOG_ERROR("4");
     m_jobTimer.reset(new woogeen_base::JobTimer(30, this));
     m_jobTimer->start();
     ELOG_ERROR("-set size to %dx%d, input = %d", rootSize.width, rootSize.height, maxInput);
