@@ -9,18 +9,22 @@ var log = logger.getLogger('LoadCollector');
 var child_process = require('child_process');
 
 var cpuCollector = function (period, on_load) {
-    var child = child_process.spawn('/usr/bin/top', ['-d', Math.max(Math.floor(period / 1000), 1)]);
+    var child = child_process.spawn('top', ['-b', '-d', Math.max(Math.floor(period / 1000), 1)]);
 
     child.stdout.on('data', function (data) {
-        var lines = data.toString().split('\n');
-        var regex = /\s+(\d+\.\d+).*\s+(\d+\.\d+).*\s+(\d+\.\d+)/;
+        var cpuline = data.toString().split('\n').filter(function (line) {return line.startsWith('%Cpu(s):');})[0];
+        var regex = /\s+(\d+\.\d+)\s+id/;
 
-        var m;
-        if (m = regex.exec(lines[3])) {
-            on_load(1.0 - (Math.floor(Number(m[3])) / 100));
-        } else {
-            log.warn('Not regular top data.');
+        if (cpuline) {
+            var m = regex.exec(cpuline);
+            if (m && (m.length === 2)) {
+                on_load(Math.floor(100 - Number(m[1])) / 100);
+            }
         }
+    });
+
+    child.stderr.on('data', function (error) {
+        log.error('cpu collector error:', error.toString());
     });
 
     this.stop = function () {
