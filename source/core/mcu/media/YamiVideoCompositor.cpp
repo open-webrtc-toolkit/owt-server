@@ -136,6 +136,7 @@ public:
         VAStatus status = vaCreateSurfaces(*m_display, VA_RT_FORMAT_YUV420, width, height,
                                            &m_surfaces[0], m_surfaces.size(),
                                            NULL, 0);
+        ELOG_ERROR("rt format = %d", VA_RT_FORMAT_YUV420);
         if (status != VA_STATUS_SUCCESS) {
             ELOG_ERROR("create surface failed fourcc = %p, %s", fourcc, vaErrorStr(status));
             m_surfaces.clear();
