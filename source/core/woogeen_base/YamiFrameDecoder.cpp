@@ -77,11 +77,11 @@ bool YamiFrameDecoder::init(FrameFormat format)
     switch (format) {
     case FRAME_FORMAT_VP8:
         m_decoder.reset(createVideoDecoder(YAMI_MIME_VP8), releaseVideoDecoder);
-        ELOG_DEBUG("Created VP8 deocder.");
+        ELOG_DEBUG("Created VP8 deocder....");
         break;
     case FRAME_FORMAT_H264:
         m_decoder.reset(createVideoDecoder(YAMI_MIME_H264), releaseVideoDecoder);
-        ELOG_DEBUG("Created H.264 deocder.");
+        ELOG_DEBUG("Created H.264 deocder....");
         break;
     default:
         ELOG_ERROR("Unspported video frame format %d", format);

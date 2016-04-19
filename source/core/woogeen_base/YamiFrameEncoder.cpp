@@ -58,11 +58,11 @@ public:
         switch (format) {
             case FRAME_FORMAT_VP8:
                 m_encoder.reset(createVideoEncoder(YAMI_MIME_VP8), releaseVideoEncoder);
-                ELOG_DEBUG("Created VP8 deocder.");
+                ELOG_DEBUG("Created VP8 encoder.");
                 break;
             case FRAME_FORMAT_H264:
                 m_encoder.reset(createVideoEncoder(YAMI_MIME_H264), releaseVideoEncoder);
-                ELOG_DEBUG("Created H.264 deocder.");
+                ELOG_DEBUG("Created H.264 encoder.");
             break;
         default:
             ELOG_ERROR("Unspported video frame format %d", format);
@@ -91,7 +91,14 @@ public:
     }
     void onFrame(const SharedPtr<::VideoFrame>& input)
     {
+      ELOG_ERROR("onFrame");
         Encode_Status status = m_encoder->encode(input);
+	if (input) { 
+	  ELOG_ERROR("surface = %p", input->surface);
+	}
+	else { 
+	  ELOG_ERROR("input = null");
+	}
         if (status != ENCODE_SUCCESS) {
             ELOG_DEBUG("encode status = %d", status);
             return;
@@ -230,6 +237,9 @@ void YamiFrameEncoder::onFrame(const Frame& frame)
     case FRAME_FORMAT_YAMI: {
         YamiVideoFrame* holder = (YamiVideoFrame*)frame.payload;
         auto input = holder->frame;
+	if (!input) {
+	  ELOG_ERROR("input null");
+	}
         for (auto it = m_streams.begin(); it != m_streams.end(); ++it) {
             it->second->onFrame(input);
         }
