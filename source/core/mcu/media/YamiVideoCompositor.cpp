@@ -23,10 +23,11 @@
 #include <webrtc/system_wrappers/interface/clock.h>
 #include <webrtc/system_wrappers/interface/tick_util.h>
 #include <deque>
-#include <va/va.h>
-#include <va/va_drm.h>
+/*#include <va/va.h>*/
+#include <va/va_compat.h>
 #include <VideoPostProcessHost.h>
 #include <YamiVideoFrame.h>
+#include <YamiVideoDisplay.h>
 
 using namespace webrtc;
 
@@ -36,29 +37,10 @@ DEFINE_LOGGER(YamiVideoCompositor, "mcu.media.YamiVideoCompositor");
 
 //efine ERROR ELOG_ERROR
 
-struct VADisplayDeleter
-{
-    VADisplayDeleter(int fd):m_fd(fd) {}
-    void operator()(VADisplay* display)
-    {
-        vaTerminate(*display);
-        delete display;
-        close(m_fd);
-    }
-private:
-    int m_fd;
-};
-
 template <class T>
 class VideoPool : public EnableSharedFromThis<VideoPool<T> >
 {
 public:
-    static SharedPtr<VideoPool<T> >
-    create(std::deque<SharedPtr<T> >& buffers)
-    {
-        SharedPtr<VideoPool<T> > ptr(new VideoPool<T>(buffers));
-        return ptr;
-    }
 
     SharedPtr<T> alloc()
     {
@@ -73,8 +55,6 @@ public:
         return ret;
     }
 
-private:
-
     VideoPool(std::deque<SharedPtr<T> >& buffers)
     {
             m_holder.swap(buffers);
@@ -83,6 +63,7 @@ private:
             }
     }
 
+private:
     void recycle(T* ptr)
     {
         boost::upgrade_lock<boost::shared_mutex> lock(m_mutex);
@@ -110,46 +91,70 @@ private:
     std::deque<SharedPtr<T> > m_holder;
 };
 
+struct SurfaceDestoryer
+{
+private:
+    SharedPtr<VADisplay> m_display;
+    std::vector<VASurfaceID> m_surfaces;
+public:
+    SurfaceDestoryer(const SharedPtr<VADisplay>& display, std::vector<VASurfaceID>& surfaces)
+        :m_display(display)
+    {
+        m_surfaces.swap(surfaces);
+    }
+    void operator()(VideoPool<VideoFrame>* pool)
+    {
+        if (m_surfaces.size())
+            vaDestroySurfaces(*m_display, &m_surfaces[0], m_surfaces.size());
+        delete pool;
+    }
 
+};
 
 class PooledFrameAllocator
 {
     DECLARE_LOGGER();
 public:
-    PooledFrameAllocator(const SharedPtr<VADisplay>& display, int poolsize):
-        m_display(display), m_poolsize(poolsize)
+    PooledFrameAllocator(const SharedPtr<VADisplay>& display, int poolsize)
+        :m_display(display)
+        , m_poolsize(poolsize)
     {
     }
     bool setFormat(uint32_t fourcc, int width, int height)
     {
-        if (m_surfaces.size()) {
-            ELOG_ERROR("you can only set format for once");
-            return false;
-        }
-        m_surfaces.resize(m_poolsize);
-/*        VASurfaceAttrib attrib;
+        std::vector<VASurfaceID> surfaces;
+        surfaces.resize(m_poolsize);
+
+        VASurfaceAttrib attrib;
         attrib.flags = VA_SURFACE_ATTRIB_SETTABLE;
         attrib.type = VASurfaceAttribPixelFormat;
         attrib.value.type = VAGenericValueTypeInteger;
         attrib.value.value.i = fourcc;
-*/
+
+
+
         VAStatus status = vaCreateSurfaces(*m_display, VA_RT_FORMAT_YUV420, width, height,
-                                           &m_surfaces[0], m_surfaces.size(),
-                                           NULL, 0);
-        ELOG_ERROR("rt format = %d", VA_RT_FORMAT_YUV420);
+                                           &surfaces[0], surfaces.size(),
+                                           &attrib, 1);
+       /*VAStatus status = vaCreateSurfaces(*m_display,width, height, VA_RT_FORMAT_YUV420 ,surfaces.size(), &surfaces[0], NULL, 0);
+         */
+
+        //wired why this call vaCreateSurfaces_0_32_0
+       //VAStatus status = vaCreateSurfaces_0_32_0(*m_display,width, height,surfaces.size(), &surfaces[0]);
+
         if (status != VA_STATUS_SUCCESS) {
-            ELOG_ERROR("create surface failed fourcc = %p, %s", fourcc, vaErrorStr(status));
-            m_surfaces.clear();
+            ELOG_ERROR("create surface failed, %s", vaErrorStr(status));
             return false;
         }
         std::deque<SharedPtr<VideoFrame> > buffers;
-        for (size_t i = 0;  i < m_surfaces.size(); i++) {
+        for (size_t i = 0;  i < surfaces.size(); i++) {
             SharedPtr<VideoFrame> f(new VideoFrame);
             memset(f.get(), 0, sizeof(VideoFrame));
-            f->surface = (intptr_t)m_surfaces[i];
+            f->surface = (intptr_t)surfaces[i];
+            f->fourcc = fourcc;
             buffers.push_back(f);
         }
-        m_pool = VideoPool<VideoFrame>::create(buffers);
+        m_pool.reset(new VideoPool<VideoFrame>(buffers), SurfaceDestoryer(m_display, surfaces));
         return true;
     }
 
@@ -157,14 +162,8 @@ public:
     {
         return  m_pool->alloc();
     }
-    ~PooledFrameAllocator()
-    {
-        if (m_surfaces.size())
-            vaDestroySurfaces(*m_display, &m_surfaces[0], m_surfaces.size());
-    }
 private:
     SharedPtr<VADisplay> m_display;
-    std::vector<VASurfaceID> m_surfaces;
     SharedPtr<VideoPool<VideoFrame> > m_pool;
     int m_poolsize;
 };
@@ -277,7 +276,7 @@ YamiVideoCompositor::YamiVideoCompositor(uint32_t maxInput, VideoSize rootSize, 
         input->updateRootSize(rootSize);
     }
 
-    m_display = createVADisplay();
+    m_display = YamiGetVADisplay();
     NativeDisplay nativeDisplay;
     nativeDisplay.type = NATIVE_DISPLAY_VA;
     nativeDisplay.handle = (intptr_t)*m_display;
@@ -285,6 +284,7 @@ YamiVideoCompositor::YamiVideoCompositor(uint32_t maxInput, VideoSize rootSize, 
     m_vpp->setNativeDisplay(nativeDisplay);
 
     m_allocator.reset(new PooledFrameAllocator(m_display, 5));
+
 
     if (!m_allocator->setFormat(YAMI_FOURCC('N', 'V', '1', '2'),
         m_compositeSize.width, m_compositeSize.width)) {
@@ -299,29 +299,6 @@ YamiVideoCompositor::~YamiVideoCompositor()
 {
     m_jobTimer->stop();
 }
-
-SharedPtr<VADisplay> YamiVideoCompositor::createVADisplay()
-{
-    SharedPtr<VADisplay> display;
-    int fd = open("/dev/dri/renderD128", O_RDWR);
-    if (fd < 0)
-        fd = open("/dev/dri/card0", O_RDWR);
-    if (fd < 0) {
-        ELOG_ERROR("can't open drm device");
-        return display;
-    }
-    VADisplay vadisplay = vaGetDisplayDRM(fd);
-    int majorVersion, minorVersion;
-    VAStatus vaStatus = vaInitialize(vadisplay, &majorVersion, &minorVersion);
-    if (vaStatus != VA_STATUS_SUCCESS) {
-        ELOG_ERROR("va init failed, status =  %d", vaStatus);
-        close(fd);
-        return display;
-    }
-    display.reset(new VADisplay(vadisplay), VADisplayDeleter(fd));
-    return display;
-}
-
 
 void YamiVideoCompositor::updateRootSize(VideoSize& videoSize)
 {
@@ -418,7 +395,7 @@ SharedPtr<VideoFrame> YamiVideoCompositor::customLayout()
 {
     SharedPtr<VideoFrame> dest = m_allocator->alloc();
     if (!dest) {
-        ELOG_TRACE("no frame");
+        return dest;
     }
     for (auto& input : m_inputs) {
         SharedPtr<VideoFrame> src = input->popInput(dest->crop);
