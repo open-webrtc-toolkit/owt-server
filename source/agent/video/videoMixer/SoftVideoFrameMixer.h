@@ -260,7 +260,7 @@ inline bool SoftVideoFrameMixer::addOutput(int output,
     boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
     Output out{.encoder = encoder, .streamId = streamId};
     m_outputs[output] = out;
-        ELOG_DEBUG("-add output %d, %d, %dx%d", output, format, rootSize.width, rootSize.height);
+        ELOG_DEBUG("-add output %d, %d, %dx%d....", output, format, rootSize.width, rootSize.height);
     return true;
 }
 

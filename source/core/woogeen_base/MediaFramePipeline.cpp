@@ -85,6 +85,7 @@ static inline bool isAudioFrame(const Frame& frame) {
 
 static inline bool isVideoFrame(const Frame& frame) {
     return frame.format == FRAME_FORMAT_I420
+          || frame.format ==FRAME_FORMAT_YAMI
           || frame.format == FRAME_FORMAT_VP8
           || frame.format == FRAME_FORMAT_H264;
 }

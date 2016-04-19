@@ -111,8 +111,10 @@ private:
 };
 
 
+
 class PooledFrameAllocator
 {
+    DECLARE_LOGGER();
 public:
     PooledFrameAllocator(const SharedPtr<VADisplay>& display, int poolsize):
         m_display(display), m_poolsize(poolsize)
@@ -121,19 +123,21 @@ public:
     bool setFormat(uint32_t fourcc, int width, int height)
     {
         if (m_surfaces.size()) {
-            //ERROR("you can only set format for once");
+	  ELOG_ERROR("you can only set format for once");
             return false;
         }
         m_surfaces.resize(m_poolsize);
-        VASurfaceAttrib attrib;
+	/*     VASurfaceAttrib attrib;
         attrib.flags = VA_SURFACE_ATTRIB_SETTABLE;
         attrib.type = VASurfaceAttribPixelFormat;
         attrib.value.type = VAGenericValueTypeInteger;
         attrib.value.value.i = fourcc;
+	*/
         VAStatus status = vaCreateSurfaces(*m_display, VA_RT_FORMAT_YUV420, width, height,
-                                           &m_surfaces[0], m_surfaces.size(),&attrib, 1);
+                                           &m_surfaces[0], m_surfaces.size(),
+					   NULL, 0);//&attrib, 1);
         if (status != VA_STATUS_SUCCESS) {
-            //ERROR("create surface failed fourcc = %p", fourcc);
+	  ELOG_ERROR("create surface failed fourcc = %p, %s", fourcc, vaErrorStr(status));
             m_surfaces.clear();
             return false;
         }
@@ -150,7 +154,7 @@ public:
 
     SharedPtr<VideoFrame> alloc()
     {
-        return m_pool->alloc();
+        return  m_pool->alloc();
     }
     ~PooledFrameAllocator()
     {
@@ -164,6 +168,7 @@ private:
     int m_poolsize;
 };
 
+DEFINE_LOGGER(PooledFrameAllocator, "mcu.media.PooledFrameAllocator");
 
 class VideoInput {
     DECLARE_LOGGER();
@@ -173,7 +178,6 @@ public:
     {
         memset(&m_rect, 0, sizeof(m_rect));
         memset(&m_rootSize, 0, sizeof(m_rootSize));
-        memset(&m_region, 0, sizeof(m_region));
 
     }
     void updateRootSize(VideoSize& videoSize)
@@ -285,6 +289,9 @@ YamiVideoCompositor::YamiVideoCompositor(uint32_t maxInput, VideoSize rootSize, 
         ELOG_ERROR("3");
 
     m_allocator.reset(new PooledFrameAllocator(m_display, 5));
+    if (!m_allocator->setFormat(YAMI_FOURCC('N', 'V', '1', '2'), 640, 480)) {
+      ELOG_ERROR("set to 640x480 faied");
+    }
     ELOG_ERROR("4");
     m_jobTimer.reset(new woogeen_base::JobTimer(30, this));
     m_jobTimer->start();
@@ -389,6 +396,11 @@ void YamiVideoCompositor::generateFrame()
     frame.length = 0; // unused.
     frame.additionalInfo.video.width = m_compositeSize.width;
     frame.additionalInfo.video.height = m_compositeSize.height;
+    if (compositeFrame) {
+      ELOG_ERROR("composite frame != null");
+    } else {
+      ELOG_ERROR("compiste frame = null");
+    }
 
     deliverFrame(frame);
 }
