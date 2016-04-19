@@ -83,28 +83,28 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
     };
 
     var initialize = function () {
-        log.debug('initialize...');
+        log.debug('initialize room', room_id);
         if (config.enableMixing) {
             audio_mixer = Math.random() * 1000000000000000000 + '';
             newTerminal(audio_mixer, 'amixer', function () {
-                log.debug('new audio mixer ok. audio_mixer:', audio_mixer);
+                log.debug('new audio mixer ok. audio_mixer:', audio_mixer, 'room_id:', room_id);
                 makeRPC(
                     amqper,
                     'ErizoJS_' + terminals[audio_mixer].erizo,
                     'init',
                     ['mixing', config.mediaMixing.audio],
                     function (supported_audio) {
-                        log.debug('init audio mixer ok.');
+                        log.debug('init audio mixer ok. room_id:', room_id);
                         video_mixer = Math.random() * 1000000000000000000 + '';
                         newTerminal(video_mixer, 'vmixer', function () {
-                            log.debug('new video mixer ok. video_mixer:', video_mixer);
+                            log.debug('new video mixer ok. video_mixer:', video_mixer, 'room_id:', room_id);
                             makeRPC(
                                 amqper,
                                 'ErizoJS_' + terminals[video_mixer].erizo,
                                 'init',
                                 ['mixing', config.mediaMixing.video, room_id, observer],
                                 function (supported_video) {
-                                    log.debug('init video mixer ok.');
+                                    log.debug('init video mixer ok. room_id:', room_id);
                                     supported_audio_codecs = supported_audio.codecs;
                                     supported_video_codecs = supported_video.codecs;
                                     supported_video_resolutions = supported_video.resolutions;
@@ -114,6 +114,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
                                         enableAVCoordination();
                                     }
                                 }, function (error_reason) {
+                                    log.error('init video_mixer failed. room_id:', room_id, 'reason:', error_reason);
                                     deleteTerminal(video_mixer);
                                     makeRPC(
                                         amqper,
@@ -126,6 +127,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
                                     if (typeof on_init_failed === 'function') on_init_failed(error_reason);
                                 });
                             }, function (error_reason) {
+                                log.error('new video mixer failed. room_id:', room_id, 'reason:', error_reason);
                                 makeRPC(
                                     amqper,
                                     'ErizoJS_' + terminals[audio_mixer].erizo,
@@ -137,10 +139,12 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
                                 if (typeof on_init_failed === 'function') on_init_failed(error_reason);
                             });
                 }, function (error_reason) {
+                    log.error('init audio_mixer failed. room_id:', room_id, 'reason:', error_reason);
                     audio_mixer = undefined;
                     if (typeof on_init_failed === 'function') on_init_failed(error_reason);
                 });
             }, function(error_reason) {
+                log.error('new audio_mixer failed. room_id:', room_id, 'reason:', error_reason);
                 audio_mixer = undefined;
                 if (typeof on_init_failed === 'function') on_init_failed(error_reason);
             });

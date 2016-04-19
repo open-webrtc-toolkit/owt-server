@@ -85,6 +85,7 @@ var rpc = require('./amqper');
     }
 })();
 
+log.info('Connecting to rabbitMQ server...');
 rpc.connect(GLOBAL.config.rabbit, function () {
     try {
         var rpcID = process.argv[2];
