@@ -6,24 +6,34 @@ var logger = require('./logger').logger;
 // Logger
 var log = logger.getLogger('LoadCollector');
 
-var os = require('os');
+var child_process = require('child_process');
 
 var cpuCollector = function (period, on_load) {
-    var interval = setInterval(function () {
-        on_load(os.loadavg()[0] / os.cpus().length);
-    }, period);
+    var child = child_process.spawn('/usr/bin/top', ['-d', Math.max(Math.floor(period / 1000), 1)]);
+
+    child.stdout.on('data', function (data) {
+        var lines = data.toString().split('\n');
+        var regex = /\s+(\d+\.\d+).*\s+(\d+\.\d+).*\s+(\d+\.\d+)/;
+
+        var m;
+        if (m = regex.exec(lines[3])) {
+            on_load(1.0 - (Math.floor(Number(m[3])) / 100));
+        } else {
+            log.warn('Not regular top data.');
+        }
+    });
 
     this.stop = function () {
         log.debug("To stop cpu load collector.");
-        clearInterval(interval);
-    }
-};
+        child && child.kill();
+        child = undefined;
+    };
+}
 
 var diskCollector = function (period, drive, on_load) {
-    var exec = require('child_process').exec;
     var interval = setInterval(function () {
         var total = 1, free = 0;
-        exec("df -k '" + drive.replace(/'/g,"'\\''") + "'", function(err, stdout, stderr) {
+        child_process.exec("df -k '" + drive.replace(/'/g,"'\\''") + "'", function(err, stdout, stderr) {
             if (err) {
                 log.error(stderr);
             } else {
@@ -46,7 +56,7 @@ var diskCollector = function (period, drive, on_load) {
 };
 
 var networkCollector = function (period, interf, max_scale, on_load) {
-    var child = require('child_process').spawn('nload', ['-u', 'm', '-t', period + '', 'devices', interf + '']);
+    var child = child_process.spawn('nload', ['-u', 'm', '-t', period + '', 'devices', interf + '']);
 
     child.stdout.on('data', function (data) {
         var concernedLine = new RegExp('(Avg:)'),
@@ -57,7 +67,7 @@ var networkCollector = function (period, interf, max_scale, on_load) {
                 sendSpeed = Number(lines[1].match(val)[1]);
             on_load(Math.max(receiveSpeed / max_scale, sendSpeed / max_scale));
         } else {
-            log.debug('Not ordinary nload data');
+            log.warn('Not ordinary nload data');
         }
     });
 
@@ -69,7 +79,9 @@ var networkCollector = function (period, interf, max_scale, on_load) {
 };
 
 var gpuCollector = function (period, on_load) {
-    var child = require('child_process').spawn('intel_gpu_top', ['-s', '200']);
+    var child = child_process.spawn('intel_gpu_top', ['-s', '200']);
+    var cpu_load = 0,
+        cpu_collector = new cpuCollector(period, function (data) {cpu_load = data;});
 
     var renders = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], render_sum = 0,
         bitstreams = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], bitstream_sum = 0,
@@ -101,12 +113,14 @@ var gpuCollector = function (period, on_load) {
     });
 
     var interval = setInterval(function () {
-        var cpu_load = os.loadavg()[0] / os.cpus().length;
-        on_load(Math.max(load, cpu_load));
+        var result = Math.max(load, cpu_load);
+        on_load(result);
     }, period);
 
     this.stop = function () {
         log.debug("To stop gpu load collector.");
+        cpu_collector && cpu_collector.stop();
+        cpu_collector = undefined;
         child && child.kill();
         child = undefined;
         interval && clearInterval(interval);

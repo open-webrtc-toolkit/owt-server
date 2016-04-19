@@ -82,6 +82,7 @@ void RawTransport<prot>::createConnection(const std::string& ip, uint32_t port)
             tcp::resolver::query query(tcp::v4(), ip.c_str(), boost::to_string(port).c_str());
             tcp::resolver::iterator iterator = resolver.resolve(query);
 
+            m_socket.tcp.socket->open(boost::asio::ip::tcp::v4());
             m_socket.tcp.socket->async_connect(*iterator,
                 boost::bind(&RawTransport::connectHandler, this,
                     boost::asio::placeholders::error));
