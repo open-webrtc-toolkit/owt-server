@@ -69,5 +69,5 @@ pack_scripts
 ${PACK_MODULE} && install_module
 pack_node
 type pack_libs >/dev/null 2>&1 && pack_libs
-pack_license
+type pack_license >/dev/null 2>&1 && pack_license
 ${PACK_ARCH} && archive
