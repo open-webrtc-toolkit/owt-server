@@ -38,3 +38,7 @@ related doxygen resources.
 --------------
 Generate pure html server guides in package 'purehtml'
 
+8. doxygen_mdformat.md
+--------------
+Describe the markdown format supported by doxygen.
+
