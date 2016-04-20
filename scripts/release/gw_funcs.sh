@@ -6,16 +6,11 @@
 #
 
 pack_runtime() {
-  mkdir -p ${WOOGEEN_DIST}/lib
-  local LIBERIZO="${SOURCE}/core/build/erizo/src/erizo/liberizo.so"
-  local LIBOOVOOGATEWAY="${SOURCE}/core/build/oovoo_gateway/liboovoo_gateway.so"
+  mkdir -p ${WOOGEEN_DIST}/lib/node
   local GATEWAY_ADDON="${SOURCE}/gateway/oovoo_gateway/build/Release/addon.node"
-  [[ -s ${LIBERIZO} ]] && cp -av ${LIBERIZO} ${WOOGEEN_DIST}/lib
-  [[ -s ${LIBOOVOOGATEWAY} ]] && cp -av ${LIBOOVOOGATEWAY} ${WOOGEEN_DIST}/lib
   [[ -s ${GATEWAY_ADDON} ]] && \
-  mkdir -p ${WOOGEEN_DIST}/bindings/gateway/build/Release && \
-  cp -av ${GATEWAY_ADDON} ${WOOGEEN_DIST}/bindings/gateway/build/Release && \
-  ${ENCRYPT} && strip ${WOOGEEN_DIST}/bindings/gateway/build/Release/addon.node
+  cp -av ${GATEWAY_ADDON} ${WOOGEEN_DIST}/lib/node/ && \
+  ${ENCRYPT} && strip ${WOOGEEN_DIST}/lib/node/addon.node
   # gateway
   mkdir -p ${WOOGEEN_DIST}/gateway/util
   cp -av ${SOURCE}/gateway/oovoo_gateway.js ${WOOGEEN_DIST}/gateway/
@@ -49,8 +44,8 @@ pack_runtime() {
 }
 
 pack_libs() {
-  [[ -s ${WOOGEEN_DIST}/lib/liboovoo_gateway.so ]] && \
-  LD_LIBRARY_PATH=$ROOT/build/libdeps/build/lib:$ROOT/build/libdeps/build/lib64 ldd ${WOOGEEN_DIST}/lib/liboovoo_gateway.so | grep '=>' | awk '{print $3}' | while read line; do
+  [[ -s ${WOOGEEN_DIST}/lib/node/addon.node ]] && \
+  LD_LIBRARY_PATH=$ROOT/build/libdeps/build/lib:$ROOT/build/libdeps/build/lib64 ldd ${WOOGEEN_DIST}/lib/node/addon.node | grep '=>' | awk '{print $3}' | while read line; do
     if [[ "$OS" =~ .*centos.* ]]
     then
       [[ -s "${line}" ]] && [[ -z `rpm -qf ${line} 2>/dev/null | grep 'glibc'` ]] && cp -Lv ${line} ${WOOGEEN_DIST}/lib
@@ -135,11 +130,9 @@ pack_node() {
 
   mkdir -p ${WOOGEEN_DIST}/lib/node
   ln -s ../../etc/gateway_config.json ${WOOGEEN_DIST}/lib/node/
-  mv ${WOOGEEN_DIST}/bindings/gateway/build/Release/addon.node ${WOOGEEN_DIST}/lib/node/
   mv ${WOOGEEN_DIST}/node_modules/* ${WOOGEEN_DIST}/lib/node/
 
   rm -rf ${WOOGEEN_DIST}/gateway
-  rm -rf ${WOOGEEN_DIST}/bindings
   rm -rf ${WOOGEEN_DIST}/node_modules
 }
 
@@ -155,7 +148,4 @@ install_module() {
     echo >&2 "npm not found."
     echo >&2 "You need to install node first."
   fi
-}
-
-pack_license() {
 }
