@@ -109,7 +109,7 @@ private:
     // introduces unnecessary complexity.
     boost::asio::io_service m_ioService;
     boost::thread m_workThread;
-    union Socket {
+    struct Socket {
         Socket() { }
         ~Socket() { }
 

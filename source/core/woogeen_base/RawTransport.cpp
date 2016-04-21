@@ -37,7 +37,6 @@ RawTransport<prot>::RawTransport(RawTransportListener* listener, size_t initialB
     , m_listener(listener)
     , m_receivedBytes(0)
 {
-    memset(&m_socket, 0, sizeof(m_socket));
 }
 
 template<Protocol prot>
