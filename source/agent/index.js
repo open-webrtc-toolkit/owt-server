@@ -121,8 +121,8 @@ var guid = (function() {
 var launchErizoJS = function() {
     log.info('Running process');
     var id = guid();
-    var out = fs.openSync('../logs/erizo-' + id + '.log', 'a');
-    var err = fs.openSync('../logs/erizo-' + id + '.log', 'a');
+    var out = fs.openSync('../logs/' + myPurpose + '-' + id + '.log', 'a');
+    var err = fs.openSync('../logs/' + myPurpose + '-' + id + '.log', 'a');
     var erizoProcess = spawn('node', ['./erizoJS.js', id, myPurpose, privateIP, publicIP], { detached: true, stdio: [ 'ignore', out, err ] });
     erizoProcess.unref();
     erizoProcess.on('close', function (code) {
