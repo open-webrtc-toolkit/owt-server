@@ -219,12 +219,9 @@ namespace erizo {
     this->updateIceState(NICE_FINISHED);
     cond_.notify_one();
     listener_ = NULL;
-    boost::system_time const timeout=boost::get_system_time()+ boost::posix_time::milliseconds(500);
+
     ELOG_DEBUG("m_thread join %p", this);
-    if (!m_Thread_.timed_join(timeout) ){
-      ELOG_DEBUG("Taking too long to close thread, trying to interrupt %p", this);
-      m_Thread_.interrupt();
-    }
+    m_Thread_.join();
 
     if (agent_!=NULL){
       g_object_unref(agent_);
