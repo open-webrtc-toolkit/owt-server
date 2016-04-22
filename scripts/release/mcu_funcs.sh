@@ -52,37 +52,22 @@ pack_agents() {
 }
 
 pack_addons() {
-  local ADDON_LIST=$(find ${SOURCE}/agent -type f -name "binding.gyp" | xargs dirname)
   local DIST_ADDON_DIR=$1
   [[ -z ${DIST_ADDON_DIR} ]] && return 1
-  for ADDON in ${ADDON_LIST}; do
-    pushd ${ADDON} >/dev/null
-    ADDON=$(basename ${ADDON})
-    if grep -RInqs "require.*\b${ADDON}\b" ${DIST_ADDON_DIR}; then
-      [[ -s build/Release/${ADDON}.node ]] && \
-      mkdir -p ${DIST_ADDON_DIR}/${ADDON}/build/Release && \
-      cp -av {.,${DIST_ADDON_DIR}/${ADDON}}/build/Release/${ADDON}.node && \
-      ${ENCRYPT} && strip ${DIST_ADDON_DIR}/${ADDON}/build/Release/${ADDON}.node
+  local ADDON_LIST=$(find ${SOURCE}/agent -type f -name "*.node" | grep -v "obj\.target")
+  for ADDON_FULLPATH in ${ADDON_LIST}; do
+    ADDON=$(basename -s .node ${ADDON_FULLPATH})
+    ADDON_DEST_DIR=$(echo ${ADDON_FULLPATH} | sed 's/.*\/\(\w*\/build\/Release\)\/.*\.node/\1/g')
+    if grep -RInqs "require.*\b${ADDON}\b'" ${DIST_ADDON_DIR}; then
+      mkdir -p ${DIST_ADDON_DIR}/${ADDON_DEST_DIR} && \
+      cp -av ${ADDON_FULLPATH} ${DIST_ADDON_DIR}/${ADDON_DEST_DIR}/${ADDON}.node && \
+      ${ENCRYPT} && strip ${DIST_ADDON_DIR}/${ADDON_DEST_DIR}/${ADDON}.node
     fi
-    popd >/dev/null
   done
   # now copy dep libs:
-  local LIBMCU="${SOURCE}/core/build/mcu/libmcu.so"
-  local LIBMCU_HW="${SOURCE}/core/build/mcu/libmcu_hw.so"
-  local LIBMCU_SW="${SOURCE}/core/build/mcu/libmcu_sw.so"
   mkdir -p ${DIST_ADDON_DIR}/lib
   local BINS=$(find ${DIST_ADDON_DIR} -type f -name "*.node")
-  if ldd ${BINS} | grep -q -s libmcu; then
-    if [[ -s ${LIBMCU_SW} ]] && [[ -s ${LIBMCU_HW} ]]; then
-      cp -av ${LIBMCU_HW} ${DIST_ADDON_DIR}/lib
-      cp -av ${LIBMCU_SW} ${DIST_ADDON_DIR}/lib
-      BINS="${BINS} ${DIST_ADDON_DIR}/lib/libmcu_hw.so ${DIST_ADDON_DIR}/lib/libmcu_sw.so"
-    else
-      [[ -s ${LIBMCU} ]] && cp -av ${LIBMCU} ${DIST_ADDON_DIR}/lib
-      BINS="${BINS} ${DIST_ADDON_DIR}/lib/libmcu.so"
-    fi
-  fi
-  LD_LIBRARY_PATH=${ROOT}/build/libdeps/build/lib:${SOURCE}/core/build/woogeen_base:${SOURCE}/core/build/mcu:${LD_LIBRARY_PATH} \
+  LD_LIBRARY_PATH=${ROOT}/build/libdeps/build/lib:${SOURCE}/core/build/woogeen_base:${ROOT}/third_party/mediaprocessor/dist:${LD_LIBRARY_PATH} \
   ldd ${BINS} | grep '=>' | awk '{print $3}' | sort | uniq | grep -v "^(" | \
   while read line; do
     if [[ "${OS}" =~ .*centos.* ]]; then

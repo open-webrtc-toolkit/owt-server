@@ -1,14 +1,25 @@
 {
   'targets': [{
-    'target_name': 'videoMixer',
-    'sources': [ 'addon.cc',
-                 'VideoMixerWrapper.cc' ],
+    'target_name': 'videoMixer-sw',
+    'sources': [
+      'addon.cc',
+      'VideoMixerWrapper.cc',
+      'BufferManager.cpp',
+      'SoftVideoCompositor.cpp',
+      'VideoLayoutProcessor.cpp',
+      'VideoMixer.cpp',
+      '../../../../third_party/webrtc/src/webrtc/video_engine/payload_router.cc',
+      '../../../../third_party/webrtc/src/webrtc/video_engine/vie_encoder.cc',
+    ],
+    'cflags_cc': ['-DWEBRTC_POSIX', '-DWEBRTC_LINUX'],
     'include_dirs': [ '$(CORE_HOME)/common',
                       '$(CORE_HOME)/erizo/src/erizo',
-                      '$(CORE_HOME)/mcu/media',
                       '$(CORE_HOME)/woogeen_base',
                       '$(CORE_HOME)/../../third_party/webrtc/src'],
-    'libraries': ['-L$(CORE_HOME)/build/mcu', '-lmcu'],
+    'libraries': [
+      '-L$(CORE_HOME)/build/woogeen_base', '-lwoogeen_base',
+      '-L$(CORE_HOME)/../../third_party/webrtc', '-lwebrtc',
+    ],
     'conditions': [
       [ 'OS=="mac"', {
         'xcode_settings': {

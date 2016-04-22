@@ -16,7 +16,7 @@ usage() {
   echo
   echo "Usage:"
   echo "    --deps (default: false)             install dependent components and libraries via apt-get/local"
-  echo "    --hardware                          enable mcu with msdk (only for video agent with \`libmcu_hw.so' packed)"
+  echo "    --hardware                          enable mcu with msdk (only for video agent with \`videoMixer-hw.node')"
   echo "    --help                              print this help"
   echo
 }
@@ -98,15 +98,7 @@ ${INSTALL_DEPS} && install_deps
 install_config
 
 if ${ENABLE_HARDWARE}; then
-  cd ${this}/lib
-  [[ -s libmcu_hw.so ]] && \
-  rm -f libmcu.so && \
-  ln -s libmcu_hw.so libmcu.so
   sed -i 's/^hardwareAccelerated = false/hardwareAccelerated = true/' ${this}/agent.toml
 else
-  cd ${this}/lib
-  [[ -s libmcu_sw.so ]] && \
-  rm -f libmcu.so && \
-  ln -s libmcu_sw.so libmcu.so
   sed -i 's/^hardwareAccelerated = true/hardwareAccelerated = false/' ${this}/agent.toml
 fi

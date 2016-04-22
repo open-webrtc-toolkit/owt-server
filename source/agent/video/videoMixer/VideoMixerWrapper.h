@@ -22,7 +22,7 @@
 #define VIDEOMIXERWRAPPER_H
 
 #include "../../addons/woogeen_base/MediaFramePipelineWrapper.h"
-#include <VideoMixer.h>
+#include "VideoMixer.h"
 #include <node.h>
 #include <node_object_wrap.h>
 #include <uv.h>

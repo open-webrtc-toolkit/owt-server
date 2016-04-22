@@ -214,7 +214,6 @@ install_node_tools() {
 install_mediaprocessor() {
   local MEDIAPROCESSOR_DIR="${ROOT}/third_party/mediaprocessor"
   local target="vcsa_video"
-  BUILD_WITH_MSDK=true
   cd ${MEDIAPROCESSOR_DIR} && make distclean && make ${target}
 }
 
