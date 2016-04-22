@@ -1,11 +1,10 @@
-/*global require, exports, GLOBAL*/
+/*global require, exports, GLOBAL, process*/
 'use strict';
 
 var woogeenInternalIO = require('./internalIO/build/Release/internalIO');
 var InternalIn = woogeenInternalIO.InternalIn;
 var InternalOut = woogeenInternalIO.InternalOut;
 var MediaFrameMulticaster = require('./mediaFrameMulticaster/build/Release/mediaFrameMulticaster').MediaFrameMulticaster;
-var VideoMixer = require('./videoMixer/build/Release/videoMixer').VideoMixer;
 
 var amqper = require('./amqper');
 var logger = require('./logger').logger;
@@ -62,6 +61,18 @@ var VideoEngine = function () {
 
         useHardware = GLOBAL.config.video.hardwareAccelerated,
         openh264Enabled = GLOBAL.config.video.openh264Enabled;
+
+    var VideoMixer;
+    try {
+        if (useHardware) {
+            VideoMixer = require('./videoMixer/build/Release/videoMixer-hw').VideoMixer;
+        } else {
+            VideoMixer = require('./videoMixer/build/Release/videoMixer-sw').VideoMixer;
+        }
+    } catch (e) {
+        log.error(e);
+        process.exit(1);
+    }
 
     var addInput = function (stream_id, codec, protocol, on_ok, on_error) {
         if (engine) {

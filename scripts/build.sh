@@ -32,7 +32,6 @@ fi
 BUILD_GATEWAY_RUNTIME=false
 BUILD_MCU_RUNTIME_SW=false
 BUILD_MCU_RUNTIME_HW=false
-BUILD_MCU_BUNDLE=false
 BUILD_SDK=false
 BUILDTYPE="Release"
 BUILD_ROOT="${ROOT}/build"
@@ -80,30 +79,28 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 
-${BUILD_MCU_RUNTIME_HW} && ${BUILD_MCU_RUNTIME_SW} && BUILD_MCU_BUNDLE=true
-
 build_gateway_runtime() {
-  CMAKE_ADDITIONAL_OPTIONS="-DCOMPILE_MCU=OFF"
   RUNTIME_ADDON_SRC_DIR="${SOURCE}/gateway"
   build_runtime
 }
 
 build_mcu_runtime() {
-  CMAKE_ADDITIONAL_OPTIONS="-DCOMPILE_MCU=ON"
   RUNTIME_ADDON_SRC_DIR="${SOURCE}/agent"
   build_runtime
 }
 
 build_mcu_runtime_sw() {
-  unset BUILD_WITH_MSDK
+  pushd "${SOURCE}/agent/video/videoMixer" >/dev/null
+  cp -f binding.sw.gyp binding.gyp
   build_mcu_runtime
-  ${BUILD_MCU_BUNDLE} && cp -av ${SOURCE}/core/build/mcu/libmcu{,_sw}.so || rm -f ${SOURCE}/core/build/mcu/libmcu_sw.so
+  popd >/dev/null
 }
 
 build_mcu_runtime_hw() {
-  export BUILD_WITH_MSDK=true
+  pushd "${SOURCE}/agent/video/videoMixer" >/dev/null
+  cp -f binding.hw.gyp binding.gyp
   build_mcu_runtime
-  ${BUILD_MCU_BUNDLE} && cp -av ${SOURCE}/core/build/mcu/libmcu{,_hw}.so || rm -f ${SOURCE}/core/build/mcu/libmcu_hw.so
+  popd >/dev/null
 }
 
 build_runtime() {
@@ -118,9 +115,9 @@ build_runtime() {
   # runtime lib
   pushd "${RUNTIME_LIB_SRC_DIR}/build" >/dev/null
   if [[ -x $CCOMPILER && -x $CXXCOMPILER ]]; then
-    LD_LIBRARY_PATH=${DEPS_ROOT}/lib:$LD_LIBRARY_PATH PKG_CONFIG_PATH=${DEPS_ROOT}/lib/pkgconfig:$PKG_CONFIG_PATH BOOST_ROOT=${DEPS_ROOT} CC=$CCOMPILER CXX=$CXXCOMPILER cmake -DCMAKE_BUILD_TYPE=${BUILDTYPE} $CMAKE_ADDITIONAL_OPTIONS ..
+    LD_LIBRARY_PATH=${DEPS_ROOT}/lib:$LD_LIBRARY_PATH PKG_CONFIG_PATH=${DEPS_ROOT}/lib/pkgconfig:$PKG_CONFIG_PATH BOOST_ROOT=${DEPS_ROOT} CC=$CCOMPILER CXX=$CXXCOMPILER cmake -DCMAKE_BUILD_TYPE=${BUILDTYPE} ..
   else
-    LD_LIBRARY_PATH=${DEPS_ROOT}/lib:$LD_LIBRARY_PATH PKG_CONFIG_PATH=${DEPS_ROOT}/lib/pkgconfig:$PKG_CONFIG_PATH BOOST_ROOT=${DEPS_ROOT} cmake -DCMAKE_BUILD_TYPE=${BUILDTYPE} $CMAKE_ADDITIONAL_OPTIONS ..
+    LD_LIBRARY_PATH=${DEPS_ROOT}/lib:$LD_LIBRARY_PATH PKG_CONFIG_PATH=${DEPS_ROOT}/lib/pkgconfig:$PKG_CONFIG_PATH BOOST_ROOT=${DEPS_ROOT} cmake -DCMAKE_BUILD_TYPE=${BUILDTYPE} ..
   fi
   LD_LIBRARY_PATH=${DEPS_ROOT}/lib:$LD_LIBRARY_PATH make
   popd >/dev/null
