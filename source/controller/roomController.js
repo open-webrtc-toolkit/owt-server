@@ -253,6 +253,18 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
                 && terminals[terminal_id].type !== 'vmixer';
     };
 
+    var publisherCount = function () {
+        var count = 0;
+        for (var t in terminals) {
+            if (terminals[t].type !== 'amixer' && terminals[t].type !== 'axcoder'
+                && terminals[t].type !== 'vmixer' && terminals[t].type !== 'vxcoder'
+                && terminals[t].published.length > 0) {
+                count = count + 1;
+            }
+        }
+        return count;
+    };
+
     var spreadStream = function (stream_id, target_erizo_id, audio, video, on_ok, on_error) {
         log.debug('spreadStream, stream_id:', stream_id, 'target_erizo_id:', target_erizo_id, 'audio:', audio, 'video:', video);
         log.debug('original stream(streams[stream_id]):', streams[stream_id]);
@@ -1017,9 +1029,14 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
         };
 
         if (streams[stream_id] === undefined) {
-            newTerminal(terminal_id, stream_type, function () {
-                doPublish();
-            }, function (error_reason) {onResponse({type: 'failed', reason: error_reason});});
+            var currentPublisherCount = publisherCount();
+            if (config.publishLimit < 0 || (config.publishLimit > currentPublisherCount)) {
+                newTerminal(terminal_id, stream_type, function () {
+                    doPublish();
+                }, function (error_reason) {onResponse({type: 'failed', reason: error_reason});});
+            } else {
+                onResponse({type: 'failed', reason: 'Too many publishers.'});
+            }
         } else {
             onResponse({type: 'failed', reason: 'Stream[' + stream_id + '] already set for ' + terminal_id});
         }
