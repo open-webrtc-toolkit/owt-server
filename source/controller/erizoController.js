@@ -566,9 +566,6 @@ var listen = function () {
                                                         room.mixer = roomID;
                                                         log.debug('Mixed stream info:', st.getPublicStream(), 'resolutions:', st.getPublicStream().video.resolutions);
                                                         sendMsgToRoom(room, 'add_stream', st.getPublicStream());
-                                                        if (room.config && room.config.publishLimit > 0) {
-                                                            room.config.publishLimit++;
-                                                        }
                                                     }
                                                 },
                                                 function (reason) {
@@ -850,13 +847,6 @@ var listen = function () {
 
                 if (socket.streams.indexOf(id) !== -1) {
                     return safeCall(callback, 'error', 'already published');
-                }
-
-                if (socket.room.config) {
-                    if (socket.room.config.publishLimit >= 0 &&
-                        socket.room.controller.publisherNum() >= socket.room.config.publishLimit) {
-                        return safeCall(callback, 'error', 'max publishers');
-                    }
                 }
 
                 if (GLOBAL.config.controller.report.session_events) {
