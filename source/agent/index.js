@@ -1,4 +1,4 @@
-/*global require, setInterval, clearInterval, GLOBAL, process*/
+/*global require, GLOBAL, process*/
 'use strict';
 var Getopt = require('node-getopt');
 var spawn = require('child_process').spawn;
@@ -227,16 +227,20 @@ var api = {
                 }
             }
 
-            var stillInUse = false;
-            for (var eid in tasks) {
-                if (tasks[eid].indexOf(room_id) !== -1) {
-                    stillInUse = true;
-                    break;
+            if (worker) {
+                var stillInUse = false;
+                for (var eid in tasks) {
+                    if (tasks[eid].indexOf(room_id) !== -1) {
+                        stillInUse = true;
+                        break;
+                    }
+                }
+                if (!stillInUse) {
+                    worker.removeTask(room_id);
                 }
             }
-            !stillInUse && worker && worker.removeTask(room_id);
         } catch(err) {
-            log.error('Error stopping ErizoJS');
+            log.error('Error stopping ErizoJS', err);
         }
     }
 };
@@ -339,9 +343,10 @@ var joinCluster = function (on_ok) {
         case 'rtsp':
             var concernedInterface = externalInterface || clusterInterface;
             if (!concernedInterface) {
-                for (var i in os.networkInterfaces()) {
-                    for (j in os.networkInterfaces()[i]) {
-                        if (!os.networkInterfaces()[i][j].internal) {
+                var interfaces = require('os').networkInterfaces();
+                for (var i in interfaces) {
+                    for (var j in interfaces[i]) {
+                        if (!interfaces[i][j].internal) {
                             concernedInterface = i;
                             break;
                         }
