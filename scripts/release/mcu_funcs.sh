@@ -57,7 +57,7 @@ pack_addons() {
   [[ -z ${DIST_ADDON_DIR} ]] && return 1
   local ADDON_LIST=$(find ${SOURCE}/agent -type f -name "*.node" | grep -v "obj\.target")
   for ADDON_FULLPATH in ${ADDON_LIST}; do
-    ADDON=$(basename -s .node ${ADDON_FULLPATH})
+    ADDON=$(basename ${ADDON_FULLPATH} .node)
     ADDON_DEST_DIR=$(echo ${ADDON_FULLPATH} | sed 's/.*\/\(\w*\/build\/Release\)\/.*\.node/\1/g')
     if grep -RInqs "require.*\b${ADDON}\b'" ${DIST_ADDON_DIR}; then
       mkdir -p ${DIST_ADDON_DIR}/${ADDON_DEST_DIR} && \

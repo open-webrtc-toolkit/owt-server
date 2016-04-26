@@ -117,12 +117,13 @@ build_runtime() {
 
   # runtime addon
   local NODE_VERSION=
-  ADDON_LIST=$(find ${RUNTIME_ADDON_SRC_DIR} -type f -name "binding.gyp" | xargs dirname)
+  ADDON_LIST=$(find ${RUNTIME_ADDON_SRC_DIR} -type f -name "binding.gyp")
   [[ ${ADDON_LIST} =~ "oovoo_gateway" ]] &&
     NODE_VERSION=v$(node -e "process.stdout.write(require('${ROOT}/scripts/release/package.gw.json').engine.node)") ||
     NODE_VERSION=v$(node -e "process.stdout.write(require('${ROOT}/scripts/release/package.mcu.json').engine.node)")
   if [[ ${NODE_VERSION} == $(node --version) ]] && hash node-gyp 2>/dev/null; then
-    for ADDON in ${ADDON_LIST}; do
+    for i in ${ADDON_LIST}; do
+      local ADDON=$(dirname "$i")
       echo -e "building addon \e[32m$(basename ${ADDON})\e[0m"
       pushd ${ADDON} >/dev/null
       if [[ -x ${CCOMPILER} && -x ${CXXCOMPILER} ]]; then
