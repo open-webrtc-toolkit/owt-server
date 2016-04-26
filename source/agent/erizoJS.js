@@ -71,14 +71,14 @@ var rpc = require('./amqper');
 (function init_env() {
     if (GLOBAL.config.video.hardwareAccelerated) {
         // Query the hardware capability only if we want to try it.
-        require('child_process').exec('vainfo', function (err, stdout) {
-            var info = '';
-            if (err) {
-                info = err.toString();
-            } else if(stdout.length > 0) {
-                info = stdout.toString();
+        require('child_process').exec('vainfo', function (error, stdout, stderr) {
+            if (error && error.code !== 0) {
+                log.warn('vainfo check with exit code:', error.code);
+                GLOBAL.config.video.hardwareAccelerated = false;
+                return;
             }
-            // Check whether hardware codec should be used for this room
+            var info = stdout.toString() || stderr.toString();
+            // Check hardware codec version
             GLOBAL.config.video.hardwareAccelerated = (info.indexOf('VA-API version 0.35.0') != -1) ||
                                                         (info.indexOf('VA-API version: 0.35') != -1);
         });
