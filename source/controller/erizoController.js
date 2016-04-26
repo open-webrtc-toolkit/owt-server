@@ -1047,6 +1047,14 @@ var listen = function () {
                 return safeCall(callback, 'error', 'No audio data from the audio stream.');
             }
 
+            if (options.videoCodec && typeof options.videoCodec !== 'string') {
+                return safeCall(callback, 'error', 'Invalid video codec.');
+            }
+
+            if (options.audioCodec && typeof options.audioCodec !== 'string') {
+                return safeCall(callback, 'error', 'Invalid audio codec.');
+            }
+
             var timeStamp = new Date();
             var recorderId = options.recorderId || formatDate(timeStamp, 'yyyyMMddhhmmssSS');
             var specifiedPath = options.path;
