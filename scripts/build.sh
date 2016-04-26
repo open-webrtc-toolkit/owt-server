@@ -11,11 +11,12 @@ usage() {
   echo "Usage:"
   echo "    --release (default)                 build in release mode"
   echo "    --debug                             build in debug mode"
-  echo "    --gateway                           build oovoo gateway library & addon"
-  echo "    --mcu (software)                    build mcu runtime library & addon without msdk"
-  echo "    --mcu-hardware                      build mcu runtime library & addon with msdk"
-  echo "    --mcu-all                           build mcu runtime library & addon both with and without msdk"
-  echo "    --sdk                               build sdk"
+  echo "    --check                             check resulted addon(s)"
+  echo "    --gateway                           build oovoo gateway addon"
+  echo "    --mcu (software)                    build mcu runtime addons without msdk"
+  echo "    --mcu-hardware                      build mcu runtime addons with msdk"
+  echo "    --mcu-all                           build mcu runtime addons both with and without msdk"
+  echo "    --sdk                               build sdk (for oovoo gateway)"
   echo "    --all                               build all components"
   echo "    --help                              print this help"
   echo "Example:"
@@ -35,6 +36,7 @@ BUILD_MCU_RUNTIME_HW=false
 BUILD_SDK=false
 BUILDTYPE="Release"
 BUILD_ROOT="${ROOT}/build"
+CHECK_ADDONS=false
 DEPS_ROOT="${ROOT}/build/libdeps/build"
 
 shopt -s extglob
@@ -45,6 +47,9 @@ while [[ $# -gt 0 ]]; do
       ;;
     *(-)debug )
       BUILDTYPE="Debug"
+      ;;
+    *(-)check )
+      CHECK_ADDONS=true
       ;;
     *(-)all )
       BUILD_GATEWAY_RUNTIME=true
@@ -104,23 +109,12 @@ build_mcu_runtime_hw() {
 }
 
 build_runtime() {
-  local RUNTIME_LIB_SRC_DIR="${SOURCE}/core"
+  local CORE_HOME="${SOURCE}/core"
   local CCOMPILER=${DEPS_ROOT}/bin/gcc
   local CXXCOMPILER=${DEPS_ROOT}/bin/g++
   local OPTIMIZATION_LEVEL="3"
   [[ BUILDTYPE == "Release" ]] || OPTIMIZATION_LEVEL="0"
 
-  # rm -fr "${RUNTIME_LIB_SRC_DIR}/build"
-  mkdir -p "${RUNTIME_LIB_SRC_DIR}/build"
-  # runtime lib
-  pushd "${RUNTIME_LIB_SRC_DIR}/build" >/dev/null
-  if [[ -x $CCOMPILER && -x $CXXCOMPILER ]]; then
-    LD_LIBRARY_PATH=${DEPS_ROOT}/lib:$LD_LIBRARY_PATH PKG_CONFIG_PATH=${DEPS_ROOT}/lib/pkgconfig:$PKG_CONFIG_PATH BOOST_ROOT=${DEPS_ROOT} CC=$CCOMPILER CXX=$CXXCOMPILER cmake -DCMAKE_BUILD_TYPE=${BUILDTYPE} ..
-  else
-    LD_LIBRARY_PATH=${DEPS_ROOT}/lib:$LD_LIBRARY_PATH PKG_CONFIG_PATH=${DEPS_ROOT}/lib/pkgconfig:$PKG_CONFIG_PATH BOOST_ROOT=${DEPS_ROOT} cmake -DCMAKE_BUILD_TYPE=${BUILDTYPE} ..
-  fi
-  LD_LIBRARY_PATH=${DEPS_ROOT}/lib:$LD_LIBRARY_PATH make
-  popd >/dev/null
   # runtime addon
   local NODE_VERSION=
   ADDON_LIST=$(find ${RUNTIME_ADDON_SRC_DIR} -type f -name "binding.gyp" | xargs dirname)
@@ -132,15 +126,15 @@ build_runtime() {
       echo -e "building addon \e[32m$(basename ${ADDON})\e[0m"
       pushd ${ADDON} >/dev/null
       if [[ -x ${CCOMPILER} && -x ${CXXCOMPILER} ]]; then
-        CORE_HOME="${RUNTIME_LIB_SRC_DIR}" OPTIMIZATION_LEVEL=${OPTIMIZATION_LEVEL} PKG_CONFIG_PATH=${DEPS_ROOT}/lib/pkgconfig:${PKG_CONFIG_PATH} CC=${CCOMPILER} CXX=${CXXCOMPILER} node-gyp configure --loglevel=error
-        CORE_HOME="${RUNTIME_LIB_SRC_DIR}" OPTIMIZATION_LEVEL=${OPTIMIZATION_LEVEL} CC=${CCOMPILER} CXX=${CXXCOMPILER} node-gyp build --loglevel=error
+        CORE_HOME="${CORE_HOME}" OPTIMIZATION_LEVEL=${OPTIMIZATION_LEVEL} PKG_CONFIG_PATH=${DEPS_ROOT}/lib/pkgconfig:${PKG_CONFIG_PATH} CC=${CCOMPILER} CXX=${CXXCOMPILER} node-gyp configure --loglevel=error
+        CORE_HOME="${CORE_HOME}" OPTIMIZATION_LEVEL=${OPTIMIZATION_LEVEL} CC=${CCOMPILER} CXX=${CXXCOMPILER} node-gyp build --loglevel=error
       else
-        CORE_HOME="${RUNTIME_LIB_SRC_DIR}" OPTIMIZATION_LEVEL=${OPTIMIZATION_LEVEL} PKG_CONFIG_PATH=${DEPS_ROOT}/lib/pkgconfig:${PKG_CONFIG_PATH} node-gyp configure --loglevel=error
-        CORE_HOME="${RUNTIME_LIB_SRC_DIR}" OPTIMIZATION_LEVEL=${OPTIMIZATION_LEVEL} node-gyp build --loglevel=error
+        CORE_HOME="${CORE_HOME}" OPTIMIZATION_LEVEL=${OPTIMIZATION_LEVEL} PKG_CONFIG_PATH=${DEPS_ROOT}/lib/pkgconfig:${PKG_CONFIG_PATH} node-gyp configure --loglevel=error
+        CORE_HOME="${CORE_HOME}" OPTIMIZATION_LEVEL=${OPTIMIZATION_LEVEL} node-gyp build --loglevel=error
       fi
       popd >/dev/null
     done
-
+    [[ ${CHECK_ADDONS} ]] && node ${ROOT}/scripts/module_test.js ${RUNTIME_ADDON_SRC_DIR}
   else
     echo >&2 "You need to install Node.js ${NODE_VERSION} toolchain:"
     echo >&2 "  nvm install ${NODE_VERSION}"
@@ -150,7 +144,7 @@ build_runtime() {
   fi
 }
 
-build_mcu_client_sdk() {
+build_oovoo_client_sdk() {
   mkdir -p "${BUILD_ROOT}/sdk"
   local CLIENTSDK_DIR="${SOURCE}/client_sdk"
   rm -f ${BUILD_ROOT}/sdk/*.js
@@ -181,7 +175,7 @@ build() {
     ((DONE++))
   fi
   if ${BUILD_SDK} ; then
-    build_mcu_client_sdk
+    build_oovoo_client_sdk
     ((DONE++))
   fi
   if [[ ${DONE} -eq 0 ]]; then

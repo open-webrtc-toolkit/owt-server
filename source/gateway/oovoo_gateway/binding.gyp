@@ -1,6 +1,6 @@
 {
   'targets': [{
-    'target_name': 'addon',
+    'target_name': 'oovoo_gateway',
     'sources': [
       'addon.cc',
       'OoVooConnection.cpp',
@@ -10,6 +10,11 @@
       '../../agent/access/webrtc/WebRtcConnection.cc',
       '../../agent/addons/woogeen_base/Gateway.cc',
       '../../agent/addons/woogeen_base/NodeEventRegistry.cc',
+      '../../core/woogeen_base/RawTransport.cpp',
+      '../../core/woogeen_base/QoSUtility.cpp',
+      '../../core/woogeen_base/ProtectedRTPReceiver.cpp',
+      '../../core/woogeen_base/ProtectedRTPSender.cpp',
+      '../../core/woogeen_base/WebRTCFeedbackProcessor.cpp',
       '../../core/erizo/src/erizo/dtls/bf_dwrap.c',
       '../../core/erizo/src/erizo/dtls/DtlsTimer.cpp',
       '../../core/erizo/src/erizo/dtls/DtlsSocket.cpp',
@@ -38,7 +43,6 @@
       '$(CORE_HOME)/../../build/libdeps/build/include'
     ],
     'libraries': [
-      '-L$(CORE_HOME)/build/woogeen_base', '-lwoogeen_base',
       '-L$(CORE_HOME)/../../build/libdeps/build/lib',
       '-loovoosdk',
       '-lsrtp',
@@ -48,6 +52,7 @@
       '-llog4cxx',
       '-lboost_thread',
       '-lboost_system',
+      '-L$(CORE_HOME)/../../third_party/webrtc', '-lwebrtc',
     ],
     'conditions': [
       [ 'OS=="mac"', {

@@ -64,7 +64,7 @@ public:
      * Constructor.
      * Constructs an empty WebRTCConnection without any configuration.
      */
-    DLL_PUBLIC WebRtcConnection(bool audioEnabled, bool videoEnabled, bool h264Enabled, const std::string &stunServer, int stunPort, int minPort, int maxPort, const std::string& certFile, const std::string& keyFile, const std::string& privatePasswd, uint32_t qos, bool trickleEnabled, WebRtcConnectionEventListener* listener);
+    WebRtcConnection(bool audioEnabled, bool videoEnabled, bool h264Enabled, const std::string &stunServer, int stunPort, int minPort, int maxPort, const std::string& certFile, const std::string& keyFile, const std::string& privatePasswd, uint32_t qos, bool trickleEnabled, WebRtcConnectionEventListener* listener);
     /**
      * Destructor.
      */
@@ -73,7 +73,7 @@ public:
      * Inits the WebConnection by starting ICE Candidate Gathering.
      * @return True if the candidates are gathered.
      */
-    DLL_PUBLIC bool init();
+    bool init();
 
     void close();
 
@@ -82,7 +82,7 @@ public:
      * @param sdp The SDP.
      * @return true if the SDP was received correctly.
      */
-    DLL_PUBLIC bool setRemoteSdp(const std::string &sdp);
+    bool setRemoteSdp(const std::string &sdp);
 
     /**
      * Add new remote candidate (from remote peer).
@@ -94,7 +94,7 @@ public:
      * Obtains the local SDP.
      * @return The SDP as a string.
      */
-    DLL_PUBLIC std::string getLocalSdp();
+    std::string getLocalSdp();
     /**
      * Try to use the specified audio codec exclusively.
      * This should be invoked before SDP negotiation.
@@ -112,7 +112,7 @@ public:
     int deliverVideoData(char* buf, int len);
 
     int deliverFeedback(char* buf, int len);
-  
+
     int preferredAudioPayloadType();
     int preferredVideoPayloadType();
     bool acceptEncapsulatedRTPData();
@@ -121,15 +121,15 @@ public:
 
     bool acceptNACK();
 
-    DLL_PUBLIC void enableAudio(bool b) {audioEnabled_ = b;}
-    DLL_PUBLIC void enableVideo(bool b) {videoEnabled_ = b;}
+    void enableAudio(bool b) {audioEnabled_ = b;}
+    void enableVideo(bool b) {videoEnabled_ = b;}
 
     /**
      * Sends a FIR Packet (RFC 5104) asking for a keyframe
      * @return the size of the data sent
      */
     int sendFirPacket();
-  
+
   /**
    * Sets the Event Listener for this WebRtcConnection
    */
@@ -138,7 +138,7 @@ public:
             WebRtcConnectionEventListener* listener){
     this->connEventListener_ = listener;
   }
-    
+
   /**
    * Sets the Stats Listener for this WebRtcConnection
    */
@@ -150,9 +150,9 @@ public:
      * Gets the current state of the Ice Connection
      * @return
      */
-    DLL_PUBLIC WebRTCEvent getCurrentState();
-    
-    DLL_PUBLIC std::string getJSONStats();
+    WebRTCEvent getCurrentState();
+
+    std::string getJSONStats();
 
     void onTransportData(char* buf, int len, Transport *transport);
 
@@ -184,7 +184,7 @@ private:
     void writeSsrc(char* buf, int len, unsigned int ssrc);
     void processRtcpHeaders(char* buf, int len, unsigned int ssrc);
     std::string getJSONCandidate(const std::string& mid, const std::string& sdp);
-  
+
     // changes the outgoing payload type for in the given data packet
     void changeDeliverPayloadType(dataPacket *dp, packetType type);
     // parses incoming payload type, replaces occurence in buf

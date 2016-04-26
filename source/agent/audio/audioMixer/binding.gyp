@@ -6,6 +6,7 @@
       'AudioMixerWrapper.cc',
       'AudioFrame2RtpPacketConverter.cpp',
       'AudioMixer.cpp',
+      '../../../core/woogeen_base/MediaFramePipeline.cpp',
     ],
     'include_dirs': [ '$(CORE_HOME)/common',
                       '$(CORE_HOME)/erizo/src/erizo',
@@ -13,9 +14,9 @@
                       '$(CORE_HOME)/woogeen_base',
                       '$(CORE_HOME)/../../third_party/webrtc/src'],
     'libraries': [
-      '-L$(CORE_HOME)/build/woogeen_base', '-lwoogeen_base',
       '-L$(CORE_HOME)/../../third_party/webrtc', '-lwebrtc',
       '-lboost_thread',
+      '-llog4cxx',
     ],
     'conditions': [
       [ 'OS=="mac"', {

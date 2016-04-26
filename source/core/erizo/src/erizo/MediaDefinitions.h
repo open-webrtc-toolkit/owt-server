@@ -7,8 +7,6 @@
 
 #include <string>
 
-#include <Compiler.h>
-
 namespace erizo{
 
 class NiceConnection;
@@ -16,7 +14,7 @@ class NiceConnection;
 enum packetType{
   VIDEO_PACKET,
   AUDIO_PACKET,
-  OTHER_PACKET    
+  OTHER_PACKET
 };
 
 /*
@@ -56,7 +54,7 @@ public:
 
 class MediaSource;
 /*
- * A MediaSink 
+ * A MediaSink
  */
 class MediaSink{
 protected:
@@ -84,7 +82,7 @@ public:
   // Is it able to sink the re-sent packet (response to NACK)
   virtual bool acceptResentData() { return false; }
   MediaSink() : audioSinkSSRC_(0), videoSinkSSRC_(0), sinkfbSource_(nullptr) {}
-  virtual ~MediaSink() = 0; 
+  virtual ~MediaSink() = 0;
 };
 
 inline MediaSink::~MediaSink() {}
@@ -97,7 +95,7 @@ enum DataContentType {
  * A MediaSource is any class that produces audio or video data.
  */
 class MediaSource{
-protected: 
+protected:
   //SSRCs coming from the source
   unsigned int videoSourceSSRC_;
   unsigned int audioSourceSSRC_;
@@ -114,10 +112,10 @@ protected:
   int audioPayloadType_;
 
 public:
-  DLL_PUBLIC virtual void setAudioSink(MediaSink* audioSink){
+  virtual void setAudioSink(MediaSink* audioSink){
     this->audioSink_ = audioSink;
   };
-  DLL_PUBLIC virtual void setVideoSink(MediaSink* videoSink){
+  virtual void setVideoSink(MediaSink* videoSink){
     this->videoSink_ = videoSink;
   };
 
@@ -138,9 +136,9 @@ public:
   DataContentType getAudioDataType (){return audioDataType_;};
   void setAudioDataType (DataContentType type){audioDataType_ = type;};
   MediaSource() : videoSourceSSRC_(0),
-                  audioSourceSSRC_(0), 
-                  videoSink_(nullptr), 
-                  audioSink_(nullptr), 
+                  audioSourceSSRC_(0),
+                  videoSink_(nullptr),
+                  audioSink_(nullptr),
                   sourcefbSink_(nullptr),
                   videoDataType_(DataContentType::RTP),
                   audioDataType_(DataContentType::RTP),

@@ -1,13 +1,22 @@
 {
   'targets': [{
     'target_name': 'rtspOut',
-    'sources': [ 'addon.cc',
-                 'RtspOutWrapper.cc',
-                 '../../addons/woogeen_base/NodeEventRegistry.cc' ],
+    'sources': [
+      'addon.cc',
+      'RtspOutWrapper.cc',
+      '../../addons/woogeen_base/NodeEventRegistry.cc',
+      '../../../core/woogeen_base/MediaFramePipeline.cpp',
+      '../../../core/woogeen_base/RtspOut.cpp',
+    ],
     'include_dirs': [ '$(CORE_HOME)/common',
                       '$(CORE_HOME)/woogeen_base',
                       '$(CORE_HOME)/../../build/libdeps/build/include' ],
-    'libraries': ['-L$(CORE_HOME)/build/woogeen_base', '-lwoogeen_base'],
+    'libraries': [
+      '-lboost_thread',
+      '-llog4cxx',
+      '<!@(pkg-config --libs libavcodec)',
+      '<!@(pkg-config --libs libavformat)',
+    ],
     'conditions': [
       [ 'OS=="mac"', {
         'xcode_settings': {

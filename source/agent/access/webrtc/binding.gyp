@@ -8,6 +8,11 @@
       'AudioFramePacketizerWrapper.cc',
       'VideoFrameConstructorWrapper.cc',
       'VideoFramePacketizerWrapper.cc',
+      '../../../core/woogeen_base/AudioFrameConstructor.cpp',
+      '../../../core/woogeen_base/AudioFramePacketizer.cpp',
+      '../../../core/woogeen_base/MediaFramePipeline.cpp',
+      '../../../core/woogeen_base/VideoFrameConstructor.cpp',
+      '../../../core/woogeen_base/VideoFramePacketizer.cpp',
       '../../../core/erizo/src/erizo/dtls/bf_dwrap.c',
       '../../../core/erizo/src/erizo/dtls/DtlsTimer.cpp',
       '../../../core/erizo/src/erizo/dtls/DtlsSocket.cpp',
@@ -25,8 +30,12 @@
       '../../../core/erizo/src/erizo/StringUtil.cpp',
       '../../../core/erizo/src/erizo/DtlsTransport.cpp',
       '../../../core/erizo/src/erizo/SdpInfo.cpp',
-      '../../../core/erizo/src/erizo/NiceConnection.cpp'
+      '../../../core/erizo/src/erizo/NiceConnection.cpp',
+      '../../../../third_party/webrtc/src/webrtc/video_engine/stream_synchronization.cc',
+      '../../../../third_party/webrtc/src/webrtc/video_engine/vie_receiver.cc',
+      '../../../../third_party/webrtc/src/webrtc/video_engine/vie_sync_module.cc',
     ],
+    'cflags_cc': ['-DWEBRTC_POSIX', '-DWEBRTC_LINUX'],
     'include_dirs': [
       '../../../core/common',
       '../../../core/erizo/src/erizo',
@@ -37,7 +46,6 @@
       '<!@(pkg-config glib-2.0 --cflags-only-I | sed s/-I//g)',
     ],
     'libraries': [
-      '-L$(CORE_HOME)/build/woogeen_base', '-lwoogeen_base',
       '-L$(CORE_HOME)/../../build/libdeps/build/lib',
       '-lsrtp',
       '<!@(pkg-config --libs nice)',
@@ -46,6 +54,7 @@
       '-llog4cxx',
       '-lboost_thread',
       '-lboost_system',
+      '-L$(CORE_HOME)/../../third_party/webrtc', '-lwebrtc',
     ],
     'conditions': [
       [ 'OS=="mac"', {

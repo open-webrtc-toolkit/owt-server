@@ -1,13 +1,22 @@
 {
   'targets': [{
     'target_name': 'rtspIn',
-    'sources': [ 'addon.cc',
-                 'RtspInWrapper.cc'],
+    'sources': [
+      'addon.cc',
+      'RtspInWrapper.cc',
+      '../../../core/woogeen_base/MediaFramePipeline.cpp',
+      '../../../core/woogeen_base/RtspIn.cpp',
+    ],
     'include_dirs': [ '$(CORE_HOME)/common',
                       '$(CORE_HOME)/erizo/src/erizo',
                       '$(CORE_HOME)/woogeen_base',
                       '$(CORE_HOME)/../../build/libdeps/build/include' ],
-    'libraries': ['-L$(CORE_HOME)/build/woogeen_base', '-lwoogeen_base'],
+    'libraries': [
+      '-lboost_thread',
+      '-llog4cxx',
+      '<!@(pkg-config --libs libavcodec)',
+      '<!@(pkg-config --libs libavformat)',
+    ],
     'conditions': [
       [ 'OS=="mac"', {
         'xcode_settings': {
