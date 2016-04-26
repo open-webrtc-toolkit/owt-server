@@ -67,7 +67,7 @@ pack_addons() {
   # now copy dep libs:
   mkdir -p ${DIST_ADDON_DIR}/lib
   local BINS=$(find ${DIST_ADDON_DIR} -type f -name "*.node")
-  LD_LIBRARY_PATH=${ROOT}/build/libdeps/build/lib:${SOURCE}/core/build/woogeen_base:${ROOT}/third_party/mediaprocessor/dist:${LD_LIBRARY_PATH} \
+  LD_LIBRARY_PATH=${ROOT}/build/libdeps/build/lib:${ROOT}/third_party/mediaprocessor/dist:${ROOT}/third_party/openh264:${LD_LIBRARY_PATH} \
   ldd ${BINS} | grep '=>' | awk '{print $3}' | sort | uniq | grep -v "^(" | \
   while read line; do
     if [[ "${OS}" =~ .*centos.* ]]; then
@@ -77,7 +77,7 @@ pack_addons() {
     fi
   done
   # remove openh264 and replace with the pseudo one
-  rm -f ${DIST_ADDON_DIR}/lib/libopenh264*
+  [[ -s ${DIST_ADDON_DIR}/lib/libopenh264.so.0 ]] && \
   cp -av $ROOT/third_party/openh264/pseudo-openh264.so ${DIST_ADDON_DIR}/lib/libopenh264.so.0
   # remove libs from msdk
   rm -f ${DIST_ADDON_DIR}/lib/libmfxhw*

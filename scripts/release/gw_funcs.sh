@@ -7,10 +7,10 @@
 
 pack_runtime() {
   mkdir -p ${WOOGEEN_DIST}/lib/node
-  local GATEWAY_ADDON="${SOURCE}/gateway/oovoo_gateway/build/Release/addon.node"
+  local GATEWAY_ADDON="${SOURCE}/gateway/oovoo_gateway/build/Release/oovoo_gateway.node"
   [[ -s ${GATEWAY_ADDON} ]] && \
   cp -av ${GATEWAY_ADDON} ${WOOGEEN_DIST}/lib/node/ && \
-  ${ENCRYPT} && strip ${WOOGEEN_DIST}/lib/node/addon.node
+  ${ENCRYPT} && strip ${WOOGEEN_DIST}/lib/node/oovoo_gateway.node
   # gateway
   mkdir -p ${WOOGEEN_DIST}/gateway/util
   cp -av ${SOURCE}/gateway/oovoo_gateway.js ${WOOGEEN_DIST}/gateway/
@@ -44,8 +44,8 @@ pack_runtime() {
 }
 
 pack_libs() {
-  [[ -s ${WOOGEEN_DIST}/lib/node/addon.node ]] && \
-  LD_LIBRARY_PATH=$ROOT/build/libdeps/build/lib:$ROOT/build/libdeps/build/lib64 ldd ${WOOGEEN_DIST}/lib/node/addon.node | grep '=>' | awk '{print $3}' | while read line; do
+  [[ -s ${WOOGEEN_DIST}/lib/node/oovoo_gateway.node ]] && \
+  LD_LIBRARY_PATH=$ROOT/build/libdeps/build/lib:$ROOT/build/libdeps/build/lib64 ldd ${WOOGEEN_DIST}/lib/node/oovoo_gateway.node | grep '=>' | awk '{print $3}' | while read line; do
     if [[ "$OS" =~ .*centos.* ]]
     then
       [[ -s "${line}" ]] && [[ -z `rpm -qf ${line} 2>/dev/null | grep 'glibc'` ]] && cp -Lv ${line} ${WOOGEEN_DIST}/lib

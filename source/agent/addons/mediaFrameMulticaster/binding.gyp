@@ -1,11 +1,17 @@
 {
   'targets': [{
     'target_name': 'mediaFrameMulticaster',
-    'sources': [ 'addon.cc',
-                 'MediaFrameMulticasterWrapper.cc'],
+    'sources': [
+      'addon.cc',
+      'MediaFrameMulticasterWrapper.cc',
+      '../../../core/woogeen_base/MediaFrameMulticaster.cpp',
+      '../../../core/woogeen_base/MediaFramePipeline.cpp',
+    ],
     'include_dirs': ['$(CORE_HOME)/common',
                       '$(CORE_HOME)/woogeen_base'],
-    'libraries': ['-L$(CORE_HOME)/build/woogeen_base', '-lwoogeen_base'],
+    'libraries': [
+      '-lboost_thread',
+    ],
     'conditions': [
       [ 'OS=="mac"', {
         'xcode_settings': {

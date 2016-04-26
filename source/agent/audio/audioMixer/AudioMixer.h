@@ -1,20 +1,20 @@
 /*
- * Copyright 2014 Intel Corporation All Rights Reserved. 
- * 
- * The source code contained or described herein and all documents related to the 
- * source code ("Material") are owned by Intel Corporation or its suppliers or 
- * licensors. Title to the Material remains with Intel Corporation or its suppliers 
- * and licensors. The Material contains trade secrets and proprietary and 
- * confidential information of Intel or its suppliers and licensors. The Material 
- * is protected by worldwide copyright and trade secret laws and treaty provisions. 
- * No part of the Material may be used, copied, reproduced, modified, published, 
- * uploaded, posted, transmitted, distributed, or disclosed in any way without 
+ * Copyright 2014 Intel Corporation All Rights Reserved.
+ *
+ * The source code contained or described herein and all documents related to the
+ * source code ("Material") are owned by Intel Corporation or its suppliers or
+ * licensors. Title to the Material remains with Intel Corporation or its suppliers
+ * and licensors. The Material contains trade secrets and proprietary and
+ * confidential information of Intel or its suppliers and licensors. The Material
+ * is protected by worldwide copyright and trade secret laws and treaty provisions.
+ * No part of the Material may be used, copied, reproduced, modified, published,
+ * uploaded, posted, transmitted, distributed, or disclosed in any way without
  * Intel's prior express written permission.
- * 
- * No license under any patent, copyright, trade secret or other intellectual 
- * property right is granted to or conferred upon you by disclosure or delivery of 
- * the Materials, either expressly, by implication, inducement, estoppel or 
- * otherwise. Any license under such intellectual property rights must be express 
+ *
+ * No license under any patent, copyright, trade secret or other intellectual
+ * property right is granted to or conferred upon you by disclosure or delivery of
+ * the Materials, either expressly, by implication, inducement, estoppel or
+ * otherwise. Any license under such intellectual property rights must be express
  * and approved by Intel in writing.
  */
 
@@ -101,19 +101,19 @@ class AudioMixer : public woogeen_base::JobTimerListener {
     DECLARE_LOGGER();
 
 public:
-    DLL_PUBLIC AudioMixer(const std::string& config);
+    AudioMixer(const std::string& config);
     virtual ~AudioMixer();
 
     // Implements JobTimerListener.
     void onTimeout();
 
-    DLL_PUBLIC void enableVAD(uint32_t period, VADListener* vadCallback);
-    DLL_PUBLIC void disableVAD();
-    DLL_PUBLIC void resetVAD();
-    DLL_PUBLIC bool addInput(const std::string& participant, const std::string& codec, woogeen_base::FrameSource* source);
-    DLL_PUBLIC void removeInput(const std::string& participant);
-    DLL_PUBLIC bool addOutput(const std::string& participant, const std::string& codec, woogeen_base::FrameDestination* dest);
-    DLL_PUBLIC void removeOutput(const std::string& participant);
+    void enableVAD(uint32_t period, VADListener* vadCallback);
+    void disableVAD();
+    void resetVAD();
+    bool addInput(const std::string& participant, const std::string& codec, woogeen_base::FrameSource* source);
+    void removeInput(const std::string& participant);
+    bool addOutput(const std::string& participant, const std::string& codec, woogeen_base::FrameDestination* dest);
+    void removeOutput(const std::string& participant);
 
     webrtc::VoEVideoSync* avSyncInterface();
 

@@ -1,6 +1,6 @@
 /*global require, exports, console*/
 
-var addon = require('./../bindings/gateway/build/Release/addon');
+var addon = require('./../bindings/gateway/build/Release/oovoo_gateway');
 var config = require('./../etc/gateway_config');
 var Logger = require('log4cxx');
 var logger = new Logger('controller');
@@ -27,7 +27,7 @@ exports = module.exports = function () {
     var CONN_INITIAL = 101, CONN_STARTED = 102, CONN_GATHERED = 103, CONN_READY = 104, CONN_FINISHED = 105, CONN_CANDIDATE = 201, CONN_SDP = 202, CONN_FAILED = 500;
 
     /*
-     * Given a WebRtcConnection waits for the state CANDIDATES_GATHERED for set remote SDP. 
+     * Given a WebRtcConnection waits for the state CANDIDATES_GATHERED for set remote SDP.
      */
     initWebRtcConnection = function (wrtc, callback, onReady) {
         var terminated = false;
