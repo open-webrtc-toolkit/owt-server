@@ -1,0 +1,36 @@
+[agent]
+#Max processes that agent can run
+maxProcesses = 13 #default: 13
+#Number of precesses that agent runs when it starts. Always lower than or equals to maxProcesses
+prerunProcesses = 2 #default: 2
+
+
+[cluster]
+#The name of the cluster to join.
+name = "woogeen-cluster"
+#The number of times to try joining
+join_retry = 5 #default: 5
+#The interval of retrying joining.
+join_interval = 3000 #default: 3000, unit: millisecond
+#The interval of retrying recovering the membership to the cluster.
+recover_interval = 1000 #default: 1000, unit: millisecond
+#The interval of sending keepAlive messages.
+keep_alive_interval = 1000 #default: 1000, unit: millisecond
+#The interval of reporting the work load
+report_load_interval = 1000 #default: 1000, unit: millisecond
+#The max work load this worker can take.
+max_load = 0.85 #default: 0.85
+#Network max scale to calculate network usage percentage
+network_max_scale = 1000 #unit: Mbps
+
+#The IP for in-cluster media spreading
+#Use "" to automatically get IP from the network-interface configured in 'network_interface'
+ip_address = "" #default: ""
+#The network-interface you want to use for in-cluster media spreading.
+#Use the first enumerated network-interface in the system if being set to undefined.
+# network_interface = "eth0" # default: undefined
+
+
+[rabbit]
+host = "localhost" #default: "localhost"
+port = 5672 #default: 5672

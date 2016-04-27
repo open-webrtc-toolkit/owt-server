@@ -35,25 +35,6 @@ ip_address = "" #default: ""
 host = "localhost" #default: "localhost"
 port = 5672 #default: 5672
 
-#########################################################################################
-[webrtc]
-#The peer-connection used IP for ICE candidates (useful when behind NATs)
-#Use "" to automatically get IP from the network-interface configured in 'network_interface'
-ip_address = "" #default: ""
-#The network-inferface you want to bind for ICE candidates
-#Use the first enumerated network-interface in the system if being set to undefined.
-# network_interface = "eth1" # default: undefined
-
-keystorePath = "./cert/certificate.pfx"
-#note, this won't work with all versions of libnice. With 0 all the available ports are used
-maxport = 0 #default: 0
-minport = 0 #default: 0
-
-#STUN server IP address and port to be used by the server.
-#if "" is used, the address is discovered locally
-stunport = 0 #default: 0
-stunserver = "" #default: ""
-
 
 #########################################################################################
 [video]
@@ -63,22 +44,3 @@ hardwareAccelerated = false
 #This configuration is only for software media engine. Hardware graphic acceleration provides H.264 by default
 #true means OpenH264 is deployed for H.264. Otherwise no support of H.264 in MCU
 openh264Enabled = false
-
-
-#########################################################################################
-#This configuration is only for RTSP muxing.
-#e.g.: "rtsp://localhost:1935/live/xxx.sdp"
-[rtsp]
-enabled = false
-addr = "localhost"
-application = "/live/" #default application name, don't forget ending slash
-port = 1935
-username = "webrtc"
-passwd = "abc123"
-
-
-#########################################################################################
-#The storage availability of the recording path needs to be guaranteed when using media recording.
-[recording]
-path = "/tmp"
-
