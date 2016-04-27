@@ -916,6 +916,8 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
             if (!isSpreadNeeded(audio_stream, erizo_id)) {
                 shrinkStream(audio_stream, erizo_id);
             }
+
+            recycleTemporaryAudio(audio_stream);
         }
 
         if (video_stream) {
@@ -929,16 +931,8 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
                 && !isSpreadNeeded(video_stream, erizo_id)) {
                 shrinkStream(video_stream, erizo_id);
             }
-        }
 
-        if (subscription_id === subscriber+'-'+mixed_stream_id) {
-            if (audio_stream) {
-                recycleTemporaryAudio(audio_stream);
-            }
-
-            if (video_stream) {
-                recycleTemporaryVideo(video_stream);
-            }
+            recycleTemporaryVideo(video_stream);
         }
 
         delete terminals[subscriber].subscribed[subscription_id];

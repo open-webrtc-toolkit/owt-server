@@ -1079,7 +1079,7 @@ var listen = function () {
             socket.room.controller.unsubscribe('file#'+socket.room.id/*FIXME: hard code terminalID*/, recorderId);
 
             socket.room.controller.subscribeSelectively(
-                'file#'+socket.room.id/*FIXME: hard code terminalID*/,
+                'file#' + socket.room.id + '-' + recorderId/*FIXME: hard code terminalID*/,
                 recorderId,
                 'file',
                 audioStreamId,
@@ -1147,7 +1147,7 @@ var listen = function () {
 
             // Stop recorder
             if (recorderExisted) {
-                socket.room.controller.unsubscribe('file#'+socket.room.id/*FIXME: hard code terminalID*/, options.recorderId);
+                socket.room.controller.unsubscribe('file#' + socket.room.id + '-' + options.recorderId/*FIXME: hard code terminalID*/, options.recorderId);
 
                 log.info('Recorder stopped: ', options.recorderId);
 
