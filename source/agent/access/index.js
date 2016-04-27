@@ -73,10 +73,13 @@ exports.AccessNode = function () {
         streams[stream_id] = {type: stream_type, connection: conn};
     };
 
-    that.unpublish = function (stream_id) {
+    that.unpublish = function (stream_id, reserve_subscriptions) {
         log.debug('unpublish, stream_id:', stream_id);
 
-        var reserve_subscriptions = (arguments[1]===true);
+        if (reserve_subscriptions === null || reserve_subscriptions === undefined) {
+            reserve_subscriptions = false;
+        }
+
         if (streams[stream_id]) {
             for (var subscription_id in subscriptions) {
                 if (subscriptions[subscription_id].audio === stream_id) {
@@ -218,10 +221,13 @@ exports.AccessNode = function () {
         callback('callback', {type: 'ready'});
     };
 
-    that.unsubscribe = function (subscription_id) {
+    that.unsubscribe = function (subscription_id, reserve_subscription) {
         log.debug('unsubscribe, subscription_id:', subscription_id);
 
-        var reserve_subscription = (arguments[1]===true);
+        if (reserve_subscription === null || reserve_subscription === undefined) {
+            reserve_subscription = false;
+        }
+
         if (subscriptions[subscription_id] !== undefined) {
             if (subscriptions[subscription_id].audio
                 && streams[subscriptions[subscription_id].audio]) {
