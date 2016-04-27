@@ -83,7 +83,6 @@ installRepo(){
     sudo rpm -Uvh remi-release-6*.rpm epel-release-6*.rpm
     wget -c http://dl.atrpms.net/el6-x86_64/atrpms/stable/atrpms-repo-6-7.el6.x86_64.rpm
     sudo rpm -Uvh atrpms-repo*rpm
-    sudo -E yum --enablerepo=atrpms-testing install cmake -y
     sudo -E wget -c -qO- http://people.redhat.com/bkabrda/scl_python27.repo >> /etc/yum.repos.d/scl.repo
     rm *.rpm
   elif [[ "$OS" =~ .*7.* ]] # CentOS 7.x
@@ -92,7 +91,6 @@ installRepo(){
     wget -c http://rpms.famillecollet.com/enterprise/remi-release-7.rpm
     sudo rpm -Uvh remi-release-7*.rpm epel-release-latest-7*.rpm
     sudo sed -i 's/https/http/g' /etc/yum.repos.d/epel.repo
-    sudo -E yum install cmake -y
     rm *.rpm
   fi
 }

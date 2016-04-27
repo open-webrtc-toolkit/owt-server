@@ -2,8 +2,14 @@
 'use strict';
 
 var path = require('path');
-if (!process.env.LD_LIBRARY_PATH) {
-  process.env.LD_LIBRARY_PATH = path.resolve(__dirname, '../build/libdeps/build/lib');
+if (!process.env.MODULE_TEST) {
+  process.env.MODULE_TEST = true;
+  process.env.LD_LIBRARY_PATH = [
+    path.resolve(__dirname, '../build/libdeps/build/lib'),
+    path.resolve(__dirname, '../third_party/mediaprocessor/dist'),
+    path.resolve(__dirname, '../third_party/openh264'),
+    process.env.LD_LIBRARY_PATH || '',
+  ].join(':');
   require('child_process').fork(process.argv[1], process.argv.slice(2));
 } else {
   var dirname = process.argv[2] || __dirname+'/../source';

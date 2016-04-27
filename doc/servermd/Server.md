@@ -200,13 +200,31 @@ To launch the MCU server on one machine, follow steps below:
     For general MCU Server installation, follow these steps:
 
         cd Release-<Version>/
-        bin/init.sh --deps
+        nuve/init.sh --deps
+        access_agent/install_deps.sh
+        video_agent/init.sh
 
     If you want to enable GPU-acceleration, follow these steps:
 
         cd Release-<Version>/
-        bin/init.sh --deps --hardware
-> **Note**: If you have already installed the required system libraries, you can omit the **--deps** option.
+        nuve/init.sh --deps
+        access_agent/install_deps.sh
+        video_agent/install_deps.sh
+        video_agent/init.sh --hardware
+
+> **Note**: If you have already installed the required system libraries:
+
+    For general MCU Server installation, follow these steps:
+
+        cd Release-<Version>/
+        nuve/init.sh
+        video_agent/init.sh
+
+    If you want to enable GPU-acceleration, follow these steps:
+
+        cd Release-<Version>/
+        nuve/init.sh
+        video_agent/init.sh --hardware
 
 2. Run the following commands to start the MCU:
 
@@ -281,22 +299,23 @@ Follow the steps below to set up an MCU cluster:
 
     - Make sure the rabbit.port and rabbit.host point to the RabbitMQ server.
 
-12. Do initialization if you choose video or audio agent.
+12. Do initialization if you choose video or access agent.
 
-       For audio agent, follow these steps:
+       For access agent, follow these steps:
 
            cd Release-<Version>/
-           audio_agent/init.sh --deps
+           access_agent/install_deps.sh
 
        For general video agent, follow these steps:
 
            cd Release-<Version>/
-           video_agent/init.sh --deps
+           video_agent/init.sh
 
        If you want to enable GPU-acceleration for video agent, follow these steps:
 
            cd Release-<Version>/
-           video_agent/init.sh --deps --hardware
+           video_agent/install_deps.sh
+           video_agent/init.sh --hardware
 
 13. Run the following commands to launch one or multiple MCU worker nodes on these work machines:
 
