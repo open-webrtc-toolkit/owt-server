@@ -19,5 +19,39 @@
 # and approved by Intel in writing.
 #
 
-bin=`dirname "$0"`
-bin=`cd "$bin"; pwd`
+this=$(dirname "$0")
+this=$(cd "${this}"; pwd)
+
+install_config() {
+  echo -e "\x1b[32mInitializing video agent msdk configuration...\x1b[0m"
+  # install mediaproess config
+  if [[ ! -s ${this}/.msdk_log_config.ini ]]; then
+    [[ -s /tmp/msdk_log_config.ini ]] && rm -f /tmp/msdk_log_config.ini
+    ln -sf ${this}/.msdk_log_config.ini /tmp/msdk_log_config.ini
+  fi
+}
+
+ENABLE_HARDWARE=false
+
+shopt -s extglob
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    *(-)hardware )
+      ENABLE_HARDWARE=true
+      ;;
+    *(-)help )
+      usage
+      exit 0
+      ;;
+  esac
+  shift
+done
+
+if ${ENABLE_HARDWARE}; then
+  echo -e "\x1b[36mHardware acceleration enabled\x1b[0m"
+  install_config
+  sed -i 's/^hardwareAccelerated = false/hardwareAccelerated = true/' ${this}/agent.toml
+else
+  echo -e "\x1b[36mHardware acceleration disbled\x1b[0m"
+  sed -i 's/^hardwareAccelerated = true/hardwareAccelerated = false/' ${this}/agent.toml
+fi
