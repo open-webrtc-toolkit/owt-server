@@ -42,6 +42,7 @@ pack_agents() {
     mkdir -p ${WOOGEEN_DIST}/${AGENT}_agent/${AGENT}
     find ${AGENT} -type f -name "*.js" -exec cp '{}' "${WOOGEEN_DIST}/${AGENT}_agent/{}" \;
     find . -maxdepth 1 -type f -not -name "*.log" -exec cp '{}' "${WOOGEEN_DIST}/${AGENT}_agent/{}" \;
+    cp -av ${AGENT}/agent.toml ${WOOGEEN_DIST}/${AGENT}_agent/
     pack_addons "${WOOGEEN_DIST}/${AGENT}_agent"
     mkdir -p ${WOOGEEN_DIST}/${AGENT}_agent/cert
     cp -av ${ROOT}/cert/{*.pfx,.woogeen.keystore} ${WOOGEEN_DIST}/${AGENT}_agent/cert/
