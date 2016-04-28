@@ -94,15 +94,15 @@ rpc.connect(GLOBAL.config.rabbit, function () {
         var controller;
         switch (purpose) {
         case 'audio':
-            controller = require('./audio').AudioNode();
+            controller = require('./audio')();
             break;
         case 'video':
-            controller = require('./video').VideoNode();
+            controller = require('./video')();
             break;
         case 'webrtc':
         case 'rtsp':
         case 'file':
-            controller = require('./access').AccessNode();
+            controller = require('./access')();
             break;
         default:
             log.error('Ambiguous purpose to start ErizoJS');

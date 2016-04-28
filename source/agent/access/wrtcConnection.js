@@ -1,4 +1,4 @@
-/*global require, exports, GLOBAL*/
+/*global require, module, GLOBAL*/
 'use strict';
 
 var woogeenWebrtc = require('./webrtc/build/Release/webrtc');
@@ -13,7 +13,7 @@ var cipher = require('./cipher');
 // Logger
 var log = logger.getLogger('WrtcConnection');
 
-exports.WrtcConnection = function (spec) {
+module.exports = function (spec) {
     var that = {},
         direction = spec.direction,
         // preferredAudioCodecs = spec.preferred_audio_codecs,

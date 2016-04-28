@@ -1,15 +1,15 @@
-/*global require, exports*/
+/*global require, module, GLOBAL*/
 'use strict';
 
-var woogeenInternalIO = require('./internalIO/build/Release/internalIO');
-var woogeenMediaFileIO = require('./mediaFileIO/build/Release/mediaFileIO');
-var InternalIn = woogeenInternalIO.InternalIn;
-var InternalOut = woogeenInternalIO.InternalOut;
-var MediaFileIn = woogeenMediaFileIO.MediaFileIn;
-var MediaFileOut = woogeenMediaFileIO.MediaFileOut;
-var RtspOut = require('./rtspOut/build/Release/rtspOut').RtspOut;
-var WrtcConnection = require('./wrtcConnection').WrtcConnection;
-var RtspIn = require('./rtspIn').RtspIn;
+var internalIO = require('./internalIO/build/Release/internalIO');
+var mediaFileIO = require('./mediaFileIO/build/Release/mediaFileIO');
+var InternalIn = internalIO.In;
+var InternalOut = internalIO.Out;
+var MediaFileIn = mediaFileIO.In;
+var MediaFileOut = mediaFileIO.Out;
+var RtspOut = require('./rtspOut/build/Release/rtspOut');
+var WrtcConnection = require('./wrtcConnection');
+var RtspIn = require('./rtspIn');
 var logger = require('./logger').logger;
 var amqper = require('./amqper');
 var path = require('path');
@@ -17,7 +17,7 @@ var path = require('path');
 // Logger
 var log = logger.getLogger('AccessNode');
 
-exports.AccessNode = function () {
+module.exports = function () {
     var that = {},
         /*{StreamID: {type: 'webrtc' | 'rtsp' | 'file' | 'internal',
                       connection: WebRtcConnection | InternalIn | RTSPConnectionIn}

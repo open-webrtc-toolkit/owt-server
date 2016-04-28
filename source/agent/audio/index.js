@@ -1,11 +1,11 @@
-/*global require, exports*/
+/*global require, module*/
 'use strict';
 
-var woogeenInternalIO = require('./internalIO/build/Release/internalIO');
-var InternalIn = woogeenInternalIO.InternalIn;
-var InternalOut = woogeenInternalIO.InternalOut;
-var MediaFrameMulticaster = require('./mediaFrameMulticaster/build/Release/mediaFrameMulticaster').MediaFrameMulticaster;
-var AudioMixer = require('./audioMixer/build/Release/audioMixer').AudioMixer;
+var internalIO = require('./internalIO/build/Release/internalIO');
+var InternalIn = internalIO.In;
+var InternalOut = internalIO.Out;
+var MediaFrameMulticaster = require('./mediaFrameMulticaster/build/Release/mediaFrameMulticaster');
+var AudioMixer = require('./audioMixer/build/Release/audioMixer');
 
 var logger = require('./logger').logger;
 var amqper = require('./amqper');
@@ -13,7 +13,7 @@ var amqper = require('./amqper');
 // Logger
 var log = logger.getLogger('AudioNode');
 
-var AudioEngine = function () {
+module.exports = function () {
     var that = {},
         engine,
         observer,
@@ -88,7 +88,7 @@ var AudioEngine = function () {
         }
     };
 
-    that.initEngine = function (config, callback) {
+    var initEngine = function (config, callback) {
         engine = new AudioMixer(JSON.stringify(config));
 
         // FIXME: The supported codec list should be a sub-list of those querried from the engine
@@ -189,18 +189,12 @@ var AudioEngine = function () {
         engine.resetVAD();
     };
 
-    return that;
-};
-
-exports.AudioNode = function () {
-    var that = new AudioEngine();
-
     that.init = function (service, config, callback) {
         if (service === 'mixing') {
-            that.initEngine(config, callback);
+            initEngine(config, callback);
         } else if (service === 'transcoding') {
             var audioConfig = {};
-            that.initEngine(audioConfig, callback);
+            initEngine(audioConfig, callback);
         } else {
             log.error('Unknown service type to init an audio node:', service);
             callback('callback', 'error', 'Unknown service type to init an audio node.');
