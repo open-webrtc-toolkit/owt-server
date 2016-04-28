@@ -163,7 +163,7 @@ module.exports = function (spec) {
     };
 
     that.quit = function () {
-        if (state === 'registerd') {
+        if (state === 'registered') {
             if (keep_alive_interval) {
                 clearInterval(keep_alive_interval);
                 keep_alive_interval = undefined;
