@@ -32,7 +32,7 @@
  */
 class RtspOut : public FrameDestination, public NodeEventRegistry {
  public:
-  static void Init(v8::Local<v8::Object> exports);
+  static void Init(v8::Handle<v8::Object>, v8::Handle<v8::Object>);
   woogeen_base::RtspOut* me;
 
  private:

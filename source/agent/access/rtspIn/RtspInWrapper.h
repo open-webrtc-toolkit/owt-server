@@ -34,7 +34,7 @@
  */
 class RtspIn : public FrameSource, woogeen_base::RtspInStatusListener {
  public:
-  static void Init(v8::Local<v8::Object> exports);
+  static void Init(v8::Handle<v8::Object>, v8::Handle<v8::Object>);
   woogeen_base::RtspIn* me;
   std::queue<std::string> statsMsgs;
   boost::mutex statusMutex;

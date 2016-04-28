@@ -1,10 +1,10 @@
-/*global require, exports, GLOBAL, process*/
+/*global require, module, GLOBAL, process*/
 'use strict';
 
-var woogeenInternalIO = require('./internalIO/build/Release/internalIO');
-var InternalIn = woogeenInternalIO.InternalIn;
-var InternalOut = woogeenInternalIO.InternalOut;
-var MediaFrameMulticaster = require('./mediaFrameMulticaster/build/Release/mediaFrameMulticaster').MediaFrameMulticaster;
+var internalIO = require('./internalIO/build/Release/internalIO');
+var InternalIn = internalIO.In;
+var InternalOut = internalIO.Out;
+var MediaFrameMulticaster = require('./mediaFrameMulticaster/build/Release/mediaFrameMulticaster');
 
 var amqper = require('./amqper');
 var logger = require('./logger').logger;
@@ -38,7 +38,7 @@ function calculateResolutions(rootResolution, useMultistreaming) {
     });
 }
 
-var VideoEngine = function () {
+module.exports = function () {
     var that = {},
         engine,
         session_id,
@@ -65,9 +65,9 @@ var VideoEngine = function () {
     var VideoMixer;
     try {
         if (useHardware) {
-            VideoMixer = require('./videoMixer/build/Release/videoMixer-hw').VideoMixer;
+            VideoMixer = require('./videoMixer/build/Release/videoMixer-hw');
         } else {
-            VideoMixer = require('./videoMixer/build/Release/videoMixer-sw').VideoMixer;
+            VideoMixer = require('./videoMixer/build/Release/videoMixer-sw');
         }
     } catch (e) {
         log.error(e);
@@ -153,7 +153,7 @@ var VideoEngine = function () {
         }
     };
 
-    that.initEngine = function (videoConfig, sessionId, layoutObserver, callback) {
+    var initEngine = function (videoConfig, sessionId, layoutObserver, callback) {
         log.debug('initEngine, videoConfig:', videoConfig);
         var config = {
             'hardware': useHardware,
@@ -315,15 +315,9 @@ var VideoEngine = function () {
         callback('callback', 'error', 'Invalid input stream_id.');
     };
 
-    return that;
-};
-
-exports.VideoNode = function () {
-    var that = new VideoEngine();
-
     that.init = function (service, config, sessionId, observer, callback) {
         if (service === 'mixing') {
-            that.initEngine(config, sessionId, observer, callback);
+            initEngine(config, sessionId, observer, callback);
         } else if (service === 'transcoding') {
             var videoConfig = {maxInput: 1,
                                bitrate: 0,
@@ -332,7 +326,7 @@ exports.VideoNode = function () {
                                multistreaming: true,
                                layout: [{region: [{id: '1', left: 0, top: 0, relativesize: 1}]}],
                                crop: false};
-            that.initEngine(videoConfig, sessionId, observer, callback);
+            initEngine(videoConfig, sessionId, observer, callback);
         } else {
             log.error('Unknown service type to init a video node:', service);
             callback('callback', 'error', 'Unknown service type to init a video node.');

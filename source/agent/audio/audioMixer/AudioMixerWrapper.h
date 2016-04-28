@@ -32,7 +32,7 @@
  */
 class AudioMixer : public node::ObjectWrap, public mcu::VADListener {
  public:
-  static void Init(v8::Local<v8::Object> exports);
+  static void Init(v8::Handle<v8::Object>, v8::Handle<v8::Object>);
   mcu::AudioMixer* me;
   std::list<std::string> vadMsgs;
   boost::mutex vadMutex;

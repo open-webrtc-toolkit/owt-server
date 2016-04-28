@@ -1,13 +1,13 @@
-/*global require, exports*/
+/*global require, module*/
 'use strict';
 
-var RtspIn = require('./rtspIn/build/Release/rtspIn').RtspIn;
+var RtspIn = require('./rtspIn/build/Release/rtspIn');
 var logger = require('./logger').logger;
 
 // Logger
 var log = logger.getLogger('RtspIn');
 
-exports.RtspIn = function () {
+module.exports = function () {
     var that = {},
         audio = false,
         video = false,
@@ -19,9 +19,9 @@ exports.RtspIn = function () {
     var initRtspClient = function (rtspClient, on_status) {
         var audio_codec_list = [],
             video_codec_list = [],
-            video_resolution = undefined;
+            video_resolution;
 
-        rtspClient.init(function (msg){
+        rtspClient.init(function (msg) {
           log.info('RtspIn Addon status:' + msg);
 
           if (msg.startsWith('videoCodec')) {
@@ -73,7 +73,6 @@ exports.RtspIn = function () {
             rtspClient.removeDestination('video', dest);
             return;
         }
-
         log.warn('Wrong track:'+track);
     };
 
