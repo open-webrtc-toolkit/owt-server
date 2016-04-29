@@ -12,6 +12,7 @@
       '../../../core/woogeen_base/MediaFramePipeline.cpp',
       '../../../core/woogeen_base/YamiFrameDecoder.cpp',
       '../../../core/woogeen_base/YamiFrameEncoder.cpp',
+      '../../../core/woogeen_base/YamiVideoDisplay.cpp',
     ],
     'cflags_cc': ['-DWEBRTC_POSIX', '-DWEBRTC_LINUX', '-DENABLE_YAMI'],
     'include_dirs': [ '$(CORE_HOME)/common',
