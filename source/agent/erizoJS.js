@@ -105,7 +105,8 @@ rpc.connect(GLOBAL.config.rabbit, function () {
             controller = require('./access')();
             break;
         default:
-            log.error('Ambiguous purpose to start ErizoJS');
+            log.error('Ambiguous purpose:', purpose);
+            process.send('ambiguous purpose');
             return;
         }
 
@@ -120,10 +121,12 @@ rpc.connect(GLOBAL.config.rabbit, function () {
 
         log.info('ID: ErizoJS_' + rpcID);
 
-        rpc.bind('ErizoJS_' + rpcID, function() {
-            log.info("ErizoJS started");
+        rpc.bind('ErizoJS_' + rpcID, function () {
+            log.info('READY');
+            process.send('READY');
         });
     } catch (err) {
+        process.send(err);
         log.error(err);
     }
 });
