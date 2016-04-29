@@ -103,7 +103,6 @@ var idle_erizos = [];
 var erizos = [];
 var processes = {};
 var tasks = {}; // {erizo_id: [RoomID]}
-var worker;
 var load_collection = {period: GLOBAL.config.cluster.report_load_interval};
 
 var guid = (function() {
@@ -118,51 +117,61 @@ var guid = (function() {
   };
 })();
 
+function cleanupErizoJS (id) {
+    delete processes[id];
+    delete tasks[id];
+    var index = erizos.indexOf(id);
+    if (index !== -1) {
+        erizos.splice(index, 1);
+    }
+    index = idle_erizos.indexOf(id);
+    if (index !== -1) {
+        idle_erizos.splice(index, 1);
+    }
+}
+
 var launchErizoJS = function() {
-    log.info('Running process');
     var id = guid();
     var out = fs.openSync('../logs/' + myPurpose + '-' + id + '.log', 'a');
     var err = fs.openSync('../logs/' + myPurpose + '-' + id + '.log', 'a');
-    var erizoProcess = spawn('node', ['./erizoJS.js', id, myPurpose, privateIP, publicIP], { detached: true, stdio: [ 'ignore', out, err ] });
-    erizoProcess.unref();
-    erizoProcess.on('close', function (code) {
-        var index = idle_erizos.indexOf(id);
-        var index2 = erizos.indexOf(id);
-        if (index > -1) {
-            idle_erizos.splice(index, 1);
-            launchErizoJS();
-        } else if (index2 > -1) {
-            erizos.splice(index2, 1);
-        }
-        delete processes[id];
-        delete tasks[id];
+    var child = spawn('node', ['./erizoJS.js', id, myPurpose, privateIP, publicIP], {
+        detached: true,
+        stdio: [ 'ignore', out, err, 'ipc' ]
+    });
+    child.unref();
+    child.on('close', function (code) {
         log.info(id, 'exit with', code);
+        cleanupErizoJS(id);
         fillErizos();
     });
-    processes[id] = erizoProcess;
+    child.on('error', function (error) {
+        log.error('failed to launch worker:', error);
+        child.READY = false;
+        cleanupErizoJS(id);
+        fillErizos(); // FIXME: distinguish between deterministic errors and recoverable ones.
+    });
+    child.on('message', function (message) { // currently only used for sending ready message from worker to agent;
+        log.info('message from worker', id, ':', message);
+        if (message === 'READY') {
+            child.READY = true;
+        } else {
+            child.READY = false;
+            child.kill();
+            cleanupErizoJS(id);
+            fillErizos(); // FIXME: distinguish between deterministic errors and recoverable ones.
+        }
+    });
+    processes[id] = child;
     tasks[id] = [];
     idle_erizos.push(id);
 };
 
-var dropErizoJS = function(erizo_id, callback) {
-   if (processes.hasOwnProperty(erizo_id)) {
-      var process = processes[erizo_id];
-      process.kill();
-      delete processes[erizo_id];
-      delete tasks[erizo_id];
-
-      var index = erizos.indexOf(erizo_id);
-      if (index !== -1) {
-          erizos.splice(index, 1);
-      }
-
-      var idleIndex = idle_erizos.indexOf(erizo_id);
-      if (idleIndex !== -1) {
-          idle_erizos.splice(idleIndex, 1);
-      }
-
-      callback('callback', 'ok');
-   }
+var dropErizoJS = function(id, callback) {
+    if (processes.hasOwnProperty(id)) {
+        processes[id].kill();
+        cleanupErizoJS(id);
+        callback('callback', 'ok');
+    }
 };
 
 var fillErizos = function() {
@@ -171,63 +180,80 @@ var fillErizos = function() {
     }
 };
 
-var api = {
+var api = function (worker) {
+    return {
+        getErizoJS: function(room_id, callback) {
+            var reportCallback = function (id, timeout) {
+                var waitForInitialization = function () {
+                    if (!processes[id]) {
+                        log.warn('process', id, 'not found');
+                        return;
+                    }
+                    if (processes[id].READY === undefined) {
+                        log.debug(id, 'not ready');
+                        setTimeout(waitForInitialization, timeout);
+                        return;
+                    }
+                    if (processes[id].READY === true) {
+                        log.debug(id, 'ready');
+                        callback('callback', id);
+                        worker.addTask(room_id);
+                    }
+                };
+                waitForInitialization();
+            };
+            try {
+                var erizo_id;
+                if (reuse) {
+                    var i;
+                    for (i in erizos) {
+                        erizo_id = erizos[i];
+                        if (tasks[erizo_id] !== undefined && tasks[erizo_id].indexOf(room_id) !== -1) {
+                            reportCallback(erizo_id, 100);
+                            return;
+                        }
+                    }
 
-    getErizoJS: function(room_id, callback) {
-        try {
-            var i, erizo_id;
-            for (i in erizos) {
-                erizo_id = erizos[i];
-                if (reuse && tasks[erizo_id] !== undefined && tasks[erizo_id].indexOf(room_id) !== -1) {
-                    callback('callback', erizo_id);
-                    worker && worker.addTask(room_id);
-                    return;
-                }
-            }
-
-            for (i in idle_erizos) {
-                erizo_id = idle_erizos[i];
-                if (reuse && tasks[erizo_id] !== undefined && tasks[erizo_id].indexOf(room_id) !== -1) {
-                    callback('callback', erizo_id);
-                    worker && worker.addTask(room_id);
-                    return;
-                }
-            }
-
-            erizo_id = idle_erizos.shift();
-            worker && worker.addTask(room_id);
-            callback('callback', erizo_id);
-
-            tasks[erizo_id].push(room_id);
-            erizos.push(erizo_id);
-
-            if (reuse && ((erizos.length + idle_erizos.length + 1) >= GLOBAL.config.agent.maxProcesses)) {
-                // We re-use Erizos
-                var reused_erizo = erizos.shift();
-                idle_erizos.push(reused_erizo);
-            } else {
-                // We launch more processes
-                fillErizos();
-            }
-        } catch (error) {
-            log.error('Error in ErizoAgent:', error);
-        }
-    },
-
-    recycleErizoJS: function(id, room_id, callback) {
-        try {
-            if (tasks[id]) {
-                var i = tasks[id].indexOf(room_id);
-                if (i !== -1) {
-                    tasks[id].splice(i, 1);
+                    for (i in idle_erizos) {
+                        erizo_id = idle_erizos[i];
+                        if (tasks[erizo_id] !== undefined && tasks[erizo_id].indexOf(room_id) !== -1) {
+                            reportCallback(erizo_id, 100);
+                            return;
+                        }
+                    }
                 }
 
-                if (tasks[id].length === 0) {
-                    dropErizoJS(id, callback);
-                }
-            }
+                erizo_id = idle_erizos.shift();
+                reportCallback(erizo_id, 100);
 
-            if (worker) {
+                tasks[erizo_id].push(room_id);
+                erizos.push(erizo_id);
+
+                if (reuse && ((erizos.length + idle_erizos.length + 1) >= GLOBAL.config.agent.maxProcesses)) {
+                    // We re-use Erizos
+                    idle_erizos.push(erizos.shift());
+                } else {
+                    // We launch more processes
+                    fillErizos();
+                }
+            } catch (error) {
+                log.error('getErizoJS error:', error);
+            }
+        },
+
+        recycleErizoJS: function(id, room_id, callback) {
+            try {
+                if (tasks[id]) {
+                    var i = tasks[id].indexOf(room_id);
+                    if (i !== -1) {
+                        tasks[id].splice(i, 1);
+                    }
+
+                    if (tasks[id].length === 0) {
+                        dropErizoJS(id, callback);
+                    }
+                }
+
                 var stillInUse = false;
                 for (var eid in tasks) {
                     if (tasks[eid].indexOf(room_id) !== -1) {
@@ -238,11 +264,11 @@ var api = {
                 if (!stillInUse) {
                     worker.removeTask(room_id);
                 }
+            } catch(error) {
+                log.error('recycleErizoJS error:', error);
             }
-        } catch(err) {
-            log.error('Error stopping ErizoJS', err);
         }
-    }
+    };
 };
 
 var privateIP, publicIP, clusterIP;
@@ -291,16 +317,20 @@ function collectIPs () {
 }
 
 var joinCluster = function (on_ok) {
+    var worker;
     var joinOK = function (id) {
         myId = id;
         myState = 2;
         log.info(myPurpose, 'agent join cluster ok.');
         on_ok(id);
+        process.on('exit', function () {
+            worker.quit();
+        });
     };
 
     var joinFailed = function (reason) {
         log.error(myPurpose, 'agent join cluster failed. reason:', reason);
-        worker && worker.quit();
+        process.exit();
     };
 
     var loss = function () {
@@ -311,26 +341,27 @@ var joinCluster = function (on_ok) {
         log.info(myPurpose, 'agent recovered.');
     };
 
-    var spec = {amqper: rpc,
-                purpose: myPurpose,
-                clusterName: GLOBAL.config.cluster.name,
-                joinRery: GLOBAL.config.cluster.join_retry,
-                joinPeriod: GLOBAL.config.cluster.join_interval,
-                recoveryPeriod: GLOBAL.config.cluster.recover_interval,
-                keepAlivePeriod: GLOBAL.config.cluster.keep_alive_interval,
-                info: {ip: clusterIP,
-                       purpose: myPurpose,
-                       state: 2,
-                       max_load: GLOBAL.config.cluster.max_load
-                      },
-                onJoinOK: joinOK,
-                onJoinFailed: joinFailed,
-                onLoss: loss,
-                onRecovery: recovery,
-                loadCollection: load_collection
-               };
-
-    worker = clusterWorker(spec);
+    worker = clusterWorker({
+        amqper: rpc,
+        purpose: myPurpose,
+        clusterName: GLOBAL.config.cluster.name,
+        joinRery: GLOBAL.config.cluster.join_retry,
+        joinPeriod: GLOBAL.config.cluster.join_interval,
+        recoveryPeriod: GLOBAL.config.cluster.recover_interval,
+        keepAlivePeriod: GLOBAL.config.cluster.keep_alive_interval,
+        info: {
+            ip: clusterIP,
+            purpose: myPurpose,
+            state: 2,
+            max_load: GLOBAL.config.cluster.max_load
+        },
+        onJoinOK: joinOK,
+        onJoinFailed: joinFailed,
+        onLoss: loss,
+        onRecovery: recovery,
+        loadCollection: load_collection
+    });
+    return worker;
 };
 
 (function init_env() {
@@ -385,24 +416,14 @@ var joinCluster = function (on_ok) {
     }
 })();
 
-var onTermination = function () {
-    worker && worker.quit();
-    Object.keys(processes).map(function (k) {
-        dropErizoJS(k, function (unused, status) {
-            log.info('Terminate ErizoJS', k, status);
-        });
-    });
-};
-
 rpc.connect(GLOBAL.config.rabbit, function () {
-    rpc.setPublicRPC(api);
     log.info('Adding agent to cloudhandler, purpose:', myPurpose);
-
-    joinCluster(function (rpcID) {
-      rpc.bind(rpcID, function () {
-        log.info('ErizoAgent rpcID:', rpcID);
-      });
-      fillErizos();
+    var worker = joinCluster(function (rpcID) {
+        rpc.bind(rpcID, function () {
+            log.info('rpcID:', rpcID);
+            rpc.setPublicRPC(api(worker));
+        });
+        fillErizos();
     });
 });
 
@@ -414,5 +435,9 @@ rpc.connect(GLOBAL.config.rabbit, function () {
 });
 
 process.on('exit', function () {
-    onTermination();
+    Object.keys(processes).map(function (k) {
+        dropErizoJS(k, function (unused, status) {
+            log.info('Terminate ErizoJS', k, status);
+        });
+    });
 });
