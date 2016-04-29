@@ -4,7 +4,6 @@
     'sources': [
       'addon.cc',
       'VideoMixerWrapper.cc',
-      'BufferManager.cpp',
       'YamiVideoCompositor.cpp',
       'VideoLayoutProcessor.cpp',
       'VideoMixer.cpp',
