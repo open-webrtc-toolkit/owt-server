@@ -21,7 +21,7 @@
 #include "VideoMixer.h"
 
 #include "HardwareVideoFrameMixer.h"
-#include "SoftVideoFrameMixer.h"
+#include "VideoFrameMixerImpl.h"
 #include "VideoLayoutProcessor.h"
 #include "VideoFrameMixer.h"
 #include <WebRTCTransport.h>
@@ -72,7 +72,7 @@ VideoMixer::VideoMixer(const std::string& configStr)
 
     m_taskRunner.reset(new woogeen_base::WebRTCTaskRunner());
 
-    m_frameMixer.reset(new SoftVideoFrameMixer(m_maxInputCount, rootSize, bgColor, m_taskRunner, useSimulcast, cropVideo));
+    m_frameMixer.reset(new VideoFrameMixerImpl(m_maxInputCount, rootSize, bgColor, m_taskRunner, useSimulcast, cropVideo));
     m_layoutProcessor->registerConsumer(m_frameMixer);
 
     m_taskRunner->Start();

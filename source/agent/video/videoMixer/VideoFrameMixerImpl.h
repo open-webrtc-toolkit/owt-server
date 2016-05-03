@@ -18,8 +18,8 @@
  * and approved by Intel in writing.
  */
 
-#ifndef SoftVideoFrameMixer_h
-#define SoftVideoFrameMixer_h
+#ifndef VideoFrameMixerImpl_h
+#define VideoFrameMixerImpl_h
 
 #include "I420VideoFrameDecoder.h"
 
@@ -66,10 +66,10 @@ private:
     boost::shared_ptr<VideoFrameCompositor> m_compositor;
 };
 
-class SoftVideoFrameMixer : public VideoFrameMixer {
+class VideoFrameMixerImpl : public VideoFrameMixer {
 public:
-    SoftVideoFrameMixer(uint32_t maxInput, VideoSize rootSize, YUVColor bgColor, boost::shared_ptr<woogeen_base::WebRTCTaskRunner>, bool useSimulcast, bool crop);
-    ~SoftVideoFrameMixer();
+    VideoFrameMixerImpl(uint32_t maxInput, VideoSize rootSize, YUVColor bgColor, boost::shared_ptr<woogeen_base::WebRTCTaskRunner>, bool useSimulcast, bool crop);
+    ~VideoFrameMixerImpl();
 
     bool addInput(int input, woogeen_base::FrameFormat, woogeen_base::FrameSource*);
     void removeInput(int input);
@@ -106,9 +106,9 @@ private:
     bool m_useSimulcast;
 };
 
-DEFINE_LOGGER(SoftVideoFrameMixer, "mcu.media.SoftVideoFrameMixer");
+DEFINE_LOGGER(VideoFrameMixerImpl, "mcu.media.VideoFrameMixerImpl");
 
-SoftVideoFrameMixer::SoftVideoFrameMixer(uint32_t maxInput, VideoSize rootSize, YUVColor bgColor, boost::shared_ptr<woogeen_base::WebRTCTaskRunner> taskRunner, bool useSimulcast, bool crop)
+VideoFrameMixerImpl::VideoFrameMixerImpl(uint32_t maxInput, VideoSize rootSize, YUVColor bgColor, boost::shared_ptr<woogeen_base::WebRTCTaskRunner> taskRunner, bool useSimulcast, bool crop)
     : m_taskRunner(taskRunner)
     , m_useSimulcast(useSimulcast)
 {
@@ -119,7 +119,7 @@ SoftVideoFrameMixer::SoftVideoFrameMixer(uint32_t maxInput, VideoSize rootSize, 
 #endif
 }
 
-SoftVideoFrameMixer::~SoftVideoFrameMixer()
+VideoFrameMixerImpl::~VideoFrameMixerImpl()
 {
     {
         boost::unique_lock<boost::shared_mutex> lock(m_outputMutex);
@@ -142,7 +142,7 @@ SoftVideoFrameMixer::~SoftVideoFrameMixer()
     m_compositor.reset();
 }
 
-inline bool SoftVideoFrameMixer::addInput(int input, woogeen_base::FrameFormat format, woogeen_base::FrameSource* source)
+inline bool VideoFrameMixerImpl::addInput(int input, woogeen_base::FrameFormat format, woogeen_base::FrameSource* source)
 {
     assert(source);
       ELOG_DEBUG("+addInput input = %d, format = %d", input, format);
@@ -181,7 +181,7 @@ inline bool SoftVideoFrameMixer::addInput(int input, woogeen_base::FrameFormat f
     }
 }
 
-inline void SoftVideoFrameMixer::removeInput(int input)
+inline void VideoFrameMixerImpl::removeInput(int input)
 {
     boost::upgrade_lock<boost::shared_mutex> lock(m_inputMutex);
     auto it = m_inputs.find(input);
@@ -193,14 +193,14 @@ inline void SoftVideoFrameMixer::removeInput(int input)
     }
 }
 
-inline void SoftVideoFrameMixer::updateLayoutSolution(LayoutSolution& solution)
+inline void VideoFrameMixerImpl::updateLayoutSolution(LayoutSolution& solution)
 {
     ELOG_DEBUG("+updateLayoutSolution");
     m_compositor->updateLayoutSolution(solution);
     ELOG_DEBUG("-updateLayoutSolution");
 }
 
-inline void SoftVideoFrameMixer::setBitrate(unsigned short kbps, int output)
+inline void VideoFrameMixerImpl::setBitrate(unsigned short kbps, int output)
 {
      ELOG_DEBUG("+setBitrate");
     boost::shared_lock<boost::shared_mutex> lock(m_outputMutex);
@@ -210,7 +210,7 @@ inline void SoftVideoFrameMixer::setBitrate(unsigned short kbps, int output)
     }
 }
 
-inline void SoftVideoFrameMixer::requestKeyFrame(int output)
+inline void VideoFrameMixerImpl::requestKeyFrame(int output)
 {
          ELOG_DEBUG("+requestKeyFrame");
     boost::shared_lock<boost::shared_mutex> lock(m_outputMutex);
@@ -220,7 +220,7 @@ inline void SoftVideoFrameMixer::requestKeyFrame(int output)
     }
 }
 
-inline bool SoftVideoFrameMixer::addOutput(int output,
+inline bool VideoFrameMixerImpl::addOutput(int output,
                                            woogeen_base::FrameFormat format,
                                            const VideoSize& rootSize,
                                            woogeen_base::FrameDestination* dest)
@@ -264,7 +264,7 @@ inline bool SoftVideoFrameMixer::addOutput(int output,
     return true;
 }
 
-inline void SoftVideoFrameMixer::removeOutput(int32_t output)
+inline void VideoFrameMixerImpl::removeOutput(int32_t output)
 {
     boost::upgrade_lock<boost::shared_mutex> lock(m_outputMutex);
     auto it = m_outputs.find(output);
