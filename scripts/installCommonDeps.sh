@@ -135,7 +135,10 @@ install_libsrtp(){
 }
 
 install_libyami(){
-  cd $ROOT/third_party/libyami
+  cd $ROOT/third_party/
+  rm -rf libyami
+  git clone https://github.com/01org/libyami.git
+  cd libyami
   ./autogen.sh --prefix=$PREFIX_DIR
   make clean
   make -s V=0
