@@ -22,40 +22,28 @@
 #define RTSPINWRAPPER_H
 
 #include "../../addons/woogeen_base/MediaFramePipelineWrapper.h"
+#include "../../addons/woogeen_base/NodeEventRegistry.h"
 #include <RtspIn.h>
-#include <node.h>
-#include <node_object_wrap.h>
-#include <queue>
-#include <uv.h>
-
 
 /*
  * Wrapper class of woogeen_base::RtspIn
  */
-class RtspIn : public FrameSource, woogeen_base::RtspInStatusListener {
+class RtspIn : public NodeEventedObjectWrap {
  public:
   static void Init(v8::Handle<v8::Object>, v8::Handle<v8::Object>);
   woogeen_base::RtspIn* me;
-  std::queue<std::string> statsMsgs;
-  boost::mutex statusMutex;
+  bool enableAudio;
+  bool enableVideo;
 
  private:
-  RtspIn();
+  RtspIn(bool, bool);
   ~RtspIn();
   static v8::Persistent<v8::Function> constructor;
 
-  uv_async_t async_;
-  v8::Persistent<v8::Function> statusCallback_;
-
   static void New(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void close(const v8::FunctionCallbackInfo<v8::Value>& args);
-
-  static void init(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void addDestination(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void removeDestination(const v8::FunctionCallbackInfo<v8::Value>& args);
-
-  static void statusCallback(uv_async_t* handle);
-  virtual void notifyStatus(const std::string& message);
 };
 
 #endif

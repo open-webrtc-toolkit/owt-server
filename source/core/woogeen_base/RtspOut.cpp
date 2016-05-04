@@ -47,11 +47,6 @@ RtspOut::RtspOut(const std::string& url)
     m_videoQueue.reset(new woogeen_base::MediaFrameQueue());
     m_audioQueue.reset(new woogeen_base::MediaFrameQueue());
 
-    // FIXME: These should really only be called once per application run
-    av_register_all();
-    avformat_network_init();
-    av_log_set_level(AV_LOG_WARNING);
-
     m_context = avformat_alloc_context();
     assert(m_context);
 

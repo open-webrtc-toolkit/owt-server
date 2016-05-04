@@ -22,9 +22,17 @@
 
 #include <cstdio>
 #include <rtputils.h>
+#include <sstream>
 #include <sys/time.h>
 
 using namespace erizo;
+
+
+static inline void notifyAsyncEvent(EventRegistry* handle, const std::string& event, const std::string& data)
+{
+    if (handle)
+        handle->notifyAsyncEvent(event, data);
+}
 
 namespace woogeen_base {
 
@@ -43,7 +51,7 @@ RtspIn::RtspIn(const Options& options)
     , m_videoFormat(FRAME_FORMAT_UNKNOWN)
     , m_audioStreamIndex(-1)
     , m_audioFormat(FRAME_FORMAT_UNKNOWN)
-    , m_statusListener(nullptr)
+    , m_asyncHandle(nullptr)
 {
     if (options.transport.compare("tcp") == 0) {
         av_dict_set(&m_transportOpts, "rtsp_transport", "tcp", 0);
@@ -71,7 +79,7 @@ RtspIn::RtspIn (const std::string& url, const std::string& transport, uint32_t b
     , m_videoSize({1920, 1080})
     , m_audioStreamIndex(-1)
     , m_audioFormat(FRAME_FORMAT_UNKNOWN)
-    , m_statusListener(nullptr)
+    , m_asyncHandle(nullptr)
 {
     if (transport.compare("tcp") == 0) {
         av_dict_set(&m_transportOpts, "rtsp_transport", "tcp", 0);
@@ -101,11 +109,6 @@ RtspIn::~RtspIn()
     ELOG_DEBUG("closed");
 }
 
-void RtspIn::setStatusListener(RtspInStatusListener* listener)
-{
-    m_statusListener = listener;
-}
-
 void RtspIn::init()
 {
     m_running = true;
@@ -119,9 +122,6 @@ bool RtspIn::connect()
     m_context = avformat_alloc_context();
     m_timeoutHandler = new TimeoutHandler(20000);
     m_context->interrupt_callback = {&TimeoutHandler::checkInterrupt, m_timeoutHandler};
-    av_register_all();
-    avcodec_register_all();
-    avformat_network_init();
     //open rtsp
     av_init_packet(&m_avPacket);
     m_avPacket.data = nullptr;
@@ -138,6 +138,9 @@ bool RtspIn::connect()
         ELOG_ERROR("Error finding stream info %s", errbuff);
         return false;
     }
+
+    std::ostringstream status;
+    status << "{\"type\":\"ready\"";
 
     AVStream *st, *audio_st;
     if (m_needVideo) {
@@ -157,14 +160,14 @@ bool RtspIn::connect()
             if (videoCodecId == AV_CODEC_ID_VP8 || (m_enableH264 && videoCodecId == AV_CODEC_ID_H264)) {
                 if (videoCodecId == AV_CODEC_ID_VP8) {
                     m_videoFormat = FRAME_FORMAT_VP8;
-                    notifyStatus("videoCodec:vp8");
+                    status << ",\"video_codecs\":" << "[\"vp8\"]";
                 } else if (videoCodecId == AV_CODEC_ID_H264) {
                     m_videoFormat = FRAME_FORMAT_H264;
-                    notifyStatus("videoCodec:h264");
+                    status << ",\"video_codecs\":" << "[\"h264\"]";
                 }
                 //FIXME: the resolution info should be retrieved from the rtsp video source.
                 std::string resolution = "hd1080p";
-                notifyStatus("videoResolution:" + resolution);
+                status << ",\"video_resolution\":" << "\"hd1080p\"";
                 VideoResolutionHelper::getVideoSize(resolution, m_videoSize);
             } else {
                 ELOG_WARN("Video codec %d is not supported ", st->codec->codec_id);
@@ -191,13 +194,13 @@ bool RtspIn::connect()
                 audioCodecId == AV_CODEC_ID_OPUS) {
                 if (audioCodecId == AV_CODEC_ID_PCM_MULAW) {
                     m_audioFormat = FRAME_FORMAT_PCMU;
-                    notifyStatus("audioCodec:pcmu");
+                    status << ",\"audio_codecs\":" << "[\"pcmu\"]";
                 } else if (audioCodecId == AV_CODEC_ID_PCM_ALAW) {
                     m_audioFormat = FRAME_FORMAT_PCMA;
-                    notifyStatus("audioCodec:pcma");
+                    status << ",\"audio_codecs\":" << "[\"pcma\"]";
                 } else if (audioCodecId == AV_CODEC_ID_OPUS) {
                     m_audioFormat = FRAME_FORMAT_OPUS;
-                    notifyStatus("audioCodec:opus_48000_2");
+                    status << ",\"audio_codecs\":" << "[\"opus_48000_2\"]";
                 }
             } else {
                 ELOG_WARN("Audio codec %d is not supported ", audioCodecId);
@@ -208,6 +211,9 @@ bool RtspIn::connect()
     if (m_audioFormat == FRAME_FORMAT_UNKNOWN && m_videoFormat == FRAME_FORMAT_UNKNOWN)
         return false;
 
+    status << "}";
+    ::notifyAsyncEvent(m_asyncHandle, "status", status.str());
+
     av_init_packet(&m_avPacket);
     return true;
 }
@@ -215,16 +221,10 @@ bool RtspIn::connect()
 void RtspIn::receiveLoop()
 {
     bool ret = connect();
-    std::string message;
-    if (ret)
-        message = "success";
-    else
-        message = "opening input url error";
-
-    if (m_statusListener)
-        m_statusListener->notifyStatus(message);
-
-    if (!ret) return;
+    if (!ret) {
+        ::notifyAsyncEvent(m_asyncHandle, "status", "{\"type\":\"failed\",\"reason\":\"opening input url error\"}");
+        return;
+    }
 
     av_read_play(m_context); // play RTSP
 
@@ -244,9 +244,7 @@ void RtspIn::receiveLoop()
                 av_strerror(res, (char*)(&errbuff), 500);
                 ELOG_ERROR("Error opening input %s", errbuff);
                 m_running = false;
-                if (m_statusListener)
-                    m_statusListener->notifyStatus("reopening input url error");
-
+                ::notifyAsyncEvent(m_asyncHandle, "status", "{\"type\":\"failed\",\"reason\":\"reopening input url error\"}");
                 return;
             }
             av_read_play(m_context);
@@ -283,11 +281,6 @@ void RtspIn::receiveLoop()
     }
     m_running = false;
     av_read_pause(m_context);
-}
-
-void RtspIn::notifyStatus(const std::string& msg) {
-    if (m_statusListener)
-        m_statusListener->notifyStatus(msg);
 }
 
 }

@@ -22,6 +22,7 @@
 #define RtspIn_h
 
 #include <boost/thread.hpp>
+#include <EventRegistry.h>
 #include <logger.h>
 #include <MediaDefinitions.h>
 #include <string>
@@ -69,13 +70,6 @@ private:
     int64_t m_lastTime;
 };
 
-class RtspInStatusListener {
-public:
-    virtual ~RtspInStatusListener() { }
-
-    virtual void notifyStatus(const std::string& message) = 0;
-};
-
 class RtspIn : public FrameSource {
     DECLARE_LOGGER();
 public:
@@ -93,12 +87,9 @@ public:
     RtspIn (const std::string& url, const std::string& transport, uint32_t bufferSize, bool enableAudio, bool enableVideo);
     virtual ~RtspIn();
     void init();
-
-    void setStatusListener(RtspInStatusListener* listener);
+    void setEventRegistry(EventRegistry* handle) { m_asyncHandle = handle; }
 
 private:
-    void notifyStatus(const std::string& msg);
-
     std::string m_url;
     bool m_needAudio;
     bool m_needVideo;
@@ -114,10 +105,11 @@ private:
     VideoSize m_videoSize;
     int m_audioStreamIndex;
     FrameFormat m_audioFormat;
-    RtspInStatusListener* m_statusListener;
+    EventRegistry* m_asyncHandle;
 
     bool connect();
     void receiveLoop();
 };
+
 }
 #endif /* RtspIn_h */
