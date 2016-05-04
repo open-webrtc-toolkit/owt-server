@@ -18,8 +18,8 @@ try {
 GLOBAL.config = config || {};
 
 GLOBAL.config.agent = GLOBAL.config.agent || {};
-GLOBAL.config.agent.maxProcesses = GLOBAL.config.agent.maxProcesses || 1;
-GLOBAL.config.agent.prerunProcesses = GLOBAL.config.agent.prerunProcesses || 1;
+GLOBAL.config.agent.maxProcesses = GLOBAL.config.agent.maxProcesses || 13;
+GLOBAL.config.agent.prerunProcesses = GLOBAL.config.agent.prerunProcesses || 2;
 
 GLOBAL.config.cluster = GLOBAL.config.cluster || {};
 GLOBAL.config.cluster.name = GLOBAL.config.cluster.name || 'woogeen-cluster';
