@@ -198,7 +198,7 @@ pack_node() {
       done
       sed -i "s/require('\.\//Module\._load('\.\//g" "${line}"
       sed -i "s/Module\._load('.*\(\baccess\b\|\baudio\b\|\bvideo\b\)/require('woogeen\/\1\/index/g" "${line}"
-      sed -i "s/Module\._load('\.\/\(\bwrtcConnection\b\|\brtspIn\b'\)/require('woogeen\/access\/\1/g" "${line}"
+      sed -i "s/Module\._load('\.\/\(\bwrtcConnection\b'\)/require('woogeen\/access\/\1/g" "${line}"
       sed -i "1 i var Module = require('module');" "${line}"
       sed -i "/lib\/zlib.js/a '${line}'," node.gyp
     done

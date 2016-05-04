@@ -27,7 +27,7 @@
 using namespace v8;
 
 Persistent<Function> RtspIn::constructor;
-RtspIn::RtspIn() {};
+RtspIn::RtspIn(bool a, bool v) : enableAudio{a}, enableVideo{v} {};
 RtspIn::~RtspIn() {};
 
 void RtspIn::Init(Handle<Object> exports, Handle<Object> module) {
@@ -37,39 +37,37 @@ void RtspIn::Init(Handle<Object> exports, Handle<Object> module) {
   tpl->SetClassName(String::NewFromUtf8(isolate, "RtspIn"));
   tpl->InstanceTemplate()->SetInternalFieldCount(1);
   // Prototype
+  SETUP_EVENTED_PROTOTYPE_METHODS(tpl);
   NODE_SET_PROTOTYPE_METHOD(tpl, "close", close);
-  NODE_SET_PROTOTYPE_METHOD(tpl, "init", init);
   NODE_SET_PROTOTYPE_METHOD(tpl, "addDestination", addDestination);
   NODE_SET_PROTOTYPE_METHOD(tpl, "removeDestination", removeDestination);
 
   constructor.Reset(isolate, tpl->GetFunction());
   module->Set(String::NewFromUtf8(isolate, "exports"), tpl->GetFunction());
+
+  av_register_all();
+  avcodec_register_all();
+  avformat_network_init();
+  av_log_set_level(AV_LOG_WARNING);
 }
 
 void RtspIn::New(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
 
-  String::Utf8Value param0(args[0]->ToString());
-  std::string url = std::string(*param0);
-
+  std::string url = std::string(*String::Utf8Value(args[0]->ToString()));
   bool a = (args[1]->ToBoolean())->BooleanValue();
   bool v = (args[2]->ToBoolean())->BooleanValue();
-
-  String::Utf8Value param3(args[3]->ToString());
-  std::string transport = std::string(*param3);
-
+  std::string transport = std::string(*String::Utf8Value(args[3]->ToString()));
   int buffSize = args[4]->IntegerValue();
   if (buffSize <= 0) {
     buffSize = 1024*1024*2;
   }
-  RtspIn* obj = new RtspIn();
+  RtspIn* obj = new RtspIn(a, v);
   obj->me = new woogeen_base::RtspIn(url, transport, buffSize, a, v);
-  obj->src = obj->me;
-  obj->me->setStatusListener(obj);
-
+  obj->me->setEventRegistry(obj);
+  obj->me->init();
   obj->Wrap(args.This());
-  uv_async_init(uv_default_loop(), &obj->async_, &RtspIn::statusCallback);
   args.GetReturnValue().Set(args.This());
 }
 
@@ -79,17 +77,6 @@ void RtspIn::close(const FunctionCallbackInfo<Value>& args) {
   RtspIn* obj = ObjectWrap::Unwrap<RtspIn>(args.Holder());
   woogeen_base::RtspIn* me = obj->me;
   delete me;
-}
-
-void RtspIn::init(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = Isolate::GetCurrent();
-  HandleScope scope(isolate);
-
-  RtspIn* obj = ObjectWrap::Unwrap<RtspIn>(args.Holder());
-  woogeen_base::RtspIn* me = (woogeen_base::RtspIn*) obj->me;
-
-  obj->statusCallback_.Reset(isolate, Local<Function>::Cast(args[0]));
-  me->init();
 }
 
 void RtspIn::addDestination(const FunctionCallbackInfo<Value>& args) {
@@ -105,9 +92,9 @@ void RtspIn::addDestination(const FunctionCallbackInfo<Value>& args) {
   FrameDestination* param = ObjectWrap::Unwrap<FrameDestination>(args[1]->ToObject());
   woogeen_base::FrameDestination* dest = param->dest;
 
-  if (track == "audio") {
+  if (obj->enableAudio && track == "audio") {
     me->addAudioDestination(dest);
-  } else if (track == "video") {
+  } else if (obj->enableVideo && track == "video") {
     me->addVideoDestination(dest);
   }
 }
@@ -125,31 +112,9 @@ void RtspIn::removeDestination(const FunctionCallbackInfo<Value>& args) {
   FrameDestination* param = ObjectWrap::Unwrap<FrameDestination>(args[1]->ToObject());
   woogeen_base::FrameDestination* dest = param->dest;
 
-  if (track == "audio") {
+  if (obj->enableAudio && track == "audio") {
     me->removeAudioDestination(dest);
-  } else if (track == "video") {
+  } else if (obj->enableVideo && track == "video") {
     me->removeVideoDestination(dest);
   }
 }
-
-void RtspIn::notifyStatus(const std::string& message) {
-  boost::mutex::scoped_lock lock(statusMutex);
-  this->statsMsgs.push(message);
-  async_.data = this;
-  uv_async_send(&async_);
-}
-
-void RtspIn::statusCallback(uv_async_t* handle) {
-  Isolate* isolate = Isolate::GetCurrent();
-  HandleScope scope(isolate);
-  RtspIn* obj = (RtspIn*)handle->data;
-  if (!obj)
-    return;
-  boost::mutex::scoped_lock lock(obj->statusMutex);
-  while(!obj->statsMsgs.empty()){
-    Local<Value> args[] = {String::NewFromUtf8(isolate, obj->statsMsgs.front().c_str())};
-    Local<Function>::New(isolate, obj->statusCallback_)->Call(isolate->GetCurrentContext()->Global(), 1, args);
-    obj->statsMsgs.pop();
-  }
-}
-

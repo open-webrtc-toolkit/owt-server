@@ -42,6 +42,10 @@ void RtspOut::Init(Handle<Object> exports, Handle<Object> module) {
 
   constructor.Reset(isolate, tpl->GetFunction());
   module->Set(String::NewFromUtf8(isolate, "exports"), tpl->GetFunction());
+
+  av_register_all();
+  avformat_network_init();
+  av_log_set_level(AV_LOG_WARNING);
 }
 
 void RtspOut::New(const v8::FunctionCallbackInfo<v8::Value>& args) {

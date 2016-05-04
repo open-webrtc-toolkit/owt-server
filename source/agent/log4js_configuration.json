@@ -17,7 +17,6 @@
     "AudioNode": "INFO",
     "ErizoAgent": "INFO",
     "VideoNode": "INFO",
-    "RtspIn": "INFO",
     "WrtcConnection": "INFO",
     "AccessNode": "INFO"
   }

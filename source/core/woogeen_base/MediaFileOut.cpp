@@ -63,11 +63,6 @@ MediaFileOut::MediaFileOut(const std::string& recordUrl, int snapshotInterval)
     m_videoQueue.reset(new MediaFrameQueue());
     m_audioQueue.reset(new MediaFrameQueue());
 
-    // FIXME: These should really only be called once per application run
-    av_register_all();
-    avcodec_register_all();
-    av_log_set_level(AV_LOG_WARNING);
-
     m_context = avformat_alloc_context();
     assert(m_context);
 
