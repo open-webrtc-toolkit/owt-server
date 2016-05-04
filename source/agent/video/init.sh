@@ -22,8 +22,20 @@
 this=$(dirname "$0")
 this=$(cd "${this}"; pwd)
 
+usage() {
+  echo
+  echo "WooGeen Initialization Script"
+  echo "    This script initializes WooGeen-MCU Video Agent."
+  echo "    This script is intended to run on a target machine."
+  echo
+  echo "Usage:"
+  echo "    --hardware (default: false)         enable hardware video codec (only for video agent with \`videoMixer-hw.node')"
+  echo "    --help                              print this help"
+  echo
+}
+
 install_config() {
-  echo -e "\x1b[32mInitializing video agent msdk configuration...\x1b[0m"
+  echo -e "\x1b[32mInitializing Intel Media Server Studio configuration for video agent...\x1b[0m"
   # install mediaproess config
   if [[ ! -s ${this}/.msdk_log_config.ini ]]; then
     [[ -s /tmp/msdk_log_config.ini ]] && rm -f /tmp/msdk_log_config.ini
