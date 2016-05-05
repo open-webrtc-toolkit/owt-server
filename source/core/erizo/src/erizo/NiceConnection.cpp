@@ -14,7 +14,7 @@
 #define SERVER_SIDE_TURN 0
 
 namespace erizo {
-  
+
   DEFINE_LOGGER(NiceConnection, "NiceConnection")
 
 
@@ -77,7 +77,7 @@ namespace erizo {
     conn->updateComponentState(component_id, NICE_READY);
   }
 
-  NiceConnection::NiceConnection(MediaType med, const std::string &transport_name,NiceConnectionListener* listener, 
+  NiceConnection::NiceConnection(MediaType med, const std::string &transport_name,NiceConnectionListener* listener,
       unsigned int iceComponents, const std::string& stunServer, int stunPort, int minPort, int maxPort, std::string username, std::string password)
      : mediaType(med), agent_(NULL), listener_(listener), candsDelivered_(0), context_(NULL), iceState_(NICE_INITIAL), iceComponents_(iceComponents) {
 
@@ -86,7 +86,7 @@ namespace erizo {
     for (unsigned int i = 1; i<=iceComponents_; i++) {
       comp_state_list_[i] = NICE_INITIAL;
     }
-    
+
 #ifndef GLIB_VERSION_2_36
     g_type_init();
 #endif
@@ -96,19 +96,23 @@ namespace erizo {
     nice_debug_enable( FALSE );
     // Create a nice agent
     agent_ = nice_agent_new(context_, NICE_COMPATIBILITY_RFC5245);
-    GValue controllingMode = { 0 };
+    GValue controllingMode;
+    memset(&controllingMode, 0, sizeof(controllingMode));
     g_value_init(&controllingMode, G_TYPE_BOOLEAN);
     g_value_set_boolean(&controllingMode, false);
     g_object_set_property(G_OBJECT( agent_ ), "controlling-mode", &controllingMode);
 
-    GValue checks = { 0 };
+    GValue checks;
+    memset(&checks, 0, sizeof(checks));
     g_value_init(&checks, G_TYPE_UINT);
     g_value_set_uint(&checks, 100);
     g_object_set_property(G_OBJECT( agent_ ), "max-connectivity-checks", &checks);
 
 
     if (stunServer.compare("") != 0 && stunPort!=0){
-      GValue val = { 0 }, val2 = { 0 };
+      GValue val, val2;
+      memset(&val, 0, sizeof(val));
+      memset(&val2, 0, sizeof(val2));
       g_value_init(&val, G_TYPE_STRING);
       g_value_set_string(&val, stunServer.c_str());
       g_object_set_property(G_OBJECT( agent_ ), "stun-server", &val);
@@ -163,7 +167,7 @@ namespace erizo {
               NICE_RELAY_TYPE_TURN_UDP);
         }
     }
-    
+
     if(agent_){
       for (unsigned int i = 1; i<=iceComponents_; i++){
         nice_agent_attach_recv(agent_, 1, i, context_, cb_nice_recv, this);
@@ -177,7 +181,7 @@ namespace erizo {
     this->close();
     ELOG_INFO("NiceConnection Destructor END");
   }
-  
+
   packetPtr NiceConnection::getPacket(){
       if(this->checkIceState()==NICE_FINISHED || !running_) {
           packetPtr p(new dataPacket());
@@ -270,9 +274,9 @@ namespace erizo {
   }
 
   void NiceConnection::init() {
-    
+
     ELOG_DEBUG("Gathering candidates %p", this);
-    nice_agent_gather_candidates(agent_, 1);   
+    nice_agent_gather_candidates(agent_, 1);
     // Attach to the component to receive the data
     while(running_){
       if(this->checkIceState()>=NICE_FINISHED || !running_)
@@ -326,18 +330,18 @@ namespace erizo {
       thecandidate->transport = NICE_CANDIDATE_TRANSPORT_UDP;
       nice_address_set_from_string(&thecandidate->addr, cinfo.hostAddress.c_str());
       nice_address_set_port(&thecandidate->addr, cinfo.hostPort);
-      
+
       if (cinfo.hostType == RELAY||cinfo.hostType==SRFLX){
         nice_address_set_from_string(&thecandidate->base_addr, cinfo.rAddress.c_str());
         nice_address_set_port(&thecandidate->base_addr, cinfo.rPort);
         ELOG_DEBUG("Adding remote candidate type %d addr %s port %d raddr %s rport %d", cinfo.hostType, cinfo.hostAddress.c_str(), cinfo.hostPort,
             cinfo.rAddress.c_str(), cinfo.rPort);
       }else{
-        ELOG_DEBUG("Adding remote candidate type %d addr %s port %d priority %d componentId %d, username %s, pass %s", 
-          cinfo.hostType, 
-          cinfo.hostAddress.c_str(), 
-          cinfo.hostPort, 
-          cinfo.priority, 
+        ELOG_DEBUG("Adding remote candidate type %d addr %s port %d priority %d componentId %d, username %s, pass %s",
+          cinfo.hostType,
+          cinfo.hostAddress.c_str(),
+          cinfo.hostPort,
+          cinfo.priority,
           cinfo.componentId,
           cinfo.username.c_str(),
           cinfo.password.c_str()
@@ -345,10 +349,10 @@ namespace erizo {
       }
       candList = g_slist_prepend(candList, thecandidate);
     }
-    //TODO: Set Component Id properly, now fixed at 1 
+    //TODO: Set Component Id properly, now fixed at 1
     nice_agent_set_remote_candidates(agent_, (guint) 1, 1, candList);
     g_slist_free_full(candList, (GDestroyNotify)&nice_candidate_free);
-    
+
     return true;
   }
 

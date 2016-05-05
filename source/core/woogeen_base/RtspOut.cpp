@@ -1,20 +1,20 @@
 /*
- * Copyright 2015 Intel Corporation All Rights Reserved. 
- * 
- * The source code contained or described herein and all documents related to the 
- * source code ("Material") are owned by Intel Corporation or its suppliers or 
- * licensors. Title to the Material remains with Intel Corporation or its suppliers 
- * and licensors. The Material contains trade secrets and proprietary and 
- * confidential information of Intel or its suppliers and licensors. The Material 
- * is protected by worldwide copyright and trade secret laws and treaty provisions. 
- * No part of the Material may be used, copied, reproduced, modified, published, 
- * uploaded, posted, transmitted, distributed, or disclosed in any way without 
+ * Copyright 2015 Intel Corporation All Rights Reserved.
+ *
+ * The source code contained or described herein and all documents related to the
+ * source code ("Material") are owned by Intel Corporation or its suppliers or
+ * licensors. Title to the Material remains with Intel Corporation or its suppliers
+ * and licensors. The Material contains trade secrets and proprietary and
+ * confidential information of Intel or its suppliers and licensors. The Material
+ * is protected by worldwide copyright and trade secret laws and treaty provisions.
+ * No part of the Material may be used, copied, reproduced, modified, published,
+ * uploaded, posted, transmitted, distributed, or disclosed in any way without
  * Intel's prior express written permission.
- * 
- * No license under any patent, copyright, trade secret or other intellectual 
- * property right is granted to or conferred upon you by disclosure or delivery of 
- * the Materials, either expressly, by implication, inducement, estoppel or 
- * otherwise. Any license under such intellectual property rights must be express 
+ *
+ * No license under any patent, copyright, trade secret or other intellectual
+ * property right is granted to or conferred upon you by disclosure or delivery of
+ * the Materials, either expressly, by implication, inducement, estoppel or
+ * otherwise. Any license under such intellectual property rights must be express
  * and approved by Intel in writing.
  */
 
@@ -127,7 +127,8 @@ void RtspOut::onFrame(const woogeen_base::Frame& frame)
 
 int RtspOut::writeVideoFrame(uint8_t* data, size_t size, int64_t timestamp)
 {
-    AVPacket pkt = { 0 };
+    AVPacket pkt;
+    memset(&pkt, 0, sizeof(pkt));
     av_init_packet(&pkt);
     pkt.data = data;
     pkt.size = size;
@@ -199,7 +200,8 @@ void RtspOut::encodeAudio() {
         ELOG_ERROR("cannot read enough data from fifo");
         return;
     }
-    AVPacket pkt = { 0 };
+    AVPacket pkt;
+    memset(&pkt, 0, sizeof(pkt));
     av_init_packet(&pkt);
     int data_present = 0;
     if (avcodec_encode_audio2(m_audioStream->codec, &pkt, m_audioEncodingFrame, &data_present) < 0) {
@@ -235,7 +237,8 @@ AVFrame* RtspOut::allocAudioFrame(AVCodecContext* c)
 
 int RtspOut::writeAudioFrame(uint8_t* data, size_t size, int64_t timestamp)
 {
-    AVPacket pkt = { 0 };
+    AVPacket pkt;
+    memset(&pkt, 0, sizeof(pkt));
     av_init_packet(&pkt);
     pkt.data = data;
     pkt.size = size;
