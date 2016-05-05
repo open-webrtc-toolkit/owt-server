@@ -116,9 +116,9 @@ case $yn in
   * ) install_openh264;;
 esac
 
-read -p "Installing mediaprocessor? [No/yes]" yn
+read -p "Installing libyami? [No/yes]" yn
 case $yn in
-  [Yy]* ) install_mediaprocessor;;
+  [Yy]* ) install_libyami;;
   [Nn]* ) ;;
   * ) ;;
 esac
