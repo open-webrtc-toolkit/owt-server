@@ -91,6 +91,7 @@ struct FeedbackMsg {
             char     buf[128];
         } rtcp;
     } data;
+    FeedbackMsg(FeedbackType t, FeedbackCmd c) : type{t}, cmd{c} {}
 };
 
 class FrameDestination;

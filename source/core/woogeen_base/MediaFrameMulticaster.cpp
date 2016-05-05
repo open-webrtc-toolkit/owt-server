@@ -36,7 +36,7 @@ MediaFrameMulticaster::~MediaFrameMulticaster()
 void MediaFrameMulticaster::onFeedback(const FeedbackMsg& msg)
 {
     if (msg.type == VIDEO_FEEDBACK && msg.cmd == REQUEST_KEY_FRAME) {
-        ++m_pendingKeyFrameRequests;      
+        ++m_pendingKeyFrameRequests;
     }
 }
 
