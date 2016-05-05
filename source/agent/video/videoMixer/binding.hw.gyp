@@ -25,6 +25,7 @@
       '-llog4cxx',
       '-L$(CORE_HOME)/../../third_party/webrtc', '-lwebrtc',
       '-L$(CORE_HOME)/../../build/libdeps/build/lib', '-lyami',
+      '<!@(pkg-config --libs libva)',
     ],
     'conditions': [
       [ 'OS=="mac"', {
