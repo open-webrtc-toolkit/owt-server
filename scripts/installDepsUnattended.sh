@@ -86,7 +86,7 @@ fi
 
 ${NO_INTERNAL} || install_webrtc
 
-install_mediaprocessor
+install_libyami
 
 if [ "$CLEANUP" = "true" ]; then
   echo "Cleaning up..."
