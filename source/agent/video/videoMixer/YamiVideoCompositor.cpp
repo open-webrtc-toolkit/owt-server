@@ -35,8 +35,6 @@ namespace mcu {
 
 DEFINE_LOGGER(YamiVideoCompositor, "mcu.media.YamiVideoCompositor");
 
-//efine ERROR ELOG_ERROR
-
 template <class T>
 class VideoPool : public EnableSharedFromThis<VideoPool<T> >
 {
@@ -139,9 +137,6 @@ public:
        /*VAStatus status = vaCreateSurfaces(*m_display,width, height, VA_RT_FORMAT_YUV420 ,surfaces.size(), &surfaces[0], NULL, 0);
          */
 
-        //wired why this call vaCreateSurfaces_0_32_0
-       //VAStatus status = vaCreateSurfaces_0_32_0(*m_display,width, height,surfaces.size(), &surfaces[0]);
-
         if (status != VA_STATUS_SUCCESS) {
             ELOG_ERROR("create surface failed, %s", vaErrorStr(status));
             return false;
@@ -221,7 +216,9 @@ public:
             return input;
         if (!m_queue.empty()) {
             input = m_queue.front();
-            m_queue.pop_front();
+            // Keep at least one frame for renderer
+            if (!m_queue.size() > 1)
+                m_queue.pop_front();
             rect = m_rect;
         }
         return input;
@@ -258,7 +255,6 @@ private:
     std::deque<SharedPtr<VideoFrame> > m_queue;
     VideoSize m_rootSize;
     Region m_region;
-    //dest rect
     VideoRect m_rect;
     boost::shared_mutex m_mutex;
 };
@@ -267,9 +263,9 @@ DEFINE_LOGGER(VideoInput, "mcu.media.VideoInput");
 
 YamiVideoCompositor::YamiVideoCompositor(uint32_t maxInput, VideoSize rootSize, YUVColor bgColor)
     : m_compositeSize(rootSize)
-    , m_bgColor(bgColor)
+    , m_bgColor(0xff000000)
 {
-    ELOG_ERROR("set size to %dx%d, input = %d", rootSize.width, rootSize.height, maxInput);
+    ELOG_DEBUG("set size to %dx%d, input = %d", rootSize.width, rootSize.height, maxInput);
     m_inputs.resize(maxInput);
     for (auto& input : m_inputs) {
         input.reset(new VideoInput());
@@ -287,12 +283,12 @@ YamiVideoCompositor::YamiVideoCompositor(uint32_t maxInput, VideoSize rootSize, 
 
 
     if (!m_allocator->setFormat(YAMI_FOURCC('N', 'V', '1', '2'),
-        m_compositeSize.width, m_compositeSize.width)) {
-        ELOG_ERROR("set to %dx%d ", m_compositeSize.width, m_compositeSize.width);
+        m_compositeSize.width, m_compositeSize.height)) {
+        ELOG_DEBUG("set to %dx%d ", m_compositeSize.width, m_compositeSize.width);
     }
     m_jobTimer.reset(new woogeen_base::JobTimer(30, this));
     m_jobTimer->start();
-    ELOG_ERROR("-set size to %dx%d, input = %d", rootSize.width, rootSize.height, maxInput);
+    ELOG_DEBUG("set size to %dx%d, input = %d", rootSize.width, rootSize.height, maxInput);
 }
 
 YamiVideoCompositor::~YamiVideoCompositor()
@@ -302,23 +298,23 @@ YamiVideoCompositor::~YamiVideoCompositor()
 
 void YamiVideoCompositor::updateRootSize(VideoSize& videoSize)
 {
-    ELOG_ERROR("updateRootSize to %dx%d", videoSize.width, videoSize.height);
+    ELOG_DEBUG("updateRootSize to %dx%d", videoSize.width, videoSize.height);
     boost::upgrade_lock<boost::shared_mutex> lock(m_mutex);
     m_compositeSize = videoSize;
 
     for (auto& input : m_inputs) {
         input->updateRootSize(videoSize);
     }
-    ELOG_ERROR("set size to %dx%d failed", videoSize.width, videoSize.height);
+    ELOG_DEBUG("set size to %dx%d failed", videoSize.width, videoSize.height);
     if (!m_allocator->setFormat(YAMI_FOURCC('N', 'V', '1', '2'), videoSize.width, videoSize.height)) {
-        ELOG_ERROR("set size to %dx%d failed", videoSize.width, videoSize.height);
+        ELOG_DEBUG("set size to %dx%d failed", videoSize.width, videoSize.height);
     }
 }
 
 void YamiVideoCompositor::updateBackgroundColor(YUVColor& bgColor)
 {
     boost::upgrade_lock<boost::shared_mutex> lock(m_mutex);
-    m_bgColor = bgColor;
+    m_bgColor = 0xff000000;
 }
 
 void YamiVideoCompositor::updateLayoutSolution(LayoutSolution& solution)
@@ -333,7 +329,7 @@ void YamiVideoCompositor::updateLayoutSolution(LayoutSolution& solution)
 
 bool YamiVideoCompositor::activateInput(int input)
 {
-    ELOG_ERROR("activateInput = %d", input);
+    ELOG_DEBUG("activateInput = %d", input);
     m_inputs[input]->activate();
     return true;
 }
@@ -345,7 +341,7 @@ void YamiVideoCompositor::deActivateInput(int input)
 
 void YamiVideoCompositor::pushInput(int input, const woogeen_base::Frame& frame)
 {
-    ELOG_ERROR("push input %d", input);
+    ELOG_DEBUG("push input %d", input);
     boost::upgrade_lock<boost::shared_mutex> lock(m_mutex);
     m_inputs[input]->pushInput(frame);
 }
@@ -359,6 +355,8 @@ void YamiVideoCompositor::onTimeout()
 void YamiVideoCompositor::generateFrame()
 {
     SharedPtr<VideoFrame> compositeFrame = layout();
+    if (!compositeFrame)
+        return;
 
     YamiVideoFrame holder;
     holder.frame = compositeFrame;
@@ -370,24 +368,12 @@ void YamiVideoCompositor::generateFrame()
     frame.length = 0; // unused.
     frame.additionalInfo.video.width = m_compositeSize.width;
     frame.additionalInfo.video.height = m_compositeSize.height;
-    if (compositeFrame) {
-      ELOG_ERROR("composite frame != null");
-    } else {
-      ELOG_ERROR("compiste frame = null");
-    }
 
     deliverFrame(frame);
 }
 
-void YamiVideoCompositor::setBackgroundColor()
-{
-    ELOG_TRACE("setBackgroundColor");
-}
-
 SharedPtr<VideoFrame> YamiVideoCompositor::layout()
 {
-    // Update the background color
-//    setBackgroundColor();
     return customLayout();
 }
 
@@ -397,12 +383,23 @@ SharedPtr<VideoFrame> YamiVideoCompositor::customLayout()
     if (!dest) {
         return dest;
     }
-    for (auto& input : m_inputs) {
+
+    bool gotFrame = false;
+
+    for (size_t i = 0; i < m_inputs.size(); i++) {
+        auto& input = m_inputs[i];
         SharedPtr<VideoFrame> src = input->popInput(dest->crop);
         if (src) {
             m_vpp->process(src, dest);
+            ELOG_DEBUG("(%d, %d, %d, %d) to (%d, %d, %d, %d)", src->crop.x, src->crop.y, src->crop.width, src->crop.height,
+                dest->crop.x, dest->crop.y, dest->crop.width, dest->crop.height);
+
+            gotFrame = true;
         }
     }
+    // Never got a frame, return null.
+    if (!gotFrame)
+        dest.reset();
     return dest;
 }
 
