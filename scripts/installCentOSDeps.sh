@@ -34,7 +34,7 @@ install_glib2(){
 install_boost(){
   if [ -d $LIB_DIR ]; then
     cd $LIB_DIR
-    wget -c http://superb-dca2.dl.sourceforge.net/project/boost/boost/1.50.0/boost_1_50_0.tar.bz2
+    wget -c http://iweb.dl.sourceforge.net/project/boost/boost/1.50.0/boost_1_50_0.tar.bz2
     tar xvf boost_1_50_0.tar.bz2
     cd boost_1_50_0
     chmod +x bootstrap.sh
