@@ -58,11 +58,9 @@ void AudioMixer::New(const v8::FunctionCallbackInfo<v8::Value>& args) {
   std::string config = std::string(*param0);
 
   AudioMixer* obj = new AudioMixer();
-  obj->hasCallback_ = false;
   obj->me = new mcu::AudioMixer(config);
 
   obj->Wrap(args.This());
-  uv_async_init(uv_default_loop(), &obj->asyncVAD_, &AudioMixer::vadCallback);
   args.GetReturnValue().Set(args.This());
 }
 
@@ -71,13 +69,7 @@ void AudioMixer::close(const v8::FunctionCallbackInfo<v8::Value>& args) {
   HandleScope scope(isolate);
   AudioMixer* obj = ObjectWrap::Unwrap<AudioMixer>(args.Holder());
   mcu::AudioMixer* me = obj->me;
-
-  obj->me = NULL;
-  obj->hasCallback_ = false;
-
-  if(!uv_is_closing((uv_handle_t*)&obj->asyncVAD_)) {
-    uv_close((uv_handle_t*)&obj->asyncVAD_, NULL);
-  }
+  obj->me = nullptr;
   delete me;
 }
 
@@ -85,28 +77,23 @@ void AudioMixer::enableVAD(const v8::FunctionCallbackInfo<v8::Value>& args) {
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
   AudioMixer* obj = ObjectWrap::Unwrap<AudioMixer>(args.Holder());
-  if (obj->me == NULL){
+  if (obj->me == nullptr)
     return;
-  }
 
   int period = args[0]->IntegerValue();
 
-  obj->me->enableVAD(period, obj);
-  obj->hasCallback_ = true;
-  obj->vadCallback_.Reset(isolate, Local<Function>::Cast(args[1]));
+  obj->me->setEventRegistry(obj);
+  obj->me->enableVAD(period);
+  if (args.Length() > 1 && args[1]->IsFunction())
+    Local<Object>::New(isolate, obj->m_store)->Set(String::NewFromUtf8(isolate, "vad"), args[1]);
 }
 
 void AudioMixer::disableVAD(const v8::FunctionCallbackInfo<v8::Value>& args) {
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
   AudioMixer* obj = ObjectWrap::Unwrap<AudioMixer>(args.Holder());
-
-  if (obj->hasCallback_) {
-    obj->me->disableVAD();
-    obj->vadCallback_.Reset();
-    obj->vadMsgs.clear();
-    obj->hasCallback_ = false;
-  }
+  obj->me->disableVAD();
+  obj->me->setEventRegistry(nullptr);
 }
 
 void AudioMixer::resetVAD(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -179,31 +166,4 @@ void AudioMixer::removeOutput(const v8::FunctionCallbackInfo<v8::Value>& args) {
   std::string participantID = std::string(*param0);
 
   me->removeOutput(participantID);
-}
-
-void AudioMixer::notifyVAD(const std::string& participantID) {
-  if (!this->hasCallback_){
-    return;
-  }
-  boost::mutex::scoped_lock lock(vadMutex);
-  this->vadMsgs.push_back(participantID);
-  asyncVAD_.data = this;
-  uv_async_send(&asyncVAD_);
-}
-
-void AudioMixer::vadCallback(uv_async_t* handle){
-  Isolate* isolate = Isolate::GetCurrent();
-  HandleScope scope(isolate);
-  AudioMixer* obj = (AudioMixer*)handle->data;
-
-  if (!obj || obj->me == NULL)
-    return;
-  boost::mutex::scoped_lock lock(obj->vadMutex);
-  if (obj->hasCallback_) {
-    while(!obj->vadMsgs.empty()){
-      Local<Value> args[] = {String::NewFromUtf8(isolate, obj->vadMsgs.front().c_str())};
-      Local<Function>::New(isolate, obj->vadCallback_)->Call(isolate->GetCurrentContext()->Global(), 1, args);
-      obj->vadMsgs.pop_front();
-    }
-  }
 }

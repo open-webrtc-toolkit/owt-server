@@ -6,6 +6,7 @@
       'AudioMixerWrapper.cc',
       'AudioFrame2RtpPacketConverter.cpp',
       'AudioMixer.cpp',
+      '../../addons/woogeen_base/NodeEventRegistry.cc',
       '../../../core/woogeen_base/MediaFramePipeline.cpp',
     ],
     'include_dirs': [ '$(CORE_HOME)/common',
