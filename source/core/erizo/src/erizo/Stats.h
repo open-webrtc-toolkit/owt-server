@@ -5,6 +5,7 @@
 #ifndef STATS_H_
 #define STATS_H_
 
+#include <EventRegistry.h>
 #include <string>
 #include <map>
 #include <boost/thread/mutex.hpp>
@@ -15,12 +16,10 @@
 
 namespace erizo{
 
-  class WebRtcConnectionStatsListener;
-
   class Stats{
     DECLARE_LOGGER();
     public:
-    
+
     Stats();
     virtual ~Stats();
 
@@ -33,17 +32,15 @@ namespace erizo{
     void setAudioSourceSSRC(unsigned int ssrc){
       audioSSRC_ = ssrc;
     };
-    inline void setStatsListener(WebRtcConnectionStatsListener* listener){
-      this->theListener_ = listener;
-    }
-    
+    inline void setEventRegistry(EventRegistry* handle) { asyncHandle_ = handle; }
+
     private:
     typedef std::map<std::string, uint64_t> singleSSRCstatsMap_t;
     typedef std::map <uint32_t, singleSSRCstatsMap_t> fullStatsMap_t;
     fullStatsMap_t statsPacket_;
     boost::recursive_mutex mapMutex_;
-    WebRtcConnectionStatsListener* theListener_;
     unsigned int videoSSRC_, audioSSRC_;
+    EventRegistry* asyncHandle_;
 
     void processRtcpPacket(RTCPHeader* chead);
 

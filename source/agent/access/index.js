@@ -45,10 +45,13 @@ module.exports = function () {
         var conn;
 
         if (stream_type === 'webrtc') {
-            conn = new WrtcConnection({direction: 'in',
-                                       private_ip_regexp: that.privateRegexp,
-                                       public_ip: that.publicIP});
-            conn.init(options.has_audio, options.has_video, function (response) {
+            conn = new WrtcConnection({
+                direction: 'in',
+                audio: options.has_audio,
+                video: options.has_video,
+                private_ip_regexp: that.privateRegexp,
+                public_ip: that.publicIP
+            }, function (response) {
                 callback('callback', response);
             });
         } else if (stream_type === 'internal') {
@@ -114,10 +117,13 @@ module.exports = function () {
         var conn;
 
         if (subscription_type === 'webrtc') {
-            conn = new WrtcConnection({direction: 'out',
-                                       private_ip_regexp: that.privateRegexp,
-                                       public_ip: that.publicIP});
-            conn.init(options.require_audio, options.require_video, function (response) {
+            conn = new WrtcConnection({
+                direction: 'out',
+                audio: options.require_audio,
+                video: options.require_video,
+                private_ip_regexp: that.privateRegexp,
+                public_ip: that.publicIP
+            }, function (response) {
                 callback('callback', response);
             });
         } else if (subscription_type === 'rtsp') {

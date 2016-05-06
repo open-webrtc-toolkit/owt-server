@@ -37,7 +37,7 @@ public:
     static NodeEventRegistry* New(const v8::Local<v8::Function>&);
 
     virtual ~NodeEventRegistry();
-    bool notifyAsyncEvent(const std::string& event, const std::string& data);
+    bool notifyAsyncEvent(const std::string& event, const std::string& data, bool prompt = false);
 
 protected:
     explicit NodeEventRegistry();
@@ -51,7 +51,7 @@ protected:
 private:
     uv_async_t* m_uvHandle;
     std::mutex m_lock;
-    std::queue<Data> m_buffer;
+    std::deque<Data> m_buffer;
     Data m_data;
     void process();
     void process(const Data& data);

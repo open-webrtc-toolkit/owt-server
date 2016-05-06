@@ -13,15 +13,15 @@ var cipher = require('./cipher');
 // Logger
 var log = logger.getLogger('WrtcConnection');
 
-module.exports = function (spec) {
+module.exports = function (spec, on_status) {
     var that = {},
         direction = spec.direction,
         // preferredAudioCodecs = spec.preferred_audio_codecs,
         // preferredVideoCodecs = spec.preferred_video_codecs,
         privateRegexp = spec.private_ip_regexp,
         publicIP = spec.public_ip,
-        audio = false,
-        video = false,
+        audio = spec.audio || false,
+        video = spec.video || false,
         audioFrameConstructor,
         audioFramePacketizer,
         videoFrameConstructor,
@@ -82,15 +82,17 @@ module.exports = function (spec) {
         var audio_codec_list_in_answer = [],
             video_codec_list_in_answer = [];
 
-        wrtc.init(function (newStatus, mess){
-
+        wrtc.addEventListener('connection', function (resp) {
           if (terminated) {
             return;
           }
+          var info = JSON.parse(resp);
+          var status = info.status;
+          var message = info.message;
 
-          log.info('webrtc Addon status' + newStatus + mess);
+          log.info('connection status:', status, message);
 
-          switch (newStatus) {
+          switch (status) {
             case CONN_FINISHED:
               terminated = true;
               break;
@@ -101,16 +103,16 @@ module.exports = function (spec) {
 
             case CONN_SDP:
             case CONN_GATHERED:
-              log.debug('Sending SDP', mess);
-              mess = mess.replace(privateRegexp, publicIP);
-              audio_codec_list_in_answer = getAudioCodecList(mess);
-              video_codec_list_in_answer = getVideoCodecList(mess);
-              on_status({type: 'answer', sdp: mess});
+              log.debug('Sending SDP', message);
+              message = message.replace(privateRegexp, publicIP);
+              audio_codec_list_in_answer = getAudioCodecList(message);
+              video_codec_list_in_answer = getVideoCodecList(message);
+              on_status({type: 'answer', sdp: message});
               break;
 
             case CONN_CANDIDATE:
-              mess = mess.replace(privateRegexp, publicIP);
-              on_status({type: 'candidate', candidate: mess});
+              message = message.replace(privateRegexp, publicIP);
+              on_status({type: 'candidate', candidate: message});
               break;
 
             case CONN_FAILED:
@@ -133,44 +135,6 @@ module.exports = function (spec) {
         });
 
         on_status({type: 'initializing'});
-    };
-
-    that.init = function (audio_info, video_info, on_status) {
-        audio = audio_info;
-        video = video_info;
-        var keystore = path.resolve(path.dirname(GLOBAL.config.webrtc.keystorePath), '.woogeen.keystore');
-        cipher.unlock(cipher.k, keystore, function cb (err, passphrase) {
-            if (!err) {
-                wrtc = new WebRtcConnection(!!audio, !!video, true/*FIXME: hash264:hard coded*/, GLOBAL.config.webrtc.stunserver, GLOBAL.config.webrtc.stunport, GLOBAL.config.webrtc.minport, GLOBAL.config.webrtc.maxport, GLOBAL.config.webrtc.keystorePath, GLOBAL.config.webrtc.keystorePath, passphrase, true, true, true, true, false);
-
-                if (direction === 'in') {
-                    if (audio) {
-                        audioFrameConstructor = new AudioFrameConstructor(wrtc);
-                        wrtc.setAudioReceiver(audioFrameConstructor);
-                    }
-
-                    if (video) {
-                        videoFrameConstructor = new VideoFrameConstructor(wrtc);
-                        wrtc.setVideoReceiver(videoFrameConstructor);
-                    }
-                }
-
-                if (direction === 'out') {
-                    if (audio) {
-                        audioFramePacketizer = new AudioFramePacketizer(wrtc);
-                    }
-
-                    if (video) {
-                        videoFramePacketizer = new VideoFramePacketizer(wrtc);
-                        //video.resolution && wrtc.setSendResolution(video.resolution);
-                    }
-                }
-
-                initWebRtcConnection(wrtc, on_status);
-            } else {
-                log.error('init error:', err);
-            }
-        });
     };
 
     that.close = function () {
@@ -269,6 +233,40 @@ module.exports = function (spec) {
             videoFrameConstructor.requestKeyFrame();
         }
     };
+
+    var keystore = path.resolve(path.dirname(GLOBAL.config.webrtc.keystorePath), '.woogeen.keystore');
+    cipher.unlock(cipher.k, keystore, function cb (err, passphrase) {
+        if (!err) {
+            wrtc = new WebRtcConnection(!!audio, !!video, true/*FIXME: hash264:hard coded*/, GLOBAL.config.webrtc.stunserver, GLOBAL.config.webrtc.stunport, GLOBAL.config.webrtc.minport, GLOBAL.config.webrtc.maxport, GLOBAL.config.webrtc.keystorePath, GLOBAL.config.webrtc.keystorePath, passphrase, true, true, true, true, false);
+
+            if (direction === 'in') {
+                if (audio) {
+                    audioFrameConstructor = new AudioFrameConstructor(wrtc);
+                    wrtc.setAudioReceiver(audioFrameConstructor);
+                }
+
+                if (video) {
+                    videoFrameConstructor = new VideoFrameConstructor(wrtc);
+                    wrtc.setVideoReceiver(videoFrameConstructor);
+                }
+            }
+
+            if (direction === 'out') {
+                if (audio) {
+                    audioFramePacketizer = new AudioFramePacketizer(wrtc);
+                }
+
+                if (video) {
+                    videoFramePacketizer = new VideoFramePacketizer(wrtc);
+                    //video.resolution && wrtc.setSendResolution(video.resolution);
+                }
+            }
+
+            initWebRtcConnection(wrtc, on_status);
+        } else {
+            log.error('init error:', err);
+        }
+    });
 
     return that;
 };

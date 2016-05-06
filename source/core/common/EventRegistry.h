@@ -26,7 +26,7 @@
 class EventRegistry {
 public:
     virtual ~EventRegistry() {}
-    virtual bool notifyAsyncEvent(const std::string& event, const std::string& data) = 0;
+    virtual bool notifyAsyncEvent(const std::string& event, const std::string& data, bool prompt = false) = 0;
 };
 
 #endif // EventRegistry_h

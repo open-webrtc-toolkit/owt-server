@@ -17,8 +17,8 @@ void WebRtcConnection::Init(Local<Object> exports) {
   tpl->SetClassName(String::NewFromUtf8(isolate, "WebRtcConnection"));
   tpl->InstanceTemplate()->SetInternalFieldCount(1);
   // Prototype
+  SETUP_EVENTED_PROTOTYPE_METHODS(tpl);
   NODE_SET_PROTOTYPE_METHOD(tpl, "close", close);
-  NODE_SET_PROTOTYPE_METHOD(tpl, "init", init);
   NODE_SET_PROTOTYPE_METHOD(tpl, "setRemoteSdp", setRemoteSdp);
   NODE_SET_PROTOTYPE_METHOD(tpl, "start", start);
   NODE_SET_PROTOTYPE_METHOD(tpl, "addRemoteCandidate", addRemoteCandidate);
@@ -37,7 +37,7 @@ void WebRtcConnection::Init(Local<Object> exports) {
 void WebRtcConnection::New(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
-  if (args.Length() < 15){
+  if (args.Length() < 15) {
     isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Wrong number of arguments")));
     return;
   }
@@ -73,16 +73,6 @@ void WebRtcConnection::New(const FunctionCallbackInfo<Value>& args) {
   WebRtcConnection* obj = new WebRtcConnection();
   obj->me = new erizo::WebRtcConnection(a, v, h, stunServer,stunPort,minPort,maxPort, certFile, keyFile, privatePass, qos, t, obj);
   obj->Wrap(args.This());
-  obj->async_ = reinterpret_cast<uv_async_t*>(malloc(sizeof(uv_async_t)));
-  if (obj->async_) {
-    obj->async_->close_cb = closeCallback;
-    uv_async_init(uv_default_loop(), obj->async_, &WebRtcConnection::eventsCallback);
-  }
-  obj->asyncStats_ = reinterpret_cast<uv_async_t*>(malloc(sizeof(uv_async_t)));
-  if (obj->asyncStats_) {
-    obj->asyncStats_->close_cb = closeCallback;
-    uv_async_init(uv_default_loop(), obj->asyncStats_, &WebRtcConnection::statsCallback);
-  }
   args.GetReturnValue().Set(args.This());
 }
 
@@ -90,29 +80,11 @@ void WebRtcConnection::close(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
   WebRtcConnection* obj = ObjectWrap::Unwrap<WebRtcConnection>(args.Holder());
-  if (obj->unref() > 0) {
+  if (obj->unref() > 0)
     return;
-  }
 
   delete obj->me;
-  obj->me = NULL;
-  obj->hasCallback_ = false;
-  
-  if(obj->async_ && !uv_is_closing(reinterpret_cast<uv_handle_t*>(obj->async_))) {
-    uv_close(reinterpret_cast<uv_handle_t*>(obj->async_), closeCallback);
-  }
-  if(obj->asyncStats_ && !uv_is_closing(reinterpret_cast<uv_handle_t*>(obj->asyncStats_))) {
-    uv_close(reinterpret_cast<uv_handle_t*>(obj->asyncStats_), closeCallback);
-  }
-
-}
-
-void WebRtcConnection::init(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = Isolate::GetCurrent();
-  HandleScope scope(isolate);
-
-  WebRtcConnection* obj = ObjectWrap::Unwrap<WebRtcConnection>(args.Holder());
-  obj->eventCallback_.Reset(isolate, Local<Function>::Cast(args[0]));
+  obj->me = nullptr;
 }
 
 void WebRtcConnection::setRemoteSdp(const FunctionCallbackInfo<Value>& args) {
@@ -152,7 +124,7 @@ void WebRtcConnection::addRemoteCandidate(const FunctionCallbackInfo<Value>& arg
   std::string mid = std::string(*param);
 
   int sdpMLine = args[1]->IntegerValue();
-  
+
   String::Utf8Value param2(args[2]->ToString());
   std::string sdp = std::string(*param2);
 
@@ -168,9 +140,7 @@ void WebRtcConnection::getLocalSdp(const FunctionCallbackInfo<Value>& args) {
   WebRtcConnection* obj = ObjectWrap::Unwrap<WebRtcConnection>(args.Holder());
   erizo::WebRtcConnection* me = obj->me;
 
-  std::string sdp = me->getLocalSdp();
-
-  args.GetReturnValue().Set(String::NewFromUtf8(isolate, sdp.c_str()));
+  args.GetReturnValue().Set(String::NewFromUtf8(isolate, me->getLocalSdp().c_str()));
 }
 
 void WebRtcConnection::setAudioReceiver(const FunctionCallbackInfo<Value>& args) {
@@ -204,28 +174,19 @@ void WebRtcConnection::getCurrentState(const FunctionCallbackInfo<Value>& args) 
   HandleScope scope(isolate);
 
   WebRtcConnection* obj = ObjectWrap::Unwrap<WebRtcConnection>(args.Holder());
-  erizo::WebRtcConnection* me = obj->me;
 
-  int state = me->getCurrentState();
-
-  args.GetReturnValue().Set(Number::New(isolate, state));
+  args.GetReturnValue().Set(Number::New(isolate, obj->me->getCurrentState()));
 }
 
 void WebRtcConnection::getStats(const FunctionCallbackInfo<Value>& args){
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
   WebRtcConnection* obj = ObjectWrap::Unwrap<WebRtcConnection>(args.Holder());
-  if (obj->me == NULL){ //Requesting stats when WebrtcConnection not available
+  if (!obj->me) //Requesting stats when WebrtcConnection not available
     return;
-  }
-  if (args.Length()==0){
-    std::string lastStats = obj->me->getJSONStats();
-    args.GetReturnValue().Set(String::NewFromUtf8(isolate, lastStats.c_str()));
-  }else{
-    obj->me->setWebRtcConnectionStatsListener(obj);
-    obj->hasCallback_ = true;
-    obj->statsCallback_.Reset(isolate, Local<Function>::Cast(args[0]));
-  }
+
+  std::string lastStats = obj->me->getJSONStats();
+  args.GetReturnValue().Set(String::NewFromUtf8(isolate, lastStats.c_str()));
 }
 
 void WebRtcConnection::enableAudio(const v8::FunctionCallbackInfo<v8::Value>& args)
@@ -251,66 +212,3 @@ void WebRtcConnection::enableVideo(const v8::FunctionCallbackInfo<v8::Value>& ar
   bool b = (args[0]->ToBoolean())->BooleanValue();
   me->enableVideo(b);
 }
-
-void WebRtcConnection::notifyEvent(erizo::WebRTCEvent event, const std::string& message, bool prompt) {
-  boost::mutex::scoped_lock lock(eventsMutex);
-  if (prompt) {
-    this->eventSts.push_front(event);
-    this->eventMsgs.push_front(message);
-  } else {
-    this->eventSts.push_back(event);
-    this->eventMsgs.push_back(message);
-  }
-  if (async_) {
-    async_->data = this;
-    uv_async_send(async_);
-  }
-}
-
-void WebRtcConnection::notifyStats(const std::string& message) {
-  if (!this->hasCallback_){
-    return;
-  }
-  boost::mutex::scoped_lock lock(statsMutex);
-  this->statsMsgs.push(message);
-  if (asyncStats_) {
-    asyncStats_->data = this;
-    uv_async_send(asyncStats_);
-  }
-}
-
-void WebRtcConnection::eventsCallback(uv_async_t* handle){
-  Isolate* isolate = Isolate::GetCurrent();
-  HandleScope scope(isolate);
-  WebRtcConnection* obj = (WebRtcConnection*)handle->data;
-  if (!obj || obj->me == NULL)
-    return;
-  boost::mutex::scoped_lock lock(obj->eventsMutex);
-  while (!obj->eventSts.empty()) {
-    Local<Value> args[] = {Integer::New(isolate, obj->eventSts.front()), String::NewFromUtf8(isolate, obj->eventMsgs.front().c_str())};
-    Local<Function>::New(isolate, obj->eventCallback_)->Call(isolate->GetCurrentContext()->Global(), 2, args);
-    obj->eventMsgs.pop_front();
-    obj->eventSts.pop_front();
-  }
-}
-
-void WebRtcConnection::statsCallback(uv_async_t* handle){
-  Isolate* isolate = Isolate::GetCurrent();
-  HandleScope scope(isolate);
-  WebRtcConnection* obj = (WebRtcConnection*)handle->data;
-  if (!obj || obj->me == NULL)
-    return;
-  boost::mutex::scoped_lock lock(obj->statsMutex);
-  if (obj->hasCallback_) {
-    while(!obj->statsMsgs.empty()){
-      Local<Value> args[] = {String::NewFromUtf8(isolate, obj->statsMsgs.front().c_str())};
-      Local<Function>::New(isolate, obj->statsCallback_)->Call(isolate->GetCurrentContext()->Global(), 1, args);
-      obj->statsMsgs.pop();
-    }
-  }
-}
-
-void WebRtcConnection::closeCallback(uv_handle_t* handle) {
-  free(handle);
-}
-
