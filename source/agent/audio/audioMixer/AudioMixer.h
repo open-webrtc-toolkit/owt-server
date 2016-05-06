@@ -21,6 +21,7 @@
 #ifndef AudioMixer_h
 #define AudioMixer_h
 
+#include <EventRegistry.h>
 #include <utility>
 #include <string>
 #include <boost/scoped_ptr.hpp>
@@ -45,11 +46,6 @@ namespace woogeen_base {
 namespace mcu {
 
 using namespace woogeen_base;
-
-class VADListener {
-public:
-    virtual void notifyVAD(const std::string& activeParticipant) = 0;
-};
 
 class AudioChannel : public webrtc::AudioEncodedFrameCallback,
                      public webrtc::VoEMediaProcess,
@@ -107,7 +103,7 @@ public:
     // Implements JobTimerListener.
     void onTimeout();
 
-    void enableVAD(uint32_t period, VADListener* vadCallback);
+    void enableVAD(uint32_t period);
     void disableVAD();
     void resetVAD();
     bool addInput(const std::string& participant, const std::string& codec, woogeen_base::FrameSource* source);
@@ -116,6 +112,7 @@ public:
     void removeOutput(const std::string& participant);
 
     webrtc::VoEVideoSync* avSyncInterface();
+    void setEventRegistry(EventRegistry* handle) { m_asyncHandle = handle; }
 
 private:
     bool addChannel(const std::string& participant);
@@ -128,7 +125,7 @@ private:
     boost::scoped_ptr<webrtc::FakeAudioDeviceModule> m_adm;
 
     bool m_vadEnabled;
-    VADListener* m_vadCallback;
+    EventRegistry* m_asyncHandle;
     uint32_t m_jitterCount;
     uint32_t m_jitterHold;
     int32_t m_mostActiveChannel;

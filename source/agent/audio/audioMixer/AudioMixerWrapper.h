@@ -22,29 +22,21 @@
 #define AUDIOMIXERWRAPPER_H
 
 #include "../../addons/woogeen_base/MediaFramePipelineWrapper.h"
+#include "../../addons/woogeen_base/NodeEventRegistry.h"
 #include "AudioMixer.h"
-#include <node.h>
-#include <node_object_wrap.h>
-#include <uv.h>
 
 /*
  * Wrapper class of mcu::AudioMixer
  */
-class AudioMixer : public node::ObjectWrap, public mcu::VADListener {
+class AudioMixer : public node::ObjectWrap, public NodeEventRegistry {
  public:
   static void Init(v8::Handle<v8::Object>, v8::Handle<v8::Object>);
   mcu::AudioMixer* me;
-  std::list<std::string> vadMsgs;
-  boost::mutex vadMutex;
 
  private:
   AudioMixer();
   ~AudioMixer();
   static v8::Persistent<v8::Function> constructor;
-
-  v8::Persistent<v8::Function> vadCallback_;
-  uv_async_t asyncVAD_;
-  bool hasCallback_;
 
   static void New(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void close(const v8::FunctionCallbackInfo<v8::Value>& args);
@@ -56,9 +48,6 @@ class AudioMixer : public node::ObjectWrap, public mcu::VADListener {
   static void removeInput(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void addOutput(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void removeOutput(const v8::FunctionCallbackInfo<v8::Value>& args);
-
-  static void vadCallback(uv_async_t* handle);
-  virtual void notifyVAD(const std::string& inputID);
 };
 
 #endif
