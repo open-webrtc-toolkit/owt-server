@@ -286,8 +286,9 @@ module.exports = function () {
             engine.setPrimary(stream_id);
             callback('callback', 'ok');
             notifyLayoutChange();
+        } else {
+            callback('callback', 'error', 'Invalid input stream_id.');
         }
-        callback('callback', 'error', 'Invalid input stream_id.');
     };
 
     that.setRegion = function (stream_id, region_id, callback) {
@@ -302,8 +303,9 @@ module.exports = function () {
             } else {
                 callback('callback', 'error', 'Invalid region_id.');
             }
+        } else {
+            callback('callback', 'error', 'Invalid input stream_id.');
         }
-        callback('callback', 'error', 'Invalid input stream_id.');
     };
 
     that.getRegion = function (stream_id, callback) {
@@ -311,8 +313,9 @@ module.exports = function () {
         if (inputs[stream_id]) {
             var region_id = engine.getRegion(stream_id);
             callback('callback', region_id);
+        } else {
+            callback('callback', 'error', 'Invalid input stream_id.');
         }
-        callback('callback', 'error', 'Invalid input stream_id.');
     };
 
     that.init = function (service, config, sessionId, observer, callback) {
