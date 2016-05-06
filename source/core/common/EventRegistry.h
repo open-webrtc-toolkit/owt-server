@@ -23,14 +23,10 @@
 
 #include <string>
 
-namespace woogeen_base {
-
 class EventRegistry {
 public:
     virtual ~EventRegistry() {}
     virtual bool notifyAsyncEvent(const std::string& event, const std::string& data) = 0;
 };
-
-} /* namespace woogeen_base */
 
 #endif // EventRegistry_h
