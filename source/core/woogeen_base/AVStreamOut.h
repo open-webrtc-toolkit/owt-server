@@ -129,10 +129,10 @@ protected:
     boost::scoped_ptr<JobTimer> m_jobTimer;
 
     // EventRegistry
-    virtual bool notifyAsyncEvent(const std::string& event, const std::string& data)
+    virtual bool notifyAsyncEvent(const std::string& event, const std::string& data, bool prompt = false)
     {
         if (m_asyncHandle)
-            return m_asyncHandle->notifyAsyncEvent(event, data);
+            return m_asyncHandle->notifyAsyncEvent(event, data, prompt);
 
         return false;
     }

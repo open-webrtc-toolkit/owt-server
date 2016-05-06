@@ -11,10 +11,9 @@
 namespace erizo {
 
   DEFINE_LOGGER(Stats, "Stats");
-  
-  Stats::Stats(){ 
+
+  Stats::Stats() : asyncHandle_{nullptr} {
     ELOG_DEBUG("Constructor Stats");
-    theListener_ = NULL;
   }
   Stats::~Stats(){
     ELOG_DEBUG("Destructor Stats");
@@ -25,28 +24,28 @@ namespace erizo {
     char* movingBuf = buf;
     int rtcpLength = 0;
     int totalLength = 0;
-    
+
     do{
       movingBuf+=rtcpLength;
       RTCPHeader *chead= reinterpret_cast<RTCPHeader*>(movingBuf);
-      rtcpLength= (chead->getLength()+1)*4;      
+      rtcpLength= (chead->getLength()+1)*4;
       totalLength+= rtcpLength;
       this->processRtcpPacket(chead);
     } while(totalLength<length);
     sendStats();
   }
-  
-  void Stats::processRtcpPacket(RTCPHeader* chead) {    
+
+  void Stats::processRtcpPacket(RTCPHeader* chead) {
     unsigned int ssrc = chead->getSSRC();
     uint8_t packetType = chead->getPacketType();
 
-    ELOG_DEBUG("RTCP SubPacket: PT %d, SSRC %u,  block count %d ",packetType,ssrc, chead->getRCOrFMT()); 
+    ELOG_DEBUG("RTCP SubPacket: PT %d, SSRC %u,  block count %d ",packetType,ssrc, chead->getRCOrFMT());
     switch(packetType){
       case RTCP_SDES_PT:
         ELOG_DEBUG("SDES");
         break;
       case RTCP_Receiver_PT: {
-        uint32_t rtcpLength= (chead->getLength()+1)*4;      
+        uint32_t rtcpLength= (chead->getLength()+1)*4;
         char* movingBuf = reinterpret_cast<char*>(chead);
         // NEED to consider multiple report blocks in a single RTCP RR!
         uint32_t blockOffset = sizeof(RTCPHeader);
@@ -99,7 +98,7 @@ namespace erizo {
         break;
     }
   }
- 
+
   std::string Stats::getStats() {
     boost::recursive_mutex::scoped_lock lock(mapMutex_);
     std::ostringstream theString;
@@ -116,7 +115,7 @@ namespace erizo {
         theString << "\"" << it->first << "\":\"" << it->second << "\"";
         if (++it != statsPacket_[currentSSRC].end()){
           theString << ",\n";
-        }          
+        }
       }
       theString << "}";
       if (++itssrc != statsPacket_.end()){
@@ -124,12 +123,12 @@ namespace erizo {
       }
     }
     theString << "]";
-    return theString.str(); 
+    return theString.str();
   }
-  
+
   void Stats::sendStats() {
-    if(theListener_!=NULL)
-      theListener_->notifyStats(this->getStats());
+    if (asyncHandle_)
+      asyncHandle_->notifyAsyncEvent("stats", this->getStats());
   }
 }
 

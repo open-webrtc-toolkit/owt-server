@@ -1,6 +1,7 @@
 #ifndef WEBRTCCONNECTION_H_
 #define WEBRTCCONNECTION_H_
 
+#include <EventRegistry.h>
 #include <string>
 #include <queue>
 #include <boost/scoped_array.hpp>
@@ -33,26 +34,16 @@ static const uint32_t QOS_SUPPORT_NACK_RECEIVER_MASK = 1 << QOS_SUPPORT_NACK_REC
  * WebRTC Events
  */
 enum WebRTCEvent {
-  CONN_INITIAL = 101, CONN_STARTED = 102,CONN_GATHERED = 103, CONN_READY = 104, CONN_FINISHED = 105, CONN_CANDIDATE = 201, CONN_SDP = 202,
-  CONN_FAILED = 500
+    CONN_INITIAL = 101,
+    CONN_STARTED = 102,
+    CONN_GATHERED = 103,
+    CONN_READY = 104,
+    CONN_FINISHED = 105,
+    CONN_CANDIDATE = 201,
+    CONN_SDP = 202,
+    CONN_FAILED = 500
 };
 
-class WebRtcConnectionEventListener {
-public:
-    virtual ~WebRtcConnectionEventListener() {
-    }
-    ;
-    virtual void notifyEvent(WebRTCEvent newEvent, const std::string& message="", bool prompt=false)=0;
-
-};
-
-class WebRtcConnectionStatsListener {
-public:
-    virtual ~WebRtcConnectionStatsListener() {
-    }
-    ;
-    virtual void notifyStats(const std::string& message)=0;
-};
 /**
  * A WebRTC Connection. This class represents a WebRTC Connection that can be established with other peers via a SDP negotiation
  * it comprises all the necessary Transport components.
@@ -64,7 +55,7 @@ public:
      * Constructor.
      * Constructs an empty WebRTCConnection without any configuration.
      */
-    WebRtcConnection(bool audioEnabled, bool videoEnabled, bool h264Enabled, const std::string &stunServer, int stunPort, int minPort, int maxPort, const std::string& certFile, const std::string& keyFile, const std::string& privatePasswd, uint32_t qos, bool trickleEnabled, WebRtcConnectionEventListener* listener);
+    WebRtcConnection(bool audioEnabled, bool videoEnabled, bool h264Enabled, const std::string &stunServer, int stunPort, int minPort, int maxPort, const std::string& certFile, const std::string& keyFile, const std::string& privatePasswd, uint32_t qos, bool trickleEnabled, EventRegistry*);
     /**
      * Destructor.
      */
@@ -110,7 +101,6 @@ public:
 
     int deliverAudioData(char* buf, int len);
     int deliverVideoData(char* buf, int len);
-
     int deliverFeedback(char* buf, int len);
 
     int preferredAudioPayloadType();
@@ -130,22 +120,6 @@ public:
      */
     int sendFirPacket();
 
-  /**
-   * Sets the Event Listener for this WebRtcConnection
-   */
-
-    inline void setWebRtcConnectionEventListener(
-            WebRtcConnectionEventListener* listener){
-    this->connEventListener_ = listener;
-  }
-
-  /**
-   * Sets the Stats Listener for this WebRtcConnection
-   */
-  inline void setWebRtcConnectionStatsListener(
-            WebRtcConnectionStatsListener* listener){
-    this->thisStats_.setStatsListener(listener);
-  }
     /**
      * Gets the current state of the Ice Connection
      * @return
@@ -155,27 +129,22 @@ public:
     std::string getJSONStats();
 
     void onTransportData(char* buf, int len, Transport *transport);
-
     void updateState(TransportState state, Transport * transport);
-
     void queueData(int comp, const char* data, int len, Transport *transport, packetType type);
-
     void onCandidate(const CandidateInfo& cand, Transport *transport);
 
 private:
-  static const int STATS_INTERVAL = 5000;
+    static const int STATS_INTERVAL = 5000;
     SdpInfo remoteSdp_;
     SdpInfo localSdp_;
-
     Stats thisStats_;
-
     WebRTCEvent globalState_;
+    EventRegistry* asyncHandle_;
 
     int bundle_, sequenceNumberFIR_;
     boost::mutex writeMutex_, receiveMediaMutex_, updateStateMutex_;
     boost::thread send_Thread_;
     std::queue<dataPacket> sendQueue_;
-    WebRtcConnectionEventListener* connEventListener_;
     Transport *videoTransport_, *audioTransport_;
     boost::scoped_array<char> deliverMediaBuffer_;
 
@@ -184,6 +153,7 @@ private:
     void writeSsrc(char* buf, int len, unsigned int ssrc);
     void processRtcpHeaders(char* buf, int len, unsigned int ssrc);
     std::string getJSONCandidate(const std::string& mid, const std::string& sdp);
+    void notifyAsyncEvent(WebRTCEvent newEvent, const std::string& message, bool prompt = false);
 
     // changes the outgoing payload type for in the given data packet
     void changeDeliverPayloadType(dataPacket *dp, packetType type);
@@ -202,7 +172,6 @@ private:
     std::string privatePasswd_;
 
     boost::condition_variable cond_;
-
 };
 
 } /* namespace erizo */

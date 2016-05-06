@@ -13,22 +13,22 @@ namespace erizo {
   DEFINE_LOGGER(WebRtcConnection, "WebRtcConnection");
 
   WebRtcConnection::WebRtcConnection(bool audioEnabled, bool videoEnabled, bool h264Enabled, const std::string &stunServer, int stunPort, int minPort,
-      int maxPort, const std::string& certFile, const std::string& keyFile, const std::string& privatePasswd, uint32_t qos, bool trickleEnabled, WebRtcConnectionEventListener* listener)
-  : connEventListener_(listener) {
+      int maxPort, const std::string& certFile, const std::string& keyFile, const std::string& privatePasswd, uint32_t qos, bool trickleEnabled, EventRegistry* handle)
+  : asyncHandle_{handle} {
 
     ELOG_WARN("WebRtcConnection constructor stunserver %s stunPort %d minPort %d maxPort %d\n", stunServer.c_str(), stunPort, minPort, maxPort);
     sequenceNumberFIR_ = 0;
     bundle_ = false;
     this->setVideoSinkSSRC(55543);
     this->setAudioSinkSSRC(44444);
-    videoSink_ = NULL;
-    audioSink_ = NULL;
-    fbSink_ = NULL;
+    videoSink_ = nullptr;
+    audioSink_ = nullptr;
+    fbSink_ = nullptr;
     sourcefbSink_ = this;
     sinkfbSource_ = this;
     globalState_ = CONN_INITIAL;
-    videoTransport_ = NULL;
-    audioTransport_ = NULL;
+    videoTransport_ = nullptr;
+    audioTransport_ = nullptr;
 
     audioEnabled_ = audioEnabled;
     videoEnabled_ = videoEnabled;
@@ -68,21 +68,19 @@ namespace erizo {
     send_Thread_.join();
 
     globalState_ = CONN_FINISHED;
-    if (connEventListener_ != NULL){
-      // Prompt this event notification because we want the listener
-      // to get the information that we're being destroyed ASAP so that
-      // it won't ask us to do something when it receives some other events (from other working threads).
-      connEventListener_->notifyEvent(globalState_, "", true);
-      connEventListener_ = NULL;
-    }
+    // Prompt this event notification because we want the listener
+    // to get the information that we're being destroyed ASAP so that
+    // it won't ask us to do something when it receives some other events (from other working threads).
+    notifyAsyncEvent(CONN_FINISHED, "", true);
+    asyncHandle_ = nullptr;
     globalState_ = CONN_FINISHED;
     delete videoTransport_;
-    videoTransport_=NULL;
+    videoTransport_ = nullptr;
     delete audioTransport_;
-    audioTransport_= NULL;
-    videoSink_ = NULL;
-    audioSink_ = NULL;
-    fbSink_ = NULL;
+    audioTransport_ = nullptr;
+    videoSink_ = nullptr;
+    audioSink_ = nullptr;
+    fbSink_ = nullptr;
     ELOG_INFO("WebRtcConnection Destructed");
   }
 
@@ -90,16 +88,13 @@ namespace erizo {
     // In case both audio and video transports are needed, we need to start
     // the transports after they are both created because the WebRtcConnection
     // state update needs information from both.
-    if (videoTransport_ != NULL)
+    if (videoTransport_)
       videoTransport_->start();
-    if (audioTransport_ != NULL)
+    if (audioTransport_)
       audioTransport_->start();
 
-    if (trickleEnabled_) {
-      std::string object = this->getLocalSdp();
-      if (connEventListener_)
-        connEventListener_->notifyEvent(CONN_SDP, object);
-    }
+    if (trickleEnabled_)
+      notifyAsyncEvent(CONN_SDP, this->getLocalSdp());
 
     return true;
   }
@@ -165,10 +160,10 @@ namespace erizo {
 
     if (!remoteSdp_.getCandidateInfos().empty()){
       ELOG_DEBUG("There are candidate in the SDP: Setting Remote Candidates!!!!");
-      if (videoTransport_ != NULL) {
+      if (videoTransport_) {
         videoTransport_->setRemoteCandidates(remoteSdp_.getCandidateInfos(), bundle_);
       }
-      if (audioTransport_ != NULL) {
+      if (audioTransport_) {
         audioTransport_->setRemoteCandidates(remoteSdp_.getCandidateInfos(), bundle_);
       }
     }
@@ -217,11 +212,11 @@ namespace erizo {
     localSdp_.audioSsrc = this->getAudioSinkSSRC();
 
     ELOG_DEBUG("Getting SDP");
-    if (videoTransport_ != NULL) {
+    if (videoTransport_) {
       videoTransport_->processLocalSdp(&localSdp_);
     }
     ELOG_DEBUG("Video SDP done.");
-    if (!bundle_ && audioTransport_ != NULL) {
+    if (!bundle_ && audioTransport_) {
       audioTransport_->processLocalSdp(&localSdp_);
     }
     ELOG_DEBUG("Audio SDP done.");
@@ -277,22 +272,14 @@ namespace erizo {
   void WebRtcConnection::onCandidate(const CandidateInfo& cand, Transport *transport) {
     std::string sdp = localSdp_.addCandidate(cand);
     ELOG_DEBUG("On Candidate %s", sdp.c_str());
-    if(trickleEnabled_){
-      if (connEventListener_ != NULL) {
-        if (!bundle_) {
-          std::string object = this->getJSONCandidate(transport->transport_name, sdp);
-          connEventListener_->notifyEvent(CONN_CANDIDATE, object);
-        } else {
-          if (remoteSdp_.hasAudio){
-            std::string object = this->getJSONCandidate("audio", sdp);
-            connEventListener_->notifyEvent(CONN_CANDIDATE, object);
-          }
-          if (remoteSdp_.hasVideo){
-            std::string object2 = this->getJSONCandidate("video", sdp);
-            connEventListener_->notifyEvent(CONN_CANDIDATE, object2);
-          }
-        }
-        
+    if (trickleEnabled_) {
+      if (!bundle_) {
+        notifyAsyncEvent(CONN_CANDIDATE, this->getJSONCandidate(transport->transport_name, sdp));
+      } else {
+        if (remoteSdp_.hasAudio)
+          notifyAsyncEvent(CONN_CANDIDATE, this->getJSONCandidate("audio", sdp));
+        if (remoteSdp_.hasVideo)
+          notifyAsyncEvent(CONN_CANDIDATE, this->getJSONCandidate("video", sdp));
       }
     }
   }
@@ -300,12 +287,12 @@ namespace erizo {
   int WebRtcConnection::deliverAudioData(char* buf, int len) {
     writeSsrc(buf, len, this->getAudioSinkSSRC());
     if (bundle_){
-      if (videoTransport_ != NULL) {
+      if (videoTransport_) {
         if (audioEnabled_ == true) {
           this->queueData(0, buf, len, videoTransport_, AUDIO_PACKET);
         }
       }
-    } else if (audioTransport_ != NULL) {
+    } else if (audioTransport_) {
       if (audioEnabled_ == true) {
         this->queueData(0, buf, len, audioTransport_, AUDIO_PACKET);
       }
@@ -316,7 +303,7 @@ namespace erizo {
   int WebRtcConnection::deliverVideoData(char* buf, int len) {
     RTPHeader* head = (RTPHeader*) buf;
     writeSsrc(buf, len, this->getVideoSinkSSRC());
-    if (videoTransport_ != NULL) {
+    if (videoTransport_) {
       if (videoEnabled_ == true) {
 
         if (head->getPayloadType() == RED_90000_PT) {
@@ -326,7 +313,7 @@ namespace erizo {
 
           //redhead->payloadtype = remoteSdp_.inOutPTMap[redhead->payloadtype];
           if (!remoteSdp_.supportPayloadType(head->getPayloadType())) {
-            assert(deliverMediaBuffer_ != NULL);
+            assert(deliverMediaBuffer_ != nullptr);
             char* sendBuffer = deliverMediaBuffer_.get();
 
             while (redhead->follow) {
@@ -362,15 +349,15 @@ namespace erizo {
       chead->getRTCPHeader().getPacketType(), chead->getRTCPHeader().getSSRC(), sourceSsrc);
     if (sourceSsrc == getAudioSinkSSRC() || sourceSsrc == getAudioSourceSSRC()) {
       writeSsrc(buf, len, this->getAudioSinkSSRC());
-      if (audioTransport_ != NULL)
+      if (audioTransport_)
         this->queueData(0, buf, len, audioTransport_, OTHER_PACKET);
       else {
-        assert(bundle_ && videoTransport_ != NULL);
+        assert(bundle_ && videoTransport_ != nullptr);
         this->queueData(0, buf, len, videoTransport_, OTHER_PACKET);
       }
     } else if (sourceSsrc == getVideoSinkSSRC() || sourceSsrc == getVideoSourceSSRC()) {
       writeSsrc(buf, len, this->getVideoSinkSSRC());
-      assert(videoTransport_ != NULL);
+      assert(videoTransport_ != nullptr);
       this->queueData(0, buf, len, videoTransport_, OTHER_PACKET);
     } else {
       ELOG_WARN("Bad source SSRC in RTCP feedback packet: %u", sourceSsrc);
@@ -391,9 +378,9 @@ namespace erizo {
   }
 
   void WebRtcConnection::onTransportData(char* buf, int len, Transport *transport) {
-    if (audioSink_ == NULL && videoSink_ == NULL && fbSink_==NULL){
+    if (!audioSink_ && !videoSink_ && !fbSink_)
       return;
-    }
+
     int length = len;
 
     // PROCESS RTCP
@@ -404,7 +391,7 @@ namespace erizo {
     uint8_t packetType = chead->getPacketType();
     // DELIVER FEEDBACK (RR, FEEDBACK PACKETS)
     if (packetType == RTCP_Receiver_PT || packetType == RTCP_PS_Feedback_PT || packetType == RTCP_RTP_Feedback_PT){
-      if (fbSink_ != NULL) {
+      if (fbSink_) {
         fbSink_->deliverFeedback(buf,length);
       }
     } else {
@@ -424,13 +411,13 @@ namespace erizo {
         // Deliver data
         if (recvSSRC==this->getVideoSourceSSRC() || recvSSRC==this->getVideoSinkSSRC()) {
           parseIncomingPayloadType(buf, len, VIDEO_PACKET);
-          if (videoSink_ != NULL)
+          if (videoSink_)
             if (videoEnabled_) {
               videoSink_->deliverVideoData(buf, len);
             }
         } else if (recvSSRC==this->getAudioSourceSSRC() || recvSSRC==this->getAudioSinkSSRC()) {
           parseIncomingPayloadType(buf, len, AUDIO_PACKET);
-          if (audioSink_ != NULL)
+          if (audioSink_)
             if (audioEnabled_) {
               audioSink_->deliverAudioData(buf, len);
             }
@@ -438,7 +425,7 @@ namespace erizo {
           ELOG_ERROR("Unknown SSRC %u, localVideo %u, remoteVideo %u, ignoring", recvSSRC, this->getVideoSourceSSRC(), this->getVideoSinkSSRC());
         }
       } else if (transport->mediaType == AUDIO_TYPE) {
-        if (audioSink_ != NULL) {
+        if (audioSink_) {
           parseIncomingPayloadType(buf, len, AUDIO_PACKET);
           // Firefox does not send SSRC in SDP
           if (this->getAudioSourceSSRC() == 0) {
@@ -451,7 +438,7 @@ namespace erizo {
           }
         }
       } else if (transport->mediaType == VIDEO_TYPE) {
-        if (videoSink_ != NULL) {
+        if (videoSink_) {
           parseIncomingPayloadType(buf, len, VIDEO_PACKET);
           // Firefox does not send SSRC in SDP
           if (this->getVideoSourceSSRC() == 0) {
@@ -501,7 +488,7 @@ namespace erizo {
     rtcpPacket[pos++] = (uint8_t) 0;
     rtcpPacket[pos++] = (uint8_t) 0;
 
-    if (videoTransport_ != NULL) {
+    if (videoTransport_) {
       videoTransport_->write((char*)rtcpPacket, pos);
     }
 
@@ -513,7 +500,7 @@ namespace erizo {
     WebRTCEvent temp = globalState_;
     std::string msg = "";
     ELOG_INFO("Update Transport State %s to %d", transport->transport_name.c_str(), state);
-    if (audioTransport_ == NULL && videoTransport_ == NULL) {
+    if (!audioTransport_ && !videoTransport_) {
       ELOG_ERROR("Update Transport State with Transport NULL, this should not happen!");
       return;
     }
@@ -527,21 +514,21 @@ namespace erizo {
       cond_.notify_one();
     }
 
-    
+
     if (globalState_ == CONN_FAILED) {
       // if current state is failed -> noop
       return;
     }
 
     if (state == TRANSPORT_STARTED &&
-        (audioTransport_ == NULL || audioTransport_->getTransportState() == TRANSPORT_STARTED) &&
-        (videoTransport_ == NULL || videoTransport_->getTransportState() == TRANSPORT_STARTED)) {
+        (!audioTransport_ || audioTransport_->getTransportState() == TRANSPORT_STARTED) &&
+        (!videoTransport_ || videoTransport_->getTransportState() == TRANSPORT_STARTED)) {
       temp = CONN_STARTED;
     }
 
     if (state == TRANSPORT_GATHERED &&
-        (audioTransport_ == NULL || audioTransport_->getTransportState() == TRANSPORT_GATHERED) &&
-        (videoTransport_ == NULL || videoTransport_->getTransportState() == TRANSPORT_GATHERED)) {
+        (!audioTransport_ || audioTransport_->getTransportState() == TRANSPORT_GATHERED) &&
+        (!videoTransport_ || videoTransport_->getTransportState() == TRANSPORT_GATHERED)) {
       if(!trickleEnabled_){
         temp = CONN_GATHERED;
         msg = this->getLocalSdp();
@@ -549,8 +536,8 @@ namespace erizo {
     }
 
     if (state == TRANSPORT_READY &&
-        (audioTransport_ == NULL || audioTransport_->getTransportState() == TRANSPORT_READY) &&
-        (videoTransport_ == NULL || videoTransport_->getTransportState() == TRANSPORT_READY) &&
+        (!audioTransport_ || audioTransport_->getTransportState() == TRANSPORT_READY) &&
+        (!videoTransport_ || videoTransport_->getTransportState() == TRANSPORT_READY) &&
         (remoteSdp_.audioDirection <= RECVONLY || this->getAudioSourceSSRC() != 0) &&
         (remoteSdp_.videoDirection <= RECVONLY || this->getVideoSourceSSRC() != 0)) {
         // WebRTCConnection will be ready only when all channels are ready,
@@ -563,23 +550,22 @@ namespace erizo {
       ELOG_INFO("Ready to send and receive media");
     }
 
-    if (audioTransport_ != NULL && videoTransport_ != NULL) {
-      ELOG_INFO("%s - Update Transport State end, %d - %d, %d - %d, %d - %d", 
+    if (audioTransport_ && videoTransport_) {
+      ELOG_INFO("%s - Update Transport State end, %d - %d, %d - %d, %d - %d",
         transport->transport_name.c_str(),
-        (int)audioTransport_->getTransportState(), 
-        (int)videoTransport_->getTransportState(), 
+        (int)audioTransport_->getTransportState(),
+        (int)videoTransport_->getTransportState(),
         this->getAudioSourceSSRC(),
         this->getVideoSourceSSRC(),
-        (int)temp, 
+        (int)temp,
         (int)globalState_);
     }
-    
+
     if (temp == globalState_ || (temp == CONN_STARTED && globalState_ == CONN_READY))
       return;
 
     globalState_ = temp;
-    if (connEventListener_ != NULL)
-      connEventListener_->notifyEvent(globalState_, msg);
+    notifyAsyncEvent(globalState_, msg);
   }
 
   // changes the outgoing payload type for in the given data packet
@@ -639,7 +625,7 @@ namespace erizo {
 
 
   void WebRtcConnection::queueData(int comp, const char* buf, int length, Transport *transport, packetType type) {
-    if ((audioSink_ == NULL && videoSink_ == NULL && fbSink_==NULL) || !sending_) //we don't enqueue data if there is nothing to receive it
+    if ((!audioSink_ && !videoSink_ && !fbSink_) || !sending_) //we don't enqueue data if there is nothing to receive it
       return;
 
     if (length > MAX_DATA_PACKET_SIZE) {
@@ -683,6 +669,25 @@ namespace erizo {
     return thisStats_.getStats();
   }
 
+
+  void WebRtcConnection::notifyAsyncEvent(WebRTCEvent newEvent, const std::string& message, bool prompt)
+  {
+    if (asyncHandle_) {
+      std::ostringstream data;
+      data << "{\"status\":" << newEvent << ",\"message\":\"";
+      for (auto it = message.begin(); it != message.end(); ++it) { // escape newlines for JSON.parse
+        if (*it == '\r')
+          data << "\\r";
+        else if (*it == '\n')
+          data << "\\n";
+        else
+          data << *it;
+      }
+      data << "\"}";
+      asyncHandle_->notifyAsyncEvent("connection", data.str(), prompt);
+    }
+  }
+
   void WebRtcConnection::processRtcpHeaders(char* buf, int len, unsigned int ssrc){
     char* movingBuf = buf;
     int rtcpLength = 0;
@@ -691,7 +696,7 @@ namespace erizo {
     do {
       movingBuf += rtcpLength;
       RTCPHeader* chead = reinterpret_cast<RTCPHeader*>(movingBuf);
-      rtcpLength = (chead->getLength() + 1) * 4;      
+      rtcpLength = (chead->getLength() + 1) * 4;
       totalLength += rtcpLength;
       chead->setSSRC(ssrc);
 
