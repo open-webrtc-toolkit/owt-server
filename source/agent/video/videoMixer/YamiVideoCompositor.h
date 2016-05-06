@@ -70,8 +70,6 @@ private:
     SharedPtr<VideoFrame> layout();
     SharedPtr<VideoFrame> customLayout();
     void generateFrame();
-   // bool commitLayout(); // Commit the new layout config.
-    void setBackgroundColor();
 
     static SharedPtr<VADisplay> createVADisplay();
     // Delta used for translating between NTP and internal timestamps.
@@ -79,8 +77,7 @@ private:
 
     boost::shared_mutex m_mutex;
     VideoSize m_compositeSize;
-//    VideoSize m_newCompositeSize;
-    YUVColor m_bgColor;
+    uint32_t m_bgColor;
     LayoutSolution m_currentLayout;
 
     SharedPtr<VADisplay> m_display;
@@ -88,8 +85,8 @@ private:
     SharedPtr<YamiMediaCodec::IVideoPostProcess> m_vpp;
     std::vector<boost::shared_ptr<VideoInput> > m_inputs;
 
-    //LayoutSolution m_newLayout;
-    //LayoutSolutionState m_solutionState;
+    // LayoutSolution m_newLayout;
+    // LayoutSolutionState m_solutionState;
     /*
      * Each incoming channel will store the decoded frame in this array, and the composition
      * thread will scan this array and composite the frames into one frame.
