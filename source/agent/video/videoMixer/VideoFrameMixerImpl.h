@@ -82,7 +82,6 @@ public:
     void updateLayoutSolution(LayoutSolution& solution);
 
 private:
-    DECLARE_LOGGER();
     struct Input {
         woogeen_base::FrameSource* source;
         boost::shared_ptr<woogeen_base::VideoFrameDecoder> decoder;
@@ -105,8 +104,6 @@ private:
     boost::shared_ptr<woogeen_base::WebRTCTaskRunner> m_taskRunner;
     bool m_useSimulcast;
 };
-
-DEFINE_LOGGER(VideoFrameMixerImpl, "mcu.media.VideoFrameMixerImpl");
 
 VideoFrameMixerImpl::VideoFrameMixerImpl(uint32_t maxInput, VideoSize rootSize, YUVColor bgColor, boost::shared_ptr<woogeen_base::WebRTCTaskRunner> taskRunner, bool useSimulcast, bool crop)
     : m_taskRunner(taskRunner)
@@ -145,7 +142,6 @@ VideoFrameMixerImpl::~VideoFrameMixerImpl()
 inline bool VideoFrameMixerImpl::addInput(int input, woogeen_base::FrameFormat format, woogeen_base::FrameSource* source)
 {
     assert(source);
-      ELOG_DEBUG("+addInput input = %d, format = %d", input, format);
 
     boost::upgrade_lock<boost::shared_mutex> lock(m_inputMutex);
     auto it = m_inputs.find(input);
@@ -173,10 +169,8 @@ inline bool VideoFrameMixerImpl::addInput(int input, woogeen_base::FrameFormat f
         boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
         Input in{.source = source, .decoder = decoder, .compositorIn = compositorIn};
         m_inputs[input] = in;
-        ELOG_DEBUG("-addInput return true");
         return true;
     } else {
-            ELOG_DEBUG("-addInput return false");
         return false;
     }
 }
@@ -195,14 +189,11 @@ inline void VideoFrameMixerImpl::removeInput(int input)
 
 inline void VideoFrameMixerImpl::updateLayoutSolution(LayoutSolution& solution)
 {
-    ELOG_DEBUG("+updateLayoutSolution");
     m_compositor->updateLayoutSolution(solution);
-    ELOG_DEBUG("-updateLayoutSolution");
 }
 
 inline void VideoFrameMixerImpl::setBitrate(unsigned short kbps, int output)
 {
-     ELOG_DEBUG("+setBitrate");
     boost::shared_lock<boost::shared_mutex> lock(m_outputMutex);
     auto it = m_outputs.find(output);
     if (it != m_outputs.end()) {
@@ -212,7 +203,6 @@ inline void VideoFrameMixerImpl::setBitrate(unsigned short kbps, int output)
 
 inline void VideoFrameMixerImpl::requestKeyFrame(int output)
 {
-         ELOG_DEBUG("+requestKeyFrame");
     boost::shared_lock<boost::shared_mutex> lock(m_outputMutex);
     auto it = m_outputs.find(output);
     if (it != m_outputs.end()) {
@@ -227,7 +217,6 @@ inline bool VideoFrameMixerImpl::addOutput(int output,
 {
     boost::shared_ptr<woogeen_base::VideoFrameEncoder> encoder;
     boost::upgrade_lock<boost::shared_mutex> lock(m_outputMutex);
-    ELOG_DEBUG("+add output %d, %d, %dx%d", output, format, rootSize.width, rootSize.height);
 
     // find a reusable encoder.
     auto it = m_outputs.begin();
@@ -260,7 +249,6 @@ inline bool VideoFrameMixerImpl::addOutput(int output,
     boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
     Output out{.encoder = encoder, .streamId = streamId};
     m_outputs[output] = out;
-        ELOG_DEBUG("-add output %d, %d, %dx%d....", output, format, rootSize.width, rootSize.height);
     return true;
 }
 
