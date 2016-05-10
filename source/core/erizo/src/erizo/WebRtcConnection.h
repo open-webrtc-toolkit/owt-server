@@ -153,7 +153,6 @@ private:
     void writeSsrc(char* buf, int len, unsigned int ssrc);
     void processRtcpHeaders(char* buf, int len, unsigned int ssrc);
     std::string getJSONCandidate(const std::string& mid, const std::string& sdp);
-    void notifyAsyncEvent(WebRTCEvent newEvent, const std::string& message, bool prompt = false);
 
     // changes the outgoing payload type for in the given data packet
     void changeDeliverPayloadType(dataPacket *dp, packetType type);

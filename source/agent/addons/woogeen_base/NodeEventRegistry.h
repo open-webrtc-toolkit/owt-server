@@ -37,7 +37,8 @@ public:
     static NodeEventRegistry* New(const v8::Local<v8::Function>&);
 
     virtual ~NodeEventRegistry();
-    bool notifyAsyncEvent(const std::string& event, const std::string& data, bool prompt = false);
+    bool notifyAsyncEvent(const std::string& event, const std::string& data);
+    bool notifyAsyncEventInEmergency(const std::string& event, const std::string& data);
 
 protected:
     explicit NodeEventRegistry();
