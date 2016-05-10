@@ -107,15 +107,26 @@ void NodeEventRegistry::process()
 }
 
 // other thread
-bool NodeEventRegistry::notifyAsyncEvent(const std::string& event, const std::string& data, bool prompt)
+bool NodeEventRegistry::notifyAsyncEvent(const std::string& event, const std::string& data)
 {
     if (m_uvHandle && uv_is_active(reinterpret_cast<uv_handle_t*>(m_uvHandle))) {
         {
             std::lock_guard<std::mutex> lock(m_lock);
-            if (prompt)
-                m_buffer.push_front(Data{ event, data });
-            else
-                m_buffer.push_back(Data{ event, data });
+            m_buffer.push_back(Data{ event, data });
+        }
+        uv_async_send(m_uvHandle);
+        return true;
+    }
+    return false;
+}
+
+// other thread
+bool NodeEventRegistry::notifyAsyncEventInEmergency(const std::string& event, const std::string& data)
+{
+    if (m_uvHandle && uv_is_active(reinterpret_cast<uv_handle_t*>(m_uvHandle))) {
+        {
+            std::lock_guard<std::mutex> lock(m_lock);
+            m_buffer.push_front(Data{ event, data });
         }
         uv_async_send(m_uvHandle);
         return true;

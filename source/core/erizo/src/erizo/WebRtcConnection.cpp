@@ -9,6 +9,34 @@
 #include "SdpInfo.h"
 #include <rtputils.h>
 
+static std::string createNotificationPayload(erizo::WebRTCEvent event, const std::string& message)
+{
+  std::ostringstream data;
+  data << "{\"status\":" << event << ",\"message\":\"";
+  for (auto it = message.begin(); it != message.end(); ++it) { // escape newlines for JSON.parse
+    if (*it == '\r')
+      data << "\\r";
+    else if (*it == '\n')
+      data << "\\n";
+    else
+      data << *it;
+  }
+  data << "\"}";
+  return data.str();
+}
+
+static inline void notifyAsyncEvent(EventRegistry* handle, erizo::WebRTCEvent event, const std::string& message)
+{
+  if (handle)
+    handle->notifyAsyncEvent("connection", createNotificationPayload(event, message));
+}
+
+static inline void notifyAsyncEventInEmergency(EventRegistry* handle, erizo::WebRTCEvent event, const std::string& message)
+{
+  if (handle)
+    handle->notifyAsyncEventInEmergency("connection", createNotificationPayload(event, message));
+}
+
 namespace erizo {
   DEFINE_LOGGER(WebRtcConnection, "WebRtcConnection");
 
@@ -71,7 +99,7 @@ namespace erizo {
     // Prompt this event notification because we want the listener
     // to get the information that we're being destroyed ASAP so that
     // it won't ask us to do something when it receives some other events (from other working threads).
-    notifyAsyncEvent(CONN_FINISHED, "", true);
+    notifyAsyncEventInEmergency(asyncHandle_, CONN_FINISHED, "");
     asyncHandle_ = nullptr;
     globalState_ = CONN_FINISHED;
     delete videoTransport_;
@@ -94,7 +122,7 @@ namespace erizo {
       audioTransport_->start();
 
     if (trickleEnabled_)
-      notifyAsyncEvent(CONN_SDP, this->getLocalSdp());
+      notifyAsyncEvent(asyncHandle_, CONN_SDP, this->getLocalSdp());
 
     return true;
   }
@@ -274,12 +302,12 @@ namespace erizo {
     ELOG_DEBUG("On Candidate %s", sdp.c_str());
     if (trickleEnabled_) {
       if (!bundle_) {
-        notifyAsyncEvent(CONN_CANDIDATE, this->getJSONCandidate(transport->transport_name, sdp));
+        notifyAsyncEvent(asyncHandle_, CONN_CANDIDATE, this->getJSONCandidate(transport->transport_name, sdp));
       } else {
         if (remoteSdp_.hasAudio)
-          notifyAsyncEvent(CONN_CANDIDATE, this->getJSONCandidate("audio", sdp));
+          notifyAsyncEvent(asyncHandle_, CONN_CANDIDATE, this->getJSONCandidate("audio", sdp));
         if (remoteSdp_.hasVideo)
-          notifyAsyncEvent(CONN_CANDIDATE, this->getJSONCandidate("video", sdp));
+          notifyAsyncEvent(asyncHandle_, CONN_CANDIDATE, this->getJSONCandidate("video", sdp));
       }
     }
   }
@@ -565,7 +593,7 @@ namespace erizo {
       return;
 
     globalState_ = temp;
-    notifyAsyncEvent(globalState_, msg);
+    notifyAsyncEvent(asyncHandle_, globalState_, msg);
   }
 
   // changes the outgoing payload type for in the given data packet
@@ -667,25 +695,6 @@ namespace erizo {
 
   std::string WebRtcConnection::getJSONStats(){
     return thisStats_.getStats();
-  }
-
-
-  void WebRtcConnection::notifyAsyncEvent(WebRTCEvent newEvent, const std::string& message, bool prompt)
-  {
-    if (asyncHandle_) {
-      std::ostringstream data;
-      data << "{\"status\":" << newEvent << ",\"message\":\"";
-      for (auto it = message.begin(); it != message.end(); ++it) { // escape newlines for JSON.parse
-        if (*it == '\r')
-          data << "\\r";
-        else if (*it == '\n')
-          data << "\\n";
-        else
-          data << *it;
-      }
-      data << "\"}";
-      asyncHandle_->notifyAsyncEvent("connection", data.str(), prompt);
-    }
   }
 
   void WebRtcConnection::processRtcpHeaders(char* buf, int len, unsigned int ssrc){
