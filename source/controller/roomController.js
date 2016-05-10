@@ -1,4 +1,4 @@
-/*global require, exports*/
+/*global require, module*/
 'use strict';
 
 var logger = require('./logger').logger;
@@ -8,7 +8,7 @@ var createErizoManager = require('./erizoManager');
 // Logger
 var log = logger.getLogger('RoomController');
 
-exports.RoomController = function (spec, on_init_ok, on_init_failed) {
+module.exports = function (spec, on_init_ok, on_init_failed) {
 
     var that = {};
 
@@ -72,8 +72,12 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
     };
 
     var resetVAD = function () {
-        if (config.enableMixing && config.mediaMixing && config.mediaMixing.video && config.mediaMixing.video.avCoordinated
-            && audio_mixer && video_mixer) {
+        if (config.enableMixing &&
+            config.mediaMixing &&
+            config.mediaMixing.video &&
+            config.mediaMixing.video.avCoordinated &&
+            audio_mixer &&
+            video_mixer) {
             makeRPC(
                 amqper,
                 'ErizoJS_' + terminals[audio_mixer].erizo,
@@ -158,16 +162,16 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
         log.debug('deinitialize');
 
         for (var terminal_id in terminals) {
-            if (terminals[terminal_id].type === 'webrtc'
-                || terminals[terminal_id].type === 'rtsp'
-                || terminals[terminal_id].type === 'file') {
+            if (terminals[terminal_id].type === 'webrtc' ||
+                terminals[terminal_id].type === 'rtsp' ||
+                terminals[terminal_id].type === 'file') {
                 terminals[terminal_id].published.map(function (stream_id) {
                     unpublishStream(stream_id);
                 });
-            } else if (terminals[terminal_id].type === 'amixer'
-                       || terminals[terminal_id].type === 'vmixer'
-                       || terminals[terminal_id].type === 'axcoder'
-                       || terminals[terminal_id].type === 'vxcoder') {
+            } else if (terminals[terminal_id].type === 'amixer' ||
+                       terminals[terminal_id].type === 'vmixer' ||
+                       terminals[terminal_id].type === 'axcoder' ||
+                       terminals[terminal_id].type === 'vxcoder') {
                 makeRPC(
                     amqper,
                     'ErizoJS_' + terminals[terminal_id].erizo,
@@ -246,19 +250,21 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
     };
 
     var isTerminalFree = function (terminal_id) {
-        return  terminals[terminal_id]
-                && (terminals[terminal_id].published.length === 0
-                    && Object.keys(terminals[terminal_id].subscribed).length === 0)
-                && (terminals[terminal_id].type !== 'amixer'
-                    && terminals[terminal_id].type !== 'vmixer');
+        return  terminals[terminal_id] &&
+                (terminals[terminal_id].published.length === 0 &&
+                    Object.keys(terminals[terminal_id].subscribed).length === 0) &&
+                (terminals[terminal_id].type !== 'amixer' &&
+                    terminals[terminal_id].type !== 'vmixer');
     };
 
     var publisherCount = function () {
         var count = 0;
         for (var t in terminals) {
-            if (terminals[t].type !== 'amixer' && terminals[t].type !== 'axcoder'
-                && terminals[t].type !== 'vmixer' && terminals[t].type !== 'vxcoder'
-                && terminals[t].published.length > 0) {
+            if (terminals[t].type !== 'amixer' &&
+                terminals[t].type !== 'axcoder'&&
+                terminals[t].type !== 'vmixer' &&
+                terminals[t].type !== 'vxcoder' &&
+                terminals[t].published.length > 0) {
                 count = count + 1;
             }
         }
@@ -365,9 +371,9 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
     };
 
     var hasStreamBeenSpread = function (stream_id, erizo_id) {
-        if (streams[stream_id]
-            && ((terminals[streams[stream_id].owner] && terminals[streams[stream_id].owner].erizo === erizo_id)
-                || (streams[stream_id].spread.indexOf(erizo_id) !== -1))) {
+        if (streams[stream_id] &&
+            ((terminals[streams[stream_id].owner] && terminals[streams[stream_id].owner].erizo === erizo_id) ||
+            (streams[stream_id].spread.indexOf(erizo_id) !== -1))) {
             return true;
         }
 
@@ -527,10 +533,10 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
 
     var getMixedVideo = function (video_codec, video_resolution, on_ok, on_error) {
         var candidates = Object.keys(streams).filter(
-            function (stream_id) { return streams[stream_id].owner === video_mixer
-                                          && streams[stream_id].video
-                                          && streams[stream_id].video.codec === video_codec
-                                          && (streams[stream_id].video.resolution === video_resolution);
+            function (stream_id) { return streams[stream_id].owner === video_mixer &&
+                                          streams[stream_id].video &&
+                                          streams[stream_id].video.codec === video_codec &&
+                                          (streams[stream_id].video.resolution === video_resolution);
             });
         if (candidates.length > 0) {
             on_ok(candidates[0]);
@@ -598,7 +604,7 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
                         'deinit',
                         [axcoder]);
                     deleteTerminal(axcoder);
-                    on_error(error_reason);
+                    on_error(reason);
                 };
 
                 makeRPC(
@@ -726,16 +732,15 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
             for (var subscription_id in terminals[owner].subscribed) {
                 unsubscribeStream(owner, subscription_id);
             }
-
             deleteTerminal(owner);
         }
     };
 
     var recycleTemporaryAudio = function (stream_id) {
-        if (streams[stream_id]
-            && streams[stream_id].audio
-            && streams[stream_id].audio.subscribers.length === 0
-            && streams[stream_id].spread.length === 0) {
+        if (streams[stream_id] &&
+            streams[stream_id].audio &&
+            streams[stream_id].audio.subscribers.length === 0 &&
+            streams[stream_id].spread.length === 0) {
 
             if (terminals[streams[stream_id].owner]) {
                 var terminal_type = terminals[streams[stream_id].owner].type;
@@ -747,10 +752,10 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
     };
 
     var recycleTemporaryVideo = function (stream_id) {
-        if (streams[stream_id]
-            && streams[stream_id].video
-            && streams[stream_id].video.subscribers.length === 0
-            && streams[stream_id].spread.length === 0) {
+        if (streams[stream_id] &&
+            streams[stream_id].video &&
+            streams[stream_id].video.subscribers.length === 0 &&
+            streams[stream_id].spread.length === 0) {
 
             if (terminals[streams[stream_id].owner]) {
                 var terminal_type = terminals[streams[stream_id].owner].type;
@@ -927,8 +932,8 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
                 subscription.video = undefined;
             }
 
-            if ((!audio_stream || video_stream !== audio_stream)
-                && !isSpreadNeeded(video_stream, erizo_id)) {
+            if ((!audio_stream || video_stream !== audio_stream) &&
+                !isSpreadNeeded(video_stream, erizo_id)) {
                 shrinkStream(video_stream, erizo_id);
             }
 
@@ -951,7 +956,6 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
                             unpublishStream(terminals[terminal_id].published[i]);
                         }
                     }
-
                     unsubscribeStream(terminal_id, subscription_id);
                 }
             }
@@ -1039,20 +1043,20 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
 
     that.subscribeSelectively = function (terminal_id, subscription_id, subscription_type, audio_stream_id, video_stream_id, options, onResponse) {
         log.debug('subscribe, terminal_id:', terminal_id, ', subscription_id:', subscription_id, ', subscription_type:', subscription_type, ', audio_stream_id:', audio_stream_id, ', video_stream_id:', video_stream_id, ', options:', options);
-        var audio_codec = options.audio_codec
-                       || (audio_stream_id === mixed_stream_id && supported_audio_codecs[0])
-                       || (streams[audio_stream_id] && streams[audio_stream_id].audio && streams[audio_stream_id].audio.codec)
-                       || undefined,
+        var audio_codec = options.audio_codec ||
+                       (audio_stream_id === mixed_stream_id && supported_audio_codecs[0]) ||
+                       (streams[audio_stream_id] && streams[audio_stream_id].audio && streams[audio_stream_id].audio.codec) ||
+                       undefined,
 
-            video_codec = options.video_codec
-                       || (video_stream_id === mixed_stream_id && supported_video_codecs[0])
-                       || (streams[video_stream_id] && streams[video_stream_id].video && streams[video_stream_id].video.codec)
-                       || undefined,
+            video_codec = options.video_codec ||
+                       (video_stream_id === mixed_stream_id && supported_video_codecs[0]) ||
+                       (streams[video_stream_id] && streams[video_stream_id].video && streams[video_stream_id].video.codec) ||
+                       undefined,
 
-            video_resolution = options.video_resolution
-                       || (video_stream_id === mixed_stream_id && supported_video_resolutions[0])
-                       || (streams[video_stream_id] && streams[video_stream_id].video && streams[video_stream_id].video.resolution)
-                       || undefined;
+            video_resolution = options.video_resolution ||
+                       (video_stream_id === mixed_stream_id && supported_video_resolutions[0]) ||
+                       (streams[video_stream_id] && streams[video_stream_id].video && streams[video_stream_id].video.resolution) ||
+                       undefined;
 
         if ((options.require_audio && !audio_codec) || (options.require_video && !video_codec)) {
             onResponse({type: 'failed', reason: 'No proper audio/video codec.'});
@@ -1084,9 +1088,10 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
         var on_ok = function (audioStream, videoStream) {
             return function () {
                 log.debug('subscribe ok, audioStream:', audioStream, 'videoStream', videoStream);
-                if (terminals[terminal_id] && terminals[terminal_id].subscribed[subscription_id]
-                    && (!audioStream || streams[audioStream])
-                    && (!videoStream || streams[videoStream])) {
+                if (terminals[terminal_id] &&
+                    terminals[terminal_id].subscribed[subscription_id] &&
+                    (!audioStream || streams[audioStream]) &&
+                    (!videoStream || streams[videoStream])) {
                     audioStream && streams[audioStream] && streams[audioStream].audio.subscribers.push(terminal_id);
                     videoStream && streams[videoStream] && streams[videoStream].video.subscribers.push(terminal_id);
                     terminals[terminal_id].subscribed[subscription_id].audio = audioStream;
@@ -1188,9 +1193,11 @@ exports.RoomController = function (spec, on_init_ok, on_init_failed) {
 
     that.unsubscribe = function (terminal_id, subscription_id) {
         log.debug('unsubscribe from terminal:', terminal_id, 'for subscription:', subscription_id);
-        if (terminals[terminal_id]) {
+        if (terminals[terminal_id] && terminals[terminal_id].subscribed[subscription_id]) {
             unsubscribeStream(terminal_id, subscription_id);
+            return true;
         }
+        return false;
     };
 
     that.unsubscribeAll = function (terminal_id) {

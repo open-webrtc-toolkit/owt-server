@@ -129,15 +129,49 @@ module.exports = function () {
                 callback('callback', response);
             });
         } else if (subscription_type === 'rtsp') {
-            conn = new RtspOut(options.url);
+            conn = new RtspOut(options.url, function (error) {
+                if (error) {
+                    log.error('rtsp-out init error:', error);
+                    if (options.observer !== undefined) {
+                        amqper.callRpc(options.observer, 'eventReport', [
+                            'stopRtspOut',
+                            options.room_id,
+                            {
+                                terminal: options.terminal,
+                                message: error,
+                                id: subscription_id,
+                                data: null
+                            }
+                        ]);
+                    }
+                }
+            });
+            // Semantically this callback should be invoked in the above error handle function when the underlying
+            // native code throws an `init' notification with null error, which indicates the connection and media
+            // are ready. However, RtspOut depends on `onFrame()' to facilitate initialization jobs including opening
+            // connection to remote RTSP server, adding audio/video stream to the connection, initializing audio/video
+            // codec, etc. `onFrame()' would be invoked upon frame arriving at RtspOut component, which means the subscription
+            // should be established already. So invocation of the callback here is safe and more of working-around to
+            // follow the generic subscription mechanism (rpc::connect -> rpc::subscribe -> response) than permanent solution.
+            // In this convention, clients get responses before the RtspOut component is ready such that when the initialization
+            // fails due to any reason, portal may need to resend a notification to clients.
             callback('callback', {type: 'ready', audio_codecs: [options.audio_codec], video_codecs: [options.video_codec]});
         } else if (subscription_type === 'file') {
             var recordingPath = options.path ? options.path : GLOBAL.config.recording.path;
             conn = new MediaFileOut(path.join(recordingPath, options.filename), options.interval);
-            conn.addEventListener('RecordingStream', function (message) {
-                log.error('External output for media recording error occurs.');
+            conn.addEventListener('RecordingStream', function (error) {
+                log.error('media recording error:', error);
                 if (options.observer !== undefined) {
-                    amqper.callRpc(options.observer, 'eventReport', ['deleteExternalOutput', options.room_id, {message: message, id: subscription_id, data: null}]);
+                    amqper.callRpc(options.observer, 'eventReport', [
+                        'deleteExternalOutput',
+                        options.room_id,
+                        {
+                            terminal: options.terminal,
+                            message: error,
+                            id: subscription_id,
+                            data: null
+                        }
+                    ]);
                 }
             });
             callback('callback', {type: 'ready', audio_codecs: [options.audio_codec], video_codecs: [options.video_codec]});

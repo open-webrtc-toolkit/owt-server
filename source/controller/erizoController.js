@@ -9,6 +9,7 @@ var fs = require('fs');
 var toml = require('toml');
 var log = require('./logger').logger.getLogger('ErizoController');
 var path = require('path');
+var url = require('url');
 
 try {
   GLOBAL.config = toml.parse(fs.readFileSync('./controller.toml'));
@@ -96,7 +97,7 @@ for (var prop in opt.options) {
 
 var amqper = require('./amqper');
 var clusterWorker = require('./clusterWorker');
-var controller = require('./roomController');
+var roomController = require('./roomController');
 var WARNING_N_ROOMS = GLOBAL.config.controller.warning_n_rooms;
 var LIMIT_N_ROOMS = GLOBAL.config.controller.limit_n_rooms;
 var BINDED_INTERFACE_NAME = GLOBAL.config.controller.networkInterface;
@@ -175,7 +176,7 @@ var eventReportHandlers = {
         }
 
         var recorderId = spec.id;
-        room.controller.unsubscribe(room.id, recorderId);
+        room.controller.unsubscribe(spec.terminal, recorderId);
 
         log.info('Recorder has been deleted since', spec.message);
 
@@ -185,6 +186,15 @@ var eventReportHandlers = {
                 room.streams[i].removeRecorder(recorderId);
             }
         }
+    },
+    'stopRtspOut': function (roomId, spec) {
+        var room = rooms[roomId];
+        if (!room) {
+            log.warn('room not found:', roomId);
+            return;
+        }
+        log.info('Stop rtsp out since', spec.message);
+        room.controller.unsubscribe(spec.terminal, spec.id);
     },
     'vad': function (roomId, spec) {
         var room = rooms[roomId];
@@ -426,6 +436,14 @@ var resolutionValue2Name = {
     'r720x720': 'r720x720'
 };
 
+var incrementedId = (function () {
+    var id = 0;
+    return function () {
+        ++id;
+        return id + '';
+    };
+}());
+
 var listen = function () {
     log.info('server on');
 
@@ -550,7 +568,7 @@ var listen = function () {
                                                 delete rooms[roomID];
                                                 return on_error();
                                             }
-                                            room.controller = controller.RoomController(
+                                            room.controller = roomController(
                                                 {cluster: GLOBAL.config.cluster.name || 'woogeen-cluster',
                                                  amqper: amqper,
                                                  room: roomID,
@@ -624,7 +642,7 @@ var listen = function () {
                             streamId = msg.payload.streamId/*FIXME: to be modified to msg.payload.connectionId along with client side.*/ + '',
                             connectionId = socket.room.streams[streamId] && socket.room.streams[streamId].getOwner() === socket.id ? streamId : socket.id + '-' + streamId;
                         socket.room.controller.onTrackControl(
-                            'webrtc#'+socket.id/*FIXME: hard code terminalID*/,
+                            'webrtc#'+socket.id/*FIXME: hard code terminalId*/,
                             connectionId,
                             cmdOpts[0],
                             cmdOpts[1],
@@ -755,7 +773,7 @@ var listen = function () {
                     log.debug('signaling_message, stream:', msg.streamId, 'owner:', st.getPublicStream().from, 'self:', socket.id);
                     /*FIXME: to modify msg.streamId to msg.connectionId along with client side.*/
                     var connectionId = st.getOwner() === socket.id ? msg.streamId : socket.id + '-' + msg.streamId;
-                    socket.room.controller.onConnectionSignalling('webrtc#'+socket.id/*FIXME: hard code terminalID*/, connectionId, msg.msg);
+                    socket.room.controller.onConnectionSignalling('webrtc#'+socket.id/*FIXME: hard code terminalId*/, connectionId, msg.msg);
                 } else {
                    log.info('signaling_message, stream['+msg.streamId+'] does not exist');
                 }
@@ -804,7 +822,7 @@ var listen = function () {
                 }
 
                 socket.room.controller.publish(
-                    stream_type+'#'+socket.id/*FIXME: hard code terminalID*/,
+                    stream_type+'#'+socket.id/*FIXME: hard code terminalId*/,
                     id,
                     stream_type,
                     {url: url,
@@ -855,7 +873,7 @@ var listen = function () {
                 }
 
                 socket.room.controller.publish(
-                    'webrtc#'+socket.id/*FIXME: hard code terminalID*/,
+                    'webrtc#'+socket.id/*FIXME: hard code terminalId*/,
                     id,
                     'webrtc',
                     {has_audio: options.audio, has_video: options.video},
@@ -965,7 +983,7 @@ var listen = function () {
                     }
 
                     socket.room.controller.subscribe(
-                        'webrtc#'+socket.id/*FIXME: hard code terminalID*/,
+                        'webrtc#'+socket.id/*FIXME: hard code terminalId*/,
                         socket.id + '-' + options.streamId,
                         'webrtc',
                         options.streamId,
@@ -1002,6 +1020,104 @@ var listen = function () {
             }
         });
 
+        socket.on('startRtspOut', function (options, callback) {
+            if (typeof options === 'function') {
+                callback = options;
+                options = {};
+            } else if (typeof options !== 'object' || options === null) {
+                options = {};
+            }
+
+            if (socket.user === undefined || !socket.user.permissions[Permission.RECORD]) {
+                return safeCall(callback, 'error', 'unauthorized');
+            }
+
+            if (typeof options.url !== 'string' || options.url === '') {
+                return safeCall(callback, 'error', 'Invalid RTSP server url');
+            }
+
+            options.url = url.parse(options.url);
+            if (options.url.protocol !== 'rtsp:' || !options.url.slashes || !options.url.host) {
+                return safeCall(callback, 'error', 'Invalid RTSP server url');
+            }
+
+            if (options.streamId === undefined) {
+                options.streamId = socket.room.mixer;
+            }
+
+            var stream = socket.room.streams[options.streamId];
+            if (typeof stream !== 'object' || stream === null) {
+                return safeCall(callback, 'error', 'Invalid stream id');
+            }
+
+            var video_resolution;
+            if (typeof options.resolution === 'object' && options.resolution !== null) {
+                if (stream.hasResolution(options.resolution)) {
+                    video_resolution = resolutionValue2Name['r'+options.resolution.width+'x'+options.resolution.height];
+                }
+            } else if (typeof options.resolution === 'string' && stream.hasResolution(resolutionName2Value[options.resolution])) {
+                video_resolution = options.resolution;
+            }
+
+            var rtspId = incrementedId();
+            options.url.pathname = path.join(options.url.pathname || '/', 'room_' + socket.room.id + '-' + options.streamId + '-' + rtspId + '.sdp');
+            var rtspUrl = options.url.format();
+            var terminalId = 'rtsp#' + socket.room.id + '-' + rtspId;
+            socket.room.controller.subscribe(
+                terminalId,
+                rtspId,
+                'rtsp',
+                options.streamId,
+                {
+                    require_audio: stream.hasAudio(),
+                    audio_codec: 'pcm_raw',
+                    require_video: stream.hasVideo(),
+                    video_codec: 'h264',
+                    video_resolution: video_resolution,
+                    url: rtspUrl,
+                    observer: myId,
+                    room_id: socket.room.id,
+                    terminal: terminalId
+                },
+                function (response) {
+                    log.debug('startRtspOut response:', response);
+                    if (response.type === 'ready') {
+                        safeCall(callback, 'success', {
+                            id: rtspId,
+                            url: rtspUrl
+                        });
+                    } else if (response.type === 'failed') {
+                        safeCall(callback, 'error', response.reason);
+                    }
+                }
+            );
+        });
+
+        socket.on('stopRtspOut', function (options, callback) {
+            if (typeof options === 'function') {
+                callback = options;
+                options = {};
+            } else if (typeof options !== 'object' || options === null) {
+                options = {};
+            }
+
+            if (socket.user === undefined || !socket.user.permissions[Permission.RECORD]) {
+                return safeCall(callback, 'error', 'unauthorized');
+            }
+
+            if (typeof options.id !== 'string' || options.id === '') {
+                return safeCall(callback, 'error', 'Invalid RTSP id');
+            }
+
+            if (socket.room.controller.unsubscribe('rtsp#' + socket.room.id + '-' + options.id, options.id)) {
+                safeCall(callback, 'success', {
+                    id: options.id
+                });
+            } else {
+                safeCall(callback, 'error', 'Invalid RTSP id');
+            }
+        });
+
         //Gets 'startRecorder' messages
         socket.on('startRecorder', function (options, callback) {
             if (typeof options === 'function') {
@@ -1025,7 +1141,7 @@ var listen = function () {
                 audioStreamId = socket.room.mixer;
             } else if (videoStreamId === undefined) {
                 videoRequired = false;
-            } else if (audioStreamId === undefined){
+            } else if (audioStreamId === undefined) {
                 audioRequired = false;
             }
 
@@ -1075,24 +1191,27 @@ var listen = function () {
                 }
             }
 
+            var terminalId = 'file#' + socket.room.id + '-' + recorderId/*FIXME: hard code terminalId*/;
             // Make sure the recording context clean for this 'startRecorder' subscription
-            socket.room.controller.unsubscribe('file#'+socket.room.id/*FIXME: hard code terminalID*/, recorderId);
-
+            socket.room.controller.unsubscribe(terminalId, recorderId);
             socket.room.controller.subscribeSelectively(
-                'file#' + socket.room.id + '-' + recorderId/*FIXME: hard code terminalID*/,
+                terminalId,
                 recorderId,
                 'file',
                 audioStreamId,
                 videoStreamId,
-                {require_audio: audioRequired,
-                 audio_codec: preferredAudioCodec,
-                 require_video: videoRequired,
-                 video_codec: preferredVideoCodec,
-                 path: specifiedPath,
-                 filename: filename,
-                 interval: interval,
-                 observer: myId,
-                 room_id: socket.room.id},
+                {
+                    require_audio: audioRequired,
+                    audio_codec: preferredAudioCodec,
+                    require_video: videoRequired,
+                    video_codec: preferredVideoCodec,
+                    path: specifiedPath,
+                    filename: filename,
+                    interval: interval,
+                    observer: myId,
+                    room_id: socket.room.id,
+                    terminal: terminalId
+                },
                 function (response) {
                     if (response.type === 'ready') {
                         log.info('Media recording to ', filename);
@@ -1147,7 +1266,7 @@ var listen = function () {
 
             // Stop recorder
             if (recorderExisted) {
-                socket.room.controller.unsubscribe('file#' + socket.room.id + '-' + options.recorderId/*FIXME: hard code terminalID*/, options.recorderId);
+                socket.room.controller.unsubscribe('file#' + socket.room.id + '-' + options.recorderId/*FIXME: hard code terminalId*/, options.recorderId);
 
                 log.info('Recorder stopped: ', options.recorderId);
 
@@ -1264,7 +1383,7 @@ var listen = function () {
 
             if (socket.room.streams[to].hasAudio() || socket.room.streams[to].hasVideo()) {
                 if (!socket.room.p2p) {
-                    socket.room.controller.unsubscribe('webrtc#'+socket.id/*FIXME: hard code terminalID*/, socket.id + '-' + to);
+                    socket.room.controller.unsubscribe('webrtc#'+socket.id/*FIXME: hard code terminalId*/, socket.id + '-' + to);
                     if (GLOBAL.config.controller.report.session_events) {
                         var timeStamp = new Date();
                         amqper.broadcast('event', {room: socket.room.id, user: socket.id, type: 'unsubscribe', stream: to, timestamp:timeStamp.getTime()});
@@ -1294,7 +1413,7 @@ var listen = function () {
                 }
 
                 if (socket.room.controller) {
-                    socket.room.controller.unsubscribeAll('webrtc#'+socket.id/*FIXME: hard code terminalID*/);
+                    socket.room.controller.unsubscribeAll('webrtc#'+socket.id/*FIXME: hard code terminalId*/);
                 }
 
                 for (i in socket.streams) {
@@ -1469,7 +1588,6 @@ var onTerminate = function () {
                 joinCluster(function (rpcID) {
                     log.info('portal join cluster ok, with rpcID:', rpcID);
                     amqper.bind(rpcID, listen);
-                    controller.myId = rpcID;
                 });
             } catch (error) {
                 log.error('Error in Erizo Controller:', error);

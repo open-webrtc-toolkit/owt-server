@@ -57,7 +57,11 @@ void RtspOut::New(const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   RtspOut* obj = new RtspOut();
   obj->me = new woogeen_base::RtspOut(url);
+  obj->me->setEventRegistry(obj);
   obj->dest = obj->me;
+
+  if (args.Length() > 1 && args[1]->IsFunction())
+    Local<Object>::New(isolate, obj->m_store)->Set(String::NewFromUtf8(isolate, "init"), args[1]);
 
   obj->Wrap(args.This());
   args.GetReturnValue().Set(args.This());
@@ -67,8 +71,11 @@ void RtspOut::close(const v8::FunctionCallbackInfo<v8::Value>& args) {
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
   RtspOut* obj = ObjectWrap::Unwrap<RtspOut>(args.Holder());
-  woogeen_base::RtspOut* me = obj->me;
-  delete me;
+  if (obj->me) {
+    delete obj->me;
+    obj->m_store.Reset();
+    obj->me = nullptr;
+  }
 }
 
 void RtspOut::addEventListener(const FunctionCallbackInfo<Value>& args)
@@ -76,9 +83,11 @@ void RtspOut::addEventListener(const FunctionCallbackInfo<Value>& args)
     Isolate* isolate = Isolate::GetCurrent();
     HandleScope scope(isolate);
     if (args.Length() < 2 || !args[0]->IsString() || !args[1]->IsFunction()) {
-        isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Wrong arguments")));
-        return;
+      isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Wrong arguments")));
+      return;
     }
-    RtspOut* n = ObjectWrap::Unwrap<RtspOut>(args.Holder());
-    Local<Object>::New(isolate, n->m_store)->Set(args[0], args[1]);
+    RtspOut* obj = ObjectWrap::Unwrap<RtspOut>(args.Holder());
+    if (!obj->me)
+      return;
+    Local<Object>::New(isolate, obj->m_store)->Set(args[0], args[1]);
 }

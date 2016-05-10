@@ -249,16 +249,16 @@ void RtspOut::onTimeout()
         if (m_audioStream && m_videoStream) {
             if (!(m_context->oformat->flags & AVFMT_NOFILE)) {
                 if (avio_open(&m_context->pb, m_context->filename, AVIO_FLAG_WRITE) < 0) {
-                    ELOG_ERROR("avio_open failed");
                     m_status = AVStreamOut::Context_ERROR;
-                    notifyAsyncEvent("RTSPStream", "cannot open output file");
+                    notifyAsyncEvent("init", "cannot open connection");
+                    ELOG_ERROR("avio_open failed");
                     return;
                 }
             }
             av_dump_format(m_context, 0, m_context->filename, 1);
             if (avformat_write_header(m_context, nullptr) < 0) {
                 m_status = AVStreamOut::Context_ERROR;
-                notifyAsyncEvent("RTSPStream", "cannot setup connection");
+                notifyAsyncEvent("init", "cannot write header");
                 ELOG_ERROR("avformat_write_header failed");
                 return;
             }
@@ -271,7 +271,6 @@ void RtspOut::onTimeout()
         break;
     case woogeen_base::AVStreamOut::Context_ERROR:
     default:
-        notifyAsyncEvent("RTSPStream", "init failed");
         ELOG_ERROR("context error");
         return;
     }
@@ -295,12 +294,14 @@ bool RtspOut::addAudioStream(enum AVCodecID codec_id, int nbChannels, int sample
     if (!codec) {
         ELOG_ERROR("cannot find audio encoder %d", codec_id);
         m_status = AVStreamOut::Context_ERROR;
+        notifyAsyncEvent("init", "cannot find audio encoder");
         return false;
     }
     AVStream* stream = avformat_new_stream(m_context, codec);
     if (!stream) {
         ELOG_ERROR("cannot add audio stream");
         m_status = AVStreamOut::Context_ERROR;
+        notifyAsyncEvent("init", "cannot add audio stream");
         return false;
     }
 
@@ -317,8 +318,10 @@ bool RtspOut::addAudioStream(enum AVCodecID codec_id, int nbChannels, int sample
         c->flags |= CODEC_FLAG_GLOBAL_HEADER;
     if (c->codec->capabilities & CODEC_CAP_VARIABLE_FRAME_SIZE)
         c->frame_size = 10000;
-    if (avcodec_open2(c, codec, nullptr) < 0)
-        ELOG_ERROR("cannot open output codec.");
+    if (avcodec_open2(c, codec, nullptr) < 0) {
+        ELOG_ERROR("cannot open output audio codec");
+        notifyAsyncEvent("init", "cannot open output audio codec");
+    }
 #ifdef FORCE_RESAMPLE
     m_resampleContext = swr_alloc_set_opts(nullptr,
                                   av_get_default_channel_layout(nbChannels),
@@ -330,7 +333,8 @@ bool RtspOut::addAudioStream(enum AVCodecID codec_id, int nbChannels, int sample
                                   0, nullptr);
     if (m_resampleContext) {
         if (swr_init(m_resampleContext) < 0) {
-            ELOG_ERROR("cannot open resample context");
+            ELOG_ERROR("cannot open audio resample context");
+            notifyAsyncEvent("init", "cannot open audio resample context");
             swr_free(&m_resampleContext);
             m_resampleContext = nullptr;
         }
@@ -339,6 +343,7 @@ bool RtspOut::addAudioStream(enum AVCodecID codec_id, int nbChannels, int sample
     if (!m_audioFifo) {
         if (!(m_audioFifo = av_audio_fifo_alloc(AV_SAMPLE_FMT_S16, c->channels, 1))) {
             ELOG_ERROR("cannot allocate audio fifo");
+            notifyAsyncEvent("init", "cannot allocate audio fifo");
         }
     }
     m_audioStream = stream;
@@ -354,6 +359,7 @@ bool RtspOut::addVideoStream(enum AVCodecID codec_id, unsigned int width, unsign
     if (!stream) {
         ELOG_ERROR("cannot add video stream");
         m_status = AVStreamOut::Context_ERROR;
+        notifyAsyncEvent("init", "cannot add video stream");
         return false;
     }
     AVCodecContext* c = stream->codec;

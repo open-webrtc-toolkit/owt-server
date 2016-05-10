@@ -112,12 +112,10 @@ rpc.connect(GLOBAL.config.rabbit, function () {
 
         controller.privateRegexp = new RegExp(process.argv[4], 'g');
         controller.publicIP = process.argv[5];
-
-        rpc.setPublicRPC(controller);
-
-        controller.keepAlive = function(callback) {
+        controller.keepAlive = function (callback) {
             callback('callback', true);
         };
+        rpc.setPublicRPC(controller);
 
         log.info('ID: ErizoJS_' + rpcID);
 
