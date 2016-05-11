@@ -123,11 +123,14 @@ void SoftVideoCompositor::deActivateInput(int input)
         m_bufferManager->releaseBuffer(busyFrame);
 }
 
-void SoftVideoCompositor::pushInput(int input, webrtc::I420VideoFrame* frame)
+void SoftVideoCompositor::pushInput(int input, const Frame& frame)
 {
+    assert(frame.format == woogeen_base::FRAME_FORMAT_I420);
+    webrtc::I420VideoFrame* i420Frame = reinterpret_cast<webrtc::I420VideoFrame*>(frame.payload);
+
     I420VideoFrame* freeFrame = m_bufferManager->getFreeBuffer();
     if (freeFrame) {
-        freeFrame->CopyFrame(*frame);
+        freeFrame->CopyFrame(*i420Frame);
         I420VideoFrame* busyFrame = m_bufferManager->postFreeBuffer(freeFrame, input);
         if (busyFrame)
             m_bufferManager->releaseBuffer(busyFrame);

@@ -54,13 +54,7 @@ public:
     }
 
     void onFrame(const woogeen_base::Frame& frame) {
-#ifndef ENABLE_YAMI
-        assert(frame.format == woogeen_base::FRAME_FORMAT_I420);
-        webrtc::I420VideoFrame* i420Frame = reinterpret_cast<webrtc::I420VideoFrame*>(frame.payload);
-        m_compositor->pushInput(m_index, i420Frame);
-#else
         m_compositor->pushInput(m_index, frame);
-#endif
     }
 
 private:
