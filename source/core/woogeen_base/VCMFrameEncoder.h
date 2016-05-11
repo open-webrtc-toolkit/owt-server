@@ -31,6 +31,11 @@
 #include <logger.h>
 #include <webrtc/modules/video_coding/main/interface/video_coding.h>
 
+#ifdef ENABLE_YAMI
+#include "YamiVideoDisplay.h"
+#include "YamiVideoFrame.h"
+#endif
+
 namespace woogeen_base {
 
 class EncodeOut : public FrameSource {
@@ -90,6 +95,13 @@ public:
         const webrtc::RTPVideoHeader* rtpVideoHdr);
 
 private:
+#ifdef ENABLE_YAMI
+    uint8_t* mapYamiSurfaceToVAImage(intptr_t surface, VAImage&);
+    void unmapVAImage(const VAImage&);
+    bool convertYamiVideoFrameToI420VideoFrame(YamiVideoFrame&, webrtc::I420VideoFrame&);
+    SharedPtr<VADisplay> m_vaDisplay;
+#endif
+
     struct OutStream {
         uint32_t width;
         uint32_t height;

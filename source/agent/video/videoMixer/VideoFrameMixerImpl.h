@@ -35,9 +35,11 @@
 #include <YamiFrameEncoder.h>
 #else
 #include "SoftVideoCompositor.h"
+#endif
+
 #include <VCMFrameDecoder.h>
 #include <VCMFrameEncoder.h>
-#endif
+
 namespace mcu {
 
 class CompositeIn : public woogeen_base::FrameDestination
@@ -234,7 +236,8 @@ inline bool VideoFrameMixerImpl::addOutput(int output,
             return false;
         }
     } else { //Never found a reusable encoder.
-#ifdef ENABLE_YAMI
+// #ifdef ENABLE_YAMI
+#if 0
         encoder.reset(new woogeen_base::YamiFrameEncoder(format, m_useSimulcast));
 #else
         encoder.reset(new woogeen_base::VCMFrameEncoder(format, m_taskRunner, m_useSimulcast));
