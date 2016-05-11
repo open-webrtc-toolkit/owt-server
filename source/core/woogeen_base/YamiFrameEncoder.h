@@ -50,7 +50,7 @@ public:
     // Implements VideoFrameEncoder.
     int32_t generateStream(uint32_t width, uint32_t height, FrameDestination* dest);
     void degenerateStream(int32_t streamId);
-    bool canSimulcastFor(FrameFormat format, uint32_t width, uint32_t height);
+    bool canSimulcast(FrameFormat format, uint32_t width, uint32_t height);
     bool isIdle();
     void onFrame(const Frame&);
     void setBitrate(unsigned short kbps, int id = 0);

@@ -223,7 +223,7 @@ inline bool VideoFrameMixerImpl::addOutput(int output,
     // find a reusable encoder.
     auto it = m_outputs.begin();
     for (; it != m_outputs.end(); ++it) {
-        if (it->second.encoder->canSimulcastFor(format, rootSize.width, rootSize.height)) {
+        if (it->second.encoder->canSimulcast(format, rootSize.width, rootSize.height)) {
             break;
         }
     }
