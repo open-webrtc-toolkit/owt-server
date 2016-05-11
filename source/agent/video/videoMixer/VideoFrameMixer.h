@@ -37,12 +37,7 @@ class VideoFrameCompositor : public LayoutConsumer, public woogeen_base::FrameSo
 public:
     virtual bool activateInput(int input) = 0;
     virtual void deActivateInput(int input) = 0;
-#ifndef ENABLE_YAMI
-    virtual void pushInput(int input, webrtc::I420VideoFrame*) = 0;
-#else
-    virtual void pushInput(int input, webrtc::I420VideoFrame*){}
-    virtual void pushInput(int input, const woogeen_base::Frame& frame){}
-#endif
+    virtual void pushInput(int input, const woogeen_base::Frame&) = 0;
 };
 
 // VideoFrameMixer accepts frames from multiple inputs and mixes them.

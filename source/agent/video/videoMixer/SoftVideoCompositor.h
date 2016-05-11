@@ -72,7 +72,7 @@ public:
 
     bool activateInput(int input);
     void deActivateInput(int input);
-    void pushInput(int input, webrtc::I420VideoFrame*);
+    void pushInput(int input, const woogeen_base::Frame&);
 
     void updateRootSize(VideoSize& rootSize);
     void updateBackgroundColor(YUVColor& bgColor);

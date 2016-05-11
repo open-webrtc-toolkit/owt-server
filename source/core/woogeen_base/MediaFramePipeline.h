@@ -162,7 +162,6 @@ public:
     virtual void degenerateStream(int32_t streamId) = 0;
     virtual void setBitrate(unsigned short kbps, int32_t streamId) = 0;
     virtual void requestKeyFrame(int32_t streamId) = 0;
-
 };
 
 }
