@@ -17,8 +17,13 @@
  * otherwise. Any license under such intellectual property rights must be express
  * and approved by Intel in writing.
  */
-#include <VideoCommonDefs.h>
+#ifndef VideoDisplay_h
+#define VideoDisplay_h
+
+#include <boost/shared_ptr.hpp>
 #include <va/va.h>
-//sington for VADisplay
-//TODO: Drop this after yami provide simliar functions
-SharedPtr<VADisplay> YamiGetVADisplay();
+
+// Singleton for VADisplay
+boost::shared_ptr<VADisplay> GetVADisplay();
+
+#endif

@@ -20,7 +20,7 @@
 
 #include "YamiFrameDecoder.h"
 
-#include "YamiVideoDisplay.h"
+#include "VideoDisplay.h"
 #include "YamiVideoFrame.h"
 #include <webrtc/modules/video_coding/codecs/h264/include/h264.h>
 #include <webrtc/modules/video_coding/codecs/vp8/include/vp8.h>
@@ -92,7 +92,7 @@ bool YamiFrameDecoder::init(FrameFormat format)
         ELOG_ERROR("Failed to create %d", format);
         return false;
     }
-    SharedPtr<VADisplay> vaDisplay = YamiGetVADisplay();
+    boost::shared_ptr<VADisplay> vaDisplay = GetVADisplay();
     if (!vaDisplay) {
         ELOG_ERROR("get va display failed");
         return false;

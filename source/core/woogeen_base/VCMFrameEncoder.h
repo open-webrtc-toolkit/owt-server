@@ -26,13 +26,13 @@
 
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/shared_mutex.hpp>
+#include <logger.h>
 #include <map>
 #include <tuple>
-#include <logger.h>
 #include <webrtc/modules/video_coding/main/interface/video_coding.h>
 
 #ifdef ENABLE_YAMI
-#include "YamiVideoDisplay.h"
+#include "VideoDisplay.h"
 #include "YamiVideoFrame.h"
 #endif
 
@@ -96,10 +96,10 @@ public:
 
 private:
 #ifdef ENABLE_YAMI
-    uint8_t* mapYamiSurfaceToVAImage(intptr_t surface, VAImage&);
+    uint8_t* mapVASurfaceToVAImage(intptr_t surface, VAImage&);
     void unmapVAImage(const VAImage&);
     bool convertYamiVideoFrameToI420VideoFrame(YamiVideoFrame&, webrtc::I420VideoFrame&);
-    SharedPtr<VADisplay> m_vaDisplay;
+    boost::shared_ptr<VADisplay> m_vaDisplay;
 #endif
 
     struct OutStream {

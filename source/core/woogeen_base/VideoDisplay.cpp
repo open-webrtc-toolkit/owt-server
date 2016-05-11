@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Intel Corporation All Rights Reserved.
+ * Copyright 2016 Intel Corporation All Rights Reserved.
  *
  * The source code contained or described herein and all documents related to the
  * source code ("Material") are owned by Intel Corporation or its suppliers or
@@ -17,12 +17,12 @@
  * otherwise. Any license under such intellectual property rights must be express
  * and approved by Intel in writing.
  */
-#include "YamiVideoDisplay.h"
+#include "VideoDisplay.h"
 
 #include <boost/thread/shared_mutex.hpp>
-#include <sys/stat.h>
 #include <fcntl.h>
 #include <logger.h>
+#include <sys/stat.h>
 #include <va/va_drm.h>
 
 struct VADisplayDeleter
@@ -40,10 +40,10 @@ private:
 
 class DisplayGetter {
 public:
-    static SharedPtr<VADisplay> YamiGetVADisplay()
+    static boost::shared_ptr<VADisplay> GetVADisplay()
     {
         boost::upgrade_lock<boost::shared_mutex> lock(m_mutex);
-        SharedPtr<VADisplay> display = m_display;
+        boost::shared_ptr<VADisplay> display = m_display;
         if (display)
             return display;
         ELOG_ERROR("create new display");
@@ -70,7 +70,7 @@ public:
 private:
     static boost::shared_mutex m_mutex;
     //TODO: change this to weak ptr
-    static SharedPtr<VADisplay> m_display;
+    static boost::shared_ptr<VADisplay> m_display;
 
     DECLARE_LOGGER();
 };
@@ -78,10 +78,10 @@ private:
 DEFINE_LOGGER(DisplayGetter, "mcu.media.DisplayGetter");
 
 boost::shared_mutex DisplayGetter::m_mutex;
-SharedPtr<VADisplay> DisplayGetter::m_display;
+boost::shared_ptr<VADisplay> DisplayGetter::m_display;
 
-SharedPtr<VADisplay> YamiGetVADisplay()
+boost::shared_ptr<VADisplay> GetVADisplay()
 {
-    return DisplayGetter::YamiGetVADisplay();
+    return DisplayGetter::GetVADisplay();
 }
 
