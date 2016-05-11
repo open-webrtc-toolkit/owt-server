@@ -1,20 +1,20 @@
 /*
- * Copyright 2014 Intel Corporation All Rights Reserved. 
- * 
- * The source code contained or described herein and all documents related to the 
- * source code ("Material") are owned by Intel Corporation or its suppliers or 
- * licensors. Title to the Material remains with Intel Corporation or its suppliers 
- * and licensors. The Material contains trade secrets and proprietary and 
- * confidential information of Intel or its suppliers and licensors. The Material 
- * is protected by worldwide copyright and trade secret laws and treaty provisions. 
- * No part of the Material may be used, copied, reproduced, modified, published, 
- * uploaded, posted, transmitted, distributed, or disclosed in any way without 
+ * Copyright 2014 Intel Corporation All Rights Reserved.
+ *
+ * The source code contained or described herein and all documents related to the
+ * source code ("Material") are owned by Intel Corporation or its suppliers or
+ * licensors. Title to the Material remains with Intel Corporation or its suppliers
+ * and licensors. The Material contains trade secrets and proprietary and
+ * confidential information of Intel or its suppliers and licensors. The Material
+ * is protected by worldwide copyright and trade secret laws and treaty provisions.
+ * No part of the Material may be used, copied, reproduced, modified, published,
+ * uploaded, posted, transmitted, distributed, or disclosed in any way without
  * Intel's prior express written permission.
- * 
- * No license under any patent, copyright, trade secret or other intellectual 
- * property right is granted to or conferred upon you by disclosure or delivery of 
- * the Materials, either expressly, by implication, inducement, estoppel or 
- * otherwise. Any license under such intellectual property rights must be express 
+ *
+ * No license under any patent, copyright, trade secret or other intellectual
+ * property right is granted to or conferred upon you by disclosure or delivery of
+ * the Materials, either expressly, by implication, inducement, estoppel or
+ * otherwise. Any license under such intellectual property rights must be express
  * and approved by Intel in writing.
  */
 
@@ -73,7 +73,7 @@ public:
     void removePublisher(const std::string& id);
     void addSubscriber(erizo::MediaSink*, const std::string& id, const std::string& options);
     void removeSubscriber(const std::string& id);
-    void setEventRegistry(woogeen_base::EventRegistry*);
+    void setEventRegistry(EventRegistry*);
     void customMessage(const std::string& message);
     std::string retrieveStatistics();
     void subscribeStream(const std::string& id, bool isAudio);
@@ -126,7 +126,7 @@ public:
     //Stream from ooVoo to webrtc
     virtual void onCreateInboundClient(std::string userName, uint32_t userId, std::string participantInfo);//New client join group
     virtual void onCloseInboundClient(uint32_t userId); //Client leave group
-    virtual void onInboundStreamCreate(uint32_t userId, uint32_t streamId, bool isAudio, uint16_t resolution); //Notify webrtc whether video/audio is ready to be sent 
+    virtual void onInboundStreamCreate(uint32_t userId, uint32_t streamId, bool isAudio, uint16_t resolution); //Notify webrtc whether video/audio is ready to be sent
     virtual void onInboundStreamClose(uint32_t streamId); // Notify when ooVoo client's video/audio is off
     virtual void onDataReceive(mediaPacket_t*); //Called when there is a media packet received from ooVoo client
     virtual void onCustomMessage(void* pData, uint32_t length);
@@ -162,7 +162,7 @@ private:
     // libuv - uv_async_send() to notify node thread
     void notifyAsyncEvent(const std::string& event, const std::string& data);
     void notifyAsyncEvent(const std::string& event, uint32_t data);
-    woogeen_base::EventRegistry* m_asyncHandle;
+    EventRegistry* m_asyncHandle;
 
     boost::shared_mutex m_publisherMutex;
 
