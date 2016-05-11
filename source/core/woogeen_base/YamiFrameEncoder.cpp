@@ -192,7 +192,7 @@ YamiFrameEncoder::~YamiFrameEncoder()
 {
 }
 
-bool YamiFrameEncoder::canSimulcastFor(FrameFormat format, uint32_t width, uint32_t height)
+bool YamiFrameEncoder::canSimulcast(FrameFormat format, uint32_t width, uint32_t height)
 {
     return false;
 }

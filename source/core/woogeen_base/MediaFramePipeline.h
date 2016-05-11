@@ -21,11 +21,11 @@
 #ifndef MediaFramePipeline_h
 #define MediaFramePipeline_h
 
-#include <stdint.h>
+#include <boost/thread/shared_mutex.hpp>
 #include <list>
 #include <map>
+#include <stdint.h>
 #include <string>
-#include <boost/thread/shared_mutex.hpp>
 
 namespace woogeen_base {
 
@@ -98,19 +98,19 @@ struct FeedbackMsg {
 class FrameDestination;
 class FrameSource {
 public:
-    FrameSource() {}
+    FrameSource() { }
     virtual ~FrameSource();
 
-    virtual void onFeedback(const FeedbackMsg&) {};
+    virtual void onFeedback(const FeedbackMsg&) { };
 
-    void addAudioDestination(FrameDestination* dest);
-    void removeAudioDestination(FrameDestination* dest);
+    void addAudioDestination(FrameDestination*);
+    void removeAudioDestination(FrameDestination*);
 
-    void addVideoDestination(FrameDestination* dest);
-    void removeVideoDestination(FrameDestination* dest);
+    void addVideoDestination(FrameDestination*);
+    void removeVideoDestination(FrameDestination*);
 
 protected:
-    void deliverFrame(const Frame& frame);
+    void deliverFrame(const Frame&);
 
 private:
     std::list<FrameDestination*> m_audio_dests;
@@ -122,15 +122,15 @@ private:
 
 class FrameDestination {
 public:
-    FrameDestination() : m_audio_src(nullptr), m_video_src(nullptr) {}
-    virtual ~FrameDestination() {}
+    FrameDestination() : m_audio_src(nullptr), m_video_src(nullptr) { }
+    virtual ~FrameDestination() { }
 
-    virtual void onFrame(const Frame& frame) = 0;
+    virtual void onFrame(const Frame&) = 0;
 
-    void setAudioSource(FrameSource* src);
+    void setAudioSource(FrameSource*);
     void unsetAudioSource();
 
-    void setVideoSource(FrameSource* src);
+    void setVideoSource(FrameSource*);
     void unsetVideoSource();
 
     bool hasAudioSource() { return m_audio_src != nullptr; }
@@ -148,17 +148,17 @@ private:
 
 class VideoFrameDecoder : public FrameSource, public FrameDestination {
 public:
-    virtual ~VideoFrameDecoder() {}
-    virtual bool init(FrameFormat format) = 0;
+    virtual ~VideoFrameDecoder() { }
+    virtual bool init(FrameFormat) = 0;
 };
 
 class VideoFrameEncoder : public FrameDestination {
 public:
-    virtual ~VideoFrameEncoder() {}
+    virtual ~VideoFrameEncoder() { }
 
-    virtual bool canSimulcastFor(FrameFormat format, uint32_t width, uint32_t height) = 0;
+    virtual bool canSimulcast(FrameFormat, uint32_t width, uint32_t height) = 0;
     virtual bool isIdle() = 0;
-    virtual int32_t generateStream(uint32_t width, uint32_t height, FrameDestination* dest) = 0;
+    virtual int32_t generateStream(uint32_t width, uint32_t height, FrameDestination*) = 0;
     virtual void degenerateStream(int32_t streamId) = 0;
     virtual void setBitrate(unsigned short kbps, int32_t streamId) = 0;
     virtual void requestKeyFrame(int32_t streamId) = 0;

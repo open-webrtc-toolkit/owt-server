@@ -53,7 +53,7 @@ VCMFrameEncoder::~VCMFrameEncoder()
     m_streamId = 0;
 }
 
-bool VCMFrameEncoder::canSimulcastFor(FrameFormat format, uint32_t width, uint32_t height)
+bool VCMFrameEncoder::canSimulcast(FrameFormat format, uint32_t width, uint32_t height)
 {
     VideoCodec videoCodec;
     videoCodec = m_vcm->GetSendCodec();
