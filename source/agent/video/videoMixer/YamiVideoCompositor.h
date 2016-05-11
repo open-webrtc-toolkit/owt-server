@@ -71,7 +71,6 @@ private:
     SharedPtr<VideoFrame> customLayout();
     void generateFrame();
 
-    static SharedPtr<VADisplay> createVADisplay();
     // Delta used for translating between NTP and internal timestamps.
     int64_t m_ntpDelta;
 
@@ -80,7 +79,7 @@ private:
     uint32_t m_bgColor;
     LayoutSolution m_currentLayout;
 
-    SharedPtr<VADisplay> m_display;
+    boost::shared_ptr<VADisplay> m_display;
     SharedPtr<PooledFrameAllocator> m_allocator;
     SharedPtr<YamiMediaCodec::IVideoPostProcess> m_vpp;
     std::vector<boost::shared_ptr<VideoInput> > m_inputs;

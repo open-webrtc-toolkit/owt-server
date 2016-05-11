@@ -200,10 +200,10 @@ void VCMFrameEncoder::requestKeyFrame(int32_t streamId)
 }
 
 #ifdef ENABLE_YAMI
-uint8_t* VCMFrameEncoder::mapYamiSurfaceToVAImage(intptr_t surface, VAImage& image)
+uint8_t* VCMFrameEncoder::mapVASurfaceToVAImage(intptr_t surface, VAImage& image)
 {
     if (!m_vaDisplay)
-        m_vaDisplay = YamiGetVADisplay();
+        m_vaDisplay = GetVADisplay();
 
     if (!m_vaDisplay) {
         ELOG_ERROR("get va display failed");
@@ -257,9 +257,9 @@ bool VCMFrameEncoder::convertYamiVideoFrameToI420VideoFrame(YamiVideoFrame& yami
     }
 
     VAImage image;
-    uint8_t* buffer = mapYamiSurfaceToVAImage(input->surface, image);
+    uint8_t* buffer = mapVASurfaceToVAImage(input->surface, image);
     if (!buffer) {
-        ELOG_ERROR("mapYamiSurfaceToVAImage failed");
+        ELOG_ERROR("mapVASurfaceToVAImage failed");
         return false;
     }
 

@@ -20,7 +20,7 @@
 
 #include "YamiFrameEncoder.h"
 
-#include "YamiVideoDisplay.h"
+#include "VideoDisplay.h"
 #include "YamiVideoFrame.h"
 #include "MediaUtilities.h"
 #include <webrtc/modules/video_coding/codecs/vp8/vp8_factory.h>
@@ -78,7 +78,7 @@ public:
 
         setEncoderParams();
 
-        SharedPtr<VADisplay> vaDisplay = YamiGetVADisplay();
+        boost::shared_ptr<VADisplay> vaDisplay = GetVADisplay();
         if (!vaDisplay) {
             ELOG_ERROR("get va display failed");
             return false;

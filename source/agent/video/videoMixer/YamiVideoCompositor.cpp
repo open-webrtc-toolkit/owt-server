@@ -25,9 +25,9 @@
 #include <deque>
 /*#include <va/va.h>*/
 #include <va/va_compat.h>
+#include <VideoDisplay.h>
 #include <VideoPostProcessHost.h>
 #include <YamiVideoFrame.h>
-#include <YamiVideoDisplay.h>
 
 using namespace webrtc;
 
@@ -92,10 +92,10 @@ private:
 struct SurfaceDestoryer
 {
 private:
-    SharedPtr<VADisplay> m_display;
+    boost::shared_ptr<VADisplay> m_display;
     std::vector<VASurfaceID> m_surfaces;
 public:
-    SurfaceDestoryer(const SharedPtr<VADisplay>& display, std::vector<VASurfaceID>& surfaces)
+    SurfaceDestoryer(const boost::shared_ptr<VADisplay>& display, std::vector<VASurfaceID>& surfaces)
         :m_display(display)
     {
         m_surfaces.swap(surfaces);
@@ -113,7 +113,7 @@ class PooledFrameAllocator
 {
     DECLARE_LOGGER();
 public:
-    PooledFrameAllocator(const SharedPtr<VADisplay>& display, int poolsize)
+    PooledFrameAllocator(const boost::shared_ptr<VADisplay>& display, int poolsize)
         :m_display(display)
         , m_poolsize(poolsize)
     {
@@ -158,7 +158,7 @@ public:
         return  m_pool->alloc();
     }
 private:
-    SharedPtr<VADisplay> m_display;
+    boost::shared_ptr<VADisplay> m_display;
     SharedPtr<VideoPool<VideoFrame> > m_pool;
     int m_poolsize;
 };
@@ -272,7 +272,7 @@ YamiVideoCompositor::YamiVideoCompositor(uint32_t maxInput, VideoSize rootSize, 
         input->updateRootSize(rootSize);
     }
 
-    m_display = YamiGetVADisplay();
+    m_display = GetVADisplay();
     NativeDisplay nativeDisplay;
     nativeDisplay.type = NATIVE_DISPLAY_VA;
     nativeDisplay.handle = (intptr_t)*m_display;
