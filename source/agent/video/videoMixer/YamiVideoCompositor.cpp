@@ -282,7 +282,7 @@ YamiVideoCompositor::YamiVideoCompositor(uint32_t maxInput, VideoSize rootSize, 
     m_allocator.reset(new PooledFrameAllocator(m_display, 5));
 
 
-    if (!m_allocator->setFormat(YAMI_FOURCC('N', 'V', '1', '2'),
+    if (!m_allocator->setFormat(YAMI_FOURCC('Y', 'V', '1', '2'),
         m_compositeSize.width, m_compositeSize.height)) {
         ELOG_DEBUG("set to %dx%d ", m_compositeSize.width, m_compositeSize.width);
     }
@@ -306,7 +306,7 @@ void YamiVideoCompositor::updateRootSize(VideoSize& videoSize)
         input->updateRootSize(videoSize);
     }
     ELOG_DEBUG("set size to %dx%d failed", videoSize.width, videoSize.height);
-    if (!m_allocator->setFormat(YAMI_FOURCC('N', 'V', '1', '2'), videoSize.width, videoSize.height)) {
+    if (!m_allocator->setFormat(YAMI_FOURCC('Y', 'V', '1', '2'), videoSize.width, videoSize.height)) {
         ELOG_DEBUG("set size to %dx%d failed", videoSize.width, videoSize.height);
     }
 }

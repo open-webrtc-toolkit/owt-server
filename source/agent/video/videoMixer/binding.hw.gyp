@@ -10,6 +10,8 @@
       '../../../../third_party/webrtc/src/webrtc/video_engine/payload_router.cc',
       '../../../../third_party/webrtc/src/webrtc/video_engine/vie_encoder.cc',
       '../../../core/woogeen_base/MediaFramePipeline.cpp',
+      '../../../core/woogeen_base/VCMFrameDecoder.cpp',
+      '../../../core/woogeen_base/VCMFrameEncoder.cpp',
       '../../../core/woogeen_base/YamiFrameDecoder.cpp',
       '../../../core/woogeen_base/YamiFrameEncoder.cpp',
       '../../../core/woogeen_base/YamiVideoDisplay.cpp',
@@ -26,6 +28,7 @@
       '-L$(CORE_HOME)/../../third_party/webrtc', '-lwebrtc',
       '-L$(CORE_HOME)/../../build/libdeps/build/lib', '-lyami',
       '<!@(pkg-config --libs libva)',
+      '-L$(CORE_HOME)/../../third_party/openh264', '-lopenh264',
     ],
     'conditions': [
       [ 'OS=="mac"', {
