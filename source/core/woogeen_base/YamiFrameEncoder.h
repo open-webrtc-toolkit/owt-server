@@ -44,8 +44,10 @@ class YamiFrameEncoder : public VideoFrameEncoder {
     DECLARE_LOGGER();
 
 public:
-    YamiFrameEncoder(woogeen_base::FrameFormat, bool useSimulcast);
+    YamiFrameEncoder(FrameFormat, bool useSimulcast);
     ~YamiFrameEncoder();
+
+    static bool supportFormat(FrameFormat);
 
     // Implements VideoFrameEncoder.
     int32_t generateStream(uint32_t width, uint32_t height, FrameDestination* dest);
@@ -57,14 +59,7 @@ public:
     void requestKeyFrame(int id = 0);
 
 private:
-/*    struct Consumer {
-        VideoFrameConsumer* consumer;
-        uint8_t streamId;
-    };
-    webrtc::VideoCodingModule* m_vcm;
- */
     FrameFormat m_encodeFormat;
-    //boost::shared_ptr<WebRTCTaskRunner> m_taskRunner;
     std::map<int, boost::shared_ptr<VideoStream> > m_streams;
     boost::shared_mutex m_mutex;
     bool m_useSimulcast;

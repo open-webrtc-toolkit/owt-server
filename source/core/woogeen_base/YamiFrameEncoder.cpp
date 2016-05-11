@@ -181,7 +181,7 @@ private:
 
 DEFINE_LOGGER(VideoStream, "woogeen.VideoStream");
 
-YamiFrameEncoder::YamiFrameEncoder(woogeen_base::FrameFormat format, bool useSimulcast)
+YamiFrameEncoder::YamiFrameEncoder(FrameFormat format, bool useSimulcast)
     : m_encodeFormat(format)
     , m_useSimulcast(useSimulcast)
     , m_id(0)
@@ -190,6 +190,12 @@ YamiFrameEncoder::YamiFrameEncoder(woogeen_base::FrameFormat format, bool useSim
 
 YamiFrameEncoder::~YamiFrameEncoder()
 {
+}
+
+bool YamiFrameEncoder::supportFormat(FrameFormat format)
+{
+    // TODO: Query the hardware/libyami capability to encode the specified format.
+    return (format == FRAME_FORMAT_H264);
 }
 
 bool YamiFrameEncoder::canSimulcast(FrameFormat format, uint32_t width, uint32_t height)
@@ -203,7 +209,7 @@ bool YamiFrameEncoder::isIdle()
     return m_streams.empty();
 }
 
-int32_t YamiFrameEncoder::generateStream(uint32_t width, uint32_t height, woogeen_base::FrameDestination* dest)
+int32_t YamiFrameEncoder::generateStream(uint32_t width, uint32_t height, FrameDestination* dest)
 {
     boost::upgrade_lock<boost::shared_mutex> lock(m_mutex);
     boost::shared_ptr<VideoStream> stream(new VideoStream());

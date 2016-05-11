@@ -229,19 +229,20 @@ inline bool VideoFrameMixerImpl::addOutput(int output,
     }
 
     int32_t streamId = -1;
-    if (it != m_outputs.end()) { //Found a reusable encoder
+    if (it != m_outputs.end()) { // Found a reusable encoder
         encoder = it->second.encoder;
         streamId = encoder->generateStream(rootSize.width, rootSize.height, dest);
         if (streamId < 0){
             return false;
         }
-    } else { //Never found a reusable encoder.
-// #ifdef ENABLE_YAMI
-#if 0
-        encoder.reset(new woogeen_base::YamiFrameEncoder(format, m_useSimulcast));
-#else
-        encoder.reset(new woogeen_base::VCMFrameEncoder(format, m_taskRunner, m_useSimulcast));
+    } else { // Never found a reusable encoder.
+#ifdef ENABLE_YAMI
+        if (woogeen_base::YamiFrameEncoder::supportFormat(format))
+            encoder.reset(new woogeen_base::YamiFrameEncoder(format, m_useSimulcast));
 #endif
+        if (!encoder)
+            encoder.reset(new woogeen_base::VCMFrameEncoder(format, m_taskRunner, m_useSimulcast));
+
         streamId = encoder->generateStream(rootSize.width, rootSize.height, dest);
         if (streamId < 0){
             return false;
