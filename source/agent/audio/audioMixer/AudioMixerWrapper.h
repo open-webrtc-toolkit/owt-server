@@ -21,8 +21,8 @@
 #ifndef AUDIOMIXERWRAPPER_H
 #define AUDIOMIXERWRAPPER_H
 
-#include "../../addons/woogeen_base/MediaFramePipelineWrapper.h"
-#include "../../addons/woogeen_base/NodeEventRegistry.h"
+#include "../../addons/common/MediaFramePipelineWrapper.h"
+#include "../../addons/common/NodeEventRegistry.h"
 #include "AudioMixer.h"
 
 /*

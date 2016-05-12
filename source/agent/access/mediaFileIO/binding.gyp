@@ -5,7 +5,7 @@
       'addon.cc',
       'MediaFileInWrapper.cc',
       'MediaFileOutWrapper.cc',
-      '../../addons/woogeen_base/NodeEventRegistry.cc',
+      '../../addons/common/NodeEventRegistry.cc',
       '../../../core/woogeen_base/MediaFileOut.cpp',
       '../../../core/woogeen_base/MediaFramePipeline.cpp',
     ],

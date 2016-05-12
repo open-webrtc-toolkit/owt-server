@@ -21,7 +21,7 @@
 #ifndef VIDEOFRAMEPACKETIZERWRAPPER_H
 #define VIDEOFRAMEPACKETIZERWRAPPER_H
 
-#include "../../addons/woogeen_base/MediaFramePipelineWrapper.h"
+#include "../../addons/common/MediaFramePipelineWrapper.h"
 #include <VideoFramePacketizer.h>
 #include <node.h>
 #include <node_object_wrap.h>

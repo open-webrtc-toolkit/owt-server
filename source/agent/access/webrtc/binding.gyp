@@ -8,7 +8,7 @@
       'AudioFramePacketizerWrapper.cc',
       'VideoFrameConstructorWrapper.cc',
       'VideoFramePacketizerWrapper.cc',
-      '../../addons/woogeen_base/NodeEventRegistry.cc',
+      '../../addons/common/NodeEventRegistry.cc',
       '../../../core/woogeen_base/AudioFrameConstructor.cpp',
       '../../../core/woogeen_base/AudioFramePacketizer.cpp',
       '../../../core/woogeen_base/MediaFramePipeline.cpp',
