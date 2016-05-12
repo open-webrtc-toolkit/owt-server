@@ -4,7 +4,7 @@
     'sources': [
       'addon.cc',
       'RtspInWrapper.cc',
-      '../../addons/woogeen_base/NodeEventRegistry.cc',
+      '../../addons/common/NodeEventRegistry.cc',
       '../../../core/woogeen_base/MediaFramePipeline.cpp',
       '../../../core/woogeen_base/RtspIn.cpp',
     ],

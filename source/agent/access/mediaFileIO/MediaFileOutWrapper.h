@@ -21,8 +21,8 @@
 #ifndef MEDIAFILEOUTWRAPPER_H
 #define MEDIAFILEOUTWRAPPER_H
 
-#include "../../addons/woogeen_base/NodeEventRegistry.h"
-#include "../../addons/woogeen_base/MediaFramePipelineWrapper.h"
+#include "../../addons/common/NodeEventRegistry.h"
+#include "../../addons/common/MediaFramePipelineWrapper.h"
 #include <MediaFileOut.h>
 #include <node.h>
 #include <node_object_wrap.h>

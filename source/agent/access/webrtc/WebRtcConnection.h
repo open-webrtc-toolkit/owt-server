@@ -1,7 +1,7 @@
 #ifndef WEBRTCCONNECTION_H
 #define WEBRTCCONNECTION_H
 
-#include "../../addons/woogeen_base/NodeEventRegistry.h"
+#include "../../addons/common/NodeEventRegistry.h"
 #include <WebRtcConnection.h>
 
 /*
