@@ -20,9 +20,9 @@
 
 #include "YamiFrameEncoder.h"
 
+#include "MediaUtilities.h"
 #include "VideoDisplay.h"
 #include "YamiVideoFrame.h"
-#include "MediaUtilities.h"
 #include <webrtc/modules/video_coding/codecs/vp8/vp8_factory.h>
 #include <VideoEncoderHost.h>
 
@@ -37,7 +37,10 @@ class VideoStream : public FrameSource
 {
     DECLARE_LOGGER()
 public:
-    VideoStream():m_dest(NULL)
+    VideoStream()
+        : m_requestKeyFrame(false)
+        , m_frameCount(0)
+        , m_dest(NULL)
     {
         memset(&m_output, 0, sizeof(m_output));
     }
@@ -98,14 +101,15 @@ public:
     }
     void onFrame(const SharedPtr<::VideoFrame>& input)
     {
-      ELOG_ERROR("onFrame");
+        ELOG_ERROR("onFrame, request key = %d", m_requestKeyFrame);
+        input->flags = m_requestKeyFrame ? VIDEO_FRAME_FLAGS_KEY : 0;
+        m_requestKeyFrame = false;
         Encode_Status status = m_encoder->encode(input);
         if (status != ENCODE_SUCCESS) {
             ELOG_DEBUG("encode status = %d", status);
             return;
         }
         status = m_encoder->getOutput(&m_output);
-        ELOG_DEBUG("output format = %d", m_output.format);
 
         Frame frame;
         memset(&frame, 0, sizeof(frame));
@@ -116,18 +120,16 @@ public:
 
         while (status == ENCODE_SUCCESS) {
             frame.length = m_output.dataSize;
-            //frame.timeStamp = m_output.timeStamp;
-            static int i;
-            i++;
-            frame.timeStamp = i*1000/30*90;
+            m_frameCount++;
+            frame.timeStamp = m_frameCount*1000/30*90;
             ELOG_DEBUG("time: %d, %lu, len = %d", frame.timeStamp, m_output.timeStamp, frame.length);
-            FILE* fp = fopen("/home/webrtc/yxian/webrtc-woogeen-2.latest/a.264", "ab");
+            /*FILE* fp = fopen("/home/webrtc/yxian/webrtc-woogeen-2.latest/a.264", "ab");
             if (fp) {
                 fwrite( m_output.data, 1, frame.length, fp);
                 fclose(fp);
             } else {
             ELOG_DEBUG("open failed");
-            }
+            }*/
             deliverFrame(frame);
             //get next output
             status = m_encoder->getOutput(&m_output);
@@ -135,10 +137,28 @@ public:
     }
     void setBitrate(unsigned short kbps)
     {
+        if (!m_encoder)
+            return ;
+        ELOG_ERROR("set bit rate to %d", kbps);
+        VideoParamsCommon encVideoParams;
+        encVideoParams.size = sizeof(VideoParamsCommon);
+        Encode_Status status = m_encoder->getParameters(VideoParamsTypeCommon, &encVideoParams);
+        if (status != ENCODE_SUCCESS) {
+            ELOG_ERROR("getParameters failed, return %d", status);
+            return ;
+        }
+        encVideoParams.rcMode = RATE_CONTROL_CBR;
+        encVideoParams.rcParams.bitRate = kbps * 1024;
+        status = m_encoder->setParameters(VideoParamsTypeCommon, &encVideoParams);
+         if (status != ENCODE_SUCCESS) {
+            ELOG_ERROR("setParameters failed, return %d", status);
+            return ;
+        }
 
     }
     void requestKeyFrame()
     {
+        m_requestKeyFrame = true;
     }
 private:
     void setEncoderParams()
@@ -153,6 +173,10 @@ private:
         //frame rate parameters.
         encVideoParams.frameRate.frameRateDenom = 1;
         encVideoParams.frameRate.frameRateNum = 30; //???
+        encVideoParams.rcMode = RATE_CONTROL_CBR;
+        uint32_t targetKbps = calcBitrate(m_width, m_height) * (m_format == FRAME_FORMAT_VP8 ? 0.9 : 1);
+        encVideoParams.rcParams.bitRate = targetKbps * 1000;
+        ELOG_ERROR("(%d, %d), set bitrate to %d", m_width, m_height, encVideoParams.rcParams.bitRate);
 
         encVideoParams.size = sizeof(VideoParamsCommon);
         m_encoder->setParameters(VideoParamsTypeCommon, &encVideoParams);
@@ -171,6 +195,9 @@ private:
     ///output
     VideoEncOutputBuffer m_output;
     std::vector<uint8_t> m_data;
+
+    bool m_requestKeyFrame;
+    int64_t m_frameCount;
 
     FrameDestination* m_dest;
 
@@ -252,9 +279,6 @@ void YamiFrameEncoder::onFrame(const Frame& frame)
     case FRAME_FORMAT_YAMI: {
         YamiVideoFrame* holder = (YamiVideoFrame*)frame.payload;
         auto input = holder->frame;
-	if (!input) {
-	  ELOG_ERROR("input null");
-	}
         for (auto it = m_streams.begin(); it != m_streams.end(); ++it) {
             it->second->onFrame(input);
         }
