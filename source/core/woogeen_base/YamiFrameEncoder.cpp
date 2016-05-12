@@ -40,7 +40,7 @@ public:
     VideoStream()
         : m_requestKeyFrame(false)
         , m_frameCount(0)
-        , m_dest(NULL)
+        , m_dest(nullptr)
     {
         memset(&m_output, 0, sizeof(m_output));
     }
@@ -48,6 +48,15 @@ public:
     ~VideoStream()
     {
         removeVideoDestination(m_dest);
+    }
+
+    void onFeedback(const FeedbackMsg& msg) {
+        if (msg.type == VIDEO_FEEDBACK) {
+            if (msg.cmd == REQUEST_KEY_FRAME)
+                requestKeyFrame();
+            else if (msg.cmd == SET_BITRATE)
+                setBitrate(msg.data.kbps);
+        }
     }
 
     bool init(FrameFormat format, uint32_t width, uint32_t height, FrameDestination* dest)
