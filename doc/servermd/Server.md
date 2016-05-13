@@ -366,6 +366,7 @@ To setup VCA nodes as seperated machines, please follow these steps:
             ssh root@10.239.44.3
 
     + 5.4 Disable firewall for VCA nodes after ssh login to it:
+
             systemctl stop firewalld
             systemctl disable firewalld
 
