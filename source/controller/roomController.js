@@ -1051,12 +1051,12 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
             video_codec = options.video_codec ||
                        (video_stream_id === mixed_stream_id && supported_video_codecs[0]) ||
                        (streams[video_stream_id] && streams[video_stream_id].video && streams[video_stream_id].video.codec) ||
-                       undefined,
-
-            video_resolution = options.video_resolution ||
-                       (video_stream_id === mixed_stream_id && supported_video_resolutions[0]) ||
-                       (streams[video_stream_id] && streams[video_stream_id].video && streams[video_stream_id].video.resolution) ||
                        undefined;
+
+        options.video_resolution = options.video_resolution ||
+                   (video_stream_id === mixed_stream_id && supported_video_resolutions[0]) ||
+                   (streams[video_stream_id] && streams[video_stream_id].video && streams[video_stream_id].video.resolution) ||
+                   undefined;
 
         if ((options.require_audio && !audio_codec) || (options.require_video && !video_codec)) {
             onResponse({type: 'failed', reason: 'No proper audio/video codec.'});
@@ -1115,7 +1115,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                     log.debug('Got audio stream:', audio_stream);
                     if (options.require_video && video_stream_id) {
                         log.debug('require video track of stream:', video_stream_id);
-                        getVideoStream(video_stream_id, video_codec, video_resolution, function (streamID) {
+                        getVideoStream(video_stream_id, video_codec, options.video_resolution, function (streamID) {
                             video_stream = streamID;
                             log.debug('Got video stream:', video_stream);
                             subscribeStream(terminal_id, subscription_id, audio_stream, video_stream, options, on_ok(audio_stream, video_stream), function (error_reason) {
@@ -1136,7 +1136,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                 }, on_error);
             } else if (options.require_video && video_stream_id) {
                 log.debug('require video track of stream:', video_stream_id);
-                getVideoStream(video_stream_id, video_codec, video_resolution, function (streamID) {
+                getVideoStream(video_stream_id, video_codec, options.video_resolution, function (streamID) {
                     video_stream = streamID;
                     subscribeStream(terminal_id, subscription_id, undefined, video_stream, options, on_ok(undefined, video_stream), function (error_reason) {
                         recycleTemporaryVideo(video_stream);

@@ -109,9 +109,9 @@ private:
 
 class AVStreamOut : public FrameDestination, public JobTimerListener, public EventRegistry {
 public:
-    enum Status { Context_ERROR = -1, Context_EMPTY = 0, Context_READY = 1 };
+    enum Status { Context_CLOSED = -2, Context_ERROR = -1, Context_EMPTY = 0, Context_READY = 1 };
 
-    AVStreamOut() : m_status(Context_EMPTY) { }
+    AVStreamOut(EventRegistry* handle = nullptr) : m_status{Context_EMPTY}, m_asyncHandle{handle} { }
     virtual ~AVStreamOut() {}
 
     void setEventRegistry(EventRegistry* handle) { m_asyncHandle = handle; }
