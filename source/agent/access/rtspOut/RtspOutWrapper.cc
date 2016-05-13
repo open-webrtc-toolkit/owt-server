@@ -23,6 +23,8 @@
 #endif
 
 #include "RtspOutWrapper.h"
+#include <MediaFramePipeline.h>
+#include <VideoHelper.h>
 
 using namespace v8;
 
@@ -52,12 +54,29 @@ void RtspOut::New(const v8::FunctionCallbackInfo<v8::Value>& args) {
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
 
-  String::Utf8Value param0(args[0]->ToString());
-  std::string url = std::string(*param0);
+  if (args.Length() == 0 || !args[0]->IsObject()) {
+    isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Wrong arguments")));
+    return;
+  }
 
+  // essential options: {
+  //     audio_codec: (not used currently, string, 'pcm_raw'),
+  //     video_codec: (not used currently, string, 'h264'),
+  //     video_resolution: (required, string),
+  //     url: (required, string),
+  // }
+  Local<Object> options = args[0]->ToObject();
+  std::string url = std::string(*String::Utf8Value(options->Get(String::NewFromUtf8(isolate, "url"))->ToString()));
+  std::string resolution = std::string(*String::Utf8Value(options->Get(String::NewFromUtf8(isolate, "video_resolution"))->ToString()));
+  woogeen_base::VideoSize vSize {0, 0};
+  woogeen_base::VideoResolutionHelper::getVideoSize(resolution, vSize);
+  woogeen_base::MediaSpecInfo audio, video;
+  audio.audio.sampleRate = 48000;
+  audio.audio.channels = 2;
+  video.video.width = vSize.width;
+  video.video.height = vSize.height;
   RtspOut* obj = new RtspOut();
-  obj->me = new woogeen_base::RtspOut(url);
-  obj->me->setEventRegistry(obj);
+  obj->me = new woogeen_base::RtspOut(url, audio, video, obj);
   obj->dest = obj->me;
 
   if (args.Length() > 1 && args[1]->IsFunction())
