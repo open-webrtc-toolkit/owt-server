@@ -18,33 +18,30 @@
  * and approved by Intel in writing.
  */
 
-#ifndef MEDIAFILEINWRAPPER_H
-#define MEDIAFILEINWRAPPER_H
+#ifndef AVStreamOutWrap_h
+#define AVStreamOutWrap_h
 
 #include "../../addons/common/MediaFramePipelineWrapper.h"
-#include <MediaFileIn.h>
-#include <node.h>
-#include <node_object_wrap.h>
-
+#include "../../addons/common/NodeEventRegistry.h"
+#include <AVStreamOut.h>
 
 /*
- * Wrapper class of woogeen_base::MediaFileIn
+ * Wrapper class of woogeen_base::AVStreamOut
  */
-class MediaFileIn : public FrameSource {
+class AVStreamOutWrap : public FrameDestination, public NodeEventRegistry {
  public:
-  static void Init(v8::Local<v8::Object> exports);
-  woogeen_base::MediaFileIn* me;
+  static void Init(v8::Handle<v8::Object>);
+  static void Init(v8::Handle<v8::Object>, v8::Handle<v8::Object>);
+  woogeen_base::AVStreamOut* me;
 
  private:
-  MediaFileIn();
-  ~MediaFileIn();
+  AVStreamOutWrap();
+  ~AVStreamOutWrap();
   static v8::Persistent<v8::Function> constructor;
 
   static void New(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void close(const v8::FunctionCallbackInfo<v8::Value>& args);
-
-  static void addDestination(const v8::FunctionCallbackInfo<v8::Value>& args);
-  static void removeDestination(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void addEventListener(const v8::FunctionCallbackInfo<v8::Value>& args);
 };
 
-#endif
+#endif // AVStreamOutWrap_h
