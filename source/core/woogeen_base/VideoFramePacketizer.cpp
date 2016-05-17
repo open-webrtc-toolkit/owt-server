@@ -33,23 +33,26 @@ static const int TRANSMISSION_MAXBITRATE_MULTIPLIER = 2;
 
 DEFINE_LOGGER(VideoFramePacketizer, "woogeen.VideoFramePacketizer");
 
-VideoFramePacketizer::VideoFramePacketizer(erizo::MediaSink* videoSink, erizo::FeedbackSource* fbSource)
+VideoFramePacketizer::VideoFramePacketizer(erizo::MediaSink* videoSink)
     : m_frameFormat(FRAME_FORMAT_UNKNOWN)
     , m_mediaSpecInfo({0, 0})
 {
-    assert(videoSink && fbSource);
+    assert(videoSink);
     setVideoSink(videoSink);
     m_videoTransport.reset(new WebRTCTransport<erizo::VIDEO>(this, nullptr));
     m_taskRunner.reset(new woogeen_base::WebRTCTaskRunner());
     m_taskRunner->Start();
     init();
-    fbSource->setFeedbackSink(this);
+    erizo::FeedbackSource* fbSource = videoSink->getFeedbackSource();
+    if (fbSource)
+        fbSource->setFeedbackSink(this);
 }
 
 VideoFramePacketizer::~VideoFramePacketizer()
 {
     close();
     m_taskRunner->Stop();
+    boost::unique_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
 }
 
 bool VideoFramePacketizer::setSendCodec(FrameFormat frameFormat, unsigned int width, unsigned int height)
@@ -84,6 +87,7 @@ bool VideoFramePacketizer::setSendCodec(FrameFormat frameFormat, unsigned int wi
     // The bitrate controller is accepting "bps".
     m_bitrateController->SetBitrateObserver(this, targetKbps * 1000, minKbps * 1000, TRANSMISSION_MAXBITRATE_MULTIPLIER * targetKbps * 1000);
 
+    boost::shared_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
     return m_rtpRtcp && m_rtpRtcp->RegisterSendPayload(codec) != -1;
 }
 
@@ -95,6 +99,7 @@ void VideoFramePacketizer::OnReceivedIntraFrameRequest(uint32_t ssrc)
 
 int VideoFramePacketizer::deliverFeedback(char* buf, int len)
 {
+    boost::shared_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
     return m_rtpRtcp->IncomingRtcpPacket(reinterpret_cast<uint8_t*>(buf), len) == -1 ? 0 : len;
 }
 
@@ -127,6 +132,7 @@ void VideoFramePacketizer::onFrame(const Frame& frame)
     if (frame.format == FRAME_FORMAT_VP8) {
         h.codec = webrtc::kRtpVideoVp8;
         h.codecHeader.VP8.InitRTPVideoHeaderVP8();
+        boost::shared_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
         m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, VP8_90000_PT, frame.timeStamp, frame.timeStamp / 90, frame.payload, frame.length, nullptr, &h);
     } else if (frame.format == FRAME_FORMAT_H264) {
         int nalu_found_length = 0;
@@ -153,6 +159,7 @@ void VideoFramePacketizer::onFrame(const Frame& frame)
             }
         }
 
+        boost::shared_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
         m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, H264_90000_PT, frame.timeStamp, frame.timeStamp / 90, frame.payload, frame.length, &frag_info, &h);
     }
 }
@@ -195,6 +202,10 @@ bool VideoFramePacketizer::init()
 
 void VideoFramePacketizer::close()
 {
+    erizo::FeedbackSource* fbSource = videoSink_->getFeedbackSource();
+    if (fbSource)
+        fbSource->setFeedbackSink(nullptr);
+
     if (m_bitrateController)
         m_bitrateController->RemoveBitrateObserver(this);
     m_taskRunner->DeRegisterModule(m_rtpRtcp.get());

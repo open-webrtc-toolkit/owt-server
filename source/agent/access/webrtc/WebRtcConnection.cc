@@ -7,7 +7,8 @@ Persistent<Function> WebRtcConnection::constructor;
 WebRtcConnection::WebRtcConnection()
   : refCount(0) {
 }
-WebRtcConnection::~WebRtcConnection(){
+WebRtcConnection::~WebRtcConnection() {
+  m_closeThread.join();
 }
 
 void WebRtcConnection::Init(Local<Object> exports) {
@@ -76,6 +77,11 @@ void WebRtcConnection::New(const FunctionCallbackInfo<Value>& args) {
   args.GetReturnValue().Set(args.This());
 }
 
+static void closeNativeConnection(WebRtcConnection* obj) {
+  delete obj->me;
+  obj->me = nullptr;
+}
+
 void WebRtcConnection::close(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
@@ -83,8 +89,7 @@ void WebRtcConnection::close(const FunctionCallbackInfo<Value>& args) {
   if (obj->unref() > 0)
     return;
 
-  delete obj->me;
-  obj->me = nullptr;
+  obj->m_closeThread = boost::thread(&closeNativeConnection, obj);
 }
 
 void WebRtcConnection::setRemoteSdp(const FunctionCallbackInfo<Value>& args) {

@@ -55,7 +55,7 @@ void AudioFramePacketizer::New(const FunctionCallbackInfo<Value>& args) {
   erizo::WebRtcConnection* wrtc = param->me;
 
   AudioFramePacketizer* obj = new AudioFramePacketizer();
-  obj->me = new woogeen_base::AudioFramePacketizer(wrtc, wrtc);
+  obj->me = new woogeen_base::AudioFramePacketizer(wrtc);
   obj->dest = obj->me;
 
   obj->Wrap(args.This());

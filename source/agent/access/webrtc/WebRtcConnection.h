@@ -23,6 +23,9 @@ class WebRtcConnection : public NodeEventedObjectWrap {
  private:
   WebRtcConnection();
   ~WebRtcConnection();
+
+  boost::thread m_closeThread;
+
   static v8::Persistent<v8::Function> constructor;
 
   /*

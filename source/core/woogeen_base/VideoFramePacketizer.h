@@ -29,6 +29,7 @@
 
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
+#include <boost/thread/shared_mutex.hpp>
 #include <logger.h>
 #include <webrtc/modules/bitrate_controller/include/bitrate_controller.h>
 #include <webrtc/modules/rtp_rtcp/interface/rtp_rtcp.h>
@@ -48,7 +49,7 @@ class VideoFramePacketizer : public FrameDestination,
     DECLARE_LOGGER();
 
 public:
-    VideoFramePacketizer(erizo::MediaSink* videoSink, erizo::FeedbackSource* fbSource);
+    VideoFramePacketizer(erizo::MediaSink* videoSink);
     ~VideoFramePacketizer();
 
     // Implements FrameDestination.
@@ -80,6 +81,7 @@ private:
     boost::scoped_ptr<webrtc::BitrateController> m_bitrateController;
     boost::scoped_ptr<webrtc::RtcpBandwidthObserver> m_bandwidthObserver;
     boost::scoped_ptr<webrtc::RtpRtcp> m_rtpRtcp;
+    boost::shared_mutex m_rtpRtcpMutex;
 
     boost::shared_ptr<webrtc::Transport> m_videoTransport;
     boost::shared_ptr<WebRTCTaskRunner> m_taskRunner;

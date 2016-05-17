@@ -28,26 +28,30 @@ using namespace erizo;
 
 namespace woogeen_base {
 
-AudioFramePacketizer::AudioFramePacketizer(erizo::MediaSink* audioSink, erizo::FeedbackSource* fbSource)
+AudioFramePacketizer::AudioFramePacketizer(erizo::MediaSink* audioSink)
     : m_frameFormat(FRAME_FORMAT_UNKNOWN)
 {
-    assert(audioSink && fbSource);
+    assert(audioSink);
     setAudioSink(audioSink);
     m_audioTransport.reset(new WebRTCTransport<erizo::AUDIO>(this, nullptr));
     m_taskRunner.reset(new woogeen_base::WebRTCTaskRunner());
     m_taskRunner->Start();
     init();
-    fbSource->setFeedbackSink(this);
+    erizo::FeedbackSource* fbSource = audioSink->getFeedbackSource();
+    if (fbSource)
+        fbSource->setFeedbackSink(this);
 }
 
 AudioFramePacketizer::~AudioFramePacketizer()
 {
     close();
     m_taskRunner->Stop();
+    boost::unique_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
 }
 
 int AudioFramePacketizer::deliverFeedback(char* buf, int len)
 {
+    boost::shared_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
     return m_rtpRtcp->IncomingRtcpPacket(reinterpret_cast<uint8_t*>(buf), len) == -1 ? 0 : len;
 }
 
@@ -88,6 +92,7 @@ void AudioFramePacketizer::onFrame(const Frame& frame)
     default:
         return;
     }
+    boost::shared_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
     // FIXME: The frame type information is lost. We treat every frame a kAudioFrameSpeech frame for now.
     m_rtpRtcp->SendOutgoingData(webrtc::kAudioFrameSpeech, payloadType, frame.timeStamp, -1, frame.payload, frame.length /*, RTPFragementationHeader* */);
 }
@@ -136,12 +141,16 @@ bool AudioFramePacketizer::setSendCodec(FrameFormat format)
         return false;
     }
 
+    boost::shared_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
     m_rtpRtcp->RegisterSendPayload(codec);
     return true;
 }
 
 void AudioFramePacketizer::close()
 {
+    erizo::FeedbackSource* fbSource = audioSink_->getFeedbackSource();
+    if (fbSource)
+        fbSource->setFeedbackSink(nullptr);
     m_taskRunner->DeRegisterModule(m_rtpRtcp.get());
 }
 

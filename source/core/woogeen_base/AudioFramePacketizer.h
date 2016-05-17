@@ -26,6 +26,7 @@
 
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
+#include <boost/thread/shared_mutex.hpp>
 #include <MediaDefinitions.h>
 #include <webrtc/modules/rtp_rtcp/interface/rtp_rtcp.h>
 
@@ -41,7 +42,7 @@ class AudioFramePacketizer : public FrameDestination,
                              public erizo::FeedbackSink,
                              public erizo::RTPDataReceiver {
 public:
-    AudioFramePacketizer(erizo::MediaSink* audioSink, erizo::FeedbackSource* fbSource);
+    AudioFramePacketizer(erizo::MediaSink* audioSink);
     ~AudioFramePacketizer();
 
     // Implements FrameDestination.
@@ -62,6 +63,7 @@ private:
     void close();
 
     boost::scoped_ptr<webrtc::RtpRtcp> m_rtpRtcp;
+    boost::shared_mutex m_rtpRtcpMutex;
 
     boost::shared_ptr<webrtc::Transport> m_audioTransport;
     boost::shared_ptr<WebRTCTaskRunner> m_taskRunner;

@@ -33,6 +33,7 @@ namespace woogeen_base {
  * webrtc engine, which will framize and decode the frames.
  */
 class AudioFrameConstructor : public erizo::MediaSink,
+                              public erizo::FeedbackSource,
                               public FrameSource {
     DECLARE_LOGGER();
 
@@ -46,9 +47,6 @@ public:
 
     // Implements the FrameSource interfaces.
     void onFeedback(const FeedbackMsg& msg);
-
-private:
-    erizo::FeedbackSink* m_fbSink;
 };
 
 }
