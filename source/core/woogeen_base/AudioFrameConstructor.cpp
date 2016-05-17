@@ -29,14 +29,15 @@ namespace woogeen_base {
 DEFINE_LOGGER(AudioFrameConstructor, "woogeen.AudioFrameConstructor");
 
 AudioFrameConstructor::AudioFrameConstructor(erizo::FeedbackSink* fbSink)
-    : m_fbSink(fbSink)
-
 {
     assert(fbSink);
+    sinkfbSource_ = this;
+    fbSink_ = fbSink;
 }
 
 AudioFrameConstructor::~AudioFrameConstructor()
 {
+    fbSink_ = nullptr;
 }
 
 int AudioFrameConstructor::deliverVideoData(char* packet, int len)
@@ -94,9 +95,8 @@ int AudioFrameConstructor::deliverAudioData(char* buf, int len)
 void AudioFrameConstructor::onFeedback(const FeedbackMsg& msg)
 {
     if (msg.type == woogeen_base::AUDIO_FEEDBACK) {
-        if (msg.cmd == RTCP_PACKET) {
-            m_fbSink->deliverFeedback(const_cast<char*>(msg.data.rtcp.buf), msg.data.rtcp.len);
-        }
+        if (msg.cmd == RTCP_PACKET && fbSink_)
+            fbSink_->deliverFeedback(const_cast<char*>(msg.data.rtcp.buf), msg.data.rtcp.len);
     }
 }
 

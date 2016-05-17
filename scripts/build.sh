@@ -30,6 +30,7 @@ usage() {
   echo "Usage:"
   echo "    --release (default)                 build in release mode"
   echo "    --debug                             build in debug mode"
+  echo "    --rebuild                           rebuild from scratch"
   echo "    --check                             check resulted addon(s)"
   echo "    --gateway                           build oovoo gateway addon"
   echo "    --mcu (software)                    build mcu runtime addons without msdk"
@@ -56,6 +57,7 @@ BUILD_SDK=false
 BUILDTYPE="Release"
 BUILD_ROOT="${ROOT}/build"
 CHECK_ADDONS=false
+REBUILD=false
 DEPS_ROOT="${ROOT}/build/libdeps/build"
 
 shopt -s extglob
@@ -69,6 +71,9 @@ while [[ $# -gt 0 ]]; do
       ;;
     *(-)check )
       CHECK_ADDONS=true
+      ;;
+    *(-)rebuild )
+      REBUILD=true
       ;;
     *(-)all )
       BUILD_GATEWAY_RUNTIME=true
@@ -146,11 +151,19 @@ build_runtime() {
       echo -e "building addon \e[32m$(basename ${ADDON})\e[0m"
       pushd ${ADDON} >/dev/null
       if [[ -x ${CCOMPILER} && -x ${CXXCOMPILER} ]]; then
-        CORE_HOME="${CORE_HOME}" OPTIMIZATION_LEVEL=${OPTIMIZATION_LEVEL} PKG_CONFIG_PATH=${DEPS_ROOT}/lib/pkgconfig:${PKG_CONFIG_PATH} CC=${CCOMPILER} CXX=${CXXCOMPILER} node-gyp configure --loglevel=error
-        CORE_HOME="${CORE_HOME}" OPTIMIZATION_LEVEL=${OPTIMIZATION_LEVEL} CC=${CCOMPILER} CXX=${CXXCOMPILER} node-gyp build --loglevel=error
+        if ${REBUILD} ; then
+          CORE_HOME="${CORE_HOME}" OPTIMIZATION_LEVEL=${OPTIMIZATION_LEVEL} PKG_CONFIG_PATH=${DEPS_ROOT}/lib/pkgconfig:${PKG_CONFIG_PATH} CC=${CCOMPILER} CXX=${CXXCOMPILER} node-gyp rebuild --loglevel=error
+        else
+          CORE_HOME="${CORE_HOME}" OPTIMIZATION_LEVEL=${OPTIMIZATION_LEVEL} PKG_CONFIG_PATH=${DEPS_ROOT}/lib/pkgconfig:${PKG_CONFIG_PATH} CC=${CCOMPILER} CXX=${CXXCOMPILER} node-gyp configure --loglevel=error
+          CORE_HOME="${CORE_HOME}" OPTIMIZATION_LEVEL=${OPTIMIZATION_LEVEL} CC=${CCOMPILER} CXX=${CXXCOMPILER} node-gyp build --loglevel=error
+        fi
       else
-        CORE_HOME="${CORE_HOME}" OPTIMIZATION_LEVEL=${OPTIMIZATION_LEVEL} PKG_CONFIG_PATH=${DEPS_ROOT}/lib/pkgconfig:${PKG_CONFIG_PATH} node-gyp configure --loglevel=error
-        CORE_HOME="${CORE_HOME}" OPTIMIZATION_LEVEL=${OPTIMIZATION_LEVEL} node-gyp build --loglevel=error
+        if ${REBUILD} ; then
+          CORE_HOME="${CORE_HOME}" OPTIMIZATION_LEVEL=${OPTIMIZATION_LEVEL} PKG_CONFIG_PATH=${DEPS_ROOT}/lib/pkgconfig:${PKG_CONFIG_PATH} node-gyp rebuild --loglevel=error
+        else
+          CORE_HOME="${CORE_HOME}" OPTIMIZATION_LEVEL=${OPTIMIZATION_LEVEL} PKG_CONFIG_PATH=${DEPS_ROOT}/lib/pkgconfig:${PKG_CONFIG_PATH} node-gyp configure --loglevel=error
+          CORE_HOME="${CORE_HOME}" OPTIMIZATION_LEVEL=${OPTIMIZATION_LEVEL} node-gyp build --loglevel=error
+        fi
       fi
       popd >/dev/null
     done

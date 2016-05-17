@@ -55,7 +55,7 @@ void VideoFramePacketizer::New(const FunctionCallbackInfo<Value>& args) {
   erizo::WebRtcConnection* wrtc = param->me;
 
   VideoFramePacketizer* obj = new VideoFramePacketizer();
-  obj->me = new woogeen_base::VideoFramePacketizer(wrtc, wrtc);
+  obj->me = new woogeen_base::VideoFramePacketizer(wrtc);
   obj->dest = obj->me;
 
   obj->Wrap(args.This());

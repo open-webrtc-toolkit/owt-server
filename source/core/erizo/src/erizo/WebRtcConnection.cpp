@@ -44,7 +44,7 @@ namespace erizo {
       int maxPort, const std::string& certFile, const std::string& keyFile, const std::string& privatePasswd, uint32_t qos, bool trickleEnabled, EventRegistry* handle)
   : asyncHandle_{handle} {
 
-    ELOG_WARN("WebRtcConnection constructor stunserver %s stunPort %d minPort %d maxPort %d\n", stunServer.c_str(), stunPort, minPort, maxPort);
+    ELOG_INFO("WebRtcConnection constructor stunserver %s stunPort %d minPort %d maxPort %d\n", stunServer.c_str(), stunPort, minPort, maxPort);
     sequenceNumberFIR_ = 0;
     bundle_ = false;
     this->setVideoSinkSSRC(55543);
@@ -84,10 +84,30 @@ namespace erizo {
 
     sending_ = true;
     send_Thread_ = boost::thread(&WebRtcConnection::sendLoop, this);
+    ELOG_INFO("WebRtcConnection constructor Done");
   }
 
   WebRtcConnection::~WebRtcConnection() {
     ELOG_INFO("WebRtcConnection Destructor");
+
+    // TODO: Verify if the feedback sink is me.
+    FeedbackSource* fbSource = nullptr;
+    if (videoSink_) {
+        fbSource = videoSink_->getFeedbackSource();
+        if (fbSource)
+            fbSource->setFeedbackSink(nullptr);
+    }
+
+    if (audioSink_) {
+        fbSource = audioSink_->getFeedbackSource();
+        if (fbSource)
+            fbSource->setFeedbackSink(nullptr);
+    }
+
+    videoSink_ = nullptr;
+    audioSink_ = nullptr;
+    fbSink_ = nullptr;
+
     {
       boost::lock_guard<boost::mutex> lock(receiveMediaMutex_);
       sending_ = false;
@@ -106,9 +126,6 @@ namespace erizo {
     videoTransport_ = nullptr;
     delete audioTransport_;
     audioTransport_ = nullptr;
-    videoSink_ = nullptr;
-    audioSink_ = nullptr;
-    fbSink_ = nullptr;
     ELOG_INFO("WebRtcConnection Destructed");
   }
 

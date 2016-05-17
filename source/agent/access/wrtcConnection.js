@@ -94,6 +94,8 @@ module.exports = function (spec, on_status) {
 
           switch (status) {
             case CONN_FINISHED:
+              audio && audioFrameConstructor && audioFrameConstructor.close();
+              video && videoFrameConstructor && videoFrameConstructor.close();
               terminated = true;
               break;
 
@@ -141,8 +143,6 @@ module.exports = function (spec, on_status) {
         audio && audioFramePacketizer && audioFramePacketizer.close();
         video && videoFramePacketizer && videoFramePacketizer.close();
         wrtc && wrtc.close();
-        audio && audioFrameConstructor && audioFrameConstructor.close();
-        video && videoFrameConstructor && videoFrameConstructor.close();
     };
 
     that.onSignalling = function (msg) {
