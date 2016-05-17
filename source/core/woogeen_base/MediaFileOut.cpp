@@ -1,24 +1,23 @@
 /*
- * Copyright 2015 Intel Corporation All Rights Reserved. 
- * 
- * The source code contained or described herein and all documents related to the 
- * source code ("Material") are owned by Intel Corporation or its suppliers or 
- * licensors. Title to the Material remains with Intel Corporation or its suppliers 
- * and licensors. The Material contains trade secrets and proprietary and 
- * confidential information of Intel or its suppliers and licensors. The Material 
- * is protected by worldwide copyright and trade secret laws and treaty provisions. 
- * No part of the Material may be used, copied, reproduced, modified, published, 
- * uploaded, posted, transmitted, distributed, or disclosed in any way without 
+ * Copyright 2015 Intel Corporation All Rights Reserved.
+ *
+ * The source code contained or described herein and all documents related to the
+ * source code ("Material") are owned by Intel Corporation or its suppliers or
+ * licensors. Title to the Material remains with Intel Corporation or its suppliers
+ * and licensors. The Material contains trade secrets and proprietary and
+ * confidential information of Intel or its suppliers and licensors. The Material
+ * is protected by worldwide copyright and trade secret laws and treaty provisions.
+ * No part of the Material may be used, copied, reproduced, modified, published,
+ * uploaded, posted, transmitted, distributed, or disclosed in any way without
  * Intel's prior express written permission.
- * 
- * No license under any patent, copyright, trade secret or other intellectual 
- * property right is granted to or conferred upon you by disclosure or delivery of 
- * the Materials, either expressly, by implication, inducement, estoppel or 
- * otherwise. Any license under such intellectual property rights must be express 
+ *
+ * No license under any patent, copyright, trade secret or other intellectual
+ * property right is granted to or conferred upon you by disclosure or delivery of
+ * the Materials, either expressly, by implication, inducement, estoppel or
+ * otherwise. Any license under such intellectual property rights must be express
  * and approved by Intel in writing.
  */
 
-#include <boost/algorithm/string.hpp>
 #include "MediaFileOut.h"
 #include <rtputils.h>
 
@@ -48,7 +47,7 @@ inline AVCodecID frameFormat2AudioCodecID(int frameFormat)
     }
 }
 
-MediaFileOut::MediaFileOut(const std::string& recordUrl, int snapshotInterval)
+MediaFileOut::MediaFileOut(const std::string& url, MediaSpecInfo& audio, MediaSpecInfo& video, int snapshotInterval, EventRegistry* handle)
     : m_videoStream(nullptr)
     , m_audioStream(nullptr)
     , m_context(nullptr)
@@ -57,17 +56,18 @@ MediaFileOut::MediaFileOut(const std::string& recordUrl, int snapshotInterval)
     , m_audioId(-1)
     , m_videoFrameFormat(woogeen_base::FRAME_FORMAT_UNKNOWN)
     , m_audioFrameFormat(woogeen_base::FRAME_FORMAT_UNKNOWN)
-    , m_recordPath(recordUrl)
+    , m_recordPath(url)
     , m_snapshotInterval(snapshotInterval)
 {
     m_videoQueue.reset(new MediaFrameQueue());
     m_audioQueue.reset(new MediaFrameQueue());
+    setEventRegistry(handle);
 
     m_context = avformat_alloc_context();
     assert(m_context);
 
     m_recordPath.copy(m_context->filename, sizeof(m_context->filename), 0);
-    m_context->oformat = av_guess_format(NULL, m_context->filename, NULL);
+    m_context->oformat = av_guess_format(nullptr, m_context->filename, nullptr);
     assert(m_context->oformat);
 
     m_jobTimer.reset(new woogeen_base::JobTimer(100, this));
@@ -84,20 +84,20 @@ void MediaFileOut::close()
 {
     m_jobTimer->stop();
 
-    if (m_context != NULL && m_avTrailerNeeded)
+    if (m_context && m_avTrailerNeeded)
         av_write_trailer(m_context);
 
-    if (m_videoStream && m_videoStream->codec != NULL)
+    if (m_videoStream && m_videoStream->codec)
         avcodec_close(m_videoStream->codec);
 
-    if (m_audioStream && m_audioStream->codec != NULL)
+    if (m_audioStream && m_audioStream->codec)
         avcodec_close(m_audioStream->codec);
 
-    if (m_context != NULL) {
+    if (m_context) {
         if (!(m_context->oformat->flags & AVFMT_NOFILE))
             avio_close(m_context->pb);
         avformat_free_context(m_context);
-        m_context = NULL;
+        m_context = nullptr;
     }
 
     ELOG_DEBUG("closed");
@@ -227,7 +227,7 @@ void MediaFileOut::onTimeout()
             if (!(m_context->oformat->flags & AVFMT_NOFILE)) {
                 if (avio_open(&m_context->pb, m_context->filename, AVIO_FLAG_WRITE) < 0) {
                     m_status = AVStreamOut::Context_ERROR;
-                    notifyAsyncEvent("RecordingStream", "output file does not exist or cannot be opened for write");
+                    notifyAsyncEvent("fatal", "output file does not exist or cannot be opened for write");
                     ELOG_ERROR("open output file failed");
                     return;
                 }
@@ -235,7 +235,7 @@ void MediaFileOut::onTimeout()
             av_dump_format(m_context, 0, m_context->filename, 1);
             if (avformat_write_header(m_context, nullptr) < 0) {
                 m_status = AVStreamOut::Context_ERROR;
-                notifyAsyncEvent("RecordingStream", "write file header error");
+                notifyAsyncEvent("fatal", "write file header error");
                 ELOG_ERROR("avformat_write_header failed");
                 return;
             }
@@ -249,7 +249,7 @@ void MediaFileOut::onTimeout()
         break;
     case AVStreamOut::Context_ERROR:
     default:
-        notifyAsyncEvent("RecordingStream", "context initialization failed");
+        notifyAsyncEvent("fatal", "context initialization failed");
         ELOG_ERROR("context error");
         return;
     }

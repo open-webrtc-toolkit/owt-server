@@ -1,15 +1,18 @@
 {
   'targets': [{
-    'target_name': 'mediaFileIO',
+    'target_name': 'avstream',
     'sources': [
       'addon.cc',
-      'MediaFileInWrapper.cc',
-      'MediaFileOutWrapper.cc',
+      'AVStreamInWrap.cc',
+      'AVStreamOutWrap.cc',
       '../../addons/common/NodeEventRegistry.cc',
       '../../../core/woogeen_base/MediaFileOut.cpp',
       '../../../core/woogeen_base/MediaFramePipeline.cpp',
+      '../../../core/woogeen_base/RtspIn.cpp',
+      '../../../core/woogeen_base/RtspOut.cpp',
     ],
     'include_dirs': [ '$(CORE_HOME)/common',
+                      '$(CORE_HOME)/erizo/src/erizo',
                       '$(CORE_HOME)/woogeen_base',
                       '$(CORE_HOME)/../../build/libdeps/build/include' ],
     'libraries': [

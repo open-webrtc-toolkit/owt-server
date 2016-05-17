@@ -38,7 +38,7 @@ namespace woogeen_base {
 
 DEFINE_LOGGER(RtspIn, "woogeen.RtspIn");
 
-RtspIn::RtspIn(const Options& options)
+RtspIn::RtspIn(const Options& options, EventRegistry* handle)
     : m_url(options.url)
     , m_needAudio(options.enableAudio)
     , m_needVideo(options.enableVideo)
@@ -51,7 +51,7 @@ RtspIn::RtspIn(const Options& options)
     , m_videoFormat(FRAME_FORMAT_UNKNOWN)
     , m_audioStreamIndex(-1)
     , m_audioFormat(FRAME_FORMAT_UNKNOWN)
-    , m_asyncHandle(nullptr)
+    , m_asyncHandle(handle)
 {
     if (options.transport.compare("tcp") == 0) {
         av_dict_set(&m_transportOpts, "rtsp_transport", "tcp", 0);
@@ -63,9 +63,11 @@ RtspIn::RtspIn(const Options& options)
         ELOG_DEBUG("url: %s, audio: %d, video: %d, transport::%s, buffer_size: %u",
                    m_url.c_str(), m_needAudio, m_needVideo, options.transport.c_str(), options.bufferSize);
     }
+    m_running = true;
+    m_thread = boost::thread(&RtspIn::receiveLoop, this);
 }
 
-RtspIn::RtspIn (const std::string& url, const std::string& transport, uint32_t bufferSize, bool enableAudio, bool enableVideo)
+RtspIn::RtspIn (const std::string& url, const std::string& transport, uint32_t bufferSize, bool enableAudio, bool enableVideo, EventRegistry* handle)
     : m_url(url)
     , m_needAudio(enableAudio)
     , m_needVideo(enableVideo)
@@ -79,7 +81,7 @@ RtspIn::RtspIn (const std::string& url, const std::string& transport, uint32_t b
     , m_videoSize({1920, 1080})
     , m_audioStreamIndex(-1)
     , m_audioFormat(FRAME_FORMAT_UNKNOWN)
-    , m_asyncHandle(nullptr)
+    , m_asyncHandle(handle)
 {
     if (transport.compare("tcp") == 0) {
         av_dict_set(&m_transportOpts, "rtsp_transport", "tcp", 0);
@@ -91,6 +93,8 @@ RtspIn::RtspIn (const std::string& url, const std::string& transport, uint32_t b
         ELOG_DEBUG("url: %s, audio: %d, video: %d, transport::%s, buffer_size: %u",
                    m_url.c_str(), m_needAudio, m_needVideo, transport.c_str(), bufferSize);
     }
+    m_running = true;
+    m_thread = boost::thread(&RtspIn::receiveLoop, this);
 }
 
 RtspIn::~RtspIn()
@@ -107,12 +111,6 @@ RtspIn::~RtspIn()
     }
     av_dict_free(&m_transportOpts);
     ELOG_DEBUG("closed");
-}
-
-void RtspIn::init()
-{
-    m_running = true;
-    m_thread = boost::thread(&RtspIn::receiveLoop, this);
 }
 
 bool RtspIn::connect()

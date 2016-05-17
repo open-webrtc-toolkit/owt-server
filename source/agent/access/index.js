@@ -2,14 +2,12 @@
 'use strict';
 
 var internalIO = require('./internalIO/build/Release/internalIO');
-var mediaFileIO = require('./mediaFileIO/build/Release/mediaFileIO');
+var avstream = require('./avstream/build/Release/avstream');
 var InternalIn = internalIO.In;
 var InternalOut = internalIO.Out;
-var MediaFileIn = mediaFileIO.In;
-var MediaFileOut = mediaFileIO.Out;
-var RtspOut = require('./rtspOut/build/Release/rtspOut');
+var AVStreamIn = avstream.AVStreamIn;
+var AVStreamOut = avstream.AVStreamOut;
 var WrtcConnection = require('./wrtcConnection');
-var RtspIn = require('./rtspIn/build/Release/rtspIn');
 var logger = require('./logger').logger;
 var amqper = require('./amqper');
 var path = require('path');
@@ -58,14 +56,16 @@ module.exports = function () {
             conn = new InternalIn(options.protocol);
             callback('callback', conn.getListeningPort());
         } else if (stream_type === 'rtsp') {
-            conn = new RtspIn(options.url, options.has_audio, options.has_video, options.transport, options.buffer_size);
-            conn.addEventListener('status', function (message) {
+            options.type = 'rtsp';
+            conn = new AVStreamIn(options, function (message) {
                 log.debug('rtsp-in status message:', message);
                 callback('callback', JSON.parse(message));
             });
             callback('callback', {type: 'initializing'});
         } else if (stream_type === 'file') {
-            conn = new MediaFileIn(path.join(GLOBAL.config.recording.path, options.url), options.has_audio, options.has_video);
+            options.type = 'file';
+            options.url = path.join(GLOBAL.config.recording.path, options.url);
+            conn = new AVStreamIn(options);
             // FIXME: There should be a better chance to start playing.
             setTimeout(function () {conn.startPlay();}, 6000);
             callback('callback', {type: 'ready'});
@@ -129,7 +129,8 @@ module.exports = function () {
                 callback('callback', response);
             });
         } else if (subscription_type === 'rtsp') {
-            conn = new RtspOut(options, function (error) {
+            options.type = 'rtsp';
+            conn = new AVStreamOut(options, function (error) {
                 if (error) {
                     log.error('rtsp-out init error:', error);
                     callback('callback', {type: 'failed', reason: error});
@@ -155,9 +156,18 @@ module.exports = function () {
                 }
             });
         } else if (subscription_type === 'file') {
+            options.type = 'file';
             var recordingPath = options.path ? options.path : GLOBAL.config.recording.path;
-            conn = new MediaFileOut(path.join(recordingPath, options.filename), options.interval);
-            conn.addEventListener('RecordingStream', function (error) {
+            options.url = path.join(recordingPath, options.filename);
+            conn = new AVStreamOut(options, function (error) {
+                if (error) {
+                    log.error('media recording init error:', error);
+                    callback('callback', {type: 'failed', reason: error});
+                } else {
+                    callback('callback', {type: 'ready', audio_codecs: [options.audio_codec], video_codecs: [options.video_codec]});
+                }
+            });
+            conn.addEventListener('fatal', function (error) {
                 log.error('media recording error:', error);
                 if (options.observer !== undefined) {
                     amqper.callRpc(options.observer, 'eventReport', [
@@ -172,7 +182,6 @@ module.exports = function () {
                     ]);
                 }
             });
-            callback('callback', {type: 'ready', audio_codecs: [options.audio_codec], video_codecs: [options.video_codec]});
         } else {
             log.error('Pre-subscription, Subscription type invalid:' + subscription_type);
             callback('callback', {type: 'failed', reason: 'Pre-subscription, Subscription type invalid:' + subscription_type});

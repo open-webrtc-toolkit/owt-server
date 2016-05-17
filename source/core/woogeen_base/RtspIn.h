@@ -83,10 +83,10 @@ public:
         Options() : url{""}, transport{"udp"}, bufferSize{2*1024*1024}, enableAudio{false}, enableVideo{false}, enableH264{false} { }
     };
 
-    RtspIn (const Options&);
-    RtspIn (const std::string& url, const std::string& transport, uint32_t bufferSize, bool enableAudio, bool enableVideo);
+    RtspIn (const Options&, EventRegistry*);
+    RtspIn (const std::string& url, const std::string& transport, uint32_t bufferSize, bool enableAudio, bool enableVideo, EventRegistry* handle);
     virtual ~RtspIn();
-    void init();
+
     void setEventRegistry(EventRegistry* handle) { m_asyncHandle = handle; }
 
 private:
