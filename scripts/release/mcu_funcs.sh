@@ -92,9 +92,9 @@ pack_addons() {
       [[ -s "${line}" ]] && [[ -z `dpkg -S ${line} 2>/dev/null | grep 'libc6\|libselinux'` ]] && cp -Lv ${line} ${DIST_ADDON_DIR}/lib
     fi
   done
-  # remove openh264 and replace with the pseudo one
-  [[ -s ${DIST_ADDON_DIR}/lib/libopenh264.so.0 ]] && \
-  cp -av $ROOT/third_party/openh264/pseudo-openh264.so ${DIST_ADDON_DIR}/lib/libopenh264.so.0
+  # remove openh264 and replace with the pseudo one unless `-openh264' flag is set
+  ${PACK_OPENH264} || ([[ -s ${DIST_ADDON_DIR}/lib/libopenh264.so.0 ]] && \
+    cp -av $ROOT/third_party/openh264/pseudo-openh264.so ${DIST_ADDON_DIR}/lib/libopenh264.so.0)
   # remove libs from msdk
   rm -f ${DIST_ADDON_DIR}/lib/libmfxhw*
   rm -f ${DIST_ADDON_DIR}/lib/libva*

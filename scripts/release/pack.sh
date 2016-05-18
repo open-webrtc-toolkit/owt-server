@@ -27,6 +27,7 @@ SOURCE="${ROOT}/source"
 export WOOGEEN_DIST="${ROOT}/dist"
 PACK_ARCH=false
 PACK_MODULE=true
+PACK_OPENH264=false
 ENCRYPT=false
 ENCRYPT_CAND_PATH=
 PACKAGE_VERSION=
@@ -47,6 +48,9 @@ while [[ $# -gt 0 ]]; do
       ;;
     *(-)no-module )
       PACK_MODULE=false
+      ;;
+    *(-)openh264 )
+      PACK_OPENH264=true
       ;;
     *(-)archive )
       PACK_ARCH=true
