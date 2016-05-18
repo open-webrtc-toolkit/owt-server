@@ -29,6 +29,15 @@ extern "C" {
 #include <libavutil/opt.h>
 }
 
+static inline const char* getShortName(std::string& url)
+{
+    if (url.compare(0, 7, "rtsp://") == 0)
+        return "rtsp";
+    else if (url.compare(0, 7, "rtmp://") == 0)
+        return "flv";
+    return nullptr;
+}
+
 namespace woogeen_base {
 
 DEFINE_LOGGER(RtspOut, "woogeen.media.RtspOut");
@@ -54,7 +63,7 @@ RtspOut::RtspOut(const std::string& url, const AVOptions* audio, const AVOptions
         return;
     }
 
-    m_context->oformat = av_guess_format("rtsp", m_uri.c_str(), nullptr);
+    m_context->oformat = av_guess_format(getShortName(m_uri), m_uri.c_str(), nullptr);
     if (!m_context->oformat) {
         m_status = AVStreamOut::Context_CLOSED;
         notifyAsyncEvent("init", "cannot find proper output format");
@@ -221,15 +230,11 @@ void RtspOut::processAudio(uint8_t* data, int nbSamples)
         ELOG_ERROR("cannot allocate converted input sample pointers");
         return;
     }
-    if (av_samples_alloc(&converted_input_samples, nullptr,
-            m_audioStream->codec->channels, nbSamples, AV_SAMPLE_FMT_S16, 0)
-        < 0) {
+    if (av_samples_alloc(&converted_input_samples, nullptr, m_audioStream->codec->channels, nbSamples, AV_SAMPLE_FMT_S16, 0) < 0) {
         ELOG_ERROR("cannot allocate converted input samples");
         goto done;
     }
-    if (swr_convert(m_resampleContext, &converted_input_samples, nbSamples,
-            const_cast<const uint8_t**>(&data), nbSamples)
-        < 0) {
+    if (swr_convert(m_resampleContext, &converted_input_samples, nbSamples, const_cast<const uint8_t**>(&data), nbSamples) < 0) {
         ELOG_ERROR("cannot convert input samples");
         goto done;
     }
@@ -320,6 +325,7 @@ bool RtspOut::addAudioStream(enum AVCodecID codec_id, int nbChannels, int sample
         notifyAsyncEvent("init", "cannot find audio encoder");
         return false;
     }
+    m_context->oformat->audio_codec = codec_id;
     AVStream* stream = avformat_new_stream(m_context, codec);
     if (!stream) {
         ELOG_ERROR("cannot add audio stream");

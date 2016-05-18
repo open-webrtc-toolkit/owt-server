@@ -10,7 +10,7 @@ var log = logger.getLogger('ErizoManager');
 module.exports = function (spec) {
 
     var that = {},
-         /*{ErizoId: {agent: AgentId, purpose: 'webrtc' | 'sip' | 'rtsp' | 'file' | 'audio&mixing' | 'video&mixing'}*/
+         /*{ErizoId: {agent: AgentId, purpose: 'webrtc' | 'sip' | 'avstream' | 'file' | 'audio&mixing' | 'video&mixing'}*/
         erizos = {};
 
     var cluster = spec.cluster,

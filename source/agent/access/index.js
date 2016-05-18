@@ -17,13 +17,13 @@ var log = logger.getLogger('AccessNode');
 
 module.exports = function () {
     var that = {},
-        /*{StreamID: {type: 'webrtc' | 'rtsp' | 'file' | 'internal',
+        /*{StreamID: {type: 'webrtc' | 'avstream' | 'file' | 'internal',
                       connection: WebRtcConnection | InternalIn | RTSPConnectionIn}
           }
         */
         streams = {},
 
-        /*{SubscriptionID: {type: 'webrtc' | 'rtsp' | 'file' | 'internal',
+        /*{SubscriptionID: {type: 'webrtc' | 'avstream' | 'file' | 'internal',
                             audio: StreamID | undefined,
                             video: StreamID | undefined,
                             connnection: WebRtcConnection | InternalOut | RTSPConnectionOut
@@ -55,10 +55,10 @@ module.exports = function () {
         } else if (stream_type === 'internal') {
             conn = new InternalIn(options.protocol);
             callback('callback', conn.getListeningPort());
-        } else if (stream_type === 'rtsp') {
-            options.type = 'rtsp';
+        } else if (stream_type === 'avstream') {
+            options.type = 'avstream';
             conn = new AVStreamIn(options, function (message) {
-                log.debug('rtsp-in status message:', message);
+                log.debug('avstream-in status message:', message);
                 callback('callback', JSON.parse(message));
             });
             callback('callback', {type: 'initializing'});
@@ -128,11 +128,11 @@ module.exports = function () {
             }, function (response) {
                 callback('callback', response);
             });
-        } else if (subscription_type === 'rtsp') {
-            options.type = 'rtsp';
+        } else if (subscription_type === 'avstream') {
+            options.type = 'avstream';
             conn = new AVStreamOut(options, function (error) {
                 if (error) {
-                    log.error('rtsp-out init error:', error);
+                    log.error('avstream-out init error:', error);
                     callback('callback', {type: 'failed', reason: error});
                 } else {
                     callback('callback', {type: 'ready', audio_codecs: [options.audio_codec], video_codecs: [options.video_codec]});
@@ -140,7 +140,7 @@ module.exports = function () {
             });
             conn.addEventListener('fatal', function (error) {
                 if (error) {
-                    log.error('rtsp-out fatal error:', error);
+                    log.error('avstream-out fatal error:', error);
                     if (options.observer !== undefined) {
                         amqper.callRpc(options.observer, 'eventReport', [
                             'stopRtspOut',
@@ -223,7 +223,7 @@ module.exports = function () {
             switch (subscription_type) {
                 case 'webrtc':
                 case 'file':
-                case 'rtsp':
+                case 'avstream':
                     log.error('Subscription connection does not exist:' + subscription_id);
                     callback('callback', {type: 'failed', reason: 'Subscription connection does not exist:'+subscription_id});
                     return;

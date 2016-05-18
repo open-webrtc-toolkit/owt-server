@@ -100,7 +100,7 @@ rpc.connect(GLOBAL.config.rabbit, function () {
             controller = require('./video')();
             break;
         case 'webrtc':
-        case 'rtsp':
+        case 'avstream':
         case 'file':
             controller = require('./access')();
             break;

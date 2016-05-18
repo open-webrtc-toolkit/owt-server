@@ -27,7 +27,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
     /*{ErizoID: {addr: Address}}*/
     var erizos = {};
 
-    /* {terminalID: {type: 'webrtc' | 'rtsp' | 'file' | 'amixer' | 'axcoder' | 'vmixer' | 'vxcoder',
+    /* {terminalID: {type: 'webrtc' | 'avstream' | 'file' | 'amixer' | 'axcoder' | 'vmixer' | 'vxcoder',
                      erizo: ErizoID,
                      published:[StreamID],
                      subscribed:{SubscriptionID: {audio: StreamID | undefined, video: StreamID | undefined}}
@@ -163,7 +163,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
 
         for (var terminal_id in terminals) {
             if (terminals[terminal_id].type === 'webrtc' ||
-                terminals[terminal_id].type === 'rtsp' ||
+                terminals[terminal_id].type === 'avstream' ||
                 terminals[terminal_id].type === 'file') {
                 terminals[terminal_id].published.map(function (stream_id) {
                     unpublishStream(stream_id);

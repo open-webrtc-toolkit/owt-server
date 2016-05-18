@@ -143,11 +143,11 @@ case $startStop in
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
-      rtsp-agent )
+      avstream-agent )
         cd ${WOOGEEN_HOME}/access_agent
         export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:./lib
         export NODE_PATH=./node_modules
-        nohup nice -n ${WOOGEEN_NICENESS} node . -U rtsp\
+        nohup nice -n ${WOOGEEN_NICENESS} node . -U avstream\
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
