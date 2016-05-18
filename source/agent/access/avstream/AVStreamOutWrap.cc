@@ -71,10 +71,12 @@ void AVStreamOutWrap::New(const v8::FunctionCallbackInfo<v8::Value>& args)
     }
 
     // essential options: {
-    //     type: (required, 'rtsp', or 'file')
+    //     type: (required, 'avstream', or 'file')
+    //     require_audio: (required, true or false)
+    //     require_video: (required, true or false)
     //     audio_codec: (optional, string, 'pcm_raw' for rtsp/rtmp, 'pcmu', 'opus_48000_2' for recording, etc.),
     //     video_codec: (optional, string, 'h264', 'vp8', etc.),
-    //     video_resolution: (required, string),
+    //     video_resolution: (required when require_video === true, string),
     //     url: (required, string),
     //     interval: (required, only for 'file')
     // }
@@ -105,7 +107,7 @@ void AVStreamOutWrap::New(const v8::FunctionCallbackInfo<v8::Value>& args)
     AVStreamOutWrap* obj = new AVStreamOutWrap();
     std::string type = std::string(*String::Utf8Value(options->Get(String::NewFromUtf8(isolate, "type"))->ToString()));
     std::string url = std::string(*String::Utf8Value(options->Get(String::NewFromUtf8(isolate, "url"))->ToString()));
-    if (type.compare("rtsp") == 0)
+    if (type.compare("avstream") == 0)
         obj->me = new woogeen_base::RtspOut(url, pAudio, pVideo, obj);
     else if (type.compare("file") == 0) {
         int snapshotInterval = options->Get(String::NewFromUtf8(isolate, "interval"))->IntegerValue();

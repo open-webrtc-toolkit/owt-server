@@ -148,7 +148,7 @@ ${bin}/daemon.sh start nuve
 ${bin}/daemon.sh start cluster-manager
 ${bin}/daemon.sh start portal
 ${bin}/daemon.sh start webrtc-agent
-${bin}/daemon.sh start rtsp-agent
+${bin}/daemon.sh start avstream-agent
 ${bin}/daemon.sh start recording-agent
 ${bin}/daemon.sh start audio-agent
 ${bin}/daemon.sh start video-agent
@@ -159,7 +159,7 @@ ${bin}/daemon.sh stop nuve
 ${bin}/daemon.sh stop cluster-manager
 ${bin}/daemon.sh stop portal
 ${bin}/daemon.sh stop webrtc-agent
-${bin}/daemon.sh stop rtsp-agent
+${bin}/daemon.sh stop avstream-agent
 ${bin}/daemon.sh stop recording-agent
 ${bin}/daemon.sh stop audio-agent
 ${bin}/daemon.sh stop video-agent

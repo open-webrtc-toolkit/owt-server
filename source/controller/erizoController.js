@@ -193,7 +193,7 @@ var eventReportHandlers = {
             log.warn('room not found:', roomId);
             return;
         }
-        log.info('Stop rtsp out since', spec.message);
+        log.info('Stop avstream out:', spec.terminal, spec.id, spec.message);
         room.controller.unsubscribe(spec.terminal, spec.id);
     },
     'vad': function (roomId, spec) {
@@ -787,16 +787,16 @@ var listen = function () {
             // format options
             // audio should be a boolean value to indicate whether audio is enabled or not.
             if (options.audio === undefined) {
-              options.audio = true;
+                options.audio = true;
             } else {
-              options.audio = !!options.audio;
+                options.audio = !!options.audio;
             }
             // video should be an object containing video tracks detailed information if it is enabled.
             if (options.video === undefined || (typeof options.video !== 'object' && !!options.video)) {
-              options.video = {};
+                options.video = {};
             }
             if (typeof options.video === 'object' && typeof options.video.device !== 'string') {
-              options.video.device = 'unknown';
+                options.video.device = 'unknown';
             }
 
             if (socket.user === undefined || !socket.user.permissions[Permission.PUBLISH]) {
@@ -812,7 +812,7 @@ var listen = function () {
             if (options.state === 'url' || options.state === 'recording') {
                 id = socket.id;
                 var url = sdp,
-                    stream_type = 'rtsp';
+                    stream_type = 'avstream';
                 if (options.state === 'recording') {
                     url = sdp + '.mkv';
                     stream_type = 'file';
@@ -1037,12 +1037,12 @@ var listen = function () {
             }
 
             if (typeof options.url !== 'string' || options.url === '') {
-                return safeCall(callback, 'error', 'Invalid RTSP server url');
+                return safeCall(callback, 'error', 'Invalid RTSP/RTMP server url');
             }
 
             options.url = url.parse(options.url);
-            if (options.url.protocol !== 'rtsp:' || !options.url.slashes || !options.url.host) {
-                return safeCall(callback, 'error', 'Invalid RTSP server url');
+            if ((options.url.protocol !== 'rtsp:' && options.url.protocol !== 'rtmp:') || !options.url.slashes || !options.url.host) {
+                return safeCall(callback, 'error', 'Invalid RTSP/RTMP server url');
             }
 
             if (options.streamId === undefined) {
@@ -1063,14 +1063,14 @@ var listen = function () {
                 video_resolution = options.resolution;
             }
 
-            var rtspId = incrementedId();
-            options.url.pathname = path.join(options.url.pathname || '/', 'room_' + socket.room.id + '-' + options.streamId + '-' + rtspId + '.sdp');
-            var rtspUrl = options.url.format();
-            var terminalId = 'rtsp#' + socket.room.id + '-' + rtspId;
+            var avid = incrementedId();
+            options.url.pathname = path.join(options.url.pathname || '/', 'room_' + socket.room.id + '-' + options.streamId + '-' + avid + '.sdp');
+            var avUrl = options.url.format();
+            var terminalId = 'avstream#' + socket.room.id + '-' + avid;
             socket.room.controller.subscribe(
                 terminalId,
-                rtspId,
-                'rtsp',
+                avid,
+                'avstream',
                 options.streamId,
                 {
                     require_audio: stream.hasAudio(),
@@ -1078,7 +1078,7 @@ var listen = function () {
                     require_video: stream.hasVideo(),
                     video_codec: 'h264',
                     video_resolution: video_resolution,
-                    url: rtspUrl,
+                    url: avUrl,
                     observer: myId,
                     room_id: socket.room.id,
                     terminal: terminalId
@@ -1087,8 +1087,8 @@ var listen = function () {
                     log.debug('startRtspOut response:', response);
                     if (response.type === 'ready') {
                         safeCall(callback, 'success', {
-                            id: rtspId,
-                            url: rtspUrl
+                            id: avid,
+                            url: avUrl
                         });
                     } else if (response.type === 'failed') {
                         safeCall(callback, 'error', response.reason);
@@ -1110,15 +1110,15 @@ var listen = function () {
             }
 
             if (typeof options.id !== 'string' || options.id === '') {
-                return safeCall(callback, 'error', 'Invalid RTSP id');
+                return safeCall(callback, 'error', 'Invalid RTSP/RTMP id');
             }
 
-            if (socket.room.controller.unsubscribe('rtsp#' + socket.room.id + '-' + options.id, options.id)) {
+            if (socket.room.controller.unsubscribe('avstream#' + socket.room.id + '-' + options.id, options.id)) {
                 safeCall(callback, 'success', {
                     id: options.id
                 });
             } else {
-                safeCall(callback, 'error', 'Invalid RTSP id');
+                safeCall(callback, 'error', 'Invalid RTSP/RTMP id');
             }
         });
 

@@ -80,7 +80,7 @@ for (var prop in opt.options) {
                 break;
             case 'my-purpose':
                 if (value === 'webrtc' ||
-                    value === 'rtsp' ||
+                    value === 'avstream' ||
                     value === 'file' ||
                     value === 'audio' ||
                     value === 'video') {
@@ -371,7 +371,7 @@ var joinCluster = function (on_ok) {
 
     switch (myPurpose) {
         case 'webrtc':
-        case 'rtsp':
+        case 'avstream':
             var concernedInterface = externalInterface || clusterInterface;
             if (!concernedInterface) {
                 var interfaces = require('os').networkInterfaces();
