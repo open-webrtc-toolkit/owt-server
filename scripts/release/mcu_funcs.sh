@@ -116,7 +116,7 @@ pack_common() {
     if [[ -d ${TARGET} ]]; then
       for MODULE in ${COMMON_MODULES}; do
         if grep -RInqs "require.*\b${MODULE}\b" ${TARGET}; then
-          for DEP in $(grep -RIn "require('\.\/" ${MODULE}.js | sed "s|.*require('\./\(.*\)').*|\1|g"); do
+          for DEP in $(grep -RIn "require('\.\/" ${MODULE}.js | sed "s|.*require('\./\([^)]*\)').*|\1|g"); do
             cp -av ${DEP}.js ${TARGET}/
           done
           cp -av ${MODULE}.js ${TARGET}/
