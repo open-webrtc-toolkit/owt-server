@@ -957,6 +957,10 @@ var listen = function () {
                 return safeCall(callback, 'error', 'stream does not exist');
             }
 
+            if (stream.getOwner() === socket.id) { //FIXME: workround to avoid break the published stream. NOTE: the root cause it the absence of 'subscription_id'.
+                return safeCall(callback, 'error', 'Not allowed to subscribe the stream published by the subscriber itself.');
+            }
+
             if (stream.hasData() && options.data !== false) {
                 stream.addDataSubscriber(socket.id);
             }
