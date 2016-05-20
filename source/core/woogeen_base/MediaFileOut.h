@@ -21,9 +21,9 @@
 #ifndef MediaFileOut_h
 #define MediaFileOut_h
 
-#include <logger.h>
 #include <AVStreamOut.h>
 #include <MediaUtilities.h>
+#include <logger.h>
 #include <string>
 
 extern "C" {
@@ -37,35 +37,25 @@ class MediaFileOut : public AVStreamOut {
     DECLARE_LOGGER();
 
 public:
-    MediaFileOut(const std::string& url, MediaSpecInfo& audio, MediaSpecInfo& video, int snapshotInterval, EventRegistry* handle);
+    MediaFileOut(const std::string& url, const AVOptions* audio, const AVOptions* video, int snapshotInterval, EventRegistry* handle);
     ~MediaFileOut();
 
     // AVStreamOut interface
     void onFrame(const Frame&);
-
     void onTimeout();
 
 private:
     void close();
-    bool addVideoStream(enum AVCodecID codec_id, unsigned int width = 1280, unsigned int height = 720);
+    bool init(const AVOptions* audio, const AVOptions* video);
+    bool addVideoStream(enum AVCodecID codec_id, unsigned int width, unsigned int height);
     bool addAudioStream(enum AVCodecID codec_id, int nbChannels = 1, int sampleRate = 8000);
-    void writeVideoFrame(EncodedFrame& encoded_frame);
-    void writeAudioFrame(EncodedFrame& encoded_frame);
+    int writeAVFrame(AVStream*, const EncodedFrame&);
 
     AVStream* m_videoStream;
     AVStream* m_audioStream;
     AVFormatContext* m_context;
-    boost::mutex m_contextMutex;
-    bool m_avTrailerNeeded;
-
-    int32_t m_videoId;
-    int32_t m_audioId;
-
-    woogeen_base::FrameFormat m_videoFrameFormat;
-    woogeen_base::FrameFormat m_audioFrameFormat;
     std::string m_recordPath;
-    // FIXME: snapshot interval for the future usage
-    int m_snapshotInterval;
+    int m_snapshotInterval; // FIXME: snapshot interval for the future usage
 };
 
 } /* namespace woogeen_base */
