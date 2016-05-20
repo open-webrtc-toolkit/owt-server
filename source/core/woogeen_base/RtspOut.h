@@ -29,8 +29,8 @@
 
 extern "C" {
 #include <libavformat/avformat.h>
-#include <libswresample/swresample.h>
 #include <libavutil/audio_fifo.h>
+#include <libswresample/swresample.h>
 }
 
 #ifdef DUMP_RAW
@@ -42,8 +42,9 @@ namespace woogeen_base {
 
 class RtspOut : public AVStreamOut {
     DECLARE_LOGGER();
+
 public:
-    RtspOut(const std::string& url, MediaSpecInfo& audio, MediaSpecInfo& video, EventRegistry* handle);
+    RtspOut(const std::string& url, const AVOptions* audio, const AVOptions* video, EventRegistry* handle);
     ~RtspOut();
 
     // AVStreamOut interface
@@ -52,28 +53,25 @@ public:
 
 private:
     void close();
-    bool init(MediaSpecInfo& audio, MediaSpecInfo& video);
+    bool init(const AVOptions* audio, const AVOptions* video);
     bool addVideoStream(enum AVCodecID codec_id, unsigned int width, unsigned int height);
     bool addAudioStream(enum AVCodecID codec_id, int nbChannels = 2, int sampleRate = 48000);
-    int writeVideoFrame(uint8_t*, size_t, int64_t);
-    int writeAudioFrame(uint8_t*, size_t, int64_t);
+    int writeAVFrame(AVStream*, const EncodedFrame&);
     AVFrame* allocAudioFrame(AVCodecContext*);
     void encodeAudio();
     void processAudio(uint8_t* data, int nbSamples);
 
-    AVFormatContext*                                m_context;
-    SwrContext*                                     m_resampleContext;
-    AVAudioFifo*                                    m_audioFifo;
-    AVStream*                                       m_videoStream;
-    AVStream*                                       m_audioStream;
-    int32_t                                         m_videoId, m_audioId;
-    std::string                                     m_uri;
-    AVFrame*                                        m_audioEncodingFrame;
+    AVFormatContext* m_context;
+    SwrContext* m_resampleContext;
+    AVAudioFifo* m_audioFifo;
+    AVStream* m_videoStream;
+    AVStream* m_audioStream;
+    std::string m_uri;
+    AVFrame* m_audioEncodingFrame;
 #ifdef DUMP_RAW
-    std::unique_ptr<std::ofstream>                  m_dumpFile;
+    std::unique_ptr<std::ofstream> m_dumpFile;
 #endif
 };
-
 }
 
 #endif // RtspOut_h

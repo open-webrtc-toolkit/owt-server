@@ -23,24 +23,26 @@
 
 #include "MediaFramePipeline.h"
 
+#include <EventRegistry.h>
+#include <JobTimer.h>
+#include <SharedQueue.h>
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/mutex.hpp>
-#include <EventRegistry.h>
-#include <JobTimer.h>
 #include <rtputils.h>
-#include <SharedQueue.h>
+
+#define KEYFRAME_REQ_INTERVAL (10 * 1000) // 10 seconds
 
 namespace woogeen_base {
 
-static inline int64_t currentTimeMs() {
+static inline int64_t currentTimeMs()
+{
     timeval time;
     gettimeofday(&time, nullptr);
     return ((time.tv_sec * 1000) + (time.tv_usec / 1000));
 }
 
-class EncodedFrame
-{
+class EncodedFrame {
 public:
     EncodedFrame(const uint8_t* data, size_t length, int64_t timeStamp)
         : m_timeStamp(timeStamp)
@@ -55,7 +57,7 @@ public:
     ~EncodedFrame()
     {
         if (m_payloadData) {
-            delete [] m_payloadData;
+            delete[] m_payloadData;
             m_payloadData = nullptr;
         }
     }
@@ -67,8 +69,7 @@ public:
 
 static const unsigned int DEFAULT_QUEUE_MAX = 10;
 
-class MediaFrameQueue
-{
+class MediaFrameQueue {
 public:
     MediaFrameQueue(unsigned int max = DEFAULT_QUEUE_MAX)
         : m_max(max)
@@ -109,9 +110,23 @@ private:
 
 class AVStreamOut : public FrameDestination, public JobTimerListener, public EventRegistry {
 public:
-    enum Status { Context_CLOSED = -2, Context_ERROR = -1, Context_EMPTY = 0, Context_READY = 1 };
+    enum Status {
+        Context_CLOSED = -1,
+        Context_EMPTY = 0,
+        Context_READY = 1
+    };
 
-    AVStreamOut(EventRegistry* handle = nullptr) : m_status{Context_EMPTY}, m_asyncHandle{handle} { }
+    struct AVOptions {
+        std::string codec;
+        MediaSpecInfo spec;
+    };
+
+    AVStreamOut(EventRegistry* handle = nullptr)
+        : m_status{ Context_EMPTY }
+        , m_lastKeyFrameReqTime{ 0 }
+        , m_asyncHandle{ handle }
+    {
+    }
     virtual ~AVStreamOut() {}
 
     void setEventRegistry(EventRegistry* handle) { m_asyncHandle = handle; }
@@ -127,6 +142,7 @@ protected:
     boost::scoped_ptr<MediaFrameQueue> m_videoQueue;
     boost::scoped_ptr<MediaFrameQueue> m_audioQueue;
     boost::scoped_ptr<JobTimer> m_jobTimer;
+    int64_t m_lastKeyFrameReqTime;
 
     // EventRegistry
     virtual bool notifyAsyncEvent(const std::string& event, const std::string& data)
