@@ -26,4 +26,7 @@
 // Singleton for VADisplay
 boost::shared_ptr<VADisplay> GetVADisplay();
 
+uint8_t* mapVASurfaceToVAImage(intptr_t surface, VAImage& image);
+void unmapVAImage(const VAImage& image);
+
 #endif

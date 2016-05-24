@@ -43,16 +43,17 @@ public:
     static boost::shared_ptr<VADisplay> GetVADisplay()
     {
         boost::upgrade_lock<boost::shared_mutex> lock(m_mutex);
-        boost::shared_ptr<VADisplay> display = m_display;
-        if (display)
-            return display;
+        if (m_display)
+            return m_display;
+
+        boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
         ELOG_ERROR("create new display");
         int fd = open("/dev/dri/renderD128", O_RDWR);
         if (fd < 0)
             fd = open("/dev/dri/card0", O_RDWR);
         if (fd < 0) {
             ELOG_ERROR("can't open drm device");
-            return display;
+            return m_display;
         }
         VADisplay vadisplay = vaGetDisplayDRM(fd);
         int majorVersion, minorVersion;
@@ -60,11 +61,58 @@ public:
         if (vaStatus != VA_STATUS_SUCCESS) {
             ELOG_ERROR("va init failed, status =  %d", vaStatus);
             close(fd);
-            return display;
+            return m_display;
         }
-        display.reset(new VADisplay(vadisplay), VADisplayDeleter(fd));
-        m_display = display;
-        return display;
+        m_display.reset(new VADisplay(vadisplay), VADisplayDeleter(fd));
+        return m_display;
+    }
+
+    static uint8_t* mapVASurfaceToVAImage(intptr_t surface, VAImage& image)
+    {
+        if (!m_display)
+            GetVADisplay();
+
+        if (!m_display) {
+            ELOG_ERROR("get va display failed");
+            return nullptr;
+        }
+
+        VAStatus status = vaDeriveImage(*m_display, (VASurfaceID)surface, &image);
+        if (status != VA_STATUS_SUCCESS) {
+            ELOG_ERROR("vaDeriveImage: %s", vaErrorStr(status));
+            return nullptr;
+        }
+
+        uint8_t* p = nullptr;
+        status = vaMapBuffer(*m_display, image.buf, (void**)&p);
+        if (status != VA_STATUS_SUCCESS) {
+            ELOG_ERROR("vaMapBuffer: %s", vaErrorStr(status));
+            status = vaDestroyImage(*m_display, image.image_id);
+            if (status != VA_STATUS_SUCCESS) {
+                ELOG_ERROR("vaDestroyImage: %s", vaErrorStr(status));
+            }
+            return nullptr;
+        }
+
+        return p;
+    }
+
+    static void unmapVAImage(const VAImage& image)
+    {
+        if (!m_display) {
+            ELOG_ERROR("No va display");
+            return;
+        }
+
+        VAStatus status = vaUnmapBuffer(*m_display, image.buf);
+        if (status != VA_STATUS_SUCCESS) {
+            ELOG_ERROR("vaUnmapBuffer: %s", vaErrorStr(status));
+        }
+
+        status = vaDestroyImage(*m_display, image.image_id);
+        if (status != VA_STATUS_SUCCESS) {
+            ELOG_ERROR("vaDestroyImage: %s", vaErrorStr(status));
+        }
     }
 
 private:
@@ -83,5 +131,15 @@ boost::shared_ptr<VADisplay> DisplayGetter::m_display;
 boost::shared_ptr<VADisplay> GetVADisplay()
 {
     return DisplayGetter::GetVADisplay();
+}
+
+uint8_t* mapVASurfaceToVAImage(intptr_t surface, VAImage& image)
+{
+    return DisplayGetter::mapVASurfaceToVAImage(surface, image);
+}
+
+void unmapVAImage(const VAImage& image)
+{
+    DisplayGetter::unmapVAImage(image);
 }
 
