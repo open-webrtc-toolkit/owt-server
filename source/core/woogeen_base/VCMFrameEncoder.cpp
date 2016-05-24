@@ -200,54 +200,6 @@ void VCMFrameEncoder::requestKeyFrame(int32_t streamId)
 }
 
 #ifdef ENABLE_YAMI
-uint8_t* VCMFrameEncoder::mapVASurfaceToVAImage(intptr_t surface, VAImage& image)
-{
-    if (!m_vaDisplay)
-        m_vaDisplay = GetVADisplay();
-
-    if (!m_vaDisplay) {
-        ELOG_ERROR("get va display failed");
-        return nullptr;
-    }
-
-    VAStatus status = vaDeriveImage(*m_vaDisplay, (VASurfaceID)surface, &image);
-    if (status != VA_STATUS_SUCCESS) {
-        ELOG_ERROR("vaDeriveImage: %s", vaErrorStr(status));
-        return nullptr;
-    }
-
-    uint8_t* p = nullptr;
-    status = vaMapBuffer(*m_vaDisplay, image.buf, (void**)&p);
-    if (status != VA_STATUS_SUCCESS) {
-        ELOG_ERROR("vaMapBuffer: %s", vaErrorStr(status));
-        status = vaDestroyImage(*m_vaDisplay, image.image_id);
-        if (status != VA_STATUS_SUCCESS) {
-            ELOG_ERROR("vaDestroyImage: %s", vaErrorStr(status));
-        }
-        return nullptr;
-    }
-
-    return p;
-}
-
-void VCMFrameEncoder::unmapVAImage(const VAImage& image)
-{
-    if (!m_vaDisplay) {
-        ELOG_ERROR("No va display");
-        return;
-    }
-
-    VAStatus status = vaUnmapBuffer(*m_vaDisplay, image.buf);
-    if (status != VA_STATUS_SUCCESS) {
-        ELOG_ERROR("vaUnmapBuffer: %s", vaErrorStr(status));
-    }
-
-    status = vaDestroyImage(*m_vaDisplay, image.image_id);
-    if (status != VA_STATUS_SUCCESS) {
-        ELOG_ERROR("vaDestroyImage: %s", vaErrorStr(status));
-    }
-}
-
 bool VCMFrameEncoder::convertYamiVideoFrameToI420VideoFrame(YamiVideoFrame& yamiFrame, I420VideoFrame& i420Frame)
 {
     auto input = yamiFrame.frame;

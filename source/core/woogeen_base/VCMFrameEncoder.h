@@ -96,10 +96,7 @@ public:
 
 private:
 #ifdef ENABLE_YAMI
-    uint8_t* mapVASurfaceToVAImage(intptr_t surface, VAImage&);
-    void unmapVAImage(const VAImage&);
     bool convertYamiVideoFrameToI420VideoFrame(YamiVideoFrame&, webrtc::I420VideoFrame&);
-    boost::shared_ptr<VADisplay> m_vaDisplay;
 #endif
 
     struct OutStream {
