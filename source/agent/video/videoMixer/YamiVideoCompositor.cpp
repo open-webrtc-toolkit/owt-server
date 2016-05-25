@@ -294,7 +294,7 @@ private:
             assert(image.format.fourcc == VA_FOURCC_YV12);
 
             const uint8_t* srcBuffer = i420Frame->buffer(webrtc::kYPlane);
-            int srcStride = i420Frame->stride(webrtc::kYPlane);
+            uint32_t srcStride = i420Frame->stride(webrtc::kYPlane);
             size_t copySize = image.pitches[0] > srcStride ? srcStride : image.pitches[0];
             // TODO: validate the value of the pitches?
             for (int i = 0; i < image.height; ++i) {
