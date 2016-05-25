@@ -73,6 +73,13 @@ YamiFrameDecoder::~YamiFrameDecoder()
     m_needDecode = false;
 }
 
+bool YamiFrameDecoder::supportFormat(FrameFormat format)
+{
+    // TODO: Query the hardware/libyami capability to encode the specified format.
+    // return (format == FRAME_FORMAT_H264);
+    return false;
+}
+
 bool YamiFrameDecoder::init(FrameFormat format)
 {
     switch (format) {

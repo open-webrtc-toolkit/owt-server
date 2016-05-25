@@ -150,10 +150,10 @@ inline bool VideoFrameMixerImpl::addInput(int input, woogeen_base::FrameFormat f
         decoder.reset(new I420VideoFrameDecoder());
     } else {
 #ifdef ENABLE_YAMI
-        decoder.reset(new woogeen_base::YamiFrameDecoder());
-#else
-        decoder.reset(new woogeen_base::VCMFrameDecoder(format));
+        if (woogeen_base::YamiFrameDecoder::supportFormat(format))
+            decoder.reset(new woogeen_base::YamiFrameDecoder());
 #endif
+        decoder.reset(new woogeen_base::VCMFrameDecoder(format));
     }
 
     if (decoder->init(format)) {
