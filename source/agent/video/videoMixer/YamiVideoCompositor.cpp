@@ -345,6 +345,7 @@ YamiVideoCompositor::YamiVideoCompositor(uint32_t maxInput, VideoSize rootSize, 
     : m_compositeSize(rootSize)
     , m_bgColor(0xff000000)
 {
+    m_ntpDelta = Clock::GetRealTimeClock()->CurrentNtpInMilliseconds() - TickTime::MillisecondTimestamp();
     ELOG_DEBUG("set size to %dx%d, input = %d", rootSize.width, rootSize.height, maxInput);
     m_inputs.resize(maxInput);
     for (auto& input : m_inputs) {
@@ -440,11 +441,16 @@ void YamiVideoCompositor::generateFrame()
     YamiVideoFrame holder;
     holder.frame = compositeFrame;
 
+    const int kMsToRtpTimestamp = 90;
+    holder.frame->timeStamp = kMsToRtpTimestamp *
+        (TickTime::MillisecondTimestamp() + m_ntpDelta);
+
     woogeen_base::Frame frame;
     memset(&frame, 0, sizeof(frame));
     frame.format = woogeen_base::FRAME_FORMAT_YAMI;
     frame.payload = reinterpret_cast<uint8_t*>(&holder);
     frame.length = 0; // unused.
+    frame.timeStamp = holder.frame->timeStamp;
     frame.additionalInfo.video.width = m_compositeSize.width;
     frame.additionalInfo.video.height = m_compositeSize.height;
 
