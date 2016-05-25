@@ -55,6 +55,8 @@ public:
     YamiFrameDecoder();
     ~YamiFrameDecoder();
 
+    static bool supportFormat(FrameFormat);
+
     void onFrame(const Frame&);
     bool init(FrameFormat);
 

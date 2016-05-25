@@ -43,7 +43,7 @@ public:
     SharedPtr<T> alloc()
     {
         SharedPtr<T> ret;
-        boost::upgrade_lock<boost::shared_mutex> lock(m_mutex);
+        boost::unique_lock<boost::shared_mutex> lock(m_mutex);
 
         if (!m_freed.empty()) {
             T* p = m_freed.front();
@@ -64,7 +64,7 @@ public:
 private:
     void recycle(T* ptr)
     {
-        boost::upgrade_lock<boost::shared_mutex> lock(m_mutex);
+        boost::unique_lock<boost::shared_mutex> lock(m_mutex);
         m_freed.push_back(ptr);
     }
 
@@ -114,7 +114,7 @@ class PooledFrameAllocator
     DECLARE_LOGGER();
 public:
     PooledFrameAllocator(const boost::shared_ptr<VADisplay>& display, int poolsize)
-        :m_display(display)
+        : m_display(display)
         , m_poolsize(poolsize)
     {
     }
@@ -125,17 +125,28 @@ public:
 
         VASurfaceAttrib attrib;
         attrib.flags = VA_SURFACE_ATTRIB_SETTABLE;
+#if 0
         attrib.type = VASurfaceAttribPixelFormat;
         attrib.value.type = VAGenericValueTypeInteger;
         attrib.value.value.i = fourcc;
+#else
+        VASurfaceAttribExternalBuffers external;
+        memset(&external, 0, sizeof(external));
+        external.pixel_format = fourcc;
+        external.width = width;
+        external.height = height;
+        // external.num_planes = ?;
+        // external.flags &= (~VA_SURFACE_EXTBUF_DESC_ENABLE_TILING);
+        external.flags |= VA_SURFACE_EXTBUF_DESC_ENABLE_TILING;
 
-
+        attrib.type = VASurfaceAttribExternalBufferDescriptor;
+        attrib.value.type = VAGenericValueTypePointer;
+        attrib.value.value.p = &external;
+#endif
 
         VAStatus status = vaCreateSurfaces(*m_display, VA_RT_FORMAT_YUV420, width, height,
                                            &surfaces[0], surfaces.size(),
                                            &attrib, 1);
-       /*VAStatus status = vaCreateSurfaces(*m_display,width, height, VA_RT_FORMAT_YUV420 ,surfaces.size(), &surfaces[0], NULL, 0);
-         */
 
         if (status != VA_STATUS_SUCCESS) {
             ELOG_ERROR("create surface failed, %s", vaErrorStr(status));
@@ -177,32 +188,33 @@ public:
     }
     void updateRootSize(VideoSize& videoSize)
     {
-        boost::upgrade_lock<boost::shared_mutex> lock(m_mutex);
+        boost::unique_lock<boost::shared_mutex> lock(m_mutex);
         m_rootSize = videoSize;
         updateRect();
     }
 
     void updateInputRegion(Region& region)
     {
-        boost::upgrade_lock<boost::shared_mutex> lock(m_mutex);
+        boost::unique_lock<boost::shared_mutex> lock(m_mutex);
         m_region = region;
         updateRect();
     }
     void activate()
     {
-        boost::upgrade_lock<boost::shared_mutex> lock(m_mutex);
+        boost::unique_lock<boost::shared_mutex> lock(m_mutex);
         m_active = true;
     }
     void deActivate()
     {
-        boost::upgrade_lock<boost::shared_mutex> lock(m_mutex);
+        boost::unique_lock<boost::shared_mutex> lock(m_mutex);
         m_active = false;
         m_queue.clear();
     }
     void pushInput(const woogeen_base::Frame& frame)
     {
-        boost::upgrade_lock<boost::shared_mutex> lock(m_mutex);
         SharedPtr<VideoFrame> input = convert(frame);
+
+        boost::unique_lock<boost::shared_mutex> lock(m_mutex);
         m_queue.push_back(input);
         if (m_queue.size() > 5 ) {
             m_queue.pop_front();
@@ -210,7 +222,7 @@ public:
     }
     SharedPtr<VideoFrame> popInput(VideoRect& rect)
     {
-        boost::upgrade_lock<boost::shared_mutex> lock(m_mutex);
+        boost::unique_lock<boost::shared_mutex> lock(m_mutex);
         SharedPtr<VideoFrame> input;
         if (!m_active)
             return input;
@@ -248,15 +260,83 @@ private:
     }
     SharedPtr<VideoFrame> convert(const woogeen_base::Frame& frame)
     {
-        YamiVideoFrame* holder = (YamiVideoFrame*)frame.payload;
-        return holder->frame;
+        switch (frame.format) {
+        case FRAME_FORMAT_YAMI: {
+            YamiVideoFrame* holder = (YamiVideoFrame*)frame.payload;
+            return holder->frame;
+        }
+        case FRAME_FORMAT_I420: {
+            if (!m_allocator) {
+                boost::shared_ptr<VADisplay> vaDisplay = GetVADisplay();
+                m_allocator.reset(new PooledFrameAllocator(vaDisplay, 5));
+                if (!m_allocator->setFormat(YAMI_FOURCC('Y', 'V', '1', '2'),
+                    frame.additionalInfo.video.width, frame.additionalInfo.video.height)) {
+                    ELOG_DEBUG("set to %dx%d failed", frame.additionalInfo.video.width, frame.additionalInfo.video.height);
+                }
+            }
+
+            SharedPtr<VideoFrame> target = m_allocator->alloc();
+            if (!target)
+                return target;
+
+            VAImage image;
+            uint8_t* buffer = mapVASurfaceToVAImage(target->surface, image);
+            if (!buffer) {
+                ELOG_ERROR("mapVASurfaceToVAImage failed");
+                return SharedPtr<VideoFrame>();
+            }
+
+            webrtc::I420VideoFrame* i420Frame = reinterpret_cast<webrtc::I420VideoFrame*>(frame.payload);
+
+            assert(image.num_planes == 3);
+            assert(image.width == i420Frame->width());
+            assert(image.height == i420Frame->height());
+            assert(image.format.fourcc == VA_FOURCC_YV12);
+
+            const uint8_t* srcBuffer = i420Frame->buffer(webrtc::kYPlane);
+            int srcStride = i420Frame->stride(webrtc::kYPlane);
+            size_t copySize = image.pitches[0] > srcStride ? srcStride : image.pitches[0];
+            // TODO: validate the value of the pitches?
+            for (int i = 0; i < image.height; ++i) {
+                // TODO: Optimize it to be one batched copy if pitch == srcStride.
+                memcpy(buffer + image.offsets[0] + image.pitches[0] * i, srcBuffer + i * srcStride, copySize);
+            }
+            // memcpy(buffer + image.offsets[0], i420Frame->buffer(webrtc::kYPlane), image.offsets[1] - image.offsets[0]);
+            //
+            srcBuffer = i420Frame->buffer(webrtc::kUPlane);
+            srcStride = i420Frame->stride(webrtc::kUPlane);
+            copySize = image.pitches[2] > srcStride ? srcStride : image.pitches[2];
+            for (int i = 0; i < image.height / 2; ++i) {
+                // TODO: Optimize it to be one batched copy if pitch == srcStride.
+                memcpy(buffer + image.offsets[2] + image.pitches[2] * i, srcBuffer + i * srcStride, copySize);
+            }
+            srcBuffer = i420Frame->buffer(webrtc::kVPlane);
+            srcStride = i420Frame->stride(webrtc::kVPlane);
+            copySize = image.pitches[1] > srcStride ? srcStride : image.pitches[1];
+            for (int i = 0; i < image.height / 2; ++i) {
+                // TODO: Optimize it to be one batched copy if pitch == srcStride.
+                memcpy(buffer + image.offsets[1] + image.pitches[1] * i, srcBuffer + i * srcStride, copySize);
+            }
+
+            target->timeStamp = i420Frame->timestamp();
+
+            unmapVAImage(image);
+            return target;
+        }
+        default:
+            return SharedPtr<VideoFrame>();
+        }
+
+        return SharedPtr<VideoFrame>();
     }
+
     bool m_active;
     std::deque<SharedPtr<VideoFrame> > m_queue;
     VideoSize m_rootSize;
     Region m_region;
     VideoRect m_rect;
     boost::shared_mutex m_mutex;
+    SharedPtr<PooledFrameAllocator> m_allocator;
 };
 
 DEFINE_LOGGER(VideoInput, "mcu.media.VideoInput");
@@ -281,10 +361,9 @@ YamiVideoCompositor::YamiVideoCompositor(uint32_t maxInput, VideoSize rootSize, 
 
     m_allocator.reset(new PooledFrameAllocator(m_display, 5));
 
-
     if (!m_allocator->setFormat(YAMI_FOURCC('Y', 'V', '1', '2'),
         m_compositeSize.width, m_compositeSize.height)) {
-        ELOG_DEBUG("set to %dx%d ", m_compositeSize.width, m_compositeSize.width);
+        ELOG_DEBUG("set to %dx%d failed", m_compositeSize.width, m_compositeSize.height);
     }
     m_jobTimer.reset(new woogeen_base::JobTimer(30, this));
     m_jobTimer->start();
@@ -299,7 +378,7 @@ YamiVideoCompositor::~YamiVideoCompositor()
 void YamiVideoCompositor::updateRootSize(VideoSize& videoSize)
 {
     ELOG_DEBUG("updateRootSize to %dx%d", videoSize.width, videoSize.height);
-    boost::upgrade_lock<boost::shared_mutex> lock(m_mutex);
+    boost::unique_lock<boost::shared_mutex> lock(m_mutex);
     m_compositeSize = videoSize;
 
     for (auto& input : m_inputs) {
@@ -313,14 +392,15 @@ void YamiVideoCompositor::updateRootSize(VideoSize& videoSize)
 
 void YamiVideoCompositor::updateBackgroundColor(YUVColor& bgColor)
 {
-    boost::upgrade_lock<boost::shared_mutex> lock(m_mutex);
+    boost::unique_lock<boost::shared_mutex> lock(m_mutex);
     m_bgColor = 0xff000000;
 }
 
 void YamiVideoCompositor::updateLayoutSolution(LayoutSolution& solution)
 {
-    boost::upgrade_lock<boost::shared_mutex> lock(m_mutex);
     ELOG_DEBUG("Configuring layout");
+
+    boost::unique_lock<boost::shared_mutex> lock(m_mutex);
     m_currentLayout = solution;
     for (auto& l : solution) {
         m_inputs[l.input]->updateInputRegion(l.region);
@@ -342,13 +422,12 @@ void YamiVideoCompositor::deActivateInput(int input)
 void YamiVideoCompositor::pushInput(int input, const woogeen_base::Frame& frame)
 {
     ELOG_DEBUG("push input %d", input);
-    boost::upgrade_lock<boost::shared_mutex> lock(m_mutex);
+    boost::unique_lock<boost::shared_mutex> lock(m_mutex);
     m_inputs[input]->pushInput(frame);
 }
 
 void YamiVideoCompositor::onTimeout()
 {
-    boost::upgrade_lock<boost::shared_mutex> lock(m_mutex);
     generateFrame();
 }
 
