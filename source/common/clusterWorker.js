@@ -181,13 +181,13 @@ module.exports = function (spec) {
         load_collector && load_collector.stop();
     };
 
-    that.reportState = function (state) {
+    that.reportState = function (st) {
         if (state === 'registered') {
             makeRPC(
                 amqper,
                 cluster_name,
                 'reportState',
-                [id, state]);
+                [id, st]);
         }
     };
 
