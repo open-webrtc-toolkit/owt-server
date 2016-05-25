@@ -231,8 +231,7 @@ YamiFrameEncoder::~YamiFrameEncoder()
 bool YamiFrameEncoder::supportFormat(FrameFormat format)
 {
     // TODO: Query the hardware/libyami capability to encode the specified format.
-    // return (format == FRAME_FORMAT_H264);
-    return false;
+    return (format == FRAME_FORMAT_H264);
 }
 
 bool YamiFrameEncoder::canSimulcast(FrameFormat format, uint32_t width, uint32_t height)
