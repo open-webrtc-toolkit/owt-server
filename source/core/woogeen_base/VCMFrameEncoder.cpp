@@ -216,7 +216,7 @@ bool VCMFrameEncoder::convertYamiVideoFrameToI420VideoFrame(YamiVideoFrame& yami
     }
 
     bool ret = false;
-    ELOG_DEBUG("timestamp: %lld", input->timeStamp);
+    ELOG_DEBUG("timestamp: %ld", input->timeStamp);
     i420Frame.set_timestamp(input->timeStamp);
     switch (image.format.fourcc) {
     case VA_FOURCC_YV12:
