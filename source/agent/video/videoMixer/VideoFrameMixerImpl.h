@@ -37,6 +37,12 @@
 #include "SoftVideoCompositor.h"
 #endif
 
+#ifdef ENABLE_MSDK
+#include "MsdkVideoCompositor.h"
+#include <MsdkFrameDecoder.h>
+#include <MsdkFrameEncoder.h>
+#endif
+
 #include <VCMFrameDecoder.h>
 #include <VCMFrameEncoder.h>
 
@@ -105,11 +111,18 @@ VideoFrameMixerImpl::VideoFrameMixerImpl(uint32_t maxInput, VideoSize rootSize, 
     : m_taskRunner(taskRunner)
     , m_useSimulcast(useSimulcast)
 {
-#ifndef ENABLE_YAMI
-    m_compositor.reset(new SoftVideoCompositor(maxInput, rootSize, bgColor, crop));
-#else
-    m_compositor.reset(new YamiVideoCompositor(maxInput, rootSize, bgColor));
+#ifdef ENABLE_YAMI
+    if (!m_compositor)
+        m_compositor.reset(new YamiVideoCompositor(maxInput, rootSize, bgColor));
 #endif
+
+#ifdef ENABLE_MSDK
+    if (!m_compositor)
+        m_compositor.reset(new MsdkVideoCompositor(maxInput, rootSize, bgColor, crop));
+#endif
+
+    if (!m_compositor)
+        m_compositor.reset(new SoftVideoCompositor(maxInput, rootSize, bgColor, crop));
 }
 
 VideoFrameMixerImpl::~VideoFrameMixerImpl()
@@ -150,10 +163,17 @@ inline bool VideoFrameMixerImpl::addInput(int input, woogeen_base::FrameFormat f
         decoder.reset(new I420VideoFrameDecoder());
     } else {
 #ifdef ENABLE_YAMI
-        if (woogeen_base::YamiFrameDecoder::supportFormat(format))
+        if (!decoder && woogeen_base::YamiFrameDecoder::supportFormat(format))
             decoder.reset(new woogeen_base::YamiFrameDecoder());
 #endif
-        decoder.reset(new woogeen_base::VCMFrameDecoder(format));
+
+#ifdef ENABLE_MSDK
+        if (!decoder && woogeen_base::MsdkFrameDecoder::supportFormat(format))
+            decoder.reset(new woogeen_base::MsdkFrameDecoder());
+#endif
+
+        if (!decoder)
+            decoder.reset(new woogeen_base::VCMFrameDecoder(format));
     }
 
     if (decoder->init(format)) {
@@ -231,9 +251,15 @@ inline bool VideoFrameMixerImpl::addOutput(int output,
         }
     } else { // Never found a reusable encoder.
 #ifdef ENABLE_YAMI
-        if (woogeen_base::YamiFrameEncoder::supportFormat(format))
+        if (!encoder && woogeen_base::YamiFrameEncoder::supportFormat(format))
             encoder.reset(new woogeen_base::YamiFrameEncoder(format, m_useSimulcast));
 #endif
+
+#ifdef ENABLE_MSDK
+        if (!encoder && woogeen_base::MsdkFrameEncoder::supportFormat(format))
+            encoder.reset(new woogeen_base::MsdkFrameEncoder(format, m_useSimulcast));
+#endif
+
         if (!encoder)
             encoder.reset(new woogeen_base::VCMFrameEncoder(format, m_taskRunner, m_useSimulcast));
 

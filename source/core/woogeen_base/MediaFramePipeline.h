@@ -34,6 +34,7 @@ enum FrameFormat {
 
     FRAME_FORMAT_I420,
     FRAME_FORMAT_YAMI,
+    FRAME_FORMAT_MSDK,
     FRAME_FORMAT_VP8,
     FRAME_FORMAT_H264,
 
@@ -42,7 +43,7 @@ enum FrameFormat {
     FRAME_FORMAT_PCMA,
     FRAME_FORMAT_OPUS,
     FRAME_FORMAT_ISAC16,
-    FRAME_FORMAT_ISAC32
+    FRAME_FORMAT_ISAC32,
 };
 
 struct VideoFrameSpecificInfo {

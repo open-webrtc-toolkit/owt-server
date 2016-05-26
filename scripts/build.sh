@@ -35,6 +35,7 @@ usage() {
   echo "    --gateway                           build oovoo gateway addon"
   echo "    --mcu (software)                    build mcu runtime addons without msdk"
   echo "    --mcu-hardware                      build mcu runtime addons with msdk"
+  echo "    --mcu-hardware-msdk                 build mcu runtime addons with msdk new media pipeline"
   echo "    --mcu-all                           build mcu runtime addons both with and without msdk"
   echo "    --sdk                               build sdk (for oovoo gateway)"
   echo "    --all                               build all components"
@@ -53,6 +54,7 @@ fi
 BUILD_GATEWAY_RUNTIME=false
 BUILD_MCU_RUNTIME_SW=false
 BUILD_MCU_RUNTIME_HW=false
+BUILD_MCU_RUNTIME_HW_MSDK=false
 BUILD_SDK=false
 BUILDTYPE="Release"
 BUILD_ROOT="${ROOT}/build"
@@ -89,6 +91,9 @@ while [[ $# -gt 0 ]]; do
       ;;
     *(-)mcu-hardware )
       BUILD_MCU_RUNTIME_HW=true
+      ;;
+    *(-)mcu-hardware-msdk )
+      BUILD_MCU_RUNTIME_HW_MSDK=true
       ;;
     *(-)mcu-all )
       BUILD_MCU_RUNTIME_SW=true
@@ -128,6 +133,13 @@ build_mcu_runtime_sw() {
 build_mcu_runtime_hw() {
   pushd "${SOURCE}/agent/video/videoMixer" >/dev/null
   cp -f binding.hw.gyp binding.gyp
+  build_mcu_runtime
+  popd >/dev/null
+}
+
+build_mcu_runtime_hw_msdk() {
+  pushd "${SOURCE}/agent/video/videoMixer" >/dev/null
+  cp -f binding.hw.msdk.gyp binding.gyp
   build_mcu_runtime
   popd >/dev/null
 }
@@ -205,6 +217,10 @@ build() {
   fi
   if ${BUILD_MCU_RUNTIME_HW} ; then
     build_mcu_runtime_hw
+    ((DONE++))
+  fi
+  if ${BUILD_MCU_RUNTIME_HW_MSDK} ; then
+    build_mcu_runtime_hw_msdk
     ((DONE++))
   fi
   if ${BUILD_SDK} ; then
