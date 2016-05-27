@@ -23,18 +23,20 @@
 
 #include "I420VideoFrameDecoder.h"
 
+#include "SoftVideoCompositor.h"
+
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/shared_mutex.hpp>
 #include <map>
 #include <MediaFramePipeline.h>
+#include <VCMFrameDecoder.h>
+#include <VCMFrameEncoder.h>
 
 #ifdef ENABLE_YAMI
 #include "YamiVideoCompositor.h"
 #include <YamiFrameDecoder.h>
 #include <YamiFrameEncoder.h>
-#else
-#include "SoftVideoCompositor.h"
 #endif
 
 #ifdef ENABLE_MSDK
@@ -42,9 +44,6 @@
 #include <MsdkFrameDecoder.h>
 #include <MsdkFrameEncoder.h>
 #endif
-
-#include <VCMFrameDecoder.h>
-#include <VCMFrameEncoder.h>
 
 namespace mcu {
 

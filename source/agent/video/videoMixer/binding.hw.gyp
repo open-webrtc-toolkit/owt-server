@@ -4,9 +4,10 @@
     'sources': [
       'addon.cc',
       'VideoMixerWrapper.cc',
-      'YamiVideoCompositor.cpp',
+      'SoftVideoCompositor.cpp',
       'VideoLayoutProcessor.cpp',
       'VideoMixer.cpp',
+      'YamiVideoCompositor.cpp',
       '../../../../third_party/webrtc/src/webrtc/video_engine/payload_router.cc',
       '../../../../third_party/webrtc/src/webrtc/video_engine/vie_encoder.cc',
       '../../../core/woogeen_base/MediaFramePipeline.cpp',
