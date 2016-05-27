@@ -21,6 +21,7 @@
 #include "YamiVideoFrame.h"
 
 #include "VideoDisplay.h"
+#include <string.h>
 #include <webrtc/video_frame.h>
 
 using namespace webrtc;
@@ -65,4 +66,50 @@ bool YamiVideoFrame::convertToI420VideoFrame(I420VideoFrame& i420Frame)
 
     unmapVAImage(image);
     return ret;
+}
+
+bool YamiVideoFrame::convertFromI420VideoFrame(const I420VideoFrame& i420Frame)
+{
+    if (!frame)
+        return false;
+
+    VAImage image;
+    uint8_t* buffer = mapVASurfaceToVAImage(frame->surface, image);
+    if (!buffer)
+        return false;
+
+    assert(image.num_planes == 3);
+    assert(image.width == i420Frame.width());
+    assert(image.height == i420Frame.height());
+    assert(image.format.fourcc == VA_FOURCC_YV12);
+
+    const uint8_t* srcBuffer = i420Frame.buffer(webrtc::kYPlane);
+    uint32_t srcStride = i420Frame.stride(webrtc::kYPlane);
+    size_t copySize = image.pitches[0] > srcStride ? srcStride : image.pitches[0];
+    // TODO: validate the value of the pitches?
+    for (int i = 0; i < image.height; ++i) {
+        // TODO: Optimize it to be one batched copy if pitch == srcStride.
+        memcpy(buffer + image.offsets[0] + image.pitches[0] * i, srcBuffer + i * srcStride, copySize);
+    }
+    // memcpy(buffer + image.offsets[0], i420Frame.buffer(webrtc::kYPlane), image.offsets[1] - image.offsets[0]);
+    //
+    srcBuffer = i420Frame.buffer(webrtc::kUPlane);
+    srcStride = i420Frame.stride(webrtc::kUPlane);
+    copySize = image.pitches[2] > srcStride ? srcStride : image.pitches[2];
+    for (int i = 0; i < image.height / 2; ++i) {
+        // TODO: Optimize it to be one batched copy if pitch == srcStride.
+        memcpy(buffer + image.offsets[2] + image.pitches[2] * i, srcBuffer + i * srcStride, copySize);
+    }
+    srcBuffer = i420Frame.buffer(webrtc::kVPlane);
+    srcStride = i420Frame.stride(webrtc::kVPlane);
+    copySize = image.pitches[1] > srcStride ? srcStride : image.pitches[1];
+    for (int i = 0; i < image.height / 2; ++i) {
+        // TODO: Optimize it to be one batched copy if pitch == srcStride.
+        memcpy(buffer + image.offsets[1] + image.pitches[1] * i, srcBuffer + i * srcStride, copySize);
+    }
+
+    frame->timeStamp = i420Frame.timestamp();
+
+    unmapVAImage(image);
+    return true;
 }

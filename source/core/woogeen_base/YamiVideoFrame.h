@@ -30,6 +30,7 @@ class I420VideoFrame;
 class YamiVideoFrame {
 public:
     bool convertToI420VideoFrame(webrtc::I420VideoFrame&);
+    bool convertFromI420VideoFrame(const webrtc::I420VideoFrame&);
 
     SharedPtr<VideoFrame> frame;
 };
