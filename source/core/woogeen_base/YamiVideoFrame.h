@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Intel Corporation All Rights Reserved.
+ * Copyright 2016 Intel Corporation All Rights Reserved.
  *
  * The source code contained or described herein and all documents related to the
  * source code ("Material") are owned by Intel Corporation or its suppliers or
@@ -22,10 +22,17 @@
 #define YamiVideoFrame_h
 
 #include <VideoCommonDefs.h>
-struct YamiVideoFrame
-{
+
+namespace webrtc {
+class I420VideoFrame;
+}
+
+class YamiVideoFrame {
+public:
+    bool convertToI420VideoFrame(webrtc::I420VideoFrame&);
+
     SharedPtr<VideoFrame> frame;
 };
 
-#endif //YamiVideoFrame_h
+#endif // YamiVideoFrame_h
 

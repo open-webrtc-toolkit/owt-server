@@ -23,6 +23,10 @@
 #include "MediaUtilities.h"
 #include <webrtc/modules/video_coding/codecs/vp8/vp8_factory.h>
 
+#ifdef ENABLE_YAMI
+#include "YamiVideoFrame.h"
+#endif
+
 using namespace webrtc;
 
 namespace woogeen_base {
@@ -199,56 +203,6 @@ void VCMFrameEncoder::requestKeyFrame(int32_t streamId)
     }
 }
 
-#ifdef ENABLE_YAMI
-bool VCMFrameEncoder::convertYamiVideoFrameToI420VideoFrame(YamiVideoFrame& yamiFrame, I420VideoFrame& i420Frame)
-{
-    auto input = yamiFrame.frame;
-    if (!input) {
-        ELOG_ERROR("input null");
-        return false;
-    }
-
-    VAImage image;
-    uint8_t* buffer = mapVASurfaceToVAImage(input->surface, image);
-    if (!buffer) {
-        ELOG_ERROR("mapVASurfaceToVAImage failed");
-        return false;
-    }
-
-    bool ret = false;
-    ELOG_DEBUG("timestamp: %ld", input->timeStamp);
-    i420Frame.set_timestamp(input->timeStamp);
-    switch (image.format.fourcc) {
-    case VA_FOURCC_YV12:
-        assert(image.num_planes == 3);
-        i420Frame.CreateFrame(image.offsets[1] - image.offsets[0],
-                              buffer + image.offsets[0],
-                              image.data_size - image.offsets[2],
-                              buffer + image.offsets[2],
-                              image.offsets[2] - image.offsets[1],
-                              buffer + image.offsets[1],
-                              image.width,
-                              image.height,
-                              image.pitches[0],
-                              image.pitches[2],
-                              image.pitches[1],
-                              kVideoRotation_0);
-        ret = true;
-        break;
-    case VA_FOURCC_NV12:
-        // TODO
-        assert(false);
-        break;
-    default:
-        assert(false);
-        break;
-    }
-
-    unmapVAImage(image);
-    return ret;
-}
-#endif
-
 void VCMFrameEncoder::onFrame(const Frame& frame)
 {
     switch (frame.format) {
@@ -272,7 +226,7 @@ void VCMFrameEncoder::onFrame(const Frame& frame)
 
         I420VideoFrame rawFrame;
         YamiVideoFrame yamiFrame = *(reinterpret_cast<YamiVideoFrame*>(frame.payload));
-        if (!convertYamiVideoFrameToI420VideoFrame(yamiFrame, rawFrame))
+        if (!yamiFrame.convertToI420VideoFrame(rawFrame))
             return;
 
         m_vcm->AddVideoFrame(rawFrame);
