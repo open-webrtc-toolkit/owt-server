@@ -275,6 +275,11 @@ private:
                 }
             }
 
+            // FIXME: The resolution of the input can be changed on the fly,
+            // for example the Chrome browser may scale down a VGA (640x480)
+            // video stream to 320x240 if network condition is not good.
+            // In such case the surface allocated by the allocator which has the
+            // format being configured at the beginning is not valid.
             SharedPtr<VideoFrame> target = m_allocator->alloc();
             if (!target)
                 return target;
