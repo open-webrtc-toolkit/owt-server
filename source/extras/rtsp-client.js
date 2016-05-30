@@ -79,12 +79,6 @@ var WoogeenNodeConference = (function () {
       try {
         self.socket.emit('token', token, function (status, resp) {
           if (status === 'success') {
-            self.connSettings = {
-              turn: resp.turnServer,
-              stun: resp.stunServerUrl,
-              defaultVideoBW: resp.defaultVideoBW,
-              maxVideoBW: resp.maxVideoBW
-            };
             self.myId = resp.clientId;
             self.conferenceId = resp.id;
             self.p2p = resp.p2p;

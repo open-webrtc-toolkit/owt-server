@@ -20,20 +20,10 @@ try {
 
 // Configuration default values
 GLOBAL.config.controller = GLOBAL.config.controller || {};
-// GLOBAL.config.controller.stunServerUrl = GLOBAL.config.controller.stunServerUrl || 'stun:stun.l.google.com:19302';
-GLOBAL.config.controller.stunServerUrl = GLOBAL.config.controller.stunServerUrl;
-GLOBAL.config.controller.defaultVideoBW = GLOBAL.config.controller.defaultVideoBW || 300;
-GLOBAL.config.controller.maxVideoBW = GLOBAL.config.controller.maxVideoBW || 300;
 GLOBAL.config.controller.ip_address = GLOBAL.config.controller.ip_address || '';
 GLOBAL.config.controller.hostname = GLOBAL.config.controller.hostname|| '';
 GLOBAL.config.controller.port = GLOBAL.config.controller.port || 8080;
 GLOBAL.config.controller.ssl = GLOBAL.config.controller.ssl || false;
-GLOBAL.config.controller.turnServer = GLOBAL.config.controller.turnServer || undefined;
-if (GLOBAL.config.controller.turnServer !== undefined) {
-    GLOBAL.config.controller.turnServer.url = GLOBAL.config.controller.turnServer.url || '';
-    GLOBAL.config.controller.turnServer.username = GLOBAL.config.controller.turnServer.username || '';
-    GLOBAL.config.controller.turnServer.password = GLOBAL.config.controller.turnServer.password || '';
-}
 GLOBAL.config.controller.warning_n_rooms = (GLOBAL.config.controller.warning_n_rooms !== undefined ? GLOBAL.config.controller.warning_n_rooms : 15);
 GLOBAL.config.controller.limit_n_rooms = (GLOBAL.config.controller.limit_n_rooms !== undefined ? GLOBAL.config.controller.limit_n_rooms : 20);
 GLOBAL.config.controller.report.session_events = GLOBAL.config.controller.report.session_events || false;
@@ -59,16 +49,10 @@ var getopt = new Getopt([
   ['r' , 'rabbit-host=ARG'            , 'RabbitMQ Host'],
   ['g' , 'rabbit-port=ARG'            , 'RabbitMQ Port'],
   ['l' , 'logging-config-file=ARG'    , 'Logging Config File'],
-  ['t' , 'stunServerUrl=ARG'          , 'Stun Server URL'],
-  ['b' , 'defaultVideoBW=ARG'         , 'Default video Bandwidth'],
-  ['M' , 'maxVideoBW=ARG'             , 'Max video bandwidth'],
   ['i' , 'ip_address=ARG'               , 'Erizo Controller\'s public IP'],
   ['H' , 'hostname=ARG'               , 'Erizo Controller\'s hostname'],
   ['p' , 'port'                       , 'Port where Erizo Controller will listen to new connections.'],
   ['S' , 'ssl'                        , 'Erizo Controller\'s hostname'],
-  ['T' , 'turn-url'                   , 'Turn server\'s URL.'],
-  ['U' , 'turn-username'              , 'Turn server\'s username.'],
-  ['P' , 'turn-password'              , 'Turn server\'s password.'],
   ['h' , 'help'                       , 'display this help']
 ]);
 
@@ -523,11 +507,7 @@ var listen = function () {
                                                 users: socket.room.sockets.map(function (sock) {
                                                     return sock.user;
                                                 }),
-                                                p2p: socket.room.p2p,
-                                                defaultVideoBW: GLOBAL.config.controller.defaultVideoBW,
-                                                maxVideoBW: GLOBAL.config.controller.maxVideoBW,
-                                                stunServerUrl: GLOBAL.config.controller.stunServerUrl,
-                                                turnServer: GLOBAL.config.controller.turnServer
+                                                p2p: socket.room.p2p
                                                 });
                             sendMsgToOthersInRoom(socket.room, 'user_join', {user: user});
                         };
@@ -1548,10 +1528,6 @@ exports.updateConfig = function (conf, callback) {
 
 exports.getConfig = function (callback) {
     safeCall(callback, {
-        defaultVideoBW: GLOBAL.config.controller.defaultVideoBW,
-        maxVideoBW: GLOBAL.config.controller.maxVideoBW,
-        turnServer: GLOBAL.config.controller.turnServer,
-        stunServerUrl: GLOBAL.config.controller.stunServerUrl,
         warning_n_rooms: GLOBAL.config.controller.warning_n_rooms,
         limit_n_rooms: GLOBAL.config.controller.limit_n_rooms
     });

@@ -1,7 +1,5 @@
 [controller]
 #Default and max video bandwidth parameters to be used by clients
-defaultVideoBW = 300 #default: 300
-maxVideoBW = 4000 #max: 4M
 keystorePath = "./cert/certificate.pfx"
 hostname = "" #default: ""
 ip_address = "" #default: ""
@@ -9,8 +7,6 @@ port = 8080 #default: 8080
 ssl = true #default: true
 limit_n_rooms = 20 #default: 20
 warning_n_rooms = 15 #default: 15
-#Use undefined to run clients without Stun
-# stunServerUrl = "stun:stun.l.google.com:19302"
 #Use the name of the inferface you want to bind to for socket.io
 # networkInterface = "eth1"
 
@@ -37,14 +33,6 @@ audio = false
 data = true
 screen = false
 video = false
-
-#Use undefined to run clients without Turn
-#url example: "turn:ip_address:port_number?transport=tcp"
-[controller.turnServer]
-password = "" #default ""
-url = "" #default ""
-username = "" #default ""
-
 
 [cluster]
 #The name of the cluster to join.

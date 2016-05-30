@@ -2,27 +2,26 @@
 
 ## Dependency
 
-- Interactive mode: `scripts/installDeps.sh`
-- Non-interactive mode: `scripts/installDepsUnattended.sh`.
+- Interactive mode: `scripts/installDeps.sh --disable-nonfree`
+- Non-interactive mode: `scripts/installDepsUnattended.sh --disable-nonfree`.
 
 
 ## MCU
 
 ### Build
 
-- without msdk: `scripts/build.sh --mcu --sdk`
-- with msdk: `scripts/build.sh --mcu-hardware --sdk`
-- both: `scripts/build.sh --mcu-all --sdk`
+- without msdk: `scripts/build.sh --mcu`
+- with msdk: `scripts/build.sh --mcu-hardware`
+- both: `scripts/build.sh --mcu-all`
 
 ### Package
 
-- `scripts/release/pack.sh --mcu`
+- `scripts/release/pack.sh --mcu --src-sample-path=${webrtc-javascript-sdk}/dist/samples/conference`
 
-- run in package:
+### Run
 
     - `cd dist`
-    - `bin/init.sh` for software; `bin/init.sh --hardware` for hardware.
-    - `bin/start-all.sh`
+    - follow sections 2.3.6 and 2.3.7 from user guide doc/servermd/Server.md
 
 ## Gateway
 
