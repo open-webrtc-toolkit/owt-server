@@ -26,28 +26,12 @@
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
 #include <logger.h>
-#include <webrtc/modules/video_coding/codecs/interface/video_codec_interface.h>
-#include <webrtc/video_decoder.h>
 
 namespace YamiMediaCodec {
-    class IVideoDecoder;
+class IVideoDecoder;
 }
 
 namespace woogeen_base {
-#if 0
-class DecodedFrameHandler : public webrtc::DecodedImageCallback {
-public:
-   DecodedFrameHandler(boost::shared_ptr<VideoFrameConsumer>);
-   ~DecodedFrameHandler();
-
-   int32_t Decoded(webrtc::I420VideoFrame& decodedImage);
-
-private:
-    int64_t m_ntpDelta;
-    boost::shared_ptr<VideoFrameConsumer> m_consumer;
-};
-#endif
-
 class YamiFrameDecoder : public VideoFrameDecoder {
     DECLARE_LOGGER();
 
@@ -63,9 +47,6 @@ public:
 private:
     bool m_needDecode;
     boost::shared_ptr<YamiMediaCodec::IVideoDecoder> m_decoder;
-    /*boost::shared_ptr<VideoFrameConsumer> m_decodedFrameConsumer;
-    boost::scoped_ptr<webrtc::DecodedImageCallback> m_decodedFrameHandler;
-    */
 };
 
 } /* namespace woogeen_base */

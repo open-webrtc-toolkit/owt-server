@@ -28,10 +28,9 @@
 #include <boost/thread/shared_mutex.hpp>
 #include <list>
 #include <logger.h>
-#include <webrtc/modules/video_coding/main/interface/video_coding.h>
 
 namespace YamiMediaCodec {
-    class IVideoEncoder;
+class IVideoEncoder;
 }
 
 namespace woogeen_base {

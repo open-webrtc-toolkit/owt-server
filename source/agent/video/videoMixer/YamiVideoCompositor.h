@@ -31,7 +31,6 @@
 #include <logger.h>
 #include <MediaFramePipeline.h>
 #include <vector>
-#include <set>
 #include <VideoCommonDefs.h>
 #include <va/va.h>
 
