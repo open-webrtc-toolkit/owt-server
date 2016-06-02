@@ -23,10 +23,8 @@
 #include "MediaUtilities.h"
 #include "VideoDisplay.h"
 #include "YamiVideoFrame.h"
-#include <webrtc/modules/video_coding/codecs/vp8/vp8_factory.h>
 #include <VideoEncoderHost.h>
 
-using namespace webrtc;
 using namespace YamiMediaCodec;
 
 namespace woogeen_base {
@@ -303,6 +301,4 @@ void YamiFrameEncoder::onFrame(const Frame& frame)
     }
 }
 
-
 } // namespace woogeen_base
-

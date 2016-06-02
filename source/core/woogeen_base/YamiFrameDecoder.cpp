@@ -22,46 +22,13 @@
 
 #include "VideoDisplay.h"
 #include "YamiVideoFrame.h"
-#include <webrtc/modules/video_coding/codecs/h264/include/h264.h>
-#include <webrtc/modules/video_coding/codecs/vp8/include/vp8.h>
-#include <webrtc/system_wrappers/interface/clock.h>
-#include <webrtc/system_wrappers/interface/tick_util.h>
 #include <VideoDecoderHost.h>
 
-using namespace webrtc;
 using namespace YamiMediaCodec;
 
 namespace woogeen_base {
 
 DEFINE_LOGGER(YamiFrameDecoder, "woogeen.YamiFrameDecoder");
-#if 0
-DecodedFrameHandler::DecodedFrameHandler(boost::shared_ptr<VideoFrameConsumer> consumer)
-    : m_ntpDelta(Clock::GetRealTimeClock()->CurrentNtpInMilliseconds() - TickTime::MillisecondTimestamp())
-    , m_consumer(consumer)
-{
-}
-
-DecodedFrameHandler::~DecodedFrameHandler()
-{
-}
-
-int32_t DecodedFrameHandler::Decoded(I420VideoFrame& decodedImage)
-{
-    decodedImage.set_render_time_ms(TickTime::MillisecondTimestamp() + m_ntpDelta);
-
-    Frame frame;
-    memset(&frame, 0, sizeof(frame));
-    frame.format = FRAME_FORMAT_I420;
-    frame.payload = reinterpret_cast<uint8_t*>(&decodedImage);
-    frame.length = 0;
-    frame.timeStamp = decodedImage.timestamp();
-    frame.additionalInfo.video.width = decodedImage.width();
-    frame.additionalInfo.video.height = decodedImage.height();
-
-    m_consumer->onFrame(frame);
-    return 0;
-}
-#endif
 
 YamiFrameDecoder::YamiFrameDecoder()
     : m_needDecode(false)
@@ -164,4 +131,5 @@ void YamiFrameDecoder::onFrame(const Frame& frame)
         output = m_decoder->getOutput();
     }
 }
-}//namespace woogeen_base
+
+} // namespace woogeen_base
