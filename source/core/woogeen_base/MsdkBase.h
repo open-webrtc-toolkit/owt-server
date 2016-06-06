@@ -23,78 +23,25 @@
 
 #ifdef ENABLE_MSDK
 
-#include <logger.h>
 #include <boost/thread/shared_mutex.hpp>
-#include <list>
+#include <logger.h>
 
-#include <va/va.h>
-#include <va/va_drm.h>
-
-#include "mfxvideo++.h"
+#include <mfxvideo++.h>
 
 namespace woogeen_base {
 
-#define printfFuncAndLine   ELOG_TRACE(":%d-(%p)%s - Mark", __LINE__, this, __FUNCTION__)
+#define printfLine      ELOG_TRACE(":%d-(%p)%s - Mark", __LINE__, this, __FUNCTION__)
 
-#define printfFuncEnter     ELOG_TRACE(":%d-(%p)%s ++++++++++ Enter", __LINE__, this, __FUNCTION__)
-#define printfFuncExit      ELOG_TRACE(":%d-(%p)%s ---------- Exit", __LINE__, this, __FUNCTION__)
+#define printfFuncEnter ELOG_TRACE(":%d-(%p)%s ++++++++++ Enter", __LINE__, this, __FUNCTION__)
+#define printfFuncExit  ELOG_TRACE(":%d-(%p)%s ---------- Exit", __LINE__, this, __FUNCTION__)
 
-#define printfToDo          ELOG_TRACE(":%d-(%p)%s - Todo", __LINE__, this, __FUNCTION__)
+#define printfToDo      ELOG_TRACE(":%d-(%p)%s - Todo", __LINE__, this, __FUNCTION__)
 
 enum DumpType{ MFX_DEC, MFX_VPP, MFX_ENC };
 
-void printfVideoParam(mfxVideoParam *pVideoParam, DumpType type);
 void printfFrameInfo(mfxFrameInfo *pFrameInfo);
-
-#define MAX_DECODED_FRAME_IN_RENDERING 3
-
-class MsdkFrame {
-    DECLARE_LOGGER();
-
-public:
-    MsdkFrame(mfxFrameInfo &info, mfxMemId id);
-    ~MsdkFrame();
-
-    mfxFrameSurface1 *getSurface(void) {return &m_surface;}
-    mfxSyncPoint *getSyncPoint(void) {return &m_syncP;}
-
-    void setSyncPoint(mfxSyncPoint &syncp) {m_syncP = syncp;}
-
-    bool isFree(void) {return !m_surface.Data.Locked;}
-
-    int getWidth() {return m_surface.Info.CropW;}
-    int getHeight() {return m_surface.Info.CropH;}
-
-private:
-    mfxFrameSurface1 m_surface;
-    mfxSyncPoint m_syncP;
-};
-
-class MsdkFramePool {
-    DECLARE_LOGGER();
-
-public:
-    MsdkFramePool(boost::shared_ptr<mfxFrameAllocator> allocator, mfxFrameAllocRequest &request);
-    ~MsdkFramePool();
-
-    bool init();
-
-    boost::shared_ptr<MsdkFrame> getFreeFrame();
-    boost::shared_ptr<MsdkFrame> getFrame(mfxFrameSurface1 *pSurface);
-
-private:
-    boost::shared_ptr<mfxFrameAllocator> m_allocator;
-
-    mfxFrameAllocRequest m_request;
-    mfxFrameAllocResponse m_response;
-
-    std::list<boost::shared_ptr<MsdkFrame>> m_framePool;
-};
-
-struct MsdkFrameHolder
-{
-    boost::shared_ptr<MsdkFrame> frame;
-};
+void printfVideoParam(mfxVideoParam *pVideoParam, DumpType type);
+void printfFrameAllocRequest(mfxFrameAllocRequest *pRequest);
 
 class MsdkBase {
     DECLARE_LOGGER();

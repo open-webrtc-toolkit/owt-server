@@ -27,6 +27,10 @@
 #include "YamiVideoFrame.h"
 #endif
 
+#ifdef ENABLE_MSDK
+#include "MsdkFrame.h"
+#endif
+
 using namespace webrtc;
 
 namespace woogeen_base {
@@ -228,6 +232,22 @@ void VCMFrameEncoder::onFrame(const Frame& frame)
         YamiVideoFrame yamiFrame = *(reinterpret_cast<YamiVideoFrame*>(frame.payload));
         if (!yamiFrame.convertToI420VideoFrame(rawFrame))
             return;
+
+        m_vcm->AddVideoFrame(rawFrame);
+        break;
+    }
+#endif
+#ifdef ENABLE_MSDK
+    case FRAME_FORMAT_MSDK: {
+        if (m_encodeFormat == FRAME_FORMAT_UNKNOWN)
+            return;
+
+        I420VideoFrame rawFrame;
+        MsdkFrameHolder *holder = (MsdkFrameHolder *)frame.payload;
+        if (!holder->frame->convertTo(rawFrame))
+            return;
+
+        rawFrame.set_timestamp(frame.timeStamp);
 
         m_vcm->AddVideoFrame(rawFrame);
         break;

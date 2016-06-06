@@ -26,95 +26,13 @@
 #include <assert.h>
 #include <stdio.h>
 
+#include <va/va.h>
+#include <va/va_drm.h>
 #include "vaapi_allocator.h"
+
 #include "MsdkBase.h"
 
 namespace woogeen_base {
-
-DEFINE_LOGGER(MsdkFrame, "woogeen.MsdkFrame");
-
-MsdkFrame::MsdkFrame(mfxFrameInfo &info, mfxMemId id)
-{
-    memset(&m_surface, 0, sizeof(mfxFrameSurface1));
-
-    m_surface.Info = info;
-    m_surface.Data.MemId = id;
-}
-
-MsdkFrame::~MsdkFrame()
-{
-}
-
-MsdkFramePool::MsdkFramePool(boost::shared_ptr<mfxFrameAllocator> allocator, mfxFrameAllocRequest &request)
-    : m_allocator(allocator)
-    , m_request(request)
-{
-}
-
-DEFINE_LOGGER(MsdkFramePool, "woogeen.MsdkFramePool");
-
-MsdkFramePool::~MsdkFramePool()
-{
-    printfFuncEnter;
-
-    int i = 0;
-    for (auto& it : m_framePool) {
-        ELOG_TRACE("frame(%d): use_count %ld", i++, it.use_count());
-    }
-
-    // defer frames destroy to mfxFrameAllocator
-    printfFuncExit;
-}
-
-bool MsdkFramePool::init()
-{
-    mfxStatus sts = MFX_ERR_NONE;
-
-    sts = m_allocator->Alloc(m_allocator->pthis, &m_request, &m_response);
-    if (sts != MFX_ERR_NONE)
-    {
-        ELOG_ERROR("mfxFrameAllocator failed, ret %d", sts);
-        return false;
-    }
-
-    for(int i = 0;i < m_response.NumFrameActual;i++)
-    {
-        m_framePool.push_back(boost::shared_ptr<MsdkFrame>(new MsdkFrame(m_request.Info, m_response.mids[i])));
-    }
-
-    return true;
-}
-
-boost::shared_ptr<MsdkFrame> MsdkFramePool::getFreeFrame()
-{
-#if 0
-    ELOG_DEBUG("dump++++++++++");
-    int i = 0;
-    for (auto& it : m_framePool) {
-        ELOG_DEBUG("djh - %d, use_count %d", i++, it.use_count());
-    }
-    ELOG_DEBUG("dump----------");
-#endif
-
-    for (auto& it : m_framePool) {
-        if(it.use_count() == 1 && it->isFree()) {
-            return it;
-        }
-    }
-
-    return NULL;
-}
-
-boost::shared_ptr<MsdkFrame> MsdkFramePool::getFrame(mfxFrameSurface1 *pSurface)
-{
-    for (auto& it : m_framePool) {
-        if(pSurface == it->getSurface()) {
-            return it;
-        }
-    }
-
-    return NULL;
-}
 
 DEFINE_LOGGER(MsdkBase, "woogeen.MsdkBase");
 
@@ -291,7 +209,6 @@ void MsdkBase::destroyFrameAllocator(mfxFrameAllocator *pAlloc)
     delete pAlloc;
 }
 
-
 void printfFrameInfo(mfxFrameInfo *pFrameInfo)
 {
     printf("%s++++++++++\n", __FUNCTION__);
@@ -424,6 +341,21 @@ void printfVideoParam(mfxVideoParam *pVideoParam, DumpType type)
     }
 
     printf("%s - %s----------\n", __FUNCTION__, type == MFX_DEC ? "DECODE" : (type == MFX_VPP) ? "VPP" : "ENCODE");
+}
+
+void printfFrameAllocRequest(mfxFrameAllocRequest *pRequest)
+{
+    printf("%s++++++++++\n", __FUNCTION__);
+
+    printf("\t AllocId %d\n",               (int)pRequest->AllocId);
+
+    printfFrameInfo(&pRequest->Info);
+
+    printf("\t Type 0x%x\n",                (int)pRequest->Type);
+    printf("\t NumFrameMin %d\n",           (int)pRequest->NumFrameMin);
+    printf("\t NumFrameSuggested %d\n",     (int)pRequest->NumFrameSuggested);
+
+    printf("%s----------\n", __FUNCTION__);
 }
 
 }//namespace woogeen_base

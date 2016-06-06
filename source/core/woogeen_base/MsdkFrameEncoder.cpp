@@ -20,12 +20,14 @@
 
 #ifdef ENABLE_MSDK
 
-#include "MsdkBase.h"
-#include "MsdkFrameEncoder.h"
+#include <stdint.h>
+#include <stdio.h>
+#include <assert.h>
 
 #include "MediaUtilities.h"
-#include <webrtc/modules/video_coding/codecs/vp8/vp8_factory.h>
 
+#include "MsdkBase.h"
+#include "MsdkFrameEncoder.h"
 
 using namespace webrtc;
 
@@ -86,6 +88,16 @@ public:
         m_bitstream.reset();
 
         printfFuncExit;
+    }
+
+    void onFeedback(const woogeen_base::FeedbackMsg& msg) {
+        if (msg.type == woogeen_base::VIDEO_FEEDBACK) {
+            if (msg.cmd == REQUEST_KEY_FRAME) {
+                requestKeyFrame();
+            } else if (msg.cmd == SET_BITRATE) {
+                setBitrate(msg.data.kbps);
+            }
+        }
     }
 
     bool init(FrameFormat format, uint32_t width, uint32_t height, FrameDestination* dest)
@@ -313,89 +325,89 @@ protected:
         m_extParams.push_back(reinterpret_cast<mfxExtBuffer *>(m_extCodingOpt2.get()));
 
         // FrameInfo
-        m_videoParam->mfx.FrameInfo.FourCC           = MFX_FOURCC_NV12;
-        m_videoParam->mfx.FrameInfo.ChromaFormat     = MFX_CHROMAFORMAT_YUV420;
-        m_videoParam->mfx.FrameInfo.PicStruct        = MFX_PICSTRUCT_PROGRESSIVE;
+        m_videoParam->mfx.FrameInfo.FourCC          = MFX_FOURCC_NV12;
+        m_videoParam->mfx.FrameInfo.ChromaFormat    = MFX_CHROMAFORMAT_YUV420;
+        m_videoParam->mfx.FrameInfo.PicStruct       = MFX_PICSTRUCT_PROGRESSIVE;
 
-        m_videoParam->mfx.FrameInfo.BitDepthLuma     = 0;
-        m_videoParam->mfx.FrameInfo.BitDepthChroma   = 0;
-        m_videoParam->mfx.FrameInfo.Shift            = 0;
+        m_videoParam->mfx.FrameInfo.BitDepthLuma    = 0;
+        m_videoParam->mfx.FrameInfo.BitDepthChroma  = 0;
+        m_videoParam->mfx.FrameInfo.Shift           = 0;
 
-        m_videoParam->mfx.FrameInfo.AspectRatioW     = 0;
-        m_videoParam->mfx.FrameInfo.AspectRatioH     = 0;
+        m_videoParam->mfx.FrameInfo.AspectRatioW    = 0;
+        m_videoParam->mfx.FrameInfo.AspectRatioH    = 0;
 
-        m_videoParam->mfx.FrameInfo.FrameRateExtN    = 5400000;//60;
-        m_videoParam->mfx.FrameInfo.FrameRateExtD    = 180000;//2;
+        m_videoParam->mfx.FrameInfo.FrameRateExtN   = 30;
+        m_videoParam->mfx.FrameInfo.FrameRateExtD   = 1;
 
-        m_videoParam->mfx.FrameInfo.Width            = 1280;
-        m_videoParam->mfx.FrameInfo.Height           = 720;
-        m_videoParam->mfx.FrameInfo.CropX            = 0;
-        m_videoParam->mfx.FrameInfo.CropY            = 0;
-        m_videoParam->mfx.FrameInfo.CropW            = 1280;
-        m_videoParam->mfx.FrameInfo.CropH            = 720;
+        m_videoParam->mfx.FrameInfo.Width           = 1280;
+        m_videoParam->mfx.FrameInfo.Height          = 720;
+        m_videoParam->mfx.FrameInfo.CropX           = 0;
+        m_videoParam->mfx.FrameInfo.CropY           = 0;
+        m_videoParam->mfx.FrameInfo.CropW           = 1280;
+        m_videoParam->mfx.FrameInfo.CropH           = 720;
 
         // mfxVideoParam Common
-        m_videoParam->AsyncDepth                 = 1;
-        m_videoParam->IOPattern                  = MFX_IOPATTERN_IN_VIDEO_MEMORY;
+        m_videoParam->AsyncDepth                    = 1;
+        m_videoParam->IOPattern                     = MFX_IOPATTERN_IN_VIDEO_MEMORY;
 
-        //m_videoParam->ExtParam                   = &m_extParams.front(); // vector is stored linearly in memory
-        //m_videoParam->NumExtParam                = m_extParams.size();
+        //m_videoParam->ExtParam                    = &m_extParams.front(); // vector is stored linearly in memory
+        //m_videoParam->NumExtParam                 = m_extParams.size();
 
         // mfx
-        m_videoParam->mfx.LowPower               = 0;
-        m_videoParam->mfx.BRCParamMultiplier     = 0;
-        m_videoParam->mfx.CodecId                = MFX_CODEC_AVC;
-        m_videoParam->mfx.CodecProfile           = MFX_PROFILE_AVC_BASELINE;
-        m_videoParam->mfx.CodecLevel             = 0;
-        m_videoParam->mfx.NumThread              = 0;
+        m_videoParam->mfx.LowPower                  = 0;
+        m_videoParam->mfx.BRCParamMultiplier        = 0;
+        m_videoParam->mfx.CodecId                   = MFX_CODEC_AVC;
+        m_videoParam->mfx.CodecProfile              = MFX_PROFILE_AVC_BASELINE;
+        m_videoParam->mfx.CodecLevel                = 0;
+        m_videoParam->mfx.NumThread                 = 0;
 
         // mfx Enc
-        m_videoParam->mfx.TargetUsage            = 0;
-        m_videoParam->mfx.GopPicSize             = 24;
-        m_videoParam->mfx.GopRefDist             = 0;
-        m_videoParam->mfx.GopOptFlag             = 0;
-        m_videoParam->mfx.IdrInterval            = 0;
+        m_videoParam->mfx.TargetUsage               = 0;
+        m_videoParam->mfx.GopPicSize                = 24;
+        m_videoParam->mfx.GopRefDist                = 0;
+        m_videoParam->mfx.GopOptFlag                = 0;
+        m_videoParam->mfx.IdrInterval               = 0;
 
-        m_videoParam->mfx.RateControlMethod      = MFX_RATECONTROL_VBR;
+        m_videoParam->mfx.RateControlMethod         = MFX_RATECONTROL_VBR;
 
-        m_videoParam->mfx.BufferSizeInKB         = 0;
-        m_videoParam->mfx.InitialDelayInKB       = 0;
-        m_videoParam->mfx.TargetKbps             = calcBitrate(m_videoParam->mfx.FrameInfo.Width, m_videoParam->mfx.FrameInfo.Height);
-        m_videoParam->mfx.MaxKbps                = m_videoParam->mfx.TargetKbps;
+        m_videoParam->mfx.BufferSizeInKB            = 0;
+        m_videoParam->mfx.InitialDelayInKB          = 0;
+        m_videoParam->mfx.TargetKbps                = calcBitrate(m_videoParam->mfx.FrameInfo.Width, m_videoParam->mfx.FrameInfo.Height);
+        m_videoParam->mfx.MaxKbps                   = m_videoParam->mfx.TargetKbps;
 
-        m_videoParam->mfx.NumSlice               = 0;
-        m_videoParam->mfx.NumRefFrame            = 1;
-        m_videoParam->mfx.EncodedOrder           = 0;
+        m_videoParam->mfx.NumSlice                  = 0;
+        m_videoParam->mfx.NumRefFrame               = 1;
+        m_videoParam->mfx.EncodedOrder              = 0;
 
         // MFX_EXTBUFF_CODING_OPTION
-        m_extCodingOpt->Header.BufferId          = MFX_EXTBUFF_CODING_OPTION;
-        m_extCodingOpt->Header.BufferSz          = sizeof(*m_extCodingOpt);
-        m_extCodingOpt->MaxDecFrameBuffering     = m_videoParam->mfx.NumRefFrame;
-        m_extCodingOpt->AUDelimiter              = MFX_CODINGOPTION_OFF;//No AUD
-        m_extCodingOpt->RecoveryPointSEI         = MFX_CODINGOPTION_OFF;//No SEI
-        m_extCodingOpt->PicTimingSEI             = MFX_CODINGOPTION_OFF;
-        m_extCodingOpt->VuiNalHrdParameters      = MFX_CODINGOPTION_OFF;
+        m_extCodingOpt->Header.BufferId             = MFX_EXTBUFF_CODING_OPTION;
+        m_extCodingOpt->Header.BufferSz             = sizeof(*m_extCodingOpt);
+        m_extCodingOpt->MaxDecFrameBuffering        = m_videoParam->mfx.NumRefFrame;
+        m_extCodingOpt->AUDelimiter                 = MFX_CODINGOPTION_OFF;//No AUD
+        m_extCodingOpt->RecoveryPointSEI            = MFX_CODINGOPTION_OFF;//No SEI
+        m_extCodingOpt->PicTimingSEI                = MFX_CODINGOPTION_OFF;
+        m_extCodingOpt->VuiNalHrdParameters         = MFX_CODINGOPTION_OFF;
 
         // MFX_EXTBUFF_CODING_OPTION2
-        m_extCodingOpt2->Header.BufferId         = MFX_EXTBUFF_CODING_OPTION2;
-        m_extCodingOpt2->Header.BufferSz         = sizeof(*m_extCodingOpt2);
-        m_extCodingOpt2->RepeatPPS               = MFX_CODINGOPTION_OFF;//No repeat pps
-        m_extCodingOpt2->MBBRC                   = 0;//Disable
-        m_extCodingOpt2->LookAheadDepth          = 0;//For MFX_RATECONTROL_LA
-        m_extCodingOpt2->MaxSliceSize            = 0;
+        m_extCodingOpt2->Header.BufferId            = MFX_EXTBUFF_CODING_OPTION2;
+        m_extCodingOpt2->Header.BufferSz            = sizeof(*m_extCodingOpt2);
+        m_extCodingOpt2->RepeatPPS                  = MFX_CODINGOPTION_OFF;//No repeat pps
+        m_extCodingOpt2->MBBRC                      = 0;//Disable
+        m_extCodingOpt2->LookAheadDepth             = 0;//For MFX_RATECONTROL_LA
+        m_extCodingOpt2->MaxSliceSize               = 0;
     }
 
     void updateParam(void)
     {
-        m_videoParam->mfx.FrameInfo.Width           = m_width;
-        m_videoParam->mfx.FrameInfo.Height          = m_height;
-        m_videoParam->mfx.FrameInfo.CropX           = 0;
-        m_videoParam->mfx.FrameInfo.CropY           = 0;
-        m_videoParam->mfx.FrameInfo.CropW           = m_width;
-        m_videoParam->mfx.FrameInfo.CropH           = m_height;
+        m_videoParam->mfx.FrameInfo.Width   = m_width;
+        m_videoParam->mfx.FrameInfo.Height  = m_height;
+        m_videoParam->mfx.FrameInfo.CropX   = 0;
+        m_videoParam->mfx.FrameInfo.CropY   = 0;
+        m_videoParam->mfx.FrameInfo.CropW   = m_width;
+        m_videoParam->mfx.FrameInfo.CropH   = m_height;
 
-        m_videoParam->mfx.TargetKbps                = m_bitRateKbps ? m_bitRateKbps : calcBitrate(m_width, m_height);
-        m_videoParam->mfx.MaxKbps                   = m_videoParam->mfx.TargetKbps;
+        m_videoParam->mfx.TargetKbps        = m_bitRateKbps ? m_bitRateKbps : calcBitrate(m_width, m_height);
+        m_videoParam->mfx.MaxKbps           = m_videoParam->mfx.TargetKbps;
     }
 
     char *getFrameType(uint16_t frameType)

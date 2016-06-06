@@ -23,20 +23,19 @@
 
 #ifdef ENABLE_MSDK
 
-#include "VideoFrameMixer.h"
-#include "VideoLayout.h"
-
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/shared_mutex.hpp>
+#include <vector>
 #include <JobTimer.h>
 #include <logger.h>
-#include <MediaFramePipeline.h>
-#include <vector>
-#include <set>
 
-#include "mfxvideo++.h"
-#include "MsdkBase.h"
+#include "VideoFrameMixer.h"
+#include "VideoLayout.h"
+
+#include "MediaFramePipeline.h"
+
+#include "MsdkFrame.h"
 
 namespace mcu {
 class VppInput;
@@ -70,8 +69,6 @@ protected:
     void updateParam(void);
 
     void init(void);
-
-    void fillFrame(mfxFrameSurface1 *pSurface, uint8_t y, uint8_t u, uint8_t v);
 
     bool isSolutionChanged ();
 

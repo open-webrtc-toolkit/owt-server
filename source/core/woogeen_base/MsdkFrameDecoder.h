@@ -23,15 +23,13 @@
 
 #ifdef ENABLE_MSDK
 
-#include "MediaFramePipeline.h"
-
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
 #include <logger.h>
-#include <webrtc/modules/video_coding/codecs/interface/video_codec_interface.h>
-#include <webrtc/video_decoder.h>
 
-#include "mfxvideo++.h"
+#include "MediaFramePipeline.h"
+
+#include "MsdkFrame.h"
 
 namespace woogeen_base {
 
