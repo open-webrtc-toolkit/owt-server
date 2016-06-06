@@ -23,11 +23,6 @@
 #include "MsdkBase.h"
 #include "MsdkFrameDecoder.h"
 
-#include <webrtc/modules/video_coding/codecs/h264/include/h264.h>
-#include <webrtc/modules/video_coding/codecs/vp8/include/vp8.h>
-#include <webrtc/system_wrappers/interface/clock.h>
-#include <webrtc/system_wrappers/interface/tick_util.h>
-
 using namespace webrtc;
 
 namespace woogeen_base {

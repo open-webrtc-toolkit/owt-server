@@ -20,9 +20,9 @@
 
 #ifdef ENABLE_MSDK
 
+#include <deque>
 #include <webrtc/system_wrappers/interface/clock.h>
 #include <webrtc/system_wrappers/interface/tick_util.h>
-#include <deque>
 
 #include "MsdkBase.h"
 #include "MsdkVideoCompositor.h"
@@ -35,8 +35,9 @@ class VppInput {
     DECLARE_LOGGER();
 
 public:
-    VppInput()
-        : m_active(false)
+    VppInput(boost::shared_ptr<mfxFrameAllocator> allocator)
+        : m_allocator(allocator)
+        , m_active(false)
     {
         memset(&m_rootSize, 0, sizeof(m_rootSize));
         memset(&m_vppRect, 0, sizeof(m_vppRect));
@@ -127,10 +128,90 @@ public:
     }
 
 protected:
+    bool initSwFramePool(int width, int height)
+    {
+        if (m_swFramePool)
+            return true;
+
+        mfxStatus sts = MFX_ERR_NONE;
+
+        mfxFrameAllocRequest Request;
+        memset(&Request, 0, sizeof(mfxFrameAllocRequest));
+
+        Request.Type = MFX_MEMTYPE_FROM_VPPIN | MFX_MEMTYPE_DXVA2_PROCESSOR_TARGET | MFX_MEMTYPE_EXTERNAL_FRAME;
+
+        Request.NumFrameMin         = MAX_DECODED_FRAME_IN_RENDERING + 1;
+        Request.NumFrameSuggested   = MAX_DECODED_FRAME_IN_RENDERING + 1;
+
+        Request.Info.FourCC         = MFX_FOURCC_NV12;
+        Request.Info.ChromaFormat   = MFX_CHROMAFORMAT_YUV420;
+        Request.Info.PicStruct      = MFX_PICSTRUCT_PROGRESSIVE;
+
+        Request.Info.BitDepthLuma   = 0;
+        Request.Info.BitDepthChroma = 0;
+        Request.Info.Shift          = 0;
+
+        Request.Info.AspectRatioW   = 0;
+        Request.Info.AspectRatioH   = 0;
+
+        Request.Info.FrameRateExtN  = 30;
+        Request.Info.FrameRateExtD  = 1;
+
+        // alignment? multiple of 16.
+        Request.Info.Width          = width;
+        Request.Info.Height         = height;
+        Request.Info.CropX          = 0;
+        Request.Info.CropY          = 0;
+        Request.Info.CropW          = width;
+        Request.Info.CropH          = height;
+
+        m_swFramePool.reset(new MsdkFramePool(m_allocator, Request));
+        if (!m_swFramePool->init()) {
+            ELOG_ERROR("(%p)Frame pool init failed, ret %d", this, sts);
+
+            m_swFramePool.reset();
+            return false;
+        }
+
+        ELOG_TRACE("(%p)Frame pool initialzed for non MsdkFrame input", this);
+        return true;
+    }
+
     boost::shared_ptr<MsdkFrame> convert(const woogeen_base::Frame& frame)
     {
-        MsdkFrameHolder *holder = (MsdkFrameHolder *)frame.payload;
-        return holder->frame;
+        if (frame.format == FRAME_FORMAT_MSDK) {
+            MsdkFrameHolder *holder = (MsdkFrameHolder *)frame.payload;
+
+            return holder->frame;
+        }
+        else if (frame.format == FRAME_FORMAT_I420) {
+            const struct VideoFrameSpecificInfo &video = frame.additionalInfo.video;
+
+            if (!m_swFramePool && !initSwFramePool(video.width, video.height)) {
+                return NULL;
+            }
+
+            boost::shared_ptr<MsdkFrame> dst = m_swFramePool->getFreeFrame();
+            if (!dst)
+            {
+                ELOG_ERROR("(%p)No frame available in swFramePool", this);
+                return NULL;
+            }
+
+            I420VideoFrame *i420Frame = (reinterpret_cast<I420VideoFrame *>(frame.payload));
+
+            if (!dst->convertFrom(*i420Frame))
+            {
+                ELOG_ERROR("(%p)Failed to convert I420 frame", this);
+            }
+
+            return dst;
+        }
+        else{
+            ELOG_ERROR("(%p)Unsupported frame format, %d", this, frame.format);
+
+            return NULL;
+        }
     }
 
     void updateRect()
@@ -158,6 +239,8 @@ protected:
     }
 
 private:
+    boost::shared_ptr<mfxFrameAllocator> m_allocator;
+
     bool m_active;
 
     VideoSize m_rootSize;
@@ -166,6 +249,9 @@ private:
     mfxVPPCompInputStream m_vppRect;
 
     std::deque<boost::shared_ptr<MsdkFrame>> m_queue;
+
+    // used for sw frame conversion
+    boost::scoped_ptr<MsdkFramePool> m_swFramePool;
 
     boost::shared_mutex m_mutex;
 };
@@ -199,7 +285,7 @@ MsdkVideoCompositor::MsdkVideoCompositor(uint32_t maxInput, VideoSize rootSize, 
 
     m_inputs.resize(maxInput);
     for (auto& input : m_inputs) {
-        input.reset(new VppInput());
+        input.reset(new VppInput(m_allocator));
         input->updateRootSize(rootSize);
     }
 
@@ -268,8 +354,8 @@ void MsdkVideoCompositor::initDefaultParam(void)
     m_videoParam->vpp.In.AspectRatioW       = 0;
     m_videoParam->vpp.In.AspectRatioH       = 0;
 
-    m_videoParam->vpp.In.FrameRateExtN      = 60;
-    m_videoParam->vpp.In.FrameRateExtD      = 2;
+    m_videoParam->vpp.In.FrameRateExtN      = 30;
+    m_videoParam->vpp.In.FrameRateExtD      = 1;
 
     // mfxVideoParam Vpp Out
     m_videoParam->vpp.Out.FourCC            = MFX_FOURCC_NV12;
@@ -283,8 +369,8 @@ void MsdkVideoCompositor::initDefaultParam(void)
     m_videoParam->vpp.Out.AspectRatioW      = 0;
     m_videoParam->vpp.Out.AspectRatioH      = 0;
 
-    m_videoParam->vpp.Out.FrameRateExtN     = 60;
-    m_videoParam->vpp.Out.FrameRateExtD     = 2;
+    m_videoParam->vpp.Out.FrameRateExtN     = 30;
+    m_videoParam->vpp.Out.FrameRateExtD     = 1;
 
     // mfxExtVPPComposite
     m_extVppComp->Header.BufferId           = MFX_EXTBUFF_VPP_COMPOSITE;
@@ -313,102 +399,6 @@ void MsdkVideoCompositor::updateParam(void)
     m_extVppComp->Y                 = m_bgColor.y;
     m_extVppComp->U                 = m_bgColor.cb;
     m_extVppComp->V                 = m_bgColor.cr;
-}
-
-void MsdkVideoCompositor::fillFrame(mfxFrameSurface1 *pSurface, uint8_t y, uint8_t u, uint8_t v) {
-    mfxStatus sts = MFX_ERR_NONE;
-
-    mfxFrameInfo& pInfo = pSurface->Info;
-    mfxFrameData& pData = pSurface->Data;
-
-    // supports only NV12 mfx surfaces for code transparency,
-    // other formats may be added if application requires such functionality
-    if (MFX_FOURCC_NV12 != pInfo.FourCC) {
-        ELOG_ERROR("Format (%c%c%c%c) is not upported!",
-                pInfo.FourCC & 0xff,
-                (pInfo.FourCC >> 8) & 0xff,
-                (pInfo.FourCC >> 16) & 0xff,
-                (pInfo.FourCC >> 24) & 0xff
-                );
-
-        return;
-    }
-
-    sts = m_allocator->Lock(m_allocator.get()->pthis, pData.MemId, &pData);
-    if (sts != MFX_ERR_NONE) {
-        ELOG_ERROR("Failed to lock surface!");
-
-        return;
-    }
-
-    mfxU16 w, h, i, pitch;
-    mfxU8 *ptr;
-
-    if (pInfo.CropH > 0 && pInfo.CropW > 0)
-    {
-        w = pInfo.CropW;
-        h = pInfo.CropH;
-    }
-    else
-    {
-        w = pInfo.Width;
-        h = pInfo.Height;
-    }
-
-    pitch = pData.Pitch;
-    ptr = pData.Y + pInfo.CropX + pInfo.CropY * pData.Pitch;
-
-    // read luminance plane
-    for(i = 0; i < h; i++)
-    {
-        ptr[i] = y;
-    }
-
-    // read chroma planes
-    switch (pSurface->Info.FourCC) // color format of data in the input file
-    {
-        case MFX_FOURCC_NV12:
-            mfxU32 j;
-            w /= 2;
-            h /= 2;
-            ptr = pData.UV + pInfo.CropX + (pInfo.CropY / 2) * pitch;
-
-            // load U
-            for (i = 0; i < h; i++)
-            {
-                for (j = 0; j < w; j++)
-                {
-                    ptr[i * pitch + j * 2] = u;
-                }
-            }
-            // load V
-            for (i = 0; i < h; i++)
-            {
-                for (j = 0; j < w; j++)
-                {
-                    ptr[i * pitch + j * 2 + 1] = v;
-                }
-            }
-
-            break;
-
-        default:
-
-            ELOG_ERROR("Format (%c%c%c%c) is not upported!",
-                    pInfo.FourCC & 0xff,
-                    (pInfo.FourCC >> 8) & 0xff,
-                    (pInfo.FourCC >> 16) & 0xff,
-                    (pInfo.FourCC >> 24) & 0xff
-                    );
-            break;
-    }
-
-    sts = m_allocator->Unlock(m_allocator.get()->pthis, pData.MemId, &pData);
-    if (sts != MFX_ERR_NONE) {
-        ELOG_ERROR("Failed to unlock surface!");
-
-        return;
-    }
 }
 
 void MsdkVideoCompositor::init(void)
@@ -504,7 +494,7 @@ void MsdkVideoCompositor::init(void)
         }
 
         m_defaultInputFrame = m_defaultInputFramePool->getFreeFrame();
-        fillFrame(m_defaultInputFrame->getSurface(), 0x0, 0x80, 0x80); //black
+        m_defaultInputFrame->fillFrame(0x0, 0x80, 0x80);
     }
 }
 

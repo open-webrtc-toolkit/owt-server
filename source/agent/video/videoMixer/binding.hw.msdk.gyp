@@ -16,6 +16,7 @@
       '../../../core/woogeen_base/MsdkFrameDecoder.cpp',
       '../../../core/woogeen_base/MsdkFrameEncoder.cpp',
       '../../../core/woogeen_base/MsdkBase.cpp',
+      '../../../core/woogeen_base/MsdkFrame.cpp',
       '../../../core/woogeen_base/base_allocator.cpp',
       '../../../core/woogeen_base/vaapi_allocator.cpp',
     ],
