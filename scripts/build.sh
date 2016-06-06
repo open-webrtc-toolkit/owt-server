@@ -255,6 +255,18 @@ build() {
     build_gateway_runtime
     ((DONE++))
   fi
+
+  # Because runtime_sw and runtime_hw share the same directory.
+  # run node-gyp clean on this directory once and set REBUILD to false
+  # to avoid duplicate clean.
+  if (${REBUILD} && (${BUILD_MCU_RUNTIME_SW} || ${BUILD_MCU_RUNTIME_HW})) ; then
+    pushd "${SOURCE}/agent/video/videoMixer" >/dev/null
+    node-gyp clean
+    popd >/dev/null
+  fi
+
+  local PRE_REBUILD=${REBUILD}
+  REBUILD=false
   if ${BUILD_MCU_RUNTIME_SW} ; then
     build_mcu_runtime_sw
     ((DONE++))
@@ -267,6 +279,8 @@ build() {
     build_mcu_runtime_hw_yami
     ((DONE++))
   fi
+  REBUILD=PRE_REBUILD
+
   if ${BUILD_SDK} ; then
     build_oovoo_client_sdk
     ((DONE++))
