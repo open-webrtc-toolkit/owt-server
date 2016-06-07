@@ -487,7 +487,7 @@ var listen = function () {
 
                             log.debug('OK, Valid token');
 
-                            if (!tokenDB.p2p && GLOBAL.config.controller.report.session_events) {
+                            if (GLOBAL.config.controller.report.session_events) {
                                 var timeStamp = new Date();
                                 amqper.broadcast('event', {room: tokenDB.room, user: socket.id, type: 'user_connection', timestamp:timeStamp.getTime()});
                             }
@@ -506,8 +506,7 @@ var listen = function () {
                                                 clientId: socket.id,
                                                 users: socket.room.sockets.map(function (sock) {
                                                     return sock.user;
-                                                }),
-                                                p2p: socket.room.p2p
+                                                })
                                                 });
                             sendMsgToOthersInRoom(socket.room, 'user_join', {user: user});
                         };
@@ -526,11 +525,7 @@ var listen = function () {
                                 room.sockets = [];
                                 room.streams = {}; //streamId: Stream
                                 rooms[roomID] = room;
-                                if (tokenDB.p2p) {
-                                    log.debug('Token of p2p room');
-                                    room.p2p = true;
-                                    on_ok();
-                                } else {
+                                {
                                     amqper.callRpc('nuve', 'getRoomConfig', room.id, {callback: function (resp) {
                                         if (resp === 'error') {
                                             log.error('Room does not exist');
@@ -541,7 +536,6 @@ var listen = function () {
                                             delete rooms[roomID];
                                             on_error();
                                         } else {
-                                            room.p2p = false;
                                             room.config = resp;
                                             if (room.config.userLimit === 0) {
                                                 log.error('Room', roomID, 'disabled');
@@ -712,9 +706,6 @@ var listen = function () {
             if (!stream) {
                 return safeCall(callback, 'error', 'stream does not exist');
             }
-            if (socket.room.p2p) {
-                return safeCall(callback, 'error', 'p2p room does not support this action');
-            }
             socket.room.controller.mix(streamId, function () {
                 return safeCall(callback, 'success');
             }, function (err) {
@@ -734,9 +725,6 @@ var listen = function () {
             if (!stream) {
                 return safeCall(callback, 'error', 'stream does not exist');
             }
-            if (socket.room.p2p) {
-                return safeCall(callback, 'error', 'p2p room does not support this action');
-            }
             socket.room.controller.unmix(streamId, function () {
                 return safeCall(callback, 'success');
             }, function (err) {
@@ -745,9 +733,6 @@ var listen = function () {
         });
 
         socket.on('signaling_message', function (msg) {
-            if (socket.room.p2p) {
-                io.sockets.to(msg.peerSocket).emit('signaling_message_peer', {streamId: msg.streamId, peerSocket: socket.id, msg: msg.msg});
-            } else {
                 var st = socket.room.streams[msg.streamId];
                 if (st) {
                     log.debug('signaling_message, stream:', msg.streamId, 'owner:', st.getPublicStream().from, 'self:', socket.id);
@@ -757,7 +742,6 @@ var listen = function () {
                 } else {
                    log.info('signaling_message, stream['+msg.streamId+'] does not exist');
                 }
-            }
         });
 
         //Gets 'publish' messages on the socket in order to add new stream to the room.
@@ -874,7 +858,7 @@ var listen = function () {
                             socket.emit('connection_failed',{});
 
                             socket.state = 'sleeping';
-                            if (!socket.room.p2p) {
+                            {
                                 socket.room.controller.unpublish(id);
                                 if (GLOBAL.config.controller.report.session_events) {
                                     var timeStamp = new Date();
@@ -946,12 +930,6 @@ var listen = function () {
             }
 
             if (stream.hasAudio() || stream.hasVideo()) {
-
-                if (socket.room.p2p) {
-                    var s = stream.getSocket();
-                    io.sockets.to(s).emit('publish_me', {streamId: options.streamId, peerSocket: socket.id});
-
-                } else {
                     if (GLOBAL.config.controller.report.session_events) {
                         var timeStamp = new Date();
                         amqper.broadcast('event', {room: socket.room.id, user: socket.id, name: socket.user.name, type: 'subscribe', stream: options.streamId, timestamp: timeStamp.getTime()});
@@ -998,7 +976,6 @@ var listen = function () {
                     );
                     log.info('Subscriber added');
                     // safeCall(callback, '');
-                }
             } else {
                 safeCall(callback, '');
             }
@@ -1338,7 +1315,7 @@ var listen = function () {
             }
 
             socket.state = 'sleeping';
-            if (!socket.room.p2p) {
+            {
                 socket.room.controller.unpublish(streamId);
                 if (GLOBAL.config.controller.report.session_events) {
                     var timeStamp = new Date();
@@ -1366,7 +1343,7 @@ var listen = function () {
             socket.room.streams[to].removeDataSubscriber(socket.id);
 
             if (socket.room.streams[to].hasAudio() || socket.room.streams[to].hasVideo()) {
-                if (!socket.room.p2p) {
+                {
                     socket.room.controller.unsubscribe('webrtc#'+socket.id/*FIXME: hard code terminalId*/, socket.id + '-' + to);
                     if (GLOBAL.config.controller.report.session_events) {
                         var timeStamp = new Date();
@@ -1403,7 +1380,7 @@ var listen = function () {
                 for (i in socket.streams) {
                     if (socket.streams.hasOwnProperty(i)) {
                         id = socket.streams[i];
-                        if (!socket.room.p2p) {
+                        {
                             socket.room.controller.unpublish(id);
                             if (GLOBAL.config.controller.report.session_events) {
                                 amqper.broadcast('event', {room: socket.room.id, user: socket.id, type: 'unpublish', stream: id, timestamp: (new Date()).getTime()});
@@ -1418,13 +1395,13 @@ var listen = function () {
                 }
             }
 
-            if (socket.room !== undefined && !socket.room.p2p && GLOBAL.config.controller.report.session_events) {
+            if (socket.room !== undefined && GLOBAL.config.controller.report.session_events) {
                 amqper.broadcast('event', {room: socket.room.id, user: socket.id, type: 'user_disconnection', timestamp: (new Date()).getTime()});
             }
 
             if (socket.room !== undefined && socket.room.sockets.length === 0) {
                 log.info('Empty room ', socket.room.id, '. Deleting it');
-                if (!socket.room.p2p) {
+                {
                     if (socket.room.mixer !== undefined) {
                         if (socket.room.controller && typeof socket.room.controller.destroy === 'function') {
                             socket.room.controller.destroy();
@@ -1502,9 +1479,7 @@ exports.deleteRoom = function (roomId, callback) {
     var streams = room.streams;
     for (var j in streams) {
         if (streams[j].hasAudio() || streams[j].hasVideo()) {
-            if (!room.p2p) {
-                room.controller.unpublish(j);
-            }
+            room.controller.unpublish(j);
         }
     }
 
