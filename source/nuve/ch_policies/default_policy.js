@@ -6,7 +6,6 @@ Params
 	room: room to which we need to assing a erizoController.
 		{
 		name: String, 
-		[p2p: bool], 
 		[data: Object], 
 		_id: ObjectId
 		}

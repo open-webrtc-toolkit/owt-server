@@ -1,5 +1,5 @@
 {
-  "mode": ["hybrid", "p2p"],
+  "mode": ["hybrid"],
   "mediaMixing": {
     "video": {
       "resolution": ["vga", "sif", "xga", "svga", "hd720p", "hd1080p", "uhd_4k", "r720x720"],
