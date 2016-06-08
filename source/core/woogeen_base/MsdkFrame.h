@@ -46,9 +46,9 @@ public:
     ~MsdkFrame();
 
     mfxFrameSurface1 *getSurface(void) {return &m_surface;}
-    mfxSyncPoint *getSyncPoint(void) {return &m_syncP;}
 
-    void setSyncPoint(mfxSyncPoint &syncp) {m_syncP = syncp;}
+    void setSyncPoint(mfxSyncPoint& syncP) {m_syncP = syncP;}
+    void setSyncFlag(bool needSync) {m_needSync = needSync;}
 
     bool isFree(void) {return !m_surface.Data.Locked;}
 
@@ -63,13 +63,19 @@ public:
 protected:
     MsdkFrame(boost::shared_ptr<mfxFrameAllocator> allocator, mfxFrameInfo &info, mfxMemId id);
 
+    void sync(void);
+
     void dumpI420VideoFrameInfo(webrtc::I420VideoFrame& frame);
 
 private:
     boost::shared_ptr<mfxFrameAllocator> m_allocator;
+    MFXVideoSession *m_mainSession;
 
     mfxFrameSurface1 m_surface;
+
     mfxSyncPoint m_syncP;
+
+    bool m_needSync;
 };
 
 class MsdkFramePool {

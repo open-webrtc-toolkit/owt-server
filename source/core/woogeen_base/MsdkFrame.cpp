@@ -35,6 +35,8 @@ DEFINE_LOGGER(MsdkFrame, "woogeen.MsdkFrame");
 
 MsdkFrame::MsdkFrame(boost::shared_ptr<mfxFrameAllocator> allocator, mfxFrameInfo &info, mfxMemId id)
     : m_allocator(allocator)
+    , m_mainSession(NULL)
+    , m_needSync(false)
 {
     memset(&m_surface, 0, sizeof(mfxFrameSurface1));
 
@@ -44,6 +46,29 @@ MsdkFrame::MsdkFrame(boost::shared_ptr<mfxFrameAllocator> allocator, mfxFrameInf
 
 MsdkFrame::~MsdkFrame()
 {
+}
+
+void MsdkFrame::sync(void)
+{
+    mfxStatus sts = MFX_ERR_NONE;
+
+    if (!m_needSync)
+        return;
+
+    m_needSync = false;
+
+    if (!m_mainSession && !(m_mainSession = MsdkBase::get()->getMainSession())) {
+        ELOG_ERROR("Invalid main session!");
+
+        return;
+    }
+
+    sts = m_mainSession->SyncOperation(m_syncP, MFX_INFINITE);
+    if(sts != MFX_ERR_NONE)
+    {
+        ELOG_ERROR("SyncOperation failed, ret %d", sts);
+        return;
+    }
 }
 
 bool MsdkFrame::fillFrame(uint8_t y, uint8_t u, uint8_t v)
@@ -69,6 +94,8 @@ bool MsdkFrame::fillFrame(uint8_t y, uint8_t u, uint8_t v)
 
         return ret;
     }
+
+    sync();
 
     sts = m_allocator->Lock(m_allocator.get()->pthis, pData.MemId, &pData);
     if (sts != MFX_ERR_NONE) {
@@ -195,6 +222,8 @@ bool MsdkFrame::convertFrom(webrtc::I420VideoFrame& frame)
         return false;
     }
 
+    sync();
+
     sts = m_allocator->Lock(m_allocator.get()->pthis, pData.MemId, &pData);
     if (sts != MFX_ERR_NONE) {
         ELOG_ERROR("Failed to lock surface!");
@@ -308,6 +337,8 @@ bool MsdkFrame::convertTo(webrtc::I420VideoFrame& frame)
     pDstY = frame.buffer(webrtc::kYPlane);
     pDstU = frame.buffer(webrtc::kUPlane);
     pDstV = frame.buffer(webrtc::kVPlane);
+
+    sync();
 
     sts = m_allocator->Lock(m_allocator.get()->pthis, pData.MemId, &pData);
     if (sts != MFX_ERR_NONE) {

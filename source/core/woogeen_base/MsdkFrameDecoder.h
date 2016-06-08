@@ -53,6 +53,7 @@ protected:
     bool decHeader(mfxBitstream *pBitstream);
     void decFrame(mfxBitstream *pBitstream);
 
+    void dumpH264BitstreamInfo(const Frame& frame);
 
 private:
     MFXVideoSession *m_session;
@@ -64,6 +65,8 @@ private:
     boost::scoped_ptr<mfxBitstream> m_bitstream;
 
     boost::scoped_ptr<MsdkFramePool> m_framePool;
+
+    uint8_t m_statDetectHeaderFrameCount;
 
     bool m_ready;
 };

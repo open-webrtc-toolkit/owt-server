@@ -36,6 +36,7 @@ MsdkFrameDecoder::MsdkFrameDecoder()
     , m_videoParam(NULL)
     , m_bitstream(NULL)
     , m_framePool(NULL)
+    , m_statDetectHeaderFrameCount(0)
     , m_ready(false)
 {
     initDefaultParam();
@@ -139,8 +140,19 @@ bool MsdkFrameDecoder::decHeader(mfxBitstream *pBitstream)
     if (sts != MFX_ERR_NONE) {
         ELOG_TRACE("(%p)More data needed by DecodeHeader", this);
 
+        if (!(m_statDetectHeaderFrameCount++ % 5))
+        {
+            ELOG_DEBUG("(%p)No header in last %d frames, request key frame!", this, m_statDetectHeaderFrameCount);
+
+            FeedbackMsg msg {.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME};
+            deliverFeedbackMsg(msg);
+        }
+
         return false;
     }
+
+    ELOG_DEBUG("(%p)Decode header successed after %d frames!", this, m_statDetectHeaderFrameCount);
+    m_statDetectHeaderFrameCount = 0;
 
     m_videoParam->IOPattern  = MFX_IOPATTERN_OUT_VIDEO_MEMORY;
     m_videoParam->AsyncDepth = 1 + MAX_DECODED_FRAME_IN_RENDERING;
@@ -151,6 +163,8 @@ bool MsdkFrameDecoder::decHeader(mfxBitstream *pBitstream)
     }
     else if (sts != MFX_ERR_NONE) {
         ELOG_ERROR("(%p)mfx init failed, ret %d", this, sts);
+
+        printfVideoParam(m_videoParam.get(), MFX_DEC);
         return false;
     }
 
@@ -183,8 +197,6 @@ bool MsdkFrameDecoder::decHeader(mfxBitstream *pBitstream)
         }
     }
 
-    ELOG_DEBUG("(%p)Decode header successed!", this);
-
     m_ready = true;
     return true;
 }
@@ -194,7 +206,7 @@ void MsdkFrameDecoder::decFrame(mfxBitstream *pBitstream)
     mfxStatus sts = MFX_ERR_NONE;
 
     mfxFrameSurface1 *pOutSurface;
-    mfxSyncPoint syncp;
+    mfxSyncPoint syncP;
 
     // drain bitstream
     while (true) {
@@ -208,7 +220,7 @@ more_surface:
 
 retry:
         // no always to set worksurface, right?
-        sts = m_dec->DecodeFrameAsync(pBitstream, workFrame->getSurface(), &pOutSurface, &syncp);
+        sts = m_dec->DecodeFrameAsync(pBitstream, workFrame->getSurface(), &pOutSurface, &syncP);
         if (sts == MFX_WRN_DEVICE_BUSY) {
             ELOG_TRACE("(%p)Device busy, retry!", this);
 
@@ -241,7 +253,7 @@ retry:
         }
 
 #if 0
-        sts = m_session->SyncOperation(syncp, MFX_INFINITE);
+        sts = m_session->SyncOperation(syncP, MFX_INFINITE);
         if(sts != MFX_ERR_NONE)
         {
             ELOG_ERROR("(%p)SyncOperation failed, ret %d", this, sts);
@@ -251,7 +263,8 @@ retry:
         //MsdkBase::printfFrameInfo(&pOutSurface->Info);
 
         boost::shared_ptr<MsdkFrame> outFrame = m_framePool->getFrame(pOutSurface);
-        outFrame->setSyncPoint(syncp);
+        outFrame->setSyncPoint(syncP);
+        outFrame->setSyncFlag(true);
 
         MsdkFrameHolder holder;
         holder.frame = outFrame;
@@ -301,13 +314,26 @@ void MsdkFrameDecoder::updateBitstream(const Frame& frame)
 
     ELOG_TRACE("(%p)Incoming frame length: %d", this, frame.length);
 
-    //todo remalloc
     if(m_bitstream->MaxLength < m_bitstream->DataLength + frame.length)
     {
-        printfToDo;
-        ELOG_ERROR("(%p)FIXME: bitstream buffer need to remalloc", this);
+        uint32_t newSize = m_bitstream->MaxLength * 2;
 
-        return;
+        while (newSize < m_bitstream->DataLength + frame.length)
+            newSize *= 2;
+
+        ELOG_ERROR("(%p)bitstream buffer need to remalloc %d -> %d"
+                , this
+                , m_bitstream->MaxLength
+                , newSize
+                );
+
+        mfxU8 *newBuffer = (mfxU8 *)malloc(newSize);
+        if (m_bitstream->DataLength > 0)
+            memcpy(newBuffer, m_bitstream->Data, m_bitstream->DataLength);
+
+        free(m_bitstream->Data);
+        m_bitstream->Data         = newBuffer;
+        m_bitstream->MaxLength    = newSize;
     }
 
     if(m_bitstream->DataOffset + m_bitstream->DataLength + frame.length > m_bitstream->MaxLength)
@@ -328,12 +354,54 @@ void MsdkFrameDecoder::onFrame(const Frame& frame)
 {
     printfFuncEnter;
 
+    //dumpH264BitstreamInfo(frame);
+
     updateBitstream(frame);
 
     if (m_ready || decHeader(m_bitstream.get()))
         decFrame(m_bitstream.get());
 
     printfFuncExit;
+}
+
+void MsdkFrameDecoder::dumpH264BitstreamInfo(const Frame& frame)
+{
+    uint8_t *data = frame.payload;
+    int nal_ref_idc;
+    int nal_unit_type;
+    const char *type = NULL;
+
+    if (frame.length < 5) {
+        ELOG_DEBUG("(%p)Invalid bitstream head size(%d)", this, frame.length);
+    }
+
+    ELOG_TRACE("(%p)Start code: %d%d%d%d", this, data[0], data[1], data[2], data[3]);
+    nal_ref_idc     = (data[4] >> 5) & 0x3;
+    nal_unit_type   = data[4] & 0x1f;
+
+    switch (nal_unit_type) {
+        case 1:
+            type = "NON-IDR";
+            break;
+
+        case 5:
+            type = "IDR";
+            break;
+
+        case 7:
+            type = "SPS";
+            break;
+
+        case 8:
+            type = "PPS";
+            break;
+
+        default:
+            type = "N/A";
+            break;
+    }
+
+    ELOG_TRACE("(%p)nal_ref_idc %d, nal_unit_type %d(%s)", this, nal_ref_idc, nal_unit_type, type);
 }
 
 }//namespace woogeen_base

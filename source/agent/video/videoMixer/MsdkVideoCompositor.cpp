@@ -158,8 +158,8 @@ protected:
         Request.Info.FrameRateExtD  = 1;
 
         // alignment? multiple of 16.
-        Request.Info.Width          = width;
-        Request.Info.Height         = height;
+        Request.Info.Width          = ALIGN16(width);
+        Request.Info.Height         = ALIGN16(height);
         Request.Info.CropX          = 0;
         Request.Info.CropY          = 0;
         Request.Info.CropW          = width;
@@ -382,15 +382,15 @@ void MsdkVideoCompositor::initDefaultParam(void)
 
 void MsdkVideoCompositor::updateParam(void)
 {
-    m_videoParam->vpp.In.Width      = m_compositeSize.width;
-    m_videoParam->vpp.In.Height     = m_compositeSize.height;
+    m_videoParam->vpp.In.Width      = ALIGN16(m_compositeSize.width);
+    m_videoParam->vpp.In.Height     = ALIGN16(m_compositeSize.height);
     m_videoParam->vpp.In.CropX      = 0;
     m_videoParam->vpp.In.CropY      = 0;
     m_videoParam->vpp.In.CropW      = m_compositeSize.width;
     m_videoParam->vpp.In.CropH      = m_compositeSize.height;
 
-    m_videoParam->vpp.Out.Width     = m_compositeSize.width;
-    m_videoParam->vpp.Out.Height    = m_compositeSize.height;
+    m_videoParam->vpp.Out.Width     = ALIGN16(m_compositeSize.width);
+    m_videoParam->vpp.Out.Height    = ALIGN16(m_compositeSize.height);
     m_videoParam->vpp.Out.CropX     = 0;
     m_videoParam->vpp.Out.CropY     = 0;
     m_videoParam->vpp.Out.CropW     = m_compositeSize.width;
@@ -441,7 +441,9 @@ void MsdkVideoCompositor::init(void)
         ELOG_TRACE("Ignore mfx warning, ret %d", sts);
     }
     else if (sts != MFX_ERR_NONE) {
-        ELOG_ERROR("mfx int failed, ret %d", sts);
+        ELOG_ERROR("mfx init failed, ret %d", sts);
+
+        printfVideoParam(m_videoParam.get(), MFX_VPP);
         return;
     }
 
@@ -478,12 +480,12 @@ void MsdkVideoCompositor::init(void)
 
         defaultInputRequest.NumFrameMin         = 1;
         defaultInputRequest.NumFrameSuggested   = 1;
-        defaultInputRequest.Info.Width          = 10;
-        defaultInputRequest.Info.Height         = 10;
+        defaultInputRequest.Info.Width          = ALIGN16(16);
+        defaultInputRequest.Info.Height         = ALIGN16(16);
         defaultInputRequest.Info.CropX          = 0;
         defaultInputRequest.Info.CropY          = 0;
-        defaultInputRequest.Info.CropW          = 10;
-        defaultInputRequest.Info.CropH          = 10;
+        defaultInputRequest.Info.CropW          = 16;
+        defaultInputRequest.Info.CropH          = 16;
 
         m_defaultInputFramePool.reset(new MsdkFramePool(m_allocator, defaultInputRequest));
         if (!m_defaultInputFramePool->init()) {
@@ -632,6 +634,8 @@ bool MsdkVideoCompositor::commitLayout()
     }
     else if (sts != MFX_ERR_NONE) {
         ELOG_ERROR("mfx init failed, ret %d", sts);
+
+        printfVideoParam(m_videoParam.get(), MFX_VPP);
         return false;
     }
 
@@ -664,7 +668,7 @@ boost::shared_ptr<MsdkFrame> MsdkVideoCompositor::customLayout()
 
     mfxStatus sts = MFX_ERR_UNKNOWN;//MFX_ERR_NONE;
 
-    mfxSyncPoint syncp;
+    mfxSyncPoint syncP;
 
     boost::shared_ptr<MsdkFrame> dst = m_framePool->getFreeFrame();
     if (!dst)
@@ -686,7 +690,7 @@ boost::shared_ptr<MsdkFrame> MsdkVideoCompositor::customLayout()
         }
 
 retry:
-        sts = m_vpp->RunFrameVPPAsync(src->getSurface(), dst->getSurface(), NULL, &syncp);
+        sts = m_vpp->RunFrameVPPAsync(src->getSurface(), dst->getSurface(), NULL, &syncP);
         if (sts == MFX_WRN_DEVICE_BUSY) {
             ELOG_TRACE("Device busy, retry!");
 
@@ -709,8 +713,10 @@ retry:
         return NULL;
     }
 
+    dst->setSyncPoint(syncP);
+    dst->setSyncFlag(true);
 #if 0
-    sts = m_session->SyncOperation(syncp, MFX_INFINITE);
+    sts = m_session->SyncOperation(syncP, MFX_INFINITE);
     if(sts != MFX_ERR_NONE)
     {
         ELOG_ERROR("SyncOperation failed, ret %d", sts);
