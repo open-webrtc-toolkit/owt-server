@@ -167,6 +167,8 @@ public:
         }
         else if (sts != MFX_ERR_NONE) {
             ELOG_ERROR("(%p)mfx init failed, ret %d", this, sts);
+
+            printfVideoParam(m_videoParam.get(), MFX_ENC);
             return false;
         }
 
@@ -339,8 +341,8 @@ protected:
         m_videoParam->mfx.FrameInfo.FrameRateExtN   = 30;
         m_videoParam->mfx.FrameInfo.FrameRateExtD   = 1;
 
-        m_videoParam->mfx.FrameInfo.Width           = 1280;
-        m_videoParam->mfx.FrameInfo.Height          = 720;
+        m_videoParam->mfx.FrameInfo.Width           = ALIGN16(1280);
+        m_videoParam->mfx.FrameInfo.Height          = ALIGN16(720);
         m_videoParam->mfx.FrameInfo.CropX           = 0;
         m_videoParam->mfx.FrameInfo.CropY           = 0;
         m_videoParam->mfx.FrameInfo.CropW           = 1280;
@@ -399,8 +401,8 @@ protected:
 
     void updateParam(void)
     {
-        m_videoParam->mfx.FrameInfo.Width   = m_width;
-        m_videoParam->mfx.FrameInfo.Height  = m_height;
+        m_videoParam->mfx.FrameInfo.Width   = ALIGN16(m_width);
+        m_videoParam->mfx.FrameInfo.Height  = ALIGN16(m_height);
         m_videoParam->mfx.FrameInfo.CropX   = 0;
         m_videoParam->mfx.FrameInfo.CropY   = 0;
         m_videoParam->mfx.FrameInfo.CropW   = m_width;

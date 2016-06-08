@@ -37,6 +37,8 @@ namespace woogeen_base {
 
 #define printfToDo      ELOG_TRACE(":%d-(%p)%s - Todo", __LINE__, this, __FUNCTION__)
 
+#define ALIGN16(x) ((((x) + 15) >> 4) << 4)
+
 enum DumpType{ MFX_DEC, MFX_VPP, MFX_ENC };
 
 void printfFrameInfo(mfxFrameInfo *pFrameInfo);
@@ -56,6 +58,8 @@ public:
 
     boost::shared_ptr<mfxFrameAllocator> createFrameAllocator(void);
     void destroyFrameAllocator(mfxFrameAllocator *pAlloc);
+
+    MFXVideoSession *getMainSession() {return m_mainSession;};
 
 protected:
     MsdkBase();
