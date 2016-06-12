@@ -49,6 +49,7 @@ public:
 
         boost::unique_lock<boost::shared_mutex> lock(m_mutex);
         m_queue.clear();
+        m_swFramePool.reset(NULL);
 
         printfFuncExit;
     }
@@ -82,13 +83,18 @@ public:
 
         m_active = false;
         m_queue.clear();
+        m_swFramePool.reset(NULL);
     }
 
     void pushInput(const woogeen_base::Frame& frame)
     {
         boost::unique_lock<boost::shared_mutex> lock(m_mutex);
 
-        m_queue.push_back(convert(frame));
+        boost::shared_ptr<MsdkFrame> msdkFrame = convert(frame);
+        if (!msdkFrame)
+            return;
+
+        m_queue.push_back(msdkFrame);
         if (m_queue.size() > MAX_DECODED_FRAME_IN_RENDERING) {
             ELOG_TRACE("(%p)Reach max frames in queue, drop oldest frame!", this);
             m_queue.pop_front();
@@ -203,6 +209,7 @@ protected:
             if (!dst->convertFrom(*i420Frame))
             {
                 ELOG_ERROR("(%p)Failed to convert I420 frame", this);
+                return NULL;
             }
 
             return dst;
@@ -264,7 +271,9 @@ MsdkVideoCompositor::MsdkVideoCompositor(uint32_t maxInput, VideoSize rootSize, 
     : m_maxInput(maxInput)
     , m_crop(crop)
     , m_compositeSize(rootSize)
+    , m_newCompositeSize(rootSize)
     , m_bgColor(bgColor)
+    , m_newBgColor(bgColor)
     , m_solutionState(UN_INITIALIZED)
     , m_videoParam(NULL)
     , m_extVppComp(NULL)
