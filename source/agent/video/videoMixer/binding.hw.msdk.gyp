@@ -30,7 +30,7 @@
       '-lboost_thread',
       '-llog4cxx',
       '-L$(CORE_HOME)/../../third_party/webrtc', '-lwebrtc',
-      '-Wl,-rpath -L/opt/intel/mediasdk/lib64', '-lmfxhw64',
+      '-L/opt/intel/mediasdk/lib64', '-lmfxhw64', '-Wl,-rpath=/opt/intel/mediasdk/lib64',
       '<!@(pkg-config --libs libva libva-drm)',
       '-L$(CORE_HOME)/../../third_party/openh264', '-lopenh264',
     ],

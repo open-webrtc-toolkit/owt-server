@@ -217,7 +217,7 @@ bool MsdkFrame::convertFrom(webrtc::I420VideoFrame& frame)
     }
 
     if (w != srcW || h != srcH) {
-        ELOG_WARN("Not support crop src I420VideoFrame(%dx%d) into dst msdk surface(%dx%d)!",
+        ELOG_WARN("Not support scale/crop src I420VideoFrame(%dx%d) into dst msdk surface(%dx%d)!",
                 srcW, srcH, w, h);
         return false;
     }
