@@ -23,7 +23,7 @@
 
 #include <boost/asio.hpp>
 #include <boost/scoped_ptr.hpp>
-#include <boost/shared_ptr.hpp>
+#include <boost/shared_array.hpp>
 #include <boost/thread.hpp>
 #include <boost/thread/mutex.hpp>
 #include <logger.h>
@@ -76,7 +76,7 @@ public:
 
 private:
     typedef struct {
-        boost::shared_ptr<char> buffer;
+        boost::shared_array<char> buffer;
         int length;
     } TransportData;
 
