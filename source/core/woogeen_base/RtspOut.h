@@ -43,6 +43,11 @@ namespace woogeen_base {
 class RtspOut : public AVStreamOut {
     DECLARE_LOGGER();
 
+    enum State { IDLE,
+        INITIALIZING,
+        READY,
+        CLOSING };
+
 public:
     RtspOut(const std::string& url, const AVOptions* audio, const AVOptions* video, EventRegistry* handle);
     ~RtspOut();
@@ -51,12 +56,19 @@ public:
     void onFrame(const woogeen_base::Frame&);
     void onTimeout();
 
+protected:
+    void run();
+    bool detectInputVideoStream();
+    static int readFunction(void* opaque, uint8_t* buf, int buf_size);
+
+    int writeVideoPkt();
+
 private:
     void close();
-    bool init(const AVOptions* audio, const AVOptions* video);
+    bool init();
     bool addVideoStream(enum AVCodecID codec_id, unsigned int width, unsigned int height);
     bool addAudioStream(enum AVCodecID codec_id, int nbChannels = 2, int sampleRate = 48000);
-    int writeAVFrame(AVStream*, const EncodedFrame&);
+    int writeAudioFrame();
     AVFrame* allocAudioFrame(AVCodecContext*);
     void encodeAudio();
     void processAudio(uint8_t* data, int nbSamples);
@@ -71,6 +83,20 @@ private:
 #ifdef DUMP_RAW
     std::unique_ptr<std::ofstream> m_dumpFile;
 #endif
+    AVOptions m_audio;
+    AVOptions m_video;
+    bool m_hasAudio;
+    bool m_hasVideo;
+    enum State m_state;
+    boost::mutex m_readCbmutex;
+    boost::condition_variable m_readCbcond;
+    int m_StatDetectFrames;
+    AVFormatContext* m_ifmtCtx;
+    boost::thread m_worker;
+    AVStream* m_inputVideoStream;
+    int64_t m_inputVideoStartTimestamp;
+    int m_inputVideoFrameIndex;
+    boost::shared_mutex m_writerMutex;
 };
 }
 
