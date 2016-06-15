@@ -71,6 +71,27 @@ void MsdkFrame::sync(void)
     }
 }
 
+bool MsdkFrame::reSize(int width, int height)
+{
+    ELOG_TRACE("reSize %dx%d(%dx%d) -> %dx%d"
+            , m_surface.Info.CropW, m_surface.Info.CropH
+            , m_surface.Info.Width, m_surface.Info.Height
+            , width, height);
+
+    if (width > m_surface.Info.Width || height > m_surface.Info.Height) {
+        ELOG_ERROR("Can not crop %dx%d into %dx%d"
+                , m_surface.Info.Width, m_surface.Info.Height
+                , width, height);
+
+        return false;
+    }
+
+    m_surface.Info.CropW = width;
+    m_surface.Info.CropH = height;
+
+    return true;
+}
+
 bool MsdkFrame::fillFrame(uint8_t y, uint8_t u, uint8_t v)
 {
     bool ret = false;
@@ -422,6 +443,8 @@ void MsdkFrame::dumpI420VideoFrameInfo(webrtc::I420VideoFrame& frame)
 MsdkFramePool::MsdkFramePool(boost::shared_ptr<mfxFrameAllocator> allocator, mfxFrameAllocRequest &request)
     : m_allocator(allocator)
     , m_request(request)
+    , m_allocatedWidth(0)
+    , m_allocatedHeight(0)
 {
 }
 
@@ -431,23 +454,22 @@ MsdkFramePool::~MsdkFramePool()
 {
     printfFuncEnter;
 
-    mfxStatus sts = MFX_ERR_NONE;
-
-    int i = 0;
-    for (auto& it : m_framePool) {
-        ELOG_TRACE("frame(%d): use_count %ld", i++, it.use_count());
-    }
-
-    sts = m_allocator->Free(m_allocator->pthis, &m_response);
-    if (sts != MFX_ERR_NONE)
-    {
-        ELOG_ERROR("mfxFrameAllocator Free() failed, ret %d", sts);
-    }
+    freeFrames();
 
     printfFuncExit;
 }
 
 bool MsdkFramePool::init()
+{
+    if (!allocateFrames())
+    {
+        return false;
+    }
+
+    return true;
+}
+
+bool MsdkFramePool::allocateFrames()
 {
     mfxStatus sts = MFX_ERR_NONE;
 
@@ -465,20 +487,84 @@ bool MsdkFramePool::init()
         m_framePool.push_back(boost::shared_ptr<MsdkFrame>(new MsdkFrame(m_allocator, m_request.Info, m_response.mids[i])));
     }
 
+    m_allocatedWidth     = m_request.Info.Width;
+    m_allocatedHeight    = m_request.Info.Height;
+
+    ELOG_DEBUG("allocate %d frames(%dx%d)", m_response.NumFrameActual, m_allocatedWidth, m_allocatedHeight);
+    return true;
+}
+
+bool MsdkFramePool::waitForFrameFree(boost::shared_ptr<MsdkFrame>& frame, int timeout)
+{
+    int i = 0;
+
+    while (!(frame.use_count() == 1 && frame->isFree()) && i < timeout)
+    {
+        ELOG_DEBUG("frame(%d): use_count %ld, isFree %d", i++, frame.use_count(), frame->isFree());
+        ELOG_DEBUG("Wait(%d ms)...", i);
+
+        usleep(1000); //1ms
+        i++;
+    }
+
+    if (!(frame.use_count() == 1 && frame->isFree())) {
+        ELOG_WARN("waitForFrameFree timeout %d ms", timeout);
+
+        return false;
+    }
+
+    return true;
+}
+
+bool MsdkFramePool::freeFrames()
+{
+    mfxStatus sts = MFX_ERR_NONE;
+
+    for (auto& it : m_framePool) {
+        if (!waitForFrameFree(it, TIMEOUT)) {
+            ELOG_WARN("Free frame in using is dangerous!");
+        }
+    }
+
+    sts = m_allocator->Free(m_allocator->pthis, &m_response);
+    if (sts != MFX_ERR_NONE)
+    {
+        ELOG_ERROR("mfxFrameAllocator Free() failed, ret %d", sts);
+    }
+
+    return true;
+}
+
+bool MsdkFramePool::reAllocate(int width, int height)
+{
+    ELOG_DEBUG("reAllocate %dx%d -> %dx%d", m_allocatedWidth, m_allocatedHeight, width, height);
+
+    if (width <= m_allocatedWidth && height <= m_allocatedHeight) {
+        ELOG_DEBUG("Dont need resize into smaller size");
+
+        return true;
+    }
+
+    // realloc
+    freeFrames();
+
+    m_request.Info.Width    = ALIGN16(width);
+    m_request.Info.Height   = ALIGN16(height);
+    m_request.Info.CropX    = 0;
+    m_request.Info.CropY    = 0;
+    m_request.Info.CropW    = width;
+    m_request.Info.CropH    = height;
+
+    if (!allocateFrames())
+    {
+        return false;
+    }
+
     return true;
 }
 
 boost::shared_ptr<MsdkFrame> MsdkFramePool::getFreeFrame()
 {
-#if 0
-    ELOG_DEBUG("dump++++++++++");
-    int i = 0;
-    for (auto& it : m_framePool) {
-        ELOG_TRACE("frame(%d): use_count %ld", i++, it.use_count());
-    }
-    ELOG_DEBUG("dump----------");
-#endif
-
     for (auto& it : m_framePool) {
         if(it.use_count() == 1 && it->isFree()) {
             return it;
