@@ -80,6 +80,51 @@ void MsdkFrameDecoder::initDefaultParam(void)
     memset(m_videoParam.get(), 0, sizeof(mfxVideoParam));
 }
 
+bool MsdkFrameDecoder::allocateFrames(void)
+{
+    mfxStatus sts = MFX_ERR_NONE;
+
+    // check if previous frame pool can be reuse
+    if (m_framePool
+            && m_videoParam->mfx.FrameInfo.Width <= m_framePool->getAllocatedWidth()
+            && m_videoParam->mfx.FrameInfo.Height <= m_framePool->getAllocatedHeight()) {
+
+        ELOG_TRACE("(%p)Reuse previous frame pool %dx%d, request %dx%d", this
+                , m_framePool->getAllocatedWidth(), m_framePool->getAllocatedHeight()
+                , m_videoParam->mfx.FrameInfo.Width, m_videoParam->mfx.FrameInfo.Height
+                );
+
+        return true;
+    }
+
+    if (m_framePool)
+        m_framePool.reset(NULL);
+
+    mfxFrameAllocRequest Request;
+    memset(&Request, 0, sizeof(mfxFrameAllocRequest));
+
+    sts = m_dec->QueryIOSurf(m_videoParam.get(), &Request);
+    if (sts > 0) {
+        ELOG_TRACE("(%p)Ignore mfx warning, ret %d", this, sts);
+    }
+    else if (sts != MFX_ERR_NONE) {
+        ELOG_ERROR("(%p)mfx QueryIOSurf() failed, ret %d", this, sts);
+        return false;
+    }
+
+    ELOG_TRACE("(%p)mfx QueryIOSurf: Suggested(%d), Min(%d)", this, Request.NumFrameSuggested, Request.NumFrameMin);
+
+    m_framePool.reset(new MsdkFramePool(m_allocator, Request));
+    if (!m_framePool->init()) {
+        ELOG_ERROR("(%p)Frame pool init failed, ret %d", this, sts);
+
+        m_framePool.reset();
+        return false;
+    }
+
+    return true;
+}
+
 bool MsdkFrameDecoder::init(FrameFormat format)
 {
     switch (format) {
@@ -172,30 +217,8 @@ bool MsdkFrameDecoder::decHeader(mfxBitstream *pBitstream)
     m_dec->GetVideoParam(m_videoParam.get());
     printfVideoParam(m_videoParam.get(), MFX_DEC);
 
-    // after reset, dont need realloc frame pool
-    if (!m_framePool ) {
-        mfxFrameAllocRequest Request;
-        memset(&Request, 0, sizeof(mfxFrameAllocRequest));
-
-        sts = m_dec->QueryIOSurf(m_videoParam.get(), &Request);
-        if (sts > 0) {
-            ELOG_TRACE("(%p)Ignore mfx warning, ret %d", this, sts);
-        }
-        else if (sts != MFX_ERR_NONE) {
-            ELOG_ERROR("(%p)mfx QueryIOSurf() failed, ret %d", this, sts);
-            return false;
-        }
-
-        ELOG_TRACE("(%p)mfx QueryIOSurf: Suggested(%d), Min(%d)", this, Request.NumFrameSuggested, Request.NumFrameMin);
-
-        m_framePool.reset(new MsdkFramePool(m_allocator, Request));
-        if (!m_framePool->init()) {
-            ELOG_ERROR("(%p)Frame pool init failed, ret %d", this, sts);
-
-            m_framePool.reset();
-            return false;
-        }
-    }
+    if (!allocateFrames())
+        return false;
 
     m_ready = true;
     return true;
@@ -232,8 +255,46 @@ retry:
 
             goto more_surface;
         }
-        else if (sts == MFX_WRN_VIDEO_PARAM_CHANGED) { //reset decoder and surface pool, or never happens?
-            ELOG_TRACE("(%p)New sequence header, ignore!", this);
+        else if (sts == MFX_WRN_VIDEO_PARAM_CHANGED) { //check if resolution changed and reset frame pool
+            ELOG_TRACE("(%p)New sequence header!", this);
+
+            //int previousWidth   = m_videoParam->mfx.FrameInfo.Width;
+            //int previousHeight  = m_videoParam->mfx.FrameInfo.Height;
+            int previousCropW   = m_videoParam->mfx.FrameInfo.CropW;
+            int previousCropH   = m_videoParam->mfx.FrameInfo.CropH;
+
+            m_dec->GetVideoParam(m_videoParam.get());
+
+            if (previousCropW != m_videoParam->mfx.FrameInfo.CropW
+                    || previousCropH != m_videoParam->mfx.FrameInfo.CropH) {
+                ELOG_DEBUG("(%p)Resolution changed %dx%d -> %dx%d", this
+                        , previousCropW, previousCropH
+                        , m_videoParam->mfx.FrameInfo.CropW, m_videoParam->mfx.FrameInfo.CropH
+                        );
+
+                printfVideoParam(m_videoParam.get(), MFX_DEC);
+
+                // chech if need reallocate frames
+                if (m_videoParam->mfx.FrameInfo.Width > m_framePool->getAllocatedWidth()
+                        || m_videoParam->mfx.FrameInfo.Height> m_framePool->getAllocatedHeight()) {
+
+                    ELOG_DEBUG("(%p)Enlarge frame size %dx%d(crop %dx%d) -> %dx%d", this
+                            , m_framePool->getAllocatedWidth(), m_framePool->getAllocatedHeight()
+                            , previousCropW, previousCropH
+                            , m_videoParam->mfx.FrameInfo.Width, m_videoParam->mfx.FrameInfo.Width
+                            );
+
+                    if (!allocateFrames()) {
+                        ELOG_ERROR("(%p)Reallocate frame pool failed, reset decoder", this);
+
+                        m_ready = false;
+                        FeedbackMsg msg {.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME};
+                        deliverFeedbackMsg(msg);
+
+                        return;
+                    }
+                }
+            }
 
             goto retry;
         }
@@ -352,16 +413,12 @@ void MsdkFrameDecoder::updateBitstream(const Frame& frame)
 
 void MsdkFrameDecoder::onFrame(const Frame& frame)
 {
-    printfFuncEnter;
-
     //dumpH264BitstreamInfo(frame);
 
     updateBitstream(frame);
 
     if (m_ready || decHeader(m_bitstream.get()))
         decFrame(m_bitstream.get());
-
-    printfFuncExit;
 }
 
 void MsdkFrameDecoder::dumpH264BitstreamInfo(const Frame& frame)

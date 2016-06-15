@@ -55,6 +55,9 @@ public:
     int getWidth() {return m_surface.Info.CropW;}
     int getHeight() {return m_surface.Info.CropH;}
 
+    //set frame crop to resize
+    bool reSize(int width, int height);
+
     bool fillFrame(uint8_t y, uint8_t u, uint8_t v);
 
     bool convertFrom(webrtc::I420VideoFrame& frame);
@@ -81,20 +84,35 @@ private:
 class MsdkFramePool {
     DECLARE_LOGGER();
 
+    static const uint32_t TIMEOUT = 16; //Wait for frame get free
+
 public:
     MsdkFramePool(boost::shared_ptr<mfxFrameAllocator> allocator, mfxFrameAllocRequest &request);
     ~MsdkFramePool();
 
     bool init();
 
+    int getAllocatedWidth() {return m_allocatedWidth;}
+    int getAllocatedHeight() {return m_allocatedWidth;}
+
+    bool reAllocate(int width, int height);
+
     boost::shared_ptr<MsdkFrame> getFreeFrame();
     boost::shared_ptr<MsdkFrame> getFrame(mfxFrameSurface1 *pSurface);
+
+protected:
+    bool waitForFrameFree(boost::shared_ptr<MsdkFrame>& frame, int timeout);
+    bool allocateFrames();
+    bool freeFrames();
 
 private:
     boost::shared_ptr<mfxFrameAllocator> m_allocator;
 
     mfxFrameAllocRequest m_request;
     mfxFrameAllocResponse m_response;
+
+    int m_allocatedWidth;
+    int m_allocatedHeight;
 
     std::list<boost::shared_ptr<MsdkFrame>> m_framePool;
 };

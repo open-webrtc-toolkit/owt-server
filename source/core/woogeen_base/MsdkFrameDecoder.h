@@ -48,6 +48,8 @@ public:
 protected:
     void initDefaultParam(void);
 
+    bool allocateFrames(void);
+
     void updateBitstream(const Frame& frame);
 
     bool decHeader(mfxBitstream *pBitstream);

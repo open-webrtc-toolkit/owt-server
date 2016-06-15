@@ -197,6 +197,13 @@ protected:
                 return NULL;
             }
 
+            if (m_swFramePool->getAllocatedWidth() < video.width || m_swFramePool->getAllocatedHeight() < video.height) {
+                m_queue.clear();
+
+                if (!m_swFramePool->reAllocate(video.width, video.height))
+                    return NULL;
+            }
+
             boost::shared_ptr<MsdkFrame> dst = m_swFramePool->getFreeFrame();
             if (!dst)
             {
@@ -204,8 +211,10 @@ protected:
                 return NULL;
             }
 
-            I420VideoFrame *i420Frame = (reinterpret_cast<I420VideoFrame *>(frame.payload));
+            if (dst->getWidth() != video.width || dst->getHeight() != video.height)
+                dst->reSize(video.width, video.height);
 
+            I420VideoFrame *i420Frame = (reinterpret_cast<I420VideoFrame *>(frame.payload));
             if (!dst->convertFrom(*i420Frame))
             {
                 ELOG_ERROR("(%p)Failed to convert I420 frame", this);
