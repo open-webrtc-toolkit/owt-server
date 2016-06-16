@@ -21,10 +21,6 @@
 #ifdef ENABLE_MSDK
 
 #include <fcntl.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <assert.h>
-#include <stdio.h>
 
 #include <va/va.h>
 #include <va/va_drm.h>

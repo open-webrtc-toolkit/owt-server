@@ -52,11 +52,11 @@ public:
 
     bool isFree(void) {return !m_surface.Data.Locked;}
 
-    int getWidth() {return m_surface.Info.CropW;}
-    int getHeight() {return m_surface.Info.CropH;}
+    uint32_t getWidth() {return m_surface.Info.CropW;}
+    uint32_t getHeight() {return m_surface.Info.CropH;}
 
     //set frame crop to resize
-    bool reSize(int width, int height);
+    bool reSize(uint32_t width, uint32_t height);
 
     bool fillFrame(uint8_t y, uint8_t u, uint8_t v);
 
@@ -65,8 +65,10 @@ public:
 
 protected:
     MsdkFrame(boost::shared_ptr<mfxFrameAllocator> allocator, mfxFrameInfo &info, mfxMemId id);
-
     void sync(void);
+    void *memcpy_f( void *, void *, size_t );
+
+    bool nv12ConvertTo(mfxFrameInfo& pInfo, mfxFrameData& pData, webrtc::I420VideoFrame& frame);
 
     void dumpI420VideoFrameInfo(webrtc::I420VideoFrame& frame);
 
@@ -79,6 +81,9 @@ private:
     mfxSyncPoint m_syncP;
 
     bool m_needSync;
+
+    uint8_t *m_nv12TBuffer;
+    size_t m_nv12TBufferSize;
 };
 
 class MsdkFramePool {
@@ -92,10 +97,10 @@ public:
 
     bool init();
 
-    int getAllocatedWidth() {return m_allocatedWidth;}
-    int getAllocatedHeight() {return m_allocatedWidth;}
+    uint32_t getAllocatedWidth() {return m_allocatedWidth;}
+    uint32_t getAllocatedHeight() {return m_allocatedWidth;}
 
-    bool reAllocate(int width, int height);
+    bool reAllocate(uint32_t width, uint32_t height);
 
     boost::shared_ptr<MsdkFrame> getFreeFrame();
     boost::shared_ptr<MsdkFrame> getFrame(mfxFrameSurface1 *pSurface);
@@ -111,8 +116,8 @@ private:
     mfxFrameAllocRequest m_request;
     mfxFrameAllocResponse m_response;
 
-    int m_allocatedWidth;
-    int m_allocatedHeight;
+    uint32_t m_allocatedWidth;
+    uint32_t m_allocatedHeight;
 
     std::list<boost::shared_ptr<MsdkFrame>> m_framePool;
 };

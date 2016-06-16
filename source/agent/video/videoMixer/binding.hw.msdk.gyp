@@ -20,7 +20,7 @@
       '../../../core/woogeen_base/base_allocator.cpp',
       '../../../core/woogeen_base/vaapi_allocator.cpp',
     ],
-    'cflags_cc': ['-DWEBRTC_POSIX', '-DWEBRTC_LINUX', '-DENABLE_MSDK'],
+    'cflags_cc': ['-DWEBRTC_POSIX', '-DWEBRTC_LINUX', '-DENABLE_MSDK', '-msse4'],
     'include_dirs': [ '$(CORE_HOME)/common',
                       '$(CORE_HOME)/erizo/src/erizo',
                       '$(CORE_HOME)/woogeen_base',

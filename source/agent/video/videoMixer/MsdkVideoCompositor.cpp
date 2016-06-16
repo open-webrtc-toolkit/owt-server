@@ -293,6 +293,8 @@ MsdkVideoCompositor::MsdkVideoCompositor(uint32_t maxInput, VideoSize rootSize, 
     , m_defaultInputFramePool(NULL)
 {
     ELOG_DEBUG("set size to %dx%d, maxInput = %d", rootSize.width, rootSize.height, maxInput);
+    ELOG_TRACE("bgColor: Y(0x%x), Cb(0x%x), Cr(0x%x)", bgColor.y, bgColor.cb, bgColor.cr);
+    ELOG_TRACE("crop: %d", crop);
 
     m_ntpDelta = Clock::GetRealTimeClock()->CurrentNtpInMilliseconds() - TickTime::MillisecondTimestamp();
 
@@ -414,9 +416,10 @@ void MsdkVideoCompositor::updateParam(void)
     m_videoParam->vpp.Out.CropW     = m_compositeSize.width;
     m_videoParam->vpp.Out.CropH     = m_compositeSize.height;
 
-    m_extVppComp->Y                 = m_bgColor.y;
-    m_extVppComp->U                 = m_bgColor.cb;
-    m_extVppComp->V                 = m_bgColor.cr;
+    //force to black as msdk does not support well
+    m_extVppComp->Y                 = 0;//m_bgColor.y;
+    m_extVppComp->U                 = 0;//m_bgColor.cb;
+    m_extVppComp->V                 = 0;//m_bgColor.cr;
 }
 
 void MsdkVideoCompositor::init(void)
@@ -514,7 +517,13 @@ void MsdkVideoCompositor::init(void)
         }
 
         m_defaultInputFrame = m_defaultInputFramePool->getFreeFrame();
-        m_defaultInputFrame->fillFrame(0x0, 0x80, 0x80);
+
+        m_defaultInputFrame->fillFrame(16, 128, 128);//black
+        //m_defaultInputFrame->fillFrame(235, 128, 128);//white
+        //m_defaultInputFrame->fillFrame(82, 90, 240);//red
+        //m_defaultInputFrame->fillFrame(144, 54, 34);//green
+        //m_defaultInputFrame->fillFrame(41, 240, 110);//blue
+
     }
 }
 
@@ -533,10 +542,11 @@ void MsdkVideoCompositor::updateBackgroundColor(YUVColor& bgColor)
 {
     boost::unique_lock<boost::shared_mutex> lock(m_mutex);
 
-    ELOG_DEBUG("updateBackgroundColor");
+    ELOG_DEBUG("updateBackgroundColor: Y(0x%x), Cb(0x%x), Cr(0x%x)", bgColor.y, bgColor.cb, bgColor.cr);
 
-    m_newBgColor = bgColor;
-    m_solutionState = CHANGING;
+    printfToDo;
+    //m_newBgColor = bgColor;
+    //m_solutionState = CHANGING;
 }
 
 void MsdkVideoCompositor::updateLayoutSolution(LayoutSolution& solution)
