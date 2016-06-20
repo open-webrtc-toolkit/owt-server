@@ -840,7 +840,8 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
 
                 unmixStream(stream_id);
                 removeSubscriptions(stream_id);
-                terminals[terminal_id].published.splice(i, 1);
+                //FIXME: the unpublish and unsubscribe procedure is interleft and not quite clear, should be refined later.
+                terminals[terminal_id] && terminals[terminal_id].published.splice(i, 1);
             }
 
             delete streams[stream_id];
