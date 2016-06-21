@@ -215,10 +215,12 @@ public:
     void pushInput(const woogeen_base::Frame& frame)
     {
         SharedPtr<VideoFrame> input = convert(frame);
+        if (!input) //convert failed
+            return;
 
         boost::unique_lock<boost::shared_mutex> lock(m_mutex);
         m_queue.push_back(input);
-        if (m_queue.size() > 5 ) {
+        if (m_queue.size() > kQueueSize) {
             m_queue.pop_front();
         }
     }
@@ -270,7 +272,7 @@ private:
         case FRAME_FORMAT_I420: {
             if (!m_allocator) {
                 boost::shared_ptr<VADisplay> vaDisplay = GetVADisplay();
-                m_allocator.reset(new PooledFrameAllocator(vaDisplay, 5));
+                m_allocator.reset(new PooledFrameAllocator(vaDisplay, kQueueSize + kSoftwareExtraSize));
                 if (!m_allocator->setFormat(YAMI_FOURCC('Y', 'V', '1', '2'),
                     frame.additionalInfo.video.width, frame.additionalInfo.video.height)) {
                     ELOG_DEBUG("set to %dx%d failed", frame.additionalInfo.video.width, frame.additionalInfo.video.height);
@@ -309,6 +311,9 @@ private:
     VideoRect m_rect;
     boost::shared_mutex m_mutex;
     SharedPtr<PooledFrameAllocator> m_allocator;
+    const static size_t kQueueSize = 5;
+    //extra size for i420 convert
+    const static size_t kSoftwareExtraSize = 3;
 };
 
 DEFINE_LOGGER(VideoInput, "mcu.media.VideoInput");
