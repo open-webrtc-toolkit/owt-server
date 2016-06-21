@@ -728,7 +728,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
         var i = terminals[owner].published.indexOf(stream_id);
         terminals[owner].published.splice(i ,1);
 
-        if (terminals[owner].published.length === 0 && (terminals[owner].type === 'axcoder' || terminals[owner].type === 'axcoder')) {
+        if (terminals[owner].published.length === 0 && (terminals[owner].type === 'axcoder' || terminals[owner].type === 'vxcoder')) {
             for (var subscription_id in terminals[owner].subscribed) {
                 unsubscribeStream(owner, subscription_id);
             }
@@ -840,7 +840,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
 
                 unmixStream(stream_id);
                 removeSubscriptions(stream_id);
-                //FIXME: the unpublish and unsubscribe procedure is interleft and not quite clear, should be refined later.
+                //FIXME: the unpublish and unsubscribe procedure is interleaved and not quite clear, should be refined later.
                 terminals[terminal_id] && terminals[terminal_id].published.splice(i, 1);
             }
 
@@ -902,6 +902,9 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
     };
 
     var unsubscribeStream = function (subscriber, subscription_id) {
+        if (terminals[subscriber] === undefined)
+            return;
+
         var erizo_id = terminals[subscriber].erizo,
             subscription = terminals[subscriber].subscribed[subscription_id],
             audio_stream = subscription && subscription.audio,
