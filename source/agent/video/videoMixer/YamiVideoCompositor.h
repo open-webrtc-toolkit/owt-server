@@ -41,6 +41,7 @@ namespace YamiMediaCodec {
 namespace mcu {
 class PooledFrameAllocator;
 class VideoInput;
+class BackgroundClearer;
 
 /**
  * composite a sequence of frames into one frame based on current layout config,
@@ -69,6 +70,8 @@ private:
     SharedPtr<VideoFrame> layout();
     SharedPtr<VideoFrame> customLayout();
     void generateFrame();
+    void clearBackgroud(const SharedPtr<VideoFrame>& dest);
+
 
     // Delta used for translating between NTP and internal timestamps.
     int64_t m_ntpDelta;
@@ -82,6 +85,8 @@ private:
     SharedPtr<PooledFrameAllocator> m_allocator;
     SharedPtr<YamiMediaCodec::IVideoPostProcess> m_vpp;
     std::vector<boost::shared_ptr<VideoInput> > m_inputs;
+
+    boost::shared_ptr<BackgroundClearer> m_backgroundClearer;
 
     // LayoutSolution m_newLayout;
     // LayoutSolutionState m_solutionState;
