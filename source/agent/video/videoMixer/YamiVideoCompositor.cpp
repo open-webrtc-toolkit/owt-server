@@ -23,11 +23,13 @@
 #include <webrtc/system_wrappers/interface/clock.h>
 #include <webrtc/system_wrappers/interface/tick_util.h>
 #include <deque>
+#include <set>
 /*#include <va/va.h>*/
 #include <va/va_compat.h>
 #include <VideoDisplay.h>
 #include <VideoPostProcessHost.h>
 #include <YamiVideoFrame.h>
+
 
 using namespace webrtc;
 
@@ -311,6 +313,115 @@ private:
 
 DEFINE_LOGGER(VideoInput, "mcu.media.VideoInput");
 
+
+class BackgroundClearer {
+    DECLARE_LOGGER();
+public:
+    BackgroundClearer(const boost::shared_ptr<VADisplay>& display, const VideoSize& videoSize, const YUVColor& bgColor)
+        : m_display(display)
+        , m_videoSize(videoSize)
+        , m_bgColor(bgColor)
+    {
+    }
+    void setColor(YUVColor bgColor)
+    {
+        m_bgColor = bgColor;
+        m_background.reset();
+    }
+    void updateRootSize(VideoSize& videoSize)
+    {
+        m_videoSize = videoSize;
+        m_background.reset();
+        m_allocator.reset();
+    }
+    void layoutSolutionUpdated()
+    {
+        m_cleared.clear();
+    }
+    bool clearBackground(const SharedPtr<VideoFrame>& frame)
+    {
+        if (!frame)
+            return false;
+        ELOG_DEBUG("clearBackground %p", (void*)frame->surface);
+        //cleared before?
+        if (m_cleared.find(frame->surface) != m_cleared.end())
+            return true;
+
+        if (!init())
+            return false;
+        m_vpp->process(m_background, frame);
+
+        //book it
+        m_cleared.insert(frame->surface);
+        return true;
+    }
+
+private:
+    static bool clearSurface(const SharedPtr<VideoFrame>& frame, YUVColor& bgColor)
+    {
+        ELOG_DEBUG("clearSurface %p", (void*)frame->surface);
+        VAImage image;
+        uint8_t* p = mapVASurfaceToVAImage(frame->surface, image);
+        if (!p)
+            return false;
+        uint8_t* s =  p;
+        //y
+        for (int i = 0; i < image.height; i++) {
+            memset(s, bgColor.y, image.width);
+            s += image.pitches[0];
+        }
+        //uv
+        s = p + image.offsets[1];
+        for (int i = 0; i < image.height / 2; i++) {
+            for (int j = 0; j < image.width; j += 2) {
+                s[j] = bgColor.cb;
+                s[j+1] = bgColor.cr;
+            }
+            s += image.pitches[1];;
+        }
+        unmapVAImage(image);
+        return true;
+    }
+
+    bool init()
+    {
+        if (!m_allocator) {
+            m_allocator.reset(new PooledFrameAllocator(m_display, 1));
+            if (!m_allocator->setFormat(YAMI_FOURCC('N', 'V', '1', '2'),
+                m_videoSize.width, m_videoSize.height )) {
+                return false;
+            }
+        }
+        if (!m_background) {
+            m_background = m_allocator->alloc();
+            if (!m_background)
+                return false;
+            if (!clearSurface(m_background, m_bgColor))
+                return false;
+
+        }
+
+        if (!m_vpp) {
+            NativeDisplay nativeDisplay;
+            nativeDisplay.type = NATIVE_DISPLAY_VA;
+            nativeDisplay.handle = (intptr_t)*m_display;
+            m_vpp.reset(createVideoPostProcess(YAMI_VPP_SCALER), releaseVideoPostProcess);
+            m_vpp->setNativeDisplay(nativeDisplay);
+        }
+        return true;
+    }
+    boost::shared_ptr<VADisplay> m_display;
+    SharedPtr<YamiMediaCodec::IVideoPostProcess> m_vpp;
+    SharedPtr<PooledFrameAllocator> m_allocator;
+    SharedPtr<VideoFrame> m_background;
+    VideoSize m_videoSize;
+    YUVColor m_bgColor;
+    std::set<intptr_t> m_cleared;
+
+};
+
+DEFINE_LOGGER(BackgroundClearer, "mcu.media.BackgroundClearer");
+
 YamiVideoCompositor::YamiVideoCompositor(uint32_t maxInput, VideoSize rootSize, YUVColor bgColor)
     : m_compositeSize(rootSize)
     , m_bgColor(0xff000000)
@@ -336,6 +447,8 @@ YamiVideoCompositor::YamiVideoCompositor(uint32_t maxInput, VideoSize rootSize, 
         m_compositeSize.width, m_compositeSize.height)) {
         ELOG_DEBUG("set to %dx%d failed", m_compositeSize.width, m_compositeSize.height);
     }
+
+    m_backgroundClearer.reset(new BackgroundClearer(m_display, rootSize, bgColor));
     m_jobTimer.reset(new woogeen_base::JobTimer(30, this));
     m_jobTimer->start();
     ELOG_DEBUG("set size to %dx%d, input = %d", rootSize.width, rootSize.height, maxInput);
@@ -359,12 +472,14 @@ void YamiVideoCompositor::updateRootSize(VideoSize& videoSize)
     if (!m_allocator->setFormat(YAMI_FOURCC('Y', 'V', '1', '2'), videoSize.width, videoSize.height)) {
         ELOG_DEBUG("set size to %dx%d failed", videoSize.width, videoSize.height);
     }
+    m_backgroundClearer->updateRootSize(videoSize);
 }
 
 void YamiVideoCompositor::updateBackgroundColor(YUVColor& bgColor)
 {
     boost::unique_lock<boost::shared_mutex> lock(m_mutex);
     m_bgColor = 0xff000000;
+    m_backgroundClearer->setColor(bgColor);
 }
 
 void YamiVideoCompositor::updateLayoutSolution(LayoutSolution& solution)
@@ -376,6 +491,7 @@ void YamiVideoCompositor::updateLayoutSolution(LayoutSolution& solution)
     for (auto& l : solution) {
         m_inputs[l.input]->updateInputRegion(l.region);
     }
+    m_backgroundClearer->layoutSolutionUpdated();
 }
 
 bool YamiVideoCompositor::activateInput(int input)
@@ -427,6 +543,11 @@ void YamiVideoCompositor::generateFrame()
     deliverFrame(frame);
 }
 
+void YamiVideoCompositor::clearBackgroud(const SharedPtr<VideoFrame>& dest)
+{
+    m_backgroundClearer->clearBackground(dest);
+}
+
 SharedPtr<VideoFrame> YamiVideoCompositor::layout()
 {
     return customLayout();
@@ -438,6 +559,7 @@ SharedPtr<VideoFrame> YamiVideoCompositor::customLayout()
     if (!dest) {
         return dest;
     }
+    clearBackgroud(dest);
 
     bool gotFrame = false;
 
