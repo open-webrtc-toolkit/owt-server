@@ -184,9 +184,9 @@ public:
     VideoInput()
         : m_active(false)
     {
+        memset(&m_inputSize, 0, sizeof(m_inputSize));
         memset(&m_rect, 0, sizeof(m_rect));
         memset(&m_rootSize, 0, sizeof(m_rootSize));
-
     }
     void updateRootSize(VideoSize& videoSize)
     {
@@ -273,17 +273,21 @@ private:
             if (!m_allocator) {
                 boost::shared_ptr<VADisplay> vaDisplay = GetVADisplay();
                 m_allocator.reset(new PooledFrameAllocator(vaDisplay, kQueueSize + kSoftwareExtraSize));
+            }
+
+            // The resolution of the input can be changed on the fly,
+            // for example the Chrome browser may scale down a VGA (640x480)
+            // video stream to 320x240 if network condition is not good.
+            // In such case we need to reset the format of the allocator.
+            if (m_inputSize.width != frame.additionalInfo.video.width || m_inputSize.height != frame.additionalInfo.video.height) {
+                m_inputSize.width = frame.additionalInfo.video.width;
+                m_inputSize.height = frame.additionalInfo.video.height;
                 if (!m_allocator->setFormat(YAMI_FOURCC('Y', 'V', '1', '2'),
-                    frame.additionalInfo.video.width, frame.additionalInfo.video.height)) {
-                    ELOG_DEBUG("set to %dx%d failed", frame.additionalInfo.video.width, frame.additionalInfo.video.height);
+                    m_inputSize.width, m_inputSize.height)) {
+                    ELOG_DEBUG("set to %dx%d failed", m_inputSize.width, m_inputSize.height);
                 }
             }
 
-            // FIXME: The resolution of the input can be changed on the fly,
-            // for example the Chrome browser may scale down a VGA (640x480)
-            // video stream to 320x240 if network condition is not good.
-            // In such case the surface allocated by the allocator which has the
-            // format being configured at the beginning is not valid.
             SharedPtr<VideoFrame> target = m_allocator->alloc();
             if (!target)
                 return target;
@@ -306,6 +310,7 @@ private:
 
     bool m_active;
     std::deque<SharedPtr<VideoFrame> > m_queue;
+    VideoSize m_inputSize;
     VideoSize m_rootSize;
     Region m_region;
     VideoRect m_rect;
