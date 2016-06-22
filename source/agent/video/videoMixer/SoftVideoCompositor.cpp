@@ -77,7 +77,7 @@ SoftVideoCompositor::SoftVideoCompositor(uint32_t maxInput, VideoSize rootSize, 
     // Initialize frame buffer and buffer manager for video composition
     m_compositeFrame.reset(new webrtc::I420VideoFrame());
     m_compositeFrame->CreateEmptyFrame(m_compositeSize.width, m_compositeSize.height, m_compositeSize.width, m_compositeSize.width / 2, m_compositeSize.width / 2);
-    m_bufferManager.reset(new BufferManager(maxInput, m_compositeSize.width, m_compositeSize.height));
+    m_bufferManager.reset(new woogeen_base::BufferManager(maxInput, m_compositeSize.width, m_compositeSize.height));
 
     m_jobTimer.reset(new woogeen_base::JobTimer(30, this));
     m_jobTimer->start();

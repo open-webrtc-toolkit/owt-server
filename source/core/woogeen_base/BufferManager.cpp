@@ -22,9 +22,9 @@
 
 #include <webrtc/common_video/interface/i420_video_frame.h>
 
-namespace mcu {
+namespace woogeen_base {
 
-DEFINE_LOGGER(BufferManager, "mcu.media.BufferManager");
+DEFINE_LOGGER(BufferManager, "woogeen.BufferManager");
 
 BufferManager::BufferManager(uint32_t maxInput, uint32_t width, uint32_t height)
     : m_maxInput(maxInput)
@@ -95,4 +95,4 @@ webrtc::I420VideoFrame* BufferManager::postFreeBuffer(webrtc::I420VideoFrame* fr
     return busyFrame;
 }
 
-} /* namespace mcu */
+} /* namespace woogeen_base */

@@ -72,6 +72,22 @@ struct Frame {
     MediaSpecInfo   additionalInfo;
 };
 
+inline bool isAudioFrame(const Frame& frame) {
+    return frame.format == FRAME_FORMAT_PCM_RAW
+          || frame.format == FRAME_FORMAT_PCMU
+          || frame.format == FRAME_FORMAT_OPUS
+          || frame.format == FRAME_FORMAT_ISAC16
+          || frame.format == FRAME_FORMAT_ISAC32;
+}
+
+inline bool isVideoFrame(const Frame& frame) {
+    return frame.format == FRAME_FORMAT_I420
+          || frame.format ==FRAME_FORMAT_YAMI
+          || frame.format ==FRAME_FORMAT_MSDK
+          || frame.format == FRAME_FORMAT_VP8
+          || frame.format == FRAME_FORMAT_H264;
+}
+
 enum FeedbackType {
     VIDEO_FEEDBACK,
     AUDIO_FEEDBACK

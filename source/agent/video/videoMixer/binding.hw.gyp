@@ -10,6 +10,7 @@
       'YamiVideoCompositor.cpp',
       '../../../../third_party/webrtc/src/webrtc/video_engine/payload_router.cc',
       '../../../../third_party/webrtc/src/webrtc/video_engine/vie_encoder.cc',
+      '../../../core/woogeen_base/BufferManager.cpp',
       '../../../core/woogeen_base/MediaFramePipeline.cpp',
       '../../../core/woogeen_base/VCMFrameDecoder.cpp',
       '../../../core/woogeen_base/VCMFrameEncoder.cpp',

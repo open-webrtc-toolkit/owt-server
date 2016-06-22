@@ -21,13 +21,13 @@
 #ifndef SoftVideoCompositor_h
 #define SoftVideoCompositor_h
 
-#include "BufferManager.h"
 #include "VideoFrameMixer.h"
 #include "VideoLayout.h"
 
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/shared_mutex.hpp>
+#include <BufferManager.h>
 #include <JobTimer.h>
 #include <logger.h>
 #include <MediaFramePipeline.h>
@@ -89,7 +89,7 @@ private:
     // Delta used for translating between NTP and internal timestamps.
     int64_t m_ntpDelta;
     boost::scoped_ptr<VPMPool> m_vpmPool;
-    boost::scoped_ptr<BufferManager> m_bufferManager;
+    boost::scoped_ptr<woogeen_base::BufferManager> m_bufferManager;
     boost::scoped_ptr<webrtc::I420VideoFrame> m_compositeFrame;
     VideoSize m_compositeSize;
     VideoSize m_newCompositeSize;
