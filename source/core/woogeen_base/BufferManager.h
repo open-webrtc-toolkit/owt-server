@@ -47,7 +47,7 @@ namespace webrtc {
 class I420VideoFrame;
 }
 
-namespace mcu {
+namespace woogeen_base {
 
 class BufferManager {
     DECLARE_LOGGER();
@@ -107,5 +107,5 @@ private:
     std::vector<bool> m_activeSlots;
 };
 
-} /* namespace mcu */
+} /* namespace woogeen_base */
 #endif /* BufferManager_h */

@@ -49,10 +49,15 @@ VCMFrameEncoder::VCMFrameEncoder(FrameFormat format, boost::shared_ptr<WebRTCTas
     m_vcm->EnableFrameDropper(false);
     if (m_taskRunner)
         m_taskRunner->RegisterModule(m_vcm);
+
+    m_jobTimer.reset(new woogeen_base::JobTimer(30, this));
+    m_jobTimer->start();
 }
 
 VCMFrameEncoder::~VCMFrameEncoder()
 {
+    m_jobTimer->stop();
+
     if (m_taskRunner)
         m_taskRunner->DeRegisterModule(m_vcm);
 
@@ -209,6 +214,17 @@ void VCMFrameEncoder::requestKeyFrame(int32_t streamId)
 
 void VCMFrameEncoder::onFrame(const Frame& frame)
 {
+    if (!m_bufferManager && isVideoFrame(frame)) {
+        m_bufferManager.reset(new BufferManager(1, frame.additionalInfo.video.width, frame.additionalInfo.video.height));
+        m_bufferManager->setActive(0, true);
+    }
+
+    I420VideoFrame* freeFrame = m_bufferManager ? m_bufferManager->getFreeBuffer() : nullptr;
+    if (!freeFrame)
+        return;
+
+    I420VideoFrame* busyFrame = nullptr;
+
     switch (frame.format) {
     case FRAME_FORMAT_I420: {
         if (m_encodeFormat == FRAME_FORMAT_UNKNOWN)
@@ -220,7 +236,8 @@ void VCMFrameEncoder::onFrame(const Frame& frame)
             kMsToRtpTimestamp *
             static_cast<uint32_t>(rawFrame->render_time_ms());
         rawFrame->set_timestamp(time_stamp);
-        m_vcm->AddVideoFrame(*rawFrame);
+        freeFrame->CopyFrame(*rawFrame);
+        busyFrame = m_bufferManager->postFreeBuffer(freeFrame, 0);
         break;
     }
 #ifdef ENABLE_YAMI
@@ -233,7 +250,8 @@ void VCMFrameEncoder::onFrame(const Frame& frame)
         if (!yamiFrame.convertToI420VideoFrame(rawFrame))
             return;
 
-        m_vcm->AddVideoFrame(rawFrame);
+        freeFrame->CopyFrame(rawFrame);
+        busyFrame = m_bufferManager->postFreeBuffer(freeFrame, 0);
         break;
     }
 #endif
@@ -249,18 +267,38 @@ void VCMFrameEncoder::onFrame(const Frame& frame)
 
         rawFrame.set_timestamp(frame.timeStamp);
 
-        m_vcm->AddVideoFrame(rawFrame);
+        freeFrame->CopyFrame(rawFrame);
+        busyFrame = m_bufferManager->postFreeBuffer(freeFrame, 0);
         break;
     }
 #endif
     case FRAME_FORMAT_VP8:
-        assert(false);
-        break;
     case FRAME_FORMAT_H264:
         assert(false);
     default:
-        break;
+        m_bufferManager->releaseBuffer(freeFrame);
+        return;
     }
+
+    if (busyFrame)
+        m_bufferManager->releaseBuffer(busyFrame);
+}
+
+void VCMFrameEncoder::onTimeout()
+{
+    if (!m_bufferManager)
+        return;
+
+    webrtc::I420VideoFrame* rawFrame = m_bufferManager->getBusyBuffer(0);
+    if (!rawFrame)
+        return;
+
+    m_vcm->AddVideoFrame(*rawFrame);
+
+    // if return busy frame failed, which means a new busy frame has been posted
+    // simply release the busy frame
+    if (m_bufferManager->returnBusyBuffer(rawFrame, 0))
+        m_bufferManager->releaseBuffer(rawFrame);
 }
 
 int32_t VCMFrameEncoder::SendData(
