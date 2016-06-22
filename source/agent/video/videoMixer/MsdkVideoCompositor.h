@@ -51,6 +51,8 @@ class MsdkVideoCompositor : public VideoFrameCompositor,
     DECLARE_LOGGER();
     enum LayoutSolutionState{UN_INITIALIZED = 0, CHANGING, IN_WORK};
 
+    friend class VppInput;
+
 public:
     MsdkVideoCompositor(uint32_t maxInput, VideoSize rootSize, YUVColor bgColor, bool crop);
     ~MsdkVideoCompositor();
@@ -69,6 +71,8 @@ protected:
     void updateParam(void);
 
     void init(void);
+
+    void flush(void);
 
     bool isSolutionChanged ();
 
@@ -115,6 +119,8 @@ private:
     boost::scoped_ptr<woogeen_base::JobTimer> m_jobTimer;
 
     boost::shared_mutex m_mutex;
+
+    boost::shared_mutex m_workMutex;
 };
 
 }

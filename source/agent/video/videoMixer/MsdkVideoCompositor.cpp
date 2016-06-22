@@ -35,8 +35,9 @@ class VppInput {
     DECLARE_LOGGER();
 
 public:
-    VppInput(boost::shared_ptr<mfxFrameAllocator> allocator)
-        : m_allocator(allocator)
+    VppInput(MsdkVideoCompositor *owner, boost::shared_ptr<mfxFrameAllocator> allocator)
+        : m_owner(owner)
+        , m_allocator(allocator)
         , m_active(false)
     {
         memset(&m_rootSize, 0, sizeof(m_rootSize));
@@ -88,16 +89,18 @@ public:
 
     void pushInput(const woogeen_base::Frame& frame)
     {
-        boost::unique_lock<boost::shared_mutex> lock(m_mutex);
+        if (!processCmd(frame)) {
+            boost::unique_lock<boost::shared_mutex> lock(m_mutex);
 
-        boost::shared_ptr<MsdkFrame> msdkFrame = convert(frame);
-        if (!msdkFrame)
-            return;
+            boost::shared_ptr<MsdkFrame> msdkFrame = convert(frame);
+            if (!msdkFrame)
+                return;
 
-        m_queue.push_back(msdkFrame);
-        if (m_queue.size() > MAX_DECODED_FRAME_IN_RENDERING) {
-            ELOG_TRACE("(%p)Reach max frames in queue, drop oldest frame!", this);
-            m_queue.pop_front();
+            m_queue.push_back(msdkFrame);
+            if (m_queue.size() > MAX_DECODED_FRAME_IN_RENDERING) {
+                ELOG_TRACE("(%p)Reach max frames in queue, drop oldest frame!", this);
+                m_queue.pop_front();
+            }
         }
     }
 
@@ -163,7 +166,6 @@ protected:
         Request.Info.FrameRateExtN  = 30;
         Request.Info.FrameRateExtD  = 1;
 
-        // alignment? multiple of 16.
         Request.Info.Width          = ALIGN16(width);
         Request.Info.Height         = ALIGN16(height);
         Request.Info.CropX          = 0;
@@ -181,6 +183,22 @@ protected:
 
         ELOG_TRACE("(%p)Frame pool initialzed for non MsdkFrame input", this);
         return true;
+    }
+
+    bool processCmd(const woogeen_base::Frame& frame)
+    {
+        if (frame.format == FRAME_FORMAT_MSDK) {
+            MsdkFrameHolder *holder = (MsdkFrameHolder *)frame.payload;
+            if (holder && holder->cmd == MsdkCmd_DEC_FLUSH) {
+                ELOG_DEBUG("do MsdkCmd_DEC_FLUSH");
+
+                m_queue.clear();
+                m_owner->flush();
+
+                return true;
+            }
+        }
+        return false;
     }
 
     boost::shared_ptr<MsdkFrame> convert(const woogeen_base::Frame& frame)
@@ -255,6 +273,8 @@ protected:
     }
 
 private:
+    MsdkVideoCompositor *m_owner;
+
     boost::shared_ptr<mfxFrameAllocator> m_allocator;
 
     bool m_active;
@@ -305,7 +325,7 @@ MsdkVideoCompositor::MsdkVideoCompositor(uint32_t maxInput, VideoSize rootSize, 
 
     m_inputs.resize(maxInput);
     for (auto& input : m_inputs) {
-        input.reset(new VppInput(m_allocator));
+        input.reset(new VppInput(this, m_allocator));
         input->updateRootSize(rootSize);
     }
 
@@ -523,7 +543,6 @@ void MsdkVideoCompositor::init(void)
         //m_defaultInputFrame->fillFrame(82, 90, 240);//red
         //m_defaultInputFrame->fillFrame(144, 54, 34);//green
         //m_defaultInputFrame->fillFrame(41, 240, 110);//blue
-
     }
 }
 
@@ -588,6 +607,15 @@ void MsdkVideoCompositor::onTimeout()
     generateFrame();
 }
 
+void MsdkVideoCompositor::flush()
+{
+    printfFuncEnter;
+
+    boost::unique_lock<boost::shared_mutex> lock(m_workMutex);
+
+    printfFuncExit;
+}
+
 void MsdkVideoCompositor::generateFrame()
 {
     boost::shared_ptr<MsdkFrame> compositeFrame = layout();
@@ -596,6 +624,7 @@ void MsdkVideoCompositor::generateFrame()
 
     MsdkFrameHolder holder;
     holder.frame = compositeFrame;
+    holder.cmd = MsdkCmd_NONE;
 
     const int kMsToRtpTimestamp = 90;
 
@@ -691,6 +720,8 @@ boost::shared_ptr<MsdkFrame> MsdkVideoCompositor::layout()
 
 boost::shared_ptr<MsdkFrame> MsdkVideoCompositor::customLayout()
 {
+    boost::unique_lock<boost::shared_mutex> lock(m_workMutex);
+
     if (!m_currentLayout.size())
         return NULL;
 
@@ -699,9 +730,8 @@ boost::shared_ptr<MsdkFrame> MsdkVideoCompositor::customLayout()
     mfxSyncPoint syncP;
 
     boost::shared_ptr<MsdkFrame> dst = m_framePool->getFreeFrame();
-    if (!dst)
-    {
-        ELOG_ERROR("No frame available");
+    if (!dst) {
+        ELOG_WARN("No frame available");
         return NULL;
     }
 
@@ -743,6 +773,9 @@ retry:
 
     dst->setSyncPoint(syncP);
     dst->setSyncFlag(true);
+
+    //dst->dump();
+
 #if 0
     sts = m_session->SyncOperation(syncP, MFX_INFINITE);
     if(sts != MFX_ERR_NONE)

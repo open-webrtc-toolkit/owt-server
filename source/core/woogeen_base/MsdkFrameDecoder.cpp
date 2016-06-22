@@ -35,6 +35,7 @@ MsdkFrameDecoder::MsdkFrameDecoder()
     , m_allocator(NULL)
     , m_videoParam(NULL)
     , m_bitstream(NULL)
+    , m_decBsOffset(0)
     , m_framePool(NULL)
     , m_statDetectHeaderFrameCount(0)
     , m_ready(false)
@@ -84,19 +85,6 @@ bool MsdkFrameDecoder::allocateFrames(void)
 {
     mfxStatus sts = MFX_ERR_NONE;
 
-    // check if previous frame pool can be reuse
-    if (m_framePool
-            && m_videoParam->mfx.FrameInfo.Width <= m_framePool->getAllocatedWidth()
-            && m_videoParam->mfx.FrameInfo.Height <= m_framePool->getAllocatedHeight()) {
-
-        ELOG_TRACE("(%p)Reuse previous frame pool %dx%d, request %dx%d", this
-                , m_framePool->getAllocatedWidth(), m_framePool->getAllocatedHeight()
-                , m_videoParam->mfx.FrameInfo.Width, m_videoParam->mfx.FrameInfo.Height
-                );
-
-        return true;
-    }
-
     if (m_framePool)
         m_framePool.reset(NULL);
 
@@ -122,6 +110,84 @@ bool MsdkFrameDecoder::allocateFrames(void)
         return false;
     }
 
+    return true;
+}
+
+void MsdkFrameDecoder::flushOutput(void)
+{
+    printfFuncEnter;
+
+    MsdkFrameHolder holder;
+    holder.frame = NULL;
+    holder.cmd = MsdkCmd_DEC_FLUSH;
+
+    Frame frame;
+    memset(&frame, 0, sizeof(frame));
+    frame.format = FRAME_FORMAT_MSDK;
+    frame.payload = reinterpret_cast<uint8_t*>(&holder);
+    frame.length = 0;
+    frame.additionalInfo.video.width = 0;
+    frame.additionalInfo.video.height = 0;
+    frame.timeStamp = 0;
+
+    deliverFrame(frame);
+
+    printfFuncExit;
+}
+
+bool MsdkFrameDecoder::resetDecoder(void)
+{
+    mfxStatus sts = MFX_ERR_NONE;
+
+    ELOG_TRACE("(%p)resetDecoder", this);
+
+    flushOutput();
+
+    if (m_dec) {
+        int previousWidth   = m_videoParam->mfx.FrameInfo.Width;
+        int previousHeight  = m_videoParam->mfx.FrameInfo.Height;
+        int previousCropW   = m_videoParam->mfx.FrameInfo.CropW;
+        int previousCropH   = m_videoParam->mfx.FrameInfo.CropH;
+
+        m_dec->GetVideoParam(m_videoParam.get());
+        printfVideoParam(m_videoParam.get(), MFX_DEC);
+
+        if (previousCropW != m_videoParam->mfx.FrameInfo.CropW
+                || previousCropH != m_videoParam->mfx.FrameInfo.CropH) {
+            ELOG_DEBUG("(%p)Reset reason - resolution changed %dx%d(crop %dx%d) -> %dx%d(crop %dx%d)", this
+                    , previousWidth, previousHeight
+                    , previousCropW, previousCropH
+                    , m_videoParam->mfx.FrameInfo.Width, m_videoParam->mfx.FrameInfo.Height
+                    , m_videoParam->mfx.FrameInfo.CropW, m_videoParam->mfx.FrameInfo.CropH
+                    );
+        }
+        else {
+            ELOG_DEBUG("(%p)Reset reason - unknown", this)
+        }
+
+#if 0
+        sts = m_dec->Reset(m_videoParam.get());
+        if (sts >= MFX_ERR_NONE) {
+            ELOG_DEBUG("(%p)Reset decoder successfully!", this);
+
+            return true;
+        }
+#endif
+
+        //mfx reset does not work, try to re-initialize
+        m_dec->Close();
+        delete m_dec;
+        m_dec = NULL;
+    }
+
+    m_dec = new MFXVideoDECODE(*m_session);
+    if (!m_dec) {
+        ELOG_ERROR("(%p)Create decode failed", this);
+
+        return false;
+    }
+
+    ELOG_DEBUG("(%p)Re-create decoder successfully!", this);
     return true;
 }
 
@@ -213,7 +279,6 @@ bool MsdkFrameDecoder::decHeader(mfxBitstream *pBitstream)
         return false;
     }
 
-    //MsdkBase::printfVideoParam(m_videoParam.get(), MsdkBase::MFX_DEC);
     m_dec->GetVideoParam(m_videoParam.get());
     printfVideoParam(m_videoParam.get(), MFX_DEC);
 
@@ -228,7 +293,7 @@ void MsdkFrameDecoder::decFrame(mfxBitstream *pBitstream)
 {
     mfxStatus sts = MFX_ERR_NONE;
 
-    mfxFrameSurface1 *pOutSurface;
+    mfxFrameSurface1 *pOutSurface = NULL;
     mfxSyncPoint syncP;
 
     // drain bitstream
@@ -242,6 +307,17 @@ more_surface:
         }
 
 retry:
+
+//reserved for debug
+#if 0
+        ELOG_TRACE("(%p)***bitstream buffer offset %d, dataLength %d, maxLength %d",
+            this, pBitstream->DataOffset, pBitstream->DataLength, pBitstream->MaxLength);
+
+        dumpH264BitstreamInfo(pBitstream->Data + pBitstream->DataOffset, pBitstream->DataLength);
+#endif
+
+        m_decBsOffset = pBitstream->DataOffset;
+
         // no always to set worksurface, right?
         sts = m_dec->DecodeFrameAsync(pBitstream, workFrame->getSurface(), &pOutSurface, &syncP);
         if (sts == MFX_WRN_DEVICE_BUSY) {
@@ -255,46 +331,8 @@ retry:
 
             goto more_surface;
         }
-        else if (sts == MFX_WRN_VIDEO_PARAM_CHANGED) { //check if resolution changed and reset frame pool
+        else if (sts == MFX_WRN_VIDEO_PARAM_CHANGED) { //ignore
             ELOG_TRACE("(%p)New sequence header!", this);
-
-            //int previousWidth   = m_videoParam->mfx.FrameInfo.Width;
-            //int previousHeight  = m_videoParam->mfx.FrameInfo.Height;
-            int previousCropW   = m_videoParam->mfx.FrameInfo.CropW;
-            int previousCropH   = m_videoParam->mfx.FrameInfo.CropH;
-
-            m_dec->GetVideoParam(m_videoParam.get());
-
-            if (previousCropW != m_videoParam->mfx.FrameInfo.CropW
-                    || previousCropH != m_videoParam->mfx.FrameInfo.CropH) {
-                ELOG_DEBUG("(%p)Resolution changed %dx%d -> %dx%d", this
-                        , previousCropW, previousCropH
-                        , m_videoParam->mfx.FrameInfo.CropW, m_videoParam->mfx.FrameInfo.CropH
-                        );
-
-                printfVideoParam(m_videoParam.get(), MFX_DEC);
-
-                // chech if need reallocate frames
-                if (m_videoParam->mfx.FrameInfo.Width > m_framePool->getAllocatedWidth()
-                        || m_videoParam->mfx.FrameInfo.Height> m_framePool->getAllocatedHeight()) {
-
-                    ELOG_DEBUG("(%p)Enlarge frame size %dx%d(crop %dx%d) -> %dx%d", this
-                            , m_framePool->getAllocatedWidth(), m_framePool->getAllocatedHeight()
-                            , previousCropW, previousCropH
-                            , m_videoParam->mfx.FrameInfo.Width, m_videoParam->mfx.FrameInfo.Width
-                            );
-
-                    if (!allocateFrames()) {
-                        ELOG_ERROR("(%p)Reallocate frame pool failed, reset decoder", this);
-
-                        m_ready = false;
-                        FeedbackMsg msg {.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME};
-                        deliverFeedbackMsg(msg);
-
-                        return;
-                    }
-                }
-            }
 
             goto retry;
         }
@@ -304,7 +342,15 @@ retry:
             return;
         }
         else if (sts != MFX_ERR_NONE) {
-            ELOG_ERROR("(%p)mfx decode error, ret %d", this, sts);
+            ELOG_INFO("(%p)mfx decode error, ret %d", this, sts);
+
+            printfVideoParam(m_videoParam.get(), MFX_DEC);
+
+            resetDecoder();
+
+            // rollback current bs
+            pBitstream->DataLength += pBitstream->DataOffset - m_decBsOffset;
+            pBitstream->DataOffset = m_decBsOffset;
 
             m_ready = false;
             FeedbackMsg msg {.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME};
@@ -321,14 +367,16 @@ retry:
         }
 #endif
 
-        //MsdkBase::printfFrameInfo(&pOutSurface->Info);
+        //printfFrameInfo(&pOutSurface->Info);
 
         boost::shared_ptr<MsdkFrame> outFrame = m_framePool->getFrame(pOutSurface);
         outFrame->setSyncPoint(syncP);
         outFrame->setSyncFlag(true);
+        //outFrame->dump();
 
         MsdkFrameHolder holder;
         holder.frame = outFrame;
+        holder.cmd = MsdkCmd_NONE;
 
         Frame frame;
         memset(&frame, 0, sizeof(frame));
@@ -413,26 +461,45 @@ void MsdkFrameDecoder::updateBitstream(const Frame& frame)
 
 void MsdkFrameDecoder::onFrame(const Frame& frame)
 {
+    printfFuncEnter;
+
     //dumpH264BitstreamInfo(frame);
 
     updateBitstream(frame);
 
-    if (m_ready || decHeader(m_bitstream.get()))
+retry:
+    if (m_ready || decHeader(m_bitstream.get())) {
         decFrame(m_bitstream.get());
+
+        // if decFrame reset, retry decHeader w/ current bs (most likely SPS) and continuely decFrame
+        if (!m_ready)
+            goto retry;
+    }
+
+    printfFuncExit;
 }
 
-void MsdkFrameDecoder::dumpH264BitstreamInfo(const Frame& frame)
+void MsdkFrameDecoder::dumpFrameInfo(const Frame& frame)
 {
-    uint8_t *data = frame.payload;
+    dumpH264BitstreamInfo(frame.payload, frame.length);
+}
+
+void MsdkFrameDecoder::dumpH264BitstreamInfo(uint8_t *data, int len)
+{
     int nal_ref_idc;
     int nal_unit_type;
     const char *type = NULL;
 
-    if (frame.length < 5) {
-        ELOG_DEBUG("(%p)Invalid bitstream head size(%d)", this, frame.length);
+    if (len < 5) {
+        ELOG_DEBUG("(%p)Invalid bitstream head size(%d)", this, len);
+        return;
     }
 
-    ELOG_TRACE("(%p)Start code: %d%d%d%d", this, data[0], data[1], data[2], data[3]);
+    if (data[0] != 0 || data[1] != 0 || data[2] != 0 || data[3] != 1) {
+        ELOG_ERROR("(%p)Invalid Start code(0001): %d%d%d%d", this, data[0], data[1], data[2], data[3]);
+        return;
+    }
+
     nal_ref_idc     = (data[4] >> 5) & 0x3;
     nal_unit_type   = data[4] & 0x1f;
 
