@@ -55,7 +55,11 @@ protected:
     bool decHeader(mfxBitstream *pBitstream);
     void decFrame(mfxBitstream *pBitstream);
 
-    void dumpH264BitstreamInfo(const Frame& frame);
+    void flushOutput(void);
+    bool resetDecoder(void);
+
+    void dumpFrameInfo(const Frame& frame);
+    void dumpH264BitstreamInfo(uint8_t *data, int len);
 
 private:
     MFXVideoSession *m_session;
@@ -65,6 +69,8 @@ private:
 
     boost::scoped_ptr<mfxVideoParam> m_videoParam;
     boost::scoped_ptr<mfxBitstream> m_bitstream;
+
+    uint32_t m_decBsOffset;
 
     boost::scoped_ptr<MsdkFramePool> m_framePool;
 

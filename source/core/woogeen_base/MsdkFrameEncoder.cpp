@@ -282,12 +282,12 @@ retry:
 
         //ELOG_TRACE("timeStamp %u", frame.timeStamp);
 
+        //dump(outFrame.payload, outFrame.length);
+
         deliverFrame(outFrame);
 
         m_bitstream->DataOffset   = 0;
         m_bitstream->DataLength   = 0;
-
-        //dump(frame.payload, frame.length);
     }
 
     void setBitrate(unsigned short kbps)
@@ -447,13 +447,13 @@ protected:
 
     void dump(uint8_t *buf, int len)
     {
-        static const char dumpFile[] = "~/webrtc-msdk-dump.264";
+        static const char dumpFile[] = "/tmp/webrtc-msdk-dump.h264";
 
         FILE *fp = fopen(dumpFile, "ab");
         if (fp) {
             fwrite(buf, 1, len, fp);
             fclose(fp);
-            ELOG_DEBUG("Dump bitstream into %s", dumpFile);
+            ELOG_DEBUG("Dump bitstream into %s, len %d", dumpFile, len);
         } else {
             ELOG_DEBUG("Dump failed, can not open file %s", dumpFile);
         }

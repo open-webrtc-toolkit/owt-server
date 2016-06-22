@@ -121,9 +121,16 @@ private:
     std::list<boost::shared_ptr<MsdkFrame>> m_framePool;
 };
 
+enum MsdkCmd {
+    MsdkCmd_NONE,
+    MsdkCmd_DEC_FLUSH,
+};
+
 struct MsdkFrameHolder
 {
     boost::shared_ptr<MsdkFrame> frame;
+
+    MsdkCmd cmd;
 };
 
 } /* namespace woogeen_base */
