@@ -19,6 +19,7 @@
       '../../../core/woogeen_base/MsdkFrame.cpp',
       '../../../core/woogeen_base/base_allocator.cpp',
       '../../../core/woogeen_base/vaapi_allocator.cpp',
+      '../../../core/woogeen_base/FastCopy.cpp',
     ],
     'cflags_cc': ['-DWEBRTC_POSIX', '-DWEBRTC_LINUX', '-DENABLE_MSDK', '-msse4'],
     'include_dirs': [ '$(CORE_HOME)/common',

@@ -66,7 +66,6 @@ public:
 protected:
     MsdkFrame(boost::shared_ptr<mfxFrameAllocator> allocator, mfxFrameInfo &info, mfxMemId id);
     void sync(void);
-    void *memcpy_f( void *, void *, size_t );
 
     bool nv12ConvertTo(mfxFrameInfo& pInfo, mfxFrameData& pData, webrtc::I420VideoFrame& frame);
 
