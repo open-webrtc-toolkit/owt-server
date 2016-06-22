@@ -319,10 +319,10 @@ private:
 DEFINE_LOGGER(VideoInput, "mcu.media.VideoInput");
 
 
-class BackgroundClearer {
+class BackgroundCleaner {
     DECLARE_LOGGER();
 public:
-    BackgroundClearer(const boost::shared_ptr<VADisplay>& display, const VideoSize& videoSize, const YUVColor& bgColor)
+    BackgroundCleaner(const boost::shared_ptr<VADisplay>& display, const VideoSize& videoSize, const YUVColor& bgColor)
         : m_display(display)
         , m_videoSize(videoSize)
         , m_bgColor(bgColor)
@@ -425,7 +425,7 @@ private:
 
 };
 
-DEFINE_LOGGER(BackgroundClearer, "mcu.media.BackgroundClearer");
+DEFINE_LOGGER(BackgroundCleaner, "mcu.media.BackgroundCleaner");
 
 YamiVideoCompositor::YamiVideoCompositor(uint32_t maxInput, VideoSize rootSize, YUVColor bgColor)
     : m_compositeSize(rootSize)
@@ -453,7 +453,7 @@ YamiVideoCompositor::YamiVideoCompositor(uint32_t maxInput, VideoSize rootSize, 
         ELOG_DEBUG("set to %dx%d failed", m_compositeSize.width, m_compositeSize.height);
     }
 
-    m_backgroundClearer.reset(new BackgroundClearer(m_display, rootSize, bgColor));
+    m_backgroundCleaner.reset(new BackgroundCleaner(m_display, rootSize, bgColor));
     m_jobTimer.reset(new woogeen_base::JobTimer(30, this));
     m_jobTimer->start();
     ELOG_DEBUG("set size to %dx%d, input = %d", rootSize.width, rootSize.height, maxInput);
@@ -477,14 +477,14 @@ void YamiVideoCompositor::updateRootSize(VideoSize& videoSize)
     if (!m_allocator->setFormat(YAMI_FOURCC('Y', 'V', '1', '2'), videoSize.width, videoSize.height)) {
         ELOG_DEBUG("set size to %dx%d failed", videoSize.width, videoSize.height);
     }
-    m_backgroundClearer->updateRootSize(videoSize);
+    m_backgroundCleaner->updateRootSize(videoSize);
 }
 
 void YamiVideoCompositor::updateBackgroundColor(YUVColor& bgColor)
 {
     boost::unique_lock<boost::shared_mutex> lock(m_mutex);
     m_bgColor = 0xff000000;
-    m_backgroundClearer->setColor(bgColor);
+    m_backgroundCleaner->setColor(bgColor);
 }
 
 void YamiVideoCompositor::updateLayoutSolution(LayoutSolution& solution)
@@ -496,7 +496,7 @@ void YamiVideoCompositor::updateLayoutSolution(LayoutSolution& solution)
     for (auto& l : solution) {
         m_inputs[l.input]->updateInputRegion(l.region);
     }
-    m_backgroundClearer->layoutSolutionUpdated();
+    m_backgroundCleaner->layoutSolutionUpdated();
 }
 
 bool YamiVideoCompositor::activateInput(int input)
@@ -550,7 +550,7 @@ void YamiVideoCompositor::generateFrame()
 
 void YamiVideoCompositor::clearBackgroud(const SharedPtr<VideoFrame>& dest)
 {
-    m_backgroundClearer->clearBackground(dest);
+    m_backgroundCleaner->clearBackground(dest);
 }
 
 SharedPtr<VideoFrame> YamiVideoCompositor::layout()

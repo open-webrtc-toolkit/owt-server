@@ -41,7 +41,7 @@ namespace YamiMediaCodec {
 namespace mcu {
 class PooledFrameAllocator;
 class VideoInput;
-class BackgroundClearer;
+class BackgroundCleaner;
 
 /**
  * composite a sequence of frames into one frame based on current layout config,
@@ -86,7 +86,7 @@ private:
     SharedPtr<YamiMediaCodec::IVideoPostProcess> m_vpp;
     std::vector<boost::shared_ptr<VideoInput> > m_inputs;
 
-    boost::shared_ptr<BackgroundClearer> m_backgroundClearer;
+    boost::shared_ptr<BackgroundCleaner> m_backgroundCleaner;
 
     // LayoutSolution m_newLayout;
     // LayoutSolutionState m_solutionState;
