@@ -22,307 +22,19 @@
 
 #include <webrtc/system_wrappers/interface/clock.h>
 #include <webrtc/system_wrappers/interface/tick_util.h>
-#include <deque>
 #include <set>
 /*#include <va/va.h>*/
 #include <va/va_compat.h>
 #include <VideoDisplay.h>
 #include <VideoPostProcessHost.h>
 #include <YamiVideoFrame.h>
-
+#include <YamiVideoInputManager.h>
 
 using namespace webrtc;
 
 namespace mcu {
 
 DEFINE_LOGGER(YamiVideoCompositor, "mcu.media.YamiVideoCompositor");
-
-template <class T>
-class VideoPool : public EnableSharedFromThis<VideoPool<T> >
-{
-public:
-
-    SharedPtr<T> alloc()
-    {
-        SharedPtr<T> ret;
-        boost::unique_lock<boost::shared_mutex> lock(m_mutex);
-
-        if (!m_freed.empty()) {
-            T* p = m_freed.front();
-            m_freed.pop_front();
-            ret.reset(p, Recycler(this->shared_from_this()));
-        }
-        return ret;
-    }
-
-    VideoPool(std::deque<SharedPtr<T> >& buffers)
-    {
-            m_holder.swap(buffers);
-            for (size_t i = 0; i < m_holder.size(); i++) {
-                m_freed.push_back(m_holder[i].get());
-            }
-    }
-
-private:
-    void recycle(T* ptr)
-    {
-        boost::unique_lock<boost::shared_mutex> lock(m_mutex);
-        m_freed.push_back(ptr);
-    }
-
-    class Recycler
-    {
-    public:
-        Recycler(const SharedPtr<VideoPool<T> >& pool)
-            :m_pool(pool)
-        {
-        }
-        void operator()(T* ptr) const
-        {
-            m_pool->recycle(ptr);
-        }
-    private:
-        SharedPtr<VideoPool<T> > m_pool;
-    };
-
-    boost::shared_mutex m_mutex;
-
-    std::deque<T*> m_freed;
-    std::deque<SharedPtr<T> > m_holder;
-};
-
-struct SurfaceDestoryer
-{
-private:
-    boost::shared_ptr<VADisplay> m_display;
-    std::vector<VASurfaceID> m_surfaces;
-public:
-    SurfaceDestoryer(const boost::shared_ptr<VADisplay>& display, std::vector<VASurfaceID>& surfaces)
-        :m_display(display)
-    {
-        m_surfaces.swap(surfaces);
-    }
-    void operator()(VideoPool<VideoFrame>* pool)
-    {
-        if (m_surfaces.size())
-            vaDestroySurfaces(*m_display, &m_surfaces[0], m_surfaces.size());
-        delete pool;
-    }
-
-};
-
-class PooledFrameAllocator
-{
-    DECLARE_LOGGER();
-public:
-    PooledFrameAllocator(const boost::shared_ptr<VADisplay>& display, int poolsize)
-        : m_display(display)
-        , m_poolsize(poolsize)
-    {
-    }
-    bool setFormat(uint32_t fourcc, int width, int height)
-    {
-        std::vector<VASurfaceID> surfaces;
-        surfaces.resize(m_poolsize);
-
-        VASurfaceAttrib attrib;
-        attrib.flags = VA_SURFACE_ATTRIB_SETTABLE;
-#if 0
-        attrib.type = VASurfaceAttribPixelFormat;
-        attrib.value.type = VAGenericValueTypeInteger;
-        attrib.value.value.i = fourcc;
-#else
-        VASurfaceAttribExternalBuffers external;
-        memset(&external, 0, sizeof(external));
-        external.pixel_format = fourcc;
-        external.width = width;
-        external.height = height;
-        // external.num_planes = ?;
-        // external.flags &= (~VA_SURFACE_EXTBUF_DESC_ENABLE_TILING);
-        external.flags |= VA_SURFACE_EXTBUF_DESC_ENABLE_TILING;
-
-        attrib.type = VASurfaceAttribExternalBufferDescriptor;
-        attrib.value.type = VAGenericValueTypePointer;
-        attrib.value.value.p = &external;
-#endif
-
-        VAStatus status = vaCreateSurfaces(*m_display, VA_RT_FORMAT_YUV420, width, height,
-                                           &surfaces[0], surfaces.size(),
-                                           &attrib, 1);
-
-        if (status != VA_STATUS_SUCCESS) {
-            ELOG_ERROR("create surface failed, %s", vaErrorStr(status));
-            return false;
-        }
-        std::deque<SharedPtr<VideoFrame> > buffers;
-        for (size_t i = 0;  i < surfaces.size(); i++) {
-            SharedPtr<VideoFrame> f(new VideoFrame);
-            memset(f.get(), 0, sizeof(VideoFrame));
-            f->surface = (intptr_t)surfaces[i];
-            f->fourcc = fourcc;
-            buffers.push_back(f);
-        }
-        m_pool.reset(new VideoPool<VideoFrame>(buffers), SurfaceDestoryer(m_display, surfaces));
-        return true;
-    }
-
-    SharedPtr<VideoFrame> alloc()
-    {
-        return  m_pool->alloc();
-    }
-private:
-    boost::shared_ptr<VADisplay> m_display;
-    SharedPtr<VideoPool<VideoFrame> > m_pool;
-    int m_poolsize;
-};
-
-DEFINE_LOGGER(PooledFrameAllocator, "mcu.media.PooledFrameAllocator");
-
-class VideoInput {
-    DECLARE_LOGGER();
-public:
-    VideoInput()
-        : m_active(false)
-    {
-        memset(&m_inputSize, 0, sizeof(m_inputSize));
-        memset(&m_rect, 0, sizeof(m_rect));
-        memset(&m_rootSize, 0, sizeof(m_rootSize));
-    }
-    void updateRootSize(VideoSize& videoSize)
-    {
-        boost::unique_lock<boost::shared_mutex> lock(m_mutex);
-        m_rootSize = videoSize;
-        updateRect();
-    }
-
-    void updateInputRegion(Region& region)
-    {
-        boost::unique_lock<boost::shared_mutex> lock(m_mutex);
-        m_region = region;
-        updateRect();
-    }
-    void activate()
-    {
-        boost::unique_lock<boost::shared_mutex> lock(m_mutex);
-        m_active = true;
-    }
-    void deActivate()
-    {
-        boost::unique_lock<boost::shared_mutex> lock(m_mutex);
-        m_active = false;
-        m_queue.clear();
-    }
-    void pushInput(const woogeen_base::Frame& frame)
-    {
-        SharedPtr<VideoFrame> input = convert(frame);
-        if (!input) //convert failed
-            return;
-
-        boost::unique_lock<boost::shared_mutex> lock(m_mutex);
-        m_queue.push_back(input);
-        if (m_queue.size() > kQueueSize) {
-            m_queue.pop_front();
-        }
-    }
-    SharedPtr<VideoFrame> popInput(VideoRect& rect)
-    {
-        boost::unique_lock<boost::shared_mutex> lock(m_mutex);
-        SharedPtr<VideoFrame> input;
-        if (!m_active)
-            return input;
-        if (!m_queue.empty()) {
-            input = m_queue.front();
-            // Keep at least one frame for renderer
-            if (!m_queue.size() > 1)
-                m_queue.pop_front();
-            rect = m_rect;
-        }
-        return input;
-    }
-private:
-    void updateRect()
-    {
-        const Region& region = m_region;
-        const VideoSize& rootSize = m_rootSize;
-        assert(!(region.relativeSize < 0.0 || region.relativeSize > 1.0)
-            && !(region.left < 0.0 || region.left > 1.0)
-            && !(region.top < 0.0 || region.top > 1.0));
-
-        unsigned int sub_width = (unsigned int)(rootSize.width * region.relativeSize);
-        unsigned int sub_height = (unsigned int)(rootSize.height * region.relativeSize);
-        unsigned int offset_width = (unsigned int)(rootSize.width * region.left);
-        unsigned int offset_height = (unsigned int)(rootSize.height * region.top);
-        if (offset_width + sub_width > rootSize.width)
-            sub_width = rootSize.width - offset_width;
-
-        if (offset_height + sub_height > rootSize.height)
-            sub_height = rootSize.height - offset_height;
-        m_rect.x = offset_width;
-        m_rect.y = offset_height;
-        m_rect.width = sub_width;
-        m_rect.height = sub_height;
-    }
-    SharedPtr<VideoFrame> convert(const woogeen_base::Frame& frame)
-    {
-        switch (frame.format) {
-        case FRAME_FORMAT_YAMI: {
-            YamiVideoFrame* holder = (YamiVideoFrame*)frame.payload;
-            return holder->frame;
-        }
-        case FRAME_FORMAT_I420: {
-            if (!m_allocator) {
-                boost::shared_ptr<VADisplay> vaDisplay = GetVADisplay();
-                m_allocator.reset(new PooledFrameAllocator(vaDisplay, kQueueSize + kSoftwareExtraSize));
-            }
-
-            // The resolution of the input can be changed on the fly,
-            // for example the Chrome browser may scale down a VGA (640x480)
-            // video stream to 320x240 if network condition is not good.
-            // In such case we need to reset the format of the allocator.
-            if (m_inputSize.width != frame.additionalInfo.video.width || m_inputSize.height != frame.additionalInfo.video.height) {
-                m_inputSize.width = frame.additionalInfo.video.width;
-                m_inputSize.height = frame.additionalInfo.video.height;
-                if (!m_allocator->setFormat(YAMI_FOURCC('Y', 'V', '1', '2'),
-                    m_inputSize.width, m_inputSize.height)) {
-                    ELOG_DEBUG("set to %dx%d failed", m_inputSize.width, m_inputSize.height);
-                }
-            }
-
-            SharedPtr<VideoFrame> target = m_allocator->alloc();
-            if (!target)
-                return target;
-
-            YamiVideoFrame yamiFrame;
-            yamiFrame.frame = target;
-            webrtc::I420VideoFrame* i420Frame = reinterpret_cast<webrtc::I420VideoFrame*>(frame.payload);
-
-            if (!yamiFrame.convertFromI420VideoFrame(*i420Frame))
-                return SharedPtr<VideoFrame>();
-
-            return yamiFrame.frame;
-        }
-        default:
-            return SharedPtr<VideoFrame>();
-        }
-
-        return SharedPtr<VideoFrame>();
-    }
-
-    bool m_active;
-    std::deque<SharedPtr<VideoFrame> > m_queue;
-    VideoSize m_inputSize;
-    VideoSize m_rootSize;
-    Region m_region;
-    VideoRect m_rect;
-    boost::shared_mutex m_mutex;
-    SharedPtr<PooledFrameAllocator> m_allocator;
-    const static size_t kQueueSize = 5;
-    //extra size for i420 convert
-    const static size_t kSoftwareExtraSize = 3;
-};
-
-DEFINE_LOGGER(VideoInput, "mcu.media.VideoInput");
-
 
 class BackgroundCleaner {
     DECLARE_LOGGER();
@@ -396,7 +108,7 @@ private:
     bool init()
     {
         if (!m_allocator) {
-            m_allocator.reset(new PooledFrameAllocator(m_display, 1));
+            m_allocator.reset(new woogeen_base::PooledFrameAllocator(m_display, 1));
             if (!m_allocator->setFormat(YAMI_FOURCC('N', 'V', '1', '2'),
                 m_videoSize.width, m_videoSize.height )) {
                 return false;
@@ -422,12 +134,11 @@ private:
     }
     boost::shared_ptr<VADisplay> m_display;
     SharedPtr<YamiMediaCodec::IVideoPostProcess> m_vpp;
-    SharedPtr<PooledFrameAllocator> m_allocator;
+    SharedPtr<woogeen_base::PooledFrameAllocator> m_allocator;
     SharedPtr<VideoFrame> m_background;
     VideoSize m_videoSize;
     YUVColor m_bgColor;
     std::set<intptr_t> m_cleared;
-
 };
 
 DEFINE_LOGGER(BackgroundCleaner, "mcu.media.BackgroundCleaner");
@@ -439,10 +150,9 @@ YamiVideoCompositor::YamiVideoCompositor(uint32_t maxInput, VideoSize rootSize, 
     m_ntpDelta = Clock::GetRealTimeClock()->CurrentNtpInMilliseconds() - TickTime::MillisecondTimestamp();
     ELOG_DEBUG("set size to %dx%d, input = %d", rootSize.width, rootSize.height, maxInput);
     m_inputs.resize(maxInput);
-    for (auto& input : m_inputs) {
-        input.reset(new VideoInput());
-        input->updateRootSize(rootSize);
-    }
+    m_inputRects.resize(maxInput);
+    for (auto& input : m_inputs)
+        input.reset(new woogeen_base::YamiVideoInputManager());
 
     m_display = GetVADisplay();
     NativeDisplay nativeDisplay;
@@ -451,7 +161,7 @@ YamiVideoCompositor::YamiVideoCompositor(uint32_t maxInput, VideoSize rootSize, 
     m_vpp.reset(createVideoPostProcess(YAMI_VPP_SCALER), releaseVideoPostProcess);
     m_vpp->setNativeDisplay(nativeDisplay);
 
-    m_allocator.reset(new PooledFrameAllocator(m_display, 5));
+    m_allocator.reset(new woogeen_base::PooledFrameAllocator(m_display, 5));
 
     if (!m_allocator->setFormat(YAMI_FOURCC('Y', 'V', '1', '2'),
         m_compositeSize.width, m_compositeSize.height)) {
@@ -469,15 +179,38 @@ YamiVideoCompositor::~YamiVideoCompositor()
     m_jobTimer->stop();
 }
 
+static void updateRect(const VideoSize& rootSize, const Region& region, VideoRect& rect)
+{
+    assert(!(region.relativeSize < 0.0 || region.relativeSize > 1.0)
+        && !(region.left < 0.0 || region.left > 1.0)
+        && !(region.top < 0.0 || region.top > 1.0));
+
+    unsigned int sub_width = (unsigned int)(rootSize.width * region.relativeSize);
+    unsigned int sub_height = (unsigned int)(rootSize.height * region.relativeSize);
+    unsigned int offset_width = (unsigned int)(rootSize.width * region.left);
+    unsigned int offset_height = (unsigned int)(rootSize.height * region.top);
+
+    if (offset_width + sub_width > rootSize.width)
+        sub_width = rootSize.width - offset_width;
+
+    if (offset_height + sub_height > rootSize.height)
+        sub_height = rootSize.height - offset_height;
+
+    rect.x = offset_width;
+    rect.y = offset_height;
+    rect.width = sub_width;
+    rect.height = sub_height;
+}
+
 void YamiVideoCompositor::updateRootSize(VideoSize& videoSize)
 {
     ELOG_DEBUG("updateRootSize to %dx%d", videoSize.width, videoSize.height);
     boost::unique_lock<boost::shared_mutex> lock(m_mutex);
     m_compositeSize = videoSize;
 
-    for (auto& input : m_inputs) {
-        input->updateRootSize(videoSize);
-    }
+    for (auto& l : m_currentLayout)
+        updateRect(videoSize, l.region, m_inputRects[l.input]);
+
     ELOG_DEBUG("set size to %dx%d failed", videoSize.width, videoSize.height);
     if (!m_allocator->setFormat(YAMI_FOURCC('Y', 'V', '1', '2'), videoSize.width, videoSize.height)) {
         ELOG_DEBUG("set size to %dx%d failed", videoSize.width, videoSize.height);
@@ -498,9 +231,9 @@ void YamiVideoCompositor::updateLayoutSolution(LayoutSolution& solution)
 
     boost::unique_lock<boost::shared_mutex> lock(m_mutex);
     m_currentLayout = solution;
-    for (auto& l : solution) {
-        m_inputs[l.input]->updateInputRegion(l.region);
-    }
+    for (auto& l : solution)
+        updateRect(m_compositeSize, l.region, m_inputRects[l.input]);
+
     m_backgroundCleaner->layoutSolutionUpdated();
 }
 
@@ -575,7 +308,8 @@ SharedPtr<VideoFrame> YamiVideoCompositor::customLayout()
 
     for (size_t i = 0; i < m_inputs.size(); i++) {
         auto& input = m_inputs[i];
-        SharedPtr<VideoFrame> src = input->popInput(dest->crop);
+        SharedPtr<VideoFrame> src = input->popInput();
+        dest->crop = m_inputRects[i];
         if (src) {
             m_vpp->process(src, dest);
             ELOG_DEBUG("(%d, %d, %d, %d) to (%d, %d, %d, %d)", src->crop.x, src->crop.y, src->crop.width, src->crop.height,
