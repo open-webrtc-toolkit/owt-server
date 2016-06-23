@@ -34,13 +34,18 @@
 #include <VideoCommonDefs.h>
 #include <va/va.h>
 
+struct VideoRect;
+
 namespace YamiMediaCodec {
-    class IVideoPostProcess;
+class IVideoPostProcess;
+}
+
+namespace woogeen_base {
+class PooledFrameAllocator;
+class YamiVideoInputManager;
 }
 
 namespace mcu {
-class PooledFrameAllocator;
-class VideoInput;
 class BackgroundCleaner;
 
 /**
@@ -72,7 +77,6 @@ private:
     void generateFrame();
     void clearBackgroud(const SharedPtr<VideoFrame>& dest);
 
-
     // Delta used for translating between NTP and internal timestamps.
     int64_t m_ntpDelta;
 
@@ -82,18 +86,15 @@ private:
     LayoutSolution m_currentLayout;
 
     boost::shared_ptr<VADisplay> m_display;
-    SharedPtr<PooledFrameAllocator> m_allocator;
+    SharedPtr<woogeen_base::PooledFrameAllocator> m_allocator;
     SharedPtr<YamiMediaCodec::IVideoPostProcess> m_vpp;
-    std::vector<boost::shared_ptr<VideoInput> > m_inputs;
+    std::vector<boost::shared_ptr<woogeen_base::YamiVideoInputManager> > m_inputs;
+    std::vector<VideoRect> m_inputRects;
 
     boost::shared_ptr<BackgroundCleaner> m_backgroundCleaner;
 
     // LayoutSolution m_newLayout;
     // LayoutSolutionState m_solutionState;
-    /*
-     * Each incoming channel will store the decoded frame in this array, and the composition
-     * thread will scan this array and composite the frames into one frame.
-     */
     boost::scoped_ptr<woogeen_base::JobTimer> m_jobTimer;
 };
 
