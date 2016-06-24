@@ -20,7 +20,6 @@
 
 #include "VideoMixer.h"
 
-#include "HardwareVideoFrameMixer.h"
 #include "VideoFrameMixerImpl.h"
 #include "VideoLayoutProcessor.h"
 #include "VideoFrameMixer.h"

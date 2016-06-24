@@ -224,12 +224,6 @@ install_node_tools() {
   mkdir -p node_modules && npm install --prefix . --development --loglevel error
 }
 
-install_mediaprocessor() {
-  local MEDIAPROCESSOR_DIR="${ROOT}/third_party/mediaprocessor"
-  local target="vcsa_video"
-  cd ${MEDIAPROCESSOR_DIR} && make distclean && make ${target}
-}
-
 install_gcc(){
   if [ -d $LIB_DIR ]; then
     local VERSION="4.8.4"
