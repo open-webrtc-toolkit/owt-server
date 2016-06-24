@@ -83,7 +83,7 @@ pack_addons() {
   # now copy dep libs:
   mkdir -p ${DIST_ADDON_DIR}/lib
   local BINS=$(find ${DIST_ADDON_DIR} -type f -name "*.node")
-  LD_LIBRARY_PATH=${ROOT}/build/libdeps/build/lib:${ROOT}/third_party/mediaprocessor/dist:${ROOT}/third_party/openh264:${LD_LIBRARY_PATH} \
+  LD_LIBRARY_PATH=${ROOT}/build/libdeps/build/lib:${ROOT}/third_party/openh264:${LD_LIBRARY_PATH} \
   ldd ${BINS} | grep '=>' | awk '{print $3}' | sort | uniq | grep -v "^(" | \
   while read line; do
     if [[ "${OS}" =~ .*centos.* ]]; then
