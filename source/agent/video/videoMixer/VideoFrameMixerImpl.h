@@ -158,9 +158,9 @@ inline bool VideoFrameMixerImpl::addInput(int input, woogeen_base::FrameFormat f
 
     boost::shared_ptr<woogeen_base::VideoFrameDecoder> decoder;
 
-    if (format == woogeen_base::FRAME_FORMAT_I420) {
+    if (format == woogeen_base::FRAME_FORMAT_I420)
         decoder.reset(new I420VideoFrameDecoder());
-    } else {
+    else {
 #ifdef ENABLE_YAMI
         if (!decoder && woogeen_base::YamiFrameDecoder::supportFormat(format))
             decoder.reset(new woogeen_base::YamiFrameDecoder());
@@ -185,9 +185,9 @@ inline bool VideoFrameMixerImpl::addInput(int input, woogeen_base::FrameFormat f
         Input in{.source = source, .decoder = decoder, .compositorIn = compositorIn};
         m_inputs[input] = in;
         return true;
-    } else {
-        return false;
     }
+
+    return false;
 }
 
 inline void VideoFrameMixerImpl::removeInput(int input)
@@ -211,18 +211,16 @@ inline void VideoFrameMixerImpl::setBitrate(unsigned short kbps, int output)
 {
     boost::shared_lock<boost::shared_mutex> lock(m_outputMutex);
     auto it = m_outputs.find(output);
-    if (it != m_outputs.end()) {
+    if (it != m_outputs.end())
         it->second.encoder->setBitrate(kbps, it->second.streamId);
-    }
 }
 
 inline void VideoFrameMixerImpl::requestKeyFrame(int output)
 {
     boost::shared_lock<boost::shared_mutex> lock(m_outputMutex);
     auto it = m_outputs.find(output);
-    if (it != m_outputs.end()) {
+    if (it != m_outputs.end())
         it->second.encoder->requestKeyFrame(it->second.streamId);
-    }
 }
 
 inline bool VideoFrameMixerImpl::addOutput(int output,
@@ -236,18 +234,16 @@ inline bool VideoFrameMixerImpl::addOutput(int output,
     // find a reusable encoder.
     auto it = m_outputs.begin();
     for (; it != m_outputs.end(); ++it) {
-        if (it->second.encoder->canSimulcast(format, rootSize.width, rootSize.height)) {
+        if (it->second.encoder->canSimulcast(format, rootSize.width, rootSize.height))
             break;
-        }
     }
 
     int32_t streamId = -1;
     if (it != m_outputs.end()) { // Found a reusable encoder
         encoder = it->second.encoder;
         streamId = encoder->generateStream(rootSize.width, rootSize.height, dest);
-        if (streamId < 0){
+        if (streamId < 0)
             return false;
-        }
     } else { // Never found a reusable encoder.
 #ifdef ENABLE_YAMI
         if (!encoder && woogeen_base::YamiFrameEncoder::supportFormat(format))
@@ -263,9 +259,9 @@ inline bool VideoFrameMixerImpl::addOutput(int output,
             encoder.reset(new woogeen_base::VCMFrameEncoder(format, m_taskRunner, m_useSimulcast));
 
         streamId = encoder->generateStream(rootSize.width, rootSize.height, dest);
-        if (streamId < 0){
+        if (streamId < 0)
             return false;
-        }
+
         m_compositor->addVideoDestination(encoder.get());
     }
 
