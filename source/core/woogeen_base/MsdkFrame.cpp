@@ -524,15 +524,18 @@ bool MsdkFramePool::waitForFrameFree(boost::shared_ptr<MsdkFrame>& frame, int ti
 
     while (!(frame.use_count() == 1 && frame->isFree()) && i < timeout)
     {
-        ELOG_DEBUG("frame(%d): use_count %ld, isFree %d", i++, frame.use_count(), frame->isFree());
-        ELOG_DEBUG("Wait(%d ms)...", i);
+        dumpMsdkFrameInfo("waitFrame", frame);
 
         usleep(1000); //1ms
         i++;
+
+        ELOG_DEBUG("Wait(%d ms)...", i);
     }
 
     if (!(frame.use_count() == 1 && frame->isFree())) {
         ELOG_WARN("waitForFrameFree timeout %d ms", timeout);
+
+        dumpMsdkFrameInfo("waitFrameTimeout", frame);
 
         return false;
     }
@@ -548,6 +551,8 @@ bool MsdkFramePool::freeFrames()
         if (!waitForFrameFree(it, TIMEOUT)) {
             ELOG_WARN("Free frame in using is dangerous!");
         }
+
+        dumpMsdkFrameInfo("free", it);
     }
 
     m_framePool.clear();
@@ -563,6 +568,8 @@ bool MsdkFramePool::freeFrames()
 
 bool MsdkFramePool::reAllocate(uint32_t width, uint32_t height)
 {
+    boost::unique_lock<boost::shared_mutex> lock(m_mutex);
+
     ELOG_DEBUG("reAllocate %dx%d -> %dx%d", m_allocatedWidth, m_allocatedHeight, width, height);
 
     if (width <= m_allocatedWidth && height <= m_allocatedHeight) {
@@ -591,6 +598,8 @@ bool MsdkFramePool::reAllocate(uint32_t width, uint32_t height)
 
 boost::shared_ptr<MsdkFrame> MsdkFramePool::getFreeFrame()
 {
+    boost::unique_lock<boost::shared_mutex> lock(m_mutex);
+
     for (auto& it : m_framePool) {
         if(it.use_count() == 1 && it->isFree()) {
             return it;

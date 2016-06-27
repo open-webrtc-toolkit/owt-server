@@ -48,8 +48,12 @@ public:
     {
         printfFuncEnter;
 
-        boost::unique_lock<boost::shared_mutex> lock(m_mutex);
-        m_queue.clear();
+        {
+            boost::unique_lock<boost::shared_mutex> lock(m_mutex);
+            m_queue.clear();
+        }
+
+        m_owner->flush();
         m_swFramePool.reset(NULL);
 
         printfFuncExit;
@@ -80,26 +84,31 @@ public:
 
     void deActivate()
     {
-        boost::unique_lock<boost::shared_mutex> lock(m_mutex);
+        {
+            boost::unique_lock<boost::shared_mutex> lock(m_mutex);
 
-        m_active = false;
-        m_queue.clear();
+            m_active = false;
+            m_queue.clear();
+        }
+
+        m_owner->flush();
         m_swFramePool.reset(NULL);
     }
 
     void pushInput(const woogeen_base::Frame& frame)
     {
         if (!processCmd(frame)) {
-            boost::unique_lock<boost::shared_mutex> lock(m_mutex);
-
             boost::shared_ptr<MsdkFrame> msdkFrame = convert(frame);
             if (!msdkFrame)
                 return;
+            {
+                boost::unique_lock<boost::shared_mutex> lock(m_mutex);
 
-            m_queue.push_back(msdkFrame);
-            if (m_queue.size() > MAX_DECODED_FRAME_IN_RENDERING) {
-                ELOG_TRACE("(%p)Reach max frames in queue, drop oldest frame!", this);
-                m_queue.pop_front();
+                m_queue.push_back(msdkFrame);
+                if (m_queue.size() > MAX_DECODED_FRAME_IN_RENDERING) {
+                    ELOG_TRACE("(%p)Reach max frames in queue, drop oldest frame!", this);
+                    m_queue.pop_front();
+                }
             }
         }
     }
@@ -190,11 +199,12 @@ protected:
         if (frame.format == FRAME_FORMAT_MSDK) {
             MsdkFrameHolder *holder = (MsdkFrameHolder *)frame.payload;
             if (holder && holder->cmd == MsdkCmd_DEC_FLUSH) {
-                ELOG_DEBUG("do MsdkCmd_DEC_FLUSH");
+                {
+                    boost::unique_lock<boost::shared_mutex> lock(m_mutex);
+                    m_queue.clear();
+                }
 
-                m_queue.clear();
                 m_owner->flush();
-
                 return true;
             }
         }
@@ -216,7 +226,11 @@ protected:
             }
 
             if (m_swFramePool->getAllocatedWidth() < video.width || m_swFramePool->getAllocatedHeight() < video.height) {
-                m_queue.clear();
+                {
+                    boost::unique_lock<boost::shared_mutex> lock(m_mutex);
+                    m_queue.clear();
+                }
+                m_owner->flush();
 
                 if (!m_swFramePool->reAllocate(video.width, video.height))
                     return NULL;
@@ -597,9 +611,11 @@ void MsdkVideoCompositor::deActivateInput(int input)
 
 void MsdkVideoCompositor::pushInput(int input, const woogeen_base::Frame& frame)
 {
-    ELOG_TRACE("pushInput %d", input);
+    ELOG_TRACE("+++pushInput %d", input);
 
     m_inputs[input]->pushInput(frame);
+
+    ELOG_TRACE("---pushInput %d", input);
 }
 
 void MsdkVideoCompositor::onTimeout()
@@ -611,7 +627,16 @@ void MsdkVideoCompositor::flush()
 {
     printfFuncEnter;
 
-    boost::unique_lock<boost::shared_mutex> lock(m_workMutex);
+    boost::shared_ptr<MsdkFrame> frame;
+
+    int i = 0;
+    while(!(frame = m_framePool->getFreeFrame())) {
+        i++;
+        ELOG_DEBUG("flush - wait %d(ms)", i);
+        usleep(1000); //1ms
+    }
+
+    ELOG_DEBUG("flush successfully after %d(ms)", i);
 
     printfFuncExit;
 }
@@ -639,9 +664,9 @@ void MsdkVideoCompositor::generateFrame()
         (TickTime::MillisecondTimestamp() + m_ntpDelta);
 
     //ELOG_TRACE("timeStamp %u", frame.timeStamp);
-    ELOG_TRACE("deliverFrame");
-
+    ELOG_TRACE("+++deliverFrame");
     deliverFrame(frame);
+    ELOG_TRACE("---deliverFrame");
 }
 
 bool MsdkVideoCompositor::commitLayout()
@@ -720,8 +745,6 @@ boost::shared_ptr<MsdkFrame> MsdkVideoCompositor::layout()
 
 boost::shared_ptr<MsdkFrame> MsdkVideoCompositor::customLayout()
 {
-    boost::unique_lock<boost::shared_mutex> lock(m_workMutex);
-
     if (!m_currentLayout.size())
         return NULL;
 
@@ -735,6 +758,8 @@ boost::shared_ptr<MsdkFrame> MsdkVideoCompositor::customLayout()
         return NULL;
     }
 
+    //dumpMsdkFrameInfo("+++dst", dst);
+
     for (auto& l : m_currentLayout) {
         auto& input = m_inputs[l.input];
         boost::shared_ptr<MsdkFrame> src = input->popInput();
@@ -747,6 +772,7 @@ boost::shared_ptr<MsdkFrame> MsdkVideoCompositor::customLayout()
             src = m_defaultInputFrame;
         }
 
+        //dumpMsdkFrameInfo("+++src", src);
 retry:
         sts = m_vpp->RunFrameVPPAsync(src->getSurface(), dst->getSurface(), NULL, &syncP);
         if (sts == MFX_WRN_DEVICE_BUSY) {
@@ -763,6 +789,8 @@ retry:
 
             break;
         }
+
+        //dumpMsdkFrameInfo("---src", src);
     }
 
     if(sts != MFX_ERR_NONE)
@@ -770,6 +798,8 @@ retry:
         ELOG_ERROR("Composite failed, ret %d", sts);
         return NULL;
     }
+
+    //dumpMsdkFrameInfo("---dst", dst);
 
     dst->setSyncPoint(syncP);
     dst->setSyncFlag(true);

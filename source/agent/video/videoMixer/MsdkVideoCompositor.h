@@ -119,8 +119,6 @@ private:
     boost::scoped_ptr<woogeen_base::JobTimer> m_jobTimer;
 
     boost::shared_mutex m_mutex;
-
-    boost::shared_mutex m_workMutex;
 };
 
 }
