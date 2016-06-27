@@ -47,6 +47,8 @@ MsdkFrameDecoder::~MsdkFrameDecoder()
 {
     printfFuncEnter;
 
+    flushOutput();
+
     if (m_dec) {
         m_dec->Close();
         delete m_dec;
@@ -137,8 +139,6 @@ void MsdkFrameDecoder::flushOutput(void)
 
 bool MsdkFrameDecoder::resetDecoder(void)
 {
-    mfxStatus sts = MFX_ERR_NONE;
-
     ELOG_TRACE("(%p)resetDecoder", this);
 
     flushOutput();
@@ -178,6 +178,9 @@ bool MsdkFrameDecoder::resetDecoder(void)
         m_dec->Close();
         delete m_dec;
         m_dec = NULL;
+
+        if (m_framePool)
+            m_framePool.reset(NULL);
     }
 
     m_dec = new MFXVideoDECODE(*m_session);
@@ -343,6 +346,8 @@ retry:
         }
         else if (sts != MFX_ERR_NONE) {
             ELOG_INFO("(%p)mfx decode error, ret %d", this, sts);
+
+            workFrame.reset();
 
             printfVideoParam(m_videoParam.get(), MFX_DEC);
 

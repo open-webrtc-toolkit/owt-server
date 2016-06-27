@@ -35,6 +35,8 @@
 
 namespace woogeen_base {
 
+#define dumpMsdkFrameInfo(name, frame) ELOG_TRACE("%s-(%p)frame use_count %ld, locked_count %d", name, frame.get(), frame.use_count(), frame->getLockedCount())
+
 #define MAX_DECODED_FRAME_IN_RENDERING 3
 
 class MsdkFrame {
@@ -51,6 +53,7 @@ public:
     void setSyncFlag(bool needSync) {m_needSync = needSync;}
 
     bool isFree(void) {return !m_surface.Data.Locked;}
+    int getLockedCount(void)  {return m_surface.Data.Locked;}
 
     uint32_t getWidth() {return m_surface.Info.CropW;}
     uint32_t getHeight() {return m_surface.Info.CropH;}
@@ -119,6 +122,8 @@ private:
     uint32_t m_allocatedHeight;
 
     std::list<boost::shared_ptr<MsdkFrame>> m_framePool;
+
+    boost::shared_mutex m_mutex;
 };
 
 enum MsdkCmd {
