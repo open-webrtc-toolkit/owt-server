@@ -171,6 +171,11 @@ case $startStop in
         cd ${WOOGEEN_HOME}/video_agent
         export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:./lib
         export NODE_PATH=./node_modules
+        if [[ -z ${LIBVA_DRIVERS_PATH} && -s ./.libva_drivers_path.sh ]]; then
+          echo "Setting LIBVA_DRIVERS_PATH..."
+          source ./.libva_drivers_path.sh
+          echo "to ${LIBVA_DRIVERS_PATH}"
+        fi
         nohup nice -n ${WOOGEEN_NICENESS} node . -U video\
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
