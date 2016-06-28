@@ -86,6 +86,8 @@ fi
 
 ${NO_INTERNAL} || install_webrtc
 
+install_libva
+install_libva_driver
 install_libyami
 
 if [ "$CLEANUP" = "true" ]; then

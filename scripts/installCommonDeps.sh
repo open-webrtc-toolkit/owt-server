@@ -134,14 +134,39 @@ install_libsrtp(){
   cd $CURRENT_DIR
 }
 
+install_libva(){
+  [ -d $LIB_DIR ] || mkdir -p $LIB_DIR
+  cd $LIB_DIR
+  wget -c https://www.freedesktop.org/software/vaapi/releases/libva/libva-1.7.0.tar.bz2
+  tar -jxvf libva-1.7.0.tar.bz2
+  cd libva-1.7.0
+  ./configure --prefix=$PREFIX_DIR
+  make -s V=0
+  make uninstall
+  make install
+  cd $CURRENT_DIR
+}
+
+install_libva_driver(){
+  [ -d $LIB_DIR ] || mkdir -p $LIB_DIR
+  cd $LIB_DIR
+  GIT_SSL_NO_VERIFY=1 git clone https://anongit.freedesktop.org/git/vaapi/intel-driver.git -b 1.7.0
+  cd intel-driver
+  PKG_CONFIG_PATH=$PREFIX_DIR/lib/pkgconfig:$PKG_CONFIG_PATH ./autogen.sh --prefix=$PREFIX_DIR
+  LD_LIBRARY_PATH=$PREFIX_DIR/lib:$LD_LIBRARY_PATH make -s V=0
+  make uninstall
+  make install
+  cd $CURRENT_DIR
+}
+
 install_libyami(){
   cd $ROOT/third_party/
   rm -rf libyami
   git clone https://github.com/01org/libyami.git
   cd libyami
-  ./autogen.sh --prefix=$PREFIX_DIR
+  PKG_CONFIG_PATH=$PREFIX_DIR/lib/pkgconfig:$PKG_CONFIG_PATH ./autogen.sh --prefix=$PREFIX_DIR
   make clean
-  make -s V=0
+  LD_LIBRARY_PATH=$PREFIX_DIR/lib:$LD_LIBRARY_PATH make -s V=0
   make uninstall
   make install
   cd $CURRENT_DIR

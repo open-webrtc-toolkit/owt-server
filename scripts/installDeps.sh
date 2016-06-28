@@ -116,6 +116,20 @@ case $yn in
   * ) install_openh264;;
 esac
 
+read -p "Installing libva? [No/yes]" yn
+case $yn in
+  [Yy]* ) install_libva;;
+  [Nn]* ) ;;
+  * ) ;;
+esac
+
+read -p "Installing libva intel driver? [No/yes]" yn
+case $yn in
+  [Yy]* ) install_libva_driver;;
+  [Nn]* ) ;;
+  * ) ;;
+esac
+
 read -p "Installing libyami? [No/yes]" yn
 case $yn in
   [Yy]* ) install_libyami;;

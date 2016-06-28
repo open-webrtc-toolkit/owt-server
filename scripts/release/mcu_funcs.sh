@@ -97,7 +97,6 @@ pack_addons() {
     cp -av $ROOT/third_party/openh264/pseudo-openh264.so ${DIST_ADDON_DIR}/lib/libopenh264.so.0)
   # remove libs from msdk
   rm -f ${DIST_ADDON_DIR}/lib/libmfxhw*
-  rm -f ${DIST_ADDON_DIR}/lib/libva*
   # remove libs from libav/ffmpeg if needed
   if ldd ${DIST_ADDON_DIR}/lib/libavcodec* | grep aac -q -s; then # nonfree, not redistributable
     rm -f ${DIST_ADDON_DIR}/lib/libav*
