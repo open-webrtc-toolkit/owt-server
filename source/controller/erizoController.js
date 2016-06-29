@@ -40,8 +40,8 @@ GLOBAL.config.cluster.max_load = GLOBAL.config.cluster.max_laod || 0.85;
 GLOBAL.config.cluster.network_max_scale = GLOBAL.config.cluster.network_max_scale || 1000;
 
 GLOBAL.config.rabbit = GLOBAL.config.rabbit || {};
-GLOBAL.config.rabbit.host = GLOBAL.config.host || 'localhost';
-GLOBAL.config.rabbit.port = GLOBAL.config.port || 5672;
+GLOBAL.config.rabbit.host = GLOBAL.config.rabbit.host || 'localhost';
+GLOBAL.config.rabbit.port = GLOBAL.config.rabbit.port || 5672;
 
 
 // Parse command line arguments
