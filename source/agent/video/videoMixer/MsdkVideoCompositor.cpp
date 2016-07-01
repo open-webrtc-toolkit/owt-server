@@ -393,7 +393,7 @@ void MsdkVideoCompositor::initDefaultParam(void)
     // mfxVideoParam Common
     m_videoParam->AsyncDepth = 1;
     m_videoParam->IOPattern = MFX_IOPATTERN_IN_VIDEO_MEMORY | MFX_IOPATTERN_OUT_VIDEO_MEMORY;
-    m_videoParam->NumExtParam = 1;
+    m_videoParam->NumExtParam = 0;
     m_videoParam->ExtParam = (mfxExtBuffer **)&m_extVppComp;
 
     // mfxVideoParam Vpp In
@@ -450,10 +450,9 @@ void MsdkVideoCompositor::updateParam(void)
     m_videoParam->vpp.Out.CropW     = m_compositeSize.width;
     m_videoParam->vpp.Out.CropH     = m_compositeSize.height;
 
-    //force to black as msdk does not support well
-    m_extVppComp->Y                 = 0;//m_bgColor.y;
-    m_extVppComp->U                 = 0;//m_bgColor.cb;
-    m_extVppComp->V                 = 0;//m_bgColor.cr;
+    m_extVppComp->Y                 = m_bgColor.y;
+    m_extVppComp->U                 = m_bgColor.cb;
+    m_extVppComp->V                 = m_bgColor.cr;
 }
 
 void MsdkVideoCompositor::init(void)
@@ -577,9 +576,8 @@ void MsdkVideoCompositor::updateBackgroundColor(YUVColor& bgColor)
 
     ELOG_DEBUG("updateBackgroundColor: Y(0x%x), Cb(0x%x), Cr(0x%x)", bgColor.y, bgColor.cb, bgColor.cr);
 
-    printfToDo;
-    //m_newBgColor = bgColor;
-    //m_solutionState = CHANGING;
+    m_newBgColor = bgColor;
+    m_solutionState = CHANGING;
 }
 
 void MsdkVideoCompositor::updateLayoutSolution(LayoutSolution& solution)
@@ -688,7 +686,11 @@ bool MsdkVideoCompositor::commitLayout()
     m_compInputStreams.resize(m_currentLayout.size());
     m_extVppComp->NumInputStream = m_compInputStreams.size();
     m_extVppComp->InputStream = &m_compInputStreams.front();
-    memset(m_extVppComp->InputStream, 0 , sizeof(mfxVPPCompInputStream) * m_extVppComp->NumInputStream);
+
+    m_videoParam->NumExtParam = m_extVppComp->NumInputStream ? 1 : 0;
+    if (m_extVppComp->NumInputStream > 0) {
+        memset(m_extVppComp->InputStream, 0 , sizeof(mfxVPPCompInputStream) * m_extVppComp->NumInputStream);
+    }
 
     int i = 0;
     for (auto& l : m_currentLayout) {
@@ -698,17 +700,16 @@ bool MsdkVideoCompositor::commitLayout()
 
     updateParam();
 
-#if 1 // should be bug for mfx
     mfxStatus sts = MFX_ERR_NONE;
     sts = m_vpp->Reset(m_videoParam.get());
     if (sts > 0) {
         ELOG_TRACE("Ignore mfx warning, ret %d", sts);
     }
     else if (sts != MFX_ERR_NONE) {
-        ELOG_ERROR("mfx reset failed, ret %d", sts);
-        return false;
+        ELOG_TRACE("mfx reset failed, ret %d. Try to close.", sts);
+
+        m_vpp->Close();
     }
-#endif
 
     sts = m_vpp->Init(m_videoParam.get());
     if (sts > 0) {
