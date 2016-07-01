@@ -36,7 +36,7 @@ GLOBAL.config.cluster.join_interval = GLOBAL.config.cluster.join_interval || 300
 GLOBAL.config.cluster.recover_interval = GLOBAL.config.cluster.recover_interval || 1000;
 GLOBAL.config.cluster.keep_alive_interval = GLOBAL.config.cluster.keep_alive_interval || 1000;
 GLOBAL.config.cluster.report_load_interval = GLOBAL.config.cluster.report_load_interval || 1000;
-GLOBAL.config.cluster.max_load = GLOBAL.config.cluster.max_laod || 0.85;
+GLOBAL.config.cluster.max_load = GLOBAL.config.cluster.max_load || 0.85;
 GLOBAL.config.cluster.network_max_scale = GLOBAL.config.cluster.network_max_scale || 1000;
 
 GLOBAL.config.rabbit = GLOBAL.config.rabbit || {};
