@@ -20,8 +20,7 @@
 
 #include "VideoMixer.h"
 
-#include "HardwareVideoFrameMixer.h"
-#include "SoftVideoFrameMixer.h"
+#include "VideoFrameMixerImpl.h"
 #include "VideoLayoutProcessor.h"
 #include "VideoFrameMixer.h"
 #include <WebRTCTransport.h>
@@ -56,7 +55,7 @@ VideoMixer::VideoMixer(const std::string& configStr)
     for (size_t i = 0; i < m_maxInputCount; ++i)
         m_freeInputIndexes.push_back(true);
 
-    bool hardwareAccelerated = config.get<bool>("hardware", false);
+    // bool hardwareAccelerated = config.get<bool>("hardware", false);
     m_outputKbps = config.get<int>("bitrate", 0);
     bool useSimulcast = config.get<bool>("simulcast");
     webrtc::VP8EncoderFactoryConfig::set_use_simulcast_adapter(useSimulcast);
@@ -72,10 +71,7 @@ VideoMixer::VideoMixer(const std::string& configStr)
 
     m_taskRunner.reset(new woogeen_base::WebRTCTaskRunner());
 
-    if (hardwareAccelerated)
-        m_frameMixer.reset(new HardwareVideoFrameMixer(rootSize, bgColor));
-    else
-        m_frameMixer.reset(new SoftVideoFrameMixer(m_maxInputCount, rootSize, bgColor, m_taskRunner, useSimulcast, cropVideo));
+    m_frameMixer.reset(new VideoFrameMixerImpl(m_maxInputCount, rootSize, bgColor, m_taskRunner, useSimulcast, cropVideo));
     m_layoutProcessor->registerConsumer(m_frameMixer);
 
     m_taskRunner->Start();

@@ -18,43 +18,27 @@
  * and approved by Intel in writing.
  */
 
-#ifndef SoftVideoCompositor_h
-#define SoftVideoCompositor_h
+#ifndef MsdkVideoCompositor_h
+#define MsdkVideoCompositor_h
 
-#include "VideoFrameMixer.h"
-#include "VideoLayout.h"
+#ifdef ENABLE_MSDK
 
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/shared_mutex.hpp>
-#include <BufferManager.h>
+#include <vector>
 #include <JobTimer.h>
 #include <logger.h>
-#include <MediaFramePipeline.h>
-#include <vector>
 
-namespace webrtc {
-class I420VideoFrame;
-class VideoProcessingModule;
-}
+#include "VideoFrameMixer.h"
+#include "VideoLayout.h"
+
+#include "MediaFramePipeline.h"
+
+#include "MsdkFrame.h"
 
 namespace mcu {
-
-/**
- * manages a pool of VPM for preprocessing the incoming I420 frame
- */
-class VPMPool {
-public:
-    VPMPool(unsigned int size);
-    ~VPMPool();
-    webrtc::VideoProcessingModule* get(unsigned int input);
-    void update(unsigned int input, VideoSize&);
-    unsigned int size() { return m_size; }
-
-private:
-    webrtc::VideoProcessingModule** m_vpms;
-    unsigned int m_size;    // total pool capacity
-};
+class VppInput;
 
 /**
  * composite a sequence of frames into one frame based on current layout config,
@@ -62,48 +46,82 @@ private:
  * but only 6 regions are configed. current implementation will only show 6 participants but
  * still 16 audios will be mixed. In the future, we may enable the video rotation based on VAD history.
  */
-class SoftVideoCompositor : public VideoFrameCompositor,
+class MsdkVideoCompositor : public VideoFrameCompositor,
                             public woogeen_base::JobTimerListener {
     DECLARE_LOGGER();
     enum LayoutSolutionState{UN_INITIALIZED = 0, CHANGING, IN_WORK};
+
+    friend class VppInput;
+
 public:
-    SoftVideoCompositor(uint32_t maxInput, VideoSize rootSize, YUVColor bgColor, bool crop);
-    ~SoftVideoCompositor();
+    MsdkVideoCompositor(uint32_t maxInput, VideoSize rootSize, YUVColor bgColor, bool crop);
+    ~MsdkVideoCompositor();
 
     bool activateInput(int input);
     void deActivateInput(int input);
-    void pushInput(int input, const woogeen_base::Frame&);
-
+    void pushInput(int input, const woogeen_base::Frame& frame);
     void updateRootSize(VideoSize& rootSize);
     void updateBackgroundColor(YUVColor& bgColor);
     void updateLayoutSolution(LayoutSolution& solution);
 
     void onTimeout();
 
-private:
-    webrtc::I420VideoFrame* layout();
-    webrtc::I420VideoFrame* customLayout();
+protected:
+    void initDefaultParam(void);
+    void updateParam(void);
+
+    void init(void);
+
+    void flush(void);
+
+    bool isSolutionChanged ();
+
     void generateFrame();
-    bool commitLayout(); // Commit the new layout config.
-    void setBackgroundColor();
-    // Delta used for translating between NTP and internal timestamps.
-    int64_t m_ntpDelta;
-    boost::scoped_ptr<VPMPool> m_vpmPool;
-    boost::scoped_ptr<woogeen_base::BufferManager> m_bufferManager;
-    boost::scoped_ptr<webrtc::I420VideoFrame> m_compositeFrame;
+    bool commitLayout(); // Commit the new layout config..clear()
+    boost::shared_ptr<MsdkFrame> layout();
+    boost::shared_ptr<MsdkFrame> customLayout();
+
+private:
+    uint32_t m_maxInput;
+    bool m_crop;
+
     VideoSize m_compositeSize;
     VideoSize m_newCompositeSize;
+
     YUVColor m_bgColor;
+    YUVColor m_newBgColor;
+
     LayoutSolution m_currentLayout;
     LayoutSolution m_newLayout;
+
     LayoutSolutionState m_solutionState;
-    bool m_crop;
-    /*
-     * Each incoming channel will store the decoded frame in this array, and the composition
-     * thread will scan this array and composite the frames into one frame.
-     */
+
+    boost::scoped_ptr<mfxVideoParam> m_videoParam;
+    boost::scoped_ptr<mfxExtVPPComposite> m_extVppComp;
+
+    std::vector<mfxVPPCompInputStream> m_compInputStreams;
+
+    // Delta used for translating between NTP and internal timestamps.
+    int64_t m_ntpDelta;
+
+    MFXVideoSession *m_session;
+    //mfxFrameAllocator *m_allocator;
+    boost::shared_ptr<mfxFrameAllocator> m_allocator;
+    MFXVideoVPP *m_vpp;
+
+    std::vector<boost::shared_ptr<VppInput>> m_inputs;
+
+    boost::scoped_ptr<MsdkFramePool> m_framePool;
+
+    boost::shared_ptr<MsdkFrame> m_defaultInputFrame;
+    boost::scoped_ptr<MsdkFramePool> m_defaultInputFramePool;
+
     boost::scoped_ptr<woogeen_base::JobTimer> m_jobTimer;
+
+    boost::shared_mutex m_mutex;
 };
 
 }
-#endif /* SoftVideoCompositor_h*/
+
+#endif /* ENABLE_MSDK */
+#endif /* MsdkVideoCompositor_h*/

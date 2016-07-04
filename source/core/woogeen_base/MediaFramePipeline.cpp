@@ -77,18 +77,6 @@ void FrameSource::removeVideoDestination(FrameDestination* dest)
     dest->unsetVideoSource();
 }
 
-static inline bool isAudioFrame(const Frame& frame) {
-    return frame.format == FRAME_FORMAT_PCM_RAW
-          || frame.format == FRAME_FORMAT_PCMU
-          || frame.format == FRAME_FORMAT_OPUS;
-}
-
-static inline bool isVideoFrame(const Frame& frame) {
-    return frame.format == FRAME_FORMAT_I420
-          || frame.format == FRAME_FORMAT_VP8
-          || frame.format == FRAME_FORMAT_H264;
-}
-
 void FrameSource::deliverFrame(const Frame& frame)
 {
     if (isAudioFrame(frame)) {

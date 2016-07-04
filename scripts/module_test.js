@@ -6,7 +6,6 @@ if (!process.env.MODULE_TEST) {
   process.env.MODULE_TEST = true;
   process.env.LD_LIBRARY_PATH = [
     path.resolve(__dirname, '../build/libdeps/build/lib'),
-    path.resolve(__dirname, '../third_party/mediaprocessor/dist'),
     path.resolve(__dirname, '../third_party/openh264'),
     process.env.LD_LIBRARY_PATH || '',
   ].join(':');

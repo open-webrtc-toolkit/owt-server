@@ -33,9 +33,10 @@ usage() {
   echo "    --rebuild                           rebuild from scratch"
   echo "    --check                             check resulted addon(s)"
   echo "    --gateway                           build oovoo gateway addon"
-  echo "    --mcu (software)                    build mcu runtime addons without msdk"
-  echo "    --mcu-hardware                      build mcu runtime addons with msdk"
-  echo "    --mcu-all                           build mcu runtime addons both with and without msdk"
+  echo "    --mcu                               build mcu runtime addons with software media pipeline"
+  echo "    --mcu-hardware                      build mcu runtime addons with msdk media pipeline"
+  echo "    --mcu-hardware-yami                 build mcu runtime addons with libyami based media pipeline"
+  echo "    --mcu-all                           build mcu runtime addons both with and without hardware support"
   echo "    --sdk                               build sdk (for oovoo gateway)"
   echo "    --all                               build all components"
   echo "    --help                              print this help"
@@ -52,7 +53,8 @@ fi
 
 BUILD_GATEWAY_RUNTIME=false
 BUILD_MCU_RUNTIME_SW=false
-BUILD_MCU_RUNTIME_HW=false
+BUILD_MCU_RUNTIME_HW_YAMI=false
+BUILD_MCU_RUNTIME_HW_MSDK=false
 BUILD_SDK=false
 BUILDTYPE="Release"
 BUILD_ROOT="${ROOT}/build"
@@ -78,7 +80,7 @@ while [[ $# -gt 0 ]]; do
     *(-)all )
       BUILD_GATEWAY_RUNTIME=true
       BUILD_MCU_RUNTIME_SW=true
-      BUILD_MCU_RUNTIME_HW=true
+      BUILD_MCU_RUNTIME_HW_MSDK=true
       BUILD_SDK=true
       ;;
     *(-)gateway )
@@ -88,11 +90,14 @@ while [[ $# -gt 0 ]]; do
       BUILD_MCU_RUNTIME_SW=true
       ;;
     *(-)mcu-hardware )
-      BUILD_MCU_RUNTIME_HW=true
+      BUILD_MCU_RUNTIME_HW_MSDK=true
+      ;;
+    *(-)mcu-hardware-yami )
+      BUILD_MCU_RUNTIME_HW_YAMI=true
       ;;
     *(-)mcu-all )
       BUILD_MCU_RUNTIME_SW=true
-      BUILD_MCU_RUNTIME_HW=true
+      BUILD_MCU_RUNTIME_HW_MSDK=true
       ;;
     *(-)sdk )
       BUILD_SDK=true
@@ -125,9 +130,16 @@ build_mcu_runtime_sw() {
   popd >/dev/null
 }
 
-build_mcu_runtime_hw() {
+build_mcu_runtime_hw_yami() {
   pushd "${SOURCE}/agent/video/videoMixer" >/dev/null
-  cp -f binding.hw.gyp binding.gyp
+  cp -f binding.hw.yami.gyp binding.gyp
+  build_mcu_runtime
+  popd >/dev/null
+}
+
+build_mcu_runtime_hw_msdk() {
+  pushd "${SOURCE}/agent/video/videoMixer" >/dev/null
+  cp -f binding.hw.msdk.gyp binding.gyp
   build_mcu_runtime
   popd >/dev/null
 }
@@ -203,8 +215,12 @@ build() {
     build_mcu_runtime_sw
     ((DONE++))
   fi
-  if ${BUILD_MCU_RUNTIME_HW} ; then
-    build_mcu_runtime_hw
+  if ${BUILD_MCU_RUNTIME_HW_MSDK} ; then
+    build_mcu_runtime_hw_msdk
+    ((DONE++))
+  fi
+  if ${BUILD_MCU_RUNTIME_HW_YAMI} ; then
+    build_mcu_runtime_hw_yami
     ((DONE++))
   fi
   if ${BUILD_SDK} ; then

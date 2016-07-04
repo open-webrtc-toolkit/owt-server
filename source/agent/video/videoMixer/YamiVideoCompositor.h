@@ -18,8 +18,8 @@
  * and approved by Intel in writing.
  */
 
-#ifndef SoftVideoCompositor_h
-#define SoftVideoCompositor_h
+#ifndef YamiVideoCompositor_h
+#define YamiVideoCompositor_h
 
 #include "VideoFrameMixer.h"
 #include "VideoLayout.h"
@@ -27,34 +27,26 @@
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/shared_mutex.hpp>
-#include <BufferManager.h>
 #include <JobTimer.h>
 #include <logger.h>
 #include <MediaFramePipeline.h>
 #include <vector>
+#include <VideoCommonDefs.h>
+#include <va/va.h>
 
-namespace webrtc {
-class I420VideoFrame;
-class VideoProcessingModule;
+struct VideoRect;
+
+namespace YamiMediaCodec {
+class IVideoPostProcess;
+}
+
+namespace woogeen_base {
+class PooledFrameAllocator;
+class YamiVideoInputManager;
 }
 
 namespace mcu {
-
-/**
- * manages a pool of VPM for preprocessing the incoming I420 frame
- */
-class VPMPool {
-public:
-    VPMPool(unsigned int size);
-    ~VPMPool();
-    webrtc::VideoProcessingModule* get(unsigned int input);
-    void update(unsigned int input, VideoSize&);
-    unsigned int size() { return m_size; }
-
-private:
-    webrtc::VideoProcessingModule** m_vpms;
-    unsigned int m_size;    // total pool capacity
-};
+class BackgroundCleaner;
 
 /**
  * composite a sequence of frames into one frame based on current layout config,
@@ -62,18 +54,17 @@ private:
  * but only 6 regions are configed. current implementation will only show 6 participants but
  * still 16 audios will be mixed. In the future, we may enable the video rotation based on VAD history.
  */
-class SoftVideoCompositor : public VideoFrameCompositor,
+class YamiVideoCompositor : public VideoFrameCompositor,
                             public woogeen_base::JobTimerListener {
     DECLARE_LOGGER();
     enum LayoutSolutionState{UN_INITIALIZED = 0, CHANGING, IN_WORK};
 public:
-    SoftVideoCompositor(uint32_t maxInput, VideoSize rootSize, YUVColor bgColor, bool crop);
-    ~SoftVideoCompositor();
+    YamiVideoCompositor(uint32_t maxInput, VideoSize rootSize, YUVColor bgColor);
+    ~YamiVideoCompositor();
 
     bool activateInput(int input);
     void deActivateInput(int input);
-    void pushInput(int input, const woogeen_base::Frame&);
-
+    void pushInput(int input, const woogeen_base::Frame& frame);
     void updateRootSize(VideoSize& rootSize);
     void updateBackgroundColor(YUVColor& bgColor);
     void updateLayoutSolution(LayoutSolution& solution);
@@ -81,29 +72,31 @@ public:
     void onTimeout();
 
 private:
-    webrtc::I420VideoFrame* layout();
-    webrtc::I420VideoFrame* customLayout();
+    SharedPtr<VideoFrame> layout();
+    SharedPtr<VideoFrame> customLayout();
     void generateFrame();
-    bool commitLayout(); // Commit the new layout config.
-    void setBackgroundColor();
+    void clearBackgroud(const SharedPtr<VideoFrame>& dest);
+
     // Delta used for translating between NTP and internal timestamps.
     int64_t m_ntpDelta;
-    boost::scoped_ptr<VPMPool> m_vpmPool;
-    boost::scoped_ptr<woogeen_base::BufferManager> m_bufferManager;
-    boost::scoped_ptr<webrtc::I420VideoFrame> m_compositeFrame;
+
+    boost::shared_mutex m_mutex;
     VideoSize m_compositeSize;
-    VideoSize m_newCompositeSize;
-    YUVColor m_bgColor;
+    uint32_t m_bgColor;
     LayoutSolution m_currentLayout;
-    LayoutSolution m_newLayout;
-    LayoutSolutionState m_solutionState;
-    bool m_crop;
-    /*
-     * Each incoming channel will store the decoded frame in this array, and the composition
-     * thread will scan this array and composite the frames into one frame.
-     */
+
+    boost::shared_ptr<VADisplay> m_display;
+    SharedPtr<woogeen_base::PooledFrameAllocator> m_allocator;
+    SharedPtr<YamiMediaCodec::IVideoPostProcess> m_vpp;
+    std::vector<boost::shared_ptr<woogeen_base::YamiVideoInputManager> > m_inputs;
+    std::vector<VideoRect> m_inputRects;
+
+    boost::shared_ptr<BackgroundCleaner> m_backgroundCleaner;
+
+    // LayoutSolution m_newLayout;
+    // LayoutSolutionState m_solutionState;
     boost::scoped_ptr<woogeen_base::JobTimer> m_jobTimer;
 };
 
 }
-#endif /* SoftVideoCompositor_h*/
+#endif /* YamiVideoCompositor_h*/
