@@ -21,14 +21,17 @@
 #ifndef VCMFrameEncoder_h
 #define VCMFrameEncoder_h
 
+#include "BufferManager.h"
+#include "JobTimer.h"
 #include "MediaFramePipeline.h"
 #include "WebRTCTaskRunner.h"
 
+#include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/shared_mutex.hpp>
+#include <logger.h>
 #include <map>
 #include <tuple>
-#include <logger.h>
 #include <webrtc/modules/video_coding/main/interface/video_coding.h>
 
 namespace woogeen_base {
@@ -66,7 +69,7 @@ private:
 /**
  * This is the class to accept the raw frame and encode it to the given format.
  */
-class VCMFrameEncoder : public VideoFrameEncoder, public webrtc::VCMPacketizationCallback {
+class VCMFrameEncoder : public VideoFrameEncoder, public webrtc::VCMPacketizationCallback, public JobTimerListener {
     DECLARE_LOGGER();
 
 public:
@@ -75,7 +78,7 @@ public:
 
     // Implements VideoFrameEncoder.
     void onFrame(const Frame&);
-    bool canSimulcastFor(FrameFormat format, uint32_t width, uint32_t height);
+    bool canSimulcast(FrameFormat format, uint32_t width, uint32_t height);
     bool isIdle();
     int32_t generateStream(uint32_t width, uint32_t height, FrameDestination* dest);
     void degenerateStream(int32_t streamId);
@@ -88,6 +91,9 @@ public:
         const webrtc::EncodedImage& encoded_image,
         const webrtc::RTPFragmentationHeader& fragmentationHeader,
         const webrtc::RTPVideoHeader* rtpVideoHdr);
+
+    // Implements JobTimerListener
+    void onTimeout();
 
 private:
     struct OutStream {
@@ -102,6 +108,8 @@ private:
     FrameFormat m_encodeFormat;
     boost::shared_ptr<WebRTCTaskRunner> m_taskRunner;
 
+    boost::scoped_ptr<BufferManager> m_bufferManager;
+    boost::scoped_ptr<woogeen_base::JobTimer> m_jobTimer;
     std::map<int32_t/*streamId*/, OutStream> m_streams;
     boost::shared_mutex m_mutex;
 };

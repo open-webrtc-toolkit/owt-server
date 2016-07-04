@@ -77,7 +77,7 @@ SoftVideoCompositor::SoftVideoCompositor(uint32_t maxInput, VideoSize rootSize, 
     // Initialize frame buffer and buffer manager for video composition
     m_compositeFrame.reset(new webrtc::I420VideoFrame());
     m_compositeFrame->CreateEmptyFrame(m_compositeSize.width, m_compositeSize.height, m_compositeSize.width, m_compositeSize.width / 2, m_compositeSize.width / 2);
-    m_bufferManager.reset(new BufferManager(maxInput, m_compositeSize.width, m_compositeSize.height));
+    m_bufferManager.reset(new woogeen_base::BufferManager(maxInput, m_compositeSize.width, m_compositeSize.height));
 
     m_jobTimer.reset(new woogeen_base::JobTimer(30, this));
     m_jobTimer->start();
@@ -123,11 +123,14 @@ void SoftVideoCompositor::deActivateInput(int input)
         m_bufferManager->releaseBuffer(busyFrame);
 }
 
-void SoftVideoCompositor::pushInput(int input, webrtc::I420VideoFrame* frame)
+void SoftVideoCompositor::pushInput(int input, const Frame& frame)
 {
+    assert(frame.format == woogeen_base::FRAME_FORMAT_I420);
+    webrtc::I420VideoFrame* i420Frame = reinterpret_cast<webrtc::I420VideoFrame*>(frame.payload);
+
     I420VideoFrame* freeFrame = m_bufferManager->getFreeBuffer();
     if (freeFrame) {
-        freeFrame->CopyFrame(*frame);
+        freeFrame->CopyFrame(*i420Frame);
         I420VideoFrame* busyFrame = m_bufferManager->postFreeBuffer(freeFrame, input);
         if (busyFrame)
             m_bufferManager->releaseBuffer(busyFrame);

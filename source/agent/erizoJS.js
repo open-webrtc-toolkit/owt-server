@@ -79,8 +79,7 @@ var rpc = require('./amqper');
             }
             var info = stdout.toString() || stderr.toString();
             // Check hardware codec version
-            GLOBAL.config.video.hardwareAccelerated = (info.indexOf('VA-API version 0.35.0') != -1) ||
-                                                        (info.indexOf('VA-API version: 0.35') != -1);
+            GLOBAL.config.video.hardwareAccelerated = (info.indexOf('VA-API version') != -1);
         });
     }
 })();

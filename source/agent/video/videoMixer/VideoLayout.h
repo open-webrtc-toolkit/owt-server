@@ -53,6 +53,13 @@ namespace mcu {
  */
 
 struct Region {
+    Region()
+        : left(0.0)
+        , top(0.0)
+        , relativeSize(0.0)
+    {
+    }
+
     std::string id;
     float left; // percentage
     float top;    // percentage
