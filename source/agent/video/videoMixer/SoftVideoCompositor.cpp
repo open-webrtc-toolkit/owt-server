@@ -26,6 +26,7 @@
 #include <webrtc/system_wrappers/interface/tick_util.h>
 
 using namespace webrtc;
+using namespace woogeen_base;
 
 namespace mcu {
 

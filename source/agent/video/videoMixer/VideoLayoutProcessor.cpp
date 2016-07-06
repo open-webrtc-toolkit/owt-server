@@ -24,6 +24,8 @@
 
 namespace mcu {
 
+using namespace woogeen_base;
+
 DEFINE_LOGGER(VideoLayoutProcessor, "mcu.media.VideoLayoutProcessor");
 
 VideoLayoutProcessor::VideoLayoutProcessor(boost::property_tree::ptree& layoutConfig)
@@ -245,6 +247,17 @@ std::string VideoLayoutProcessor::getInputRegion(int input)
         return m_currentRegions->at(position).id;
     }
     return "";
+}
+
+Region VideoLayoutProcessor::getRegionDetail(int input)
+{
+    std::vector<int>::iterator inputIt = std::find(m_inputPositions.begin(), m_inputPositions.end(), input);
+    if (inputIt != m_inputPositions.end()) {
+        uint32_t position = inputIt - m_inputPositions.begin();
+        assert(m_currentRegions->size() > position);
+        return m_currentRegions->at(position);
+    }
+    return Region();
 }
 
 void VideoLayoutProcessor::updateInputPositions()

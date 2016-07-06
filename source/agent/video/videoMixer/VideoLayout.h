@@ -25,8 +25,6 @@
 
 #include <list>
 
-using namespace woogeen_base;
-
 namespace mcu {
 
 /**
@@ -80,8 +78,8 @@ public:
 };
 
 // Default video layout configuration
-const VideoSize DEFAULT_VIDEO_SIZE = {640, 480};
-const YUVColor DEFAULT_VIDEO_BG_COLOR = {0x00, 0x80, 0x80};
+const woogeen_base::VideoSize DEFAULT_VIDEO_SIZE = {640, 480};
+const woogeen_base::YUVColor DEFAULT_VIDEO_BG_COLOR = {0x00, 0x80, 0x80};
 
 }
 #endif

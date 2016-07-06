@@ -32,6 +32,7 @@
  */
 class VideoMixer : public node::ObjectWrap {
  public:
+  DECLARE_LOGGER();
   static void Init(v8::Handle<v8::Object>, v8::Handle<v8::Object>);
   mcu::VideoMixer* me;
 
@@ -51,6 +52,8 @@ class VideoMixer : public node::ObjectWrap {
   static void setRegion(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void getRegion(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void setPrimary(const v8::FunctionCallbackInfo<v8::Value>& args);
+
+  static void getCurrentRegions(const v8::FunctionCallbackInfo<v8::Value>& args);
 };
 
 #endif
