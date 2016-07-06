@@ -12,6 +12,7 @@ DISABLE_NONFREE=false
 CLEANUP=false
 NIGHTLY=false
 NO_INTERNAL=false
+ENABLE_YAMI=false
 
 parse_arguments(){
   while [ "$1" != "" ]; do
@@ -27,6 +28,9 @@ parse_arguments(){
         ;;
       "--no-internal")
         NO_INTERNAL=true
+        ;;
+      "--enable-yami")
+        ENABLE_YAMI=true
         ;;
     esac
     shift
@@ -86,9 +90,11 @@ fi
 
 ${NO_INTERNAL} || install_webrtc
 
-install_libva
-install_libva_driver
-install_libyami
+if [ "$ENABLE_YAMI" = "true" ]; then
+  install_libva
+  install_libva_driver
+  install_libyami
+fi
 
 if [ "$CLEANUP" = "true" ]; then
   echo "Cleaning up..."
