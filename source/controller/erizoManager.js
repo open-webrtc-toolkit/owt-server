@@ -90,7 +90,7 @@ module.exports = function (spec) {
                     },
                     on_failed);
         }, function () {
-            on_failed('Failed to get accessing agent.');
+            on_failed('Failed to get agent: ' + purpose);
         });
     };
 
