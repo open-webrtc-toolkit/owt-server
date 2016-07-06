@@ -48,7 +48,7 @@ public:
     VPMPool(unsigned int size);
     ~VPMPool();
     webrtc::VideoProcessingModule* get(unsigned int input);
-    void update(unsigned int input, VideoSize&);
+    void update(unsigned int input, woogeen_base::VideoSize&);
     unsigned int size() { return m_size; }
 
 private:
@@ -67,15 +67,15 @@ class SoftVideoCompositor : public VideoFrameCompositor,
     DECLARE_LOGGER();
     enum LayoutSolutionState{UN_INITIALIZED = 0, CHANGING, IN_WORK};
 public:
-    SoftVideoCompositor(uint32_t maxInput, VideoSize rootSize, YUVColor bgColor, bool crop);
+    SoftVideoCompositor(uint32_t maxInput, woogeen_base::VideoSize rootSize, woogeen_base::YUVColor bgColor, bool crop);
     ~SoftVideoCompositor();
 
     bool activateInput(int input);
     void deActivateInput(int input);
     void pushInput(int input, const woogeen_base::Frame&);
 
-    void updateRootSize(VideoSize& rootSize);
-    void updateBackgroundColor(YUVColor& bgColor);
+    void updateRootSize(woogeen_base::VideoSize& rootSize);
+    void updateBackgroundColor(woogeen_base::YUVColor& bgColor);
     void updateLayoutSolution(LayoutSolution& solution);
 
     void onTimeout();
@@ -91,9 +91,9 @@ private:
     boost::scoped_ptr<VPMPool> m_vpmPool;
     boost::scoped_ptr<woogeen_base::BufferManager> m_bufferManager;
     boost::scoped_ptr<webrtc::I420VideoFrame> m_compositeFrame;
-    VideoSize m_compositeSize;
-    VideoSize m_newCompositeSize;
-    YUVColor m_bgColor;
+    woogeen_base::VideoSize m_compositeSize;
+    woogeen_base::VideoSize m_newCompositeSize;
+    woogeen_base::YUVColor m_bgColor;
     LayoutSolution m_currentLayout;
     LayoutSolution m_newLayout;
     LayoutSolutionState m_solutionState;

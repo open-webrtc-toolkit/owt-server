@@ -23,8 +23,12 @@
 #endif
 
 #include "VideoMixerWrapper.h"
+#include "logger.h"
+
 
 using namespace v8;
+
+DEFINE_LOGGER(VideoMixer, "VideoMixerWrap");
 
 Persistent<Function> VideoMixer::constructor;
 VideoMixer::VideoMixer() {};
@@ -45,6 +49,7 @@ void VideoMixer::Init(Handle<Object> exports, Handle<Object> module) {
   NODE_SET_PROTOTYPE_METHOD(tpl, "setRegion", setRegion);
   NODE_SET_PROTOTYPE_METHOD(tpl, "getRegion", getRegion);
   NODE_SET_PROTOTYPE_METHOD(tpl, "setPrimary", setPrimary);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "getCurrentRegions", getCurrentRegions);
 
   constructor.Reset(isolate, tpl->GetFunction());
   module->Set(String::NewFromUtf8(isolate, "exports"), tpl->GetFunction());
@@ -185,4 +190,36 @@ void VideoMixer::setPrimary(const v8::FunctionCallbackInfo<v8::Value>& args) {
   std::string inStreamID = std::string(*param0);
 
   me->setPrimary(inStreamID);
+}
+
+void VideoMixer::getCurrentRegions(const v8::FunctionCallbackInfo<v8::Value>& args) {
+  Isolate* isolate = Isolate::GetCurrent();
+
+  VideoMixer* obj = ObjectWrap::Unwrap<VideoMixer>(args.Holder());
+  mcu::VideoMixer* me = obj->me;
+
+  boost::shared_ptr<std::map<std::string, mcu::Region>> currentRegions = me->getCurrentRegions();
+  if (currentRegions && currentRegions->size()) {
+    // Construct a js array
+    Local<Array> regionArray = Array::New(isolate, currentRegions->size());
+
+    ELOG_WARN("Current Regions in Layout:%lu\n", currentRegions->size());
+
+    int arrayPos = 0;
+    for (std::map<std::string, mcu::Region>::iterator it = currentRegions->begin(); it != currentRegions->end(); it++) {
+      Local<Object> region = Object::New(isolate);
+      region->Set(String::NewFromUtf8(isolate, "streamID"), String::NewFromUtf8(isolate, it->first.c_str()));
+      region->Set(String::NewFromUtf8(isolate, "id"), String::NewFromUtf8(isolate, it->second.id.c_str()));
+      region->Set(String::NewFromUtf8(isolate, "left"), Number::New(isolate, it->second.left));
+      region->Set(String::NewFromUtf8(isolate, "top"), Number::New(isolate, it->second.top));
+      region->Set(String::NewFromUtf8(isolate, "relativeSize"), Number::New(isolate, it->second.relativeSize));
+
+      regionArray->Set(arrayPos, region);
+      arrayPos++;
+    }
+
+    args.GetReturnValue().Set(regionArray);
+  } else {
+    args.GetReturnValue().Set(v8::Null(isolate));
+  }
 }

@@ -154,7 +154,13 @@ var Portal = function(spec, rpcClient) {
                                        in_session: session,
                                        controller: session_controller,
                                        connections: {}};
-        return {user: userName, role: role, session_id: session, participants: joinResult.participants, streams: joinResult.streams};
+        return {
+          user: userName,
+          role: role,
+          session_id: session,
+          participants: joinResult.participants,
+          streams: joinResult.streams,
+        };
       });
   };
 
@@ -375,7 +381,7 @@ var Portal = function(spec, rpcClient) {
       //FIXME - a: use the target stream id as the subscription_id to keep compatible with client SDK, should be fixed and use random strings independently later.
       subscription_id = participantId + '-sub-' + ((subscriptionDescription.audio && subscriptionDescription.audio.fromStream) ||
                                                    (subscriptionDescription.video && subscriptionDescription.video.fromStream));
-    } else if(connectionType === 'recording') {
+    } else if (connectionType === 'recording') {
       subscription_id = subscriptionDescription.recorderId || formatDate(new Date, 'yyyyMMddhhmmssSS');
     } else {
       subscription_id = Math.random() * 1000000000000000000 + '';
@@ -442,7 +448,6 @@ var Portal = function(spec, rpcClient) {
       }
       return Promise.reject(reason);
     };
-
 
     return rpcClient.getAccessNode(cluster_name, connectionType, {session: participants[participantId].in_session, consumer: connection_id})
       .then(function(accessNode) {

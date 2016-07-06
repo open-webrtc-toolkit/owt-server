@@ -234,6 +234,19 @@ void VideoMixer::removeOutput(const std::string& outStreamID)
     }
 }
 
+boost::shared_ptr<std::map<std::string, mcu::Region>> VideoMixer::getCurrentRegions()
+{
+    boost::shared_ptr<std::map<std::string, Region>> layoutMap(new std::map<std::string, Region>);
+
+    for (auto it = m_inputs.begin(); it != m_inputs.end(); it++) {
+        std::string streamID = it->first;
+        int index = it->second;
+        (*layoutMap)[streamID] = m_layoutProcessor->getRegionDetail(index);
+    }
+
+    return layoutMap;
+}
+
 int VideoMixer::useAFreeInputIndex()
 {
     for (size_t i = 0; i < m_freeInputIndexes.size(); ++i) {

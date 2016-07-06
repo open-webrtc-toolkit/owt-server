@@ -150,12 +150,24 @@ module.exports = function () {
         }
     };
 
+    var getSortedRegions = function () {
+        // TODO: implement the layout processor in node.js layer.
+        var regions = (engine.getCurrentRegions() || []);
+        // Sort by region ID to save work with overlap in client side.
+        regions.sort(function(regionA, regionB) {
+            return regionA.id.localeCompare(regionB.id);
+        });
+
+        return regions;
+    };
+
     var notifyLayoutChange = function () {
         if (observer) {
+            var regions = getSortedRegions();
             amqper.callRpc(
                 observer,
                 'onVideoLayoutChange',
-                [session_id, {fix_me: 'new layout data'}]);
+                [session_id, regions]);
         }
     };
 

@@ -43,9 +43,9 @@ public:
     void registerConsumer(boost::shared_ptr<LayoutConsumer>);
     void deregisterConsumer(boost::shared_ptr<LayoutConsumer>);
 
-    bool getRootSize(VideoSize& rootSize);
+    bool getRootSize(woogeen_base::VideoSize& rootSize);
 
-    bool getBgColor(YUVColor& bgColor);
+    bool getBgColor(woogeen_base::YUVColor& bgColor);
 
     void addInput(int input, bool toFront = false);
     void addInput(int input, std::string& specifiedRegionID);
@@ -54,6 +54,8 @@ public:
     void promoteInputs(std::vector<int>& inputs);
     bool specifyInputRegion(int input, const std::string& regionID);
     std::string getInputRegion(int input);
+    // Get detail region for layout
+    Region getRegionDetail(int input);
     void setEventRegistry(EventRegistry* handle) { m_eventHandle = handle; }
 
 private:
@@ -62,8 +64,8 @@ private:
 
 private:
     std::list<boost::shared_ptr<LayoutConsumer>> m_consumers;
-    VideoSize m_rootSize;
-    YUVColor m_bgColor;
+    woogeen_base::VideoSize m_rootSize;
+    woogeen_base::YUVColor m_bgColor;
     std::vector<int> m_inputPositions;
     std::vector<Region>* m_currentRegions;
     std::map<size_t /*MaxInputCount*/, std::vector<Region>> m_templates;

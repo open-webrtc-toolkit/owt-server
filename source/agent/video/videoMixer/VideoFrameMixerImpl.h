@@ -69,13 +69,13 @@ private:
 
 class VideoFrameMixerImpl : public VideoFrameMixer {
 public:
-    VideoFrameMixerImpl(uint32_t maxInput, VideoSize rootSize, YUVColor bgColor, boost::shared_ptr<woogeen_base::WebRTCTaskRunner>, bool useSimulcast, bool crop);
+    VideoFrameMixerImpl(uint32_t maxInput, woogeen_base::VideoSize rootSize, woogeen_base::YUVColor bgColor, boost::shared_ptr<woogeen_base::WebRTCTaskRunner>, bool useSimulcast, bool crop);
     ~VideoFrameMixerImpl();
 
     bool addInput(int input, woogeen_base::FrameFormat, woogeen_base::FrameSource*);
     void removeInput(int input);
 
-    bool addOutput(int output, woogeen_base::FrameFormat, const VideoSize&, woogeen_base::FrameDestination*);
+    bool addOutput(int output, woogeen_base::FrameFormat, const woogeen_base::VideoSize&, woogeen_base::FrameDestination*);
     void removeOutput(int output);
     void setBitrate(unsigned short kbps, int output);
     void requestKeyFrame(int output);
@@ -106,7 +106,7 @@ private:
     bool m_useSimulcast;
 };
 
-VideoFrameMixerImpl::VideoFrameMixerImpl(uint32_t maxInput, VideoSize rootSize, YUVColor bgColor, boost::shared_ptr<woogeen_base::WebRTCTaskRunner> taskRunner, bool useSimulcast, bool crop)
+VideoFrameMixerImpl::VideoFrameMixerImpl(uint32_t maxInput, woogeen_base::VideoSize rootSize, woogeen_base::YUVColor bgColor, boost::shared_ptr<woogeen_base::WebRTCTaskRunner> taskRunner, bool useSimulcast, bool crop)
     : m_taskRunner(taskRunner)
     , m_useSimulcast(useSimulcast)
 {
@@ -225,7 +225,7 @@ inline void VideoFrameMixerImpl::requestKeyFrame(int output)
 
 inline bool VideoFrameMixerImpl::addOutput(int output,
                                            woogeen_base::FrameFormat format,
-                                           const VideoSize& rootSize,
+                                           const woogeen_base::VideoSize& rootSize,
                                            woogeen_base::FrameDestination* dest)
 {
     boost::shared_ptr<woogeen_base::VideoFrameEncoder> encoder;

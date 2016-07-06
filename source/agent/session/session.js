@@ -70,7 +70,18 @@ module.exports = function (amqper, selfRpcId) {
                   log.debug('room controller init ok');
                   resolve('ok');
                   if (room_config.enableMixing) {
-                    var mixed_stream = new ST.Stream({id: session_id, socket: '', audio: true, video: {device: 'mcu', resolutions: resolutions}, from: '', attributes: null});
+                    var mixed_stream = new ST.Stream({
+                      id: session_id,
+                      socket: '',
+                      audio: true,
+                      video: {
+                        device: 'mcu',
+                        resolutions: resolutions,
+                        layout: []
+                      },
+                      from: '',
+                      attributes: null
+                    });
                     streams[session_id] = mixed_stream;
                     log.debug('Mixed stream info:', mixed_stream.getPublicStream(), 'resolutions:', mixed_stream.getPublicStream().video.resolutions);
                     sendMsg('room', 'all', 'add_stream', mixed_stream.getPublicStream());
@@ -143,7 +154,9 @@ module.exports = function (amqper, selfRpcId) {
         for (var stream_id in streams) {
           current_streams.push(streams[stream_id].getPublicStream());
         }
+
         callback('callback', {participants: current_participants, streams: current_streams});
+
         sendMsg(participantInfo.id, 'others', 'user_join', {user: {id: participantInfo.id, name: participantInfo.name, role: participantInfo.role}});
       }, function(err) {
         log.warn('Participant ' + participantInfo.id + ' join session ' + sessionId + ' failed, err:', err);
@@ -395,6 +408,7 @@ module.exports = function (amqper, selfRpcId) {
 
   that.onVideoLayoutChange = function(sessionId, layout, callback) {
     if (session_id === sessionId) {
+      streams[sessionId].setLayout(layout);
       sendMsg('room', 'all', 'update_stream', {event: 'VideoLayoutChanged', id: session_id, data: layout});
       callback('callback', 'ok');
     } else {

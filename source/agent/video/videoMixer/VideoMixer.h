@@ -30,6 +30,7 @@
 
 #include "MediaFramePipeline.h"
 #include "WebRTCTaskRunner.h"
+#include "VideoLayoutProcessor.h"
 
 namespace webrtc {
 class VoEVideoSync;
@@ -61,6 +62,9 @@ public:
         //TODO: Establish another data path to guarantee the a/v sync of input streams.
         return -1;
     }
+
+    // Current layout { streamID : region } map
+    boost::shared_ptr<std::map<std::string, mcu::Region>> getCurrentRegions();
 
 private:
     int useAFreeInputIndex();

@@ -100,7 +100,14 @@ exports.Stream = function (spec) {
 
     // Returns the public specification of this stream
     that.getPublicStream = function () {
-        return {id: spec.id, audio: spec.audio, video: spec.video, data: spec.data, from: spec.from, attributes: spec.attributes};
+        return {
+            id: spec.id,
+            audio: spec.audio,
+            video: spec.video,
+            data: spec.data,
+            from: spec.from,
+            attributes: spec.attributes
+        };
     };
 
     that.getOwner = function () {
@@ -113,6 +120,16 @@ exports.Stream = function (spec) {
 
     that.setStatus = function (status) {
         spec.status = status;
+    };
+
+    that.getLayout = function () {
+        return (spec.video && spec.video.layout);
+    };
+
+    that.setLayout = function (newLayout) {
+        if (spec.video) {
+            spec.video.layout = newLayout;
+        }
     };
 
     return that;
