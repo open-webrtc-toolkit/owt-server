@@ -20,13 +20,12 @@
 
 #ifdef ENABLE_MSDK
 
-#include <fcntl.h>
+#include "MsdkBase.h"
 
+#include <fcntl.h>
 #include <va/va.h>
 #include <va/va_drm.h>
-#include "vaapi_allocator.h"
-
-#include "MsdkBase.h"
+#include <vaapi_allocator.h>
 
 namespace woogeen_base {
 
