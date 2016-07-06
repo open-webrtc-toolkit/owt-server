@@ -248,7 +248,7 @@ namespace erizo {
 
   void NiceConnection::queueData(unsigned int component_id, char* buf, int len) {
     if (this->checkIceState() == NICE_READY && running_){
-      boost::mutex::scoped_lock(queueMutex_);
+      boost::mutex::scoped_lock lock(queueMutex_);
       if (niceQueue_.size() < 1000 ) {
         packetPtr p_(new dataPacket());
         if (p_) {
