@@ -1,6 +1,6 @@
 {
   "name": "WooGeen-Gateway-ooVoo",
-  "version": "0.12.3",
+  "version": "0.13.0",
   "description": "Intel CS for WebRTC Gateway to ooVoo",
   "dependencies": {
     "socket.io": "0.9.17",
