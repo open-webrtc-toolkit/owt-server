@@ -1,12 +1,21 @@
-/* ****************************************************************************** *\
+/******************************************************************************\
+Copyright (c) 2005-2016, Intel Corporation
+All rights reserved.
 
-INTEL CORPORATION PROPRIETARY INFORMATION
-This software is supplied under the terms of a license agreement or nondisclosure
-agreement with Intel Corporation and may not be copied or disclosed except in
-accordance with the terms of that agreement
-Copyright(c) 2008-2012 Intel Corporation. All Rights Reserved.
+Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
 
-\* ****************************************************************************** */
+1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+This sample was distributed or derived from the Intel's Media Samples package.
+The original version of this sample may be obtained from https://software.intel.com/en-us/intel-media-server-studio
+or https://software.intel.com/en-us/media-client-solutions-support.
+\**********************************************************************************/
 
 #include <assert.h>
 #include <algorithm>
@@ -108,27 +117,34 @@ mfxStatus BaseFrameAllocator::AllocFrames(mfxFrameAllocRequest *request, mfxFram
 
     if ( (request->Type & MFX_MEMTYPE_EXTERNAL_FRAME) && (request->Type & MFX_MEMTYPE_FROM_DECODE) )
     {
+        bool foundInCache = false;
         // external decoder allocations
-        std::list<UniqueResponse>::iterator it =
-            std::find_if( m_ExtResponses.begin()
-                        , m_ExtResponses.end()
-                        , UniqueResponse (*response, request->Info.CropW, request->Info.CropH, 0));
-
-        if (it != m_ExtResponses.end())
+        std::list<UniqueResponse>::iterator
+            it = m_ExtResponses.begin(),
+            et = m_ExtResponses.end();
+        UniqueResponse checker(*response, request->Info.CropW, request->Info.CropH, 0);
+        for (; it != et; ++it)
         {
-            // check if enough frames were allocated
-            if (request->NumFrameSuggested > it->NumFrameActual)
-                return MFX_ERR_MEMORY_ALLOC;
+            // same decoder and same size
+            if (request->AllocId == it->AllocId && checker(*it))
+            {
+                // check if enough frames were allocated
+                if (request->NumFrameSuggested > it->NumFrameActual)
+                    return MFX_ERR_MEMORY_ALLOC;
 
-            it->m_refCount++;
-            // return existing response
-            *response = (mfxFrameAllocResponse&)*it;
+                it->m_refCount++;
+                // return existing response
+                *response = (mfxFrameAllocResponse&)*it;
+                foundInCache = true;
+            }
         }
-        else
+
+        if (!foundInCache)
         {
             sts = AllocImpl(request, response);
             if (sts == MFX_ERR_NONE)
             {
+                response->AllocId = request->AllocId;
                 m_ExtResponses.push_back(UniqueResponse(*response, request->Info.CropW, request->Info.CropH, request->Type & MEMTYPE_FROM_MASK));
             }
         }
