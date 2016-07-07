@@ -1,61 +1,27 @@
-/* ****************************************************************************** *\
+/******************************************************************************\
+Copyright (c) 2005-2015, Intel Corporation
+All rights reserved.
 
-INTEL CORPORATION PROPRIETARY INFORMATION
-This software is supplied under the terms of a license agreement or nondisclosure
-agreement with Intel Corporation and may not be copied or disclosed except in
-accordance with the terms of that agreement
-Copyright(c) 2011-2014 Intel Corporation. All Rights Reserved.
+Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
 
-\* ****************************************************************************** */
+1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+This sample was distributed or derived from the Intel's Media Samples package.
+The original version of this sample may be obtained from https://software.intel.com/en-us/intel-media-server-studio
+or https://software.intel.com/en-us/media-client-solutions-support.
+\**********************************************************************************/
 
 
 #include <stdio.h>
 #include <assert.h>
 
 #include "vaapi_allocator.h"
-//#include "vaapi_utils.h"
-
-enum {
-    MFX_FOURCC_VP8_NV12    = MFX_MAKEFOURCC('V','P','8','N'),
-    MFX_FOURCC_VP8_MBDATA  = MFX_MAKEFOURCC('V','P','8','M'),
-    MFX_FOURCC_VP8_SEGMAP  = MFX_MAKEFOURCC('V','P','8','S'),
-};
-
-unsigned int ConvertMfxFourccToVAFormat(mfxU32 fourcc)
-{
-    switch (fourcc)
-    {
-    case MFX_FOURCC_NV12:
-        return VA_FOURCC_NV12;
-    case MFX_FOURCC_YUY2:
-        return VA_FOURCC_YUY2;
-    case MFX_FOURCC_YV12:
-        return VA_FOURCC_YV12;
-    case MFX_FOURCC_RGB4:
-        return VA_FOURCC_ARGB;
-    case MFX_FOURCC_P8:
-        return VA_FOURCC_P208;
-
-    default:
-        assert(!"unsupported fourcc");
-        return 0;
-    }
-}
-
-unsigned int ConvertVP8FourccToMfxFourcc(mfxU32 fourcc)
-{
-    switch (fourcc)
-    {
-    case MFX_FOURCC_VP8_NV12:
-    case MFX_FOURCC_VP8_MBDATA:
-        return MFX_FOURCC_NV12;
-    case MFX_FOURCC_VP8_SEGMAP:
-        return MFX_FOURCC_P8;
-
-    default:
-        return fourcc;
-    }
-}
 
 mfxStatus va_to_mfx_status(VAStatus va_res)
 {
@@ -96,8 +62,54 @@ mfxStatus va_to_mfx_status(VAStatus va_res)
     return mfxRes;
 }
 
+enum {
+    MFX_FOURCC_VP8_NV12    = MFX_MAKEFOURCC('V','P','8','N'),
+    MFX_FOURCC_VP8_MBDATA  = MFX_MAKEFOURCC('V','P','8','M'),
+    MFX_FOURCC_VP8_SEGMAP  = MFX_MAKEFOURCC('V','P','8','S'),
+};
+
+unsigned int ConvertMfxFourccToVAFormat(mfxU32 fourcc)
+{
+    switch (fourcc)
+    {
+    case MFX_FOURCC_NV12:
+        return VA_FOURCC_NV12;
+    case MFX_FOURCC_YUY2:
+        return VA_FOURCC_YUY2;
+    case MFX_FOURCC_UYVY:
+        return VA_FOURCC_UYVY;
+    case MFX_FOURCC_YV12:
+        return VA_FOURCC_YV12;
+    case MFX_FOURCC_RGB4:
+        return VA_FOURCC_ARGB;
+    case MFX_FOURCC_P8:
+        return VA_FOURCC_P208;
+
+    default:
+        assert(!"unsupported fourcc");
+        return 0;
+    }
+}
+
+unsigned int ConvertVP8FourccToMfxFourcc(mfxU32 fourcc)
+{
+    switch (fourcc)
+    {
+    case MFX_FOURCC_VP8_NV12:
+    case MFX_FOURCC_VP8_MBDATA:
+        return MFX_FOURCC_NV12;
+    case MFX_FOURCC_VP8_SEGMAP:
+        return MFX_FOURCC_P8;
+
+    default:
+        return fourcc;
+    }
+}
+
 vaapiFrameAllocator::vaapiFrameAllocator():
     m_dpy(0)
+    , m_export_mode(vaapiAllocatorParams::DONOT_EXPORT)
+    , m_exporter(NULL)
 {
 }
 
@@ -113,8 +125,22 @@ mfxStatus vaapiFrameAllocator::Init(mfxAllocatorParams *pParams)
     if ((NULL == p_vaapiParams) || (NULL == p_vaapiParams->m_dpy))
         return MFX_ERR_NOT_INITIALIZED;
 
-    m_dpy = p_vaapiParams->m_dpy;
+    if ((p_vaapiParams->m_export_mode != vaapiAllocatorParams::DONOT_EXPORT) &&
+        !(p_vaapiParams->m_export_mode & vaapiAllocatorParams::FLINK) &&
+        !(p_vaapiParams->m_export_mode & vaapiAllocatorParams::PRIME) &&
+        !(p_vaapiParams->m_export_mode & vaapiAllocatorParams::CUSTOM))
+      return MFX_ERR_UNSUPPORTED;
+    if ((p_vaapiParams->m_export_mode & vaapiAllocatorParams::CUSTOM) &&
+        !p_vaapiParams->m_exporter)
+      return MFX_ERR_UNSUPPORTED;
 
+    m_dpy = p_vaapiParams->m_dpy;
+    m_export_mode = p_vaapiParams->m_export_mode;
+    m_exporter = p_vaapiParams->m_exporter;
+#if defined(LIBVA_WAYLAND_SUPPORT)
+    // TODO this should be done on application level via allocator parameters!!
+    m_export_mode = vaapiAllocatorParams::PRIME;
+#endif
     return MFX_ERR_NONE;
 }
 
@@ -157,6 +183,7 @@ mfxStatus vaapiFrameAllocator::AllocImpl(mfxFrameAllocRequest *request, mfxFrame
     if (!va_fourcc || ((VA_FOURCC_NV12 != va_fourcc) &&
                        (VA_FOURCC_YV12 != va_fourcc) &&
                        (VA_FOURCC_YUY2 != va_fourcc) &&
+                       (VA_FOURCC_UYVY != va_fourcc) &&
                        (VA_FOURCC_ARGB != va_fourcc) &&
                        (VA_FOURCC_P208 != va_fourcc)))
     {
@@ -202,6 +229,10 @@ mfxStatus vaapiFrameAllocator::AllocImpl(mfxFrameAllocRequest *request, mfxFrame
             {
                 format = VA_RT_FORMAT_YUV420;
             }
+            else if (va_fourcc == VA_FOURCC_UYVY)
+            {
+                format = VA_RT_FORMAT_YUV422;
+            }
 
             va_res = vaCreateSurfaces(m_dpy,
                                     format,
@@ -215,7 +246,7 @@ mfxStatus vaapiFrameAllocator::AllocImpl(mfxFrameAllocRequest *request, mfxFrame
         }
         else
         {
-            VAContextID context_id = request->reserved[0];
+            VAContextID context_id = request->AllocId;
             int codedbuf_size;
 
             int width32 = 32 * ((request->Info.Width + 31) >> 5);
@@ -249,7 +280,38 @@ mfxStatus vaapiFrameAllocator::AllocImpl(mfxFrameAllocRequest *request, mfxFrame
                 surfaces[numAllocated] = coded_buf;
             }
         }
+    }
+    if ((MFX_ERR_NONE == mfx_res) &&
+        (request->Type & MFX_MEMTYPE_EXPORT_FRAME))
+    {
+        if (m_export_mode == vaapiAllocatorParams::DONOT_EXPORT) {
+            mfx_res = MFX_ERR_UNKNOWN;
+        }
+        for (i=0; i < surfaces_num; ++i)
+        {
+            if (m_export_mode & vaapiAllocatorParams::NATIVE_EXPORT_MASK) {
+#ifndef DISABLE_VAAPI_BUFFER_EXPORT
+                vaapi_mids[i].m_buffer_info.mem_type = (m_export_mode & vaapiAllocatorParams::PRIME)?
+                  VA_SURFACE_ATTRIB_MEM_TYPE_DRM_PRIME: VA_SURFACE_ATTRIB_MEM_TYPE_KERNEL_DRM;
+                va_res = vaDeriveImage(m_dpy, surfaces[i], &(vaapi_mids[i].m_image));
+                mfx_res = va_to_mfx_status(va_res);
 
+                if (MFX_ERR_NONE != mfx_res) break;
+
+                va_res = vaAcquireBufferHandle(m_dpy, vaapi_mids[i].m_image.buf, &(vaapi_mids[i].m_buffer_info));
+#else
+                va_res = VA_STATUS_ERROR_OPERATION_FAILED;
+#endif
+                mfx_res = va_to_mfx_status(va_res);
+            }
+            if (m_exporter) {
+                vaapi_mids[i].m_custom = m_exporter->acquire(&vaapi_mids[i]);
+                if (!vaapi_mids[i].m_custom) {
+                    mfx_res = MFX_ERR_UNKNOWN;
+                    break;
+                }
+            }
+        }
     }
     if (MFX_ERR_NONE == mfx_res)
     {
@@ -273,7 +335,8 @@ mfxStatus vaapiFrameAllocator::AllocImpl(mfxFrameAllocRequest *request, mfxFrame
         if (VA_FOURCC_P208 != va_fourcc
             || fourcc == MFX_FOURCC_VP8_MBDATA )
         {
-            if (bCreateSrfSucceeded) vaDestroySurfaces(m_dpy, surfaces, surfaces_num);
+            if (bCreateSrfSucceeded)
+                vaDestroySurfaces(m_dpy, surfaces, surfaces_num);
         }
         else
         {
@@ -310,6 +373,17 @@ mfxStatus vaapiFrameAllocator::ReleaseResponse(mfxFrameAllocResponse *response)
         {
             if (MFX_FOURCC_P8 == vaapi_mids[i].m_fourcc) vaDestroyBuffer(m_dpy, surfaces[i]);
             else if (vaapi_mids[i].m_sys_buffer) free(vaapi_mids[i].m_sys_buffer);
+            if (m_export_mode != vaapiAllocatorParams::DONOT_EXPORT) {
+                if (m_exporter && vaapi_mids[i].m_custom) {
+                    m_exporter->release(&vaapi_mids[i], vaapi_mids[i].m_custom);
+                }
+                if (m_export_mode & vaapiAllocatorParams::NATIVE_EXPORT_MASK) {
+#ifndef DISABLE_VAAPI_BUFFER_EXPORT
+                    vaReleaseBufferHandle(m_dpy, vaapi_mids[i].m_image.buf);
+#endif
+                    vaDestroyImage(m_dpy, vaapi_mids[i].m_image.image_id);
+                }
+            }
         }
         free(vaapi_mids);
         free(response->mids);
@@ -397,6 +471,16 @@ mfxStatus vaapiFrameAllocator::LockFrame(mfxMemId mid, mfxFrameData *ptr)
                     ptr->Y = pBuffer + vaapi_mid->m_image.offsets[0];
                     ptr->U = ptr->Y + 1;
                     ptr->V = ptr->Y + 3;
+                }
+                else mfx_res = MFX_ERR_LOCK_MEMORY;
+                break;
+            case VA_FOURCC_UYVY:
+                if (mfx_fourcc == MFX_FOURCC_UYVY)
+                {
+                    ptr->Pitch = (mfxU16)vaapi_mid->m_image.pitches[0];
+                    ptr->U = pBuffer + vaapi_mid->m_image.offsets[0];
+                    ptr->Y = ptr->U + 1;
+                    ptr->V = ptr->U + 2;
                 }
                 else mfx_res = MFX_ERR_LOCK_MEMORY;
                 break;
