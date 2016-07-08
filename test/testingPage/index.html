@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta http-equiv='X-UA-Compatible' content='IE=EmulateIE10'>
+	<title>Woogeen Test</title>
+	<style type="text/css">
+		* {
+			margin: 0;
+			padding: 0;
+		}
+		/* header style */
+		#wrapper{
+			margin: 2px 5px;
+		}
+		#woogeen-header{
+			margin: 1px auto;
+			border: 1px solid #ddd;
+			background-color: #AAF5AC;
+			position: relative;
+			text-align: center;
+		}
+		#woogeen-header div {
+			position: absolute;
+			right: 10px;
+			bottom: 5px;
+		}
+		#woogeen-header h1 {
+			padding: 10px 0;
+		}
+
+		/* @container style */
+		/* video layout */
+		#container-video {
+			margin-right: 5px;
+			width:40%;
+			/*height: 1000px;*/
+			float: left;
+			background-color: #F1E6F9;
+		}
+		#localVideo, #screenVideo {
+			margin: 3px 0px 3px 3px;
+			float: left;
+			background-color: #A1A6A9;
+		}
+		#mixVideo {
+			margin: 1%;
+			width:98%;
+			float: left;
+			background-color: #A1A6A9;
+		}
+		/* test layout */
+		#container-test{
+			border: 1px solid #eee;
+			margin: 5px;
+			width: 55%;
+			float: right;
+		}
+
+		/* test layout */
+		#test-1, #test-2, #test-3{
+			margin: 0 2px;
+			width: 32%;
+			max-width: 221px;
+			float: left;
+			text-align: center;
+		}
+
+		ul{
+			list-style: none;
+		}
+
+		ul li{
+			/* max-width: 200px; */
+			min-height: 24px;
+		}
+
+		a {
+			display: block;
+			/* max-width: 200px; */
+			min-height: 24px;
+			text-decoration: none;
+			color: #000;
+			background-color: #94B8E9;
+			line-height: 24px;
+			border-bottom: 1px solid #ddd;
+		}
+		a:hover{
+			background-color: #33C583;
+			font-size: 1.5em;
+			cursor:crosshair;
+		}
+
+		label{
+			display: block;
+			border-bottom: 1px solid #229A9D;
+		}
+		input[type='text'] {
+			width: 100px;
+			margin: 3px 0;
+		}
+
+		input[type='text']:focus {
+			position: relative;
+			z-index: 2;
+			background-color: #B4F5F7;
+		}
+		input[type='button']:hover, button:hover{
+			background-color: #AD3490;
+		}
+
+		#recorder, #other{
+			background-color: #DED8D8;
+			padding: 2px;
+			text-align: left;
+			/* max-width: 200px; */
+		}
+		#multiple {
+			padding: 2px;
+			text-align: left;
+			/* max-width: 200px; */
+			background-color: #ABD2D1;
+		}
+
+
+		h2 {
+			margin-right: 0px;
+			background-color: #E66464;
+		}
+		h3 {
+			margin-right: 0px;
+			background-color: #C79C9C;
+		}
+		.suboptions{
+			text-align: left;
+		}
+		#resultRecorder{
+			border: #333333 1px solid;
+			background:#E5F00C;
+			position: absolute;
+			left:10px;
+			top: 10px;
+			padding: 0px 10px;
+			min-width: 100px;
+			height: 30px;
+			opacity: 0.8;
+			text-align: center;
+			font-size: 30px;
+			font-weight: 900;
+			color:#E93030;
+			line-height: 30px;
+
+		}
+		/*clear float*/
+		#woogeen-footer{
+			clear:both;
+		}
+	</style>
+</head>
+<body>
+<div id='wrapper'>
+	<div id='woogeen-header'>
+		<h1>WebRTC Conference Call</h1>
+		<div>
+			<span>Enable By: </span>
+			<img src="intel.png">
+		</div>
+	</div>
+	<div id='woogeen-container'>
+		<div id='container-video'>
+			<div id='localVideo'></div>
+			<div id='screenVideo'></div>
+                      <!--  <div id='mixVideo'></div> -->
+		</div>
+		<div id='container-test'>
+			<div id='test-1'>
+				<h2>Function</h2>
+				<h3>Local</h3>
+				<ul>
+					<li><a href="javascript:void(0)" onclick="fullScreen()">full screen</a></li>
+					<li><a href="javascript:void(0)" onclick="shareScreen()">share screen</a></li>
+					<li><a href="javascript:void(0)" onclick="showv('localVideo')">show local</a></li>
+					<li><a href="javascript:void(0)" onclick="hidev('localVideo')">hide local</a></li>
+					<li><a href="javascript:void(0)" onclick="stoplocal()">stop local</a></li>
+					<li><a href="javascript:void(0)" onclick="recreateLocal(true,true)">create local</a></li>
+					<li><a href="javascript:void(0)" onclick="recreateLocal(false,true)">create audio local</a></li>
+					<li><a href="javascript:void(0)" onclick="recreateLocal(true,false)">create video local</a></li>
+					<li><a href="javascript:void(0)" onclick="createNewToken('presenter')">create token presenter</a></li>
+					<li><a href="javascript:void(0)" onclick="createNewToken('viewer')">create token viewer</a></li>
+					<li><a href="javascript:void(0)" onclick="createNewToken('viewerWithData')">create token viewerWithData</a></li>
+					<li><a href="javascript:void(0)" onclick="joinRoom()">join room</a></li>
+					<li><a href="javascript:void(0)" onclick="unpub()">unpublish local</a></li>
+					<li><a href="javascript:void(0)" onclick="pub('vp8')">publish local vp8</a></li>
+					<li><a href="javascript:void(0)" onclick="pub('h264')">publish local h264</a></li>
+					<li><a href="javascript:void(0)" onclick="room_disconn()">room disconnect</a></li>
+				</ul>
+				<h3>Remote</h3>
+				<div class="suboptions">
+					<label><input type='checkbox' id='subForwVideo' checked="checked"/> subForwardVideo</label>
+					<label><input type='checkbox' id='subForwAudio' checked="checked"/> subForwardAudio</label>
+					<label><input type='checkbox' id='subMixVideo' checked="checked"/> subMixVideo</label>
+					<label><input type='checkbox' id='subMixAudio' checked="checked"/> subMixAudio</label>
+				</div>
+				<ul>
+					<li><a href="javascript:void(0)" onclick="unsub()">unsub all</a></li>
+					<li><a href="javascript:void(0)" onclick="subs('all','vp8')">sub all vp8</a></li>
+					<li><a href="javascript:void(0)" onclick="subs('all','h264')">sub all h264</a></li>
+					<li><a href="javascript:void(0)" onclick="unsub('mix')">unsub mix</a></li>
+					<li><a href="javascript:void(0)" onclick="subs('mix','vp8')">sub mix vp8</a></li>
+					<li><a href="javascript:void(0)" onclick="subs('mix','h264')">sub mix h264</a></li>
+					<li><a href="javascript:void(0)" onclick="unsub('forward')">unsub forward</a></li>
+					<li><a href="javascript:void(0)" onclick="subs('forward','vp8')">sub forward vp8</a></li>
+					<li><a href="javascript:void(0)" onclick="subs('forward','h264')">sub forward h264</a></li>
+					<li><a href="javascript:void(0)" onclick="unsub('shareScreen')">unsub share screen</a></li>
+					<li><a href="javascript:void(0)" onclick="subs('shareScreen','h264')">sub share screen</a></li>
+					<li><a href="javascript:void(0)" onclick="unmixLocal()">unmix local</a></li>
+					<li><a href="javascript:void(0)" onclick="mixLocal()">mix local</a></li>
+					<li><a href="javascript:void(0)" onclick="sendd()">send message</a></li>
+				</ul>
+
+			</div>
+			<div id='test-2'>
+				<h2> Media Test </h2>
+				<h3> Local </h3>
+				<ul id='localMedia'>
+					<li><a href="javascript:void(0)" onclick="screenplayvideo()">play screen video</a></li>
+					<li><a href="javascript:void(0)" onclick="screenpausevideo()">pause screen video</a></li>
+					<li><a href="javascript:void(0)" onclick="playVideo()">play video</a></li>
+					<li><a href="javascript:void(0)" onclick="pauseVideo()">pause video</a></li>
+					<li><a href="javascript:void(0)" onclick="playAudio()">play audio</a></li>
+					<li><a href="javascript:void(0)" onclick="pauseAudio()">pause audio</a></li>
+					<li><a href="javascript:void(0)" onclick="disableVideo()">disable video</a></li>
+					<li><a href="javascript:void(0)" onclick="enableVideo()">enable video</a></li>
+					<li><a href="javascript:void(0)" onclick="disableAudio()">disable audio</a></li>
+					<li><a href="javascript:void(0)" onclick="enableAudio()">enable audio</a></li>
+				</ul>
+				<h3> remote </h3>
+				<ul id='remoteMedia'>
+					<li><a href="javascript:void(0)" onclick="remoteplayvideo()">play video</a></li>
+					<li><a href="javascript:void(0)" onclick="remotepausevideo()">pause video</a></li>
+					<li><a href="javascript:void(0)" onclick="remoteplayaudio()">play audio</a></li>
+					<li><a href="javascript:void(0)" onclick="remotepauseaudio()">pause audio</a></li>
+					<li><a href="javascript:void(0)" onclick="remotedisablevideo()">disable video</a></li>
+					<li><a href="javascript:void(0)" onclick="remoteenablevideo()">enable video</a></li>
+					<li><a href="javascript:void(0)" onclick="remotedisableaudio()">disable audio</a></li>
+					<li><a href="javascript:void(0)" onclick="remoteenableaudio()">enable audio</a></li>
+				</ul>
+				<div>
+					<h3>Recording</h3>
+					<div id='recorder'>
+						<label for="videoStreamId">videoStreamId:<input type="text" id='videoStreamId'></label>
+						<label for="audioStreamId">audioStreamId:<input type="text" id='audioStreamId'></label>
+						<label for="videoCodec">videoCodec:&nbsp&nbsp&nbsp&nbsp<input type="text" id='videoCodec'></label>
+						<label for="audioCodec">audioCodec:&nbsp&nbsp&nbsp&nbsp<input type="text" id='audioCodec'></label>
+						<label for="recorderId">recorderId:&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp<input type="text" id='recorderId'></label>
+						<button onclick="startRecording(true)">startRecord</button>
+						<button onclick="startRecording(false)">stopRecord</button>
+					</div>
+					<h3>Multiple</h3>
+					<div id='multiple'>
+						<label>count:<input type="text" id="cycleCounts"></label>
+						<button onclick="unmix_mix()">unmix_mix</button>
+						<button onclick="unpublish_publish()">publish_unpub</button>
+						<button onclick="unsubscribe_subscribe('mix')">subscribe_unsub mix </button>
+						<button onclick="unsubscribe_subscribe('forward')">subscribe_unsub forward</button>
+
+					</div>
+
+				</div>
+			</div>
+			<div id='test-3'>
+				<h3>Other</h3>
+					<div id='other'>
+						<label>Set:<input type="text" id='setVideo'></label>
+						<label>videoBitrate to: <input type="text" id='bitrate'>
+							<button onclick="setVideoBitrate()">Set bitrate</button>
+						</label>
+
+						<label>region to: <input type="text" id='regionId'>
+							<button type="button" id="region" onclick="setRegion()">Set region</button>
+							<button type="button" onclick="getRegion()">Get region</button>
+						</label>
+						<br/>
+						<select id='streamIds'>
+							<option value=''>mixStream</option>
+							<option value=''>forwardStream</option>
+							<option value=''>screenStream</option>
+							<option value=''>rtspStream</option>
+						</select>
+					</div>
+			</div>
+		</div>
+	</div>
+	<input type="text" id="resultRecorder" />
+	<div id='woogeen-footer'>
+
+	</div>
+</div>
+  <script src="socket.io.js" type="text/javascript"></script>
+  <script type="text/javascript" src="adapter.js"></script>
+  <script type="text/javascript" src="woogeen.sdk.js"></script>
+  <script type="text/javascript" src="woogeen.sdk.ui.js"></script>
+  <script type="text/javascript" src="script2.js"></script>
+</body>
+</html>
