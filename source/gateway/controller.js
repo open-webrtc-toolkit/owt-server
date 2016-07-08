@@ -32,14 +32,17 @@ exports = module.exports = function () {
     initWebRtcConnection = function (wrtc, callback, onReady) {
         var terminated = false;
 
-        wrtc.init(function (newStatus, mess) {
+        wrtc.addEventListener('connection', function (resp) {
             if (terminated) {
                 return;
             }
+            var info = JSON.parse(resp);
+            var status = info.status;
+            var message = info.message;
 
-            logger.info("webrtc Addon status: " + newStatus + mess);
+            logger.info("connection status: ", status, message);
 
-            switch (newStatus) {
+            switch (status) {
             case CONN_FINISHED:
                 terminated = true;
                 break;
@@ -50,18 +53,18 @@ exports = module.exports = function () {
 
             case CONN_SDP:
             case CONN_GATHERED:
-                logger.debug('Sending SDP', mess);
-                mess = mess.replace(that.privateRegexp, that.publicIP);
-                callback({type: 'answer', sdp: mess});
+                logger.debug('Sending SDP', message);
+                message = message.replace(that.privateRegexp, that.publicIP);
+                callback({type: 'answer', sdp: message});
                 break;
 
             case CONN_CANDIDATE:
-                mess = mess.replace(that.privateRegexp, that.publicIP);
-                callback({type: 'candidate', candidate: mess});
+                message = message.replace(that.privateRegexp, that.publicIP);
+                callback({type: 'candidate', candidate: message});
                 break;
 
             case CONN_FAILED:
-                callback({type: 'failed', sdp: mess});
+                callback({type: 'failed', sdp: message});
                 break;
 
             case CONN_READY:
