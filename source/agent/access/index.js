@@ -17,298 +17,346 @@ var log = logger.getLogger('AccessNode');
 
 module.exports = function () {
     var that = {},
-        /*{StreamID: {type: 'webrtc' | 'avstream' | 'file' | 'internal',
-                      connection: WebRtcConnection | InternalIn | RTSPConnectionIn}
+        /*{ConnectionID: {type: 'webrtc' | 'avstream' | 'recording' | 'internal',
+                          direction: 'in' | 'out',
+                          audioFrom: ConnectionID | undefined,
+                          videoFrom: ConnectionID | undefined,
+                          connnection: WebRtcConnection | InternalOut | RTSPConnectionOut
+                         }
           }
         */
-        streams = {},
+        connections = {};
 
-        /*{SubscriptionID: {type: 'webrtc' | 'avstream' | 'file' | 'internal',
-                            audio: StreamID | undefined,
-                            video: StreamID | undefined,
-                            connnection: WebRtcConnection | InternalOut | RTSPConnectionOut
-                           }
-          }
-        */
-        subscriptions = {};
+    var createWebRTCConnection = function (direction, options, callback) {
+        var connection = new WrtcConnection({
+            direction: direction,
+            audio: options.audio,
+            video: options.video,
+            private_ip_regexp: that.privateRegexp,
+            public_ip: that.publicIP
+        }, function (response) {
+            callback('onStatus', response);
+        });
 
-    that.publish = function (stream_id, stream_type, options, callback) {
-        log.debug('publish, stream_id:', stream_id, ', stream_type:', stream_type, ', audio:', options.has_audio, ', video:', options.has_video);
-        if (streams[stream_id]) {
-            log.error('Stream already exists:'+stream_id);
-            callback('callback', {type: 'failed', reason: 'Stream already exists:'+stream_id});
-            return;
-        }
-
-        var conn;
-
-        if (stream_type === 'webrtc') {
-            conn = new WrtcConnection({
-                direction: 'in',
-                audio: options.has_audio,
-                video: options.has_video,
-                private_ip_regexp: that.privateRegexp,
-                public_ip: that.publicIP
-            }, function (response) {
-                callback('callback', response);
-            });
-        } else if (stream_type === 'internal') {
-            conn = new InternalIn(options.protocol);
-            callback('callback', conn.getListeningPort());
-        } else if (stream_type === 'avstream') {
-            options.type = 'avstream';
-            conn = new AVStreamIn(options, function (message) {
-                log.debug('avstream-in status message:', message);
-                callback('callback', JSON.parse(message));
-            });
-            callback('callback', {type: 'initializing'});
-        } else if (stream_type === 'file') {
-            options.type = 'file';
-            options.url = path.join(GLOBAL.config.recording.path, options.url);
-            conn = new AVStreamIn(options);
-            // FIXME: There should be a better chance to start playing.
-            setTimeout(function () {conn.startPlay();}, 6000);
-            callback('callback', {type: 'ready'});
-        } else {
-            log.error('Stream type invalid:'+stream_type);
-            callback('callback', {type: 'failed', reason: 'Stream type invalid:'+stream_type});
-            return;
-        }
-
-        streams[stream_id] = {type: stream_type, connection: conn};
+        callback('callback', 'ok');
+        return connection;
     };
 
-    that.unpublish = function (stream_id) {
-        log.debug('unpublish, stream_id:', stream_id);
-        if (streams[stream_id]) {
-            for (var subscription_id in subscriptions) {
-                if (subscriptions[subscription_id].audio === stream_id) {
-                    log.debug('remove audio:', subscriptions[subscription_id].audio);
-                    var dest = subscriptions[subscription_id].type === 'webrtc' ? subscriptions[subscription_id].connection.receiver('audio') : subscriptions[subscription_id].connection;
-                    streams[stream_id].connection.removeDestination('audio', dest);
-                    subscriptions[subscription_id].audio = undefined;
-                }
+    var createAVStreamIn = function (options, callback) {
+        var avstream_options = {type: 'avstream',
+                                has_audio: !!options.audio,
+                                has_video: !!options.video,
+                                transport: options.transport,
+                                buffer_size: options.buffer_size,
+                                url: options.url};
 
-                if (subscriptions[subscription_id].video === stream_id) {
-                    log.debug('remove video:', subscriptions[subscription_id].video);
-                    var dest = subscriptions[subscription_id].type === 'webrtc' ? subscriptions[subscription_id].connection.receiver('video') : subscriptions[subscription_id].connection;
-                    streams[stream_id].connection.removeDestination('video', dest);
-                    subscriptions[subscription_id].video = undefined;
-                }
+        var connection = new AVStreamIn(avstream_options, function (message) {
+            log.debug('avstream-in status message:', message);
+            callback('onStatus', JSON.parse(message));
+        });
+        callback('callback', 'ok');
+        return connection;
+    };
 
-                if (subscriptions[subscription_id].audio === undefined && subscriptions[subscription_id].video === undefined) {
-                    subscriptions[subscription_id].connection.close();
-                    delete subscriptions[subscription_id];
-                }
+    var createAVStreamOut = function (options, callback) {
+        if (options.audio.codecs[0] === 'aac') {
+            options.audio.codecs = ['pcm_raw'];
+        }
+        var avstream_options = {type: 'avstream',
+                                require_audio: !!options.audio,
+                                require_video: !!options.video,
+                                audio_codec: (options.audio ? options.audio.codecs[0] : undefined),
+                                video_codec: (options.video ? options.video.codecs[0] : undefined),
+                                video_resolution: (options.video ? options.video.resolution : undefined),
+                                url: options.url};
+
+        var connection = new AVStreamOut(avstream_options, function (error) {
+            if (error) {
+                log.error('avstream-out init error:', error);
+                callback('onStatus', {type: 'failed', reason: error});
+            } else {
+                callback('onStatus', {type: 'ready', audio_codecs: options.audio.codecs, video_codecs: options.video.codecs});
             }
-
-            streams[stream_id].connection.close();
-            delete streams[stream_id];
-        } else {
-            log.warn('stream['+stream_id+'] doesn\'t exist.');
-        }
+        });
+        connection.addEventListener('fatal', function (error) {
+            if (error) {
+                log.error('avstream-out fatal error:', error);
+                callback('onStatus', {type: 'failed', reason: 'avstream_out fatal error: ' + error});
+            }
+        });
+        callback('callback', 'ok');
+        return connection;
     };
 
-    that.connect = function (subscription_id, subscription_type, options, callback) {
-        if (subscriptions[subscription_id]) {
-            log.error('Subscription already exists:'+subscription_id);
-            callback('callback', {type: 'failed', reason: 'Subscription already exists:'+subscription_id});
-            return;
-        }
+    var createFileIn = function (options, callback) {
+        var avstream_options = {type: 'file',
+                                url: options.url};
 
-        var conn;
+        var connection = new AVStreamIn(avstream_options);
+        // FIXME: There should be a better chance to start playing.
+        setTimeout(function () {connection.startPlay();}, 6000);
+        callback('callback', 'ok');
+        callback('onStatus', {type: 'ready'});
+    };
 
-        if (subscription_type === 'webrtc') {
-            conn = new WrtcConnection({
-                direction: 'out',
-                audio: options.require_audio,
-                video: options.require_video,
-                private_ip_regexp: that.privateRegexp,
-                public_ip: that.publicIP
-            }, function (response) {
-                callback('callback', response);
-            });
-        } else if (subscription_type === 'avstream') {
-            options.type = 'avstream';
-            conn = new AVStreamOut(options, function (error) {
-                if (error) {
-                    log.error('avstream-out init error:', error);
-                    callback('callback', {type: 'failed', reason: error});
-                } else {
-                    callback('callback', {type: 'ready', audio_codecs: [options.audio_codec], video_codecs: [options.video_codec]});
-                }
-            });
-            conn.addEventListener('fatal', function (error) {
-                if (error) {
-                    log.error('avstream-out fatal error:', error);
-                    if (options.observer !== undefined) {
-                        amqper.callRpc(options.observer, 'eventReport', [
-                            'stopRtspOut',
-                            options.room_id,
-                            {
-                                terminal: options.terminal,
-                                message: error,
-                                id: subscription_id,
-                                data: null
-                            }
-                        ]);
+    var createInternalIn = function (options, callback) {
+        var connection = new InternalIn(options.protocol);
+        callback('callback', {ip: that.clusterIP, port: connection.getListeningPort()});
+        return connection;
+    };
+
+    var createInternalOut = function (options, callback) {
+        var connection = new InternalOut(options.protocol, options.dest_ip, options.dest_port);
+        callback('callback', 'ok');
+        return connection;
+    };
+
+    var createFileOut = function (options, callback) {
+        var recordingPath = options.path ? options.path : GLOBAL.config.recording.path;
+        var avstream_options = {type: 'file',
+                                require_audio: !!options.audio,
+                                require_video: !!options.video,
+                                audio_codec: (options.audio ? options.audio.codecs[0] : undefined),
+                                video_codec: (options.video ? options.video.codecs[0] : undefined),
+                                url: path.join(recordingPath, options.filename),
+                                interval: options.interval};
+
+        var connection = new AVStreamOut(avstream_options, function (error) {
+            if (error) {
+                log.error('media recording init error:', error);
+                callback('onStatus', {type: 'failed', reason: error});
+            } else {
+                callback('onStatus', {type: 'ready', audio_codecs: (options.audio ? options.audio.codecs : []), video_codecs: (options.video ? options.video.codecs : [])});
+            }
+        });
+        connection.addEventListener('fatal', function (error) {
+            log.error('media recording error:', error);
+            callback('onStatus', {type: 'failed', reason: 'media recording error: ' + error});
+        });
+        callback('callback', 'ok');
+        return connection;
+    };
+
+    var disconnectFrom = function (connectionId) {
+        log.debug('remove subscriptions from connection:', connectionId);
+        if (connections[connectionId] && connections[connectionId].direction === 'in') {
+            for (var connection_id in connections) {
+                if (connections[connection_id].direction === 'out') {
+                    if (connections[connection_id].audioFrom === connectionId) {
+                        log.debug('remove audio subscription:', connections[connection_id].audioFrom);
+                        var dest = (connections[connection_id].type === 'webrtc' ? connections[connection_id].connection.receiver('audio') : connections[connection_id].connection);
+                        connections[connectionId].connection.removeDestination('audio', dest);
+                        connections[connection_id].audioFrom = undefined;
+                    }
+
+                    if (connections[connection_id].videoFrom === connectionId) {
+                        log.debug('remove video subscription:', connections[connection_id].videoFrom);
+                        var dest = connections[connection_id].type === 'webrtc' ? connections[connection_id].connection.receiver('video') : connections[connection_id].connection;
+                        connections[connectionId].connection.removeDestination('video', dest);
+                        connections[connection_id].videoFrom = undefined;
                     }
                 }
-            });
-        } else if (subscription_type === 'file') {
-            options.type = 'file';
-            var recordingPath = options.path ? options.path : GLOBAL.config.recording.path;
-            options.url = path.join(recordingPath, options.filename);
-            conn = new AVStreamOut(options, function (error) {
-                if (error) {
-                    log.error('media recording init error:', error);
-                    callback('callback', {type: 'failed', reason: error});
-                } else {
-                    callback('callback', {type: 'ready', audio_codecs: [options.audio_codec], video_codecs: [options.video_codec]});
-                }
-            });
-            conn.addEventListener('fatal', function (error) {
-                log.error('media recording error:', error);
-                if (options.observer !== undefined) {
-                    amqper.callRpc(options.observer, 'eventReport', [
-                        'deleteExternalOutput',
-                        options.room_id,
-                        {
-                            terminal: options.terminal,
-                            message: error,
-                            id: subscription_id,
-                            data: null
-                        }
-                    ]);
-                }
-            });
-        } else {
-            log.error('Pre-subscription, Subscription type invalid:' + subscription_type);
-            callback('callback', {type: 'failed', reason: 'Pre-subscription, Subscription type invalid:' + subscription_type});
+            }
+        }
+    };
+
+    var disconnectTo = function (connectionId) {
+        log.debug('remove subscription to connection:', connectionId);
+        if (connections[connectionId] && connections[connectionId].direction === 'out') {
+            var audioFrom = connections[connectionId].audioFrom,
+                videoFrom = connections[connectionId].videoFrom;
+
+            if (audioFrom && connections[audioFrom] && connections[audioFrom].direction === 'in') {
+                log.debug('remove audio from:', audioFrom);
+                var dest = (connections[connectionId].type === 'webrtc' ? connections[connectionId].connection.receiver('audio') : connections[connectionId].connection);
+                connections[audioFrom].connection.removeDestination('audio', dest);
+                connections[connectionId].audioFrom = undefined;
+            }
+
+            if (videoFrom && connections[videoFrom] && connections[videoFrom].direction === 'in') {
+                log.debug('remove video from:', videoFrom);
+                var dest = (connections[connectionId].type === 'webrtc' ? connections[connectionId].connection.receiver('video') : connections[connectionId].connection);
+                connections[videoFrom].connection.removeDestination('video', dest);
+                connections[connectionId].audioFrom = undefined;
+            }
+        }
+    };
+
+    that.publish = function (connectionId, connectionType, options, callback) {
+        log.debug('publish, connectionId:', connectionId, 'connectionType:', connectionType, 'options:', options);
+        if (connections[connectionId]) {
+            log.error('Connection already exists:'+connectionId);
+            callback('callback', {type: 'failed', reason: 'Connection already exists:'+connectionId});
             return;
         }
 
-        subscriptions[subscription_id] = {type: subscription_type,
-                                          audio: undefined,
-                                          video: undefined,
-                                          connection: conn};
-    };
+        var conn;
 
-    that.disconnect = function (subscription_id) {
-        if (subscriptions[subscription_id] !== undefined) {
-            subscriptions[subscription_id].connection.close();
-            delete subscriptions[subscription_id];
+        if (connectionType === 'webrtc') {
+            conn = createWebRTCConnection('in', options, callback);
+        } else if (connectionType === 'avstream') {
+            conn = createAVStreamIn(options, callback);
+        } else if (connectionType === 'recording') {
+            conn = createFileIn(options, callback);
+        } else if (connectionType === 'internal') {
+            conn = createInternalIn(options, callback);
         } else {
-            log.info('Subscription does NOT exist:'+subscription_id);
-        }
-    };
-
-    that.subscribe = function (subscription_id, subscription_type, audio_stream_id, video_stream_id, options, callback) {
-        log.debug('subscribe, subscription_id:', subscription_id, ', subscription_type:', subscription_type, ', audio_stream_id:', audio_stream_id, ', video_stream_id:', video_stream_id);
-        if (audio_stream_id && streams[audio_stream_id] === undefined) {
-            log.error('Audio stream does not exist:'+audio_stream_id);
-            callback('callback', {type: 'failed', reason: 'Audio stream does not exist:'+audio_stream_id});
+            log.error('Connection type invalid:' + connectionType);
+            callback('callback', {type: 'failed', reason: 'Connection type invalid:' + connectionType});
             return;
         }
 
-        if (video_stream_id && streams[video_stream_id] === undefined) {
-            log.error('Video stream does not exist:'+video_stream_id);
-            callback('callback', {type: 'failed', reason: 'Video stream does not exist:'+video_stream_id});
-            return;
-        }
-
-        var conn = subscriptions[subscription_id] && subscriptions[subscription_id].connection || undefined;
-
-        if (!conn) {
-            switch (subscription_type) {
-                case 'webrtc':
-                case 'file':
-                case 'avstream':
-                    log.error('Subscription connection does not exist:' + subscription_id);
-                    callback('callback', {type: 'failed', reason: 'Subscription connection does not exist:'+subscription_id});
-                    return;
-                case 'internal':
-                    conn = new InternalOut(options.protocol, options.dest_ip, options.dest_port);
-                    break;
-                default:
-                    log.error('Subscription type invalid:' + subscription_type);
-                    callback('callback', {type: 'failed', reason: 'Subscription type invalid:' + subscription_type});
-                    return;
-            }
-
-            subscriptions[subscription_id] = {type: subscription_type,
-                                              audio: undefined,
-                                              video: undefined,
-                                              connection: conn};
-        }
-
-        if (audio_stream_id) {
-            var dest = subscription_type === 'webrtc' ? conn.receiver('audio') : conn;
-            streams[audio_stream_id].connection.addDestination('audio', dest);
-            subscriptions[subscription_id].audio = audio_stream_id;
-        }
-
-        if (video_stream_id) {
-            var dest = subscription_type === 'webrtc' ? conn.receiver('video') : conn;
-            streams[video_stream_id].connection.addDestination('video', dest);
-            if (streams[video_stream_id].type === 'webrtc') {streams[video_stream_id].connection.requestKeyFrame();}//FIXME: Temporarily add this interface to workround the hardware mode's absence of feedback mechanism.
-            subscriptions[subscription_id].video = video_stream_id;
-        }
-        callback('callback', {type: 'ready'});
+        connections[connectionId] = {type: connectionType,
+                                     direction: 'in',
+                                     connection: conn};
     };
 
-    that.unsubscribe = function (subscription_id) {
-        log.debug('unsubscribe, subscription_id:', subscription_id);
-        if (subscriptions[subscription_id] !== undefined) {
-            if (subscriptions[subscription_id].audio
-                && streams[subscriptions[subscription_id].audio]) {
-                log.debug('remove audio:', subscriptions[subscription_id].audio);
-                var dest = subscriptions[subscription_id].type === 'webrtc' ? subscriptions[subscription_id].connection.receiver('audio') : subscriptions[subscription_id].connection;
-                streams[subscriptions[subscription_id].audio].connection.removeDestination('audio', dest);
-            }
-
-            if (subscriptions[subscription_id].video
-                && streams[subscriptions[subscription_id].video]) {
-                log.debug('remove video:', subscriptions[subscription_id].video);
-                var dest = subscriptions[subscription_id].type === 'webrtc' ? subscriptions[subscription_id].connection.receiver('video') : subscriptions[subscription_id].connection;
-                streams[subscriptions[subscription_id].video].connection.removeDestination('video', dest);
-            }
-
-            subscriptions[subscription_id].connection.close();
-            delete subscriptions[subscription_id];
-        } else {
-            log.info('Subscription does NOT exist:'+subscription_id);
-        }
-    };
-
-    that.onConnectionSignalling = function (connection_id, msg) {
-        log.debug('onConnectionSignalling, connection_id:', connection_id, 'msg:', msg);
-        if (streams[connection_id] && streams[connection_id].type === 'webrtc') {
-            log.debug('on publisher\'s ConnectionSignalling');
-            streams[connection_id].connection.onSignalling(msg);
-        } else if (subscriptions[connection_id] && subscriptions[connection_id].type === 'webrtc') {
-            log.debug('on subscriber\'s ConnectionSignalling');
-            subscriptions[connection_id].connection.onSignalling(msg);
-        }
-    };
-
-    that.onTrackControl = function (connection_id, track, direction, action, callback) {
-        log.debug('onTrackControl, connection_id:', connection_id, 'track:', track, 'direction:', direction, 'action:', action);
-        if (streams[connection_id] && streams[connection_id].type === 'webrtc') {
-            streams[connection_id].connection.onTrackControl(track, direction, action, function () {callback('callback', 'ok');}, function (error_reason) {callback('callback', 'error', error_reason);});
-        } else if (subscriptions[connection_id] && subscriptions[connection_id].type === 'webrtc') {
-            subscriptions[connection_id].connection.onTrackControl(track, direction, action, function () {callback('callback', 'ok');}, function (error_reason) {callback('callback', 'error', error_reason);});
-        } else {
-            callback('callback', 'error', 'No such a connection.');
-        }
-    };
-
-    that.setVideoBitrate = function (stream_id, bitrate, callback) {
-        if (streams[stream_id] && streams[stream_id].type === 'webrtc') {
-            streams[stream_id].connection.setVideoBitrate(bitrate);
+    that.unpublish = function (connectionId, callback) {
+        log.debug('unpublish, connectionId:', connectionId);
+        if (connections[connectionId] !== undefined) {
+            disconnectFrom(connectionId);
+            connections[connectionId].connection.close();
+            delete connections[connectionId];
             callback('callback', 'ok');
         } else {
-            callback('callback', 'error', 'Stream:'+stream_id+' does not exist.');
+            log.info('Connection does NOT exist:' + connectionId);
+            callback('callback', 'error', 'Connection does NOT exist:' + connectionId);
+        }
+    };
+
+    that.subscribe = function (connectionId, connectionType, options, callback) {
+        log.debug('subscribe, connectionId:', connectionId, 'connectionType:', connectionType, 'options:', options);
+        if (connections[connectionId]) {
+            log.error('Connection already exists:'+connectionId);
+            callback('callback', {type: 'failed', reason: 'Connection already exists:'+connectionId});
+            return;
+        }
+
+        var conn;
+
+        if (connectionType === 'webrtc') {
+            conn = createWebRTCConnection('out', options, callback);
+        } else if (connectionType === 'avstream') {
+            conn = createAVStreamOut(options, callback);
+        } else if (connectionType === 'recording') {
+            conn = createFileOut(options, callback);
+        } else if (connectionType === 'internal') {
+            conn = createInternalOut(options, callback);
+        } else {
+            log.error('Connection type invalid:' + connectionType);
+            callback('callback', {type: 'failed', reason: 'Connection type invalid:' + connectionType});
+            return;
+        }
+
+        connections[connectionId] = {type: connectionType,
+                                     direction: 'out',
+                                     audioFrom: undefined,
+                                     videoFrom: undefined,
+                                     connection: conn};
+    };
+
+    that.unsubscribe = function (connectionId, callback) {
+        log.debug('unsubscribe, connectionId:', connectionId);
+        if (connections[connectionId] !== undefined) {
+            disconnectTo(connectionId);
+            connections[connectionId].connection.close();
+            delete connections[connectionId];
+            callback('callback', 'ok');
+        } else {
+            log.info('Connection does NOT exist:' + connectionId);
+            callback('callback', 'error', 'Connection does NOT exist:' + connectionId);
+        }
+    };
+
+    that.linkup = function (connectionId, audioFrom, videoFrom, callback) {
+        log.debug('linkup, connectionId:', connectionId, ', audioFrom:', audioFrom, ', videoFrom:', videoFrom);
+        if (!connectionId || !connections[connectionId]) {
+            log.error('Subscription does not exist:' + connectionId);
+            return callback('callback', 'error', 'Subscription does not exist:' + connectionId);
+        }
+
+        if (audioFrom && connections[audioFrom] === undefined) {
+            log.error('Audio stream does not exist:' + audioFrom);
+            return callback('callback', {type: 'failed', reason: 'Audio stream does not exist:' + audioFrom});
+        }
+
+        if (videoFrom && connections[videoFrom] === undefined) {
+            log.error('Video stream does not exist:' + videoFrom);
+            return callback('callback', {type: 'failed', reason: 'Video stream does not exist:' + videoFrom});
+        }
+
+        var conn = connections[connectionId];
+
+        if (audioFrom) {
+            var dest = (conn.type === 'webrtc' ? conn.connection.receiver('audio') : conn.connection);
+            connections[audioFrom].connection.addDestination('audio', dest);
+            connections[connectionId].audioFrom = audioFrom;
+        }
+
+        if (videoFrom) {
+            var dest = (conn.type === 'webrtc' ? conn.connection.receiver('video') : conn.connection);
+            connections[videoFrom].connection.addDestination('video', dest);
+            connections[connectionId].videoFrom = videoFrom;
+        }
+        callback('callback', 'ok');
+    };
+
+    that.cutoff = function (connectionId, callback) {
+        log.debug('cutoff, connectionId:', connectionId);
+        if (connections[connectionId]) {
+            disconnectTo(connectionId);
+            callback('callback', 'ok');
+        } else {
+            log.info('Connection does NOT exist:' + connectionId);
+            callback('callback', 'error', 'Connection does NOT exist:' + connectionId);
+        }
+    };
+
+    that.onConnectionSignalling = function (connectionId, msg, callback) {
+        log.debug('onConnectionSignalling, connection id:', connectionId, 'msg:', msg);
+        if (connections[connectionId]) {
+            if (connections[connectionId].type === 'webrtc') {//NOTE: Only webrtc connection supports signaling.
+                connections[connectionId].connection.onSignalling(msg);
+                callback('callback', 'ok');
+            } else {
+                callback('callback', 'error', 'signaling on non-webrtc connection');
+            }
+        } else {
+          callback('callback', 'error', 'Connection does NOT exist:' + connectionId);
+        }
+    };
+
+    that.onMediaOnOff = function (connectionId, track, direction, action, callback) {
+        log.debug('onMediaOnOff, connection id:', connectionId, 'track:', track, 'direction:', direction, 'action:', action);
+        if (connections[connectionId]) {
+            if (connections[connectionId].type === 'webrtc') {//NOTE: Only webrtc connection supports media-on-off
+                connections[connectionId].connection.onTrackControl(track,
+                                                                    direction,
+                                                                    action,
+                                                                    function () {
+                                                                        callback('callback', 'ok');
+                                                                    }, function (error_reason) {
+                                                                        callback('callback', 'error', error_reason);
+                                                                    });
+            } else {
+                callback('callback', 'error', 'signaling on non-webrtc connection');
+            }
+        } else {
+          callback('callback', 'error', 'Connection does NOT exist:' + connectionId);
+        }
+    };
+
+    that.setVideoBitrate = function (connectionId, bitrate, callback) {
+        log.debug('setVideoBitrate, connection id:', connectionId, 'bitrate:', bitrate);
+        if (connections[connectionId] && connections[connectionId].direction === 'in') {
+            if (connections[connectionId].type === 'webrtc') {//NOTE: Only webrtc connection supports setting video bitrate.
+                connections[connection_id].connection.setVideoBitrate(bitrate);
+                callback('callback', 'ok');
+            } else {
+                callback('callback', 'error', 'signaling on non-webrtc connection');
+            }
+        } else {
+          callback('callback', 'error', 'Connection does NOT exist:' + connectionId);
         }
     };
 

@@ -12,8 +12,9 @@ schedule_reserve_time = 60000 #ms
 [strategy]
 general = "last-used"
 portal = "last-used"
+session = "last-used"
 webrtc = "last-used"
 rtsp = "round-robin"
-file = "randomly-pick"
+recording = "randomly-pick"
 audio = "most-used"
 video = "least-used"

@@ -20,17 +20,23 @@ module.exports = function () {
 
         supported_codecs = [],
 
-        /*{StreamID : {owner: TerminalID,
+        /*{StreamID : {owner: ParticipantID,
                        codec: 'pcmu' | 'pcma' | 'isac_16000' | 'isac_32000' | 'opus_48000_2' |...,
                        dispatcher: MediaFrameMulticaster,
-                       subscriptions: {SubscriptionID: InternalOut}
                        }}*/
         outputs = {},
 
         /*{StreamID : {owner: TerminalID,
                        connection: InternalIn}
           }*/
-        inputs = {};
+        inputs = {},
+
+        /*{ConnectionID: {audioFrom: StreamID | undefined,
+                          connection: InternalOut}
+                         }
+         }
+         */
+        connections = {};
 
     var addInput = function (stream_id, for_whom, codec, protocol, on_ok, on_error) {
         if (engine) {
@@ -64,7 +70,7 @@ module.exports = function () {
                 outputs[stream_id] = {owner: for_whom,
                                       codec: codec,
                                       dispatcher: dispatcher,
-                                      subscriptions: {}};
+                                      connections: {}};
                 on_ok(stream_id);
             } else {
                 on_error('Failed in adding output to audio-engine');
@@ -77,10 +83,10 @@ module.exports = function () {
     var removeOutput = function (stream_id) {
         if (outputs[stream_id]) {
             var output = outputs[stream_id];
-            for (var subscription_id in output.subscriptions) {
-                 output.dispatcher.removeDestination('audio', output.subscriptions[subscription_id]);
-                 output.subscriptions[subscription_id].close();
-                 delete output.subscriptions[subscription_id];
+            for (var connectionId in output.connections) {
+                 output.dispatcher.removeDestination('audio', output.connections[connectionId]);
+                 output.connections[connectionId].close();
+                 delete output.connections[connectionId];
             }
             engine.removeOutput(output.owner);
             output.dispatcher.close();
@@ -138,10 +144,18 @@ module.exports = function () {
     };
 
     that.publish = function (stream_id, stream_type, options, callback) {
+        if (stream_type !== 'internal') {
+            return callback('callback', 'error', 'can not publish a stream to audio engine through a non-internal connection');
+        }
+
+        if (options.audio === undefined || options.audio.codec === undefined) {
+            return callback('callback', 'error', 'can not publish a stream to audio engine without proper audio codec');
+        }
+
         if (inputs[stream_id] === undefined) {
-            log.debug('publish stream:', stream_id, 'stream_type:', stream_type);
-            addInput(stream_id, options.owner, options.audio_codec, options.protocol, function () {
-                callback('callback', inputs[stream_id].connection.getListeningPort());
+            log.debug('publish stream:', stream_id);
+            addInput(stream_id, options.owner, options.audio.codec, options.protocol, function () {
+                callback('callback', {ip: that.clusterIP, port: inputs[stream_id].connection.getListeningPort()});
             }, function (error_reason) {
                 log.error(error_reason);
                 callback('callback', 'error', error_reason);
@@ -156,12 +170,40 @@ module.exports = function () {
         removeInput(stream_id);
     };
 
-    that.subscribe = function (subscription_id, subscription_type, audio_stream_id, video_stream_id, options, callback) {
+    that.subscribe = function (connectionId, connectionType, options, callback) {
+        if (connectionType !== 'internal') {
+            return callback('callback', 'error', 'can not subscribe a stream from audio engine through a non-internal connection');
+        }
+        log.debug('subscribe, connectionId:', connectionId, 'options:', options);
+
+        if (connections[connectionId] === undefined) {
+            connections[connectionId] = {audioFrom: undefined,
+                                         connection: new InternalOut(options.protocol, options.dest_ip, options.dest_port)
+                                        };
+            callback('callback', 'ok');
+        } else {
+            callback('callback', 'error', 'connection already exists');
+        }
+    };
+
+    that.unsubscribe = function (connectionId) {
+        if (connections[connectionId] && connections[connectionId].audioFrom) {
+            if (outputs[connections[connectionId].audioFrom]) {
+                outputs[connections[connectionId].audioFrom].dispatcher.removeDestination('audio', connections[connectionId].connection);
+            }
+            //connections[connectionId].connection.close();
+            delete connections[connectionId];
+        }
+    };
+
+    that.linkup = function (connectionId, audio_stream_id, video_stream_id, callback) {
+        if (connections[connectionId] === undefined) {
+            return callback('callback', 'error', 'connection does not exist');
+        }
+
         if (outputs[audio_stream_id]) {
-            log.debug('subscribe, subscription_id:', subscription_id, 'subscription_type:', subscription_type, 'audio_stream_id:', audio_stream_id, 'options:', options);
-            var conn = new InternalOut(options.protocol, options.dest_ip, options.dest_port);
-            outputs[audio_stream_id].dispatcher.addDestination('audio', conn);
-            outputs[audio_stream_id].subscriptions[subscription_id] = conn;
+            log.debug('linkup, connectionId:', connectionId, 'audio_stream_id:', audio_stream_id);
+            outputs[audio_stream_id].dispatcher.addDestination('audio', connections[connectionId].connection);
             callback('callback', 'ok');
         } else {
             log.error('Stream does not exist!', audio_stream_id);
@@ -169,19 +211,20 @@ module.exports = function () {
         }
     };
 
-    that.unsubscribe = function (subscription_id) {
-        for (var stream_id in outputs) {
-            if (outputs[stream_id].subscriptions[subscription_id]) {
-                outputs[stream_id].dispatcher.removeDestination('audio', outputs[stream_id].subscriptions[subscription_id]);
-                delete outputs[stream_id].subscriptions[subscription_id];
+    that.cutoff = function (connectionId) {
+        log.debug('cutoff, connectionId:', connectionId);
+        if (connections[connectionId] && connections[connectionId].audioFrom) {
+            if (outputs[connections[connectionId].audioFrom]) {
+                outputs[connections[connectionId].audioFrom].dispatcher.removeDestination('audio', connections[connectionId].connection);
             }
+            connections[connectionId].audioFrom = undefined;
         }
     };
 
     that.enableVAD = function (periodMS, roomId, observer) {
         engine.enableVAD(periodMS, function (activeParticipant) {
             log.debug('enableVAD, activeParticipant:', activeParticipant);
-            amqper.callRpc(observer, 'eventReport', ['vad', roomId, {active_terminal: activeParticipant, data: null}]);
+            amqper.callRpc(observer, 'onAudioActiveParticipant', [roomId, activeParticipant]);
         });
     };
 

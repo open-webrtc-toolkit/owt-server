@@ -1,4 +1,4 @@
-[controller]
+[portal]
 #Default and max video bandwidth parameters to be used by clients
 keystorePath = "./cert/certificate.pfx"
 hostname = "" #default: ""
@@ -10,25 +10,19 @@ warning_n_rooms = 15 #default: 15
 #Use the name of the inferface you want to bind to for socket.io
 # networkInterface = "eth1"
 
-#If true, erizoController sends report to rabbitMQ queue "report_handler"
-[controller.report]
-connection_events = false #Connection (ICE) level events -- default: false
-rtcp_stats = false #RTCP stats -- default: false
-session_events = false #Session level events -- default: false
-
 #Roles to be used by services
-[controller.roles.presenter]
+[portal.roles.presenter]
 publish = true
 record = true
 subscribe = true
 
-[controller.roles.viewer]
+[portal.roles.viewer]
 subscribe = true
 
-[controller.roles.viewerWithData]
+[portal.roles.viewerWithData]
 subscribe = true
 
-[controller.roles.viewerWithData.publish]
+[portal.roles.viewerWithData.publish]
 audio = false
 data = true
 screen = false
@@ -51,7 +45,6 @@ report_load_interval = 1000 #default: 1000, unit: millisecond
 max_load = 0.85 #default: 0.85
 #Network max scale to calculate network usage percentage
 network_max_scale = 1000 #unit: Mbps
-
 
 [rabbit]
 host = "localhost" #default: "localhost"

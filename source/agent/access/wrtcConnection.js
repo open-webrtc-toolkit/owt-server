@@ -146,11 +146,33 @@ module.exports = function (spec, on_status) {
     };
 
     that.onSignalling = function (msg) {
-        if (msg.type === 'offer') {
-            wrtc.setRemoteSdp(msg.sdp);
-            wrtc.start();
-        } else if (msg.type === 'candidate') {
-            wrtc.addRemoteCandidate(msg.candidate.sdpMid, msg.candidate.sdpMLineIndex, msg.candidate.candidate);
+        var processSignalling = function() {
+            if (msg.type === 'offer') {
+                wrtc.setRemoteSdp(msg.sdp);
+                wrtc.start();
+            } else if (msg.type === 'candidate') {
+                wrtc.addRemoteCandidate(msg.candidate.sdpMid, msg.candidate.sdpMLineIndex, msg.candidate.candidate);
+            }
+        };
+
+        if (wrtc) {
+            processSignalling();
+        } else {
+            log.warn('wrtc is not ready to process signallings');
+            var count = 0,
+                interval = setInterval(function() {
+                    if (wrtc) {
+                        processSignalling();
+                        clearInterval(interval);
+                    } else {
+                        if (count > 200) {
+                            log.error('wrtc has not got ready in 10s, drop signalling:', msg);
+                            clearInterval(interval);
+                        } else {
+                            count = count + 1;
+                        }
+                    }
+                }, 50);
         }
     };
 

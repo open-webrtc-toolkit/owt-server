@@ -23,11 +23,12 @@ WOOGEEN_AGENTS="audio video access"
 
 pack_runtime() {
   # mcu
-  pack_controller
+  pack_session_agent
   pack_agents
   pack_nuve
+  pack_portal
   pack_common
-  ENCRYPT_CAND_PATH=("${WOOGEEN_DIST}/controller" "${WOOGEEN_DIST}/cluster_manager" "${WOOGEEN_DIST}/nuve")
+  ENCRYPT_CAND_PATH=("${WOOGEEN_DIST}/session_agent" "${WOOGEEN_DIST}/portal" "${WOOGEEN_DIST}/cluster_manager" "${WOOGEEN_DIST}/nuve")
   for AGENT in ${WOOGEEN_AGENTS}; do
     ENCRYPT_CAND_PATH+=("${WOOGEEN_DIST}/${AGENT}_agent")
   done
@@ -40,14 +41,22 @@ pack_runtime() {
   cp -av ${SOURCE}/extras/rtsp-client.js ${WOOGEEN_DIST}/extras
 }
 
-pack_controller() {
-  mkdir -p ${WOOGEEN_DIST}/controller/rpc
-  pushd ${SOURCE}/controller >/dev/null
-  find . -type f -not -name "*.log" -not -name "in*.sh" -not -name "*.md" -exec cp '{}' "${WOOGEEN_DIST}/controller/{}" \;
+pack_portal() {
+  cp -av ${SOURCE}/portal ${WOOGEEN_DIST}/
+  mkdir -p ${WOOGEEN_DIST}/portal/cert
+  cp -av ${ROOT}/cert/{*.pfx,.woogeen.keystore} ${WOOGEEN_DIST}/portal/cert/
+  cp -av {${this},${WOOGEEN_DIST}/portal}/initcert.js && chmod +x ${WOOGEEN_DIST}/portal/initcert.js
+  cp -av ${ROOT}/scripts/detectOS.sh ${WOOGEEN_DIST}/portal/detectOS.sh
+}
+
+pack_session_agent() {
+  pushd ${SOURCE}/agent >/dev/null
+  mkdir -p ${WOOGEEN_DIST}/session_agent
+  cp -av ${SOURCE}/agent/session/* ${WOOGEEN_DIST}/session_agent
+  find . -maxdepth 1 -type f -name "*.js" -exec cp '{}' "${WOOGEEN_DIST}/session_agent/{}" \;
+  find . -maxdepth 1 -type f -name "*.json" -exec cp '{}' "${WOOGEEN_DIST}/session_agent/{}" \;
+  cp -av ${ROOT}/scripts/detectOS.sh ${WOOGEEN_DIST}/session_agent/detectOS.sh
   popd >/dev/null
-  mkdir -p ${WOOGEEN_DIST}/controller/cert
-  cp -av ${ROOT}/cert/{*.pfx,.woogeen.keystore} ${WOOGEEN_DIST}/controller/cert/
-  cp -av {${this},${WOOGEEN_DIST}/controller}/initcert.js && chmod +x ${WOOGEEN_DIST}/controller/initcert.js
 }
 
 pack_agents() {
@@ -114,7 +123,7 @@ pack_addons() {
 }
 
 pack_common() {
-  local TARGETS="controller nuve cluster_manager access_agent audio_agent video_agent"
+  local TARGETS="portal nuve cluster_manager session_agent access_agent audio_agent video_agent"
   pushd ${SOURCE}/common >/dev/null
   local COMMON_MODULES=$(find . -type f -name "*.js" | cut -d '/' -f 2 | cut -d '.' -f 1)
   for TARGET in ${TARGETS}; do
@@ -153,6 +162,7 @@ pack_scripts() {
 ${bin}/daemon.sh start nuve
 ${bin}/daemon.sh start cluster-manager
 ${bin}/daemon.sh start portal
+${bin}/daemon.sh start session-agent
 ${bin}/daemon.sh start webrtc-agent
 ${bin}/daemon.sh start avstream-agent
 ${bin}/daemon.sh start recording-agent
@@ -164,6 +174,7 @@ ${bin}/daemon.sh start app
 ${bin}/daemon.sh stop nuve
 ${bin}/daemon.sh stop cluster-manager
 ${bin}/daemon.sh stop portal
+${bin}/daemon.sh stop session-agent
 ${bin}/daemon.sh stop webrtc-agent
 ${bin}/daemon.sh stop avstream-agent
 ${bin}/daemon.sh stop recording-agent
@@ -255,4 +266,11 @@ install_module() {
 pack_license() {
   cp -v {$ROOT/third_party,${WOOGEEN_DIST}}/NOTICE
   cp -v {$ROOT/third_party,${WOOGEEN_DIST}}/ThirdpartyLicenses.txt
+}
+
+run_test() {
+  pushd ${WOOGEEN_DIST}/portal >/dev/null
+  npm install
+  npm test
+  popd >/dev/null
 }

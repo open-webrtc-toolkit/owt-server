@@ -29,6 +29,7 @@ PACK_ARCH=false
 PACK_MODULE=true
 PACK_OPENH264=false
 ENCRYPT=false
+RUN_TEST=false
 ENCRYPT_CAND_PATH=
 PACKAGE_VERSION=
 SRC_SAMPLE_PATH=
@@ -57,6 +58,9 @@ while [[ $# -gt 0 ]]; do
       ;;
     *(-)encrypt )
       ENCRYPT=true
+      ;;
+    *(-)run-test )
+      RUN_TEST=true
       ;;
     *(-)src-sample-path=* )
       SRC_SAMPLE_PATH=${1##*(-)}
@@ -89,3 +93,4 @@ pack_node
 type pack_libs >/dev/null 2>&1 && pack_libs
 type pack_license >/dev/null 2>&1 && pack_license
 ${PACK_ARCH} && archive
+${RUN_TEST} && run_test

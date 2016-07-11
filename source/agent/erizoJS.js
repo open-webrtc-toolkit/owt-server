@@ -92,6 +92,9 @@ rpc.connect(GLOBAL.config.rabbit, function () {
 
         var controller;
         switch (purpose) {
+        case 'session':
+            controller = require('./session')(rpc, rpcID);
+            break;
         case 'audio':
             controller = require('./audio')();
             break;
@@ -100,7 +103,7 @@ rpc.connect(GLOBAL.config.rabbit, function () {
             break;
         case 'webrtc':
         case 'avstream':
-        case 'file':
+        case 'recording':
             controller = require('./access')();
             break;
         default:
@@ -111,14 +114,15 @@ rpc.connect(GLOBAL.config.rabbit, function () {
 
         controller.privateRegexp = new RegExp(process.argv[4], 'g');
         controller.publicIP = process.argv[5];
+        controller.clusterIP = process.argv[6];
         controller.keepAlive = function (callback) {
             callback('callback', true);
         };
         rpc.setPublicRPC(controller);
 
-        log.info('ID: ErizoJS_' + rpcID);
+        log.info('ID: ' + rpcID);
 
-        rpc.bind('ErizoJS_' + rpcID, function () {
+        rpc.bind(rpcID, function () {
             log.info('READY');
             process.send('READY');
         });

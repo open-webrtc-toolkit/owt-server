@@ -4,7 +4,7 @@ var rpc = require('./rpc/rpc');
 var log = require('./logger').logger.getLogger('CloudHandler');
 var cluster_name = ((GLOBAL.config || {}).cluster || {}).name || 'woogeen-cluster';
 
-exports.getErizoControllerForRoom = function (room, callback) {
+exports.getPortalForRoom = function (room, callback) {
     var roomId = room._id,
         keepTrying = true;
 
@@ -30,15 +30,24 @@ exports.getErizoControllerForRoom = function (room, callback) {
 };
 
 exports.getUsersInRoom = function (roomId, callback) {
-    rpc.callRpc(cluster_name, 'getScheduled', ['portal', roomId], {callback: function (r) {
+    rpc.callRpc(cluster_name, 'getScheduled', ['session', roomId], {callback: function (r) {
         if (r === 'timeout' || r === 'error') {
             callback([]);
         } else {
-            rpc.callRpc(r, 'getUsersInRoom', [roomId], {callback: function (users) {
-                if (users === 'timeout' || users === 'error') {
+            log.info('getUsersInRoom:', roomId, 'session agent:', r);
+            rpc.callRpc(r, 'querryNode', [roomId], {callback: function(r1) {
+                if (r1 === 'timeout' || r1 === 'error') {
                     callback([]);
                 } else {
-                    callback(users);
+                    log.info('getUsersInRoom:', roomId, 'session node:', r1);
+                    rpc.callRpc(r1, 'getUsers', [], {callback: function (users) {
+                        log.info('got users:', users);
+                        if (users === 'timeout' || users === 'error') {
+                            callback([]);
+                        } else {
+                            callback(users);
+                        }
+                    }});
                 }
             }});
         }
@@ -46,24 +55,36 @@ exports.getUsersInRoom = function (roomId, callback) {
 };
 
 exports.deleteRoom = function (roomId, callback) {
-    rpc.callRpc(cluster_name, 'getScheduled', ['portal', roomId], {callback: function (r) {
+    rpc.callRpc(cluster_name, 'getScheduled', ['session', roomId], {callback: function (r) {
         if (r === 'timeout' || r === 'error') {
             callback('Success');
         } else {
-            rpc.callRpc(r, 'deleteRoom', [roomId], {callback: function (result) {
-                callback(result);
+            rpc.callRpc(r, 'querryNode', [roomId], {callback: function(r1) {
+                if (r1 === 'timeout' || r1 === 'error') {
+                    callback([]);
+                } else {
+                    rpc.callRpc(r1, 'destroy', [], {callback: function (result) {
+                        callback(result);
+                    }});
+                }
             }});
         }
     }});
 };
 
 exports.deleteUser = function (user, roomId, callback) {
-    rpc.callRpc(cluster_name, 'getScheduled', ['portal', roomId], {callback: function (r) {
+    rpc.callRpc(cluster_name, 'getScheduled', ['session', roomId], {callback: function (r) {
         if (r === 'timeout' || r === 'error') {
             callback('Success');
         } else {
-            rpc.callRpc(r, 'deleteUser', [{user: user, roomId: roomId}], {callback: function (result) {
-                callback(result);
+            rpc.callRpc(r, 'querryNode', [roomId], {callback: function(r1) {
+                if (r1 === 'timeout' || r1 === 'error') {
+                    callback([]);
+                } else {
+                    rpc.callRpc(r1, 'deleteUser', [user], {callback: function (result) {
+                        callback(result);
+                    }});
+                }
             }});
         }
     }});
@@ -97,13 +118,19 @@ exports.getPortal = function (node, callback) {
     }});
 };
 
+//To be deleted
 exports.getEcConfig = function getEcConfig (rpcID, callback) {
+    /*
     rpc.callRpc(rpcID, 'getConfig', [], {callback: function (result) {
         callback(result);
     }});
+    */
+    callback({});
 };
 
+//To be deleted
 exports.getHostedRooms = function getHostedRooms (callback) {
+    /*
     rpc.callRpc(cluster_name, 'getWorkers', ['portal'], {callback: function (result) {
         if (result === 'timeout' || result === 'error') {
             callback([]);
@@ -124,6 +151,8 @@ exports.getHostedRooms = function getHostedRooms (callback) {
             });
         }
     }});
+    */
+    callback([]);
 };
 
 

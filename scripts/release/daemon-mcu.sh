@@ -130,8 +130,14 @@ case $startStop in
         echo $! > ${pid}
         ;;
       portal )
-        cd ${WOOGEEN_HOME}/controller
-        nohup nice -n ${WOOGEEN_NICENESS} node erizoController.js \
+        cd ${WOOGEEN_HOME}/portal
+        nohup nice -n ${WOOGEEN_NICENESS} node . \
+          > "${stdout}" 2>&1 </dev/null &
+        echo $! > ${pid}
+        ;;
+      session-agent )
+        cd ${WOOGEEN_HOME}/session_agent
+        nohup nice -n ${WOOGEEN_NICENESS} node . -U session\
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
@@ -155,7 +161,7 @@ case $startStop in
         cd ${WOOGEEN_HOME}/access_agent
         export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:./lib
         export NODE_PATH=./node_modules
-        nohup nice -n ${WOOGEEN_NICENESS} node . -U file\
+        nohup nice -n ${WOOGEEN_NICENESS} node . -U recording\
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;

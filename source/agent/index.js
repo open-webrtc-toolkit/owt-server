@@ -79,9 +79,10 @@ for (var prop in opt.options) {
                 GLOBAL.config.rabbit.port = value;
                 break;
             case 'my-purpose':
-                if (value === 'webrtc' ||
+                if (value === 'session' ||
+                    value === 'webrtc' ||
                     value === 'avstream' ||
-                    value === 'file' ||
+                    value === 'recording' ||
                     value === 'audio' ||
                     value === 'video') {
                     myPurpose = value;
@@ -102,7 +103,7 @@ var rpc = require('./amqper');
 var idle_erizos = [];
 var erizos = [];
 var processes = {};
-var tasks = {}; // {erizo_id: [RoomID]}
+var tasks = {}; // {erizo_id: {RoomID: [ConsumerID]}}
 var load_collection = {period: GLOBAL.config.cluster.report_load_interval};
 
 var guid = (function() {
@@ -134,7 +135,7 @@ var launchErizoJS = function() {
     var id = guid();
     var out = fs.openSync('../logs/' + myPurpose + '-' + id + '.log', 'a');
     var err = fs.openSync('../logs/' + myPurpose + '-' + id + '.log', 'a');
-    var child = spawn('node', ['./erizoJS.js', id, myPurpose, privateIP, publicIP], {
+    var child = spawn('node', ['./erizoJS.js', id, myPurpose, privateIP, publicIP, clusterIP], {
         detached: true,
         stdio: [ 'ignore', out, err, 'ipc' ]
     });
@@ -162,7 +163,7 @@ var launchErizoJS = function() {
         }
     });
     processes[id] = child;
-    tasks[id] = [];
+    tasks[id] = {};
     idle_erizos.push(id);
 };
 
@@ -180,9 +181,51 @@ var fillErizos = function() {
     }
 };
 
+var isInUse = function(session) {
+    for (var eid in tasks) {
+        if (tasks[eid][session] !== undefined) {
+            return true;
+        }
+    }
+    return false;
+};
+
+var addConsumer = function(worker, nodeId, consumer) {
+    tasks[nodeId] = tasks[nodeId] || {};
+    if (tasks[nodeId][consumer.session] === undefined) {
+        if (!isInUse(consumer.session)) {
+            worker.addTask(consumer.session);
+        }
+        tasks[nodeId][consumer.session] = [];
+    }
+    tasks[nodeId][consumer.session].push(consumer.consumer);
+};
+
+var removeConsumer = function(worker, nodeId, consumer, on_last_consumer_leave) {
+    if (tasks[nodeId]) {
+        if (tasks[nodeId][consumer.session]) {
+            var i = tasks[nodeId][consumer.session].indexOf(consumer.consumer);
+            if (i > -1) {
+                tasks[nodeId][consumer.session].splice(i, 1);
+            }
+
+            if (tasks[nodeId][consumer.session].length === 0) {
+                delete tasks[nodeId][consumer.session];
+                if (Object.keys(tasks[nodeId]).length === 0) {
+                    on_last_consumer_leave();
+                }
+            }
+        }
+    }
+
+    if (!isInUse) {
+        worker.removeTask(consumer.session);
+    }
+};
+
 var api = function (worker) {
     return {
-        getErizoJS: function(room_id, callback) {
+        getNode: function(consumer, callback) {
             var reportCallback = function (id, timeout) {
                 var waitForInitialization = function () {
                     if (!processes[id]) {
@@ -197,18 +240,19 @@ var api = function (worker) {
                     if (processes[id].READY === true) {
                         log.debug(id, 'ready');
                         callback('callback', id);
-                        worker.addTask(room_id);
+                        addConsumer(worker, id, consumer);
                     }
                 };
                 waitForInitialization();
             };
             try {
+                var room_id = consumer.session;
                 var erizo_id;
                 if (reuse) {
                     var i;
                     for (i in erizos) {
                         erizo_id = erizos[i];
-                        if (tasks[erizo_id] !== undefined && tasks[erizo_id].indexOf(room_id) !== -1) {
+                        if (tasks[erizo_id] !== undefined && tasks[erizo_id][room_id] !== undefined) {
                             reportCallback(erizo_id, 100);
                             return;
                         }
@@ -216,7 +260,7 @@ var api = function (worker) {
 
                     for (i in idle_erizos) {
                         erizo_id = idle_erizos[i];
-                        if (tasks[erizo_id] !== undefined && tasks[erizo_id].indexOf(room_id) !== -1) {
+                        if (tasks[erizo_id] !== undefined && tasks[erizo_id][room_id] !== undefined) {
                             reportCallback(erizo_id, 100);
                             return;
                         }
@@ -226,10 +270,9 @@ var api = function (worker) {
                 erizo_id = idle_erizos.shift();
                 reportCallback(erizo_id, 100);
 
-                tasks[erizo_id].push(room_id);
                 erizos.push(erizo_id);
 
-                if (reuse && ((erizos.length + idle_erizos.length + 1) >= GLOBAL.config.agent.maxProcesses)) {
+                if (reuse && myPurpose !== 'session' && ((erizos.length + idle_erizos.length + 1) >= GLOBAL.config.agent.maxProcesses)) {
                     // We re-use Erizos
                     idle_erizos.push(erizos.shift());
                 } else {
@@ -237,36 +280,27 @@ var api = function (worker) {
                     fillErizos();
                 }
             } catch (error) {
-                log.error('getErizoJS error:', error);
+                log.error('getNode error:', error);
             }
         },
 
-        recycleErizoJS: function(id, room_id, callback) {
+        recycleNode: function(id, consumer, callback) {
             try {
-                if (tasks[id]) {
-                    var i = tasks[id].indexOf(room_id);
-                    if (i !== -1) {
-                        tasks[id].splice(i, 1);
-                    }
-
-                    if (tasks[id].length === 0) {
-                        dropErizoJS(id, callback);
-                    }
-                }
-
-                var stillInUse = false;
-                for (var eid in tasks) {
-                    if (tasks[eid].indexOf(room_id) !== -1) {
-                        stillInUse = true;
-                        break;
-                    }
-                }
-                if (!stillInUse) {
-                    worker.removeTask(room_id);
-                }
+                removeConsumer(worker, id, consumer, function() {
+                    dropErizoJS(id, callback);
+                });
             } catch(error) {
-                log.error('recycleErizoJS error:', error);
+                log.error('recycleNode error:', error);
             }
+        },
+
+        querryNode: function(task, callback) {
+            for (var eid in tasks) {
+                if (tasks[eid][task] !== undefined) {
+                    return callback('callback', eid);
+                }
+            }
+            return callback('callback', 'error');
         }
     };
 };
@@ -392,7 +426,7 @@ var joinCluster = function (on_ok) {
                                     interf: concernedInterface || 'lo',
                                     max_scale: GLOBAL.config.cluster.network_max_scale};
             break;
-        case 'file':
+        case 'recording':
             try {
                 fs.accessSync(GLOBAL.config.recording.path, fs.F_OK);
             } catch (e) {
@@ -404,6 +438,7 @@ var joinCluster = function (on_ok) {
                                     drive: GLOBAL.config.recording.path};
             break;
         case 'audio':
+        case 'session':
             load_collection.item = {name: 'cpu'};
             break;
         case 'video':

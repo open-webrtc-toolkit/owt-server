@@ -49,9 +49,12 @@ private:
     bool init(const AVOptions* audio, const AVOptions* video);
     bool addVideoStream(enum AVCodecID codec_id, unsigned int width, unsigned int height);
     bool addAudioStream(enum AVCodecID codec_id, int nbChannels = 1, int sampleRate = 8000);
+    bool getReady();
     int writeAVFrame(AVStream*, const EncodedFrame&);
 
+    AVCodecID m_expectedVideo;
     AVStream* m_videoStream;
+    AVCodecID m_expectedAudio;
     AVStream* m_audioStream;
     AVFormatContext* m_context;
     std::string m_recordPath;

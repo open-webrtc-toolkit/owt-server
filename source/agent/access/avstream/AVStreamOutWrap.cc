@@ -86,22 +86,10 @@ void AVStreamOutWrap::New(const v8::FunctionCallbackInfo<v8::Value>& args)
     woogeen_base::AVStreamOut::AVOptions audioOption, videoOption, *pAudio = nullptr, *pVideo = nullptr;
     if (requireAudio) {
         audioOption.codec = std::string(*String::Utf8Value(options->Get(String::NewFromUtf8(isolate, "audio_codec"))->ToString()));
-        if (audioOption.codec.compare("pcmu") == 0) { // "pcmu"
-            audioOption.spec.audio.sampleRate = 8000;
-            audioOption.spec.audio.channels = 1;
-        } else { // "pcm_raw", "opus_48000_2"
-            audioOption.spec.audio.sampleRate = 48000;
-            audioOption.spec.audio.channels = 2;
-        }
         pAudio = &audioOption;
     }
     if (requireVideo) {
         videoOption.codec = std::string(*String::Utf8Value(options->Get(String::NewFromUtf8(isolate, "video_codec"))->ToString()));
-        std::string resolution = std::string(*String::Utf8Value(options->Get(String::NewFromUtf8(isolate, "video_resolution"))->ToString()));
-        woogeen_base::VideoSize vSize{ 0, 0 };
-        woogeen_base::VideoResolutionHelper::getVideoSize(resolution, vSize);
-        videoOption.spec.video.width = vSize.width;
-        videoOption.spec.video.height = vSize.height;
         pVideo = &videoOption;
     }
     AVStreamOutWrap* obj = new AVStreamOutWrap();

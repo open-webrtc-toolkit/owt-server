@@ -12,9 +12,10 @@
   "levels": {
     "ClusterWorker": "INFO",
     "LoadCollector": "INFO",
-    "ErizoController": "INFO",
-    "RoomController": "INFO",
-    "ErizoManager": "INFO",
+    "Main": "INFO",
+    "SocketIOServer": "INFO",
+    "Portal": "INFO",
+    "RpcClient": "INFO",
     "AMQPER": "INFO"
   }
 }
