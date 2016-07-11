@@ -113,7 +113,8 @@ public:
     enum Status {
         Context_CLOSED = -1,
         Context_EMPTY = 0,
-        Context_READY = 1
+        Context_INITIALIZING = 1,
+        Context_READY = 2
     };
 
     struct AVOptions {

@@ -51,7 +51,6 @@ module.exports = function () {
                        resolution: 'cif' | 'vga' | 'svga' | 'xga' | 'hd720p' | 'sif' | 'hvga' | 'r640x360' | 'r480x360' | 'qcif' | 'r192x144' | 'hd1080p' | 'uhd_4k' | 'r720x720' ...,
                        framerate: Number(1~120) | undefined,
                        dispatcher: Dispather,
-                       subscriptions: {SubscriptionID: InternalOut}
                        }}*/
         outputs = {},
 
@@ -60,7 +59,14 @@ module.exports = function () {
         maxInputNum = 0,
 
         useHardware = GLOBAL.config.video.hardwareAccelerated,
-        openh264Enabled = GLOBAL.config.video.openh264Enabled;
+        openh264Enabled = GLOBAL.config.video.openh264Enabled,
+
+        /*{ConnectionID: {video: StreamID | undefined,
+                          connection: InternalOut}
+                         }
+         }
+         */
+        connections = {};
 
     var VideoMixer;
     try {
@@ -119,7 +125,7 @@ module.exports = function () {
                 outputs[stream_id] = {codec: codec,
                                       resolution: resolution,
                                       dispatcher: dispatcher,
-                                      subscriptions: {}};
+                                      connections: {}};
                 log.debug('addOutput ok, stream_id:', stream_id);
                 on_ok(stream_id);
             } else {
@@ -133,10 +139,10 @@ module.exports = function () {
     var removeOutput = function (stream_id) {
         if (outputs[stream_id]) {
             var output = outputs[stream_id];
-            for (var subscription_id in output.subscriptions) {
-                 output.dispatcher.removeDestination('video', output.subscriptions[subscription_id]);
-                 output.subscriptions[subscription_id].close();
-                 delete output.subscriptions[subscription_id];
+            for (var connectionId in output.connections) {
+                 output.dispatcher.removeDestination('video', output.connections[connectionId]);
+                 output.connections[connectionId].close();
+                 delete output.connections[connectionId];
             }
             engine.removeOutput(stream_id);
             output.dispatcher.close();
@@ -148,8 +154,8 @@ module.exports = function () {
         if (observer) {
             amqper.callRpc(
                 observer,
-                'eventReport',
-                ['updateStream', session_id, {event: 'VideoLayoutChanged', id: session_id, data: null}]);
+                'onVideoLayoutChange',
+                [session_id, {fix_me: 'new layout data'}]);
         }
     };
 
@@ -232,11 +238,19 @@ module.exports = function () {
     };
 
     that.publish = function (stream_id, stream_type, options, callback) {
+        if (stream_type !== 'internal') {
+            return callback('callback', 'error', 'can not publish a stream to video engine through a non-internal connection');
+        }
+
+        if (options.video === undefined || options.video.codec === undefined) {
+            return callback('callback', 'error', 'can not publish a stream to video engine without proper video codec');
+        }
+
         if (inputs[stream_id] === undefined) {
-            log.debug('inputs.length:', Object.keys(inputs).length, 'maxInputNum:', maxInputNum);
+            log.debug('publish, stream_id:', stream_id, 'inputs.length:', Object.keys(inputs).length, 'maxInputNum:', maxInputNum);
             if (Object.keys(inputs).length < maxInputNum) {
-                addInput(stream_id, options.video_codec, options.protocol, function () {
-                    callback('callback', inputs[stream_id].getListeningPort());
+                addInput(stream_id, options.video.codec, options.protocol, function () {
+                    callback('callback', {ip: that.clusterIP, port: inputs[stream_id].getListeningPort()});
                 }, function (error_reason) {
                     log.error(error_reason);
                     callback('callback', 'error', error_reason);
@@ -255,24 +269,54 @@ module.exports = function () {
         removeInput(stream_id);
     };
 
-    that.subscribe = function (subscription_id, subscription_type, audio_stream_id, video_stream_id, options, callback) {
-        if (outputs[video_stream_id]) {
-            var conn = new InternalOut(options.protocol, options.dest_ip, options.dest_port);
-            outputs[video_stream_id].dispatcher.addDestination('video', conn);
-            outputs[video_stream_id].subscriptions[subscription_id] = conn;
+    that.subscribe = function (connectionId, connectionType, options, callback) {
+        if (connectionType !== 'internal') {
+            return callback('callback', 'error', 'can not subscribe a stream from video engine through a non-internal connection');
+        }
+        log.debug('subscribe, connectionId:', connectionId, 'options:', options);
+
+        if (connections[connectionId] === undefined) {
+            connections[connectionId] = {videoFrom: undefined,
+                                         connection: new InternalOut(options.protocol, options.dest_ip, options.dest_port)
+                                        };
             callback('callback', 'ok');
         } else {
-            log.error('Stream does not exist!', audio_stream_id);
+            callback('callback', 'error', 'connection already exists');
+        }
+    };
+
+    that.unsubscribe = function (connectionId) {
+        if (connections[connectionId] && connections[connectionId].videoFrom) {
+            if (outputs[connections[connectionId].videoFrom]) {
+                outputs[connections[connectionId].videoFrom].dispatcher.removeDestination('video', connections[connectionId].connection);
+            }
+            //connections[connectionId].connection.close();
+            delete connections[connectionId];
+        }
+    };
+
+    that.linkup = function (connectionId, audio_stream_id, video_stream_id, callback) {
+        if (connections[connectionId] === undefined) {
+            return callback('callback', 'error', 'connection does not exist');
+        }
+
+        if (outputs[video_stream_id]) {
+            log.debug('linkup, connectionId:', connectionId, 'video_stream_id:', video_stream_id);
+            outputs[video_stream_id].dispatcher.addDestination('video', connections[connectionId].connection);
+            callback('callback', 'ok');
+        } else {
+            log.error('Stream does not exist!', video_stream_id);
             callback('callback', 'error', 'Stream does not exist!');
         }
     };
 
-    that.unsubscribe = function (subscription_id) {
-        for (var stream_id in outputs) {
-            if (outputs[stream_id].subscriptions[subscription_id]) {
-                outputs[stream_id].dispatcher.removeDestination('video', outputs[stream_id].subscriptions[subscription_id]);
-                delete outputs[stream_id].subscriptions[subscription_id];
+    that.cutoff = function (connectionId) {
+        log.debug('cutoff, connectionId:', connectionId);
+        if (connections[connectionId] && connections[connectionId].videoFrom) {
+            if (outputs[connections[connectionId].videoFrom]) {
+                outputs[connections[connectionId].videoFrom].dispatcher.removeDestination('video', connections[connectionId].connection);
             }
+            connections[connectionId].videoFrom = undefined;
         }
     };
 

@@ -24,9 +24,10 @@ config.manager.schedule_reserve_time = config.manager.schedule_reserve_time || 6
 config.strategy = config.strategy || {};
 config.strategy.general = config.strategy.general || 'round-robin';
 config.strategy.portal = config.strategy.portal || 'last-used';
+config.strategy.session = config.strategy.session || 'last-used';
 config.strategy.webrtc = config.strategy.webrtc || 'last-used';
 config.strategy.rtsp = config.strategy.rtsp || 'round-robin';
-config.strategy.file = config.strategy.file || 'randomly-pick';
+config.strategy.recording = config.strategy.session || 'randomly-pick';
 config.strategy.audio = config.strategy.audio || 'most-used';
 config.strategy.video = config.strategy.video || 'least-used';
 
@@ -42,9 +43,10 @@ function startup () {
                     scheduleKeepTime: config.manager.schedule_reserve_time,
                     generalStrategy: config.strategy.general,
                     portalStrategy: config.strategy.portal,
+                    sessionStrategy: config.strategy.session,
                     webrtcStrategy: config.strategy.webrtc,
                     rtspStrategy: config.strategy.rtsp,
-                    fileStrategy: config.strategy.file,
+                    recordingStrategy: config.strategy.recording,
                     audioStrategy: config.strategy.audio,
                     videoStrategy: config.strategy.video
                    };

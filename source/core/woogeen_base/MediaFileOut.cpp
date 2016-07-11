@@ -55,7 +55,9 @@ inline AVCodecID frameFormat2AudioCodecID(int frameFormat)
 }
 
 MediaFileOut::MediaFileOut(const std::string& url, const AVOptions* audio, const AVOptions* video, int snapshotInterval, EventRegistry* handle)
-    : m_videoStream(nullptr)
+    : m_expectedVideo(AV_CODEC_ID_NONE)
+    , m_videoStream(nullptr)
+    , m_expectedAudio(AV_CODEC_ID_NONE)
     , m_audioStream(nullptr)
     , m_context(nullptr)
     , m_recordPath(url)
@@ -118,106 +120,97 @@ void MediaFileOut::close()
 
 bool MediaFileOut::init(const AVOptions* audio, const AVOptions* video)
 {
-    enum AVCodecID codec_id = AV_CODEC_ID_NONE;
     if (video) {
         if (video->codec.compare("vp8") == 0) {
-            codec_id = AV_CODEC_ID_VP8;
+            m_expectedVideo = AV_CODEC_ID_VP8;
         } else if (video->codec.compare("h264") == 0) {
-            codec_id = AV_CODEC_ID_H264;
+            m_expectedVideo = AV_CODEC_ID_H264;
         } else {
             notifyAsyncEvent("init", "invalid video codec");
             return false;
         }
-        if (!addVideoStream(codec_id, video->spec.video.width, video->spec.video.height)) {
-            notifyAsyncEvent("init", "cannot add video stream");
-            return false;
-        }
+        ELOG_DEBUG("expected video codec:(%d, %s)", m_expectedVideo, video->codec.c_str());
     }
     if (audio) {
         if (audio->codec.compare("pcmu") == 0) {
-            codec_id = AV_CODEC_ID_PCM_MULAW;
+            m_expectedAudio = AV_CODEC_ID_PCM_MULAW;
         } else if (audio->codec.compare("opus_48000_2") == 0) {
-            codec_id = AV_CODEC_ID_OPUS;
+            m_expectedAudio = AV_CODEC_ID_OPUS;
         } else {
             notifyAsyncEvent("init", "invalid audio codec");
             return false;
         }
-        if (!addAudioStream(codec_id, audio->spec.audio.channels, audio->spec.audio.sampleRate)) {
-            notifyAsyncEvent("init", "cannot add audio stream");
-            return false;
-        }
+        ELOG_DEBUG("expected audio codec:(%d, %s)", m_expectedAudio, audio->codec.c_str());
     }
-    if (codec_id == AV_CODEC_ID_NONE) {
+
+    if (m_expectedVideo == AV_CODEC_ID_NONE && m_expectedAudio == AV_CODEC_ID_NONE) {
         notifyAsyncEvent("init", "no a/v options specified");
         return false;
     }
 
-    if (!(m_context->oformat->flags & AVFMT_NOFILE)) {
-        if (avio_open(&m_context->pb, m_context->filename, AVIO_FLAG_WRITE) < 0) {
-            notifyAsyncEvent("init", "output file does not exist or cannot be opened for write");
-            ELOG_ERROR("avio_open failed");
-            return false;
-        }
-    }
-    if (avformat_write_header(m_context, nullptr) < 0) {
-        notifyAsyncEvent("init", "cannot write file header");
-        ELOG_ERROR("avformat_write_header failed");
-        return false;
-    }
-    av_dump_format(m_context, 0, m_context->filename, 1);
-    m_status = AVStreamOut::Context_READY;
+    m_status = AVStreamOut::Context_INITIALIZING;
     notifyAsyncEvent("init", "");
-    ELOG_DEBUG("context ready");
     deliverFeedbackMsg(FeedbackMsg{.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME });
     return true;
 }
 
 void MediaFileOut::onFrame(const Frame& frame)
 {
-    if (m_status != AVStreamOut::Context_READY)
+    if (m_status == AVStreamOut::Context_EMPTY || m_status == AVStreamOut::Context_CLOSED) {
         return;
+    }
 
     switch (frame.format) {
     case FRAME_FORMAT_VP8:
     case FRAME_FORMAT_H264:
-        if (!m_videoStream)
-            return;
-        if (m_videoStream->codec->codec_id != frameFormat2VideoCodecID(frame.format)) {
+        if (m_expectedVideo == frameFormat2VideoCodecID(frame.format)) {
+            bool addStreamOK = true;
+            if (!m_videoStream) {
+                addStreamOK = addVideoStream(m_expectedVideo, frame.additionalInfo.video.width, frame.additionalInfo.video.height);
+            } else if (frame.additionalInfo.video.width != m_videoStream->codec->width || frame.additionalInfo.video.height != m_videoStream->codec->height) {
+                ELOG_ERROR("invalid video frame resolution: %dx%d", frame.additionalInfo.video.width, frame.additionalInfo.video.height);
+                notifyAsyncEvent("fatal", "invalid video frame resolution");
+                return close();
+            }
+
+            if (addStreamOK) {
+                m_videoQueue->pushFrame(frame.payload, frame.length);
+            }
+        } else if (m_expectedVideo != AV_CODEC_ID_NONE){
             ELOG_ERROR("invalid video frame format");
             notifyAsyncEvent("fatal", "invalid video frame format");
             return close();
         }
-        if (frame.additionalInfo.video.width != m_videoStream->codec->width || frame.additionalInfo.video.height != m_videoStream->codec->height) {
-            ELOG_ERROR("invalid video frame resolution: %dx%d", frame.additionalInfo.video.width, frame.additionalInfo.video.height);
-            notifyAsyncEvent("fatal", "invalid video frame resolution");
-            return close();
-        }
-        m_videoQueue->pushFrame(frame.payload, frame.length);
         break;
     case FRAME_FORMAT_PCMU:
     case FRAME_FORMAT_OPUS: {
-        if (!m_audioStream)
-            return;
-        if (m_audioStream->codec->codec_id != frameFormat2AudioCodecID(frame.format)) {
+        if (m_expectedAudio == frameFormat2AudioCodecID(frame.format)) {
+            bool addStreamOK = true;
+            if (!m_audioStream) {
+                addStreamOK = addAudioStream(m_expectedAudio, frame.additionalInfo.audio.channels, frame.additionalInfo.audio.sampleRate);
+            } else if (frame.additionalInfo.audio.channels != m_audioStream->codec->channels || int(frame.additionalInfo.audio.sampleRate) != m_audioStream->codec->sample_rate) {
+                ELOG_ERROR("invalid audio frame channels %d, or sample rate: %d", frame.additionalInfo.audio.channels, frame.additionalInfo.audio.sampleRate);
+                notifyAsyncEvent("fatal", "invalid audio frame channels or sample rate");
+                return close();
+            }
+
+            if (addStreamOK) {
+                uint8_t* payload = frame.payload;
+                uint32_t length = frame.length;
+                if (frame.additionalInfo.audio.isRtpPacket) {
+                    RTPHeader* rtp = reinterpret_cast<RTPHeader*>(payload);
+                    uint32_t headerLength = rtp->getHeaderLength();
+                    assert(length >= headerLength);
+                    payload += headerLength;
+                    length -= headerLength;
+                }
+                m_audioQueue->pushFrame(payload, length);
+            }
+        } else if (m_expectedAudio != AV_CODEC_ID_NONE) {
             ELOG_ERROR("invalid audio frame format");
             notifyAsyncEvent("fatal", "invalid audio frame format");
             return close();
         }
-        if (frame.additionalInfo.audio.channels != m_audioStream->codec->channels || int(frame.additionalInfo.audio.sampleRate) != m_audioStream->codec->sample_rate) {
-            ELOG_ERROR("invalid audio frame channels %d, or sample rate: %d", frame.additionalInfo.audio.channels, frame.additionalInfo.audio.sampleRate);
-            notifyAsyncEvent("fatal", "invalid audio frame channels or sample rate");
-            return close();
-        }
-        uint8_t* payload = frame.payload;
-        uint32_t length = frame.length;
-        if (frame.additionalInfo.audio.isRtpPacket) {
-            RTPHeader* rtp = reinterpret_cast<RTPHeader*>(payload);
-            uint32_t headerLength = rtp->getHeaderLength();
-            assert(length >= headerLength);
-            payload += headerLength;
-            length -= headerLength;
-        }
-        m_audioQueue->pushFrame(payload, length);
         break;
     }
     default:
@@ -233,6 +226,8 @@ bool MediaFileOut::addAudioStream(enum AVCodecID codec_id, int nbChannels, int s
     AVStream* stream = avformat_new_stream(m_context, nullptr);
     if (!stream) {
         ELOG_ERROR("cannot add audio stream");
+        notifyAsyncEvent("fatal", "cannot add audio stream");
+        close();
         return false;
     }
     AVCodecContext* c = stream->codec;
@@ -250,6 +245,10 @@ bool MediaFileOut::addAudioStream(enum AVCodecID codec_id, int nbChannels, int s
         c->flags |= CODEC_FLAG_GLOBAL_HEADER;
     m_audioStream = stream;
     ELOG_DEBUG("audio stream added: %d channel(s), %d Hz, %s", nbChannels, sampleRate, (codec_id == AV_CODEC_ID_OPUS) ? "OPUS" : "PCMU");
+
+    if ((m_expectedVideo == AV_CODEC_ID_NONE) || m_videoStream) {
+        return getReady();
+    }
     return true;
 }
 
@@ -258,6 +257,8 @@ bool MediaFileOut::addVideoStream(enum AVCodecID codec_id, unsigned int width, u
     m_context->oformat->video_codec = codec_id;
     AVStream* stream = avformat_new_stream(m_context, nullptr);
     if (!stream) {
+        notifyAsyncEvent("fatal", "cannot add audio stream");
+        close();
         ELOG_ERROR("cannot add video stream");
         return false;
     }
@@ -273,6 +274,31 @@ bool MediaFileOut::addVideoStream(enum AVCodecID codec_id, unsigned int width, u
     m_context->oformat->flags |= AVFMT_VARIABLE_FPS;
     m_videoStream = stream;
     ELOG_DEBUG("video stream added: %dx%d, %s", width, height, (codec_id == AV_CODEC_ID_H264) ? "H264" : "VP8");
+
+    if ((m_expectedAudio == AV_CODEC_ID_NONE) || m_audioStream) {
+        return getReady();
+    }
+    return true;
+}
+
+bool MediaFileOut::getReady()
+{
+    if (!(m_context->oformat->flags & AVFMT_NOFILE)) {
+        if (avio_open(&m_context->pb, m_context->filename, AVIO_FLAG_WRITE) < 0) {
+            notifyAsyncEvent("init", "output file does not exist or cannot be opened for write");
+            ELOG_ERROR("avio_open failed");
+            return false;
+        }
+    }
+    if (avformat_write_header(m_context, nullptr) < 0) {
+        notifyAsyncEvent("init", "cannot write file header");
+        ELOG_ERROR("avformat_write_header failed");
+        return false;
+    }
+    av_dump_format(m_context, 0, m_context->filename, 1);
+    m_status = AVStreamOut::Context_READY;
+    ELOG_DEBUG("context ready");
+    deliverFeedbackMsg(FeedbackMsg{.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME });
     return true;
 }
 

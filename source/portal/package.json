@@ -1,0 +1,21 @@
+{
+  "name": "WooGeen-MCU-Portal",
+  "version": "3.0.0",
+  "dependencies": {
+    "amqp": "*",
+    "socket.io": "^1.3.5",
+    "log4js": "*",
+    "toml": "*"
+  },
+  "devDependencies": {
+    "mocha": "^2.2.5",
+    "chai": "^3.0.0",
+    "chai-as-promised": "^5.1.0",
+    "sinon": "^1.15.4",
+    "sinon-as-promised": "^4.0.0",
+    "socket.io-client": "*"
+  },
+  "scripts": {
+    "test": "mocha ./test -R spec"
+  }
+}

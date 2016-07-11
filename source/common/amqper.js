@@ -41,9 +41,11 @@ exports.connect = function(addr, callback) {
                                 log.debug('Callback', message.type, ' - ', message.data);
                                 clearTimeout(map[message.corrID].to);
                                 map[message.corrID].fn[message.type].call({}, message.data, message.err);
-                                setTimeout(function() {
-                                    if (map[message.corrID] !== undefined) delete map[message.corrID];
-                                }, REMOVAL_TIMEOUT);
+                                if (!map[message.corrID].fn['onStatus']) {//FIXME: if the rpc contains a 'onStatus' callback, it will not be deleted. May cause memory leak here, should be fixed later.
+                                    setTimeout(function() {
+                                        if (map[message.corrID] !== undefined) delete map[message.corrID];
+                                    }, REMOVAL_TIMEOUT);
+                                }
                             }
                         } catch(err) {
                             log.error('Error processing response: ', err);
@@ -121,7 +123,7 @@ exports.broadcast = function(topic, message) {
 exports.callRpc = function(to, method, args, callbacks) {
     corrID ++;
     map[corrID] = {};
-    map[corrID].fn = callbacks;
+    map[corrID].fn = callbacks || {callback: function() {}};
     map[corrID].to = setTimeout(callbackError, TIMEOUT, corrID);
     rpc_exc.publish(to, {method: method, args: args, corrID: corrID, replyTo: clientQueue.name});
 };

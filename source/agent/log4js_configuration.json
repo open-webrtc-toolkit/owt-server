@@ -14,6 +14,8 @@
     "LoadCollector": "INFO",
     "AMQPER": "INFO",
     "ErizoJS": "INFO",
+    "Session": "INFo",
+    "Controller": "INFO",
     "AudioNode": "INFO",
     "ErizoAgent": "INFO",
     "VideoNode": "INFO",
