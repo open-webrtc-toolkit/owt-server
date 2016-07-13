@@ -24,6 +24,7 @@
     'include_dirs': [ '$(CORE_HOME)/common',
                       '$(CORE_HOME)/erizo/src/erizo',
                       '$(CORE_HOME)/woogeen_base',
+                      '$(CORE_HOME)/../../build/libdeps/build/include',
                       '$(CORE_HOME)/../../build/libdeps/build/include/libyami',
                       '$(CORE_HOME)/../../third_party/webrtc/src' ],
     'libraries': [
