@@ -82,8 +82,9 @@ var Client = function(participantId, socket, portal, on_disconnect) {
                                        }),
                                        users: result.participants});
       }).catch(function(err) {
-        log.info('token login failed:', err.message);
-        safeCall(callback, 'error', err.message);
+        var err_message = (typeof err === 'string' ? err: err.message);
+        log.info('token login failed:', err_message);
+        safeCall(callback, 'error', err_message);
         socket.disconnect();
       });
     });
@@ -132,8 +133,9 @@ var Client = function(participantId, socket, portal, on_disconnect) {
           safeCall(callback, 'success', streamId);
         }
       }).catch(function(err) {
-        log.info('portal.publish exception:', err.message);
-        safeCall(callback, 'error', err.message);
+        var err_message = (typeof err === 'string' ? err: err.message);
+        log.info('portal.publish failed:', err_message);
+        safeCall(callback, 'error', err_message);
       });
     });
 
@@ -145,12 +147,10 @@ var Client = function(participantId, socket, portal, on_disconnect) {
       return portal.unpublish(participant_id, streamId)
       .then(function() {
         safeCall(callback, 'success');
-      }, function(err) {
-        log.info('portal.unpublish failed:', err.message);
-        safeCall(callback, 'error', err.message);
       }).catch(function(err) {
-        log.info('portal.unpublish exception:', err.message);
-        safeCall(callback, 'error', err.message);
+        var err_message = (typeof err === 'string' ? err: err.message);
+        log.info('portal.unpublish failed:', err_message);
+        safeCall(callback, 'error', err_message);
       });
     });
 
@@ -162,12 +162,10 @@ var Client = function(participantId, socket, portal, on_disconnect) {
       return portal.mix(participant_id, streamId)
       .then(function() {
         safeCall(callback, 'success');
-      }, function(err) {
-        log.info('portal.mix failed:', err.message);
-        safeCall(callback, 'error', err.message);
       }).catch(function(err) {
-        log.info('portal.mix exception:', err.message);
-        safeCall(callback, 'error', err.message);
+        var err_message = (typeof err === 'string' ? err: err.message);
+        log.info('portal.mix failed:', err_message);
+        safeCall(callback, 'error', err_message);
       });
     });
 
@@ -179,12 +177,10 @@ var Client = function(participantId, socket, portal, on_disconnect) {
       return portal.unmix(participant_id, streamId)
       .then(function() {
         safeCall(callback, 'success');
-      }, function(err) {
-        log.info('portal.unmix failed:', err.message);
-        safeCall(callback, 'error', err.message);
       }).catch(function(err) {
-        log.info('portal.unmix exception:', err.message);
-        safeCall(callback, 'error', err.message);
+        var err_message = (typeof err === 'string' ? err: err.message);
+        log.info('portal.unmix failed:', err_message);
+        safeCall(callback, 'error', err_message);
       });
     });
 
@@ -196,12 +192,10 @@ var Client = function(participantId, socket, portal, on_disconnect) {
       return portal.setVideoBitrate(participant_id, options.id, options.bitrate)
       .then(function() {
         safeCall(callback, 'success');
-      }, function(err) {
-        log.info('portal.setVideoBitrate failed:', err.message);
-        safeCall(callback, 'error', err.message);
       }).catch(function(err) {
-        log.info('portal.setVideoBitrate exception:', err.message);
-        safeCall(callback, 'error', err.message);
+        var err_message = (typeof err === 'string' ? err: err.message);
+        log.info('portal.setVideoBitrate failed:', err_message);
+        safeCall(callback, 'error', err_message);
       });
     });
 
@@ -227,8 +221,9 @@ var Client = function(participantId, socket, portal, on_disconnect) {
         subscription_id = subscriptionId;
         safeCall(callback, 'initializing', subscriptionId);
       }).catch(function(err) {
-        log.info('portal.subscribe exception:', err.message);
-        safeCall(callback, 'error', err.message);
+        var err_message = (typeof err === 'string' ? err: err.message);
+        log.info('portal.subscribe failed:', err_message);
+        safeCall(callback, 'error', err_message);
       });
     });
 
@@ -241,12 +236,10 @@ var Client = function(participantId, socket, portal, on_disconnect) {
       return portal.unsubscribe(participant_id, subscription_id)
       .then(function() {
         safeCall(callback, 'success');
-      }, function(err) {
-        log.info('portal.unsubscribe failed:', err.message);
-        safeCall(callback, 'error', err.message);
       }).catch(function(err) {
-        log.info('portal.unsubscribe exception:', err.message);
-        safeCall(callback, 'error', err.message);
+        var err_message = (typeof err === 'string' ? err: err.message);
+        log.info('portal.unsubscribe failed:', err_message);
+        safeCall(callback, 'error', err_message);
       });
     });
 
@@ -293,8 +286,9 @@ var Client = function(participantId, socket, portal, on_disconnect) {
         url_lead.pathname = path.join(url_lead.pathname || '/', 'room_' + that.inRoom + '-' + subscription_id + '.sdp');
         stream_url = url_lead.format();
       }).catch(function(err) {
-        log.info('portal.subscribe exception:', err.message);
-        safeCall(callback, 'error', err.message);
+        var err_message = (typeof err === 'string' ? err: err.message);
+        log.info('portal.subscribe failed:', err_message);
+        safeCall(callback, 'error', err_message);
       });
     });
 
@@ -310,12 +304,10 @@ var Client = function(participantId, socket, portal, on_disconnect) {
       return portal.unsubscribe(participant_id, options.id)
       .then(function() {
         safeCall(callback, 'success', {id: options.id});
-      }, function(err) {
-        log.info('portal.unsubscribe failed:', err.message);
-        safeCall(callback, 'error', 'Invalid RTSP/RTMP id');
       }).catch(function(err) {
-        log.info('portal.unsubscribe exception:', err.message);
-        safeCall(callback, 'error', err.message);
+        var err_message = (typeof err === 'string' ? err: err.message);
+        log.info('portal.unsubscribe failed:', err_message);
+        safeCall(callback, 'error', err_message);
       });
     });
 
@@ -330,18 +322,18 @@ var Client = function(participantId, socket, portal, on_disconnect) {
 
       var unspecifiedStreamIds = (options.audioStreamId === undefined && options.videoStreamId === undefined);
 
-      if ((options.audioStreamId || unspecifiedStreamIds) && (options.audioCodec !== undefined) && ((typeof options.audioCodec !== 'string') || options.audioCodec === '')) {
+      if ((options.audioStreamId || unspecifiedStreamIds) && (options.audioCodec !== undefined) && (['pcmu', 'opus'].indexOf(options.audioCodec) < 0)) {
         return safeCall(callback, 'error', 'Invalid audio codec');
       }
 
-      if ((options.videoStreamId || unspecifiedStreamIds) && (options.videoCodec !== undefined) && ((typeof options.videoCodec !== 'string') || options.videoCodec === '')) {
+      if ((options.videoStreamId || unspecifiedStreamIds) && (options.videoCodec !== undefined) && (['vp8', 'h264'].indexOf(options.videoCodec) < 0)) {
         return safeCall(callback, 'error', 'Invalid video codec');
       }
 
       var subscription_description = {audio: false, video: false};
       (options.audioStreamId || unspecifiedStreamIds) && (subscription_description.audio = {fromStream: options.audioStreamId || that.inRoom});
       (subscription_description.audio && (typeof options.audioCodec === 'string')) && (subscription_description.audio.codecs = [options.audioCodec]);
-      subscription_description.audio && (subscription_description.audio.codecs = subscription_description.audio.codecs || ['pcmu']);
+      subscription_description.audio && (subscription_description.audio.codecs = (subscription_description.audio.codecs || ['pcmu']).map(function(c) {return (c === 'opus' ? 'opus_48000_2' : c);}));
       (options.videoStreamId || unspecifiedStreamIds) && (subscription_description.video = {fromStream: options.videoStreamId || that.inRoom});
       (subscription_description.video && (typeof options.videoCodec === 'string')) && (subscription_description.video.codecs = [options.videoCodec]);
       subscription_description.video && (subscription_description.video.codecs = subscription_description.video.codecs || ['vp8']);
@@ -349,19 +341,24 @@ var Client = function(participantId, socket, portal, on_disconnect) {
       options.recorderId && (subscription_description.recorderId = options.recorderId);
       subscription_description.interval = (options.interval && options.interval > 0) ? options.interval : -1;
 
-      var subscription_id, recording_file;
+      var subscription_id, recording_file, recorder_added = false;
       return portal.subscribe(participant_id, 'recording', subscription_description, function(status) {
         if (status.type === 'failed') {
-          safeCall(callback, 'error', status.reason);
+          if (recorder_added) {
+            that.notify('remove_recorder', {id: subscription_id});
+          } else {
+            safeCall(callback, 'error', status.reason);
+          }
         } else if (status.type === 'ready') {
+          recorder_added = true;
           safeCall(callback, 'success', {recorderId: subscription_id, path: recording_file});
         }
       }).then(function(subscriptionId) {
         subscription_id = subscriptionId;
         recording_file = path.join(options.path || '', 'room_' + that.inRoom + '-' + subscription_id + '.mkv' );
       }).catch(function(err) {
-        log.info('portal.subscribe exception:', err.message);
-        safeCall(callback, 'error', err.message);
+        log.info('portal.subscribe failed:', err_message);
+        safeCall(callback, 'error', err_message);
       });
     });
 
@@ -377,12 +374,10 @@ var Client = function(participantId, socket, portal, on_disconnect) {
       return portal.unsubscribe(participant_id, options.recorderId)
       .then(function() {
         safeCall(callback, 'success', {recorderId: options.recorderId});
-      }, function(err) {
-        log.info('portal.unsubscribe failed:', err.message);
-        safeCall(callback, 'error', 'Invalid recorder id');
       }).catch(function(err) {
-        log.info('portal.unsubscribe exception:', err.message);
-        safeCall(callback, 'error', err.message);
+        var err_message = (typeof err === 'string' ? err: err.message);
+        log.info('portal.unsubscribe failed:', err_message);
+        safeCall(callback, 'error', err_message);
       });
     });
 
@@ -398,12 +393,10 @@ var Client = function(participantId, socket, portal, on_disconnect) {
       return portal.getRegion(participant_id, options.id)
       .then(function(regionId) {
         safeCall(callback, 'success', {region: regionId});
-      }, function(err) {
-        log.info('portal.getRegion failed:', err.message);
-        safeCall(callback, 'error', 'Invalid stream id');
       }).catch(function(err) {
-        log.info('portal.getRegion exception:', err.message);
-        safeCall(callback, 'error', err.message);
+        var err_message = (typeof err === 'string' ? err: err.message);
+        log.info('portal.getRegion failed:', err_message);
+        safeCall(callback, 'error', err_message);
       });
     });
 
@@ -423,12 +416,10 @@ var Client = function(participantId, socket, portal, on_disconnect) {
       return portal.setRegion(participant_id, options.id, options.region)
       .then(function() {
         safeCall(callback, 'success');
-      }, function(err) {
-        log.info('portal.setRegion failed:', err.message);
-        safeCall(callback, 'error', err.message);
       }).catch(function(err) {
-        log.info('portal.setRegion exception:', err.message);
-        safeCall(callback, 'error', err.message);
+        var err_message = (typeof err === 'string' ? err: err.message);
+        log.info('portal.setRegion failed:', err_message);
+        safeCall(callback, 'error', err_message);
       });
     });
 
@@ -446,12 +437,10 @@ var Client = function(participantId, socket, portal, on_disconnect) {
           return portal.text(participant_id, msg.receiver, msg.data)
             .then(function() {
               safeCall(callback, 'success');
-            }, function(err) {
-              log.info('portal.text failed:', err.message);
-              safeCall(callback, 'error', err.message);
             }).catch(function(err) {
-              log.info('portal.text exception:', err.message);
-              safeCall(callback, 'error', err.message);
+              var err_message = (typeof err === 'string' ? err: err.message);
+              log.info('portal.text failed:', err_message);
+              safeCall(callback, 'error', err_message);
             });
         case 'control':
           if (typeof msg.payload !== 'object') {
@@ -474,12 +463,10 @@ var Client = function(participantId, socket, portal, on_disconnect) {
           return portal.mediaOnOff(participant_id, msg.payload.streamId, track, direction, on_off)
             .then(function() {
               safeCall(callback, 'success');
-            }, function(err) {
-              log.info('portal.mediaOnOff failed:', err.message);
-              safeCall(callback, 'error', err.message);
             }).catch(function(err) {
-              log.info('portal.mediaOnOff exception:', err.message);
-              safeCall(callback, 'error', err.message);
+              var err_message = (typeof err === 'string' ? err: err.message);
+              log.info('portal.mediaOnOff failed:', err_message);
+              safeCall(callback, 'error', err_message);
             });
         default:
           return safeCall(callback, 'error', 'Invalid message type');
@@ -489,7 +476,8 @@ var Client = function(participantId, socket, portal, on_disconnect) {
     socket.on('disconnect', function() {
       if (that.inRoom) {
         portal.leave(participant_id).catch(function(err) {
-          log.info('portal.leave exception:', err.message);
+          var err_message = (typeof err === 'string' ? err: err.message);
+          log.info('portal.leave failed:', err_message);
         });
       }
       on_disconnect();
@@ -497,6 +485,7 @@ var Client = function(participantId, socket, portal, on_disconnect) {
   };
 
   that.notify = function(event, data) {
+    log.debug('socket.emit, event:', event, 'data:', data);
     socket.emit(event, data);
   };
 
@@ -562,6 +551,7 @@ var SocketIOServer = function(spec, portal) {
   };
 
   that.notify = function(participantId, event, data) {
+    log.debug('notify participant:', participantId, 'event:', event, 'data:', data);
     if (clients[participantId]) {
       clients[participantId].notify(event, data);
       return Promise.resolve('ok');

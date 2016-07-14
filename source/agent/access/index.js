@@ -319,6 +319,7 @@ module.exports = function () {
                 connections[connectionId].connection.onSignalling(msg);
                 callback('callback', 'ok');
             } else {
+                log.info('signaling on non-webrtc connection');
                 callback('callback', 'error', 'signaling on non-webrtc connection');
             }
         } else {
@@ -326,8 +327,8 @@ module.exports = function () {
         }
     };
 
-    that.onMediaOnOff = function (connectionId, track, direction, action, callback) {
-        log.debug('onMediaOnOff, connection id:', connectionId, 'track:', track, 'direction:', direction, 'action:', action);
+    that.mediaOnOff = function (connectionId, track, direction, action, callback) {
+        log.debug('mediaOnOff, connection id:', connectionId, 'track:', track, 'direction:', direction, 'action:', action);
         if (connections[connectionId]) {
             if (connections[connectionId].type === 'webrtc') {//NOTE: Only webrtc connection supports media-on-off
                 connections[connectionId].connection.onTrackControl(track,
@@ -336,12 +337,15 @@ module.exports = function () {
                                                                     function () {
                                                                         callback('callback', 'ok');
                                                                     }, function (error_reason) {
+                                                                        log.info('trac control failed:', error_reason);
                                                                         callback('callback', 'error', error_reason);
                                                                     });
             } else {
-                callback('callback', 'error', 'signaling on non-webrtc connection');
+                log.info('mediaOnOff on non-webrtc connection');
+                callback('callback', 'error', 'mediaOnOff on non-webrtc connection');
             }
         } else {
+          log.info('Connection does NOT exist:' + connectionId);
           callback('callback', 'error', 'Connection does NOT exist:' + connectionId);
         }
     };
@@ -350,10 +354,10 @@ module.exports = function () {
         log.debug('setVideoBitrate, connection id:', connectionId, 'bitrate:', bitrate);
         if (connections[connectionId] && connections[connectionId].direction === 'in') {
             if (connections[connectionId].type === 'webrtc') {//NOTE: Only webrtc connection supports setting video bitrate.
-                connections[connection_id].connection.setVideoBitrate(bitrate);
+                connections[connectionId].connection.setVideoBitrate(bitrate);
                 callback('callback', 'ok');
             } else {
-                callback('callback', 'error', 'signaling on non-webrtc connection');
+                callback('callback', 'error', 'setVideoBitrate on non-webrtc connection');
             }
         } else {
           callback('callback', 'error', 'Connection does NOT exist:' + connectionId);

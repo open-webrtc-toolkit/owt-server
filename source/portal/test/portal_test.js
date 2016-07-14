@@ -15,7 +15,13 @@ var testPortalSpec = {tokenKey: testTokenKey,
                       selfRpcId: testSelfRpcId,
                       permissionMap: {'admin': {publish: true, subscribe: true, record: true},
                                       'presenter': {publish: true, subscribe: true},
-                                      'viewer': {subscribe: true}}
+                                      'viewer': {subscribe: true},
+                                      'viewer_no_text': {subscribe: true, text: false},
+                                      'a_viewer': {subscribe: {audio: true}},
+                                      'v_viewer': {subscribe: {video: true}},
+                                      'viewer_pub_a': {subscribe: true, publish: {audio: true}},
+                                      'viewer_pub_v': {subscribe: true, publish: {video: true}},
+                                      'guest': {}}
                      };
 var testToken = {tokenId: '573eab88111478bb3526421b',
                  host: '10.239.158.161:8080',
@@ -268,7 +274,7 @@ describe('portal.publish/portal.unpublish: Participants publish/unpublish stream
         .to.be.rejectedWith('Participant ' + testParticipantId + ' does NOT exist.');
   });
 
-  it('Publishing without permission should fail.', function() {
+  it('Publishing without permission(publish: undefined | false) should fail.', function() {
     var mockRpcClient = sinon.createStubInstance(rpcClient);
     var portal = Portal(testPortalSpec, mockRpcClient);
 
@@ -277,6 +283,58 @@ describe('portal.publish/portal.unpublish: Participants publish/unpublish stream
     mockRpcClient.join = sinon.stub();
 
     mockRpcClient.tokenLogin.resolves({userName: 'Jack', role: 'viewer', room: testSession});
+    mockRpcClient.getController.resolves('rpcIdOfController');
+    mockRpcClient.join.resolves({participants: [],
+                                 streams: []});
+
+    var spyConnectionObserver = sinon.spy();
+
+    return portal.join(testParticipantId, testToken)
+      .then(function(login_result) {
+        return expect(portal.publish(testParticipantId,
+                                     'webrtc',
+                                     {audio: true, video: {resolution: 'vga', framerate: 30, device: 'camera'}},
+                                     spyConnectionObserver,
+                                     false))
+          .to.be.rejectedWith('unauthorized');
+      });
+  });
+
+  it('Publishing without permission(publish: {audio: true} but stream contains video) should fail.', function() {
+    var mockRpcClient = sinon.createStubInstance(rpcClient);
+    var portal = Portal(testPortalSpec, mockRpcClient);
+
+    mockRpcClient.tokenLogin = sinon.stub();
+    mockRpcClient.getController = sinon.stub();
+    mockRpcClient.join = sinon.stub();
+
+    mockRpcClient.tokenLogin.resolves({userName: 'Jack', role: 'viewer_pub_a', room: testSession});
+    mockRpcClient.getController.resolves('rpcIdOfController');
+    mockRpcClient.join.resolves({participants: [],
+                                 streams: []});
+
+    var spyConnectionObserver = sinon.spy();
+
+    return portal.join(testParticipantId, testToken)
+      .then(function(login_result) {
+        return expect(portal.publish(testParticipantId,
+                                     'webrtc',
+                                     {audio: true, video: {resolution: 'vga', framerate: 30, device: 'camera'}},
+                                     spyConnectionObserver,
+                                     false))
+          .to.be.rejectedWith('unauthorized');
+      });
+  });
+
+  it('Publishing without permission(publish: {video: true} but stream contains video) should fail.', function() {
+    var mockRpcClient = sinon.createStubInstance(rpcClient);
+    var portal = Portal(testPortalSpec, mockRpcClient);
+
+    mockRpcClient.tokenLogin = sinon.stub();
+    mockRpcClient.getController = sinon.stub();
+    mockRpcClient.join = sinon.stub();
+
+    mockRpcClient.tokenLogin.resolves({userName: 'Jack', role: 'viewer_pub_v', room: testSession});
     mockRpcClient.getController.resolves('rpcIdOfController');
     mockRpcClient.join.resolves({participants: [],
                                  streams: []});
@@ -334,7 +392,7 @@ describe('portal.publish/portal.unpublish: Participants publish/unpublish stream
       portal.leave(testParticipantId);
     });
 
-    it('Publishing an rtsp stream with both audio and video should succeed.', function() {
+    it('Publishing an rtsp/rtmp stream with both audio and video should succeed.', function() {
       mockRpcClient.getAccessNode = sinon.stub();
       mockRpcClient.publish = sinon.stub();
       mockRpcClient.onConnectionSignalling = sinon.stub();
@@ -375,6 +433,53 @@ describe('portal.publish/portal.unpublish: Participants publish/unpublish stream
           expect(result).to.equal('ok');
           expect(mockRpcClient.pub2Session.getCall(0).args).to.deep.equal(['rpcIdOfController', testParticipantId, stream_id, {agent: 'rpcIdOfAccessAgent', node: 'rpcIdOfAccessNode'}, {audio: {codec: 'pcmu'}, video: {resolution: 'hd1080p', device: 'unknown', codec: 'h264'}}, false]);
           expect(spyConnectionObserver.getCall(1).args).to.deep.equal([{type: 'ready', audio_codecs: ['pcmu'], video_codecs: ['h264'], video_resolution: 'hd1080p'}]);
+        });
+    });
+
+    it('Publishing rtsp/rtmp streams should be aborted if exceptions occur.', function() {
+      mockRpcClient.getAccessNode = sinon.stub();
+      mockRpcClient.publish = sinon.stub();
+      mockRpcClient.pub2Session = sinon.stub();
+      mockRpcClient.unpublish = sinon.stub();
+      mockRpcClient.recycleAccessNode = sinon.stub();
+      mockRpcClient.unpub2Session = sinon.stub();
+
+      mockRpcClient.getAccessNode.resolves({agent: 'rpcIdOfAccessAgent', node: 'rpcIdOfAccessNode'});
+      mockRpcClient.publish.resolves('ok');
+      mockRpcClient.unpublish.resolves('ok');
+      mockRpcClient.recycleAccessNode.resolves('ok');
+      mockRpcClient.pub2Session.resolves('ok');
+      mockRpcClient.unpub2Session.resolves('ok');
+
+      var stream_id, on_connection_status;
+      var spyConnectionObserver = sinon.spy();
+
+      return portal.publish(testParticipantId,
+                            'avstream',
+                            {audio: true, video: {resolution: 'unknown', device: 'unknown'}, url: 'URIofSomeIPCamera'},
+                            spyConnectionObserver,
+                            false)
+        .then(function(streamId) {
+          stream_id = streamId;
+          on_connection_status = mockRpcClient.publish.getCall(0).args[4];
+          expect(on_connection_status).to.be.a('function');
+          return on_connection_status({type: 'initializing'});
+        })
+        .then(function(statusResult) {
+          expect(statusResult).to.equal('initializing');
+          return on_connection_status({type: 'ready', audio_codecs: ['pcmu'], video_codecs: ['h264'], video_resolution: 'hd1080p'});
+        })
+        .then(function(result) {
+          expect(result).to.equal('ok');
+          return on_connection_status({type: 'failed', reason: 'network error'});
+        })
+        .then(function(runHere) {
+          expect(runHere).to.be.false;
+        }, function(reason) {
+          expect(reason).to.have.string('network error');
+          expect(mockRpcClient.unpublish.getCall(0).args).to.deep.equal(['rpcIdOfAccessNode', stream_id]);
+          expect(mockRpcClient.recycleAccessNode.getCall(0).args).to.deep.equal(['rpcIdOfAccessAgent', 'rpcIdOfAccessNode', {session: testSession, consumer: stream_id}]);
+          expect(mockRpcClient.unpub2Session.getCall(0).args).to.deep.equal(['rpcIdOfController', testParticipantId, stream_id]);
         });
     });
 
@@ -929,7 +1034,7 @@ describe('portal.subscribe/portal.unsubscribe/portal.mediaOnOff: Participants su
         .to.be.rejectedWith('Participant ' + testParticipantId + ' does NOT exist.');
   });
 
-  it('Subscribing to webrtc clients without permission should fail.', function() {
+  it('Subscribing to webrtc clients without permission(subscribe: undefined | false) should fail.', function() {
     var mockRpcClient = sinon.createStubInstance(rpcClient);
     var portal = Portal(testPortalSpec, mockRpcClient);
 
@@ -938,6 +1043,56 @@ describe('portal.subscribe/portal.unsubscribe/portal.mediaOnOff: Participants su
     mockRpcClient.join = sinon.stub();
 
     mockRpcClient.tokenLogin.resolves({userName: 'Jack', role: 'guest', room: testSession});
+    mockRpcClient.getController.resolves('rpcIdOfController');
+    mockRpcClient.join.resolves({participants: [],
+                                 streams: []});
+
+    var spyConnectionObserver = sinon.spy();
+
+    return portal.join(testParticipantId, testToken)
+      .then(function(login_result) {
+        return expect(portal.subscribe(testParticipantId,
+                                       'webrtc',
+                                       {streamId: 'targetStreamId', audio: true, video: {resolution: 'vga'}},
+                                       spyConnectionObserver))
+          .to.be.rejectedWith('unauthorized');
+      });
+  });
+
+  it('Subscribing to webrtc clients without permission(subscribe: {audio: true} and require video as well) should fail.', function() {
+    var mockRpcClient = sinon.createStubInstance(rpcClient);
+    var portal = Portal(testPortalSpec, mockRpcClient);
+
+    mockRpcClient.tokenLogin = sinon.stub();
+    mockRpcClient.getController = sinon.stub();
+    mockRpcClient.join = sinon.stub();
+
+    mockRpcClient.tokenLogin.resolves({userName: 'Jack', role: 'a_viewer', room: testSession});
+    mockRpcClient.getController.resolves('rpcIdOfController');
+    mockRpcClient.join.resolves({participants: [],
+                                 streams: []});
+
+    var spyConnectionObserver = sinon.spy();
+
+    return portal.join(testParticipantId, testToken)
+      .then(function(login_result) {
+        return expect(portal.subscribe(testParticipantId,
+                                       'webrtc',
+                                       {streamId: 'targetStreamId', audio: true, video: {resolution: 'vga'}},
+                                       spyConnectionObserver))
+          .to.be.rejectedWith('unauthorized');
+      });
+  });
+
+  it('Subscribing to webrtc clients without permission(subscribe: {video: true} and require audio as well) should fail.', function() {
+    var mockRpcClient = sinon.createStubInstance(rpcClient);
+    var portal = Portal(testPortalSpec, mockRpcClient);
+
+    mockRpcClient.tokenLogin = sinon.stub();
+    mockRpcClient.getController = sinon.stub();
+    mockRpcClient.join = sinon.stub();
+
+    mockRpcClient.tokenLogin.resolves({userName: 'Jack', role: 'v_viewer', room: testSession});
     mockRpcClient.getController.resolves('rpcIdOfController');
     mockRpcClient.join.resolves({participants: [],
                                  streams: []});
@@ -1067,6 +1222,43 @@ describe('portal.subscribe/portal.unsubscribe/portal.mediaOnOff: Participants su
         });
     });
 
+    it('Subscribing an already-subscribed stream should fail.', function() {
+      mockRpcClient.getAccessNode = sinon.stub();
+      mockRpcClient.subscribe = sinon.stub();
+      mockRpcClient.unsubscribe = sinon.stub();
+      mockRpcClient.recycleAccessNode = sinon.stub();
+      mockRpcClient.sub2Session = sinon.stub();
+      mockRpcClient.unsub2Session = sinon.stub();
+
+      mockRpcClient.getAccessNode.resolves({agent: 'rpcIdOfAccessAgent', node: 'rpcIdOfAccessNode'});
+      mockRpcClient.subscribe.resolves('ok');
+      mockRpcClient.unsubscribe.resolves('ok');
+      mockRpcClient.recycleAccessNode.resolves('ok');
+      mockRpcClient.sub2Session.resolves('ok');
+      mockRpcClient.unsub2Session.resolves('ok');
+
+      var subscription_id, on_connection_status;
+      var spyConnectionObserver = sinon.spy();
+      var spyConnectionObserver1 = sinon.spy();
+
+      return portal.subscribe(testParticipantId,
+                             'webrtc',
+                             {audio: {fromStream: 'targetStreamId'}, video: {fromStream: 'targetStreamId', resolution: 'vga'}},
+                             spyConnectionObserver)
+        .then(function(subscriptionId) {
+          subscription_id = subscriptionId;
+          on_connection_status = mockRpcClient.subscribe.getCall(0).args[4];
+          return on_connection_status({type: 'ready', audio_codecs: ['pcmu', 'opus'], video_codecs: ['vp8', 'h264']});
+        })
+        .then(function() {
+          expect(mockRpcClient.sub2Session.callCount).to.equal(1);
+          return expect(portal.subscribe(testParticipantId,
+                                         'webrtc',
+                                         {audio: {fromStream: 'targetStreamId'}, video: {fromStream: 'targetStreamId', resolution: 'vga'}},
+                                         spyConnectionObserver1)).to.be.rejectedWith('Not allowed to subscribe an already-subscribed stream');
+        });
+    });
+
     it('Subscribing a stream with both audio and video to a webrtc client should succeed.', function() {
       mockRpcClient.getAccessNode = sinon.stub();
       mockRpcClient.subscribe = sinon.stub();
@@ -1174,6 +1366,54 @@ describe('portal.subscribe/portal.unsubscribe/portal.mediaOnOff: Participants su
         });
     });
 
+    it('Subscribing streams to a recording file should abort when exceptions occur.', function() {
+      mockRpcClient.getAccessNode = sinon.stub();
+      mockRpcClient.subscribe = sinon.stub();
+      mockRpcClient.sub2Session = sinon.stub();
+      mockRpcClient.unsubscribe = sinon.stub();
+      mockRpcClient.recycleAccessNode = sinon.stub();
+      mockRpcClient.unsub2Session = sinon.stub();
+
+      mockRpcClient.getAccessNode.resolves({agent: 'rpcIdOfAccessAgent', node: 'rpcIdOfAccessNode'});
+      mockRpcClient.subscribe.resolves('ok');
+      mockRpcClient.sub2Session.resolves('ok');
+      mockRpcClient.unsubscribe.resolves('ok');
+      mockRpcClient.recycleAccessNode.resolves('ok');
+      mockRpcClient.unsub2Session.resolves('ok');
+
+      var subscription_id, on_connection_status;
+      var spyConnectionObserver = sinon.spy();
+
+      return portal.subscribe(testParticipantId,
+                             'avstream',
+                             {audio: {fromStream: 'targetStreamId1', codecs: ['aac']}, video: {fromStream: 'targetStreamId2', codecs: ['h264'], resolution: 'vga'}, url: 'url-of-avstream'},
+                             spyConnectionObserver)
+        .then(function(subscriptionId) {
+          subscription_id = subscriptionId;
+          on_connection_status = mockRpcClient.subscribe.getCall(0).args[4];
+          return on_connection_status({type: 'initializing'});
+        })
+        .then(function(statusResult) {
+          expect(statusResult).to.equal('initializing');
+          return on_connection_status({type: 'ready', audio_codecs: ['pcm_raw'], video_codecs: ['h264']});
+        })
+        .then(function(result) {
+          expect(result).to.equal('ok');
+          expect(mockRpcClient.sub2Session.callCount).to.equal(1);
+          return on_connection_status({type: 'failed', reason: 'network error'});
+        })
+        .then(function(runHere) {
+          expect(runHere).to.be.false;
+        }, function(reason) {
+          console.log(reason);
+          expect(reason).to.equal('network error');
+          expect(mockRpcClient.unsubscribe.getCall(0).args).to.deep.equal(['rpcIdOfAccessNode', subscription_id]);
+          expect(mockRpcClient.recycleAccessNode.getCall(0).args).to.deep.equal(['rpcIdOfAccessAgent', 'rpcIdOfAccessNode', {session: testSession, consumer: subscription_id}]);
+          expect(mockRpcClient.unsub2Session.getCall(0).args).to.deep.equal(['rpcIdOfController', testParticipantId, subscription_id]);
+          expect(spyConnectionObserver.getCall(2).args).to.deep.equal([{type: 'failed', reason: 'network error'}]);
+        });
+    });
+
     it('Subscribing streams to a recording file should succeed.', function() {
       mockRpcClient.getAccessNode = sinon.stub();
       mockRpcClient.subscribe = sinon.stub();
@@ -1235,6 +1475,56 @@ describe('portal.subscribe/portal.unsubscribe/portal.mediaOnOff: Participants su
                              spyConnectionObserver)
         .then(function(subscriptionId) {
           expect(subscriptionId).to.equal(testRecorderId);
+        });
+    });
+
+    it('Subscribing streams to a recording file should abort when exceptions occur.', function() {
+      mockRpcClient.getAccessNode = sinon.stub();
+      mockRpcClient.subscribe = sinon.stub();
+      mockRpcClient.sub2Session = sinon.stub();
+      mockRpcClient.unsubscribe = sinon.stub();
+      mockRpcClient.recycleAccessNode = sinon.stub();
+      mockRpcClient.unsub2Session = sinon.stub();
+
+      mockRpcClient.getAccessNode.resolves({agent: 'rpcIdOfAccessAgent', node: 'rpcIdOfAccessNode'});
+      mockRpcClient.subscribe.resolves('ok');
+      mockRpcClient.sub2Session.resolves('ok');
+      mockRpcClient.unsubscribe.resolves('ok');
+      mockRpcClient.recycleAccessNode.resolves('ok');
+      mockRpcClient.unsub2Session.resolves('ok');
+
+
+      var testRecorderId = '2016061416024671';
+      var spyConnectionObserver = sinon.spy();
+      var on_connection_status;
+
+      return portal.subscribe(testParticipantId,
+                             'recording',
+                             {audio: {fromStream: 'targetStreamId1', codecs: ['pcmu']}, video: {fromStream: 'targetStreamId2', codecs: ['vp8']}, path: 'path-of-recording', recorderId: testRecorderId, interval: -1},
+                             spyConnectionObserver)
+        .then(function(subscriptionId) {
+          expect(subscriptionId).to.equal(testRecorderId);
+          on_connection_status = mockRpcClient.subscribe.getCall(0).args[4];
+          return on_connection_status({type: 'initializing'});
+        })
+        .then(function(statusResult) {
+          expect(statusResult).to.equal('initializing');
+          return on_connection_status({type: 'ready', audio_codecs: ['pcmu'], video_codecs: ['vp8']});
+        })
+        .then(function(result) {
+          expect(result).to.equal('ok');
+          expect(mockRpcClient.sub2Session.callCount).to.equal(1);
+          return on_connection_status({type: 'failed', reason: 'write file error'});
+        })
+        .then(function(runHere) {
+          expect(runHere).to.be.false;
+        }, function(reason) {
+          console.log(reason);
+          expect(reason).to.equal('write file error');
+          expect(mockRpcClient.unsubscribe.getCall(0).args).to.deep.equal(['rpcIdOfAccessNode', testRecorderId]);
+          expect(mockRpcClient.recycleAccessNode.getCall(0).args).to.deep.equal(['rpcIdOfAccessAgent', 'rpcIdOfAccessNode', {session: testSession, consumer: testRecorderId}]);
+          expect(mockRpcClient.unsub2Session.getCall(0).args).to.deep.equal(['rpcIdOfController', testParticipantId, testRecorderId]);
+          expect(spyConnectionObserver.getCall(2).args).to.deep.equal([{type: 'failed', reason: 'write file error'}]);
         });
     });
 
@@ -1631,7 +1921,7 @@ describe('portal.text', function() {
     mockRpcClient.getController = sinon.stub();
     mockRpcClient.join = sinon.stub();
 
-    mockRpcClient.tokenLogin.resolves({userName: 'Jack', role: 'guest', room: testSession});
+    mockRpcClient.tokenLogin.resolves({userName: 'Jack', role: 'no_text_viewer', room: testSession});
     mockRpcClient.getController.resolves('rpcIdOfController');
     mockRpcClient.join.resolves({participants: [],
                                  streams: []});
