@@ -11,22 +11,30 @@ warning_n_rooms = 15 #default: 15
 # networkInterface = "eth1"
 
 #Roles to be used by services
+[portal.roles.admin]
+publish = true
+record = true
+subscribe = true
+
 [portal.roles.presenter]
 publish = true
 record = true
 subscribe = true
 
+[portal.roles.audio_only_presenter.publish]
+audio = true
+[portal.roles.audio_only_presenter.subscribe]
+audio = true
+
 [portal.roles.viewer]
 subscribe = true
 
-[portal.roles.viewerWithData]
-subscribe = true
+[portal.roles.video_only_viewer.subscribe]
+video = true
 
-[portal.roles.viewerWithData.publish]
-audio = false
-data = true
-screen = false
-video = false
+[portal.roles.no_text_viewer]
+subscribe = true
+text = false
 
 [cluster]
 #The name of the cluster to join.

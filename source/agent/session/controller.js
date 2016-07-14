@@ -55,7 +55,6 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
     var enableAVCoordination = function () {
         log.debug('enableAVCoordination');
         if (config.enableMixing && audio_mixer && video_mixer) {
-            log.debug('enableAVCoordination 1');
             makeRPC(
                 amqper,
                 terminals[audio_mixer].locality.node,
@@ -1033,7 +1032,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
     that.subscribe = function(participantId, subscriptionId, accessNode, subInfo, on_ok, on_error) {
         log.debug('subscribe, participantId:', participantId, 'subscriptionId:', subscriptionId, 'accessNode:', accessNode.node, 'subInfo:', JSON.stringify(subInfo));
         if ((!subInfo.audio || (streams[subInfo.audio.fromStream] && streams[subInfo.audio.fromStream].audio) || subInfo.audio.fromStream === mixed_stream_id)
-            && (!subInfo.video || (streams[subInfo.video.fromStream] && streams[subInfo.audio.fromStream].video) || subInfo.video.fromStream === mixed_stream_id)) {
+            && (!subInfo.video || (streams[subInfo.video.fromStream] && streams[subInfo.video.fromStream].video) || subInfo.video.fromStream === mixed_stream_id)) {
 
             var audio_codec = (subInfo.audio && (subInfo.audio.fromStream === mixed_stream_id) && getMixedCodec(subInfo.audio, supported_audio_codecs))
                               || (subInfo.audio && getForwardCodec(subInfo.audio, streams[subInfo.audio.fromStream].audio.codec, enable_audio_transcoding))
@@ -1239,6 +1238,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
     };
 
     that.mix = function (stream_id, on_ok, on_error) {
+        log.debug('mix, stream_id:', stream_id);
         if (streams[stream_id] && config.enableMixing) {
             mixStream(stream_id, on_ok, on_error);
         } else {
@@ -1247,6 +1247,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
     };
 
     that.unmix = function (stream_id, on_ok, on_error) {
+        log.debug('unmix, stream_id:', stream_id);
         if (streams[stream_id] && config.enableMixing) {
             unmixStream(stream_id);
             on_ok();
@@ -1256,6 +1257,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
     };
 
     that.getRegion = function (stream_id, on_ok, on_error) {
+        log.debug('getRegion, stream_id:', stream_id);
         if (video_mixer) {
             makeRPC(
                 amqper,
@@ -1268,6 +1270,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
     };
 
     that.setRegion = function (stream_id, region, on_ok, on_error) {
+        log.debug('setRegion, stream_id:', stream_id, 'region:', region);
         if (video_mixer) {
             makeRPC(
                 amqper,

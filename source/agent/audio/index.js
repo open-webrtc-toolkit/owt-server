@@ -224,7 +224,7 @@ module.exports = function () {
     that.enableVAD = function (periodMS, roomId, observer) {
         engine.enableVAD(periodMS, function (activeParticipant) {
             log.debug('enableVAD, activeParticipant:', activeParticipant);
-            amqper.callRpc(observer, 'onAudioActiveParticipant', [roomId, activeParticipant]);
+            amqper.callRpc(observer, 'onAudioActiveParticipant', [roomId, activeParticipant], {callback: function(){}});
         });
     };
 

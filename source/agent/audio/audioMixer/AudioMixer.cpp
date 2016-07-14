@@ -548,6 +548,7 @@ void AudioMixer::performVAD()
     if (!voe->GetActiveMixedInChannels(activeChannels)) {
         if (activeChannels.size() > 0 && (activeChannels[0] != m_mostActiveChannel)) {
             m_mostActiveChannel = activeChannels[0];
+            ELOG_DEBUG("m_mostActiveChannel change to:%d", m_mostActiveChannel);
             notifyVAD();
             m_jitterCount = m_jitterHold; /* 200 * 10ms = 2 seconds */
         }
@@ -563,6 +564,7 @@ void AudioMixer::notifyVAD()
     for (auto it = m_channels.begin(); it != m_channels.end(); ++it) {
         if (it->second->id() == m_mostActiveChannel) {
             mostActiveParticipant = it->first;
+            ELOG_DEBUG("mostActiveParticipant now is :%s", mostActiveParticipant.c_str());
         }
     }
     lock.unlock();

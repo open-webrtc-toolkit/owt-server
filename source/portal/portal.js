@@ -50,6 +50,63 @@ var Portal = function(spec, rpcClient) {
    *            }} */
   var participants = {};
 
+  var isPermitted = function(role, act, track) {
+    return permission_map[role]
+           && ((permission_map[role][act] === true)
+               || (typeof permission_map[role][act] === 'object' && permission_map[role][act][track] === true));
+  };
+
+  var isTextPermitted = function(role) {
+    return permission_map[role] && (permission_map[role]['text'] !== false);
+  };
+
+  var constructConnectOptions = function(connectionId, connectionType, description, sessionId) {
+    var options = {};
+    if (!!description.audio) {
+      if (typeof description.audio === 'object' && description.audio.codecs) {
+        options.audio = {};
+        options.audio.codecs = description.audio.codecs;
+      } else {
+        options.audio = true;
+      }
+    }
+
+    if (!!description.video) {
+      if (typeof description.video === 'object' && (description.video.codecs || description.video.resolution)) {
+        options.video = {};
+        description.video.codecs && (options.video.codecs = description.video.codecs);
+        description.video.resolution && (options.video.resolution = description.video.resolution);
+      } else {
+        options.video = true;
+      }
+    }
+
+    if (connectionType === 'avstream' && description.url) {
+      options.url = path.join(description.url || '/', 'room_' + sessionId + '-' + connectionId + '.sdp');
+    }
+
+    if (connectionType === 'recording') {
+      description.path && (options.path = description.path);
+      options.filename = 'room_' + sessionId + '-' + connectionId + '.mkv';
+      options.interval = description.interval;
+    }
+
+    return options;
+  };
+
+  var connectionObserver = function(onStatus, onConnectionReady, onConnectionFailed) {
+    return function(status) {
+      onStatus(status);
+      if (status.type === 'failed') {
+        return onConnectionFailed(status.reason);
+      } else if (status.type === 'ready') {
+        return onConnectionReady(status);
+      } else {
+        return Promise.resolve(status.type);
+      }
+    };
+  };
+
   that.join = function(participantId, token) {
     log.debug('participant[', participantId, '] join with token:', JSON.stringify(token));
     var calculateSignature = function (token) {
@@ -127,59 +184,13 @@ var Portal = function(spec, rpcClient) {
     }
   };
 
-  var constructConnectOptions = function(connectionId, connectionType, description, sessionId) {
-    var options = {};
-    if (!!description.audio) {
-      if (typeof description.audio === 'object' && description.audio.codecs) {
-        options.audio = {};
-        options.audio.codecs = description.audio.codecs;
-      } else {
-        options.audio = true;
-      }
-    }
-
-    if (!!description.video) {
-      if (typeof description.video === 'object' && (description.video.codecs || description.video.resolution)) {
-        options.video = {};
-        description.video.codecs && (options.video.codecs = description.video.codecs);
-        description.video.resolution && (options.video.resolution = description.video.resolution);
-      } else {
-        options.video = true;
-      }
-    }
-
-    if (connectionType === 'avstream' && description.url) {
-      options.url = path.join(description.url || '/', 'room_' + sessionId + '-' + connectionId + '.sdp');
-    }
-
-    if (connectionType === 'recording') {
-      description.path && (options.path = description.path);
-      options.filename = 'room_' + sessionId + '-' + connectionId + '.mkv';
-      options.interval = description.interval;
-    }
-
-    return options;
-  };
-
-  var connectionObserver = function(onStatus, onConnectionReady, onConnectionFailed) {
-    return function(status) {
-      onStatus(status);
-      if (status.type === 'failed') {
-        return onConnectionFailed(status.reason);
-      } else if (status.type === 'ready') {
-        return onConnectionReady(status);
-      } else {
-        return Promise.resolve(status.type);
-      }
-    };
-  };
-
   that.publish = function(participantId, connectionType, streamDescription, onConnectionStatus, notMix) {
     if (participants[participantId] === undefined) {
       return Promise.reject('Participant ' + participantId + ' does NOT exist.');
     }
 
-    if (!permission_map[participants[participantId].role] || !permission_map[participants[participantId].role]['publish']) {
+    if ((!isPermitted(participants[participantId].role, 'publish', 'audio') && streamDescription.audio)
+        || (!isPermitted(participants[participantId].role, 'publish', 'video') && streamDescription.video)) {
       return Promise.reject('unauthorized');
     }
 
@@ -254,9 +265,14 @@ var Portal = function(spec, rpcClient) {
     var onConnectionFailed = function(reason) {
       log.debug('publish::onConnectionFailed, participantId:', participantId, 'connection_id:', connection_id, 'reason:', reason);
       if (participants[participantId]) {
-        rpcClient.unpublish(locality.node, connection_id);
-        rpcClient.recycleAccessNode(locality.agent, locality.node, {session: participants[participantId].in_session, consumer: connection_id});
-        delete participants[participantId].connections[connection_id];
+        if (participants[participantId].connections[connection_id]) {
+          if (participants[participantId].connections[connection_id].state === 'connected') {
+              rpcClient.unpub2Session(participants[participantId].controller, participantId, connection_id);
+          }
+          rpcClient.unpublish(locality.node, connection_id);
+          rpcClient.recycleAccessNode(locality.agent, locality.node, {session: participants[participantId].in_session, consumer: connection_id});
+          delete participants[participantId].connections[connection_id];
+        }
       }
       return Promise.reject(reason);
     };
@@ -354,8 +370,8 @@ var Portal = function(spec, rpcClient) {
     }
 
     var act = (connectionType === 'recording' ? 'record' : 'subscribe');
-
-    if (!permission_map[participants[participantId].role] || !permission_map[participants[participantId].role][act]) {
+    if ((!isPermitted(participants[participantId].role, act, 'audio') && subscriptionDescription.audio)
+        || (!isPermitted(participants[participantId].role, act, 'video') && subscriptionDescription.video)) {
       return Promise.reject('unauthorized');
     }
 
@@ -373,6 +389,12 @@ var Portal = function(spec, rpcClient) {
       subscription_id = subscriptionDescription.recorderId || formatDate(new Date, 'yyyyMMddhhmmssSS');
     } else {
       subscription_id = Math.random() * 1000000000000000000 + '';
+    }
+
+    //FIXME : not allowed to subscribe an already subscribed stream, this is a limitation caused by FIXME - a.
+    if ((subscriptionDescription.audio && subscriptionDescription.audio.fromStream && participants[participantId].connections[subscription_id])
+        ||(subscriptionDescription.video && subscriptionDescription.video.fromStream && participants[participantId].connections[subscription_id])) {
+      return Promise.reject('Not allowed to subscribe an already-subscribed stream');
     }
 
     var connection_id = subscription_id,
@@ -417,9 +439,14 @@ var Portal = function(spec, rpcClient) {
     var onConnectionFailed = function(reason) {
       log.debug('subscribe::onConnectionFailed, participantId:', participantId, 'connection_id:', connection_id, 'reason:', reason);
       if (participants[participantId]) {
-        rpcClient.unsubscribe(locality.node, connection_id);
-        rpcClient.recycleAccessNode(locality.agent, locality.node, {session: participants[participantId].in_session, consumer: connection_id});
-        delete participants[participantId].connections[connection_id];
+        if (participants[participantId].connections[connection_id]) {
+          if (participants[participantId].connections[connection_id].state === 'connected') {
+              rpcClient.unsub2Session(participants[participantId].controller, participantId, connection_id);
+          }
+          rpcClient.unsubscribe(locality.node, connection_id);
+          rpcClient.recycleAccessNode(locality.agent, locality.node, {session: participants[participantId].in_session, consumer: connection_id});
+          delete participants[participantId].connections[connection_id];
+        }
       }
       return Promise.reject(reason);
     };
@@ -539,7 +566,7 @@ var Portal = function(spec, rpcClient) {
       return Promise.reject('Participant ' + participantId + ' does NOT exist.');
     }
 
-    if (!permission_map[participants[participantId].role] || !permission_map[participants[participantId].role]['publish']) {
+    if (!isTextPermitted(participants[participantId].role)) {
       return Promise.reject('unauthorized');
     }
 

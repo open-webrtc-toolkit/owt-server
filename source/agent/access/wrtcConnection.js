@@ -178,16 +178,14 @@ module.exports = function (spec, on_status) {
 
     that.onTrackControl = function (track, dir, action, on_ok, on_error) {
         if (track === 'audio' && audio) {
-            if ((dir === 'in' && direction === 'out')
-                || (dir === 'out' && direction === 'in')) {
+            if (dir === direction) {
                 wrtc.enableAudio(action === 'on');
                 on_ok();
             } else {
                 on_error('Ambiguous direction.');
             }
         } else if (track === 'video' && video) {
-            if ((dir === 'in' && direction === 'out')
-                || (dir === 'out' && direction === 'in')) {
+            if (dir === direction) {
                 wrtc.enableVideo(action === 'on');
                 on_ok();
             } else {

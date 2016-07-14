@@ -14,7 +14,8 @@ var log = logger.getLogger('Session');
 module.exports = function (amqper, selfRpcId) {
   var that = {},
       session_id,
-      controller;
+      controller,
+      user_limit = 0;
 
   /*
    * {StreamId: ST.Stream()}
@@ -47,7 +48,9 @@ module.exports = function (amqper, selfRpcId) {
       return rpcClient.getSessionConfig('nuve'/*FIXME: hard coded*/, session_id)
         .then(function(config) {
             var room_config = config;
-            if (room_config.userLimit === 0) {
+
+            user_limit = room_config.userLimit;
+            if (user_limit === 0) {
               log.error('Room', roomID, 'disabled');
               return Promise.reject('Room' + roomID + 'disabled');
             }
@@ -118,6 +121,12 @@ module.exports = function (amqper, selfRpcId) {
     log.debug('participant:', participantInfo, 'join session:', sessionId);
     return initSession(sessionId)
       .then(function() {
+        log.debug('user_limit:', user_limit, 'current users count:', Object.keys(participants).length);
+        if (user_limit > 0 && (Object.keys(participants).length >= user_limit)) {
+          log.warn('Room is full');
+          return callback('callback', 'error', 'Room is full');
+        }
+
         participants[participantInfo.id] = {name: participantInfo.name,
                                             role: participantInfo.role,
                                             portal: participantInfo.portal,
@@ -286,16 +295,17 @@ module.exports = function (amqper, selfRpcId) {
   };
 
   that.mix = function(participantId, streamId, callback) {
+    log.debug('unmix, participantId:', participantId, 'streamId:', streamId);
     if (participants[participantId]) {
       var index = participants[participantId].published.indexOf(streamId);
       if (index !== -1 && streams[streamId]) {
         if (controller) {
-          controller.mix(participantId, streamId, function() {
+          controller.mix(streamId, function() {
             callback('callback', 'ok');
           }, function(reason) {
+            log.info('Controller.mix failed, reason:', reason);
             callback('callback', 'error', reason);
           });
-          callback('callback', 'ok');
         } else {
           log.info('Controller is not ready');
           callback('callback', 'error', 'Controller is not ready');
@@ -311,16 +321,17 @@ module.exports = function (amqper, selfRpcId) {
   };
 
   that.unmix = function(participantId, streamId, callback) {
+    log.debug('unmix, participantId:', participantId, 'streamId:', streamId);
     if (participants[participantId]) {
       var index = participants[participantId].published.indexOf(streamId);
       if (index !== -1 && streams[streamId]) {
         if (controller) {
-          controller.unmix(participantId, streamId, function() {
+          controller.unmix(streamId, function() {
             callback('callback', 'ok');
           }, function(reason) {
+            log.info('Controller.unmix failed, reason:', reason);
             callback('callback', 'error', reason);
           });
-          callback('callback', 'ok');
         } else {
           log.info('Controller is not ready');
           callback('callback', 'error', 'Controller is not ready');
@@ -341,9 +352,9 @@ module.exports = function (amqper, selfRpcId) {
         controller.getRegion(streamId, function(region) {
           callback('callback', region);
         }, function(reason) {
+          log.info('controller.getRegion failed, reason:', reason);
           callback('callback', 'error', reason);
         });
-        callback('callback', 'ok');
       } else {
         log.info('Controller is not ready');
         callback('callback', 'error', 'Controller is not ready');
@@ -360,9 +371,9 @@ module.exports = function (amqper, selfRpcId) {
         controller.setRegion(streamId, regionId, function() {
           callback('callback', 'ok');
         }, function(reason) {
+          log.info('controller.setRegion failed, reason:', reason);
           callback('callback', 'error', reason);
         });
-        callback('callback', 'ok');
       } else {
         log.info('Controller is not ready');
         callback('callback', 'error', 'Controller is not ready');
@@ -392,14 +403,17 @@ module.exports = function (amqper, selfRpcId) {
   };
 
   that.onAudioActiveParticipant = function(sessionId, activeParticipantId, callback) {
+    log.debug('onAudioActiveParticipant, sessionId:', sessionId, 'active:', activeParticipantId);
     if ((session_id === sessionId) && controller) {
       if (participants[activeParticipantId]) {
-        controller.setPrimary(sessionId, activeParticipantId);
+        controller.setPrimary(activeParticipantId);
         callback('callback', 'ok');
       } else {
+        log.info('onAudioActiveParticipant, participant does not exist');
         callback('callback', 'error', 'participant does not exist');
       }
     } else {
+      log.info('onAudioActiveParticipant, session does not exist');
       callback('callback', 'error', 'session is not in service');
     }
   };
