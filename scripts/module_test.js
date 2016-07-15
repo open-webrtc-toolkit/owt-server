@@ -7,6 +7,7 @@ if (!process.env.MODULE_TEST) {
   process.env.LD_LIBRARY_PATH = [
     path.resolve(__dirname, '../build/libdeps/build/lib'),
     path.resolve(__dirname, '../third_party/openh264'),
+    path.resolve(__dirname, '../source/core/build/sip_gateway'),
     process.env.LD_LIBRARY_PATH || '',
   ].join(':');
   require('child_process').fork(process.argv[1], process.argv.slice(2));

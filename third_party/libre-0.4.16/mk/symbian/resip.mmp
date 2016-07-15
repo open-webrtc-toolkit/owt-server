@@ -1,0 +1,52 @@
+/**
+ * @file resip.mmp  Symbian makefile for libre SIP
+ *
+ * Copyright (C) 2010 Creytiv.com
+ */
+TARGET        resip.lib
+TARGETTYPE    lib
+TARGETPATH    system\libs
+UID           0x10000fd3 0x2001130A
+
+#ifdef EKA2
+VENDORID      0
+CAPABILITY    NetworkServices
+#endif
+
+SOURCEPATH    .
+SOURCE        dll.cpp
+
+SOURCEPATH    ..\..\src\httpauth
+SOURCE        basic.c
+SOURCE        digest.c
+
+SOURCEPATH    ..\..\src\sip
+SOURCE        addr.c
+SOURCE        auth.c
+SOURCE        cseq.c
+SOURCE        ctrans.c
+SOURCE        dialog.c
+SOURCE        keepalive.c
+SOURCE        keepalive_udp.c
+SOURCE        msg.c
+SOURCE        param.c
+SOURCE        reply.c
+SOURCE        request.c
+SOURCE        sip.c
+SOURCE        strans.c
+SOURCE        transp.c
+SOURCE        via.c
+
+SOURCEPATH    ..\..\src\sipreg
+SOURCE        reg.c
+
+USERINCLUDE   . ..\..\include
+SYSTEMINCLUDE \epoc32\include
+SYSTEMINCLUDE \epoc32\include\libc
+SYSTEMINCLUDE ..\..\include
+#ifndef EKA2
+LIBRARY       estlib.lib euser.lib
+LIBRARY       esock.lib insock.lib
+#endif
+
+EXPORTUNFROZEN

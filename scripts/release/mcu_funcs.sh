@@ -19,7 +19,7 @@
 # and approved by Intel in writing.
 #
 
-WOOGEEN_AGENTS="audio video access"
+WOOGEEN_AGENTS="audio video access sip"
 
 pack_runtime() {
   # mcu
@@ -28,7 +28,7 @@ pack_runtime() {
   pack_nuve
   pack_portal
   pack_common
-  ENCRYPT_CAND_PATH=("${WOOGEEN_DIST}/session_agent" "${WOOGEEN_DIST}/portal" "${WOOGEEN_DIST}/cluster_manager" "${WOOGEEN_DIST}/nuve")
+  ENCRYPT_CAND_PATH=("${WOOGEEN_DIST}/session_agent" "${WOOGEEN_DIST}/portal" "${WOOGEEN_DIST}/cluster_manager" "${WOOGEEN_DIST}/nuve" "${WOOGEEN_DIST}/sip_portal")
   for AGENT in ${WOOGEEN_AGENTS}; do
     ENCRYPT_CAND_PATH+=("${WOOGEEN_DIST}/${AGENT}_agent")
   done
@@ -92,7 +92,7 @@ pack_addons() {
   # now copy dep libs:
   mkdir -p ${DIST_ADDON_DIR}/lib
   local BINS=$(find ${DIST_ADDON_DIR} -type f -name "*.node")
-  LD_LIBRARY_PATH=${ROOT}/build/libdeps/build/lib:${ROOT}/third_party/openh264:${LD_LIBRARY_PATH} \
+  LD_LIBRARY_PATH=${ROOT}/build/libdeps/build/lib:${ROOT}/third_party/openh264:${SOURCE}/core/build/sip_gateway:${LD_LIBRARY_PATH} \
   ldd ${BINS} | grep '=>' | awk '{print $3}' | sort | uniq | grep -v "^(" | \
   while read line; do
     if [[ "${OS}" =~ .*centos.* ]]; then
@@ -123,7 +123,7 @@ pack_addons() {
 }
 
 pack_common() {
-  local TARGETS="portal nuve cluster_manager session_agent access_agent audio_agent video_agent"
+  local TARGETS="portal nuve cluster_manager session_agent access_agent audio_agent video_agent sip_agent sip_portal"
   pushd ${SOURCE}/common >/dev/null
   local COMMON_MODULES=$(find . -type f -name "*.js" | cut -d '/' -f 2 | cut -d '.' -f 1)
   for TARGET in ${TARGETS}; do
@@ -145,6 +145,7 @@ pack_common() {
 pack_nuve() {
   cp -av ${SOURCE}/nuve ${WOOGEEN_DIST}/
   cp -av ${SOURCE}/cluster_manager ${WOOGEEN_DIST}/
+  cp -av ${SOURCE}/sip_portal ${WOOGEEN_DIST}/
   mkdir -p ${WOOGEEN_DIST}/nuve/cert
   cp -av ${ROOT}/cert/{*.pfx,.woogeen.keystore} ${WOOGEEN_DIST}/nuve/cert/
   cp -av {${this},${WOOGEEN_DIST}/nuve}/initcert.js && chmod +x ${WOOGEEN_DIST}/nuve/initcert.js
@@ -153,6 +154,7 @@ pack_nuve() {
 
 pack_scripts() {
   mkdir -p ${WOOGEEN_DIST}/bin/
+  cp -av ${this}/init-all.sh ${WOOGEEN_DIST}/bin/init-all.sh
   cp -av ${this}/daemon-mcu.sh ${WOOGEEN_DIST}/bin/daemon.sh
   cp -av ${this}/launch-base.sh ${WOOGEEN_DIST}/bin/start-all.sh
   cp -av ${this}/launch-base.sh ${WOOGEEN_DIST}/bin/stop-all.sh
@@ -165,9 +167,11 @@ ${bin}/daemon.sh start portal
 ${bin}/daemon.sh start session-agent
 ${bin}/daemon.sh start webrtc-agent
 ${bin}/daemon.sh start avstream-agent
+${bin}/daemon.sh start sip-agent
 ${bin}/daemon.sh start recording-agent
 ${bin}/daemon.sh start audio-agent
 ${bin}/daemon.sh start video-agent
+${bin}/daemon.sh start sip-portal
 ${bin}/daemon.sh start app
 ' >> ${WOOGEEN_DIST}/bin/start-all.sh
   echo '
@@ -177,9 +181,11 @@ ${bin}/daemon.sh stop portal
 ${bin}/daemon.sh stop session-agent
 ${bin}/daemon.sh stop webrtc-agent
 ${bin}/daemon.sh stop avstream-agent
+${bin}/daemon.sh stop sip-agent
 ${bin}/daemon.sh stop recording-agent
 ${bin}/daemon.sh stop audio-agent
 ${bin}/daemon.sh stop video-agent
+${bin}/daemon.sh stop sip-portal
 ${bin}/daemon.sh stop app
 ' >> ${WOOGEEN_DIST}/bin/stop-all.sh
   echo '
@@ -216,6 +222,7 @@ pack_node() {
       sed -i "s/require('\.\//Module\._load('\.\//g" "${line}"
       sed -i "s/Module\._load('.*\(\baccess\b\|\baudio\b\|\bvideo\b\)/require('woogeen\/\1\/index/g" "${line}"
       sed -i "s/Module\._load('\.\/\(\bwrtcConnection\b'\)/require('woogeen\/access\/\1/g" "${line}"
+      sed -i "s/Module\._load('\.\/\(\bsipCallConnection\b'\)/require('woogeen\/sip\/\1/g" "${line}"
       sed -i "1 i var Module = require('module');" "${line}"
       sed -i "/lib\/zlib.js/a '${line}'," node.gyp
     done

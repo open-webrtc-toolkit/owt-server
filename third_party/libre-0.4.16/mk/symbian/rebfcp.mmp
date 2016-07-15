@@ -1,0 +1,41 @@
+/**
+ * @file rebfcp.mmp  Symbian makefile for libre BFCP
+ *
+ * Copyright (C) 2010 Creytiv.com
+ */
+TARGET        rebfcp.lib
+TARGETTYPE    lib
+TARGETPATH    system\libs
+UID           0x10000fd3 0x20011308
+
+#ifdef EKA2
+VENDORID      0
+CAPABILITY    NetworkServices
+#endif
+
+MACRO         HAVE_SYS_TIME_H
+MACRO         HAVE_UNISTD_H
+MACRO         HAVE_ACTSCHED
+
+#ifndef EKA2
+SOURCEPATH    .
+SOURCE        dll.cpp
+#endif
+
+SOURCEPATH    ..\..\src\bfcp
+SOURCE        attr.c
+SOURCE        conn.c
+SOURCE        msg.c
+SOURCE        reply.c
+SOURCE        request.c
+
+USERINCLUDE   . ..\..\include
+SYSTEMINCLUDE \epoc32\include
+SYSTEMINCLUDE \epoc32\include\libc
+SYSTEMINCLUDE ..\..\include
+#ifndef EKA2
+LIBRARY       estlib.lib euser.lib
+LIBRARY       esock.lib insock.lib
+#endif
+
+EXPORTUNFROZEN

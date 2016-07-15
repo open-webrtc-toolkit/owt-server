@@ -1,0 +1,155 @@
+/**
+ * @file re.mmp  Symbian makefile for libre
+ *
+ * Copyright (C) 2010 Creytiv.com
+ */
+TARGET        re.lib
+TARGETTYPE    lib
+TARGETPATH    system\libs
+UID           0x10000fd3 0x200112fa
+
+#ifdef EKA2
+VENDORID      0
+CAPABILITY    NetworkServices
+#endif
+
+MACRO         HAVE_SYS_TIME_H
+MACRO         HAVE_UNISTD_H
+MACRO         HAVE_ACTSCHED
+
+#ifndef EKA2
+SOURCEPATH    .
+SOURCE        dll.cpp
+#endif
+
+SOURCEPATH    ..\..\src\base64
+SOURCE        b64.c
+
+SOURCEPATH    ..\..\src\conf
+SOURCE        conf.c
+
+SOURCEPATH    ..\..\src\crc32
+SOURCE        crc32.c
+
+SOURCEPATH    ..\..\src\dbg
+SOURCE        dbg.c
+
+SOURCEPATH    ..\..\src\fmt
+SOURCE        ch.c
+SOURCE        hexdump.c
+SOURCE        pl.c
+SOURCE        print.c
+SOURCE        prm.c
+SOURCE        regex.c
+SOURCE        str.c
+SOURCE        str_error.c
+SOURCE        time.c
+
+SOURCEPATH    ..\..\src\hash
+SOURCE        hash.c
+SOURCE        func.c
+
+SOURCEPATH    ..\..\src\hmac
+SOURCE        hmac_sha1.c
+
+SOURCEPATH    ..\..\src\httpauth
+SOURCE        basic.c
+SOURCE        digest.c
+
+SOURCEPATH    ..\..\src\jbuf
+SOURCE        jbuf.c
+
+SOURCEPATH    ..\..\src\list
+SOURCE        list.c
+
+SOURCEPATH    ..\..\src\lock
+SOURCE        symbian\rmutex.cpp
+
+SOURCEPATH    ..\..\src\main
+SOURCE        init.c
+SOURCE        main.c
+SOURCE        method.c
+SOURCE        symbian\actsched.cpp
+
+SOURCEPATH    ..\..\src\mbuf
+SOURCE        mbuf.c
+
+SOURCEPATH    ..\..\src\md5
+SOURCE        md5.c
+SOURCE        wrap.c
+
+SOURCEPATH    ..\..\src\mem
+SOURCE        mem.c
+
+SOURCEPATH    ..\..\src\mod
+SOURCE        mod.c
+SOURCE        symbian\rlib.cpp
+
+SOURCEPATH    ..\..\src\net
+SOURCE        sock.c
+SOURCE        netstr.c
+SOURCE        if.c
+SOURCE        rt.c
+SOURCE        net.c
+SOURCE        symbian\sif.cpp
+SOURCE        symbian\snet.cpp
+SOURCE        symbian\srt.cpp
+SOURCE        symbian\rconn.cpp
+
+SOURCEPATH    ..\..\src\rtp
+SOURCE        fb.c
+SOURCE        member.c
+SOURCE        ntp.c
+SOURCE        pkt.c
+SOURCE        rr.c
+SOURCE        rtcp.c
+SOURCE        rtp.c
+SOURCE        sdes.c
+SOURCE        sess.c
+SOURCE        source.c
+
+SOURCEPATH    ..\..\src\sa
+SOURCE        ntop.c
+SOURCE        printaddr.c
+SOURCE        pton.c
+SOURCE        sa.c
+
+SOURCEPATH    ..\..\src\sha
+SOURCE        sha1.c
+
+SOURCEPATH    ..\..\src\sys
+SOURCE        daemon.c
+SOURCE        endian.c
+SOURCE        fs.c
+SOURCE        rand.c
+SOURCE        sys.c
+SOURCE        symbian\sleep.cpp
+
+SOURCEPATH    ..\..\src\telev
+SOURCE        telev.c
+
+SOURCEPATH    ..\..\src\tmr
+SOURCE        tmr.c
+
+SOURCEPATH    ..\..\src\udp
+SOURCE        symbian\udp.cpp
+
+SOURCEPATH    ..\..\src\tcp
+SOURCE        tcp_high.c
+SOURCE        symbian\tcp.cpp
+
+SOURCEPATH    ..\..\src\uri
+SOURCE        ucmp.c
+SOURCE        uri.c
+SOURCE        uric.c
+
+USERINCLUDE   . ..\..\include
+SYSTEMINCLUDE \epoc32\include
+SYSTEMINCLUDE \epoc32\include\libc
+SYSTEMINCLUDE ..\..\include
+#ifndef EKA2
+LIBRARY       estlib.lib euser.lib
+LIBRARY       esock.lib insock.lib
+#endif
+
+EXPORTUNFROZEN

@@ -1,0 +1,38 @@
+/**
+ * @file redns.mmp  Symbian makefile for libre DNS
+ *
+ * Copyright (C) 2010 Creytiv.com
+ */
+TARGET        redns.lib
+TARGETTYPE    lib
+TARGETPATH    system\libs
+UID           0x10000fd3 0x20011309
+
+#ifdef EKA2
+VENDORID      0
+CAPABILITY    NetworkServices
+#endif
+
+SOURCEPATH    .
+SOURCE        dll.cpp
+
+SOURCEPATH    ..\..\src\dns
+SOURCE        client.c
+SOURCE        cstr.c
+SOURCE        dname.c
+SOURCE        hdr.c
+SOURCE        ns.c
+SOURCE        rr.c
+SOURCE        rrlist.c
+SOURCE        symbian\srv.cpp
+
+USERINCLUDE   .
+SYSTEMINCLUDE \epoc32\include
+SYSTEMINCLUDE \epoc32\include\libc
+SYSTEMINCLUDE ..\..\include
+#ifndef EKA2
+LIBRARY       estlib.lib euser.lib
+LIBRARY       esock.lib insock.lib
+#endif
+
+EXPORTUNFROZEN

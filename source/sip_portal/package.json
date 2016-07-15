@@ -1,0 +1,9 @@
+{
+  "name": "WooGeen-MCU-SIP-Portal",
+  "version": "3.2.0",
+  "dependencies": {
+    "amqp": "*",
+    "log4js": "*",
+    "toml": "*"
+  }
+}

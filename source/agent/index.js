@@ -81,6 +81,7 @@ for (var prop in opt.options) {
             case 'my-purpose':
                 if (value === 'session' ||
                     value === 'webrtc' ||
+                    value === 'sip' ||
                     value === 'avstream' ||
                     value === 'recording' ||
                     value === 'audio' ||
@@ -135,7 +136,7 @@ var launchErizoJS = function() {
     var id = guid();
     var out = fs.openSync('../logs/' + myPurpose + '-' + id + '.log', 'a');
     var err = fs.openSync('../logs/' + myPurpose + '-' + id + '.log', 'a');
-    var child = spawn('node', ['./erizoJS.js', id, myPurpose, privateIP, publicIP, clusterIP], {
+    var child = spawn('node', ['./erizoJS.js', id, myPurpose, privateIP, publicIP, clusterIP, myId], {
         detached: true,
         stdio: [ 'ignore', out, err, 'ipc' ]
     });
@@ -272,7 +273,7 @@ var api = function (worker) {
 
                 erizos.push(erizo_id);
 
-                if (reuse && myPurpose !== 'session' && ((erizos.length + idle_erizos.length + 1) >= GLOBAL.config.agent.maxProcesses)) {
+                if (reuse && myPurpose !== 'session' && myPurpose !== 'sip' && ((erizos.length + idle_erizos.length + 1) >= GLOBAL.config.agent.maxProcesses)) {
                     // We re-use Erizos
                     idle_erizos.push(erizos.shift());
                 } else {
@@ -436,6 +437,9 @@ var joinCluster = function (on_ok) {
 
             load_collection.item = {name: 'disk',
                                     drive: GLOBAL.config.recording.path};
+            break;
+        case 'sip':
+            load_collection.item = {name: 'cpu'};
             break;
         case 'audio':
         case 'session':

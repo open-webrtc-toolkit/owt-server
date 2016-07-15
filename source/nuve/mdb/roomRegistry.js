@@ -51,3 +51,19 @@ exports.removeRoom = function (id, callback) {
         }
     });
 };
+
+/*
+ * Find rooms with SIP information
+ */
+exports.getRoomsWithSIP = function (callback) {
+    var results = [];
+    db.collection('rooms').find({'sipInfo': {$ne: null}}).forEach(function(err, room) {
+        if (err) log.warn('MongoDB: Error getting SIP rooms: ', err);
+        if (room) {
+            results.push({room_id: room._id, sipInfo: room.sipInfo});
+        } else {
+            callback(results);
+        }
+    });
+};
+

@@ -1,0 +1,17 @@
+{
+  "appenders": [
+    {
+      "type": "console",
+      "layout": {
+        "type": "pattern",
+        "pattern": "%d  - %p: %c - %m",
+        "replaceConsole": true
+      }
+    }
+  ],
+  "levels": {
+    "AMQPER": "ERROR",
+    "SipPortal": "INFO",
+    "SipErizoHelper": "INFO"
+  }
+}

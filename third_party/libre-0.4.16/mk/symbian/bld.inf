@@ -1,0 +1,62 @@
+/**
+ * @file bld.inf  Symbian build information
+ *
+ * Copyright (C) 2010 Creytiv.com
+ */
+
+PRJ_EXPORTS
+
+..\..\include\re.h             \epoc32\include\re\re.h
+..\..\include\re_base64.h      \epoc32\include\re\re_base64.h
+..\..\include\re_bfcp.h        \epoc32\include\re\re_bfcp.h
+..\..\include\re_bitv.h        \epoc32\include\re\re_bitv.h
+..\..\include\re_conf.h        \epoc32\include\re\re_conf.h
+..\..\include\re_crc32.h       \epoc32\include\re\re_crc32.h
+..\..\include\re_dbg.h         \epoc32\include\re\re_dbg.h
+..\..\include\re_dns.h         \epoc32\include\re\re_dns.h
+..\..\include\re_fmt.h         \epoc32\include\re\re_fmt.h
+..\..\include\re_hash.h        \epoc32\include\re\re_hash.h
+..\..\include\re_hmac.h        \epoc32\include\re\re_hmac.h
+..\..\include\re_httpauth.h    \epoc32\include\re\re_httpauth.h
+..\..\include\re_ice.h         \epoc32\include\re\re_ice.h
+..\..\include\re_jbuf.h        \epoc32\include\re\re_jbuf.h
+..\..\include\re_list.h        \epoc32\include\re\re_list.h
+..\..\include\re_lock.h        \epoc32\include\re\re_lock.h
+..\..\include\re_main.h        \epoc32\include\re\re_main.h
+..\..\include\re_mbuf.h        \epoc32\include\re\re_mbuf.h
+..\..\include\re_md5.h         \epoc32\include\re\re_md5.h
+..\..\include\re_mem.h         \epoc32\include\re\re_mem.h
+..\..\include\re_mod.h         \epoc32\include\re\re_mod.h
+..\..\include\re_mqueue.h      \epoc32\include\re\re_mqueue.h
+..\..\include\re_natbd.h       \epoc32\include\re\re_natbd.h
+..\..\include\re_net.h         \epoc32\include\re\re_net.h
+..\..\include\re_rtp.h         \epoc32\include\re\re_rtp.h
+..\..\include\re_sa.h          \epoc32\include\re\re_sa.h
+..\..\include\re_sdp.h         \epoc32\include\re\re_sdp.h
+..\..\include\re_sha.h         \epoc32\include\re\re_sha.h
+..\..\include\re_sip.h         \epoc32\include\re\re_sip.h
+..\..\include\re_sipevent.h    \epoc32\include\re\re_sipevent.h
+..\..\include\re_sipreg.h      \epoc32\include\re\re_sipreg.h
+..\..\include\re_sipsess.h     \epoc32\include\re\re_sipsess.h
+..\..\include\re_stun.h        \epoc32\include\re\re_stun.h
+..\..\include\re_sys.h         \epoc32\include\re\re_sys.h
+..\..\include\re_tcp.h         \epoc32\include\re\re_tcp.h
+..\..\include\re_telev.h       \epoc32\include\re\re_telev.h
+..\..\include\re_tls.h         \epoc32\include\re\re_tls.h
+..\..\include\re_tmr.h         \epoc32\include\re\re_tmr.h
+..\..\include\re_turn.h        \epoc32\include\re\re_turn.h
+..\..\include\re_types.h       \epoc32\include\re\re_types.h
+..\..\include\re_udp.h         \epoc32\include\re\re_udp.h
+..\..\include\re_uri.h         \epoc32\include\re\re_uri.h
+
+
+PRJ_MMPFILES
+
+re.mmp
+rebfcp.mmp
+redns.mmp
+resdp.mmp
+resip.mmp
+resipevent.mmp
+resipsess.mmp
+restun.mmp

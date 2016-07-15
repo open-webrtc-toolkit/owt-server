@@ -1,0 +1,71 @@
+/**
+ * @file restun.mmp  Symbian makefile for libre STUN
+ *
+ * Copyright (C) 2010 Creytiv.com
+ */
+TARGET        restun.lib
+TARGETTYPE    lib
+TARGETPATH    system\libs
+UID           0x10000fd3 0x2001130B
+
+#ifdef EKA2
+VENDORID      0
+CAPABILITY    NetworkServices
+#endif
+
+MACRO         HAVE_SYS_TIME_H
+MACRO         HAVE_UNISTD_H
+
+SOURCEPATH    .
+SOURCE        dll.cpp
+
+SOURCEPATH    ..\..\src\ice
+SOURCE        cand.c
+SOURCE        candpair.c
+SOURCE        chklist.c
+SOURCE        comp.c
+SOURCE        connchk.c
+SOURCE        gather.c
+SOURCE        ice.c
+SOURCE        icem.c
+SOURCE        icesdp.c
+SOURCE        icestr.c
+SOURCE        stunsrv.c
+SOURCE        util.c
+
+SOURCEPATH    ..\..\src\natbd
+SOURCE        filtering.c
+SOURCE        genalg.c
+SOURCE        hairpinning.c
+SOURCE        lifetime.c
+SOURCE        mapping.c
+SOURCE        natstr.c
+
+SOURCEPATH    ..\..\src\stun
+SOURCE        addr.c
+SOURCE        attr.c
+SOURCE        ctrans.c
+SOURCE        dnsdisc.c
+SOURCE        hdr.c
+SOURCE        ind.c
+SOURCE        keepalive.c
+SOURCE        msg.c
+SOURCE        rep.c
+SOURCE        req.c
+SOURCE        stun.c
+
+SOURCEPATH    ..\..\src\turn
+SOURCE        chan.c
+SOURCE        perm.c
+SOURCE        turnc.c
+
+USERINCLUDE   . ..\..\include
+SYSTEMINCLUDE \epoc32\include
+SYSTEMINCLUDE \epoc32\include\libc
+SYSTEMINCLUDE ..\..\include
+#ifndef EKA2
+LIBRARY       estlib.lib euser.lib
+LIBRARY       esock.lib insock.lib
+#endif
+
+EXPORTUNFROZEN

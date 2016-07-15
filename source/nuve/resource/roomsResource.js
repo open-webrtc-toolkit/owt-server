@@ -4,6 +4,7 @@ var roomRegistry = require('./../mdb/roomRegistry');
 var serviceRegistry = require('./../mdb/serviceRegistry');
 var Room = require('./room');
 var logger = require('./../logger').logger;
+var cloudHandler = require('../cloudHandler');
 
 // Logger
 var log = logger.getLogger('RoomsResource');
@@ -47,6 +48,12 @@ exports.createRoom = function (req, res) {
                 serviceRegistry.updateService(currentService);
                 log.info('TestRoom created for service', currentService.name);
                 res.send(result);
+
+                // Notify SIP portal if SIP room created
+                if (result.sipInfo) {
+                    log.info('Notify SIP Portal on create Room');
+                    cloudHandler.notifySipPortal('create', result, function(){});
+                }
             });
         }
     } else {
@@ -64,6 +71,12 @@ exports.createRoom = function (req, res) {
             }, function (reason) {
                 res.status(400).send(reason);
             });
+
+            // Notify SIP portal if SIP room created
+            if (result.sipInfo) {
+                log.info('Notify SIP Portal on create Room');
+                cloudHandler.notifySipPortal('create', result, function(){});
+            }
         });
     }
 };

@@ -165,6 +165,20 @@ case $startStop in
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
+      sip-agent )
+        cd ${WOOGEEN_HOME}/sip_agent
+        export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:./lib
+        export NODE_PATH=./node_modules
+        nohup nice -n ${WOOGEEN_NICENESS} node . -U sip\
+          > "${stdout}" 2>&1 </dev/null &
+        echo $! > ${pid}
+        ;;
+      sip-portal )
+        cd ${WOOGEEN_HOME}/sip_portal
+        nohup nice -n ${WOOGEEN_NICENESS} node sip_portal.js \
+          > "${stdout}" 2>&1 </dev/null &
+        echo $! > ${pid}
+        ;;
       audio-agent )
         cd ${WOOGEEN_HOME}/audio_agent
         export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:./lib
