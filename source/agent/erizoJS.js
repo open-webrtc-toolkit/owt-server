@@ -89,6 +89,7 @@ rpc.connect(GLOBAL.config.rabbit, function () {
     try {
         var rpcID = process.argv[2];
         var purpose = process.argv[3];
+        var clusterIP = process.argv[6];
 
         var controller;
         switch (purpose) {
@@ -106,6 +107,9 @@ rpc.connect(GLOBAL.config.rabbit, function () {
         case 'recording':
             controller = require('./access')();
             break;
+        case 'sip':
+            controller = require('woogeen/sip/index')({id:rpcID, addr:clusterIP});
+            break;
         default:
             log.error('Ambiguous purpose:', purpose);
             process.send('ambiguous purpose');
@@ -115,6 +119,7 @@ rpc.connect(GLOBAL.config.rabbit, function () {
         controller.privateRegexp = new RegExp(process.argv[4], 'g');
         controller.publicIP = process.argv[5];
         controller.clusterIP = process.argv[6];
+        controller.agentID = process.argv[7];
         controller.keepAlive = function (callback) {
             callback('callback', true);
         };

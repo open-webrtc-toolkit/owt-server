@@ -22,7 +22,33 @@
 this=$(dirname "$0")
 this=$(cd "${this}"; pwd)
 
+
+usage() {
+  echo
+  echo "Video Agent Install Dependency Script"
+  echo "Usage:"
+  echo "    --software (default)                install software dependencies"
+  echo "    --hardware                          install hardware dependencies"
+  echo
+}
+
+
+install_openh264(){
+  echo "Install OpenH264"
+  cd ${this}/lib
+  wget -c http://ciscobinary.openh264.org/libopenh264-1.4.0-linux64.so.bz2
+  bzip2 -d libopenh264-1.4.0-linux64.so.bz2
+  mv libopenh264-1.4.0-linux64.so libopenh264.so
+  local symbol=$(readelf -d ./libopenh264.so | grep soname | sed 's/.*\[\(.*\)\]/\1/g')
+  if [ -f "$symbol" ]; then
+    rm -f $symbol
+  fi
+  ln -s libopenh264.so ${symbol}
+  cd ${this}
+}
+
 enable_intel_gpu_top() {
+  echo "Enable Intel GPU Top"
   # make intel-gpu-tools accessable by non-root users.
   sudo chmod a+rw /sys/devices/pci0000:00/0000:00:02.0/resource*
   # make the above change effect at every system startup.
@@ -60,9 +86,35 @@ install_deps() {
   else
     echo -e "\x1b[32mUnsupported platform...\x1b[0m"
   fi
-
-  # make the intel-gpu-tools accessable by non-root users.
-  enable_intel_gpu_top
 }
 
+HARDWARE_DEPS=false
+
+shopt -s extglob
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    *(-)software )
+      HARDWARE_DEPS=false
+      ;;
+    *(-)hardware )
+      HARDWARE_DEPS=true
+      ;;
+    *(-)help )
+      usage
+      exit 0
+      ;;
+    * )
+      echo -e "\x1b[33mUnknown argument\x1b[0m: $1"
+      ;;
+  esac
+  shift
+done
+
 install_deps
+
+if ${HARDWARE_DEPS} ; then
+  enable_intel_gpu_top
+else
+  install_openh264
+fi
+

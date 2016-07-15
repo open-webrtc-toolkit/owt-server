@@ -137,6 +137,13 @@ case $yn in
   * ) ;;
 esac
 
+read -p "Installing libre? [No/yes]" yn
+case $yn in
+  [Yy]* ) install_libre;;
+  [Nn]* ) ;;
+  * ) ;;
+esac
+
 if [ "$CLEANUP" = "true" ]; then
   echo "Cleaning up..."
   cleanup

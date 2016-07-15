@@ -249,6 +249,11 @@ install_node_tools() {
   mkdir -p node_modules && npm install --prefix . --development --loglevel error
 }
 
+install_libre() {
+  local LIBRE_DIR="${ROOT}/third_party/libre-0.4.7"
+  cd "${LIBRE_DIR}" && make clean && make
+}
+
 install_gcc(){
   if [ -d $LIB_DIR ]; then
     local VERSION="4.8.4"

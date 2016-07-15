@@ -1,0 +1,6 @@
+[rabbit]
+host = "localhost" #default: "localhost"
+port = 5672 #default: 5672
+
+[cluster]
+name = "woogeen-cluster"

@@ -131,6 +131,7 @@ var tableTemplateService = '{{#rooms}}<tr>\
       <td>{{userLimit}}</td>\
       <td>{{enableMixing}}</td>\
       <td>{{mediaSetting}}</td>\
+      <td>{{sipInfo}}</td>\
     </tr>{{/rooms}}';
 Mustache.parse(tableTemplateService);
 
@@ -200,6 +201,7 @@ var tableTemplateRoom = '{{#rooms}}<tr>\
       <td class="userLimit" data-spin="userLimit">{{userLimit}}</td>\
       <td class="enableMixing" data-spin="enableMixing" data-value="{{enableMixing}}"></td>\
       <td class="mediaSetting" data-spin="mediaMixing">object</td>\
+      <td class="SIPConnectivity" data-spin="sipInfo">object</td>\
       <td class="col-md-1"><button type="button" id="apply-room" class="btn btn-xs btn-primary">Apply</button> <button type="button" id="delete-room" class="btn btn-xs btn-danger">Delete</button></td>\
     </tr>{{/rooms}}';
 Mustache.parse(tableTemplateRoom);
@@ -223,6 +225,7 @@ function tableHandlerRoom(rooms) {
       <td class="userLimit" data-spin="userLimit"></td>\
       <td class="enableMixing" data-spin="enableMixing" data-value="{{enableMixing}}"></td>\
       <td class="mediaSetting" data-spin="mediaMixing"></td>\
+      <td class="SIPConnectivity" data-spin="sipInfo"></td>\
       <td class="col-md-1"><button type="button" id="add-room" class="btn btn-xs btn-success">Add</button> <button type="button" id="reset-room" class="btn btn-xs btn-warning">Reset</button></td>\
     </tr>');
 
@@ -240,6 +243,10 @@ function tableHandlerRoom(rooms) {
         var valueObj = $(each).editable('getValue');
         var id = $(each).attr('id');
         updates[key] = valueObj[id];
+        if (updates[key] === undefined) {
+          // Set undefined to null because undefined will be ignored in JSON.stringfy
+          updates[key] = null;
+        }
       });
       if (updates.enableMixing) {
         updates.enableMixing = updates.enableMixing === "0" ? false : true;
@@ -331,6 +338,52 @@ function tableHandlerRoom(rooms) {
   };
   var disabledHandle = {
     disabled: true
+  };
+
+  var booleanHandle = {
+    mode: 'inline',
+    type: 'select',
+    source: [{
+      value: 0,
+      text: 'false'
+    }, {
+      value: 1,
+      text: 'true'
+    }]
+  };
+
+  var textHandle = {
+    mode: 'inline',
+    validate: function(value) {
+      var val = $.trim(value);
+      return {
+        newValue: val
+      };
+    }
+  };
+
+  var passwordHandle = {
+    mode: 'inline',
+    type: 'password',
+    validate: function(value) {
+      var val = $.trim(value);
+      return {
+        newValue: val
+      };
+    }
+  };
+
+  var ipEditHandle = {
+    mode: 'inline',
+    validate: function(value) {
+      var val = $.trim(value);
+      var ipformat = /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+      var hostname = "^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])$";
+      if(!val.match(ipformat) && !val.match(hostname)) return 'This Hostname or IP is not valid';
+      return {
+        newValue: val
+      };
+    }
   };
 
   var mediaSettingFn = function() {
@@ -462,17 +515,7 @@ function tableHandlerRoom(rooms) {
       }
     });
     // $('#myModal3 tbody td#bkColor').editable(numberHandle);
-    $('#myModal3 tbody td#avCoordinated').editable({
-      mode: 'inline',
-      type: 'select',
-      source: [{
-        value: 0,
-        text: 'false'
-      }, {
-        value: 1,
-        text: 'true'
-      }]
-    });
+    $('#myModal3 tbody td#avCoordinated').editable(booleanHandle);
     $('#myModal3 tbody td.value-num-edit:last').editable({
       mode: 'inline',
       type: 'select',
@@ -483,28 +526,8 @@ function tableHandlerRoom(rooms) {
         };
       })
     });
-    $('#myModal3 tbody td#multistreaming').editable({
-      mode: 'inline',
-      type: 'select',
-      source: [{
-        value: 0,
-        text: 'false'
-      }, {
-        value: 1,
-        text: 'true'
-      }]
-    });
-    $('#myModal3 tbody td#crop').editable({
-      mode: 'inline',
-      type: 'select',
-      source: [{
-        value: 0,
-        text: 'false'
-      }, {
-        value: 1,
-        text: 'true'
-      }]
-    });
+    $('#myModal3 tbody td#multistreaming').editable(booleanHandle);
+    $('#myModal3 tbody td#crop').editable(booleanHandle);
     $('#myModal3 tbody td.value-obj-edit').editable({
       title: 'Input a stringified JSON object',
       validate: function(value) {
@@ -535,6 +558,92 @@ function tableHandlerRoom(rooms) {
     $('#myModal3 tbody td.value-obj-edit').editable(disabledHandle);
   }
 
+  var sipConnectivityFn = function() {
+    if (this.parentNode.children[0].innerText === "") return;
+    $('#SIPModal').modal('toggle');
+    var roomId = $(this).parent().find('td:first').text();
+    var room = roomCache[roomId];
+    if (typeof room === 'undefined') {
+      return notify('error', 'SIP Connectivity', 'error in finding roomId');
+    }
+    var p = $(this);
+    $('#SIPModal .modal-title').text('SIP Connectivity for Room ' + roomId);
+
+    var sipSetting = room.sipInfo;
+    var sipDefault = {
+      sipServer : '127.0.0.1',
+      username : '',
+      password : ''
+    };
+    var sipTemplate = '\
+      <tr>\
+        <td colspan="2">SIP Server</td>\
+        <td id="sipServer" class="value-ip-edit SIPinput" data-value={{sipServer}}></td>\
+      </tr>\
+      <tr>\
+        <td colspan="2">User Name</td>\
+        <td id="username" class="value-text-edit SIPinput" data-value={{username}}></td>\
+      </tr>\
+      <tr>\
+        <td colspan="2">Password</td>\
+        <td id="password" class="value-password-edit SIPinput" data-value={{password}}></td>\
+      </tr>';
+
+    var view = Mustache.render(sipTemplate, sipSetting || sipDefault);
+    $('#SIPModal #SIPTable tbody').html(view);
+
+    $('#SIPModal #SIPTable tbody td.value-ip-edit').editable(ipEditHandle);
+    $('#SIPModal #SIPTable tbody td.value-text-edit').editable(textHandle);
+    $('#SIPModal #SIPTable tbody td.value-password-edit').editable(passwordHandle);
+
+    $('#SIPModal .modal-footer').html('<button type="button" class="btn btn-primary" data-dismiss="modal"><i class="glyphicon glyphicon-ok"></i></button>\
+        <button type="button" class="btn btn-default" data-dismiss="modal"><i class="glyphicon glyphicon-remove"></i></button>');
+
+    var sipBefore = !!sipSetting;
+    if (sipBefore) {
+      $('#SIPModal #SIPSwitch').prop('checked', true);
+      $('#SIPModal #SIPTable').show();
+    } else {
+      $('#SIPModal #SIPSwitch').prop('checked', false);
+      $('#SIPModal #SIPTable').hide();
+    }
+
+    var sipAfter = sipBefore;
+    $('#SIPModal #SIPSwitch').click(function() {
+      if (this.checked) {
+        $('#SIPModal #SIPTable').show();
+      } else {
+        $('#SIPModal #SIPTable').hide();
+      }
+      sipAfter = this.checked;
+    });
+
+    $('#SIPModal .modal-footer button:first').click(function() {
+      var unsaved = $('#SIPModal tbody .editable-unsaved');
+      if (sipAfter === sipBefore) {
+        if ((sipAfter && unsaved.length === 0) || !sipAfter) {
+          return;
+        }
+      }
+
+      if (sipAfter) {
+        sipSetting = {};
+        $('#SIPModal .SIPinput').each(function(index) {
+          var id = $(this).attr('id');
+          var val = $(this).editable('getValue')[id] + '';
+          setVal(sipSetting, id, val);
+        });
+      } else {
+        sipSetting = null;
+      }
+
+      room.sipInfo = sipSetting;
+      p.addClass('editable-unsaved');
+      p.editable('setValue', room.sipInfo);
+      p.text('object');
+    });
+  };
+
   $('td.roomName').editable(roomNameHandle);
   $('td.roomMode').editable(roomModeHandle);
   $('td.publishLimit').editable(numberHandle1);
@@ -542,6 +651,8 @@ function tableHandlerRoom(rooms) {
   $('td.enableMixing').editable(roomEnableMixingHandle);
   $('td.mediaSetting').editable(disabledHandle);
   $('td.mediaSetting').click(mediaSettingFn);
+  $('td.SIPConnectivity').editable(disabledHandle);
+  $('td.SIPConnectivity').click(sipConnectivityFn);
 
   $('#myModal3').on('hidden.bs.modal', function() {
     $('#myModal3 #inRoomTable tbody').empty();
@@ -583,6 +694,8 @@ function tableHandlerRoom(rooms) {
       selector.find('td.enableMixing').editable(roomEnableMixingHandle);
       selector.find('td.mediaSetting').editable(disabledHandle);
       selector.find('td.mediaSetting').click(mediaSettingFn);
+      selector.find('td.SIPConnectivity').editable(disabledHandle);
+      selector.find('td.SIPConnectivity').click(sipConnectivityFn);
       selector.find('button#apply-room').click(applyRoomFn);
       selector.find('button#delete-room').click(deleteRoomFn);
       roomCache[room1._id] = room1;

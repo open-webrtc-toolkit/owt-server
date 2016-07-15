@@ -1,0 +1,42 @@
+SRTP module
+-----------
+
+The SRTP module implements Secure RTP as defined in RFC 3711.
+It provides a clean and user friendly API and can be used
+as a standalone module.
+
+
+
+
+Requirements and features:
+
+RFC 3711                       yes
+RFC 6188                       yes
+Multiple Master keys:          no
+Key derivation rate:           0 (zero)
+Salting keys:                  yes
+SRTP protection:               yes
+SRTCP protection:              yes
+Replay protection:             yes
+Encryption:                    yes
+Authentication:                yes
+MKI (Master Key Identifier):   no
+Authentication tag length:     32-bit and 80-bit
+ROC (Roll Over Counter):       yes
+Master key lifetime:           no
+Multiple SSRCs:                yes
+Performance:                   better than libsrtp
+
+Cryptographic transforms:
+- AES in Counter mode:         yes
+- AES in f8-mode:              no
+- NULL Cipher:                 no
+
+Authentication transform:
+- HMAC-SHA1:                   yes
+- NULL auth:                   no
+
+master key lengths:
+- 128 bits                     yes
+- 192 bits                     no
+- 256 bits                     yes

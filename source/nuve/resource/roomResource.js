@@ -67,6 +67,12 @@ exports.deleteRoom = function (req, res) {
                                 log.info('Room ', req.params.room, ' does not exist');
                                 res.status(404).send('Room does not exist');
                             });
+
+                            // Notify SIP portal if SIP room deleted
+                            if (room.sipInfo) {
+                                log.info('Notify SIP Portal on delete Room');
+                                cloudHandler.notifySipPortal('delete', room, function(){});
+                            }
                         }
                     });
 
@@ -90,10 +96,13 @@ exports.updateRoom = function (req, res) {
         } else {
             var updates = req.body;
             if (typeof updates === 'object' && updates !== null) {
+                log.info('Room', 'updateRoom updates', updates);
                 var newRoom = Room.create(updates);
                 if (newRoom === null) {
                     return res.status(400).send('Bad room configuration');
                 }
+
+                var hasSip = !!room.sipInfo;
                 Object.keys(updates).map(function (k) {
                     if (newRoom.hasOwnProperty(k)) {
                         if (k !== 'mediaMixing') {
@@ -127,11 +136,24 @@ exports.updateRoom = function (req, res) {
                         }
                     });
                     if (result == 1) {
-                      res.send(room);
+                        res.send(room);
                     } else {
-                      res.send(result);
+                        // Notify SIP portal if SIP room updated
+                        if (updates.hasOwnProperty('sipInfo')) {
+                            log.info('Notify SIP Portal on update Room', updates);
+                            var changeType = 'update';
+                            if (!hasSip && result.sipInfo) {
+                                changeType = 'create';
+                            } else if (hasSip && !result.sipInfo) {
+                                changeType = 'delete';
+                            }
+                            log.info('Change type', changeType);
+                            cloudHandler.notifySipPortal(changeType, result, function(){});
+                        }
+                        res.send(result);
                     }
                 });
+
             } else {
                 res.status(400).send('Bad room configuration');
             }

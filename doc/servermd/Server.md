@@ -197,34 +197,15 @@ To launch the MCU server on one machine, follow steps below:
 
 1. Initialize the MCU package for the first time execution.
 
-    For general MCU Server installation, follow these steps:
+    For general MCU Server installation, use following command:
 
-        cd Release-<Version>/
-        nuve/init.sh --deps
-        access_agent/install_deps.sh
-        video_agent/init.sh
+        bin/init-all.sh [--deps]
 
-    If you want to enable GPU-acceleration, follow these steps:
+    If you want to enable GPU-acceleration, use following command:
 
-        cd Release-<Version>/
-        nuve/init.sh --deps
-        access_agent/install_deps.sh
-        video_agent/install_deps.sh
-        video_agent/init.sh --hardware
+        bin/init-all.sh [--deps] --hardware
 
-> **Note**: If you have already installed the required system libraries:
-
-    For general MCU Server installation, follow these steps:
-
-        cd Release-<Version>/
-        nuve/init.sh
-        video_agent/init.sh
-
-    If you want to enable GPU-acceleration, follow these steps:
-
-        cd Release-<Version>/
-        nuve/init.sh
-        video_agent/init.sh --hardware
+> **Note**: If you have already installed the required system libraries, then --deps is not required.
 
 2. Run the following commands to start the MCU:
 
@@ -249,10 +230,12 @@ nuve|1|The manager of the MCU, keeping the configurations of all rooms, generati
 cluster_manager|1|The manager of all active workers in the cluster, checking their lives, scheduling workers with the specified purposes according to the configured policies
 portal|1 or many|The signaling server and room controller, handling service requests from and responding to the clients
 webrtc-agent|1 or many|This agent spawning webrtc accessing nodes which establish peer-connections with webrtc clients, receive media streams from and send media streams to webrtc clients
-rtsp-agent|1 or many|This agent spawning rtsp accessing nodes which pull rtsp streams from rtsp sources and push rtsp streams to rtsp destinations
-recording-agent|1 or many|This agent spawning recording nodes which record the specified audio/video streams to permanent storage facilities
+rtsp-agent|0 or many|This agent spawning rtsp accessing nodes which pull rtsp streams from rtsp sources and push rtsp streams to rtsp destinations
+recording-agent|0 or many|This agent spawning recording nodes which record the specified audio/video streams to permanent storage facilities
 audio-agent|1 or many|This agent spawning audio processing nodes which perform audio transcoding and mixing
 video-agent|1 or many|This agent spawning video processing nodes which perform video transcoding and mixing
+sip-agent|0 or many|This agent spawning sip processing nodes which handle sip connections
+sip-portal|0 or 1|The portal for dealing with sip settings and controlling sip agents
 app|0 or 1|The sample web application for reference, users should use their own application server
 
 Follow the steps below to set up an MCU cluster:
@@ -309,20 +292,26 @@ Follow the steps below to set up an MCU cluster:
        For general video agent, follow these steps:
 
            cd Release-<Version>/
+           video_agent/install_deps.sh
            video_agent/init.sh
 
        If you want to enable GPU-acceleration for video agent, follow these steps:
 
            cd Release-<Version>/
-           video_agent/install_deps.sh
+           video_agent/install_deps.sh --hardware
            video_agent/init.sh --hardware
 
 13. Run the following commands to launch one or multiple MCU worker nodes on these work machines:
 
         cd Release-<Version>/
-        bin/daemon.sh start [portal/webrtc-agent/rtsp-agent/audio-agent/video-agent/recording-agent]
+        bin/daemon.sh start [portal/webrtc-agent/rtsp-agent/audio-agent/video-agent/recording-agent/sip-agent]
 
-14. Repeat step 10 to 12 to launch as many MCU worker machines as you need.
+14. Run the following command to launch one sip-portal worker:
+
+        cd Release-<Version>/
+        bin/daemon.sh start sip-portal
+
+15. Repeat step 10 to 12 to launch as many MCU worker machines as you need.
 
 ### 2.3.9 Configure VCA nodes as seperated machines to run video-agent {#Conferencesection2_3_9}
 To setup VCA nodes as seperated machines, please follow these steps:
@@ -387,7 +376,7 @@ To stop the MCU cluster, follow these steps:
 3. Run the following commands on worker machines to stop cluster workers:
 
         cd Release-<Version>/
-        bin/daemon.sh stop [portal/webrtc-agent/rtsp-agent/audio-agent/video-agent/recording-agent]
+        bin/daemon.sh stop [portal/webrtc-agent/rtsp-agent/audio-agent/video-agent/recording-agent/sip-agent/sip-portal]
 
 ## 2.4 Security Recommendations {#Conferencesection2_4}
 Intel Corporation does not host any conference cluster/service, instead, the entire suite is provided so you can build your own video conference system and host your own server cluster.
@@ -542,6 +531,20 @@ Regions are rendered on top of the root mixed stream. "id" is the identifier for
 The size of a region is specified relative to the size of the root mixed stream using the "relativesize" attribute.
 
 Regions are located on the root window based on the value of the position attributes "top" and "left".  These attributes define the position of the top left corner of the region as an offset from the top left corner of the root mixed stream, which is a percent of the vertical or horizontal dimension of the root mixed stream.
+
+### 3.5.2 Enable SIP setting for rooms {#Conferencesection3_5_2}
+The MCU server supports communication with SIP clients. Before setup SIP for room, make sure SIP servers (like Kamailio) and related SIP user accounts are available. The SIP setting can be enabled through SDK or management console. On the console page, find the room that need to interact with SIP and click the related "SIP connectivity" field. Then an SIP dialog titled "SIP connectivity for Room _id" would show up (Figure 3-2):
+
+**Figure 3-2. SIP Connectivity Setting on Management Console**
+![SIP Connectivity Setting](./pic/sipSetting.png)
+
+Make the "Enable SIP" option checked and input the "SIP server", "User Name", "Password" fields. The meanings of each fields are listed below:
+
+        SIP server: The SIP server's hostname or IP address.
+        User Name: The user name registered on the SIP server above.
+        Password: The user's corresponding password.
+
+After the SIP settings has been done,  click the "Apply" button at the right side of the Room row to let it take effect. If the "Update Room Success" message shows up and the SIP information is set correctly, then SIP clients should be able to join this room via the SIP server that setted. More information about SIP support of MCU can be found in section [SIP connectivity for MCU](#Conferencesection6).
 
 ## 3.6 Cluster Worker Scheduling Policy Introduction {#Conferencesection3_6}
 All workers including portals, webrtc-agents, rtsp-agents, recording-agents, audio-agents, video-agents in the cluster are scheduled by the cluster_manager with respect to the configured scheduling strategies in cluster_manager/cluster_manager.toml.  For example, the configuration item "portal = last-used" means the scheduling policy of workers with purposes of "portal" are set to "last-used". The following built-in scheduling strategies are provided:

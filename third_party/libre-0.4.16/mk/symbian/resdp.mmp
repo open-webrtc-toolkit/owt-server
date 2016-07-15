@@ -1,0 +1,36 @@
+/**
+ * @file resdp.mmp  Symbian makefile for libre SDP
+ *
+ * Copyright (C) 2010 Creytiv.com
+ */
+TARGET        resdp.lib
+TARGETTYPE    lib
+TARGETPATH    system\libs
+UID           0x10000fd3 0x2001130C
+
+#ifdef EKA2
+VENDORID      0
+CAPABILITY    NetworkServices
+#endif
+
+SOURCEPATH    .
+SOURCE        dll.cpp
+
+SOURCEPATH    ..\..\src\sdp
+SOURCE        attr.c
+SOURCE        format.c
+SOURCE        media.c
+SOURCE        msg.c
+SOURCE        session.c
+SOURCE        str.c
+
+USERINCLUDE   . ..\..\include
+SYSTEMINCLUDE \epoc32\include
+SYSTEMINCLUDE \epoc32\include\libc
+SYSTEMINCLUDE ..\..\include
+#ifndef EKA2
+LIBRARY       estlib.lib euser.lib
+LIBRARY       esock.lib insock.lib
+#endif
+
+EXPORTUNFROZEN

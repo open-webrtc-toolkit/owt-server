@@ -155,4 +155,19 @@ exports.getHostedRooms = function getHostedRooms (callback) {
     callback([]);
 };
 
+exports.notifySipPortal = function (changeType, room, callback) {
+        var arg = {
+            type: changeType,
+            room_id: room._id,
+            sipInfo: room.sipInfo
+        };
+        rpc.callRpc('sip-portal', 'handleSipUpdate', [arg], {callback: function (r) {
+        if (r === 'timeout' || r === 'error') {
+            callback('Fail');
+        } else {
+            callback('Success');
+        }
+    }});
+};
+
 

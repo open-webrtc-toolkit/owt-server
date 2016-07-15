@@ -1,0 +1,40 @@
+/**
+ * @file resipsess.mmp  Symbian makefile for libre SIP Session
+ *
+ * Copyright (C) 2010 Creytiv.com
+ */
+TARGET        resipsess.lib
+TARGETTYPE    lib
+TARGETPATH    system\libs
+UID           0x10000fd3 0x2001130D
+
+#ifdef EKA2
+VENDORID      0
+CAPABILITY    NetworkServices
+#endif
+
+SOURCEPATH    .
+SOURCE        dll.cpp
+
+SOURCEPATH    ..\..\src\sipsess
+SOURCE        accept.c
+SOURCE        ack.c
+SOURCE        close.c
+SOURCE        connect.c
+SOURCE        info.c
+SOURCE        listen.c
+SOURCE        modify.c
+SOURCE        reply.c
+SOURCE        request.c
+SOURCE        sess.c
+
+USERINCLUDE   . ..\..\include
+SYSTEMINCLUDE \epoc32\include
+SYSTEMINCLUDE \epoc32\include\libc
+SYSTEMINCLUDE ..\..\include
+#ifndef EKA2
+LIBRARY       estlib.lib euser.lib
+LIBRARY       esock.lib insock.lib
+#endif
+
+EXPORTUNFROZEN

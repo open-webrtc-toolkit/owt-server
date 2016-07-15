@@ -29,6 +29,7 @@ function Room (spec) {
     this.userLimit = spec.userLimit;
     this.mediaMixing = spec.mediaMixing;
     this.enableMixing = spec.enableMixing;
+    this.sipInfo = spec.sipInfo;
 }
 
 Room.prototype.validate = function() {

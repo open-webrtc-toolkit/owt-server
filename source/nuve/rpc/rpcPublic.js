@@ -58,3 +58,9 @@ exports.getRoomConfig = function (roomId, callback) {
 exports.getKey = function (id, callback) {
     callback('callback', nuveKey);
 };
+
+exports.getRoomsWithSIP = function (nothing, callback) {
+    roomRegistry.getRoomsWithSIP(function(rooms) {
+        callback('callback', rooms);
+    });
+};

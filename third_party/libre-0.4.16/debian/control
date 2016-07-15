@@ -1,0 +1,73 @@
+Source: libre
+Section: comm
+Priority: optional
+Maintainer: Alfred E. Heggestad <aeh@db.org>
+Standards-Version: 3.9.5
+Build-Depends: debhelper (>= 9.20120311)
+Homepage: http://www.creytiv.com/
+
+Package: libre
+Architecture: any
+Section: libs
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Generic library for real-time communications with async IO support
+ Libre is a portable and generic library for real-time communications
+ with async IO support and a complete SIP stack with support for protocols
+ such as SDP, RTP/RTCP, STUN/TURN/ICE, BFCP, HTTP and DNS Client.
+ .
+ The current features are:
+ .
+  SIP Stack (RFC 3261)
+  SDP parser
+  RTP and RTCP stack
+  DNS-Client
+  STUN/TURN/ICE stack
+  BFCP
+  Jitter-buffer
+  Async I/O (poll, epoll, select)
+  UDP/TCP/TLS/DTLS transport
+  HTTP Client and Server
+  Websocket Client and Server
+  JSON parser
+  SRTP and SRTCP (Secure RTP)
+ .
+ Design goals:
+ .
+  Portable POSIX source code (ANSI C89 and ISO C99 standard)
+  Robust, fast, low memory footprint
+  RFC compliance
+  IPv4 and IPv6 support
+
+Package: libre-dev
+Architecture: any
+Section: libdevel
+Depends: libre (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Description: Generic library for real-time communications (development files)
+ Libre is a portable and generic library for real-time communications
+ with async IO support and a complete SIP stack with support for protocols
+ such as SDP, RTP/RTCP, STUN/TURN/ICE, BFCP, HTTP and DNS Client.
+ .
+ The current features are:
+ .
+  SIP Stack (RFC 3261)
+  SDP parser
+  RTP and RTCP stack
+  DNS-Client
+  STUN/TURN/ICE stack
+  BFCP
+  Jitter-buffer
+  Async I/O (poll, epoll, select)
+  UDP/TCP/TLS/DTLS transport
+  HTTP Client and Server
+  Websocket Client and Server
+  JSON parser
+  SRTP and SRTCP (Secure RTP)
+ .
+ Design goals:
+ .
+  Portable POSIX source code (ANSI C89 and ISO C99 standard)
+  Robust, fast, low memory footprint
+  RFC compliance
+  IPv4 and IPv6 support
+ .
+ This package is only the library development files.

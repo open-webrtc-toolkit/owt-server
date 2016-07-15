@@ -37,6 +37,7 @@ usage() {
   echo "    --mcu-hardware                      build mcu runtime addons with msdk media pipeline"
   echo "    --mcu-hardware-yami                 build mcu runtime addons with libyami based media pipeline"
   echo "    --mcu-all                           build mcu runtime addons both with and without hardware support"
+  echo "    --sip                               build sip gateway runtime"
   echo "    --sdk                               build sdk (for oovoo gateway)"
   echo "    --all                               build all components"
   echo "    --help                              print this help"
@@ -52,6 +53,7 @@ if [[ $# -eq 0 ]];then
 fi
 
 BUILD_GATEWAY_RUNTIME=false
+BUILD_SIP_GATEWAY_RUNTIME=false
 BUILD_MCU_RUNTIME_SW=false
 BUILD_MCU_RUNTIME_HW_YAMI=false
 BUILD_MCU_RUNTIME_HW_MSDK=false
@@ -99,6 +101,9 @@ while [[ $# -gt 0 ]]; do
       BUILD_MCU_RUNTIME_SW=true
       BUILD_MCU_RUNTIME_HW_MSDK=true
       ;;
+    *(-)sip )
+      BUILD_SIP_GATEWAY_RUNTIME=true
+      ;;
     *(-)sdk )
       BUILD_SDK=true
       ;;
@@ -117,6 +122,9 @@ build_gateway_runtime() {
   RUNTIME_ADDON_SRC_DIR="${SOURCE}/gateway"
   build_runtime
 }
+
+
+
 
 build_mcu_runtime() {
   RUNTIME_ADDON_SRC_DIR="${SOURCE}/agent"
@@ -188,6 +196,24 @@ build_runtime() {
     return 1
   fi
 }
+build_sip_ua() {
+  local CORE_HOME="${SOURCE}/core"
+  local CCOMPILER=${DEPS_ROOT}/bin/gcc
+  local CXXCOMPILER=${DEPS_ROOT}/bin/g++
+  local OPTIMIZATION_LEVEL="3"
+  local RUNTIME_LIB_SRC_DIR="${SOURCE}/core"
+  mkdir -p "${RUNTIME_LIB_SRC_DIR}/build"
+  [[ BUILDTYPE == "Release" ]] || OPTIMIZATION_LEVEL="0"
+
+  [[ BUILDTYPE == "Release" ]] || OPTIMIZATION_LEVEL="0"
+  pushd "${RUNTIME_LIB_SRC_DIR}/build" >/dev/null
+  if [[ -x $CCOMPILER && -x $CXXCOMPILER ]]; then
+    LD_LIBRARY_PATH=${DEPS_ROOT}/lib:$LD_LIBRARY_PATH PKG_CONFIG_PATH=${DEPS_ROOT}/lib/pkgconfig:$PKG_CONFIG_PATH BOOST_ROOT=${DEPS_ROOT} CC=$CCOMPILER CXX=$CXXCOMPILER cmake -DCMAKE_BUILD_TYPE=${BUILDTYPE} $CMAKE_ADDITIONAL_OPTIONS ..
+  else
+    LD_LIBRARY_PATH=${DEPS_ROOT}/lib:$LD_LIBRARY_PATH PKG_CONFIG_PATH=${DEPS_ROOT}/lib/pkgconfig:$PKG_CONFIG_PATH BOOST_ROOT=${DEPS_ROOT} cmake -DCMAKE_BUILD_TYPE=${BUILDTYPE} $CMAKE_ADDITIONAL_OPTIONS ..
+  fi
+  LD_LIBRARY_PATH=${DEPS_ROOT}/lib:$LD_LIBRARY_PATH make
+}
 
 build_oovoo_client_sdk() {
   mkdir -p "${BUILD_ROOT}/sdk"
@@ -232,5 +258,18 @@ build() {
     return 1
   fi
 }
+
+build_sip_gateway_runtime() {
+  CMAKE_ADDITIONAL_OPTIONS="-DCOMPILE_SIP_GATEWAY=ON"
+  pushd "${SOURCE}/core/sip_gateway/sipua" > /dev/null
+  make clean && make
+  popd >/dev/null
+  build_sip_ua
+}
+
+if ${BUILD_SIP_GATEWAY_RUNTIME} ; then
+  build_sip_gateway_runtime
+  ((DONE++))
+fi
 
 build
