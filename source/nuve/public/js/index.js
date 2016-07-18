@@ -450,7 +450,17 @@ function tableHandlerRoom(rooms) {
       })
     });
     $('#myModal3 tbody td#bitrate').editable(numberHandle);
-    $('#myModal3 tbody td#maxInput').editable(numberHandle);
+    //$('#myModal3 tbody td#maxInput').editable(numberHandle);
+    $('#myModal3 tbody td#maxInput').editable({
+      mode: 'inline',
+      validate: function(value) {
+        var val = parseInt(value, 10);
+        if (isNaN(val) || val < 0 || val > 100/*FIXME: hard coded the up border of maxInputto 100*/) return 'value should be a number in [0, 100]';
+        return {
+          newValue: val
+        };
+      }
+    });
     // $('#myModal3 tbody td#bkColor').editable(numberHandle);
     $('#myModal3 tbody td#avCoordinated').editable({
       mode: 'inline',

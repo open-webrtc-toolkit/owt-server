@@ -114,7 +114,8 @@ Room.prototype.validate = function() {
         } else if (typeof this.mediaMixing.video.maxInput === 'string') {
             this.mediaMixing.video.maxInput = parseInt(this.mediaMixing.video.maxInput, 10);
             if (isNaN(this.mediaMixing.video.maxInput) ||
-                this.mediaMixing.video.maxInput <= 0) {
+                this.mediaMixing.video.maxInput <= 0 ||
+                this.mediaMixing.vidao.maxInput > 100/*FIXME: hard coded the up border of maxInputto 100*/) {
                 return null;
             }
         } else if (typeof this.mediaMixing.video.maxInput !== 'number' ||
