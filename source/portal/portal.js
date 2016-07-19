@@ -221,7 +221,7 @@ var Portal = function(spec, rpcClient) {
         return Promise.reject('No proper video codec');
       }
 
-      var video_resolution = streamDescription.video && streamDescription.video.resolution;
+      var video_resolution = (streamDescription.video && streamDescription.video.resolution);
       if (streamDescription.video) {
         if (streamDescription.video.resolution === 'unknown' && ((typeof status.video_resolution !== 'string') || (status.video_resolution === 'unknown'))) {
           rpcClient.unpublish(locality.node, connection_id);
