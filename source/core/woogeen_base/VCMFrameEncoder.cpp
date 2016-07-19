@@ -295,10 +295,7 @@ void VCMFrameEncoder::onTimeout()
 
     m_vcm->AddVideoFrame(*rawFrame);
 
-    // if return busy frame failed, which means a new busy frame has been posted
-    // simply release the busy frame
-    if (m_bufferManager->returnBusyBuffer(rawFrame, 0))
-        m_bufferManager->releaseBuffer(rawFrame);
+    m_bufferManager->releaseBuffer(rawFrame);
 }
 
 int32_t VCMFrameEncoder::SendData(
