@@ -70,12 +70,13 @@ module.exports = function () {
                                 video_resolution: (options.video ? options.video.resolution : undefined),
                                 url: options.url};
 
+        var audio_codec = ((avstream_options.audio_codec && avstream_options.audio_codec === 'aac' ? 'pcm_raw' : avstream_options.audio_codec));
         var connection = new AVStreamOut(avstream_options, function (error) {
             if (error) {
                 log.error('avstream-out init error:', error);
                 callback('onStatus', {type: 'failed', reason: error});
             } else {
-                callback('onStatus', {type: 'ready', audio_codecs: options.audio.codecs, video_codecs: options.video.codecs});
+                callback('onStatus', {type: 'ready', audio_codecs: options.audio ? [audio_codec] : [], video_codecs: options.video ? options.video.codecs : []});
             }
         });
         connection.addEventListener('fatal', function (error) {
@@ -137,7 +138,7 @@ module.exports = function () {
         return connection;
     };
 
-    var disconnectFrom = function (connectionId) {
+    var cutOffFrom = function (connectionId) {
         log.debug('remove subscriptions from connection:', connectionId);
         if (connections[connectionId] && connections[connectionId].direction === 'in') {
             for (var connection_id in connections) {
@@ -160,7 +161,7 @@ module.exports = function () {
         }
     };
 
-    var disconnectTo = function (connectionId) {
+    var cutOffTo = function (connectionId) {
         log.debug('remove subscription to connection:', connectionId);
         if (connections[connectionId] && connections[connectionId].direction === 'out') {
             var audioFrom = connections[connectionId].audioFrom,
@@ -214,7 +215,7 @@ module.exports = function () {
     that.unpublish = function (connectionId, callback) {
         log.debug('unpublish, connectionId:', connectionId);
         if (connections[connectionId] !== undefined) {
-            disconnectFrom(connectionId);
+            cutOffFrom(connectionId);
             connections[connectionId].connection.close();
             delete connections[connectionId];
             callback('callback', 'ok');
@@ -258,7 +259,7 @@ module.exports = function () {
     that.unsubscribe = function (connectionId, callback) {
         log.debug('unsubscribe, connectionId:', connectionId);
         if (connections[connectionId] !== undefined) {
-            disconnectTo(connectionId);
+            cutOffTo(connectionId);
             connections[connectionId].connection.close();
             delete connections[connectionId];
             callback('callback', 'ok');
@@ -304,7 +305,7 @@ module.exports = function () {
     that.cutoff = function (connectionId, callback) {
         log.debug('cutoff, connectionId:', connectionId);
         if (connections[connectionId]) {
-            disconnectTo(connectionId);
+            cutOffTo(connectionId);
             callback('callback', 'ok');
         } else {
             log.info('Connection does NOT exist:' + connectionId);
