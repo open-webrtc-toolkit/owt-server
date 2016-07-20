@@ -30,23 +30,17 @@
 extern "C" {
 #include <libavformat/avformat.h>
 #include <libavutil/audio_fifo.h>
-#include <libswresample/swresample.h>
 }
 
-#ifdef DUMP_RAW
 #include <fstream>
 #include <memory>
-#endif
 
 namespace woogeen_base {
 
 class RtspOut : public AVStreamOut {
     DECLARE_LOGGER();
 
-    enum State { IDLE,
-        INITIALIZING,
-        READY,
-        CLOSING };
+    static const uint32_t VIDEO_BUFFER_SIZE = 4 * 1024 * 1024;
 
 public:
     RtspOut(const std::string& url, const AVOptions* audio, const AVOptions* video, EventRegistry* handle);
@@ -54,49 +48,69 @@ public:
 
     // AVStreamOut interface
     void onFrame(const woogeen_base::Frame&);
-    void onTimeout();
+    void onTimeout() {;}
 
 protected:
-    void run();
-    bool detectInputVideoStream();
     static int readFunction(void* opaque, uint8_t* buf, int buf_size);
 
-    int writeVideoPkt();
+    bool hasAudio() {return !m_audioOptions.codec.empty();}
+    bool hasVideo() {return !m_videoOptions.codec.empty();}
 
-private:
-    void close();
-    bool init();
+    void audioRun();
+    void videoRun();
+
+    bool detectInputVideoStream();
+
     bool addVideoStream(enum AVCodecID codec_id, unsigned int width, unsigned int height);
     bool addAudioStream(enum AVCodecID codec_id, int nbChannels = 2, int sampleRate = 48000);
-    int writeAudioFrame();
-    AVFrame* allocAudioFrame(AVCodecContext*);
-    void encodeAudio();
-    void processAudio(uint8_t* data, int nbSamples);
 
-    AVFormatContext* m_context;
-    SwrContext* m_resampleContext;
-    AVAudioFifo* m_audioFifo;
-    AVStream* m_videoStream;
-    AVStream* m_audioStream;
+    bool init();
+    void close();
+
+    int writeAudioFrame();
+    int writeVideoFrame();
+
+    void addToAudioFifo(uint8_t* data, int nbSamples);
+    bool encodeAudioFrame(AVPacket *pkt);
+
+private:
     std::string m_uri;
-    AVFrame* m_audioEncodingFrame;
-#ifdef DUMP_RAW
-    std::unique_ptr<std::ofstream> m_dumpFile;
-#endif
-    AVOptions m_audio;
-    AVOptions m_video;
-    bool m_hasAudio;
-    bool m_hasVideo;
-    enum State m_state;
+
+    AVOptions m_audioOptions;
+    AVOptions m_videoOptions;
+
+    boost::thread m_audioWorker;
+    boost::thread m_videoWorker;
+
+    bool m_audioReceived;
+    bool m_videoReceived;
+
     boost::mutex m_readCbmutex;
     boost::condition_variable m_readCbcond;
-    int m_StatDetectFrames;
+
     AVFormatContext* m_ifmtCtx;
-    boost::thread m_worker;
     AVStream* m_inputVideoStream;
-    int64_t m_inputVideoStartTimestamp;
-    int m_inputVideoFrameIndex;
-    boost::shared_mutex m_writerMutex;
+
+    AVFormatContext* m_context;
+    boost::shared_mutex m_contextMutex;
+
+    AVStream* m_audioStream;
+    AVStream* m_videoStream;
+
+    AVAudioFifo* m_audioFifo;
+    boost::mutex m_audioFifoMutex;
+    boost::condition_variable m_audioFifoCond;
+
+    AVFrame* m_audioEncodingFrame;
+
+    int64_t m_timeOffset;
+
+    int64_t m_lastAudioTimestamp;
+    int64_t m_lastVideoTimestamp;
+
+#ifdef DUMP_AUDIO_RAW
+    std::unique_ptr<std::ofstream> m_audioRawDumpFile;
+#endif
 };
 }
 
