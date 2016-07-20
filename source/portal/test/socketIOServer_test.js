@@ -397,7 +397,15 @@ describe('Responding to clients.', function() {
                            if (status === 'initializing') {
                               expect(mockPortal.publish.getCall(3).args[2]).to.deep.equal({audio: false, video: {resolution: 'vga', device: 'screen'}});
                               expect(mockPortal.publish.getCall(3).args[4]).to.be.true;
-                              done();
+
+                              var options5 = {state: 'erizo', audio: true, video: {resolution: '', device: 'camera'}};
+                              client.emit('publish', options5, undefined, function(status, id) {
+                                if (status === 'initializing') {
+                                   expect(mockPortal.publish.getCall(4).args[2]).to.deep.equal({audio: true, video: {resolution: 'unknown', device: 'camera'}});
+                                   expect(mockPortal.publish.getCall(4).args[4]).to.be.false;
+                                   done();
+                                 }
+                              });
                             }
                          });
                       }
