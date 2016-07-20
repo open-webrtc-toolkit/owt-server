@@ -693,7 +693,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                     amqper,
                     terminals[vxcoder].locality.node,
                     'init',
-                    ['transcoding', {resolution: streams[stream_id].video.resolution || 'hd1080p'/*FIXME: hard code*/}, room_id, undefined],
+                    ['transcoding', {resolution: streams[stream_id].video.resolution}, room_id, undefined],
                     function (supported_video) {
                         var target_node = terminals[vxcoder].locality.node,
                             spread_id = stream_id + '@' + target_node;
@@ -825,7 +825,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
     };
 
     var getAudioStream = function (participant_id, stream_id, audio_codec, on_ok, on_error) {
-        log.debug('getAudioStream, participant_id:', participant_id, 'stream:', streams[stream_id], 'audio_codec:', audio_codec);
+        log.debug('getAudioStream, participant_id:', participant_id, 'stream:', stream_id, 'audio_codec:', audio_codec);
         if (stream_id === mixed_stream_id) {
             getMixedAudio(participant_id, audio_codec, function (streamID) {
                 log.debug('Got mixed audio:', streamID);
@@ -849,7 +849,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
     };
 
     var getVideoStream = function (stream_id, video_codec, video_resolution, on_ok, on_error) {
-        log.debug('getVideoStream, stream:', streams[stream_id], 'video_codec:', video_codec, 'video_resolution:', video_resolution);
+        log.debug('getVideoStream, stream:', stream_id, 'video_codec:', video_codec, 'video_resolution:', video_resolution);
         if (stream_id === mixed_stream_id) {
             getMixedVideo(video_codec, video_resolution, function (streamID) {
                 log.debug('Got mixed video:', streamID);
@@ -857,7 +857,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
             }, on_error);
         } else if (streams[stream_id]) {
             if (streams[stream_id].video) {
-                if (streams[stream_id].video.codec === video_codec && (!video_resolution || streams[stream_id].video.resolution === video_resolution)) {
+                if (streams[stream_id].video.codec === video_codec && (video_resolution === 'unspecified' || streams[stream_id].video.resolution === video_resolution)) {
                     on_ok(stream_id);
                 } else {
                     getTranscodedVideo(video_codec, video_resolution, stream_id, function (streamID) {
@@ -1055,7 +1055,8 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
             }
 
             var video_resolution = (subInfo.video && (subInfo.video.fromStream === mixed_stream_id) && getMixedResolution(subInfo.video, supported_video_resolutions))
-                              || (subInfo.video && getForwardResolution(subInfo.video, streams[subInfo.video.fromStream].video.resolution, enable_video_transcoding))
+                              || (subInfo.video && subInfo.video.resolution && getForwardResolution(subInfo.video, streams[subInfo.video.fromStream].video.resolution, enable_video_transcoding))
+                              || (subInfo.video && 'unspecified')
                               || undefined;
 
             if (video_resolution === 'unavailable') {
@@ -1064,9 +1065,9 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                 return on_error('No available video resolution');
             }
 
-            if ((subInfo.audio && !audio_codec) || (subInfo.video && (!video_codec || !video_resolution))) {
-                log.error('No proper audio/video codec or resolution');
-                return on_error('No proper audio/video codec or resolution');
+            if ((subInfo.audio && !audio_codec) || (subInfo.video && !video_codec)) {
+                log.error('No proper audio/video codec');
+                return on_error('No proper audio/video codec');
             }
 
             var terminal_id = participantId + '-sub-' + subscriptionId;

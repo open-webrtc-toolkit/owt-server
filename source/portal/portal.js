@@ -222,16 +222,7 @@ var Portal = function(spec, rpcClient) {
       }
 
       var video_resolution = (streamDescription.video && streamDescription.video.resolution);
-      if (streamDescription.video) {
-        if (streamDescription.video.resolution === 'unknown' && ((typeof status.video_resolution !== 'string') || (status.video_resolution === 'unknown'))) {
-          rpcClient.unpublish(locality.node, connection_id);
-          rpcClient.recycleAccessNode(locality.agent, locality.node, {session: participants[participantId].in_session, consumer: connection_id});
-          onConnectionStatus({type: 'failed', reason: 'Undetermined video resolution'});
-          return Promise.reject('Undetermined video resolution');
-        } else {
-          video_resolution = ((typeof status.video_resolution === 'string' && status.video_resolution !== 'unknown') ? status.video_resolution : video_resolution);
-        }
-      }
+      video_resolution = ((typeof status.video_resolution === 'string' && status.video_resolution !== 'unknown') ? status.video_resolution : video_resolution);
 
       var stream_description = {audio: streamDescription.audio && {codec: status.audio_codecs[0]},
                                 video: streamDescription.video && {resolution: video_resolution,

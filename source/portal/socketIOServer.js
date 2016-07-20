@@ -110,8 +110,8 @@ var Client = function(participantId, socket, portal, on_disconnect) {
 
       stream_description.audio = (options.audio === undefined ? true : !!options.audio);
       stream_description.video = (options.video === false ? false : (typeof options.video === 'object' ? options.video : {}));
-      stream_description.video && (typeof stream_description.video.resolution !== 'string') && (stream_description.video.resolution = 'unknown');
-      stream_description.video && (typeof stream_description.video.device !== 'string') && (stream_description.video.device = 'unknown');
+      stream_description.video && (typeof stream_description.video.resolution !== 'string' || stream_description.video.resolution === '') && (stream_description.video.resolution = 'unknown');
+      stream_description.video && (typeof stream_description.video.device !== 'string' || stream_description.video.device === '') && (stream_description.video.device = 'unknown');
       var unmix = (options.unmix === true || (stream_description.video && (stream_description.video.device === 'screen'))) ? true : false;
 
       return portal.publish(participant_id, connection_type, stream_description, function(status) {
