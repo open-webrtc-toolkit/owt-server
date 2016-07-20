@@ -976,8 +976,9 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
         if (streams[streamId] === undefined) {
             var currentPublisherCount = publisherCount();
             if (config.publishLimit < 0 || (config.publishLimit > currentPublisherCount)) {
-               var terminal_id = participantId + '-pub-' + streamId;
-                newTerminal(terminal_id, 'participant', participantId, accessNode, function () {
+               var terminal_id = participantId + '-pub-' + streamId,
+                   terminal_owner = participantId + '-' + streamInfo.type;
+                newTerminal(terminal_id, 'participant', terminal_owner, accessNode, function () {
                     streams[streamId] = {owner: terminal_id,
                                          audio: streamInfo.audio ? {codec: streamInfo.audio.codec,
                                                                     subscribers: []} : undefined,
@@ -1174,8 +1175,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                 var audio_stream, video_stream;
                 if (subInfo.audio) {
                     log.debug('require audio track of stream:', subInfo.audio.fromStream);
-                    var pt_id = (subInfo.isRecording ? participantId + '-recorder' : participantId);
-                    getAudioStream(pt_id, subInfo.audio.fromStream, audio_codec, function (streamID) {
+                    getAudioStream(terminals[terminal_id].owner, subInfo.audio.fromStream, audio_codec, function (streamID) {
                         audio_stream = streamID;
                         log.debug('Got audio stream:', audio_stream);
                         if (subInfo.video) {
@@ -1220,7 +1220,8 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                 }
             };
 
-            newTerminal(terminal_id, 'participant', participantId, accessNode, function () {
+            var terminal_owner = participantId + '-' + subInfo.type;
+            newTerminal(terminal_id, 'participant', terminal_owner, accessNode, function () {
                 doSubscribe();
             }, on_error);
         } else {

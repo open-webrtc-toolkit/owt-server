@@ -227,7 +227,8 @@ var Portal = function(spec, rpcClient) {
       var stream_description = {audio: streamDescription.audio && {codec: status.audio_codecs[0]},
                                 video: streamDescription.video && {resolution: video_resolution,
                                                                    device: streamDescription.video.device,
-                                                                   codec: status.video_codecs[0]}
+                                                                   codec: status.video_codecs[0]},
+                                type: connectionType
                                };
       (streamDescription.video && streamDescription.video.framerate) && (stream_description.video.framerate = streamDescription.video.framerate);
       return rpcClient.pub2Session(participant.controller, participantId, stream_id, locality, stream_description, notMix)
@@ -402,7 +403,7 @@ var Portal = function(spec, rpcClient) {
       var subscription_description = {audio: subscriptionDescription.audio, video: subscriptionDescription.video};
       (subscription_description.audio) && (subscription_description.audio.codecs = status.audio_codecs);
       (subscription_description.video) && (subscription_description.video.codecs = status.video_codecs);
-      (connectionType === 'recording') && (subscription_description.isRecording = true);
+      subscription_description.type = connectionType;
 
       return rpcClient.sub2Session(participant.controller, participantId, connection_id, locality, subscription_description)
         .then(function(result) {

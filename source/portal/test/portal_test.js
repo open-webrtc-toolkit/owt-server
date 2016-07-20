@@ -431,7 +431,7 @@ describe('portal.publish/portal.unpublish: Participants publish/unpublish stream
         })
         .then(function(result) {
           expect(result).to.equal('ok');
-          expect(mockRpcClient.pub2Session.getCall(0).args).to.deep.equal(['rpcIdOfController', testParticipantId, stream_id, {agent: 'rpcIdOfAccessAgent', node: 'rpcIdOfAccessNode'}, {audio: {codec: 'pcmu'}, video: {resolution: 'hd1080p', device: 'unknown', codec: 'h264'}}, false]);
+          expect(mockRpcClient.pub2Session.getCall(0).args).to.deep.equal(['rpcIdOfController', testParticipantId, stream_id, {agent: 'rpcIdOfAccessAgent', node: 'rpcIdOfAccessNode'}, {audio: {codec: 'pcmu'}, video: {resolution: 'hd1080p', device: 'unknown', codec: 'h264'}, type: 'avstream'}, false]);
           expect(spyConnectionObserver.getCall(1).args).to.deep.equal([{type: 'ready', audio_codecs: ['pcmu'], video_codecs: ['h264'], video_resolution: 'hd1080p'}]);
         });
     });
@@ -542,7 +542,7 @@ describe('portal.publish/portal.unpublish: Participants publish/unpublish stream
         })
         .then(function(result) {
           expect(result).to.equal('ok');
-          expect(mockRpcClient.pub2Session.getCall(0).args).to.deep.equal(['rpcIdOfController', testParticipantId, stream_id, {agent: 'rpcIdOfAccessAgent', node: 'rpcIdOfAccessNode'}, {audio: {codec: 'pcmu'}, video: {resolution: 'vga', framerate: 30, device: 'camera', codec: 'vp8'}}, false]);
+          expect(mockRpcClient.pub2Session.getCall(0).args).to.deep.equal(['rpcIdOfController', testParticipantId, stream_id, {agent: 'rpcIdOfAccessAgent', node: 'rpcIdOfAccessNode'}, {audio: {codec: 'pcmu'}, video: {resolution: 'vga', framerate: 30, device: 'camera', codec: 'vp8'}, type: 'webrtc'}, false]);
           expect(spyConnectionObserver.getCall(3).args).to.deep.equal([{type: 'ready', audio_codecs: ['pcmu', 'opus'], video_codecs: ['vp8', 'h264']}]);
         });
     });
@@ -697,7 +697,7 @@ describe('portal.publish/portal.unpublish: Participants publish/unpublish stream
         }, function(err) {
           expect(err).to.be.an('error');
           expect(mockRpcClient.pub2Session.callCount).to.equal(1);
-          expect(mockRpcClient.pub2Session.getCall(0).args).to.deep.equal(['rpcIdOfController', testParticipantId, stream_id, {agent: 'rpcIdOfAccessAgent', node: 'rpcIdOfAccessNode'}, {audio: {codec: 'pcmu'}, video: {resolution: 'vga', framerate: 30, device: 'camera', codec: 'vp8'}}, true]);
+          expect(mockRpcClient.pub2Session.getCall(0).args).to.deep.equal(['rpcIdOfController', testParticipantId, stream_id, {agent: 'rpcIdOfAccessAgent', node: 'rpcIdOfAccessNode'}, {audio: {codec: 'pcmu'}, video: {resolution: 'vga', framerate: 30, device: 'camera', codec: 'vp8'}, type: 'webrtc'}, true]);
           expect(mockRpcClient.unpublish.getCall(0).args).to.deep.equal(['rpcIdOfAccessNode', stream_id]);
           expect(mockRpcClient.recycleAccessNode.getCall(0).args).to.deep.equal(['rpcIdOfAccessAgent', 'rpcIdOfAccessNode', {session: testSession, consumer: stream_id}]);
           expect(spyConnectionObserver.getCall(0).args).to.deep.equal([{type: 'ready', audio_codecs: ['pcmu', 'opus'], video_codecs: ['vp8', 'h264']}]);
@@ -1317,7 +1317,7 @@ describe('portal.subscribe/portal.unsubscribe/portal.mediaOnOff: Participants su
         })
         .then(function(result) {
           expect(result).to.equal('ok');
-          expect(mockRpcClient.sub2Session.getCall(0).args).to.deep.equal(['rpcIdOfController', testParticipantId, subscription_id, {agent: 'rpcIdOfAccessAgent', node: 'rpcIdOfAccessNode'}, {audio: {fromStream: 'targetStreamId', codecs: ['pcmu']}, video: {fromStream: 'targetStreamId', codecs: ['vp8'], resolution: 'vga'}}]);
+          expect(mockRpcClient.sub2Session.getCall(0).args).to.deep.equal(['rpcIdOfController', testParticipantId, subscription_id, {agent: 'rpcIdOfAccessAgent', node: 'rpcIdOfAccessNode'}, {audio: {fromStream: 'targetStreamId', codecs: ['pcmu']}, video: {fromStream: 'targetStreamId', codecs: ['vp8'], resolution: 'vga'}, type: 'webrtc'}]);
           expect(spyConnectionObserver.getCall(3).args).to.deep.equal([{type: 'ready', audio_codecs: ['pcmu'], video_codecs: ['vp8']}]);
         });
     });
@@ -1361,7 +1361,7 @@ describe('portal.subscribe/portal.unsubscribe/portal.mediaOnOff: Participants su
         })
         .then(function(result) {
           expect(result).to.equal('ok');
-          expect(mockRpcClient.sub2Session.getCall(0).args).to.deep.equal(['rpcIdOfController', testParticipantId, subscription_id, {agent: 'rpcIdOfAccessAgent', node: 'rpcIdOfAccessNode'}, {audio: {fromStream: 'targetStreamId1', codecs: ['pcm_raw']}, video: {fromStream: 'targetStreamId2', codecs: ['h264'], resolution: 'vga'}}]);
+          expect(mockRpcClient.sub2Session.getCall(0).args).to.deep.equal(['rpcIdOfController', testParticipantId, subscription_id, {agent: 'rpcIdOfAccessAgent', node: 'rpcIdOfAccessNode'}, {audio: {fromStream: 'targetStreamId1', codecs: ['pcm_raw']}, video: {fromStream: 'targetStreamId2', codecs: ['h264'], resolution: 'vga'}, type: 'avstream'}]);
           expect(spyConnectionObserver.getCall(1).args).to.deep.equal([{type: 'ready', audio_codecs: ['pcm_raw'], video_codecs: ['h264']}]);
         });
     });
@@ -1454,7 +1454,7 @@ describe('portal.subscribe/portal.unsubscribe/portal.mediaOnOff: Participants su
         })
         .then(function(result) {
           expect(result).to.equal('ok');
-          expect(mockRpcClient.sub2Session.getCall(0).args).to.deep.equal(['rpcIdOfController', testParticipantId, subscription_id, {agent: 'rpcIdOfAccessAgent', node: 'rpcIdOfAccessNode'}, {audio: {fromStream: 'targetStreamId1', codecs: ['pcmu']}, video: {fromStream: 'targetStreamId2', codecs: ['vp8']}, isRecording: true}]);
+          expect(mockRpcClient.sub2Session.getCall(0).args).to.deep.equal(['rpcIdOfController', testParticipantId, subscription_id, {agent: 'rpcIdOfAccessAgent', node: 'rpcIdOfAccessNode'}, {audio: {fromStream: 'targetStreamId1', codecs: ['pcmu']}, video: {fromStream: 'targetStreamId2', codecs: ['vp8']}, type: 'recording'}]);
           expect(spyConnectionObserver.getCall(1).args).to.deep.equal([{type: 'ready', audio_codecs: ['pcmu'], video_codecs: ['vp8']}]);
         });
     });
