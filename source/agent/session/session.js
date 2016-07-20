@@ -386,7 +386,7 @@ module.exports = function (amqper, selfRpcId) {
 
   that.text = function(fromParticipantId, toParticipantId, data, callback) {
     if (participants[fromParticipantId]) {
-      sendMsg(fromParticipantId, toParticipantId, 'custom_message', data);
+      sendMsg(fromParticipantId, toParticipantId, 'custom_message', {from: fromParticipantId, to: toParticipantId, data: data});
       callback('callback', 'ok');
     } else {
       callback('callback', 'error', 'Participant ' + participantId + ' has not joined');
