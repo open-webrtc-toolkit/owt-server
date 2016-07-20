@@ -961,7 +961,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                         }
                     }
                 });
-                streams[stream_id].audio.subscribers = [];
+                streams[stream_id].video.subscribers = [];
             }
         }
     };
