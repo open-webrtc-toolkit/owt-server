@@ -383,6 +383,8 @@ var Portal = function(spec, rpcClient) {
                                                    (subscriptionDescription.video && subscriptionDescription.video.fromStream));
     } else if (connectionType === 'recording') {
       subscription_id = subscriptionDescription.recorderId || formatDate(new Date, 'yyyyMMddhhmmssSS');
+    } else if (connectionType === 'avstream') {
+      subscription_id = subscriptionDescription.url;
     } else {
       subscription_id = Math.random() * 1000000000000000000 + '';
     }

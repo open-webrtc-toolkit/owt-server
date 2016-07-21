@@ -696,11 +696,11 @@ describe('Responding to clients.', function() {
     });
   });
 
-  describe('on: startRtspOut', function() {
+  describe('on: addExternalOutput', function() {
     it('Starting pulling out rtsp/rtmp streams should fail before joining.', function(done) {
       mockPortal.subscribe = sinon.stub();
 
-      client.emit('startRtspOut', {}, function(status, data) {
+      client.emit('addExternalOutput', {}, function(status, data) {
         expect(status).to.equal('error');
         expect(data).to.equal('unauthorized');
         expect(mockPortal.subscribe.callCount).to.equal(0);
@@ -717,10 +717,9 @@ describe('Responding to clients.', function() {
           expect(result).to.equal('ok');
           simulateStubResponse(mockPortal.subscribe, 0, 3, {type: 'ready', audio_codecs: ['pcm_raw'], video_codecs: ['h264']});
           var options = {streamId: 'targetStreamId', resolution: {width: 640, height: 480}, url: 'rtsp://target.host'};
-          client.emit('startRtspOut', options, function(status, data) {
+          client.emit('addExternalOutput', options, function(status, data) {
             expect(status).to.equal('success');
-            expect(data.id).to.equal('subscriptionId');
-            expect(data.url).to.equal('rtsp://target.host/room_' + testRoom + '-subscriptionId.sdp');
+            expect(data.url).to.equal('rtsp://target.host');
             expect(mockPortal.subscribe.getCall(0).args[0]).to.equal('/#' + client.id);
             expect(mockPortal.subscribe.getCall(0).args[1]).to.equal('avstream');
             expect(mockPortal.subscribe.getCall(0).args[2]).to.deep.equal({audio: {fromStream: 'targetStreamId', codecs: ['aac']}, video: {fromStream: 'targetStreamId', codecs: ['h264'], resolution: 'vga'}, url: 'rtsp://target.host'});
@@ -738,7 +737,7 @@ describe('Responding to clients.', function() {
           expect(result).to.equal('ok');
           simulateStubResponse(mockPortal.subscribe, 0, 3, {type: 'ready', audio_codecs: ['pcm_raw'], video_codecs: ['h264']});
           var options = {url: 'rtsp://target.host'};
-          client.emit('startRtspOut', options, function(status, data) {
+          client.emit('addExternalOutput', options, function(status, data) {
             expect(status).to.equal('success');
             expect(mockPortal.subscribe.getCall(0).args[2]).to.deep.equal({audio: {fromStream: testRoom, codecs: ['aac']}, video: {fromStream: testRoom, codecs: ['h264']}, url: 'rtsp://target.host'});
             done();
@@ -754,15 +753,15 @@ describe('Responding to clients.', function() {
         .then(function(result) {
           expect(result).to.equal('ok');
           var options = {url: ''};
-          client.emit('startRtspOut', options, function(status, data) {
+          client.emit('addExternalOutput', options, function(status, data) {
             expect(status).to.equal('error');
             expect(data).to.equal('Invalid RTSP/RTMP server url');
             var options1 = {url: 1234567};
-            client.emit('startRtspOut', options1, function(status, data) {
+            client.emit('addExternalOutput', options1, function(status, data) {
               expect(status).to.equal('error');
               expect(data).to.equal('Invalid RTSP/RTMP server url');
               var options2 = {url: 'a invalid url'};
-              client.emit('startRtspOut', options2, function(status, data) {
+              client.emit('addExternalOutput', options2, function(status, data) {
                 expect(status).to.equal('error');
                 expect(data).to.equal('Invalid RTSP/RTMP server url');
                 done();
@@ -773,11 +772,11 @@ describe('Responding to clients.', function() {
     });
   });
 
-  describe('on: stopRtspOut', function() {
-    it('Stopping pulling out rtsp/rtmp streams should fail before joining.', function(done) {
+  describe('on: updateExternalOutput', function() {
+    it('Updating out rtsp/rtmp streams should fail before joining.', function(done) {
       mockPortal.unsubscribe = sinon.stub();
 
-      client.emit('stopRtspOut', {}, function(status, data) {
+      client.emit('updateExternalOutput', {}, function(status, data) {
         expect(status).to.equal('error');
         expect(data).to.equal('unauthorized');
         expect(mockPortal.unsubscribe.callCount).to.equal(0);
@@ -785,20 +784,89 @@ describe('Responding to clients.', function() {
       });
     });
 
-    it('Stopping pulling out rtsp/rtmp streams without specifying a valid id should fail.', function(done) {
+    it('Updating out rtsp/rtmp streams without specifying a valid url should fail.', function(done) {
       mockPortal.unsubscribe = sinon.stub();
 
       return joinFirstly()
         .then(function(result) {
           expect(result).to.equal('ok');
-          var options = {id: ''};
-          client.emit('stopRtspOut', options, function(status, data) {
+          var options = {url: ''};
+          client.emit('updateExternalOutput', options, function(status, data) {
             expect(status).to.equal('error');
-            expect(data).to.equal('Invalid RTSP/RTMP id');
-            var options = {id: 7878878};
-            client.emit('stopRtspOut', options, function(status, data) {
+            expect(data).to.equal('Invalid RTSP/RTMP server url');
+            var options = {url: 7878878};
+            client.emit('updateExternalOutput', options, function(status, data) {
               expect(status).to.equal('error');
-              expect(data).to.equal('Invalid RTSP/RTMP id');
+              expect(data).to.equal('Invalid RTSP/RTMP server url');
+              expect(mockPortal.unsubscribe.callCount).to.equal(0);
+              done();
+            });
+          });
+        });
+    });
+
+    it('Updating pulling out rtsp/rtmp streams should fail if no previous stream on the specfied url.', function(done) {
+      mockPortal.unsubscribe = sinon.stub();
+      mockPortal.unsubscribe.rejects('subscription does not exist');
+
+      return joinFirstly()
+        .then(function(result) {
+          expect(result).to.equal('ok');
+          var options = {url: 'rtsp://target.host'};
+          client.emit('updateExternalOutput', options, function(status, data) {
+            expect(status).to.equal('error');
+            expect(data).to.equal('subscription does not exist');
+            expect(mockPortal.unsubscribe.getCall(0).args).to.deep.equal(['/#' + client.id, 'rtsp://target.host'])
+            done();
+          });
+        });
+    });
+
+    it('Updating pulling out rtsp/rtmp streams should succeed if portal.unsubscribe/subscribe succeeds.', function(done) {
+      mockPortal.unsubscribe = sinon.stub();
+      mockPortal.unsubscribe.resolves('ok');
+
+      return joinFirstly()
+        .then(function(result) {
+          expect(result).to.equal('ok');
+          var options = {url: 'rtsp://target.host'};
+          client.emit('updateExternalOutput', options, function(status, data) {
+            expect(status).to.equal('success');
+            expect(data.url).to.equal('rtsp://target.host');
+            expect(mockPortal.unsubscribe.getCall(0).args).to.deep.equal(['/#' + client.id, 'rtsp://target.host'])
+            done();
+          });
+        });
+    });
+
+  });
+
+  describe('on: removeExternalOutput', function() {
+    it('Stopping pulling out rtsp/rtmp streams should fail before joining.', function(done) {
+      mockPortal.unsubscribe = sinon.stub();
+
+      client.emit('removeExternalOutput', {}, function(status, data) {
+        expect(status).to.equal('error');
+        expect(data).to.equal('unauthorized');
+        expect(mockPortal.unsubscribe.callCount).to.equal(0);
+        done();
+      });
+    });
+
+    it('Stopping pulling out rtsp/rtmp streams without specifying a valid url should fail.', function(done) {
+      mockPortal.unsubscribe = sinon.stub();
+
+      return joinFirstly()
+        .then(function(result) {
+          expect(result).to.equal('ok');
+          var options = {url: ''};
+          client.emit('removeExternalOutput', options, function(status, data) {
+            expect(status).to.equal('error');
+            expect(data).to.equal('Invalid RTSP/RTMP server url');
+            var options = {url: 7878878};
+            client.emit('removeExternalOutput', options, function(status, data) {
+              expect(status).to.equal('error');
+              expect(data).to.equal('Invalid RTSP/RTMP server url');
               expect(mockPortal.unsubscribe.callCount).to.equal(0);
               done();
             });
@@ -813,11 +881,11 @@ describe('Responding to clients.', function() {
       return joinFirstly()
         .then(function(result) {
           expect(result).to.equal('ok');
-          var options = {id: 'rtsp-or-rtmp-subscription-id'};
-          client.emit('stopRtspOut', options, function(status, data) {
+          var options = {url: 'rtsp://target.host'};
+          client.emit('removeExternalOutput', options, function(status, data) {
             expect(status).to.equal('success');
-            expect(data.id).to.equal('rtsp-or-rtmp-subscription-id');
-            expect(mockPortal.unsubscribe.getCall(0).args).to.deep.equal(['/#' + client.id, 'rtsp-or-rtmp-subscription-id'])
+            expect(data.url).to.equal('rtsp://target.host');
+            expect(mockPortal.unsubscribe.getCall(0).args).to.deep.equal(['/#' + client.id, 'rtsp://target.host'])
             done();
           });
         });
@@ -825,16 +893,16 @@ describe('Responding to clients.', function() {
 
     it('Stopping pulling out rtsp/rtmp streams should fail if portal.unsubscribe fails.', function(done) {
       mockPortal.unsubscribe = sinon.stub();
-      mockPortal.unsubscribe.rejects('Invalid RTSP/RTMP id');
+      mockPortal.unsubscribe.rejects('Invalid RTSP/RTMP server url');
 
       return joinFirstly()
         .then(function(result) {
           expect(result).to.equal('ok');
-          var options = {id: 'rtsp-or-rtmp-subscription-id'};
-          client.emit('stopRtspOut', options, function(status, data) {
+          var options = {url: 'rtsp://target.host'};
+          client.emit('removeExternalOutput', options, function(status, data) {
             expect(status).to.equal('error');
-            expect(data).to.have.string('Invalid RTSP/RTMP id');
-            expect(mockPortal.unsubscribe.getCall(0).args).to.deep.equal(['/#' + client.id, 'rtsp-or-rtmp-subscription-id'])
+            expect(data).to.equal('Invalid RTSP/RTMP server url');
+            expect(mockPortal.unsubscribe.getCall(0).args).to.deep.equal(['/#' + client.id, 'rtsp://target.host'])
             done();
           });
         });

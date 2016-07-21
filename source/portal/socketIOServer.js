@@ -250,10 +250,12 @@ var Client = function(participantId, socket, portal, on_disconnect) {
       safeCall(callback, 'ok');
     });
 
-    socket.on('startRtspOut', function(options, callback) {
+    socket.on('addExternalOutput', function(options, callback) {
       if(!that.inRoom) {
         return safeCall(callback, 'error', 'unauthorized');
       }
+
+      log.debug('Add serverUrl:', options.url, 'options:', options);
 
       if (typeof options.url !== 'string' || options.url === '') {
         return safeCall(callback, 'error', 'Invalid RTSP/RTMP server url');
@@ -273,20 +275,14 @@ var Client = function(participantId, socket, portal, on_disconnect) {
       (options.video || options.video === undefined) && (subscription_description.video = {fromStream: options.streamId, codecs: (options.video && options.video.codecs) || ['h264']});
       ((subscription_description.video) && options.resolution && (typeof options.resolution.width === 'number') && (typeof options.resolution.height === 'number')) &&
       (subscription_description.video.resolution = widthHeight2Resolution(options.resolution.width, options.resolution.height));
-      subscription_description.url = options.url;
+      subscription_description.url = parsed_url.format();
 
-      var subscription_id, stream_url;
       return portal.subscribe(participant_id, 'avstream', subscription_description, function(status) {
         if (status.type === 'failed') {
-          safeCall(callback, 'error', status.reason);
-        } else if (status.type === 'ready') {
-          safeCall(callback, 'success', {id: subscription_id, url: stream_url});
+          log.info('addExternalOutput onConnection error:', status.reason);
         }
       }).then(function(subscriptionId) {
-        subscription_id = subscriptionId;
-        var url_lead = parsed_url;
-        url_lead.pathname = path.join(url_lead.pathname || '/', 'room_' + that.inRoom + '-' + subscription_id + '.sdp');
-        stream_url = url_lead.format();
+        safeCall(callback, 'success', {url: subscription_description.url});
       }).catch(function(err) {
         var err_message = (typeof err === 'string' ? err: err.message);
         log.info('portal.subscribe failed:', err_message);
@@ -294,18 +290,67 @@ var Client = function(participantId, socket, portal, on_disconnect) {
       });
     });
 
-    socket.on('stopRtspOut', function(options, callback) {
+    socket.on('updateExternalOutput', function(options, callback) {
       if(!that.inRoom) {
         return safeCall(callback, 'error', 'unauthorized');
       }
 
-      if (typeof options.id !== 'string' || options.id === '') {
-        return safeCall(callback, 'error', 'Invalid RTSP/RTMP id');
+      log.debug('Update serverUrl:', options.url, 'options:', options);
+
+      if (typeof options.url !== 'string' || options.url === '') {
+        return safeCall(callback, 'error', 'Invalid RTSP/RTMP server url');
       }
 
-      return portal.unsubscribe(participant_id, options.id)
+      var parsed_url = url.parse(options.url);
+      if ((parsed_url.protocol !== 'rtsp:' && parsed_url.protocol !== 'rtmp:') || !parsed_url.slashes || !parsed_url.host) {
+        return safeCall(callback, 'error', 'Invalid RTSP/RTMP server url');
+      }
+
+      if (options.streamId === undefined) {
+        options.streamId = that.inRoom;
+      }
+
+      var subscription_description = {};
+      (options.audio || options.audio === undefined) && (subscription_description.audio = {fromStream: options.streamId, codecs: (options.audio && options.audio.codecs) || ['aac']});
+      (options.video || options.video === undefined) && (subscription_description.video = {fromStream: options.streamId, codecs: (options.video && options.video.codecs) || ['h264']});
+      ((subscription_description.video) && options.resolution && (typeof options.resolution.width === 'number') && (typeof options.resolution.height === 'number')) &&
+      (subscription_description.video.resolution = widthHeight2Resolution(options.resolution.width, options.resolution.height));
+      subscription_description.url = parsed_url.format();
+
+      return portal.unsubscribe(participant_id, options.url)
       .then(function() {
-        safeCall(callback, 'success', {id: options.id});
+        return portal.subscribe(participant_id, 'avstream', subscription_description, function(status) {
+          if (status.type === 'failed') {
+            log.info('updateExternalOutput onConnection error:', status.reason);
+          }
+        });
+      }).then(function(subscriptionId) {
+        safeCall(callback, 'success', {url: subscription_description.url});
+      }).catch(function(err) {
+        var err_message = (typeof err === 'string' ? err: err.message);
+        log.info('portal.unsubscribe/subscribe exception:', err_message);
+        safeCall(callback, 'error', err_message);
+      });
+    });
+
+    socket.on('removeExternalOutput', function(options, callback) {
+      if(!that.inRoom) {
+        return safeCall(callback, 'error', 'unauthorized');
+      }
+
+      log.debug('Remove serverUrl:', options.url, 'options:', options);
+
+      if (typeof options.url !== 'string' || options.url === '') {
+        return safeCall(callback, 'error', 'Invalid RTSP/RTMP server url');
+      }
+
+      return portal.unsubscribe(participant_id, options.url)
+      .then(function() {
+        safeCall(callback, 'success', {url: options.url});
+      }, function(err) {
+        var err_message = (typeof err === 'string' ? err: err.message);
+        log.info('portal.unsubscribe failed:', err_message);
+        safeCall(callback, 'error', 'Invalid RTSP/RTMP server url');
       }).catch(function(err) {
         var err_message = (typeof err === 'string' ? err: err.message);
         log.info('portal.unsubscribe failed:', err_message);
