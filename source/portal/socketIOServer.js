@@ -357,6 +357,7 @@ var Client = function(participantId, socket, portal, on_disconnect) {
         subscription_id = subscriptionId;
         recording_file = path.join(options.path || '', 'room_' + that.inRoom + '-' + subscription_id + '.mkv' );
       }).catch(function(err) {
+        var err_message = (typeof err === 'string' ? err: err.message);
         log.info('portal.subscribe failed:', err_message);
         safeCall(callback, 'error', err_message);
       });

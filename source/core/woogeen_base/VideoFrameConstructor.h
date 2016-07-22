@@ -99,6 +99,8 @@ private:
     bool init();
 
     FrameFormat m_format;
+    uint16_t m_width;
+    uint16_t m_height;
     uint32_t m_ssrc;
 
     webrtc::VideoCodingModule* m_vcm;

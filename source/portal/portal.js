@@ -367,11 +367,6 @@ var Portal = function(spec, rpcClient) {
       return Promise.reject('unauthorized');
     }
 
-    if ((subscriptionDescription.audio && subscriptionDescription.audio.fromStream && participants[participantId].connections[subscriptionDescription.audio.fromStream])
-        ||(subscriptionDescription.video && subscriptionDescription.video.fromStream && participants[participantId].connections[subscriptionDescription.video.fromStream])) {
-      return Promise.reject('Not allowed to subscribe a self-published stream');
-    }
-
     var subscription_id;
     if (connectionType === 'webrtc') {
       //FIXME - a: use the target stream id as the subscription_id to keep compatible with client SDK, should be fixed and use random strings independently later.
@@ -492,12 +487,14 @@ var Portal = function(spec, rpcClient) {
     var participant = participants[participantId];
     log.debug('onConnectionSignalling, participantId:', participantId, 'connectionId:', connectionId);
 
-    var connection_id = ((participant.connections[connectionId] && participant.connections[connectionId].direction === 'in') ? connectionId : participantId + '-sub-' + connectionId);//FIXME: removed once FIXME - a is fixed.
+    var subscription_id = participantId + '-sub-' + connectionId,
+        stream_id = connectionId;
+    var connection_id = ((participant.connections[subscription_id] && participant.connections[subscription_id].direction === 'out') ? subscription_id : stream_id);//FIXME: removed once FIXME - a is fixed.
 
     if (participant === undefined) {
       return Promise.reject('Participant ' + participantId + ' has left when receiving a signaling of its connection ' + connection_id + '.');
     } else if (participant.connections[connection_id] === undefined) {
-      return Promise.reject('Connection ' + connection_id + ' of participant ' + participantId + ' does NOT exist when receives a signaling.');
+      return Promise.reject('Connection does NOT exist when receiving a signaling.');
     } else {
       return rpcClient.onConnectionSignalling(participant.connections[connection_id].locality.node, connection_id, signaling)
         .then(function(result) {

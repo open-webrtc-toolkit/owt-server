@@ -125,19 +125,14 @@ describe('Drop users from sessions.', function() {
 
     client.on('connect', function() {
       mockPortal.join = sinon.stub();
-      var join_result = {user: 'Jack',
-                         role: 'presenter',
-                         session_id: testRoom,
-                         participants: [],
-                         streams: []};
-      mockPortal.join.resolves(join_result);
+      mockPortal.join.rejects('user not in room');
 
       client.emit('token', 'someValidToken', function(status, resp) {
         return server.drop('Jack', 'someOtherEoomJackNotIn')
-          .then(function() {
-            expect('neverRunHere').to.be.true;
+          .then(function(runInHere) {
+            expect(runInHere).to.be.false;
           }, function(err) {
-            expect(err).includes('user not in room');
+            expect(err).to.have.string('user not in room');
             done();
           });
       });
