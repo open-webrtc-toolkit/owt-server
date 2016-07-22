@@ -215,7 +215,9 @@ var Client = function(participantId, socket, portal, on_disconnect) {
         if (status.type === 'failed') {
           safeCall(callback, 'error', status.reason);
         } else {
-          socket.emit('signaling_message_erizo', {peerId: options.streamId/*FIXME -a */, mess: status});
+          if (status.type !== 'initializing') {
+            socket.emit('signaling_message_erizo', {peerId: options.streamId/*FIXME -a */, mess: status});
+          }
         }
       }).then(function(subscriptionId) {
         subscription_id = subscriptionId;

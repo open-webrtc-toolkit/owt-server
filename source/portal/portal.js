@@ -1,6 +1,7 @@
 /* global require */
 
 var path = require('path');
+var url = require('url');
 var crypto = require('crypto');
 var log = require('./logger').logger.getLogger('Portal');
 
@@ -82,7 +83,9 @@ var Portal = function(spec, rpcClient) {
     }
 
     if (connectionType === 'avstream' && description.url) {
-      options.url = path.join(description.url || '/', 'room_' + sessionId + '-' + connectionId + '.sdp');
+      var url_obj = url.parse(description.url);
+      url_obj.pathname = path.join(url_obj.pathname || '/', 'room_' + sessionId + '-' + connectionId + '.sdp');
+      options.url = url_obj.format();
     }
 
     if (connectionType === 'recording') {
