@@ -1300,7 +1300,7 @@ describe('portal.subscribe/portal.unsubscribe/portal.mediaOnOff: Participants su
 
       return portal.subscribe(testParticipantId,
                              'avstream',
-                             {audio: {fromStream: 'targetStreamId1', codecs: ['aac']}, video: {fromStream: 'targetStreamId2', codecs: ['h264'], resolution: 'vga'}, url: 'url-of-avstream'},
+                             {audio: {fromStream: 'targetStreamId1', codecs: ['aac']}, video: {fromStream: 'targetStreamId2', codecs: ['h264'], resolution: 'vga'}, url: 'rtmp://user:pwd@1.1.1.1:9000/url-of-avstream'},
                              spyConnectionObserver)
         .then(function(subscriptionId) {
           subscription_id = subscriptionId;
@@ -1312,7 +1312,7 @@ describe('portal.subscribe/portal.unsubscribe/portal.mediaOnOff: Participants su
           expect(mockRpcClient.subscribe.getCall(0).args[0]).to.deep.equal('rpcIdOfAccessNode');
           expect(mockRpcClient.subscribe.getCall(0).args[1]).to.equal(subscription_id);
           expect(mockRpcClient.subscribe.getCall(0).args[2]).to.equal('avstream');
-          expect(mockRpcClient.subscribe.getCall(0).args[3]).to.deep.equal({audio: {codecs: ['aac']}, video: {codecs: ['h264'], resolution: 'vga'}, url: 'url-of-avstream/room_' + testSession + '-' + subscription_id + '.sdp'});
+          expect(mockRpcClient.subscribe.getCall(0).args[3]).to.deep.equal({audio: {codecs: ['aac']}, video: {codecs: ['h264'], resolution: 'vga'}, url: 'rtmp://user:pwd@1.1.1.1:9000/url-of-avstream/room_' + testSession + '-' + subscription_id + '.sdp'});
           on_connection_status = mockRpcClient.subscribe.getCall(0).args[4];
           expect(on_connection_status).to.be.a('function');
           return on_connection_status({type: 'initializing'});
