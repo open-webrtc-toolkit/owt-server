@@ -32,6 +32,8 @@ DEFINE_LOGGER(VideoFrameConstructor, "woogeen.VideoFrameConstructor");
 
 VideoFrameConstructor::VideoFrameConstructor(erizo::FeedbackSink* feedback)
     : m_format(FRAME_FORMAT_UNKNOWN)
+    , m_width(0)
+    , m_height(0)
     , m_ssrc(0)
     , m_vcm(nullptr)
 {
@@ -206,6 +208,8 @@ int32_t VideoFrameConstructor::Decode(const webrtc::EncodedImage& encodedImage,
                        int64_t renderTimeMs)
 {
     FrameFormat format = FRAME_FORMAT_UNKNOWN;
+    bool resolutionChanged = false;
+
     if (encodedImage._length > 0) {
         switch (codecSpecificInfo->codecType) {
         case webrtc::kVideoCodecVP8:
@@ -218,14 +222,33 @@ int32_t VideoFrameConstructor::Decode(const webrtc::EncodedImage& encodedImage,
             return 0;
         }
 
+        if (encodedImage._encodedWidth != 0 && m_width != encodedImage._encodedWidth) {
+            m_width = encodedImage._encodedWidth;
+            resolutionChanged = true;
+        };
+
+        if (encodedImage._encodedHeight != 0 && m_height != encodedImage._encodedHeight) {
+            m_height = encodedImage._encodedHeight;
+            resolutionChanged = true;
+        };
+
+        if (resolutionChanged) {
+            ELOG_INFO("received video resolution has changed to %ux%u", m_width, m_height);
+            //TODO: Notify the controlling layer about the resolution change.
+        }
+
+        if (encodedImage._frameType == webrtc::kKeyFrame) {
+            //ELOG_INFO("got a key frame");
+        }
+
         Frame frame;
         memset(&frame, 0, sizeof(frame));
         frame.format = format;
         frame.payload = encodedImage._buffer;
         frame.length = encodedImage._length;
         frame.timeStamp = encodedImage._timeStamp;
-        frame.additionalInfo.video.width = encodedImage._encodedWidth;
-        frame.additionalInfo.video.height = encodedImage._encodedHeight;
+        frame.additionalInfo.video.width = m_width;
+        frame.additionalInfo.video.height = m_height;
 
         deliverFrame(frame);
     }

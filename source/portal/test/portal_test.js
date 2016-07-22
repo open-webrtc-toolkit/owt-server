@@ -1184,44 +1184,6 @@ describe('portal.subscribe/portal.unsubscribe/portal.mediaOnOff: Participants su
       portal.leave(testParticipantId);
     });
 
-    it('Subscribing a self-published stream should fail.', function() {
-      mockRpcClient.getAccessNode = sinon.stub();
-      mockRpcClient.publish = sinon.stub();
-      mockRpcClient.subscribe = sinon.stub();
-      mockRpcClient.recycleAccessNode = sinon.stub();
-      mockRpcClient.pub2Session = sinon.stub();
-      mockRpcClient.unpub2Session = sinon.stub();
-
-      mockRpcClient.getAccessNode.resolves({agent: 'rpcIdOfAccessAgent', node: 'rpcIdOfAccessNode'});
-      mockRpcClient.publish.resolves('ok');
-      mockRpcClient.subscribe.resolves('ok');
-      mockRpcClient.recycleAccessNode.resolves('ok');
-      mockRpcClient.pub2Session.resolves('ok');
-      mockRpcClient.unpub2Session.resolves('ok');
-
-      var stream_id, on_connection_status;
-      var spyConnectionObserver = sinon.spy();
-
-      return portal.publish(testParticipantId,
-                            'webrtc',
-                            {audio: true, video: {resolution: 'vga', framerate: 30, device: 'camera'}},
-                            spyConnectionObserver,
-                            false)
-        .then(function(streamId) {
-          stream_id = streamId;
-          on_connection_status = mockRpcClient.publish.getCall(0).args[4];
-          return on_connection_status({type: 'ready', audio_codecs: ['pcmu', 'opus'], video_codecs: ['vp8', 'h264']});
-        })
-        .then(function() {
-          expect(mockRpcClient.pub2Session.callCount).to.equal(1);
-          var spyConnectionObserver1 = sinon.spy();
-          return expect(portal.subscribe(testParticipantId,
-                                         'webrtc',
-                                         {audio: {fromStream: stream_id}, video: {fromStream: stream_id, resolution: 'vga'}},
-                                         spyConnectionObserver1)).to.be.rejectedWith('Not allowed to subscribe a self-published stream');
-        });
-    });
-
     it('Subscribing an already-subscribed stream should fail.', function() {
       mockRpcClient.getAccessNode = sinon.stub();
       mockRpcClient.subscribe = sinon.stub();
@@ -1652,16 +1614,16 @@ describe('portal.subscribe/portal.unsubscribe/portal.mediaOnOff: Participants su
           on_connection_status = mockRpcClient.subscribe.getCall(0).args[4];
           return on_connection_status({type: 'failed', reason: 'reasonString'});
         })
-        .then(function(statusResult) {
-          expect('run into here').to.be.false;
+        .then(function(runInHere) {
+          expect(runInHere).to.be.false;
         }, function(err) {
-          expect(err).to.equal('reasonString');
+          expect(err).to.have.string('reasonString');
           expect(spyConnectionObserver.getCall(0).args).to.deep.equal([{type: 'failed', reason: 'reasonString'}]);
           expect(mockRpcClient.sub2Session.callCount).to.equal(0);
           expect(mockRpcClient.unsubscribe.getCall(0).args).to.deep.equal(['rpcIdOfAccessNode', subscription_id]);
           expect(mockRpcClient.recycleAccessNode.getCall(0).args).to.deep.equal(['rpcIdOfAccessAgent', 'rpcIdOfAccessNode', {session: testSession, consumer: subscription_id}]);
           return expect(portal.onConnectionSignalling(testParticipantId, 'targetStreamId', {type: 'candidate', candidate: 'candidateString'}))
-            .to.be.rejectedWith('Connection ' + subscription_id + ' of participant ' + testParticipantId + ' does NOT exist when receives a signaling.');
+            .to.be.rejectedWith('Connection does NOT exist when receiving a signaling.');
         });
     });
 

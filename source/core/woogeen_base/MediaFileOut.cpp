@@ -166,14 +166,18 @@ void MediaFileOut::onFrame(const Frame& frame)
         if (m_expectedVideo == frameFormat2VideoCodecID(frame.format)) {
             bool addStreamOK = true;
             if (!m_videoStream) {
-                addStreamOK = addVideoStream(m_expectedVideo, frame.additionalInfo.video.width, frame.additionalInfo.video.height);
+                if (frame.additionalInfo.video.width != 0 && frame.additionalInfo.video.height != 0) {
+                    addStreamOK = addVideoStream(m_expectedVideo, frame.additionalInfo.video.width, frame.additionalInfo.video.height);
+                } else {
+                    return;
+                }
             } else if (frame.additionalInfo.video.width != m_videoStream->codec->width || frame.additionalInfo.video.height != m_videoStream->codec->height) {
                 ELOG_ERROR("invalid video frame resolution: %dx%d", frame.additionalInfo.video.width, frame.additionalInfo.video.height);
                 notifyAsyncEvent("fatal", "invalid video frame resolution");
                 return close();
             }
 
-            if (addStreamOK) {
+            if (addStreamOK && m_status == AVStreamOut::Context_READY) {
                 m_videoQueue->pushFrame(frame.payload, frame.length);
             }
         } else if (m_expectedVideo != AV_CODEC_ID_NONE){
@@ -194,7 +198,7 @@ void MediaFileOut::onFrame(const Frame& frame)
                 return close();
             }
 
-            if (addStreamOK) {
+            if (addStreamOK && m_status == AVStreamOut::Context_READY) {
                 uint8_t* payload = frame.payload;
                 uint32_t length = frame.length;
                 if (frame.additionalInfo.audio.isRtpPacket) {
