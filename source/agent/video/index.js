@@ -208,7 +208,7 @@ module.exports = function () {
     that.generate = function (codec, resolution, callback) {
         codec = codec || supported_codecs[0];
         codec = codec.toLowerCase();
-        resolution = resolution || supported_resolutions[0];
+        resolution = ((!resolution || resolution === 'unspecified') ? supported_resolutions[0] : resolution);
         resolution = resolution.toLowerCase();
         log.debug('generate, codec:', codec, 'resolution:', resolution);
 
