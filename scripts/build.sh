@@ -123,9 +123,6 @@ build_gateway_runtime() {
   build_runtime
 }
 
-
-
-
 build_mcu_runtime() {
   RUNTIME_ADDON_SRC_DIR="${SOURCE}/agent"
   build_runtime
@@ -196,6 +193,7 @@ build_runtime() {
     return 1
   fi
 }
+
 build_sip_ua() {
   local CORE_HOME="${SOURCE}/core"
   local CCOMPILER=${DEPS_ROOT}/bin/gcc
@@ -213,6 +211,26 @@ build_sip_ua() {
     LD_LIBRARY_PATH=${DEPS_ROOT}/lib:$LD_LIBRARY_PATH PKG_CONFIG_PATH=${DEPS_ROOT}/lib/pkgconfig:$PKG_CONFIG_PATH BOOST_ROOT=${DEPS_ROOT} cmake -DCMAKE_BUILD_TYPE=${BUILDTYPE} $CMAKE_ADDITIONAL_OPTIONS ..
   fi
   LD_LIBRARY_PATH=${DEPS_ROOT}/lib:$LD_LIBRARY_PATH make
+}
+
+build_sip_gateway_runtime() {
+  CMAKE_ADDITIONAL_OPTIONS="-DCOMPILE_SIP_GATEWAY=ON"
+  pushd "${SOURCE}/core/sip_gateway/sipua" > /dev/null
+  make clean && make
+  popd >/dev/null
+  build_sip_ua
+
+  # Sip addon build
+  pushd "${SOURCE}/agent/sip/sipIn" >/dev/null
+  cp -f binding.sip.gyp binding.gyp
+  popd >/dev/null
+
+  RUNTIME_ADDON_SRC_DIR="${SOURCE}/agent/sip"
+  build_runtime
+
+  pushd "${SOURCE}/agent/sip/sipIn" >/dev/null
+  rm -f binding.gyp
+  popd >/dev/null
 }
 
 build_oovoo_client_sdk() {
@@ -259,13 +277,7 @@ build() {
   fi
 }
 
-build_sip_gateway_runtime() {
-  CMAKE_ADDITIONAL_OPTIONS="-DCOMPILE_SIP_GATEWAY=ON"
-  pushd "${SOURCE}/core/sip_gateway/sipua" > /dev/null
-  make clean && make
-  popd >/dev/null
-  build_sip_ua
-}
+
 
 if ${BUILD_SIP_GATEWAY_RUNTIME} ; then
   build_sip_gateway_runtime

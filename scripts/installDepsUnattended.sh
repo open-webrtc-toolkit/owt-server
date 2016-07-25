@@ -86,6 +86,8 @@ if [ "$NIGHTLY" != "true" ]; then
   install_oovoosdk
 
   install_openh264
+
+  install_libre
 fi
 
 ${NO_INTERNAL} || install_webrtc
