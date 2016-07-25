@@ -405,13 +405,8 @@ module.exports = function (amqper, selfRpcId) {
   that.onAudioActiveParticipant = function(sessionId, activeParticipantId, callback) {
     log.debug('onAudioActiveParticipant, sessionId:', sessionId, 'active:', activeParticipantId);
     if ((session_id === sessionId) && controller) {
-      if (participants[activeParticipantId]) {
-        controller.setPrimary(activeParticipantId);
-        callback('callback', 'ok');
-      } else {
-        log.info('onAudioActiveParticipant, participant does not exist');
-        callback('callback', 'error', 'participant does not exist');
-      }
+      controller.setPrimary(activeParticipantId);
+      callback('callback', 'ok');
     } else {
       log.info('onAudioActiveParticipant, session does not exist');
       callback('callback', 'error', 'session is not in service');
