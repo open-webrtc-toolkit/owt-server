@@ -42,6 +42,9 @@ endif
 ifneq ($(USE_VIDEO),)
 CFLAGS    += -DUSE_VIDEO=1
 endif
+ifneq ($(USE_TLS),)
+CFLAGS    += -DUSE_TLS=1
+endif
 ifneq ($(STATIC),)
 CFLAGS    += -DSTATIC=1
 CXXFLAGS  += -DSTATIC=1
