@@ -64,8 +64,13 @@ protected:
     bool addVideoStream(enum AVCodecID codec_id, unsigned int width, unsigned int height);
     bool addAudioStream(enum AVCodecID codec_id, int nbChannels = 2, int sampleRate = 48000);
 
+    bool createContext();
     bool init();
     void close();
+
+    bool addDumpStream(AVStream *stream);
+    bool initDump(bool audioRaw);
+    void closeDump();
 
     int writeAudioFrame();
     int writeVideoFrame();
@@ -108,9 +113,9 @@ private:
     int64_t m_lastAudioTimestamp;
     int64_t m_lastVideoTimestamp;
 
-#ifdef DUMP_AUDIO_RAW
     std::unique_ptr<std::ofstream> m_audioRawDumpFile;
-#endif
+
+    AVFormatContext* m_dumpContext;
 };
 }
 
