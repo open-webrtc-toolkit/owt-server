@@ -866,6 +866,7 @@ describe('Responding to clients.', function() {
             expect(status).to.equal('success');
             expect(data.recorderId).to.equal('yyyyMMddhhmmssSS');
             expect(data.path).to.equal('/tmp/room_' + testRoom + '-yyyyMMddhhmmssSS.mkv');
+            expect(data.host).to.equal('unknown');
             expect(mockPortal.subscribe.getCall(0).args[0]).to.equal('/#' + client.id);
             expect(mockPortal.subscribe.getCall(0).args[1]).to.equal('recording');
             expect(mockPortal.subscribe.getCall(0).args[2]).to.deep.equal({audio: {fromStream: 'targetStreamId1', codecs: ['pcmu']}, video: {fromStream: 'targetStreamId2', codecs: ['vp8']}, path: '/tmp', interval: 1000});
@@ -1056,6 +1057,7 @@ describe('Responding to clients.', function() {
           client.emit('stopRecorder', options, function(status, data) {
             expect(status).to.equal('success');
             expect(data.recorderId).to.equal('recorder-id');
+            expect(data.host).to.equal('unknown');
             expect(mockPortal.unsubscribe.getCall(0).args).to.deep.equal(['/#' + client.id, 'recorder-id'])
             done();
           });
