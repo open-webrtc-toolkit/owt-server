@@ -874,6 +874,40 @@ describe('Responding to clients.', function() {
         });
     });
 
+    it('Starting recording after joining with inproper options should fail.', function(done) {
+      mockPortal.subscribe = sinon.stub();
+      mockPortal.subscribe.resolves('yyyyMMddhhmmssSS');
+
+      return joinFirstly()
+        .then(function(result) {
+          expect(result).to.equal('ok');
+          var options = {audioStreamId: '', videoStreamId: 'targetStreamId', audioCodec: 'pcmu', videoCodec: 'vp8', path: '/tmp', interval: 1000};
+          client.emit('startRecorder', options, function(status, data) {
+            expect(status).to.equal('error');
+            expect(data).to.equal('Invalid audio stream id');
+
+            var options = {audioStreamId: 'targetStreamId', videoStreamId: '', audioCodec: 'pcmu', videoCodec: 'vp8', path: '/tmp', interval: 1000};
+            client.emit('startRecorder', options, function(status, data) {
+              expect(status).to.equal('error');
+              expect(data).to.equal('Invalid video stream id');
+
+              var options = {audioStreamId: 'targetStreamId', videoStreamId: 'targetStreamId', audioCodec: '', videoCodec: 'vp8', path: '/tmp', interval: 1000};
+              client.emit('startRecorder', options, function(status, data) {
+                expect(status).to.equal('error');
+                expect(data).to.equal('Invalid audio codec');
+
+                var options = {audioStreamId: 'targetStreamId', videoStreamId: 'targetStreamId', audioCodec: 'opus', videoCodec: '', path: '/tmp', interval: 1000};
+                client.emit('startRecorder', options, function(status, data) {
+                  expect(status).to.equal('error');
+                  expect(data).to.equal('Invalid video codec');
+                  done();
+                });
+              });
+            });
+          });
+        });
+    });
+
     it('Exceptions should cause aborting recording and notifying clients.', function(done) {
       mockPortal.subscribe = sinon.stub();
       mockPortal.subscribe.resolves('yyyyMMddhhmmssSS');
