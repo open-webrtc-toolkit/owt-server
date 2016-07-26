@@ -322,6 +322,14 @@ var Client = function(participantId, socket, portal, on_disconnect) {
         return safeCall(callback, 'error', 'Invalid recorder id');
       }
 
+      if (options.audioStreamId === '') {
+        return safeCall(callback, 'error', 'Invalid audio stream id');
+      }
+
+      if (options.videoStreamId === '') {
+        return safeCall(callback, 'error', 'Invalid video stream id');
+      }
+
       var unspecifiedStreamIds = (options.audioStreamId === undefined && options.videoStreamId === undefined);
 
       if ((options.audioStreamId || unspecifiedStreamIds) && (options.audioCodec !== undefined) && (['pcmu', 'opus'].indexOf(options.audioCodec) < 0)) {
