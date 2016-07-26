@@ -361,7 +361,7 @@ var Client = function(participantId, socket, portal, on_disconnect) {
           }
         } else if (status.type === 'ready') {
           recorder_added = true;
-          safeCall(callback, 'success', {recorderId: subscription_id, path: recording_file});
+          safeCall(callback, 'success', {recorderId: subscription_id, path: recording_file, host: 'unknown'});
         }
       }).then(function(subscriptionId) {
         subscription_id = subscriptionId;
@@ -384,7 +384,7 @@ var Client = function(participantId, socket, portal, on_disconnect) {
 
       return portal.unsubscribe(participant_id, options.recorderId)
       .then(function() {
-        safeCall(callback, 'success', {recorderId: options.recorderId});
+        safeCall(callback, 'success', {recorderId: options.recorderId, host: 'unknown'});
       }).catch(function(err) {
         var err_message = (typeof err === 'string' ? err: err.message);
         log.info('portal.unsubscribe failed:', err_message);
