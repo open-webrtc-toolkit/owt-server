@@ -1062,7 +1062,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
 
             if (video_resolution === 'unavailable') {
                 log.error('No available video resolution');
-                log.debug('subInfo.video:', subInfo.video, 'targetStream.video:', streams[subInfo.video.fromStream].video, 'enable_video_transcoding:', enable_video_transcoding);
+                log.debug('subInfo.video:', subInfo.video, 'targetStream.video:', streams[subInfo.video.fromStream] ? streams[subInfo.video.fromStream].video : 'mixed_stream, supported_resolutions: ' + supported_video_resolutions, 'enable_video_transcoding:', enable_video_transcoding);
                 return on_error('No available video resolution');
             }
 
