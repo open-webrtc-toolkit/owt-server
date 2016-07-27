@@ -908,8 +908,8 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                     [subscription_id]);
             }
 
-            if (audio_stream) {
-                if (streams[audio_stream] && streams[audio_stream].audio) {
+            if (audio_stream && streams[audio_stream]) {
+                if (streams[audio_stream].audio) {
                     var i = streams[audio_stream].audio.subscribers.indexOf(subscriber);
                     i > -1 && streams[audio_stream].audio.subscribers.splice(i, 1);
                 }
@@ -917,8 +917,8 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                 terminals[streams[audio_stream].owner] && terminals[streams[audio_stream].owner].type !== 'participant' && recycleTemporaryAudio(audio_stream);
             }
 
-            if (video_stream) {
-                if (streams[video_stream] && streams[video_stream].video) {
+            if (video_stream && streams[video_stream]) {
+                if (streams[video_stream].video) {
                     var i = streams[video_stream].video.subscribers.indexOf(subscriber);
                     i > -1 && streams[video_stream].video.subscribers.splice(i, 1);
                 }
