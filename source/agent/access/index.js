@@ -186,8 +186,12 @@ module.exports = function () {
     that.publish = function (connectionId, connectionType, options, callback) {
         log.debug('publish, connectionId:', connectionId, 'connectionType:', connectionType, 'options:', options);
         if (connections[connectionId]) {
-            log.error('Connection already exists:'+connectionId);
-            callback('callback', {type: 'failed', reason: 'Connection already exists:'+connectionId});
+            if (connectionType === 'internal') {
+                callback('callback', {ip: that.clusterIP, port: connections[connectionId].connection.getListeningPort()});
+            } else {
+                log.error('Connection already exists:'+connectionId);
+                callback('callback', {type: 'failed', reason: 'Connection already exists:'+connectionId});
+            }
             return;
         }
 
@@ -228,8 +232,12 @@ module.exports = function () {
     that.subscribe = function (connectionId, connectionType, options, callback) {
         log.debug('subscribe, connectionId:', connectionId, 'connectionType:', connectionType, 'options:', options);
         if (connections[connectionId]) {
-            log.error('Connection already exists:'+connectionId);
-            callback('callback', {type: 'failed', reason: 'Connection already exists:'+connectionId});
+            if (connectionType === 'internal') {
+                callback('callback', 'ok');
+            } else {
+                log.error('Connection already exists:'+connectionId);
+                callback('callback', {type: 'failed', reason: 'Connection already exists:'+connectionId});
+            }
             return;
         }
 

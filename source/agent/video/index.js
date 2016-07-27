@@ -272,8 +272,7 @@ module.exports = function () {
                 callback('callback', 'error', 'Too many inputs in video-engine.');
             }
         } else {
-            log.error('Stream:'+stream_id+' already input in video-engine.');
-            callback('callback', 'error', 'Stream:'+stream_id+' already input in video-engine.');
+            callback('callback', {ip: that.clusterIP, port: inputs[stream_id].getListeningPort()});
         }
     };
 
@@ -291,10 +290,8 @@ module.exports = function () {
             connections[connectionId] = {videoFrom: undefined,
                                          connection: new InternalOut(options.protocol, options.dest_ip, options.dest_port)
                                         };
-            callback('callback', 'ok');
-        } else {
-            callback('callback', 'error', 'connection already exists');
         }
+        callback('callback', 'ok');
     };
 
     that.unsubscribe = function (connectionId) {
