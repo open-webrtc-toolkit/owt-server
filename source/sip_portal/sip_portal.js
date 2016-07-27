@@ -71,7 +71,7 @@ function initSipRooms() {
 }
 
 function createSipConnectivity(room_id, sip_server, sip_user, sip_passwd) {
-    sipErizoHelper.allocateSipErizo(room_id, function(erizo) {
+    sipErizoHelper.allocateSipErizo({session: room_id, consumer: room_id}, function(erizo) {
         log.info('allocateSipErizo', erizo);
         makeRPC(
             amqper,
