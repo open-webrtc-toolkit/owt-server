@@ -175,86 +175,134 @@ module.exports = function (spec) {
         }, on_error);
     };
 
-    var handleCallEstablished = function (info) {
-        var client_id = info.peerURI;
+    //TODO: should complete the following procedure to protect against the unexpected situations such as partial failure.
+    var setupCall = function (client_id, info) {
+        var session_controller = calls[client_id].session_controller;
 
-        if (calls[client_id]) {
-            var session_controller = calls[client_id].session_controller;
-            log.info('CallEstablished:', client_id, 'audio='+info.audio, 'video='+info.video, ' audio codec:', info.audio_codec, (info.video ? (' video codec: ' + info.video_codec) : ''));
-            // the user join the room
-            var stream_id = generateStreamId();
-            var audio_info, video_info;
-            // TODO yaojie need retrive the info from sipua
-            if (info.audio) {
-                var tmp;
-                if (info.audio_codec === 'opus') {
-                   tmp = 'opus_48000_2';
-                } else if (info.audio_codec === 'PCMU') {
-                   tmp = 'pcmu';
-                }
-                audio_info = {codec:tmp};
+        // publish stream to controller
+        var stream_id = generateStreamId();
+        var audio_info, video_info;
+        if (info.audio) {
+            var tmp;
+            if (info.audio_codec === 'opus') {
+               tmp = 'opus_48000_2';
+            } else if (info.audio_codec === 'PCMU') {
+               tmp = 'pcmu';
             }
-            if (info.video) {
-                // codec list
-                video_info = {codec:info.video_codec.toLowerCase(), resolution:'vga', framerate:30};
-            }
+            audio_info = {codec:tmp};
+        }
+        if (info.video) {
+            video_info = {codec:info.video_codec.toLowerCase(), resolution:'vga', framerate:30};
+        }
+        //TODO: the streams binding should be done in the success callback.
+        streams[stream_id] = {type: 'sip', connection: calls[client_id].conn};
+        calls[client_id].stream_id = stream_id;
+        do_publish(calls[client_id].session_controller,
+                   client_id,
+                   stream_id,
+                   {agent:that.agentID, node: erizo.id},
+                   {audio: audio_info, video: video_info},
+                   function() {
+                       // conn.enablePort('in');
+                       log.debug("publish stream OK!");
+                   }, function() {
+                       log.error("publish stream failed!");
+                   });
 
+        // subscribe the mix streams
+        if (mixed_stream_id) {
             var subInfo = {};
-            if (audio_info) {
+            if (info.audio) {
                 subInfo.audio = {
                     fromStream: mixed_stream_id,
                     codecs: [audio_info.codec]
                 };
             }
-            if (video_info) {
+            if (info.video) {
                 subInfo.video = {
                     fromStream: mixed_stream_id,
                     codecs: [video_info.codec],
                     resolution: 'vga'
                 };
             }
-
-            // var st = new ST.Stream({id: stream_id, audio: info.audio, video: info.video, screen: false});
-            var conn = new SipCallConnection({gateway: gateway, clientID: client_id, audio : info.audio, video : info.video});
-            streams[stream_id] = {type: 'sip', connection: conn};
-            calls[client_id].stream_id = stream_id;
-            calls[client_id].conn = conn;
-
-            do_publish(session_controller,
-                       client_id,
-                       stream_id,
-                       {agent:that.agentID, node: erizo.id},
-                       {audio: audio_info, video:video_info},
-                       function() {
-                           // conn.enablePort('in');
-                           log.debug("publish stream OK!");
-                       }, function() {
-                           log.error("publish stream failed!");
-                       });
-
+            //TODO: The subscriptions binding should be done in the success callback.
+            calls[client_id].mix_stream_id = mixed_stream_id;
             subscriptions[client_id] = {type: 'sip',
                                         audio: undefined,
                                         video: undefined,
-                                        connection: conn};
-            // subscribe the mix streams
-            if (mixed_stream_id) {
-                calls[client_id].mix_stream_id = mixed_stream_id;
-                do_subscribe(session_controller,
-                             client_id,
-                             client_id,
-                             {agent:that.agentID, node: erizo.id},
-                             subInfo,
-                             function() {
-                                log.info("subscribe stream ok");
-                             }, function(err) {
-                                log.error("subscribe stream failed with  ", err);
-                             });
-            } else {
-                log.warn("invalid mix stream id");
+                                        connection: calls[client_id].conn};
+            do_subscribe(calls[client_id].session_controller,
+                         client_id,
+                         client_id,
+                         {agent:that.agentID, node: erizo.id},
+                         subInfo,
+                         function() {
+                            log.info("subscribe stream ok");
+                         }, function(err) {
+                            log.error("subscribe stream failed with  ", err);
+                         });
+        } else {
+            log.warn("invalid mix stream id");
+        }
+    };
+
+    var teardownCall = function (client_id) {
+        log.debug("teardownCall, client_id: ", client_id);
+        if (subscriptions[client_id]) {
+            var audio_from = subscriptions[client_id].audio,
+                video_from = subscriptions[client_id].video;
+
+            if (streams[audio_from]) {
+                var dest = subscriptions[client_id].connection.receiver('audio');
+                streams[audio_from].connection.removeDestination('audio', dest);
+                subscriptions[client_id].audio = undefined;
             }
 
-            //subscribe remote stream
-            //streams[stream_id] = {stream:st};
+            if (streams[video_from]) {
+                var dest = subscriptions[client_id].connection.receiver('video');
+                streams[video_from].connection.removeDestination('video', dest);
+                subscriptions[client_id].video = undefined;
+            }
+
+            delete subscriptions[client_id];
+        }
+
+        var stream_id = calls[client_id].stream_id;
+        if (stream_id && streams[stream_id]) {
+            for (var subscription_id in subscriptions) {
+                if (subscriptions[subscription_id].audio === stream_id) {
+                    log.debug('remove audio:', subscriptions[subscription_id].audio);
+                    var dest = subscriptions[subscription_id].connection;
+                    log.debug('remove audio removeDestination: ', streams[stream_id].connection, ' dest: ', dest);
+                    streams[stream_id].connection.removeDestination('audio', dest);
+                    subscriptions[subscription_id].audio = undefined;
+                }
+
+                if (subscriptions[subscription_id].video === stream_id) {
+                    log.debug('remove video:', subscriptions[subscription_id].video);
+                    var dest = subscriptions[subscription_id].connection;
+                    log.debug('remove video removeDestination: ', streams[stream_id].connection, ' dest: ', dest);
+                    streams[stream_id].connection.removeDestination('video', dest);
+                    subscriptions[subscription_id].video = undefined;
+                }
+
+                if (subscriptions[subscription_id].audio === undefined && subscriptions[subscription_id].video === undefined) {
+                    subscriptions[subscription_id].type === 'internal' && subscriptions[subscription_id].connection.close();
+                    delete subscriptions[subscription_id];
+                }
+            }
+            delete streams[stream_id];
+            calls[client_id].stream_id = undefined;
+        }
+    };
+
+    var handleCallEstablished = function (info) {
+        log.info('CallEstablished:', client_id, 'audio='+info.audio, 'video='+info.video, ' audio codec:', info.audio_codec, (info.video ? (' video codec: ' + info.video_codec) : ''));
+        var client_id = info.peerURI;
+
+        if (calls[client_id]) {
+            calls[client_id].conn = new SipCallConnection({gateway: gateway, clientID: client_id, audio : info.audio, video : info.video});
+            setupCall(client_id, info);
         } else {
             log.error("gateway can not handle event with invalid status");
         }
@@ -269,8 +317,13 @@ module.exports = function (spec) {
             return;
         }
         var session_controller = calls[client_id].session_controller;
+        //TODO: should do_unsubscribe/do_unpublish and then do_subscribe/do_publish instead of do_leave/do_join, to avoid unneccesary room destroy and re-establishment.
+        if (calls[client_id]) {
+            teardownCall(client_id);
+            calls[client_id].conn.close({input: true, output: true});
+            delete calls[client_id];
+        }
         do_leave(session_controller, client_id);
-        delete calls[client_id];
 
         do_join(session_controller, client_id, room_id, erizo.id, function(sid) {
             mixed_stream_id = sid;
@@ -286,14 +339,10 @@ module.exports = function (spec) {
 
         log.info('CallClosed:', client_id);
         if (calls[client_id]) {
-            var session_controller = calls[client_id].session_controller;
-
-            log.debug('try to leave room ', room_id, ' user: ', client_id);
-            do_leave(session_controller, client_id);
+            teardownCall(client_id);
+            calls[client_id].conn.close({input: true, output: true});
+            do_leave(calls[client_id].session_controller, client_id);
             delete calls[client_id];
-            log.debug('complete leaving room ', room_id, ' user: ', client_id);
-        } else {
-          log.error("gateway can not handle event with invalid status");
         }
     };
 
@@ -360,31 +409,27 @@ module.exports = function (spec) {
         for (var client_id in calls) {
             log.debug('force leaving room ', room_id, ' user: ', client_id);
             gateway.hangup(client_id);
+            teardownCall(client_id);
+            calls[client_id].conn.close({input: true, output: true});
             do_leave(calls[client_id].session_controller, client_id);
+            delete calls[client_id];
         }
         gateway.close();
     };
 
-    // for every stream
-    // stream_id = the sip client uri.
     that.publish = function (stream_id, stream_type, options, callback) {
-        // finds the stream
-        log.debug('publish stream_id:', stream_id, ', stream_type:', stream_type, ', audio:', options.has_audio, ', video:', options.has_video);
-        if (streams[stream_id]) {
-            log.error('Stream already exists:'+stream_id);
-            callback('callback', {type: 'failed', reason: 'Stream already exists:'+stream_id});
-            return;
-        }
-
-        var conn;
+        log.debug('publish stream_id:', stream_id, ', stream_type:', stream_type, ', audio:', options.audio, ', video:', options.video);
         if (stream_type === 'internal') {
-            conn = new InternalIn(options.protocol);
-            callback('callback', {ip: that.clusterIP, port: conn.getListeningPort()});
-            streams[stream_id] = {type: stream_type, connection: conn};
+            if (streams[stream_id] === undefined) {
+                var conn = new InternalIn(options.protocol);
+                streams[stream_id] = {type: stream_type, connection: conn};
+                callback('callback', {ip: that.clusterIP, port: conn.getListeningPort()});
+            } else {
+                callback('callback', {ip: that.clusterIP, port: streams[stream_id].connection.getListeningPort()});
+            }
         } else {
             log.error('Stream type invalid:'+stream_type);
             callback('callback', {type: 'failed', reason: 'Stream type invalid:'+stream_type});
-            return;
         }
     };
 
@@ -392,10 +437,9 @@ module.exports = function (spec) {
         log.debug('unpublish enter, stream_id:', stream_id);
         if (streams[stream_id]) {
             for (var subscription_id in subscriptions) {
-                var is_sip = (subscriptions[subscription_id].type === 'sip');
                 if (subscriptions[subscription_id].audio === stream_id) {
                     log.debug('remove audio:', subscriptions[subscription_id].audio);
-                    var dest = (is_sip ? subscriptions[subscription_id].connection.receiver('audio'):subscriptions[subscription_id].connection);
+                    var dest = subscriptions[subscription_id].connection.receiver('audio');
                     log.debug('remove audio removeDestination: ', streams[stream_id].connection, ' dest: ', dest);
                     streams[stream_id].connection.removeDestination('audio', dest);
                     subscriptions[subscription_id].audio = undefined;
@@ -403,20 +447,13 @@ module.exports = function (spec) {
 
                 if (subscriptions[subscription_id].video === stream_id) {
                     log.debug('remove video:', subscriptions[subscription_id].video);
-                    var dest = (is_sip ? subscriptions[subscription_id].connection.receiver('video'):subscriptions[subscription_id].connection);
+                    var dest = subscriptions[subscription_id].connection.receiver('video');
                     log.debug('remove video removeDestination: ', streams[stream_id].connection, ' dest: ', dest);
                     streams[stream_id].connection.removeDestination('video', dest);
                     subscriptions[subscription_id].video = undefined;
                 }
-
-                subscriptions[subscription_id].connection.close({output:true});
-                delete subscriptions[subscription_id];
             }
-            if (streams[stream_id].type !== 'sip'){
-                streams[stream_id].connection.close();
-            } else {
-                streams[stream_id].connection.close({input:true});
-            }
+            streams[stream_id].connection.close();
             delete streams[stream_id];
             callback('callback', 'ok');
         } else {
@@ -427,74 +464,46 @@ module.exports = function (spec) {
 
     that.subscribe = function (subscription_id, subscription_type, options, callback) {
         log.debug('subscribe, subscription_id:', subscription_id, ', subscription_type:', subscription_type, ',options:', options);
-        if (subscriptions[subscription_id]) {
-            log.error('Connection already exists:'+subscription_id);
-            callback('callback', {type: 'failed', reason: 'Connection already exists:'+subscription_id});
-            return;
+        if (subscription_type === 'internal') {
+            if (subscriptions[subscription_id] === undefined) {
+                var conn = new InternalOut(options.protocol, options.dest_ip, options.dest_port);
+                subscriptions[subscription_id] = {type: subscription_type,
+                                                  audio: undefined,
+                                                  video: undefined,
+                                                  connection: conn};
+            }
+            callback('callback', 'ok');
+        } else {
+            log.error('Stream type invalid:'+stream_type);
+            callback('callback', {type: 'failed', reason: 'Stream type invalid:'+stream_type});
         }
-
-        var is_sip = (subscription_type === 'sip');
-
-        var conn;
-
-        switch (subscription_type) {
-            case 'internal':
-                conn = new InternalOut(options.protocol, options.dest_ip, options.dest_port);
-                break;
-            case "sip":
-                conn = calls[subscription_id].conn;
-                if (conn === undefined)
-                    log.error('no sip connect');
-                break;
-            default:
-                log.error('Subscription type invalid:' + subscription_type);
-                callback('callback', {type: 'failed', reason: 'Subscription type invalid:' + subscription_type});
-                return;
-        }
-
-        subscriptions[subscription_id] = {type: subscription_type,
-                                          audio: undefined,
-                                          video: undefined,
-                                          connection: conn};
-        callback('callback', 'ok');
     };
 
     that.unsubscribe = function (subscription_id, callback) {
-        var reserve_subscription = (arguments[1]===true);
-        log.debug('unsubscribe enter, subscription_id:', subscription_id);
+        log.debug('unsubscribe, subscription_id:', subscription_id);
 
         if (subscriptions[subscription_id] !== undefined) {
-            var is_sip = (subscriptions[subscription_id].type === 'sip');
             if (subscriptions[subscription_id].audio
                 && streams[subscriptions[subscription_id].audio]) {
-                var dest = is_sip ? subscriptions[subscription_id].connection.receiver('audio') : subscriptions[subscription_id].connection;
+                var dest = subscriptions[subscription_id].connection.receiver('audio');
                 log.debug("connection: ", streams[subscriptions[subscription_id].audio].connection, ' remove Dest: ', dest);
                 streams[subscriptions[subscription_id].audio].connection.removeDestination('audio', dest);
             }
 
             if (subscriptions[subscription_id].video
                 && streams[subscriptions[subscription_id].video]) {
-                var dest = is_sip ? subscriptions[subscription_id].connection.receiver('video') : subscriptions[subscription_id].connection;
+                var dest = subscriptions[subscription_id].connection.receiver('video');
                 log.debug("connection: ", streams[subscriptions[subscription_id].video].connection, ' remove Dest: ', dest);
                 streams[subscriptions[subscription_id].video].connection.removeDestination('video', dest);
             }
 
-           if (!reserve_subscription) {
-                if (is_sip) {
-                    subscriptions[subscription_id].connection.close({output:true});
-                } else {
-                    subscriptions[subscription_id].connection.close();
-                }
-                delete subscriptions[subscription_id];
-            }
-
+            subscriptions[subscription_id].connection.close();
+            delete subscriptions[subscription_id];
             callback('callback', 'ok');
         } else {
             log.info('Connection does NOT exist:' + subscription_id);
             callback('callback', 'error', 'Connection does NOT exist:' + subscription_id);
         }
-
-        log.debug('unsubscribe exit');
     };
 
     that.linkup = function (connectionId, audioFrom, videoFrom, callback) {
@@ -561,6 +570,7 @@ module.exports = function (spec) {
             callback('callback', 'error', 'Connection does NOT exist:' + connectionId);
         }
     };
+
     that.drop = function(participantId, fromRoom, callback) {
         that.clean();
         callback('callback', 'ok');
