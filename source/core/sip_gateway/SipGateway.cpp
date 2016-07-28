@@ -117,9 +117,11 @@ void SipGateway::onPeerRinging(const std::string& peerURI)
 void SipGateway::onCallEstablished(const std::string& peerURI, void *call, bool video)
 {
     const CallInfo *info = getCallInfoByPeerURI(peerURI);
-    std::string str = "{\"peerURI\":\"" + peerURI +
-                        "\",\"audio\":true,\"audio_codec\":\"" + info->audioCodec +
-                        "\", \"video\":"+((video) ? ("true, \"video_codec\":\"" + info->videoCodec + "\"") : "false") + "}";
+    std::string str = "{\"peerURI\":\"" + peerURI + "\"," +
+                       "\"audio\":true,\"audio_codec\":\"" + info->audioCodec + "\"," +
+                       "\"video\":" + ((video) ? ("true, \"video_codec\":\"" + info->videoCodec + "\"," +
+                                                        "\"videoResolution\": \"" + info->videoResolution + "\"")
+                                                : "false") + "}";
     if (updateCallInfoByPeerURI(peerURI, call, true, video)) {
         notifyAsyncEvent("CallEstablished", str.c_str());
         refreshVideoStream();
@@ -132,9 +134,11 @@ void SipGateway::onCallEstablished(const std::string& peerURI, void *call, bool 
 void SipGateway::onCallUpdated(const std::string& peerURI, bool video)
 {
     const CallInfo *info = getCallInfoByPeerURI(peerURI);
-    std::string str = "{\"peerURI\":\"" + peerURI +
-                        "\",\"audio\":true,\"audio_codec\":\"" + info->audioCodec +
-                        "\", \"video\":"+((video) ? ("true, \"video_codec\":\"" + info->videoCodec + "\"") : "false") + "}";
+    std::string str = "{\"peerURI\":\"" + peerURI + "\"," +
+                       "\"audio\":true,\"audio_codec\":\"" + info->audioCodec + "\"," +
+                       "\"video\":" + ((video) ? ("true, \"video_codec\":\"" + info->videoCodec + "\"," +
+                                                        "\"videoResolution\": \"" + info->videoResolution + "\"")
+                                                : "false") + "}";
     if (updateCallInfoByPeerURI(peerURI, info->sipCall, true, video)) {
         notifyAsyncEvent("CallUpdated", str.c_str());
         refreshVideoStream();
