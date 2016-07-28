@@ -16,6 +16,14 @@ var cluster_name = ((GLOBAL.config || {}).cluster || {}).name || 'woogeen-cluste
 // Logger
 var log = logger.getLogger('SipNode');
 
+// resolution map
+var resolution_map = {'sif' : {'width' : 352, 'height' : 240},
+                      'vga' : {'width' : 640, 'height' : 480},
+                      'hd720p' : {'width' : 1280, 'height' : 720},
+                      'hd1080p' : {'width' : 1920, 'height' : 1080},
+                      'svga' : {'width' : 800, 'height' : 600},
+                      'r640x360' : {'width' : 640, 'height' : 360}}
+
 var generateStreamId = (function() {
   function s4() {
     return Math.floor((1 + Math.random()) * 0x10000)
@@ -42,7 +50,7 @@ function do_join(session_ctl, user, room, selfPortal, ok, err) {
         'join',
         [room, {id: user, name: user, role: 'presenter', portal: selfPortal}], function(joinResult) {
             log.debug('join ok');
-            safeCall(ok, joinResult.streams[0].id);
+            safeCall(ok, joinResult.streams[0]);
         }, function (reason) {
             safeCall(err,reason);
         });
@@ -154,6 +162,7 @@ module.exports = function (spec) {
         erizo = {id:spec.id, addr:spec.addr},
         room_id,
         mixed_stream_id,
+        mixed_stream_resolutions,
         gateway,
         streams = {},
         calls = {},
@@ -166,8 +175,9 @@ module.exports = function (spec) {
         getSessionControllerForRoom(room_id, function(result) {
             var session_controller = result;
             calls[client_id] = {session_controller : session_controller};
-            do_join(session_controller, client_id, room_id, erizo.id, function(sid) {
-                mixed_stream_id = sid;
+            do_join(session_controller, client_id, room_id, erizo.id, function(mixedStream) {
+                mixed_stream_id = mixedStream.id;
+                mixed_stream_resolutions = mixedStream.video.resolutions;
                 on_ok();
             }, function (err) {
                 on_error(err);
@@ -219,10 +229,31 @@ module.exports = function (spec) {
                 };
             }
             if (info.video) {
+		//check resolution
+                var fmtp = info.videoResolution;
+                var preferred_subscription_resolution = mixed_stream_resolutions[0];
+                //TODO: currently we only check CIF/QCIF, there might be other options in fmtp from other devices.
+                if((fmtp.indexOf('CIF') != -1 || fmtp.indexOf('QCIF') != -1)){
+                        if(mixed_stream_resolutions.indexOf('sif') != -1){
+                                preferred_subscription_resolution = 'sif';
+                        }else{
+                                log.warn('MCU does not support the resolution required by sip client');
+                                var diff = Number.MAX_VALUE;
+                                //looking for the resolution closest to 352 * 240(sif)
+                                for(var index in mixed_stream_resolutions){
+                                        var current_diff = resolution_map[mixed_stream_resolutions[index]].width - 352
+                                                             + resolution_map[mixed_stream_resolutions[index]].height - 240;
+                                        if(current_diff < diff){
+                                                diff = current_diff;
+                                                preferred_subscription_resolution = mixed_stream_resolutions[index];
+                                        }
+                                }
+                        }
+                }
                 subInfo.video = {
                     fromStream: mixed_stream_id,
                     codecs: [video_info.codec],
-                    resolution: 'vga'
+                    resolution: preferred_subscription_resolution
                 };
             }
             //TODO: The subscriptions binding should be done in the success callback.
@@ -325,8 +356,8 @@ module.exports = function (spec) {
         }
         do_leave(session_controller, client_id);
 
-        do_join(session_controller, client_id, room_id, erizo.id, function(sid) {
-            mixed_stream_id = sid;
+        do_join(session_controller, client_id, room_id, erizo.id, function(mixedStream) {
+            mixed_stream_id = mixedStream.id;
             calls[client_id] = {session_controller : session_controller};
             handleCallEstablished(info);
         }, function (err) {
