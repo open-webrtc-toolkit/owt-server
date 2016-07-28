@@ -59,14 +59,14 @@ class YamiVideoCompositor : public VideoFrameCompositor,
     DECLARE_LOGGER();
     enum LayoutSolutionState{UN_INITIALIZED = 0, CHANGING, IN_WORK};
 public:
-    YamiVideoCompositor(uint32_t maxInput, VideoSize rootSize, YUVColor bgColor);
+    YamiVideoCompositor(uint32_t maxInput, woogeen_base::VideoSize rootSize, woogeen_base::YUVColor bgColor);
     ~YamiVideoCompositor();
 
     bool activateInput(int input);
     void deActivateInput(int input);
     void pushInput(int input, const woogeen_base::Frame& frame);
-    void updateRootSize(VideoSize& rootSize);
-    void updateBackgroundColor(YUVColor& bgColor);
+    void updateRootSize(woogeen_base::VideoSize& rootSize);
+    void updateBackgroundColor(woogeen_base::YUVColor& bgColor);
     void updateLayoutSolution(LayoutSolution& solution);
 
     void onTimeout();
@@ -81,7 +81,7 @@ private:
     int64_t m_ntpDelta;
 
     boost::shared_mutex m_mutex;
-    VideoSize m_compositeSize;
+    woogeen_base::VideoSize m_compositeSize;
     uint32_t m_bgColor;
     LayoutSolution m_currentLayout;
 

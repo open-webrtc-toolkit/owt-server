@@ -54,14 +54,14 @@ class MsdkVideoCompositor : public VideoFrameCompositor,
     friend class VppInput;
 
 public:
-    MsdkVideoCompositor(uint32_t maxInput, VideoSize rootSize, YUVColor bgColor, bool crop);
+    MsdkVideoCompositor(uint32_t maxInput, woogeen_base::VideoSize rootSize, woogeen_base::YUVColor bgColor, bool crop);
     ~MsdkVideoCompositor();
 
     bool activateInput(int input);
     void deActivateInput(int input);
     void pushInput(int input, const woogeen_base::Frame& frame);
-    void updateRootSize(VideoSize& rootSize);
-    void updateBackgroundColor(YUVColor& bgColor);
+    void updateRootSize(woogeen_base::VideoSize& rootSize);
+    void updateBackgroundColor(woogeen_base::YUVColor& bgColor);
     void updateLayoutSolution(LayoutSolution& solution);
 
     void onTimeout();
@@ -78,18 +78,18 @@ protected:
 
     void generateFrame();
     bool commitLayout(); // Commit the new layout config..clear()
-    boost::shared_ptr<MsdkFrame> layout();
-    boost::shared_ptr<MsdkFrame> customLayout();
+    boost::shared_ptr<woogeen_base::MsdkFrame> layout();
+    boost::shared_ptr<woogeen_base::MsdkFrame> customLayout();
 
 private:
     uint32_t m_maxInput;
     bool m_crop;
 
-    VideoSize m_compositeSize;
-    VideoSize m_newCompositeSize;
+    woogeen_base::VideoSize m_compositeSize;
+    woogeen_base::VideoSize m_newCompositeSize;
 
-    YUVColor m_bgColor;
-    YUVColor m_newBgColor;
+    woogeen_base::YUVColor m_bgColor;
+    woogeen_base::YUVColor m_newBgColor;
 
     LayoutSolution m_currentLayout;
     LayoutSolution m_newLayout;
@@ -111,10 +111,10 @@ private:
 
     std::vector<boost::shared_ptr<VppInput>> m_inputs;
 
-    boost::scoped_ptr<MsdkFramePool> m_framePool;
+    boost::scoped_ptr<woogeen_base::MsdkFramePool> m_framePool;
 
-    boost::shared_ptr<MsdkFrame> m_defaultInputFrame;
-    boost::scoped_ptr<MsdkFramePool> m_defaultInputFramePool;
+    boost::shared_ptr<woogeen_base::MsdkFrame> m_defaultInputFrame;
+    boost::scoped_ptr<woogeen_base::MsdkFramePool> m_defaultInputFramePool;
 
     boost::scoped_ptr<woogeen_base::JobTimer> m_jobTimer;
 
