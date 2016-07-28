@@ -454,6 +454,32 @@ void MsdkVideoCompositor::updateParam(void)
     m_extVppComp->Y                 = m_bgColor.y;
     m_extVppComp->U                 = m_bgColor.cb;
     m_extVppComp->V                 = m_bgColor.cr;
+
+    {
+        // workaroung 16.4.4 msdk's bug, swap r and b
+        int C = m_bgColor.y - 16;
+        int D = m_bgColor.cb - 128;
+        int E = m_bgColor.cr - 128;
+
+        int r = ( 298 * C           + 409 * E + 128) >> 8;
+        int g = ( 298 * C - 100 * D - 208 * E + 128) >> 8;
+        int b = ( 298 * C + 516 * D           + 128) >> 8;
+
+        int t;
+
+        t = r;
+        r = b;
+        b = t;
+
+        m_extVppComp->Y = ( (  66 * r + 129 * g +  25 * b + 128) >> 8) +  16;
+        m_extVppComp->U = ( ( -38 * r -  74 * g + 112 * b + 128) >> 8) + 128;
+        m_extVppComp->V = ( ( 112 * r -  94 * g -  18 * b + 128) >> 8) + 128;
+
+        ELOG_DEBUG("swap r <-> b, yuv 0x%x, 0x%x, 0x%x -> 0x%x, 0x%x, 0x%x"
+                , m_bgColor.y, m_bgColor.cb, m_bgColor.cr
+                , m_extVppComp->Y, m_extVppComp->U, m_extVppComp->V
+                );
+    }
 }
 
 void MsdkVideoCompositor::init(void)
