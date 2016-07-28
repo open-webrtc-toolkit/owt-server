@@ -650,7 +650,7 @@ describe('portal.publish/portal.unpublish: Participants publish/unpublish stream
           return portal.publish(testParticipantId,
                                 'webrtc',
                                 {audio: true, video: {resolution: 'vga', framerate: 30, device: 'camera'}},
-                                spyConnectionObserver,
+                                spyConnectionObserver1,
                                 false)
             .then(function(streamId) {
               stream_id1 = streamId;
@@ -662,6 +662,24 @@ describe('portal.publish/portal.unpublish: Participants publish/unpublish stream
               expect(err).to.equal('No proper video codec');
               expect(mockRpcClient.unpublish.getCall(1).args).to.deep.equal(['rpcIdOfAccessNode', stream_id1]);
               expect(mockRpcClient.recycleAccessNode.getCall(1).args).to.deep.equal(['rpcIdOfAccessAgent', 'rpcIdOfAccessNode', {session: testSession, consumer: stream_id1}]);
+              var stream_id2, on_connection_status2
+              var spyConnectionObserver2 = sinon.spy();
+              return portal.publish(testParticipantId,
+                                    'avstream',
+                                    {audio: true, video: {resolution: 'unknown', device: 'unknown'}, url: 'URIofSomeIPCamera'},
+                                    spyConnectionObserver2,
+                                    false)
+                .then(function(streamId) {
+                  stream_id2 = streamId;
+                  on_connection_status2 = mockRpcClient.publish.getCall(2).args[4];
+                  return on_connection_status2({type: 'ready', audio_codecs: undefined, video_codecs: ['h264']});
+                }).then(function(runInHere) {
+                  expect(runInHere).to.be.false;
+                }, function(err) {
+                  expect(err).to.equal('No proper audio codec');
+                  expect(mockRpcClient.unpublish.getCall(2).args).to.deep.equal(['rpcIdOfAccessNode', stream_id2]);
+                  expect(mockRpcClient.recycleAccessNode.getCall(2).args).to.deep.equal(['rpcIdOfAccessAgent', 'rpcIdOfAccessNode', {session: testSession, consumer: stream_id2}]);
+                });
             });
         });
     });
