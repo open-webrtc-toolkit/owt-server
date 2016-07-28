@@ -915,4 +915,6 @@ function changeRGBA(str) {
 function changeObj2RGB(obj) {
   if (typeof obj === "object")
     return "rgb(" + obj.r + ", " + obj.g + ", " + obj.b + ")";
+  else
+    return obj;
 }
