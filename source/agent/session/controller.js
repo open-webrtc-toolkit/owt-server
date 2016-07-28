@@ -883,7 +883,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
             if (i !== -1) {
                 config.enableMixing && unmixStream(stream_id);
                 removeSubscriptions(stream_id);
-                terminals[terminal_id].published.splice(i, 1);
+                terminals[terminal_id] && terminals[terminal_id].published.splice(i, 1);
             }
 
             delete streams[stream_id];
@@ -946,7 +946,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                         }
                     }
                 });
-                streams[stream_id].audio.subscribers = [];
+                streams[stream_id] && (streams[stream_id].audio.subscribers = []);
             }
 
             if (streams[stream_id].video) {
@@ -961,7 +961,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                         }
                     }
                 });
-                streams[stream_id].video.subscribers = [];
+                streams[stream_id] && (streams[stream_id].video.subscribers = []);
             }
         }
     };

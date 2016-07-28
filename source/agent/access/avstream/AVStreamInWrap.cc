@@ -95,11 +95,11 @@ void AVStreamInWrap::New(const FunctionCallbackInfo<Value>& args)
             param.bufferSize = 1024 * 1024 * 2;
     }
     if (options->Has(keyAudio))
-        param.enableAudio = *options->Get(keyAudio)->ToBoolean();
+        param.enableAudio = (*options->Get(keyAudio)->ToBoolean())->BooleanValue();
     if (options->Has(keyVideo))
-        param.enableVideo = *options->Get(keyVideo)->ToBoolean();
+        param.enableVideo = (*options->Get(keyVideo)->ToBoolean())->BooleanValue();
     if (options->Has(keyH264))
-        param.enableH264 = *options->Get(keyH264)->ToBoolean();
+        param.enableH264 = (*options->Get(keyH264)->ToBoolean())->BooleanValue();
     else
         param.enableH264 = true;
 

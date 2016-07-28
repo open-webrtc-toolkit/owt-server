@@ -81,8 +81,8 @@ void AVStreamOutWrap::New(const v8::FunctionCallbackInfo<v8::Value>& args)
     //     interval: (required, only for 'file')
     // }
     Local<Object> options = args[0]->ToObject();
-    bool requireAudio = *options->Get(String::NewFromUtf8(isolate, "require_audio"))->ToBoolean();
-    bool requireVideo = *options->Get(String::NewFromUtf8(isolate, "require_video"))->ToBoolean();
+    bool requireAudio = (*options->Get(String::NewFromUtf8(isolate, "require_audio"))->ToBoolean())->BooleanValue();
+    bool requireVideo = (*options->Get(String::NewFromUtf8(isolate, "require_video"))->ToBoolean())->BooleanValue();
     woogeen_base::AVStreamOut::AVOptions audioOption, videoOption, *pAudio = nullptr, *pVideo = nullptr;
     if (requireAudio) {
         audioOption.codec = std::string(*String::Utf8Value(options->Get(String::NewFromUtf8(isolate, "audio_codec"))->ToString()));

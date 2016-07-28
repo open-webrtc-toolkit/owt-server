@@ -210,20 +210,20 @@ var Portal = function(spec, rpcClient) {
 
     var onConnectionReady = function(status) {
       var participant = participants[participantId];
-      log.debug('publish::onConnectionReady, participantId:', participantId, 'connection_id:', connection_id);
+      log.debug('publish::onConnectionReady, participantId:', participantId, 'connection_id:', connection_id, 'status:', status);
 
       if (participant === undefined) {
         return Promise.reject('Participant ' + participantId + ' has left when the connection gets ready.');
       }
 
-      if (streamDescription.audio && status.audio_codecs.length < 1) {
+      if (streamDescription.audio && (!status.audio_codecs || status.audio_codecs.length < 1)) {
         rpcClient.unpublish(locality.node, connection_id);
         rpcClient.recycleAccessNode(locality.agent, locality.node, {session: participants[participantId].in_session, consumer: connection_id});
         onConnectionStatus({type: 'failed', reason: 'No proper audio codec'});
         return Promise.reject('No proper audio codec');
       }
 
-      if (streamDescription.video && status.video_codecs.length < 1) {
+      if (streamDescription.video && (!status.video_codecs || status.video_codecs.length < 1)) {
         rpcClient.unpublish(locality.node, connection_id);
         rpcClient.recycleAccessNode(locality.agent, locality.node, {session: participants[participantId].in_session, consumer: connection_id});
         onConnectionStatus({type: 'failed', reason: 'No proper video codec'});
