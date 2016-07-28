@@ -31,6 +31,7 @@
 #include <YamiVideoInputManager.h>
 
 using namespace webrtc;
+using namespace woogeen_base;
 
 namespace mcu {
 
