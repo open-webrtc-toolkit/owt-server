@@ -300,7 +300,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                                         streams[stream_id].spread.push(target_node);
                                         on_ok();
                                     } else {
-                                        on_spread_faild('Late coming callback for spreading stream.', true, true);
+                                        on_spread_failed('Late coming callback for spreading stream.', true, true);
                                     }
                                 },
                                 function (error_reason) {

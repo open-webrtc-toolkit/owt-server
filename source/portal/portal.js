@@ -110,6 +110,10 @@ var Portal = function(spec, rpcClient) {
     };
   };
 
+  that.updateTokenKey = function(tokenKey) {
+    token_key = tokenKey;
+  };
+
   that.join = function(participantId, token) {
     log.debug('participant[', participantId, '] join with token:', JSON.stringify(token));
     var calculateSignature = function (token) {
@@ -499,13 +503,15 @@ var Portal = function(spec, rpcClient) {
     var participant = participants[participantId];
     log.debug('onConnectionSignalling, participantId:', participantId, 'connectionId:', connectionId);
 
+    if (participant === undefined) {
+      return Promise.reject('Participant ' + participantId + ' has left when receiving a signaling of its connection ' + connection_id + '.');
+    }
+
     var subscription_id = participantId + '-sub-' + connectionId,
         stream_id = connectionId;
     var connection_id = ((participant.connections[subscription_id] && participant.connections[subscription_id].direction === 'out') ? subscription_id : stream_id);//FIXME: removed once FIXME - a is fixed.
 
-    if (participant === undefined) {
-      return Promise.reject('Participant ' + participantId + ' has left when receiving a signaling of its connection ' + connection_id + '.');
-    } else if (participant.connections[connection_id] === undefined) {
+    if (participant.connections[connection_id] === undefined) {
       return Promise.reject('Connection does NOT exist when receiving a signaling.');
     } else {
       return rpcClient.onConnectionSignalling(participant.connections[connection_id].locality.node, connection_id, signaling)
@@ -529,11 +535,14 @@ var Portal = function(spec, rpcClient) {
   that.mediaOnOff = function(participantId, connectionId, track, direction, onOff) {
     var participant = participants[participantId];
     log.debug('mediaOnOff, participantId:', participantId, 'connectionId:', connectionId, 'track:', track, 'direction:', direction, 'onOff', onOff);
+
     if (participant === undefined) {
       return Promise.reject('Participant ' + participantId + ' does NOT exist.');
     }
 
-    var connection_id = ((participant.connections[connectionId] && participant.connections[connectionId].direction === 'in') ? connectionId : participantId + '-sub-' + connectionId);//FIXME: removed once FIXME - a is fixed.
+    var subscription_id = participantId + '-sub-' + connectionId,
+        stream_id = connectionId;
+    var connection_id = ((participant.connections[subscription_id] && participant.connections[subscription_id].direction === 'out') ? subscription_id : stream_id);//FIXME: removed once FIXME - a is fixed.
 
     var connection = participant.connections[connection_id];
     if (connection === undefined || connection.direction !== direction) {

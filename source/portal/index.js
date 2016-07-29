@@ -70,13 +70,12 @@ var ip_address;
   }
 })();
 
-var getTokenKey = function(id, on_key) {
+var getTokenKey = function(id, on_key, on_error) {
   amqper.callRpc('nuve', 'getKey', id, {
     callback: function (key) {
       if (key === 'error' || key === 'timeout') {
         log.info('Failed to get token key.');
-        worker && worker.quit();
-        return process.exit();
+        return on_error();
       }
       on_key(key);
     }
@@ -139,6 +138,19 @@ var startServer = function(id, tokenKey) {
   return server.start()
     .then(function() {
       log.info('start socket.io server ok.');
+      var interval = setInterval(function() {
+        getTokenKey(id, function(newTokenKey) {
+          (server === undefined) && clearInterval(interval);
+          if (newTokenKey !== tokenKey) {
+            log.info('Token key updated!');
+            portal.updateTokenKey(newTokenKey);
+            tokenKey = newTokenKey;
+          }
+        }, function() {
+          (server === undefined) && clearInterval(interval);
+          log.warn('Keep trying...');
+        });
+      }, 6 * 1000);
     })
     .catch(function(err) {
       log.error('Failed to start socket.io server, reason:', err.message);
@@ -173,6 +185,9 @@ amqper.connect(config.rabbit, function () {
         log.info('bind amqp client ok.');
         getTokenKey(id, function(tokenKey) {
           startServer(id, tokenKey);
+        }, function() {
+          worker && worker.quit();
+          return process.exit();
         });
       });
     });
