@@ -122,15 +122,17 @@ var Client = function(participantId, socket, portal, on_disconnect) {
           if (connection_type === 'webrtc') {
             socket.emit('signaling_message_erizo', {streamId: stream_id, mess: status});
           } else {
-            safeCall(callback, status);
+            if (status.type === 'ready') {
+              safeCall(callback, 'success', stream_id);
+            } else if (status.type !== 'initializing') {
+              safeCall(callback, status);
+            }
           }
         }
       }, unmix).then(function(streamId) {
         stream_id = streamId;
         if (connection_type === 'webrtc') {
           safeCall(callback, 'initializing', streamId);
-        } else {
-          safeCall(callback, 'success', streamId);
         }
       }).catch(function(err) {
         var err_message = (typeof err === 'string' ? err: err.message);

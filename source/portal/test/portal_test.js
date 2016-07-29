@@ -32,6 +32,47 @@ var testToken = {tokenId: '573eab88111478bb3526421b',
 var testParticipantId = '/#gpMeAEuPeMMDT0daAAAA';
 var testSession = '573eab78111478bb3526421a';
 
+describe('portal.updateTokenKey: update the token key.', function() {
+  it('Joining with a valid token will fail if the token key is out of time, and success when token key is updated', function() {
+    var mockRpcClient = sinon.createStubInstance(rpcClient);
+    mockRpcClient.tokenLogin = sinon.stub();
+    mockRpcClient.getController = sinon.stub();
+    mockRpcClient.join = sinon.stub();
+
+    var portalSpecWithOldTokenKey = {tokenKey: 'OldTokenKey',
+                                     tokenServer: testTokenServer,
+                                     clusterName: testClusterName,
+                                     selfRpcId: testSelfRpcId,
+                                     permissionMap: {'presenter': {publish: true, subscribe: true}}};
+
+    var portal = Portal(portalSpecWithOldTokenKey, mockRpcClient);
+
+    var login_result = {userName: 'Jack', role: 'presenter', room: testSession};
+    mockRpcClient.tokenLogin.resolves(login_result);
+
+    mockRpcClient.getController.resolves('rpcIdOfController');
+
+    var join_result = {participants: [],
+                       streams: []};
+    mockRpcClient.join.resolves(join_result);
+
+    var final_result = {user: login_result.userName, role: login_result.role, session_id: login_result.room, participants: join_result.participants, streams: join_result.streams};
+
+    return portal.join(testParticipantId, testToken).then(function(runInHere) {
+        expect(runInHere).to.be.false;
+      }, function(reason) {
+        expect(reason).to.have.string('Invalid token signature');
+        portal.updateTokenKey(testTokenKey);
+        return portal.join(testParticipantId, testToken).then(function(result) {
+          expect(result).to.deep.equal(final_result);
+          expect(mockRpcClient.tokenLogin.getCall(0).args).to.deep.equal(['nuve', testToken.tokenId]);
+          expect(mockRpcClient.getController.getCall(0).args).to.deep.equal(['woogeen-cluster', testSession]);
+          expect(mockRpcClient.join.getCall(0).args).to.deep.equal(['rpcIdOfController', testSession, {id: testParticipantId, name: 'Jack', role: 'presenter', portal: testSelfRpcId}]);
+        });
+      });
+  });
+});
+
 describe('portal.join: Participants join.', function() {
   it('Joining with valid token should succeed.', function() {
     var mockRpcClient = sinon.createStubInstance(rpcClient);

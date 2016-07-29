@@ -121,7 +121,7 @@ module.exports = function () {
 
             var stream_id = Math.random() * 1000000000000000000 + '';
             var dispatcher = new MediaFrameMulticaster();
-            if (engine.addOutput(stream_id, codec, (resolution === 'unspecified' ? 'hd1080p' : resolution), dispatcher)) {
+            if (engine.addOutput(stream_id, codec, ((!resolution || resolution === 'unspecified' || VideoResolutionMap[resolution] === undefined) ? supported_resolutions[0] : resolution), dispatcher)) {
                 outputs[stream_id] = {codec: codec,
                                       resolution: resolution,
                                       dispatcher: dispatcher,
@@ -220,7 +220,7 @@ module.exports = function () {
     that.generate = function (codec, resolution, callback) {
         codec = codec || supported_codecs[0];
         codec = codec.toLowerCase();
-        resolution = ((!resolution || resolution === 'unspecified') ? supported_resolutions[0] : resolution);
+        resolution = ((!resolution || resolution === 'unspecified' || VideoResolutionMap[resolution] === undefined) ? supported_resolutions[0] : resolution);
         resolution = resolution.toLowerCase();
         log.debug('generate, codec:', codec, 'resolution:', resolution);
 
@@ -377,7 +377,7 @@ module.exports = function () {
         } else if (service === 'transcoding') {
             var videoConfig = {maxInput: 1,
                                bitrate: 0,
-                               resolution: config.resolution === 'unknown' ? 'hd1080p' : config.resolution,
+                               resolution: (config.resolution === 'unknown' || VideoResolutionMap[config.resolution] === undefined) ? 'hd1080p' : config.resolution,
                                bkColor: 'black',
                                multistreaming: true,
                                layout: [{region: [{id: '1', left: 0, top: 0, relativesize: 1}]}],
