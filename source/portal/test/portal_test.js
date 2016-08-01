@@ -461,7 +461,7 @@ describe('portal.publish/portal.unpublish: Participants publish/unpublish stream
           expect(mockRpcClient.publish.getCall(0).args[0]).to.deep.equal('rpcIdOfAccessNode');
           expect(mockRpcClient.publish.getCall(0).args[1]).to.equal(stream_id);
           expect(mockRpcClient.publish.getCall(0).args[2]).to.equal('avstream');
-          expect(mockRpcClient.publish.getCall(0).args[3]).to.deep.equal({audio: true, video: {resolution: 'unknown'}, url: 'URIofSomeIPCamera/room_' + testSession + '-' + stream_id + '.sdp'});
+          expect(mockRpcClient.publish.getCall(0).args[3]).to.deep.equal({audio: true, video: {resolution: 'unknown'}, url: 'URIofSomeIPCamera'});
           on_connection_status = mockRpcClient.publish.getCall(0).args[4];
           expect(on_connection_status).to.be.a('function');
           return on_connection_status({type: 'initializing'});
