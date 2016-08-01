@@ -148,7 +148,7 @@ exports.LoadCollector = function (spec) {
 
     switch (item.name) {
         case 'network':
-            collector = new networkCollector(period, item.interface, item.max_scale, on_load);
+            collector = new networkCollector(period, item.interf, item.max_scale, on_load);
             break;
         case 'cpu':
             collector = new cpuCollector(period, on_load);
