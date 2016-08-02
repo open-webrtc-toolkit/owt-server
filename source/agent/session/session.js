@@ -408,9 +408,13 @@ module.exports = function (amqper, selfRpcId) {
 
   that.onVideoLayoutChange = function(sessionId, layout, callback) {
     if (session_id === sessionId) {
-      streams[sessionId].setLayout(layout);
-      sendMsg('room', 'all', 'update_stream', {event: 'VideoLayoutChanged', id: session_id, data: layout});
-      callback('callback', 'ok');
+      if (streams[sessionId]) {
+        streams[sessionId].setLayout(layout);
+        sendMsg('room', 'all', 'update_stream', {event: 'VideoLayoutChanged', id: session_id, data: layout});
+        callback('callback', 'ok');
+      } else {
+        callback('callback', 'error', 'no mixed stream.');
+      }
     } else {
       callback('callback', 'error', 'session is not in service');
     }
