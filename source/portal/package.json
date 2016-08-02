@@ -13,9 +13,11 @@
     "chai-as-promised": "^5.1.0",
     "sinon": "^1.15.4",
     "sinon-as-promised": "^4.0.0",
+    "istanbul": "*",
     "socket.io-client": "*"
   },
   "scripts": {
-    "test": "mocha ./test -R spec --timeout 5000"
+    "test": "mocha ./test -R spec --timeout 5000",
+    "test:cover": "istanbul cover _mocha -- ./test -R spec --timeout 5000"
   }
 }
