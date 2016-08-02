@@ -129,24 +129,21 @@ build_mcu_runtime() {
 }
 
 build_mcu_runtime_sw() {
-  pushd "${SOURCE}/agent/video/videoMixer" >/dev/null
-  cp -f binding.sw.gyp binding.gyp
+  cp -f ${SOURCE}/agent/video/videoMixer_sw/binding.sw.gyp ${SOURCE}/agent/video/videoMixer_sw/binding.gyp
   build_mcu_runtime
-  popd >/dev/null
+  rm -f ${SOURCE}/agent/video/videoMixer_sw/binding.gyp
 }
 
 build_mcu_runtime_hw_yami() {
-  pushd "${SOURCE}/agent/video/videoMixer" >/dev/null
-  cp -f binding.hw.yami.gyp binding.gyp
+  cp -f ${SOURCE}/agent/video/videoMixer_hw/binding.hw.yami.gyp ${SOURCE}/agent/video/videoMixer_hw/binding.gyp
   build_mcu_runtime
-  popd >/dev/null
+  rm -f ${SOURCE}/agent/video/videoMixer_hw/binding.gyp
 }
 
 build_mcu_runtime_hw_msdk() {
-  pushd "${SOURCE}/agent/video/videoMixer" >/dev/null
-  cp -f binding.hw.msdk.gyp binding.gyp
+  cp -f ${SOURCE}/agent/video/videoMixer_hw/binding.hw.msdk.gyp ${SOURCE}/agent/video/videoMixer_hw/binding.gyp
   build_mcu_runtime
-  popd >/dev/null
+  rm -f ${SOURCE}/agent/video/videoMixer_hw/binding.gyp
 }
 
 build_runtime() {
