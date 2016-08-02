@@ -71,9 +71,9 @@ module.exports = function () {
     var VideoMixer;
     try {
         if (useHardware) {
-            VideoMixer = require('./videoMixer/build/Release/videoMixer-hw');
+            VideoMixer = require('./videoMixer_hw/build/Release/videoMixer-hw');
         } else {
-            VideoMixer = require('./videoMixer/build/Release/videoMixer-sw');
+            VideoMixer = require('./videoMixer_sw/build/Release/videoMixer-sw');
         }
     } catch (e) {
         log.error(e);

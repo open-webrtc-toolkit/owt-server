@@ -2,11 +2,11 @@
   'targets': [{
     'target_name': 'videoMixer-hw',
     'sources': [
-      'addon.cc',
-      'VideoMixerWrapper.cc',
-      'MsdkVideoCompositor.cpp',
-      'VideoLayoutProcessor.cpp',
-      'VideoMixer.cpp',
+      '../videoMixer/addon.cc',
+      '../videoMixer/VideoMixerWrapper.cc',
+      '../videoMixer/MsdkVideoCompositor.cpp',
+      '../videoMixer/VideoLayoutProcessor.cpp',
+      '../videoMixer/VideoMixer.cpp',
       '../../../core/woogeen_base/BufferManager.cpp',
       '../../../core/woogeen_base/MediaFramePipeline.cpp',
       '../../../core/woogeen_base/VCMFrameDecoder.cpp',
