@@ -267,6 +267,7 @@ var Portal = function(spec, rpcClient) {
           rpcClient.unpublish(locality.node, connection_id);
           rpcClient.recycleAccessNode(locality.agent, locality.node, {session: participants[participantId].in_session, consumer: connection_id});
           onConnectionStatus({type: 'failed', reason: err.message});
+          participants[participantId] && (delete participants[participantId].connections[connection_id]);
           return Promise.reject(err);
         });
     };
@@ -440,6 +441,7 @@ var Portal = function(spec, rpcClient) {
           rpcClient.unsubscribe(locality.node, connection_id);
           rpcClient.recycleAccessNode(locality.agent, locality.node, {session: participants[participantId].in_session, consumer: connection_id});
           onConnectionStatus({type: 'failed', reason: err.message});
+          participants[participantId] && (delete participants[participantId].connections[connection_id]);
           return Promise.reject(err);
         });
     };
