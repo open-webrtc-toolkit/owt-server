@@ -478,7 +478,7 @@ The following example shows the details:
         "id": "1",
         "left": 0,
         "top": 0,
-        "relativesize": 1,
+        "relativesize": 1
       }
     ]
   },
@@ -488,37 +488,37 @@ The following example shows the details:
         "id": "1",
         "left": 0,
         "top": 0,
-        "relativesize": 0.667,
+        "relativesize": 0.667
       },
       {
         "id": "2",
         "left": 0.667,
         "top": 0,
-        "relativesize": 0.333,
+        "relativesize": 0.333
       },
       {
         "id": "3",
         "left": 0.667,
         "top": 0.333,
-        "relativesize": 0.333,
+        "relativesize": 0.333
       },
       {
         "id": "4",
         "left": 0.667,
         "top": 0.667,
-        "relativesize": 0.333,
+        "relativesize": 0.333
       },
       {
         "id": "5",
         "left": 0.333,
         "top": 0.667,
-        "relativesize": 0.333,
+        "relativesize": 0.333
       },
       {
         "id": "6",
         "left": 0,
         "top": 0.667,
-        "relativesize": 0.333,
+        "relativesize": 0.333
       }
     ]
   }
