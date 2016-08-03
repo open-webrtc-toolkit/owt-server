@@ -33,6 +33,12 @@ exports.createRoom = function (req, res) {
         return;
     }
 
+    if (req.body.options && typeof req.body.options !== 'object') {
+        log.info('Invalid room option');
+        res.status(400).send('Invalid room option');
+        return;
+    }
+
     req.body.options = req.body.options || {};
     var room;
 
