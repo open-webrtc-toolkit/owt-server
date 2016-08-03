@@ -50,7 +50,13 @@ function do_join(session_ctl, user, room, selfPortal, ok, err) {
         'join',
         [room, {id: user, name: user, role: 'presenter', portal: selfPortal}], function(joinResult) {
             log.debug('join ok');
-            safeCall(ok, joinResult.streams[0]);
+            for(var index in joinResult.streams){
+                if(joinResult.streams[index].video.device === 'mcu'){
+                    safeCall(ok, joinResult.streams[index]);
+                    return;
+                }
+            }
+            safeCall(ok);
         }, function (reason) {
             safeCall(err,reason);
         });
@@ -176,8 +182,10 @@ module.exports = function (spec) {
             var session_controller = result;
             calls[client_id] = {session_controller : session_controller};
             do_join(session_controller, client_id, room_id, erizo.id, function(mixedStream) {
-                mixed_stream_id = mixedStream.id;
-                mixed_stream_resolutions = mixedStream.video.resolutions;
+                if(mixedStream !== undefined){
+                    mixed_stream_id = mixedStream.id;
+                    mixed_stream_resolutions = mixedStream.video.resolutions;
+                }
                 on_ok();
             }, function (err) {
                 on_error(err);
@@ -229,7 +237,7 @@ module.exports = function (spec) {
                 };
             }
             if (info.video) {
-		//check resolution
+                //check resolution
                 var fmtp = info.videoResolution;
                 var preferred_subscription_resolution = mixed_stream_resolutions[0];
                 //TODO: currently we only check CIF/QCIF, there might be other options in fmtp from other devices.
@@ -357,7 +365,10 @@ module.exports = function (spec) {
         do_leave(session_controller, client_id);
 
         do_join(session_controller, client_id, room_id, erizo.id, function(mixedStream) {
-            mixed_stream_id = mixedStream.id;
+            if(mixedStream !== undefined){
+                mixed_stream_id = mixedStream.id;
+                mixed_stream_resolutions = mixedStream.video.resolutions;
+            }
             calls[client_id] = {session_controller : session_controller};
             handleCallEstablished(info);
         }, function (err) {
