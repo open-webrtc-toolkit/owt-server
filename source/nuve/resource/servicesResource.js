@@ -30,6 +30,13 @@ exports.create = function (req, res) {
         return;
     }
     var service = req.body;
+
+    // Check the request body as service
+    if (typeof service.name !== 'string' || typeof service.key !== 'string') {
+        res.status(401).send('Service name and key do not have string type');
+        return;
+    }
+
     service.encrypted = true;
     service.key = cipher.encrypt(cipher.k, service.key);
     serviceRegistry.addService(service, function (result) {

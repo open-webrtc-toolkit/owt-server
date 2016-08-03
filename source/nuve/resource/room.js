@@ -151,11 +151,15 @@ Room.prototype.validate = function() {
             return null;
         }
 
-        if (this.mediaMixing.video.bkColor === undefined ||
-            this.mediaMixing.video.bkColor === null ||
-            this.mediaMixing.video.bkColor === '') {
+        if (!this.mediaMixing.video.bkColor) {
             this.mediaMixing.video.bkColor = 'black';
-        } else if (typeof this.mediaMixing.video.bkColor !== 'string') {
+        } else if (typeof this.mediaMixing.video.bkColor === 'object') {
+            var rgbObj = this.mediaMixing.video.bkColor;
+            if (typeof rgbObj.r !== 'number' || typeof rgbObj.g !== 'number' || typeof rgbObj.b !== 'number') {
+                log.info('Invalid RGB bkColor:', rgbObj);
+                return null;
+            }
+
             this.mediaMixing.video.bkColor.r = validateRGBValue(this.mediaMixing.video.bkColor.r);
             if (this.mediaMixing.video.bkColor.r < 0) {
                 return null;
@@ -170,12 +174,16 @@ Room.prototype.validate = function() {
             if (this.mediaMixing.video.bkColor.b < 0) {
                 return null;
             }
-        } else {
+        } else if (typeof this.mediaMixing.video.bkColor === 'string') {
             var bkColor = this.mediaMixing.video.bkColor.toLowerCase();
             if (meta.mediaMixing.video.bkColor.indexOf(bkColor) === -1) {
+                log.info('Invalid string bkColor:', bkColor);
                 return null;
             }
             this.mediaMixing.video.bkColor = bkColor;
+        } else {
+            log.info('Invalid bkColor:', this.mediaMixing.video.bkColor);
+            return null;
         }
 
         if (this.mediaMixing.video.crop === '1' ||
