@@ -9,20 +9,19 @@ var cloudHandler = require('../cloudHandler');
 // Logger
 var log = logger.getLogger('RoomsResource');
 
-var currentService;
-
-/*
- * Gets the service for the proccess of the request.
- */
-var doInit = function () {
-    currentService = require('./../auth/nuveAuthenticator').service;
-};
-
 /*
  * Post Room. Creates a new room for a determined service.
  */
 exports.createRoom = function (req, res) {
-    doInit();
+    var authData = req.authData || {};
+
+    if (authData.service === undefined) {
+        log.info('Service not found');
+        res.status(404).send('Service not found');
+        return;
+    }
+    var currentService = authData.service;
+
     if (currentService === undefined) {
         res.status(404).send('Service not found');
         return;
@@ -91,7 +90,15 @@ exports.createRoom = function (req, res) {
  * Get Rooms. Represent a list of rooms for a determined service.
  */
 exports.represent = function (req, res) {
-    doInit();
+    var authData = req.authData || {};
+
+    if (authData.service === undefined) {
+        log.info('Service not found');
+        res.status(404).send('Service not found');
+        return;
+    }
+    var currentService = authData.service;
+
     if (currentService === undefined) {
         res.status(404).send('Service not found');
         return;

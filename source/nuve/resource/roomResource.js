@@ -9,13 +9,10 @@ var logger = require('./../logger').logger;
 // Logger
 var log = logger.getLogger('RoomResource');
 
-var currentService;
-
 /*
  * Gets the service and the room for the proccess of the request.
  */
-var doInit = function (roomId, callback) {
-    currentService = require('./../auth/nuveAuthenticator').service;
+var doInit = function (currentService, roomId, callback) {
     serviceRegistry.getRoomForService(roomId, currentService, callback);
 };
 
@@ -23,14 +20,20 @@ var doInit = function (roomId, callback) {
  * Get Room. Represents a determined room.
  */
 exports.represent = function (req, res) {
-    doInit(req.params.room, function (room) {
-        if (currentService === undefined) {
-            res.status(401).send('Client unathorized');
-        } else if (room === undefined) {
+    var authData = req.authData || {};
+
+    if (authData.service === undefined) {
+        log.info('Service not found');
+        res.status(401).send('Client unathorized');
+        return;
+    }
+
+    doInit(authData.service, req.params.room, function (room) {
+        if (room === undefined) {
             log.info('Room ', req.params.room, ' does not exist');
             res.status(404).send('Room does not exist');
         } else {
-            log.info('Representing room ', room._id, 'of service ', currentService._id);
+            log.info('Representing room ', room._id, 'of service ', authData.service._id);
             res.send(room);
         }
     });
@@ -40,10 +43,17 @@ exports.represent = function (req, res) {
  * Delete Room. Removes a determined room from the data base and asks cloudHandler to remove it from erizoController.
  */
 exports.deleteRoom = function (req, res) {
-    doInit(req.params.room, function (room) {
-        if (currentService === undefined) {
-            res.status(401).send('Client unathorized');
-        } else if (room === undefined) {
+    var authData = req.authData || {};
+
+    if (authData.service === undefined) {
+        log.info('Service not found');
+        res.status(401).send('Client unathorized');
+        return;
+    }
+    var currentService = authData.service;
+
+    doInit(currentService, req.params.room, function (room) {
+        if (room === undefined) {
             log.info('Room ', req.params.room, ' does not exist');
             res.status(404).send('Room does not exist');
         } else {
@@ -87,7 +97,16 @@ exports.deleteRoom = function (req, res) {
 };
 
 exports.updateRoom = function (req, res) {
-    doInit(req.params.room, function (room) {
+    var authData = req.authData || {};
+
+    if (authData.service === undefined) {
+        log.info('Service not found');
+        res.status(401).send('Client unathorized');
+        return;
+    }
+    var currentService = authData.service;
+
+    doInit(currentService, req.params.room, function (room) {
         if (currentService === undefined) {
             res.status(401).send('Client unathorized');
         } else if (room === undefined) {

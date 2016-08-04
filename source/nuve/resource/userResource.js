@@ -8,17 +8,12 @@ var logger = require('./../logger').logger;
 // Logger
 var log = logger.getLogger('UserResource');
 
-var currentService;
-var currentRoom;
-
 /*
  * Gets the service and the room for the proccess of the request.
  */
-var doInit = function (roomId, callback) {
-    currentService = require('./../auth/nuveAuthenticator').service;
+var doInit = function (currentService, roomId, callback) {
     serviceRegistry.getRoomForService(roomId, currentService, function (room) {
-        currentRoom = room;
-        callback();
+        callback(room);
     });
 };
 
@@ -26,11 +21,16 @@ var doInit = function (roomId, callback) {
  * Get User. Represent a determined user of a room. This is consulted to erizoController using RabbitMQ RPC call.
  */
 exports.getUser = function (req, res) {
-    doInit(req.params.room, function () {
-        if (currentService === undefined) {
-            res.status(404).send('Service not found');
-            return;
-        } else if (currentRoom === undefined) {
+    var authData = req.authData || {};
+
+    if (authData.service === undefined) {
+        log.info('Service not found');
+        res.status(404).send('Service not found');
+        return;
+    }
+
+    doInit(authData.service, req.params.room, function (currentRoom) {
+        if (currentRoom === undefined) {
             log.info('Room ', req.params.room, ' does not exist');
             res.status(404).send('Room does not exist');
             return;
@@ -60,11 +60,16 @@ exports.getUser = function (req, res) {
  * Delete User. Removes a determined user from a room. This order is sent to erizoController using RabbitMQ RPC call.
  */
 exports.deleteUser = function (req, res) {
-    doInit(req.params.room, function () {
-        if (currentService === undefined) {
-            res.status(404).send('Service not found');
-            return;
-        } else if (currentRoom === undefined) {
+    var authData = req.authData || {};
+
+    if (authData.service === undefined) {
+        log.info('Service not found');
+        res.status(404).send('Service not found');
+        return;
+    }
+
+    doInit(authData.service, req.params.room, function (currentRoom) {
+        if (currentRoom === undefined) {
             log.info('Room ', req.params.room, ' does not exist');
             res.status(404).send('Room does not exist');
             return;

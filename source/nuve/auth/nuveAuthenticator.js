@@ -87,13 +87,19 @@ exports.authenticate = function (req, res, next) {
 
             // Check if the signature is valid.
             if (checkSignature(params, key)) {
+                var authData = {};
+
                 if (params.username !== undefined && params.role !== undefined) {
-                    exports.user = (new Buffer(params.username, 'base64').toString('utf8'));
-                    exports.role = params.role;
+                    authData.user = (new Buffer(params.username, 'base64').toString('utf8'));
+                    authData.role = params.role;
                 }
 
                 cache[serv._id+''] =  params;
-                exports.service = serv;
+
+                authData.service = serv;
+
+                // Put auth data into request for further use
+                req.authData = authData;
 
                 // If everything in the authentication is valid continue with the request.
                 next();
