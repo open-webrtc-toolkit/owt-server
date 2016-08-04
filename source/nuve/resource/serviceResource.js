@@ -12,10 +12,9 @@ var log = logger.getLogger('ServiceResource');
 
 var superService = require('./../mdb/dataBase').superService;
 
-var doInit = function (serv, callback) {
-    var service = require('./../auth/nuveAuthenticator').service;
-    service._id = service._id + '';
-    if (service._id !== superService) {
+var doInit = function (currentService, serv, callback) {
+    currentService._id = currentService._id + '';
+    if (currentService._id !== superService) {
         callback('error');
     } else {
         serviceRegistry.getService(serv, function (ser) {
@@ -28,7 +27,15 @@ var doInit = function (serv, callback) {
  * Get Service. Represents a determined service.
  */
 exports.represent = function (req, res) {
-    doInit(req.params.service, function (serv) {
+    var authData = req.authData || {};
+
+    if (authData.service === undefined) {
+        log.info('Service not found');
+        res.status(404).send('Service not found');
+        return;
+    }
+
+    doInit(authData.service, req.params.service, function (serv) {
         if (serv === 'error') {
             log.info('Service ', req.params.service, ' not authorized for this action');
             res.status(401).send('Service not authorized for this action');
@@ -47,7 +54,15 @@ exports.represent = function (req, res) {
  * Delete Service. Removes a determined service from the data base.
  */
 exports.deleteService = function (req, res) {
-    doInit(req.params.service, function (serv) {
+    var authData = req.authData || {};
+
+    if (authData.service === undefined) {
+        log.info('Service not found');
+        res.status(404).send('Service not found');
+        return;
+    }
+
+    doInit(authData.service, req.params.service, function (serv) {
         if (serv === 'error') {
             log.info('Service ', req.params.service, ' not authorized for this action');
             res.status(401).send('Service not authorized for this action');

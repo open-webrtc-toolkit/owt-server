@@ -10,18 +10,13 @@ var logger = require('./../logger').logger;
 // Logger
 var log = logger.getLogger('TokensResource');
 
-var currentService;
-var currentRoom;
-
 /*
  * Gets the service and the room for the proccess of the request.
  */
-var doInit = function (roomId, callback) {
-    currentService = require('./../auth/nuveAuthenticator').service;
+var doInit = function (currentService, roomId, callback) {
     serviceRegistry.getRoomForService(roomId, currentService, function (room) {
         //log.info(room);
-        currentRoom = room;
-        callback();
+        callback(room);
     });
 };
 
@@ -46,9 +41,10 @@ var getTokenString = function (id, token) {
  * The format of a token is:
  * {tokenId: id, host: erizoController host, signature: signature of the token};
  */
-var generateToken = function (callback) {
-    var user = require('./../auth/nuveAuthenticator').user,
-        role = require('./../auth/nuveAuthenticator').role,
+var generateToken = function (currentRoom, authData, callback) {
+    var currentService = authData.service,
+        user = authData.user,
+        role = authData.role,
         r,
         tr,
         token,
@@ -128,18 +124,22 @@ var generateToken = function (callback) {
  * Post Token. Creates a new token for a determined room of a service.
  */
 exports.create = function (req, res) {
-    doInit(req.params.room, function () {
-        if (currentService === undefined) {
-            log.info('Service not found');
-            res.status(404).send('Service not found');
-            return;
-        } else if (currentRoom === undefined) {
+    var authData = req.authData || {};
+
+    if (authData.service === undefined) {
+        log.info('Service not found');
+        res.status(404).send('Service not found');
+        return;
+    }
+
+    doInit(authData.service, req.params.room, function (currentRoom) {
+         if (currentRoom === undefined) {
             log.info('Room ', req.params.room, ' does not exist');
             res.status(404).send('Room does not exist');
             return;
         }
 
-        generateToken(function (tokenS) {
+        generateToken(currentRoom, authData, function (tokenS) {
             if (tokenS === undefined) {
                 log.info('Name and role?');
                 res.status(401).send('Name and role?');
@@ -150,7 +150,7 @@ exports.create = function (req, res) {
                 res.status(401).send('CloudHandler does not respond');
                 return;
             }
-            log.info('Created token for room ', currentRoom._id, 'and service ', currentService._id);
+            log.info('Created token for room ', currentRoom._id, 'and service ', authData.service._id);
             res.send(tokenS);
         });
     });

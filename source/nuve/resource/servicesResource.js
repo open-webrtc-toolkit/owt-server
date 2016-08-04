@@ -8,13 +8,10 @@ var cipher = require('../cipher');
 // Logger
 var log = logger.getLogger('ServicesResource');
 
-var currentService;
-
 /*
  * Gets the service and checks if it is superservice. Only superservice can do actions about services.
  */
-var doInit = function () {
-    currentService = require('./../auth/nuveAuthenticator').service;
+var doInit = function (currentService) {
     var superService = require('./../mdb/dataBase').superService;
     currentService._id = currentService._id + '';
     return (currentService._id === superService);
@@ -24,8 +21,16 @@ var doInit = function () {
  * Post Service. Creates a new service.
  */
 exports.create = function (req, res) {
-    if (!doInit()) {
-        log.info('Service ', currentService._id, ' not authorized for this action');
+    var authData = req.authData || {};
+
+    if (authData.service === undefined) {
+        log.info('Service not found');
+        res.status(404).send('Service not found');
+        return;
+    }
+
+    if (!doInit(authData.service)) {
+        log.info('Service ', authData.service._id, ' not authorized for this action');
         res.status(401).send('Service not authorized for this action');
         return;
     }
@@ -49,8 +54,16 @@ exports.create = function (req, res) {
  * Get Service. Represents a determined service.
  */
 exports.represent = function (req, res) {
-    if (!doInit()) {
-        log.info('Service ', currentService, ' not authorized for this action');
+    var authData = req.authData || {};
+
+    if (authData.service === undefined) {
+        log.info('Service not found');
+        res.status(404).send('Service not found');
+        return;
+    }
+
+    if (!doInit(authData.service)) {
+        log.info('Service ', authData.service, ' not authorized for this action');
         res.status(401).send('Service not authorized for this action');
         return;
     }

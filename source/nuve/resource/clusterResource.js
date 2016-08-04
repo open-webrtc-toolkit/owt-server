@@ -3,14 +3,20 @@
 var cloudHandler = require('../cloudHandler');
 var superService = require('./../mdb/dataBase').superService;
 
-function authorized (callback) {
-  var service = require('./../auth/nuveAuthenticator').service;
-  service._id = service._id + '';
-  callback(service._id === superService);
+function authorized (req, callback) {
+  var authData = req.authData || {};
+
+  if (authData.service === undefined) {
+      callback(false);
+      return;
+  }
+
+  var serviceId = authData.service._id + '';
+  callback(serviceId === superService);
 }
 
 exports.getNodes = function (req, res) {
-  authorized(function (ok) {
+  authorized(req, function (ok) {
     if (ok) {
       return cloudHandler.getPortals(function (portals) {
         res.send(portals);
@@ -22,7 +28,7 @@ exports.getNodes = function (req, res) {
 
 exports.getNode = function (req, res) {
   var node = req.params.node;
-  authorized(function (ok) {
+  authorized(req, function (ok) {
     if (ok) {
       return cloudHandler.getPortal(node, function (attr) {
         res.send(attr);
@@ -34,7 +40,7 @@ exports.getNode = function (req, res) {
 
 exports.getNodeConfig = function (req, res) {
   var node = req.params.node;
-  authorized(function (ok) {
+  authorized(req, function (ok) {
     if (ok) {
       return cloudHandler.getEcConfig(node, function (config) {
         res.send(config);
@@ -45,7 +51,7 @@ exports.getNodeConfig = function (req, res) {
 };
 
 exports.getRooms = function (req, res) {
-  authorized(function (ok) {
+  authorized(req, function (ok) {
     if (ok) {
       return cloudHandler.getHostedRooms(function (rooms) {
         res.send(rooms);
