@@ -155,23 +155,9 @@ Room.prototype.validate = function() {
             this.mediaMixing.video.bkColor = 'black';
         } else if (typeof this.mediaMixing.video.bkColor === 'object') {
             var rgbObj = this.mediaMixing.video.bkColor;
-            if (typeof rgbObj.r !== 'number' || typeof rgbObj.g !== 'number' || typeof rgbObj.b !== 'number') {
-                log.info('Invalid RGB bkColor:', rgbObj);
-                return null;
-            }
 
-            this.mediaMixing.video.bkColor.r = validateRGBValue(this.mediaMixing.video.bkColor.r);
-            if (this.mediaMixing.video.bkColor.r < 0) {
-                return null;
-            }
-
-            this.mediaMixing.video.bkColor.g = validateRGBValue(this.mediaMixing.video.bkColor.g);
-            if (this.mediaMixing.video.bkColor.g < 0) {
-                return null;
-            }
-
-            this.mediaMixing.video.bkColor.b = validateRGBValue(this.mediaMixing.video.bkColor.b);
-            if (this.mediaMixing.video.bkColor.b < 0) {
+            if (!validateRGBValue(rgbObj.r) || !validateRGBValue(rgbObj.g) || !validateRGBValue(rgbObj.b)) {
+                log.info('Invalid bkColor:', rgbObj);
                 return null;
             }
         } else if (typeof this.mediaMixing.video.bkColor === 'string') {
@@ -355,23 +341,15 @@ module.exports = Room;
 }
 */
 
-function validateRGBValue(rgbValue) {
-    if (rgbValue === undefined || rgbValue === null) {
-        rgbValue = 0;
-    } else if (typeof rgbValue === 'string') {
-        rgbValue = parseInt(rgbValue, 10);
-        if (isNaN(rgbValue) || rgbValue < 0) {
-            return -1;
+function validateRGBValue(val) {
+    if (typeof val === 'number') {
+        // NaN is not less than, equal to, or greater than any other number.
+        if (val >= 0 && val <= 255) {
+            return true;
         }
-    } else if (typeof rgbValue !== 'number') {
-        return -1;
     }
 
-    if (rgbValue > 255) {
-        return -1;
-    }
-
-    return rgbValue;
+    return false;
 }
 
 function generateLectureTemplates (maxInput) {

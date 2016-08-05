@@ -469,10 +469,12 @@ function tableHandlerRoom(rooms) {
         var val = $(each).editable('getValue')[id];
         setVal(videoSetting, id, val);
       });
+
       if ($('#myModal3 tbody td#bkColor input#color').val() !== lastColor) {
         lastColor = $('#myModal3 tbody td#bkColor input#color').val();
-        setVal(videoSetting, "bkColor", changeRGBA2RGB(lastColor));
       }
+      setVal(videoSetting, "bkColor", changeRGBA2RGB(lastColor));
+
       room.mediaMixing = room.mediaMixing || {};
       room.mediaMixing.video = videoSetting;
       p.addClass('editable-unsaved');
@@ -892,9 +894,9 @@ function changeRGBA2RGB(color) {
     color = color.replace(")", "");
     var tmp = color.split(", ");
     color = {
-      r: tmp[1],
-      g: tmp[2],
-      b: tmp[3]
+      r: parseInt(tmp[1]),
+      g: parseInt(tmp[2]),
+      b: parseInt(tmp[3])
     };
   }
   return color;
