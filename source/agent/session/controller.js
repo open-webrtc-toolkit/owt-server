@@ -949,7 +949,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                 streams[stream_id] && (streams[stream_id].audio.subscribers = []);
             }
 
-            if (streams[stream_id].video) {
+            if (streams[stream_id] && streams[stream_id].video) {
                 streams[stream_id].video.subscribers.forEach(function(terminal_id) {
                     for (var subscription_id in terminals[terminal_id].subscribed) {
                         unsubscribeStream(terminal_id, subscription_id);
