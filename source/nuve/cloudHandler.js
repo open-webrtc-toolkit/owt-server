@@ -35,7 +35,7 @@ exports.getUsersInRoom = function (roomId, callback) {
             callback([]);
         } else {
             log.info('getUsersInRoom:', roomId, 'session agent:', r);
-            rpc.callRpc(r, 'querryNode', [roomId], {callback: function(r1) {
+            rpc.callRpc(r, 'queryNode', [roomId], {callback: function(r1) {
                 if (r1 === 'timeout' || r1 === 'error') {
                     callback([]);
                 } else {
@@ -59,7 +59,7 @@ exports.deleteRoom = function (roomId, callback) {
         if (r === 'timeout' || r === 'error') {
             callback('Success');
         } else {
-            rpc.callRpc(r, 'querryNode', [roomId], {callback: function(r1) {
+            rpc.callRpc(r, 'queryNode', [roomId], {callback: function(r1) {
                 if (r1 === 'timeout' || r1 === 'error') {
                     callback([]);
                 } else {
@@ -77,7 +77,7 @@ exports.deleteUser = function (user, roomId, callback) {
         if (r === 'timeout' || r === 'error') {
             callback('Success');
         } else {
-            rpc.callRpc(r, 'querryNode', [roomId], {callback: function(r1) {
+            rpc.callRpc(r, 'queryNode', [roomId], {callback: function(r1) {
                 if (r1 === 'timeout' || r1 === 'error') {
                     callback([]);
                 } else {
