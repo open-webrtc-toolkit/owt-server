@@ -59,6 +59,9 @@ private:
     AVFormatContext* m_context;
     std::string m_recordPath;
     int m_snapshotInterval; // FIXME: snapshot interval for the future usage
+
+    uint32_t m_videoWidth;
+    uint32_t m_videoHeight;
 };
 
 } /* namespace woogeen_base */

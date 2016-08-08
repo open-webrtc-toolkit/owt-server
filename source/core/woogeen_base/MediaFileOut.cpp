@@ -62,6 +62,8 @@ MediaFileOut::MediaFileOut(const std::string& url, const AVOptions* audio, const
     , m_context(nullptr)
     , m_recordPath(url)
     , m_snapshotInterval(snapshotInterval)
+    , m_videoWidth(0)
+    , m_videoHeight(0)
 {
     m_videoQueue.reset(new MediaFrameQueue());
     m_audioQueue.reset(new MediaFrameQueue());
@@ -168,13 +170,20 @@ void MediaFileOut::onFrame(const Frame& frame)
             if (!m_videoStream) {
                 if (frame.additionalInfo.video.width != 0 && frame.additionalInfo.video.height != 0) {
                     addStreamOK = addVideoStream(m_expectedVideo, frame.additionalInfo.video.width, frame.additionalInfo.video.height);
+
+                    m_videoWidth = frame.additionalInfo.video.width;
+                    m_videoHeight = frame.additionalInfo.video.height;
                 } else {
                     return;
                 }
-            } else if (frame.additionalInfo.video.width != m_videoStream->codec->width || frame.additionalInfo.video.height != m_videoStream->codec->height) {
-                ELOG_ERROR("invalid video frame resolution: %dx%d", frame.additionalInfo.video.width, frame.additionalInfo.video.height);
-                notifyAsyncEvent("fatal", "invalid video frame resolution");
-                return close();
+            } else if (frame.additionalInfo.video.width != m_videoWidth || frame.additionalInfo.video.height != m_videoHeight) {
+                ELOG_DEBUG("video resolution changed: %dx%d -> %dx%d"
+                        , m_videoWidth, m_videoHeight
+                        , frame.additionalInfo.video.width, frame.additionalInfo.video.height
+                        );
+
+                m_videoWidth = frame.additionalInfo.video.width;
+                m_videoHeight = frame.additionalInfo.video.height;
             }
 
             if (addStreamOK && m_status == AVStreamOut::Context_READY) {
