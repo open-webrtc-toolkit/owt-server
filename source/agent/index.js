@@ -295,7 +295,7 @@ var api = function (worker) {
             }
         },
 
-        querryNode: function(task, callback) {
+        queryNode: function(task, callback) {
             for (var eid in tasks) {
                 if (tasks[eid][task] !== undefined) {
                     return callback('callback', eid);
