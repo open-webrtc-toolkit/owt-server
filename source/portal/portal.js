@@ -61,7 +61,7 @@ var Portal = function(spec, rpcClient) {
     return permission_map[role] && (permission_map[role]['text'] !== false);
   };
 
-  var constructConnectOptions = function(connectionId, connectionType, description, sessionId) {
+  var constructConnectOptions = function(connectionId, connectionType, direction, description, sessionId) {
     var options = {};
     if (!!description.audio) {
       if (typeof description.audio === 'object' && description.audio.codecs) {
@@ -85,6 +85,10 @@ var Portal = function(spec, rpcClient) {
     if (connectionType === 'avstream' && description.url) {
       var url_obj = url.parse(description.url);
       options.url = url_obj.format();
+      if (direction === 'in') {
+        options.transport = description.transport;
+        options.buffer_size = description.bufferSize;
+      }
     }
 
     if (connectionType === 'recording') {
@@ -286,7 +290,7 @@ var Portal = function(spec, rpcClient) {
       .then(function(accessNode) {
         log.debug('publish::getAccessNode ok, participantId:', participantId, 'connection_id:', connection_id, 'locality:', accessNode);
         locality = accessNode;
-        var connect_options = constructConnectOptions(connection_id, connectionType, streamDescription, participants[participantId].in_session);
+        var connect_options = constructConnectOptions(connection_id, connectionType, 'in', streamDescription, participants[participantId].in_session);
         return rpcClient.publish(locality.node,
                                  connection_id,
                                  connectionType,
@@ -460,7 +464,7 @@ var Portal = function(spec, rpcClient) {
       .then(function(accessNode) {
         log.debug('subscribe::getAccessNode ok, participantId:', participantId, 'connection_id:', connection_id, 'locality:', accessNode);
         locality = accessNode;
-        var connect_options = constructConnectOptions(connection_id, connectionType, subscriptionDescription, participants[participantId].in_session);
+        var connect_options = constructConnectOptions(connection_id, connectionType, 'out', subscriptionDescription, participants[participantId].in_session);
         return rpcClient.subscribe(locality.node,
                                    connection_id,
                                    connectionType,
