@@ -4,9 +4,17 @@ port = 5672 #default: 5672
 
 [manager]
 name = "woogeen-cluster"
+
+#The time for cluster manager getting ready to handle the incoming 'schedule' requirements.
 initial_time = 10000 #ms
+
+#The interval of checking the attendences of all cluster workers.
 check_alive_interval = 1000 #ms
+
+#The threshold count of consecutive absences after which the corresponding cluster workers will be deleted.
 check_alive_count = 10
+
+#The default reservation time if not specified in the scheduling requirement.
 schedule_reserve_time = 60000 #ms
 
 [strategy]
@@ -14,7 +22,7 @@ general = "last-used"
 portal = "last-used"
 session = "last-used"
 webrtc = "last-used"
-rtsp = "round-robin"
+avstream = "round-robin"
 recording = "randomly-pick"
 audio = "most-used"
 video = "least-used"
