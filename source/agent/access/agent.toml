@@ -1,33 +1,39 @@
 [agent]
 #Max processes that agent can run
 maxProcesses = 13 #default: 13
+
 #Number of precesses that agent runs when it starts. 1 <= prerunProcesses <= maxProcesses.
 prerunProcesses = 2 #default: 2
 
 
 [cluster]
-#The name of the cluster to join.
 name = "woogeen-cluster"
-#The number of times to try joining
+
+#The number of times to retry joining if the first try fails.
 join_retry = 5 #default: 5
+
 #The interval of retrying joining.
 join_interval = 3000 #default: 3000, unit: millisecond
-#The interval of retrying recovering the membership to the cluster.
+
+#The interval of retrying recovering the connection to the cluster.
 recover_interval = 1000 #default: 1000, unit: millisecond
+
 #The interval of sending keepAlive messages.
 keep_alive_interval = 1000 #default: 1000, unit: millisecond
+
 #The interval of reporting the work load
 report_load_interval = 1000 #default: 1000, unit: millisecond
+
 #The max work load this worker can take.
 max_load = 0.85 #default: 0.85
+
 #Network max scale to calculate network usage percentage
 network_max_scale = 1000 #unit: Mbps
 
-#The IP for in-cluster media spreading
-#Use "" to automatically get IP from the network-interface configured in 'network_interface'
+#The IP address used for internal-cluster media spreading. Will use the IP got from the 'network_interface' item if 'ip_address' is not specified or equal to "".
 ip_address = "" #default: ""
-#The network-interface you want to use for in-cluster media spreading.
-#Use the first enumerated network-interface in the system if being set to undefined.
+
+#The network interface used for internal-cluster media spreading. The first enumerated network interface in the system will be adopted if this item is not specified.
 # network_interface = "eth0" # default: undefined
 
 
@@ -37,15 +43,15 @@ port = 5672 #default: 5672
 
 #########################################################################################
 [webrtc]
-#The peer-connection used IP for ICE candidates (useful when behind NATs)
-#Use "" to automatically get IP from the network-interface configured in 'network_interface'
+#The IP address used for replacing the internal IP address in locally generated SDP's and ICE candidates during establishing the peer-connection(useful when behind NATs) if it is specified with a non-empty string.
 ip_address = "" #default: ""
-#The network-inferface you want to bind for ICE candidates
-#Use the first enumerated network-interface in the system if being set to undefined.
+
+#The network inferface all peer-connections will be established through. The first enumerated network interface in the system will be adopted if this item is not specified.
 # network_interface = "eth1" # default: undefined
 
 keystorePath = "./cert/certificate.pfx"
 #note, this won't work with all versions of libnice. With 0 all the available ports are used
+
 maxport = 0 #default: 0
 minport = 0 #default: 0
 
