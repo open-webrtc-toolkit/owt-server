@@ -2,9 +2,15 @@ build/
 dist/
 source/etc/
 source/core/sip_gateway
+source/agent/sip/sipIn/third_party/
+source/agent/video/videoMixer_hw/third_party/
+source/agent/video/videoMixer_sw/third_party/
 .DS_Store
 third_party/node-v*
 third_party/libuv*
+third_party/libre-0.4.16/build-x86_64/
+third_party/libre-0.4.16/libre.a
+third_party/libre-0.4.16/libre.so
 doc/webrtc-jsdoc-cosmo/
 doc/*.class
 node_modules
