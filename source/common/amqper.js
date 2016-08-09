@@ -131,7 +131,7 @@ exports.callRpc = function(to, method, args, callbacks) {
 
 var callbackError = function(corrID) {
     for (var i in map[corrID].fn) {
-        map[corrID].fn[i]('timeout');
+        (typeof map[corrID].fn[i] === 'function' ) && map[corrID].fn[i]('timeout');
     }
     delete map[corrID];
 };
