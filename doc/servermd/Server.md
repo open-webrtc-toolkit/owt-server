@@ -84,10 +84,10 @@ If you want to set up video conference service powered by GPU-accelerated MCU se
 Either Professional Edition or Community Edition is applicable. For download or installation instructions, please visit its website at https://software.intel.com/en-us/intel-media-server-studio.
 
  **Table 2-2. Client compatibility**
-Application Name|Google Chrome* 49|Mozilla Firefox* 45|Microsoft Internet Explorer* (IE) 9， 10， 11|Intel CS for WebRTC Client SDK for Android | Intel CS for WebRTC Client SDK for iOS | Intel CS for WebRTC Client SDK for C++
---------|--------|--------|--------|--------|--------|--------
-MCU Client|YES|YES|YES|YES|YES|YES
-Management Console|YES|YES|N/A|N/A|N/A|N/A
+Application Name|Google Chrome* 52|Mozilla Firefox* 47|Intel CS for WebRTC Client SDK for Android | Intel CS for WebRTC Client SDK for iOS | Intel CS for WebRTC Client SDK for Windows
+--------|--------|--------|--------|--------|--------
+MCU Client|YES|YES|YES|YES|YES
+Management Console|YES|YES|N/A|N/A|N/A
 
 ## 2.3 Install the MCU server {#Conferencesection2_3}
 This section describes the dependencies and steps for installing the MCU.
@@ -204,8 +204,7 @@ To launch the MCU server on one machine, follow steps below:
     If you want to enable GPU-acceleration, use following command:
 
         bin/init-all.sh [--deps] --hardware
-
-> **Note**: If you have already installed the required system libraries, then --deps is not required.
+   > **Note**: If you have already installed the required system libraries, then --deps is not required.
 
 2. Run the following commands to start the MCU:
 
@@ -227,7 +226,7 @@ Run the following commands to stop the MCU:
 Component Name|Deployment Number|Responsibility
 --------|--------|--------
 nuve|1|The manager of the MCU, keeping the configurations of all rooms, generating and verifying the tokens
-cluster_manager|1|The manager of all active workers in the cluster, checking their lives, scheduling workers with the specified purposes according to the configured policies
+cluster-manager|1|The manager of all active workers in the cluster, checking their lives, scheduling workers with the specified purposes according to the configured policies
 portal|1 or many|The signaling server and room controller, handling service requests from and responding to the clients
 webrtc-agent|1 or many|This agent spawning webrtc accessing nodes which establish peer-connections with webrtc clients, receive media streams from and send media streams to webrtc clients
 rtsp-agent|0 or many|This agent spawning rtsp accessing nodes which pull rtsp streams from rtsp sources and push rtsp streams to rtsp destinations
@@ -244,6 +243,8 @@ Follow the steps below to set up an MCU cluster:
 3. Edit the configuration items of nuve in Release-<Version>/nuve/nuve.toml.
 
     - Make sure the rabbit.port and rabbit.host point to the RabbitMQ server.
+   > **Note**: Now a default RabbitMQ server will be deployed along with nuve, but you can customized the scripts to utilize any existing RabbitMQ server. RabbitMQ service should be started prior to all MCU cluster nodes.
+
 4. Initialize and run MCU manager nuve and the sample application on the primary machine.
 
     1) Initialize MCU manager nuve for the first time execution:
@@ -251,23 +252,23 @@ Follow the steps below to set up an MCU cluster:
         cd Release-<Version>/
         nuve/init.sh --deps
 
-    2) Initialize sample application for the first time execution following instructions at Release-<Version>/extras/basic_example/README.md.
-
-    3) Run MCU manager nuve and the sample application with following commands:
+    2) Run MCU manager nuve and the sample application with following commands:
 
         cd Release-<Version>/
         bin/daemon.sh start nuve
         bin/daemon.sh start app
 
-5. Choose a machine to run cluster_manager. This machine need not to be visible to clients, but must be visible to nuve and all workers.
-6. Edit the configurations of cluster_manager in Release-<Version>/cluster_manager/cluster_manager.toml.
+> **Note**: You can also deploy the sample application server on separated machine, follow instructions at Release-<Version>/extras/basic_example/README.md
+
+5. Choose a machine to run cluster-manager. This machine need not to be visible to clients, but must be visible to nuve and all workers.
+6. Edit the configurations of cluster-manager in Release-<Version>/cluster_manager/cluster_manager.toml.
 
     - Make sure the rabbit.port and rabbit.host point to the RabbitMQ server.
 
-7. Run the cluster_manager with following commands:
+7. Run the cluster-manager with following commands:
 
         cd Release-<Version>/
-        bin/daemon.sh start cluster_manager
+        bin/daemon.sh start cluster-manager
 
 8. Choose worker machines to run portals. These machines must be visible to clients.
 9. Edit the configuration items of portals in Release-<Version>/controller/controller.toml.
@@ -371,7 +372,7 @@ To stop the MCU cluster, follow these steps:
 2. Run the following commands on cluster manager machine to stop the cluster manager:
 
         cd Release-<Version>/
-        bin/daemon.sh stop cluster_manager
+        bin/daemon.sh stop cluster-manager
 
 3. Run the following commands on worker machines to stop cluster workers:
 
@@ -547,7 +548,7 @@ Make the "Enable SIP" option checked and input the "SIP server", "User Name", "P
 After the SIP settings has been done,  click the "Apply" button at the right side of the Room row to let it take effect. If the "Update Room Success" message shows up and the SIP information is set correctly, then SIP clients should be able to join this room via the SIP server that setted. More information about SIP support of MCU can be found in section [SIP connectivity for MCU](#Conferencesection6).
 
 ## 3.6 Cluster Worker Scheduling Policy Introduction {#Conferencesection3_6}
-All workers including portals, webrtc-agents, rtsp-agents, recording-agents, audio-agents, video-agents in the cluster are scheduled by the cluster_manager with respect to the configured scheduling strategies in cluster_manager/cluster_manager.toml.  For example, the configuration item "portal = last-used" means the scheduling policy of workers with purposes of "portal" are set to "last-used". The following built-in scheduling strategies are provided:
+All workers including portals, webrtc-agents, rtsp-agents, recording-agents, audio-agents, video-agents in the cluster are scheduled by the cluster-manager with respect to the configured scheduling strategies in cluster_manager/cluster_manager.toml.  For example, the configuration item "portal = last-used" means the scheduling policy of workers with purposes of "portal" are set to "last-used". The following built-in scheduling strategies are provided:
 1. last-used: If more than 1 worker with the specified purpose are alive and available, the last used one will be scheduled.
 2. least-used: If more than 1 worker with the specified purpose are alive and available, the one with the least work-load will be scheduled.
 3. most-used: If more than 1 worker with the specified purpose are alive and available, the one with the heavist work-load will be scheduled.
