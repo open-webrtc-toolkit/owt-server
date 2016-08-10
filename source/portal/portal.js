@@ -250,23 +250,30 @@ var Portal = function(spec, rpcClient) {
       return rpcClient.pub2Session(participant.controller, participantId, stream_id, locality, stream_description, notMix)
         .then(function(result) {
           log.debug('pub2Session ok, participantId:', participantId, 'connection_id:', connection_id);
-          var p = participants[participantId];
-          if (p === undefined) {
+          var participant = participants[participantId];
+          if (participant === undefined) {
             rpcClient.unpub2Session(participant.controller, participantId, stream_id);
             return Promise.reject('Participant ' + participantId + ' has left when controller responds publish ok.');
-          } else if (p.connections[stream_id] === undefined) {
+          } else if (participant.connections[stream_id] === undefined) {
             rpcClient.unpub2Session(participant.controller, participantId, stream_id);
             return Promise.reject('Connection ' + stream_id + ' has been released when controller responds publish ok.');
           }
 
-          p.connections[stream_id].state = 'connected';
+          participant.connections[stream_id].state = 'connected';
           return result;
         }).catch(function(err) {
           log.debug('pub2Session failed, participantId:', participantId, 'connection_id:', connection_id, 'err:', err);
-          rpcClient.unpublish(locality.node, connection_id);
-          rpcClient.recycleAccessNode(locality.agent, locality.node, {session: participants[participantId].in_session, consumer: connection_id});
+          var participant = participants[participantId];
+          if (participant) {
+            var connection = participant.connections[connection_id];
+            if (connection) {
+              (connection.state) === 'connected' && rpcClient.unpub2Session(p.controller, participantId, stream_id);
+              rpcClient.unpublish(connection.locality.node, connection_id);
+              rpcClient.recycleAccessNode(connection.locality.agent, connection.locality.node, {session: participant.in_session, consumer: connection_id});
+            }
+            delete participant.connections[connection_id];
+          }
           onConnectionStatus({type: 'failed', reason: err.message});
-          participants[participantId] && (delete participants[participantId].connections[connection_id]);
           return Promise.reject(err);
         });
     };
@@ -424,23 +431,30 @@ var Portal = function(spec, rpcClient) {
       return rpcClient.sub2Session(participant.controller, participantId, connection_id, locality, subscription_description)
         .then(function(result) {
           log.debug('sub2Session ok, participantId:', participantId, 'connection_id:', connection_id);
-          var p = participants[participantId];
-          if (p === undefined) {
+          var participant = participants[participantId];
+          if (participant === undefined) {
             rpcClient.unsub2Session(participant.controller, participantId, connection_id);
             return Promise.reject('Participant ' + participantId + ' has left when controller responds subscribe ok.');
-          } else if (p.connections[connection_id] === undefined) {
+          } else if (participant.connections[connection_id] === undefined) {
             rpcClient.unsub2Session(participant.controller, participantId, connection_id);
             return Promise.reject('Connection ' + connection_id + ' has been released when controller responds subscribe ok.');
           }
 
-          p.connections[connection_id].state = 'connected';
+          participant.connections[connection_id].state = 'connected';
           return result;
         }).catch(function(err) {
           log.debug('sub2Session failed, participantId:', participantId, 'connection_id:', connection_id, 'err:', err);
-          rpcClient.unsubscribe(locality.node, connection_id);
-          rpcClient.recycleAccessNode(locality.agent, locality.node, {session: participants[participantId].in_session, consumer: connection_id});
+          var participant = participants[participantId];
+          if (participant) {
+            var connection = participant.connections[connection_id];
+            if (connection) {
+              (connection.state) === 'connected' && rpcClient.unsub2Session(participant.controller, participantId, connection_id);
+              rpcClient.unsubscribe(connection.locality.node, connection_id);
+              rpcClient.recycleAccessNode(connection.locality.agent, connection.locality.node, {session: participant.in_session, consumer: connection_id});
+            }
+            delete participant.connections[connection_id];
+          }
           onConnectionStatus({type: 'failed', reason: err.message});
-          participants[participantId] && (delete participants[participantId].connections[connection_id]);
           return Promise.reject(err);
         });
     };
