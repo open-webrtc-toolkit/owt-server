@@ -109,7 +109,7 @@ private:
     boost::scoped_ptr<webrtc::ViEReceiver> m_videoReceiver;
     boost::scoped_ptr<webrtc::RtpRtcp> m_rtpRtcp;
     boost::scoped_ptr<webrtc::ViESyncModule> m_avSync;
-    boost::shared_ptr<webrtc::Transport> m_videoTransport;
+    boost::shared_ptr<WebRTCTransport<erizo::VIDEO>> m_videoTransport;
 
     boost::scoped_ptr<DebugRecorder> m_recorder;
     boost::shared_ptr<WebRTCTaskRunner> m_taskRunner;

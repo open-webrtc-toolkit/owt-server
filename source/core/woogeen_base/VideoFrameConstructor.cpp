@@ -38,6 +38,7 @@ VideoFrameConstructor::VideoFrameConstructor(erizo::FeedbackSink* feedback)
     , m_vcm(nullptr)
 {
     m_videoTransport.reset(new WebRTCTransport<erizo::VIDEO>(nullptr, feedback));
+    sinkfbSource_ = m_videoTransport.get();
     m_taskRunner.reset(new woogeen_base::WebRTCTaskRunner());
     m_taskRunner->Start();
     init();
