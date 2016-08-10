@@ -417,10 +417,10 @@ function tableHandlerRoom(rooms) {
           <td colspan="2">resolution</td>\
           <td id="resolution" class="value-num-edit" data-value={{resolution}}></td>\
         </tr>\
-        <tr>\
+        <!--<tr>\
           <td colspan="2">bitrate(Kbit)</td>\
           <td id="bitrate" class="value-num-edit" data-value={{bitrate}}></td>\
-        </tr>\
+        </tr>-->\
         <tr>\
           <td colspan="2">bkColor</td>\
           <td id="bkColor" class="value-num-edit" data-value={{bkColor}}><input id="color" style="border: 0px; outline: 0px;"></td>\
@@ -504,7 +504,7 @@ function tableHandlerRoom(rooms) {
         };
       })
     });
-    $('#myModal3 tbody td#bitrate').editable(numberHandle);
+    //$('#myModal3 tbody td#bitrate').editable(numberHandle);
     //$('#myModal3 tbody td#maxInput').editable(numberHandle);
     $('#myModal3 tbody td#maxInput').editable({
       mode: 'inline',
@@ -551,7 +551,7 @@ function tableHandlerRoom(rooms) {
 
   var disabledMixing = function() {
     $('#myModal3 tbody td#resolution').editable(disabledHandle);
-    $('#myModal3 tbody td#bitrate').editable(disabledHandle);
+    // $('#myModal3 tbody td#bitrate').editable(disabledHandle);
     $('#myModal3 tbody td#maxInput').editable(disabledHandle);
     $('#myModal3 tbody td#bkColor').editable(disabledHandle);
     $('#myModal3 tbody td#avCoordinated').editable(disabledHandle);

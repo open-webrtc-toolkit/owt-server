@@ -440,14 +440,19 @@ module.exports = function (amqper, selfRpcId) {
     }
     callback('callback', result);
   };
-  
+
   that.deleteUser = function(user, callback) {
+    var deleteNum = 0;
     for (var participant_id in participants) {
       if (participants[participant_id].name === user) {
         rpcClient.dropUser(participants[participant_id].portal, participant_id, session_id);
+        this.leave(participant_id, function(){});
+
+        deleteNum += 1;
       };
     }
-    callback('callback', 'Success');
+
+    callback('callback', deleteNum);
   };
 
   that.destroy = function(callback) {
