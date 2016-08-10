@@ -245,7 +245,7 @@ recording-agent|0 or many|This agent spawning recording nodes which record the s
 audio-agent|1 or many|This agent spawning audio processing nodes which perform audio transcoding and mixing
 video-agent|1 or many|This agent spawning video processing nodes which perform video transcoding and mixing
 sip-agent|0 or many|This agent spawning sip processing nodes which handle sip connections
-sip-portal|0 or 1|The portal for initializing rooms' sip settings and sheduling sip agents to serve for them
+sip-portal|0 or 1|The portal for initializing rooms' sip settings and scheduling sip agents to serve for them
 app|0 or 1|The sample web application for reference, users should use their own application server
 
 Follow the steps below to set up an MCU cluster:
@@ -293,13 +293,13 @@ Follow the steps below to set up an MCU cluster:
 
 11. Choose worker machine to run session-agent and/or webrtc-agent and/or avstream-agent and/or recording-agent and/or audio-agent and/or video-agents and/or sip-agent. This machine must be visible to other agent machines. If webrtc-agent or sip-agent is running on it, it must be visible to clients.
 
-    - If you want to use Intel<sup>®</sup> Visual Compute Accelerator (VCA) to run video agents, please follow section [Configure VCA nodes](#Conferencesection2_3_10) to enable nodes of Intel VCA as a visible seperated machines.
+    - If you want to use Intel<sup>®</sup> Visual Compute Accelerator (VCA) to run video agents, please follow section [Configure VCA nodes](#Conferencesection2_3_10) to enable nodes of Intel VCA as a visible seperated machine.
 
 12. Edit the configuration items in Release-<Version>/{audio,video,session,recording,avstream,sip}_agent/agent.toml.
 
     - Make sure the rabbit.port and rabbit.host point to the RabbitMQ server.
 
-13. Initialze and run agent worker.
+13. Initialize and run agent worker.
 
     1) Initialize agent workers for the first time execution if necessary
 
@@ -563,7 +563,7 @@ Make the "Enable SIP" option checked and input the "SIP server", "User Name", "P
         User Name: The user name registered in the above SIP server.
         Password: The user's password.
 
-After the SIP settings has been done,  click the "Apply" button at the right side of the Room row to let it take effect. If the "Update Room Success" message shows up and the SIP related information is correct, then SIP clients should be able to join this room via the registered SIP server.
+After the SIP settings has been done, click the "Apply" button at the right side of the Room row to let it take effect. If the "Update Room Success" message shows up and the SIP related information is correct, then SIP clients should be able to join this room via the registered SIP server.
 
 ## 3.6 Cluster Worker Scheduling Policy Introduction {#Conferencesection3_6}
 All workers including portals, session-agents, webrtc-agents, avstream-agents, recording-agents, audio-agents, video-agents, sip-agents in the cluster are scheduled by the cluster-manager with respect to the configured scheduling strategies in cluster_manager/cluster_manager.toml.  For example, the configuration item "portal = last-used" means the scheduling policy of workers with purposes of "portal" are set to "last-used". The following built-in scheduling strategies are provided:
