@@ -162,7 +162,7 @@ On the server machine, directly un-archive the package file.
 ~~~~~~
 
 ### 2.3.4 Deploy Cisco OpenH264* Library {#Conferencesection2_3_4}
-The default H.264 library installed is a pseudo one without any media logic. To enable H.264 support in non GPU-accelerated MCU system, the deployment of Cisco OpenH264 library is required, follow these steps:
+The default H.264 library installed is a pseudo one without any media logic. To enable H.264 support in non GPU-accelerated MCU system, the deployment of Cisco OpenH264 library is required. Follow these steps:
 1. Go to Release-<Version>/video_agent folder, download specific OpenH264 library version with below command:
 
         download_openh264.sh
