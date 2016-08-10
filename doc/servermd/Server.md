@@ -661,7 +661,7 @@ Name | Version | Remarks
 Node.js | 4.* | Website: http://nodejs.org/
 Node modules | Specified | N/A
 
-Regarding Node.js*, make sure it's installed in your system prior to installing the Peer Server. We recommend version 4.1.2. Refer to http://nodejs.org/ for installation details.
+Regarding Node.js*, make sure it's installed in your system prior to installing the Peer Server. We recommend version 4.2.3. Refer to http://nodejs.org/ for installation details.
 ## 5.3 Installation {#Conferencesection5_3}
 On the server machine, unpack the peer server release package, and install node modules
 
