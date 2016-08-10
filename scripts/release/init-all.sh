@@ -18,10 +18,10 @@ init_software()
     ${ROOT}/nuve/init.sh --deps
     ${ROOT}/access_agent/install_deps.sh
     ${ROOT}/video_agent/install_deps.sh
-    ${ROOT}/video_agent/init.sh --openh264
+    ${ROOT}/video_agent/init.sh
   else
     ${ROOT}/nuve/init.sh
-    ${ROOT}/video_agent/init.sh --openh264
+    ${ROOT}/video_agent/init.sh
   fi
 }
 

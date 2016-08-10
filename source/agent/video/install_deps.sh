@@ -32,21 +32,6 @@ usage() {
   echo
 }
 
-
-install_openh264(){
-  echo "Install OpenH264"
-  cd ${this}/lib
-  wget -c http://ciscobinary.openh264.org/libopenh264-1.4.0-linux64.so.bz2
-  bzip2 -d libopenh264-1.4.0-linux64.so.bz2
-  mv libopenh264-1.4.0-linux64.so libopenh264.so
-  local symbol=$(readelf -d ./libopenh264.so | grep soname | sed 's/.*\[\(.*\)\]/\1/g')
-  if [ -f "$symbol" ]; then
-    rm -f $symbol
-  fi
-  ln -s libopenh264.so ${symbol}
-  cd ${this}
-}
-
 enable_intel_gpu_top() {
   echo "Enable Intel GPU Top"
   # make intel-gpu-tools accessable by non-root users.
@@ -114,7 +99,5 @@ install_deps
 
 if ${HARDWARE_DEPS} ; then
   enable_intel_gpu_top
-else
-  install_openh264
 fi
 
