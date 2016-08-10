@@ -78,7 +78,7 @@ If you want to set up video conference service with H.264 codec support powered 
 
 If you want to set up video conference service powered by GPU-accelerated MCU server, the following server side SDK needs to be installed on CentOS* 7.1 where video-agents run on:
 
- - Intel<sup>®</sup> Media Server Studio for Linux* version 2015 R6
+ - Intel<sup>®</sup> Media Server Studio for Linux* 2016 R1
 
 Either Professional Edition or Community Edition is applicable. For download or installation instructions, please visit its website at https://software.intel.com/en-us/intel-media-server-studio.
 
@@ -565,7 +565,7 @@ Make the "Enable SIP" option checked and input the "SIP server", "User Name", "P
         User Name: The user name registered in the above SIP server.
         Password: The user's password.
 
-After the SIP settings has been done,  click the "Apply" button at the right side of the Room row to let it take effect. If the "Update Room Success" message shows up and the SIP related information is correct, then SIP clients should be able to join this room via the registered SIP server. More information about SIP support of MCU can be found in section [SIP connectivity for MCU](#Conferencesection6).
+After the SIP settings has been done,  click the "Apply" button at the right side of the Room row to let it take effect. If the "Update Room Success" message shows up and the SIP related information is correct, then SIP clients should be able to join this room via the registered SIP server.
 
 ## 3.6 Cluster Worker Scheduling Policy Introduction {#Conferencesection3_6}
 All workers including portals, session-agents, webrtc-agents, avstream-agents, recording-agents, audio-agents, video-agents, sip-agents in the cluster are scheduled by the cluster-manager with respect to the configured scheduling strategies in cluster_manager/cluster_manager.toml.  For example, the configuration item "portal = last-used" means the scheduling policy of workers with purposes of "portal" are set to "last-used". The following built-in scheduling strategies are provided:
