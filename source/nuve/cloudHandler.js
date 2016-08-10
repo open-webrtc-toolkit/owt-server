@@ -57,7 +57,7 @@ exports.getUsersInRoom = function (roomId, callback) {
 exports.deleteRoom = function (roomId, callback) {
     rpc.callRpc(cluster_name, 'getScheduled', ['session', roomId], {callback: function (r) {
         if (r === 'timeout' || r === 'error') {
-            callback('Success');
+            callback([]);
         } else {
             rpc.callRpc(r, 'queryNode', [roomId], {callback: function(r1) {
                 if (r1 === 'timeout' || r1 === 'error') {
@@ -75,7 +75,7 @@ exports.deleteRoom = function (roomId, callback) {
 exports.deleteUser = function (user, roomId, callback) {
     rpc.callRpc(cluster_name, 'getScheduled', ['session', roomId], {callback: function (r) {
         if (r === 'timeout' || r === 'error') {
-            callback('Success');
+            callback([]);
         } else {
             rpc.callRpc(r, 'queryNode', [roomId], {callback: function(r1) {
                 if (r1 === 'timeout' || r1 === 'error') {
