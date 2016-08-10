@@ -27,7 +27,7 @@ var RpcClient = function(rpcChannel) {
   };
 
   that.dropUser = function(portal, participantId, sessionId) {
-    return rpcChannel.makeRPC(portal, 'drop', participantId, sessionId);
+    return rpcChannel.makeRPC(portal, 'drop', [participantId, sessionId]);
   }
 
   return that;
