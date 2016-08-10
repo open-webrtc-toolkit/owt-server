@@ -28,7 +28,7 @@
 namespace woogeen_base {
 
 template<erizo::DataType dataType>
-class WebRTCTransport : public webrtc::Transport {
+class WebRTCTransport : public webrtc::Transport, public erizo::FeedbackSource {
 public:
     WebRTCTransport(erizo::RTPDataReceiver*, erizo::FeedbackSink*);
     virtual ~WebRTCTransport();
@@ -37,18 +37,16 @@ public:
     virtual int SendRTCPPacket(int channel, const void* data, size_t len);
 
     void setRTPReceiver(erizo::RTPDataReceiver*);
-    void setFeedbackSink(erizo::FeedbackSink*);
 
 private:
     erizo::RTPDataReceiver* m_rtpReceiver;
-    erizo::FeedbackSink* m_feedbackSink;
 };
 
 template<erizo::DataType dataType>
 WebRTCTransport<dataType>::WebRTCTransport(erizo::RTPDataReceiver* rtpReceiver, erizo::FeedbackSink* feedbackSink)
     : m_rtpReceiver(rtpReceiver)
-    , m_feedbackSink(feedbackSink)
 {
+    fbSink_ = feedbackSink;
 }
 
 template<erizo::DataType dataType>
@@ -60,12 +58,6 @@ template<erizo::DataType dataType>
 inline void WebRTCTransport<dataType>::setRTPReceiver(erizo::RTPDataReceiver* rtpReceiver)
 {
     m_rtpReceiver = rtpReceiver;
-}
-
-template<erizo::DataType dataType>
-inline void WebRTCTransport<dataType>::setFeedbackSink(erizo::FeedbackSink* feedbackSink)
-{
-    m_feedbackSink = feedbackSink;
 }
 
 template<erizo::DataType dataType>
@@ -95,7 +87,7 @@ inline int WebRTCTransport<dataType>::SendRTCPPacket(int channel, const void* da
         return ret;
     }
 
-    return m_feedbackSink ? m_feedbackSink->deliverFeedback(reinterpret_cast<char*>(const_cast<void*>(data)), len) : 0;
+    return fbSink_ ? fbSink_->deliverFeedback(reinterpret_cast<char*>(const_cast<void*>(data)), len) : 0;
 }
 
 }
