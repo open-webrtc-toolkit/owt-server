@@ -74,14 +74,15 @@ MCU server|CentOS* 7.1
 
 The evaluation version of MCU server is also provided for Ubuntu 14.04 LTS* 64-bit.
 
-H.264 support in MCU system requires the deployment of OpenH264 library, see [Deploy Cisco OpenH264* Library section](#Conferencesection2_3_4) for more details.
+If you want to set up video conference service with H.264 codec support powered by non GPU-accelerated MCU server, OpenH264 library is required. See [Deploy Cisco OpenH264* Library](#Conferencesection2_3_4) section for more details.
 
-> **Note**: OpenH264 library is not required for GPU-accelerated MCU when forward RTSP stream subscription is not used.
 If you want to set up video conference service powered by GPU-accelerated MCU server, the following server side SDK needs to be installed on CentOS* 7.1 where video-agents run on:
 
  - Intel<sup>®</sup> Media Server Studio for Linux* version 2015 R6
 
 Either Professional Edition or Community Edition is applicable. For download or installation instructions, please visit its website at https://software.intel.com/en-us/intel-media-server-studio.
+
+The external stream output (rtsp/rtmp) feature relies on AAC encoder libfdk_aac support in ffmpeg library, please see [Compile and deploy ffmpeg with libfdk_aac](#Conferencesection2_3_5) section for detailed instrunctions.
 
  **Table 2-2. Client compatibility**
 Application Name|Google Chrome* 52|Mozilla Firefox* 47|Intel CS for WebRTC Client SDK for Android | Intel CS for WebRTC Client SDK for iOS | Intel CS for WebRTC Client SDK for Windows
@@ -161,22 +162,30 @@ On the server machine, directly un-archive the package file.
 ~~~~~~
 
 ### 2.3.4 Deploy Cisco OpenH264* Library {#Conferencesection2_3_4}
-The default H.264 library installed is a pseudo one without any media logic. To enable H.264 support in non GPU-accelerated MCU system, the deployment of Cisco OpenH264 library is required; follow these steps:
-1. Go to the following URL and get the binary package: http://ciscobinary.openh264.org/libopenh264-1.4.0-linux64.so.bz2.
+The default H.264 library installed is a pseudo one without any media logic. To enable H.264 support in non GPU-accelerated MCU system, the deployment of Cisco OpenH264 library is required, follow these steps:
+1. Go to Release-<Version>/video_agent folder, download specific OpenH264 library version with below command:
 
-        curl –O http://ciscobinary.openh264.org/libopenh264-1.4.0-linux64.so.bz2
+        download_openh264.sh
 
-2. Unzip this package with following command:
+2. Copy the downloaded lib file libopenh264-1.4.0-linux64.so to Release-<Version>/video_agent/lib folder, and rename it to libopenh264.so.0 to replace the existing pseudo one.
 
-        bzip2 -d libopenh264-1.4.0-linux64.so.bz2
+3. Edit Release-<Version>/video_agent/agent.toml file, set the value of key openh264Enbaled to true.
 
-3. Copy the lib file libopenh264-1.4.0-linux64.so to Release-<Version>/video_agent/lib folder, and rename it to libopenh264.so.0 to replace the existing pseudo one, or run the following commands in folder Release-<Version> to download and replace the lib:
+### 2.3.5 Compile and deploy ffmpeg with libfdk_aac {#Conferencesection2_3_5}
 
-        video_agent/install_deps.sh --openh264
+The default ffmpeg library used by MCU server has no libfdk_aac support. If you want to enable libfdk_aac for external stream output, please compile and deploy ffmpeg yourself with following steps:
 
-4. Edit video_agent/agent.toml file under Release-<Version> folder, set the value of key openh264Enbaled to true.
+   > **Note**: The libfdk_aac is designated as "non-free", please make sure you have got proper authority before using it.
 
-### 2.3.5 Use your own certificate {#Conferencesection2_3_5}
+1. Go to Release-<Version>/access_agent folder, compile ffmpeg with libfdk_acc with below command:
+
+        compile_ffmpeg_with_libfdkaac.sh
+
+> **Note**: This compiling script need install all dependencies for ffmpeg with libfdk_aac. If that's not expected on deployment machines, please run it on other proper machine.
+
+2. Copy all output libraries under ffmpeg_libfdkaac_lib folder to Release-<Version>/access_agent/lib to replace the exsiting ones.
+
+### 2.3.6 Use your own certificate {#Conferencesection2_3_6}
 
 The default certificate (certificate.pfx) for the MCU is located in each component in Release-<Version> folder.
 When using HTTPS and/or secure socket.io connection, you should use your own certificate for each server. First you should edit nuve/nuve.toml, access_agent/agent.toml, portal/portal.toml to provide the path of each certificate for each server, under the key keystorePath. See below table for details.
@@ -194,7 +203,7 @@ After editing the configuration file, you should run `./initcert.js` inside each
 
 For MCU sample application's certificate configuration, please follow the instruction file 'README.md' located at Release-<Version>/extras/basic_example/.
 
-### 2.3.6 Launch the MCU server as single node {#Conferencesection2_3_6}
+### 2.3.7 Launch the MCU server as single node {#Conferencesection2_3_7}
 To launch the MCU server on one machine, follow steps below:
 
 1. Initialize the MCU package for the first time execution.
@@ -207,10 +216,6 @@ To launch the MCU server on one machine, follow steps below:
 
         bin/init-all.sh [--deps] --hardware
 
-    If you want to use ExternalOutput (RTMP/RTSP stream) features, you should compile ffmpeg with libfdk_aac in addition. You can follow section [Enable External output features for MCU](#Conferencesection2_3_11) for detail steps.
-
-    If you want to use SIP features in software mode, you need to install the openh264 library and follow section [Deploy Cisco OpenH264* Library](#Conferencesection2_3_4) for details.
-
    > **Note**: If you have already installed the required system libraries, then --deps is not required.
 
 2. Run the following commands to start the MCU:
@@ -222,19 +227,19 @@ To launch the MCU server on one machine, follow steps below:
 
 > **Note**: The procedures in this guide use the default room in the sample.
 
-### 2.3.7 Stop the MCU server {#Conferencesection2_3_7}
+### 2.3.8 Stop the MCU server {#Conferencesection2_3_8}
 Run the following commands to stop the MCU:
 
     cd Release-<Version>/
     bin/stop-all.sh
 
-### 2.3.8 Set up the MCU cluster {#Conferencesection2_3_8}
+### 2.3.9 Set up the MCU cluster {#Conferencesection2_3_9}
  **Table 2-5. Distributed MCU components**
 Component Name|Deployment Number|Responsibility
 --------|--------|--------
 nuve|1|The manager of the MCU, keeping the configurations of all rooms, generating and verifying the tokens
 cluster-manager|1|The manager of all active workers in the cluster, checking their lives, scheduling workers with the specified purposes according to the configured policies
-portal|1|The signaling server, handling service requests from and responding to the clients
+portal|1 or many|The signaling server, handling service requests from Socket.IO clients
 session-agent|1 or many|This agent handles room controller logics
 webrtc-agent|1 or many|This agent spawning webrtc accessing nodes which establish peer-connections with webrtc clients, receive media streams from and send media streams to webrtc clients
 avstream-agent|0 or many|This agent spawning avstream accessing nodes which pull external streams from sources and push streams to rtmp/rtsp destinations
@@ -242,7 +247,7 @@ recording-agent|0 or many|This agent spawning recording nodes which record the s
 audio-agent|1 or many|This agent spawning audio processing nodes which perform audio transcoding and mixing
 video-agent|1 or many|This agent spawning video processing nodes which perform video transcoding and mixing
 sip-agent|0 or many|This agent spawning sip processing nodes which handle sip connections
-sip-portal|0 or 1|The portal for dealing with sip settings and controlling sip agents
+sip-portal|0 or 1|The portal for initializing rooms' sip settings and sheduling sip agents to serve for them
 app|0 or 1|The sample web application for reference, users should use their own application server
 
 Follow the steps below to set up an MCU cluster:
@@ -251,7 +256,7 @@ Follow the steps below to set up an MCU cluster:
 3. Edit the configuration items of nuve in Release-<Version>/nuve/nuve.toml.
 
     - Make sure the rabbit.port and rabbit.host point to the RabbitMQ server.
-   > **Note**: Now a default RabbitMQ server will be deployed along with nuve, but you can customized the scripts to utilize any existing RabbitMQ server. RabbitMQ service should be started prior to all MCU cluster nodes.
+   > **Note**: Now a default RabbitMQ server will be deployed along with nuve in scripts, but you can choose any other existing RabbitMQ server. Make sure RabbitMQ service is started prior to all MCU cluster nodes.
 
 4. Initialize and run MCU manager nuve and the sample application on the primary machine.
 
@@ -265,10 +270,9 @@ Follow the steps below to set up an MCU cluster:
         cd Release-<Version>/
         bin/daemon.sh start nuve
         bin/daemon.sh start app
+   > **Note**: You can also deploy the sample application server on separated machine, follow instructions at Release-<Version>/extras/basic_example/README.md
 
-> **Note**: You can also deploy the sample application server on separated machine, follow instructions at Release-<Version>/extras/basic_example/README.md
-
-5. Choose a machine to run cluster-manager. This machine need not to be visible to clients, but must be visible to nuve and all workers.
+5. Choose a machine to run cluster-manager. This machine does not need to be visible to clients, but should be visible to nuve and all workers.
 6. Edit the configurations of cluster-manager in Release-<Version>/cluster_manager/cluster_manager.toml.
 
     - Make sure the rabbit.port and rabbit.host point to the RabbitMQ server.
@@ -279,27 +283,32 @@ Follow the steps below to set up an MCU cluster:
         bin/daemon.sh start cluster-manager
 
 8. Choose worker machines to run portals. These machines must be visible to clients.
-9. Edit the configuration items of portals in Release-<Version>/portal/portal.toml.
-    + Make sure the rabbit.port and rabbit.host point to the RabbitMQ
-    + Make sure the portal.networkInterface is specified to the correct network interface which the clients’ signaling and control messages are expected to connect through.
-    + The [portal.roles.*] section defines user-roles' permission in rooms and the [portal.roles.*.subscribe/publish] section defines attributes of actions of specific roles. 
+9. Edit the configuration items of portal in Release-<Version>/portal/portal.toml.
+    - Make sure the rabbit.port and rabbit.host point to the RabbitMQ server
+    - Make sure the portal.networkInterface points to the correct network interface which the clients’ signaling and control messages are expected to connect through.
+    - The [portal.roles.<role>] section defines the authorized action list for specific role and the [portal.roles.<role>.<action>] section defines the action attributes for this role.
 
-10. Choose worker machine to run session-agent and/or webrtc-agent and/or avstream-agent and/or recording-agent and/or audio-agent and/or video-agents. This machine must be visible to each other, and if webrtc-agent is running on it, it must be visible to other client.
+10. Run the portal on each machine with following commands:
 
-    - If you want to use Intel<sup>®</sup> Visual Compute Accelerator (VCA) to run video agents, please follow section [Configure VCA nodes](#Conferencesection2_3_9) to enable nodes of Intel VCA as a visible seperated machines.
+        cd Release-<Version>/
+        bin/daemon.sh start portal
 
-11. Edit the configuration items in Release-<Version>/{audio,video,access,session,recording,avstream,sip}_agent/agent.toml.
+11. Choose worker machine to run session-agent and/or webrtc-agent and/or avstream-agent and/or recording-agent and/or audio-agent and/or video-agents and/or sip-agent. This machine must be visible to other agent machines. If webrtc-agent or sip-agent is running on it, it must be visible to clients.
+
+    - If you want to use Intel<sup>®</sup> Visual Compute Accelerator (VCA) to run video agents, please follow section [Configure VCA nodes](#Conferencesection2_3_10) to enable nodes of Intel VCA as a visible seperated machines.
+
+12. Edit the configuration items in Release-<Version>/{audio,video,session,recording,avstream,sip}_agent/agent.toml.
 
     - Make sure the rabbit.port and rabbit.host point to the RabbitMQ server.
 
-12. Do initialization if you choose video or access agent.
+13. Initialze and run agent worker.
+
+    1) Initialize agent workers for the first time execution if necessary
 
        For access agent, follow these steps:
 
            cd Release-<Version>/
            access_agent/install_deps.sh
-
-       If you want to use ExternalOutput (RTMP/RTSP stream) features, you should compile ffmpeg with libfdk_aac in addition. You can follow section [Enable External output  features for MCU](#Conferencesection2_3_11) for detail steps.
 
        For general video agent, follow these steps:
 
@@ -313,22 +322,19 @@ Follow the steps below to set up an MCU cluster:
            video_agent/install_deps.sh --hardware
            video_agent/init.sh --hardware
 
-       If you want to start sip-agent in software mode, you need to install the openh264 library for video-agent. Follow section [Deploy Cisco OpenH264* Library](#Conferencesection2_3_4) for details.
-
-13. Run the following commands to launch one or multiple MCU worker nodes on these work machines:
+    2) Run the following commands to launch agent worker:
 
         cd Release-<Version>/
         bin/daemon.sh start [session-agent/webrtc-agent/avstream-agent/audio-agent/video-agent/recording-agent/sip-agent]
 
-14. Run the following command to launch one portal/sip-portal(if you want to start sip-agent) worker:
+14. Repeat step 11 to 13 to launch as many MCU agent worker machines as you need.
+
+15. Choose one worker machine to run sip-portal if sip-agent workers are deployed:
 
         cd Release-<Version>/
-        bin/daemon.sh start portal
         bin/daemon.sh start sip-portal
 
-15. Repeat step 10 to 13 to launch as many MCU worker machines as you need.
-
-### 2.3.9 Configure VCA nodes as seperated machines to run video-agent {#Conferencesection2_3_9}
+### 2.3.10 Configure VCA nodes as seperated machines to run video-agent {#Conferencesection2_3_10}
 To setup VCA nodes as seperated machines, please follow these steps:
 1. Make sure one VCA card is correctly installed and VCA nodes successfully boot up.
 2. Make sure the host machine has enough ethernet interface for VCA nodes. Eg: host IP is "10.239.44.100" and 3 ethernet interfaces for 3 nodes of 1 VCA card, and the IP of ethernet Interfaces are "10.239.44.1", "10.239.44.2", "10.239.44.3".
@@ -374,7 +380,7 @@ To setup VCA nodes as seperated machines, please follow these steps:
             systemctl stop firewalld
             systemctl disable firewalld
 
-### 2.3.10 Stop the MCU cluster {#Conferencesection2_3_10}
+### 2.3.11 Stop the MCU cluster {#Conferencesection2_3_11}
 
 To stop the MCU cluster, follow these steps:
 1. Run the following commands on primary machine to stop the application and MCU manager nuve:
@@ -392,20 +398,6 @@ To stop the MCU cluster, follow these steps:
 
         cd Release-<Version>/
         bin/daemon.sh stop [portal/session-agent/webrtc-agent/avstream-agent/audio-agent/video-agent/recording-agent/sip-agent/sip-portal]
-
-### 2.3.11 Enable External output features for MCU {#Conferencesection2_3_11}
-The external output streams (RTMP/RTSP) are not enabled by default. These functions require an fdk-aac enabled ffmpeg library. For building ffmpeg library with fdk-aac to use the external output (RTMP/RTSP) features, you need download and build related libraries with following steps:
-
-        cd Release-<Version>/
-        access_agent/install_deps.sh --enable-fdkaac
-
-The above commands will install building dependencies. If you do not want to do it on depoly machines, you can copy the file: access_agent/build_ffmpeg_with_fdkaac.sh to the building machine, and build library with following command:
-
-        build_ffmpeg_with_fdkaac.sh
-
-The bulit libraries are in the fdkaac_enabled_lib under same folder with build_ffmpeg_with_fdkaac.sh. Copying those compiled libraries to Release-<Version>/access_agent/lib would make the external output functions work.
-
-> **Note**: The libfdk_aac is designated as "non-free", please make sure you have got proper authority before using it.
 
 ## 2.4 Security Recommendations {#Conferencesection2_4}
 Intel Corporation does not host any conference cluster/service, instead, the entire suite is provided so you can build your own video conference system and host your own server cluster.
@@ -561,8 +553,8 @@ The size of a region is specified relative to the size of the root mixed stream 
 
 Regions are located on the root window based on the value of the position attributes "top" and "left".  These attributes define the position of the top left corner of the region as an offset from the top left corner of the root mixed stream, which is a percent of the vertical or horizontal dimension of the root mixed stream.
 
-### 3.5.2 Enable SIP setting for rooms {#Conferencesection3_5_2}
-The MCU server supports communication with SIP clients. Before setup SIP for room, make sure SIP servers (like Kamailio) and related SIP user accounts are available. The SIP setting can be enabled through SDK or management console. On the console page, find the room that need to interact with SIP and click the related "SIP connectivity" field. Then an SIP dialog titled "SIP connectivity for Room _id" would show up (Figure 3-2):
+### 3.5.2 Enable SIP connectivity {#Conferencesection3_5_2}
+The MCU server supports connection from SIP clients. Before setting up SIP connectivity for rooms, make sure SIP server (like Kamailio) and related SIP user accounts are available. The SIP setting can be enabled through SDK or management console. On the console page, find the room that need to interact with SIP clients and click the related "SIP connectivity" field. Then a SIP setting dialog titled "SIP connectivity for Room <id>" will show up as Figure 3-2:
 
 **Figure 3-2. SIP Connectivity Setting on Management Console**
 ![SIP Connectivity Setting](./pic/sipSetting.png)
@@ -570,14 +562,10 @@ The MCU server supports communication with SIP clients. Before setup SIP for roo
 Make the "Enable SIP" option checked and input the "SIP server", "User Name", "Password" fields. The meanings of each fields are listed below:
 
         SIP server: The SIP server's hostname or IP address.
-        User Name: The user name registered on the SIP server above.
-        Password: The user's corresponding password.
+        User Name: The user name registered in the above SIP server.
+        Password: The user's password.
 
-After the SIP settings has been done,  click the "Apply" button at the right side of the Room row to let it take effect. If the "Update Room Success" message shows up and the SIP information is set correctly, then SIP clients should be able to join this room via the SIP server that setted. More information about SIP support of MCU can be found in section [SIP connectivity for MCU](#Conferencesection6).
-
-> **Note**:    The SIP enabled room can also be created through Javascript SDK.
-> There are steps in the user guide for you to follow from the main page
-> of Intel CS for WebRTC Client SDK for JavaScript.
+After the SIP settings has been done,  click the "Apply" button at the right side of the Room row to let it take effect. If the "Update Room Success" message shows up and the SIP related information is correct, then SIP clients should be able to join this room via the registered SIP server. More information about SIP support of MCU can be found in section [SIP connectivity for MCU](#Conferencesection6).
 
 ## 3.6 Cluster Worker Scheduling Policy Introduction {#Conferencesection3_6}
 All workers including portals, session-agents, webrtc-agents, avstream-agents, recording-agents, audio-agents, video-agents, sip-agents in the cluster are scheduled by the cluster-manager with respect to the configured scheduling strategies in cluster_manager/cluster_manager.toml.  For example, the configuration item "portal = last-used" means the scheduling policy of workers with purposes of "portal" are set to "last-used". The following built-in scheduling strategies are provided:
@@ -647,8 +635,8 @@ For example, if you want to generate a 720P local video stream and publish that 
 
 > **Note**    The specified resolution acts only as a target value. This means that the actual generated video resolution might be different
 > depending on the hardware of your local media capture device.
-### 4.2.5 Connect to an MCU conference with an RTSP/RTMP input {#Conferencesection4_2_5}
-The MCU conference supports external stream input from devices that support RTSP/RTMP protocol, like IP Camera.
+### 4.2.5 Connect to an MCU conference with an RTSP input {#Conferencesection4_2_5}
+The MCU conference supports external stream input from devices that support RTSP protocol, like IP Camera.
 For example, connect to the MCU sample application server XXXXX with the following URL:
 
         https://XXXXX:3004/?url=rtsp_stream_url
