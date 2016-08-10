@@ -180,8 +180,7 @@ The default ffmpeg library used by MCU server has no libfdk_aac support. If you 
 1. Go to Release-<Version>/access_agent folder, compile ffmpeg with libfdk_acc with below command:
 
         compile_ffmpeg_with_libfdkaac.sh
-
-> **Note**: This compiling script need install all dependencies for ffmpeg with libfdk_aac. If that's not expected on deployment machines, please run it on other proper machine.
+> **Note**: This compiling script need install all dependencies for ffmpeg with libfdk_aac. If that is not expected on deployment machines, please run it on other proper machine.
 
 2. Copy all output libraries under ffmpeg_libfdkaac_lib folder to Release-<Version>/access_agent/lib to replace the exsiting ones.
 
@@ -215,7 +214,6 @@ To launch the MCU server on one machine, follow steps below:
     If you want to enable GPU-acceleration, use following command:
 
         bin/init-all.sh [--deps] --hardware
-
    > **Note**: If you have already installed the required system libraries, then --deps is not required.
 
 2. Run the following commands to start the MCU:
