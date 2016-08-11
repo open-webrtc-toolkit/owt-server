@@ -33,6 +33,7 @@ ReST|Representational state transfer
 RTC|Real-time communication
 RTCP|RTP Control Protocol
 RTSP|Real Time Streaming Protocol
+RTMP|Real Time Messaging Protocol
 RTP|Real Time Transport Protocol
 SDK|Software development kit
 SDP|Session Description Protocol
