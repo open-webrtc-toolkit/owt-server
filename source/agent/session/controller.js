@@ -1041,7 +1041,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
 
             if (audio_codec === 'unavailable') {
                 log.error('No available audio codec');
-                log.debug('subInfo.audio:', subInfo.audio, 'targetStream.video:', streams[subInfo.audio.fromStream].audio, 'enable_audio_transcoding:', enable_audio_transcoding);
+                log.debug('subInfo.audio:', subInfo.audio, 'targetStream.video:', streams[subInfo.audio.fromStream] ? streams[subInfo.audio.fromStream].audio : 'mixed_stream', 'enable_audio_transcoding:', enable_audio_transcoding);
                 return on_error('No available audio codec');
             }
 
@@ -1051,7 +1051,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
 
             if (video_codec === 'unavailable') {
                 log.error('No available video codec');
-                log.debug('subInfo.video:', subInfo.video, 'targetStream.video:', streams[subInfo.video.fromStream].video, 'enable_video_transcoding:', enable_video_transcoding);
+                log.debug('subInfo.video:', subInfo.video, 'targetStream.video:', streams[subInfo.video.fromStream] ? streams[subInfo.video.fromStream].video : 'mixed_stream', 'enable_video_transcoding:', enable_video_transcoding);
                 return on_error('No available video codec');
             }
 
