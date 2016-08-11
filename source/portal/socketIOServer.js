@@ -283,9 +283,11 @@ var Client = function(participantId, socket, portal, on_disconnect) {
       return portal.subscribe(participant_id, 'avstream', subscription_description, function(status) {
         if (status.type === 'failed') {
           log.info('addExternalOutput onConnection error:', status.reason);
+          safeCall(callback, 'error', status.reason);
+        } else if (status.type === 'ready') {
+          safeCall(callback, 'success', {url: subscription_description.url});
         }
       }).then(function(subscriptionId) {
-        safeCall(callback, 'success', {url: subscription_description.url});
       }).catch(function(err) {
         var err_message = (typeof err === 'string' ? err: err.message);
         log.info('portal.subscribe failed:', err_message);
@@ -325,10 +327,12 @@ var Client = function(participantId, socket, portal, on_disconnect) {
         return portal.subscribe(participant_id, 'avstream', subscription_description, function(status) {
           if (status.type === 'failed') {
             log.info('updateExternalOutput onConnection error:', status.reason);
+            safeCall(callback, 'error', status.reason);
+          } else if (status.type === 'ready') {
+            safeCall(callback, 'success', {url: subscription_description.url});
           }
         });
       }).then(function(subscriptionId) {
-        safeCall(callback, 'success', {url: subscription_description.url});
       }).catch(function(err) {
         var err_message = (typeof err === 'string' ? err: err.message);
         log.info('portal.unsubscribe/subscribe exception:', err_message);
