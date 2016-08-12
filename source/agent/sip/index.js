@@ -527,14 +527,18 @@ module.exports = function (spec) {
         if (subscriptions[subscription_id] !== undefined) {
             if (subscriptions[subscription_id].audio
                 && streams[subscriptions[subscription_id].audio]) {
-                var dest = subscriptions[subscription_id].connection.receiver('audio');
+                var dest = (subscriptions[subscription_id].type === 'sip'?
+                    subscriptions[subscription_id].connection.receiver('audio') :
+                    subscriptions[subscription_id].connection);
                 log.debug("connection: ", streams[subscriptions[subscription_id].audio].connection, ' remove Dest: ', dest);
                 streams[subscriptions[subscription_id].audio].connection.removeDestination('audio', dest);
             }
 
             if (subscriptions[subscription_id].video
                 && streams[subscriptions[subscription_id].video]) {
-                var dest = subscriptions[subscription_id].connection.receiver('video');
+                var dest = (subscriptions[subscription_id].type === 'sip'?
+                    subscriptions[subscription_id].connection.receiver('video') :
+                    subscriptions[subscription_id].connection);
                 log.debug("connection: ", streams[subscriptions[subscription_id].video].connection, ' remove Dest: ', dest);
                 streams[subscriptions[subscription_id].video].connection.removeDestination('video', dest);
             }
