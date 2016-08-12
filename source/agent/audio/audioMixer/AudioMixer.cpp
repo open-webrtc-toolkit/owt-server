@@ -460,6 +460,7 @@ bool  AudioMixer::addInput(const std::string& participant, const std::string& co
     }
 
     m_channels[participant]->setInput(source);
+    m_mostActiveChannel = -1;
     return true;
 }
 
@@ -472,6 +473,7 @@ void AudioMixer::removeInput(const std::string& participant)
             boost::upgrade_to_unique_lock<boost::shared_mutex> uniquePartLock(lock);
             removeChannel(participant);
         }
+        m_mostActiveChannel = -1;
     }
 }
 

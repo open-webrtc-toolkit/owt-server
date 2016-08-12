@@ -308,7 +308,7 @@ module.exports = function (amqper, selfRpcId) {
   };
 
   that.mix = function(participantId, streamId, callback) {
-    log.debug('unmix, participantId:', participantId, 'streamId:', streamId);
+    log.debug('mix, participantId:', participantId, 'streamId:', streamId);
     if (participants[participantId]) {
       var index = participants[participantId].published.indexOf(streamId);
       if (index !== -1 && streams[streamId]) {
