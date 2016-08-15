@@ -45,14 +45,15 @@ WebRTC|Web real-time communication
 For more information, visit the following Web pages:
 
  - Intel HTML Developer Zone: https://software.intel.com/en-us/html5/tools
- - Intel Collaboration Suite for WebRTC:
-    1. https://software.intel.com/webrtc
+ - Intel<sup>®</sup> Collaboration Suite for WebRTC
+    1. http://webrtc.intel.com
     2. https://software.intel.com/en-us/forums/webrtc
     3. https://software.intel.com/zh-cn/forums/webrtc
- - Intel Visual Compute Accelerator:
-    1. http://www.intel.com/content/www/us/en/servers/media-and-graphics/visual-compute-accelerator.html
-    2. http://www.intel.com/visualcloud
- - The Internet Engineering Task Force (IETF<sup>®</sup>) Working Group: http://tools.ietf.org/wg/rtcweb/
+ - Intel<sup>®</sup> Visual Compute Accelerator
+    1. www.intel.com/content/www/us/en/servers/media-and-graphics/visual-compute-accelerator.html
+    2. https://www-ssl.intel.com/content/www/us/en/cloud-computing/visual-cloud.html
+ - The Internet Engineering Task Force (IETF<sup>®</sup>) Working Group
+    1. https://tools.ietf.org/wg/rtcweb/
  - W3C WebRTC Working Group: http://www.w3.org/2011/04/webrtc/
  - WebRTC Open Project: http://www.webrtc.org
 
@@ -163,7 +164,7 @@ On the server machine, directly un-archive the package file.
 ~~~~~~
 
 ### 2.3.4 Deploy Cisco OpenH264* Library {#Conferencesection2_3_4}
-The default H.264 library installed is a pseudo one without any media logic. To enable H.264 support in non GPU-accelerated MCU system, the deployment of Cisco OpenH264 library is required. Follow these steps:
+The default H.264 library installed is a pseudo one without any media logic. To enable H.264 support in non GPU-accelerated MCU system, you must deploy the Cisco OpenH264 library. Follow these steps:
 1. Go to Release-<Version>/video_agent folder, download specific OpenH264 library version with below command:
 
         download_openh264.sh
@@ -334,7 +335,7 @@ Follow the steps below to set up an MCU cluster:
         bin/daemon.sh start sip-portal
 
 ### 2.3.10 Configure VCA nodes as seperated machines to run video-agent {#Conferencesection2_3_10}
-To setup VCA nodes as seperated machines, please follow these steps:
+To setup VCA nodes as separate machines, please follow these steps:
 1. Make sure one VCA card is correctly installed and VCA nodes successfully boot up.
 2. Make sure the host machine has enough ethernet interface for VCA nodes. Eg: host IP is "10.239.44.100" and 3 ethernet interfaces for 3 nodes of 1 VCA card, and the IP of ethernet Interfaces are "10.239.44.1", "10.239.44.2", "10.239.44.3".
 3. Make sure your ip routing tables(please get it with "route -n") on host machine is like below :
@@ -477,7 +478,7 @@ Only super service user can access service management, in the ‘overview' tab t
 ## 3.5 Room Management {#Conferencesection3_5}
 Any service user can do room management inside the service, including create, delete or modify rooms.
 
-Specifically for modifying rooms, user can choose room mode, room publish limit, user limit and media mixing configuration (only for hybrid mode) for its own preference. When room mode is hybrid, user can define a configuration set for media mixing: resolution, background color, layout, etc. For VAD, set avCoordinated to true to enable VAD in the room. Enabling multistreaming can let MCU generate two or more mixed streams with different resolutions to fullfill different devices. For layout, use can choose a base layout template and customize its own preferred ones, which would be combined as a whole for rendering mixed video.
+Specifically for modifying rooms, user can choose room mode, room publish limit, user limit and media mixing configuration (only for hybrid mode) for its own preference. When room mode is hybrid, user can define a configuration set for media mixing: resolution, background color, layout, etc. For VAD, set avCoordinated to true to enable VAD in the room. Enabling multi-streaming can let MCU generate two or more mixed streams with different resolutions to fulfill different devices. For layout, use can choose a base layout template and customize its own preferred ones, which would be combined as a whole for rendering mixed video.
 
 > **Note**: If base layout is set to 'void', user must input customized layout for the room, otherwise the video layout would be treated as invalid. Read 3.5.1 for details of customized layout. maxInput indicates the maximum number of video frame inputs for the video layout definition.
 
@@ -585,7 +586,7 @@ The MCU sample application server is a Web application demo that shows how to ho
 
 This section explains how to start a conference and then connect to a conference using different qualifiers, such as a specific video resolution.
 
-## 4.2 Start a conference through the MCU sample application server {#Conferencesection4_2}
+## 4.2 Start a Conference through the MCU Sample Application Server {#Conferencesection4_2}
 These general steps show how to start a conference:
 
 1. Start up the MCU server components.
