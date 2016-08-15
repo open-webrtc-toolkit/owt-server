@@ -255,7 +255,7 @@ Follow the steps below to set up an MCU cluster:
 2. Choose a primary machine. This machine must be visible to clients(such as browsers and mobile apps).
 3. Edit the configuration items of nuve in Release-<Version>/nuve/nuve.toml.
 
-    - Make sure the rabbit.port and rabbit.host point to the RabbitMQ server.
+    - Make sure the [rabbit.port] and [rabbit.host] point to the RabbitMQ server.
    > **Note**: Now a default RabbitMQ server will be deployed along with nuve in scripts, but you can choose any other existing RabbitMQ server. Make sure RabbitMQ service is started prior to all MCU cluster nodes.
 
 4. Initialize and run MCU manager nuve and the sample application on the primary machine.
@@ -275,7 +275,7 @@ Follow the steps below to set up an MCU cluster:
 5. Choose a machine to run cluster-manager. This machine does not need to be visible to clients, but should be visible to nuve and all workers.
 6. Edit the configurations of cluster-manager in Release-<Version>/cluster_manager/cluster_manager.toml.
 
-    - Make sure the rabbit.port and rabbit.host point to the RabbitMQ server.
+    - Make sure the [rabbit.port] and [rabbit.host] point to the RabbitMQ server.
 
 7. Run the cluster-manager with following commands:
 
@@ -284,8 +284,8 @@ Follow the steps below to set up an MCU cluster:
 
 8. Choose worker machines to run portals. These machines must be visible to clients.
 9. Edit the configuration items of portal in Release-<Version>/portal/portal.toml.
-    - Make sure the rabbit.port and rabbit.host point to the RabbitMQ server
-    - Make sure the portal.networkInterface points to the correct network interface which the clients’ signaling and control messages are expected to connect through.
+    - Make sure the [rabbit.port] and [rabbit.host] point to the RabbitMQ server
+    - Make sure the [portal.ip_address] or [portal.networkInterface] points to the correct network interface which the clients’ signaling and control messages are expected to connect through.
     - The [portal.roles.<role>] section defines the authorized action list for specific role and the [portal.roles.<role>.<action>] section defines the action attributes for this role.
 
 10. Run the portal on each machine with following commands:
@@ -293,30 +293,24 @@ Follow the steps below to set up an MCU cluster:
         cd Release-<Version>/
         bin/daemon.sh start portal
 
-11. Choose worker machine to run session-agent and/or webrtc-agent and/or avstream-agent and/or recording-agent and/or audio-agent and/or video-agents and/or sip-agent. This machine must be visible to other agent machines. If webrtc-agent or sip-agent is running on it, it must be visible to clients.
+11. Choose worker machine to run session-agent and/or webrtc-agent and/or avstream-agent and/or recording-agent and/or audio-agent and/or video-agent and/or sip-agent. This machine must be visible to other agent machines. If webrtc-agent or sip-agent is running on it, it must be visible to clients.
 
     - If you want to use Intel<sup>®</sup> Visual Compute Accelerator (VCA) to run video agents, please follow section [Configure VCA nodes](#Conferencesection2_3_10) to enable nodes of Intel VCA as a visible seperated machine.
 
-12. Edit the configuration items in Release-<Version>/{audio,video,session,recording,avstream,sip}_agent/agent.toml.
-
-    - Make sure the rabbit.port and rabbit.host point to the RabbitMQ server.
+12. Edit the configuration items in Release-<Version>/{audio,video,session,access,sip}_agent/agent.toml.
+    - Make sure the [rabbit.port] and [rabbit.host] point to the RabbitMQ server
+    - Make sure the [cluster.ip_address] or [cluster.network_interface] points to the correct network interface through which the media streams will flow to other cluster nodes.
 
 13. Initialize and run agent worker.
 
     1) Initialize agent workers for the first time execution if necessary
 
-       For access agent, follow these steps:
+       For webrtc-agent, avstream-agent or recording-agent, follow these steps:
 
            cd Release-<Version>/
            access_agent/install_deps.sh
 
-       For general video agent, follow these steps:
-
-           cd Release-<Version>/
-           video_agent/install_deps.sh
-           video_agent/init.sh
-
-       If you want to enable GPU-acceleration for video agent, follow these steps:
+       If you want to enable GPU-acceleration for video-agent, follow these steps:
 
            cd Release-<Version>/
            video_agent/install_deps.sh --hardware
