@@ -81,6 +81,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     *(-)all )
       BUILD_GATEWAY_RUNTIME=true
+      BUILD_SIP_GATEWAY_RUNTIME=true
       BUILD_MCU_RUNTIME_SW=true
       BUILD_MCU_RUNTIME_HW_MSDK=true
       BUILD_SDK=true
@@ -191,32 +192,8 @@ build_runtime() {
   fi
 }
 
-build_sip_ua() {
-  local CORE_HOME="${SOURCE}/core"
-  local CCOMPILER=${DEPS_ROOT}/bin/gcc
-  local CXXCOMPILER=${DEPS_ROOT}/bin/g++
-  local OPTIMIZATION_LEVEL="3"
-  local RUNTIME_LIB_SRC_DIR="${SOURCE}/core"
-  mkdir -p "${RUNTIME_LIB_SRC_DIR}/build"
-  [[ BUILDTYPE == "Release" ]] || OPTIMIZATION_LEVEL="0"
-
-  [[ BUILDTYPE == "Release" ]] || OPTIMIZATION_LEVEL="0"
-  pushd "${RUNTIME_LIB_SRC_DIR}/build" >/dev/null
-  if [[ -x $CCOMPILER && -x $CXXCOMPILER ]]; then
-    LD_LIBRARY_PATH=${DEPS_ROOT}/lib:$LD_LIBRARY_PATH PKG_CONFIG_PATH=${DEPS_ROOT}/lib/pkgconfig:$PKG_CONFIG_PATH BOOST_ROOT=${DEPS_ROOT} CC=$CCOMPILER CXX=$CXXCOMPILER cmake -DCMAKE_BUILD_TYPE=${BUILDTYPE} $CMAKE_ADDITIONAL_OPTIONS ..
-  else
-    LD_LIBRARY_PATH=${DEPS_ROOT}/lib:$LD_LIBRARY_PATH PKG_CONFIG_PATH=${DEPS_ROOT}/lib/pkgconfig:$PKG_CONFIG_PATH BOOST_ROOT=${DEPS_ROOT} cmake -DCMAKE_BUILD_TYPE=${BUILDTYPE} $CMAKE_ADDITIONAL_OPTIONS ..
-  fi
-  LD_LIBRARY_PATH=${DEPS_ROOT}/lib:$LD_LIBRARY_PATH make
-}
 
 build_sip_gateway_runtime() {
-  CMAKE_ADDITIONAL_OPTIONS="-DCOMPILE_SIP_GATEWAY=ON"
-  pushd "${SOURCE}/core/sip_gateway/sipua" > /dev/null
-  make clean && make
-  popd >/dev/null
-  build_sip_ua
-
   # Sip addon build
   pushd "${SOURCE}/agent/sip/sipIn" >/dev/null
   cp -f binding.sip.gyp binding.gyp
@@ -248,6 +225,10 @@ build() {
 
   local DONE=0
   # Job
+  if ${BUILD_SIP_GATEWAY_RUNTIME} ; then
+    build_sip_gateway_runtime
+    ((DONE++))
+  fi
   if ${BUILD_GATEWAY_RUNTIME} ; then
     build_gateway_runtime
     ((DONE++))
@@ -273,12 +254,5 @@ build() {
     return 1
   fi
 }
-
-
-
-if ${BUILD_SIP_GATEWAY_RUNTIME} ; then
-  build_sip_gateway_runtime
-  ((DONE++))
-fi
 
 build
