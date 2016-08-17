@@ -752,7 +752,7 @@ namespace erizo {
         }
       }
       if (isCand != std::string::npos) {
-        std::vector<std::string> pieces = stringutil::splitOneOf(line, " :");
+        std::vector<std::string> pieces = stringutil::splitOneOf(line, " ");
         processCandidate(pieces, mtype);
       }
       if (isCrypt != std::string::npos) {
@@ -1044,10 +1044,10 @@ namespace erizo {
     CandidateInfo cand;
     static const char* types_str[] = { "host", "srflx", "prflx", "relay" };
     cand.mediaType = mediaType;
-    cand.foundation = pieces[1];
-    cand.componentId = (unsigned int) strtoul(pieces[2].c_str(), NULL, 10);
+    cand.foundation = stringutil::splitOneOf(pieces[0], ":")[1];
+    cand.componentId = (unsigned int) strtoul(pieces[1].c_str(), NULL, 10);
 
-    cand.netProtocol = pieces[3];
+    cand.netProtocol = pieces[2];
     // libnice does not support tcp candidates, we ignore them
     ELOG_DEBUG("cand.netProtocol=%s", cand.netProtocol.c_str());
     if (cand.netProtocol.compare("UDP") && cand.netProtocol.compare("udp")) {
@@ -1057,16 +1057,16 @@ namespace erizo {
     //		        0 1 2    3            4          5     6  7    8          9
     // 
     // a=candidate:1367696781 1 udp 33562367 138. 49462 typ relay raddr 138.4 rport 53531 generation 0
-    cand.priority = (unsigned int) strtoul(pieces[4].c_str(), NULL, 10);
-    cand.hostAddress = pieces[5];
-    cand.hostPort = (unsigned int) strtoul(pieces[6].c_str(), NULL, 10);
-    if (pieces[7] != "typ") {
+    cand.priority = (unsigned int) strtoul(pieces[3].c_str(), NULL, 10);
+    cand.hostAddress = pieces[4];
+    cand.hostPort = (unsigned int) strtoul(pieces[5].c_str(), NULL, 10);
+    if (pieces[6] != "typ") {
       return false;
     }
     unsigned int type = 1111;
     int p;
     for (p = 0; p < 4; p++) {
-      if (pieces[8] == types_str[p]) {
+      if (pieces[7] == types_str[p]) {
         type = p;
       }
     }
@@ -1099,8 +1099,8 @@ namespace erizo {
                 cand.hostType);
 
     if (cand.hostType == SRFLX || cand.hostType==RELAY) {
-      cand.rAddress = pieces[10];
-      cand.rPort = (unsigned int) strtoul(pieces[12].c_str(), NULL, 10);
+      cand.rAddress = pieces[9];
+      cand.rPort = (unsigned int) strtoul(pieces[11].c_str(), NULL, 10);
       ELOG_DEBUG("Parsing raddr srlfx or relay %s, %u \n", cand.rAddress.c_str(), cand.rPort);
     }
     candidateVector_.push_back(cand);
