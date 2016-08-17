@@ -24,8 +24,6 @@ void WebRtcConnection::Init(Local<Object> exports) {
   NODE_SET_PROTOTYPE_METHOD(tpl, "start", start);
   NODE_SET_PROTOTYPE_METHOD(tpl, "addRemoteCandidate", addRemoteCandidate);
   NODE_SET_PROTOTYPE_METHOD(tpl, "getLocalSdp", getLocalSdp);
-  NODE_SET_PROTOTYPE_METHOD(tpl, "setAudioReceiver", setAudioReceiver);
-  NODE_SET_PROTOTYPE_METHOD(tpl, "setVideoReceiver", setVideoReceiver);
   NODE_SET_PROTOTYPE_METHOD(tpl, "getCurrentState", getCurrentState);
   NODE_SET_PROTOTYPE_METHOD(tpl, "getStats", getStats);
   NODE_SET_PROTOTYPE_METHOD(tpl, "enableVideo", enableVideo);
@@ -146,32 +144,6 @@ void WebRtcConnection::getLocalSdp(const FunctionCallbackInfo<Value>& args) {
   erizo::WebRtcConnection* me = obj->me;
 
   args.GetReturnValue().Set(String::NewFromUtf8(isolate, me->getLocalSdp().c_str()));
-}
-
-void WebRtcConnection::setAudioReceiver(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = Isolate::GetCurrent();
-  HandleScope scope(isolate);
-
-  WebRtcConnection* obj = ObjectWrap::Unwrap<WebRtcConnection>(args.Holder());
-  erizo::WebRtcConnection *me = obj->me;
-
-  MediaSink* param = ObjectWrap::Unwrap<MediaSink>(args[0]->ToObject());
-  erizo::MediaSink* mr = param->msink;
-
-  me->setAudioSink(mr);
-}
-
-void WebRtcConnection::setVideoReceiver(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = Isolate::GetCurrent();
-  HandleScope scope(isolate);
-
-  WebRtcConnection* obj = ObjectWrap::Unwrap<WebRtcConnection>(args.Holder());
-  erizo::WebRtcConnection* me = obj->me;
-
-  MediaSink* param = ObjectWrap::Unwrap<MediaSink>(args[0]->ToObject());
-  erizo::MediaSink* mr = param->msink;
-
-  me->setVideoSink(mr);
 }
 
 void WebRtcConnection::getCurrentState(const FunctionCallbackInfo<Value>& args) {

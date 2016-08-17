@@ -26,6 +26,7 @@
 #include <logger.h>
 #include <MediaDefinitions.h>
 
+
 namespace woogeen_base {
 
 /**
@@ -38,8 +39,11 @@ class AudioFrameConstructor : public erizo::MediaSink,
     DECLARE_LOGGER();
 
 public:
-    AudioFrameConstructor(erizo::FeedbackSink* fbSink);
+    AudioFrameConstructor();
     virtual ~AudioFrameConstructor();
+
+    void bindTransport(erizo::MediaSource* source, erizo::FeedbackSink* fbSink);
+    void unbindTransport();
 
     // Implements the MediaSink interfaces.
     int deliverAudioData(char*, int len);
@@ -47,6 +51,10 @@ public:
 
     // Implements the FrameSource interfaces.
     void onFeedback(const FeedbackMsg& msg);
+
+private:
+    erizo::MediaSource* m_transport;
+    boost::shared_mutex m_transport_mutex;
 };
 
 }

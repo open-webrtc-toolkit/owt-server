@@ -30,6 +30,7 @@
 #include <MediaDefinitions.h>
 #include <webrtc/modules/rtp_rtcp/interface/rtp_rtcp.h>
 
+
 namespace woogeen_base {
 
 class WebRTCTaskRunner;
@@ -42,8 +43,11 @@ class AudioFramePacketizer : public FrameDestination,
                              public erizo::FeedbackSink,
                              public erizo::RTPDataReceiver {
 public:
-    AudioFramePacketizer(erizo::MediaSink* audioSink);
+    AudioFramePacketizer();
     ~AudioFramePacketizer();
+
+    void bindTransport(erizo::MediaSink* sink);
+    void unbindTransport();
 
     // Implements FrameDestination.
     void onFrame(const Frame&);
@@ -68,6 +72,8 @@ private:
     boost::shared_ptr<webrtc::Transport> m_audioTransport;
     boost::shared_ptr<WebRTCTaskRunner> m_taskRunner;
     FrameFormat m_frameFormat;
+
+    boost::shared_mutex m_transport_mutex;
 };
 
 }

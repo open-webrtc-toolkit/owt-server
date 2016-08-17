@@ -41,7 +41,8 @@ void VideoFramePacketizer::Init(v8::Local<v8::Object> exports) {
   // Prototype
   NODE_SET_PROTOTYPE_METHOD(tpl, "close", close);
 
-  NODE_SET_PROTOTYPE_METHOD(tpl, "setVideoReceiver", setVideoReceiver);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "bindTransport", bindTransport);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "unbindTransport", unbindTransport);
 
   constructor.Reset(isolate, tpl->GetFunction());
   exports->Set(String::NewFromUtf8(isolate, "VideoFramePacketizer"), tpl->GetFunction());
@@ -51,11 +52,8 @@ void VideoFramePacketizer::New(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
 
-  SipCallConnection* param = ObjectWrap::Unwrap<SipCallConnection>(args[0]->ToObject());
-  erizo::MediaSink* sink = param->me;
-
   VideoFramePacketizer* obj = new VideoFramePacketizer();
-  obj->me = new woogeen_base::VideoFramePacketizer(sink);
+  obj->me = new woogeen_base::VideoFramePacketizer();
   obj->dest = obj->me;
 
   obj->Wrap(args.This());
@@ -70,17 +68,26 @@ void VideoFramePacketizer::close(const FunctionCallbackInfo<Value>& args) {
   delete me;
 }
 
-void VideoFramePacketizer::setVideoReceiver(const FunctionCallbackInfo<Value>& args) {
+void VideoFramePacketizer::bindTransport(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
 
   VideoFramePacketizer* obj = ObjectWrap::Unwrap<VideoFramePacketizer>(args.Holder());
   woogeen_base::VideoFramePacketizer* me = obj->me;
 
-  MediaSink* param = ObjectWrap::Unwrap<MediaSink>(args[0]->ToObject());
-  erizo::MediaSink* mr = param->msink;
+  SipCallConnection* param = ObjectWrap::Unwrap<SipCallConnection>(args[0]->ToObject());
+  sip_gateway::SipCallConnection* transport = param->me;
 
-  me->setVideoSink(mr);
+  me->bindTransport(transport);
 }
 
+void VideoFramePacketizer::unbindTransport(const FunctionCallbackInfo<Value>& args) {
+  Isolate* isolate = Isolate::GetCurrent();
+  HandleScope scope(isolate);
+
+  VideoFramePacketizer* obj = ObjectWrap::Unwrap<VideoFramePacketizer>(args.Holder());
+  woogeen_base::VideoFramePacketizer* me = obj->me;
+
+  me->unbindTransport();
+}
 

@@ -30,14 +30,15 @@ namespace woogeen_base {
 
 DEFINE_LOGGER(VideoFrameConstructor, "woogeen.VideoFrameConstructor");
 
-VideoFrameConstructor::VideoFrameConstructor(erizo::FeedbackSink* feedback)
+VideoFrameConstructor::VideoFrameConstructor()
     : m_format(FRAME_FORMAT_UNKNOWN)
     , m_width(0)
     , m_height(0)
     , m_ssrc(0)
     , m_vcm(nullptr)
+    , m_transport(nullptr)
 {
-    m_videoTransport.reset(new WebRTCTransport<erizo::VIDEO>(nullptr, feedback));
+    m_videoTransport.reset(new WebRTCTransport<erizo::VIDEO>(nullptr, nullptr));
     sinkfbSource_ = m_videoTransport.get();
     m_taskRunner.reset(new woogeen_base::WebRTCTaskRunner());
     m_taskRunner->Start();
@@ -48,6 +49,8 @@ VideoFrameConstructor::~VideoFrameConstructor()
 {
     m_videoReceiver->StopReceive();
     m_recorder->Stop();
+
+    unbindTransport();
 
     if (m_taskRunner) {
         m_taskRunner->DeRegisterModule(m_avSync.get());
@@ -133,6 +136,24 @@ bool VideoFrameConstructor::init()
     m_taskRunner->RegisterModule(m_rtpRtcp.get());
     m_videoReceiver->StartReceive();
     return true;
+}
+
+void VideoFrameConstructor::bindTransport(erizo::MediaSource* source, erizo::FeedbackSink* fbSink)
+{
+    boost::unique_lock<boost::shared_mutex> lock(m_transport_mutex);
+    m_transport = source;
+    m_transport->setVideoSink(this);
+    m_videoTransport->setFeedbackSink(fbSink);
+}
+
+void VideoFrameConstructor::unbindTransport()
+{
+    boost::unique_lock<boost::shared_mutex> lock(m_transport_mutex);
+    if (m_transport) {
+        m_transport->setVideoSink(nullptr);
+        m_videoTransport->setFeedbackSink(nullptr);
+        m_transport = nullptr;
+    }
 }
 
 void VideoFrameConstructor::syncWithAudio(int32_t voiceChannelId, VoEVideoSync* voe)

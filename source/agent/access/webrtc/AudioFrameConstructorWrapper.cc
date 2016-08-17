@@ -41,6 +41,8 @@ void AudioFrameConstructor::Init(v8::Local<v8::Object> exports) {
   // Prototype
   NODE_SET_PROTOTYPE_METHOD(tpl, "close", close);
 
+  NODE_SET_PROTOTYPE_METHOD(tpl, "bindTransport", bindTransport);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "unbindTransport", unbindTransport);
   NODE_SET_PROTOTYPE_METHOD(tpl, "addDestination", addDestination);
   NODE_SET_PROTOTYPE_METHOD(tpl, "removeDestination", removeDestination);
 
@@ -52,11 +54,8 @@ void AudioFrameConstructor::New(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
 
-  WebRtcConnection* param = ObjectWrap::Unwrap<WebRtcConnection>(args[0]->ToObject());
-  erizo::FeedbackSink* fbSink = param->me;
-
   AudioFrameConstructor* obj = new AudioFrameConstructor();
-  obj->me = new woogeen_base::AudioFrameConstructor(fbSink);
+  obj->me = new woogeen_base::AudioFrameConstructor();
   obj->src = obj->me;
   obj->msink = obj->me;
 
@@ -70,6 +69,29 @@ void AudioFrameConstructor::close(const FunctionCallbackInfo<Value>& args) {
   AudioFrameConstructor* obj = ObjectWrap::Unwrap<AudioFrameConstructor>(args.Holder());
   woogeen_base::AudioFrameConstructor* me = obj->me;
   delete me;
+}
+
+void AudioFrameConstructor::bindTransport(const FunctionCallbackInfo<Value>& args) {
+  Isolate* isolate = Isolate::GetCurrent();
+  HandleScope scope(isolate);
+
+  AudioFrameConstructor* obj = ObjectWrap::Unwrap<AudioFrameConstructor>(args.Holder());
+  woogeen_base::AudioFrameConstructor* me = obj->me;
+
+  WebRtcConnection* param = ObjectWrap::Unwrap<WebRtcConnection>(args[0]->ToObject());
+  erizo::WebRtcConnection* transport = param->me;
+
+  me->bindTransport(transport, transport);
+}
+
+void AudioFrameConstructor::unbindTransport(const FunctionCallbackInfo<Value>& args) {
+  Isolate* isolate = Isolate::GetCurrent();
+  HandleScope scope(isolate);
+
+  AudioFrameConstructor* obj = ObjectWrap::Unwrap<AudioFrameConstructor>(args.Holder());
+  woogeen_base::AudioFrameConstructor* me = obj->me;
+
+  me->unbindTransport();
 }
 
 void AudioFrameConstructor::addDestination(const FunctionCallbackInfo<Value>& args) {

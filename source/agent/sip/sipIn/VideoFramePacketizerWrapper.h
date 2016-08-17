@@ -20,6 +20,7 @@
 
 #ifndef VIDEOFRAMEPACKETIZERWRAPPER_H
 #define VIDEOFRAMEPACKETIZERWRAPPER_H
+
 #include "../../addons/common/MediaFramePipelineWrapper.h"
 #include <VideoFramePacketizer.h>
 #include <node.h>
@@ -41,7 +42,8 @@ class VideoFramePacketizer : public FrameDestination {
   static void New(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void close(const v8::FunctionCallbackInfo<v8::Value>& args);
 
-  static void setVideoReceiver(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void bindTransport(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void unbindTransport(const v8::FunctionCallbackInfo<v8::Value>& args);
 };
 
 #endif

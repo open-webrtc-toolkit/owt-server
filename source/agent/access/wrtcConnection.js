@@ -94,8 +94,6 @@ module.exports = function (spec, on_status) {
 
           switch (status) {
             case CONN_FINISHED:
-              audio && audioFrameConstructor && audioFrameConstructor.close();
-              video && videoFrameConstructor && videoFrameConstructor.close();
               terminated = true;
               break;
 
@@ -139,10 +137,64 @@ module.exports = function (spec, on_status) {
         on_status({type: 'initializing'});
     };
 
+    var bindFrameConstructors = function () {
+        if (audio) {
+            audioFrameConstructor = new AudioFrameConstructor();
+            audioFrameConstructor.bindTransport(wrtc);
+        }
+
+        if (video) {
+            videoFrameConstructor = new VideoFrameConstructor();
+            videoFrameConstructor.bindTransport(wrtc);
+        }
+    };
+
+    var unbindFrameConstructors = function () {
+        if (audio && audioFrameConstructor) {
+            audioFrameConstructor.unbindTransport();
+            audioFrameConstructor.close();
+            audioFrameConstructor = undefined;
+        }
+
+        if (video && videoFrameConstructor) {
+            videoFrameConstructor.unbindTransport();
+            videoFrameConstructor.close();
+            videoFrameConstructor = undefined;
+        }
+    };
+
+    var bindFramePacketizers = function () {
+        if (audio) {
+            audioFramePacketizer = new AudioFramePacketizer();
+            audioFramePacketizer.bindTransport(wrtc);
+        }
+
+        if (video) {
+            videoFramePacketizer = new VideoFramePacketizer();
+            videoFramePacketizer.bindTransport(wrtc);
+            //video.resolution && wrtc.setSendResolution(video.resolution);
+        }
+    };
+
+    var unbindFramePacketizers = function () {
+        if (audio && audioFramePacketizer) {
+            audioFramePacketizer.unbindTransport();
+            audioFramePacketizer.close();
+            audioFramePacketizer = undefined;
+        }
+
+        if (video && videoFramePacketizer) {
+            videoFramePacketizer.unbindTransport();
+            videoFramePacketizer.close();
+            videoFramePacketizer = undefined;
+        }
+    };
+
     that.close = function () {
-        audio && audioFramePacketizer && audioFramePacketizer.close();
-        video && videoFramePacketizer && videoFramePacketizer.close();
+        unbindFramePacketizers();
+        unbindFrameConstructors();
         wrtc && wrtc.close();
+        wrtc = undefined;
     };
 
     that.onSignalling = function (msg) {
@@ -198,10 +250,10 @@ module.exports = function (spec, on_status) {
 
     that.addDestination = function (track, dest) {
         if (direction === 'in') {
-            if (audio && track === 'audio') {
+            if (audio && track === 'audio' && audioFrameConstructor) {
                 audioFrameConstructor.addDestination(dest);
                 return;
-            } else if (video && track === 'video') {
+            } else if (video && track === 'video' && videoFrameConstructor) {
                 videoFrameConstructor.addDestination(dest);
                 return;
             }
@@ -214,10 +266,10 @@ module.exports = function (spec, on_status) {
 
     that.removeDestination = function (track, dest) {
         if (direction === 'in') {
-            if (audio && track === 'audio') {
+            if (audio && track === 'audio' && audioFrameConstructor) {
                 audioFrameConstructor.removeDestination(dest);
                 return;
-            } else if (video && track === 'video') {
+            } else if (video && track === 'video' && videoFrameConstructor) {
                 videoFrameConstructor.removeDestination(dest);
                 return;
             }
@@ -242,14 +294,14 @@ module.exports = function (spec, on_status) {
     };
 
     that.setVideoBitrate = function (bitrateKBPS) {
-        if (video) {
+        if (video && videoFrameConstructor) {
             videoFrameConstructor.setBitrate(bitrateKBPS);
         }
     };
 
     //FIXME: Temporarily add this interface to workround the hardware mode's absence of feedback mechanism.
     that.requestKeyFrame = function () {
-        if (direction === 'in' && video) {
+        if (direction === 'in' && video && videoFrameConstructor) {
             videoFrameConstructor.requestKeyFrame();
         }
     };
@@ -260,26 +312,11 @@ module.exports = function (spec, on_status) {
             wrtc = new WebRtcConnection(!!audio, !!video, true/*FIXME: hash264:hard coded*/, GLOBAL.config.webrtc.stunserver, GLOBAL.config.webrtc.stunport, GLOBAL.config.webrtc.minport, GLOBAL.config.webrtc.maxport, GLOBAL.config.webrtc.keystorePath, GLOBAL.config.webrtc.keystorePath, passphrase, true, true, true, true, false);
 
             if (direction === 'in') {
-                if (audio) {
-                    audioFrameConstructor = new AudioFrameConstructor(wrtc);
-                    wrtc.setAudioReceiver(audioFrameConstructor);
-                }
-
-                if (video) {
-                    videoFrameConstructor = new VideoFrameConstructor(wrtc);
-                    wrtc.setVideoReceiver(videoFrameConstructor);
-                }
+                bindFrameConstructors();
             }
 
             if (direction === 'out') {
-                if (audio) {
-                    audioFramePacketizer = new AudioFramePacketizer(wrtc);
-                }
-
-                if (video) {
-                    videoFramePacketizer = new VideoFramePacketizer(wrtc);
-                    //video.resolution && wrtc.setSendResolution(video.resolution);
-                }
+                bindFramePacketizers();
             }
 
             initWebRtcConnection(wrtc, on_status);
