@@ -303,6 +303,9 @@ namespace erizo {
       if (cinfo.componentId !=1 || (!isBundle && cinfo.mediaType!=this->mediaType ))
         continue;
 
+      if (strstr(cinfo.hostAddress.c_str(), ":") != NULL) // We ignore IPv6 candidates at this point
+        continue;
+
       switch (cinfo.hostType) {
         case HOST:
           nice_cand_type = NICE_CANDIDATE_TYPE_HOST;
