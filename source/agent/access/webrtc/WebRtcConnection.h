@@ -60,16 +60,6 @@ class WebRtcConnection : public NodeEventedObjectWrap {
    */
   static void getLocalSdp(const v8::FunctionCallbackInfo<v8::Value>& args);
   /*
-   * Sets a MediaReceiver that is going to receive Audio Data
-   * Param: the MediaReceiver to send audio to.
-   */
-  static void setAudioReceiver(const v8::FunctionCallbackInfo<v8::Value>& args);
-  /*
-   * Sets a MediaReceiver that is going to receive Video Data
-   * Param: the MediaReceiver
-   */
-  static void setVideoReceiver(const v8::FunctionCallbackInfo<v8::Value>& args);
-  /*
    * Gets the current state of the Ice Connection
    * Returns the state.
    */

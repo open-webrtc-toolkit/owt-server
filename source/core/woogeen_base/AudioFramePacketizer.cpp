@@ -28,18 +28,14 @@ using namespace erizo;
 
 namespace woogeen_base {
 
-AudioFramePacketizer::AudioFramePacketizer(erizo::MediaSink* audioSink)
+AudioFramePacketizer::AudioFramePacketizer()
     : m_frameFormat(FRAME_FORMAT_UNKNOWN)
 {
-    assert(audioSink);
-    setAudioSink(audioSink);
+    audioSink_ = nullptr;
     m_audioTransport.reset(new WebRTCTransport<erizo::AUDIO>(this, nullptr));
     m_taskRunner.reset(new woogeen_base::WebRTCTaskRunner());
     m_taskRunner->Start();
     init();
-    erizo::FeedbackSource* fbSource = audioSink->getFeedbackSource();
-    if (fbSource)
-        fbSource->setFeedbackSink(this);
 }
 
 AudioFramePacketizer::~AudioFramePacketizer()
@@ -47,6 +43,27 @@ AudioFramePacketizer::~AudioFramePacketizer()
     close();
     m_taskRunner->Stop();
     boost::unique_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
+}
+
+void AudioFramePacketizer::bindTransport(erizo::MediaSink* sink)
+{
+    boost::unique_lock<boost::shared_mutex> lock(m_transport_mutex);
+    audioSink_ = sink;
+    audioSink_->setAudioSinkSSRC(m_rtpRtcp->SSRC());
+    erizo::FeedbackSource* fbSource = audioSink_->getFeedbackSource();
+    if (fbSource)
+        fbSource->setFeedbackSink(this);
+}
+
+void AudioFramePacketizer::unbindTransport()
+{
+    boost::unique_lock<boost::shared_mutex> lock(m_transport_mutex);
+    if (audioSink_) {
+        erizo::FeedbackSource* fbSource = audioSink_->getFeedbackSource();
+        if (fbSource)
+            fbSource->setFeedbackSink(nullptr);
+        audioSink_ = nullptr;
+    }
 }
 
 int AudioFramePacketizer::deliverFeedback(char* buf, int len)
@@ -57,12 +74,23 @@ int AudioFramePacketizer::deliverFeedback(char* buf, int len)
 
 void AudioFramePacketizer::receiveRtpData(char* buf, int len, erizo::DataType type, uint32_t channelId)
 {
+    boost::shared_lock<boost::shared_mutex> lock(m_transport_mutex);
+    if (!audioSink_) {
+        return;
+    }
+
     assert(type == erizo::AUDIO);
     audioSink_->deliverAudioData(buf, len);
 }
 
+
 void AudioFramePacketizer::onFrame(const Frame& frame)
 {
+    boost::shared_lock<boost::shared_mutex> lock1(m_transport_mutex);
+    if (!audioSink_) {
+        return;
+    }
+
     if (frame.length <= 0)
         return;
 
@@ -75,6 +103,7 @@ void AudioFramePacketizer::onFrame(const Frame& frame)
         audioSink_->deliverAudioData(reinterpret_cast<char*>(frame.payload), frame.length);
         return;
     }
+    lock1.unlock();
 
     int payloadType = INVALID_PT;
 
@@ -111,7 +140,6 @@ bool AudioFramePacketizer::init()
 
     m_taskRunner->RegisterModule(m_rtpRtcp.get());
 
-    audioSink_->setAudioSinkSSRC(m_rtpRtcp->SSRC());
     return true;
 }
 
@@ -148,9 +176,14 @@ bool AudioFramePacketizer::setSendCodec(FrameFormat format)
 
 void AudioFramePacketizer::close()
 {
-    erizo::FeedbackSource* fbSource = audioSink_->getFeedbackSource();
-    if (fbSource)
-        fbSource->setFeedbackSink(nullptr);
+    boost::unique_lock<boost::shared_mutex> lock(m_transport_mutex);
+    if (audioSink_) {
+        erizo::FeedbackSource* fbSource = audioSink_->getFeedbackSource();
+        if (fbSource)
+            fbSource->setFeedbackSink(nullptr);
+        audioSink_ = nullptr;
+    }
+    lock.unlock();
     m_taskRunner->DeRegisterModule(m_rtpRtcp.get());
 }
 

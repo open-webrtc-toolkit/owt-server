@@ -41,6 +41,8 @@ void VideoFrameConstructor::Init(v8::Local<v8::Object> exports) {
   // Prototype
   NODE_SET_PROTOTYPE_METHOD(tpl, "close", close);
 
+  NODE_SET_PROTOTYPE_METHOD(tpl, "bindTransport", bindTransport);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "unbindTransport", unbindTransport);
   NODE_SET_PROTOTYPE_METHOD(tpl, "addDestination", addDestination);
   NODE_SET_PROTOTYPE_METHOD(tpl, "removeDestination", removeDestination);
   NODE_SET_PROTOTYPE_METHOD(tpl, "setBitrate", setBitrate);
@@ -54,11 +56,8 @@ void VideoFrameConstructor::New(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
 
-  SipCallConnection* param = ObjectWrap::Unwrap<SipCallConnection>(args[0]->ToObject());
-  erizo::FeedbackSink* fbSink = param->me;
-
   VideoFrameConstructor* obj = new VideoFrameConstructor();
-  obj->me = new woogeen_base::VideoFrameConstructor(fbSink);
+  obj->me = new woogeen_base::VideoFrameConstructor();
   obj->src = obj->me;
   obj->msink = obj->me;
 
@@ -72,6 +71,29 @@ void VideoFrameConstructor::close(const FunctionCallbackInfo<Value>& args) {
   VideoFrameConstructor* obj = ObjectWrap::Unwrap<VideoFrameConstructor>(args.Holder());
   woogeen_base::VideoFrameConstructor* me = obj->me;
   delete me;
+}
+
+void VideoFrameConstructor::bindTransport(const FunctionCallbackInfo<Value>& args) {
+  Isolate* isolate = Isolate::GetCurrent();
+  HandleScope scope(isolate);
+
+  VideoFrameConstructor* obj = ObjectWrap::Unwrap<VideoFrameConstructor>(args.Holder());
+  woogeen_base::VideoFrameConstructor* me = obj->me;
+
+  SipCallConnection* param = ObjectWrap::Unwrap<SipCallConnection>(args[0]->ToObject());
+  sip_gateway::SipCallConnection* transport = param->me;
+
+  me->bindTransport(transport, transport);
+}
+
+void VideoFrameConstructor::unbindTransport(const FunctionCallbackInfo<Value>& args) {
+  Isolate* isolate = Isolate::GetCurrent();
+  HandleScope scope(isolate);
+
+  VideoFrameConstructor* obj = ObjectWrap::Unwrap<VideoFrameConstructor>(args.Holder());
+  woogeen_base::VideoFrameConstructor* me = obj->me;
+
+  me->unbindTransport();
 }
 
 void VideoFrameConstructor::addDestination(const FunctionCallbackInfo<Value>& args) {

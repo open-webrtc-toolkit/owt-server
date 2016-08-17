@@ -24,18 +24,19 @@ exports.SipCallConnection = function (spec) {
         sip_callConnection = new woogeenSipGateway.SipCallConnection(gateway, clientID);
         if (audio) {
             // sip->mcu
-            audioFrameConstructor = new AudioFrameConstructor(sip_callConnection);
-            sip_callConnection.setAudioReceiver(audioFrameConstructor);
+            audioFrameConstructor = new AudioFrameConstructor();
+            audioFrameConstructor.bindTransport(sip_callConnection);
 
             // mcu->sip
-            audioFramePacketizer = new AudioFramePacketizer(sip_callConnection);
-
+            audioFramePacketizer = new AudioFramePacketizer();
+            audioFramePacketizer.bindTransport(sip_callConnection);
         }
         if (video) {
-            videoFrameConstructor = new VideoFrameConstructor(sip_callConnection);
-            sip_callConnection.setVideoReceiver(videoFrameConstructor);
+            videoFrameConstructor = new VideoFrameConstructor();
+            videoFrameConstructor.bindTransport(sip_callConnection);
 
-            videoFramePacketizer = new VideoFramePacketizer(sip_callConnection);
+            videoFramePacketizer = new VideoFramePacketizer();
+            videoFramePacketizer.bindTransport(sip_callConnection);
         }
 
     that.close = function (direction) {
@@ -52,20 +53,41 @@ exports.SipCallConnection = function (spec) {
           input = false;
         }
         if (!(input || output) ) {
-          audio && audioFramePacketizer && audioFramePacketizer.close();
-          video && videoFramePacketizer && videoFramePacketizer.close();
-          audio && audioFrameConstructor && audioFrameConstructor.close();
-          video && videoFrameConstructor && videoFrameConstructor.close();
-          sip_callConnection && sip_callConnection.close();
-          log.debug('Completely close');
+            if (audio && audioFramePacketizer) {
+                audioFramePacketizer.unbindTransport();
+                audioFramePacketizer.close();
+                audioFramePacketizer = undefined;
+            }
+
+            if (video && videoFramePacketizer) {
+                videoFramePacketizer.unbindTransport();
+                videoFramePacketizer.close();
+                videoFramePacketizer = undefined;
+            }
+
+            if (audio && audioFrameConstructor) {
+                audioFrameConstructor.unbindTransport();
+                audioFrameConstructor.close();
+                audioFrameConstructor = undefined;
+            }
+
+            if (video && videoFrameConstructor) {
+                videoFrameConstructor.unbindTransport();
+                videoFrameConstructor.close();
+                videoFrameConstructor = undefined;
+            }
+
+            sip_callConnection && sip_callConnection.close();
+            sip_callConnection = undefined;
+            log.debug('Completely close');
         }
     };
 
     that.addDestination = function (track, dest) {
-        if (audio && track === 'audio') {
+        if (audio && track === 'audio' && audioFrameConstructor) {
             audioFrameConstructor.addDestination(dest);
             return;
-        } else if (video && track === 'video') {
+        } else if (video && track === 'video' && videoFrameConstructor) {
             videoFrameConstructor.addDestination(dest);
             return;
         }
@@ -74,10 +96,10 @@ exports.SipCallConnection = function (spec) {
     };
 
     that.removeDestination = function (track, dest) {
-        if (audio && track === 'audio') {
+        if (audio && track === 'audio' && audioFrameConstructor) {
             audioFrameConstructor.removeDestination(dest);
             return;
-        } else if (video && track === 'video') {
+        } else if (video && track === 'video' && videoFrameConstructor) {
             videoFrameConstructor.removeDestination(dest);
             return;
         }
@@ -99,7 +121,7 @@ exports.SipCallConnection = function (spec) {
     };
 
     that.requestKeyFrame = function() {
-        if (video)
+        if (video && videoFrameConstructor)
             videoFrameConstructor.requestKeyFrame();
     }
     return that;

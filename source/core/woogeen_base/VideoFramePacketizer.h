@@ -49,8 +49,11 @@ class VideoFramePacketizer : public FrameDestination,
     DECLARE_LOGGER();
 
 public:
-    VideoFramePacketizer(erizo::MediaSink* videoSink);
+    VideoFramePacketizer();
     ~VideoFramePacketizer();
+
+    void bindTransport(erizo::MediaSink* sink);
+    void unbindTransport();
 
     // Implements FrameDestination.
     void onFrame(const Frame&);
@@ -87,6 +90,8 @@ private:
     boost::shared_ptr<WebRTCTaskRunner> m_taskRunner;
     FrameFormat m_frameFormat;
     MediaSpecInfo m_mediaSpecInfo;
+
+    boost::shared_mutex m_transport_mutex;
 };
 
 }

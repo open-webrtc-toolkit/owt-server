@@ -19,7 +19,6 @@
  */
 
 #include "VideoFramePacketizer.h"
-
 #include "MediaUtilities.h"
 
 using namespace webrtc;
@@ -33,19 +32,15 @@ static const int TRANSMISSION_MAXBITRATE_MULTIPLIER = 2;
 
 DEFINE_LOGGER(VideoFramePacketizer, "woogeen.VideoFramePacketizer");
 
-VideoFramePacketizer::VideoFramePacketizer(erizo::MediaSink* videoSink)
+VideoFramePacketizer::VideoFramePacketizer()
     : m_frameFormat(FRAME_FORMAT_UNKNOWN)
     , m_mediaSpecInfo({0, 0})
 {
-    assert(videoSink);
-    setVideoSink(videoSink);
+    videoSink_ = nullptr;
     m_videoTransport.reset(new WebRTCTransport<erizo::VIDEO>(this, nullptr));
     m_taskRunner.reset(new woogeen_base::WebRTCTaskRunner());
     m_taskRunner->Start();
     init();
-    erizo::FeedbackSource* fbSource = videoSink->getFeedbackSource();
-    if (fbSource)
-        fbSource->setFeedbackSink(this);
 }
 
 VideoFramePacketizer::~VideoFramePacketizer()
@@ -53,6 +48,27 @@ VideoFramePacketizer::~VideoFramePacketizer()
     close();
     m_taskRunner->Stop();
     boost::unique_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
+}
+
+void VideoFramePacketizer::bindTransport(erizo::MediaSink* sink)
+{
+    boost::unique_lock<boost::shared_mutex> lock(m_transport_mutex);
+    videoSink_ = sink;
+    videoSink_->setVideoSinkSSRC(m_rtpRtcp->SSRC());
+    erizo::FeedbackSource* fbSource = videoSink_->getFeedbackSource();
+    if (fbSource)
+        fbSource->setFeedbackSink(this);
+}
+
+void VideoFramePacketizer::unbindTransport()
+{
+    boost::unique_lock<boost::shared_mutex> lock(m_transport_mutex);
+    if (videoSink_) {
+        erizo::FeedbackSource* fbSource = videoSink_->getFeedbackSource();
+        if (fbSource)
+            fbSource->setFeedbackSink(nullptr);
+        videoSink_ = nullptr;
+    }
 }
 
 bool VideoFramePacketizer::setSendCodec(FrameFormat frameFormat, unsigned int width, unsigned int height)
@@ -105,6 +121,11 @@ int VideoFramePacketizer::deliverFeedback(char* buf, int len)
 
 void VideoFramePacketizer::receiveRtpData(char* buf, int len, erizo::DataType type, uint32_t channelId)
 {
+    boost::shared_lock<boost::shared_mutex> lock(m_transport_mutex);
+    if (!videoSink_) {
+        return;
+    }
+
     assert(type == erizo::VIDEO);
     videoSink_->deliverVideoData(buf, len);
 }
@@ -195,16 +216,19 @@ bool VideoFramePacketizer::init()
 
     m_taskRunner->RegisterModule(m_rtpRtcp.get());
 
-    videoSink_->setVideoSinkSSRC(m_rtpRtcp->SSRC());
-
     return true;
 }
 
 void VideoFramePacketizer::close()
 {
-    erizo::FeedbackSource* fbSource = videoSink_->getFeedbackSource();
-    if (fbSource)
-        fbSource->setFeedbackSink(nullptr);
+    boost::unique_lock<boost::shared_mutex> lock(m_transport_mutex);
+    if (videoSink_) {
+        erizo::FeedbackSource* fbSource = videoSink_->getFeedbackSource();
+        if (fbSource)
+            fbSource->setFeedbackSink(nullptr);
+        videoSink_ = nullptr;
+    }
+    lock.unlock();
 
     if (m_bitrateController)
         m_bitrateController->RemoveBitrateObserver(this);

@@ -37,6 +37,7 @@
 #include <webrtc/video_engine/vie_receiver.h>
 #include <webrtc/video_engine/vie_sync_module.h>
 
+
 namespace woogeen_base {
 
 /**
@@ -52,8 +53,11 @@ class VideoFrameConstructor : public erizo::MediaSink,
     DECLARE_LOGGER();
 
 public:
-    VideoFrameConstructor(erizo::FeedbackSink* feedback);
+    VideoFrameConstructor();
     virtual ~VideoFrameConstructor();
+
+    void bindTransport(erizo::MediaSource* source, erizo::FeedbackSink* fbSink);
+    void unbindTransport();
 
     // Implements the webrtc::VCMPacketRequestCallback interface.
     virtual int32_t ResendPackets(const uint16_t* sequenceNumbers, uint16_t length);
@@ -113,6 +117,9 @@ private:
 
     boost::scoped_ptr<DebugRecorder> m_recorder;
     boost::shared_ptr<WebRTCTaskRunner> m_taskRunner;
+
+    erizo::MediaSource* m_transport;
+    boost::shared_mutex m_transport_mutex;
 };
 
 class DummyRemoteBitrateObserver : public webrtc::RemoteBitrateObserver {

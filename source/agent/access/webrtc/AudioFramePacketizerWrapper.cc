@@ -41,7 +41,8 @@ void AudioFramePacketizer::Init(v8::Local<v8::Object> exports) {
   // Prototype
   NODE_SET_PROTOTYPE_METHOD(tpl, "close", close);
 
-  NODE_SET_PROTOTYPE_METHOD(tpl, "setAudioReceiver", setAudioReceiver);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "bindTransport", bindTransport);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "unbindTransport", unbindTransport);
 
   constructor.Reset(isolate, tpl->GetFunction());
   exports->Set(String::NewFromUtf8(isolate, "AudioFramePacketizer"), tpl->GetFunction());
@@ -51,11 +52,8 @@ void AudioFramePacketizer::New(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
 
-  WebRtcConnection* param = ObjectWrap::Unwrap<WebRtcConnection>(args[0]->ToObject());
-  erizo::WebRtcConnection* wrtc = param->me;
-
   AudioFramePacketizer* obj = new AudioFramePacketizer();
-  obj->me = new woogeen_base::AudioFramePacketizer(wrtc);
+  obj->me = new woogeen_base::AudioFramePacketizer();
   obj->dest = obj->me;
 
   obj->Wrap(args.This());
@@ -70,16 +68,26 @@ void AudioFramePacketizer::close(const FunctionCallbackInfo<Value>& args) {
   delete me;
 }
 
-void AudioFramePacketizer::setAudioReceiver(const FunctionCallbackInfo<Value>& args) {
+void AudioFramePacketizer::bindTransport(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
 
   AudioFramePacketizer* obj = ObjectWrap::Unwrap<AudioFramePacketizer>(args.Holder());
   woogeen_base::AudioFramePacketizer* me = obj->me;
 
-  MediaSink* param = ObjectWrap::Unwrap<MediaSink>(args[0]->ToObject());
-  erizo::MediaSink* mr = param->msink;
+  WebRtcConnection* param = ObjectWrap::Unwrap<WebRtcConnection>(args[0]->ToObject());
+  erizo::WebRtcConnection* transport = param->me;
 
-  me->setAudioSink(mr);
+  me->bindTransport(transport);
+}
+
+void AudioFramePacketizer::unbindTransport(const FunctionCallbackInfo<Value>& args) {
+  Isolate* isolate = Isolate::GetCurrent();
+  HandleScope scope(isolate);
+
+  AudioFramePacketizer* obj = ObjectWrap::Unwrap<AudioFramePacketizer>(args.Holder());
+  woogeen_base::AudioFramePacketizer* me = obj->me;
+
+  me->unbindTransport();
 }
 
