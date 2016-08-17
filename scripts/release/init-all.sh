@@ -15,11 +15,15 @@ init_software()
 {
   if ${INSTALL_DEPS}; then
     echo "Installing dependency..."
-    ${ROOT}/nuve/init.sh --deps
+    ${ROOT}/bin/init-mongodb.sh --deps
+    ${ROOT}/bin/init-rabbitmq.sh --deps
+    ${ROOT}/nuve/init.sh
     ${ROOT}/access_agent/install_deps.sh
     ${ROOT}/video_agent/install_deps.sh
     ${ROOT}/video_agent/init.sh
   else
+    ${ROOT}/bin/init-mongodb.sh
+    ${ROOT}/bin/init-rabbitmq.sh
     ${ROOT}/nuve/init.sh
     ${ROOT}/video_agent/init.sh
   fi
@@ -29,11 +33,15 @@ init_hardware()
 {
   if ${INSTALL_DEPS}; then
     echo "Installing dependency..."
-    ${ROOT}/nuve/init.sh --deps
+    ${ROOT}/bin/init-mongodb.sh --deps
+    ${ROOT}/bin/init-rabbitmq.sh --deps
+    ${ROOT}/nuve/init.sh
     ${ROOT}/access_agent/install_deps.sh
     ${ROOT}/video_agent/install_deps.sh --hardware
     ${ROOT}/video_agent/init.sh --hardware
   else
+    ${ROOT}/bin/init-mongodb.sh
+    ${ROOT}/bin/init-rabbitmq.sh
     ${ROOT}/nuve/init.sh
     ${ROOT}/video_agent/init.sh --hardware
   fi
