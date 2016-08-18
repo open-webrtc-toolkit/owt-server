@@ -103,7 +103,11 @@ rpc.connect(GLOBAL.config.rabbit, function () {
             controller = require('./video')();
             break;
         case 'webrtc':
+            controller = require('woogeen/webrtc/index')();
+            break;
         case 'avstream':
+            controller = require('./access')();
+            break;
         case 'recording':
             controller = require('./access')();
             break;

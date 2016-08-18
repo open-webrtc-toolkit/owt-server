@@ -138,7 +138,7 @@ case $startStop in
         echo $! > ${pid}
         ;;
       webrtc-agent )
-        cd ${WOOGEEN_HOME}/access_agent
+        cd ${WOOGEEN_HOME}/webrtc_agent
         export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:./lib
         export NODE_PATH=./node_modules
         nohup nice -n ${WOOGEEN_NICENESS} node . -U webrtc\

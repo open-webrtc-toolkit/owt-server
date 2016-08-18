@@ -1,7 +1,7 @@
 /*global require, module, GLOBAL*/
 'use strict';
 
-var woogeenWebrtc = require('./webrtc/build/Release/webrtc');
+var woogeenWebrtc = require('./webrtcLib/build/Release/webrtc');
 var WebRtcConnection = woogeenWebrtc.WebRtcConnection;
 var AudioFrameConstructor = woogeenWebrtc.AudioFrameConstructor;
 var VideoFrameConstructor = woogeenWebrtc.VideoFrameConstructor;
