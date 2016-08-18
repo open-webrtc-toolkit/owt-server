@@ -244,8 +244,8 @@ protected:
                 return NULL;
             }
 
-            if (dst->getWidth() != video.width || dst->getHeight() != video.height)
-                dst->reSize(video.width, video.height);
+            if (dst->getVideoWidth() != video.width || dst->getVideoHeight() != video.height)
+                dst->setCrop(0, 0, video.width, video.height);
 
             I420VideoFrame *i420Frame = (reinterpret_cast<I420VideoFrame *>(frame.payload));
             if (!dst->convertFrom(*i420Frame))
@@ -328,9 +328,11 @@ MsdkVideoCompositor::MsdkVideoCompositor(uint32_t maxInput, VideoSize rootSize, 
     , m_framePool(NULL)
     , m_defaultInputFramePool(NULL)
 {
-    ELOG_DEBUG("set size to %dx%d, maxInput = %d", rootSize.width, rootSize.height, maxInput);
-    ELOG_TRACE("bgColor: Y(0x%x), Cb(0x%x), Cr(0x%x)", bgColor.y, bgColor.cb, bgColor.cr);
-    ELOG_TRACE("crop: %d", crop);
+    ELOG_DEBUG("set size to %dx%d, maxInput = %d, crop: %d, bgColor: Y(0x%x), Cb(0x%x), Cr(0x%x)"
+            , rootSize.width, rootSize.height, maxInput
+            , crop
+            , bgColor.y, bgColor.cb, bgColor.cr
+            );
 
     m_ntpDelta = Clock::GetRealTimeClock()->CurrentNtpInMilliseconds() - TickTime::MillisecondTimestamp();
 
@@ -383,6 +385,8 @@ MsdkVideoCompositor::~MsdkVideoCompositor()
     m_defaultInputFramePool.reset();
 
     m_framePool.reset();
+
+    m_frameQueue.clear();
 
     printfFuncExit;
 }
@@ -710,8 +714,8 @@ void MsdkVideoCompositor::generateFrame()
     frame.format = woogeen_base::FRAME_FORMAT_MSDK;
     frame.payload = reinterpret_cast<uint8_t*>(&holder);
     frame.length = 0; // unused.
-    frame.additionalInfo.video.width = compositeFrame->getWidth();
-    frame.additionalInfo.video.height = compositeFrame->getHeight();
+    frame.additionalInfo.video.width = compositeFrame->getVideoWidth();
+    frame.additionalInfo.video.height = compositeFrame->getVideoHeight();
     frame.timeStamp = kMsToRtpTimestamp *
         (TickTime::MillisecondTimestamp() + m_ntpDelta);
 
@@ -830,6 +834,15 @@ boost::shared_ptr<MsdkFrame> MsdkVideoCompositor::customLayout()
             src = m_defaultInputFrame;
         }
 
+        m_frameQueue.push_back(src);
+    }
+
+    applyAspectRatio();
+
+    int i = 0;
+    for (auto& l : m_currentLayout) {
+        boost::shared_ptr<MsdkFrame> src = m_frameQueue[i++];
+
         //dumpMsdkFrameInfo("+++src", src);
 retry:
         sts = m_vpp->RunFrameVPPAsync(src->getSurface(), dst->getSurface(), NULL, &syncP);
@@ -851,8 +864,9 @@ retry:
         //dumpMsdkFrameInfo("---src", src);
     }
 
-    if(sts != MFX_ERR_NONE)
-    {
+    m_frameQueue.clear();
+
+    if(sts != MFX_ERR_NONE) {
         ELOG_ERROR("Composite failed, ret %d", sts);
         return NULL;
     }
@@ -866,14 +880,133 @@ retry:
 
 #if 0
     sts = m_session->SyncOperation(syncP, MFX_INFINITE);
-    if(sts != MFX_ERR_NONE)
-    {
+    if(sts != MFX_ERR_NONE) {
         ELOG_ERROR("SyncOperation failed, ret %d", sts);
         return NULL;
     }
 #endif
 
     return dst;
+}
+
+void MsdkVideoCompositor::applyAspectRatio()
+{
+    bool isChanged = false;
+    int i = 0;
+
+    if (m_frameQueue.size() != m_extVppComp->NumInputStream) {
+        ELOG_ERROR("Num of frames(%lu) is not equal w/ input streams(%d)", m_frameQueue.size(), m_extVppComp->NumInputStream);
+        return;
+    }
+
+    for (auto& l : m_currentLayout) {
+        boost::shared_ptr<MsdkFrame> frame = m_frameQueue[i];
+        mfxVPPCompInputStream *configRect = m_inputs[l.input]->getVppRect();
+        mfxVPPCompInputStream *vppRect = &m_extVppComp->InputStream[i];
+
+        i++;
+
+        if (frame == m_defaultInputFrame)
+            continue;
+
+        double frame_ar = (double)frame->getCropW() / frame->getCropH();
+        double config_ar  = (double)configRect->DstW / configRect->DstH;
+        double vpp_ar = (double)vppRect->DstW / vppRect->DstH;
+        uint32_t x, y, w, h;
+
+        if (frame_ar == vpp_ar)
+            continue;
+
+        if (m_crop) {
+            uint32_t frame_w, frame_h;
+
+            frame_w = frame->getCropW();
+            frame_h = frame->getCropH();
+
+            if (frame_ar > config_ar) {
+                w = frame_h * config_ar;
+                h = frame_h;
+
+                x = (frame_w - w) / 2;
+                y = 0;
+            }
+            else {
+                w = frame_w;
+                h = frame_w / config_ar;
+
+                x = 0;
+                y = (frame_h - h) / 2;
+            }
+
+            ELOG_TRACE("setCrop(%p) %d-%d-%d-%d -> %d-%d-%d-%d"
+                    , frame.get()
+                    , frame->getCropX(), frame->getCropY(), frame->getCropW(), frame->getCropH()
+                    , x, y, w, h
+                    );
+
+            frame->setCrop(x, y, w, h);
+        }
+        else {
+            if (frame_ar > config_ar) {
+                w = configRect->DstW;
+                h = configRect->DstW / frame_ar;
+
+                x = configRect->DstX;
+                y = configRect->DstY + (configRect->DstH - h) / 2;
+            }
+            else {
+                w = configRect->DstH * frame_ar;
+                h = configRect->DstH;
+
+                x = configRect->DstX + (configRect->DstW - w) / 2;
+                y = configRect->DstY;
+            }
+
+            ELOG_TRACE("update pos %d-%d-%d-%d -> %d-%d-%d-%d, aspect ratio %lf -> %lf"
+                    , vppRect->DstX, vppRect->DstY, vppRect->DstW, vppRect->DstH
+                    , x, y, w, h
+                    , vpp_ar
+                    , frame_ar
+                    );
+
+            vppRect->DstX = x;
+            vppRect->DstY = y;
+            vppRect->DstW = w;
+            vppRect->DstH = h;
+
+            isChanged = true;
+        }
+    }
+
+    if (!isChanged)
+        return;
+
+    ELOG_DEBUG("apply new aspect ratio");
+
+    mfxStatus sts = MFX_ERR_NONE;
+    sts = m_vpp->Reset(m_videoParam.get());
+    if (sts > 0) {
+        ELOG_TRACE("Ignore mfx warning, ret %d", sts);
+    }
+    else if (sts != MFX_ERR_NONE) {
+        ELOG_TRACE("mfx reset failed, ret %d. Try to close.", sts);
+
+        m_vpp->Close();
+
+        sts = m_vpp->Init(m_videoParam.get());
+        if (sts > 0) {
+            ELOG_TRACE("Ignore mfx warning, ret %d", sts);
+        }
+        else if (sts != MFX_ERR_NONE) {
+            ELOG_ERROR("mfx init failed, ret %d", sts);
+
+            MsdkBase::printfVideoParam(m_videoParam.get(), MFX_VPP);
+            return;
+        }
+    }
+
+    m_vpp->GetVideoParam(m_videoParam.get());
+    MsdkBase::printfVideoParam(m_videoParam.get(), MFX_VPP);
 }
 
 }

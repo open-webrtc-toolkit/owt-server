@@ -79,25 +79,30 @@ void MsdkFrame::sync(void)
     }
 }
 
-bool MsdkFrame::reSize(uint32_t width, uint32_t height)
+bool MsdkFrame::setCrop(uint32_t cropX, uint32_t cropY, uint32_t cropW, uint32_t cropH)
 {
-    ELOG_TRACE("reSize %dx%d(%dx%d) -> %dx%d"
+    ELOG_TRACE("setCrop %d-%d-%d-%d(%dx%d) -> %d-%d-%d-%d"
+            , m_surface.Info.CropX, m_surface.Info.CropY
             , m_surface.Info.CropW, m_surface.Info.CropH
             , m_surface.Info.Width, m_surface.Info.Height
-            , width, height);
+            , cropX, cropY
+            , cropW, cropH
+            );
 
-    if (width > m_surface.Info.Width || height > m_surface.Info.Height) {
-        ELOG_ERROR("Can not crop %dx%d into %dx%d"
+    if (cropX + cropW > m_surface.Info.Width || cropY + cropH >  m_surface.Info.Height) {
+        ELOG_ERROR("Can not crop %dx%d into %d-%d-%d-%d"
                 , m_surface.Info.Width, m_surface.Info.Height
-                , width, height);
+                , cropX, cropY, cropW, cropH);
 
         return false;
     }
 
-    m_surface.Info.CropW = width;
-    m_surface.Info.CropH = height;
+    m_surface.Info.CropX = cropX;
+    m_surface.Info.CropY = cropY;
+    m_surface.Info.CropW = cropW;
+    m_surface.Info.CropH = cropH;
 
-    if (m_nv12TBuffer && m_nv12TBufferSize < width * height * 3 / 2) {
+    if (m_nv12TBuffer && m_nv12TBufferSize < cropW * cropH * 3 / 2) {
         free(m_nv12TBuffer);
         m_nv12TBuffer = NULL;
         m_nv12TBufferSize = 0;
@@ -242,6 +247,11 @@ bool MsdkFrame::convertFrom(webrtc::I420VideoFrame& frame)
         return false;
     }
 
+    if (pInfo.CropX != 0 || pInfo.CropY != 0) {
+        ELOG_ERROR("Dont support set x, y crop: %d-%d", pInfo.CropX, pInfo.CropY);
+        return false;
+    }
+
     if (pInfo.CropH > 0 && pInfo.CropW > 0) {
         w = pInfo.CropW;
         h = pInfo.CropH;
@@ -316,8 +326,8 @@ bool MsdkFrame::convertFrom(webrtc::I420VideoFrame& frame)
 
 bool MsdkFrame::nv12ConvertTo(mfxFrameInfo& pInfo, mfxFrameData& pData, webrtc::I420VideoFrame& frame)
 {
-    uint32_t w = getWidth();
-    uint32_t h = getHeight();
+    uint32_t w = getCropW();
+    uint32_t h = getCropH();
 
     if (!m_nv12TBuffer) {
         m_nv12TBuffer = (uint8_t *)memalign(16, h * pData.Pitch * 3 / 2);
@@ -392,12 +402,20 @@ bool MsdkFrame::convertTo(webrtc::I420VideoFrame& frame)
         return false;
     }
 
+    if (pInfo.CropX != 0 || pInfo.CropY != 0) {
+        ELOG_ERROR("Dont support set x, y crop: %d-%d", pInfo.CropX, pInfo.CropY);
+        return false;
+    }
+
+    uint32_t w = getCropW();
+    uint32_t h = getCropH();
+
     frame.CreateEmptyFrame(
-            getWidth(),
-            getHeight(),
-            getWidth(),
-            getWidth() / 2,
-            getWidth() / 2
+            w,
+            h,
+            w,
+            w / 2,
+            w / 2
             );
 
     //dumpI420VideoFrameInfo(frame);

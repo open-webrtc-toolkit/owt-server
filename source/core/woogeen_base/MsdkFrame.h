@@ -55,11 +55,16 @@ public:
     bool isFree(void) {return !m_surface.Data.Locked;}
     int getLockedCount(void)  {return m_surface.Data.Locked;}
 
-    uint32_t getWidth() {return m_surface.Info.CropW;}
-    uint32_t getHeight() {return m_surface.Info.CropH;}
+    uint32_t getVideoWidth() {return m_surface.Info.CropW;}
+    uint32_t getVideoHeight() {return m_surface.Info.CropH;}
+
+    uint32_t getCropX() {return m_surface.Info.CropX;}
+    uint32_t getCropY() {return m_surface.Info.CropY;}
+    uint32_t getCropW() {return m_surface.Info.CropW;}
+    uint32_t getCropH() {return m_surface.Info.CropH;}
 
     //set frame crop to resize
-    bool reSize(uint32_t width, uint32_t height);
+    bool setCrop(uint32_t cropX, uint32_t cropY, uint32_t cropW, uint32_t cropH);
 
     bool fillFrame(uint8_t y, uint8_t u, uint8_t v);
 

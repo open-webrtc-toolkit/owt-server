@@ -388,8 +388,8 @@ retry:
         frame.format = FRAME_FORMAT_MSDK;
         frame.payload = reinterpret_cast<uint8_t*>(&holder);
         frame.length = 0;
-        frame.additionalInfo.video.width = holder.frame->getWidth();
-        frame.additionalInfo.video.height = holder.frame->getHeight();
+        frame.additionalInfo.video.width = holder.frame->getVideoWidth();
+        frame.additionalInfo.video.height = holder.frame->getVideoHeight();
         frame.timeStamp = 0;
 
         //ELOG_TRACE("timeStamp %u", frame.timeStamp);
