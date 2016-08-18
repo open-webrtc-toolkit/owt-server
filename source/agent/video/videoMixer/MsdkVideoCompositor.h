@@ -81,6 +81,8 @@ protected:
     boost::shared_ptr<woogeen_base::MsdkFrame> layout();
     boost::shared_ptr<woogeen_base::MsdkFrame> customLayout();
 
+    void applyAspectRatio();
+
 private:
     uint32_t m_maxInput;
     bool m_crop;
@@ -122,6 +124,8 @@ private:
     boost::scoped_ptr<JobTimer> m_jobTimer;
 
     boost::shared_mutex m_mutex;
+
+    std::vector<boost::shared_ptr<woogeen_base::MsdkFrame>> m_frameQueue;
 };
 
 }
