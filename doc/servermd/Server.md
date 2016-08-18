@@ -223,6 +223,11 @@ To launch the MCU server on one machine, follow steps below:
         cd Release-<Version>/
         bin/start-all.sh
 
+    If mongodb or rabbitmq-server is not running, you can run following command before starting the MCU:
+
+        bin/init-mongodb.sh [--deps] [--DB_URL=dburl]
+        bin/init-rabbitmq.sh [--deps]
+
 3. To verify whether the server started successfully, launch your browser and connect to the MCU server at https://XXXXX:3004. Replace XXXXX with the IP address or machine name of your MCU server.
 
 > **Note**: The procedures in this guide use the default room in the sample.
@@ -252,24 +257,38 @@ app|0 or 1|The sample web application for reference, users should use their own 
 
 Follow the steps below to set up an MCU cluster:
 1. Make sure you have installed the MCU package on each machine before launching the cluster which has been described in section [Install the MCU package](#Conferencesection2_3_3).
-2. Choose a primary machine. This machine must be visible to clients(such as browsers and mobile apps).
-3. Edit the configuration items of nuve in Release-<Version>/nuve/nuve.toml.
+2. Make sure RabbitMQ service is started prior to all MCU cluster nodes. RabbitMQ can be deployed on a single node by running following command:
 
-    - Make sure the [rabbit.port] and [rabbit.host] point to the RabbitMQ server.
-   > **Note**: Now a default RabbitMQ server will be deployed along with nuve in scripts, but you can choose any other existing RabbitMQ server. Make sure RabbitMQ service is started prior to all MCU cluster nodes.
+        bin/init-rabbitmq.sh [--deps]
+
+    **Note**: If you want to enable clustering for rabbitmq, you can refer to rabbitmq's official site (https://www.rabbitmq.com/clustering.html) for details.
+
+    Make sure mongodb service is started prior to nuve (if DB_URL is not specified, localhost/nuve is used as default. You can start mongodb on the same machine with nuve). The mongodb can be deployed on a single node by running following command:
+
+        bin/init-mongodb.sh [--deps] [--DB_URL=dburl]
+
+
+3. Choose a primary machine for nuve. This machine must be visible to clients(such as browsers and mobile apps). Edit the configuration items of nuve in Release-<Version>/nuve/nuve.toml.
+
+    Make sure the [rabbit.port] and [rabbit.host] point to the RabbitMQ server.
+
+    **Note**: Make sure the nuve machine is able to access the mongodb service on the network.
 
 4. Initialize and run MCU manager nuve and the sample application on the primary machine.
 
     1) Initialize MCU manager nuve for the first time execution:
 
         cd Release-<Version>/
-        nuve/init.sh --deps
+        nuve/init.sh [--dburl=HOST/DBNAME]
+
+    The argument dburl is the mongodb url.
 
     2) Run MCU manager nuve and the sample application with following commands:
 
         cd Release-<Version>/
         bin/daemon.sh start nuve
         bin/daemon.sh start app
+
    > **Note**: You can also deploy the sample application server on separated machine, follow instructions at Release-<Version>/extras/basic_example/README.md
 
 5. Choose a machine to run cluster-manager. This machine does not need to be visible to clients, but should be visible to nuve and all workers.
