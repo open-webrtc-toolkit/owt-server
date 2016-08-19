@@ -215,6 +215,10 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
         }
     };
 
+    var isTerminalFree = function (terminal_id) {
+        return terminals[terminal_id] && terminals[terminal_id].published.length === 0 && (Object.keys(terminals[terminal_id].subscribed).length === 0) ? true : false;
+    };
+
     var publisherCount = function () {
         var count = 0;
         for (var t in terminals) {
@@ -942,8 +946,10 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                             for (var i in terminals[terminal_id].published) {
                                 unpublishStream(terminals[terminal_id].published[i]);
                             }
-                            deleteTerminal(terminal_id);
                         }
+                    }
+                    if (isTerminalFree(terminal_id)) {
+                        deleteTerminal(terminal_id);
                     }
                 });
                 streams[stream_id] && (streams[stream_id].audio.subscribers = []);
@@ -957,8 +963,10 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                             for (var i in terminals[terminal_id].published) {
                                 unpublishStream(terminals[terminal_id].published[i]);
                             }
-                            deleteTerminal(terminal_id);
                         }
+                    }
+                    if (isTerminalFree(terminal_id)) {
+                        deleteTerminal(terminal_id);
                     }
                 });
                 streams[stream_id] && (streams[stream_id].video.subscribers = []);
