@@ -78,6 +78,8 @@ protected:
     void addToAudioFifo(uint8_t* data, int nbSamples);
     bool encodeAudioFrame(AVPacket *pkt);
 
+    bool isHls(std::string uri) {return (uri.compare(0, 7, "http://") == 0);}
+
 private:
     std::string m_uri;
 

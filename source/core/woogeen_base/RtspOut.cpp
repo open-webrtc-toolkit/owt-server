@@ -46,6 +46,8 @@ static inline const char* getShortName(std::string& url)
         return "rtsp";
     else if (url.compare(0, 7, "rtmp://") == 0)
         return "flv";
+    else if (url.compare(0, 7, "http://") == 0)
+        return "hls";
     return nullptr;
 }
 
@@ -86,6 +88,7 @@ RtspOut::RtspOut(const std::string& url, const AVOptions* audio, const AVOptions
     ELOG_TRACE("acodec %s, vcodec %s", m_audioOptions.codec.c_str(), m_videoOptions.codec.c_str());
 
     av_log_set_level(AV_LOG_DEBUG);
+    avcodec_register_all();
 
     if(!createContext()) {
         return;
@@ -221,7 +224,7 @@ bool RtspOut::detectInputVideoStream()
             nullptr,
             nullptr);
 
-    m_ifmtCtx->max_analyze_duration2 = 1 * AV_TIME_BASE;
+    m_ifmtCtx->max_analyze_duration = 1 * AV_TIME_BASE;
 
     ret = avformat_open_input(&m_ifmtCtx, nullptr, 0, 0);
     if (ret != 0) {
@@ -386,6 +389,8 @@ fail:
 
 bool RtspOut::init()
 {
+    AVDictionary *options = NULL;
+
     if (!hasAudio() || !hasVideo()) {
         ELOG_ERROR("no a/v options specified, audio %d, video %d", hasAudio(), hasVideo());
 
@@ -447,7 +452,43 @@ bool RtspOut::init()
     if (!addAudioStream(AV_CODEC_ID_AAC, m_audioOptions.spec.audio.channels, m_audioOptions.spec.audio.sampleRate))
         return false;
 
-    if (avformat_write_header(m_context, nullptr) < 0) {
+    if (isHls(m_uri)) {
+        std::string::size_type pos1 = m_uri.rfind('/');
+        if (pos1 == std::string::npos) {
+            ELOG_ERROR("cant not find base url %s", m_uri.c_str());
+
+            return false;
+        }
+
+        std::string::size_type pos2 = m_uri.rfind('.');
+        if (pos2 == std::string::npos) {
+            ELOG_ERROR("cant not find base url %s", m_uri.c_str());
+
+            return false;
+        }
+
+        if (pos2 <= pos1) {
+             ELOG_ERROR("cant not find base url %s", m_uri.c_str());
+
+             return false;
+         }
+
+        std::string segment_uri(m_uri.substr(0, pos1));
+        segment_uri.append("/intel_");
+        segment_uri.append(m_uri.substr(pos1 + 1, pos2 - pos1 - 1));
+        segment_uri.append("_%09d.ts");
+
+        ELOG_TRACE("index url %s", m_uri.c_str());
+        ELOG_TRACE("segment url %s", segment_uri.c_str());
+
+        av_dict_set(&options, "hls_segment_filename", segment_uri.c_str(), 0);
+        av_dict_set(&options, "hls_time", "10", 0);
+        av_dict_set(&options, "hls_list_size", "4", 0);
+        av_dict_set(&options, "hls_flags", "delete_segments", 0);
+        av_dict_set(&options, "method", "PUT", 0);
+    }
+
+    if (avformat_write_header(m_context, &options) < 0) {
         ELOG_ERROR("cannot write header");
 
         notifyAsyncEvent("fatal", "cannot write header");
@@ -669,7 +710,7 @@ int RtspOut::writeAudioFrame()
 	}
 
     m_lastAudioTimestamp = pkt.pts;
-    ELOG_TRACE("audio_frame pts: %ld, duration: %d, size: %d", pkt.pts, pkt.duration, pkt.size);
+    ELOG_TRACE("audio_frame pts: %ld, duration: %ld, size: %d", pkt.pts, pkt.duration, pkt.size);
 
     {
         boost::unique_lock<boost::shared_mutex> lock(m_contextMutex);
@@ -733,7 +774,7 @@ int RtspOut::writeVideoFrame()
     }
 
     m_lastVideoTimestamp = pkt.pts;
-    ELOG_TRACE("video_frame pts: %ld, duration: %d, size: %d %s"
+    ELOG_TRACE("video_frame pts: %ld, duration: %ld, size: %d %s"
             , pkt.pts, pkt.duration, pkt.size, (pkt.flags & AV_PKT_FLAG_KEY) ? "key frame" : "");
     {
         boost::unique_lock<boost::shared_mutex> lock(m_contextMutex);
@@ -764,7 +805,11 @@ bool RtspOut::addAudioStream(enum AVCodecID codec_id, int nbChannels, int sample
     AVStream* stream = NULL;
     AVCodecContext* c = NULL;
 
-    codec = avcodec_find_encoder(codec_id);
+    if (codec_id == AV_CODEC_ID_AAC)
+        codec = avcodec_find_encoder_by_name("libfdk_aac");
+    else
+        codec = avcodec_find_encoder(codec_id);
+
     if (!codec) {
         ELOG_ERROR("cannot find audio encoder %d", codec_id);
 
