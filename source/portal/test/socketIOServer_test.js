@@ -765,12 +765,18 @@ describe('Responding to clients.', function() {
                 expect(status).to.equal('error');
                 expect(data).to.equal('Invalid RTSP/RTMP server url');
 
-                simulateStubResponse(mockPortal.subscribe, 0, 3, {type: 'failed', reason: 'can not open connection'});
-                var options3 = {url: 'rtmp://a-wrong-url'};
-                client.emit('addExternalOutput', options3, function(status, data) {
+                var options22 = {url: 'sip://another invalid url'};
+                client.emit('addExternalOutput', options22, function(status, data) {
                   expect(status).to.equal('error');
-                  expect(data).to.equal('can not open connection');
-                  done();
+                  expect(data).to.equal('Invalid RTSP/RTMP server url');
+
+                  simulateStubResponse(mockPortal.subscribe, 0, 3, {type: 'failed', reason: 'can not open connection'});
+                  var options3 = {url: 'rtmp://a-wrong-url'};
+                  client.emit('addExternalOutput', options3, function(status, data) {
+                    expect(status).to.equal('error');
+                    expect(data).to.equal('can not open connection');
+                    done();
+                  });
                 });
               });
             });

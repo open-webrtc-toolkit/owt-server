@@ -265,7 +265,7 @@ var Client = function(participantId, socket, portal, on_disconnect) {
       }
 
       var parsed_url = url.parse(options.url);
-      if ((parsed_url.protocol !== 'rtsp:' && parsed_url.protocol !== 'rtmp:') || !parsed_url.slashes || !parsed_url.host) {
+      if ((parsed_url.protocol !== 'rtsp:' && parsed_url.protocol !== 'rtmp:' && parsed_url.protocol !== 'http:') || !parsed_url.slashes || !parsed_url.host) {
         return safeCall(callback, 'error', 'Invalid RTSP/RTMP server url');
       }
 
@@ -307,7 +307,7 @@ var Client = function(participantId, socket, portal, on_disconnect) {
       }
 
       var parsed_url = url.parse(options.url);
-      if ((parsed_url.protocol !== 'rtsp:' && parsed_url.protocol !== 'rtmp:') || !parsed_url.slashes || !parsed_url.host) {
+      if ((parsed_url.protocol !== 'rtsp:' && parsed_url.protocol !== 'rtmp:' && parsed_url.protocol !== 'http:') || !parsed_url.slashes || !parsed_url.host) {
         return safeCall(callback, 'error', 'Invalid RTSP/RTMP server url');
       }
 
