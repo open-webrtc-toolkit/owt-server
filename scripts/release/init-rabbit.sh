@@ -70,6 +70,7 @@ start_up() {
   if ! pgrep -f rabbitmq >/dev/null; then
     sudo echo
     sudo rabbitmq-server > ${LogDir}/rabbit.log &
+    echo -e "\x1b[32mRabbitmq-server started\x1b[0m"
   else
     echo -e "\x1b[32mRabbitmq-server already running\x1b[0m"
   fi
