@@ -102,12 +102,12 @@ var Portal = function(spec, rpcClient) {
 
   var connectionObserver = function(onStatus, onConnectionReady, onConnectionFailed) {
     return function(status) {
-      onStatus(status);
       if (status.type === 'failed') {
         return onConnectionFailed(status.reason);
       } else if (status.type === 'ready') {
         return onConnectionReady(status);
       } else {
+        onStatus(status);
         return Promise.resolve(status.type);
       }
     };
@@ -260,6 +260,7 @@ var Portal = function(spec, rpcClient) {
           }
 
           participant.connections[stream_id].state = 'connected';
+          onConnectionStatus(status);
           return result;
         }).catch(function(err) {
           log.debug('pub2Session failed, participantId:', participantId, 'connection_id:', connection_id, 'err:', err);
@@ -290,6 +291,7 @@ var Portal = function(spec, rpcClient) {
           delete participants[participantId].connections[connection_id];
         }
       }
+      onConnectionStatus({type: 'failed', reason: reason});
       return Promise.reject(reason);
     };
 
@@ -441,6 +443,7 @@ var Portal = function(spec, rpcClient) {
           }
 
           participant.connections[connection_id].state = 'connected';
+          onConnectionStatus(status);
           return result;
         }).catch(function(err) {
           log.debug('sub2Session failed, participantId:', participantId, 'connection_id:', connection_id, 'err:', err);
@@ -471,6 +474,7 @@ var Portal = function(spec, rpcClient) {
           delete participants[participantId].connections[connection_id];
         }
       }
+      onConnectionStatus({type: 'failed', reason: reason});
       return Promise.reject(reason);
     };
 

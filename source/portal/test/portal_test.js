@@ -760,8 +760,7 @@ describe('portal.publish/portal.unpublish: Participants publish/unpublish stream
           expect(mockRpcClient.pub2Session.getCall(0).args).to.deep.equal(['rpcIdOfController', testParticipantId, stream_id, {agent: 'rpcIdOfAccessAgent', node: 'rpcIdOfAccessNode'}, {audio: {codec: 'pcmu'}, video: {resolution: 'vga', framerate: 30, device: 'camera', codec: 'vp8'}, type: 'webrtc'}, true]);
           expect(mockRpcClient.unpublish.getCall(0).args).to.deep.equal(['rpcIdOfAccessNode', stream_id]);
           expect(mockRpcClient.recycleAccessNode.getCall(0).args).to.deep.equal(['rpcIdOfAccessAgent', 'rpcIdOfAccessNode', {session: testSession, consumer: stream_id}]);
-          expect(spyConnectionObserver.getCall(0).args).to.deep.equal([{type: 'ready', audio_codecs: ['pcmu', 'opus'], video_codecs: ['vp8', 'h264']}]);
-          expect(spyConnectionObserver.getCall(1).args).to.deep.equal([{type: 'failed', reason: 'timeout or error'}]);
+          expect(spyConnectionObserver.getCall(0).args).to.deep.equal([{type: 'failed', reason: 'timeout or error'}]);
         });
     });
 
@@ -1643,8 +1642,7 @@ describe('portal.subscribe/portal.unsubscribe/portal.mediaOnOff: Participants su
           expect(err).to.be.an('error');
           expect(mockRpcClient.unsubscribe.getCall(0).args).to.deep.equal(['rpcIdOfAccessNode', subscription_id]);
           expect(mockRpcClient.recycleAccessNode.getCall(0).args).to.deep.equal(['rpcIdOfAccessAgent', 'rpcIdOfAccessNode', {session: testSession, consumer: subscription_id}]);
-          expect(spyConnectionObserver.getCall(0).args).to.deep.equal([{type: 'ready', audio_codecs: ['pcmu'], video_codecs: ['vp8']}]);
-          expect(spyConnectionObserver.getCall(1).args).to.deep.equal([{type: 'failed', reason: 'timeout or error'}]);
+          expect(spyConnectionObserver.getCall(0).args).to.deep.equal([{type: 'failed', reason: 'timeout or error'}]);
         });
     });
 

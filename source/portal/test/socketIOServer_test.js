@@ -308,21 +308,20 @@ describe('Responding to clients.', function() {
         .then(function(result) {
           expect(result).to.equal('ok');
           var options = {state: 'erizo', audio: true, video: {resolution: 'vga', framerate: 30, device: 'camera'}};
+          simulateStubResponse(mockPortal.publish, 0, 3, {type: 'initializing'});
           client.emit('publish', options, undefined, function(status, id) {
-            var observer;
             if (status === 'initializing') {
                expect(id).to.equal('streamId');
                expect(mockPortal.publish.getCall(0).args[0]).to.equal('/#' + client.id);
                expect(mockPortal.publish.getCall(0).args[1]).to.equal('webrtc');
                expect(mockPortal.publish.getCall(0).args[2]).to.deep.equal({audio: true, video: {resolution: 'vga', framerate: 30, device: 'camera'}});
-               observer = mockPortal.publish.getCall(0).args[3];
-               expect(observer).to.be.a('function');
+               expect(mockPortal.publish.getCall(0).args[3]).to.be.a('function');
                expect(mockPortal.publish.getCall(0).args[4]).to.be.false;
                client.emit('signaling_message', {streamId: 'streamId', msg: {type: 'offer', sdp: 'offerSDPString'}}, undefined, function() {
                  expect(mockPortal.onConnectionSignalling.getCall(0).args).to.deep.equal(['/#' + client.id, 'streamId', {type: 'offer', sdp: 'offerSDPString'}]);
                  client.emit('signaling_message', {streamId: 'streamId', msg: {type: 'candidate', sdp: 'candidateString'}}, undefined, function() {
                    expect(mockPortal.onConnectionSignalling.getCall(1).args).to.deep.equal(['/#' + client.id, 'streamId', {type: 'candidate', sdp: 'candidateString'}]);
-                   observer({type: 'ready', audio_codecs: ['opus'], video_codecs: ['vp8']});
+                   simulateStubResponse(mockPortal.publish, 0, 3, {type: 'ready', audio_codecs: ['opus'], video_codecs: ['vp8']});
                  });
                });
             } else if (status === 'error') {
@@ -372,42 +371,39 @@ describe('Responding to clients.', function() {
         .then(function(result) {
           expect(result).to.equal('ok');
           var options1 = {state: 'erizo'};
+          simulateStubResponse(mockPortal.publish, 0, 3, {type: 'initializing'});
           client.emit('publish', options1, undefined, function(status, id) {
-            if (status === 'initializing') {
-               expect(mockPortal.publish.getCall(0).args[2]).to.deep.equal({audio: true, video: {resolution: 'unknown', device: 'unknown'}});
+            expect(mockPortal.publish.getCall(0).args[2]).to.deep.equal({audio: true, video: {resolution: 'unknown', device: 'unknown'}});
+            expect(mockPortal.publish.getCall(0).args[4]).to.be.false;
 
-               var options2 = {state: 'erizo', audio: false, video: true, unmix: true};
-               client.emit('publish', options2, undefined, function(status, id) {
-                 if (status === 'initializing') {
-                    expect(mockPortal.publish.getCall(1).args[2]).to.deep.equal({audio: false, video: {resolution: 'unknown', device: 'unknown'}});
-                    expect(mockPortal.publish.getCall(1).args[4]).to.be.true;
+            var options2 = {state: 'erizo', audio: false, video: true, unmix: true};
+            simulateStubResponse(mockPortal.publish, 1, 3, {type: 'initializing'});
+            client.emit('publish', options2, undefined, function(status, id) {
+              expect(mockPortal.publish.getCall(1).args[2]).to.deep.equal({audio: false, video: {resolution: 'unknown', device: 'unknown'}});
+              expect(mockPortal.publish.getCall(1).args[4]).to.be.true;
 
-                    var options3 = {state: 'erizo', audio: true, video: false};
-                    client.emit('publish', options3, undefined, function(status, id) {
-                      if (status === 'initializing') {
-                         expect(mockPortal.publish.getCall(2).args[2]).to.deep.equal({audio: true, video: false});
+              var options3 = {state: 'erizo', audio: true, video: false};
+              simulateStubResponse(mockPortal.publish, 2, 3, {type: 'initializing'});
+              client.emit('publish', options3, undefined, function(status, id) {
+                expect(mockPortal.publish.getCall(2).args[2]).to.deep.equal({audio: true, video: false});
+                expect(mockPortal.publish.getCall(2).args[4]).to.be.false;
 
-                         var options4 = {state: 'erizo', audio: false, video: {resolution: 'vga', device: 'screen'}};
-                         client.emit('publish', options4, undefined, function(status, id) {
-                           if (status === 'initializing') {
-                              expect(mockPortal.publish.getCall(3).args[2]).to.deep.equal({audio: false, video: {resolution: 'vga', device: 'screen'}});
-                              expect(mockPortal.publish.getCall(3).args[4]).to.be.true;
+                var options4 = {state: 'erizo', audio: false, video: {resolution: 'vga', device: 'screen'}};
+                simulateStubResponse(mockPortal.publish, 3, 3, {type: 'initializing'});
+                client.emit('publish', options4, undefined, function(status, id) {
+                  expect(mockPortal.publish.getCall(3).args[2]).to.deep.equal({audio: false, video: {resolution: 'vga', device: 'screen'}});
+                  expect(mockPortal.publish.getCall(3).args[4]).to.be.true;
 
-                              var options5 = {state: 'erizo', audio: true, video: {resolution: '', device: 'camera'}};
-                              client.emit('publish', options5, undefined, function(status, id) {
-                                if (status === 'initializing') {
-                                   expect(mockPortal.publish.getCall(4).args[2]).to.deep.equal({audio: true, video: {resolution: 'unknown', device: 'camera'}});
-                                   expect(mockPortal.publish.getCall(4).args[4]).to.be.false;
-                                   done();
-                                 }
-                              });
-                            }
-                         });
-                      }
-                    });
-                 }
-               });
-            }
+                  var options5 = {state: 'erizo', audio: true, video: {resolution: '', device: 'camera'}};
+                  simulateStubResponse(mockPortal.publish, 4, 3, {type: 'initializing'});
+                  client.emit('publish', options5, undefined, function(status, id) {
+                    expect(mockPortal.publish.getCall(4).args[2]).to.deep.equal({audio: true, video: {resolution: 'unknown', device: 'camera'}});
+                    expect(mockPortal.publish.getCall(4).args[4]).to.be.false;
+                    done();
+                  });
+                });
+              });
+            });
           });
         });
     });
@@ -595,20 +591,19 @@ describe('Responding to clients.', function() {
         .then(function(result) {
           expect(result).to.equal('ok');
           var options = {streamId: 'targetStreamId', audio: true, video: {resolution: {width: 640, height: 480}}};
+          simulateStubResponse(mockPortal.subscribe, 0, 3, {type: 'initializing'});
           client.emit('subscribe', options, undefined, function(status, id) {
-            var observer;
             if (status === 'initializing') {
-               expect(id).to.equal('subscriptionId');
+               expect(id).to.equal('targetStreamId');
                expect(mockPortal.subscribe.getCall(0).args[0]).to.equal('/#' + client.id);
                expect(mockPortal.subscribe.getCall(0).args[1]).to.equal('webrtc');
                expect(mockPortal.subscribe.getCall(0).args[2]).to.deep.equal({audio: {fromStream: 'targetStreamId'}, video: {fromStream: 'targetStreamId', resolution: 'vga'}});
-               observer = mockPortal.subscribe.getCall(0).args[3];
-               expect(observer).to.be.a('function');
+               expect(mockPortal.subscribe.getCall(0).args[3]).to.be.a('function');
                client.emit('signaling_message', {streamId: 'subscriptionId', msg: {type: 'offer', sdp: 'offerSDPString'}}, undefined, function() {
                  expect(mockPortal.onConnectionSignalling.getCall(0).args).to.deep.equal(['/#' + client.id, 'subscriptionId', {type: 'offer', sdp: 'offerSDPString'}]);
                  client.emit('signaling_message', {streamId: 'subscriptionId', msg: {type: 'candidate', sdp: 'candidateString'}}, undefined, function() {
                    expect(mockPortal.onConnectionSignalling.getCall(1).args).to.deep.equal(['/#' + client.id, 'subscriptionId', {type: 'candidate', sdp: 'candidateString'}]);
-                   observer({type: 'ready', audio_codecs: ['opus'], video_codecs: ['vp8']});
+                   simulateStubResponse(mockPortal.subscribe, 0, 3, {type: 'ready', audio_codecs: ['opus'], video_codecs: ['vp8']});
                  });
                });
             } else if (status === 'error') {
@@ -635,17 +630,15 @@ describe('Responding to clients.', function() {
         .then(function(result) {
           expect(result).to.equal('ok');
           var options = {streamId: 'targetStreamId', audio: true, video: {resolution: {width: 640, height: 480}}};
+          simulateStubResponse(mockPortal.subscribe, 0, 3, {type: 'initializing'});
           client.emit('subscribe', options, undefined, function(status, id) {
-            if (status === 'initializing') {
-              expect(mockPortal.subscribe.getCall(0).args[2]).to.deep.equal({audio: {fromStream: 'targetStreamId'}, video: {fromStream: 'targetStreamId', resolution: 'vga'}});
-              var options1 = {streamId: 'targetStreamId1', video: {resolution: {width: 640, height: 480}}};
-              client.emit('subscribe', options1, undefined, function(status, id) {
-                if (status === 'initializing') {
-                  expect(mockPortal.subscribe.getCall(1).args[2]).to.deep.equal({audio: {fromStream: 'targetStreamId1'}, video: {fromStream: 'targetStreamId1', resolution: 'vga'}});
-                  done();
-                }
-              });
-            }
+            expect(mockPortal.subscribe.getCall(0).args[2]).to.deep.equal({audio: {fromStream: 'targetStreamId'}, video: {fromStream: 'targetStreamId', resolution: 'vga'}});
+            var options1 = {streamId: 'targetStreamId1', video: {resolution: {width: 640, height: 480}}};
+            simulateStubResponse(mockPortal.subscribe, 1, 3, {type: 'initializing'});
+            client.emit('subscribe', options1, undefined, function(status, id) {
+              expect(mockPortal.subscribe.getCall(1).args[2]).to.deep.equal({audio: {fromStream: 'targetStreamId1'}, video: {fromStream: 'targetStreamId1', resolution: 'vga'}});
+              done();
+            });
           });
         });
     });
