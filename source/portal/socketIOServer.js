@@ -121,7 +121,11 @@ var Client = function(participantId, socket, portal, on_disconnect) {
           safeCall(callback, 'error', status.reason);
         } else {
           if (connection_type === 'webrtc') {
-            socket.emit('signaling_message_erizo', {streamId: stream_id, mess: status});
+            if (status.type === 'initializing') {
+              safeCall(callback, 'initializing', stream_id);
+            } else {
+              socket.emit('signaling_message_erizo', {streamId: stream_id, mess: status});
+            }
           } else {
             if (status.type === 'ready') {
               safeCall(callback, 'success', stream_id);
@@ -132,9 +136,6 @@ var Client = function(participantId, socket, portal, on_disconnect) {
         }
       }, unmix).then(function(streamId) {
         stream_id = streamId;
-        if (connection_type === 'webrtc') {
-          safeCall(callback, 'initializing', streamId);
-        }
       }).catch(function(err) {
         var err_message = (typeof err === 'string' ? err: err.message);
         log.info('portal.publish failed:', err_message);
@@ -213,18 +214,15 @@ var Client = function(participantId, socket, portal, on_disconnect) {
       (options.video && options.video.resolution && (typeof options.video.resolution.width === 'number') && (typeof options.video.resolution.height === 'number')) &&
       (subscription_description.video.resolution = widthHeight2Resolution(options.video.resolution.width, options.video.resolution.height));
 
-      var subscription_id;
       return portal.subscribe(participant_id, 'webrtc', subscription_description, function(status) {
         if (status.type === 'failed') {
           safeCall(callback, 'error', status.reason);
+        } else if (status.type === 'initializing') {
+          safeCall(callback, 'initializing', options.streamId/*FIXME -a */);
         } else {
-          if (status.type !== 'initializing') {
-            socket.emit('signaling_message_erizo', {peerId: options.streamId/*FIXME -a */, mess: status});
-          }
+          socket.emit('signaling_message_erizo', {peerId: options.streamId/*FIXME -a */, mess: status});
         }
       }).then(function(subscriptionId) {
-        subscription_id = subscriptionId;
-        safeCall(callback, 'initializing', subscriptionId);
       }).catch(function(err) {
         var err_message = (typeof err === 'string' ? err: err.message);
         log.info('portal.subscribe failed:', err_message);
