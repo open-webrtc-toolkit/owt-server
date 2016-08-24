@@ -324,6 +324,7 @@ MsdkVideoCompositor::MsdkVideoCompositor(uint32_t maxInput, VideoSize rootSize, 
     , m_session(NULL)
     , m_allocator(NULL)
     , m_vpp(NULL)
+    , m_defaultRootFramePool(NULL)
     , m_framePool(NULL)
     , m_defaultInputFramePool(NULL)
 {
@@ -372,6 +373,9 @@ MsdkVideoCompositor::~MsdkVideoCompositor()
     m_videoParam.reset();
     m_extVppComp.reset();
     m_compInputStreams.clear();
+
+    m_defaultRootFrame.reset();
+    m_defaultRootFramePool.reset();
 
     m_inputs.clear();
 
@@ -555,7 +559,6 @@ void MsdkVideoCompositor::init(void)
         }
     }
 
-    // after reset, dont need realloc frame pool
     if (!m_defaultInputFramePool) {
         mfxFrameAllocRequest defaultInputRequest = Request[0];
 
@@ -583,6 +586,30 @@ void MsdkVideoCompositor::init(void)
         //m_defaultInputFrame->fillFrame(82, 90, 240);//red
         //m_defaultInputFrame->fillFrame(144, 54, 34);//green
         //m_defaultInputFrame->fillFrame(41, 240, 110);//blue
+    }
+
+    if (!m_defaultRootFramePool) {
+        mfxFrameAllocRequest defaultRootRequest = Request[0];
+
+        defaultRootRequest.NumFrameMin         = 1;
+        defaultRootRequest.NumFrameSuggested   = 1;
+        defaultRootRequest.Info.Width          = ALIGN16(m_compositeSize.width);
+        defaultRootRequest.Info.Height         = ALIGN16(m_compositeSize.height);
+        defaultRootRequest.Info.CropX          = 0;
+        defaultRootRequest.Info.CropY          = 0;
+        defaultRootRequest.Info.CropW          = m_compositeSize.width;
+        defaultRootRequest.Info.CropH          = m_compositeSize.height;
+
+        m_defaultRootFramePool.reset(new MsdkFramePool(m_allocator, defaultRootRequest));
+        if (!m_defaultRootFramePool->init()) {
+            ELOG_ERROR("Frame pool(default root) init failed, ret %d", sts);
+
+            m_defaultRootFramePool.reset();
+            return;
+        }
+
+        m_defaultRootFrame = m_defaultRootFramePool->getFreeFrame();
+        m_defaultRootFrame->fillFrame(16, 128, 128);//black
     }
 }
 
@@ -773,8 +800,11 @@ boost::shared_ptr<MsdkFrame> MsdkVideoCompositor::layout()
 
 boost::shared_ptr<MsdkFrame> MsdkVideoCompositor::customLayout()
 {
-    if (!m_currentLayout.size())
-        return NULL;
+    // feed default root frame instead of NULL
+    if (!m_currentLayout.size()) {
+        ELOG_TRACE("Feed default root frame");
+        return m_defaultRootFrame;
+    }
 
     mfxStatus sts = MFX_ERR_UNKNOWN;//MFX_ERR_NONE;
 

@@ -109,6 +109,9 @@ private:
     boost::shared_ptr<mfxFrameAllocator> m_allocator;
     MFXVideoVPP *m_vpp;
 
+    boost::shared_ptr<woogeen_base::MsdkFrame> m_defaultRootFrame;
+    boost::scoped_ptr<woogeen_base::MsdkFramePool> m_defaultRootFramePool;
+
     std::vector<boost::shared_ptr<VppInput>> m_inputs;
 
     boost::scoped_ptr<woogeen_base::MsdkFramePool> m_framePool;
