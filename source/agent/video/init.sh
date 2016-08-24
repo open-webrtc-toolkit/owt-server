@@ -30,7 +30,6 @@ usage() {
   echo
   echo "Usage:"
   echo "    --hardware (default: false)         enable hardware video codec (only for video agent with \`videoMixer-hw.node')"
-  echo "    --openh264 (default: false)         enable openh264 video codec (only for video agent with libopenh264 installed)"
   echo "    --help                              print this help"
   echo
 }
@@ -44,16 +43,12 @@ install_config() {
 }
 
 ENABLE_HARDWARE=false
-ENABLE_OPENH264=false
 
 shopt -s extglob
 while [[ $# -gt 0 ]]; do
   case $1 in
     *(-)hardware )
       ENABLE_HARDWARE=true
-      ;;
-    *(-)openh264 )
-      ENABLE_OPENH264=true
       ;;
     *(-)help )
       usage
@@ -72,10 +67,3 @@ else
   sed -i 's/^hardwareAccelerated = true/hardwareAccelerated = false/' ${this}/agent.toml
 fi
 
-if ${ENABLE_OPENH264}; then
-  echo -e "\x1b[36mOpenH264 enabled\x1b[0m"
-  sed -i 's/^openh264Enabled = false/openh264Enabled = true/' ${this}/agent.toml
-else
-  echo -e "\x1b[36mOpenH264 disbled\x1b[0m"
-  sed -i 's/^openh264Enabled = true/openh264Enabled = false/' ${this}/agent.toml
-fi
