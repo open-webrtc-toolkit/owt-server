@@ -25,15 +25,17 @@ ROOT=`cd "${this}/.."; pwd`
 export WOOGEEN_HOME=${ROOT}
 
 LogDir=${WOOGEEN_HOME}/logs
+DB_URL='localhost/nuvedb'
 
 usage() {
   echo
-  echo "Rabbitmq Start Up Script"
-  echo "    This script starts rabbitmq."
+  echo "Mongodb Start Up Script"
+  echo "    This script starts mongodb."
   echo "    This script is intended to run on a target machine."
   echo
   echo "Usage:"
-  echo "    --deps (default: false)             install dependent components and libraries before rabbitmq start-up"
+  echo "    --deps (default: false)             install dependent components and libraries before mongodb start-up"
+  echo "    --dburl=HOST/DBNAME                 specify mongodb URL other than default \`localhost/nuvedb'"
   echo "    --help                              print this help"
   echo
 }
@@ -55,24 +57,32 @@ install_deps() {
       sudo rpm -Uvh epel-release-latest-7*.rpm
     fi
     sudo sed -i 's/https/http/g' /etc/yum.repos.d/epel.repo
-    sudo -E yum install rabbitmq-server -y
+    sudo -E yum install mongodb mongodb-server -y
   elif [[ "$OS" =~ .*ubuntu.* ]]
   then
     echo -e "\x1b[32mInstalling dependent components and libraries via apt-get...\x1b[0m"
     sudo apt-get update
-    sudo apt-get install rabbitmq-server
+    sudo apt-get install mongodb
   else
     echo -e "\x1b[32mUnsupported platform...\x1b[0m"
   fi
 }
 
-start_up() {
-  if ! pgrep -f rabbitmq >/dev/null; then
-    sudo echo
-    sudo rabbitmq-server > ${LogDir}/rabbit.log &
-    echo -e "\x1b[32mRabbitmq-server started\x1b[0m"
+install_db() {
+  local DB_DIR=${WOOGEEN_HOME}/db
+  echo -e "\x1b[32mInitializing mongodb...\x1b[0m"
+  if ! pgrep -x mongod &> /dev/null; then
+    if ! hash mongod 2>/dev/null; then
+        echo >&2 "Error: mongodb not found."
+        return 1
+    fi
+    [[ ! -d "${DB_DIR}" ]] && mkdir -p "${DB_DIR}"
+    [[ ! -d "${LogDir}" ]] && mkdir -p "${LogDir}"
+    mongod --repair --dbpath ${DB_DIR}
+    mongod --dbpath ${DB_DIR} --logpath ${LogDir}/mongo.log --fork
+    sleep 5
   else
-    echo -e "\x1b[32mRabbitmq-server already running\x1b[0m"
+    echo -e "\x1b[32mMongoDB already running\x1b[0m"
   fi
 }
 
@@ -84,6 +94,10 @@ while [[ $# -gt 0 ]]; do
     *(-)deps )
       INSTALL_DEPS=true
       ;;
+    *(-)dburl=* )
+      DB_URL=$(echo $1 | cut -d '=' -f 2)
+      echo -e "\x1b[36musing $DB_URL\x1b[0m"
+      ;;
     *(-)help )
       usage
       exit 0
@@ -94,4 +108,4 @@ done
 
 ${INSTALL_DEPS} && install_deps
 
-start_up
+install_db
