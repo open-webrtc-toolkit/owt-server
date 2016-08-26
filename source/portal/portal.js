@@ -38,17 +38,21 @@ var Portal = function(spec, rpcClient) {
     self_rpc_id = spec.selfRpcId,
     permission_map = spec.permissionMap;
 
-  /* {participantId: {userName: String(),
+  /*
+   * {participantId: {userName: String(),
    *             role: String(),
    *             in_session: RoomId,
    *             controller: RpcId,
    *             connections: {ConnectionId: {locality: {agent: RpcIdOfAccessAgent, node: RpcIdOfAccessNode},
-   *                                          type: 'webrtc' | 'rtsp' | 'rtmp' | 'recording' | ...,
+   *                                          type: 'webrtc' | 'avstream' | 'recording' | ...,
    *                                          direction: 'out' | 'in',
+   *                                          audio_codecs: [AudioCodecName],
+   *                                          video_codecs: [VideoCodecName],
    *                                          state: 'connecting' | 'connected'
    *                                         }
    *                          }
-   *            }} */
+   *            }}
+   */
   var participants = {};
 
   var isPermitted = function(role, act, track) {
@@ -409,7 +413,9 @@ var Portal = function(spec, rpcClient) {
     //FIXME : not allowed to subscribe an already subscribed stream, this is a limitation caused by FIXME - a.
     if ((subscriptionDescription.audio && subscriptionDescription.audio.fromStream && participants[participantId].connections[subscription_id])
         ||(subscriptionDescription.video && subscriptionDescription.video.fromStream && participants[participantId].connections[subscription_id])) {
-      return Promise.reject('Not allowed to subscribe an already-subscribed stream');
+      if (connectionType !== 'recording') {
+        return Promise.reject('Not allowed to subscribe an already-subscribed stream');
+      }
     }
 
     var connection_id = subscription_id,
@@ -430,7 +436,7 @@ var Portal = function(spec, rpcClient) {
       (subscription_description.video) && (subscription_description.video.codecs = [status.video_codecs[0]]/*FIXME: delete the non-top codecs as a workround approach because firefox(20160726) does not support the second prior codec*/);
       subscription_description.type = connectionType;
 
-      return rpcClient.sub2Session(participant.controller, participantId, connection_id, locality, subscription_description)
+      return rpcClient.sub2Session(participant.controller, participantId, connection_id, participant.connections[connection_id].locality, subscription_description)
         .then(function(result) {
           log.debug('sub2Session ok, participantId:', participantId, 'connection_id:', connection_id);
           var participant = participants[participantId];
@@ -443,6 +449,8 @@ var Portal = function(spec, rpcClient) {
           }
 
           participant.connections[connection_id].state = 'connected';
+          participant.connections[connection_id].audio_codecs = (subscription_description.audio ? subscription_description.audio.codecs : []);
+          participant.connections[connection_id].video_codecs = (subscription_description.video ? subscription_description.video.codecs : []);
           onConnectionStatus(status);
           return result;
         }).catch(function(err) {
@@ -478,25 +486,38 @@ var Portal = function(spec, rpcClient) {
       return Promise.reject(reason);
     };
 
-    return rpcClient.getAccessNode(cluster_name, connectionType, {session: participants[participantId].in_session, consumer: connection_id})
-      .then(function(accessNode) {
-        log.debug('subscribe::getAccessNode ok, participantId:', participantId, 'connection_id:', connection_id, 'locality:', accessNode);
-        locality = accessNode;
-        var connect_options = constructConnectOptions(connection_id, connectionType, 'out', subscriptionDescription, participants[participantId].in_session);
-        return rpcClient.subscribe(locality.node,
-                                   connection_id,
-                                   connectionType,
-                                   connect_options,
-                                   connectionObserver(onConnectionStatus, onConnectionReady, onConnectionFailed));
-      })
-      .then(function() {
-        log.debug('subscribe::sub2AccessNode ok, participantId:', participantId, 'connection_id:', connection_id);
-        participants[participantId].connections[connection_id] = {locality: locality,
-                                                                  type: connectionType,
-                                                                  direction: 'out',
-                                                                  state: 'connecting'};
-        return subscription_id;
-      });
+    var connection = participants[participantId].connections[connection_id];
+    if (connection) {
+      if (connection.state === 'connected') {
+          rpcClient.unsub2Session(participants[participantId].controller, participantId, connection_id);
+          setTimeout(function() {
+            onConnectionReady({type: 'ready', audio_codecs: connection.audio_codecs, video_codecs: connection.video_codecs});
+          }, 0);
+          connection.state === 'connecting';
+      }
+      //TODO: notify user about 'recorder-continued'? Does it really neccesary?
+      return Promise.resolve(connection_id);
+    } else {
+      return rpcClient.getAccessNode(cluster_name, connectionType, {session: participants[participantId].in_session, consumer: connection_id})
+        .then(function(accessNode) {
+          log.debug('subscribe::getAccessNode ok, participantId:', participantId, 'connection_id:', connection_id, 'locality:', accessNode);
+          locality = accessNode;
+          var connect_options = constructConnectOptions(connection_id, connectionType, 'out', subscriptionDescription, participants[participantId].in_session);
+          return rpcClient.subscribe(locality.node,
+                                     connection_id,
+                                     connectionType,
+                                     connect_options,
+                                     connectionObserver(onConnectionStatus, onConnectionReady, onConnectionFailed));
+        })
+        .then(function() {
+          log.debug('subscribe::sub2AccessNode ok, participantId:', participantId, 'connection_id:', connection_id);
+          participants[participantId].connections[connection_id] = {locality: locality,
+                                                                    type: connectionType,
+                                                                    direction: 'out',
+                                                                    state: 'connecting'};
+          return subscription_id;
+        });
+    }
   };
 
   that.unsubscribe = function(participantId, subscriptionId) {

@@ -1499,6 +1499,58 @@ describe('portal.subscribe/portal.unsubscribe/portal.mediaOnOff: Participants su
         });
     });
 
+    it('Subscribing streams with the same recorder id with the previous one should continue.', function() {
+      mockRpcClient.getAccessNode = sinon.stub();
+      mockRpcClient.subscribe = sinon.stub();
+      mockRpcClient.onConnectionSignalling = sinon.stub();
+      mockRpcClient.sub2Session = sinon.stub();
+      mockRpcClient.unsub2Session = sinon.stub();
+
+      mockRpcClient.getAccessNode.resolves({agent: 'rpcIdOfAccessAgent', node: 'rpcIdOfAccessNode'});
+      mockRpcClient.subscribe.resolves('ok');
+      mockRpcClient.onConnectionSignalling.resolves('ok');
+      mockRpcClient.sub2Session.resolves('ok');
+      mockRpcClient.unsub2Session.resolves('ok');
+
+      var subscription_id, on_connection_status;
+      var testRecorderId = '2016082415322905';
+      var spyConnectionObserver = sinon.spy();
+      var spyConnectionObserver1 = sinon.spy();
+
+      return portal.subscribe(testParticipantId,
+                             'recording',
+                             {audio: {fromStream: 'targetStreamId1', codecs: ['pcmu']}, video: {fromStream: 'targetStreamId2', codecs: ['vp8']}, path: 'path-of-recording', recorderId: testRecorderId, interval: -1},
+                             spyConnectionObserver)
+        .then(function(subscriptionId) {
+          subscription_id = subscriptionId;
+          expect(subscription_id).to.equal(testRecorderId);
+          on_connection_status = mockRpcClient.subscribe.getCall(0).args[4];
+          return on_connection_status({type: 'initializing'});
+        })
+        .then(function(statusResult) {
+          expect(statusResult).to.equal('initializing');
+          return on_connection_status({type: 'ready', audio_codecs: ['pcmu'], video_codecs: ['vp8']});
+        })
+        .then(function(result) {
+          expect(result).to.equal('ok');
+          return portal.subscribe(testParticipantId,
+                             'recording',
+                             {audio: {fromStream: 'targetStreamId3', codecs: ['pcmu']}, video: {fromStream: 'targetStreamId4', codecs: ['vp8']}, path: 'path-of-recording', recorderId: testRecorderId, interval: -1},
+                             spyConnectionObserver1)
+        })
+        .then(function(subscriptionId) {
+          subscription_id = subscriptionId;
+          expect(subscription_id).to.equal(testRecorderId);
+          return new Promise(function(resolve, reject) {setTimeout(function() {resolve('ok');}, 30);});
+        })
+        .then(function(result) {
+          expect(result).to.equal('ok');
+          expect(mockRpcClient.unsub2Session.getCall(0).args).to.deep.equal(['rpcIdOfController', testParticipantId, subscription_id]);
+          expect(mockRpcClient.sub2Session.getCall(1).args).to.deep.equal(['rpcIdOfController', testParticipantId, subscription_id, {agent: 'rpcIdOfAccessAgent', node: 'rpcIdOfAccessNode'}, {audio: {fromStream: 'targetStreamId3', codecs: ['pcmu']}, video: {fromStream: 'targetStreamId4', codecs: ['vp8']}, type: 'recording'}]);
+          expect(spyConnectionObserver1.getCall(0).args).to.deep.equal([{type: 'ready', audio_codecs: ['pcmu'], video_codecs: ['vp8']}]);
+        });
+    });
+
     it('Subscribing streams to a recording file should abort when exceptions occur.', function() {
       mockRpcClient.getAccessNode = sinon.stub();
       mockRpcClient.subscribe = sinon.stub();

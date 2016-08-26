@@ -134,6 +134,7 @@ public:
 
     // FrameDestination
     virtual void onFrame(const Frame&) = 0;
+    virtual void onVideoSourceChanged() {deliverFeedbackMsg(FeedbackMsg{.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME });}
 
     // JobTimerListener
     virtual void onTimeout() = 0;
