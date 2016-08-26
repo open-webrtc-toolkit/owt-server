@@ -106,6 +106,8 @@ void FrameDestination::setVideoSource(FrameSource* src)
 {
     boost::unique_lock<boost::shared_mutex> lock(m_video_src_mutex);
     m_video_src = src;
+    lock.unlock();
+    onVideoSourceChanged();
 }
 
 void FrameDestination::unsetAudioSource()

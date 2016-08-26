@@ -143,6 +143,7 @@ public:
     virtual ~FrameDestination() { }
 
     virtual void onFrame(const Frame&) = 0;
+    virtual void onVideoSourceChanged() {}
 
     void setAudioSource(FrameSource*);
     void unsetAudioSource();
