@@ -12,7 +12,8 @@ try {
   process.exit(1);
 }
 
-require('./rpc/rpc').connect(GLOBAL.config.rabbit);
+var rpc = require('./rpc/rpc');
+rpc.connect(GLOBAL.config.rabbit);
 
 var express = require('express');
 var bodyParser = require('body-parser');
@@ -101,3 +102,14 @@ if (GLOBAL.config.nuve.ssl === true) {
 } else {
     app.listen(3000);
 }
+
+['SIGINT', 'SIGTERM'].map(function (sig) {
+    process.on(sig, function () {
+        log.warn('Exiting on', sig);
+        process.exit();
+    });
+});
+
+process.on('exit', function () {
+    rpc.disconnect();
+});

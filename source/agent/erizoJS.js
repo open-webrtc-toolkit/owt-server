@@ -155,3 +155,7 @@ controller.RoomController().addPublisher("1", sdp, function(type, answer) {
         log.warn(sig, 'caught and ignored');
     });
 });
+
+process.on('exit', function () {
+    rpc.disconnect();
+});

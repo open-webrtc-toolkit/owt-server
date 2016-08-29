@@ -63,3 +63,14 @@ function startup () {
 }
 
 startup();
+
+['SIGINT', 'SIGTERM'].map(function (sig) {
+    process.on(sig, function () {
+        log.warn('Exiting on', sig);
+        process.exit();
+    });
+});
+
+process.on('exit', function () {
+    amqper.disconnect();
+});
