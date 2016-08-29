@@ -206,3 +206,7 @@ amqper.connect(config.rabbit, function () {
   });
 });
 
+process.on('exit', function () {
+    amqper.disconnect();
+});
+

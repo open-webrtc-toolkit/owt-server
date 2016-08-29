@@ -47,6 +47,13 @@ exports.connect = function (addr) {
     });
 };
 
+exports.disconnect = function() {
+    if (connection) {
+        connection.disconnect();
+        connection = undefined;
+    }
+};
+
 var callbackError = function (corrID) {
     for (var i in map[corrID].fn) {
         map[corrID].fn[i]('timeout');

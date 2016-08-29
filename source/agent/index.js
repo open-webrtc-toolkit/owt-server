@@ -479,4 +479,5 @@ process.on('exit', function () {
             log.info('Terminate ErizoJS', k, status);
         });
     });
+    rpc.disconnect();
 });

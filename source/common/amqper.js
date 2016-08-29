@@ -68,6 +68,13 @@ exports.connect = function(addr, callback) {
     });
 };
 
+exports.disconnect = function() {
+    if (connection) {
+        connection.disconnect();
+        connection = undefined;
+    }
+};
+
 exports.bind = function(id, callback) {
 
     //Create the queue for receive messages
