@@ -57,6 +57,11 @@ function resolution2WidthHeight(resolution) {
   return resolutionName2Value[resolution] ? resolutionName2Value[resolution] : {width: w, height: h};
 }
 
+var idPattern = /^[0-9a-zA-Z]+$/;
+function isValidIdString(str) {
+  return (typeof str === 'string') && idPattern.test(str);
+}
+
 function safeCall () {
   var callback = arguments[0];
   if (typeof callback === 'function') {
@@ -368,15 +373,15 @@ var Client = function(participantId, socket, portal, on_disconnect) {
         return safeCall(callback, 'error', 'unauthorized');
       }
 
-      if (options.recorderId && typeof options.recorderId !== 'string') {
+      if (!(options.recorderId === undefined || isValidIdString(options.recorderId))) {
         return safeCall(callback, 'error', 'Invalid recorder id');
       }
 
-      if (options.audioStreamId === '') {
+      if (!(options.audioStreamId === undefined || isValidIdString(options.audioStreamId))) {
         return safeCall(callback, 'error', 'Invalid audio stream id');
       }
 
-      if (options.videoStreamId === '') {
+      if (!(options.videoStreamId === undefined || isValidIdString(options.videoStreamId))) {
         return safeCall(callback, 'error', 'Invalid video stream id');
       }
 
@@ -428,7 +433,7 @@ var Client = function(participantId, socket, portal, on_disconnect) {
         return safeCall(callback, 'error', 'unauthorized');
       }
 
-      if (typeof options.recorderId !== 'string' || options.recorderId === '') {
+      if (!(options.recorderId === undefined || isValidIdString(options.recorderId))) {
         return safeCall(callback, 'error', 'Invalid recorder id');
       }
 
@@ -447,7 +452,7 @@ var Client = function(participantId, socket, portal, on_disconnect) {
         return safeCall(callback, 'error', 'unauthorized');
       }
 
-      if (typeof options.id !== 'string' || options.id === '') {
+      if (!isValidIdString(options.id)) {
         return safeCall(callback, 'error', 'Invalid stream id');
       }
 
@@ -466,11 +471,11 @@ var Client = function(participantId, socket, portal, on_disconnect) {
         return safeCall(callback, 'error', 'unauthorized');
       }
 
-      if (typeof options.id !== 'string' || options.id === '') {
+      if (!isValidIdString(options.id)) {
         return safeCall(callback, 'error', 'Invalid stream id');
       }
 
-      if (typeof options.region !== 'string' || options.region === '') {
+      if (!isValidIdString(options.region)) {
         return safeCall(callback, 'error', 'Invalid region id');
       }
 
@@ -508,7 +513,7 @@ var Client = function(participantId, socket, portal, on_disconnect) {
             return safeCall(callback, 'error', 'Invalid payload');
           }
 
-          if (typeof msg.payload.streamId !== 'string' || msg.payload.streamId === '') {
+          if (!isValidIdString(msg.payload.streamId)) {
             return safeCall(callback, 'error', 'Invalid connection id');
           }
 

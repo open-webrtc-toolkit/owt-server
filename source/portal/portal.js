@@ -436,7 +436,7 @@ var Portal = function(spec, rpcClient) {
       (subscription_description.video) && (subscription_description.video.codecs = [status.video_codecs[0]]/*FIXME: delete the non-top codecs as a workround approach because firefox(20160726) does not support the second prior codec*/);
       subscription_description.type = connectionType;
 
-      return rpcClient.sub2Session(participant.controller, participantId, connection_id, participant.connections[connection_id].locality, subscription_description)
+      return rpcClient.sub2Session(participant.controller, participantId, connection_id, locality, subscription_description)
         .then(function(result) {
           log.debug('sub2Session ok, participantId:', participantId, 'connection_id:', connection_id);
           var participant = participants[participantId];
@@ -491,6 +491,7 @@ var Portal = function(spec, rpcClient) {
       if (connection.state === 'connected') {
           rpcClient.unsub2Session(participants[participantId].controller, participantId, connection_id);
           setTimeout(function() {
+            locality = connection.locality;
             onConnectionReady({type: 'ready', audio_codecs: connection.audio_codecs, video_codecs: connection.video_codecs});
           }, 0);
           connection.state === 'connecting';
