@@ -959,40 +959,6 @@ describe('Responding to clients.', function() {
         });
     });
 
-    it('Starting recording after joining with inproper options should fail.', function(done) {
-      mockPortal.subscribe = sinon.stub();
-      mockPortal.subscribe.resolves('yyyyMMddhhmmssSS');
-
-      return joinFirstly()
-        .then(function(result) {
-          expect(result).to.equal('ok');
-          var options = {audioStreamId: '', videoStreamId: 'targetStreamId', audioCodec: 'pcmu', videoCodec: 'vp8', path: '/tmp', interval: 1000};
-          client.emit('startRecorder', options, function(status, data) {
-            expect(status).to.equal('error');
-            expect(data).to.equal('Invalid audio stream id');
-
-            var options = {audioStreamId: 'targetStreamId', videoStreamId: '', audioCodec: 'pcmu', videoCodec: 'vp8', path: '/tmp', interval: 1000};
-            client.emit('startRecorder', options, function(status, data) {
-              expect(status).to.equal('error');
-              expect(data).to.equal('Invalid video stream id');
-
-              var options = {audioStreamId: 'targetStreamId', videoStreamId: 'targetStreamId', audioCodec: '', videoCodec: 'vp8', path: '/tmp', interval: 1000};
-              client.emit('startRecorder', options, function(status, data) {
-                expect(status).to.equal('error');
-                expect(data).to.equal('Invalid audio codec');
-
-                var options = {audioStreamId: 'targetStreamId', videoStreamId: 'targetStreamId', audioCodec: 'opus', videoCodec: '', path: '/tmp', interval: 1000};
-                client.emit('startRecorder', options, function(status, data) {
-                  expect(status).to.equal('error');
-                  expect(data).to.equal('Invalid video codec');
-                  done();
-                });
-              });
-            });
-          });
-        });
-    });
-
     it('Exceptions should cause aborting recording and notifying clients.', function(done) {
       mockPortal.subscribe = sinon.stub();
       mockPortal.subscribe.resolves('yyyyMMddhhmmssSS');
@@ -1071,24 +1037,45 @@ describe('Responding to clients.', function() {
             expect(data).to.equal('Invalid recorder id');
             expect(mockPortal.subscribe.callCount).to.equal(0);
 
-            var options = {audioStreamId: 'targetStreamId', audioCodec: 24};
+            var options = {recorderId: 0};
             client.emit('startRecorder', options, function(status, data) {
               expect(status).to.equal('error');
-              expect(data).to.equal('Invalid audio codec');
+              expect(data).to.equal('Invalid recorder id');
               expect(mockPortal.subscribe.callCount).to.equal(0);
 
-              var options = {videoStreamId: 'targetStreamId', videoCodec: {a: 1}};
+              var options = {recorderId: -1};
               client.emit('startRecorder', options, function(status, data) {
                 expect(status).to.equal('error');
-                expect(data).to.equal('Invalid video codec');
+                expect(data).to.equal('Invalid recorder id');
                 expect(mockPortal.subscribe.callCount).to.equal(0);
 
-                var options = {recorderId: 'aaaa', audioStreamId: 'targetStreamId1', videoStreamId: 'targetStreamId1', audioCodec: '', videoCodec: ''}; //
+                var options = {audioStreamId: 'targetStreamId', audioCodec: 24};
                 client.emit('startRecorder', options, function(status, data) {
                   expect(status).to.equal('error');
                   expect(data).to.equal('Invalid audio codec');
                   expect(mockPortal.subscribe.callCount).to.equal(0);
-                  done();
+
+                  var options = {videoStreamId: 'targetStreamId', videoCodec: {a: 1}};
+                  client.emit('startRecorder', options, function(status, data) {
+                    expect(status).to.equal('error');
+                    expect(data).to.equal('Invalid video codec');
+                    expect(mockPortal.subscribe.callCount).to.equal(0);
+
+                    var options = {recorderId: 'aaaa', audioStreamId: 'targetStreamId1', videoStreamId: 'targetStreamId1', audioCodec: '', videoCodec: 'vp8'}; //
+                    client.emit('startRecorder', options, function(status, data) {
+                      expect(status).to.equal('error');
+                      expect(data).to.equal('Invalid audio codec');
+                      expect(mockPortal.subscribe.callCount).to.equal(0);
+
+                      var options = {recorderId: 'aaaa', audioStreamId: 'targetStreamId1', videoStreamId: 'targetStreamId1', audioCodec: 'opus', videoCodec: ''}; //
+                      client.emit('startRecorder', options, function(status, data) {
+                        expect(status).to.equal('error');
+                        expect(data).to.equal('Invalid video codec');
+                        expect(mockPortal.subscribe.callCount).to.equal(0);
+                        done();
+                      });
+                    });
+                  });
                 });
               });
             });
@@ -1137,12 +1124,12 @@ describe('Responding to clients.', function() {
       return joinFirstly()
         .then(function(result) {
           expect(result).to.equal('ok');
-          var options = {recorderId: 'recorder-id'};
+          var options = {recorderId: 'recorderid'};
           client.emit('stopRecorder', options, function(status, data) {
             expect(status).to.equal('success');
-            expect(data.recorderId).to.equal('recorder-id');
+            expect(data.recorderId).to.equal('recorderid');
             expect(data.host).to.equal('unknown');
-            expect(mockPortal.unsubscribe.getCall(0).args).to.deep.equal(['/#' + client.id, 'recorder-id'])
+            expect(mockPortal.unsubscribe.getCall(0).args).to.deep.equal(['/#' + client.id, 'recorderid'])
             done();
           });
         });
@@ -1155,11 +1142,11 @@ describe('Responding to clients.', function() {
       return joinFirstly()
         .then(function(result) {
           expect(result).to.equal('ok');
-          var options = {recorderId: 'recorder-id'};
+          var options = {recorderId: 'recorderid'};
           client.emit('stopRecorder', options, function(status, data) {
             expect(status).to.equal('error');
             expect(data).to.have.string('Invalid recorder id');
-            expect(mockPortal.unsubscribe.getCall(0).args).to.deep.equal(['/#' + client.id, 'recorder-id'])
+            expect(mockPortal.unsubscribe.getCall(0).args).to.deep.equal(['/#' + client.id, 'recorderid'])
             done();
           });
         });
@@ -1365,7 +1352,7 @@ describe('Responding to clients.', function() {
                 expect(status).to.equal('error');
                 expect(data).to.equal('Invalid connection id');
 
-                client.emit('customMessage', {type: 'control', payload: {streamId: {obj: true}}}, function(status, data) {
+                client.emit('customMessage', {type: 'control', payload: {streamId: ''}}, function(status, data) {
                   expect(status).to.equal('error');
                   expect(data).to.equal('Invalid connection id');
 
