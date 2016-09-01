@@ -24,7 +24,6 @@ GLOBAL.config.agent.prerunProcesses = GLOBAL.config.agent.prerunProcesses || 2;
 GLOBAL.config.cluster = GLOBAL.config.cluster || {};
 GLOBAL.config.cluster.name = GLOBAL.config.cluster.name || 'woogeen-cluster';
 GLOBAL.config.cluster.join_retry = GLOBAL.config.cluster.join_retry || 5;
-GLOBAL.config.cluster.join_interval = GLOBAL.config.cluster.join_interval || 3000;
 GLOBAL.config.cluster.recover_interval = GLOBAL.config.cluster.recover_interval || 1000;
 GLOBAL.config.cluster.keep_alive_interval = GLOBAL.config.cluster.keep_alive_interval || 1000;
 GLOBAL.config.cluster.report_load_interval = GLOBAL.config.cluster.report_load_interval || 1000;
@@ -380,8 +379,7 @@ var joinCluster = function (on_ok) {
         amqper: rpc,
         purpose: myPurpose,
         clusterName: GLOBAL.config.cluster.name,
-        joinRery: GLOBAL.config.cluster.join_retry,
-        joinPeriod: GLOBAL.config.cluster.join_interval,
+        joinRetry: GLOBAL.config.cluster.join_retry,
         recoveryPeriod: GLOBAL.config.cluster.recover_interval,
         keepAlivePeriod: GLOBAL.config.cluster.keep_alive_interval,
         info: {
