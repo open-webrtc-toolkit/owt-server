@@ -12,9 +12,6 @@ name = "woogeen-cluster"
 #The number of times to retry joining if the first try fails.
 join_retry = 5 #default: 5
 
-#The interval of retrying joining.
-join_interval = 3000 #default: 3000, unit: millisecond
-
 #The interval of retrying recovering the connection to the cluster.
 recover_interval = 1000 #default: 1000, unit: millisecond
 

@@ -23,7 +23,6 @@ config.portal.roles = config.portal.roles || {'admin':{'publish': true, 'subscri
 config.cluster = config.cluster || {};
 config.cluster.name = config.cluster.name || 'woogeen-cluster';
 config.cluster.join_retry = config.cluster.join_retry || 5;
-config.cluster.join_interval = config.cluster.join_interval || 3000;
 config.cluster.recover_interval = config.cluster.recover_interval || 1000;
 config.cluster.keep_alive_interval = config.cluster.keep_alive_interval || 1000;
 config.cluster.report_load_interval = config.cluster.report_load_interval || 1000;
@@ -102,8 +101,7 @@ var joinCluster = function (on_ok) {
   var spec = {amqper: amqper,
               purpose: 'portal',
               clusterName: config.cluster.name,
-              joinRery: config.cluster.join_retry,
-              joinPeriod: config.cluster.join_interval,
+              joinRetry: config.cluster.join_retry,
               recoveryPeriod: config.cluster.recover_interval,
               keepAlivePeriod: config.cluster.keep_alive_interval,
               info: {ip: ip_address,

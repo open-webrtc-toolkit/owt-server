@@ -37,7 +37,6 @@ module.exports = function (spec) {
         info = spec.info,
         cluster_name = spec.clusterName || 'woogeenCluster',
         join_retry = spec.joinRetry || 5,
-        join_period = spec.joinPeriod || 3000/*MS*/,
         recovery_period = spec.recoveryPeriod || 1000/*MS*/,
         keep_alive_period = spec.keepAlivePeriod || 5000/*MS*/,
         keep_alive_interval = undefined,
@@ -73,7 +72,8 @@ module.exports = function (spec) {
             }, on_failed);
     };
 
-    var joinCluster = function (attempt, period) {
+    var joinCluster = function (attempt) {
+        var countDown = attempt;
         var error = 'Unknown reason';
 
         var tryJoin = function (countDown) {
@@ -84,14 +84,15 @@ module.exports = function (spec) {
 
             log.debug('Try joining cluster:', cluster_name);
             join(function () {
-                    on_join_ok(id);
-                    log.info('Join cluster', cluster_name, 'OK.');
-                }, function (error_reason) {
-                    error = error_reason;
-                    state === 'unregistered' && log.info('Join cluster', cluster_name, 'failed. try again.');
-                    setTimeout(function () {tryJoin(countDown - 1);}, period);
-                });
+                on_join_ok(id);
+                log.info('Join cluster', cluster_name, 'OK.');
+            }, function (error_reason) {
+                error = error_reason;
+                state === 'unregistered' && log.info('Join cluster', cluster_name, 'failed. try again.');
+                tryJoin(countDown - 1);
+            });
         };
+
         tryJoin(attempt);
     };
 
@@ -215,7 +216,7 @@ module.exports = function (spec) {
         doRejectTask(task);
     };
 
-    joinCluster(join_retry, join_period);
+    joinCluster(join_retry);
     return that;
 };
 
