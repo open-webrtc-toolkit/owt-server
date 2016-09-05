@@ -212,8 +212,6 @@ bool RtspOut::detectInputVideoStream()
     int ret;
     int videoIndex = -1;
 
-    deliverFeedbackMsg(FeedbackMsg{.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME });
-
     m_ifmtCtx = avformat_alloc_context();
     m_ifmtCtx->pb = avio_alloc_context(
             reinterpret_cast<unsigned char*>(av_malloc(VIDEO_BUFFER_SIZE + FF_INPUT_BUFFER_PADDING_SIZE)),
@@ -617,6 +615,9 @@ void RtspOut::onFrame(const woogeen_base::Frame& frame)
                 m_videoOptions.spec.video.width = frame.additionalInfo.video.width;
                 m_videoOptions.spec.video.height = frame.additionalInfo.video.height;
                 m_videoReceived = true;
+
+                ELOG_INFO("request video key frame");
+                deliverFeedbackMsg(FeedbackMsg{.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME });
             }
 
             if (frame.additionalInfo.video.width != m_videoOptions.spec.video.width
