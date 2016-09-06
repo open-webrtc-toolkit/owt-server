@@ -105,7 +105,7 @@ module.exports = function (amqper, selfRpcId) {
       streams = {};
       session_id = undefined;
     }
-    //process.exit();
+    process.exit();
   };
 
   var sendMsg = function(from, to, msg, data) {
