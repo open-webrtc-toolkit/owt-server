@@ -18,7 +18,7 @@ config.portal.ip_address = config.portal.ip_address || '';
 config.portal.hostname = config.portal.hostname|| '';
 config.portal.port = config.portal.port || 8080;
 config.portal.ssl = config.portal.ssl || false;
-config.portal.roles = config.portal.roles || {'admin':{'publish': true, 'subscribe':true, 'record':true}, 'presenter':{'publish': true, 'subscribe':true, 'record':true}, 'audio_only_presenter':{'publish': {'audio': true}, 'subscribe':{'audio': true}}, 'viewer':{'subscribe':true}, 'video_only_viewer':{'subscribe':{'video': true}}, 'no_text_viewer': {'subscribe': true, 'text': false}};
+config.portal.roles = config.portal.roles || {'admin':{'publish': true, 'subscribe':true, 'record':true, 'addExternalOutput':true}, 'presenter':{'publish': true, 'subscribe':true, 'record':true, 'addExternalOutput':true}, 'audio_only_presenter':{'publish': {'audio': true}, 'subscribe':{'audio': true}}, 'viewer':{'subscribe':true}, 'video_only_viewer':{'subscribe':{'video': true}}, 'no_text_viewer': {'subscribe': true, 'text': false}};
 
 config.cluster = config.cluster || {};
 config.cluster.name = config.cluster.name || 'woogeen-cluster';
