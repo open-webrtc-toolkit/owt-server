@@ -431,7 +431,8 @@ namespace erizo {
       cand_info.username = ufrag_;
       cand_info.password = upass_;
       //localCandidates->push_back(cand_info);
-      this->getNiceListener()->onCandidate(cand_info, this);
+      if (listener_)
+        listener_->onCandidate(cand_info, this);
     }
     // for nice_agent_get_local_candidates,  the caller owns the returned GSList as well as the candidates contained within it.
     // let's free everything in the list, as well as the list.
