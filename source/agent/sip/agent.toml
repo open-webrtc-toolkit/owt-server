@@ -10,8 +10,6 @@ prerunProcesses = 2 #default: 2
 name = "woogeen-cluster"
 #The number of times to try joining
 join_retry = 5 #default: 5
-#The interval of retrying joining.
-join_interval = 3000 #default: 3000, unit: millisecond
 #The interval of retrying recovering the membership to the cluster.
 recover_interval = 1000 #default: 1000, unit: millisecond
 #The interval of sending keepAlive messages.
