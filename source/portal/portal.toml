@@ -16,11 +16,13 @@ ssl = true #default: true
 publish = true
 record = true
 subscribe = true
+addExternalOutput = true
 
 [portal.roles.presenter]
 publish = true
 record = true
 subscribe = true
+addExternalOutput = true
 
 [portal.roles.audio_only_presenter.publish]
 audio = true

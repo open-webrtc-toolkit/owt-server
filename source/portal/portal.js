@@ -391,7 +391,13 @@ var Portal = function(spec, rpcClient) {
       return Promise.reject('Participant ' + participantId + ' does NOT exist.');
     }
 
-    var act = (connectionType === 'recording' ? 'record' : 'subscribe');
+    var act = 'subscribe';
+    if (connectionType === 'recording') {
+      act = 'record';
+    } else if (connectionType === 'avstream') {
+      act = 'addExternalOutput';
+    }
+
     if ((!isPermitted(participants[participantId].role, act, 'audio') && subscriptionDescription.audio)
         || (!isPermitted(participants[participantId].role, act, 'video') && subscriptionDescription.video)) {
       return Promise.reject('unauthorized');
