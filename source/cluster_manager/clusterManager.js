@@ -136,7 +136,7 @@ var ClusterManager = function (spec) {
         if (purpose === 'all') {
             on_ok(Object.keys(workers));
         } else {
-            result = [];
+            var result = [];
             for (var worker in workers) {
                 if (workers[worker].purpose === purpose) {
                     result.push(worker);
