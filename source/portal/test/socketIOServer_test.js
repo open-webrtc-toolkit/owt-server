@@ -1161,6 +1161,65 @@ describe('Responding to clients.', function() {
     });
   });
 
+  describe('on: setMute, setMute', function() {
+    it('setMute should fail before joining.', function(done) {
+      mockPortal.setMute = sinon.stub();
+
+      client.emit('setMute', {streamId: 'subStreamId', muted:true}, function(status, data) {
+        expect(status).to.equal('error');
+        expect(data).to.equal('unauthorized');
+        expect(mockPortal.setMute.callCount).to.equal(0);
+        done();
+      });
+    });
+
+    it('setMute without specifying streamId should fail.', function(done) {
+      mockPortal.setMute = sinon.stub();
+
+      return joinFirstly()
+        .then(function(result) {
+          expect(result).to.equal('ok');
+          client.emit('setMute', {muted: false}, function(status, data) {
+            expect(status).to.equal('error');
+            expect(data).to.equal('no stream ID');
+            expect(mockPortal.setMute.callCount).to.equal(0);
+            done();
+          });
+        });
+    });
+
+    it('setMute should succeed if portal.setMute succeeds.', function(done) {
+      mockPortal.setMute = sinon.stub();
+      mockPortal.setMute.resolves('ok');
+
+      return joinFirstly()
+        .then(function(result) {
+          expect(result).to.equal('ok');
+          client.emit('setMute', {streamId: 'subStreamId', muted:true}, function(status, data) {
+            expect(status).to.equal('success');
+            expect(mockPortal.setMute.getCall(0).args).to.deep.equal([client.id, 'subStreamId', true]);
+            done();
+          });
+        });
+    });
+
+    it('setMute should fail if portal.setMute fails.', function(done) {
+      mockPortal.setMute = sinon.stub();
+      mockPortal.setMute.rejects('Mute/Unmute Permission Denied.');
+
+      return joinFirstly()
+        .then(function(result) {
+          expect(result).to.equal('ok');
+          client.emit('setMute', {streamId: 'subStreamId', muted:true}, function(status, data) {
+            expect(status).to.equal('error');
+            expect(data).to.have.string('Mute/Unmute Permission Denied.');
+            expect(mockPortal.setMute.getCall(0).args).to.deep.equal([client.id, 'subStreamId', true]);
+            done();
+          });
+        });
+    });
+  });
+
   describe('on: getRegion, setRegion', function() {
     it('Getting/setting region should fail before joining.', function(done) {
       mockPortal.getRegion = sinon.stub();

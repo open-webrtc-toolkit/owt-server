@@ -358,6 +358,56 @@ module.exports = function (rpc, selfRpcId) {
     }
   };
 
+  that.setMute = function(streamId, muted, callback) {
+    log.debug('set mute:', streamId, muted);
+
+    if (!streams[streamId]) {
+      log.info('Stream ' + streamId + ' does not exists');
+      callback('callback', 'error', 'Stream ' + streamId + 'does not exist');
+      return;
+    }
+
+    if (streams[streamId].isMixed()) {
+      log.warn('Stream ' + streamId + ' is Mixed');
+      callback('callback', 'error', 'Stream ' + streamId + ' is Mixed');
+      return;
+    }
+
+    var stream_owner = streams[streamId].getOwner();
+    var index = participants[stream_owner].published.indexOf(streamId);
+    if (index === -1) {
+      log.warn('Stream ' + streamId + ' not published by ' + stream_owner);
+      callback('callback', 'error', 'Stream ' + streamId + ' not published by ' + stream_owner);
+      return;
+    }
+
+    rpcClient.setMute(participants[stream_owner].portal, stream_owner, streamId, muted)
+    .then(function() {
+      callback('callback', 'ok');
+    }).catch(function(reason) {
+      log.warn('Session set mute rpc fail:', reason);
+      callback('callback', 'error', reason)
+    });
+  };
+
+  that.setPermission = function(targetId, act, value, callback) {
+    log.debug('set permission:', targetId, act, value);
+
+    if (!participants[targetId]) {
+      callback('callback', 'error', 'Target user does not exist');
+      return;
+    }
+
+    rpcClient.setPermission(participants[targetId].portal, targetId, act, value)
+    .then(function() {
+      callback('callback', 'ok');
+    }).catch(function(reason) {
+      log.warn('Session set permission rpc fail:', reason);
+      callback('callback', 'error', reason)
+    });
+  };
+
+
   that.getRegion = function(streamId, callback) {
     if (streams[streamId]) {
       if (controller) {

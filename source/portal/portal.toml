@@ -20,6 +20,8 @@ publish = true
 record = true
 subscribe = true
 addExternalOutput = true
+# The 'manage' operation includes mute/unmute users and change users' permissions in same room
+manage = true
 
 [portal.roles.presenter]
 publish = true

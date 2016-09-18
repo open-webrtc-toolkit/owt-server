@@ -522,6 +522,48 @@ var Client = function(participantId, socket, portal, on_disconnect) {
       });
     });
 
+    socket.on('setMute', function(options, callback) {
+      if(!that.inRoom) {
+        return safeCall(callback, 'error', 'unauthorized');
+      }
+
+      if (!options.streamId) {
+        return safeCall(callback, 'error', 'no stream ID');
+      }
+
+      return portal.setMute(participant_id, options.streamId, options.muted)
+      .then(function() {
+          safeCall(callback, 'success');
+        }).catch(function(err) {
+          var err_message = (typeof err === 'string' ? err: err.message);
+          log.info('portal.setMute failed:', err_message);
+          safeCall(callback, 'error', err_message);
+        });
+    });
+
+    socket.on('setPermission', function(options, callback) {
+      if (!that.inRoom) {
+        return safeCall(callback, 'error', 'unauthorized');
+      }
+
+      if (!options.targetId) {
+        return safeCall(callback, 'error', 'no targetId specified');
+      }
+
+      if (!options.act) {
+        return safeCall(callback, 'error', 'no action specified');
+      }
+
+      return portal.setPermission(participant_id, options.targetId, options.act, options.updatedValue, false)
+      .then(function() {
+        safeCall(callback, 'success');
+      }).catch(function(err) {
+        var err_message = (typeof err === 'string' ? err: err.message);
+        log.info('portal.setPermission failed:', err_message);
+        safeCall(callback, 'error', err_message);
+      });
+    })
+
     socket.on('customMessage', function(msg, callback) {
       if(!that.inRoom) {
         return safeCall(callback, 'error', 'unauthorized');
@@ -668,8 +710,24 @@ var SocketIOServer = function(spec, portal) {
     }
   };
 
+  that.updateMuteState = function(participantId, streamId, isMuted) {
+    var state = isMuted? 'off' : 'on';
+
+    var videoPromise = portal.mediaOnOff(participantId, streamId, 'video', 'in', state);
+    var audioPromise = portal.mediaOnOff(participantId, streamId, 'audio', 'in', state);
+    return Promise.all([videoPromise, audioPromise]);
+  };
+
+  that.updatePermission = function(targetId, act, updatedValue) {
+    log.debug('permission update:', targetId, act, updatedValue);
+
+    return portal.setPermission('session', targetId, act, updatedValue, true);
+  };
+
   return that;
 };
+
+
 
 module.exports = SocketIOServer;
 
