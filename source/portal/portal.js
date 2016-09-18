@@ -14,30 +14,71 @@ var Portal = function(spec, rpcClient) {
     permission_map = spec.permissionMap;
 
   /*
-   * {participantId: {userName: String(),
-   *             role: String(),
-   *             in_session: RoomId,
-   *             controller: RpcId,
-   *             connections: {ConnectionId: {locality: {agent: RpcIdOfAccessAgent, node: RpcIdOfAccessNode},
-   *                                          type: 'webrtc' | 'avstream' | 'recording' | ...,
-   *                                          direction: 'out' | 'in',
-   *                                          audio_codecs: [AudioCodecName],
-   *                                          video_codecs: [VideoCodecName],
-   *                                          state: 'connecting' | 'connected'
-   *                                         }
-   *                          }
-   *            }}
+   * {participantId: {
+   *     userName: String(),
+   *     role: String(),
+   *     in_session: RoomId,
+   *     controller: RpcId,
+   *     connections: {
+   *         ConnectionId: {
+   *             locality: { agent: RpcIdOfAccessAgent, node: RpcIdOfAccessNode },
+   *             type: 'webrtc' | 'avstream' | 'recording' | ...,
+   *             direction: 'out' | 'in',
+   *             audio_codecs: [AudioCodecName],
+   *             video_codecs: [VideoCodecName],
+   *             state: 'connecting' | 'connected'
+   *         }
+   *     },
+   *     permissions: { permissionMap got by role }
+   * }}
    */
   var participants = {};
 
-  var isPermitted = function(role, act, track) {
-    return permission_map[role]
-           && ((permission_map[role][act] === true)
-               || (typeof permission_map[role][act] === 'object' && permission_map[role][act][track] === true));
+  var newPermissions = function(role) {
+    var deepClone = function(obj) {
+      if (typeof obj !== 'object') {
+        return obj;
+      }
+
+      var result;
+      if (Array.isArray(obj)) {
+        result = [];
+        obj.forEach(function(value) {
+          result.push(deepClone(value));
+        });
+      } else {
+        result = {};
+        Object.keys(obj).forEach(function(key) {
+            result[key] = deepClone(obj[key]);
+        });
+      }
+
+      return result;
+    };
+
+    var permissions = deepClone(permission_map[role]);
+
+    return permissions;
   };
 
-  var isTextPermitted = function(role) {
-    return permission_map[role] && (permission_map[role]['text'] !== false);
+  var isPermitted = function(participantId, act, track) {
+    if (!participants[participantId]) {
+      return false;
+    }
+
+    var permissions = participants[participantId].permissions;
+    return permissions
+           && ((permissions[act] === true)
+               || (typeof permissions[act] === 'object' && permissions[act][track] === true));
+  };
+
+  var isTextPermitted = function(participantId) {
+    if (!participants[participantId]) {
+      return false;
+    }
+
+    var permissions = participants[participantId].permissions;
+    return permissions && (permissions['text'] !== false);
   };
 
   var constructConnectOptions = function(connectionId, connectionType, direction, description, sessionId) {
@@ -135,11 +176,15 @@ var Portal = function(spec, rpcClient) {
       })
       .then(function(joinResult) {
         log.debug('join ok, result:', joinResult);
-        participants[participantId] = {userName: userName,
-                                       role: role,
-                                       in_session: session,
-                                       controller: session_controller,
-                                       connections: {}};
+        participants[participantId] = {
+          userName: userName,
+          role: role,
+          in_session: session,
+          controller: session_controller,
+          connections: {},
+          permissions: newPermissions(role)
+        };
+
         return {
           user: userName,
           role: role,
@@ -184,8 +229,8 @@ var Portal = function(spec, rpcClient) {
       return Promise.reject('Participant ' + participantId + ' does NOT exist.');
     }
 
-    if ((!isPermitted(participants[participantId].role, 'publish', 'audio') && streamDescription.audio)
-        || (!isPermitted(participants[participantId].role, 'publish', 'video') && streamDescription.video)) {
+    if ((!isPermitted(participantId, 'publish', 'audio') && streamDescription.audio)
+        || (!isPermitted(participantId, 'publish', 'video') && streamDescription.video)) {
       return Promise.reject('unauthorized');
     }
 
@@ -373,8 +418,8 @@ var Portal = function(spec, rpcClient) {
       act = 'addExternalOutput';
     }
 
-    if ((!isPermitted(participants[participantId].role, act, 'audio') && subscriptionDescription.audio)
-        || (!isPermitted(participants[participantId].role, act, 'video') && subscriptionDescription.video)) {
+    if ((!isPermitted(participantId, act, 'audio') && subscriptionDescription.audio)
+        || (!isPermitted(participantId, act, 'video') && subscriptionDescription.video)) {
       return Promise.reject('unauthorized');
     }
 
@@ -553,16 +598,71 @@ var Portal = function(spec, rpcClient) {
       return Promise.reject('Participant ' + participantId + ' does NOT exist.');
     }
 
+    if (onOff === 'on' && !isPermitted(participantId, 'publish', track)) {
+      return Promise.reject('start stream permission denied');
+    }
+
     var subscription_id = participantId + '-sub-' + connectionId,
         stream_id = connectionId;
-    var connection_id = ((participant.connections[subscription_id] && participant.connections[subscription_id].direction === 'out') ? subscription_id : stream_id);//FIXME: removed once FIXME - a is fixed.
 
-    var connection = participant.connections[connection_id];
-    if (connection === undefined || connection.direction !== direction) {
+    var targetConnectionId = (direction === 'out')? subscription_id : stream_id;
+
+    var targetConnection;
+    if (participant.connections[targetConnectionId] && participant.connections[targetConnectionId].direction === direction) {
+      targetConnection = participant.connections[targetConnectionId];
+    }
+
+    if (targetConnection === undefined) {
       return Promise.reject('connection does not exist');
     }
 
-    return rpcClient.mediaOnOff(connection.locality.node, connection_id, track, direction, onOff);
+    if (targetConnection.type !== 'webrtc') {
+      return Promise.reject(targetConnection.type + ' connection does not support mediaOnOff');
+    }
+
+    return rpcClient.mediaOnOff(targetConnection.locality.node, targetConnectionId, track, direction, onOff);
+  };
+
+  that.setMute = function(participantId, streamId, muted) {
+    var participant = participants[participantId];
+    log.debug('setMute, participantId:', participantId, 'streamId:', streamId, 'muted:', muted);
+
+    if (participant === undefined) {
+      return Promise.reject('Participant ' + participantId + ' does NOT exist.');
+    }
+
+    if (!isPermitted(participantId, 'manage')) {
+      return Promise.reject('Mute/Unmute Permission Denied');
+    }
+
+    return rpcClient.setMute(participant.controller, streamId, muted);
+  };
+
+  that.setPermission = function(participantId, targetId, act, value, fromSession) {
+    log.debug('setPermission, participantId:', participantId, targetId, act, value, fromSession);
+    var target = participants[targetId];
+
+    if (target === undefined) {
+      return Promise.reject('Target ' + targetId + ' does NOT exist.')
+    }
+
+    if (fromSession) {
+      // Set the permission from session RPC
+      target.permissions[act] = value;
+      return Promise.resolve('ok');
+    } else {
+      // Notify session controller
+      var participant = participants[participantId];
+      if (participant === undefined) {
+        return Promise.reject('Participant ' + participantId + ' does NOT exist.');
+      }
+
+      if (!isPermitted(participantId, 'manage')) {
+        return Promise.reject('setPermission Permission Denied');
+      }
+
+      return rpcClient.setPermission(participant.controller, targetId, act, value);
+    }
   };
 
   that.getRegion = function(participantId, subStreamId) {
@@ -589,7 +689,7 @@ var Portal = function(spec, rpcClient) {
       return Promise.reject('Participant ' + participantId + ' does NOT exist.');
     }
 
-    if (!isTextPermitted(participants[participantId].role)) {
+    if (!isTextPermitted(participantId)) {
       return Promise.reject('unauthorized');
     }
 

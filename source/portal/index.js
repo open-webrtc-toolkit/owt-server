@@ -187,6 +187,30 @@ var rpcPublic = {
     socketio_server && socketio_server.notify(participantId, event, data);
     rest_server && rest_server.notify(participantId, event, data);
     callback('callback', 'ok');
+  },
+  setMute: function(participantId, streamId, muted, callback) {
+    if (socketio_server) {
+      socketio_server.updateMuteState(participantId, streamId, muted)
+      .then(function() {
+        callback('callback', 'ok');
+      }).catch(function(reason) {
+        callback('callback', 'error', reason);
+      });
+    } else {
+      callback('callback', 'error', 'socketio server is not ready');
+    }
+  },
+  setPermission: function(targetId, act, updatedValue, callback) {
+    if (socketio_server) {
+      socketio_server.updatePermission(targetId, act, updatedValue)
+      .then(function() {
+        callback('callback', 'ok');
+      }).catch(function(reason) {
+        callback('callback', 'error', reason);
+      });
+    } else {
+      callback('callback', 'error', 'socketio server is not ready');
+    }
   }
 };
 

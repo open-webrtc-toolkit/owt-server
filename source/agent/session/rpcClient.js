@@ -28,7 +28,15 @@ var RpcClient = function(rpcChannel) {
 
   that.dropUser = function(portal, participantId, sessionId) {
     return rpcChannel.makeRPC(portal, 'drop', [participantId, sessionId]);
-  }
+  };
+
+  that.setMute = function(portal, participantId, streamId, muted) {
+    return rpcChannel.makeRPC(portal, 'setMute', [participantId, streamId, muted]);
+  };
+
+  that.setPermission = function(portal, targetId, act, value) {
+    return rpcChannel.makeRPC(portal, 'setPermission', [targetId, act, value]);
+  };
 
   return that;
 }

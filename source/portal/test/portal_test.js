@@ -14,7 +14,7 @@ var testPortalSpec = {tokenKey: testTokenKey,
                       tokenServer: testTokenServer,
                       clusterName: testClusterName,
                       selfRpcId: testSelfRpcId,
-                      permissionMap: {'admin': {publish: true, subscribe: true, record: true, addExternalOutput: true},
+                      permissionMap: {'admin': {publish: true, subscribe: true, record: true, addExternalOutput: true, manage:true},
                                       'presenter': {publish: true, subscribe: true},
                                       'viewer': {subscribe: true},
                                       'viewer_no_text': {subscribe: true, text: false},
@@ -922,6 +922,67 @@ describe('portal.publish/portal.unpublish: Participants publish/unpublish stream
           expect(mockRpcClient.recycleAccessNode.getCall(0).args).to.deep.equal(['rpcIdOfAccessAgent', 'rpcIdOfAccessNode', {session: testSession, consumer: stream_id}]);
           expect(mockRpcClient.unpub2Session.getCall(0).args).to.deep.equal(['rpcIdOfController', testParticipantId, stream_id]);
         });
+    });
+  });
+});
+
+describe('portal.setMute: Administrators manipulate streams that published.', function() {
+  it('Should fail before joining', function() {
+    var mockRpcClient = sinon.createStubInstance(rpcClient);
+    var portal = Portal(testPortalSpec, mockRpcClient);
+
+    var setMute = portal.setMute(testParticipantId, 'streamId', true);
+
+    return Promise.all([
+      expect(setMute).to.be.rejectedWith('Participant ' + testParticipantId + ' does NOT exist.')
+      ]);
+  });
+
+  it('Should fail without manage permission', function() {
+    var mockRpcClient = sinon.createStubInstance(rpcClient);
+    var portal = Portal(testPortalSpec, mockRpcClient);
+
+    mockRpcClient.tokenLogin = sinon.stub();
+    mockRpcClient.getController = sinon.stub();
+    mockRpcClient.join = sinon.stub();
+
+    mockRpcClient.tokenLogin.resolves({userName: 'Jack', role: 'viewer', room: testSession});
+    mockRpcClient.getController.resolves('rpcIdOfController');
+    mockRpcClient.join.resolves({participants: [],
+                                 streams: []});
+
+    return portal.join(testParticipantId, testToken)
+    .then(function(login_result) {
+      var setMute = portal.setMute(testParticipantId, 'streamId', true);
+
+      return Promise.all([
+        expect(setMute).to.be.rejectedWith('Mute/Unmute Permission Denied')
+        ]);
+    });
+  });
+
+  it('Should success after login with manage permission', function() {
+    var mockRpcClient = sinon.createStubInstance(rpcClient);
+    var portal = Portal(testPortalSpec, mockRpcClient);
+
+    mockRpcClient.tokenLogin = sinon.stub();
+    mockRpcClient.getController = sinon.stub();
+    mockRpcClient.join = sinon.stub();
+    mockRpcClient.setMute = sinon.stub();
+
+    mockRpcClient.tokenLogin.resolves({userName: 'Jack', role: 'admin', room: testSession});
+    mockRpcClient.getController.resolves('rpcIdOfController');
+    mockRpcClient.join.resolves({participants: [],
+                                 streams: []});
+    mockRpcClient.setMute.resolves('ok');
+
+    return portal.join(testParticipantId, testToken)
+    .then(function(login_result) {
+      var setMute = portal.setMute(testParticipantId, 'streamId', true);
+
+      return Promise.all([
+        expect(setMute).to.become('ok')
+        ]);
     });
   });
 });
