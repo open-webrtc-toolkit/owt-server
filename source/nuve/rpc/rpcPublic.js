@@ -29,7 +29,7 @@ exports.deleteToken = function (id, callback) {
 exports.getRoomConfig = function (roomId, callback) {
 
     roomRegistry.getRoom(roomId, function (room) {
-        if (room === undefined) {
+        if (room === undefined || room === null) {
             return callback('callback', 'error');
         }
 
