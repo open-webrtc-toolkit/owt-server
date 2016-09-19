@@ -33,7 +33,13 @@ extern "C" {
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 #include <libavutil/mathematics.h>
+#include <libavutil/audio_fifo.h>
+#include <libavutil/opt.h>
+#include <libswresample/swresample.h>
 }
+
+#include <fstream>
+#include <memory>
 
 namespace woogeen_base {
 
@@ -103,12 +109,42 @@ private:
     int m_videoStreamIndex;
     FrameFormat m_videoFormat;
     VideoSize m_videoSize;
+    bool m_needVBSF;
+    AVBitStreamFilterContext *m_vbsf;
+    uint8_t *m_vbsf_buffer;
+    int m_vbsf_buffer_size;
     int m_audioStreamIndex;
     FrameFormat m_audioFormat;
     EventRegistry* m_asyncHandle;
 
+    bool m_needAudioTranscoder;
+    AVFrame *m_audioDecFrame;
+    AVCodecContext *m_audioEncCtx;
+    struct SwrContext *m_audioSwrCtx;
+    uint8_t **m_audioSwrSamplesData;
+    int m_audioSwrSamplesLinesize;
+    int m_audioSwrSamplesCount;
+    AVAudioFifo* m_audioEncFifo;
+    AVFrame *m_audioEncFrame;
+
+    uint32_t m_audioRcvSampleCount;
+    uint32_t m_audioRcvSampleDts;
+    uint32_t m_audioEncodedSampleCount;
+
+    AVRational m_videoTimeBase;
+    AVRational m_audioTimeBase;
+
+    std::unique_ptr<std::ofstream> m_audioRawDumpFile;
+
     bool connect();
     void receiveLoop();
+
+    bool initVBSFilter();
+    bool filterVBS();
+
+    bool initAudioTranscoder(int inCodec, int outCodec);
+    bool decAudioFrame();
+    bool encAudioFrame();
 };
 
 }
