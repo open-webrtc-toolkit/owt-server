@@ -417,7 +417,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                     streams[stream_id].video.subscribers.push(video_mixer);
                     on_ok();
                 } else {
-                    shrink(stream_id, target_node);
+                    shrinkStream(stream_id, target_node);
                     on_error('Video mixer is early released.');
                 }
             }, on_error);
