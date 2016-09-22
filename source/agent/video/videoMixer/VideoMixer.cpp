@@ -152,6 +152,21 @@ void VideoMixer::removeInput(const std::string& inStreamID)
     }
 }
 
+void VideoMixer::setInputActive(const std::string& inStreamID, bool active)
+{
+    int index = -1;
+    boost::unique_lock<boost::shared_mutex> lock(m_inputsMutex);
+    auto it = m_inputs.find(inStreamID);
+    if (it != m_inputs.end()) {
+        index = it->second;
+    }
+    lock.unlock();
+
+    if (index >= 0) {
+        m_frameMixer->setInputActive(index, active);
+    }
+}
+
 bool VideoMixer::setRegion(const std::string& inStreamID, const std::string& regionID)
 {
     int index = -1;

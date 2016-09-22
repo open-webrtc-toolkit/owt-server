@@ -46,6 +46,7 @@ class VideoMixer : public node::ObjectWrap {
 
   static void addInput(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void removeInput(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void setInputActive(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void addOutput(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void removeOutput(const v8::FunctionCallbackInfo<v8::Value>& args);
 

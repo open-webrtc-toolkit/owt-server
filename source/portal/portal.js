@@ -620,6 +620,12 @@ var Portal = function(spec, rpcClient) {
       return Promise.reject(targetConnection.type + ' connection does not support mediaOnOff');
     }
 
+    var status = (onOff === 'on')? 'active':'inactive';
+
+    if (direction === 'in') {
+      rpcClient.updateStream(participant.controller, targetConnectionId, track, status);
+    }
+
     return rpcClient.mediaOnOff(targetConnection.locality.node, targetConnectionId, track, direction, onOff);
   };
 

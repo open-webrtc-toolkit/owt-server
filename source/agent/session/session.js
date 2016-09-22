@@ -358,6 +358,18 @@ module.exports = function (rpc, selfRpcId) {
     }
   };
 
+  that.updateStream = function(streamId, track, status, callback) {
+    log.info('updateStream:', streamId, status);
+    sendMsg('room', 'all', 'update_stream', {event: 'StateChange', id: streamId, state: status});
+
+    if (controller) {
+      controller.updateStream(streamId, track, status);
+      callback('callback', 'ok');
+    } else {
+      callback('callback', 'error', 'Controller is not ready');
+    }
+  };
+
   that.setMute = function(streamId, muted, callback) {
     log.debug('set mute:', streamId, muted);
 

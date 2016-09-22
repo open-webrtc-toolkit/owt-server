@@ -303,7 +303,7 @@ describe('rpcClient.unpublish/unsubscribe/recycleAccessNode/unpub2Session/unsub2
    });
 });
 
-describe('rpcClient.tokenLogin/join/onConnectionSignalling/mix/unmix/setVideoBitrate/mediaOnOff/setMute/getRegion/setRegion/text', function() {
+describe('rpcClient.tokenLogin/join/onConnectionSignalling/mix/unmix/setVideoBitrate/updateStream/mediaOnOff/setMute/getRegion/setRegion/text', function() {
   it('Should succeed if rpcChannel.makeRPC succeeds.', function() {
     var mockRpcChannel = sinon.createStubInstance(rpcChannel);
     mockRpcChannel.makeRPC = sinon.stub();
@@ -332,6 +332,9 @@ describe('rpcClient.tokenLogin/join/onConnectionSignalling/mix/unmix/setVideoBit
     mockRpcChannel.makeRPC.withArgs('rpcIdOfAccessNode', 'setVideoBitrate', ['connectionId', 500]).returns(Promise.resolve('ok'));
     var setVideoBitrate = client.setVideoBitrate('rpcIdOfAccessNode', 'connectionId', 500);
 
+    mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'updateStream', ['streamId', 'video', 'active']).returns(Promise.resolve('ok'));
+    var updateStream = client.updateStream('rpcIdOfController', 'streamId', 'video', 'active');
+
     mockRpcChannel.makeRPC.withArgs('rpcIdOfAccessNode', 'mediaOnOff', ['connectionId', 'video', 'in', 'off']).returns(Promise.resolve('ok'));
     var mediaOnOff = client.mediaOnOff('rpcIdOfAccessNode', 'connectionId', 'video', 'in', 'off');
 
@@ -354,6 +357,7 @@ describe('rpcClient.tokenLogin/join/onConnectionSignalling/mix/unmix/setVideoBit
       expect(mix).to.become('ok'),
       expect(unmix).to.become('ok'),
       expect(setVideoBitrate).to.become('ok'),
+      expect(updateStream).to.become('ok'),
       expect(mediaOnOff).to.become('ok'),
       expect(setMute).to.become('ok'),
       expect(getRegion).to.become('regionId1'),
@@ -361,7 +365,7 @@ describe('rpcClient.tokenLogin/join/onConnectionSignalling/mix/unmix/setVideoBit
       expect(text).to.become('ok')
       ])
       .then(function() {
-        expect(mockRpcChannel.makeRPC.callCount).to.equal(11);
+        expect(mockRpcChannel.makeRPC.callCount).to.equal(12);
       });
   });
 
@@ -390,6 +394,9 @@ describe('rpcClient.tokenLogin/join/onConnectionSignalling/mix/unmix/setVideoBit
     mockRpcChannel.makeRPC.withArgs('rpcIdOfAccessNode', 'setVideoBitrate', ['connectionId', 500]).returns(Promise.reject('timeout or error'));
     var setVideoBitrate = client.setVideoBitrate('rpcIdOfAccessNode', 'connectionId', 500);
 
+    mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'updateStream', ['streamId', 'video', 'active']).returns(Promise.reject('timeout or error'));
+    var updateStream = client.updateStream('rpcIdOfController', 'streamId', 'video', 'active');
+
     mockRpcChannel.makeRPC.withArgs('rpcIdOfAccessNode', 'mediaOnOff', ['connectionId', 'video', 'in', 'off']).returns(Promise.reject('timeout or error'));
     var mediaOnOff = client.mediaOnOff('rpcIdOfAccessNode', 'connectionId', 'video', 'in', 'off');
 
@@ -412,6 +419,7 @@ describe('rpcClient.tokenLogin/join/onConnectionSignalling/mix/unmix/setVideoBit
       expect(mix).to.be.rejectedWith('timeout'),
       expect(unmix).to.be.rejectedWith('error'),
       expect(setVideoBitrate).to.be.rejectedWith('timeout or error'),
+      expect(updateStream).to.be.rejectedWith('timeout or error'),
       expect(mediaOnOff).to.be.rejectedWith('timeout or error'),
       expect(setMute).to.be.rejectedWith('timeout or error'),
       expect(getRegion).to.be.rejectedWith('no such a sub-stream'),
@@ -419,7 +427,7 @@ describe('rpcClient.tokenLogin/join/onConnectionSignalling/mix/unmix/setVideoBit
       expect(text).to.be.rejectedWith('timeout or error')
       ])
       .then(function() {
-        expect(mockRpcChannel.makeRPC.callCount).to.equal(11);
+        expect(mockRpcChannel.makeRPC.callCount).to.equal(12);
       });
   });
 });

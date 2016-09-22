@@ -74,6 +74,7 @@ public:
 
     bool addInput(int input, woogeen_base::FrameFormat, woogeen_base::FrameSource*);
     void removeInput(int input);
+    void setInputActive(int input, bool active);
 
     bool addOutput(int output, woogeen_base::FrameFormat, const woogeen_base::VideoSize&, woogeen_base::FrameDestination*);
     void removeOutput(int output);
@@ -199,6 +200,19 @@ inline void VideoFrameMixerImpl::removeInput(int input)
         it->second.decoder->removeVideoDestination(it->second.compositorIn.get());
         boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
         m_inputs.erase(it);
+    }
+}
+
+inline void VideoFrameMixerImpl::setInputActive(int input, bool active)
+{
+    auto it = m_inputs.find(input);
+    // FIXEME: Should show a black frame when input is not active
+    if (it != m_inputs.end()) {
+        if (active) {
+            m_compositor->activateInput(input);
+        } else {
+            m_compositor->deActivateInput(input);
+        }
     }
 }
 

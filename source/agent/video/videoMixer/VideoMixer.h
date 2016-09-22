@@ -50,6 +50,7 @@ public:
 
     bool addInput(const std::string& inStreamID, const std::string& codec, woogeen_base::FrameSource* source);
     void removeInput(const std::string& inStreamID);
+    void setInputActive(const std::string& inStreamID, bool active);
     bool setRegion(const std::string& inStreamID, const std::string& regionID);
     std::string getRegion(const std::string& inStreamID);
     void setPrimary(const std::string& inStreamID);

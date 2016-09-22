@@ -1095,6 +1095,7 @@ describe('portal.mix/portal.unmix/portal.setVideoBitrate/portal.mediaOnOff: Part
       mockRpcClient.unmix = sinon.stub();
       mockRpcClient.setVideoBitrate = sinon.stub();
       mockRpcClient.mediaOnOff = sinon.stub();
+      mockRpcClient.updateStream = sinon.stub();
 
       mockRpcClient.mix.resolves('ok');
       mockRpcClient.unmix.resolves('ok');
@@ -1125,6 +1126,7 @@ describe('portal.mix/portal.unmix/portal.setVideoBitrate/portal.mediaOnOff: Part
       mockRpcClient.unmix = sinon.stub();
       mockRpcClient.setVideoBitrate = sinon.stub();
       mockRpcClient.mediaOnOff = sinon.stub();
+      mockRpcClient.updateStream = sinon.stub();
 
       mockRpcClient.mix.rejects('timeout or error');
       mockRpcClient.unmix.rejects('timeout or error');
