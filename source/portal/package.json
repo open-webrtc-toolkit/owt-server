@@ -3,6 +3,8 @@
   "version":"3.2.0",
   "dependencies": {
     "amqp": "*",
+    "express": "*",
+    "body-parser": "*",
     "socket.io": "^1.3.5",
     "log4js": "*",
     "toml": "*"
@@ -14,6 +16,7 @@
     "sinon": "^1.15.4",
     "sinon-as-promised": "^4.0.0",
     "istanbul": "*",
+    "request": "*",
     "socket.io-client": "*"
   },
   "scripts": {

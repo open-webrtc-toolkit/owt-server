@@ -17,6 +17,7 @@ config.portal = config.portal || {};
 config.portal.ip_address = config.portal.ip_address || '';
 config.portal.hostname = config.portal.hostname|| '';
 config.portal.port = config.portal.port || 8080;
+config.portal.rest_port = config.portal.rest_port || 8081;
 config.portal.ssl = config.portal.ssl || false;
 config.portal.roles = config.portal.roles || {'admin':{'publish': true, 'subscribe':true, 'record':true, 'addExternalOutput':true}, 'presenter':{'publish': true, 'subscribe':true, 'record':true, 'addExternalOutput':true}, 'audio_only_presenter':{'publish': {'audio': true}, 'subscribe':{'audio': true}}, 'viewer':{'subscribe':true}, 'video_only_viewer':{'subscribe':{'video': true}}, 'no_text_viewer': {'subscribe': true, 'text': false}};
 
@@ -35,7 +36,8 @@ config.rabbit.port = config.rabbit.port || 5672;
 
 
 var amqper = require('./amqper');
-var server;
+var socketio_server;
+var rest_server;
 var worker;
 
 var ip_address;
@@ -107,6 +109,7 @@ var joinCluster = function (on_ok) {
               info: {ip: ip_address,
                      hostname: config.portal.hostname,
                      port: config.portal.port,
+                     rest_port: config.portal.rest_port,
                      ssl: config.portal.ssl,
                      state: 2,
                      max_load: config.cluster.max_load
@@ -122,7 +125,23 @@ var joinCluster = function (on_ok) {
   worker = require('./clusterWorker')(spec);
 };
 
-var startServer = function(id, tokenKey) {
+var refreshTokenKey = function(id, portal, tokenKey) {
+  var interval = setInterval(function() {
+    getTokenKey(id, function(newTokenKey) {
+      (socketio_server === undefined) && clearInterval(interval);
+      if (newTokenKey !== tokenKey) {
+        log.info('Token key updated!');
+        portal.updateTokenKey(newTokenKey);
+        tokenKey = newTokenKey;
+      }
+    }, function() {
+      (socketio_server === undefined) && clearInterval(interval);
+      log.warn('Keep trying...');
+    });
+  }, 6 * 1000);
+};
+
+var startServers = function(id, tokenKey) {
   var rpcChannel = require('./rpcChannel')(amqper);
   var rpcClient = require('./rpcClient')(rpcChannel);
 
@@ -132,44 +151,41 @@ var startServer = function(id, tokenKey) {
                                     selfRpcId: id,
                                     permissionMap: config.portal.roles},
                                     rpcClient);
-  server = require('./socketIOServer')({port: config.portal.port, ssl: config.portal.ssl, keystorePath: config.portal.keystorePath}, portal);
-  return server.start()
+  socketio_server = require('./socketIOServer')({port: config.portal.port, ssl: config.portal.ssl, keystorePath: config.portal.keystorePath}, portal);
+  rest_server = require('./restServer')({port: config.portal.rest_port, ssl: config.portal.ssl, keystorePath: config.portal.keystorePath}, portal);
+  return socketio_server.start()
     .then(function() {
       log.info('start socket.io server ok.');
-      var interval = setInterval(function() {
-        getTokenKey(id, function(newTokenKey) {
-          (server === undefined) && clearInterval(interval);
-          if (newTokenKey !== tokenKey) {
-            log.info('Token key updated!');
-            portal.updateTokenKey(newTokenKey);
-            tokenKey = newTokenKey;
-          }
-        }, function() {
-          (server === undefined) && clearInterval(interval);
-          log.warn('Keep trying...');
-        });
-      }, 6 * 1000);
+      return rest_server.start();
+    })
+    .then(function() {
+      log.info('start rest server ok.');
+      refreshTokenKey(id, portal, tokenKey);
     })
     .catch(function(err) {
-      log.error('Failed to start socket.io server, reason:', err.message);
+      log.error('Failed to start servers, reason:', err.message);
       throw err;
     });
 };
 
-var stopServer = function() {
-  server && server.stop();
-  server = undefined;
+var stopServers = function() {
+  socketio_server && socketio_server.stop();
+  socketio_server = undefined;
+  rest_server && rest_server.stop();
+  rest_server = undefined;
   worker && worker.quit();
   worker = undefined;
 };
 
 var rpcPublic = {
   drop: function(participantId, fromRoom, callback) {
-    server &&  server.drop(participantId, fromRoom);
+    socketio_server &&  socketio_server.drop(participantId, fromRoom);
+    rest_server &&  rest_server.drop(participantId, fromRoom);
     callback('callback', 'ok');
   },
   notify: function(participantId, event, data, callback) {
-    server && server.notify(participantId, event, data);
+    socketio_server && socketio_server.notify(participantId, event, data);
+    rest_server && rest_server.notify(participantId, event, data);
     callback('callback', 'ok');
   }
 };
@@ -182,7 +198,7 @@ amqper.connect(config.rabbit, function () {
       amqper.bind(id, function() {
         log.info('bind amqp client ok.');
         getTokenKey(id, function(tokenKey) {
-          startServer(id, tokenKey);
+          startServers(id, tokenKey);
         }, function() {
           worker && worker.quit();
           return process.exit();
@@ -191,7 +207,7 @@ amqper.connect(config.rabbit, function () {
     });
   } catch (error) {
     log.error('Error in Erizo portal:', error);
-    stopServer();
+    stopServers();
     process.exit();
   }
 });
@@ -199,7 +215,7 @@ amqper.connect(config.rabbit, function () {
 ['SIGINT', 'SIGTERM'].map(function (sig) {
   process.on(sig, function () {
     log.warn('Exiting on', sig);
-    stopServer();
+    stopServers();
     process.exit();
   });
 });

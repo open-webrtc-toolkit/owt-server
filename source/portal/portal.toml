@@ -2,7 +2,10 @@
 keystorePath = "./cert/certificate.pfx"
 hostname = "" #default: ""
 ip_address = "" #default: ""
+# Port that the socket.io server listens at.
 port = 8080 #default: 8080
+# Port that the REST server listens at.
+rest_port = 8081 #default: 8081
 ssl = true #default: true
 #The network inferface the socket.io will be bound to in case portal.ip_address (the 'ip_address' item above) is not specified or equal to "".
 # networkInterface = "eth1"

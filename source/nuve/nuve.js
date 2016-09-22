@@ -63,6 +63,7 @@ app.delete('/rooms/:room', roomResource.deleteRoom);
 app.put('/rooms/:room', roomResource.updateRoom);
 
 app.post('/rooms/:room/tokens', tokensResource.create);
+app.post('/rooms/:room/tokens/:type', tokensResource.create);
 
 app.post('/services', servicesResource.create);
 app.get('/services', servicesResource.represent);
