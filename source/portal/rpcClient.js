@@ -87,6 +87,10 @@ var RpcClient = function(rpcChannel) {
     return rpcChannel.makeRPC(controller, 'unmix', [participantId, streamId]);
   };
 
+  that.updateStream = function(controller, streamId, track, status) {
+    return rpcChannel.makeRPC(controller, 'updateStream', [streamId, track, status]);
+  };
+
   that.setVideoBitrate = function(accessNode, connectionId, bitrate) {
     return rpcChannel.makeRPC(accessNode, 'setVideoBitrate', [connectionId, bitrate]);
   };

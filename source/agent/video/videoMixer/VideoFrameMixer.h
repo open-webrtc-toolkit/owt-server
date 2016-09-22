@@ -46,6 +46,7 @@ class VideoFrameMixer : public LayoutConsumer {
 public:
     virtual bool addInput(int input, woogeen_base::FrameFormat, woogeen_base::FrameSource*) = 0;
     virtual void removeInput(int input) = 0;
+    virtual void setInputActive(int input, bool active) = 0;
 
     virtual bool addOutput(int output, woogeen_base::FrameFormat, const woogeen_base::VideoSize&, woogeen_base::FrameDestination*) = 0;
     virtual void removeOutput(int output) = 0;

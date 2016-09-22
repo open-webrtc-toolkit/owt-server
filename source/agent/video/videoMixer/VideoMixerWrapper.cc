@@ -44,6 +44,7 @@ void VideoMixer::Init(Handle<Object> exports, Handle<Object> module) {
   NODE_SET_PROTOTYPE_METHOD(tpl, "close", close);
   NODE_SET_PROTOTYPE_METHOD(tpl, "addInput", addInput);
   NODE_SET_PROTOTYPE_METHOD(tpl, "removeInput", removeInput);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "setInputActive", setInputActive);
   NODE_SET_PROTOTYPE_METHOD(tpl, "addOutput", addOutput);
   NODE_SET_PROTOTYPE_METHOD(tpl, "removeOutput", removeOutput);
   NODE_SET_PROTOTYPE_METHOD(tpl, "setRegion", setRegion);
@@ -110,6 +111,21 @@ void VideoMixer::removeInput(const v8::FunctionCallbackInfo<v8::Value>& args) {
   std::string inStreamID = std::string(*param0);
 
   me->removeInput(inStreamID);
+}
+
+void VideoMixer::setInputActive(const v8::FunctionCallbackInfo<v8::Value>& args) {
+  Isolate* isolate = Isolate::GetCurrent();
+  HandleScope scope(isolate);
+
+  VideoMixer* obj = ObjectWrap::Unwrap<VideoMixer>(args.Holder());
+  mcu::VideoMixer* me = obj->me;
+
+  String::Utf8Value param0(args[0]->ToString());
+  std::string inStreamID = std::string(*param0);
+
+  bool active = args[1]->ToBoolean()->Value();
+
+  me->setInputActive(inStreamID, active);
 }
 
 void VideoMixer::addOutput(const v8::FunctionCallbackInfo<v8::Value>& args) {

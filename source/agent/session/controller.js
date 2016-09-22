@@ -1253,6 +1253,23 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
         }
     };
 
+    that.updateStream = function (stream_id, track, status) {
+        log.debug('updateStream, stream_id:', stream_id, 'track', track, 'status:', status);
+        if (track === 'video' && (status === 'active' || status === 'inactive')) {
+            if (streams[stream_id] && config.enableMixing) {
+                if (streams[stream_id].video && video_mixer && terminals[video_mixer]) {
+                    var target_node = terminals[video_mixer].locality.node;
+                    var active = (status === 'active');
+                    makeRPC(
+                        amqper,
+                        target_node,
+                        'setInputActive',
+                        [stream_id, active]);
+                }
+            }
+        }
+    };
+
     that.mix = function (stream_id, on_ok, on_error) {
         log.debug('mix, stream_id:', stream_id);
         if (streams[stream_id] && config.enableMixing) {

@@ -248,6 +248,15 @@ module.exports = function (rpcClient) {
         removeOutput(stream_id);
     };
 
+    that.setInputActive = function (stream_id, active, callback) {
+        if (inputs[stream_id]) {
+            engine.setInputActive(stream_id, !!active);
+            callback('callback', 'ok');
+        } else {
+            callback('callback', 'error', 'No stream:' + stream_id);
+        }
+    };
+
     that.publish = function (stream_id, stream_type, options, callback) {
         log.debug('publish, stream_id:', stream_id, 'stream_type:', stream_type, 'options:', options);
         if (stream_type !== 'internal') {
