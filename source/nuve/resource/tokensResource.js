@@ -41,7 +41,7 @@ var getTokenString = function (id, token) {
  * The format of a token is:
  * {tokenId: id, host: erizoController host, signature: signature of the token};
  */
-var generateToken = function (currentRoom, authData, callback) {
+var generateToken = function (currentRoom, authData, type, callback) {
     var currentService = authData.service,
         user = authData.user,
         role = authData.role,
@@ -110,7 +110,13 @@ var generateToken = function (currentRoom, authData, callback) {
                 token.host = ec.ip;
             }
 
-            token.host += ':' + ec.port;
+            if (type === 'rest') {
+                token.host += ':' + ec.rest_port;
+            } else if (type === 'socketio') {
+                token.host += ':' + ec.port;
+            } else {
+                return callback('error');
+            }
 
             tokenRegistry.addToken(token, function (id) {
                 var tokenS = getTokenString(id, token);
@@ -124,7 +130,8 @@ var generateToken = function (currentRoom, authData, callback) {
  * Post Token. Creates a new token for a determined room of a service.
  */
 exports.create = function (req, res) {
-    var authData = req.authData || {};
+    var authData = req.authData || {},
+        type = req.params.type || 'socketio';
 
     if (authData.service === undefined) {
         log.info('Service not found');
@@ -139,7 +146,7 @@ exports.create = function (req, res) {
             return;
         }
 
-        generateToken(currentRoom, authData, function (tokenS) {
+        generateToken(currentRoom, authData, type, function (tokenS) {
             if (tokenS === undefined) {
                 log.info('Name and role?');
                 res.status(401).send('Name and role?');
@@ -155,3 +162,4 @@ exports.create = function (req, res) {
         });
     });
 };
+

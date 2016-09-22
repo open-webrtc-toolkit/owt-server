@@ -14,6 +14,7 @@
     "LoadCollector": "INFO",
     "Main": "INFO",
     "SocketIOServer": "INFO",
+    "RestServer": "INFO",
     "Portal": "INFO",
     "RpcClient": "INFO",
     "AMQPER": "INFO"
