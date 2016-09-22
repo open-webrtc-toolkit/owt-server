@@ -436,8 +436,7 @@ var Portal = function(spec, rpcClient) {
       }
 
       var subscription_description = {audio: subscriptionDescription.audio, video: subscriptionDescription.video};
-      //(subscription_description.audio) && (subscription_description.audio.codecs = status.audio_codecs);
-      (subscription_description.audio) && (subscription_description.audio.codecs = [status.audio_codecs[0]]/*FIXME: delete the non-top codecs as a workround approach because firefox(20160726) does not support the second prior codec*/);
+      (subscription_description.audio) && (subscription_description.audio.codecs = status.audio_codecs);
       //(subscription_description.video) && (subscription_description.video.codecs = status.video_codecs);
       (subscription_description.video) && (subscription_description.video.codecs = [status.video_codecs[0]]/*FIXME: delete the non-top codecs as a workround approach because firefox(20160726) does not support the second prior codec*/);
       subscription_description.type = connectionType;
