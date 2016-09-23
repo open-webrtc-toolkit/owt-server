@@ -50,7 +50,7 @@ VCMFrameEncoder::VCMFrameEncoder(FrameFormat format, boost::shared_ptr<WebRTCTas
     if (m_taskRunner)
         m_taskRunner->RegisterModule(m_vcm);
 
-    m_jobTimer.reset(new woogeen_base::JobTimer(30, this));
+    m_jobTimer.reset(new JobTimer(30, this));
     m_jobTimer->start();
 }
 

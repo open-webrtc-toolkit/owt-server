@@ -55,7 +55,7 @@ class BackgroundCleaner;
  * still 16 audios will be mixed. In the future, we may enable the video rotation based on VAD history.
  */
 class YamiVideoCompositor : public VideoFrameCompositor,
-                            public woogeen_base::JobTimerListener {
+                            public JobTimerListener {
     DECLARE_LOGGER();
     enum LayoutSolutionState{UN_INITIALIZED = 0, CHANGING, IN_WORK};
 public:
@@ -95,7 +95,7 @@ private:
 
     // LayoutSolution m_newLayout;
     // LayoutSolutionState m_solutionState;
-    boost::scoped_ptr<woogeen_base::JobTimer> m_jobTimer;
+    boost::scoped_ptr<JobTimer> m_jobTimer;
 };
 
 }

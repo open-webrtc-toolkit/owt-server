@@ -345,7 +345,7 @@ MsdkVideoCompositor::MsdkVideoCompositor(uint32_t maxInput, VideoSize rootSize, 
         input->updateRootSize(rootSize);
     }
 
-    m_jobTimer.reset(new woogeen_base::JobTimer(30, this));
+    m_jobTimer.reset(new JobTimer(30, this));
     m_jobTimer->start();
 }
 

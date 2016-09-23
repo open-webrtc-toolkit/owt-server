@@ -7,7 +7,6 @@
 
 #include <memory>
 #include <boost/shared_ptr.hpp>
-#include "DtlsTimer.h"
 #include <openssl/evp.h>
 #include <logger.h>
 typedef struct x509_st X509;
@@ -18,7 +17,6 @@ namespace dtls
 {
 class DtlsSocket;
 class DtlsSocketContext;
-class DtlsTimerContext;
 
 //Not threadsafe. Timers must fire in the same thread as dtls processing.
 class DtlsFactory
@@ -41,9 +39,6 @@ class DtlsFactory
 
      // Returns the fingerprint of the user cert that was passed into the constructor
      void getMyCertFingerprint(char *fingerprint);
-
-     // Returns a reference to the timer context that was passed into the constructor
-     DtlsTimerContext& getTimerContext() {return *mTimerContext;}
 
      // The default SrtpProfile used at construction time (default is: SRTP_AES128_CM_SHA1_80:SRTP_AES128_CM_SHA1_32)
      static const char* DefaultSrtpProfile;
@@ -72,10 +67,6 @@ private:
      // Creates a DTLS SSL Context and enables srtp extension, also sets the private and public key cert
 
      SSL_CTX* mContext;
-     std::unique_ptr<DtlsTimerContext> mTimerContext;
-
-
-
 };
 
 }

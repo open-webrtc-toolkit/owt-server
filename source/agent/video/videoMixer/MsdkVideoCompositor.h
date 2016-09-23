@@ -47,7 +47,7 @@ class VppInput;
  * still 16 audios will be mixed. In the future, we may enable the video rotation based on VAD history.
  */
 class MsdkVideoCompositor : public VideoFrameCompositor,
-                            public woogeen_base::JobTimerListener {
+                            public JobTimerListener {
     DECLARE_LOGGER();
     enum LayoutSolutionState{UN_INITIALIZED = 0, CHANGING, IN_WORK};
 
@@ -119,7 +119,7 @@ private:
     boost::shared_ptr<woogeen_base::MsdkFrame> m_defaultInputFrame;
     boost::scoped_ptr<woogeen_base::MsdkFramePool> m_defaultInputFramePool;
 
-    boost::scoped_ptr<woogeen_base::JobTimer> m_jobTimer;
+    boost::scoped_ptr<JobTimer> m_jobTimer;
 
     boost::shared_mutex m_mutex;
 };

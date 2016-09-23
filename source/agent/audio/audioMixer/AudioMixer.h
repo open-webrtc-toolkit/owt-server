@@ -34,7 +34,7 @@
 
 #include <logger.h>
 #include "MediaFramePipeline.h"
-#include "JobTimer.h"
+#include <JobTimer.h>
 #include "WebRTCTransport.h"
 #include "AudioFrame2RtpPacketConverter.h"
 
@@ -93,7 +93,7 @@ private:
     AudioFrame2RtpPacketConverter m_converter; //FIXME: Temporarily convert audio frame to rtp-packets due to the premature AudioFrameConstructor implementation.
 };
 
-class AudioMixer : public woogeen_base::JobTimerListener {
+class AudioMixer : public JobTimerListener {
     DECLARE_LOGGER();
 
 public:
@@ -134,7 +134,7 @@ private:
     std::map<std::string, boost::shared_ptr<AudioChannel>> m_channels;
     boost::shared_mutex m_channelsMutex;
 
-    boost::scoped_ptr<woogeen_base::JobTimer> m_jobTimer;
+    boost::scoped_ptr<JobTimer> m_jobTimer;
 };
 
 inline webrtc::VoEVideoSync* AudioMixer::avSyncInterface()

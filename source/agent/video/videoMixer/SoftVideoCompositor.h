@@ -63,7 +63,7 @@ private:
  * still 16 audios will be mixed. In the future, we may enable the video rotation based on VAD history.
  */
 class SoftVideoCompositor : public VideoFrameCompositor,
-                            public woogeen_base::JobTimerListener {
+                            public JobTimerListener {
     DECLARE_LOGGER();
     enum LayoutSolutionState{UN_INITIALIZED = 0, CHANGING, IN_WORK};
 public:
@@ -102,7 +102,7 @@ private:
      * Each incoming channel will store the decoded frame in this array, and the composition
      * thread will scan this array and composite the frames into one frame.
      */
-    boost::scoped_ptr<woogeen_base::JobTimer> m_jobTimer;
+    boost::scoped_ptr<JobTimer> m_jobTimer;
 };
 
 }

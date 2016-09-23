@@ -25,8 +25,6 @@
 #include <boost/scoped_ptr.hpp>
 #include <boost/thread.hpp>
 
-namespace woogeen_base {
-
 class JobTimerListener {
 public:
     virtual void onTimeout() = 0;
@@ -100,5 +98,4 @@ private:
     boost::scoped_ptr<boost::asio::deadline_timer> m_timer;
 };
 
-}
 #endif

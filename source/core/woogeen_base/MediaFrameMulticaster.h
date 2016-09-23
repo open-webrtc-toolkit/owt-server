@@ -22,7 +22,7 @@
 #define MediaFrameMulticaster_h
 
 #include "MediaFramePipeline.h"
-#include "JobTimer.h"
+#include <JobTimer.h>
 
 namespace woogeen_base {
 
@@ -41,7 +41,7 @@ public:
     void onTimeout();
 
 private:
-    boost::scoped_ptr<woogeen_base::JobTimer> m_feedbackTimer;
+    boost::scoped_ptr<JobTimer> m_feedbackTimer;
     uint32_t m_pendingKeyFrameRequests;
 };
 

@@ -302,9 +302,6 @@ DtlsFactory::DtlsFactory(const std::string& certFile, const std::string& keyFile
 {
     DtlsFactory::Init(certFile, keyFile, privatePasswd);
 
-    mTimerContext = std::unique_ptr<TestTimerContext>(new TestTimerContext());
-
-
     ELOG_DEBUG("Creating Dtls factory");
 
     mContext=SSL_CTX_new(DTLSv1_client_method());

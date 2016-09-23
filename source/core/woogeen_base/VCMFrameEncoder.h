@@ -22,13 +22,13 @@
 #define VCMFrameEncoder_h
 
 #include "BufferManager.h"
-#include "JobTimer.h"
 #include "MediaFramePipeline.h"
 #include "WebRTCTaskRunner.h"
 
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/shared_mutex.hpp>
+#include <JobTimer.h>
 #include <logger.h>
 #include <map>
 #include <tuple>
@@ -109,7 +109,7 @@ private:
     boost::shared_ptr<WebRTCTaskRunner> m_taskRunner;
 
     boost::scoped_ptr<BufferManager> m_bufferManager;
-    boost::scoped_ptr<woogeen_base::JobTimer> m_jobTimer;
+    boost::scoped_ptr<JobTimer> m_jobTimer;
     std::map<int32_t/*streamId*/, OutStream> m_streams;
     boost::shared_mutex m_mutex;
 };
