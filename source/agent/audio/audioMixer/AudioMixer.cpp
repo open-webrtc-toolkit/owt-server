@@ -399,7 +399,7 @@ AudioMixer::AudioMixer(const std::string& config)
     voe->Init(m_adm.get());
 
     // FIXME: hard coded timer interval.
-    m_jobTimer.reset(new woogeen_base::JobTimer(100, this));
+    m_jobTimer.reset(new JobTimer(100, this));
 }
 
 AudioMixer::~AudioMixer()

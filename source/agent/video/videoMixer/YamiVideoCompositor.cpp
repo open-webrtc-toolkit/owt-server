@@ -170,7 +170,7 @@ YamiVideoCompositor::YamiVideoCompositor(uint32_t maxInput, VideoSize rootSize, 
     }
 
     m_backgroundCleaner.reset(new BackgroundCleaner(m_display, rootSize, bgColor));
-    m_jobTimer.reset(new woogeen_base::JobTimer(30, this));
+    m_jobTimer.reset(new JobTimer(30, this));
     m_jobTimer->start();
     ELOG_DEBUG("set size to %dx%d, input = %d", rootSize.width, rootSize.height, maxInput);
 }

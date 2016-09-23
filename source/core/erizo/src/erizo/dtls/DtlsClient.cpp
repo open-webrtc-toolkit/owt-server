@@ -11,7 +11,6 @@
 #include <openssl/srtp.h>
 
 #include "DtlsSocket.h"
-#include "DtlsTimer.h"
 #include "bf_dwrap.h"
 
 #include <nice/nice.h>

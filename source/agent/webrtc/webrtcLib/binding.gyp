@@ -15,7 +15,6 @@
       '../../../core/woogeen_base/VideoFrameConstructor.cpp',
       '../../../core/woogeen_base/VideoFramePacketizer.cpp',
       '../../../core/erizo/src/erizo/dtls/bf_dwrap.c',
-      '../../../core/erizo/src/erizo/dtls/DtlsTimer.cpp',
       '../../../core/erizo/src/erizo/dtls/DtlsSocket.cpp',
       '../../../core/erizo/src/erizo/dtls/DtlsClient.cpp',
       '../../../core/erizo/src/erizo/dtls/DtlsFactory.cpp',

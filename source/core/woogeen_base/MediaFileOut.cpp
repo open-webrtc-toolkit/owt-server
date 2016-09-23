@@ -89,7 +89,7 @@ MediaFileOut::MediaFileOut(const std::string& url, const AVOptions* audio, const
         close();
         return;
     }
-    m_jobTimer.reset(new woogeen_base::JobTimer(100, this));
+    m_jobTimer.reset(new JobTimer(100, this));
     ELOG_DEBUG("created");
 }
 

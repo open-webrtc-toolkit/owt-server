@@ -5,6 +5,8 @@
 #ifndef DtlsSocket_h
 #define DtlsSocket_h
 
+#include <JobTimer.h>
+
 #include <memory>
 #include <string.h>
 extern "C"
@@ -23,6 +25,7 @@ extern "C"
 #include <openssl/ssl.h>
 
 #include <boost/thread/mutex.hpp>
+#include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
 
 #include <logger.h>
@@ -34,8 +37,6 @@ namespace dtls
 {
 class DtlsFactory;
 class DtlsSocketContext;
-class DtlsTimer;
-class DtlsSocketTimer;
 
 class SrtpSessionKeys
 {
@@ -74,7 +75,7 @@ public:
       int serverMasterSaltLen;
 };
 
-class DtlsSocket
+class DtlsSocket : public JobTimerListener
 {
    DECLARE_LOGGER();
    public:
@@ -83,9 +84,6 @@ class DtlsSocket
 
       // Inspects packet to see if it's a DTLS packet, if so continue processing
       bool handlePacketMaybe(const unsigned char* bytes, unsigned int len);
-
-      // Called by DtlSocketTimer when timer expires - causes a retransmission (forceRetransmit)
-      void expired(DtlsSocketTimer*);
 
       // Retrieves the finger print of the certificate presented by the remote party
       bool getRemoteFingerprint(char *fingerprint);
@@ -115,6 +113,8 @@ class DtlsSocket
 
       DtlsSocketContext* getSocketContext() { return mSocketContext.get(); }
 
+      void onTimeout();
+
    private:
       friend class DtlsFactory;
 
@@ -130,6 +130,7 @@ class DtlsSocket
       // Internals
       boost::shared_ptr<DtlsSocketContext> mSocketContext;
       DtlsFactory* mFactory;
+      boost::scoped_ptr<JobTimer> mReadTimer; //  Timer used during handshake process
 
       // OpenSSL context data
       SSL *mSsl;

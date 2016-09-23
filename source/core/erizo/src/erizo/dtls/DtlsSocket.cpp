@@ -8,7 +8,6 @@
 
 #include "DtlsFactory.h"
 #include "DtlsSocket.h"
-#include "DtlsTimer.h"
 #include "bf_dwrap.h"
 
 using namespace std;
@@ -17,23 +16,6 @@ using namespace dtls;
 const int SRTP_MASTER_KEY_BASE64_LEN = SRTP_MASTER_KEY_LEN * 4 / 3;
 
 DEFINE_LOGGER(DtlsSocket, "dtls.DtlsSocket");
-
-// Our local timers
-class dtls::DtlsSocketTimer : public DtlsTimer
-{
-  public:
-     DtlsSocketTimer(unsigned int seq,DtlsSocket *socket): DtlsTimer(seq),mSocket(socket){}
-     ~DtlsSocketTimer()
-      {
-      }
-
-      void expired()
-      {
-         mSocket->expired(this);
-      }
-  private:
-     DtlsSocket *mSocket;
-};
 
 int dummy_cb(int d, X509_STORE_CTX *x)
 {
@@ -87,6 +69,9 @@ DtlsSocket::DtlsSocket(boost::shared_ptr<DtlsSocketContext> socketContext, DtlsF
 
 DtlsSocket::~DtlsSocket()
 {
+   if (mReadTimer)
+      mReadTimer->stop();
+
    // Properly shutdown the socket and free it - note: this also free's the BIO's
    if (mSsl != NULL) {
       SSL_shutdown(mSsl);
@@ -97,7 +82,7 @@ DtlsSocket::~DtlsSocket()
 }
 
 void
-DtlsSocket::expired(DtlsSocketTimer* timer)
+DtlsSocket::onTimeout()
 {
    forceRetransmit();
 }
@@ -167,6 +152,8 @@ DtlsSocket::doHandshakeIteration()
    case SSL_ERROR_NONE:
       mHandshakeCompleted = true;
       mSocketContext->handshakeCompleted();
+      if (mReadTimer)
+         mReadTimer->stop();
       break;
    case SSL_ERROR_WANT_READ:
       // There are two cases here:
@@ -180,6 +167,8 @@ DtlsSocket::doHandshakeIteration()
       // something or a retransmit so we need to reset the timer
       if(outBioLen)
       {
+         if (!mReadTimer)
+            mReadTimer.reset(new JobTimer(2, this));
       }
 
       break;
