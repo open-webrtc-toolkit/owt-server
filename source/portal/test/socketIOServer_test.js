@@ -997,7 +997,7 @@ describe('Responding to clients.', function() {
           var options = {}; // unspecified both audio and video stream-ids.
           client.emit('startRecorder', options, function(status, data) {
             expect(status).to.equal('success');
-            expect(mockPortal.subscribe.getCall(0).args[2]).to.deep.equal({audio: {fromStream: testRoom, codecs: ['pcmu']}, video: {fromStream: testRoom, codecs: ['vp8']}, interval: -1});
+            expect(mockPortal.subscribe.getCall(0).args[2]).to.deep.equal({audio: {fromStream: testRoom, codecs: ['opus_48000_2']}, video: {fromStream: testRoom, codecs: ['vp8']}, interval: -1});
 
             simulateStubResponse(mockPortal.subscribe, 1, 3, {type: 'ready', audio_codecs: ['opus_48000_2'], video_codecs: ['vp8']});
             var options = {audioStreamId: 'targetStreamId1', audioCodec: 'opus'}; //unspecified video stream-id, audio codec is 'opus'.
@@ -1015,7 +1015,7 @@ describe('Responding to clients.', function() {
                 var options = {videoCodec: 'h264', recorderId: '2016060418215098', interval: -6}; //invalid interval.
                 client.emit('startRecorder', options, function(status, data) {
                   expect(status).to.equal('success');
-                  expect(mockPortal.subscribe.getCall(3).args[2]).to.deep.equal({audio: {fromStream: testRoom, codecs: ['pcmu']}, video: {fromStream: testRoom, codecs: ['h264']}, recorderId: '2016060418215098', interval: -1});
+                  expect(mockPortal.subscribe.getCall(3).args[2]).to.deep.equal({audio: {fromStream: testRoom, codecs: ['opus_48000_2']}, video: {fromStream: testRoom, codecs: ['h264']}, recorderId: '2016060418215098', interval: -1});
                   done();
                 });
               });
