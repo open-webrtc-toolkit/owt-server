@@ -14,7 +14,7 @@ var testPortalSpec = {tokenKey: testTokenKey,
                       tokenServer: testTokenServer,
                       clusterName: testClusterName,
                       selfRpcId: testSelfRpcId,
-                      permissionMap: {'admin': {publish: true, subscribe: true, record: true},
+                      permissionMap: {'admin': {publish: true, subscribe: true, record: true, addExternalOutput: true},
                                       'presenter': {publish: true, subscribe: true},
                                       'viewer': {subscribe: true},
                                       'viewer_no_text': {subscribe: true, text: false},
@@ -1343,7 +1343,7 @@ describe('portal.subscribe/portal.unsubscribe/portal.mediaOnOff: Participants su
         });
     });
 
-    it('Subscribing a stream to an rtsp/rtmp server should succeed.', function() {
+    it('Subscribing a stream to an rtsp/rtmp url should succeed.', function() {
       mockRpcClient.getAccessNode = sinon.stub();
       mockRpcClient.subscribe = sinon.stub();
       mockRpcClient.onConnectionSignalling = sinon.stub();
@@ -1387,7 +1387,7 @@ describe('portal.subscribe/portal.unsubscribe/portal.mediaOnOff: Participants su
         });
     });
 
-    it('Subscribing streams to a recording file should abort when exceptions occur.', function() {
+    it('Subscribing streams to an rtsp/rtmp url should abort when exceptions occur.', function() {
       mockRpcClient.getAccessNode = sinon.stub();
       mockRpcClient.subscribe = sinon.stub();
       mockRpcClient.sub2Session = sinon.stub();
@@ -1407,7 +1407,7 @@ describe('portal.subscribe/portal.unsubscribe/portal.mediaOnOff: Participants su
 
       return portal.subscribe(testParticipantId,
                              'avstream',
-                             {audio: {fromStream: 'targetStreamId1', codecs: ['aac']}, video: {fromStream: 'targetStreamId2', codecs: ['h264'], resolution: 'vga'}, url: 'url-of-avstream'},
+                             {audio: {fromStream: 'targetStreamId1', codecs: ['aac']}, video: {fromStream: 'targetStreamId2', codecs: ['h264'], resolution: 'vga'}, url: 'rtmp://user:pwd@1.1.1.1:9000/url-of-avstream'},
                              spyConnectionObserver)
         .then(function(subscriptionId) {
           subscription_id = subscriptionId;
