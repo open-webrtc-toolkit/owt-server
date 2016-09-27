@@ -449,6 +449,8 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                         unmixAudio(stream_id);
                         on_error(error_reason);
                     });
+                } else {
+                    on_ok();
                 }
             }, on_error);
         } else if (streams[stream_id].video) {
@@ -940,16 +942,18 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
         if (streams[stream_id]) {
             if (streams[stream_id].audio) {
                 streams[stream_id].audio.subscribers.forEach(function(terminal_id) {
-                    for (var subscription_id in terminals[terminal_id].subscribed) {
-                        unsubscribeStream(terminal_id, subscription_id);
-                        if (terminals[terminal_id].type === 'axcoder') {
-                            for (var i in terminals[terminal_id].published) {
-                                unpublishStream(terminals[terminal_id].published[i]);
+                    if (terminals[terminal_id]) {
+                        for (var subscription_id in terminals[terminal_id].subscribed) {
+                            unsubscribeStream(terminal_id, subscription_id);
+                            if (terminals[terminal_id].type === 'axcoder') {
+                                for (var i in terminals[terminal_id].published) {
+                                    unpublishStream(terminals[terminal_id].published[i]);
+                                }
                             }
                         }
-                    }
-                    if (isTerminalFree(terminal_id)) {
-                        deleteTerminal(terminal_id);
+                        if (isTerminalFree(terminal_id)) {
+                            deleteTerminal(terminal_id);
+                        }
                     }
                 });
                 streams[stream_id] && (streams[stream_id].audio.subscribers = []);
@@ -957,16 +961,18 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
 
             if (streams[stream_id] && streams[stream_id].video) {
                 streams[stream_id].video.subscribers.forEach(function(terminal_id) {
-                    for (var subscription_id in terminals[terminal_id].subscribed) {
-                        unsubscribeStream(terminal_id, subscription_id);
-                        if (terminals[terminal_id].type === 'vxcoder') {
-                            for (var i in terminals[terminal_id].published) {
-                                unpublishStream(terminals[terminal_id].published[i]);
+                    if (terminals[terminal_id]) {
+                        for (var subscription_id in terminals[terminal_id].subscribed) {
+                            unsubscribeStream(terminal_id, subscription_id);
+                            if (terminals[terminal_id].type === 'vxcoder') {
+                                for (var i in terminals[terminal_id].published) {
+                                    unpublishStream(terminals[terminal_id].published[i]);
+                                }
                             }
                         }
-                    }
-                    if (isTerminalFree(terminal_id)) {
-                        deleteTerminal(terminal_id);
+                        if (isTerminalFree(terminal_id)) {
+                            deleteTerminal(terminal_id);
+                        }
                     }
                 });
                 streams[stream_id] && (streams[stream_id].video.subscribers = []);
