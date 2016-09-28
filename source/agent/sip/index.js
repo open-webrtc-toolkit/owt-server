@@ -457,6 +457,7 @@ module.exports = function (spec) {
             delete calls[client_id];
         }
         gateway.close();
+        gateway = undefined;
     };
 
     that.publish = function (stream_id, stream_type, options, callback) {
@@ -625,6 +626,12 @@ module.exports = function (spec) {
     that.notify = function(participantId, event, data, callback) {
         //TODO: notify text message to sip end.
         callback('callback', 'ok');
+    };
+
+    that.close = function() {
+        if (gateway) {
+            this.clean();
+        }
     };
 
     return that;
