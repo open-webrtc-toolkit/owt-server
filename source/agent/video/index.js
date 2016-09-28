@@ -250,6 +250,7 @@ module.exports = function () {
     };
 
     that.publish = function (stream_id, stream_type, options, callback) {
+        log.debug('publish, stream_id:', stream_id, 'stream_type:', stream_type, 'options:', options);
         if (stream_type !== 'internal') {
             return callback('callback', 'error', 'can not publish a stream to video engine through a non-internal connection');
         }
@@ -259,7 +260,7 @@ module.exports = function () {
         }
 
         if (inputs[stream_id] === undefined) {
-            log.debug('publish, stream_id:', stream_id, 'inputs.length:', Object.keys(inputs).length, 'maxInputNum:', maxInputNum);
+            log.debug('publish 1, inputs.length:', Object.keys(inputs).length, 'maxInputNum:', maxInputNum);
             if (Object.keys(inputs).length < maxInputNum) {
                 addInput(stream_id, options.video.codec, options.protocol, function () {
                     callback('callback', {ip: that.clusterIP, port: inputs[stream_id].getListeningPort()});
@@ -277,14 +278,15 @@ module.exports = function () {
     };
 
     that.unpublish = function (stream_id) {
+        log.debug('unpublish, stream_id:', stream_id);
         removeInput(stream_id);
     };
 
     that.subscribe = function (connectionId, connectionType, options, callback) {
+        log.debug('subscribe, connectionId:', connectionId, 'connectionType:', connectionType, 'options:', options);
         if (connectionType !== 'internal') {
             return callback('callback', 'error', 'can not subscribe a stream from video engine through a non-internal connection');
         }
-        log.debug('subscribe, connectionId:', connectionId, 'options:', options);
 
         if (connections[connectionId] === undefined) {
             connections[connectionId] = {videoFrom: undefined,
@@ -295,6 +297,7 @@ module.exports = function () {
     };
 
     that.unsubscribe = function (connectionId) {
+        log.debug('unsubscribe, connectionId:', connectionId);
         if (connections[connectionId] && connections[connectionId].videoFrom) {
             if (outputs[connections[connectionId].videoFrom]) {
                 outputs[connections[connectionId].videoFrom].dispatcher.removeDestination('video', connections[connectionId].connection);
@@ -305,13 +308,14 @@ module.exports = function () {
     };
 
     that.linkup = function (connectionId, audio_stream_id, video_stream_id, callback) {
+        log.debug('linkup, connectionId:', connectionId, 'video_stream_id:', video_stream_id);
         if (connections[connectionId] === undefined) {
             return callback('callback', 'error', 'connection does not exist');
         }
 
         if (outputs[video_stream_id]) {
-            log.debug('linkup, connectionId:', connectionId, 'video_stream_id:', video_stream_id);
             outputs[video_stream_id].dispatcher.addDestination('video', connections[connectionId].connection);
+            connections[connectionId].videoFrom = video_stream_id;
             callback('callback', 'ok');
         } else {
             log.error('Stream does not exist!', video_stream_id);
