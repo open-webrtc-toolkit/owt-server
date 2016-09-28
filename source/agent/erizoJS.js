@@ -85,13 +85,15 @@ var rpc = require('./amqper');
 })();
 
 log.info('Connecting to rabbitMQ server...');
+
+var controller;
+
 rpc.connect(GLOBAL.config.rabbit, function () {
     try {
-        var rpcID = process.argv[2];
         var purpose = process.argv[3];
+        var rpcID = process.argv[2];
         var clusterIP = process.argv[6];
 
-        var controller;
         switch (purpose) {
         case 'session':
             controller = require('./session')(rpc, rpcID);
@@ -150,6 +152,9 @@ controller.RoomController().addPublisher("1", sdp, function(type, answer) {
 ['SIGINT', 'SIGTERM'].map(function (sig) {
     process.on(sig, function () {
         log.warn('Exiting on', sig);
+        if (controller && typeof controller.close === 'function') {
+            controller.close();
+        }
         process.exit();
     });
 });
