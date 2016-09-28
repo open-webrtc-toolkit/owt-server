@@ -144,6 +144,7 @@ module.exports = function () {
     };
 
     that.publish = function (stream_id, stream_type, options, callback) {
+        log.debug('publish stream:', stream_id, 'stream_type:', stream_type, 'options:', options);
         if (stream_type !== 'internal') {
             return callback('callback', 'error', 'can not publish a stream to audio engine through a non-internal connection');
         }
@@ -153,7 +154,6 @@ module.exports = function () {
         }
 
         if (inputs[stream_id] === undefined) {
-            log.debug('publish stream:', stream_id);
             addInput(stream_id, options.owner, options.audio.codec, options.protocol, function () {
                 callback('callback', {ip: that.clusterIP, port: inputs[stream_id].connection.getListeningPort()});
             }, function (error_reason) {
@@ -166,14 +166,15 @@ module.exports = function () {
     };
 
     that.unpublish = function (stream_id) {
+        log.debug('unpublish, stream_id:', stream_id);
         removeInput(stream_id);
     };
 
     that.subscribe = function (connectionId, connectionType, options, callback) {
+        log.debug('subscribe, connectionId:', connectionId, 'connectionType:', connectionType, 'options:', options);
         if (connectionType !== 'internal') {
             return callback('callback', 'error', 'can not subscribe a stream from audio engine through a non-internal connection');
         }
-        log.debug('subscribe, connectionId:', connectionId, 'options:', options);
 
         if (connections[connectionId] === undefined) {
             connections[connectionId] = {audioFrom: undefined,
@@ -184,6 +185,7 @@ module.exports = function () {
     };
 
     that.unsubscribe = function (connectionId) {
+        log.debug('unsubscribe, connectionId:', connectionId);
         if (connections[connectionId] && connections[connectionId].audioFrom) {
             if (outputs[connections[connectionId].audioFrom]) {
                 outputs[connections[connectionId].audioFrom].dispatcher.removeDestination('audio', connections[connectionId].connection);
@@ -194,13 +196,14 @@ module.exports = function () {
     };
 
     that.linkup = function (connectionId, audio_stream_id, video_stream_id, callback) {
+        log.debug('linkup, connectionId:', connectionId, 'audio_stream_id:', audio_stream_id);
         if (connections[connectionId] === undefined) {
             return callback('callback', 'error', 'connection does not exist');
         }
 
         if (outputs[audio_stream_id]) {
-            log.debug('linkup, connectionId:', connectionId, 'audio_stream_id:', audio_stream_id);
             outputs[audio_stream_id].dispatcher.addDestination('audio', connections[connectionId].connection);
+            connections[connectionId].audioFrom = audio_stream_id;
             callback('callback', 'ok');
         } else {
             log.error('Stream does not exist!', audio_stream_id);
