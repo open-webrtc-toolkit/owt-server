@@ -199,8 +199,6 @@ webrtc::I420VideoFrame* SoftVideoCompositor::customLayout()
     webrtc::I420VideoFrame* target = m_compositeFrame.get();
     for (LayoutSolution::iterator it = m_currentLayout.begin(); it != m_currentLayout.end(); ++it) {
         int index = it->input;
-        if (!m_bufferManager->isActive(index))
-            continue;
 
         Region region = it->region;
         assert(!(region.relativeSize < 0.0 || region.relativeSize > 1.0)
@@ -217,7 +215,7 @@ webrtc::I420VideoFrame* SoftVideoCompositor::customLayout()
         if (offset_height + sub_height > m_compositeSize.height)
             sub_height = m_compositeSize.height - offset_height;
 
-        webrtc::I420VideoFrame* sub_image = m_bufferManager->getBusyBuffer((uint32_t)index);
+        webrtc::I420VideoFrame* sub_image = m_bufferManager->isActive(index) ? m_bufferManager->getBusyBuffer((uint32_t)index) : NULL;
         if (!sub_image) {
             for (unsigned int i = 0; i < sub_height; i++) {
                 memset(target->buffer(webrtc::kYPlane) + (i+offset_height) * target->stride(webrtc::kYPlane) + offset_width,
