@@ -69,6 +69,13 @@ MediaFileOut::MediaFileOut(const std::string& url, const AVOptions* audio, const
     m_audioQueue.reset(new MediaFrameQueue());
     setEventRegistry(handle);
 
+    if (ELOG_IS_TRACE_ENABLED())
+        av_log_set_level(AV_LOG_TRACE);
+    else if (ELOG_IS_DEBUG_ENABLED())
+        av_log_set_level(AV_LOG_DEBUG);
+    else
+        av_log_set_level(AV_LOG_INFO);
+
     m_context = avformat_alloc_context();
     if (!m_context) {
         m_status = AVStreamOut::Context_CLOSED;

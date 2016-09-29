@@ -87,7 +87,13 @@ RtspOut::RtspOut(const std::string& url, const AVOptions* audio, const AVOptions
     ELOG_TRACE("url %s", m_uri.c_str());
     ELOG_TRACE("acodec %s, vcodec %s", m_audioOptions.codec.c_str(), m_videoOptions.codec.c_str());
 
-    //av_log_set_level(AV_LOG_DEBUG);
+    if (ELOG_IS_TRACE_ENABLED())
+        av_log_set_level(AV_LOG_TRACE);
+    else if (ELOG_IS_DEBUG_ENABLED())
+        av_log_set_level(AV_LOG_DEBUG);
+    else
+        av_log_set_level(AV_LOG_INFO);
+
     avcodec_register_all();
 
     if(!createContext()) {

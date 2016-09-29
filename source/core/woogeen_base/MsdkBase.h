@@ -41,10 +41,6 @@ namespace woogeen_base {
 
 enum DumpType{ MFX_DEC, MFX_VPP, MFX_ENC };
 
-void printfFrameInfo(mfxFrameInfo *pFrameInfo);
-void printfVideoParam(mfxVideoParam *pVideoParam, DumpType type);
-void printfFrameAllocRequest(mfxFrameAllocRequest *pRequest);
-
 class MsdkBase {
     DECLARE_LOGGER();
 
@@ -60,6 +56,10 @@ public:
     void destroyFrameAllocator(mfxFrameAllocator *pAlloc);
 
     MFXVideoSession *getMainSession() {return m_mainSession;};
+
+    static void printfFrameInfo(mfxFrameInfo *pFrameInfo);
+    static void printfVideoParam(mfxVideoParam *pVideoParam, DumpType type);
+    static void printfFrameAllocRequest(mfxFrameAllocRequest *pRequest);
 
 protected:
     MsdkBase();

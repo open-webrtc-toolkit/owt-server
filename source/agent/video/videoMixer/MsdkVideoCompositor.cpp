@@ -528,7 +528,7 @@ void MsdkVideoCompositor::init(void)
     else if (sts != MFX_ERR_NONE) {
         ELOG_ERROR("mfx init failed, ret %d", sts);
 
-        printfVideoParam(m_videoParam.get(), MFX_VPP);
+        MsdkBase::printfVideoParam(m_videoParam.get(), MFX_VPP);
         return;
     }
 
@@ -772,12 +772,12 @@ bool MsdkVideoCompositor::commitLayout()
     else if (sts != MFX_ERR_NONE) {
         ELOG_ERROR("mfx init failed, ret %d", sts);
 
-        printfVideoParam(m_videoParam.get(), MFX_VPP);
+        MsdkBase::printfVideoParam(m_videoParam.get(), MFX_VPP);
         return false;
     }
 
     m_vpp->GetVideoParam(m_videoParam.get());
-    printfVideoParam(m_videoParam.get(), MFX_VPP);
+    MsdkBase::printfVideoParam(m_videoParam.get(), MFX_VPP);
 
     ELOG_DEBUG("configChanged sets to false after commitLayout!");
     return true;

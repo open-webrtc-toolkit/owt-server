@@ -150,7 +150,7 @@ bool MsdkFrameDecoder::resetDecoder(void)
         int previousCropH   = m_videoParam->mfx.FrameInfo.CropH;
 
         m_dec->GetVideoParam(m_videoParam.get());
-        printfVideoParam(m_videoParam.get(), MFX_DEC);
+        MsdkBase::printfVideoParam(m_videoParam.get(), MFX_DEC);
 
         if (previousCropW != m_videoParam->mfx.FrameInfo.CropW
                 || previousCropH != m_videoParam->mfx.FrameInfo.CropH) {
@@ -278,12 +278,12 @@ bool MsdkFrameDecoder::decHeader(mfxBitstream *pBitstream)
     else if (sts != MFX_ERR_NONE) {
         ELOG_ERROR("(%p)mfx init failed, ret %d", this, sts);
 
-        printfVideoParam(m_videoParam.get(), MFX_DEC);
+        MsdkBase::printfVideoParam(m_videoParam.get(), MFX_DEC);
         return false;
     }
 
     m_dec->GetVideoParam(m_videoParam.get());
-    printfVideoParam(m_videoParam.get(), MFX_DEC);
+    MsdkBase::printfVideoParam(m_videoParam.get(), MFX_DEC);
 
     if (!allocateFrames())
         return false;
@@ -349,7 +349,7 @@ retry:
 
             workFrame.reset();
 
-            printfVideoParam(m_videoParam.get(), MFX_DEC);
+            MsdkBase::printfVideoParam(m_videoParam.get(), MFX_DEC);
 
             resetDecoder();
 
@@ -435,7 +435,7 @@ void MsdkFrameDecoder::updateBitstream(const Frame& frame)
         while (newSize < m_bitstream->DataLength + frame.length)
             newSize *= 2;
 
-        ELOG_ERROR("(%p)bitstream buffer need to remalloc %d -> %d"
+        ELOG_WARN("(%p)bitstream buffer need to remalloc %d -> %d"
                 , this
                 , m_bitstream->MaxLength
                 , newSize

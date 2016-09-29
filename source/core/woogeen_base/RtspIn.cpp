@@ -199,6 +199,13 @@ RtspIn::~RtspIn()
 
 bool RtspIn::connect()
 {
+    if (ELOG_IS_TRACE_ENABLED())
+        av_log_set_level(AV_LOG_TRACE);
+    else if (ELOG_IS_DEBUG_ENABLED())
+        av_log_set_level(AV_LOG_DEBUG);
+    else
+        av_log_set_level(AV_LOG_INFO);
+
     srand((unsigned)time(0));
 
     m_context = avformat_alloc_context();

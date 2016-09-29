@@ -104,4 +104,28 @@
 #define ELOG_FATAL(fmt, args...) \
     ELOG_FATAL2( logger, fmt, ##args );
 
+
+#ifdef LOG4CXX_TRACE
+#define ELOG_IS_TRACE_ENABLED() \
+    logger->isTraceEnabled()
+#else
+#define ELOG_IS_TRACE_ENABLED() \
+    logger->isDebugEnabled()
+#endif
+
+#define ELOG_IS_DEBUG_ENABLED() \
+    logger->isDebugEnabled()
+
+#define ELOG_IS_INFO_ENABLED() \
+    logger->isInfoEnabled()
+
+#define ELOG_IS_WARN_ENABLED() \
+    logger->isWarnEnabled()
+
+#define ELOG_IS_ERROR_ENABLED() \
+    logger->isErrorEnabled()
+
+#define ELOG_IS_FATAL_ENABLED() \
+    logger->isFatalEnabled()
+
 #endif  /* __ELOG_H__ */

@@ -172,12 +172,12 @@ public:
         else if (sts != MFX_ERR_NONE) {
             ELOG_ERROR("(%p)mfx init failed, ret %d", this, sts);
 
-            printfVideoParam(m_encParam.get(), MFX_ENC);
+            MsdkBase::printfVideoParam(m_encParam.get(), MFX_ENC);
             return false;
         }
 
         m_enc->GetVideoParam(m_encParam.get());
-        printfVideoParam(m_encParam.get(), MFX_ENC);
+        MsdkBase::printfVideoParam(m_encParam.get(), MFX_ENC);
 
         ELOG_TRACE("(%p)Init bistream buffer, %dx%d", this,
                 m_width,
@@ -222,7 +222,7 @@ public:
             }
 
             m_enc->GetVideoParam(m_encParam.get());
-            printfVideoParam(m_encParam.get(), MFX_ENC);
+            MsdkBase::printfVideoParam(m_encParam.get(), MFX_ENC);
 
             m_setBitRateFlag = false;
         }
@@ -592,7 +592,7 @@ protected:
         else if (sts != MFX_ERR_NONE) {
             ELOG_ERROR("(%p)mfx init failed, ret %d", this, sts);
 
-            printfVideoParam(m_vppParam.get(), MFX_VPP);
+            MsdkBase::printfVideoParam(m_vppParam.get(), MFX_VPP);
 
             closeVpp();
             return false;

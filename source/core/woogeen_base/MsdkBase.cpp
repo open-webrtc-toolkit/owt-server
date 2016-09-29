@@ -204,8 +204,11 @@ void MsdkBase::destroyFrameAllocator(mfxFrameAllocator *pAlloc)
     delete pAlloc;
 }
 
-void printfFrameInfo(mfxFrameInfo *pFrameInfo)
+void MsdkBase::printfFrameInfo(mfxFrameInfo *pFrameInfo)
 {
+    if (!ELOG_IS_DEBUG_ENABLED())
+        return;
+
     printf("%s++++++++++\n", __FUNCTION__);
 
     printf("\t BitDepthLuma %d\n",             (int)pFrameInfo->BitDepthLuma);
@@ -233,8 +236,11 @@ void printfFrameInfo(mfxFrameInfo *pFrameInfo)
     printf("%s----------\n", __FUNCTION__);
 }
 
-void printfVideoParam(mfxVideoParam *pVideoParam, DumpType type)
+void MsdkBase::printfVideoParam(mfxVideoParam *pVideoParam, DumpType type)
 {
+    if (!ELOG_IS_DEBUG_ENABLED())
+        return;
+
     printf("%s - %s++++++++++\n", __FUNCTION__, type == MFX_DEC ? "DECODE" : (type == MFX_VPP) ? "VPP" : "ENCODE");
 
     printf("\t AsyncDepth %d\n",               (int)pVideoParam->AsyncDepth);
@@ -338,8 +344,11 @@ void printfVideoParam(mfxVideoParam *pVideoParam, DumpType type)
     printf("%s - %s----------\n", __FUNCTION__, type == MFX_DEC ? "DECODE" : (type == MFX_VPP) ? "VPP" : "ENCODE");
 }
 
-void printfFrameAllocRequest(mfxFrameAllocRequest *pRequest)
+void MsdkBase::printfFrameAllocRequest(mfxFrameAllocRequest *pRequest)
 {
+    if (!ELOG_IS_DEBUG_ENABLED())
+        return;
+
     printf("%s++++++++++\n", __FUNCTION__);
 
     printf("\t AllocId %d\n",               (int)pRequest->AllocId);
