@@ -497,7 +497,7 @@ bool MsdkFramePool::allocateFrames()
 {
     mfxStatus sts = MFX_ERR_NONE;
 
-    printfFrameAllocRequest(&m_request);
+    MsdkBase::printfFrameAllocRequest(&m_request);
 
     sts = m_allocator->Alloc(m_allocator->pthis, &m_request, &m_response);
     if (sts != MFX_ERR_NONE)
