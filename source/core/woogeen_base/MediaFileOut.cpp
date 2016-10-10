@@ -54,6 +54,58 @@ inline AVCodecID frameFormat2AudioCodecID(int frameFormat)
     }
 }
 
+bool MediaFileOut::isKeyFrame(int codec, uint8_t *data, size_t len)
+{
+    if (codec == FRAME_FORMAT_H264) {
+        if (len < 5)
+            return false;
+
+        if (data[0] != 0 || data[1] != 0 || data[2] != 0 || data[3] != 1)
+            return false;
+
+        int nal_ref_idc     = (data[4] >> 5) & 0x3;
+        int nal_unit_type   = data[4] & 0x1f;
+        const char *type    = NULL;
+
+        if (nal_unit_type == 5) {
+            ELOG_TRACE("nal_unit_type %d, key_frame %d, len %d", nal_unit_type, true, len);
+            return true;
+        }
+        else if (nal_unit_type == 9) {
+            if (len < 6)
+                return false;
+
+            int primary_pic_type = (data[5] >> 5) & 0x7;
+
+            ELOG_TRACE("nal_unit_type %d, primary_pic_type %d, key_frame %d, len %d", nal_unit_type, primary_pic_type, (primary_pic_type == 0), len);
+            return (primary_pic_type == 0);
+        }
+        else {
+            ELOG_TRACE("nal_unit_type %d, key_frame %d, len %d", nal_unit_type, false, len);
+            return false;
+        }
+    }
+    else if (codec == FRAME_FORMAT_VP8) {
+        if (len < 3)
+            return false;
+
+        unsigned char *c = data;
+        unsigned int tmp = (c[2] << 16) | (c[1] << 8) | c[0];
+
+        int key_frame = tmp & 0x1;
+        int version = (tmp >> 1) & 0x7;
+        int show_frame = (tmp >> 4) & 0x1;
+        int first_part_size = (tmp >> 5) & 0x7FFFF;
+
+        ELOG_TRACE("key_frame %d, len %d", (key_frame == 0), len);
+        return (key_frame == 0);
+    }
+    else {
+        ELOG_ERROR("unknown codec: %d", codec);
+        return false;
+    }
+}
+
 MediaFileOut::MediaFileOut(const std::string& url, const AVOptions* audio, const AVOptions* video, int snapshotInterval, EventRegistry* handle)
     : m_expectedVideo(AV_CODEC_ID_NONE)
     , m_videoStream(nullptr)
@@ -64,6 +116,7 @@ MediaFileOut::MediaFileOut(const std::string& url, const AVOptions* audio, const
     , m_snapshotInterval(snapshotInterval)
     , m_videoWidth(0)
     , m_videoHeight(0)
+    , m_videoSourceChanged(true)
 {
     m_videoQueue.reset(new MediaFrameQueue());
     m_audioQueue.reset(new MediaFrameQueue());
@@ -194,7 +247,21 @@ void MediaFileOut::onFrame(const Frame& frame)
             }
 
             if (addStreamOK && m_status == AVStreamOut::Context_READY) {
-                m_videoQueue->pushFrame(frame.payload, frame.length);
+                if (m_videoSourceChanged) {
+                    if (isKeyFrame(frame.format, frame.payload, frame.length)) {
+                        ELOG_DEBUG("key frame comes after video source changed!");
+                        m_videoSourceChanged = false;
+                    } else {
+                        ELOG_DEBUG("request key frame after video source changed!");
+                        deliverFeedbackMsg(FeedbackMsg{.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME});
+                    }
+                }
+
+                if (!m_videoSourceChanged)
+                    m_videoQueue->pushFrame(frame.payload, frame.length);
+                else {
+                    ELOG_DEBUG("video source changed, discard till key frame!");
+                }
             }
         } else if (m_expectedVideo != AV_CODEC_ID_NONE){
             ELOG_ERROR("invalid video frame format");
@@ -238,6 +305,14 @@ void MediaFileOut::onFrame(const Frame& frame)
         notifyAsyncEvent("fatal", "unsupported frame format");
         return close();
     }
+}
+
+void MediaFileOut::onVideoSourceChanged()
+{
+    ELOG_DEBUG("onVideoSourceChanged");
+
+    deliverFeedbackMsg(FeedbackMsg{.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME});
+    m_videoSourceChanged = true;
 }
 
 bool MediaFileOut::addAudioStream(enum AVCodecID codec_id, int nbChannels, int sampleRate)

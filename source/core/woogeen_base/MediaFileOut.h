@@ -43,8 +43,11 @@ public:
     // AVStreamOut interface
     void onFrame(const Frame&);
     void onTimeout();
+    void onVideoSourceChanged();
 
 private:
+    bool isKeyFrame(int codec, uint8_t *data, size_t len);
+
     void close();
     bool init(const AVOptions* audio, const AVOptions* video);
     bool addVideoStream(enum AVCodecID codec_id, unsigned int width, unsigned int height);
@@ -62,6 +65,8 @@ private:
 
     uint32_t m_videoWidth;
     uint32_t m_videoHeight;
+
+    bool m_videoSourceChanged;
 };
 
 } /* namespace woogeen_base */
