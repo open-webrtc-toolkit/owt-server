@@ -68,7 +68,7 @@ describe('Notifying events to clients.', function() {
   });
 
   it('Notifying the unjoined clients should fail.', function() {
-    return expect(server.notify('/#112233445566', 'event', 'data')).to.be.rejectedWith('participant does not exist');
+    return expect(server.notify('112233445566', 'event', 'data')).to.be.rejectedWith('participant does not exist');
   });
 
   it('Notifying the joined clients should succeed.', function(done) {
@@ -90,7 +90,7 @@ describe('Notifying events to clients.', function() {
 
       client.emit('token', 'someValidToken', function(status, resp) {
         expect(status).to.equal('success');
-        return expect(server.notify('/#' + client.id, 'add_stream', {audio: true, video: {resolution: 'vga', device: 'camera'}})).to.become('ok');
+        return expect(server.notify(client.id, 'add_stream', {audio: true, video: {resolution: 'vga', device: 'camera'}})).to.become('ok');
       });
     });
   });
@@ -152,7 +152,7 @@ describe('Drop users from sessions.', function() {
       mockPortal.join.resolves(join_result);
 
       client.emit('token', 'someValidToken', function(status, resp) {
-        return server.drop('/#' + client.id, testRoom)
+        return server.drop(client.id, testRoom)
           .then(function(result) {
             expect(result).to.equal('ok');
             done();
@@ -174,7 +174,7 @@ describe('Drop users from sessions.', function() {
       mockPortal.join.resolves(join_result);
 
       client.emit('token', 'someValidToken', function(status, resp) {
-        return server.drop('/#' + client.id)
+        return server.drop(client.id)
           .then(function(result) {
             expect(result).to.equal('ok');
             done();
@@ -263,8 +263,8 @@ describe('Responding to clients.', function() {
 
       client.emit('token', 'someValidToken', function(status, resp) {
         expect(status).to.equal('success');
-        expect(mockPortal.join.getCall(0).args).to.deep.equal(['/#' + client.id, 'someValidToken']);
-        expect(resp).to.deep.equal({id: join_result.session_id, clientId: '/#' + client.id, streams: transformed_streams, users: join_result.participants});
+        expect(mockPortal.join.getCall(0).args).to.deep.equal([client.id, 'someValidToken']);
+        expect(resp).to.deep.equal({id: join_result.session_id, clientId: client.id, streams: transformed_streams, users: join_result.participants});
         done();
       });
     });
@@ -312,15 +312,15 @@ describe('Responding to clients.', function() {
           client.emit('publish', options, undefined, function(status, id) {
             if (status === 'initializing') {
                expect(id).to.equal('streamId');
-               expect(mockPortal.publish.getCall(0).args[0]).to.equal('/#' + client.id);
+               expect(mockPortal.publish.getCall(0).args[0]).to.equal(client.id);
                expect(mockPortal.publish.getCall(0).args[1]).to.equal('webrtc');
                expect(mockPortal.publish.getCall(0).args[2]).to.deep.equal({audio: true, video: {resolution: 'vga', framerate: 30, device: 'camera'}});
                expect(mockPortal.publish.getCall(0).args[3]).to.be.a('function');
                expect(mockPortal.publish.getCall(0).args[4]).to.be.false;
                client.emit('signaling_message', {streamId: 'streamId', msg: {type: 'offer', sdp: 'offerSDPString'}}, undefined, function() {
-                 expect(mockPortal.onConnectionSignalling.getCall(0).args).to.deep.equal(['/#' + client.id, 'streamId', {type: 'offer', sdp: 'offerSDPString'}]);
+                 expect(mockPortal.onConnectionSignalling.getCall(0).args).to.deep.equal([client.id, 'streamId', {type: 'offer', sdp: 'offerSDPString'}]);
                  client.emit('signaling_message', {streamId: 'streamId', msg: {type: 'candidate', sdp: 'candidateString'}}, undefined, function() {
-                   expect(mockPortal.onConnectionSignalling.getCall(1).args).to.deep.equal(['/#' + client.id, 'streamId', {type: 'candidate', sdp: 'candidateString'}]);
+                   expect(mockPortal.onConnectionSignalling.getCall(1).args).to.deep.equal([client.id, 'streamId', {type: 'candidate', sdp: 'candidateString'}]);
                    simulateStubResponse(mockPortal.publish, 0, 3, {type: 'ready', audio_codecs: ['opus'], video_codecs: ['vp8']});
                  });
                });
@@ -347,7 +347,7 @@ describe('Responding to clients.', function() {
           simulateStubResponse(mockPortal.publish, 0, 3, {type: 'ready', audio_codecs: ['pcmu'], video_codecs: ['h264']});
           var options = {state: 'url', audio: true, video: true, transport: 'tcp', bufferSize: 2048, unmix: true};
           client.emit('publish', options, 'urlOfRtspOrRtmpSource', function(status, id) {
-            expect(mockPortal.publish.getCall(0).args[0]).to.equal('/#' + client.id);
+            expect(mockPortal.publish.getCall(0).args[0]).to.equal(client.id);
             expect(mockPortal.publish.getCall(0).args[1]).to.equal('avstream');
             expect(mockPortal.publish.getCall(0).args[2]).to.deep.equal({audio: true, video: {resolution: 'unknown', device: 'unknown'}, url: 'urlOfRtspOrRtmpSource', transport: 'tcp', bufferSize: 2048});
             expect(mockPortal.publish.getCall(0).args[3]).to.be.a('function');
@@ -431,7 +431,7 @@ describe('Responding to clients.', function() {
           expect(result).to.equal('ok');
           client.emit('unpublish', 'previouslyPublishedStreamId', function(status, data) {
             expect(status).to.equal('success');
-            expect(mockPortal.unpublish.getCall(0).args).to.deep.equal(['/#' + client.id, 'previouslyPublishedStreamId']);
+            expect(mockPortal.unpublish.getCall(0).args).to.deep.equal([client.id, 'previouslyPublishedStreamId']);
             done();
           });
         });
@@ -447,7 +447,7 @@ describe('Responding to clients.', function() {
           client.emit('unpublish', 'non-ExistStreamId', function(status, data) {
             expect(status).to.equal('error');
             expect(data).to.have.string('stream does not exist');
-            expect(mockPortal.unpublish.getCall(0).args).to.deep.equal(['/#' + client.id, 'non-ExistStreamId']);
+            expect(mockPortal.unpublish.getCall(0).args).to.deep.equal([client.id, 'non-ExistStreamId']);
             done();
           });
         });
@@ -478,7 +478,7 @@ describe('Responding to clients.', function() {
           var options = {id: 'streamId', bitrate: 500};
           client.emit('setVideoBitrate', options, function(status, data) {
             expect(status).to.equal('success');
-            expect(mockPortal.setVideoBitrate.getCall(0).args).to.deep.equal(['/#' + client.id, 'streamId', 500]);
+            expect(mockPortal.setVideoBitrate.getCall(0).args).to.deep.equal([client.id, 'streamId', 500]);
             done();
           });
         });
@@ -495,7 +495,7 @@ describe('Responding to clients.', function() {
           client.emit('setVideoBitrate', options, function(status, data) {
             expect(status).to.equal('error');
             expect(data).to.have.string('stream does not exist');
-            expect(mockPortal.setVideoBitrate.getCall(0).args).to.deep.equal(['/#' + client.id, 'streamId', 500]);
+            expect(mockPortal.setVideoBitrate.getCall(0).args).to.deep.equal([client.id, 'streamId', 500]);
             done();
           });
         });
@@ -532,11 +532,11 @@ describe('Responding to clients.', function() {
         .then(function() {
           client.emit('addToMixer', 'streamId', function(status, data) {
             expect(status).to.equal('success');
-            expect(mockPortal.mix.getCall(0).args).to.deep.equal(['/#' + client.id, 'streamId']);
+            expect(mockPortal.mix.getCall(0).args).to.deep.equal([client.id, 'streamId']);
 
             client.emit('removeFromMixer', 'streamId', function(status, data) {
               expect(status).to.equal('success');
-              expect(mockPortal.unmix.getCall(0).args).to.deep.equal(['/#' + client.id, 'streamId']);
+              expect(mockPortal.unmix.getCall(0).args).to.deep.equal([client.id, 'streamId']);
               done();
             });
           });
@@ -555,12 +555,12 @@ describe('Responding to clients.', function() {
           client.emit('addToMixer', 'streamId', function(status, data) {
             expect(status).to.equal('error');
             expect(data).to.have.string('stream does not exist');
-            expect(mockPortal.mix.getCall(0).args).to.deep.equal(['/#' + client.id, 'streamId']);
+            expect(mockPortal.mix.getCall(0).args).to.deep.equal([client.id, 'streamId']);
 
             client.emit('removeFromMixer', 'streamId', function(status, data) {
               expect(status).to.equal('error');
               expect(data).to.have.string('stream does not exist');
-              expect(mockPortal.unmix.getCall(0).args).to.deep.equal(['/#' + client.id, 'streamId']);
+              expect(mockPortal.unmix.getCall(0).args).to.deep.equal([client.id, 'streamId']);
               done();
             });
           });
@@ -595,14 +595,14 @@ describe('Responding to clients.', function() {
           client.emit('subscribe', options, undefined, function(status, id) {
             if (status === 'initializing') {
                expect(id).to.equal('targetStreamId');
-               expect(mockPortal.subscribe.getCall(0).args[0]).to.equal('/#' + client.id);
+               expect(mockPortal.subscribe.getCall(0).args[0]).to.equal(client.id);
                expect(mockPortal.subscribe.getCall(0).args[1]).to.equal('webrtc');
                expect(mockPortal.subscribe.getCall(0).args[2]).to.deep.equal({audio: {fromStream: 'targetStreamId'}, video: {fromStream: 'targetStreamId', resolution: 'vga'}});
                expect(mockPortal.subscribe.getCall(0).args[3]).to.be.a('function');
                client.emit('signaling_message', {streamId: 'subscriptionId', msg: {type: 'offer', sdp: 'offerSDPString'}}, undefined, function() {
-                 expect(mockPortal.onConnectionSignalling.getCall(0).args).to.deep.equal(['/#' + client.id, 'subscriptionId', {type: 'offer', sdp: 'offerSDPString'}]);
+                 expect(mockPortal.onConnectionSignalling.getCall(0).args).to.deep.equal([client.id, 'subscriptionId', {type: 'offer', sdp: 'offerSDPString'}]);
                  client.emit('signaling_message', {streamId: 'subscriptionId', msg: {type: 'candidate', sdp: 'candidateString'}}, undefined, function() {
-                   expect(mockPortal.onConnectionSignalling.getCall(1).args).to.deep.equal(['/#' + client.id, 'subscriptionId', {type: 'candidate', sdp: 'candidateString'}]);
+                   expect(mockPortal.onConnectionSignalling.getCall(1).args).to.deep.equal([client.id, 'subscriptionId', {type: 'candidate', sdp: 'candidateString'}]);
                    simulateStubResponse(mockPortal.subscribe, 0, 3, {type: 'ready', audio_codecs: ['opus'], video_codecs: ['vp8']});
                  });
                });
@@ -666,7 +666,7 @@ describe('Responding to clients.', function() {
           expect(result).to.equal('ok');
           client.emit('unsubscribe', 'previouslySubscribedSubscriptionId', function(status, data) {
             expect(status).to.equal('success');
-            expect(mockPortal.unsubscribe.getCall(0).args).to.deep.equal(['/#' + client.id, '/#' + client.id + '-sub-' + 'previouslySubscribedSubscriptionId']);
+            expect(mockPortal.unsubscribe.getCall(0).args).to.deep.equal([client.id, client.id + '-sub-' + 'previouslySubscribedSubscriptionId']);
             done();
           });
         });
@@ -682,7 +682,7 @@ describe('Responding to clients.', function() {
           client.emit('unsubscribe', 'non-ExistSubscriptionId', function(status, data) {
             expect(status).to.equal('error');
             expect(data).to.have.string('subscription does not exist');
-            expect(mockPortal.unsubscribe.getCall(0).args).to.deep.equal(['/#' + client.id, '/#' + client.id + '-sub-' + 'non-ExistSubscriptionId']);
+            expect(mockPortal.unsubscribe.getCall(0).args).to.deep.equal([client.id, client.id + '-sub-' + 'non-ExistSubscriptionId']);
             done();
           });
         });
@@ -713,7 +713,7 @@ describe('Responding to clients.', function() {
           client.emit('addExternalOutput', options, function(status, data) {
             expect(status).to.equal('success');
             expect(data.url).to.equal('rtsp://target.host');
-            expect(mockPortal.subscribe.getCall(0).args[0]).to.equal('/#' + client.id);
+            expect(mockPortal.subscribe.getCall(0).args[0]).to.equal(client.id);
             expect(mockPortal.subscribe.getCall(0).args[1]).to.equal('avstream');
             expect(mockPortal.subscribe.getCall(0).args[2]).to.deep.equal({audio: {fromStream: 'targetStreamId', codecs: ['aac']}, video: {fromStream: 'targetStreamId', codecs: ['h264'], resolution: 'vga'}, url: 'rtsp://target.host'});
             done();
@@ -822,7 +822,7 @@ describe('Responding to clients.', function() {
           client.emit('updateExternalOutput', options, function(status, data) {
             expect(status).to.equal('error');
             expect(data).to.equal('subscription does not exist');
-            expect(mockPortal.unsubscribe.getCall(0).args).to.deep.equal(['/#' + client.id, 'rtsp://target.host'])
+            expect(mockPortal.unsubscribe.getCall(0).args).to.deep.equal([client.id, 'rtsp://target.host'])
             done();
           });
         });
@@ -848,7 +848,7 @@ describe('Responding to clients.', function() {
               console.log('status:', status);
               expect(status).to.equal('success');
               expect(data.url).to.equal('rtsp://target.host');
-              expect(mockPortal.unsubscribe.getCall(0).args).to.deep.equal(['/#' + client.id, 'rtsp://target.host'])
+              expect(mockPortal.unsubscribe.getCall(0).args).to.deep.equal([client.id, 'rtsp://target.host'])
               done();
             });
           });
@@ -901,7 +901,7 @@ describe('Responding to clients.', function() {
           client.emit('removeExternalOutput', options, function(status, data) {
             expect(status).to.equal('success');
             expect(data.url).to.equal('rtsp://target.host');
-            expect(mockPortal.unsubscribe.getCall(0).args).to.deep.equal(['/#' + client.id, 'rtsp://target.host'])
+            expect(mockPortal.unsubscribe.getCall(0).args).to.deep.equal([client.id, 'rtsp://target.host'])
             done();
           });
         });
@@ -918,7 +918,7 @@ describe('Responding to clients.', function() {
           client.emit('removeExternalOutput', options, function(status, data) {
             expect(status).to.equal('error');
             expect(data).to.equal('Invalid RTSP/RTMP server url');
-            expect(mockPortal.unsubscribe.getCall(0).args).to.deep.equal(['/#' + client.id, 'rtsp://target.host'])
+            expect(mockPortal.unsubscribe.getCall(0).args).to.deep.equal([client.id, 'rtsp://target.host'])
             done();
           });
         });
@@ -951,7 +951,7 @@ describe('Responding to clients.', function() {
             expect(data.recorderId).to.equal('yyyyMMddhhmmssSS');
             expect(data.path).to.equal('/tmp/room_' + testRoom + '-yyyyMMddhhmmssSS.mkv');
             expect(data.host).to.equal('unknown');
-            expect(mockPortal.subscribe.getCall(0).args[0]).to.equal('/#' + client.id);
+            expect(mockPortal.subscribe.getCall(0).args[0]).to.equal(client.id);
             expect(mockPortal.subscribe.getCall(0).args[1]).to.equal('recording');
             expect(mockPortal.subscribe.getCall(0).args[2]).to.deep.equal({audio: {fromStream: 'targetStreamId1', codecs: ['pcmu']}, video: {fromStream: 'targetStreamId2', codecs: ['vp8']}, path: '/tmp', interval: 1000});
             done();
@@ -1129,7 +1129,7 @@ describe('Responding to clients.', function() {
             expect(status).to.equal('success');
             expect(data.recorderId).to.equal('recorderid');
             expect(data.host).to.equal('unknown');
-            expect(mockPortal.unsubscribe.getCall(0).args).to.deep.equal(['/#' + client.id, 'recorderid'])
+            expect(mockPortal.unsubscribe.getCall(0).args).to.deep.equal([client.id, 'recorderid'])
             done();
           });
         });
@@ -1146,7 +1146,7 @@ describe('Responding to clients.', function() {
           client.emit('stopRecorder', options, function(status, data) {
             expect(status).to.equal('error');
             expect(data).to.have.string('Invalid recorder id');
-            expect(mockPortal.unsubscribe.getCall(0).args).to.deep.equal(['/#' + client.id, 'recorderid'])
+            expect(mockPortal.unsubscribe.getCall(0).args).to.deep.equal([client.id, 'recorderid'])
             done();
           });
         });
@@ -1224,11 +1224,11 @@ describe('Responding to clients.', function() {
           client.emit('getRegion', {id: 'subStreamId'}, function(status, data) {
             expect(status).to.equal('success');
             expect(data.region).to.equal('regionId');
-            expect(mockPortal.getRegion.getCall(0).args).to.deep.equal(['/#' + client.id, 'subStreamId']);
+            expect(mockPortal.getRegion.getCall(0).args).to.deep.equal([client.id, 'subStreamId']);
 
             client.emit('setRegion', {id: 'subStreamId', region: '3'}, function(status, data) {
               expect(status).to.equal('success');
-              expect(mockPortal.setRegion.getCall(0).args).to.deep.equal(['/#' + client.id, 'subStreamId', '3']);
+              expect(mockPortal.setRegion.getCall(0).args).to.deep.equal([client.id, 'subStreamId', '3']);
               done();
             });
           });
@@ -1247,12 +1247,12 @@ describe('Responding to clients.', function() {
           client.emit('getRegion', {id: 'subStreamId'}, function(status, data) {
             expect(status).to.equal('error');
             expect(data).to.have.string('Invalid stream id');
-            expect(mockPortal.getRegion.getCall(0).args).to.deep.equal(['/#' + client.id, 'subStreamId']);
+            expect(mockPortal.getRegion.getCall(0).args).to.deep.equal([client.id, 'subStreamId']);
 
             client.emit('setRegion', {id: 'subStreamId', region: '3'}, function(status, data) {
               expect(status).to.equal('error');
               expect(data).to.have.string('another error');
-              expect(mockPortal.setRegion.getCall(0).args).to.deep.equal(['/#' + client.id, 'subStreamId', '3']);
+              expect(mockPortal.setRegion.getCall(0).args).to.deep.equal([client.id, 'subStreamId', '3']);
               done();
             });
           });
@@ -1399,7 +1399,7 @@ describe('Responding to clients.', function() {
           expect(result).to.equal('ok');
           client.emit('customMessage', {type: 'data', receiver: 'all', data: 'Hi, there!'}, function(status, data) {
             expect(status).to.equal('success');
-            expect(mockPortal.text.getCall(0).args).to.deep.equal(['/#' + client.id, 'all', 'Hi, there!']);
+            expect(mockPortal.text.getCall(0).args).to.deep.equal([client.id, 'all', 'Hi, there!']);
             done();
           });
         });
@@ -1429,7 +1429,7 @@ describe('Responding to clients.', function() {
           expect(result).to.equal('ok');
           client.emit('customMessage', {type: 'control', payload: {streamId: 'streamId', action: 'video-out-off'}}, function(status, data) {
             expect(status).to.equal('success');
-            expect(mockPortal.mediaOnOff.getCall(0).args).to.deep.equal(['/#' + client.id, 'streamId', 'video', 'in', 'off']);
+            expect(mockPortal.mediaOnOff.getCall(0).args).to.deep.equal([client.id, 'streamId', 'video', 'in', 'off']);
             done();
           });
         });
@@ -1463,7 +1463,7 @@ describe('Responding to clients.', function() {
                          streams: []};
       mockPortal.join.resolves(join_result);
 
-      var participant_id = '/#' + client.id;
+      var participant_id = client.id;
       client.on('disconnect', function() {
         //NOTE: the detection method here is not acurate.
         setTimeout(function() {
