@@ -261,13 +261,13 @@ describe('Responding to http requests.', function() {
 
     it('Publishing RTSP/RTMP streams after joining should succeed if portal succeeds.', function(done) {
       mockPortal.publish = sinon.stub();
-      mockPortal.publish.resolves('streamId');
+      mockPortal.publish.resolves({agent: 'agentId', node: 'nodeId'});
 
       return joinFirstly()
         .then(function(clientId) {
           expect(clientId).to.be.a('string');
 
-          simulateStubResponse(mockPortal.publish, 0, 3, {type: 'ready', audio_codecs: ['pcmu'], video_codecs: ['h264']});
+          simulateStubResponse(mockPortal.publish, 0, 4, {type: 'ready', audio_codecs: ['pcmu'], video_codecs: ['h264']});
           var options = {uri: 'http://localhost:3002/pub/' + clientId,
                          method: 'POST',
                          json: {type: 'url',
@@ -275,27 +275,30 @@ describe('Responding to http requests.', function() {
           request(options, function(error, response, body) {
             expect(error).to.equal(null);
             expect(response.statusCode).to.equal(200);
-            expect(body.id).to.equal('streamId');
+            expect(body.id).to.be.a('string');
             expect(mockPortal.publish.getCall(0).args[0]).to.equal(clientId);
-            expect(mockPortal.publish.getCall(0).args[1]).to.equal('avstream');
-            expect(mockPortal.publish.getCall(0).args[2]).to.deep.equal({audio: true, video: {resolution: 'unknown', device: 'unknown'}, url: 'urlOfRtspOrRtmpSource', transport: 'tcp', bufferSize: 2048});
-            expect(mockPortal.publish.getCall(0).args[3]).to.be.a('function');
-            expect(mockPortal.publish.getCall(0).args[4]).to.be.false;
+            expect(mockPortal.publish.getCall(0).args[1]).to.equal(body.id);
+            expect(mockPortal.publish.getCall(0).args[2]).to.equal('avstream');
+            expect(mockPortal.publish.getCall(0).args[3]).to.deep.equal({audio: true, video: {resolution: 'unknown', device: 'unknown'}, url: 'urlOfRtspOrRtmpSource', transport: 'tcp', bufferSize: 2048});
+            expect(mockPortal.publish.getCall(0).args[4]).to.be.a('function');
+            expect(mockPortal.publish.getCall(0).args[5]).to.be.false;
 
             var options = {uri: 'http://localhost:3002/clients/' + clientId,
                            method: 'GET',
                            json: true};
 
+            var stream_id = body.id;
+
             setTimeout(function() {
             request(options, function(error, response, body) {
               expect(error).to.equal(null);
               expect(response.statusCode).to.equal(200);
-              expect(body).to.deep.equal({published: {'streamId': [{type: 'ready', audio_codecs: ['pcmu'], video_codecs: ['h264']}]}, subscribed: {}, notifications: []});
+              expect(body.published[stream_id]).to.deep.equal([{type: 'ready', audio_codecs: ['pcmu'], video_codecs: ['h264']}]);
 
               request(options, function(error, response, body) {
                 expect(error).to.equal(null);
                 expect(response.statusCode).to.equal(200);
-                expect(body).to.deep.equal({published: {'streamId': []}, subscribed: {}, notifications: []});
+                expect(body.published[stream_id]).to.deep.equal([]);
                 done();
               });
             });
@@ -372,7 +375,7 @@ describe('Responding to http requests.', function() {
 
     it('Unpublishing should fail if portal fails.', function(done) {
       mockPortal.publish = sinon.stub();
-      mockPortal.publish.resolves('streamId');
+      mockPortal.publish.resolves({agent: 'agentId', node: 'nodeId'});
       mockPortal.unpublish = sinon.stub();
       mockPortal.unpublish.rejects('whatever reason');
 
@@ -423,13 +426,13 @@ describe('Responding to http requests.', function() {
     it('Subscribing to an RTSP/RTMP destination should succeed if portal succeeds.', function(done) {
       var subscribed_stream = testRoom;
       mockPortal.subscribe = sinon.stub();
-      mockPortal.subscribe.resolves('subscriptionId');
+      mockPortal.subscribe.resolves({agent: 'agentId', node: 'nodeId'});
 
       return joinFirstly()
         .then(function(clientId) {
           expect(clientId).to.be.a('string');
 
-          simulateStubResponse(mockPortal.subscribe, 0, 3, {type: 'ready', audio_codecs: ['pcm_raw'], video_codecs: ['h264']});
+          simulateStubResponse(mockPortal.subscribe, 0, 4, {type: 'ready', audio_codecs: ['pcm_raw'], video_codecs: ['h264']});
           var options = {uri: 'http://localhost:3002/sub/' + clientId,
                          method: 'POST',
                          json: {type: 'url',
@@ -439,26 +442,28 @@ describe('Responding to http requests.', function() {
           request(options, function(error, response, body) {
             expect(error).to.equal(null);
             expect(response.statusCode).to.equal(200);
-            expect(body.id).to.equal('subscriptionId');
+            expect(body.id).to.be.a('string');
             expect(mockPortal.subscribe.getCall(0).args[0]).to.equal(clientId);
-            expect(mockPortal.subscribe.getCall(0).args[1]).to.equal('avstream');
-            expect(mockPortal.subscribe.getCall(0).args[2]).to.deep.equal({audio: {fromStream: subscribed_stream, codecs: ['aac']}, video: {fromStream: subscribed_stream, codecs: ['h264'], resolution: 'vga'}, url: 'rtmp://url-of-rtsp-or-rtmp-destination'});
-            expect(mockPortal.subscribe.getCall(0).args[3]).to.be.a('function');
+            expect(mockPortal.subscribe.getCall(0).args[1]).to.equal(body.id);
+            expect(mockPortal.subscribe.getCall(0).args[2]).to.equal('avstream');
+            expect(mockPortal.subscribe.getCall(0).args[3]).to.deep.equal({audio: {fromStream: subscribed_stream, codecs: ['aac']}, video: {fromStream: subscribed_stream, codecs: ['h264'], resolution: 'vga'}, url: 'rtmp://url-of-rtsp-or-rtmp-destination'});
+            expect(mockPortal.subscribe.getCall(0).args[4]).to.be.a('function');
 
             var options = {uri: 'http://localhost:3002/clients/' + clientId,
                            method: 'GET',
                            json: true};
+            var subscription_id = body.id;
 
             setTimeout(function() {
             request(options, function(error, response, body) {
               expect(error).to.equal(null);
               expect(response.statusCode).to.equal(200);
-              expect(body).to.deep.equal({published: {}, subscribed: {'subscriptionId': [{type: 'ready', audio_codecs: ['pcm_raw'], video_codecs: ['h264']}]}, notifications: []});
+              expect(body.subscribed[subscription_id]).to.deep.equal([{type: 'ready', audio_codecs: ['pcm_raw'], video_codecs: ['h264']}]);
 
               request(options, function(error, response, body) {
                 expect(error).to.equal(null);
                 expect(response.statusCode).to.equal(200);
-                expect(body).to.deep.equal({published: {}, subscribed: {'subscriptionId': []}, notifications: []});
+                expect(body.subscribed[subscription_id]).to.deep.equal([]);
                 done();
               });
             });
@@ -508,7 +513,7 @@ describe('Responding to http requests.', function() {
     it('Unsubscribing should succeed if portal succeeds.', function(done) {
       var subscribed_stream = testRoom;
       mockPortal.subscribe = sinon.stub();
-      mockPortal.subscribe.resolves('subscriptionId');
+      mockPortal.subscribe.resolves({agent: 'agentId', node: 'nodeId'});
       mockPortal.unsubscribe = sinon.stub();
       mockPortal.unsubscribe.resolves('ok');
 
@@ -541,7 +546,7 @@ describe('Responding to http requests.', function() {
     it('Unsubscribing should fail if portal fails.', function(done) {
       var subscribed_stream = testRoom;
       mockPortal.subscribe = sinon.stub();
-      mockPortal.subscribe.resolves('subscriptionId');
+      mockPortal.subscribe.resolves({agent: 'agentId', node: 'nodeId'});
       mockPortal.unsubscribe = sinon.stub();
       mockPortal.unsubscribe.rejects('whatever reason');
 

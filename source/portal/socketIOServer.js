@@ -62,6 +62,31 @@ function isValidIdString(str) {
   return (typeof str === 'string') && idPattern.test(str);
 }
 
+var formatDate = function(date, format) {
+  var dateTime = {
+    'M+': date.getMonth() + 1,
+    'd+': date.getDate(),
+    'h+': date.getHours(),
+    'm+': date.getMinutes(),
+    's+': date.getSeconds(),
+    'q+': Math.floor((date.getMonth() + 3) / 3),
+    'S+': date.getMilliseconds()
+  };
+
+  if (/(y+)/i.test(format)) {
+    format = format.replace(RegExp.$1, (date.getFullYear() + '').substr(4 - RegExp.$1.length));
+  }
+
+  for (var k in dateTime) {
+    if (new RegExp('(' + k + ')').test(format)) {
+      format = format.replace(RegExp.$1, RegExp.$1.length == 1 ?
+        dateTime[k] : ('00' + dateTime[k]).substr(('' + dateTime[k]).length));
+    }
+  }
+
+  return format;
+};
+
 function safeCall () {
   var callback = arguments[0];
   if (typeof callback === 'function') {
@@ -99,8 +124,9 @@ var Client = function(participantId, socket, portal, on_disconnect) {
         return safeCall(callback, 'error', 'unauthorized');
       };
 
-      var connection_type, stream_id;
-      var stream_description = {};
+      var stream_id = Math.random() * 1000000000000000000 + '',
+        connection_type,
+        stream_description = {};
 
       if (options.state === 'erizo') {
         connection_type = 'webrtc';
@@ -120,7 +146,7 @@ var Client = function(participantId, socket, portal, on_disconnect) {
       stream_description.video && (typeof stream_description.video.device !== 'string' || stream_description.video.device === '') && (stream_description.video.device = 'unknown');
       var unmix = (options.unmix === true || (stream_description.video && (stream_description.video.device === 'screen'))) ? true : false;
 
-      return portal.publish(participant_id, connection_type, stream_description, function(status) {
+      return portal.publish(participant_id, stream_id, connection_type, stream_description, function(status) {
         if (status.type === 'failed') {
           socket.emit('connection_failed', {});
           safeCall(callback, 'error', status.reason);
@@ -139,8 +165,8 @@ var Client = function(participantId, socket, portal, on_disconnect) {
             }
           }
         }
-      }, unmix).then(function(streamId) {
-        stream_id = streamId;
+      }, unmix).then(function(connectionLocality) {
+        log.debug('portal.publish succeeded, connection locality:', connectionLocality);
       }).catch(function(err) {
         var err_message = (typeof err === 'string' ? err: err.message);
         log.info('portal.publish failed:', err_message);
@@ -219,7 +245,11 @@ var Client = function(participantId, socket, portal, on_disconnect) {
       (options.video && options.video.resolution && (typeof options.video.resolution.width === 'number') && (typeof options.video.resolution.height === 'number')) &&
       (subscription_description.video.resolution = widthHeight2Resolution(options.video.resolution.width, options.video.resolution.height));
 
-      return portal.subscribe(participant_id, 'webrtc', subscription_description, function(status) {
+      //FIXME - a: use the target stream id as the subscription_id to keep compatible with client SDK, should be fixed and use random strings independently later.
+      var subscription_id = participant_id + '-sub-' + ((subscription_description.audio && subscription_description.audio.fromStream) ||
+                                                        (subscription_description.video && subscription_description.video.fromStream));
+
+      return portal.subscribe(participant_id, subscription_id, 'webrtc', subscription_description, function(status) {
         if (status.type === 'failed') {
           safeCall(callback, 'error', status.reason);
         } else if (status.type === 'initializing') {
@@ -227,7 +257,8 @@ var Client = function(participantId, socket, portal, on_disconnect) {
         } else {
           socket.emit('signaling_message_erizo', {peerId: options.streamId/*FIXME -a */, mess: status});
         }
-      }).then(function(subscriptionId) {
+      }).then(function(connectionLocality) {
+        log.debug('portal.subscribe succeeded, connection locality:', connectionLocality);
       }).catch(function(err) {
         var err_message = (typeof err === 'string' ? err: err.message);
         log.info('portal.subscribe failed:', err_message);
@@ -283,14 +314,16 @@ var Client = function(participantId, socket, portal, on_disconnect) {
       (subscription_description.video.resolution = widthHeight2Resolution(options.resolution.width, options.resolution.height));
       subscription_description.url = parsed_url.format();
 
-      return portal.subscribe(participant_id, 'avstream', subscription_description, function(status) {
+      var subscription_id = subscription_description.url;
+      return portal.subscribe(participant_id, subscription_id, 'avstream', subscription_description, function(status) {
         if (status.type === 'failed') {
           log.info('addExternalOutput onConnection error:', status.reason);
           safeCall(callback, 'error', status.reason);
         } else if (status.type === 'ready') {
           safeCall(callback, 'success', {url: subscription_description.url});
         }
-      }).then(function(subscriptionId) {
+      }).then(function(connectionLocality) {
+        log.debug('portal.subscribe succeeded, connection locality:', connectionLocality);
       }).catch(function(err) {
         var err_message = (typeof err === 'string' ? err: err.message);
         log.info('portal.subscribe failed:', err_message);
@@ -327,7 +360,7 @@ var Client = function(participantId, socket, portal, on_disconnect) {
 
       return portal.unsubscribe(participant_id, options.url)
       .then(function() {
-        return portal.subscribe(participant_id, 'avstream', subscription_description, function(status) {
+        return portal.subscribe(participant_id, options.url, 'avstream', subscription_description, function(status) {
           if (status.type === 'failed') {
             log.info('updateExternalOutput onConnection error:', status.reason);
             safeCall(callback, 'error', status.reason);
@@ -403,11 +436,11 @@ var Client = function(participantId, socket, portal, on_disconnect) {
       (subscription_description.video && (typeof options.videoCodec === 'string')) && (subscription_description.video.codecs = [options.videoCodec]);
       subscription_description.video && (subscription_description.video.codecs = subscription_description.video.codecs || ['vp8']);
       options.path && (subscription_description.path = options.path);
-      options.recorderId && (subscription_description.recorderId = options.recorderId);
       subscription_description.interval = (options.interval && options.interval > 0) ? options.interval : -1;
 
-      var subscription_id, recording_file, recorder_added = false;
-      return portal.subscribe(participant_id, 'recording', subscription_description, function(status) {
+      var subscription_id = options.recorderId || formatDate(new Date, 'yyyyMMddhhmmssSS');
+      var recording_file, recorder_added = false;
+      return portal.subscribe(participant_id, subscription_id, 'recording', subscription_description, function(status) {
         if (status.type === 'failed') {
           if (recorder_added) {
             that.notify('remove_recorder', {id: subscription_id});
@@ -418,8 +451,8 @@ var Client = function(participantId, socket, portal, on_disconnect) {
           recorder_added = true;
           safeCall(callback, 'success', {recorderId: subscription_id, path: recording_file, host: 'unknown'});
         }
-      }).then(function(subscriptionId) {
-        subscription_id = subscriptionId;
+      }).then(function(connectionLocality) {
+        log.debug('portal.subscribe succeeded, connection locality:', connectionLocality);
         recording_file = path.join(options.path || '', 'room_' + that.inRoom + '-' + subscription_id + '.mkv' );
       }).catch(function(err) {
         var err_message = (typeof err === 'string' ? err: err.message);
