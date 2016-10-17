@@ -85,7 +85,7 @@ var Client = function(clientId, inRoom, queryInterval, portal, on_loss) {
   };
 
   that.publish = function(type, options, on_ok, on_error) {
-    var connection_type, stream_id;
+    var connection_type, stream_id = Math.random() * 1000000000000000000 + '';
     var stream_description = {};
 
     if (type === 'webrtc') {
@@ -106,7 +106,7 @@ var Client = function(clientId, inRoom, queryInterval, portal, on_loss) {
     stream_description.video && (typeof stream_description.video.device !== 'string' || stream_description.video.device === '') && (stream_description.video.device = 'unknown');
     var unmix = (options.unmix === true || (stream_description.video && (stream_description.video.device === 'screen'))) ? true : false;
 
-    return portal.publish(clientId, connection_type, stream_description, function(status) {
+    return portal.publish(clientId, stream_id, connection_type, stream_description, function(status) {
       if (status.type === 'failed') {
         published[stream_id] && (delete published[stream_id]);
         on_error(status.reason);
@@ -114,8 +114,8 @@ var Client = function(clientId, inRoom, queryInterval, portal, on_loss) {
         published[stream_id] === undefined && (published[stream_id] = []);
         published[stream_id].push(status);
       }
-    }, unmix).then(function(streamId) {
-      stream_id = streamId;
+    }, unmix).then(function(connectionLocality) {
+      log.debug('portal.publish succeeded, connection locality:', connectionLocality);
       published[stream_id] === undefined && (published[stream_id] = []);
       on_ok(stream_id);
     }).catch(function(err) {
@@ -215,7 +215,9 @@ var Client = function(clientId, inRoom, queryInterval, portal, on_loss) {
       return on_error('Bad request: options.audio');
     }
 
-    return portal.subscribe(clientId, connection_type, subscription_description, function(status) {
+    var subscription_id = Math.random() * 1000000000000000000 + '';
+
+    return portal.subscribe(clientId, subscription_id, connection_type, subscription_description, function(status) {
       if (status.type === 'failed') {
         subscribed[subscription_id] && (delete subscribed[subscription_id]);
         on_error(status.reason);
@@ -223,8 +225,8 @@ var Client = function(clientId, inRoom, queryInterval, portal, on_loss) {
         subscribed[subscription_id] === undefined && (subscribed[subscription_id] = []);
         subscribed[subscription_id].push(status);
       }
-    }).then(function(subscriptionId) {
-      subscription_id = subscriptionId;
+    }).then(function(connectionLocality) {
+      log.debug('portal.subscribe succeeded, connection locality:', connectionLocality);
       subscribed[subscription_id] === undefined && (subscribed[subscription_id] = []);
       on_ok(subscription_id);
     }).catch(function(err) {

@@ -5,31 +5,6 @@ var url = require('url');
 var crypto = require('crypto');
 var log = require('./logger').logger.getLogger('Portal');
 
-var formatDate = function(date, format) {
-  var dateTime = {
-    'M+': date.getMonth() + 1,
-    'd+': date.getDate(),
-    'h+': date.getHours(),
-    'm+': date.getMinutes(),
-    's+': date.getSeconds(),
-    'q+': Math.floor((date.getMonth() + 3) / 3),
-    'S+': date.getMilliseconds()
-  };
-
-  if (/(y+)/i.test(format)) {
-    format = format.replace(RegExp.$1, (date.getFullYear() + '').substr(4 - RegExp.$1.length));
-  }
-
-  for (var k in dateTime) {
-    if (new RegExp('(' + k + ')').test(format)) {
-      format = format.replace(RegExp.$1, RegExp.$1.length == 1 ?
-        dateTime[k] : ('00' + dateTime[k]).substr(('' + dateTime[k]).length));
-    }
-  }
-
-  return format;
-};
-
 var Portal = function(spec, rpcClient) {
   var that = {},
     token_key = spec.tokenKey,
@@ -204,7 +179,7 @@ var Portal = function(spec, rpcClient) {
     }
   };
 
-  that.publish = function(participantId, connectionType, streamDescription, onConnectionStatus, notMix) {
+  that.publish = function(participantId, connectionId, connectionType, streamDescription, onConnectionStatus, notMix) {
     if (participants[participantId] === undefined) {
       return Promise.reject('Participant ' + participantId + ' does NOT exist.');
     }
@@ -214,7 +189,7 @@ var Portal = function(spec, rpcClient) {
       return Promise.reject('unauthorized');
     }
 
-    var stream_id = Math.random() * 1000000000000000000 + '',
+    var stream_id = connectionId,
         connection_id = stream_id,
         locality;
     log.debug('publish, participantId:', participantId, 'connectionType:', connectionType, 'streamDescription:', streamDescription, 'notMix:', notMix, 'connection_id:', connection_id);
@@ -316,7 +291,7 @@ var Portal = function(spec, rpcClient) {
                                                                   type: connectionType,
                                                                   direction: 'in',
                                                                   state: 'connecting'};
-        return stream_id;
+        return locality;
       });
   };
 
@@ -385,7 +360,7 @@ var Portal = function(spec, rpcClient) {
     return rpcClient.setVideoBitrate(participants[participantId].connections[connection_id].locality.node, connection_id, bitrate);
   };
 
-  that.subscribe = function(participantId, connectionType, subscriptionDescription, onConnectionStatus) {
+  that.subscribe = function(participantId, connectionId, connectionType, subscriptionDescription, onConnectionStatus) {
     log.debug('subscribe, participantId:', participantId, 'connectionType:', connectionType, 'subscriptionDescription:', subscriptionDescription);
     if (participants[participantId] === undefined) {
       return Promise.reject('Participant ' + participantId + ' does NOT exist.');
@@ -403,22 +378,10 @@ var Portal = function(spec, rpcClient) {
       return Promise.reject('unauthorized');
     }
 
-    var subscription_id;
-    if (connectionType === 'webrtc') {
-      //FIXME - a: use the target stream id as the subscription_id to keep compatible with client SDK, should be fixed and use random strings independently later.
-      subscription_id = participantId + '-sub-' + ((subscriptionDescription.audio && subscriptionDescription.audio.fromStream) ||
-                                                   (subscriptionDescription.video && subscriptionDescription.video.fromStream));
-    } else if (connectionType === 'recording') {
-      subscription_id = subscriptionDescription.recorderId || formatDate(new Date, 'yyyyMMddhhmmssSS');
-    } else if (connectionType === 'avstream') {
-      subscription_id = subscriptionDescription.url;
-    } else {
-      subscription_id = Math.random() * 1000000000000000000 + '';
-    }
+    var subscription_id = connectionId;
 
     //FIXME : not allowed to subscribe an already subscribed stream, this is a limitation caused by FIXME - a.
-    if ((subscriptionDescription.audio && subscriptionDescription.audio.fromStream && participants[participantId].connections[subscription_id])
-        ||(subscriptionDescription.video && subscriptionDescription.video.fromStream && participants[participantId].connections[subscription_id])) {
+    if (participants[participantId].connections[subscription_id]) {
       if (connectionType !== 'recording') {
         return Promise.reject('Not allowed to subscribe an already-subscribed stream');
       }
@@ -502,7 +465,7 @@ var Portal = function(spec, rpcClient) {
           connection.state === 'connecting';
       }
       //TODO: notify user about 'recorder-continued'? Does it really neccesary?
-      return Promise.resolve(connection_id);
+      return Promise.resolve(connection.locality);
     } else {
       return rpcClient.getAccessNode(cluster_name, connectionType, {session: participants[participantId].in_session, consumer: connection_id})
         .then(function(accessNode) {
@@ -521,7 +484,7 @@ var Portal = function(spec, rpcClient) {
                                                                     type: connectionType,
                                                                     direction: 'out',
                                                                     state: 'connecting'};
-          return subscription_id;
+          return locality;
         });
     }
   };
