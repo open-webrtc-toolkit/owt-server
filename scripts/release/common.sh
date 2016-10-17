@@ -31,6 +31,9 @@ usage() {
   echo "    --archive                           archive & compress to Release-<version>.tgz"
   echo "    --encrypt                           minify, compress and encrypt js and binary files when archiving"
   echo "    --no-module                         exclude node_modules in package"
+  echo "    --openh264                          pack the lib of OpenH264"
+  echo "    --src-sample-path                   set the path of conference sample to be packed"
+  echo "    --run-test                          run the test"
   echo "    --help                              print this help"
   echo
 }
