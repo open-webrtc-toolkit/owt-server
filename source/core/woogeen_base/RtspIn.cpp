@@ -199,6 +199,9 @@ RtspIn::~RtspIn()
 
 bool RtspIn::connect()
 {
+    int res;
+    char errbuff[500];
+
     if (ELOG_IS_TRACE_ENABLED())
         av_log_set_level(AV_LOG_TRACE);
     else if (ELOG_IS_DEBUG_ENABLED())
@@ -214,8 +217,8 @@ bool RtspIn::connect()
     //open rtsp
     av_init_packet(&m_avPacket);
     m_avPacket.data = nullptr;
-    int res = avformat_open_input(&m_context, m_url.c_str(), nullptr, &m_transportOpts);
-    char errbuff[500];
+
+    res = avformat_open_input(&m_context, m_url.c_str(), nullptr, &m_transportOpts);
     if (res != 0) {
         av_strerror(res, (char*)(&errbuff), 500);
         ELOG_ERROR("Error opening input %s", errbuff);
@@ -335,6 +338,71 @@ bool RtspIn::connect()
     return true;
 }
 
+bool RtspIn::reconnect()
+{
+    int res;
+    char errbuff[500];
+
+    ELOG_WARN("Read input data failed; trying to reopren input from url %s", m_url.c_str());
+
+    m_timeoutHandler->reset(10000);
+    av_read_pause(m_context);
+    avformat_close_input(&m_context);
+    m_timeoutHandler->reset(10000);
+
+    res = avformat_open_input(&m_context, m_url.c_str(), nullptr, &m_transportOpts);
+    if (res != 0) {
+        av_strerror(res, (char*)(&errbuff), 500);
+        ELOG_ERROR("Error opening input %s", errbuff);
+        return false;
+    }
+
+    res = avformat_find_stream_info(m_context, nullptr);
+    if (res < 0) {
+        av_strerror(res, (char*)(&errbuff), 500);
+        ELOG_ERROR("Error find stream info %s", errbuff);
+        return false;
+    }
+
+    av_dump_format(m_context, 0, nullptr, 0);
+
+    if (m_needVideo) {
+        int streamNo = av_find_best_stream(m_context, AVMEDIA_TYPE_VIDEO, -1, -1, nullptr, 0);
+        if (streamNo < 0) {
+            ELOG_ERROR("No Video stream found");
+            return false;
+        }
+
+        if (m_videoStreamIndex != streamNo) {
+            ELOG_ERROR("Video stream index changed, %d -> %d", m_videoStreamIndex, streamNo);
+            m_videoStreamIndex = streamNo;
+        }
+    }
+
+    if (m_needAudio) {
+        int streamNo = av_find_best_stream(m_context, AVMEDIA_TYPE_AUDIO, -1, -1, nullptr, 0);
+        if (streamNo < 0) {
+            ELOG_ERROR("No Audio stream found");
+            return false;
+        }
+
+        if (m_audioStreamIndex != streamNo) {
+            ELOG_ERROR("Audio stream index changed, %d -> %d", m_audioStreamIndex, streamNo);
+            m_audioStreamIndex = streamNo;
+        }
+
+        // reinitilize audio transcoder
+        if (m_needAudioTranscoder) {
+            if (!initAudioDecoder(AV_CODEC_ID_AAC))
+                return false;
+        }
+    }
+
+    av_read_play(m_context);
+
+    return true;
+}
+
 void RtspIn::receiveLoop()
 {
     bool ret = connect();
@@ -347,31 +415,22 @@ void RtspIn::receiveLoop()
 
     ELOG_DEBUG("Start playing %s", m_url.c_str() );
     while (m_running) {
-        m_timeoutHandler->reset(1000);
+        m_timeoutHandler->reset(5000);
         if (av_read_frame(m_context, &m_avPacket) < 0) {
             // Try to re-open the input - silently.
-            m_timeoutHandler->reset(10000);
-            av_read_pause(m_context);
-            avformat_close_input(&m_context);
-            ELOG_WARN("Read input data failed; trying to reopen input from url %s", m_url.c_str());
-            m_timeoutHandler->reset(10000);
-            int res = avformat_open_input(&m_context, m_url.c_str(), nullptr, &m_transportOpts);
-            char errbuff[500];
-            if (res != 0) {
-                av_strerror(res, (char*)(&errbuff), 500);
-                ELOG_ERROR("Error opening input %s", errbuff);
+            if (!reconnect()) {
                 m_running = false;
                 ::notifyAsyncEvent(m_asyncHandle, "status", "{\"type\":\"failed\",\"reason\":\"reopening input url error\"}");
                 return;
             }
-            av_read_play(m_context);
             continue;
         }
 
         if (m_avPacket.stream_index == m_videoStreamIndex) { //packet is video
             AVStream *video_st = m_context->streams[m_videoStreamIndex];
-            ELOG_TRACE("Receive video frame packet with size %d, dts %d "
+            ELOG_TRACE("Receive video frame packet with size %d, dts %d(%d) "
                     , m_avPacket.size
+                    , m_avPacket.dts
                     , timestampRtp(m_avPacket.dts, video_st->time_base, m_videoTimeBase));
 
             if (!m_needVBSF || filterVBS()) {
@@ -389,8 +448,9 @@ void RtspIn::receiveLoop()
             }
         } else if (m_avPacket.stream_index == m_audioStreamIndex) { //packet is audio
             AVStream *audio_st = m_context->streams[m_audioStreamIndex];
-            ELOG_TRACE("Receive audio frame packet with size %d, dts %d "
+            ELOG_TRACE("Receive audio frame packet with size %d, dts %d(%d) "
                     , m_avPacket.size
+                    , m_avPacket.dts
                     , timestampRtp(m_avPacket.dts, audio_st->time_base, m_audioTimeBase));
 
             if (!m_needAudioTranscoder) {
@@ -459,7 +519,10 @@ bool RtspIn::filterVBS() {
             m_context->streams[m_videoStreamIndex]->codec, NULL, &m_vbsf_buffer, &m_vbsf_buffer_size,
             m_avPacket.data, m_avPacket.size, m_avPacket.flags & AV_PKT_FLAG_KEY);
     if(ret <= 0) {
-        ELOG_ERROR("Fail to filter video bitstream, %d", ret);
+        char errbuff[500];
+        av_strerror(ret, (char*)(&errbuff), 500);
+
+        ELOG_ERROR("Fail to filter video bitstream, %s", errbuff);
         return false;
     }
 
@@ -469,11 +532,41 @@ bool RtspIn::filterVBS() {
     return true;
 }
 
+bool RtspIn::initAudioDecoder(int codec) {
+    AVStream *audio_st = m_context->streams[m_audioStreamIndex];
+    AVCodec *audioDec = NULL;
+
+    if (codec != AV_CODEC_ID_AAC) {
+        ELOG_ERROR("Support codec AAC only, %d", codec);
+        return false;
+    }
+
+    audioDec = avcodec_find_decoder_by_name("libfdk_aac");
+    if (!audioDec) {
+        ELOG_ERROR("Cound not find audio decoder");
+        return false;
+    }
+
+    audio_st->codec->sample_fmt = AV_SAMPLE_FMT_S16;
+
+    if (avcodec_open2(audio_st->codec, audioDec , NULL) < 0) {
+        ELOG_ERROR("Could not open audio decoder context");
+        return false;
+    }
+
+    ELOG_TRACE("Audio dec sample_rate %d, channels %d, frame_size %d"
+            , audio_st->codec->sample_rate
+            , audio_st->codec->channels
+            , audio_st->codec->frame_size
+            );
+
+    return true;
+}
+
 bool RtspIn::initAudioTranscoder(int inCodec, int outCodec) {
     int ret;
     AVStream *audio_st = m_context->streams[m_audioStreamIndex];
-    AVCodec *m_audioDec = NULL;
-    AVCodec *m_audioEnc = NULL;
+    AVCodec *audioEnc = NULL;
 
     if (inCodec != AV_CODEC_ID_AAC) {
         ELOG_ERROR("Support inCodec AAC only, %d", inCodec);
@@ -485,30 +578,14 @@ bool RtspIn::initAudioTranscoder(int inCodec, int outCodec) {
         return false;
     }
 
-    avcodec_register_all();
-
-    m_audioDec = avcodec_find_decoder_by_name("libfdk_aac");
-    if (!m_audioDec) {
-        ELOG_ERROR("Cound not fine audio decoder");
-        goto failed;
-    }
-
-    audio_st->codec->sample_fmt = AV_SAMPLE_FMT_S16;
-
 #ifdef DUMP_AUDIO_PCM
     m_audioRawDumpFile.reset(new std::ofstream("/tmp/audio_pcm_s16.pcm", std::ios::binary));
 #endif
 
-    if (avcodec_open2(audio_st->codec, m_audioDec , NULL) < 0) {
-        ELOG_ERROR("Could not open audio decoder context");
-        goto failed;
-    }
+    avcodec_register_all();
 
-    ELOG_TRACE("Audio dec sample_rate %d, channels %d, frame_size %d"
-            , audio_st->codec->sample_rate
-            , audio_st->codec->channels
-            , audio_st->codec->frame_size
-            );
+    if (!initAudioDecoder(inCodec))
+        goto failed;
 
     m_audioDecFrame = av_frame_alloc();
     if (!m_audioDecFrame) {
@@ -516,13 +593,13 @@ bool RtspIn::initAudioTranscoder(int inCodec, int outCodec) {
         goto failed;
     }
 
-    m_audioEnc = avcodec_find_encoder(AV_CODEC_ID_OPUS);
-    if (!m_audioEnc) {
-        ELOG_ERROR("Cound not fine audio encoder");
+    audioEnc = avcodec_find_encoder(AV_CODEC_ID_OPUS);
+    if (!audioEnc) {
+        ELOG_ERROR("Cound not find audio encoder");
         goto failed;
     }
 
-    m_audioEncCtx = avcodec_alloc_context3(m_audioEnc);
+    m_audioEncCtx = avcodec_alloc_context3(audioEnc);
     if (!m_audioEncCtx ) {
         ELOG_ERROR("Could not alloc audio encoder context");
         goto failed;
@@ -535,7 +612,7 @@ bool RtspIn::initAudioTranscoder(int inCodec, int outCodec) {
     m_audioEncCtx->bit_rate         = 64000;
 
     /* open it */
-    if (avcodec_open2(m_audioEncCtx, m_audioEnc, NULL) < 0) {
+    if (avcodec_open2(m_audioEncCtx, audioEnc, NULL) < 0) {
         ELOG_ERROR("Could not open audio encoder context");
         goto failed;
     }

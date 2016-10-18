@@ -137,11 +137,13 @@ private:
     std::unique_ptr<std::ofstream> m_audioRawDumpFile;
 
     bool connect();
+    bool reconnect();
     void receiveLoop();
 
     bool initVBSFilter();
     bool filterVBS();
 
+    bool initAudioDecoder(int codec);
     bool initAudioTranscoder(int inCodec, int outCodec);
     bool decAudioFrame();
     bool encAudioFrame();
