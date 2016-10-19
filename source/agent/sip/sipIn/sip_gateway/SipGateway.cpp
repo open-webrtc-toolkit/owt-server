@@ -53,10 +53,9 @@ bool SipGateway::sipRegister(const std::string& sipServerAddr, const std::string
 bool SipGateway::makeCall(const std::string& calleeURI, bool requireAudio, bool requireVideo)
 {
     if (m_sipEP->makeCall(calleeURI,requireAudio, requireVideo)) {
-        CallInfo info("sip:" + calleeURI, requireAudio,requireVideo);
-        ELOG_DEBUG("makeCall CallInfo: %s", info.peerURI.c_str());
-        boost::shared_lock<boost::shared_mutex> lock(m_mutex);
-        m_call_vector.push_back(info);
+        std::string peerURI = "sip:" + calleeURI;
+        ELOG_DEBUG("makeCall CallInfo: %s", peerURI.c_str());
+        insertCallInfoByPeerURI(peerURI, requireAudio, requireVideo);
         return true;
     } else {
         return false;
@@ -71,14 +70,11 @@ void SipGateway::hangup(const std::string& peer)
         m_sipEP->hangup(peer);
 }
 
-
 // The main thread
 bool SipGateway::accept(const std::string& peer)
 {
     if (m_sipEP->accept(peer)) {
-        CallInfo info(peer, true, true);
-        boost::shared_lock<boost::shared_mutex> lock(m_mutex);
-        m_call_vector.push_back(info);
+        insertCallInfoByPeerURI(peer, true, true);
         return true;
     } else {
         notifyAsyncEvent("CallClosed", "");
@@ -122,12 +118,9 @@ void SipGateway::onCallEstablished(const std::string& peerURI, void *call, bool 
                        "\"video\":" + ((video) ? ("true, \"video_codec\":\"" + info->videoCodec + "\"," +
                                                         "\"videoResolution\": \"" + info->videoResolution + "\"")
                                                 : "false") + "}";
-    if (updateCallInfoByPeerURI(peerURI, call, true, video)) {
-        notifyAsyncEvent("CallEstablished", str.c_str());
-        refreshVideoStream();
-    } else {
-        ELOG_ERROR("can not establish call: %s", peerURI.c_str());
-    }
+    insertOrUpdateCallInfoByPeerURI(peerURI, call, true, video);
+    notifyAsyncEvent("CallEstablished", str.c_str());
+    refreshVideoStream();
 }
 
 // The sipua thread
@@ -139,12 +132,9 @@ void SipGateway::onCallUpdated(const std::string& peerURI, bool video)
                        "\"video\":" + ((video) ? ("true, \"video_codec\":\"" + info->videoCodec + "\"," +
                                                         "\"videoResolution\": \"" + info->videoResolution + "\"")
                                                 : "false") + "}";
-    if (updateCallInfoByPeerURI(peerURI, info->sipCall, true, video)) {
-        notifyAsyncEvent("CallUpdated", str.c_str());
-        refreshVideoStream();
-    } else {
-        ELOG_ERROR("can not update call: %s", peerURI.c_str());
-    }
+    insertOrUpdateCallInfoByPeerURI(peerURI, info->sipCall, true, video);
+    notifyAsyncEvent("CallUpdated", str.c_str());
+    refreshVideoStream();
 }
 
 // The sipua thread
@@ -168,9 +158,7 @@ void SipGateway::onSipAudioFmt(const std::string &peer, const std::string &codec
     if ((codecName == "PCMU" && sampleRate == 8000)
         || (codecName == "PCMA" && sampleRate == 8000)
         || (codecName == "opus" && sampleRate == 48000)) {
-        if (!updateCallInfoByPeerURI(peer, codecName, sampleRate)) {
-            ELOG_ERROR("signal error with set audio fmt");
-        }
+        insertOrUpdateCallInfoByPeerURI(peer, codecName, sampleRate);
     } else {
       ELOG_ERROR("not support audio fmt");
     }
@@ -181,9 +169,7 @@ void SipGateway::onSipVideoFmt(const std::string &peer, const std::string& codec
     ELOG_DEBUG("onSipVideoFmt:%s-%u[%s]", codecName.c_str(), rtpClock, fmtp.c_str());
     if ((codecName == "VP8" && rtpClock == 90000)
     || (codecName == "H264" && rtpClock == 90000)) {
-        if (!updateCallInfoByPeerURI(peer, codecName, rtpClock, fmtp)) {
-            ELOG_ERROR("signal error with set video fmt");
-        }
+        insertOrUpdateCallInfoByPeerURI(peer, codecName, rtpClock, fmtp);
     } else {
       ELOG_ERROR("not support video fmt");
     }
@@ -193,57 +179,76 @@ void SipGateway::onSipVideoFmt(const std::string &peer, const std::string& codec
 const CallInfo* SipGateway::getCallInfoByPeerURI(const std::string& uri)
 {
     boost::shared_lock<boost::shared_mutex> lock(m_mutex);
-    std::vector<CallInfo>::const_iterator iter = m_call_vector.begin();
-    for(; iter != m_call_vector.end(); ++iter) {
-        if (uri == iter->peerURI) {
-            return &(*iter);
-        }
+    std::map<std::string, CallInfo>::iterator iter = m_call_map.find(uri);
+    if(iter != m_call_map.end()){
+        return &(iter->second);
     }
     return NULL;
 }
 
-bool SipGateway::updateCallInfoByPeerURI(const std::string& uri, const std::string& vCodec, unsigned int rtpClock, const std::string& fmtp)
-{
-    boost::shared_lock<boost::shared_mutex> lock(m_mutex);
-    std::vector<CallInfo>::iterator iter = m_call_vector.begin();
-    for(; iter != m_call_vector.end(); ++iter) {
-        if (uri == iter->peerURI) {
-            iter->videoCodec = vCodec;
-            iter->videoRtpClock = rtpClock;
-            iter->videoResolution = fmtp;
-            return true;
-        }
+void SipGateway::insertCallInfoByPeerURI(const std::string& uri, const bool audio, const bool video){
+    ELOG_DEBUG("insertCallInfoByPeerURI %s", uri.c_str());
+    boost::upgrade_lock<boost::shared_mutex> upgrade_lock(m_mutex);
+    std::map<std::string, CallInfo>::iterator iter = m_call_map.find(uri);
+    if(iter == m_call_map.end()){
+        boost::upgrade_to_unique_lock<boost::shared_mutex> unique_lock(upgrade_lock);
+        m_call_map.insert(std::pair<std::string, CallInfo>(uri, CallInfo(uri, audio, video)));
     }
-    return false;
 }
 
-bool SipGateway::updateCallInfoByPeerURI(const std::string& uri, const std::string& aCodec, unsigned int sampleRate)
+void SipGateway::insertOrUpdateCallInfoByPeerURI(const std::string& uri, const std::string& vCodec, unsigned int rtpClock, const std::string& fmtp)
 {
-    boost::shared_lock<boost::shared_mutex> lock(m_mutex);
-    std::vector<CallInfo>::iterator iter = m_call_vector.begin();
-    for(; iter != m_call_vector.end(); ++iter) {
-        if (uri == iter->peerURI) {
-            iter->audioCodec = aCodec;
-            iter->audioSampleRate = sampleRate;
-            return true;
-        }
+    ELOG_DEBUG("insertOrUpdateCallInfoByPeerURI %s", uri.c_str());
+    boost::upgrade_lock<boost::shared_mutex> upgrade_lock(m_mutex);
+    std::map<std::string, CallInfo>::iterator iter = m_call_map.find(uri);
+    boost::upgrade_to_unique_lock<boost::shared_mutex> unique_lock(upgrade_lock);
+    if(iter != m_call_map.end()){
+        iter->second.requireVideo = true;
+        iter->second.videoCodec = vCodec;
+        iter->second.videoRtpClock = rtpClock;
+        iter->second.videoResolution = fmtp;
+    }else{
+        CallInfo newInfo(uri, false, true);
+        newInfo.videoCodec = vCodec;
+        newInfo.videoRtpClock = rtpClock;
+        newInfo.videoResolution = fmtp;
+        m_call_map.insert(std::pair<std::string, CallInfo>(uri, newInfo));
     }
-    return false;
 }
 
-bool SipGateway::updateCallInfoByPeerURI(const std::string& uri, void *call, bool audio, bool video)
+void SipGateway::insertOrUpdateCallInfoByPeerURI(const std::string& uri, const std::string& aCodec, unsigned int sampleRate)
 {
-    boost::shared_lock<boost::shared_mutex> lock(m_mutex);
-    std::vector<CallInfo>::iterator iter = m_call_vector.begin();
-    for(; iter != m_call_vector.end(); ++iter) {
-        if (uri == iter->peerURI) {
-            iter->sipCall = call;
-            iter->requireAudio = audio;
-            iter->requireVideo = video;
-            return true;
-        }
+    ELOG_DEBUG("insertOrUpdateCallInfoByPeerURI %s", uri.c_str());
+    boost::upgrade_lock<boost::shared_mutex> upgrade_lock(m_mutex);
+    std::map<std::string, CallInfo>::iterator iter = m_call_map.find(uri);
+    boost::upgrade_to_unique_lock<boost::shared_mutex> unique_lock(upgrade_lock);
+    if(iter != m_call_map.end()){
+        iter->second.requireAudio = true;
+        iter->second.audioCodec = aCodec;
+        iter->second.audioSampleRate = sampleRate;
+    }else{
+        CallInfo newInfo(uri, true, false);
+        newInfo.audioCodec = aCodec;
+        newInfo.audioSampleRate = sampleRate;
+        m_call_map.insert(std::pair<std::string, CallInfo>(uri, newInfo));
     }
-    return false;
+}
+
+void SipGateway::insertOrUpdateCallInfoByPeerURI(const std::string& uri, void *call, bool audio, bool video)
+{
+    ELOG_DEBUG("insertOrUpdateCallInfoByPeerURI %s", uri.c_str());
+    boost::upgrade_lock<boost::shared_mutex> upgrade_lock(m_mutex);
+    std::map<std::string, CallInfo>::iterator iter = m_call_map.find(uri);
+    boost::upgrade_to_unique_lock<boost::shared_mutex> unique_lock(upgrade_lock);
+    if(iter != m_call_map.end()){
+        iter->second.requireAudio = audio;
+        iter->second.requireVideo = video;
+        iter->second.sipCall = call;
+    }else{
+        CallInfo newInfo(uri, audio, video);
+        newInfo.sipCall = call;
+        m_call_map.insert(std::pair<std::string, CallInfo>(uri, newInfo));
+    }
 }
 
 void SipGateway::refreshVideoStream()
@@ -254,12 +259,12 @@ void SipGateway::refreshVideoStream()
 // The main thread or sipua thread
 bool SipGateway::terminateCall(const std::string &peer)
 {
-    boost::shared_lock<boost::shared_mutex> lock(m_mutex);
-    std::vector<CallInfo>::iterator iter = m_call_vector.begin();
-    for(; iter != m_call_vector.end(); ++iter) {
-        if (peer == iter->peerURI)
-            m_call_vector.erase(iter);
-            return true;
+    boost::upgrade_lock<boost::shared_mutex> upgrade_lock(m_mutex);
+    std::map<std::string, CallInfo>::iterator iter = m_call_map.find(peer);
+    if(iter != m_call_map.end()){
+        boost::upgrade_to_unique_lock<boost::shared_mutex> unique_lock(upgrade_lock);
+        m_call_map.erase(iter);
+        return true;
     }
     return false;
 }

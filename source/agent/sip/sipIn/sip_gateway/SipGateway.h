@@ -97,12 +97,14 @@ public:
 private:
     void refreshVideoStream();
     bool terminateCall(const std::string &peer);
-    bool updateCallInfoByPeerURI(const std::string& uri, void *call, bool audio, bool video);
-    bool updateCallInfoByPeerURI(const std::string& uri, const std::string& aCodec, unsigned int sampleRate);
-    bool updateCallInfoByPeerURI(const std::string& uri, const std::string& vCodec, unsigned int rtpClock, const std::string& fmtp);
+    void insertCallInfoByPeerURI(const std::string& uri, const bool audio, const bool video);
+    void insertOrUpdateCallInfoByPeerURI(const std::string& uri, void *call, bool audio, bool video);
+    void insertOrUpdateCallInfoByPeerURI(const std::string& uri, const std::string& aCodec, unsigned int sampleRate);
+    void insertOrUpdateCallInfoByPeerURI(const std::string& uri, const std::string& vCodec, unsigned int rtpClock, const std::string& fmtp);
+
     boost::scoped_ptr<SipEP> m_sipEP;
     boost::shared_mutex m_mutex;
-    std::vector<CallInfo> m_call_vector;
+    std::map<std::string, CallInfo> m_call_map;
     // MediaInfo m_sipMediaInfo;
 
     // libuv - uv_async_send() to notify node thread
