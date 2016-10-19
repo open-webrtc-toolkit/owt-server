@@ -991,7 +991,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
             var currentPublisherCount = publisherCount();
             if (config.publishLimit < 0 || (config.publishLimit > currentPublisherCount)) {
                var terminal_id = participantId + '-pub-' + streamId,
-                   terminal_owner = participantId + '-' + streamInfo.type;
+                   terminal_owner = ((streamInfo.type === 'webrtc' || streamInfo.type === 'sip') ? participantId : room_id + '-' + Math.random() * 1000000000000000000);
                 newTerminal(terminal_id, 'participant', terminal_owner, accessNode, function () {
                     streams[streamId] = {owner: terminal_id,
                                          audio: streamInfo.audio ? {codec: streamInfo.audio.codec,
@@ -1234,7 +1234,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                 }
             };
 
-            var terminal_owner = participantId + '-' + subInfo.type;
+            var terminal_owner = ((subInfo.type === 'webrtc' || subInfo.type === 'sip') ? participantId : room_id);
             newTerminal(terminal_id, 'participant', terminal_owner, accessNode, function () {
                 doSubscribe();
             }, on_error);
