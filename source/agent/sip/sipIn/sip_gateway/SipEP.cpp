@@ -52,7 +52,7 @@ bool SipEP::sipRegister(const std::string& sipServerAddr, const std::string& use
                              const std::string& password, const std::string& displayName)
 {
     if (m_state == INITIALISED && !m_sipua) {
-        if (sipServerAddr.length() == 0 || userName.length() == 0 || password.length() == 0) {
+        if (sipServerAddr.length() == 0 || userName.length() == 0) {
             ELOG_WARN("!!User info incorect, Create sipua failed!\n");
             return false;
         }
