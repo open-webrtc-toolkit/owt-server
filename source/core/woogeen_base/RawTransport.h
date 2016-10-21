@@ -52,6 +52,7 @@ public:
     virtual ~RawTransportInterface() { }
     virtual void createConnection(const std::string& ip, uint32_t port) = 0;
     virtual void listenTo(uint32_t port) = 0;
+    virtual void listenTo(uint32_t minPort, uint32_t maxPort) = 0;
     virtual void sendData(const char*, int len) = 0;
     virtual void sendData(const char* header, int headerLength, const char* payload, int payloadLength) = 0;
     virtual void close() = 0;
@@ -68,6 +69,7 @@ public:
 
     void createConnection(const std::string& ip, uint32_t port);
     void listenTo(uint32_t port);
+    void listenTo(uint32_t minPort, uint32_t maxPort);
     void sendData(const char*, int len);
     void sendData(const char* header, int headerLength, const char* payload, int payloadLength);
     void close();

@@ -84,7 +84,7 @@ module.exports = function (rpcClient) {
             if (!useHardware && !openh264Enabled && codec === 'h264') {
                 on_error('Codec ' + codec + ' is not supported by video engine.');
             } else {
-                var conn = new InternalIn(protocol);
+                var conn = new InternalIn(protocol, GLOBAL.config.internal.minport, GLOBAL.config.internal.maxport);
                 if (engine.addInput(stream_id, codec, conn)) {
                     inputs[stream_id] = conn;
                     log.debug('addInput ok, stream_id:', stream_id, 'codec:', codec, 'protocol:', protocol);

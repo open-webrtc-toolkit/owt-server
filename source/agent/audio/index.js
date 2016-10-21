@@ -39,7 +39,7 @@ module.exports = function (rpcClient) {
 
     var addInput = function (stream_id, for_whom, codec, protocol, on_ok, on_error) {
         if (engine) {
-            var conn = new InternalIn(protocol);
+            var conn = new InternalIn(protocol, GLOBAL.config.internal.minport, GLOBAL.config.internal.maxport);
             if (engine.addInput(for_whom, codec, conn)) {
                 inputs[stream_id] = {owner: for_whom,
                                      connection: conn};

@@ -208,6 +208,72 @@ void RawTransport<prot>::listenTo(uint32_t port)
 }
 
 template<Protocol prot>
+void RawTransport<prot>::listenTo(uint32_t minPort, uint32_t maxPort)
+{
+    switch (prot) {
+    case TCP: {
+        if (m_socket.tcp.socket) {
+            ELOG_WARN("TCP transport existed, ignoring the listening request for minPort %d, maxPort %d\n", minPort, maxPort);
+        } else {
+            m_socket.tcp.socket.reset(new tcp::socket(m_ioService));
+
+            // find port in range
+            uint32_t portRange = maxPort - minPort + 1;
+            uint32_t port = rand() % portRange + minPort;
+            boost::system::error_code ec;
+
+            for (uint32_t i = 0; i < portRange; i++) {
+                m_socket.tcp.acceptor.reset(new tcp::acceptor(m_ioService));
+                m_socket.tcp.acceptor->open(tcp::v4());
+                m_socket.tcp.acceptor->bind(tcp::endpoint(tcp::v4(), port), ec);
+
+                if (ec != boost::system::errc::address_in_use) {
+                    break;
+                }
+                if (m_socket.tcp.acceptor->is_open()) {
+                    m_socket.tcp.acceptor->close();
+                }
+
+                port++;
+                if (port > maxPort) {
+                    port -= portRange;
+                }
+            }
+
+            if (ec) {
+                ELOG_WARN("TCP transport listen in port range bind error: %s", ec.message().c_str());
+                break;
+            }
+
+            m_socket.tcp.acceptor->listen(boost::asio::socket_base::max_connections, ec);
+            if (!ec) {
+                ELOG_DEBUG("TCP transport listening request for port %d\n", m_socket.tcp.acceptor->local_endpoint().port());
+                m_socket.tcp.acceptor->async_accept(*(m_socket.tcp.socket.get()),
+                boost::bind(&RawTransport::acceptHandler, this,
+                    boost::asio::placeholders::error));
+            }
+        }
+        break;
+    }
+    case UDP: {
+        if (m_socket.udp.socket) {
+            ELOG_WARN("UDP transport existed, ignoring the listening request for minPort %d, maxPort %d\n", minPort, maxPort);
+        } else {
+            ELOG_WARN("UDP transport does not support listening in specific range.");
+            m_socket.udp.socket.reset(new udp::socket(m_ioService, udp::endpoint(udp::v4(), 0)));
+            receiveData();
+        }
+        break;
+    }
+    default:
+        break;
+    }
+
+    if (m_workThread.get_id() == boost::thread::id()) // Not-A-Thread
+        m_workThread = boost::thread(boost::bind(&boost::asio::io_service::run, &m_ioService));
+}
+
+template<Protocol prot>
 unsigned short RawTransport<prot>::getListeningPort()
 {
     unsigned short port = 0;
