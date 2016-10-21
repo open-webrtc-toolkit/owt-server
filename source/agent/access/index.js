@@ -20,7 +20,7 @@ module.exports = function () {
     var connections = new Connections;
 
     var createInternalIn = function (options) {
-        var connection = new InternalIn(options.protocol);
+        var connection = new InternalIn(options.protocol, GLOBAL.config.internal.minport, GLOBAL.config.internal.maxport);
         return connection;
     };
 

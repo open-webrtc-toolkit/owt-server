@@ -41,6 +41,11 @@ ip_address = "" #default: ""
 host = "localhost" #default: "localhost"
 port = 5672 #default: 5672
 
+[internal]
+# The internal listening port range
+maxport = 0 #default: 0
+minport = 0 #default: 0
+
 #########################################################################################
 [webrtc]
 #The IP address used for replacing the internal IP address in locally generated SDP's and ICE candidates during establishing the peer-connection(useful when behind NATs) if it is specified with a non-empty string.
@@ -52,6 +57,7 @@ ip_address = "" #default: ""
 keystorePath = "./cert/certificate.pfx"
 #note, this won't work with all versions of libnice. With 0 all the available ports are used
 
+# The webrtc port range
 maxport = 0 #default: 0
 minport = 0 #default: 0
 

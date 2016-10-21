@@ -29,6 +29,10 @@ GLOBAL.config.video.openh264Enabled = !!GLOBAL.config.video.openh264Enabled;
 GLOBAL.config.recording = GLOBAL.config.recording || {};
 GLOBAL.config.recording.path = GLOBAL.config.recording.path || '/tmp';
 
+GLOBAL.config.internal = GLOBAL.config.internal || {};
+GLOBAL.config.internal.minport = GLOBAL.config.internal.minport || 0;
+GLOBAL.config.internal.maxport = GLOBAL.config.internal.maxport || 0;
+
 // Parse command line arguments
 var getopt = new Getopt([
   ['r' , 'rabbit-host=ARG'            , 'RabbitMQ Host'],

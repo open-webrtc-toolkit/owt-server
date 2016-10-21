@@ -38,17 +38,10 @@ ip_address = "" #default: ""
 host = "localhost" #default: "localhost"
 port = 5672 #default: 5672
 
-#########################################################################################
-#This configuration is only for RTSP muxing.
-#e.g.: "rtsp://localhost:1935/live/xxx.sdp"
-[rtsp]
-enabled = false
-addr = "localhost"
-application = "/live/" #default application name, don't forget ending slash
-port = 1935
-username = "webrtc"
-passwd = "abc123"
-
+[internal]
+# The internal listening port range
+maxport = 0 #default: 0
+minport = 0 #default: 0
 
 #########################################################################################
 #The storage availability of the recording path needs to be guaranteed when using media recording.

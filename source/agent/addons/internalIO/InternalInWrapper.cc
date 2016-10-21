@@ -52,9 +52,15 @@ void InternalIn::New(const FunctionCallbackInfo<Value>& args) {
 
   String::Utf8Value param0(args[0]->ToString());
   std::string protocol = std::string(*param0);
+  unsigned int minPort = 0, maxPort = 0;
+
+  if (args.Length() >= 3) {
+    minPort = args[1]->Uint32Value();
+    maxPort = args[2]->Uint32Value();
+  }
 
   InternalIn* obj = new InternalIn();
-  obj->me = new woogeen_base::InternalIn(protocol);
+  obj->me = new woogeen_base::InternalIn(protocol, minPort, maxPort);
   obj->src = obj->me;
 
   obj->Wrap(args.This());

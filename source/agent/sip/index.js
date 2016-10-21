@@ -466,7 +466,7 @@ module.exports = function (rpcClient, spec) {
         log.debug('publish stream_id:', stream_id, ', stream_type:', stream_type, ', audio:', options.audio, ', video:', options.video);
         if (stream_type === 'internal') {
             if (streams[stream_id] === undefined) {
-                var conn = new InternalIn(options.protocol);
+                var conn = new InternalIn(options.protocol, GLOBAL.config.internal.minport, GLOBAL.config.internal.maxport);
                 streams[stream_id] = {type: stream_type, connection: conn};
                 callback('callback', {ip: that.clusterIP, port: conn.getListeningPort()});
             } else {

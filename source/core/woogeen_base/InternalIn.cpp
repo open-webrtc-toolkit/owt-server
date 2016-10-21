@@ -22,14 +22,18 @@
 
 namespace woogeen_base {
 
-InternalIn::InternalIn(const std::string& protocol)
+InternalIn::InternalIn(const std::string& protocol, unsigned int minPort, unsigned int maxPort)
 {
     if (protocol == "tcp")
         m_transport.reset(new woogeen_base::RawTransport<TCP>(this));
     else
         m_transport.reset(new woogeen_base::RawTransport<UDP>(this, 64 * 1024));
 
-    m_transport->listenTo(0);
+    if (minPort > 0 && minPort <= maxPort) {
+        m_transport->listenTo(minPort, maxPort);
+    } else {
+        m_transport->listenTo(0);
+    }
 }
 
 InternalIn::~InternalIn()
