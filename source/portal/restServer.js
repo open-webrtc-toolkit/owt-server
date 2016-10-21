@@ -84,7 +84,7 @@ var Client = function(clientId, inRoom, queryInterval, portal, on_loss) {
     notifications = [];
   };
 
-  that.publish = function(type, options, on_ok, on_error) {
+  that.publish = function(type, options, on_ok, on_failure, on_error) {
     var connection_type, stream_id = Math.random() * 1000000000000000000 + '';
     var stream_description = {};
 
@@ -96,7 +96,7 @@ var Client = function(clientId, inRoom, queryInterval, portal, on_loss) {
       stream_description.transport = options.transport;
       stream_description.bufferSize = options.buffer_size;
     } else {
-      return on_error('stream type error.');
+      return on_failure('stream type error.');
     }
 
     stream_description.audio = (options.audio === undefined ? true : !!options.audio);
@@ -106,10 +106,11 @@ var Client = function(clientId, inRoom, queryInterval, portal, on_loss) {
     stream_description.video && (typeof stream_description.video.device !== 'string' || stream_description.video.device === '') && (stream_description.video.device = 'unknown');
     var unmix = (options.unmix === true || (stream_description.video && (stream_description.video.device === 'screen'))) ? true : false;
 
+    var once_ok = false;
     return portal.publish(clientId, stream_id, connection_type, stream_description, function(status) {
       if (status.type === 'failed') {
         published[stream_id] && (delete published[stream_id]);
-        on_error(status.reason);
+        once_ok ? on_error(status.reason) : on_failure(status.reason);
       } else {
         published[stream_id] === undefined && (published[stream_id] = []);
         published[stream_id].push(status);
@@ -118,15 +119,16 @@ var Client = function(clientId, inRoom, queryInterval, portal, on_loss) {
       log.debug('portal.publish succeeded, connection locality:', connectionLocality);
       published[stream_id] === undefined && (published[stream_id] = []);
       on_ok(stream_id);
+      once_ok = true;
     }).catch(function(err) {
       var err_message = (typeof err === 'string' ? err: err.message);
       log.info('portal.publish failed:', err_message);
       published[stream_id] && (delete published[stream_id]);
-      on_error(err_message);
+      on_failure(err_message);
     });
   };
 
-  that.unpublish = function(streamId, on_ok, on_error) {
+  that.unpublish = function(streamId, on_ok, on_failure) {
     return portal.unpublish(clientId, streamId)
     .then(function() {
       delete published[streamId];
@@ -135,11 +137,11 @@ var Client = function(clientId, inRoom, queryInterval, portal, on_loss) {
       var err_message = (typeof err === 'string' ? err: err.message);
       log.info('portal.unpublish failed:', err_message);
       delete published[streamId];
-      on_error(err_message);
+      on_failure(err_message);
     });
   };
 
-  that.subscribe = function(type, options, on_ok, on_error) {
+  that.subscribe = function(type, options, on_ok, on_failure, on_error) {
     var connection_type, subscription_id;
     var subscription_description = {};
 
@@ -149,16 +151,16 @@ var Client = function(clientId, inRoom, queryInterval, portal, on_loss) {
       connection_type = 'avstream';
 
       if (typeof options.url !== 'string' || options.url === '') {
-        return on_error('Invalid RTSP/RTMP server url');
+        return on_failure('Invalid RTSP/RTMP server url');
       }
 
       var parsed_url = url.parse(options.url);
       if ((parsed_url.protocol !== 'rtsp:' && parsed_url.protocol !== 'rtmp:' && parsed_url.protocol !== 'http:') || !parsed_url.slashes || !parsed_url.host) {
-        return on_error('Invalid RTSP/RTMP server url');
+        return on_failure('Invalid RTSP/RTMP server url');
       }
       subscription_description.url = parsed_url.format();
     } else {
-      return on_error('subscription type error.');
+      return on_failure('subscription type error.');
     }
 
     if (options.audio === undefined || options.audio === true) {
@@ -170,7 +172,7 @@ var Client = function(clientId, inRoom, queryInterval, portal, on_loss) {
       } else if (typeof options.audio.from === 'string' && options.audio.from !== '') {
         subscription_description.audio.fromStream = options.audio.from;
       } else {
-        return on_error('Bad request: options.audio.from');
+        return on_failure('Bad request: options.audio.from');
       }
 
       if (options.audio.codecs === undefined) {
@@ -178,10 +180,10 @@ var Client = function(clientId, inRoom, queryInterval, portal, on_loss) {
       } else if ((options.audio.codecs instanceof Array) && options.audio.codecs.length > 0) {
         subscription_description.audio.codecs = options.audio.codecs;
       } else {
-        return on_error('Bad request: options.audio.codecs');
+        return on_failure('Bad request: options.audio.codecs');
       }
     } else {
-      return on_error('Bad request: options.audio');
+      return on_failure('Bad request: options.audio');
     }
 
     if (options.video === undefined || options.video === true) {
@@ -193,7 +195,7 @@ var Client = function(clientId, inRoom, queryInterval, portal, on_loss) {
       } else if (typeof options.video.from === 'string' && options.video.from !== '') {
         subscription_description.video.fromStream = options.video.from;
       } else {
-        return on_error('Bad request: options.video.from');
+        return on_failure('Bad request: options.video.from');
       }
 
       if (options.video.codecs === undefined) {
@@ -201,7 +203,7 @@ var Client = function(clientId, inRoom, queryInterval, portal, on_loss) {
       } else if ((options.video.codecs instanceof Array) && options.video.codecs.length > 0) {
         subscription_description.video.codecs = options.video.codecs;
       } else {
-        return on_error('Bad request: options.video.codecs');
+        return on_failure('Bad request: options.video.codecs');
       }
 
       if (options.video.resolution === undefined) {
@@ -209,18 +211,19 @@ var Client = function(clientId, inRoom, queryInterval, portal, on_loss) {
       } else if ((typeof options.video.resolution.width === 'number') && (typeof options.video.resolution.height === 'number')) {
         subscription_description.video.resolution = widthHeight2Resolution(options.video.resolution.width, options.video.resolution.height);
       } else {
-        return on_error('Bad request: options.video.resolution');
+        return on_failure('Bad request: options.video.resolution');
       }
     } else {
-      return on_error('Bad request: options.audio');
+      return on_failure('Bad request: options.audio');
     }
 
     var subscription_id = Math.random() * 1000000000000000000 + '';
 
+    var once_ok = false;
     return portal.subscribe(clientId, subscription_id, connection_type, subscription_description, function(status) {
       if (status.type === 'failed') {
         subscribed[subscription_id] && (delete subscribed[subscription_id]);
-        on_error(status.reason);
+        once_ok ? on_error(status.reason) : on_failure(status.reason);
       } else {
         subscribed[subscription_id] === undefined && (subscribed[subscription_id] = []);
         subscribed[subscription_id].push(status);
@@ -229,15 +232,16 @@ var Client = function(clientId, inRoom, queryInterval, portal, on_loss) {
       log.debug('portal.subscribe succeeded, connection locality:', connectionLocality);
       subscribed[subscription_id] === undefined && (subscribed[subscription_id] = []);
       on_ok(subscription_id);
+      once_ok = true;
     }).catch(function(err) {
       var err_message = (typeof err === 'string' ? err: err.message);
       log.info('portal.subscribe failed:', err_message);
       subscribed[subscription_id] && (delete subscribed[subscription_id]);
-      on_error(err_message);
+      on_failure(err_message);
     });
   };
 
-  that.unsubscribe = function(subscriptionId, on_ok, on_error) {
+  that.unsubscribe = function(subscriptionId, on_ok, on_failure) {
     return portal.unsubscribe(clientId, subscriptionId)
     .then(function() {
       delete subscribed[subscriptionId];
@@ -246,7 +250,7 @@ var Client = function(clientId, inRoom, queryInterval, portal, on_loss) {
       var err_message = (typeof err === 'string' ? err: err.message);
       log.info('portal.unsubscribe failed:', err_message);
       delete subscribed[subscriptionId];
-      on_error(err_message);
+      on_failure(err_message);
     });
   };
 
@@ -328,6 +332,8 @@ var RestServer = function(spec, portal) {
     }, function(reason) {
       log.debug('publish failed:', reason);
       res.status(404).send({reason: reason});
+    }, function(reason) {
+      log.debug('publish error:', reason);
     });
   };
 
@@ -349,6 +355,8 @@ var RestServer = function(spec, portal) {
     }, function(reason) {
       log.debug('subscribe failed:', reason);
       res.status(404).send({reason: reason});
+    }, function(reason) {
+      log.debug('subscribe error:', reason);
     });
   };
 

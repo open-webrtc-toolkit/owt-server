@@ -328,6 +328,57 @@ describe('Responding to http requests.', function() {
           });
         });
     });
+
+    it('Successully published streams should be removed if the connection raises an error.', function(done) {
+      mockPortal.publish = sinon.stub();
+      mockPortal.publish.resolves({agent: 'agentId', node: 'nodeId'});
+
+      return joinFirstly()
+        .then(function(clientId) {
+          expect(clientId).to.be.a('string');
+
+          simulateStubResponse(mockPortal.publish, 0, 4, {type: 'ready', audio_codecs: ['pcmu'], video_codecs: ['h264']});
+          var options = {uri: 'http://localhost:3002/pub/' + clientId,
+                         method: 'POST',
+                         json: {type: 'url',
+                                options: {url: 'urlOfRtspOrRtmpSource', transport: 'tcp', buffer_size: 2048}}};
+          request(options, function(error, response, body) {
+            expect(error).to.equal(null);
+            expect(response.statusCode).to.equal(200);
+            expect(body.id).to.be.a('string');
+
+            var options = {uri: 'http://localhost:3002/clients/' + clientId,
+                           method: 'GET',
+                           json: true};
+
+            var stream_id = body.id;
+
+            setTimeout(function() {
+            request(options, function(error, response, body) {
+              expect(error).to.equal(null);
+              expect(response.statusCode).to.equal(200);
+
+              request(options, function(error, response, body) {
+                expect(error).to.equal(null);
+                expect(response.statusCode).to.equal(200);
+                expect(body.published[stream_id]).to.deep.equal([]);
+
+                simulateStubResponse(mockPortal.publish, 0, 4, {type: 'failed', reason: 'Exception occured on the connection'});
+                setTimeout(function() {
+                  request(options, function(error, response, body) {
+                    expect(error).to.equal(null);
+                    expect(response.statusCode).to.equal(200);
+                    expect(body.published[stream_id]).to.equal(undefined); //The stream should have been removed.
+                    done();
+                  });
+                }, 20);
+              });
+            });
+            }, 20);
+          });
+        });
+    });
+
   });
 
   describe('Unpublishing streams.', function() {
@@ -492,6 +543,58 @@ describe('Responding to http requests.', function() {
             expect(response.statusCode).to.equal(404);
             expect(body).to.deep.equal({reason: 'whatever reason'});
             done();
+          });
+        });
+    });
+
+    it('Successful subscription should be removed if the connection raises an error.', function(done) {
+      var subscribed_stream = testRoom;
+      mockPortal.subscribe = sinon.stub();
+      mockPortal.subscribe.resolves({agent: 'agentId', node: 'nodeId'});
+
+      return joinFirstly()
+        .then(function(clientId) {
+          expect(clientId).to.be.a('string');
+
+          simulateStubResponse(mockPortal.subscribe, 0, 4, {type: 'ready', audio_codecs: ['pcm_raw'], video_codecs: ['h264']});
+          var options = {uri: 'http://localhost:3002/sub/' + clientId,
+                         method: 'POST',
+                         json: {type: 'url',
+                                options: {url: 'rtmp://url-of-rtsp-or-rtmp-destination',
+                                          audio: {from: subscribed_stream, codecs: ['aac']},
+                                          video: {from: subscribed_stream, codecs: ['h264'], resolution: {width: 640, height: 480}}}}};
+          request(options, function(error, response, body) {
+            expect(error).to.equal(null);
+            expect(response.statusCode).to.equal(200);
+
+            var options = {uri: 'http://localhost:3002/clients/' + clientId,
+                           method: 'GET',
+                           json: true};
+            var subscription_id = body.id;
+
+            setTimeout(function() {
+            request(options, function(error, response, body) {
+              expect(error).to.equal(null);
+              expect(response.statusCode).to.equal(200);
+              expect(body.subscribed[subscription_id]).to.deep.equal([{type: 'ready', audio_codecs: ['pcm_raw'], video_codecs: ['h264']}]);
+
+              request(options, function(error, response, body) {
+                expect(error).to.equal(null);
+                expect(response.statusCode).to.equal(200);
+                expect(body.subscribed[subscription_id]).to.deep.equal([]);
+
+                simulateStubResponse(mockPortal.subscribe, 0, 4, {type: 'failed', reason: 'exception occured on the connection'});
+                setTimeout(function() {
+                  request(options, function(error, response, body) {
+                    expect(error).to.equal(null);
+                    expect(response.statusCode).to.equal(200);
+                    expect(body.subscribed[subscription_id]).to.equal(undefined); //The subscription should have been removed.
+                    done();
+                  });
+                }, 20);
+              });
+            });
+            }, 20);
           });
         });
     });
