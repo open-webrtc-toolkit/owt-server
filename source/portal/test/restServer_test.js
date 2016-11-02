@@ -271,7 +271,7 @@ describe('Responding to http requests.', function() {
           var options = {uri: 'http://localhost:3002/pub/' + clientId,
                          method: 'POST',
                          json: {type: 'url',
-                                options: {url: 'urlOfRtspOrRtmpSource', transport: 'tcp', buffer_size: 2048}}};
+                                options: {url: 'urlOfRtspOrRtmpSource', transport: 'tcp', bufferSize: 2048}}};
           request(options, function(error, response, body) {
             expect(error).to.equal(null);
             expect(response.statusCode).to.equal(200);
@@ -319,7 +319,7 @@ describe('Responding to http requests.', function() {
           var options = {uri: 'http://localhost:3002/pub/' + clientId,
                          method: 'POST',
                          json: {type: 'url',
-                                options: {url: 'urlOfRtspOrRtmpSource', transport: 'tcp', buffer_size: 2048}}};
+                                options: {url: 'urlOfRtspOrRtmpSource', transport: 'tcp', bufferSize: 2048}}};
           request(options, function(error, response, body) {
             expect(error).to.equal(null);
             expect(response.statusCode).to.equal(404);
@@ -341,7 +341,7 @@ describe('Responding to http requests.', function() {
           var options = {uri: 'http://localhost:3002/pub/' + clientId,
                          method: 'POST',
                          json: {type: 'url',
-                                options: {url: 'urlOfRtspOrRtmpSource', transport: 'tcp', buffer_size: 2048}}};
+                                options: {url: 'urlOfRtspOrRtmpSource', transport: 'tcp', bufferSize: 2048}}};
           request(options, function(error, response, body) {
             expect(error).to.equal(null);
             expect(response.statusCode).to.equal(200);
@@ -407,7 +407,7 @@ describe('Responding to http requests.', function() {
           var options = {uri: 'http://localhost:3002/pub/' + clientId,
                          method: 'POST',
                          json: {type: 'url',
-                                options: {url: 'urlOfRtspOrRtmpSource', transport: 'tcp', buffer_size: 2048}}};
+                                options: {url: 'urlOfRtspOrRtmpSource', transport: 'tcp', bufferSize: 2048}}};
           request(options, function(error, response, body) {
             expect(error).to.equal(null);
             expect(response.statusCode).to.equal(200);
@@ -437,7 +437,7 @@ describe('Responding to http requests.', function() {
           var options = {uri: 'http://localhost:3002/pub/' + clientId,
                          method: 'POST',
                          json: {type: 'url',
-                                options: {url: 'urlOfRtspOrRtmpSource', transport: 'tcp', buffer_size: 2048}}};
+                                options: {url: 'urlOfRtspOrRtmpSource', transport: 'tcp', bufferSize: 2048}}};
           request(options, function(error, response, body) {
             expect(error).to.equal(null);
             expect(response.statusCode).to.equal(200);
