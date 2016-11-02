@@ -7,7 +7,7 @@ var SipCallConnection = require('./sipCallConnection').SipCallConnection;
 var InternalIn = woogeenInternalIO.In;
 var InternalOut = woogeenInternalIO.Out;
 var logger = require('./logger').logger;
-var amqper = require('./amqper');
+var amqper;
 var path = require('path');
 var makeRPC = require('./makeRPC').makeRPC;
 
@@ -163,7 +163,9 @@ var getSessionControllerForRoom = function (roomId, on_ok, on_error) {
     tryFetchingSessionController(25);
 };
 
-module.exports = function (spec) {
+module.exports = function (rpcClient, spec) {
+    amqper = rpcClient;
+
     var that = {},
         erizo = {id:spec.id, addr:spec.addr},
         room_id,

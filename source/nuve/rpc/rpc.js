@@ -16,14 +16,14 @@ exports.connect = function (addr) {
         log.info('Conected to rabbitMQ server');
 
         //Create a direct exchange
-        exc = connection.exchange('rpcExchange', {type: 'direct'}, function (exchange) {
+        exc = connection.exchange('woogeenRpc', {type: 'direct'}, function (exchange) {
             log.info('Exchange ' + exchange.name + ' is open');
 
             //Create the queue for receive messages
             var q = connection.queue('nuveQueue', function (queue) {
                 log.info('Queue ' + queue.name + ' is open');
 
-                q.bind('rpcExchange', 'nuve');
+                q.bind('woogeenRpc', 'nuve');
                 q.subscribe(function (message) {
                     rpcPublic[message.method](message.args, function (type, result) {
                         exc.publish(message.replyTo, {data: result, corrID: message.corrID, type: type});
@@ -34,7 +34,7 @@ exports.connect = function (addr) {
             //Create the queue for send messages
             clientQueue = connection.queue('', function (q) {
                 log.info('ClientQueue ' + q.name + ' is open');
-                clientQueue.bind('rpcExchange', clientQueue.name);
+                clientQueue.bind('woogeenRpc', clientQueue.name);
                 clientQueue.subscribe(function (message) {
                     if (map[message.corrID] !== undefined) {
                         map[message.corrID].fn[message.type](message.data);

@@ -3,7 +3,7 @@
 
 var fs = require('fs');
 var toml = require('toml');
-var amqper = require('./amqper');
+var amqper = require('./amqp_client')();
 var makeRPC = require('./makeRPC').makeRPC;
 var log = require('./logger').logger.getLogger('SipPortal');
 var sipErizoHelper = require('./sipErizoHelper');
@@ -111,11 +111,21 @@ function deleteSipConnectivity(room_id) {
 
 function startup () {
     amqper.connect(config.rabbit, function () {
-        amqper.bind('sip-portal', function () {
-            log.info('sip-portal up!');
-            amqper.setPublicRPC(api);
-            initSipRooms();
+        amqper.asRpcClient(function() {
+            amqper.asRpcServer('sip-portal', api, function() {
+                log.info('sip-portal up!');
+                initSipRooms();
+            }, function(reason) {
+                log.error('initializing sip-portal as rpc server failed, reason:', reason);
+                process.exit();
+            });
+        }, function(reason) {
+            log.error('initializing sip-portal as rpc server failed, reason:', reason);
+            process.exit();
         });
+    }, function(reason) {
+        log.error('Sip-portal connect to rabbitMQ server failed, reason:', reason);
+        process.exit();
     });
 }
 

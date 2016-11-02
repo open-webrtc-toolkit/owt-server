@@ -17,6 +17,6 @@
     "RestServer": "INFO",
     "Portal": "INFO",
     "RpcClient": "INFO",
-    "AMQPER": "INFO"
+    "AmqpClient": "INFO"
   }
 }

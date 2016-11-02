@@ -9,7 +9,6 @@ var avstream = require('./avstream/build/Release/avstream');
 var AVStreamIn = avstream.AVStreamIn;
 var AVStreamOut = avstream.AVStreamOut;
 var logger = require('./logger').logger;
-var amqper = require('./amqper');
 var path = require('path');
 var Connections = require('./connections');
 

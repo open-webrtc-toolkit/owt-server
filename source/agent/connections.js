@@ -2,7 +2,6 @@
 'use strict';
 
 var logger = require('./logger').logger;
-var amqper = require('./amqper');
 var path = require('path');
 
 // Logger

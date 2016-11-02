@@ -1,7 +1,6 @@
 /*global require, module, GLOBAL, process*/
 'use strict';
 
-var amqper = require('./amqper');
 var logger = require('./logger').logger;
 
 var ST = require('./Stream');
@@ -11,7 +10,7 @@ var sessionController = require('./controller');
 var log = logger.getLogger('Session');
 
 
-module.exports = function (amqper, selfRpcId) {
+module.exports = function (rpc, selfRpcId) {
   var that = {},
       session_id,
       controller,
@@ -33,7 +32,7 @@ module.exports = function (amqper, selfRpcId) {
    */
   var participants = {};
 
-  var rpcChannel = require('./rpcChannel')(amqper),
+  var rpcChannel = require('./rpcChannel')(rpc),
       rpcClient = require('./rpcClient')(rpcChannel);
 
   var initSession = function(sessionId) {
@@ -62,7 +61,7 @@ module.exports = function (amqper, selfRpcId) {
               controller = sessionController(
                 {cluster: GLOBAL.config.cluster.name || 'woogeen-cluster',
                  rpcClient: rpcClient,
-                 amqper: amqper,
+                 amqper: rpc,
                  room: session_id,
                  config: room_config,
                  observer: selfRpcId

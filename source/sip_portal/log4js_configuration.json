@@ -10,7 +10,7 @@
     }
   ],
   "levels": {
-    "AMQPER": "ERROR",
+    "AmqpClient": "INFO",
     "SipPortal": "INFO",
     "SipErizoHelper": "INFO"
   }
