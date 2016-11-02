@@ -6,7 +6,6 @@ var InternalIn = internalIO.In;
 var InternalOut = internalIO.Out;
 var MediaFrameMulticaster = require('./mediaFrameMulticaster/build/Release/mediaFrameMulticaster');
 
-var amqper = require('./amqper');
 var logger = require('./logger').logger;
 
 // Logger
@@ -38,7 +37,7 @@ function calculateResolutions(rootResolution, useMultistreaming) {
     });
 }
 
-module.exports = function () {
+module.exports = function (rpcClient) {
     var that = {},
         engine,
         session_id,
@@ -164,7 +163,7 @@ module.exports = function () {
     var notifyLayoutChange = function () {
         if (observer) {
             var regions = getSortedRegions();
-            amqper.callRpc(
+            rpcClient.callRpc(
                 observer,
                 'onVideoLayoutChange',
                 [session_id, regions]);

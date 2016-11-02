@@ -35,7 +35,7 @@ config.rabbit.host = config.rabbit.host || 'localhost';
 config.rabbit.port = config.rabbit.port || 5672;
 
 
-var amqper = require('./amqper');
+var amqper = require('./amqp_client')();
 var socketio_server;
 var rest_server;
 var worker;
@@ -191,25 +191,32 @@ var rpcPublic = {
 };
 
 amqper.connect(config.rabbit, function () {
-  try {
-    amqper.setPublicRPC(rpcPublic);
+  amqper.asRpcClient(function() {
+    log.info('portal initializing as rpc client ok');
     joinCluster(function(id) {
       log.info('portal join cluster ok, with rpcID:', id);
-      amqper.bind(id, function() {
-        log.info('bind amqp client ok.');
-        getTokenKey(id, function(tokenKey) {
-          startServers(id, tokenKey);
-        }, function() {
-          worker && worker.quit();
-          return process.exit();
-        });
+        amqper.asRpcServer(id, rpcPublic, function() {
+          log.info('portal initializing as rpc server ok');
+          getTokenKey(id, function(tokenKey) {
+            startServers(id, tokenKey);
+          }, function() {
+            worker && worker.quit();
+            return process.exit();
+          });
+      }, function(reason) {
+        log.error('portal initializing as rpc client failed, reason:', reason);
+        stopServers();
+        process.exit();
       });
     });
-  } catch (error) {
-    log.error('Error in Erizo portal:', error);
+  }, function(reason) {
+    log.error('portal initializing as rpc client failed, reason:', reason);
     stopServers();
     process.exit();
-  }
+  });
+}, function(reason) {
+    log.error('portal connect to rabbitMQ server failed, reason:', reason);
+    process.exit();
 });
 
 ['SIGINT', 'SIGTERM'].map(function (sig) {

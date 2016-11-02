@@ -47,8 +47,7 @@ module.exports = function (spec) {
 
     var reportLoad = function (load) {
         if (state === 'registered') {
-            makeRPC(
-                amqper,
+            amqper.remoteCast(
                 cluster_name,
                 'reportLoad',
                 [id, load]);
@@ -121,6 +120,7 @@ module.exports = function (spec) {
             }, recovery_period);
         };
 
+        var loss_count = 0;
         keep_alive_interval = setInterval(function () {
             makeRPC(
                 amqper,
@@ -128,36 +128,37 @@ module.exports = function (spec) {
                 'keepAlive',
                 [id],
                 function (result) {
+                    loss_count = 0;
                     if (result === 'whoareyou') {
                         log.info('Unknown by cluster manager.');
                         (state !== 'recovering') && tryRecovery();
                     }
                 }, function (error_reason) {
-                    log.info('keep alive error:', error_reason);
-                    (state !== 'recovering') && tryRecovery();
+                    loss_count += 1;
+                    if (loss_count > 3) {
+                        log.info('keep alive error:', error_reason);
+                        (state !== 'recovering') && tryRecovery();
+                    }
                 });
         }, keep_alive_period);
     };
 
     var pickUpTasks = function (taskList) {
-        makeRPC(
-            amqper,
+        amqper.remoteCast(
             cluster_name,
             'pickUpTasks',
             [id, taskList]);
     };
 
     var layDownTask = function (task) {
-        makeRPC(
-            amqper,
+        amqper.remoteCast(
             cluster_name,
             'layDownTask',
             [id, task]);
     };
 
     var doRejectTask = function (task) {
-        makeRPC(
-            amqper,
+        amqper.remoteCast(
             cluster_name,
             'unschedule',
             [id, task]);
@@ -170,8 +171,7 @@ module.exports = function (spec) {
                 keep_alive_interval = undefined;
             }
 
-            makeRPC(
-                amqper,
+            amqper.remoteCast(
                 cluster_name,
                 'quit',
                 [id]);
@@ -184,8 +184,7 @@ module.exports = function (spec) {
 
     that.reportState = function (st) {
         if (state === 'registered') {
-            makeRPC(
-                amqper,
+            amqper.remoteCast(
                 cluster_name,
                 'reportState',
                 [id, st]);

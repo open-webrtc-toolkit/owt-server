@@ -12,7 +12,7 @@
   "levels": {
     "ClusterWorker": "INFO",
     "LoadCollector": "INFO",
-    "AMQPER": "INFO",
+    "AmqpClient": "INFO",
     "ErizoJS": "INFO",
     "Session": "INFO",
     "Controller": "INFO",

@@ -1,7 +1,7 @@
 /*global require, process*/
 'use strict';
 
-var amqper = require('./amqper');
+var amqper = require('./amqp_client')();
 var log = require('./logger').logger.getLogger('Main');
 var ClusterManager = require('./clusterManager');
 var toml = require('toml');
@@ -51,14 +51,19 @@ function startup () {
                     videoStrategy: config.strategy.video
                    };
         var api = new ClusterManager.API(spec);
-        amqper.setPublicRPC(api);
+        amqper.asRpcServer(config.manager.name || 'woogeen-cluster', api, function() {
+            log.info('Cluster manager up!');
+        }, function(reason) {
+            log.error('Cluster manager initializing failed, reason:', reason);
+            process.exit();
+        });
     };
 
     amqper.connect(config.rabbit, function () {
-        amqper.bind(config.manager.name || 'woogeen-cluster', function () {
-            log.info('clusterManager up!');
-            enableService();
-        });
+        enableService();
+    }, function(reason) {
+        log.error('Cluster manager connect to rabbitMQ server failed, reason:', reason);
+        process.exit();
     });
 }
 

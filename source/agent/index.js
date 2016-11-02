@@ -98,7 +98,7 @@ for (var prop in opt.options) {
 }
 
 var clusterWorker = require('./clusterWorker');
-var rpc = require('./amqper');
+var rpc = require('./amqp_client')();
 
 var idle_erizos = [];
 var erizos = [];
@@ -455,13 +455,23 @@ var joinCluster = function (on_ok) {
 
 rpc.connect(GLOBAL.config.rabbit, function () {
     log.info('Adding agent to cloudhandler, purpose:', myPurpose);
-    var worker = joinCluster(function (rpcID) {
-        rpc.bind(rpcID, function () {
-            log.info('rpcID:', rpcID);
-            rpc.setPublicRPC(api(worker));
+    rpc.asRpcClient(function() {
+        var worker = joinCluster(function (rpcID) {
+            rpc.asRpcServer(rpcID, api(worker), function() {
+                log.info();
+            }, function(reason) {
+                log.error(rpcID + ' as rpc server failed, reason:', reason);
+                process.exit();
+            });
+            fillErizos();
         });
-        fillErizos();
+    }, function(reason) {
+        log.error('Agent as rpc client failed, reason:', reason);
+        process.exit();
     });
+}, function(reason) {
+    log.error('Agent connect to rabbitMQ server failed, reason:', reason);
+    process.exit();
 });
 
 ['SIGINT', 'SIGTERM'].map(function (sig) {

@@ -8,12 +8,11 @@ var MediaFrameMulticaster = require('./mediaFrameMulticaster/build/Release/media
 var AudioMixer = require('./audioMixer/build/Release/audioMixer');
 
 var logger = require('./logger').logger;
-var amqper = require('./amqper');
 
 // Logger
 var log = logger.getLogger('AudioNode');
 
-module.exports = function () {
+module.exports = function (rpcClient) {
     var that = {},
         engine,
         observer,
@@ -224,7 +223,7 @@ module.exports = function () {
     that.enableVAD = function (periodMS, roomId, observer) {
         engine.enableVAD(periodMS, function (activeParticipant) {
             log.debug('enableVAD, activeParticipant:', activeParticipant);
-            amqper.callRpc(observer, 'onAudioActiveParticipant', [roomId, activeParticipant], {callback: function(){}});
+            rpcClient.callRpc(observer, 'onAudioActiveParticipant', [roomId, activeParticipant], {callback: function(){}});
         });
     };
 

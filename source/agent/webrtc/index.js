@@ -3,7 +3,6 @@
 
 var WrtcConnection = require('./wrtcConnection');
 var logger = require('./logger').logger;
-var amqper = require('./amqper');
 var path = require('path');
 var Connections = require('./connections');
 

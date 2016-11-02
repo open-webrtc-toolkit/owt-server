@@ -10,7 +10,7 @@
     }
   ],
   "levels": {
-    "AMQPER": "ERROR",
+    "AmqpClient": "INFO",
     "Main": "DEBUG",
     "ClusterManager": "INFO",
     "Scheduler": "INFO",
