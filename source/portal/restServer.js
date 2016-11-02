@@ -94,7 +94,7 @@ var Client = function(clientId, inRoom, queryInterval, portal, on_loss) {
       connection_type = 'avstream';
       stream_description.url = options.url;
       stream_description.transport = options.transport;
-      stream_description.bufferSize = options.buffer_size;
+      stream_description.bufferSize = options.bufferSize;
     } else {
       return on_failure('stream type error.');
     }
