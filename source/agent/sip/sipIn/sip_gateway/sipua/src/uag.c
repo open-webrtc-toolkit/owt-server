@@ -170,12 +170,15 @@ static void sipsess_conn_handler(const struct sip_msg *msg, void *arg)
 	}
 
 	/* handle multiple calls */
+	/* remove max calls limits here */
+	/*
 	if (list_count(&ua->calls) + 1 > MAX_CALLS) {
 		info("ua: rejected call from %r (maximum %d calls)\n",
 		     &msg->from.auri, MAX_CALLS);
 		(void)sip_treply(NULL, uag->sip, msg, 486, "Busy Here");
 		return;
 	}
+	*/
 
 	/* Handle Require: header, check for any required extensions */
 	hdr = sip_msg_hdr_apply(msg, true, SIP_HDR_REQUIRE,
