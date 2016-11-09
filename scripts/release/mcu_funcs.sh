@@ -154,6 +154,7 @@ pack_nuve() {
 
 pack_scripts() {
   mkdir -p ${WOOGEEN_DIST}/bin/
+  cp -av ${ROOT}/scripts/detectOS.sh ${WOOGEEN_DIST}/bin/detectOS.sh
   cp -av ${this}/init-all.sh ${WOOGEEN_DIST}/bin/init-all.sh
   cp -av ${this}/init-rabbitmq.sh ${WOOGEEN_DIST}/bin/init-rabbitmq.sh
   cp -av ${this}/init-mongodb.sh ${WOOGEEN_DIST}/bin/init-mongodb.sh
