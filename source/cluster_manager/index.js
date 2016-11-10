@@ -26,6 +26,7 @@ config.strategy.general = config.strategy.general || 'round-robin';
 config.strategy.portal = config.strategy.portal || 'last-used';
 config.strategy.session = config.strategy.session || 'last-used';
 config.strategy.webrtc = config.strategy.webrtc || 'last-used';
+config.strategy.sip = config.strategy.sip || 'round-robin';
 config.strategy.avstream = config.strategy.avstream || 'round-robin';
 config.strategy.recording = config.strategy.recording || 'randomly-pick';
 config.strategy.audio = config.strategy.audio || 'most-used';
@@ -37,6 +38,7 @@ config.rabbit.port = config.rabbit.port || 5672;
 
 function startup () {
     var enableService = function () {
+        var id = Math.floor(Math.random() * 1000000000);
         var spec = {initialTime: config.manager.initial_time,
                     checkAlivePeriod: config.manager.check_alive_interval,
                     checkAliveCount: config.manager.check_alive_count,
@@ -45,14 +47,16 @@ function startup () {
                     portalStrategy: config.strategy.portal,
                     sessionStrategy: config.strategy.session,
                     webrtcStrategy: config.strategy.webrtc,
+                    sipStrategy: config.strategy.sip,
                     avstreamStrategy: config.strategy.avstream,
                     recordingStrategy: config.strategy.recording,
                     audioStrategy: config.strategy.audio,
                     videoStrategy: config.strategy.video
                    };
-        var api = new ClusterManager.API(spec);
-        amqper.asRpcServer(config.manager.name || 'woogeen-cluster', api, function() {
-            log.info('Cluster manager up!');
+
+        amqper.asTopicParticipant('woogeen-cluster-management', function(channel) {
+            log.info('Cluster manager up! id:', id);
+            ClusterManager.run(channel, config.manager.name || 'woogeen-cluster', id, spec);
         }, function(reason) {
             log.error('Cluster manager initializing failed, reason:', reason);
             process.exit();

@@ -48,13 +48,10 @@ text = false
 name = "woogeen-cluster"
 
 #The number of times to retry joining if the first try fails.
-join_retry = 5 #default: 5
-
-#The interval of retrying recovering the connection to the cluster.
-recover_interval = 1000 #default: 1000, unit: millisecond
+join_retry = 60 #default: 60
 
 #The interval of sending keepAlive messages.
-keep_alive_interval = 1000 #default: 1000, unit: millisecond
+keep_alive_interval = 800 #default: 800, unit: millisecond
 
 #The interval of reporting the work load
 report_load_interval = 1000 #default: 1000, unit: millisecond
