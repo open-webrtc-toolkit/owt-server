@@ -9,6 +9,10 @@ rest_port = 8081 #default: 8081
 ssl = true #default: true
 #The network inferface the socket.io will be bound to in case portal.ip_address (the 'ip_address' item above) is not specified or equal to "".
 # networkInterface = "eth1"
+# Life time for reconnection ticket. Unit: second.
+reconnection_ticket_lifetime = 600 #default: 600
+# Client will leave conference if it cannot reconnect to Socket.IO server after |reconnection_timeout| seconds.
+reconnection_timeout = 120 #default: 120
 
 #Roles defined in services
 # NOTE: Each of the roles is defined in a tree-level structure and must comply with the following rules:
