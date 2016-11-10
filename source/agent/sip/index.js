@@ -85,50 +85,52 @@ function do_query(session_ctl, user, room, ok, err) {
         });
 }
 
-function do_publish(session_ctl, user, stream_id, accessNode, stream_info, ok, err) {
-    makeRPC(
-        rpcClient,
-        session_ctl,
-        'publish',
-        [user, stream_id, accessNode, stream_info, false], function() {
-            safeCall(ok);
-        }, function(reason) {
-            safeCall(err, reason);
-        });
+function do_publish(session_ctl, user, stream_id, accessNode, stream_info) {
+    return new Promise(function(resolve, reject) {
+        makeRPC(
+            rpcClient,
+            session_ctl,
+            'publish',
+            [user, stream_id, accessNode, stream_info, false],
+            resolve,
+            reject);
+    });
 }
 
-function do_subscribe(session_ctl, user, subscription_id, accessNode, subInfo, ok, err) {
-    makeRPC(
-        rpcClient,
-        session_ctl,
-        'subscribe',
-        [user, subscription_id, accessNode, subInfo], function() {
-            safeCall(ok);
-        }, function(reason) {
-            safeCall(err, reason);
-        });
+function do_subscribe(session_ctl, user, subscription_id, accessNode, subInfo) {
+    return new Promise(function(resolve, reject) {
+        makeRPC(
+            rpcClient,
+            session_ctl,
+            'subscribe',
+            [user, subscription_id, accessNode, subInfo],
+            resolve,
+            reject);
+    });
 }
 
 function do_unpublish(session_ctl, user, stream_id) {
-    makeRPC(
-        rpcClient,
-        session_ctl,
-        'unpublish',
-        [user, stream_id],
-        function() {
-            log.debug('unpublish ok');
-        });
+    return new Promise(function(resolve, reject) {
+        makeRPC(
+            rpcClient,
+            session_ctl,
+            'unpublish',
+            [user, stream_id],
+            resolve,
+            reject);
+    });
 }
 
 function do_unsubscribe(session_ctl, user, subscription_id) {
-    makeRPC(
-        rpcClient,
-        session_ctl,
-        'unsubscribe',
-        [user, subscription_id],
-        function() {
-            log.debug('unsubscribe ok');
-        });
+    return new Promise(function(resolve, reject) {
+        makeRPC(
+            rpcClient,
+            session_ctl,
+            'unsubscribe',
+            [user, subscription_id],
+            resolve,
+            reject);
+    });
 }
 
 var getSessionControllerForRoom = function (roomId, on_ok, on_error) {
@@ -199,6 +201,9 @@ module.exports = function (rpcC, spec) {
     var setupCall = function (client_id, info) {
         var session_controller = calls[client_id].session_controller;
 
+        var published = Promise.resolve('ok');
+        var subscribed = Promise.resolve('ok');
+
         // publish stream to controller
         var stream_id = generateStreamId();
         var audio_info, video_info;
@@ -217,17 +222,12 @@ module.exports = function (rpcC, spec) {
         //TODO: the streams binding should be done in the success callback.
         streams[stream_id] = {type: 'sip', connection: calls[client_id].conn};
         calls[client_id].stream_id = stream_id;
-        do_publish(calls[client_id].session_controller,
-                   client_id,
-                   stream_id,
-                   {agent:that.agentID, node: erizo.id},
-                   {audio: audio_info, video: video_info},
-                   function() {
-                       // conn.enablePort('in');
-                       log.debug("publish stream OK!");
-                   }, function() {
-                       log.error("publish stream failed!");
-                   });
+        published = do_publish(
+            calls[client_id].session_controller,
+            client_id,
+            stream_id,
+            {agent:that.agentID, node: erizo.id},
+            {audio: audio_info, video: video_info});
 
         // subscribe the mix streams
         if (mixed_stream_id) {
@@ -272,19 +272,23 @@ module.exports = function (rpcC, spec) {
                                         audio: undefined,
                                         video: undefined,
                                         connection: calls[client_id].conn};
-            do_subscribe(calls[client_id].session_controller,
+            subscribed = do_subscribe(calls[client_id].session_controller,
                          client_id,
                          client_id,
                          {agent:that.agentID, node: erizo.id},
-                         subInfo,
-                         function() {
-                            log.info("subscribe stream ok");
-                         }, function(err) {
-                            log.error("subscribe stream failed with  ", err);
-                         });
+                         subInfo);
         } else {
             log.warn("invalid mix stream id");
         }
+
+        return Promise.all([published, subscribed]).then(function(result) {
+            log.debug('setup call ok:', info);
+            if (calls[client_id]) {
+                // keep the current info
+                calls[client_id].currentInfo = info;
+            }
+            return info;
+        });
     };
 
     var teardownCall = function (client_id) {
@@ -343,7 +347,10 @@ module.exports = function (rpcC, spec) {
 
         if (calls[client_id]) {
             calls[client_id].conn = new SipCallConnection({gateway: gateway, clientID: client_id, audio : info.audio, video : info.video});
-            setupCall(client_id, info);
+            setupCall(client_id, info)
+            .catch(function(err) {
+                log.error('Error during call establish:', err);
+            });
         } else {
             log.error("gateway can not handle event with invalid status");
         }
@@ -353,28 +360,69 @@ module.exports = function (rpcC, spec) {
         log.info('CallUpdated:', info, calls);
 
         var client_id = info.peerURI;
-        if(calls[client_id] === undefined || calls[client_id].session_controller === undefined) {
-            log.warn("Too frequent call update request, ignore it");
+        if(calls[client_id] === undefined || calls[client_id].session_controller === undefined || calls[client_id].currentInfo === undefined) {
+            log.warn('Call ' + client_id + ' not established, ignore it');
             return;
         }
-        var session_controller = calls[client_id].session_controller;
-        //TODO: should do_unsubscribe/do_unpublish and then do_subscribe/do_publish instead of do_leave/do_join, to avoid unneccesary room destroy and re-establishment.
-        if (calls[client_id]) {
-            teardownCall(client_id);
-            calls[client_id].conn.close({input: true, output: true});
-            delete calls[client_id];
-        }
-        do_leave(session_controller, client_id);
 
-        do_join(session_controller, client_id, room_id, erizo.id, function(mixedStream) {
-            if(mixedStream !== undefined){
-                mixed_stream_id = mixedStream.id;
-                mixed_stream_resolutions = mixedStream.video.resolutions;
+        if (calls[client_id].updating) {
+            log.warn("Too frequent call update request, process it later");
+            calls[client_id].latestInfo = info;
+            return;
+        }
+
+        // Call info compare function
+        var infoEqual = function(a, b) {
+            var audioEqual = (a.audio === b.audio);
+            if (a.audio && b.audio) {
+                audioEqual = (a.audio_codec === b.audio_codec);
             }
-            calls[client_id] = {session_controller : session_controller};
-            handleCallEstablished(info);
-        }, function (err) {
-            log.error("Handle call update error: ", err);
+            var videoEqual = (a.video === b.video);
+            if (a.video && b.video) {
+                videoEqual = (a.video_codec === b.video_codec && a.videoResolution === b.videoResolution);
+            }
+
+            return (audioEqual && videoEqual);
+        }
+
+        // Ignore duplicate update requests
+        if (infoEqual(calls[client_id].currentInfo, info)) {
+            log.warn('Same as current info:', info, 'ignore it.');
+            return;
+        }
+
+        calls[client_id].updating = true;
+
+        var session_controller = calls[client_id].session_controller;
+        var old_stream_id = calls[client_id].stream_id;
+
+        var unpublished = do_unpublish(session_controller, client_id, old_stream_id);
+        var unsubscribed = do_unsubscribe(session_controller, client_id, client_id);
+
+        Promise.all([unpublished, unsubscribed])
+        .then(function(result) {
+            log.debug('handleCallUpdated unsubscribe/unpublish ok');
+
+            teardownCall(client_id);
+            // recreate a sip call connection
+            calls[client_id].conn.close({input: true, output: true});
+            calls[client_id].conn = new SipCallConnection({gateway: gateway, clientID: client_id, audio : info.audio, video : info.video});
+            return setupCall(client_id, info);
+        })
+        .then(function(result) {
+            log.debug('handleCallUpdated re-setup call ok');
+            calls[client_id].updating = undefined;
+
+            if (calls[client_id].latestInfo) {
+                // Process saved latest update request
+                log.info('Received call update request during updating');
+                var latestInfo = calls[client_id].latestInfo;
+                calls[client_id].latestInfo = undefined;
+
+                handleCallUpdated(latestInfo);
+            }
+        }).catch(function(err) {
+            log.error('Error during call updating:', err);
         });
     };
 
