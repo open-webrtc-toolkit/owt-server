@@ -168,6 +168,36 @@ exports.Scheduler = function(spec) {
         tasks[task] ? on_ok(tasks[task].worker) : on_error('No such a task');
     };
 
+    that.setScheduled = function (task, worker, reserveTime) {
+        tasks[task] = {worker: worker,
+                       reserve_time: time};
+    };
+
+    that.getData = function () {
+        var data = {workers: workers, tasks: {}};
+        for (var task in tasks) {
+            data.tasks[task] = {reserve_time: tasks[task].reserve_time,
+                                worker: tasks[task].worker};
+        }
+        return data;
+    };
+
+    that.setData = function (data) {
+        workers = data.workers;
+        for (var task in data.tasks) {
+            tasks[task] = data.tasks[task];
+        }
+    };
+
+    that.serve = function () {
+        for (var task in tasks) {
+            var worker = tasks[task].worker;
+            if (workers[worker].tasks.indexOf(task) === -1) {
+                reserveWorkerForTask(task, worker, tasks[task].reserve_time);
+            }
+        }
+    };
+
     return that;
 };
 

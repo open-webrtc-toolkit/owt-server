@@ -36,16 +36,20 @@ module.exports = function (spec) {
         purpose = spec.purpose,
         info = spec.info,
         cluster_name = spec.clusterName || 'woogeenCluster',
-        join_retry = spec.joinRetry || 5,
-        recovery_period = spec.recoveryPeriod || 1000/*MS*/,
-        keep_alive_period = spec.keepAlivePeriod || 5000/*MS*/,
+        join_retry = spec.joinRetry || 60,
+        keep_alive_period = spec.keepAlivePeriod || 800/*MS*/,
         keep_alive_interval = undefined,
         on_join_ok = spec.onJoinOK || function () {log.debug('Join cluster successfully.');},
         on_join_failed = spec.onJoinFailed || function (reason) {log.debug('Join cluster failed. reason:', reason);},
         on_loss = spec.onLoss || function () {log.debug('Lost connection with cluster manager');},
         on_recovery = spec.onRecovery || function () {log.debug('Rejoin cluster successfully.');};
 
+    var previous_load = 0;
     var reportLoad = function (load) {
+        if (load == previous_load) {
+            return;
+        }
+        previous_load = load;
         if (state === 'registered') {
             amqper.remoteCast(
                 cluster_name,
@@ -73,22 +77,20 @@ module.exports = function (spec) {
 
     var joinCluster = function (attempt) {
         var countDown = attempt;
-        var error = 'Unknown reason';
 
         var tryJoin = function (countDown) {
-            if (countDown <= 0) {
-                on_join_failed(error);
-                return;
-            }
-
-            log.debug('Try joining cluster:', cluster_name);
+            log.info('Try joining cluster', cluster_name, ', retry count:', attempt - countDown);
             join(function () {
                 on_join_ok(id);
                 log.info('Join cluster', cluster_name, 'OK.');
             }, function (error_reason) {
-                error = error_reason;
-                state === 'unregistered' && log.info('Join cluster', cluster_name, 'failed. try again.');
-                tryJoin(countDown - 1);
+                state === 'unregistered' && log.info('Join cluster', cluster_name, 'failed.');
+                if (countDown <= 0) {
+                    log.error('Join cluster', cluster_name, 'failed. reason:', error_reason);
+                    on_join_failed(error_reason);
+                } else {
+                    tryJoin(countDown - 1);
+                }
             });
         };
 
@@ -98,26 +100,22 @@ module.exports = function (spec) {
     var keepAlive = function () {
         keep_alive_interval && clearInterval(keep_alive_interval);
 
-        var tryRecovery = function () {
+        var tryRecovery = function (on_success) {
             clearInterval(keep_alive_interval);
             keep_alive_interval = undefined;
             state = 'recovering';
 
-            on_loss();
-
-            log.info('Lost connection with cluster', cluster_name, '. Try recovering.');
-            var interval = setInterval(function () {
+            var tryJoining = function () {
                 join(function () {
-                    clearInterval(interval);
                     tasks.length > 0 && pickUpTasks(tasks);
-                    log.info('Rejoin cluster', cluster_name, 'OK.');
-                    on_recovery(id);
+                    on_success();
                 }, function (reason) {
-                    if (state === 'recovering') {
-                        log.debug('Rejoin cluster', cluster_name, 'failed. reason:', reason);
-                    }
+                    log.debug('Rejoin cluster', cluster_name, 'failed. reason:', reason);
+                    tryJoining();
                 });
-            }, recovery_period);
+            };
+
+            tryJoining();
         };
 
         var loss_count = 0;
@@ -130,14 +128,24 @@ module.exports = function (spec) {
                 function (result) {
                     loss_count = 0;
                     if (result === 'whoareyou') {
-                        log.info('Unknown by cluster manager.');
-                        (state !== 'recovering') && tryRecovery();
+                        if (state !== 'recovering') {
+                            log.info('Unknown by cluster manager', cluster_name, '. Try recovering.');
+                            tryRecovery(function () {
+                                log.info('Rejoin cluster', cluster_name, 'OK.');
+                            });
+                        }
                     }
                 }, function (error_reason) {
                     loss_count += 1;
                     if (loss_count > 3) {
-                        log.info('keep alive error:', error_reason);
-                        (state !== 'recovering') && tryRecovery();
+                        if (state !== 'recovering') {
+                            on_loss();
+                            log.info('Lost connection with cluster', cluster_name, '. Try recovering.');
+                            tryRecovery(function () {
+                                log.info('Rejoin cluster', cluster_name, 'OK.');
+                                on_recovery(id);
+                            });
+                        }
                     }
                 });
         }, keep_alive_period);
