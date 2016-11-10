@@ -95,9 +95,8 @@ function safeCall () {
   }
 }
 
-var Client = function(participantId, socket, portal, on_disconnect) {
+var Client = function(participant_id, socket, portal, on_disconnect) {
   var that = {};
-  var participant_id = participantId;
 
   that.listen = function() {
     socket.on('token', function(token, callback) {
