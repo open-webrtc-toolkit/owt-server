@@ -4,6 +4,8 @@
 var path = require('path');
 var url = require('url');
 var log = require('./logger').logger.getLogger('SocketIOServer');
+var crypto = require('crypto');
+var vsprintf = require("sprintf-js").vsprintf;
 
 //FIXME: to keep compatible to previous MCU, should be removed later.
 var resolutionName2Value = {
@@ -95,12 +97,16 @@ function safeCall () {
   }
 }
 
-var Client = function(participant_id, socket, portal, on_disconnect) {
+var Client = function(participant_id, socket, portal, reconnection_spec, on_disconnect) {
   var that = {};
+  // If reconnection is enabled, server will keep session for |reconnectionTimeout| seconds after client is disconnected. Client should send "logout" before leaving.
   let reconnection_enabled = false;
+  let reconnection_ticket_id;
+  let pending_messages = [];  // Messages need to be sent when reconnection is success.
+  let disconnect_timeout;  // Timeout function for disconnection. It will be executed if disconnect timeout reached, will be cleared if other client valid reconnection ticket success.
 
   // client_info has client version and platform.
-  let checkClientAbility = function(ua){
+  const checkClientAbility = function(ua){
     if(!ua||!ua.sdk||!ua.sdk.version||!ua.sdk.type||!ua.runtime||!ua.runtime.version||!ua.runtime.name||!ua.os||!ua.os.version||!ua.os.name){
       return false;
     }
@@ -109,9 +115,54 @@ var Client = function(participant_id, socket, portal, on_disconnect) {
     return true;
   };
 
+  const calculateSignature = function(reconnection_ticket) {
+    const to_sign = vsprintf('%s,%s,%s', [
+      reconnection_ticket.participantId, reconnection_ticket.notBefore,
+      reconnection_ticket.notAfter
+    ]);
+    const signed = crypto.createHmac('sha256', reconnection_spec.reconnectionKey)
+                     .update(to_sign)
+                     .digest('hex');
+    return (new Buffer(signed)).toString('base64');
+  };
+
+  const generateReconnectionTicket = function() {
+    const now = Date.now();
+    const ticket = {
+      participantId: participant_id,
+      ticketId: Math.random().toString(36).substring(2),
+      notBefore: now,
+      // Unit for reconnectionTicketLifetime is second.
+      notAfter: now + reconnection_spec.reconnectionTicketLifetime * 1000
+    };
+    ticket.signature = calculateSignature(ticket);
+    reconnection_ticket_id = ticket.ticketId;
+    return (new Buffer(JSON.stringify(ticket))).toString('base64');
+  };
+
+  const validateReconnectionTicket = function(ticket) {
+    if(!disconnect_timeout||!reconnection_enabled) {
+      return Promise.reject('Reconnection is not allowed.');
+    }
+    if(ticket.participantId!==participant_id){
+      return Promise.reject('Participant ID is not matched.');
+    }
+    let signature = calculateSignature(ticket);
+    if(signature!=ticket.signature){
+      return Promise.reject('Invalid reconnection ticket signature');
+    }
+    const now = Date.now();
+    if(now<ticket.notBefore||now>ticket.notAfter){
+      return Promise.reject('Ticket is expired.');
+    }
+    clearTimeout(disconnect_timeout);
+    disconnect_timeout=undefined;
+    return Promise.resolve();
+  };
+
   that.listen = function() {
     // Join portal. It returns room info.
-    let joinPortal = function(participant_id, token){
+    const joinPortal = function(participant_id, token){
       return portal.join(participant_id, token).then(function(result){
         that.inRoom = result.session_id;
         return {clientId: participant_id,
@@ -124,8 +175,8 @@ var Client = function(participant_id, socket, portal, on_disconnect) {
       });
     };
 
-    var joinPortalFailed = function(err, callback){
-      var err_message = (typeof err === 'string' ? err: err.message);
+    const joinPortalFailed = function(err, callback){
+      const err_message = (typeof err === 'string' ? err: err.message);
       safeCall(callback, 'error', err_message);
       socket.disconnect();
     };
@@ -144,6 +195,9 @@ var Client = function(participant_id, socket, portal, on_disconnect) {
       }).then(function(token){
         return joinPortal(participant_id, token);
       }).then(function(room_info) {
+        if(reconnection_enabled){
+          room_info.reconnectionTicket=generateReconnectionTicket();
+        }
         safeCall(callback, 'success', room_info)
       }).catch(function(error) {
         joinPortalFailed(error, callback)
@@ -157,6 +211,38 @@ var Client = function(participant_id, socket, portal, on_disconnect) {
       }).catch(function(error){
         joinPortalFailed(error, callback);
       });
+    });
+
+    // Login after reconnection.
+    socket.on('relogin', function(reconnection_ticket, callback) {
+      new Promise(function(resolve){
+        resolve(JSON.parse((new Buffer(reconnection_ticket, 'base64')).toString()));
+      }).then(function(ticket){
+        return reconnection_spec.reconnectionCallback(participant_id, ticket);
+      }).then(function(result){
+        // Authentication passed. Restore session.
+        pending_messages=pending_messages.concat(result.pendingStreams);
+        that.inRoom=result.roomId;
+        participant_id=result.participantId;
+      }).then(function(){
+        reconnection_enabled=true;
+        const ticket = generateReconnectionTicket();
+        safeCall(callback, 'success', ticket);
+      }).catch(function(error){
+        safeCall(callback, 'error', error);
+      }).then(function(){
+        for(let message of pending_messages){
+          notify(message.event, message.data);
+        }
+        pending_messages=[];
+      });
+    });
+
+    socket.on('refreshReconnectionTicket', function(callback){
+      if(!reconnection_enabled)
+        safeCall(callback,'error','Reconnection is not enabled.');
+      const ticket = generateReconnectionTicket();
+      safeCall(callback, 'success', ticket);
     });
 
     socket.on('publish', function(options, url, callback) {
@@ -654,14 +740,29 @@ var Client = function(participant_id, socket, portal, on_disconnect) {
       }
     });
 
-    socket.on('disconnect', function() {
-      if (that.inRoom) {
-        portal.leave(participant_id).catch(function(err) {
-          var err_message = (typeof err === 'string' ? err: err.message);
-          log.info('portal.leave failed:', err_message);
-        });
+    socket.on('disconnect', function(reason) {
+      log.debug(participant_id+' disconnected, reason: '+reason);
+      if(reason==='client namespace disconnect'){
+        reconnection_enabled=false;
       }
-      on_disconnect();
+      const leavePortal = function(){
+        if(that.inRoom){
+          portal.leave(participant_id).catch(function(err) {
+            var err_message = (typeof err === 'string' ? err: err.message);
+            log.info('portal.leave failed:', err_message);
+          });
+        }
+      };
+      if(reconnection_enabled){
+        disconnect_timeout = setTimeout(function(){
+          log.info(participant_id+' failed to reconnect. Leaving portal.');
+          leavePortal();
+          on_disconnect();
+        }, reconnection_spec.reconnectionTimeout*1000);
+      } else {
+        leavePortal();
+        on_disconnect();
+      }
     });
   };
 
@@ -671,8 +772,18 @@ var Client = function(participant_id, socket, portal, on_disconnect) {
   };
 
   that.drop = function() {
+    reconnection_enabled = false;
     socket.disconnect();
   };
+
+  that.validateReconnectionTicket = function(ticket){
+    if(ticket.participantId!==participant_id){
+      return Promise.reject('Participant ID is not matched.');
+    }
+    return validateReconnectionTicket(ticket).then(function(){
+      return pending_messages;
+    });
+  }
 
   return that;
 };
@@ -682,6 +793,8 @@ var SocketIOServer = function(spec, portal) {
   var that = {};
   var io;
   var clients = {};
+  // A Socket.IO server has a unique reconnection key. Client cannot reconnect to another Socket.IO server in the cluster.
+  var reconnection_key = require('crypto').randomBytes(64).toString('hex');
 
   var startInsecure = function(port) {
     var server = require('http').createServer().listen(port);
@@ -710,7 +823,34 @@ var SocketIOServer = function(spec, portal) {
   var run = function() {
     io.sockets.on('connection', function(socket) {
       var participant_id = socket.id;
-      clients[participant_id] = Client(participant_id, socket, portal, function() {
+      /*
+        Reconnection logic:
+        1. New client asks for reconnection ticket verification.
+        2. |reconnection_callback| is executed, it finds old client from |clients| and sends ticket to the old client.
+        3. Old client verify this ticket. (Old client knows ticket ID, reconnection enabled or not). If verification success, it returns all client information for session recovery.
+        4. Server replaces old client with the new client.
+        5. New client recovery old session with information provided by the old client.
+        6. New client emits pending messages.
+      */
+      const reconnection_callback = function(participant_id, ticket) {
+        // Check ticket and replace old client with the new one. |participant_id| is current client's participant ID.
+        const client = clients[ticket.participantId];
+        if(!client){
+          return Promise.reject('Invalid reconnection ticket.')
+        }
+        return client.validateReconnectionTicket(ticket).then(function(pending_messages){
+          clients[ticket.participantId]=clients[participant_id];
+          delete clients[participant_id];
+          return Promise.resolve({pendingStreams:pending_messages, roomId:client.inRoom, participantId:ticket.participantId});
+        });
+      };
+      const reconnection_spec = {
+        reconnectionTicketLifetime: spec.reconnectionTicketLifetime,
+        reconnectionTimeout: spec.reconnectionTimeout,
+        reconnectionKey: reconnection_key,
+        reconnectionCallback: reconnection_callback
+      };
+      clients[participant_id] = Client(participant_id, socket, portal, reconnection_spec, function() {
         delete clients[participant_id];
       });
       clients[participant_id].listen();

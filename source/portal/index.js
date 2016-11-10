@@ -19,6 +19,8 @@ config.portal.hostname = config.portal.hostname|| '';
 config.portal.port = config.portal.port || 8080;
 config.portal.rest_port = config.portal.rest_port || 8081;
 config.portal.ssl = config.portal.ssl || false;
+config.portal.reconnection_ticket_lifetime = config.portal.reconnection_ticket_lifetime || 600;
+config.portal.reconnection_timeout = config.portal.reconnection_timeout || 120;
 config.portal.roles = config.portal.roles || {'admin':{'publish': true, 'subscribe':true, 'record':true, 'addExternalOutput':true}, 'presenter':{'publish': true, 'subscribe':true, 'record':true, 'addExternalOutput':true}, 'audio_only_presenter':{'publish': {'audio': true}, 'subscribe':{'audio': true}}, 'viewer':{'subscribe':true}, 'video_only_viewer':{'subscribe':{'video': true}}, 'no_text_viewer': {'subscribe': true, 'text': false}};
 
 config.cluster = config.cluster || {};
@@ -150,7 +152,7 @@ var startServers = function(id, tokenKey) {
                                     selfRpcId: id,
                                     permissionMap: config.portal.roles},
                                     rpcReq);
-  socketio_server = require('./socketIOServer')({port: config.portal.port, ssl: config.portal.ssl, keystorePath: config.portal.keystorePath}, portal);
+  socketio_server = require('./socketIOServer')({port: config.portal.port, ssl: config.portal.ssl, keystorePath: config.portal.keystorePath, reconnectionTicketLifetime: config.portal.reconnection_ticket_lifetime, reconnectionTimeout: config.portal.reconnection_timeout}, portal);
   rest_server = require('./restServer')({port: config.portal.rest_port, ssl: config.portal.ssl, keystorePath: config.portal.keystorePath}, portal);
   return socketio_server.start()
     .then(function() {

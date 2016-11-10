@@ -10,10 +10,11 @@ var portal = require('../portal');
 var testRoom = '573eab78111478bb3526421a';
 
 var clientInfo = {sdk:{version: '3.3', type: 'JavaScript'}, runtime: {name: 'Chrome', version: '53.0.0.0'}, os:{name:'Linux (Ubuntu)', version:'14.04'}};
+var insecureSocketIOServerConfig = {port: 3001, ssl: false, reconnectionTicketLifetime: 600, reconnectionTimeout: 1000};
 
 describe('Clients connect to socket.io server.', function() {
   it('Connecting to an insecure socket.io server should succeed.', function(done) {
-    var server = socketIOServer({port: 3001, ssl: false});
+    var server = socketIOServer(insecureSocketIOServerConfig);
 
     return server.start()
       .then(function(result) {
@@ -52,7 +53,7 @@ describe('Clients connect to socket.io server.', function() {
 
 describe('Notifying events to clients.', function() {
   var mockPortal = sinon.createStubInstance(portal);
-  var server = socketIOServer({port: 3001, ssl: false}, mockPortal);
+  var server = socketIOServer(insecureSocketIOServerConfig, mockPortal);
   var client;
 
   before('Start the server.', function(done) {
@@ -103,7 +104,7 @@ describe('Drop users from sessions.', function() {
   mockPortal.leave = sinon.stub();
   mockPortal.leave.resolves('ok');
 
-  var server = socketIOServer({port: 3001, ssl: false}, mockPortal);
+  var server = socketIOServer(insecureSocketIOServerConfig, mockPortal);
   var client;
 
   before('Start the server.', function(done) {
@@ -184,11 +185,45 @@ describe('Drop users from sessions.', function() {
       });
     });
   });
+
+  it('Dropped user cannot be reconnected.', function(done){
+    'use strict';
+    const someValidLoginInfo = {token: (new Buffer(JSON.stringify('someInvalidToken'))).toString('base64'), userAgent: clientInfo};
+    let client = sioClient.connect('http://localhost:3001', {reconnection: true, secure: false, 'force new connection': false});
+    let ticket;
+
+    client.on('connect', function() {
+      mockPortal.join = sinon.stub();
+      const join_result = {user: 'Jack',
+                         role: 'presenter',
+                         session_id: testRoom,
+                         participants: [],
+                         streams: []};
+      mockPortal.join.resolves(join_result);
+
+      client.emit('login', someValidLoginInfo, function(status, resp) {
+        expect(status).to.equal('success');
+        ticket = resp.reconnectionTicket;
+        return server.drop(client.id)
+          .then(function(result) {
+            expect(result).to.equal('ok');
+          });
+      });
+    });
+    client.on('disconnect', function(){
+      console.log('fire disconnect');
+      client = sioClient.connect('http://localhost:3001', {reconnection: true, secure: false, 'force new connection': false});
+      client.emit('relogin', ticket, function(status, resp){
+        expect(status).to.equal('error');
+        done();
+      });
+    });
+  });
 });
 
 describe('Responding to clients.', function() {
   var mockPortal = sinon.createStubInstance(portal);
-  var server = socketIOServer({port: 3001, ssl: false}, mockPortal);
+  var server = socketIOServer(insecureSocketIOServerConfig, mockPortal);
   var client;
 
   before('Start the server.', function(done) {
@@ -207,9 +242,7 @@ describe('Responding to clients.', function() {
 
   beforeEach('Clients connect to the server.', function(done) {
     client = sioClient.connect('http://localhost:3001', {reconnect: false, secure: false, 'force new connection': true});
-    client.on('connect', function() {
-      done();
-    });
+    done();
   });
 
   afterEach('Clients disconnect.', function() {
@@ -318,7 +351,13 @@ describe('Responding to clients.', function() {
       client.emit('login', {token: someValidToken, userAgent:clientInfo}, function(status, resp) {
         expect(status).to.equal('success');
         expect(mockPortal.join.getCall(0).args).to.deep.equal([client.id, 'someValidToken']);
-        expect(resp).to.deep.equal({id: join_result.session_id, clientId: client.id, streams: transformed_streams, users: join_result.participants});
+        expect(resp.id).to.equal(join_result.session_id);
+        expect(resp.clientId).to.equal(client.id);
+        expect(resp.streams).to.deep.equal(transformed_streams);
+        expect(resp.users).to.deep.equal(join_result.participants);
+        var reconnection_ticket = JSON.parse(new Buffer(resp.reconnectionTicket, 'base64').toString());
+        expect(reconnection_ticket.notBefore).to.be.at.most(Date.now());
+        expect(reconnection_ticket.notAfter).to.be.at.least(Date.now());
         done();
       });
     });
@@ -397,6 +436,152 @@ describe('Responding to clients.', function() {
         expect(status).to.equal('error');
         expect(resp).to.have.string('User agent info is incorrect.');
         done();
+      });
+    });
+  });
+
+  describe('on: relogin', function(){
+    'use strict';
+    const someValidLoginInfo = {token: (new Buffer(JSON.stringify('someInvalidToken'))).toString('base64'), userAgent: clientInfo};
+
+    it('Relogin with correct ticket should success.', function(done){
+      const joinResult = {user: 'Jack',
+                   role: 'presenter',
+                   session_id: testRoom,
+                   participants: [],
+                   streams: []};
+      mockPortal.join = sinon.stub();
+      mockPortal.join.resolves(joinResult);
+      mockPortal.leave = sinon.stub();
+      mockPortal.leave.resolves('ok');
+      const reconnection_client = sioClient.connect('http://localhost:3001', {reconnect: true, secure: false, 'force new connection': true});
+      const clientDisconnect = function(){
+        return new Promise(function(resolve){
+          reconnection_client.io.engine.close();
+          resolve();
+        });
+      };
+      const reconnection=function(){
+        return new Promise(function(resolve){
+          reconnection_client.connect('http://localhost:3001', {reconnect: false, secure: false, 'force new connection': false});
+          resolve();
+        });
+      }
+      reconnection_client.emit('login', someValidLoginInfo, function(status, resp){
+        expect(status).to.equal('success');
+        clientDisconnect().then(reconnection).then(function(){
+          reconnection_client.emit('relogin', resp.reconnectionTicket, function(status, resp){
+            expect(status).to.equal('success');
+            done();
+          });
+        }).catch(function(err){
+          done();
+        });
+      });
+    });
+
+    it('Relogin with incorrect ticket should fail.', function(done){
+      const joinResult = {user: 'Jack',
+                   role: 'presenter',
+                   session_id: testRoom,
+                   participants: [],
+                   streams: []};
+      mockPortal.join = sinon.stub();
+      mockPortal.join.resolves(joinResult);
+      mockPortal.leave = sinon.stub();
+      mockPortal.leave.resolves('ok');
+      const reconnection_client = sioClient.connect('http://localhost:3001', {reconnect: true, secure: false, 'force new connection': true});
+      const clientDisconnect = function(){
+        return new Promise(function(resolve){
+          reconnection_client.io.engine.close();
+          resolve();
+        });
+      };
+      const reconnection=function(){
+        return new Promise(function(resolve){
+          reconnection_client.connect('http://localhost:3001', {reconnect: false, secure: false, 'force new connection': false});
+          resolve();
+        });
+      }
+      reconnection_client.emit('login', someValidLoginInfo, function(status, resp){
+        expect(status).to.equal('success');
+        clientDisconnect().then(reconnection).then(function(){
+          reconnection_client.emit('relogin', 'someInvalidReconnectionTicket', function(status, resp){
+            done();
+          });
+        }).catch(function(err){
+          assert(false);
+          done();
+        });
+      });
+    });
+
+    it('Relogin with correct ticket after expected socket close should fail.', function(done){
+      const joinResult = {user: 'Jack',
+                   role: 'presenter',
+                   session_id: testRoom,
+                   participants: [],
+                   streams: []};
+      mockPortal.join = sinon.stub();
+      mockPortal.join.resolves(joinResult);
+      mockPortal.leave = sinon.stub();
+      mockPortal.leave.resolves('ok');
+      const reconnection_client = sioClient.connect('http://localhost:3001', {reconnect: true, secure: false, 'force new connection': true});
+      const clientDisconnect = function(){
+        return new Promise(function(resolve){
+          reconnection_client.close();
+          resolve();
+        });
+      };
+      const reconnection=function(){
+        return new Promise(function(resolve){
+          reconnection_client.connect('http://localhost:3001', {reconnect: false, secure: false, 'force new connection': false});
+          resolve();
+        });
+      }
+      reconnection_client.emit('login', someValidLoginInfo, function(status, resp){
+        expect(status).to.equal('success');
+        setTimeout(function(){  // Postpone disconnect. Otherwise, disconnect will be executed before establishing connection.
+          clientDisconnect().then(reconnection).then(function(){
+            reconnection_client.emit('relogin', resp.reconnectionTicket, function(status, resp){
+              expect(status).to.equal('error');
+              done();
+            });
+          }).catch(function(err){
+            done();
+          });
+        },10);
+      });
+    });
+  });
+
+  describe('on: refreshReconnectionTicket', function(){
+    'use strict';
+
+    it('Refresh reconnection ticket before login should fail.', function(done){
+      client.emit('refreshReconnectionTicket', function(status, data){
+        expect(status).to.equal('error');
+        done();
+      });
+    });
+
+    it('Refresh reconnection ticket after login should get new ticket.', function(done){
+      const someValidLoginInfo = {token: (new Buffer(JSON.stringify('someInvalidToken'))).toString('base64'), userAgent: clientInfo};
+      mockPortal.join = sinon.stub();
+      const joinResult = {user: 'Jack',
+                         role: 'presenter',
+                         session_id: testRoom,
+                         participants: [],
+                         streams: []};
+      mockPortal.join.resolves(joinResult);
+      client.emit('login', someValidLoginInfo, function(status, resp) {
+        expect(status).to.equal('success');
+        client.emit('refreshReconnectionTicket', function(status, data){
+          var reconnection_ticket = JSON.parse(new Buffer(data, 'base64').toString());
+          expect(reconnection_ticket.notBefore).to.be.at.most(Date.now());
+          expect(reconnection_ticket.notAfter).to.be.at.least(Date.now());
+          done();
+        });
       });
     });
   });
@@ -1636,26 +1821,28 @@ describe('Responding to clients.', function() {
 
   describe('on: disconnect', function() {
     it('Disconnecting after joining should cause participant leaving.', function(done) {
-      mockPortal.leave = sinon.stub();
-      mockPortal.leave.resolves('ok');
-
       var join_result = {user: 'Jack',
                          role: 'presenter',
                          session_id: testRoom,
                          participants: [],
                          streams: []};
+
+      mockPortal.leave = sinon.stub();
+      mockPortal.leave.resolves('ok');
+      mockPortal.join = sinon.stub();
       mockPortal.join.resolves(join_result);
 
-      var participant_id = client.id;
+      var participant_id;
       client.on('disconnect', function() {
         //NOTE: the detection method here is not acurate.
         setTimeout(function() {
           expect(mockPortal.leave.getCall(0).args).to.deep.equal([participant_id]);
           done();
-        }, 20);
+        }, 1200);
       });
 
       client.emit('token', 'someValidToken', function(status, resp) {
+        participant_id = client.id;
         expect(status).to.equal('success');
         client.disconnect();
       });
@@ -1663,16 +1850,20 @@ describe('Responding to clients.', function() {
 
     it('Disconnecting before joining should not cause participant leaving.', function(done) {
       mockPortal.leave = sinon.stub();
+      mockPortal.leave.rejects('not reached');
 
       client.on('disconnect', function() {
         //NOTE: the detection method here is not acurate.
         setTimeout(function() {
           expect(mockPortal.leave.callCount).to.equal(0);
           done();
-        }, 20);
+        }, 10);
       });
 
-      client.disconnect();
+      // Waiting for connection established. If disconnect is executed before connected, it will be deferred.
+      setTimeout(function(){
+        client.disconnect();
+      }, 100);
     });
   });
 });

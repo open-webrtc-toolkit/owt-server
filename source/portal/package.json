@@ -5,9 +5,10 @@
     "amqp": "*",
     "express": "*",
     "body-parser": "*",
-    "socket.io": "^1.3.5",
+    "socket.io": "^1.6.0",
     "log4js": "*",
-    "toml": "*"
+    "toml": "*",
+    "sprintf-js": "^1.0.3"
   },
   "devDependencies": {
     "mocha": "^2.2.5",
