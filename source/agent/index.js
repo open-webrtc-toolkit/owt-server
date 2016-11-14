@@ -99,23 +99,12 @@ for (var prop in opt.options) {
 var clusterWorker = require('./clusterWorker');
 var rpc = require('./amqp_client')();
 
+var erizo_index = 0;
 var idle_erizos = [];
 var erizos = [];
 var processes = {};
 var tasks = {}; // {erizo_id: {RoomID: [ConsumerID]}}
 var load_collection = {period: GLOBAL.config.cluster.report_load_interval};
-
-var guid = (function() {
-  function s4() {
-    return Math.floor((1 + Math.random()) * 0x10000)
-               .toString(16)
-               .substring(1);
-  }
-  return function() {
-    return s4() + s4() + '-' + s4() + '-' + s4() + '-' +
-           s4() + '-' + s4() + s4() + s4();
-  };
-})();
 
 function cleanupErizoJS (id) {
     delete processes[id];
@@ -131,9 +120,9 @@ function cleanupErizoJS (id) {
 }
 
 var launchErizoJS = function() {
-    var id = guid();
-    var out = fs.openSync('../logs/' + myPurpose + '-' + id + '.log', 'a');
-    var err = fs.openSync('../logs/' + myPurpose + '-' + id + '.log', 'a');
+    var id = myId + '.' + erizo_index++;
+    var out = fs.openSync('../logs/' + id + '.log', 'a');
+    var err = fs.openSync('../logs/' + id + '.log', 'a');
     var child = spawn('node', ['./erizoJS.js', id, myPurpose, privateIP, publicIP, clusterIP, myId], {
         detached: true,
         stdio: [ 'ignore', out, err, 'ipc' ]
