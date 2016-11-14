@@ -16,10 +16,9 @@ var genID = (function() {
     }
     return function() {
         return s4() + s4()
-               //FIXME: uncomment the following segments if stronger randomicity is required.
-               //+ '-' + s4()
-               //+ '-' + s4()
-               //+ '-' + s4()
+               + '-' + s4()
+               + '-' + s4()
+               + '-' + s4()
                + '-' + s4() + s4() + s4();
     };
 })();
@@ -32,7 +31,7 @@ module.exports = function (spec) {
         tasks = [];
 
     var amqper = spec.amqper,
-        id = spec.purpose + '-' + genID(),
+        id = spec.purpose + '.' + genID(),
         purpose = spec.purpose,
         info = spec.info,
         cluster_name = spec.clusterName || 'woogeenCluster',
