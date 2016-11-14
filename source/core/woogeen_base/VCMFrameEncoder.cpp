@@ -109,6 +109,10 @@ int32_t VCMFrameEncoder::generateStream(uint32_t width, uint32_t height, woogeen
             if (VideoCodingModule::Codec(kVideoCodecVP8, &videoCodec) != VCM_OK)
                 return -1;
             break;
+        case FRAME_FORMAT_VP9:
+            if (VideoCodingModule::Codec(kVideoCodecVP9, &videoCodec) != VCM_OK)
+                return -1;
+            break;
         case FRAME_FORMAT_H264:
             if (VideoCodingModule::Codec(kVideoCodecH264, &videoCodec) != VCM_OK)
                 return -1;
@@ -273,6 +277,7 @@ void VCMFrameEncoder::onFrame(const Frame& frame)
     }
 #endif
     case FRAME_FORMAT_VP8:
+    case FRAME_FORMAT_VP9:
     case FRAME_FORMAT_H264:
         assert(false);
     default:

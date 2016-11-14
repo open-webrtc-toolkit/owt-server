@@ -100,6 +100,10 @@ static woogeen_base::FrameFormat getFormat(const std::string& codec) {
         return woogeen_base::FRAME_FORMAT_VP8;
     } else if (codec == "h264") {
         return woogeen_base::FRAME_FORMAT_H264;
+    } else if (codec == "vp9") {
+        return woogeen_base::FRAME_FORMAT_VP9;
+    } else if (codec == "h265") {
+        return woogeen_base::FRAME_FORMAT_H265;
     } else {
         return woogeen_base::FRAME_FORMAT_UNKNOWN;
     }

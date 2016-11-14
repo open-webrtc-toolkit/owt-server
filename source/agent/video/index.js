@@ -195,6 +195,12 @@ module.exports = function (rpcClient) {
             supported_codecs.push('h264');
         }
 
+        if (useHardware) {
+            supported_codecs.push('h265');
+        }
+
+        supported_codecs.push('vp9');
+
         supported_resolutions = calculateResolutions(videoConfig.resolution, videoConfig.multistreaming);
 
         log.info('Video engine init OK');

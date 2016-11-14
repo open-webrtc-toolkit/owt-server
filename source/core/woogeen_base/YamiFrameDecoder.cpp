@@ -43,7 +43,7 @@ YamiFrameDecoder::~YamiFrameDecoder()
 bool YamiFrameDecoder::supportFormat(FrameFormat format)
 {
     // TODO: Query the hardware/libyami capability to encode the specified format.
-    return (format == FRAME_FORMAT_H264);
+    return (format == FRAME_FORMAT_H264 || format == FRAME_FORMAT_H265);
 }
 
 bool YamiFrameDecoder::init(FrameFormat format)
@@ -56,6 +56,10 @@ bool YamiFrameDecoder::init(FrameFormat format)
     case FRAME_FORMAT_H264:
         m_decoder.reset(createVideoDecoder(YAMI_MIME_H264), releaseVideoDecoder);
         ELOG_DEBUG("Created H.264 deocder....");
+        break;
+    case FRAME_FORMAT_H265:
+        m_decoder.reset(createVideoDecoder(YAMI_MIME_H265), releaseVideoDecoder);
+        ELOG_DEBUG("Created H.265 deocder....");
         break;
     default:
         ELOG_ERROR("Unspported video frame format %d", format);
