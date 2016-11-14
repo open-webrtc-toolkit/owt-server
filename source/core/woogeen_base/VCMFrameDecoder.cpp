@@ -22,6 +22,7 @@
 
 #include <webrtc/modules/video_coding/codecs/h264/include/h264.h>
 #include <webrtc/modules/video_coding/codecs/vp8/include/vp8.h>
+#include <webrtc/modules/video_coding/codecs/vp9/include/vp9.h>
 #include <webrtc/system_wrappers/interface/clock.h>
 #include <webrtc/system_wrappers/interface/tick_util.h>
 
@@ -53,6 +54,11 @@ bool VCMFrameDecoder::init(FrameFormat format)
         codecType = VideoCodecType::kVideoCodecVP8;
         m_decoder.reset(VP8Decoder::Create());
         ELOG_DEBUG("Created VP8 deocder.");
+        break;
+    case FRAME_FORMAT_VP9:
+        codecType = VideoCodecType::kVideoCodecVP9;
+        m_decoder.reset(VP9Decoder::Create());
+        ELOG_DEBUG("Created VP9 deocder.");
         break;
     case FRAME_FORMAT_H264:
         codecType = VideoCodecType::kVideoCodecH264;

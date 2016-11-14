@@ -24,6 +24,7 @@
 #include <webrtc/modules/interface/module_common_types.h>
 #include <webrtc/voice_engine/include/voe_codec.h>
 #include <webrtc/voice_engine/include/voe_network.h>
+#include <webrtc/voice_engine/include/voe_audio_processing.h>
 #include <webrtc/voice_engine/include/voe_rtp_rtcp.h>
 
 using namespace erizo;
@@ -44,6 +45,9 @@ bool AudioChannel::init()
     VoEBase* voe = VoEBase::GetInterface(m_engine);
     m_channel = voe->CreateChannel();
     VoENetwork* network = VoENetwork::GetInterface(m_engine);
+
+    VoEAudioProcessing* apm = VoEAudioProcessing::GetInterface(m_engine);
+    apm->SetNsStatus(true, kNsHighSuppression);
 
     m_transport.reset(new woogeen_base::WebRTCTransport<erizo::AUDIO>(nullptr, nullptr));
     network->RegisterExternalTransport(m_channel, *(m_transport.get()));
@@ -126,12 +130,13 @@ int32_t AudioChannel::Encoded(webrtc::FrameType frameType, uint8_t payloadType,
 }
 
 void AudioChannel::Process(int channelId, webrtc::ProcessingTypes type,
-    int16_t data[], int nbSamples,
+    int16_t data[], size_t length,
     int sampleRate, bool isStereo)
 {
     if (m_destination) {
         int channels = isStereo ? 2 : 1;
-        uint16_t length = nbSamples * channels * sizeof(int16_t);
+        //uint16_t length = nbSamples * channels * sizeof(int16_t);
+        int nbSamples = length/(channels * sizeof(uint16_t));
 
         woogeen_base::Frame frame;
         memset(&frame, 0, sizeof(frame));
@@ -264,6 +269,9 @@ bool AudioChannel::setOutput(FrameFormat format, woogeen_base::FrameDestination*
     VoEBase* voe = VoEBase::GetInterface(m_engine);
     VoECodec* codec = VoECodec::GetInterface(m_engine);
     VoEExternalMedia* externalMedia = VoEExternalMedia::GetInterface(m_engine);
+
+    VoEAudioProcessing* apm = VoEAudioProcessing::GetInterface(m_engine);
+    apm->SetRxNsStatus(m_channel, true, kNsHighSuppression);
 
     CodecInst audioCodec;
     bool validCodec = fillAudioCodec(format, audioCodec);

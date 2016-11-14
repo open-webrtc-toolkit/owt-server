@@ -48,8 +48,14 @@ public:
             case webrtc::kVideoCodecVP8:
                 format = FRAME_FORMAT_VP8;
                 break;
+            case webrtc::kVideoCodecVP9:
+                format = FRAME_FORMAT_VP9;
+                break;
             case webrtc::kVideoCodecH264:
                 format = FRAME_FORMAT_H264;
+                break;
+            case webrtc::kVideoCodecH265:
+                format = FRAME_FORMAT_H265;
                 break;
             default:
                 break;

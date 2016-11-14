@@ -74,7 +74,11 @@ public:
             case FRAME_FORMAT_H264:
                 m_encoder.reset(createVideoEncoder(YAMI_MIME_H264), releaseVideoEncoder);
                 ELOG_DEBUG("Created H.264 encoder.");
-            break;
+                break;
+            case FRAME_FORMAT_H265:
+                m_encoder.reset(createVideoEncoder(YAMI_MIME_H265), releaseVideoEncoder);
+                ELOG_DEBUG("Created H.265 encoder.");
+                break;
         default:
             ELOG_ERROR("Unspported video frame format %d", format);
             return false;
@@ -229,7 +233,7 @@ YamiFrameEncoder::~YamiFrameEncoder()
 bool YamiFrameEncoder::supportFormat(FrameFormat format)
 {
     // TODO: Query the hardware/libyami capability to encode the specified format.
-    return (format == FRAME_FORMAT_H264);
+    return (format == FRAME_FORMAT_H264 || format == FRAME_FORMAT_H265);
 }
 
 bool YamiFrameEncoder::canSimulcast(FrameFormat format, uint32_t width, uint32_t height)
@@ -296,6 +300,10 @@ void YamiFrameEncoder::onFrame(const Frame& frame)
         break;
     case FRAME_FORMAT_H264:
         assert(false);
+        break;
+    case FRAME_FORMAT_H265:
+        assert(false);
+        break;
     default:
         break;
     }

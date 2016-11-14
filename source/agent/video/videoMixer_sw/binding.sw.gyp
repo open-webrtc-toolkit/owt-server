@@ -24,6 +24,9 @@
       '-llog4cxx',
       '-L$(CORE_HOME)/../../third_party/webrtc', '-lwebrtc',
       '-L$(CORE_HOME)/../../third_party/openh264', '-lopenh264',
+      '<!@(pkg-config --libs libavutil)',
+      '<!@(pkg-config --libs libavcodec)',
+      '<!@(pkg-config --libs libavformat)',
     ],
     'conditions': [
       [ 'OS=="mac"', {

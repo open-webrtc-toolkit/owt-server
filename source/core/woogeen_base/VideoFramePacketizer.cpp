@@ -86,10 +86,20 @@ bool VideoFramePacketizer::setSendCodec(FrameFormat frameFormat, unsigned int wi
         strcpy(codec.plName, "VP8");
         codec.plType = VP8_90000_PT;
         break;
+    case FRAME_FORMAT_VP9:
+        codec.codecType = webrtc::kVideoCodecVP9;
+        strcpy(codec.plName, "VP9");
+        codec.plType = VP9_90000_PT;
+        break;
     case FRAME_FORMAT_H264:
         codec.codecType = webrtc::kVideoCodecH264;
         strcpy(codec.plName, "H264");
         codec.plType = H264_90000_PT;
+        break;
+    case FRAME_FORMAT_H265:
+        codec.codecType = webrtc::kVideoCodecH265;
+        strcpy(codec.plName, "H265");
+        codec.plType = H265_90000_PT;
         break;
     case FRAME_FORMAT_I420:
     default:
@@ -101,7 +111,10 @@ bool VideoFramePacketizer::setSendCodec(FrameFormat frameFormat, unsigned int wi
 
     uint32_t minKbps = targetKbps / 4;
     // The bitrate controller is accepting "bps".
-    m_bitrateController->SetBitrateObserver(this, targetKbps * 1000, minKbps * 1000, TRANSMISSION_MAXBITRATE_MULTIPLIER * targetKbps * 1000);
+    //m_bitrateController->SetBitrateObserver(this, targetKbps * 1000, minKbps * 1000, TRANSMISSION_MAXBITRATE_MULTIPLIER * targetKbps * 1000);
+    //Update with M53
+    m_bitrateController->SetStartBitrate(targetKbps * 1000);
+    m_bitrateController->SetMinMaxBitrate(minKbps * 1000, TRANSMISSION_MAXBITRATE_MULTIPLIER * targetKbps * 1000);
 
     boost::shared_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
     return m_rtpRtcp && m_rtpRtcp->RegisterSendPayload(codec) != -1;
@@ -155,7 +168,12 @@ void VideoFramePacketizer::onFrame(const Frame& frame)
         h.codecHeader.VP8.InitRTPVideoHeaderVP8();
         boost::shared_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
         m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, VP8_90000_PT, frame.timeStamp, frame.timeStamp / 90, frame.payload, frame.length, nullptr, &h);
-    } else if (frame.format == FRAME_FORMAT_H264) {
+    } else if (frame.format == FRAME_FORMAT_VP9) {
+        h.codec = webrtc::kRtpVideoVp9;
+        h.codecHeader.VP9.InitRTPVideoHeaderVP9();
+        boost::shared_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
+        m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, VP9_90000_PT, frame.timeStamp, frame.timeStamp / 90, frame.payload, frame.length, nullptr, &h);
+    } else if (frame.format == FRAME_FORMAT_H264 || frame.format == FRAME_FORMAT_H265) {
         int nalu_found_length = 0;
         uint8_t* buffer_start = frame.payload;
         int buffer_length = frame.length;
@@ -163,7 +181,7 @@ void VideoFramePacketizer::onFrame(const Frame& frame)
         int nalu_end_offset = 0;
         RTPFragmentationHeader frag_info;
 
-        h.codec = webrtc::kRtpVideoH264;
+        h.codec = (frame.format == FRAME_FORMAT_H264)?(webrtc::kRtpVideoH264):(webrtc::kRtpVideoH265);
         while (buffer_length > 0) {
             nalu_found_length = findNALU(buffer_start, buffer_length, &nalu_start_offset, &nalu_end_offset);
             if (nalu_found_length < 0) {
@@ -181,7 +199,11 @@ void VideoFramePacketizer::onFrame(const Frame& frame)
         }
 
         boost::shared_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
-        m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, H264_90000_PT, frame.timeStamp, frame.timeStamp / 90, frame.payload, frame.length, &frag_info, &h);
+        if (frame.format == FRAME_FORMAT_H264) {
+          m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, H264_90000_PT, frame.timeStamp, frame.timeStamp / 90, frame.payload, frame.length, &frag_info, &h);
+        } else {
+          m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, H265_90000_PT, frame.timeStamp, frame.timeStamp / 90, frame.payload, frame.length, &frag_info, &h);
+        }
     }
 }
 
@@ -194,10 +216,12 @@ int VideoFramePacketizer::sendFirPacket()
 
 bool VideoFramePacketizer::init()
 {
-    m_bitrateController.reset(webrtc::BitrateController::CreateBitrateController(Clock::GetRealTimeClock(), true));
+    m_bitrateController.reset(webrtc::BitrateController::CreateBitrateController(Clock::GetRealTimeClock(), this));
     m_bandwidthObserver.reset(m_bitrateController->CreateRtcpBandwidthObserver());
     // FIXME: Provide the correct bitrate settings (start, min and max bitrates).
-    m_bitrateController->SetBitrateObserver(this, 300 * 1000, 0, 0);
+    //m_bitrateController->SetBitrateObserver(this, 300 * 1000, 0, 0);
+    m_bitrateController->SetStartBitrate(300*1000);
+    m_bitrateController->SetMinMaxBitrate(0, 0);
 
     RtpRtcp::Configuration configuration;
     // configuration.id = m_id;
@@ -229,9 +253,9 @@ void VideoFramePacketizer::close()
         videoSink_ = nullptr;
     }
     lock.unlock();
-
-    if (m_bitrateController)
-        m_bitrateController->RemoveBitrateObserver(this);
+    // M53 does not support removing observer
+    //if (m_bitrateController)
+    //   m_bitrateController->RemoveBitrateObserver(this);
     m_taskRunner->DeRegisterModule(m_rtpRtcp.get());
 }
 

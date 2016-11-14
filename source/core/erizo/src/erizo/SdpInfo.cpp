@@ -65,6 +65,15 @@ namespace erizo {
     vp8.enable = true;
     internalPayloadVector_.push_back(vp8);
 
+    RtpMap vp9;
+    vp9.payloadType = VP9_90000_PT;
+    vp9.encodingName = "VP9";
+    vp9.clockRate = 90000;
+    vp9.channels = 1;
+    vp9.mediaType = VIDEO_TYPE;
+    vp9.enable = true;
+    internalPayloadVector_.push_back(vp9);
+
     RtpMap h264;
     h264.payloadType = H264_90000_PT;
     h264.encodingName = "H264";
@@ -73,6 +82,15 @@ namespace erizo {
     h264.mediaType = VIDEO_TYPE;
     h264.enable = true;
     internalPayloadVector_.push_back(h264);
+
+    RtpMap h265;
+    h265.payloadType = H265_90000_PT;
+    h265.encodingName = "H265";
+    h265.clockRate = 90000;
+    h265.channels = 1;
+    h265.mediaType = VIDEO_TYPE;
+    h265.enable = true;
+    internalPayloadVector_.push_back(h265);
 
     RtpMap red;
     red.payloadType = RED_90000_PT;
@@ -474,7 +492,7 @@ namespace erizo {
           int payloadType = rtp.payloadType;
           sdp << "a=rtpmap:"<<payloadType << " " << rtp.encodingName << "/"
               << rtp.clockRate <<"\n";
-          if (rtp.encodingName == "VP8" || rtp.encodingName == "H264") {
+          if (rtp.encodingName == "VP8" || rtp.encodingName == "H264" || rtp.encodingName == "H265" || rtp.encodingName == "VP9") {
             if (rtp.encodingName == "H264") {
               sdp << "a=fmtp:"<< payloadType<<" profile-level-id=42e01f;packetization-mode=1\n";
             }

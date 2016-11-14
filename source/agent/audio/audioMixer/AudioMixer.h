@@ -64,7 +64,7 @@ public:
                     uint16_t payloadSize);
 
     // Implements webrtc::VoEMediaProcess.
-    void Process(int channelId, webrtc::ProcessingTypes type, int16_t data[], int nbSamples, int sampleRate, bool isStereo);
+    void Process(int channelId, webrtc::ProcessingTypes type, int16_t data[], size_t length, int sampleRate, bool isStereo);
 
     // Implements woogeen_base::FrameSource.
     void onFeedback(const woogeen_base::FeedbackMsg& msg);

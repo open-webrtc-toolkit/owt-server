@@ -2,19 +2,19 @@
  * Copyright 2015 Intel Corporation All Rights Reserved. 
  * 
  * The source code contained or described herein and all documents related to the 
- * source code ("Material") are owned by Intel Corporation or its suppliers or 
- * licensors. Title to the Material remains with Intel Corporation or its suppliers 
- * and licensors. The Material contains trade secrets and proprietary and 
- * confidential information of Intel or its suppliers and licensors. The Material 
- * is protected by worldwide copyright and trade secret laws and treaty provisions. 
- * No part of the Material may be used, copied, reproduced, modified, published, 
- * uploaded, posted, transmitted, distributed, or disclosed in any way without 
+ * source code ("Material") are owned by Intel Corporation or its suppliers or
+ * licensors. Title to the Material remains with Intel Corporation or its suppliers
+ * and licensors. The Material contains trade secrets and proprietary and
+ * confidential information of Intel or its suppliers and licensors. The Material
+ * is protected by worldwide copyright and trade secret laws and treaty provisions.
+ * No part of the Material may be used, copied, reproduced, modified, published,
+ * uploaded, posted, transmitted, distributed, or disclosed in any way without
  * Intel's prior express written permission.
- * 
- * No license under any patent, copyright, trade secret or other intellectual 
- * property right is granted to or conferred upon you by disclosure or delivery of 
- * the Materials, either expressly, by implication, inducement, estoppel or 
- * otherwise. Any license under such intellectual property rights must be express 
+ *
+ * No license under any patent, copyright, trade secret or other intellectual
+ * property right is granted to or conferred upon you by disclosure or delivery of
+ * the Materials, either expressly, by implication, inducement, estoppel or
+ * otherwise. Any license under such intellectual property rights must be express
  * and approved by Intel in writing.
  */
 
@@ -22,6 +22,8 @@
 
 #include "WebRTCTaskRunner.h"
 #include <rtputils.h>
+#include <webrtc/common_types.h>
+#include "webrtc/modules/remote_bitrate_estimator/remote_bitrate_estimator_single_stream.h"
 
 using namespace webrtc;
 using namespace erizo;
@@ -77,17 +79,16 @@ bool VideoFrameConstructor::init()
     // We need to investigate whether this is necessary or not in our case, so that we can decide whether to
     // provide a real RemoteBitrateObserver.
     m_remoteBitrateObserver.reset(new DummyRemoteBitrateObserver());
-    m_remoteBitrateEstimator.reset(RemoteBitrateEstimatorFactory().Create(m_remoteBitrateObserver.get(), Clock::GetRealTimeClock(), kMimdControl, 0));
+    m_remoteBitrateEstimator.reset(new RemoteBitrateEstimatorSingleStream(m_remoteBitrateObserver.get(), Clock::GetRealTimeClock()));
     m_videoReceiver.reset(new ViEReceiver(0, m_vcm, m_remoteBitrateEstimator.get(), this));
 
     RtpRtcp::Configuration configuration;
-    configuration.id = 0;
     configuration.audio = false;  // Video.
     configuration.outgoing_transport = m_videoTransport.get(); // For sending RTCP feedback to the publisher
     configuration.remote_bitrate_estimator = m_remoteBitrateEstimator.get();
     configuration.receive_statistics = m_videoReceiver->GetReceiveStatistics();
     m_rtpRtcp.reset(RtpRtcp::CreateRtpRtcp(configuration));
-    m_rtpRtcp->SetRTCPStatus(webrtc::kRtcpCompound);
+    m_rtpRtcp->SetRTCPStatus(webrtc::RtcpMode::kCompound);
     // There're 3 options of Intra frame requests: PLI, FIR in RTCP and FIR in RTP (RFC 2032).
     // Since currently our MCU only claims FIR support in SDP, we choose FirRtcp for now.
     m_rtpRtcp->SetKeyFrameRequestMethod(kKeyFrameReqFirRtcp);
@@ -101,9 +102,21 @@ bool VideoFrameConstructor::init()
         assert(!"register VP8 decoder failed");
     m_videoReceiver->SetReceiveCodec(video_codec);
 
+    if (VideoCodingModule::Codec(webrtc::kVideoCodecVP9, &video_codec) != VCM_OK
+        || m_vcm->RegisterReceiveCodec(&video_codec, 1, true) != VCM_OK)
+        assert(!"register VP9 decoder failed");
+    m_videoReceiver->SetReceiveCodec(video_codec);
+
     if (VideoCodingModule::Codec(webrtc::kVideoCodecH264, &video_codec) != VCM_OK
         || m_vcm->RegisterReceiveCodec(&video_codec, 1, true) != VCM_OK)
         assert(!"register H264 decoder failed");
+    m_videoReceiver->SetReceiveCodec(video_codec);
+
+    memset(&video_codec, 0, sizeof(VideoCodec));
+    video_codec.codecType = webrtc::kVideoCodecH265;
+    strcpy(video_codec.plName, "H265");
+    video_codec.plType = H265_90000_PT;
+    m_vcm->RegisterReceiveCodec(&video_codec, 1, true);
     m_videoReceiver->SetReceiveCodec(video_codec);
 
     memset(&video_codec, 0, sizeof(VideoCodec));
@@ -187,11 +200,10 @@ int32_t VideoFrameConstructor::RequestKeyFrame()
 }
 
 int32_t VideoFrameConstructor::OnInitializeDecoder(
-    const int32_t id,
     const int8_t payload_type,
     const char payload_name[RTP_PAYLOAD_NAME_SIZE],
     const int frequency,
-    const uint8_t channels,
+    const size_t channels,
     const uint32_t rate)
 {
     m_vcm->RegisterExternalDecoder(this, payload_type, true);
@@ -199,7 +211,7 @@ int32_t VideoFrameConstructor::OnInitializeDecoder(
     return 0;
 }
 
-void VideoFrameConstructor::OnIncomingSSRCChanged(const int32_t id, const uint32_t ssrc)
+void VideoFrameConstructor::OnIncomingSSRCChanged(const uint32_t ssrc)
 {
     m_rtpRtcp->SetRemoteSSRC(ssrc);
     m_ssrc = ssrc;
@@ -208,17 +220,23 @@ void VideoFrameConstructor::OnIncomingSSRCChanged(const int32_t id, const uint32
 void VideoFrameConstructor::ResetStatistics(uint32_t ssrc)
 {
     StreamStatistician* statistician = m_videoReceiver->GetReceiveStatistics()->GetStatistician(ssrc);
-    if (statistician)
-        statistician->ResetStatistics();
+    //Not supported on M53
+    //if (statistician)
+    //    statistician->ResetStatistics();
 }
 
 int32_t VideoFrameConstructor::InitDecode(const webrtc::VideoCodec* codecSettings, int32_t numberOfCores)
 {
-    assert(codecSettings->codecType == webrtc::kVideoCodecVP8 || codecSettings->codecType == webrtc::kVideoCodecH264);
+    assert(codecSettings->codecType == webrtc::kVideoCodecVP8 || codecSettings->codecType == webrtc::kVideoCodecH264
+           || codecSettings->codecType == webrtc::kVideoCodecH265 || codecSettings->codecType == webrtc::kVideoCodecVP9);
     if (codecSettings->codecType == webrtc::kVideoCodecVP8)
         m_format = woogeen_base::FRAME_FORMAT_VP8;
+    else if (codecSettings->codecType == webrtc::kVideoCodecVP9)
+        m_format = woogeen_base::FRAME_FORMAT_VP9;
     else if (codecSettings->codecType == webrtc::kVideoCodecH264)
         m_format = woogeen_base::FRAME_FORMAT_H264;
+    else if (codecSettings->codecType == webrtc::kVideoCodecH265)
+        m_format = woogeen_base::FRAME_FORMAT_H265;
 
     return 0;
 }
@@ -237,8 +255,14 @@ int32_t VideoFrameConstructor::Decode(const webrtc::EncodedImage& encodedImage,
         case webrtc::kVideoCodecVP8:
             format = FRAME_FORMAT_VP8;
             break;
+        case webrtc::kVideoCodecVP9:
+            format = FRAME_FORMAT_VP9;
+            break;
         case webrtc::kVideoCodecH264:
             format = FRAME_FORMAT_H264;
+            break;
+        case webrtc::kVideoCodecH265:
+            format = FRAME_FORMAT_H265;
             break;
         default:
             return 0;

@@ -36,7 +36,9 @@ enum FrameFormat {
     FRAME_FORMAT_YAMI,
     FRAME_FORMAT_MSDK,
     FRAME_FORMAT_VP8,
+    FRAME_FORMAT_VP9,
     FRAME_FORMAT_H264,
+    FRAME_FORMAT_H265,
 
     FRAME_FORMAT_PCM_RAW,
     FRAME_FORMAT_PCMU,
@@ -85,7 +87,9 @@ inline bool isVideoFrame(const Frame& frame) {
           || frame.format ==FRAME_FORMAT_YAMI
           || frame.format ==FRAME_FORMAT_MSDK
           || frame.format == FRAME_FORMAT_VP8
-          || frame.format == FRAME_FORMAT_H264;
+          || frame.format == FRAME_FORMAT_VP9
+          || frame.format == FRAME_FORMAT_H264
+          || frame.format == FRAME_FORMAT_H265;
 }
 
 enum FeedbackType {

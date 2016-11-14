@@ -31,7 +31,7 @@
 #include <logger.h>
 #include <MediaDefinitions.h>
 #include <webrtc/modules/remote_bitrate_estimator/include/remote_bitrate_estimator.h>
-#include <webrtc/modules/rtp_rtcp/interface/rtp_rtcp.h>
+#include <webrtc/modules/rtp_rtcp/include/rtp_rtcp.h>
 #include <webrtc/modules/video_coding/codecs/interface/video_codec_interface.h>
 #include <webrtc/modules/video_coding/main/interface/video_coding.h>
 #include <webrtc/video_engine/vie_receiver.h>
@@ -67,14 +67,13 @@ public:
 
     // Implements the webrtc::RtpFeedback interface.
     virtual int32_t OnInitializeDecoder(
-        const int32_t id,
         const int8_t payload_type,
         const char payload_name[RTP_PAYLOAD_NAME_SIZE],
         const int frequency,
-        const uint8_t channels,
+        const size_t channels,
         const uint32_t rate);
-    virtual void OnIncomingSSRCChanged(const int32_t id, const uint32_t ssrc);
-    virtual void OnIncomingCSRCChanged(const int32_t id, const uint32_t CSRC, const bool added) { }
+    virtual void OnIncomingSSRCChanged( const uint32_t ssrc);
+    virtual void OnIncomingCSRCChanged( const uint32_t CSRC, const bool added) { }
     virtual void ResetStatistics(uint32_t ssrc);
 
     // Implements the webrtc::VideoDecoder interface.

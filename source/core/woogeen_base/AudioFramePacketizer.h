@@ -28,7 +28,7 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/shared_mutex.hpp>
 #include <MediaDefinitions.h>
-#include <webrtc/modules/rtp_rtcp/interface/rtp_rtcp.h>
+#include <webrtc/modules/rtp_rtcp/include/rtp_rtcp.h>
 
 
 namespace woogeen_base {

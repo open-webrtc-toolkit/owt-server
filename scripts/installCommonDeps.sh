@@ -137,9 +137,9 @@ install_libsrtp(){
 install_libva(){
   [ -d $LIB_DIR ] || mkdir -p $LIB_DIR
   cd $LIB_DIR
-  wget -c https://www.freedesktop.org/software/vaapi/releases/libva/libva-1.7.0.tar.bz2
-  tar -jxvf libva-1.7.0.tar.bz2
-  cd libva-1.7.0
+  wget -c https://www.freedesktop.org/software/vaapi/releases/libva/libva-1.7.3.tar.bz2
+  tar -jxvf libva-1.7.3.tar.bz2
+  cd libva-1.7.3
   ./configure --prefix=$PREFIX_DIR
   make -s V=0
   make uninstall
@@ -150,7 +150,7 @@ install_libva(){
 install_libva_driver(){
   [ -d $LIB_DIR ] || mkdir -p $LIB_DIR
   cd $LIB_DIR
-  GIT_SSL_NO_VERIFY=1 git clone https://anongit.freedesktop.org/git/vaapi/intel-driver.git -b 1.7.0
+  GIT_SSL_NO_VERIFY=1 git clone https://anongit.freedesktop.org/git/vaapi/intel-driver.git -b 1.7.3
   cd intel-driver
   PKG_CONFIG_PATH=$PREFIX_DIR/lib/pkgconfig:$PKG_CONFIG_PATH ./autogen.sh --prefix=$PREFIX_DIR
   LD_LIBRARY_PATH=$PREFIX_DIR/lib:$LD_LIBRARY_PATH make -s V=0
@@ -164,7 +164,7 @@ install_libyami(){
   rm -rf libyami
   git clone https://github.com/01org/libyami.git
   cd libyami
-  PKG_CONFIG_PATH=$PREFIX_DIR/lib/pkgconfig:$PKG_CONFIG_PATH ./autogen.sh --prefix=$PREFIX_DIR
+  PKG_CONFIG_PATH=$PREFIX_DIR/lib/pkgconfig:$PKG_CONFIG_PATH ./autogen.sh --enable-vp8enc --enable-h265dec --enable-h265enc --prefix=$PREFIX_DIR
   make clean
   LD_LIBRARY_PATH=$PREFIX_DIR/lib:$LD_LIBRARY_PATH make -s V=0
   make uninstall
@@ -186,11 +186,11 @@ install_webrtc(){
     fi
   fi
   # git clone --recursive -b 42-mcu ssh://${GIT_ACCOUNT}@git-ccr-1.devtools.intel.com:29418/webrtc-webrtcstack src
-  git clone -b 42-mcu ssh://${GIT_ACCOUNT}@git-ccr-1.devtools.intel.com:29418/webrtc-webrtcstack src
+  git clone -b 53-mcu-new ssh://${GIT_ACCOUNT}@git-ccr-1.devtools.intel.com:29418/webrtc-webrtcstack src
   pushd src
-  sed -i 's/lab_webrtctest/'${GIT_ACCOUNT}'/g' .gitmodules
-  git submodule init
-  git submodule update
+  #sed -i 's/lab_webrtctest/'${GIT_ACCOUNT}'/g' .gitmodules
+  #git submodule init
+  #git submodule update
   ./build.sh
   mv libwebrtc.a ../
   popd

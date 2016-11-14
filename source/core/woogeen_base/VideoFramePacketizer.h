@@ -32,7 +32,7 @@
 #include <boost/thread/shared_mutex.hpp>
 #include <logger.h>
 #include <webrtc/modules/bitrate_controller/include/bitrate_controller.h>
-#include <webrtc/modules/rtp_rtcp/interface/rtp_rtcp.h>
+#include <webrtc/modules/rtp_rtcp/include/rtp_rtcp.h>
 
 namespace woogeen_base {
 /**
