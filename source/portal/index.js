@@ -35,6 +35,7 @@ config.rabbit.port = config.rabbit.port || 5672;
 
 
 var amqper = require('./amqp_client')();
+var rpcClient;
 var socketio_server;
 var rest_server;
 var worker;
@@ -71,7 +72,7 @@ var ip_address;
 })();
 
 var getTokenKey = function(id, on_key, on_error) {
-  amqper.callRpc('nuve', 'getKey', id, {
+  rpcClient && rpcClient.remoteCall('nuve', 'getKey', id, {
     callback: function (key) {
       if (key === 'error' || key === 'timeout') {
         log.info('Failed to get token key.');
@@ -99,7 +100,7 @@ var joinCluster = function (on_ok) {
     log.info('portal recovered.');
   };
 
-  var spec = {amqper: amqper,
+  var spec = {rpcClient: rpcClient,
               purpose: 'portal',
               clusterName: config.cluster.name,
               joinRetry: config.cluster.join_retry,
@@ -140,15 +141,15 @@ var refreshTokenKey = function(id, portal, tokenKey) {
 };
 
 var startServers = function(id, tokenKey) {
-  var rpcChannel = require('./rpcChannel')(amqper);
-  var rpcClient = require('./rpcClient')(rpcChannel);
+  var rpcChannel = require('./rpcChannel')(rpcClient);
+  var rpcReq = require('./rpcRequest')(rpcChannel);
 
   var portal = require('./portal')({tokenKey: tokenKey,
                                     tokenServer: 'nuve',
                                     clusterName: config.cluster.name,
                                     selfRpcId: id,
                                     permissionMap: config.portal.roles},
-                                    rpcClient);
+                                    rpcReq);
   socketio_server = require('./socketIOServer')({port: config.portal.port, ssl: config.portal.ssl, keystorePath: config.portal.keystorePath}, portal);
   rest_server = require('./restServer')({port: config.portal.rest_port, ssl: config.portal.ssl, keystorePath: config.portal.keystorePath}, portal);
   return socketio_server.start()
@@ -213,11 +214,12 @@ var rpcPublic = {
 };
 
 amqper.connect(config.rabbit, function () {
-  amqper.asRpcClient(function() {
+  amqper.asRpcClient(function(rpcClnt) {
+    rpcClient = rpcClnt;
     log.info('portal initializing as rpc client ok');
     joinCluster(function(id) {
       log.info('portal join cluster ok, with rpcID:', id);
-        amqper.asRpcServer(id, rpcPublic, function() {
+        amqper.asRpcServer(id, rpcPublic, function(rpcSvr) {
           log.info('portal initializing as rpc server ok');
           getTokenKey(id, function(tokenKey) {
             startServers(id, tokenKey);

@@ -5,7 +5,7 @@ var url = require('url');
 var crypto = require('crypto');
 var log = require('./logger').logger.getLogger('Portal');
 
-var Portal = function(spec, rpcClient) {
+var Portal = function(spec, rpcReq) {
   var that = {},
     token_key = spec.tokenKey,
     token_server = spec.tokenServer,
@@ -160,19 +160,19 @@ var Portal = function(spec, rpcClient) {
     return validateToken(token)
       .then(function(validToken) {
         log.debug('token validation ok.');
-        return rpcClient.tokenLogin(token_server, validToken.tokenId);
+        return rpcReq.tokenLogin(token_server, validToken.tokenId);
       })
       .then(function(loginResult) {
         log.debug('login ok.');
         userName = loginResult.userName;
         role = loginResult.role;
         session = loginResult.room;
-        return rpcClient.getController(cluster_name, session);
+        return rpcReq.getController(cluster_name, session);
       })
       .then(function(controller) {
         log.debug('got controller:', controller);
         session_controller = controller;
-        return rpcClient.join(controller, session, {id: participantId, name: userName, role: role, portal: self_rpc_id});
+        return rpcReq.join(controller, session, {id: participantId, name: userName, role: role, portal: self_rpc_id});
       })
       .then(function(joinResult) {
         log.debug('join ok, result:', joinResult);
@@ -203,20 +203,20 @@ var Portal = function(spec, rpcClient) {
         if (connection.direction === 'in') {
           var stream_id = connection_id;
           if (connection.state === 'connected') {
-              rpcClient.unpub2Session(participants[participantId].controller, participantId, stream_id);
+              rpcReq.unpub2Session(participants[participantId].controller, participantId, stream_id);
           }
-          rpcClient.unpublish(connection.locality.node, stream_id);
-          rpcClient.recycleAccessNode(connection.locality.agent, connection.locality.node, {session: participants[participantId].in_session, consumer: connection_id});
+          rpcReq.unpublish(connection.locality.node, stream_id);
+          rpcReq.recycleAccessNode(connection.locality.agent, connection.locality.node, {session: participants[participantId].in_session, consumer: connection_id});
         } else if (connection.direction === 'out') {
           var subscription_id = connection_id;
           if (connection.state === 'connected') {
-              rpcClient.unsub2Session(participants[participantId].controller, participantId, subscription_id);
+              rpcReq.unsub2Session(participants[participantId].controller, participantId, subscription_id);
           }
-          rpcClient.unsubscribe(connection.locality.node, subscription_id);
-          rpcClient.recycleAccessNode(connection.locality.agent, connection.locality.node, {session: participants[participantId].in_session, consumer: connection_id});
+          rpcReq.unsubscribe(connection.locality.node, subscription_id);
+          rpcReq.recycleAccessNode(connection.locality.agent, connection.locality.node, {session: participants[participantId].in_session, consumer: connection_id});
         }
       }
-      rpcClient.leave(participants[participantId].controller, participantId);
+      rpcReq.leave(participants[participantId].controller, participantId);
       delete participants[participantId];
       return Promise.resolve('ok');
     } else {
@@ -248,15 +248,15 @@ var Portal = function(spec, rpcClient) {
       }
 
       if (streamDescription.audio && (!status.audio_codecs || status.audio_codecs.length < 1)) {
-        rpcClient.unpublish(locality.node, connection_id);
-        rpcClient.recycleAccessNode(locality.agent, locality.node, {session: participants[participantId].in_session, consumer: connection_id});
+        rpcReq.unpublish(locality.node, connection_id);
+        rpcReq.recycleAccessNode(locality.agent, locality.node, {session: participants[participantId].in_session, consumer: connection_id});
         onConnectionStatus({type: 'failed', reason: 'No proper audio codec'});
         return Promise.reject('No proper audio codec');
       }
 
       if (streamDescription.video && (!status.video_codecs || status.video_codecs.length < 1)) {
-        rpcClient.unpublish(locality.node, connection_id);
-        rpcClient.recycleAccessNode(locality.agent, locality.node, {session: participants[participantId].in_session, consumer: connection_id});
+        rpcReq.unpublish(locality.node, connection_id);
+        rpcReq.recycleAccessNode(locality.agent, locality.node, {session: participants[participantId].in_session, consumer: connection_id});
         onConnectionStatus({type: 'failed', reason: 'No proper video codec'});
         return Promise.reject('No proper video codec');
       }
@@ -271,15 +271,15 @@ var Portal = function(spec, rpcClient) {
                                 type: connectionType
                                };
       (streamDescription.video && streamDescription.video.framerate) && (stream_description.video.framerate = streamDescription.video.framerate);
-      return rpcClient.pub2Session(participant.controller, participantId, stream_id, locality, stream_description, notMix)
+      return rpcReq.pub2Session(participant.controller, participantId, stream_id, locality, stream_description, notMix)
         .then(function(result) {
           log.debug('pub2Session ok, participantId:', participantId, 'connection_id:', connection_id);
           var participant = participants[participantId];
           if (participant === undefined) {
-            rpcClient.unpub2Session(participant.controller, participantId, stream_id);
+            rpcReq.unpub2Session(participant.controller, participantId, stream_id);
             return Promise.reject('Participant ' + participantId + ' has left when controller responds publish ok.');
           } else if (participant.connections[stream_id] === undefined) {
-            rpcClient.unpub2Session(participant.controller, participantId, stream_id);
+            rpcReq.unpub2Session(participant.controller, participantId, stream_id);
             return Promise.reject('Connection ' + stream_id + ' has been released when controller responds publish ok.');
           }
 
@@ -292,9 +292,9 @@ var Portal = function(spec, rpcClient) {
           if (participant) {
             var connection = participant.connections[connection_id];
             if (connection) {
-              (connection.state) === 'connected' && rpcClient.unpub2Session(p.controller, participantId, stream_id);
-              rpcClient.unpublish(connection.locality.node, connection_id);
-              rpcClient.recycleAccessNode(connection.locality.agent, connection.locality.node, {session: participant.in_session, consumer: connection_id});
+              (connection.state) === 'connected' && rpcReq.unpub2Session(p.controller, participantId, stream_id);
+              rpcReq.unpublish(connection.locality.node, connection_id);
+              rpcReq.recycleAccessNode(connection.locality.agent, connection.locality.node, {session: participant.in_session, consumer: connection_id});
             }
             delete participant.connections[connection_id];
           }
@@ -308,10 +308,10 @@ var Portal = function(spec, rpcClient) {
       if (participants[participantId]) {
         if (participants[participantId].connections[connection_id]) {
           if (participants[participantId].connections[connection_id].state === 'connected') {
-              rpcClient.unpub2Session(participants[participantId].controller, participantId, connection_id);
+              rpcReq.unpub2Session(participants[participantId].controller, participantId, connection_id);
           }
-          rpcClient.unpublish(locality.node, connection_id);
-          rpcClient.recycleAccessNode(locality.agent, locality.node, {session: participants[participantId].in_session, consumer: connection_id});
+          rpcReq.unpublish(locality.node, connection_id);
+          rpcReq.recycleAccessNode(locality.agent, locality.node, {session: participants[participantId].in_session, consumer: connection_id});
           delete participants[participantId].connections[connection_id];
         }
       }
@@ -319,12 +319,12 @@ var Portal = function(spec, rpcClient) {
       return Promise.reject(reason);
     };
 
-    return rpcClient.getAccessNode(cluster_name, connectionType, {session: participants[participantId].in_session, consumer: connection_id})
+    return rpcReq.getAccessNode(cluster_name, connectionType, {session: participants[participantId].in_session, consumer: connection_id})
       .then(function(accessNode) {
         log.debug('publish::getAccessNode ok, participantId:', participantId, 'connection_id:', connection_id, 'locality:', accessNode);
         locality = accessNode;
         var connect_options = constructConnectOptions(connection_id, connectionType, 'in', streamDescription, participants[participantId].in_session);
-        return rpcClient.publish(locality.node,
+        return rpcReq.publish(locality.node,
                                  connection_id,
                                  connectionType,
                                  connect_options,
@@ -353,11 +353,11 @@ var Portal = function(spec, rpcClient) {
     }
 
     if(connection.state === 'connected') {
-      rpcClient.unpub2Session(participants[participantId].controller, participantId, streamId);
+      rpcReq.unpub2Session(participants[participantId].controller, participantId, streamId);
     }
 
-    rpcClient.unpublish(connection.locality.node, connection_id);
-    rpcClient.recycleAccessNode(connection.locality.agent, connection.locality.node, {session: participants[participantId].in_session, consumer: connection_id});
+    rpcReq.unpublish(connection.locality.node, connection_id);
+    rpcReq.recycleAccessNode(connection.locality.agent, connection.locality.node, {session: participants[participantId].in_session, consumer: connection_id});
 
     delete participants[participantId].connections[connection_id];
     return Promise.resolve('ok');
@@ -374,7 +374,7 @@ var Portal = function(spec, rpcClient) {
       return Promise.reject('stream does not exist');
     }
 
-    return rpcClient.mix(participants[participantId].controller, participantId, streamId);
+    return rpcReq.mix(participants[participantId].controller, participantId, streamId);
   };
 
   that.unmix = function(participantId, streamId) {
@@ -388,7 +388,7 @@ var Portal = function(spec, rpcClient) {
       return Promise.reject('stream does not exist');
     }
 
-    return rpcClient.unmix(participants[participantId].controller, participantId, streamId);
+    return rpcReq.unmix(participants[participantId].controller, participantId, streamId);
   };
 
   that.setVideoBitrate = function(participantId, streamId, bitrate) {
@@ -402,7 +402,7 @@ var Portal = function(spec, rpcClient) {
       return Promise.reject('stream does not exist');
     }
 
-    return rpcClient.setVideoBitrate(participants[participantId].connections[connection_id].locality.node, connection_id, bitrate);
+    return rpcReq.setVideoBitrate(participants[participantId].connections[connection_id].locality.node, connection_id, bitrate);
   };
 
   that.subscribe = function(participantId, connectionId, connectionType, subscriptionDescription, onConnectionStatus) {
@@ -449,15 +449,15 @@ var Portal = function(spec, rpcClient) {
       (subscription_description.video) && (subscription_description.video.codecs = [status.video_codecs[0]]/*FIXME: delete the non-top codecs as a workround approach because firefox(20160726) does not support the second prior codec*/);
       subscription_description.type = connectionType;
 
-      return rpcClient.sub2Session(participant.controller, participantId, connection_id, locality, subscription_description)
+      return rpcReq.sub2Session(participant.controller, participantId, connection_id, locality, subscription_description)
         .then(function(result) {
           log.debug('sub2Session ok, participantId:', participantId, 'connection_id:', connection_id);
           var participant = participants[participantId];
           if (participant === undefined) {
-            rpcClient.unsub2Session(participant.controller, participantId, connection_id);
+            rpcReq.unsub2Session(participant.controller, participantId, connection_id);
             return Promise.reject('Participant ' + participantId + ' has left when controller responds subscribe ok.');
           } else if (participant.connections[connection_id] === undefined) {
-            rpcClient.unsub2Session(participant.controller, participantId, connection_id);
+            rpcReq.unsub2Session(participant.controller, participantId, connection_id);
             return Promise.reject('Connection ' + connection_id + ' has been released when controller responds subscribe ok.');
           }
 
@@ -472,9 +472,9 @@ var Portal = function(spec, rpcClient) {
           if (participant) {
             var connection = participant.connections[connection_id];
             if (connection) {
-              (connection.state) === 'connected' && rpcClient.unsub2Session(participant.controller, participantId, connection_id);
-              rpcClient.unsubscribe(connection.locality.node, connection_id);
-              rpcClient.recycleAccessNode(connection.locality.agent, connection.locality.node, {session: participant.in_session, consumer: connection_id});
+              (connection.state) === 'connected' && rpcReq.unsub2Session(participant.controller, participantId, connection_id);
+              rpcReq.unsubscribe(connection.locality.node, connection_id);
+              rpcReq.recycleAccessNode(connection.locality.agent, connection.locality.node, {session: participant.in_session, consumer: connection_id});
             }
             delete participant.connections[connection_id];
           }
@@ -488,10 +488,10 @@ var Portal = function(spec, rpcClient) {
       if (participants[participantId]) {
         if (participants[participantId].connections[connection_id]) {
           if (participants[participantId].connections[connection_id].state === 'connected') {
-              rpcClient.unsub2Session(participants[participantId].controller, participantId, connection_id);
+              rpcReq.unsub2Session(participants[participantId].controller, participantId, connection_id);
           }
-          rpcClient.unsubscribe(locality.node, connection_id);
-          rpcClient.recycleAccessNode(locality.agent, locality.node, {session: participants[participantId].in_session, consumer: connection_id});
+          rpcReq.unsubscribe(locality.node, connection_id);
+          rpcReq.recycleAccessNode(locality.agent, locality.node, {session: participants[participantId].in_session, consumer: connection_id});
           delete participants[participantId].connections[connection_id];
         }
       }
@@ -502,7 +502,7 @@ var Portal = function(spec, rpcClient) {
     var connection = participants[participantId].connections[connection_id];
     if (connection) {
       if (connection.state === 'connected') {
-          rpcClient.unsub2Session(participants[participantId].controller, participantId, connection_id);
+          rpcReq.unsub2Session(participants[participantId].controller, participantId, connection_id);
           setTimeout(function() {
             locality = connection.locality;
             onConnectionReady({type: 'ready', audio_codecs: connection.audio_codecs, video_codecs: connection.video_codecs});
@@ -512,12 +512,12 @@ var Portal = function(spec, rpcClient) {
       //TODO: notify user about 'recorder-continued'? Does it really neccesary?
       return Promise.resolve(connection.locality);
     } else {
-      return rpcClient.getAccessNode(cluster_name, connectionType, {session: participants[participantId].in_session, consumer: connection_id})
+      return rpcReq.getAccessNode(cluster_name, connectionType, {session: participants[participantId].in_session, consumer: connection_id})
         .then(function(accessNode) {
           log.debug('subscribe::getAccessNode ok, participantId:', participantId, 'connection_id:', connection_id, 'locality:', accessNode);
           locality = accessNode;
           var connect_options = constructConnectOptions(connection_id, connectionType, 'out', subscriptionDescription, participants[participantId].in_session);
-          return rpcClient.subscribe(locality.node,
+          return rpcReq.subscribe(locality.node,
                                      connection_id,
                                      connectionType,
                                      connect_options,
@@ -547,11 +547,11 @@ var Portal = function(spec, rpcClient) {
     }
 
     if(connection.state === 'connected') {
-      rpcClient.unsub2Session(participants[participantId].controller, participantId, connection_id);
+      rpcReq.unsub2Session(participants[participantId].controller, participantId, connection_id);
     }
 
-    rpcClient.unsubscribe(connection.locality.node, connection_id);
-    rpcClient.recycleAccessNode(connection.locality.agent, connection.locality.node, {session: participants[participantId].in_session, consumer: connection_id});
+    rpcReq.unsubscribe(connection.locality.node, connection_id);
+    rpcReq.recycleAccessNode(connection.locality.agent, connection.locality.node, {session: participants[participantId].in_session, consumer: connection_id});
 
     delete participants[participantId].connections[connection_id];
     return Promise.resolve('ok');
@@ -572,16 +572,16 @@ var Portal = function(spec, rpcClient) {
     if (participant.connections[connection_id] === undefined) {
       return Promise.reject('Connection does NOT exist when receiving a signaling.');
     } else {
-      return rpcClient.onConnectionSignalling(participant.connections[connection_id].locality.node, connection_id, signaling)
+      return rpcReq.onConnectionSignalling(participant.connections[connection_id].locality.node, connection_id, signaling)
         .then(function(result) {
           return result;
         }, function(reason) {
           if (participants[participantId]) {
             var connection = participants[participantId].connections[connection_id];
             if (connection) {
-              connection.direction === 'in' && rpcClient.unpublish(connection.locality.node, connection_id);
-              connection.direction === 'out' && rpcClient.unsubscribe(connection.locality.node, connection_id);
-              rpcClient.recycleAccessNode(connection.locality.agent, connection.locality.node, {session: participants[participantId].in_session, consumer: connection_id});
+              connection.direction === 'in' && rpcReq.unpublish(connection.locality.node, connection_id);
+              connection.direction === 'out' && rpcReq.unsubscribe(connection.locality.node, connection_id);
+              rpcReq.recycleAccessNode(connection.locality.agent, connection.locality.node, {session: participants[participantId].in_session, consumer: connection_id});
               delete participants[participantId].connections[connection_id];
             }
           }
@@ -623,10 +623,10 @@ var Portal = function(spec, rpcClient) {
     var status = (onOff === 'on')? 'active':'inactive';
 
     if (direction === 'in') {
-      rpcClient.updateStream(participant.controller, targetConnectionId, track, status);
+      rpcReq.updateStream(participant.controller, targetConnectionId, track, status);
     }
 
-    return rpcClient.mediaOnOff(targetConnection.locality.node, targetConnectionId, track, direction, onOff);
+    return rpcReq.mediaOnOff(targetConnection.locality.node, targetConnectionId, track, direction, onOff);
   };
 
   that.setMute = function(participantId, streamId, muted) {
@@ -641,7 +641,7 @@ var Portal = function(spec, rpcClient) {
       return Promise.reject('Mute/Unmute Permission Denied');
     }
 
-    return rpcClient.setMute(participant.controller, streamId, muted);
+    return rpcReq.setMute(participant.controller, streamId, muted);
   };
 
   that.setPermission = function(participantId, targetId, act, value, fromSession) {
@@ -667,7 +667,7 @@ var Portal = function(spec, rpcClient) {
         return Promise.reject('setPermission Permission Denied');
       }
 
-      return rpcClient.setPermission(participant.controller, targetId, act, value);
+      return rpcReq.setPermission(participant.controller, targetId, act, value);
     }
   };
 
@@ -677,7 +677,7 @@ var Portal = function(spec, rpcClient) {
       return Promise.reject('Participant ' + participantId + ' does NOT exist.');
     }
 
-    return rpcClient.getRegion(participants[participantId].controller, subStreamId);
+    return rpcReq.getRegion(participants[participantId].controller, subStreamId);
   };
 
   that.setRegion = function(participantId, subStreamId, regionId) {
@@ -686,7 +686,7 @@ var Portal = function(spec, rpcClient) {
       return Promise.reject('Participant ' + participantId + ' does NOT exist.');
     }
 
-    return rpcClient.setRegion(participants[participantId].controller, subStreamId, regionId);
+    return rpcReq.setRegion(participants[participantId].controller, subStreamId, regionId);
   };
 
   that.text = function(participantId, to, message) {
@@ -699,7 +699,7 @@ var Portal = function(spec, rpcClient) {
       return Promise.reject('unauthorized');
     }
 
-    return rpcClient.text(participants[participantId].controller, participantId, to, message);
+    return rpcReq.text(participants[participantId].controller, participantId, to, message);
   };
 
 

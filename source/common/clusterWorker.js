@@ -30,7 +30,7 @@ module.exports = function (spec) {
     var state = 'unregistered',
         tasks = [];
 
-    var amqper = spec.amqper,
+    var rpcClient = spec.rpcClient,
         id = spec.purpose + '.' + genID(),
         purpose = spec.purpose,
         info = spec.info,
@@ -50,7 +50,7 @@ module.exports = function (spec) {
         }
         previous_load = load;
         if (state === 'registered') {
-            amqper.remoteCast(
+            rpcClient.remoteCast(
                 cluster_name,
                 'reportLoad',
                 [id, load]);
@@ -63,7 +63,7 @@ module.exports = function (spec) {
 
     var join = function (on_ok, on_failed) {
         makeRPC(
-            amqper,
+            rpcClient,
             cluster_name,
             'join',
             [purpose, id, info],
@@ -120,7 +120,7 @@ module.exports = function (spec) {
         var loss_count = 0;
         keep_alive_interval = setInterval(function () {
             makeRPC(
-                amqper,
+                rpcClient,
                 cluster_name,
                 'keepAlive',
                 [id],
@@ -151,21 +151,21 @@ module.exports = function (spec) {
     };
 
     var pickUpTasks = function (taskList) {
-        amqper.remoteCast(
+        rpcClient.remoteCast(
             cluster_name,
             'pickUpTasks',
             [id, taskList]);
     };
 
     var layDownTask = function (task) {
-        amqper.remoteCast(
+        rpcClient.remoteCast(
             cluster_name,
             'layDownTask',
             [id, task]);
     };
 
     var doRejectTask = function (task) {
-        amqper.remoteCast(
+        rpcClient.remoteCast(
             cluster_name,
             'unschedule',
             [id, task]);
@@ -178,7 +178,7 @@ module.exports = function (spec) {
                 keep_alive_interval = undefined;
             }
 
-            amqper.remoteCast(
+            rpcClient.remoteCast(
                 cluster_name,
                 'quit',
                 [id]);
@@ -191,7 +191,7 @@ module.exports = function (spec) {
 
     that.reportState = function (st) {
         if (state === 'registered') {
-            amqper.remoteCast(
+            rpcClient.remoteCast(
                 cluster_name,
                 'reportState',
                 [id, st]);

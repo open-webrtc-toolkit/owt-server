@@ -163,7 +163,7 @@ module.exports = function (rpcClient) {
     var notifyLayoutChange = function () {
         if (observer) {
             var regions = getSortedRegions();
-            rpcClient.callRpc(
+            rpcClient.remoteCall(
                 observer,
                 'onVideoLayoutChange',
                 [session_id, regions]);

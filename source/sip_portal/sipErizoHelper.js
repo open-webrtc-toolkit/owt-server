@@ -14,7 +14,7 @@ module.exports = function (spec) {
         erizos = {};
 
     var cluster = spec.cluster,
-        amqper = spec.amqper,
+        rpcClient = spec.rpcClient,
         on_erizo_broken = spec.on_broken;
 
     var callbackFor = function(erizo_id) {
@@ -23,7 +23,7 @@ module.exports = function (spec) {
                 log.info('ErizoJS[', erizo_id, '] check alive timeout!');
                 on_erizo_broken(erizo_id);
                 var room_id = erizos[erizo_id].room_id;
-                makeRPC(amqper,
+                makeRPC(rpcClient,
                         erizos[erizo_id].agent,
                         'recycleNode',
                         [erizo_id, room_id],
@@ -39,7 +39,7 @@ module.exports = function (spec) {
     var KEEPALIVE_INTERVAL = 12*1000;
     var sendKeepAlive = function() {
         for (var erizo_id in erizos) {
-            makeRPC(amqper,
+            makeRPC(rpcClient,
                     erizo_id,
                     'keepAlive',
                     [],
@@ -59,7 +59,7 @@ module.exports = function (spec) {
             }
 
             makeRPC(
-                amqper,
+                rpcClient,
                 cluster,
                 'schedule',
                 ['sip', for_whom/*FIXME: use room_id as taskId temporarily, should use for_whom instead later.*/, 10 * 1000],
@@ -79,7 +79,7 @@ module.exports = function (spec) {
 
     that.allocateSipErizo = function (for_whom, on_ok, on_failed) {
         getSipAgent(for_whom, function(result) {
-            makeRPC(amqper,
+            makeRPC(rpcClient,
                     result.id,
                     'getNode',
                     [for_whom],
@@ -96,7 +96,7 @@ module.exports = function (spec) {
 
     that.deallocateSipErizo = function (erizo_id) {
         var room_id = erizos[erizo_id].room_id;
-        makeRPC(amqper,
+        makeRPC(rpcClient,
                 erizos[erizo_id].agent,
                 'recycleNode',
                 [erizo_id, room_id],

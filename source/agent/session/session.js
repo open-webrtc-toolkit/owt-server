@@ -10,7 +10,7 @@ var sessionController = require('./controller');
 var log = logger.getLogger('Session');
 
 
-module.exports = function (rpc, selfRpcId) {
+module.exports = function (rpcClient, selfRpcId) {
   var that = {},
       session_id,
       controller,
@@ -32,8 +32,8 @@ module.exports = function (rpc, selfRpcId) {
    */
   var participants = {};
 
-  var rpcChannel = require('./rpcChannel')(rpc),
-      rpcClient = require('./rpcClient')(rpcChannel);
+  var rpcChannel = require('./rpcChannel')(rpcClient),
+      rpcReq = require('./rpcRequest')(rpcChannel);
 
   var initSession = function(sessionId) {
     if (session_id !== undefined) {
@@ -44,7 +44,7 @@ module.exports = function (rpc, selfRpcId) {
       }
     } else {
       session_id = sessionId;
-      return rpcClient.getSessionConfig('nuve'/*FIXME: hard coded*/, session_id)
+      return rpcReq.getSessionConfig('nuve'/*FIXME: hard coded*/, session_id)
         .then(function(config) {
             var room_config = config;
 
@@ -60,8 +60,8 @@ module.exports = function (rpc, selfRpcId) {
             return new Promise(function(resolve, reject) {
               controller = sessionController(
                 {cluster: GLOBAL.config.cluster.name || 'woogeen-cluster',
+                 rpcReq: rpcReq,
                  rpcClient: rpcClient,
-                 amqper: rpc,
                  room: session_id,
                  config: room_config,
                  observer: selfRpcId
@@ -120,7 +120,7 @@ module.exports = function (rpc, selfRpcId) {
       }
     } else {
       if (participants[to]) {
-        rpcClient.sendMsg(participants[to].portal, to, msg, data);
+        rpcReq.sendMsg(participants[to].portal, to, msg, data);
       } else {
         log.warn('Can not send message to:', to);
       }
@@ -393,7 +393,7 @@ module.exports = function (rpc, selfRpcId) {
       return;
     }
 
-    rpcClient.setMute(participants[stream_owner].portal, stream_owner, streamId, muted)
+    rpcReq.setMute(participants[stream_owner].portal, stream_owner, streamId, muted)
     .then(function() {
       callback('callback', 'ok');
     }).catch(function(reason) {
@@ -410,7 +410,7 @@ module.exports = function (rpc, selfRpcId) {
       return;
     }
 
-    rpcClient.setPermission(participants[targetId].portal, targetId, act, value)
+    rpcReq.setPermission(participants[targetId].portal, targetId, act, value)
     .then(function() {
       callback('callback', 'ok');
     }).catch(function(reason) {
@@ -506,7 +506,7 @@ module.exports = function (rpc, selfRpcId) {
     var deleteNum = 0;
     for (var participant_id in participants) {
       if (participants[participant_id].name === user) {
-        rpcClient.dropUser(participants[participant_id].portal, participant_id, session_id);
+        rpcReq.dropUser(participants[participant_id].portal, participant_id, session_id);
         this.leave(participant_id, function(){});
 
         deleteNum += 1;

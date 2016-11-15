@@ -7,7 +7,7 @@ var SipCallConnection = require('./sipCallConnection').SipCallConnection;
 var InternalIn = woogeenInternalIO.In;
 var InternalOut = woogeenInternalIO.Out;
 var logger = require('./logger').logger;
-var amqper;
+var rpcClient;
 var path = require('path');
 var makeRPC = require('./makeRPC').makeRPC;
 
@@ -45,7 +45,7 @@ function safeCall () {
 
 function do_join(session_ctl, user, room, selfPortal, ok, err) {
     makeRPC(
-        amqper,
+        rpcClient,
         session_ctl,
         'join',
         [room, {id: user, name: user, role: 'presenter', portal: selfPortal}], function(joinResult) {
@@ -64,7 +64,7 @@ function do_join(session_ctl, user, room, selfPortal, ok, err) {
 
 function do_leave(session_ctl, user) {
     makeRPC(
-        amqper,
+        rpcClient,
         session_ctl,
         'leave',
         [user],
@@ -75,7 +75,7 @@ function do_leave(session_ctl, user) {
 }
 function do_query(session_ctl, user, room, ok, err) {
     makeRPC(
-        amqper,
+        rpcClient,
         session_ctl,
         'query',
         [user, room], function(streams) {
@@ -87,7 +87,7 @@ function do_query(session_ctl, user, room, ok, err) {
 
 function do_publish(session_ctl, user, stream_id, accessNode, stream_info, ok, err) {
     makeRPC(
-        amqper,
+        rpcClient,
         session_ctl,
         'publish',
         [user, stream_id, accessNode, stream_info, false], function() {
@@ -99,7 +99,7 @@ function do_publish(session_ctl, user, stream_id, accessNode, stream_info, ok, e
 
 function do_subscribe(session_ctl, user, subscription_id, accessNode, subInfo, ok, err) {
     makeRPC(
-        amqper,
+        rpcClient,
         session_ctl,
         'subscribe',
         [user, subscription_id, accessNode, subInfo], function() {
@@ -111,7 +111,7 @@ function do_subscribe(session_ctl, user, subscription_id, accessNode, subInfo, o
 
 function do_unpublish(session_ctl, user, stream_id) {
     makeRPC(
-        amqper,
+        rpcClient,
         session_ctl,
         'unpublish',
         [user, stream_id],
@@ -122,7 +122,7 @@ function do_unpublish(session_ctl, user, stream_id) {
 
 function do_unsubscribe(session_ctl, user, subscription_id) {
     makeRPC(
-        amqper,
+        rpcClient,
         session_ctl,
         'unsubscribe',
         [user, subscription_id],
@@ -141,9 +141,9 @@ var getSessionControllerForRoom = function (roomId, on_ok, on_error) {
 
         log.info('Send controller schedule RPC request to ', cluster_name, ' for room ', roomId);
 
-        makeRPC(amqper, cluster_name, 'schedule', ['session', roomId, 60 * 1000],
+        makeRPC(rpcClient, cluster_name, 'schedule', ['session', roomId, 60 * 1000],
             function (result) {
-                makeRPC(amqper, result.id, 'getNode', [{session: roomId, consumer: roomId}], function (sessionController) {
+                makeRPC(rpcClient, result.id, 'getNode', [{session: roomId, consumer: roomId}], function (sessionController) {
                     on_ok(sessionController);
                     keepTrying = false;
                 }, function(reason) {
@@ -163,8 +163,8 @@ var getSessionControllerForRoom = function (roomId, on_ok, on_error) {
     tryFetchingSessionController(25);
 };
 
-module.exports = function (rpcClient, spec) {
-    amqper = rpcClient;
+module.exports = function (rpcC, spec) {
+    rpcClient = rpcC;
 
     var that = {},
         erizo = {id:spec.id, addr:spec.addr},

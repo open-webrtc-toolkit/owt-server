@@ -54,7 +54,7 @@ function startup () {
                     videoStrategy: config.strategy.video
                    };
 
-        amqper.asTopicParticipant('woogeen-cluster-management', function(channel) {
+        amqper.asTopicParticipant('woogeen-cluster.management', function(channel) {
             log.info('Cluster manager up! id:', id);
             ClusterManager.run(channel, config.manager.name || 'woogeen-cluster', id, spec);
         }, function(reason) {

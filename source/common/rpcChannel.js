@@ -20,7 +20,7 @@ var RpcChannel = function(amqpClient) {
       };
       onStatus && (callbacks.onStatus = onStatus);
 
-      amqp_client.callRpc(
+      amqp_client.remoteCall(
         node,
         method,
         args,

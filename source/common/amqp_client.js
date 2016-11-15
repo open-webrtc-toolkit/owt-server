@@ -21,12 +21,24 @@ var declareExchange = function(conn, name, type, autoDelete, on_ok, on_failure) 
     }, 3000);
 };
 
-var rpcClient = function(conn, exc, on_ready) {
-    var handler = {};//neccesary? maybe 'this' is clearer.
+var rpcClient = function(bus, conn, on_ready, on_failure) {
+    var handler = {bus: bus};
 
     var call_map = {},
         corrID = 0,
         ready = false,
+        reply_q,
+        exc;
+
+    declareExchange(conn, 'woogeenRpc', 'direct', true, function (exc_got) {
+        exc = exc_got;
+        var timer = setTimeout(function () {
+            if (!ready) {
+                exc.destroy(true);
+                on_failure('Declare reply queue or rpc-client failed.');
+            }
+        }, 2000);
+
         reply_q = conn.queue('', function (q) {
             log.info('Reply queue for rpc client ' + q.name + ' is open');
 
@@ -58,6 +70,7 @@ var rpcClient = function(conn, exc, on_ready) {
                 on_ready();
             });
         });
+    }, on_failure);
 
     handler.remoteCall = function(to, method, args, callbacks) {
         log.debug('remoteCall, corrID:', corrID, 'to:', to, 'method:', method);
@@ -83,7 +96,7 @@ var rpcClient = function(conn, exc, on_ready) {
     };
 
     handler.remoteCast = function(to, method, args) {
-        exc.publish(to, {method: method, args: args});
+        exc && exc.publish(to, {method: method, args: args});
     };
 
     handler.close = function() {
@@ -92,39 +105,59 @@ var rpcClient = function(conn, exc, on_ready) {
         }
         call_map = {};
         reply_q && reply_q.destroy();
+        reply_q = undefined;
+        exc && exc.destroy(true);
+        exc = undefined;
     };
 
     return handler;
 };
 
-var rpcServer = function(conn, exc, id, methods, on_ready) {
-    var handler = {};
+var rpcServer = function(bus, conn, id, methods, on_ready, on_failure) {
+    var handler = {bus: bus};
 
-    var request_q = conn.queue(id, function (queueCreated) {
-        log.info('Request queue for rpc server ' + queueCreated.name + ' is open');
+    var exc, request_q;
 
-        request_q.bind(exc.name, id, function() {
-            request_q.subscribe(function (message) {
-                try {
-                    log.debug('New message received', message);
-                    message.args = message.args || [];
-                    if (message.replyTo && message.corrID !== undefined) {
-                        message.args.push(function(type, result, err) {
-                            exc.publish(message.replyTo, {data: result, corrID: message.corrID, type: type, err: err});
-                        });
+    declareExchange(conn, 'woogeenRpc', 'direct', true, function (exc_got) {
+        exc = exc_got;
+        var ready = false;
+        var timer = setTimeout(function () {
+            if (!ready) {
+                exc.destroy(true);
+                on_failure('Declare request queue or rpc-server failed.');
+            }
+        }, 2000);
+
+        request_q = conn.queue(id, function (queueCreated) {
+            log.info('Request queue for rpc server ' + queueCreated.name + ' is open');
+
+            request_q.bind(exc.name, id, function() {
+                request_q.subscribe(function (message) {
+                    try {
+                        log.debug('New message received', message);
+                        message.args = message.args || [];
+                        if (message.replyTo && message.corrID !== undefined) {
+                            message.args.push(function(type, result, err) {
+                                exc.publish(message.replyTo, {data: result, corrID: message.corrID, type: type, err: err});
+                            });
+                        }
+                        methods[message.method].apply(methods, message.args);
+                    } catch (error) {
+                        log.error('message:', message);
+                        log.error('Error processing call: ', error);
                     }
-                    methods[message.method].apply(methods, message.args);
-                } catch (error) {
-                    log.error('message:', message);
-                    log.error('Error processing call: ', error);
-                }
+                });
+                ready = true;
+                on_ready();
             });
-            on_ready();
         });
-    });
+    }, on_failure);
 
     handler.close = function() {
-        request_q.destroy();
+        request_q && request_q.destroy();
+        request_q = undefined;
+        exc && exc.destroy(true);
+        exc = undefined;
     };
 
     return handler;
@@ -196,39 +229,16 @@ module.exports = function() {
     var that = {};
 
     var connection,
-        rpc_exc,
         rpc_client,
         rpc_server,
         topic_participants = {},
         monitor_exc;
-
-    var declareExchange = function(name, type, autoDelete, on_ok, on_failure) {
-        if (connection) {
-            var ok = false;
-            var exc = connection.exchange(name, {type: type, autoDelete: autoDelete}, function (exchange) {
-                log.info('Exchange ' + exchange.name + ' is open');
-                ok = true;
-                on_ok(exc);
-            });
-
-            setTimeout(function() {
-                if (!ok) {
-                    log.error('Declare exchange [name: ' + name + ', type: ' + type + '] failed.');
-                    on_failure('Declare exchange [name: ' + name + ', type: ' + type + '] failed.');
-                }
-            }, 5000);
-        } else {
-            on_failure('amqp connection is not ready');
-        }
-    };
 
     var close = function () {
         rpc_server && rpc_server.close();
         rpc_server = undefined;
         rpc_client && rpc_client.close();
         rpc_client = undefined;
-        rpc_exc && rpc_exc.destroy(true);
-        rpc_exc = undefined;
         for (var group in topic_participants) {
             topic_participants[group].close();
         }
@@ -269,74 +279,25 @@ module.exports = function() {
 
     that.asRpcServer = function(id, methods, on_ok, on_failure) {
         if (rpc_server) {
-            on_ok();
-            return that;
+            return on_ok(rpc_server);
         }
 
-        var init_rpc_server = function() {
-            var timer = setTimeout(on_failure, 10 * 1000, 'Initializing rpc server timeout');
-            rpc_server = rpcServer(connection, rpc_exc, id, methods, function() {
-                clearTimeout(timer);
-                on_ok();
-            });
-        };
-
         if (connection) {
-            if (rpc_exc) {
-                init_rpc_server();
-            } else {
-                declareExchange('woogeenRpc', 'direct', true, function(exc) {
-                    rpc_exc = exc;
-                    init_rpc_server();
-                }, on_failure);
-            }
+            rpc_server = rpcServer(that, connection, id, methods, function () { on_ok(rpc_server); }, on_failure);
         } else {
             on_failure('amqp connection not ready');
         }
-
-        return that;
     };
 
     that.asRpcClient = function(on_ok, on_failure) {
         if (rpc_client) {
-            return on_ok();
+            return on_ok(rpc_client);
         }
-
-        var init_rpc_client = function() {
-            var timer = setTimeout(on_failure, 10 * 1000, 'Initializing rpc client timeout');
-            rpc_client = rpcClient(connection, rpc_exc, function() {
-                clearTimeout(timer);
-                on_ok();
-            });
-        };
 
         if (connection) {
-            if (rpc_exc) {
-                init_rpc_client();
-            } else {
-                declareExchange('woogeenRpc', 'direct', true, function(exc) {
-                    rpc_exc = exc;
-                    init_rpc_client();
-                }, on_failure);
-            }
+            rpc_client = rpcClient(that, connection, function () { on_ok(rpc_client); }, on_failure);
         } else {
             on_failure('amqp connection not ready');
-        }
-
-        return that;
-    };
-
-    that.callRpc = function(to, method, args, callback) {
-        if (rpc_client) {
-            rpc_client.remoteCall(to, method, args, callback);
-        } else {
-            callback('error', 'Rpc client is not ready.');
-        }
-    };
-
-    that.remoteCast = function(to, method, args) {
-        if (rpc_client) {
-            rpc_client.remoteCast(to, method, args);
         }
     };
 
