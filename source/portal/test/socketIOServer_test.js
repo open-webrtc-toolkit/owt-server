@@ -9,6 +9,8 @@ var portal = require('../portal');
 
 var testRoom = '573eab78111478bb3526421a';
 
+var clientInfo = {sdk:{version: '3.3', type: 'JavaScript'}, runtime: {name: 'Chrome', version: '53.0.0.0'}, os:{name:'Linux (Ubuntu)', version:'14.04'}};
+
 describe('Clients connect to socket.io server.', function() {
   it('Connecting to an insecure socket.io server should succeed.', function(done) {
     var server = socketIOServer({port: 3001, ssl: false});
@@ -248,7 +250,7 @@ describe('Responding to clients.', function() {
     }, 5);
   }
 
-  describe('on: token', function() {
+  describe('on: token (deprecated)', function() {
     it('Joining with valid tokens should succeed.', function(done) {
       mockPortal.join = sinon.stub();
 
@@ -263,6 +265,7 @@ describe('Responding to clients.', function() {
 
       client.emit('token', 'someValidToken', function(status, resp) {
         expect(status).to.equal('success');
+        // portal.join requires base64 encoded token which is the same as nuve issued. Legacy client sends base64 decoded token.
         expect(mockPortal.join.getCall(0).args).to.deep.equal([client.id, 'someValidToken']);
         expect(resp).to.deep.equal({id: join_result.session_id, clientId: client.id, streams: transformed_streams, users: join_result.participants});
         done();
@@ -270,17 +273,130 @@ describe('Responding to clients.', function() {
     });
 
     it('Joining with invalid tokens should fail and cause disconnection.', function(done) {
+      "use strict";
       mockPortal.join = sinon.stub();
       mockPortal.join.rejects('invalid token');
 
-      client.on('disconnect', function() {
+      let resolveDisconnect, resolveToken;
+      Promise.all([new Promise(function(resolve){
+        resolveDisconnect=resolve;
+      }), new Promise(function(resolve){
+        resolveToken=resolve;
+      })]).then(function(){
         done();
+      });
+
+      client.on('disconnect', function() {
+        resolveDisconnect();
       });
 
       client.emit('token', 'someInvalidToken', function(status, resp) {
         expect(status).to.equal('error');
         expect(resp).to.have.string('invalid token');
-        //done();
+        resolveToken();
+      });
+    });
+
+  });
+
+  describe('on: login', function(){
+    "use strict";
+    let someValidToken = (new Buffer(JSON.stringify('someValidToken'))).toString('base64');
+
+    it('Joining with valid token and UA info should succeed.', function(done) {
+      mockPortal.join = sinon.stub();
+
+      var join_result = {user: 'Jack',
+                         role: 'presenter',
+                         session_id: testRoom,
+                         participants: [],
+                         streams: [{id: testRoom, audio: true, video: {device: 'mcu', resolutions: ['vag', 'hd720p']}, from: '', socket: ''}]};
+      mockPortal.join.resolves(join_result);
+
+      var transformed_streams = [{id: testRoom, audio: true, video: {device: 'mcu', resolutions: [{width: 640, height: 480}, {width: 1280, height: 720}]}, from: '', socket: ''}];
+
+      client.emit('login', {token: someValidToken, userAgent:clientInfo}, function(status, resp) {
+        expect(status).to.equal('success');
+        expect(mockPortal.join.getCall(0).args).to.deep.equal([client.id, 'someValidToken']);
+        expect(resp).to.deep.equal({id: join_result.session_id, clientId: client.id, streams: transformed_streams, users: join_result.participants});
+        done();
+      });
+    });
+
+    it('Joining with invalid token and valid UA info should fail and cause disconnection.', function(done) {
+      mockPortal.join = sinon.stub();
+      mockPortal.join.rejects('invalid token');
+
+      let resolveDisconnect, resolveJoin;
+      Promise.all([new Promise(function(resolve){
+        resolveDisconnect=resolve;
+      }), new Promise(function(resolve){
+        resolveJoin=resolve;
+      })]).then(function(){
+        done();
+      });
+
+      client.on('disconnect', function() {
+        resolveDisconnect();
+      });
+
+      client.emit('login', {token: (new Buffer(JSON.stringify('someInvalidToken'))).toString('base64'), userAgent: clientInfo}, function(status, resp) {
+        expect(status).to.equal('error');
+        expect(resp).to.have.string('invalid token');
+        resolveJoin();
+      });
+    });
+
+    it('Joining with token which is not base64 encoded should fail and cause disconnection.', function(done) {
+      mockPortal.join = sinon.stub();
+      mockPortal.join.rejects('invalid token');
+
+      let resolveDisconnect, resolveJoin;
+      Promise.all([new Promise(function(resolve){
+        resolveDisconnect=resolve;
+      }), new Promise(function(resolve){
+        resolveJoin=resolve;
+      })]).then(function(){
+        done();
+      });
+
+      client.on('disconnect', function() {
+        resolveDisconnect();
+      });
+
+      client.emit('login', {token: 'someInvalidToken', userAgent: clientInfo}, function(status, resp) {
+        expect(status).to.equal('error');
+        expect(mockPortal.join.called).to.be.false;
+        resolveJoin();
+      });
+    });
+
+    it('Joining with valid tokens and invalid UA should fail and cause disconnection.', function(done) {
+      mockPortal.join = sinon.stub();
+      var join_result = {user: 'Jack',
+                         role: 'presenter',
+                         session_id: testRoom,
+                         participants: [],
+                         streams: [{id: testRoom, audio: true, video: {device: 'mcu', resolutions: ['vag', 'hd720p']}, from: '', socket: ''}]};
+      mockPortal.join.resolves(join_result);
+
+      let resolveDisconnect, resolveJoin;
+      Promise.all([new Promise(function(resolve){
+        resolveDisconnect=resolve;
+      }), new Promise(function(resolve){
+        resolveToken=resolve;
+      })]).then(function(){
+        done();
+      });
+
+      client.on('disconnect', function() {
+        resolveDisconnect();
+      });
+
+      client.emit('login', {token: someValidToken, userAgent: 'invalidUserAgent'}, function(status, resp) {
+        expect(status).to.equal('error');
+        expect(resp).to.have.string('User agent info is incorrect.');
+        done();
       });
     });
   });

@@ -97,24 +97,65 @@ function safeCall () {
 
 var Client = function(participant_id, socket, portal, on_disconnect) {
   var that = {};
+  let reconnection_enabled = false;
+
+  // client_info has client version and platform.
+  let checkClientAbility = function(ua){
+    if(!ua||!ua.sdk||!ua.sdk.version||!ua.sdk.type||!ua.runtime||!ua.runtime.version||!ua.runtime.name||!ua.os||!ua.os.version||!ua.os.name){
+      return false;
+    }
+    // client_info is introduced in 3.3. It's the same version as reconnection. So it's safe to set reconnection_enabled to true if UA info is valid.
+    reconnection_enabled = true;
+    return true;
+  };
 
   that.listen = function() {
-    socket.on('token', function(token, callback) {
-      portal.join(participant_id, token)
-      .then(function(result) {
+    // Join portal. It returns room info.
+    let joinPortal = function(participant_id, token){
+      return portal.join(participant_id, token).then(function(result){
         that.inRoom = result.session_id;
-        safeCall(callback, 'success', {clientId: participant_id,
-                                       id: result.session_id,
-                                       streams: result.streams.map(function(st) {
-                                         st.video && (st.video.resolutions instanceof Array) && (st.video.resolutions = st.video.resolutions.map(resolution2WidthHeight));
-                                         return st;
-                                       }),
-                                       users: result.participants});
-      }).catch(function(err) {
-        var err_message = (typeof err === 'string' ? err: err.message);
-        log.info('token login failed:', err_message);
-        safeCall(callback, 'error', err_message);
-        socket.disconnect();
+        return {clientId: participant_id,
+                id: result.session_id,
+                streams: result.streams.map(function(st) {
+                  st.video && (st.video.resolutions instanceof Array) && (st.video.resolutions = st.video.resolutions.map(resolution2WidthHeight));
+                  return st;
+                }),
+                users: result.participants};
+      });
+    };
+
+    var joinPortalFailed = function(err, callback){
+      var err_message = (typeof err === 'string' ? err: err.message);
+      safeCall(callback, 'error', err_message);
+      socket.disconnect();
+    };
+
+    socket.on('login', function(login_info, callback) {
+      new Promise(function(resolve){
+        resolve(JSON.parse((new Buffer(login_info.token, 'base64')).toString()));
+      }).then(function(token){
+        return new Promise(function(resolve, reject){
+          if(checkClientAbility(login_info.userAgent)){
+            resolve(token);
+          } else {
+            reject('User agent info is incorrect.');
+          }
+        });
+      }).then(function(token){
+        return joinPortal(participant_id, token);
+      }).then(function(room_info) {
+        safeCall(callback, 'success', room_info)
+      }).catch(function(error) {
+        joinPortalFailed(error, callback)
+      });
+    });
+
+    // "token" event is deprecated. It has been replace with "login". All clients use "token" will be treated as legacy version (<3.3).
+    socket.on('token', function(token, callback) {
+      joinPortal(participant_id, token).then(function(room_info){
+        safeCall(callback, 'success', room_info);
+      }).catch(function(error){
+        joinPortalFailed(error, callback);
       });
     });
 
