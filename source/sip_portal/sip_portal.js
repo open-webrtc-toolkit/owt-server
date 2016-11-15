@@ -4,10 +4,11 @@
 var fs = require('fs');
 var toml = require('toml');
 var amqper = require('./amqp_client')();
+var rpcClient;
 var makeRPC = require('./makeRPC').makeRPC;
 var log = require('./logger').logger.getLogger('SipPortal');
 var sipErizoHelper = require('./sipErizoHelper');
-
+var helper;
 var config;
 try {
   config = toml.parse(fs.readFileSync('./sip_portal.toml'));
@@ -26,13 +27,6 @@ config.cluster.name = config.cluster.name || 'woogeen-cluster';
 var rebuildErizo = function(erizo_id) {
   //TODO: clean the old erizo and rebuild a new one to resume the biz.
 };
-
-var sipErizoHelper = sipErizoHelper({cluster : config.cluster.name,
-                                     amqper : amqper,
-                                     on_broken : function (erizo_id) {
-        rebuildErizo(erizo_id);
-    }
-});
 
 var api = {
 	//define rpc calls to receive sip info change from nuve
@@ -56,7 +50,14 @@ var erizos = {};
 
 function initSipRooms() {
     log.info('Start to get SIP rooms');
-    amqper.callRpc('nuve', 'getRoomsWithSIP', null, {
+    helper = sipErizoHelper({cluster : config.cluster.name,
+                             rpcClient : rpcClient,
+                             on_broken : function (erizo_id) {
+            rebuildErizo(erizo_id);
+        }
+    });
+
+    rpcClient.remoteCall('nuve', 'getRoomsWithSIP', null, {
         callback: function (rooms) {
             // get sip rooms here
             // Argument rooms: [{room_id:room-id, sipInfo:room's-sipInfo}...]
@@ -71,10 +72,10 @@ function initSipRooms() {
 }
 
 function createSipConnectivity(room_id, sip_server, sip_user, sip_passwd) {
-    sipErizoHelper.allocateSipErizo({session: room_id, consumer: room_id}, function(erizo) {
+    helper.allocateSipErizo({session: room_id, consumer: room_id}, function(erizo) {
         log.info('allocateSipErizo', erizo);
         makeRPC(
-            amqper,
+            rpcClient,
             erizo.id,
             'init',
             [{
@@ -88,7 +89,7 @@ function createSipConnectivity(room_id, sip_server, sip_user, sip_passwd) {
                 erizos[room_id] = erizo.id;
             }, function(reason) {
                 log.error("Init sip node fail, try to de-allocate it.");
-                sipErizoHelper.deallocateSipErizo(erizo.id);
+                helper.deallocateSipErizo(erizo.id);
             });
   }, function(error_reson) {
       log.error("Allocate sip Erizo fail: ", error_reson);
@@ -100,19 +101,20 @@ function deleteSipConnectivity(room_id) {
     if (erizo_id) {
         log.info('deallocateSipErizo', erizo_id);
         makeRPC(
-            amqper,
+            rpcClient,
             erizo_id,
             'clean');
 
-        sipErizoHelper.deallocateSipErizo(erizo_id);
+        helper.deallocateSipErizo(erizo_id);
         delete erizos[room_id];
     }
 }
 
 function startup () {
     amqper.connect(config.rabbit, function () {
-        amqper.asRpcClient(function() {
-            amqper.asRpcServer('sip-portal', api, function() {
+        amqper.asRpcClient(function(rpcClnt) {
+            rpcClient = rpcClnt;
+            amqper.asRpcServer('sip-portal', api, function(rpcSvr) {
                 log.info('sip-portal up!');
                 initSipRooms();
             }, function(reason) {

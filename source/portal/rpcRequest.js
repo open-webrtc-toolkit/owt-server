@@ -1,7 +1,7 @@
 /* global require */
 'use strict';
 
-var RpcClient = function(rpcChannel) {
+var RpcRequest = function(rpcChannel) {
   var that = {};
 
   that.tokenLogin = function(nuve, tokenId) {
@@ -122,5 +122,5 @@ var RpcClient = function(rpcChannel) {
   return that;
 }
 
-module.exports = RpcClient;
+module.exports = RpcRequest;
 

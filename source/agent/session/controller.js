@@ -12,8 +12,8 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
     var that = {};
 
     var cluster = spec.cluster,
-        rpc_client = spec.rpcClient,
-        amqper = spec.amqper,
+        rpcReq = spec.rpcReq,
+        rpcClient = spec.rpcClient,
         config = spec.config,
         room_id = spec.room,
         observer = spec.observer,
@@ -56,7 +56,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
         log.debug('enableAVCoordination');
         if (config.enableMixing && audio_mixer && video_mixer) {
             makeRPC(
-                amqper,
+                rpcClient,
                 terminals[audio_mixer].locality.node,
                 'enableVAD',
                 [1000, room_id, observer]);
@@ -71,7 +71,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
             audio_mixer &&
             video_mixer) {
             makeRPC(
-                amqper,
+                rpcClient,
                 terminals[audio_mixer].locality.node,
                 'resetVAD',
                 []);
@@ -85,7 +85,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
             newTerminal(audio_mixer, 'amixer', room_id, false, function () {
                 log.debug('new audio mixer ok. audio_mixer:', audio_mixer, 'room_id:', room_id);
                 makeRPC(
-                    amqper,
+                    rpcClient,
                     terminals[audio_mixer].locality.node,
                     'init',
                     ['mixing', config.mediaMixing.audio],
@@ -95,7 +95,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                         newTerminal(video_mixer, 'vmixer', room_id, false, function () {
                             log.debug('new video mixer ok. video_mixer:', video_mixer, 'room_id:', room_id);
                             makeRPC(
-                                amqper,
+                                rpcClient,
                                 terminals[video_mixer].locality.node,
                                 'init',
                                 ['mixing', config.mediaMixing.video, room_id, observer],
@@ -113,7 +113,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                                     log.error('init video_mixer failed. room_id:', room_id, 'reason:', error_reason);
                                     deleteTerminal(video_mixer);
                                     makeRPC(
-                                        amqper,
+                                        rpcClient,
                                         terminals[audio_mixer].locality.node,
                                         'deinit',
                                         [audio_mixer]);
@@ -125,7 +125,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                             }, function (error_reason) {
                                 log.error('new video mixer failed. room_id:', room_id, 'reason:', error_reason);
                                 makeRPC(
-                                    amqper,
+                                    rpcClient,
                                     terminals[audio_mixer].locality.node,
                                     'deinit',
                                     [audio_mixer]);
@@ -163,7 +163,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                        terminals[terminal_id].type === 'axcoder' ||
                        terminals[terminal_id].type === 'vxcoder') {
                 makeRPC(
-                    amqper,
+                    rpcClient,
                     terminals[terminal_id].locality.node,
                     'deinit',
                     [terminal_id]);
@@ -189,7 +189,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                               : ((terminal_type === 'amixer' || terminal_type === 'axcoder') ? 'audio' : 'unknown');
 
                 var nodeLocality = (preAssignedNode ? Promise.resolve(preAssignedNode)
-                                               : rpc_client.getMediaNode(cluster, purpose, {session: room_id, consumer: terminal_id}));
+                                               : rpcReq.getMediaNode(cluster, purpose, {session: room_id, consumer: terminal_id}));
 
                 return nodeLocality
                     .then(function(locality) {
@@ -210,7 +210,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
     var deleteTerminal = function (terminal_id) {
         log.debug('deleteTerminal:', terminal_id);
         if (terminals[terminal_id]) {
-            rpc_client.recycleMediaNode(terminals[terminal_id].locality.agent, terminals[terminal_id].locality.node, {session: room_id, consumer: terminal_id});
+            rpcReq.recycleMediaNode(terminals[terminal_id].locality.agent, terminals[terminal_id].locality.node, {session: room_id, consumer: terminal_id});
             delete terminals[terminal_id];
         }
     };
@@ -255,7 +255,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
         var on_spread_failed = function(reason, cancel_pub, cancel_sub) {
             if (cancel_sub) {
                 makeRPC(
-                    amqper,
+                    rpcClient,
                     original_node,
                     'unsubscribe',
                     [spread_id]);
@@ -263,7 +263,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
 
             if (cancel_pub) {
                 makeRPC(
-                    amqper,
+                    rpcClient,
                     target_node,
                     'unpublish',
                     [stream_id]);
@@ -273,7 +273,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
         };
 
         makeRPC(
-            amqper,
+            rpcClient,
             target_node,
             'publish',
             [stream_id, 'internal', {owner: terminals[stream_owner].owner,
@@ -286,7 +286,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                 }
                 log.debug('internally publish ok, dest:', dest.ip, dest.port);
                 makeRPC(
-                    amqper,
+                    rpcClient,
                     original_node,
                     'subscribe',
                     [spread_id, 'internal', {dest_ip: dest.ip, dest_port: dest.port, protocol: 'tcp'}],
@@ -294,7 +294,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                         log.debug('internally subscribe ok');
                         if (streams[stream_id]) {
                             makeRPC(
-                                amqper,
+                                rpcClient,
                                 original_node,
                                 'linkup',
                                 [spread_id, audio ? stream_id : undefined, video ? stream_id : undefined],
@@ -335,13 +335,13 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                 }
 
                 makeRPC(
-                    amqper,
+                    rpcClient,
                     original_node,
                     'unsubscribe',
                     [spread_id]);
 
                 makeRPC(
-                    amqper,
+                    rpcClient,
                     target_node,
                     'unpublish',
                     [stream_id]);
@@ -474,7 +474,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
             var amixer_node = terminals[audio_mixer].locality.node;
             log.debug('spawnMixedAudio, for participant:', participant_id, 'audio_codec:', audio_codec);
             makeRPC(
-                amqper,
+                rpcClient,
                 amixer_node,
                 'generate',
                 [participant_id, audio_codec],
@@ -499,7 +499,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
         if (video_mixer && terminals[video_mixer]) {
             var vmixer_node = terminals[video_mixer].locality.node;
             makeRPC(
-                amqper,
+                rpcClient,
                 vmixer_node,
                 'generate',
                 [video_codec, video_resolution],
@@ -549,7 +549,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
         var axcoder_node = terminals[axcoder].locality.node;
         log.debug('spawnTranscodedAudio, audio_codec:', audio_codec);
         makeRPC(
-            amqper,
+            rpcClient,
             axcoder_node,
             'generate',
             [audio_codec, audio_codec],
@@ -596,7 +596,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
             newTerminal(axcoder, 'axcoder', streams[stream_id].owner, false, function () {
                 var on_failed = function (reason) {
                     makeRPC(
-                        amqper,
+                        rpcClient,
                         terminals[axcoder].locality.node,
                         'deinit',
                         [axcoder]);
@@ -605,7 +605,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                 };
 
                 makeRPC(
-                    amqper,
+                    rpcClient,
                     terminals[axcoder].locality.node,
                     'init',
                     ['transcoding', {}],
@@ -639,7 +639,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
         var vxcoder_node = terminals[vxcoder].locality.node;
         log.debug('spawnTranscodedVideo, video_codec:', video_codec, 'video_resolution:', video_resolution);
         makeRPC(
-            amqper,
+            rpcClient,
             vxcoder_node,
             'generate',
             [video_codec, video_resolution],
@@ -687,7 +687,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
             newTerminal(vxcoder, 'vxcoder', streams[stream_id].owner, false, function () {
                 var on_failed = function (error_reason) {
                     makeRPC(
-                        amqper,
+                        rpcClient,
                         terminals[vxcoder].locality.node,
                         'deinit',
                         [vxcoder]);
@@ -696,7 +696,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                 };
 
                 makeRPC(
-                    amqper,
+                    rpcClient,
                     terminals[vxcoder].locality.node,
                     'init',
                     ['transcoding', {resolution: streams[stream_id].video.resolution}, room_id, undefined],
@@ -731,7 +731,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
         var owner = streams[stream_id].owner;
         var node = terminals[owner].locality.node;
         makeRPC(
-            amqper,
+            rpcClient,
             node,
             'degenerate',
             [stream_id]);
@@ -908,7 +908,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
 
             if (terminals[subscriber].type === 'participant') {
                 makeRPC(
-                    amqper,
+                    rpcClient,
                     node,
                     'cutoff',
                     [subscription_id]);
@@ -1126,7 +1126,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                 log.debug('linkup, subscriber:', terminal_id, 'audioStream:', audioStream, 'videoStream:', videoStream);
                 if (terminals[terminal_id] && (!audioStream || streams[audioStream]) && (!videoStream || streams[videoStream])) {
                     makeRPC(
-                        amqper,
+                        rpcClient,
                         terminals[terminal_id].locality.node,
                         'linkup',
                         [subscriptionId, audioStream, videoStream],
@@ -1261,7 +1261,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                     var target_node = terminals[video_mixer].locality.node;
                     var active = (status === 'active');
                     makeRPC(
-                        amqper,
+                        rpcClient,
                         target_node,
                         'setInputActive',
                         [stream_id, active]);
@@ -1293,7 +1293,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
         log.debug('getRegion, stream_id:', stream_id);
         if (video_mixer) {
             makeRPC(
-                amqper,
+                rpcClient,
                 terminals[video_mixer].locality.node,
                 'getRegion',
                 [stream_id],
@@ -1306,7 +1306,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
         log.debug('setRegion, stream_id:', stream_id, 'region:', region);
         if (video_mixer) {
             makeRPC(
-                amqper,
+                rpcClient,
                 terminals[video_mixer].locality.node,
                 'setRegion',
                 [stream_id, region],
@@ -1325,7 +1325,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                     var stream_id = terminals[terminal_id].published[i];
                     if (streams[stream_id] && streams[stream_id].video && (streams[stream_id].video.subscribers.indexOf(video_mixer) !== -1)) {
                         makeRPC(
-                            amqper,
+                            rpcClient,
                             terminals[video_mixer].locality.node,
                             'setPrimary',
                             [stream_id]);

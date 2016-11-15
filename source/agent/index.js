@@ -97,7 +97,8 @@ for (var prop in opt.options) {
 }
 
 var clusterWorker = require('./clusterWorker');
-var rpc = require('./amqp_client')();
+var amqper = require('./amqp_client')();
+var rpcClient;
 
 var erizo_index = 0;
 var idle_erizos = [];
@@ -130,6 +131,9 @@ var launchErizoJS = function() {
     child.unref();
     child.on('close', function (code) {
         log.info(id, 'exit with', code);
+        if (code) {
+            //notify abnormal exit of working node.
+        }
         cleanupErizoJS(id);
         fillErizos();
     });
@@ -364,7 +368,7 @@ var joinCluster = function (on_ok) {
     };
 
     worker = clusterWorker({
-        amqper: rpc,
+        rpcClient: rpcClient,
         purpose: myPurpose,
         clusterName: GLOBAL.config.cluster.name,
         joinRetry: GLOBAL.config.cluster.join_retry,
@@ -440,12 +444,13 @@ var joinCluster = function (on_ok) {
     }
 })();
 
-rpc.connect(GLOBAL.config.rabbit, function () {
+amqper.connect(GLOBAL.config.rabbit, function () {
     log.info('Adding agent to cloudhandler, purpose:', myPurpose);
-    rpc.asRpcClient(function() {
+    amqper.asRpcClient(function(rpcClnt) {
+        rpcClient = rpcClnt;
         var worker = joinCluster(function (rpcID) {
-            rpc.asRpcServer(rpcID, api(worker), function() {
-                log.info();
+            amqper.asRpcServer(rpcID, api(worker), function(rpcServer) {
+                log.info('as rpc server ok.');
             }, function(reason) {
                 log.error(rpcID + ' as rpc server failed, reason:', reason);
                 process.exit();
@@ -474,5 +479,5 @@ process.on('exit', function () {
             log.info('Terminate ErizoJS', k, status);
         });
     });
-    rpc.disconnect();
+    amqper.disconnect();
 });

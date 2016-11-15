@@ -223,7 +223,7 @@ module.exports = function (rpcClient) {
     that.enableVAD = function (periodMS, roomId, observer) {
         engine.enableVAD(periodMS, function (activeParticipant) {
             log.debug('enableVAD, activeParticipant:', activeParticipant);
-            rpcClient.callRpc(observer, 'onAudioActiveParticipant', [roomId, activeParticipant], {callback: function(){}});
+            rpcClient.remoteCall(observer, 'onAudioActiveParticipant', [roomId, activeParticipant], {callback: function(){}});
         });
     };
 

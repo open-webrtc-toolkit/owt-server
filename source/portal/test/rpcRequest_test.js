@@ -2,19 +2,19 @@ var expect = require('chai').use(require('chai-as-promised')).expect;
 var sinon = require('sinon');
 var sinonAsPromised = require('sinon-as-promised');
 
-var rpcClient = require('../rpcClient');
+var rpcRequest = require('../rpcRequest');
 var rpcChannel = require('../rpcChannel');
 
-describe('rpcClient.getController', function() {
+describe('rpcRequest.getController', function() {
   it('Should succeed if scheduling agent and requiring node succeed.', function() {
     var mockRpcChannel = sinon.createStubInstance(rpcChannel);
     mockRpcChannel.makeRPC = sinon.stub();
     mockRpcChannel.makeRPC.onCall(0).returns(Promise.resolve({id: 'RpcIdOfControllerAgent', info: {ip: 'x.x.x.x', purpose: 'session', state: 2, max_load: 0.85}}));
     mockRpcChannel.makeRPC.onCall(1).returns(Promise.resolve('RpcIdOfController'));
 
-    var client = rpcClient(mockRpcChannel);
+    var req = rpcRequest(mockRpcChannel);
 
-    return client.getController('woogeen-cluster', 'SessionId').then(function(result) {
+    return req.getController('woogeen-cluster', 'SessionId').then(function(result) {
       expect(result).to.equal('RpcIdOfController');
       expect(mockRpcChannel.makeRPC.getCall(0).args).to.deep.equal(['woogeen-cluster', 'schedule', ['session', 'SessionId', 30000]]);
       expect(mockRpcChannel.makeRPC.getCall(1).args).to.deep.equal(['RpcIdOfControllerAgent', 'getNode', [{session: 'SessionId', consumer: 'SessionId'}]]);
@@ -26,9 +26,9 @@ describe('rpcClient.getController', function() {
     mockRpcChannel.makeRPC = sinon.stub();
     mockRpcChannel.makeRPC.onCall(0).returns(Promise.reject('timeout or error while getting agent'));
 
-    var client = rpcClient(mockRpcChannel);
+    var req = rpcRequest(mockRpcChannel);
 
-    return expect(client.getController('woogeen-cluster', 'SessionId')).to.be.rejectedWith('timeout or error while getting agent');
+    return expect(req.getController('woogeen-cluster', 'SessionId')).to.be.rejectedWith('timeout or error while getting agent');
   });
 
   it('Should fail if requiring node timeout or error occurs.', function() {
@@ -37,22 +37,22 @@ describe('rpcClient.getController', function() {
     mockRpcChannel.makeRPC.onCall(0).returns(Promise.resolve('RpcIdOfControllerAgent'));
     mockRpcChannel.makeRPC.onCall(1).returns(Promise.reject('timeout or error'));
 
-    var client = rpcClient(mockRpcChannel);
+    var req = rpcRequest(mockRpcChannel);
 
-    return expect(client.getController('woogeen-cluster', 'SessionId')).to.be.rejectedWith('timeout or error');
+    return expect(req.getController('woogeen-cluster', 'SessionId')).to.be.rejectedWith('timeout or error');
   });
 });
 
-describe('rpcClient.getAccessNode', function() {
+describe('rpcRequest.getAccessNode', function() {
   it('Should succeed if scheduling agent and requiring node succeed.', function() {
     var mockRpcChannel = sinon.createStubInstance(rpcChannel);
     mockRpcChannel.makeRPC = sinon.stub();
     mockRpcChannel.makeRPC.onCall(0).returns(Promise.resolve({id: 'RpcIdOfAccessAgent', info: {ip: 'x.x.x.x', purpose: 'purpose', state: 2, max_load: 0.85}}));
     mockRpcChannel.makeRPC.onCall(1).returns(Promise.resolve('RpcIdOfAccessNode'));
 
-    var client = rpcClient(mockRpcChannel);
+    var req = rpcRequest(mockRpcChannel);
 
-    return client.getAccessNode('woogeen-cluster', 'purpose', {session: 'Session', consumer: 'ConnectionId'}).then(function(result) {
+    return req.getAccessNode('woogeen-cluster', 'purpose', {session: 'Session', consumer: 'ConnectionId'}).then(function(result) {
       expect(result).to.deep.equal({agent:'RpcIdOfAccessAgent', node: 'RpcIdOfAccessNode'});
       expect(mockRpcChannel.makeRPC.getCall(0).args).to.deep.equal(['woogeen-cluster', 'schedule', ['purpose', 'Session', 30000]]);
       expect(mockRpcChannel.makeRPC.getCall(1).args).to.deep.equal(['RpcIdOfAccessAgent', 'getNode', [{session: 'Session', consumer: 'ConnectionId'}]]);
@@ -64,9 +64,9 @@ describe('rpcClient.getAccessNode', function() {
     mockRpcChannel.makeRPC = sinon.stub();
     mockRpcChannel.makeRPC.onCall(0).returns(Promise.reject('timeout or error while getting agent'));
 
-    var client = rpcClient(mockRpcChannel);
+    var req = rpcRequest(mockRpcChannel);
 
-    return expect(client.getAccessNode('woogeen-cluster', 'purpose', {session: 'Session', consumer: 'ConnectionId'})).to.be.rejectedWith('timeout or error while getting agent');
+    return expect(req.getAccessNode('woogeen-cluster', 'purpose', {session: 'Session', consumer: 'ConnectionId'})).to.be.rejectedWith('timeout or error while getting agent');
   });
 
   it('Should fail if requiring node timeout or error occurs.', function() {
@@ -75,23 +75,23 @@ describe('rpcClient.getAccessNode', function() {
     mockRpcChannel.makeRPC.onCall(0).returns(Promise.resolve('RpcIdOfAccessAgent'));
     mockRpcChannel.makeRPC.onCall(1).returns(Promise.reject('timeout or error'));
 
-    var client = rpcClient(mockRpcChannel);
+    var req = rpcRequest(mockRpcChannel);
 
-    return expect(client.getAccessNode('woogeen-cluster', 'purpose', {session: 'Session', consumer: 'ConnectionId'})).to.be.rejectedWith('timeout or error');
+    return expect(req.getAccessNode('woogeen-cluster', 'purpose', {session: 'Session', consumer: 'ConnectionId'})).to.be.rejectedWith('timeout or error');
   });
 });
 
-describe('rpcClient.publish', function() {
+describe('rpcRequest.publish', function() {
   it('Should succeed if rpcChannel.makeRPC succeeds.', function() {
     var mockRpcChannel = sinon.createStubInstance(rpcChannel);
     mockRpcChannel.makeRPC = sinon.stub();
-    var client = rpcClient(mockRpcChannel);
+    var req = rpcRequest(mockRpcChannel);
 
     mockRpcChannel.makeRPC.resolves('ok');
 
     var onStatus = sinon.spy();
 
-    return client.publish('rpcIdOfAccessNode',
+    return req.publish('rpcIdOfAccessNode',
                           'connectionId',
                           'connectionType',
                           {audio: true, video: {resolution: 'vga', framerate: 30, divice: 'camera'}},
@@ -110,12 +110,12 @@ describe('rpcClient.publish', function() {
   it('Should fail if rpcChannel.makeRPC timeout or error occurs.', function() {
     var mockRpcChannel = sinon.createStubInstance(rpcChannel);
     mockRpcChannel.makeRPC = sinon.stub();
-    var client = rpcClient(mockRpcChannel);
+    var req = rpcRequest(mockRpcChannel);
 
     mockRpcChannel.makeRPC.rejects('timeout or error');
     var onStatus = sinon.spy();
 
-    return expect(client.publish('rpcIdOfAccessNode',
+    return expect(req.publish('rpcIdOfAccessNode',
                                  'connectionId',
                                  'connectionType',
                                  {audio: true, video: {resolution: 'vga', framerate: 30, divice: 'camera'}},
@@ -124,17 +124,17 @@ describe('rpcClient.publish', function() {
   });
 });
 
-describe('rpcClient.subscribe', function() {
+describe('rpcRequest.subscribe', function() {
   it('Should succeed if rpcChannel.makeRPC succeeds.', function() {
     var mockRpcChannel = sinon.createStubInstance(rpcChannel);
     mockRpcChannel.makeRPC = sinon.stub();
-    var client = rpcClient(mockRpcChannel);
+    var req = rpcRequest(mockRpcChannel);
 
     mockRpcChannel.makeRPC.resolves('ok');
 
     var onStatus = sinon.spy();
 
-    return client.subscribe('rpcIdOfAccessNode',
+    return req.subscribe('rpcIdOfAccessNode',
                           'connectionId',
                           'connectionType',
                           {audio: true, video: {resolution: 'vga', framerate: 30, divice: 'camera'}},
@@ -153,12 +153,12 @@ describe('rpcClient.subscribe', function() {
   it('Should fail if rpcChannel.makeRPC timeout or error occurs.', function() {
     var mockRpcChannel = sinon.createStubInstance(rpcChannel);
     mockRpcChannel.makeRPC = sinon.stub();
-    var client = rpcClient(mockRpcChannel);
+    var req = rpcRequest(mockRpcChannel);
 
     mockRpcChannel.makeRPC.rejects('timeout or error');
     var onStatus = sinon.spy();
 
-    return expect(client.subscribe('rpcIdOfAccessNode',
+    return expect(req.subscribe('rpcIdOfAccessNode',
                                  'connectionId',
                                  'connectionType',
                                  {audio: true, video: {resolution: 'vga', framerate: 30, divice: 'camera'}},
@@ -167,15 +167,15 @@ describe('rpcClient.subscribe', function() {
   });
 });
 
-describe('rpcClient.pub2Session', function() {
+describe('rpcRequest.pub2Session', function() {
   it('Should succeed if rpcChannel.makeRPC succeeds.', function() {
     var mockRpcChannel = sinon.createStubInstance(rpcChannel);
     mockRpcChannel.makeRPC = sinon.stub();
-    var client = rpcClient(mockRpcChannel);
+    var req = rpcRequest(mockRpcChannel);
 
     mockRpcChannel.makeRPC.resolves('ok');
 
-    return client.pub2Session('rpcIdOfController',
+    return req.pub2Session('rpcIdOfController',
                           'participantId',
                           'streamId',
                           'accessNode',
@@ -185,7 +185,7 @@ describe('rpcClient.pub2Session', function() {
         expect(mockRpcChannel.makeRPC.getCall(0).args).to.deep.equal(['rpcIdOfController',
                                                                       'publish',
                                                                       ['participantId', 'streamId', 'accessNode', {audio: {codecs: ['pcmu', 'opus']}, video: {codecs: ['vp8', 'h264'], resolution: 'vga', framerate: 30, divice: 'camera'}}, false]]);
-        return client.pub2Session('rpcIdOfController',
+        return req.pub2Session('rpcIdOfController',
                               'participantId',
                               'streamId2',
                               'accessNode',
@@ -203,12 +203,12 @@ describe('rpcClient.pub2Session', function() {
   it('Should fail if rpcChannel.makeRPC timeout or error occurs.', function() {
     var mockRpcChannel = sinon.createStubInstance(rpcChannel);
     mockRpcChannel.makeRPC = sinon.stub();
-    var client = rpcClient(mockRpcChannel);
+    var req = rpcRequest(mockRpcChannel);
 
     mockRpcChannel.makeRPC.rejects('timeout or error');
     var onStatus = sinon.spy();
 
-    return expect(client.pub2Session('rpcIdOfController',
+    return expect(req.pub2Session('rpcIdOfController',
                                  'participantId',
                                  'streamId',
                                  'accessNode',
@@ -217,16 +217,16 @@ describe('rpcClient.pub2Session', function() {
   });
 });
 
-describe('rpcClient.sub2Session', function() {
+describe('rpcRequest.sub2Session', function() {
   it('Should succeed if rpcChannel.makeRPC succeeds.', function() {
     var mockRpcChannel = sinon.createStubInstance(rpcChannel);
     mockRpcChannel.makeRPC = sinon.stub();
-    var client = rpcClient(mockRpcChannel);
+    var req = rpcRequest(mockRpcChannel);
 
     mockRpcChannel.makeRPC.resolves('ok');
 
     var subscription_description = {audio: {fromStream: 'targetStreamId', codecs: ['opus']}, video: {fromStream: 'targetStreamId', codecs: ['vp8'], resolution: 'vga'}};
-    return client.sub2Session('rpcIdOfController',
+    return req.sub2Session('rpcIdOfController',
                             'participantId',
                             'subscriptionId',
                             'accessNode',
@@ -242,13 +242,13 @@ describe('rpcClient.sub2Session', function() {
   it('Should fail if rpcChannel.makeRPC timeout or error occurs.', function() {
     var mockRpcChannel = sinon.createStubInstance(rpcChannel);
     mockRpcChannel.makeRPC = sinon.stub();
-    var client = rpcClient(mockRpcChannel);
+    var req = rpcRequest(mockRpcChannel);
 
     mockRpcChannel.makeRPC.rejects('timeout or error');
     var onStatus = sinon.spy();
 
     var subscription_description = {audio: {fromStream: 'targetStreamId', codecs: ['opus']}, video: {fromStream: 'targetStreamId', codecs: ['vp8'], resolution: 'vga'}};
-    return expect(client.sub2Session('rpcIdOfController',
+    return expect(req.sub2Session('rpcIdOfController',
                                    'participantId',
                                    'subscriptionId',
                                    'accessNode',
@@ -257,11 +257,11 @@ describe('rpcClient.sub2Session', function() {
   });
 });
 
-describe('rpcClient.unpublish/unsubscribe/recycleAccessNode/unpub2Session/unsub2Session/leave', function() {
+describe('rpcRequest.unpublish/unsubscribe/recycleAccessNode/unpub2Session/unsub2Session/leave', function() {
   it('Should succeed if rpcChannel.makeRPC succeeds.', function() {
     var mockRpcChannel = sinon.createStubInstance(rpcChannel);
     mockRpcChannel.makeRPC = sinon.stub();
-    var client = rpcClient(mockRpcChannel);
+    var req = rpcRequest(mockRpcChannel);
 
     mockRpcChannel.makeRPC.withArgs('rpcIdOfAccessNode', 'unpublish', ['connectionId']).returns(Promise.resolve('ok'));
     mockRpcChannel.makeRPC.withArgs('rpcIdOfAccessNode', 'unsubscribe', ['connectionId']).returns(Promise.resolve('ok'));
@@ -271,12 +271,12 @@ describe('rpcClient.unpublish/unsubscribe/recycleAccessNode/unpub2Session/unsub2
     mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'leave', ['participantId']).returns(Promise.resolve('ok'));
 
     return Promise.all([
-      expect(client.unpublish('rpcIdOfAccessNode', 'connectionId')).to.become('ok'),
-      expect(client.unsubscribe('rpcIdOfAccessNode', 'connectionId')).to.become('ok'),
-      expect(client.recycleAccessNode('rpcIdOfAccessAgent', 'rpcIdOfAccessNode', {session: 'Session', consumer: 'connectionId'})).to.become('ok'),
-      expect(client.unpub2Session('rpcIdOfController', 'participantId', 'streamId')).to.become('ok'),
-      expect(client.unsub2Session('rpcIdOfController', 'participantId', 'subscriptionId')).to.become('ok'),
-      expect(client.leave('rpcIdOfController', 'participantId')).to.become('ok')
+      expect(req.unpublish('rpcIdOfAccessNode', 'connectionId')).to.become('ok'),
+      expect(req.unsubscribe('rpcIdOfAccessNode', 'connectionId')).to.become('ok'),
+      expect(req.recycleAccessNode('rpcIdOfAccessAgent', 'rpcIdOfAccessNode', {session: 'Session', consumer: 'connectionId'})).to.become('ok'),
+      expect(req.unpub2Session('rpcIdOfController', 'participantId', 'streamId')).to.become('ok'),
+      expect(req.unsub2Session('rpcIdOfController', 'participantId', 'subscriptionId')).to.become('ok'),
+      expect(req.leave('rpcIdOfController', 'participantId')).to.become('ok')
       ])
       .then(function() {
         expect(mockRpcChannel.makeRPC.callCount).to.equal(6);
@@ -286,16 +286,16 @@ describe('rpcClient.unpublish/unsubscribe/recycleAccessNode/unpub2Session/unsub2
   it('Should still succeed if rpcChannel.makeRPC fails.', function() {
     var mockRpcChannel = sinon.createStubInstance(rpcChannel);
     mockRpcChannel.makeRPC = sinon.stub();
-    var client = rpcClient(mockRpcChannel);
+    var req = rpcRequest(mockRpcChannel);
 
     mockRpcChannel.makeRPC.rejects('timeout or error');
     return Promise.all([
-      expect(client.unpublish('rpcIdOfAccessNode', 'connectionId')).become('ok'),
-      expect(client.unsubscribe('rpcIdOfAccessNode', 'connectionId')).become('ok'),
-      expect(client.recycleAccessNode('rpcIdOfAccessAgent', 'rpcIdOfAccessNode', {session: 'Session', consumer: 'connectionId'})).to.become('ok'),
-      expect(client.unpub2Session('rpcIdOfController', 'participantId', 'streamId')).become('ok'),
-      expect(client.unsub2Session('rpcIdOfController', 'participantId', 'subscriptionId')).become('ok'),
-      expect(client.leave('rpcIdOfController', 'participantId')).to.become('ok')
+      expect(req.unpublish('rpcIdOfAccessNode', 'connectionId')).become('ok'),
+      expect(req.unsubscribe('rpcIdOfAccessNode', 'connectionId')).become('ok'),
+      expect(req.recycleAccessNode('rpcIdOfAccessAgent', 'rpcIdOfAccessNode', {session: 'Session', consumer: 'connectionId'})).to.become('ok'),
+      expect(req.unpub2Session('rpcIdOfController', 'participantId', 'streamId')).become('ok'),
+      expect(req.unsub2Session('rpcIdOfController', 'participantId', 'subscriptionId')).become('ok'),
+      expect(req.leave('rpcIdOfController', 'participantId')).to.become('ok')
       ])
       .then(function() {
         expect(mockRpcChannel.makeRPC.callCount).to.equal(6);
@@ -303,52 +303,52 @@ describe('rpcClient.unpublish/unsubscribe/recycleAccessNode/unpub2Session/unsub2
    });
 });
 
-describe('rpcClient.tokenLogin/join/onConnectionSignalling/mix/unmix/setVideoBitrate/updateStream/mediaOnOff/setMute/getRegion/setRegion/text', function() {
+describe('rpcRequest.tokenLogin/join/onConnectionSignalling/mix/unmix/setVideoBitrate/updateStream/mediaOnOff/setMute/getRegion/setRegion/text', function() {
   it('Should succeed if rpcChannel.makeRPC succeeds.', function() {
     var mockRpcChannel = sinon.createStubInstance(rpcChannel);
     mockRpcChannel.makeRPC = sinon.stub();
-    var client = rpcClient(mockRpcChannel);
+    var req = rpcRequest(mockRpcChannel);
 
     var login_result = {userName: 'Jack', role: 'presenter', room: '573eab78111478bb3526421a'};
     mockRpcChannel.makeRPC.withArgs('nuve', 'deleteToken', 'tokenIdAsString').returns(Promise.resolve(login_result));
-    var tokenLogin = client.tokenLogin('nuve', 'tokenIdAsString');
+    var tokenLogin = req.tokenLogin('nuve', 'tokenIdAsString');
 
     var join_result = {participants: [],
                        streams: []};
     mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'join', ['sessionId', {id: 'participantId', name: 'UserName', role: 'UserRole', portal: 'portalRpcId'}]).returns(Promise.resolve(join_result));
-    var join = client.join('rpcIdOfController', 'sessionId', {id: 'participantId', name: 'UserName', role: 'UserRole', portal: 'portalRpcId'});
+    var join = req.join('rpcIdOfController', 'sessionId', {id: 'participantId', name: 'UserName', role: 'UserRole', portal: 'portalRpcId'});
 
     mockRpcChannel.makeRPC.withArgs('rpcIdOfAccessNode',
                                     'onConnectionSignalling',
                                     ['connectionId', {type: 'offer', sdp: 'offerSDPString'}]).returns(Promise.resolve('ok'));
-    var onConnectionSignalling = client.onConnectionSignalling('rpcIdOfAccessNode', 'connectionId', {type: 'offer', sdp: 'offerSDPString'});
+    var onConnectionSignalling = req.onConnectionSignalling('rpcIdOfAccessNode', 'connectionId', {type: 'offer', sdp: 'offerSDPString'});
 
     mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'mix', ['participantId', 'streamId']).returns(Promise.resolve('ok'));
-    var mix = client.mix('rpcIdOfController', 'participantId', 'streamId');
+    var mix = req.mix('rpcIdOfController', 'participantId', 'streamId');
 
     mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'unmix', ['participantId', 'streamId']).returns(Promise.resolve('ok'));
-    var unmix = client.unmix('rpcIdOfController', 'participantId', 'streamId');
+    var unmix = req.unmix('rpcIdOfController', 'participantId', 'streamId');
 
     mockRpcChannel.makeRPC.withArgs('rpcIdOfAccessNode', 'setVideoBitrate', ['connectionId', 500]).returns(Promise.resolve('ok'));
-    var setVideoBitrate = client.setVideoBitrate('rpcIdOfAccessNode', 'connectionId', 500);
+    var setVideoBitrate = req.setVideoBitrate('rpcIdOfAccessNode', 'connectionId', 500);
 
     mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'updateStream', ['streamId', 'video', 'active']).returns(Promise.resolve('ok'));
-    var updateStream = client.updateStream('rpcIdOfController', 'streamId', 'video', 'active');
+    var updateStream = req.updateStream('rpcIdOfController', 'streamId', 'video', 'active');
 
     mockRpcChannel.makeRPC.withArgs('rpcIdOfAccessNode', 'mediaOnOff', ['connectionId', 'video', 'in', 'off']).returns(Promise.resolve('ok'));
-    var mediaOnOff = client.mediaOnOff('rpcIdOfAccessNode', 'connectionId', 'video', 'in', 'off');
+    var mediaOnOff = req.mediaOnOff('rpcIdOfAccessNode', 'connectionId', 'video', 'in', 'off');
 
     mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'setMute', ['streamId', true]).returns(Promise.resolve('ok'));
-    var setMute = client.setMute('rpcIdOfController', 'streamId', true);
+    var setMute = req.setMute('rpcIdOfController', 'streamId', true);
 
     mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'getRegion', ['subStreamId']).returns(Promise.resolve('regionId1'));
-    var getRegion = client.getRegion('rpcIdOfController', 'subStreamId');
+    var getRegion = req.getRegion('rpcIdOfController', 'subStreamId');
 
     mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'setRegion', ['subStreamId', 500]).returns(Promise.resolve('ok'));
-    var setRegion = client.setRegion('rpcIdOfController', 'subStreamId', 500);
+    var setRegion = req.setRegion('rpcIdOfController', 'subStreamId', 500);
 
     mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'text', ['fromWhom', 'toWhom', 'message body']).returns(Promise.resolve('ok'));
-    var text = client.text('rpcIdOfController', 'fromWhom', 'toWhom', 'message body');
+    var text = req.text('rpcIdOfController', 'fromWhom', 'toWhom', 'message body');
 
     return Promise.all([
       expect(tokenLogin).to.become(login_result),
@@ -372,45 +372,45 @@ describe('rpcClient.tokenLogin/join/onConnectionSignalling/mix/unmix/setVideoBit
   it('Should fail if rpcChannel.makeRPC fails with reason of timeout or error.', function() {
     var mockRpcChannel = sinon.createStubInstance(rpcChannel);
     mockRpcChannel.makeRPC = sinon.stub();
-    var client = rpcClient(mockRpcChannel);
+    var req = rpcRequest(mockRpcChannel);
 
     mockRpcChannel.makeRPC.withArgs('nuve', 'deleteToken', 'tokenIdAsString').returns(Promise.reject('failed'));
-    var tokenLogin = client.tokenLogin('nuve', 'tokenIdAsString');
+    var tokenLogin = req.tokenLogin('nuve', 'tokenIdAsString');
 
     mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'join', ['sessionId', {id: 'participantId', name: 'UserName', role: 'UserRole', portal: 'portalRpcId'}]).returns(Promise.reject('error or timeout'));
-    var join = client.join('rpcIdOfController', 'sessionId', {id: 'participantId', name: 'UserName', role: 'UserRole', portal: 'portalRpcId'});
+    var join = req.join('rpcIdOfController', 'sessionId', {id: 'participantId', name: 'UserName', role: 'UserRole', portal: 'portalRpcId'});
 
     mockRpcChannel.makeRPC.withArgs('rpcIdOfAccessNode',
                                     'onConnectionSignalling',
                                     ['connectionId', {type: 'offer', sdp: 'offerSDPString'}]).returns(Promise.reject('error or timeout'));
-    var onConnectionSignalling = client.onConnectionSignalling('rpcIdOfAccessNode', 'connectionId', {type: 'offer', sdp: 'offerSDPString'});
+    var onConnectionSignalling = req.onConnectionSignalling('rpcIdOfAccessNode', 'connectionId', {type: 'offer', sdp: 'offerSDPString'});
 
     mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'mix', ['participantId', 'streamId']).returns(Promise.reject('timeout'));
-    var mix = client.mix('rpcIdOfController', 'participantId', 'streamId');
+    var mix = req.mix('rpcIdOfController', 'participantId', 'streamId');
 
     mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'unmix', ['participantId', 'streamId']).returns(Promise.reject('error'));
-    var unmix = client.unmix('rpcIdOfController', 'participantId', 'streamId');
+    var unmix = req.unmix('rpcIdOfController', 'participantId', 'streamId');
 
     mockRpcChannel.makeRPC.withArgs('rpcIdOfAccessNode', 'setVideoBitrate', ['connectionId', 500]).returns(Promise.reject('timeout or error'));
-    var setVideoBitrate = client.setVideoBitrate('rpcIdOfAccessNode', 'connectionId', 500);
+    var setVideoBitrate = req.setVideoBitrate('rpcIdOfAccessNode', 'connectionId', 500);
 
     mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'updateStream', ['streamId', 'video', 'active']).returns(Promise.reject('timeout or error'));
-    var updateStream = client.updateStream('rpcIdOfController', 'streamId', 'video', 'active');
+    var updateStream = req.updateStream('rpcIdOfController', 'streamId', 'video', 'active');
 
     mockRpcChannel.makeRPC.withArgs('rpcIdOfAccessNode', 'mediaOnOff', ['connectionId', 'video', 'in', 'off']).returns(Promise.reject('timeout or error'));
-    var mediaOnOff = client.mediaOnOff('rpcIdOfAccessNode', 'connectionId', 'video', 'in', 'off');
+    var mediaOnOff = req.mediaOnOff('rpcIdOfAccessNode', 'connectionId', 'video', 'in', 'off');
 
     mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'setMute', ['streamId', true]).returns(Promise.reject('timeout or error'));
-    var setMute = client.setMute('rpcIdOfController', 'streamId', true);
+    var setMute = req.setMute('rpcIdOfController', 'streamId', true);
 
     mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'getRegion', ['subStreamId']).returns(Promise.reject('no such a sub-stream'));
-    var getRegion = client.getRegion('rpcIdOfController', 'subStreamId');
+    var getRegion = req.getRegion('rpcIdOfController', 'subStreamId');
 
     mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'setRegion', ['subStreamId', 500]).returns(Promise.reject('some error'));
-    var setRegion = client.setRegion('rpcIdOfController', 'subStreamId', 500);
+    var setRegion = req.setRegion('rpcIdOfController', 'subStreamId', 500);
 
     mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'text', ['fromWhom', 'toWhom', 'message body']).returns(Promise.reject('timeout or error'));
-    var text = client.text('rpcIdOfController', 'fromWhom', 'toWhom', 'message body');
+    var text = req.text('rpcIdOfController', 'fromWhom', 'toWhom', 'message body');
 
     return Promise.all([
       expect(tokenLogin).to.be.rejectedWith('failed'),

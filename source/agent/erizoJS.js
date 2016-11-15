@@ -93,20 +93,20 @@ log.info('Connecting to rabbitMQ server...');
 var controller;
 
 rpc.connect(GLOBAL.config.rabbit, function () {
-    rpc.asRpcClient(function() {
+    rpc.asRpcClient(function(rpcClient) {
         var purpose = process.argv[3];
         var rpcID = process.argv[2];
         var clusterIP = process.argv[6];
 
         switch (purpose) {
         case 'session':
-            controller = require('./session')(rpc, rpcID);
+            controller = require('./session')(rpcClient, rpcID);
             break;
         case 'audio':
-            controller = require('./audio')(rpc);
+            controller = require('./audio')(rpcClient);
             break;
         case 'video':
-            controller = require('./video')(rpc);
+            controller = require('./video')(rpcClient);
             break;
         case 'webrtc':
             controller = require('woogeen/webrtc/index')();
@@ -118,7 +118,7 @@ rpc.connect(GLOBAL.config.rabbit, function () {
             controller = require('./access')();
             break;
         case 'sip':
-            controller = require('woogeen/sip/index')(rpc, {id:rpcID, addr:clusterIP});
+            controller = require('woogeen/sip/index')(rpcClient, {id:rpcID, addr:clusterIP});
             break;
         default:
             log.error('Ambiguous purpose:', purpose);
@@ -134,7 +134,7 @@ rpc.connect(GLOBAL.config.rabbit, function () {
             callback('callback', true);
         };
 
-        rpc.asRpcServer(rpcID, controller, function() {
+        rpc.asRpcServer(rpcID, controller, function(rpcServer) {
             log.info(rpcID + ' as rpc server ready');
             process.send('READY');
         }, function(reason) {

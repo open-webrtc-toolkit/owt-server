@@ -36,6 +36,7 @@ var ClusterManager = function (clusterName, selfId, spec) {
             workers[worker].alive_count += 1;
             if (workers[worker].alive_count > check_alive_count) {
                 log.info('Worker', worker, 'is not alive any longer, Deleting it.');
+                //notify abnormal exit of worker.
                 that.workerQuit(worker);
             }
         }
@@ -347,7 +348,7 @@ var runAsSlave = function(topicChannel, manager) {
 
 var runAsMaster = function(topicChannel, manager) {
     log.info('Run as master.');
-    topicChannel.bus.asRpcServer(manager.name, manager.rpcAPI, function() {
+    topicChannel.bus.asRpcServer(manager.name, manager.rpcAPI, function(rpcSvr) {
         manager.serve();
         setInterval(function () {
             //log.info('Send out heart-beat as master.');
