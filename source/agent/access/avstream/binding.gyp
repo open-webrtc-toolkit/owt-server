@@ -31,7 +31,7 @@
         },
       }, { # OS!="mac"
         'cflags!':    ['-fno-exceptions'],
-        'cflags_cc':  ['-Wall', '-O$(OPTIMIZATION_LEVEL)', '-g' , '-std=c++11', '-frtti'],
+        'cflags_cc':  ['-Wall', '-O$(OPTIMIZATION_LEVEL)', '-g' , '-std=c++11', '-frtti', '-Wno-deprecated-declarations'],
         'cflags_cc!': ['-fno-exceptions']
       }],
     ]

@@ -22,6 +22,8 @@
 #define RtspIn_h
 
 #include <boost/thread.hpp>
+#include <boost/asio.hpp>
+#include <boost/scoped_ptr.hpp>
 #include <EventRegistry.h>
 #include <logger.h>
 #include <MediaDefinitions.h>
@@ -43,6 +45,8 @@ extern "C" {
 
 namespace woogeen_base {
 
+class JitterBuffer;
+
 static inline int64_t currentTimeMillis()
 {
     timeval time;
@@ -52,7 +56,7 @@ static inline int64_t currentTimeMillis()
 
 class TimeoutHandler {
 public:
-    TimeoutHandler(int32_t timeout) : m_timeout(timeout), m_lastTime(currentTimeMillis()) { }
+    TimeoutHandler(int32_t timeout = 100000) : m_timeout(timeout), m_lastTime(currentTimeMillis()) { }
 
     void reset(int32_t timeout)
     {
@@ -76,7 +80,79 @@ private:
     int64_t m_lastTime;
 };
 
-class RtspIn : public FrameSource {
+class FramePacket {
+public:
+    FramePacket (AVPacket *packet);
+    virtual ~FramePacket ();
+
+    AVPacket *getAVPacket() {return m_packet;}
+private:
+    AVPacket *m_packet;
+};
+
+class FramePacketBuffer {
+public:
+    FramePacketBuffer () { }
+    virtual ~FramePacketBuffer() { }
+
+    void pushPacket(boost::shared_ptr<FramePacket> &FramePacket);
+    boost::shared_ptr<FramePacket> popPacket(bool noWait = true);
+    boost::shared_ptr<FramePacket> frontPacket(bool noWait = true);
+    uint32_t size();
+    void clear();
+private:
+    boost::mutex m_queueMutex;
+    boost::condition_variable m_queueCond;
+    std::deque<boost::shared_ptr<FramePacket>> m_queue;
+};
+
+class JitterBufferListener {
+public:
+    virtual void onDeliverFrame(JitterBuffer *jitterBuffer, AVPacket *pkt) = 0;
+    virtual void onSyncTimeChanged(JitterBuffer *jitterBuffer, int64_t syncTimestamp) = 0;
+};
+
+class JitterBuffer {
+    DECLARE_LOGGER();
+public:
+    JitterBuffer (std::string name, JitterBufferListener *listener);
+    virtual ~JitterBuffer ();
+
+    void start(uint32_t delay = 0);
+    void stop();
+    void drain();
+
+    void insert(AVPacket &pkt);
+    void setSyncTime(int64_t &syncTimestamp, boost::posix_time::ptime &syncLocalTime);
+
+protected:
+    void onTimeout(const boost::system::error_code& ec);
+    int64_t getNextTime(AVPacket *pkt);
+    void handleJob();
+
+private:
+    std::string m_name;
+
+    std::atomic<bool> m_isClosing;
+    bool m_isRunning;
+    int64_t m_lastInterval;
+    std::atomic<bool> m_isFirstFramePacket;
+    JitterBufferListener *m_listener;
+
+    FramePacketBuffer m_buffer;
+
+    boost::scoped_ptr<boost::thread> m_timingThread;
+    boost::asio::io_service m_ioService;
+    boost::scoped_ptr<boost::asio::deadline_timer> m_timer;
+
+    boost::scoped_ptr<boost::posix_time::ptime> m_syncLocalTime;
+    int64_t m_syncTimestamp;
+    boost::scoped_ptr<boost::posix_time::ptime> m_firstLocalTime;
+    int64_t m_firstTimestamp;
+    boost::mutex m_syncMutex;
+};
+
+class RtspIn : public FrameSource, public JitterBufferListener {
     DECLARE_LOGGER();
 public:
     struct Options {
@@ -90,10 +166,12 @@ public:
     };
 
     RtspIn (const Options&, EventRegistry*);
-    RtspIn (const std::string& url, const std::string& transport, uint32_t bufferSize, bool enableAudio, bool enableVideo, EventRegistry* handle);
     virtual ~RtspIn();
 
     void setEventRegistry(EventRegistry* handle) { m_asyncHandle = handle; }
+
+    void onDeliverFrame(JitterBuffer *jitterBuffer, AVPacket *pkt);
+    void onSyncTimeChanged(JitterBuffer *jitterBuffer, int64_t syncTimestamp);
 
 private:
     std::string m_url;
@@ -126,27 +204,34 @@ private:
     int m_audioSwrSamplesCount;
     AVAudioFifo* m_audioEncFifo;
     AVFrame *m_audioEncFrame;
+    int64_t m_audioEncTimestamp;
 
-    uint32_t m_audioRcvSampleCount;
-    uint32_t m_audioRcvSampleDts;
-    uint32_t m_audioEncodedSampleCount;
-
+    AVRational m_msTimeBase;
     AVRational m_videoTimeBase;
     AVRational m_audioTimeBase;
 
+    boost::shared_ptr<JitterBuffer> m_videoJitterBuffer;
+    boost::shared_ptr<JitterBuffer> m_audioJitterBuffer;
+
     std::unique_ptr<std::ofstream> m_audioRawDumpFile;
+    std::unique_ptr<std::ofstream> m_audioResampleDumpFile;
+    AVFormatContext* m_dumpContext;
+
+    bool isRtsp() {return (m_url.compare(0, 7, "rtsp://") == 0);}
 
     bool connect();
     bool reconnect();
     void receiveLoop();
 
     bool initVBSFilter();
-    bool filterVBS();
+    bool filterVBS(AVPacket &packet);
 
-    bool initAudioDecoder(int codec);
-    bool initAudioTranscoder(int inCodec, int outCodec);
-    bool decAudioFrame();
-    bool encAudioFrame();
+    bool initAudioDecoder(AVCodecID codec);
+    bool initAudioTranscoder(AVCodecID inCodec, AVCodecID outCodec);
+    bool decAudioFrame(AVPacket &packet);
+    bool encAudioFrame(AVPacket *packet);
+
+    bool initDump(char *dumpFile);
 };
 
 }

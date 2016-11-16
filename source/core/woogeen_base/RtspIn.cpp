@@ -25,19 +25,13 @@
 #include <sstream>
 #include <sys/time.h>
 
-//#define DUMP_AUDIO_PCM
+//#define DUMP_AUDIO
 
 using namespace erizo;
 
-static inline uint32_t timestampRtp(int64_t ts, AVRational tb, AVRational tbRtp)
+static inline int64_t timeRescale(uint32_t time, AVRational in, AVRational out)
 {
-    return av_rescale_q(ts, tb, tbRtp);
-}
-
-static inline uint32_t calibrateTimestamp(uint32_t aSamples, uint32_t aSampleRate, uint32_t bSamples, uint32_t bSampleRate, uint32_t bTs, AVRational tb)
-{
-    int32_t diff = av_rescale_rnd(aSamples, bSampleRate, aSampleRate, AV_ROUND_UP) - bSamples;
-    return bTs + diff / av_q2d(tb) / bSampleRate;
+    return av_rescale_q(time, in, out);
 }
 
 static inline void notifyAsyncEvent(EventRegistry* handle, const std::string& event, const std::string& data)
@@ -47,6 +41,260 @@ static inline void notifyAsyncEvent(EventRegistry* handle, const std::string& ev
 }
 
 namespace woogeen_base {
+
+FramePacket::FramePacket (AVPacket *packet)
+    : m_packet(NULL)
+{
+    m_packet = (AVPacket *)malloc(sizeof(AVPacket));
+
+    av_init_packet(m_packet);
+    av_packet_ref(m_packet, packet);
+}
+
+FramePacket::~FramePacket()
+{
+    if (m_packet) {
+        av_packet_unref(m_packet);
+        free(m_packet);
+        m_packet = NULL;
+    }
+}
+
+void FramePacketBuffer::pushPacket(boost::shared_ptr<FramePacket> &FramePacket)
+{
+    boost::mutex::scoped_lock lock(m_queueMutex);
+    m_queue.push_back(FramePacket);
+
+    if (m_queue.size() == 1)
+        m_queueCond.notify_one();
+}
+
+boost::shared_ptr<FramePacket> FramePacketBuffer::popPacket(bool noWait)
+{
+    boost::mutex::scoped_lock lock(m_queueMutex);
+    boost::shared_ptr<FramePacket> packet;
+
+    while (!noWait && m_queue.empty()) {
+        m_queueCond.wait(lock);
+    }
+
+    if (!m_queue.empty()) {
+        packet = m_queue.front();
+        m_queue.pop_front();
+    }
+
+    return packet;
+}
+
+boost::shared_ptr<FramePacket> FramePacketBuffer::frontPacket(bool noWait)
+{
+    boost::mutex::scoped_lock lock(m_queueMutex);
+    boost::shared_ptr<FramePacket> packet;
+
+    while (!noWait && m_queue.empty()) {
+        m_queueCond.wait(lock);
+    }
+
+    if (!m_queue.empty()) {
+        packet = m_queue.front();
+    }
+
+    return packet;
+}
+
+uint32_t FramePacketBuffer::size()
+{
+    boost::mutex::scoped_lock lock(m_queueMutex);
+    return m_queue.size();
+}
+
+void FramePacketBuffer::clear()
+{
+    boost::mutex::scoped_lock lock(m_queueMutex);
+    m_queue.clear();
+    return;
+}
+
+DEFINE_LOGGER(JitterBuffer, "woogeen.RtspIn.JitterBuffer");
+
+JitterBuffer::JitterBuffer(std::string name, JitterBufferListener *listener)
+    : m_name(name)
+    , m_isClosing(false)
+    , m_isRunning(false)
+    , m_lastInterval(5)
+    , m_isFirstFramePacket(true)
+    , m_listener(listener)
+    , m_syncTimestamp(AV_NOPTS_VALUE)
+    , m_firstTimestamp(AV_NOPTS_VALUE)
+{
+}
+
+JitterBuffer::~JitterBuffer()
+{
+    stop();
+}
+
+void JitterBuffer::start(uint32_t delay)
+{
+    if (!m_isRunning) {
+        ELOG_INFO("(%s)start", m_name.c_str());
+
+        m_timer.reset(new boost::asio::deadline_timer(m_ioService));
+        m_timer->expires_from_now(boost::posix_time::milliseconds(delay));
+        m_timer->async_wait(boost::bind(&JitterBuffer::onTimeout, this, boost::asio::placeholders::error));
+        m_timingThread.reset(new boost::thread(boost::bind(&boost::asio::io_service::run, &m_ioService)));
+        m_isRunning = true;
+    }
+}
+
+void JitterBuffer::stop()
+{
+    if (m_isRunning) {
+        ELOG_INFO("(%s)stop", m_name.c_str());
+
+        m_timer->cancel();
+
+        m_isClosing = true;
+        m_timingThread->join();
+        m_buffer.clear();
+        m_ioService.reset();
+        m_isRunning = false;
+        m_isClosing = false;
+
+        m_isFirstFramePacket = true;
+        m_syncTimestamp = AV_NOPTS_VALUE;
+        m_syncLocalTime.reset();
+        m_firstTimestamp = AV_NOPTS_VALUE;
+        m_firstLocalTime.reset();
+    }
+}
+
+void JitterBuffer::drain()
+{
+    ELOG_INFO("(%s)drain jitter buffer size(%d)", m_name.c_str(), m_buffer.size());
+
+    while(m_buffer.size() > 0) {
+        ELOG_DEBUG("(%s)drain jitter buffer, size(%d) ...", m_name.c_str(), m_buffer.size());
+        usleep(10);
+    }
+}
+
+void JitterBuffer::onTimeout(const boost::system::error_code& ec)
+{
+    if (!ec) {
+        if (!m_isClosing)
+            handleJob();
+    }
+}
+
+void JitterBuffer::insert(AVPacket &pkt)
+{
+    boost::shared_ptr<FramePacket> framePacket(new FramePacket(&pkt));
+    m_buffer.pushPacket(framePacket);
+}
+
+void JitterBuffer::setSyncTime(int64_t &syncTimestamp, boost::posix_time::ptime &syncLocalTime)
+{
+    boost::mutex::scoped_lock lock(m_syncMutex);
+
+    ELOG_INFO("(%s)set sync timestamp %ld -> %ld", m_name.c_str(), m_syncTimestamp, syncTimestamp);
+
+    m_syncTimestamp = syncTimestamp;
+    m_syncLocalTime.reset(new boost::posix_time::ptime(syncLocalTime));
+}
+
+int64_t JitterBuffer::getNextTime(AVPacket *pkt)
+{
+    int64_t interval = m_lastInterval;
+    int64_t diff = 0;
+    int64_t timestamp = 0;
+    int64_t nextTimestamp = 0;
+
+    boost::shared_ptr<FramePacket> nextFramePacket = m_buffer.frontPacket();
+    AVPacket *nextPkt = nextFramePacket != NULL ? nextFramePacket->getAVPacket() : NULL;
+
+    if (!pkt || !nextPkt) {
+        ELOG_INFO("(%s)no next frame, next time %ld", m_name.c_str(), interval);
+        return interval;
+    }
+
+    timestamp = pkt->dts;
+    nextTimestamp = nextPkt->dts;
+
+    diff = nextTimestamp - timestamp;
+    if (diff < 0 || diff > 2000) { // revised
+        ELOG_INFO("(%s)timestamp rollback, %ld -> %ld", m_name.c_str(), timestamp, nextTimestamp);
+        m_listener->onSyncTimeChanged(this, nextTimestamp);
+
+        ELOG_INFO("(%s)set first timestamp %ld -> %ld", m_name.c_str(), m_firstTimestamp, nextTimestamp);
+        m_firstTimestamp = nextTimestamp;
+        m_firstLocalTime.reset(new boost::posix_time::ptime(boost::posix_time::microsec_clock::local_time() + boost::posix_time::milliseconds(interval)));
+        return interval;
+    }
+
+    {
+        boost::mutex::scoped_lock lock(m_syncMutex);
+        if (m_isFirstFramePacket) {
+            ELOG_INFO("(%s)set first timestamp %ld -> %ld", m_name.c_str(), m_firstTimestamp, timestamp);
+            m_firstTimestamp = timestamp;
+            m_firstLocalTime.reset(new boost::posix_time::ptime(boost::posix_time::microsec_clock::local_time()));
+
+            if (m_syncTimestamp == AV_NOPTS_VALUE) {
+                m_syncMutex.unlock();
+                m_listener->onSyncTimeChanged(this, timestamp);
+                m_syncMutex.lock();
+            }
+
+            m_isFirstFramePacket = false;
+        }
+
+        boost::posix_time::ptime mst = boost::posix_time::microsec_clock::local_time();
+        if (m_syncTimestamp != AV_NOPTS_VALUE) {
+            // sync timestamp changed
+            if (nextTimestamp < m_syncTimestamp) {
+                ELOG_INFO("(%s)timestamp(%ld) is behind sync timestamp(%ld)!", m_name.c_str(), nextTimestamp, m_syncTimestamp);
+                interval = diff;
+            }
+            else {
+                interval = (*m_syncLocalTime - mst).total_milliseconds() + (nextTimestamp - m_syncTimestamp);
+            }
+        }
+        else {
+            interval = (*m_firstLocalTime - mst).total_milliseconds() + (nextTimestamp - m_firstTimestamp);
+        }
+
+        if (interval < 0) {
+            ELOG_WARN("(%s)force next time %ld -> %ld", m_name.c_str(), interval, m_lastInterval);
+            interval = m_lastInterval;
+        } else if (interval > 2000) {
+            ELOG_WARN("(%s)force next time %ld -> %ld", m_name.c_str(), interval, 2000l);
+            interval = 2000;
+        }
+
+        m_lastInterval = (m_lastInterval * 4.0 + interval) / 5;
+        return interval;
+    }
+}
+
+void JitterBuffer::handleJob()
+{
+    uint32_t interval;
+
+    boost::shared_ptr<FramePacket> framePacket = m_buffer.popPacket();
+    AVPacket *pkt = framePacket != NULL ? framePacket->getAVPacket() : NULL;
+
+    interval = getNextTime(pkt);
+    m_timer->expires_from_now(boost::posix_time::milliseconds(interval));
+
+    if (pkt != NULL)
+        m_listener->onDeliverFrame(this, pkt);
+    else
+        ELOG_WARN("(%s)no frame in JitterBuffer", m_name.c_str());
+
+    ELOG_TRACE("(%s)buffer size %d, next time %d", m_name.c_str(), m_buffer.size(), interval);
+
+    m_timer->async_wait(boost::bind(&JitterBuffer::onTimeout, this, boost::asio::placeholders::error));
+}
 
 DEFINE_LOGGER(RtspIn, "woogeen.RtspIn");
 
@@ -77,9 +325,8 @@ RtspIn::RtspIn(const Options& options, EventRegistry* handle)
     , m_audioSwrSamplesCount(0)
     , m_audioEncFifo(nullptr)
     , m_audioEncFrame(nullptr)
-    , m_audioRcvSampleCount(0)
-    , m_audioRcvSampleDts(0)
-    , m_audioEncodedSampleCount(0)
+    , m_audioEncTimestamp(AV_NOPTS_VALUE)
+    , m_dumpContext(nullptr)
 {
     if (options.transport.compare("tcp") == 0) {
         av_dict_set(&m_transportOpts, "rtsp_transport", "tcp", 0);
@@ -91,51 +338,6 @@ RtspIn::RtspIn(const Options& options, EventRegistry* handle)
         ELOG_DEBUG("url: %s, audio: %d, video: %d, transport::%s, buffer_size: %u",
                    m_url.c_str(), m_needAudio, m_needVideo, options.transport.c_str(), options.bufferSize);
     }
-    m_running = true;
-    m_thread = boost::thread(&RtspIn::receiveLoop, this);
-}
-
-RtspIn::RtspIn (const std::string& url, const std::string& transport, uint32_t bufferSize, bool enableAudio, bool enableVideo, EventRegistry* handle)
-    : m_url(url)
-    , m_needAudio(enableAudio)
-    , m_needVideo(enableVideo)
-    , m_transportOpts(nullptr)
-    , m_enableH264(true)
-    , m_running(false)
-    , m_context(nullptr)
-    , m_timeoutHandler(nullptr)
-    , m_videoStreamIndex(-1)
-    , m_videoFormat(FRAME_FORMAT_UNKNOWN)
-    , m_videoSize({1920, 1080})
-    , m_vbsf(NULL)
-    , m_vbsf_buffer(nullptr)
-    , m_vbsf_buffer_size(0)
-    , m_audioStreamIndex(-1)
-    , m_audioFormat(FRAME_FORMAT_UNKNOWN)
-    , m_asyncHandle(handle)
-    , m_audioDecFrame(nullptr)
-    , m_audioEncCtx(nullptr)
-    , m_audioSwrCtx(nullptr)
-    , m_audioSwrSamplesData(nullptr)
-    , m_audioSwrSamplesLinesize(0)
-    , m_audioSwrSamplesCount(0)
-    , m_audioEncFifo(nullptr)
-    , m_audioEncFrame(nullptr)
-    , m_audioRcvSampleCount(0)
-    , m_audioRcvSampleDts(0)
-    , m_audioEncodedSampleCount(0)
-{
-    if (transport.compare("tcp") == 0) {
-        av_dict_set(&m_transportOpts, "rtsp_transport", "tcp", 0);
-        ELOG_DEBUG("url: %s, audio: %d, video: %d, transport::tcp", m_url.c_str(), m_needAudio, m_needVideo);
-    } else {
-        char buf[256];
-        snprintf(buf, sizeof(buf), "%u", bufferSize);
-        av_dict_set(&m_transportOpts, "buffer_size", buf, 0);
-        ELOG_DEBUG("url: %s, audio: %d, video: %d, transport::%s, buffer_size: %u",
-                   m_url.c_str(), m_needAudio, m_needVideo, transport.c_str(), bufferSize);
-    }
-    m_running = true;
     m_thread = boost::thread(&RtspIn::receiveLoop, this);
 }
 
@@ -144,9 +346,21 @@ RtspIn::~RtspIn()
     ELOG_DEBUG("closing %s" , m_url.c_str());
     m_running = false;
     m_thread.join();
-    av_free_packet(&m_avPacket);
-    if (m_context)
+
+    if (m_videoJitterBuffer) {
+        m_videoJitterBuffer->stop();
+        m_videoJitterBuffer.reset();
+    }
+
+    if (m_audioJitterBuffer) {
+        m_audioJitterBuffer->stop();
+        m_audioJitterBuffer.reset();
+    }
+
+    if (m_context) {
         avformat_free_context(m_context);
+        m_context = NULL;
+    }
     if (m_timeoutHandler) {
         delete m_timeoutHandler;
         m_timeoutHandler = nullptr;
@@ -190,8 +404,9 @@ RtspIn::~RtspIn()
         m_audioDecFrame = NULL;
     }
 
-#ifdef DUMP_AUDIO_PCM
+#ifdef DUMP_AUDIO
     m_audioRawDumpFile.reset();
+    m_audioResampleDumpFile.reset();
 #endif
 
     ELOG_DEBUG("closed");
@@ -203,7 +418,7 @@ bool RtspIn::connect()
     char errbuff[500];
 
     if (ELOG_IS_TRACE_ENABLED())
-        av_log_set_level(AV_LOG_TRACE);
+        av_log_set_level(AV_LOG_DEBUG);
     else if (ELOG_IS_DEBUG_ENABLED())
         av_log_set_level(AV_LOG_DEBUG);
     else
@@ -211,19 +426,24 @@ bool RtspIn::connect()
 
     srand((unsigned)time(0));
 
-    m_context = avformat_alloc_context();
-    m_timeoutHandler = new TimeoutHandler(20000);
-    m_context->interrupt_callback = {&TimeoutHandler::checkInterrupt, m_timeoutHandler};
-    //open rtsp
+    m_timeoutHandler = new TimeoutHandler();
     av_init_packet(&m_avPacket);
-    m_avPacket.data = nullptr;
 
+    m_context = avformat_alloc_context();
+    m_context->interrupt_callback = {&TimeoutHandler::checkInterrupt, m_timeoutHandler};
+    //m_context->max_analyze_duration = 3 * AV_TIME_BASE;
+
+    m_timeoutHandler->reset(30000);
+    ELOG_INFO("Opening input");
     res = avformat_open_input(&m_context, m_url.c_str(), nullptr, &m_transportOpts);
     if (res != 0) {
         av_strerror(res, (char*)(&errbuff), 500);
         ELOG_ERROR("Error opening input %s", errbuff);
         return false;
     }
+
+    m_timeoutHandler->reset(10000);
+    ELOG_INFO("Finding stream info");
     res = avformat_find_stream_info(m_context, nullptr);
     if (res < 0) {
         av_strerror(res, (char*)(&errbuff), 500);
@@ -231,6 +451,7 @@ bool RtspIn::connect()
         return false;
     }
 
+    ELOG_INFO("Dump format");
     av_dump_format(m_context, 0, nullptr, 0);
 
     std::ostringstream status;
@@ -244,13 +465,13 @@ bool RtspIn::connect()
         } else {
             m_videoStreamIndex = streamNo;
             st = m_context->streams[streamNo];
-            ELOG_DEBUG("Has video, video stream number %d. time base = %d / %d, codec type = %d ",
+            ELOG_INFO("Has video, video stream number %d. time base = %d / %d, codec type = %s ",
                       m_videoStreamIndex,
                       st->time_base.num,
                       st->time_base.den,
-                      st->codec->codec_id);
+                      avcodec_get_name(st->codec->codec_id));
 
-            int videoCodecId = st->codec->codec_id;
+            AVCodecID videoCodecId = st->codec->codec_id;
             if (videoCodecId == AV_CODEC_ID_VP8 || (m_enableH264 && videoCodecId == AV_CODEC_ID_H264)) {
                 if (videoCodecId == AV_CODEC_ID_VP8) {
                     m_videoFormat = FRAME_FORMAT_VP8;
@@ -262,13 +483,16 @@ bool RtspIn::connect()
                         status << ",\"video_codecs\":" << "[\"h264\"]";
                     }
                 }
+
                 //FIXME: the resolution info should be retrieved from the rtsp video source.
                 std::string resolution = "hd1080p";
                 status << ",\"video_resolution\":" << "\"hd1080p\"";
                 VideoResolutionHelper::getVideoSize(resolution, m_videoSize);
             } else {
-                ELOG_WARN("Video codec %d is not supported ", st->codec->codec_id);
+                ELOG_WARN("Video codec %s is not supported ", avcodec_get_name(videoCodecId));
             }
+
+            m_videoJitterBuffer.reset(new JitterBuffer("video", this));
 
             m_videoTimeBase.num = 1;
             m_videoTimeBase.den = 90000;
@@ -282,13 +506,13 @@ bool RtspIn::connect()
         } else {
             m_audioStreamIndex = audioStreamNo;
             audio_st = m_context->streams[m_audioStreamIndex];
-            ELOG_DEBUG("Has audio, audio stream number %d. time base = %d / %d, codec type = %d ",
+            ELOG_INFO("Has audio, audio stream number %d. time base = %d / %d, codec type = %s ",
                       m_audioStreamIndex,
                       audio_st->time_base.num,
                       audio_st->time_base.den,
-                      audio_st->codec->codec_id);
+                      avcodec_get_name(audio_st->codec->codec_id));
 
-            int audioCodecId = audio_st->codec->codec_id;
+            AVCodecID audioCodecId = audio_st->codec->codec_id;
             switch(audioCodecId) {
                 case AV_CODEC_ID_PCM_MULAW:
                     m_audioFormat = FRAME_FORMAT_PCMU;
@@ -314,8 +538,10 @@ bool RtspIn::connect()
                     break;
 
                 default:
-                    ELOG_WARN("Audio codec %d is not supported ", audioCodecId);
+                    ELOG_WARN("Audio codec %s is not supported ", avcodec_get_name(audioCodecId));
             }
+
+            m_audioJitterBuffer.reset(new JitterBuffer("audio", this));
 
             if (m_audioFormat == FRAME_FORMAT_OPUS) {
                 m_audioTimeBase.num = 1;
@@ -331,10 +557,21 @@ bool RtspIn::connect()
     if (m_audioFormat == FRAME_FORMAT_UNKNOWN && m_videoFormat == FRAME_FORMAT_UNKNOWN)
         return false;
 
+    m_msTimeBase.num = 1;
+    m_msTimeBase.den = 1000;
+
     status << "}";
     ::notifyAsyncEvent(m_asyncHandle, "status", status.str());
 
-    av_init_packet(&m_avPacket);
+    av_read_play(m_context);
+
+    if (m_videoJitterBuffer) {
+        m_videoJitterBuffer->start();
+    }
+    if (m_audioJitterBuffer) {
+        m_audioJitterBuffer->start();
+    }
+
     return true;
 }
 
@@ -343,13 +580,29 @@ bool RtspIn::reconnect()
     int res;
     char errbuff[500];
 
-    ELOG_WARN("Read input data failed; trying to reopren input from url %s", m_url.c_str());
+    ELOG_WARN("Read input data failed; trying to reopen input from url %s", m_url.c_str());
+
+    if (m_videoJitterBuffer) {
+        m_videoJitterBuffer->drain();
+        m_videoJitterBuffer->stop();
+    }
+    if (m_audioJitterBuffer) {
+        m_audioJitterBuffer->drain();
+        m_audioJitterBuffer->stop();
+    }
 
     m_timeoutHandler->reset(10000);
     av_read_pause(m_context);
     avformat_close_input(&m_context);
-    m_timeoutHandler->reset(10000);
+    avformat_free_context(m_context);
+    m_context = NULL;
 
+    m_context = avformat_alloc_context();
+    m_context->interrupt_callback = {&TimeoutHandler::checkInterrupt, m_timeoutHandler};
+    //m_context->max_analyze_duration = 3 * AV_TIME_BASE;
+
+    m_timeoutHandler->reset(60000);
+    ELOG_INFO("Opening input");
     res = avformat_open_input(&m_context, m_url.c_str(), nullptr, &m_transportOpts);
     if (res != 0) {
         av_strerror(res, (char*)(&errbuff), 500);
@@ -357,6 +610,8 @@ bool RtspIn::reconnect()
         return false;
     }
 
+    m_timeoutHandler->reset(10000);
+    ELOG_INFO("Finding stream info");
     res = avformat_find_stream_info(m_context, nullptr);
     if (res < 0) {
         av_strerror(res, (char*)(&errbuff), 500);
@@ -364,6 +619,7 @@ bool RtspIn::reconnect()
         return false;
     }
 
+    ELOG_INFO("Dump format");
     av_dump_format(m_context, 0, nullptr, 0);
 
     if (m_needVideo) {
@@ -393,12 +649,18 @@ bool RtspIn::reconnect()
 
         // reinitilize audio transcoder
         if (m_needAudioTranscoder) {
+            m_audioEncTimestamp = AV_NOPTS_VALUE;
             if (!initAudioDecoder(AV_CODEC_ID_AAC))
                 return false;
         }
     }
 
     av_read_play(m_context);
+
+    if (m_videoJitterBuffer)
+        m_videoJitterBuffer->start();
+    if (m_audioJitterBuffer)
+        m_audioJitterBuffer->start();
 
     return true;
 }
@@ -411,14 +673,14 @@ void RtspIn::receiveLoop()
         return;
     }
 
-    av_read_play(m_context); // play RTSP
-
+    m_running = true;
     ELOG_DEBUG("Start playing %s", m_url.c_str() );
     while (m_running) {
-        m_timeoutHandler->reset(5000);
+        m_timeoutHandler->reset(10000);
         if (av_read_frame(m_context, &m_avPacket) < 0) {
             // Try to re-open the input - silently.
-            if (!reconnect()) {
+            ret = reconnect();
+            if (!ret) {
                 m_running = false;
                 ::notifyAsyncEvent(m_asyncHandle, "status", "{\"type\":\"failed\",\"reason\":\"reopening input url error\"}");
                 return;
@@ -428,68 +690,43 @@ void RtspIn::receiveLoop()
 
         if (m_avPacket.stream_index == m_videoStreamIndex) { //packet is video
             AVStream *video_st = m_context->streams[m_videoStreamIndex];
-            ELOG_TRACE("Receive video frame packet with size %d, dts %d(%d) "
-                    , m_avPacket.size
-                    , m_avPacket.dts
-                    , timestampRtp(m_avPacket.dts, video_st->time_base, m_videoTimeBase));
+            m_avPacket.dts = timeRescale(m_avPacket.dts, video_st->time_base, m_msTimeBase);
+            m_avPacket.pts = timeRescale(m_avPacket.pts, video_st->time_base, m_msTimeBase);
 
-            if (!m_needVBSF || filterVBS()) {
-                Frame frame;
-                memset(&frame, 0, sizeof(frame));
-                frame.format = m_videoFormat;
-                frame.payload = reinterpret_cast<uint8_t*>(m_avPacket.data);
-                frame.length = m_avPacket.size;
-                frame.timeStamp = timestampRtp(m_avPacket.dts, video_st->time_base, m_videoTimeBase);
-                frame.additionalInfo.video.width = m_videoSize.width;
-                frame.additionalInfo.video.height = m_videoSize.height;
-                deliverFrame(frame);
+            ELOG_TRACE("Receive video frame packet, dts %ld, size %d"
+                    , m_avPacket.dts, m_avPacket.size);
 
-                ELOG_DEBUG("Deliver video frame size %4d, timestamp %6d ", frame.length, frame.timeStamp);
+            if (!m_needVBSF || filterVBS(m_avPacket)) {
+                m_videoJitterBuffer->insert(m_avPacket);
             }
         } else if (m_avPacket.stream_index == m_audioStreamIndex) { //packet is audio
             AVStream *audio_st = m_context->streams[m_audioStreamIndex];
-            ELOG_TRACE("Receive audio frame packet with size %d, dts %d(%d) "
-                    , m_avPacket.size
-                    , m_avPacket.dts
-                    , timestampRtp(m_avPacket.dts, audio_st->time_base, m_audioTimeBase));
+            m_avPacket.dts = timeRescale(m_avPacket.dts, audio_st->time_base, m_msTimeBase);
+            m_avPacket.pts = timeRescale(m_avPacket.pts, audio_st->time_base, m_msTimeBase);
+
+            ELOG_TRACE("Receive audio frame packet, dts %ld, size %d"
+                    , m_avPacket.dts, m_avPacket.size);
 
             if (!m_needAudioTranscoder) {
-                Frame frame;
-                memset(&frame, 0, sizeof(frame));
-                frame.format = m_audioFormat;
-                frame.payload = reinterpret_cast<uint8_t*>(m_avPacket.data);
-                frame.length = m_avPacket.size;
-                frame.timeStamp = timestampRtp(m_avPacket.dts, audio_st->time_base, m_audioTimeBase);
-                frame.additionalInfo.audio.isRtpPacket = 0;
-                frame.additionalInfo.audio.nbSamples = m_avPacket.duration;
-                frame.additionalInfo.audio.sampleRate = m_audioFormat == FRAME_FORMAT_OPUS ? 48000 : 8000;
-                frame.additionalInfo.audio.channels = m_audioFormat == FRAME_FORMAT_OPUS ? 2 : 1;
-                deliverFrame(frame);
+                m_audioJitterBuffer->insert(m_avPacket);
+            } else if(decAudioFrame(m_avPacket)) {
+                AVPacket audioPacket;
 
-                ELOG_TRACE("Deliver audio frame size %4d, timestamp %6d ", frame.length, frame.timeStamp);
-            } else if(decAudioFrame()) {
-                while(encAudioFrame()) {
-                    Frame frame;
-                    memset(&frame, 0, sizeof(frame));
-                    frame.format = m_audioFormat;
-                    frame.payload = reinterpret_cast<uint8_t*>(m_avPacket.data);
-                    frame.length = m_avPacket.size;
-                    frame.timeStamp = timestampRtp(m_avPacket.dts, audio_st->time_base, m_audioTimeBase);
-                    frame.additionalInfo.audio.isRtpPacket = 0;
-                    frame.additionalInfo.audio.nbSamples = m_avPacket.duration;
-                    frame.additionalInfo.audio.sampleRate = m_audioFormat == FRAME_FORMAT_OPUS ? 48000 : 8000;
-                    frame.additionalInfo.audio.channels = m_audioFormat == FRAME_FORMAT_OPUS ? 2 : 1;
-                    deliverFrame(frame);
-
-                    ELOG_TRACE("Deliver audio frame size %4d, timestamp %6d ", frame.length, frame.timeStamp);
+                while(true) {
+                    av_init_packet(&audioPacket);
+                    if(!encAudioFrame(&audioPacket))
+                        break;
+                    m_audioJitterBuffer->insert(audioPacket);
+                    av_packet_unref(&audioPacket);
                 }
             }
         }
-        av_free_packet(&m_avPacket);
+        av_packet_unref(&m_avPacket);
         av_init_packet(&m_avPacket);
     }
     m_running = false;
     av_read_pause(m_context);
+    avformat_close_input(&m_context);
 }
 
 bool RtspIn::initVBSFilter() {
@@ -503,22 +740,14 @@ bool RtspIn::initVBSFilter() {
     return true;
 }
 
-bool RtspIn::filterVBS() {
+bool RtspIn::filterVBS(AVPacket &packet) {
     int ret;
 
     if (!m_vbsf)
         return false;
 
-    if (m_vbsf_buffer) {
-        av_free(m_vbsf_buffer);
-        m_vbsf_buffer = NULL;
-        m_vbsf_buffer_size = 0;
-    }
-
-    ret = av_bitstream_filter_filter(m_vbsf,
-            m_context->streams[m_videoStreamIndex]->codec, NULL, &m_vbsf_buffer, &m_vbsf_buffer_size,
-            m_avPacket.data, m_avPacket.size, m_avPacket.flags & AV_PKT_FLAG_KEY);
-    if(ret <= 0) {
+    ret = av_apply_bitstream_filters(m_context->streams[m_videoStreamIndex]->codec, &packet, m_vbsf);
+    if(ret < 0) {
         char errbuff[500];
         av_strerror(ret, (char*)(&errbuff), 500);
 
@@ -526,24 +755,21 @@ bool RtspIn::filterVBS() {
         return false;
     }
 
-    m_avPacket.data = m_vbsf_buffer;
-    m_avPacket.size = m_vbsf_buffer_size;
-
     return true;
 }
 
-bool RtspIn::initAudioDecoder(int codec) {
+bool RtspIn::initAudioDecoder(AVCodecID codec) {
     AVStream *audio_st = m_context->streams[m_audioStreamIndex];
     AVCodec *audioDec = NULL;
 
     if (codec != AV_CODEC_ID_AAC) {
-        ELOG_ERROR("Support codec AAC only, %d", codec);
+        ELOG_ERROR("Codec %s is not supported, AAC only", avcodec_get_name(codec));
         return false;
     }
 
     audioDec = avcodec_find_decoder_by_name("libfdk_aac");
     if (!audioDec) {
-        ELOG_ERROR("Cound not find audio decoder");
+        ELOG_ERROR("Cound not find audio decoder, %s", "libfdk_aac");
         return false;
     }
 
@@ -554,7 +780,7 @@ bool RtspIn::initAudioDecoder(int codec) {
         return false;
     }
 
-    ELOG_TRACE("Audio dec sample_rate %d, channels %d, frame_size %d"
+    ELOG_INFO("Audio dec sample_rate %d, channels %d, frame_size %d"
             , audio_st->codec->sample_rate
             , audio_st->codec->channels
             , audio_st->codec->frame_size
@@ -563,24 +789,20 @@ bool RtspIn::initAudioDecoder(int codec) {
     return true;
 }
 
-bool RtspIn::initAudioTranscoder(int inCodec, int outCodec) {
+bool RtspIn::initAudioTranscoder(AVCodecID inCodec, AVCodecID outCodec) {
     int ret;
     AVStream *audio_st = m_context->streams[m_audioStreamIndex];
     AVCodec *audioEnc = NULL;
 
     if (inCodec != AV_CODEC_ID_AAC) {
-        ELOG_ERROR("Support inCodec AAC only, %d", inCodec);
+        ELOG_ERROR("inCodec %s is not supported, AAC only", avcodec_get_name(inCodec));
         return false;
     }
 
     if (outCodec != AV_CODEC_ID_OPUS) {
-        ELOG_ERROR("Support outCodec OPUS only, %d", outCodec);
+        ELOG_ERROR("outCodec %s is not supported, OPUS only", avcodec_get_name(outCodec));
         return false;
     }
-
-#ifdef DUMP_AUDIO_PCM
-    m_audioRawDumpFile.reset(new std::ofstream("/tmp/audio_pcm_s16.pcm", std::ios::binary));
-#endif
 
     avcodec_register_all();
 
@@ -617,7 +839,7 @@ bool RtspIn::initAudioTranscoder(int inCodec, int outCodec) {
         goto failed;
     }
 
-    ELOG_TRACE("Audio enc sample_rate %d, channels %d, frame_size %d"
+    ELOG_INFO("Audio enc sample_rate %d, channels %d, frame_size %d"
             , m_audioEncCtx->sample_rate
             , m_audioEncCtx->channels
             , m_audioEncCtx->frame_size
@@ -683,6 +905,22 @@ bool RtspIn::initAudioTranscoder(int inCodec, int outCodec) {
         goto failed;
     }
 
+#ifdef DUMP_AUDIO
+    char dumpFile[128];
+
+    snprintf(dumpFile, 128, "/tmp/audio-%s-s16-%d-%d.pcm", "raw", audio_st->codec->sample_rate, audio_st->codec->channels);
+    m_audioRawDumpFile.reset(new std::ofstream(dumpFile, std::ios::binary));
+
+    snprintf(dumpFile, 128, "/tmp/audio-%s-s16-%d-%d.pcm", "resample", 48000, 2);
+    m_audioResampleDumpFile.reset(new std::ofstream(dumpFile, std::ios::binary));
+
+    snprintf(dumpFile, 128, "/tmp/audio-%s-%d-%d.opus", "opus", 48000, 2);
+    if(!initDump(dumpFile)) {
+        ELOG_ERROR("Could not init dump");
+        goto failed;
+    }
+#endif
+
     ELOG_TRACE("Init audio transcoder OK");
     return true;
 
@@ -724,20 +962,21 @@ failed:
     return false;
 }
 
-bool RtspIn::decAudioFrame() {
+bool RtspIn::decAudioFrame(AVPacket &packet) {
     AVStream *audio_st = m_context->streams[m_audioStreamIndex];
     int got;
-    int len;
-    int nSamples;
     int ret;
+    int nSamples;
+    uint8_t **audioFrameData;
+    int audioFrameLen = 0;
 
     if (!m_audioEncCtx) {
         ELOG_ERROR("Invalid transcode params");
         return false;
     }
 
-    len = avcodec_decode_audio4(audio_st->codec, m_audioDecFrame, &got, &m_avPacket);
-    if (len < 0) {
+    ret = avcodec_decode_audio4(audio_st->codec, m_audioDecFrame, &got, &packet);
+    if (ret < 0) {
         ELOG_ERROR("Error while decoding");
         return false;
     }
@@ -747,10 +986,12 @@ bool RtspIn::decAudioFrame() {
         return false;
     }
 
-    m_audioRcvSampleDts = m_avPacket.dts;
-    m_audioRcvSampleCount += m_audioDecFrame->nb_samples;
+    audioFrameData = m_audioDecFrame->data;
+    audioFrameLen = m_audioDecFrame->nb_samples;
 
-    ELOG_TRACE("dts %d, nbSample %d", m_audioRcvSampleDts, m_audioRcvSampleCount);
+#ifdef DUMP_AUDIO
+    m_audioRawDumpFile->write((const char*)m_audioDecFrame->data[0], m_audioDecFrame->nb_samples * audio_st->codec->channels * 2);
+#endif
 
     if (m_audioSwrCtx) {
         int dst_nb_samples;
@@ -782,34 +1023,30 @@ bool RtspIn::decAudioFrame() {
             return false;
         }
 
-        ELOG_TRACE("swr convert nbSample %d -> %d", m_audioDecFrame->nb_samples, ret);
-
-#ifdef DUMP_AUDIO_PCM
+#ifdef DUMP_AUDIO
         int bufsize = av_samples_get_buffer_size(&m_audioSwrSamplesLinesize, m_audioEncCtx->channels,
                 ret, m_audioEncCtx->sample_fmt, 1);
 
-        m_audioRawDumpFile->write((const char*)m_audioSwrSamplesData[0], bufsize);
+        m_audioResampleDumpFile->write((const char*)m_audioSwrSamplesData[0], bufsize);
 #endif
 
-        nSamples = av_audio_fifo_write(m_audioEncFifo, reinterpret_cast<void**>(m_audioSwrSamplesData), ret);
-        if (nSamples < ret) {
-            ELOG_ERROR("Can not write audio enc fifo, nbSamples %d, writed %d", ret, nSamples);
-            return false;
-        }
+        audioFrameData = m_audioSwrSamplesData;
+        audioFrameLen = ret;
     }
-    else {
-        nSamples = av_audio_fifo_write(m_audioEncFifo, reinterpret_cast<void**>(&m_audioDecFrame->data), m_audioDecFrame->nb_samples);
-        if (nSamples < m_audioDecFrame->nb_samples) {
-            ELOG_ERROR("Can not write audio enc fifo, nbSamples %d, writed %d", m_audioDecFrame->nb_samples, nSamples);
-            return false;
-        }
+
+    nSamples = av_audio_fifo_write(m_audioEncFifo, reinterpret_cast<void**>(audioFrameData), audioFrameLen);
+    if (nSamples < audioFrameLen) {
+        ELOG_ERROR("Can not write audio enc fifo, nbSamples %d, writed %d", audioFrameLen, nSamples);
+        return false;
     }
+
+    if (m_audioEncTimestamp == AV_NOPTS_VALUE)
+        m_audioEncTimestamp = packet.dts;
 
     return true;
 }
 
-bool RtspIn::encAudioFrame() {
-    AVPacket pkt;
+bool RtspIn::encAudioFrame(AVPacket *packet) {
     int ret;
     int got;
     int nSamples;
@@ -829,11 +1066,7 @@ bool RtspIn::encAudioFrame() {
         return false;
     }
 
-    av_init_packet(&pkt);
-    pkt.data = NULL; // packet data will be allocated by the encoder
-    pkt.size = 0;
-
-    ret = avcodec_encode_audio2(m_audioEncCtx, &pkt, m_audioEncFrame, &got);
+    ret = avcodec_encode_audio2(m_audioEncCtx, packet, m_audioEncFrame, &got);
     if (ret < 0) {
         ELOG_ERROR("Fail to encode audio frame, ret %d", ret);
         return false;
@@ -844,31 +1077,123 @@ bool RtspIn::encAudioFrame() {
         return false;
     }
 
-    av_free_packet(&m_avPacket);
-    av_copy_packet(&m_avPacket, &pkt);
-    av_free_packet(&pkt);
+    packet->dts = m_audioEncTimestamp + 1000.0 * m_audioEncCtx->frame_size / m_audioEncCtx->sample_rate;
+    m_audioEncTimestamp = packet->dts;
 
     if (av_audio_fifo_size(m_audioEncFifo) >= m_audioEncCtx->frame_size) {
         ELOG_TRACE("More data in fifo to encode %d >= %d", av_audio_fifo_size(m_audioEncFifo), m_audioEncCtx->frame_size);
     }
 
-    m_avPacket.dts = calibrateTimestamp(
-            m_audioEncodedSampleCount
-            , m_audioEncCtx->sample_rate
-            , m_audioRcvSampleCount - m_audioDecFrame->nb_samples
-            , m_context->streams[m_audioStreamIndex]->codec->sample_rate
-            , m_audioRcvSampleDts
-            , m_context->streams[m_audioStreamIndex]->time_base
-            );
+#ifdef DUMP_AUDIO
+    if (m_dumpContext) {
+        AVPacket dump_pkt;
+        av_packet_ref(&dump_pkt, packet);
+        ret = av_interleaved_write_frame(m_dumpContext, &dump_pkt);
+    }
+#endif
 
-    ELOG_TRACE("Encoded audio frame dts %ld(%d), sample count %d(%d) "
-            , m_avPacket.dts
-            , m_audioRcvSampleDts
-            , m_audioEncodedSampleCount
-            , m_audioRcvSampleCount - m_audioDecFrame->nb_samples
-            );
+    return true;
+}
 
-    m_audioEncodedSampleCount += m_audioEncFrame->nb_samples;
+void RtspIn::onSyncTimeChanged(JitterBuffer *jitterBuffer, int64_t syncTimestamp)
+{
+    if (m_audioJitterBuffer.get() == jitterBuffer) {
+        ELOG_INFO("onSyncTimeChanged audio, timestamp %ld ", syncTimestamp);
+
+        //rtsp audio/video time base is different, it will lost sync after roll back
+        if(!isRtsp()) {
+            boost::posix_time::ptime mst = boost::posix_time::microsec_clock::local_time();
+
+            m_audioJitterBuffer->setSyncTime(syncTimestamp, mst);
+            if (m_videoJitterBuffer)
+                m_videoJitterBuffer->setSyncTime(syncTimestamp, mst);
+        }
+    }
+    else if (m_videoJitterBuffer.get() == jitterBuffer) {
+        ELOG_INFO("onSyncTimeChanged video, timestamp %ld ", syncTimestamp);
+    } else {
+        ELOG_ERROR("Invalid JitterBuffer onSyncTimeChanged event!");
+    }
+}
+
+void RtspIn::onDeliverFrame(JitterBuffer *jitterBuffer, AVPacket *pkt)
+{
+    if (m_videoJitterBuffer.get() == jitterBuffer) {
+        Frame frame;
+        memset(&frame, 0, sizeof(frame));
+        frame.format = m_videoFormat;
+        frame.payload = reinterpret_cast<uint8_t*>(pkt->data);
+        frame.length = pkt->size;
+        frame.timeStamp = timeRescale(pkt->dts, m_msTimeBase, m_videoTimeBase);
+        frame.additionalInfo.video.width = m_videoSize.width;
+        frame.additionalInfo.video.height = m_videoSize.height;
+        deliverFrame(frame);
+
+        ELOG_DEBUG("onDeliver video frame, timestamp %ld, size %4d"
+                , timeRescale(frame.timeStamp, m_videoTimeBase, m_msTimeBase)
+                , frame.length);
+    } else if (m_audioJitterBuffer.get() == jitterBuffer) {
+        Frame frame;
+        memset(&frame, 0, sizeof(frame));
+        frame.format = m_audioFormat;
+        frame.payload = reinterpret_cast<uint8_t*>(pkt->data);
+        frame.length = pkt->size;
+        frame.timeStamp = timeRescale(pkt->dts, m_msTimeBase, m_audioTimeBase);
+        frame.additionalInfo.audio.isRtpPacket = 0;
+        frame.additionalInfo.audio.nbSamples = pkt->duration;
+        frame.additionalInfo.audio.sampleRate = m_audioFormat == FRAME_FORMAT_OPUS ? 48000 : 8000;
+        frame.additionalInfo.audio.channels = m_audioFormat == FRAME_FORMAT_OPUS ? 2 : 1;
+        deliverFrame(frame);
+
+        ELOG_DEBUG("onDeliver audio frame, timestamp %ld, size %4d"
+                , timeRescale(frame.timeStamp, m_audioTimeBase, m_msTimeBase)
+                , frame.length);
+    } else {
+        ELOG_ERROR("Invalid JitterBuffer onDeliver event!");
+    }
+}
+
+bool RtspIn::initDump(char *dumpFile) {
+
+    avformat_alloc_output_context2(&m_dumpContext, nullptr, nullptr, dumpFile);
+    if (!m_dumpContext) {
+        ELOG_ERROR("avformat_alloc_output_context2 dump context failed");
+        return false;
+        //goto failed;
+    }
+
+    AVStream* dumpStream = NULL;
+    dumpStream = avformat_new_stream(m_dumpContext, m_audioEncCtx->codec);
+    if (!dumpStream) {
+        ELOG_ERROR("cannot add dump stream");
+        return false;
+        //goto failed;
+    }
+#if 1
+    //Copy the settings of AVCodecContext
+    if (avcodec_copy_context(dumpStream->codec, m_audioEncCtx) < 0) {
+        ELOG_ERROR("Failed to copy dump stream codec context");
+        return false;
+        //goto failed;
+    }
+#endif
+    dumpStream->codec->codec_tag = 0;
+    if (m_dumpContext->oformat->flags & AVFMT_GLOBALHEADER)
+        dumpStream->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
+
+    if (avio_open(&m_dumpContext->pb, m_dumpContext->filename, AVIO_FLAG_WRITE) < 0) {
+        ELOG_ERROR("avio_open failed, %s", m_dumpContext->filename);
+        return false;
+        //goto failed;
+    }
+
+    if (avformat_write_header(m_dumpContext, nullptr) < 0) {
+        ELOG_ERROR("avformat_write_header failed");
+        return false;
+        //goto failed;
+    }
+
+    av_dump_format(m_dumpContext, 0, m_dumpContext->filename, 1);
     return true;
 }
 

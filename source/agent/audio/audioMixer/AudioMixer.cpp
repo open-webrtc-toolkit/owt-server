@@ -27,8 +27,12 @@
 #include <webrtc/voice_engine/include/voe_audio_processing.h>
 #include <webrtc/voice_engine/include/voe_rtp_rtcp.h>
 
+#include <webrtc/system_wrappers/interface/trace.h>
+
 using namespace erizo;
 using namespace webrtc;
+
+#define ENABLE_WEBRTC_TRACE 0
 
 namespace mcu {
 
@@ -408,6 +412,12 @@ AudioMixer::AudioMixer(const std::string& config)
 
     // FIXME: hard coded timer interval.
     m_jobTimer.reset(new JobTimer(100, this));
+
+#if ENABLE_WEBRTC_TRACE
+    webrtc::Trace::CreateTrace();
+    webrtc::Trace::SetTraceFile("webrtc_trace_audioMixer.txt");
+    webrtc::Trace::set_level_filter(webrtc::kTraceAll);
+#endif
 }
 
 AudioMixer::~AudioMixer()
