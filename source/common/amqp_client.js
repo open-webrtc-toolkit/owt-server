@@ -2,7 +2,7 @@
 'use strict';
 var amqp = require('amqp');
 var log = require('./logger').logger.getLogger('AmqpClient');
-var TIMEOUT = 1000;
+var TIMEOUT = 2000;
 var REMOVAL_TIMEOUT = 7 * 24 * 3600 * 1000;
 
 var declareExchange = function(conn, name, type, autoDelete, on_ok, on_failure) {
