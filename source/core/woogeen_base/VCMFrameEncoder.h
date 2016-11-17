@@ -80,7 +80,7 @@ public:
     void onFrame(const Frame&);
     bool canSimulcast(FrameFormat format, uint32_t width, uint32_t height);
     bool isIdle();
-    int32_t generateStream(uint32_t width, uint32_t height, FrameDestination* dest);
+    int32_t generateStream(uint32_t width, uint32_t height, uint32_t bitrateKbps, FrameDestination* dest);
     void degenerateStream(int32_t streamId);
     void setBitrate(unsigned short kbps, int32_t streamId);
     void requestKeyFrame(int32_t streamId);

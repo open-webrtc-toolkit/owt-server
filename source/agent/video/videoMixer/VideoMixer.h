@@ -55,7 +55,11 @@ public:
     std::string getRegion(const std::string& inStreamID);
     void setPrimary(const std::string& inStreamID);
 
-    bool addOutput(const std::string& outStreamID, const std::string& codec, const std::string& resolution, woogeen_base::FrameDestination* dest);
+    bool addOutput(const std::string& outStreamID
+            , const std::string& codec
+            , const std::string& resolution
+            , const woogeen_base::QualityLevel qualityLevel
+            , woogeen_base::FrameDestination* dest);
     void removeOutput(const std::string& outStreamID);
 
     int32_t bindAudio(uint32_t sourceId, int voiceChannelId, webrtc::VoEVideoSync*)
@@ -76,7 +80,6 @@ private:
     uint32_t m_inputCount;
     uint32_t m_maxInputCount;
 
-    unsigned short m_outputKbps;
     boost::shared_ptr<VideoFrameMixer> m_frameMixer;
     boost::shared_ptr<woogeen_base::WebRTCTaskRunner> m_taskRunner;
 

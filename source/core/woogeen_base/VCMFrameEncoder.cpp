@@ -70,7 +70,8 @@ bool VCMFrameEncoder::canSimulcast(FrameFormat format, uint32_t width, uint32_t 
 {
     VideoCodec videoCodec;
     videoCodec = m_vcm->GetSendCodec();
-    return webrtc::VP8EncoderFactoryConfig::use_simulcast_adapter()
+    return false
+           &&webrtc::VP8EncoderFactoryConfig::use_simulcast_adapter()
            && m_encodeFormat == format
            && videoCodec.width * height == videoCodec.height * width;
 }
@@ -81,7 +82,7 @@ bool VCMFrameEncoder::isIdle()
     return m_streams.size() == 0;
 }
 
-int32_t VCMFrameEncoder::generateStream(uint32_t width, uint32_t height, woogeen_base::FrameDestination* dest)
+int32_t VCMFrameEncoder::generateStream(uint32_t width, uint32_t height, uint32_t bitrateKbps, woogeen_base::FrameDestination* dest)
 {
     boost::upgrade_lock<boost::shared_mutex> lock(m_mutex);
 
@@ -124,7 +125,7 @@ int32_t VCMFrameEncoder::generateStream(uint32_t width, uint32_t height, woogeen
     }
 
     VideoCodec fbVideoCodec = videoCodec;
-    uint32_t targetKbps = calcBitrate(width, height) * (m_encodeFormat == FRAME_FORMAT_VP8 ? 0.9 : 1);
+    uint32_t targetKbps = bitrateKbps * (m_encodeFormat == FRAME_FORMAT_VP8 ? 0.9 : 1);
 
     for (; simulcastId < videoCodec.numberOfSimulcastStreams; ++simulcastId) {
         if (videoCodec.simulcastStream[simulcastId].width > width)
@@ -186,7 +187,7 @@ int32_t VCMFrameEncoder::generateStream(uint32_t width, uint32_t height, woogeen
     encodeOut.reset(new EncodeOut(m_streamId, this, dest));
     OutStream stream = {.width = width, .height = height, .simulcastId = simulcastId, .encodeOut = encodeOut};
     m_streams[m_streamId] = stream;
-    ELOG_DEBUG("generateStream[%p]: {.width=%d, .height=%d}, simulcastId=%d", this, width, height, simulcastId);
+    ELOG_DEBUG("generateStream[%p]: {.width=%d, .height=%d, .bitrateKbps=%d}, simulcastId=%d", this, width, height, bitrateKbps, simulcastId);
     return m_streamId++;
 }
 
