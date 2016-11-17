@@ -34,8 +34,6 @@ using namespace webrtc;
 using namespace woogeen_base;
 using namespace erizo;
 
-#define ENABLE_WEBRTC_TRACE 0
-
 namespace mcu {
 
 DEFINE_LOGGER(VideoMixer, "mcu.media.VideoMixer");
@@ -44,7 +42,6 @@ VideoMixer::VideoMixer(const std::string& configStr)
     : m_nextOutputIndex(0)
     , m_inputCount(0)
     , m_maxInputCount(0)
-    , m_outputKbps(0) //TODO: It needs more consideration about specifying the outputKbps with multi-streaming.
 {
     boost::property_tree::ptree config;
     std::istringstream is(configStr);
@@ -56,7 +53,7 @@ VideoMixer::VideoMixer(const std::string& configStr)
         m_freeInputIndexes.push_back(true);
 
     // bool hardwareAccelerated = config.get<bool>("hardware", false);
-    m_outputKbps = config.get<int>("bitrate", 0);
+
     bool useSimulcast = config.get<bool>("simulcast");
     webrtc::VP8EncoderFactoryConfig::set_use_simulcast_adapter(useSimulcast);
     bool cropVideo = config.get<bool>("crop");
@@ -67,7 +64,7 @@ VideoMixer::VideoMixer(const std::string& configStr)
     YUVColor bgColor;
     m_layoutProcessor->getBgColor(bgColor);
 
-    ELOG_DEBUG("Init maxInput(%u), rootSize(%u, %u), bgColor(%u, %u, %u)", m_maxInputCount, rootSize.width, rootSize.height, bgColor.y, bgColor.cb, bgColor.cr);
+    ELOG_INFO("Init maxInput(%u), rootSize(%u, %u), bgColor(%u, %u, %u)", m_maxInputCount, rootSize.width, rootSize.height, bgColor.y, bgColor.cb, bgColor.cr);
 
     m_taskRunner.reset(new woogeen_base::WebRTCTaskRunner());
 
@@ -76,11 +73,11 @@ VideoMixer::VideoMixer(const std::string& configStr)
 
     m_taskRunner->Start();
 
-#if ENABLE_WEBRTC_TRACE
-    webrtc::Trace::CreateTrace();
-    webrtc::Trace::SetTraceFile("webrtc.trace.txt");
-    webrtc::Trace::set_level_filter(webrtc::kTraceAll);
-#endif
+    if (ELOG_IS_TRACE_ENABLED()) {
+        webrtc::Trace::CreateTrace();
+        webrtc::Trace::SetTraceFile("webrtc_trace_videoMixer.txt");
+        webrtc::Trace::set_level_filter(webrtc::kTraceAll);
+    }
 }
 
 VideoMixer::~VideoMixer()
@@ -88,10 +85,9 @@ VideoMixer::~VideoMixer()
     closeAll();
 
     m_taskRunner->Stop();
-#if ENABLE_WEBRTC_TRACE
-    webrtc::Trace::ReturnTrace();
-#endif
-
+    if (ELOG_IS_TRACE_ENABLED()) {
+        webrtc::Trace::ReturnTrace();
+    }
     m_layoutProcessor->deregisterConsumer(m_frameMixer);
 }
 
@@ -223,13 +219,12 @@ void VideoMixer::setPrimary(const std::string& inStreamID)
         m_layoutProcessor->promoteInputs(inputs);
 }
 
-bool VideoMixer::addOutput(const std::string& outStreamID, const std::string& codec, const std::string& resolution, woogeen_base::FrameDestination* dest)
+bool VideoMixer::addOutput(const std::string& outStreamID, const std::string& codec, const std::string& resolution, woogeen_base::QualityLevel qualityLevel, woogeen_base::FrameDestination* dest)
 {
     woogeen_base::FrameFormat format = getFormat(codec);
     VideoSize vSize;
     VideoResolutionHelper::getVideoSize(resolution, vSize);
-
-    if (m_frameMixer->addOutput(m_nextOutputIndex, format, vSize, dest)) {
+    if (m_frameMixer->addOutput(m_nextOutputIndex, format, vSize, qualityLevel, dest)) {
         boost::unique_lock<boost::shared_mutex> lock(m_outputsMutex);
         m_outputs[outStreamID] = m_nextOutputIndex++;
         return true;

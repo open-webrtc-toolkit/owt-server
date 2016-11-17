@@ -148,7 +148,7 @@ void VideoMixer::addOutput(const v8::FunctionCallbackInfo<v8::Value>& args) {
   FrameDestination* param3 = ObjectWrap::Unwrap<FrameDestination>(args[3]->ToObject());
   woogeen_base::FrameDestination* dest = param3->dest;
 
-  bool r = me->addOutput(outStreamID, codec, resolution, dest);
+  bool r = me->addOutput(outStreamID, codec, resolution, woogeen_base::STANDARD, dest);
 
   args.GetReturnValue().Set(Boolean::New(isolate, r));
 }

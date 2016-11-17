@@ -42,11 +42,11 @@ class StreamEncoder : public FrameSource
 public:
     StreamEncoder()
         : m_frameCount(0)
+        , m_format(FRAME_FORMAT_UNKNOWN)
         , m_width(0)
         , m_height(0)
-        , m_format(FRAME_FORMAT_UNKNOWN)
-        , m_dest(NULL)
         , m_bitRateKbps(0)
+        , m_dest(NULL)
         , m_setBitRateFlag(false)
         , m_requestKeyFrameFlag(false)
         , m_encSession(NULL)
@@ -104,16 +104,17 @@ public:
         }
     }
 
-    bool init(FrameFormat format, uint32_t width, uint32_t height, FrameDestination* dest)
+    bool init(FrameFormat format, uint32_t width, uint32_t height, uint32_t bitrateKbps, FrameDestination* dest)
     {
         if (!dest) {
             ELOG_ERROR("(%p)Null FrameDestination.", this);
             return false;
         }
-        m_format = format;
-        m_width = width;
-        m_height = height;
-        m_dest = dest;
+        m_format        = format;
+        m_width         = width;
+        m_height        = height;
+        m_bitRateKbps   = bitrateKbps;
+        m_dest          = dest;
         addVideoDestination(dest);
 
         updateParam();
@@ -693,13 +694,11 @@ private:
     //format
     uint32_t m_frameCount;
 
+    FrameFormat m_format;
     uint32_t m_width;
     uint32_t m_height;
-    FrameFormat m_format;
-
-    FrameDestination *m_dest;
-
     uint32_t m_bitRateKbps;
+    FrameDestination *m_dest;
 
     bool m_setBitRateFlag;
     bool m_requestKeyFrameFlag;
@@ -763,13 +762,13 @@ bool MsdkFrameEncoder::isIdle()
     return m_streams.size() == 0;
 }
 
-int32_t MsdkFrameEncoder::generateStream(uint32_t width, uint32_t height, woogeen_base::FrameDestination* dest)
+int32_t MsdkFrameEncoder::generateStream(uint32_t width, uint32_t height, uint32_t bitrateKbps, woogeen_base::FrameDestination* dest)
 {
     boost::upgrade_lock<boost::shared_mutex> lock(m_mutex);
 
     boost::shared_ptr<StreamEncoder> stream(new StreamEncoder());
-    if (!stream->init(m_encodeFormat, width, height, dest)) {
-        ELOG_ERROR("generateStream failed: {.width=%d, .height=%d}", width, height);
+    if (!stream->init(m_encodeFormat, width, height, bitrateKbps, dest)) {
+        ELOG_ERROR("generateStream failed: {.width=%d, .height=%d, .bitrateKbps=%d}", width, height, bitrateKbps);
         return -1;
     }
 
@@ -777,7 +776,7 @@ int32_t MsdkFrameEncoder::generateStream(uint32_t width, uint32_t height, woogee
 
     m_streams[m_id] = stream;
 
-    ELOG_DEBUG("generateStream[%d]: {.width=%d, .height=%d}", m_id, width, height);
+    ELOG_DEBUG("generateStream[%d]: {.width=%d, .height=%d, .bitrateKbps=%d}", m_id, width, height, bitrateKbps);
 
     return m_id++;
 }

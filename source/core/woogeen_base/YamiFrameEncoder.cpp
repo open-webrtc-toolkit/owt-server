@@ -247,7 +247,7 @@ bool YamiFrameEncoder::isIdle()
     return m_streams.empty();
 }
 
-int32_t YamiFrameEncoder::generateStream(uint32_t width, uint32_t height, FrameDestination* dest)
+int32_t YamiFrameEncoder::generateStream(uint32_t width, uint32_t height, uint32_t bitrateKbps, FrameDestination* dest)
 {
     boost::upgrade_lock<boost::shared_mutex> lock(m_mutex);
     boost::shared_ptr<VideoStream> stream(new VideoStream());

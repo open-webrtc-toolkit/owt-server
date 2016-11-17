@@ -180,10 +180,18 @@ public:
 
     virtual bool canSimulcast(FrameFormat, uint32_t width, uint32_t height) = 0;
     virtual bool isIdle() = 0;
-    virtual int32_t generateStream(uint32_t width, uint32_t height, FrameDestination*) = 0;
+    virtual int32_t generateStream(uint32_t width, uint32_t height, uint32_t bitrateKbps, FrameDestination*) = 0;
     virtual void degenerateStream(int32_t streamId) = 0;
     virtual void setBitrate(unsigned short kbps, int32_t streamId) = 0;
     virtual void requestKeyFrame(int32_t streamId) = 0;
+};
+
+enum QualityLevel {
+    BEST_QUALITY = 0,   //1.4
+    QUALITY,            //1.2
+    STANDARD,           //1.0
+    SPEED,              //0.8
+    BEST_SPEED,         //0.6
 };
 
 }

@@ -21,15 +21,16 @@
 #ifndef VideoFrameMixerImpl_h
 #define VideoFrameMixerImpl_h
 
-#include "I420VideoFrameDecoder.h"
-
-#include "SoftVideoCompositor.h"
-
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/shared_mutex.hpp>
 #include <map>
+#include <MediaUtilities.h>
 #include <MediaFramePipeline.h>
+
+#include "I420VideoFrameDecoder.h"
+
+#include "SoftVideoCompositor.h"
 #include <VCMFrameDecoder.h>
 #include <VCMFrameEncoder.h>
 
@@ -76,7 +77,11 @@ public:
     void removeInput(int input);
     void setInputActive(int input, bool active);
 
-    bool addOutput(int output, woogeen_base::FrameFormat, const woogeen_base::VideoSize&, woogeen_base::FrameDestination*);
+    bool addOutput(int output,
+            woogeen_base::FrameFormat,
+            const woogeen_base::VideoSize&,
+            const woogeen_base::QualityLevel qualityLevel,
+            woogeen_base::FrameDestination*);
     void removeOutput(int output);
     void setBitrate(unsigned short kbps, int output);
     void requestKeyFrame(int output);
@@ -84,6 +89,8 @@ public:
     void updateLayoutSolution(LayoutSolution& solution);
 
 private:
+    uint32_t getBitrate(uint32_t width, uint32_t height, const woogeen_base::QualityLevel qualityLevel);
+
     struct Input {
         woogeen_base::FrameSource* source;
         boost::shared_ptr<woogeen_base::VideoFrameDecoder> decoder;
@@ -237,13 +244,41 @@ inline void VideoFrameMixerImpl::requestKeyFrame(int output)
         it->second.encoder->requestKeyFrame(it->second.streamId);
 }
 
+uint32_t VideoFrameMixerImpl::getBitrate(uint32_t width, uint32_t height, const woogeen_base::QualityLevel qualityLevel)
+{
+    uint32_t bitrate = woogeen_base::calcBitrate(width, height);
+    switch(qualityLevel) {
+        case woogeen_base::BEST_QUALITY:
+            bitrate *= 1.4;
+            break;
+        case woogeen_base::QUALITY:
+            bitrate *= 1.2;
+            break;
+        case woogeen_base::STANDARD:
+            bitrate *= 1;
+            break;
+        case woogeen_base::SPEED:
+            bitrate *= 0.8;
+            break;
+        case woogeen_base::BEST_SPEED:
+            bitrate *= 0.6;
+            break;
+        default:
+            bitrate *= 1;
+            break;
+    }
+    return bitrate;
+}
+
 inline bool VideoFrameMixerImpl::addOutput(int output,
                                            woogeen_base::FrameFormat format,
                                            const woogeen_base::VideoSize& rootSize,
+                                           const woogeen_base::QualityLevel qualityLevel,
                                            woogeen_base::FrameDestination* dest)
 {
     boost::shared_ptr<woogeen_base::VideoFrameEncoder> encoder;
     boost::upgrade_lock<boost::shared_mutex> lock(m_outputMutex);
+    uint32_t bitrateKbps = getBitrate(rootSize.width, rootSize.height, qualityLevel);
 
     // find a reusable encoder.
     auto it = m_outputs.begin();
@@ -255,7 +290,7 @@ inline bool VideoFrameMixerImpl::addOutput(int output,
     int32_t streamId = -1;
     if (it != m_outputs.end()) { // Found a reusable encoder
         encoder = it->second.encoder;
-        streamId = encoder->generateStream(rootSize.width, rootSize.height, dest);
+        streamId = encoder->generateStream(rootSize.width, rootSize.height, bitrateKbps, dest);
         if (streamId < 0)
             return false;
     } else { // Never found a reusable encoder.
@@ -272,7 +307,7 @@ inline bool VideoFrameMixerImpl::addOutput(int output,
         if (!encoder)
             encoder.reset(new woogeen_base::VCMFrameEncoder(format, m_taskRunner, m_useSimulcast));
 
-        streamId = encoder->generateStream(rootSize.width, rootSize.height, dest);
+        streamId = encoder->generateStream(rootSize.width, rootSize.height, bitrateKbps, dest);
         if (streamId < 0)
             return false;
 
