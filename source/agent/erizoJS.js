@@ -26,6 +26,8 @@ GLOBAL.config.video = GLOBAL.config.video || {};
 GLOBAL.config.video.hardwareAccelerated = !!GLOBAL.config.video.hardwareAccelerated;
 GLOBAL.config.video.openh264Enabled = !!GLOBAL.config.video.openh264Enabled;
 
+GLOBAL.config.avatar = GLOBAL.config.avatar || {};
+
 GLOBAL.config.recording = GLOBAL.config.recording || {};
 GLOBAL.config.recording.path = GLOBAL.config.recording.path || '/tmp';
 

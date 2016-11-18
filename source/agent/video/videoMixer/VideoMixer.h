@@ -48,7 +48,7 @@ public:
     VideoMixer(const std::string& config);
     virtual ~VideoMixer();
 
-    bool addInput(const std::string& inStreamID, const std::string& codec, woogeen_base::FrameSource* source);
+    bool addInput(const std::string& inStreamID, const std::string& codec, woogeen_base::FrameSource* source, const std::string& avatar);
     void removeInput(const std::string& inStreamID);
     void setInputActive(const std::string& inStreamID, bool active);
     bool setRegion(const std::string& inStreamID, const std::string& regionID);

@@ -72,7 +72,7 @@ public:
     VideoFrameMixerImpl(uint32_t maxInput, woogeen_base::VideoSize rootSize, woogeen_base::YUVColor bgColor, boost::shared_ptr<woogeen_base::WebRTCTaskRunner>, bool useSimulcast, bool crop);
     ~VideoFrameMixerImpl();
 
-    bool addInput(int input, woogeen_base::FrameFormat, woogeen_base::FrameSource*);
+    bool addInput(int input, woogeen_base::FrameFormat, woogeen_base::FrameSource*, const std::string& avatar);
     void removeInput(int input);
     void setInputActive(int input, bool active);
 
@@ -148,7 +148,7 @@ VideoFrameMixerImpl::~VideoFrameMixerImpl()
     m_compositor.reset();
 }
 
-inline bool VideoFrameMixerImpl::addInput(int input, woogeen_base::FrameFormat format, woogeen_base::FrameSource* source)
+inline bool VideoFrameMixerImpl::addInput(int input, woogeen_base::FrameFormat format, woogeen_base::FrameSource* source, const std::string& avatar)
 {
     assert(source);
 

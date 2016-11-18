@@ -79,13 +79,16 @@ module.exports = function (rpcClient) {
         process.exit(1);
     }
 
-    var addInput = function (stream_id, codec, protocol, on_ok, on_error) {
+    var addInput = function (stream_id, codec, protocol, avatar, on_ok, on_error) {
         if (engine) {
             if (!useHardware && !openh264Enabled && codec === 'h264') {
                 on_error('Codec ' + codec + ' is not supported by video engine.');
             } else {
                 var conn = new InternalIn(protocol, GLOBAL.config.internal.minport, GLOBAL.config.internal.maxport);
-                if (engine.addInput(stream_id, codec, conn)) {
+
+                // Use default avatar if it is not set
+                avatar = avatar || GLOBAL.config.avatar.location;
+                if (engine.addInput(stream_id, codec, conn, avatar)) {
                     inputs[stream_id] = conn;
                     log.debug('addInput ok, stream_id:', stream_id, 'codec:', codec, 'protocol:', protocol);
                     on_ok(stream_id);
@@ -276,7 +279,7 @@ module.exports = function (rpcClient) {
         if (inputs[stream_id] === undefined) {
             log.debug('publish 1, inputs.length:', Object.keys(inputs).length, 'maxInputNum:', maxInputNum);
             if (Object.keys(inputs).length < maxInputNum) {
-                addInput(stream_id, options.video.codec, options.protocol, function () {
+                addInput(stream_id, options.video.codec, options.protocol, options.avatar, function () {
                     callback('callback', {ip: that.clusterIP, port: inputs[stream_id].getListeningPort()});
                 }, function (error_reason) {
                     log.error(error_reason);
