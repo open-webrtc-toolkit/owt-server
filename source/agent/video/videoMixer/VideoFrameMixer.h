@@ -44,7 +44,7 @@ public:
 // It can have multiple outputs with different FrameFormat or framerate/bitrate settings.
 class VideoFrameMixer : public LayoutConsumer {
 public:
-    virtual bool addInput(int input, woogeen_base::FrameFormat, woogeen_base::FrameSource*) = 0;
+    virtual bool addInput(int input, woogeen_base::FrameFormat, woogeen_base::FrameSource*, const std::string& avatar) = 0;
     virtual void removeInput(int input) = 0;
     virtual void setInputActive(int input, bool active) = 0;
 

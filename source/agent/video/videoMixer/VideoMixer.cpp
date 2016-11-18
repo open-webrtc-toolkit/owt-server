@@ -109,7 +109,7 @@ static woogeen_base::FrameFormat getFormat(const std::string& codec) {
     }
 }
 
-bool VideoMixer::addInput(const std::string& inStreamID, const std::string& codec, woogeen_base::FrameSource* source)
+bool VideoMixer::addInput(const std::string& inStreamID, const std::string& codec, woogeen_base::FrameSource* source, const std::string& avatar)
 {
     if (m_inputCount == m_maxInputCount) {
         ELOG_WARN("Exceeding maximum number of sources (%u), ignoring the addSource request", m_maxInputCount);
@@ -124,7 +124,7 @@ bool VideoMixer::addInput(const std::string& inStreamID, const std::string& code
         int index = useAFreeInputIndex();
         ELOG_DEBUG("addSource - assigned input index is %d", index);
 
-        if (m_frameMixer->addInput(index, format, source)) {
+        if (m_frameMixer->addInput(index, format, source, avatar)) {
             m_layoutProcessor->addInput(index);
             boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
             m_inputs[inStreamID] = index;

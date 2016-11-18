@@ -95,7 +95,11 @@ void VideoMixer::addInput(const v8::FunctionCallbackInfo<v8::Value>& args) {
   FrameSource* param2 = ObjectWrap::Unwrap<FrameSource>(args[2]->ToObject());
   woogeen_base::FrameSource* src = param2->src;
 
-  bool r = me->addInput(inStreamID, codec, src);
+  // Set avatar data
+  String::Utf8Value param3(args[3]->ToString());
+  std::string avatarData = std::string(*param3);
+
+  bool r = me->addInput(inStreamID, codec, src, avatarData);
 
   args.GetReturnValue().Set(Boolean::New(isolate, r));
 }
