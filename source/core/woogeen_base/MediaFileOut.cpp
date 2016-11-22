@@ -63,12 +63,10 @@ bool MediaFileOut::isKeyFrame(int codec, uint8_t *data, size_t len)
         if (data[0] != 0 || data[1] != 0 || data[2] != 0 || data[3] != 1)
             return false;
 
-        int nal_ref_idc     = (data[4] >> 5) & 0x3;
         int nal_unit_type   = data[4] & 0x1f;
-        const char *type    = NULL;
 
         if (nal_unit_type == 5) {
-            ELOG_TRACE("nal_unit_type %d, key_frame %d, len %d", nal_unit_type, true, len);
+            ELOG_TRACE("nal_unit_type %d, key_frame %d, len %ld", nal_unit_type, true, len);
             return true;
         }
         else if (nal_unit_type == 9) {
@@ -77,11 +75,11 @@ bool MediaFileOut::isKeyFrame(int codec, uint8_t *data, size_t len)
 
             int primary_pic_type = (data[5] >> 5) & 0x7;
 
-            ELOG_TRACE("nal_unit_type %d, primary_pic_type %d, key_frame %d, len %d", nal_unit_type, primary_pic_type, (primary_pic_type == 0), len);
+            ELOG_TRACE("nal_unit_type %d, primary_pic_type %d, key_frame %d, len %ld", nal_unit_type, primary_pic_type, (primary_pic_type == 0), len);
             return (primary_pic_type == 0);
         }
         else {
-            ELOG_TRACE("nal_unit_type %d, key_frame %d, len %d", nal_unit_type, false, len);
+            ELOG_TRACE("nal_unit_type %d, key_frame %d, len %ld", nal_unit_type, false, len);
             return false;
         }
     }
@@ -93,11 +91,13 @@ bool MediaFileOut::isKeyFrame(int codec, uint8_t *data, size_t len)
         unsigned int tmp = (c[2] << 16) | (c[1] << 8) | c[0];
 
         int key_frame = tmp & 0x1;
+        /*
         int version = (tmp >> 1) & 0x7;
         int show_frame = (tmp >> 4) & 0x1;
         int first_part_size = (tmp >> 5) & 0x7FFFF;
+        */
 
-        ELOG_TRACE("key_frame %d, len %d", (key_frame == 0), len);
+        ELOG_TRACE("key_frame %d, len %ld", (key_frame == 0), len);
         return (key_frame == 0);
     }
     else {
