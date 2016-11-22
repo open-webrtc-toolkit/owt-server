@@ -392,11 +392,11 @@ module.exports = function (rpcC, spec) {
         var infoEqual = function(a, b) {
             var audioEqual = (a.audio === b.audio);
             if (a.audio && b.audio) {
-                audioEqual = (a.audio_codec === b.audio_codec);
+                audioEqual = (a.audio_codec === b.audio_codec && a.audio_dir === b.audio_dir);
             }
             var videoEqual = (a.video === b.video);
             if (a.video && b.video) {
-                videoEqual = (a.video_codec === b.video_codec && a.videoResolution === b.videoResolution);
+                videoEqual = (a.video_codec === b.video_codec && a.videoResolution === b.videoResolution && a.video_dir === b.video_dir);
             }
 
             return (audioEqual && videoEqual);
@@ -413,8 +413,19 @@ module.exports = function (rpcC, spec) {
         var session_controller = calls[client_id].session_controller;
         var old_stream_id = calls[client_id].stream_id;
 
-        var unpublished = do_unpublish(session_controller, client_id, old_stream_id);
-        var unsubscribed = do_unsubscribe(session_controller, client_id, client_id);
+        // Ignore unpublish/unsubscribe failure for send-only/receive-only clients
+        var unpublished = do_unpublish(session_controller, client_id, old_stream_id)
+            .then(function(ok) {
+                return ok;
+            }).catch(function(err) {
+                return err;
+            });
+        var unsubscribed = do_unsubscribe(session_controller, client_id, client_id).then(
+            function(ok) {
+                return ok;
+            }).catch(function(err) {
+                return err;
+            });
 
         Promise.all([unpublished, unsubscribed])
         .then(function(result) {
