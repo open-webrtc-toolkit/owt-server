@@ -210,8 +210,8 @@ extern int ep_incoming_call(void *gateway, unsigned char audio, unsigned char vi
 extern void ep_peer_ringing(void *gateway, const char *peer);
 extern void ep_call_closed(void *gateway, const char *peer, const char *reason);
 extern void call_connection_closed(void *call_owner);
-extern void ep_call_established(void *gateway, const char *peer, struct call* call, bool video);
-extern void ep_call_updated(void *gateway, const char *peer, bool video);
+extern void ep_call_established(void *gateway, const char *peer, struct call *call, const char *audio_dir, const char* video_dir);
+extern void ep_call_updated(void *gateway, const char *peer, const char *audio_dir, const char *video_dir);
 
 
 static void call_event_handler(struct call *call, enum call_event ev,
@@ -272,7 +272,7 @@ static void call_event_handler(struct call *call, enum call_event ev,
 	case CALL_EVENT_ESTABLISHED:
 		ua_printf(ua, "Call established: %s\n", peeruri);
 		ua_event(ua, UA_EVENT_CALL_ESTABLISHED, call, peeruri);
-		ep_call_established(ua->owner->ep, peeruri, call, call_video_enabled(call));
+		ep_call_established(ua->owner->ep, peeruri, call, call_audio_dir(call), call_video_dir(call));
 		break;
 
 	case CALL_EVENT_CLOSED:
@@ -322,7 +322,7 @@ static void call_event_handler(struct call *call, enum call_event ev,
 		break;
 	case CALL_EVENT_UPDATE:
 		if (call_get_owner(call)) {
-			ep_call_updated(ua->owner->ep, peeruri, call_video_enabled(call));
+			ep_call_updated(ua->owner->ep, peeruri, call_audio_dir(call), call_video_dir(call));
 			//Now Sip call upate requires server stream connection reset
 			call_connection_closed(call_get_owner(call));
 	    }

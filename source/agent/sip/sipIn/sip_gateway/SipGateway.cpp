@@ -110,29 +110,36 @@ void SipGateway::onPeerRinging(const std::string& peerURI)
 }
 
 // The sipua thread
-void SipGateway::onCallEstablished(const std::string& peerURI, void *call, bool video)
+void SipGateway::onCallEstablished(const std::string& peerURI, void *call,
+                                   const char *audioDir, const char *videoDir)
 {
     const CallInfo *info = getCallInfoByPeerURI(peerURI);
     std::string str = "{\"peerURI\":\"" + peerURI + "\"," +
-                       "\"audio\":true,\"audio_codec\":\"" + info->audioCodec + "\"," +
-                       "\"video\":" + ((video) ? ("true, \"video_codec\":\"" + info->videoCodec + "\"," +
-                                                        "\"videoResolution\": \"" + info->videoResolution + "\"")
-                                                : "false") + "}";
-    insertOrUpdateCallInfoByPeerURI(peerURI, call, true, video);
+                       "\"audio\":" + ((audioDir!=NULL) ? ("true,\"audio_codec\":\"" + info->audioCodec + "\"," +
+                                                           "\"audio_dir\": \"" + audioDir + "\"")
+                                                        : "false") + "," +
+                       "\"video\":" + ((videoDir!=NULL) ? ("true, \"video_codec\":\"" + info->videoCodec + "\"," +
+                                                           "\"videoResolution\": \"" + info->videoResolution + "\"," +
+                                                           "\"video_dir\": \"" + videoDir + "\"")
+                                                        : "false") + "}";
+    insertOrUpdateCallInfoByPeerURI(peerURI, call, audioDir!=NULL, videoDir!=NULL);
     notifyAsyncEvent("CallEstablished", str.c_str());
     refreshVideoStream();
 }
 
 // The sipua thread
-void SipGateway::onCallUpdated(const std::string& peerURI, bool video)
+void SipGateway::onCallUpdated(const std::string& peerURI, const char *audioDir, const char *videoDir)
 {
     const CallInfo *info = getCallInfoByPeerURI(peerURI);
     std::string str = "{\"peerURI\":\"" + peerURI + "\"," +
-                       "\"audio\":true,\"audio_codec\":\"" + info->audioCodec + "\"," +
-                       "\"video\":" + ((video) ? ("true, \"video_codec\":\"" + info->videoCodec + "\"," +
-                                                        "\"videoResolution\": \"" + info->videoResolution + "\"")
-                                                : "false") + "}";
-    insertOrUpdateCallInfoByPeerURI(peerURI, info->sipCall, true, video);
+                       "\"audio\":" + ((audioDir!=NULL) ? ("true,\"audio_codec\":\"" + info->audioCodec + "\"," +
+                                                           "\"audio_dir\": \"" + audioDir + "\"")
+                                                        : "false") + "," +
+                       "\"video\":" + ((videoDir!=NULL) ? ("true, \"video_codec\":\"" + info->videoCodec + "\"," +
+                                                           "\"videoResolution\": \"" + info->videoResolution + "\"," +
+                                                           "\"video_dir\": \"" + videoDir + "\"")
+                                                        : "false") + "}";
+    insertOrUpdateCallInfoByPeerURI(peerURI, info->sipCall, audioDir!=NULL, videoDir!=NULL);
     notifyAsyncEvent("CallUpdated", str.c_str());
     refreshVideoStream();
 }

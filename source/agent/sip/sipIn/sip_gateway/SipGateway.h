@@ -86,9 +86,9 @@ public:
     void onRegisterResult(bool successful);
     bool onSipIncomingCall(bool requireAudio, bool requireVideo, const std::string& callerIdentity);
     void onPeerRinging(const std::string& peerURI);
-    void onCallEstablished(const std::string& peerURI, void *call, bool video);
+    void onCallEstablished(const std::string& peerURI, void *call, const char *audioDir, const char *videoDir);
     void onCallClosed(const std::string& peer, const std::string& reason);
-    void onCallUpdated(const std::string& peerURI, bool video);
+    void onCallUpdated(const std::string& peerURI, const char *audioDir, const char *videoDir);
 
     void onSipAudioFmt(const std::string& peer, const std::string& codecName, unsigned int sampleRate);
     void onSipVideoFmt(const std::string& peer, const std::string& codecName, unsigned int rtpClock, const std::string& ftmp);

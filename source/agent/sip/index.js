@@ -204,8 +204,6 @@ module.exports = function (rpcC, spec) {
         var published = Promise.resolve('ok');
         var subscribed = Promise.resolve('ok');
 
-        // publish stream to controller
-        var stream_id = generateStreamId();
         var audio_info, video_info;
         if (info.audio) {
             var tmp;
@@ -219,66 +217,83 @@ module.exports = function (rpcC, spec) {
         if (info.video) {
             video_info = {codec:info.video_codec.toLowerCase(), resolution:'vga', framerate:30};
         }
-        //TODO: the streams binding should be done in the success callback.
-        streams[stream_id] = {type: 'sip', connection: calls[client_id].conn};
-        calls[client_id].stream_id = stream_id;
-        published = do_publish(
-            calls[client_id].session_controller,
-            client_id,
-            stream_id,
-            {agent:that.agentID, node: erizo.id},
-            {audio: audio_info, video: video_info});
+
+        // publish stream to controller
+        if ((info.audio && info.audio_dir !== 'sendonly') || (info.video && info.video_dir !== 'sendonly')) {
+            var stream_id = generateStreamId();
+
+            //TODO: the streams binding should be done in the success callback.
+            streams[stream_id] = {type: 'sip', connection: calls[client_id].conn};
+            calls[client_id].stream_id = stream_id;
+
+            var pubInfo = {};
+            if (info.audio && info.audio_dir !== 'sendonly') {
+                pubInfo.audio = audio_info;
+            }
+            if (info.video && info.video_dir !== 'sendonly') {
+                pubInfo.video = video_info;
+            }
+
+            published = do_publish(calls[client_id].session_controller,
+                                   client_id,
+                                   stream_id,
+                                   {agent:that.agentID, node: erizo.id},
+                                   pubInfo);
+        }
 
         // subscribe the mix streams
-        if (mixed_stream_id) {
-            var subInfo = {};
-            if (info.audio) {
-                subInfo.audio = {
-                    fromStream: mixed_stream_id,
-                    codecs: [audio_info.codec]
-                };
-            }
-            if (info.video) {
-                //check resolution
-                var fmtp = info.videoResolution;
-                var preferred_subscription_resolution = mixed_stream_resolutions[0];
-                //TODO: currently we only check CIF/QCIF, there might be other options in fmtp from other devices.
-                if((fmtp.indexOf('CIF') != -1 || fmtp.indexOf('QCIF') != -1)){
-                        if(mixed_stream_resolutions.indexOf('sif') != -1){
-                                preferred_subscription_resolution = 'sif';
-                        }else{
-                                log.warn('MCU does not support the resolution required by sip client');
-                                var diff = Number.MAX_VALUE;
-                                //looking for the resolution closest to 352 * 240(sif)
-                                for(var index in mixed_stream_resolutions){
-                                        var current_diff = resolution_map[mixed_stream_resolutions[index]].width - 352
-                                                             + resolution_map[mixed_stream_resolutions[index]].height - 240;
-                                        if(current_diff < diff){
-                                                diff = current_diff;
-                                                preferred_subscription_resolution = mixed_stream_resolutions[index];
-                                        }
-                                }
-                        }
+        if ((info.audio && info.audio_dir !== 'recvonly') || (info.video && info.video_dir !== 'recvonly')) {
+            if (mixed_stream_id) {
+                var subInfo = {};
+                if (info.audio && info.audio_dir !== 'recvonly') {
+                    subInfo.audio = {
+                        fromStream: mixed_stream_id,
+                        codecs: [audio_info.codec]
+                    };
                 }
-                subInfo.video = {
-                    fromStream: mixed_stream_id,
-                    codecs: [video_info.codec],
-                    resolution: preferred_subscription_resolution
-                };
+                if (info.video && info.video_dir !== 'recvonly') {
+                    //check resolution
+                    var fmtp = info.videoResolution;
+                    var preferred_subscription_resolution = mixed_stream_resolutions[0];
+                    //TODO: currently we only check CIF/QCIF, there might be other options in fmtp from other devices.
+                    if((fmtp.indexOf('CIF') != -1 || fmtp.indexOf('QCIF') != -1)){
+                            if(mixed_stream_resolutions.indexOf('sif') != -1){
+                                    preferred_subscription_resolution = 'sif';
+                            }else{
+                                    log.warn('MCU does not support the resolution required by sip client');
+                                    var diff = Number.MAX_VALUE;
+                                    //looking for the resolution closest to 352 * 240(sif)
+                                    for(var index in mixed_stream_resolutions){
+                                            var current_diff = resolution_map[mixed_stream_resolutions[index]].width - 352
+                                                                 + resolution_map[mixed_stream_resolutions[index]].height - 240;
+                                            if(current_diff < diff){
+                                                    diff = current_diff;
+                                                    preferred_subscription_resolution = mixed_stream_resolutions[index];
+                                            }
+                                    }
+                            }
+                    }
+                    subInfo.video = {
+                        fromStream: mixed_stream_id,
+                        codecs: [video_info.codec],
+                        resolution: preferred_subscription_resolution
+                    };
+                }
+                //TODO: The subscriptions binding should be done in the success callback.
+                calls[client_id].mix_stream_id = mixed_stream_id;
+                subscriptions[client_id] = {type: 'sip',
+                                            audio: undefined,
+                                            video: undefined,
+                                            connection: calls[client_id].conn};
+
+                subscribed = do_subscribe(calls[client_id].session_controller,
+                                          client_id,
+                                          client_id,
+                                          {agent:that.agentID, node: erizo.id},
+                                          subInfo);
+            } else {
+                log.warn("invalid mix stream id");
             }
-            //TODO: The subscriptions binding should be done in the success callback.
-            calls[client_id].mix_stream_id = mixed_stream_id;
-            subscriptions[client_id] = {type: 'sip',
-                                        audio: undefined,
-                                        video: undefined,
-                                        connection: calls[client_id].conn};
-            subscribed = do_subscribe(calls[client_id].session_controller,
-                         client_id,
-                         client_id,
-                         {agent:that.agentID, node: erizo.id},
-                         subInfo);
-        } else {
-            log.warn("invalid mix stream id");
         }
 
         return Promise.all([published, subscribed]).then(function(result) {
@@ -342,7 +357,9 @@ module.exports = function (rpcC, spec) {
     };
 
     var handleCallEstablished = function (info) {
-        log.info('CallEstablished:', client_id, 'audio='+info.audio, 'video='+info.video, ' audio codec:', info.audio_codec, (info.video ? (' video codec: ' + info.video_codec) : ''));
+        log.info('CallEstablished:', info.peerURI, 'audio='+info.audio, 'video='+info.video,
+                 (info.audio ? (' audio codec:' + info.audio_codec + ' audio dir: ' + info.audio_dir) : ''),
+                 (info.video ? (' video codec: ' + info.video_codec + ' video dir: ' + info.video_dir) : ''));
         var client_id = info.peerURI;
 
         if (calls[client_id]) {
