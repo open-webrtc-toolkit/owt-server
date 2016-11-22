@@ -169,16 +169,16 @@ void SipEP::onPeerRinging(const std::string &peer)
     m_owner->onPeerRinging(peer);
 }
 
-void SipEP::onCallEstablished(const std::string& peer, void *call, bool video)
+void SipEP::onCallEstablished(const std::string& peer, void *call, const char *audioDir, const char *videoDir)
 {
     ELOG_DEBUG("Call established");
-    m_owner->onCallEstablished(peer, call, video);
+    m_owner->onCallEstablished(peer, call, audioDir, videoDir);
 }
 
-void SipEP::onCallUpdated(const std::string &peer, bool video)
+void SipEP::onCallUpdated(const std::string &peer, const char *audioDir, const char *videoDir)
 {
     ELOG_DEBUG("Call updated.");
-    m_owner->onCallUpdated(peer, video);
+    m_owner->onCallUpdated(peer, audioDir, videoDir);
 }
 
 void SipEP::onCallClosed(const std::string& peer, const std::string& reason)
@@ -229,17 +229,17 @@ void ep_call_closed(void* gateway, const char *peer, const char* reason)
     obj->onCallClosed(peer, reason);
 }
 
-void ep_call_established(void* gateway, const char *peer, void *call,  bool video)
+void ep_call_established(void* gateway, const char *peer, void *call, const char *audio_dir, const char *video_dir)
 {
     sip_gateway::SipEP* obj = static_cast<sip_gateway::SipEP*>(gateway);
     //TODO get the peer id
-    obj->onCallEstablished(peer, call, video);
+    obj->onCallEstablished(peer, call, audio_dir, video_dir);
 }
 
-void ep_call_updated(void* gateway, const char *peer, bool video)
+void ep_call_updated(void* gateway, const char *peer, const char *audio_dir, const char *video_dir)
 {
     sip_gateway::SipEP* obj = static_cast<sip_gateway::SipEP*>(gateway);
-    obj->onCallUpdated(peer, video);
+    obj->onCallUpdated(peer, audio_dir, video_dir);
 }
 
 void ep_update_audio_params(void* gateway, const char* peer, const char* cdcname, int srate, int ch, const char* fmtp)

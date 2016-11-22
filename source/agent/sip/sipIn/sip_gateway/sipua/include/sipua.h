@@ -43,8 +43,8 @@ void ep_register_result(void *endpoint, sipua_bool successful);
 int ep_incoming_call(void *endpoint, sipua_bool audio, sipua_bool video, const char *callerURI);
 void ep_peer_ringing(void *endpoint, const char *peer);
 void ep_call_closed(void *endpoint, const char *peer, const char *reason);
-void ep_call_established(void *endpoint, const char *peer, void *call, bool video);
-void ep_call_updated(void *endpoint, const char *peer, bool video);
+void ep_call_established(void *endpoint, const char *peer, void *call, const char *audio_dir, const char *video_dir);
+void ep_call_updated(void *endpoint, const char *peer, const char *audio_dir, const char *video_dir);
 
 //void ep_update_audio_params(void *endpoint, const char *cdcname, int srate, int ch, const char *fmtp);
 //void ep_update_video_params(void *endpoint, const char *cdcname, int bitrate, int packetsize, int fps, const char *fmtp);

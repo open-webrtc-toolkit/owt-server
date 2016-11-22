@@ -78,10 +78,6 @@ bool sdp_media_has_media(const struct sdp_media *m)
 	return false;
 }
 
-bool sdp_video_enabled(const struct sdp_media *m) {
-    return sdp_media_rdir(m) == SDP_SENDRECV;
-}
-
 /**
  * Find a dynamic payload type that is not used
  *

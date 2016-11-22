@@ -65,7 +65,7 @@ enum call_event {
 	CALL_EVENT_CLOSED,
 	CALL_EVENT_TRANSFER,
 	CALL_EVENT_TRANSFER_FAILED,
-        CALL_EVENT_UPDATE,
+	CALL_EVENT_UPDATE,
 };
 
 struct call;
@@ -98,7 +98,8 @@ bool          call_is_outgoing(const struct call *call);
 
 void *call_get_owner(const struct call *call);
 void call_set_owner(struct call *call, void *owner);
-bool call_video_enabled(const struct call *call);
+const char *call_audio_dir(const struct call *call);
+const char *call_video_dir(const struct call *call);
 void call_subscribe_audio(struct call *call, void *subscriber);
 void call_subscribe_video(struct call *call, void *subscriber);
 void call_connection_tx_audio(void* call, uint8_t *data, size_t len);
@@ -582,7 +583,6 @@ int realtime_enable(bool enable, int fps);
 /*
  * SDP
  */
-bool sdp_video_enabled(const struct sdp_media *m);
 bool sdp_media_has_media(const struct sdp_media *m);
 int  sdp_media_find_unused_pt(const struct sdp_media *m);
 int  sdp_fingerprint_decode(const char *attr, struct pl *hash,

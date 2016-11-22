@@ -36,9 +36,9 @@ public:
     virtual void onRegisterResult(bool successful) = 0;
     virtual bool onSipIncomingCall(bool requireAudio, bool requireVideo, const std::string& callerIdentity) = 0;
     virtual void onPeerRinging(const std::string& peerURI) = 0;
-    virtual void onCallEstablished(const std::string& peerURI, void *call, bool video) = 0;
+    virtual void onCallEstablished(const std::string& peerURI, void *call, const char *audioDir, const char *videoDir) = 0;
     virtual void onCallClosed(const std::string& peer, const std::string& reason)= 0;
-    virtual void onCallUpdated(const std::string& peerURI, bool video) = 0;
+    virtual void onCallUpdated(const std::string& peerURI, const char *audioDir, const char *videoDir) = 0;
     virtual void onSipAudioFmt(const std::string& peer, const std::string& codecName, unsigned int sampleRate) = 0;
     virtual void onSipVideoFmt(const std::string& peer, const std::string& codecName, unsigned int rtpClock, const std::string& fmtp) = 0;
 
@@ -65,9 +65,9 @@ public:
 
     void onRegisterResult(bool successful);
     void onPeerRinging(const std::string &peer);
-    void onCallEstablished(const std::string& peer, void *call, bool video);
+    void onCallEstablished(const std::string& peer, void *call, const char *audioDir, const char *videoDir);
     void onCallClosed(const std::string& peer, const std::string& reason);
-    void onCallUpdated(const std::string& peer, bool video);
+    void onCallUpdated(const std::string& peer, const char *audioDir, const char *videoDir);
     bool onSipIncomingCall(bool requireAudio, bool requireVideo, const std::string& callerIdentity);
     void onSipAudioFmt(const std::string& peer, const std::string& codecName, unsigned int sampleRate);
     void onSipVideoFmt(const std::string& peer, const std::string& codecName, unsigned int rtpClock, const std::string& fmtp);

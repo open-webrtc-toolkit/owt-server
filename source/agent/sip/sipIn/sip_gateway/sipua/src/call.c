@@ -746,17 +746,48 @@ bool call_has_video(const struct call *call)
 #endif
 }
 
-
-bool call_video_enabled(const struct call *call) {
+/**
+ *	@return Remote audio direction in this call
+ *		NULL if audio is disabled,
+ *		"recvonly" for SDP_RECVONLY,
+ *		"sendonly" for SDP_SENDONLY,
+ *		"sendrecv" for SDP_SENDRECV
+*/
+const char* call_audio_dir(const struct call *call) {
     struct sdp_media *media = 0;
     if (!call)
-        return false;
+        return NULL;
+    media = stream_sdpmedia(audio_strm(call->audio));
+    if (sdp_media_has_media(media)) {
+        enum sdp_dir dir = sdp_media_dir(media);
+        if (dir == SDP_SENDONLY || dir == SDP_RECVONLY || dir == SDP_SENDRECV) {
+            return sdp_dir_name(dir);
+        }
+    }
+    return NULL;
+}
+
+/**
+ *	@return Remote audio direction in this call
+ *		NULL if video is disabled,
+ *		"recvonly" for SDP_RECVONLY,
+ *		"sendonly" for SDP_SENDONLY,
+ *		"sendrecv" for SDP_SENDRECV
+*/
+const char* call_video_dir(const struct call *call) {
+    struct sdp_media *media = 0;
+    if (!call)
+        return NULL;
 #ifdef USE_VIDEO
     media = stream_sdpmedia(video_strm(call->video));
-    return sdp_media_has_media(media) && sdp_video_enabled(media);
-#else
-    return false;
+    if (sdp_media_has_media(media)) {
+        enum sdp_dir dir= sdp_media_dir(media);
+        if (dir == SDP_SENDONLY || dir == SDP_RECVONLY || dir == SDP_SENDRECV) {
+            return sdp_dir_name(dir);
+        }
+    }
 #endif
+    return NULL;
 }
 
 /**
