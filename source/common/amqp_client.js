@@ -189,37 +189,117 @@ var topicParticipant = function(bus, conn, excName, on_ready, on_failure) {
     }, on_failure);
 
     that.subscribe = function(patterns, on_message, on_ok) {
-        message_processor = on_message;
-        patterns.map(function(pattern) {
-            msg_q.bind(exc.name, pattern, function() {
-                log.debug('Follow topic [' + pattern + '] ok.');
+        if (msg_q) {
+            message_processor = on_message;
+            patterns.map(function(pattern) {
+                msg_q.bind(exc.name, pattern, function() {
+                    log.debug('Follow topic [' + pattern + '] ok.');
+                });
             });
-        });
-        msg_q.subscribe(function(message) {
-            try {
-                message_processor && message_processor(message);
-            } catch (error) {
-                log.error('Error processing topic message:', message, 'and error:', error);
-            }
-        });
-        on_ok();
+            msg_q.subscribe(function(message) {
+                try {
+                    message_processor && message_processor(message);
+                } catch (error) {
+                    log.error('Error processing topic message:', message, 'and error:', error);
+                }
+            });
+            on_ok();
+        }
     };
 
     that.unsubscribe = function(patterns) {
-        message_processor = undefined;
-        patterns.map(function(pattern) {
-            msg_q.unbind(exc.name, pattern);
-            log.debug('Ignore topic [' + pattern + ']');
-        });
+        if (msg_q) {
+            message_processor = undefined;
+            patterns.map(function(pattern) {
+                msg_q.unbind(exc.name, pattern);
+                log.debug('Ignore topic [' + pattern + ']');
+            });
+        }
     };
 
     that.publish = function(topic, data) {
-        exc.publish(topic, data);
+        exc && exc.publish(topic, data);
     };
 
     that.close = function () {
         msg_q.destroy();
+        msg_q = undefined;
+        exc && exc.destroy(true);
+        exc = undefined;
+    };
+
+    return that;
+};
+
+var faultMonitor = function(bus, conn, on_message, on_ready, on_failure) {
+    var that = {bus: bus},
+        msg_receiver = on_message;
+
+    var exc, msg_q;
+
+    declareExchange(conn, 'woogeenMonitoring', 'topic', false, function (exc_got) {
+        exc = exc_got;
+        var ready = false;
+        var timer = setTimeout(function () {
+            if (!ready) {
+                exc.destroy(true);
+                on_failure('Declare queue for monitoring failed.');
+            }
+        }, 2000);
+
+        msg_q = conn.queue('', function (queueCreated) {
+            log.info('Message queue for monitoring is open:', queueCreated.name);
+            ready = true;
+            clearTimeout(timer);
+
+            msg_q.bind(exc.name, 'exit.#', function() {
+                log.debug('Monitoring queue bind ok.');
+            });
+
+            msg_q.subscribe(function(msg) {
+                try {
+                    log.debug('received monitoring message:', msg);
+                    msg_receiver && msg_receiver(msg);
+                } catch (error) {
+                    log.error('Error processing monitored message:', msg, 'and error:', error);
+                }
+            });
+            on_ready();
+        });
+
+    }, on_failure);
+
+    that.setMsgReceiver = function (on_message) {
+        msg_receiver = on_message;
+    };
+
+    that.close = function () {
+        msg_q.destroy();
+        msg_q = undefined;
+        exc && exc.destroy(true);
+        exc = undefined;
+    };
+
+    return that;
+};
+
+var monitoringTarget = function(bus, conn, on_ready, on_failure) {
+    var that = {bus: bus};
+
+    var exc;
+
+    declareExchange(conn, 'woogeenMonitoring', 'topic', false, function (exc_got) {
+        exc = exc_got;
+        on_ready();
+    }, on_failure);
+
+    that.notify = function(reason, message) {
+        exc && exc.publish('exit.' + reason, {reason: reason, message: message});
+    };
+
+    that.close = function () {
         exc.destroy(true);
+        exc = undefined;
     };
 
     return that;
@@ -232,7 +312,8 @@ module.exports = function() {
         rpc_client,
         rpc_server,
         topic_participants = {},
-        monitor_exc;
+        monitor,
+        monitoring_target;
 
     var close = function () {
         rpc_server && rpc_server.close();
@@ -243,6 +324,10 @@ module.exports = function() {
             topic_participants[group].close();
         }
         topic_participants = {};
+        monitor && monitor.close();
+        monitor = undefined;
+        monitoring_target && monitoring_target.close();
+        monitoring_target = undefined;
     };
 
     that.connect = function(hostPort, on_ok, on_failure) {
@@ -302,11 +387,11 @@ module.exports = function() {
     };
 
     that.asTopicParticipant = function(group, on_ok, on_failure) {
-        if (connection) {
-            if (topic_participants[group]) {
-                return on_ok(topic_participants[group]);
-            }
+        if (topic_participants[group]) {
+            return on_ok(topic_participants[group]);
+        }
 
+        if (connection) {
             var topic_participant = topicParticipant(that, connection, group, function() {
                 topic_participants[group] = topic_participant;
                 on_ok(topic_participant);
@@ -316,10 +401,29 @@ module.exports = function() {
         }
     };
 
-    that.monitor = function(target, evt, callback) {
+    that.asMonitor = function(message_receiver, on_ok, on_failure) {
+        if (monitor) {
+            monitor.setMsgReceiver(message_receiver);
+            return on_ok(monitor);
+        }
+
+        if (connection) {
+            monitor = faultMonitor(that, connection, message_receiver, function () { on_ok(monitor); }, on_failure);
+        } else {
+            on_failure('amqp connection not ready');
+        }
     };
 
-    that.unmonitor = function(target, evt) {
+    that.asMonitoringTarget = function(on_ok, on_failure) {
+        if (monitoring_target) {
+            return on_ok(monitoring_target);
+        }
+
+        if (connection) {
+            monitoring_target = monitoringTarget(that, connection, function () { on_ok(monitoring_target); }, on_failure);
+        } else {
+            on_failure('amqp connection not ready');
+        }
     };
 
     return that;

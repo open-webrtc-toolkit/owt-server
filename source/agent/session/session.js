@@ -127,43 +127,17 @@ module.exports = function (rpcClient, selfRpcId) {
     }
   };
 
-  that.join = function(sessionId, participantInfo, callback) {
-    log.debug('participant:', participantInfo, 'join session:', sessionId);
-    return initSession(sessionId)
-      .then(function() {
-        log.debug('user_limit:', user_limit, 'current users count:', Object.keys(participants).length);
-        if (user_limit > 0 && (Object.keys(participants).length >= user_limit)) {
-          log.warn('Room is full');
-          return callback('callback', 'error', 'Room is full');
-        }
-
-        participants[participantInfo.id] = {name: participantInfo.name,
-                                            role: participantInfo.role,
-                                            portal: participantInfo.portal,
-                                            published: [],
-                                            subscribed: []
-                                           };
-        var current_participants = [],
-            current_streams = [];
-
-        for (var participant_id in participants) {
-          current_participants.push({id: participant_id, name: participants[participant_id].name, role: participants[participant_id].role});
-        }
-
-        for (var stream_id in streams) {
-          current_streams.push(streams[stream_id].getPublicStream());
-        }
-
-        callback('callback', {participants: current_participants, streams: current_streams});
-
-        sendMsg(participantInfo.id, 'others', 'user_join', {user: {id: participantInfo.id, name: participantInfo.name, role: participantInfo.role}});
-      }, function(err) {
-        log.warn('Participant ' + participantInfo.id + ' join session ' + sessionId + ' failed, err:', err);
-        callback('callback', 'error', 'Participant ' + participantInfo.id + ' join session ' + sessionId + ' failed');
-      });
+  var addParticipant = function(participantInfo) {
+    participants[participantInfo.id] = {name: participantInfo.name,
+                                        role: participantInfo.role,
+                                        portal: participantInfo.portal,
+                                        published: [],
+                                        subscribed: []
+                                       };
+    sendMsg(participantInfo.id, 'others', 'user_join', {user: {id: participantInfo.id, name: participantInfo.name, role: participantInfo.role}});
   };
 
-  that.leave = function(participantId, callback) {
+  var removeParticipant = function(participantId) {
     if (participants[participantId]) {
       var participant = participants[participantId];
 
@@ -181,7 +155,48 @@ module.exports = function (rpcClient, selfRpcId) {
       delete participants[participantId];
       sendMsg('room', 'all', 'user_leave', {user: left_user});
     }
+  };
 
+  var dropParticipants = function(portal) {
+    for (var participant_id in participants) {
+      if (participants[participant_id].portal === portal) {
+        removeParticipant(participant_id);
+      }
+    }
+  };
+
+  that.join = function(sessionId, participantInfo, callback) {
+    log.debug('participant:', participantInfo, 'join session:', sessionId);
+    return initSession(sessionId)
+      .then(function() {
+        log.debug('user_limit:', user_limit, 'current users count:', Object.keys(participants).length);
+        if (user_limit > 0 && (Object.keys(participants).length >= user_limit)) {
+          log.warn('Room is full');
+          return callback('callback', 'error', 'Room is full');
+        }
+
+        addParticipant(participantInfo);
+
+        var current_participants = [],
+            current_streams = [];
+
+        for (var participant_id in participants) {
+          current_participants.push({id: participant_id, name: participants[participant_id].name, role: participants[participant_id].role});
+        }
+
+        for (var stream_id in streams) {
+          current_streams.push(streams[stream_id].getPublicStream());
+        }
+
+        callback('callback', {participants: current_participants, streams: current_streams});
+      }, function(err) {
+        log.warn('Participant ' + participantInfo.id + ' join session ' + sessionId + ' failed, err:', err);
+        callback('callback', 'error', 'Participant ' + participantInfo.id + ' join session ' + sessionId + ' failed');
+      });
+  };
+
+  that.leave = function(participantId, callback) {
+    removeParticipant(participantId);
     callback('callback', 'ok');
     if (Object.keys(participants).length === 0) {
       log.info('Empty session ', session_id, '. Deleting it');
@@ -522,6 +537,13 @@ module.exports = function (rpcClient, selfRpcId) {
     callback('callback', 'Success');
   };
 
+  that.onFaultDetected = function (message) {
+    if (message.purpose === 'portal' || message.purpose === 'sip') {
+      dropParticipants(message.id);
+    } else {
+      controller && controller.onFaultDetected(message.purpose, message.type, message.id);
+    }
+  };
 
   return that;
 };

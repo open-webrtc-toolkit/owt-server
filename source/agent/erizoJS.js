@@ -105,9 +105,11 @@ rpc.connect(GLOBAL.config.rabbit, function () {
             controller = require('./session')(rpcClient, rpcID);
             break;
         case 'audio':
+            //if (rpcID.endsWith(".0")) {setTimeout(function() {log.error('###########Intensive audio node error#########');var a = 2; a / b;}, 45 * 1000);}
             controller = require('./audio')(rpcClient);
             break;
         case 'video':
+            //if (rpcID.endsWith(".0")) {setTimeout(function() {log.error('###########Intensive video node error#########');var a = 2; a / b;}, 30 * 1000);}
             controller = require('./video')(rpcClient);
             break;
         case 'webrtc':
@@ -138,7 +140,19 @@ rpc.connect(GLOBAL.config.rabbit, function () {
 
         rpc.asRpcServer(rpcID, controller, function(rpcServer) {
             log.info(rpcID + ' as rpc server ready');
-            process.send('READY');
+            rpc.asMonitor(function (data) {
+                if (data.reason === 'abnormal' || data.reason === 'error') {
+                    if (controller && typeof controller.onFaultDetected === 'function') {
+                        controller.onFaultDetected(data.message);
+                    }
+                }
+            }, function (monitor) {
+                log.info(rpcID + ' as monitor ready');
+                process.send('READY');
+            }, function(reason) {
+                process.send('ERROR');
+                log.error(reason);
+            });
         }, function(reason) {
             process.send('ERROR');
             log.error(reason);
