@@ -204,6 +204,8 @@ private:
     int m_audioSwrSamplesCount;
     AVAudioFifo* m_audioEncFifo;
     AVFrame *m_audioEncFrame;
+    int64_t m_audioFifoTimeBegin;
+    int64_t m_audioFifoTimeEnd;
     int64_t m_audioEncTimestamp;
 
     AVRational m_msTimeBase;

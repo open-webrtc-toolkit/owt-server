@@ -818,7 +818,7 @@ bool RtspOut::addAudioStream(enum AVCodecID codec_id, int nbChannels, int sample
         codec = avcodec_find_encoder(codec_id);
 
     if (!codec) {
-        ELOG_ERROR("cannot find audio encoder %d", codec_id);
+        ELOG_ERROR("Can not find audio encoder %s, please check if ffmpeg/libfdk_aac installed", "libfdk_aac");
 
         notifyAsyncEvent("fatal", "cannot find audio encoder");
 

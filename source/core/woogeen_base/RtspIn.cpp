@@ -325,6 +325,8 @@ RtspIn::RtspIn(const Options& options, EventRegistry* handle)
     , m_audioSwrSamplesCount(0)
     , m_audioEncFifo(nullptr)
     , m_audioEncFrame(nullptr)
+    , m_audioFifoTimeBegin(AV_NOPTS_VALUE)
+    , m_audioFifoTimeEnd(AV_NOPTS_VALUE)
     , m_audioEncTimestamp(AV_NOPTS_VALUE)
     , m_dumpContext(nullptr)
 {
@@ -697,6 +699,10 @@ void RtspIn::receiveLoop()
                     , m_avPacket.dts, m_avPacket.size);
 
             if (!m_needVBSF || filterVBS(m_avPacket)) {
+                if (m_needAudioTranscoder) {
+                    m_avPacket.dts += m_audioEncTimestamp - m_audioFifoTimeBegin;
+                    m_avPacket.pts += m_audioEncTimestamp - m_audioFifoTimeBegin;
+                }
                 m_videoJitterBuffer->insert(m_avPacket);
             }
         } else if (m_avPacket.stream_index == m_audioStreamIndex) { //packet is audio
@@ -732,7 +738,7 @@ void RtspIn::receiveLoop()
 bool RtspIn::initVBSFilter() {
     m_vbsf = av_bitstream_filter_init("h264_mp4toannexb");
     if (!m_vbsf) {
-        ELOG_ERROR("Cound not init h264 bitstream filter");
+        ELOG_ERROR("Could not init h264 bitstream filter");
         return false;
     }
 
@@ -763,13 +769,13 @@ bool RtspIn::initAudioDecoder(AVCodecID codec) {
     AVCodec *audioDec = NULL;
 
     if (codec != AV_CODEC_ID_AAC) {
-        ELOG_ERROR("Codec %s is not supported, AAC only", avcodec_get_name(codec));
+        ELOG_ERROR("Decoder %s is not supported, AAC only", avcodec_get_name(codec));
         return false;
     }
 
     audioDec = avcodec_find_decoder_by_name("libfdk_aac");
     if (!audioDec) {
-        ELOG_ERROR("Cound not find audio decoder, %s", "libfdk_aac");
+        ELOG_ERROR("Could not find audio decoder %s, please check if ffmpeg/libfdk_aac installed", "libfdk_aac");
         return false;
     }
 
@@ -795,12 +801,12 @@ bool RtspIn::initAudioTranscoder(AVCodecID inCodec, AVCodecID outCodec) {
     AVCodec *audioEnc = NULL;
 
     if (inCodec != AV_CODEC_ID_AAC) {
-        ELOG_ERROR("inCodec %s is not supported, AAC only", avcodec_get_name(inCodec));
+        ELOG_ERROR("Decoder %s is not supported, AAC only", avcodec_get_name(inCodec));
         return false;
     }
 
     if (outCodec != AV_CODEC_ID_OPUS) {
-        ELOG_ERROR("outCodec %s is not supported, OPUS only", avcodec_get_name(outCodec));
+        ELOG_ERROR("Encoder %s is not supported, OPUS only", avcodec_get_name(outCodec));
         return false;
     }
 
@@ -817,7 +823,7 @@ bool RtspIn::initAudioTranscoder(AVCodecID inCodec, AVCodecID outCodec) {
 
     audioEnc = avcodec_find_encoder(AV_CODEC_ID_OPUS);
     if (!audioEnc) {
-        ELOG_ERROR("Cound not find audio encoder");
+        ELOG_ERROR("Could not find audio encoder %s", avcodec_get_name(AV_CODEC_ID_OPUS));
         goto failed;
     }
 
@@ -1040,8 +1046,11 @@ bool RtspIn::decAudioFrame(AVPacket &packet) {
         return false;
     }
 
-    if (m_audioEncTimestamp == AV_NOPTS_VALUE)
+    if (m_audioEncTimestamp == AV_NOPTS_VALUE) {
         m_audioEncTimestamp = packet.dts;
+        m_audioFifoTimeBegin = packet.dts;
+    }
+    m_audioFifoTimeEnd = packet.dts + m_avPacket.duration;
 
     return true;
 }
@@ -1079,6 +1088,8 @@ bool RtspIn::encAudioFrame(AVPacket *packet) {
 
     packet->dts = m_audioEncTimestamp + 1000.0 * m_audioEncCtx->frame_size / m_audioEncCtx->sample_rate;
     m_audioEncTimestamp = packet->dts;
+
+    m_audioFifoTimeBegin += (double)(m_audioFifoTimeEnd - m_audioFifoTimeBegin) * m_audioEncCtx->frame_size / (av_audio_fifo_size(m_audioEncFifo) + m_audioEncCtx->frame_size);
 
     if (av_audio_fifo_size(m_audioEncFifo) >= m_audioEncCtx->frame_size) {
         ELOG_TRACE("More data in fifo to encode %d >= %d", av_audio_fifo_size(m_audioEncFifo), m_audioEncCtx->frame_size);
