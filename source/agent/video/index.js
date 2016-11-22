@@ -410,5 +410,8 @@ module.exports = function (rpcClient) {
         }
     };
 
+    that.onFaultDetected = function (message) {
+    };
+
     return that;
 };

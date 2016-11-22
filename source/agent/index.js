@@ -99,6 +99,7 @@ for (var prop in opt.options) {
 var clusterWorker = require('./clusterWorker');
 var amqper = require('./amqp_client')();
 var rpcClient;
+var monitoringTarget;
 
 var erizo_index = 0;
 var idle_erizos = [];
@@ -131,8 +132,8 @@ var launchErizoJS = function() {
     child.unref();
     child.on('close', function (code) {
         log.info(id, 'exit with', code);
-        if (code) {
-            //notify abnormal exit of working node.
+        if (code !== 0) {
+            monitoringTarget && monitoringTarget.notify('abnormal', {purpose: myPurpose, id: id, type: 'node'});
         }
         cleanupErizoJS(id);
         fillErizos();
@@ -140,6 +141,7 @@ var launchErizoJS = function() {
     child.on('error', function (error) {
         log.error('failed to launch worker:', error);
         child.READY = false;
+        monitoringTarget && monitoringTarget.notify('error', {purpose: myPurpose, id: id, type: 'node'});
         cleanupErizoJS(id);
         fillErizos(); // FIXME: distinguish between deterministic errors and recoverable ones.
     });
@@ -451,6 +453,13 @@ amqper.connect(GLOBAL.config.rabbit, function () {
         var worker = joinCluster(function (rpcID) {
             amqper.asRpcServer(rpcID, api(worker), function(rpcServer) {
                 log.info('as rpc server ok.');
+                amqper.asMonitoringTarget(function (monitoringTgt) {
+                    monitoringTarget = monitoringTgt;
+                    log.info('as monitoring target ok.');
+                }, function(reason) {
+                    log.error(rpcID + 'as monitoring target failed, reason:', reason);
+                    process.exit();
+                });
             }, function(reason) {
                 log.error(rpcID + ' as rpc server failed, reason:', reason);
                 process.exit();

@@ -1336,5 +1336,446 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
         }
     };
 
+    var isImpacted = function (locality, type, id) {
+        return (type === 'worker' && locality.agent === id) || (type === 'node' && locality.node === id);
+    };
+
+    var allocateMediaProcessingNode  = function (forWhom, usage) {
+        return  rpcReq.getMediaNode(cluster, purpose, {session: room_id, consumer: terminal_id})
+    };
+
+    var initMediaProcessor = function (terminal_id, parameters) {
+        return new Promise(function (resolve, reject) {
+            makeRPC(
+                rpcClient,
+                terminals[terminal_id].locality.node,
+                'init',
+                parameters,
+                function (result) {
+                    if (config.mediaMixing.video.avCoordinated) {
+                        enableAVCoordination();
+                    }
+                    resolve(result);
+                }, function (error_reason) {
+                    reject(error_reason);
+                });
+        });
+    };
+
+    var initVideoMixer = function (vmixerId) {
+        return initMediaProcessor(vmixerId, ['mixing', config.mediaMixing.video, room_id, observer])
+            .then(function (supported_video) {
+                log.debug('Init video mixer ok. room_id:', room_id);
+                supported_video_codecs = supported_video.codecs;
+                supported_video_resolutions = supported_video.resolutions;
+                return supported_video_resolutions;
+            }, function (error_reason) {
+                log.error('Init video_mixer failed. room_id:', room_id, 'reason:', error_reason);
+                Promise.reject(error_reason);
+            });
+    };
+
+    var rebuildVideoMixer = function (vmixerId) {
+        var old_locality = terminals[vmixerId].locality;
+        var inputs = [], outputs = [];
+
+        log.debug('rebuildVideoMixer, vmixerId:', vmixerId);
+        for (var sub_id in terminals[vmixerId].subscribed) {
+            var vst_id = terminals[vmixerId].subscribed[sub_id].video;
+            inputs.push(vst_id);
+            log.debug('Abort stream mixing:', vst_id);
+            unmixVideo(vst_id);
+        }
+        terminals[vmixerId].subscribed = {};
+
+        terminals[vmixerId].published.forEach(function (st_id) {
+            if (streams[st_id]) {
+                var backup = JSON.parse(JSON.stringify(streams[st_id]));
+                backup.old_stream_id = st_id;
+                outputs.push(backup);
+                streams[st_id].video.subscribers.forEach(function(t_id) {
+                    log.debug('Aborting subscription to stream :', st_id, 'by subscriber:', t_id);
+                    var i = streams[st_id].video.subscribers.indexOf(t_id);
+                    i > -1 && streams[st_id].video.subscribers.splice(i, 1);
+                    terminals[t_id] && shrinkStream(st_id, terminals[t_id].locality.node);
+                });
+                delete streams[st_id];
+            }
+        });
+        terminals[vmixerId].published = [];
+
+        return rpcReq.getMediaNode(cluster, 'video', {session: room_id, consumer: vmixerId})
+            .then(function (locality) {
+                log.debug('Got new video mixer node:', locality);
+                terminals[vmixerId].locality = locality;
+                return initVideoMixer(vmixerId);
+            })
+            .then(function () {
+                return Promise.all(inputs.map(function (vst_id) {
+                    log.debug('Resuming video mixer input:', vst_id);
+                    return new Promise(function (resolve, reject) {
+                        mixVideo(vst_id, resolve, reject);
+                    });
+                }));
+            })
+            .then(function () {
+                return Promise.all(outputs.map(function (old_st) {
+                    log.debug('Resuming video mixer output:', old_st);
+                    return new Promise(function (resolve, reject) {
+                        getMixedVideo(old_st.video.codec, old_st.video.resolution, function(stream_id) {
+                            log.debug('Got new stream:', stream_id);
+                            return Promise.all(old_st.spread.map(function(target_node) {
+                                return new Promise(function (res, rej) {
+                                    spreadStream(stream_id, target_node, 'participant', function() {
+                                        res('ok');
+                                    }, function (reason) {
+                                        log.warn('Failed in spreading video stream. reason:', reason);
+                                        rej(reason);
+                                    });
+                                });
+                            }))
+                            .then(function () {
+                                old_st.video.subscribers.forEach(function (t_id) {
+                                    if (terminals[t_id]) {
+                                        for (var sub_id in terminals[t_id].subscribed) {
+                                            if (terminals[t_id].subscribed[sub_id].video === old_st.old_stream_id) {
+                                                makeRPC(
+                                                    rpcClient,
+                                                    terminals[t_id].locality.node,
+                                                    'linkup',
+                                                    [sub_id, undefined, stream_id],
+                                                    function () {
+                                                        streams[stream_id].video.subscribers = streams[stream_id].video.subscribers || [];
+                                                        streams[stream_id].video.subscribers.push(t_id);
+                                                        terminals[t_id].subscribed[sub_id].video = stream_id;
+                                                    }, function (reason) {
+                                                        log.warn('Failed in resuming video subscription. reason:', reason);
+                                                    });
+                                            }
+                                        }
+                                    }
+                                });
+                            })
+                            .then(function () {
+                                log.debug('Resumed video mixer output ok.');
+                                resolve('ok');
+                            })
+                            .catch(function (err) {
+                                log.info('Resumed video mixer output failed. err:', err);
+                                reject(err);
+                            });
+                        }, reject);
+                    });
+                }));
+            });
+    };
+
+    var rebuildVideoTranscoder = function(vxcoderId) {
+        var old_locality = terminals[vxcoderId].locality;
+        var input, outputs = [];
+
+        log.debug('rebuildVideoTranscoder, vxcoderId:', vxcoderId);
+        for (var sub_id in terminals[vmixerId].subscribed) {
+            var vst_id = terminals[vmixerId].subscribed[sub_id].video;
+            input = vst_id;
+            var i = streams[vst_id].video.subscribers.indexOf(vxcoderId);
+            i > -1 && streams[vst_id].video.subscribers.splice(i, 1);
+            shrinkStream(vst_id, old_locality.node);
+        }
+        terminals[vxcoderId].subscribed = {};
+
+        terminals[vxcoderId].published.forEach(function (st_id) {
+            if (streams[st_id]) {
+                var backup = JSON.parse(JSON.stringify(streams[st_id]));
+                backup.old_stream_id = st_id;
+                outputs.push(backup);
+                streams[st_id].video.subscribers.forEach(function(t_id) {
+                    log.debug('Aborting subscription to stream :', st_id, 'by subscriber:', t_id);
+                    var i = streams[st_id].video.subscribers.indexOf(t_id);
+                    i > -1 && streams[st_id].video.subscribers.splice(i, 1);
+                    terminals[t_id] && shrinkStream(st_id, terminals[t_id].locality.node);
+                });
+                delete streams[st_id];
+            }
+        });
+        terminals[vxcoderId].published = [];
+
+        return Promise.resolve('ok')
+            .then(function () {
+                return Promise.all(outputs.map(function (old_st) {
+                    log.debug('Resuming video xcoder output:', old_st);
+                    return new Promise(function (resolve, reject) {
+                        getTranscodedVideo(old_st.video.codec, old_st.video.resolution, input, function(stream_id) {
+                            log.debug('Got new stream:', stream_id);
+                            return Promise.all(old_st.spread.map(function(target_node) {
+                                return new Promise(function (res, rej) {
+                                    spreadStream(stream_id, target_node, 'participant', function() {
+                                        res('ok');
+                                    }, function (reason) {
+                                        log.warn('Failed in spreading video stream. reason:', reason);
+                                        rej(reason);
+                                    });
+                                });
+                            }))
+                            .then(function () {
+                                old_st.video.subscribers.forEach(function (t_id) {
+                                    if (terminals[t_id]) {
+                                        for (var sub_id in terminals[t_id].subscribed) {
+                                            if (terminals[t_id].subscribed[sub_id].video === old_st.old_stream_id) {
+                                                makeRPC(
+                                                    rpcClient,
+                                                    terminals[t_id].locality.node,
+                                                    'linkup',
+                                                    [sub_id, undefined, stream_id],
+                                                    function () {
+                                                        streams[stream_id].video.subscribers = streams[stream_id].video.subscribers || [];
+                                                        streams[stream_id].video.subscribers.push(t_id);
+                                                        terminals[t_id].subscribed[sub_id].video = stream_id;
+                                                    }, function (reason) {
+                                                        log.warn('Failed in resuming video subscription. reason:', reason);
+                                                    });
+                                            }
+                                        }
+                                    }
+                                });
+                            })
+                            .then(function () {
+                                log.debug('Resumed video xcoder output ok.');
+                                resolve('ok');
+                            })
+                            .catch(function (err) {
+                                log.info('Resumed video xcoder output failed. err:', err);
+                                reject(err);
+                            });
+                        }, reject);
+                    });
+                }));
+            });
+    };
+
+    var initAudioMixer = function (amixerId) {
+        return initMediaProcessor(amixerId, ['mixing', config.mediaMixing.audio])
+            .then(function (supported_audio) {
+                log.debug('Init audio mixer ok. room_id:', room_id);
+                supported_audio_codecs = supported_audio.codecs;
+                return 'ok';
+            }, function (error_reason) {
+                log.error('Init audio_mixer failed. room_id:', room_id, 'reason:', error_reason);
+                Promise.reject(error_reason);
+            });
+    };
+
+    var rebuildAudioMixer = function (amixerId) {
+        var old_locality = terminals[amixerId].locality;
+        var inputs = [], outputs = [];
+
+        for (var sub_id in terminals[amixerId].subscribed) {
+            var ast_id = terminals[amixerId].subscribed[sub_id].audio;
+            inputs.push(ast_id);
+            log.debug('Aborting stream mixing:', ast_id);
+            unmixAudio(ast_id);
+        }
+        terminals[amixerId].subscribed = {};
+
+        terminals[amixerId].published.forEach(function (st_id) {
+            if (streams[st_id]) {
+                var backup = JSON.parse(JSON.stringify(streams[st_id]));
+                backup.old_stream_id = st_id;
+                streams[st_id].audio.subscribers.forEach(function(t_id) {
+                    backup.for_whom = (terminals[t_id] && terminals[t_id].owner);
+                    log.debug('Aborting subscription to stream:', st_id, 'by subscriber:', t_id);
+                    var i = streams[st_id].audio.subscribers.indexOf(t_id);
+                    i > -1 && streams[st_id].audio.subscribers.splice(i, 1);
+                    terminals[t_id] && shrinkStream(st_id, terminals[t_id].locality.node);
+                });
+                outputs.push(backup);
+                delete streams[st_id];
+            }
+        });
+        terminals[amixerId].published = [];
+
+        return rpcReq.getMediaNode(cluster, 'audio', {session: room_id, consumer: amixerId})
+            .then(function (locality) {
+                log.debug('Got new audio mixer node:', locality);
+                terminals[amixerId].locality = locality;
+                return initAudioMixer(amixerId);
+            })
+            .then(function () {
+                return Promise.all(inputs.map(function (ast_id) {
+                    log.debug('Resuming audio mixer input:', ast_id);
+                    return new Promise(function (resolve, reject) {
+                        mixAudio(ast_id, resolve, reject);
+                    });
+                }));
+            })
+            .then(function () {
+                return Promise.all(outputs.map(function (old_st) {
+                    log.debug('Resuming audio mixer output:', old_st);
+                    return new Promise(function (resolve, reject) {
+                        getMixedAudio(old_st.for_whom, old_st.audio.codec, function(stream_id) {
+                            log.debug('Got new stream:', stream_id);
+                            return Promise.all(old_st.spread.map(function(target_node) {
+                                    return new Promise(function (res, rej) {
+                                        spreadStream(stream_id, target_node, 'participant', function() {
+                                            res('ok');
+                                        }, function (reason) {
+                                            log.warn('Failed in spreading audio stream. reason:', reason);
+                                            rej(reason);
+                                        });
+                                    });
+                                }))
+                                .then(function () {
+                                    old_st.audio.subscribers.forEach(function (t_id) {
+                                        if (terminals[t_id]) {
+                                            for (var sub_id in terminals[t_id].subscribed) {
+                                                if (terminals[t_id].subscribed[sub_id].audio === old_st.old_stream_id) {
+                                                    makeRPC(
+                                                        rpcClient,
+                                                        terminals[t_id].locality.node,
+                                                        'linkup',
+                                                        [sub_id, stream_id, undefined],
+                                                        function () {
+                                                            streams[stream_id].audio.subscribers = streams[stream_id].audio.subscribers || [];
+                                                            streams[stream_id].audio.subscribers.push(t_id);
+                                                            terminals[t_id].subscribed[sub_id].audio = stream_id;
+                                                        }, function (reason) {
+                                                            log.warn('Failed in resuming video subscription. reason:', reason);
+                                                        });
+                                                }
+                                            }
+                                        }
+                                    });
+                                })
+                                .then(function () {
+                                    log.debug('Resumed audio mixer output ok.');
+                                    resolve('ok');
+                                })
+                                .catch(function (err) {
+                                    log.info('Resumed audio mixer output failed. err:', err);
+                                    reject(err);
+                                });
+                        }, reject);
+                    });
+                }));
+            });
+    };
+
+    var rebuildAudioTranscoder = function(axcoderId) {
+        var old_locality = terminals[axcoderId].locality;
+        var input, outputs = [];
+
+        for (var sub_id in terminals[amixerId].subscribed) {
+            var vst_id = terminals[amixerId].subscribed[sub_id].video;
+            input = vst_id;
+            var i = streams[vst_id].audio.subscribers.indexOf(axcoderId);
+            i > -1 && streams[vst_id].audio.subscribers.splice(i, 1);
+            shrinkStream(vst_id, old_locality.node);
+        }
+        terminals[axcoderId].subscribed = {};
+
+        terminals[axcoderId].published.forEach(function (st_id) {
+            if (streams[st_id]) {
+                var backup = JSON.parse(JSON.stringify(streams[st_id]));
+                backup.old_stream_id = st_id;
+                outputs.push(backup);
+                streams[st_id].audio.subscribers.forEach(function(t_id) {
+                    log.debug('Aborting subscription to stream :', st_id, 'by subscriber:', t_id);
+                    var i = streams[st_id].audio.subscribers.indexOf(t_id);
+                    i > -1 && streams[st_id].audio.subscribers.splice(i, 1);
+                    terminals[t_id] && shrinkStream(st_id, terminals[t_id].locality.node);
+                });
+                delete streams[st_id];
+            }
+        });
+        terminals[axcoderId].published = [];
+
+        return Promise.resolve('ok')
+            .then(function () {
+                return Promise.all(outputs.map(function (old_st) {
+                    log.debug('Resuming audio xcoder output:', old_st);
+                    return new Promise(function (resolve, reject) {
+                        getTranscodedAudio(old_st.audio.codec, input, function(stream_id) {
+                            log.debug('Got new stream:', stream_id);
+                            return Promise.all(old_st.spread.map(function(target_node) {
+                                return new Promise(function (res, rej) {
+                                    spreadStream(stream_id, target_node, 'participant', function() {
+                                        res('ok');
+                                    }, function (reason) {
+                                        log.warn('Failed in spreading audio stream. reason:', reason);
+                                        rej(reason);
+                                    });
+                                });
+                            }))
+                            .then(function () {
+                                old_st.audio.subscribers.forEach(function (t_id) {
+                                    if (terminals[t_id]) {
+                                        for (var sub_id in terminals[t_id].subscribed) {
+                                            if (terminals[t_id].subscribed[sub_id].audio === old_st.old_stream_id) {
+                                                makeRPC(
+                                                    rpcClient,
+                                                    terminals[t_id].locality.node,
+                                                    'linkup',
+                                                    [sub_id, stream_id, undefined],
+                                                    function () {
+                                                        streams[stream_id].audio.subscribers = streams[stream_id].audio.subscribers || [];
+                                                        streams[stream_id].audio.subscribers.push(t_id);
+                                                        terminals[t_id].subscribed[sub_id].audio = stream_id;
+                                                    }, function (reason) {
+                                                        log.warn('Failed in resuming audio subscription. reason:', reason);
+                                                    });
+                                            }
+                                        }
+                                    }
+                                });
+                            })
+                            .then(function () {
+                                log.debug('Resumed audio xcoder output ok.');
+                                resolve('ok');
+                            })
+                            .catch(function (err) {
+                                log.info('Resumed audio xcoder output failed. err:', err);
+                                reject(err);
+                            });
+                        }, reject);
+                    });
+                }));
+            });
+    };
+
+    var onVideoFault = function (type, id) {
+        for (var terminal_id in terminals) {
+            if (isImpacted(terminals[terminal_id].locality, type, id)) {
+                log.debug('Impacted terminal:', terminal_id, 'and its locality:', terminals[terminal_id].locality);
+                if (terminals[terminal_id].type === 'vmixer') {
+                    rebuildVideoMixer(terminal_id);
+                } else if (terminals[terminal_id].type === 'vxcoder') {
+                    rebuildVideoTranscoder(terminal_id);
+                }
+            }
+        }
+    };
+
+    var onAudioFault = function (type, id) {
+        for (var terminal_id in terminals) {
+            if (isImpacted(terminals[terminal_id].locality, type, id)) {
+                log.debug('Impacted terminal:', terminal_id, 'and its locality:', terminals[terminal_id].locality);
+                if (terminals[terminal_id].type === 'amixer') {
+                    rebuildAudioMixer(terminal_id);
+                } else if (terminals[terminal_id].type === 'axcoder') {
+                    rebuildAudioTranscoder(terminal_id);
+                }
+            }
+        }
+    };
+
+    that.onFaultDetected = function (purpose, type, id) {
+        log.info('onFaultDetected, purpose:', purpose, 'type:', type, 'id:', id);
+        if (purpose === 'video') {
+            onVideoFault(type, id);
+        } else if (purpose === 'audio') {
+            onAudioFault(type, id);
+        }
+    };
+
     return initialize();
 };

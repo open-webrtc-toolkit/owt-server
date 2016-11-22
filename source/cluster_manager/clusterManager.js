@@ -13,6 +13,7 @@ var ClusterManager = function (clusterName, selfId, spec) {
     /*initializing | in-service*/
     var state = 'initializing',
         is_freshman = true,
+        monitoringTarget,
 
         initial_time = spec.initialTime,
         check_alive_period = spec.checkAlivePeriod,
@@ -36,8 +37,8 @@ var ClusterManager = function (clusterName, selfId, spec) {
             workers[worker].alive_count += 1;
             if (workers[worker].alive_count > check_alive_count) {
                 log.info('Worker', worker, 'is not alive any longer, Deleting it.');
-                //notify abnormal exit of worker.
-                that.workerQuit(worker);
+                monitoringTarget && monitoringTarget.notify('abnormal', {purpose: workers[worker].purpose, id: worker, type: 'worker'});
+                workerQuit(worker);
             }
         }
     };
@@ -225,7 +226,7 @@ var ClusterManager = function (clusterName, selfId, spec) {
         }
     };
 
-    that.serve = function () {
+    that.serve = function (monitoringTgt) {
         if (is_freshman) {
             setTimeout(function () {
                 state = 'in-service';
@@ -234,6 +235,7 @@ var ClusterManager = function (clusterName, selfId, spec) {
             state = 'in-service';
         }
         is_freshman = false;
+        monitoringTarget = monitoringTgt;
         setInterval(checkAlive, check_alive_period);
         for (var purpose in schedulers) {
             schedulers[purpose].serve();
@@ -349,28 +351,33 @@ var runAsSlave = function(topicChannel, manager) {
 var runAsMaster = function(topicChannel, manager) {
     log.info('Run as master.');
     topicChannel.bus.asRpcServer(manager.name, manager.rpcAPI, function(rpcSvr) {
-        manager.serve();
-        setInterval(function () {
-            //log.info('Send out heart-beat as master.');
-            topicChannel.publish('clusterManager.slave', {type: 'declareMaster', data: manager.id});
-            topicChannel.publish('clusterManager.candidate', {type: 'declareMaster', data: manager.id});
-        }, 20);
+        topicChannel.bus.asMonitoringTarget(function(monitoringTgt) {
+            manager.serve(monitoringTgt);
+            setInterval(function () {
+                //log.info('Send out heart-beat as master.');
+                topicChannel.publish('clusterManager.slave', {type: 'declareMaster', data: manager.id});
+                topicChannel.publish('clusterManager.candidate', {type: 'declareMaster', data: manager.id});
+            }, 20);
 
-        var onTopicMessage = function (message) {
-            if (message.type === 'requestRuntimeData') {
-                var from = message.data;
-                log.info('requestRuntimeData from:', from);
-                manager.getRuntimeData(function (data) {
-                    topicChannel.publish('clusterManager.slave.' + from, {type: 'runtimeData', data: data});
+            var onTopicMessage = function (message) {
+                if (message.type === 'requestRuntimeData') {
+                    var from = message.data;
+                    log.info('requestRuntimeData from:', from);
+                    manager.getRuntimeData(function (data) {
+                        topicChannel.publish('clusterManager.slave.' + from, {type: 'runtimeData', data: data});
+                    });
+                }
+            };
+
+            topicChannel.subscribe(['clusterManager.master.#', 'clusterManager.*.' + manager.id], onTopicMessage, function () {
+                log.info('Cluster manager is in service as master!');
+                manager.registerDataUpdate(function (data) {
+                    topicChannel.publish('clusterManager.slave', {type: 'updateData', data: data});
                 });
-            }
-        };
-
-        topicChannel.subscribe(['clusterManager.master.#', 'clusterManager.*.' + manager.id], onTopicMessage, function () {
-            log.info('Cluster manager is in service as master!');
-            manager.registerDataUpdate(function (data) {
-                topicChannel.publish('clusterManager.slave', {type: 'updateData', data: data});
             });
+        }, function(reason) {
+            log.error('Cluster manager running as monitoring target failed, reason:', reason);
+            process.exit();
         });
     }, function(reason) {
         log.error('Cluster manager running as RPC server failed, reason:', reason);
