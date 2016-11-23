@@ -23,6 +23,7 @@
       '../../../core/woogeen_base/MediaFramePipeline.cpp',
     ],
     'dependencies': ['sipLib'],
+    'cflags_cc': ['-DWEBRTC_POSIX', '-DWEBRTC_LINUX'],
     'include_dirs': [
       '$(CORE_HOME)/common',
       '$(CORE_HOME)/erizo/src/erizo',
@@ -50,7 +51,7 @@
         },
       }, { # OS!="mac"
         'cflags!':    ['-fno-exceptions'],
-        'cflags_cc':  ['-Wall', '-O3', '-g' , '-std=c++0x', '-frtti'],
+        'cflags_cc':  ['-Wall', '-O3', '-g' , '-std=c++11', '-frtti'],
         'cflags_cc!': ['-fno-exceptions']
       }],
     ]
