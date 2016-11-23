@@ -151,8 +151,12 @@ build_runtime() {
   local CORE_HOME="${SOURCE}/core"
   local CCOMPILER=${DEPS_ROOT}/bin/gcc
   local CXXCOMPILER=${DEPS_ROOT}/bin/g++
-  local OPTIMIZATION_LEVEL="3"
-  [[ BUILDTYPE == "Release" ]] || OPTIMIZATION_LEVEL="0"
+  local OPTIMIZATION_LEVEL="0"
+  if [[ ${BUILDTYPE} == "Release" ]] ; then
+      OPTIMIZATION_LEVEL="3"
+      export CFLAGS=${CFLAGS}" -D_FORTIFY_SOURCE=2"
+      export CXXFLAGS=${CFLAGS}
+  fi
 
   # runtime addon
   local NODE_VERSION=
@@ -218,7 +222,7 @@ build_oovoo_client_sdk() {
 }
 
 build() {
-  export CFLAGS="-fstack-protector -D_FORTIFY_SOURCE=2 -Wformat -Wformat-security"
+  export CFLAGS="-fstack-protector -Wformat -Wformat-security"
   export CXXFLAGS=$CFLAGS
   #export LDFLAGS="-z noexecstack -z relro -z now"
   export LDFLAGS="-z noexecstack -z relro"
