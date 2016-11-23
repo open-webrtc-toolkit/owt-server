@@ -534,10 +534,20 @@ protected:
 
         m_vppParam->vpp.Out.Width           = ALIGN16(m_width);
         m_vppParam->vpp.Out.Height          = ALIGN16(m_height);
-        m_vppParam->vpp.Out.CropX           = 0;
-        m_vppParam->vpp.Out.CropY           = 0;
-        m_vppParam->vpp.Out.CropW           = m_width;
-        m_vppParam->vpp.Out.CropH           = m_height;
+
+        if (inputWidth * m_height > m_width * inputHeight) {
+            m_vppParam->vpp.Out.CropW   = m_width;
+            m_vppParam->vpp.Out.CropH   = inputHeight * m_width / inputWidth;
+
+            m_vppParam->vpp.Out.CropX   = 0;
+            m_vppParam->vpp.Out.CropY   = (m_height - m_vppParam->vpp.Out.CropH) / 2;
+        } else {
+            m_vppParam->vpp.Out.CropW   = inputWidth * m_height / inputHeight;
+            m_vppParam->vpp.Out.CropH   = m_height;
+
+            m_vppParam->vpp.Out.CropX   = (m_width - m_vppParam->vpp.Out.CropW) / 2;
+            m_vppParam->vpp.Out.CropY   = 0;
+        }
     }
 
     bool initVpp(int inputWidth, int inputHeight)
@@ -598,6 +608,8 @@ protected:
             closeVpp();
             return false;
         }
+
+        MsdkBase::printfVideoParam(m_vppParam.get(), MFX_VPP);
 
         mfxFrameAllocRequest Request[2];
         memset(&Request, 0, sizeof(mfxFrameAllocRequest) * 2);
