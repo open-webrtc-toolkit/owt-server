@@ -377,6 +377,7 @@ static void call_destructor(void *arg)
 	call_stream_stop(call);
 	list_unlink(&call->le);
 	tmr_cancel(&call->tmr_dtmf);
+	tmr_cancel(&call->tmr_check_av_rx);
 
 	mem_deref(call->sess);
 	mem_deref(call->local_uri);
