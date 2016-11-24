@@ -114,6 +114,7 @@ struct vrx {
 	int pt_rx;                         /**< Incoming RTP payload type */
 	int frames;                        /**< Number of frames received */
 	int efps;                          /**< Estimated frame-rate      */
+    int rx_counter;                    /**< counter for handling connection timeout*/
 };
 
 
@@ -444,9 +445,10 @@ static void stream_recv_handler(const struct rtp_header *hdr,
 	}
 
 	mb->pos = 0;
-        if (mbuf_get_left(mb) && v->call) {
-            call_connection_rx_video(call_get_owner(v->call), mbuf_buf(mb), mbuf_get_left(mb));
-        }
+    if (mbuf_get_left(mb) && v->call) {
+        ++v->vrx.rx_counter;
+        call_connection_rx_video(call_get_owner(v->call), mbuf_buf(mb), mbuf_get_left(mb));
+    }
 }
 
 
@@ -747,6 +749,15 @@ int video_decoder_set(struct video *v, struct vidcodec *vc, int pt_rx,
 	return err;
 }
 
+int get_video_counter(const struct video *video){
+    return video ? video->vrx.rx_counter : 0;
+}
+
+void reset_video_counter(struct video *video){
+    if(video){
+        video->vrx.rx_counter = 0;
+    }
+}
 
 struct stream *video_strm(const struct video *v)
 {

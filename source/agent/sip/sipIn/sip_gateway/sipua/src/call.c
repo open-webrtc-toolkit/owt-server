@@ -12,7 +12,7 @@
 #include <baresip.h>
 #include "core.h"
 
-
+#define CHECK_AV_INTERVAL 6000
 
 #define FOREACH_STREAM						\
 	for (le = call->streaml.head; le; le = le->next)
@@ -58,6 +58,7 @@ struct call {
 	char *peer_name;          /**< Peer display name                    */
 	struct tmr tmr_inv;       /**< Timer for incoming calls             */
 	struct tmr tmr_dtmf;      /**< Timer for incoming DTMF events       */
+    struct tmr tmr_check_av_rx;/**< Timer for checking connection timeout*/
 	time_t time_start;        /**< Time when call started               */
 	time_t time_conn;         /**< Time when call initiated             */
 	time_t time_stop;         /**< Time when call stopped               */
@@ -101,6 +102,48 @@ static void set_state(struct call *call, enum state st)
 	call->state = st;
 }
 
+extern void ep_call_closed(void *gateway, const char *peer, const char *reason);
+extern int get_video_counter(const struct video *v);
+extern int get_audio_counter(const struct audio *a);
+extern void reset_video_counter(struct video *v);
+extern void reset_audio_counter(struct audio *a);
+static void check_audio_video_rx(void *arg){
+    struct call *call = arg;
+
+    if(!call)
+        return;
+
+    int video_frames = get_video_counter(call->video);
+    int audio_frames = get_audio_counter(call->audio);
+
+    bool video_stopped = video_frames == 0;
+    bool audio_stopped = audio_frames == 0;
+
+    if(video_stopped && audio_stopped){
+        ep_call_closed((void *)call->ua->owner->ep, call_peeruri(call), "connection loss");
+    }else{
+        reset_video_counter(call->video);
+        reset_audio_counter(call->audio);
+
+        tmr_start(&call->tmr_check_av_rx, CHECK_AV_INTERVAL, check_audio_video_rx, call);
+    }
+}
+
+void start_tmr_check_av_if_needed(struct call *call){
+    if(!call)
+        return;
+
+    struct sdp_media *video_media = stream_sdpmedia(video_strm(call->video));
+    struct sdp_media *audio_media = stream_sdpmedia(audio_strm(call->audio));
+    enum sdp_dir video_dir = sdp_media_has_media(video_media) ? sdp_media_dir(video_media) : 0;
+    enum sdp_dir audio_dir = sdp_media_has_media(audio_media) ? sdp_media_dir(audio_media) : 0;
+
+    if(video_dir == SDP_SENDONLY && audio_dir == SDP_SENDONLY){
+        tmr_cancel(&call->tmr_check_av_rx);
+    }else if(!call->tmr_check_av_rx.th){
+        tmr_start(&call->tmr_check_av_rx, CHECK_AV_INTERVAL, check_audio_video_rx, call);
+    }
+}
 
 static void call_stream_start(struct call *call, bool active)
 {
@@ -400,7 +443,6 @@ static void menc_error_handler(int err, void *arg)
 	call_stream_stop(call);
 	call_event_handler(call, CALL_EVENT_CLOSED, "mediaenc failed");
 }
-
 
 /**
  * Allocate a new Call state object
@@ -710,7 +752,6 @@ int call_answer(struct call *call, uint16_t scode)
 	return err;
 }
 
-
 /**
  * Check if the current call has an active audio stream
  *
@@ -1017,6 +1058,7 @@ static int sipsess_offer_handler(struct mbuf **descp,
 	if (!err)
 		call_event_handler(call, CALL_EVENT_UPDATE, "got re-INVITE");
 
+    start_tmr_check_av_if_needed(call);
 	return err;
 }
 
@@ -1064,6 +1106,8 @@ static void sipsess_estab_handler(const struct sip_msg *msg, void *arg)
 
 	/* must be done last, the handler might deref this call */
 	call_event_handler(call, CALL_EVENT_ESTABLISHED, call->peer_uri);
+
+    start_tmr_check_av_if_needed(call);
 }
 
 
