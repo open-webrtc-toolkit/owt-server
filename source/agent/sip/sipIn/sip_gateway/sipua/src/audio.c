@@ -102,6 +102,7 @@ struct aurx {
 	uint32_t ptime;               /**< Packet time for receiving       */
 	int pt;                       /**< Payload type for incoming RTP   */
 	int pt_tel;                   /**< Event payload type - receive    */
+    int rx_counter;               /**< counter for handling connection timeout*/
 };
 
 
@@ -120,6 +121,15 @@ struct audio {
 	void *arg;                    /**< Handler argument                */
 };
 
+int get_audio_counter(const struct audio *audio){
+    return audio ? audio->rx.rx_counter : 0;
+}
+
+void reset_audio_counter(struct audio *audio){
+    if(audio){
+        audio->rx.rx_counter = 0;
+    }
+}
 
 static void stop_tx(struct autx *tx, struct audio *a)
 {
@@ -438,7 +448,7 @@ static void stream_recv_handler(const struct rtp_header *hdr,
 {
 	struct audio *a = arg;
 	struct aurx *rx = &a->rx;
-        void *owner = 0;
+    void *owner = 0;
 
 
 	/* Telephone event? */
@@ -471,15 +481,16 @@ static void stream_recv_handler(const struct rtp_header *hdr,
 		return;
 	}
 
-        /***  Do NOT decode the stream data here, but send to transcoder ***/
-        // (void)aurx_stream_decode(&a->rx, mb);
-        mb->pos = 0;
-        owner = call_get_owner(a->call); 
-        if (mbuf_get_left(mb) && owner) {
-            	call_connection_rx_audio(owner, mbuf_buf(mb), mbuf_get_left(mb));
-        }
-        
-        return;
+    /***  Do NOT decode the stream data here, but send to transcoder ***/
+    // (void)aurx_stream_decode(&a->rx, mb);
+    mb->pos = 0;
+    owner = call_get_owner(a->call);
+    if (mbuf_get_left(mb) && owner) {
+        ++a->rx.rx_counter;
+        call_connection_rx_audio(owner, mbuf_buf(mb), mbuf_get_left(mb));
+    }
+
+    return;
 }
 
 
