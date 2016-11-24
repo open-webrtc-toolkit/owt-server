@@ -265,14 +265,11 @@ void VCMFrameEncoder::onFrame(const Frame& frame)
         if (m_encodeFormat == FRAME_FORMAT_UNKNOWN)
             return;
 
-        I420VideoFrame rawFrame;
         MsdkFrameHolder *holder = (MsdkFrameHolder *)frame.payload;
-        if (!holder->frame->convertTo(rawFrame))
+        if (!holder->frame->convertTo(*freeFrame))
             return;
 
-        rawFrame.set_timestamp(frame.timeStamp);
-
-        freeFrame->CopyFrame(rawFrame);
+        freeFrame->set_timestamp(frame.timeStamp);
         busyFrame = m_bufferManager->postFreeBuffer(freeFrame, 0);
         break;
     }
