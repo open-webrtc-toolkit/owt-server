@@ -40,6 +40,7 @@ var amqper = require('./amqp_client')();
 var rpcClient;
 var socketio_server;
 var rest_server;
+var portal;
 var worker;
 
 var ip_address;
@@ -146,7 +147,7 @@ var startServers = function(id, tokenKey) {
   var rpcChannel = require('./rpcChannel')(rpcClient);
   var rpcReq = require('./rpcRequest')(rpcChannel);
 
-  var portal = require('./portal')({tokenKey: tokenKey,
+  portal = require('./portal')({tokenKey: tokenKey,
                                     tokenServer: 'nuve',
                                     clusterName: config.cluster.name,
                                     selfRpcId: id,
@@ -223,12 +224,26 @@ amqper.connect(config.rabbit, function () {
       log.info('portal join cluster ok, with rpcID:', id);
         amqper.asRpcServer(id, rpcPublic, function(rpcSvr) {
           log.info('portal initializing as rpc server ok');
-          getTokenKey(id, function(tokenKey) {
-            startServers(id, tokenKey);
-          }, function() {
-            worker && worker.quit();
-            return process.exit();
-          });
+            amqper.asMonitor(function (data) {
+              if (data.reason === 'abnormal' || data.reason === 'error') {
+                if (portal !== undefined) {
+                  return portal.onFaultDetected(data.message);
+                }
+              }
+            }, function (monitor) {
+              log.info(id + ' as monitor ready');
+              getTokenKey(id, function(tokenKey) {
+                startServers(id, tokenKey);
+              }, function() {
+                log.error('portal getting token failed.');
+                stopServers();
+                process.exit();
+              });
+            }, function(reason) {
+              log.error('portal initializing as rpc client failed, reason:', reason);
+              stopServers();
+              process.exit();
+            });
       }, function(reason) {
         log.error('portal initializing as rpc client failed, reason:', reason);
         stopServers();

@@ -462,7 +462,7 @@ describe('Logining and Relogining.', function() {
         setTimeout(function() {
           expect(mockPortal.leave.getCall(0).args).to.deep.equal([participant_id]);
           done();
-        }, 400);
+        }, 500);
       });
 
       client.emit('token', 'someValidToken', function(status, resp) {
