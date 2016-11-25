@@ -32,8 +32,6 @@
 using namespace erizo;
 using namespace webrtc;
 
-#define ENABLE_WEBRTC_TRACE 0
-
 namespace mcu {
 
 AudioChannel::AudioChannel(webrtc::VoiceEngine* engine)
@@ -139,16 +137,14 @@ void AudioChannel::Process(int channelId, webrtc::ProcessingTypes type,
 {
     if (m_destination) {
         int channels = isStereo ? 2 : 1;
-        //uint16_t length = nbSamples * channels * sizeof(int16_t);
-        int nbSamples = length/(channels * sizeof(uint16_t));
 
         woogeen_base::Frame frame;
         memset(&frame, 0, sizeof(frame));
         frame.format = woogeen_base::FRAME_FORMAT_PCM_RAW;
         frame.payload = reinterpret_cast<uint8_t*>(data);
-        frame.length = length;
+        frame.length = length * channels * sizeof(int16_t);
         frame.timeStamp = 0; // unused.
-        frame.additionalInfo.audio.nbSamples = nbSamples;
+        frame.additionalInfo.audio.nbSamples = length;
         frame.additionalInfo.audio.sampleRate = sampleRate;
         frame.additionalInfo.audio.channels = channels;
 
@@ -413,11 +409,11 @@ AudioMixer::AudioMixer(const std::string& config)
     // FIXME: hard coded timer interval.
     m_jobTimer.reset(new JobTimer(100, this));
 
-#if ENABLE_WEBRTC_TRACE
-    webrtc::Trace::CreateTrace();
-    webrtc::Trace::SetTraceFile("webrtc_trace_audioMixer.txt");
-    webrtc::Trace::set_level_filter(webrtc::kTraceAll);
-#endif
+    if (ELOG_IS_TRACE_ENABLED()) {
+        webrtc::Trace::CreateTrace();
+        webrtc::Trace::SetTraceFile("webrtc_trace_audioMixer.txt");
+        webrtc::Trace::set_level_filter(webrtc::kTraceAll);
+    }
 }
 
 AudioMixer::~AudioMixer()
@@ -432,6 +428,10 @@ AudioMixer::~AudioMixer()
 
     voe->Terminate();
     VoiceEngine::Delete(m_voiceEngine);
+
+    if (ELOG_IS_TRACE_ENABLED()) {
+        webrtc::Trace::ReturnTrace();
+    }
 }
 
 void AudioMixer::onTimeout()
