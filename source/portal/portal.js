@@ -26,7 +26,8 @@ var Portal = function(spec, rpcReq) {
    *             direction: 'out' | 'in',
    *             audio_codecs: [AudioCodecName],
    *             video_codecs: [VideoCodecName],
-   *             state: 'connecting' | 'connected'
+   *             state: 'connecting' | 'connected',
+   *             status_observer: function(status) {...}
    *         }
    *     },
    *     permissions: { permissionMap got by role }
@@ -131,6 +132,28 @@ var Portal = function(spec, rpcReq) {
         return Promise.resolve(status.type);
       }
     };
+  };
+
+  var onSessionControllerFault = function(type, id) {
+    //for (var participant_id in participants) {
+    //}
+  };
+
+  var isImpacted = function(locality, type, id) {
+    return (type === 'worker' && locality.agent === id) || (type === 'node' && locality.node === id);
+  };
+
+  var onAccessNodeFault = function(type, id) {
+    var impacted_connections = [];
+    for (var participant_id in participants) {
+      for (var connection_id in participants[participant_id].connections) {
+        if (isImpacted(participants[participant_id].connections[connection_id].locality, type, id)) {
+          log.info('Fault detected on node:', participants[participant_id].connections[connection_id].locality);
+          impacted_connections.push(participants[participant_id].connections[connection_id].status_observer({type: 'failed', reason: 'access node exited unexpectedly'}));
+        }
+      }
+    }
+    return Promise.all(impacted_connections);
   };
 
   that.updateTokenKey = function(tokenKey) {
@@ -319,6 +342,7 @@ var Portal = function(spec, rpcReq) {
       return Promise.reject(reason);
     };
 
+    var connection_observer = connectionObserver(onConnectionStatus, onConnectionReady, onConnectionFailed);
     return rpcReq.getAccessNode(cluster_name, connectionType, {session: participants[participantId].in_session, consumer: connection_id})
       .then(function(accessNode) {
         log.debug('publish::getAccessNode ok, participantId:', participantId, 'connection_id:', connection_id, 'locality:', accessNode);
@@ -328,14 +352,15 @@ var Portal = function(spec, rpcReq) {
                                  connection_id,
                                  connectionType,
                                  connect_options,
-                                 connectionObserver(onConnectionStatus, onConnectionReady, onConnectionFailed));
+                                 connection_observer);
       })
       .then(function() {
         log.debug('publish::pub2AccessNode ok, participantId:', participantId, 'connection_id:', connection_id);
         participants[participantId].connections[connection_id] = {locality: locality,
                                                                   type: connectionType,
                                                                   direction: 'in',
-                                                                  state: 'connecting'};
+                                                                  state: 'connecting',
+                                                                  status_observer: connection_observer};
         return locality;
       });
   };
@@ -512,6 +537,7 @@ var Portal = function(spec, rpcReq) {
       //TODO: notify user about 'recorder-continued'? Does it really neccesary?
       return Promise.resolve(connection.locality);
     } else {
+      var connection_observer = connectionObserver(onConnectionStatus, onConnectionReady, onConnectionFailed);
       return rpcReq.getAccessNode(cluster_name, connectionType, {session: participants[participantId].in_session, consumer: connection_id})
         .then(function(accessNode) {
           log.debug('subscribe::getAccessNode ok, participantId:', participantId, 'connection_id:', connection_id, 'locality:', accessNode);
@@ -521,14 +547,15 @@ var Portal = function(spec, rpcReq) {
                                      connection_id,
                                      connectionType,
                                      connect_options,
-                                     connectionObserver(onConnectionStatus, onConnectionReady, onConnectionFailed));
+                                     connection_observer);
         })
         .then(function() {
           log.debug('subscribe::sub2AccessNode ok, participantId:', participantId, 'connection_id:', connection_id);
           participants[participantId].connections[connection_id] = {locality: locality,
                                                                     type: connectionType,
                                                                     direction: 'out',
-                                                                    state: 'connecting'};
+                                                                    state: 'connecting',
+                                                                    status_observer: connection_observer};
           return locality;
         });
     }
@@ -702,6 +729,16 @@ var Portal = function(spec, rpcReq) {
     return rpcReq.text(participants[participantId].controller, participantId, to, message);
   };
 
+  that.onFaultDetected = function (message) {
+    if (message.purpose === 'session') {
+      return onSessionControllerFault(message.type, message.id);
+    } else if (message.purpose === 'webrtc' ||
+               message.purpose === 'recording' ||
+               message.purpose === 'avstream') {
+      return onAccessNodeFault(message.type, message.id);
+    }
+    return Promise.resolve('ok');
+  };
 
   return that;
 };

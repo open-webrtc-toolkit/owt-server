@@ -529,6 +529,100 @@ describe('portal.publish/portal.unpublish: Participants publish/unpublish stream
         });
     });
 
+    it('Publishing rtsp/rtmp streams should be aborted if the access node fault is detected.', function() {
+      mockrpcReq.getAccessNode = sinon.stub();
+      mockrpcReq.publish = sinon.stub();
+      mockrpcReq.pub2Session = sinon.stub();
+      mockrpcReq.unpublish = sinon.stub();
+      mockrpcReq.recycleAccessNode = sinon.stub();
+      mockrpcReq.unpub2Session = sinon.stub();
+
+      mockrpcReq.getAccessNode.resolves({agent: 'rpcIdOfAccessAgent', node: 'rpcIdOfAccessNode'});
+      mockrpcReq.publish.resolves('ok');
+      mockrpcReq.unpublish.resolves('ok');
+      mockrpcReq.recycleAccessNode.resolves('ok');
+      mockrpcReq.pub2Session.resolves('ok');
+      mockrpcReq.unpub2Session.resolves('ok');
+
+      var stream_id = 'streamId', on_connection_status;
+      var spyConnectionObserver = sinon.spy();
+
+      return portal.publish(testParticipantId,
+                            stream_id,
+                            'avstream',
+                            {audio: true, video: {resolution: 'unknown', device: 'unknown'}, url: 'URIofSomeIPCamera', transport: 'tcp', buffer_size: 2048},
+                            spyConnectionObserver,
+                            false)
+        .then(function(connectionLocality) {
+          on_connection_status = mockrpcReq.publish.getCall(0).args[4];
+          expect(on_connection_status).to.be.a('function');
+          return on_connection_status({type: 'initializing'});
+        })
+        .then(function(statusResult) {
+          expect(statusResult).to.equal('initializing');
+          return on_connection_status({type: 'ready', audio_codecs: ['pcmu'], video_codecs: ['h264'], video_resolution: 'hd1080p'});
+        })
+        .then(function(result) {
+          expect(result).to.equal('ok');
+          return portal.onFaultDetected({purpose: 'avstream', type: 'node', id: 'rpcIdOfAccessNode'});
+        })
+        .then(function(runHere) {
+          expect(runHere).to.be.false;
+        }, function(reason) {
+          expect(reason).to.have.string('access node exited unexpectedly');
+          expect(mockrpcReq.unpublish.getCall(0).args).to.deep.equal(['rpcIdOfAccessNode', stream_id]);
+          expect(mockrpcReq.recycleAccessNode.getCall(0).args).to.deep.equal(['rpcIdOfAccessAgent', 'rpcIdOfAccessNode', {session: testSession, consumer: stream_id}]);
+          expect(mockrpcReq.unpub2Session.getCall(0).args).to.deep.equal(['rpcIdOfController', testParticipantId, stream_id]);
+        });
+    });
+
+    it.skip('Publishing rtsp/rtmp streams should be aborted if fault is detected on the session controller.', function() {
+      mockrpcReq.getAccessNode = sinon.stub();
+      mockrpcReq.publish = sinon.stub();
+      mockrpcReq.pub2Session = sinon.stub();
+      mockrpcReq.unpublish = sinon.stub();
+      mockrpcReq.recycleAccessNode = sinon.stub();
+      mockrpcReq.unpub2Session = sinon.stub();
+
+      mockrpcReq.getAccessNode.resolves({agent: 'rpcIdOfAccessAgent', node: 'rpcIdOfAccessNode'});
+      mockrpcReq.publish.resolves('ok');
+      mockrpcReq.unpublish.resolves('ok');
+      mockrpcReq.recycleAccessNode.resolves('ok');
+      mockrpcReq.pub2Session.resolves('ok');
+      mockrpcReq.unpub2Session.resolves('ok');
+
+      var stream_id = 'streamId', on_connection_status;
+      var spyConnectionObserver = sinon.spy();
+
+      return portal.publish(testParticipantId,
+                            stream_id,
+                            'avstream',
+                            {audio: true, video: {resolution: 'unknown', device: 'unknown'}, url: 'URIofSomeIPCamera', transport: 'tcp', buffer_size: 2048},
+                            spyConnectionObserver,
+                            false)
+        .then(function(connectionLocality) {
+          on_connection_status = mockrpcReq.publish.getCall(0).args[4];
+          expect(on_connection_status).to.be.a('function');
+          return on_connection_status({type: 'initializing'});
+        })
+        .then(function(statusResult) {
+          expect(statusResult).to.equal('initializing');
+          return on_connection_status({type: 'ready', audio_codecs: ['pcmu'], video_codecs: ['h264'], video_resolution: 'hd1080p'});
+        })
+        .then(function(result) {
+          expect(result).to.equal('ok');
+          return portal.onFaultDetected({purpose: 'avstream', type: 'node', id: 'rpcIdOfController'});
+        })
+        .then(function(runHere) {
+          expect(runHere).to.be.false;
+        }, function(reason) {
+          expect(reason).to.have.string('session controller exited unexpectedly');
+          expect(mockrpcReq.unpublish.getCall(0).args).to.deep.equal(['rpcIdOfAccessNode', stream_id]);
+          expect(mockrpcReq.recycleAccessNode.getCall(0).args).to.deep.equal(['rpcIdOfAccessAgent', 'rpcIdOfAccessNode', {session: testSession, consumer: stream_id}]);
+          expect(mockrpcReq.unpub2Session.getCall(0).args).to.deep.equal(['rpcIdOfController', testParticipantId, stream_id]);
+        });
+    });
+
     it('Publishing a webrtc stream with both audio and video should succeed.', function() {
       mockrpcReq.getAccessNode = sinon.stub();
       mockrpcReq.publish = sinon.stub();
@@ -846,6 +940,44 @@ describe('portal.publish/portal.unpublish: Participants publish/unpublish stream
           expect(mockrpcReq.unpub2Session.callCount).to.equal(0);
           return expect(on_connection_status({type: 'ready', audio_codecs: ['pcmu', 'opus'], video_codecs: ['vp8', 'h264']}))
             .to.be.rejectedWith('Participant ' + testParticipantId + ' has left when the connection gets ready.');
+        });
+    });
+
+    it('Fault being detected on the access agent should abort publishing.', function() {
+      mockrpcReq.getAccessNode = sinon.stub();
+      mockrpcReq.publish = sinon.stub();
+      mockrpcReq.unpublish = sinon.stub();
+      mockrpcReq.recycleAccessNode = sinon.stub();
+      mockrpcReq.onConnectionSignalling = sinon.stub();
+      mockrpcReq.pub2Session = sinon.stub();
+
+      mockrpcReq.getAccessNode.resolves({agent: 'rpcIdOfAccessAgent', node: 'rpcIdOfAccessNode'});
+      mockrpcReq.publish.resolves('ok');
+      mockrpcReq.unpublish.resolves('ok');
+      mockrpcReq.recycleAccessNode.resolves('ok');
+      mockrpcReq.onConnectionSignalling.resolves('ok');
+
+      var stream_id = 'streamId', on_connection_status;
+      var spyConnectionObserver = sinon.spy();
+
+      return portal.publish(testParticipantId,
+                            stream_id,
+                            'webrtc',
+                            {audio: true, video: {resolution: 'vga', framerate: 30, device: 'camera'}},
+                            spyConnectionObserver,
+                            false)
+        .then(function(connectionLocality) {
+          on_connection_status = mockrpcReq.publish.getCall(0).args[4];
+          return portal.onFaultDetected({purpose: 'webrtc', type: 'worker', id: 'rpcIdOfAccessAgent'});
+        })
+        .then(function(statusResult) {
+          expect('run into here').to.be.false;
+        }, function(err) {
+          expect(err).to.equal('access node exited unexpectedly');
+          expect(spyConnectionObserver.getCall(0).args).to.deep.equal([{type: 'failed', reason: 'access node exited unexpectedly'}]);
+          expect(mockrpcReq.pub2Session.callCount).to.equal(0);
+          expect(mockrpcReq.unpublish.getCall(0).args).to.deep.equal(['rpcIdOfAccessNode', stream_id]);
+          expect(mockrpcReq.recycleAccessNode.getCall(0).args).to.deep.equal(['rpcIdOfAccessAgent', 'rpcIdOfAccessNode', {session: testSession, consumer: stream_id}]);
         });
     });
 
