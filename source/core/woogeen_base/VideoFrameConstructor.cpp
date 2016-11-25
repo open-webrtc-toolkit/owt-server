@@ -219,8 +219,8 @@ void VideoFrameConstructor::OnIncomingSSRCChanged(const uint32_t ssrc)
 
 void VideoFrameConstructor::ResetStatistics(uint32_t ssrc)
 {
-    StreamStatistician* statistician = m_videoReceiver->GetReceiveStatistics()->GetStatistician(ssrc);
     //Not supported on M53
+    //StreamStatistician* statistician = m_videoReceiver->GetReceiveStatistics()->GetStatistician(ssrc);
     //if (statistician)
     //    statistician->ResetStatistics();
 }

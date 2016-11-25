@@ -403,7 +403,7 @@ bool RtspOut::init()
     }
 
     const int retry = 100; // timeout in 1s
-    int i;
+    int i = 0;
 
     while ((!m_audioReceived || !m_videoReceived) && i++ < retry) {
         ELOG_INFO("wait for av options available, audio %d, video %d, retry %d"

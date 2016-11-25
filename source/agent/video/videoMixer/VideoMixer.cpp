@@ -85,10 +85,11 @@ VideoMixer::~VideoMixer()
     closeAll();
 
     m_taskRunner->Stop();
+    m_layoutProcessor->deregisterConsumer(m_frameMixer);
+
     if (ELOG_IS_TRACE_ENABLED()) {
         webrtc::Trace::ReturnTrace();
     }
-    m_layoutProcessor->deregisterConsumer(m_frameMixer);
 }
 
 static woogeen_base::FrameFormat getFormat(const std::string& codec) {
