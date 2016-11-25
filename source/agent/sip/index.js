@@ -15,6 +15,7 @@ var cluster_name = ((GLOBAL.config || {}).cluster || {}).name || 'woogeen-cluste
 
 // Logger
 var log = logger.getLogger('SipNode');
+var InternalConnectionFactory = require('./InternalConnectionFactory');
 
 // resolution map
 var resolution_map = {'sif' : {'width' : 352, 'height' : 240},
@@ -177,7 +178,8 @@ module.exports = function (rpcC, spec) {
         streams = {},
         calls = {},
         subscriptions = {},
-        recycling_mode = false;
+        recycling_mode = false,
+        internalConnFactory = new InternalConnectionFactory;
 
     var handleIncomingCall = function (peerURI, on_ok, on_error) {
         var client_id = peerURI;
@@ -551,15 +553,33 @@ module.exports = function (rpcC, spec) {
         gateway = undefined;
     };
 
+    that.createInternalConnection = function (connectionId, direction, internalOpt, callback) {
+        internalOpt.minport = GLOBAL.config.internal.minport;
+        internalOpt.maxport = GLOBAL.config.internal.maxport;
+        var portInfo = internalConnFactory.create(connectionId, direction, internalOpt);
+        callback('callback', {ip: that.clusterIP, port: portInfo});
+    };
+
+    that.destroyInternalConnection = function (connectionId, direction, callback) {
+        internalConnFactory.destroy(connectionId, direction);
+        callback('callback', 'ok');
+    };
+
     that.publish = function (stream_id, stream_type, options, callback) {
         log.debug('publish stream_id:', stream_id, ', stream_type:', stream_type, ', audio:', options.audio, ', video:', options.video);
         if (stream_type === 'internal') {
             if (streams[stream_id] === undefined) {
-                var conn = new InternalIn(options.protocol, GLOBAL.config.internal.minport, GLOBAL.config.internal.maxport);
+                var conn = internalConnFactory.fetch(stream_id, 'in');
+                if (!conn) {
+                    callback('callback', {type: 'failed', reason: 'Create internal connection failed.'});
+                    return;
+                }
+                conn.connect(options);
+
                 streams[stream_id] = {type: stream_type, connection: conn};
-                callback('callback', {ip: that.clusterIP, port: conn.getListeningPort()});
+                callback('callback', 'ok');
             } else {
-                callback('callback', {ip: that.clusterIP, port: streams[stream_id].connection.getListeningPort()});
+                callback('callback', 'error', 'Connection Already exist.');
             }
         } else {
             log.error('Stream type invalid:'+stream_type);
@@ -587,7 +607,9 @@ module.exports = function (rpcC, spec) {
                     subscriptions[subscription_id].video = undefined;
                 }
             }
-            streams[stream_id].connection.close();
+
+            // All published connections are internal
+            internalConnFactory.destroy(stream_id, 'in');
             delete streams[stream_id];
             callback('callback', 'ok');
         } else {
@@ -600,13 +622,21 @@ module.exports = function (rpcC, spec) {
         log.debug('subscribe, subscription_id:', subscription_id, ', subscription_type:', subscription_type, ',options:', options);
         if (subscription_type === 'internal') {
             if (subscriptions[subscription_id] === undefined) {
-                var conn = new InternalOut(options.protocol, options.dest_ip, options.dest_port);
+                var conn = internalConnFactory.fetch(subscription_id, 'out');
+                if (!conn) {
+                    callback('callback', {type: 'failed', reason: 'Create internal connection failed.'});
+                    return;
+                }
+                conn.connect(options);
+
                 subscriptions[subscription_id] = {type: subscription_type,
                                                   audio: undefined,
                                                   video: undefined,
                                                   connection: conn};
+                callback('callback', 'ok');
+            } else {
+                callback('callback', 'error', 'Connection already exist.');
             }
-            callback('callback', 'ok');
         } else {
             log.error('Stream type invalid:'+stream_type);
             callback('callback', {type: 'failed', reason: 'Stream type invalid:'+stream_type});
@@ -635,7 +665,8 @@ module.exports = function (rpcC, spec) {
                 streams[subscriptions[subscription_id].video].connection.removeDestination('video', dest);
             }
 
-            subscriptions[subscription_id].connection.close();
+            // All subscribed connections are internal
+            internalConnFactory.destroy(subscription_id, 'out');
             delete subscriptions[subscription_id];
             callback('callback', 'ok');
         } else {

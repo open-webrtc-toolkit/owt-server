@@ -254,6 +254,30 @@ install_libre() {
   cd "${LIBRE_DIR}" && make clean && make
 }
 
+install_usrsctp() {
+  local TP_DIR="${ROOT}/third_party"
+  if [ -d $TP_DIR ]; then
+    local USRSCTP_VERSION="d4609bc611e0599af73414f0ab5dfe27db591359"
+    local USRSCTP_FILE="${USRSCTP_VERSION}.tar.gz"
+    local USRSCTP_EXTRACT="usrsctp-${USRSCTP_VERSION}"
+    local USRSCTP_URL="https://github.com/sctplab/usrsctp/archive/${USRSCTP_FILE}"
+
+    cd $TP_DIR
+    wget -c ${USRSCTP_URL}
+    tar -zxvf ${USRSCTP_FILE}
+    mv ${USRSCTP_EXTRACT} usrsctp
+    rm ${USRSCTP_FILE}
+
+    cd usrsctp
+    ./bootstrap
+    ./configure
+    make
+  else
+    mkdir -p $TP_DIR
+    install_usrsctp
+  fi
+}
+
 install_gcc(){
   if [ -d $LIB_DIR ]; then
     local VERSION="4.8.4"

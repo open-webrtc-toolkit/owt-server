@@ -11,6 +11,7 @@ var logger = require('./logger').logger;
 
 // Logger
 var log = logger.getLogger('AudioNode');
+var InternalConnectionFactory = require('./InternalConnectionFactory');
 
 module.exports = function (rpcClient) {
     var that = {},
@@ -37,15 +38,24 @@ module.exports = function (rpcClient) {
                          }
          }
          */
-        connections = {};
+        connections = {},
 
-    var addInput = function (stream_id, for_whom, codec, protocol, on_ok, on_error) {
+        // For internal SCTP connection creation
+        internalConnFactory = new InternalConnectionFactory;
+
+    var addInput = function (stream_id, for_whom, codec, options, on_ok, on_error) {
         if (engine) {
-            var conn = new InternalIn(protocol, GLOBAL.config.internal.minport, GLOBAL.config.internal.maxport);
+            var conn = internalConnFactory.fetch(stream_id, 'in');
+            if (!conn) {
+                on_error('Create internal connection failed.');
+                return;
+            }
+            conn.connect(options);
+
             if (engine.addInput(for_whom, codec, conn)) {
                 inputs[stream_id] = {owner: for_whom,
                                      connection: conn};
-                log.debug('addInput ok, for:', for_whom, 'codec:', codec, 'protocol:', protocol);
+                log.debug('addInput ok, for:', for_whom, 'codec:', codec, 'options:', options);
                 on_ok(stream_id);
             } else {
                 on_error('Failed in adding input to audio-engine.');
@@ -58,7 +68,7 @@ module.exports = function (rpcClient) {
     var removeInput = function (stream_id) {
         if (inputs[stream_id]) {
             engine.removeInput(inputs[stream_id].owner);
-            inputs[stream_id].connection.close();
+            internalConnFactory.destroy(stream_id, 'in');
             delete inputs[stream_id];
         }
     };
@@ -85,7 +95,7 @@ module.exports = function (rpcClient) {
         if (outputs[stream_id]) {
             var output = outputs[stream_id];
             for (var connectionId in output.connections) {
-                 output.dispatcher.removeDestination('audio', output.connections[connectionId]);
+                 output.dispatcher.removeDestination('audio', output.connections[connectionId].receiver());
                  output.connections[connectionId].close();
                  delete output.connections[connectionId];
             }
@@ -147,6 +157,18 @@ module.exports = function (rpcClient) {
         removeOutput(stream_id);
     };
 
+    that.createInternalConnection = function (connectionId, direction, internalOpt, callback) {
+        internalOpt.minport = GLOBAL.config.internal.minport;
+        internalOpt.maxport = GLOBAL.config.internal.maxport;
+        var portInfo = internalConnFactory.create(connectionId, direction, internalOpt);
+        callback('callback', {ip: that.clusterIP, port: portInfo});
+    };
+
+    that.destroyInternalConnection = function (connectionId, direction, callback) {
+        internalConnFactory.destroy(connectionId, direction);
+        callback('callback', 'ok');
+    };
+
     that.publish = function (stream_id, stream_type, options, callback) {
         log.debug('publish stream:', stream_id, 'stream_type:', stream_type, 'options:', options);
         if (stream_type !== 'internal') {
@@ -158,14 +180,14 @@ module.exports = function (rpcClient) {
         }
 
         if (inputs[stream_id] === undefined) {
-            addInput(stream_id, options.owner, options.audio.codec, options.protocol, function () {
-                callback('callback', {ip: that.clusterIP, port: inputs[stream_id].connection.getListeningPort()});
+            addInput(stream_id, options.owner, options.audio.codec, options, function () {
+                callback('callback', 'ok');
             }, function (error_reason) {
                 log.error(error_reason);
                 callback('callback', 'error', error_reason);
             });
         } else {
-            callback('callback', {ip: that.clusterIP, port: inputs[stream_id].connection.getListeningPort()});
+            callback('callback', 'error', 'Connection Already exist.');
         }
     };
 
@@ -180,9 +202,17 @@ module.exports = function (rpcClient) {
             return callback('callback', 'error', 'can not subscribe a stream from audio engine through a non-internal connection');
         }
 
+        var conn = internalConnFactory.fetch(connectionId, 'out');
+        if (!conn) {
+            callback('callback', 'error', 'Create internal connection failed.');
+            return;
+        }
+        conn.connect(options);
+
+
         if (connections[connectionId] === undefined) {
             connections[connectionId] = {audioFrom: undefined,
-                                         connection: new InternalOut(options.protocol, options.dest_ip, options.dest_port)
+                                         connection: conn
                                         };
         }
         callback('callback', 'ok');
@@ -192,7 +222,7 @@ module.exports = function (rpcClient) {
         log.debug('unsubscribe, connectionId:', connectionId);
         if (connections[connectionId] && connections[connectionId].audioFrom) {
             if (outputs[connections[connectionId].audioFrom]) {
-                outputs[connections[connectionId].audioFrom].dispatcher.removeDestination('audio', connections[connectionId].connection);
+                outputs[connections[connectionId].audioFrom].dispatcher.removeDestination('audio', connections[connectionId].connection.receiver());
             }
             //connections[connectionId].connection.close();
             delete connections[connectionId];
@@ -206,7 +236,7 @@ module.exports = function (rpcClient) {
         }
 
         if (outputs[audio_stream_id]) {
-            outputs[audio_stream_id].dispatcher.addDestination('audio', connections[connectionId].connection);
+            outputs[audio_stream_id].dispatcher.addDestination('audio', connections[connectionId].connection.receiver());
             connections[connectionId].audioFrom = audio_stream_id;
             callback('callback', 'ok');
         } else {
@@ -219,7 +249,7 @@ module.exports = function (rpcClient) {
         log.debug('cutoff, connectionId:', connectionId);
         if (connections[connectionId] && connections[connectionId].audioFrom) {
             if (outputs[connections[connectionId].audioFrom]) {
-                outputs[connections[connectionId].audioFrom].dispatcher.removeDestination('audio', connections[connectionId].connection);
+                outputs[connections[connectionId].audioFrom].dispatcher.removeDestination('audio', connections[connectionId].connection.receiver());
             }
             connections[connectionId].audioFrom = undefined;
         }

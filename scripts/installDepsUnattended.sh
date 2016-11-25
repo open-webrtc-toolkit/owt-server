@@ -62,7 +62,7 @@ then
   fi
 fi
 
-install_node
+#install_node
 
 check_proxy
 
@@ -75,19 +75,21 @@ if [ "$NIGHTLY" != "true" ]; then
     install_mediadeps_nonfree
   fi
 
-  install_node_tools
+  #install_node_tools
 
-  install_libnice
+  #install_libnice
 
-  install_openssl
+  #install_openssl
 
-  install_libsrtp
+  #install_libsrtp
 
-  install_oovoosdk
+  #install_oovoosdk
 
   install_openh264
 
   install_libre
+
+  install_usrsctp
 fi
 
 ${NO_INTERNAL} || install_webrtc

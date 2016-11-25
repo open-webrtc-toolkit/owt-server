@@ -10,6 +10,7 @@ var logger = require('./logger').logger;
 
 // Logger
 var log = logger.getLogger('VideoNode');
+var InternalConnectionFactory = require('./InternalConnectionFactory');
 
 var VideoResolutionMap = { // definition adopted from VideoLayout.h
     cif:      ['cif'],
@@ -73,8 +74,8 @@ module.exports = function (rpcClient) {
                          }
          }
          */
-        connections = {};
-
+        connections = {},
+        internalConnFactory = new InternalConnectionFactory;
     var VideoMixer;
     try {
         if (useHardware) {
@@ -87,22 +88,27 @@ module.exports = function (rpcClient) {
         process.exit(1);
     }
 
-    var addInput = function (stream_id, codec, protocol, avatar, on_ok, on_error) {
+    var addInput = function (stream_id, codec, options, avatar, on_ok, on_error) {
         if (engine) {
             if (!useHardware && !openh264Enabled && codec === 'h264') {
                 on_error('Codec ' + codec + ' is not supported by video engine.');
             } else {
-                var conn = new InternalIn(protocol, GLOBAL.config.internal.minport, GLOBAL.config.internal.maxport);
+                var conn = internalConnFactory.fetch(stream_id, 'in');
+                if (!conn) {
+                    on_error('Create internal connection failed.');
+                    return;
+                }
+                conn.connect(options);
 
                 // Use default avatar if it is not set
                 avatar = avatar || GLOBAL.config.avatar.location;
                 if (engine.addInput(stream_id, codec, conn, avatar)) {
                     inputs[stream_id] = conn;
-                    log.debug('addInput ok, stream_id:', stream_id, 'codec:', codec, 'protocol:', protocol);
+                    log.debug('addInput ok, stream_id:', stream_id, 'codec:', codec, 'options:', options);
                     on_ok(stream_id);
                     notifyLayoutChange();
                 } else {
-                    conn.close();
+                    internalConnFactory.destroy(stream_id, 'in');
                     on_error('Failed in adding input to video-engine.');
                 }
             }
@@ -114,7 +120,7 @@ module.exports = function (rpcClient) {
     var removeInput = function (stream_id) {
         if (inputs[stream_id]) {
             engine.removeInput(stream_id);
-            inputs[stream_id].close();
+            internalConnFactory.destroy(stream_id, 'in');
             delete inputs[stream_id];
 
             notifyLayoutChange();
@@ -156,7 +162,7 @@ module.exports = function (rpcClient) {
         if (outputs[stream_id]) {
             var output = outputs[stream_id];
             for (var connectionId in output.connections) {
-                 output.dispatcher.removeDestination('video', output.connections[connectionId]);
+                 output.dispatcher.removeDestination('video', output.connections[connectionId].receiver());
                  output.connections[connectionId].close();
                  delete output.connections[connectionId];
             }
@@ -279,6 +285,18 @@ module.exports = function (rpcClient) {
         removeOutput(stream_id);
     };
 
+    that.createInternalConnection = function (connectionId, direction, internalOpt, callback) {
+        internalOpt.minport = GLOBAL.config.internal.minport;
+        internalOpt.maxport = GLOBAL.config.internal.maxport;
+        var portInfo = internalConnFactory.create(connectionId, direction, internalOpt);
+        callback('callback', {ip: that.clusterIP, port: portInfo});
+    };
+
+    that.destroyInternalConnection = function (connectionId, direction, callback) {
+        internalConnFactory.destroy(connectionId, direction);
+        callback('callback', 'ok');
+    };
+
     that.setInputActive = function (stream_id, active, callback) {
         if (inputs[stream_id]) {
             engine.setInputActive(stream_id, !!active);
@@ -301,7 +319,7 @@ module.exports = function (rpcClient) {
         if (inputs[stream_id] === undefined) {
             log.debug('publish 1, inputs.length:', Object.keys(inputs).length, 'maxInputNum:', maxInputNum);
             if (Object.keys(inputs).length < maxInputNum) {
-                addInput(stream_id, options.video.codec, options.protocol, options.avatar, function () {
+                addInput(stream_id, options.video.codec, options, options.avatar, function () {
                     callback('callback', {ip: that.clusterIP, port: inputs[stream_id].getListeningPort()});
                 }, function (error_reason) {
                     log.error(error_reason);
@@ -327,9 +345,16 @@ module.exports = function (rpcClient) {
             return callback('callback', 'error', 'can not subscribe a stream from video engine through a non-internal connection');
         }
 
+        var conn = internalConnFactory.fetch(connectionId, 'out');
+        if (!conn) {
+            callback('callback', 'error', 'Create internal connection failed.');
+            return;
+        }
+        conn.connect(options);
+
         if (connections[connectionId] === undefined) {
             connections[connectionId] = {videoFrom: undefined,
-                                         connection: new InternalOut(options.protocol, options.dest_ip, options.dest_port)
+                                         connection: conn
                                         };
         }
         callback('callback', 'ok');
@@ -339,7 +364,7 @@ module.exports = function (rpcClient) {
         log.debug('unsubscribe, connectionId:', connectionId);
         if (connections[connectionId] && connections[connectionId].videoFrom) {
             if (outputs[connections[connectionId].videoFrom]) {
-                outputs[connections[connectionId].videoFrom].dispatcher.removeDestination('video', connections[connectionId].connection);
+                outputs[connections[connectionId].videoFrom].dispatcher.removeDestination('video', connections[connectionId].connection.receiver());
             }
             //connections[connectionId].connection.close();
             delete connections[connectionId];
@@ -353,7 +378,7 @@ module.exports = function (rpcClient) {
         }
 
         if (outputs[video_stream_id]) {
-            outputs[video_stream_id].dispatcher.addDestination('video', connections[connectionId].connection);
+            outputs[video_stream_id].dispatcher.addDestination('video', connections[connectionId].connection.receiver());
             connections[connectionId].videoFrom = video_stream_id;
             callback('callback', 'ok');
         } else {
@@ -366,7 +391,7 @@ module.exports = function (rpcClient) {
         log.debug('cutoff, connectionId:', connectionId);
         if (connections[connectionId] && connections[connectionId].videoFrom) {
             if (outputs[connections[connectionId].videoFrom]) {
-                outputs[connections[connectionId].videoFrom].dispatcher.removeDestination('video', connections[connectionId].connection);
+                outputs[connections[connectionId].videoFrom].dispatcher.removeDestination('video', connections[connectionId].connection.receiver());
             }
             connections[connectionId].videoFrom = undefined;
         }

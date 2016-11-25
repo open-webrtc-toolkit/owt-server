@@ -272,54 +272,111 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
             on_error(reason);
         };
 
-        makeRPC(
-            rpcClient,
-            target_node,
-            'publish',
-            [stream_id, 'internal', {controller: selfRpcId,
-                                     owner: terminals[stream_owner].owner,
-                                     audio: (audio ? {codec: streams[stream_id].audio.codec} : false),
-                                     video: (video ? {codec: streams[stream_id].video.codec} : false),
-                                     protocol: 'tcp'}],
-            function (dest) {
-                if (!streams[stream_id]) {
-                    on_spread_failed('Late coming callback for spreading stream.', true, false);
+        log.info("spread pub/sub start");
+
+        // Transport protocol for creating internal connection
+        var internalOpt = {
+            protocol: GLOBAL.config.internal.protocol
+        };
+
+        // Prepare ports before internal connecting
+        // For tcp/udp, the listening ports will also be get at preparation step
+        Promise.all([
+            new Promise(function(resolve, reject) {
+                makeRPC(rpcClient, target_node, 'createInternalConnection', [stream_id, 'in', internalOpt], resolve, reject);
+            }),
+            new Promise(function(resolve, reject) {
+                makeRPC(rpcClient, original_node, 'createInternalConnection', [spread_id, 'out', internalOpt], resolve, reject);
+            })
+        ]).then(function(prepared) {
+            var targetAddr = prepared[0];
+            var originAddr = prepared[1];
+
+            log.info("addr:", targetAddr, originAddr);
+
+            var pubFail = false, subFail = false;
+            // Publish/Subscribe internal connections
+            Promise.all([
+                new Promise(function(resolve, reject) {
+                    makeRPC(
+                        rpcClient,
+                        target_node,
+                        'publish',
+                        [
+                            stream_id,
+                            'internal',
+                            {
+                                controller: selfRpcId,
+                                owner: terminals[stream_owner].owner,
+                                audio: (audio ? {codec: streams[stream_id].audio.codec} : false),
+                                video: (video ? {codec: streams[stream_id].video.codec} : false),
+                                ip: originAddr.ip,
+                                port: originAddr.port,
+                            }
+                        ],
+                        resolve,
+                        reject
+                    );
+                }).catch(function(err) {
+                    log.error("Publish internal failed.");
+                    pubFail = true;
+                }),
+                new Promise(function(resolve, reject) {
+                    makeRPC(
+                        rpcClient,
+                        original_node,
+                        'subscribe',
+                        [
+                            spread_id,
+                            'internal',
+                            {controller: selfRpcId, ip: targetAddr.ip, port: targetAddr.port}
+                        ],
+                        resolve,
+                        reject
+                    );
+                }).catch(function(err) {
+                    log.error("Subscribe internal failed.");
+                    subFail = true;
+                })
+            ]).then(function(ret) {
+                if (pubFail || subFail) {
+                    on_spread_failed("Error occurs during internal publish/subscribe.", pubFail, subFail);
+                    return;
                 }
-                log.debug('internally publish ok, dest:', dest.ip, dest.port);
+                if (!streams[stream_id]) {
+                    on_spread_failed('Late coming callback for spreading stream.', true, true);
+                    return;
+                }
+
+                log.debug('internally publish/subscribe ok');
+
+                // Linkup after publish/subscribe ready
                 makeRPC(
                     rpcClient,
                     original_node,
-                    'subscribe',
-                    [spread_id, 'internal', {controller: selfRpcId, dest_ip: dest.ip, dest_port: dest.port, protocol: 'tcp'}],
+                    'linkup',
+                    [spread_id, audio ? stream_id : undefined, video ? stream_id : undefined],
                     function () {
-                        log.debug('internally subscribe ok');
+                        log.info('internally linkup ok');
                         if (streams[stream_id]) {
-                            makeRPC(
-                                rpcClient,
-                                original_node,
-                                'linkup',
-                                [spread_id, audio ? stream_id : undefined, video ? stream_id : undefined],
-                                function () {
-                                    log.debug('internally linkup ok');
-                                    if (streams[stream_id]) {
-                                        streams[stream_id].spread.push(target_node);
-                                        on_ok();
-                                    } else {
-                                        on_spread_failed('Late coming callback for spreading stream.', true, true);
-                                    }
-                                },
-                                function (error_reason) {
-                                    on_spread_failed(error_reason, true, true);
-                                });
+                            streams[stream_id].spread.push(target_node);
+                            on_ok();
                         } else {
                             on_spread_failed('Late coming callback for spreading stream.', true, true);
                         }
                     },
                     function (error_reason) {
-                        on_spread_failed(error_reason, true, false);
+                        on_spread_failed(error_reason, true, true);
                     });
-            },
-            on_error);
+            });
+
+        }).catch(function(prepareError) {
+            // The createInternalConnection never has error unless makeRPC fail
+            log.error("Prepare internal connection error:", prepareError);
+            makeRPC(rpcClient, target_node, 'destroyInternalConnection', [stream_id, 'in']);
+            makeRPC(rpcClient, original_node, 'destroyInternalConnection', [spread_id, 'out']);
+            on_error(prepareError);
+        });
     };
 
     var shrinkStream = function (stream_id, target_node) {
