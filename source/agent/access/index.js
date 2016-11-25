@@ -15,24 +15,12 @@ var Connections = require('./connections');
 // Logger
 var log = logger.getLogger('AccessNode');
 
+var InternalConnectionFactory = require('./InternalConnectionFactory');
+
 module.exports = function () {
     var that = {};
     var connections = new Connections;
-
-    var createInternalIn = function (options) {
-        var connection = new InternalIn(options.protocol, GLOBAL.config.internal.minport, GLOBAL.config.internal.maxport);
-        return connection;
-    };
-
-    var createInternalOut = function (options) {
-        var connection = new InternalOut(options.protocol, options.dest_ip, options.dest_port);
-
-        // Adapter for being consistent with webrtc connection
-        connection.receiver = function(type) {
-            return this;
-        };
-        return connection;
-    };
+    var internalConnFactory = new InternalConnectionFactory;
 
     var createAVStreamIn = function (options, callback) {
         var avstream_options = {type: 'avstream',
@@ -141,76 +129,104 @@ module.exports = function () {
         };
     };
 
-    // Add functions: publish, unpublish, subscribe, unsubscribe, linkup, cutoff
+    that.createInternalConnection = function (connectionId, direction, internalOpt, callback) {
+        internalOpt.minport = GLOBAL.config.internal.minport;
+        internalOpt.maxport = GLOBAL.config.internal.maxport;
+        var portInfo = internalConnFactory.create(connectionId, direction, internalOpt);
+        callback('callback', {ip: that.clusterIP, port: portInfo});
+    };
+
+    that.destroyInternalConnection = function (connectionId, direction, callback) {
+        internalConnFactory.destroy(connectionId, direction);
+        callback('callback', 'ok');
+    };
+
     that.publish = function (connectionId, connectionType, options, callback) {
         log.debug('publish, connectionId:', connectionId, 'connectionType:', connectionType, 'options:', options);
-        var conn = connections.getConnection(connectionId);
-        if (conn) {
-            // Connection already exist
-            if (connectionType !== 'internal') {
-                log.error('Connection already exists:'+connectionId);
-                return callback('callback', {type: 'failed', reason: 'Connection already exists:'+connectionId});
-            }
-        } else {
-            // Connection not exist
-            if (connectionType === 'internal') {
-                conn = createInternalIn(options);
-            } else if (connectionType === 'avstream') {
+        if (connections.getConnection(connectionId)) {
+            return callback('callback', {type: 'failed', reason: 'Connection already exists:'+connectionId});
+        }
+
+        var conn = null;
+        switch (connectionType) {
+            case 'internal':
+                conn = internalConnFactory.fetch(connectionId, 'in');
+                if (conn)
+                    conn.connect(options);
+                break;
+            case 'avstream':
                 conn = createAVStreamIn(options, callback);
-            } else if (connectionType === 'recording') {
+                break;
+            case 'recording':
                 conn = createFileIn(options, callback);
-            } else {
+                break;
+            default:
                 log.error('Connection type invalid:' + connectionType);
-                callback('callback', {type: 'failed', reason: 'Connection type invalid:' + connectionType});
-                return;
-            }
+        }
+        if (!conn) {
+            log.error('Create connection failed', connectionId, connectionType);
+            return callback('callback', {type: 'failed', reason: 'Create Connection failed'});
         }
 
         connections.addConnection(connectionId, connectionType, options.controller, conn, 'in')
-        .then(function(result) {
-            if (connectionType === 'internal') {
-                callback('callback', {ip: that.clusterIP, port: conn.getListeningPort()})
-            } else {
-                callback('callback', 'ok');
-            }
-        }, onError(callback));
+        .then(onSuccess(callback), onError(callback));
     };
 
     that.unpublish = function (connectionId, callback) {
         log.debug('unpublish, connectionId:', connectionId);
-        connections.removeConnection(connectionId).then(onSuccess(callback), onError(callback));
+        var conn = connections.getConnection(connectionId);
+        connections.removeConnection(connectionId).then(function(ok) {
+            if (conn && conn.type === 'internal') {
+                internalConnFactory.destroy(connectionId, 'in');
+            } else if (conn) {
+                conn.connection.close();
+            }
+            callback('callback', 'ok');
+        }, onError(callback));
     };
 
     that.subscribe = function (connectionId, connectionType, options, callback) {
         log.debug('subscribe, connectionId:', connectionId, 'connectionType:', connectionType, 'options:', options);
-        var conn = connections.getConnection(connectionId);
-        if (conn) {
-            // Connection already exist
-            if (connectionType !== 'internal') {
-                log.error('Connection already exists:'+connectionId);
-                return callback('callback', {type: 'failed', reason: 'Connection already exists:'+connectionId});
-            }
-        } else {
-            // Connection not exist
-            if (connectionType === 'internal') {
-                conn = createInternalOut(options);
-            } else if (connectionType === 'avstream') {
-                conn = createAVStreamOut(options, callback);
-            } else if (connectionType === 'recording') {
-                conn = createFileOut(options, callback);
-            } else {
-                log.error('Connection type invalid:' + connectionType);
-                callback('callback', {type: 'failed', reason: 'Connection type invalid:' + connectionType});
-                return;
-            }
+        if (connections.getConnection(connectionId)) {
+            return callback('callback', {type: 'failed', reason: 'Connection already exists:'+connectionId});
         }
 
-        connections.addConnection(connectionId, connectionType, options.controller, conn, 'out').then(onSuccess(callback), onError(callback));
+        var conn = null;
+        switch (connectionType) {
+            case 'internal':
+                conn = internalConnFactory.fetch(connectionId, 'out');
+                if (conn)
+                    conn.connect(options);
+                break;
+            case 'avstream':
+                conn = createAVStreamOut(options, callback);
+                break;
+            case 'recording':
+                conn = createFileOut(options, callback);
+                break;
+            default:
+                log.error('Connection type invalid:' + connectionType);
+        }
+        if (!conn) {
+            log.error('Create connection failed', connectionId, connectionType);
+            return callback('callback', {type: 'failed', reason: 'Create Connection failed'});
+        }
+
+        connections.addConnection(connectionId, connectionType, options.controller, conn, 'out')
+        .then(onSuccess(callback), onError(callback));
     };
 
     that.unsubscribe = function (connectionId, callback) {
         log.debug('unsubscribe, connectionId:', connectionId);
-        connections.removeConnection(connectionId).then(onSuccess(callback), onError(callback));
+        var conn = connections.getConnection(connectionId);
+        connections.removeConnection(connectionId).then(function(ok) {
+            if (conn && conn.type === 'internal') {
+                internalConnFactory.destroy(connectionId, 'out');
+            } else if (conn) {
+                conn.connection.close();
+            }
+            callback('callback', 'ok');
+        }, onError(callback));
     };
 
     that.linkup = function (connectionId, audioFrom, videoFrom, callback) {

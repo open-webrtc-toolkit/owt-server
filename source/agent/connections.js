@@ -2,10 +2,8 @@
 'use strict';
 
 var logger = require('./logger').logger;
-var path = require('path');
-
 // Logger
-var log = logger.getLogger('AccessNode');
+var log = logger.getLogger('Connections');
 
 module.exports = function Connections () {
     var that = {},
@@ -91,7 +89,6 @@ module.exports = function Connections () {
             } else {
                 cutOffTo(connectionId);
             }
-            connections[connectionId].connection.close();
             delete connections[connectionId];
         } else {
             log.info('Connection does NOT exist:' + connectionId);

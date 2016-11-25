@@ -25,3 +25,7 @@ max_load = 0.85 #default: 0.85
 [rabbit]
 host = "localhost" #default: "localhost"
 port = 5672 #default: 5672
+
+[internal]
+# sctp/tcp available, sctp is default
+protocol = "sctp"

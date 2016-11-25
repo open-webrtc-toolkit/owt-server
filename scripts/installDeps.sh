@@ -144,6 +144,13 @@ case $yn in
   * ) ;;
 esac
 
+read -p "Installing libusrsctp? [No/yes]" yn
+case $yn in
+  [Yy]* ) install_usrsctp;;
+  [Nn]* ) ;;
+  * ) ;;
+esac
+
 if [ "$CLEANUP" = "true" ]; then
   echo "Cleaning up..."
   cleanup
