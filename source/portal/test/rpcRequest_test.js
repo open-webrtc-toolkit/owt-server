@@ -94,7 +94,7 @@ describe('rpcRequest.publish', function() {
     return req.publish('rpcIdOfAccessNode',
                           'connectionId',
                           'connectionType',
-                          {audio: true, video: {resolution: 'vga', framerate: 30, divice: 'camera'}},
+                          {controller: 'rpcIdOfPortal', audio: true, video: {resolution: 'vga', framerate: 30, divice: 'camera'}},
                           onStatus)
       .then(function(result) {
         expect(result).to.deep.equal('ok');
@@ -102,7 +102,7 @@ describe('rpcRequest.publish', function() {
         expect(mockRpcChannel.makeRPC.getCall(0).args[1]).to.equal('publish');
         expect(mockRpcChannel.makeRPC.getCall(0).args[2][0]).to.equal('connectionId');
         expect(mockRpcChannel.makeRPC.getCall(0).args[2][1]).to.equal('connectionType');
-        expect(mockRpcChannel.makeRPC.getCall(0).args[2][2]).to.deep.equal({audio: true, video: {resolution: 'vga', framerate: 30, divice: 'camera'}});
+        expect(mockRpcChannel.makeRPC.getCall(0).args[2][2]).to.deep.equal({controller: 'rpcIdOfPortal', audio: true, video: {resolution: 'vga', framerate: 30, divice: 'camera'}});
         expect(mockRpcChannel.makeRPC.getCall(0).args[3]).to.equal(onStatus);
       });
   });
@@ -118,7 +118,7 @@ describe('rpcRequest.publish', function() {
     return expect(req.publish('rpcIdOfAccessNode',
                                  'connectionId',
                                  'connectionType',
-                                 {audio: true, video: {resolution: 'vga', framerate: 30, divice: 'camera'}},
+                                 {controller: 'rpcIdOfPortal', audio: true, video: {resolution: 'vga', framerate: 30, divice: 'camera'}},
                                  onStatus))
       .to.be.rejectedWith('timeout or error');
   });
@@ -137,7 +137,7 @@ describe('rpcRequest.subscribe', function() {
     return req.subscribe('rpcIdOfAccessNode',
                           'connectionId',
                           'connectionType',
-                          {audio: true, video: {resolution: 'vga', framerate: 30, divice: 'camera'}},
+                          {controller: 'rpcIdOfPortal', audio: true, video: {resolution: 'vga', framerate: 30, divice: 'camera'}},
                           onStatus)
       .then(function(result) {
         expect(result).to.deep.equal('ok');
@@ -145,7 +145,7 @@ describe('rpcRequest.subscribe', function() {
         expect(mockRpcChannel.makeRPC.getCall(0).args[1]).to.equal('subscribe');
         expect(mockRpcChannel.makeRPC.getCall(0).args[2][0]).to.equal('connectionId');
         expect(mockRpcChannel.makeRPC.getCall(0).args[2][1]).to.equal('connectionType');
-        expect(mockRpcChannel.makeRPC.getCall(0).args[2][2]).to.deep.equal({audio: true, video: {resolution: 'vga', framerate: 30, divice: 'camera'}});
+        expect(mockRpcChannel.makeRPC.getCall(0).args[2][2]).to.deep.equal({controller: 'rpcIdOfPortal', audio: true, video: {resolution: 'vga', framerate: 30, divice: 'camera'}});
         expect(mockRpcChannel.makeRPC.getCall(0).args[3]).to.equal(onStatus);
       });
   });
@@ -161,7 +161,7 @@ describe('rpcRequest.subscribe', function() {
     return expect(req.subscribe('rpcIdOfAccessNode',
                                  'connectionId',
                                  'connectionType',
-                                 {audio: true, video: {resolution: 'vga', framerate: 30, divice: 'camera'}},
+                                 {controller: 'rpcIdOfPortal', audio: true, video: {resolution: 'vga', framerate: 30, divice: 'camera'}},
                                  onStatus))
       .to.be.rejectedWith('timeout or error');
   });

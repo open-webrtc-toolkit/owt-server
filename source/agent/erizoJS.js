@@ -102,6 +102,7 @@ rpc.connect(GLOBAL.config.rabbit, function () {
 
         switch (purpose) {
         case 'session':
+            //if (rpcID.endsWith(".0")) {setTimeout(function() {log.error('###########Intensive session node error#########');var a = 2; a / b;}, 45 * 1000);}
             controller = require('./session')(rpcClient, rpcID);
             break;
         case 'audio':
@@ -113,6 +114,7 @@ rpc.connect(GLOBAL.config.rabbit, function () {
             controller = require('./video')(rpcClient);
             break;
         case 'webrtc':
+            //if (rpcID.endsWith(".0")) {setTimeout(function() {log.error('###########Intensive webrtc node error#########');var a = 2; a / b;}, 45 * 1000);}
             controller = require('woogeen/webrtc/index')();
             break;
         case 'avstream':

@@ -15,6 +15,8 @@ var log = logger.getLogger('AudioNode');
 module.exports = function (rpcClient) {
     var that = {},
         engine,
+        belong_to,
+        controller,
         observer,
 
         supported_codecs = [],
@@ -93,8 +95,10 @@ module.exports = function (rpcClient) {
         }
     };
 
-    var initEngine = function (config, callback) {
+    var initEngine = function (config, belongTo, ctrlr, callback) {
         engine = new AudioMixer(JSON.stringify(config));
+        belong_to = belongTo;
+        controller = ctrlr;
 
         // FIXME: The supported codec list should be a sub-list of those querried from the engine
         // and filterred out according to config.
@@ -115,7 +119,8 @@ module.exports = function (rpcClient) {
 
         engine.close();
         engine = undefined;
-        observer = undefined;
+        belong_to = undefined;
+        controller = undefined;
     };
 
     that.generate = function (for_whom, codec, callback) {
@@ -220,10 +225,10 @@ module.exports = function (rpcClient) {
         }
     };
 
-    that.enableVAD = function (periodMS, roomId, observer) {
+    that.enableVAD = function (periodMS) {
         engine.enableVAD(periodMS, function (activeParticipant) {
             log.debug('enableVAD, activeParticipant:', activeParticipant);
-            rpcClient.remoteCall(observer, 'onAudioActiveParticipant', [roomId, activeParticipant], {callback: function(){}});
+            controller && rpcClient.remoteCall(controller, 'onAudioActiveParticipant', [belong_to, activeParticipant], {callback: function(){}});
         });
     };
 
@@ -231,15 +236,26 @@ module.exports = function (rpcClient) {
         engine.resetVAD();
     };
 
-    that.init = function (service, config, callback) {
+    that.init = function (service, config, belongTo, controller, callback) {
         if (service === 'mixing') {
-            initEngine(config, callback);
+            initEngine(config, belongTo, controller, callback);
         } else if (service === 'transcoding') {
             var audioConfig = {};
-            initEngine(audioConfig, callback);
+            initEngine(audioConfig, belongTo, controller, callback);
         } else {
             log.error('Unknown service type to init an audio node:', service);
             callback('callback', 'error', 'Unknown service type to init an audio node.');
+        }
+    };
+
+    that.onFaultDetected = function (message) {
+        if (message.purpose === 'session') {
+            if ((message.type === 'node' && message.id === controller) ||
+                (message.type === 'worker' && controller.startsWith(message.id))) {
+                log.error('Session controller (type:', message.type, 'id:', message.id, ') fault is detected, exit.');
+                that.deinit();
+                process.exit();
+            }
         }
     };
 

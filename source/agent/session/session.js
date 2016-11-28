@@ -64,7 +64,7 @@ module.exports = function (rpcClient, selfRpcId) {
                  rpcClient: rpcClient,
                  room: session_id,
                  config: room_config,
-                 observer: selfRpcId
+                 selfRpcId: selfRpcId
                 }, function (resolutions) {
                   log.debug('room controller init ok');
                   resolve('ok');

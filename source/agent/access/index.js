@@ -166,7 +166,7 @@ module.exports = function () {
             }
         }
 
-        connections.addConnection(connectionId, connectionType, conn, 'in')
+        connections.addConnection(connectionId, connectionType, options.controller, conn, 'in')
         .then(function(result) {
             if (connectionType === 'internal') {
                 callback('callback', {ip: that.clusterIP, port: conn.getListeningPort()})
@@ -205,7 +205,7 @@ module.exports = function () {
             }
         }
 
-        connections.addConnection(connectionId, connectionType, conn, 'out').then(onSuccess(callback), onError(callback));
+        connections.addConnection(connectionId, connectionType, options.controller, conn, 'out').then(onSuccess(callback), onError(callback));
     };
 
     that.unsubscribe = function (connectionId, callback) {
@@ -219,6 +219,10 @@ module.exports = function () {
 
     that.cutoff = function (connectionId, callback) {
         connections.cutoffConnection(connectionId).then(onSuccess(callback), onError(callback));
+    };
+
+    that.onFaultDetected = function (message) {
+        connections.onFaultDetected(message);
     };
 
     return that;

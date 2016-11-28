@@ -83,7 +83,7 @@ var Portal = function(spec, rpcReq) {
   };
 
   var constructConnectOptions = function(connectionId, connectionType, direction, description, sessionId) {
-    var options = {};
+    var options = {controller: self_rpc_id};
     if (!!description.audio) {
       if (typeof description.audio === 'object' && description.audio.codecs) {
         options.audio = {};
@@ -132,11 +132,6 @@ var Portal = function(spec, rpcReq) {
         return Promise.resolve(status.type);
       }
     };
-  };
-
-  var onSessionControllerFault = function(type, id) {
-    //for (var participant_id in participants) {
-    //}
   };
 
   var isImpacted = function(locality, type, id) {
@@ -730,14 +725,23 @@ var Portal = function(spec, rpcReq) {
   };
 
   that.onFaultDetected = function (message) {
-    if (message.purpose === 'session') {
-      return onSessionControllerFault(message.type, message.id);
-    } else if (message.purpose === 'webrtc' ||
+    if (message.purpose === 'webrtc' ||
                message.purpose === 'recording' ||
                message.purpose === 'avstream') {
       return onAccessNodeFault(message.type, message.id);
     }
     return Promise.resolve('ok');
+  };
+
+  that.getParticipantsByController = function (type, id) {
+    var result = [];
+    for (var participant_id in participants) {
+      if ((type === 'node' && participants[participant_id].controller === id) ||
+          (type === 'worker' && participants[participant_id].controller.startsWith(id))) {
+        result.push(participant_id);
+      }
+    }
+    return Promise.resolve(result);
   };
 
   return that;

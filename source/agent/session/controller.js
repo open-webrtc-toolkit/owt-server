@@ -16,7 +16,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
         rpcClient = spec.rpcClient,
         config = spec.config,
         room_id = spec.room,
-        observer = spec.observer,
+        selfRpcId = spec.selfRpcId,
         mixed_stream_id = spec.room,
         supported_audio_codecs = [],
         supported_video_codecs = [],
@@ -59,7 +59,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                 rpcClient,
                 terminals[audio_mixer].locality.node,
                 'enableVAD',
-                [1000, room_id, observer]);
+                [1000]);
         }
     };
 
@@ -88,7 +88,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                     rpcClient,
                     terminals[audio_mixer].locality.node,
                     'init',
-                    ['mixing', config.mediaMixing.audio],
+                    ['mixing', config.mediaMixing.audio, room_id, selfRpcId],
                     function (supported_audio) {
                         log.debug('init audio mixer ok. room_id:', room_id);
                         video_mixer = Math.random() * 1000000000000000000 + '';
@@ -98,7 +98,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                                 rpcClient,
                                 terminals[video_mixer].locality.node,
                                 'init',
-                                ['mixing', config.mediaMixing.video, room_id, observer],
+                                ['mixing', config.mediaMixing.video, room_id, selfRpcId],
                                 function (supported_video) {
                                     log.debug('init video mixer ok. room_id:', room_id);
                                     supported_audio_codecs = supported_audio.codecs;
@@ -276,7 +276,8 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
             rpcClient,
             target_node,
             'publish',
-            [stream_id, 'internal', {owner: terminals[stream_owner].owner,
+            [stream_id, 'internal', {controller: selfRpcId,
+                                     owner: terminals[stream_owner].owner,
                                      audio: (audio ? {codec: streams[stream_id].audio.codec} : false),
                                      video: (video ? {codec: streams[stream_id].video.codec} : false),
                                      protocol: 'tcp'}],
@@ -289,7 +290,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                     rpcClient,
                     original_node,
                     'subscribe',
-                    [spread_id, 'internal', {dest_ip: dest.ip, dest_port: dest.port, protocol: 'tcp'}],
+                    [spread_id, 'internal', {controller: selfRpcId, dest_ip: dest.ip, dest_port: dest.port, protocol: 'tcp'}],
                     function () {
                         log.debug('internally subscribe ok');
                         if (streams[stream_id]) {
@@ -608,7 +609,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                     rpcClient,
                     terminals[axcoder].locality.node,
                     'init',
-                    ['transcoding', {}],
+                    ['transcoding', {}, stream_id, selfRpcId],
                     function (supported_audio) {
                         var target_node = terminals[axcoder].locality.node,
                             spread_id = stream_id + '@' + target_node;
@@ -699,7 +700,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                     rpcClient,
                     terminals[vxcoder].locality.node,
                     'init',
-                    ['transcoding', {resolution: streams[stream_id].video.resolution}, room_id, undefined],
+                    ['transcoding', {resolution: streams[stream_id].video.resolution}, stream_id, selfRpcId],
                     function (supported_video) {
                         var target_node = terminals[vxcoder].locality.node,
                             spread_id = stream_id + '@' + target_node;
@@ -1363,7 +1364,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
     };
 
     var initVideoMixer = function (vmixerId) {
-        return initMediaProcessor(vmixerId, ['mixing', config.mediaMixing.video, room_id, observer])
+        return initMediaProcessor(vmixerId, ['mixing', config.mediaMixing.video, room_id, selfRpcId])
             .then(function (supported_video) {
                 log.debug('Init video mixer ok. room_id:', room_id);
                 supported_video_codecs = supported_video.codecs;
@@ -1554,7 +1555,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
     };
 
     var initAudioMixer = function (amixerId) {
-        return initMediaProcessor(amixerId, ['mixing', config.mediaMixing.audio])
+        return initMediaProcessor(amixerId, ['mixing', config.mediaMixing.audio, room_id, selfRpcId])
             .then(function (supported_audio) {
                 log.debug('Init audio mixer ok. room_id:', room_id);
                 supported_audio_codecs = supported_audio.codecs;

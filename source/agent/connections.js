@@ -64,8 +64,8 @@ module.exports = function Connections () {
         }
     };
 
-    that.addConnection =  function (connectionId, connectionType, conn, direction) {
-        log.debug('Add connection:', connectionId, connectionType);
+    that.addConnection =  function (connectionId, connectionType, connectionController, conn, direction) {
+        log.debug('Add connection:', connectionId, connectionType, connectionController);
         if (connections[connectionId]) {
             log.error('Connection already exists:'+connectionId);
             return Promise.reject({type: 'failed', reason: 'Connection already exists:'+connectionId});
@@ -76,7 +76,8 @@ module.exports = function Connections () {
             direction: direction,
             audioFrom: undefined,
             videoFrom: undefined,
-            connection: conn
+            connection: conn,
+            controller: connectionController
         };
 
         return Promise.resolve('ok');
@@ -152,6 +153,22 @@ module.exports = function Connections () {
 
     that.getConnection = function (connectionId) {
         return connections[connectionId];
+    };
+
+    that.onFaultDetected = function (message) {
+        if (message.purpose === 'session' || message.purpose === 'portal') {
+            for (var conn_id in connections) {
+                if ((message.purpose === 'session' &&
+                     connections[conn_id].type === 'internal' &&
+                     ((message.type === 'node' && message.id === connections[conn_id].controller) || (message.type === 'worker' && connections[conn_id].controller.startsWith(message.id)))) ||
+                    (message.purpose === 'portal' &&
+                     message.type === 'worker' &&
+                     connections[conn_id].controller === message.id)){
+                    log.error('Fault detected on controller (type:', message.type, 'id:', message.id, ') of connection:', conn_id , 'and remove it');
+                    that.removeConnection(conn_id);
+                }
+            }
+        }
     };
 
     return that;

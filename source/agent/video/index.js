@@ -40,8 +40,8 @@ function calculateResolutions(rootResolution, useMultistreaming) {
 module.exports = function (rpcClient) {
     var that = {},
         engine,
-        session_id,
-        observer,
+        belong_to,
+        controller,
 
         supported_codecs = [],
         supported_resolutions = [],
@@ -164,16 +164,16 @@ module.exports = function (rpcClient) {
     };
 
     var notifyLayoutChange = function () {
-        if (observer) {
+        if (controller) {
             var regions = getSortedRegions();
             rpcClient.remoteCall(
-                observer,
+                controller,
                 'onVideoLayoutChange',
-                [session_id, regions]);
+                [belong_to, regions]);
         }
     };
 
-    var initEngine = function (videoConfig, sessionId, layoutObserver, callback) {
+    var initEngine = function (videoConfig, belongTo, layoutcontroller, callback) {
         log.debug('initEngine, videoConfig:', videoConfig);
         var config = {
             'hardware': useHardware,
@@ -187,8 +187,8 @@ module.exports = function (rpcClient) {
         };
 
         engine = new VideoMixer(JSON.stringify(config));
-        session_id = sessionId;
-        observer = layoutObserver;
+        belong_to = belongTo;
+        controller = layoutcontroller;
         maxInputNum = videoConfig.maxInput;
 
         // FIXME: The supported codec list should be a sub-list of those querried from the engine
@@ -392,9 +392,9 @@ module.exports = function (rpcClient) {
         }
     };
 
-    that.init = function (service, config, sessionId, observer, callback) {
+    that.init = function (service, config, belongTo, controller, callback) {
         if (service === 'mixing') {
-            initEngine(config, sessionId, observer, callback);
+            initEngine(config, belongTo, controller, callback);
         } else if (service === 'transcoding') {
             var videoConfig = {maxInput: 1,
                                bitrate: 0,
@@ -403,7 +403,7 @@ module.exports = function (rpcClient) {
                                multistreaming: true,
                                layout: [{region: [{id: '1', left: 0, top: 0, relativesize: 1}]}],
                                crop: false};
-            initEngine(videoConfig, sessionId, observer, callback);
+            initEngine(videoConfig, belongTo, controller, callback);
         } else {
             log.error('Unknown service type to init a video node:', service);
             callback('callback', 'error', 'Unknown service type to init a video node.');
@@ -411,6 +411,14 @@ module.exports = function (rpcClient) {
     };
 
     that.onFaultDetected = function (message) {
+        if (message.purpose === 'session') {
+            if ((message.type === 'node' && message.id === controller) ||
+                (message.type === 'worker' && controller.startsWith(message.id))) {
+                log.error('Session controller (type:', message.type, 'id:', message.id, ') fault is detected, exit.');
+                that.deinit();
+                process.exit();
+            }
+        }
     };
 
     return that;
