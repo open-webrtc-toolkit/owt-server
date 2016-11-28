@@ -181,8 +181,8 @@ var stopServers = function() {
 
 var rpcPublic = {
   drop: function(participantId, fromRoom, callback) {
-    socketio_server &&  socketio_server.drop(participantId, fromRoom);
-    rest_server &&  rest_server.drop(participantId, fromRoom);
+    socketio_server && socketio_server.drop(participantId, fromRoom);
+    rest_server && rest_server.drop(participantId, fromRoom);
     callback('callback', 'ok');
   },
   notify: function(participantId, event, data, callback) {
@@ -227,7 +227,18 @@ amqper.connect(config.rabbit, function () {
             amqper.asMonitor(function (data) {
               if (data.reason === 'abnormal' || data.reason === 'error') {
                 if (portal !== undefined) {
-                  return portal.onFaultDetected(data.message);
+                  if (data.message.purpose === 'session') {
+                    return portal.getParticipantsByController(data.message.type, data.message.id)
+                      .then(function (impactedParticipants) {
+                        impactedParticipants.forEach(function(participantId) {
+                          log.error('Fault on session controller(type:', data.message.type, 'id:', data.message.id, ') of participant', participantId, 'was detected, drop it.');
+                          socketio_server && socketio_server.drop(participantId);
+                          rest_server && rest_server.drop(participantId);
+                        });
+                      });
+                  } else {
+                    return portal.onFaultDetected(data.message);
+                  }
                 }
               }
             }, function (monitor) {

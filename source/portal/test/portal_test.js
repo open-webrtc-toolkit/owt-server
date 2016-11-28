@@ -465,7 +465,7 @@ describe('portal.publish/portal.unpublish: Participants publish/unpublish stream
           expect(mockrpcReq.publish.getCall(0).args[0]).to.deep.equal('rpcIdOfAccessNode');
           expect(mockrpcReq.publish.getCall(0).args[1]).to.equal(stream_id);
           expect(mockrpcReq.publish.getCall(0).args[2]).to.equal('avstream');
-          expect(mockrpcReq.publish.getCall(0).args[3]).to.deep.equal({audio: true, video: {resolution: 'unknown'}, url: 'URIofSomeIPCamera', transport: 'tcp', buffer_size: 2048});
+          expect(mockrpcReq.publish.getCall(0).args[3]).to.deep.equal({controller: testSelfRpcId, audio: true, video: {resolution: 'unknown'}, url: 'URIofSomeIPCamera', transport: 'tcp', buffer_size: 2048});
           on_connection_status = mockrpcReq.publish.getCall(0).args[4];
           expect(on_connection_status).to.be.a('function');
           return on_connection_status({type: 'initializing'});
@@ -576,53 +576,6 @@ describe('portal.publish/portal.unpublish: Participants publish/unpublish stream
         });
     });
 
-    it.skip('Publishing rtsp/rtmp streams should be aborted if fault is detected on the session controller.', function() {
-      mockrpcReq.getAccessNode = sinon.stub();
-      mockrpcReq.publish = sinon.stub();
-      mockrpcReq.pub2Session = sinon.stub();
-      mockrpcReq.unpublish = sinon.stub();
-      mockrpcReq.recycleAccessNode = sinon.stub();
-      mockrpcReq.unpub2Session = sinon.stub();
-
-      mockrpcReq.getAccessNode.resolves({agent: 'rpcIdOfAccessAgent', node: 'rpcIdOfAccessNode'});
-      mockrpcReq.publish.resolves('ok');
-      mockrpcReq.unpublish.resolves('ok');
-      mockrpcReq.recycleAccessNode.resolves('ok');
-      mockrpcReq.pub2Session.resolves('ok');
-      mockrpcReq.unpub2Session.resolves('ok');
-
-      var stream_id = 'streamId', on_connection_status;
-      var spyConnectionObserver = sinon.spy();
-
-      return portal.publish(testParticipantId,
-                            stream_id,
-                            'avstream',
-                            {audio: true, video: {resolution: 'unknown', device: 'unknown'}, url: 'URIofSomeIPCamera', transport: 'tcp', buffer_size: 2048},
-                            spyConnectionObserver,
-                            false)
-        .then(function(connectionLocality) {
-          on_connection_status = mockrpcReq.publish.getCall(0).args[4];
-          expect(on_connection_status).to.be.a('function');
-          return on_connection_status({type: 'initializing'});
-        })
-        .then(function(statusResult) {
-          expect(statusResult).to.equal('initializing');
-          return on_connection_status({type: 'ready', audio_codecs: ['pcmu'], video_codecs: ['h264'], video_resolution: 'hd1080p'});
-        })
-        .then(function(result) {
-          expect(result).to.equal('ok');
-          return portal.onFaultDetected({purpose: 'avstream', type: 'node', id: 'rpcIdOfController'});
-        })
-        .then(function(runHere) {
-          expect(runHere).to.be.false;
-        }, function(reason) {
-          expect(reason).to.have.string('session controller exited unexpectedly');
-          expect(mockrpcReq.unpublish.getCall(0).args).to.deep.equal(['rpcIdOfAccessNode', stream_id]);
-          expect(mockrpcReq.recycleAccessNode.getCall(0).args).to.deep.equal(['rpcIdOfAccessAgent', 'rpcIdOfAccessNode', {session: testSession, consumer: stream_id}]);
-          expect(mockrpcReq.unpub2Session.getCall(0).args).to.deep.equal(['rpcIdOfController', testParticipantId, stream_id]);
-        });
-    });
-
     it('Publishing a webrtc stream with both audio and video should succeed.', function() {
       mockrpcReq.getAccessNode = sinon.stub();
       mockrpcReq.publish = sinon.stub();
@@ -650,7 +603,7 @@ describe('portal.publish/portal.unpublish: Participants publish/unpublish stream
           expect(mockrpcReq.publish.getCall(0).args[0]).to.deep.equal('rpcIdOfAccessNode');
           expect(mockrpcReq.publish.getCall(0).args[1]).to.equal(stream_id);
           expect(mockrpcReq.publish.getCall(0).args[2]).to.equal('webrtc');
-          expect(mockrpcReq.publish.getCall(0).args[3]).to.deep.equal({audio: true, video: {resolution: 'vga'}});
+          expect(mockrpcReq.publish.getCall(0).args[3]).to.deep.equal({controller: testSelfRpcId, audio: true, video: {resolution: 'vga'}});
           on_connection_status = mockrpcReq.publish.getCall(0).args[4];
           expect(on_connection_status).to.be.a('function');
           return on_connection_status({type: 'initializing'});
@@ -1514,7 +1467,7 @@ describe('portal.subscribe/portal.unsubscribe/portal.mediaOnOff: Participants su
           expect(mockrpcReq.subscribe.getCall(0).args[0]).to.deep.equal('rpcIdOfAccessNode');
           expect(mockrpcReq.subscribe.getCall(0).args[1]).to.equal(subscription_id);
           expect(mockrpcReq.subscribe.getCall(0).args[2]).to.equal('webrtc');
-          expect(mockrpcReq.subscribe.getCall(0).args[3]).to.deep.equal({audio: true, video: {resolution: 'vga'}});
+          expect(mockrpcReq.subscribe.getCall(0).args[3]).to.deep.equal({controller: testSelfRpcId, audio: true, video: {resolution: 'vga'}});
           on_connection_status = mockrpcReq.subscribe.getCall(0).args[4];
           expect(on_connection_status).to.be.a('function');
           return on_connection_status({type: 'initializing'});
@@ -1577,7 +1530,7 @@ describe('portal.subscribe/portal.unsubscribe/portal.mediaOnOff: Participants su
           expect(mockrpcReq.subscribe.getCall(0).args[0]).to.deep.equal('rpcIdOfAccessNode');
           expect(mockrpcReq.subscribe.getCall(0).args[1]).to.equal(subscription_id);
           expect(mockrpcReq.subscribe.getCall(0).args[2]).to.equal('avstream');
-          expect(mockrpcReq.subscribe.getCall(0).args[3]).to.deep.equal({audio: {codecs: ['aac']}, video: {codecs: ['h264'], resolution: 'vga'}, url: 'rtmp://user:pwd@1.1.1.1:9000/url-of-avstream'});
+          expect(mockrpcReq.subscribe.getCall(0).args[3]).to.deep.equal({controller: testSelfRpcId, audio: {codecs: ['aac']}, video: {codecs: ['h264'], resolution: 'vga'}, url: 'rtmp://user:pwd@1.1.1.1:9000/url-of-avstream'});
           on_connection_status = mockrpcReq.subscribe.getCall(0).args[4];
           expect(on_connection_status).to.be.a('function');
           return on_connection_status({type: 'initializing'});
@@ -1668,7 +1621,7 @@ describe('portal.subscribe/portal.unsubscribe/portal.mediaOnOff: Participants su
           expect(mockrpcReq.subscribe.getCall(0).args[0]).to.deep.equal('rpcIdOfAccessNode');
           expect(mockrpcReq.subscribe.getCall(0).args[1]).to.equal(subscription_id);
           expect(mockrpcReq.subscribe.getCall(0).args[2]).to.equal('recording');
-          expect(mockrpcReq.subscribe.getCall(0).args[3]).to.deep.equal({audio: {codecs: ['pcmu']}, video: {codecs: ['vp8']}, path: 'path-of-recording', filename: 'room_' + testSession + '-' + subscription_id + '.mkv', interval: 1000});
+          expect(mockrpcReq.subscribe.getCall(0).args[3]).to.deep.equal({controller: testSelfRpcId, audio: {codecs: ['pcmu']}, video: {codecs: ['vp8']}, path: 'path-of-recording', filename: 'room_' + testSession + '-' + subscription_id + '.mkv', interval: 1000});
           on_connection_status = mockrpcReq.subscribe.getCall(0).args[4];
           expect(on_connection_status).to.be.a('function');
           return on_connection_status({type: 'initializing'});
@@ -2232,6 +2185,34 @@ describe('portal.text', function() {
 
       return expect(portal.text(testParticipantId, 'a-non-existed-receiver', 'some-message')).to.be.rejectedWith('no such a receiver');
     });
+  });
+});
+
+describe('portal.getParticipantsByController', function() {
+  it('Getting participants should return empty list if no participant has joined.', function() {
+    var mockrpcReq = sinon.createStubInstance(rpcReq);
+    var portal = Portal(testPortalSpec, mockrpcReq);
+
+    return expect(portal.getParticipantsByController('node', 'rpcIdOfController')).to.become([]);
+  });
+
+  it('Sending text without permission should fail.', function() {
+    var mockrpcReq = sinon.createStubInstance(rpcReq);
+    var portal = Portal(testPortalSpec, mockrpcReq);
+
+    mockrpcReq.tokenLogin = sinon.stub();
+    mockrpcReq.getController = sinon.stub();
+    mockrpcReq.join = sinon.stub();
+
+    mockrpcReq.tokenLogin.resolves({userName: 'Jack', role: 'no_text_viewer', room: testSession});
+    mockrpcReq.getController.resolves('rpcIdOfController');
+    mockrpcReq.join.resolves({participants: [],
+                                 streams: []});
+
+    return portal.join(testParticipantId, testToken)
+      .then(function(login_result) {
+        return expect(portal.getParticipantsByController('node', 'rpcIdOfController')).to.become([testParticipantId]);
+      });
   });
 });
 
