@@ -115,7 +115,12 @@ public:
 class JitterBuffer {
     DECLARE_LOGGER();
 public:
-    JitterBuffer (std::string name, JitterBufferListener *listener);
+    enum SyncMode {
+        SYNC_MODE_MASTER,
+        SYNC_MODE_SLAVE,
+    };
+
+    JitterBuffer (std::string name, SyncMode syncMode, JitterBufferListener *listener);
     virtual ~JitterBuffer ();
 
     void start(uint32_t delay = 0);
@@ -132,6 +137,7 @@ protected:
 
 private:
     std::string m_name;
+    SyncMode m_syncMode;
 
     std::atomic<bool> m_isClosing;
     bool m_isRunning;
