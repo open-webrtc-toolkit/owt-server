@@ -117,8 +117,9 @@ void FramePacketBuffer::clear()
 
 DEFINE_LOGGER(JitterBuffer, "woogeen.RtspIn.JitterBuffer");
 
-JitterBuffer::JitterBuffer(std::string name, JitterBufferListener *listener)
+JitterBuffer::JitterBuffer(std::string name, SyncMode syncMode, JitterBufferListener *listener)
     : m_name(name)
+    , m_syncMode(syncMode)
     , m_isClosing(false)
     , m_isRunning(false)
     , m_lastInterval(5)
@@ -214,7 +215,9 @@ int64_t JitterBuffer::getNextTime(AVPacket *pkt)
     AVPacket *nextPkt = nextFramePacket != NULL ? nextFramePacket->getAVPacket() : NULL;
 
     if (!pkt || !nextPkt) {
-        ELOG_INFO("(%s)no next frame, next time %ld", m_name.c_str(), interval);
+        interval = 10;
+
+        ELOG_DEBUG("(%s)no next frame, next time %ld", m_name.c_str(), interval);
         return interval;
     }
 
@@ -224,9 +227,10 @@ int64_t JitterBuffer::getNextTime(AVPacket *pkt)
     diff = nextTimestamp - timestamp;
     if (diff < 0 || diff > 2000) { // revised
         ELOG_INFO("(%s)timestamp rollback, %ld -> %ld", m_name.c_str(), timestamp, nextTimestamp);
-        m_listener->onSyncTimeChanged(this, nextTimestamp);
+        if (m_syncMode == SYNC_MODE_MASTER)
+            m_listener->onSyncTimeChanged(this, nextTimestamp);
 
-        ELOG_INFO("(%s)set first timestamp %ld -> %ld", m_name.c_str(), m_firstTimestamp, nextTimestamp);
+        ELOG_INFO("(%s)reset first timestamp %ld -> %ld", m_name.c_str(), m_firstTimestamp, nextTimestamp);
         m_firstTimestamp = nextTimestamp;
         m_firstLocalTime.reset(new boost::posix_time::ptime(boost::posix_time::microsec_clock::local_time() + boost::posix_time::milliseconds(interval)));
         return interval;
@@ -239,7 +243,7 @@ int64_t JitterBuffer::getNextTime(AVPacket *pkt)
             m_firstTimestamp = timestamp;
             m_firstLocalTime.reset(new boost::posix_time::ptime(boost::posix_time::microsec_clock::local_time()));
 
-            if (m_syncTimestamp == AV_NOPTS_VALUE) {
+            if (m_syncTimestamp == AV_NOPTS_VALUE && m_syncMode == SYNC_MODE_MASTER) {
                 m_syncMutex.unlock();
                 m_listener->onSyncTimeChanged(this, timestamp);
                 m_syncMutex.lock();
@@ -252,7 +256,8 @@ int64_t JitterBuffer::getNextTime(AVPacket *pkt)
         if (m_syncTimestamp != AV_NOPTS_VALUE) {
             // sync timestamp changed
             if (nextTimestamp < m_syncTimestamp) {
-                ELOG_INFO("(%s)timestamp(%ld) is behind sync timestamp(%ld)!", m_name.c_str(), nextTimestamp, m_syncTimestamp);
+                ELOG_INFO("(%s)timestamp(%ld) is behind sync timestamp(%ld), diff %ld!"
+                        , m_name.c_str(), nextTimestamp, m_syncTimestamp, nextTimestamp - m_syncTimestamp);
                 interval = diff;
             }
             else {
@@ -263,12 +268,26 @@ int64_t JitterBuffer::getNextTime(AVPacket *pkt)
             interval = (*m_firstLocalTime - mst).total_milliseconds() + (nextTimestamp - m_firstTimestamp);
         }
 
-        if (interval < 0) {
-            ELOG_WARN("(%s)force next time %ld -> %ld", m_name.c_str(), interval, m_lastInterval);
-            interval = m_lastInterval;
-        } else if (interval > 2000) {
-            ELOG_WARN("(%s)force next time %ld -> %ld", m_name.c_str(), interval, 2000l);
-            interval = 2000;
+        if (m_syncMode == SYNC_MODE_MASTER) {
+            if (interval < 0) {
+                m_syncMutex.unlock();
+                m_listener->onSyncTimeChanged(this, timestamp);
+                m_syncMutex.lock();
+
+                ELOG_DEBUG("(%s)force next time %ld -> %ld", m_name.c_str(), interval, m_lastInterval);
+                interval = m_lastInterval;
+            } else if (interval > 1000) {
+                ELOG_DEBUG("(%s)force next time %ld -> %ld", m_name.c_str(), interval, 1000l);
+                interval = 1000;
+            }
+        } else {
+            if (interval < 0) {
+                ELOG_DEBUG("(%s)force next time %ld -> %ld", m_name.c_str(), interval, 0l);
+                interval = 0;
+            } else if (interval > 1000) {
+                ELOG_DEBUG("(%s)force next time %ld -> %ld", m_name.c_str(), interval, 1000l);
+                interval = 1000;
+            }
         }
 
         m_lastInterval = (m_lastInterval * 4.0 + interval) / 5;
@@ -289,7 +308,7 @@ void JitterBuffer::handleJob()
     if (pkt != NULL)
         m_listener->onDeliverFrame(this, pkt);
     else
-        ELOG_WARN("(%s)no frame in JitterBuffer", m_name.c_str());
+        ELOG_DEBUG("(%s)no frame in JitterBuffer", m_name.c_str());
 
     ELOG_TRACE("(%s)buffer size %d, next time %d", m_name.c_str(), m_buffer.size(), interval);
 
@@ -494,7 +513,7 @@ bool RtspIn::connect()
                 ELOG_WARN("Video codec %s is not supported ", avcodec_get_name(videoCodecId));
             }
 
-            m_videoJitterBuffer.reset(new JitterBuffer("video", this));
+            m_videoJitterBuffer.reset(new JitterBuffer("video", JitterBuffer::SYNC_MODE_SLAVE, this));
 
             m_videoTimeBase.num = 1;
             m_videoTimeBase.den = 90000;
@@ -543,7 +562,7 @@ bool RtspIn::connect()
                     ELOG_WARN("Audio codec %s is not supported ", avcodec_get_name(audioCodecId));
             }
 
-            m_audioJitterBuffer.reset(new JitterBuffer("audio", this));
+            m_audioJitterBuffer.reset(new JitterBuffer("audio", JitterBuffer::SYNC_MODE_MASTER, this));
 
             if (m_audioFormat == FRAME_FORMAT_OPUS) {
                 m_audioTimeBase.num = 1;
@@ -582,7 +601,7 @@ bool RtspIn::reconnect()
     int res;
     char errbuff[500];
 
-    ELOG_WARN("Read input data failed; trying to reopen input from url %s", m_url.c_str());
+    ELOG_WARN("Read input data failed, trying to reopen input from url %s", m_url.c_str());
 
     if (m_videoJitterBuffer) {
         m_videoJitterBuffer->drain();
@@ -702,6 +721,7 @@ void RtspIn::receiveLoop()
                 if (m_needAudioTranscoder) {
                     m_avPacket.dts += m_audioEncTimestamp - m_audioFifoTimeBegin;
                     m_avPacket.pts += m_audioEncTimestamp - m_audioFifoTimeBegin;
+                    ELOG_TRACE("Audio transcoder offset %ld", m_audioEncTimestamp - m_audioFifoTimeBegin);
                 }
                 m_videoJitterBuffer->insert(m_avPacket);
             }
@@ -710,8 +730,8 @@ void RtspIn::receiveLoop()
             m_avPacket.dts = timeRescale(m_avPacket.dts, audio_st->time_base, m_msTimeBase);
             m_avPacket.pts = timeRescale(m_avPacket.pts, audio_st->time_base, m_msTimeBase);
 
-            ELOG_TRACE("Receive audio frame packet, dts %ld, size %d"
-                    , m_avPacket.dts, m_avPacket.size);
+            ELOG_TRACE("Receive audio frame packet, dts %ld, duration %ld, size %d"
+                    , m_avPacket.dts, m_avPacket.duration, m_avPacket.size);
 
             if (!m_needAudioTranscoder) {
                 m_audioJitterBuffer->insert(m_avPacket);
@@ -1050,7 +1070,7 @@ bool RtspIn::decAudioFrame(AVPacket &packet) {
         m_audioEncTimestamp = packet.dts;
         m_audioFifoTimeBegin = packet.dts;
     }
-    m_audioFifoTimeEnd = packet.dts + m_avPacket.duration;
+    m_audioFifoTimeEnd = packet.dts + packet.duration;
 
     return true;
 }
@@ -1086,9 +1106,9 @@ bool RtspIn::encAudioFrame(AVPacket *packet) {
         return false;
     }
 
-    packet->dts = m_audioEncTimestamp + 1000.0 * m_audioEncCtx->frame_size / m_audioEncCtx->sample_rate;
-    m_audioEncTimestamp = packet->dts;
+    packet->dts = m_audioEncTimestamp;
 
+    m_audioEncTimestamp += 1000.0 * m_audioEncCtx->frame_size / m_audioEncCtx->sample_rate;
     m_audioFifoTimeBegin += (double)(m_audioFifoTimeEnd - m_audioFifoTimeBegin) * m_audioEncCtx->frame_size / (av_audio_fifo_size(m_audioEncFifo) + m_audioEncCtx->frame_size);
 
     if (av_audio_fifo_size(m_audioEncFifo) >= m_audioEncCtx->frame_size) {
@@ -1140,8 +1160,9 @@ void RtspIn::onDeliverFrame(JitterBuffer *jitterBuffer, AVPacket *pkt)
         frame.additionalInfo.video.height = m_videoSize.height;
         deliverFrame(frame);
 
-        ELOG_DEBUG("onDeliver video frame, timestamp %ld, size %4d"
+        ELOG_DEBUG("onDeliver video frame, timestamp %ld(%ld), size %4d"
                 , timeRescale(frame.timeStamp, m_videoTimeBase, m_msTimeBase)
+                , pkt->dts
                 , frame.length);
     } else if (m_audioJitterBuffer.get() == jitterBuffer) {
         Frame frame;
@@ -1156,8 +1177,9 @@ void RtspIn::onDeliverFrame(JitterBuffer *jitterBuffer, AVPacket *pkt)
         frame.additionalInfo.audio.channels = m_audioFormat == FRAME_FORMAT_OPUS ? 2 : 1;
         deliverFrame(frame);
 
-        ELOG_DEBUG("onDeliver audio frame, timestamp %ld, size %4d"
+        ELOG_DEBUG("onDeliver audio frame, timestamp %ld(%ld), size %4d"
                 , timeRescale(frame.timeStamp, m_audioTimeBase, m_msTimeBase)
+                , pkt->dts
                 , frame.length);
     } else {
         ELOG_ERROR("Invalid JitterBuffer onDeliver event!");

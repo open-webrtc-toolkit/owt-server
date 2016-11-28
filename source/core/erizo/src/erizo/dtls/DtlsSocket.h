@@ -80,7 +80,7 @@ class DtlsSocket : public JobTimerListener
    DECLARE_LOGGER();
    public:
       enum SocketType { Client, Server};
-      ~DtlsSocket();
+      virtual ~DtlsSocket();
 
       // Inspects packet to see if it's a DTLS packet, if so continue processing
       bool handlePacketMaybe(const unsigned char* bytes, unsigned int len);
