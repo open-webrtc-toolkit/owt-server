@@ -278,8 +278,8 @@ static void call_event_handler(struct call *call, enum call_event ev,
 	case CALL_EVENT_CLOSED:
 		ua_event(ua, UA_EVENT_CALL_CLOSED, call, str);
 		if (call_get_owner(call)) {
-			ep_call_closed(ua->owner->ep, peeruri, str);
 			call_connection_closed(call_get_owner(call));
+			ep_call_closed(ua->owner->ep, peeruri, str);
 		}
 		mem_deref(call);
 
@@ -322,9 +322,9 @@ static void call_event_handler(struct call *call, enum call_event ev,
 		break;
 	case CALL_EVENT_UPDATE:
 		if (call_get_owner(call)) {
-			ep_call_updated(ua->owner->ep, peeruri, call_audio_dir(call), call_video_dir(call));
 			//Now Sip call upate requires server stream connection reset
 			call_connection_closed(call_get_owner(call));
+			ep_call_updated(ua->owner->ep, peeruri, call_audio_dir(call), call_video_dir(call));
 	    }
 	    break;
 	}
