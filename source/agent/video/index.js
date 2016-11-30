@@ -45,6 +45,14 @@ module.exports = function (rpcClient) {
 
         supported_codecs = [],
         supported_resolutions = [],
+        // Map to enum QualityLevel defined in MediaFramePipeline.h
+        supported_qualities = {
+            bestquality: 0,
+            betterquality: 1,
+            standard: 2,
+            betterspeed: 3,
+            bestspeed: 4
+        };
 
         /*{StreamID : {codec: 'vp8' | 'h264' |...,
                        resolution: 'cif' | 'vga' | 'svga' | 'xga' | 'hd720p' | 'sif' | 'hvga' | 'r640x360' | 'r480x360' | 'qcif' | 'r192x144' | 'hd1080p' | 'uhd_4k' | 'r720x720' ...,
@@ -113,19 +121,25 @@ module.exports = function (rpcClient) {
         }
     };
 
-    var addOutput = function (codec, resolution, on_ok, on_error) {
+    var addOutput = function (codec, resolution, quality, on_ok, on_error) {
         if (engine) {
             for (var id in outputs) {
-                if (outputs[id].codec === codec && outputs[id].resolution === resolution) {
+                if (outputs[id].codec === codec && outputs[id].resolution === resolution && outputs[id].quality === quality) {
                     return on_ok(id);
                 }
             }
 
+            log.debug('addOutput: codec', codec, 'resolution', resolution, 'quality', quality);
+
             var stream_id = Math.random() * 1000000000000000000 + '';
             var dispatcher = new MediaFrameMulticaster();
-            if (engine.addOutput(stream_id, codec, ((!resolution || resolution === 'unspecified' || VideoResolutionMap[resolution] === undefined) ? supported_resolutions[0] : resolution), dispatcher)) {
+            if (engine.addOutput(stream_id, codec,
+                                 ((!resolution || resolution === 'unspecified' || VideoResolutionMap[resolution] === undefined) ? supported_resolutions[0] : resolution),
+                                 quality,
+                                 dispatcher)) {
                 outputs[stream_id] = {codec: codec,
                                       resolution: resolution,
+                                      quality: quality,
                                       dispatcher: dispatcher,
                                       connections: {}};
                 log.debug('addOutput ok, stream_id:', stream_id);
@@ -178,7 +192,6 @@ module.exports = function (rpcClient) {
         var config = {
             'hardware': useHardware,
             'maxinput': videoConfig.maxInput,
-            'bitrate': videoConfig.bitrate,
             'resolution': videoConfig.resolution,
             'backgroundcolor': videoConfig.bkColor,
             'layout': videoConfig.layout,
@@ -225,15 +238,24 @@ module.exports = function (rpcClient) {
         }
     };
 
-    that.generate = function (codec, resolution, callback) {
+    that.generate = function (codec, resolution, quality, callback) {
         codec = codec || supported_codecs[0];
         codec = codec.toLowerCase();
         resolution = ((!resolution || resolution === 'unspecified' || VideoResolutionMap[resolution] === undefined) ? supported_resolutions[0] : resolution);
         resolution = resolution.toLowerCase();
-        log.debug('generate, codec:', codec, 'resolution:', resolution);
+        log.debug('generate, codec:', codec, 'resolution:', resolution, 'qualityLevel:', quality);
+
+        // Map to qualityLevel enum
+        var qualityLevel = supported_qualities[quality.toLowerCase()];
+        if (qualityLevel === undefined) {
+            qualityLevel = 2; // use 'standard' if not found
+            log.warn('Not supported quality:', quality, ', use level:', qualityLevel);
+        }
 
         for (var stream_id in outputs) {
-            if (outputs[stream_id].codec === codec && outputs[stream_id].resolution === resolution) {
+            if (outputs[stream_id].codec === codec &&
+                outputs[stream_id].resolution === resolution &&
+                outputs[stream_id].quality === qualityLevel) {
                 callback('callback', stream_id);
                 return;
             }
@@ -245,7 +267,7 @@ module.exports = function (rpcClient) {
             return;
         }
 
-        addOutput(codec, resolution, function (stream_id) {
+        addOutput(codec, resolution, qualityLevel, function (stream_id) {
             callback('callback', stream_id);
         }, function (error_reason) {
             log.error(error_reason);

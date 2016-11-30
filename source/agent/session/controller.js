@@ -496,20 +496,21 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
         }
     };
 
-    var spawnMixedVideo = function (video_codec, video_resolution, on_ok, on_error) {
+    var spawnMixedVideo = function (video_codec, video_resolution, video_quality, on_ok, on_error) {
         if (video_mixer && terminals[video_mixer]) {
             var vmixer_node = terminals[video_mixer].locality.node;
             makeRPC(
                 rpcClient,
                 vmixer_node,
                 'generate',
-                [video_codec, video_resolution],
+                [video_codec, video_resolution, video_quality],
                 function (stream_id) {
                     if (streams[stream_id] === undefined) {
                         streams[stream_id] = {owner: video_mixer,
                                               audio: undefined,
                                               video: {codec: video_codec,
                                                       resolution: video_resolution,
+                                                      quality: video_quality,
                                                       subscribers: []},
                                               spread: []};
                         terminals[video_mixer].published.push(stream_id);
@@ -529,18 +530,21 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                         on_error);
     };
 
-    var getMixedVideo = function (video_codec, video_resolution, on_ok, on_error) {
+    var getMixedVideo = function (video_codec, video_resolution, video_quality, on_ok, on_error) {
         var candidates = Object.keys(streams).filter(
-            function (stream_id) { return streams[stream_id].owner === video_mixer &&
-                                          streams[stream_id].video &&
-                                          streams[stream_id].video.codec === video_codec &&
-                                          (streams[stream_id].video.resolution === video_resolution);
+            function (stream_id) {
+                return streams[stream_id].owner === video_mixer &&
+                       streams[stream_id].video &&
+                       streams[stream_id].video.codec === video_codec &&
+                       streams[stream_id].video.resolution === video_resolution &&
+                       streams[stream_id].video.quality === video_quality;
             });
         if (candidates.length > 0) {
             on_ok(candidates[0]);
         } else {
             spawnMixedVideo(video_codec,
                             video_resolution,
+                            video_quality,
                             on_ok,
                             on_error);
         }
@@ -636,14 +640,14 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
         }, on_error);
     };
 
-    var spawnTranscodedVideo = function (vxcoder, video_codec, video_resolution, on_ok, on_error) {
+    var spawnTranscodedVideo = function (vxcoder, video_codec, video_resolution, video_quality, on_ok, on_error) {
         var vxcoder_node = terminals[vxcoder].locality.node;
-        log.debug('spawnTranscodedVideo, video_codec:', video_codec, 'video_resolution:', video_resolution);
+        log.debug('spawnTranscodedVideo, video_codec:', video_codec, 'video_resolution:', video_resolution, 'video_quality:', video_quality);
         makeRPC(
             rpcClient,
             vxcoder_node,
             'generate',
-            [video_codec, video_resolution],
+            [video_codec, video_resolution, video_quality],
             function (stream_id) {
                 log.debug('spawnTranscodedVideo ok, stream_id:', stream_id);
                 if (streams[stream_id] === undefined) {
@@ -652,6 +656,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                                           audio: undefined,
                                           video: {codec: video_codec,
                                                   resolution: video_resolution,
+                                                  quality: video_quality,
                                                   subscribers: []},
                                           spread: []};
                     terminals[vxcoder].published.push(stream_id);
@@ -660,10 +665,14 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
             }, on_error);
     };
 
-    var findExistingTranscodedVideo = function (vxcoder, video_codec, video_resolution, on_ok, on_error) {
+    var findExistingTranscodedVideo = function (vxcoder, video_codec, video_resolution, video_quality, on_ok, on_error) {
         var published = terminals[vxcoder].published;
         for (var j in published) {
-            if (streams[published[j]] && streams[published[j]].video && streams[published[j]].video.codec === video_codec && streams[published[j]].video.resolution === video_resolution) {
+            if (streams[published[j]] &&
+                streams[published[j]].video &&
+                streams[published[j]].video.codec === video_codec &&
+                streams[published[j]].video.resolution === video_resolution &&
+                streams[published[j]].video.quality === video_quality) {
                 on_ok(published[j]);
                 return;
             }
@@ -719,10 +728,10 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
         });
     };
 
-    var getTranscodedVideo = function (video_codec, video_resolution, stream_id, on_ok, on_error) {
+    var getTranscodedVideo = function (video_codec, video_resolution, video_quality, stream_id, on_ok, on_error) {
         getVideoTranscoder(stream_id, function (vxcoder) {
-            findExistingTranscodedVideo(vxcoder, video_codec, video_resolution, on_ok, function () {
-                spawnTranscodedVideo(vxcoder, video_codec, video_resolution, on_ok, on_error);
+            findExistingTranscodedVideo(vxcoder, video_codec, video_resolution, video_quality, on_ok, function () {
+                spawnTranscodedVideo(vxcoder, video_codec, video_resolution, video_quality, on_ok, on_error);
             });
         }, on_error);
     };
@@ -855,19 +864,21 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
         }
     };
 
-    var getVideoStream = function (stream_id, video_codec, video_resolution, on_ok, on_error) {
-        log.debug('getVideoStream, stream:', stream_id, 'video_codec:', video_codec, 'video_resolution:', video_resolution);
+    var getVideoStream = function (stream_id, video_codec, video_resolution, video_quality, on_ok, on_error) {
+        log.debug('getVideoStream, stream:', stream_id, 'video_codec:', video_codec, 'video_resolution:', video_resolution, 'video_quality', video_quality);
         if (stream_id === mixed_stream_id) {
-            getMixedVideo(video_codec, video_resolution, function (streamID) {
+            getMixedVideo(video_codec, video_resolution, video_quality, function (streamID) {
                 log.debug('Got mixed video:', streamID);
                 on_ok(streamID);
             }, on_error);
         } else if (streams[stream_id]) {
             if (streams[stream_id].video) {
-                if (streams[stream_id].video.codec === video_codec && (video_resolution === 'unspecified' || streams[stream_id].video.resolution === video_resolution)) {
+                if (streams[stream_id].video.codec === video_codec &&
+                    (video_resolution === 'unspecified' || streams[stream_id].video.resolution === video_resolution) &&
+                    (video_quality === 'unspecified' || streams[stream_id].video.quality === video_quality)) {
                     on_ok(stream_id);
                 } else {
-                    getTranscodedVideo(video_codec, video_resolution, stream_id, function (streamID) {
+                    getTranscodedVideo(video_codec, video_resolution, video_quality, stream_id, function (streamID) {
                         on_ok(streamID);
                     }, on_error);
                 }
@@ -1075,6 +1086,14 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                               || (subInfo.video && 'unspecified')
                               || undefined;
 
+            var video_quality = 'unspecified';
+            if (subInfo.video) {
+                video_quality = (subInfo.video.fromStream === mixed_stream_id)?
+                                (subInfo.video.quality || (config.mediaMixing.video && config.mediaMixing.video.quality) || 'unspecified')
+                                : (subInfo.video.quality || 'unspecified');
+            }
+
+
             if (video_resolution === 'unavailable') {
                 log.error('No available video resolution');
                 log.debug('subInfo.video:', subInfo.video, 'targetStream.video:', streams[subInfo.video.fromStream] ? streams[subInfo.video.fromStream].video : 'mixed_stream, supported_resolutions: ' + supported_video_resolutions, 'enable_video_transcoding:', enable_video_transcoding);
@@ -1195,7 +1214,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                         log.debug('Got audio stream:', audio_stream);
                         if (subInfo.video) {
                             log.debug('require video track of stream:', subInfo.video.fromStream);
-                            getVideoStream(subInfo.video.fromStream, video_codec, video_resolution, function (streamID) {
+                            getVideoStream(subInfo.video.fromStream, video_codec, video_resolution, video_quality, function (streamID) {
                                 video_stream = streamID;
                                 log.debug('Got video stream:', video_stream);
                                 spread2LocalNode(audio_stream, video_stream, function () {
@@ -1220,7 +1239,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                     }, finaly_error);
                 } else if (subInfo.video) {
                     log.debug('require video track of stream:', subInfo.video.fromStream);
-                    getVideoStream(subInfo.video.fromStream, video_codec, video_resolution, function (streamID) {
+                    getVideoStream(subInfo.video.fromStream, video_codec, video_resolution, video_quality, function (streamID) {
                         video_stream = streamID;
                         spread2LocalNode(undefined, video_stream, function () {
                             linkup(undefined, video_stream);
@@ -1423,7 +1442,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                 return Promise.all(outputs.map(function (old_st) {
                     log.debug('Resuming video mixer output:', old_st);
                     return new Promise(function (resolve, reject) {
-                        getMixedVideo(old_st.video.codec, old_st.video.resolution, function(stream_id) {
+                        getMixedVideo(old_st.video.codec, old_st.video.resolution, old_st.video.quality, function(stream_id) {
                             log.debug('Got new stream:', stream_id);
                             return Promise.all(old_st.spread.map(function(target_node) {
                                 return new Promise(function (res, rej) {
@@ -1506,7 +1525,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                 return Promise.all(outputs.map(function (old_st) {
                     log.debug('Resuming video xcoder output:', old_st);
                     return new Promise(function (resolve, reject) {
-                        getTranscodedVideo(old_st.video.codec, old_st.video.resolution, input, function(stream_id) {
+                        getTranscodedVideo(old_st.video.codec, old_st.video.resolution, old_st.video.quality, input, function(stream_id) {
                             log.debug('Got new stream:', stream_id);
                             return Promise.all(old_st.spread.map(function(target_node) {
                                 return new Promise(function (res, rej) {

@@ -282,7 +282,7 @@ describe('portal.leave: Participants leave.', function() {
       return portal.subscribe(testParticipantId,
                               subscription_id,
                               'webrtc',
-                              {audio: {fromStream: 'targetStreamId'}, video: {fromStream: 'targetStreamId', resolution: 'vga'}},
+                              {audio: {fromStream: 'targetStreamId'}, video: {fromStream: 'targetStreamId', resolution: 'vga', quality: 'standard'}},
                               spyConnectionObserver)
         .then(function(connectionLocality) {
           on_connection_status = mockrpcReq.subscribe.getCall(0).args[4];
@@ -1243,7 +1243,7 @@ describe('portal.subscribe/portal.unsubscribe/portal.mediaOnOff: Participants su
     return expect(portal.subscribe(testParticipantId,
                                   'subscriptionId',
                                   'webrtc',
-                                  {streamId: 'targetStreamId', audio: true, video: {resolution: 'vga'}},
+                                  {streamId: 'targetStreamId', audio: true, video: {resolution: 'vga', quality: 'standard'}},
                                    spyConnectionObserver))
         .to.be.rejectedWith('Participant ' + testParticipantId + ' does NOT exist.');
   });
@@ -1268,7 +1268,7 @@ describe('portal.subscribe/portal.unsubscribe/portal.mediaOnOff: Participants su
         return expect(portal.subscribe(testParticipantId,
                                        'subscriptionId',
                                        'webrtc',
-                                       {streamId: 'targetStreamId', audio: true, video: {resolution: 'vga'}},
+                                       {streamId: 'targetStreamId', audio: true, video: {resolution: 'vga', quality: 'standard'}},
                                        spyConnectionObserver))
           .to.be.rejectedWith('unauthorized');
       });
@@ -1294,7 +1294,7 @@ describe('portal.subscribe/portal.unsubscribe/portal.mediaOnOff: Participants su
         return expect(portal.subscribe(testParticipantId,
                                        'subscriptionId',
                                        'webrtc',
-                                       {streamId: 'targetStreamId', audio: true, video: {resolution: 'vga'}},
+                                       {streamId: 'targetStreamId', audio: true, video: {resolution: 'vga', quality: 'standard'}},
                                        spyConnectionObserver))
           .to.be.rejectedWith('unauthorized');
       });
@@ -1320,7 +1320,7 @@ describe('portal.subscribe/portal.unsubscribe/portal.mediaOnOff: Participants su
         return expect(portal.subscribe(testParticipantId,
                                        'subscriptionId',
                                        'webrtc',
-                                       {streamId: 'targetStreamId', audio: true, video: {resolution: 'vga'}},
+                                       {streamId: 'targetStreamId', audio: true, video: {resolution: 'vga', quality: 'standard'}},
                                        spyConnectionObserver))
           .to.be.rejectedWith('unauthorized');
       });
@@ -1424,7 +1424,7 @@ describe('portal.subscribe/portal.unsubscribe/portal.mediaOnOff: Participants su
       return portal.subscribe(testParticipantId,
                              'subscriptionId',
                              'webrtc',
-                             {audio: {fromStream: 'targetStreamId'}, video: {fromStream: 'targetStreamId', resolution: 'vga'}},
+                             {audio: {fromStream: 'targetStreamId'}, video: {fromStream: 'targetStreamId', resolution: 'vga', quality: 'standard'}},
                              spyConnectionObserver)
         .then(function(subscriptionId) {
           subscription_id = subscriptionId;
@@ -1436,7 +1436,7 @@ describe('portal.subscribe/portal.unsubscribe/portal.mediaOnOff: Participants su
           return expect(portal.subscribe(testParticipantId,
                                          'subscriptionId',
                                          'webrtc',
-                                         {audio: {fromStream: 'targetStreamId'}, video: {fromStream: 'targetStreamId', resolution: 'vga'}},
+                                         {audio: {fromStream: 'targetStreamId'}, video: {fromStream: 'targetStreamId', resolution: 'vga', quality: 'standard'}},
                                          spyConnectionObserver1)).to.be.rejectedWith('Not allowed to subscribe an already-subscribed stream');
         });
     });
@@ -1458,7 +1458,7 @@ describe('portal.subscribe/portal.unsubscribe/portal.mediaOnOff: Participants su
       return portal.subscribe(testParticipantId,
                               subscription_id,
                              'webrtc',
-                             {audio: {fromStream: 'targetStreamId'}, video: {fromStream: 'targetStreamId', resolution: 'vga'}},
+                             {audio: {fromStream: 'targetStreamId'}, video: {fromStream: 'targetStreamId', resolution: 'vga', quality: 'standard'}},
                              spyConnectionObserver)
         .then(function(connectionLocality) {
           expect(connectionLocality).to.deep.equal({agent: 'rpcIdOfAccessAgent', node: 'rpcIdOfAccessNode'});
@@ -1467,7 +1467,7 @@ describe('portal.subscribe/portal.unsubscribe/portal.mediaOnOff: Participants su
           expect(mockrpcReq.subscribe.getCall(0).args[0]).to.deep.equal('rpcIdOfAccessNode');
           expect(mockrpcReq.subscribe.getCall(0).args[1]).to.equal(subscription_id);
           expect(mockrpcReq.subscribe.getCall(0).args[2]).to.equal('webrtc');
-          expect(mockrpcReq.subscribe.getCall(0).args[3]).to.deep.equal({controller: testSelfRpcId, audio: true, video: {resolution: 'vga'}});
+          expect(mockrpcReq.subscribe.getCall(0).args[3]).to.deep.equal({controller: testSelfRpcId, audio: true, video: {resolution: 'vga', quality: 'standard'}});
           on_connection_status = mockrpcReq.subscribe.getCall(0).args[4];
           expect(on_connection_status).to.be.a('function');
           return on_connection_status({type: 'initializing'});
@@ -1499,7 +1499,7 @@ describe('portal.subscribe/portal.unsubscribe/portal.mediaOnOff: Participants su
         })
         .then(function(result) {
           expect(result).to.equal('ok');
-          expect(mockrpcReq.sub2Session.getCall(0).args).to.deep.equal(['rpcIdOfController', testParticipantId, subscription_id, {agent: 'rpcIdOfAccessAgent', node: 'rpcIdOfAccessNode'}, {audio: {fromStream: 'targetStreamId', codecs: ['pcmu']}, video: {fromStream: 'targetStreamId', codecs: ['vp8'/*FIXME: delete the non-top codecs as a workround approach because firefox(20160726) does not support the second prior codec*/], resolution: 'vga'}, type: 'webrtc'}]);
+          expect(mockrpcReq.sub2Session.getCall(0).args).to.deep.equal(['rpcIdOfController', testParticipantId, subscription_id, {agent: 'rpcIdOfAccessAgent', node: 'rpcIdOfAccessNode'}, {audio: {fromStream: 'targetStreamId', codecs: ['pcmu']}, video: {fromStream: 'targetStreamId', codecs: ['vp8'/*FIXME: delete the non-top codecs as a workround approach because firefox(20160726) does not support the second prior codec*/], resolution: 'vga', quality: 'standard'}, type: 'webrtc'}]);
           expect(spyConnectionObserver.getCall(3).args).to.deep.equal([{type: 'ready', audio_codecs: ['pcmu'], video_codecs: ['vp8', 'h264']}]);
         });
     });
@@ -1746,7 +1746,7 @@ describe('portal.subscribe/portal.unsubscribe/portal.mediaOnOff: Participants su
       return expect(portal.subscribe(testParticipantId,
                                      'subscriptionId',
                                      'webrtc',
-                                     {audio: {fromStream: 'targetStreamId'}, video: {fromStream: 'targetStreamId', resolution: 'vga'}},
+                                     {audio: {fromStream: 'targetStreamId'}, video: {fromStream: 'targetStreamId', resolution: 'vga', quality: 'standard'}},
                                      spyConnectionObserver))
         .to.be.rejectedWith('getAccessNode timeout or error.');
     });
@@ -1763,7 +1763,7 @@ describe('portal.subscribe/portal.unsubscribe/portal.mediaOnOff: Participants su
       return expect(portal.subscribe(testParticipantId,
                                      'subscriptionId',
                                      'webrtc',
-                                     {audio: {fromStream: 'targetStreamId'}, video: {fromStream: 'targetStreamId', resolution: 'vga'}},
+                                     {audio: {fromStream: 'targetStreamId'}, video: {fromStream: 'targetStreamId', resolution: 'vga', quality: 'standard'}},
                                      spyConnectionObserver))
         .to.be.rejectedWith('connect timeout or error.');
     });
@@ -1788,7 +1788,7 @@ describe('portal.subscribe/portal.unsubscribe/portal.mediaOnOff: Participants su
       return portal.subscribe(testParticipantId,
                               subscription_id,
                               'webrtc',
-                              {audio: {fromStream: 'targetStreamId'}, video: {fromStream: 'targetStreamId', resolution: 'vga'}},
+                              {audio: {fromStream: 'targetStreamId'}, video: {fromStream: 'targetStreamId', resolution: 'vga', quality: 'standard'}},
                               spyConnectionObserver)
         .then(function(connectionLocality) {
           return portal.onConnectionSignalling(testParticipantId, 'targetStreamId', {type: 'candidate', sdp: 'candidateString'});
@@ -1820,7 +1820,7 @@ describe('portal.subscribe/portal.unsubscribe/portal.mediaOnOff: Participants su
       return portal.subscribe(testParticipantId,
                               subscription_id,
                               'webrtc',
-                              {audio: {fromStream: 'targetStreamId'}, video: {fromStream: 'targetStreamId', resolution: 'vga'}},
+                              {audio: {fromStream: 'targetStreamId'}, video: {fromStream: 'targetStreamId', resolution: 'vga', quality: 'standard'}},
                               spyConnectionObserver)
         .then(function(connectionLocality) {
           on_connection_status = mockrpcReq.subscribe.getCall(0).args[4];
@@ -1856,7 +1856,7 @@ describe('portal.subscribe/portal.unsubscribe/portal.mediaOnOff: Participants su
       return portal.subscribe(testParticipantId,
                               subscription_id,
                               'webrtc',
-                              {audio: {fromStream: 'targetStreamId'}, video: {fromStream: 'targetStreamId', resolution: 'vga'}},
+                              {audio: {fromStream: 'targetStreamId'}, video: {fromStream: 'targetStreamId', resolution: 'vga', quality: 'standard'}},
                               spyConnectionObserver)
         .then(function(connectionLocality) {
           on_connection_status = mockrpcReq.subscribe.getCall(0).args[4];
@@ -1896,7 +1896,7 @@ describe('portal.subscribe/portal.unsubscribe/portal.mediaOnOff: Participants su
       return portal.subscribe(testParticipantId,
                               subscription_id,
                               'webrtc',
-                              {audio: {fromStream: 'targetStreamId'}, video: {fromStream: 'targetStreamId', resolution: 'vga'}},
+                              {audio: {fromStream: 'targetStreamId'}, video: {fromStream: 'targetStreamId', resolution: 'vga', quality: 'standard'}},
                               spyConnectionObserver)
         .then(function(connectionLocality) {
           on_connection_status = mockrpcReq.subscribe.getCall(0).args[4];
@@ -1937,7 +1937,7 @@ describe('portal.subscribe/portal.unsubscribe/portal.mediaOnOff: Participants su
       return portal.subscribe(testParticipantId,
                               subscription_id,
                               'webrtc',
-                              {audio: {fromStream: 'targetStreamId'}, video: {fromStream: 'targetStreamId', resolution: 'vga'}},
+                              {audio: {fromStream: 'targetStreamId'}, video: {fromStream: 'targetStreamId', resolution: 'vga', quality: 'standard'}},
                               spyConnectionObserver)
         .then(function(connectionLocality) {
           on_connection_status = mockrpcReq.subscribe.getCall(0).args[4];
@@ -1971,7 +1971,7 @@ describe('portal.subscribe/portal.unsubscribe/portal.mediaOnOff: Participants su
       return portal.subscribe(testParticipantId,
                               subscription_id,
                               'webrtc',
-                              {audio: {fromStream: 'targetStreamId'}, video: {fromStream: 'targetStreamId', resolution: 'vga'}},
+                              {audio: {fromStream: 'targetStreamId'}, video: {fromStream: 'targetStreamId', resolution: 'vga', quality: 'standard'}},
                               spyConnectionObserver)
         .then(function(connectionLocality) {
           on_connection_status = mockrpcReq.subscribe.getCall(0).args[4];
@@ -2018,7 +2018,7 @@ describe('portal.subscribe/portal.unsubscribe/portal.mediaOnOff: Participants su
       return portal.subscribe(testParticipantId,
                               subscription_id,
                               'webrtc',
-                              {audio: {fromStream: 'targetStreamId'}, video: {fromStream: 'targetStreamId', resolution: 'vga'}},
+                              {audio: {fromStream: 'targetStreamId'}, video: {fromStream: 'targetStreamId', resolution: 'vga', quality: 'standard'}},
                               spyConnectionObserver)
         .then(function(connectionLocality) {
           on_connection_status = mockrpcReq.subscribe.getCall(0).args[4];

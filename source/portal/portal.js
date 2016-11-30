@@ -94,10 +94,11 @@ var Portal = function(spec, rpcReq) {
     }
 
     if (!!description.video) {
-      if (typeof description.video === 'object' && (description.video.codecs || description.video.resolution)) {
+      if (typeof description.video === 'object' && (description.video.codecs || description.video.resolution || description.video.quality)) {
         options.video = {};
         description.video.codecs && (options.video.codecs = description.video.codecs);
         description.video.resolution && (options.video.resolution = description.video.resolution);
+        (typeof description.video.quality === 'string') && (options.video.quality = description.video.quality.toLowerCase());
       } else {
         options.video = true;
       }

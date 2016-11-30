@@ -398,7 +398,7 @@ function tableHandlerRoom(rooms) {
     $('#myModal3 .modal-title').text('Media Setting for Room ' + roomId);
     var videoSetting = (room.mediaMixing || {}).video || {
       resolution: 'vga',
-      bitrate: 0,
+      quality: 'standard',
       bkColor: 'black',
       avCoordinated: false,
       multistreaming: 0,
@@ -417,10 +417,10 @@ function tableHandlerRoom(rooms) {
           <td colspan="2">resolution</td>\
           <td id="resolution" class="value-num-edit" data-value={{resolution}}></td>\
         </tr>\
-        <!--<tr>\
-          <td colspan="2">bitrate(Kbit)</td>\
-          <td id="bitrate" class="value-num-edit" data-value={{bitrate}}></td>\
-        </tr>-->\
+        <tr>\
+          <td colspan="2">quality</td>\
+          <td id="quality" class="value-num-edit" data-value={{quality}}></td>\
+        </tr>\
         <tr>\
           <td colspan="2">bkColor</td>\
           <td id="bkColor" class="value-num-edit" data-value={{bkColor}}><input id="color" style="border: 0px; outline: 0px;"></td>\
@@ -504,7 +504,18 @@ function tableHandlerRoom(rooms) {
         };
       })
     });
-    //$('#myModal3 tbody td#bitrate').editable(numberHandle);
+
+    $('#myModal3 tbody td#quality').editable({
+      mode: 'inline',
+      type: 'select',
+      source: metadata.mediaMixing.video.quality.map(function(v) {
+        return {
+          value: v,
+          text: v
+        };
+      })
+    });
+
     //$('#myModal3 tbody td#maxInput').editable(numberHandle);
     $('#myModal3 tbody td#maxInput').editable({
       mode: 'inline',
@@ -551,7 +562,7 @@ function tableHandlerRoom(rooms) {
 
   var disabledMixing = function() {
     $('#myModal3 tbody td#resolution').editable(disabledHandle);
-    // $('#myModal3 tbody td#bitrate').editable(disabledHandle);
+    $('#myModal3 tbody td#quality').editable(disabledHandle);
     $('#myModal3 tbody td#maxInput').editable(disabledHandle);
     $('#myModal3 tbody td#bkColor').editable(disabledHandle);
     $('#myModal3 tbody td#avCoordinated').editable(disabledHandle);
