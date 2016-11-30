@@ -145,10 +145,12 @@ void VideoMixer::addOutput(const v8::FunctionCallbackInfo<v8::Value>& args) {
   std::string codec = std::string(*param1);
   String::Utf8Value param2(args[2]->ToString());
   std::string resolution = std::string(*param2);
-  FrameDestination* param3 = ObjectWrap::Unwrap<FrameDestination>(args[3]->ToObject());
-  woogeen_base::FrameDestination* dest = param3->dest;
+  unsigned int param3 = args[3]->Uint32Value();
+  woogeen_base::QualityLevel quality = static_cast<woogeen_base::QualityLevel>(param3);
+  FrameDestination* param4 = ObjectWrap::Unwrap<FrameDestination>(args[4]->ToObject());
+  woogeen_base::FrameDestination* dest = param4->dest;
 
-  bool r = me->addOutput(outStreamID, codec, resolution, woogeen_base::STANDARD, dest);
+  bool r = me->addOutput(outStreamID, codec, resolution, quality, dest);
 
   args.GetReturnValue().Set(Boolean::New(isolate, r));
 }
