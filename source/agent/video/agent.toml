@@ -46,4 +46,5 @@ hardwareAccelerated = false
 openh264Enabled = false
 
 [avatar]
-location = "avatar.yuv"
+#widthxheight in the location indicates the image size
+location = "avatar.180x180.yuv"

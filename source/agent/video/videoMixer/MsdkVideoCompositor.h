@@ -59,6 +59,8 @@ public:
 
     bool activateInput(int input);
     void deActivateInput(int input);
+    bool setAvatar(int input, const std::string& avatar);
+    bool unsetAvatar(int input);
     void pushInput(int input, const woogeen_base::Frame& frame);
     void updateRootSize(woogeen_base::VideoSize& rootSize);
     void updateBackgroundColor(woogeen_base::YUVColor& bgColor);

@@ -250,6 +250,20 @@ void YamiVideoCompositor::deActivateInput(int input)
     m_inputs[input]->deActivate();
 }
 
+bool YamiVideoCompositor::setAvatar(int input, const std::string& avatar)
+{
+    ELOG_DEBUG("setAvatar(%d) = %s", input, avatar.c_str());
+
+    return true;
+}
+
+bool YamiVideoCompositor::unsetAvatar(int input)
+{
+    ELOG_DEBUG("unsetAvatar(%d)", input);
+
+    return true;
+}
+
 void YamiVideoCompositor::pushInput(int input, const woogeen_base::Frame& frame)
 {
     ELOG_DEBUG("push input %d", input);

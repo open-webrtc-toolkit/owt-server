@@ -56,6 +56,30 @@ private:
     unsigned int m_size;    // total pool capacity
 };
 
+class AvatarManager {
+    DECLARE_LOGGER();
+public:
+    AvatarManager(uint8_t size);
+    ~AvatarManager();
+
+    bool setAvatar(uint8_t index, const std::string &url);
+    bool unsetAvatar(uint8_t index);
+
+    boost::shared_ptr<webrtc::I420VideoFrame> getAvatarFrame(uint8_t index);
+
+protected:
+    bool getImageSize(const std::string &url, uint32_t *pWidth, uint32_t *pHeight);
+    boost::shared_ptr<webrtc::I420VideoFrame> loadImage(const std::string &url);
+
+private:
+    uint8_t m_size;
+
+    std::map<uint8_t, std::string> m_inputs;
+    std::map<std::string, boost::shared_ptr<webrtc::I420VideoFrame>> m_frames;
+
+    boost::shared_mutex m_mutex;
+};
+
 /**
  * composite a sequence of frames into one frame based on current layout config,
  * there is a question of how many streams to be composited if there are 16 participants
@@ -72,6 +96,8 @@ public:
 
     bool activateInput(int input);
     void deActivateInput(int input);
+    bool setAvatar(int input, const std::string& avatar);
+    bool unsetAvatar(int input);
     void pushInput(int input, const woogeen_base::Frame&);
 
     void updateRootSize(woogeen_base::VideoSize& rootSize);
@@ -98,6 +124,8 @@ private:
     LayoutSolution m_newLayout;
     LayoutSolutionState m_solutionState;
     bool m_crop;
+
+    boost::scoped_ptr<AvatarManager> m_avatarManager;
     /*
      * Each incoming channel will store the decoded frame in this array, and the composition
      * thread will scan this array and composite the frames into one frame.
