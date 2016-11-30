@@ -665,6 +665,20 @@ void MsdkVideoCompositor::deActivateInput(int input)
     m_inputs[input]->deActivate();
 }
 
+bool MsdkVideoCompositor::setAvatar(int input, const std::string& avatar)
+{
+    ELOG_DEBUG("setAvatar(%d) = %s", input, avatar.c_str());
+
+    return true;
+}
+
+bool MsdkVideoCompositor::unsetAvatar(int input)
+{
+    ELOG_DEBUG("unsetAvatar(%d)", input);
+
+    return true;
+}
+
 void MsdkVideoCompositor::pushInput(int input, const woogeen_base::Frame& frame)
 {
     ELOG_TRACE("+++pushInput %d", input);

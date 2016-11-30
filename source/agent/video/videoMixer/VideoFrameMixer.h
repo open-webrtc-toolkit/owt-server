@@ -33,6 +33,8 @@ class VideoFrameCompositor : public LayoutConsumer, public woogeen_base::FrameSo
 public:
     virtual bool activateInput(int input) = 0;
     virtual void deActivateInput(int input) = 0;
+    virtual bool setAvatar(int input, const std::string& avatar) = 0;
+    virtual bool unsetAvatar(int input) = 0;
     virtual void pushInput(int input, const woogeen_base::Frame&) = 0;
 };
 

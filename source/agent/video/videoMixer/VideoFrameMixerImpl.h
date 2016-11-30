@@ -51,11 +51,13 @@ namespace mcu {
 class CompositeIn : public woogeen_base::FrameDestination
 {
 public:
-    CompositeIn(int index, boost::shared_ptr<VideoFrameCompositor> compositor) : m_index(index), m_compositor(compositor) {
+    CompositeIn(int index, const std::string& avatar, boost::shared_ptr<VideoFrameCompositor> compositor) : m_index(index), m_compositor(compositor) {
         m_compositor->activateInput(m_index);
+        m_compositor->setAvatar(m_index, avatar);
     }
 
     virtual ~CompositeIn() {
+        m_compositor->unsetAvatar(m_index);
         m_compositor->deActivateInput(m_index);
     }
 
@@ -184,7 +186,7 @@ inline bool VideoFrameMixerImpl::addInput(int input, woogeen_base::FrameFormat f
     }
 
     if (decoder->init(format)) {
-        boost::shared_ptr<CompositeIn> compositorIn(new CompositeIn(input, m_compositor));
+        boost::shared_ptr<CompositeIn> compositorIn(new CompositeIn(input, avatar, m_compositor));
 
         source->addVideoDestination(decoder.get());
         decoder->addVideoDestination(compositorIn.get());

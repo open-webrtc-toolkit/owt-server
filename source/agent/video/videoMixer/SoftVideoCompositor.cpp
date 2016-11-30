@@ -25,6 +25,9 @@
 #include <webrtc/system_wrappers/interface/clock.h>
 #include <webrtc/system_wrappers/interface/tick_util.h>
 
+#include <iostream>
+#include <fstream>
+
 using namespace webrtc;
 using namespace woogeen_base;
 
@@ -64,6 +67,170 @@ void VPMPool::update(unsigned int input, VideoSize& videoSize)
         m_vpms[input]->SetTargetResolution(videoSize.width, videoSize.height, 30);
 }
 
+DEFINE_LOGGER(AvatarManager, "mcu.media.SoftVideoCompositor.AvatarManager");
+
+AvatarManager::AvatarManager(uint8_t size)
+    : m_size(size)
+{
+}
+
+AvatarManager::~AvatarManager()
+{
+}
+
+bool AvatarManager::getImageSize(const std::string &url, uint32_t *pWidth, uint32_t *pHeight)
+{
+    uint32_t width, height;
+    size_t begin, end;
+    char *str_end = NULL;
+
+    begin = url.find('.');
+    if (begin == std::string::npos) {
+        ELOG_WARN("Invalid image size in url(%s)", url.c_str());
+        return false;
+    }
+
+    end = url.find('x', begin);
+    if (end == std::string::npos) {
+        ELOG_WARN("Invalid image size in url(%s)", url.c_str());
+        return false;
+    }
+
+    width = strtol(url.data() + begin + 1, &str_end, 10);
+    if (url.data() + end != str_end) {
+        ELOG_WARN("Invalid image size in url(%s)", url.c_str());
+        return false;
+    }
+
+    begin = end;
+    end = url.find('.', begin);
+    if (end == std::string::npos) {
+        ELOG_WARN("Invalid image size in url(%s)", url.c_str());
+        return false;
+    }
+
+    height = strtol(url.data() + begin + 1, &str_end, 10);
+    if (url.data() + end != str_end) {
+        ELOG_WARN("Invalid image size in url(%s)", url.c_str());
+        return false;
+    }
+
+    *pWidth = width;
+    *pHeight = height;
+
+    ELOG_TRACE("Image size in url(%s), %dx%d", url.c_str(), *pWidth, *pHeight);
+    return true;
+}
+
+boost::shared_ptr<webrtc::I420VideoFrame> AvatarManager::loadImage(const std::string &url)
+{
+    uint32_t width, height;
+
+    if (!getImageSize(url, &width, &height))
+        return NULL;
+
+    std::ifstream in(url, std::ios::in | std::ios::binary);
+    boost::shared_ptr<webrtc::I420VideoFrame> frame;
+
+    in.seekg (0, in.end);
+    uint32_t size = in.tellg();
+    in.seekg (0, in.beg);
+
+    if (size <= 0 || ((width * height * 3 + 1) / 2) != size) {
+        ELOG_WARN("Open avatar image(%s) error, invalid size %d, expected size %d"
+                , url.c_str(), size, (width * height * 3 + 1) / 2);
+        return NULL;
+    }
+
+    char *image = new char [size];;
+    in.read (image, size);
+    in.close();
+
+    frame.reset(new webrtc::I420VideoFrame());
+    frame->CreateFrame(
+            width * height,
+            (uint8_t *)image,
+            width * height / 4,
+            (uint8_t *)image + width * height,
+            width * height / 4,
+            (uint8_t *)image + width * height * 5 / 4,
+            width,
+            height,
+            width,
+            width / 2,
+            width / 2
+            );
+    delete image;
+
+    return frame;
+}
+
+bool AvatarManager::setAvatar(uint8_t index, const std::string &url)
+{
+    boost::unique_lock<boost::shared_mutex> lock(m_mutex);
+    ELOG_DEBUG("setAvatar(%d) = %s", index, url.c_str());
+
+    auto it = m_inputs.find(index);
+    if (it == m_inputs.end()) {
+        m_inputs[index] = url;
+        return true;
+    }
+
+    if (it->second == url) {
+        return true;
+    }
+    std::string old_url = it->second;
+    it->second = url;
+
+    //delete
+    for (auto& it2 : m_inputs) {
+        if (old_url == it2.second)
+            return true;
+    }
+    m_frames.erase(old_url);
+    return true;
+}
+
+bool AvatarManager::unsetAvatar(uint8_t index)
+{
+    boost::unique_lock<boost::shared_mutex> lock(m_mutex);
+    ELOG_DEBUG("unsetAvatar(%d)", index);
+
+    auto it = m_inputs.find(index);
+    if (it == m_inputs.end()) {
+        return true;
+    }
+    std::string url = it->second;
+    m_inputs.erase(it);
+
+    //delete
+    for (auto& it2 : m_inputs) {
+        if (url == it2.second)
+            return true;
+    }
+    m_frames.erase(url);
+    return true;
+}
+
+boost::shared_ptr<webrtc::I420VideoFrame> AvatarManager::getAvatarFrame(uint8_t index)
+{
+    boost::unique_lock<boost::shared_mutex> lock(m_mutex);
+
+    auto it = m_inputs.find(index);
+    if (it == m_inputs.end()) {
+        ELOG_ERROR("Not invalid index");
+        return NULL;
+    }
+    auto it2 = m_frames.find(it->second);
+    if (it2 != m_frames.end()) {
+        return it2->second;
+    }
+
+    boost::shared_ptr<webrtc::I420VideoFrame> frame = loadImage(it->second);
+    m_frames[it->second] = frame;
+    return frame;
+}
+
 DEFINE_LOGGER(SoftVideoCompositor, "mcu.media.SoftVideoCompositor");
 
 SoftVideoCompositor::SoftVideoCompositor(uint32_t maxInput, VideoSize rootSize, YUVColor bgColor, bool crop)
@@ -79,6 +246,8 @@ SoftVideoCompositor::SoftVideoCompositor(uint32_t maxInput, VideoSize rootSize, 
     m_compositeFrame.reset(new webrtc::I420VideoFrame());
     m_compositeFrame->CreateEmptyFrame(m_compositeSize.width, m_compositeSize.height, m_compositeSize.width, m_compositeSize.width / 2, m_compositeSize.width / 2);
     m_bufferManager.reset(new woogeen_base::BufferManager(maxInput, m_compositeSize.width, m_compositeSize.height));
+
+    m_avatarManager.reset(new AvatarManager(maxInput));
 
     m_jobTimer.reset(new JobTimer(30, this));
     m_jobTimer->start();
@@ -124,6 +293,16 @@ void SoftVideoCompositor::deActivateInput(int input)
         m_bufferManager->releaseBuffer(busyFrame);
 }
 
+bool SoftVideoCompositor::setAvatar(int input, const std::string& avatar)
+{
+    return m_avatarManager->setAvatar(input, avatar);
+}
+
+bool SoftVideoCompositor::unsetAvatar(int input)
+{
+    return m_avatarManager->unsetAvatar(input);
+}
+
 void SoftVideoCompositor::pushInput(int input, const Frame& frame)
 {
     assert(frame.format == woogeen_base::FRAME_FORMAT_I420);
@@ -163,8 +342,6 @@ void SoftVideoCompositor::generateFrame()
 void SoftVideoCompositor::setBackgroundColor()
 {
     if (m_compositeFrame) {
-        ELOG_TRACE("setBackgroundColor");
-
         // Set the background color
         memset(m_compositeFrame->buffer(webrtc::kYPlane), m_bgColor.y, m_compositeFrame->allocated_size(webrtc::kYPlane));
         memset(m_compositeFrame->buffer(webrtc::kUPlane), m_bgColor.cb, m_compositeFrame->allocated_size(webrtc::kUPlane));
@@ -215,40 +392,49 @@ webrtc::I420VideoFrame* SoftVideoCompositor::customLayout()
         if (offset_height + sub_height > m_compositeSize.height)
             sub_height = m_compositeSize.height - offset_height;
 
-        webrtc::I420VideoFrame* sub_image = m_bufferManager->isActive(index) ? m_bufferManager->getBusyBuffer((uint32_t)index) : NULL;
-        if (!sub_image) {
+        webrtc::I420VideoFrame* sub_image = NULL;
+        boost::shared_ptr<webrtc::I420VideoFrame> avatarFrame;
+
+        if (m_bufferManager->isActive(index)) {
+            sub_image = m_bufferManager->getBusyBuffer((uint32_t)index);
+        } else {
+            avatarFrame = m_avatarManager->getAvatarFrame(index);
+        }
+
+        if (!sub_image && !avatarFrame) {
             for (unsigned int i = 0; i < sub_height; i++) {
                 memset(target->buffer(webrtc::kYPlane) + (i+offset_height) * target->stride(webrtc::kYPlane) + offset_width,
-                    0,
-                    sub_width);
+                        0,
+                        sub_width);
             }
 
             for (unsigned int i = 0; i < sub_height/2; i++) {
                 memset(target->buffer(webrtc::kUPlane) + (i+offset_height/2) * target->stride(webrtc::kUPlane) + offset_width/2,
-                    128,
-                    sub_width/2);
+                        128,
+                        sub_width/2);
                 memset(target->buffer(webrtc::kVPlane) + (i+offset_height/2) * target->stride(webrtc::kVPlane) + offset_width/2,
-                    128,
-                    sub_width/2);
+                        128,
+                        sub_width/2);
             }
         } else {
+            webrtc::I420VideoFrame* image = sub_image != NULL ? sub_image : avatarFrame.get();
             uint32_t cropped_sub_width = sub_width;
             uint32_t cropped_sub_height = sub_height;
             if (!m_crop) {
                 // If we are *not* required to crop the video input to fit in its region,
                 // we need to adjust the region to be filled to match the input's width/height.
-                cropped_sub_width = std::min(sub_width, sub_image->width() * sub_height / sub_image->height());
-                cropped_sub_height = std::min(sub_height, sub_image->height() * sub_width / sub_image->width());
+                cropped_sub_width = std::min(sub_width, image->width() * sub_height / image->height());
+                cropped_sub_height = std::min(sub_height, image->height() * sub_width / image->width());
             }
             offset_width += ((sub_width - cropped_sub_width) / 2) & ~1;
             offset_height += ((sub_height - cropped_sub_height) / 2) & ~1;
             VideoSize sub_size {cropped_sub_width, cropped_sub_height};
             m_vpmPool->update(index, sub_size);
             I420VideoFrame* processedFrame = nullptr;
-            int ret = m_vpmPool->get((unsigned int)index)->PreprocessFrame(*sub_image, &processedFrame);
+            int ret = m_vpmPool->get((unsigned int)index)->PreprocessFrame(*image, &processedFrame);
             if (ret == VPM_OK) {
                 if (!processedFrame)
-                    processedFrame = sub_image;
+                    processedFrame = image;
 
                 for (unsigned int i = 0; i < cropped_sub_height; i++) {
                     memcpy(target->buffer(webrtc::kYPlane) + (i+offset_height) * target->stride(webrtc::kYPlane) + offset_width,
@@ -267,13 +453,12 @@ webrtc::I420VideoFrame* SoftVideoCompositor::customLayout()
             }
             // if return busy frame failed, which means a new busy frame has been posted
             // simply release the busy frame
-            if (m_bufferManager->returnBusyBuffer(sub_image, (uint32_t)index))
+            if (sub_image && m_bufferManager->returnBusyBuffer(sub_image, (uint32_t)index))
                 m_bufferManager->releaseBuffer(sub_image);
         }
     }
 
     return m_compositeFrame.get();
 }
-
 
 }
