@@ -70,7 +70,8 @@ DEFINE_LOGGER(SipCallConnection, "sip.SipCallConnection");
 
 SipCallConnection::SipCallConnection(SipGateway* gateway, const std::string& peerURI):
       m_gateway(gateway),
-      m_peerURI(peerURI)
+      m_peerURI(peerURI),
+      sequenceNumberFIR_(0)
 {
     const CallInfo *info = gateway->getCallInfoByPeerURI(peerURI);
     m_sipCall = info->sipCall;
@@ -111,6 +112,14 @@ int SipCallConnection::deliverVideoData(char* buf, int len)
     //boost::shared_lock<boost::shared_mutex> lock(m_mutex);
     if (running) {
       call_connection_tx_video(m_sipCall, (uint8_t*)buf, (size_t)len);
+
+      //Some sip devices, such as Jitsi, doesn't send FIR, which leads to that
+      //it will wait for quite a while until it shows the video.
+      //So here trigger the onSipFIR as soon as deliver video frames to sip devices.
+      //FIXME: Remove this workaround when jitsi fixes the no fir issue.
+      if(sequenceNumberFIR_ == 0){
+        onSipFIR();
+      }
     }
     return 0;
 }
@@ -172,12 +181,41 @@ void SipCallConnection::onSipVideoData(char* data, int len)
 
 void SipCallConnection::onSipFIR()
 {
+    ELOG_DEBUG("SipCallConnection::onSipFIR");
     if (running) {
         //as the MediaSink, handle sip client fir request, deliver to FramePacketizer
-        {
-          //boost::shared_lock<boost::shared_mutex> lock(m_mutex);
-          fbSink_->deliverFeedback(NULL, 0);
-        }
+        ++sequenceNumberFIR_;
+        int pos = 0;
+        uint8_t rtcpPacket[50];
+        // add full intra request indicator
+        uint8_t FMT = 4;
+        rtcpPacket[pos++] = (uint8_t) 0x80 + FMT;
+        rtcpPacket[pos++] = (uint8_t) 206;
+
+        //Length of 4
+        rtcpPacket[pos++] = (uint8_t) 0;
+        rtcpPacket[pos++] = (uint8_t) (4);
+
+        // Add our own SSRC
+        uint32_t* ptr = reinterpret_cast<uint32_t*>(rtcpPacket + pos);
+        ptr[0] = htonl(this->getVideoSourceSSRC());
+        pos += 4;
+
+        rtcpPacket[pos++] = (uint8_t) 0;
+        rtcpPacket[pos++] = (uint8_t) 0;
+        rtcpPacket[pos++] = (uint8_t) 0;
+        rtcpPacket[pos++] = (uint8_t) 0;
+        // Additional Feedback Control Information (FCI)
+        uint32_t* ptr2 = reinterpret_cast<uint32_t*>(rtcpPacket + pos);
+        ptr2[0] = htonl(this->getVideoSinkSSRC());
+        pos += 4;
+
+        rtcpPacket[pos++] = (uint8_t) (sequenceNumberFIR_);
+        rtcpPacket[pos++] = (uint8_t) 0;
+        rtcpPacket[pos++] = (uint8_t) 0;
+        rtcpPacket[pos++] = (uint8_t) 0;
+
+        fbSink_->deliverFeedback((char *)rtcpPacket, pos);
     }
 }
 
@@ -186,6 +224,7 @@ void SipCallConnection::onConnectionClosed()
     ELOG_DEBUG("Enter onConnectionClosed");
     //boost::shared_lock<boost::shared_mutex> lock(m_mutex);
     running = false;
+    sequenceNumberFIR_ = 0;
     ELOG_DEBUG("Leave onConnectionClosed");
 }
 
