@@ -82,6 +82,7 @@ private:
     unsigned int m_audioSampleRate;
     std::string m_videoCodec;
     unsigned int m_videoRtpClock;
+    int sequenceNumberFIR_;
 
 };
 }
