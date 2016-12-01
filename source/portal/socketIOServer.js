@@ -438,6 +438,7 @@ var Client = function(participant_id, socket, portal, reconnection_spec, on_disc
       (options.video || options.video === undefined) && (subscription_description.video = {fromStream: options.streamId, codecs: (options.video && options.video.codecs) || ['h264']});
       ((subscription_description.video) && options.resolution && (typeof options.resolution.width === 'number') && (typeof options.resolution.height === 'number')) &&
       (subscription_description.video.resolution = widthHeight2Resolution(options.resolution.width, options.resolution.height));
+      (subscription_description.video && (typeof options.resolution === 'string')) && (subscription_description.video.resolution = options.resolution);
       subscription_description.url = parsed_url.format();
 
       var subscription_id = subscription_description.url;
@@ -482,6 +483,7 @@ var Client = function(participant_id, socket, portal, reconnection_spec, on_disc
       (options.video || options.video === undefined) && (subscription_description.video = {fromStream: options.streamId, codecs: (options.video && options.video.codecs) || ['h264']});
       ((subscription_description.video) && options.resolution && (typeof options.resolution.width === 'number') && (typeof options.resolution.height === 'number')) &&
       (subscription_description.video.resolution = widthHeight2Resolution(options.resolution.width, options.resolution.height));
+      (subscription_description.video && (typeof options.resolution === 'string')) && (subscription_description.video.resolution = options.resolution);
       subscription_description.url = parsed_url.format();
 
       return portal.unsubscribe(participant_id, options.url)
