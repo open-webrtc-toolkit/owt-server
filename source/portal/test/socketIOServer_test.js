@@ -1140,10 +1140,10 @@ describe('Responding to clients.', function() {
         .then(function(result) {
           expect(result).to.equal('ok');
           simulateStubResponse(mockPortal.subscribe, 0, 4, {type: 'ready', audio_codecs: ['pcm_raw'], video_codecs: ['h264']});
-          var options = {url: 'rtsp://target.host'};
+          var options = {url: 'rtsp://target.host', resolution: 'hd720p'};
           client.emit('addExternalOutput', options, function(status, data) {
             expect(status).to.equal('success');
-            expect(mockPortal.subscribe.getCall(0).args[3]).to.deep.equal({audio: {fromStream: testRoom, codecs: ['aac']}, video: {fromStream: testRoom, codecs: ['h264']}, url: 'rtsp://target.host'});
+            expect(mockPortal.subscribe.getCall(0).args[3]).to.deep.equal({audio: {fromStream: testRoom, codecs: ['aac']}, video: {fromStream: testRoom, codecs: ['h264'], resolution: 'hd720p'}, url: 'rtsp://target.host'});
             done();
           });
         });
