@@ -1,0 +1,27 @@
+                   The Fault-Tolerance Mechanism in MCU v3.3 release
+
+    Unlike the previous releases in which only one cluster-manager instance is allowed to run in deployment, the v3.3 MCU server comprises of a of cluster-manager-group and various cluster-workers with different purposes. Different measures should be adopt to handle cluster-managers's and cluster-workers' unexpected exit.
+
+    To archive a high availability, MCU v3.3 release provides a cluster-manager-group mechanism, in which many cluster-manager instances could be parallelingly running in a one-master-multiple-slaves style on physically independent machines in deployment. One of the instance will run as the master cluster-manager, and rest ones will run as slave cluster-managers. If the master cluster-manager crashes or exits unexpectedly, a new master cluster-manager should be elected from the slave cluster-managers in a few hundred milliseconds. The new master cluster-manager will takeover the workload on the previous master cluster-manager. All ongoing stable conferences should not be affected during the whole master change process. All cluster-workers should not be aware of the transition either.
+    If there is only one instance of cluster-manager running in deployment, it naturally is the master cluster-manager. If it crashes or exits unexpectedly in this case, some other third-party monitoring mechanism should be introduced to be aware of it and restart it to keep the whole cluster proceeding.
+
+    As for the cluster-workers' unexpected failures, they are monitored and handled by other running components. That is, the unexpected exit or termination of portal, all kinds of xxx-agents and the working nodes they spawns should be monitored and properly handled by other running components in manners of either recovering the workload they are taking before the exception, or recycling the resources occupied by them, depending on the purpose of the component.
+
+    All the monitored components and the expected behaviors upon unexpected fault are listed as below:
+    1) portal: Should be monitored by session nodes, access nodes.
+        a) All signalling connections to it should be torn-down;
+        b) All participants accessing throught it should be dropped on session nodes;
+        c) All connections allocated by it should be released on access nodes(such as webrtc nodes, avstream nodes, recording nodes, etc.).
+    2) session-agent or session nodes: Should be monitored by portals, access nodes, audio nodes and video nodes.
+        a) All conferences controlled by it shoul be torn-down;
+        b) All participants being involved in the conferences it carries should be dropped on portals;
+        c) All internal(in and out) connections being involved in the conferences it carries should be released on access nodes, audio nodes and video nodes.
+    3) access-agent(such as webrtc-agent, avstream-agent recording-agent, etc.) and webrtc access nodes: Should be monitored by portals.
+        a) All external connections it carries should be aborted on portals.
+    4) audio-agent and audio nodes: Should be monitored by session nodes.
+        a) All audio mixers and audio transcoders it carries should be rebiult by session nodes allochthonously if their are available audio-agents and audio nodes elsewhere.
+    5) video-agent and video nodes: Should be monitored by session nodes.
+        a) All video mixers and video transcoders it carries should be rebiult by session nodes allochthonously if their are available video-agents and video nodes elsewhere.
+    6) sip-agent and sip nodes: Should be monitored by session nodes.
+        a) All sip participants it carries should be dropped by session nodes.
+
