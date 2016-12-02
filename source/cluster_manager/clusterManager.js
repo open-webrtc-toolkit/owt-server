@@ -37,7 +37,6 @@ var ClusterManager = function (clusterName, selfId, spec) {
             workers[worker].alive_count += 1;
             if (workers[worker].alive_count > check_alive_count) {
                 log.info('Worker', worker, 'is not alive any longer, Deleting it.');
-                monitoringTarget && monitoringTarget.notify('abnormal', {purpose: workers[worker].purpose, id: worker, type: 'worker'});
                 workerQuit(worker);
             }
         }
@@ -57,6 +56,7 @@ var ClusterManager = function (clusterName, selfId, spec) {
     var workerQuit = function (worker) {
         if (workers[worker] && schedulers[workers[worker].purpose]) {
             schedulers[workers[worker].purpose].remove(worker);
+            monitoringTarget && monitoringTarget.notify('quit', {purpose: workers[worker].purpose, id: worker, type: 'worker'});
             delete workers[worker];
             data_synchronizer && data_synchronizer({type: 'worker_quit', payload: {worker: worker}});
         }

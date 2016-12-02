@@ -225,7 +225,7 @@ amqper.connect(config.rabbit, function () {
         amqper.asRpcServer(id, rpcPublic, function(rpcSvr) {
           log.info('portal initializing as rpc server ok');
             amqper.asMonitor(function (data) {
-              if (data.reason === 'abnormal' || data.reason === 'error') {
+              if (data.reason === 'abnormal' || data.reason === 'error' || data.reason === 'quit') {
                 if (portal !== undefined) {
                   if (data.message.purpose === 'session') {
                     return portal.getParticipantsByController(data.message.type, data.message.id)
