@@ -51,7 +51,7 @@ module.exports = function () {
     };
 
     var createAVStreamOut = function (options, callback) {
-        if (options.audio.codecs[0] === 'aac') {
+        if (options.audio && options.audio.codecs[0] === 'aac') {
             options.audio.codecs = ['pcm_raw'];
         }
         var avstream_options = {type: 'avstream',
