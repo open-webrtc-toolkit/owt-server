@@ -132,7 +132,8 @@ var launchErizoJS = function() {
     child.unref();
     child.on('close', function (code) {
         log.info(id, 'exit with', code);
-        if (code !== 0) {
+        //if (code !== 0) {
+        if (processes[id]) {
             monitoringTarget && monitoringTarget.notify('abnormal', {purpose: myPurpose, id: id, type: 'node'});
         }
         cleanupErizoJS(id);

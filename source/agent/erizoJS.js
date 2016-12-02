@@ -102,19 +102,15 @@ rpc.connect(GLOBAL.config.rabbit, function () {
 
         switch (purpose) {
         case 'session':
-            //if (rpcID.endsWith(".0")) {setTimeout(function() {log.error('###########Intensive session node error#########');var a = 2; a / b;}, 45 * 1000);}
             controller = require('./session')(rpcClient, rpcID);
             break;
         case 'audio':
-            //if (rpcID.endsWith(".0")) {setTimeout(function() {log.error('###########Intensive audio node error#########');var a = 2; a / b;}, 45 * 1000);}
             controller = require('./audio')(rpcClient);
             break;
         case 'video':
-            //if (rpcID.endsWith(".0")) {setTimeout(function() {log.error('###########Intensive video node error#########');var a = 2; a / b;}, 30 * 1000);}
             controller = require('./video')(rpcClient);
             break;
         case 'webrtc':
-            //if (rpcID.endsWith(".0")) {setTimeout(function() {log.error('###########Intensive webrtc node error#########');var a = 2; a / b;}, 45 * 1000);}
             controller = require('woogeen/webrtc/index')();
             break;
         case 'avstream':
@@ -143,7 +139,7 @@ rpc.connect(GLOBAL.config.rabbit, function () {
         rpc.asRpcServer(rpcID, controller, function(rpcServer) {
             log.info(rpcID + ' as rpc server ready');
             rpc.asMonitor(function (data) {
-                if (data.reason === 'abnormal' || data.reason === 'error') {
+                if (data.reason === 'abnormal' || data.reason === 'error' || data.reason === 'quit') {
                     if (controller && typeof controller.onFaultDetected === 'function') {
                         controller.onFaultDetected(data.message);
                     }
