@@ -97,14 +97,27 @@ module.exports = function (rpcClient, selfRpcId) {
     }
   };
 
-  var deleteSession = function() {
-    if (session_id) {
-      controller && controller.destroy();
-      controller = undefined;
-      streams = {};
-      session_id = undefined;
+  var deleteSession = function(force) {
+    var terminate = function () {
+      if (session_id) {
+        controller && controller.destroy();
+        controller = undefined;
+        streams = {};
+        session_id = undefined;
+      }
+      process.exit();
     }
-    process.exit();
+
+    if (!force) {
+      setTimeout(function() {
+        if (Object.keys(participants).length === 0) {
+          log.info('Empty session ', session_id, '. Deleting it');
+          terminate();
+        }
+      }, 6 * 1000);
+    } else {
+      terminate();
+    }
   };
 
   var sendMsg = function(from, to, msg, data) {
@@ -199,8 +212,7 @@ module.exports = function (rpcClient, selfRpcId) {
     removeParticipant(participantId);
     callback('callback', 'ok');
     if (Object.keys(participants).length === 0) {
-      log.info('Empty session ', session_id, '. Deleting it');
-      deleteSession();
+      deleteSession(false);
     }
   };
 
@@ -533,7 +545,7 @@ module.exports = function (rpcClient, selfRpcId) {
 
   that.destroy = function(callback) {
     log.info('Destroy session:', session_id);
-    deleteSession();
+    deleteSession(true);
     callback('callback', 'Success');
   };
 
