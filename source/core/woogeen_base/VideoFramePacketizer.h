@@ -49,7 +49,7 @@ class VideoFramePacketizer : public FrameDestination,
     DECLARE_LOGGER();
 
 public:
-    VideoFramePacketizer();
+    VideoFramePacketizer(bool enableRed, bool enableUlpfec);
     ~VideoFramePacketizer();
 
     void bindTransport(erizo::MediaSink* sink);
@@ -77,7 +77,7 @@ public:
     void OnNetworkChanged(const uint32_t target_bitrate, const uint8_t fraction_loss, const int64_t rtt);
 
 private:
-    bool init();
+    bool init(bool enableRed, bool enableUlpfec);
     void close();
     bool setSendCodec(FrameFormat, unsigned int width, unsigned int height);
 

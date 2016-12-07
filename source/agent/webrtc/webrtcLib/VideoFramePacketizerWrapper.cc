@@ -52,8 +52,10 @@ void VideoFramePacketizer::New(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
 
+  bool supportRED = (args[0]->ToBoolean())->BooleanValue();
+  bool supportULPFEC = (args[1]->ToBoolean())->BooleanValue();
   VideoFramePacketizer* obj = new VideoFramePacketizer();
-  obj->me = new woogeen_base::VideoFramePacketizer();
+  obj->me = new woogeen_base::VideoFramePacketizer(supportRED, supportULPFEC);
   obj->dest = obj->me;
 
   obj->Wrap(args.This());

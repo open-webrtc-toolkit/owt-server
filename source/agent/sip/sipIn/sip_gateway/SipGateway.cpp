@@ -114,13 +114,15 @@ void SipGateway::onCallEstablished(const std::string& peerURI, void *call,
                                    const char *audioDir, const char *videoDir)
 {
     const CallInfo *info = getCallInfoByPeerURI(peerURI);
+    //TODO: pass red/ulpfec support from EP
     std::string str = "{\"peerURI\":\"" + peerURI + "\"," +
                        "\"audio\":" + ((audioDir!=NULL) ? ("true,\"audio_codec\":\"" + info->audioCodec + "\"," +
                                                            "\"audio_dir\": \"" + audioDir + "\"")
                                                         : "false") + "," +
                        "\"video\":" + ((videoDir!=NULL) ? ("true, \"video_codec\":\"" + info->videoCodec + "\"," +
                                                            "\"videoResolution\": \"" + info->videoResolution + "\"," +
-                                                           "\"video_dir\": \"" + videoDir + "\"")
+                                                           "\"video_dir\": \"" + videoDir + "\"," + "\"support_red\":false," +
+                                                           "\"support_ulpfec\":false")
                                                         : "false") + "}";
     insertOrUpdateCallInfoByPeerURI(peerURI, call, audioDir!=NULL, videoDir!=NULL);
     notifyAsyncEvent("CallEstablished", str.c_str());
@@ -137,7 +139,8 @@ void SipGateway::onCallUpdated(const std::string& peerURI, const char *audioDir,
                                                         : "false") + "," +
                        "\"video\":" + ((videoDir!=NULL) ? ("true, \"video_codec\":\"" + info->videoCodec + "\"," +
                                                            "\"videoResolution\": \"" + info->videoResolution + "\"," +
-                                                           "\"video_dir\": \"" + videoDir + "\"")
+                                                           "\"video_dir\": \"" + videoDir + "\"," + "\"support_red\":false," +
+                                                           "\"support_ulpfec\":false")
                                                         : "false") + "}";
     insertOrUpdateCallInfoByPeerURI(peerURI, info->sipCall, audioDir!=NULL, videoDir!=NULL);
     notifyAsyncEvent("CallUpdated", str.c_str());

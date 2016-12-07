@@ -16,6 +16,8 @@ exports.SipCallConnection = function (spec) {
         clientID = spec.clientID,
         audio = spec.audio,
         video = spec.video,
+        support_red = spec.red,
+        support_ulpfec = spec.ulpfec,
         audioFrameConstructor,
         audioFramePacketizer,
         videoFrameConstructor,
@@ -35,7 +37,7 @@ exports.SipCallConnection = function (spec) {
             videoFrameConstructor = new VideoFrameConstructor();
             videoFrameConstructor.bindTransport(sip_callConnection);
 
-            videoFramePacketizer = new VideoFramePacketizer();
+            videoFramePacketizer = new VideoFramePacketizer(support_red, support_ulpfec);
             videoFramePacketizer.bindTransport(sip_callConnection);
         }
 
