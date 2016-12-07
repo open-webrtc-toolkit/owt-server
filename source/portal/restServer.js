@@ -273,7 +273,7 @@ var Client = function(clientId, inRoom, queryInterval, portal, on_loss) {
   return that;
 };
 
-var RestServer = function(spec, portal) {
+var RestServer = function(spec, portal, observer) {
   var that = {};
   var express = require('express');
   var bodyParser = require('body-parser');
@@ -288,9 +288,11 @@ var RestServer = function(spec, portal) {
 
     return portal.join(client_id, token)
       .then(function(result) {
+        observer.onJoin(client_id, result.session_id);
         clients[client_id] = new Client(client_id, result.session_id, query_interval, portal, function() {
           portal.leave(client_id);
           delete clients[client_id];
+          observer.onLeave(client_id, result.session_id);
         });
         var joinResult = {id: client_id,
                           streams: result.streams.map(function(st) {
@@ -322,7 +324,9 @@ var RestServer = function(spec, portal) {
   };
 
   var clientLeave = function(req, res) {
-     res.send();
+    var client_id = req.params.client;
+    clients[client_id].drop();
+    res.send();
   };
 
   var publish = function(req, res) {
@@ -456,7 +460,12 @@ var RestServer = function(spec, portal) {
   };
 
   that.drop = function(clientId, fromRoom) {
-    if (clients[clientId] && (fromRoom === undefined || clients[clientId].inRoom === fromRoom)) {
+    if (clientId === 'all') {
+      for(var cid in clients) {
+        clients[cid].drop();
+      }
+      return Promise.resolve('ok');
+    } else if (clients[clientId] && (fromRoom === undefined || clients[clientId].inRoom === fromRoom)) {
       clients[clientId].drop();
       return Promise.resolve('ok');
     } else {

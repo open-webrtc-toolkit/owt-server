@@ -84,18 +84,15 @@ exports.Scheduler = function(spec) {
         return tasks[task] && workers[worker] && worker === tasks[task].worker && workers[worker].tasks.indexOf(task) !== -1;
     };
 
-    that.add = function (worker, state, max_load, on_ok, on_error) {
+    that.add = function (worker, state, max_load) {
+        log.debug('Add worker:', worker, 'state:', state, 'max_load:', max_load);
         if (workers[worker]) {
             log.warn('Double adding worker:', worker);
-            return on_error('Double adding worker.');
         }
-
-        log.info('Add worker:', worker);
         workers[worker] = {state: state,
                            load: 0,
                            max_load: max_load,
                            tasks: []};
-        return on_ok();
     };
 
     that.remove = function (worker) {

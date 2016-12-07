@@ -170,6 +170,14 @@ var dropErizoJS = function(id, callback) {
     }
 };
 
+var dropAll = function() {
+    Object.keys(processes).map(function (k) {
+        dropErizoJS(k, function (unused, status) {
+            log.info('Terminate ErizoJS', k, status);
+        });
+    });
+};
+
 var fillErizos = function() {
     for (var i = idle_erizos.length; i < GLOBAL.config.agent.prerunProcesses; i++) {
         launchErizoJS();
@@ -364,6 +372,8 @@ var joinCluster = function (on_ok) {
 
     var loss = function () {
         log.info(myPurpose, 'agent lost.');
+        dropAll();
+        fillErizos();
     };
 
     var recovery = function () {
@@ -484,10 +494,6 @@ amqper.connect(GLOBAL.config.rabbit, function () {
 });
 
 process.on('exit', function () {
-    Object.keys(processes).map(function (k) {
-        dropErizoJS(k, function (unused, status) {
-            log.info('Terminate ErizoJS', k, status);
-        });
-    });
+    dropAll();
     amqper.disconnect();
 });

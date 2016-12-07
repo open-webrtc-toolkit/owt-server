@@ -74,6 +74,11 @@ var ip_address;
   }
 })();
 
+var dropAll = function() {
+  socketio_server && socketio_server.drop('all');
+  rest_server && rest_server.drop('all');
+};
+
 var getTokenKey = function(id, on_key, on_error) {
   rpcClient && rpcClient.remoteCall('nuve', 'getKey', id, {
     callback: function (key) {
@@ -97,6 +102,7 @@ var joinCluster = function (on_ok) {
 
   var loss = function () {
     log.info('portal lost.');
+    dropAll();
   };
 
   var recovery = function () {
@@ -143,18 +149,52 @@ var refreshTokenKey = function(id, portal, tokenKey) {
   }, 6 * 1000);
 };
 
+var room_users = {};
+var serviceObserver = {
+  onJoin: function(user, room) {
+    if (room_users[room] === undefined) {
+      room_users[room] = [user];
+      worker && worker.addTask(room);
+    } else {
+      room_users[room].push(user);
+    }
+  },
+  onLeave: function(user, room) {
+    if (room_users[room]) {
+      var i = room_users[room].indexOf(user);
+      if (i >= 0) {
+        room_users[room].splice(i, 1);
+      }
+      if (room_users[room].length === 0) {
+        worker && worker.removeTask(room);
+        delete room_users[room];
+      }
+    }
+  }
+};
+
 var startServers = function(id, tokenKey) {
   var rpcChannel = require('./rpcChannel')(rpcClient);
   var rpcReq = require('./rpcRequest')(rpcChannel);
 
   portal = require('./portal')({tokenKey: tokenKey,
-                                    tokenServer: 'nuve',
-                                    clusterName: config.cluster.name,
-                                    selfRpcId: id,
-                                    permissionMap: config.portal.roles},
-                                    rpcReq);
-  socketio_server = require('./socketIOServer')({port: config.portal.port, ssl: config.portal.ssl, keystorePath: config.portal.keystorePath, reconnectionTicketLifetime: config.portal.reconnection_ticket_lifetime, reconnectionTimeout: config.portal.reconnection_timeout}, portal);
-  rest_server = require('./restServer')({port: config.portal.rest_port, ssl: config.portal.ssl, keystorePath: config.portal.keystorePath}, portal);
+                                tokenServer: 'nuve',
+                                clusterName: config.cluster.name,
+                                selfRpcId: id,
+                                permissionMap: config.portal.roles},
+                                rpcReq);
+  socketio_server = require('./socketIOServer')({port: config.portal.port,
+                                                 ssl: config.portal.ssl,
+                                                 keystorePath: config.portal.keystorePath,
+                                                 reconnectionTicketLifetime: config.portal.reconnection_ticket_lifetime,
+                                                 reconnectionTimeout: config.portal.reconnection_timeout},
+                                                 portal,
+                                                 serviceObserver);
+  rest_server = require('./restServer')({port: config.portal.rest_port,
+                                         ssl: config.portal.ssl,
+                                         keystorePath: config.portal.keystorePath},
+                                         portal,
+                                         serviceObserver);
   return socketio_server.start()
     .then(function() {
       log.info('start socket.io server ok.');

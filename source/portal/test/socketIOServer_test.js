@@ -53,7 +53,8 @@ describe('Clients connect to socket.io server.', function() {
 
 describe('Logining and Relogining.', function() {
   var mockPortal = sinon.createStubInstance(portal);
-  var server = socketIOServer(insecureSocketIOServerConfig, mockPortal);
+  var mockServiceObserver = {onJoin: sinon.spy(), onLeave: sinon.spy()};
+  var server = socketIOServer(insecureSocketIOServerConfig, mockPortal, mockServiceObserver);
   var client;
 
   before('Start the server.', function(done) {
@@ -85,6 +86,7 @@ describe('Logining and Relogining.', function() {
 
     it('Joining with valid tokens should succeed.', function(done) {
       mockPortal.join = sinon.stub();
+      mockServiceObserver.onJoin = sinon.spy();
 
       var join_result = {user: 'Jack',
                          role: 'presenter',
@@ -99,6 +101,7 @@ describe('Logining and Relogining.', function() {
         expect(status).to.equal('success');
         // portal.join requires base64 encoded token which is the same as nuve issued. Legacy client sends base64 decoded token.
         expect(mockPortal.join.getCall(0).args).to.deep.equal([client.id, 'someValidToken']);
+        expect(mockServiceObserver.onJoin.getCall(0).args).to.deep.equal([client.id, testRoom]);
         expect(resp).to.deep.equal({id: join_result.session_id, clientId: client.id, streams: transformed_streams, users: join_result.participants});
         done();
       });
@@ -142,6 +145,7 @@ describe('Logining and Relogining.', function() {
 
     it('Joining with valid token and UA info should succeed.', function(done) {
       mockPortal.join = sinon.stub();
+      mockServiceObserver.onJoin = sinon.spy();
 
       var join_result = {user: 'Jack',
                          role: 'presenter',
@@ -155,6 +159,7 @@ describe('Logining and Relogining.', function() {
       client.emit('login', {token: someValidToken, userAgent:clientInfo}, function(status, resp) {
         expect(status).to.equal('success');
         expect(mockPortal.join.getCall(0).args).to.deep.equal([client.id, 'someValidToken']);
+        expect(mockServiceObserver.onJoin.getCall(0).args).to.deep.equal([client.id, testRoom]);
         expect(resp.id).to.equal(join_result.session_id);
         expect(resp.clientId).to.equal(client.id);
         expect(resp.streams).to.deep.equal(transformed_streams);
@@ -455,12 +460,14 @@ describe('Logining and Relogining.', function() {
       mockPortal.leave.resolves('ok');
       mockPortal.join = sinon.stub();
       mockPortal.join.resolves(join_result);
+      mockServiceObserver.onLeave = sinon.spy();
 
       var participant_id;
       client.on('disconnect', function() {
         //NOTE: the detection method here is not acurate.
         setTimeout(function() {
           expect(mockPortal.leave.getCall(0).args).to.deep.equal([participant_id]);
+          expect(mockServiceObserver.onLeave.getCall(0).args).to.deep.equal([participant_id, testRoom]);
           done();
         }, 500);
       });
@@ -475,11 +482,13 @@ describe('Logining and Relogining.', function() {
     it('Disconnecting before joining should not cause participant leaving.', function(done) {
       mockPortal.leave = sinon.stub();
       mockPortal.leave.rejects('not reached');
+      mockServiceObserver.onLeave = sinon.spy();
 
       client.on('disconnect', function() {
         //NOTE: the detection method here is not acurate.
         setTimeout(function() {
           expect(mockPortal.leave.callCount).to.equal(0);
+          expect(mockServiceObserver.onLeave.callCount).to.equal(0);
           done();
         }, 10);
       });
@@ -494,7 +503,8 @@ describe('Logining and Relogining.', function() {
 
 describe('Notifying events to clients.', function() {
   var mockPortal = sinon.createStubInstance(portal);
-  var server = socketIOServer(insecureSocketIOServerConfig, mockPortal);
+  var mockServiceObserver = {onJoin: sinon.spy(), onLeave: sinon.spy()};
+  var server = socketIOServer(insecureSocketIOServerConfig, mockPortal, mockServiceObserver);
   var client;
 
   before('Start the server.', function(done) {
@@ -545,7 +555,8 @@ describe('Drop users from sessions.', function() {
   mockPortal.leave = sinon.stub();
   mockPortal.leave.resolves('ok');
 
-  var server = socketIOServer(insecureSocketIOServerConfig, mockPortal);
+  var mockServiceObserver = {onJoin: sinon.spy(), onLeave: sinon.spy()};
+  var server = socketIOServer(insecureSocketIOServerConfig, mockPortal, mockServiceObserver);
   var client;
 
   before('Start the server.', function(done) {
@@ -570,13 +581,15 @@ describe('Drop users from sessions.', function() {
     client.on('connect', function() {
       mockPortal.join = sinon.stub();
       mockPortal.join.rejects('user not in room');
+      mockServiceObserver.onLeave = sinon.spy();
 
       client.emit('token', 'someValidToken', function(status, resp) {
-        return server.drop('Jack', 'someOtherEoomJackNotIn')
+        return server.drop('Jack', 'someOtherRoomJackNotIn')
           .then(function(runInHere) {
             expect(runInHere).to.be.false;
           }, function(err) {
             expect(err).to.have.string('user not in room');
+            expect(mockServiceObserver.onLeave.callCount).to.equal(0);
             done();
           });
       });
@@ -594,11 +607,13 @@ describe('Drop users from sessions.', function() {
                          participants: [],
                          streams: []};
       mockPortal.join.resolves(join_result);
+      mockServiceObserver.onLeave = sinon.spy();
 
       client.emit('token', 'someValidToken', function(status, resp) {
         return server.drop(client.id, testRoom)
           .then(function(result) {
             expect(result).to.equal('ok');
+            expect(mockServiceObserver.onLeave.getCall(0).args).to.deep.equal([client.id, testRoom]);
             done();
           });
       });
@@ -616,11 +631,37 @@ describe('Drop users from sessions.', function() {
                          participants: [],
                          streams: []};
       mockPortal.join.resolves(join_result);
+      mockServiceObserver.onLeave = sinon.spy();
 
       client.emit('token', 'someValidToken', function(status, resp) {
         return server.drop(client.id)
           .then(function(result) {
             expect(result).to.equal('ok');
+            expect(mockServiceObserver.onLeave.getCall(0).args).to.deep.equal([client.id, testRoom]);
+            done();
+          });
+      });
+    });
+  });
+
+  it('Dropping all users should cause all users leaving.', function(done) {
+    var client = sioClient.connect('http://localhost:3001', {reconnect: false, secure: false, 'force new connection': true});
+
+    client.on('connect', function() {
+      mockPortal.join = sinon.stub();
+      var join_result = {user: 'Jack',
+                         role: 'presenter',
+                         session_id: testRoom,
+                         participants: [],
+                         streams: []};
+      mockPortal.join.resolves(join_result);
+      mockServiceObserver.onLeave = sinon.spy();
+
+      client.emit('token', 'someValidToken', function(status, resp) {
+        return server.drop('all')
+          .then(function(result) {
+            expect(result).to.equal('ok');
+            expect(mockServiceObserver.onLeave.getCall(0).args).to.deep.equal([client.id, testRoom]);
             done();
           });
       });
@@ -630,7 +671,8 @@ describe('Drop users from sessions.', function() {
 
 describe('Responding to clients.', function() {
   var mockPortal = sinon.createStubInstance(portal);
-  var server = socketIOServer(insecureSocketIOServerConfig, mockPortal);
+  var mockServiceObserver = {onJoin: sinon.spy(), onLeave: sinon.spy()};
+  var server = socketIOServer(insecureSocketIOServerConfig, mockPortal, mockServiceObserver);
   var client;
 
   before('Start the server.', function(done) {
