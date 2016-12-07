@@ -32,7 +32,7 @@ static const int TRANSMISSION_MAXBITRATE_MULTIPLIER = 2;
 
 DEFINE_LOGGER(VideoFramePacketizer, "woogeen.VideoFramePacketizer");
 
-VideoFramePacketizer::VideoFramePacketizer()
+VideoFramePacketizer::VideoFramePacketizer(bool enableRed, bool enableUlpfec)
     : m_frameFormat(FRAME_FORMAT_UNKNOWN)
     , m_mediaSpecInfo({0, 0})
 {
@@ -40,7 +40,7 @@ VideoFramePacketizer::VideoFramePacketizer()
     m_videoTransport.reset(new WebRTCTransport<erizo::VIDEO>(this, nullptr));
     m_taskRunner.reset(new woogeen_base::WebRTCTaskRunner());
     m_taskRunner->Start();
-    init();
+    init(enableRed, enableUlpfec);
 }
 
 VideoFramePacketizer::~VideoFramePacketizer()
@@ -214,7 +214,7 @@ int VideoFramePacketizer::sendFirPacket()
     return 0;
 }
 
-bool VideoFramePacketizer::init()
+bool VideoFramePacketizer::init(bool enableRed, bool enableUlpfec)
 {
     m_bitrateController.reset(webrtc::BitrateController::CreateBitrateController(Clock::GetRealTimeClock(), this));
     m_bandwidthObserver.reset(m_bitrateController->CreateRtcpBandwidthObserver());
@@ -231,9 +231,11 @@ bool VideoFramePacketizer::init()
     configuration.bandwidth_callback = m_bandwidthObserver.get();
     m_rtpRtcp.reset(RtpRtcp::CreateRtpRtcp(configuration));
 
-    // Disable FEC.
     // TODO: the parameters should be dynamically adjustable.
-    m_rtpRtcp->SetGenericFECStatus(false, RED_90000_PT, ULP_90000_PT);
+    uint8_t red_pl_type = enableRed? RED_90000_PT : 0;
+    uint8_t ulpfec_pl_type = enableUlpfec? ULP_90000_PT : 0;
+    m_rtpRtcp->SetGenericFECStatus(false, red_pl_type, ulpfec_pl_type);
+
     // Enable NACK.
     // TODO: the parameters should be dynamically adjustable.
     m_rtpRtcp->SetStorePacketsStatus(true, 600);

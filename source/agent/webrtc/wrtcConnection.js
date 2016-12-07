@@ -170,7 +170,9 @@ module.exports = function (spec, on_status) {
         }
 
         if (video) {
-            videoFramePacketizer = new VideoFramePacketizer();
+            // TODO: check remote-side's support on RED/ULPFEC instead of
+            // hardcoding here
+            videoFramePacketizer = new VideoFramePacketizer(true, true);
             videoFramePacketizer.bindTransport(wrtc);
             //video.resolution && wrtc.setSendResolution(video.resolution);
         }

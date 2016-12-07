@@ -361,9 +361,12 @@ module.exports = function (rpcC, spec) {
                  (info.audio ? (' audio codec:' + info.audio_codec + ' audio dir: ' + info.audio_dir) : ''),
                  (info.video ? (' video codec: ' + info.video_codec + ' video dir: ' + info.video_dir) : ''));
         var client_id = info.peerURI;
+        var support_red = info.video? info.support_red : false;
+        var support_ulpfec = info.video? info.support_ulpfec : false;
 
         if (calls[client_id]) {
-            calls[client_id].conn = new SipCallConnection({gateway: gateway, clientID: client_id, audio : info.audio, video : info.video});
+            calls[client_id].conn = new SipCallConnection({gateway: gateway, clientID: client_id, audio : info.audio, video : info.video,
+                red : support_red, ulpfec : support_ulpfec});
             setupCall(client_id, info)
             .catch(function(err) {
                 log.error('Error during call establish:', err);
@@ -377,6 +380,9 @@ module.exports = function (rpcC, spec) {
         log.info('CallUpdated:', info, calls);
 
         var client_id = info.peerURI;
+        var support_red = info.video? info.support_red : false;
+        var support_ulpfec = info.video? info.support_ulpfec : false;
+
         if(calls[client_id] === undefined || calls[client_id].session_controller === undefined || calls[client_id].currentInfo === undefined) {
             log.warn('Call ' + client_id + ' not established, ignore it');
             return;
@@ -396,7 +402,8 @@ module.exports = function (rpcC, spec) {
             }
             var videoEqual = (a.video === b.video);
             if (a.video && b.video) {
-                videoEqual = (a.video_codec === b.video_codec && a.videoResolution === b.videoResolution && a.video_dir === b.video_dir);
+                videoEqual = (a.video_codec === b.video_codec && a.videoResolution === b.videoResolution && a.video_dir === b.video_dir &&
+                    a.support_red === b.support_red && a.support_ulpfec === b.support_ulpfec);
             }
 
             return (audioEqual && videoEqual);
@@ -434,7 +441,8 @@ module.exports = function (rpcC, spec) {
             teardownCall(client_id);
             // recreate a sip call connection
             calls[client_id].conn.close({input: true, output: true});
-            calls[client_id].conn = new SipCallConnection({gateway: gateway, clientID: client_id, audio : info.audio, video : info.video});
+            calls[client_id].conn = new SipCallConnection({gateway: gateway, clientID: client_id, audio : info.audio, video : info.video,
+                red : support_red, ulpfec : support_ulpfec});
             return setupCall(client_id, info);
         })
         .then(function(result) {
