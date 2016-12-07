@@ -75,19 +75,20 @@ var rpcClient = function(bus, conn, on_ready, on_failure) {
     handler.remoteCall = function(to, method, args, callbacks) {
         log.debug('remoteCall, corrID:', corrID, 'to:', to, 'method:', method);
         if (ready) {
-            corrID ++;
-            call_map[corrID] = {};
-            call_map[corrID].fn = callbacks || {callback: function() {}};
-            call_map[corrID].timer = setTimeout(function() {
-                if (call_map[corrID]) {
-                    for (var i in call_map[corrID].fn) {
-                        (typeof call_map[corrID].fn[i] === 'function' ) && call_map[corrID].fn[i]('timeout');
+            var corr_id = corrID++;
+            call_map[corr_id] = {};
+            call_map[corr_id].fn = callbacks || {callback: function() {}};
+            call_map[corr_id].timer = setTimeout(function() {
+                log.debug('remoteCall timeout, corrID:', corr_id);
+                if (call_map[corr_id]) {
+                    for (var i in call_map[corr_id].fn) {
+                        (typeof call_map[corr_id].fn[i] === 'function' ) && call_map[corr_id].fn[i]('timeout');
                     }
-                    delete call_map[corrID];
+                    delete call_map[corr_id];
                 }
             }, TIMEOUT);
 
-            exc.publish(to, {method: method, args: args, corrID: corrID, replyTo: reply_q.name});
+            exc.publish(to, {method: method, args: args, corrID: corr_id, replyTo: reply_q.name});
         } else {
             for (var i in callbacks) {
                 (typeof callbacks[i] === 'function' ) && callbacks[i]('error', 'rpc client is not ready');

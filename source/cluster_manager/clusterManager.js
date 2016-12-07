@@ -42,18 +42,19 @@ var ClusterManager = function (clusterName, selfId, spec) {
         }
     };
 
-    var workerJoin = function (purpose, worker, info, on_ok, on_error) {
+    var workerJoin = function (purpose, worker, info) {
+        log.debug('workerJoin, purpose:', purpose, 'worker:', worker, 'info:', info);
         schedulers[purpose] = schedulers[purpose] || createScheduler(purpose);
-        schedulers[purpose].add(worker, info.state, info.max_load, function () {
-            workers[worker] = {purpose: purpose,
-                               info: info,
-                               alive_count: 0};
-            on_ok();
-            data_synchronizer && data_synchronizer({type: 'worker_join', payload: {purpose: purpose, worker: worker, info: info}});
-        }, on_error);
+        schedulers[purpose].add(worker, info.state, info.max_load);
+        workers[worker] = {purpose: purpose,
+                           info: info,
+                           alive_count: 0};
+        data_synchronizer && data_synchronizer({type: 'worker_join', payload: {purpose: purpose, worker: worker, info: info}});
+        return state;
     };
 
     var workerQuit = function (worker) {
+        log.debug('workerQuit, worker:', worker);
         if (workers[worker] && schedulers[workers[worker].purpose]) {
             schedulers[workers[worker].purpose].remove(worker);
             monitoringTarget && monitoringTarget.notify('quit', {purpose: workers[worker].purpose, id: worker, type: 'worker'});
@@ -198,7 +199,7 @@ var ClusterManager = function (clusterName, selfId, spec) {
         log.debug('onUpdatedData, data:', data);
         switch (data.type) {
         case 'worker_join':
-            workerJoin(data.payload.purpose, data.payload.worker, data.payload.info, function(){}, function(){});
+            workerJoin(data.payload.purpose, data.payload.worker, data.payload.info);
             break;
         case 'worker_quit':
             workerQuit(data.payload.worker);
@@ -244,11 +245,8 @@ var ClusterManager = function (clusterName, selfId, spec) {
 
     that.rpcAPI = {
         join: function (purpose, worker, info, callback) {
-            workerJoin(purpose, worker, info, function () {
-                callback('callback', 'ok');
-            }, function (error_reason) {
-                callback('callback', 'error', error_reason);
-            });
+            var result = workerJoin(purpose, worker, info);
+            callback('callback', result);
         },
         quit: function (worker) {
             workerQuit(worker);

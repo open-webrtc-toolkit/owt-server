@@ -67,9 +67,9 @@ module.exports = function (spec) {
             cluster_name,
             'join',
             [purpose, id, info],
-            function () {
+            function (result) {
                 state = 'registered';
-                on_ok();
+                on_ok(result);
                 keepAlive();
             }, on_failed);
     };
@@ -79,16 +79,18 @@ module.exports = function (spec) {
 
         var tryJoin = function (countDown) {
             log.info('Try joining cluster', cluster_name, ', retry count:', attempt - countDown);
-            join(function () {
+            join(function (result) {
                 on_join_ok(id);
                 log.info('Join cluster', cluster_name, 'OK.');
             }, function (error_reason) {
-                state === 'unregistered' && log.info('Join cluster', cluster_name, 'failed.');
-                if (countDown <= 0) {
-                    log.error('Join cluster', cluster_name, 'failed. reason:', error_reason);
-                    on_join_failed(error_reason);
-                } else {
-                    tryJoin(countDown - 1);
+                if (state === 'unregistered') {
+                    log.info('Join cluster', cluster_name, 'failed.');
+                    if (countDown <= 0) {
+                        log.error('Join cluster', cluster_name, 'failed. reason:', error_reason);
+                        on_join_failed(error_reason);
+                    } else {
+                        tryJoin(countDown - 1);
+                    }
                 }
             });
         };
@@ -105,12 +107,21 @@ module.exports = function (spec) {
             state = 'recovering';
 
             var tryJoining = function () {
-                join(function () {
-                    tasks.length > 0 && pickUpTasks(tasks);
+                log.debug('Try rejoining cluster', cluster_name, '....');
+                join(function (result) {
+                    log.debug('Rejoining result', result);
+                    if (result === 'initializing') {
+                        tasks.length > 0 && pickUpTasks(tasks);
+                    } else {
+                        on_loss();
+                        tasks = [];
+                    }
                     on_success();
                 }, function (reason) {
-                    log.debug('Rejoin cluster', cluster_name, 'failed. reason:', reason);
-                    tryJoining();
+                    if (state === 'recovering') {
+                        log.debug('Rejoin cluster', cluster_name, 'failed. reason:', reason);
+                        tryJoining();
+                    }
                 });
             };
 
@@ -128,7 +139,7 @@ module.exports = function (spec) {
                     loss_count = 0;
                     if (result === 'whoareyou') {
                         if (state !== 'recovering') {
-                            log.info('Unknown by cluster manager', cluster_name, '. Try recovering.');
+                            log.info('Unknown by cluster manager', cluster_name);
                             tryRecovery(function () {
                                 log.info('Rejoin cluster', cluster_name, 'OK.');
                             });
@@ -138,8 +149,7 @@ module.exports = function (spec) {
                     loss_count += 1;
                     if (loss_count > 3) {
                         if (state !== 'recovering') {
-                            on_loss();
-                            log.info('Lost connection with cluster', cluster_name, '. Try recovering.');
+                            log.info('Lost connection with cluster', cluster_name);
                             tryRecovery(function () {
                                 log.info('Rejoin cluster', cluster_name, 'OK.');
                                 on_recovery(id);

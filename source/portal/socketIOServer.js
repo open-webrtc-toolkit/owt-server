@@ -97,7 +97,7 @@ function safeCall () {
   }
 }
 
-var Client = function(participant_id, socket, portal, reconnection_spec, on_disconnect) {
+var Client = function(participant_id, socket, portal, observer, reconnection_spec, on_disconnect) {
   var that = {};
   // If reconnection is enabled, server will keep session for |reconnectionTimeout| seconds after client is disconnected. Client should send "logout" before leaving.
   let reconnection_enabled = false;
@@ -165,6 +165,7 @@ var Client = function(participant_id, socket, portal, reconnection_spec, on_disc
     const joinPortal = function(participant_id, token){
       return portal.join(participant_id, token).then(function(result){
         that.inRoom = result.session_id;
+        observer.onJoin(participant_id, result.session_id);
         return {clientId: participant_id,
                 id: result.session_id,
                 streams: result.streams.map(function(st) {
@@ -754,6 +755,7 @@ var Client = function(participant_id, socket, portal, reconnection_spec, on_disc
             var err_message = (typeof err === 'string' ? err: err.message);
             log.info('portal.leave failed:', err_message);
           });
+          observer.onLeave(participant_id, that.inRoom);
         }
       };
       if(reconnection_enabled){
@@ -792,7 +794,7 @@ var Client = function(participant_id, socket, portal, reconnection_spec, on_disc
 };
 
 
-var SocketIOServer = function(spec, portal) {
+var SocketIOServer = function(spec, portal, observer) {
   var that = {};
   var io;
   var clients = {};
@@ -853,7 +855,7 @@ var SocketIOServer = function(spec, portal) {
         reconnectionKey: reconnection_key,
         reconnectionCallback: reconnection_callback
       };
-      clients[participant_id] = Client(participant_id, socket, portal, reconnection_spec, function() {
+      clients[participant_id] = Client(participant_id, socket, portal, observer, reconnection_spec, function() {
         delete clients[participant_id];
       });
       clients[participant_id].listen();
@@ -885,7 +887,12 @@ var SocketIOServer = function(spec, portal) {
   };
 
   that.drop = function(participantId, fromRoom) {
-    if (clients[participantId] && (fromRoom === undefined || clients[participantId].inRoom === fromRoom)) {
+    if (participantId === 'all') {
+      for(var pid in clients) {
+        clients[pid].drop();
+      }
+      return Promise.resolve('ok');
+    } else if (clients[participantId] && (fromRoom === undefined || clients[participantId].inRoom === fromRoom)) {
       clients[participantId].drop();
       return Promise.resolve('ok');
     } else {

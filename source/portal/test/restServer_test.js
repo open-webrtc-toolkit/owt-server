@@ -12,7 +12,8 @@ process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
 describe('Responding to https requests.', function() {
   var mockPortal = sinon.createStubInstance(portal);
-  var server = restServer({port: 3003, ssl: true, keystorePath: './cert/certificate.pfx'}, mockPortal);
+  var mockServiceObserver = {onJoin: sinon.spy(), onLeave: sinon.spy()};
+  var server = restServer({port: 3003, ssl: true, keystorePath: './cert/certificate.pfx'}, mockPortal, mockServiceObserver);
   var testQueryInterval = 60 * 1000;
   var request = require('request');
 
@@ -37,6 +38,7 @@ describe('Responding to https requests.', function() {
 
   it('Joining with valid parameters should succeed.', function(done) {
     mockPortal.join = sinon.stub();
+    mockServiceObserver.onJoin = sinon.spy();
 
     var join_result = {user: 'Jack',
                        role: 'presenter',
@@ -55,6 +57,7 @@ describe('Responding to https requests.', function() {
       var client_id = mockPortal.join.getCall(0).args[0];
       expect(client_id).to.be.a('string');
       expect(mockPortal.join.getCall(0).args[1]).to.equal('someValidToken');
+      expect(mockServiceObserver.onJoin.getCall(0).args).to.deep.equal([client_id, testRoom]);
       expect(body).to.deep.equal({id: client_id, streams: transformed_streams, clients: join_result.participants});
       done();
     });
@@ -64,7 +67,8 @@ describe('Responding to https requests.', function() {
 
 describe('Responding to http requests.', function() {
   var mockPortal = sinon.createStubInstance(portal);
-  var server = restServer({port: 3002, ssl: false}, mockPortal);
+  var mockServiceObserver = {onJoin: sinon.spy(), onLeave: sinon.spy()};
+  var server = restServer({port: 3002, ssl: false}, mockPortal, mockServiceObserver);
   var testQueryInterval = 60 * 1000;
   var request = require('request');
 
@@ -125,6 +129,7 @@ describe('Responding to http requests.', function() {
   describe('User joins.', function() {
     it('Joining with valid parameters should succeed.', function(done) {
       mockPortal.join = sinon.stub();
+      mockServiceObserver.onJoin = sinon.spy();
 
       var join_result = {user: 'Jack',
                          role: 'presenter',
@@ -144,6 +149,7 @@ describe('Responding to http requests.', function() {
         var client_id = mockPortal.join.getCall(0).args[0];
         expect(client_id).to.be.a('string');
         expect(mockPortal.join.getCall(0).args[1]).to.equal('someValidToken');
+        expect(mockServiceObserver.onJoin.getCall(0).args).to.deep.equal([client_id, testRoom]);
         expect(body).to.deep.equal({id: client_id, streams: transformed_streams, clients: join_result.participants});
         done();
       });
@@ -233,10 +239,15 @@ describe('Responding to http requests.', function() {
         .then(function(clientId) {
           expect(clientId).to.be.a('string');
 
+          mockPortal.leave = sinon.stub();
+          mockPortal.leave.resolves('ok');
+          mockServiceObserver.onLeave = sinon.spy();
           var options = {uri: 'http://localhost:3002/clients/' + clientId,
                          method: 'DELETE',
                          json: true};
           request(options, function(error, response, body) {
+            expect(mockPortal.leave.getCall(0).args).to.deep.equal([clientId]);
+            expect(mockServiceObserver.onLeave.getCall(0).args).to.deep.equal([clientId, testRoom]);
             expect(error).to.equal(null);
             expect(response.statusCode).to.equal(200);
             done();
