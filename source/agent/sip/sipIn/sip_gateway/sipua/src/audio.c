@@ -249,22 +249,21 @@ static int add_audio_codec(struct audio *a, struct sdp_media *m,
 static void settledown_audio_codec(struct sdp_media *m, const char *name,
 		   uint32_t srate, uint8_t ch)
 {
-	struct sdp_format *lfmt;
-	struct le *lle;
-	const struct list *lfmtl = sdp_media_format_lst(m, true);
+    struct sdp_format *lfmt;
+    struct le *lle;
+    const struct list *lfmtl = sdp_media_format_lst(m, true);
 
-	for (lle=lfmtl->tail; lle; ) {
-		lfmt = lle->data;
-		lle = lle->prev;
+    for (lle=lfmtl->tail; lle; ) {
+        lfmt = lle->data;
+        lle = lle->prev;
 
-		if (str_casecmp(lfmt->name, name)
-			|| (lfmt->srate != srate)
-			|| (lfmt->ch != ch)) {
-			lfmt->rparams = mem_deref(lfmt->rparams);
-			list_unlink(&lfmt->le);
-		    mem_deref(lfmt);
-		}
-	}
+        if (str_casecmp(lfmt->name, telev_rtpfmt) &&
+                (str_casecmp(lfmt->name, name) || (lfmt->srate != srate) || (lfmt->ch != ch))) {
+            lfmt->rparams = mem_deref(lfmt->rparams);
+            list_unlink(&lfmt->le);
+            mem_deref(lfmt);
+        }
+    }
 }
 
 #if 0
@@ -404,7 +403,6 @@ static void check_telev(struct audio *a, struct autx *tx)
 
 #endif
 
-
 static int pt_handler(struct audio *a, uint8_t pt_old, uint8_t pt_new)
 {
 	const struct sdp_format *lc;
@@ -423,7 +421,6 @@ static int pt_handler(struct audio *a, uint8_t pt_old, uint8_t pt_new)
 	return audio_decoder_set(a, lc->data, lc->pt, lc->params);
 }
 
-#if 0
 static void handle_telev(struct audio *a, struct mbuf *mb)
 {
 	int event, digit;
@@ -437,9 +434,6 @@ static void handle_telev(struct audio *a, struct mbuf *mb)
 		a->eventh(digit, end, a->arg);
 }
 
-#endif
-
-
 extern void call_connection_rx_audio(void *owner, uint8_t *data, size_t len);
 
 /* Handle incoming stream data from the network */
@@ -452,18 +446,16 @@ static void stream_recv_handler(const struct rtp_header *hdr,
 
 
 	/* Telephone event? */
-        if (hdr->pt != rx->pt) {
-                const struct sdp_format *fmt;
+    if (hdr->pt != rx->pt) {
+        const struct sdp_format *fmt;
 
-                fmt = sdp_media_lformat(stream_sdpmedia(a->strm), hdr->pt);
+        fmt = sdp_media_lformat(stream_sdpmedia(a->strm), hdr->pt);
 
-                if (fmt && !str_casecmp(fmt->name, "telephone-event")) {
-                        handle_telev(a, mb);
-                        return;
-                }
+        if (fmt && !str_casecmp(fmt->name, telev_rtpfmt)) {
+            handle_telev(a, mb);
+            return;
         }
-
-
+    }
 
 	/* Comfort Noise (CN) as of RFC 3389 */
 	if (PT_CN == hdr->pt)
