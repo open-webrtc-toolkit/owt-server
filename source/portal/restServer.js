@@ -141,6 +141,25 @@ var Client = function(clientId, inRoom, queryInterval, portal, on_loss) {
     });
   };
 
+  that.updateStream = function(streamId, message) {
+    if (message.type === 'control') {
+      if (message.control) {
+        if (message.control.attr === 'region-in-mix') {
+          return portal.setRegion(clientId, streamId, message.control.value);
+        } else if (message.control.attr === 'audio-on-off' || message.control.attr === 'video-on-off') {
+          var track = (message.control.attr.startsWith('audio') ? 'audio' : 'video');
+          var on_off = (message.control.value === 'on' ? 'on': 'off');
+          return portal.mediaOnOff(clientId, streamId, track, 'in', on_off);
+        } else if (message.control.attr === 'mix') {
+          return message.control.value === 'yes' ? portal.mix(clientId, streamId) : portal.unmix(clientId, streamId);
+        }
+        return Promise.reject('unknown attr to control');
+      }
+      return Promise.reject('control data empty');
+    }
+    return Promise.reject('unknown updating type');
+  };
+
   that.subscribe = function(type, options, on_ok, on_failure, on_error) {
     var connection_type, subscription_id;
     var subscription_description = {};
@@ -352,6 +371,19 @@ var RestServer = function(spec, portal, observer) {
     });
   };
 
+  var updateStream = function(req, res) {
+    var client_id = req.params.client,
+        stream_id = req.params.streamId;
+    return clients[client_id].updateStream(stream_id, req.body)
+      .then(function() {
+        res.send();
+      }, function(err) {
+        var err_message = (typeof err === 'string' ? err: err.message);
+        log.debug('updating stream failed:', err_message);
+        res.status(404).send({reason: err_message});
+      });
+  };
+
   var subscribe = function(req, res) {
     var client_id = req.params.client;
     clients[client_id].subscribe(req.body.type, req.body.options, function(subscriptionId) {
@@ -403,6 +435,7 @@ var RestServer = function(spec, portal, observer) {
     app.use('/pub/:client*', checkClientExistence);
     app.post('/pub/:client', publish);
     app.delete('/pub/:client/:streamId', unpublish);
+    app.put('/pub/:client/:streamId', updateStream);
 
     app.use('/sub/:client*', checkClientExistence);
     app.post('/sub/:client', subscribe);
