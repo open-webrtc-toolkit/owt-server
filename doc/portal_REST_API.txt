@@ -81,13 +81,13 @@ Rules and conventions:
                          transport: absent | string(Transport),
                          bufferSize: absent | number(BufferSize)}
 
-            StreamType: url | webrtc, the stream type to be published.
+            StreamType: "url" | "webrtc", the stream type to be published.
             Audio: true | false, true by default if absent.
             Video: true | false, true by default if absent.
             Device: "camera" | "screen", "unknown" by default if absent.
             Resolution: {width: Number(Width), height: Number(Height)} | "unknown", "unknown" by default if absent.
             URL: The url of the external stream, can be absent if StreamType does not equal to "url".
-            Transport: tcp | udp, The transport of the external stream, can be absent if StreamType does not equal to "url".
+            Transport: "tcp" | "udp", The transport of the external stream, can be absent if StreamType does not equal to "url".
             BufferSize: The buffer size used in pulling the external stream, can be absent if StreamType does not equal to "url".
 
     response:
@@ -113,11 +113,28 @@ Rules and conventions:
         body: {type: string(Type),
                Type: object(Data)}
 
-            Type: offer | candidate | control, the siganling or controlling type to the peer of the media connection.
+            Type: "offer" | "candidate" | "control", the siganling or controlling type to the peer of the media connection.
             Data: The sdp or candidate item of the signaling, or the controlling command.
 
     response:
         body: empty
+
+    6.1 Set Region
+        Type: "control"
+        Data: {attr: "region-in-mix",
+               value: string(Region)}
+
+            Region: The region id to specify in the mixed stream layout.
+
+    6.2 Audio/Video on/off
+        Type: "control"
+        Data: {attr: "audio-on-off" | "video-on-off",
+               value: "on" | "off"}
+
+    6.3 Enable/Disable mixing
+        Type: "control"
+        Data: {attr: "mix",
+               value: "yes" | "no"}
 
 7. Subscribe
     request:

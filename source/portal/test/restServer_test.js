@@ -389,7 +389,6 @@ describe('Responding to http requests.', function() {
           });
         });
     });
-
   });
 
   describe('Unpublishing streams.', function() {
@@ -458,6 +457,235 @@ describe('Responding to http requests.', function() {
                            method: 'DELETE',
                            json: true};
             request(options, function(error, response, body) {
+              expect(error).to.equal(null);
+              expect(response.statusCode).to.equal(404);
+              expect(body).to.deep.equal({reason: 'whatever reason'});
+              done();
+            });
+          });
+        });
+    });
+  });
+
+  describe('Updating streams.', function() {
+    it('Updating streams before joining should fail.', function(done) {
+      var options = {uri: 'http://localhost:3002/pub/' + 'some-unjoined-client-id' + '/' + 'stream-id',
+                     method: 'PUT',
+                     json: {type: 'control',
+                            control: {attr: 'region-in-mix',
+                                      value: '1'}}};
+      request(options, function(error, response, body) {
+        expect(error).to.equal(null);
+        expect(response.statusCode).to.equal(404);
+        expect(body).to.deep.equal({reason: 'Client absent'});
+        done();
+      });
+    });
+
+    it('Setting region should succeed if portal succeeds.', function(done) {
+      mockPortal.publish = sinon.stub();
+      mockPortal.publish.resolves('streamId');
+      mockPortal.setRegion = sinon.stub();
+      mockPortal.setRegion.resolves('ok');
+
+      return joinFirstly()
+        .then(function(clientId) {
+          expect(clientId).to.be.a('string');
+
+          var options = {uri: 'http://localhost:3002/pub/' + clientId,
+                         method: 'POST',
+                         json: {type: 'url',
+                                options: {url: 'urlOfRtspOrRtmpSource', transport: 'tcp', bufferSize: 2048}}};
+          request(options, function(error, response, body) {
+            var stream_id = body.id;
+            expect(stream_id).to.be.a('string');
+            expect(error).to.equal(null);
+            expect(response.statusCode).to.equal(200);
+
+            var options = {uri: 'http://localhost:3002/pub/' + clientId + '/' + stream_id,
+                           method: 'PUT',
+                           json: {type: 'control',
+                                  control: {attr: 'region-in-mix',
+                                            value: '1'}}};
+            request(options, function(error, response, body) {
+              expect(mockPortal.setRegion.getCall(0).args).to.deep.equal([clientId, stream_id, '1']);
+              expect(error).to.equal(null);
+              expect(response.statusCode).to.equal(200);
+              done();
+            });
+          });
+        });
+    });
+
+    it('Setting region should fail if portal fails.', function(done) {
+      mockPortal.publish = sinon.stub();
+      mockPortal.publish.resolves({agent: 'agentId', node: 'nodeId'});
+      mockPortal.setRegion = sinon.stub();
+      mockPortal.setRegion.rejects('whatever reason');
+
+      return joinFirstly()
+        .then(function(clientId) {
+          expect(clientId).to.be.a('string');
+
+          var options = {uri: 'http://localhost:3002/pub/' + clientId,
+                         method: 'POST',
+                         json: {type: 'url',
+                                options: {url: 'urlOfRtspOrRtmpSource', transport: 'tcp', bufferSize: 2048}}};
+          request(options, function(error, response, body) {
+            var stream_id = body.id;
+            expect(stream_id).to.be.a('string');
+            expect(error).to.equal(null);
+            expect(response.statusCode).to.equal(200);
+
+            var options = {uri: 'http://localhost:3002/pub/' + clientId + '/' + stream_id,
+                           method:  'PUT',
+                           json: {type: 'control',
+                                  control: {attr: 'region-in-mix',
+                                            value: '1'}}};
+            request(options, function(error, response, body) {
+              expect(mockPortal.setRegion.getCall(0).args).to.deep.equal([clientId, stream_id, '1']);
+              expect(error).to.equal(null);
+              expect(response.statusCode).to.equal(404);
+              expect(body).to.deep.equal({reason: 'whatever reason'});
+              done();
+            });
+          });
+        });
+    });
+
+    it('Switching audio on should succeed if portal succeeds.', function(done) {
+      mockPortal.publish = sinon.stub();
+      mockPortal.publish.resolves('streamId');
+      mockPortal.mediaOnOff = sinon.stub();
+      mockPortal.mediaOnOff.resolves('ok');
+
+      return joinFirstly()
+        .then(function(clientId) {
+          expect(clientId).to.be.a('string');
+
+          var options = {uri: 'http://localhost:3002/pub/' + clientId,
+                         method: 'POST',
+                         json: {type: 'url',
+                                options: {url: 'urlOfRtspOrRtmpSource', transport: 'tcp', bufferSize: 2048}}};
+          request(options, function(error, response, body) {
+            var stream_id = body.id;
+            expect(stream_id).to.be.a('string');
+            expect(error).to.equal(null);
+            expect(response.statusCode).to.equal(200);
+
+            var options = {uri: 'http://localhost:3002/pub/' + clientId + '/' + stream_id,
+                           method: 'PUT',
+                           json: {type: 'control',
+                                  control: {attr: 'audio-on-off',
+                                            value: 'on'}}};
+            request(options, function(error, response, body) {
+              expect(mockPortal.mediaOnOff.getCall(0).args).to.deep.equal([clientId, stream_id, 'audio', 'in', 'on']);
+              expect(error).to.equal(null);
+              expect(response.statusCode).to.equal(200);
+              done();
+            });
+          });
+        });
+    });
+
+    it('Switching video off should fail if portal fails.', function(done) {
+      mockPortal.publish = sinon.stub();
+      mockPortal.publish.resolves({agent: 'agentId', node: 'nodeId'});
+      mockPortal.mediaOnOff = sinon.stub();
+      mockPortal.mediaOnOff.rejects('whatever reason');
+
+      return joinFirstly()
+        .then(function(clientId) {
+          expect(clientId).to.be.a('string');
+
+          var options = {uri: 'http://localhost:3002/pub/' + clientId,
+                         method: 'POST',
+                         json: {type: 'url',
+                                options: {url: 'urlOfRtspOrRtmpSource', transport: 'tcp', bufferSize: 2048}}};
+          request(options, function(error, response, body) {
+            var stream_id = body.id;
+            expect(stream_id).to.be.a('string');
+            expect(error).to.equal(null);
+            expect(response.statusCode).to.equal(200);
+
+            var options = {uri: 'http://localhost:3002/pub/' + clientId + '/' + stream_id,
+                           method:  'PUT',
+                           json: {type: 'control',
+                                  control: {attr: 'video-on-off',
+                                            value: 'off'}}};
+            request(options, function(error, response, body) {
+              expect(mockPortal.mediaOnOff.getCall(0).args).to.deep.equal([clientId, stream_id, 'video', 'in', 'off']);
+              expect(error).to.equal(null);
+              expect(response.statusCode).to.equal(404);
+              expect(body).to.deep.equal({reason: 'whatever reason'});
+              done();
+            });
+          });
+        });
+    });
+
+    it('Mixing should succeed if portal succeeds.', function(done) {
+      mockPortal.publish = sinon.stub();
+      mockPortal.publish.resolves('streamId');
+      mockPortal.mix = sinon.stub();
+      mockPortal.mix.resolves('ok');
+
+      return joinFirstly()
+        .then(function(clientId) {
+          expect(clientId).to.be.a('string');
+
+          var options = {uri: 'http://localhost:3002/pub/' + clientId,
+                         method: 'POST',
+                         json: {type: 'url',
+                                options: {url: 'urlOfRtspOrRtmpSource', transport: 'tcp', bufferSize: 2048}}};
+          request(options, function(error, response, body) {
+            var stream_id = body.id;
+            expect(stream_id).to.be.a('string');
+            expect(error).to.equal(null);
+            expect(response.statusCode).to.equal(200);
+
+            var options = {uri: 'http://localhost:3002/pub/' + clientId + '/' + stream_id,
+                           method: 'PUT',
+                           json: {type: 'control',
+                                  control: {attr: 'mix',
+                                            value: 'yes'}}};
+            request(options, function(error, response, body) {
+              expect(mockPortal.mix.getCall(0).args).to.deep.equal([clientId, stream_id]);
+              expect(error).to.equal(null);
+              expect(response.statusCode).to.equal(200);
+              done();
+            });
+          });
+        });
+    });
+
+    it('Unmixing should fail if portal fails.', function(done) {
+      mockPortal.publish = sinon.stub();
+      mockPortal.publish.resolves({agent: 'agentId', node: 'nodeId'});
+      mockPortal.unmix = sinon.stub();
+      mockPortal.unmix.rejects('whatever reason');
+
+      return joinFirstly()
+        .then(function(clientId) {
+          expect(clientId).to.be.a('string');
+
+          var options = {uri: 'http://localhost:3002/pub/' + clientId,
+                         method: 'POST',
+                         json: {type: 'url',
+                                options: {url: 'urlOfRtspOrRtmpSource', transport: 'tcp', bufferSize: 2048}}};
+          request(options, function(error, response, body) {
+            var stream_id = body.id;
+            expect(stream_id).to.be.a('string');
+            expect(error).to.equal(null);
+            expect(response.statusCode).to.equal(200);
+
+            var options = {uri: 'http://localhost:3002/pub/' + clientId + '/' + stream_id,
+                           method:  'PUT',
+                           json: {type: 'control',
+                                  control: {attr: 'mix',
+                                            value: 'no'}}};
+            request(options, function(error, response, body) {
+              expect(mockPortal.unmix.getCall(0).args).to.deep.equal([clientId, stream_id]);
               expect(error).to.equal(null);
               expect(response.statusCode).to.equal(404);
               expect(body).to.deep.equal({reason: 'whatever reason'});
