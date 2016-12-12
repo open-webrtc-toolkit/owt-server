@@ -215,7 +215,8 @@ module.exports = function (rpcC, spec) {
             audio_info = {codec:tmp};
         }
         if (info.video) {
-            video_info = {codec:info.video_codec.toLowerCase(), resolution:'vga', framerate:30};
+            //TODO: device:camera, we may need to differentiate with screen sharing in the furture
+            video_info = {codec:info.video_codec.toLowerCase(), resolution:'vga', framerate:30, device:'camera'};
         }
 
         // publish stream to controller
@@ -229,9 +230,13 @@ module.exports = function (rpcC, spec) {
             var pubInfo = {};
             if (info.audio && info.audio_dir !== 'sendonly') {
                 pubInfo.audio = audio_info;
+            }else {
+                pubInfo.audio = false;
             }
             if (info.video && info.video_dir !== 'sendonly') {
                 pubInfo.video = video_info;
+            }else {
+                pubInfo.video = false;
             }
 
             published = do_publish(calls[client_id].session_controller,
