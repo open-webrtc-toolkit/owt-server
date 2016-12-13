@@ -744,11 +744,13 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
       }
     });
 
+    socket.on('logout', function(){
+      log.debug(vsprintf('Reconnection for %s is disabled because of client logout.', [participant_id]));
+      reconnection_enabled=false;
+    });
+
     socket.on('disconnect', function(reason) {
       log.debug(participant_id+' disconnected, reason: '+reason);
-      if(reason==='client namespace disconnect'){
-        reconnection_enabled=false;
-      }
       const leavePortal = function(){
         if(that.inRoom){
           portal.leave(participant_id).catch(function(err) {
@@ -777,6 +779,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
   };
 
   that.drop = function() {
+    that.notify('drop');  // Explicitly let client know it is dropped.
     reconnection_enabled = false;
     socket.disconnect();
   };
@@ -788,7 +791,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
     return validateReconnectionTicket(ticket).then(function(){
       return pending_messages;
     });
-  }
+  };
 
   return that;
 };

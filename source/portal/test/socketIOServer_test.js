@@ -336,7 +336,7 @@ describe('Logining and Relogining.', function() {
       });
     });
 
-    it('Relogin with correct ticket after expected socket close should fail.', function(done){
+    it('Relogin with correct ticket after logout should fail.', function(done){
       const joinResult = {user: 'Jack',
                    role: 'presenter',
                    session_id: testRoom,
@@ -361,6 +361,7 @@ describe('Logining and Relogining.', function() {
       reconnection_client.emit('login', someValidLoginInfo, function(status, resp){
         expect(status).to.equal('success');
         setTimeout(function(){  // Postpone disconnect. Otherwise, disconnect will be executed before establishing connection.
+          reconnection_client.emit('logout');
           clientDisconnect().then(reconnection).then(function(){
             reconnection_client.emit('relogin', resp.reconnectionTicket, function(status, resp){
               expect(status).to.equal('error');
