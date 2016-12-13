@@ -267,7 +267,7 @@ private:
     VideoSize m_inputSize;
     boost::shared_mutex m_mutex;
     SharedPtr<PooledFrameAllocator> m_allocator;
-    const static size_t kQueueSize = 5;
+    const static size_t kQueueSize = 3;
     //extra size for i420 convert
     const static size_t kSoftwareExtraSize = 3;
 };
