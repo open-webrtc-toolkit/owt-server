@@ -29,7 +29,8 @@ usage() {
   echo "    This script is intended to run on a target machine."
   echo
   echo "Usage:"
-  echo "    --hardware (default: false)         enable hardware video codec (only for video agent with \`videoMixer-hw.node')"
+  echo "    --hardware (default: false)         enable hardware video codec (only for video agent with \`videoMixer-hw-*.node')"
+  echo "    --yami (default: false)             enable yami backend (only for video agent with \'videoMixer-hw-yami.node')"
   echo "    --help                              print this help"
   echo
 }
@@ -43,12 +44,16 @@ install_config() {
 }
 
 ENABLE_HARDWARE=false
+ENABLE_YAMI=false
 
 shopt -s extglob
 while [[ $# -gt 0 ]]; do
   case $1 in
     *(-)hardware )
       ENABLE_HARDWARE=true
+      ;;
+    *(-)yami )
+      ENABLE_YAMI=true
       ;;
     *(-)help )
       usage
@@ -67,3 +72,11 @@ else
   sed -i 's/^hardwareAccelerated = true/hardwareAccelerated = false/' ${this}/agent.toml
 fi
 
+if ${ENABLE_YAMI}; then
+  install_config
+  echo -e "\x1b[36mYami backend enabled\x1b[0m"
+  sed -i 's/^yamiEnabled = false/yamiEnabled = true/' ${this}/agent.toml
+else
+  echo -e "\x1b[36mYami backend disbled\x1b[0m"
+  sed -i 's/^yamiEnabled = true/yamiEnabled = false/' ${this}/agent.toml
+fi

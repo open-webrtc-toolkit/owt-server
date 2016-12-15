@@ -24,8 +24,16 @@ if (!process.env.MODULE_TEST) {
       }).map(function (module) {
         try {
           module = path.resolve(process.cwd(), module);
-          require(module);
-          console.log('[PASS]', path.basename(module));
+          if (path.basename(module) == "videoMixer-hw-msdk.node") {
+            process.env.LD_LIBRARY_PATH = [
+              path.resolve(__dirname, '/usr/lib64'),
+              process.env.LD_LIBRARY_PATH || '',
+            ].join(':');
+            require('child_process').fork('msdk_test.js', [module]);
+          }else {
+            require(module);
+            console.log('[PASS]', path.basename(module));
+          }
         } catch (e) {
           console.log('[FAIL]', path.basename(module), e);
         }

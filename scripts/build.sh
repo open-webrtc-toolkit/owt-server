@@ -84,6 +84,7 @@ while [[ $# -gt 0 ]]; do
       BUILD_SIP_GATEWAY_RUNTIME=true
       BUILD_MCU_RUNTIME_SW=true
       BUILD_MCU_RUNTIME_HW_MSDK=true
+      BUILD_MCU_RUNTIME_HW_YAMI=true
       BUILD_SDK=true
       ;;
     *(-)gateway )
@@ -94,6 +95,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     *(-)mcu-hardware )
       BUILD_MCU_RUNTIME_HW_MSDK=true
+      BUILD_MCU_RUNTIME_HW_YAMI=true
       ;;
     *(-)mcu-hardware-yami )
       BUILD_MCU_RUNTIME_HW_YAMI=true
@@ -101,6 +103,7 @@ while [[ $# -gt 0 ]]; do
     *(-)mcu-all )
       BUILD_MCU_RUNTIME_SW=true
       BUILD_MCU_RUNTIME_HW_MSDK=true
+      BUILD_MCU_RUNTIME_HW_YAMI=true
       ;;
     *(-)sip )
       BUILD_SIP_GATEWAY_RUNTIME=true
@@ -136,15 +139,15 @@ build_mcu_runtime_sw() {
 }
 
 build_mcu_runtime_hw_yami() {
-  cp -f ${SOURCE}/agent/video/videoMixer_hw/binding.hw.yami.gyp ${SOURCE}/agent/video/videoMixer_hw/binding.gyp
+  cp -f ${SOURCE}/agent/video/videoMixer_hw/binding.hw.yami.gyp ${SOURCE}/agent/video/videoMixer_hw_yami/binding.gyp
   build_mcu_runtime
-  rm -f ${SOURCE}/agent/video/videoMixer_hw/binding.gyp
+  rm -f ${SOURCE}/agent/video/videoMixer_hw_yami/binding.gyp
 }
 
 build_mcu_runtime_hw_msdk() {
-  cp -f ${SOURCE}/agent/video/videoMixer_hw/binding.hw.msdk.gyp ${SOURCE}/agent/video/videoMixer_hw/binding.gyp
+  cp -f ${SOURCE}/agent/video/videoMixer_hw/binding.hw.msdk.gyp ${SOURCE}/agent/video/videoMixer_hw_msdk/binding.gyp
   build_mcu_runtime
-  rm -f ${SOURCE}/agent/video/videoMixer_hw/binding.gyp
+  rm -f ${SOURCE}/agent/video/videoMixer_hw_msdk/binding.gyp
 }
 
 build_runtime() {

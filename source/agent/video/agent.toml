@@ -41,6 +41,9 @@ minport = 0 #default: 0
 #If true and the machine has the capability, the mixer will be accelerated by hardware graphic chips
 hardwareAccelerated = false
 
+#If true and hardwareAccelerate is true, use yami as video backend when hardware platform support it
+yamiEnabled = false
+
 #This configuration is only for software media engine. Hardware graphic acceleration provides H.264 by default
 #true means OpenH264 is deployed for H.264. Otherwise no support of H.264 in MCU
 openh264Enabled = false
