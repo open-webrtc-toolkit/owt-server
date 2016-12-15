@@ -25,7 +25,7 @@
 
 #include <EventRegistry.h>
 #include <JobTimer.h>
-#include <SharedQueue.h>
+#include <queue>
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/mutex.hpp>
@@ -44,10 +44,11 @@ static inline int64_t currentTimeMs()
 
 class EncodedFrame {
 public:
-    EncodedFrame(const uint8_t* data, size_t length, int64_t timeStamp)
+    EncodedFrame(const uint8_t* data, size_t length, int64_t timeStamp, FrameFormat format)
         : m_timeStamp(timeStamp)
         , m_payloadData(nullptr)
         , m_payloadSize(length)
+        , m_format(format)
     {
         // copy the encoded frame
         m_payloadData = new uint8_t[length];
@@ -65,6 +66,7 @@ public:
     int64_t m_timeStamp;
     uint8_t* m_payloadData;
     size_t m_payloadSize;
+    FrameFormat m_format;
 };
 
 static const unsigned int DEFAULT_QUEUE_MAX = 10;
@@ -81,31 +83,46 @@ public:
     {
     }
 
-    void pushFrame(const uint8_t* data, size_t length)
+    void pushFrame(const uint8_t* data, size_t length, FrameFormat format = FRAME_FORMAT_UNKNOWN)
     {
+        boost::mutex::scoped_lock lock(m_mutex);
+
         int64_t timestamp = currentTimeMs() - m_startTimeOffset;
-        boost::shared_ptr<EncodedFrame> newFrame(new EncodedFrame(data, length, timestamp));
+        boost::shared_ptr<EncodedFrame> newFrame(new EncodedFrame(data, length, timestamp, format));
         m_queue.push(newFrame);
 
-        // Enforce our max queue size
-        boost::shared_ptr<EncodedFrame> frame;
-        while (m_queue.size() > m_max)
-            m_queue.pop(frame);
+        if (m_queue.size() == 1)
+            m_cond.notify_one();
     }
 
-    boost::shared_ptr<EncodedFrame> popFrame()
+    boost::shared_ptr<EncodedFrame> popFrame(int timeout = 0)
     {
+        boost::mutex::scoped_lock lock(m_mutex);
         boost::shared_ptr<EncodedFrame> frame;
-        m_queue.pop(frame);
+
+        if (m_queue.size() == 0 && timeout > 0) {
+            m_cond.timed_wait(lock, boost::get_system_time() + boost::posix_time::milliseconds(timeout));
+        }
+        frame = m_queue.front();
+        m_queue.pop();
         return frame;
+    }
+
+    void cancel()
+    {
+        boost::mutex::scoped_lock lock(m_mutex);
+        m_cond.notify_all();
     }
 
 private:
     // This queue can be used to store decoded frames
-    SharedQueue<boost::shared_ptr<EncodedFrame>> m_queue;
+    std::queue<boost::shared_ptr<EncodedFrame>> m_queue;
     // The max size we allow the queue to grow before discarding frames
     unsigned int m_max;
     int64_t m_startTimeOffset;
+
+    boost::mutex m_mutex;
+    boost::condition_variable m_cond;
 };
 
 class AVStreamOut : public FrameDestination, public JobTimerListener, public EventRegistry {
@@ -141,8 +158,6 @@ public:
 
 protected:
     Status m_status;
-    boost::scoped_ptr<MediaFrameQueue> m_videoQueue;
-    boost::scoped_ptr<MediaFrameQueue> m_audioQueue;
     boost::scoped_ptr<JobTimer> m_jobTimer;
     int64_t m_lastKeyFrameReqTime;
 

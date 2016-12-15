@@ -225,6 +225,9 @@ private:
     std::unique_ptr<std::ofstream> m_audioResampleDumpFile;
     AVFormatContext* m_dumpContext;
 
+    char m_errbuff[500];
+    char *ff_err2str(int errRet);
+
     bool isRtsp() {return (m_url.compare(0, 7, "rtsp://") == 0);}
 
     bool connect();
