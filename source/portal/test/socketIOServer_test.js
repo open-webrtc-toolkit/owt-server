@@ -10,6 +10,8 @@ var portal = require('../portal');
 var testRoom = '573eab78111478bb3526421a';
 
 var clientInfo = {sdk:{version: '3.3', type: 'JavaScript'}, runtime: {name: 'Chrome', version: '53.0.0.0'}, os:{name:'Linux (Ubuntu)', version:'14.04'}};
+// JavaScript SDK 3.3 does not support reconnection. So use iOS UA info for reconnection tests.
+var reconnectionClientInfo = {sdk:{version: '3.3', type: 'iOS'}, runtime: {name: 'WebRTC', version: '54'}, os:{name:'iOS', version:'10.2'}};
 var insecureSocketIOServerConfig = {port: 3001, ssl: false, reconnectionTicketLifetime: 100, reconnectionTimeout: 300};
 
 describe('Clients connect to socket.io server.', function() {
@@ -156,7 +158,7 @@ describe('Logining and Relogining.', function() {
 
       var transformed_streams = [{id: testRoom, audio: true, video: {device: 'mcu', resolutions: [{width: 640, height: 480}, {width: 1280, height: 720}]}, from: '', socket: ''}];
 
-      client.emit('login', {token: someValidToken, userAgent:clientInfo}, function(status, resp) {
+      client.emit('login', {token: someValidToken, userAgent:reconnectionClientInfo}, function(status, resp) {
         expect(status).to.equal('success');
         expect(mockPortal.join.getCall(0).args).to.deep.equal([client.id, 'someValidToken']);
         expect(mockServiceObserver.onJoin.getCall(0).args).to.deep.equal([client.id, testRoom]);
@@ -247,6 +249,34 @@ describe('Logining and Relogining.', function() {
         resolveToken();
       });
     });
+
+    // JavaScript client does not support reconnection. So this function should be disabled.
+    it('Do not issue reconnection ticket to JavaScript clients.', function(done){
+      'use strict';
+      mockPortal.join = sinon.stub();
+      mockServiceObserver.onJoin = sinon.spy();
+
+      var join_result = {user: 'Jack',
+                         role: 'presenter',
+                         session_id: testRoom,
+                         participants: [],
+                         streams: [{id: testRoom, audio: true, video: {device: 'mcu', resolutions: ['vag', 'hd720p']}, from: '', socket: ''}]};
+      mockPortal.join.resolves(join_result);
+
+      var transformed_streams = [{id: testRoom, audio: true, video: {device: 'mcu', resolutions: [{width: 640, height: 480}, {width: 1280, height: 720}]}, from: '', socket: ''}];
+
+      client.emit('login', {token: someValidToken, userAgent:clientInfo}, function(status, resp) {
+        expect(status).to.equal('success');
+        expect(mockPortal.join.getCall(0).args).to.deep.equal([client.id, 'someValidToken']);
+        expect(mockServiceObserver.onJoin.getCall(0).args).to.deep.equal([client.id, testRoom]);
+        expect(resp.id).to.equal(join_result.session_id);
+        expect(resp.clientId).to.equal(client.id);
+        expect(resp.streams).to.deep.equal(transformed_streams);
+        expect(resp.users).to.deep.equal(join_result.participants);
+        expect(resp.reconnectionTicket).to.be.undefined;
+        done();
+      });
+    });
   });
 
   describe('on: relogin', function(){
@@ -263,7 +293,7 @@ describe('Logining and Relogining.', function() {
       done();
     });
 
-    const someValidLoginInfo = {token: (new Buffer(JSON.stringify('someInvalidToken'))).toString('base64'), userAgent: clientInfo};
+    const someValidLoginInfo = {token: (new Buffer(JSON.stringify('someInvalidToken'))).toString('base64'), userAgent: reconnectionClientInfo};
 
     it('Relogin with correct ticket should success.', function(done){
       const joinResult = {user: 'Jack',
@@ -376,7 +406,6 @@ describe('Logining and Relogining.', function() {
 
     it('Dropped user cannot be reconnected.', function(done){
       'use strict';
-      const someValidLoginInfo = {token: (new Buffer(JSON.stringify('someInvalidToken'))).toString('base64'), userAgent: clientInfo};
       let client = sioClient.connect('http://localhost:3001', {reconnection: true, secure: false, 'force new connection': false});
       let ticket;
 
@@ -423,7 +452,7 @@ describe('Logining and Relogining.', function() {
     });
 
     it('Refresh reconnection ticket after login should get new ticket.', function(done){
-      const someValidLoginInfo = {token: (new Buffer(JSON.stringify('someInvalidToken'))).toString('base64'), userAgent: clientInfo};
+      const someValidLoginInfo = {token: (new Buffer(JSON.stringify('someInvalidToken'))).toString('base64'), userAgent: reconnectionClientInfo};
       mockPortal.join = sinon.stub();
       const joinResult = {user: 'Jack',
                          role: 'presenter',
