@@ -96,6 +96,58 @@ inline int findNALU(uint8_t* buf, int size, int* nal_start, int* nal_end)
     return (*nal_end - *nal_start);
 }
 
+inline bool isH264KeyFrame(uint8_t *data, size_t len)
+{
+    if (len < 5) {
+        //printf("Invalid len %ld\n", len);
+        return false;
+    }
+
+    if (data[0] != 0 || data[1] != 0 || data[2] != 0 || data[3] != 1) {
+        //printf("Invalid start code %d-%d-%d-%d\n", data[0], data[1], data[2], data[3]);
+        return false;
+    }
+
+    int nal_unit_type = data[4] & 0x1f;
+
+    if (nal_unit_type == 5 || nal_unit_type == 7) {
+        //printf("nal_unit_type %d, key_frame %d, len %ld\n", nal_unit_type, true, len);
+        return true;
+    } else if (nal_unit_type == 9) {
+        if (len < 6) {
+            //printf("Invalid len %ld\n", len);
+            return false;
+        }
+
+        int primary_pic_type = (data[5] >> 5) & 0x7;
+
+        //printf("nal_unit_type %d, primary_pic_type %d, key_frame %d, len %ld\n", nal_unit_type, primary_pic_type, (primary_pic_type == 0), len);
+        return (primary_pic_type == 0);
+    } else {
+        //printf("nal_unit_type %d, key_frame %d, len %ld\n", nal_unit_type, false, len);
+        return false;
+    }
+}
+
+inline bool isVp8KeyFrame(uint8_t *data, size_t len)
+{
+    if (len < 3) {
+        //printf("Invalid len %ld\n", len);
+        return false;
+    }
+
+    unsigned char *c = data;
+    unsigned int tmp = (c[2] << 16) | (c[1] << 8) | c[0];
+
+    int key_frame = tmp & 0x1;
+    //int version = (tmp >> 1) & 0x7;
+    //int show_frame = (tmp >> 4) & 0x1;
+    //int first_part_size = (tmp >> 5) & 0x7FFFF;
+
+    //printf("key_frame %d, len %ld\n", (key_frame == 0), len);
+    return (key_frame == 0);
+}
+
 class VP8Dumper {
 public:
     VP8Dumper(const char* filePath, uint32_t timeS, uint16_t width_ = 0, uint16_t height_ = 0, uint32_t frameRate = 30) : m_file(nullptr), m_index(0), m_frameCount(timeS * frameRate), m_frameRate(frameRate) {

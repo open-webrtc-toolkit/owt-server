@@ -29,96 +29,70 @@
 
 extern "C" {
 #include <libavformat/avformat.h>
+#include <libavcodec/avcodec.h>
+#include <libavutil/avstring.h>
+#include <libavutil/channel_layout.h>
+#include <libavutil/opt.h>
+#include <libavutil/time.h>
 #include <libavutil/audio_fifo.h>
 }
-
-#include <fstream>
-#include <memory>
 
 namespace woogeen_base {
 
 class RtspOut : public AVStreamOut {
     DECLARE_LOGGER();
-
-    static const uint32_t VIDEO_BUFFER_SIZE = 4 * 1024 * 1024;
-
 public:
     RtspOut(const std::string& url, const AVOptions* audio, const AVOptions* video, EventRegistry* handle);
     ~RtspOut();
 
-    // AVStreamOut interface
     void onFrame(const woogeen_base::Frame&);
     void onTimeout() {;}
 
 protected:
-    static int readFunction(void* opaque, uint8_t* buf, int buf_size);
-
     bool hasAudio() {return !m_audioOptions.codec.empty();}
     bool hasVideo() {return !m_videoOptions.codec.empty();}
+    bool isHls(std::string uri) {return (uri.compare(0, 7, "http://") == 0);}
 
-    void audioRun();
-    void videoRun();
+    void sendLoop();
 
-    bool detectInputVideoStream();
-
-    bool addVideoStream(enum AVCodecID codec_id, unsigned int width, unsigned int height);
-    bool addAudioStream(enum AVCodecID codec_id, int nbChannels = 2, int sampleRate = 48000);
-
-    bool createContext();
-    bool init();
+    bool connect();
+    bool reconnect();
     void close();
 
-    bool addDumpStream(AVStream *stream);
-    bool initDump(bool audioRaw);
-    void closeDump();
+    bool openAudioEncoder(AVOptions &options);
+    bool addAudioStream(AVOptions &options);
+    bool addVideoStream(AVOptions &options);
 
-    int writeAudioFrame();
-    int writeVideoFrame();
+    bool writeHeader();
+    void addAudioFrame(uint8_t* data, int nbSamples);
+    int writeAVFrame(AVStream* stream, const EncodedFrame& frame);
 
-    void addToAudioFifo(uint8_t* data, int nbSamples);
-    bool encodeAudioFrame(AVPacket *pkt);
-
-    bool isHls(std::string uri) {return (uri.compare(0, 7, "http://") == 0);}
+    char *ff_err2str(int errRet);
 
 private:
     std::string m_uri;
-
     AVOptions m_audioOptions;
     AVOptions m_videoOptions;
 
-    boost::thread m_audioWorker;
-    boost::thread m_videoWorker;
+    boost::thread m_thread;
 
     bool m_audioReceived;
     bool m_videoReceived;
 
-    boost::mutex m_readCbmutex;
-    boost::condition_variable m_readCbcond;
-
-    AVFormatContext* m_ifmtCtx;
-    AVStream* m_inputVideoStream;
-
     AVFormatContext* m_context;
-    boost::shared_mutex m_contextMutex;
-
     AVStream* m_audioStream;
     AVStream* m_videoStream;
 
+    AVCodecContext* m_audioEnc;
     AVAudioFifo* m_audioFifo;
-    boost::mutex m_audioFifoMutex;
-    boost::condition_variable m_audioFifoCond;
-
     AVFrame* m_audioEncodingFrame;
 
-    int64_t m_timeOffset;
+    boost::shared_ptr<woogeen_base::EncodedFrame> m_videoKeyFrame;
+    boost::scoped_ptr<MediaFrameQueue> m_frameQueue;
 
-    int64_t m_lastAudioTimestamp;
-    int64_t m_lastVideoTimestamp;
-
-    std::unique_ptr<std::ofstream> m_audioRawDumpFile;
-
-    AVFormatContext* m_dumpContext;
+    char m_errbuff[500];
 };
+
 }
 
 #endif // RtspOut_h

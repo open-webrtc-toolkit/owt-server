@@ -46,7 +46,8 @@ public:
     void onVideoSourceChanged();
 
 private:
-    bool isKeyFrame(int codec, uint8_t *data, size_t len);
+    boost::scoped_ptr<MediaFrameQueue> m_videoQueue;
+    boost::scoped_ptr<MediaFrameQueue> m_audioQueue;
 
     void close();
     bool init(const AVOptions* audio, const AVOptions* video);

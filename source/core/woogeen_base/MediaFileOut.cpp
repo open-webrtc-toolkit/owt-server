@@ -20,6 +20,7 @@
 
 #include "MediaFileOut.h"
 #include <rtputils.h>
+#include <MediaUtilities.h>
 
 extern "C" {
 #include <libavutil/avstring.h>
@@ -51,58 +52,6 @@ inline AVCodecID frameFormat2AudioCodecID(int frameFormat)
         return AV_CODEC_ID_OPUS;
     default:
         return AV_CODEC_ID_PCM_MULAW;
-    }
-}
-
-bool MediaFileOut::isKeyFrame(int codec, uint8_t *data, size_t len)
-{
-    if (codec == FRAME_FORMAT_H264) {
-        if (len < 5)
-            return false;
-
-        if (data[0] != 0 || data[1] != 0 || data[2] != 0 || data[3] != 1)
-            return false;
-
-        int nal_unit_type   = data[4] & 0x1f;
-
-        if (nal_unit_type == 5) {
-            ELOG_TRACE("nal_unit_type %d, key_frame %d, len %ld", nal_unit_type, true, len);
-            return true;
-        }
-        else if (nal_unit_type == 9) {
-            if (len < 6)
-                return false;
-
-            int primary_pic_type = (data[5] >> 5) & 0x7;
-
-            ELOG_TRACE("nal_unit_type %d, primary_pic_type %d, key_frame %d, len %ld", nal_unit_type, primary_pic_type, (primary_pic_type == 0), len);
-            return (primary_pic_type == 0);
-        }
-        else {
-            ELOG_TRACE("nal_unit_type %d, key_frame %d, len %ld", nal_unit_type, false, len);
-            return false;
-        }
-    }
-    else if (codec == FRAME_FORMAT_VP8) {
-        if (len < 3)
-            return false;
-
-        unsigned char *c = data;
-        unsigned int tmp = (c[2] << 16) | (c[1] << 8) | c[0];
-
-        int key_frame = tmp & 0x1;
-        /*
-        int version = (tmp >> 1) & 0x7;
-        int show_frame = (tmp >> 4) & 0x1;
-        int first_part_size = (tmp >> 5) & 0x7FFFF;
-        */
-
-        ELOG_TRACE("key_frame %d, len %ld", (key_frame == 0), len);
-        return (key_frame == 0);
-    }
-    else {
-        ELOG_ERROR("unknown codec: %d", codec);
-        return false;
     }
 }
 
@@ -248,7 +197,13 @@ void MediaFileOut::onFrame(const Frame& frame)
 
             if (addStreamOK && m_status == AVStreamOut::Context_READY) {
                 if (m_videoSourceChanged) {
-                    if (isKeyFrame(frame.format, frame.payload, frame.length)) {
+                    bool isKeyFrame;
+                    if (frame.format == FRAME_FORMAT_H264)
+                        isKeyFrame = isH264KeyFrame(frame.payload, frame.length);
+                    else
+                        isKeyFrame = isVp8KeyFrame(frame.payload, frame.length);
+
+                    if (isKeyFrame) {
                         ELOG_DEBUG("key frame comes after video source changed!");
                         m_videoSourceChanged = false;
                     } else {

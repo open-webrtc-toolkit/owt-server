@@ -19,26 +19,7 @@
  */
 
 #include "RtspOut.h"
-
-#include <rtputils.h>
-
-extern "C" {
-#include <libavcodec/avcodec.h>
-#include <libavutil/avstring.h>
-#include <libavutil/channel_layout.h>
-#include <libavutil/opt.h>
-#include <libavutil/time.h>
-}
-
-static const char *AUDIO_RAW_FILENAME = "/tmp/rtspOutAudioRaw.pcm";
-static const char *DUMP_FILENAME = "/tmp/rtspOut.flv";
-
-static inline int64_t currentTimeMs()
-{
-    timeval time;
-    gettimeofday(&time, nullptr);
-    return ((time.tv_sec * 1000) + (time.tv_usec / 1000));
-}
+#include "MediaUtilities.h"
 
 static inline const char* getShortName(std::string& url)
 {
@@ -60,35 +41,30 @@ RtspOut::RtspOut(const std::string& url, const AVOptions* audio, const AVOptions
     , m_uri{ url }
     , m_audioReceived(false)
     , m_videoReceived(false)
-    , m_ifmtCtx(nullptr)
-    , m_inputVideoStream(nullptr)
     , m_context{ nullptr }
     , m_audioStream{ nullptr }
     , m_videoStream{ nullptr }
+    , m_audioEnc{ nullptr }
     , m_audioFifo{ nullptr }
     , m_audioEncodingFrame{ nullptr }
-    , m_timeOffset(0)
-    , m_lastAudioTimestamp(-1)
-    , m_lastVideoTimestamp(-1)
-    , m_audioRawDumpFile( nullptr )
-    , m_dumpContext( nullptr )
 {
-    m_videoQueue.reset(new woogeen_base::MediaFrameQueue());
-    m_audioQueue.reset(new woogeen_base::MediaFrameQueue());
+    ELOG_TRACE("url %s, acodec %s, vcodec %s", m_uri.c_str(), m_audioOptions.codec.c_str(), m_videoOptions.codec.c_str());
 
-    if (audio) {
+    if (!audio && !video) {
+        ELOG_ERROR("NULL a/v AVOptions");
+        notifyAsyncEvent("init", "NULL a/v AVOptions");
+        return;
+    }
+
+    if (audio)
         m_audioOptions = *audio;
-    }
-
-    if (video) {
+    if (video)
         m_videoOptions = *video;
-    }
 
-    ELOG_TRACE("url %s", m_uri.c_str());
-    ELOG_TRACE("acodec %s, vcodec %s", m_audioOptions.codec.c_str(), m_videoOptions.codec.c_str());
+    m_frameQueue.reset(new woogeen_base::MediaFrameQueue());
 
     if (ELOG_IS_TRACE_ENABLED())
-        av_log_set_level(AV_LOG_TRACE);
+        av_log_set_level(AV_LOG_DEBUG);
     else if (ELOG_IS_DEBUG_ENABLED())
         av_log_set_level(AV_LOG_DEBUG);
     else
@@ -96,14 +72,14 @@ RtspOut::RtspOut(const std::string& url, const AVOptions* audio, const AVOptions
 
     avcodec_register_all();
 
-    if(!createContext()) {
+    if(!connect()) {
+        notifyAsyncEvent("init", "Cannot open connection");
         return;
     }
 
+    m_status = Context_INITIALIZING;
     notifyAsyncEvent("init", "");
-
-    m_audioWorker = boost::thread(&RtspOut::audioRun, this);
-    m_videoWorker = boost::thread(&RtspOut::videoRun, this);
+    m_thread = boost::thread(&RtspOut::sendLoop, this);
 }
 
 RtspOut::~RtspOut()
@@ -113,31 +89,11 @@ RtspOut::~RtspOut()
 
 void RtspOut::close()
 {
-    ELOG_INFO("closing");
-
-    if (m_status == AVStreamOut::Context_CLOSED || m_status == AVStreamOut::Context_EMPTY) {
-        ELOG_INFO("status %s, do nothing", m_status == AVStreamOut::Context_CLOSED ? "CLOSED" : "EMPTY");
-
-        m_audioWorker.join();
-        m_videoWorker.join();
-        return;
-    }
+    ELOG_INFO("Closing %s", m_uri.c_str());
 
     m_status = AVStreamOut::Context_CLOSED;
-
-    m_audioWorker.join();
-    m_videoWorker.join();
-
-    // video input context
-    if (m_ifmtCtx) {
-        if (m_ifmtCtx->pb) {
-            av_freep(&m_ifmtCtx->pb->buffer);
-            av_freep(&m_ifmtCtx->pb);
-            m_ifmtCtx->pb = NULL;
-        }
-
-       avformat_close_input(&m_ifmtCtx);
-    }
+    m_frameQueue->cancel();
+    m_thread.join();
 
     // audio encoder
     if (m_audioEncodingFrame) {
@@ -150,8 +106,8 @@ void RtspOut::close()
         m_audioFifo = NULL;
     }
 
-    if (m_audioStream) {
-        avcodec_close(m_audioStream->codec);
+    if (m_audioEnc) {
+        avcodec_close(m_audioEnc);
     }
 
     // output context
@@ -161,225 +117,96 @@ void RtspOut::close()
         m_context = NULL;
     }
 
-    closeDump();
-
     ELOG_INFO("closed");
 }
 
-int RtspOut::readFunction(void* opaque, uint8_t* buf, int buf_size)
-{
-    const int timeout = 200; // ms
-    const int retry = 5;  // eos if no frame in 1s
-
-    uint32_t len = 0;
-    int i = 0;
-
-    RtspOut* This = static_cast<RtspOut*>(opaque);
-
-    while (This->m_status != Context_CLOSED) {
-        boost::shared_ptr<woogeen_base::EncodedFrame> frame;
-        frame = This->m_videoQueue->popFrame();
-
-        if (frame) {
-            if (len + frame->m_payloadSize > (uint32_t)buf_size) {
-                ELOG_ERROR("Read buf is full, discard encoded video frame");
-                return len;
-            }
-
-            memcpy(buf, frame->m_payloadData, frame->m_payloadSize);
-            len += frame->m_payloadSize;
-
-            return len;
-        } else {
-            boost::mutex::scoped_lock slock(This->m_readCbmutex);
-
-            if (i >= retry) {
-                ELOG_INFO("No video frame in %d(s)...", timeout * retry / 1000);
-                break;
-            }
-
-            if (!This->m_readCbcond.timed_wait(slock, boost::get_system_time() + boost::posix_time::milliseconds(timeout))) {
-                i++;
-
-                ELOG_INFO("No video frame in last %d(ms)...", timeout * i);
-            }
-
-            continue;
-        }
-    }
-
-    // end of stream
-    ELOG_INFO("video EOS");
-    return 0;
-}
-
-bool RtspOut::detectInputVideoStream()
+void RtspOut::sendLoop()
 {
     int ret;
-    int videoIndex = -1;
+    int i = 0;
 
-    m_ifmtCtx = avformat_alloc_context();
-    m_ifmtCtx->pb = avio_alloc_context(
-            reinterpret_cast<unsigned char*>(av_malloc(VIDEO_BUFFER_SIZE + FF_INPUT_BUFFER_PADDING_SIZE)),
-            VIDEO_BUFFER_SIZE,
-            0,
-            this,
-            readFunction,
-            nullptr,
-            nullptr);
+    while ((hasAudio() && !m_audioReceived) || (hasVideo() && !m_videoReceived)) {
+        if (m_status == AVStreamOut::Context_CLOSED)
+            goto exit;
 
-    m_ifmtCtx->max_analyze_duration = 1 * AV_TIME_BASE;
-
-    ret = avformat_open_input(&m_ifmtCtx, nullptr, 0, 0);
-    if (ret != 0) {
-        ELOG_ERROR("could not open video input");
-
-        notifyAsyncEvent("fatal", "could not open video input");
-        return false;
-    }
-
-#if 1 // compatible w/ rtmp flash media player
-    if ((ret = avformat_find_stream_info(m_ifmtCtx, 0)) < 0) {
-        ELOG_ERROR("failed to retrieve input stream information");
-
-        notifyAsyncEvent("fatal", "failed to retrieve input stream information");
-        return false;
-    }
-#endif
-
-    videoIndex = av_find_best_stream(m_ifmtCtx, AVMEDIA_TYPE_VIDEO, -1, -1, NULL, 0);
-    if (videoIndex < 0) {
-        ELOG_ERROR("invalid input video stream");
-
-        notifyAsyncEvent("fatal", "invalid input video stream");
-        return false;
-    }
-
-    av_dump_format(m_ifmtCtx, 0, nullptr, 0);
-
-    m_inputVideoStream = m_ifmtCtx->streams[videoIndex];
-    if (!m_inputVideoStream) {
-        ELOG_ERROR("null input video stream");
-
-        notifyAsyncEvent("fatal", "null input video stream");
-        return false;
-    }
-
-    return true;
-}
-
-void RtspOut::audioRun()
-{
-    ELOG_DEBUG("audioWork started!");
-
-    while (m_status == AVStreamOut::Context_EMPTY) {
-        ELOG_TRACE("wait for context ready");
-        usleep(10000);
-    }
-
-    if (!hasAudio()) {
-        ELOG_DEBUG("video only streaming, audioWorker exited!");
-        return;
-    }
-
-    while (m_status == AVStreamOut::Context_READY) {
-        {
-            boost::mutex::scoped_lock slock(m_audioFifoMutex);
-            int nbSamples = m_audioStream->codec->frame_size;
-            int n;
-
-            while (m_status == AVStreamOut::Context_READY && av_audio_fifo_size(m_audioFifo) < nbSamples) {
-                int timeout = 200;
-                if (!m_audioFifoCond.timed_wait(slock, boost::get_system_time() + boost::posix_time::milliseconds(timeout))) {
-                    ELOG_WARN("No audio frame in last %d(ms)...", timeout);
-
-                    continue;
-                }
-            }
-            if (m_status != AVStreamOut::Context_READY)
-                break;
-
-            n = av_audio_fifo_read(m_audioFifo, reinterpret_cast<void**>(m_audioEncodingFrame->data), nbSamples);
-            if (n != nbSamples) {
-                ELOG_ERROR("cannot read enough data from fifo, needed %d, read %d", nbSamples, n);
-
-                break;
-            }
+        if (i++ >= 100) {
+            ELOG_ERROR("No a/v options specified");
+            notifyAsyncEvent("fatal", "No a/v options specified");
+            goto exit;
         }
-
-        writeAudioFrame();
+        ELOG_INFO("Wait for av options available, hasAudio %d(rcv %d), hasVideo %d(rcv %d), retry %d"
+                , hasAudio(), m_audioReceived, hasAudio(), m_videoReceived, i);
+        usleep(20000);
     }
 
-    ELOG_DEBUG("audioWork exited!");
-}
-
-void RtspOut::videoRun()
-{
-    ELOG_DEBUG("videoWork started!");
-
-    if (hasVideo() && !detectInputVideoStream()) {
-        m_status = AVStreamOut::Context_CLOSED;
-        return;
+    if (hasAudio() && (!openAudioEncoder(m_audioOptions) || !addAudioStream(m_audioOptions))) {
+        notifyAsyncEvent("fatal", "Cannot add audio stream");
+        goto exit;
+    }
+    if (hasVideo() && !addVideoStream(m_videoOptions)) {
+        notifyAsyncEvent("fatal", "Cannot add video stream");
+        goto exit;
     }
 
-    if (!init()) {
-        m_status = AVStreamOut::Context_CLOSED;
-        return;
+    if (!writeHeader()) {
+        notifyAsyncEvent("fatal", "Cannot write header");
+        goto exit;
     }
-
-#ifdef DUMP_OUTPUT
-#if 1
-    initDump(true);
-#else
-    const char *key = "enableRtspOutDump";
-    char *value = NULL;
-
-    value = getenv(key);
-    if (value) {
-        ELOG_TRACE("getenv key(%s) ok, dump enabled", key);
-
-        initDump(true);
-    }
-    else {
-        ELOG_TRACE("getenv key(%s) failed, dump disabled", key);
-    }
-#endif
-#endif
 
     m_status = AVStreamOut::Context_READY;
-    ELOG_DEBUG("initialized");
 
-    if (!hasVideo()) {
-        ELOG_DEBUG("audio only streaming, videoWorker exited!");
-        return;
-    }
+    ELOG_INFO("Request video key frame");
+    deliverFeedbackMsg(FeedbackMsg{.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME});
 
+    ELOG_DEBUG("Start sending");
     while (m_status == AVStreamOut::Context_READY) {
-        writeVideoFrame();
+        boost::shared_ptr<woogeen_base::EncodedFrame> frame = m_frameQueue->popFrame(1000);
+        if (!frame) {
+            ELOG_WARN("No input frames available");
+            notifyAsyncEvent("fatal", "No input frames available");
+            goto exit;
+        }
+
+        int retry = 1;
+        while(true) {
+            ret = writeAVFrame(frame->m_format == FRAME_FORMAT_H264? m_videoStream : m_audioStream, *frame);
+            if (ret == 0)
+                break;
+
+            if (retry-- <= 0) {
+                ELOG_ERROR("Cannot write frame after reconnection");
+                notifyAsyncEvent("fatal", "Cannot write frame after reconnection");
+                goto exit;
+            }
+
+            if (!reconnect()){
+                ELOG_ERROR("Cannot reconnect");
+                notifyAsyncEvent("fatal", "Cannot reconnect");
+                goto exit;
+            }
+        }
     }
 
-    ELOG_DEBUG("videoWork exited!");
+exit:
+    m_status = AVStreamOut::Context_CLOSED;
+    ELOG_DEBUG("Thread exited!");
 }
 
-bool RtspOut::createContext()
+bool RtspOut::connect()
 {
+    int ret;
+
     avformat_alloc_output_context2(&m_context, nullptr, getShortName(m_uri), m_uri.c_str());
     if (!m_context) {
-        ELOG_ERROR("cannot allocate output context, url %s, format %s", m_uri.c_str(), getShortName(m_uri));
-
-        notifyAsyncEvent("init", "cannot allocate output context");
+        ELOG_ERROR("Cannot allocate output context");
         goto fail;
     }
 
-    if (!(m_context->oformat->flags & AVFMT_NOFILE)) {
-        if (avio_open(&m_context->pb, m_context->filename, AVIO_FLAG_WRITE) < 0) {
-            ELOG_ERROR("cannot open connection, %s", m_uri.c_str());
-
-            notifyAsyncEvent("init", "cannot open connection");
-            goto fail;
-        }
+    ret = avio_open(&m_context->pb, m_context->filename, AVIO_FLAG_WRITE);
+    if (ret < 0) {
+        ELOG_ERROR("Cannot open connection(%s), %s", m_uri.c_str(), ff_err2str(ret));
+        goto fail;
     }
-
     return true;
 
 fail:
@@ -387,95 +214,348 @@ fail:
         avformat_free_context(m_context);
         m_context = NULL;
     }
+    return false;
+}
+
+bool RtspOut::reconnect()
+{
+    av_write_trailer(m_context);
+    avformat_free_context(m_context);
+    m_context = NULL;
+    m_audioStream = NULL;
+    m_videoStream = NULL;
+
+    ELOG_WARN("Write output data failed, trying to reopen output from url %s", m_uri.c_str());
+    usleep(5000000);
+
+    if (!connect())
+        return false;
+
+    if (hasAudio() && !addAudioStream(m_audioOptions)) {
+        return false;
+    }
+    if (hasVideo() && !addVideoStream(m_videoOptions)) {
+        return false;
+    }
+
+    if (!writeHeader()) {
+        return false;
+    }
+
+    ELOG_INFO("Request video key frame");
+    deliverFeedbackMsg(FeedbackMsg{.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME});
+
+    return true;
+}
+
+bool RtspOut::openAudioEncoder(AVOptions &options)
+{
+    int ret;
+    AVCodec* codec = NULL;
+    int nbChannels = options.spec.audio.channels;
+    int sampleRate = options.spec.audio.sampleRate;
+
+    if (options.codec.compare("pcm_raw") != 0) {
+        ELOG_ERROR("Invalid audio codec, %s", options.codec.c_str());
+        return false;
+    }
+
+    codec = avcodec_find_encoder_by_name("libfdk_aac");
+    if (!codec) {
+        ELOG_ERROR("Can not find audio encoder %s, please check if ffmpeg/libfdk_aac installed", "libfdk_aac");
+        goto fail;
+    }
+
+    m_audioEnc = avcodec_alloc_context3(codec);
+    if (!m_audioEnc) {
+        ELOG_ERROR("Can not alloc avcodec context");
+        goto fail;
+    }
+    m_audioEnc->channels         = nbChannels;
+    m_audioEnc->channel_layout   = av_get_default_channel_layout(nbChannels);
+    m_audioEnc->sample_rate      = sampleRate;
+    m_audioEnc->sample_fmt       = AV_SAMPLE_FMT_S16;
+
+    if (m_context->oformat->flags & AVFMT_GLOBALHEADER)
+        m_audioEnc->flags |= CODEC_FLAG_GLOBAL_HEADER;
+
+    ret = avcodec_open2(m_audioEnc, codec, nullptr);
+    if (ret < 0) {
+        ELOG_ERROR("Cannot open output audio codec, %s", ff_err2str(ret));
+        goto fail;
+    }
+
+    if (m_audioFifo) {
+        av_audio_fifo_free(m_audioFifo);
+        m_audioFifo = NULL;
+    }
+
+    m_audioFifo = av_audio_fifo_alloc(m_audioEnc->sample_fmt, m_audioEnc->channels, 1);
+    if (!m_audioFifo) {
+        ELOG_ERROR("Cannot allocate audio fifo");
+        goto fail;
+    }
+
+    if (m_audioEncodingFrame) {
+        av_frame_free(&m_audioEncodingFrame);
+        m_audioEncodingFrame = NULL;
+    }
+
+    m_audioEncodingFrame  = av_frame_alloc();
+    if (!m_audioEncodingFrame) {
+        ELOG_ERROR("Cannot allocate audio frame");
+        goto fail;
+    }
+
+    m_audioEncodingFrame->nb_samples        = m_audioEnc->frame_size;
+    m_audioEncodingFrame->format            = m_audioEnc->sample_fmt;
+    m_audioEncodingFrame->channel_layout    = m_audioEnc->channel_layout;
+    m_audioEncodingFrame->sample_rate       = m_audioEnc->sample_rate;
+
+    ret = av_frame_get_buffer(m_audioEncodingFrame, 0);
+    if (ret < 0) {
+        ELOG_ERROR("Cannot get audio frame buffer, %s", ff_err2str(ret));
+        goto fail;
+    }
+
+    ELOG_DEBUG("Audio encoder frame_size %d, sample_rate %d, channels %d",
+            m_audioEnc->frame_size, m_audioEnc->sample_rate, nbChannels);
+    return true;
+
+fail:
+    if (m_audioEncodingFrame) {
+        av_frame_free(&m_audioEncodingFrame);
+        m_audioEncodingFrame = NULL;
+    }
+
+    if (m_audioFifo) {
+        av_audio_fifo_free(m_audioFifo);
+        m_audioFifo = NULL;
+    }
+
+    if (m_audioEnc) {
+        avcodec_close(m_audioEnc);
+        codec = NULL;
+    }
 
     return false;
 }
 
-bool RtspOut::init()
+bool RtspOut::addAudioStream(AVOptions &options)
 {
-    AVDictionary *options = NULL;
+    int ret;
 
-    if (!hasAudio() || !hasVideo()) {
-        ELOG_ERROR("no a/v options specified, audio %d, video %d", hasAudio(), hasVideo());
-
-        notifyAsyncEvent("fatal", "no a/v options specified");
+    if (options.codec.compare("pcm_raw") != 0) {
+        ELOG_ERROR("Invalid audio codec, %s", options.codec.c_str());
         return false;
     }
 
-    const int retry = 100; // timeout in 1s
-    int i = 0;
-
-    while ((!m_audioReceived || !m_videoReceived) && i++ < retry) {
-        ELOG_INFO("wait for av options available, audio %d, video %d, retry %d"
-                , m_audioReceived, m_videoReceived, i);
-
-        usleep(10000);
-    }
-    if (!m_audioReceived || !m_videoReceived) {
-        ELOG_ERROR("no a/v frames available, audio %d, video %d"
-                , m_audioReceived, m_videoReceived);
-
-        notifyAsyncEvent("fatal", "no a/v frames available");
+    m_audioStream = avformat_new_stream(m_context, m_audioEnc->codec);
+    if (!m_audioStream) {
+        ELOG_ERROR("Cannot add audio stream");
         return false;
     }
 
-    if (m_audioOptions.codec.compare("pcm_raw") != 0) {
-        ELOG_ERROR("invalid audio codec, %s", m_audioOptions.codec.c_str());
-
-        notifyAsyncEvent("fatal", "invalid audio codec");
-        return false;
-    }
-    if (m_videoOptions.codec.compare("h264") != 0) {
-        ELOG_ERROR("invalid video codec, %s", m_videoOptions.codec.c_str());
-
-        notifyAsyncEvent("fatal", "invalid video codec");
+    ret = avcodec_parameters_from_context(m_audioStream->codecpar, m_audioEnc);
+    if (ret < 0) {
+        ELOG_ERROR("Could not copy the stream parameters, %s", ff_err2str(ret));
+        m_audioStream = NULL;
         return false;
     }
 
-#if 0
-    avformat_alloc_output_context2(&m_context, nullptr, getShortName(m_uri), m_uri.c_str());
-    if (!m_context) {
-        ELOG_ERROR("cannot allocate output context, url %s, format %s", m_uri.c_str(), getShortName(m_uri));
+    ELOG_DEBUG("Audio stream added");
+    return true;
+}
 
-        notifyAsyncEvent("fatal", "cannot allocate output context");
+bool RtspOut::addVideoStream(AVOptions &options)
+{
+    enum AVCodecID codec_id = AV_CODEC_ID_H264;
+    int width = options.spec.video.width;
+    int height = options.spec.video.height;
+    AVCodecParserContext *parser;
+
+    if (options.codec.compare("h264") != 0) {
+        ELOG_ERROR("Invalid video codec, %s", options.codec.c_str());
         return false;
     }
 
-    if (!(m_context->oformat->flags & AVFMT_NOFILE)) {
-        if (avio_open(&m_context->pb, m_context->filename, AVIO_FLAG_WRITE) < 0) {
-            ELOG_ERROR("cannot open connection, %s", m_uri.c_str());
+    m_videoStream = avformat_new_stream(m_context, NULL);
+    if (!m_videoStream) {
+        ELOG_ERROR("Cannot add video stream");
+        return false;
+    }
 
-            notifyAsyncEvent("fatal", "cannot open connection");
-            return false;
+    AVCodecParameters *par = m_videoStream->codecpar;
+    par->codec_type = AVMEDIA_TYPE_VIDEO;
+    par->codec_id = codec_id;
+    par->width = width;
+    par->height = height;
+
+    //extradata
+    parser = av_parser_init(codec_id);
+    if (!parser) {
+        ELOG_ERROR("Cannot find video parser");
+        return false;
+    }
+
+    int size = parser->parser->split(NULL, m_videoKeyFrame->m_payloadData, m_videoKeyFrame->m_payloadSize);
+    if (size > 0) {
+        par->extradata_size = size;
+        par->extradata      = (uint8_t *)malloc(size + AV_INPUT_BUFFER_PADDING_SIZE);
+        memcpy(par->extradata, m_videoKeyFrame->m_payloadData, par->extradata_size);
+    } else {
+        ELOG_WARN("Cannot find video extradata");
+    }
+
+    av_parser_close(parser);
+
+    if (m_context->oformat->flags & AVFMT_GLOBALHEADER)
+        m_videoStream->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
+
+    ELOG_DEBUG("Video stream added: %dx%d", width, height);
+    return true;
+}
+
+void RtspOut::onFrame(const woogeen_base::Frame& frame)
+{
+    switch (frame.format) {
+        case woogeen_base::FRAME_FORMAT_PCM_RAW:
+            if (!hasAudio())
+                return;
+
+            if (!m_audioReceived) {
+                ELOG_INFO("Initial audio options channels %d, sample rate: %d"
+                        , frame.additionalInfo.audio.channels, frame.additionalInfo.audio.sampleRate);
+
+                m_audioOptions.spec.audio.channels = frame.additionalInfo.audio.channels;
+                m_audioOptions.spec.audio.sampleRate = frame.additionalInfo.audio.sampleRate;
+                m_audioReceived = true;
+            }
+
+            if (m_status != AVStreamOut::Context_READY)
+                return;
+
+            if (frame.additionalInfo.audio.channels != m_audioOptions.spec.audio.channels
+                    || frame.additionalInfo.audio.sampleRate != m_audioOptions.spec.audio.sampleRate) {
+                ELOG_ERROR("Invalid audio frame channels %d, or sample rate: %d"
+                        , frame.additionalInfo.audio.channels, frame.additionalInfo.audio.sampleRate);
+
+                notifyAsyncEvent("fatal", "Invalid audio frame channels or sample rate");
+                return;
+            }
+            addAudioFrame(frame.payload, frame.additionalInfo.audio.nbSamples);
+
+            break;
+
+        case woogeen_base::FRAME_FORMAT_H264:
+            if (!hasVideo())
+                return;
+
+            if (!m_videoReceived) {
+                if (!isH264KeyFrame(frame.payload, frame.length)) {
+                    ELOG_INFO("Not video key frame, %d", frame.length);
+
+                    ELOG_INFO("Request video key frame");
+                    deliverFeedbackMsg(FeedbackMsg{.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME});
+                    return;
+                }
+
+                ELOG_INFO("Initial video options: %dx%d",
+                        frame.additionalInfo.video.width, frame.additionalInfo.video.height);
+
+                m_videoKeyFrame.reset(new EncodedFrame(frame.payload, frame.length, 0, frame.format));
+
+                m_videoOptions.spec.video.width = frame.additionalInfo.video.width;
+                m_videoOptions.spec.video.height = frame.additionalInfo.video.height;
+                m_videoReceived = true;
+            }
+
+            if (m_status != AVStreamOut::Context_READY)
+                return;
+
+            if (frame.additionalInfo.video.width != m_videoOptions.spec.video.width
+                    || frame.additionalInfo.video.height != m_videoOptions.spec.video.height) {
+                ELOG_ERROR("Invalid video frame resolution: %dx%d",
+                        frame.additionalInfo.video.width, frame.additionalInfo.video.height);
+
+                notifyAsyncEvent("fatal", "Invalid video frame resolution");
+                return;
+            }
+            m_frameQueue->pushFrame(frame.payload, frame.length, frame.format);
+
+            break;
+
+        default:
+            ELOG_ERROR("Unsupported frame format: %d", frame.format);
+
+            notifyAsyncEvent("fatal", "Unsupported frame format");
+            return;
+    }
+}
+
+void RtspOut::addAudioFrame(uint8_t* data, int nbSamples)
+{
+    int n;
+
+    if (!m_audioFifo || !m_audioEnc) {
+        ELOG_ERROR("Not valid audio fifo(%p), enc(%p)", m_audioFifo, m_audioEnc);
+        return;
+    }
+
+    n = av_audio_fifo_write(m_audioFifo, reinterpret_cast<void**>(&data), nbSamples);
+    if (n < nbSamples) {
+        ELOG_ERROR("Cannot not write data to fifo, bnSamples %d, writed %d", nbSamples, n);
+        return;
+    }
+
+    while (av_audio_fifo_size(m_audioFifo) >= m_audioEnc->frame_size) {
+        n = av_audio_fifo_read(m_audioFifo, reinterpret_cast<void**>(m_audioEncodingFrame->data), m_audioEnc->frame_size);
+        if (n != m_audioEnc->frame_size) {
+            ELOG_ERROR("Cannot read enough data from fifo, needed %d, read %d", m_audioEnc->frame_size, n);
+            return;
         }
-    }
-#endif
 
-    if (!addVideoStream(AV_CODEC_ID_H264, m_videoOptions.spec.video.width, m_videoOptions.spec.video.height))
-        return false;
-    if (!addAudioStream(AV_CODEC_ID_AAC, m_audioOptions.spec.audio.channels, m_audioOptions.spec.audio.sampleRate))
-        return false;
+        AVPacket pkt;
+        int ret;
+        int got_output = 0;
+
+        av_init_packet(&pkt);
+        ret = avcodec_encode_audio2(m_audioEnc, &pkt, m_audioEncodingFrame, &got_output);
+        if (ret < 0) {
+            ELOG_ERROR("Cannot encode audio frame, %s", ff_err2str(ret));
+            return;
+        }
+
+        if (!got_output)
+            return;
+
+        m_frameQueue->pushFrame(pkt.data, pkt.size);
+        av_packet_unref(&pkt);
+    }
+}
+
+bool RtspOut::writeHeader()
+{
+    int ret;
+    AVDictionary *options = NULL;
 
     if (isHls(m_uri)) {
         std::string::size_type pos1 = m_uri.rfind('/');
         if (pos1 == std::string::npos) {
-            ELOG_ERROR("cant not find base url %s", m_uri.c_str());
-
+            ELOG_ERROR("Cant not find base url %s", m_uri.c_str());
             return false;
         }
 
         std::string::size_type pos2 = m_uri.rfind('.');
         if (pos2 == std::string::npos) {
-            ELOG_ERROR("cant not find base url %s", m_uri.c_str());
-
+            ELOG_ERROR("Cant not find base url %s", m_uri.c_str());
             return false;
         }
 
         if (pos2 <= pos1) {
-             ELOG_ERROR("cant not find base url %s", m_uri.c_str());
-
-             return false;
-         }
+            ELOG_ERROR("Cant not find base url %s", m_uri.c_str());
+            return false;
+        }
 
         std::string segment_uri(m_uri.substr(0, pos1));
         segment_uri.append("/intel_");
@@ -492,10 +572,9 @@ bool RtspOut::init()
         av_dict_set(&options, "method", "PUT", 0);
     }
 
-    if (avformat_write_header(m_context, &options) < 0) {
-        ELOG_ERROR("cannot write header");
-
-        notifyAsyncEvent("fatal", "cannot write header");
+    ret = avformat_write_header(m_context, &options);
+    if (ret < 0) {
+        ELOG_ERROR("Cannot write header, %s", ff_err2str(ret));
         return false;
     }
 
@@ -503,476 +582,51 @@ bool RtspOut::init()
     return true;
 }
 
-bool RtspOut::addDumpStream(AVStream *stream)
-{
-    AVStream* dumpStream = NULL;
-
-    dumpStream = avformat_new_stream(m_dumpContext, stream->codec->codec);
-    if (!dumpStream) {
-        ELOG_ERROR("cannot add dump stream");
-
-        return false;
-    }
-
-    //Copy the settings of AVCodecContext
-    if (avcodec_copy_context(dumpStream->codec, stream->codec) < 0) {
-        ELOG_ERROR("Failed to copy dump stream codec context");
-
-        return false;
-    }
-
-    dumpStream->codec->codec_tag = 0;
-    if (m_dumpContext->oformat->flags & AVFMT_GLOBALHEADER)
-        dumpStream->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
-
-    return true;
-}
-
-bool RtspOut::initDump(bool audioRaw)
-{
-    if(audioRaw)
-        m_audioRawDumpFile.reset(new std::ofstream(AUDIO_RAW_FILENAME, std::ios::binary));
-
-    avformat_alloc_output_context2(&m_dumpContext, nullptr, getShortName(m_uri), DUMP_FILENAME);
-    if (!m_dumpContext) {
-        ELOG_ERROR("avformat_alloc_output_context2 failed, url %s, format %s", DUMP_FILENAME, getShortName(m_uri));
-
-        closeDump();
-        return false;
-    }
-
-    addDumpStream(m_videoStream);
-    addDumpStream(m_audioStream);
-
-    if (!(m_dumpContext->oformat->flags & AVFMT_NOFILE)) {
-        if (avio_open(&m_dumpContext->pb, m_dumpContext->filename, AVIO_FLAG_WRITE) < 0) {
-            ELOG_ERROR("avio_open failed, %s", m_uri.c_str());
-
-            closeDump();
-            return false;
-        }
-    }
-
-    if (avformat_write_header(m_dumpContext, nullptr) < 0) {
-        ELOG_ERROR("avformat_write_header failed");
-
-        closeDump();
-        return false;
-    }
-
-    av_dump_format(m_dumpContext, 0, m_dumpContext->filename, 1);
-    return true;
-}
-
-void RtspOut::closeDump()
-{
-    m_audioRawDumpFile.reset();
-
-    if (m_dumpContext) {
-        av_write_trailer(m_dumpContext);
-        avformat_free_context(m_dumpContext);
-        m_dumpContext = NULL;
-    }
-}
-
-void RtspOut::onFrame(const woogeen_base::Frame& frame)
-{
-    if (!m_timeOffset) {
-        m_timeOffset = currentTimeMs();
-
-        ELOG_TRACE("initial time offset %ld", m_timeOffset);
-    }
-
-    switch (frame.format) {
-        case woogeen_base::FRAME_FORMAT_PCM_RAW:
-            if (!m_audioReceived) {
-                ELOG_TRACE("initial audio options channels %d, sample rate: %d"
-                        , frame.additionalInfo.audio.channels, frame.additionalInfo.audio.sampleRate);
-
-                m_audioOptions.spec.audio.channels = frame.additionalInfo.audio.channels;
-                m_audioOptions.spec.audio.sampleRate = frame.additionalInfo.audio.sampleRate;
-                m_audioReceived = true;
-            }
-
-            if (m_status != AVStreamOut::Context_READY || !m_audioStream)
-                return;
-
-            if (frame.additionalInfo.audio.channels != m_audioStream->codec->channels
-                    || int(frame.additionalInfo.audio.sampleRate) != m_audioStream->codec->sample_rate) {
-                ELOG_ERROR("invalid audio frame channels %d, or sample rate: %d"
-                        , frame.additionalInfo.audio.channels, frame.additionalInfo.audio.sampleRate);
-
-                notifyAsyncEvent("fatal", "invalid audio frame channels or sample rate");
-                return close();
-            }
-
-            if (m_audioRawDumpFile)
-                m_audioRawDumpFile->write((const char*)frame.payload, frame.length);
-
-            addToAudioFifo(frame.payload, frame.additionalInfo.audio.nbSamples);
-
-            break;
-
-        case woogeen_base::FRAME_FORMAT_H264:
-            if (!m_videoReceived) {
-                ELOG_TRACE("initial video options: %dx%d",
-                        frame.additionalInfo.video.width, frame.additionalInfo.video.height);
-
-                m_videoOptions.spec.video.width = frame.additionalInfo.video.width;
-                m_videoOptions.spec.video.height = frame.additionalInfo.video.height;
-                m_videoReceived = true;
-
-                ELOG_INFO("request video key frame");
-                deliverFeedbackMsg(FeedbackMsg{.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME });
-            }
-
-            if (frame.additionalInfo.video.width != m_videoOptions.spec.video.width
-                    || frame.additionalInfo.video.height != m_videoOptions.spec.video.height) {
-                ELOG_ERROR("invalid video frame resolution: %dx%d",
-                        frame.additionalInfo.video.width, frame.additionalInfo.video.height);
-
-                notifyAsyncEvent("fatal", "invalid video frame resolution");
-                return close();
-            }
-            m_videoQueue->pushFrame(frame.payload, frame.length);
-            m_readCbcond.notify_one();
-
-            break;
-
-        default:
-            ELOG_ERROR("unsupported frame format: %d", frame.format);
-
-            notifyAsyncEvent("fatal", "unsupported frame format");
-            return close();
-    }
-}
-
-void RtspOut::addToAudioFifo(uint8_t* data, int nbSamples)
-{
-    boost::mutex::scoped_lock slock(m_audioFifoMutex);
-    int n;
-
-    if (!m_audioFifo || !m_audioStream)
-        return;
-
-    n = av_audio_fifo_write(m_audioFifo, reinterpret_cast<void**>(&data), nbSamples);
-    if (n < nbSamples) {
-        ELOG_ERROR("cannot not write data to fifo, bnSamples %d, writed %d", nbSamples, n);
-
-        return;
-    }
-
-    if (av_audio_fifo_size(m_audioFifo) >= m_audioStream->codec->frame_size) {
-        //trigger audio encoder
-        m_audioFifoCond.notify_one();
-    }
-}
-
-bool RtspOut::encodeAudioFrame(AVPacket *pkt)
+int RtspOut::writeAVFrame(AVStream* stream, const EncodedFrame& frame)
 {
     int ret;
-    int got_output = 0;
-
-    if (!m_audioStream) {
-        ELOG_ERROR("invalid audio stream");
-
-        return false;
-    }
-
-    av_init_packet(pkt);
-    ret = avcodec_encode_audio2(m_audioStream->codec, pkt, m_audioEncodingFrame, &got_output);
-    if (ret < 0) {
-        ELOG_ERROR("cannot encode audio frame.");
-
-        return false;
-    }
-
-    return got_output;
-}
-
-int RtspOut::writeAudioFrame()
-{
     AVPacket pkt;
-    int ret;
 
     av_init_packet(&pkt);
-    ret = encodeAudioFrame(&pkt);
-    if (!ret) {
-        ELOG_TRACE("No audio frame!");
-        return false;
-    }
+    pkt.data = frame.m_payloadData;
+    pkt.size = frame.m_payloadSize;
+    pkt.dts = (int64_t)(frame.m_timeStamp / (av_q2d(stream->time_base) * 1000));
+    pkt.pts = pkt.dts;
+    pkt.stream_index = stream->index;
 
-    int64_t timestamp = currentTimeMs() - m_timeOffset;
+    if (stream == m_videoStream) {
+        pkt.flags = isH264KeyFrame(frame.m_payloadData, frame.m_payloadSize) ? AV_PKT_FLAG_KEY : 0;
 
-    pkt.stream_index = m_audioStream->index;
-    pkt.pts = (timestamp * 1000) / (av_q2d(m_audioStream->time_base) * AV_TIME_BASE);
-    pkt.dts = pkt.pts;
-    pkt.duration = (m_lastAudioTimestamp != -1) ? (pkt.pts - m_lastAudioTimestamp) : 0;
-
-    if (m_lastVideoTimestamp != -1) {
-        if (pkt.pts <= m_lastVideoTimestamp - 1000) {
-            ELOG_INFO("Lost av sync, audio pts (%ld) is too fast than video pts(%ld), > %d ms"
-                    , pkt.pts, m_lastVideoTimestamp, 1000);
-        }
-	}
-
-    m_lastAudioTimestamp = pkt.pts;
-    ELOG_TRACE("audio_frame pts: %ld, duration: %ld, size: %d", pkt.pts, pkt.duration, pkt.size);
-
-    {
-        boost::unique_lock<boost::shared_mutex> lock(m_contextMutex);
-
-        if (m_dumpContext) {
-            AVPacket dump_pkt;
-            av_copy_packet(&dump_pkt, &pkt);
-            ret = av_interleaved_write_frame(m_dumpContext, &dump_pkt);
+        if (pkt.flags == AV_PKT_FLAG_KEY) {
+            m_lastKeyFrameReqTime = frame.m_timeStamp;
         }
 
-        ret = av_interleaved_write_frame(m_context, &pkt);
-    }
-    if (ret < 0) {
-        ELOG_ERROR("Error muxing audio packet");
+        if (frame.m_timeStamp - m_lastKeyFrameReqTime > KEYFRAME_REQ_INTERVAL) {
+            m_lastKeyFrameReqTime = frame.m_timeStamp;
 
-        av_free_packet(&pkt);
-        return false;
+            ELOG_DEBUG("Request video key frame");
+            deliverFeedbackMsg(FeedbackMsg{.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME});
+        }
     }
 
-    av_free_packet(&pkt);
-    return true;
+    ELOG_DEBUG("Send %s frame, timestamp %ld, size %4d%s"
+            , stream == m_audioStream ? "audio" : "video"
+            , pkt.dts
+            , pkt.size
+            , pkt.flags == AV_PKT_FLAG_KEY ? " - key" : ""
+            );
+
+    ret = av_interleaved_write_frame(m_context, &pkt);
+    if (ret < 0)
+        ELOG_ERROR("Cannot write frame, %s", ff_err2str(ret));
+
+    return ret;
 }
 
-int RtspOut::writeVideoFrame()
+char *RtspOut::ff_err2str(int errRet)
 {
-    int ret;
-    AVPacket pkt;
-
-    ret = av_read_frame(m_ifmtCtx, &pkt);
-    if (ret < 0) {
-        ELOG_ERROR("video EOS, error av_read_frame for vide stream");
-
-        notifyAsyncEvent("fatal", "video EOS");
-        return false;
-    }
-
-    int64_t timestamp = currentTimeMs() - m_timeOffset;
-
-    if (pkt.flags & AV_PKT_FLAG_KEY)
-        m_lastKeyFrameReqTime = timestamp;
-
-    if (timestamp - m_lastKeyFrameReqTime > KEYFRAME_REQ_INTERVAL) {
-        ELOG_TRACE("Request key frame!");
-
-        m_lastKeyFrameReqTime = timestamp;
-        deliverFeedbackMsg(FeedbackMsg{.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME });
-    }
-
-    if (pkt.pts != AV_NOPTS_VALUE)
-        ELOG_WARN("Raw H264 bitstream PTS should be none!");
-
-    pkt.pts = (timestamp * 1000) / (av_q2d(m_videoStream->time_base) * AV_TIME_BASE);
-    pkt.dts = pkt.pts;
-    pkt.duration = (m_lastVideoTimestamp != -1) ? (pkt.pts - m_lastVideoTimestamp) : 0;
-
-    if (m_lastAudioTimestamp != -1) {
-        if (pkt.pts  <= m_lastAudioTimestamp - 1000) {
-            ELOG_INFO("Lost av sync, video pts (%ld) is too fast than audio pts(%ld), > %d ms"
-                    , pkt.pts, m_lastAudioTimestamp, 1000);
-        }
-    }
-
-    m_lastVideoTimestamp = pkt.pts;
-    ELOG_TRACE("video_frame pts: %ld, duration: %ld, size: %d %s"
-            , pkt.pts, pkt.duration, pkt.size, (pkt.flags & AV_PKT_FLAG_KEY) ? "key frame" : "");
-    {
-        boost::unique_lock<boost::shared_mutex> lock(m_contextMutex);
-
-        if (m_dumpContext) {
-            AVPacket dump_pkt;
-            av_copy_packet(&dump_pkt, &pkt);
-            ret = av_interleaved_write_frame(m_dumpContext, &dump_pkt);
-        }
-
-        ret = av_interleaved_write_frame(m_context, &pkt);
-    }
-    if (ret < 0) {
-        ELOG_ERROR("Error muxing video packet");
-
-        av_free_packet(&pkt);
-        return false;
-    }
-
-    av_free_packet(&pkt);
-    return true;
-}
-
-bool RtspOut::addAudioStream(enum AVCodecID codec_id, int nbChannels, int sampleRate)
-{
-    int ret;
-    AVCodec* codec = NULL;
-    AVStream* stream = NULL;
-    AVCodecContext* c = NULL;
-
-    if (codec_id == AV_CODEC_ID_AAC)
-        codec = avcodec_find_encoder_by_name("libfdk_aac");
-    else
-        codec = avcodec_find_encoder(codec_id);
-
-    if (!codec) {
-        ELOG_ERROR("Can not find audio encoder %s, please check if ffmpeg/libfdk_aac installed", "libfdk_aac");
-
-        notifyAsyncEvent("fatal", "cannot find audio encoder");
-
-        goto fail;
-    }
-
-    stream = avformat_new_stream(m_context, codec);
-    if (!stream) {
-        ELOG_ERROR("cannot add audio stream");
-
-        notifyAsyncEvent("fatal", "cannot add audio stream");
-        goto fail;
-    }
-
-    c = stream->codec;
-    c->channels         = nbChannels;
-    c->channel_layout   = av_get_default_channel_layout(nbChannels);
-    c->sample_rate      = sampleRate;
-    c->sample_fmt       = AV_SAMPLE_FMT_S16;
-
-    if (m_context->oformat->flags & AVFMT_GLOBALHEADER)
-        c->flags |= CODEC_FLAG_GLOBAL_HEADER;
-
-    ret = avcodec_open2(c, codec, nullptr);
-    if (ret < 0) {
-        ELOG_ERROR("cannot open output audio codec");
-
-        notifyAsyncEvent("fatal", "cannot open output audio codec");
-        goto fail;
-    }
-
-    if (m_audioFifo) {
-        ELOG_TRACE("free audio fifo");
-
-        av_audio_fifo_free(m_audioFifo);
-        m_audioFifo = NULL;
-    }
-
-    m_audioFifo = av_audio_fifo_alloc(c->sample_fmt, c->channels, 1);
-    if (!m_audioFifo ) {
-        ELOG_ERROR("cannot allocate audio fifo");
-
-        notifyAsyncEvent("fatal", "cannot allocate audio fifo");
-        goto fail;
-    }
-
-    if (m_audioEncodingFrame) {
-        ELOG_TRACE("free audio frame");
-
-        av_frame_free(&m_audioEncodingFrame);
-        m_audioEncodingFrame = NULL;
-    }
-
-    m_audioEncodingFrame  = av_frame_alloc();
-    if (!m_audioEncodingFrame) {
-        ELOG_ERROR("cannot allocate audio frame");
-
-        notifyAsyncEvent("fatal", "cannot allocate audio frame");
-        goto fail;
-    }
-
-    m_audioEncodingFrame->nb_samples        = c->frame_size;
-    m_audioEncodingFrame->format            = c->sample_fmt;
-    m_audioEncodingFrame->channel_layout    = c->channel_layout;
-    m_audioEncodingFrame->sample_rate       = c->sample_rate;
-
-    ret = av_frame_get_buffer(m_audioEncodingFrame, 0);
-    if (ret < 0) {
-        ELOG_ERROR("cannot get audio frame buffer");
-
-        notifyAsyncEvent("fatal", "cannot allocate audio frame buffer");
-        goto fail;
-    }
-
-    m_audioStream = stream;
-
-    ELOG_DEBUG("audio stream added: %d channel(s), %d Hz", nbChannels, sampleRate);
-
-    return true;
-
-fail:
-    if (m_audioEncodingFrame) {
-        av_frame_free(&m_audioEncodingFrame);
-        m_audioEncodingFrame = NULL;
-    }
-
-    if (m_audioFifo) {
-        av_audio_fifo_free(m_audioFifo);
-        m_audioFifo = NULL;
-    }
-
-    if (c) {
-        avcodec_close(c);
-        codec = NULL;
-    }
-
-    if (m_audioStream) {
-        m_audioStream = NULL;
-    }
-
-    //stream will be closed by context
-
-    return false;
-}
-
-bool RtspOut::addVideoStream(enum AVCodecID codec_id, unsigned int width, unsigned int height)
-{
-    if (!m_inputVideoStream) {
-        ELOG_ERROR("invalid input video stream!");
-
-        notifyAsyncEvent("fatal", "invalid input video stream");
-        return false;
-    }
-
-    if (codec_id != m_inputVideoStream->codec->codec_id) {
-        ELOG_ERROR("cannot add video stream, invalid codec param");
-
-        notifyAsyncEvent("fatal", "cannot add video stream");
-        return false;
-    }
-
-    if (m_inputVideoStream->codec->width != (int)width || m_inputVideoStream->codec->height != (int)height) {
-        ELOG_TRACE("set video size %dx%d -> %dx%d"
-            , m_inputVideoStream->codec->width
-            , m_inputVideoStream->codec->height
-            , width
-            , height);
-
-        m_inputVideoStream->codec->width = width;
-        m_inputVideoStream->codec->height = height;
-    }
-
-    m_videoStream = avformat_new_stream(m_context, m_inputVideoStream->codec->codec);
-    if (!m_videoStream) {
-        ELOG_ERROR("cannot add video stream");
-
-        notifyAsyncEvent("fatal", "cannot add video stream");
-        return false;
-    }
-
-    //Copy the settings of AVCodecContext
-    if (avcodec_copy_context(m_videoStream->codec, m_inputVideoStream->codec) < 0) {
-        ELOG_ERROR("Failed to copy context from input to output stream codec context");
-
-        notifyAsyncEvent("fatal", "cannot configure video stream context");
-        return false;
-    }
-
-    m_videoStream->codec->codec_tag = 0;
-    if (m_context->oformat->flags & AVFMT_GLOBALHEADER)
-        m_videoStream->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
-
-    ELOG_DEBUG("video stream added: %dx%d", width, height);
-    return true;
+    av_strerror(errRet, (char*)(&m_errbuff), 500);
+    return m_errbuff;
 }
 
 } /* namespace mcu */
