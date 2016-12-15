@@ -110,8 +110,11 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
     if(!ua||!ua.sdk||!ua.sdk.version||!ua.sdk.type||!ua.runtime||!ua.runtime.version||!ua.runtime.name||!ua.os||!ua.os.version||!ua.os.name){
       return false;
     }
-    // client_info is introduced in 3.3. It's the same version as reconnection. So it's safe to set reconnection_enabled to true if UA info is valid.
-    reconnection_enabled = true;
+    // client_info is introduced in 3.3. It's the same version as reconnection. So it's safe to ignore SDK version.
+    // JavaScript SDK 3.3 does not support reconnection.
+    if(ua.sdk.type == 'iOS' || ua.sdk.type == 'Android'){
+      reconnection_enabled = true;
+    }
     return true;
   };
 
