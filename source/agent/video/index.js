@@ -68,6 +68,7 @@ module.exports = function (rpcClient) {
 
         useHardware = GLOBAL.config.video.hardwareAccelerated,
         openh264Enabled = GLOBAL.config.video.openh264Enabled,
+        yamiEnabled = GLOBAL.config.video.yamiEnabled,
 
         /*{ConnectionID: {video: StreamID | undefined,
                           connection: InternalOut}
@@ -78,8 +79,10 @@ module.exports = function (rpcClient) {
         internalConnFactory = new InternalConnectionFactory;
     var VideoMixer;
     try {
-        if (useHardware) {
-            VideoMixer = require('./videoMixer_hw/build/Release/videoMixer-hw');
+        if (useHardware && yamiEnabled) {
+            VideoMixer = require('./videoMixer_hw_yami/build/Release/videoMixer-hw-yami');
+        } else if (useHardware && !yamiEnabled) {
+            VideoMixer = require('./videoMixer_hw_msdk/build/Release/videoMixer-hw-msdk');
         } else {
             VideoMixer = require('./videoMixer_sw/build/Release/videoMixer-sw');
         }

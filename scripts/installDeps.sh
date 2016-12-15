@@ -120,21 +120,21 @@ read -p "Installing libva? [No/yes]" yn
 case $yn in
   [Yy]* ) install_libva;;
   [Nn]* ) ;;
-  * ) ;;
+  * ) install_libva;;
 esac
 
 read -p "Installing libva intel driver? [No/yes]" yn
 case $yn in
   [Yy]* ) install_libva_driver;;
   [Nn]* ) ;;
-  * ) ;;
+  * ) install_libva_driver;;
 esac
 
 read -p "Installing libyami? [No/yes]" yn
 case $yn in
   [Yy]* ) install_libyami;;
   [Nn]* ) ;;
-  * ) ;;
+  * ) install_libyami;;
 esac
 
 read -p "Installing libre? [No/yes]" yn

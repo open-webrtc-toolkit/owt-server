@@ -40,6 +40,7 @@ GLOBAL.config.recording.path = GLOBAL.config.recording.path || '/tmp';
 
 GLOBAL.config.video = GLOBAL.config.video || {};
 GLOBAL.config.video.hardwareAccelerated = !!GLOBAL.config.video.hardwareAccelerated;
+GLOBAL.config.video.yamiEnabled = !!GLOBAL.config.video.yamiEnabled;
 
 
 // Parse command line arguments
@@ -449,8 +450,21 @@ var joinCluster = function (on_ok) {
             break;
         case 'video':
             /*FIXME: should be double checked whether hardware acceleration is actually running*/
-            load_collection.item = {name: (GLOBAL.config.video.hardwareAccelerated ? 'gpu' : 'cpu')};
-            break;
+        load_collection.item = {name: (GLOBAL.config.video.hardwareAccelerated ? 'gpu' : 'cpu')};
+        if (GLOBAL.config.video.hardwareAccelerated) {
+            // Query the hardware capability only if we want to try it.
+            if (GLOBAL.config.video.yamiEnabled) {
+                var path = require('path');
+                process.env.LD_LIBRARY_PATH = [
+                    path.resolve(process.cwd(), './lib/va'),
+                    process.env.LD_LIBRARY_PATH,
+                    path.resolve(process.cwd(), './lib'),
+                    ].join(':');
+                process.env.LIBVA_DRIVERS_PATH = path.resolve(process.cwd(), './lib/dri');
+                process.env.LIBVA_DRIVER_NAME = 'i965';
+            }
+        }
+        break;
         default:
             load_collection.item = {name: 'cpu'};
             break;

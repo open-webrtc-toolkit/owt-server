@@ -107,12 +107,16 @@ pack_addons() {
   # remove libs from msdk
   rm -f ${DIST_ADDON_DIR}/lib/libmfxhw*
   for f in ${DIST_ADDON_DIR}/lib/libva*; do
+    if [[ -s "$f" && ! -d ${DIST_ADDON_DIR}/lib/va ]]; then
+      mkdir -p ${DIST_ADDON_DIR}/lib/va
+    fi
     if [ -s "$f" ]; then
       VA_DRIVERS_PATH=`PKG_CONFIG_PATH=${ROOT}/build/libdeps/build/lib/pkgconfig:${PKG_CONFIG_PATH} pkg-config libva --variable driverdir`
       [ -s "${VA_DRIVERS_PATH}" ] && mkdir -p ${DIST_ADDON_DIR}/lib/dri && cp -av ${VA_DRIVERS_PATH}/* ${DIST_ADDON_DIR}/lib/dri && echo -e "this=\`dirname \"\$_\"\`\nthis=\`cd \"\$this\"; pwd\`\nexport LIBVA_DRIVERS_PATH=\$this/lib/dri" > ${DIST_ADDON_DIR}/.libva_drivers_path.sh
     fi
     break
   done
+  mv -v ${DIST_ADDON_DIR}/lib/libva* ${DIST_ADDON_DIR}/lib/va/
   # remove libs from libav/ffmpeg if needed
   if ldd ${DIST_ADDON_DIR}/lib/libavcodec* | grep aac -q -s; then # nonfree, not redistributable
     rm -f ${DIST_ADDON_DIR}/lib/libav*

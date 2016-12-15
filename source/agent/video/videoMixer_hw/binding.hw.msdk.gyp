@@ -1,6 +1,6 @@
 {
   'targets': [{
-    'target_name': 'videoMixer-hw',
+    'target_name': 'videoMixer-hw-msdk',
     'sources': [
       '../videoMixer/addon.cc',
       '../videoMixer/VideoMixerWrapper.cc',
@@ -34,7 +34,7 @@
       '-llog4cxx',
       '-L$(CORE_HOME)/../../third_party/webrtc', '-lwebrtc',
       '-L/opt/intel/mediasdk/lib64', '-lmfxhw64', '-Wl,-rpath=/opt/intel/mediasdk/lib64',
-      '<!@(pkg-config --libs libva libva-drm)',
+      '-lva -lva-drm',
       '-L$(CORE_HOME)/../../third_party/openh264', '-lopenh264',
     ],
     'conditions': [

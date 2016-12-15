@@ -1,6 +1,6 @@
 {
   'targets': [{
-    'target_name': 'videoMixer-hw',
+    'target_name': 'videoMixer-hw-yami',
     'sources': [
       '../videoMixer/addon.cc',
       '../videoMixer/VideoMixerWrapper.cc',
