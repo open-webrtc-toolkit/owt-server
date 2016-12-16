@@ -48,8 +48,6 @@ RtspOut::RtspOut(const std::string& url, const AVOptions* audio, const AVOptions
     , m_audioFifo{ nullptr }
     , m_audioEncodingFrame{ nullptr }
 {
-    ELOG_TRACE("url %s, acodec %s, vcodec %s", m_uri.c_str(), m_audioOptions.codec.c_str(), m_videoOptions.codec.c_str());
-
     if (!audio && !video) {
         ELOG_ERROR("NULL a/v AVOptions");
         notifyAsyncEvent("init", "NULL a/v AVOptions");
@@ -60,6 +58,8 @@ RtspOut::RtspOut(const std::string& url, const AVOptions* audio, const AVOptions
         m_audioOptions = *audio;
     if (video)
         m_videoOptions = *video;
+
+    ELOG_TRACE("url %s, acodec %s, vcodec %s", m_uri.c_str(), m_audioOptions.codec.c_str(), m_videoOptions.codec.c_str());
 
     m_frameQueue.reset(new woogeen_base::MediaFrameQueue());
 
@@ -202,11 +202,14 @@ bool RtspOut::connect()
         goto fail;
     }
 
-    ret = avio_open(&m_context->pb, m_context->filename, AVIO_FLAG_WRITE);
-    if (ret < 0) {
-        ELOG_ERROR("Cannot open connection(%s), %s", m_uri.c_str(), ff_err2str(ret));
-        goto fail;
+    if (!(m_context->oformat->flags & AVFMT_NOFILE)) {
+        ret = avio_open(&m_context->pb, m_context->filename, AVIO_FLAG_WRITE);
+        if (ret < 0) {
+            ELOG_ERROR("Cannot open connection(%s), %s", m_uri.c_str(), ff_err2str(ret));
+            goto fail;
+        }
     }
+
     return true;
 
 fail:
