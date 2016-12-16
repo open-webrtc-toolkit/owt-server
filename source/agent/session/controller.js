@@ -1021,6 +1021,9 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                             log.info('Mix stream['+streamId+'] successfully.');
                         }, function (error_reason) {
                             log.error(error_reason);
+                            unpublishStream(streamId);
+                            deleteTerminal(terminal_id);
+                            on_error(error_reason);
                         });
                     } else {
                         log.debug('will not mix stream:', streamId);
@@ -1487,6 +1490,10 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                         }, reject);
                     });
                 }));
+            })
+            .catch(function (reason) {
+                log.error('Rebuid video mixer failed, reason:', (typeof reason === 'string') ? reason : reason.message);
+                setTimeout(function () {throw Error('Rebuild video mixer failed.');});
             });
     };
 
@@ -1570,6 +1577,10 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                         }, reject);
                     });
                 }));
+            })
+            .catch(function (reason) {
+                log.error('Rebuid video transcoder failed, reason:', (typeof reason === 'string') ? reason : reason.message);
+                setTimeout(function () {throw Error('Rebuild video transcoder failed.');});
             });
     };
 
@@ -1677,6 +1688,10 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                         }, reject);
                     });
                 }));
+            })
+            .catch(function (reason) {
+                log.error('Rebuid audio mixer failed, reason:', (typeof reason === 'string') ? reason : reason.message);
+                setTimeout(function () {throw Error('Rebuild audio mixer failed.');});
             });
     };
 
@@ -1759,6 +1774,10 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                         }, reject);
                     });
                 }));
+            })
+            .catch(function (reason) {
+                log.error('Rebuid audio transcoder failed, reason:', (typeof reason === 'string') ? reason : reason.message);
+                setTimeout(function () {throw Error('Rebuild audio transcoder failed.');});
             });
     };
 
