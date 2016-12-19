@@ -243,8 +243,8 @@ std::string VideoLayoutProcessor::getInputRegion(int input)
     std::vector<int>::iterator inputIt = std::find(m_inputPositions.begin(), m_inputPositions.end(), input);
     if (inputIt != m_inputPositions.end()) {
         uint32_t position = inputIt - m_inputPositions.begin();
-        assert(m_currentRegions->size() > position);
-        return m_currentRegions->at(position).id;
+        if (m_currentRegions->size() > position)
+            return m_currentRegions->at(position).id;
     }
     return "";
 }
@@ -254,8 +254,8 @@ Region VideoLayoutProcessor::getRegionDetail(int input)
     std::vector<int>::iterator inputIt = std::find(m_inputPositions.begin(), m_inputPositions.end(), input);
     if (inputIt != m_inputPositions.end()) {
         uint32_t position = inputIt - m_inputPositions.begin();
-        assert(m_currentRegions->size() > position);
-        return m_currentRegions->at(position);
+        if (m_currentRegions->size() > position)
+            return m_currentRegions->at(position);
     }
     return Region();
 }
