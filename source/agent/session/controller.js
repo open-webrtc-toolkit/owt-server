@@ -567,7 +567,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                                               audio: undefined,
                                               video: {codec: video_codec,
                                                       resolution: video_resolution,
-                                                      quality: video_quality,
+                                                      quality_level: video_quality,
                                                       subscribers: []},
                                               spread: []};
                         terminals[video_mixer].published.push(stream_id);
@@ -594,7 +594,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                        streams[stream_id].video &&
                        streams[stream_id].video.codec === video_codec &&
                        streams[stream_id].video.resolution === video_resolution &&
-                       streams[stream_id].video.quality === video_quality;
+                       streams[stream_id].video.quality_level === video_quality;
             });
         if (candidates.length > 0) {
             on_ok(candidates[0]);
@@ -729,7 +729,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                 streams[published[j]].video &&
                 streams[published[j]].video.codec === video_codec &&
                 streams[published[j]].video.resolution === video_resolution &&
-                streams[published[j]].video.quality === video_quality) {
+                streams[published[j]].video.quality_level === video_quality) {
                 on_ok(published[j]);
                 return;
             }
@@ -932,7 +932,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
             if (streams[stream_id].video) {
                 if (streams[stream_id].video.codec === video_codec &&
                     (video_resolution === 'unspecified' || streams[stream_id].video.resolution === video_resolution) &&
-                    (video_quality === 'unspecified' || streams[stream_id].video.quality === video_quality)) {
+                    (video_quality === 'unspecified' || streams[stream_id].video.quality_level === video_quality)) {
                     on_ok(stream_id);
                 } else {
                     getTranscodedVideo(video_codec, video_resolution, video_quality, stream_id, function (streamID) {
@@ -1149,8 +1149,8 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
             var video_quality = 'unspecified';
             if (subInfo.video) {
                 video_quality = (subInfo.video.fromStream === mixed_stream_id)?
-                                (subInfo.video.quality || (config.mediaMixing.video && config.mediaMixing.video.quality) || 'unspecified')
-                                : (subInfo.video.quality || 'unspecified');
+                                (subInfo.video.quality_level || (config.mediaMixing.video && config.mediaMixing.video.quality_level) || 'unspecified')
+                                : 'standard' /*(subInfo.video.quality_level || 'unspecified')*/;
             }
 
 
@@ -1502,7 +1502,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                 return Promise.all(outputs.map(function (old_st) {
                     log.debug('Resuming video mixer output:', old_st);
                     return new Promise(function (resolve, reject) {
-                        getMixedVideo(old_st.video.codec, old_st.video.resolution, old_st.video.quality, function(stream_id) {
+                        getMixedVideo(old_st.video.codec, old_st.video.resolution, old_st.video.quality_level, function(stream_id) {
                             log.debug('Got new stream:', stream_id);
                             return Promise.all(old_st.spread.map(function(target_node) {
                                 return new Promise(function (res, rej) {
@@ -1589,7 +1589,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                 return Promise.all(outputs.map(function (old_st) {
                     log.debug('Resuming video xcoder output:', old_st);
                     return new Promise(function (resolve, reject) {
-                        getTranscodedVideo(old_st.video.codec, old_st.video.resolution, old_st.video.quality, input, function(stream_id) {
+                        getTranscodedVideo(old_st.video.codec, old_st.video.resolution, old_st.video.quality_level, input, function(stream_id) {
                             log.debug('Got new stream:', stream_id);
                             return Promise.all(old_st.spread.map(function(target_node) {
                                 return new Promise(function (res, rej) {

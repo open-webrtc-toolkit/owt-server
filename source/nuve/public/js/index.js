@@ -398,7 +398,7 @@ function tableHandlerRoom(rooms) {
     $('#myModal3 .modal-title').text('Media Setting for Room ' + roomId);
     var videoSetting = (room.mediaMixing || {}).video || {
       resolution: 'vga',
-      quality: 'standard',
+      quality_level: 'standard',
       bkColor: 'black',
       avCoordinated: false,
       multistreaming: 0,
@@ -418,8 +418,8 @@ function tableHandlerRoom(rooms) {
           <td id="resolution" class="value-num-edit" data-value={{resolution}}></td>\
         </tr>\
         <tr>\
-          <td colspan="2">quality</td>\
-          <td id="quality" class="value-num-edit" data-value={{quality}}></td>\
+          <td colspan="2">quality level</td>\
+          <td id="quality_level" class="value-num-edit" data-value={{quality_level}}></td>\
         </tr>\
         <tr>\
           <td colspan="2">bkColor</td>\
@@ -508,7 +508,7 @@ function tableHandlerRoom(rooms) {
     $('#myModal3 tbody td#quality').editable({
       mode: 'inline',
       type: 'select',
-      source: metadata.mediaMixing.video.quality.map(function(v) {
+      source: metadata.mediaMixing.video.quality_level.map(function(v) {
         return {
           value: v,
           text: v
