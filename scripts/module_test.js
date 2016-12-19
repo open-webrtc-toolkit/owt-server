@@ -29,7 +29,8 @@ if (!process.env.MODULE_TEST) {
               path.resolve(__dirname, '/usr/lib64'),
               process.env.LD_LIBRARY_PATH || '',
             ].join(':');
-            require('child_process').fork('msdk_test.js', [module]);
+            var subScript = path.resolve(__dirname, './msdk_test.js'); 
+            require('child_process').fork(subScript, [module]);
           }else {
             require(module);
             console.log('[PASS]', path.basename(module));
