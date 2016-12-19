@@ -27,6 +27,8 @@ extern "C" {
 #include <libavutil/channel_layout.h>
 }
 
+#define KEYFRAME_REQ_INTERVAL (1 * 1000) // 1 seconds
+
 namespace woogeen_base {
 
 DEFINE_LOGGER(MediaFileOut, "woogeen.media.MediaFileOut");
@@ -212,8 +214,9 @@ void MediaFileOut::onFrame(const Frame& frame)
                     }
                 }
 
-                if (!m_videoSourceChanged)
+                if (!m_videoSourceChanged) {
                     m_videoQueue->pushFrame(frame.payload, frame.length);
+                }
                 else {
                     ELOG_DEBUG("video source changed, discard till key frame!");
                 }
@@ -358,26 +361,54 @@ void MediaFileOut::onTimeout()
         return;
 
     boost::shared_ptr<EncodedFrame> mediaFrame;
-    while (mediaFrame = m_audioQueue->popFrame())
-        this->writeAVFrame(m_audioStream, *mediaFrame);
 
+    while (mediaFrame = m_audioQueue->popFrame())
+        this->writeAVFrame(m_audioStream, *mediaFrame, false);
     while (mediaFrame = m_videoQueue->popFrame())
-        this->writeAVFrame(m_videoStream, *mediaFrame);
+        this->writeAVFrame(m_videoStream, *mediaFrame, true);
 }
 
-int MediaFileOut::writeAVFrame(AVStream* stream, const EncodedFrame& frame)
+int MediaFileOut::writeAVFrame(AVStream* stream, const EncodedFrame& frame, bool isVideo)
 {
     AVPacket pkt;
+    int ret;
+
     av_init_packet(&pkt);
     pkt.data = frame.m_payloadData;
     pkt.size = frame.m_payloadSize;
     pkt.pts = (int64_t)(frame.m_timeStamp / (av_q2d(stream->time_base) * 1000));
+    pkt.dts = pkt.pts;
     pkt.stream_index = stream->index;
-    if (frame.m_timeStamp - m_lastKeyFrameReqTime > KEYFRAME_REQ_INTERVAL) {
-        m_lastKeyFrameReqTime = frame.m_timeStamp;
-        deliverFeedbackMsg(FeedbackMsg{.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME });
+
+    if (isVideo) {
+        if (stream->codec->codec_id == AV_CODEC_ID_H264)
+            pkt.flags = isH264KeyFrame(frame.m_payloadData, frame.m_payloadSize) ? AV_PKT_FLAG_KEY : 0;
+        else
+            pkt.flags = isVp8KeyFrame(frame.m_payloadData, frame.m_payloadSize) ? AV_PKT_FLAG_KEY : 0;
+
+        if (pkt.flags == AV_PKT_FLAG_KEY) {
+            m_lastKeyFrameReqTime = frame.m_timeStamp;
+        }
+
+        if (frame.m_timeStamp - m_lastKeyFrameReqTime > KEYFRAME_REQ_INTERVAL) {
+            m_lastKeyFrameReqTime = frame.m_timeStamp;
+
+            ELOG_DEBUG("Request video key frame");
+            deliverFeedbackMsg(FeedbackMsg{.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME});
+        }
     }
-    return av_interleaved_write_frame(m_context, &pkt);
+
+    ret = av_interleaved_write_frame(m_context, &pkt);
+    if (ret < 0)
+        ELOG_ERROR("Cannot write frame, %s", ff_err2str(ret));
+
+    return ret;
+}
+
+char *MediaFileOut::ff_err2str(int errRet)
+{
+    av_strerror(errRet, (char*)(&m_errbuff), 500);
+    return m_errbuff;
 }
 
 } // namespace woogeen_base

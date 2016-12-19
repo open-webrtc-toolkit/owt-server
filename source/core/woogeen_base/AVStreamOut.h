@@ -31,8 +31,6 @@
 #include <boost/thread/mutex.hpp>
 #include <rtputils.h>
 
-#define KEYFRAME_REQ_INTERVAL (10 * 1000) // 10 seconds
-
 namespace woogeen_base {
 
 static inline int64_t currentTimeMs()
@@ -103,8 +101,12 @@ public:
         if (m_queue.size() == 0 && timeout > 0) {
             m_cond.timed_wait(lock, boost::get_system_time() + boost::posix_time::milliseconds(timeout));
         }
-        frame = m_queue.front();
-        m_queue.pop();
+
+        if (m_queue.size() > 0) {
+            frame = m_queue.front();
+            m_queue.pop();
+        }
+
         return frame;
     }
 

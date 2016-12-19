@@ -54,7 +54,8 @@ private:
     bool addVideoStream(enum AVCodecID codec_id, unsigned int width, unsigned int height);
     bool addAudioStream(enum AVCodecID codec_id, int nbChannels = 1, int sampleRate = 8000);
     bool getReady();
-    int writeAVFrame(AVStream*, const EncodedFrame&);
+    int writeAVFrame(AVStream*, const EncodedFrame&, bool isVideo);
+    char *ff_err2str(int errRet);
 
     AVCodecID m_expectedVideo;
     AVStream* m_videoStream;
@@ -68,6 +69,8 @@ private:
     uint32_t m_videoHeight;
 
     bool m_videoSourceChanged;
+
+    char m_errbuff[500];
 };
 
 } /* namespace woogeen_base */
