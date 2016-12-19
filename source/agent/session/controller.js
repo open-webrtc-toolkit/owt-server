@@ -90,7 +90,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                     'init',
                     ['mixing', config.mediaMixing.audio, room_id, selfRpcId],
                     function (supported_audio) {
-                        log.debug('init audio mixer ok. room_id:', room_id);
+                        log.debug('init audio mixer ok. room_id:', room_id, 'supported_audio:', supported_audio);
                         video_mixer = Math.random() * 1000000000000000000 + '';
                         newTerminal(video_mixer, 'vmixer', room_id, false, function () {
                             log.debug('new video mixer ok. video_mixer:', video_mixer, 'room_id:', room_id);
@@ -100,7 +100,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                                 'init',
                                 ['mixing', config.mediaMixing.video, room_id, selfRpcId],
                                 function (supported_video) {
-                                    log.debug('init video mixer ok. room_id:', room_id);
+                                    log.debug('init video mixer ok. room_id:', room_id, 'supported_video:', supported_video);
                                     supported_audio_codecs = supported_audio.codecs;
                                     supported_video_codecs = supported_video.codecs;
                                     supported_video_resolutions = supported_video.resolutions;
