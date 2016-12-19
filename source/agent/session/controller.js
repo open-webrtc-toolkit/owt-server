@@ -438,7 +438,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
             spreadStream(stream_id, target_node, 'amixer', function() {
                 if (terminals[audio_mixer]) {
                     terminals[audio_mixer].subscribed[spread_id] = {audio: stream_id};
-                    streams[stream_id].audio.subscribers.push(audio_mixer);
+                    (streams[stream_id].audio.subscribers.indexOf(audio_mixer) < 0) && streams[stream_id].audio.subscribers.push(audio_mixer);
                     on_ok();
                 } else {
                     shrinkStream(stream_id, target_node);
@@ -472,7 +472,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
             spreadStream(stream_id, target_node, 'vmixer', function() {
                 if (terminals[video_mixer]) {
                     terminals[video_mixer].subscribed[spread_id] = {video: stream_id};
-                    streams[stream_id].video.subscribers.push(video_mixer);
+                    (streams[stream_id].video.subscribers.indexOf(video_mixer) < 0) && streams[stream_id].video.subscribers.push(video_mixer);
                     on_ok();
                 } else {
                     shrinkStream(stream_id, target_node);
