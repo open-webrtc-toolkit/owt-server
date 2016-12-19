@@ -10,7 +10,7 @@ function defaultMediaMixing () {
             maxInput: 16,
             resolution: 'vga',
             multistreaming: 0,
-            quality: 'standard',
+            quality_level: 'standard',
             bkColor: 'black',
             crop: 0,
             layout: {
@@ -138,8 +138,8 @@ Room.prototype.validate = function() {
             this.mediaMixing.video.resolution = resolution;
         }
 
-        if (typeof this.mediaMixing.video.quality !== 'string') {
-            this.mediaMixing.video.quality = 'standard';
+        if (typeof this.mediaMixing.video.quality_level !== 'string') {
+            this.mediaMixing.video.quality_level = 'standard';
         }
 
         // Do we still need bitrate?
@@ -298,7 +298,7 @@ Room.genConfig = function (room) {
                 avCoordinated: room.mediaMixing.video.avCoordinated === 1,
                 multistreaming: room.mediaMixing.video.multistreaming === 1,
                 maxInput: maxInput,
-                quality: room.mediaMixing.video.quality || 'standard',
+                quality_level: room.mediaMixing.video.quality_level || 'standard',
                 resolution: room.mediaMixing.video.resolution || 'vga',
                 bkColor: room.mediaMixing.video.bkColor || 'black',
                 crop: room.mediaMixing.video.crop === 1,
@@ -325,7 +325,7 @@ module.exports = Room;
   "mediaMixing": { // type object
     "video": {
       "resolution": "vga", // type string
-      "quality": "standard", // type string, enum in ["bestquality", "betterquality", "standard", "betterspeed", "bestspeed"]
+      "quality_level": "standard", // type string, enum in ["bestquality", "betterquality", "standard", "betterspeed", "bestspeed"]
       "bkColor": {  // or just use "black" with type string
         "r": 255, // type number, 0 ~ 255
         "g": 255, // type number, 0 ~ 255
