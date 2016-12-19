@@ -338,12 +338,18 @@ var Portal = function(spec, rpcReq) {
       return Promise.reject(reason);
     };
 
-    var connection_observer = connectionObserver(onConnectionStatus, onConnectionReady, onConnectionFailed);
-    return rpcReq.getAccessNode(cluster_name, connectionType, {session: participants[participantId].in_session, consumer: connection_id})
+    var connection_observer = connectionObserver(onConnectionStatus, onConnectionReady, onConnectionFailed),
+      in_session = participants[participantId].in_session;
+    return rpcReq.getAccessNode(cluster_name, connectionType, {session: in_session, consumer: connection_id})
       .then(function(accessNode) {
         log.debug('publish::getAccessNode ok, participantId:', participantId, 'connection_id:', connection_id, 'locality:', accessNode);
         locality = accessNode;
-        var connect_options = constructConnectOptions(connection_id, connectionType, 'in', streamDescription, participants[participantId].in_session);
+        if (participants[participantId] === undefined) {
+          log.debug('aborting publishing because of early leave, participantId:', participantId, 'connection_id:', connection_id);
+          rpcReq.recycleAccessNode(locality.agent, locality.node, {session: in_session, consumer: connection_id});
+          return Promise.reject('publishing is aborted because of early leave');
+        }
+        var connect_options = constructConnectOptions(connection_id, connectionType, 'in', streamDescription, in_session);
         return rpcReq.publish(locality.node,
                                  connection_id,
                                  connectionType,
@@ -352,6 +358,12 @@ var Portal = function(spec, rpcReq) {
       })
       .then(function() {
         log.debug('publish::pub2AccessNode ok, participantId:', participantId, 'connection_id:', connection_id);
+        if (participants[participantId] === undefined) {
+          log.debug('canceling publishing because of early leave, participantId:', participantId, 'connection_id:', connection_id);
+          rpcReq.unpublish(locality.node, connection_id);
+          rpcReq.recycleAccessNode(locality.agent, locality.node, {session: in_session, consumer: connection_id});
+          return Promise.reject('publishing is canceled because of early leave');
+        }
         participants[participantId].connections[connection_id] = {locality: locality,
                                                                   type: connectionType,
                                                                   direction: 'in',
@@ -533,12 +545,18 @@ var Portal = function(spec, rpcReq) {
       //TODO: notify user about 'recorder-continued'? Does it really neccesary?
       return Promise.resolve(connection.locality);
     } else {
-      var connection_observer = connectionObserver(onConnectionStatus, onConnectionReady, onConnectionFailed);
-      return rpcReq.getAccessNode(cluster_name, connectionType, {session: participants[participantId].in_session, consumer: connection_id})
+      var connection_observer = connectionObserver(onConnectionStatus, onConnectionReady, onConnectionFailed),
+        in_session = participants[participantId].in_session;
+      return rpcReq.getAccessNode(cluster_name, connectionType, {session: in_session, consumer: connection_id})
         .then(function(accessNode) {
           log.debug('subscribe::getAccessNode ok, participantId:', participantId, 'connection_id:', connection_id, 'locality:', accessNode);
           locality = accessNode;
-          var connect_options = constructConnectOptions(connection_id, connectionType, 'out', subscriptionDescription, participants[participantId].in_session);
+          if (participants[participantId] === undefined) {
+            log.debug('aborting subscribing because of early leave, participantId:', participantId, 'connection_id:', connection_id);
+            rpcReq.recycleAccessNode(locality.agent, locality.node, {session: in_session, consumer: connection_id});
+            return Promise.reject('subscribing is aborted because of early leave');
+          }
+          var connect_options = constructConnectOptions(connection_id, connectionType, 'out', subscriptionDescription, in_session);
           return rpcReq.subscribe(locality.node,
                                      connection_id,
                                      connectionType,
@@ -547,6 +565,12 @@ var Portal = function(spec, rpcReq) {
         })
         .then(function() {
           log.debug('subscribe::sub2AccessNode ok, participantId:', participantId, 'connection_id:', connection_id);
+          if (participants[participantId] === undefined) {
+            log.debug('canceling subscribing because of early leave, participantId:', participantId, 'connection_id:', connection_id);
+            rpcReq.unsubscribe(locality.node, connection_id);
+            rpcReq.recycleAccessNode(locality.agent, locality.node, {session: in_session, consumer: connection_id});
+            return Promise.reject('subscribing is canceled because of early leave');
+          }
           participants[participantId].connections[connection_id] = {locality: locality,
                                                                     type: connectionType,
                                                                     direction: 'out',
