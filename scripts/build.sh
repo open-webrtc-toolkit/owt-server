@@ -34,8 +34,9 @@ usage() {
   echo "    --check                             check resulted addon(s)"
   echo "    --gateway                           build oovoo gateway addon"
   echo "    --mcu                               build mcu runtime addons with software media pipeline"
-  echo "    --mcu-hardware                      build mcu runtime addons with msdk media pipeline"
+  echo "    --mcu-hardware                      build mcu runtime addons with msdk and yami media pipeline"
   echo "    --mcu-hardware-yami                 build mcu runtime addons with libyami based media pipeline"
+  echo "    --mcu-hardware-msdk                 build mcu runtime addons with msdk media pipeline"
   echo "    --mcu-all                           build mcu runtime addons both with and without hardware support"
   echo "    --sip                               build sip gateway runtime"
   echo "    --sdk                               build sdk (for oovoo gateway)"
@@ -99,6 +100,9 @@ while [[ $# -gt 0 ]]; do
       ;;
     *(-)mcu-hardware-yami )
       BUILD_MCU_RUNTIME_HW_YAMI=true
+      ;;
+    *(-)mcu-hardware-msdk )
+      BUILD_MCU_RUNTIME_HW_MSDK=true
       ;;
     *(-)mcu-all )
       BUILD_MCU_RUNTIME_SW=true

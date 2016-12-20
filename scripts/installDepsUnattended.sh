@@ -12,7 +12,7 @@ DISABLE_NONFREE=false
 CLEANUP=false
 NIGHTLY=false
 NO_INTERNAL=false
-ENABLE_YAMI=false
+ENABLE_YAMI=true
 
 parse_arguments(){
   while [ "$1" != "" ]; do
