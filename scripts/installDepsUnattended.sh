@@ -75,13 +75,13 @@ if [ "$NIGHTLY" != "true" ]; then
     install_mediadeps_nonfree
   fi
 
-  #install_node_tools
+  install_node_tools
 
-  #install_libnice
+  install_libnice
 
-  #install_openssl
+  install_openssl
 
-  #install_libsrtp
+  install_libsrtp
 
   #install_oovoosdk
 
