@@ -339,7 +339,7 @@ module.exports = function (rpcC, spec) {
             for (var subscription_id in subscriptions) {
                 if (subscriptions[subscription_id].audio === stream_id) {
                     log.debug('remove audio:', subscriptions[subscription_id].audio);
-                    var dest = subscriptions[subscription_id].connection;
+                    var dest = subscriptions[subscription_id].connection.receiver('audio');
                     log.debug('remove audio removeDestination: ', streams[stream_id].connection, ' dest: ', dest);
                     streams[stream_id].connection.removeDestination('audio', dest);
                     subscriptions[subscription_id].audio = undefined;
@@ -347,14 +347,14 @@ module.exports = function (rpcC, spec) {
 
                 if (subscriptions[subscription_id].video === stream_id) {
                     log.debug('remove video:', subscriptions[subscription_id].video);
-                    var dest = subscriptions[subscription_id].connection;
+                    var dest = subscriptions[subscription_id].connection.receiver('video');
                     log.debug('remove video removeDestination: ', streams[stream_id].connection, ' dest: ', dest);
                     streams[stream_id].connection.removeDestination('video', dest);
                     subscriptions[subscription_id].video = undefined;
                 }
 
                 if (subscriptions[subscription_id].audio === undefined && subscriptions[subscription_id].video === undefined) {
-                    subscriptions[subscription_id].type === 'internal' && subscriptions[subscription_id].connection.close();
+                    subscriptions[subscription_id].type === 'internal' && internalConnFactory.destroy(subscription_id, 'out');
                     delete subscriptions[subscription_id];
                 }
             }
@@ -649,18 +649,14 @@ module.exports = function (rpcC, spec) {
         if (subscriptions[subscription_id] !== undefined) {
             if (subscriptions[subscription_id].audio
                 && streams[subscriptions[subscription_id].audio]) {
-                var dest = (subscriptions[subscription_id].type === 'sip'?
-                    subscriptions[subscription_id].connection.receiver('audio') :
-                    subscriptions[subscription_id].connection);
+                var dest = subscriptions[subscription_id].connection.receiver('audio');
                 log.debug("connection: ", streams[subscriptions[subscription_id].audio].connection, ' remove Dest: ', dest);
                 streams[subscriptions[subscription_id].audio].connection.removeDestination('audio', dest);
             }
 
             if (subscriptions[subscription_id].video
                 && streams[subscriptions[subscription_id].video]) {
-                var dest = (subscriptions[subscription_id].type === 'sip'?
-                    subscriptions[subscription_id].connection.receiver('video') :
-                    subscriptions[subscription_id].connection);
+                var dest = subscriptions[subscription_id].connection.receiver('video');
                 log.debug("connection: ", streams[subscriptions[subscription_id].video].connection, ' remove Dest: ', dest);
                 streams[subscriptions[subscription_id].video].connection.removeDestination('video', dest);
             }
@@ -698,14 +694,14 @@ module.exports = function (rpcC, spec) {
         var is_sip = (subscriptions[connectionId].type === 'sip');
 
         if (audioFrom) {
-            var dest = (is_sip ? conn.receiver('audio') : conn);
+            var dest = conn.receiver('audio');
             log.debug("subscribe addDestination: ", streams[audioFrom].connection, " dest: ", dest);
             streams[audioFrom].connection.addDestination('audio', dest);
             subscriptions[connectionId].audio = audioFrom;
         }
 
         if (videoFrom) {
-            var dest = (is_sip ? conn.receiver('video') : conn);
+            var dest = conn.receiver('video');
             streams[videoFrom].connection.addDestination('video', dest);
             if (streams[videoFrom].type === 'sip') {streams[videoFrom].connection.requestKeyFrame();}//FIXME: Temporarily add this interface to workround the hardware mode's absence of feedback mechanism.
             subscriptions[connectionId].video = videoFrom;
@@ -720,7 +716,7 @@ module.exports = function (rpcC, spec) {
             var is_sip = (subscriptions[connectionId].type === 'sip');
             if (subscriptions[connectionId].audio
                 && streams[subscriptions[connectionId].audio]) {
-                var dest = is_sip ? subscriptions[connectionId].connection.receiver('audio') : subscriptions[connectionId].connection;
+                var dest = subscriptions[connectionId].connection.receiver('audio');
                 log.debug("connection: ", streams[subscriptions[connectionId].audio].connection, ' remove Dest: ', dest);
                 streams[subscriptions[connectionId].audio].connection.removeDestination('audio', dest);
                 subscriptions[connectionId].audio = undefined;
@@ -728,7 +724,7 @@ module.exports = function (rpcC, spec) {
 
             if (subscriptions[connectionId].video
                 && streams[subscriptions[connectionId].video]) {
-                var dest = is_sip ? subscriptions[connectionId].connection.receiver('video') : subscriptions[connectionId].connection;
+                var dest = subscriptions[connectionId].connection.receiver('video');
                 log.debug("connection: ", streams[subscriptions[connectionId].video].connection, ' remove Dest: ', dest);
                 streams[subscriptions[connectionId].video].connection.removeDestination('video', dest);
                 subscriptions[connectionId].video = undefined;
