@@ -112,7 +112,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
     }
     // client_info is introduced in 3.3. It's the same version as reconnection. So it's safe to ignore SDK version.
     // JavaScript SDK 3.3 does not support reconnection.
-    if(ua.sdk.type == 'iOS' || ua.sdk.type == 'Android'){
+    if(ua.sdk.type === 'Objective-C' || ua.sdk.type === 'C++' || ua.sdk.type === 'Android'){
       reconnection_enabled = true;
     }
     return true;
