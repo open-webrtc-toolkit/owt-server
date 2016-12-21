@@ -11,7 +11,7 @@ var testRoom = '573eab78111478bb3526421a';
 
 var clientInfo = {sdk:{version: '3.3', type: 'JavaScript'}, runtime: {name: 'Chrome', version: '53.0.0.0'}, os:{name:'Linux (Ubuntu)', version:'14.04'}};
 // JavaScript SDK 3.3 does not support reconnection. So use iOS UA info for reconnection tests.
-var reconnectionClientInfo = {sdk:{version: '3.3', type: 'iOS'}, runtime: {name: 'WebRTC', version: '54'}, os:{name:'iOS', version:'10.2'}};
+var reconnectionClientInfo = {sdk:{version: '3.3', type: 'Objective-C'}, runtime: {name: 'WebRTC', version: '54'}, os:{name:'iPhone OS', version:'10.2'}};
 var insecureSocketIOServerConfig = {port: 3001, ssl: false, reconnectionTicketLifetime: 100, reconnectionTimeout: 300};
 
 describe('Clients connect to socket.io server.', function() {
