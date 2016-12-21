@@ -276,22 +276,29 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
       stream_description.video && (typeof stream_description.video.device !== 'string' || stream_description.video.device === '') && (stream_description.video.device = 'unknown');
       var unmix = (options.unmix === true || (stream_description.video && (stream_description.video.device === 'screen'))) ? true : false;
 
+      var has_responded = false;
       return portal.publish(participant_id, stream_id, connection_type, stream_description, function(status) {
         if (status.type === 'failed') {
-          socket.emit('connection_failed', {});
-          safeCall(callback, 'error', status.reason);
+          if (has_responded) {
+            socket.emit('connection_failed', {streamId: stream_id});
+          } else {
+            safeCall(callback, 'error', status.reason);
+          }
         } else {
           if (connection_type === 'webrtc') {
             if (status.type === 'initializing') {
               safeCall(callback, 'initializing', stream_id);
+              has_responded = true;
             } else {
               socket.emit('signaling_message_erizo', {streamId: stream_id, mess: status});
             }
           } else {
             if (status.type === 'ready') {
               safeCall(callback, 'success', stream_id);
+              has_responded = true;
             } else if (status.type !== 'initializing') {
               safeCall(callback, status);
+              has_responded = true;
             }
           }
         }
@@ -300,7 +307,11 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
       }).catch(function(err) {
         var err_message = (typeof err === 'string' ? err: err.message);
         log.info('portal.publish failed:', err_message);
-        safeCall(callback, 'error', err_message);
+        if (has_responded) {
+          socket.emit('connection_failed', {streamId: stream_id});
+        } else {
+          safeCall(callback, 'error', err_message);
+        }
       });
     });
 
