@@ -167,7 +167,7 @@ exports.Scheduler = function(spec) {
 
     that.setScheduled = function (task, worker, reserveTime) {
         tasks[task] = {worker: worker,
-                       reserve_time: time};
+                       reserve_time: reserveTime};
     };
 
     that.getData = function () {

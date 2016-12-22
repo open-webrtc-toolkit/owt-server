@@ -256,6 +256,7 @@ module.exports = function (rpcClient) {
     };
 
     that.enableVAD = function (periodMS) {
+        log.debug('enableVAD, periodMS:', periodMS);
         engine.enableVAD(periodMS, function (activeParticipant) {
             log.debug('enableVAD, activeParticipant:', activeParticipant);
             controller && rpcClient.remoteCall(controller, 'onAudioActiveParticipant', [belong_to, activeParticipant], {callback: function(){}});
@@ -279,7 +280,7 @@ module.exports = function (rpcClient) {
     };
 
     that.onFaultDetected = function (message) {
-        if (message.purpose === 'session') {
+        if (message.purpose === 'session' && controller) {
             if ((message.type === 'node' && message.id === controller) ||
                 (message.type === 'worker' && controller.startsWith(message.id))) {
                 log.error('Session controller (type:', message.type, 'id:', message.id, ') fault is detected, exit.');
