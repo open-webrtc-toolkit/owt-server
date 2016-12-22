@@ -93,6 +93,7 @@ private:
 
     // Fragments buffer
     TransportData m_fragments;
+    uint32_t m_fragBufferSize;
     uint32_t m_receivedBytes;
     uint32_t m_currentTsn;
 
