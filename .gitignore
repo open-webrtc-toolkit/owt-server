@@ -12,6 +12,7 @@ third_party/libyami/
 third_party/libre-0.4.16/build-x86_64/
 third_party/libre-0.4.16/libre.a
 third_party/libre-0.4.16/libre.so
+third_party/usrsctp/
 doc/webrtc-jsdoc-cosmo/
 doc/*.class
 node_modules
