@@ -906,96 +906,109 @@ retry:
 void MsdkVideoCompositor::applyAspectRatio()
 {
     bool isChanged = false;
-    int i = 0;
 
     if (m_frameQueue.size() != m_extVppComp->NumInputStream) {
         ELOG_ERROR("Num of frames(%lu) is not equal w/ input streams(%d)", m_frameQueue.size(), m_extVppComp->NumInputStream);
         return;
     }
 
+    int i = 0;
     for (auto& l : m_currentLayout) {
         boost::shared_ptr<MsdkFrame> frame = m_frameQueue[i];
-        mfxVPPCompInputStream *configRect = m_inputs[l.input]->getVppRect();
+        mfxVPPCompInputStream *layoutRect = m_inputs[l.input]->getVppRect();
         mfxVPPCompInputStream *vppRect = &m_extVppComp->InputStream[i];
 
         i++;
-
         if (frame == m_defaultInputFrame)
             continue;
 
-        double frame_ar = (double)frame->getCropW() / frame->getCropH();
-        double config_ar  = (double)configRect->DstW / configRect->DstH;
-        double vpp_ar = (double)vppRect->DstW / vppRect->DstH;
+        uint32_t frame_w    = frame->getCropW();
+        uint32_t frame_h    = frame->getCropH();
+        uint32_t vpp_w      = vppRect->DstW;
+        uint32_t vpp_h      = vppRect->DstH;
         uint32_t x, y, w, h;
 
-        if (frame_ar == vpp_ar)
-            continue;
-
         if (m_crop) {
-            uint32_t frame_w, frame_h;
-
-            frame_w = frame->getCropW();
-            frame_h = frame->getCropH();
-
-            if (frame_ar > config_ar) {
-                w = frame_h * config_ar;
+            if ((frame_w + 1) * vpp_h >= vpp_w * (frame_h - 1) &&
+                    (frame_w - 1) * vpp_h <= vpp_w * (frame_h + 1)) {
+                continue;
+            } else if (frame_w * layoutRect->DstH > layoutRect->DstW * frame_h) {
+                w = frame_h * layoutRect->DstW / layoutRect->DstH;
                 h = frame_h;
 
                 x = (frame_w - w) / 2;
                 y = 0;
-            }
-            else {
+            } else {
                 w = frame_w;
-                h = frame_w / config_ar;
+                h = frame_w * layoutRect->DstH / layoutRect->DstW;
 
                 x = 0;
                 y = (frame_h - h) / 2;
             }
 
-            ELOG_TRACE("setCrop(%p) %d-%d-%d-%d -> %d-%d-%d-%d"
-                    , frame.get()
-                    , frame->getCropX(), frame->getCropY(), frame->getCropW(), frame->getCropH()
-                    , x, y, w, h
-                    );
+            if (frame->getCropX() != x || frame->getCropY() != y || frame->getCropW() != w || frame->getCropH()!= h) {
+                ELOG_TRACE("setCrop(%p) %d-%d-%d-%d -> %d-%d-%d-%d"
+                        , frame.get()
+                        , frame->getCropX(), frame->getCropY(), frame->getCropW(), frame->getCropH()
+                        , x, y, w, h
+                        );
 
-            frame->setCrop(x, y, w, h);
-        }
-        else {
-            if (frame_ar > config_ar) {
-                w = configRect->DstW;
-                h = configRect->DstW / frame_ar;
+                frame->setCrop(x, y, w, h);
+            } else {
+                ELOG_WARN("invalid setCrop(%p) %d-%d-%d-%d -> %d-%d-%d-%d"
+                        , frame.get()
+                        , frame->getCropX(), frame->getCropY(), frame->getCropW(), frame->getCropH()
+                        , x, y, w, h
+                        );
+            }
+        } else {
+            if (frame_w * (vpp_h + 1) >= (vpp_w - 1) * frame_h &&
+                    frame_w * (vpp_h - 1) <= (vpp_w + 1) * frame_h) {
+                continue;
+            } else if (frame_w * layoutRect->DstH > layoutRect->DstW * frame_h) {
+                w = layoutRect->DstW;
+                h = layoutRect->DstW * frame_h / frame_w;
 
-                x = configRect->DstX;
-                y = configRect->DstY + (configRect->DstH - h) / 2;
+                x = layoutRect->DstX;
+                y = layoutRect->DstY + (layoutRect->DstH - h) / 2;
             }
             else {
-                w = configRect->DstH * frame_ar;
-                h = configRect->DstH;
+                w = layoutRect->DstH * frame_w / frame_h;
+                h = layoutRect->DstH;
 
-                x = configRect->DstX + (configRect->DstW - w) / 2;
-                y = configRect->DstY;
+                x = layoutRect->DstX + (layoutRect->DstW - w) / 2;
+                y = layoutRect->DstY;
             }
 
-            ELOG_TRACE("update pos %d-%d-%d-%d -> %d-%d-%d-%d, aspect ratio %lf -> %lf"
-                    , vppRect->DstX, vppRect->DstY, vppRect->DstW, vppRect->DstH
-                    , x, y, w, h
-                    , vpp_ar
-                    , frame_ar
-                    );
+            if (vppRect->DstX != x || vppRect->DstY != y || vppRect->DstW != w || vppRect->DstH != h) {
+                ELOG_TRACE("update pos %d-%d-%d-%d -> %d-%d-%d-%d, aspect ratio %lf -> %lf"
+                        , vppRect->DstX, vppRect->DstY, vppRect->DstW, vppRect->DstH
+                        , x, y, w, h
+                        , (double)vpp_w / vpp_h
+                        , (double)frame_w / frame_h
+                        );
 
-            vppRect->DstX = x;
-            vppRect->DstY = y;
-            vppRect->DstW = w;
-            vppRect->DstH = h;
+                vppRect->DstX = x;
+                vppRect->DstY = y;
+                vppRect->DstW = w;
+                vppRect->DstH = h;
 
-            isChanged = true;
+                isChanged = true;
+            } else {
+                ELOG_WARN("invalid update pos %d-%d-%d-%d -> %d-%d-%d-%d, aspect ratio %lf -> %lf"
+                        , vppRect->DstX, vppRect->DstY, vppRect->DstW, vppRect->DstH
+                        , x, y, w, h
+                        , (double)vpp_w / vpp_h
+                        , (double)frame_w / frame_h
+                        );
+            }
         }
     }
 
     if (!isChanged)
         return;
 
-    ELOG_DEBUG("apply new aspect ratio");
+    ELOG_INFO("apply new aspect ratio");
 
     mfxStatus sts = MFX_ERR_NONE;
     sts = m_vpp->Reset(m_videoParam.get());
