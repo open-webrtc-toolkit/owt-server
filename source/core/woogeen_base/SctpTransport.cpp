@@ -34,7 +34,8 @@ enum PreservedErrno {
     SCTP_EWOULDBLOCK = EWOULDBLOCK
 };
 
-const int MAX_MSGSIZE = 256 * 1024;
+// Initialize with a large send space size currently
+const int MAX_MSGSIZE = 1024 * 1024;
 
 int usrsctp_ref_count = 0;
 boost::mutex usrsctp_ref_mutex;
@@ -49,20 +50,23 @@ void debugSctpPrintf(const char *format, ...)
 }
 
 void initUsrSctp() {
-    printf("### initUsrSctp\n");
+    //printf("### initUsrSctp\n");
     usrsctp_init(0, &SctpTransport::onSctpOutboundPacket, &debugSctpPrintf);
 
-    int send_size = usrsctp_sysctl_get_sctp_sendspace();
+    uint32_t send_size = MAX_MSGSIZE;
+    usrsctp_sysctl_set_sctp_sendspace(send_size);
+    //send_size = usrsctp_sysctl_get_sctp_sendspace();
+    //printf("###Set sctp send space %u", send_size);
     if (send_size < MAX_MSGSIZE) {
-        printf("Got smaller send size than expected: %d\n", send_size);
+        //printf("Got smaller send size than expected: %d\n", send_size);
     }
 }
 
 void uninitUsrSctp() {
-    printf("### uninitUsrSctp\n");
+    //printf("### uninitUsrSctp\n");
     for (size_t i = 0; i < 300; ++i) {
         if (usrsctp_finish() == 0) {
-            printf("### usrsctp finish\n");
+            //printf("### usrsctp finish\n");
             return;
         }
         boost::this_thread::sleep_for(boost::chrono::milliseconds(10));
@@ -71,7 +75,7 @@ void uninitUsrSctp() {
 
 void incrementUsrSctpCount() {
     boost::lock_guard<boost::mutex> lock(usrsctp_ref_mutex);
-    printf("### increment %d\n", usrsctp_ref_count);
+    //printf("### increment %d\n", usrsctp_ref_count);
     if (!usrsctp_ref_count) {
         initUsrSctp();
     }
@@ -80,7 +84,7 @@ void incrementUsrSctpCount() {
 
 void decrementUsrSctpCount() {
     boost::lock_guard<boost::mutex> lock(usrsctp_ref_mutex);
-    printf("### decrement %d\n", usrsctp_ref_count);
+    //printf("### decrement %d\n", usrsctp_ref_count);
     usrsctp_ref_count--;
     if (!usrsctp_ref_count) {
         uninitUsrSctp();
@@ -98,6 +102,7 @@ SctpTransport::SctpTransport(RawTransportListener* listener, size_t initialBuffe
     , m_tag(tag)
     , m_ready(false)
     , m_bufferSize(initialBufferSize)
+    , m_fragBufferSize(initialBufferSize)
     , m_receivedBytes(0)
     , m_currentTsn(0)
     , m_sctpSocket(NULL)
@@ -107,7 +112,7 @@ SctpTransport::SctpTransport(RawTransportListener* listener, size_t initialBuffe
 
 SctpTransport::~SctpTransport()
 {
-    ELOG_INFO("SctpTransport Destructor");
+    ELOG_DEBUG("SctpTransport Destructor");
     m_isClosing = true;
 
     destroySctpSocket();
@@ -119,7 +124,7 @@ SctpTransport::~SctpTransport()
     // We need to wait for the work thread to finish its job.
     m_workThread.join();
 
-    ELOG_INFO("SctpTransport Destructor END");
+    ELOG_DEBUG("SctpTransport Destructor END");
 }
 
 void SctpTransport::close()
@@ -144,30 +149,42 @@ void SctpTransport::handleNotification(union sctp_notification *notif, size_t n)
         handleAssociationChangeEvent(&(notif->sn_assoc_change));
         break;
     case SCTP_PEER_ADDR_CHANGE:
+        ELOG_INFO("SCTP_PEER_ADDR_CHANGE");
         //handlePeerAddressChangeEvent(&(notif->sn_paddr_change));
         break;
     case SCTP_REMOTE_ERROR:
+        ELOG_INFO("SCTP_REMOTE_ERROR");
         break;
     case SCTP_SHUTDOWN_EVENT:
+        ELOG_INFO("SCTP_SHUTDOWN_EVENT");
         break;
     case SCTP_ADAPTATION_INDICATION:
+        ELOG_INFO("SCTP_ADAPTATION_INDICATION");
         break;
     case SCTP_PARTIAL_DELIVERY_EVENT:
+        ELOG_INFO("SCTP_PARTIAL_DELIVERY_EVENT");
         break;
     case SCTP_AUTHENTICATION_EVENT:
+        ELOG_INFO("SCTP_AUTHENTICATION_EVENT");
         break;
     case SCTP_SENDER_DRY_EVENT:
+        ELOG_INFO("SCTP_SENDER_DRY_EVENT");
         break;
     case SCTP_NOTIFICATIONS_STOPPED_EVENT:
+        ELOG_INFO("SCTP_NOTIFICATIONS_STOPPED_EVENT");
         break;
     case SCTP_SEND_FAILED_EVENT:
+        ELOG_INFO("SCTP_SEND_FAILED_EVENT");
         //handleSendFailedEvent(&(notif->sn_send_failed_event));
         break;
     case SCTP_STREAM_RESET_EVENT:
+        ELOG_INFO("SCTP_STREAM_RESET_EVENT");
         break;
     case SCTP_ASSOC_RESET_EVENT:
+        ELOG_INFO("SCTP_ASSOC_RESET_EVENT");
         break;
     case SCTP_STREAM_CHANGE_EVENT:
+        ELOG_INFO("SCTP_STREAM_CHANGE_EVENT");
         break;
     default:
         break;
@@ -243,7 +260,7 @@ int SctpTransport::onSctpInboundPacket(struct socket *sock, union sctp_sockstore
 
 int SctpTransport::onSctpOutboundPacket(void *addr, void *buf, size_t length, uint8_t tos, uint8_t set_df)
 {
-    ELOG_DEBUG("onSctpOutboundPacket, length:%zu", length);
+    ELOG_DEBUG("onSctpOutboundPacket, length:%zu, buf:%p", length, buf);
 
     // char *dump_buf;
     // if ((dump_buf = usrsctp_dumppacket(buf, length, SCTP_DUMP_OUTBOUND)) != NULL) {
@@ -406,7 +423,38 @@ void SctpTransport::startSctpConnection() {
         return;
     }
 
-    ELOG_INFO("Remote Ports:%u %u", m_remoteUdpPort, m_remoteSctpPort);
+    ELOG_DEBUG("Remote Ports:%u %u", m_remoteUdpPort, m_remoteSctpPort);
+
+    // Note: conversion from int to uint16_t happens on assignment.
+    sockaddr_conn sconn;
+    memset(&sconn, 0, sizeof(struct sockaddr_conn));
+    sconn.sconn_family = AF_CONN;
+    sconn.sconn_port = htons(m_remoteSctpPort);
+    sconn.sconn_addr = this;
+
+    // Connect usrsctp on main thread
+    int connect_result = usrsctp_connect(
+        m_sctpSocket, reinterpret_cast<sockaddr *>(&sconn), sizeof(sconn));
+    if (connect_result < 0 && errno != SCTP_EINPROGRESS) {
+        ELOG_ERROR("SCTP connect ERROR");
+        destroySctpSocket();
+        return;
+    }
+
+    m_ready = true;
+
+    // Set the MTU and disable MTU discovery.
+    // We can only do this after usrsctp_connect or it has no effect.
+    /*
+    sctp_paddrparams params = {{0}};
+    memcpy(&params.spp_address, &remote_sconn, sizeof(remote_sconn));
+    params.spp_flags = SPP_PMTUD_DISABLE;
+    params.spp_pathmtu = kSctpMtu;
+    if (usrsctp_setsockopt(m_sctpSocket, IPPROTO_SCTP, SCTP_PEER_ADDR_PARAMS, &params,
+                           sizeof(params))) {
+        ELOG_ERROR("Failed to set SCTP_PEER_ADDR_PARAMS.");
+    }
+    */
 
     boost::asio::ip::udp::resolver resolver(m_ioService);
     boost::asio::ip::udp::resolver::query query(
@@ -419,36 +467,6 @@ void SctpTransport::startSctpConnection() {
             // Start receving on udp port
             ELOG_DEBUG("Udp async connect callback");
             receiveData();
-
-            // Note: conversion from int to uint16_t happens on assignment.
-            sockaddr_conn sconn;
-            memset(&sconn, 0, sizeof(struct sockaddr_conn));
-            sconn.sconn_family = AF_CONN;
-            sconn.sconn_port = htons(m_remoteSctpPort);
-            sconn.sconn_addr = this;
-
-            int connect_result = usrsctp_connect(
-                m_sctpSocket, reinterpret_cast<sockaddr *>(&sconn), sizeof(sconn));
-            if (connect_result < 0 && errno != SCTP_EINPROGRESS) {
-                ELOG_ERROR("SCTP connect ERROR");
-                destroySctpSocket();
-                return;
-            }
-
-            m_ready = true;
-
-            // Set the MTU and disable MTU discovery.
-            // We can only do this after usrsctp_connect or it has no effect.
-            /*
-            sctp_paddrparams params = {{0}};
-            memcpy(&params.spp_address, &remote_sconn, sizeof(remote_sconn));
-            params.spp_flags = SPP_PMTUD_DISABLE;
-            params.spp_pathmtu = kSctpMtu;
-            if (usrsctp_setsockopt(m_sctpSocket, IPPROTO_SCTP, SCTP_PEER_ADDR_PARAMS, &params,
-                                   sizeof(params))) {
-                ELOG_ERROR("Failed to set SCTP_PEER_ADDR_PARAMS.");
-            }
-            */
         });
 
     if (m_workThread.get_id() == boost::thread::id()) // Not-A-Thread
@@ -462,10 +480,14 @@ void SctpTransport::postPacket(const char* buf, int len)
     memcpy(data.buffer.get(), buf, len);
     data.length = len;
 
-    boost::lock_guard<boost::mutex> lock(m_sendQueueMutex);
-    m_sendQueue.push(data);
-    if (m_sendQueue.size() == 1)
-        doSend();
+    // Make doSend all in workThread
+    m_ioService.post([this, data]() {
+        boost::lock_guard<boost::mutex> lock(m_sendQueueMutex);
+        ELOG_DEBUG("m_sendQueue size: %zu", m_sendQueue.size());
+        m_sendQueue.push(data);
+        if (m_sendQueue.size() == 1)
+            doSend();
+    });
 }
 
 void SctpTransport::doSend()
@@ -474,14 +496,13 @@ void SctpTransport::doSend()
 
     assert(m_udpSocket);
     assert(m_remoteUdpPort);
-    ELOG_DEBUG("send to remote udp port %d->%d", m_localUdpPort, m_remoteUdpPort);
+    ELOG_DEBUG("Send to remote udp port %d->%d", m_localUdpPort, m_remoteUdpPort);
+
     m_udpSocket->async_send(boost::asio::buffer(data.buffer.get(), data.length),
         [this] (const boost::system::error_code& ec, std::size_t bytes) {
             if (ec) {
                 ELOG_WARN("wrote data error: %s", ec.message().c_str());
             }
-
-            //ELOG_DEBUG("writeHandler(%zu)", bytes);
 
             boost::lock_guard<boost::mutex> lock(m_sendQueueMutex);
             assert(m_sendQueue.size() > 0);
@@ -494,6 +515,7 @@ void SctpTransport::doSend()
 
 void SctpTransport::receiveData()
 {
+    // The receiveData is only called in workThread
     if (!m_receiveData.buffer)
         m_receiveData.buffer.reset(new char[m_bufferSize]);
 
@@ -529,6 +551,11 @@ void SctpTransport::receiveData()
 
 void SctpTransport::processPacket(const char* data, int len, uint32_t tsn)
 {
+    // Called in usrsctp's receive callback thread
+    if (!m_fragments.buffer) {
+        m_fragments.buffer.reset(new char[m_fragBufferSize]);
+    }
+
     const int INT_SIZE = sizeof(uint32_t);
     if (len < INT_SIZE) {
         ELOG_ERROR("Packet with length less than %d is incorrect, drop it, length:%d", INT_SIZE, len);
@@ -536,26 +563,33 @@ void SctpTransport::processPacket(const char* data, int len, uint32_t tsn)
     }
 
     if (m_currentTsn != tsn) {
-        if (m_fragments.buffer) {
+        if (m_receivedBytes) {
             ELOG_WARN("SCTP received message not complete.");
             // Deliver last message
             m_listener->onTransportData(m_fragments.buffer.get(), m_receivedBytes);
-            m_fragments.buffer.reset();
-            m_fragments.length = 0;
             m_receivedBytes = 0;
         }
         m_currentTsn = tsn;
     }
 
-    if (!m_fragments.buffer) {
-        // Read header & reset buffer
+    if (!m_receivedBytes) {
+        // Read header & reset buffer if needed
         uint32_t msglen;
         memcpy(&msglen, data, INT_SIZE);
         msglen = ntohl(msglen);
 
-        m_fragments.buffer.reset(new char[msglen]);
+        if (msglen > m_fragBufferSize) {
+            while (msglen > m_fragBufferSize) {
+                m_fragBufferSize *= 2;
+                if (m_fragBufferSize > MAX_MSGSIZE) {
+                    ELOG_WARN("Assembled fragbuffersize %u becomes large than MAX_MSGSIZE", m_fragBufferSize);
+                    break;
+                }
+            }
+            ELOG_WARN("Increase the received buffer size %u", m_fragBufferSize);
+            m_fragments.buffer.reset(new char[m_fragBufferSize]);
+        }
         m_fragments.length = msglen;
-        m_receivedBytes = 0;
 
         uint32_t bodylen = len - INT_SIZE;
         if (m_fragments.length < bodylen) {
@@ -565,7 +599,7 @@ void SctpTransport::processPacket(const char* data, int len, uint32_t tsn)
 
         // Save to fragments
         memcpy(m_fragments.buffer.get(), data + INT_SIZE, bodylen);
-        m_receivedBytes += bodylen;
+        m_receivedBytes = bodylen;
     } else {
         if (m_fragments.length < m_receivedBytes + len) {
             ELOG_WARN("SCTP packet msglen too small, not correct.");
@@ -579,9 +613,10 @@ void SctpTransport::processPacket(const char* data, int len, uint32_t tsn)
 
     if (m_fragments.length == m_receivedBytes) {
         // Received message successfully
+
+        // We cannot change m_fragments.buffer immediately after the onTransportData returns
+        // Because the listener may used this buffer directly
         m_listener->onTransportData(m_fragments.buffer.get(), m_fragments.length);
-        m_fragments.buffer.reset();
-        m_fragments.length = 0;
         m_receivedBytes = 0;
     }
 
@@ -589,16 +624,16 @@ void SctpTransport::processPacket(const char* data, int len, uint32_t tsn)
 
 void SctpTransport::open()
 {
-    ELOG_INFO("!Sctp Open Start");
+    ELOG_DEBUG("Sctp Open Start");
     if (setupSctpPeer()) {
-        ELOG_INFO("!Sctp Open Success");
+        ELOG_DEBUG("Sctp Open Success");
     } else {
-        ELOG_ERROR("!Sctp Open Fail");
+        ELOG_ERROR("Sctp Open Fail");
     }
 }
 
 void SctpTransport::connect(const std::string &ip, uint32_t udpPort, uint32_t sctpPort) {
-    ELOG_INFO("!Sctp Connect Start: %u, %u", udpPort, sctpPort);
+    ELOG_DEBUG("Sctp Connect Start: %u, %u", udpPort, sctpPort);
     m_remoteIp = ip;
     m_remoteUdpPort = udpPort;
     m_remoteSctpPort = sctpPort;
@@ -658,6 +693,7 @@ void SctpTransport::sendData(const char* header, int headerLength, const char* d
         tData.length = headerLength + len;
     }
 
+    ELOG_DEBUG("SCTP send length: %d", tData.length);
     int send_res = usrsctp_sendv(
         m_sctpSocket, tData.buffer.get(), static_cast<size_t>(tData.length), NULL, 0, &sndinfo,
         static_cast<socklen_t>(sizeof(struct sctp_sndinfo)), SCTP_SENDV_SNDINFO, 0);
