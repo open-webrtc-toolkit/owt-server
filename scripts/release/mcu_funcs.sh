@@ -73,6 +73,10 @@ pack_agents() {
     cp -av {${this},${WOOGEEN_DIST}/${AGENT}_agent}/initcert.js && chmod +x ${WOOGEEN_DIST}/${AGENT}_agent/initcert.js
     cp -av ${ROOT}/scripts/detectOS.sh ${WOOGEEN_DIST}/${AGENT}_agent/detectOS.sh
   done
+
+  # remove cert in webrtc_agent
+  rm ${WOOGEEN_DIST}/webrtc_agent/cert/*
+
   popd >/dev/null
 }
 
