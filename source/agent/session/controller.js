@@ -930,9 +930,9 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
             }, on_error);
         } else if (streams[stream_id]) {
             if (streams[stream_id].video) {
+                // We do not check the quality_level for transcoding forward stream here
                 if (streams[stream_id].video.codec === video_codec &&
-                    (video_resolution === 'unspecified' || streams[stream_id].video.resolution === video_resolution) &&
-                    (video_quality === 'unspecified' || streams[stream_id].video.quality_level === video_quality)) {
+                    (video_resolution === 'unspecified' || streams[stream_id].video.resolution === video_resolution)) {
                     on_ok(stream_id);
                 } else {
                     getTranscodedVideo(video_codec, video_resolution, video_quality, stream_id, function (streamID) {
