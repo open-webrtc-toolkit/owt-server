@@ -5,6 +5,7 @@
       'addon.cc',
       'AudioMixerWrapper.cc',
       'AudioFrame2RtpPacketConverter.cpp',
+      'AudioChannel.cpp',
       'AudioMixer.cpp',
       '../../addons/common/NodeEventRegistry.cc',
       '../../../core/woogeen_base/MediaFramePipeline.cpp',
