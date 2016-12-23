@@ -143,7 +143,7 @@ module.exports = function (rpcClient) {
             var stream_id = Math.random() * 1000000000000000000 + '';
             var dispatcher = new MediaFrameMulticaster();
             if (engine.addOutput(stream_id, codec,
-                                 ((!resolution || resolution === 'unspecified' || supported_resolutions[resolution] === undefined) ? supported_resolutions[0] : resolution),
+                                 ((!resolution || resolution === 'unspecified' || supported_resolutions.indexOf(resolution) < 0) ? supported_resolutions[0] : resolution),
                                  quality,
                                  dispatcher)) {
                 outputs[stream_id] = {codec: codec,
@@ -251,7 +251,7 @@ module.exports = function (rpcClient) {
         log.debug('generate, codec:', codec, 'resolution:', resolution, 'qualityLevel:', quality);
         codec = codec || supported_codecs[0];
         codec = codec.toLowerCase();
-        resolution = ((!resolution || resolution === 'unspecified' || supported_resolutions[resolution] === undefined) ? supported_resolutions[0] : resolution);
+        resolution = ((!resolution || resolution === 'unspecified' || supported_resolutions.indexOf(resolution) < 0) ? supported_resolutions[0] : resolution);
         resolution = resolution.toLowerCase();
 
         // Map to qualityLevel enum
