@@ -28,15 +28,13 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/shared_mutex.hpp>
 #include <webrtc/modules/audio_device/include/fake_audio_device.h>
-#include <webrtc/voice_engine/include/voe_external_media.h>
 #include <webrtc/voice_engine/include/voe_video_sync.h>
 #include <webrtc/voice_engine/include/voe_base.h>
 
 #include <logger.h>
 #include "MediaFramePipeline.h"
 #include <JobTimer.h>
-#include "WebRTCTransport.h"
-#include "AudioFrame2RtpPacketConverter.h"
+#include "AudioChannel.h"
 
 namespace woogeen_base {
     struct Frame;
@@ -46,52 +44,6 @@ namespace woogeen_base {
 namespace mcu {
 
 using namespace woogeen_base;
-
-class AudioChannel : public webrtc::AudioEncodedFrameCallback,
-                     public webrtc::VoEMediaProcess,
-                     public woogeen_base::FrameSource,
-                     public woogeen_base::FrameDestination {
-public:
-    AudioChannel(webrtc::VoiceEngine* engine);
-    virtual ~AudioChannel();
-
-    bool init();
-    int32_t id() {return m_channel;}
-
-    // Implements webrtc::AudioEncodedFrameCallback.
-    int32_t Encoded(webrtc::FrameType frameType, uint8_t payloadType,
-                    uint32_t timeStamp, const uint8_t* payloadData,
-                    uint16_t payloadSize);
-
-    // Implements webrtc::VoEMediaProcess.
-    void Process(int channelId, webrtc::ProcessingTypes type, int16_t data[], size_t length, int sampleRate, bool isStereo);
-
-    // Implements woogeen_base::FrameSource.
-    void onFeedback(const woogeen_base::FeedbackMsg& msg);
-
-    // Implements woogeen_base::FrameDestination.
-    void onFrame(const Frame& frame);
-
-    bool setOutput(FrameFormat format, woogeen_base::FrameDestination* destination);
-    void unsetOutput();
-    bool setInput(woogeen_base::FrameSource* source);
-    void unsetInput();
-
-    bool isIdle();
-
-    void performMix(bool isCommon);
-
-private:
-    int32_t m_channel;
-    webrtc::VoiceEngine* m_engine;
-    boost::shared_ptr<woogeen_base::WebRTCTransport<erizo::AUDIO>> m_transport;
-    woogeen_base::FrameSource* m_source;
-    boost::shared_mutex m_sourceMutex;
-    woogeen_base::FrameDestination* m_destination;
-    boost::shared_mutex m_destinationMutex;
-    FrameFormat m_outFormat;
-    AudioFrame2RtpPacketConverter m_converter; //FIXME: Temporarily convert audio frame to rtp-packets due to the premature AudioFrameConstructor implementation.
-};
 
 class AudioMixer : public JobTimerListener {
     DECLARE_LOGGER();
