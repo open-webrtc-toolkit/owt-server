@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Intel Corporation All Rights Reserved.
+ * Copyright 2016 Intel Corporation All Rights Reserved.
  *
  * The source code contained or described herein and all documents related to the
  * source code ("Material") are owned by Intel Corporation or its suppliers or
@@ -489,15 +489,23 @@ bool RtspIn::connect()
                       avcodec_get_name(st->codec->codec_id));
 
             AVCodecID videoCodecId = st->codec->codec_id;
-            if (videoCodecId == AV_CODEC_ID_VP8 || (m_enableH264 && videoCodecId == AV_CODEC_ID_H264)) {
+            if (videoCodecId == AV_CODEC_ID_VP8 ||
+                (m_enableH264 && videoCodecId == AV_CODEC_ID_H264) ||
+                videoCodecId == AV_CODEC_ID_H265) {
                 if (videoCodecId == AV_CODEC_ID_VP8) {
                     m_videoFormat = FRAME_FORMAT_VP8;
                     status << ",\"video_codecs\":" << "[\"vp8\"]";
                 } else if (videoCodecId == AV_CODEC_ID_H264) {
                     m_needVBSF = true;
-                    if (initVBSFilter()) {
+                    if (initVBSFilter(videoCodecId)) {
                         m_videoFormat = FRAME_FORMAT_H264;
                         status << ",\"video_codecs\":" << "[\"h264\"]";
+                    }
+                } else if (videoCodecId == AV_CODEC_ID_H265) {
+                    m_needVBSF = true;
+                    if (initVBSFilter(videoCodecId)) {
+                        m_videoFormat = FRAME_FORMAT_H265;
+                        status << ",\"video_codecs\":" << "[\"h265\"]";
                     }
                 }
 
@@ -750,10 +758,14 @@ void RtspIn::receiveLoop()
     ELOG_DEBUG("Thread exited!");
 }
 
-bool RtspIn::initVBSFilter() {
-    m_vbsf = av_bitstream_filter_init("h264_mp4toannexb");
+bool RtspIn::initVBSFilter(AVCodecID codec) {
+    if (codec == AV_CODEC_ID_H264) {
+        m_vbsf = av_bitstream_filter_init("h264_mp4toannexb");
+    } else if (codec == AV_CODEC_ID_H265) {
+        m_vbsf = av_bitstream_filter_init("hevc_mp4toannexb");
+    }
     if (!m_vbsf) {
-        ELOG_ERROR("Could not init h264 bitstream filter");
+        ELOG_ERROR("Could not init bitstream filter");
         return false;
     }
 

@@ -234,11 +234,12 @@ private:
     bool reconnect();
     void receiveLoop();
 
-    bool initVBSFilter();
+    bool initVBSFilter(AVCodecID codec);
     bool filterVBS(AVPacket &packet);
 
     bool initAudioDecoder(AVCodecID codec);
     bool initAudioTranscoder(AVCodecID inCodec, AVCodecID outCodec);
+
     bool decAudioFrame(AVPacket &packet);
     bool encAudioFrame(AVPacket *packet);
 
