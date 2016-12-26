@@ -149,42 +149,42 @@ void SctpTransport::handleNotification(union sctp_notification *notif, size_t n)
         handleAssociationChangeEvent(&(notif->sn_assoc_change));
         break;
     case SCTP_PEER_ADDR_CHANGE:
-        ELOG_INFO("SCTP_PEER_ADDR_CHANGE");
+        ELOG_DEBUG("SCTP_PEER_ADDR_CHANGE");
         //handlePeerAddressChangeEvent(&(notif->sn_paddr_change));
         break;
     case SCTP_REMOTE_ERROR:
-        ELOG_INFO("SCTP_REMOTE_ERROR");
+        ELOG_WARN("SCTP_REMOTE_ERROR");
         break;
     case SCTP_SHUTDOWN_EVENT:
-        ELOG_INFO("SCTP_SHUTDOWN_EVENT");
+        ELOG_DEBUG("SCTP_SHUTDOWN_EVENT");
         break;
     case SCTP_ADAPTATION_INDICATION:
-        ELOG_INFO("SCTP_ADAPTATION_INDICATION");
+        ELOG_DEBUG("SCTP_ADAPTATION_INDICATION");
         break;
     case SCTP_PARTIAL_DELIVERY_EVENT:
-        ELOG_INFO("SCTP_PARTIAL_DELIVERY_EVENT");
+        ELOG_DEBUG("SCTP_PARTIAL_DELIVERY_EVENT");
         break;
     case SCTP_AUTHENTICATION_EVENT:
-        ELOG_INFO("SCTP_AUTHENTICATION_EVENT");
+        ELOG_DEBUG("SCTP_AUTHENTICATION_EVENT");
         break;
     case SCTP_SENDER_DRY_EVENT:
-        ELOG_INFO("SCTP_SENDER_DRY_EVENT");
+        //ELOG_INFO("SCTP_SENDER_DRY_EVENT");
         break;
     case SCTP_NOTIFICATIONS_STOPPED_EVENT:
-        ELOG_INFO("SCTP_NOTIFICATIONS_STOPPED_EVENT");
+        ELOG_DEBUG("SCTP_NOTIFICATIONS_STOPPED_EVENT");
         break;
     case SCTP_SEND_FAILED_EVENT:
-        ELOG_INFO("SCTP_SEND_FAILED_EVENT");
+        ELOG_WARN("SCTP_SEND_FAILED_EVENT");
         //handleSendFailedEvent(&(notif->sn_send_failed_event));
         break;
     case SCTP_STREAM_RESET_EVENT:
-        ELOG_INFO("SCTP_STREAM_RESET_EVENT");
+        ELOG_DEBUG("SCTP_STREAM_RESET_EVENT");
         break;
     case SCTP_ASSOC_RESET_EVENT:
-        ELOG_INFO("SCTP_ASSOC_RESET_EVENT");
+        ELOG_DEBUG("SCTP_ASSOC_RESET_EVENT");
         break;
     case SCTP_STREAM_CHANGE_EVENT:
-        ELOG_INFO("SCTP_STREAM_CHANGE_EVENT");
+        ELOG_DEBUG("SCTP_STREAM_CHANGE_EVENT");
         break;
     default:
         break;
