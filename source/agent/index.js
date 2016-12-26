@@ -131,12 +131,17 @@ var launchErizoJS = function() {
         stdio: [ 'ignore', out, err, 'ipc' ]
     });
     child.unref();
+    child.out_log_fd = out;
+    child.err_log_fd = err;
+
     child.on('close', function (code) {
         log.info(id, 'exit with', code);
         //if (code !== 0) {
         if (processes[id]) {
             monitoringTarget && monitoringTarget.notify('abnormal', {purpose: myPurpose, id: id, type: 'node'});
         }
+        fs.closeSync(child.out_log_fd);
+        fs.closeSync(child.err_log_fd);
         cleanupErizoJS(id);
         fillErizos();
     });
@@ -144,6 +149,8 @@ var launchErizoJS = function() {
         log.error('failed to launch worker:', error);
         child.READY = false;
         monitoringTarget && monitoringTarget.notify('error', {purpose: myPurpose, id: id, type: 'node'});
+        fs.closeSync(child.out_log_fd);
+        fs.closeSync(child.err_log_fd);
         cleanupErizoJS(id);
         fillErizos(); // FIXME: distinguish between deterministic errors and recoverable ones.
     });
