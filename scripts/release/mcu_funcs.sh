@@ -106,8 +106,8 @@ pack_addons() {
     fi
   done
   # remove openh264 and replace with the pseudo one unless `-openh264' flag is set
-  ${PACK_OPENH264} || ([[ -s ${DIST_ADDON_DIR}/lib/libopenh264.so.0 ]] && \
-    cp -av $ROOT/third_party/openh264/pseudo-openh264.so ${DIST_ADDON_DIR}/lib/libopenh264.so.0)
+  ${PACK_OPENH264} || ([[ -s ${DIST_ADDON_DIR}/lib/libopenh264.so.3 ]] && \
+    cp -av $ROOT/third_party/openh264/pseudo-openh264.so ${DIST_ADDON_DIR}/lib/libopenh264.so.3)
   # remove libs from msdk
   rm -f ${DIST_ADDON_DIR}/lib/libmfxhw*
   for f in ${DIST_ADDON_DIR}/lib/libva*; do
