@@ -181,14 +181,14 @@ var ClusterManager = function (clusterName, selfId, spec) {
     };
 
     that.setRuntimeData = function (data) {
+         log.debug('onRuntimeData, data:', data);
          if (is_freshman) {
-             log.debug('onRuntimeData, data:', data);
-             workers = data.workers;
-             for (var purpose in data.schedulers) {
-                 schedulers[purpose] = createScheduler(purpose);
-                 schedulers[purpose].setData(data.schedulers[purpose]);
-             }
              is_freshman = false;
+         }
+         workers = data.workers;
+         for (var purpose in data.schedulers) {
+             schedulers[purpose] = createScheduler(purpose);
+             schedulers[purpose].setData(data.schedulers[purpose]);
          }
     };
 
@@ -355,15 +355,29 @@ var runAsMaster = function(topicChannel, manager) {
                 //log.info('Send out heart-beat as master.');
                 topicChannel.publish('clusterManager.slave', {type: 'declareMaster', data: manager.id});
                 topicChannel.publish('clusterManager.candidate', {type: 'declareMaster', data: manager.id});
+                topicChannel.publish('clusterManager.master', {type: 'declareMaster', data: manager.id});
             }, 20);
 
+            var has_got_response = false;
+            setInterval(function () {
+                if (!has_got_response) {
+                    log.error('Cluster manager lost connection with rabbitMQ server.');
+                    process.exit(1);
+                }
+                has_got_response = false;
+            }, 80);
+
             var onTopicMessage = function (message) {
+                has_got_response = true;
                 if (message.type === 'requestRuntimeData') {
                     var from = message.data;
                     log.info('requestRuntimeData from:', from);
                     manager.getRuntimeData(function (data) {
                         topicChannel.publish('clusterManager.slave.' + from, {type: 'runtimeData', data: data});
                     });
+                } else if (message.type === 'declareMaster' && message.data !== manager.id) {
+                    log.error('!!Double master!! self:', manager.id, 'another:', message.data);
+                    //FIXME: This occasion should be handled more elegantly.
                 }
             };
 
@@ -386,7 +400,8 @@ var runAsMaster = function(topicChannel, manager) {
 var runAsCandidate = function(topicChannel, manager) {
     var am_i_the_one = true,
         timer,
-        interval;
+        interval,
+        has_got_response = false;
 
     var electMaster = function () {
         interval && clearInterval(interval);
@@ -408,6 +423,11 @@ var runAsCandidate = function(topicChannel, manager) {
     };
 
     var onTopicMessage = function (message) {
+        if (!has_got_response) {
+            timer = setTimeout(electMaster, 160);
+            has_got_response = true;
+        }
+
         if (message.type === 'selfRecommend') {
             if (message.data > manager.id) {
                 am_i_the_one = false;
@@ -425,7 +445,6 @@ var runAsCandidate = function(topicChannel, manager) {
 
     log.info('Run as candidate.');
     topicChannel.subscribe(['clusterManager.candidate.#'], onTopicMessage, function () {
-        timer = setTimeout(electMaster, 160);
         selfRecommend();
     });
 };
