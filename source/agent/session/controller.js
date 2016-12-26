@@ -713,7 +713,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                                           audio: undefined,
                                           video: {codec: video_codec,
                                                   resolution: video_resolution,
-                                                  quality: video_quality,
+                                                  quality_level: video_quality,
                                                   subscribers: []},
                                           spread: []};
                     terminals[vxcoder].published.push(stream_id);
@@ -1559,8 +1559,8 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
         var input, outputs = [];
 
         log.debug('rebuildVideoTranscoder, vxcoderId:', vxcoderId);
-        for (var sub_id in terminals[vmixerId].subscribed) {
-            var vst_id = terminals[vmixerId].subscribed[sub_id].video;
+        for (var sub_id in terminals[vxcoderId].subscribed) {
+            var vst_id = terminals[vxcoderId].subscribed[sub_id].video;
             input = vst_id;
             var i = streams[vst_id].video.subscribers.indexOf(vxcoderId);
             i > -1 && streams[vst_id].video.subscribers.splice(i, 1);
@@ -1756,8 +1756,8 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
         var old_locality = terminals[axcoderId].locality;
         var input, outputs = [];
 
-        for (var sub_id in terminals[amixerId].subscribed) {
-            var vst_id = terminals[amixerId].subscribed[sub_id].video;
+        for (var sub_id in terminals[axcoderId].subscribed) {
+            var vst_id = terminals[axcoderId].subscribed[sub_id].video;
             input = vst_id;
             var i = streams[vst_id].audio.subscribers.indexOf(axcoderId);
             i > -1 && streams[vst_id].audio.subscribers.splice(i, 1);
