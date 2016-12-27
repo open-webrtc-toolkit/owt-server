@@ -241,6 +241,10 @@ module.exports = function (spec, on_status) {
         } else if (track === 'video' && video) {
             if (dir === direction) {
                 wrtc.enableVideo(action === 'on');
+                // Temporary fix for Firefox do not request key frame
+                if (direction === 'out' && action === 'on' && videoFramePacketizer) {
+                    videoFramePacketizer.requestKeyFrame();
+                }
                 on_ok();
             } else {
                 on_error('Ambiguous direction.');
