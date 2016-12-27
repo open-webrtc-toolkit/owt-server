@@ -10,8 +10,6 @@ prerunProcesses = 2 #default: 2
 name = "woogeen-cluster"
 #The number of times to try joining
 join_retry = 60 #default: 60
-#The interval of sending keepAlive messages.
-keep_alive_interval = 800 #default: 800, unit: millisecond
 #The interval of reporting the work load
 report_load_interval = 1000 #default: 1000, unit: millisecond
 #The max work load this worker can take.

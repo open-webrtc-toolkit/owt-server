@@ -26,7 +26,6 @@ config.portal.roles = config.portal.roles || {'admin':{'publish': true, 'subscri
 config.cluster = config.cluster || {};
 config.cluster.name = config.cluster.name || 'woogeen-cluster';
 config.cluster.join_retry = config.cluster.join_retry || 60;
-config.cluster.keep_alive_interval = config.cluster.keep_alive_interval || 800;
 config.cluster.report_load_interval = config.cluster.report_load_interval || 1000;
 config.cluster.max_load = config.cluster.max_laod || 0.85;
 config.cluster.network_max_scale = config.cluster.network_max_scale || 1000;
@@ -113,7 +112,6 @@ var joinCluster = function (on_ok) {
               purpose: 'portal',
               clusterName: config.cluster.name,
               joinRetry: config.cluster.join_retry,
-              keepAlivePeriod: config.cluster.keep_alive_interval,
               info: {ip: ip_address,
                      hostname: config.portal.hostname,
                      port: config.portal.port,
