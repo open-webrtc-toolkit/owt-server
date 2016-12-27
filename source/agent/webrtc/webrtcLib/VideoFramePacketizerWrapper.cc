@@ -43,6 +43,7 @@ void VideoFramePacketizer::Init(v8::Local<v8::Object> exports) {
 
   NODE_SET_PROTOTYPE_METHOD(tpl, "bindTransport", bindTransport);
   NODE_SET_PROTOTYPE_METHOD(tpl, "unbindTransport", unbindTransport);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "requestKeyFrame", requestKeyFrame);
 
   constructor.Reset(isolate, tpl->GetFunction());
   exports->Set(String::NewFromUtf8(isolate, "VideoFramePacketizer"), tpl->GetFunction());
@@ -91,5 +92,15 @@ void VideoFramePacketizer::unbindTransport(const FunctionCallbackInfo<Value>& ar
   woogeen_base::VideoFramePacketizer* me = obj->me;
 
   me->unbindTransport();
+}
+
+void VideoFramePacketizer::requestKeyFrame(const v8::FunctionCallbackInfo<v8::Value>& args) {
+  Isolate* isolate = Isolate::GetCurrent();
+  HandleScope scope(isolate);
+
+  VideoFramePacketizer* obj = ObjectWrap::Unwrap<VideoFramePacketizer>(args.Holder());
+  woogeen_base::VideoFramePacketizer* me = obj->me;
+
+  me->sendFirPacket();
 }
 

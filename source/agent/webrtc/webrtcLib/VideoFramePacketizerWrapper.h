@@ -44,6 +44,9 @@ class VideoFramePacketizer : public FrameDestination {
 
   static void bindTransport(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void unbindTransport(const v8::FunctionCallbackInfo<v8::Value>& args);
+
+  // Clients like Firefox play after pause do not send key frame request
+  static void requestKeyFrame(const v8::FunctionCallbackInfo<v8::Value>& args);
 };
 
 #endif
