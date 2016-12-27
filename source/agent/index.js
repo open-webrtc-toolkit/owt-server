@@ -108,6 +108,7 @@ var erizos = [];
 var processes = {};
 var tasks = {}; // {erizo_id: {RoomID: [ConsumerID]}}
 var load_collection = {period: GLOBAL.config.cluster.report_load_interval};
+var worker;
 
 function cleanupErizoJS (id) {
     delete processes[id];
@@ -362,15 +363,11 @@ function collectIPs () {
 }
 
 var joinCluster = function (on_ok) {
-    var worker;
     var joinOK = function (id) {
         myId = id;
         myState = 2;
         log.info(myPurpose, 'agent join cluster ok.');
         on_ok(id);
-        process.on('exit', function () {
-            worker.quit();
-        });
     };
 
     var joinFailed = function (reason) {
@@ -406,7 +403,6 @@ var joinCluster = function (on_ok) {
         onRecovery: recovery,
         loadCollection: load_collection
     });
-    return worker;
 };
 
 (function init_env() {
@@ -482,7 +478,7 @@ amqper.connect(GLOBAL.config.rabbit, function () {
     log.info('Adding agent to cloudhandler, purpose:', myPurpose);
     amqper.asRpcClient(function(rpcClnt) {
         rpcClient = rpcClnt;
-        var worker = joinCluster(function (rpcID) {
+        joinCluster(function (rpcID) {
             amqper.asRpcServer(rpcID, api(worker), function(rpcServer) {
                 log.info('as rpc server ok.');
                 amqper.asMonitoringTarget(function (monitoringTgt) {
@@ -516,5 +512,6 @@ amqper.connect(GLOBAL.config.rabbit, function () {
 
 process.on('exit', function () {
     dropAll();
+    worker && worker.quit();
     amqper.disconnect();
 });

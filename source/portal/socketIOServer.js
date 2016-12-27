@@ -758,22 +758,25 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
       }
     });
 
+    const leavePortal = function(){
+      if(that.inRoom){
+        portal.leave(participant_id).catch(function(err) {
+          var err_message = (typeof err === 'string' ? err: err.message);
+          log.info('portal.leave failed:', err_message);
+        });
+        observer.onLeave(participant_id, that.inRoom);
+        that.inRoom = undefined;
+      }
+    };
+
     socket.on('logout', function(){
       log.debug(vsprintf('Reconnection for %s is disabled because of client logout.', [participant_id]));
       reconnection_enabled=false;
+      leavePortal();
     });
 
     socket.on('disconnect', function(reason) {
       log.debug(participant_id+' disconnected, reason: '+reason);
-      const leavePortal = function(){
-        if(that.inRoom){
-          portal.leave(participant_id).catch(function(err) {
-            var err_message = (typeof err === 'string' ? err: err.message);
-            log.info('portal.leave failed:', err_message);
-          });
-          observer.onLeave(participant_id, that.inRoom);
-        }
-      };
       if(reconnection_enabled){
         disconnect_timeout = setTimeout(function(){
           log.info(participant_id+' failed to reconnect. Leaving portal.');
