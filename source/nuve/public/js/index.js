@@ -505,7 +505,7 @@ function tableHandlerRoom(rooms) {
       })
     });
 
-    $('#myModal3 tbody td#quality').editable({
+    $('#myModal3 tbody td#quality_level').editable({
       mode: 'inline',
       type: 'select',
       source: metadata.mediaMixing.video.quality_level.map(function(v) {
