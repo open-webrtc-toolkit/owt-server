@@ -24,7 +24,6 @@ GLOBAL.config.agent.prerunProcesses = GLOBAL.config.agent.prerunProcesses || 2;
 GLOBAL.config.cluster = GLOBAL.config.cluster || {};
 GLOBAL.config.cluster.name = GLOBAL.config.cluster.name || 'woogeen-cluster';
 GLOBAL.config.cluster.join_retry = GLOBAL.config.cluster.join_retry || 60;
-GLOBAL.config.cluster.keep_alive_interval = GLOBAL.config.cluster.keep_alive_interval || 800;
 GLOBAL.config.cluster.report_load_interval = GLOBAL.config.cluster.report_load_interval || 1000;
 GLOBAL.config.cluster.max_load = GLOBAL.config.cluster.max_load || 0.85;
 GLOBAL.config.cluster.network_max_scale = GLOBAL.config.cluster.network_max_scale || 1000;
@@ -390,7 +389,6 @@ var joinCluster = function (on_ok) {
         purpose: myPurpose,
         clusterName: GLOBAL.config.cluster.name,
         joinRetry: GLOBAL.config.cluster.join_retry,
-        keepAlivePeriod: GLOBAL.config.cluster.keep_alive_interval,
         info: {
             ip: clusterIP,
             purpose: myPurpose,
