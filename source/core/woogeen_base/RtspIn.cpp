@@ -322,7 +322,6 @@ RtspIn::RtspIn(const Options& options, EventRegistry* handle)
     , m_needAudio(options.enableAudio)
     , m_needVideo(options.enableVideo)
     , m_transportOpts(nullptr)
-    , m_enableH264(options.enableH264)
     , m_running(false)
     , m_context(nullptr)
     , m_timeoutHandler(nullptr)
@@ -437,6 +436,14 @@ bool RtspIn::connect()
 {
     int res;
 
+    if (!m_needVideo && !m_needAudio) {
+        ELOG_ERROR("Audio and video not enabled");
+
+        m_AsyncEvent.str("");
+        m_AsyncEvent << "{\"type\":\"failed\",\"reason\":\"audio and video not enabled\"}";
+        return false;
+    }
+
     if (ELOG_IS_TRACE_ENABLED())
         av_log_set_level(AV_LOG_DEBUG);
     else if (ELOG_IS_DEBUG_ENABLED())
@@ -457,6 +464,9 @@ bool RtspIn::connect()
     res = avformat_open_input(&m_context, m_url.c_str(), nullptr, &m_transportOpts);
     if (res != 0) {
         ELOG_ERROR("Error opening input %s", ff_err2str(res));
+
+        m_AsyncEvent.str("");
+        m_AsyncEvent << "{\"type\":\"failed\",\"reason\":\"error opening input url\"}";
         return false;
     }
 
@@ -465,128 +475,159 @@ bool RtspIn::connect()
     res = avformat_find_stream_info(m_context, nullptr);
     if (res < 0) {
         ELOG_ERROR("Error finding stream info %s", ff_err2str(res));
+
+        m_AsyncEvent.str("");
+        m_AsyncEvent << "{\"type\":\"failed\",\"reason\":\"error finding streams info\"}";
         return false;
     }
 
     ELOG_INFO("Dump format");
     av_dump_format(m_context, 0, nullptr, 0);
 
-    std::ostringstream status;
-    status << "{\"type\":\"ready\"";
+    m_AsyncEvent.str("");
+    m_AsyncEvent << "{\"type\":\"ready\"";
 
     AVStream *st, *audio_st;
     if (m_needVideo) {
         int streamNo = av_find_best_stream(m_context, AVMEDIA_TYPE_VIDEO, -1, -1, nullptr, 0);
         if (streamNo < 0) {
             ELOG_WARN("No Video stream found");
-        } else {
-            m_videoStreamIndex = streamNo;
-            st = m_context->streams[streamNo];
-            ELOG_INFO("Has video, video stream number %d. time base = %d / %d, codec type = %s ",
-                      m_videoStreamIndex,
-                      st->time_base.num,
-                      st->time_base.den,
-                      avcodec_get_name(st->codec->codec_id));
 
-            AVCodecID videoCodecId = st->codec->codec_id;
-            if (videoCodecId == AV_CODEC_ID_VP8 ||
-                (m_enableH264 && videoCodecId == AV_CODEC_ID_H264) ||
-                videoCodecId == AV_CODEC_ID_H265) {
-                if (videoCodecId == AV_CODEC_ID_VP8) {
-                    m_videoFormat = FRAME_FORMAT_VP8;
-                    status << ",\"video_codecs\":" << "[\"vp8\"]";
-                } else if (videoCodecId == AV_CODEC_ID_H264) {
-                    m_needVBSF = true;
-                    if (initVBSFilter(videoCodecId)) {
-                        m_videoFormat = FRAME_FORMAT_H264;
-                        status << ",\"video_codecs\":" << "[\"h264\"]";
-                    }
-                } else if (videoCodecId == AV_CODEC_ID_H265) {
-                    m_needVBSF = true;
-                    if (initVBSFilter(videoCodecId)) {
-                        m_videoFormat = FRAME_FORMAT_H265;
-                        status << ",\"video_codecs\":" << "[\"h265\"]";
-                    }
-                }
-
-                //FIXME: the resolution info should be retrieved from the rtsp video source.
-                std::string resolution = "hd1080p";
-                status << ",\"video_resolution\":" << "\"hd1080p\"";
-                VideoResolutionHelper::getVideoSize(resolution, m_videoSize);
-            } else {
-                ELOG_WARN("Video codec %s is not supported ", avcodec_get_name(videoCodecId));
-            }
-
-            m_videoJitterBuffer.reset(new JitterBuffer("video", JitterBuffer::SYNC_MODE_SLAVE, this));
-
-            m_videoTimeBase.num = 1;
-            m_videoTimeBase.den = 90000;
+            m_AsyncEvent.str("");
+            m_AsyncEvent << "{\"type\":\"failed\",\"reason\":\"no video stream found\"}";
+            return false;
         }
+        m_videoStreamIndex = streamNo;
+        st = m_context->streams[streamNo];
+        ELOG_INFO("Has video, video stream number %d. time base = %d / %d, codec type = %s ",
+                m_videoStreamIndex,
+                st->time_base.num,
+                st->time_base.den,
+                avcodec_get_name(st->codec->codec_id));
+
+        AVCodecID videoCodecId = st->codec->codec_id;
+        switch (videoCodecId) {
+            case AV_CODEC_ID_VP8:
+                m_videoFormat = FRAME_FORMAT_VP8;
+                m_AsyncEvent << ",\"video_codecs\":" << "[\"vp8\"]";
+                break;
+
+            case AV_CODEC_ID_H264:
+                m_needVBSF = true;
+                if (!initVBSFilter(videoCodecId)) {
+                    ELOG_ERROR("Can not init video bitstream filter");
+
+                    m_AsyncEvent.str("");
+                    m_AsyncEvent << "{\"type\":\"failed\",\"reason\":\"can not init h264\"}";
+                    return false;
+                }
+                m_videoFormat = FRAME_FORMAT_H264;
+                m_AsyncEvent << ",\"video_codecs\":" << "[\"h264\"]";
+                break;
+
+            case AV_CODEC_ID_H265:
+                m_needVBSF = true;
+                if (!initVBSFilter(videoCodecId)) {
+                    ELOG_ERROR("Can not init video bitstream filter");
+
+                    m_AsyncEvent.str("");
+                    m_AsyncEvent << "{\"type\":\"failed\",\"reason\":\"can not init h265\"}";
+                    return false;
+                }
+                m_videoFormat = FRAME_FORMAT_H265;
+                m_AsyncEvent << ",\"video_codecs\":" << "[\"h265\"]";
+                break;
+
+            default:
+                ELOG_WARN("Video codec %s is not supported", avcodec_get_name(videoCodecId));
+
+                m_AsyncEvent.str("");
+                m_AsyncEvent << "{\"type\":\"failed\",\"reason\":\"video codec is not supported\"}";
+                return false;
+        }
+
+        //FIXME: the resolution info should be retrieved from the rtsp video source.
+        std::string resolution = "hd1080p";
+        m_AsyncEvent << ",\"video_resolution\":" << "\"hd1080p\"";
+        VideoResolutionHelper::getVideoSize(resolution, m_videoSize);
+
+        m_videoJitterBuffer.reset(new JitterBuffer("video", JitterBuffer::SYNC_MODE_SLAVE, this));
+
+        m_videoTimeBase.num = 1;
+        m_videoTimeBase.den = 90000;
     }
 
     if (m_needAudio) {
         int audioStreamNo = av_find_best_stream(m_context, AVMEDIA_TYPE_AUDIO, -1, -1, nullptr, 0);
         if (audioStreamNo < 0) {
             ELOG_WARN("No Audio stream found");
-        } else {
-            m_audioStreamIndex = audioStreamNo;
-            audio_st = m_context->streams[m_audioStreamIndex];
-            ELOG_INFO("Has audio, audio stream number %d. time base = %d / %d, codec type = %s ",
-                      m_audioStreamIndex,
-                      audio_st->time_base.num,
-                      audio_st->time_base.den,
-                      avcodec_get_name(audio_st->codec->codec_id));
 
-            AVCodecID audioCodecId = audio_st->codec->codec_id;
-            switch(audioCodecId) {
-                case AV_CODEC_ID_PCM_MULAW:
-                    m_audioFormat = FRAME_FORMAT_PCMU;
-                    status << ",\"audio_codecs\":" << "[\"pcmu\"]";
-                    break;
+            m_AsyncEvent.str("");
+            m_AsyncEvent << "{\"type\":\"failed\",\"reason\":\"no audio stream found\"}";
+            return false;
+        }
+        m_audioStreamIndex = audioStreamNo;
+        audio_st = m_context->streams[m_audioStreamIndex];
+        ELOG_INFO("Has audio, audio stream number %d. time base = %d / %d, codec type = %s ",
+                m_audioStreamIndex,
+                audio_st->time_base.num,
+                audio_st->time_base.den,
+                avcodec_get_name(audio_st->codec->codec_id));
 
-                case AV_CODEC_ID_PCM_ALAW:
-                    m_audioFormat = FRAME_FORMAT_PCMA;
-                    status << ",\"audio_codecs\":" << "[\"pcma\"]";
-                    break;
+        AVCodecID audioCodecId = audio_st->codec->codec_id;
+        switch(audioCodecId) {
+            case AV_CODEC_ID_PCM_MULAW:
+                m_audioFormat = FRAME_FORMAT_PCMU;
+                m_AsyncEvent << ",\"audio_codecs\":" << "[\"pcmu\"]";
+                break;
 
-                case AV_CODEC_ID_OPUS:
-                    m_audioFormat = FRAME_FORMAT_OPUS;
-                    status << ",\"audio_codecs\":" << "[\"opus_48000_2\"]";
-                    break;
+            case AV_CODEC_ID_PCM_ALAW:
+                m_audioFormat = FRAME_FORMAT_PCMA;
+                m_AsyncEvent << ",\"audio_codecs\":" << "[\"pcma\"]";
+                break;
 
-                case AV_CODEC_ID_AAC:
-                    m_needAudioTranscoder = true;
-                    if (initAudioTranscoder(AV_CODEC_ID_AAC, AV_CODEC_ID_OPUS)) {
-                        m_audioFormat = FRAME_FORMAT_OPUS;
-                        status << ",\"audio_codecs\":" << "[\"opus_48000_2\"]";
-                    }
-                    break;
+            case AV_CODEC_ID_OPUS:
+                m_audioFormat = FRAME_FORMAT_OPUS;
+                m_AsyncEvent << ",\"audio_codecs\":" << "[\"opus_48000_2\"]";
+                break;
 
-                default:
-                    ELOG_WARN("Audio codec %s is not supported ", avcodec_get_name(audioCodecId));
-            }
+            case AV_CODEC_ID_AAC:
+                m_needAudioTranscoder = true;
+                if (!initAudioTranscoder(AV_CODEC_ID_AAC, AV_CODEC_ID_OPUS)) {
+                    ELOG_ERROR("Can not init audio codec");
 
-            m_audioJitterBuffer.reset(new JitterBuffer("audio", JitterBuffer::SYNC_MODE_MASTER, this));
+                    m_AsyncEvent.str("");
+                    m_AsyncEvent << "{\"type\":\"failed\",\"reason\":\"can not init audio\"}";
+                    return false;
+                }
+                m_audioFormat = FRAME_FORMAT_OPUS;
+                m_AsyncEvent << ",\"audio_codecs\":" << "[\"aac_48000_2\"]";
+                break;
 
-            if (m_audioFormat == FRAME_FORMAT_OPUS) {
-                m_audioTimeBase.num = 1;
-                m_audioTimeBase.den = 48000;
-            }
-            else {
-                m_audioTimeBase.num = 1;
-                m_audioTimeBase.den = 8000;
-            }
+            default:
+                ELOG_WARN("Audio codec %s is not supported ", avcodec_get_name(audioCodecId));
+
+                m_AsyncEvent.str("");
+                m_AsyncEvent << "{\"type\":\"failed\",\"reason\":\"audio codec is not supported\"}";
+                return false;
+        }
+
+        m_audioJitterBuffer.reset(new JitterBuffer("audio", JitterBuffer::SYNC_MODE_MASTER, this));
+
+        if (m_audioFormat == FRAME_FORMAT_OPUS) {
+            m_audioTimeBase.num = 1;
+            m_audioTimeBase.den = 48000;
+        }
+        else {
+            m_audioTimeBase.num = 1;
+            m_audioTimeBase.den = 8000;
         }
     }
-
-    if (m_audioFormat == FRAME_FORMAT_UNKNOWN && m_videoFormat == FRAME_FORMAT_UNKNOWN)
-        return false;
 
     m_msTimeBase.num = 1;
     m_msTimeBase.den = 1000;
 
-    status << "}";
-    ::notifyAsyncEvent(m_asyncHandle, "status", status.str());
+    m_AsyncEvent << "}";
 
     av_read_play(m_context);
 
@@ -690,10 +731,13 @@ void RtspIn::receiveLoop()
 {
     int ret = connect();
     if (!ret) {
-        ELOG_ERROR("Connect failed");
-        ::notifyAsyncEvent(m_asyncHandle, "status", "{\"type\":\"failed\",\"reason\":\"opening input url error\"}");
+        ELOG_ERROR("Connect failed, %s", m_AsyncEvent.str().c_str());
+
+        ::notifyAsyncEvent(m_asyncHandle, "status", m_AsyncEvent.str());
         return;
     }
+    ELOG_DEBUG("%s", m_AsyncEvent.str().c_str());
+    ::notifyAsyncEvent(m_asyncHandle, "status", m_AsyncEvent.str().c_str());
 
     m_running = true;
     ELOG_DEBUG("Start playing %s", m_url.c_str() );
