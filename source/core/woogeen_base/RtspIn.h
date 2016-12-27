@@ -184,7 +184,6 @@ private:
     bool m_needAudio;
     bool m_needVideo;
     AVDictionary* m_transportOpts;
-    bool m_enableH264;
     bool m_running;
     boost::thread m_thread;
     AVFormatContext* m_context;
@@ -227,6 +226,8 @@ private:
 
     char m_errbuff[500];
     char *ff_err2str(int errRet);
+
+    std::ostringstream m_AsyncEvent;
 
     bool isRtsp() {return (m_url.compare(0, 7, "rtsp://") == 0);}
 
