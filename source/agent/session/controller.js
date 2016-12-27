@@ -272,8 +272,6 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
             on_error(reason);
         };
 
-        log.info("spread pub/sub start");
-
         // Transport protocol for creating internal connection
         var internalOpt = {
             protocol: GLOBAL.config.internal.protocol
@@ -291,8 +289,6 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
         ]).then(function(prepared) {
             var targetAddr = prepared[0];
             var originAddr = prepared[1];
-
-            log.info("addr:", targetAddr, originAddr);
 
             var pubFail = false, subFail = false;
             // Publish/Subscribe internal connections
