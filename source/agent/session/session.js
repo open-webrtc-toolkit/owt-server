@@ -43,8 +43,7 @@ module.exports = function (rpcClient, selfRpcId) {
         return Promise.resolve('ok');
       }
     } else {
-      session_id = sessionId;
-      return rpcReq.getSessionConfig('nuve'/*FIXME: hard coded*/, session_id)
+      return rpcReq.getSessionConfig('nuve'/*FIXME: hard coded*/, sessionId)
         .then(function(config) {
             var room_config = config;
 
@@ -53,7 +52,7 @@ module.exports = function (rpcClient, selfRpcId) {
               log.error('Room', roomID, 'disabled');
               return Promise.reject('Room' + roomID + 'disabled');
             }
-            log.debug('initializing session:', session_id, 'got config:', config);
+            log.debug('initializing session:', sessionId, 'got config:', config);
             room_config.enableAudioTranscoding = (room_config.enableAudioTranscoding === undefined ? true : room_config.enableAudioTranscoding);
             room_config.enableVideoTranscoding = (room_config.enableVideoTranscoding === undefined ? true : room_config.enableVideoTranscoding);
 
@@ -62,11 +61,12 @@ module.exports = function (rpcClient, selfRpcId) {
                 {cluster: GLOBAL.config.cluster.name || 'woogeen-cluster',
                  rpcReq: rpcReq,
                  rpcClient: rpcClient,
-                 room: session_id,
+                 room: sessionId,
                  config: room_config,
                  selfRpcId: selfRpcId
                 }, function (resolutions) {
                   log.debug('room controller init ok');
+                  session_id = sessionId;
                   resolve('ok');
                   if (room_config.enableMixing) {
                     var mixed_stream = new ST.Stream({
