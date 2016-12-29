@@ -24,9 +24,12 @@ config.rabbit.port = config.rabbit.port || 5672;
 config.cluster = config.cluster || {};
 config.cluster.name = config.cluster.name || 'woogeen-cluster';
 
-var rebuildErizo = function(erizo_id) {
-  //TODO: clean the old erizo and rebuild a new one to resume the biz.
-};
+// Allocate retry interval when allocate sip agent failed
+var AllocateInterval = 5000;
+
+var erizos = {};
+// Keep rooms after initialization for re-assign agent
+var roomInfo = {};
 
 var api = {
 	//define rpc calls to receive sip info change from nuve
@@ -35,6 +38,12 @@ var api = {
         log.info("receivied api called, args", update);
         var room_id = update.room_id;
         var sipInfo = update.sipInfo;
+        // Update the room sip info
+        roomInfo[room_id] = sipInfo;
+        if (update.type == 'delete') {
+            delete roomInfo[room_id];
+        }
+
         if (update.type === 'create') {
             createSipConnectivity(room_id, sipInfo.sipServer, sipInfo.username, sipInfo.password);
         } else if (update.type === 'update') {
@@ -46,7 +55,22 @@ var api = {
     }
 };
 
-var erizos = {};
+var rebuildErizo = function(erizo_id) {
+    // Rebuild a new one to resume the biz.
+    for (var roomId in erizos) {
+        if (erizos[roomId] === erizo_id) {
+            // Get failed room id
+            log.info('SIP agent failed, try to re-assign an agent work for room:', roomId);
+            delete erizos[roomId];
+
+            var sipInfo = roomInfo[roomId];
+            if (sipInfo) {
+                createSipConnectivity(roomId, sipInfo.sipServer, sipInfo.username, sipInfo.password);
+            }
+            break;
+        }
+    }
+};
 
 function initSipRooms() {
     log.info('Start to get SIP rooms');
@@ -65,6 +89,8 @@ function initSipRooms() {
             for (var index in rooms) {
                 var room_id = rooms[index].room_id;
                 var sipInfo = rooms[index].sipInfo;
+                // Save the room sip info
+                roomInfo[room_id] = sipInfo;
                 createSipConnectivity(room_id, sipInfo.sipServer, sipInfo.username, sipInfo.password);
             }
         }
@@ -92,7 +118,11 @@ function createSipConnectivity(room_id, sip_server, sip_user, sip_passwd) {
                 helper.deallocateSipErizo(erizo.id);
             });
   }, function(error_reson) {
-      log.error("Allocate sip Erizo fail: ", error_reson);
+        log.error("Allocate sip Erizo fail: ", error_reson);
+        log.info("Try to allocate after", AllocateInterval / 1000, "s.");
+        setTimeout(function() {
+            createSipConnectivity(room_id, sip_server, sip_user, sip_passwd);
+        }, AllocateInterval);
   });
 }
 

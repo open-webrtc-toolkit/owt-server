@@ -23,15 +23,18 @@ module.exports = function (spec) {
                 log.info('ErizoJS[', erizo_id, '] check alive timeout!');
                 on_erizo_broken(erizo_id);
                 var room_id = erizos[erizo_id].room_id;
+
+                var afterRecycle = function() {
+                    delete erizos[erizo_id];
+                    on_erizo_broken(erizo_id);
+                };
+
                 makeRPC(rpcClient,
                         erizos[erizo_id].agent,
                         'recycleNode',
                         [erizo_id, room_id],
-                        function() {
-                            delete erizos[erizo_id];
-                        }, function() {
-                            delete erizos[erizo_id];
-                        });
+                        afterRecycle,
+                        afterRecycle);
             }
         };
     };
