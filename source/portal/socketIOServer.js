@@ -104,6 +104,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
   let reconnection_ticket_id;
   let pending_messages = [];  // Messages need to be sent when reconnection is success.
   let disconnect_timeout;  // Timeout function for disconnection. It will be executed if disconnect timeout reached, will be cleared if other client valid reconnection ticket success.
+  let disconnected = false;
 
   // client_info has client version and platform.
   const checkClientAbility = function(ua){
@@ -167,6 +168,10 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
     // Join portal. It returns room info.
     const joinPortal = function(participant_id, token){
       return portal.join(participant_id, token).then(function(result){
+        if(disconnected){
+          portal.leave(participant_id);
+          return Promise.reject('Leaved conference before join success.');
+        }
         that.inRoom = result.session_id;
         observer.onJoin(participant_id, result.session_id);
         return {clientId: participant_id,
@@ -781,10 +786,13 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
         disconnect_timeout = setTimeout(function(){
           log.info(participant_id+' failed to reconnect. Leaving portal.');
           leavePortal();
+          disconnected = true;
           on_disconnect();
         }, reconnection_spec.reconnectionTimeout*1000);
       } else {
+        log.info(participant_id+' is going to leave portal');
         leavePortal();
+        disconnected = true;
         on_disconnect();
       }
     });
