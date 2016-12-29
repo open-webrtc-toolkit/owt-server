@@ -290,15 +290,17 @@ var Portal = function(spec, rpcReq) {
                                 type: connectionType
                                };
       (streamDescription.video && streamDescription.video.framerate) && (stream_description.video.framerate = streamDescription.video.framerate);
-      return rpcReq.pub2Session(participant.controller, participantId, stream_id, locality, stream_description, notMix)
+
+      var controller = participant.controller;
+      return rpcReq.pub2Session(controller, participantId, stream_id, locality, stream_description, notMix)
         .then(function(result) {
           log.debug('pub2Session ok, participantId:', participantId, 'connection_id:', connection_id);
           var participant = participants[participantId];
           if (participant === undefined) {
-            rpcReq.unpub2Session(participant.controller, participantId, stream_id);
+            rpcReq.unpub2Session(controller, participantId, stream_id);
             return Promise.reject('Participant ' + participantId + ' has left when controller responds publish ok.');
           } else if (participant.connections[stream_id] === undefined) {
-            rpcReq.unpub2Session(participant.controller, participantId, stream_id);
+            rpcReq.unpub2Session(controller, participantId, stream_id);
             return Promise.reject('Connection ' + stream_id + ' has been released when controller responds publish ok.');
           }
 
@@ -430,12 +432,17 @@ var Portal = function(spec, rpcReq) {
       return Promise.reject('Participant ' + participantId + ' does NOT exist.');
     }
 
-    var connection_id = streamId;
-    if (participants[participantId].connections[connection_id] === undefined) {
+    var connection_id = streamId,
+      connection = participants[participantId].connections[connection_id];
+    if (connection === undefined) {
       return Promise.reject('stream does not exist');
     }
 
-    return rpcReq.setVideoBitrate(participants[participantId].connections[connection_id].locality.node, connection_id, bitrate);
+    if (connection.type !== 'webrtc' || connection.direction !== 'in') {
+      return Promise.reject('operation not allowed');
+    }
+
+    return rpcReq.setVideoBitrate(connection.locality.node, connection_id, bitrate);
   };
 
   that.subscribe = function(participantId, connectionId, connectionType, subscriptionDescription, onConnectionStatus) {
@@ -482,15 +489,16 @@ var Portal = function(spec, rpcReq) {
       (subscription_description.video) && (subscription_description.video.codecs = [status.video_codecs[0]]/*FIXME: delete the non-top codecs as a workround approach because firefox(20160726) does not support the second prior codec*/);
       subscription_description.type = connectionType;
 
-      return rpcReq.sub2Session(participant.controller, participantId, connection_id, locality, subscription_description)
+      var controller = participant.controller;
+      return rpcReq.sub2Session(controller, participantId, connection_id, locality, subscription_description)
         .then(function(result) {
           log.debug('sub2Session ok, participantId:', participantId, 'connection_id:', connection_id);
           var participant = participants[participantId];
           if (participant === undefined) {
-            rpcReq.unsub2Session(participant.controller, participantId, connection_id);
+            rpcReq.unsub2Session(controller, participantId, connection_id);
             return Promise.reject('Participant ' + participantId + ' has left when controller responds subscribe ok.');
           } else if (participant.connections[connection_id] === undefined) {
-            rpcReq.unsub2Session(participant.controller, participantId, connection_id);
+            rpcReq.unsub2Session(controller, participantId, connection_id);
             return Promise.reject('Connection ' + connection_id + ' has been released when controller responds subscribe ok.');
           }
 
