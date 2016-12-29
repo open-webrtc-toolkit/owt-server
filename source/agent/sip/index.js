@@ -483,6 +483,11 @@ module.exports = function (rpcC, spec) {
 
     that.init = function(options, callback) {
         log.debug('init SipGateway:', options.sip_server, options.sip_user);
+        if (gateway) {
+            log.info('SipGateway already exists, ignore init request.');
+            callback('callback', 'ok');
+            return;
+        }
 
         room_id = options.room_id;
 
@@ -551,6 +556,7 @@ module.exports = function (rpcC, spec) {
         }
         gateway.close();
         gateway = undefined;
+        recycling_mode = false;
     };
 
     that.createInternalConnection = function (connectionId, direction, internalOpt, callback) {
