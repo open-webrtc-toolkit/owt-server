@@ -74,16 +74,30 @@ var rebuildErizo = function(erizo_id) {
 
 function initSipRooms() {
     log.info('Start to get SIP rooms');
-    helper = sipErizoHelper({cluster : config.cluster.name,
-                             rpcClient : rpcClient,
-                             on_broken : function (erizo_id) {
-            rebuildErizo(erizo_id);
-        }
-    });
 
+    if (!helper) {
+        helper = sipErizoHelper({
+            cluster : config.cluster.name,
+            rpcClient : rpcClient,
+            on_broken : function (erizo_id) {
+                rebuildErizo(erizo_id);
+            }
+        });
+    }
+
+    // Why not access mongodb directly here?
     rpcClient.remoteCall('nuve', 'getRoomsWithSIP', null, {
         callback: function (rooms) {
-            // get sip rooms here
+            // Get sip rooms here
+            if (!Array.isArray(rooms)) {
+                log.warn('Get sip rooms from nuve failed:', rooms);
+                setTimeout(function() {
+                    log.info('Try to re-get sip rooms from nuve.');
+                    initSipRooms();
+                }, 5000);
+                return;
+            }
+
             // Argument rooms: [{room_id:room-id, sipInfo:room's-sipInfo}...]
             log.debug('SIP rooms', rooms);
             for (var index in rooms) {
