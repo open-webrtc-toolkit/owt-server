@@ -317,6 +317,10 @@ amqper.connect(config.rabbit, function () {
   });
 });
 
+process.on('SIGPIPE', function () {
+  log.warn('SIGPIPE!!');
+});
+
 process.on('exit', function () {
     amqper.disconnect();
 });

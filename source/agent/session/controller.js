@@ -1753,7 +1753,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
         var input, outputs = [];
 
         for (var sub_id in terminals[axcoderId].subscribed) {
-            var vst_id = terminals[axcoderId].subscribed[sub_id].video;
+            var vst_id = terminals[axcoderId].subscribed[sub_id].audio;
             input = vst_id;
             var i = streams[vst_id].audio.subscribers.indexOf(axcoderId);
             i > -1 && streams[vst_id].audio.subscribers.splice(i, 1);
