@@ -348,36 +348,42 @@ var runAsSlave = function(topicChannel, manager) {
 
 var runAsMaster = function(topicChannel, manager) {
     log.info('Run as master.');
+    var life_time = 0;
     topicChannel.bus.asRpcServer(manager.name, manager.rpcAPI, function(rpcSvr) {
         topicChannel.bus.asMonitoringTarget(function(monitoringTgt) {
             manager.serve(monitoringTgt);
             setInterval(function () {
+                life_time += 1;
                 //log.info('Send out heart-beat as master.');
-                topicChannel.publish('clusterManager.slave', {type: 'declareMaster', data: manager.id});
-                topicChannel.publish('clusterManager.candidate', {type: 'declareMaster', data: manager.id});
-                topicChannel.publish('clusterManager.master', {type: 'declareMaster', data: manager.id});
+                topicChannel.publish('clusterManager.slave', {type: 'declareMaster', data: {id: manager.id, life_time: life_time}});
+                topicChannel.publish('clusterManager.candidate', {type: 'declareMaster', data: {id: manager.id, life_time: life_time}});
+                topicChannel.publish('clusterManager.master', {type: 'declareMaster', data: {id: manager.id, life_time: life_time}});
             }, 20);
 
-            var has_got_response = false;
-            setInterval(function () {
-                if (!has_got_response) {
-                    log.error('Cluster manager lost connection with rabbitMQ server.');
-                    process.exit(1);
-                }
-                has_got_response = false;
-            }, 80);
+           // var has_got_response = false;
+           // setInterval(function () {
+           //     if (!has_got_response) {
+           //         log.error('Cluster manager lost connection with rabbitMQ server.');
+           //         process.exit(1);
+           //     }
+           //     has_got_response = false;
+           // }, 80);
 
             var onTopicMessage = function (message) {
-                has_got_response = true;
+           //     has_got_response = true;
                 if (message.type === 'requestRuntimeData') {
                     var from = message.data;
                     log.info('requestRuntimeData from:', from);
                     manager.getRuntimeData(function (data) {
                         topicChannel.publish('clusterManager.slave.' + from, {type: 'runtimeData', data: data});
                     });
-                } else if (message.type === 'declareMaster' && message.data !== manager.id) {
-                    log.error('!!Double master!! self:', manager.id, 'another:', message.data);
+                } else if (message.type === 'declareMaster' && message.data.id !== manager.id) {
+                    log.error('!!Double master!! self:', manager.id, 'another:', message.data.id);
                     //FIXME: This occasion should be handled more elegantly.
+                    if (message.data.life_time > life_time) {
+                        log.error('Another master is more senior than me, I quit.');
+                        process.exit(1);
+                    }
                 }
             };
 
