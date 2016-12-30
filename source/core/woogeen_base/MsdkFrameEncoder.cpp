@@ -29,6 +29,8 @@
 #include "MsdkBase.h"
 #include "MsdkFrameEncoder.h"
 
+#define _MAX_BITSTREAM_BUFFER_ (100 * 1024 * 1024)
+
 using namespace webrtc;
 
 namespace woogeen_base {
@@ -248,7 +250,27 @@ retry:
             goto retry;
         }
         else if (sts == MFX_ERR_NOT_ENOUGH_BUFFER) {
-            ELOG_WARN("(%p)Require more bitstream buffer!", this);
+            ELOG_WARN("(%p)Require more bitstream buffer, %d!", this, m_bitstream->MaxLength);
+
+            uint32_t newSize = m_bitstream->MaxLength * 2;
+            if (newSize > _MAX_BITSTREAM_BUFFER_) {
+                ELOG_ERROR("(%p)Exceed max bitstream buffer size(%d), %d!", this, _MAX_BITSTREAM_BUFFER_, newSize);
+                return;
+            }
+
+            ELOG_WARN("(%p)bitstream buffer need to remalloc %d -> %d"
+                    , this
+                    , m_bitstream->MaxLength
+                    , newSize
+                    );
+
+            mfxU8 *newBuffer = (mfxU8 *)malloc(newSize);
+            if (m_bitstream->DataLength > 0)
+                memcpy(newBuffer, m_bitstream->Data, m_bitstream->DataLength);
+
+            free(m_bitstream->Data);
+            m_bitstream->Data         = newBuffer;
+            m_bitstream->MaxLength    = newSize;
 
             return;
         }
