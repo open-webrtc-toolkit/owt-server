@@ -1211,10 +1211,12 @@ void RtspIn::onDeliverFrame(JitterBuffer *jitterBuffer, AVPacket *pkt)
         frame.additionalInfo.video.height = m_videoSize.height;
         deliverFrame(frame);
 
-        ELOG_DEBUG("onDeliver video frame, timestamp %ld(%ld), size %4d"
+        ELOG_DEBUG("onDeliver video frame, timestamp %ld(%ld), size %4d, %s"
                 , timeRescale(frame.timeStamp, m_videoTimeBase, m_msTimeBase)
                 , pkt->dts
-                , frame.length);
+                , frame.length
+                , (pkt->flags & AV_PKT_FLAG_KEY) ? "key frame" : ""
+                );
     } else if (m_audioJitterBuffer.get() == jitterBuffer) {
         Frame frame;
         memset(&frame, 0, sizeof(frame));
