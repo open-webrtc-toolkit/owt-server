@@ -164,6 +164,14 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
     return Promise.resolve();
   };
 
+  const send_msg = function (event, data) {
+    try {
+      socket.emit(event, data);
+    } catch (e) {
+      log.error('socket.emit error:', e.message);
+    }
+  };
+
   that.listen = function() {
     // Join portal. It returns room info.
     const joinPortal = function(participant_id, token){
@@ -285,7 +293,8 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
       return portal.publish(participant_id, stream_id, connection_type, stream_description, function(status) {
         if (status.type === 'failed') {
           if (has_responded) {
-            socket.emit('connection_failed', {streamId: stream_id});
+            log.info('emitted connection_failed, reason:', status.reason);
+            send_msg('connection_failed', {streamId: stream_id});
           } else {
             safeCall(callback, 'error', status.reason);
           }
@@ -295,7 +304,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
               safeCall(callback, 'initializing', stream_id);
               has_responded = true;
             } else {
-              socket.emit('signaling_message_erizo', {streamId: stream_id, mess: status});
+              send_msg('signaling_message_erizo', {streamId: stream_id, mess: status});
             }
           } else {
             if (status.type === 'ready') {
@@ -313,7 +322,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
         var err_message = (typeof err === 'string' ? err: err.message);
         log.info('portal.publish failed:', err_message);
         if (has_responded) {
-          socket.emit('connection_failed', {streamId: stream_id});
+          send_msg('connection_failed', {streamId: stream_id});
         } else {
           safeCall(callback, 'error', err_message);
         }
@@ -402,7 +411,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
         } else if (status.type === 'initializing') {
           safeCall(callback, 'initializing', options.streamId/*FIXME -a */);
         } else {
-          socket.emit('signaling_message_erizo', {peerId: options.streamId/*FIXME -a */, mess: status});
+          send_msg('signaling_message_erizo', {peerId: options.streamId/*FIXME -a */, mess: status});
         }
       }).then(function(connectionLocality) {
         log.debug('portal.subscribe succeeded, connection locality:', connectionLocality);
@@ -799,12 +808,12 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
   };
 
   that.notify = function(event, data) {
-    log.debug('socket.emit, event:', event, 'data:', data);
-    socket.emit(event, data);
+    log.debug('notify, event:', event, 'data:', data);
+    send_msg(event, data);
   };
 
   that.drop = function() {
-    that.notify('drop');  // Explicitly let client know it is dropped.
+    send_msg('drop');  // Explicitly let client know it is dropped.
     reconnection_enabled = false;
     socket.disconnect();
   };
