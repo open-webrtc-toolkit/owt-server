@@ -58,9 +58,6 @@ protected:
     void flushOutput(void);
     bool resetDecoder(void);
 
-    void dumpFrameInfo(const Frame& frame);
-    void dumpH264BitstreamInfo(uint8_t *data, int len);
-
 private:
     MFXVideoSession *m_session;
     MFXVideoDECODE *m_dec;

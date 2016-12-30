@@ -272,7 +272,7 @@ retry:
             m_bitstream->Data         = newBuffer;
             m_bitstream->MaxLength    = newSize;
 
-            return;
+            goto retry;
         }
         else if (sts != MFX_ERR_NONE) {
             ELOG_ERROR("(%p)mfx encode error, ret %d", this, sts);

@@ -303,8 +303,7 @@ void MsdkFrameDecoder::decFrame(mfxBitstream *pBitstream)
     while (true) {
 more_surface:
         boost::shared_ptr<MsdkFrame> workFrame = m_framePool->getFreeFrame();
-        if (!workFrame)
-        {
+        if (!workFrame) {
             ELOG_WARN("(%p)No WorkSurface available", this);
             return;
         }
@@ -315,8 +314,6 @@ retry:
 #if 0
         ELOG_TRACE("(%p)***bitstream buffer offset %d, dataLength %d, maxLength %d",
             this, pBitstream->DataOffset, pBitstream->DataLength, pBitstream->MaxLength);
-
-        dumpH264BitstreamInfo(pBitstream->Data + pBitstream->DataOffset, pBitstream->DataLength);
 #endif
 
         m_decBsOffset = pBitstream->DataOffset;
@@ -468,8 +465,6 @@ void MsdkFrameDecoder::onFrame(const Frame& frame)
 {
     printfFuncEnter;
 
-    //dumpH264BitstreamInfo(frame);
-
     updateBitstream(frame);
 
 retry:
@@ -482,55 +477,6 @@ retry:
     }
 
     printfFuncExit;
-}
-
-void MsdkFrameDecoder::dumpFrameInfo(const Frame& frame)
-{
-    dumpH264BitstreamInfo(frame.payload, frame.length);
-}
-
-void MsdkFrameDecoder::dumpH264BitstreamInfo(uint8_t *data, int len)
-{
-    int nal_ref_idc;
-    int nal_unit_type;
-    const char *type = NULL;
-
-    if (len < 5) {
-        ELOG_DEBUG("(%p)Invalid bitstream head size(%d)", this, len);
-        return;
-    }
-
-    if (data[0] != 0 || data[1] != 0 || data[2] != 0 || data[3] != 1) {
-        ELOG_ERROR("(%p)Invalid Start code(0001): %d%d%d%d", this, data[0], data[1], data[2], data[3]);
-        return;
-    }
-
-    nal_ref_idc     = (data[4] >> 5) & 0x3;
-    nal_unit_type   = data[4] & 0x1f;
-
-    switch (nal_unit_type) {
-        case 1:
-            type = "NON-IDR";
-            break;
-
-        case 5:
-            type = "IDR";
-            break;
-
-        case 7:
-            type = "SPS";
-            break;
-
-        case 8:
-            type = "PPS";
-            break;
-
-        default:
-            type = "N/A";
-            break;
-    }
-
-    ELOG_TRACE("(%p)nal_ref_idc %d, nal_unit_type %d(%s)", this, nal_ref_idc, nal_unit_type, type);
 }
 
 }//namespace woogeen_base
