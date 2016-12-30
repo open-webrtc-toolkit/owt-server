@@ -299,10 +299,12 @@ module.exports = function (spec, on_status) {
         return undefined;
     };
 
-    that.setVideoBitrate = function (bitrateKBPS) {
+    that.setVideoBitrate = function (bitrateKBPS, on_ok, on_error) {
         if (video && videoFrameConstructor) {
             videoFrameConstructor.setBitrate(bitrateKBPS);
+            return on_ok();
         }
+        return on_error('no video track');
     };
 
     //FIXME: Temporarily add this interface to workround the hardware mode's absence of feedback mechanism.

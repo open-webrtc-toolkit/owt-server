@@ -193,8 +193,12 @@ module.exports = function () {
         var conn = connections.getConnection(connectionId);
         if (conn && conn.direction === 'in') {
             if (conn.type === 'webrtc') {//NOTE: Only webrtc connection supports setting video bitrate.
-                conn.connection.setVideoBitrate(bitrate);
-                callback('callback', 'ok');
+                conn.connection.setVideoBitrate(bitrate, function () {
+                  callback('callback', 'ok');
+                }, function (err_reason) {
+                    log.info('set video bitrate failed:', err_reason);
+                    callback('callback', 'error', err_reason);
+                });
             } else {
                 callback('callback', 'error', 'setVideoBitrate on non-webrtc connection');
             }
