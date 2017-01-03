@@ -272,6 +272,13 @@ install_module() {
       echo -e "\x1b[32mInstalling node_modules for ${TARGET}...\x1b[0m"
       pushd ${TARGET} >/dev/null
       npm install --production --loglevel error
+
+      if [ "$TARGET" = "nuve" ]; then
+        # Set bson version to 1.0.1 to avoid requiring higher node version
+        pushd node_modules/mongojs/node_modules/mongodb/node_modules/mongodb-core >/dev/null
+        npm install bson@1.0.1 --save
+        popd >/dev/null
+      fi
       popd >/dev/null
     done
   else
