@@ -1499,7 +1499,7 @@ describe('portal.subscribe/portal.unsubscribe/portal.mediaOnOff: Participants su
         })
         .then(function(result) {
           expect(result).to.equal('ok');
-          expect(mockrpcReq.sub2Session.getCall(0).args).to.deep.equal(['rpcIdOfController', testParticipantId, subscription_id, {agent: 'rpcIdOfAccessAgent', node: 'rpcIdOfAccessNode'}, {audio: {fromStream: 'targetStreamId', codecs: ['pcmu']}, video: {fromStream: 'targetStreamId', codecs: ['vp8'/*FIXME: delete the non-top codecs as a workround approach because firefox(20160726) does not support the second prior codec*/], resolution: 'vga', quality_level: 'standard'}, type: 'webrtc'}]);
+          expect(mockrpcReq.sub2Session.getCall(0).args).to.deep.equal(['rpcIdOfController', testParticipantId, subscription_id, {agent: 'rpcIdOfAccessAgent', node: 'rpcIdOfAccessNode'}, {audio: {fromStream: 'targetStreamId', codecs: ['pcmu']}, video: {fromStream: 'targetStreamId', codecs: ['vp8', 'h264'], resolution: 'vga', quality_level: 'standard'}, type: 'webrtc'}]);
           expect(spyConnectionObserver.getCall(3).args).to.deep.equal([{type: 'ready', audio_codecs: ['pcmu'], video_codecs: ['vp8', 'h264']}]);
         });
     });
