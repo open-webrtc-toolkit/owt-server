@@ -24,6 +24,7 @@ var getService = exports.getService = function (id, callback) {
     try {
         serviceId = db.ObjectId(id);
     } catch (e) {
+        log.error('Get service Error:', e);
         if (typeof callback === 'function') {
             callback(undefined);
         }
