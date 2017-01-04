@@ -85,7 +85,6 @@ while [[ $# -gt 0 ]]; do
       BUILD_SIP_GATEWAY_RUNTIME=true
       BUILD_MCU_RUNTIME_SW=true
       BUILD_MCU_RUNTIME_HW_MSDK=true
-      BUILD_MCU_RUNTIME_HW_YAMI=true
       BUILD_SDK=true
       ;;
     *(-)gateway )
@@ -96,7 +95,6 @@ while [[ $# -gt 0 ]]; do
       ;;
     *(-)mcu-hardware )
       BUILD_MCU_RUNTIME_HW_MSDK=true
-      BUILD_MCU_RUNTIME_HW_YAMI=true
       ;;
     *(-)mcu-hardware-yami )
       BUILD_MCU_RUNTIME_HW_YAMI=true
@@ -107,7 +105,6 @@ while [[ $# -gt 0 ]]; do
     *(-)mcu-all )
       BUILD_MCU_RUNTIME_SW=true
       BUILD_MCU_RUNTIME_HW_MSDK=true
-      BUILD_MCU_RUNTIME_HW_YAMI=true
       ;;
     *(-)sip )
       BUILD_SIP_GATEWAY_RUNTIME=true
