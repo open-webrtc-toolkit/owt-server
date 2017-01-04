@@ -1,6 +1,6 @@
 {
   "name": "WooGeen-MCU-Portal",
-  "version":"3.2.0",
+  "version":"3.3.0",
   "dependencies": {
     "amqp": "*",
     "express": "*",
