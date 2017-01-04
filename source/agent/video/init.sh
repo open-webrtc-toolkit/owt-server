@@ -80,3 +80,12 @@ else
   echo -e "\x1b[36mYami backend disbled\x1b[0m"
   sed -i 's/^yamiEnabled = true/yamiEnabled = false/' ${this}/agent.toml
 fi
+
+if [[ "${ENABLE_HARDWARE}" = "false" && "${ENABLE_YAMI}" = "false" ]]; then
+  read -p "Installing OpenH264 Video Codec Library provided by Cisco Systems, Inc? [Yes/no]" yn
+  case $yn in
+    [Yy]* ) . install_OpenH264.sh;;
+    [Nn]* ) . uninstall_OpenH264.sh;;
+    * ) install_OpenH264.sh;;
+  esac
+fi
