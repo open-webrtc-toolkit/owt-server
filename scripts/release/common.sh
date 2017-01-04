@@ -42,6 +42,12 @@ encrypt_js() {
   local target="$1"
   local tmp="$1.tmp"
   echo "Encrypt javascript file: ${target}"
+
+  # Transform es6 to es5 for uglify task
+  local nodeLib=`npm root -g`
+  NODE_PATH=${nodeLib} babel --presets es2015,stage-0 ${target} -o "${tmp}.es5"
+  mv "${tmp}.es5" ${target}
+
   uglifyjs ${target} -o ${tmp} -c -m
   mv ${tmp} ${target}
 }
@@ -58,6 +64,19 @@ archive() {
         echo >&2 "You need to install node first."
       fi
     fi
+
+    # Used to transform es6 to es5 for uglify task
+    if ! hash babel 2>/dev/null; then
+      if hash npm 2>/dev/null; then
+        npm install -g --save-dev babel-cli
+        npm install -g --save-dev babel-preset-es2015 babel-preset-stage-0
+        hash -r
+      else
+        echo >&2 "npm not found."
+        echo >&2 "You need to install node first."
+      fi
+    fi
+
     for i in "${ENCRYPT_CAND_PATH[@]}"
     do
       find "$i" -path "${i}/public" -prune -o -path "${i}/node_modules" -prune -o -type f -name "*.js" -print | while read line; do
