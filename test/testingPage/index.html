@@ -71,18 +71,22 @@
 
 		ul li{
 			/* max-width: 200px; */
-			min-height: 24px;
+			height: 24px;
 		}
 
 		a {
-			display: block;
+			display: inline-block;
 			/* max-width: 200px; */
-			min-height: 24px;
+			height: 24px;
+			width: 100%;
 			text-decoration: none;
 			color: #000;
 			background-color: #94B8E9;
 			line-height: 24px;
 			border-bottom: 1px solid #ddd;
+			border-top: 1px solid #ddd;
+			overflow: hidden;
+			white-space: nowrap;
 		}
 		a:hover{
 			background-color: #33C583;
@@ -108,12 +112,17 @@
 			background-color: #AD3490;
 		}
 
-		#recorder, #other{
+		#recorder, #other, .rtmp{
 			background-color: #DED8D8;
 			padding: 2px;
 			text-align: left;
 			/* max-width: 200px; */
 		}
+		#recorder span, .rtmp span{
+			display: inline-block;
+			width: 100px;
+		}
+
 		#multiple {
 			padding: 2px;
 			text-align: left;
@@ -140,16 +149,73 @@
 			left:10px;
 			top: 10px;
 			padding: 0px 10px;
-			min-width: 100px;
+			width: 300px;
 			height: 30px;
 			opacity: 0.8;
 			text-align: center;
-			font-size: 30px;
+			font-size: 14px;
 			font-weight: 900;
 			color:#E93030;
 			line-height: 30px;
 
 		}
+		#frame{
+			position: absolute;
+			left: 50%;
+			top: 5px;
+			border: 1px solid #ad2222;
+			width: 400px;
+			margin-left: -200px;
+			height: 50px;
+			border-radius: 5px 5px;
+		}
+
+		#frame>div{
+			width:96px;
+			height:50px;
+			margin: 2px;
+			background-color: #e5f00c;
+			display: inline-block;
+			float: left;
+			border-radius: 25px 25px;
+			color: red;
+			text-align: center;
+			font-size:22px;
+			vertical-align:bottom;
+		}
+		<!-- rtmp test -->
+		#startrtmp{
+			margin-right: 10px;
+		}
+		<!-- update room-->
+		#plv, #ulv, #emv{
+			height: 24px;
+			position: absolute;
+			display: none;
+		}
+		.mmv{
+			position: absolute;
+			top:0;
+			left: 0;
+			right: 0;
+			bottom: 0;
+			background-color: rgba(222,212,232,0.3);
+			display: none;
+		}
+                /*select mix resolution*/
+                #mixresolutions{
+                  display: none;
+                  position: absolute;
+                  list-style: none;
+                  width: 100px;
+                  background: #777;
+                  margin-top: 1px;
+                }
+                #mixresolutions > li{
+                  border-bottom: 1px solid #e6cfcf;
+                  height: 23px;
+                  line-height:23px;
+                }
 		/*clear float*/
 		#woogeen-footer{
 			clear:both;
@@ -177,7 +243,10 @@
 				<h3>Local</h3>
 				<ul>
 					<li><a href="javascript:void(0)" onclick="fullScreen()">full screen</a></li>
-					<li><a href="javascript:void(0)" onclick="shareScreen()">share screen</a></li>
+					<li><a href="javascript:void(0)" onclick="shareScreen()">share screen vp8</a></li>
+					<li><a href="javascript:void(0)" onclick="shareScreen('vp9')">share screen vp9</a></li>
+					<li><a href="javascript:void(0)" onclick="shareScreen('h264')">share screen h264</a></li>
+					<li><a href="javascript:void(0)" onclick="shareScreen('h265')">share screen h265</a></li>
 					<li><a href="javascript:void(0)" onclick="showv('localVideo')">show local</a></li>
 					<li><a href="javascript:void(0)" onclick="hidev('localVideo')">hide local</a></li>
 					<li><a href="javascript:void(0)" onclick="stoplocal()">stop local</a></li>
@@ -190,7 +259,9 @@
 					<li><a href="javascript:void(0)" onclick="joinRoom()">join room</a></li>
 					<li><a href="javascript:void(0)" onclick="unpub()">unpublish local</a></li>
 					<li><a href="javascript:void(0)" onclick="pub('vp8')">publish local vp8</a></li>
+					<li><a href="javascript:void(0)" onclick="pub('vp9')">publish local vp9</a></li>
 					<li><a href="javascript:void(0)" onclick="pub('h264')">publish local h264</a></li>
+					<li><a href="javascript:void(0)" onclick="pub('h265')">publish local h265</a></li>
 					<li><a href="javascript:void(0)" onclick="room_disconn()">room disconnect</a></li>
 				</ul>
 				<h3>Remote</h3>
@@ -203,15 +274,27 @@
 				<ul>
 					<li><a href="javascript:void(0)" onclick="unsub()">unsub all</a></li>
 					<li><a href="javascript:void(0)" onclick="subs('all','vp8')">sub all vp8</a></li>
+					<li><a href="javascript:void(0)" onclick="subs('all','vp9')">sub all vp9</a></li>
 					<li><a href="javascript:void(0)" onclick="subs('all','h264')">sub all h264</a></li>
+					<li><a href="javascript:void(0)" onclick="subs('all','h265')">sub all h265</a></li>
+					<li><a href="javascript:void(0)" onclick="getMixResolutions()" id="selectedresolution">select resolution</a><ul id="mixresolutions">
+                                        </ul>
+                                        </li>
 					<li><a href="javascript:void(0)" onclick="unsub('mix')">unsub mix</a></li>
 					<li><a href="javascript:void(0)" onclick="subs('mix','vp8')">sub mix vp8</a></li>
+					<li><a href="javascript:void(0)" onclick="subs('mix','vp9')">sub mix vp9</a></li>
 					<li><a href="javascript:void(0)" onclick="subs('mix','h264')">sub mix h264</a></li>
+					<li><a href="javascript:void(0)" onclick="subs('mix','h265')">sub mix h265</a></li>
 					<li><a href="javascript:void(0)" onclick="unsub('forward')">unsub forward</a></li>
 					<li><a href="javascript:void(0)" onclick="subs('forward','vp8')">sub forward vp8</a></li>
+					<li><a href="javascript:void(0)" onclick="subs('forward','vp9')">sub forward vp9</a></li>
 					<li><a href="javascript:void(0)" onclick="subs('forward','h264')">sub forward h264</a></li>
+					<li><a href="javascript:void(0)" onclick="subs('forward','h265')">sub forward h265</a></li>
 					<li><a href="javascript:void(0)" onclick="unsub('shareScreen')">unsub share screen</a></li>
-					<li><a href="javascript:void(0)" onclick="subs('shareScreen','h264')">sub share screen</a></li>
+					<li><a href="javascript:void(0)" onclick="subs('shareScreen','vp8')">sub share screen vp8</a></li>
+					<li><a href="javascript:void(0)" onclick="subs('shareScreen','vp9')">sub share screen vp9</a></li>
+					<li><a href="javascript:void(0)" onclick="subs('shareScreen','h264')">sub share screen h264</a></li>
+					<li><a href="javascript:void(0)" onclick="subs('shareScreen','h265')">sub share screen h265</a></li>
 					<li><a href="javascript:void(0)" onclick="unmixLocal()">unmix local</a></li>
 					<li><a href="javascript:void(0)" onclick="mixLocal()">mix local</a></li>
 					<li><a href="javascript:void(0)" onclick="sendd()">send message</a></li>
@@ -235,33 +318,35 @@
 				</ul>
 				<h3> remote </h3>
 				<ul id='remoteMedia'>
-					<li><a href="javascript:void(0)" onclick="remoteplayvideo()">play video</a></li>
-					<li><a href="javascript:void(0)" onclick="remotepausevideo()">pause video</a></li>
-					<li><a href="javascript:void(0)" onclick="remoteplayaudio()">play audio</a></li>
-					<li><a href="javascript:void(0)" onclick="remotepauseaudio()">pause audio</a></li>
-					<li><a href="javascript:void(0)" onclick="remotedisablevideo()">disable video</a></li>
-					<li><a href="javascript:void(0)" onclick="remoteenablevideo()">enable video</a></li>
-					<li><a href="javascript:void(0)" onclick="remotedisableaudio()">disable audio</a></li>
-					<li><a href="javascript:void(0)" onclick="remoteenableaudio()">enable audio</a></li>
+					<li><a href="javascript:void(0)" onclick="remoteplayvideo()">play remote video</a></li>
+					<li><a href="javascript:void(0)" onclick="remotepausevideo()">pause remote video</a></li>
+					<li><a href="javascript:void(0)" onclick="remoteplayaudio()">play remote audio</a></li>
+					<li><a href="javascript:void(0)" onclick="remotepauseaudio()">pause remote audio</a></li>
+					<li><a href="javascript:void(0)" onclick="remotedisablevideo()">disable remote video</a></li>
+					<li><a href="javascript:void(0)" onclick="remoteenablevideo()">enable remote video</a></li>
+					<li><a href="javascript:void(0)" onclick="remotedisableaudio()">disable remote audio</a></li>
+					<li><a href="javascript:void(0)" onclick="remoteenableaudio()">enable remote audio</a></li>
 				</ul>
 				<div>
 					<h3>Recording</h3>
 					<div id='recorder'>
-						<label for="videoStreamId">videoStreamId:<input type="text" id='videoStreamId'></label>
-						<label for="audioStreamId">audioStreamId:<input type="text" id='audioStreamId'></label>
-						<label for="videoCodec">videoCodec:&nbsp&nbsp&nbsp&nbsp<input type="text" id='videoCodec'></label>
-						<label for="audioCodec">audioCodec:&nbsp&nbsp&nbsp&nbsp<input type="text" id='audioCodec'></label>
-						<label for="recorderId">recorderId:&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp<input type="text" id='recorderId'></label>
+						<label for="videoStreamId"><span>videoStreamId:</span><input type="text" id='videoStreamId'></label>
+						<label for="audioStreamId"><span>audioStreamId:</span><input type="text" id='audioStreamId'></label>
+						<label for="videoCodec"><span>videoCodec:</span><input type="text" id='videoCodec'></label>
+						<label for="audioCodec"><span>audioCodec:</span><input type="text" id='audioCodec'></label>
+						<label for="recorderId"><span>recorderId:</span><input type="text" id='recorderId'></label>
 						<button onclick="startRecording(true)">startRecord</button>
 						<button onclick="startRecording(false)">stopRecord</button>
 					</div>
 					<h3>Multiple</h3>
 					<div id='multiple'>
 						<label>count:<input type="text" id="cycleCounts"></label>
+						<label>intervals:<input type="text" id="intervals" placeholder="ms"></label>
 						<button onclick="unmix_mix()">unmix_mix</button>
 						<button onclick="unpublish_publish()">publish_unpub</button>
 						<button onclick="unsubscribe_subscribe('mix')">subscribe_unsub mix </button>
 						<button onclick="unsubscribe_subscribe('forward')">subscribe_unsub forward</button>
+						<button onclick="qualityTest()">quality test</button>
 
 					</div>
 
@@ -279,6 +364,8 @@
 							<button type="button" id="region" onclick="setRegion()">Set region</button>
 							<button type="button" onclick="getRegion()">Get region</button>
 						</label>
+                                                <button onclick="getConnectStats()"> getConnectionStats</button>
+                                                <hr/>
 						<br/>
 						<select id='streamIds'>
 							<option value=''>mixStream</option>
@@ -287,10 +374,50 @@
 							<option value=''>rtspStream</option>
 						</select>
 					</div>
+					<h3>RTMP TEST</h3>
+					<div class="rtmp">
+						<label><span>Server URL:</span> <input type='text' id='rtmpserverurl' value='rtmp://zhenqi:intel123@10.239.44.27:1935/live' /></label>
+						<label><span>Stream id:</span> <input type='text' id='rtmpstreamid' /></label>
+						<label><span>Resolution:</span> <input type='text' id='rtmpresolution' /></label>
+						<button type='button' id='startrtmp'onclick="startRTMP()">start RTMP</button>
+						<button type='button' id='stoprtmp'onclick="stopRTMP()">stop RTMP</button>
+						<button type='button' id='updatertmp'onclick="updateRTMP()">update RTMP</button>
+					</div>
+					<h3>Update room</h3>
+					<div class="update_room">
+						<ul>
+							<li><a href="javascript:void(0)">publish limit</a><select name="plv" id="plv">
+								<option value="one">1</option>
+								<option value="sixteen" selected="selected">16</option>
+								<option value="thirty">30</option>
+								<option value="longer">1000000000</option>
+							</select></li>
+							<li><a href="javascript:void(0)">user limit</a><select name="ulv" id="ulv">
+									<option value="one">1</option>
+									<option value="sixteen" selected="selected">16</option>
+									<option value="thirty">30</option>
+									<option value="longer">1000000000</option>
+								</select>
+							</li>
+							<li><a href="javascript:void(0)">enable mixing</a><select name="emv" id="emv">
+									<option value="true">true</option>
+									<option value="false">false</option>
+								</select>
+							</li>
+							<li><a href="javascript:void(0)">media mixing</a><div class="mmv">mmv</div></li>
+						</ul>
+					</div>
 			</div>
+
 		</div>
 	</div>
 	<input type="text" id="resultRecorder" />
+	<div id="frame">
+		<div><div class="streamFrame" id="mixFrame"></div>mix</div>
+		<div><div class="streamFrame" id="forwardFrame1"></div>screen</div>
+		<div><div class="streamFrame" id="forwardFrame2"></div><p>forward</p></div>
+		<div><div class="streamFrame" id="forwardFrame3"></div><p>forward</p></div>
+	</div>
 	<div id='woogeen-footer'>
 
 	</div>
@@ -300,5 +427,9 @@
   <script type="text/javascript" src="woogeen.sdk.js"></script>
   <script type="text/javascript" src="woogeen.sdk.ui.js"></script>
   <script type="text/javascript" src="script2.js"></script>
+<!--
+  <script type="text/javascript" src="script2.js"></script>
+  <script type="text/javascript" src="script2-forRecord.js"></script>
+-->
 </body>
 </html>
