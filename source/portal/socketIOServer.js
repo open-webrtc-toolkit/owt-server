@@ -774,19 +774,25 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
 
     const leavePortal = function(){
       if(that.inRoom){
-        portal.leave(participant_id).catch(function(err) {
-          var err_message = (typeof err === 'string' ? err: err.message);
-          log.info('portal.leave failed:', err_message);
+        return portal.leave(participant_id).then(function(){
+          observer.onLeave(participant_id, that.inRoom);
+          that.inRoom = undefined;
         });
-        observer.onLeave(participant_id, that.inRoom);
-        that.inRoom = undefined;
+      } else {
+        return Promise.reject('Not in a conference.');
       }
     };
 
-    socket.on('logout', function(){
+    socket.on('logout', function(callback){
       log.debug(vsprintf('Reconnection for %s is disabled because of client logout.', [participant_id]));
       reconnection_enabled=false;
-      leavePortal();
+      leavePortal().then(function() {
+        safeCall(callback, 'success');
+      }).catch(function(err) {
+        const err_message = (typeof err === 'string' ? err: err.message);
+        // Expect client does not response to this error and disconnect soon.
+        safeCall(callback, 'error', err_message);
+      });
     });
 
     socket.on('disconnect', function(reason) {

@@ -437,6 +437,41 @@ describe('Logining and Relogining.', function() {
     });
   });
 
+  describe('on: logout', function() {
+    'use strict';
+    const someValidLoginInfo = {token: (new Buffer(JSON.stringify('someInvalidToken'))).toString('base64'), userAgent: reconnectionClientInfo};
+
+    beforeEach('Clients connect to the server.', function(done) {
+      client = sioClient.connect('http://localhost:3001', {reconnect: false, secure: false, 'force new connection': true});
+      done();
+    });
+
+    it('Logout before login should fail.', function(done){
+      client.emit('logout', function(status){
+        expect(status).to.equal('error');
+        done();
+      });
+    });
+
+    it('Logout after login should success.', function(done){
+      mockPortal.join = sinon.stub();
+      const join_result = {user: 'Jack',
+                         role: 'presenter',
+                         session_id: testRoom,
+                         participants: [],
+                         streams: []};
+      mockPortal.join.resolves(join_result);
+
+      client.emit('login', someValidLoginInfo, function(loginStatus, resp) {
+        expect(loginStatus).to.equal('success');
+        client.emit('logout', function(logoutStatus){
+          expect(logoutStatus).to.equal('success');
+          done();
+        });
+      });
+    });
+  });
+
   describe('on: refreshReconnectionTicket', function(){
     'use strict';
     beforeEach('Clients connect to the server.', function(done) {
