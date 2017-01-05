@@ -117,12 +117,14 @@ SctpTransport::~SctpTransport()
 
     destroySctpSocket();
 
+    m_ioService.stop();
+    // We need to wait for the work thread to finish its job.
+    m_workThread.join();
+
+    // Close the socket after it has no work left
     if (m_udpSocket && m_udpSocket->is_open()) {
         m_udpSocket->close();
     }
-
-    // We need to wait for the work thread to finish its job.
-    m_workThread.join();
 
     ELOG_DEBUG("SctpTransport Destructor END");
 }
@@ -168,13 +170,13 @@ void SctpTransport::handleNotification(union sctp_notification *notif, size_t n)
         ELOG_DEBUG("SCTP_AUTHENTICATION_EVENT");
         break;
     case SCTP_SENDER_DRY_EVENT:
-        //ELOG_INFO("SCTP_SENDER_DRY_EVENT");
+        //ELOG_DEBUG("SCTP_SENDER_DRY_EVENT");
         break;
     case SCTP_NOTIFICATIONS_STOPPED_EVENT:
         ELOG_DEBUG("SCTP_NOTIFICATIONS_STOPPED_EVENT");
         break;
     case SCTP_SEND_FAILED_EVENT:
-        ELOG_WARN("SCTP_SEND_FAILED_EVENT");
+        ELOG_DEBUG("SCTP_SEND_FAILED_EVENT");
         //handleSendFailedEvent(&(notif->sn_send_failed_event));
         break;
     case SCTP_STREAM_RESET_EVENT:
@@ -502,6 +504,7 @@ void SctpTransport::doSend()
         [this] (const boost::system::error_code& ec, std::size_t bytes) {
             if (ec) {
                 ELOG_WARN("wrote data error: %s", ec.message().c_str());
+                m_listener->onTransportError();
             }
 
             boost::lock_guard<boost::mutex> lock(m_sendQueueMutex);
@@ -528,10 +531,7 @@ void SctpTransport::receiveData()
         [this] (const boost::system::error_code& ec, std::size_t bytes) {
             if (ec) {
                 ELOG_WARN("udp async receive error:%s", ec.message().c_str());
-                if (!m_isClosing) {
-                    m_listener->onTransportError();
-                }
-                return;
+                m_listener->onTransportError();
             }
 
             // char *dump_buf;
@@ -700,6 +700,7 @@ void SctpTransport::sendData(const char* header, int headerLength, const char* d
     if (send_res < 0) {
         if (errno == SCTP_EWOULDBLOCK) {
             ELOG_WARN("usrsctp_sendv: EWOULDBLOCK returned");
+            m_ready = false;
         } else {
             ELOG_ERROR("usrsctp_sendv: %d", errno);
         }

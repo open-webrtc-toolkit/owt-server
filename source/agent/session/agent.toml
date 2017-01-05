@@ -27,5 +27,5 @@ host = "localhost" #default: "localhost"
 port = 5672 #default: 5672
 
 [internal]
-# sctp/tcp available, sctp is default
+# tcp/sctp available, tcp is default
 protocol = "tcp"
