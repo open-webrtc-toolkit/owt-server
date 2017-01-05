@@ -28,4 +28,4 @@ port = 5672 #default: 5672
 
 [internal]
 # sctp/tcp available, sctp is default
-protocol = "sctp"
+protocol = "tcp"
