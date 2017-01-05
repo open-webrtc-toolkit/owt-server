@@ -84,8 +84,8 @@ fi
 if [[ "${ENABLE_HARDWARE}" = "false" && "${ENABLE_YAMI}" = "false" ]]; then
   read -p "Installing OpenH264 Video Codec Library provided by Cisco Systems, Inc? [Yes/no]" yn
   case $yn in
-    [Yy]* ) . install_OpenH264.sh;;
-    [Nn]* ) . uninstall_OpenH264.sh;;
-    * ) install_OpenH264.sh;;
+    [Yy]* ) . ${this}/install_openh264.sh;;
+    [Nn]* ) . ${this}/uninstall_openh264.sh;;
+    * ) ${this}/install_openh264.sh;;
   esac
 fi

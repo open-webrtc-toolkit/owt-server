@@ -53,8 +53,9 @@ pack_session_agent() {
   pushd ${SOURCE}/agent >/dev/null
   mkdir -p ${WOOGEEN_DIST}/session_agent
   cp -av ${SOURCE}/agent/session/* ${WOOGEEN_DIST}/session_agent
-  find . -maxdepth 1 -type f -name "*.js" -exec cp '{}' "${WOOGEEN_DIST}/session_agent/{}" \;
   find . -maxdepth 1 -type f -name "*.json" -exec cp '{}' "${WOOGEEN_DIST}/session_agent/{}" \;
+  cp -av erizoJS.js ${WOOGEEN_DIST}/session_agent/
+  cp -av index.js ${WOOGEEN_DIST}/session_agent/
   cp -av ${ROOT}/scripts/detectOS.sh ${WOOGEEN_DIST}/session_agent/detectOS.sh
   popd >/dev/null
 }
