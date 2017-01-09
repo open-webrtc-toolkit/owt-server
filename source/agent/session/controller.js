@@ -353,7 +353,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                     'linkup',
                     [spread_id, audio ? stream_id : undefined, video ? stream_id : undefined],
                     function () {
-                        log.info('internally linkup ok');
+                        log.debug('internally linkup ok');
                         if (streams[stream_id]) {
                             streams[stream_id].spread.push(target_node);
                             on_ok();
@@ -1071,7 +1071,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
 
                     if (!unmix && config.enableMixing) {
                         mixStream(streamId, function () {
-                            log.info('Mix stream['+streamId+'] successfully.');
+                            log.debug('Mix stream['+streamId+'] successfully.');
                         }, function (error_reason) {
                             log.error(error_reason);
                             unpublishStream(streamId);
@@ -1861,7 +1861,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
     };
 
     that.onFaultDetected = function (purpose, type, id) {
-        log.info('onFaultDetected, purpose:', purpose, 'type:', type, 'id:', id);
+        log.debug('onFaultDetected, purpose:', purpose, 'type:', type, 'id:', id);
         if (purpose === 'video') {
             onVideoFault(type, id);
         } else if (purpose === 'audio') {
