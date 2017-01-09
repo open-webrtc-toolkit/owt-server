@@ -1637,7 +1637,7 @@ describe('portal.subscribe/portal.unsubscribe/portal.mediaOnOff: Participants su
         });
     });
 
-    it('Subscribing streams with the same recorder id with the previous one should continue.', function() {
+    it('Subscribing streams with the same subscription-id with the previous one and with type of recording should continue.', function() {
       mockrpcReq.getAccessNode = sinon.stub();
       mockrpcReq.subscribe = sinon.stub();
       mockrpcReq.onConnectionSignalling = sinon.stub();
@@ -1684,6 +1684,52 @@ describe('portal.subscribe/portal.unsubscribe/portal.mediaOnOff: Participants su
           expect(mockrpcReq.unsub2Session.getCall(0).args).to.deep.equal(['rpcIdOfController', testParticipantId, testRecorderId]);
           expect(mockrpcReq.sub2Session.getCall(1).args).to.deep.equal(['rpcIdOfController', testParticipantId, testRecorderId, {agent: 'rpcIdOfAccessAgent', node: 'rpcIdOfAccessNode'}, {audio: {fromStream: 'targetStreamId3', codecs: ['pcmu']}, video: {fromStream: 'targetStreamId4', codecs: ['vp8']}, type: 'recording'}]);
           expect(spyConnectionObserver1.getCall(0).args).to.deep.equal([{type: 'ready', audio_codecs: ['pcmu'], video_codecs: ['vp8']}]);
+        });
+    });
+
+    it('Subscribing streams with the same subscription-id with the previous one but not with type of recording should fail.', function() {
+      mockrpcReq.getAccessNode = sinon.stub();
+      mockrpcReq.subscribe = sinon.stub();
+      mockrpcReq.onConnectionSignalling = sinon.stub();
+      mockrpcReq.sub2Session = sinon.stub();
+      mockrpcReq.unsub2Session = sinon.stub();
+
+      mockrpcReq.getAccessNode.resolves({agent: 'rpcIdOfAccessAgent', node: 'rpcIdOfAccessNode'});
+      mockrpcReq.subscribe.resolves('ok');
+      mockrpcReq.onConnectionSignalling.resolves('ok');
+      mockrpcReq.sub2Session.resolves('ok');
+      mockrpcReq.unsub2Session.resolves('ok');
+
+      var on_connection_status;
+      var targetURL = 'rtmp://xxx.yyy.zzz/live/1935';
+      var spyConnectionObserver = sinon.spy();
+      var spyConnectionObserver1 = sinon.spy();
+
+      return portal.subscribe(testParticipantId,
+                              targetURL,
+                             'avstream',
+                             {audio: {fromStream: 'targetStreamId1', codecs: ['aac']}, video: {fromStream: 'targetStreamId2', codecs: ['h264']}, url: targetURL},
+                             spyConnectionObserver)
+        .then(function(connectionLocality) {
+          on_connection_status = mockrpcReq.subscribe.getCall(0).args[4];
+          return on_connection_status({type: 'initializing'});
+        })
+        .then(function(statusResult) {
+          expect(statusResult).to.equal('initializing');
+          return on_connection_status({type: 'ready', audio_codecs: ['pcm_raw'], video_codecs: ['h264']});
+        })
+        .then(function(result) {
+          expect(result).to.equal('ok');
+          return portal.subscribe(testParticipantId,
+                                  targetURL,
+                                 'avstream',
+                                 {audio: {fromStream: 'targetStreamId3', codecs: ['aac']}, video: {fromStream: 'targetStreamId4', codecs: ['h264']}, url: targetURL},
+                                 spyConnectionObserver1)
+        })
+        .then(function(runHere) {
+          expect(runHere).to.be.false;
+        },function(reason) {
+          expect(reason).to.be.equal('Not allowed to subscribe an already-subscribed stream');
         });
     });
 
