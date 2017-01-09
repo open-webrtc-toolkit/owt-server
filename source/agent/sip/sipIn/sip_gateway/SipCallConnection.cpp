@@ -183,6 +183,8 @@ void SipCallConnection::onSipFIR()
 {
     ELOG_DEBUG("SipCallConnection::onSipFIR");
     if (running) {
+        if(fbSink_ == NULL)
+            return;
         //as the MediaSink, handle sip client fir request, deliver to FramePacketizer
         ++sequenceNumberFIR_;
         int pos = 0;
