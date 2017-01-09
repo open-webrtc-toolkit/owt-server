@@ -513,6 +513,8 @@ void RtspOut::addAudioFrame(uint8_t* data, int nbSamples)
         return;
     }
 
+    AVPacket pkt;
+    memset(&pkt, 0, sizeof(pkt));
     while (av_audio_fifo_size(m_audioFifo) >= m_audioEnc->frame_size) {
         n = av_audio_fifo_read(m_audioFifo, reinterpret_cast<void**>(m_audioEncodingFrame->data), m_audioEnc->frame_size);
         if (n != m_audioEnc->frame_size) {
@@ -520,7 +522,6 @@ void RtspOut::addAudioFrame(uint8_t* data, int nbSamples)
             return;
         }
 
-        AVPacket pkt;
         int ret;
         int got_output = 0;
 

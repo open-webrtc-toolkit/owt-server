@@ -601,7 +601,7 @@ bool RtspIn::connect()
                     return false;
                 }
                 m_audioFormat = FRAME_FORMAT_OPUS;
-                m_AsyncEvent << ",\"audio_codecs\":" << "[\"aac_48000_2\"]";
+                m_AsyncEvent << ",\"audio_codecs\":" << "[\"opus_48000_2\"]";
                 break;
 
             default:
@@ -739,6 +739,7 @@ void RtspIn::receiveLoop()
     ELOG_DEBUG("%s", m_AsyncEvent.str().c_str());
     ::notifyAsyncEvent(m_asyncHandle, "status", m_AsyncEvent.str().c_str());
 
+    memset(&m_avPacket, 0, sizeof(m_avPacket));
     m_running = true;
     ELOG_DEBUG("Start playing %s", m_url.c_str() );
     while (m_running) {
@@ -785,6 +786,7 @@ void RtspIn::receiveLoop()
                 m_audioJitterBuffer->insert(m_avPacket);
             } else if(decAudioFrame(m_avPacket)) {
                 AVPacket audioPacket;
+                memset(&audioPacket, 0, sizeof(audioPacket));
 
                 while(true) {
                     av_init_packet(&audioPacket);
