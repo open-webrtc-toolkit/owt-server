@@ -268,10 +268,16 @@ module.exports = function (rpcClient) {
     };
 
     that.init = function (service, config, belongTo, controller, callback) {
+        var audioConfig = GLOBAL.config.audio;
+        log.debug('init, audioConfig:', audioConfig);
+
         if (service === 'mixing') {
-            initEngine(config, belongTo, controller, callback);
+            if (typeof config === 'object') {
+                // Merge media mixing audio property
+                audioConfig = Object.assign(audioConfig, config);
+            }
+            initEngine(audioConfig, belongTo, controller, callback);
         } else if (service === 'transcoding') {
-            var audioConfig = {};
             initEngine(audioConfig, belongTo, controller, callback);
         } else {
             log.error('Unknown service type to init an audio node:', service);

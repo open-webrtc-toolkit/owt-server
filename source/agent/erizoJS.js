@@ -29,6 +29,8 @@ GLOBAL.config.video.yamiEnabled = !!GLOBAL.config.video.yamiEnabled;
 
 GLOBAL.config.avatar = GLOBAL.config.avatar || {};
 
+GLOBAL.config.audio = GLOBAL.config.audio || {};
+
 GLOBAL.config.recording = GLOBAL.config.recording || {};
 GLOBAL.config.recording.path = GLOBAL.config.recording.path || '/tmp';
 
