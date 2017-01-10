@@ -251,7 +251,7 @@ module.exports = function (rpcC, spec) {
         // subscribe the mix streams
         if ((info.audio && info.audio_dir !== 'recvonly') || (info.video && info.video_dir !== 'recvonly')) {
             if (mixed_stream_id) {
-                var subInfo = {};
+                var subInfo = { type: 'sip' };
                 if (info.audio && info.audio_dir !== 'recvonly') {
                     subInfo.audio = {
                         fromStream: mixed_stream_id,
