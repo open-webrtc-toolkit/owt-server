@@ -267,7 +267,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
         return safeCall(callback, 'error', 'unauthorized');
       };
 
-      var stream_id = Math.random() * 1000000000000000000 + '',
+      var stream_id = Math.round(Math.random() * 1000000000000000000) + '',
         connection_type,
         stream_description = {};
 
