@@ -85,7 +85,7 @@ var Client = function(clientId, inRoom, queryInterval, portal, on_loss) {
   };
 
   that.publish = function(type, options, on_ok, on_failure, on_error) {
-    var connection_type, stream_id = Math.random() * 1000000000000000000 + '';
+    var connection_type, stream_id = Math.round(Math.random() * 1000000000000000000) + '';
     var stream_description = {};
 
     if (type === 'webrtc') {
@@ -236,7 +236,7 @@ var Client = function(clientId, inRoom, queryInterval, portal, on_loss) {
       return on_failure('Bad request: options.audio');
     }
 
-    var subscription_id = Math.random() * 1000000000000000000 + '';
+    var subscription_id = Math.round(Math.random() * 1000000000000000000) + '';
 
     var once_ok = false;
     return portal.subscribe(clientId, subscription_id, connection_type, subscription_description, function(status) {
@@ -301,7 +301,7 @@ var RestServer = function(spec, portal, observer) {
   var clients = {};
 
   var clientJoin = function(req, res) {
-    var client_id = Math.random() * 100000000000000000 + '',
+    var client_id = Math.round(Math.random() * 100000000000000000) + '',
         token = req.body.token,
         query_interval = req.body.queryInterval;
 
