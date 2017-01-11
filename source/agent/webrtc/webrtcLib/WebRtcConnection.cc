@@ -26,8 +26,6 @@ void WebRtcConnection::Init(Local<Object> exports) {
   NODE_SET_PROTOTYPE_METHOD(tpl, "getLocalSdp", getLocalSdp);
   NODE_SET_PROTOTYPE_METHOD(tpl, "getCurrentState", getCurrentState);
   NODE_SET_PROTOTYPE_METHOD(tpl, "getStats", getStats);
-  NODE_SET_PROTOTYPE_METHOD(tpl, "enableVideo", enableVideo);
-  NODE_SET_PROTOTYPE_METHOD(tpl, "enableAudio", enableAudio);
 
   constructor.Reset(isolate, tpl->GetFunction());
   exports->Set(String::NewFromUtf8(isolate, "WebRtcConnection"), tpl->GetFunction());
@@ -166,26 +164,3 @@ void WebRtcConnection::getStats(const FunctionCallbackInfo<Value>& args){
   args.GetReturnValue().Set(String::NewFromUtf8(isolate, lastStats.c_str()));
 }
 
-void WebRtcConnection::enableAudio(const v8::FunctionCallbackInfo<v8::Value>& args)
-{
-  Isolate* isolate = Isolate::GetCurrent();
-  HandleScope scope(isolate);
-
-  WebRtcConnection* obj = ObjectWrap::Unwrap<WebRtcConnection>(args.Holder());
-  erizo::WebRtcConnection* me = obj->me;
-
-  bool b = (args[0]->ToBoolean())->BooleanValue();
-  me->enableAudio(b);
-}
-
-void WebRtcConnection::enableVideo(const v8::FunctionCallbackInfo<v8::Value>& args)
-{
-  Isolate* isolate = Isolate::GetCurrent();
-  HandleScope scope(isolate);
-
-  WebRtcConnection* obj = ObjectWrap::Unwrap<WebRtcConnection>(args.Holder());
-  erizo::WebRtcConnection* me = obj->me;
-
-  bool b = (args[0]->ToBoolean())->BooleanValue();
-  me->enableVideo(b);
-}

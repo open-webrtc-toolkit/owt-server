@@ -48,6 +48,7 @@ public:
 
     void bindTransport(erizo::MediaSink* sink);
     void unbindTransport();
+    void enable(bool enabled) {m_enabled = enabled;}
 
     // Implements FrameDestination.
     void onFrame(const Frame&);
@@ -66,6 +67,7 @@ private:
     bool setSendCodec(FrameFormat format);
     void close();
 
+    bool m_enabled;
     boost::scoped_ptr<webrtc::RtpRtcp> m_rtpRtcp;
     boost::shared_mutex m_rtpRtcpMutex;
 

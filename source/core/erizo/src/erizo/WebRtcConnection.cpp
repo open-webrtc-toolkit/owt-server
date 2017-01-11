@@ -457,15 +457,11 @@ namespace erizo {
         if (recvSSRC==this->getVideoSourceSSRC() || recvSSRC==this->getVideoSinkSSRC()) {
           parseIncomingPayloadType(buf, len, VIDEO_PACKET);
           if (videoSink_)
-            if (videoEnabled_) {
               videoSink_->deliverVideoData(buf, len);
-            }
         } else if (recvSSRC==this->getAudioSourceSSRC() || recvSSRC==this->getAudioSinkSSRC()) {
           parseIncomingPayloadType(buf, len, AUDIO_PACKET);
           if (audioSink_)
-            if (audioEnabled_) {
               audioSink_->deliverAudioData(buf, len);
-            }
         } else {
           ELOG_ERROR("Unknown SSRC %u, localVideo %u, remoteVideo %u, ignoring", recvSSRC, this->getVideoSourceSSRC(), this->getVideoSinkSSRC());
         }
@@ -478,9 +474,7 @@ namespace erizo {
             this->setAudioSourceSSRC(recvSSRC);
             this->updateState(TRANSPORT_READY, transport);
           }
-          if (audioEnabled_) {
-            audioSink_->deliverAudioData(buf, length);
-          }
+          audioSink_->deliverAudioData(buf, length);
         }
       } else if (transport->mediaType == VIDEO_TYPE) {
         if (videoSink_) {
@@ -491,10 +485,7 @@ namespace erizo {
             this->setVideoSourceSSRC(recvSSRC);
             this->updateState(TRANSPORT_READY, transport);
           }
-
-          if (videoEnabled_) {
-            videoSink_->deliverVideoData(buf, length);
-          }
+          videoSink_->deliverVideoData(buf, length);
         }
       }
     }

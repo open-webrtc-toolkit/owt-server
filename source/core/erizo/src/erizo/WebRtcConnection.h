@@ -111,9 +111,6 @@ public:
 
     bool acceptNACK();
 
-    void enableAudio(bool b) {audioEnabled_ = b;}
-    void enableVideo(bool b) {videoEnabled_ = b;}
-
     /**
      * Sends a FIR Packet (RFC 5104) asking for a keyframe
      * @return the size of the data sent

@@ -232,19 +232,21 @@ module.exports = function (spec, on_status) {
 
     that.onTrackControl = function (track, dir, action, on_ok, on_error) {
         if (track === 'audio' && audio) {
-            if (dir === direction) {
-                wrtc.enableAudio(action === 'on');
+            if (dir === 'in' && audioFrameConstructor) {
+                audioFrameConstructor.enable(action === 'on');
+                on_ok();
+            } else if (dir === 'out' && audioFramePacketizer) {
+                audioFramePacketizer.enable(action === 'on');
                 on_ok();
             } else {
                 on_error('Ambiguous direction.');
             }
         } else if (track === 'video' && video) {
-            if (dir === direction) {
-                wrtc.enableVideo(action === 'on');
-                // Temporary fix for Firefox do not request key frame
-                if (direction === 'out' && action === 'on' && videoFramePacketizer) {
-                    videoFramePacketizer.requestKeyFrame();
-                }
+            if (dir === 'in' && videoFrameConstructor) {
+                videoFrameConstructor.enable(action === 'on');
+                on_ok();
+            } else if (dir === 'out' && videoFramePacketizer) {
+                videoFramePacketizer.enable(action === 'on');
                 on_ok();
             } else {
                 on_error('Ambiguous direction.');

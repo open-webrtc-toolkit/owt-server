@@ -43,6 +43,7 @@ void AudioFrameConstructor::Init(v8::Local<v8::Object> exports) {
 
   NODE_SET_PROTOTYPE_METHOD(tpl, "bindTransport", bindTransport);
   NODE_SET_PROTOTYPE_METHOD(tpl, "unbindTransport", unbindTransport);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "enable", enable);
   NODE_SET_PROTOTYPE_METHOD(tpl, "addDestination", addDestination);
   NODE_SET_PROTOTYPE_METHOD(tpl, "removeDestination", removeDestination);
 
@@ -118,5 +119,16 @@ void AudioFrameConstructor::removeDestination(const FunctionCallbackInfo<Value>&
   woogeen_base::FrameDestination* dest = param->dest;
 
   me->removeAudioDestination(dest);
+}
+
+void AudioFrameConstructor::enable(const v8::FunctionCallbackInfo<v8::Value>& args) {
+  Isolate* isolate = Isolate::GetCurrent();
+  HandleScope scope(isolate);
+
+  AudioFrameConstructor* obj = ObjectWrap::Unwrap<AudioFrameConstructor>(args.Holder());
+  woogeen_base::AudioFrameConstructor* me = obj->me;
+
+  bool b = (args[0]->ToBoolean())->BooleanValue();
+  me->enable(b);
 }
 

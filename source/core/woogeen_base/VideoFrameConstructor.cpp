@@ -33,7 +33,8 @@ namespace woogeen_base {
 DEFINE_LOGGER(VideoFrameConstructor, "woogeen.VideoFrameConstructor");
 
 VideoFrameConstructor::VideoFrameConstructor()
-    : m_format(FRAME_FORMAT_UNKNOWN)
+    : m_enabled(true)
+    , m_format(FRAME_FORMAT_UNKNOWN)
     , m_width(0)
     , m_height(0)
     , m_ssrc(0)
@@ -169,6 +170,14 @@ void VideoFrameConstructor::unbindTransport()
     }
 }
 
+void VideoFrameConstructor::enable(bool enabled)
+{
+    m_enabled = enabled;
+    if (m_enabled) {
+        m_rtpRtcp->RequestKeyFrame();
+    }
+}
+
 void VideoFrameConstructor::syncWithAudio(int32_t voiceChannelId, VoEVideoSync* voe)
 {
     if (m_avSync) {
@@ -296,7 +305,9 @@ int32_t VideoFrameConstructor::Decode(const webrtc::EncodedImage& encodedImage,
         frame.additionalInfo.video.width = m_width;
         frame.additionalInfo.video.height = m_height;
 
-        deliverFrame(frame);
+        if (m_enabled) {
+            deliverFrame(frame);
+        }
     }
     return 0;
 }

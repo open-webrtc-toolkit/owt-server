@@ -44,6 +44,7 @@ public:
 
     void bindTransport(erizo::MediaSource* source, erizo::FeedbackSink* fbSink);
     void unbindTransport();
+    void enable(bool enabled) {m_enabled = enabled;}
 
     // Implements the MediaSink interfaces.
     int deliverAudioData(char*, int len);
@@ -53,6 +54,7 @@ public:
     void onFeedback(const FeedbackMsg& msg);
 
 private:
+    bool m_enabled;
     erizo::MediaSource* m_transport;
     boost::shared_mutex m_transport_mutex;
 };

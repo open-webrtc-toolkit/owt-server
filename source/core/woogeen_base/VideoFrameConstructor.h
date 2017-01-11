@@ -58,6 +58,7 @@ public:
 
     void bindTransport(erizo::MediaSource* source, erizo::FeedbackSink* fbSink);
     void unbindTransport();
+    void enable(bool enabled);
 
     // Implements the webrtc::VCMPacketRequestCallback interface.
     virtual int32_t ResendPackets(const uint16_t* sequenceNumbers, uint16_t length);
@@ -101,6 +102,7 @@ public:
 private:
     bool init();
 
+    bool m_enabled;
     FrameFormat m_format;
     uint16_t m_width;
     uint16_t m_height;

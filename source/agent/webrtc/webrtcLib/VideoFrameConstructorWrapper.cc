@@ -42,6 +42,7 @@ void VideoFrameConstructor::Init(v8::Local<v8::Object> exports) {
 
   NODE_SET_PROTOTYPE_METHOD(tpl, "bindTransport", bindTransport);
   NODE_SET_PROTOTYPE_METHOD(tpl, "unbindTransport", unbindTransport);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "enable", enable);
   NODE_SET_PROTOTYPE_METHOD(tpl, "addDestination", addDestination);
   NODE_SET_PROTOTYPE_METHOD(tpl, "removeDestination", removeDestination);
   NODE_SET_PROTOTYPE_METHOD(tpl, "setBitrate", setBitrate);
@@ -141,5 +142,16 @@ void VideoFrameConstructor::requestKeyFrame(const FunctionCallbackInfo<Value>& a
   woogeen_base::VideoFrameConstructor* me = obj->me;
 
   me->RequestKeyFrame();
+}
+
+void VideoFrameConstructor::enable(const v8::FunctionCallbackInfo<v8::Value>& args) {
+  Isolate* isolate = Isolate::GetCurrent();
+  HandleScope scope(isolate);
+
+  VideoFrameConstructor* obj = ObjectWrap::Unwrap<VideoFrameConstructor>(args.Holder());
+  woogeen_base::VideoFrameConstructor* me = obj->me;
+
+  bool b = (args[0]->ToBoolean())->BooleanValue();
+  me->enable(b);
 }
 
