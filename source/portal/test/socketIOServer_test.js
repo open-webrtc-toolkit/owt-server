@@ -1551,7 +1551,7 @@ describe('Responding to clients.', function() {
       mockPortal.unsubscribe.resolves('ok');
 
       client.on('remove_recorder', function(data) {
-        expect(data.id).to.equal('yyyyMMddhhmmssSS');
+        expect(data.id).to.equal(client.id + '-yyyyMMddhhmmssSS');
         done();
       });
 
@@ -1563,7 +1563,7 @@ describe('Responding to clients.', function() {
           var options = {audioStreamId: 'targetStreamId1', recorderId: 'yyyyMMddhhmmssSS', videoStreamId: 'targetStreamId2', audioCodec: 'pcmu', videoCodec: 'vp8', path: '/tmp', interval: 1000};
           client.emit('startRecorder', options, function(status, data) {
             expect(status).to.equal('success');
-            expect(data.recorderId).to.equal('yyyyMMddhhmmssSS');
+            expect(data.recorderId).to.equal(client.id + '-yyyyMMddhhmmssSS');
             observer = mockPortal.subscribe.getCall(0).args[4];
             expect(observer).to.be.a('function');
             observer({type: 'failed', reason: 'write header error'});
@@ -1600,7 +1600,7 @@ describe('Responding to clients.', function() {
                 var options = {videoCodec: 'h264', recorderId: '2016060418215098', interval: -6}; //invalid interval.
                 client.emit('startRecorder', options, function(status, data) {
                   expect(status).to.equal('success');
-                  expect(mockPortal.subscribe.getCall(3).args[1]).to.equal('2016060418215098');
+                  expect(mockPortal.subscribe.getCall(3).args[1]).to.equal(client.id + '-2016060418215098');
                   expect(mockPortal.subscribe.getCall(3).args[3]).to.deep.equal({audio: {fromStream: testRoom, codecs: ['opus_48000_2']}, video: {fromStream: testRoom, codecs: ['h264']}, interval: -1});
                   done();
                 });

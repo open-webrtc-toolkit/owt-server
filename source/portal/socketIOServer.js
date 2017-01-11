@@ -596,7 +596,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
       options.path && (subscription_description.path = options.path);
       subscription_description.interval = (options.interval && options.interval > 0) ? options.interval : -1;
 
-      var subscription_id = options.recorderId || formatDate(new Date, 'yyyyMMddhhmmssSS');
+      var subscription_id = participant_id + '-' + (options.recorderId || formatDate(new Date, 'yyyyMMddhhmmssSS'));
       var recording_file, recorder_added = false;
       return portal.subscribe(participant_id, subscription_id, 'recording', subscription_description, function(status) {
         if (status.type === 'failed') {
