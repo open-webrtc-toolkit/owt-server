@@ -65,8 +65,6 @@ class WebRtcConnection : public NodeEventedObjectWrap {
    */
   static void getCurrentState(const v8::FunctionCallbackInfo<v8::Value>& args);
 
-  static void enableAudio(const v8::FunctionCallbackInfo<v8::Value>& args);
-  static void enableVideo(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void getStats(const v8::FunctionCallbackInfo<v8::Value>& args);
 };
 

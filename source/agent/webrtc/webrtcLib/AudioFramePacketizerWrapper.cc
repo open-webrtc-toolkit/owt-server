@@ -43,6 +43,7 @@ void AudioFramePacketizer::Init(v8::Local<v8::Object> exports) {
 
   NODE_SET_PROTOTYPE_METHOD(tpl, "bindTransport", bindTransport);
   NODE_SET_PROTOTYPE_METHOD(tpl, "unbindTransport", unbindTransport);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "enable", enable);
 
   constructor.Reset(isolate, tpl->GetFunction());
   exports->Set(String::NewFromUtf8(isolate, "AudioFramePacketizer"), tpl->GetFunction());
@@ -89,5 +90,16 @@ void AudioFramePacketizer::unbindTransport(const FunctionCallbackInfo<Value>& ar
   woogeen_base::AudioFramePacketizer* me = obj->me;
 
   me->unbindTransport();
+}
+
+void AudioFramePacketizer::enable(const v8::FunctionCallbackInfo<v8::Value>& args) {
+  Isolate* isolate = Isolate::GetCurrent();
+  HandleScope scope(isolate);
+
+  AudioFramePacketizer* obj = ObjectWrap::Unwrap<AudioFramePacketizer>(args.Holder());
+  woogeen_base::AudioFramePacketizer* me = obj->me;
+
+  bool b = (args[0]->ToBoolean())->BooleanValue();
+  me->enable(b);
 }
 

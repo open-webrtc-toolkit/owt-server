@@ -29,7 +29,8 @@ using namespace erizo;
 namespace woogeen_base {
 
 AudioFramePacketizer::AudioFramePacketizer()
-    : m_frameFormat(FRAME_FORMAT_UNKNOWN)
+    : m_enabled(true)
+    , m_frameFormat(FRAME_FORMAT_UNKNOWN)
 {
     audioSink_ = nullptr;
     m_audioTransport.reset(new WebRTCTransport<erizo::AUDIO>(this, nullptr));
@@ -86,6 +87,10 @@ void AudioFramePacketizer::receiveRtpData(char* buf, int len, erizo::DataType ty
 
 void AudioFramePacketizer::onFrame(const Frame& frame)
 {
+    if (!m_enabled) {
+        return;
+    }
+
     boost::shared_lock<boost::shared_mutex> lock1(m_transport_mutex);
     if (!audioSink_) {
         return;

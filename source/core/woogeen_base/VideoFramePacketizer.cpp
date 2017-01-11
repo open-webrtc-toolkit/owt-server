@@ -33,7 +33,8 @@ static const int TRANSMISSION_MAXBITRATE_MULTIPLIER = 2;
 DEFINE_LOGGER(VideoFramePacketizer, "woogeen.VideoFramePacketizer");
 
 VideoFramePacketizer::VideoFramePacketizer(bool enableRed, bool enableUlpfec)
-    : m_frameFormat(FRAME_FORMAT_UNKNOWN)
+    : m_enabled(true)
+    , m_frameFormat(FRAME_FORMAT_UNKNOWN)
     , m_mediaSpecInfo({0, 0})
 {
     videoSink_ = nullptr;
@@ -68,6 +69,15 @@ void VideoFramePacketizer::unbindTransport()
         if (fbSource)
             fbSource->setFeedbackSink(nullptr);
         videoSink_ = nullptr;
+    }
+}
+
+void VideoFramePacketizer::enable(bool enabled)
+{
+    m_enabled = enabled;
+    if (m_enabled) {
+        FeedbackMsg feedback = {.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME};
+        deliverFeedbackMsg(feedback);
     }
 }
 
@@ -152,6 +162,10 @@ void VideoFramePacketizer::OnNetworkChanged(const uint32_t target_bitrate, const
 
 void VideoFramePacketizer::onFrame(const Frame& frame)
 {
+    if (!m_enabled) {
+        return;
+    }
+
     webrtc::RTPVideoHeader h;
 
     if (frame.format != m_frameFormat

@@ -47,6 +47,8 @@ class VideoFrameConstructor : public MediaSink {
   static void bindTransport(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void unbindTransport(const v8::FunctionCallbackInfo<v8::Value>& args);
 
+  static void enable(const v8::FunctionCallbackInfo<v8::Value>& args);
+
   static void addDestination(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void removeDestination(const v8::FunctionCallbackInfo<v8::Value>& args);
 

@@ -29,7 +29,8 @@ namespace woogeen_base {
 DEFINE_LOGGER(AudioFrameConstructor, "woogeen.AudioFrameConstructor");
 
 AudioFrameConstructor::AudioFrameConstructor()
-  : m_transport(nullptr)
+  : m_enabled(true)
+  , m_transport(nullptr)
 {
     sinkfbSource_ = this;
     fbSink_ = nullptr;
@@ -106,7 +107,9 @@ int AudioFrameConstructor::deliverAudioData(char* buf, int len)
     frame.timeStamp = head->getTimestamp();
     frame.additionalInfo.audio.isRtpPacket = 1;
 
-    deliverFrame(frame);
+    if (m_enabled) {
+        deliverFrame(frame);
+    }
     return len;
 }
 
