@@ -53,6 +53,8 @@ protected:
     bool hasVideo() {return !m_videoOptions.codec.empty();}
     bool isHls(std::string uri) {return (uri.compare(0, 7, "http://") == 0);}
 
+    bool checkCodec(AVOptions &audioOptions, AVOptions &videoOptions);
+
     void sendLoop();
 
     bool connect();
@@ -89,6 +91,8 @@ private:
 
     boost::shared_ptr<woogeen_base::EncodedFrame> m_videoKeyFrame;
     boost::scoped_ptr<MediaFrameQueue> m_frameQueue;
+
+    std::ostringstream m_AsyncEvent;
 
     char m_errbuff[500];
 };
