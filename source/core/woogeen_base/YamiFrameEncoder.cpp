@@ -21,7 +21,10 @@
 #include "YamiFrameEncoder.h"
 
 #include "MediaUtilities.h"
+#include <va/va_compat.h>
 #include "VideoDisplay.h"
+#include "VideoPostProcessHost.h"
+#include "YamiVideoInputManager.h"
 #include "YamiVideoFrame.h"
 #include <VideoEncoderHost.h>
 
@@ -103,6 +106,15 @@ public:
         display.handle = (intptr_t)*vaDisplay;
         m_encoder->setNativeDisplay(&display);
 
+        m_vpp.reset(createVideoPostProcess(YAMI_VPP_SCALER), releaseVideoPostProcess);
+        m_vpp->setNativeDisplay(display);
+        if(!m_allocator) {
+          m_allocator.reset(new woogeen_base::PooledFrameAllocator(vaDisplay, 5));
+          if (!m_allocator->setFormat(YAMI_FOURCC('Y', 'V', '1', '2'), m_width, m_height)) {
+            ELOG_ERROR("failed to set VPP input frame format");
+            return false;
+          }
+        }
         Encode_Status status = m_encoder->start();
         if (status != ENCODE_SUCCESS) {
             ELOG_DEBUG("start encode failed status = %d", status);
@@ -110,12 +122,14 @@ public:
 
         return status == ENCODE_SUCCESS;
     }
-    void onFrame(const SharedPtr<::VideoFrame>& input)
+    void onFrame(const woogeen_base::Frame& input)
     {
+        SharedPtr<::VideoFrame> inFrame = convert(input);
+
         ELOG_ERROR("onFrame, request key = %d", m_requestKeyFrame);
-        input->flags = m_requestKeyFrame ? VIDEO_FRAME_FLAGS_KEY : 0;
+        inFrame->flags = m_requestKeyFrame ? VIDEO_FRAME_FLAGS_KEY : 0;
         m_requestKeyFrame = false;
-        Encode_Status status = m_encoder->encode(input);
+        Encode_Status status = m_encoder->encode(inFrame);
         if (status != ENCODE_SUCCESS) {
             ELOG_DEBUG("encode status = %d", status);
             return;
@@ -214,6 +228,26 @@ private:
 
     //encoder
     boost::shared_ptr<IVideoEncoder> m_encoder;
+    //vpp
+    SharedPtr<YamiMediaCodec::IVideoPostProcess> m_vpp;
+    SharedPtr<woogeen_base::PooledFrameAllocator> m_allocator;
+protected:
+    SharedPtr<::VideoFrame> convert(const woogeen_base::Frame& frame)
+    {
+      YamiVideoFrame* holder = (YamiVideoFrame*)frame.payload;
+      auto input = holder->frame;
+
+      if (m_width != frame.additionalInfo.video.width || m_height != frame.additionalInfo.video.height) {
+        SharedPtr<::VideoFrame> dst = m_allocator->alloc();
+        if (!dst) {
+          return dst;
+        }
+        m_vpp->process(input, dst);
+        return dst;
+      } else {
+        return input;
+      }
+    }
 };
 
 
@@ -288,10 +322,8 @@ void YamiFrameEncoder::onFrame(const Frame& frame)
     boost::upgrade_lock<boost::shared_mutex> lock(m_mutex);
     switch (frame.format) {
     case FRAME_FORMAT_YAMI: {
-        YamiVideoFrame* holder = (YamiVideoFrame*)frame.payload;
-        auto input = holder->frame;
         for (auto it = m_streams.begin(); it != m_streams.end(); ++it) {
-            it->second->onFrame(input);
+            it->second->onFrame(frame);
         }
         break;
     }
