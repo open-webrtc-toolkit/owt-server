@@ -74,6 +74,11 @@ RtspOut::RtspOut(const std::string& url, const AVOptions* audio, const AVOptions
 
     avcodec_register_all();
 
+    if(!checkCodec(m_audioOptions, m_videoOptions)) {
+        notifyAsyncEvent("init", m_AsyncEvent.str().c_str());
+        return;
+    }
+
     if(!connect()) {
         notifyAsyncEvent("init", "Cannot open connection");
         return;
@@ -120,6 +125,32 @@ void RtspOut::close()
     }
 
     ELOG_INFO("closed");
+}
+
+bool RtspOut::checkCodec(AVOptions &audioOptions, AVOptions &videoOptions)
+{
+    AVCodec* codec = NULL;
+
+    //audio disabled, dont check
+    if (audioOptions.codec.empty())
+        return true;
+
+    if (audioOptions.codec.compare("pcm_raw") != 0) {
+        m_AsyncEvent.str("");
+        m_AsyncEvent << "Invalid audio codec (" << audioOptions.codec << "), want(pcm_raw)";
+        ELOG_ERROR("Invalid audio codec(%s), want(%s)", audioOptions.codec.c_str(), "pcm_raw");
+        return false;
+    }
+
+    codec = avcodec_find_encoder_by_name("libfdk_aac");
+    if (!codec) {
+        m_AsyncEvent.str("");
+        m_AsyncEvent << "Can not find audio encoder libfdk_aac, please check if ffmpeg/libfdk_aac installed";
+        ELOG_ERROR("Can not find audio encoder %s, please check if ffmpeg/libfdk_aac installed", "libfdk_aac");
+        return false;
+    }
+
+    return true;
 }
 
 void RtspOut::sendLoop()
