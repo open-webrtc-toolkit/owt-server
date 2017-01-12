@@ -104,6 +104,24 @@
 #define ELOG_FATAL(fmt, args...) \
     ELOG_FATAL2( logger, fmt, ##args );
 
+//this
+#define ELOG_TRACE_T(fmt, args...) \
+    ELOG_TRACE2( logger, "(%p)" fmt, this, ##args );
+
+#define ELOG_DEBUG_T(fmt, args...) \
+    ELOG_DEBUG2( logger, "(%p)" fmt, this, ##args );
+
+#define ELOG_INFO_T(fmt, args...) \
+    ELOG_INFO2( logger, "(%p)" fmt, this, ##args );
+
+#define ELOG_WARN_T(fmt, args...) \
+    ELOG_WARN2( logger, "(%p)" fmt, this, ##args );
+
+#define ELOG_ERROR_T(fmt, args...) \
+    ELOG_ERROR2( logger, "(%p)" fmt, this, ##args );
+
+#define ELOG_FATAL_T(fmt, args...) \
+    ELOG_FATAL2( logger, "(%p)" fmt, this, ##args );
 
 #ifdef LOG4CXX_TRACE
 #define ELOG_IS_TRACE_ENABLED() \

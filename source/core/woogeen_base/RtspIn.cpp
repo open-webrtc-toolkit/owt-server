@@ -138,7 +138,7 @@ JitterBuffer::~JitterBuffer()
 void JitterBuffer::start(uint32_t delay)
 {
     if (!m_isRunning) {
-        ELOG_INFO("(%s)start", m_name.c_str());
+        ELOG_INFO_T("(%s)start", m_name.c_str());
 
         m_timer.reset(new boost::asio::deadline_timer(m_ioService));
         m_timer->expires_from_now(boost::posix_time::milliseconds(delay));
@@ -151,7 +151,7 @@ void JitterBuffer::start(uint32_t delay)
 void JitterBuffer::stop()
 {
     if (m_isRunning) {
-        ELOG_INFO("(%s)stop", m_name.c_str());
+        ELOG_INFO_T("(%s)stop", m_name.c_str());
 
         m_timer->cancel();
 
@@ -172,10 +172,10 @@ void JitterBuffer::stop()
 
 void JitterBuffer::drain()
 {
-    ELOG_INFO("(%s)drain jitter buffer size(%d)", m_name.c_str(), m_buffer.size());
+    ELOG_INFO_T("(%s)drain jitter buffer size(%d)", m_name.c_str(), m_buffer.size());
 
     while(m_buffer.size() > 0) {
-        ELOG_DEBUG("(%s)drain jitter buffer, size(%d) ...", m_name.c_str(), m_buffer.size());
+        ELOG_DEBUG_T("(%s)drain jitter buffer, size(%d) ...", m_name.c_str(), m_buffer.size());
         usleep(10);
     }
 }
@@ -198,7 +198,7 @@ void JitterBuffer::setSyncTime(int64_t &syncTimestamp, boost::posix_time::ptime 
 {
     boost::mutex::scoped_lock lock(m_syncMutex);
 
-    ELOG_INFO("(%s)set sync timestamp %ld -> %ld", m_name.c_str(), m_syncTimestamp, syncTimestamp);
+    ELOG_INFO_T("(%s)set sync timestamp %ld -> %ld", m_name.c_str(), m_syncTimestamp, syncTimestamp);
 
     m_syncTimestamp = syncTimestamp;
     m_syncLocalTime.reset(new boost::posix_time::ptime(syncLocalTime));
@@ -217,7 +217,7 @@ int64_t JitterBuffer::getNextTime(AVPacket *pkt)
     if (!pkt || !nextPkt) {
         interval = 10;
 
-        ELOG_DEBUG("(%s)no next frame, next time %ld", m_name.c_str(), interval);
+        ELOG_DEBUG_T("(%s)no next frame, next time %ld", m_name.c_str(), interval);
         return interval;
     }
 
@@ -226,11 +226,11 @@ int64_t JitterBuffer::getNextTime(AVPacket *pkt)
 
     diff = nextTimestamp - timestamp;
     if (diff < 0 || diff > 2000) { // revised
-        ELOG_INFO("(%s)timestamp rollback, %ld -> %ld", m_name.c_str(), timestamp, nextTimestamp);
+        ELOG_INFO_T("(%s)timestamp rollback, %ld -> %ld", m_name.c_str(), timestamp, nextTimestamp);
         if (m_syncMode == SYNC_MODE_MASTER)
             m_listener->onSyncTimeChanged(this, nextTimestamp);
 
-        ELOG_INFO("(%s)reset first timestamp %ld -> %ld", m_name.c_str(), m_firstTimestamp, nextTimestamp);
+        ELOG_INFO_T("(%s)reset first timestamp %ld -> %ld", m_name.c_str(), m_firstTimestamp, nextTimestamp);
         m_firstTimestamp = nextTimestamp;
         m_firstLocalTime.reset(new boost::posix_time::ptime(boost::posix_time::microsec_clock::local_time() + boost::posix_time::milliseconds(interval)));
         return interval;
@@ -239,7 +239,7 @@ int64_t JitterBuffer::getNextTime(AVPacket *pkt)
     {
         boost::mutex::scoped_lock lock(m_syncMutex);
         if (m_isFirstFramePacket) {
-            ELOG_INFO("(%s)set first timestamp %ld -> %ld", m_name.c_str(), m_firstTimestamp, timestamp);
+            ELOG_INFO_T("(%s)set first timestamp %ld -> %ld", m_name.c_str(), m_firstTimestamp, timestamp);
             m_firstTimestamp = timestamp;
             m_firstLocalTime.reset(new boost::posix_time::ptime(boost::posix_time::microsec_clock::local_time()));
 
@@ -256,7 +256,7 @@ int64_t JitterBuffer::getNextTime(AVPacket *pkt)
         if (m_syncTimestamp != AV_NOPTS_VALUE) {
             // sync timestamp changed
             if (nextTimestamp < m_syncTimestamp) {
-                ELOG_INFO("(%s)timestamp(%ld) is behind sync timestamp(%ld), diff %ld!"
+                ELOG_INFO_T("(%s)timestamp(%ld) is behind sync timestamp(%ld), diff %ld!"
                         , m_name.c_str(), nextTimestamp, m_syncTimestamp, nextTimestamp - m_syncTimestamp);
                 interval = diff;
             }
@@ -274,18 +274,18 @@ int64_t JitterBuffer::getNextTime(AVPacket *pkt)
                 m_listener->onSyncTimeChanged(this, timestamp);
                 m_syncMutex.lock();
 
-                ELOG_DEBUG("(%s)force next time %ld -> %ld", m_name.c_str(), interval, m_lastInterval);
+                ELOG_DEBUG_T("(%s)force next time %ld -> %ld", m_name.c_str(), interval, m_lastInterval);
                 interval = m_lastInterval;
             } else if (interval > 1000) {
-                ELOG_DEBUG("(%s)force next time %ld -> %ld", m_name.c_str(), interval, 1000l);
+                ELOG_DEBUG_T("(%s)force next time %ld -> %ld", m_name.c_str(), interval, 1000l);
                 interval = 1000;
             }
         } else {
             if (interval < 0) {
-                ELOG_DEBUG("(%s)force next time %ld -> %ld", m_name.c_str(), interval, 0l);
+                ELOG_DEBUG_T("(%s)force next time %ld -> %ld", m_name.c_str(), interval, 0l);
                 interval = 0;
             } else if (interval > 1000) {
-                ELOG_DEBUG("(%s)force next time %ld -> %ld", m_name.c_str(), interval, 1000l);
+                ELOG_DEBUG_T("(%s)force next time %ld -> %ld", m_name.c_str(), interval, 1000l);
                 interval = 1000;
             }
         }
@@ -308,9 +308,9 @@ void JitterBuffer::handleJob()
     if (pkt != NULL)
         m_listener->onDeliverFrame(this, pkt);
     else
-        ELOG_DEBUG("(%s)no frame in JitterBuffer", m_name.c_str());
+        ELOG_DEBUG_T("(%s)no frame in JitterBuffer", m_name.c_str());
 
-    ELOG_TRACE("(%s)buffer size %d, next time %d", m_name.c_str(), m_buffer.size(), interval);
+    ELOG_TRACE_T("(%s)buffer size %d, next time %d", m_name.c_str(), m_buffer.size(), interval);
 
     m_timer->async_wait(boost::bind(&JitterBuffer::onTimeout, this, boost::asio::placeholders::error));
 }
@@ -350,12 +350,12 @@ RtspIn::RtspIn(const Options& options, EventRegistry* handle)
 {
     if (options.transport.compare("tcp") == 0) {
         av_dict_set(&m_transportOpts, "rtsp_transport", "tcp", 0);
-        ELOG_INFO("url: %s, audio: %d, video: %d, transport::tcp", m_url.c_str(), m_needAudio, m_needVideo);
+        ELOG_INFO_T("url: %s, audio: %d, video: %d, transport::tcp", m_url.c_str(), m_needAudio, m_needVideo);
     } else {
         char buf[256];
         snprintf(buf, sizeof(buf), "%u", options.bufferSize);
         av_dict_set(&m_transportOpts, "buffer_size", buf, 0);
-        ELOG_INFO("url: %s, audio: %d, video: %d, transport::%s, buffer_size: %u",
+        ELOG_INFO_T("url: %s, audio: %d, video: %d, transport::%s, buffer_size: %u",
                    m_url.c_str(), m_needAudio, m_needVideo, options.transport.c_str(), options.bufferSize);
     }
     m_thread = boost::thread(&RtspIn::receiveLoop, this);
@@ -363,7 +363,7 @@ RtspIn::RtspIn(const Options& options, EventRegistry* handle)
 
 RtspIn::~RtspIn()
 {
-    ELOG_INFO("Closing %s" , m_url.c_str());
+    ELOG_INFO_T("Closing %s" , m_url.c_str());
     m_running = false;
     m_thread.join();
 
@@ -429,7 +429,7 @@ RtspIn::~RtspIn()
     m_audioResampleDumpFile.reset();
 #endif
 
-    ELOG_DEBUG("Closed");
+    ELOG_DEBUG_T("Closed");
 }
 
 bool RtspIn::connect()
@@ -437,7 +437,7 @@ bool RtspIn::connect()
     int res;
 
     if (!m_needVideo && !m_needAudio) {
-        ELOG_ERROR("Audio and video not enabled");
+        ELOG_ERROR_T("Audio and video not enabled");
 
         m_AsyncEvent.str("");
         m_AsyncEvent << "{\"type\":\"failed\",\"reason\":\"audio and video not enabled\"}";
@@ -460,10 +460,10 @@ bool RtspIn::connect()
     //m_context->max_analyze_duration = 3 * AV_TIME_BASE;
 
     m_timeoutHandler->reset(30000);
-    ELOG_INFO("Opening input");
+    ELOG_INFO_T("Opening input");
     res = avformat_open_input(&m_context, m_url.c_str(), nullptr, &m_transportOpts);
     if (res != 0) {
-        ELOG_ERROR("Error opening input %s", ff_err2str(res));
+        ELOG_ERROR_T("Error opening input %s", ff_err2str(res));
 
         m_AsyncEvent.str("");
         m_AsyncEvent << "{\"type\":\"failed\",\"reason\":\"error opening input url\"}";
@@ -471,17 +471,17 @@ bool RtspIn::connect()
     }
 
     m_timeoutHandler->reset(10000);
-    ELOG_INFO("Finding stream info");
+    ELOG_INFO_T("Finding stream info");
     res = avformat_find_stream_info(m_context, nullptr);
     if (res < 0) {
-        ELOG_ERROR("Error finding stream info %s", ff_err2str(res));
+        ELOG_ERROR_T("Error finding stream info %s", ff_err2str(res));
 
         m_AsyncEvent.str("");
         m_AsyncEvent << "{\"type\":\"failed\",\"reason\":\"error finding streams info\"}";
         return false;
     }
 
-    ELOG_INFO("Dump format");
+    ELOG_INFO_T("Dump format");
     av_dump_format(m_context, 0, nullptr, 0);
 
     m_AsyncEvent.str("");
@@ -499,7 +499,7 @@ bool RtspIn::connect()
         }
         m_videoStreamIndex = streamNo;
         st = m_context->streams[streamNo];
-        ELOG_INFO("Has video, video stream number %d. time base = %d / %d, codec type = %s ",
+        ELOG_INFO_T("Has video, video stream number %d. time base = %d / %d, codec type = %s ",
                 m_videoStreamIndex,
                 st->time_base.num,
                 st->time_base.den,
@@ -515,7 +515,7 @@ bool RtspIn::connect()
             case AV_CODEC_ID_H264:
                 m_needVBSF = true;
                 if (!initVBSFilter(videoCodecId)) {
-                    ELOG_ERROR("Can not init video bitstream filter");
+                    ELOG_ERROR_T("Can not init video bitstream filter");
 
                     m_AsyncEvent.str("");
                     m_AsyncEvent << "{\"type\":\"failed\",\"reason\":\"can not init h264\"}";
@@ -528,7 +528,7 @@ bool RtspIn::connect()
             case AV_CODEC_ID_H265:
                 m_needVBSF = true;
                 if (!initVBSFilter(videoCodecId)) {
-                    ELOG_ERROR("Can not init video bitstream filter");
+                    ELOG_ERROR_T("Can not init video bitstream filter");
 
                     m_AsyncEvent.str("");
                     m_AsyncEvent << "{\"type\":\"failed\",\"reason\":\"can not init h265\"}";
@@ -569,7 +569,7 @@ bool RtspIn::connect()
         }
         m_audioStreamIndex = audioStreamNo;
         audio_st = m_context->streams[m_audioStreamIndex];
-        ELOG_INFO("Has audio, audio stream number %d. time base = %d / %d, codec type = %s ",
+        ELOG_INFO_T("Has audio, audio stream number %d. time base = %d / %d, codec type = %s ",
                 m_audioStreamIndex,
                 audio_st->time_base.num,
                 audio_st->time_base.den,
@@ -595,7 +595,7 @@ bool RtspIn::connect()
             case AV_CODEC_ID_AAC:
                 m_needAudioTranscoder = true;
                 if (!initAudioTranscoder(AV_CODEC_ID_AAC, AV_CODEC_ID_OPUS)) {
-                    ELOG_ERROR("Can not init audio codec");
+                    ELOG_ERROR_T("Can not init audio codec");
 
                     m_AsyncEvent.str("");
                     m_AsyncEvent << "{\"type\":\"failed\",\"reason\":\"can not init audio\"}";
@@ -668,33 +668,33 @@ bool RtspIn::reconnect()
     //m_context->max_analyze_duration = 3 * AV_TIME_BASE;
 
     m_timeoutHandler->reset(60000);
-    ELOG_INFO("Opening input");
+    ELOG_INFO_T("Opening input");
     res = avformat_open_input(&m_context, m_url.c_str(), nullptr, &m_transportOpts);
     if (res != 0) {
-        ELOG_ERROR("Error opening input %s", ff_err2str(res));
+        ELOG_ERROR_T("Error opening input %s", ff_err2str(res));
         return false;
     }
 
     m_timeoutHandler->reset(10000);
-    ELOG_INFO("Finding stream info");
+    ELOG_INFO_T("Finding stream info");
     res = avformat_find_stream_info(m_context, nullptr);
     if (res < 0) {
-        ELOG_ERROR("Error find stream info %s", ff_err2str(res));
+        ELOG_ERROR_T("Error find stream info %s", ff_err2str(res));
         return false;
     }
 
-    ELOG_INFO("Dump format");
+    ELOG_INFO_T("Dump format");
     av_dump_format(m_context, 0, nullptr, 0);
 
     if (m_needVideo) {
         int streamNo = av_find_best_stream(m_context, AVMEDIA_TYPE_VIDEO, -1, -1, nullptr, 0);
         if (streamNo < 0) {
-            ELOG_ERROR("No Video stream found");
+            ELOG_ERROR_T("No Video stream found");
             return false;
         }
 
         if (m_videoStreamIndex != streamNo) {
-            ELOG_ERROR("Video stream index changed, %d -> %d", m_videoStreamIndex, streamNo);
+            ELOG_ERROR_T("Video stream index changed, %d -> %d", m_videoStreamIndex, streamNo);
             m_videoStreamIndex = streamNo;
         }
     }
@@ -702,12 +702,12 @@ bool RtspIn::reconnect()
     if (m_needAudio) {
         int streamNo = av_find_best_stream(m_context, AVMEDIA_TYPE_AUDIO, -1, -1, nullptr, 0);
         if (streamNo < 0) {
-            ELOG_ERROR("No Audio stream found");
+            ELOG_ERROR_T("No Audio stream found");
             return false;
         }
 
         if (m_audioStreamIndex != streamNo) {
-            ELOG_ERROR("Audio stream index changed, %d -> %d", m_audioStreamIndex, streamNo);
+            ELOG_ERROR_T("Audio stream index changed, %d -> %d", m_audioStreamIndex, streamNo);
             m_audioStreamIndex = streamNo;
         }
 
@@ -733,27 +733,27 @@ void RtspIn::receiveLoop()
 {
     int ret = connect();
     if (!ret) {
-        ELOG_ERROR("Connect failed, %s", m_AsyncEvent.str().c_str());
+        ELOG_ERROR_T("Connect failed, %s", m_AsyncEvent.str().c_str());
 
         ::notifyAsyncEvent(m_asyncHandle, "status", m_AsyncEvent.str());
         return;
     }
-    ELOG_DEBUG("%s", m_AsyncEvent.str().c_str());
+    ELOG_DEBUG_T("%s", m_AsyncEvent.str().c_str());
     ::notifyAsyncEvent(m_asyncHandle, "status", m_AsyncEvent.str().c_str());
 
     memset(&m_avPacket, 0, sizeof(m_avPacket));
     m_running = true;
-    ELOG_DEBUG("Start playing %s", m_url.c_str() );
+    ELOG_DEBUG_T("Start playing %s", m_url.c_str() );
     while (m_running) {
         av_init_packet(&m_avPacket);
         m_timeoutHandler->reset(10000);
         ret = av_read_frame(m_context, &m_avPacket);
         if (ret < 0) {
-            ELOG_ERROR("Error read frame, %s", ff_err2str(ret));
+            ELOG_ERROR_T("Error read frame, %s", ff_err2str(ret));
             // Try to re-open the input - silently.
             ret = reconnect();
             if (!ret) {
-                ELOG_ERROR("Reconnect failed");
+                ELOG_ERROR_T("Reconnect failed");
                 ::notifyAsyncEvent(m_asyncHandle, "status", "{\"type\":\"failed\",\"reason\":\"reopening input url error\"}");
                 break;
             }
@@ -765,14 +765,14 @@ void RtspIn::receiveLoop()
             m_avPacket.dts = timeRescale(m_avPacket.dts, video_st->time_base, m_msTimeBase);
             m_avPacket.pts = timeRescale(m_avPacket.pts, video_st->time_base, m_msTimeBase);
 
-            ELOG_TRACE("Receive video frame packet, dts %ld, size %d"
+            ELOG_TRACE_T("Receive video frame packet, dts %ld, size %d"
                     , m_avPacket.dts, m_avPacket.size);
 
             if (!m_needVBSF || filterVBS(m_avPacket)) {
                 if (m_needAudioTranscoder) {
                     m_avPacket.dts += m_audioEncTimestamp - m_audioFifoTimeBegin;
                     m_avPacket.pts += m_audioEncTimestamp - m_audioFifoTimeBegin;
-                    ELOG_TRACE("Audio transcoder offset %ld", m_audioEncTimestamp - m_audioFifoTimeBegin);
+                    ELOG_TRACE_T("Audio transcoder offset %ld", m_audioEncTimestamp - m_audioFifoTimeBegin);
                 }
 
                 if (m_videoJitterBuffer)
@@ -785,7 +785,7 @@ void RtspIn::receiveLoop()
             m_avPacket.dts = timeRescale(m_avPacket.dts, audio_st->time_base, m_msTimeBase);
             m_avPacket.pts = timeRescale(m_avPacket.pts, audio_st->time_base, m_msTimeBase);
 
-            ELOG_TRACE("Receive audio frame packet, dts %ld, duration %ld, size %d"
+            ELOG_TRACE_T("Receive audio frame packet, dts %ld, duration %ld, size %d"
                     , m_avPacket.dts, m_avPacket.duration, m_avPacket.size);
 
             if (!m_needAudioTranscoder) {
@@ -813,7 +813,7 @@ void RtspIn::receiveLoop()
     }
     m_running = false;
 
-    ELOG_DEBUG("Thread exited!");
+    ELOG_DEBUG_T("Thread exited!");
 }
 
 bool RtspIn::initVBSFilter(AVCodecID codec) {
@@ -823,11 +823,11 @@ bool RtspIn::initVBSFilter(AVCodecID codec) {
         m_vbsf = av_bitstream_filter_init("hevc_mp4toannexb");
     }
     if (!m_vbsf) {
-        ELOG_ERROR("Could not init bitstream filter");
+        ELOG_ERROR_T("Could not init bitstream filter");
         return false;
     }
 
-    ELOG_TRACE("Init vidoe bitstream filter OK");
+    ELOG_TRACE_T("Init vidoe bitstream filter OK");
     return true;
 }
 
@@ -852,13 +852,13 @@ bool RtspIn::initAudioDecoder(AVCodecID codec) {
     int ret;
 
     if (codec != AV_CODEC_ID_AAC) {
-        ELOG_ERROR("Decoder %s is not supported, AAC only", avcodec_get_name(codec));
+        ELOG_ERROR_T("Decoder %s is not supported, AAC only", avcodec_get_name(codec));
         return false;
     }
 
     audioDec = avcodec_find_decoder_by_name("libfdk_aac");
     if (!audioDec) {
-        ELOG_ERROR("Could not find audio decoder %s, please check if ffmpeg/libfdk_aac installed", "libfdk_aac");
+        ELOG_ERROR_T("Could not find audio decoder %s, please check if ffmpeg/libfdk_aac installed", "libfdk_aac");
         return false;
     }
 
@@ -866,11 +866,11 @@ bool RtspIn::initAudioDecoder(AVCodecID codec) {
 
     ret = avcodec_open2(audio_st->codec, audioDec , NULL);
     if (ret < 0) {
-        ELOG_ERROR("Could not open audio decoder context, %s", ff_err2str(ret));
+        ELOG_ERROR_T("Could not open audio decoder context, %s", ff_err2str(ret));
         return false;
     }
 
-    ELOG_INFO("Audio dec sample_rate %d, channels %d, frame_size %d"
+    ELOG_INFO_T("Audio dec sample_rate %d, channels %d, frame_size %d"
             , audio_st->codec->sample_rate
             , audio_st->codec->channels
             , audio_st->codec->frame_size
@@ -885,12 +885,12 @@ bool RtspIn::initAudioTranscoder(AVCodecID inCodec, AVCodecID outCodec) {
     AVCodec *audioEnc = NULL;
 
     if (inCodec != AV_CODEC_ID_AAC) {
-        ELOG_ERROR("Decoder %s is not supported, AAC only", avcodec_get_name(inCodec));
+        ELOG_ERROR_T("Decoder %s is not supported, AAC only", avcodec_get_name(inCodec));
         return false;
     }
 
     if (outCodec != AV_CODEC_ID_OPUS) {
-        ELOG_ERROR("Encoder %s is not supported, OPUS only", avcodec_get_name(outCodec));
+        ELOG_ERROR_T("Encoder %s is not supported, OPUS only", avcodec_get_name(outCodec));
         return false;
     }
 
@@ -901,19 +901,19 @@ bool RtspIn::initAudioTranscoder(AVCodecID inCodec, AVCodecID outCodec) {
 
     m_audioDecFrame = av_frame_alloc();
     if (!m_audioDecFrame) {
-        ELOG_ERROR("Could not allocate audio dec frame");
+        ELOG_ERROR_T("Could not allocate audio dec frame");
         goto failed;
     }
 
     audioEnc = avcodec_find_encoder(AV_CODEC_ID_OPUS);
     if (!audioEnc) {
-        ELOG_ERROR("Could not find audio encoder %s", avcodec_get_name(AV_CODEC_ID_OPUS));
+        ELOG_ERROR_T("Could not find audio encoder %s", avcodec_get_name(AV_CODEC_ID_OPUS));
         goto failed;
     }
 
     m_audioEncCtx = avcodec_alloc_context3(audioEnc);
     if (!m_audioEncCtx ) {
-        ELOG_ERROR("Could not alloc audio encoder context");
+        ELOG_ERROR_T("Could not alloc audio encoder context");
         goto failed;
     }
 
@@ -926,22 +926,22 @@ bool RtspIn::initAudioTranscoder(AVCodecID inCodec, AVCodecID outCodec) {
     /* open it */
     ret = avcodec_open2(m_audioEncCtx, audioEnc, NULL);
     if (ret < 0) {
-        ELOG_ERROR("Could not open audio encoder context, %s", ff_err2str(ret));
+        ELOG_ERROR_T("Could not open audio encoder context, %s", ff_err2str(ret));
         goto failed;
     }
 
-    ELOG_INFO("Audio enc sample_rate %d, channels %d, frame_size %d"
+    ELOG_INFO_T("Audio enc sample_rate %d, channels %d, frame_size %d"
             , m_audioEncCtx->sample_rate
             , m_audioEncCtx->channels
             , m_audioEncCtx->frame_size
             );
 
     if (audio_st->codec->sample_rate != m_audioEncCtx->sample_rate || audio_st->codec->channels != m_audioEncCtx->channels) {
-        ELOG_TRACE("Init audio resampler");
+        ELOG_TRACE_T("Init audio resampler");
 
         m_audioSwrCtx = swr_alloc();
         if (!m_audioSwrCtx) {
-            ELOG_ERROR("Could not allocate resampler context");
+            ELOG_ERROR_T("Could not allocate resampler context");
             goto failed;
         }
 
@@ -955,7 +955,7 @@ bool RtspIn::initAudioTranscoder(AVCodecID inCodec, AVCodecID outCodec) {
 
         ret = swr_init(m_audioSwrCtx);
         if (ret < 0) {
-            ELOG_ERROR("Failed to initialize the resampling context, %s", ff_err2str(ret));
+            ELOG_ERROR_T("Failed to initialize the resampling context, %s", ff_err2str(ret));
             goto failed;
         }
 
@@ -968,20 +968,20 @@ bool RtspIn::initAudioTranscoder(AVCodecID inCodec, AVCodecID outCodec) {
         ret = av_samples_alloc_array_and_samples(&m_audioSwrSamplesData, &m_audioSwrSamplesLinesize, m_audioEncCtx->channels,
                 m_audioSwrSamplesCount, m_audioEncCtx->sample_fmt, 0);
         if (ret < 0) {
-            ELOG_ERROR("Could not allocate swr samples data, %s", ff_err2str(ret));
+            ELOG_ERROR_T("Could not allocate swr samples data, %s", ff_err2str(ret));
             goto failed;
         }
     }
 
     m_audioEncFifo = av_audio_fifo_alloc(m_audioEncCtx->sample_fmt, m_audioEncCtx->channels, 1);
     if (!m_audioEncFifo) {
-        ELOG_ERROR("Could not allocate audio enc fifo");
+        ELOG_ERROR_T("Could not allocate audio enc fifo");
         goto failed;
     }
 
     m_audioEncFrame  = av_frame_alloc();
     if (!m_audioEncFrame) {
-        ELOG_ERROR("Could not allocate audio enc frame");
+        ELOG_ERROR_T("Could not allocate audio enc frame");
         goto failed;
     }
 
@@ -992,7 +992,7 @@ bool RtspIn::initAudioTranscoder(AVCodecID inCodec, AVCodecID outCodec) {
 
     ret = av_frame_get_buffer(m_audioEncFrame, 0);
     if (ret < 0) {
-        ELOG_ERROR("Could not get audio frame buffer, %s", ff_err2str(ret));
+        ELOG_ERROR_T("Could not get audio frame buffer, %s", ff_err2str(ret));
         goto failed;
     }
 
@@ -1007,12 +1007,12 @@ bool RtspIn::initAudioTranscoder(AVCodecID inCodec, AVCodecID outCodec) {
 
     snprintf(dumpFile, 128, "/tmp/audio-%s-%d-%d.opus", "opus", 48000, 2);
     if(!initDump(dumpFile)) {
-        ELOG_ERROR("Could not init dump");
+        ELOG_ERROR_T("Could not init dump");
         goto failed;
     }
 #endif
 
-    ELOG_TRACE("Init audio transcoder OK");
+    ELOG_TRACE_T("Init audio transcoder OK");
     return true;
 
 failed:
@@ -1062,18 +1062,18 @@ bool RtspIn::decAudioFrame(AVPacket &packet) {
     int audioFrameLen = 0;
 
     if (!m_audioEncCtx) {
-        ELOG_ERROR("Invalid transcode params");
+        ELOG_ERROR_T("Invalid transcode params");
         return false;
     }
 
     ret = avcodec_decode_audio4(audio_st->codec, m_audioDecFrame, &got, &packet);
     if (ret < 0) {
-        ELOG_ERROR("Error while decoding, %s", ff_err2str(ret));
+        ELOG_ERROR_T("Error while decoding, %s", ff_err2str(ret));
         return false;
     }
 
     if (!got) {
-        ELOG_TRACE("No decoded frame output");
+        ELOG_TRACE_T("No decoded frame output");
         return false;
     }
 
@@ -1095,13 +1095,13 @@ bool RtspIn::decAudioFrame(AVPacket &packet) {
                 , AV_ROUND_UP);
 
         if (dst_nb_samples > m_audioSwrSamplesCount) {
-            ELOG_TRACE("Realloc audio swr samples buffer");
+            ELOG_TRACE_T("Realloc audio swr samples buffer");
 
             av_freep(&m_audioSwrSamplesData[0]);
             ret = av_samples_alloc(m_audioSwrSamplesData, &m_audioSwrSamplesLinesize, m_audioEncCtx->channels,
                 dst_nb_samples, m_audioEncCtx->sample_fmt, 1);
             if (ret < 0) {
-                ELOG_ERROR("Fail to realloc swr samples, %s", ff_err2str(ret));
+                ELOG_ERROR_T("Fail to realloc swr samples, %s", ff_err2str(ret));
                 return false;
             }
             m_audioSwrSamplesCount = dst_nb_samples;
@@ -1110,7 +1110,7 @@ bool RtspIn::decAudioFrame(AVPacket &packet) {
         /* convert to destination format */
         ret = swr_convert(m_audioSwrCtx, m_audioSwrSamplesData, dst_nb_samples, (const uint8_t **)m_audioDecFrame->data, m_audioDecFrame->nb_samples);
         if (ret < 0) {
-            ELOG_ERROR("Error while converting, %s", ff_err2str(ret));
+            ELOG_ERROR_T("Error while converting, %s", ff_err2str(ret));
             return false;
         }
 
@@ -1127,7 +1127,7 @@ bool RtspIn::decAudioFrame(AVPacket &packet) {
 
     nSamples = av_audio_fifo_write(m_audioEncFifo, reinterpret_cast<void**>(audioFrameData), audioFrameLen);
     if (nSamples < audioFrameLen) {
-        ELOG_ERROR("Can not write audio enc fifo, nbSamples %d, writed %d", audioFrameLen, nSamples);
+        ELOG_ERROR_T("Can not write audio enc fifo, nbSamples %d, writed %d", audioFrameLen, nSamples);
         return false;
     }
 
@@ -1146,7 +1146,7 @@ bool RtspIn::encAudioFrame(AVPacket *packet) {
     int nSamples;
 
     if (!m_audioEncCtx) {
-        ELOG_ERROR("Invalid transcode params");
+        ELOG_ERROR_T("Invalid transcode params");
         return false;
     }
 
@@ -1156,18 +1156,18 @@ bool RtspIn::encAudioFrame(AVPacket *packet) {
 
     nSamples = av_audio_fifo_read(m_audioEncFifo, reinterpret_cast<void**>(m_audioEncFrame->data), m_audioEncCtx->frame_size);
     if (nSamples < m_audioEncCtx->frame_size) {
-        ELOG_ERROR("Can not read audio enc fifo, nbSamples %d, writed %d", m_audioEncCtx->frame_size, nSamples);
+        ELOG_ERROR_T("Can not read audio enc fifo, nbSamples %d, writed %d", m_audioEncCtx->frame_size, nSamples);
         return false;
     }
 
     ret = avcodec_encode_audio2(m_audioEncCtx, packet, m_audioEncFrame, &got);
     if (ret < 0) {
-        ELOG_ERROR("Fail to encode audio frame, %s", ff_err2str(ret));
+        ELOG_ERROR_T("Fail to encode audio frame, %s", ff_err2str(ret));
         return false;
     }
 
     if (!got) {
-        ELOG_TRACE("Not get encoded audio frame");
+        ELOG_TRACE_T("Not get encoded audio frame");
         return false;
     }
 
@@ -1177,7 +1177,7 @@ bool RtspIn::encAudioFrame(AVPacket *packet) {
     m_audioFifoTimeBegin += (double)(m_audioFifoTimeEnd - m_audioFifoTimeBegin) * m_audioEncCtx->frame_size / (av_audio_fifo_size(m_audioEncFifo) + m_audioEncCtx->frame_size);
 
     if (av_audio_fifo_size(m_audioEncFifo) >= m_audioEncCtx->frame_size) {
-        ELOG_TRACE("More data in fifo to encode %d >= %d", av_audio_fifo_size(m_audioEncFifo), m_audioEncCtx->frame_size);
+        ELOG_TRACE_T("More data in fifo to encode %d >= %d", av_audio_fifo_size(m_audioEncFifo), m_audioEncCtx->frame_size);
     }
 
 #ifdef DUMP_AUDIO
@@ -1194,7 +1194,7 @@ bool RtspIn::encAudioFrame(AVPacket *packet) {
 void RtspIn::onSyncTimeChanged(JitterBuffer *jitterBuffer, int64_t syncTimestamp)
 {
     if (m_audioJitterBuffer.get() == jitterBuffer) {
-        ELOG_INFO("onSyncTimeChanged audio, timestamp %ld ", syncTimestamp);
+        ELOG_INFO_T("onSyncTimeChanged audio, timestamp %ld ", syncTimestamp);
 
         //rtsp audio/video time base is different, it will lost sync after roll back
         if(!isRtsp()) {
@@ -1206,9 +1206,9 @@ void RtspIn::onSyncTimeChanged(JitterBuffer *jitterBuffer, int64_t syncTimestamp
         }
     }
     else if (m_videoJitterBuffer.get() == jitterBuffer) {
-        ELOG_INFO("onSyncTimeChanged video, timestamp %ld ", syncTimestamp);
+        ELOG_INFO_T("onSyncTimeChanged video, timestamp %ld ", syncTimestamp);
     } else {
-        ELOG_ERROR("Invalid JitterBuffer onSyncTimeChanged event!");
+        ELOG_ERROR_T("Invalid JitterBuffer onSyncTimeChanged event!");
     }
 }
 
@@ -1224,7 +1224,7 @@ void RtspIn::deliverVideoFrame(AVPacket *pkt)
     frame.additionalInfo.video.height = m_videoSize.height;
     deliverFrame(frame);
 
-    ELOG_DEBUG("deliver video frame, timestamp %ld(%ld), size %4d, %s"
+    ELOG_DEBUG_T("deliver video frame, timestamp %ld(%ld), size %4d, %s"
             , timeRescale(frame.timeStamp, m_videoTimeBase, m_msTimeBase)
             , pkt->dts
             , frame.length
@@ -1246,7 +1246,7 @@ void RtspIn::deliverAudioFrame(AVPacket *pkt)
     frame.additionalInfo.audio.channels = m_audioFormat == FRAME_FORMAT_OPUS ? 2 : 1;
     deliverFrame(frame);
 
-    ELOG_DEBUG("deliver audio frame, timestamp %ld(%ld), size %4d"
+    ELOG_DEBUG_T("deliver audio frame, timestamp %ld(%ld), size %4d"
             , timeRescale(frame.timeStamp, m_audioTimeBase, m_msTimeBase)
             , pkt->dts
             , frame.length);
@@ -1259,7 +1259,7 @@ void RtspIn::onDeliverFrame(JitterBuffer *jitterBuffer, AVPacket *pkt)
     } else if (m_audioJitterBuffer.get() == jitterBuffer) {
         deliverAudioFrame(pkt);
     } else {
-        ELOG_ERROR("Invalid JitterBuffer onDeliver event!");
+        ELOG_ERROR_T("Invalid JitterBuffer onDeliver event!");
     }
 }
 
@@ -1273,7 +1273,7 @@ bool RtspIn::initDump(char *dumpFile) {
 
     avformat_alloc_output_context2(&m_dumpContext, nullptr, nullptr, dumpFile);
     if (!m_dumpContext) {
-        ELOG_ERROR("avformat_alloc_output_context2 dump context failed");
+        ELOG_ERROR_T("avformat_alloc_output_context2 dump context failed");
         return false;
         //goto failed;
     }
@@ -1281,14 +1281,14 @@ bool RtspIn::initDump(char *dumpFile) {
     AVStream* dumpStream = NULL;
     dumpStream = avformat_new_stream(m_dumpContext, m_audioEncCtx->codec);
     if (!dumpStream) {
-        ELOG_ERROR("cannot add dump stream");
+        ELOG_ERROR_T("cannot add dump stream");
         return false;
         //goto failed;
     }
 #if 1
     //Copy the settings of AVCodecContext
     if (avcodec_copy_context(dumpStream->codec, m_audioEncCtx) < 0) {
-        ELOG_ERROR("Failed to copy dump stream codec context");
+        ELOG_ERROR_T("Failed to copy dump stream codec context");
         return false;
         //goto failed;
     }
@@ -1298,13 +1298,13 @@ bool RtspIn::initDump(char *dumpFile) {
         dumpStream->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
 
     if (avio_open(&m_dumpContext->pb, m_dumpContext->filename, AVIO_FLAG_WRITE) < 0) {
-        ELOG_ERROR("avio_open failed, %s", m_dumpContext->filename);
+        ELOG_ERROR_T("avio_open failed, %s", m_dumpContext->filename);
         return false;
         //goto failed;
     }
 
     if (avformat_write_header(m_dumpContext, nullptr) < 0) {
-        ELOG_ERROR("avformat_write_header failed");
+        ELOG_ERROR_T("avformat_write_header failed");
         return false;
         //goto failed;
     }
