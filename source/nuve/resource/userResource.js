@@ -39,7 +39,7 @@ exports.getUser = function (req, res) {
         var user = req.params.user;
         cloudHandler.getUsersInRoom(currentRoom._id, function (users) {
             if (users === 'error') {
-                res.status(404).send('User does not exist');
+                res.status(404).send('Operation failed');
                 return;
             }
             for (var index in users) {
