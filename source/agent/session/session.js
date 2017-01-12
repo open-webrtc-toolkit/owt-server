@@ -549,17 +549,18 @@ module.exports = function (rpcClient, selfRpcId) {
   };
 
   that.deleteUser = function(user, callback) {
-    var deleteNum = 0;
+    log.debug('deleteUser', user);
+    var deleted = null;
     for (var participant_id in participants) {
-      if (participants[participant_id].name === user) {
+      if (participant_id === user) {
+        deleted = participants[participant_id];
         rpcReq.dropUser(participants[participant_id].portal, participant_id, session_id);
         this.leave(participant_id, function(){});
-
-        deleteNum += 1;
-      };
+        break;
+      }
     }
 
-    callback('callback', deleteNum);
+    callback('callback', deleted);
   };
 
   that.destroy = function(callback) {

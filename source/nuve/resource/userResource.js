@@ -77,14 +77,15 @@ exports.deleteUser = function (req, res) {
 
         var user = req.params.user;
         cloudHandler.deleteUser(user, currentRoom._id, function (result) {
-            if (typeof result === 'number') {
-                if (result === 0) {
-                    res.status(404).send('User does not exist');
+            log.debug('result', result);
+            if (result !== null) {
+                if (typeof result === 'object') {
+                    res.send('User deleted');
                 } else {
-                    res.send(result + ' users deleted');
+                    res.status(404).send('Operation failed');
                 }
             } else {
-                res.status(404).send('Operation failed');
+                res.status(404).send('User does not exist');
             }
         });
     });
