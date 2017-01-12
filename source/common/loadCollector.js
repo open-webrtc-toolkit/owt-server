@@ -135,7 +135,7 @@ var gpuCollector = function (period, on_load) {
 exports.LoadCollector = function (spec) {
     var that = {};
 
-    var period = spec.pediod || 1000,
+    var period = spec.period || 1000,
         item = spec.item,
         on_load = spec.onLoad || function (load) {log.debug('Got', item.name, 'load:', load);},
         collector = undefined;
