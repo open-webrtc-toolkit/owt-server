@@ -43,8 +43,8 @@ exports.getUser = function (req, res) {
                 return;
             }
             for (var index in users) {
-                if (users[index].name === user) {
-                    log.info('Found user', user);
+                if (users[index].id === user) {
+                    log.debug('Found user', user);
                     res.send(users[index]);
                     return;
                 }
