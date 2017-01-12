@@ -179,6 +179,9 @@ public:
     void onDeliverFrame(JitterBuffer *jitterBuffer, AVPacket *pkt);
     void onSyncTimeChanged(JitterBuffer *jitterBuffer, int64_t syncTimestamp);
 
+    void deliverVideoFrame(AVPacket *pkt);
+    void deliverAudioFrame(AVPacket *pkt);
+
 private:
     std::string m_url;
     bool m_needAudio;
