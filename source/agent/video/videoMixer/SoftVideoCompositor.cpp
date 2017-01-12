@@ -218,7 +218,7 @@ boost::shared_ptr<webrtc::I420VideoFrame> AvatarManager::getAvatarFrame(uint8_t 
 
     auto it = m_inputs.find(index);
     if (it == m_inputs.end()) {
-        ELOG_ERROR("Not invalid index");
+        ELOG_WARN("Not valid index(%d)", index);
         return NULL;
     }
     auto it2 = m_frames.find(it->second);

@@ -350,12 +350,12 @@ RtspIn::RtspIn(const Options& options, EventRegistry* handle)
 {
     if (options.transport.compare("tcp") == 0) {
         av_dict_set(&m_transportOpts, "rtsp_transport", "tcp", 0);
-        ELOG_DEBUG("url: %s, audio: %d, video: %d, transport::tcp", m_url.c_str(), m_needAudio, m_needVideo);
+        ELOG_INFO("url: %s, audio: %d, video: %d, transport::tcp", m_url.c_str(), m_needAudio, m_needVideo);
     } else {
         char buf[256];
         snprintf(buf, sizeof(buf), "%u", options.bufferSize);
         av_dict_set(&m_transportOpts, "buffer_size", buf, 0);
-        ELOG_DEBUG("url: %s, audio: %d, video: %d, transport::%s, buffer_size: %u",
+        ELOG_INFO("url: %s, audio: %d, video: %d, transport::%s, buffer_size: %u",
                    m_url.c_str(), m_needAudio, m_needVideo, options.transport.c_str(), options.bufferSize);
     }
     m_thread = boost::thread(&RtspIn::receiveLoop, this);
@@ -429,7 +429,7 @@ RtspIn::~RtspIn()
     m_audioResampleDumpFile.reset();
 #endif
 
-    ELOG_DEBUG("closed");
+    ELOG_DEBUG("Closed");
 }
 
 bool RtspIn::connect()
@@ -551,7 +551,8 @@ bool RtspIn::connect()
         m_AsyncEvent << ",\"video_resolution\":" << "\"hd1080p\"";
         VideoResolutionHelper::getVideoSize(resolution, m_videoSize);
 
-        m_videoJitterBuffer.reset(new JitterBuffer("video", JitterBuffer::SYNC_MODE_SLAVE, this));
+        if (!isRtsp())
+            m_videoJitterBuffer.reset(new JitterBuffer("video", JitterBuffer::SYNC_MODE_SLAVE, this));
 
         m_videoTimeBase.num = 1;
         m_videoTimeBase.den = 90000;
@@ -612,7 +613,8 @@ bool RtspIn::connect()
                 return false;
         }
 
-        m_audioJitterBuffer.reset(new JitterBuffer("audio", JitterBuffer::SYNC_MODE_MASTER, this));
+        if (!isRtsp())
+            m_audioJitterBuffer.reset(new JitterBuffer("audio", JitterBuffer::SYNC_MODE_MASTER, this));
 
         if (m_audioFormat == FRAME_FORMAT_OPUS) {
             m_audioTimeBase.num = 1;
@@ -772,7 +774,11 @@ void RtspIn::receiveLoop()
                     m_avPacket.pts += m_audioEncTimestamp - m_audioFifoTimeBegin;
                     ELOG_TRACE("Audio transcoder offset %ld", m_audioEncTimestamp - m_audioFifoTimeBegin);
                 }
-                m_videoJitterBuffer->insert(m_avPacket);
+
+                if (m_videoJitterBuffer)
+                    m_videoJitterBuffer->insert(m_avPacket);
+                else
+                    deliverVideoFrame(&m_avPacket);
             }
         } else if (m_avPacket.stream_index == m_audioStreamIndex) { //packet is audio
             AVStream *audio_st = m_context->streams[m_audioStreamIndex];
@@ -783,7 +789,10 @@ void RtspIn::receiveLoop()
                     , m_avPacket.dts, m_avPacket.duration, m_avPacket.size);
 
             if (!m_needAudioTranscoder) {
-                m_audioJitterBuffer->insert(m_avPacket);
+                if (m_audioJitterBuffer)
+                    m_audioJitterBuffer->insert(m_avPacket);
+                else
+                    deliverAudioFrame(&m_avPacket);
             } else if(decAudioFrame(m_avPacket)) {
                 AVPacket audioPacket;
                 memset(&audioPacket, 0, sizeof(audioPacket));
@@ -792,7 +801,10 @@ void RtspIn::receiveLoop()
                     av_init_packet(&audioPacket);
                     if(!encAudioFrame(&audioPacket))
                         break;
-                    m_audioJitterBuffer->insert(audioPacket);
+                    if (m_audioJitterBuffer)
+                        m_audioJitterBuffer->insert(audioPacket);
+                    else
+                        deliverAudioFrame(&audioPacket);
                     av_packet_unref(&audioPacket);
                 }
             }
@@ -1200,42 +1212,52 @@ void RtspIn::onSyncTimeChanged(JitterBuffer *jitterBuffer, int64_t syncTimestamp
     }
 }
 
+void RtspIn::deliverVideoFrame(AVPacket *pkt)
+{
+    Frame frame;
+    memset(&frame, 0, sizeof(frame));
+    frame.format = m_videoFormat;
+    frame.payload = reinterpret_cast<uint8_t*>(pkt->data);
+    frame.length = pkt->size;
+    frame.timeStamp = timeRescale(pkt->dts, m_msTimeBase, m_videoTimeBase);
+    frame.additionalInfo.video.width = m_videoSize.width;
+    frame.additionalInfo.video.height = m_videoSize.height;
+    deliverFrame(frame);
+
+    ELOG_DEBUG("deliver video frame, timestamp %ld(%ld), size %4d, %s"
+            , timeRescale(frame.timeStamp, m_videoTimeBase, m_msTimeBase)
+            , pkt->dts
+            , frame.length
+            , (pkt->flags & AV_PKT_FLAG_KEY) ? "key frame" : ""
+            );
+}
+
+void RtspIn::deliverAudioFrame(AVPacket *pkt)
+{
+    Frame frame;
+    memset(&frame, 0, sizeof(frame));
+    frame.format = m_audioFormat;
+    frame.payload = reinterpret_cast<uint8_t*>(pkt->data);
+    frame.length = pkt->size;
+    frame.timeStamp = timeRescale(pkt->dts, m_msTimeBase, m_audioTimeBase);
+    frame.additionalInfo.audio.isRtpPacket = 0;
+    frame.additionalInfo.audio.nbSamples = pkt->duration;
+    frame.additionalInfo.audio.sampleRate = m_audioFormat == FRAME_FORMAT_OPUS ? 48000 : 8000;
+    frame.additionalInfo.audio.channels = m_audioFormat == FRAME_FORMAT_OPUS ? 2 : 1;
+    deliverFrame(frame);
+
+    ELOG_DEBUG("deliver audio frame, timestamp %ld(%ld), size %4d"
+            , timeRescale(frame.timeStamp, m_audioTimeBase, m_msTimeBase)
+            , pkt->dts
+            , frame.length);
+}
+
 void RtspIn::onDeliverFrame(JitterBuffer *jitterBuffer, AVPacket *pkt)
 {
     if (m_videoJitterBuffer.get() == jitterBuffer) {
-        Frame frame;
-        memset(&frame, 0, sizeof(frame));
-        frame.format = m_videoFormat;
-        frame.payload = reinterpret_cast<uint8_t*>(pkt->data);
-        frame.length = pkt->size;
-        frame.timeStamp = timeRescale(pkt->dts, m_msTimeBase, m_videoTimeBase);
-        frame.additionalInfo.video.width = m_videoSize.width;
-        frame.additionalInfo.video.height = m_videoSize.height;
-        deliverFrame(frame);
-
-        ELOG_DEBUG("onDeliver video frame, timestamp %ld(%ld), size %4d, %s"
-                , timeRescale(frame.timeStamp, m_videoTimeBase, m_msTimeBase)
-                , pkt->dts
-                , frame.length
-                , (pkt->flags & AV_PKT_FLAG_KEY) ? "key frame" : ""
-                );
+        deliverVideoFrame(pkt);
     } else if (m_audioJitterBuffer.get() == jitterBuffer) {
-        Frame frame;
-        memset(&frame, 0, sizeof(frame));
-        frame.format = m_audioFormat;
-        frame.payload = reinterpret_cast<uint8_t*>(pkt->data);
-        frame.length = pkt->size;
-        frame.timeStamp = timeRescale(pkt->dts, m_msTimeBase, m_audioTimeBase);
-        frame.additionalInfo.audio.isRtpPacket = 0;
-        frame.additionalInfo.audio.nbSamples = pkt->duration;
-        frame.additionalInfo.audio.sampleRate = m_audioFormat == FRAME_FORMAT_OPUS ? 48000 : 8000;
-        frame.additionalInfo.audio.channels = m_audioFormat == FRAME_FORMAT_OPUS ? 2 : 1;
-        deliverFrame(frame);
-
-        ELOG_DEBUG("onDeliver audio frame, timestamp %ld(%ld), size %4d"
-                , timeRescale(frame.timeStamp, m_audioTimeBase, m_msTimeBase)
-                , pkt->dts
-                , frame.length);
+        deliverAudioFrame(pkt);
     } else {
         ELOG_ERROR("Invalid JitterBuffer onDeliver event!");
     }
