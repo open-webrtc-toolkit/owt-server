@@ -12,6 +12,7 @@ var log = logger.getLogger('Session');
 
 module.exports = function (rpcClient, selfRpcId) {
   var that = {},
+      is_initializing = false,
       session_id,
       controller,
       user_limit = 0;
@@ -36,13 +37,27 @@ module.exports = function (rpcClient, selfRpcId) {
       rpcReq = require('./rpcRequest')(rpcChannel);
 
   var initSession = function(sessionId) {
-    if (session_id !== undefined) {
+    if (is_initializing) {
+      return new Promise(function(resolve, reject) {
+        var interval = setInterval(function() {
+          if (!is_initializing) {
+            clearInterval(interval);
+            if (session_id === sessionId) {
+              resolve('ok');
+            } else {
+              reject('session initialization failed');
+            }
+          }
+        }, 50);
+      });
+    } else if (session_id !== undefined) {
       if (session_id !== sessionId) {
         return Promise.reject('session id clash');
       } else {
         return Promise.resolve('ok');
       }
     } else {
+      is_initializing = true;
       return rpcReq.getSessionConfig('nuve'/*FIXME: hard coded*/, sessionId)
         .then(function(config) {
             var room_config = config;
@@ -50,6 +65,7 @@ module.exports = function (rpcClient, selfRpcId) {
             user_limit = room_config.userLimit;
             if (user_limit === 0) {
               log.error('Room', roomID, 'disabled');
+              is_initializing = false;
               return Promise.reject('Room' + roomID + 'disabled');
             }
             log.debug('initializing session:', sessionId, 'got config:', config);
@@ -67,6 +83,7 @@ module.exports = function (rpcClient, selfRpcId) {
                 }, function (resolutions) {
                   log.debug('room controller init ok');
                   session_id = sessionId;
+                  is_initializing = false;
                   resolve('ok');
                   if (room_config.enableMixing) {
                     var mixed_stream = new ST.Stream({
@@ -87,11 +104,13 @@ module.exports = function (rpcClient, selfRpcId) {
                   }
                 }, function (reason) {
                   log.error('controller init failed.', reason);
+                  is_initializing = false;
                   reject('controller init failed. reason: ' + reason);
                 });
             });
         }, function(err) {
           log.error('Init session failed, reason:', err);
+          is_initializing = false;
           return Promise.reject(err);
         });
     }
