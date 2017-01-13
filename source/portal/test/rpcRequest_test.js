@@ -103,7 +103,8 @@ describe('rpcRequest.publish', function() {
         expect(mockRpcChannel.makeRPC.getCall(0).args[2][0]).to.equal('connectionId');
         expect(mockRpcChannel.makeRPC.getCall(0).args[2][1]).to.equal('connectionType');
         expect(mockRpcChannel.makeRPC.getCall(0).args[2][2]).to.deep.equal({controller: 'rpcIdOfPortal', audio: true, video: {resolution: 'vga', framerate: 30, divice: 'camera'}});
-        expect(mockRpcChannel.makeRPC.getCall(0).args[3]).to.equal(onStatus);
+        expect(mockRpcChannel.makeRPC.getCall(0).args[3]).to.equal(undefined);
+        expect(mockRpcChannel.makeRPC.getCall(0).args[4]).to.equal(onStatus);
       });
   });
 
@@ -146,7 +147,8 @@ describe('rpcRequest.subscribe', function() {
         expect(mockRpcChannel.makeRPC.getCall(0).args[2][0]).to.equal('connectionId');
         expect(mockRpcChannel.makeRPC.getCall(0).args[2][1]).to.equal('connectionType');
         expect(mockRpcChannel.makeRPC.getCall(0).args[2][2]).to.deep.equal({controller: 'rpcIdOfPortal', audio: true, video: {resolution: 'vga', framerate: 30, divice: 'camera'}});
-        expect(mockRpcChannel.makeRPC.getCall(0).args[3]).to.equal(onStatus);
+        expect(mockRpcChannel.makeRPC.getCall(0).args[3]).to.equal(undefined);
+        expect(mockRpcChannel.makeRPC.getCall(0).args[4]).to.equal(onStatus);
       });
   });
 
@@ -184,7 +186,7 @@ describe('rpcRequest.pub2Session', function() {
         expect(result).to.deep.equal('ok');
         expect(mockRpcChannel.makeRPC.getCall(0).args).to.deep.equal(['rpcIdOfController',
                                                                       'publish',
-                                                                      ['participantId', 'streamId', 'accessNode', {audio: {codecs: ['pcmu', 'opus']}, video: {codecs: ['vp8', 'h264'], resolution: 'vga', framerate: 30, divice: 'camera'}}, false]]);
+                                                                      ['participantId', 'streamId', 'accessNode', {audio: {codecs: ['pcmu', 'opus']}, video: {codecs: ['vp8', 'h264'], resolution: 'vga', framerate: 30, divice: 'camera'}}, false], 6000]);
         return req.pub2Session('rpcIdOfController',
                               'participantId',
                               'streamId2',
@@ -195,7 +197,7 @@ describe('rpcRequest.pub2Session', function() {
             expect(result).to.deep.equal('ok');
             expect(mockRpcChannel.makeRPC.getCall(1).args).to.deep.equal(['rpcIdOfController',
                                                                           'publish',
-                                                                          ['participantId', 'streamId2', 'accessNode', {audio: {codecs: ['pcmu', 'opus']}, video: {codecs: ['vp8', 'h264'], resolution: 'vga', framerate: 30, divice: 'camera'}}, true]]);
+                                                                          ['participantId', 'streamId2', 'accessNode', {audio: {codecs: ['pcmu', 'opus']}, video: {codecs: ['vp8', 'h264'], resolution: 'vga', framerate: 30, divice: 'camera'}}, true], 6000]);
           });
       });
   });
@@ -235,7 +237,7 @@ describe('rpcRequest.sub2Session', function() {
         expect(result).to.deep.equal('ok');
         expect(mockRpcChannel.makeRPC.getCall(0).args).to.deep.equal(['rpcIdOfController',
                                                                       'subscribe',
-                                                                      ['participantId', 'subscriptionId', 'accessNode', subscription_description]]);
+                                                                      ['participantId', 'subscriptionId', 'accessNode', subscription_description], 6000]);
       });
   });
 
@@ -315,7 +317,7 @@ describe('rpcRequest.tokenLogin/join/onConnectionSignalling/mix/unmix/setVideoBi
 
     var join_result = {participants: [],
                        streams: []};
-    mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'join', ['sessionId', {id: 'participantId', name: 'UserName', role: 'UserRole', portal: 'portalRpcId'}]).returns(Promise.resolve(join_result));
+    mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'join', ['sessionId', {id: 'participantId', name: 'UserName', role: 'UserRole', portal: 'portalRpcId'}], 6000).returns(Promise.resolve(join_result));
     var join = req.join('rpcIdOfController', 'sessionId', {id: 'participantId', name: 'UserName', role: 'UserRole', portal: 'portalRpcId'});
 
     mockRpcChannel.makeRPC.withArgs('rpcIdOfAccessNode',
@@ -323,31 +325,34 @@ describe('rpcRequest.tokenLogin/join/onConnectionSignalling/mix/unmix/setVideoBi
                                     ['connectionId', {type: 'offer', sdp: 'offerSDPString'}]).returns(Promise.resolve('ok'));
     var onConnectionSignalling = req.onConnectionSignalling('rpcIdOfAccessNode', 'connectionId', {type: 'offer', sdp: 'offerSDPString'});
 
-    mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'mix', ['participantId', 'streamId']).returns(Promise.resolve('ok'));
+    mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'mix', ['participantId', 'streamId'], 4000).returns(Promise.resolve('ok'));
     var mix = req.mix('rpcIdOfController', 'participantId', 'streamId');
 
-    mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'unmix', ['participantId', 'streamId']).returns(Promise.resolve('ok'));
+    mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'unmix', ['participantId', 'streamId'], 4000).returns(Promise.resolve('ok'));
     var unmix = req.unmix('rpcIdOfController', 'participantId', 'streamId');
 
     mockRpcChannel.makeRPC.withArgs('rpcIdOfAccessNode', 'setVideoBitrate', ['connectionId', 500]).returns(Promise.resolve('ok'));
     var setVideoBitrate = req.setVideoBitrate('rpcIdOfAccessNode', 'connectionId', 500);
 
-    mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'updateStream', ['streamId', 'video', 'active']).returns(Promise.resolve('ok'));
+    mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'updateStream', ['streamId', 'video', 'active'], 4000).returns(Promise.resolve('ok'));
     var updateStream = req.updateStream('rpcIdOfController', 'streamId', 'video', 'active');
 
     mockRpcChannel.makeRPC.withArgs('rpcIdOfAccessNode', 'mediaOnOff', ['connectionId', 'video', 'in', 'off']).returns(Promise.resolve('ok'));
     var mediaOnOff = req.mediaOnOff('rpcIdOfAccessNode', 'connectionId', 'video', 'in', 'off');
 
-    mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'setMute', ['streamId', true]).returns(Promise.resolve('ok'));
+    mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'setMute', ['streamId', true], 4000).returns(Promise.resolve('ok'));
     var setMute = req.setMute('rpcIdOfController', 'streamId', true);
 
-    mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'getRegion', ['subStreamId']).returns(Promise.resolve('regionId1'));
+    mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'setPermission', ['role', 'act', true], 4000).returns(Promise.resolve('ok'));
+    var setPermission = req.setPermission('rpcIdOfController', 'role', 'act', true);
+
+    mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'getRegion', ['subStreamId'], 4000).returns(Promise.resolve('regionId1'));
     var getRegion = req.getRegion('rpcIdOfController', 'subStreamId');
 
-    mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'setRegion', ['subStreamId', 500]).returns(Promise.resolve('ok'));
+    mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'setRegion', ['subStreamId', 500], 4000).returns(Promise.resolve('ok'));
     var setRegion = req.setRegion('rpcIdOfController', 'subStreamId', 500);
 
-    mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'text', ['fromWhom', 'toWhom', 'message body']).returns(Promise.resolve('ok'));
+    mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'text', ['fromWhom', 'toWhom', 'message body'], 4000).returns(Promise.resolve('ok'));
     var text = req.text('rpcIdOfController', 'fromWhom', 'toWhom', 'message body');
 
     return Promise.all([
@@ -360,12 +365,13 @@ describe('rpcRequest.tokenLogin/join/onConnectionSignalling/mix/unmix/setVideoBi
       expect(updateStream).to.become('ok'),
       expect(mediaOnOff).to.become('ok'),
       expect(setMute).to.become('ok'),
+      expect(setPermission).to.become('ok'),
       expect(getRegion).to.become('regionId1'),
       expect(setRegion).to.become('ok'),
       expect(text).to.become('ok')
       ])
       .then(function() {
-        expect(mockRpcChannel.makeRPC.callCount).to.equal(12);
+        expect(mockRpcChannel.makeRPC.callCount).to.equal(13);
       });
   });
 
@@ -385,31 +391,34 @@ describe('rpcRequest.tokenLogin/join/onConnectionSignalling/mix/unmix/setVideoBi
                                     ['connectionId', {type: 'offer', sdp: 'offerSDPString'}]).returns(Promise.reject('error or timeout'));
     var onConnectionSignalling = req.onConnectionSignalling('rpcIdOfAccessNode', 'connectionId', {type: 'offer', sdp: 'offerSDPString'});
 
-    mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'mix', ['participantId', 'streamId']).returns(Promise.reject('timeout'));
+    mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'mix', ['participantId', 'streamId'], 4000).returns(Promise.reject('timeout'));
     var mix = req.mix('rpcIdOfController', 'participantId', 'streamId');
 
-    mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'unmix', ['participantId', 'streamId']).returns(Promise.reject('error'));
+    mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'unmix', ['participantId', 'streamId'], 4000).returns(Promise.reject('error'));
     var unmix = req.unmix('rpcIdOfController', 'participantId', 'streamId');
 
     mockRpcChannel.makeRPC.withArgs('rpcIdOfAccessNode', 'setVideoBitrate', ['connectionId', 500]).returns(Promise.reject('timeout or error'));
     var setVideoBitrate = req.setVideoBitrate('rpcIdOfAccessNode', 'connectionId', 500);
 
-    mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'updateStream', ['streamId', 'video', 'active']).returns(Promise.reject('timeout or error'));
+    mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'updateStream', ['streamId', 'video', 'active'], 4000).returns(Promise.reject('timeout or error'));
     var updateStream = req.updateStream('rpcIdOfController', 'streamId', 'video', 'active');
 
     mockRpcChannel.makeRPC.withArgs('rpcIdOfAccessNode', 'mediaOnOff', ['connectionId', 'video', 'in', 'off']).returns(Promise.reject('timeout or error'));
     var mediaOnOff = req.mediaOnOff('rpcIdOfAccessNode', 'connectionId', 'video', 'in', 'off');
 
-    mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'setMute', ['streamId', true]).returns(Promise.reject('timeout or error'));
+    mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'setMute', ['streamId', true], 4000).returns(Promise.reject('timeout or error'));
     var setMute = req.setMute('rpcIdOfController', 'streamId', true);
 
-    mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'getRegion', ['subStreamId']).returns(Promise.reject('no such a sub-stream'));
+    mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'setPermission', ['role', 'act', true], 4000).returns(Promise.reject('timeout or error'));
+    var setPermission = req.setPermission('rpcIdOfController', 'role', 'act', true);
+
+    mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'getRegion', ['subStreamId'], 4000).returns(Promise.reject('no such a sub-stream'));
     var getRegion = req.getRegion('rpcIdOfController', 'subStreamId');
 
-    mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'setRegion', ['subStreamId', 500]).returns(Promise.reject('some error'));
+    mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'setRegion', ['subStreamId', 500], 4000).returns(Promise.reject('some error'));
     var setRegion = req.setRegion('rpcIdOfController', 'subStreamId', 500);
 
-    mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'text', ['fromWhom', 'toWhom', 'message body']).returns(Promise.reject('timeout or error'));
+    mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'text', ['fromWhom', 'toWhom', 'message body'], 4000).returns(Promise.reject('timeout or error'));
     var text = req.text('rpcIdOfController', 'fromWhom', 'toWhom', 'message body');
 
     return Promise.all([
@@ -422,12 +431,13 @@ describe('rpcRequest.tokenLogin/join/onConnectionSignalling/mix/unmix/setVideoBi
       expect(updateStream).to.be.rejectedWith('timeout or error'),
       expect(mediaOnOff).to.be.rejectedWith('timeout or error'),
       expect(setMute).to.be.rejectedWith('timeout or error'),
+      expect(setPermission).to.be.rejectedWith('timeout or error'),
       expect(getRegion).to.be.rejectedWith('no such a sub-stream'),
       expect(setRegion).to.be.rejectedWith('some error'),
       expect(text).to.be.rejectedWith('timeout or error')
       ])
       .then(function() {
-        expect(mockRpcChannel.makeRPC.callCount).to.equal(12);
+        expect(mockRpcChannel.makeRPC.callCount).to.equal(13);
       });
   });
 });

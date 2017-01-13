@@ -72,7 +72,7 @@ var rpcClient = function(bus, conn, on_ready, on_failure) {
         });
     }, on_failure);
 
-    handler.remoteCall = function(to, method, args, callbacks) {
+    handler.remoteCall = function(to, method, args, callbacks, timeout) {
         log.debug('remoteCall, corrID:', corrID, 'to:', to, 'method:', method);
         if (ready) {
             var corr_id = corrID++;
@@ -86,7 +86,7 @@ var rpcClient = function(bus, conn, on_ready, on_failure) {
                     }
                     delete call_map[corr_id];
                 }
-            }, TIMEOUT);
+            }, timeout || TIMEOUT);
 
             exc.publish(to, {method: method, args: args, corrID: corr_id, replyTo: reply_q.name});
         } else {

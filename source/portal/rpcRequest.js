@@ -16,7 +16,7 @@ var RpcRequest = function(rpcChannel) {
   };
 
   that.join = function(controller, sessionId, participant) {
-    return rpcChannel.makeRPC(controller, 'join', [sessionId, participant]);
+    return rpcChannel.makeRPC(controller, 'join', [sessionId, participant], 6000);
   };
 
   that.leave = function(controller, participantId) {
@@ -40,7 +40,7 @@ var RpcRequest = function(rpcChannel) {
   };
 
   that.publish = function(accessNode, connectionId, connectionType, Options, onConnectionStatus) {
-    return rpcChannel.makeRPC(accessNode, 'publish', [connectionId, connectionType, Options], onConnectionStatus);
+    return rpcChannel.makeRPC(accessNode, 'publish', [connectionId, connectionType, Options], undefined, onConnectionStatus);
   };
 
   that.unpublish = function(accessNode, connectionId) {
@@ -49,7 +49,7 @@ var RpcRequest = function(rpcChannel) {
   };
 
   that.subscribe = function(accessNode, connectionId, connectionType, Options, onConnectionStatus) {
-    return rpcChannel.makeRPC(accessNode, 'subscribe', [connectionId, connectionType, Options], onConnectionStatus);
+    return rpcChannel.makeRPC(accessNode, 'subscribe', [connectionId, connectionType, Options], undefined, onConnectionStatus);
   };
 
   that.unsubscribe = function(accessNode, connectionId) {
@@ -62,7 +62,7 @@ var RpcRequest = function(rpcChannel) {
   };
 
   that.pub2Session = function(controller, participantId, streamId, accessNode, streamDescription, notMix) {
-    return rpcChannel.makeRPC(controller, 'publish', [participantId, streamId, accessNode, streamDescription, !!notMix]);
+    return rpcChannel.makeRPC(controller, 'publish', [participantId, streamId, accessNode, streamDescription, !!notMix], 6000);
   };
 
   that.unpub2Session = function(controller, participantId, streamId) {
@@ -71,7 +71,7 @@ var RpcRequest = function(rpcChannel) {
   };
 
   that.sub2Session = function(controller, participantId, subscriptionId, accessNode, subscriptionDescription) {
-    return rpcChannel.makeRPC(controller, 'subscribe', [participantId, subscriptionId, accessNode, subscriptionDescription]);
+    return rpcChannel.makeRPC(controller, 'subscribe', [participantId, subscriptionId, accessNode, subscriptionDescription], 6000);
   };
 
   that.unsub2Session = function(controller, participantId, subscriptionId) {
@@ -80,15 +80,15 @@ var RpcRequest = function(rpcChannel) {
   };
 
   that.mix = function(controller, participantId, streamId) {
-    return rpcChannel.makeRPC(controller, 'mix', [participantId, streamId]);
+    return rpcChannel.makeRPC(controller, 'mix', [participantId, streamId], 4000);
   };
 
   that.unmix = function(controller, participantId, streamId) {
-    return rpcChannel.makeRPC(controller, 'unmix', [participantId, streamId]);
+    return rpcChannel.makeRPC(controller, 'unmix', [participantId, streamId], 4000);
   };
 
   that.updateStream = function(controller, streamId, track, status) {
-    return rpcChannel.makeRPC(controller, 'updateStream', [streamId, track, status]);
+    return rpcChannel.makeRPC(controller, 'updateStream', [streamId, track, status], 4000);
   };
 
   that.setVideoBitrate = function(accessNode, connectionId, bitrate) {
@@ -100,23 +100,23 @@ var RpcRequest = function(rpcChannel) {
   };
 
   that.setMute = function(controller, streamId, muted) {
-    return rpcChannel.makeRPC(controller, 'setMute', [streamId, muted]);
+    return rpcChannel.makeRPC(controller, 'setMute', [streamId, muted], 4000);
   };
 
   that.setPermission = function(controller, targetId, act, value) {
-    return rpcChannel.makeRPC(controller, 'setPermission', [targetId, act, value]);
+    return rpcChannel.makeRPC(controller, 'setPermission', [targetId, act, value], 4000);
   };
 
   that.getRegion = function(controller, subStreamId) {
-    return rpcChannel.makeRPC(controller, 'getRegion', [subStreamId]);
+    return rpcChannel.makeRPC(controller, 'getRegion', [subStreamId], 4000);
   };
 
   that.setRegion = function(controller, subStreamId, regionId) {
-    return rpcChannel.makeRPC(controller, 'setRegion', [subStreamId, regionId]);
+    return rpcChannel.makeRPC(controller, 'setRegion', [subStreamId, regionId], 4000);
   };
 
   that.text = function(controller, fromWhom, toWhom, message) {
-    return rpcChannel.makeRPC(controller, 'text', [fromWhom, toWhom, message]);
+    return rpcChannel.makeRPC(controller, 'text', [fromWhom, toWhom, message], 4000);
   };
 
   return that;
