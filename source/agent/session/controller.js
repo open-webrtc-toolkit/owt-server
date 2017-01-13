@@ -1315,7 +1315,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                 doSubscribe();
             }, on_error);
         } else {
-            on_error('streams do not exist');
+            on_error('streams do not exist or are insufficient');
         }
     };
 

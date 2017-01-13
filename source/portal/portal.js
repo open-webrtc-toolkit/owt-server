@@ -330,7 +330,7 @@ var Portal = function(spec, rpcReq) {
             }
             delete participant.connections[connection_id];
           }
-          onConnectionStatus({type: 'failed', reason: err.message});
+          onConnectionStatus({type: 'failed', reason: (typeof err === 'string' ? err : err.message)});
           return Promise.reject(err);
         });
     };
@@ -543,7 +543,7 @@ var Portal = function(spec, rpcReq) {
             }
             delete participant.connections[connection_id];
           }
-          onConnectionStatus({type: 'failed', reason: err.message});
+          onConnectionStatus({type: 'failed', reason: (typeof err === 'string' ? err : err.message)});
           return Promise.reject(err);
         });
     };
