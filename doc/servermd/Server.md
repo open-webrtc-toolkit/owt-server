@@ -88,7 +88,7 @@ The external stream output (rtsp/rtmp) feature relies on AAC encoder libfdk_aac 
 
  **Table 2-2. Client compatibility**
 Application Name|Google Chrome* 52|Mozilla Firefox* 48|Microsoft Edge* 38.14393|Intel CS for WebRTC Client SDK for Android | Intel CS for WebRTC Client SDK for iOS | Intel CS for WebRTC Client SDK for Windows
---------|--------|--------|--------|--------|--------
+--------|--------|--------|--------|--------|--------|--------
 MCU Client|YES|YES|YES|YES|YES|YES
 Management Console|YES|YES|YES|N/A|N/A|N/A
 
