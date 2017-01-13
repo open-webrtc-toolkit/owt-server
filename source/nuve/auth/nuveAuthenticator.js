@@ -78,12 +78,14 @@ exports.authenticate = function (req, res, next) {
                 key = cipher.decrypt(cipher.k, key);
             }
 
-            // Check if timestam and cnonce are valids in order to avoid duplicate requests.
+            // Check if timestamp and cnonce are valids in order to avoid duplicate requests.
+            /* This will affact concurrent performance under same service.
             if (!checkTimestamp(serv, params)) {
                 log.info('[Auth] Invalid timestamp or cnonce');
                 res.status(401).send({'WWW-Authenticate': challengeReq});
                 return;
             }
+            */
 
             // Check if the signature is valid.
             if (checkSignature(params, key)) {
