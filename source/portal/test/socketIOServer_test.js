@@ -1533,10 +1533,10 @@ describe('Responding to clients.', function() {
           client.emit('startRecorder', options, function(status, data) {
             expect(status).to.equal('success');
             expect(data.recorderId).to.be.a('string');
-            expect(data.path).to.equal('/tmp/room_' + testRoom + '-' + data.recorderId + '.mkv');
+            expect(data.path).to.equal('/tmp/room_' + testRoom + '-' + client.id + '-' + data.recorderId + '.mkv');
             expect(data.host).to.equal('unknown');
             expect(mockPortal.subscribe.getCall(0).args[0]).to.equal(client.id);
-            expect(mockPortal.subscribe.getCall(0).args[1]).to.equal(data.recorderId);
+            expect(mockPortal.subscribe.getCall(0).args[1]).to.equal(client.id + '-' + data.recorderId);
             expect(mockPortal.subscribe.getCall(0).args[2]).to.equal('recording');
             expect(mockPortal.subscribe.getCall(0).args[3]).to.deep.equal({audio: {fromStream: 'targetStreamId1', codecs: ['pcmu']}, video: {fromStream: 'targetStreamId2', codecs: ['vp8']}, path: '/tmp', interval: 1000});
             done();
@@ -1551,7 +1551,7 @@ describe('Responding to clients.', function() {
       mockPortal.unsubscribe.resolves('ok');
 
       client.on('remove_recorder', function(data) {
-        expect(data.id).to.equal(client.id + '-yyyyMMddhhmmssSS');
+        expect(data.id).to.equal('yyyyMMddhhmmssSS');
         done();
       });
 
@@ -1563,7 +1563,7 @@ describe('Responding to clients.', function() {
           var options = {audioStreamId: 'targetStreamId1', recorderId: 'yyyyMMddhhmmssSS', videoStreamId: 'targetStreamId2', audioCodec: 'pcmu', videoCodec: 'vp8', path: '/tmp', interval: 1000};
           client.emit('startRecorder', options, function(status, data) {
             expect(status).to.equal('success');
-            expect(data.recorderId).to.equal(client.id + '-yyyyMMddhhmmssSS');
+            expect(data.recorderId).to.equal('yyyyMMddhhmmssSS');
             observer = mockPortal.subscribe.getCall(0).args[4];
             expect(observer).to.be.a('function');
             observer({type: 'failed', reason: 'write header error'});
@@ -1715,7 +1715,7 @@ describe('Responding to clients.', function() {
             expect(status).to.equal('success');
             expect(data.recorderId).to.equal('recorderid');
             expect(data.host).to.equal('unknown');
-            expect(mockPortal.unsubscribe.getCall(0).args).to.deep.equal([client.id, 'recorderid'])
+            expect(mockPortal.unsubscribe.getCall(0).args).to.deep.equal([client.id, client.id + '-recorderid'])
             done();
           });
         });
@@ -1732,7 +1732,6 @@ describe('Responding to clients.', function() {
           client.emit('stopRecorder', options, function(status, data) {
             expect(status).to.equal('error');
             expect(data).to.have.string('Invalid recorder id');
-            expect(mockPortal.unsubscribe.getCall(0).args).to.deep.equal([client.id, 'recorderid'])
             done();
           });
         });

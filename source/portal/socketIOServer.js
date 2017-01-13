@@ -596,18 +596,19 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
       options.path && (subscription_description.path = options.path);
       subscription_description.interval = (options.interval && options.interval > 0) ? options.interval : -1;
 
-      var subscription_id = participant_id + '-' + (options.recorderId || formatDate(new Date, 'yyyyMMddhhmmssSS'));
+      var recorder_id = (options.recorderId || formatDate(new Date, 'yyyyMMddhhmmssSS'));
+      var subscription_id = participant_id + '-' + recorder_id;
       var recording_file, recorder_added = false;
       return portal.subscribe(participant_id, subscription_id, 'recording', subscription_description, function(status) {
         if (status.type === 'failed') {
           if (recorder_added) {
-            that.notify('remove_recorder', {id: subscription_id});
+            that.notify('remove_recorder', {id: recorder_id});
           } else {
             safeCall(callback, 'error', status.reason);
           }
         } else if (status.type === 'ready') {
           recorder_added = true;
-          safeCall(callback, 'success', {recorderId: subscription_id, path: recording_file, host: 'unknown'});
+          safeCall(callback, 'success', {recorderId: recorder_id, path: recording_file, host: 'unknown'});
         }
       }).then(function(connectionLocality) {
         log.debug('portal.subscribe succeeded, connection locality:', connectionLocality);
@@ -628,7 +629,8 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
         return safeCall(callback, 'error', 'Invalid recorder id');
       }
 
-      return portal.unsubscribe(participant_id, options.recorderId)
+      var subscription_id = (options.recorderId.startsWith(participant_id) ? options.recorderId : participant_id + '-' + options.recorderId);
+      return portal.unsubscribe(participant_id, subscription_id)
       .then(function() {
         safeCall(callback, 'success', {recorderId: options.recorderId, host: 'unknown'});
       }).catch(function(err) {
