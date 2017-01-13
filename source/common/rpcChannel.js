@@ -5,7 +5,7 @@ var RpcChannel = function(amqpClient) {
   var that = {};
   var amqp_client = amqpClient;
 
-  that.makeRPC = function (node, method, args, onStatus) {
+  that.makeRPC = function (node, method, args, timeout, onStatus) {
     return new Promise(function(resolve, reject) {
       var callbacks = {
         callback: function (result, error_reason) {
@@ -24,7 +24,8 @@ var RpcChannel = function(amqpClient) {
         node,
         method,
         args,
-        callbacks
+        callbacks,
+        timeout
       );
     });
   };
