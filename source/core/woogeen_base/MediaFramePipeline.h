@@ -74,6 +74,41 @@ struct Frame {
     MediaSpecInfo   additionalInfo;
 };
 
+inline const char *getFormatStr(const FrameFormat &format) {
+    switch(format) {
+        case FRAME_FORMAT_UNKNOWN:
+            return "UNKNOWN";
+        case FRAME_FORMAT_I420:
+            return "I420";
+        case FRAME_FORMAT_YAMI:
+            return "YAMI";
+        case FRAME_FORMAT_MSDK:
+            return "MSDK";
+        case FRAME_FORMAT_VP8:
+            return "VP8";
+        case FRAME_FORMAT_VP9:
+            return "VP9";
+        case FRAME_FORMAT_H264:
+            return "H264";
+        case FRAME_FORMAT_H265:
+            return "H265";
+        case FRAME_FORMAT_PCM_RAW:
+            return "PCM_RAW";
+        case FRAME_FORMAT_PCMU:
+            return "PCMU";
+        case FRAME_FORMAT_PCMA:
+            return "PCMA";
+        case FRAME_FORMAT_OPUS:
+            return "OPUS";
+        case FRAME_FORMAT_ISAC16:
+            return "ISAC16";
+        case FRAME_FORMAT_ISAC32:
+            return "ISAC32";
+        default:
+            return "INVALID";
+    }
+}
+
 inline bool isAudioFrame(const Frame& frame) {
     return frame.format == FRAME_FORMAT_PCM_RAW
           || frame.format == FRAME_FORMAT_PCMU
