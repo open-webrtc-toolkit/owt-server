@@ -49,24 +49,22 @@ bool VCMFrameDecoder::init(FrameFormat format)
 {
     VideoCodecType codecType = VideoCodecType::kVideoCodecUnknown;
 
+    ELOG_DEBUG_T("Create deocder(%s)", getFormatStr(format));
     switch (format) {
     case FRAME_FORMAT_VP8:
         codecType = VideoCodecType::kVideoCodecVP8;
         m_decoder.reset(VP8Decoder::Create());
-        ELOG_DEBUG("Created VP8 deocder.");
         break;
     case FRAME_FORMAT_VP9:
         codecType = VideoCodecType::kVideoCodecVP9;
         m_decoder.reset(VP9Decoder::Create());
-        ELOG_DEBUG("Created VP9 deocder.");
         break;
     case FRAME_FORMAT_H264:
         codecType = VideoCodecType::kVideoCodecH264;
         m_decoder.reset(H264Decoder::Create());
-        ELOG_DEBUG("Created H.264 deocder.");
         break;
     default:
-        ELOG_ERROR("Unspported video frame format %d", format);
+        ELOG_ERROR_T("Unspported video frame format %d(%s)", format, getFormatStr(format));
         return false;
     }
 
@@ -74,7 +72,7 @@ bool VCMFrameDecoder::init(FrameFormat format)
     codecSettings.codecType = codecType;
 
     if (m_decoder->InitDecode(&codecSettings, 0) != 0) {
-        ELOG_ERROR("Video decoder init faild.");
+        ELOG_ERROR_T("Video decoder init faild.");
         return false;
     }
 
@@ -98,6 +96,9 @@ int32_t VCMFrameDecoder::Decoded(I420VideoFrame& decodedImage)
     frame.additionalInfo.video.width = decodedImage.width();
     frame.additionalInfo.video.height = decodedImage.height();
 
+    ELOG_TRACE_T("deliverFrame, %dx%d",
+            frame.additionalInfo.video.width,
+            frame.additionalInfo.video.height);
     deliverFrame(frame);
     return 0;
 }
@@ -107,14 +108,20 @@ void VCMFrameDecoder::onFrame(const Frame& frame)
     if (!m_needDecode)
         return;
 
+    ELOG_TRACE_T("onFrame(%s), %dx%d, length(%d)",
+            getFormatStr(frame.format),
+            frame.additionalInfo.video.width,
+            frame.additionalInfo.video.height,
+            frame.length
+            );
+
     EncodedImage image(reinterpret_cast<uint8_t*>(frame.payload), frame.length, 0);
     image._frameType = VideoFrameType::kKeyFrame;
     image._completeFrame = true;
     image._timeStamp = frame.timeStamp;
     int ret = m_decoder->Decode(image, false, nullptr, &m_codecInfo);
-
     if (ret != 0) {
-        ELOG_ERROR("Decode frame error: %d", ret);
+        ELOG_ERROR_T("Decode frame error: %d", ret);
         FeedbackMsg msg {.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME};
         deliverFeedbackMsg(msg);
     }

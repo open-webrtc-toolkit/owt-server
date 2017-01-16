@@ -1,20 +1,20 @@
 /*
- * Copyright 2015 Intel Corporation All Rights Reserved. 
- * 
- * The source code contained or described herein and all documents related to the 
- * source code ("Material") are owned by Intel Corporation or its suppliers or 
- * licensors. Title to the Material remains with Intel Corporation or its suppliers 
- * and licensors. The Material contains trade secrets and proprietary and 
- * confidential information of Intel or its suppliers and licensors. The Material 
- * is protected by worldwide copyright and trade secret laws and treaty provisions. 
- * No part of the Material may be used, copied, reproduced, modified, published, 
- * uploaded, posted, transmitted, distributed, or disclosed in any way without 
+ * Copyright 2015 Intel Corporation All Rights Reserved.
+ *
+ * The source code contained or described herein and all documents related to the
+ * source code ("Material") are owned by Intel Corporation or its suppliers or
+ * licensors. Title to the Material remains with Intel Corporation or its suppliers
+ * and licensors. The Material contains trade secrets and proprietary and
+ * confidential information of Intel or its suppliers and licensors. The Material
+ * is protected by worldwide copyright and trade secret laws and treaty provisions.
+ * No part of the Material may be used, copied, reproduced, modified, published,
+ * uploaded, posted, transmitted, distributed, or disclosed in any way without
  * Intel's prior express written permission.
- * 
- * No license under any patent, copyright, trade secret or other intellectual 
- * property right is granted to or conferred upon you by disclosure or delivery of 
- * the Materials, either expressly, by implication, inducement, estoppel or 
- * otherwise. Any license under such intellectual property rights must be express 
+ *
+ * No license under any patent, copyright, trade secret or other intellectual
+ * property right is granted to or conferred upon you by disclosure or delivery of
+ * the Materials, either expressly, by implication, inducement, estoppel or
+ * otherwise. Any license under such intellectual property rights must be express
  * and approved by Intel in writing.
  */
 
@@ -98,28 +98,36 @@ int32_t VCMFrameEncoder::generateStream(uint32_t width, uint32_t height, uint32_
                 OutStream stream = {.width = width, .height = height, .simulcastId = simulcastId, .encodeOut = encodeOut};
                 boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
                 m_streams[m_streamId] = stream;
-                ELOG_DEBUG("generateStream[%p]: {.width=%d, .height=%d}, simulcastId=%d", this, width, height, simulcastId);
+                ELOG_DEBUG_T("generateStream: {.width=%d, .height=%d}, simulcastId=%d", width, height, simulcastId);
                 return m_streamId++;
             }
         }
         if (videoCodec.numberOfSimulcastStreams >= kMaxSimulcastStreams)
             return -1;
     } else {
+        ELOG_DEBUG_T("Create encoder(%s)", getFormatStr(m_encodeFormat));
         switch (m_encodeFormat) {
         case FRAME_FORMAT_VP8:
-            if (VideoCodingModule::Codec(kVideoCodecVP8, &videoCodec) != VCM_OK)
+            if (VideoCodingModule::Codec(kVideoCodecVP8, &videoCodec) != VCM_OK) {
+                ELOG_ERROR_T("Error create encoder(%s)", getFormatStr(m_encodeFormat));
                 return -1;
+            }
             break;
         case FRAME_FORMAT_VP9:
-            if (VideoCodingModule::Codec(kVideoCodecVP9, &videoCodec) != VCM_OK)
+            if (VideoCodingModule::Codec(kVideoCodecVP9, &videoCodec) != VCM_OK) {
+                ELOG_ERROR_T("Error create encoder(%s)", getFormatStr(m_encodeFormat));
                 return -1;
+            }
             break;
         case FRAME_FORMAT_H264:
-            if (VideoCodingModule::Codec(kVideoCodecH264, &videoCodec) != VCM_OK)
+            if (VideoCodingModule::Codec(kVideoCodecH264, &videoCodec) != VCM_OK) {
+                ELOG_ERROR_T("Error create encoder(%s)", getFormatStr(m_encodeFormat));
                 return -1;
+            }
             break;
         case FRAME_FORMAT_I420:
         default:
+            ELOG_ERROR_T("Invalid encoder(%s)", getFormatStr(m_encodeFormat));
             return -1;
         }
     }
@@ -169,8 +177,8 @@ int32_t VCMFrameEncoder::generateStream(uint32_t width, uint32_t height, uint32_
     int32_t ret = m_vcm->RegisterSendCodec(&videoCodec, 1, 1400);
     boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
     if (ret != VCM_OK) {
-        ELOG_ERROR("RegisterSendCodec error: %d", ret);
-        ELOG_DEBUG("Try fallback to previous video codec");
+        ELOG_ERROR_T("RegisterSendCodec error: %d", ret);
+        ELOG_DEBUG_T("Try fallback to previous video codec");
         m_vcm->RegisterSendCodec(&fbVideoCodec, 1, 1400);
         return -1;
     } else {
@@ -187,13 +195,15 @@ int32_t VCMFrameEncoder::generateStream(uint32_t width, uint32_t height, uint32_
     encodeOut.reset(new EncodeOut(m_streamId, this, dest));
     OutStream stream = {.width = width, .height = height, .simulcastId = simulcastId, .encodeOut = encodeOut};
     m_streams[m_streamId] = stream;
-    ELOG_DEBUG("generateStream[%p]: {.width=%d, .height=%d, .bitrateKbps=%d}, simulcastId=%d", this, width, height, bitrateKbps, simulcastId);
+    ELOG_DEBUG_T("generateStream: {.width=%d, .height=%d, .bitrateKbps=%d}, simulcastId=%d", width, height, bitrateKbps, simulcastId);
     return m_streamId++;
 }
 
 void VCMFrameEncoder::degenerateStream(int32_t streamId)
 {
     boost::upgrade_lock<boost::shared_mutex> lock(m_mutex);
+    ELOG_DEBUG_T("degenerateStream(%d)", streamId);
+
     auto it = m_streams.find(streamId);
     if (it != m_streams.end()) {
         boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
@@ -211,6 +221,8 @@ void VCMFrameEncoder::setBitrate(unsigned short kbps, int32_t streamId)
 void VCMFrameEncoder::requestKeyFrame(int32_t streamId)
 {
     boost::shared_lock<boost::shared_mutex> lock(m_mutex);
+    ELOG_DEBUG_T("requestKeyFrame(%d)", streamId);
+
     auto it = m_streams.find(streamId);
     if (it != m_streams.end()) {
         m_vcm->IntraFrameRequest(it->second.simulcastId);
@@ -318,6 +330,13 @@ int32_t VCMFrameEncoder::SendData(
         frame.timeStamp = encoded_image._timeStamp;
         frame.additionalInfo.video.width = encoded_image._encodedWidth;
         frame.additionalInfo.video.height = encoded_image._encodedHeight;
+
+        ELOG_TRACE_T("SendData(%d), %s, %dx%d, length(%d)",
+                rtpVideoHdr->simulcastIdx,
+                getFormatStr(frame.format),
+                frame.additionalInfo.video.width,
+                frame.additionalInfo.video.height ,
+                frame.length);
 
         auto it = m_streams.begin();
         for (; it != m_streams.end(); ++it) {
