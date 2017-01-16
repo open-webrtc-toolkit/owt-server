@@ -1198,7 +1198,12 @@ describe('Responding to clients.', function() {
             simulateStubResponse(mockPortal.subscribe, 1, 4, {type: 'initializing'});
             client.emit('subscribe', options1, undefined, function(status, id) {
               expect(mockPortal.subscribe.getCall(1).args[3]).to.deep.equal({audio: {fromStream: 'targetStreamId1'}, video: {fromStream: 'targetStreamId1', resolution: 'vga', quality_level: 'standard'}});
-              done();
+              var options2 = {streamId: 'targetStreamId2', video: {resolution: 'vga', quality_level: 'standard'}};
+              simulateStubResponse(mockPortal.subscribe, 2, 4, {type: 'initializing'});
+              client.emit('subscribe', options2, undefined, function(status, id) {
+                expect(mockPortal.subscribe.getCall(2).args[3]).to.deep.equal({audio: {fromStream: 'targetStreamId2'}, video: {fromStream: 'targetStreamId2', resolution: 'vga', quality_level: 'standard'}});
+                done();
+              });
             });
           });
         });
