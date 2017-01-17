@@ -447,7 +447,7 @@ module.exports = function (rpcC, spec) {
 
             teardownCall(client_id);
             // recreate a sip call connection
-            calls[client_id].conn.close({input: true, output: true});
+            calls[client_id].conn && calls[client_id].conn.close({input: true, output: true});
             calls[client_id].conn = new SipCallConnection({gateway: gateway, clientID: client_id, audio : info.audio, video : info.video,
                 red : support_red, ulpfec : support_ulpfec});
             return setupCall(client_id, info);
@@ -475,7 +475,7 @@ module.exports = function (rpcC, spec) {
         log.info('CallClosed:', client_id);
         if (calls[client_id]) {
             teardownCall(client_id);
-            calls[client_id].conn.close({input: true, output: true});
+            calls[client_id].conn && calls[client_id].conn.close({input: true, output: true});
             do_leave(calls[client_id].session_controller, client_id);
             delete calls[client_id];
         }
@@ -755,6 +755,22 @@ module.exports = function (rpcC, spec) {
     that.close = function() {
         if (gateway) {
             this.clean();
+        }
+    };
+
+    that.onFaultDetected = function (message) {
+        if (message.purpose === 'session') {
+            for (var client_id in calls) {
+                if (message.purpose === 'session' &&
+                    calls[client_id].session_controller &&
+                    ((message.type === 'node' && message.id === calls[client_id].session_controller) || (message.type === 'worker' && calls[client_id].session_controller.startsWith(message.id)))){
+                    log.error('Fault detected on session_controller:', message.id, 'of call:', client_id , ', terminate it');
+                    gateway.hangup(client_id);
+                    teardownCall(client_id);
+                    calls[client_id].conn && calls[client_id].conn.close({input: true, output: true});
+                    delete calls[client_id];
+                }
+            }
         }
     };
 
