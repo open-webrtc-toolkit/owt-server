@@ -1,4 +1,4 @@
-WebRTC Conference Management RESTAPI
+Intel CS for WebRTC Management REST API
 -------
 # 1 Introduction {#RESTAPIsection1}
 Intel WebRTC solution provides a set of REST (Representational State Transfer) API for conference management. Manager clients can be implemented by different programming languages through these APIs.
@@ -98,9 +98,9 @@ Resources:
  - /services
  - /services/{serviceId}
 
-<b>/services</b>
-GET
--------------------------------------
+### /services
+#### GET
+___
 Read all the services.
 
 Parameters
@@ -112,8 +112,8 @@ Content - List of service data.
 Example: [service0, ...]
 (elements in list are of service data model.)
 
-POST
--------------------------------------
+#### POST
+___
 Create a service.
 
 Parameters
@@ -132,9 +132,9 @@ Response Body
 Type - JSON.
 Content - A service data model.
 
-<b>/services/{serviceId}</b>
-GET
--------------------------------------
+### /services/{serviceId}
+#### GET
+___
 Read the service specified by ID.
 
 Parameters
@@ -147,8 +147,8 @@ Response Body
 Type - JSON.
 Content - The required service data model.
 
-DELETE
--------------------------------------
+#### DELETE
+___
 Delete the service specified by ID.
 
 Parameters
@@ -203,9 +203,9 @@ Resources:
  - /rooms
  - /rooms/{roomId}
 
-<b>/rooms</b>
-GET
--------------------------------------
+### /rooms
+#### GET
+___
 Read all the rooms using current service's authentication.
 
 Parameters
@@ -217,8 +217,8 @@ Content - List of room data.
 Example: [room0, ...]
 (elements in list are of room data model.)
 
-POST
--------------------------------------
+#### POST
+___
 Create a room using current service's authentication.
 
 Parameters
@@ -267,9 +267,9 @@ Response Body
 Type - JSON.
 Content - A room data model represent the room created.
 
-<b>/rooms/{roomId}</b>
-GET
--------------------------------------
+### /rooms/{roomId}
+#### GET
+___
 Read the room specified by ID under current service.
 
 Parameters
@@ -282,8 +282,8 @@ Response Body
 Type - JSON.
 Content - The required room data model.
 
-PUT
--------------------------------------
+#### PUT
+___
 Update the room specified by ID under current service.
 
 Parameters
@@ -297,8 +297,8 @@ Type - JSON.
 Content - The updated room data model.
 
 
-DELETE
--------------------------------------
+#### DELETE
+___
 Delete the room specified by ID under current service.
 
 Parameters
@@ -330,9 +330,9 @@ Resources:
  - /rooms/{roomId}/tokens
  - /rooms/{roomId}/tokens/{type}
 
-<b>/rooms/{roomId}/tokens</b>
-POST
--------------------------------------
+### /rooms/{roomId}/tokens
+#### POST
+___
 Create a socket.io token for specified room using current service's authentication. Note that "mauth_username" and "mauth_role" should be added in "Authorization" field of the request header to determine the user name and role (Refer to section "Authentication and Authorization").
 
 Parameters
@@ -345,9 +345,9 @@ Response Body
 Type - Text.
 Content - Base64 encrypted text of JSON token data model.
 
-<b>/rooms/{roomId}/tokens/{type}</b>
-POST
--------------------------------------
+### /rooms/{roomId}/tokens/{type}
+#### POST
+___
 Create a socket.io or rest token for specified room using current service's authentication. Similar to the POST /rooms/{roomId}/tokens, "mauth_username" and "mauth_role" are also required in "Authorization" header.
 
 Parameters
@@ -380,9 +380,9 @@ Resources:
  - /rooms/{roomId}/users
  - /rooms/{roomId}/users/{userId}
 
-<b>/rooms/{roomId}/users</b>
-GET
--------------------------------------
+### /rooms/{roomId}/users
+#### GET
+___
 Read all the users in the specified room using current service's authentication.
 
 Parameters
@@ -397,9 +397,9 @@ Content - List of user data.
 Example: [user0, ...]
 (elements in list are of user data model.)
 
-<b>/rooms/{roomId}/users/{userId}</b>
-GET
--------------------------------------
+### /rooms/{roomId}/users/{userId}
+#### GET
+___
 Read the user specified by ID in the specified room under current service.
 
 Parameters
@@ -413,8 +413,8 @@ Response Body
 Type - JSON.
 Content - The required user data model.
 
-DELETE
--------------------------------------
+#### DELETE
+___
 Delete the room specified by ID under current service.
 
 Parameters
