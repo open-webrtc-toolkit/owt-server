@@ -43,6 +43,8 @@ pack_runtime() {
 
 pack_portal() {
   cp -av ${SOURCE}/portal ${WOOGEEN_DIST}/
+  # Remove test in dist portal if ENCRYPT
+  ${ENCRYPT} && rm -rf ${WOOGEEN_DIST}/portal/test
   mkdir -p ${WOOGEEN_DIST}/portal/cert
   cp -av ${ROOT}/cert/{*.pfx,.woogeen.keystore} ${WOOGEEN_DIST}/portal/cert/
   cp -av {${this},${WOOGEEN_DIST}/portal}/initcert.js && chmod +x ${WOOGEEN_DIST}/portal/initcert.js
