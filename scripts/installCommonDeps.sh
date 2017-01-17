@@ -251,7 +251,7 @@ install_node_tools() {
 
 install_libre() {
   local LIBRE_DIR="${ROOT}/third_party/libre-0.4.16"
-  cd "${LIBRE_DIR}" && make clean && make
+  cd "${LIBRE_DIR}" && make clean && make RELEASE=1
 }
 
 install_usrsctp() {
