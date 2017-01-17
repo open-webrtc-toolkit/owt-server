@@ -550,7 +550,7 @@ module.exports = function (rpcC, spec) {
             log.debug('force leaving room ', room_id, ' user: ', client_id);
             gateway.hangup(client_id);
             teardownCall(client_id);
-            calls[client_id].conn.close({input: true, output: true});
+            calls[client_id].conn && calls[client_id].conn.close({input: true, output: true});
             do_leave(calls[client_id].session_controller, client_id);
             delete calls[client_id];
         }
