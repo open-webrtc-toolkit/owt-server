@@ -99,5 +99,12 @@ install_deps
 
 if ${HARDWARE_DEPS} ; then
   enable_intel_gpu_top
+else
+  # Install if no input for 15s
+  read -t 15 -p "Installing OpenH264 Video Codec Library provided by Cisco Systems, Inc? [Yes/no]" yn
+  case $yn in
+    [Yy]* ) . ${this}/install_openh264.sh;;
+    [Nn]* ) ;;
+    * ) echo && . ${this}/install_openh264.sh;;
+  esac
 fi
-
