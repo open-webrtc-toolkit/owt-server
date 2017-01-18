@@ -23,12 +23,8 @@
 #endif
 
 #include "VideoMixerWrapper.h"
-#include "logger.h"
-
 
 using namespace v8;
-
-DEFINE_LOGGER(VideoMixer, "VideoMixerWrap");
 
 Persistent<Function> VideoMixer::constructor;
 VideoMixer::VideoMixer() {};
@@ -224,8 +220,6 @@ void VideoMixer::getCurrentRegions(const v8::FunctionCallbackInfo<v8::Value>& ar
   if (currentRegions && currentRegions->size()) {
     // Construct a js array
     Local<Array> regionArray = Array::New(isolate, currentRegions->size());
-
-    ELOG_WARN("Current Regions in Layout:%lu\n", currentRegions->size());
 
     int arrayPos = 0;
     for (std::map<std::string, mcu::Region>::iterator it = currentRegions->begin(); it != currentRegions->end(); it++) {
