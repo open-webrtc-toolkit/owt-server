@@ -71,14 +71,15 @@ pack_agents() {
     cp -av ${AGENT}/agent.toml ${WOOGEEN_DIST}/${AGENT}_agent/
     cp -av ${AGENT}/*.sh ${WOOGEEN_DIST}/${AGENT}_agent/
     pack_addons "${WOOGEEN_DIST}/${AGENT}_agent"
-    mkdir -p ${WOOGEEN_DIST}/${AGENT}_agent/cert
-    cp -av ${ROOT}/cert/{*.pfx,.woogeen.keystore} ${WOOGEEN_DIST}/${AGENT}_agent/cert/
-    cp -av {${this},${WOOGEEN_DIST}/${AGENT}_agent}/initcert.js && chmod +x ${WOOGEEN_DIST}/${AGENT}_agent/initcert.js
     cp -av ${ROOT}/scripts/detectOS.sh ${WOOGEEN_DIST}/${AGENT}_agent/detectOS.sh
   done
 
-  # remove cert in webrtc_agent
-  rm ${WOOGEEN_DIST}/webrtc_agent/cert/*
+  # Only cert directory in webrtc agent
+  mkdir -p ${WOOGEEN_DIST}/webrtc_agent/cert
+  # Because Edge cannot accept a large cert, we do not copy the pfx into webrtc agent.
+  # Because Bug 1361, webrtc agent cannot work without .woogeen.keystore in cert directory, we copy it.
+  cp -av ${ROOT}/cert/.woogeen.keystore ${WOOGEEN_DIST}/webrtc_agent/cert/
+  cp -av {${this},${WOOGEEN_DIST}/webrtc_agent}/initcert.js && chmod +x ${WOOGEEN_DIST}/webrtc_agent/initcert.js
 
   popd >/dev/null
 }
