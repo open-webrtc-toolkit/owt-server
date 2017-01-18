@@ -32,7 +32,6 @@
  */
 class VideoMixer : public node::ObjectWrap {
  public:
-  DECLARE_LOGGER();
   static void Init(v8::Handle<v8::Object>, v8::Handle<v8::Object>);
   mcu::VideoMixer* me;
 
