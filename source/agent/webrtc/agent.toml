@@ -33,7 +33,7 @@ host = "localhost" #default: "localhost"
 port = 5672 #default: 5672
 
 [internal]
-# The internal listening port range
+# The internal listening port range, only works for TCP now
 maxport = 0 #default: 0
 minport = 0 #default: 0
 
