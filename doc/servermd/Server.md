@@ -653,7 +653,7 @@ Due to server-side APIs' security consideration, API calls from a service should
 ## 4.1 Introduction {#Conferencesection4_1}
 The MCU sample application server is a Web application demo that shows how to host audio/video conference services powered by the Intel CS for WebRTC MCU. The sample application server is based on MCU runtime components. Refer to [Section 2](#Conferencesection2) of this guide, for system requirements and launch/stop instructions.
 
-The source code of the sample application is in Release-<Version>/extras/basic-example/.
+The source code of the sample application is in Release-<Version>/extras/basic_example/.
 
 This section explains how to start a conference and then connect to a conference using different qualifiers, such as a specific video resolution.
 
