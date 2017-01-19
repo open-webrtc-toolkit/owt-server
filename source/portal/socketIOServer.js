@@ -626,7 +626,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
         return safeCall(callback, 'error', 'unauthorized');
       }
 
-      if (!(options.recorderId === undefined || isValidIdString(options.recorderId))) {
+      if (options.recorderId === undefined || !isValidIdString(options.recorderId)) {
         return safeCall(callback, 'error', 'Invalid recorder id');
       }
 
