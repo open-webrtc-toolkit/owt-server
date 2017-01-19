@@ -25,7 +25,6 @@ ROOT=`cd "${this}/.."; pwd`
 export WOOGEEN_HOME=${ROOT}
 
 LogDir=${WOOGEEN_HOME}/logs
-DB_URL='localhost/nuvedb'
 
 usage() {
   echo
@@ -35,7 +34,6 @@ usage() {
   echo
   echo "Usage:"
   echo "    --deps (default: false)             install dependent components and libraries before mongodb start-up"
-  echo "    --dburl=HOST/DBNAME                 specify mongodb URL other than default \`localhost/nuvedb'"
   echo "    --help                              print this help"
   echo
 }
@@ -93,10 +91,6 @@ while [[ $# -gt 0 ]]; do
   case $1 in
     *(-)deps )
       INSTALL_DEPS=true
-      ;;
-    *(-)dburl=* )
-      DB_URL=$(echo $1 | cut -d '=' -f 2)
-      echo -e "\x1b[36musing $DB_URL\x1b[0m"
       ;;
     *(-)help )
       usage
