@@ -29,10 +29,17 @@ DEFINE_LOGGER(BufferManager, "woogeen.BufferManager");
 BufferManager::BufferManager(uint32_t maxInput, uint32_t width, uint32_t height)
     : m_maxInput(maxInput)
 {
+    if (m_maxInput > MAX_CAPACITY) {
+        ELOG_ERROR("Input(%d) exceed max capacity(%d)", m_maxInput, MAX_CAPACITY);
+        assert(false);
+        return;
+    }
+
     for (uint32_t i = 0; i < m_maxInput * 2; i++) {
         webrtc::I420VideoFrame* buffer = new webrtc::I420VideoFrame();
         buffer->CreateEmptyFrame(width, height, width, width / 2, width / 2);
         m_freeQ.push(buffer);
+        m_frames.push(buffer);
     }
 
     m_busyQ = new volatile webrtc::I420VideoFrame*[m_maxInput];
@@ -47,7 +54,7 @@ BufferManager::BufferManager(uint32_t maxInput, uint32_t width, uint32_t height)
 BufferManager::~BufferManager()
 {
     webrtc::I420VideoFrame* buffer = nullptr;
-    while (m_freeQ.pop(buffer))
+    while (m_frames.pop(buffer))
         delete buffer;
     delete [] m_busyQ;
     ELOG_DEBUG("BufferManager destroyed")

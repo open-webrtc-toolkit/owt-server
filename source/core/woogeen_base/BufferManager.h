@@ -52,6 +52,8 @@ namespace woogeen_base {
 class BufferManager {
     DECLARE_LOGGER();
 
+    static const uint32_t MAX_CAPACITY = 64;
+
 public:
     BufferManager(uint32_t maxInput, uint32_t width, uint32_t height);
     ~BufferManager();
@@ -97,9 +99,11 @@ private:
 
     // frames in freeQ can be used to copy decoded frame data by the decoder thread
 #if BOOST_LOCKFREE_QUEUE
-    boost::lockfree::queue<webrtc::I420VideoFrame*, boost::lockfree::capacity<32>> m_freeQ;
+    boost::lockfree::queue<webrtc::I420VideoFrame*, boost::lockfree::capacity<MAX_CAPACITY * 2>> m_freeQ;
+    boost::lockfree::queue<webrtc::I420VideoFrame*, boost::lockfree::capacity<MAX_CAPACITY * 2>> m_frames;
 #else
     SharedQueue<webrtc::I420VideoFrame*> m_freeQ;
+    SharedQueue<webrtc::I420VideoFrame*> m_frames;
 #endif
     // frames in the busyQ is ready for composition by the encoder thread
     volatile webrtc::I420VideoFrame** m_busyQ;
