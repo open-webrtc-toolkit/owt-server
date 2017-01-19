@@ -54,13 +54,13 @@ Table 2-1 describes the system requirements for installing the Intel CS for WebR
 **Table 2-1. Server requirements**
 Application name | OS version
 ----|----
-Gateway Server | CentOS* 7.1
+Gateway Server | CentOS* 7.2
 
 Install the OpenH264 library to support H.264 in the gateway for SIP when required, refer to the [Install the Cisco OpenH264 Library](#SIPsection2_2_1) section for more details.
 
 > **Note**: The OpenH264 library is not required for GPU-accelerated Gateway.
 
-If you want to set up gateway service powered by GPU-accelerated Gateway server, the following server side SDK needs to be installed on CentOS* 7.1:
+If you want to set up gateway service powered by GPU-accelerated Gateway server, the following server side SDK needs to be installed on CentOS* 7.2:
 
  - Intel<sup>®</sup> Media Server Studio for Linux* version 2015 R6
 
@@ -82,27 +82,28 @@ The gateway for SIP has been tested in the environment listed in Table 2-2.
 </tr>
 <tr>
 <td>SIP client</td>
-<td><ul><li>AVer EVC3000*</li>
-<li>Jitsi v2.5* or later</li></td>
+<td><ul>
+<li>Jitsi v2.8* or later</li></td>
 </tr>
 <tr>
 <td>Video codec</td>
 <td>
-VP8: <ul><li>Jitsi v2.5 or later</li></ul><br>
+VP8: <ul><li>Jitsi v2.8 or later</li></ul><br>
 H264:
-<ul><li>Aver EVC3000</li>
-<li>Jitsi v2.5 or later</li></ul>
+<ul>
+<li>Jitsi v2.8 or later</li></ul>
 </td>
 </tr>
 <tr>
 <td>Audio codec</td>
 <td><ul><li>G.711*</li>
+<li>G.722*</li>
 <li>Opus</li></ul></td>
 </tr>
 <tr>
 <td>Web browser</td>
-<td><ul><li>Google Chrome* v49</li>
-<li>Firefox* v45</li></ul>
+<td><ul><li>Google Chrome* v55</li>
+<li>Firefox* v50</li></ul>
 </td>
 </tr>
 </tbody>

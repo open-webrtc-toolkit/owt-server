@@ -72,17 +72,29 @@ Table 2-1 describes the system requirements for installing the MCU server. Table
 **Table 2-1. Server requirements**
 Application name|OS version
 -------------|--------------
-MCU server|CentOS* 7.1
+MCU server|CentOS* 7.2
 
 The evaluation version of MCU server is also provided for Ubuntu 14.04 LTS* 64-bit.
 
 If you want to set up video conference service with H.264 codec support powered by non GPU-accelerated MCU server, OpenH264 library is required. See [Deploy Cisco OpenH264* Library](#Conferencesection2_3_4) section for more details.
 
-If you want to set up video conference service powered by GPU-accelerated MCU server, the following server side SDK needs to be installed on CentOS* 7.1 where video-agents run on:
+If you want to set up video conference service powered by GPU-accelerated MCU server through Intel® Media Server Studio, please follow the below instructions to install server side SDK on CentOS* 7.2 where the video-agents execute.
 
- - Intel<sup>®</sup> Media Server Studio for Linux* 2016 R1
+If you are working on the following platforms with the integrated graphics, please install Intel® Media Server Studio for Linux* 2017 R1.
+
+ - Intel® Xeon® E3-1200 v4 Family with C226 chipset
+ - Intel® Xeon® E3-1200 and E3-1500 v5 Family with C236 chipset
+ - 5th Generation Intel® Core™
+ - 6th Generation Intel® Core™
+
+ If the following earlier generation platforms with the integrated graphics are used, please install Intel® Media Server Studio for Linux* 2016 R1.
+
+ - Intel® Xeon® E3-1200 v3 Family with C226 chipset
+ - 4th Generation Intel® Core™
 
 Either Professional Edition or Community Edition is applicable. For download or installation instructions, please visit its website at https://software.intel.com/en-us/intel-media-server-studio.
+
+Intel CS for WebRTC also provides the option to benefit from GPU-accelerated MCU server through open source library libyami at https://github.com/01org/libyami. This version is only validated on the integrated graphics of 6th Generation Intel Core or Intel Xeon E3-1200 / E3-1500 v5 Family with C236 chipset. And now only this version can support GPU-accelerated HEVC video codec.
 
 The external stream output (rtsp/rtmp) feature relies on AAC encoder libfdk_aac support in ffmpeg library, please see [Compile and deploy ffmpeg with libfdk_aac](#Conferencesection2_3_5) section for detailed instructions.
 
@@ -163,15 +175,22 @@ On the server machine, directly un-archive the package file.
     tar xf CS_WebRTC_Conference_Server_MCU.v<Version>.tgz
 ~~~~~~
 
+For Ubuntu version MCU, do as following:
+
+~~~~~~{.sh}
+    tar xf CS_WebRTC_Conference_Server_MCU.v<Version>.Ubuntu.tgz
+~~~~~~
+
+For libyami-accelerated MCU, do as following:
+
+~~~~~~{.sh}
+    tar xf CS_WebRTC_Conference_Server_MCU.v<Version>.libyami.CentOS.tgz
+~~~~~~
+
 ### 2.3.4 Deploy Cisco OpenH264* Library {#Conferencesection2_3_4}
-The default H.264 library installed is a pseudo one without any media logic. To enable H.264 support in non GPU-accelerated MCU system, you must deploy the Cisco OpenH264 library. Follow these steps:
-1. Go to Release-<Version>/video_agent folder, download specific OpenH264 library version with below command:
+The default H.264 library installed is a pseudo one without any media logic. To enable H.264 support in non GPU-accelerated MCU system, you must deploy the Cisco OpenH264 library. Choose yes to download and enable Cisco Open H264 library during video-agent dependency installation at Release-<Version>/video_agent/ install_deps.sh.
 
-        download_openh264.sh
-
-2. Copy the downloaded lib file libopenh264-1.4.0-linux64.so to Release-<Version>/video_agent/lib folder, and rename it to libopenh264.so.0 to replace the existing pseudo one.
-
-3. Edit Release-<Version>/video_agent/agent.toml file, set the value of key openh264Enbaled to true.
+Or you can also use install_openh264.sh or uninstall_openh264.sh scripts under Release-<Version>/video_agent folder to enable or disable Cisco OpenH264 library later.
 
 ### 2.3.5 Compile and deploy ffmpeg with libfdk_aac {#Conferencesection2_3_5}
 
@@ -184,12 +203,11 @@ The default ffmpeg library used by MCU server has no libfdk_aac support. If you 
         compile_ffmpeg_with_libfdkaac.sh
 > **Note**: This compiling script need install all dependencies for ffmpeg with libfdk_aac. If that is not expected on deployment machines, please run it on other proper machine.
 
-2. Copy all output libraries under ffmpeg_libfdkaac_lib folder to Release-<Version>/access_agent/lib to replace the exsiting ones.
+2. Copy all output libraries under ffmpeg_libfdkaac_lib folder to Release-<Version>/access_agent/lib to replace the existing ones.
 
 ### 2.3.6 Use your own certificate {#Conferencesection2_3_6}
 
-The default certificate (certificate.pfx) for the MCU is located in each component in Release-<Version> folder.
-When using HTTPS and/or secure socket.io connection, you should use your own certificate for each server. First you should edit nuve/nuve.toml, access_agent/agent.toml, portal/portal.toml to provide the path of each certificate for each server, under the key keystorePath. See below table for details.
+The default certificate (certificate.pfx) for the MCU is located in the Release-<Version>/<Component>/cert folder. When using HTTPS and/or secure socket.io connection, you should use your own certificate for each server. First, you should edit nuve/nuve.toml, webrtc_agent/agent.toml, portal/portal.toml to provide the path of each certificate for each server, under the key keystorePath. See Table 2-4 for details.
 
 We use PFX formatted certificates in MCU. See https://nodejs.org/api/tls.html for how to generate a self-signed certificate by openssl utility. We recommend using 2048-bits private key for the certificates.
 
@@ -200,7 +218,7 @@ After editing the configuration file, you should run `./initcert.js` inside each
 |--------|--------|
 | nuve HTTPS | nuve/nuve.toml |
 | portal secured Socket.io | portal/portal.toml |
-| DTLS-SRTP | access_agent/agent.toml |
+| DTLS-SRTP | webrtc_agent/agent.toml |
 
 For MCU sample application's certificate configuration, please follow the instruction file 'README.md' located at Release-<Version>/extras/basic_example/.
 
@@ -213,20 +231,19 @@ To launch the MCU server on one machine, follow steps below:
 
         bin/init-all.sh [--deps]
 
-    If you want to enable GPU-acceleration, use following command:
+    If you want to enable GPU-acceleration through Intel Media Server Studio, use following command:
 
         bin/init-all.sh [--deps] --hardware
+
+    If you want to enable GPU-acceleration through libyami, use following command:
+
+        bin/init-all.sh [--deps] --hardware --yami
    > **Note**: If you have already installed the required system libraries, then --deps is not required.
 
 2. Run the following commands to start the MCU:
 
         cd Release-<Version>/
         bin/start-all.sh
-
-    If mongodb or rabbitmq-server is not running, you can run following command before starting the MCU:
-
-        bin/init-mongodb.sh [--deps] [--DB_URL=dburl]
-        bin/init-rabbitmq.sh [--deps]
 
 3. To verify whether the server started successfully, launch your browser and connect to the MCU server at https://XXXXX:3004. Replace XXXXX with the IP address or machine name of your MCU server.
 
@@ -243,7 +260,7 @@ Run the following commands to stop the MCU:
 Component Name|Deployment Number|Responsibility
 --------|--------|--------
 nuve|1|The manager of the MCU, keeping the configurations of all rooms, generating and verifying the tokens
-cluster-manager|1|The manager of all active workers in the cluster, checking their lives, scheduling workers with the specified purposes according to the configured policies
+cluster-manager|1 or many|The manager of all active workers in the cluster, checking their lives, scheduling workers with the specified purposes according to the configured policies. One elected master, it will provide service at one time; others will be standby
 portal|1 or many|The signaling server, handling service requests from Socket.IO clients
 session-agent|1 or many|This agent handles room controller logics
 webrtc-agent|1 or many|This agent spawning webrtc accessing nodes which establish peer-connections with webrtc clients, receive media streams from and send media streams to webrtc clients
@@ -255,100 +272,122 @@ sip-agent|0 or many|This agent spawning sip processing nodes which handle sip co
 sip-portal|0 or 1|The portal for initializing rooms' sip settings and scheduling sip agents to serve for them
 app|0 or 1|The sample web application for reference, users should use their own application server
 
-Follow the steps below to set up an MCU cluster:
+Follow the steps below to set up a MCU cluster:
+
 1. Make sure you have installed the MCU package on each machine before launching the cluster which has been described in section [Install the MCU package](#Conferencesection2_3_3).
-2. Make sure RabbitMQ service is started prior to all MCU cluster nodes. RabbitMQ can be deployed on a single node by running following command:
 
+2. Choose machines to initialize MongoDB and RabbitMQ servers.
+
+    For MongoDB, do as following:
+
+        cd Release-<Version>/
+        bin/init-mongodb.sh [--deps]
+
+    For RabbitMQ, do as following:
+
+        cd Release-<Version>/
         bin/init-rabbitmq.sh [--deps]
+   > **Note**: You can change the shell scripts to initialize them according to your own requirement. Or choose any other existing MongoDB or RabbitMQ service, like those with cluster support. Make sure MongoDB and RabbitMQ services are started prior to all MCU cluster nodes.
 
-    **Note**: If you want to enable clustering for rabbitmq, you can refer to rabbitmq's official site (https://www.rabbitmq.com/clustering.html) for details.
+3. Choose a primary machine for nuve. This machine must be visible to clients(such as browsers and mobile apps).
 
-    Make sure mongodb service is started prior to nuve (if DB_URL is not specified, localhost/nuve is used as default. You can start mongodb on the same machine with nuve). The mongodb can be deployed on a single node by running following command:
+4. Edit the configuration items of nuve in Release-<Version>/nuve/nuve.toml.
 
-        bin/init-mongodb.sh [--deps] [--DB_URL=dburl]
+    - Make sure the [nuve.dataBaseURL] point to the MongoDB instance.
+    - Make sure the [rabbit.port] and [rabbit.host] point to the RabbitMQ server.
 
-
-3. Choose a primary machine for nuve. This machine must be visible to clients(such as browsers and mobile apps). Edit the configuration items of nuve in Release-<Version>/nuve/nuve.toml.
-
-    Make sure the [rabbit.port] and [rabbit.host] point to the RabbitMQ server.
-
-    **Note**: Make sure the nuve machine is able to access the mongodb service on the network.
-
-4. Initialize and run MCU manager nuve and the sample application on the primary machine.
+5. Initialize and run MCU manager nuve and the sample application on the primary machine.
 
     1) Initialize MCU manager nuve for the first time execution:
 
         cd Release-<Version>/
-        nuve/init.sh [--dburl=HOST/DBNAME]
-
-    The argument dburl is the mongodb url.
+        nuve/init.sh
 
     2) Run MCU manager nuve and the sample application with following commands:
 
         cd Release-<Version>/
         bin/daemon.sh start nuve
         bin/daemon.sh start app
-
    > **Note**: You can also deploy the sample application server on separated machine, follow instructions at Release-<Version>/extras/basic_example/README.md
 
-5. Choose a machine to run cluster-manager. This machine does not need to be visible to clients, but should be visible to nuve and all workers.
-6. Edit the configurations of cluster-manager in Release-<Version>/cluster_manager/cluster_manager.toml.
+6. Choose machines to run cluster-managers. These machines do not need to be visible to clients, but should be visible to nuve and all workers.
+7. Edit the configurations of cluster-manager in Release-<Version>/cluster_manager/cluster_manager.toml.
 
     - Make sure the [rabbit.port] and [rabbit.host] point to the RabbitMQ server.
 
-7. Run the cluster-manager with following commands:
+8. Run the cluster-manager on each machine with following commands:
 
         cd Release-<Version>/
         bin/daemon.sh start cluster-manager
 
-8. Choose worker machines to run portals. These machines must be visible to clients.
-9. Edit the configuration items of portal in Release-<Version>/portal/portal.toml.
+9. Choose worker machines to run portals. These machines must be visible to clients.
+10. Edit the configuration items of portal in Release-<Version>/portal/portal.toml.
     - Make sure the [rabbit.port] and [rabbit.host] point to the RabbitMQ server
     - Make sure the [portal.ip_address] or [portal.networkInterface] points to the correct network interface which the clients’ signaling and control messages are expected to connect through.
     - The [portal.roles.<role>] section defines the authorized action list for specific role and the [portal.roles.<role>.<action>] section defines the action attributes for this role.
 
-10. Run the portal on each machine with following commands:
+11. Run the portal on each machine with following commands:
 
         cd Release-<Version>/
         bin/daemon.sh start portal
 
-11. Choose worker machine to run session-agent and/or webrtc-agent and/or avstream-agent and/or recording-agent and/or audio-agent and/or video-agent and/or sip-agent. This machine must be visible to other agent machines. If webrtc-agent or sip-agent is running on it, it must be visible to clients.
+12. Choose worker machine to run session-agent and/or webrtc-agent and/or avstream-agent and/or recording-agent and/or audio-agent and/or video-agent and/or sip-agent. This machine must be visible to other agent machines. If webrtc-agent or sip-agent is running on it, it must be visible to clients.
 
     - If you want to use Intel<sup>®</sup> Visual Compute Accelerator (VCA) to run video agents, please follow section [Configure VCA nodes](#Conferencesection2_3_10) to enable nodes of Intel VCA as a visible seperated machine.
 
-12. Edit the configuration items in Release-<Version>/{audio,video,session,access,sip}_agent/agent.toml.
+13. Edit the configuration items in Release-<Version>/{audio,video,session,webrtc,access,sip}_agent/agent.toml.
     - Make sure the [rabbit.port] and [rabbit.host] point to the RabbitMQ server
     - Make sure the [cluster.ip_address] or [cluster.network_interface] points to the correct network interface through which the media streams will flow to other cluster nodes.
 
-13. Initialize and run agent worker.
+14. Initialize and run agent worker.
 
     1) Initialize agent workers for the first time execution if necessary
 
-       For webrtc-agent, avstream-agent or recording-agent, follow these steps:
+       For avstream-agent or recording-agent, follow these steps:
 
-           cd Release-<Version>/
-           access_agent/install_deps.sh
+            cd Release-<Version>/
+            access_agent/install_deps.sh
 
-       If you want to enable GPU-acceleration for video-agent, follow these steps:
+        For webrtc-agent, follow these steps:
 
-           cd Release-<Version>/
-           video_agent/install_deps.sh --hardware
-           video_agent/init.sh --hardware
+            cd Release-<Version>/
+            webrtc_agent/install_deps.sh
+
+        For video-agent, follow these steps:
+
+            cd Release-<Version>/
+            video_agent/install_deps.sh
+
+       If you want to enable GPU-acceleration for video-agent through Media Server Studio, follow these steps:
+
+            cd Release-<Version>/
+            video_agent/install_deps.sh --hardware
+            video_agent/init.sh --hardware
+
+        If you want to enable GPU-acceleration for video-agent through libyami, follow these steps:
+
+            cd Release-<Version>/
+            video_agent/install_deps.sh --hardware
+            video_agent/init.sh --hardware --yami
 
     2) Run the following commands to launch agent worker:
 
         cd Release-<Version>/
         bin/daemon.sh start [session-agent/webrtc-agent/avstream-agent/audio-agent/video-agent/recording-agent/sip-agent]
 
-14. Repeat step 11 to 13 to launch as many MCU agent worker machines as you need.
+15. Repeat step 12 to 14 to launch as many MCU agent worker machines as you need.
 
-15. Choose one worker machine to run sip-portal if sip-agent workers are deployed:
+16. Choose one worker machine to run sip-portal if sip-agent workers are deployed:
 
         cd Release-<Version>/
         bin/daemon.sh start sip-portal
 
 ### 2.3.10 Configure VCA nodes as seperated machines to run video-agent {#Conferencesection2_3_10}
-To setup VCA nodes as separate machines, please follow these steps:
+To setup VCA nodes as separate machines, two approaches are provided. One is network bridging provided by VCA software stack. The other is IP forwarding rules setting through iptables.
+
+VCA built-in software stack provides network bridging support. Follow section 8 - Configuring nodes for bridged mode operation in VCA_SoftwareUserGuide_1_3.pdf. In this approach, all network traffic will go through one Ethernet interface.
+
+If you want to map each VCA node to different Ethernet interface, IP forwarding can be one alternative to achieve this goal. Follow these steps:
 1. Make sure one VCA card is correctly installed and VCA nodes successfully boot up.
 2. Make sure the host machine has enough ethernet interface for VCA nodes. Eg: host IP is "10.239.44.100" and 3 ethernet interfaces for 3 nodes of 1 VCA card, and the IP of ethernet Interfaces are "10.239.44.1", "10.239.44.2", "10.239.44.3".
 3. Make sure your ip routing tables(please get it with "route -n") on host machine is like below :
@@ -411,6 +450,23 @@ To stop the MCU cluster, follow these steps:
 
         cd Release-<Version>/
         bin/daemon.sh stop [portal/session-agent/webrtc-agent/avstream-agent/audio-agent/video-agent/recording-agent/sip-agent/sip-portal]
+
+### 2.3.12 MCU cluster’s fault tolerance / resilience {#Conferencesection2_3_12}
+
+Intel CS for WebRTC MCU server provides built-in fault tolerance / resilience support for its key components, as Table 2-6 shows.
+
+ **Table 2-6. MCU cluster components’ fault tolerance / resilience**
+Component Name|Server Reaction|Client Awareness
+--------|--------|--------
+cluster-manager|Auto elect another cluster-manager node as master and provide service.|Transparent
+portal|All signaling connections on this portal will be disconnected, all actions through this portal will be dropped. Client needs re-login the session.|server-disconnected event
+session-agent/node|All sessions impacted will be destroyed and all their participants will be forced disconnected and all actions will be dropped. Client needs re-login the session.|server-disconnected event
+webrtc-agent/node|All webrtc stream actions assign to this node will be dropped. Client needs redo these actions.|stream-failed event
+avstream-agent/node|All external stream actions assign to this node will be dropped. Client needs redo these actions.|stream-failed event
+recording-agent/node|All recording actions assign to this node will be dropped. Client needs redo these actions.|recorder-removed event
+audio-agent/node|Auto schedule new audio-agent/node resource to recover the session context.|Transparent
+video-agent/node|Auto schedule new video-agent/node resource to recover the session context.|Transparent
+sip-agent/node|All sip participants it carries should be dropped by session nodes.|SIP BYE signaling event
 
 ## 2.4 Security Recommendations {#Conferencesection2_4}
 Intel Corporation does not host any conference cluster/service, instead, the entire suite is provided so you can build your own video conference system and host your own server cluster.
@@ -596,6 +652,8 @@ Due to server-side APIs' security consideration, API calls from a service should
 # 4 MCU Sample Application Server User Guide  {#Conferencesection4}
 ## 4.1 Introduction {#Conferencesection4_1}
 The MCU sample application server is a Web application demo that shows how to host audio/video conference services powered by the Intel CS for WebRTC MCU. The sample application server is based on MCU runtime components. Refer to [Section 2](#Conferencesection2) of this guide, for system requirements and launch/stop instructions.
+
+The source code of the sample application is in Release-<Version>/extras/basic-example/.
 
 This section explains how to start a conference and then connect to a conference using different qualifiers, such as a specific video resolution.
 
