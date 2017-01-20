@@ -94,7 +94,7 @@ If you are working on the following platforms with the integrated graphics, plea
 
 Either Professional Edition or Community Edition is applicable. For download or installation instructions, please visit its website at https://software.intel.com/en-us/intel-media-server-studio.
 
-Intel CS for WebRTC also provides the option to benefit from GPU-accelerated MCU server through open source library libyami at https://github.com/01org/libyami. This version is only validated on the integrated graphics of 6th Generation Intel Core or Intel Xeon E3-1200 / E3-1500 v5 Family with C236 chipset. And now only this version can support GPU-accelerated HEVC video codec.
+Intel CS for WebRTC also provides the option to benefit from GPU-accelerated MCU server on CentOS through open source library libyami at https://github.com/01org/libyami. This version is only validated on the integrated graphics of 6th Generation Intel Core or Intel Xeon E3-1200 / E3-1500 v5 Family with C236 chipset. And now only this MCU version can support GPU-accelerated HEVC video codec.
 
 The external stream output (rtsp/rtmp) feature relies on AAC encoder libfdk_aac support in ffmpeg library, please see [Compile and deploy ffmpeg with libfdk_aac](#Conferencesection2_3_5) section for detailed instructions.
 
