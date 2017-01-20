@@ -1,4 +1,4 @@
-Intel CS for WebRTC Management REST API
+MCU Management API
 -------
 # 1 Introduction {#RESTAPIsection1}
 Intel WebRTC solution provides a set of REST (Representational State Transfer) API for conference management. Manager clients can be implemented by different programming languages through these APIs.
@@ -10,8 +10,11 @@ Verb: HTTP verb. The mapping to operations is as following:
  - Read operations: GET
  - Update operations: PUT
  - Delete operations: DELETE
+
 URI: the Universal Resource Identifier, or name through which the resouce can be manipulated.
+
 Request Body: the request data that user need supply to call the API. JSON format data is required.
+
 Response Body: the response data is returned through HTTP response in JSON/text format.
 
 # 3 Making a Call {#MAKINGACALL}
@@ -23,9 +26,10 @@ With all the management API, perform the following steps to implement each call.
 5. Use the data in your application.
 
 The following HTTP response may be returned after your make a call:
-200 - OK. Some calls return with a JSON format respone while some calls return a plain text response indicates success.
-401 - Not authenticated or not permitted.
-404 - Not found or no such resource.
+
+ - 200 - OK. Some calls return with a JSON format respone while some calls return a plain text response indicates success.
+ - 401 - Not authenticated or not permitted.
+ - 404 - Not found or no such resource.
 
 # 4 Authentication and Authorization {#RESTAPIsection3}
 The management API can only be called after authorized. To get authorized, each request should be a HTTP request with "Authorization" field in the header. So the server can determine whether it is a valid client. The value of "Authorization" is something like:
@@ -104,9 +108,11 @@ ___
 Read all the services.
 
 Parameters
+
 None.
 
 Response Body
+
 Type - JSON.
 Content - List of service data.
 Example: [service0, ...]
@@ -129,6 +135,7 @@ A JSON object describes the service to be created.
 ~~~~~~~~~~~~~
 
 Response Body
+
 Type - JSON.
 Content - A service data model.
 
@@ -144,6 +151,7 @@ Query:
 None.
 
 Response Body
+
 Type - JSON.
 Content - The required service data model.
 
@@ -158,6 +166,7 @@ Query:
 None.
 
 Response Body
+
 Type - Text.
 Content - A text message "Service deleted" indicates success.
 
@@ -209,9 +218,11 @@ ___
 Read all the rooms using current service's authentication.
 
 Parameters
+
 None.
 
 Response Body
+
 Type - JSON.
 Content - List of room data.
 Example: [room0, ...]
@@ -264,6 +275,7 @@ A JSON object describes the room to be created.
 ~~~~~~~~~~~~~
 
 Response Body
+
 Type - JSON.
 Content - A room data model represent the room created.
 
@@ -279,6 +291,7 @@ Query:
 A JSON object describes the room updates contains attributes(except id) in room data model.
 
 Response Body
+
 Type - JSON.
 Content - The required room data model.
 
@@ -293,6 +306,7 @@ Query:
 None.
 
 Response Body
+
 Type - JSON.
 Content - The updated room data model.
 
@@ -302,12 +316,14 @@ ___
 Delete the room specified by ID under current service.
 
 Parameters
+
 Path:
 roomId - The specified room ID.
 Query:
 None.
 
 Response Body
+
 Type - Text.
 Content - A text message "Room deleted" indicates success.
 
@@ -336,12 +352,14 @@ ___
 Create a socket.io token for specified room using current service's authentication. Note that "mauth_username" and "mauth_role" should be added in "Authorization" field of the request header to determine the user name and role (Refer to section "Authentication and Authorization").
 
 Parameters
+
 Path:
 roomId - The specified room ID.
 Query:
 None.
 
 Response Body
+
 Type - Text.
 Content - Base64 encrypted text of JSON token data model.
 
@@ -351,6 +369,7 @@ ___
 Create a socket.io or rest token for specified room using current service's authentication. Similar to the POST /rooms/{roomId}/tokens, "mauth_username" and "mauth_role" are also required in "Authorization" header.
 
 Parameters
+
 Path:
 roomId - The specified room ID.
 type - Token type, "socketio" or "rest".
@@ -358,6 +377,7 @@ Query:
 None.
 
 Response Body
+
 Type - Text.
 Content - Base64 encrypted text of JSON token data model.
 
@@ -367,6 +387,7 @@ Description:
   User is the representation for clients in the room. This resource provides the ability for querying and managing clients in the spcefied room. Note that the user resource does not have a adding-user interface. The user can only be added by joining the room through client sdk with a token created by the management.
 
 Data Model:
+
 User data JSON example:
 ~~~~~~~~~~~~~{.js}
 {
@@ -386,12 +407,14 @@ ___
 Read all the users in the specified room using current service's authentication.
 
 Parameters
+
 Path:
 roomId - The specified room ID.
 Query:
 None.
 
 Response Body
+
 Type - JSON.
 Content - List of user data.
 Example: [user0, ...]
@@ -403,6 +426,7 @@ ___
 Read the user specified by ID in the specified room under current service.
 
 Parameters
+
 Path:
 roomId - The specified room ID.
 userId - The specified user ID.
@@ -410,6 +434,7 @@ Query:
 None.
 
 Response Body
+
 Type - JSON.
 Content - The required user data model.
 
@@ -418,6 +443,7 @@ ___
 Delete the room specified by ID under current service.
 
 Parameters
+
 Path:
 roomId - The specified room ID.
 userId - The specified user ID.
@@ -425,5 +451,6 @@ Query:
 None.
 
 Response Body
+
 Type - Text.
 Content - A text message "User deleted" indicates success.
