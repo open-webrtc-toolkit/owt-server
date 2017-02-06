@@ -69,18 +69,21 @@ exports.deleteRoom = function (req, res) {
                         if (r._id === room._id) {
                             found = true;
                             currentService.rooms.splice(index, 1);
-                            serviceRegistry.updateService(currentService, function () {
-                                log.info('Room ', id, ' deleted for service ', currentService._id);
-                                cloudHandler.deleteRoom(id, function () {});
-                                res.send('Room deleted');
-                            }, function () {
-                                log.info('Room ', req.params.room, ' does not exist');
-                                res.status(404).send('Room does not exist');
+
+                            serviceRegistry.deleteRoomInService(currentService._id, r, function (err, ret) {
+                                if (!err) {
+                                    log.debug('Room ', id, ' deleted for service ', currentService._id);
+                                    cloudHandler.deleteRoom(id, function () {});
+                                    res.send('Room deleted');
+                                } else {
+                                    log.info('Room ', req.params.room, ' does not exist');
+                                    res.status(404).send('Room does not exist');
+                                }
                             });
 
                             // Notify SIP portal if SIP room deleted
                             if (room.sipInfo) {
-                                log.info('Notify SIP Portal on delete Room');
+                                log.debug('Notify SIP Portal on delete Room');
                                 cloudHandler.notifySipPortal('delete', room, function(){});
                             }
                         }
@@ -148,29 +151,26 @@ exports.updateRoom = function (req, res) {
                 });
 
                 roomRegistry.addRoom(room, function (result) {
-                    currentService.rooms.map(function (r, index) {
-                        if (r._id === room._id) {
-                            currentService.rooms.splice(index, 1, room);
-                            serviceRegistry.updateService(currentService);
+                    log.debug('currentService:', currentService);
+                    serviceRegistry.updateRoomInService(currentService._id, result, function(err, updated) {
+                        if (err) {
+                            res.send(room);
+                        } else {
+                            // Notify SIP portal if SIP room updated
+                            if (updates.hasOwnProperty('sipInfo')) {
+                                log.debug('Notify SIP Portal on update Room', updates);
+                                var changeType = 'update';
+                                if (!hasSip && result.sipInfo) {
+                                    changeType = 'create';
+                                } else if (hasSip && !result.sipInfo) {
+                                    changeType = 'delete';
+                                }
+                                log.debug('Change type', changeType);
+                                cloudHandler.notifySipPortal(changeType, result, function(){});
+                            }
+                            res.send(result);
                         }
                     });
-                    if (result == 1) {
-                        res.send(room);
-                    } else {
-                        // Notify SIP portal if SIP room updated
-                        if (updates.hasOwnProperty('sipInfo')) {
-                            log.info('Notify SIP Portal on update Room', updates);
-                            var changeType = 'update';
-                            if (!hasSip && result.sipInfo) {
-                                changeType = 'create';
-                            } else if (hasSip && !result.sipInfo) {
-                                changeType = 'delete';
-                            }
-                            log.info('Change type', changeType);
-                            cloudHandler.notifySipPortal(changeType, result, function(){});
-                        }
-                        res.send(result);
-                    }
                 });
 
             } else {

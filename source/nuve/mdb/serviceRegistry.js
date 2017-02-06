@@ -103,3 +103,74 @@ exports.getRoomForService = function (roomId, service, callback) {
     }
     callback(undefined);
 };
+
+
+/*
+ * Update a single room in service.
+ * Our service collection also has room data same as room collection.
+ * One update service request would update the room array inside service collection.
+ * Then concurrent requests cause problems.
+ * We may remove room array in service collection later?
+ */
+exports.updateRoomInService = function (serviceId, room, callback) {
+    db.collection('services').update(
+        { // Query
+            '_id' : serviceId,
+            'rooms._id' : room._id,
+        },
+        { // Update
+            '$set' : {'rooms.$' : room }
+        },
+        // Callback
+        function(err, result) {
+            if (err) {
+                log.error('Update Service Room Failed.');
+                callback(err, null);
+            } else {
+                callback(err, result);
+            }
+        }
+    );
+};
+
+// Add a single room in service
+exports.addRoomInService = function (serviceId, room, callback) {
+    db.collection('services').update(
+        { // Query
+            '_id' : serviceId,
+        },
+        { // Update
+            '$push' : {'rooms' : room }
+        },
+        // Callback
+        function(err, result) {
+            if (err) {
+                log.error('Add Service Room Failed.');
+                callback(err, null);
+            } else {
+                callback(err, result);
+            }
+        }
+    );
+};
+
+// Delete a single room in service
+exports.deleteRoomInService = function (serviceId, room, callback) {
+    db.collection('services').update(
+        { // Query
+            '_id' : serviceId,
+        },
+        { // Update
+            '$pull' : {'rooms' : {'_id' : room._id } }
+        },
+        // Callback
+        function(err, result) {
+            if (err) {
+                log.error('Delete Service Room Failed.');
+                callback(err, null);
+            } else {
+                callback(err, result);
+            }
+        }
+    );
+};

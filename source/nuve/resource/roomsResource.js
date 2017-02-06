@@ -70,16 +70,18 @@ exports.createRoom = function (req, res) {
         }
         roomRegistry.addRoom(room, function (result) {
             currentService.rooms.push(result);
-            serviceRegistry.updateService(currentService, function () {
-                log.info('Room created:', req.body.name, 'for service', currentService.name);
-                res.send(result);
-            }, function (reason) {
-                res.status(400).send(reason);
+            serviceRegistry.addRoomInService(currentService._id, result, function (err, ret) {
+                if (!err) {
+                    log.debug('Room created:', req.body.name, 'for service', currentService.name);
+                    res.send(result);
+                } else {
+                    res.status(400).send(ret);
+                }
             });
 
             // Notify SIP portal if SIP room created
             if (result.sipInfo) {
-                log.info('Notify SIP Portal on create Room');
+                log.debug('Notify SIP Portal on create Room');
                 cloudHandler.notifySipPortal('create', result, function(){});
             }
         });
