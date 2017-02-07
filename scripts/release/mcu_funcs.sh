@@ -19,7 +19,7 @@
 # and approved by Intel in writing.
 #
 
-WOOGEEN_AGENTS="audio video access sip webrtc"
+WOOGEEN_AGENTS="audio video avstream recording sip webrtc"
 
 pack_runtime() {
   # mcu
@@ -135,7 +135,7 @@ pack_addons() {
 }
 
 pack_common() {
-  local TARGETS="portal nuve cluster_manager session_agent access_agent audio_agent video_agent sip_agent sip_portal webrtc_agent"
+  local TARGETS="portal nuve cluster_manager session_agent avstream_agent recording_agent audio_agent video_agent sip_agent sip_portal webrtc_agent"
   pushd ${SOURCE}/common >/dev/null
   local COMMON_MODULES=$(find . -type f -name "*.js" | cut -d '/' -f 2 | cut -d '.' -f 1)
   for TARGET in ${TARGETS}; do
@@ -235,7 +235,7 @@ pack_node() {
         sed -i "s/require('\(\b${JSMODULE}\b\)/Module\._load('\1/g" "${line}"
       done
       sed -i "s/require('\.\//Module\._load('\.\//g" "${line}"
-      sed -i "s/Module\._load('.*\(\baccess\b\|\baudio\b\|\bvideo\b\)/require('woogeen\/\1\/index/g" "${line}"
+      sed -i "s/Module\._load('.*\(\baudio\b\|\bvideo\b\)/require('woogeen\/\1\/index/g" "${line}"
       sed -i "s/Module\._load('\.\/\(\bwrtcConnection\b'\)/require('woogeen\/webrtc\/\1/g" "${line}"
       sed -i "s/Module\._load('\.\/\(\bsipCallConnection\b'\)/require('woogeen\/sip\/\1/g" "${line}"
       sed -i "1 i var Module = require('module');" "${line}"

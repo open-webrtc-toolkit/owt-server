@@ -118,10 +118,10 @@ rpc.connect(GLOBAL.config.rabbit, function () {
             controller = require('woogeen/webrtc/index')();
             break;
         case 'avstream':
-            controller = require('./access')();
+            controller = require('woogeen/avstream/index')();
             break;
         case 'recording':
-            controller = require('./access')();
+            controller = require('woogeen/recording/index')();
             break;
         case 'sip':
             controller = require('woogeen/sip/index')(rpcClient, {id:rpcID, addr:clusterIP});
