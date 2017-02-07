@@ -146,7 +146,7 @@ case $startStop in
         echo $! > ${pid}
         ;;
       avstream-agent )
-        cd ${WOOGEEN_HOME}/access_agent
+        cd ${WOOGEEN_HOME}/avstream_agent
         export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:./lib
         export NODE_PATH=./node_modules
         nohup nice -n ${WOOGEEN_NICENESS} node . -U avstream\
@@ -154,7 +154,7 @@ case $startStop in
         echo $! > ${pid}
         ;;
       recording-agent )
-        cd ${WOOGEEN_HOME}/access_agent
+        cd ${WOOGEEN_HOME}/recording_agent
         export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:./lib
         export NODE_PATH=./node_modules
         nohup nice -n ${WOOGEEN_NICENESS} node . -U recording\

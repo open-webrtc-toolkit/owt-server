@@ -5,7 +5,7 @@ var internalIO = require('./internalIO/build/Release/internalIO');
 var InternalIn = internalIO.In;
 var InternalOut = internalIO.Out;
 
-var avstream = require('./avstream/build/Release/avstream');
+var avstream = require('./avstreamLib/build/Release/avstream');
 var AVStreamIn = avstream.AVStreamIn;
 var AVStreamOut = avstream.AVStreamOut;
 var logger = require('./logger').logger;
@@ -72,47 +72,6 @@ module.exports = function () {
         return connection;
     };
 
-    var createFileIn = function (options, callback) {
-        var avstream_options = {type: 'file',
-                                url: options.url};
-
-        var connection = new AVStreamIn(avstream_options);
-        // FIXME: There should be a better chance to start playing.
-        setTimeout(function () {connection.startPlay();}, 6000);
-        callback('onStatus', {type: 'ready'});
-
-        return connection;
-    };
-
-    var createFileOut = function (options, callback) {
-        var recordingPath = options.path ? options.path : GLOBAL.config.recording.path;
-        var avstream_options = {type: 'file',
-                                require_audio: !!options.audio,
-                                require_video: !!options.video,
-                                audio_codec: (options.audio ? options.audio.codecs[0] : undefined),
-                                video_codec: (options.video ? options.video.codecs[0] : undefined),
-                                url: path.join(recordingPath, options.filename),
-                                interval: options.interval};
-
-        var connection = new AVStreamOut(avstream_options, function (error) {
-            if (error) {
-                log.error('media recording init error:', error);
-                callback('onStatus', {type: 'failed', reason: error});
-            } else {
-                callback('onStatus', {type: 'ready', audio_codecs: (options.audio ? options.audio.codecs : []), video_codecs: (options.video ? options.video.codecs : [])});
-            }
-        });
-        connection.addEventListener('fatal', function (error) {
-            log.error('media recording error:', error);
-            callback('onStatus', {type: 'failed', reason: 'media recording error: ' + error});
-        });
-
-        connection.receiver = function(type) {
-            return this;
-        };
-        return connection;
-    };
-
     var onSuccess = function (callback) {
         return function(result) {
             callback('callback', result);
@@ -157,9 +116,6 @@ module.exports = function () {
             case 'avstream':
                 conn = createAVStreamIn(options, callback);
                 break;
-            case 'recording':
-                conn = createFileIn(options, callback);
-                break;
             default:
                 log.error('Connection type invalid:' + connectionType);
         }
@@ -200,9 +156,6 @@ module.exports = function () {
                 break;
             case 'avstream':
                 conn = createAVStreamOut(options, callback);
-                break;
-            case 'recording':
-                conn = createFileOut(options, callback);
                 break;
             default:
                 log.error('Connection type invalid:' + connectionType);
