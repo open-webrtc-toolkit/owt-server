@@ -13,7 +13,7 @@ var path = require('path');
 var Connections = require('./connections');
 
 // Logger
-var log = logger.getLogger('AccessNode');
+var log = logger.getLogger('AvstreamNode');
 
 var InternalConnectionFactory = require('./InternalConnectionFactory');
 

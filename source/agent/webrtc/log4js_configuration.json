@@ -14,19 +14,9 @@
     "LoadCollector": "INFO",
     "AmqpClient": "INFO",
     "ErizoJS": "INFO",
-    "Session": "INFO",
-    "Controller": "INFO",
-    "AudioNode": "INFO",
+    "WebrtcNode": "INFO",
     "ErizoAgent": "INFO",
-    "VideoNode": "INFO",
-    "WrtcConnection": "INFO",
-    "AccessNode": "INFO"
+    "Connections": "INFO",
+    "InternalConnectionFactory": "INFO"
   }
 }
-
-
-
-
-
-
-

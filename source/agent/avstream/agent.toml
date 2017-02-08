@@ -36,8 +36,3 @@ port = 5672 #default: 5672
 # The internal listening port range, only works for TCP now
 maxport = 0 #default: 0
 minport = 0 #default: 0
-
-#########################################################################################
-#The storage availability of the recording path needs to be guaranteed when using media recording.
-[recording]
-path = "/tmp"
