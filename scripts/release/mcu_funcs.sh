@@ -59,6 +59,7 @@ pack_session_agent() {
   cp -av erizoJS.js ${WOOGEEN_DIST}/session_agent/
   cp -av index.js ${WOOGEEN_DIST}/session_agent/
   cp -av ${ROOT}/scripts/detectOS.sh ${WOOGEEN_DIST}/session_agent/detectOS.sh
+  cp -av session/*.json ${WOOGEEN_DIST}/session_agent/
   popd >/dev/null
 }
 
@@ -69,6 +70,7 @@ pack_agents() {
     find ${AGENT} -type f -name "*.js" -exec cp '{}' "${WOOGEEN_DIST}/${AGENT}_agent/{}" \;
     find . -maxdepth 1 -type f -not -name "*.log" -exec cp '{}' "${WOOGEEN_DIST}/${AGENT}_agent/{}" \;
     cp -av ${AGENT}/agent.toml ${WOOGEEN_DIST}/${AGENT}_agent/
+    cp -av ${AGENT}/*.json ${WOOGEEN_DIST}/${AGENT}_agent/
     cp -av ${AGENT}/*.sh ${WOOGEEN_DIST}/${AGENT}_agent/
     pack_addons "${WOOGEEN_DIST}/${AGENT}_agent"
     cp -av ${ROOT}/scripts/detectOS.sh ${WOOGEEN_DIST}/${AGENT}_agent/detectOS.sh

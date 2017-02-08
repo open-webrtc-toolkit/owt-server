@@ -1,0 +1,22 @@
+{
+  "appenders": [
+    {
+      "type": "console",
+      "layout": {
+        "type": "pattern",
+        "pattern": "%d  - %p: %c - %m",
+        "replaceConsole": true
+      }
+    }
+  ],
+  "levels": {
+    "ClusterWorker": "INFO",
+    "LoadCollector": "INFO",
+    "AmqpClient": "INFO",
+    "ErizoJS": "INFO",
+    "AudioNode": "INFO",
+    "ErizoAgent": "INFO",
+    "Connections": "INFO",
+    "InternalConnectionFactory": "INFO"
+  }
+}

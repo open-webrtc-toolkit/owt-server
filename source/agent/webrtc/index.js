@@ -9,7 +9,7 @@ var Connections = require('./connections');
 var InternalConnectionFactory = require('./InternalConnectionFactory');
 
 // Logger
-var log = logger.getLogger('AccessNode');
+var log = logger.getLogger('WebrtcNode');
 module.exports = function () {
     var that = {};
     var connections = new Connections;
