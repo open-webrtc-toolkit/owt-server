@@ -88,7 +88,7 @@ module.exports = function (rpcClient) {
         }
     } catch (e) {
         log.error(e);
-        process.exit(1);
+        process.exit(-2);
     }
 
     var addInput = function (stream_id, codec, options, avatar, on_ok, on_error) {
