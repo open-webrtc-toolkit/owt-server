@@ -18,118 +18,18 @@
  * and approved by Intel in writing.
  */
 
-#include "AudioMixer.h"
+#include <boost/property_tree/json_parser.hpp>
+#include <boost/property_tree/ptree.hpp>
 
 #include <webrtc/system_wrappers/interface/trace.h>
 
-using namespace erizo;
+#include "AudioMixer.h"
+#include "AcmmFrameMixer.h"
+#include "VoeFrameMixer.h"
+
 using namespace webrtc;
 
 namespace mcu {
-
-DEFINE_LOGGER(AudioMixer, "mcu.media.AudioMixer");
-
-AudioMixer::AudioMixer(const std::string& config)
-    : m_vadEnabled(false)
-    , m_asyncHandle(nullptr)
-    , m_jitterCount(200)
-    , m_jitterHold(200)
-    , m_mostActiveChannel(-1)
-{
-    m_voiceEngine = VoiceEngine::Create();
-    m_adm.reset(new webrtc::FakeAudioDeviceModule);
-
-    VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);
-    voe->Init(m_adm.get());
-
-    // FIXME: hard coded timer interval.
-    m_jobTimer.reset(new JobTimer(100, this));
-
-    if (ELOG_IS_TRACE_ENABLED()) {
-        webrtc::Trace::CreateTrace();
-        webrtc::Trace::SetTraceFile("webrtc_trace_audioMixer.txt");
-        webrtc::Trace::set_level_filter(webrtc::kTraceAll);
-    }
-}
-
-AudioMixer::~AudioMixer()
-{
-    m_jobTimer->stop();
-
-    VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);
-
-    boost::unique_lock<boost::shared_mutex> lock(m_channelsMutex);
-    m_channels.clear();
-    lock.unlock();
-
-    voe->Terminate();
-    VoiceEngine::Delete(m_voiceEngine);
-
-    if (ELOG_IS_TRACE_ENABLED()) {
-        webrtc::Trace::ReturnTrace();
-    }
-}
-
-void AudioMixer::onTimeout()
-{
-    boost::shared_lock<boost::shared_mutex> lock(m_channelsMutex);
-    for (auto it = m_channels.begin(); it != m_channels.end(); ++it) {
-        it->second->performMix(it == m_channels.begin());
-    }
-    lock.unlock();
-
-    if (m_vadEnabled)
-        performVAD();
-}
-
-void AudioMixer::enableVAD(uint32_t period)
-{
-    ELOG_DEBUG("enableVAD, period:%u", period);
-    m_jitterHold = period / 10;
-    m_vadEnabled = true;
-}
-
-void AudioMixer::disableVAD()
-{
-    ELOG_DEBUG("disableVAD.");
-    m_vadEnabled = false;
-}
-
-void AudioMixer::resetVAD()
-{
-    ELOG_DEBUG("resetVAD");
-    m_mostActiveChannel = -1;
-}
-
-bool  AudioMixer::addInput(const std::string& participant, const std::string& codec, woogeen_base::FrameSource* source)
-{
-    assert(source);
-
-    boost::upgrade_lock<boost::shared_mutex> lock(m_channelsMutex);
-    if (m_channels.find(participant) == m_channels.end()) {
-        boost::upgrade_to_unique_lock<boost::shared_mutex> uniquePartLock(lock);
-        if (!addChannel(participant)) {
-            return false;
-        }
-    }
-
-    m_channels[participant]->setInput(source);
-    m_mostActiveChannel = -1;
-    return true;
-}
-
-void AudioMixer::removeInput(const std::string& participant)
-{
-    boost::upgrade_lock<boost::shared_mutex> lock(m_channelsMutex);
-    if (m_channels.find(participant) != m_channels.end()) {
-        m_channels[participant]->unsetInput();
-        if (m_channels[participant]->isIdle()) {
-            boost::upgrade_to_unique_lock<boost::shared_mutex> uniquePartLock(lock);
-            removeChannel(participant);
-        }
-        m_mostActiveChannel = -1;
-    }
-}
 
 static woogeen_base::FrameFormat getFormat(const std::string& codec) {
     if (codec == "pcmu") {
@@ -149,84 +49,94 @@ static woogeen_base::FrameFormat getFormat(const std::string& codec) {
     }
 }
 
+DEFINE_LOGGER(AudioMixer, "mcu.media.AudioMixer");
+
+AudioMixer::AudioMixer(const std::string& configStr)
+{
+    boost::property_tree::ptree config;
+    std::istringstream is(configStr);
+    boost::property_tree::read_json(is, config);
+    std::string mixerImplName = config.get<std::string>("audioMixerImpl", "ACMM");
+
+    if (mixerImplName == "VOE") {
+        m_mixer.reset(new VoeFrameMixer());
+        ELOG_INFO("Create VoeFrameMixer(%s)", mixerImplName.c_str());
+    } else {
+        // default
+        m_mixer.reset(new AcmmFrameMixer());
+        ELOG_INFO("Create AcmmFrameMixer(%s)", mixerImplName.c_str());
+    }
+
+    if (ELOG_IS_TRACE_ENABLED()) {
+        webrtc::Trace::CreateTrace();
+        webrtc::Trace::SetTraceFile("webrtc_trace_audioMixer.txt");
+        webrtc::Trace::set_level_filter(webrtc::kTraceAll);
+    }
+}
+
+AudioMixer::~AudioMixer()
+{
+    if (ELOG_IS_TRACE_ENABLED()) {
+        webrtc::Trace::ReturnTrace();
+    }
+}
+
+void AudioMixer::setEventRegistry(EventRegistry *handle)
+{
+    m_mixer->setEventRegistry(handle);
+}
+
+void AudioMixer::enableVAD(uint32_t period)
+{
+    m_mixer->enableVAD(period);
+}
+
+void AudioMixer::disableVAD()
+{
+    m_mixer->disableVAD();
+}
+
+void AudioMixer::resetVAD()
+{
+    m_mixer->resetVAD();
+}
+
+bool AudioMixer::addInput(const std::string& participant, const std::string& codec, woogeen_base::FrameSource* source)
+{
+    assert(source);
+
+    woogeen_base::FrameFormat format = getFormat(codec);
+    if (format == woogeen_base::FRAME_FORMAT_UNKNOWN) {
+        ELOG_ERROR("addInput, invalid codec(%s)", codec.c_str());
+        return false;
+    }
+
+    return m_mixer->addInput(participant, format, source);
+}
+
+void AudioMixer::removeInput(const std::string& participant)
+{
+    m_mixer->removeInput(participant);
+    return;
+}
+
 bool AudioMixer::addOutput(const std::string& participant, const std::string& codec, woogeen_base::FrameDestination* dest)
 {
     assert(dest);
 
-    boost::upgrade_lock<boost::shared_mutex> lock(m_channelsMutex);
-    if (m_channels.find(participant) == m_channels.end()) {
-        boost::upgrade_to_unique_lock<boost::shared_mutex> uniquePartLock(lock);
-        if (!addChannel(participant)) {
-            return false;
-        }
+    woogeen_base::FrameFormat format = getFormat(codec);
+    if (format == woogeen_base::FRAME_FORMAT_UNKNOWN) {
+        ELOG_ERROR("addOutput, invalid codec(%s)", codec.c_str());
+        return false;
     }
 
-    return m_channels[participant]->setOutput(getFormat(codec), dest);
+    return m_mixer->addOutput(participant, format, dest);
 }
 
 void AudioMixer::removeOutput(const std::string& participant)
 {
-    boost::upgrade_lock<boost::shared_mutex> lock(m_channelsMutex);
-    if (m_channels.find(participant) != m_channels.end()) {
-        m_channels[participant]->unsetOutput();
-        if (m_channels[participant]->isIdle()) {
-            boost::upgrade_to_unique_lock<boost::shared_mutex> uniquePartLock(lock);
-            removeChannel(participant);
-        }
-    }
-}
-
-bool AudioMixer::addChannel(const std::string& participant)
-{
-    boost::shared_ptr<AudioChannel> channel(new AudioChannel(m_voiceEngine));
-    if (channel && channel->init()) {
-        m_channels[participant] = channel;
-        return true;
-    }
-    return false;
-}
-
-void AudioMixer::removeChannel(const std::string& participant)
-{
-    m_channels.erase(participant);
-}
-
-void AudioMixer::performVAD()
-{
-    VoEBase* voe = VoEBase::GetInterface(m_voiceEngine);
-    std::vector<int32_t> activeChannels;
-
-    if (m_jitterCount > 0) {
-        m_jitterCount--;
-        return;
-    }
-
-    if (!voe->GetActiveMixedInChannels(activeChannels)) {
-        if (activeChannels.size() > 0 && (activeChannels[0] != m_mostActiveChannel)) {
-            m_mostActiveChannel = activeChannels[0];
-            ELOG_DEBUG("m_mostActiveChannel change to:%d", m_mostActiveChannel);
-            notifyVAD();
-            m_jitterCount = m_jitterHold; /* 200 * 10ms = 2 seconds */
-        }
-    }
-}
-
-void AudioMixer::notifyVAD()
-{
-    // FIXME: only notify the most active participant
-    std::string mostActiveParticipant;
-
-    boost::shared_lock<boost::shared_mutex> lock(m_channelsMutex);
-    for (auto it = m_channels.begin(); it != m_channels.end(); ++it) {
-        if (it->second->id() == m_mostActiveChannel) {
-            mostActiveParticipant = it->first;
-            ELOG_DEBUG("mostActiveParticipant now is :%s", mostActiveParticipant.c_str());
-        }
-    }
-    lock.unlock();
-
-    if (m_asyncHandle)
-        m_asyncHandle->notifyAsyncEvent("vad", mostActiveParticipant);
+    m_mixer->removeOutput(participant);
+    return;
 }
 
 } /* namespace mcu */

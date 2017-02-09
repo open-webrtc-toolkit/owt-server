@@ -18,39 +18,47 @@
  * and approved by Intel in writing.
  */
 
-#ifndef AudioMixer_h
-#define AudioMixer_h
+#ifndef AcmInput_h
+#define AcmInput_h
 
-#include <EventRegistry.h>
+#include <boost/scoped_ptr.hpp>
+#include <boost/shared_ptr.hpp>
+
+#include <webrtc/modules/audio_coding/include/audio_coding_module.h>
+
 #include <logger.h>
 
 #include "MediaFramePipeline.h"
-#include "AudioFrameMixer.h"
+#include "AudioInput.h"
 
 namespace mcu {
+using namespace woogeen_base;
+using namespace webrtc;
 
-class AudioMixer {
+class AcmInput : public AudioInput {
     DECLARE_LOGGER();
 
 public:
-    AudioMixer(const std::string& configStr);
-    virtual ~AudioMixer();
+    AcmInput(const FrameFormat format, FrameSource *source);
+    ~AcmInput();
 
-    void enableVAD(uint32_t period);
-    void disableVAD();
-    void resetVAD();
+    bool init() override;
+    bool getAudioFrame(AudioFrame *audioFrame) override;
 
-    bool addInput(const std::string& participant, const std::string& codec, woogeen_base::FrameSource* source);
-    void removeInput(const std::string& participant);
-    bool addOutput(const std::string& participant, const std::string& codec, woogeen_base::FrameDestination* dest);
-    void removeOutput(const std::string& participant);
-
-    void setEventRegistry(EventRegistry* handle);
+    // Implements woogeen_base::FrameDestination
+    void onFrame(const Frame& frame) override;
 
 private:
-    boost::shared_ptr<AudioFrameMixer> m_mixer;
+    boost::shared_ptr<AudioCodingModule> m_audioCodingModule;
+    FrameFormat m_format;
+    FrameSource *m_source;
+
+    unsigned int m_ssrc;
+    uint32_t m_seqNumber;
+    bool m_valid;
+    boost::shared_mutex m_mutex;
 };
 
 } /* namespace mcu */
 
-#endif /* AudioMixer_h */
+#endif /* AcmInput_h */

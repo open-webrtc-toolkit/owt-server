@@ -18,39 +18,59 @@
  * and approved by Intel in writing.
  */
 
-#ifndef AudioMixer_h
-#define AudioMixer_h
+#ifndef AcmmParticipant_h
+#define AcmmParticipant_h
 
-#include <EventRegistry.h>
+#include <boost/scoped_ptr.hpp>
+#include <boost/shared_ptr.hpp>
+
+#include <webrtc/modules/audio_conference_mixer/include/audio_conference_mixer_defines.h>
+
 #include <logger.h>
 
 #include "MediaFramePipeline.h"
-#include "AudioFrameMixer.h"
+
+#include "AudioInput.h"
+#include "AudioOutput.h"
 
 namespace mcu {
 
-class AudioMixer {
+using namespace woogeen_base;
+using namespace webrtc;
+
+class AcmmParticipant : public MixerParticipant {
     DECLARE_LOGGER();
 
 public:
-    AudioMixer(const std::string& configStr);
-    virtual ~AudioMixer();
+    AcmmParticipant(int32_t id);
+    ~AcmmParticipant();
 
-    void enableVAD(uint32_t period);
-    void disableVAD();
-    void resetVAD();
+    int32_t id() {return m_id;}
 
-    bool addInput(const std::string& participant, const std::string& codec, woogeen_base::FrameSource* source);
-    void removeInput(const std::string& participant);
-    bool addOutput(const std::string& participant, const std::string& codec, woogeen_base::FrameDestination* dest);
-    void removeOutput(const std::string& participant);
+    bool hasInput() {return m_input != NULL;}
+    bool hasOutput() {return m_output != NULL;}
 
-    void setEventRegistry(EventRegistry* handle);
+    bool setInput(FrameFormat format, FrameSource* source);
+    void unsetInput();
+    bool setOutput(FrameFormat format, FrameDestination* destination);
+    void unsetOutput();
+
+    void NewMixedAudio(const AudioFrame* audioFrame);
+
+    // Implements MixerParticipant
+    MixerParticipant::AudioFrameInfo GetAudioFrameWithMuted(int32_t id, AudioFrame* audioFrame) override;
+    int32_t NeededFrequency(int32_t id) const override;
 
 private:
-    boost::shared_ptr<AudioFrameMixer> m_mixer;
+    int32_t m_id;
+
+    FrameFormat m_srcFormat;
+    FrameFormat m_dstFormat;
+
+    boost::shared_ptr<AudioInput> m_input;
+    boost::shared_ptr<AudioOutput> m_output;
 };
 
 } /* namespace mcu */
 
-#endif /* AudioMixer_h */
+#endif /* AcmmParticipant_h */

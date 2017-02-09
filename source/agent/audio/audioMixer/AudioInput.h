@@ -18,39 +18,25 @@
  * and approved by Intel in writing.
  */
 
-#ifndef AudioMixer_h
-#define AudioMixer_h
+#ifndef AudioInput_h
+#define AudioInput_h
 
-#include <EventRegistry.h>
-#include <logger.h>
-
+#include <webrtc/modules/interface/module_common_types.h>
 #include "MediaFramePipeline.h"
-#include "AudioFrameMixer.h"
 
 namespace mcu {
 
-class AudioMixer {
-    DECLARE_LOGGER();
-
+class AudioInput : public woogeen_base::FrameDestination {
 public:
-    AudioMixer(const std::string& configStr);
-    virtual ~AudioMixer();
+    virtual ~AudioInput() { }
 
-    void enableVAD(uint32_t period);
-    void disableVAD();
-    void resetVAD();
+    virtual bool init() = 0;
+    virtual bool getAudioFrame(webrtc::AudioFrame *audioFrame) = 0;
 
-    bool addInput(const std::string& participant, const std::string& codec, woogeen_base::FrameSource* source);
-    void removeInput(const std::string& participant);
-    bool addOutput(const std::string& participant, const std::string& codec, woogeen_base::FrameDestination* dest);
-    void removeOutput(const std::string& participant);
-
-    void setEventRegistry(EventRegistry* handle);
-
-private:
-    boost::shared_ptr<AudioFrameMixer> m_mixer;
+    // Implements woogeen_base::FrameDestination
+    virtual void onFrame(const woogeen_base::Frame& frame) = 0;
 };
 
 } /* namespace mcu */
 
-#endif /* AudioMixer_h */
+#endif /* AudioInput_h */
