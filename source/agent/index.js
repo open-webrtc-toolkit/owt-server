@@ -135,34 +135,39 @@ var launchErizoJS = function() {
     child.err_log_fd = err;
 
     child.on('close', function (code) {
-        log.info(id, 'exit with', code);
+        log.debug('Node ', id, 'exited with', code);
         //if (code !== 0) {
         if (processes[id]) {
             monitoringTarget && monitoringTarget.notify('abnormal', {purpose: myPurpose, id: id, type: 'node'});
+            fs.closeSync(child.out_log_fd);
+            fs.closeSync(child.err_log_fd);
+            cleanupErizoJS(id);
         }
-        fs.closeSync(child.out_log_fd);
-        fs.closeSync(child.err_log_fd);
-        cleanupErizoJS(id);
-        fillErizos();
+        var is_recorverable = !(code === -2);//FIXME: there might be other unrecoverable reasons.
+        if (is_recorverable) {
+            fillErizos();
+        } else {
+            log.error('Node(', id, ') exited with an unrecoverable code(', code, '), and will no longer try to lauch new ones.');
+        }
     });
     child.on('error', function (error) {
-        log.error('failed to launch worker:', error);
+        log.error('failed to launch worker', id, 'error:', error.code);
         child.READY = false;
         monitoringTarget && monitoringTarget.notify('error', {purpose: myPurpose, id: id, type: 'node'});
         fs.closeSync(child.out_log_fd);
         fs.closeSync(child.err_log_fd);
         cleanupErizoJS(id);
-        fillErizos(); // FIXME: distinguish between deterministic errors and recoverable ones.
     });
     child.on('message', function (message) { // currently only used for sending ready message from worker to agent;
-        log.info('message from worker', id, ':', message);
+        log.debug('message from node', id, ':', message);
         if (message === 'READY') {
             child.READY = true;
         } else {
             child.READY = false;
             child.kill();
+            fs.closeSync(child.out_log_fd);
+            fs.closeSync(child.err_log_fd);
             cleanupErizoJS(id);
-            fillErizos(); // FIXME: distinguish between deterministic errors and recoverable ones.
         }
     });
     processes[id] = child;
@@ -467,7 +472,8 @@ var joinCluster = function (on_ok) {
         }
         break;
         default:
-            load_collection.item = {name: 'cpu'};
+            log.error('Ambiguous purpose:', purpose);
+            process.exit();
             break;
     }
 })();
