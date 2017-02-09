@@ -18,39 +18,31 @@
  * and approved by Intel in writing.
  */
 
-#ifndef AudioMixer_h
-#define AudioMixer_h
+#ifndef AudioFrameMixer_h
+#define AudioFrameMixer_h
 
 #include <EventRegistry.h>
-#include <logger.h>
 
 #include "MediaFramePipeline.h"
-#include "AudioFrameMixer.h"
 
 namespace mcu {
 
-class AudioMixer {
-    DECLARE_LOGGER();
-
+class AudioFrameMixer {
 public:
-    AudioMixer(const std::string& configStr);
-    virtual ~AudioMixer();
+    virtual ~AudioFrameMixer() {}
 
-    void enableVAD(uint32_t period);
-    void disableVAD();
-    void resetVAD();
+    virtual void enableVAD(uint32_t period) = 0;
+    virtual void disableVAD() = 0;
+    virtual void resetVAD() = 0;
 
-    bool addInput(const std::string& participant, const std::string& codec, woogeen_base::FrameSource* source);
-    void removeInput(const std::string& participant);
-    bool addOutput(const std::string& participant, const std::string& codec, woogeen_base::FrameDestination* dest);
-    void removeOutput(const std::string& participant);
+    virtual bool addInput(const std::string& participant, const woogeen_base::FrameFormat format, woogeen_base::FrameSource* source) = 0;
+    virtual void removeInput(const std::string& participant) = 0;
+    virtual bool addOutput(const std::string& participant, const woogeen_base::FrameFormat format, woogeen_base::FrameDestination* destination) = 0;
+    virtual void removeOutput(const std::string& participant) = 0;
 
-    void setEventRegistry(EventRegistry* handle);
-
-private:
-    boost::shared_ptr<AudioFrameMixer> m_mixer;
+    virtual void setEventRegistry(EventRegistry* handle) = 0;
 };
 
 } /* namespace mcu */
 
-#endif /* AudioMixer_h */
+#endif /* AudioFrameMixer_h */

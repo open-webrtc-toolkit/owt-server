@@ -18,39 +18,41 @@
  * and approved by Intel in writing.
  */
 
-#ifndef AudioMixer_h
-#define AudioMixer_h
+#ifndef PcmOutput_h
+#define PcmOutput_h
 
-#include <EventRegistry.h>
+#include <boost/scoped_ptr.hpp>
+#include <boost/shared_ptr.hpp>
+
+#include <webrtc/common_types.h>
+
 #include <logger.h>
 
 #include "MediaFramePipeline.h"
-#include "AudioFrameMixer.h"
+#include "AudioOutput.h"
 
 namespace mcu {
+using namespace woogeen_base;
+using namespace webrtc;
 
-class AudioMixer {
+class PcmOutput : public AudioOutput {
     DECLARE_LOGGER();
 
 public:
-    AudioMixer(const std::string& configStr);
-    virtual ~AudioMixer();
+    PcmOutput(const FrameFormat format, FrameDestination *destination);
+    ~PcmOutput();
 
-    void enableVAD(uint32_t period);
-    void disableVAD();
-    void resetVAD();
-
-    bool addInput(const std::string& participant, const std::string& codec, woogeen_base::FrameSource* source);
-    void removeInput(const std::string& participant);
-    bool addOutput(const std::string& participant, const std::string& codec, woogeen_base::FrameDestination* dest);
-    void removeOutput(const std::string& participant);
-
-    void setEventRegistry(EventRegistry* handle);
+    bool init() override;
+    bool addAudioFrame(const AudioFrame *audioFrame) override;
 
 private:
-    boost::shared_ptr<AudioFrameMixer> m_mixer;
+    FrameFormat m_format;
+    FrameDestination *m_destination;
+
+    uint32_t m_timestampOffset;
+    bool m_valid;
 };
 
 } /* namespace mcu */
 
-#endif /* AudioMixer_h */
+#endif /* PcmOutput_h */
