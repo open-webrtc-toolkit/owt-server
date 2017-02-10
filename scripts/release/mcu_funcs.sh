@@ -247,16 +247,7 @@ pack_node() {
     mv lib/woogeen/erizoJS.js lib/_third_party_main.js
     sed -i "s/woogeen\/erizoJS\.js/_third_party_main.js/g" node.gyp
 
-    # fix node's configure for dynamic-linking libraries
-    patch -p0 < ../node4-configure.patch
-
-    local LIBTCMALLOC="${PREFIX_DIR}/lib/libtcmalloc_minimal.so"
-    if [ -s ${LIBTCMALLOC} ]; then
-      patch -p0 < ../node4-configure-tcmalloc.patch
-      PKG_CONFIG_PATH=${PREFIX_DIR}/lib/pkgconfig:${PREFIX_DIR}/lib64/pkgconfig:${PKG_CONFIG_PATH} ./configure --without-npm --prefix=${PREFIX_DIR} --shared-openssl --shared-tcmalloc --shared-tcmalloc-libpath=${PREFIX_DIR}/lib --shared-tcmalloc-libname=tcmalloc_minimal,dl
-    else
-      PKG_CONFIG_PATH=${PREFIX_DIR}/lib/pkgconfig:${PREFIX_DIR}/lib64/pkgconfig:${PKG_CONFIG_PATH} ./configure --without-npm --prefix=${PREFIX_DIR} --shared-openssl
-    fi
+    PKG_CONFIG_PATH=${PREFIX_DIR}/lib/pkgconfig:${PREFIX_DIR}/lib64/pkgconfig:${PKG_CONFIG_PATH} ./configure --without-npm --prefix=${PREFIX_DIR} --shared-openssl --shared-openssl-libpath=${PREFIX_DIR}/lib --shared-openssl-includes=${PREFIX_DIR}/include --shared-openssl-libname=ssl,crypto
     LD_LIBRARY_PATH=${PREFIX_DIR}/lib:${LD_LIBRARY_PATH} make V= -j5
     make uninstall >/dev/null
     make install >/dev/null
@@ -278,13 +269,6 @@ install_module() {
       echo -e "\x1b[32mInstalling node_modules for ${TARGET}...\x1b[0m"
       pushd ${TARGET} >/dev/null
       npm install --production --loglevel error
-
-      if [ "$TARGET" = "nuve" ]; then
-        # Set bson version to 1.0.1 to avoid requiring higher node version
-        pushd node_modules/mongojs/node_modules/mongodb/node_modules/mongodb-core >/dev/null
-        npm install bson@1.0.1 --save
-        popd >/dev/null
-      fi
       popd >/dev/null
     done
   else
