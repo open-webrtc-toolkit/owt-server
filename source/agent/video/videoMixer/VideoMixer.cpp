@@ -53,6 +53,7 @@ VideoMixer::VideoMixer(const std::string& configStr)
         m_freeInputIndexes.push_back(true);
 
     // bool hardwareAccelerated = config.get<bool>("hardware", false);
+    bool useGacc = config.get<bool>("gaccplugin");
 
     bool useSimulcast = config.get<bool>("simulcast");
     webrtc::VP8EncoderFactoryConfig::set_use_simulcast_adapter(useSimulcast);
@@ -68,7 +69,7 @@ VideoMixer::VideoMixer(const std::string& configStr)
 
     m_taskRunner.reset(new woogeen_base::WebRTCTaskRunner());
 
-    m_frameMixer.reset(new VideoFrameMixerImpl(m_maxInputCount, rootSize, bgColor, m_taskRunner, useSimulcast, cropVideo));
+    m_frameMixer.reset(new VideoFrameMixerImpl(m_maxInputCount, rootSize, bgColor, m_taskRunner, useSimulcast, cropVideo, useGacc));
     m_layoutProcessor->registerConsumer(m_frameMixer);
 
     m_taskRunner->Start();

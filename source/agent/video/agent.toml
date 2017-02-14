@@ -45,6 +45,11 @@ yamiEnabled = false
 #true means OpenH264 is deployed for H.264. Otherwise no support of H.264 in MCU
 openh264Enabled = false
 
+#If true and hardwareAccleration is enabled, setting this to true allows GACC HEVC encoder plugin to be used
+#for better video quality.
+#Warning: enabling this will introduce extra CPU resource consumption.
+enableBetterHEVCQuality = false
+
 [avatar]
 #widthxheight in the location indicates the image size
 location = "avatar.180x180.yuv"

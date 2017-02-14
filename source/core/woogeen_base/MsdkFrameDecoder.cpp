@@ -20,7 +20,6 @@
 
 #ifdef ENABLE_MSDK
 
-#include "MsdkBase.h"
 #include "MsdkFrameDecoder.h"
 
 using namespace webrtc;
@@ -39,6 +38,7 @@ MsdkFrameDecoder::MsdkFrameDecoder()
     , m_framePool(NULL)
     , m_statDetectHeaderFrameCount(0)
     , m_ready(false)
+    , m_pluginID()
 {
     initDefaultParam();
 }
@@ -53,6 +53,11 @@ MsdkFrameDecoder::~MsdkFrameDecoder()
         m_dec->Close();
         delete m_dec;
         m_dec = NULL;
+    }
+
+    if (AreGuidsEqual(m_pluginID, MFX_PLUGINID_HEVCD_HW) &&
+        m_session) {
+        MFXVideoUSER_UnLoad(*m_session, &m_pluginID);
     }
 
     if (m_session) {
@@ -198,10 +203,13 @@ bool MsdkFrameDecoder::init(FrameFormat format)
 {
     switch (format) {
         case FRAME_FORMAT_H264:
-
             m_videoParam->mfx.CodecId = MFX_CODEC_AVC;
+            ELOG_DEBUG("(%p)Created H.264 decoder.", this);
+            break;
 
-            ELOG_DEBUG("(%p)Created H.264 deocder.", this);
+        case FRAME_FORMAT_H265:
+            m_videoParam->mfx.CodecId = MFX_CODEC_HEVC;
+            ELOG_DEBUG("(%p)Created H.265 decoder.", this);
             break;
 
         case FRAME_FORMAT_VP8:
@@ -217,8 +225,14 @@ bool MsdkFrameDecoder::init(FrameFormat format)
         ELOG_ERROR("(%p)Get MSDK failed.", this);
         return false;
     }
+    if (format == FRAME_FORMAT_H265) {
+        memcpy(&m_pluginID, &MFX_PLUGINID_HEVCD_HW, sizeof(mfxPluginUID));
+        m_session = msdkBase->createSession(&m_pluginID);
 
-    m_session = msdkBase->createSession();
+    } else {
+        m_session = msdkBase->createSession();
+    }
+
     if (!m_session ) {
         ELOG_ERROR("(%p)Create session failed.", this);
         return false;
@@ -271,6 +285,11 @@ bool MsdkFrameDecoder::decHeader(mfxBitstream *pBitstream)
     m_videoParam->IOPattern  = MFX_IOPATTERN_OUT_VIDEO_MEMORY;
     m_videoParam->AsyncDepth = 1 + MAX_DECODED_FRAME_IN_RENDERING;
 
+    if (!allocateFrames()) {
+        ELOG_ERROR("Failed to allocate frames for decoder.");
+        return false;
+    }
+
     sts = m_dec->Init(m_videoParam.get());
     if (sts > 0) {
         ELOG_TRACE("(%p)Ignore mfx warning, ret %d", this, sts);
@@ -284,9 +303,6 @@ bool MsdkFrameDecoder::decHeader(mfxBitstream *pBitstream)
 
     m_dec->GetVideoParam(m_videoParam.get());
     MsdkBase::printfVideoParam(m_videoParam.get(), MFX_DEC);
-
-    if (!allocateFrames())
-        return false;
 
     m_ready = true;
     return true;

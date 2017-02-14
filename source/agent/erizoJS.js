@@ -26,6 +26,7 @@ GLOBAL.config.video = GLOBAL.config.video || {};
 GLOBAL.config.video.hardwareAccelerated = !!GLOBAL.config.video.hardwareAccelerated;
 GLOBAL.config.video.openh264Enabled = !!GLOBAL.config.video.openh264Enabled;
 GLOBAL.config.video.yamiEnabled = !!GLOBAL.config.video.yamiEnabled;
+GLOBAL.config.video.enableBetterHEVCQuality = !!GLOBAL.config.video.enableBetterHEVCQuality;
 
 GLOBAL.config.avatar = GLOBAL.config.avatar || {};
 

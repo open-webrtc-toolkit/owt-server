@@ -131,6 +131,15 @@ install_libsrtp(){
   make install
   cd $CURRENT_DIR
 }
+install_msdk_dispatcher(){
+  [ -d $LIB_DIR ] || mkdir -p $LIB_DIR
+  mkdir -p ${LIB_DIR}/dispatcher
+  pushd ${LIB_DIR}/dispatcher
+  cmake -D__ARCH:STRING=intel64 /opt/intel/mediasdk/opensource/mfx_dispatch/
+  make
+  cp -av __lib/libdispatch_shared.a ${PREFIX_DIR}/lib/libdispatch_shared.a
+  popd
+}
 
 install_libva(){
   [ -d $LIB_DIR ] || mkdir -p $LIB_DIR

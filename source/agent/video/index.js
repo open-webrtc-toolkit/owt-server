@@ -69,6 +69,7 @@ module.exports = function (rpcClient) {
         useHardware = GLOBAL.config.video.hardwareAccelerated,
         openh264Enabled = GLOBAL.config.video.openh264Enabled,
         yamiEnabled = GLOBAL.config.video.yamiEnabled,
+        gaccPluginEnabled = GLOBAL.config.video.enableBetterHEVCQuality,
 
         /*{ConnectionID: {video: StreamID | undefined,
                           connection: InternalOut}
@@ -205,7 +206,8 @@ module.exports = function (rpcClient) {
             'backgroundcolor': videoConfig.bkColor,
             'layout': videoConfig.layout,
             'simulcast': videoConfig.multistreaming,
-            'crop': videoConfig.crop
+            'crop': videoConfig.crop,
+            'gaccplugin': gaccPluginEnabled
         };
 
         engine = new VideoMixer(JSON.stringify(config));

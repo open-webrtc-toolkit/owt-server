@@ -40,6 +40,7 @@ GLOBAL.config.recording.path = GLOBAL.config.recording.path || '/tmp';
 GLOBAL.config.video = GLOBAL.config.video || {};
 GLOBAL.config.video.hardwareAccelerated = !!GLOBAL.config.video.hardwareAccelerated;
 GLOBAL.config.video.yamiEnabled = !!GLOBAL.config.video.yamiEnabled;
+GLOBAL.config.video.enableBetterHEVCQuality = !!GLOBAL.config.video.enableBetterHEVCQuality;
 
 
 // Parse command line arguments

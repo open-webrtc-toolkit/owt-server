@@ -30,6 +30,7 @@
 #include "MediaFramePipeline.h"
 
 #include "MsdkFrame.h"
+#include "MsdkBase.h"
 
 namespace woogeen_base {
 
@@ -40,7 +41,7 @@ public:
     MsdkFrameDecoder();
     ~MsdkFrameDecoder();
 
-    static bool supportFormat(FrameFormat format) {return (format == FRAME_FORMAT_H264);}
+    static bool supportFormat(FrameFormat format) {return (format == FRAME_FORMAT_H264 || format == FRAME_FORMAT_H265);}
 
     void onFrame(const Frame&);
     bool init(FrameFormat);
@@ -74,6 +75,8 @@ private:
     uint8_t m_statDetectHeaderFrameCount;
 
     bool m_ready;
+
+    mfxPluginUID m_pluginID;
 };
 
 } /* namespace woogeen_base */

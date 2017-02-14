@@ -72,7 +72,7 @@ private:
 
 class VideoFrameMixerImpl : public VideoFrameMixer {
 public:
-    VideoFrameMixerImpl(uint32_t maxInput, woogeen_base::VideoSize rootSize, woogeen_base::YUVColor bgColor, boost::shared_ptr<woogeen_base::WebRTCTaskRunner>, bool useSimulcast, bool crop);
+    VideoFrameMixerImpl(uint32_t maxInput, woogeen_base::VideoSize rootSize, woogeen_base::YUVColor bgColor, boost::shared_ptr<woogeen_base::WebRTCTaskRunner>, bool useSimulcast, bool crop, bool useGacc);
     ~VideoFrameMixerImpl();
 
     bool addInput(int input, woogeen_base::FrameFormat, woogeen_base::FrameSource*, const std::string& avatar);
@@ -114,11 +114,13 @@ private:
 
     boost::shared_ptr<woogeen_base::WebRTCTaskRunner> m_taskRunner;
     bool m_useSimulcast;
+    bool m_useGacc;
 };
 
-VideoFrameMixerImpl::VideoFrameMixerImpl(uint32_t maxInput, woogeen_base::VideoSize rootSize, woogeen_base::YUVColor bgColor, boost::shared_ptr<woogeen_base::WebRTCTaskRunner> taskRunner, bool useSimulcast, bool crop)
+VideoFrameMixerImpl::VideoFrameMixerImpl(uint32_t maxInput, woogeen_base::VideoSize rootSize, woogeen_base::YUVColor bgColor, boost::shared_ptr<woogeen_base::WebRTCTaskRunner> taskRunner, bool useSimulcast, bool crop, bool useGacc)
     : m_taskRunner(taskRunner)
     , m_useSimulcast(useSimulcast)
+    , m_useGacc(useGacc)
 {
 #ifdef ENABLE_YAMI
     if (!m_compositor)
@@ -303,7 +305,7 @@ inline bool VideoFrameMixerImpl::addOutput(int output,
 
 #ifdef ENABLE_MSDK
         if (!encoder && woogeen_base::MsdkFrameEncoder::supportFormat(format))
-            encoder.reset(new woogeen_base::MsdkFrameEncoder(format, m_useSimulcast));
+            encoder.reset(new woogeen_base::MsdkFrameEncoder(format, m_useSimulcast, m_useGacc));
 #endif
 
         if (!encoder)

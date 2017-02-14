@@ -27,6 +27,7 @@
 #include <logger.h>
 
 #include <mfxvideo++.h>
+#include <mfxplugin++.h>
 
 namespace woogeen_base {
 
@@ -38,6 +39,10 @@ namespace woogeen_base {
 #define printfToDo      ELOG_TRACE(":%d-(%p)%s - Todo", __LINE__, this, __FUNCTION__)
 
 #define ALIGN16(x) ((((x) + 15) >> 4) << 4)
+#define ALIGN32(x) ((((x) + 31) >> 5) << 5)
+
+
+bool AreGuidsEqual(const mfxPluginUID& guid1, const mfxPluginUID& guid2);
 
 enum DumpType{ MFX_DEC, MFX_VPP, MFX_ENC };
 
@@ -49,7 +54,7 @@ public:
 
     static MsdkBase *get(void);
 
-    MFXVideoSession *createSession(void);
+    MFXVideoSession *createSession(mfxPluginUID* pluginID=nullptr);
     void destroySession(MFXVideoSession *pSession);
 
     boost::shared_ptr<mfxFrameAllocator> createFrameAllocator(void);
