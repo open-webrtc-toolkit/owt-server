@@ -42,7 +42,7 @@ class StreamEncoder : public FrameSource
     DECLARE_LOGGER()
 
 public:
-    StreamEncoder()
+    StreamEncoder(bool useGacc)
         : m_frameCount(0)
         , m_format(FRAME_FORMAT_UNKNOWN)
         , m_width(0)
@@ -51,8 +51,10 @@ public:
         , m_dest(NULL)
         , m_setBitRateFlag(false)
         , m_requestKeyFrameFlag(false)
+        , m_useGacc(useGacc)
         , m_encSession(NULL)
         , m_enc(NULL)
+        , m_pluginID()
         , m_vppSession(NULL)
         , m_vpp(NULL)
     {
@@ -71,6 +73,12 @@ public:
             m_enc = NULL;
         }
 
+        if ((AreGuidsEqual(m_pluginID, MFX_PLUGINID_HEVCE_HW)||
+            AreGuidsEqual(m_pluginID, MFX_PLUGINID_HEVCE_GACC)) &&
+            m_encSession) {
+            MFXVideoUSER_UnLoad(*m_encSession, &m_pluginID);
+        }
+
         if (m_encSession) {
             //disjoint
             m_encSession->Close();
@@ -83,6 +91,7 @@ public:
         m_encParam.reset();
         m_encExtCodingOpt.reset();
         m_encExtCodingOpt2.reset();
+        m_encExtHevcParam.reset();
         m_encExtParams.clear();
 
         if (m_bitstream && m_bitstream->Data) {
@@ -128,7 +137,10 @@ public:
 
                 ELOG_DEBUG("(%p)Created H.264 encoder.", this);
                 break;
-
+            case FRAME_FORMAT_H265:
+                // Let encoder decide the profile to be used.
+                m_encParam->mfx.CodecId                = MFX_CODEC_HEVC;
+                break;
             case FRAME_FORMAT_VP8:
             default:
                 ELOG_ERROR("(%p)Unspported video frame format %d", this, format);
@@ -143,7 +155,17 @@ public:
             return false;
         }
 
-        m_encSession = msdkBase->createSession();
+        if (format == FRAME_FORMAT_H265) {
+            if (!m_useGacc) {
+                memcpy(&m_pluginID, &MFX_PLUGINID_HEVCE_HW, sizeof(mfxPluginUID));
+            } else {
+                memcpy(&m_pluginID, &MFX_PLUGINID_HEVCE_GACC, sizeof(mfxPluginUID));
+            }
+            m_encSession = msdkBase->createSession(&m_pluginID);
+        } else {
+            m_encSession = msdkBase->createSession();
+        }
+
         if (!m_encSession ) {
             ELOG_ERROR("(%p)Create session failed.", this);
             return false;
@@ -372,8 +394,11 @@ protected:
         m_encExtCodingOpt2.reset(new mfxExtCodingOption2);
         memset(m_encExtCodingOpt2.get(), 0, sizeof(mfxExtCodingOption2));
 
-        m_encExtParams.push_back(reinterpret_cast<mfxExtBuffer *>(m_encExtCodingOpt.get()));
-        m_encExtParams.push_back(reinterpret_cast<mfxExtBuffer *>(m_encExtCodingOpt2.get()));
+        m_encExtHevcParam.reset(new mfxExtHEVCParam);
+        memset(m_encExtHevcParam.get(), 0, sizeof(mfxExtHEVCParam));
+
+        //m_encExtParams.push_back(reinterpret_cast<mfxExtBuffer *>(m_encExtCodingOpt.get()));
+        //m_encExtParams.push_back(reinterpret_cast<mfxExtBuffer *>(m_encExtCodingOpt2.get()));
 
         // FrameInfo
         m_encParam->mfx.FrameInfo.FourCC          = MFX_FOURCC_NV12;
@@ -407,8 +432,6 @@ protected:
         // mfx
         m_encParam->mfx.LowPower                  = 0;
         m_encParam->mfx.BRCParamMultiplier        = 0;
-        m_encParam->mfx.CodecId                   = MFX_CODEC_AVC;
-        m_encParam->mfx.CodecProfile              = MFX_PROFILE_AVC_BASELINE;
         m_encParam->mfx.CodecLevel                = 0;
         m_encParam->mfx.NumThread                 = 0;
 
@@ -448,14 +471,33 @@ protected:
         m_encExtCodingOpt2->MaxSliceSize               = 0;
     }
 
-    void updateParam(void)
+    void updateParam()
     {
-        m_encParam->mfx.FrameInfo.Width   = ALIGN16(m_width);
-        m_encParam->mfx.FrameInfo.Height  = ALIGN16(m_height);
         m_encParam->mfx.FrameInfo.CropX   = 0;
         m_encParam->mfx.FrameInfo.CropY   = 0;
         m_encParam->mfx.FrameInfo.CropW   = m_width;
         m_encParam->mfx.FrameInfo.CropH   = m_height;
+
+        if (m_format != FRAME_FORMAT_H265) {
+            m_encParam->mfx.FrameInfo.Width   = ALIGN16(m_width);
+            m_encParam->mfx.FrameInfo.Height  = ALIGN16(m_height);
+        } else { // HEVC. More ext params
+            m_encParam->mfx.FrameInfo.Width   = ALIGN32(m_width);
+            m_encParam->mfx.FrameInfo.Height  = ALIGN32(m_height);
+
+            if ((!((m_encParam->mfx.FrameInfo.CropW & 15) ^ 8)) ||
+                (!((m_encParam->mfx.FrameInfo.CropH & 15) ^ 8))) {
+                m_encExtHevcParam->Header.BufferId          = MFX_EXTBUFF_HEVC_PARAM;
+                m_encExtHevcParam->Header.BufferSz          = sizeof(m_encExtHevcParam);
+                m_encExtHevcParam->PicWidthInLumaSamples    = m_encParam->mfx.FrameInfo.CropW;
+                m_encExtHevcParam->PicHeightInLumaSamples   = m_encParam->mfx.FrameInfo.CropH;
+
+                m_encExtParams.push_back(reinterpret_cast<mfxExtBuffer *>(m_encExtHevcParam.get()));
+
+                m_encParam->ExtParam                    = &m_encExtParams.front(); // vector is stored linearly in memory
+                m_encParam->NumExtParam                 = m_encExtParams.size();
+          }
+        }
 
         m_encParam->mfx.TargetKbps        = m_bitRateKbps ? m_bitRateKbps : calcBitrate(m_width, m_height);
         m_encParam->mfx.MaxKbps           = m_encParam->mfx.TargetKbps;
@@ -736,6 +778,7 @@ private:
 
     bool m_setBitRateFlag;
     bool m_requestKeyFrameFlag;
+    bool m_useGacc;
 
     //encoder
     MFXVideoSession *m_encSession;
@@ -748,8 +791,10 @@ private:
     std::vector<mfxExtBuffer *> m_encExtParams;
     boost::scoped_ptr<mfxExtCodingOption> m_encExtCodingOpt;
     boost::scoped_ptr<mfxExtCodingOption2> m_encExtCodingOpt2;
+    boost::scoped_ptr<mfxExtHEVCParam> m_encExtHevcParam;
 
     boost::scoped_ptr<mfxBitstream> m_bitstream;
+    mfxPluginUID m_pluginID;
 
     //vpp
     MFXVideoSession *m_vppSession;
@@ -764,9 +809,10 @@ private:
 
 DEFINE_LOGGER(StreamEncoder, "woogeen.StreamEncoder");
 
-MsdkFrameEncoder::MsdkFrameEncoder(woogeen_base::FrameFormat format, bool useSimulcast)
+MsdkFrameEncoder::MsdkFrameEncoder(woogeen_base::FrameFormat format, bool useSimulcast, bool useGacc)
     : m_encodeFormat(format)
     , m_useSimulcast(useSimulcast)
+    , m_useGacc(useGacc)
     , m_id(0)
 {
 }
@@ -800,7 +846,7 @@ int32_t MsdkFrameEncoder::generateStream(uint32_t width, uint32_t height, uint32
 {
     boost::upgrade_lock<boost::shared_mutex> lock(m_mutex);
 
-    boost::shared_ptr<StreamEncoder> stream(new StreamEncoder());
+    boost::shared_ptr<StreamEncoder> stream(new StreamEncoder(m_useGacc));
     if (!stream->init(m_encodeFormat, width, height, bitrateKbps, dest)) {
         ELOG_ERROR("generateStream failed: {.width=%d, .height=%d, .bitrateKbps=%d}", width, height, bitrateKbps);
         return -1;
@@ -867,6 +913,10 @@ void MsdkFrameEncoder::onFrame(const Frame& frame)
             break;
 
         case FRAME_FORMAT_H264:
+            assert(false);
+            break;
+
+        case FRAME_FORMAT_H265:
             assert(false);
             break;
 

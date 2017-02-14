@@ -34,6 +34,16 @@ DEFINE_LOGGER(MsdkBase, "woogeen.MsdkBase");
 boost::shared_mutex MsdkBase::sSingletonLock;
 MsdkBase *MsdkBase::sSingleton = NULL;
 
+bool AreGuidsEqual(const mfxPluginUID& guid1, const mfxPluginUID& guid2)
+{
+    for(size_t i = 0; i != sizeof(mfxPluginUID); i++)
+    {
+        if (guid1.Data[i] != guid2.Data[i])
+            return false;
+    }
+    return true;
+}
+
 MsdkBase::MsdkBase()
     : m_fd(0),
     m_vaDisp(NULL),
@@ -117,7 +127,7 @@ MFXVideoSession *MsdkBase::createSession_internal(void)
 {
     mfxStatus sts = MFX_ERR_NONE;
 
-    mfxIMPL impl = MFX_IMPL_AUTO_ANY;
+    mfxIMPL impl = MFX_IMPL_HARDWARE_ANY;
     mfxVersion ver = {{3, 1}};
 
     MFXVideoSession * pSession = new MFXVideoSession;
@@ -148,7 +158,7 @@ MFXVideoSession *MsdkBase::createSession_internal(void)
     return pSession;
 }
 
-MFXVideoSession *MsdkBase::createSession(void)
+MFXVideoSession *MsdkBase::createSession(mfxPluginUID* pluginID)
 {
     mfxStatus sts = MFX_ERR_NONE;
     MFXVideoSession *pSession = NULL;
@@ -171,6 +181,23 @@ MFXVideoSession *MsdkBase::createSession(void)
     if (sts != MFX_ERR_NONE) {
         ELOG_ERROR("Join main session failed");
         return NULL;
+    }
+
+    // If plugin load fails, we need to destroy the session.
+    // Be noted plugin loading must happen after joining main
+    // session, else decoder will crash in plugin.
+    if (pluginID != nullptr) {
+        sts = MFXVideoUSER_Load(*pSession, pluginID, 1);
+        if (sts != MFX_ERR_NONE) {
+            ELOG_ERROR("Failed to load codec plugin.");
+            //TODO: Disjoin main session
+            pSession->Close();
+            delete pSession;
+            pSession = nullptr;
+            return pSession;
+        } else {
+            ELOG_DEBUG("Succeed to load codec plugin.");
+        }
     }
 
     return pSession;
