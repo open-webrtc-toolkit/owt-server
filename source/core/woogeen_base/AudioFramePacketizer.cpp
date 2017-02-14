@@ -31,6 +31,7 @@ namespace woogeen_base {
 AudioFramePacketizer::AudioFramePacketizer()
     : m_enabled(true)
     , m_frameFormat(FRAME_FORMAT_UNKNOWN)
+    , m_seqNo(0)
 {
     audioSink_ = nullptr;
     m_audioTransport.reset(new WebRTCTransport<erizo::AUDIO>(this, nullptr));
@@ -105,6 +106,8 @@ void AudioFramePacketizer::onFrame(const Frame& frame)
     }
 
     if (frame.additionalInfo.audio.isRtpPacket) { // FIXME: Temporarily use Frame to carry rtp-packets due to the premature AudioFrameConstructor implementation.
+        //reinterpret_cast<RTPHeader*>(frame.payload)->setSeqNumber(m_seqNo++);
+        updateSeqNo(frame.payload);
         audioSink_->deliverAudioData(reinterpret_cast<char*>(frame.payload), frame.length);
         return;
     }
@@ -190,6 +193,10 @@ void AudioFramePacketizer::close()
     }
     lock.unlock();
     m_taskRunner->DeRegisterModule(m_rtpRtcp.get());
+}
+
+void AudioFramePacketizer::updateSeqNo(uint8_t* rtp) {
+    *(reinterpret_cast<uint16_t*>(&rtp[2])) = htons(m_seqNo++);
 }
 
 }
