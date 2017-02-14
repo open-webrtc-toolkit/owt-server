@@ -147,7 +147,7 @@ var launchErizoJS = function() {
         if (is_recorverable) {
             fillErizos();
         } else {
-            log.error('Node(', id, ') exited with an unrecoverable code(', code, '), and will no longer try to lauch new ones.');
+            log.error('Node(', id, ') exited with an unrecoverable code(', code, '), and will no longer try to launch new ones.');
         }
     });
     child.on('error', function (error) {

@@ -66,6 +66,7 @@ private:
     bool init();
     bool setSendCodec(FrameFormat format);
     void close();
+    void updateSeqNo(uint8_t* rtp);
 
     bool m_enabled;
     boost::scoped_ptr<webrtc::RtpRtcp> m_rtpRtcp;
@@ -76,6 +77,8 @@ private:
     FrameFormat m_frameFormat;
 
     boost::shared_mutex m_transport_mutex;
+
+    uint16_t m_seqNo;
 };
 
 }
