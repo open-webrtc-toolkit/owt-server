@@ -62,9 +62,7 @@ public:
  */
 class CandidateInfo {
 public:
-    CandidateInfo() :
-            tag(0) {
-    }
+    CandidateInfo() : tag(0), generation(-1) {}
     bool isBundle;
     int tag;
     unsigned int priority;
@@ -80,6 +78,7 @@ public:
     std::string username;
     std::string password;
     MediaType mediaType;
+    int generation;  // -1 if this info does not exist.
 };
 
 /**
