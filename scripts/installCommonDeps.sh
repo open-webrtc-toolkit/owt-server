@@ -218,7 +218,7 @@ install_oovoosdk(){
 install_tcmalloc(){
   if [ -d $LIB_DIR ]; then
     cd $LIB_DIR
-    wget -c http://gperftools.googlecode.com/files/gperftools-2.1.tar.gz
+    wget -c https://github.com/gperftools/gperftools/releases/download/gperftools-2.1/gperftools-2.1.tar.gz
     tar -zxf gperftools-2.1.tar.gz
     cd gperftools-2.1
     ./configure --prefix=$PREFIX_DIR --disable-cpu-profiler --disable-heap-profiler --disable-heap-checker --disable-debugalloc
