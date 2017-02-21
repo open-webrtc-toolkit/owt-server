@@ -1,4 +1,4 @@
-/*global require, GLOBAL, process*/
+/*global require, global, process*/
 'use strict';
 var Getopt = require('node-getopt');
 var spawn = require('child_process').spawn;
@@ -15,33 +15,32 @@ try {
 }
 
 // Configuration default values
-GLOBAL.config = config || {};
+global.config = config || {};
 
-GLOBAL.config.agent = GLOBAL.config.agent || {};
-GLOBAL.config.agent.maxProcesses = GLOBAL.config.agent.maxProcesses || 13;
-GLOBAL.config.agent.prerunProcesses = GLOBAL.config.agent.prerunProcesses || 2;
+global.config.agent = global.config.agent || {};
+global.config.agent.maxProcesses = global.config.agent.maxProcesses || 13;
+global.config.agent.prerunProcesses = global.config.agent.prerunProcesses || 2;
 
-GLOBAL.config.cluster = GLOBAL.config.cluster || {};
-GLOBAL.config.cluster.name = GLOBAL.config.cluster.name || 'woogeen-cluster';
-GLOBAL.config.cluster.join_retry = GLOBAL.config.cluster.join_retry || 60;
-GLOBAL.config.cluster.report_load_interval = GLOBAL.config.cluster.report_load_interval || 1000;
-GLOBAL.config.cluster.max_load = GLOBAL.config.cluster.max_load || 0.85;
-GLOBAL.config.cluster.network_max_scale = GLOBAL.config.cluster.network_max_scale || 1000;
-GLOBAL.config.cluster.ip_address = GLOBAL.config.cluster.ip_address || '';
-GLOBAL.config.cluster.network_interface = GLOBAL.config.cluster.network_interface || undefined;
+global.config.cluster = global.config.cluster || {};
+global.config.cluster.name = global.config.cluster.name || 'woogeen-cluster';
+global.config.cluster.join_retry = global.config.cluster.join_retry || 60;
+global.config.cluster.report_load_interval = global.config.cluster.report_load_interval || 1000;
+global.config.cluster.max_load = global.config.cluster.max_load || 0.85;
+global.config.cluster.network_max_scale = global.config.cluster.network_max_scale || 1000;
+global.config.cluster.ip_address = global.config.cluster.ip_address || '';
+global.config.cluster.network_interface = global.config.cluster.network_interface || undefined;
 
-GLOBAL.config.webrtc = GLOBAL.config.webrtc || {};
-GLOBAL.config.webrtc.ip_address = GLOBAL.config.webrtc.ip_address || '';
-GLOBAL.config.webrtc.network_interface = GLOBAL.config.webrtc.network_interface || undefined;
+global.config.webrtc = global.config.webrtc || {};
+global.config.webrtc.ip_address = global.config.webrtc.ip_address || '';
+global.config.webrtc.network_interface = global.config.webrtc.network_interface || undefined;
 
-GLOBAL.config.recording = GLOBAL.config.recording || {};
-GLOBAL.config.recording.path = GLOBAL.config.recording.path || '/tmp';
+global.config.recording = global.config.recording || {};
+global.config.recording.path = global.config.recording.path || '/tmp';
 
-GLOBAL.config.video = GLOBAL.config.video || {};
-GLOBAL.config.video.hardwareAccelerated = !!GLOBAL.config.video.hardwareAccelerated;
-GLOBAL.config.video.yamiEnabled = !!GLOBAL.config.video.yamiEnabled;
-GLOBAL.config.video.enableBetterHEVCQuality = !!GLOBAL.config.video.enableBetterHEVCQuality;
-
+global.config.video = global.config.video || {};
+global.config.video.hardwareAccelerated = !!global.config.video.hardwareAccelerated;
+global.config.video.yamiEnabled = !!global.config.video.yamiEnabled;
+global.config.video.enableBetterHEVCQuality = !!global.config.video.enableBetterHEVCQuality;
 
 // Parse command line arguments
 var getopt = new Getopt([
@@ -70,12 +69,12 @@ for (var prop in opt.options) {
                 process.exit(0);
                 break;
             case 'rabbit-host':
-                GLOBAL.config.rabbit = GLOBAL.config.rabbit || {};
-                GLOBAL.config.rabbit.host = value;
+                global.config.rabbit = global.config.rabbit || {};
+                global.config.rabbit.host = value;
                 break;
             case 'rabbit-port':
-                GLOBAL.config.rabbit = GLOBAL.config.rabbit || {};
-                GLOBAL.config.rabbit.port = value;
+                global.config.rabbit = global.config.rabbit || {};
+                global.config.rabbit.port = value;
                 break;
             case 'my-purpose':
                 if (value === 'session' ||
@@ -91,7 +90,7 @@ for (var prop in opt.options) {
                 }
                 break;
             default:
-                GLOBAL.config.agent[prop] = value;
+                global.config.agent[prop] = value;
                 break;
         }
     }
@@ -107,7 +106,7 @@ var idle_erizos = [];
 var erizos = [];
 var processes = {};
 var tasks = {}; // {erizo_id: {RoomID: [ConsumerID]}}
-var load_collection = {period: GLOBAL.config.cluster.report_load_interval};
+var load_collection = {period: global.config.cluster.report_load_interval};
 var worker;
 
 function cleanupErizoJS (id) {
@@ -193,7 +192,7 @@ var dropAll = function() {
 };
 
 var fillErizos = function() {
-    for (var i = idle_erizos.length; i < GLOBAL.config.agent.prerunProcesses; i++) {
+    for (var i = idle_erizos.length; i < global.config.agent.prerunProcesses; i++) {
         launchErizoJS();
     }
 };
@@ -289,7 +288,7 @@ var api = function (worker) {
 
                 erizos.push(erizo_id);
 
-                if (reuse && myPurpose !== 'session' && myPurpose !== 'sip' && ((erizos.length + idle_erizos.length + 1) >= GLOBAL.config.agent.maxProcesses)) {
+                if (reuse && myPurpose !== 'session' && myPurpose !== 'sip' && ((erizos.length + idle_erizos.length + 1) >= global.config.agent.maxProcesses)) {
                     // We re-use Erizos
                     idle_erizos.push(erizos.shift());
                 } else {
@@ -338,11 +337,11 @@ function collectIPs () {
                 if (interfaces[k].hasOwnProperty(k2)) {
                     address = interfaces[k][k2];
                     if (address.family === 'IPv4' && !address.internal) {
-                        if (!externalInterface && (k === GLOBAL.config.webrtc.network_interface || !GLOBAL.config.webrtc.network_interface)) {
+                        if (!externalInterface && (k === global.config.webrtc.network_interface || !global.config.webrtc.network_interface)) {
                             externalInterface = k;
                             externalAddress = address.address;
                         }
-                        if (!clusterInterface && (k === GLOBAL.config.cluster.network_interface || !GLOBAL.config.cluster.network_interface)) {
+                        if (!clusterInterface && (k === global.config.cluster.network_interface || !global.config.cluster.network_interface)) {
                             clusterInterface = k;
                             clusterAddress = address.address;
                         }
@@ -354,16 +353,16 @@ function collectIPs () {
 
     privateIP = externalAddress;
 
-    if (GLOBAL.config.webrtc.ip_address === '' || GLOBAL.config.webrtc.ip_address === undefined){
+    if (global.config.webrtc.ip_address === '' || global.config.webrtc.ip_address === undefined){
         publicIP = externalAddress;
     } else {
-        publicIP = GLOBAL.config.webrtc.ip_address;
+        publicIP = global.config.webrtc.ip_address;
     }
 
-    if (GLOBAL.config.cluster.ip_address === '' || GLOBAL.config.cluster.ip_address === undefined) {
+    if (global.config.cluster.ip_address === '' || global.config.cluster.ip_address === undefined) {
         clusterIP = clusterAddress;
     } else {
-        clusterIP = GLOBAL.config.cluster.ip_address;
+        clusterIP = global.config.cluster.ip_address;
     }
 }
 
@@ -393,13 +392,13 @@ var joinCluster = function (on_ok) {
     worker = clusterWorker({
         rpcClient: rpcClient,
         purpose: myPurpose,
-        clusterName: GLOBAL.config.cluster.name,
-        joinRetry: GLOBAL.config.cluster.join_retry,
+        clusterName: global.config.cluster.name,
+        joinRetry: global.config.cluster.join_retry,
         info: {
             ip: clusterIP,
             purpose: myPurpose,
             state: 2,
-            max_load: GLOBAL.config.cluster.max_load
+            max_load: global.config.cluster.max_load
         },
         onJoinOK: joinOK,
         onJoinFailed: joinFailed,
@@ -435,18 +434,18 @@ var joinCluster = function (on_ok) {
 
             load_collection.item = {name: 'network',
                                     interf: concernedInterface || 'lo',
-                                    max_scale: GLOBAL.config.cluster.network_max_scale};
+                                    max_scale: global.config.cluster.network_max_scale};
             break;
         case 'recording':
             try {
-                fs.accessSync(GLOBAL.config.recording.path, fs.F_OK);
+                fs.accessSync(global.config.recording.path, fs.F_OK);
             } catch (e) {
                 log.error('The configured recording path is not accessible.');
                 process.exit(1);
             }
 
             load_collection.item = {name: 'disk',
-                                    drive: GLOBAL.config.recording.path};
+                                    drive: global.config.recording.path};
             break;
         case 'sip':
             load_collection.item = {name: 'cpu'};
@@ -457,10 +456,10 @@ var joinCluster = function (on_ok) {
             break;
         case 'video':
             /*FIXME: should be double checked whether hardware acceleration is actually running*/
-        load_collection.item = {name: (GLOBAL.config.video.hardwareAccelerated ? 'gpu' : 'cpu')};
-        if (GLOBAL.config.video.hardwareAccelerated) {
+        load_collection.item = {name: (global.config.video.hardwareAccelerated ? 'gpu' : 'cpu')};
+        if (global.config.video.hardwareAccelerated) {
             // Query the hardware capability only if we want to try it.
-            if (GLOBAL.config.video.yamiEnabled) {
+            if (global.config.video.yamiEnabled) {
                 var path = require('path');
                 process.env.LD_LIBRARY_PATH = [
                     path.resolve(process.cwd(), './lib/va'),
@@ -479,7 +478,7 @@ var joinCluster = function (on_ok) {
     }
 })();
 
-amqper.connect(GLOBAL.config.rabbit, function () {
+amqper.connect(global.config.rabbit, function () {
     log.info('Adding agent to cloudhandler, purpose:', myPurpose);
     amqper.asRpcClient(function(rpcClnt) {
         rpcClient = rpcClnt;

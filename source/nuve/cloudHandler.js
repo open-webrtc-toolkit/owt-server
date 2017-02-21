@@ -1,8 +1,8 @@
-/*global require, exports, GLOBAL*/
+/*global require, exports, global*/
 'use strict';
 var rpc = require('./rpc/rpc');
 var log = require('./logger').logger.getLogger('CloudHandler');
-var cluster_name = ((GLOBAL.config || {}).cluster || {}).name || 'woogeen-cluster';
+var cluster_name = ((global.config || {}).cluster || {}).name || 'woogeen-cluster';
 
 exports.getPortalForRoom = function (room, callback) {
     var roomId = room._id,

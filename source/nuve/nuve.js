@@ -1,4 +1,4 @@
-/*global require, __dirname, process, GLOBAL*/
+/*global require, __dirname, process, global*/
 'use strict';
 
 var log = require('./logger').logger.getLogger('Nuve');
@@ -6,14 +6,14 @@ var fs = require('fs');
 var toml = require('toml');
 
 try {
-  GLOBAL.config = toml.parse(fs.readFileSync('./nuve.toml'));
+  global.config = toml.parse(fs.readFileSync('./nuve.toml'));
 } catch (e) {
   log.error('Parsing config error on line ' + e.line + ', column ' + e.column + ': ' + e.message);
   process.exit(1);
 }
 
 var rpc = require('./rpc/rpc');
-rpc.connect(GLOBAL.config.rabbit);
+rpc.connect(global.config.rabbit);
 
 var express = require('express');
 var bodyParser = require('body-parser');
@@ -81,15 +81,15 @@ app.get('/cluster/nodes/:node', clusterResource.getNode);
 app.get('/cluster/rooms', clusterResource.getRooms);
 app.get('/cluster/nodes/:node/config', clusterResource.getNodeConfig);
 
-if (GLOBAL.config.nuve.ssl === true) {
+if (global.config.nuve.ssl === true) {
     var cipher = require('./cipher');
     var path = require('path');
-    var keystore = path.resolve(path.dirname(GLOBAL.config.nuve.keystorePath), '.woogeen.keystore');
+    var keystore = path.resolve(path.dirname(global.config.nuve.keystorePath), '.woogeen.keystore');
     cipher.unlock(cipher.k, keystore, function cb (err, passphrase) {
         if (!err) {
             try {
                 require('https').createServer({
-                    pfx: require('fs').readFileSync(GLOBAL.config.nuve.keystorePath),
+                    pfx: require('fs').readFileSync(global.config.nuve.keystorePath),
                     passphrase: passphrase
                 }, app).listen(3000);
             } catch (e) {

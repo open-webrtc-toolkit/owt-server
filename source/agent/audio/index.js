@@ -158,8 +158,8 @@ module.exports = function (rpcClient) {
     };
 
     that.createInternalConnection = function (connectionId, direction, internalOpt, callback) {
-        internalOpt.minport = GLOBAL.config.internal.minport;
-        internalOpt.maxport = GLOBAL.config.internal.maxport;
+        internalOpt.minport = global.config.internal.minport;
+        internalOpt.maxport = global.config.internal.maxport;
         var portInfo = internalConnFactory.create(connectionId, direction, internalOpt);
         callback('callback', {ip: that.clusterIP, port: portInfo});
     };
@@ -268,7 +268,7 @@ module.exports = function (rpcClient) {
     };
 
     that.init = function (service, config, belongTo, controller, callback) {
-        var audioConfig = GLOBAL.config.audio;
+        var audioConfig = global.config.audio;
         log.debug('init, audioConfig:', audioConfig);
 
         if (service === 'mixing') {

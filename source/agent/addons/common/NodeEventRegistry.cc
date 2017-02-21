@@ -73,7 +73,7 @@ void NodeEventRegistry::process(const Data& data)
     Local<Value> argv[argc] = {
         String::NewFromUtf8(isolate, data.message.c_str())
     };
-    TryCatch try_catch;
+    TryCatch try_catch(isolate);
 
     if (store->IsFunction()) {
         Local<Function>::Cast(store)->Call(isolate->GetCurrentContext()->Global(), argc, argv);

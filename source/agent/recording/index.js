@@ -1,4 +1,4 @@
-/*global require, module, GLOBAL*/
+/*global require, module, global*/
 'use strict';
 
 var internalIO = require('./internalIO/build/Release/internalIO');
@@ -35,7 +35,7 @@ module.exports = function () {
     };
 
     var createFileOut = function (options, callback) {
-        var recordingPath = options.path ? options.path : GLOBAL.config.recording.path;
+        var recordingPath = options.path ? options.path : global.config.recording.path;
         var avstream_options = {type: 'file',
                                 require_audio: !!options.audio,
                                 require_video: !!options.video,
@@ -80,8 +80,8 @@ module.exports = function () {
     };
 
     that.createInternalConnection = function (connectionId, direction, internalOpt, callback) {
-        internalOpt.minport = GLOBAL.config.internal.minport;
-        internalOpt.maxport = GLOBAL.config.internal.maxport;
+        internalOpt.minport = global.config.internal.minport;
+        internalOpt.maxport = global.config.internal.maxport;
         var portInfo = internalConnFactory.create(connectionId, direction, internalOpt);
         callback('callback', {ip: that.clusterIP, port: portInfo});
     };

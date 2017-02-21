@@ -1,4 +1,4 @@
-/*global require, module, GLOBAL, process*/
+/*global require, module, global, process*/
 'use strict';
 
 var logger = require('./logger').logger;
@@ -74,7 +74,7 @@ module.exports = function (rpcClient, selfRpcId) {
 
             return new Promise(function(resolve, reject) {
               controller = sessionController(
-                {cluster: GLOBAL.config.cluster.name || 'woogeen-cluster',
+                {cluster: global.config.cluster.name || 'woogeen-cluster',
                  rpcReq: rpcReq,
                  rpcClient: rpcClient,
                  room: sessionId,

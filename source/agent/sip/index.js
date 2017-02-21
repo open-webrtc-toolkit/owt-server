@@ -11,7 +11,7 @@ var rpcClient;
 var path = require('path');
 var makeRPC = require('./makeRPC').makeRPC;
 
-var cluster_name = ((GLOBAL.config || {}).cluster || {}).name || 'woogeen-cluster';
+var cluster_name = ((global.config || {}).cluster || {}).name || 'woogeen-cluster';
 
 // Logger
 var log = logger.getLogger('SipNode');
@@ -560,8 +560,8 @@ module.exports = function (rpcC, spec) {
     };
 
     that.createInternalConnection = function (connectionId, direction, internalOpt, callback) {
-        internalOpt.minport = GLOBAL.config.internal.minport;
-        internalOpt.maxport = GLOBAL.config.internal.maxport;
+        internalOpt.minport = global.config.internal.minport;
+        internalOpt.maxport = global.config.internal.maxport;
         var portInfo = internalConnFactory.create(connectionId, direction, internalOpt);
         callback('callback', {ip: that.clusterIP, port: portInfo});
     };

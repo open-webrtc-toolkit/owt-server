@@ -1,4 +1,4 @@
-/*global require, module, GLOBAL, process*/
+/*global require, module, global, process*/
 'use strict';
 
 var internalIO = require('./internalIO/build/Release/internalIO');
@@ -66,10 +66,10 @@ module.exports = function (rpcClient) {
         inputs = {},
         maxInputNum = 0,
 
-        useHardware = GLOBAL.config.video.hardwareAccelerated,
-        openh264Enabled = GLOBAL.config.video.openh264Enabled,
-        yamiEnabled = GLOBAL.config.video.yamiEnabled,
-        gaccPluginEnabled = GLOBAL.config.video.enableBetterHEVCQuality,
+        useHardware = global.config.video.hardwareAccelerated,
+        openh264Enabled = global.config.video.openh264Enabled,
+        yamiEnabled = global.config.video.yamiEnabled,
+        gaccPluginEnabled = global.config.video.enableBetterHEVCQuality,
 
         /*{ConnectionID: {video: StreamID | undefined,
                           connection: InternalOut}
@@ -105,7 +105,7 @@ module.exports = function (rpcClient) {
                 conn.connect(options);
 
                 // Use default avatar if it is not set
-                avatar = avatar || GLOBAL.config.avatar.location;
+                avatar = avatar || global.config.avatar.location;
                 if (engine.addInput(stream_id, codec, conn, avatar)) {
                     inputs[stream_id] = conn;
                     log.debug('addInput ok, stream_id:', stream_id, 'codec:', codec, 'options:', options);
@@ -291,8 +291,8 @@ module.exports = function (rpcClient) {
     };
 
     that.createInternalConnection = function (connectionId, direction, internalOpt, callback) {
-        internalOpt.minport = GLOBAL.config.internal.minport;
-        internalOpt.maxport = GLOBAL.config.internal.maxport;
+        internalOpt.minport = global.config.internal.minport;
+        internalOpt.maxport = global.config.internal.maxport;
         var portInfo = internalConnFactory.create(connectionId, direction, internalOpt);
         callback('callback', {ip: that.clusterIP, port: portInfo});
     };

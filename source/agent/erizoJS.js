@@ -1,4 +1,4 @@
-/*global require, GLOBAL, process*/
+/*global require, global, process*/
 'use strict';
 var Getopt = require('node-getopt');
 var fs = require('fs');
@@ -14,31 +14,31 @@ try {
 }
 
 
-GLOBAL.config = config || {};
-GLOBAL.config.webrtc = GLOBAL.config.webrtc || {};
-GLOBAL.config.webrtc.stunserver = GLOBAL.config.webrtc.stunserver || '';
-GLOBAL.config.webrtc.stunport = GLOBAL.config.webrtc.stunport || 0;
-GLOBAL.config.webrtc.minport = GLOBAL.config.webrtc.minport || 0;
-GLOBAL.config.webrtc.maxport = GLOBAL.config.webrtc.maxport || 0;
-GLOBAL.config.webrtc.keystorePath = GLOBAL.config.webrtc.keystorePath || '';
+global.config = config || {};
+global.config.webrtc = global.config.webrtc || {};
+global.config.webrtc.stunserver = global.config.webrtc.stunserver || '';
+global.config.webrtc.stunport = global.config.webrtc.stunport || 0;
+global.config.webrtc.minport = global.config.webrtc.minport || 0;
+global.config.webrtc.maxport = global.config.webrtc.maxport || 0;
+global.config.webrtc.keystorePath = global.config.webrtc.keystorePath || '';
 
-GLOBAL.config.video = GLOBAL.config.video || {};
-GLOBAL.config.video.hardwareAccelerated = !!GLOBAL.config.video.hardwareAccelerated;
-GLOBAL.config.video.openh264Enabled = !!GLOBAL.config.video.openh264Enabled;
-GLOBAL.config.video.yamiEnabled = !!GLOBAL.config.video.yamiEnabled;
-GLOBAL.config.video.enableBetterHEVCQuality = !!GLOBAL.config.video.enableBetterHEVCQuality;
+global.config.video = global.config.video || {};
+global.config.video.hardwareAccelerated = !!global.config.video.hardwareAccelerated;
+global.config.video.openh264Enabled = !!global.config.video.openh264Enabled;
+global.config.video.yamiEnabled = !!global.config.video.yamiEnabled;
+global.config.video.enableBetterHEVCQuality = !!global.config.video.enableBetterHEVCQuality;
 
-GLOBAL.config.avatar = GLOBAL.config.avatar || {};
+global.config.avatar = global.config.avatar || {};
 
-GLOBAL.config.audio = GLOBAL.config.audio || {};
+global.config.audio = global.config.audio || {};
 
-GLOBAL.config.recording = GLOBAL.config.recording || {};
-GLOBAL.config.recording.path = GLOBAL.config.recording.path || '/tmp';
+global.config.recording = global.config.recording || {};
+global.config.recording.path = global.config.recording.path || '/tmp';
 
-GLOBAL.config.internal = GLOBAL.config.internal || {};
-GLOBAL.config.internal.protocol = GLOBAL.config.internal.protocol || 'sctp';
-GLOBAL.config.internal.minport = GLOBAL.config.internal.minport || 0;
-GLOBAL.config.internal.maxport = GLOBAL.config.internal.maxport || 0;
+global.config.internal = global.config.internal || {};
+global.config.internal.protocol = global.config.internal.protocol || 'sctp';
+global.config.internal.minport = global.config.internal.minport || 0;
+global.config.internal.maxport = global.config.internal.maxport || 0;
 
 // Parse command line arguments
 var getopt = new Getopt([
@@ -63,15 +63,15 @@ for (var prop in opt.options) {
                 process.exit(0);
                 break;
             case 'rabbit-host':
-                GLOBAL.config.rabbit = GLOBAL.config.rabbit || {};
-                GLOBAL.config.rabbit.host = value;
+                global.config.rabbit = global.config.rabbit || {};
+                global.config.rabbit.host = value;
                 break;
             case 'rabbit-port':
-                GLOBAL.config.rabbit = GLOBAL.config.rabbit || {};
-                GLOBAL.config.rabbit.port = value;
+                global.config.rabbit = global.config.rabbit || {};
+                global.config.rabbit.port = value;
                 break;
             default:
-                GLOBAL.config.webrtc[prop] = value;
+                global.config.webrtc[prop] = value;
                 break;
         }
     }
@@ -80,17 +80,17 @@ for (var prop in opt.options) {
 var rpc = require('./amqp_client')();
 
 (function init_env() {
-    if (GLOBAL.config.video.hardwareAccelerated) {
+    if (global.config.video.hardwareAccelerated) {
         // Query the hardware capability only if we want to try it.
         require('child_process').exec('vainfo', function (error, stdout, stderr) {
             if (error && error.code !== 0) {
                 log.warn('vainfo check with exit code:', error.code);
-                GLOBAL.config.video.hardwareAccelerated = false;
+                global.config.video.hardwareAccelerated = false;
                 return;
             }
             var info = stdout.toString() || stderr.toString();
             // Check hardware codec version
-            GLOBAL.config.video.hardwareAccelerated = (info.indexOf('VA-API version') != -1);
+            global.config.video.hardwareAccelerated = (info.indexOf('VA-API version') != -1);
         });
     }
 })();
@@ -99,7 +99,7 @@ log.info('Connecting to rabbitMQ server...');
 
 var controller;
 
-rpc.connect(GLOBAL.config.rabbit, function () {
+rpc.connect(global.config.rabbit, function () {
     rpc.asRpcClient(function(rpcClient) {
         var purpose = process.argv[3];
         var rpcID = process.argv[2];
