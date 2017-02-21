@@ -79,7 +79,7 @@ namespace erizo {
 
   NiceConnection::NiceConnection(MediaType med, const std::string &transport_name,NiceConnectionListener* listener,
       unsigned int iceComponents, const std::string& stunServer, int stunPort, int minPort, int maxPort, std::string username, std::string password)
-     : mediaType(med), agent_(NULL), listener_(listener), candsDelivered_(0), context_(NULL), iceState_(NICE_INITIAL), iceComponents_(iceComponents) {
+     : mediaType(med), agent_(NULL), listener_(listener), candsDelivered_(0), context_(NULL), iceState_(NICE_INITIAL), iceComponents_(iceComponents), generation_(0) {
 
     localCandidates.reset(new std::vector<CandidateInfo>());
     transportName.reset(new std::string(transport_name));
@@ -430,6 +430,7 @@ namespace erizo {
       cand_info.transProtocol = std::string(*transportName.get());
       cand_info.username = ufrag_;
       cand_info.password = upass_;
+      cand_info.generation = generation_;
       //localCandidates->push_back(cand_info);
       if (listener_)
         listener_->onCandidate(cand_info, this);
@@ -520,6 +521,26 @@ namespace erizo {
     ELOG_INFO("remote candidate addr: %s:%d",ipaddr, nice_address_get_port(&remote->addr));
     return selectedPair;
 
+  }
+
+  StunCredential NiceConnection::restart(const std::string username,
+                                         const std::string password) {
+    ELOG_INFO("ICE restart.");
+    nice_agent_restart(agent_);
+    gchar *ufrag = NULL, *upass = NULL;
+    nice_agent_get_local_credentials(agent_, 1, &ufrag, &upass);
+    StunCredential localCredential;
+    localCredential.username = std::string(ufrag);
+    localCredential.password = std::string(upass);
+    ufrag_ = std::string(ufrag);
+    upass_ = std::string(upass);
+    nice_agent_set_remote_candidates(agent_, (guint)1, 1, nullptr);
+    nice_agent_set_remote_credentials(agent_, (guint)1, username.c_str(),
+                                      password.c_str());
+    g_free(ufrag);
+    g_free(upass);
+    generation_++;
+    return localCredential;
   }
 
 } /* namespace erizo */

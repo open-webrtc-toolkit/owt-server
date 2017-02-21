@@ -29,6 +29,7 @@ namespace erizo {
     void onHandshakeCompleted(dtls::DtlsSocketContext *ctx, std::string clientKey, std::string serverKey, std::string srtp_profile);
     void updateIceState(IceState state, NiceConnection *conn);
     void processLocalSdp(SdpInfo *localSdp_);
+    StunCredential restart(const std::string username, const std::string password);
 
     private:
     char protectBuf_[5000];

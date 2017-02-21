@@ -110,6 +110,8 @@ DtlsTransport::~DtlsTransport() {
 }
 
 void DtlsTransport::start() {
+  if(running_)
+    return;
   nice_->start();
   running_ =true;
   getNice_Thread_ = boost::thread(&DtlsTransport::getNiceDataLoop, this);
@@ -306,6 +308,10 @@ void DtlsTransport::processLocalSdp(SdpInfo *localSdp_) {
      localSdp_->setCredentials(username, password, this->mediaType);
   }
   ELOG_DEBUG( "Processed Local SDP in DTLS Transport with credentials %s, %s", username.c_str(), password.c_str());
+}
+
+StunCredential DtlsTransport::restart(const std::string username, const std::string password){
+  return nice_->restart(username, password);
 }
 
 void DtlsTransport::getNiceDataLoop(){

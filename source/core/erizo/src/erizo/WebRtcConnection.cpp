@@ -84,6 +84,8 @@ namespace erizo {
 
     sending_ = true;
     send_Thread_ = boost::thread(&WebRtcConnection::sendLoop, this);
+    iceRestarting_ = false;
+    localSdpGeneration_ = 0;
     ELOG_INFO("WebRtcConnection constructor Done");
   }
 
@@ -190,12 +192,12 @@ namespace erizo {
     if (remoteSdp_.profile == SAVPF) {
       if (remoteSdp_.isFingerprint) {
         // DTLS-SRTP
-        if (videoTransportNeeded) {
+        if (videoTransportNeeded && !videoTransport_) {
           std::string username, password;
           remoteSdp_.getCredentials(username, password, VIDEO_TYPE);
           videoTransport_ = new DtlsTransport(VIDEO_TYPE, "video", bundle_, remoteSdp_.isRtcpMux, this, stunServer_, stunPort_, minPort_, maxPort_, certFile_, keyFile_, privatePasswd_, username, password);
         }
-        if (audioTransportNeeded) {
+        if (audioTransportNeeded && !audioTransport_) {
           std::string username, password;
           remoteSdp_.getCredentials(username, password, AUDIO_TYPE);
           audioTransport_ = new DtlsTransport(AUDIO_TYPE, "audio", false, remoteSdp_.isRtcpMux, this, stunServer_, stunPort_, minPort_, maxPort_, certFile_, keyFile_, privatePasswd_, username, password);
@@ -203,14 +205,65 @@ namespace erizo {
       }
     }
 
+    // Detecting ICE restart. (RFC5245 9.2.2.1)
+    // Restarting a single stream is not support yet. We only support full
+    // restart now.
+    // ICE restart always initialized by client side.
+    std::string username, password;
+    remoteSdp_.getCredentials(username, password, VIDEO_TYPE);
+    if (username.empty()) {
+      remoteSdp_.getCredentials(username, password, AUDIO_TYPE);
+    }
+    if (!remoteUfrag_.empty() && username != remoteUfrag_) {
+      ELOG_DEBUG("Detected ICE restart.");
+      iceRestarting_ = true;
+
+    }
+    remoteUfrag_ = username;
+
     if (!remoteSdp_.getCandidateInfos().empty()){
-      ELOG_DEBUG("There are candidate in the SDP: Setting Remote Candidates!!!!");
+      ELOG_DEBUG("There are candidate in the SDP.");
+      if (iceRestarting_) {
+        auto candidateInfos = remoteSdp_.getCandidateInfos();
+        boost::lock_guard<boost::mutex> lock(pendingRemoteCandidatesMutex_);
+        pendingRemoteCandidates_.insert(pendingRemoteCandidates_.end(),
+                                        candidateInfos.begin(),
+                                        candidateInfos.end());
+      } else {
+        ELOG_DEBUG("Setting remote candidates.");
+        if (videoTransport_) {
+          videoTransport_->setRemoteCandidates(remoteSdp_.getCandidateInfos(), bundle_);
+        }
+        if (audioTransport_) {
+          audioTransport_->setRemoteCandidates(remoteSdp_.getCandidateInfos(), bundle_);
+        }
+      }
+      remoteUfrag_ = username;
+    }
+
+    if (iceRestarting_) {
+      ELOG_DEBUG("Handle ICE restart");
+      localSdpGeneration_++;
       if (videoTransport_) {
-        videoTransport_->setRemoteCandidates(remoteSdp_.getCandidateInfos(), bundle_);
+        auto newCredential = videoTransport_->restart(username, password);
+        ELOG_DEBUG("Update credentials for audio and video transport channel.");
+        localSdp_.setCredentials(newCredential.username, newCredential.password,
+                                 VIDEO_TYPE);
+        localSdp_.setCredentials(newCredential.username, newCredential.password,
+                                 AUDIO_TYPE);
       }
-      if (audioTransport_) {
-        audioTransport_->setRemoteCandidates(remoteSdp_.getCandidateInfos(), bundle_);
+      if (!bundle_ && audioTransport_) {
+        auto newCredential = audioTransport_->restart(username, password);
+        ELOG_DEBUG("Update credentials for audio transport channel.");
+        localSdp_.setCredentials(newCredential.username, newCredential.password,
+                                 AUDIO_TYPE);
       }
+      for (CandidateInfo& cand : localSdp_.getCandidateInfos()) {
+        ELOG_DEBUG("Update candidate generation to %d.", localSdpGeneration_);
+        cand.generation = localSdpGeneration_;
+      }
+      notifyAsyncEvent(asyncHandle_, CONN_SDP, localSdp_.getSdp());
+      iceRestarting_ = false;
     }
 
     return true;
@@ -234,6 +287,13 @@ namespace erizo {
     tempSdp.setCredentials(username, password, OTHER);
     bool res = false;
     if(tempSdp.initWithSdp(sdp, theMid)){
+      if (iceRestarting_) {
+        boost::lock_guard<boost::mutex> lock(pendingRemoteCandidatesMutex_);
+        pendingRemoteCandidates_.insert(pendingRemoteCandidates_.end(),
+                                        tempSdp.getCandidateInfos().begin(),
+                                        tempSdp.getCandidateInfos().end());
+        return true;
+      }
       if (theType == VIDEO_TYPE||bundle_){
         ELOG_DEBUG("Setting VIDEO CANDIDATE" );
         res = videoTransport_->setRemoteCandidates(tempSdp.getCandidateInfos(), bundle_);
@@ -249,6 +309,10 @@ namespace erizo {
       remoteSdp_.addCandidate(tempSdp.getCandidateInfos()[it]);
     }
     return res;
+  }
+
+  void WebRtcConnection::drainPendingRemoteCandidates(){
+    // TODO: Drain pending remote candidates when client updated ICE credentials.
   }
 
   std::string WebRtcConnection::getLocalSdp() {
