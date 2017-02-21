@@ -1,4 +1,4 @@
-/*global require, module, GLOBAL*/
+/*global require, module, global*/
 'use strict';
 
 var woogeenWebrtc = require('./webrtcLib/build/Release/webrtc');
@@ -316,10 +316,20 @@ module.exports = function (spec, on_status) {
         }
     };
 
-    var keystore = path.resolve(path.dirname(GLOBAL.config.webrtc.keystorePath), '.woogeen.keystore');
+    var keystore = path.resolve(path.dirname(global.config.webrtc.keystorePath), '.woogeen.keystore');
     cipher.unlock(cipher.k, keystore, function cb (err, passphrase) {
         if (!err) {
-            wrtc = new WebRtcConnection(!!audio, !!video, true/*FIXME: hash264:hard coded*/, GLOBAL.config.webrtc.stunserver, GLOBAL.config.webrtc.stunport, GLOBAL.config.webrtc.minport, GLOBAL.config.webrtc.maxport, GLOBAL.config.webrtc.keystorePath, GLOBAL.config.webrtc.keystorePath, passphrase, true, true, true, true, false);
+            wrtc = new WebRtcConnection(
+                !!audio, !!video,
+                true/*FIXME: hash264:hard coded*/,
+                global.config.webrtc.stunserver,
+                global.config.webrtc.stunport,
+                global.config.webrtc.minport,
+                global.config.webrtc.maxport,
+                global.config.webrtc.keystorePath,
+                global.config.webrtc.keystorePath,
+                passphrase,
+                true, true,true, true, false);
 
             if (direction === 'in') {
                 bindFrameConstructors();

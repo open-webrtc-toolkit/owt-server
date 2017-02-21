@@ -1,4 +1,4 @@
-/*global require, module, GLOBAL*/
+/*global require, module, global*/
 'use strict';
 
 var WrtcConnection = require('./wrtcConnection');
@@ -46,8 +46,8 @@ module.exports = function () {
     };
 
     that.createInternalConnection = function (connectionId, direction, internalOpt, callback) {
-        internalOpt.minport = GLOBAL.config.internal.minport;
-        internalOpt.maxport = GLOBAL.config.internal.maxport;
+        internalOpt.minport = global.config.internal.minport;
+        internalOpt.maxport = global.config.internal.maxport;
         var portInfo = internalConnFactory.create(connectionId, direction, internalOpt);
         callback('callback', {ip: that.clusterIP, port: portInfo});
     };

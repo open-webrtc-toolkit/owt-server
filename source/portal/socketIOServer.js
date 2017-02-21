@@ -177,7 +177,9 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
     const joinPortal = function(participant_id, token){
       return portal.join(participant_id, token).then(function(result){
         if(disconnected){
-          portal.leave(participant_id);
+          portal.leave(participant_id).catch(function(err) {
+            log.warn('Portal leave:', err);
+          });
           return Promise.reject('Leaved conference before join success.');
         }
         that.inRoom = result.session_id;
@@ -803,13 +805,17 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
       if(reconnection_enabled){
         disconnect_timeout = setTimeout(function(){
           log.info(participant_id+' failed to reconnect. Leaving portal.');
-          leavePortal();
+          leavePortal().catch(function(err) {
+            log.warn('LeavePortal:', err);
+          });
           disconnected = true;
           on_disconnect();
         }, reconnection_spec.reconnectionTimeout*1000);
       } else {
         log.info(participant_id+' is going to leave portal');
-        leavePortal();
+        leavePortal().catch(function(err) {
+          log.warn('LeavePortal:', err);
+        });
         disconnected = true;
         on_disconnect();
       }

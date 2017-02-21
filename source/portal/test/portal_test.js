@@ -435,7 +435,9 @@ describe('portal.publish/portal.unpublish: Participants publish/unpublish stream
       mockrpcReq.unpub2Session.resolves('ok');
       mockrpcReq.leave = sinon.stub();
       mockrpcReq.leave.resolves('ok');
-      portal.leave(testParticipantId);
+      portal.leave(testParticipantId).catch(function(error) {
+        // Handle the reject leave Promise.
+      });
     });
 
     it('Publishing an rtsp/rtmp stream with both audio and video should succeed.', function() {
@@ -1171,7 +1173,9 @@ describe('portal.mix/portal.unmix/portal.setVideoBitrate/portal.mediaOnOff: Part
       mockrpcReq.unpub2Session.resolves('ok');
       mockrpcReq.leave = sinon.stub();
       mockrpcReq.leave.resolves('ok');
-      portal.leave(testParticipantId);
+      portal.leave(testParticipantId).catch(function(error) {
+        // Handle the reject leave Promise.
+      });
       testStreamId = undefined;
     });
 
@@ -1399,7 +1403,9 @@ describe('portal.subscribe/portal.unsubscribe/portal.mediaOnOff: Participants su
       mockrpcReq.unsub2Session.resolves('ok');
       mockrpcReq.leave = sinon.stub();
       mockrpcReq.leave.resolves('ok');
-      portal.leave(testParticipantId);
+      portal.leave(testParticipantId).catch(function(error) {
+        // Handle the reject leave Promise.
+      });
     });
 
     it('Subscribing an already-subscribed stream should fail.', function() {
@@ -2120,7 +2126,9 @@ describe('portal.getRegion/portal.setRegion: Manipulate the mixed stream.', func
     afterEach(function() {
       mockrpcReq.leave = sinon.stub();
       mockrpcReq.leave.resolves('ok');
-      portal.leave(testParticipantId);
+      portal.leave(testParticipantId).catch(function(error) {
+        // Handle the reject leave Promise.
+      });
     });
 
     it('Getting region should succeed if rpcReq.getRegion succeeds.', function() {
@@ -2211,7 +2219,9 @@ describe('portal.text', function() {
     afterEach(function() {
       mockrpcReq.leave = sinon.stub();
       mockrpcReq.leave.resolves('ok');
-      portal.leave(testParticipantId);
+      portal.leave(testParticipantId).catch(function(error) {
+        // Handle the reject leave Promise.
+      });
     });
 
     it('Should succeed if rpcReq.text succeeds.', function() {

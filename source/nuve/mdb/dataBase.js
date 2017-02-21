@@ -1,12 +1,12 @@
-/*global require, exports, GLOBAL*/
+/*global require, exports, global*/
 'use strict';
 
-GLOBAL.config = GLOBAL.config || {};
-GLOBAL.config.nuve = GLOBAL.config.nuve || {};
-GLOBAL.config.nuve.dataBaseURL = GLOBAL.config.nuve.dataBaseURL || 'localhost/nuvedb';
-GLOBAL.config.nuve.superserviceID = GLOBAL.config.nuve.superserviceID || '';
+global.config = global.config || {};
+global.config.nuve = global.config.nuve || {};
+global.config.nuve.dataBaseURL = global.config.nuve.dataBaseURL || 'localhost/nuvedb';
+global.config.nuve.superserviceID = global.config.nuve.superserviceID || '';
 
-var databaseUrl = GLOBAL.config.nuve.dataBaseURL;
+var databaseUrl = global.config.nuve.dataBaseURL;
 
 /*
  * Data base collections and its fields are:
@@ -22,7 +22,7 @@ var collections = ['rooms', 'tokens', 'services'];
 exports.db = require('mongojs')(databaseUrl, collections);
 
 // Superservice ID
-exports.superService = GLOBAL.config.nuve.superserviceID;
+exports.superService = global.config.nuve.superserviceID;
 
 // token key
 exports.nuveKey = require('crypto').randomBytes(64).toString('hex');

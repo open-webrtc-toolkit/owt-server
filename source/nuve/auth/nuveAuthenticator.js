@@ -1,4 +1,4 @@
-/*global require, exports, Buffer, GLOBAL*/
+/*global require, exports, Buffer, global*/
 'use strict';
 var serviceRegistry = require('./../mdb/serviceRegistry');
 var mauthParser = require('./mauthParser');
@@ -8,7 +8,7 @@ var log = require('./../logger').logger.getLogger('NuveAuthenticator');
 var cache = {};
 
 var checkTimestamp = function (ser, params) {
-    if ((GLOBAL.config||{}).timestampCheck !== true) {
+    if ((global.config||{}).timestampCheck !== true) {
         return true;
     }
     var serviceId = ser._id + '';
