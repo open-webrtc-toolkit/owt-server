@@ -2,6 +2,7 @@
  * SDPProcessor.cpp
  */
 
+#include <algorithm>
 #include <sstream>
 #include <stdio.h>
 #include <cstdlib>
@@ -53,6 +54,9 @@ namespace erizo {
     audioCodecs = 0;
     videoSdpMLine = -1;
     audioSdpMLine = -1;
+
+    gen_random(msid,10);
+    msid[10] = 0;
 
     ELOG_DEBUG("Generating internal RtpMap");
 
@@ -300,10 +304,6 @@ namespace erizo {
   }
 
   std::string SdpInfo::getSdp() {
-    char msidtemp[11];
-    gen_random(msidtemp,10);
-    msidtemp[10] = 0;
-
     ELOG_DEBUG("Getting SDP");
 
     std::ostringstream sdp;
@@ -323,7 +323,7 @@ namespace erizo {
         sdp << " " << bundleTags[i].id;
       }
       sdp << "\n";
-      sdp << "a=msid-semantic: WMS "<< msidtemp << endl;
+      sdp << "a=msid-semantic: WMS "<< msid << endl;
      }
     //candidates audio
     bool printedAudio = true, printedVideo = true;
@@ -418,9 +418,9 @@ namespace erizo {
       }
       sdp << "a=maxptime:60" << endl;
       sdp << "a=ssrc:" << audioSsrc << " cname:o/i14u9pJrxRKAsu" << endl<<
-        "a=ssrc:"<< audioSsrc << " msid:"<< msidtemp << " a0"<< endl<<
-        "a=ssrc:"<< audioSsrc << " mslabel:"<< msidtemp << endl<<
-        "a=ssrc:"<< audioSsrc << " label:" << msidtemp <<"a0"<<endl;
+        "a=ssrc:"<< audioSsrc << " msid:"<< msid << " a0"<< endl<<
+        "a=ssrc:"<< audioSsrc << " mslabel:"<< msid << endl<<
+        "a=ssrc:"<< audioSsrc << " label:" << msid <<"a0"<<endl;
 
     }
 
@@ -520,14 +520,14 @@ namespace erizo {
         videoSsrc = 55543;
       }
       sdp << "a=ssrc:" << videoSsrc << " cname:o/i14u9pJrxRKAsu" << endl<<
-        "a=ssrc:"<< videoSsrc << " msid:"<< msidtemp << " v0"<< endl<<
-        "a=ssrc:"<< videoSsrc << " mslabel:"<< msidtemp << endl<<
-        "a=ssrc:"<< videoSsrc << " label:" << msidtemp <<"v0"<<endl;
+        "a=ssrc:"<< videoSsrc << " msid:"<< msid << " v0"<< endl<<
+        "a=ssrc:"<< videoSsrc << " mslabel:"<< msid << endl<<
+        "a=ssrc:"<< videoSsrc << " label:" << msid <<"v0"<<endl;
       if (videoRtxSsrc!=0){
         sdp << "a=ssrc:" << videoRtxSsrc << " cname:o/i14u9pJrxRKAsu" << endl<<
-          "a=ssrc:"<< videoRtxSsrc << " msid:"<< msidtemp << " v0"<< endl<<
-          "a=ssrc:"<< videoRtxSsrc << " mslabel:"<< msidtemp << endl<<
-          "a=ssrc:"<< videoRtxSsrc << " label:" << msidtemp <<"v0"<<endl;
+          "a=ssrc:"<< videoRtxSsrc << " msid:"<< msid << " v0"<< endl<<
+          "a=ssrc:"<< videoRtxSsrc << " mslabel:"<< msid << endl<<
+          "a=ssrc:"<< videoRtxSsrc << " label:" << msid <<"v0"<<endl;
       }
     }
     ELOG_DEBUG("sdp local \n %s",sdp.str().c_str());
@@ -731,7 +731,12 @@ namespace erizo {
           for (unsigned int tagno=2; tagno<parts.size(); tagno++){
             ELOG_DEBUG("Adding %s to bundle vector", parts[tagno].c_str());
             BundleTag theTag(parts[tagno], OTHER);
-            bundleTags.push_back(theTag);
+            if (std::find_if(bundleTags.begin(), bundleTags.end(),
+                             [theTag](const BundleTag& tag) -> bool {
+                               return theTag.id == tag.id;
+                             }) == bundleTags.end()) {
+              bundleTags.push_back(theTag);
+            }
           }
         }
       }

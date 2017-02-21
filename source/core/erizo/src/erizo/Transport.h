@@ -62,6 +62,9 @@ namespace erizo {
       bool setRemoteCandidates(std::vector<CandidateInfo> &candidates, bool isBundle) {
         return nice_->setRemoteCandidates(candidates, isBundle);
       }
+      StunCredential restart(const std::string username, const std::string password) {
+        return nice_->restart(username, password);
+      }
       bool rtcp_mux_;
     private:
       TransportListener *transpListener_;

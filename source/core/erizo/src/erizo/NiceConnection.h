@@ -46,6 +46,11 @@ enum IceState {
 	NICE_INITIAL, NICE_CANDIDATES_RECEIVED, NICE_READY, NICE_FINISHED, NICE_FAILED
 };
 
+struct StunCredential {
+  std::string username;
+  std::string password;
+};
+
 class NiceConnectionListener {
 public:
 	virtual void onNiceData(unsigned int component_id, char* data, int len, NiceConnection* conn)=0;
@@ -128,6 +133,13 @@ public:
 	 * @return Bytes sent.
 	 */
 	int sendData(unsigned int compId, const void* buf, int len);
+	/**
+	 * ICE restart
+	 * @param username Remote STUN username.
+	 * @param password Remote STUN password.
+	 * @return Local STUN credentials.
+	 */
+	StunCredential restart(const std::string username, const std::string password);
 
 
 
@@ -157,6 +169,7 @@ private:
 	std::map <unsigned int, IceState> comp_state_list_;
 	bool running_;
 	std::string ufrag_, upass_;
+	unsigned int generation_;
 };
 
 } /* namespace erizo */

@@ -282,6 +282,7 @@ private:
     std::vector<RtpMap> internalPayloadVector_;
     std::string iceVideoUsername_, iceAudioUsername_;
     std::string iceVideoPassword_, iceAudioPassword_;
+    char msid[11];
 };
 }/* namespace erizo */
 #endif /* SDPPROCESSOR_H_ */

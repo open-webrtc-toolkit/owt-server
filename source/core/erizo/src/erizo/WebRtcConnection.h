@@ -78,7 +78,7 @@ public:
     /**
      * Add new remote candidate (from remote peer).
      * @param sdp The candidate in SDP format.
-     * @return true if the SDP was received correctly.
+     * @return true if the SDP was received correctly or successfully queued.
      */
     bool addRemoteCandidate(const std::string &mid, int mLineIndex, const std::string &sdp);
     /**
@@ -156,6 +156,9 @@ private:
     // parses incoming payload type, replaces occurence in buf
     void parseIncomingPayloadType(char *buf, int len, packetType type);
 
+    // Push pending remote candidates to transport layer.
+    void drainPendingRemoteCandidates();
+
     bool audioEnabled_;
     bool videoEnabled_;
     bool nackEnabled_;
@@ -168,6 +171,27 @@ private:
     std::string privatePasswd_;
 
     boost::condition_variable cond_;
+
+    // Indicates ICE restarting is in progress.
+    // This value is true when we receive an offer from client side that
+    // indicates an ICE restart. It will be set to false after sending out local
+    // SDP.
+    // TODO: Ack is not implemented. It should be set to false after client
+    // successfully set MCU's SDP, then |pendingRemoteCandidates_| can be
+    // drained. At this time, |pendingRemoteCandidates_| will never be drained.
+    // However, it's not a problem for now, since we expect client start STUN
+    // binding requests.
+    // When ICE restart happens, we hope |pendingRemoteCandidates_| can be pushed
+    // to nice connection after corresponding generation of SDP has been acked
+    // by client side. Otherwise, 401 (Unauthorized) error may occur because ICE
+    // restart changes credentials.
+    bool iceRestarting_;
+    // Remote candidates that haven't been set to nice connections.
+    std::vector<CandidateInfo> pendingRemoteCandidates_;
+    boost::mutex pendingRemoteCandidatesMutex_;
+    // Remote ICE username fragment.
+    std::string remoteUfrag_;
+    int localSdpGeneration_;
 };
 
 } /* namespace erizo */
