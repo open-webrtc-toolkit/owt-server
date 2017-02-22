@@ -179,8 +179,17 @@ public:
     void onDeliverFrame(JitterBuffer *jitterBuffer, AVPacket *pkt);
     void onSyncTimeChanged(JitterBuffer *jitterBuffer, int64_t syncTimestamp);
 
+    void deliverNullVideoFrame();
     void deliverVideoFrame(AVPacket *pkt);
     void deliverAudioFrame(AVPacket *pkt);
+
+    void onFeedback(const woogeen_base::FeedbackMsg& msg) {
+        if (msg.type == woogeen_base::VIDEO_FEEDBACK) {
+            if (msg.cmd == REQUEST_KEY_FRAME) {
+                requestKeyFrame();
+            }
+        }
+    }
 
 private:
     std::string m_url;
@@ -188,6 +197,7 @@ private:
     bool m_needVideo;
     AVDictionary* m_transportOpts;
     bool m_running;
+    bool m_keyFrameRequest;
     boost::thread m_thread;
     AVFormatContext* m_context;
     TimeoutHandler* m_timeoutHandler;
@@ -233,6 +243,8 @@ private:
     std::ostringstream m_AsyncEvent;
 
     bool isRtsp() {return (m_url.compare(0, 7, "rtsp://") == 0);}
+
+    void requestKeyFrame();
 
     bool connect();
     bool reconnect();

@@ -108,6 +108,13 @@ void VCMFrameDecoder::onFrame(const Frame& frame)
     if (!m_needDecode)
         return;
 
+    if (frame.payload == 0 || frame.length == 0) {
+        ELOG_DEBUG_T("Null frame, request key frame");
+        FeedbackMsg msg {.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME};
+        deliverFeedbackMsg(msg);
+        return;
+    }
+
     ELOG_TRACE_T("onFrame(%s), %dx%d, length(%d)",
             getFormatStr(frame.format),
             frame.additionalInfo.video.width,

@@ -323,6 +323,7 @@ RtspIn::RtspIn(const Options& options, EventRegistry* handle)
     , m_needVideo(options.enableVideo)
     , m_transportOpts(nullptr)
     , m_running(false)
+    , m_keyFrameRequest(false)
     , m_context(nullptr)
     , m_timeoutHandler(nullptr)
     , m_videoStreamIndex(-1)
@@ -430,6 +431,13 @@ RtspIn::~RtspIn()
 #endif
 
     ELOG_DEBUG_T("Closed");
+}
+
+void RtspIn::requestKeyFrame()
+{
+    ELOG_DEBUG_T("requestKeyFrame");
+    if (!m_keyFrameRequest)
+        m_keyFrameRequest = true;
 }
 
 bool RtspIn::connect()
@@ -740,6 +748,20 @@ void RtspIn::receiveLoop()
     }
     ELOG_DEBUG_T("%s", m_AsyncEvent.str().c_str());
     ::notifyAsyncEvent(m_asyncHandle, "status", m_AsyncEvent.str().c_str());
+
+    if (m_needVideo) {
+        int i = 0;
+
+        while (!m_keyFrameRequest) {
+            if (i++ >= 100) {
+                ELOG_INFO_T("No incoming key frame request");
+                break;
+            }
+            deliverNullVideoFrame();
+            ELOG_TRACE_T("Wait for key frame request, retry %d", i);
+            usleep(10000);
+        }
+    }
 
     memset(&m_avPacket, 0, sizeof(m_avPacket));
     m_running = true;
@@ -1210,6 +1232,18 @@ void RtspIn::onSyncTimeChanged(JitterBuffer *jitterBuffer, int64_t syncTimestamp
     } else {
         ELOG_ERROR_T("Invalid JitterBuffer onSyncTimeChanged event!");
     }
+}
+
+void RtspIn::deliverNullVideoFrame()
+{
+    uint8_t dumyData = 0;
+    Frame frame;
+    memset(&frame, 0, sizeof(frame));
+    frame.format = m_videoFormat;
+    frame.payload = &dumyData;
+    deliverFrame(frame);
+
+    ELOG_DEBUG_T("deliver null video frame");
 }
 
 void RtspIn::deliverVideoFrame(AVPacket *pkt)

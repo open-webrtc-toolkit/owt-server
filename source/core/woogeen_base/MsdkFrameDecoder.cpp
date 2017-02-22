@@ -481,6 +481,13 @@ void MsdkFrameDecoder::onFrame(const Frame& frame)
 {
     printfFuncEnter;
 
+    if (frame.payload == 0 || frame.length == 0) {
+        ELOG_DEBUG_T("Null frame, request key frame");
+        FeedbackMsg msg {.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME};
+        deliverFeedbackMsg(msg);
+        return;
+    }
+
     updateBitstream(frame);
 
 retry:
