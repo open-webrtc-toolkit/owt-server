@@ -224,8 +224,9 @@ var rpcPublic = {
     callback('callback', 'ok');
   },
   notify: function(participantId, event, data, callback) {
-    socketio_server && socketio_server.notify(participantId, event, data);
-    rest_server && rest_server.notify(participantId, event, data);
+    var notifyFail = (err) => log.warn('notify fail:', err);
+    socketio_server && socketio_server.notify(participantId, event, data).catch(notifyFail);
+    rest_server && rest_server.notify(participantId, event, data).catch(notifyFail);
     callback('callback', 'ok');
   },
   setMute: function(participantId, streamId, muted, callback) {
