@@ -20,6 +20,7 @@
       '-llog4cxx',
       '<!@(pkg-config --libs libavcodec)',
       '<!@(pkg-config --libs libavformat)',
+      '<!@(pkg-config --libs libavutil)',
     ],
     'conditions': [
       [ 'OS=="mac"', {
