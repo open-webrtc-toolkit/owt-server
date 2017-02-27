@@ -31,29 +31,119 @@ namespace woogeen_base {
 
 DEFINE_LOGGER(MsdkFrame, "woogeen.MsdkFrame");
 
-MsdkFrame::MsdkFrame(boost::shared_ptr<mfxFrameAllocator> allocator, mfxFrameInfo &info, mfxMemId id)
+MsdkFrame::MsdkFrame(uint32_t width, uint32_t height, boost::shared_ptr<mfxFrameAllocator> allocator)
     : m_allocator(allocator)
+    , m_valid(false)
+    , m_externalAlloc(false)
     , m_mainSession(NULL)
     , m_needSync(false)
     , m_nv12TBuffer(NULL)
     , m_nv12TBufferSize(0)
 {
+    memset(&m_response, 0, sizeof(mfxFrameAllocResponse));
     memset(&m_surface, 0, sizeof(mfxFrameSurface1));
+
+    memset(&m_request, 0, sizeof(mfxFrameAllocRequest));
+
+    m_request.Type = MFX_MEMTYPE_FROM_VPPIN | MFX_MEMTYPE_DXVA2_PROCESSOR_TARGET | MFX_MEMTYPE_EXTERNAL_FRAME;
+
+    m_request.NumFrameMin         = 1;
+    m_request.NumFrameSuggested   = 1;
+
+    m_request.Info.FourCC         = MFX_FOURCC_NV12;
+    m_request.Info.ChromaFormat   = MFX_CHROMAFORMAT_YUV420;
+    m_request.Info.PicStruct      = MFX_PICSTRUCT_PROGRESSIVE;
+
+    m_request.Info.BitDepthLuma   = 0;
+    m_request.Info.BitDepthChroma = 0;
+    m_request.Info.Shift          = 0;
+
+    m_request.Info.AspectRatioW   = 0;
+    m_request.Info.AspectRatioH   = 0;
+
+    m_request.Info.FrameRateExtN  = 30;
+    m_request.Info.FrameRateExtD  = 1;
+
+    m_request.Info.Width          = ALIGN16(width);
+    m_request.Info.Height         = ALIGN16(height);
+    m_request.Info.CropX          = 0;
+    m_request.Info.CropY          = 0;
+    m_request.Info.CropW          = width;
+    m_request.Info.CropH          = height;
+}
+
+MsdkFrame::MsdkFrame(mfxFrameInfo &info, mfxMemId &id, boost::shared_ptr<mfxFrameAllocator> allocator)
+    : m_allocator(allocator)
+    , m_valid(false)
+    , m_externalAlloc(true)
+    , m_mainSession(NULL)
+    , m_needSync(false)
+    , m_nv12TBuffer(NULL)
+    , m_nv12TBufferSize(0)
+{
+    memset(&m_response, 0, sizeof(mfxFrameAllocResponse));
+    memset(&m_surface, 0, sizeof(mfxFrameSurface1));
+    memset(&m_request, 0, sizeof(mfxFrameAllocRequest));
 
     m_surface.Info = info;
     m_surface.Data.MemId = id;
+    m_valid = true;
 }
 
 MsdkFrame::~MsdkFrame()
 {
     printfFuncEnter;
+    if (m_valid) {
+        mfxStatus sts = MFX_ERR_NONE;
 
-    if (m_nv12TBuffer) {
-        free(m_nv12TBuffer);
-        m_nv12TBuffer = NULL;
+        uint32_t i = 0;
+        while (m_surface.Data.Locked > 0 && i < TIMEOUT) {
+          ELOG_DEBUG("Wait(%d ms), locked %d...", i, m_surface.Data.Locked);
+          usleep(1000); //1ms
+          i++;
+        }
+
+        if (m_surface.Data.Locked > 0) {
+            ELOG_WARN("Free surface lock count, %d > 0", m_surface.Data.Locked);
+        }
+
+        if (!m_externalAlloc) {
+            sts = m_allocator->Free(m_allocator->pthis, &m_response);
+            if (sts != MFX_ERR_NONE) {
+                ELOG_ERROR("mfxFrameAllocator Free() failed, ret %d", sts);
+            }
+        }
+
+        if (m_nv12TBuffer) {
+            free(m_nv12TBuffer);
+            m_nv12TBuffer = NULL;
+        }
+    }
+    printfFuncExit;
+}
+
+bool MsdkFrame::init()
+{
+    mfxStatus sts = MFX_ERR_NONE;
+
+    if (m_externalAlloc)
+        return m_valid;
+
+    sts = m_allocator->Alloc(m_allocator->pthis, &m_request, &m_response);
+    if (sts != MFX_ERR_NONE) {
+        ELOG_ERROR("mfxFrameAllocator Alloc failed, ret %d", sts);
+        return false;
     }
 
-    printfFuncExit;
+    if (m_response.NumFrameActual != 1) {
+        ELOG_ERROR("mfxFrameAllocator Alloc invalid frame num, %d", m_response.NumFrameActual);
+        return false;
+    }
+
+    m_surface.Info = m_request.Info;
+    m_surface.Data.MemId = m_response.mids[0];
+    m_valid = true;
+    return true;
 }
 
 void MsdkFrame::sync(void)
@@ -481,137 +571,55 @@ void MsdkFrame::dumpI420VideoFrameInfo(webrtc::I420VideoFrame& frame)
             );
 }
 
+DEFINE_LOGGER(MsdkFramePool, "woogeen.MsdkFramePool");
 
-MsdkFramePool::MsdkFramePool(boost::shared_ptr<mfxFrameAllocator> allocator, mfxFrameAllocRequest &request)
-    : m_allocator(allocator)
-    , m_request(request)
-    , m_allocatedWidth(0)
-    , m_allocatedHeight(0)
+MsdkFramePool::MsdkFramePool(const uint32_t width, const uint32_t height, const int32_t count, boost::shared_ptr<mfxFrameAllocator> allocator)
 {
+    for (int i = 0; i < count; i++) {
+        boost::shared_ptr<MsdkFrame> frame(new MsdkFrame(width, height, allocator));
+        if (!frame->init()) {
+            continue;
+        }
+        m_framePool.push_back(frame);
+    }
 }
 
-DEFINE_LOGGER(MsdkFramePool, "woogeen.MsdkFramePool");
+MsdkFramePool::MsdkFramePool(mfxFrameAllocRequest &request, boost::shared_ptr<mfxFrameAllocator> allocator)
+    : m_allocator(allocator)
+{
+    mfxStatus sts = MFX_ERR_NONE;
+
+    sts = m_allocator->Alloc(m_allocator->pthis, &request, &m_response);
+    if (sts != MFX_ERR_NONE) {
+        memset(&m_response, 0, sizeof(m_response));
+        ELOG_ERROR("mfxFrameAllocator Alloc failed, ret %d", sts);
+        return;
+    }
+
+    for (int i = 0; i < m_response.NumFrameActual; i++) {
+        boost::shared_ptr<MsdkFrame> frame(new MsdkFrame(request.Info, m_response.mids[i], m_allocator));
+        if (!frame->init()) {
+            continue;
+        }
+        m_framePool.push_back(frame);
+    }
+}
 
 MsdkFramePool::~MsdkFramePool()
 {
     printfFuncEnter;
 
-    freeFrames();
+    m_framePool.clear();
+    if (m_allocator && m_response.NumFrameActual > 0) {
+        mfxStatus sts = MFX_ERR_NONE;
+
+        sts = m_allocator->Free(m_allocator->pthis, &m_response);
+        if (sts != MFX_ERR_NONE) {
+            ELOG_ERROR("mfxFrameAllocator Free() failed, ret %d", sts);
+        }
+    }
 
     printfFuncExit;
-}
-
-bool MsdkFramePool::init()
-{
-    if (!allocateFrames())
-    {
-        return false;
-    }
-
-    return true;
-}
-
-bool MsdkFramePool::allocateFrames()
-{
-    mfxStatus sts = MFX_ERR_NONE;
-
-    MsdkBase::printfFrameAllocRequest(&m_request);
-
-    sts = m_allocator->Alloc(m_allocator->pthis, &m_request, &m_response);
-    if (sts != MFX_ERR_NONE)
-    {
-        ELOG_ERROR("mfxFrameAllocator Alloc() failed, ret %d", sts);
-        return false;
-    }
-
-    for(int i = 0;i < m_response.NumFrameActual;i++)
-    {
-        m_framePool.push_back(boost::shared_ptr<MsdkFrame>(new MsdkFrame(m_allocator, m_request.Info, m_response.mids[i])));
-    }
-
-    m_allocatedWidth     = m_request.Info.Width;
-    m_allocatedHeight    = m_request.Info.Height;
-
-    ELOG_DEBUG("allocate %d frames(%dx%d)", m_response.NumFrameActual, m_allocatedWidth, m_allocatedHeight);
-    return true;
-}
-
-bool MsdkFramePool::waitForFrameFree(boost::shared_ptr<MsdkFrame>& frame, int timeout)
-{
-    int i = 0;
-
-    while (!(frame.use_count() == 1 && frame->isFree()) && i < timeout)
-    {
-        dumpMsdkFrameInfo("waitFrame", frame);
-
-        usleep(1000); //1ms
-        i++;
-
-        ELOG_DEBUG("Wait(%d ms)...", i);
-    }
-
-    if (!(frame.use_count() == 1 && frame->isFree())) {
-        ELOG_WARN("waitForFrameFree timeout %d ms", timeout);
-
-        dumpMsdkFrameInfo("waitFrameTimeout", frame);
-
-        return false;
-    }
-
-    return true;
-}
-
-bool MsdkFramePool::freeFrames()
-{
-    mfxStatus sts = MFX_ERR_NONE;
-
-    for (auto& it : m_framePool) {
-        if (!waitForFrameFree(it, TIMEOUT)) {
-            ELOG_WARN("Free frame in using is dangerous!");
-        }
-
-        dumpMsdkFrameInfo("free", it);
-    }
-
-    m_framePool.clear();
-
-    sts = m_allocator->Free(m_allocator->pthis, &m_response);
-    if (sts != MFX_ERR_NONE)
-    {
-        ELOG_ERROR("mfxFrameAllocator Free() failed, ret %d", sts);
-    }
-
-    return true;
-}
-
-bool MsdkFramePool::reAllocate(uint32_t width, uint32_t height)
-{
-    boost::unique_lock<boost::shared_mutex> lock(m_mutex);
-
-    ELOG_DEBUG("reAllocate %dx%d -> %dx%d", m_allocatedWidth, m_allocatedHeight, width, height);
-
-    if (width <= m_allocatedWidth && height <= m_allocatedHeight) {
-        ELOG_DEBUG("Dont need resize into smaller size");
-
-        return true;
-    }
-
-    // realloc
-    freeFrames();
-
-    m_request.Info.Width    = ALIGN16(width);
-    m_request.Info.Height   = ALIGN16(height);
-    m_request.Info.CropX    = 0;
-    m_request.Info.CropY    = 0;
-    m_request.Info.CropW    = width;
-    m_request.Info.CropH    = height;
-
-    if (!allocateFrames())
-    {
-        return false;
-    }
-
-    return true;
 }
 
 boost::shared_ptr<MsdkFrame> MsdkFramePool::getFreeFrame()
@@ -629,6 +637,8 @@ boost::shared_ptr<MsdkFrame> MsdkFramePool::getFreeFrame()
 
 boost::shared_ptr<MsdkFrame> MsdkFramePool::getFrame(mfxFrameSurface1 *pSurface)
 {
+    boost::unique_lock<boost::shared_mutex> lock(m_mutex);
+
     for (auto& it : m_framePool) {
         if(pSurface == it->getSurface()) {
             return it;
@@ -637,6 +647,7 @@ boost::shared_ptr<MsdkFrame> MsdkFramePool::getFrame(mfxFrameSurface1 *pSurface)
 
     return NULL;
 }
+
 
 }//namespace woogeen_base
 

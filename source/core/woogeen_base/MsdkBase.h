@@ -44,6 +44,8 @@ namespace woogeen_base {
 
 bool AreGuidsEqual(const mfxPluginUID& guid1, const mfxPluginUID& guid2);
 
+const char *mfxStatusToStr(const mfxStatus sts);
+
 enum DumpType{ MFX_DEC, MFX_VPP, MFX_ENC };
 
 class MsdkBase {

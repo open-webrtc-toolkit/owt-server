@@ -42,10 +42,13 @@ namespace woogeen_base {
 class MsdkFrame {
     DECLARE_LOGGER();
 
-    friend class MsdkFramePool;
-
+    static const uint32_t TIMEOUT = 16; //Wait for frame get free
 public:
+    MsdkFrame(uint32_t width, uint32_t height, boost::shared_ptr<mfxFrameAllocator> allocator);
+    MsdkFrame(mfxFrameInfo &info, mfxMemId &id, boost::shared_ptr<mfxFrameAllocator> allocator);
     ~MsdkFrame();
+
+    bool init();
 
     mfxFrameSurface1 *getSurface(void) {return &m_surface;}
 
@@ -53,7 +56,7 @@ public:
     void setSyncFlag(bool needSync) {m_needSync = needSync;}
 
     bool isFree(void) {return !m_surface.Data.Locked;}
-    int getLockedCount(void)  {return m_surface.Data.Locked;}
+    int getLockedCount(void) {return m_surface.Data.Locked;}
 
     uint32_t getVideoWidth() {return m_surface.Info.CropW;}
     uint32_t getVideoHeight() {return m_surface.Info.CropH;}
@@ -72,7 +75,6 @@ public:
     bool convertTo(webrtc::I420VideoFrame& frame);
 
 protected:
-    MsdkFrame(boost::shared_ptr<mfxFrameAllocator> allocator, mfxFrameInfo &info, mfxMemId id);
     void sync(void);
 
     bool nv12ConvertTo(mfxFrameInfo& pInfo, mfxFrameData& pData, webrtc::I420VideoFrame& frame);
@@ -80,13 +82,16 @@ protected:
     void dumpI420VideoFrameInfo(webrtc::I420VideoFrame& frame);
 
 private:
+    mfxFrameAllocRequest m_request;
     boost::shared_ptr<mfxFrameAllocator> m_allocator;
-    MFXVideoSession *m_mainSession;
 
+    mfxFrameAllocResponse m_response;
     mfxFrameSurface1 m_surface;
+    bool m_valid;
+    bool m_externalAlloc;
 
+    MFXVideoSession *m_mainSession;
     mfxSyncPoint m_syncP;
-
     bool m_needSync;
 
     uint8_t *m_nv12TBuffer;
@@ -96,38 +101,20 @@ private:
 class MsdkFramePool {
     DECLARE_LOGGER();
 
-    static const uint32_t TIMEOUT = 16; //Wait for frame get free
-
 public:
-    MsdkFramePool(boost::shared_ptr<mfxFrameAllocator> allocator, mfxFrameAllocRequest &request);
+    MsdkFramePool(const uint32_t width, const uint32_t height, const int32_t count, boost::shared_ptr<mfxFrameAllocator> allocator);
+    MsdkFramePool(mfxFrameAllocRequest &request, boost::shared_ptr<mfxFrameAllocator> allocator);
+
     ~MsdkFramePool();
-
-    bool init();
-
-    uint32_t getAllocatedWidth() {return m_allocatedWidth;}
-    uint32_t getAllocatedHeight() {return m_allocatedWidth;}
-
-    bool reAllocate(uint32_t width, uint32_t height);
 
     boost::shared_ptr<MsdkFrame> getFreeFrame();
     boost::shared_ptr<MsdkFrame> getFrame(mfxFrameSurface1 *pSurface);
 
-protected:
-    bool waitForFrameFree(boost::shared_ptr<MsdkFrame>& frame, int timeout);
-    bool allocateFrames();
-    bool freeFrames();
-
 private:
     boost::shared_ptr<mfxFrameAllocator> m_allocator;
-
-    mfxFrameAllocRequest m_request;
     mfxFrameAllocResponse m_response;
 
-    uint32_t m_allocatedWidth;
-    uint32_t m_allocatedHeight;
-
     std::list<boost::shared_ptr<MsdkFrame>> m_framePool;
-
     boost::shared_mutex m_mutex;
 };
 

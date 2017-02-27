@@ -693,14 +693,7 @@ protected:
 
         ELOG_TRACE("(%p)mfx QueryIOSurf: In(%d), Out(%d)", this, Request[0].NumFrameSuggested, Request[1].NumFrameSuggested);
 
-        m_vppFramePool.reset(new MsdkFramePool(m_vppAllocator, Request[1]));
-        if (!m_vppFramePool->init()) {
-            ELOG_ERROR("(%p)Frame pool init failed, ret %d", this, sts);
-
-            closeVpp();
-            return false;
-        }
-
+        m_vppFramePool.reset(new MsdkFramePool(Request[1], m_vppAllocator));
         return true;
     }
 
