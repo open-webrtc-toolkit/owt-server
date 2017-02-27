@@ -214,6 +214,7 @@ private:
     EventRegistry* m_asyncHandle;
 
     bool m_needAudioTranscoder;
+    AVCodecID m_audioDecId;
     AVFrame *m_audioDecFrame;
     AVCodecContext *m_audioEncCtx;
     struct SwrContext *m_audioSwrCtx;
@@ -241,6 +242,8 @@ private:
     char *ff_err2str(int errRet);
 
     std::ostringstream m_AsyncEvent;
+
+    enum AVSampleFormat getSampleFmt(AVCodec *codec, enum AVSampleFormat sample_fmt);
 
     bool isRtsp() {return (m_url.compare(0, 7, "rtsp://") == 0);}
 

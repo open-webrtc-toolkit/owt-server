@@ -336,6 +336,7 @@ RtspIn::RtspIn(const Options& options, EventRegistry* handle)
     , m_audioFormat(FRAME_FORMAT_UNKNOWN)
     , m_asyncHandle(handle)
     , m_needAudioTranscoder(false)
+    , m_audioDecId(AV_CODEC_ID_NONE)
     , m_audioDecFrame(nullptr)
     , m_audioEncCtx(nullptr)
     , m_audioSwrCtx(nullptr)
@@ -438,6 +439,18 @@ void RtspIn::requestKeyFrame()
     ELOG_DEBUG_T("requestKeyFrame");
     if (!m_keyFrameRequest)
         m_keyFrameRequest = true;
+}
+
+enum AVSampleFormat RtspIn::getSampleFmt(AVCodec *codec, enum AVSampleFormat sample_fmt)
+{
+    const enum AVSampleFormat *p = codec->sample_fmts;
+
+    while (*p != AV_SAMPLE_FMT_NONE) {
+        if (*p == sample_fmt)
+            return sample_fmt;
+        p++;
+    }
+    return codec->sample_fmts[0];
 }
 
 bool RtspIn::connect()
@@ -601,14 +614,16 @@ bool RtspIn::connect()
                 break;
 
             case AV_CODEC_ID_AAC:
+            case AV_CODEC_ID_NELLYMOSER:
                 m_needAudioTranscoder = true;
-                if (!initAudioTranscoder(AV_CODEC_ID_AAC, AV_CODEC_ID_OPUS)) {
+                if (!initAudioTranscoder(audioCodecId, AV_CODEC_ID_OPUS)) {
                     ELOG_ERROR_T("Can not init audio codec");
 
                     m_AsyncEvent.str("");
                     m_AsyncEvent << "{\"type\":\"failed\",\"reason\":\"can not init audio\"}";
                     return false;
                 }
+                m_audioDecId = audioCodecId;
                 m_audioFormat = FRAME_FORMAT_OPUS;
                 m_AsyncEvent << ",\"audio_codecs\":" << "[\"opus_48000_2\"]";
                 break;
@@ -722,7 +737,7 @@ bool RtspIn::reconnect()
         // reinitilize audio transcoder
         if (m_needAudioTranscoder) {
             m_audioEncTimestamp = AV_NOPTS_VALUE;
-            if (!initAudioDecoder(AV_CODEC_ID_AAC))
+            if (!initAudioDecoder(m_audioDecId))
                 return false;
         }
     }
@@ -873,18 +888,22 @@ bool RtspIn::initAudioDecoder(AVCodecID codec) {
     AVCodec *audioDec = NULL;
     int ret;
 
-    if (codec != AV_CODEC_ID_AAC) {
-        ELOG_ERROR_T("Decoder %s is not supported, AAC only", avcodec_get_name(codec));
-        return false;
-    }
+    switch(codec) {
+        case AV_CODEC_ID_AAC:
+        case AV_CODEC_ID_NELLYMOSER:
+            audioDec = avcodec_find_decoder(codec);
+            if (!audioDec) {
+                ELOG_ERROR_T("Could not find audio decoder %s", avcodec_get_name(codec));
+                return false;
+            }
 
-    audioDec = avcodec_find_decoder_by_name("libfdk_aac");
-    if (!audioDec) {
-        ELOG_ERROR_T("Could not find audio decoder %s, please check if ffmpeg/libfdk_aac installed", "libfdk_aac");
-        return false;
-    }
+            audio_st->codec->sample_fmt = getSampleFmt(audioDec, AV_SAMPLE_FMT_FLT);
+            break;
 
-    audio_st->codec->sample_fmt = AV_SAMPLE_FMT_S16;
+        default:
+            ELOG_ERROR_T("Decoder %s is not supported", avcodec_get_name(codec));
+            return false;
+    }
 
     ret = avcodec_open2(audio_st->codec, audioDec , NULL);
     if (ret < 0) {
@@ -892,7 +911,8 @@ bool RtspIn::initAudioDecoder(AVCodecID codec) {
         return false;
     }
 
-    ELOG_INFO_T("Audio dec sample_rate %d, channels %d, frame_size %d"
+    ELOG_INFO_T("Audio dec sample_format(%s), sample_rate %d, channels %d, frame_size %d"
+            , av_get_sample_fmt_name(audio_st->codec->sample_fmt)
             , audio_st->codec->sample_rate
             , audio_st->codec->channels
             , audio_st->codec->frame_size
@@ -905,11 +925,6 @@ bool RtspIn::initAudioTranscoder(AVCodecID inCodec, AVCodecID outCodec) {
     int ret;
     AVStream *audio_st = m_context->streams[m_audioStreamIndex];
     AVCodec *audioEnc = NULL;
-
-    if (inCodec != AV_CODEC_ID_AAC) {
-        ELOG_ERROR_T("Decoder %s is not supported, AAC only", avcodec_get_name(inCodec));
-        return false;
-    }
 
     if (outCodec != AV_CODEC_ID_OPUS) {
         ELOG_ERROR_T("Encoder %s is not supported, OPUS only", avcodec_get_name(outCodec));
@@ -942,7 +957,7 @@ bool RtspIn::initAudioTranscoder(AVCodecID inCodec, AVCodecID outCodec) {
     m_audioEncCtx->channels         = 2;
     m_audioEncCtx->channel_layout   = av_get_default_channel_layout(2);
     m_audioEncCtx->sample_rate      = 48000;
-    m_audioEncCtx->sample_fmt       = audio_st->codec->sample_fmt;
+    m_audioEncCtx->sample_fmt       = getSampleFmt(audioEnc , audio_st->codec->sample_fmt);
     m_audioEncCtx->bit_rate         = 64000;
 
     /* open it */
@@ -952,7 +967,8 @@ bool RtspIn::initAudioTranscoder(AVCodecID inCodec, AVCodecID outCodec) {
         goto failed;
     }
 
-    ELOG_INFO_T("Audio enc sample_rate %d, channels %d, frame_size %d"
+    ELOG_INFO_T("Audio enc sample_format(%s), sample_rate %d, channels %d, frame_size %d"
+            , av_get_sample_fmt_name(m_audioEncCtx->sample_fmt)
             , m_audioEncCtx->sample_rate
             , m_audioEncCtx->channels
             , m_audioEncCtx->frame_size
@@ -981,12 +997,7 @@ bool RtspIn::initAudioTranscoder(AVCodecID inCodec, AVCodecID outCodec) {
             goto failed;
         }
 
-        m_audioSwrSamplesCount = av_rescale_rnd(
-                audio_st->codec->frame_size
-                , m_audioEncCtx->sample_rate
-                , audio_st->codec->sample_rate
-                , AV_ROUND_UP);
-
+        m_audioSwrSamplesCount = m_audioEncCtx->frame_size * 2;
         ret = av_samples_alloc_array_and_samples(&m_audioSwrSamplesData, &m_audioSwrSamplesLinesize, m_audioEncCtx->channels,
                 m_audioSwrSamplesCount, m_audioEncCtx->sample_fmt, 0);
         if (ret < 0) {
@@ -1111,7 +1122,7 @@ bool RtspIn::decAudioFrame(AVPacket &packet) {
 
         /* compute destination number of samples */
         dst_nb_samples = av_rescale_rnd(
-                swr_get_delay(m_audioSwrCtx, audio_st->codec->sample_rate) + audio_st->codec->frame_size
+                swr_get_delay(m_audioSwrCtx, audio_st->codec->sample_rate) + m_audioDecFrame->nb_samples
                 , m_audioEncCtx->sample_rate
                 , audio_st->codec->sample_rate
                 , AV_ROUND_UP);
