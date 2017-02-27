@@ -109,14 +109,7 @@ bool MsdkFrameDecoder::allocateFrames(void)
 
     ELOG_TRACE("(%p)mfx QueryIOSurf: Suggested(%d), Min(%d)", this, Request.NumFrameSuggested, Request.NumFrameMin);
 
-    m_framePool.reset(new MsdkFramePool(m_allocator, Request));
-    if (!m_framePool->init()) {
-        ELOG_ERROR("(%p)Frame pool init failed, ret %d", this, sts);
-
-        m_framePool.reset();
-        return false;
-    }
-
+    m_framePool.reset(new MsdkFramePool(Request, m_allocator));
     return true;
 }
 
@@ -358,7 +351,7 @@ retry:
             return;
         }
         else if (sts != MFX_ERR_NONE) {
-            ELOG_INFO("(%p)mfx decode error, ret %d", this, sts);
+            ELOG_INFO("(%p)mfx decode error, ret %d(%s)", this, sts, mfxStatusToStr(sts));
 
             workFrame.reset();
 

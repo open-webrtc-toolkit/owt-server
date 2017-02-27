@@ -20,6 +20,9 @@
 
 #ifdef ENABLE_MSDK
 
+#include <iostream>
+#include <fstream>
+
 #include <deque>
 #include <webrtc/system_wrappers/interface/clock.h>
 #include <webrtc/system_wrappers/interface/tick_util.h>
@@ -32,6 +35,174 @@ using namespace woogeen_base;
 
 namespace mcu {
 
+DEFINE_LOGGER(MsdkAvatarManager, "mcu.media.MsdkVideoCompositor.MsdkAvatarManager");
+
+MsdkAvatarManager::MsdkAvatarManager(uint8_t size, boost::shared_ptr<mfxFrameAllocator> allocator)
+    : m_size(size)
+    , m_allocator(allocator)
+{
+}
+
+MsdkAvatarManager::~MsdkAvatarManager()
+{
+}
+
+bool MsdkAvatarManager::getImageSize(const std::string &url, uint32_t *pWidth, uint32_t *pHeight)
+{
+    uint32_t width, height;
+    size_t begin, end;
+    char *str_end = NULL;
+
+    begin = url.find('.');
+    if (begin == std::string::npos) {
+        ELOG_WARN("Invalid image size in url(%s)", url.c_str());
+        return false;
+    }
+
+    end = url.find('x', begin);
+    if (end == std::string::npos) {
+        ELOG_WARN("Invalid image size in url(%s)", url.c_str());
+        return false;
+    }
+
+    width = strtol(url.data() + begin + 1, &str_end, 10);
+    if (url.data() + end != str_end) {
+        ELOG_WARN("Invalid image size in url(%s)", url.c_str());
+        return false;
+    }
+
+    begin = end;
+    end = url.find('.', begin);
+    if (end == std::string::npos) {
+        ELOG_WARN("Invalid image size in url(%s)", url.c_str());
+        return false;
+    }
+
+    height = strtol(url.data() + begin + 1, &str_end, 10);
+    if (url.data() + end != str_end) {
+        ELOG_WARN("Invalid image size in url(%s)", url.c_str());
+        return false;
+    }
+
+    *pWidth = width;
+    *pHeight = height;
+
+    ELOG_TRACE("Image size in url(%s), %dx%d", url.c_str(), *pWidth, *pHeight);
+    return true;
+}
+
+boost::shared_ptr<woogeen_base::MsdkFrame> MsdkAvatarManager::loadImage(const std::string &url)
+{
+    uint32_t width, height;
+
+    if (!getImageSize(url, &width, &height))
+        return NULL;
+
+    std::ifstream in(url, std::ios::in | std::ios::binary);
+    in.seekg (0, in.end);
+    uint32_t size = in.tellg();
+    in.seekg (0, in.beg);
+
+    if (size <= 0 || ((width * height * 3 + 1) / 2) != size) {
+        ELOG_WARN("Open avatar image(%s) error, invalid size %d, expected size %d"
+                , url.c_str(), size, (width * height * 3 + 1) / 2);
+        return NULL;
+    }
+
+    char *image = new char [size];;
+    in.read (image, size);
+    in.close();
+
+    boost::shared_ptr<webrtc::I420VideoFrame> i420Frame(new webrtc::I420VideoFrame());
+    i420Frame->CreateFrame(
+            width * height,
+            (uint8_t *)image,
+            width * height / 4,
+            (uint8_t *)image + width * height,
+            width * height / 4,
+            (uint8_t *)image + width * height * 5 / 4,
+            width,
+            height,
+            width,
+            width / 2,
+            width / 2
+            );
+    delete image;
+
+    boost::shared_ptr<woogeen_base::MsdkFrame> frame(new woogeen_base::MsdkFrame(width, height, m_allocator));
+    if(!frame->init())
+        return NULL;
+
+    frame->convertFrom(*i420Frame.get());
+    return frame;
+}
+
+bool MsdkAvatarManager::setAvatar(uint8_t index, const std::string &url)
+{
+    boost::unique_lock<boost::shared_mutex> lock(m_mutex);
+    ELOG_DEBUG("setAvatar(%d) = %s", index, url.c_str());
+
+    auto it = m_inputs.find(index);
+    if (it == m_inputs.end()) {
+        m_inputs[index] = url;
+        return true;
+    }
+
+    if (it->second == url) {
+        return true;
+    }
+    std::string old_url = it->second;
+    it->second = url;
+
+    //delete
+    for (auto& it2 : m_inputs) {
+        if (old_url == it2.second)
+            return true;
+    }
+    m_frames.erase(old_url);
+    return true;
+}
+
+bool MsdkAvatarManager::unsetAvatar(uint8_t index)
+{
+    boost::unique_lock<boost::shared_mutex> lock(m_mutex);
+    ELOG_DEBUG("unsetAvatar(%d)", index);
+
+    auto it = m_inputs.find(index);
+    if (it == m_inputs.end()) {
+        return true;
+    }
+    std::string url = it->second;
+    m_inputs.erase(it);
+
+    //delete
+    for (auto& it2 : m_inputs) {
+        if (url == it2.second)
+            return true;
+    }
+    m_frames.erase(url);
+    return true;
+}
+
+boost::shared_ptr<woogeen_base::MsdkFrame> MsdkAvatarManager::getAvatarFrame(uint8_t index)
+{
+    boost::unique_lock<boost::shared_mutex> lock(m_mutex);
+
+    auto it = m_inputs.find(index);
+    if (it == m_inputs.end()) {
+        ELOG_WARN("Not valid index(%d)", index);
+        return NULL;
+    }
+    auto it2 = m_frames.find(it->second);
+    if (it2 != m_frames.end()) {
+        return it2->second;
+    }
+
+    boost::shared_ptr<woogeen_base::MsdkFrame> frame = loadImage(it->second);
+    m_frames[it->second] = frame;
+    return frame;
+}
+
 class VppInput {
     DECLARE_LOGGER();
 
@@ -40,6 +211,8 @@ public:
         : m_owner(owner)
         , m_allocator(allocator)
         , m_active(false)
+        , m_swFramePoolWidth(0)
+        , m_swFramePoolHeight(0)
     {
         memset(&m_rootSize, 0, sizeof(m_rootSize));
         memset(&m_vppRect, 0, sizeof(m_vppRect));
@@ -94,6 +267,14 @@ public:
 
         m_owner->flush();
         m_swFramePool.reset(NULL);
+        m_swFramePoolWidth = 0;
+        m_swFramePoolHeight = 0;
+    }
+
+    bool isActivate()
+    {
+        boost::unique_lock<boost::shared_mutex> lock(m_mutex);
+        return m_active;
     }
 
     void pushInput(const woogeen_base::Frame& frame)
@@ -149,47 +330,9 @@ public:
 protected:
     bool initSwFramePool(int width, int height)
     {
-        if (m_swFramePool)
-            return true;
-
-        mfxStatus sts = MFX_ERR_NONE;
-
-        mfxFrameAllocRequest Request;
-        memset(&Request, 0, sizeof(mfxFrameAllocRequest));
-
-        Request.Type = MFX_MEMTYPE_FROM_VPPIN | MFX_MEMTYPE_DXVA2_PROCESSOR_TARGET | MFX_MEMTYPE_EXTERNAL_FRAME;
-
-        Request.NumFrameMin         = MAX_DECODED_FRAME_IN_RENDERING + 1;
-        Request.NumFrameSuggested   = MAX_DECODED_FRAME_IN_RENDERING + 1;
-
-        Request.Info.FourCC         = MFX_FOURCC_NV12;
-        Request.Info.ChromaFormat   = MFX_CHROMAFORMAT_YUV420;
-        Request.Info.PicStruct      = MFX_PICSTRUCT_PROGRESSIVE;
-
-        Request.Info.BitDepthLuma   = 0;
-        Request.Info.BitDepthChroma = 0;
-        Request.Info.Shift          = 0;
-
-        Request.Info.AspectRatioW   = 0;
-        Request.Info.AspectRatioH   = 0;
-
-        Request.Info.FrameRateExtN  = 30;
-        Request.Info.FrameRateExtD  = 1;
-
-        Request.Info.Width          = ALIGN16(width);
-        Request.Info.Height         = ALIGN16(height);
-        Request.Info.CropX          = 0;
-        Request.Info.CropY          = 0;
-        Request.Info.CropW          = width;
-        Request.Info.CropH          = height;
-
-        m_swFramePool.reset(new MsdkFramePool(m_allocator, Request));
-        if (!m_swFramePool->init()) {
-            ELOG_ERROR("(%p)Frame pool init failed, ret %d", this, sts);
-
-            m_swFramePool.reset();
-            return false;
-        }
+        m_swFramePool.reset(new MsdkFramePool(width, height, MAX_DECODED_FRAME_IN_RENDERING + 1, m_allocator));
+        m_swFramePoolWidth = width;
+        m_swFramePoolHeight = height;
 
         ELOG_TRACE("(%p)Frame pool initialzed for non MsdkFrame input", this);
         return true;
@@ -222,18 +365,16 @@ protected:
         else if (frame.format == FRAME_FORMAT_I420) {
             const struct VideoFrameSpecificInfo &video = frame.additionalInfo.video;
 
-            if (!m_swFramePool && !initSwFramePool(video.width, video.height)) {
-                return NULL;
-            }
-
-            if (m_swFramePool->getAllocatedWidth() < video.width || m_swFramePool->getAllocatedHeight() < video.height) {
-                {
-                    boost::unique_lock<boost::shared_mutex> lock(m_mutex);
-                    m_queue.clear();
+            if (m_swFramePool == NULL || m_swFramePoolWidth < video.width || m_swFramePoolHeight < video.height) {
+                if (m_swFramePool) {
+                    {
+                        boost::unique_lock<boost::shared_mutex> lock(m_mutex);
+                        m_queue.clear();
+                    }
+                    m_owner->flush();
                 }
-                m_owner->flush();
 
-                if (!m_swFramePool->reAllocate(video.width, video.height))
+                if (!initSwFramePool(video.width, video.height))
                     return NULL;
             }
 
@@ -303,6 +444,8 @@ private:
 
     // used for sw frame conversion
     boost::scoped_ptr<MsdkFramePool> m_swFramePool;
+    int m_swFramePoolWidth;
+    int m_swFramePoolHeight;
 
     boost::shared_mutex m_mutex;
 };
@@ -324,9 +467,7 @@ MsdkVideoCompositor::MsdkVideoCompositor(uint32_t maxInput, VideoSize rootSize, 
     , m_session(NULL)
     , m_allocator(NULL)
     , m_vpp(NULL)
-    , m_defaultRootFramePool(NULL)
     , m_framePool(NULL)
-    , m_defaultInputFramePool(NULL)
 {
     ELOG_DEBUG("set size to %dx%d, maxInput = %d, crop: %d, bgColor: Y(0x%x), Cb(0x%x), Cr(0x%x)"
             , rootSize.width, rootSize.height, maxInput
@@ -346,6 +487,8 @@ MsdkVideoCompositor::MsdkVideoCompositor(uint32_t maxInput, VideoSize rootSize, 
         input.reset(new VppInput(this, m_allocator));
         input->updateRootSize(rootSize);
     }
+
+    m_avatarManager.reset(new MsdkAvatarManager(maxInput, m_allocator));
 
     m_jobTimer.reset(new JobTimer(30, this));
     m_jobTimer->start();
@@ -377,12 +520,10 @@ MsdkVideoCompositor::~MsdkVideoCompositor()
     m_compInputStreams.clear();
 
     m_defaultRootFrame.reset();
-    m_defaultRootFramePool.reset();
 
     m_inputs.clear();
 
     m_defaultInputFrame.reset();
-    m_defaultInputFramePool.reset();
 
     m_framePool.reset();
 
@@ -554,37 +695,16 @@ void MsdkVideoCompositor::init(void)
 
     // after reset, dont need realloc frame pool
     if (!m_framePool) {
-        m_framePool.reset(new MsdkFramePool(m_allocator, Request[1]));
-        if (!m_framePool->init()) {
-            ELOG_ERROR("Frame pool init failed, ret %d", sts);
-
-            m_framePool.reset();
-            return;
-        }
+        m_framePool.reset(new MsdkFramePool(Request[1], m_allocator));
     }
 
-    if (!m_defaultInputFramePool) {
-        mfxFrameAllocRequest defaultInputRequest = Request[0];
-
-        defaultInputRequest.NumFrameMin         = 1;
-        defaultInputRequest.NumFrameSuggested   = 1;
-        defaultInputRequest.Info.Width          = ALIGN16(16);
-        defaultInputRequest.Info.Height         = ALIGN16(16);
-        defaultInputRequest.Info.CropX          = 0;
-        defaultInputRequest.Info.CropY          = 0;
-        defaultInputRequest.Info.CropW          = 16;
-        defaultInputRequest.Info.CropH          = 16;
-
-        m_defaultInputFramePool.reset(new MsdkFramePool(m_allocator, defaultInputRequest));
-        if (!m_defaultInputFramePool->init()) {
-            ELOG_ERROR("Frame pool(default input) init failed, ret %d", sts);
-
-            m_defaultInputFramePool.reset();
+    if (!m_defaultInputFrame) {
+        m_defaultInputFrame.reset(new MsdkFrame(16, 16, m_allocator));
+        if (!m_defaultInputFrame->init()) {
+            ELOG_ERROR("Default input frame init failed");
+            m_defaultInputFrame.reset();
             return;
         }
-
-        m_defaultInputFrame = m_defaultInputFramePool->getFreeFrame();
-
         m_defaultInputFrame->fillFrame(16, 128, 128);//black
         //m_defaultInputFrame->fillFrame(235, 128, 128);//white
         //m_defaultInputFrame->fillFrame(82, 90, 240);//red
@@ -592,27 +712,13 @@ void MsdkVideoCompositor::init(void)
         //m_defaultInputFrame->fillFrame(41, 240, 110);//blue
     }
 
-    if (!m_defaultRootFramePool) {
-        mfxFrameAllocRequest defaultRootRequest = Request[0];
-
-        defaultRootRequest.NumFrameMin         = 1;
-        defaultRootRequest.NumFrameSuggested   = 1;
-        defaultRootRequest.Info.Width          = ALIGN16(m_compositeSize.width);
-        defaultRootRequest.Info.Height         = ALIGN16(m_compositeSize.height);
-        defaultRootRequest.Info.CropX          = 0;
-        defaultRootRequest.Info.CropY          = 0;
-        defaultRootRequest.Info.CropW          = m_compositeSize.width;
-        defaultRootRequest.Info.CropH          = m_compositeSize.height;
-
-        m_defaultRootFramePool.reset(new MsdkFramePool(m_allocator, defaultRootRequest));
-        if (!m_defaultRootFramePool->init()) {
-            ELOG_ERROR("Frame pool(default root) init failed, ret %d", sts);
-
-            m_defaultRootFramePool.reset();
+    if (!m_defaultRootFrame) {
+        m_defaultRootFrame.reset(new MsdkFrame(m_compositeSize.width, m_compositeSize.height, m_allocator));
+        if (!m_defaultRootFrame->init()) {
+            ELOG_ERROR("Default root frame init failed");
+            m_defaultRootFrame.reset();
             return;
         }
-
-        m_defaultRootFrame = m_defaultRootFramePool->getFreeFrame();
         m_defaultRootFrame->fillFrame(16, 128, 128);//black
     }
 }
@@ -669,14 +775,14 @@ bool MsdkVideoCompositor::setAvatar(int input, const std::string& avatar)
 {
     ELOG_DEBUG("setAvatar(%d) = %s", input, avatar.c_str());
 
-    return true;
+    return m_avatarManager->setAvatar(input, avatar);
 }
 
 bool MsdkVideoCompositor::unsetAvatar(int input)
 {
     ELOG_DEBUG("unsetAvatar(%d)", input);
 
-    return true;
+    return m_avatarManager->unsetAvatar(input);
 }
 
 void MsdkVideoCompositor::pushInput(int input, const woogeen_base::Frame& frame)
@@ -837,10 +943,16 @@ boost::shared_ptr<MsdkFrame> MsdkVideoCompositor::customLayout()
     //dumpMsdkFrameInfo("+++dst", dst);
 
     for (auto& l : m_currentLayout) {
-        auto& input = m_inputs[l.input];
-        boost::shared_ptr<MsdkFrame> src = input->popInput();
-
         ELOG_TRACE("Render Input-%d(%lu)!", l.input, m_currentLayout.size());
+
+        auto& input = m_inputs[l.input];
+        boost::shared_ptr<MsdkFrame> src;
+
+        if (input->isActivate()) {
+            src = input->popInput();
+        } else {
+            src = m_avatarManager->getAvatarFrame(l.input);
+        }
 
         if (!src) {
             ELOG_TRACE("Input-%d(%lu): Null surface, using default!", l.input, m_currentLayout.size());

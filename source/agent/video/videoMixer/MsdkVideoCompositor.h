@@ -40,6 +40,31 @@
 namespace mcu {
 class VppInput;
 
+class MsdkAvatarManager {
+    DECLARE_LOGGER();
+public:
+    MsdkAvatarManager(uint8_t size, boost::shared_ptr<mfxFrameAllocator> allocator);
+    ~MsdkAvatarManager();
+
+    bool setAvatar(uint8_t index, const std::string &url);
+    bool unsetAvatar(uint8_t index);
+
+    boost::shared_ptr<woogeen_base::MsdkFrame> getAvatarFrame(uint8_t index);
+
+protected:
+    bool getImageSize(const std::string &url, uint32_t *pWidth, uint32_t *pHeight);
+    boost::shared_ptr<woogeen_base::MsdkFrame> loadImage(const std::string &url);
+
+private:
+    uint8_t m_size;
+    boost::shared_ptr<mfxFrameAllocator> m_allocator;
+
+    std::map<uint8_t, std::string> m_inputs;
+    std::map<std::string, boost::shared_ptr<woogeen_base::MsdkFrame>> m_frames;
+
+    boost::shared_mutex m_mutex;
+};
+
 /**
  * composite a sequence of frames into one frame based on current layout config,
  * there is a question of how many streams to be composited if there are 16 participants
@@ -114,20 +139,20 @@ private:
     MFXVideoVPP *m_vpp;
 
     boost::shared_ptr<woogeen_base::MsdkFrame> m_defaultRootFrame;
-    boost::scoped_ptr<woogeen_base::MsdkFramePool> m_defaultRootFramePool;
 
     std::vector<boost::shared_ptr<VppInput>> m_inputs;
 
     boost::scoped_ptr<woogeen_base::MsdkFramePool> m_framePool;
 
     boost::shared_ptr<woogeen_base::MsdkFrame> m_defaultInputFrame;
-    boost::scoped_ptr<woogeen_base::MsdkFramePool> m_defaultInputFramePool;
 
     boost::scoped_ptr<JobTimer> m_jobTimer;
 
     boost::shared_mutex m_mutex;
 
     std::vector<boost::shared_ptr<woogeen_base::MsdkFrame>> m_frameQueue;
+
+    boost::scoped_ptr<MsdkAvatarManager> m_avatarManager;
 };
 
 }
