@@ -67,19 +67,26 @@ install_deps() {
 }
 
 install_db() {
-  local DB_DIR=${WOOGEEN_HOME}/db
   echo -e "\x1b[32mInitializing mongodb...\x1b[0m"
   if ! pgrep -x mongod &> /dev/null; then
     if ! hash mongod 2>/dev/null; then
         echo >&2 "Error: mongodb not found."
         return 1
     fi
-    [[ ! -d "${DB_DIR}" ]] && mkdir -p "${DB_DIR}"
-    [[ ! -d "${LogDir}" ]] && mkdir -p "${LogDir}"
-    mongod --repair --dbpath ${DB_DIR}
-    mongod --dbpath ${DB_DIR} --logpath ${LogDir}/mongo.log --fork
-    sleep 5
-  else
+
+    # Use default configuration
+    if [[ "$OS" =~ .*centos.* ]]
+    then
+      echo "Start mongodb - \"systemctl start mongod\""
+      sudo systemctl start mongod
+    elif [[ "$OS" =~ .*ubuntu.* ]]
+    then
+      echo "Start mongodb - \"service mongodb start\""
+      sudo service mongodb start
+    else
+      echo -e "\x1b[32mUnsupported platform...\x1b[0m"
+    fi
+
     echo -e "\x1b[32mMongoDB already running\x1b[0m"
   fi
 }
