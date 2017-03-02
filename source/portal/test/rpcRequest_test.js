@@ -325,11 +325,11 @@ describe('rpcRequest.tokenLogin/join/onConnectionSignalling/mix/unmix/setVideoBi
                                     ['connectionId', {type: 'offer', sdp: 'offerSDPString'}]).returns(Promise.resolve('ok'));
     var onConnectionSignalling = req.onConnectionSignalling('rpcIdOfAccessNode', 'connectionId', {type: 'offer', sdp: 'offerSDPString'});
 
-    mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'mix', ['participantId', 'streamId'], 4000).returns(Promise.resolve('ok'));
-    var mix = req.mix('rpcIdOfController', 'participantId', 'streamId');
+    mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'mix', ['participantId', 'streamId', ['mixStream1']], 4000).returns(Promise.resolve('ok'));
+    var mix = req.mix('rpcIdOfController', 'participantId', 'streamId', ['mixStream1']);
 
-    mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'unmix', ['participantId', 'streamId'], 4000).returns(Promise.resolve('ok'));
-    var unmix = req.unmix('rpcIdOfController', 'participantId', 'streamId');
+    mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'unmix', ['participantId', 'streamId', ['mixStream1']], 4000).returns(Promise.resolve('ok'));
+    var unmix = req.unmix('rpcIdOfController', 'participantId', 'streamId', ['mixStream1']);
 
     mockRpcChannel.makeRPC.withArgs('rpcIdOfAccessNode', 'setVideoBitrate', ['connectionId', 500]).returns(Promise.resolve('ok'));
     var setVideoBitrate = req.setVideoBitrate('rpcIdOfAccessNode', 'connectionId', 500);
@@ -346,11 +346,11 @@ describe('rpcRequest.tokenLogin/join/onConnectionSignalling/mix/unmix/setVideoBi
     mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'setPermission', ['role', 'act', true], 4000).returns(Promise.resolve('ok'));
     var setPermission = req.setPermission('rpcIdOfController', 'role', 'act', true);
 
-    mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'getRegion', ['subStreamId'], 4000).returns(Promise.resolve('regionId1'));
-    var getRegion = req.getRegion('rpcIdOfController', 'subStreamId');
+    mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'getRegion', ['subStreamId', 'mixStreamId'], 4000).returns(Promise.resolve('regionId1'));
+    var getRegion = req.getRegion('rpcIdOfController', 'subStreamId', 'mixStreamId');
 
-    mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'setRegion', ['subStreamId', 500], 4000).returns(Promise.resolve('ok'));
-    var setRegion = req.setRegion('rpcIdOfController', 'subStreamId', 500);
+    mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'setRegion', ['subStreamId', 500, 'mixStreamId'], 4000).returns(Promise.resolve('ok'));
+    var setRegion = req.setRegion('rpcIdOfController', 'subStreamId', 500, 'mixStreamId');
 
     mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'text', ['fromWhom', 'toWhom', 'message body'], 4000).returns(Promise.resolve('ok'));
     var text = req.text('rpcIdOfController', 'fromWhom', 'toWhom', 'message body');
@@ -391,11 +391,11 @@ describe('rpcRequest.tokenLogin/join/onConnectionSignalling/mix/unmix/setVideoBi
                                     ['connectionId', {type: 'offer', sdp: 'offerSDPString'}]).returns(Promise.reject('error or timeout'));
     var onConnectionSignalling = req.onConnectionSignalling('rpcIdOfAccessNode', 'connectionId', {type: 'offer', sdp: 'offerSDPString'});
 
-    mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'mix', ['participantId', 'streamId'], 4000).returns(Promise.reject('timeout'));
-    var mix = req.mix('rpcIdOfController', 'participantId', 'streamId');
+    mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'mix', ['participantId', 'streamId', ['mixStream1']], 4000).returns(Promise.reject('timeout'));
+    var mix = req.mix('rpcIdOfController', 'participantId', 'streamId', ['mixStream1']);
 
-    mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'unmix', ['participantId', 'streamId'], 4000).returns(Promise.reject('error'));
-    var unmix = req.unmix('rpcIdOfController', 'participantId', 'streamId');
+    mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'unmix', ['participantId', 'streamId', ['mixStream1']], 4000).returns(Promise.reject('error'));
+    var unmix = req.unmix('rpcIdOfController', 'participantId', 'streamId', ['mixStream1']);
 
     mockRpcChannel.makeRPC.withArgs('rpcIdOfAccessNode', 'setVideoBitrate', ['connectionId', 500]).returns(Promise.reject('timeout or error'));
     var setVideoBitrate = req.setVideoBitrate('rpcIdOfAccessNode', 'connectionId', 500);
@@ -412,11 +412,11 @@ describe('rpcRequest.tokenLogin/join/onConnectionSignalling/mix/unmix/setVideoBi
     mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'setPermission', ['role', 'act', true], 4000).returns(Promise.reject('timeout or error'));
     var setPermission = req.setPermission('rpcIdOfController', 'role', 'act', true);
 
-    mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'getRegion', ['subStreamId'], 4000).returns(Promise.reject('no such a sub-stream'));
-    var getRegion = req.getRegion('rpcIdOfController', 'subStreamId');
+    mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'getRegion', ['subStreamId', 'mixStreamId'], 4000).returns(Promise.reject('no such a sub-stream'));
+    var getRegion = req.getRegion('rpcIdOfController', 'subStreamId', 'mixStreamId');
 
-    mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'setRegion', ['subStreamId', 500], 4000).returns(Promise.reject('some error'));
-    var setRegion = req.setRegion('rpcIdOfController', 'subStreamId', 500);
+    mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'setRegion', ['subStreamId', 500, 'mixStreamId'], 4000).returns(Promise.reject('some error'));
+    var setRegion = req.setRegion('rpcIdOfController', 'subStreamId', 500, 'mixStreamId');
 
     mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'text', ['fromWhom', 'toWhom', 'message body'], 4000).returns(Promise.reject('timeout or error'));
     var text = req.text('rpcIdOfController', 'fromWhom', 'toWhom', 'message body');

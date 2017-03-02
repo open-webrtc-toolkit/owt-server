@@ -1,0 +1,27 @@
+{
+  "name": "WooGeen-MCU-Session-Controller",
+  "version":"3.3.0",
+  "dependencies": {
+    "amqp": "*",
+    "express": "*",
+    "body-parser": "*",
+    "socket.io": "^1.6.0",
+    "log4js": "*",
+    "node-getopt": "*",
+    "toml": "*",
+    "sprintf-js": "^1.0.3"
+  },
+  "devDependencies": {
+    "mocha": "^2.2.5",
+    "chai": "^3.0.0",
+    "chai-as-promised": "^5.1.0",
+    "sinon": "^1.15.4",
+    "sinon-as-promised": "^4.0.0",
+    "mockery": "*",
+    "istanbul": "*"
+  },
+  "scripts": {
+    "test": "mocha ./test -R spec --timeout 5000",
+    "test:cover": "istanbul cover _mocha -- ./test -R spec --timeout 5000"
+  }
+}

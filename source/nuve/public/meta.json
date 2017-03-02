@@ -3,7 +3,7 @@
   "mediaMixing": {
     "video": {
       "resolution": ["vga", "sif", "xga", "svga", "hd720p", "hd1080p", "uhd_4k", "r720x720"],
-      "quality_level": ["BestQuality", "BetterQuality", "Standard", "BetterSpeed", "BestSpeed"],
+      "quality_level": ["bestquality", "betterquality", "standard", "betterspeed", "bestspeed"],
       "bkColor": ["black", "white"],
       "layout": {
         "base": ["fluid", "lecture", "void"]

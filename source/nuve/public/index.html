@@ -57,7 +57,7 @@
           </div>
         </div>
       </div>
-      <div id="myModal2" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="createServiceModal" aria-hidden="true" style="display: none;">
+      <div id="serviceModal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="createServiceModal" aria-hidden="true" style="display: none;">
         <div class="modal-dialog">
           <div class="modal-content">
             <div class="modal-header">
@@ -83,7 +83,7 @@
           </div>
         </div>
       </div>
-      <div id="myModal3" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="editTableModal" aria-hidden="true" style="display: none;">
+      <div id="mediaMixingModal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="editTableModal" aria-hidden="true" style="display: none;">
         <div class="modal-dialog modal-lg">
           <div class="modal-content">
             <div class="modal-header">
@@ -91,6 +91,8 @@
               <h4 class="modal-title" id="editTableModal"></h4>
             </div>
             <div class="modal-body">
+              <ul class="nav nav-tabs marginBottom" id="myTab">
+              </ul>
               <div class="table-responsive" id="inRoomTable">
                 <table class="table table-striped">
                   <tbody>
@@ -103,6 +105,29 @@
           </div>
         </div>
       </div>
+      <!-- Modal -->
+      <div id="newViewModal" class="modal fade"  tabindex="-1" role="dialog" aria-labelledby="newViewModal" aria-hidden="true">
+          <div class="modal-dialog">
+              <div class="modal-content">
+                  <!-- Modal Header -->
+                  <div class="modal-header">
+                      <h4 class="modal-title">
+                          Enter a Label for the new View
+                      </h4>
+                  </div>
+                  <!-- Modal Body -->
+                  <div class="modal-body">
+                    <input type="text" class="form-control" id="inputViewLabel" placeholder="Enter your label"/>
+                  </div>
+                  <!-- Modal Footer -->
+                  <div class="modal-footer">
+                    <button type="button" id="viewLabelBtn" class="btn btn-primary" data-dismiss="modal"><i class="glyphicon glyphicon-ok"></i></button>
+                    <button type="button" class="btn btn-default" data-dismiss="modal"><i class="glyphicon glyphicon-remove"></i></button>
+                  </div>
+              </div>
+          </div>
+      </div>
+
       <div id="SIPModal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="editTableModal" aria-hidden="true" style="display: none;">
         <div class="modal-dialog modal-lg">
           <div class="modal-content">

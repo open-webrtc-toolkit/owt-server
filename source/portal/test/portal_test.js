@@ -1080,8 +1080,8 @@ describe('portal.mix/portal.unmix/portal.setVideoBitrate/portal.mediaOnOff: Part
     var mockrpcReq = sinon.createStubInstance(rpcReq);
     var portal = Portal(testPortalSpec, mockrpcReq);
 
-    var mix = portal.mix(testParticipantId, 'streamId'),
-        unmix = portal.unmix(testParticipantId, 'streamId'),
+    var mix = portal.mix(testParticipantId, 'streamId', ['mixStream1', 'mixStream2']),
+        unmix = portal.unmix(testParticipantId, 'streamId', ['mixStream1', 'mixStream2']),
         setVideoBitrate = portal.setVideoBitrate(testParticipantId, 'streamId', 500),
         mediaOnOff = portal.mediaOnOff(testParticipantId, 'streamId', 'video', 'in', 'off');
 
@@ -1108,8 +1108,8 @@ describe('portal.mix/portal.unmix/portal.setVideoBitrate/portal.mediaOnOff: Part
 
     return portal.join(testParticipantId, testToken)
       .then(function(joinResult) {
-        var mix = portal.mix(testParticipantId, 'streamId'),
-            unmix = portal.unmix(testParticipantId, 'streamId'),
+        var mix = portal.mix(testParticipantId, 'streamId', ['mixStream1', 'mixStream2']),
+            unmix = portal.unmix(testParticipantId, 'streamId', ['mixStream1', 'mixStream2']),
             setVideoBitrate = portal.setVideoBitrate(testParticipantId, 'streamId', 500),
             mediaOnOff = portal.mediaOnOff(testParticipantId, 'streamId', 'video', 'in', 'off');
 
@@ -1192,8 +1192,8 @@ describe('portal.mix/portal.unmix/portal.setVideoBitrate/portal.mediaOnOff: Part
       mockrpcReq.setVideoBitrate.resolves('ok');
       mockrpcReq.mediaOnOff.resolves('ok');
 
-      var mix = portal.mix(testParticipantId, testStreamId),
-          unmix = portal.unmix(testParticipantId, testStreamId),
+      var mix = portal.mix(testParticipantId, testStreamId, ['mixStream1', 'mixStream2']),
+          unmix = portal.unmix(testParticipantId, testStreamId, ['mixStream1', 'mixStream2']),
           setVideoBitrate = portal.setVideoBitrate(testParticipantId, testStreamId, 500),
           mediaOnOff = portal.mediaOnOff(testParticipantId, testStreamId, 'video', 'in', 'off');
 
@@ -1204,8 +1204,8 @@ describe('portal.mix/portal.unmix/portal.setVideoBitrate/portal.mediaOnOff: Part
         expect(mediaOnOff).to.become('ok')
         ])
         .then(function() {
-          expect(mockrpcReq.mix.getCall(0).args).to.deep.equal(['rpcIdOfController', testParticipantId, testStreamId]);
-          expect(mockrpcReq.unmix.getCall(0).args).to.deep.equal(['rpcIdOfController', testParticipantId, testStreamId]);
+          expect(mockrpcReq.mix.getCall(0).args).to.deep.equal(['rpcIdOfController', testParticipantId, testStreamId, ['mixStream1', 'mixStream2']]);
+          expect(mockrpcReq.unmix.getCall(0).args).to.deep.equal(['rpcIdOfController', testParticipantId, testStreamId, ['mixStream1', 'mixStream2']]);
           expect(mockrpcReq.setVideoBitrate.getCall(0).args).to.deep.equal(['rpcIdOfAccessNode', testStreamId, 500]);
           expect(mockrpcReq.mediaOnOff.getCall(0).args).to.deep.equal(['rpcIdOfAccessNode', testStreamId, 'video', 'in', 'off']);
         });
@@ -1223,8 +1223,8 @@ describe('portal.mix/portal.unmix/portal.setVideoBitrate/portal.mediaOnOff: Part
       mockrpcReq.setVideoBitrate.rejects('timeout or error');
       mockrpcReq.mediaOnOff.rejects('timeout or error');
 
-      var mix = portal.mix(testParticipantId, testStreamId),
-          unmix = portal.unmix(testParticipantId, testStreamId),
+      var mix = portal.mix(testParticipantId, testStreamId, ['mixStream1', 'mixStream2']),
+          unmix = portal.unmix(testParticipantId, testStreamId, ['mixStream1', 'mixStream2']),
           setVideoBitrate = portal.setVideoBitrate(testParticipantId, testStreamId, 500),
           mediaOnOff = portal.mediaOnOff(testParticipantId, testStreamId, 'video', 'in', 'off');
 
@@ -2099,8 +2099,8 @@ describe('portal.getRegion/portal.setRegion: Manipulate the mixed stream.', func
     var portal = Portal(testPortalSpec, mockrpcReq);
 
     return Promise.all([
-      expect(portal.getRegion(testParticipantId, 'subStreamId')).to.be.rejectedWith('Participant ' + testParticipantId + ' does NOT exist.'),
-      expect(portal.setRegion(testParticipantId, 'subStreamId', 500)).to.be.rejectedWith('Participant ' + testParticipantId + ' does NOT exist.')
+      expect(portal.getRegion(testParticipantId, 'subStreamId', 'mixStreamId')).to.be.rejectedWith('Participant ' + testParticipantId + ' does NOT exist.'),
+      expect(portal.setRegion(testParticipantId, 'subStreamId', 500, 'mixStreamId')).to.be.rejectedWith('Participant ' + testParticipantId + ' does NOT exist.')
       ]);
   });
 
@@ -2136,10 +2136,10 @@ describe('portal.getRegion/portal.setRegion: Manipulate the mixed stream.', func
       mockrpcReq.getRegion = sinon.stub();
       mockrpcReq.getRegion.resolves('regionId');
 
-      return portal.getRegion(testParticipantId, 'subStreamId')
+      return portal.getRegion(testParticipantId, 'subStreamId', 'mixStreamId')
         .then(function(result) {
           expect(result).to.equal('regionId');
-          expect(mockrpcReq.getRegion.getCall(0).args).to.deep.equal(['rpcIdOfController', 'subStreamId']);
+          expect(mockrpcReq.getRegion.getCall(0).args).to.deep.equal(['rpcIdOfController', 'subStreamId', 'mixStreamId']);
         });
     });
 
@@ -2147,17 +2147,17 @@ describe('portal.getRegion/portal.setRegion: Manipulate the mixed stream.', func
       mockrpcReq.getRegion = sinon.stub();
       mockrpcReq.getRegion.rejects('no such a stream');
 
-      return expect(portal.getRegion(testParticipantId, 'subStreamId')).to.be.rejectedWith('no such a stream');
+      return expect(portal.getRegion(testParticipantId, 'subStreamId', 'mixStreamId')).to.be.rejectedWith('no such a stream');
     });
 
     it('Setting region should succeed if rpcReq.setRegion succeeds.', function() {
       mockrpcReq.setRegion = sinon.stub();
       mockrpcReq.setRegion.resolves('ok');
 
-      return portal.setRegion(testParticipantId, 'subStreamId', 500)
+      return portal.setRegion(testParticipantId, 'subStreamId', 500, 'mixStreamId')
         .then(function(result) {
           expect(result).to.equal('ok');
-          expect(mockrpcReq.setRegion.getCall(0).args).to.deep.equal(['rpcIdOfController', 'subStreamId', 500]);
+          expect(mockrpcReq.setRegion.getCall(0).args).to.deep.equal(['rpcIdOfController', 'subStreamId', 500, 'mixStreamId']);
         });
     });
 
@@ -2165,7 +2165,7 @@ describe('portal.getRegion/portal.setRegion: Manipulate the mixed stream.', func
       mockrpcReq.setRegion = sinon.stub();
       mockrpcReq.setRegion.rejects('failed-for-some-reason');
 
-      return expect(portal.setRegion(testParticipantId, 'subStreamId', 500)).to.be.rejectedWith('failed-for-some-reason');
+      return expect(portal.setRegion(testParticipantId, 'subStreamId', 500, 'mixStreamId')).to.be.rejectedWith('failed-for-some-reason');
     });
   });
 });

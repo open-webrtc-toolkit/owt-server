@@ -8,6 +8,7 @@ var sioClient = require('socket.io-client');
 var portal = require('../portal');
 
 var testRoom = '573eab78111478bb3526421a';
+var testStream = '573eab78111478bb3526421a-common';
 
 var clientInfo = {sdk:{version: '3.3', type: 'JavaScript'}, runtime: {name: 'Chrome', version: '53.0.0.0'}, os:{name:'Linux (Ubuntu)', version:'14.04'}};
 // JavaScript SDK 3.3 does not support reconnection. So use iOS UA info for reconnection tests.
@@ -95,10 +96,10 @@ describe('Logining and Relogining.', function() {
                          role: 'presenter',
                          session_id: testRoom,
                          participants: [],
-                         streams: [{id: testRoom, audio: true, video: {device: 'mcu', resolutions: ['vag', 'hd720p']}, from: '', socket: ''}]};
+                         streams: [{id: testStream, view: 'common', audio: true, video: {device: 'mcu', resolutions: ['vga', 'hd720p']}, from: '', socket: ''}]};
       mockPortal.join.resolves(join_result);
 
-      var transformed_streams = [{id: testRoom, audio: true, video: {device: 'mcu', resolutions: [{width: 640, height: 480}, {width: 1280, height: 720}]}, from: '', socket: ''}];
+      var transformed_streams = [{id: testStream, view: 'common', audio: true, video: {device: 'mcu', resolutions: [{width: 640, height: 480}, {width: 1280, height: 720}]}, from: '', socket: ''}];
 
       client.emit('token', 'someValidToken', function(status, resp) {
         expect(status).to.equal('success');
@@ -155,10 +156,10 @@ describe('Logining and Relogining.', function() {
                          role: 'presenter',
                          session_id: testRoom,
                          participants: [],
-                         streams: [{id: testRoom, audio: true, video: {device: 'mcu', resolutions: ['vag', 'hd720p']}, from: '', socket: ''}]};
+                         streams: [{id: testStream, view: 'common', audio: true, video: {device: 'mcu', resolutions: ['vga', 'hd720p']}, from: '', socket: ''}]};
       mockPortal.join.resolves(join_result);
 
-      var transformed_streams = [{id: testRoom, audio: true, video: {device: 'mcu', resolutions: [{width: 640, height: 480}, {width: 1280, height: 720}]}, from: '', socket: ''}];
+      var transformed_streams = [{id: testStream, view: 'common', audio: true, video: {device: 'mcu', resolutions: [{width: 640, height: 480}, {width: 1280, height: 720}]}, from: '', socket: ''}];
 
       client.emit('login', {token: someValidToken, userAgent:reconnectionClientInfo}, function(status, resp) {
         expect(status).to.equal('success');
@@ -230,7 +231,7 @@ describe('Logining and Relogining.', function() {
                          role: 'presenter',
                          session_id: testRoom,
                          participants: [],
-                         streams: [{id: testRoom, audio: true, video: {device: 'mcu', resolutions: ['vag', 'hd720p']}, from: '', socket: ''}]};
+                         streams: [{id: testStream, view: 'common', audio: true, video: {device: 'mcu', resolutions: ['vga', 'hd720p']}, from: '', socket: ''}]};
       mockPortal.join.resolves(join_result);
 
       let resolveDisconnect, resolveToken;
@@ -264,10 +265,10 @@ describe('Logining and Relogining.', function() {
                          role: 'presenter',
                          session_id: testRoom,
                          participants: [],
-                         streams: [{id: testRoom, audio: true, video: {device: 'mcu', resolutions: ['vag', 'hd720p']}, from: '', socket: ''}]};
+                         streams: [{id: testStream, view: 'common', audio: true, video: {device: 'mcu', resolutions: ['vga', 'hd720p']}, from: '', socket: ''}]};
       mockPortal.join.resolves(join_result);
 
-      var transformed_streams = [{id: testRoom, audio: true, video: {device: 'mcu', resolutions: [{width: 640, height: 480}, {width: 1280, height: 720}]}, from: '', socket: ''}];
+      var transformed_streams = [{id: testStream, view: 'common', audio: true, video: {device: 'mcu', resolutions: [{width: 640, height: 480}, {width: 1280, height: 720}]}, from: '', socket: ''}];
 
       client.emit('login', {token: someValidToken, userAgent:clientInfo}, function(status, resp) {
         expect(status).to.equal('success');
@@ -851,7 +852,7 @@ describe('Responding to clients.', function() {
                          role: 'presenter',
                          session_id: testRoom,
                          participants: [],
-                         streams: []};
+                         streams: [{id: testStream, view: 'common', audio: true, video: {device: 'mcu', resolutions: ['vga', 'hd720p']}, from: '', socket: ''}]};
       mockPortal.join.resolves(join_result);
 
       client.emit('token', 'someValidToken', function(status, resp) {
@@ -1150,12 +1151,12 @@ describe('Responding to clients.', function() {
       mockPortal.mix = sinon.stub();
       mockPortal.unmix = sinon.stub();
 
-      client.emit('addToMixer', 'streamId', function(status, data) {
+      client.emit('addToMixer', 'streamId', ['mixStream1', 'mixStream2'], function(status, data) {
         expect(status).to.equal('error');
         expect(data).to.equal('unauthorized');
         expect(mockPortal.mix.callCount).to.equal(0);
 
-        client.emit('removeFromMixer', 'streamId', function(status, data) {
+        client.emit('removeFromMixer', 'streamId', ['mixStream1', 'mixStream2'], function(status, data) {
           expect(status).to.equal('error');
           expect(data).to.equal('unauthorized');
           expect(mockPortal.unmix.callCount).to.equal(0);
@@ -1175,12 +1176,22 @@ describe('Responding to clients.', function() {
         .then(function() {
           client.emit('addToMixer', 'streamId', function(status, data) {
             expect(status).to.equal('success');
-            expect(mockPortal.mix.getCall(0).args).to.deep.equal([client.id, 'streamId']);
+            expect(mockPortal.mix.getCall(0).args).to.deep.equal([client.id, 'streamId', undefined]);
 
             client.emit('removeFromMixer', 'streamId', function(status, data) {
               expect(status).to.equal('success');
-              expect(mockPortal.unmix.getCall(0).args).to.deep.equal([client.id, 'streamId']);
-              done();
+              expect(mockPortal.unmix.getCall(0).args).to.deep.equal([client.id, 'streamId', undefined]);
+
+              client.emit('addToMixer', 'streamId', ['mixStream1', 'mixStream2'], function(status, data) {
+                expect(status).to.equal('success');
+                expect(mockPortal.mix.getCall(1).args).to.deep.equal([client.id, 'streamId', ['mixStream1', 'mixStream2']]);
+
+                client.emit('removeFromMixer', 'streamId', ['mixStream1', 'mixStream2'], function(status, data) {
+                  expect(status).to.equal('success');
+                  expect(mockPortal.unmix.getCall(1).args).to.deep.equal([client.id, 'streamId', ['mixStream1', 'mixStream2']]);
+                  done();
+                });
+              });
             });
           });
       });
@@ -1195,15 +1206,15 @@ describe('Responding to clients.', function() {
 
       return joinFirstly()
         .then(function() {
-          client.emit('addToMixer', 'streamId', function(status, data) {
+          client.emit('addToMixer', 'streamId', ['mixStream1', 'mixStream2'], function(status, data) {
             expect(status).to.equal('error');
             expect(data).to.have.string('stream does not exist');
-            expect(mockPortal.mix.getCall(0).args).to.deep.equal([client.id, 'streamId']);
+            expect(mockPortal.mix.getCall(0).args).to.deep.equal([client.id, 'streamId', ['mixStream1', 'mixStream2']]);
 
-            client.emit('removeFromMixer', 'streamId', function(status, data) {
+            client.emit('removeFromMixer', 'streamId', ['mixStream1', 'mixStream2'], function(status, data) {
               expect(status).to.equal('error');
               expect(data).to.have.string('stream does not exist');
-              expect(mockPortal.unmix.getCall(0).args).to.deep.equal([client.id, 'streamId']);
+              expect(mockPortal.unmix.getCall(0).args).to.deep.equal([client.id, 'streamId', ['mixStream1', 'mixStream2']]);
               done();
             });
           });
@@ -1409,7 +1420,7 @@ describe('Responding to clients.', function() {
           var options = {url: 'rtsp://target.host', resolution: 'hd720p'};
           client.emit('addExternalOutput', options, function(status, data) {
             expect(status).to.equal('success');
-            expect(mockPortal.subscribe.getCall(0).args[3]).to.deep.equal({audio: {fromStream: testRoom, codecs: ['aac']}, video: {fromStream: testRoom, codecs: ['h264'], resolution: 'hd720p'}, url: 'rtsp://target.host'});
+            expect(mockPortal.subscribe.getCall(0).args[3]).to.deep.equal({audio: {fromStream: testStream, codecs: ['aac']}, video: {fromStream: testStream, codecs: ['h264'], resolution: 'hd720p'}, url: 'rtsp://target.host'});
             done();
           });
         });
@@ -1626,7 +1637,7 @@ describe('Responding to clients.', function() {
           client.emit('startRecorder', options, function(status, data) {
             expect(status).to.equal('success');
             expect(data.recorderId).to.be.a('string');
-            expect(data.path).to.equal('/tmp/room_' + testRoom + '-' + client.id + '-' + data.recorderId + '.mkv');
+            expect(data.path).to.equal('/tmp/room_' + testStream + '-' + client.id + '-' + data.recorderId + '.mkv');
             expect(data.host).to.equal('unknown');
             expect(mockPortal.subscribe.getCall(0).args[0]).to.equal(client.id);
             expect(mockPortal.subscribe.getCall(0).args[1]).to.equal(client.id + '-' + data.recorderId);
@@ -1675,7 +1686,7 @@ describe('Responding to clients.', function() {
           var options = {}; // unspecified both audio and video stream-ids.
           client.emit('startRecorder', options, function(status, data) {
             expect(status).to.equal('success');
-            expect(mockPortal.subscribe.getCall(0).args[3]).to.deep.equal({audio: {fromStream: testRoom, codecs: ['opus_48000_2']}, video: {fromStream: testRoom, codecs: ['vp8']}, interval: -1});
+            expect(mockPortal.subscribe.getCall(0).args[3]).to.deep.equal({audio: {fromStream: testStream, codecs: ['opus_48000_2']}, video: {fromStream: testStream, codecs: ['vp8']}, interval: -1});
 
             simulateStubResponse(mockPortal.subscribe, 1, 4, {type: 'ready', audio_codecs: ['opus_48000_2'], video_codecs: ['vp8']});
             var options = {audioStreamId: 'targetStreamId1', audioCodec: 'opus'}; //unspecified video stream-id, audio codec is 'opus'.
@@ -1694,7 +1705,7 @@ describe('Responding to clients.', function() {
                 client.emit('startRecorder', options, function(status, data) {
                   expect(status).to.equal('success');
                   expect(mockPortal.subscribe.getCall(3).args[1]).to.equal(client.id + '-2016060418215098');
-                  expect(mockPortal.subscribe.getCall(3).args[3]).to.deep.equal({audio: {fromStream: testRoom, codecs: ['opus_48000_2']}, video: {fromStream: testRoom, codecs: ['h264']}, interval: -1});
+                  expect(mockPortal.subscribe.getCall(3).args[3]).to.deep.equal({audio: {fromStream: testStream, codecs: ['opus_48000_2']}, video: {fromStream: testStream, codecs: ['h264']}, interval: -1});
                   done();
                 });
               });
@@ -1895,12 +1906,12 @@ describe('Responding to clients.', function() {
       mockPortal.getRegion = sinon.stub();
       mockPortal.setRegion = sinon.stub();
 
-      client.emit('getRegion', {id: 'subStreamId'}, function(status, data) {
+      client.emit('getRegion', {id: 'subStreamId', mixStreamId: 'mixStream1'}, function(status, data) {
         expect(status).to.equal('error');
         expect(data).to.equal('unauthorized');
         expect(mockPortal.getRegion.callCount).to.equal(0);
 
-        client.emit('setRegion', {id: 'subStreamId', region: 'regionId'}, function(status, data) {
+        client.emit('setRegion', {id: 'subStreamId', region: 'regionId', mixStreamId: 'mixStream1'}, function(status, data) {
           expect(status).to.equal('error');
           expect(data).to.equal('unauthorized');
           expect(mockPortal.setRegion.callCount).to.equal(0);
@@ -1961,12 +1972,23 @@ describe('Responding to clients.', function() {
           client.emit('getRegion', {id: 'subStreamId'}, function(status, data) {
             expect(status).to.equal('success');
             expect(data.region).to.equal('regionId');
-            expect(mockPortal.getRegion.getCall(0).args).to.deep.equal([client.id, 'subStreamId']);
+            expect(mockPortal.getRegion.getCall(0).args).to.deep.equal([client.id, 'subStreamId', undefined]);
 
             client.emit('setRegion', {id: 'subStreamId', region: '3'}, function(status, data) {
               expect(status).to.equal('success');
-              expect(mockPortal.setRegion.getCall(0).args).to.deep.equal([client.id, 'subStreamId', '3']);
-              done();
+              expect(mockPortal.setRegion.getCall(0).args).to.deep.equal([client.id, 'subStreamId', '3', undefined]);
+
+              client.emit('getRegion', {id: 'subStreamId', mixStreamId: 'mixStream1'}, function(status, data) {
+                expect(status).to.equal('success');
+                expect(data.region).to.equal('regionId');
+                expect(mockPortal.getRegion.getCall(1).args).to.deep.equal([client.id, 'subStreamId', 'mixStream1']);
+
+                client.emit('setRegion', {id: 'subStreamId', region: '3', mixStreamId: 'mixStream1'}, function(status, data) {
+                  expect(status).to.equal('success');
+                  expect(mockPortal.setRegion.getCall(1).args).to.deep.equal([client.id, 'subStreamId', '3', 'mixStream1']);
+                  done();
+                });
+              });
             });
           });
         });
@@ -1984,12 +2006,12 @@ describe('Responding to clients.', function() {
           client.emit('getRegion', {id: 'subStreamId'}, function(status, data) {
             expect(status).to.equal('error');
             expect(data).to.have.string('Invalid stream id');
-            expect(mockPortal.getRegion.getCall(0).args).to.deep.equal([client.id, 'subStreamId']);
+            expect(mockPortal.getRegion.getCall(0).args).to.deep.equal([client.id, 'subStreamId', undefined]);
 
             client.emit('setRegion', {id: 'subStreamId', region: '3'}, function(status, data) {
               expect(status).to.equal('error');
               expect(data).to.have.string('another error');
-              expect(mockPortal.setRegion.getCall(0).args).to.deep.equal([client.id, 'subStreamId', '3']);
+              expect(mockPortal.setRegion.getCall(0).args).to.deep.equal([client.id, 'subStreamId', '3', undefined]);
               done();
             });
           });

@@ -127,7 +127,11 @@ exports.updateRoom = function (req, res) {
                 var hasSip = !!room.sipInfo;
                 Object.keys(updates).map(function (k) {
                     if (newRoom.hasOwnProperty(k)) {
-                        if (k !== 'mediaMixing') {
+                        if (k === 'views') {
+                            room[k] = newRoom[k];
+                            // Remove old style media mixing configuration
+                            delete room['mediaMixing'];
+                        } else if (k !== 'mediaMixing') {
                             room[k] = newRoom[k];
                         } else if (typeof updates.mediaMixing.video === 'object') {
                             room.mediaMixing = room.mediaMixing || {};
