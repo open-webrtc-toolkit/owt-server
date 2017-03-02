@@ -195,6 +195,7 @@ private:
     std::string m_url;
     bool m_needAudio;
     bool m_needVideo;
+    EventRegistry* m_asyncHandle;
     AVDictionary* m_transportOpts;
     bool m_running;
     bool m_keyFrameRequest;
@@ -202,17 +203,16 @@ private:
     AVFormatContext* m_context;
     TimeoutHandler* m_timeoutHandler;
     AVPacket m_avPacket;
+
     int m_videoStreamIndex;
     FrameFormat m_videoFormat;
     VideoSize m_videoSize;
-    bool m_needVBSF;
+    bool m_needCheckVBS;
+    bool m_needApplyVBSF;
     AVBitStreamFilterContext *m_vbsf;
-    uint8_t *m_vbsf_buffer;
-    int m_vbsf_buffer_size;
+
     int m_audioStreamIndex;
     FrameFormat m_audioFormat;
-    EventRegistry* m_asyncHandle;
-
     bool m_needAudioTranscoder;
     AVCodecID m_audioDecId;
     AVFrame *m_audioDecFrame;
@@ -253,8 +253,8 @@ private:
     bool reconnect();
     void receiveLoop();
 
-    bool initVBSFilter(AVCodecID codec);
-    bool filterVBS(AVPacket &packet);
+    void checkVideoBitstream(AVStream *st, const AVPacket *pkt);
+    bool filterVBS(AVStream *st, AVPacket *pkt);
 
     bool initAudioDecoder(AVCodecID codec);
     bool initAudioTranscoder(AVCodecID inCodec, AVCodecID outCodec);
