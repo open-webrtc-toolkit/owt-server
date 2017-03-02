@@ -27,6 +27,17 @@
 
 //#define DUMP_AUDIO
 
+#define RB24(x)                           \
+    ((((const uint8_t*)(x))[0] << 16) |         \
+     (((const uint8_t*)(x))[1] <<  8) |         \
+     ((const uint8_t*)(x))[2])
+
+#define RB32(x)                                \
+    (((uint32_t)((const uint8_t*)(x))[0] << 24) |    \
+     (((const uint8_t*)(x))[1] << 16) |    \
+     (((const uint8_t*)(x))[2] <<  8) |    \
+     ((const uint8_t*)(x))[3])
+
 using namespace erizo;
 
 static inline int64_t timeRescale(uint32_t time, AVRational in, AVRational out)
@@ -321,6 +332,7 @@ RtspIn::RtspIn(const Options& options, EventRegistry* handle)
     : m_url(options.url)
     , m_needAudio(options.enableAudio)
     , m_needVideo(options.enableVideo)
+    , m_asyncHandle(handle)
     , m_transportOpts(nullptr)
     , m_running(false)
     , m_keyFrameRequest(false)
@@ -328,13 +340,11 @@ RtspIn::RtspIn(const Options& options, EventRegistry* handle)
     , m_timeoutHandler(nullptr)
     , m_videoStreamIndex(-1)
     , m_videoFormat(FRAME_FORMAT_UNKNOWN)
-    , m_needVBSF(false)
+    , m_needCheckVBS(true)
+    , m_needApplyVBSF(false)
     , m_vbsf(nullptr)
-    , m_vbsf_buffer(nullptr)
-    , m_vbsf_buffer_size(0)
     , m_audioStreamIndex(-1)
     , m_audioFormat(FRAME_FORMAT_UNKNOWN)
-    , m_asyncHandle(handle)
     , m_needAudioTranscoder(false)
     , m_audioDecId(AV_CODEC_ID_NONE)
     , m_audioDecFrame(nullptr)
@@ -391,11 +401,6 @@ RtspIn::~RtspIn()
     if (m_vbsf) {
         av_bitstream_filter_close(m_vbsf);
         m_vbsf = NULL;
-    }
-    if (m_vbsf_buffer) {
-        av_free(m_vbsf_buffer);
-        m_vbsf_buffer = NULL;
-        m_vbsf_buffer_size = 0;
     }
     if (m_audioEncFrame) {
         av_frame_free(&m_audioEncFrame);
@@ -534,27 +539,11 @@ bool RtspIn::connect()
                 break;
 
             case AV_CODEC_ID_H264:
-                m_needVBSF = true;
-                if (!initVBSFilter(videoCodecId)) {
-                    ELOG_ERROR_T("Can not init video bitstream filter");
-
-                    m_AsyncEvent.str("");
-                    m_AsyncEvent << "{\"type\":\"failed\",\"reason\":\"can not init h264\"}";
-                    return false;
-                }
                 m_videoFormat = FRAME_FORMAT_H264;
                 m_AsyncEvent << ",\"video_codecs\":" << "[\"h264\"]";
                 break;
 
             case AV_CODEC_ID_H265:
-                m_needVBSF = true;
-                if (!initVBSFilter(videoCodecId)) {
-                    ELOG_ERROR_T("Can not init video bitstream filter");
-
-                    m_AsyncEvent.str("");
-                    m_AsyncEvent << "{\"type\":\"failed\",\"reason\":\"can not init h265\"}";
-                    return false;
-                }
                 m_videoFormat = FRAME_FORMAT_H265;
                 m_AsyncEvent << ",\"video_codecs\":" << "[\"h265\"]";
                 break;
@@ -805,7 +794,7 @@ void RtspIn::receiveLoop()
             ELOG_TRACE_T("Receive video frame packet, dts %ld, size %d"
                     , m_avPacket.dts, m_avPacket.size);
 
-            if (!m_needVBSF || filterVBS(m_avPacket)) {
+            if (filterVBS(video_st, &m_avPacket)) {
                 if (m_needAudioTranscoder) {
                     m_avPacket.dts += m_audioEncTimestamp - m_audioFifoTimeBegin;
                     m_avPacket.pts += m_audioEncTimestamp - m_audioFifoTimeBegin;
@@ -853,30 +842,59 @@ void RtspIn::receiveLoop()
     ELOG_DEBUG_T("Thread exited!");
 }
 
-bool RtspIn::initVBSFilter(AVCodecID codec) {
-    if (codec == AV_CODEC_ID_H264) {
-        m_vbsf = av_bitstream_filter_init("h264_mp4toannexb");
-    } else if (codec == AV_CODEC_ID_H265) {
-        m_vbsf = av_bitstream_filter_init("hevc_mp4toannexb");
-    }
-    if (!m_vbsf) {
-        ELOG_ERROR_T("Could not init bitstream filter");
-        return false;
-    }
+void RtspIn::checkVideoBitstream(AVStream *st, const AVPacket *pkt)
+{
+    if (!m_needCheckVBS)
+        return;
 
-    ELOG_TRACE_T("Init vidoe bitstream filter OK");
-    return true;
+    m_needApplyVBSF = false;
+    switch(st->codecpar->codec_id) {
+        case AV_CODEC_ID_H264:
+            if (pkt->size < 5 || RB32(pkt->data) == 0x0000001 || RB24(pkt->data) == 0x000001)
+                break;
+
+            m_vbsf = av_bitstream_filter_init("h264_mp4toannexb");
+            if(!m_vbsf)
+                ELOG_ERROR_T("Fail to init h264_mp4toannexb filter");
+
+            m_needApplyVBSF = true;
+            break;
+        case AV_CODEC_ID_HEVC:
+            if (pkt->size < 5 || RB32(pkt->data) == 0x0000001 || RB24(pkt->data) == 0x000001)
+                break;
+
+            m_vbsf = av_bitstream_filter_init("hevc_mp4toannexb");
+            if(!m_vbsf)
+                ELOG_ERROR_T("Fail to init hevc_mp4toannexb filter");
+
+            m_needApplyVBSF = true;
+            break;
+        default:
+            break;
+    }
+    m_needCheckVBS = false;
+    ELOG_INFO_T("%s video bitstream filter", m_needApplyVBSF ? "Apply" : "Not apply");
 }
 
-bool RtspIn::filterVBS(AVPacket &packet) {
+bool RtspIn::filterVBS(AVStream *st, AVPacket *pkt) {
     int ret;
 
-    if (!m_vbsf)
-        return false;
+    checkVideoBitstream(st, pkt);
+    if (!m_needApplyVBSF)
+        return true;
 
-    ret = av_apply_bitstream_filters(m_context->streams[m_videoStreamIndex]->codec, &packet, m_vbsf);
+    if (!m_vbsf) {
+        ELOG_ERROR_T("Invalid vbs filter");
+        return false;
+    }
+
+    av_packet_split_side_data(pkt);
+    ret = av_apply_bitstream_filters(st->codec, pkt, m_vbsf);
     if(ret < 0) {
-        ELOG_WARN("Fail to filter video bitstream, %s", ff_err2str(ret));
+        ELOG_ERROR_T("Fail to filter video bitstream, len(%d)(0x%x 0x%x 0x%x 0x%x), %s"
+                , pkt->size
+                , pkt->data[0], pkt->data[1], pkt->data[2], pkt->data[3]
+                , ff_err2str(ret));
         return false;
     }
 
@@ -993,7 +1011,7 @@ bool RtspIn::initAudioTranscoder(AVCodecID inCodec, AVCodecID outCodec) {
 
         ret = swr_init(m_audioSwrCtx);
         if (ret < 0) {
-            ELOG_ERROR_T("Failed to initialize the resampling context, %s", ff_err2str(ret));
+            ELOG_ERROR_T("Fail to initialize the resampling context, %s", ff_err2str(ret));
             goto failed;
         }
 
@@ -1333,7 +1351,7 @@ bool RtspIn::initDump(char *dumpFile) {
 #if 1
     //Copy the settings of AVCodecContext
     if (avcodec_copy_context(dumpStream->codec, m_audioEncCtx) < 0) {
-        ELOG_ERROR_T("Failed to copy dump stream codec context");
+        ELOG_ERROR_T("Fail to copy dump stream codec context");
         return false;
         //goto failed;
     }
