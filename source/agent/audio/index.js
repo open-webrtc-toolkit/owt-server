@@ -19,6 +19,7 @@ module.exports = function (rpcClient) {
         belong_to,
         controller,
         observer,
+        view,
 
         supported_codecs = [],
 
@@ -259,7 +260,7 @@ module.exports = function (rpcClient) {
         log.debug('enableVAD, periodMS:', periodMS);
         engine.enableVAD(periodMS, function (activeParticipant) {
             log.debug('enableVAD, activeParticipant:', activeParticipant);
-            controller && rpcClient.remoteCall(controller, 'onAudioActiveParticipant', [belong_to, activeParticipant], {callback: function(){}});
+            controller && rpcClient.remoteCall(controller, 'onAudioActiveParticipant', [belong_to, activeParticipant, view], {callback: function(){}});
         });
     };
 
@@ -267,7 +268,7 @@ module.exports = function (rpcClient) {
         engine.resetVAD();
     };
 
-    that.init = function (service, config, belongTo, controller, callback) {
+    that.init = function (service, config, belongTo, controller, mixView, callback) {
         var audioConfig = global.config.audio;
         log.debug('init, audioConfig:', audioConfig);
 
@@ -276,6 +277,7 @@ module.exports = function (rpcClient) {
                 // Merge media mixing audio property
                 audioConfig = Object.assign(audioConfig, config);
             }
+            view = mixView;
             initEngine(audioConfig, belongTo, controller, callback);
         } else if (service === 'transcoding') {
             initEngine(audioConfig, belongTo, controller, callback);

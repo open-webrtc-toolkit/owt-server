@@ -102,6 +102,7 @@ exports.Stream = function (spec) {
     that.getPublicStream = function () {
         return {
             id: spec.id,
+            view: spec.view,
             audio: spec.audio,
             video: spec.video,
             data: spec.data,
@@ -122,14 +123,12 @@ exports.Stream = function (spec) {
         spec.status = status;
     };
 
-    that.getLayout = function () {
-        return (spec.video && spec.video.layout);
+    that.getView = function() {
+        return spec.view;
     };
 
-    that.setLayout = function (newLayout) {
-        if (spec.video) {
-            spec.video.layout = newLayout;
-        }
+    that.getLayout = function () {
+        return (spec.video && spec.video.layout);
     };
 
     return that;

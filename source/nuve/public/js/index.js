@@ -95,9 +95,9 @@ function judgePermissions() {
 
 function ServiceCreation() {
   this.toggle = function() {
-    $('#myModal2').modal('toggle');
+    $('#serviceModal').modal('toggle');
   };
-  $('#myModal2 .modal-footer button:first').click(function() {
+  $('#serviceModal .modal-footer button:first').click(function() {
     var serviceName = $('#cs-form #cs-name').val();
     var serviceKey = $('#cs-form #cs-key').val();
     if (serviceName !== '' && serviceKey !== '') {
@@ -110,7 +110,7 @@ function ServiceCreation() {
       notify('error', 'Service Creation', 'invalid service name or key');
     }
   });
-  $('#myModal2').on('hidden.bs.modal', function() {
+  $('#serviceModal').on('hidden.bs.modal', function() {
     $('#cs-form #cs-name').val('');
     $('#cs-form #cs-key').val('');
   });
@@ -200,7 +200,7 @@ var tableTemplateRoom = '{{#rooms}}<tr>\
       <td class="publishLimit" data-spin="publishLimit">{{publishLimit}}</td>\
       <td class="userLimit" data-spin="userLimit">{{userLimit}}</td>\
       <td class="enableMixing" data-spin="enableMixing" data-value="{{enableMixing}}"></td>\
-      <td class="mediaSetting" data-spin="mediaMixing">object</td>\
+      <td class="mediaSetting" data-spin="views">object</td>\
       <td class="SIPConnectivity" data-spin="sipInfo">object</td>\
       <td class="col-md-1"><button type="button" id="apply-room" class="btn btn-xs btn-primary">Apply</button> <button type="button" id="delete-room" class="btn btn-xs btn-danger">Delete</button></td>\
     </tr>{{/rooms}}';
@@ -224,7 +224,7 @@ function tableHandlerRoom(rooms) {
       <td class="publishLimit" data-spin="publishLimit"></td>\
       <td class="userLimit" data-spin="userLimit"></td>\
       <td class="enableMixing" data-spin="enableMixing" data-value="{{enableMixing}}"></td>\
-      <td class="mediaSetting" data-spin="mediaMixing"></td>\
+      <td class="mediaSetting" data-spin="views"></td>\
       <td class="SIPConnectivity" data-spin="sipInfo"></td>\
       <td class="col-md-1"><button type="button" id="add-room" class="btn btn-xs btn-success">Add</button> <button type="button" id="reset-room" class="btn btn-xs btn-warning">Reset</button></td>\
     </tr>');
@@ -386,34 +386,99 @@ function tableHandlerRoom(rooms) {
     }
   };
 
+  var deepClone = function(obj) {
+      if (typeof obj !== 'object' || obj === null) {
+        return obj;
+      }
+      var result;
+      if (Array.isArray(obj)) {
+        result = [];
+        obj.forEach(function(value) {
+          result.push(deepClone(value));
+        });
+      } else {
+        result = {};
+        Object.keys(obj).forEach(function(key) {
+            result[key] = deepClone(obj[key]);
+        });
+      }
+      return result;
+    };
+
   var mediaSettingFn = function() {
     if (this.parentNode.children[0].innerText === "") return;
-    $('#myModal3').modal('toggle');
+    $('#mediaMixingModal').modal('toggle');
     var roomId = $(this).parent().find('td:first').text();
     var room = roomCache[roomId];
     if (typeof room === 'undefined') {
       return notify('error', 'Media Setting', 'error in finding roomId');
     }
     var p = $(this);
-    $('#myModal3 .modal-title').text('Media Setting for Room ' + roomId);
-    var videoSetting = (room.mediaMixing || {}).video || {
-      resolution: 'vga',
-      quality_level: 'standard',
-      bkColor: 'black',
-      avCoordinated: false,
-      multistreaming: 0,
-      maxInput: 16,
-      crop: false,
-      layout: {
-        base: 'fluid',
-        custom: []
+    $('#mediaMixingModal .modal-title').text('Media Setting for Room ' + roomId);
+
+    // Setup view tabs
+    var views = (deepClone(room.views) || { "common": { mediaMixing: room.mediaMixing } });
+    $("#myTab").empty();
+    for (var label in views) {
+      $("#myTab").append('<li><a href="#"><button class="close closeTab" type="button" >×</button><span>' + label + '</span></a></li>');
+    }
+    $("#myTab").append('<li class="bottom-align-text" id="addNew"><button class="btn btn-primary" type="button">+ New View</button></li>');
+
+    $("#addNew button").off("click");
+    $("#addNew button").click(function(e) {
+      $("#inputViewLabel").val("Enter your view label");
+      $('#newViewModal').modal('toggle');
+    });
+
+    $(".closeTab").off("click");
+    $(".closeTab").click(function () {
+      //there are multiple elements which has .closeTab icon so close the tab whose close icon is clicked
+      var deleteView = $(this).parent().find("span").html();
+      if (views[deleteView]) {
+        delete views[deleteView];
       }
-    };
+      $(this).parent().parent().remove(); //remove li of tab
+      $("#myTab li a").first().click();
+    });
 
-    videoSetting.bkColor = changeObj2RGB(videoSetting.bkColor);
+    $("#viewLabelBtn").off("click");
+    $("#viewLabelBtn").click(function(e) {
+      var reg = /^[a-zA-Z\-0-9]+$/;
+      var newLabel = $("#inputViewLabel").val();
+      if (!reg.test(newLabel)) {
+        notify("error", "Input not valid, only a-z0-9- allowed.", newLabel);
+      } else if (views[newLabel]) {
+        notify("error", "Label already exist", newLabel);
+      } else {
+        views[newLabel] = { mediaMixing: {} };
+        $("#addNew").before('<li><a href="#"><button class="close closeTab" type="button" >×</button><span>' + newLabel + '</span></a></li>');
+      }
+    });
 
-    var view = Mustache.render('<tr>\
-          <td rowspan="8">video</td>\
+    var videoSetting = null;
+    var renderTable = function(viewLabel) {
+      if (videoSetting && typeof videoSetting.bkColor === 'string')
+        videoSetting.bkColor = changeRGBA2RGB(videoSetting.bkColor);
+
+      var view = views[viewLabel];
+      videoSetting = (view.mediaMixing || {}).video || {
+        resolution: 'vga',
+        quality_level: 'Standard',
+        bkColor: 'black',
+        avCoordinated: false,
+        multistreaming: 0,
+        maxInput: 16,
+        crop: false,
+        layout: {
+          base: 'fluid',
+          custom: []
+        }
+      };
+
+      videoSetting.bkColor = changeObj2RGB(videoSetting.bkColor);
+
+      var view = Mustache.render('<tr>\
+          <td rowspan="9">video</td>\
           <td colspan="2">resolution</td>\
           <td id="resolution" class="value-num-edit" data-value={{resolution}}></td>\
         </tr>\
@@ -455,46 +520,62 @@ function tableHandlerRoom(rooms) {
           <td colspan="3" class="text-muted"><em>NOT SUPPORTED NOW</em></td>\
         </tr>', videoSetting);
 
-    $('#myModal3 #inRoomTable tbody').html(view);
-    $('#myModal3 .modal-footer').html('<button type="button" class="btn btn-primary" data-dismiss="modal"><i class="glyphicon glyphicon-ok"></i></button>\
+      $('#mediaMixingModal #inRoomTable tbody').html(view);
+      enabledMixing(videoSetting);
+
+      $('#mediaMixingModal tbody td#bkColor input#color').val(changeRGBA(videoSetting.bkColor));
+
+      $('#mediaMixingModal tbody td#bkColor input#color').ColorPickerSliders({
+        color: "rgb(255, 255, 255)",
+        flat: false,
+        sliders: false,
+        swatches: false,
+        hsvpanel: true
+      });
+    };
+
+    var currentLabel = null;
+    $("#myTab").off("click", "a");
+    $("#myTab").on("click", "a", function (e) {
+        e.preventDefault();
+        $(this).tab('show');
+        currentLabel = $(this).find("span").html();
+        renderTable(currentLabel);
+    });
+
+    // Chose the first
+    $("#myTab li a").first().click();
+
+    $('#mediaMixingModal .modal-footer').html('<button type="button" class="btn btn-primary" data-dismiss="modal"><i class="glyphicon glyphicon-ok"></i></button>\
         <button type="button" class="btn btn-default" data-dismiss="modal"><i class="glyphicon glyphicon-remove"></i></button>');
 
-    enabledMixing(videoSetting);
     // <audio not supported now>
-    $('#myModal3 .modal-footer button:first').click(function() {
-      var unsaved = $('#myModal3 tbody .editable-unsaved');
-      if (unsaved.length === 0 && $('#myModal3 tbody td#bkColor input#color').val() === lastColor) return;
+    $('#mediaMixingModal .modal-footer button:first').click(function() {
+      var unsaved = $('#mediaMixingModal tbody .editable-unsaved');
+      if (unsaved.length === 0 && $('#mediaMixingModal tbody td#bkColor input#color').val() === lastColor) return;
       unsaved.map(function(index, each) {
         var id = $(each).attr('id');
         var val = $(each).editable('getValue')[id];
         setVal(videoSetting, id, val);
       });
 
-      if ($('#myModal3 tbody td#bkColor input#color').val() !== lastColor) {
-        lastColor = $('#myModal3 tbody td#bkColor input#color').val();
+      if ($('#mediaMixingModal tbody td#bkColor input#color').val() !== lastColor) {
+        lastColor = $('#mediaMixingModal tbody td#bkColor input#color').val();
       }
       setVal(videoSetting, "bkColor", changeRGBA2RGB(lastColor));
 
-      room.mediaMixing = room.mediaMixing || {};
-      room.mediaMixing.video = videoSetting;
+      room.views = views || {};
+      room.views[currentLabel] = room.views[currentLabel] || {};
+      room.views[currentLabel].mediaMixing = room.views[currentLabel].mediaMixing || {};
+      room.views[currentLabel].mediaMixing.video = videoSetting;
       p.addClass('editable-unsaved');
-      p.editable('setValue', room.mediaMixing);
+      p.editable('setValue', room.views);
       p.text('object');
-    });
-
-    $('#myModal3 tbody td#bkColor input#color').val(changeRGBA(videoSetting.bkColor));
-
-    $('#myModal3 tbody td#bkColor input#color').ColorPickerSliders({
-      color: "rgb(255, 255, 255)",
-      flat: false,
-      sliders: false,
-      swatches: false,
-      hsvpanel: true
     });
   };
 
   var enabledMixing = function(videoSetting) {
-    $('#myModal3 tbody td#resolution').editable({
+    $('#mediaMixingModal tbody td#resolution').editable({
       mode: 'inline',
       type: 'select',
       source: metadata.mediaMixing.video.resolution.map(function(v) {
@@ -505,7 +586,7 @@ function tableHandlerRoom(rooms) {
       })
     });
 
-    $('#myModal3 tbody td#quality_level').editable({
+    $('#mediaMixingModal tbody td#quality_level').editable({
       mode: 'inline',
       type: 'select',
       source: metadata.mediaMixing.video.quality_level.map(function(v) {
@@ -516,8 +597,8 @@ function tableHandlerRoom(rooms) {
       })
     });
 
-    //$('#myModal3 tbody td#maxInput').editable(numberHandle);
-    $('#myModal3 tbody td#maxInput').editable({
+    //$('#mediaMixingModal tbody td#maxInput').editable(numberHandle);
+    $('#mediaMixingModal tbody td#maxInput').editable({
       mode: 'inline',
       validate: function(value) {
         var val = parseInt(value, 10);
@@ -527,9 +608,9 @@ function tableHandlerRoom(rooms) {
         };
       }
     });
-    // $('#myModal3 tbody td#bkColor').editable(numberHandle);
-    $('#myModal3 tbody td#avCoordinated').editable(booleanHandle);
-    $('#myModal3 tbody td.value-num-edit:last').editable({
+    // $('#mediaMixingModal tbody td#bkColor').editable(numberHandle);
+    $('#mediaMixingModal tbody td#avCoordinated').editable(booleanHandle);
+    $('#mediaMixingModal tbody td.value-num-edit:last').editable({
       mode: 'inline',
       type: 'select',
       source: metadata.mediaMixing.video.layout.base.map(function(v) {
@@ -539,9 +620,9 @@ function tableHandlerRoom(rooms) {
         };
       })
     });
-    $('#myModal3 tbody td#multistreaming').editable(booleanHandle);
-    $('#myModal3 tbody td#crop').editable(booleanHandle);
-    $('#myModal3 tbody td.value-obj-edit').editable({
+    $('#mediaMixingModal tbody td#multistreaming').editable(booleanHandle);
+    $('#mediaMixingModal tbody td#crop').editable(booleanHandle);
+    $('#mediaMixingModal tbody td.value-obj-edit').editable({
       title: 'Input a stringified JSON object',
       validate: function(value) {
         value = $.trim(value);
@@ -561,14 +642,14 @@ function tableHandlerRoom(rooms) {
   }
 
   var disabledMixing = function() {
-    $('#myModal3 tbody td#resolution').editable(disabledHandle);
-    $('#myModal3 tbody td#quality').editable(disabledHandle);
-    $('#myModal3 tbody td#maxInput').editable(disabledHandle);
-    $('#myModal3 tbody td#bkColor').editable(disabledHandle);
-    $('#myModal3 tbody td#avCoordinated').editable(disabledHandle);
-    $('#myModal3 tbody td#crop').editable(disabledHandle);
-    $('#myModal3 tbody td.value-num-edit:last').editable(disabledHandle);
-    $('#myModal3 tbody td.value-obj-edit').editable(disabledHandle);
+    $('#mediaMixingModal tbody td#resolution').editable(disabledHandle);
+    $('#mediaMixingModal tbody td#quality').editable(disabledHandle);
+    $('#mediaMixingModal tbody td#maxInput').editable(disabledHandle);
+    $('#mediaMixingModal tbody td#bkColor').editable(disabledHandle);
+    $('#mediaMixingModal tbody td#avCoordinated').editable(disabledHandle);
+    $('#mediaMixingModal tbody td#crop').editable(disabledHandle);
+    $('#mediaMixingModal tbody td.value-num-edit:last').editable(disabledHandle);
+    $('#mediaMixingModal tbody td.value-obj-edit').editable(disabledHandle);
   }
 
   var sipConnectivityFn = function() {
@@ -667,8 +748,8 @@ function tableHandlerRoom(rooms) {
   $('td.SIPConnectivity').editable(disabledHandle);
   $('td.SIPConnectivity').click(sipConnectivityFn);
 
-  $('#myModal3').on('hidden.bs.modal', function() {
-    $('#myModal3 #inRoomTable tbody').empty();
+  $('#mediaMixingModal').on('hidden.bs.modal', function() {
+    $('#mediaMixingModal #inRoomTable tbody').empty();
   });
 
   $('button#add-room').click(function() {

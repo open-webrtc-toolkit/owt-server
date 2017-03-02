@@ -193,6 +193,9 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
         return {clientId: participant_id,
                 id: result.session_id,
                 streams: result.streams.map(function(st) {
+                  if (st.view === 'common') {
+                    that.commonViewStream = st.id;
+                  }
                   st.video && (st.video.resolutions instanceof Array) && (st.video.resolutions = st.video.resolutions.map(resolution2WidthHeight));
                   return st;
                 }),
@@ -357,12 +360,18 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
       });
     });
 
-    socket.on('addToMixer', function(streamId, callback) {
+    socket.on('addToMixer', function(streamId, mixStreams, callback) {
+      if (typeof mixStreams === 'function') {
+        // Shift the arguments with old clients
+        callback = mixStreams;
+        mixStreams = undefined;
+      }
+
       if(!that.inRoom) {
         return safeCall(callback, 'error', 'unauthorized');
       };
 
-      return portal.mix(participant_id, streamId)
+      return portal.mix(participant_id, streamId, mixStreams)
       .then(function() {
         safeCall(callback, 'success');
       }).catch(function(err) {
@@ -372,12 +381,18 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
       });
     });
 
-    socket.on('removeFromMixer', function(streamId, callback) {
+    socket.on('removeFromMixer', function(streamId, mixStreams, callback) {
+      if (typeof mixStreams === 'function') {
+        // Shift the arguments with old clients
+        callback = mixStreams;
+        mixStreams = undefined;
+      }
+
       if(!that.inRoom) {
         return safeCall(callback, 'error', 'unauthorized');
       };
 
-      return portal.unmix(participant_id, streamId)
+      return portal.unmix(participant_id, streamId, mixStreams)
       .then(function() {
         safeCall(callback, 'success');
       }).catch(function(err) {
@@ -478,7 +493,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
       }
 
       if (options.streamId === undefined) {
-        options.streamId = that.inRoom;
+        options.streamId = that.commonViewStream;
       }
 
       var subscription_description = {};
@@ -523,7 +538,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
       }
 
       if (options.streamId === undefined) {
-        options.streamId = that.inRoom;
+        options.streamId = that.commonViewStream;
       }
 
       var subscription_description = {};
@@ -603,12 +618,11 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
       if ((options.videoStreamId || unspecifiedStreamIds) && (options.videoCodec !== undefined) && (['vp8', 'h264'].indexOf(options.videoCodec) < 0)) {
         return safeCall(callback, 'error', 'Invalid video codec');
       }
-
       var subscription_description = {audio: false, video: false};
-      (options.audioStreamId || unspecifiedStreamIds) && (subscription_description.audio = {fromStream: options.audioStreamId || that.inRoom});
+      (options.audioStreamId || unspecifiedStreamIds) && (subscription_description.audio = {fromStream: options.audioStreamId || that.commonViewStream});
       (subscription_description.audio && (typeof options.audioCodec === 'string')) && (subscription_description.audio.codecs = [options.audioCodec]);
       subscription_description.audio && (subscription_description.audio.codecs = (subscription_description.audio.codecs || ['opus']).map(function(c) {return (c === 'opus' ? 'opus_48000_2' : c);}));
-      (options.videoStreamId || unspecifiedStreamIds) && (subscription_description.video = {fromStream: options.videoStreamId || that.inRoom});
+      (options.videoStreamId || unspecifiedStreamIds) && (subscription_description.video = {fromStream: options.videoStreamId || that.commonViewStream});
       (subscription_description.video && (typeof options.videoCodec === 'string')) && (subscription_description.video.codecs = [options.videoCodec]);
       subscription_description.video && (subscription_description.video.codecs = subscription_description.video.codecs || ['vp8']);
       options.path && (subscription_description.path = options.path);
@@ -630,7 +644,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
         }
       }).then(function(connectionLocality) {
         log.debug('portal.subscribe succeeded, connection locality:', connectionLocality);
-        recording_file = path.join(options.path || '', 'room_' + that.inRoom + '-' + subscription_id + '.mkv' );
+        recording_file = path.join(options.path || '', 'room_' + that.commonViewStream + '-' + subscription_id + '.mkv' );
       }).catch(function(err) {
         var err_message = (typeof err === 'string' ? err: err.message);
         log.info('portal.subscribe failed:', err_message);
@@ -667,7 +681,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
         return safeCall(callback, 'error', 'Invalid stream id');
       }
 
-      return portal.getRegion(participant_id, options.id)
+      return portal.getRegion(participant_id, options.id, options.mixStreamId)
       .then(function(regionId) {
         safeCall(callback, 'success', {region: regionId});
       }).catch(function(err) {
@@ -690,7 +704,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
         return safeCall(callback, 'error', 'Invalid region id');
       }
 
-      return portal.setRegion(participant_id, options.id, options.region)
+      return portal.setRegion(participant_id, options.id, options.region, options.mixStreamId)
       .then(function() {
         safeCall(callback, 'success');
       }).catch(function(err) {

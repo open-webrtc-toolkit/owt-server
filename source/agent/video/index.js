@@ -69,6 +69,7 @@ function VMixer(rpcClient, clusterIP) {
         engine,
         belong_to,
         controller,
+        view,
 
         supported_codecs = [],
         supported_resolutions = [],
@@ -200,11 +201,11 @@ function VMixer(rpcClient, clusterIP) {
             rpcClient.remoteCall(
                 controller,
                 'onVideoLayoutChange',
-                [belong_to, regions]);
+                [belong_to, regions, view]);
         }
     };
 
-    that.initialize = function (videoConfig, belongTo, layoutcontroller, callback) {
+    that.initialize = function (videoConfig, belongTo, layoutcontroller, mixView, callback) {
         log.debug('initEngine, videoConfig:', videoConfig);
         var config = {
             'hardware': useHardware,
@@ -221,6 +222,7 @@ function VMixer(rpcClient, clusterIP) {
         belong_to = belongTo;
         controller = layoutcontroller;
         maxInputNum = videoConfig.maxInput;
+        view = mixView;
 
         // FIXME: The supported codec list should be a sub-list of those querried from the engine
         // and filterred out according to config.
@@ -763,11 +765,11 @@ module.exports = function (rpcClient, clusterIP) {
     var that = {},
         processor = undefined;
 
-    that.init = function (service, config, belongTo, controller, callback) {
+    that.init = function (service, config, belongTo, controller, mixView, callback) {
         if (processor === undefined) {
             if (service === 'mixing') {
                 processor = new VMixer(rpcClient, clusterIP);
-                processor.initialize(config, belongTo, controller, callback);
+                processor.initialize(config, belongTo, controller, mixView, callback);
                 that.__proto__ = processor;
             } else if (service === 'transcoding') {
                 processor = new VTranscoder(rpcClient, clusterIP);

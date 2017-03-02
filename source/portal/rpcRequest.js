@@ -79,12 +79,12 @@ var RpcRequest = function(rpcChannel) {
     return Promise.resolve('ok');
   };
 
-  that.mix = function(controller, participantId, streamId) {
-    return rpcChannel.makeRPC(controller, 'mix', [participantId, streamId], 4000);
+  that.mix = function(controller, participantId, streamId, mixStreams) {
+    return rpcChannel.makeRPC(controller, 'mix', [participantId, streamId, mixStreams], 4000);
   };
 
-  that.unmix = function(controller, participantId, streamId) {
-    return rpcChannel.makeRPC(controller, 'unmix', [participantId, streamId], 4000);
+  that.unmix = function(controller, participantId, streamId, mixStreams) {
+    return rpcChannel.makeRPC(controller, 'unmix', [participantId, streamId, mixStreams], 4000);
   };
 
   that.updateStream = function(controller, streamId, track, status) {
@@ -107,12 +107,12 @@ var RpcRequest = function(rpcChannel) {
     return rpcChannel.makeRPC(controller, 'setPermission', [targetId, act, value], 4000);
   };
 
-  that.getRegion = function(controller, subStreamId) {
-    return rpcChannel.makeRPC(controller, 'getRegion', [subStreamId], 4000);
+  that.getRegion = function(controller, subStreamId, mixStreamId) {
+    return rpcChannel.makeRPC(controller, 'getRegion', [subStreamId, mixStreamId], 4000);
   };
 
-  that.setRegion = function(controller, subStreamId, regionId) {
-    return rpcChannel.makeRPC(controller, 'setRegion', [subStreamId, regionId], 4000);
+  that.setRegion = function(controller, subStreamId, regionId, mixStreamId) {
+    return rpcChannel.makeRPC(controller, 'setRegion', [subStreamId, regionId, mixStreamId], 4000);
   };
 
   that.text = function(controller, fromWhom, toWhom, message) {

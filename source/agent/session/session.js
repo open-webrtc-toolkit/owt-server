@@ -4,7 +4,7 @@
 var logger = require('./logger').logger;
 
 var ST = require('./Stream');
-var sessionController = require('./controller');
+var Controller = require('./controller');
 
 // Logger
 var log = logger.getLogger('Session');
@@ -71,38 +71,52 @@ module.exports = function (rpcClient, selfRpcId) {
             log.debug('initializing session:', sessionId, 'got config:', config);
             room_config.enableAudioTranscoding = (room_config.enableAudioTranscoding === undefined ? true : room_config.enableAudioTranscoding);
             room_config.enableVideoTranscoding = (room_config.enableVideoTranscoding === undefined ? true : room_config.enableVideoTranscoding);
+            room_config.internalConnProtocol = global.config.internal.protocol;
 
             return new Promise(function(resolve, reject) {
-              controller = sessionController(
-                {cluster: global.config.cluster.name || 'woogeen-cluster',
-                 rpcReq: rpcReq,
-                 rpcClient: rpcClient,
-                 room: sessionId,
-                 config: room_config,
-                 selfRpcId: selfRpcId
-                }, function (resolutions) {
+              Controller.create(
+                {
+                  cluster: global.config.cluster.name || 'woogeen-cluster',
+                  rpcReq: rpcReq,
+                  rpcClient: rpcClient,
+                  room: sessionId,
+                  config: room_config,
+                  selfRpcId: selfRpcId
+                },
+                function onOk(sessionController) {
                   log.debug('room controller init ok');
+                  controller = sessionController;
                   session_id = sessionId;
                   is_initializing = false;
-                  resolve('ok');
+
+                  var mixStreams = controller.getMixedStreams();
+
                   if (room_config.enableMixing) {
-                    var mixed_stream = new ST.Stream({
-                      id: session_id,
-                      socket: '',
-                      audio: true,
-                      video: {
-                        device: 'mcu',
-                        resolutions: resolutions,
-                        layout: []
-                      },
-                      from: '',
-                      attributes: null
+                    // Save mix streams
+                    mixStreams.forEach(function(mstream) {
+                      var mixed_stream = new ST.Stream({
+                        id: mstream.streamId,
+                        view: mstream.view,
+                        socket: '',
+                        audio: true,
+                        video: {
+                          device: 'mcu',
+                          resolutions: mstream.resolutions,
+                          layout: []
+                        },
+                        from: '',
+                        attributes: null
+                      });
+
+                      streams[mstream.streamId] = mixed_stream;
+
+                      log.debug('Mixed stream info:', mixed_stream.getPublicStream(), 'resolutions:', mixed_stream.getPublicStream().video.resolutions);
+                      sendMsg('room', 'all', 'add_stream', mixed_stream.getPublicStream());
                     });
-                    streams[session_id] = mixed_stream;
-                    log.debug('Mixed stream info:', mixed_stream.getPublicStream(), 'resolutions:', mixed_stream.getPublicStream().video.resolutions);
-                    sendMsg('room', 'all', 'add_stream', mixed_stream.getPublicStream());
                   }
-                }, function (reason) {
+                  resolve('ok');
+                },
+                function onError(reason) {
                   log.error('controller init failed.', reason);
                   is_initializing = false;
                   reject('controller init failed. reason: ' + reason);
@@ -352,13 +366,13 @@ module.exports = function (rpcClient, selfRpcId) {
     }
   };
 
-  that.mix = function(participantId, streamId, callback) {
-    log.debug('mix, participantId:', participantId, 'streamId:', streamId);
+  that.mix = function(participantId, streamId, mixStreams, callback) {
+    log.debug('mix, participantId:', participantId, 'streamId:', streamId, 'mixStreams:', mixStreams);
     if (participants[participantId]) {
       var index = participants[participantId].published.indexOf(streamId);
       if (index !== -1 && streams[streamId]) {
         if (controller) {
-          controller.mix(streamId, function() {
+          controller.mix(streamId, mixStreams, function() {
             callback('callback', 'ok');
           }, function(reason) {
             log.info('Controller.mix failed, reason:', reason);
@@ -378,13 +392,13 @@ module.exports = function (rpcClient, selfRpcId) {
     }
   };
 
-  that.unmix = function(participantId, streamId, callback) {
-    log.debug('unmix, participantId:', participantId, 'streamId:', streamId);
+  that.unmix = function(participantId, streamId, mixStreams, callback) {
+    log.debug('unmix, participantId:', participantId, 'streamId:', streamId, 'mixStreams:', mixStreams);
     if (participants[participantId]) {
       var index = participants[participantId].published.indexOf(streamId);
       if (index !== -1 && streams[streamId]) {
         if (controller) {
-          controller.unmix(streamId, function() {
+          controller.unmix(streamId, mixStreams, function() {
             callback('callback', 'ok');
           }, function(reason) {
             log.info('Controller.unmix failed, reason:', reason);
@@ -466,10 +480,10 @@ module.exports = function (rpcClient, selfRpcId) {
   };
 
 
-  that.getRegion = function(streamId, callback) {
+  that.getRegion = function(streamId, mixStreamId, callback) {
     if (streams[streamId]) {
       if (controller) {
-        controller.getRegion(streamId, function(region) {
+        controller.getRegion(streamId, mixStreamId, function(region) {
           callback('callback', region);
         }, function(reason) {
           log.info('controller.getRegion failed, reason:', reason);
@@ -485,10 +499,10 @@ module.exports = function (rpcClient, selfRpcId) {
     }
   };
 
-  that.setRegion = function(streamId, regionId, callback) {
+  that.setRegion = function(streamId, regionId, mixStreamId, callback) {
     if (streams[streamId]) {
       if (controller) {
-        controller.setRegion(streamId, regionId, function() {
+        controller.setRegion(streamId, regionId, mixStreamId, function() {
           callback('callback', 'ok');
         }, function(reason) {
           log.info('controller.setRegion failed, reason:', reason);
@@ -513,11 +527,12 @@ module.exports = function (rpcClient, selfRpcId) {
     }
   };
 
-  that.onVideoLayoutChange = function(sessionId, layout, callback) {
-    if (session_id === sessionId) {
-      if (streams[sessionId]) {
-        streams[sessionId].setLayout(layout);
-        sendMsg('room', 'all', 'update_stream', {event: 'VideoLayoutChanged', id: session_id, data: layout});
+  that.onVideoLayoutChange = function(sessionId, layout, view, callback) {
+    if (session_id === sessionId && controller) {
+      var streamId = controller.getMixedStream(view);
+      if (streams[streamId]) {
+        streams[streamId].setLayout(layout);
+        sendMsg('room', 'all', 'update_stream', {event: 'VideoLayoutChanged', id: streamId, data: layout});
         callback('callback', 'ok');
       } else {
         callback('callback', 'error', 'no mixed stream.');
@@ -527,10 +542,10 @@ module.exports = function (rpcClient, selfRpcId) {
     }
   };
 
-  that.onAudioActiveParticipant = function(sessionId, activeParticipantId, callback) {
-    log.debug('onAudioActiveParticipant, sessionId:', sessionId, 'active:', activeParticipantId);
+  that.onAudioActiveParticipant = function(sessionId, activeParticipantId, view, callback) {
+    log.debug('onAudioActiveParticipant, sessionId:', sessionId, 'active:', activeParticipantId, 'view:', view);
     if ((session_id === sessionId) && controller) {
-      controller.setPrimary(activeParticipantId);
+      controller.setPrimary(activeParticipantId, view);
       callback('callback', 'ok');
     } else {
       log.info('onAudioActiveParticipant, session does not exist');
