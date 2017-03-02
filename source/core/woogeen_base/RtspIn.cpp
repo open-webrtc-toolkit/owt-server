@@ -929,10 +929,11 @@ bool RtspIn::initAudioDecoder(AVCodecID codec) {
         return false;
     }
 
-    ELOG_INFO_T("Audio dec sample_format(%s), sample_rate %d, channels %d, frame_size %d"
+    ELOG_INFO_T("Audio dec sample_format(%s), sample_rate %d, channels %d, channel_layout %ld, frame_size %d"
             , av_get_sample_fmt_name(audio_st->codec->sample_fmt)
             , audio_st->codec->sample_rate
             , audio_st->codec->channels
+            , audio_st->codec->channel_layout
             , audio_st->codec->frame_size
             );
 
@@ -973,7 +974,7 @@ bool RtspIn::initAudioTranscoder(AVCodecID inCodec, AVCodecID outCodec) {
     }
 
     m_audioEncCtx->channels         = 2;
-    m_audioEncCtx->channel_layout   = av_get_default_channel_layout(2);
+    m_audioEncCtx->channel_layout   = av_get_default_channel_layout(m_audioEncCtx->channels);
     m_audioEncCtx->sample_rate      = 48000;
     m_audioEncCtx->sample_fmt       = getSampleFmt(audioEnc , audio_st->codec->sample_fmt);
     m_audioEncCtx->bit_rate         = 64000;
@@ -985,14 +986,17 @@ bool RtspIn::initAudioTranscoder(AVCodecID inCodec, AVCodecID outCodec) {
         goto failed;
     }
 
-    ELOG_INFO_T("Audio enc sample_format(%s), sample_rate %d, channels %d, frame_size %d"
+    ELOG_INFO_T("Audio enc sample_format(%s), sample_rate %d, channels %d, channel_layout %ld, frame_size %d"
             , av_get_sample_fmt_name(m_audioEncCtx->sample_fmt)
             , m_audioEncCtx->sample_rate
             , m_audioEncCtx->channels
+            , m_audioEncCtx->channel_layout
             , m_audioEncCtx->frame_size
             );
 
-    if (audio_st->codec->sample_rate != m_audioEncCtx->sample_rate || audio_st->codec->channels != m_audioEncCtx->channels) {
+    if (audio_st->codec->sample_fmt != m_audioEncCtx->sample_fmt
+            || audio_st->codec->sample_rate != m_audioEncCtx->sample_rate
+            || audio_st->codec->channels != m_audioEncCtx->channels) {
         ELOG_TRACE_T("Init audio resampler");
 
         m_audioSwrCtx = swr_alloc();
@@ -1050,17 +1054,37 @@ bool RtspIn::initAudioTranscoder(AVCodecID inCodec, AVCodecID outCodec) {
 #ifdef DUMP_AUDIO
     char dumpFile[128];
 
-    snprintf(dumpFile, 128, "/tmp/audio-%s-s16-%d-%d.pcm", "raw", audio_st->codec->sample_rate, audio_st->codec->channels);
+    snprintf(dumpFile, 128, "/tmp/audio-%s-%s-%d-%d.pcm"
+            , "raw"
+            , av_get_sample_fmt_name(audio_st->codec->sample_fmt)
+            , audio_st->codec->sample_rate
+            , audio_st->codec->channels
+            );
     m_audioRawDumpFile.reset(new std::ofstream(dumpFile, std::ios::binary));
 
-    snprintf(dumpFile, 128, "/tmp/audio-%s-s16-%d-%d.pcm", "resample", 48000, 2);
-    m_audioResampleDumpFile.reset(new std::ofstream(dumpFile, std::ios::binary));
+    if (m_audioSwrCtx) {
+        snprintf(dumpFile, 128, "/tmp/audio-%s-%s-%d-%d.pcm"
+                , "resample"
+                , av_get_sample_fmt_name(m_audioEncCtx->sample_fmt)
+                , m_audioEncCtx->sample_rate
+                , m_audioEncCtx->channels
+                );
+        m_audioResampleDumpFile.reset(new std::ofstream(dumpFile, std::ios::binary));
+    }
 
-    snprintf(dumpFile, 128, "/tmp/audio-%s-%d-%d.opus", "opus", 48000, 2);
+#if 0
+    snprintf(dumpFile, 128, "/tmp/audio-%s-%s-%d-%d.opus"
+            , avcodec_get_name(m_audioEncCtx->codec_id)
+            , avcodec_get_name(m_audioEncCtx->codec_id)
+            , m_audioEncCtx->sample_rate
+            , m_audioEncCtx->channels
+            );
     if(!initDump(dumpFile)) {
         ELOG_ERROR_T("Could not init dump");
         goto failed;
     }
+#endif
+
 #endif
 
     ELOG_TRACE_T("Init audio transcoder OK");
@@ -1132,7 +1156,10 @@ bool RtspIn::decAudioFrame(AVPacket &packet) {
     audioFrameLen = m_audioDecFrame->nb_samples;
 
 #ifdef DUMP_AUDIO
-    m_audioRawDumpFile->write((const char*)m_audioDecFrame->data[0], m_audioDecFrame->nb_samples * audio_st->codec->channels * 2);
+    if (m_audioRawDumpFile) {
+        m_audioRawDumpFile->write((const char*)m_audioDecFrame->data[0]
+                , m_audioDecFrame->nb_samples * audio_st->codec->channels * av_get_bytes_per_sample(audio_st->codec->sample_fmt));
+    }
 #endif
 
     if (m_audioSwrCtx) {
@@ -1166,10 +1193,12 @@ bool RtspIn::decAudioFrame(AVPacket &packet) {
         }
 
 #ifdef DUMP_AUDIO
-        int bufsize = av_samples_get_buffer_size(&m_audioSwrSamplesLinesize, m_audioEncCtx->channels,
-                ret, m_audioEncCtx->sample_fmt, 1);
+        if (m_audioResampleDumpFile) {
+            int bufsize = av_samples_get_buffer_size(&m_audioSwrSamplesLinesize, m_audioEncCtx->channels,
+                    ret, m_audioEncCtx->sample_fmt, 1);
 
-        m_audioResampleDumpFile->write((const char*)m_audioSwrSamplesData[0], bufsize);
+            m_audioResampleDumpFile->write((const char*)m_audioSwrSamplesData[0], bufsize);
+        }
 #endif
 
         audioFrameData = m_audioSwrSamplesData;
