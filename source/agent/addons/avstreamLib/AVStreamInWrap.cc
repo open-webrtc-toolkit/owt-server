@@ -89,11 +89,8 @@ void AVStreamInWrap::New(const FunctionCallbackInfo<Value>& args)
         param.url = std::string(*String::Utf8Value(options->Get(keyUrl)->ToString()));
     if (options->Has(keyTransport))
         param.transport = std::string(*String::Utf8Value(options->Get(keyTransport)->ToString()));
-    if (options->Has(keyBufferSize)) {
+    if (options->Has(keyBufferSize))
         param.bufferSize = options->Get(keyBufferSize)->Uint32Value();
-        if (param.bufferSize <= 0)
-            param.bufferSize = 1024 * 1024 * 2;
-    }
     if (options->Has(keyAudio))
         param.enableAudio = (*options->Get(keyAudio)->ToBoolean())->BooleanValue();
     if (options->Has(keyVideo))

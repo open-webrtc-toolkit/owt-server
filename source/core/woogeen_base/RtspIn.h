@@ -160,6 +160,8 @@ private:
 
 class RtspIn : public FrameSource, public JitterBufferListener {
     DECLARE_LOGGER();
+
+    static const uint32_t DEFAULT_UDP_BUF_SIZE = 8 * 1024 * 1024;
 public:
     struct Options {
         std::string url;
@@ -168,7 +170,7 @@ public:
         bool enableAudio;
         bool enableVideo;
         bool enableH264;
-        Options() : url{""}, transport{"udp"}, bufferSize{2*1024*1024}, enableAudio{false}, enableVideo{false}, enableH264{false} { }
+        Options() : url{""}, transport{"tcp"}, bufferSize{DEFAULT_UDP_BUF_SIZE}, enableAudio{false}, enableVideo{false}, enableH264{false} { }
     };
 
     RtspIn (const Options&, EventRegistry*);
@@ -196,7 +198,7 @@ private:
     bool m_needAudio;
     bool m_needVideo;
     EventRegistry* m_asyncHandle;
-    AVDictionary* m_transportOpts;
+    AVDictionary* m_options;
     bool m_running;
     bool m_keyFrameRequest;
     boost::thread m_thread;
