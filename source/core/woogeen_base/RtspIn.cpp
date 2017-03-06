@@ -333,7 +333,7 @@ RtspIn::RtspIn(const Options& options, EventRegistry* handle)
     , m_needAudio(options.enableAudio)
     , m_needVideo(options.enableVideo)
     , m_asyncHandle(handle)
-    , m_transportOpts(nullptr)
+    , m_options(nullptr)
     , m_running(false)
     , m_keyFrameRequest(false)
     , m_context(nullptr)
@@ -360,16 +360,23 @@ RtspIn::RtspIn(const Options& options, EventRegistry* handle)
     , m_audioEncTimestamp(AV_NOPTS_VALUE)
     , m_dumpContext(nullptr)
 {
-    if (options.transport.compare("tcp") == 0) {
-        av_dict_set(&m_transportOpts, "rtsp_transport", "tcp", 0);
-        ELOG_INFO_T("url: %s, audio: %d, video: %d, transport::tcp", m_url.c_str(), m_needAudio, m_needVideo);
-    } else {
-        char buf[256];
-        snprintf(buf, sizeof(buf), "%u", options.bufferSize);
-        av_dict_set(&m_transportOpts, "buffer_size", buf, 0);
-        ELOG_INFO_T("url: %s, audio: %d, video: %d, transport::%s, buffer_size: %u",
-                   m_url.c_str(), m_needAudio, m_needVideo, options.transport.c_str(), options.bufferSize);
+    if(isRtsp()) {
+        if (options.transport.compare("udp") == 0) {
+            uint32_t buffer_size =  options.bufferSize > 0 ? options.bufferSize : DEFAULT_UDP_BUF_SIZE;
+            char buf[256];
+            snprintf(buf, sizeof(buf), "%u", buffer_size);
+            av_dict_set(&m_options, "buffer_size", buf, 0);
+
+            av_dict_set(&m_options, "rtsp_transport", "udp", 0);
+            ELOG_INFO_T("url: %s, audio: %d, video: %d, transport: udp(%u)"
+                    , m_url.c_str(), m_needAudio, m_needVideo, buffer_size);
+        } else {
+            av_dict_set(&m_options, "rtsp_transport", "tcp", 0);
+            ELOG_INFO_T("url: %s, audio: %d, video: %d, transport: tcp"
+                    , m_url.c_str(), m_needAudio, m_needVideo);
+        }
     }
+
     m_thread = boost::thread(&RtspIn::receiveLoop, this);
 }
 
@@ -397,7 +404,7 @@ RtspIn::~RtspIn()
         delete m_timeoutHandler;
         m_timeoutHandler = nullptr;
     }
-    av_dict_free(&m_transportOpts);
+    av_dict_free(&m_options);
     if (m_vbsf) {
         av_bitstream_filter_close(m_vbsf);
         m_vbsf = NULL;
@@ -487,7 +494,7 @@ bool RtspIn::connect()
 
     m_timeoutHandler->reset(30000);
     ELOG_INFO_T("Opening input");
-    res = avformat_open_input(&m_context, m_url.c_str(), nullptr, &m_transportOpts);
+    res = avformat_open_input(&m_context, m_url.c_str(), nullptr, &m_options);
     if (res != 0) {
         ELOG_ERROR_T("Error opening input %s", ff_err2str(res));
 
@@ -681,7 +688,7 @@ bool RtspIn::reconnect()
 
     m_timeoutHandler->reset(60000);
     ELOG_INFO_T("Opening input");
-    res = avformat_open_input(&m_context, m_url.c_str(), nullptr, &m_transportOpts);
+    res = avformat_open_input(&m_context, m_url.c_str(), nullptr, &m_options);
     if (res != 0) {
         ELOG_ERROR_T("Error opening input %s", ff_err2str(res));
         return false;
