@@ -197,6 +197,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
     const joinPortalFailed = function(err, callback){
       const err_message = (typeof err === 'string' ? err: err.message);
       safeCall(callback, 'error', err_message);
+      log.info('Participant', participant_id, 'join portal failed, reason:', err_message);
       socket.disconnect();
     };
 

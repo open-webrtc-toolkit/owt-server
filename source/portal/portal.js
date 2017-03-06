@@ -143,8 +143,9 @@ var Portal = function(spec, rpcReq) {
     var impacted_connections = [];
     for (var participant_id in participants) {
       for (var connection_id in participants[participant_id].connections) {
-        if (isImpacted(participants[participant_id].connections[connection_id].locality, type, id)) {
-          log.info('Fault detected on node:', participants[participant_id].connections[connection_id].locality);
+        var locality = participants[participant_id].connections[connection_id].locality;
+        if (locality && isImpacted(locality, type, id)) {
+          log.info('Fault detected on node:', locality);
           impacted_connections.push(participants[participant_id].connections[connection_id].status_observer({type: 'failed', reason: 'access node exited unexpectedly'}));
         }
       }
