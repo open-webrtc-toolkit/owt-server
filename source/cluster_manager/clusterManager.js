@@ -22,14 +22,14 @@ var ClusterManager = function (clusterName, selfId, spec) {
     /* {Purpose: Scheduler}*/
     var schedulers = {};
 
-    /*Id : {purpose: Purpose, alive_count: Number, info: Info}*/
+    /*Id : {purpose: Purpose, alive_count: Number}*/
     var workers = {};
 
     var data_synchronizer;
 
     var createScheduler = function (purpose) {
         var strategy = spec.hasOwnProperty(purpose + 'Strategy') ? spec[purpose + 'Strategy'] : spec.generalStrategy;
-        return new Scheduler({strategy: strategy, scheduleReserveTime: spec.scheduleReserveTime});
+        return new Scheduler({purpose: purpose, strategy: strategy, scheduleReserveTime: spec.scheduleReserveTime});
     };
 
     var checkAlive = function () {
@@ -45,9 +45,8 @@ var ClusterManager = function (clusterName, selfId, spec) {
     var workerJoin = function (purpose, worker, info) {
         log.debug('workerJoin, purpose:', purpose, 'worker:', worker, 'info:', info);
         schedulers[purpose] = schedulers[purpose] || createScheduler(purpose);
-        schedulers[purpose].add(worker, info.state, info.max_load);
+        schedulers[purpose].add(worker, info);
         workers[worker] = {purpose: purpose,
-                           info: info,
                            alive_count: 0};
         data_synchronizer && data_synchronizer({type: 'worker_join', payload: {purpose: purpose, worker: worker, info: info}});
         return state;
@@ -92,13 +91,13 @@ var ClusterManager = function (clusterName, selfId, spec) {
         data_synchronizer && data_synchronizer({type: 'worker_laydown', payload: {worker: worker, task: task}});
     };
 
-    var schedule = function (purpose, task, reserveTime, on_ok, on_error) {
-        log.debug('schedule, purpose:', purpose, 'task:', task, 'reserveTime:', reserveTime, 'while state:', state);
+    var schedule = function (purpose, task, preference, reserveTime, on_ok, on_error) {
+        log.debug('schedule, purpose:', purpose, 'task:', task, ', preference:', preference, 'reserveTime:', reserveTime, 'while state:', state);
         if (state === 'in-service') {
             if (schedulers[purpose]) {
-                schedulers[purpose].schedule(task, reserveTime, function(worker) {
+                schedulers[purpose].schedule(task, preference, reserveTime, function(worker, info) {
                     log.debug('schedule OK, got  worker', worker);
-                    on_ok(worker, workers[worker].info);
+                    on_ok(worker, info);
                     data_synchronizer && data_synchronizer({type: 'scheduled', payload: {purpose: purpose, task: task, worker: worker, reserve_time: reserveTime}});
                 }, function (reason) {
                     log.warn('schedule failed:', reason);
@@ -121,21 +120,21 @@ var ClusterManager = function (clusterName, selfId, spec) {
 
     var getWorkerAttr = function (worker, on_ok, on_error) {
         if (workers[worker]) {
+            var worker_info = schedulers[workers[worker].purpose] && schedulers[workers[worker].purpose].getInfo(worker);
+            worker_info = worker_info || {state: 0, load: 0, info: {}, tasks: []};
             // FIXME: the following attr items are for purpose of compaticity with legacy oam client, should be refined later.
             if (workers[worker].purpose === 'portal') {
-                var scheduling_info = schedulers[workers[worker].purpose] && schedulers[workers[worker].purpose].getInfo(worker);
-                scheduling_info = scheduling_info || {state: 0, load: 0, max_load: 1.0, tasks: []};
                 on_ok({id: worker,
                        purpose: workers[worker].purpose,
-                       ip: workers[worker].info.ip,
+                       ip: worker_info.info.ip,
                        rpcID: worker,
-                       state: scheduling_info.state,
-                       load: scheduling_info.load,
-                       hostname: workers[worker].info.hostname || '',
-                       port: workers[worker].info.port || 0,
+                       state: worker_info.state,
+                       load: worker_info.load,
+                       hostname: worker_info.info.hostname || '',
+                       port: worker_info.info.port || 0,
                        keepAlive: workers[worker].alive_count});
             } else {
-                on_ok(workers[worker].info);
+                on_ok(info);
             }
         } else {
             on_error('Worker [' + worker + '] does NOT exist.');
@@ -268,8 +267,8 @@ var ClusterManager = function (clusterName, selfId, spec) {
         layDownTask: function (worker, task) {
             layDownTask(worker, task);
         },
-        schedule: function (purpose, task, reserveTime, callback) {
-            schedule(purpose, task, reserveTime, function(worker, info) {
+        schedule: function (purpose, task, preference, reserveTime, callback) {
+            schedule(purpose, task, preference, reserveTime, function(worker, info) {
                 callback('callback', {id: worker, info: info});
             }, function (error_reason) {
                 callback('callback', 'error', error_reason);

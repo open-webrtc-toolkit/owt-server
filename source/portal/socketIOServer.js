@@ -183,7 +183,8 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
           return Promise.reject('Leaved conference before join success.');
         }
         that.inRoom = result.session_id;
-        observer.onJoin(participant_id, result.session_id);
+        that.tokenCode = result.tokenCode;
+        observer.onJoin(result.tokenCode);
         return {clientId: participant_id,
                 id: result.session_id,
                 streams: result.streams.map(function(st) {
@@ -781,8 +782,9 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
     const leavePortal = function(){
       if(that.inRoom){
         return portal.leave(participant_id).then(function(){
-          observer.onLeave(participant_id, that.inRoom);
+          that.tokenCode && observer.onLeave(that.tokenCode);
           that.inRoom = undefined;
+          that.tokenCode = undefined;
         });
       } else {
         return Promise.reject('Not in a conference.');

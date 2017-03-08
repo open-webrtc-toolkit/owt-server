@@ -4,19 +4,18 @@ var rpc = require('./rpc/rpc');
 var log = require('./logger').logger.getLogger('CloudHandler');
 var cluster_name = ((global.config || {}).cluster || {}).name || 'woogeen-cluster';
 
-exports.getPortalForRoom = function (room, callback) {
-    var roomId = room._id,
-        keepTrying = true;
+exports.schedulePortal = function (tokenCode, origin, callback) {
+    var keepTrying = true;
 
     var tryFetchingPortal = function (attempts) {
         if (attempts <= 0) {
             return callback('timeout');
         }
 
-        rpc.callRpc(cluster_name, 'schedule', ['portal', roomId, 60 * 1000], {callback: function (result) {
+        rpc.callRpc(cluster_name, 'schedule', ['portal', tokenCode, origin, 60 * 1000], {callback: function (result) {
             if (result === 'timeout' || result === 'error') {
                 if (keepTrying) {
-                    log.info('Faild in scheduling portal for', roomId, ', keep trying.');
+                    log.info('Faild in scheduling portal, tokenCode:', tokenCode, ', keep trying.');
                     setTimeout(function () {tryFetchingPortal(attempts - (result === 'timeout' ? 4 : 1));}, 1000);
                 }
             } else {
@@ -113,7 +112,7 @@ exports.getPortals = function (callback) {
 };
 
 exports.getPortal = function (node, callback) {
-    rpc.callRpc(cluster_name, 'getWorkerAttr', [worker], {callback: function (r) {
+    rpc.callRpc(cluster_name, 'getWorkerAttr', [node], {callback: function (r) {
         callback(r);
     }});
 };

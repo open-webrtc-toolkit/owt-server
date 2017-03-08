@@ -189,7 +189,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                               : ((terminal_type === 'amixer' || terminal_type === 'axcoder') ? 'audio' : 'unknown');
 
                 var nodeLocality = (preAssignedNode ? Promise.resolve(preAssignedNode)
-                                               : rpcReq.getMediaNode(cluster, purpose, {session: room_id, consumer: terminal_id}));
+                                               : rpcReq.getMediaNode(cluster, purpose, {session: room_id, task: terminal_id}));
 
                 return nodeLocality
                     .then(function(locality) {
@@ -210,7 +210,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
     var deleteTerminal = function (terminal_id) {
         log.debug('deleteTerminal:', terminal_id);
         if (terminals[terminal_id]) {
-            rpcReq.recycleMediaNode(terminals[terminal_id].locality.agent, terminals[terminal_id].locality.node, {session: room_id, consumer: terminal_id})
+            rpcReq.recycleMediaNode(terminals[terminal_id].locality.agent, terminals[terminal_id].locality.node, {session: room_id, task: terminal_id})
             .catch(function(reason) {
                 // Catch the error to avoid the UnhandledPromiseRejectionWarning in node v6,
                 // The current code can reach here due to recycle an already recycled node.
@@ -1433,7 +1433,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
     };
 
     var allocateMediaProcessingNode  = function (forWhom, usage) {
-        return  rpcReq.getMediaNode(cluster, purpose, {session: room_id, consumer: terminal_id})
+        return  rpcReq.getMediaNode(cluster, purpose, {session: room_id, task: terminal_id})
     };
 
     var initMediaProcessor = function (terminal_id, parameters) {
@@ -1496,7 +1496,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
         });
         terminals[vmixerId].published = [];
 
-        return rpcReq.getMediaNode(cluster, 'video', {session: room_id, consumer: vmixerId})
+        return rpcReq.getMediaNode(cluster, 'video', {session: room_id, task: vmixerId})
             .then(function (locality) {
                 log.debug('Got new video mixer node:', locality);
                 terminals[vmixerId].locality = locality;
@@ -1694,7 +1694,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
         });
         terminals[amixerId].published = [];
 
-        return rpcReq.getMediaNode(cluster, 'audio', {session: room_id, consumer: amixerId})
+        return rpcReq.getMediaNode(cluster, 'audio', {session: room_id, task: amixerId})
             .then(function (locality) {
                 log.debug('Got new audio mixer node:', locality);
                 terminals[amixerId].locality = locality;

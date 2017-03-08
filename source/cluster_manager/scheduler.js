@@ -1,17 +1,22 @@
 /*global require, setTimeout, clearTimeout, exports*/
 'use strict';
 var logger = require('./logger').logger;
+var Matcher = require('./matcher');
 var Strategy = require('./strategy');
 
 // Logger
 var log = logger.getLogger('Scheduler');
+
+var isWorkerAvailable = function (worker) {
+    return worker.load < worker.info.max_load && (worker.state === undefined || worker.state === 2);
+};
 
 
 exports.Scheduler = function(spec) {
     var that = {};
 
     /*State <- [0 | 1 | 2]*/
-    /*{WorkerId: {state: State, load: Number, max_load: Number, tasks:[Task]}*/
+    /*{WorkerId: {state: State, load: Number, info: info, tasks:[Task]}*/
     var workers = {};
 
     /*{Task: {reserve_timer: TimerId,
@@ -20,7 +25,8 @@ exports.Scheduler = function(spec) {
       }*/
     var tasks = {};
 
-    var strategy = Strategy.create(spec.strategy),
+    var matcher = Matcher.create(spec.purpose),
+        strategy = Strategy.create(spec.strategy),
         schedule_reserve_time = spec.scheduleReserveTime;
 
     var reserveWorkerForTask = function (task, worker, time) {
@@ -84,14 +90,14 @@ exports.Scheduler = function(spec) {
         return tasks[task] && workers[worker] && worker === tasks[task].worker && workers[worker].tasks.indexOf(task) !== -1;
     };
 
-    that.add = function (worker, state, max_load) {
-        log.debug('Add worker:', worker, 'state:', state, 'max_load:', max_load);
+    that.add = function (worker, info) {
+        log.debug('Add worker:', worker, 'info:', info);
         if (workers[worker]) {
             log.warn('Double adding worker:', worker);
         }
-        workers[worker] = {state: state,
-                           load: 0,
-                           max_load: max_load,
+        workers[worker] = {state: undefined,
+                           load: info.max_load || 1.0,
+                           info: info,
                            tasks: []};
     };
 
@@ -128,7 +134,7 @@ exports.Scheduler = function(spec) {
         }
     };
 
-    that.schedule = function (task, reserveTime, on_ok, on_error) {
+    that.schedule = function (task, preference, reserveTime, on_ok, on_error) {
         if (tasks[task]) {
             var newReserveTime = reserveTime && tasks[task].reserve_time < reserveTime ? reserveTime : tasks[task].reserve_time,
                 worker = tasks[task].worker;
@@ -139,16 +145,37 @@ exports.Scheduler = function(spec) {
                 } else {
                     reserveWorkerForTask(task, worker, newReserveTime);
                 }
-                return on_ok(worker);
+                return on_ok(worker, workers[worker].info);
             } else {
                 repealTask(task);
             }
         }
 
-        strategy.allocate(workers, function (worker) {
+        var candidates = [];
+        for (var worker in workers) {
+            if (isWorkerAvailable(workers[worker])) {
+                candidates.push(worker);
+            }
+        }
+
+        if (candidates.length < 1) {
+            return on_error('No worker available');
+        }
+
+        candidates = matcher.match(preference, workers, candidates);
+
+        if (candidates.length < 1) {
+            return on_error('No worker matched');
+        } else if (candidates.length === 1) {
+            var worker = candidates[0];
             reserveWorkerForTask(task, worker, (reserveTime && reserveTime > 0 ? reserveTime : schedule_reserve_time));
-            on_ok(worker);
-        }, on_error);
+            return on_ok(worker, workers[worker].info);
+        } else {
+            strategy.allocate(workers, candidates, function (worker) {
+                reserveWorkerForTask(task, worker, (reserveTime && reserveTime > 0 ? reserveTime : schedule_reserve_time));
+                on_ok(worker, workers[worker].info);
+            }, on_error);
+        }
     };
 
     that.unschedule = function (worker, task) {

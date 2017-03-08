@@ -30,6 +30,11 @@ config.cluster.report_load_interval = config.cluster.report_load_interval || 100
 config.cluster.max_load = config.cluster.max_laod || 0.85;
 config.cluster.network_max_scale = config.cluster.network_max_scale || 1000;
 
+config.capacity = config.capacity || {};
+config.capacity.isps = config.capacity.isps || [];
+config.capacity.regions = config.capacity.regions || [];
+
+
 config.rabbit = config.rabbit || {};
 config.rabbit.host = config.rabbit.host || 'localhost';
 config.rabbit.port = config.rabbit.port || 5672;
@@ -118,7 +123,8 @@ var joinCluster = function (on_ok) {
                      rest_port: config.portal.rest_port,
                      ssl: config.portal.ssl,
                      state: 2,
-                     max_load: config.cluster.max_load
+                     max_load: config.cluster.max_load,
+                     capacity: config.capacity
                     },
               onJoinOK: joinOK,
               onJoinFailed: joinFailed,
@@ -147,27 +153,12 @@ var refreshTokenKey = function(id, portal, tokenKey) {
   }, 6 * 1000);
 };
 
-var room_users = {};
 var serviceObserver = {
-  onJoin: function(user, room) {
-    if (room_users[room] === undefined) {
-      room_users[room] = [user];
-      worker && worker.addTask(room);
-    } else {
-      room_users[room].push(user);
-    }
+  onJoin: function(tokenCode) {
+    worker && worker.addTask(tokenCode);
   },
-  onLeave: function(user, room) {
-    if (room_users[room]) {
-      var i = room_users[room].indexOf(user);
-      if (i >= 0) {
-        room_users[room].splice(i, 1);
-      }
-      if (room_users[room].length === 0) {
-        worker && worker.removeTask(room);
-        delete room_users[room];
-      }
-    }
+  onLeave: function(tokenCode) {
+    worker && worker.removeTask(tokenCode);
   }
 };
 

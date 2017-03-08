@@ -28,6 +28,13 @@ ip_address = "" #default: ""
 # network_interface = "eth0" # default: undefined
 
 
+[capacity]
+#The ISP list this agent tends to handle 
+isps = [] #default: [], which means all ISPs.
+#The region list this agent tends to handle
+regions = [] #default: [], which means all regions.
+
+
 [rabbit]
 host = "localhost" #default: "localhost"
 port = 5672 #default: 5672

@@ -40,7 +40,8 @@ describe('Responding to https requests.', function() {
     mockPortal.join = sinon.stub();
     mockServiceObserver.onJoin = sinon.spy();
 
-    var join_result = {user: 'Jack',
+    var join_result = {tokenCode: 'tokenCode',
+                       user: 'Jack',
                        role: 'presenter',
                        session_id: testRoom,
                        participants: [],
@@ -57,7 +58,7 @@ describe('Responding to https requests.', function() {
       var client_id = mockPortal.join.getCall(0).args[0];
       expect(client_id).to.be.a('string');
       expect(mockPortal.join.getCall(0).args[1]).to.equal('someValidToken');
-      expect(mockServiceObserver.onJoin.getCall(0).args).to.deep.equal([client_id, testRoom]);
+      expect(mockServiceObserver.onJoin.getCall(0).args).to.deep.equal(['tokenCode']);
       expect(body).to.deep.equal({id: client_id, streams: transformed_streams, clients: join_result.participants});
       done();
     });
@@ -95,7 +96,8 @@ describe('Responding to http requests.', function() {
     return new Promise(function(resolve, reject) {
       mockPortal.join = sinon.stub();
 
-      var join_result = {user: 'Jack',
+      var join_result = {tokenCode: 'tokenCode',
+                         user: 'Jack',
                          role: 'presenter',
                          session_id: testRoom,
                          participants: [],
@@ -131,7 +133,8 @@ describe('Responding to http requests.', function() {
       mockPortal.join = sinon.stub();
       mockServiceObserver.onJoin = sinon.spy();
 
-      var join_result = {user: 'Jack',
+      var join_result = {tokenCode: 'tokenCode',
+                         user: 'Jack',
                          role: 'presenter',
                          session_id: testRoom,
                          participants: [],
@@ -149,7 +152,7 @@ describe('Responding to http requests.', function() {
         var client_id = mockPortal.join.getCall(0).args[0];
         expect(client_id).to.be.a('string');
         expect(mockPortal.join.getCall(0).args[1]).to.equal('someValidToken');
-        expect(mockServiceObserver.onJoin.getCall(0).args).to.deep.equal([client_id, testRoom]);
+        expect(mockServiceObserver.onJoin.getCall(0).args).to.deep.equal(['tokenCode']);
         expect(body).to.deep.equal({id: client_id, streams: transformed_streams, clients: join_result.participants});
         done();
       });
@@ -247,7 +250,7 @@ describe('Responding to http requests.', function() {
                          json: true};
           request(options, function(error, response, body) {
             expect(mockPortal.leave.getCall(0).args).to.deep.equal([clientId]);
-            expect(mockServiceObserver.onLeave.getCall(0).args).to.deep.equal([clientId, testRoom]);
+            expect(mockServiceObserver.onLeave.getCall(0).args).to.deep.equal(['tokenCode']);
             expect(error).to.equal(null);
             expect(response.statusCode).to.equal(200);
             done();
