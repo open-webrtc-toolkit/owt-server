@@ -39,7 +39,6 @@
     'include_dirs': [
       '../../../core/common',
       '../../../core/erizo/src/erizo',
-      '../../../core/mcu/media',
       '../../../core/woogeen_base',
       '../../../../third_party/webrtc/src',
       '../../../../build/libdeps/build/include',

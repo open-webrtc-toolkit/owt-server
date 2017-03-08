@@ -27,7 +27,6 @@
     'include_dirs': [
       '$(CORE_HOME)/common',
       '$(CORE_HOME)/erizo/src/erizo',
-      '$(CORE_HOME)/mcu/media',
       '$(CORE_HOME)/woogeen_base',
       '$(CORE_HOME)/../../third_party/webrtc/src'
     ],
