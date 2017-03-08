@@ -60,6 +60,12 @@ report_load_interval = 1000 #default: 1000, unit: millisecond
 #The max work load this worker can carry.
 max_load = 0.85 #default: 0.85
 
+[capacity]
+#The ISP list this portal tends to handle 
+isps = [] #default: [], which means all ISPs.
+#The region list this portal tends to handle
+regions = [] #default: [], which means all regions.
+
 [rabbit]
 host = "localhost" #default: "localhost"
 port = 5672 #default: 5672

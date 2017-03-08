@@ -41,7 +41,7 @@ var getTokenString = function (id, token) {
  * The format of a token is:
  * {tokenId: id, host: erizoController host, signature: signature of the token};
  */
-var generateToken = function (currentRoom, authData, type, callback) {
+var generateToken = function (currentRoom, authData, type, origin, callback) {
     var currentService = authData.service,
         user = authData.user,
         role = authData.role,
@@ -61,6 +61,8 @@ var generateToken = function (currentRoom, authData, type, callback) {
     token.role = role;
     token.service = currentService._id;
     token.creationDate = new Date();
+    token.origin = origin;
+    token.code = Math.floor(Math.random() * 100000000000) + '';
 
     // Values to be filled from the erizoController
     token.secure = false;
@@ -96,7 +98,7 @@ var generateToken = function (currentRoom, authData, type, callback) {
         }
     } else {
 
-        cloudHandler.getPortalForRoom (currentRoom, function (ec) {
+        cloudHandler.schedulePortal (token.code, origin, function (ec) {
 
             if (ec === 'timeout') {
                 callback('error');
@@ -131,7 +133,8 @@ var generateToken = function (currentRoom, authData, type, callback) {
  */
 exports.create = function (req, res) {
     var authData = req.authData || {},
-        type = req.params.type || 'socketio';
+        type = req.params.type || 'socketio',
+        origin = req.origin || {isp: 'isp', region: 'region'};
 
     if (authData.service === undefined) {
         log.info('Service not found');
@@ -146,7 +149,7 @@ exports.create = function (req, res) {
             return;
         }
 
-        generateToken(currentRoom, authData, type, function (tokenS) {
+        generateToken(currentRoom, authData, type, origin, function (tokenS) {
             if (tokenS === undefined) {
                 log.info('Name and role?');
                 res.status(401).send('Name and role?');

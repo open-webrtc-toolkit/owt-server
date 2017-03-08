@@ -307,11 +307,11 @@ var RestServer = function(spec, portal, observer) {
 
     return portal.join(client_id, token)
       .then(function(result) {
-        observer.onJoin(client_id, result.session_id);
+        observer.onJoin(result.tokenCode);
         clients[client_id] = new Client(client_id, result.session_id, query_interval, portal, function() {
           portal.leave(client_id);
           delete clients[client_id];
-          observer.onLeave(client_id, result.session_id);
+          observer.onLeave(result.tokenCode);
         });
         var joinResult = {id: client_id,
                           streams: result.streams.map(function(st) {

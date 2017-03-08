@@ -30,6 +30,8 @@ global.config.cluster.network_max_scale = global.config.cluster.network_max_scal
 global.config.cluster.ip_address = global.config.cluster.ip_address || '';
 global.config.cluster.network_interface = global.config.cluster.network_interface || undefined;
 
+global.config.capacity = global.config.capacity || {};
+
 global.config.webrtc = global.config.webrtc || {};
 global.config.webrtc.ip_address = global.config.webrtc.ip_address || '';
 global.config.webrtc.network_interface = global.config.webrtc.network_interface || undefined;
@@ -105,8 +107,9 @@ var erizo_index = 0;
 var idle_erizos = [];
 var erizos = [];
 var processes = {};
-var tasks = {}; // {erizo_id: {RoomID: [ConsumerID]}}
+var tasks = {}; // {erizo_id: {RoomID: [TaskID]}}
 var load_collection = {period: global.config.cluster.report_load_interval};
+var capacity = global.config.capacity;
 var worker;
 
 function cleanupErizoJS (id) {
@@ -197,51 +200,42 @@ var fillErizos = function() {
     }
 };
 
-var isInUse = function(session) {
-    for (var eid in tasks) {
-        if (tasks[eid][session] !== undefined) {
-            return true;
-        }
-    }
-    return false;
-};
-
-var addConsumer = function(worker, nodeId, consumer) {
+var addTask = function(worker, nodeId, task) {
     tasks[nodeId] = tasks[nodeId] || {};
-    if (tasks[nodeId][consumer.session] === undefined) {
-        if (!isInUse(consumer.session)) {
-            worker.addTask(consumer.session);
-        }
-        tasks[nodeId][consumer.session] = [];
+    tasks[nodeId][task.session] = tasks[nodeId][task.session] || [];
+
+    if (tasks[nodeId][task.session].indexOf(task.task) === -1) {
+        worker && worker.addTask(task.task);
     }
-    tasks[nodeId][consumer.session].push(consumer.consumer);
+
+    tasks[nodeId][task.session].push(task.task);
 };
 
-var removeConsumer = function(worker, nodeId, consumer, on_last_consumer_leave) {
+var removeTask = function(worker, nodeId, task, on_last_task_leave) {
     if (tasks[nodeId]) {
-        if (tasks[nodeId][consumer.session]) {
-            var i = tasks[nodeId][consumer.session].indexOf(consumer.consumer);
+        if (tasks[nodeId][task.session]) {
+            var i = tasks[nodeId][task.session].indexOf(task.task);
             if (i > -1) {
-                tasks[nodeId][consumer.session].splice(i, 1);
+                tasks[nodeId][task.session].splice(i, 1);
             }
 
-            if (tasks[nodeId][consumer.session].length === 0) {
-                delete tasks[nodeId][consumer.session];
+            if (tasks[nodeId][task.session].indexOf(task.task) === -1) {
+                worker && worker.removeTask(task.task);
+            }
+
+            if (tasks[nodeId][task.session].length === 0) {
+                delete tasks[nodeId][task.session];
                 if (Object.keys(tasks[nodeId]).length === 0) {
-                    on_last_consumer_leave();
+                    on_last_task_leave();
                 }
             }
         }
-    }
-
-    if (!isInUse) {
-        worker.removeTask(consumer.session);
     }
 };
 
 var api = function (worker) {
     return {
-        getNode: function(consumer, callback) {
+        getNode: function(task, callback) {
             var reportCallback = function (id, timeout) {
                 var waitForInitialization = function () {
                     if (!processes[id]) {
@@ -256,13 +250,13 @@ var api = function (worker) {
                     if (processes[id].READY === true) {
                         log.debug(id, 'ready');
                         callback('callback', id);
-                        addConsumer(worker, id, consumer);
+                        addTask(worker, id, task);
                     }
                 };
                 waitForInitialization();
             };
             try {
-                var room_id = consumer.session;
+                var room_id = task.session;
                 var erizo_id;
                 if (reuse) {
                     var i;
@@ -300,9 +294,9 @@ var api = function (worker) {
             }
         },
 
-        recycleNode: function(id, consumer, callback) {
+        recycleNode: function(id, task, callback) {
             try {
-                removeConsumer(worker, id, consumer, function() {
+                removeTask(worker, id, task, function() {
                     dropErizoJS(id, callback);
                 });
             } catch(error) {
@@ -398,7 +392,8 @@ var joinCluster = function (on_ok) {
             ip: clusterIP,
             purpose: myPurpose,
             state: 2,
-            max_load: global.config.cluster.max_load
+            max_load: global.config.cluster.max_load,
+            capacity: global.config.capacity
         },
         onJoinOK: joinOK,
         onJoinFailed: joinFailed,
@@ -415,6 +410,8 @@ var joinCluster = function (on_ok) {
 
     switch (myPurpose) {
         case 'webrtc':
+            global.config.capacity.isps = global.config.capacity.isps || [];
+            global.config.capacity.regions = global.config.capacity.regions || [];
         case 'avstream':
             var concernedInterface = externalInterface || clusterInterface;
             if (!concernedInterface) {

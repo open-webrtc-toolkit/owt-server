@@ -16,8 +16,8 @@ describe('rpcRequest.getController', function() {
 
     return req.getController('woogeen-cluster', 'SessionId').then(function(result) {
       expect(result).to.equal('RpcIdOfController');
-      expect(mockRpcChannel.makeRPC.getCall(0).args).to.deep.equal(['woogeen-cluster', 'schedule', ['session', 'SessionId', 30000]]);
-      expect(mockRpcChannel.makeRPC.getCall(1).args).to.deep.equal(['RpcIdOfControllerAgent', 'getNode', [{session: 'SessionId', consumer: 'SessionId'}]]);
+      expect(mockRpcChannel.makeRPC.getCall(0).args).to.deep.equal(['woogeen-cluster', 'schedule', ['session', 'SessionId', 'preference', 30000]]);
+      expect(mockRpcChannel.makeRPC.getCall(1).args).to.deep.equal(['RpcIdOfControllerAgent', 'getNode', [{session: 'SessionId', task: 'SessionId'}]]);
     });
   });
 
@@ -52,10 +52,10 @@ describe('rpcRequest.getAccessNode', function() {
 
     var req = rpcRequest(mockRpcChannel);
 
-    return req.getAccessNode('woogeen-cluster', 'purpose', {session: 'Session', consumer: 'ConnectionId'}).then(function(result) {
+    return req.getAccessNode('woogeen-cluster', 'purpose', {session: 'Session', task: 'ConnectionId'}, {isp: 'isp', region: 'region'}).then(function(result) {
       expect(result).to.deep.equal({agent:'RpcIdOfAccessAgent', node: 'RpcIdOfAccessNode'});
-      expect(mockRpcChannel.makeRPC.getCall(0).args).to.deep.equal(['woogeen-cluster', 'schedule', ['purpose', 'Session', 30000]]);
-      expect(mockRpcChannel.makeRPC.getCall(1).args).to.deep.equal(['RpcIdOfAccessAgent', 'getNode', [{session: 'Session', consumer: 'ConnectionId'}]]);
+      expect(mockRpcChannel.makeRPC.getCall(0).args).to.deep.equal(['woogeen-cluster', 'schedule', ['purpose', 'ConnectionId', {isp: 'isp', region: 'region'}, 30000]]);
+      expect(mockRpcChannel.makeRPC.getCall(1).args).to.deep.equal(['RpcIdOfAccessAgent', 'getNode', [{session: 'Session', task: 'ConnectionId'}]]);
     });
   });
 
@@ -66,7 +66,7 @@ describe('rpcRequest.getAccessNode', function() {
 
     var req = rpcRequest(mockRpcChannel);
 
-    return expect(req.getAccessNode('woogeen-cluster', 'purpose', {session: 'Session', consumer: 'ConnectionId'})).to.be.rejectedWith('timeout or error while getting agent');
+    return expect(req.getAccessNode('woogeen-cluster', 'purpose', {session: 'Session', task: 'ConnectionId'})).to.be.rejectedWith('timeout or error while getting agent');
   });
 
   it('Should fail if requiring node timeout or error occurs.', function() {
@@ -77,7 +77,7 @@ describe('rpcRequest.getAccessNode', function() {
 
     var req = rpcRequest(mockRpcChannel);
 
-    return expect(req.getAccessNode('woogeen-cluster', 'purpose', {session: 'Session', consumer: 'ConnectionId'})).to.be.rejectedWith('timeout or error');
+    return expect(req.getAccessNode('woogeen-cluster', 'purpose', {session: 'Session', task: 'ConnectionId'})).to.be.rejectedWith('timeout or error');
   });
 });
 
@@ -267,7 +267,7 @@ describe('rpcRequest.unpublish/unsubscribe/recycleAccessNode/unpub2Session/unsub
 
     mockRpcChannel.makeRPC.withArgs('rpcIdOfAccessNode', 'unpublish', ['connectionId']).returns(Promise.resolve('ok'));
     mockRpcChannel.makeRPC.withArgs('rpcIdOfAccessNode', 'unsubscribe', ['connectionId']).returns(Promise.resolve('ok'));
-    mockRpcChannel.makeRPC.withArgs('rpcIdOfAccessAgent', 'recycleNode', ['rpcIdOfAccessNode', {session: 'Session', consumer: 'connectionId'}]).returns(Promise.resolve('ok'));
+    mockRpcChannel.makeRPC.withArgs('rpcIdOfAccessAgent', 'recycleNode', ['rpcIdOfAccessNode', {session: 'Session', task: 'connectionId'}]).returns(Promise.resolve('ok'));
     mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'unpublish', ['participantId', 'streamId']).returns(Promise.resolve('ok'));
     mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'unsubscribe', ['participantId', 'subscriptionId']).returns(Promise.resolve('ok'));
     mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'leave', ['participantId']).returns(Promise.resolve('ok'));
@@ -275,7 +275,7 @@ describe('rpcRequest.unpublish/unsubscribe/recycleAccessNode/unpub2Session/unsub
     return Promise.all([
       expect(req.unpublish('rpcIdOfAccessNode', 'connectionId')).to.become('ok'),
       expect(req.unsubscribe('rpcIdOfAccessNode', 'connectionId')).to.become('ok'),
-      expect(req.recycleAccessNode('rpcIdOfAccessAgent', 'rpcIdOfAccessNode', {session: 'Session', consumer: 'connectionId'})).to.become('ok'),
+      expect(req.recycleAccessNode('rpcIdOfAccessAgent', 'rpcIdOfAccessNode', {session: 'Session', task: 'connectionId'})).to.become('ok'),
       expect(req.unpub2Session('rpcIdOfController', 'participantId', 'streamId')).to.become('ok'),
       expect(req.unsub2Session('rpcIdOfController', 'participantId', 'subscriptionId')).to.become('ok'),
       expect(req.leave('rpcIdOfController', 'participantId')).to.become('ok')
@@ -294,7 +294,7 @@ describe('rpcRequest.unpublish/unsubscribe/recycleAccessNode/unpub2Session/unsub
     return Promise.all([
       expect(req.unpublish('rpcIdOfAccessNode', 'connectionId')).become('ok'),
       expect(req.unsubscribe('rpcIdOfAccessNode', 'connectionId')).become('ok'),
-      expect(req.recycleAccessNode('rpcIdOfAccessAgent', 'rpcIdOfAccessNode', {session: 'Session', consumer: 'connectionId'})).to.become('ok'),
+      expect(req.recycleAccessNode('rpcIdOfAccessAgent', 'rpcIdOfAccessNode', {session: 'Session', task: 'connectionId'})).to.become('ok'),
       expect(req.unpub2Session('rpcIdOfController', 'participantId', 'streamId')).become('ok'),
       expect(req.unsub2Session('rpcIdOfController', 'participantId', 'subscriptionId')).become('ok'),
       expect(req.leave('rpcIdOfController', 'participantId')).to.become('ok')
@@ -311,7 +311,7 @@ describe('rpcRequest.tokenLogin/join/onConnectionSignalling/mix/unmix/setVideoBi
     mockRpcChannel.makeRPC = sinon.stub();
     var req = rpcRequest(mockRpcChannel);
 
-    var login_result = {userName: 'Jack', role: 'presenter', room: '573eab78111478bb3526421a'};
+    var login_result = {code: 'tokenCode', userName: 'Jack', role: 'presenter', origin: {isp: 'isp', region: 'region'}, room: '573eab78111478bb3526421a'};
     mockRpcChannel.makeRPC.withArgs('nuve', 'deleteToken', 'tokenIdAsString').returns(Promise.resolve(login_result));
     var tokenLogin = req.tokenLogin('nuve', 'tokenIdAsString');
 

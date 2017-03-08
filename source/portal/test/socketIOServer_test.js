@@ -90,7 +90,8 @@ describe('Logining and Relogining.', function() {
       mockPortal.join = sinon.stub();
       mockServiceObserver.onJoin = sinon.spy();
 
-      var join_result = {user: 'Jack',
+      var join_result = {tokenCode: 'tokenCode',
+                         user: 'Jack',
                          role: 'presenter',
                          session_id: testRoom,
                          participants: [],
@@ -103,7 +104,7 @@ describe('Logining and Relogining.', function() {
         expect(status).to.equal('success');
         // portal.join requires base64 encoded token which is the same as nuve issued. Legacy client sends base64 decoded token.
         expect(mockPortal.join.getCall(0).args).to.deep.equal([client.id, 'someValidToken']);
-        expect(mockServiceObserver.onJoin.getCall(0).args).to.deep.equal([client.id, testRoom]);
+        expect(mockServiceObserver.onJoin.getCall(0).args).to.deep.equal(['tokenCode']);
         expect(resp).to.deep.equal({id: join_result.session_id, clientId: client.id, streams: transformed_streams, users: join_result.participants});
         done();
       });
@@ -149,7 +150,8 @@ describe('Logining and Relogining.', function() {
       mockPortal.join = sinon.stub();
       mockServiceObserver.onJoin = sinon.spy();
 
-      var join_result = {user: 'Jack',
+      var join_result = {tokenCode: 'tokenCode',
+                         user: 'Jack',
                          role: 'presenter',
                          session_id: testRoom,
                          participants: [],
@@ -161,7 +163,7 @@ describe('Logining and Relogining.', function() {
       client.emit('login', {token: someValidToken, userAgent:reconnectionClientInfo}, function(status, resp) {
         expect(status).to.equal('success');
         expect(mockPortal.join.getCall(0).args).to.deep.equal([client.id, 'someValidToken']);
-        expect(mockServiceObserver.onJoin.getCall(0).args).to.deep.equal([client.id, testRoom]);
+        expect(mockServiceObserver.onJoin.getCall(0).args).to.deep.equal(['tokenCode']);
         expect(resp.id).to.equal(join_result.session_id);
         expect(resp.clientId).to.equal(client.id);
         expect(resp.streams).to.deep.equal(transformed_streams);
@@ -223,7 +225,8 @@ describe('Logining and Relogining.', function() {
 
     it('Joining with valid tokens and invalid UA should fail and cause disconnection.', function(done) {
       mockPortal.join = sinon.stub();
-      var join_result = {user: 'Jack',
+      var join_result = {tokenCode: 'tokenCode',
+                         user: 'Jack',
                          role: 'presenter',
                          session_id: testRoom,
                          participants: [],
@@ -256,7 +259,8 @@ describe('Logining and Relogining.', function() {
       mockPortal.join = sinon.stub();
       mockServiceObserver.onJoin = sinon.spy();
 
-      var join_result = {user: 'Jack',
+      var join_result = {tokenCode: 'tokenCode',
+                         user: 'Jack',
                          role: 'presenter',
                          session_id: testRoom,
                          participants: [],
@@ -268,7 +272,7 @@ describe('Logining and Relogining.', function() {
       client.emit('login', {token: someValidToken, userAgent:clientInfo}, function(status, resp) {
         expect(status).to.equal('success');
         expect(mockPortal.join.getCall(0).args).to.deep.equal([client.id, 'someValidToken']);
-        expect(mockServiceObserver.onJoin.getCall(0).args).to.deep.equal([client.id, testRoom]);
+        expect(mockServiceObserver.onJoin.getCall(0).args).to.deep.equal(['tokenCode']);
         expect(resp.id).to.equal(join_result.session_id);
         expect(resp.clientId).to.equal(client.id);
         expect(resp.streams).to.deep.equal(transformed_streams);
@@ -411,11 +415,12 @@ describe('Logining and Relogining.', function() {
 
       client.on('connect', function() {
         mockPortal.join = sinon.stub();
-        const join_result = {user: 'Jack',
-                           role: 'presenter',
-                           session_id: testRoom,
-                           participants: [],
-                           streams: []};
+        const join_result = {tokenCode: 'tokenCode',
+                             user: 'Jack',
+                             role: 'presenter',
+                             session_id: testRoom,
+                             participants: [],
+                             streams: []};
         mockPortal.join.resolves(join_result);
 
         client.emit('login', someValidLoginInfo, function(status, resp) {
@@ -455,11 +460,12 @@ describe('Logining and Relogining.', function() {
 
     it('Logout after login should success.', function(done){
       mockPortal.join = sinon.stub();
-      const join_result = {user: 'Jack',
-                         role: 'presenter',
-                         session_id: testRoom,
-                         participants: [],
-                         streams: []};
+      const join_result = {tokenCode: 'tokenCode',
+                           user: 'Jack',
+                           role: 'presenter',
+                           session_id: testRoom,
+                           participants: [],
+                           streams: []};
       mockPortal.join.resolves(join_result);
 
       client.emit('login', someValidLoginInfo, function(loginStatus, resp) {
@@ -515,7 +521,8 @@ describe('Logining and Relogining.', function() {
     });
 
     it('Disconnecting after joining should cause participant leaving.', function(done) {
-      var join_result = {user: 'Jack',
+      var join_result = {tokenCode: 'tokenCode',
+                         user: 'Jack',
                          role: 'presenter',
                          session_id: testRoom,
                          participants: [],
@@ -532,7 +539,7 @@ describe('Logining and Relogining.', function() {
         //NOTE: the detection method here is not acurate.
         setTimeout(function() {
           expect(mockPortal.leave.getCall(0).args).to.deep.equal([participant_id]);
-          expect(mockServiceObserver.onLeave.getCall(0).args).to.deep.equal([participant_id, testRoom]);
+          expect(mockServiceObserver.onLeave.getCall(0).args).to.deep.equal(['tokenCode']);
           done();
         }, 500);
       });
@@ -600,7 +607,8 @@ describe('Notifying events to clients.', function() {
 
     client.on('connect', function() {
       mockPortal.join = sinon.stub();
-      var join_result = {user: 'Jack',
+      var join_result = {tokenCode: 'tokenCode',
+                         user: 'Jack',
                          role: 'presenter',
                          session_id: testRoom,
                          participants: [],
@@ -666,7 +674,8 @@ describe('Drop users from sessions.', function() {
 
     client.on('connect', function() {
       mockPortal.join = sinon.stub();
-      var join_result = {user: 'Jack',
+      var join_result = {tokenCode: 'tokenCode',
+                         user: 'Jack',
                          role: 'presenter',
                          session_id: testRoom,
                          participants: [],
@@ -678,7 +687,7 @@ describe('Drop users from sessions.', function() {
         return server.drop(client.id, testRoom)
           .then(function(result) {
             expect(result).to.equal('ok');
-            expect(mockServiceObserver.onLeave.getCall(0).args).to.deep.equal([client.id, testRoom]);
+            expect(mockServiceObserver.onLeave.getCall(0).args).to.deep.equal(['tokenCode']);
             done();
           });
       });
@@ -690,7 +699,8 @@ describe('Drop users from sessions.', function() {
 
     client.on('connect', function() {
       mockPortal.join = sinon.stub();
-      var join_result = {user: 'Jack',
+      var join_result = {tokenCode: 'tokenCode',
+                         user: 'Jack',
                          role: 'presenter',
                          session_id: testRoom,
                          participants: [],
@@ -702,7 +712,7 @@ describe('Drop users from sessions.', function() {
         return server.drop(client.id)
           .then(function(result) {
             expect(result).to.equal('ok');
-            expect(mockServiceObserver.onLeave.getCall(0).args).to.deep.equal([client.id, testRoom]);
+            expect(mockServiceObserver.onLeave.getCall(0).args).to.deep.equal(['tokenCode']);
             done();
           });
       });
@@ -714,7 +724,8 @@ describe('Drop users from sessions.', function() {
 
     client.on('connect', function() {
       mockPortal.join = sinon.stub();
-      var join_result = {user: 'Jack',
+      var join_result = {tokenCode: 'tokenCode',
+                         user: 'Jack',
                          role: 'presenter',
                          session_id: testRoom,
                          participants: [],
@@ -726,7 +737,7 @@ describe('Drop users from sessions.', function() {
         return server.drop('all')
           .then(function(result) {
             expect(result).to.equal('ok');
-            expect(mockServiceObserver.onLeave.getCall(0).args).to.deep.equal([client.id, testRoom]);
+            expect(mockServiceObserver.onLeave.getCall(0).args).to.deep.equal(['tokenCode']);
             done();
           });
       });
@@ -769,7 +780,8 @@ describe('Responding to clients.', function() {
     return new Promise(function(resolve, reject) {
       mockPortal.join = sinon.stub();
 
-      var join_result = {user: 'Jack',
+      var join_result = {tokenCode: 'tokenCode',
+                         user: 'Jack',
                          role: 'presenter',
                          session_id: testRoom,
                          participants: [],

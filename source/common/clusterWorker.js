@@ -43,7 +43,7 @@ module.exports = function (spec) {
         on_loss = spec.onLoss || function () {log.debug('Lost connection with cluster manager');},
         on_recovery = spec.onRecovery || function () {log.debug('Rejoin cluster successfully.');};
 
-    var previous_load = 0;
+    var previous_load = 0.99;
     var reportLoad = function (load) {
         if (load == previous_load) {
             return;

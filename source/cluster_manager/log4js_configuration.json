@@ -11,9 +11,10 @@
   ],
   "levels": {
     "AmqpClient": "INFO",
-    "Main": "DEBUG",
+    "Main": "INFO",
     "ClusterManager": "INFO",
     "Scheduler": "INFO",
+    "Matcher": "INFO",
     "Strategy": "INFO"
   }
 }

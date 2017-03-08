@@ -9,9 +9,9 @@ var RpcRequest = function(rpcChannel) {
   };
 
   that.getController = function(clusterManager, sessionId) {
-    return rpcChannel.makeRPC(clusterManager, 'schedule', ['session', sessionId, 30 * 1000])
+    return rpcChannel.makeRPC(clusterManager, 'schedule', ['session', sessionId, 'preference'/*TODO: specify preference*/, 30 * 1000])
       .then(function(controllerAgent) {
-        return rpcChannel.makeRPC(controllerAgent.id, 'getNode', [{session: sessionId, consumer: sessionId}]);
+        return rpcChannel.makeRPC(controllerAgent.id, 'getNode', [{session: sessionId, task: sessionId}]);
       });
   };
 
@@ -24,10 +24,10 @@ var RpcRequest = function(rpcChannel) {
     return Promise.resolve('ok');
   };
 
-  that.getAccessNode = function(clusterManager, purpose, forWhom) {
-    return rpcChannel.makeRPC(clusterManager, 'schedule', [purpose, forWhom.session, 30 * 1000])
+  that.getAccessNode = function(clusterManager, purpose, forWhom, preference) {
+    return rpcChannel.makeRPC(clusterManager, 'schedule', [purpose, forWhom.task, preference, 30 * 1000])
       .then(function(accessAgent) {
-        return rpcChannel.makeRPC(accessAgent.id, 'getNode', [{session: forWhom.session, consumer: forWhom.consumer}])
+        return rpcChannel.makeRPC(accessAgent.id, 'getNode', [forWhom])
           .then(function(accessNode) {
             return {agent: accessAgent.id, node: accessNode};
           });
@@ -35,7 +35,7 @@ var RpcRequest = function(rpcChannel) {
   };
 
   that.recycleAccessNode = function(accessAgent, accessNode, forWhom) {
-    rpcChannel.makeRPC(accessAgent, 'recycleNode', [accessNode, {session: forWhom.session, consumer: forWhom.consumer}]);
+    rpcChannel.makeRPC(accessAgent, 'recycleNode', [accessNode, {session: forWhom.session, task: forWhom.task}]);
     return Promise.resolve('ok');
   };
 

@@ -9,7 +9,7 @@ var RpcRequest = function(rpcChannel) {
   };
 
   that.getMediaNode = function(clusterManager, purpose, forWhom) {
-    return rpcChannel.makeRPC(clusterManager, 'schedule', [purpose, forWhom.session, 30 * 1000])
+    return rpcChannel.makeRPC(clusterManager, 'schedule', [purpose, forWhom.task, 'preference'/*TODO: specify preference*/, 30 * 1000])
       .then(function(agent) {
         return rpcChannel.makeRPC(agent.id, 'getNode', [forWhom])
           .then(function(node) {
