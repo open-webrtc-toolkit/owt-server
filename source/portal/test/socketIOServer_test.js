@@ -440,6 +440,72 @@ describe('Logining and Relogining.', function() {
         });
       });
     });
+
+    // Socket.IO server may detect network error slower than client does.
+    it('Reconnect before original socket is disconnected is allowed.', function(done){
+      'use strict';
+      let client1 = sioClient.connect('http://localhost:3001', {reconnection: true, secure: false, 'force new connection': false});
+      client1.on('connect', function() {
+        mockPortal.join = sinon.stub();
+        const join_result = {user: 'Jack',
+                           role: 'presenter',
+                           session_id: testRoom,
+                           participants: [],
+                           streams: []};
+        mockPortal.join.resolves(join_result);
+
+        client1.emit('login', someValidLoginInfo, function(status, resp) {
+          expect(status).to.equal('success');
+          let client2 = sioClient.connect('http://localhost:3001', {reconnection: true, secure: false, 'force new connection': false});
+          client2.emit('relogin', resp.reconnectionTicket, function(status, resp){
+            expect(status).to.equal('success');
+            done();
+          });
+        });
+      });
+    });
+
+    it('Components created during old client\'s lifetime can still send message after reconnection.', function(done){
+      'use strict';
+      let portalOnConnectionStatus;
+      mockPortal.publish = function(participantId, connectionId, connectionType, streamDescription, onConnectionStatus, notMix){
+        // Store |onConnectionStatus|. Simulate wrtcConnection's behavior.
+        portalOnConnectionStatus=onConnectionStatus;
+        setTimeout(function(){ onConnectionStatus({type: 'initializing'}) }, 5);
+        return Promise.resolve({agent: 'agentId', node: 'nodeId'});
+      };
+      mockPortal.onConnectionSignalling = sinon.stub();
+      mockPortal.onConnectionSignalling.resolves('ok');
+
+      let client1 = sioClient.connect('http://localhost:3001', {reconnection: true, secure: false, 'force new connection': false});
+      client1.on('connect', function() {
+        mockPortal.join = sinon.stub();
+        const join_result = {user: 'Jack',
+                           role: 'presenter',
+                           session_id: testRoom,
+                           participants: [],
+                           streams: []};
+        mockPortal.join.resolves(join_result);
+        client1.emit('login', someValidLoginInfo, function(status, resp) {
+          console.log('login done');
+          expect(status).to.equal('success');
+          let options = {state: 'erizo', audio: true, video: {resolution: 'vga', framerate: 30, device: 'camera'}};
+          client1.emit('publish', options, undefined, function(status, id) {
+            console.log('publish done');
+            expect(status).to.equal('initializing');
+            let client2 = sioClient.connect('http://localhost:3001', {reconnection: true, secure: false, 'force new connection': false});
+            client2.on('signaling_message_erizo', function(){
+              done();
+            });
+            client2.emit('relogin', resp.reconnectionTicket, function(status, resp){
+              console.log('relogin done');
+              expect(status).to.equal('success');
+              portalOnConnectionStatus({type: 'candidate', candidate: 'I\'m a candidate.'});
+            });
+          });
+        });
+      });
+    });
   });
 
   describe('on: logout', function() {
