@@ -105,6 +105,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
   let pending_messages = [];  // Messages need to be sent when reconnection is success.
   let disconnect_timeout;  // Timeout function for disconnection. It will be executed if disconnect timeout reached, will be cleared if other client valid reconnection ticket success.
   let disconnected = false;
+  let old_clients = [];  // Old clients before reconnections.
 
   // client_info has client version and platform.
   const checkClientAbility = function(ua){
@@ -145,7 +146,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
   };
 
   const validateReconnectionTicket = function(ticket) {
-    if(!disconnect_timeout||!reconnection_enabled) {
+    if(!reconnection_enabled) {
       return Promise.reject('Reconnection is not allowed.');
     }
     if(ticket.participantId!==participant_id){
@@ -159,8 +160,12 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
     if(now<ticket.notBefore||now>ticket.notAfter){
       return Promise.reject('Ticket is expired.');
     }
-    clearTimeout(disconnect_timeout);
-    disconnect_timeout=undefined;
+    if(disconnect_timeout){
+      clearTimeout(disconnect_timeout);
+      disconnect_timeout=undefined;
+    }
+    disconnected = true;
+    socket.disconnect(true);
     return Promise.resolve();
   };
 
@@ -243,8 +248,12 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
       }).then(function(result){
         // Authentication passed. Restore session.
         pending_messages=pending_messages.concat(result.pendingStreams);
+        old_clients=result.oldClients;
         that.inRoom=result.roomId;
         participant_id=result.participantId;
+        for(let client of old_clients){
+          client.replaceSocket(socket);
+        }
       }).then(function(){
         reconnection_enabled=true;
         const ticket = generateReconnectionTicket();
@@ -805,7 +814,9 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
 
     socket.on('disconnect', function(reason) {
       log.debug(participant_id+' disconnected, reason: '+reason);
-      if(reconnection_enabled){
+      if(disconnected){
+        return;
+      }else if(reconnection_enabled){
         disconnect_timeout = setTimeout(function(){
           log.info(participant_id+' failed to reconnect. Leaving portal.');
           leavePortal().catch(function(err) {
@@ -841,9 +852,19 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
       return Promise.reject('Participant ID is not matched.');
     }
     return validateReconnectionTicket(ticket).then(function(){
-      return pending_messages;
+      old_clients.push(that);
+      return {pendingMessages:pending_messages, oldClients:old_clients};
     });
   };
+
+  // Replace old socket object with the new one after reconnection. If the old
+  // socket is not being replaced, callbacks will use a dead socket which leads
+  // to message lost. Socket should be replaced after every successful
+  // reconnection. That is, socket object is always the latest one for current
+  // participant.
+  that.replaceSocket = function(newSocket){
+    socket = newSocket;
+  }
 
   return that;
 };
@@ -898,10 +919,10 @@ var SocketIOServer = function(spec, portal, observer) {
         if(!client){
           return Promise.reject('Invalid reconnection ticket.')
         }
-        return client.validateReconnectionTicket(ticket).then(function(pending_messages){
+        return client.validateReconnectionTicket(ticket).then(function(old_client_info){
           clients[ticket.participantId]=clients[participant_id];
           delete clients[participant_id];
-          return Promise.resolve({pendingStreams:pending_messages, roomId:client.inRoom, participantId:ticket.participantId});
+          return Promise.resolve({pendingStreams:old_client_info.pending_messages, roomId:client.inRoom, participantId:ticket.participantId, oldClients:old_client_info.oldClients});
         });
       };
       const reconnection_spec = {
