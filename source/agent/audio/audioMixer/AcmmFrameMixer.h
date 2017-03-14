@@ -44,6 +44,8 @@ class AcmmFrameMixer : public AudioFrameMixer,
     DECLARE_LOGGER();
 
     static const int32_t MAX_PARTICIPANTS = 128;
+    static const int32_t MIXER_FREQUENCY = 100;
+    static const int32_t MAX_SAMPLE_RATE = 48000;
 
 public:
     AcmmFrameMixer();
@@ -105,7 +107,11 @@ private:
     std::vector<bool> m_freeIds;
     std::map<std::string, int32_t> m_ids;
     std::map<int32_t, boost::shared_ptr<AcmmParticipant>> m_participants;
+    uint32_t m_inputs;
+    uint32_t m_outputs;
     boost::shared_mutex m_mutex;
+
+    AudioFrame mutedAudioFrame;
 
     bool m_vadEnabled;
     int32_t m_mostActiveChannel;
