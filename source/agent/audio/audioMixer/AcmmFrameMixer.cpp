@@ -46,6 +46,8 @@ DEFINE_LOGGER(AcmmFrameMixer, "mcu.media.AcmmFrameMixer");
 
 AcmmFrameMixer::AcmmFrameMixer()
     : m_asyncHandle(NULL)
+    , m_inputs(0)
+    , m_outputs(0)
     , m_vadEnabled(false)
     , m_mostActiveChannel(-1)
     , m_frequency(0)
@@ -57,7 +59,10 @@ AcmmFrameMixer::AcmmFrameMixer()
     for (size_t i = 0; i < MAX_PARTICIPANTS; ++i)
         m_freeIds[i] = true;
 
-    m_jobTimer.reset(new JobTimer(100, this));
+    mutedAudioFrame.UpdateFrame(-1, 0, NULL, MAX_SAMPLE_RATE / MIXER_FREQUENCY, MAX_SAMPLE_RATE,
+                            AudioFrame::kNormalSpeech, AudioFrame::kVadUnknown, 2);
+
+    m_jobTimer.reset(new JobTimer(MIXER_FREQUENCY, this));
 }
 
 AcmmFrameMixer::~AcmmFrameMixer()
@@ -180,6 +185,7 @@ bool AcmmFrameMixer::addInput(const std::string& participant, const FrameFormat 
         }
     }
 
+    m_inputs++;
     ELOG_TRACE("setInput %s---", participant.c_str());
     return true;
 }
@@ -207,6 +213,7 @@ void AcmmFrameMixer::removeInput(const std::string& participant)
         }
     }
 
+    m_inputs--;
     ELOG_TRACE("removeInput %s---", participant.c_str());
     return;
 }
@@ -241,6 +248,7 @@ bool AcmmFrameMixer::addOutput(const std::string& participant, const FrameFormat
 
     updateFrequency();
 
+    m_outputs++;
     ELOG_TRACE("setOutput %s, %d---", participant.c_str(), format);
     return true;
 }
@@ -273,6 +281,7 @@ void AcmmFrameMixer::removeOutput(const std::string& participant)
         updateFrequency();
     }
 
+    m_outputs--;
     ELOG_TRACE("removeOutput %s---", participant.c_str());
     return;
 }
@@ -310,8 +319,12 @@ void AcmmFrameMixer::onTimeout()
 void AcmmFrameMixer::performMix()
 {
     boost::upgrade_lock<boost::shared_mutex> lock(m_mutex);
-    if (m_participants.size())
+    if (m_inputs) {
         m_mixerModule->Process();
+    } else if (m_outputs) {
+        ELOG_TRACE_T("Generate muted frame");
+        NewMixedAudio(0, mutedAudioFrame, NULL, 0);
+    }
 }
 
 void AcmmFrameMixer::NewMixedAudio(int32_t id,
