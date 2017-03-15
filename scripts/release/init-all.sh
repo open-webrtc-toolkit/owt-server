@@ -36,7 +36,9 @@ init_software()
     ${ROOT}/bin/init-mongodb.sh --deps
     ${ROOT}/bin/init-rabbitmq.sh --deps
     ${ROOT}/nuve/init.sh
-    ${ROOT}/access_agent/install_deps.sh
+    ${ROOT}/webrtc_agent/install_deps.sh
+    ${ROOT}/recording_agent/install_deps.sh
+    ${ROOT}/avstream_agent/install_deps.sh
     ${ROOT}/video_agent/install_deps.sh
     ${ROOT}/video_agent/init.sh
   else
@@ -54,7 +56,9 @@ init_hardware()
     ${ROOT}/bin/init-mongodb.sh --deps
     ${ROOT}/bin/init-rabbitmq.sh --deps
     ${ROOT}/nuve/init.sh
-    ${ROOT}/access_agent/install_deps.sh
+    ${ROOT}/webrtc_agent/install_deps.sh
+    ${ROOT}/recording_agent/install_deps.sh
+    ${ROOT}/avstream_agent/install_deps.sh
     ${ROOT}/video_agent/install_deps.sh --hardware
     ${ROOT}/video_agent/init.sh --hardware
   else
@@ -72,7 +76,9 @@ init_hardware_yami()
     ${ROOT}/bin/init-mongodb.sh --deps
     ${ROOT}/bin/init-rabbitmq.sh --deps
     ${ROOT}/nuve/init.sh
-    ${ROOT}/access_agent/install_deps.sh
+    ${ROOT}/webrtc_agent/install_deps.sh
+    ${ROOT}/recording_agent/install_deps.sh
+    ${ROOT}/avstream_agent/install_deps.sh
     ${ROOT}/video_agent/install_deps.sh --hardware
     ${ROOT}/video_agent/init.sh --hardware
   else

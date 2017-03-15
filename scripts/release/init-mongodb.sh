@@ -74,6 +74,7 @@ install_db() {
         return 1
     fi
 
+    local OS=`${this}/detectOS.sh | awk '{print tolower($0)}'`
     # Use default configuration
     if [[ "$OS" =~ .*centos.* ]]
     then
@@ -87,6 +88,7 @@ install_db() {
       echo -e "\x1b[32mUnsupported platform...\x1b[0m"
     fi
 
+  else
     echo -e "\x1b[32mMongoDB already running\x1b[0m"
   fi
 }
