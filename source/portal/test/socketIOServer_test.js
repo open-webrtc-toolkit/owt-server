@@ -1213,9 +1213,6 @@ describe('Responding to clients.', function() {
 
   describe('on: subscribe, signaling_message', function() {
     it('Subscribing without joining should fail.', function(done) {
-      mockPortal.subscribe = sinon.stub();
-      mockPortal.subscribe.resolves({agent: 'agentId', node: 'nodeId'});
-
       client.emit('subscribe', {}, undefined, function(status, data) {
         expect(status).to.equal('error');
         expect(data).to.equal('unauthorized');
@@ -1223,7 +1220,20 @@ describe('Responding to clients.', function() {
       });
     });
 
-    it('Subscribing after joining should succeed.', function(done) {
+    it('Subscribing with options requesting neither audio nor video should fail.', function(done) {
+      return joinFirstly()
+        .then(function(result) {
+          expect(result).to.equal('ok');
+          var options = {streamId: 'targetStreamId', audio: false, video: false};
+          client.emit('subscribe', options, undefined, function(status, id) {
+            expect(status).to.equal('error');
+            expect(id).to.equal('bad options');
+            done();
+          });
+        });
+    });
+
+    it('Subscribing with proper options after joining should succeed.', function(done) {
       mockPortal.subscribe = sinon.stub();
       mockPortal.onConnectionSignalling = sinon.stub();
 
