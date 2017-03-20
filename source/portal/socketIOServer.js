@@ -415,6 +415,10 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
       (options.video && (typeof options.video.resolution === 'string')) && (subscription_description.video.resolution = options.video.resolution);
       (options.video && options.video.quality_level && (subscription_description.video.quality_level = options.video.quality_level));
 
+      if (!subscription_description.audio && !subscription_description.video) {
+          return safeCall(callback, 'error', 'bad options');
+      }
+
       //FIXME - a: use the target stream id as the subscription_id to keep compatible with client SDK, should be fixed and use random strings independently later.
       var subscription_id = participant_id + '-sub-' + ((subscription_description.audio && subscription_description.audio.fromStream) ||
                                                         (subscription_description.video && subscription_description.video.fromStream));
