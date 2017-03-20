@@ -32,7 +32,7 @@ var cpuCollector = function (period, on_load) {
         child && child.kill();
         child = undefined;
     };
-}
+};
 
 var diskCollector = function (period, drive, on_load) {
     var interval = setInterval(function () {
@@ -56,7 +56,7 @@ var diskCollector = function (period, drive, on_load) {
     this.stop = function () {
         log.debug("To stop disk load collector.");
         clearInterval(interval);
-    }
+    };
 };
 
 var networkCollector = function (period, interf, max_scale, on_load) {

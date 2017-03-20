@@ -314,12 +314,13 @@ var RestServer = function(spec, portal, observer) {
           delete clients[client_id];
           observer.onLeave(result.tokenCode);
         });
-        var joinResult = {id: client_id,
-                          streams: result.streams.map(function(st) {
-                            st.video && (st.video.resolutions instanceof Array) && (st.video.resolutions = st.video.resolutions.map(resolution2WidthHeight));
-                            return st;
-                          }),
-                          clients: result.participants}
+        var joinResult = {
+          id: client_id,
+          streams: result.streams.map(function(st) {
+            st.video && (st.video.resolutions instanceof Array) && (st.video.resolutions = st.video.resolutions.map(resolution2WidthHeight));
+            return st;
+          }),
+          clients: result.participants};
         res.send(joinResult);
       }, function(err) {
         var err_message = (typeof err === 'string' ? err: err.message);

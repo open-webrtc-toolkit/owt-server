@@ -790,7 +790,7 @@ var Portal = function(spec, rpcReq) {
     var target = participants[targetId];
 
     if (target === undefined) {
-      return Promise.reject('Target ' + targetId + ' does NOT exist.')
+      return Promise.reject('Target ' + targetId + ' does NOT exist.');
     }
 
     if (fromSession) {

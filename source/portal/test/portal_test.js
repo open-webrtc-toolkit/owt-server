@@ -152,7 +152,7 @@ describe('portal.join: Participants join.', function() {
     var login_result = {code: 'tokenCode', userName: 'Jack', role: 'presenter', origin: {isp: 'isp', region: 'region'}, room: testSession};
     mockrpcReq.tokenLogin.resolves(login_result);
 
-    var controller_result = 'theRpcIdOfController'
+    var controller_result = 'theRpcIdOfController';
     mockrpcReq.getController.resolves(controller_result);
 
     mockrpcReq.join.rejects('timeout or error');
@@ -760,7 +760,7 @@ describe('portal.publish/portal.unpublish: Participants publish/unpublish stream
               expect(err).to.equal('No proper video codec');
               expect(mockrpcReq.unpublish.getCall(1).args).to.deep.equal(['rpcIdOfAccessNode', stream_id1]);
               expect(mockrpcReq.recycleAccessNode.getCall(1).args).to.deep.equal(['rpcIdOfAccessAgent', 'rpcIdOfAccessNode', {session: testSession, task: stream_id1}]);
-              var stream_id2 = 'streamId2', on_connection_status2
+              var stream_id2 = 'streamId2', on_connection_status2;
               var spyConnectionObserver2 = sinon.spy();
               return portal.publish(testParticipantId,
                                     stream_id2,
@@ -1681,7 +1681,7 @@ describe('portal.subscribe/portal.unsubscribe/portal.mediaOnOff: Participants su
                                   testRecorderId,
                                  'recording',
                                  {audio: {fromStream: 'targetStreamId3', codecs: ['pcmu']}, video: {fromStream: 'targetStreamId4', codecs: ['vp8']}, path: 'path-of-recording', interval: -1},
-                                 spyConnectionObserver1)
+                                 spyConnectionObserver1);
         })
         .then(function(connectionLocality) {
           return new Promise(function(resolve, reject) {setTimeout(function() {resolve('ok');}, 30);});
@@ -1731,7 +1731,7 @@ describe('portal.subscribe/portal.unsubscribe/portal.mediaOnOff: Participants su
                                   targetURL,
                                  'avstream',
                                  {audio: {fromStream: 'targetStreamId3', codecs: ['aac']}, video: {fromStream: 'targetStreamId4', codecs: ['h264']}, url: targetURL},
-                                 spyConnectionObserver1)
+                                 spyConnectionObserver1);
         })
         .then(function(runHere) {
           expect(runHere).to.be.false;

@@ -165,5 +165,5 @@ describe('server', function () {
         runs(function () {
             expect(id).toBe(undefined);
         });
-    })
+    });
 });

@@ -321,7 +321,7 @@ describe('Logining and Relogining.', function() {
           reconnection_client.connect('http://localhost:3001', {reconnect: false, secure: false, 'force new connection': false});
           resolve();
         });
-      }
+      };
       reconnection_client.emit('login', someValidLoginInfo, function(status, resp){
         expect(status).to.equal('success');
         clientDisconnect().then(reconnection).then(function(){
@@ -356,7 +356,7 @@ describe('Logining and Relogining.', function() {
           reconnection_client.connect('http://localhost:3001', {reconnect: false, secure: false, 'force new connection': false});
           resolve();
         });
-      }
+      };
       reconnection_client.emit('login', someValidLoginInfo, function(status, resp){
         expect(status).to.equal('success');
         clientDisconnect().then(reconnection).then(function(){
@@ -392,7 +392,7 @@ describe('Logining and Relogining.', function() {
           reconnection_client.connect('http://localhost:3001', {reconnect: false, secure: false, 'force new connection': false});
           resolve();
         });
-      }
+      };
       reconnection_client.emit('login', someValidLoginInfo, function(status, resp){
         expect(status).to.equal('success');
         setTimeout(function(){  // Postpone disconnect. Otherwise, disconnect will be executed before establishing connection.
@@ -1510,7 +1510,7 @@ describe('Responding to clients.', function() {
           client.emit('updateExternalOutput', options, function(status, data) {
             expect(status).to.equal('error');
             expect(data).to.equal('subscription does not exist');
-            expect(mockPortal.unsubscribe.getCall(0).args).to.deep.equal([client.id, 'rtsp://target.host'])
+            expect(mockPortal.unsubscribe.getCall(0).args).to.deep.equal([client.id, 'rtsp://target.host']);
             done();
           });
         });
@@ -1536,7 +1536,7 @@ describe('Responding to clients.', function() {
               console.log('status:', status);
               expect(status).to.equal('success');
               expect(data.url).to.equal('rtsp://target.host');
-              expect(mockPortal.unsubscribe.getCall(0).args).to.deep.equal([client.id, 'rtsp://target.host'])
+              expect(mockPortal.unsubscribe.getCall(0).args).to.deep.equal([client.id, 'rtsp://target.host']);
               done();
             });
           });
@@ -1589,7 +1589,7 @@ describe('Responding to clients.', function() {
           client.emit('removeExternalOutput', options, function(status, data) {
             expect(status).to.equal('success');
             expect(data.url).to.equal('rtsp://target.host');
-            expect(mockPortal.unsubscribe.getCall(0).args).to.deep.equal([client.id, 'rtsp://target.host'])
+            expect(mockPortal.unsubscribe.getCall(0).args).to.deep.equal([client.id, 'rtsp://target.host']);
             done();
           });
         });
@@ -1606,7 +1606,7 @@ describe('Responding to clients.', function() {
           client.emit('removeExternalOutput', options, function(status, data) {
             expect(status).to.equal('error');
             expect(data).to.equal('Invalid RTSP/RTMP server url');
-            expect(mockPortal.unsubscribe.getCall(0).args).to.deep.equal([client.id, 'rtsp://target.host'])
+            expect(mockPortal.unsubscribe.getCall(0).args).to.deep.equal([client.id, 'rtsp://target.host']);
             done();
           });
         });
@@ -1819,7 +1819,7 @@ describe('Responding to clients.', function() {
             expect(status).to.equal('success');
             expect(data.recorderId).to.equal('recorderid');
             expect(data.host).to.equal('unknown');
-            expect(mockPortal.unsubscribe.getCall(0).args).to.deep.equal([client.id, client.id + '-recorderid'])
+            expect(mockPortal.unsubscribe.getCall(0).args).to.deep.equal([client.id, client.id + '-recorderid']);
             done();
           });
         });

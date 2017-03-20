@@ -227,9 +227,9 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
         if(reconnection_enabled){
           room_info.reconnectionTicket=generateReconnectionTicket();
         }
-        safeCall(callback, 'success', room_info)
+        safeCall(callback, 'success', room_info);
       }).catch(function(error) {
-        joinPortalFailed(error, callback)
+        joinPortalFailed(error, callback);
       });
     });
 

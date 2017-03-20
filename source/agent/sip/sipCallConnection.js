@@ -125,6 +125,6 @@ exports.SipCallConnection = function (spec) {
     that.requestKeyFrame = function() {
         if (video && videoFrameConstructor)
             videoFrameConstructor.requestKeyFrame();
-    }
+    };
     return that;
 };

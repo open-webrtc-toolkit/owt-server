@@ -31,7 +31,7 @@ var RpcChannel = function(amqpClient) {
   };
 
   return that;
-}
+};
 
 module.exports = RpcChannel;
 
