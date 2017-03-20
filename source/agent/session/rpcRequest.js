@@ -39,7 +39,7 @@ var RpcRequest = function(rpcChannel) {
   };
 
   return that;
-}
+};
 
 module.exports = RpcRequest;
 

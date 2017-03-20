@@ -18,12 +18,14 @@ var log = logger.getLogger('SipNode');
 var InternalConnectionFactory = require('./InternalConnectionFactory');
 
 // resolution map
-var resolution_map = {'sif' : {'width' : 352, 'height' : 240},
-                      'vga' : {'width' : 640, 'height' : 480},
-                      'hd720p' : {'width' : 1280, 'height' : 720},
-                      'hd1080p' : {'width' : 1920, 'height' : 1080},
-                      'svga' : {'width' : 800, 'height' : 600},
-                      'r640x360' : {'width' : 640, 'height' : 360}}
+var resolution_map = {
+    'sif' : {'width' : 352, 'height' : 240},
+    'vga' : {'width' : 640, 'height' : 480},
+    'hd720p' : {'width' : 1280, 'height' : 720},
+    'hd1080p' : {'width' : 1920, 'height' : 1080},
+    'svga' : {'width' : 800, 'height' : 600},
+    'r640x360' : {'width' : 640, 'height' : 360}
+};
 
 var generateStreamId = (function() {
   function s4() {
@@ -414,7 +416,7 @@ module.exports = function (rpcC, spec) {
             }
 
             return (audioEqual && videoEqual);
-        }
+        };
 
         // Ignore duplicate update requests
         if (infoEqual(calls[client_id].currentInfo, info)) {

@@ -223,7 +223,7 @@ exports = module.exports = function () {
             if (subscribers[to]) {
                 logger.info('Removing subscriber ', from, 'to ', to);
                 gateway.removeSubscriber(to);
-                subscribers[to].close()
+                subscribers[to].close();
                 delete subscribers[to];
             }
         }

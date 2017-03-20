@@ -144,5 +144,4 @@ module.exports = function() {
     };
 
     return that;
-}
-
+};

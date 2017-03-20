@@ -16,4 +16,4 @@ exports.makeRPC = function (rpcClient, remote_node, remote_function, parameters_
             }
         }}
     );
-}
+};

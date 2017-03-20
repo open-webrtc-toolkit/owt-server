@@ -458,7 +458,7 @@ module.exports = function (rpcClient, selfRpcId) {
       callback('callback', 'ok');
     }).catch(function(reason) {
       log.warn('Session set mute rpc fail:', reason);
-      callback('callback', 'error', reason)
+      callback('callback', 'error', reason);
     });
   };
 
@@ -475,7 +475,7 @@ module.exports = function (rpcClient, selfRpcId) {
       callback('callback', 'ok');
     }).catch(function(reason) {
       log.warn('Session set permission rpc fail:', reason);
-      callback('callback', 'error', reason)
+      callback('callback', 'error', reason);
     });
   };
 

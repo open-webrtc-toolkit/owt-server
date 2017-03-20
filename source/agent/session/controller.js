@@ -292,11 +292,12 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
 
                 return nodeLocality
                     .then(function(locality) {
-                        terminals[terminal_id] = {owner: owner,
-                                                  type: terminal_type,
-                                                  locality: locality,
-                                                  published: [],
-                                                  subscribed: {}}
+                        terminals[terminal_id] = {
+                            owner: owner,
+                            type: terminal_type,
+                            locality: locality,
+                            published: [],
+                            subscribed: {}};
                         on_ok();
                     }, function(err) {
                         on_error(err.message);
@@ -1349,7 +1350,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                         videoStream && recycleTemporaryVideo(videoStream);
                         finaly_error('The subscribed stream has been broken. Canceling it.');
                     }
-                }
+                };
             };
 
             var linkup = function (audioStream, videoStream) {
@@ -1649,7 +1650,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
     };
 
     var allocateMediaProcessingNode  = function (forWhom, usage) {
-        return  rpcReq.getMediaNode(cluster, purpose, {session: room_id, task: terminal_id})
+        return  rpcReq.getMediaNode(cluster, purpose, {session: room_id, task: terminal_id});
     };
 
     var initMediaProcessor = function (terminal_id, parameters) {

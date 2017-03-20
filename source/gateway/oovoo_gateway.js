@@ -470,7 +470,7 @@ var gatherGatewayStatistics = function () {
     }, 5000);
 
     return intervalId;
-}
+};
 
 gatherGatewayStatistics();
 
