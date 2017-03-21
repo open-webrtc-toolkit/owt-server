@@ -144,7 +144,7 @@ var getSessionControllerForRoom = function (roomId, on_ok, on_error) {
 
         log.info('Send controller schedule RPC request to ', cluster_name, ' for room ', roomId);
 
-        makeRPC(rpcClient, cluster_name, 'schedule', ['session', roomId, 60 * 1000],
+        makeRPC(rpcClient, cluster_name, 'schedule', ['session', roomId, 'preference'/*FIXME:should fill-in actual preference*/, 60 * 1000],
             function (result) {
                 makeRPC(rpcClient, result.id, 'getNode', [{session: roomId, consumer: roomId}], function (sessionController) {
                     on_ok(sessionController);
