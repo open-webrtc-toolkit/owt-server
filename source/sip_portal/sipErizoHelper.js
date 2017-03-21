@@ -65,7 +65,7 @@ module.exports = function (spec) {
                 rpcClient,
                 cluster,
                 'schedule',
-                ['sip', for_whom/*FIXME: use room_id as taskId temporarily, should use for_whom instead later.*/, 10 * 1000],
+                ['sip', for_whom/*FIXME: use room_id as taskId temporarily, should use for_whom instead later.*/, 'preference'/*FIXME: should fill-in actual preference*/, 10 * 1000],
                 function (result) {
                     on_ok({id: result.id, addr: result.info.ip});
                     keepTrying = false;
