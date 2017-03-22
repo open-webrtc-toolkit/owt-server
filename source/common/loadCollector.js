@@ -60,25 +60,42 @@ var diskCollector = function (period, drive, on_load) {
 };
 
 var networkCollector = function (period, interf, max_scale, on_load) {
-    var child = child_process.spawn('nload', ['-u', 'm', '-t', period + '', 'devices', interf + '']);
+    var rx_Mbps = 0, tx_Mbps = 0, rx_bytes = 0, tx_bytes = 0;
+    var meter = setInterval(function () {
+        child_process.exec("awk 'NR>2{if (index($1, \"" + interf + "\")==1){print $2, $10}}' /proc/net/dev", function (err, stdout, stderr) {
+            if (err) {
+                log.error(stderr);
+            } else {
+                var fields = stdout.trim().split(" ");
+                if (fields.length < 2) {
+                    return log.warn('not ordinary network load data');
+                }
+                var rx = Number(fields[0]), tx = Number(fields[1]);
+                if (rx >= rx_bytes && rx_bytes > 0) {
+                    rx_Mbps = Math.round(((rx - rx_bytes) * 8 / 1048576) * 1000) / 1000;
+                }
 
-    child.stdout.on('data', function (data) {
-        var concernedLine = new RegExp('(Avg:)'),
-            val = new RegExp('^.*Avg:\\s+(.*)\\s+MBit\\/s');
-        var lines = data.toString().split('\u001b').filter(function (line) {return concernedLine.test(line);});
-        if (lines.length === 2) {
-            var receiveSpeed = Number(lines[0].match(val)[1]),
-                sendSpeed = Number(lines[1].match(val)[1]);
-            on_load(Math.max(receiveSpeed / max_scale, sendSpeed / max_scale));
-        } else {
-            log.warn('Not ordinary nload data');
-        }
-    });
+                if (tx >= tx_bytes && tx_bytes > 0) {
+                    tx_Mbps = Math.round(((tx - tx_bytes) * 8 / 1048576) * 1000) / 1000;
+                }
+
+                rx_bytes = rx;
+                tx_bytes = tx;
+            }
+        });
+    }, 1000);
+
+    var reporter = setInterval(function () {
+        var rt_load = Math.round(Math.max(rx_Mbps / max_scale, tx_Mbps / max_scale) * 1000) / 1000;
+        on_load(rt_load);
+    }, period);
 
     this.stop = function () {
         log.debug("To stop network load collector.");
-        child && child.kill();
-        child = undefined;
+        meter && clearInterval(meter);
+        reporter && clearInterval(reporter);
+        meter = undefined;
+        reporter = undefined;
     };
 };
 
