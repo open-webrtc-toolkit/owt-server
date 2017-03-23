@@ -100,8 +100,8 @@ var ClusterManager = function (clusterName, selfId, spec) {
                     on_ok(worker, info);
                     data_synchronizer && data_synchronizer({type: 'scheduled', payload: {purpose: purpose, task: task, worker: worker, reserve_time: reserveTime}});
                 }, function (reason) {
-                    log.warn('schedule failed:', reason);
-                    on_error(reason);
+                    log.warn('schedule failed, purpose:', purpose, 'task:', task, 'reason:', reason);
+                    on_error('Failed in scheduling ' + purpose + ' worker, reason: ' + reason);
                 });
             } else {
                 log.warn('No scheduler for purpose:', purpose);
