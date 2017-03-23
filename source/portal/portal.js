@@ -644,7 +644,7 @@ var Portal = function(spec, rpcReq) {
       connection.state = 'connecting';
     }
 
-    if (connection.state === 'connecting') {
+    if (connection.state === 'connecting' && connection.locality) {
       rpcReq.unsubscribe(connection.locality.node, connection_id);
       rpcReq.recycleAccessNode(connection.locality.agent, connection.locality.node, {session: participants[participantId].in_session, task: connection_id});
     }
@@ -667,6 +667,8 @@ var Portal = function(spec, rpcReq) {
 
     if (participant.connections[connection_id] === undefined) {
       return Promise.reject('Connection does NOT exist when receiving a signaling.');
+    } else if (participant.connections[connection_id].locality === undefined){
+      return Promise.reject('Connection has been tore down.');
     } else {
       return rpcReq.onConnectionSignalling(participant.connections[connection_id].locality.node, connection_id, signaling)
         .then(function(result) {
