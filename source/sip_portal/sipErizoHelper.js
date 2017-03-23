@@ -92,12 +92,16 @@ module.exports = function (spec) {
                         on_ok({id: erizo_id, addr: result.addr});
                     },
                     on_failed);
-        }, function () {
-            on_failed('Failed to get sip agent.');
+        }, function (reason) {
+            on_failed('Failed to get sip agent:', reason);
         });
     };
 
     that.deallocateSipErizo = function (erizo_id) {
+        if (!erizos[erizo_id]) {
+            log.warn('Try to deallocate a non-existing sip node');
+            return;
+        }
         var room_id = erizos[erizo_id].room_id;
         makeRPC(rpcClient,
                 erizos[erizo_id].agent,

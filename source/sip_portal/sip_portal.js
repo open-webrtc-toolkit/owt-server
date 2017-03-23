@@ -24,6 +24,9 @@ config.rabbit.port = config.rabbit.port || 5672;
 config.cluster = config.cluster || {};
 config.cluster.name = config.cluster.name || 'woogeen-cluster';
 
+// Use promise to make the update on the same room execute in order.
+var roomPromises = {};
+
 // Allocate retry interval when allocate sip agent failed
 var AllocateInterval = 5000;
 
@@ -112,46 +115,71 @@ function initSipRooms() {
 }
 
 function createSipConnectivity(room_id, sip_server, sip_user, sip_passwd) {
-    helper.allocateSipErizo({session: room_id, consumer: room_id}, function(erizo) {
-        log.info('allocateSipErizo', erizo);
-        makeRPC(
-            rpcClient,
-            erizo.id,
-            'init',
-            [{
-                room_id: room_id,
-                sip_server: sip_server,
-                sip_user: sip_user,
-                sip_passwd: sip_passwd
-            }],
-            function(result) {
-                log.info("Sip node init successfully.");
-                erizos[room_id] = erizo.id;
-            }, function(reason) {
-                log.error("Init sip node fail, try to de-allocate it.");
-                helper.deallocateSipErizo(erizo.id);
+    if (!roomPromises[room_id]) roomPromises[room_id] = Promise.resolve(0);
+
+    roomPromises[room_id] = roomPromises[room_id].then(() => {
+        if (erizos[room_id]) {
+            return;
+        }
+
+        return new Promise((resolve, reject) => {
+            helper.allocateSipErizo({session: room_id, consumer: room_id}, function(erizo) {
+                log.info('allocateSipErizo', erizo);
+                makeRPC(
+                    rpcClient,
+                    erizo.id,
+                    'init',
+                    [{
+                        room_id: room_id,
+                        sip_server: sip_server,
+                        sip_user: sip_user,
+                        sip_passwd: sip_passwd
+                    }],
+                    function(result) {
+                        log.info("Sip node init successfully.");
+                        erizos[room_id] = erizo.id;
+                        resolve(erizo.id);
+                    }, function(reason) {
+                        log.error("Init sip node fail, try to de-allocate it:", reason);
+                        helper.deallocateSipErizo(erizo.id);
+                        resolve();
+                    });
+            }, function(error_reson) {
+                log.error("Allocate sip Erizo fail: ", error_reson);
+                log.info("Try to allocate after", AllocateInterval / 1000, "s.");
+                reject(error_reson);
             });
-  }, function(error_reson) {
-        log.error("Allocate sip Erizo fail: ", error_reson);
-        log.info("Try to allocate after", AllocateInterval / 1000, "s.");
-        setTimeout(function() {
-            createSipConnectivity(room_id, sip_server, sip_user, sip_passwd);
-        }, AllocateInterval);
-  });
+        })
+        .catch((reason) => {
+            return new Promise((resolve, reject) => {
+                setTimeout(resolve, AllocateInterval);
+            })
+            .then(() => {
+                return createSipConnectivity(room_id, sip_server, sip_user, sip_passwd);
+            });
+        });
+    });
 }
 
 function deleteSipConnectivity(room_id) {
-    var erizo_id = erizos[room_id];
-    if (erizo_id) {
-        log.info('deallocateSipErizo', erizo_id);
-        makeRPC(
-            rpcClient,
-            erizo_id,
-            'clean');
+    if (!roomPromises[room_id]) roomPromises[room_id] = Promise.resolve(0);
 
-        helper.deallocateSipErizo(erizo_id);
-        delete erizos[room_id];
-    }
+    roomPromises[room_id] = roomPromises[room_id].then(() => {
+        if (erizos[room_id]) {
+            return new Promise((resolve, reject) => {
+                log.info('deallocateSipErizo', erizos[room_id]);
+                makeRPC(
+                    rpcClient,
+                    erizos[room_id],
+                    'clean');
+                helper.deallocateSipErizo(erizos[room_id]);
+                delete erizos[room_id];
+                resolve(room_id);
+            });
+        }
+
+        return;
+    });
 }
 
 function startup () {
