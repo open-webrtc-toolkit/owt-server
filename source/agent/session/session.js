@@ -509,7 +509,7 @@ module.exports = function (rpcClient, selfRpcId) {
       sendMsg(fromParticipantId, toParticipantId, 'custom_message', {from: fromParticipantId, to: toParticipantId, data: data});
       callback('callback', 'ok');
     } else {
-      callback('callback', 'error', 'Participant ' + participantId + ' has not joined');
+      callback('callback', 'error', 'Participant ' + fromParticipantId + ' has not joined');
     }
   };
 
