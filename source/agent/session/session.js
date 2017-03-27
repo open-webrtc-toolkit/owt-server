@@ -5,6 +5,7 @@ var logger = require('./logger').logger;
 
 var ST = require('./Stream');
 var Controller = require('./controller');
+var dbAccess = require('./dataBaseAccess');
 
 // Logger
 var log = logger.getLogger('Session');
@@ -114,6 +115,12 @@ module.exports = function (rpcClient, selfRpcId) {
                       sendMsg('room', 'all', 'add_stream', mixed_stream.getPublicStream());
                     });
                   }
+
+                  // Save session permissions
+                  var roles = global.config.session.roles;
+                  dbAccess.saveRolesOfRoom(session_id, roles)
+                    .catch((err)=>{ log.warn('Fail to save roles:', err); });
+
                   resolve('ok');
                 },
                 function onError(reason) {
@@ -137,6 +144,10 @@ module.exports = function (rpcClient, selfRpcId) {
         controller = undefined;
         streams = {};
         session_id = undefined;
+        dbAccess.clearPermissionOfRoom(session_id)
+          .catch((err) => {
+            log.warn('Fail to clear permission of session:', session_id);
+          });
       }
       process.exit();
     }
@@ -461,24 +472,6 @@ module.exports = function (rpcClient, selfRpcId) {
       callback('callback', 'error', reason);
     });
   };
-
-  that.setPermission = function(targetId, act, value, callback) {
-    log.debug('set permission:', targetId, act, value);
-
-    if (!participants[targetId]) {
-      callback('callback', 'error', 'Target user does not exist');
-      return;
-    }
-
-    rpcReq.setPermission(participants[targetId].portal, targetId, act, value)
-    .then(function() {
-      callback('callback', 'ok');
-    }).catch(function(reason) {
-      log.warn('Session set permission rpc fail:', reason);
-      callback('callback', 'error', reason);
-    });
-  };
-
 
   that.getRegion = function(streamId, mixStreamId, callback) {
     if (streams[streamId]) {

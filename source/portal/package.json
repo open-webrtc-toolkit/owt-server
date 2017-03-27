@@ -8,7 +8,8 @@
     "socket.io": "^1.6.0",
     "log4js": "*",
     "toml": "*",
-    "sprintf-js": "^1.0.3"
+    "sprintf-js": "^1.0.3",
+    "mongojs": ""
   },
   "devDependencies": {
     "mocha": "^2.2.5",
@@ -18,6 +19,7 @@
     "sinon-as-promised": "^4.0.0",
     "istanbul": "*",
     "request": "*",
+    "mockery": "*",
     "socket.io-client": "*"
   },
   "scripts": {

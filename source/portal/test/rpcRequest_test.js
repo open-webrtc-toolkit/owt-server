@@ -343,9 +343,6 @@ describe('rpcRequest.tokenLogin/join/onConnectionSignalling/mix/unmix/setVideoBi
     mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'setMute', ['streamId', true], 4000).returns(Promise.resolve('ok'));
     var setMute = req.setMute('rpcIdOfController', 'streamId', true);
 
-    mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'setPermission', ['role', 'act', true], 4000).returns(Promise.resolve('ok'));
-    var setPermission = req.setPermission('rpcIdOfController', 'role', 'act', true);
-
     mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'getRegion', ['subStreamId', 'mixStreamId'], 4000).returns(Promise.resolve('regionId1'));
     var getRegion = req.getRegion('rpcIdOfController', 'subStreamId', 'mixStreamId');
 
@@ -365,13 +362,12 @@ describe('rpcRequest.tokenLogin/join/onConnectionSignalling/mix/unmix/setVideoBi
       expect(updateStream).to.become('ok'),
       expect(mediaOnOff).to.become('ok'),
       expect(setMute).to.become('ok'),
-      expect(setPermission).to.become('ok'),
       expect(getRegion).to.become('regionId1'),
       expect(setRegion).to.become('ok'),
       expect(text).to.become('ok')
       ])
       .then(function() {
-        expect(mockRpcChannel.makeRPC.callCount).to.equal(13);
+        expect(mockRpcChannel.makeRPC.callCount).to.equal(12);
       });
   });
 
@@ -409,9 +405,6 @@ describe('rpcRequest.tokenLogin/join/onConnectionSignalling/mix/unmix/setVideoBi
     mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'setMute', ['streamId', true], 4000).returns(Promise.reject('timeout or error'));
     var setMute = req.setMute('rpcIdOfController', 'streamId', true);
 
-    mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'setPermission', ['role', 'act', true], 4000).returns(Promise.reject('timeout or error'));
-    var setPermission = req.setPermission('rpcIdOfController', 'role', 'act', true);
-
     mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'getRegion', ['subStreamId', 'mixStreamId'], 4000).returns(Promise.reject('no such a sub-stream'));
     var getRegion = req.getRegion('rpcIdOfController', 'subStreamId', 'mixStreamId');
 
@@ -431,13 +424,12 @@ describe('rpcRequest.tokenLogin/join/onConnectionSignalling/mix/unmix/setVideoBi
       expect(updateStream).to.be.rejectedWith('timeout or error'),
       expect(mediaOnOff).to.be.rejectedWith('timeout or error'),
       expect(setMute).to.be.rejectedWith('timeout or error'),
-      expect(setPermission).to.be.rejectedWith('timeout or error'),
       expect(getRegion).to.be.rejectedWith('no such a sub-stream'),
       expect(setRegion).to.be.rejectedWith('some error'),
       expect(text).to.be.rejectedWith('timeout or error')
       ])
       .then(function() {
-        expect(mockRpcChannel.makeRPC.callCount).to.equal(13);
+        expect(mockRpcChannel.makeRPC.callCount).to.equal(12);
       });
   });
 });

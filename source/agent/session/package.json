@@ -9,7 +9,8 @@
     "log4js": "*",
     "node-getopt": "*",
     "toml": "*",
-    "sprintf-js": "^1.0.3"
+    "sprintf-js": "^1.0.3",
+    "mongojs": ""
   },
   "devDependencies": {
     "mocha": "^2.2.5",
