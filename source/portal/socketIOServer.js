@@ -618,6 +618,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
       if ((options.videoStreamId || unspecifiedStreamIds) && (options.videoCodec !== undefined) && (['vp8', 'h264'].indexOf(options.videoCodec) < 0)) {
         return safeCall(callback, 'error', 'Invalid video codec');
       }
+
       var subscription_description = {audio: false, video: false};
       (options.audioStreamId || unspecifiedStreamIds) && (subscription_description.audio = {fromStream: options.audioStreamId || that.commonViewStream});
       (subscription_description.audio && (typeof options.audioCodec === 'string')) && (subscription_description.audio.codecs = [options.audioCodec]);
@@ -742,11 +743,11 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
         return safeCall(callback, 'error', 'no targetId specified');
       }
 
-      if (!options.act) {
+      if (!options.action) {
         return safeCall(callback, 'error', 'no action specified');
       }
 
-      return portal.setPermission(participant_id, options.targetId, options.act, options.updatedValue, false)
+      return portal.setPermission(participant_id, options.targetId, options.action, options.update)
       .then(function() {
         safeCall(callback, 'success');
       }).catch(function(err) {
@@ -1000,12 +1001,6 @@ var SocketIOServer = function(spec, portal, observer) {
     var videoPromise = portal.mediaOnOff(participantId, streamId, 'video', 'in', state);
     var audioPromise = portal.mediaOnOff(participantId, streamId, 'audio', 'in', state);
     return Promise.all([videoPromise, audioPromise]);
-  };
-
-  that.updatePermission = function(targetId, act, updatedValue) {
-    log.debug('permission update:', targetId, act, updatedValue);
-
-    return portal.setPermission('session', targetId, act, updatedValue, true);
   };
 
   return that;

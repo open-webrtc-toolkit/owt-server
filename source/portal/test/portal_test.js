@@ -2,6 +2,32 @@ var expect = require('chai').use(require('chai-as-promised')).expect;
 var sinon = require('sinon');
 var sinonAsPromised = require('sinon-as-promised');
 var path = require('path');
+var mockery = require('mockery');
+
+// Mock dataBaseAccess module before require portal
+mockery.enable({
+  warnOnUnregistered: false
+});
+
+var mockDb = {};
+var dbAccess;
+dbAccess = {
+  getRolesOfRoom: function(roomId) {
+    return Promise.resolve(testPortalSpec.permissionMap);
+  },
+  getPermissionOfUser: function(userId, roomId){
+    return Promise.resolve(mockDb[userId]);
+  },
+  savePermissionOfUser: function(userId, roomId, permission) {
+    mockDb[userId] = permission;
+    return Promise.resolve(mockDb[userId]);
+  },
+};
+mockery.registerMock("./dataBaseAccess", dbAccess);
+
+after(function(){
+    mockery.disable();
+});
 
 var Portal = require('../portal');
 var rpcReq = require('../rpcRequest');
@@ -31,6 +57,7 @@ var testToken = {tokenId: '573eab88111478bb3526421b',
                 };
 var testParticipantId = '/#gpMeAEuPeMMDT0daAAAA';
 var testSession = '573eab78111478bb3526421a';
+
 
 describe('portal.updateTokenKey: update the token key.', function() {
   it('Joining with a valid token will fail if the token key is out of time, and success when token key is updated', function() {
@@ -1071,6 +1098,100 @@ describe('portal.setMute: Administrators manipulate streams that published.', fu
       return Promise.all([
         expect(setMute).to.become('ok')
         ]);
+    });
+  });
+});
+
+describe('portal.setPermission: Administrators update user permission.', function() {
+  it('Should fail before joining', function() {
+    var mockrpcReq = sinon.createStubInstance(rpcReq);
+    var portal = Portal(testPortalSpec, mockrpcReq);
+
+    var setPermission = portal.setPermission(testParticipantId, 'targetUserID', 'publish', true);
+
+    return Promise.all([
+      expect(setPermission).to.be.rejectedWith('Participant ' + testParticipantId + ' does NOT exist.')
+    ]);
+  });
+
+  it('Should fail with invalid target user', function() {
+    var mockrpcReq = sinon.createStubInstance(rpcReq);
+    var portal = Portal(testPortalSpec, mockrpcReq);
+
+    mockrpcReq.tokenLogin = sinon.stub();
+    mockrpcReq.getController = sinon.stub();
+    mockrpcReq.join = sinon.stub();
+
+    mockrpcReq.tokenLogin.resolves({code: 'tokenCode', userName: 'Jack', role: 'viewer', origin: {isp: 'isp', region: 'region'}, room: testSession});
+    mockrpcReq.getController.resolves('rpcIdOfController');
+    mockrpcReq.join.resolves({participants: [],
+                                 streams: []});
+
+    return portal.join(testParticipantId, testToken)
+    .then(function(joinResult) {
+      var setPermission = portal.setPermission(testParticipantId, 'invalidUserID', 'publish', true);
+
+      return Promise.all([
+        expect(setPermission).to.be.rejectedWith('Target ' + 'invalidUserID' + ' does NOT exist.')
+      ]);
+    });
+  });
+
+  it('Should fail without manage permission', function() {
+    var mockrpcReq = sinon.createStubInstance(rpcReq);
+    var portal = Portal(testPortalSpec, mockrpcReq);
+
+    mockrpcReq.tokenLogin = sinon.stub();
+    mockrpcReq.getController = sinon.stub();
+    mockrpcReq.join = sinon.stub();
+
+    mockrpcReq.tokenLogin.resolves({code: 'tokenCode', userName: 'Jack', role: 'viewer', origin: {isp: 'isp', region: 'region'}, room: testSession});
+    mockrpcReq.getController.resolves('rpcIdOfController');
+    mockrpcReq.join.resolves({participants: [{id: 'targetUserID', name: 'targetUserName', role: 'presenter'}],
+                                 streams: []});
+
+    return portal.join('targetUserID', testToken)
+    .then(function(targetJoin) {
+      mockrpcReq.tokenLogin.resolves({code: 'tokenCode', userName: 'Tom', role: 'viewer', origin: {isp: 'isp', region: 'region'}, room: testSession});
+      return portal.join(testParticipantId, testToken)
+      .then(function(joinResult) {
+        var setPermission = portal.setPermission(testParticipantId, 'targetUserID', 'publish', false);
+
+        return Promise.all([
+          expect(setPermission).to.be.rejectedWith('setPermission Permission Denied')
+        ]);
+      });
+    });
+  });
+
+  it('Should success after login with manage permission', function() {
+    var mockrpcReq = sinon.createStubInstance(rpcReq);
+    var portal = Portal(testPortalSpec, mockrpcReq);
+
+    mockrpcReq.tokenLogin = sinon.stub();
+    mockrpcReq.getController = sinon.stub();
+    mockrpcReq.join = sinon.stub();
+
+    mockrpcReq.tokenLogin.resolves({code: 'tokenCode', userName: 'Jack', role: 'presenter', origin: {isp: 'isp', region: 'region'}, room: testSession});
+    mockrpcReq.getController.resolves('rpcIdOfController');
+    mockrpcReq.join.resolves({participants: [{id: 'targetUserID', name: 'targetUserName', role: 'presenter'}],
+                                 streams: []});
+
+    return portal.join('targetUserID', testToken)
+    .then(function(targetJoin) {
+      mockrpcReq.tokenLogin.resolves({code: 'tokenCode', userName: 'Tom', role: 'admin', origin: {isp: 'isp', region: 'region'}, room: testSession});
+      return portal.join(testParticipantId, testToken)
+      .then(function(joinResult) {
+        var setPermission = portal.setPermission(testParticipantId, 'targetUserID', 'publish', false)
+          .then(function(result) {
+            expect(mockDb['targetUserID'].customize).deep.equal({ 'publish': false });
+            return result;
+          });
+
+        return Promise.all([
+          expect(setPermission).to.become('ok'),
+        ]);
+      });
     });
   });
 });
@@ -2186,7 +2307,7 @@ describe('portal.text', function() {
     mockrpcReq.getController = sinon.stub();
     mockrpcReq.join = sinon.stub();
 
-    mockrpcReq.tokenLogin.resolves({code: 'tokenCode', userName: 'Jack', role: 'no_text_viewer', origin: {isp: 'isp', region: 'region'}, room: testSession});
+    mockrpcReq.tokenLogin.resolves({code: 'tokenCode', userName: 'Jack', role: 'viewer_no_text', origin: {isp: 'isp', region: 'region'}, room: testSession});
     mockrpcReq.getController.resolves('rpcIdOfController');
     mockrpcReq.join.resolves({participants: [],
                                  streams: []});
@@ -2261,7 +2382,7 @@ describe('portal.getParticipantsByController', function() {
     mockrpcReq.getController = sinon.stub();
     mockrpcReq.join = sinon.stub();
 
-    mockrpcReq.tokenLogin.resolves({code: 'tokenCode', userName: 'Jack', role: 'no_text_viewer', origin: {isp: 'isp', region: 'region'}, room: testSession});
+    mockrpcReq.tokenLogin.resolves({code: 'tokenCode', userName: 'Jack', role: 'viewer_no_text', origin: {isp: 'isp', region: 'region'}, room: testSession});
     mockrpcReq.getController.resolves('rpcIdOfController');
     mockrpcReq.join.resolves({participants: [],
                                  streams: []});

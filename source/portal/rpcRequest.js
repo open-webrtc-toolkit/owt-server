@@ -103,10 +103,6 @@ var RpcRequest = function(rpcChannel) {
     return rpcChannel.makeRPC(controller, 'setMute', [streamId, muted], 4000);
   };
 
-  that.setPermission = function(controller, targetId, act, value) {
-    return rpcChannel.makeRPC(controller, 'setPermission', [targetId, act, value], 4000);
-  };
-
   that.getRegion = function(controller, subStreamId, mixStreamId) {
     return rpcChannel.makeRPC(controller, 'getRegion', [subStreamId, mixStreamId], 4000);
   };

@@ -1644,6 +1644,7 @@ describe('Responding to clients.', function() {
             expect(mockPortal.subscribe.getCall(0).args[2]).to.equal('recording');
             expect(mockPortal.subscribe.getCall(0).args[3]).to.deep.equal({audio: {fromStream: 'targetStreamId-01', codecs: ['pcmu']}, video: {fromStream: 'targetStreamId-02', codecs: ['vp8']}, path: '/tmp', interval: 1000});
 
+            simulateStubResponse(mockPortal.subscribe, 1, 4, {type: 'ready', audio_codecs: ['pcmu'], video_codecs: ['vp8']});
             options = {audioStreamId: testStream, videoStreamId: testStream, audioCodec: 'pcmu', videoCodec: 'vp8', path: '/tmp', interval: 1000};
             client.emit('startRecorder', options, function(status, data) {
               expect(status).to.equal('success');
@@ -1848,6 +1849,64 @@ describe('Responding to clients.', function() {
           client.emit('stopRecorder', options, function(status, data) {
             expect(status).to.equal('error');
             expect(data).to.have.string('Invalid recorder id');
+            done();
+          });
+        });
+    });
+  });
+
+  describe('on: setPermission, setPermission', function() {
+    it('setPermission should fail before joining.', function(done) {
+      mockPortal.setPermission = sinon.stub();
+
+      client.emit('setPermission', {targetId: 'targetId', action: 'subscribe', update: false}, function(status, data) {
+        expect(status).to.equal('error');
+        expect(data).to.equal('unauthorized');
+        expect(mockPortal.setPermission.callCount).to.equal(0);
+        done();
+      });
+    });
+
+    it('setPermission without specifying targetId should fail.', function(done) {
+      mockPortal.setPermission = sinon.stub();
+
+      return joinFirstly()
+        .then(function(result) {
+          expect(result).to.equal('ok');
+          client.emit('setPermission', {action: 'subscribe', update: false}, function(status, data) {
+            expect(status).to.equal('error');
+            expect(data).to.equal('no targetId specified');
+            expect(mockPortal.setPermission.callCount).to.equal(0);
+            done();
+          });
+        });
+    });
+
+    it('setPermission without specifying action should fail.', function(done) {
+      mockPortal.setPermission = sinon.stub();
+
+      return joinFirstly()
+        .then(function(result) {
+          expect(result).to.equal('ok');
+          client.emit('setPermission', {targetId: 'targetId', update: false}, function(status, data) {
+            expect(status).to.equal('error');
+            expect(data).to.equal('no action specified');
+            expect(mockPortal.setPermission.callCount).to.equal(0);
+            done();
+          });
+        });
+    });
+
+    it('setPermission should succeed if portal.setPermission succeeds.', function(done) {
+      mockPortal.setPermission = sinon.stub();
+      mockPortal.setPermission.resolves('ok');
+
+      return joinFirstly()
+        .then(function(result) {
+          expect(result).to.equal('ok');
+          client.emit('setPermission', {targetId: 'targetId', action: 'subscribe', update: false}, function(status, data) {
+            expect(status).to.equal('success');
+            expect(mockPortal.setPermission.getCall(0).args).to.deep.equal([client.id, 'targetId', 'subscribe', false]);
             done();
           });
         });

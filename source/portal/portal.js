@@ -4,6 +4,7 @@ var path = require('path');
 var url = require('url');
 var crypto = require('crypto');
 var log = require('./logger').logger.getLogger('Portal');
+var dbAccess = require('./dataBaseAccess');
 
 var Portal = function(spec, rpcReq) {
   var that = {},
@@ -37,50 +38,38 @@ var Portal = function(spec, rpcReq) {
    */
   var participants = {};
 
-  var newPermissions = function(role) {
-    var deepClone = function(obj) {
-      if (typeof obj !== 'object') {
-        return obj;
-      }
+  var getUserPermission = function(userId) {
+    // Get permission from database
+    if (!participants[userId]) return Promise.reject();
 
-      var result;
-      if (Array.isArray(obj)) {
-        result = [];
-        obj.forEach(function(value) {
-          result.push(deepClone(value));
-        });
-      } else {
-        result = {};
-        Object.keys(obj).forEach(function(key) {
-            result[key] = deepClone(obj[key]);
-        });
-      }
+    var roomId = participants[userId].in_session;
+    var userRole = participants[userId].role;
 
-      return result;
-    };
+    return Promise.all([
+      dbAccess.getRolesOfRoom(roomId),
+      dbAccess.getPermissionOfUser(userId, roomId),
+    ])
+      .then(([roles, permission]) => {
+        roles = roles || {};
+        permission = permission || {};
+        var finalPermission = roles[userRole] || {};
+        var customizePermission = permission.customize || {};
 
-    var permissions = deepClone(permission_map[role]);
+        for (var action in customizePermission) {
+          finalPermission[action] = customizePermission[action];
+        }
 
-    return permissions;
+        return finalPermission;
+      });
   };
 
-  var isPermitted = function(participantId, act, track) {
-    if (!participants[participantId]) {
-      return false;
-    }
-
-    var permissions = participants[participantId].permissions;
+  var isPermitted = function(permissions, act, track) {
     return permissions
-           && ((permissions[act] === true)
-               || (typeof permissions[act] === 'object' && permissions[act][track] === true));
+      && ((permissions[act] === true)
+        || (typeof permissions[act] === 'object' && permissions[act][track] === true));
   };
 
-  var isTextPermitted = function(participantId) {
-    if (!participants[participantId]) {
-      return false;
-    }
-
-    var permissions = participants[participantId].permissions;
+  var isTextPermitted = function(permissions) {
     return permissions && (permissions['text'] !== false);
   };
 
@@ -208,7 +197,6 @@ var Portal = function(spec, rpcReq) {
           in_session: session,
           controller: session_controller,
           connections: {},
-          permissions: newPermissions(role)
         };
 
         return {
@@ -268,160 +256,164 @@ var Portal = function(spec, rpcReq) {
       return Promise.reject('Participant ' + participantId + ' does NOT exist.');
     }
 
-    if ((!isPermitted(participantId, 'publish', 'audio') && streamDescription.audio)
-        || (!isPermitted(participantId, 'publish', 'video') && streamDescription.video)) {
-      return Promise.reject('unauthorized');
-    }
+    return getUserPermission(participantId)
+      .then((userPermission) => {
+        if ((streamDescription.audio && !isPermitted(userPermission, 'publish', 'audio'))
+            || (streamDescription.video && !isPermitted(userPermission, 'publish', 'video'))) {
+          return Promise.reject('unauthorized');
+        }
 
-    var stream_id = connectionId,
-        connection_id = stream_id,
-        locality;
-    log.debug('publish, participantId:', participantId, 'connectionType:', connectionType, 'streamDescription:', streamDescription, 'notMix:', notMix, 'connection_id:', connection_id);
+        var stream_id = connectionId,
+          connection_id = stream_id,
+          locality;
+        log.debug('publish, participantId:', participantId, 'connectionType:', connectionType, 'streamDescription:', streamDescription, 'notMix:', notMix, 'connection_id:', connection_id);
 
-    var onConnectionReady = function(status) {
-      var participant = participants[participantId];
-      log.debug('publish::onConnectionReady, participantId:', participantId, 'connection_id:', connection_id, 'status:', status);
-
-      if (participant === undefined) {
-        return Promise.reject('Participant ' + participantId + ' has left when the connection gets ready.');
-      }
-
-      if (streamDescription.audio && (!status.audio_codecs || status.audio_codecs.length < 1)) {
-        rpcReq.unpublish(locality.node, connection_id);
-        rpcReq.recycleAccessNode(locality.agent, locality.node, {session: participants[participantId].in_session, task: connection_id})
-        .catch(function(reason) {
-            log.warn('AccessNode not recycled', locality);
-        });
-        onConnectionStatus({type: 'failed', reason: 'No proper audio codec'});
-        return Promise.reject('No proper audio codec');
-      }
-
-      if (streamDescription.video && (!status.video_codecs || status.video_codecs.length < 1)) {
-        rpcReq.unpublish(locality.node, connection_id);
-        rpcReq.recycleAccessNode(locality.agent, locality.node, {session: participants[participantId].in_session, task: connection_id})
-        .catch(function(reason) {
-            log.warn('AccessNode not recycled', locality);
-        });
-        onConnectionStatus({type: 'failed', reason: 'No proper video codec'});
-        return Promise.reject('No proper video codec');
-      }
-
-      var video_resolution = (streamDescription.video && streamDescription.video.resolution);
-      video_resolution = ((typeof status.video_resolution === 'string' && status.video_resolution !== 'unknown') ? status.video_resolution : video_resolution);
-
-      var stream_description = {audio: streamDescription.audio && {codec: status.audio_codecs[0]},
-                                video: streamDescription.video && {resolution: video_resolution,
-                                                                   device: streamDescription.video.device,
-                                                                   codec: status.video_codecs[0]},
-                                type: connectionType
-                               };
-      (streamDescription.video && streamDescription.video.framerate) && (stream_description.video.framerate = streamDescription.video.framerate);
-
-      var controller = participant.controller;
-      return rpcReq.pub2Session(controller, participantId, stream_id, locality, stream_description, notMix)
-        .then(function(result) {
-          log.debug('pub2Session ok, participantId:', participantId, 'connection_id:', connection_id);
+        var onConnectionReady = function(status) {
           var participant = participants[participantId];
+          log.debug('publish::onConnectionReady, participantId:', participantId, 'connection_id:', connection_id, 'status:', status);
+
           if (participant === undefined) {
-            rpcReq.unpub2Session(controller, participantId, stream_id);
-            return Promise.reject('Participant ' + participantId + ' has left when controller responds publish ok.');
-          } else if (participant.connections[stream_id] === undefined) {
-            rpcReq.unpub2Session(controller, participantId, stream_id);
-            return Promise.reject('Connection ' + stream_id + ' has been released when controller responds publish ok.');
+            return Promise.reject('Participant ' + participantId + ' has left when the connection gets ready.');
           }
 
-          participant.connections[stream_id].state = 'connected';
-          onConnectionStatus(status);
-          return result;
-        }).catch(function(err) {
-          log.debug('pub2Session failed, participantId:', participantId, 'connection_id:', connection_id, 'err:', err);
-          var participant = participants[participantId];
-          if (participant) {
-            var connection = participant.connections[connection_id];
-            if (connection) {
-              if (connection.state === 'connected') {
-                rpcReq.unpub2Session(p.controller, participantId, stream_id);
-                connection.state = 'connecting';
-              }
-              if (connection.state === 'connecting') {
-                rpcReq.unpublish(connection.locality.node, connection_id);
-                rpcReq.recycleAccessNode(connection.locality.agent, connection.locality.node, {session: participant.in_session, task: connection_id})
-                .catch(function(reason) {
-                    log.warn('AccessNode not recycled', connection.locality);
-                });
-              }
-            }
-            delete participant.connections[connection_id];
-          }
-          onConnectionStatus({type: 'failed', reason: (typeof err === 'string' ? err : err.message)});
-          return Promise.reject(err);
-        });
-    };
-
-    var onConnectionFailed = function(reason) {
-      log.debug('publish::onConnectionFailed, participantId:', participantId, 'connection_id:', connection_id, 'reason:', reason);
-      if (participants[participantId]) {
-        if (participants[participantId].connections[connection_id]) {
-          if (participants[participantId].connections[connection_id].state === 'connected') {
-            rpcReq.unpub2Session(participants[participantId].controller, participantId, connection_id);
-            participants[participantId].connections[connection_id].state = 'connecting';
-          }
-          if (participants[participantId].connections[connection_id].state === 'connecting') {
+          if (streamDescription.audio && (!status.audio_codecs || status.audio_codecs.length < 1)) {
             rpcReq.unpublish(locality.node, connection_id);
             rpcReq.recycleAccessNode(locality.agent, locality.node, {session: participants[participantId].in_session, task: connection_id})
             .catch(function(reason) {
                 log.warn('AccessNode not recycled', locality);
             });
+            onConnectionStatus({type: 'failed', reason: 'No proper audio codec'});
+            return Promise.reject('No proper audio codec');
           }
-          delete participants[participantId].connections[connection_id];
-        }
-      }
-      onConnectionStatus({type: 'failed', reason: reason});
-      return Promise.reject(reason);
-    };
 
-    var connection_observer = connectionObserver(onConnectionStatus, onConnectionReady, onConnectionFailed),
-      in_session = participants[participantId].in_session;
+          if (streamDescription.video && (!status.video_codecs || status.video_codecs.length < 1)) {
+            rpcReq.unpublish(locality.node, connection_id);
+            rpcReq.recycleAccessNode(locality.agent, locality.node, {session: participants[participantId].in_session, task: connection_id})
+            .catch(function(reason) {
+                log.warn('AccessNode not recycled', locality);
+            });
+            onConnectionStatus({type: 'failed', reason: 'No proper video codec'});
+            return Promise.reject('No proper video codec');
+          }
 
-    participants[participantId].connections[connection_id] = {type: connectionType,
-                                                              direction: 'in',
-                                                              state: 'initialized',
-                                                              status_observer: connection_observer};
+          var video_resolution = (streamDescription.video && streamDescription.video.resolution);
+          video_resolution = ((typeof status.video_resolution === 'string' && status.video_resolution !== 'unknown') ? status.video_resolution : video_resolution);
 
-    return rpcReq.getAccessNode(cluster_name, connectionType, {session: in_session, task: connection_id}, participants[participantId].origin)
-      .then(function(accessNode) {
-        log.debug('publish::getAccessNode ok, participantId:', participantId, 'connection_id:', connection_id, 'locality:', accessNode);
-        locality = accessNode;
-        if (participants[participantId] === undefined || participants[participantId].connections[connection_id] === undefined) {
-          log.debug('aborting publishing because of early leave, participantId:', participantId, 'connection_id:', connection_id);
-          rpcReq.recycleAccessNode(locality.agent, locality.node, {session: in_session, task: connection_id})
-          .catch(function(reason) {
-              log.warn('AccessNode not recycled', locality);
+          var stream_description = {audio: streamDescription.audio && {codec: status.audio_codecs[0]},
+                                    video: streamDescription.video && {resolution: video_resolution,
+                                                                       device: streamDescription.video.device,
+                                                                       codec: status.video_codecs[0]},
+                                    type: connectionType
+                                   };
+          (streamDescription.video && streamDescription.video.framerate) && (stream_description.video.framerate = streamDescription.video.framerate);
+
+          var controller = participant.controller;
+          return rpcReq.pub2Session(controller, participantId, stream_id, locality, stream_description, notMix)
+            .then(function(result) {
+              log.debug('pub2Session ok, participantId:', participantId, 'connection_id:', connection_id);
+              var participant = participants[participantId];
+              if (participant === undefined) {
+                rpcReq.unpub2Session(controller, participantId, stream_id);
+                return Promise.reject('Participant ' + participantId + ' has left when controller responds publish ok.');
+              } else if (participant.connections[stream_id] === undefined) {
+                rpcReq.unpub2Session(controller, participantId, stream_id);
+                return Promise.reject('Connection ' + stream_id + ' has been released when controller responds publish ok.');
+              }
+
+              participant.connections[stream_id].state = 'connected';
+              onConnectionStatus(status);
+              return result;
+            }).catch(function(err) {
+              log.debug('pub2Session failed, participantId:', participantId, 'connection_id:', connection_id, 'err:', err);
+              var participant = participants[participantId];
+              if (participant) {
+                var connection = participant.connections[connection_id];
+                if (connection) {
+                  if (connection.state === 'connected') {
+                    rpcReq.unpub2Session(p.controller, participantId, stream_id);
+                    connection.state = 'connecting';
+                  }
+                  if (connection.state === 'connecting') {
+                    rpcReq.unpublish(connection.locality.node, connection_id);
+                    rpcReq.recycleAccessNode(connection.locality.agent, connection.locality.node, {session: participant.in_session, task: connection_id})
+                    .catch(function(reason) {
+                        log.warn('AccessNode not recycled', connection.locality);
+                    });
+                  }
+                }
+                delete participant.connections[connection_id];
+              }
+              onConnectionStatus({type: 'failed', reason: (typeof err === 'string' ? err : err.message)});
+              return Promise.reject(err);
+            });
+        };
+
+        var onConnectionFailed = function(reason) {
+          log.debug('publish::onConnectionFailed, participantId:', participantId, 'connection_id:', connection_id, 'reason:', reason);
+          if (participants[participantId]) {
+            if (participants[participantId].connections[connection_id]) {
+              if (participants[participantId].connections[connection_id].state === 'connected') {
+                rpcReq.unpub2Session(participants[participantId].controller, participantId, connection_id);
+                participants[participantId].connections[connection_id].state = 'connecting';
+              }
+              if (participants[participantId].connections[connection_id].state === 'connecting') {
+                rpcReq.unpublish(locality.node, connection_id);
+                rpcReq.recycleAccessNode(locality.agent, locality.node, {session: participants[participantId].in_session, task: connection_id})
+                .catch(function(reason) {
+                    log.warn('AccessNode not recycled', locality);
+                });
+              }
+              delete participants[participantId].connections[connection_id];
+            }
+          }
+          onConnectionStatus({type: 'failed', reason: reason});
+          return Promise.reject(reason);
+        };
+
+        var connection_observer = connectionObserver(onConnectionStatus, onConnectionReady, onConnectionFailed),
+          in_session = participants[participantId].in_session;
+
+        participants[participantId].connections[connection_id] = {type: connectionType,
+                                                                  direction: 'in',
+                                                                  state: 'initialized',
+                                                                  status_observer: connection_observer};
+
+        return rpcReq.getAccessNode(cluster_name, connectionType, {session: in_session, task: connection_id}, participants[participantId].origin)
+          .then(function(accessNode) {
+            log.debug('publish::getAccessNode ok, participantId:', participantId, 'connection_id:', connection_id, 'locality:', accessNode);
+            locality = accessNode;
+            if (participants[participantId] === undefined || participants[participantId].connections[connection_id] === undefined) {
+              log.debug('aborting publishing because of early leave, participantId:', participantId, 'connection_id:', connection_id);
+              rpcReq.recycleAccessNode(locality.agent, locality.node, {session: in_session, task: connection_id})
+              .catch(function(reason) {
+                  log.warn('AccessNode not recycled', locality);
+              });
+              return Promise.reject('publishing is aborted because of early leave');
+            }
+            participants[participantId].connections[connection_id].locality = locality;
+            var connect_options = constructConnectOptions(connection_id, connectionType, 'in', streamDescription, in_session);
+            return rpcReq.publish(locality.node,
+                                     connection_id,
+                                     connectionType,
+                                     connect_options,
+                                     connection_observer);
+          })
+          .then(function() {
+            log.debug('publish::pub2AccessNode ok, participantId:', participantId, 'connection_id:', connection_id);
+            if (participants[participantId] === undefined || participants[participantId].connections[connection_id] === undefined) {
+              log.debug('canceling publishing because of early leave, participantId:', participantId, 'connection_id:', connection_id);
+              rpcReq.unpublish(locality.node, connection_id);
+              rpcReq.recycleAccessNode(locality.agent, locality.node, {session: in_session, task: connection_id})
+              .catch(function(reason) {
+                  log.warn('AccessNode not recycled', locality);
+              });
+              return Promise.reject('publishing is canceled because of early leave');
+            }
+            participants[participantId].connections[connection_id].state = 'connecting';
+            return locality;
           });
-          return Promise.reject('publishing is aborted because of early leave');
-        }
-        participants[participantId].connections[connection_id].locality = locality;
-        var connect_options = constructConnectOptions(connection_id, connectionType, 'in', streamDescription, in_session);
-        return rpcReq.publish(locality.node,
-                                 connection_id,
-                                 connectionType,
-                                 connect_options,
-                                 connection_observer);
-      })
-      .then(function() {
-        log.debug('publish::pub2AccessNode ok, participantId:', participantId, 'connection_id:', connection_id);
-        if (participants[participantId] === undefined || participants[participantId].connections[connection_id] === undefined) {
-          log.debug('canceling publishing because of early leave, participantId:', participantId, 'connection_id:', connection_id);
-          rpcReq.unpublish(locality.node, connection_id);
-          rpcReq.recycleAccessNode(locality.agent, locality.node, {session: in_session, task: connection_id})
-          .catch(function(reason) {
-              log.warn('AccessNode not recycled', locality);
-          });
-          return Promise.reject('publishing is canceled because of early leave');
-        }
-        participants[participantId].connections[connection_id].state = 'connecting';
-        return locality;
-      });
+    });
+
   };
 
   that.unpublish = function(participantId, streamId) {
@@ -513,155 +505,158 @@ var Portal = function(spec, rpcReq) {
       act = 'addExternalOutput';
     }
 
-    if ((!isPermitted(participantId, act, 'audio') && subscriptionDescription.audio)
-        || (!isPermitted(participantId, act, 'video') && subscriptionDescription.video)) {
-      return Promise.reject('unauthorized');
-    }
+    return getUserPermission(participantId)
+      .then((userPermission) => {
+        if ((subscriptionDescription.audio && !isPermitted(userPermission, act, 'audio')) ||
+            (subscriptionDescription.video && !isPermitted(userPermission, act, 'video'))) {
+          return Promise.reject('unauthorized');
+        }
 
-    var subscription_id = connectionId;
+        var subscription_id = connectionId;
 
-    //FIXME : not allowed to subscribe an already subscribed stream, this is a limitation caused by FIXME - a.
-    if (participants[participantId].connections[subscription_id]) {
-      if (connectionType !== 'recording') {
-        return Promise.reject('Not allowed to subscribe an already-subscribed stream');
-      }
-    }
+        //FIXME : not allowed to subscribe an already subscribed stream, this is a limitation caused by FIXME - a.
+        if (participants[participantId].connections[subscription_id]) {
+          if (connectionType !== 'recording') {
+            return Promise.reject('Not allowed to subscribe an already-subscribed stream');
+          }
+        }
 
-    var connection_id = subscription_id,
-        locality;
+        var connection_id = subscription_id,
+            locality;
 
-    var onConnectionReady = function(status) {
-      var participant = participants[participantId];
-      log.debug('subscribe::onConnectionReady, participantId:', participantId, 'connection_id:', connection_id);
-
-      if (participant === undefined) {
-        return Promise.reject('Participant ' + participantId + ' has left when the connection gets ready.');
-      }
-
-      var subscription_description = {audio: subscriptionDescription.audio, video: subscriptionDescription.video};
-      (subscription_description.audio) && (subscription_description.audio.codecs = status.audio_codecs);
-      (subscription_description.video) && (subscription_description.video.codecs = status.video_codecs);
-      subscription_description.type = connectionType;
-
-      var controller = participant.controller;
-      return rpcReq.sub2Session(controller, participantId, connection_id, locality, subscription_description)
-        .then(function(result) {
-          log.debug('sub2Session ok, participantId:', participantId, 'connection_id:', connection_id);
+        var onConnectionReady = function(status) {
           var participant = participants[participantId];
+          log.debug('subscribe::onConnectionReady, participantId:', participantId, 'connection_id:', connection_id);
+
           if (participant === undefined) {
-            rpcReq.unsub2Session(controller, participantId, connection_id);
-            return Promise.reject('Participant ' + participantId + ' has left when controller responds subscribe ok.');
-          } else if (participant.connections[connection_id] === undefined) {
-            rpcReq.unsub2Session(controller, participantId, connection_id);
-            return Promise.reject('Connection ' + connection_id + ' has been released when controller responds subscribe ok.');
+            return Promise.reject('Participant ' + participantId + ' has left when the connection gets ready.');
           }
 
-          participant.connections[connection_id].state = 'connected';
-          participant.connections[connection_id].audio_codecs = (subscription_description.audio ? subscription_description.audio.codecs : []);
-          participant.connections[connection_id].video_codecs = (subscription_description.video ? subscription_description.video.codecs : []);
-          onConnectionStatus(status);
-          return result;
-        }).catch(function(err) {
-          log.debug('sub2Session failed, participantId:', participantId, 'connection_id:', connection_id, 'err:', err);
-          var participant = participants[participantId];
-          if (participant) {
-            var connection = participant.connections[connection_id];
-            if (connection) {
-              if (connection.state === 'connected') {
-                rpcReq.unsub2Session(participant.controller, participantId, connection_id);
-                connection.state = 'connecting';
+          var subscription_description = {audio: subscriptionDescription.audio, video: subscriptionDescription.video};
+          (subscription_description.audio) && (subscription_description.audio.codecs = status.audio_codecs);
+          (subscription_description.video) && (subscription_description.video.codecs = status.video_codecs);
+          subscription_description.type = connectionType;
+
+          var controller = participant.controller;
+          return rpcReq.sub2Session(controller, participantId, connection_id, locality, subscription_description)
+            .then(function(result) {
+              log.debug('sub2Session ok, participantId:', participantId, 'connection_id:', connection_id);
+              var participant = participants[participantId];
+              if (participant === undefined) {
+                rpcReq.unsub2Session(controller, participantId, connection_id);
+                return Promise.reject('Participant ' + participantId + ' has left when controller responds subscribe ok.');
+              } else if (participant.connections[connection_id] === undefined) {
+                rpcReq.unsub2Session(controller, participantId, connection_id);
+                return Promise.reject('Connection ' + connection_id + ' has been released when controller responds subscribe ok.');
               }
-              if (connection.state === 'connecting') {
-                rpcReq.unsubscribe(connection.locality.node, connection_id);
-                rpcReq.recycleAccessNode(connection.locality.agent, connection.locality.node, {session: participant.in_session, task: connection_id})
+
+              participant.connections[connection_id].state = 'connected';
+              participant.connections[connection_id].audio_codecs = (subscription_description.audio ? subscription_description.audio.codecs : []);
+              participant.connections[connection_id].video_codecs = (subscription_description.video ? subscription_description.video.codecs : []);
+              onConnectionStatus(status);
+              return result;
+            }).catch(function(err) {
+              log.debug('sub2Session failed, participantId:', participantId, 'connection_id:', connection_id, 'err:', err);
+              var participant = participants[participantId];
+              if (participant) {
+                var connection = participant.connections[connection_id];
+                if (connection) {
+                  if (connection.state === 'connected') {
+                    rpcReq.unsub2Session(participant.controller, participantId, connection_id);
+                    connection.state = 'connecting';
+                  }
+                  if (connection.state === 'connecting') {
+                    rpcReq.unsubscribe(connection.locality.node, connection_id);
+                    rpcReq.recycleAccessNode(connection.locality.agent, connection.locality.node, {session: participant.in_session, task: connection_id})
+                    .catch(function(reason) {
+                        log.warn('AccessNode not recycled', connection.locality);
+                    });
+                  }
+                }
+                delete participant.connections[connection_id];
+              }
+              onConnectionStatus({type: 'failed', reason: (typeof err === 'string' ? err : err.message)});
+              return Promise.reject(err);
+            });
+        };
+
+        var onConnectionFailed = function(reason) {
+          log.debug('subscribe::onConnectionFailed, participantId:', participantId, 'connection_id:', connection_id, 'reason:', reason);
+          if (participants[participantId]) {
+            if (participants[participantId].connections[connection_id]) {
+              if (participants[participantId].connections[connection_id].state === 'connected') {
+                rpcReq.unsub2Session(participants[participantId].controller, participantId, connection_id);
+                participants[participantId].connections[connection_id].state = 'connecting';
+              }
+              if (participants[participantId].connections[connection_id].state === 'connecting') {
+                rpcReq.unsubscribe(locality.node, connection_id);
+                rpcReq.recycleAccessNode(locality.agent, locality.node, {session: participants[participantId].in_session, task: connection_id})
                 .catch(function(reason) {
-                    log.warn('AccessNode not recycled', connection.locality);
+                    log.warn('AccessNode not recycled', locality);
                 });
               }
+              delete participants[participantId].connections[connection_id];
             }
-            delete participant.connections[connection_id];
           }
-          onConnectionStatus({type: 'failed', reason: (typeof err === 'string' ? err : err.message)});
-          return Promise.reject(err);
-        });
-    };
+          onConnectionStatus({type: 'failed', reason: reason});
+          return Promise.reject(reason);
+        };
 
-    var onConnectionFailed = function(reason) {
-      log.debug('subscribe::onConnectionFailed, participantId:', participantId, 'connection_id:', connection_id, 'reason:', reason);
-      if (participants[participantId]) {
-        if (participants[participantId].connections[connection_id]) {
-          if (participants[participantId].connections[connection_id].state === 'connected') {
-            rpcReq.unsub2Session(participants[participantId].controller, participantId, connection_id);
-            participants[participantId].connections[connection_id].state = 'connecting';
+        var connection = participants[participantId].connections[connection_id];
+        if (connection) {
+          if (connection.state === 'connected') {
+              rpcReq.unsub2Session(participants[participantId].controller, participantId, connection_id);
+              setTimeout(function() {
+                locality = connection.locality;
+                onConnectionReady({type: 'ready', audio_codecs: connection.audio_codecs, video_codecs: connection.video_codecs});
+              }, 0);
+              connection.state === 'connecting';
           }
-          if (participants[participantId].connections[connection_id].state === 'connecting') {
-            rpcReq.unsubscribe(locality.node, connection_id);
-            rpcReq.recycleAccessNode(locality.agent, locality.node, {session: participants[participantId].in_session, task: connection_id})
-            .catch(function(reason) {
-                log.warn('AccessNode not recycled', locality);
+          //TODO: notify user about 'recorder-continued'? Does it really neccesary?
+          return Promise.resolve(connection.locality);
+        } else {
+          var connection_observer = connectionObserver(onConnectionStatus, onConnectionReady, onConnectionFailed),
+            in_session = participants[participantId].in_session;
+
+          participants[participantId].connections[connection_id] = {type: connectionType,
+                                                                    direction: 'out',
+                                                                    state: 'initialized',
+                                                                    status_observer: connection_observer};
+
+          return rpcReq.getAccessNode(cluster_name, connectionType, {session: in_session, task: connection_id}, participants[participantId].origin)
+            .then(function(accessNode) {
+              log.debug('subscribe::getAccessNode ok, participantId:', participantId, 'connection_id:', connection_id, 'locality:', accessNode);
+              locality = accessNode;
+              if (participants[participantId] === undefined || participants[participantId].connections[connection_id] === undefined) {
+                log.debug('aborting subscribing because of early leave, participantId:', participantId, 'connection_id:', connection_id);
+                rpcReq.recycleAccessNode(locality.agent, locality.node, {session: in_session, task: connection_id}).catch(function(reason) {
+                    log.warn('AccessNode not recycled', locality);
+                });
+                return Promise.reject('subscribing is aborted because of early leave');
+              }
+              participants[participantId].connections[connection_id].locality = locality;
+              var connect_options = constructConnectOptions(connection_id, connectionType, 'out', subscriptionDescription, in_session);
+              return rpcReq.subscribe(locality.node,
+                                         connection_id,
+                                         connectionType,
+                                         connect_options,
+                                         connection_observer);
+            })
+            .then(function() {
+              log.debug('subscribe::sub2AccessNode ok, participantId:', participantId, 'connection_id:', connection_id);
+              if (participants[participantId] === undefined || participants[participantId].connections[connection_id] === undefined) {
+                log.debug('canceling subscribing because of early leave, participantId:', participantId, 'connection_id:', connection_id);
+                rpcReq.unsubscribe(locality.node, connection_id);
+                rpcReq.recycleAccessNode(locality.agent, locality.node, {session: in_session, task: connection_id}).catch(function(reason) {
+                    log.warn('AccessNode not recycled', locality);
+                });
+                return Promise.reject('subscribing is canceled because of early leave');
+              }
+              participants[participantId].connections[connection_id].state = 'connecting';
+              return locality;
             });
-          }
-          delete participants[participantId].connections[connection_id];
         }
-      }
-      onConnectionStatus({type: 'failed', reason: reason});
-      return Promise.reject(reason);
-    };
-
-    var connection = participants[participantId].connections[connection_id];
-    if (connection) {
-      if (connection.state === 'connected') {
-          rpcReq.unsub2Session(participants[participantId].controller, participantId, connection_id);
-          setTimeout(function() {
-            locality = connection.locality;
-            onConnectionReady({type: 'ready', audio_codecs: connection.audio_codecs, video_codecs: connection.video_codecs});
-          }, 0);
-          connection.state === 'connecting';
-      }
-      //TODO: notify user about 'recorder-continued'? Does it really neccesary?
-      return Promise.resolve(connection.locality);
-    } else {
-      var connection_observer = connectionObserver(onConnectionStatus, onConnectionReady, onConnectionFailed),
-        in_session = participants[participantId].in_session;
-
-      participants[participantId].connections[connection_id] = {type: connectionType,
-                                                                direction: 'out',
-                                                                state: 'initialized',
-                                                                status_observer: connection_observer};
-
-      return rpcReq.getAccessNode(cluster_name, connectionType, {session: in_session, task: connection_id}, participants[participantId].origin)
-        .then(function(accessNode) {
-          log.debug('subscribe::getAccessNode ok, participantId:', participantId, 'connection_id:', connection_id, 'locality:', accessNode);
-          locality = accessNode;
-          if (participants[participantId] === undefined || participants[participantId].connections[connection_id] === undefined) {
-            log.debug('aborting subscribing because of early leave, participantId:', participantId, 'connection_id:', connection_id);
-            rpcReq.recycleAccessNode(locality.agent, locality.node, {session: in_session, task: connection_id}).catch(function(reason) {
-                log.warn('AccessNode not recycled', locality);
-            });
-            return Promise.reject('subscribing is aborted because of early leave');
-          }
-          participants[participantId].connections[connection_id].locality = locality;
-          var connect_options = constructConnectOptions(connection_id, connectionType, 'out', subscriptionDescription, in_session);
-          return rpcReq.subscribe(locality.node,
-                                     connection_id,
-                                     connectionType,
-                                     connect_options,
-                                     connection_observer);
-        })
-        .then(function() {
-          log.debug('subscribe::sub2AccessNode ok, participantId:', participantId, 'connection_id:', connection_id);
-          if (participants[participantId] === undefined || participants[participantId].connections[connection_id] === undefined) {
-            log.debug('canceling subscribing because of early leave, participantId:', participantId, 'connection_id:', connection_id);
-            rpcReq.unsubscribe(locality.node, connection_id);
-            rpcReq.recycleAccessNode(locality.agent, locality.node, {session: in_session, task: connection_id}).catch(function(reason) {
-                log.warn('AccessNode not recycled', locality);
-            });
-            return Promise.reject('subscribing is canceled because of early leave');
-          }
-          participants[participantId].connections[connection_id].state = 'connecting';
-          return locality;
-        });
-    }
+      });
   };
 
   that.unsubscribe = function(participantId, subscriptionId) {
@@ -739,35 +734,38 @@ var Portal = function(spec, rpcReq) {
       return Promise.reject('Participant ' + participantId + ' does NOT exist.');
     }
 
-    if (onOff === 'on' && !isPermitted(participantId, 'publish', track)) {
-      return Promise.reject('start stream permission denied');
-    }
+    return getUserPermission(participantId)
+      .then((userPermission) => {
+        if (onOff === 'on' && !isPermitted(userPermission, 'publish', track)) {
+          return Promise.reject('start stream permission denied');
+        }
 
-    var subscription_id = participantId + '-sub-' + connectionId,
-        stream_id = connectionId;
+        var subscription_id = participantId + '-sub-' + connectionId,
+            stream_id = connectionId;
 
-    var targetConnectionId = (direction === 'out')? subscription_id : stream_id;
+        var targetConnectionId = (direction === 'out')? subscription_id : stream_id;
 
-    var targetConnection;
-    if (participant.connections[targetConnectionId] && participant.connections[targetConnectionId].direction === direction) {
-      targetConnection = participant.connections[targetConnectionId];
-    }
+        var targetConnection;
+        if (participant.connections[targetConnectionId] && participant.connections[targetConnectionId].direction === direction) {
+          targetConnection = participant.connections[targetConnectionId];
+        }
 
-    if (targetConnection === undefined) {
-      return Promise.reject('connection does not exist');
-    }
+        if (targetConnection === undefined) {
+          return Promise.reject('connection does not exist');
+        }
 
-    if (targetConnection.type !== 'webrtc') {
-      return Promise.reject(targetConnection.type + ' connection does not support mediaOnOff');
-    }
+        if (targetConnection.type !== 'webrtc') {
+          return Promise.reject(targetConnection.type + ' connection does not support mediaOnOff');
+        }
 
-    var status = (onOff === 'on')? 'active':'inactive';
+        var status = (onOff === 'on')? 'active':'inactive';
 
-    if (direction === 'in') {
-      rpcReq.updateStream(participant.controller, targetConnectionId, track, status);
-    }
+        if (direction === 'in') {
+          rpcReq.updateStream(participant.controller, targetConnectionId, track, status);
+        }
 
-    return rpcReq.mediaOnOff(targetConnection.locality.node, targetConnectionId, track, direction, onOff);
+        return rpcReq.mediaOnOff(targetConnection.locality.node, targetConnectionId, track, direction, onOff);
+      });
   };
 
   that.setMute = function(participantId, streamId, muted) {
@@ -778,38 +776,49 @@ var Portal = function(spec, rpcReq) {
       return Promise.reject('Participant ' + participantId + ' does NOT exist.');
     }
 
-    if (!isPermitted(participantId, 'manage')) {
-      return Promise.reject('Mute/Unmute Permission Denied');
-    }
+    return getUserPermission(participantId)
+      .then((userPermission) => {
+        if (!isPermitted(userPermission, 'manage')) {
+          return Promise.reject('Mute/Unmute Permission Denied');
+        }
 
-    return rpcReq.setMute(participant.controller, streamId, muted);
+        return rpcReq.setMute(participant.controller, streamId, muted);
+      });
   };
 
-  that.setPermission = function(participantId, targetId, act, value, fromSession) {
-    log.debug('setPermission, participantId:', participantId, targetId, act, value, fromSession);
-    var target = participants[targetId];
+  that.setPermission = function(participantId, targetId, act, value) {
+    log.debug('setPermission, participantId:', participantId, targetId, act, value);
 
+    var participant = participants[participantId];
+    if (participant === undefined) {
+      return Promise.reject('Participant ' + participantId + ' does NOT exist.');
+    }
+
+    var target = participants[targetId];
     if (target === undefined) {
       return Promise.reject('Target ' + targetId + ' does NOT exist.');
     }
 
-    if (fromSession) {
-      // Set the permission from session RPC
-      target.permissions[act] = value;
-      return Promise.resolve('ok');
-    } else {
-      // Notify session controller
-      var participant = participants[participantId];
-      if (participant === undefined) {
-        return Promise.reject('Participant ' + participantId + ' does NOT exist.');
-      }
+    return getUserPermission(participantId)
+      .then((userPermission) => {
+        if (!isPermitted(userPermission, 'manage')) {
+          return Promise.reject('setPermission Permission Denied');
+        }
 
-      if (!isPermitted(participantId, 'manage')) {
-        return Promise.reject('setPermission Permission Denied');
-      }
-
-      return rpcReq.setPermission(participant.controller, targetId, act, value);
-    }
+        // Update permission in database
+        let userId = targetId;
+        let roomId = target.in_session;
+        return dbAccess.getPermissionOfUser(userId, roomId)
+          .then((permission) => {
+            permission = permission || {};
+            permission.customize = permission.customize || {};
+            permission.customize[act] = value;
+            return dbAccess.savePermissionOfUser(userId, roomId, permission);
+          })
+          .then((saved) => {
+            return 'ok';
+          });
+      });
   };
 
   that.getRegion = function(participantId, subStreamId, mixStreamId) {
@@ -836,11 +845,14 @@ var Portal = function(spec, rpcReq) {
       return Promise.reject('Participant ' + participantId + ' does NOT exist.');
     }
 
-    if (!isTextPermitted(participantId)) {
-      return Promise.reject('unauthorized');
-    }
+    return getUserPermission(participantId)
+      .then((userPermission) => {
+        if (!isTextPermitted(userPermission)) {
+          return Promise.reject('unauthorized');
+        }
 
-    return rpcReq.text(participants[participantId].controller, participantId, to, message);
+        return rpcReq.text(participants[participantId].controller, participantId, to, message);
+      });
   };
 
   that.onFaultDetected = function (message) {

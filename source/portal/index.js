@@ -21,7 +21,6 @@ config.portal.rest_port = config.portal.rest_port || 8081;
 config.portal.ssl = config.portal.ssl || false;
 config.portal.reconnection_ticket_lifetime = config.portal.reconnection_ticket_lifetime || 600;
 config.portal.reconnection_timeout = config.portal.reconnection_timeout || 120;
-config.portal.roles = config.portal.roles || {'admin':{'publish': true, 'subscribe':true, 'record':true, 'addExternalOutput':true}, 'presenter':{'publish': true, 'subscribe':true, 'record':true, 'addExternalOutput':true}, 'audio_only_presenter':{'publish': {'audio': true}, 'subscribe':{'audio': true}}, 'viewer':{'subscribe':true}, 'video_only_viewer':{'subscribe':{'video': true}}, 'no_text_viewer': {'subscribe': true, 'text': false}};
 
 config.cluster = config.cluster || {};
 config.cluster.name = config.cluster.name || 'woogeen-cluster';
@@ -38,6 +37,11 @@ config.capacity.regions = config.capacity.regions || [];
 config.rabbit = config.rabbit || {};
 config.rabbit.host = config.rabbit.host || 'localhost';
 config.rabbit.port = config.rabbit.port || 5672;
+
+config.nuve = config.nuve || {};
+config.nuve.dataBaseURL = config.nuve.dataBaseURL || 'localhost/nuvedb';
+
+global.config = config;
 
 
 var amqper = require('./amqp_client')();
@@ -169,8 +173,7 @@ var startServers = function(id, tokenKey) {
   portal = require('./portal')({tokenKey: tokenKey,
                                 tokenServer: 'nuve',
                                 clusterName: config.cluster.name,
-                                selfRpcId: id,
-                                permissionMap: config.portal.roles},
+                                selfRpcId: id},
                                 rpcReq);
   socketio_server = require('./socketIOServer')({port: config.portal.port,
                                                  ssl: config.portal.ssl,
@@ -232,18 +235,6 @@ var rpcPublic = {
       callback('callback', 'error', 'socketio server is not ready');
     }
   },
-  setPermission: function(targetId, act, updatedValue, callback) {
-    if (socketio_server) {
-      socketio_server.updatePermission(targetId, act, updatedValue)
-      .then(function() {
-        callback('callback', 'ok');
-      }).catch(function(reason) {
-        callback('callback', 'error', reason);
-      });
-    } else {
-      callback('callback', 'error', 'socketio server is not ready');
-    }
-  }
 };
 
 amqper.connect(config.rabbit, function () {

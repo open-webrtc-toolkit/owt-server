@@ -14,40 +14,6 @@ reconnection_ticket_lifetime = 600 #default: 600
 # Client will leave conference if it cannot reconnect to Socket.IO server after |reconnection_timeout| seconds.
 reconnection_timeout = 120 #default: 120
 
-#Roles defined in services
-# NOTE: Each of the roles is defined in a tree-level structure and must comply with the following rules:
-# 1) the ROLE level, are key-value pairs representing the role name and its operation scope, in which the keys must be strings such as the 'admin'/'presenter'/'viewer'... demonstrated as follow, and the values must be the OPERATION level objects.
-# 2) the OPERATION level, are key-value pairs representing the operation set the role is allowed to perform, in which the keys must be among the list of ['publish', 'subscribe', 'record', 'text'], and the values must be either literally true, false or OBJECT level objects. The default value is false for 'publish', 'subscribe' and 'record', and true for 'text' if not specified.
-# 3) the OBJECT level, are key-value pairs representing the media the operation can be performed upon, in which the keys must be in the list of ['audio', 'video', 'screen'], and the values must be either literally true or false. The default value is false if not specified.
-[portal.roles.admin]
-publish = true
-record = true
-subscribe = true
-addExternalOutput = true
-# The 'manage' operation includes mute/unmute users and change users' permissions in same room
-manage = true
-
-[portal.roles.presenter]
-publish = true
-record = true
-subscribe = true
-addExternalOutput = true
-
-[portal.roles.audio_only_presenter.publish]
-audio = true
-[portal.roles.audio_only_presenter.subscribe]
-audio = true
-
-[portal.roles.viewer]
-subscribe = true
-
-[portal.roles.video_only_viewer.subscribe]
-video = true
-
-[portal.roles.no_text_viewer]
-subscribe = true
-text = false
-
 [cluster]
 name = "woogeen-cluster"
 
