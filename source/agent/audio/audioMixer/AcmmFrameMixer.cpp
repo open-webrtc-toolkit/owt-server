@@ -120,7 +120,7 @@ int32_t AcmmFrameMixer::getFreeId()
 void AcmmFrameMixer::setEventRegistry(EventRegistry* handle)
 {
     boost::unique_lock<boost::shared_mutex> lock(m_mutex);
-    ELOG_ERROR("setEventRegistry(%p)", handle);
+    ELOG_TRACE("setEventRegistry(%p)", handle);
 
     m_asyncHandle = handle;
 }
@@ -128,7 +128,7 @@ void AcmmFrameMixer::setEventRegistry(EventRegistry* handle)
 void AcmmFrameMixer::enableVAD(uint32_t period)
 {
     boost::unique_lock<boost::shared_mutex> lock(m_mutex);
-    ELOG_ERROR("enableVAD, period(%u)", period);
+    ELOG_INFO("enableVAD, period(%u)", period);
 
     m_vadEnabled = true;
     m_mostActiveChannel = -1;
@@ -138,7 +138,7 @@ void AcmmFrameMixer::enableVAD(uint32_t period)
 void AcmmFrameMixer::disableVAD()
 {
     boost::unique_lock<boost::shared_mutex> lock(m_mutex);
-    ELOG_ERROR("disableVAD");
+    ELOG_INFO("disableVAD");
 
     m_vadEnabled = false;
     m_mixerModule->UnRegisterMixerStatusCallback();
@@ -147,7 +147,7 @@ void AcmmFrameMixer::disableVAD()
 void AcmmFrameMixer::resetVAD()
 {
     boost::unique_lock<boost::shared_mutex> lock(m_mutex);
-    ELOG_ERROR("resetVAD");
+    ELOG_DEBUG("resetVAD");
     m_mostActiveChannel = -1;
 }
 
