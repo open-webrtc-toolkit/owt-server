@@ -11,6 +11,32 @@ var logger = require('./logger').logger;
 // Logger
 var log = logger.getLogger('VideoNode');
 var InternalConnectionFactory = require('./InternalConnectionFactory');
+var internalConnFactory = new InternalConnectionFactory;
+
+var useHardware = global.config.video.hardwareAccelerated,
+    openh264Enabled = global.config.video.openh264Enabled,
+    yamiEnabled = global.config.video.yamiEnabled,
+    gaccPluginEnabled = global.config.video.enableBetterHEVCQuality;
+
+var VideoMixer, VideoTranscoder;
+try {
+    if (useHardware && yamiEnabled) {
+        VideoMixer = require('./videoMixer_hw_yami/build/Release/videoMixer-hw-yami');
+        VideoTranscoder = require('./videoMixer_hw_yami/build/Release/videoMixer-hw-yami');//FIXME: use next line instead.
+        //VideoTranscoder = require('./videoMixer_hw_yami/build/Release/videoTranscoder-hw-yami');
+    } else if (useHardware && !yamiEnabled) {
+        VideoMixer = require('./videoMixer_hw_msdk/build/Release/videoMixer-hw-msdk');
+        VideoTranscoder = require('./videoMixer_hw_msdk/build/Release/videoMixer-hw-msdk');//FIXME: use next line instead.
+        //VideoTranscoder = require('./videoMixer_hw_msdk/build/Release/videoTranscoder-hw-msdk');
+    } else {
+        VideoMixer = require('./videoMixer_sw/build/Release/videoMixer-sw');
+        VideoTranscoder = require('./videoMixer_sw/build/Release/videoMixer-sw');//FIXME: use next line instead.
+        //VideoTranscoder = require('./videoMixer_sw/build/Release/videoTranscoder-sw');
+    }
+} catch (e) {
+    log.error(e);
+    process.exit(-2);
+}
 
 var VideoResolutionMap = { // definition adopted from VideoLayout.h
     cif:      ['cif'],
@@ -38,7 +64,7 @@ function calculateResolutions(rootResolution, useMultistreaming) {
     });
 }
 
-module.exports = function (rpcClient) {
+function VMixer(rpcClient, clusterIP) {
     var that = {},
         engine,
         belong_to,
@@ -66,31 +92,12 @@ module.exports = function (rpcClient) {
         inputs = {},
         maxInputNum = 0,
 
-        useHardware = global.config.video.hardwareAccelerated,
-        openh264Enabled = global.config.video.openh264Enabled,
-        yamiEnabled = global.config.video.yamiEnabled,
-        gaccPluginEnabled = global.config.video.enableBetterHEVCQuality,
-
         /*{ConnectionID: {video: StreamID | undefined,
                           connection: InternalOut}
                          }
          }
          */
-        connections = {},
-        internalConnFactory = new InternalConnectionFactory;
-    var VideoMixer;
-    try {
-        if (useHardware && yamiEnabled) {
-            VideoMixer = require('./videoMixer_hw_yami/build/Release/videoMixer-hw-yami');
-        } else if (useHardware && !yamiEnabled) {
-            VideoMixer = require('./videoMixer_hw_msdk/build/Release/videoMixer-hw-msdk');
-        } else {
-            VideoMixer = require('./videoMixer_sw/build/Release/videoMixer-sw');
-        }
-    } catch (e) {
-        log.error(e);
-        process.exit(-2);
-    }
+        connections = {};
 
     var addInput = function (stream_id, codec, options, avatar, on_ok, on_error) {
         if (engine) {
@@ -197,7 +204,7 @@ module.exports = function (rpcClient) {
         }
     };
 
-    var initEngine = function (videoConfig, belongTo, layoutcontroller, callback) {
+    that.initialize = function (videoConfig, belongTo, layoutcontroller, callback) {
         log.debug('initEngine, videoConfig:', videoConfig);
         var config = {
             'hardware': useHardware,
@@ -217,7 +224,7 @@ module.exports = function (rpcClient) {
 
         // FIXME: The supported codec list should be a sub-list of those querried from the engine
         // and filterred out according to config.
-        supported_codecs = ['vp8'];
+        supported_codecs = ['vp8', 'vp9'];
         if (useHardware || openh264Enabled) {
             supported_codecs.push('h264');
         }
@@ -225,8 +232,6 @@ module.exports = function (rpcClient) {
         if (useHardware) {
             supported_codecs.push('h265');
         }
-
-        supported_codecs.push('vp9');
 
         supported_resolutions = calculateResolutions(videoConfig.resolution, videoConfig.multistreaming);
 
@@ -247,6 +252,29 @@ module.exports = function (rpcClient) {
             engine.close();
             engine = undefined;
         }
+    };
+
+    that.onFaultDetected = function (message) {
+        if (message.purpose === 'session' && controller) {
+            if ((message.type === 'node' && message.id === controller) ||
+                (message.type === 'worker' && controller.startsWith(message.id))) {
+                log.error('Session controller (type:', message.type, 'id:', message.id, ') fault is detected, exit.');
+                that.deinit();
+                process.exit();
+            }
+        }
+    };
+
+    that.createInternalConnection = function (connectionId, direction, internalOpt, callback) {
+        internalOpt.minport = global.config.internal.minport;
+        internalOpt.maxport = global.config.internal.maxport;
+        var portInfo = internalConnFactory.create(connectionId, direction, internalOpt);
+        callback('callback', {ip: clusterIP, port: portInfo});
+    };
+
+    that.destroyInternalConnection = function (connectionId, direction, callback) {
+        internalConnFactory.destroy(connectionId, direction);
+        callback('callback', 'ok');
     };
 
     that.generate = function (codec, resolution, quality, callback) {
@@ -290,18 +318,6 @@ module.exports = function (rpcClient) {
         removeOutput(stream_id);
     };
 
-    that.createInternalConnection = function (connectionId, direction, internalOpt, callback) {
-        internalOpt.minport = global.config.internal.minport;
-        internalOpt.maxport = global.config.internal.maxport;
-        var portInfo = internalConnFactory.create(connectionId, direction, internalOpt);
-        callback('callback', {ip: that.clusterIP, port: portInfo});
-    };
-
-    that.destroyInternalConnection = function (connectionId, direction, callback) {
-        internalConnFactory.destroy(connectionId, direction);
-        callback('callback', 'ok');
-    };
-
     that.setInputActive = function (stream_id, active, callback) {
         if (inputs[stream_id]) {
             engine.setInputActive(stream_id, !!active);
@@ -325,7 +341,7 @@ module.exports = function (rpcClient) {
             log.debug('publish 1, inputs.length:', Object.keys(inputs).length, 'maxInputNum:', maxInputNum);
             if (Object.keys(inputs).length < maxInputNum) {
                 addInput(stream_id, options.video.codec, options, options.avatar, function () {
-                    callback('callback', {ip: that.clusterIP, port: inputs[stream_id].getListeningPort()});
+                    callback('callback', {ip: clusterIP, port: inputs[stream_id].getListeningPort()});
                 }, function (error_reason) {
                     log.error(error_reason);
                     callback('callback', 'error', error_reason);
@@ -335,7 +351,7 @@ module.exports = function (rpcClient) {
                 callback('callback', 'error', 'Too many inputs in video-engine.');
             }
         } else {
-            callback('callback', {ip: that.clusterIP, port: inputs[stream_id].getListeningPort()});
+            callback('callback', {ip: clusterIP, port: inputs[stream_id].getListeningPort()});
         }
     };
 
@@ -444,21 +460,152 @@ module.exports = function (rpcClient) {
         }
     };
 
-    that.init = function (service, config, belongTo, controller, callback) {
-        if (service === 'mixing') {
-            initEngine(config, belongTo, controller, callback);
-        } else if (service === 'transcoding') {
-            var videoConfig = {maxInput: 1,
-                               bitrate: 0,
-                               resolution: (config.resolution === 'unknown' || VideoResolutionMap[config.resolution] === undefined) ? 'hd1080p' : config.resolution,
-                               bkColor: 'black',
-                               multistreaming: true,
-                               layout: [{region: [{id: '1', left: 0, top: 0, relativesize: 1}]}],
-                               crop: false};
-            initEngine(videoConfig, belongTo, controller, callback);
+    return that;
+};
+
+function VTranscoder(rpcClient, clusterIP) {
+    var that = {},
+        engine,
+        controller,
+
+        supported_codecs = [],
+
+        input_id = undefined,
+        input_conn = undefined,
+
+        /*{StreamID : {codec: 'vp8' | 'h264' |...,
+                       dispatcher: Dispather,
+                       }}*/
+        outputs = {},
+
+        /*{ConnectionID: {video: StreamID | undefined,
+                          connection: InternalOut}
+                         }
+         }
+         */
+        connections = {};
+
+    var setInput = function (stream_id, codec, options, on_ok, on_error) {
+        if (engine) {
+            if (!useHardware && !openh264Enabled && codec === 'h264') {
+                on_error('Codec ' + codec + ' is not supported by video engine.');
+            } else {
+                var conn = internalConnFactory.fetch(stream_id, 'in');
+                if (!conn) {
+                    on_error('Create internal connection failed.');
+                    return;
+                }
+                conn.connect(options);
+
+                if (engine.addInput(stream_id, codec, conn, global.config.avatar.location)) {//FIXME: use next line instead.
+                //if (engine.setInput(stream_id, codec, conn)) {
+                    input_id = stream_id;
+                    input_conn = conn;
+                    log.debug('setInput ok, stream_id:', stream_id, 'codec:', codec, 'options:', options);
+                    on_ok(stream_id);
+                } else {
+                    internalConnFactory.destroy(stream_id, 'in');
+                    on_error('Failed in setting input to video-engine.');
+                }
+            }
         } else {
-            log.error('Unknown service type to init a video node:', service);
-            callback('callback', 'error', 'Unknown service type to init a video node.');
+            on_error('Video-transcoder engine is not ready.');
+        }
+    };
+
+    var unsetInput = function () {
+        if (input_id) {
+            engine.removeInput(input_id);//FIXME: use next line instead.
+            //engine.unsetInput(input_id);
+            internalConnFactory.destroy(input_id, 'in');
+            input_id = undefined;
+            input_conn = undefined;
+        }
+    };
+
+    var addOutput = function (codec, on_ok, on_error) {
+        if (engine) {
+            for (var id in outputs) {
+                if (outputs[id].codec === codec) {
+                    return on_ok(id);
+                }
+            }
+
+            log.debug('addOutput: codec', codec);
+
+            var stream_id = Math.random() * 1000000000000000000 + '';
+            var dispatcher = new MediaFrameMulticaster();
+            if (engine.addOutput(stream_id, codec, 'vga', 'standard', dispatcher)) {//FIXME: use next line instead.
+            //if (engine.addOutput(stream_id, codec, dispatcher)) {
+                outputs[stream_id] = {codec: codec,
+                                      dispatcher: dispatcher,
+                                      connections: {}};
+                log.debug('addOutput ok, stream_id:', stream_id);
+                on_ok(stream_id);
+            } else {
+                on_error('Failed in yielding output');
+            }
+        } else {
+            on_error('Video-transcoder engine is not ready.');
+        }
+    };
+
+    var removeOutput = function (stream_id) {
+        if (outputs[stream_id]) {
+            var output = outputs[stream_id];
+            for (var connectionId in output.connections) {
+                 output.dispatcher.removeDestination('video', output.connections[connectionId].receiver());
+                 output.connections[connectionId].close();
+                 delete output.connections[connectionId];
+            }
+            engine.removeOutput(stream_id);
+            output.dispatcher.close();
+            delete outputs[stream_id];
+        }
+    };
+
+    that.initialize = function (ctrlr, callback) {
+        log.debug('initEngine, videoConfig:', videoConfig);
+        var config = {
+            'hardware': useHardware,
+            'maxinput': 1,
+            'resolution': 'hd1080p',
+            'backgroundcolor': 'black',
+            'layout': [{region: [{id: '1', left: 0, top: 0, relativesize: 1}]}],
+            'simulcast': false,
+            'crop': false,
+            'gaccplugin': gaccPluginEnabled
+        };
+
+        controller = ctrlr;
+
+        engine = new VideoMixer(JSON.stringify(config));
+        //engine = new VideoTranscoder(JSON.stringify({hardware: useHardware}));
+
+        // FIXME: The supported codec list should be a sub-list of those querried from the engine
+        // and filterred out according to config.
+        supported_codecs = ['vp8', 'vp9'];
+        if (useHardware || openh264Enabled) {
+            supported_codecs.push('h264');
+        }
+
+        if (useHardware) {
+            supported_codecs.push('h265');
+        }
+
+        log.info('Video transcoding engine init OK');
+        callback('callback', {codecs: supported_codecs});
+    };
+
+    that.deinit = function () {
+        for (var stream_id in outputs) {
+            removeOutput(stream_id);
+        }
+        input_id && unsetInput(input_id);
+
+        if (engine) {
+            engine.close();
+            engine = undefined;
         }
     };
 
@@ -471,6 +618,174 @@ module.exports = function (rpcClient) {
                 process.exit();
             }
         }
+    };
+
+    that.createInternalConnection = function (connectionId, direction, internalOpt, callback) {
+        internalOpt.minport = global.config.internal.minport;
+        internalOpt.maxport = global.config.internal.maxport;
+        var portInfo = internalConnFactory.create(connectionId, direction, internalOpt);
+        callback('callback', {ip: clusterIP, port: portInfo});
+    };
+
+    that.destroyInternalConnection = function (connectionId, direction, callback) {
+        internalConnFactory.destroy(connectionId, direction);
+        callback('callback', 'ok');
+    };
+
+    that.generate = function (codec, callback) {
+        log.debug('generate, codec:', codec);
+        codec = codec || supported_codecs[0];
+        codec = codec.toLowerCase();
+
+        for (var stream_id in outputs) {
+            if (outputs[stream_id].codec === codec) {
+                callback('callback', stream_id);
+                return;
+            }
+        }
+
+        if (supported_codecs.indexOf(codec) === -1) {
+            log.error('Not supported codec:'+codec);
+            callback('callback', 'error', 'Not supported codec.');
+            return;
+        }
+
+        addOutput(codec, function (stream_id) {
+            callback('callback', stream_id);
+        }, function (error_reason) {
+            log.error(error_reason);
+            callback('callback', 'error', error_reason);
+        });
+    };
+
+    that.degenerate = function (stream_id) {
+        removeOutput(stream_id);
+    };
+
+    that.publish = function (stream_id, stream_type, options, callback) {
+        log.debug('publish, stream_id:', stream_id, 'stream_type:', stream_type, 'options:', options);
+        if (stream_type !== 'internal') {
+            return callback('callback', 'error', 'can not publish a stream to video engine through a non-internal connection');
+        }
+
+        if (options.video === undefined || options.video.codec === undefined) {
+            return callback('callback', 'error', 'can not publish a stream to video engine without proper video codec');
+        }
+
+        if (input_id === undefined) {
+            log.debug('publish 1, inputs.length:', Object.keys(inputs).length, 'maxInputNum:', maxInputNum);
+            if (Object.keys(inputs).length < maxInputNum) {
+                setInput(stream_id, options.video.codec, options, function () {
+                    callback('callback', {ip: clusterIP, port: inputs[stream_id].getListeningPort()});
+                }, function (error_reason) {
+                    log.error(error_reason);
+                    callback('callback', 'error', error_reason);
+                });
+            } else {
+                log.error('Too many inputs in video-engine.');
+                callback('callback', 'error', 'Too many inputs in video-engine.');
+            }
+        } else if (input_id === stream_id) {
+            callback('callback', {ip: clusterIP, port: inputs[stream_id].getListeningPort()});
+        } else {
+            log.error('input already exists.');
+            callback('callback', 'error', 'input already exists.');
+        }
+    };
+
+    that.unpublish = function (stream_id) {
+        log.debug('unpublish, stream_id:', stream_id);
+        unsetInput(stream_id);
+    };
+
+    that.subscribe = function (connectionId, connectionType, options, callback) {
+        log.debug('subscribe, connectionId:', connectionId, 'connectionType:', connectionType, 'options:', options);
+        if (connectionType !== 'internal') {
+            return callback('callback', 'error', 'can not subscribe a stream from video engine through a non-internal connection');
+        }
+
+        var conn = internalConnFactory.fetch(connectionId, 'out');
+        if (!conn) {
+            callback('callback', 'error', 'Create internal connection failed.');
+            return;
+        }
+        conn.connect(options);
+
+        if (connections[connectionId] === undefined) {
+            connections[connectionId] = {videoFrom: undefined,
+                                         connection: conn
+                                        };
+        }
+        callback('callback', 'ok');
+    };
+
+    that.unsubscribe = function (connectionId) {
+        log.debug('unsubscribe, connectionId:', connectionId);
+        if (connections[connectionId] && connections[connectionId].videoFrom) {
+            if (outputs[connections[connectionId].videoFrom]) {
+                outputs[connections[connectionId].videoFrom].dispatcher.removeDestination('video', connections[connectionId].connection.receiver());
+            }
+            //connections[connectionId].connection.close();
+            delete connections[connectionId];
+        }
+    };
+
+    that.linkup = function (connectionId, audio_stream_id, video_stream_id, callback) {
+        log.debug('linkup, connectionId:', connectionId, 'video_stream_id:', video_stream_id);
+        if (connections[connectionId] === undefined) {
+            return callback('callback', 'error', 'connection does not exist');
+        }
+
+        if (outputs[video_stream_id]) {
+            outputs[video_stream_id].dispatcher.addDestination('video', connections[connectionId].connection.receiver());
+            connections[connectionId].videoFrom = video_stream_id;
+            callback('callback', 'ok');
+        } else {
+            log.error('Stream does not exist!', video_stream_id);
+            callback('callback', 'error', 'Stream does not exist!');
+        }
+    };
+
+    that.cutoff = function (connectionId) {
+        log.debug('cutoff, connectionId:', connectionId);
+        if (connections[connectionId] && connections[connectionId].videoFrom) {
+            if (outputs[connections[connectionId].videoFrom]) {
+                outputs[connections[connectionId].videoFrom].dispatcher.removeDestination('video', connections[connectionId].connection.receiver());
+            }
+            connections[connectionId].videoFrom = undefined;
+        }
+    };
+
+    return that;
+};
+
+module.exports = function (rpcClient, clusterIP) {
+    var that = {},
+        processor = undefined;
+
+    that.init = function (service, config, belongTo, controller, callback) {
+        if (processor === undefined) {
+            if (service === 'mixing') {
+                processor = new VMixer(rpcClient, clusterIP);
+                processor.initialize(config, belongTo, controller, callback);
+                that.__proto__ = processor;
+            } else if (service === 'transcoding') {
+                processor = new VTranscoder(rpcClient, clusterIP);
+                processor.initialize(controller, callback);
+                that.__proto__ = processor;
+            } else {
+                log.error('Unknown service type to init a video node:', service);
+                callback('callback', 'error', 'Unknown service type to init a video node.');
+            }
+        } else {
+            log.error('Repetitive initialization, service:', service);
+            callback('callback', 'error', 'Repetitive initialization.');
+        }
+    };
+
+    that.deinit = function () {
+        processor && processor.deinit();
+        processor = undefined;
     };
 
     return that;

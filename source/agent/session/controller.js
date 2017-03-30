@@ -716,7 +716,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
             rpcClient,
             vxcoder_node,
             'generate',
-            [video_codec, video_resolution, video_quality],
+            [video_codec],
             function (stream_id) {
                 log.debug('spawnTranscodedVideo ok, stream_id:', stream_id);
                 if (streams[stream_id] === undefined) {
@@ -778,7 +778,7 @@ module.exports = function (spec, on_init_ok, on_init_failed) {
                     rpcClient,
                     terminals[vxcoder].locality.node,
                     'init',
-                    ['transcoding', {resolution: streams[stream_id].video.resolution}, stream_id, selfRpcId],
+                    ['transcoding', {}, stream_id, selfRpcId],
                     function (supported_video) {
                         var target_node = terminals[vxcoder].locality.node,
                             spread_id = stream_id + '@' + target_node;
