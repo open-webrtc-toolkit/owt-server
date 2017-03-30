@@ -113,7 +113,7 @@ rpc.connect(global.config.rabbit, function () {
             controller = require('./audio')(rpcClient);
             break;
         case 'video':
-            controller = require('./video')(rpcClient);
+            controller = require('./video')(rpcClient, clusterIP);
             break;
         case 'webrtc':
             controller = require('woogeen/webrtc/index')();
