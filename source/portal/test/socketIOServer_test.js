@@ -1633,17 +1633,29 @@ describe('Responding to clients.', function() {
         .then(function(result) {
           expect(result).to.equal('ok');
           simulateStubResponse(mockPortal.subscribe, 0, 4, {type: 'ready', audio_codecs: ['pcmu'], video_codecs: ['vp8']});
-          var options = {audioStreamId: 'targetStreamId1', videoStreamId: 'targetStreamId2', audioCodec: 'pcmu', videoCodec: 'vp8', path: '/tmp', interval: 1000};
+          var options = {audioStreamId: 'targetStreamId-01', videoStreamId: 'targetStreamId-02', audioCodec: 'pcmu', videoCodec: 'vp8', path: '/tmp', interval: 1000};
           client.emit('startRecorder', options, function(status, data) {
             expect(status).to.equal('success');
             expect(data.recorderId).to.be.a('string');
-            expect(data.path).to.equal('/tmp/room_' + testStream + '-' + client.id + '-' + data.recorderId + '.mkv');
+            expect(data.path).to.equal('/tmp/room_' + testRoom + '-' + client.id + '-' + data.recorderId + '.mkv');
             expect(data.host).to.equal('unknown');
             expect(mockPortal.subscribe.getCall(0).args[0]).to.equal(client.id);
             expect(mockPortal.subscribe.getCall(0).args[1]).to.equal(client.id + '-' + data.recorderId);
             expect(mockPortal.subscribe.getCall(0).args[2]).to.equal('recording');
-            expect(mockPortal.subscribe.getCall(0).args[3]).to.deep.equal({audio: {fromStream: 'targetStreamId1', codecs: ['pcmu']}, video: {fromStream: 'targetStreamId2', codecs: ['vp8']}, path: '/tmp', interval: 1000});
-            done();
+            expect(mockPortal.subscribe.getCall(0).args[3]).to.deep.equal({audio: {fromStream: 'targetStreamId-01', codecs: ['pcmu']}, video: {fromStream: 'targetStreamId-02', codecs: ['vp8']}, path: '/tmp', interval: 1000});
+
+            options = {audioStreamId: testStream, videoStreamId: testStream, audioCodec: 'pcmu', videoCodec: 'vp8', path: '/tmp', interval: 1000};
+            client.emit('startRecorder', options, function(status, data) {
+              expect(status).to.equal('success');
+              expect(data.recorderId).to.be.a('string');
+              expect(data.path).to.equal('/tmp/room_' + testRoom + '-' + client.id + '-' + data.recorderId + '.mkv');
+              expect(data.host).to.equal('unknown');
+              expect(mockPortal.subscribe.getCall(1).args[0]).to.equal(client.id);
+              expect(mockPortal.subscribe.getCall(1).args[1]).to.equal(client.id + '-' + data.recorderId);
+              expect(mockPortal.subscribe.getCall(1).args[2]).to.equal('recording');
+              expect(mockPortal.subscribe.getCall(1).args[3]).to.deep.equal({audio: {fromStream: testStream, codecs: ['pcmu']}, video: {fromStream: testStream, codecs: ['vp8']}, path: '/tmp', interval: 1000});
+              done();
+            });
           });
         });
     });

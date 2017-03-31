@@ -59,7 +59,7 @@ function resolution2WidthHeight(resolution) {
   return resolutionName2Value[resolution] ? resolutionName2Value[resolution] : {width: w, height: h};
 }
 
-var idPattern = /^[0-9a-zA-Z]+$/;
+var idPattern = /^[0-9a-zA-Z\-]+$/;
 function isValidIdString(str) {
   return (typeof str === 'string') && idPattern.test(str);
 }
@@ -644,7 +644,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
         }
       }).then(function(connectionLocality) {
         log.debug('portal.subscribe succeeded, connection locality:', connectionLocality);
-        recording_file = path.join(options.path || '', 'room_' + that.commonViewStream + '-' + subscription_id + '.mkv' );
+        recording_file = path.join(options.path || '', 'room_' + that.inRoom + '-' + subscription_id + '.mkv' );
       }).catch(function(err) {
         var err_message = (typeof err === 'string' ? err: err.message);
         log.info('portal.subscribe failed:', err_message);
