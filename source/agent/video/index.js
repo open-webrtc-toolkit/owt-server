@@ -567,7 +567,7 @@ function VTranscoder(rpcClient, clusterIP) {
     };
 
     that.initialize = function (ctrlr, callback) {
-        log.debug('initEngine, videoConfig:', videoConfig);
+        log.debug('to initialize video transcoder');
         var config = {
             'hardware': useHardware,
             'maxinput': 1,

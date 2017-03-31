@@ -797,7 +797,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                     rpcClient,
                     terminals[axcoder].locality.node,
                     'init',
-                    ['transcoding', {}, stream_id, selfRpcId],
+                    ['transcoding', {}, stream_id, selfRpcId, 'transcoder'],
                     function (supported_audio) {
                         var target_node = terminals[axcoder].locality.node,
                             spread_id = stream_id + '@' + target_node;
@@ -893,7 +893,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                     rpcClient,
                     terminals[vxcoder].locality.node,
                     'init',
-                    ['transcoding', {}, stream_id, selfRpcId],
+                    ['transcoding', {}, stream_id, selfRpcId, 'transcoder'],
                     function (supported_video) {
                         var target_node = terminals[vxcoder].locality.node,
                             spread_id = stream_id + '@' + target_node;
