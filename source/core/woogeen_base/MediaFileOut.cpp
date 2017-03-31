@@ -50,6 +50,8 @@ inline AVCodecID frameFormat2AudioCodecID(int frameFormat)
     switch (frameFormat) {
     case FRAME_FORMAT_PCMU:
         return AV_CODEC_ID_PCM_MULAW;
+    case FRAME_FORMAT_PCMA:
+        return AV_CODEC_ID_PCM_ALAW;
     case FRAME_FORMAT_OPUS:
         return AV_CODEC_ID_OPUS;
     default:
@@ -147,6 +149,8 @@ bool MediaFileOut::init(const AVOptions* audio, const AVOptions* video)
     if (audio) {
         if (audio->codec.compare("pcmu") == 0) {
             m_expectedAudio = AV_CODEC_ID_PCM_MULAW;
+        } else if (audio->codec.compare("pcma") == 0) {
+            m_expectedAudio = AV_CODEC_ID_PCM_ALAW;
         } else if (audio->codec.compare("opus_48000_2") == 0) {
             m_expectedAudio = AV_CODEC_ID_OPUS;
         } else {
@@ -228,6 +232,7 @@ void MediaFileOut::onFrame(const Frame& frame)
         }
         break;
     case FRAME_FORMAT_PCMU:
+    case FRAME_FORMAT_PCMA:
     case FRAME_FORMAT_OPUS: {
         if (m_expectedAudio == frameFormat2AudioCodecID(frame.format)) {
             bool addStreamOK = true;
@@ -297,7 +302,7 @@ bool MediaFileOut::addAudioStream(enum AVCodecID codec_id, int nbChannels, int s
     if (m_context->oformat->flags & AVFMT_GLOBALHEADER)
         c->flags |= CODEC_FLAG_GLOBAL_HEADER;
     m_audioStream = stream;
-    ELOG_DEBUG("audio stream added: %d channel(s), %d Hz, %s", nbChannels, sampleRate, (codec_id == AV_CODEC_ID_OPUS) ? "OPUS" : "PCMU");
+    ELOG_DEBUG("audio stream added: %d channel(s), %d Hz, %s", nbChannels, sampleRate, (codec_id == AV_CODEC_ID_OPUS ? "OPUS" : (codec_id == AV_CODEC_ID_PCM_MULAW ? "PCMU" : "PCMA")));
 
     if ((m_expectedVideo == AV_CODEC_ID_NONE) || m_videoStream) {
         return getReady();
