@@ -113,7 +113,7 @@ module.exports = function (rpcClient) {
 
         // FIXME: The supported codec list should be a sub-list of those querried from the engine
         // and filterred out according to config.
-        supported_codecs = ['pcmu', 'opus_48000_2', 'pcm_raw'/*, 'pcma', 'isac_16000', 'isac_32000'*/];
+        supported_codecs = ['pcmu', 'opus_48000_2', 'pcma', 'pcm_raw'/*, 'isac_16000', 'isac_32000'*/];
 
         log.info('AudioMixer.init OK');
         callback('callback', {codecs: supported_codecs});

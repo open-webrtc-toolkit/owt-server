@@ -158,16 +158,16 @@ namespace erizo {
     opus.mediaType = AUDIO_TYPE;
     opus.enable = true;
     internalPayloadVector_.push_back(opus);
-/*
+
     RtpMap pcma;
     pcma.payloadType = PCMA_8000_PT;
     pcma.encodingName = "PCMA";
     pcma.clockRate = 8000;
     pcma.channels = 1;
     pcma.mediaType = AUDIO_TYPE;
-    pcma.enable = false;
+    pcma.enable = true;
     internalPayloadVector_.push_back(pcma);
-
+/*
     RtpMap cn8;
     cn8.payloadType = CN_8000_PT;
     cn8.encodingName = "CN";
