@@ -675,20 +675,14 @@ function VTranscoder(rpcClient, clusterIP) {
         }
 
         if (input_id === undefined) {
-            log.debug('publish 1, inputs.length:', Object.keys(inputs).length, 'maxInputNum:', maxInputNum);
-            if (Object.keys(inputs).length < maxInputNum) {
-                setInput(stream_id, options.video.codec, options, function () {
-                    callback('callback', {ip: clusterIP, port: inputs[stream_id].getListeningPort()});
-                }, function (error_reason) {
-                    log.error(error_reason);
-                    callback('callback', 'error', error_reason);
-                });
-            } else {
-                log.error('Too many inputs in video-engine.');
-                callback('callback', 'error', 'Too many inputs in video-engine.');
-            }
+            setInput(stream_id, options.video.codec, options, function () {
+                callback('callback', {ip: clusterIP, port: input_conn.getListeningPort()});
+            }, function (error_reason) {
+                log.error(error_reason);
+                callback('callback', 'error', error_reason);
+            });
         } else if (input_id === stream_id) {
-            callback('callback', {ip: clusterIP, port: inputs[stream_id].getListeningPort()});
+            callback('callback', {ip: clusterIP, port: input_conn.getListeningPort()});
         } else {
             log.error('input already exists.');
             callback('callback', 'error', 'input already exists.');
