@@ -451,12 +451,14 @@ var Portal = function(spec, rpcReq) {
       return Promise.reject('Participant ' + participantId + ' does NOT exist.');
     }
 
-    var connection_id = streamId;
-    if (participants[participantId].connections[connection_id] === undefined) {
-      return Promise.reject('stream does not exist');
-    }
+    return getUserPermission(participantId)
+      .then((userPermission) => {
+        if (!isPermitted(userPermission, 'manage')) {
+          return Promise.reject('Mix Permission Denied');
+        }
 
-    return rpcReq.mix(participants[participantId].controller, participantId, streamId, mixStreams);
+        return rpcReq.mix(participants[participantId].controller, participantId, streamId, mixStreams);
+      });
   };
 
   that.unmix = function(participantId, streamId, mixStreams) {
@@ -465,12 +467,14 @@ var Portal = function(spec, rpcReq) {
       return Promise.reject('Participant ' + participantId + ' does NOT exist.');
     }
 
-    var connection_id = streamId;
-    if (participants[participantId].connections[connection_id] === undefined) {
-      return Promise.reject('stream does not exist');
-    }
+    return getUserPermission(participantId)
+      .then((userPermission) => {
+        if (!isPermitted(userPermission, 'manage')) {
+          return Promise.reject('Mix Permission Denied');
+        }
 
-    return rpcReq.unmix(participants[participantId].controller, participantId, streamId, mixStreams);
+        return rpcReq.unmix(participants[participantId].controller, participantId, streamId, mixStreams);
+      });
   };
 
   that.setVideoBitrate = function(participantId, streamId, bitrate) {
@@ -768,7 +772,7 @@ var Portal = function(spec, rpcReq) {
       });
   };
 
-  that.setMute = function(participantId, streamId, muted) {
+  that.setMute = function(participantId, streamId, track, muted) {
     var participant = participants[participantId];
     log.debug('setMute, participantId:', participantId, 'streamId:', streamId, 'muted:', muted);
 
@@ -782,7 +786,7 @@ var Portal = function(spec, rpcReq) {
           return Promise.reject('Mute/Unmute Permission Denied');
         }
 
-        return rpcReq.setMute(participant.controller, streamId, muted);
+        return rpcReq.setMute(participant.controller, streamId, track, muted);
       });
   };
 
@@ -827,6 +831,7 @@ var Portal = function(spec, rpcReq) {
       return Promise.reject('Participant ' + participantId + ' does NOT exist.');
     }
 
+    // No Permission required for getRegion
     return rpcReq.getRegion(participants[participantId].controller, subStreamId, mixStreamId);
   };
 
@@ -836,7 +841,14 @@ var Portal = function(spec, rpcReq) {
       return Promise.reject('Participant ' + participantId + ' does NOT exist.');
     }
 
-    return rpcReq.setRegion(participants[participantId].controller, subStreamId, regionId, mixStreamId);
+    return getUserPermission(participantId)
+      .then((userPermission) => {
+        if (!isPermitted(userPermission, 'manage')) {
+          return Promise.reject('setRegion Permission Denied');
+        }
+
+        return rpcReq.setRegion(participants[participantId].controller, subStreamId, regionId, mixStreamId);
+      });
   };
 
   that.text = function(participantId, to, message) {

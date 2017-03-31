@@ -715,7 +715,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
       });
     });
 
-    socket.on('setMute', function(options, callback) {
+    socket.on('mute', function(options, callback) {
       if(!that.inRoom) {
         return safeCall(callback, 'error', 'unauthorized');
       }
@@ -724,7 +724,34 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
         return safeCall(callback, 'error', 'no stream ID');
       }
 
-      return portal.setMute(participant_id, options.streamId, options.muted)
+      if (options.track !== 'video' && options.track !== 'audio') {
+        return safeCall(callback, 'error', `invalid track ${options.track}`);
+      }
+
+      return portal.setMute(participant_id, options.streamId, options.track, true)
+      .then(function() {
+          safeCall(callback, 'success');
+        }).catch(function(err) {
+          var err_message = (typeof err === 'string' ? err: err.message);
+          log.info('portal.setMute failed:', err_message);
+          safeCall(callback, 'error', err_message);
+        });
+    });
+
+    socket.on('unmute', function(options, callback) {
+      if(!that.inRoom) {
+        return safeCall(callback, 'error', 'unauthorized');
+      }
+
+      if (!options.streamId) {
+        return safeCall(callback, 'error', 'no stream ID');
+      }
+
+      if (options.track !== 'video' && options.track !== 'audio') {
+        return safeCall(callback, 'error', `invalid track ${options.track}`);
+      }
+
+      return portal.setMute(participant_id, options.streamId, options.track, false)
       .then(function() {
           safeCall(callback, 'success');
         }).catch(function(err) {
@@ -993,14 +1020,6 @@ var SocketIOServer = function(spec, portal, observer) {
     } else {
       return Promise.reject('user not in room');
     }
-  };
-
-  that.updateMuteState = function(participantId, streamId, isMuted) {
-    var state = isMuted? 'off' : 'on';
-
-    var videoPromise = portal.mediaOnOff(participantId, streamId, 'video', 'in', state);
-    var audioPromise = portal.mediaOnOff(participantId, streamId, 'audio', 'in', state);
-    return Promise.all([videoPromise, audioPromise]);
   };
 
   return that;

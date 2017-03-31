@@ -30,10 +30,6 @@ var RpcRequest = function(rpcChannel) {
     return rpcChannel.makeRPC(portal, 'drop', [participantId, sessionId]);
   };
 
-  that.setMute = function(portal, participantId, streamId, muted) {
-    return rpcChannel.makeRPC(portal, 'setMute', [participantId, streamId, muted]);
-  };
-
   return that;
 };
 

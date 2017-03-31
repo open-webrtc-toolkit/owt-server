@@ -223,18 +223,6 @@ var rpcPublic = {
     rest_server && rest_server.notify(participantId, event, data).catch(notifyFail);
     callback('callback', 'ok');
   },
-  setMute: function(participantId, streamId, muted, callback) {
-    if (socketio_server) {
-      socketio_server.updateMuteState(participantId, streamId, muted)
-      .then(function() {
-        callback('callback', 'ok');
-      }).catch(function(reason) {
-        callback('callback', 'error', reason);
-      });
-    } else {
-      callback('callback', 'error', 'socketio server is not ready');
-    }
-  },
 };
 
 amqper.connect(config.rabbit, function () {
