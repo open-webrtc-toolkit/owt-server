@@ -99,8 +99,8 @@ var RpcRequest = function(rpcChannel) {
     return rpcChannel.makeRPC(accessNode, 'mediaOnOff', [connectionId, track, direction, onOff]);
   };
 
-  that.setMute = function(controller, streamId, muted) {
-    return rpcChannel.makeRPC(controller, 'setMute', [streamId, muted], 4000);
+  that.setMute = function(controller, streamId, track, muted) {
+    return rpcChannel.makeRPC(controller, 'setMute', [streamId, track, muted], 4000);
   };
 
   that.getRegion = function(controller, subStreamId, mixStreamId) {

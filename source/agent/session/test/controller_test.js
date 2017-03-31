@@ -436,7 +436,7 @@ describe("MultipleViewController", () => {
     });
 
 
-    describe("Mix/Unmix/GetRegion/SetRegion/UpdateStream", () => {
+    describe("Mix/Unmix/GetRegion/SetRegion/UpdateStream/SetMute", () => {
         before((done) => {
             published.before(controller, () => {
                 published.before(commonViewController, done);
@@ -524,10 +524,10 @@ describe("MultipleViewController", () => {
 
         it("GetRegion", (done) => {
             controller.getRegion("ustream1", "TestRoom-first-view",
-                function ok() {
+                function onOk() {
                     done();
                 },
-                function error(err) {
+                function onError(err) {
                     throw new Error(err);
                 }
             );
@@ -535,10 +535,10 @@ describe("MultipleViewController", () => {
 
         it("GetRegion-Without-MixStreamID-On-CommonView", (done) => {
             commonViewController.getRegion("ustream2", undefined,
-                function ok() {
+                function onOk() {
                     done();
                 },
-                function error(err) {
+                function onError(err) {
                     throw new Error(err);
                 }
             );
@@ -560,7 +560,7 @@ describe("MultipleViewController", () => {
                 function ok() {
                     done();
                 },
-                function error(err) {
+                function onError(err) {
                     throw new Error(err);
                 }
             );
@@ -568,10 +568,10 @@ describe("MultipleViewController", () => {
 
         it("SetRegion-Without-MixStreamID-On-CommonView", (done) => {
             commonViewController.setRegion("ustream2", "fakeRegion", undefined,
-                function ok() {
+                function onOk() {
                     done();
                 },
-                function error(err) {
+                function onError(err) {
                     throw new Error(err);
                 }
             );
@@ -592,5 +592,15 @@ describe("MultipleViewController", () => {
             controller.updateStream("ustream1", "video", "active");
         });
 
+        it("setMute", () => {
+            controller.setMute("ustream1", "video", true,
+                function onOk() {
+                    done();
+                },
+                function onError(err) {
+                    throw new Error(err);
+                }
+            );
+        });
     });
 });

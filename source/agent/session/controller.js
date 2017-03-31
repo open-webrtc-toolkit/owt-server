@@ -1559,6 +1559,20 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         }
     };
 
+    that.setMute = function (streamId, track, muted, onOk, onError) {
+        log.debug('mute, streamId:', streamId, 'track:', track);
+        let onOff = muted? 'off' : 'on';
+        if (streams[streamId]) {
+            let terminal = terminals[streams[streamId].owner];
+            makeRPC(
+                terminal.locality.node,
+                'mediaOnOff',
+                [streamId, track, 'in', onOff],
+                onOk,
+                onError);
+        }
+    };
+
     that.getRegion = function (stream_id, mixstream_id, on_ok, on_error) {
         log.debug('getRegion, stream_id:', stream_id, 'mixstream_id', mixstream_id);
         if (!mixstream_id) {

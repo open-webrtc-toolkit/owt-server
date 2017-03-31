@@ -441,7 +441,7 @@ module.exports = function (rpcClient, selfRpcId) {
     }
   };
 
-  that.setMute = function(streamId, muted, callback) {
+  that.setMute = function(streamId, track, muted, callback) {
     log.debug('set mute:', streamId, muted);
 
     if (!streams[streamId]) {
@@ -456,21 +456,16 @@ module.exports = function (rpcClient, selfRpcId) {
       return;
     }
 
-    var stream_owner = streams[streamId].getOwner();
-    var index = participants[stream_owner].published.indexOf(streamId);
-    if (index === -1) {
-      log.warn('Stream ' + streamId + ' not published by ' + stream_owner);
-      callback('callback', 'error', 'Stream ' + streamId + ' not published by ' + stream_owner);
-      return;
-    }
-
-    rpcReq.setMute(participants[stream_owner].portal, stream_owner, streamId, muted)
-    .then(function() {
-      callback('callback', 'ok');
-    }).catch(function(reason) {
-      log.warn('Session set mute rpc fail:', reason);
-      callback('callback', 'error', reason);
-    });
+    controller.setMute(streamId, track, muted,
+      function() {
+        // Make the input inactive in mix video stream
+        controller.updateStream(streamId, track, 'inactive');
+        callback('callback', 'ok');
+      },
+      function(reason) {
+        log.warn('Session set mute fail:', reason);
+        callback('callback', 'error', reason);
+      });
   };
 
   that.getRegion = function(streamId, mixStreamId, callback) {
