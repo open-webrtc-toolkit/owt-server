@@ -131,5 +131,11 @@ exports.Stream = function (spec) {
         return (spec.video && spec.video.layout);
     };
 
+    that.setLayout = function (newLayout) {
+        if (spec.video) {
+           spec.video.layout = newLayout;
+        }
+    };
+
     return that;
 };

@@ -148,7 +148,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             newTerminal(mixerId, type, mixStreamId, false,
                 function onTerminalReady() {
                     log.debug('new terminal ok. terminal_id', mixerId, 'type:', type, 'view:', view, 'mixConfig:', mixConfig);
-                    initMediaProcessor(mixerId, ['mixing', mixConfig, view, selfRpcId, view])
+                    initMediaProcessor(mixerId, ['mixing', mixConfig, room_id, selfRpcId, view])
                     .then(function(initMediaResult) {
                         resolve(initMediaResult);
                     }).catch(function(reason) {
