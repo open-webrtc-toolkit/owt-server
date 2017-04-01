@@ -72,7 +72,7 @@ private:
 
 class VideoFrameMixerImpl : public VideoFrameMixer {
 public:
-    VideoFrameMixerImpl(uint32_t maxInput, woogeen_base::VideoSize rootSize, woogeen_base::YUVColor bgColor, boost::shared_ptr<woogeen_base::WebRTCTaskRunner>, bool useSimulcast, bool crop, bool useGacc);
+    VideoFrameMixerImpl(uint32_t maxInput, woogeen_base::VideoSize rootSize, woogeen_base::YUVColor bgColor, boost::shared_ptr<woogeen_base::WebRTCTaskRunner>, bool useSimulcast, bool crop);
     ~VideoFrameMixerImpl();
 
     bool addInput(int input, woogeen_base::FrameFormat, woogeen_base::FrameSource*, const std::string& avatar);
@@ -91,8 +91,6 @@ public:
     void updateLayoutSolution(LayoutSolution& solution);
 
 private:
-    uint32_t getBitrate(uint32_t width, uint32_t height, const woogeen_base::QualityLevel qualityLevel);
-
     struct Input {
         woogeen_base::FrameSource* source;
         boost::shared_ptr<woogeen_base::VideoFrameDecoder> decoder;
@@ -114,13 +112,11 @@ private:
 
     boost::shared_ptr<woogeen_base::WebRTCTaskRunner> m_taskRunner;
     bool m_useSimulcast;
-    bool m_useGacc;
 };
 
-VideoFrameMixerImpl::VideoFrameMixerImpl(uint32_t maxInput, woogeen_base::VideoSize rootSize, woogeen_base::YUVColor bgColor, boost::shared_ptr<woogeen_base::WebRTCTaskRunner> taskRunner, bool useSimulcast, bool crop, bool useGacc)
+VideoFrameMixerImpl::VideoFrameMixerImpl(uint32_t maxInput, woogeen_base::VideoSize rootSize, woogeen_base::YUVColor bgColor, boost::shared_ptr<woogeen_base::WebRTCTaskRunner> taskRunner, bool useSimulcast, bool crop)
     : m_taskRunner(taskRunner)
     , m_useSimulcast(useSimulcast)
-    , m_useGacc(useGacc)
 {
 #ifdef ENABLE_YAMI
     if (!m_compositor)
@@ -141,8 +137,8 @@ VideoFrameMixerImpl::~VideoFrameMixerImpl()
     {
         boost::unique_lock<boost::shared_mutex> lock(m_outputMutex);
         for (auto it = m_outputs.begin(); it != m_outputs.end(); ++it) {
-            it->second.encoder->degenerateStream(it->second.streamId);
             m_compositor->removeVideoDestination(it->second.encoder.get());
+            it->second.encoder->degenerateStream(it->second.streamId);
         }
         m_outputs.clear();
     }
@@ -151,6 +147,7 @@ VideoFrameMixerImpl::~VideoFrameMixerImpl()
         boost::unique_lock<boost::shared_mutex> lock(m_inputMutex);
         for (auto it = m_inputs.begin(); it != m_inputs.end(); ++it) {
             it->second.source->removeVideoDestination(it->second.decoder.get());
+            it->second.decoder->removeVideoDestination(it->second.compositorIn.get());
             m_inputs.erase(it);
         }
         m_inputs.clear();
@@ -248,32 +245,6 @@ inline void VideoFrameMixerImpl::requestKeyFrame(int output)
         it->second.encoder->requestKeyFrame(it->second.streamId);
 }
 
-uint32_t VideoFrameMixerImpl::getBitrate(uint32_t width, uint32_t height, const woogeen_base::QualityLevel qualityLevel)
-{
-    uint32_t bitrate = woogeen_base::calcBitrate(width, height);
-    switch(qualityLevel) {
-        case woogeen_base::BEST_QUALITY:
-            bitrate *= 1.4;
-            break;
-        case woogeen_base::QUALITY:
-            bitrate *= 1.2;
-            break;
-        case woogeen_base::STANDARD:
-            bitrate *= 1;
-            break;
-        case woogeen_base::SPEED:
-            bitrate *= 0.8;
-            break;
-        case woogeen_base::BEST_SPEED:
-            bitrate *= 0.6;
-            break;
-        default:
-            bitrate *= 1;
-            break;
-    }
-    return bitrate;
-}
-
 inline bool VideoFrameMixerImpl::addOutput(int output,
                                            woogeen_base::FrameFormat format,
                                            const woogeen_base::VideoSize& rootSize,
@@ -282,7 +253,7 @@ inline bool VideoFrameMixerImpl::addOutput(int output,
 {
     boost::shared_ptr<woogeen_base::VideoFrameEncoder> encoder;
     boost::upgrade_lock<boost::shared_mutex> lock(m_outputMutex);
-    uint32_t bitrateKbps = getBitrate(rootSize.width, rootSize.height, qualityLevel);
+    uint32_t bitrateKbps = woogeen_base::calcBitrate(rootSize.width, rootSize.height) * woogeen_base::getQualityLevelMultiplier(qualityLevel);
 
     // find a reusable encoder.
     auto it = m_outputs.begin();
@@ -305,7 +276,7 @@ inline bool VideoFrameMixerImpl::addOutput(int output,
 
 #ifdef ENABLE_MSDK
         if (!encoder && woogeen_base::MsdkFrameEncoder::supportFormat(format))
-            encoder.reset(new woogeen_base::MsdkFrameEncoder(format, m_useSimulcast, m_useGacc));
+            encoder.reset(new woogeen_base::MsdkFrameEncoder(format, m_useSimulcast));
 #endif
 
         if (!encoder)
@@ -329,10 +300,10 @@ inline void VideoFrameMixerImpl::removeOutput(int32_t output)
     boost::upgrade_lock<boost::shared_mutex> lock(m_outputMutex);
     auto it = m_outputs.find(output);
     if (it != m_outputs.end()) {
-        it->second.encoder->degenerateStream(it->second.streamId);
         if (it->second.encoder->isIdle()) {
             m_compositor->removeVideoDestination(it->second.encoder.get());
         }
+        it->second.encoder->degenerateStream(it->second.streamId);
         boost::upgrade_to_unique_lock<boost::shared_mutex> ulock(lock);
         m_outputs.erase(output);
     }

@@ -78,6 +78,20 @@ struct Frame {
     MediaSpecInfo   additionalInfo;
 };
 
+inline FrameFormat getFormat(const std::string& codec) {
+    if (codec == "vp8") {
+        return woogeen_base::FRAME_FORMAT_VP8;
+    } else if (codec == "h264") {
+        return woogeen_base::FRAME_FORMAT_H264;
+    } else if (codec == "vp9") {
+        return woogeen_base::FRAME_FORMAT_VP9;
+    } else if (codec == "h265") {
+        return woogeen_base::FRAME_FORMAT_H265;
+    } else {
+        return woogeen_base::FRAME_FORMAT_UNKNOWN;
+    }
+}
+
 inline const char *getFormatStr(const FrameFormat &format) {
     switch(format) {
         case FRAME_FORMAT_UNKNOWN:
@@ -213,9 +227,17 @@ public:
     virtual bool init(FrameFormat) = 0;
 };
 
+class VideoFrameProcesser : public FrameSource, public FrameDestination {
+public:
+    virtual ~VideoFrameProcesser() { }
+    virtual bool init(FrameFormat format) = 0;
+};
+
 class VideoFrameEncoder : public FrameDestination {
 public:
     virtual ~VideoFrameEncoder() { }
+
+    virtual FrameFormat getInputFormat() = 0;
 
     virtual bool canSimulcast(FrameFormat, uint32_t width, uint32_t height) = 0;
     virtual bool isIdle() = 0;
@@ -226,12 +248,40 @@ public:
 };
 
 enum QualityLevel {
-    BEST_QUALITY = 0,   //1.4
-    QUALITY,            //1.2
-    STANDARD,           //1.0
-    SPEED,              //0.8
-    BEST_SPEED,         //0.6
+    QUALITY_LEVEL_BEST_QUALITY = 0,   //1.4
+    QUALITY_LEVEL_QUALITY,            //1.2
+    QUALITY_LEVEL_STANDARD,           //1.0
+    QUALITY_LEVEL_SPEED,              //0.8
+    QUALITY_LEVEL_BEST_SPEED,         //0.6
+
+    QUALITY_LEVEL_AUTO,
 };
+
+inline double getQualityLevelMultiplier(const QualityLevel &level) {
+    double multiplier = 0;
+    switch(level) {
+        case QUALITY_LEVEL_BEST_QUALITY:
+            multiplier = 1.4;
+            break;
+        case QUALITY_LEVEL_QUALITY:
+            multiplier = 1.2;
+            break;
+        case QUALITY_LEVEL_STANDARD:
+            multiplier = 1;
+            break;
+        case QUALITY_LEVEL_SPEED:
+            multiplier = 0.8;
+            break;
+        case QUALITY_LEVEL_BEST_SPEED:
+            multiplier = 0.6;
+            break;
+        case QUALITY_LEVEL_AUTO:
+        default:
+            multiplier = 0;
+            break;
+    }
+    return multiplier;
+}
 
 }
 #endif

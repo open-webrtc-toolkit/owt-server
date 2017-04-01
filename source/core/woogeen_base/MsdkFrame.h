@@ -58,6 +58,9 @@ public:
     bool isFree(void) {return !m_surface.Data.Locked;}
     int getLockedCount(void) {return m_surface.Data.Locked;}
 
+    uint32_t getWidth() {return m_surface.Info.Width;}
+    uint32_t getHeight() {return m_surface.Info.Height;}
+
     uint32_t getVideoWidth() {return m_surface.Info.CropW;}
     uint32_t getVideoHeight() {return m_surface.Info.CropH;}
 

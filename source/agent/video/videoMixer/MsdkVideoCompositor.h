@@ -74,9 +74,10 @@ private:
 class MsdkVideoCompositor : public VideoFrameCompositor,
                             public JobTimerListener {
     DECLARE_LOGGER();
-    enum LayoutSolutionState{UN_INITIALIZED = 0, CHANGING, IN_WORK};
 
     friend class VppInput;
+
+    enum LayoutSolutionState{UN_INITIALIZED = 0, CHANGING, IN_WORK};
 
 public:
     MsdkVideoCompositor(uint32_t maxInput, woogeen_base::VideoSize rootSize, woogeen_base::YUVColor bgColor, bool crop);
@@ -94,18 +95,22 @@ public:
     void onTimeout();
 
 protected:
-    void initDefaultParam(void);
-    void updateParam(void);
+    void initDefaultVppParam(void);
+    void updateVppParam(void);
+    bool isValidVppParam(void);
 
-    void init(void);
+    void initVpp(void);
+    bool resetVpp(void);
+    bool isVppReady(void) {return m_vppReady;}
 
     void flush(void);
 
     bool isSolutionChanged ();
 
     void generateFrame();
-    bool commitLayout(); // Commit the new layout config..clear()
+
     boost::shared_ptr<woogeen_base::MsdkFrame> layout();
+    bool commitLayout();
     boost::shared_ptr<woogeen_base::MsdkFrame> customLayout();
 
     void applyAspectRatio();
@@ -114,45 +119,38 @@ private:
     uint32_t m_maxInput;
     bool m_crop;
 
-    woogeen_base::VideoSize m_compositeSize;
-    woogeen_base::VideoSize m_newCompositeSize;
-
+    woogeen_base::VideoSize m_rootSize;
+    woogeen_base::VideoSize m_newRootSize;
     woogeen_base::YUVColor m_bgColor;
     woogeen_base::YUVColor m_newBgColor;
-
     LayoutSolution m_currentLayout;
     LayoutSolution m_newLayout;
-
     LayoutSolutionState m_solutionState;
-
-    boost::scoped_ptr<mfxVideoParam> m_videoParam;
-    boost::scoped_ptr<mfxExtVPPComposite> m_extVppComp;
-
-    std::vector<mfxVPPCompInputStream> m_compInputStreams;
 
     // Delta used for translating between NTP and internal timestamps.
     int64_t m_ntpDelta;
 
+    boost::scoped_ptr<mfxVideoParam> m_videoParam;
+    boost::scoped_ptr<mfxExtVPPComposite> m_extVppComp;
+    std::vector<mfxVPPCompInputStream> m_compInputStreams;
+
     MFXVideoSession *m_session;
-    //mfxFrameAllocator *m_allocator;
     boost::shared_ptr<mfxFrameAllocator> m_allocator;
     MFXVideoVPP *m_vpp;
-
-    boost::shared_ptr<woogeen_base::MsdkFrame> m_defaultRootFrame;
+    bool m_vppReady;
 
     std::vector<boost::shared_ptr<VppInput>> m_inputs;
+    std::map<int32_t, mfxVPPCompInputStream> m_vppLayout;
 
     boost::scoped_ptr<woogeen_base::MsdkFramePool> m_framePool;
-
     boost::shared_ptr<woogeen_base::MsdkFrame> m_defaultInputFrame;
-
-    boost::scoped_ptr<JobTimer> m_jobTimer;
-
-    boost::shared_mutex m_mutex;
+    boost::shared_ptr<woogeen_base::MsdkFrame> m_defaultRootFrame;
 
     std::vector<boost::shared_ptr<woogeen_base::MsdkFrame>> m_frameQueue;
 
+    boost::scoped_ptr<JobTimer> m_jobTimer;
     boost::scoped_ptr<MsdkAvatarManager> m_avatarManager;
+    boost::shared_mutex m_mutex;
 };
 
 }

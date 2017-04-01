@@ -21,17 +21,14 @@ var useHardware = global.config.video.hardwareAccelerated,
 var VideoMixer, VideoTranscoder;
 try {
     if (useHardware && yamiEnabled) {
-        VideoMixer = require('./videoMixer_hw_yami/build/Release/videoMixer-hw-yami');
-        VideoTranscoder = require('./videoMixer_hw_yami/build/Release/videoMixer-hw-yami');//FIXME: use next line instead.
-        //VideoTranscoder = require('./videoMixer_hw_yami/build/Release/videoTranscoder-hw-yami');
+        VideoMixer = require('./videoMixer_yami/build/Release/videoMixer-yami');
+        VideoTranscoder = require('./videoMixer_yami/build/Release/videoTranscoder-yami');
     } else if (useHardware && !yamiEnabled) {
-        VideoMixer = require('./videoMixer_hw_msdk/build/Release/videoMixer-hw-msdk');
-        VideoTranscoder = require('./videoMixer_hw_msdk/build/Release/videoMixer-hw-msdk');//FIXME: use next line instead.
-        //VideoTranscoder = require('./videoMixer_hw_msdk/build/Release/videoTranscoder-hw-msdk');
+        VideoMixer = require('./videoMixer_msdk/build/Release/videoMixer-msdk');
+        VideoTranscoder = require('./videoTranscoder_msdk/build/Release/videoTranscoder-msdk');
     } else {
         VideoMixer = require('./videoMixer_sw/build/Release/videoMixer-sw');
-        VideoTranscoder = require('./videoMixer_sw/build/Release/videoMixer-sw');//FIXME: use next line instead.
-        //VideoTranscoder = require('./videoMixer_sw/build/Release/videoTranscoder-sw');
+        VideoTranscoder = require('./videoTranscoder_sw/build/Release/videoTranscoder-sw');
     }
 } catch (e) {
     log.error(e);
@@ -502,8 +499,7 @@ function VTranscoder(rpcClient, clusterIP) {
                 }
                 conn.connect(options);
 
-                if (engine.addInput(stream_id, codec, conn, global.config.avatar.location)) {//FIXME: use next line instead.
-                //if (engine.setInput(stream_id, codec, conn)) {
+                if (engine.setInput(stream_id, codec, conn)) {
                     input_id = stream_id;
                     input_conn = conn;
                     log.debug('setInput ok, stream_id:', stream_id, 'codec:', codec, 'options:', options);
@@ -520,8 +516,7 @@ function VTranscoder(rpcClient, clusterIP) {
 
     var unsetInput = function () {
         if (input_id) {
-            engine.removeInput(input_id);//FIXME: use next line instead.
-            //engine.unsetInput(input_id);
+            engine.unsetInput(input_id);
             internalConnFactory.destroy(input_id, 'in');
             input_id = undefined;
             input_conn = undefined;
@@ -540,8 +535,7 @@ function VTranscoder(rpcClient, clusterIP) {
 
             var stream_id = Math.random() * 1000000000000000000 + '';
             var dispatcher = new MediaFrameMulticaster();
-            if (engine.addOutput(stream_id, codec, 'vga', 'standard', dispatcher)) {//FIXME: use next line instead.
-            //if (engine.addOutput(stream_id, codec, dispatcher)) {
+            if (engine.addOutput(stream_id, codec, dispatcher)) {
                 outputs[stream_id] = {codec: codec,
                                       dispatcher: dispatcher,
                                       connections: {}};
@@ -573,10 +567,6 @@ function VTranscoder(rpcClient, clusterIP) {
         log.debug('to initialize video transcoder');
         var config = {
             'hardware': useHardware,
-            'maxinput': 1,
-            'resolution': 'hd1080p',
-            'backgroundcolor': 'black',
-            'layout': [{region: [{id: '1', left: 0, top: 0, relativesize: 1}]}],
             'simulcast': false,
             'crop': false,
             'gaccplugin': gaccPluginEnabled
@@ -584,8 +574,7 @@ function VTranscoder(rpcClient, clusterIP) {
 
         controller = ctrlr;
 
-        engine = new VideoMixer(JSON.stringify(config));
-        //engine = new VideoTranscoder(JSON.stringify({hardware: useHardware}));
+        engine = new VideoTranscoder(JSON.stringify(config));
 
         // FIXME: The supported codec list should be a sub-list of those querried from the engine
         // and filterred out according to config.

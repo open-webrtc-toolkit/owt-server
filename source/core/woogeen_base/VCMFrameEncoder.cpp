@@ -42,6 +42,9 @@ VCMFrameEncoder::VCMFrameEncoder(FrameFormat format, boost::shared_ptr<WebRTCTas
     , m_vcm(VideoCodingModule::Create())
     , m_encodeFormat(format)
     , m_taskRunner(taskRunner)
+    , m_running(false)
+    , m_incomingFrameCount(0)
+    , m_encodedFrameCount(0)
 {
     webrtc::VP8EncoderFactoryConfig::set_use_simulcast_adapter(useSimulcast);
     m_vcm->InitializeSender();
@@ -50,13 +53,19 @@ VCMFrameEncoder::VCMFrameEncoder(FrameFormat format, boost::shared_ptr<WebRTCTas
     if (m_taskRunner)
         m_taskRunner->RegisterModule(m_vcm);
 
-    m_jobTimer.reset(new JobTimer(30, this));
-    m_jobTimer->start();
+    //m_jobTimer.reset(new JobTimer(30, this));
+    //m_jobTimer->start();
+
+    m_running = true;
+    m_thread = boost::thread(&VCMFrameEncoder::encodeLoop, this);
 }
 
 VCMFrameEncoder::~VCMFrameEncoder()
 {
-    m_jobTimer->stop();
+    //m_jobTimer->stop();
+
+    m_running = false;
+    m_thread.join();
 
     if (m_taskRunner)
         m_taskRunner->DeRegisterModule(m_vcm);
@@ -254,7 +263,6 @@ void VCMFrameEncoder::onFrame(const Frame& frame)
             static_cast<uint32_t>(rawFrame->render_time_ms());
         rawFrame->set_timestamp(time_stamp);
         freeFrame->CopyFrame(*rawFrame);
-        busyFrame = m_bufferManager->postFreeBuffer(freeFrame, 0);
         break;
     }
 #ifdef ENABLE_YAMI
@@ -268,7 +276,6 @@ void VCMFrameEncoder::onFrame(const Frame& frame)
             return;
 
         freeFrame->CopyFrame(rawFrame);
-        busyFrame = m_bufferManager->postFreeBuffer(freeFrame, 0);
         break;
     }
 #endif
@@ -282,7 +289,6 @@ void VCMFrameEncoder::onFrame(const Frame& frame)
             return;
 
         freeFrame->set_timestamp(frame.timeStamp);
-        busyFrame = m_bufferManager->postFreeBuffer(freeFrame, 0);
         break;
     }
 #endif
@@ -295,12 +301,17 @@ void VCMFrameEncoder::onFrame(const Frame& frame)
         return;
     }
 
+    busyFrame = m_bufferManager->postFreeBuffer(freeFrame, 0);
     if (busyFrame)
         m_bufferManager->releaseBuffer(busyFrame);
+
+    encodeOneFrame();
 }
 
-void VCMFrameEncoder::onTimeout()
+void VCMFrameEncoder::doEncoding()
 {
+    ELOG_TRACE("doEncoding");
+
     if (!m_bufferManager)
         return;
 
@@ -311,6 +322,38 @@ void VCMFrameEncoder::onTimeout()
     m_vcm->AddVideoFrame(*rawFrame);
 
     m_bufferManager->releaseBuffer(rawFrame);
+}
+
+void VCMFrameEncoder::encodeLoop()
+{
+    while (m_running) {
+        boost::mutex::scoped_lock lock(m_encMutex);
+        while (m_incomingFrameCount <= m_encodedFrameCount) {
+            m_encCond.wait(lock);
+        }
+        m_encodedFrameCount++;
+        m_encMutex.unlock();
+
+        if (m_running)
+            doEncoding();
+    }
+
+    ELOG_TRACE("Thread exited!");
+}
+
+void VCMFrameEncoder::encodeOneFrame()
+{
+    boost::mutex::scoped_lock lock(m_encMutex);
+
+    m_incomingFrameCount++;
+    m_encCond.notify_one();
+
+    ELOG_TRACE("encodeOneFrame, incoming(%d), encoded(%d)", m_incomingFrameCount, m_encodedFrameCount);
+}
+
+void VCMFrameEncoder::onTimeout()
+{
+    encodeOneFrame();
 }
 
 int32_t VCMFrameEncoder::SendData(
