@@ -42,8 +42,10 @@ class MsdkFrameEncoder : public VideoFrameEncoder {
     DECLARE_LOGGER();
 
 public:
-    MsdkFrameEncoder(woogeen_base::FrameFormat, bool useSimulcast = false, bool useGacc = false);
+    MsdkFrameEncoder(woogeen_base::FrameFormat, bool useSimulcast = false);
     ~MsdkFrameEncoder();
+
+    FrameFormat getInputFormat() {return FRAME_FORMAT_MSDK;}
 
     static bool supportFormat(FrameFormat format) {return (format == FRAME_FORMAT_H264 || format == FRAME_FORMAT_H265);}
 
@@ -61,7 +63,6 @@ private:
     std::map<int, boost::shared_ptr<StreamEncoder> > m_streams;
     boost::shared_mutex m_mutex;
     bool m_useSimulcast;
-    bool m_useGacc;
     int m_id;
 };
 

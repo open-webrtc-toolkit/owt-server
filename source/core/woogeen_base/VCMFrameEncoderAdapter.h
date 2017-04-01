@@ -18,72 +18,48 @@
  * and approved by Intel in writing.
  */
 
-#ifndef MsdkFrameDecoder_h
-#define MsdkFrameDecoder_h
+#ifndef VCMFrameEncoderAdapter_h
+#define VCMFrameEncoderAdapter_h
 
-#ifdef ENABLE_MSDK
+#include "MediaFramePipeline.h"
+#include "WebRTCTaskRunner.h"
 
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
-#include <deque>
+#include <boost/thread/shared_mutex.hpp>
 #include <logger.h>
 
-#include "MediaFramePipeline.h"
-
-#include "MsdkFrame.h"
-#include "MsdkBase.h"
+#include "VCMFrameEncoder.h"
 
 namespace woogeen_base {
 
-class MsdkFrameDecoder : public VideoFrameDecoder {
+class VCMFrameEncoderAdapter : public VideoFrameEncoder {
     DECLARE_LOGGER();
 
 public:
-    MsdkFrameDecoder();
-    ~MsdkFrameDecoder();
+    VCMFrameEncoderAdapter(FrameFormat format, boost::shared_ptr<WebRTCTaskRunner>);
+    ~VCMFrameEncoderAdapter();
 
-    static bool supportFormat(FrameFormat format) {return (format == FRAME_FORMAT_H264 || format == FRAME_FORMAT_H265);}
+    FrameFormat getInputFormat() {return FRAME_FORMAT_I420;}
 
+    // Implements VideoFrameEncoder.
     void onFrame(const Frame&);
-    bool init(FrameFormat);
-
-protected:
-    void initDefaultParam(void);
-
-    bool allocateFrames(void);
-
-    void updateBitstream(const Frame& frame);
-
-    bool decHeader(mfxBitstream *pBitstream);
-    void decFrame(mfxBitstream *pBitstream);
-
-    void flushOutput(void);
-    bool resetDecoder(void);
+    bool canSimulcast(FrameFormat format, uint32_t width, uint32_t height);
+    bool isIdle();
+    int32_t generateStream(uint32_t width, uint32_t height, uint32_t bitrateKbps, FrameDestination* dest);
+    void degenerateStream(int32_t streamId);
+    void setBitrate(unsigned short kbps, int32_t streamId);
+    void requestKeyFrame(int32_t streamId);
 
 private:
-    MFXVideoSession *m_session;
-    MFXVideoDECODE *m_dec;
-
-    std::deque<uint32_t> m_timeStamps;
-
-    boost::shared_ptr<mfxFrameAllocator> m_allocator;
-
-    boost::scoped_ptr<mfxVideoParam> m_videoParam;
-    boost::scoped_ptr<mfxBitstream> m_bitstream;
-
-    uint32_t m_decBsOffset;
-
-    boost::scoped_ptr<MsdkFramePool> m_framePool;
-
-    uint8_t m_statDetectHeaderFrameCount;
-
-    bool m_ready;
-
-    mfxPluginUID m_pluginID;
+    boost::scoped_ptr<VCMFrameEncoder> m_encoder;
+    int32_t m_streamId;
+    int32_t m_encoderStreamId;
+    uint32_t m_width;
+    uint32_t m_height;
+    uint32_t m_kbps;
+    FrameDestination *m_dest;
 };
 
 } /* namespace woogeen_base */
-
-#endif /* ENABLE_MSDK */
-#endif /* MsdkFrameDecoder_h */
-
+#endif /* VCMFrameEncoderAdapter_h */

@@ -41,9 +41,13 @@ class StreamEncoder : public FrameSource
 {
     DECLARE_LOGGER()
 
+    enum EncoderMode{ENCODER_MODE_NORMAL = 0, ENCODER_MODE_AUTO};
+
 public:
-    StreamEncoder(bool useGacc)
-        : m_frameCount(0)
+    StreamEncoder()
+        : m_mode(ENCODER_MODE_NORMAL)
+        , m_ready(false)
+        , m_frameCount(0)
         , m_format(FRAME_FORMAT_UNKNOWN)
         , m_width(0)
         , m_height(0)
@@ -51,7 +55,6 @@ public:
         , m_dest(NULL)
         , m_setBitRateFlag(false)
         , m_requestKeyFrameFlag(false)
-        , m_useGacc(useGacc)
         , m_encSession(NULL)
         , m_enc(NULL)
         , m_pluginID()
@@ -73,17 +76,12 @@ public:
             m_enc = NULL;
         }
 
-        if ((AreGuidsEqual(m_pluginID, MFX_PLUGINID_HEVCE_HW)||
-            AreGuidsEqual(m_pluginID, MFX_PLUGINID_HEVCE_GACC)) &&
-            m_encSession) {
-            MFXVideoUSER_UnLoad(*m_encSession, &m_pluginID);
-        }
-
         if (m_encSession) {
-            //disjoint
-            m_encSession->Close();
-            delete m_encSession;
-            m_encSession = NULL;
+            MsdkBase *msdkBase = MsdkBase::get();
+            if (msdkBase) {
+                msdkBase->unLoadPlugin(m_encSession, &m_pluginID);
+                msdkBase->destroySession(m_encSession);
+            }
         }
 
         m_encAllocator.reset();
@@ -121,21 +119,21 @@ public:
             ELOG_ERROR("(%p)Null FrameDestination.", this);
             return false;
         }
+
+        m_mode = (width > 0 && height > 0) ? ENCODER_MODE_NORMAL : ENCODER_MODE_AUTO;
         m_format        = format;
         m_width         = width;
         m_height        = height;
-        m_bitRateKbps   = bitrateKbps;
+        m_bitRateKbps   = (m_mode == ENCODER_MODE_NORMAL) ? bitrateKbps : 0;
         m_dest          = dest;
         addVideoDestination(dest);
 
         updateParam();
 
-        switch (format) {
+        switch (m_format) {
             case FRAME_FORMAT_H264:
                 m_encParam->mfx.CodecId                = MFX_CODEC_AVC;
                 m_encParam->mfx.CodecProfile           = MFX_PROFILE_AVC_BASELINE;
-
-                ELOG_DEBUG("(%p)Created H.264 encoder.", this);
                 break;
             case FRAME_FORMAT_H265:
                 // Let encoder decide the profile to be used.
@@ -143,9 +141,10 @@ public:
                 break;
             case FRAME_FORMAT_VP8:
             default:
-                ELOG_ERROR("(%p)Unspported video frame format %d", this, format);
+                ELOG_ERROR("(%p)Unspported video frame format %s(%d)", this, getFormatStr(m_format), m_format);
                 return false;
         }
+        ELOG_DEBUG("(%p)Created encoder %s(%d)", this, getFormatStr(m_format), m_format);
 
         mfxStatus sts = MFX_ERR_NONE;
 
@@ -155,19 +154,14 @@ public:
             return false;
         }
 
-        if (format == FRAME_FORMAT_H265) {
-            if (!m_useGacc) {
-                memcpy(&m_pluginID, &MFX_PLUGINID_HEVCE_HW, sizeof(mfxPluginUID));
-            } else {
-                memcpy(&m_pluginID, &MFX_PLUGINID_HEVCE_GACC, sizeof(mfxPluginUID));
-            }
-            m_encSession = msdkBase->createSession(&m_pluginID);
-        } else {
-            m_encSession = msdkBase->createSession();
-        }
-
+        m_encSession = msdkBase->createSession();
         if (!m_encSession ) {
             ELOG_ERROR("(%p)Create session failed.", this);
+            return false;
+        }
+
+        if (!msdkBase->loadEncoderPlugin(m_encParam->mfx.CodecId, m_encSession, &m_pluginID)) {
+            ELOG_ERROR("(%p)Load plugin failed.", this);
             return false;
         }
 
@@ -186,33 +180,14 @@ public:
         m_enc = new MFXVideoENCODE(*m_encSession);
         if (!m_enc) {
             ELOG_ERROR("(%p)Create encode failed", this);
-
             return false;
         }
 
-        sts = m_enc->Init(m_encParam.get());
-        if (sts > 0) {
-            ELOG_TRACE("(%p)Ignore mfx warning, ret %d", this, sts);
-        }
-        else if (sts != MFX_ERR_NONE) {
-            ELOG_ERROR("(%p)mfx init failed, ret %d", this, sts);
+        int size = (m_width != 0 && m_height != 0) ?
+            m_width * m_height * 3 / 2 :
+            1 * 1024 * 1024;
 
-            MsdkBase::printfVideoParam(m_encParam.get(), MFX_ENC);
-            return false;
-        }
-
-        m_enc->GetVideoParam(m_encParam.get());
-        MsdkBase::printfVideoParam(m_encParam.get(), MFX_ENC);
-
-        ELOG_TRACE("(%p)Init bistream buffer, %dx%d", this,
-                m_width,
-                m_height
-                );
-
-        int size = m_width * m_height * 3 / 2;
-
-        if (size == 0)
-            size = 1 * 1024 * 1024;
+        ELOG_TRACE("(%p)Init bistream buffer, size(%d)", this, size);
 
         m_bitstream.reset(new mfxBitstream);
         memset((void *)m_bitstream.get(), 0, sizeof(mfxBitstream));
@@ -222,7 +197,43 @@ public:
         m_bitstream->DataOffset   = 0;
         m_bitstream->DataLength   = 0;
 
+        resetEnc();
+
         return true;
+    }
+
+    void resetEnc()
+    {
+        mfxStatus sts = MFX_ERR_NONE;
+
+        if (!isValidParam()) {
+            m_ready = false;
+            return;
+        }
+
+        sts = m_enc->Reset(m_encParam.get());
+        if (sts > 0) {
+            ELOG_TRACE("(%p)Ignore mfx warning, ret %d", this, sts);
+        } else if (sts != MFX_ERR_NONE) {
+            ELOG_TRACE("(%p)mfx reset failed, ret %d. Try to reinitialize.", this, sts);
+
+            m_enc->Close();
+            sts = m_enc->Init(m_encParam.get());
+            if (sts > 0) {
+                ELOG_TRACE("(%p)Ignore mfx warning, ret %d", this, sts);
+            } else if (sts != MFX_ERR_NONE) {
+                MsdkBase::printfVideoParam(m_encParam.get(), MFX_ENC);
+                ELOG_ERROR("(%p)mfx init failed, ret %d", this, sts);
+
+                m_ready = false;
+                return;
+            }
+        }
+
+        m_enc->GetVideoParam(m_encParam.get());
+        MsdkBase::printfVideoParam(m_encParam.get(), MFX_ENC);
+
+        m_ready = true;
     }
 
     void onFrame(const woogeen_base::Frame& frame)
@@ -231,24 +242,33 @@ public:
         mfxSyncPoint syncp;
         boost::scoped_ptr<mfxEncodeCtrl> ctrl;
 
+        if (m_mode == ENCODER_MODE_AUTO) {
+            if(m_width != frame.additionalInfo.video.width || m_height != frame.additionalInfo.video.height) {
+                ELOG_INFO("(%p)Encoder resolution changed, %dx%d -> %dx%d", this
+                        , m_width, m_height
+                        , frame.additionalInfo.video.width, frame.additionalInfo.video.height
+                        );
+
+                m_width = frame.additionalInfo.video.width;
+                m_height = frame.additionalInfo.video.height;
+
+                updateParam();
+                resetEnc();
+            }
+        }
+
+        if (!m_ready) {
+            ELOG_INFO("(%p)Encoder not ready!", this);
+            return;
+        }
+
         boost::shared_ptr<MsdkFrame> inFrame = convert(frame);
 
         if (m_setBitRateFlag) {
             ELOG_INFO("(%p)Do set bitrate!", this);
 
             updateParam();
-
-            sts = m_enc->Reset(m_encParam.get());
-            if (sts > 0) {
-                ELOG_TRACE("(%p)Ignore mfx warning, ret %d", this, sts);
-            }
-            else if (sts != MFX_ERR_NONE) {
-                ELOG_ERROR("(%p)mfx reset failed, ret %d", this, sts);
-            }
-
-            m_enc->GetVideoParam(m_encParam.get());
-            MsdkBase::printfVideoParam(m_encParam.get(), MFX_ENC);
-
+            resetEnc();
             m_setBitRateFlag = false;
         }
 
@@ -360,6 +380,9 @@ protected:
         MsdkFrameHolder *holder = (MsdkFrameHolder *)frame.payload;
         boost::shared_ptr<MsdkFrame> msdkFrame = holder->frame;
 
+        if (m_mode == ENCODER_MODE_AUTO)
+            return msdkFrame;
+
         if(m_width != frame.additionalInfo.video.width || m_height != frame.additionalInfo.video.height) {
             if (!m_vpp) {
                 ELOG_DEBUG("(%p)Init vpp for frame scaling, %dx%d -> %dx%d"
@@ -415,12 +438,12 @@ protected:
         m_encParam->mfx.FrameInfo.FrameRateExtN   = 30;
         m_encParam->mfx.FrameInfo.FrameRateExtD   = 1;
 
-        m_encParam->mfx.FrameInfo.Width           = ALIGN16(1280);
-        m_encParam->mfx.FrameInfo.Height          = ALIGN16(720);
+        m_encParam->mfx.FrameInfo.Width           = ALIGN16(0);
+        m_encParam->mfx.FrameInfo.Height          = ALIGN16(0);
         m_encParam->mfx.FrameInfo.CropX           = 0;
         m_encParam->mfx.FrameInfo.CropY           = 0;
-        m_encParam->mfx.FrameInfo.CropW           = 1280;
-        m_encParam->mfx.FrameInfo.CropH           = 720;
+        m_encParam->mfx.FrameInfo.CropW           = 0;
+        m_encParam->mfx.FrameInfo.CropH           = 0;
 
         // mfxVideoParam Common
         m_encParam->AsyncDepth                    = 1;
@@ -501,6 +524,12 @@ protected:
 
         m_encParam->mfx.TargetKbps        = m_bitRateKbps ? m_bitRateKbps : calcBitrate(m_width, m_height);
         m_encParam->mfx.MaxKbps           = m_encParam->mfx.TargetKbps;
+    }
+
+    bool isValidParam()
+    {
+        return m_encParam->mfx.FrameInfo.Width > 0
+            && m_encParam->mfx.FrameInfo.Height > 0;
     }
 
     char *getFrameType(uint16_t frameType)
@@ -706,10 +735,10 @@ protected:
         }
 
         if (m_vppSession) {
-            //disjoint
-            m_vppSession->Close();
-            delete m_vppSession;
-            m_vppSession = NULL;
+            MsdkBase *msdkBase = MsdkBase::get();
+            if (msdkBase) {
+                msdkBase->destroySession(m_vppSession);
+            }
         }
 
         m_vppAllocator.reset();
@@ -760,6 +789,8 @@ retry:
     }
 
 private:
+    enum EncoderMode m_mode;
+    bool m_ready;
     //format
     uint32_t m_frameCount;
 
@@ -771,7 +802,6 @@ private:
 
     bool m_setBitRateFlag;
     bool m_requestKeyFrameFlag;
-    bool m_useGacc;
 
     //encoder
     MFXVideoSession *m_encSession;
@@ -792,20 +822,16 @@ private:
     //vpp
     MFXVideoSession *m_vppSession;
     MFXVideoVPP *m_vpp;
-
     boost::shared_ptr<mfxFrameAllocator> m_vppAllocator;
-
     boost::scoped_ptr<mfxVideoParam> m_vppParam;
-
     boost::scoped_ptr<MsdkFramePool> m_vppFramePool;
 };
 
 DEFINE_LOGGER(StreamEncoder, "woogeen.StreamEncoder");
 
-MsdkFrameEncoder::MsdkFrameEncoder(woogeen_base::FrameFormat format, bool useSimulcast, bool useGacc)
+MsdkFrameEncoder::MsdkFrameEncoder(woogeen_base::FrameFormat format, bool useSimulcast)
     : m_encodeFormat(format)
     , m_useSimulcast(useSimulcast)
-    , m_useGacc(useGacc)
     , m_id(0)
 {
 }
@@ -839,7 +865,7 @@ int32_t MsdkFrameEncoder::generateStream(uint32_t width, uint32_t height, uint32
 {
     boost::upgrade_lock<boost::shared_mutex> lock(m_mutex);
 
-    boost::shared_ptr<StreamEncoder> stream(new StreamEncoder(m_useGacc));
+    boost::shared_ptr<StreamEncoder> stream(new StreamEncoder());
     if (!stream->init(m_encodeFormat, width, height, bitrateKbps, dest)) {
         ELOG_ERROR("generateStream failed: {.width=%d, .height=%d, .bitrateKbps=%d}", width, height, bitrateKbps);
         return -1;
@@ -893,27 +919,13 @@ void MsdkFrameEncoder::onFrame(const Frame& frame)
 
     switch (frame.format) {
         case FRAME_FORMAT_MSDK:
-            {
-                for (auto it = m_streams.begin(); it != m_streams.end(); ++it) {
-                    it->second->onFrame(frame);
-                }
-
-                break;
+            for (auto it = m_streams.begin(); it != m_streams.end(); ++it) {
+                it->second->onFrame(frame);
             }
-
-        case FRAME_FORMAT_VP8:
-            assert(false);
             break;
-
-        case FRAME_FORMAT_H264:
-            assert(false);
-            break;
-
-        case FRAME_FORMAT_H265:
-            assert(false);
-            break;
-
         default:
+            ELOG_ERROR("frame format %d(%s) not supported", frame.format, getFormatStr(frame.format));
+            assert(false);
             break;
     }
 }

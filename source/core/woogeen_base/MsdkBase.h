@@ -26,23 +26,19 @@
 #include <boost/thread/shared_mutex.hpp>
 #include <logger.h>
 
+#include <mfxdefs.h>
 #include <mfxvideo++.h>
 #include <mfxplugin++.h>
 
 namespace woogeen_base {
 
-#define printfLine      ELOG_TRACE(":%d-(%p)%s - Mark", __LINE__, this, __FUNCTION__)
+//#define printfLine      ELOG_TRACE(":%d-(%p)%s - Mark", __LINE__, this, __FUNCTION__)
 
 #define printfFuncEnter ELOG_TRACE(":%d-(%p)%s ++++++++++ Enter", __LINE__, this, __FUNCTION__)
 #define printfFuncExit  ELOG_TRACE(":%d-(%p)%s ---------- Exit", __LINE__, this, __FUNCTION__)
 
-#define printfToDo      ELOG_TRACE(":%d-(%p)%s - Todo", __LINE__, this, __FUNCTION__)
-
 #define ALIGN16(x) ((((x) + 15) >> 4) << 4)
 #define ALIGN32(x) ((((x) + 31) >> 5) << 5)
-
-
-bool AreGuidsEqual(const mfxPluginUID& guid1, const mfxPluginUID& guid2);
 
 const char *mfxStatusToStr(const mfxStatus sts);
 
@@ -56,8 +52,14 @@ public:
 
     static MsdkBase *get(void);
 
-    MFXVideoSession *createSession(mfxPluginUID* pluginID=nullptr);
+    void setConfig(bool hevcEncoderGaccPlugin);
+
+    MFXVideoSession *createSession();
     void destroySession(MFXVideoSession *pSession);
+
+    bool loadDecoderPlugin(uint32_t codecId, MFXVideoSession *pSession, mfxPluginUID *pluginID);
+    bool loadEncoderPlugin(uint32_t codecId, MFXVideoSession *pSession, mfxPluginUID *pluginID);
+    void unLoadPlugin(MFXVideoSession *pSession, mfxPluginUID *pluginID);
 
     boost::shared_ptr<mfxFrameAllocator> createFrameAllocator(void);
     void destroyFrameAllocator(mfxFrameAllocator *pAlloc);
@@ -82,6 +84,8 @@ private:
     void *m_vaDisp;
 
     MFXVideoSession *m_mainSession;
+
+    bool m_configHevcEncoderGaccPlugin;
 };
 
 } /* namespace woogeen_base */

@@ -34,20 +34,28 @@ DEFINE_LOGGER(MsdkBase, "woogeen.MsdkBase");
 boost::shared_mutex MsdkBase::sSingletonLock;
 MsdkBase *MsdkBase::sSingleton = NULL;
 
-bool AreGuidsEqual(const mfxPluginUID& guid1, const mfxPluginUID& guid2)
+static bool AreGuidsEqual(const mfxPluginUID *guid1, const mfxPluginUID *guid2)
 {
-    for(size_t i = 0; i != sizeof(mfxPluginUID); i++)
-    {
-        if (guid1.Data[i] != guid2.Data[i])
+    for(size_t i = 0; i != sizeof(mfxPluginUID); i++) {
+        if (guid1->Data[i] != guid2->Data[i])
             return false;
     }
     return true;
 }
 
+static bool isValidPluginUID(const mfxPluginUID *uid)
+{
+    return (AreGuidsEqual(uid, &MFX_PLUGINID_HEVCD_HW)
+            ||AreGuidsEqual(uid, &MFX_PLUGINID_HEVCE_HW)
+            ||AreGuidsEqual(uid, &MFX_PLUGINID_HEVCE_GACC)
+           );
+}
+
 MsdkBase::MsdkBase()
-    : m_fd(0),
-    m_vaDisp(NULL),
-    m_mainSession(NULL)
+    : m_fd(0)
+    , m_vaDisp(NULL)
+    , m_mainSession(NULL)
+    , m_configHevcEncoderGaccPlugin(false)
 {
 }
 
@@ -99,7 +107,6 @@ bool MsdkBase::init()
 MsdkBase::~MsdkBase()
 {
     printfFuncEnter;
-    printfToDo;
     printfFuncExit;
 }
 
@@ -121,6 +128,12 @@ MsdkBase *MsdkBase::get(void)
     }
 
     return sSingleton;
+}
+
+void MsdkBase::setConfig(bool hevcEncoderGaccPlugin)
+{
+    ELOG_DEBUG("Set hevcEncoderGaccPlugin(%d)", hevcEncoderGaccPlugin);
+    m_configHevcEncoderGaccPlugin = hevcEncoderGaccPlugin;
 }
 
 MFXVideoSession *MsdkBase::createSession_internal(void)
@@ -158,19 +171,10 @@ MFXVideoSession *MsdkBase::createSession_internal(void)
     return pSession;
 }
 
-MFXVideoSession *MsdkBase::createSession(mfxPluginUID* pluginID)
+MFXVideoSession *MsdkBase::createSession()
 {
     mfxStatus sts = MFX_ERR_NONE;
     MFXVideoSession *pSession = NULL;
-
-#if 0 //dont need
-    if(!m_mainSession)
-    {
-        ELOG_ERROR("Main session is not available.");
-
-        return NULL;
-    }
-#endif
 
     pSession = createSession_internal();
     if (!pSession) {
@@ -183,29 +187,85 @@ MFXVideoSession *MsdkBase::createSession(mfxPluginUID* pluginID)
         return NULL;
     }
 
-    // If plugin load fails, we need to destroy the session.
-    // Be noted plugin loading must happen after joining main
-    // session, else decoder will crash in plugin.
-    if (pluginID != nullptr) {
-        sts = MFXVideoUSER_Load(*pSession, pluginID, 1);
-        if (sts != MFX_ERR_NONE) {
-            ELOG_ERROR("Failed to load codec plugin.");
-            //TODO: Disjoin main session
-            pSession->Close();
-            delete pSession;
-            pSession = nullptr;
-            return pSession;
-        } else {
-            ELOG_DEBUG("Succeed to load codec plugin.");
-        }
-    }
-
     return pSession;
 }
 
 void MsdkBase::destroySession(MFXVideoSession *pSession)
 {
-    printfToDo;
+    if (pSession) {
+        pSession->DisjoinSession();
+        pSession->Close();
+        delete pSession;
+    }
+}
+
+bool MsdkBase::loadDecoderPlugin(uint32_t codecId, MFXVideoSession *pSession, mfxPluginUID *pluginID)
+{
+    mfxStatus sts = MFX_ERR_NONE;
+
+    switch (codecId) {
+        case MFX_CODEC_HEVC:
+            ELOG_DEBUG("Load plugin MFX_PLUGINID_HEVCD_HW");
+            sts = MFXVideoUSER_Load(*pSession, &MFX_PLUGINID_HEVCD_HW, 1);
+            if (sts != MFX_ERR_NONE) {
+                ELOG_ERROR("Failed to load codec plugin.");
+                return false;
+            }
+
+            memcpy(pluginID, &MFX_PLUGINID_HEVCD_HW, sizeof(mfxPluginUID));
+            return true;
+
+        case MFX_CODEC_AVC:
+            return true;
+
+        default:
+            return false;
+    }
+
+    return true;
+}
+
+bool MsdkBase::loadEncoderPlugin(uint32_t codecId, MFXVideoSession *pSession, mfxPluginUID *pluginID)
+{
+    mfxStatus sts = MFX_ERR_NONE;
+
+    switch (codecId) {
+        case MFX_CODEC_HEVC:
+            mfxPluginUID id;
+
+            if (m_configHevcEncoderGaccPlugin) {
+                ELOG_DEBUG("Load plugin MFX_PLUGINID_HEVCE_GACC");
+                memcpy(&id, &MFX_PLUGINID_HEVCE_GACC, sizeof(mfxPluginUID));
+            } else {
+                ELOG_DEBUG("Load plugin MFX_PLUGINID_HEVCE_HW");
+                memcpy(&id, &MFX_PLUGINID_HEVCE_HW, sizeof(mfxPluginUID));
+            }
+
+            sts = MFXVideoUSER_Load(*pSession, &id, 1);
+            if (sts != MFX_ERR_NONE) {
+                ELOG_ERROR("Failed to load codec plugin.");
+                return false;
+            }
+
+            memcpy(pluginID, &id, sizeof(mfxPluginUID));
+            return true;
+
+        case MFX_CODEC_AVC:
+            return true;
+
+        default:
+            return false;
+    }
+
+    return true;
+}
+
+void MsdkBase::unLoadPlugin(MFXVideoSession *pSession, mfxPluginUID *pluginID)
+{
+    if (isValidPluginUID(pluginID)) {
+        ELOG_DEBUG("UnLoad plugin");
+        MFXVideoUSER_UnLoad(*pSession, pluginID);
+    }
 }
 
 boost::shared_ptr<mfxFrameAllocator> MsdkBase::createFrameAllocator(void)

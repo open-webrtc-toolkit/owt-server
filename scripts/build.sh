@@ -58,6 +58,7 @@ BUILD_SIP_GATEWAY_RUNTIME=false
 BUILD_MCU_RUNTIME_SW=false
 BUILD_MCU_RUNTIME_HW_YAMI=false
 BUILD_MCU_RUNTIME_HW_MSDK=false
+BUILD_MCU_RUNTIME_ALL=false
 BUILD_SDK=false
 BUILDTYPE="Release"
 BUILD_ROOT="${ROOT}/build"
@@ -80,13 +81,6 @@ while [[ $# -gt 0 ]]; do
     *(-)rebuild )
       REBUILD=true
       ;;
-    *(-)all )
-      BUILD_GATEWAY_RUNTIME=true
-      BUILD_SIP_GATEWAY_RUNTIME=true
-      BUILD_MCU_RUNTIME_SW=true
-      BUILD_MCU_RUNTIME_HW_MSDK=true
-      BUILD_SDK=true
-      ;;
     *(-)gateway )
       BUILD_GATEWAY_RUNTIME=true
       ;;
@@ -103,14 +97,25 @@ while [[ $# -gt 0 ]]; do
       BUILD_MCU_RUNTIME_HW_MSDK=true
       ;;
     *(-)mcu-all )
-      BUILD_MCU_RUNTIME_SW=true
-      BUILD_MCU_RUNTIME_HW_MSDK=true
+      BUILD_MCU_RUNTIME_SW=false
+      BUILD_MCU_RUNTIME_HW_MSDK=false
+      BUILD_MCU_RUNTIME_HW_YAMI=false
+      BUILD_MCU_RUNTIME_ALL=true
       ;;
     *(-)sip )
       BUILD_SIP_GATEWAY_RUNTIME=true
       ;;
     *(-)sdk )
       BUILD_SDK=true
+      ;;
+    *(-)all )
+      BUILD_GATEWAY_RUNTIME=true
+      BUILD_SIP_GATEWAY_RUNTIME=true
+      BUILD_SDK=true
+      BUILD_MCU_RUNTIME_SW=false
+      BUILD_MCU_RUNTIME_HW_MSDK=false
+      BUILD_MCU_RUNTIME_HW_YAMI=false
+      BUILD_MCU_RUNTIME_ALL=true
       ;;
     *(-)help )
       usage
@@ -134,21 +139,39 @@ build_mcu_runtime() {
 }
 
 build_mcu_runtime_sw() {
-  cp -f ${SOURCE}/agent/video/videoMixer_sw/binding.sw.gyp ${SOURCE}/agent/video/videoMixer_sw/binding.gyp
+  cp -f ${SOURCE}/agent/video/videoMixer/videoMixer_sw/binding.sw.gyp ${SOURCE}/agent/video/videoMixer/videoMixer_sw/binding.gyp
+  cp -f ${SOURCE}/agent/video/videoTranscoder/videoTranscoder_sw/binding.sw.gyp ${SOURCE}/agent/video/videoTranscoder/videoTranscoder_sw/binding.gyp
   build_mcu_runtime
-  rm -f ${SOURCE}/agent/video/videoMixer_sw/binding.gyp
+  rm -f ${SOURCE}/agent/video/videoMixer/videoMixer_sw/binding.gyp
+  rm -f ${SOURCE}/agent/video/videoTranscoder/videoTranscoder_sw/binding.gyp
 }
 
 build_mcu_runtime_hw_yami() {
-  cp -f ${SOURCE}/agent/video/videoMixer_hw/binding.hw.yami.gyp ${SOURCE}/agent/video/videoMixer_hw_yami/binding.gyp
+  cp -f ${SOURCE}/agent/video/videoMixer/yami/binding.hw.yami.gyp ${SOURCE}/agent/video/videoMixer/yami/binding.gyp
   build_mcu_runtime
-  rm -f ${SOURCE}/agent/video/videoMixer_hw_yami/binding.gyp
+  rm -f ${SOURCE}/agent/video/videoMixer/yami/binding.gyp
 }
 
 build_mcu_runtime_hw_msdk() {
-  cp -f ${SOURCE}/agent/video/videoMixer_hw/binding.hw.msdk.gyp ${SOURCE}/agent/video/videoMixer_hw_msdk/binding.gyp
+  cp -f ${SOURCE}/agent/video/videoMixer/videoMixer_msdk/binding.msdk.gyp ${SOURCE}/agent/video/videoMixer/videoMixer_msdk/binding.gyp
+  cp -f ${SOURCE}/agent/video/videoTranscoder/videoTranscoder_msdk/binding.msdk.gyp ${SOURCE}/agent/video/videoTranscoder/videoTranscoder_msdk/binding.gyp
   build_mcu_runtime
-  rm -f ${SOURCE}/agent/video/videoMixer_hw_msdk/binding.gyp
+  rm -f ${SOURCE}/agent/video/videoMixer/videoMixer_msdk/binding.gyp
+  rm -f ${SOURCE}/agent/video/videoTranscoder/videoTranscoder_msdk/binding.gyp
+}
+
+build_mcu_runtime_all() {
+  cp -f ${SOURCE}/agent/video/videoMixer/videoMixer_sw/binding.sw.gyp ${SOURCE}/agent/video/videoMixer/videoMixer_sw/binding.gyp
+  cp -f ${SOURCE}/agent/video/videoTranscoder/videoTranscoder_sw/binding.sw.gyp ${SOURCE}/agent/video/videoTranscoder/videoTranscoder_sw/binding.gyp
+
+  cp -f ${SOURCE}/agent/video/videoMixer/videoMixer_msdk/binding.msdk.gyp ${SOURCE}/agent/video/videoMixer/videoMixer_msdk/binding.gyp
+  cp -f ${SOURCE}/agent/video/videoTranscoder/videoTranscoder_msdk/binding.msdk.gyp ${SOURCE}/agent/video/videoTranscoder/videoTranscoder_msdk/binding.gyp
+  build_mcu_runtime
+  rm -f ${SOURCE}/agent/video/videoMixer/videoMixer_sw/binding.gyp
+  rm -f ${SOURCE}/agent/video/videoTranscoder/videoTranscoder_sw/binding.gyp
+
+  rm -f ${SOURCE}/agent/video/videoMixer/videoMixer_msdk/binding.gyp
+  rm -f ${SOURCE}/agent/video/videoTranscoder/videoTranscoder_msdk/binding.gyp
 }
 
 build_runtime() {
@@ -251,6 +274,10 @@ build() {
   fi
   if ${BUILD_MCU_RUNTIME_HW_YAMI} ; then
     build_mcu_runtime_hw_yami
+    ((DONE++))
+  fi
+  if ${BUILD_MCU_RUNTIME_ALL} ; then
+    build_mcu_runtime_all
     ((DONE++))
   fi
   if ${BUILD_SDK} ; then

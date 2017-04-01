@@ -55,16 +55,12 @@ MsdkFrameDecoder::~MsdkFrameDecoder()
         m_dec = NULL;
     }
 
-    if (AreGuidsEqual(m_pluginID, MFX_PLUGINID_HEVCD_HW) &&
-        m_session) {
-        MFXVideoUSER_UnLoad(*m_session, &m_pluginID);
-    }
-
     if (m_session) {
-        //disjoint
-        m_session->Close();
-        delete m_session;
-        m_session = NULL;
+        MsdkBase *msdkBase = MsdkBase::get();
+        if (msdkBase) {
+            msdkBase->unLoadPlugin(m_session, &m_pluginID);
+            msdkBase->destroySession(m_session);
+        }
     }
 
     m_allocator.reset();
@@ -78,6 +74,8 @@ MsdkFrameDecoder::~MsdkFrameDecoder()
     m_bitstream.reset();
 
     m_framePool.reset();
+
+    m_timeStamps.clear();
 
     printfFuncExit;
 }
@@ -218,16 +216,15 @@ bool MsdkFrameDecoder::init(FrameFormat format)
         ELOG_ERROR("(%p)Get MSDK failed.", this);
         return false;
     }
-    if (format == FRAME_FORMAT_H265) {
-        memcpy(&m_pluginID, &MFX_PLUGINID_HEVCD_HW, sizeof(mfxPluginUID));
-        m_session = msdkBase->createSession(&m_pluginID);
 
-    } else {
-        m_session = msdkBase->createSession();
-    }
-
+    m_session = msdkBase->createSession();
     if (!m_session ) {
         ELOG_ERROR("(%p)Create session failed.", this);
+        return false;
+    }
+
+    if (!msdkBase->loadDecoderPlugin(m_videoParam->mfx.CodecId, m_session, &m_pluginID)) {
+        ELOG_ERROR("(%p)Load plugin failed.", this);
         return false;
     }
 
@@ -396,9 +393,13 @@ retry:
         frame.length = 0;
         frame.additionalInfo.video.width = holder.frame->getVideoWidth();
         frame.additionalInfo.video.height = holder.frame->getVideoHeight();
-        frame.timeStamp = 0;
 
-        //ELOG_TRACE("timeStamp %u", frame.timeStamp);
+        if (m_timeStamps.size() > 0) {
+            frame.timeStamp = m_timeStamps.front();
+            m_timeStamps.pop_front();
+        } else {
+            ELOG_ERROR("No timeStamp available in queue");
+        }
 
         deliverFrame(frame);
     }
@@ -485,11 +486,14 @@ void MsdkFrameDecoder::onFrame(const Frame& frame)
 
 retry:
     if (m_ready || decHeader(m_bitstream.get())) {
+        m_timeStamps.push_back(frame.timeStamp);
         decFrame(m_bitstream.get());
 
         // if decFrame reset, retry decHeader w/ current bs (most likely SPS) and continuely decFrame
-        if (!m_ready)
+        if (!m_ready) {
+            m_timeStamps.clear();
             goto retry;
+        }
     }
 
     printfFuncExit;

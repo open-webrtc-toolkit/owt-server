@@ -24,7 +24,6 @@
 #include "VideoLayoutProcessor.h"
 #include "VideoFrameMixer.h"
 #include <WebRTCTransport.h>
-#include <webrtc/modules/video_coding/codecs/vp8/vp8_factory.h>
 #include <webrtc/system_wrappers/interface/trace.h>
 
 #include <boost/property_tree/json_parser.hpp>
@@ -52,12 +51,15 @@ VideoMixer::VideoMixer(const std::string& configStr)
     for (size_t i = 0; i < m_maxInputCount; ++i)
         m_freeInputIndexes.push_back(true);
 
-    // bool hardwareAccelerated = config.get<bool>("hardware", false);
-    bool useGacc = config.get<bool>("gaccplugin");
-
-    bool useSimulcast = config.get<bool>("simulcast");
-    webrtc::VP8EncoderFactoryConfig::set_use_simulcast_adapter(useSimulcast);
     bool cropVideo = config.get<bool>("crop");
+
+#ifdef ENABLE_MSDK
+    bool useGacc = config.get<bool>("gaccplugin", false);
+    MsdkBase *msdkBase = MsdkBase::get();
+    if(msdkBase != NULL) {
+        msdkBase->setConfig(useGacc);
+    }
+#endif
 
     m_layoutProcessor.reset(new VideoLayoutProcessor(config));
     VideoSize rootSize;
@@ -69,7 +71,7 @@ VideoMixer::VideoMixer(const std::string& configStr)
 
     m_taskRunner.reset(new woogeen_base::WebRTCTaskRunner());
 
-    m_frameMixer.reset(new VideoFrameMixerImpl(m_maxInputCount, rootSize, bgColor, m_taskRunner, useSimulcast, cropVideo, useGacc));
+    m_frameMixer.reset(new VideoFrameMixerImpl(m_maxInputCount, rootSize, bgColor, m_taskRunner, true, cropVideo));
     m_layoutProcessor->registerConsumer(m_frameMixer);
 
     m_taskRunner->Start();
@@ -90,20 +92,6 @@ VideoMixer::~VideoMixer()
 
     if (ELOG_IS_TRACE_ENABLED()) {
         webrtc::Trace::ReturnTrace();
-    }
-}
-
-static woogeen_base::FrameFormat getFormat(const std::string& codec) {
-    if (codec == "vp8") {
-        return woogeen_base::FRAME_FORMAT_VP8;
-    } else if (codec == "h264") {
-        return woogeen_base::FRAME_FORMAT_H264;
-    } else if (codec == "vp9") {
-        return woogeen_base::FRAME_FORMAT_VP9;
-    } else if (codec == "h265") {
-        return woogeen_base::FRAME_FORMAT_H265;
-    } else {
-        return woogeen_base::FRAME_FORMAT_UNKNOWN;
     }
 }
 
