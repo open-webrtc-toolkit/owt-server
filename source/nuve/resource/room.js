@@ -258,45 +258,46 @@ Room.prototype.toString = function () {
 };
 
 Room.genConfig = function (room) {
-    var layoutType = room.mediaMixing.video.layout.base;
-    var maxInput = room.mediaMixing.video.maxInput || 16;
-    var layoutTemplates;
-
-    if (layoutType === 'fluid') {
-        layoutTemplates = generateFluidTemplates(maxInput);
-    } else if (layoutType === 'lecture') {
-        layoutTemplates = generateLectureTemplates(maxInput);
-    } else if (layoutType === 'void') {
-        layoutTemplates = [];
-    } else {
-        layoutTemplates = generateFluidTemplates(maxInput);
-    }
-
-    var custom = room.mediaMixing.video.layout.custom;
-    if (isTemplatesValid(custom)) {
-        log.info('apply custom layout templates');
-        custom.map(function (tpl) {
-            var len = tpl.region.length;
-            var pos;
-            for (var j in layoutTemplates) {
-                if (layoutTemplates.hasOwnProperty(j)) {
-                    if (layoutTemplates[j].region.length >= len) {
-                        pos = j;
-                        break;
-                    }
-                }
-            }
-            if (pos === undefined) {
-                layoutTemplates.push(tpl);
-            } else if (layoutTemplates[pos].region.length === len) {
-                layoutTemplates.splice(pos, 1, tpl);
-            } else {
-                layoutTemplates.splice(pos, 0, tpl);
-            }
-        });
-    }
 
     var genMediaMixing = function(mediaMixing) {
+        var layoutType = mediaMixing.video.layout.base;
+        var maxInput = mediaMixing.video.maxInput || 16;
+        var layoutTemplates;
+
+        if (layoutType === 'fluid') {
+        layoutTemplates = generateFluidTemplates(maxInput);
+        } else if (layoutType === 'lecture') {
+            layoutTemplates = generateLectureTemplates(maxInput);
+        } else if (layoutType === 'void') {
+            layoutTemplates = [];
+        } else {
+            layoutTemplates = generateFluidTemplates(maxInput);
+        }
+
+        var custom = mediaMixing.video.layout.custom;
+        if (isTemplatesValid(custom)) {
+            log.info('apply custom layout templates');
+            custom.map(function (tpl) {
+                var len = tpl.region.length;
+                var pos;
+                for (var j in layoutTemplates) {
+                    if (layoutTemplates.hasOwnProperty(j)) {
+                        if (layoutTemplates[j].region.length >= len) {
+                            pos = j;
+                            break;
+                        }
+                    }
+                }
+                if (pos === undefined) {
+                    layoutTemplates.push(tpl);
+                } else if (layoutTemplates[pos].region.length === len) {
+                    layoutTemplates.splice(pos, 1, tpl);
+                } else {
+                    layoutTemplates.splice(pos, 0, tpl);
+                }
+            });
+        }
+
         return {
             video: {
                 avCoordinated: mediaMixing.video.avCoordinated === 1,
