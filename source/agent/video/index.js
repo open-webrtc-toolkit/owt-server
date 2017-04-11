@@ -70,6 +70,7 @@ function VMixer(rpcClient, clusterIP) {
         belong_to,
         controller,
         view,
+        defaultQuality,
 
         supported_codecs = [],
         supported_resolutions = [],
@@ -80,7 +81,7 @@ function VMixer(rpcClient, clusterIP) {
             standard: 2,
             betterspeed: 3,
             bestspeed: 4
-        };
+        },
 
         /*{StreamID : {codec: 'vp8' | 'h264' |...,
                        resolution: 'cif' | 'vga' | 'svga' | 'xga' | 'hd720p' | 'sif' | 'hvga' | 'r640x360' | 'r480x360' | 'qcif' | 'r192x144' | 'hd1080p' | 'uhd_4k' | 'r720x720' ...,
@@ -223,6 +224,7 @@ function VMixer(rpcClient, clusterIP) {
         controller = layoutcontroller;
         maxInputNum = videoConfig.maxInput;
         view = mixView;
+        defaultQuality = videoConfig.quality_level;
 
         // FIXME: The supported codec list should be a sub-list of those querried from the engine
         // and filterred out according to config.
@@ -287,6 +289,7 @@ function VMixer(rpcClient, clusterIP) {
         resolution = resolution.toLowerCase();
 
         // Map to qualityLevel enum
+        if (quality === 'unspecified') quality = defaultQuality;
         var qualityLevel = supported_qualities[quality.toLowerCase()];
         if (qualityLevel === undefined) {
             qualityLevel = 2; // use 'standard' if not found
