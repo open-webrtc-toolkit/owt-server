@@ -134,7 +134,7 @@ var generateToken = function (currentRoom, authData, type, origin, callback) {
 exports.create = function (req, res) {
     var authData = req.authData || {},
         type = req.params.type || 'socketio',
-        origin = req.origin || {isp: 'isp', region: 'region'};
+        origin = (req.body && req.body.preference) || {isp: 'isp', region: 'region'};
 
     if (authData.service === undefined) {
         log.info('Service not found');
