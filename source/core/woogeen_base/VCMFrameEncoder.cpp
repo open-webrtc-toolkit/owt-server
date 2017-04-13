@@ -44,7 +44,6 @@ VCMFrameEncoder::VCMFrameEncoder(FrameFormat format, boost::shared_ptr<WebRTCTas
     , m_taskRunner(taskRunner)
     , m_running(false)
     , m_incomingFrameCount(0)
-    , m_encodedFrameCount(0)
 {
     webrtc::VP8EncoderFactoryConfig::set_use_simulcast_adapter(useSimulcast);
     m_vcm->InitializeSender();
@@ -310,8 +309,6 @@ void VCMFrameEncoder::onFrame(const Frame& frame)
 
 void VCMFrameEncoder::doEncoding()
 {
-    ELOG_TRACE("doEncoding");
-
     if (!m_bufferManager)
         return;
 
@@ -328,17 +325,17 @@ void VCMFrameEncoder::encodeLoop()
 {
     while (m_running) {
         boost::mutex::scoped_lock lock(m_encMutex);
-        while (m_incomingFrameCount <= m_encodedFrameCount) {
+        while (m_incomingFrameCount == 0) {
             m_encCond.wait(lock);
         }
-        m_encodedFrameCount++;
+        m_incomingFrameCount--;
         m_encMutex.unlock();
 
         if (m_running)
             doEncoding();
     }
 
-    ELOG_TRACE("Thread exited!");
+    ELOG_TRACE_T("Thread exited!");
 }
 
 void VCMFrameEncoder::encodeOneFrame()
@@ -348,7 +345,8 @@ void VCMFrameEncoder::encodeOneFrame()
     m_incomingFrameCount++;
     m_encCond.notify_one();
 
-    ELOG_TRACE("encodeOneFrame, incoming(%d), encoded(%d)", m_incomingFrameCount, m_encodedFrameCount);
+    if (m_incomingFrameCount > 100)
+        ELOG_WARN_T("Too many pending frames(%d)", m_incomingFrameCount);
 }
 
 void VCMFrameEncoder::onTimeout()

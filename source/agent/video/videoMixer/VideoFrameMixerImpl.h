@@ -206,6 +206,7 @@ inline void VideoFrameMixerImpl::removeInput(int input)
     if (it != m_inputs.end()) {
         it->second.source->removeVideoDestination(it->second.decoder.get());
         it->second.decoder->removeVideoDestination(it->second.compositorIn.get());
+        it->second.compositorIn.reset();
         boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
         m_inputs.erase(it);
     }
@@ -300,10 +301,10 @@ inline void VideoFrameMixerImpl::removeOutput(int32_t output)
     boost::upgrade_lock<boost::shared_mutex> lock(m_outputMutex);
     auto it = m_outputs.find(output);
     if (it != m_outputs.end()) {
+        it->second.encoder->degenerateStream(it->second.streamId);
         if (it->second.encoder->isIdle()) {
             m_compositor->removeVideoDestination(it->second.encoder.get());
         }
-        it->second.encoder->degenerateStream(it->second.streamId);
         boost::upgrade_to_unique_lock<boost::shared_mutex> ulock(lock);
         m_outputs.erase(output);
     }

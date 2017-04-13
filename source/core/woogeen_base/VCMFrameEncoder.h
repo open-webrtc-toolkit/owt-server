@@ -127,7 +127,6 @@ private:
     boost::condition_variable m_encCond;
 
     uint32_t m_incomingFrameCount;
-    uint32_t m_encodedFrameCount;
 };
 
 } /* namespace woogeen_base */

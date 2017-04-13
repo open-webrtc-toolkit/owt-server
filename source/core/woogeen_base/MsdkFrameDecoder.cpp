@@ -47,7 +47,7 @@ MsdkFrameDecoder::~MsdkFrameDecoder()
 {
     printfFuncEnter;
 
-    flushOutput();
+    //flushOutput();
 
     if (m_dec) {
         m_dec->Close();
@@ -73,6 +73,7 @@ MsdkFrameDecoder::~MsdkFrameDecoder()
     }
     m_bitstream.reset();
 
+    m_framePool2.reset();
     m_framePool.reset();
 
     m_timeStamps.clear();
@@ -90,23 +91,20 @@ bool MsdkFrameDecoder::allocateFrames(void)
 {
     mfxStatus sts = MFX_ERR_NONE;
 
-    if (m_framePool)
-        m_framePool.reset(NULL);
-
     mfxFrameAllocRequest Request;
     memset(&Request, 0, sizeof(mfxFrameAllocRequest));
 
     sts = m_dec->QueryIOSurf(m_videoParam.get(), &Request);
     if (sts > 0) {
         ELOG_TRACE("(%p)Ignore mfx warning, ret %d", this, sts);
-    }
-    else if (sts != MFX_ERR_NONE) {
+    } else if (sts != MFX_ERR_NONE) {
         ELOG_ERROR("(%p)mfx QueryIOSurf() failed, ret %d", this, sts);
         return false;
     }
 
     ELOG_TRACE("(%p)mfx QueryIOSurf: Suggested(%d), Min(%d)", this, Request.NumFrameSuggested, Request.NumFrameMin);
 
+    m_framePool2 = m_framePool;
     m_framePool.reset(new MsdkFramePool(Request, m_allocator));
     return true;
 }
@@ -137,7 +135,7 @@ bool MsdkFrameDecoder::resetDecoder(void)
 {
     ELOG_TRACE("(%p)resetDecoder", this);
 
-    flushOutput();
+    //flushOutput();
 
     if (m_dec) {
         int previousWidth   = m_videoParam->mfx.FrameInfo.Width;
@@ -174,9 +172,6 @@ bool MsdkFrameDecoder::resetDecoder(void)
         m_dec->Close();
         delete m_dec;
         m_dec = NULL;
-
-        if (m_framePool)
-            m_framePool.reset(NULL);
     }
 
     m_dec = new MFXVideoDECODE(*m_session);
