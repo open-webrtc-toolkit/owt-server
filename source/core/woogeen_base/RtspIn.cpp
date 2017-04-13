@@ -360,6 +360,8 @@ RtspIn::RtspIn(const Options& options, EventRegistry* handle)
     , m_audioEncTimestamp(AV_NOPTS_VALUE)
     , m_dumpContext(nullptr)
 {
+    ELOG_INFO_T("url: %s, audio: %d, video: %d"
+            , m_url.c_str(), m_needAudio, m_needVideo);
     if(isRtsp()) {
         if (options.transport.compare("udp") == 0) {
             uint32_t buffer_size =  options.bufferSize > 0 ? options.bufferSize : DEFAULT_UDP_BUF_SIZE;
@@ -368,12 +370,10 @@ RtspIn::RtspIn(const Options& options, EventRegistry* handle)
             av_dict_set(&m_options, "buffer_size", buf, 0);
 
             av_dict_set(&m_options, "rtsp_transport", "udp", 0);
-            ELOG_INFO_T("url: %s, audio: %d, video: %d, transport: udp(%u)"
-                    , m_url.c_str(), m_needAudio, m_needVideo, buffer_size);
+            ELOG_INFO_T("rtsp, transport: udp(%u)" , buffer_size);
         } else {
             av_dict_set(&m_options, "rtsp_transport", "tcp", 0);
-            ELOG_INFO_T("url: %s, audio: %d, video: %d, transport: tcp"
-                    , m_url.c_str(), m_needAudio, m_needVideo);
+            ELOG_INFO_T("rtsp, transport: tcp");
         }
     }
 
@@ -610,6 +610,7 @@ bool RtspIn::connect()
                 break;
 
             case AV_CODEC_ID_AAC:
+            case AV_CODEC_ID_AC3:
             case AV_CODEC_ID_NELLYMOSER:
                 m_needAudioTranscoder = true;
                 if (!initAudioTranscoder(audioCodecId, AV_CODEC_ID_OPUS)) {
@@ -915,6 +916,7 @@ bool RtspIn::initAudioDecoder(AVCodecID codec) {
 
     switch(codec) {
         case AV_CODEC_ID_AAC:
+        case AV_CODEC_ID_AC3:
         case AV_CODEC_ID_NELLYMOSER:
             audioDec = avcodec_find_decoder(codec);
             if (!audioDec) {
@@ -1222,7 +1224,7 @@ bool RtspIn::decAudioFrame(AVPacket &packet) {
         m_audioEncTimestamp = packet.dts;
         m_audioFifoTimeBegin = packet.dts;
     }
-    m_audioFifoTimeEnd = packet.dts + packet.duration;
+    m_audioFifoTimeEnd = packet.dts + 1000.0 * audioFrameLen / m_audioEncCtx->sample_rate;
 
     return true;
 }
