@@ -53,13 +53,21 @@ void initUsrSctp() {
     //printf("### initUsrSctp\n");
     usrsctp_init(0, &SctpTransport::onSctpOutboundPacket, &debugSctpPrintf);
 
-    uint32_t send_size = MAX_MSGSIZE;
-    usrsctp_sysctl_set_sctp_sendspace(send_size);
-    //send_size = usrsctp_sysctl_get_sctp_sendspace();
-    //printf("###Set sctp send space %u", send_size);
-    if (send_size < MAX_MSGSIZE) {
-        //printf("Got smaller send size than expected: %d\n", send_size);
-    }
+    usrsctp_sysctl_set_sctp_sendspace((uint32_t) MAX_MSGSIZE);
+    usrsctp_sysctl_set_sctp_recvspace((uint32_t) MAX_MSGSIZE);
+
+    // uint32_t delay_time = 100;
+    // usrsctp_sysctl_set_sctp_delayed_sack_time_default(delay_time);
+
+    // uint32_t enable_immediate_sack = 1;
+    // usrsctp_sysctl_set_sctp_enable_sack_immediately(enable_immediate_sack);
+    // uint32_t on = 1;
+    // usrsctp_sysctl_set_sctp_nr_sack_on_off(on);
+
+    // send_size = usrsctp_sysctl_get_sctp_sendspace();
+    // if (send_size < MAX_MSGSIZE) {
+    //     //printf("Got smaller send size than expected: %d\n", send_size);
+    // }
 }
 
 void uninitUsrSctp() {
@@ -135,7 +143,7 @@ void SctpTransport::close()
 
     destroySctpSocket();
 
-    m_ready = false;
+    changeReadyState(false);
     m_isClosing = true;
 
     ELOG_DEBUG("Done Closing...");
@@ -171,6 +179,7 @@ void SctpTransport::handleNotification(union sctp_notification *notif, size_t n)
         break;
     case SCTP_SENDER_DRY_EVENT:
         //ELOG_DEBUG("SCTP_SENDER_DRY_EVENT");
+        changeReadyState(true);
         break;
     case SCTP_NOTIFICATIONS_STOPPED_EVENT:
         ELOG_DEBUG("SCTP_NOTIFICATIONS_STOPPED_EVENT");
@@ -199,12 +208,14 @@ void SctpTransport::handleAssociationChangeEvent(struct sctp_assoc_change *sac)
     switch (sac->sac_state) {
     case SCTP_COMM_UP:
         ELOG_INFO("SCTP_COMM_UP");
+        changeReadyState(true);
         break;
     case SCTP_COMM_LOST:
         ELOG_INFO("SCTP_COMM_LOST");
         break;
     case SCTP_RESTART:
         ELOG_INFO("SCTP_RESTART");
+        changeReadyState(true);
         break;
     case SCTP_SHUTDOWN_COMP:
         ELOG_INFO("SCTP_SHUTDOWN_COMP");
@@ -221,7 +232,7 @@ void SctpTransport::handleAssociationChangeEvent(struct sctp_assoc_change *sac)
         (sac->sac_state == SCTP_SHUTDOWN_COMP) ||
         (sac->sac_state == SCTP_COMM_LOST)) {
         ELOG_WARN("Disconnect due to notifications");
-        //m_isClosing = true;
+        changeReadyState(false);
     }
 }
 
@@ -303,7 +314,7 @@ bool SctpTransport::createSctpSocket() {
     linger_opt.l_onoff = 1;
     linger_opt.l_linger = 0;
     if (usrsctp_setsockopt(m_sctpSocket, SOL_SOCKET, SO_LINGER, &linger_opt,
-                           sizeof(linger_opt))) {
+                           sizeof(linger_opt)) < 0) {
         ELOG_ERROR("SCTP set SO_LINGER fail.");
         return false;
     }
@@ -443,7 +454,7 @@ void SctpTransport::startSctpConnection() {
         return;
     }
 
-    m_ready = true;
+    changeReadyState(true);
 
     // Set the MTU and disable MTU discovery.
     // We can only do this after usrsctp_connect or it has no effect.
@@ -651,7 +662,7 @@ void SctpTransport::sendData(const char* header, int headerLength, const char* d
     const int INT_SIZE = sizeof(uint32_t);
 
     if (!m_ready) {
-        ELOG_WARN("SCTP not ready, send request ignored");
+        ELOG_DEBUG("SCTP not ready, send request ignored");
         return;
     }
     if (m_isClosing) {
@@ -700,7 +711,29 @@ void SctpTransport::sendData(const char* header, int headerLength, const char* d
     if (send_res < 0) {
         if (errno == SCTP_EWOULDBLOCK) {
             ELOG_WARN("usrsctp_sendv: EWOULDBLOCK returned");
-            m_ready = false;
+
+            changeReadyState(false);
+
+            // Double the send buffer size
+            int sndbufsize = MAX_MSGSIZE;
+            int intlen = sizeof(int);
+            if (usrsctp_getsockopt(m_sctpSocket, SOL_SOCKET, SO_SNDBUF, &sndbufsize,
+                                   (socklen_t *)&intlen) < 0) {
+                ELOG_INFO("Can not get SNDBUF");
+            } else {
+                ELOG_DEBUG("Send buffer size origin: %d", sndbufsize);
+                if (sndbufsize < MAX_MSGSIZE * 16) {
+                    sndbufsize *= 2;
+                    if (usrsctp_setsockopt(m_sctpSocket, SOL_SOCKET, SO_SNDBUF, &sndbufsize,
+                                           sizeof(int)) < 0) {
+                        ELOG_WARN("SCTP set SO_SNDBUF fail.");
+                    }
+                } else {
+                    ELOG_WARN("Send buffer size already max.");
+                }
+                ELOG_DEBUG("Send buffer size after: %d", sndbufsize);
+            }
+
         } else {
             ELOG_ERROR("usrsctp_sendv: %d", errno);
         }

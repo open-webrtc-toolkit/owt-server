@@ -70,6 +70,11 @@ private:
     void receiveData();
     void processPacket(const char* data, int len, uint32_t tsn);
 
+    void changeReadyState(bool isReady) {
+        boost::lock_guard<boost::mutex> lock(m_readyMutex);
+        m_ready = isReady;
+    }
+
     bool m_isClosing;
 
     std::string m_remoteIp;
@@ -80,6 +85,7 @@ private:
 
     bool m_tag;
     bool m_ready;
+    boost::mutex m_readyMutex;
 
     // Transport data
     typedef struct {
