@@ -263,7 +263,7 @@ install_libre() {
 install_usrsctp() {
   local TP_DIR="${ROOT}/third_party"
   if [ -d $TP_DIR ]; then
-    local USRSCTP_VERSION="e411f6652c2363e0a7ec89c4eab54fff73a5118c"
+    local USRSCTP_VERSION="2f6478eb8d40f1766a96b5b033ed26c0c2244589"
     local USRSCTP_FILE="${USRSCTP_VERSION}.tar.gz"
     local USRSCTP_EXTRACT="usrsctp-${USRSCTP_VERSION}"
     local USRSCTP_URL="https://github.com/sctplab/usrsctp/archive/${USRSCTP_FILE}"
