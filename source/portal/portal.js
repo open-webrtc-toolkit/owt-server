@@ -470,7 +470,7 @@ var Portal = function(spec, rpcReq) {
     return getUserPermission(participantId)
       .then((userPermission) => {
         if (!isPermitted(userPermission, 'manage')) {
-          return Promise.reject('Mix Permission Denied');
+          return Promise.reject('Unmix Permission Denied');
         }
 
         return rpcReq.unmix(participants[participantId].controller, participantId, streamId, mixStreams);
