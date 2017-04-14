@@ -340,8 +340,8 @@ describe('rpcRequest.tokenLogin/join/onConnectionSignalling/mix/unmix/setVideoBi
     mockRpcChannel.makeRPC.withArgs('rpcIdOfAccessNode', 'mediaOnOff', ['connectionId', 'video', 'in', 'off']).returns(Promise.resolve('ok'));
     var mediaOnOff = req.mediaOnOff('rpcIdOfAccessNode', 'connectionId', 'video', 'in', 'off');
 
-    mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'setMute', ['streamId', true], 4000).returns(Promise.resolve('ok'));
-    var setMute = req.setMute('rpcIdOfController', 'streamId', true);
+    mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'setMute', ['streamId', 'video', true], 4000).returns(Promise.resolve('ok'));
+    var setMute = req.setMute('rpcIdOfController', 'streamId', 'video', true);
 
     mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'getRegion', ['subStreamId', 'mixStreamId'], 4000).returns(Promise.resolve('regionId1'));
     var getRegion = req.getRegion('rpcIdOfController', 'subStreamId', 'mixStreamId');
@@ -402,8 +402,8 @@ describe('rpcRequest.tokenLogin/join/onConnectionSignalling/mix/unmix/setVideoBi
     mockRpcChannel.makeRPC.withArgs('rpcIdOfAccessNode', 'mediaOnOff', ['connectionId', 'video', 'in', 'off']).returns(Promise.reject('timeout or error'));
     var mediaOnOff = req.mediaOnOff('rpcIdOfAccessNode', 'connectionId', 'video', 'in', 'off');
 
-    mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'setMute', ['streamId', true], 4000).returns(Promise.reject('timeout or error'));
-    var setMute = req.setMute('rpcIdOfController', 'streamId', true);
+    mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'setMute', ['streamId', 'video', true], 4000).returns(Promise.reject('timeout or error'));
+    var setMute = req.setMute('rpcIdOfController', 'streamId', 'video', true);
 
     mockRpcChannel.makeRPC.withArgs('rpcIdOfController', 'getRegion', ['subStreamId', 'mixStreamId'], 4000).returns(Promise.reject('no such a sub-stream'));
     var getRegion = req.getRegion('rpcIdOfController', 'subStreamId', 'mixStreamId');

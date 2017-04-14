@@ -1041,16 +1041,20 @@ describe('portal.publish/portal.unpublish: Participants publish/unpublish stream
   });
 });
 
-describe('portal.setMute: Administrators manipulate streams that published.', function() {
+describe('portal.setMute/portal.mix/portal.unmix: Administrators manipulate streams that published.', function() {
   it('Should fail before joining', function() {
     var mockrpcReq = sinon.createStubInstance(rpcReq);
     var portal = Portal(testPortalSpec, mockrpcReq);
 
+    var mix = portal.mix(testParticipantId, 'streamId', ['mixStream1', 'mixStream2']);
+    var unmix = portal.unmix(testParticipantId, 'streamId', ['mixStream1', 'mixStream2']);
     var setMute = portal.setMute(testParticipantId, 'streamId', true);
 
     return Promise.all([
-      expect(setMute).to.be.rejectedWith('Participant ' + testParticipantId + ' does NOT exist.')
-      ]);
+      expect(mix).to.be.rejectedWith('Participant ' + testParticipantId + ' does NOT exist.'),
+      expect(unmix).to.be.rejectedWith('Participant ' + testParticipantId + ' does NOT exist.'),
+      expect(setMute).to.be.rejectedWith('Participant ' + testParticipantId + ' does NOT exist.'),
+    ]);
   });
 
   it('Should fail without manage permission', function() {
@@ -1069,10 +1073,14 @@ describe('portal.setMute: Administrators manipulate streams that published.', fu
     return portal.join(testParticipantId, testToken)
     .then(function(joinResult) {
       var setMute = portal.setMute(testParticipantId, 'streamId', true);
+      var mix = portal.mix(testParticipantId, 'streamId', ['mixStream1', 'mixStream2']);
+      var unmix = portal.unmix(testParticipantId, 'streamId', ['mixStream1', 'mixStream2']);
 
       return Promise.all([
-        expect(setMute).to.be.rejectedWith('Mute/Unmute Permission Denied')
-        ]);
+        expect(mix).to.be.rejectedWith('Mix Permission Denied'),
+        expect(unmix).to.be.rejectedWith('Unmix Permission Denied'),
+        expect(setMute).to.be.rejectedWith('Mute/Unmute Permission Denied'),
+      ]);
     });
   });
 
@@ -1083,21 +1091,30 @@ describe('portal.setMute: Administrators manipulate streams that published.', fu
     mockrpcReq.tokenLogin = sinon.stub();
     mockrpcReq.getController = sinon.stub();
     mockrpcReq.join = sinon.stub();
+    mockrpcReq.mix = sinon.stub();
+    mockrpcReq.unmix = sinon.stub();
     mockrpcReq.setMute = sinon.stub();
 
     mockrpcReq.tokenLogin.resolves({code: 'tokenCode', userName: 'Jack', role: 'admin', origin: {isp: 'isp', region: 'region'}, room: testSession});
     mockrpcReq.getController.resolves('rpcIdOfController');
     mockrpcReq.join.resolves({participants: [],
                                  streams: []});
+    mockrpcReq.mix.resolves('ok');
+    mockrpcReq.unmix.resolves('ok');
     mockrpcReq.setMute.resolves('ok');
+
 
     return portal.join(testParticipantId, testToken)
     .then(function(joinResult) {
+      var mix = portal.mix(testParticipantId, 'streamId', ['mixStream1', 'mixStream2']);
+      var unmix = portal.unmix(testParticipantId, 'streamId', ['mixStream1', 'mixStream2']);
       var setMute = portal.setMute(testParticipantId, 'streamId', true);
 
       return Promise.all([
-        expect(setMute).to.become('ok')
-        ]);
+        expect(mix).to.become('ok'),
+        expect(unmix).to.become('ok'),
+        expect(setMute).to.become('ok'),
+      ]);
     });
   });
 });
@@ -1196,22 +1213,18 @@ describe('portal.setPermission: Administrators update user permission.', functio
   });
 });
 
-describe('portal.mix/portal.unmix/portal.setVideoBitrate/portal.mediaOnOff: Participants manipulate streams they published.', function() {
+describe('portal.setVideoBitrate/portal.mediaOnOff: Participants manipulate streams they published.', function() {
   it('Should fail before joining', function() {
     var mockrpcReq = sinon.createStubInstance(rpcReq);
     var portal = Portal(testPortalSpec, mockrpcReq);
 
-    var mix = portal.mix(testParticipantId, 'streamId', ['mixStream1', 'mixStream2']),
-        unmix = portal.unmix(testParticipantId, 'streamId', ['mixStream1', 'mixStream2']),
-        setVideoBitrate = portal.setVideoBitrate(testParticipantId, 'streamId', 500),
+    var setVideoBitrate = portal.setVideoBitrate(testParticipantId, 'streamId', 500),
         mediaOnOff = portal.mediaOnOff(testParticipantId, 'streamId', 'video', 'in', 'off');
 
     return Promise.all([
-      expect(mix).to.be.rejectedWith('Participant ' + testParticipantId + ' does NOT exist.'),
-      expect(unmix).to.be.rejectedWith('Participant ' + testParticipantId + ' does NOT exist.'),
       expect(setVideoBitrate).to.be.rejectedWith('Participant ' + testParticipantId + ' does NOT exist.'),
       expect(mediaOnOff).to.be.rejectedWith('Participant ' + testParticipantId + ' does NOT exist.')
-      ]);
+    ]);
   });
 
   it('Should fail before publishing.', function() {
@@ -1222,24 +1235,20 @@ describe('portal.mix/portal.unmix/portal.setVideoBitrate/portal.mediaOnOff: Part
     mockrpcReq.getController = sinon.stub();
     mockrpcReq.join = sinon.stub();
 
-    mockrpcReq.tokenLogin.resolves({code: 'tokenCode', userName: 'Jack', role: 'presenter', origin: {isp: 'isp', region: 'region'}, room: testSession});
+    mockrpcReq.tokenLogin.resolves({code: 'tokenCode', userName: 'Jack', role: 'admin', origin: {isp: 'isp', region: 'region'}, room: testSession});
     mockrpcReq.getController.resolves('rpcIdOfController');
     mockrpcReq.join.resolves({participants: [],
                                  streams: []});
 
     return portal.join(testParticipantId, testToken)
       .then(function(joinResult) {
-        var mix = portal.mix(testParticipantId, 'streamId', ['mixStream1', 'mixStream2']),
-            unmix = portal.unmix(testParticipantId, 'streamId', ['mixStream1', 'mixStream2']),
-            setVideoBitrate = portal.setVideoBitrate(testParticipantId, 'streamId', 500),
+        var setVideoBitrate = portal.setVideoBitrate(testParticipantId, 'streamId', 500),
             mediaOnOff = portal.mediaOnOff(testParticipantId, 'streamId', 'video', 'in', 'off');
 
         return Promise.all([
-          expect(mix).to.be.rejectedWith('stream does not exist'),
-          expect(unmix).to.be.rejectedWith('stream does not exist'),
           expect(setVideoBitrate).to.be.rejectedWith('stream does not exist'),
           expect(mediaOnOff).to.be.rejectedWith('connection does not exist')
-          ]);
+        ]);
       });
   });
 
@@ -1256,7 +1265,7 @@ describe('portal.mix/portal.unmix/portal.setVideoBitrate/portal.mediaOnOff: Part
       mockrpcReq.publish = sinon.stub();
       mockrpcReq.pub2Session = sinon.stub();
 
-      mockrpcReq.tokenLogin.resolves({code: 'tokenCode', userName: 'Jack', role: 'presenter', origin: {isp: 'isp', region: 'region'}, room: testSession});
+      mockrpcReq.tokenLogin.resolves({code: 'tokenCode', userName: 'Jack', role: 'admin', origin: {isp: 'isp', region: 'region'}, room: testSession});
       mockrpcReq.getController.resolves('rpcIdOfController');
       mockrpcReq.join.resolves({participants: [],
                                    streams: []});
@@ -1301,57 +1310,49 @@ describe('portal.mix/portal.unmix/portal.setVideoBitrate/portal.mediaOnOff: Part
       testStreamId = undefined;
     });
 
-    it('Should succeed if rpcReq.mix/rpcReq.unmix/rpcReq.setVideoBitrate/rpcReq.mediaOnOff succeeds.', function() {
-      mockrpcReq.mix = sinon.stub();
-      mockrpcReq.unmix = sinon.stub();
+    it('Should succeed if rpcReq.setVideoBitrate/rpcReq.mediaOnOff succeeds.', function() {
+      // mockrpcReq.mix = sinon.stub();
+      // mockrpcReq.unmix = sinon.stub();
       mockrpcReq.setVideoBitrate = sinon.stub();
       mockrpcReq.mediaOnOff = sinon.stub();
       mockrpcReq.updateStream = sinon.stub();
 
-      mockrpcReq.mix.resolves('ok');
-      mockrpcReq.unmix.resolves('ok');
+      // mockrpcReq.mix.resolves('ok');
+      // mockrpcReq.unmix.resolves('ok');
       mockrpcReq.setVideoBitrate.resolves('ok');
       mockrpcReq.mediaOnOff.resolves('ok');
 
-      var mix = portal.mix(testParticipantId, testStreamId, ['mixStream1', 'mixStream2']),
-          unmix = portal.unmix(testParticipantId, testStreamId, ['mixStream1', 'mixStream2']),
-          setVideoBitrate = portal.setVideoBitrate(testParticipantId, testStreamId, 500),
+      var setVideoBitrate = portal.setVideoBitrate(testParticipantId, testStreamId, 500),
           mediaOnOff = portal.mediaOnOff(testParticipantId, testStreamId, 'video', 'in', 'off');
 
       return Promise.all([
-        expect(mix).to.become('ok'),
-        expect(unmix).to.become('ok'),
+        // expect(mix).to.become('ok'),
+        // expect(unmix).to.become('ok'),
         expect(setVideoBitrate).to.become('ok'),
         expect(mediaOnOff).to.become('ok')
         ])
         .then(function() {
-          expect(mockrpcReq.mix.getCall(0).args).to.deep.equal(['rpcIdOfController', testParticipantId, testStreamId, ['mixStream1', 'mixStream2']]);
-          expect(mockrpcReq.unmix.getCall(0).args).to.deep.equal(['rpcIdOfController', testParticipantId, testStreamId, ['mixStream1', 'mixStream2']]);
+          // expect(mockrpcReq.mix.getCall(0).args).to.deep.equal(['rpcIdOfController', testParticipantId, testStreamId, ['mixStream1', 'mixStream2']]);
+          // expect(mockrpcReq.unmix.getCall(0).args).to.deep.equal(['rpcIdOfController', testParticipantId, testStreamId, ['mixStream1', 'mixStream2']]);
           expect(mockrpcReq.setVideoBitrate.getCall(0).args).to.deep.equal(['rpcIdOfAccessNode', testStreamId, 500]);
           expect(mockrpcReq.mediaOnOff.getCall(0).args).to.deep.equal(['rpcIdOfAccessNode', testStreamId, 'video', 'in', 'off']);
         });
     });
 
-    it('Should fail if rpcReq.mix/rpcReq.unmix/rpcReq.setVideoBitrate/rpcReq.mediaOnOff fails.', function() {
-      mockrpcReq.mix = sinon.stub();
-      mockrpcReq.unmix = sinon.stub();
+    it('Should fail if rpcReq.setVideoBitrate/rpcReq.mediaOnOff fails.', function() {
       mockrpcReq.setVideoBitrate = sinon.stub();
       mockrpcReq.mediaOnOff = sinon.stub();
       mockrpcReq.updateStream = sinon.stub();
 
-      mockrpcReq.mix.rejects('timeout or error');
-      mockrpcReq.unmix.rejects('timeout or error');
+      // mockrpcReq.mix.rejects('timeout or error');
+      // mockrpcReq.unmix.rejects('timeout or error');
       mockrpcReq.setVideoBitrate.rejects('timeout or error');
       mockrpcReq.mediaOnOff.rejects('timeout or error');
 
-      var mix = portal.mix(testParticipantId, testStreamId, ['mixStream1', 'mixStream2']),
-          unmix = portal.unmix(testParticipantId, testStreamId, ['mixStream1', 'mixStream2']),
-          setVideoBitrate = portal.setVideoBitrate(testParticipantId, testStreamId, 500),
+      var setVideoBitrate = portal.setVideoBitrate(testParticipantId, testStreamId, 500),
           mediaOnOff = portal.mediaOnOff(testParticipantId, testStreamId, 'video', 'in', 'off');
 
       return Promise.all([
-        expect(mix).to.be.rejectedWith('timeout or error'),
-        expect(unmix).to.be.rejectedWith('timeout or error'),
         expect(setVideoBitrate).to.be.rejectedWith('timeout or error'),
         expect(mediaOnOff).to.be.rejectedWith('timeout or error')
         ]);
@@ -2234,7 +2235,7 @@ describe('portal.getRegion/portal.setRegion: Manipulate the mixed stream.', func
       mockrpcReq.getController = sinon.stub();
       mockrpcReq.join = sinon.stub();
 
-      mockrpcReq.tokenLogin.resolves({code: 'tokenCode', userName: 'Jack', role: 'presenter', origin: {isp: 'isp', region: 'region'}, room: testSession});
+      mockrpcReq.tokenLogin.resolves({code: 'tokenCode', userName: 'Jack', role: 'admin', origin: {isp: 'isp', region: 'region'}, room: testSession});
       mockrpcReq.getController.resolves('rpcIdOfController');
       mockrpcReq.join.resolves({participants: [],
                                    streams: []});

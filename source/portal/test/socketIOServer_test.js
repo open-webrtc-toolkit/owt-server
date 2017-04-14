@@ -1913,60 +1913,104 @@ describe('Responding to clients.', function() {
     });
   });
 
-  describe('on: setMute, setMute', function() {
-    it('setMute should fail before joining.', function(done) {
+  describe('on: mute, unmute', function() {
+    it('mute/unmute should fail before joining.', function(done) {
       mockPortal.setMute = sinon.stub();
 
-      client.emit('setMute', {streamId: 'subStreamId', muted:true}, function(status, data) {
+      client.emit('mute', {streamId: 'subStreamId', track: 'video'}, function(status, data) {
         expect(status).to.equal('error');
         expect(data).to.equal('unauthorized');
         expect(mockPortal.setMute.callCount).to.equal(0);
-        done();
+
+        client.emit('unmute', {streamId: 'subStreamId', track: 'video'}, function(status, data) {
+          expect(status).to.equal('error');
+          expect(data).to.equal('unauthorized');
+          expect(mockPortal.setMute.callCount).to.equal(0);
+          done();
+        });
       });
     });
 
-    it('setMute without specifying streamId should fail.', function(done) {
+    it('mute/unmute without specifying streamId should fail.', function(done) {
       mockPortal.setMute = sinon.stub();
 
       return joinFirstly()
         .then(function(result) {
           expect(result).to.equal('ok');
-          client.emit('setMute', {muted: false}, function(status, data) {
+          client.emit('mute', { track: 'video' }, function(status, data) {
             expect(status).to.equal('error');
             expect(data).to.equal('no stream ID');
             expect(mockPortal.setMute.callCount).to.equal(0);
-            done();
+
+            client.emit('unmute', { track: 'video' }, function(status, data) {
+              expect(status).to.equal('error');
+              expect(data).to.equal('no stream ID');
+              expect(mockPortal.setMute.callCount).to.equal(0);
+              done();
+            });
           });
         });
     });
 
-    it('setMute should succeed if portal.setMute succeeds.', function(done) {
+    it('mute/unmute without specifying track should fail.', function(done) {
+      mockPortal.setMute = sinon.stub();
+
+      return joinFirstly()
+        .then(function(result) {
+          expect(result).to.equal('ok');
+          client.emit('mute', { streamId: 'subStreamId' }, function(status, data) {
+            expect(status).to.equal('error');
+            expect(data).to.equal('invalid track undefined');
+            expect(mockPortal.setMute.callCount).to.equal(0);
+
+            client.emit('unmute', { streamId: 'subStreamId' }, function(status, data) {
+              expect(status).to.equal('error');
+              expect(data).to.equal('invalid track undefined');
+              expect(mockPortal.setMute.callCount).to.equal(0);
+              done();
+            });
+          });
+        });
+    });
+
+    it('mute/unmute should succeed if portal.setMute succeeds.', function(done) {
       mockPortal.setMute = sinon.stub();
       mockPortal.setMute.resolves('ok');
 
       return joinFirstly()
         .then(function(result) {
           expect(result).to.equal('ok');
-          client.emit('setMute', {streamId: 'subStreamId', muted:true}, function(status, data) {
+          client.emit('mute', {streamId: 'subStreamId', track: 'video'}, function(status, data) {
             expect(status).to.equal('success');
-            expect(mockPortal.setMute.getCall(0).args).to.deep.equal([client.id, 'subStreamId', true]);
-            done();
+            expect(mockPortal.setMute.getCall(0).args).to.deep.equal([client.id, 'subStreamId', 'video', true]);
+
+            client.emit('unmute', {streamId: 'subStreamId', track: 'video'}, function(status, data) {
+              expect(status).to.equal('success');
+              expect(mockPortal.setMute.getCall(1).args).to.deep.equal([client.id, 'subStreamId', 'video', false]);
+              done();
+            });
           });
         });
     });
 
-    it('setMute should fail if portal.setMute fails.', function(done) {
+    it('mute/unmute should fail if portal.setMute fails.', function(done) {
       mockPortal.setMute = sinon.stub();
       mockPortal.setMute.rejects('Mute/Unmute Permission Denied.');
 
       return joinFirstly()
         .then(function(result) {
           expect(result).to.equal('ok');
-          client.emit('setMute', {streamId: 'subStreamId', muted:true}, function(status, data) {
+          client.emit('mute', {streamId: 'subStreamId', track: 'video'}, function(status, data) {
             expect(status).to.equal('error');
             expect(data).to.have.string('Mute/Unmute Permission Denied.');
-            expect(mockPortal.setMute.getCall(0).args).to.deep.equal([client.id, 'subStreamId', true]);
-            done();
+            expect(mockPortal.setMute.getCall(0).args).to.deep.equal([client.id, 'subStreamId', 'video', true]);
+
+            client.emit('unmute', {streamId: 'subStreamId', track: 'video'}, function(status, data) {
+              expect(status).to.equal('error');
+              expect(data).to.have.string('Mute/Unmute Permission Denied.');
+              expect(mockPortal.setMute.getCall(1).args).to.deep.equal([client.id, 'subStreamId', 'video', false]);
+              done();
+            });
           });
         });
     });
