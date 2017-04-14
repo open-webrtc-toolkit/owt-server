@@ -306,6 +306,7 @@ var Portal = function(spec, rpcReq) {
                                     type: connectionType
                                    };
           (streamDescription.video && streamDescription.video.framerate) && (stream_description.video.framerate = streamDescription.video.framerate);
+          streamDescription.attributes && (stream_description.attributes = streamDescription.attributes);
 
           var controller = participant.controller;
           return rpcReq.pub2Session(controller, participantId, stream_id, locality, stream_description, notMix)

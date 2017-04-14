@@ -106,7 +106,7 @@ module.exports = function (rpcClient, selfRpcId) {
                           layout: []
                         },
                         from: '',
-                        attributes: null
+                        attributes: {}
                       });
 
                       streams[mstream.streamId] = mixed_stream;
@@ -267,7 +267,7 @@ module.exports = function (rpcClient, selfRpcId) {
           if (controller) {
             controller.publish(participantId, streamId, accessNode, streamInfo, unmix, function() {
               if (participants[participantId]) {
-                var st = new ST.Stream({id: streamId, audio: streamInfo.audio, video: streamInfo.video, from: participantId});
+                var st = new ST.Stream({id: streamId, audio: streamInfo.audio, video: streamInfo.video, from: participantId, attributes: streamInfo.attributes});
                 participants[participantId].published.push(streamId);
                 streams[streamId] = st;
                 sendMsg('room', 'all', 'add_stream', st.getPublicStream());

@@ -303,6 +303,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
       ((stream_description.video && options.video && options.video.resolution && (typeof options.video.resolution.width === 'number') && (typeof options.video.resolution.height === 'number')) && (stream_description.video.resolution = widthHeight2Resolution(options.video.resolution.width, options.video.resolution.height))) ||
       (stream_description.video && (typeof stream_description.video.resolution !== 'string' || stream_description.video.resolution === '') && (stream_description.video.resolution = 'unknown'));
       stream_description.video && (typeof stream_description.video.device !== 'string' || stream_description.video.device === '') && (stream_description.video.device = 'unknown');
+      options.attributes && (stream_description.attributes = options.attributes);
       var unmix = (options.unmix === true || (stream_description.video && (stream_description.video.device === 'screen'))) ? true : false;
 
       var has_responded = false;
