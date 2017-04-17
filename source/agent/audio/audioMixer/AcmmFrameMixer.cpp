@@ -164,16 +164,16 @@ bool AcmmFrameMixer::addInput(const std::string& participant, const FrameFormat 
 
         acmmParticipant.reset(new AcmmParticipant(id));
         m_participants[id] = acmmParticipant;
+
+        ret = m_mixerModule->SetMixabilityStatus(acmmParticipant.get(), true);
+        if (ret != 0) {
+            ELOG_ERROR("Fail to SetMixabilityStatus");
+            return false;
+        }
     }
 
     if(!acmmParticipant->setInput(format, source)) {
         ELOG_ERROR("Fail to set participant input");
-        return false;
-    }
-
-    ret = m_mixerModule->SetMixabilityStatus(acmmParticipant.get(), true);
-    if (ret != 0) {
-        ELOG_ERROR("Fail to SetMixabilityStatus");
         return false;
     }
 
