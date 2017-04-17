@@ -65,6 +65,12 @@ var callbackError = function (corrID) {
  * Calls remotely the 'method' function defined in rpcPublic of 'to'.
  */
 exports.callRpc = function (to, method, args, callbacks) {
+    if (!clientQueue) {
+        for (var i in callbacks) {
+            callbacks[i]('rpc client not ready');
+        }
+        return;
+    }
     corrID += 1;
     map[corrID] = {};
     map[corrID].fn = callbacks;
