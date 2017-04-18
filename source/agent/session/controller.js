@@ -660,7 +660,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 'generate',
                 [participant_id, audio_codec],
                 function (stream_id) {
-                    log.debug('spawnMixedAudio ok, stream_id:', stream_id);
+                    log.debug('spawnMixedAudio ok, amixer_node:', amixer_node, 'stream_id:', stream_id);
                     if (streams[stream_id] === undefined) {
                         streams[stream_id] = {owner: audio_mixer,
                                               audio: {codec: audio_codec,
@@ -680,12 +680,14 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         var video_mixer = getSubMediaMixer(view, 'video');
         if (video_mixer && terminals[video_mixer]) {
             var vmixer_node = terminals[video_mixer].locality.node;
+            log.debug('spawnMixedVideo, view:', view, 'video_codec:', video_codec, 'video_resolution:', video_resolution, 'video_quality:', video_quality);
             makeRPC(
                 rpcClient,
                 vmixer_node,
                 'generate',
                 [video_codec, video_resolution, video_quality],
                 function (stream_id) {
+                    log.debug('spawnMixedVideo ok, vmixer_node:', vmixer_node, 'stream_id:', stream_id);
                     if (streams[stream_id] === undefined) {
                         streams[stream_id] = {owner: video_mixer,
                                               audio: undefined,
@@ -921,7 +923,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
     };
 
     var terminateTemporaryStream = function (stream_id) {
-        log.debug('terminaleTemporaryStream:', stream_id);
+        log.debug('terminateTemporaryStream:', stream_id);
         var owner = streams[stream_id].owner;
         var node = terminals[owner].locality.node;
         makeRPC(
@@ -1212,9 +1214,9 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                         var mixId = getMixStreamOfView("common");
                         if (mix_views["common"]) {
                             mixStream(streamId, "common", function () {
-                                log.debug('Mix stream['+streamId+'] successfully.');
+                                log.debug('Mix stream[' + streamId + '] successfully.');
                             }, function (error_reason) {
-                                log.error(error_reason);
+                                log.error('Mix stream[' + streamId + '] failed, reason: ' + error_reason);
                                 unpublishStream(streamId);
                                 deleteTerminal(terminal_id);
                                 on_error(error_reason);

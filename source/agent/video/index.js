@@ -317,10 +317,12 @@ function VMixer(rpcClient, clusterIP) {
     };
 
     that.degenerate = function (stream_id) {
+        log.debug('degenerate, stream_id:', stream_id);
         removeOutput(stream_id);
     };
 
     that.setInputActive = function (stream_id, active, callback) {
+        log.debug('setInputActive, stream_id:', stream_id, 'active:', active);
         if (inputs[stream_id]) {
             engine.setInputActive(stream_id, !!active);
             callback('callback', 'ok');
