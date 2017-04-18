@@ -164,28 +164,37 @@ bool AcmmFrameMixer::addInput(const std::string& participant, const FrameFormat 
 
         acmmParticipant.reset(new AcmmParticipant(id));
         m_participants[id] = acmmParticipant;
+    }
+
+    if (acmmParticipant->hasInput()) {
+        ELOG_TRACE("Update previous input");
+
+        if(!acmmParticipant->setInput(format, source)) {
+            ELOG_ERROR("Fail to set participant input");
+            return false;
+        }
+    } else {
+        if(!acmmParticipant->setInput(format, source)) {
+            ELOG_ERROR("Fail to set participant input");
+            return false;
+        }
 
         ret = m_mixerModule->SetMixabilityStatus(acmmParticipant.get(), true);
         if (ret != 0) {
             ELOG_ERROR("Fail to SetMixabilityStatus");
             return false;
         }
-    }
 
-    if(!acmmParticipant->setInput(format, source)) {
-        ELOG_ERROR("Fail to set participant input");
-        return false;
-    }
-
-    if (!acmmParticipant->hasOutput()) {
-        ret = m_mixerModule->SetAnonymousMixabilityStatus(acmmParticipant.get(), true);
-        if (ret != 0) {
-            ELOG_ERROR("Fail to SetAnonymousMixabilityStatus");
-            return false;
+        if (!acmmParticipant->hasOutput()) {
+            ret = m_mixerModule->SetAnonymousMixabilityStatus(acmmParticipant.get(), true);
+            if (ret != 0) {
+                ELOG_ERROR("Fail to SetAnonymousMixabilityStatus");
+                return false;
+            }
         }
+        m_inputs++;
     }
 
-    m_inputs++;
     ELOG_TRACE("setInput %s---", participant.c_str());
     return true;
 }
@@ -197,7 +206,7 @@ void AcmmFrameMixer::removeInput(const std::string& participant)
 
     ELOG_TRACE("removeInput %s+++", participant.c_str());
 
-    if (acmmParticipant) {
+    if (acmmParticipant && acmmParticipant->hasInput()) {
         int ret;
 
         ret = m_mixerModule->SetMixabilityStatus(acmmParticipant.get(), false);
@@ -211,9 +220,9 @@ void AcmmFrameMixer::removeInput(const std::string& participant)
             acmmParticipant.reset();
             removeParticipant(participant);
         }
+        m_inputs--;
     }
 
-    m_inputs--;
     ELOG_TRACE("removeInput %s---", participant.c_str());
     return;
 }
@@ -233,26 +242,33 @@ bool AcmmFrameMixer::addOutput(const std::string& participant, const FrameFormat
         m_participants[id] = acmmParticipant;
     }
 
-    if(!acmmParticipant->setOutput(format, destination)) {
-        ELOG_ERROR("Fail to set participant output");
-        return false;
-    }
+    if (acmmParticipant->hasOutput()) {
+        ELOG_TRACE("Update previous output");
 
-    if (acmmParticipant->hasInput()) {
-        ret = m_mixerModule->SetAnonymousMixabilityStatus(acmmParticipant.get(), false);
-        if (ret != 0) {
-            ELOG_ERROR("Fail to unSetAnonymousMixabilityStatus");
+        if(!acmmParticipant->setOutput(format, destination)) {
+            ELOG_ERROR("Fail to set participant output");
             return false;
         }
-    }
+    } else {
+        if(!acmmParticipant->setOutput(format, destination)) {
+            ELOG_ERROR("Fail to set participant output");
+            return false;
+        }
 
+        if (acmmParticipant->hasInput()) {
+            ret = m_mixerModule->SetAnonymousMixabilityStatus(acmmParticipant.get(), false);
+            if (ret != 0) {
+                ELOG_ERROR("Fail to unSetAnonymousMixabilityStatus");
+                return false;
+            }
+        }
+        m_outputs++;
+    }
     updateFrequency();
 
-    m_outputs++;
     ELOG_TRACE("setOutput %s, %d---", participant.c_str(), format);
     return true;
 }
-
 
 void AcmmFrameMixer::removeOutput(const std::string& participant)
 {
@@ -261,7 +277,7 @@ void AcmmFrameMixer::removeOutput(const std::string& participant)
 
     ELOG_TRACE("removeOutput %s+++", participant.c_str());
 
-    if (acmmParticipant) {
+    if (acmmParticipant && acmmParticipant->hasOutput()) {
         if (acmmParticipant->hasInput()) {
             int ret;
 
@@ -277,11 +293,11 @@ void AcmmFrameMixer::removeOutput(const std::string& participant)
             acmmParticipant.reset();
             removeParticipant(participant);
         }
-
         updateFrequency();
+
+        m_outputs--;
     }
 
-    m_outputs--;
     ELOG_TRACE("removeOutput %s---", participant.c_str());
     return;
 }
