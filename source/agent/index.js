@@ -137,6 +137,7 @@ var launchErizoJS = function() {
     child.out_log_fd = out;
     child.err_log_fd = err;
 
+    log.debug('launchErizoJS, id:', id);
     child.on('close', function (code) {
         log.debug('Node ', id, 'exited with', code);
         //if (code !== 0) {
@@ -178,19 +179,17 @@ var launchErizoJS = function() {
     idle_erizos.push(id);
 };
 
-var dropErizoJS = function(id, callback) {
+var dropErizoJS = function(id) {
+    log.debug('dropErizoJS, id:', id);
     if (processes.hasOwnProperty(id)) {
         processes[id].kill();
         cleanupErizoJS(id);
-        callback('callback', 'ok');
     }
 };
 
 var dropAll = function() {
     Object.keys(processes).map(function (k) {
-        dropErizoJS(k, function (unused, status) {
-            log.info('Terminate ErizoJS', k, status);
-        });
+        dropErizoJS(k);
     });
 };
 
@@ -236,6 +235,7 @@ var removeTask = function(worker, nodeId, task, on_last_task_leave) {
 var api = function (worker) {
     return {
         getNode: function(task, callback) {
+            log.debug('getNode, task:', task);
             var reportCallback = function (id, timeout) {
                 var waitForInitialization = function () {
                     if (!processes[id]) {
@@ -295,10 +295,12 @@ var api = function (worker) {
         },
 
         recycleNode: function(id, task, callback) {
+            log.debug('recycleNode, id:', id, 'task:', task);
             try {
                 removeTask(worker, id, task, function() {
-                    dropErizoJS(id, callback);
+                    dropErizoJS(id);
                 });
+                callback('callback', 'ok');
             } catch(error) {
                 log.error('recycleNode error:', error);
             }
