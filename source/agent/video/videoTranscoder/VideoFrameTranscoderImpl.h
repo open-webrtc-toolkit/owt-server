@@ -208,11 +208,11 @@ inline void VideoFrameTranscoderImpl::removeOutput(int32_t output)
     boost::upgrade_lock<boost::shared_mutex> lock(m_outputMutex);
     auto it = m_outputs.find(output);
     if (it != m_outputs.end()) {
+        it->second.encoder->degenerateStream(it->second.streamId);
         if (it->second.encoder->isIdle()) {
             this->removeVideoDestination(it->second.processer.get());
             it->second.processer->removeVideoDestination(it->second.encoder.get());
         }
-        it->second.encoder->degenerateStream(it->second.streamId);
         boost::upgrade_to_unique_lock<boost::shared_mutex> ulock(lock);
         m_outputs.erase(output);
     }

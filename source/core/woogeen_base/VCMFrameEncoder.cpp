@@ -64,6 +64,7 @@ VCMFrameEncoder::~VCMFrameEncoder()
     //m_jobTimer->stop();
 
     m_running = false;
+    m_encCond.notify_one();
     m_thread.join();
 
     if (m_taskRunner)
@@ -323,16 +324,19 @@ void VCMFrameEncoder::doEncoding()
 
 void VCMFrameEncoder::encodeLoop()
 {
-    while (m_running) {
+    while (true) {
         boost::mutex::scoped_lock lock(m_encMutex);
-        while (m_incomingFrameCount == 0) {
+        while (m_running && m_incomingFrameCount == 0) {
             m_encCond.wait(lock);
         }
+
+        if (!m_running)
+            break;
+
         m_incomingFrameCount--;
         m_encMutex.unlock();
 
-        if (m_running)
-            doEncoding();
+        doEncoding();
     }
 
     ELOG_TRACE_T("Thread exited!");
