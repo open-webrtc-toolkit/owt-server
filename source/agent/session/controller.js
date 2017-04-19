@@ -310,13 +310,18 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
     var deleteTerminal = function (terminal_id) {
         log.debug('deleteTerminal:', terminal_id);
         if (terminals[terminal_id]) {
-            rpcReq.recycleMediaNode(terminals[terminal_id].locality.agent, terminals[terminal_id].locality.node, {session: room_id, task: terminal_id})
-            .catch(function(reason) {
-                // Catch the error to avoid the UnhandledPromiseRejectionWarning in node v6,
-                // The current code can reach here due to recycle an already recycled node.
-                // There may be other UnhandledPromiseRejectionWarning somewhere, fix when they appear.
-                log.warn('MediaNode not recycled for:', terminal_id);
-            });
+            if (terminals[terminal_id].type === 'amixer'
+                || terminals[terminal_id].type === 'axcoder'
+                || terminals[terminal_id].type === 'vmixer'
+                || terminals[terminal_id].type === 'vxcoder') {
+                rpcReq.recycleMediaNode(terminals[terminal_id].locality.agent, terminals[terminal_id].locality.node, {session: room_id, task: terminal_id})
+                .catch(function(reason) {
+                    // Catch the error to avoid the UnhandledPromiseRejectionWarning in node v6,
+                    // The current code can reach here due to recycle an already recycled node.
+                    // There may be other UnhandledPromiseRejectionWarning somewhere, fix when they appear.
+                    log.warn('MediaNode not recycled for:', terminal_id);
+                });
+            }
             delete terminals[terminal_id];
         }
     };
