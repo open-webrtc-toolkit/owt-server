@@ -298,28 +298,30 @@ function lastremotedisableaudio() {
 }
 
 function screenplayvideo() {
-  for (var i in conference.remoteStreams) {
+  var localStreams = conference.localStreams;
+  for (var i in localStreams) {
     if (conference.remoteStreams[i].isScreen()) {
-      conference.playVideo(conference.remoteStreams[i], function() {
+      conference.playVideo(localStreams[i], function() {
         recordActionResulte(true);
-        console.log('play remote video success');
+        console.log('play screen success');
       }, function(err) {
         recordActionResulte(false);
-        console.log("play remote video failed", err);
+        console.log("play screen failed", err);
       });
     }
   }
 }
 
 function screenpausevideo() {
-  for (var i in conference.remoteStreams) {
-    if (conference.remoteStreams[i].isScreen()) {
-      conference.pauseVideo(conference.remoteStreams[i], function() {
+  var localStreams = conference.localStreams;
+  for (var i in localStreams) {
+    if (localStreams[i].isScreen()) {
+      conference.pauseVideo(localStreams[i], function() {
         recordActionResulte(true);
-        console.log('play remote video success');
+        console.log('pause screen success');
       }, function(err) {
         recordActionResulte(false);
-        console.log("play remote video failed", err);
+        console.log("pause screen failed", err);
       });
     }
   }
@@ -551,9 +553,10 @@ function subs(st, codec) {
   var subForwVideo = document.getElementById('subForwVideo').checked;
   var subForwAudio = document.getElementById('subForwAudio').checked;
   var xResolution = document.getElementById('selectedresolution').innerText;
+  var qualityLevel = document.getElementById('selectedqualitylevel').innerText || 'Standard';
   var wh = [];
   if(xResolution.indexOf('x') != -1){
-     subMixVideo = {};
+     subMixVideo = {qualityLevel: qualityLevel};
      wh = xResolution.split('x');
      subMixVideo.resolution = {
        width : parseInt(wh[1]),
@@ -571,9 +574,9 @@ function subs(st, codec) {
             L.Logger.info('mix is true');
             L.Logger.info('*****************************************************************subscribe API mix with codec:', codec);
             conference.subscribe(stream, {
-              video:subMixVideo,
+              video: subMixVideo,
               audio: subMixAudio,
-              videoCodec: codec,
+              videoCodec: codec
             }, function(et) {
               recordActionResulte(true);
               L.Logger.info('subscribe stream', et.id());
@@ -683,6 +686,28 @@ function getMixResolutions (){
      children[i].onclick = function(){
        selectedResolution.innerText = this.innerText;
        mixResolutionsD.style.display = 'none';
+     }
+  }
+}
+function getQualityLevels (){
+  var selectedQualityLevel = document.getElementById('selectedqualitylevel');
+  var qualityLevels = ['BestQuality','BetterQuality', 'Standard', 'BetterSpeed', 'BestSpeed'];
+  var qualityLevelsD = document.getElementById('mixqualitylevels');
+  qualityLevelsD.style.display =  'inline-block';
+  var children = qualityLevelsD.children
+  while (children[0]){
+    qualityLevelsD.removeChild(children[0]);
+  }
+  for(var j = 0; j < qualityLevels.length; j++){
+    var child = document.createElement('li');
+    child.innerText = qualityLevels[j];
+    qualityLevelsD.appendChild(child);
+  }
+   children = qualityLevelsD.children
+   for(var i = 0; i < children.length; i++){
+     children[i].onclick = function(){
+       selectedQualityLevel.innerText = this.innerText;
+       qualityLevelsD.style.display = 'none';
      }
   }
 }
@@ -1004,10 +1029,10 @@ function unsubscribe_subscribe(name) {
 //test quality parameter in subscrebe API.
 function qualityTest(){
   //the thenable object of subscribe api.
-  function subThenable (resolution, quality) {
+  function subThenable (resolution, quality, codec) {
      return {
               then: function (resolve, reject) {
-                conference.subscribe(mixStream, {video:{resolution: resolution, quality: quality}}, (st) => {
+                conference.subscribe(mixStream, {video:{resolution: resolution, qualityLevel: quality}, videoCodec: codec}, (st) => {
                   console.log('subscribe mix success');
                   displayStream(st)
                   resolve(Promise.resolve());
@@ -1041,9 +1066,9 @@ function qualityTest(){
            conference.getConnectionStats(mixStream, (stats) => {
             console.log('mix stream stats is: ', stats);
             bytesRcvd.push(stats[1].stats.bytes_rcvd);
-            if(i == 3){
+            if(i == 4){
               bytesRcvd.reduce(function (prev, next) {
-                results.push(Math.floor((next - prev) * 8 / 1000 / 2));
+                results.push(Math.floor((next - prev) * 8 / 1000 / 3));
                 return next
               })
               resolve(results.join("  "))
@@ -1052,10 +1077,10 @@ function qualityTest(){
              reject(err);
            });
          }
-         for (let i=0; i<4; i++){
+         for (let i=0; i<5; i++){
           setTimeout(function(){
              getBitrate(i);
-           }, 2000*i)
+           }, 3000*i)
          }
        }
      }
@@ -1107,8 +1132,8 @@ function qualityTest(){
     return stringResolution
   }
   function startTest () {
-    // var codecs = ['vp8', 'vp9', 'h264'];
-    var qualitys = ["BestQuality", "betterQuality", "Standard", "betterSpeed", "BestSpeed"];
+    var codecs = ['vp8', 'vp9', 'h264'];
+    var qualitys = ["BestQuality", "BetterQuality", "Standard", "BetterSpeed", "BestSpeed"];
     var resolutionStandard = {
       'sif': 400,
       'r360x360': 491,
@@ -1136,19 +1161,19 @@ function qualityTest(){
     var p = Promise.resolve();
     var results = [];
     for(let i = 0; i<resolutions.length; i++){
-      // for (let j = 0; j < codecs.length; j++) {
+       for (let j = 0; j < codecs.length; j++) {
         for (let k = 0; k < qualitys.length; k++) {
           let currentResu;
           p = p.then(function () {
              return Promise.resolve(unsubThenable())
           }).then(function () {
-             return Promise.resolve(subThenable(resolutions[i], qualitys[k]))
+             return Promise.resolve(subThenable(resolutions[i], qualitys[k], codecs[j]))
           }).then(function () {
               return Promise.resolve(bitrateThenable())
           }).then(function (realBitrate) {
              console.log('++++++++++++++++++++results is: ',resolutions[i],toStringResolution(resolutions[i]), qualitys[k]);
                 currentResu = {
-                // codec: codecs[j],
+                codec: codecs[j],
                 quality: qualitys[k],
                 realBitrates: realBitrate,
                 resolution: toStringResolution(resolutions[i]),
@@ -1161,7 +1186,7 @@ function qualityTest(){
              console.log('fffffffffffffff', err);
              return p = Promise.resolve()
           });
-        // };
+        };
       };
     }
   }
@@ -1367,7 +1392,8 @@ window.onload = function() {
   var maxAudioBW = getParameterByName("maxAudioBW") || 30;
   var subscribeMix = getParameterByName("subscribeMix") || true;
   var subscribeForward = getParameterByName("subscribeForward") || true;
-  var codec = getParameterByName("codec") || 'vp8';
+  var videoCodec = getParameterByName("videoCodec") || 'vp8';
+  var audioCodec = getParameterByName("audioCodec") || 'opus';
   var mediaUrl = getParameterByName('url');
   var transport = getParameterByName('transport');
   var bufferSize = getParameterByName('bufferSize');
@@ -1394,7 +1420,7 @@ if(!maxVideoBW){
   }
 }
   console.log('myrole is ' + myrole);
-  myCodec = codec;
+  myCodec = videoCodec;
   currentRoom = myRoom;
   if (subscribeMix == true) {
     Mix = true;
@@ -1491,7 +1517,6 @@ if(!maxVideoBW){
             conference.publish(localStream, {
               transport: transport,
               bufferSize: bufferSize,
-              videoCodec: codec,
               unmix: !!unmix
             }, function(st) {
               recordActionResulte(true, "pub_rtsp");
@@ -1537,9 +1562,10 @@ if(!maxVideoBW){
             if (!onlyJoin) {
               conference.publish(localStream, {
                 unmix: !!unmix,
-                maxVideoBW: maxVideoBW,
-                maxAudioBW: maxAudioBW,
-                videoCodec: codec
+            //    maxVideoBW: maxVideoBW,
+            //    maxAudioBW: maxAudioBW,
+                videoCodec: videoCodec,
+                audioCodec: audioCodec
               }, function(st) {
                 recordActionResulte(true, "pub_cam");
                 L.Logger.info('++++++++++++stream published:', st.id());
