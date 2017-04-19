@@ -123,7 +123,7 @@
 			width: 100px;
 		}
 
-		#multiple {
+		#multiple, #autotest {
 			padding: 2px;
 			text-align: left;
 			/* max-width: 200px; */
@@ -203,7 +203,7 @@
 			display: none;
 		}
                 /*select mix resolution*/
-                #mixresolutions{
+                #mixresolutions, #mixqualitylevels{
                   display: none;
                   position: absolute;
                   list-style: none;
@@ -211,7 +211,7 @@
                   background: #777;
                   margin-top: 1px;
                 }
-                #mixresolutions > li{
+                #mixresolutions > li, #mixqualitylevels > li{
                   border-bottom: 1px solid #e6cfcf;
                   height: 23px;
                   line-height:23px;
@@ -280,6 +280,9 @@
 					<li><a href="javascript:void(0)" onclick="getMixResolutions()" id="selectedresolution">select resolution</a><ul id="mixresolutions">
                                         </ul>
                                         </li>
+					<li><a href="javascript:void(0)" onclick="getQualityLevels()" id="selectedqualitylevel">select qualityLevel</a><ul id="mixqualitylevels">
+                                        </ul>
+                                        </li>
 					<li><a href="javascript:void(0)" onclick="unsub('mix')">unsub mix</a></li>
 					<li><a href="javascript:void(0)" onclick="subs('mix','vp8')">sub mix vp8</a></li>
 					<li><a href="javascript:void(0)" onclick="subs('mix','vp9')">sub mix vp9</a></li>
@@ -346,10 +349,13 @@
 						<button onclick="unpublish_publish()">publish_unpub</button>
 						<button onclick="unsubscribe_subscribe('mix')">subscribe_unsub mix </button>
 						<button onclick="unsubscribe_subscribe('forward')">subscribe_unsub forward</button>
-						<button onclick="qualityTest()">quality test</button>
-
 					</div>
-
+					<h3>Auto Test</h3>
+					<div id="autotest">
+						<label>regulation:<input type="text" id="datarule" placeholder="num:3/mix:screen"></label>
+						<button onclick="startPromiseReorder()">Record</button>
+						<button onclick="qualityTest()">quality test</button>
+					</div>
 				</div>
 			</div>
 			<div id='test-3'>
@@ -376,7 +382,7 @@
 					</div>
 					<h3>RTMP TEST</h3>
 					<div class="rtmp">
-						<label><span>Server URL:</span> <input type='text' id='rtmpserverurl' value='rtmp://zhenqi:intel123@10.239.44.27:1935/live' /></label>
+						<label><span>Server URL:</span> <input type='text' id='rtmpserverurl' value='rtmp://10.239.44.138:1935/liveshow/zhenqi' /></label>
 						<label><span>Stream id:</span> <input type='text' id='rtmpstreamid' /></label>
 						<label><span>Resolution:</span> <input type='text' id='rtmpresolution' /></label>
 						<button type='button' id='startrtmp'onclick="startRTMP()">start RTMP</button>
@@ -427,6 +433,8 @@
   <script type="text/javascript" src="woogeen.sdk.js"></script>
   <script type="text/javascript" src="woogeen.sdk.ui.js"></script>
   <script type="text/javascript" src="script2.js"></script>
+  <script type="text/javascript" src="caseData.js"></script>
+  <script type="text/javascript" src="recordPromise.js"></script>
 <!--
   <script type="text/javascript" src="script2.js"></script>
   <script type="text/javascript" src="script2-forRecord.js"></script>
