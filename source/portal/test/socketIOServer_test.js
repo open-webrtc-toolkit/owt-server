@@ -1222,6 +1222,73 @@ describe('Responding to clients.', function() {
     });
   });
 
+  describe('on: mix, unmix', function() {
+    it('Mixing/unmixing streams without joining should fail.', function(done) {
+      mockPortal.mix = sinon.stub();
+      mockPortal.unmix = sinon.stub();
+
+      client.emit('mix', {streamId: 'streamId', mixStreams: ['mixStream1', 'mixStream2']}, function(status, data) {
+        expect(status).to.equal('error');
+        expect(data).to.equal('unauthorized');
+        expect(mockPortal.mix.callCount).to.equal(0);
+
+        client.emit('unmix', {streamId: 'streamId', mixStreams: ['mixStream1', 'mixStream2']}, function(status, data) {
+          expect(status).to.equal('error');
+          expect(data).to.equal('unauthorized');
+          expect(mockPortal.unmix.callCount).to.equal(0);
+          done();
+        });
+      });
+    });
+
+    it('Mixing/unmixing streams should succeed if portal.mix/portal.unmix suceeds.', function(done) {
+      mockPortal.mix = sinon.stub();
+      mockPortal.unmix = sinon.stub();
+
+      mockPortal.mix.resolves('ok');
+      mockPortal.unmix.resolves('ok');
+
+      return joinFirstly()
+        .then(function() {
+          client.emit('mix', {streamId: 'streamId', mixStreams: ['mixStream1', 'mixStream2']}, function(status, data) {
+            expect(status).to.equal('success');
+            expect(mockPortal.mix.getCall(0).args).to.deep.equal([client.id, 'streamId', ['mixStream1', 'mixStream2']]);
+
+            client.emit('unmix', {streamId: 'streamId', mixStreams: ['mixStream1', 'mixStream2']}, function(status, data) {
+              expect(status).to.equal('success');
+              expect(mockPortal.unmix.getCall(0).args).to.deep.equal([client.id, 'streamId', ['mixStream1', 'mixStream2']]);
+
+              done();
+            });
+          });
+      });
+    });
+
+    it('Mixing/unmixing streams should fail if portal.mix/portal.unmix fails.', function(done) {
+      mockPortal.mix = sinon.stub();
+      mockPortal.unmix = sinon.stub();
+
+      mockPortal.mix.rejects('stream does not exist');
+      mockPortal.unmix.rejects('stream does not exist');
+
+      return joinFirstly()
+        .then(function() {
+          client.emit('mix', {streamId: 'streamId', mixStreams: ['mixStream1', 'mixStream2']}, function(status, data) {
+            expect(status).to.equal('error');
+            expect(data).to.have.string('stream does not exist');
+            expect(mockPortal.mix.getCall(0).args).to.deep.equal([client.id, 'streamId', ['mixStream1', 'mixStream2']]);
+
+            client.emit('unmix', {streamId: 'streamId', mixStreams: ['mixStream1', 'mixStream2']}, function(status, data) {
+              expect(status).to.equal('error');
+              expect(data).to.have.string('stream does not exist');
+              expect(mockPortal.unmix.getCall(0).args).to.deep.equal([client.id, 'streamId', ['mixStream1', 'mixStream2']]);
+              done();
+            });
+          });
+      });
+    });
+  });
+
   describe('on: subscribe, signaling_message', function() {
     it('Subscribing without joining should fail.', function(done) {
       client.emit('subscribe', {}, undefined, function(status, data) {
