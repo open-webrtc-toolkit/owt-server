@@ -361,6 +361,43 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
       });
     });
 
+    socket.on('mix', function(options, callback) {
+      var streamId = options.streamId;
+      var mixStreams = options.mixStreams;
+
+      if(!that.inRoom) {
+        return safeCall(callback, 'error', 'unauthorized');
+      };
+
+      return portal.mix(participant_id, streamId, mixStreams)
+      .then(function() {
+        safeCall(callback, 'success');
+      }).catch(function(err) {
+        var err_message = (typeof err === 'string' ? err: err.message);
+        log.info('portal.mix failed:', err_message);
+        safeCall(callback, 'error', err_message);
+      });
+    });
+
+    socket.on('unmix', function(options, callback) {
+      var streamId = options.streamId;
+      var mixStreams = options.mixStreams;
+
+      if(!that.inRoom) {
+        return safeCall(callback, 'error', 'unauthorized');
+      };
+
+      return portal.unmix(participant_id, streamId, mixStreams)
+      .then(function() {
+        safeCall(callback, 'success');
+      }).catch(function(err) {
+        var err_message = (typeof err === 'string' ? err: err.message);
+        log.info('portal.unmix failed:', err_message);
+        safeCall(callback, 'error', err_message);
+      });
+    });
+
+    // To be delete after clients updated
     socket.on('addToMixer', function(streamId, mixStreams, callback) {
       if (typeof mixStreams === 'function') {
         // Shift the arguments with old clients
@@ -382,6 +419,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
       });
     });
 
+    // To be delete after clients updated
     socket.on('removeFromMixer', function(streamId, mixStreams, callback) {
       if (typeof mixStreams === 'function') {
         // Shift the arguments with old clients
