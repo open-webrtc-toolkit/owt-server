@@ -1215,18 +1215,21 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                         if (mix_views["common"]) {
                             mixStream(streamId, "common", function () {
                                 log.debug('Mix stream[' + streamId + '] successfully.');
+                                on_ok();
                             }, function (error_reason) {
                                 log.error('Mix stream[' + streamId + '] failed, reason: ' + error_reason);
                                 unpublishStream(streamId);
                                 deleteTerminal(terminal_id);
                                 on_error(error_reason);
                             });
+                        } else {
+                            log.warn('Mix stream[' + streamId + '] to no view.');
+                            on_ok();
                         }
                     } else {
                         log.debug('will not mix stream:', streamId);
+                        on_ok();
                     }
-                    log.debug('publish ok.');
-                    on_ok();
                 }, function (error_reason) {
                     on_error(error_reason);
                 });
