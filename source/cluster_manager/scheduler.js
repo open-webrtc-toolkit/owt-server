@@ -159,13 +159,13 @@ exports.Scheduler = function(spec) {
         }
 
         if (candidates.length < 1) {
-            return on_error('No worker available');
+            return on_error('No worker available, all in full load.');
         }
 
         candidates = matcher.match(preference, workers, candidates);
 
         if (candidates.length < 1) {
-            return on_error('No worker matched');
+            return on_error('No worker matches the preference.');
         } else if (candidates.length === 1) {
             var worker = candidates[0];
             reserveWorkerForTask(task, worker, (reserveTime && reserveTime > 0 ? reserveTime : schedule_reserve_time));

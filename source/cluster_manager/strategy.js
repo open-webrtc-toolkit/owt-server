@@ -16,7 +16,7 @@ var leastUsed = function () {
             }
         }
 
-        found ? on_ok(found) : on_error('No worker found.');
+        on_ok(found);
     };
 };
 
@@ -31,7 +31,7 @@ var mostUsed = function () {
             }
         }
 
-        found ? on_ok(found) : on_error('No worker found.');
+        on_ok(found);
     };
 };
 

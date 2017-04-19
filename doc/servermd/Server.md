@@ -244,6 +244,7 @@ To launch the MCU server on one machine, follow steps below:
 
         cd Release-<Version>/
         bin/start-all.sh
+   > **Note**: If you want to run start-all in a combined command like "ssh remote-host MCU-installed-path/bin/start-all", the environment $DISPLAY needs to be explicitly specified as "export DISPLAY=:0.0".
 
 3. To verify whether the server started successfully, launch your browser and connect to the MCU server at https://XXXXX:3004. Replace XXXXX with the IP address or machine name of your MCU server.
 
