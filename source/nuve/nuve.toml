@@ -3,6 +3,8 @@ dataBaseURL = "localhost/nuvedb" #default: "localhost/nuvedb"
 keystorePath = "./cert/certificate.pfx"
 superserviceID = "_auto_generated_ID_" #default: ""
 ssl = false #default: false
+port = 3000 #default: 3000, port of nuve server
+numberOfProcess = 4 #default: 1
 
 [cluster]
 name = "woogeen-cluster"

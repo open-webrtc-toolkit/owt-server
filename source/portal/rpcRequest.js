@@ -5,6 +5,7 @@ var RpcRequest = function(rpcChannel) {
   var that = {};
 
   that.tokenLogin = function(nuve, tokenId) {
+    // Reserve for tests, should not be called.
     return rpcChannel.makeRPC(nuve, 'deleteToken', tokenId);
   };
 

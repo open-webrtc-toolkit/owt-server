@@ -59,7 +59,7 @@ module.exports = function (rpcClient, selfRpcId) {
       }
     } else {
       is_initializing = true;
-      return rpcReq.getSessionConfig('nuve'/*FIXME: hard coded*/, sessionId)
+      return dbAccess.getRoomConfig(sessionId)
         .then(function(config) {
             var room_config = config;
 

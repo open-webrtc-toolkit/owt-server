@@ -13,7 +13,6 @@ try {
 }
 
 var rpc = require('./rpc/rpc');
-rpc.connect(global.config.rabbit);
 
 var express = require('express');
 var bodyParser = require('body-parser');
@@ -50,10 +49,12 @@ app.options('*', function(req, res) {
     res.send(200);
 });
 
-app.get('*', nuveAuthenticator.authenticate);
-app.post('*', nuveAuthenticator.authenticate);
-app.delete('*', nuveAuthenticator.authenticate);
-app.put('*', nuveAuthenticator.authenticate);
+// Only following paths need authentication.
+var authPaths = ['/rooms*', '/services*', '/cluster*'];
+app.get(authPaths, nuveAuthenticator.authenticate);
+app.post(authPaths, nuveAuthenticator.authenticate);
+app.delete(authPaths, nuveAuthenticator.authenticate);
+app.put(authPaths, nuveAuthenticator.authenticate);
 
 app.post('/rooms', roomsResource.createRoom);
 app.get('/rooms', roomsResource.represent);
@@ -81,36 +82,76 @@ app.get('/cluster/nodes/:node', clusterResource.getNode);
 app.get('/cluster/rooms', clusterResource.getRooms);
 app.get('/cluster/nodes/:node/config', clusterResource.getNodeConfig);
 
-if (global.config.nuve.ssl === true) {
-    var cipher = require('./cipher');
-    var path = require('path');
-    var keystore = path.resolve(path.dirname(global.config.nuve.keystorePath), '.woogeen.keystore');
-    cipher.unlock(cipher.k, keystore, function cb (err, passphrase) {
-        if (!err) {
-            try {
-                require('https').createServer({
-                    pfx: require('fs').readFileSync(global.config.nuve.keystorePath),
-                    passphrase: passphrase
-                }, app).listen(3000);
-            } catch (e) {
-                err = e;
-            }
-        } else {
-            log.warn('Failed to setup secured server:', err);
-            return process.exit(1);
-        }
-    });
-} else {
-    app.listen(3000);
-}
+var nuveConfig = global.config.nuve || {};
+// Mutiple process setup
+var cluster = require("cluster");
+var nuvePort = nuveConfig.port || 3000;
+var numCPUs = nuveConfig.numberOfProcess || 1;
 
-['SIGINT', 'SIGTERM'].map(function (sig) {
+if (cluster.isMaster) {
+    // Master Process
+
+    // Save nuve key to database.
+    // FIXME: we should check if nuve key already exists
+    // in cache/database before generating a new one when
+    // there are multiple machine running nuve.
+    require('./mdb/dataBase').saveKey();
+
+    for (var i = 0; i < numCPUs; i++) {
+        cluster.fork();
+    }
+
+    cluster.on('exit', function(worker, code, signal) {
+        log.info(`Worker ${worker.process.pid} died`);
+    });
+
+
+    ['SIGINT', 'SIGTERM'].map(function (sig) {
     process.on(sig, function () {
-        log.warn('Exiting on', sig);
-        process.exit();
+            log.info('Master exiting on', sig);
+            process.exit();
+        });
     });
-});
 
-process.on('exit', function () {
-    rpc.disconnect();
-});
+} else {
+    // Worker Process
+    rpc.connect(global.config.rabbit);
+
+    if (nuveConfig.ssl === true) {
+        var cipher = require('./cipher');
+        var path = require('path');
+        var keystore = path.resolve(path.dirname(nuveConfig.keystorePath), '.woogeen.keystore');
+        cipher.unlock(cipher.k, keystore, function cb (err, passphrase) {
+            if (!err) {
+                try {
+                    require('https').createServer({
+                        pfx: require('fs').readFileSync(nuveConfig.keystorePath),
+                        passphrase: passphrase
+                    }, app).listen(nuvePort);
+                } catch (e) {
+                    err = e;
+                }
+            } else {
+                log.warn('Failed to setup secured server:', err);
+                return process.exit(1);
+            }
+        });
+    } else {
+        app.listen(nuvePort);
+    }
+
+    log.info(`Worker ${process.pid} started`);
+
+    ['SIGINT', 'SIGTERM'].map(function (sig) {
+        process.on(sig, function () {
+            // This log won't be showed in nuve log,
+            // because worker process disconnected.
+            log.warn('Worker exiting on', sig);
+            process.exit();
+        });
+    });
+
+    process.on('exit', function () {
+        rpc.disconnect();
+    });
+}

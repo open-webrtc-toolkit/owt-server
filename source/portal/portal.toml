@@ -39,3 +39,6 @@ regions = [] #default: [], which means all regions.
 [rabbit]
 host = "localhost" #default: "localhost"
 port = 5672 #default: 5672
+
+[nuve]
+dataBaseURL = "localhost/nuvedb" #default: "localhost/nuvedb"

@@ -88,14 +88,12 @@ var dropAll = function() {
 };
 
 var getTokenKey = function(id, on_key, on_error) {
-  rpcClient && rpcClient.remoteCall('nuve', 'getKey', id, {
-    callback: function (key) {
-      if (key === 'error' || key === 'timeout') {
-        log.info('Failed to get token key.');
-        return on_error();
-      }
-      on_key(key);
-    }
+  var dbAccess = require('./dataBaseAccess');
+  dbAccess.getKey(id).then(function (key) {
+    on_key(key);
+  }).catch(function (err) {
+    log.info('Failed to get token key.');
+    on_error(err);
   });
 };
 

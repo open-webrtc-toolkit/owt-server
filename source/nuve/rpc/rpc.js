@@ -1,7 +1,6 @@
 /*global exports, require, setTimeout, clearTimeout*/
 'use strict';
 var amqp = require('amqp');
-var rpcPublic = require('./rpcPublic');
 var log = require('./../logger').logger.getLogger('RPC');
 var TIMEOUT = 3000;
 var corrID = 0;
@@ -18,18 +17,6 @@ exports.connect = function (addr) {
         //Create a direct exchange
         exc = connection.exchange('woogeenRpc', {type: 'direct'}, function (exchange) {
             log.info('Exchange ' + exchange.name + ' is open');
-
-            //Create the queue for receive messages
-            var q = connection.queue('nuveQueue', function (queue) {
-                log.info('Queue ' + queue.name + ' is open');
-
-                q.bind('woogeenRpc', 'nuve');
-                q.subscribe(function (message) {
-                    rpcPublic[message.method](message.args, function (type, result) {
-                        exc.publish(message.replyTo, {data: result, corrID: message.corrID, type: type});
-                    });
-                });
-            });
 
             //Create the queue for send messages
             clientQueue = connection.queue('', function (q) {
