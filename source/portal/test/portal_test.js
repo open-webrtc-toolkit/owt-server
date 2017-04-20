@@ -62,7 +62,7 @@ var testSession = '573eab78111478bb3526421a';
 describe('portal.updateTokenKey: update the token key.', function() {
   it('Joining with a valid token will fail if the token key is out of time, and success when token key is updated', function() {
     var mockrpcReq = sinon.createStubInstance(rpcReq);
-    mockrpcReq.tokenLogin = sinon.stub();
+    dbAccess.deleteToken = sinon.stub();
     mockrpcReq.getController = sinon.stub();
     mockrpcReq.join = sinon.stub();
 
@@ -75,7 +75,7 @@ describe('portal.updateTokenKey: update the token key.', function() {
     var portal = Portal(portalSpecWithOldTokenKey, mockrpcReq);
 
     var login_result = {code: 'tokenCode', userName: 'Jack', role: 'presenter', origin: {isp: 'isp', region: 'region'}, room: testSession};
-    mockrpcReq.tokenLogin.resolves(login_result);
+    dbAccess.deleteToken.resolves(login_result);
 
     mockrpcReq.getController.resolves('rpcIdOfController');
 
@@ -92,7 +92,6 @@ describe('portal.updateTokenKey: update the token key.', function() {
         portal.updateTokenKey(testTokenKey);
         return portal.join(testParticipantId, testToken).then(function(result) {
           expect(result).to.deep.equal(final_result);
-          expect(mockrpcReq.tokenLogin.getCall(0).args).to.deep.equal(['nuve', testToken.tokenId]);
           expect(mockrpcReq.getController.getCall(0).args).to.deep.equal(['woogeen-cluster', testSession]);
           expect(mockrpcReq.join.getCall(0).args).to.deep.equal(['rpcIdOfController', testSession, {id: testParticipantId, name: 'Jack', role: 'presenter', portal: testSelfRpcId}]);
         });
@@ -103,14 +102,14 @@ describe('portal.updateTokenKey: update the token key.', function() {
 describe('portal.join: Participants join.', function() {
   it('Joining with valid token should succeed.', function() {
     var mockrpcReq = sinon.createStubInstance(rpcReq);
-    mockrpcReq.tokenLogin = sinon.stub();
+    dbAccess.deleteToken = sinon.stub();
     mockrpcReq.getController = sinon.stub();
     mockrpcReq.join = sinon.stub();
 
     var portal = Portal(testPortalSpec, mockrpcReq);
 
     var login_result = {code: 'tokenCode', userName: 'Jack', role: 'presenter', origin: {isp: 'isp', region: 'region'}, room: testSession};
-    mockrpcReq.tokenLogin.resolves(login_result);
+    dbAccess.deleteToken.resolves(login_result);
 
     mockrpcReq.getController.resolves('rpcIdOfController');
 
@@ -122,7 +121,6 @@ describe('portal.join: Participants join.', function() {
 
     return portal.join(testParticipantId, testToken).then(function(result) {
       expect(result).to.deep.equal(final_result);
-      expect(mockrpcReq.tokenLogin.getCall(0).args).to.deep.equal(['nuve', testToken.tokenId]);
       expect(mockrpcReq.getController.getCall(0).args).to.deep.equal(['woogeen-cluster', testSession]);
       expect(mockrpcReq.join.getCall(0).args).to.deep.equal(['rpcIdOfController', testSession, {id: testParticipantId, name: 'Jack', role: 'presenter', portal: testSelfRpcId}]);
     });
@@ -130,7 +128,7 @@ describe('portal.join: Participants join.', function() {
 
   it('Tokens with incorect signature should fail joining.', function() {
     var mockrpcReq = sinon.createStubInstance(rpcReq);
-    mockrpcReq.tokenLogin = sinon.stub();
+    dbAccess.deleteToken = sinon.stub();
     mockrpcReq.getController = sinon.stub();
     mockrpcReq.join = sinon.stub();
     var portal = Portal(testPortalSpec, mockrpcReq);
@@ -142,27 +140,27 @@ describe('portal.join: Participants join.', function() {
     return expect(portal.join(testParticipantId, tokenWithInvalidSignature)).to.be.rejectedWith('Invalid token signature');//Note: The error message is not strictly equality checked, instead it will be fullfiled when the actual error message includes the given string here. That is the inherint behavor of 'rejectedWith'.
   });
 
-  it('rpcReq.tokenLogin timeout or error should fail joining.', function() {
+  it('deleteToken timeout or error should fail joining.', function() {
     var mockrpcReq = sinon.createStubInstance(rpcReq);
-    mockrpcReq.tokenLogin = sinon.stub();
+    dbAccess.deleteToken = sinon.stub();
     mockrpcReq.getController = sinon.stub();
     mockrpcReq.join = sinon.stub();
     var portal = Portal(testPortalSpec, mockrpcReq);
 
-    mockrpcReq.tokenLogin.rejects('timeout or error');
+    dbAccess.deleteToken.rejects('timeout or error');
 
     return expect(portal.join(testParticipantId, testToken)).to.be.rejectedWith('timeout or error');
   });
 
   it('rpcReq.getController timeout or error should fail joining.', function() {
     var mockrpcReq = sinon.createStubInstance(rpcReq);
-    mockrpcReq.tokenLogin = sinon.stub();
+    dbAccess.deleteToken = sinon.stub();
     mockrpcReq.getController = sinon.stub();
     mockrpcReq.join = sinon.stub();
     var portal = Portal(testPortalSpec, mockrpcReq);
 
     var login_result = {code: 'tokenCode', userName: 'Jack', role: 'presenter', origin: {isp: 'isp', region: 'region'}, room: testSession};
-    mockrpcReq.tokenLogin.resolves(login_result);
+    dbAccess.deleteToken.resolves(login_result);
 
     mockrpcReq.getController.rejects('timeout or error');
 
@@ -171,13 +169,13 @@ describe('portal.join: Participants join.', function() {
 
   it('rpcReq.join timeout or error should fail joining.', function() {
     var mockrpcReq = sinon.createStubInstance(rpcReq);
-    mockrpcReq.tokenLogin = sinon.stub();
+    dbAccess.deleteToken = sinon.stub();
     mockrpcReq.getController = sinon.stub();
     mockrpcReq.join = sinon.stub();
     var portal = Portal(testPortalSpec, mockrpcReq);
 
     var login_result = {code: 'tokenCode', userName: 'Jack', role: 'presenter', origin: {isp: 'isp', region: 'region'}, room: testSession};
-    mockrpcReq.tokenLogin.resolves(login_result);
+    dbAccess.deleteToken.resolves(login_result);
 
     var controller_result = 'theRpcIdOfController';
     mockrpcReq.getController.resolves(controller_result);
@@ -219,12 +217,12 @@ describe('portal.leave: Participants leave.', function() {
     var portal = Portal(testPortalSpec, mockrpcReq);
 
     beforeEach(function(done) {
-      mockrpcReq.tokenLogin = sinon.stub();
+      dbAccess.deleteToken = sinon.stub();
       mockrpcReq.getController = sinon.stub();
       mockrpcReq.join = sinon.stub();
 
       var login_result = {code: 'tokenCode', userName: 'Jack', role: 'presenter', origin: {isp: 'isp', region: 'region'}, room: testSession};
-      mockrpcReq.tokenLogin.resolves(login_result);
+      dbAccess.deleteToken.resolves(login_result);
       mockrpcReq.getController.resolves('rpcIdOfController');
       mockrpcReq.join.resolves({
                                    participants: [],
@@ -349,11 +347,11 @@ describe('portal.publish/portal.unpublish: Participants publish/unpublish stream
     var mockrpcReq = sinon.createStubInstance(rpcReq);
     var portal = Portal(testPortalSpec, mockrpcReq);
 
-    mockrpcReq.tokenLogin = sinon.stub();
+    dbAccess.deleteToken = sinon.stub();
     mockrpcReq.getController = sinon.stub();
     mockrpcReq.join = sinon.stub();
 
-    mockrpcReq.tokenLogin.resolves({code: 'tokenCode', userName: 'Jack', role: 'viewer', origin: {isp: 'isp', region: 'region'}, room: testSession});
+    dbAccess.deleteToken.resolves({code: 'tokenCode', userName: 'Jack', role: 'viewer', origin: {isp: 'isp', region: 'region'}, room: testSession});
     mockrpcReq.getController.resolves('rpcIdOfController');
     mockrpcReq.join.resolves({participants: [],
                                  streams: []});
@@ -376,11 +374,11 @@ describe('portal.publish/portal.unpublish: Participants publish/unpublish stream
     var mockrpcReq = sinon.createStubInstance(rpcReq);
     var portal = Portal(testPortalSpec, mockrpcReq);
 
-    mockrpcReq.tokenLogin = sinon.stub();
+    dbAccess.deleteToken = sinon.stub();
     mockrpcReq.getController = sinon.stub();
     mockrpcReq.join = sinon.stub();
 
-    mockrpcReq.tokenLogin.resolves({code: 'tokenCode', userName: 'Jack', role: 'viewer_pub_a', origin: {isp: 'isp', region: 'region'}, room: testSession});
+    dbAccess.deleteToken.resolves({code: 'tokenCode', userName: 'Jack', role: 'viewer_pub_a', origin: {isp: 'isp', region: 'region'}, room: testSession});
     mockrpcReq.getController.resolves('rpcIdOfController');
     mockrpcReq.join.resolves({participants: [],
                                  streams: []});
@@ -403,11 +401,11 @@ describe('portal.publish/portal.unpublish: Participants publish/unpublish stream
     var mockrpcReq = sinon.createStubInstance(rpcReq);
     var portal = Portal(testPortalSpec, mockrpcReq);
 
-    mockrpcReq.tokenLogin = sinon.stub();
+    dbAccess.deleteToken = sinon.stub();
     mockrpcReq.getController = sinon.stub();
     mockrpcReq.join = sinon.stub();
 
-    mockrpcReq.tokenLogin.resolves({code: 'tokenCode', userName: 'Jack', role: 'viewer_pub_v', origin: {isp: 'isp', region: 'region'}, room: testSession});
+    dbAccess.deleteToken.resolves({code: 'tokenCode', userName: 'Jack', role: 'viewer_pub_v', origin: {isp: 'isp', region: 'region'}, room: testSession});
     mockrpcReq.getController.resolves('rpcIdOfController');
     mockrpcReq.join.resolves({participants: [],
                                  streams: []});
@@ -439,11 +437,11 @@ describe('portal.publish/portal.unpublish: Participants publish/unpublish stream
     var portal = Portal(testPortalSpec, mockrpcReq);
 
     beforeEach(function(done) {
-      mockrpcReq.tokenLogin = sinon.stub();
+      dbAccess.deleteToken = sinon.stub();
       mockrpcReq.getController = sinon.stub();
       mockrpcReq.join = sinon.stub();
 
-      mockrpcReq.tokenLogin.resolves({code: 'tokenCode', userName: 'Jack', role: 'presenter', origin: {isp: 'isp', region: 'region'}, room: testSession});
+      dbAccess.deleteToken.resolves({code: 'tokenCode', userName: 'Jack', role: 'presenter', origin: {isp: 'isp', region: 'region'}, room: testSession});
       mockrpcReq.getController.resolves('rpcIdOfController');
       mockrpcReq.join.resolves({participants: [],
                                    streams: []});
@@ -1061,11 +1059,11 @@ describe('portal.setMute/portal.mix/portal.unmix: Administrators manipulate stre
     var mockrpcReq = sinon.createStubInstance(rpcReq);
     var portal = Portal(testPortalSpec, mockrpcReq);
 
-    mockrpcReq.tokenLogin = sinon.stub();
+    dbAccess.deleteToken = sinon.stub();
     mockrpcReq.getController = sinon.stub();
     mockrpcReq.join = sinon.stub();
 
-    mockrpcReq.tokenLogin.resolves({code: 'tokenCode', userName: 'Jack', role: 'viewer', origin: {isp: 'isp', region: 'region'}, room: testSession});
+    dbAccess.deleteToken.resolves({code: 'tokenCode', userName: 'Jack', role: 'viewer', origin: {isp: 'isp', region: 'region'}, room: testSession});
     mockrpcReq.getController.resolves('rpcIdOfController');
     mockrpcReq.join.resolves({participants: [],
                                  streams: []});
@@ -1088,14 +1086,14 @@ describe('portal.setMute/portal.mix/portal.unmix: Administrators manipulate stre
     var mockrpcReq = sinon.createStubInstance(rpcReq);
     var portal = Portal(testPortalSpec, mockrpcReq);
 
-    mockrpcReq.tokenLogin = sinon.stub();
+    dbAccess.deleteToken = sinon.stub();
     mockrpcReq.getController = sinon.stub();
     mockrpcReq.join = sinon.stub();
     mockrpcReq.mix = sinon.stub();
     mockrpcReq.unmix = sinon.stub();
     mockrpcReq.setMute = sinon.stub();
 
-    mockrpcReq.tokenLogin.resolves({code: 'tokenCode', userName: 'Jack', role: 'admin', origin: {isp: 'isp', region: 'region'}, room: testSession});
+    dbAccess.deleteToken.resolves({code: 'tokenCode', userName: 'Jack', role: 'admin', origin: {isp: 'isp', region: 'region'}, room: testSession});
     mockrpcReq.getController.resolves('rpcIdOfController');
     mockrpcReq.join.resolves({participants: [],
                                  streams: []});
@@ -1135,11 +1133,11 @@ describe('portal.setPermission: Administrators update user permission.', functio
     var mockrpcReq = sinon.createStubInstance(rpcReq);
     var portal = Portal(testPortalSpec, mockrpcReq);
 
-    mockrpcReq.tokenLogin = sinon.stub();
+    dbAccess.deleteToken = sinon.stub();
     mockrpcReq.getController = sinon.stub();
     mockrpcReq.join = sinon.stub();
 
-    mockrpcReq.tokenLogin.resolves({code: 'tokenCode', userName: 'Jack', role: 'viewer', origin: {isp: 'isp', region: 'region'}, room: testSession});
+    dbAccess.deleteToken.resolves({code: 'tokenCode', userName: 'Jack', role: 'viewer', origin: {isp: 'isp', region: 'region'}, room: testSession});
     mockrpcReq.getController.resolves('rpcIdOfController');
     mockrpcReq.join.resolves({participants: [],
                                  streams: []});
@@ -1158,18 +1156,18 @@ describe('portal.setPermission: Administrators update user permission.', functio
     var mockrpcReq = sinon.createStubInstance(rpcReq);
     var portal = Portal(testPortalSpec, mockrpcReq);
 
-    mockrpcReq.tokenLogin = sinon.stub();
+    dbAccess.deleteToken = sinon.stub();
     mockrpcReq.getController = sinon.stub();
     mockrpcReq.join = sinon.stub();
 
-    mockrpcReq.tokenLogin.resolves({code: 'tokenCode', userName: 'Jack', role: 'viewer', origin: {isp: 'isp', region: 'region'}, room: testSession});
+    dbAccess.deleteToken.resolves({code: 'tokenCode', userName: 'Jack', role: 'viewer', origin: {isp: 'isp', region: 'region'}, room: testSession});
     mockrpcReq.getController.resolves('rpcIdOfController');
     mockrpcReq.join.resolves({participants: [{id: 'targetUserID', name: 'targetUserName', role: 'presenter'}],
                                  streams: []});
 
     return portal.join('targetUserID', testToken)
     .then(function(targetJoin) {
-      mockrpcReq.tokenLogin.resolves({code: 'tokenCode', userName: 'Tom', role: 'viewer', origin: {isp: 'isp', region: 'region'}, room: testSession});
+      dbAccess.deleteToken.resolves({code: 'tokenCode', userName: 'Tom', role: 'viewer', origin: {isp: 'isp', region: 'region'}, room: testSession});
       return portal.join(testParticipantId, testToken)
       .then(function(joinResult) {
         var setPermission = portal.setPermission(testParticipantId, 'targetUserID', 'publish', false);
@@ -1185,18 +1183,18 @@ describe('portal.setPermission: Administrators update user permission.', functio
     var mockrpcReq = sinon.createStubInstance(rpcReq);
     var portal = Portal(testPortalSpec, mockrpcReq);
 
-    mockrpcReq.tokenLogin = sinon.stub();
+    dbAccess.deleteToken = sinon.stub();
     mockrpcReq.getController = sinon.stub();
     mockrpcReq.join = sinon.stub();
 
-    mockrpcReq.tokenLogin.resolves({code: 'tokenCode', userName: 'Jack', role: 'presenter', origin: {isp: 'isp', region: 'region'}, room: testSession});
+    dbAccess.deleteToken.resolves({code: 'tokenCode', userName: 'Jack', role: 'presenter', origin: {isp: 'isp', region: 'region'}, room: testSession});
     mockrpcReq.getController.resolves('rpcIdOfController');
     mockrpcReq.join.resolves({participants: [{id: 'targetUserID', name: 'targetUserName', role: 'presenter'}],
                                  streams: []});
 
     return portal.join('targetUserID', testToken)
     .then(function(targetJoin) {
-      mockrpcReq.tokenLogin.resolves({code: 'tokenCode', userName: 'Tom', role: 'admin', origin: {isp: 'isp', region: 'region'}, room: testSession});
+      dbAccess.deleteToken.resolves({code: 'tokenCode', userName: 'Tom', role: 'admin', origin: {isp: 'isp', region: 'region'}, room: testSession});
       return portal.join(testParticipantId, testToken)
       .then(function(joinResult) {
         var setPermission = portal.setPermission(testParticipantId, 'targetUserID', 'publish', false)
@@ -1231,11 +1229,11 @@ describe('portal.setVideoBitrate/portal.mediaOnOff: Participants manipulate stre
     var mockrpcReq = sinon.createStubInstance(rpcReq);
     var portal = Portal(testPortalSpec, mockrpcReq);
 
-    mockrpcReq.tokenLogin = sinon.stub();
+    dbAccess.deleteToken = sinon.stub();
     mockrpcReq.getController = sinon.stub();
     mockrpcReq.join = sinon.stub();
 
-    mockrpcReq.tokenLogin.resolves({code: 'tokenCode', userName: 'Jack', role: 'admin', origin: {isp: 'isp', region: 'region'}, room: testSession});
+    dbAccess.deleteToken.resolves({code: 'tokenCode', userName: 'Jack', role: 'admin', origin: {isp: 'isp', region: 'region'}, room: testSession});
     mockrpcReq.getController.resolves('rpcIdOfController');
     mockrpcReq.join.resolves({participants: [],
                                  streams: []});
@@ -1258,14 +1256,14 @@ describe('portal.setVideoBitrate/portal.mediaOnOff: Participants manipulate stre
     var testStreamId = 'streamId';
 
     beforeEach(function(done) {
-      mockrpcReq.tokenLogin = sinon.stub();
+      dbAccess.deleteToken = sinon.stub();
       mockrpcReq.getController = sinon.stub();
       mockrpcReq.join = sinon.stub();
       mockrpcReq.getAccessNode = sinon.stub();
       mockrpcReq.publish = sinon.stub();
       mockrpcReq.pub2Session = sinon.stub();
 
-      mockrpcReq.tokenLogin.resolves({code: 'tokenCode', userName: 'Jack', role: 'admin', origin: {isp: 'isp', region: 'region'}, room: testSession});
+      dbAccess.deleteToken.resolves({code: 'tokenCode', userName: 'Jack', role: 'admin', origin: {isp: 'isp', region: 'region'}, room: testSession});
       mockrpcReq.getController.resolves('rpcIdOfController');
       mockrpcReq.join.resolves({participants: [],
                                    streams: []});
@@ -1379,11 +1377,11 @@ describe('portal.subscribe/portal.unsubscribe/portal.mediaOnOff: Participants su
     var mockrpcReq = sinon.createStubInstance(rpcReq);
     var portal = Portal(testPortalSpec, mockrpcReq);
 
-    mockrpcReq.tokenLogin = sinon.stub();
+    dbAccess.deleteToken = sinon.stub();
     mockrpcReq.getController = sinon.stub();
     mockrpcReq.join = sinon.stub();
 
-    mockrpcReq.tokenLogin.resolves({code: 'tokenCode', userName: 'Jack', role: 'guest', origin: {isp: 'isp', region: 'region'}, room: testSession});
+    dbAccess.deleteToken.resolves({code: 'tokenCode', userName: 'Jack', role: 'guest', origin: {isp: 'isp', region: 'region'}, room: testSession});
     mockrpcReq.getController.resolves('rpcIdOfController');
     mockrpcReq.join.resolves({participants: [],
                                  streams: []});
@@ -1405,11 +1403,11 @@ describe('portal.subscribe/portal.unsubscribe/portal.mediaOnOff: Participants su
     var mockrpcReq = sinon.createStubInstance(rpcReq);
     var portal = Portal(testPortalSpec, mockrpcReq);
 
-    mockrpcReq.tokenLogin = sinon.stub();
+    dbAccess.deleteToken = sinon.stub();
     mockrpcReq.getController = sinon.stub();
     mockrpcReq.join = sinon.stub();
 
-    mockrpcReq.tokenLogin.resolves({code: 'tokenCode', userName: 'Jack', role: 'a_viewer', origin: {isp: 'isp', region: 'region'}, room: testSession});
+    dbAccess.deleteToken.resolves({code: 'tokenCode', userName: 'Jack', role: 'a_viewer', origin: {isp: 'isp', region: 'region'}, room: testSession});
     mockrpcReq.getController.resolves('rpcIdOfController');
     mockrpcReq.join.resolves({participants: [],
                                  streams: []});
@@ -1431,11 +1429,11 @@ describe('portal.subscribe/portal.unsubscribe/portal.mediaOnOff: Participants su
     var mockrpcReq = sinon.createStubInstance(rpcReq);
     var portal = Portal(testPortalSpec, mockrpcReq);
 
-    mockrpcReq.tokenLogin = sinon.stub();
+    dbAccess.deleteToken = sinon.stub();
     mockrpcReq.getController = sinon.stub();
     mockrpcReq.join = sinon.stub();
 
-    mockrpcReq.tokenLogin.resolves({code: 'tokenCode', userName: 'Jack', role: 'v_viewer', origin: {isp: 'isp', region: 'region'}, room: testSession});
+    dbAccess.deleteToken.resolves({code: 'tokenCode', userName: 'Jack', role: 'v_viewer', origin: {isp: 'isp', region: 'region'}, room: testSession});
     mockrpcReq.getController.resolves('rpcIdOfController');
     mockrpcReq.join.resolves({participants: [],
                                  streams: []});
@@ -1457,11 +1455,11 @@ describe('portal.subscribe/portal.unsubscribe/portal.mediaOnOff: Participants su
     var mockrpcReq = sinon.createStubInstance(rpcReq);
     var portal = Portal(testPortalSpec, mockrpcReq);
 
-    mockrpcReq.tokenLogin = sinon.stub();
+    dbAccess.deleteToken = sinon.stub();
     mockrpcReq.getController = sinon.stub();
     mockrpcReq.join = sinon.stub();
 
-    mockrpcReq.tokenLogin.resolves({code: 'tokenCode', userName: 'Jack', role: 'presenter', origin: {isp: 'isp', region: 'region'}, room: testSession});
+    dbAccess.deleteToken.resolves({code: 'tokenCode', userName: 'Jack', role: 'presenter', origin: {isp: 'isp', region: 'region'}, room: testSession});
     mockrpcReq.getController.resolves('rpcIdOfController');
     mockrpcReq.join.resolves({participants: [],
                                  streams: []});
@@ -1500,11 +1498,11 @@ describe('portal.subscribe/portal.unsubscribe/portal.mediaOnOff: Participants su
     var portal = Portal(testPortalSpec, mockrpcReq);
 
     beforeEach(function(done) {
-      mockrpcReq.tokenLogin = sinon.stub();
+      dbAccess.deleteToken = sinon.stub();
       mockrpcReq.getController = sinon.stub();
       mockrpcReq.join = sinon.stub();
 
-      mockrpcReq.tokenLogin.resolves({code: 'tokenCode', userName: 'Jack', role: 'admin', origin: {isp: 'isp', region: 'region'}, room: testSession});
+      dbAccess.deleteToken.resolves({code: 'tokenCode', userName: 'Jack', role: 'admin', origin: {isp: 'isp', region: 'region'}, room: testSession});
       mockrpcReq.getController.resolves('rpcIdOfController');
       mockrpcReq.join.resolves({participants: [],
                                    streams: []});
@@ -2323,11 +2321,11 @@ describe('portal.getRegion/portal.setRegion: Manipulate the mixed stream.', func
     var portal = Portal(testPortalSpec, mockrpcReq);
 
     beforeEach(function(done) {
-      mockrpcReq.tokenLogin = sinon.stub();
+      dbAccess.deleteToken = sinon.stub();
       mockrpcReq.getController = sinon.stub();
       mockrpcReq.join = sinon.stub();
 
-      mockrpcReq.tokenLogin.resolves({code: 'tokenCode', userName: 'Jack', role: 'admin', origin: {isp: 'isp', region: 'region'}, room: testSession});
+      dbAccess.deleteToken.resolves({code: 'tokenCode', userName: 'Jack', role: 'admin', origin: {isp: 'isp', region: 'region'}, room: testSession});
       mockrpcReq.getController.resolves('rpcIdOfController');
       mockrpcReq.join.resolves({participants: [],
                                    streams: []});
@@ -2396,11 +2394,11 @@ describe('portal.text', function() {
     var mockrpcReq = sinon.createStubInstance(rpcReq);
     var portal = Portal(testPortalSpec, mockrpcReq);
 
-    mockrpcReq.tokenLogin = sinon.stub();
+    dbAccess.deleteToken = sinon.stub();
     mockrpcReq.getController = sinon.stub();
     mockrpcReq.join = sinon.stub();
 
-    mockrpcReq.tokenLogin.resolves({code: 'tokenCode', userName: 'Jack', role: 'viewer_no_text', origin: {isp: 'isp', region: 'region'}, room: testSession});
+    dbAccess.deleteToken.resolves({code: 'tokenCode', userName: 'Jack', role: 'viewer_no_text', origin: {isp: 'isp', region: 'region'}, room: testSession});
     mockrpcReq.getController.resolves('rpcIdOfController');
     mockrpcReq.join.resolves({participants: [],
                                  streams: []});
@@ -2416,11 +2414,11 @@ describe('portal.text', function() {
     var portal = Portal(testPortalSpec, mockrpcReq);
 
     beforeEach(function(done) {
-      mockrpcReq.tokenLogin = sinon.stub();
+      dbAccess.deleteToken = sinon.stub();
       mockrpcReq.getController = sinon.stub();
       mockrpcReq.join = sinon.stub();
 
-      mockrpcReq.tokenLogin.resolves({code: 'tokenCode', userName: 'Jack', role: 'presenter', origin: {isp: 'isp', region: 'region'}, room: testSession});
+      dbAccess.deleteToken.resolves({code: 'tokenCode', userName: 'Jack', role: 'presenter', origin: {isp: 'isp', region: 'region'}, room: testSession});
       mockrpcReq.getController.resolves('rpcIdOfController');
       mockrpcReq.join.resolves({participants: [],
                                    streams: []});
@@ -2471,11 +2469,11 @@ describe('portal.getParticipantsByController', function() {
     var mockrpcReq = sinon.createStubInstance(rpcReq);
     var portal = Portal(testPortalSpec, mockrpcReq);
 
-    mockrpcReq.tokenLogin = sinon.stub();
+    dbAccess.deleteToken = sinon.stub();
     mockrpcReq.getController = sinon.stub();
     mockrpcReq.join = sinon.stub();
 
-    mockrpcReq.tokenLogin.resolves({code: 'tokenCode', userName: 'Jack', role: 'viewer_no_text', origin: {isp: 'isp', region: 'region'}, room: testSession});
+    dbAccess.deleteToken.resolves({code: 'tokenCode', userName: 'Jack', role: 'viewer_no_text', origin: {isp: 'isp', region: 'region'}, room: testSession});
     mockrpcReq.getController.resolves('rpcIdOfController');
     mockrpcReq.join.resolves({participants: [],
                                  streams: []});

@@ -21,19 +21,24 @@ var doInit = function (currentService, roomId, callback) {
 };
 
 var getTokenString = function (id, token) {
-    var toSign = id + ',' + token.host,
-        hex = crypto.createHmac('sha256', dataBase.nuveKey).update(toSign).digest('hex'),
-        signed = (new Buffer(hex)).toString('base64'),
+    return dataBase.getKey().then(function(nuveKey) {
+        var toSign = id + ',' + token.host,
+            hex = crypto.createHmac('sha256', nuveKey).update(toSign).digest('hex'),
+            signed = (new Buffer(hex)).toString('base64'),
 
-        tokenJ = {
-            tokenId: id,
-            host: token.host,
-            secure: token.secure,
-            signature: signed
-        },
-        tokenS = (new Buffer(JSON.stringify(tokenJ))).toString('base64');
+            tokenJ = {
+                tokenId: id,
+                host: token.host,
+                secure: token.secure,
+                signature: signed
+            },
+            tokenS = (new Buffer(JSON.stringify(tokenJ))).toString('base64');
 
-    return tokenS;
+        return tokenS;
+
+    }).catch(function(err) {
+        log.error('Get nuveKey error:', err);
+    });
 };
 
 /*
@@ -85,15 +90,19 @@ var generateToken = function (currentRoom, authData, type, origin, callback) {
                 token._id = id;
                 currentService.testToken = token;
                 serviceRegistry.updateService(currentService);
-                tokenS = getTokenString(id, token);
-                callback(tokenS);
+                getTokenString(id, token)
+                    .then((tokenS) => {
+                        callback(tokenS);
+                    });
                 return;
             });
         } else {
             token = currentService.testToken;
             log.info('TestToken already exists, sending it', token);
-            tokenS = getTokenString(token._id, token);
-            callback(tokenS);
+            getTokenString(id, token)
+                .then((tokenS) => {
+                    callback(tokenS);
+                });
             return;
         }
     } else {
@@ -121,8 +130,10 @@ var generateToken = function (currentRoom, authData, type, origin, callback) {
             }
 
             tokenRegistry.addToken(token, function (id) {
-                var tokenS = getTokenString(id, token);
-                callback(tokenS);
+                getTokenString(id, token)
+                    .then((tokenS) => {
+                        callback(tokenS);
+                    });
             });
         });
     }

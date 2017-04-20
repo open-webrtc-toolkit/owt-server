@@ -171,10 +171,10 @@ var Portal = function(spec, rpcReq) {
     return validateToken(token)
       .then(function(validToken) {
         log.debug('token validation ok.');
-        return rpcReq.tokenLogin(token_server, validToken.tokenId);
+        return dbAccess.deleteToken(validToken.tokenId);
       })
       .then(function(loginResult) {
-        log.debug('login ok.');
+        log.debug('login ok.', loginResult);
         tokenCode = loginResult.code;
         userName = loginResult.userName;
         role = loginResult.role;

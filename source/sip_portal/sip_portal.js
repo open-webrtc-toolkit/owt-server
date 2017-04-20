@@ -10,6 +10,8 @@ var log = require('./logger').logger.getLogger('SipPortal');
 var sipErizoHelper = require('./sipErizoHelper');
 var helper;
 var config;
+var dbAccess = require('./dataBaseAccess');
+
 try {
   config = toml.parse(fs.readFileSync('./sip_portal.toml'));
 } catch (e) {
@@ -88,9 +90,8 @@ function initSipRooms() {
         });
     }
 
-    // Why not access mongodb directly here?
-    rpcClient.remoteCall('nuve', 'getRoomsWithSIP', null, {
-        callback: function (rooms) {
+    dbAccess.getSipRooms()
+        .then(function(rooms) {
             // Get sip rooms here
             if (!Array.isArray(rooms)) {
                 log.warn('Get sip rooms from nuve failed:', rooms);
@@ -110,8 +111,7 @@ function initSipRooms() {
                 roomInfo[room_id] = sipInfo;
                 createSipConnectivity(room_id, sipInfo.sipServer, sipInfo.username, sipInfo.password);
             }
-        }
-    });
+        });
 }
 
 function createSipConnectivity(room_id, sip_server, sip_user, sip_passwd) {

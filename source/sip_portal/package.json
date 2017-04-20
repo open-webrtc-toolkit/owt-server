@@ -4,6 +4,7 @@
   "dependencies": {
     "amqp": "*",
     "log4js": "*",
+    "mongojs": "",
     "toml": "*"
   }
 }

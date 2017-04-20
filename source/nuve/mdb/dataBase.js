@@ -18,11 +18,32 @@ var databaseUrl = global.config.nuve.dataBaseURL;
  * token {host: '', userName: '', room: '', role: '', service: '', creationDate: Date(), [use: int], _id: ObjectId}
  *
  */
-var collections = ['rooms', 'tokens', 'services'];
+var collections = ['rooms', 'tokens', 'services', 'key'];
 exports.db = require('mongojs')(databaseUrl, collections);
 
 // Superservice ID
 exports.superService = global.config.nuve.superserviceID;
 
-// token key
-exports.nuveKey = require('crypto').randomBytes(64).toString('hex');
+// Save token key, called by cluster master
+// FIXME: should store in a cache server instead of db
+exports.saveKey = function() {
+    var key = require('crypto').randomBytes(64).toString('hex');
+    exports.db.key.save({ _id: 'one', nuveKey: key }, function (err, saved) {
+        if (err) {
+            console.log('Save nuveKey error:', err);
+        }
+    });
+};
+
+// Get token key, called by cluster worker
+exports.getKey = function() {
+    return new Promise((resolve, reject) => {
+        exports.db.key.findOne({_id: 'one'}, function (err, key) {
+            if (err || !key) {
+                reject(err);
+            } else {
+                resolve(key.nuveKey);
+            }
+        });
+    });
+};
