@@ -380,8 +380,7 @@ module.exports = function (rpcClient, selfRpcId) {
   that.mix = function(participantId, streamId, mixStreams, callback) {
     log.debug('mix, participantId:', participantId, 'streamId:', streamId, 'mixStreams:', mixStreams);
     if (participants[participantId]) {
-      var index = participants[participantId].published.indexOf(streamId);
-      if (index !== -1 && streams[streamId]) {
+      if (streams[streamId]) {
         if (controller) {
           controller.mix(streamId, mixStreams, function() {
             callback('callback', 'ok');
@@ -406,8 +405,7 @@ module.exports = function (rpcClient, selfRpcId) {
   that.unmix = function(participantId, streamId, mixStreams, callback) {
     log.debug('unmix, participantId:', participantId, 'streamId:', streamId, 'mixStreams:', mixStreams);
     if (participants[participantId]) {
-      var index = participants[participantId].published.indexOf(streamId);
-      if (index !== -1 && streams[streamId]) {
+      if (streams[streamId]) {
         if (controller) {
           controller.unmix(streamId, mixStreams, function() {
             callback('callback', 'ok');
