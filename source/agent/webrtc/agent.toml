@@ -29,7 +29,7 @@ ip_address = "" #default: ""
 
 
 [capacity]
-#The ISP list this agent tends to handle 
+#The ISP list this agent tends to handle
 isps = [] #default: [], which means all ISPs.
 #The region list this agent tends to handle
 regions = [] #default: [], which means all regions.
@@ -49,7 +49,7 @@ minport = 0 #default: 0
 #The IP address used for replacing the internal IP address in locally generated SDP's and ICE candidates during establishing the peer-connection(useful when behind NATs) if it is specified with a non-empty string.
 ip_address = "" #default: ""
 
-#The network inferface all peer-connections will be established through. The first enumerated network interface in the system will be adopted if this item is not specified.
+#The network inferface all peer-connections will be established through. All network interfaces in the system will be adopted if this item is not specified or specified with an invalid value.
 # network_interface = "eth1" # default: undefined
 
 keystorePath = "./cert/certificate.pfx"

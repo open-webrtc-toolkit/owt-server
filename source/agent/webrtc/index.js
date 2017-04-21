@@ -21,7 +21,8 @@ module.exports = function () {
             audio: options.audio,
             video: options.video,
             private_ip_regexp: that.privateRegexp,
-            public_ip: that.publicIP
+            public_ip: that.publicIP,
+            network_interface: that.networkInterface
         }, function (response) {
             callback('onStatus', response);
         });

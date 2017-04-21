@@ -332,7 +332,8 @@ module.exports = function (spec, on_status) {
                 global.config.webrtc.keystorePath,
                 global.config.webrtc.keystorePath,
                 passphrase,
-                true, true,true, true, false);
+                true, true,true, true, false,
+                global.config.webrtc.network_interface);
 
             if (direction === 'in') {
                 bindFrameConstructors();
