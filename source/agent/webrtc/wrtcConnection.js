@@ -231,29 +231,32 @@ module.exports = function (spec, on_status) {
     };
 
     that.onTrackControl = function (track, dir, action, on_ok, on_error) {
-        if (track === 'audio' && audio) {
+        if (['audio', 'video', 'av'].indexOf(track) < 0) {
+            on_error('Invalid track.');
+            return;
+        }
+
+        if ((track === 'av' || track === 'audio') && audio) {
             if (dir === 'in' && audioFrameConstructor) {
                 audioFrameConstructor.enable(action === 'on');
-                on_ok();
             } else if (dir === 'out' && audioFramePacketizer) {
                 audioFramePacketizer.enable(action === 'on');
-                on_ok();
             } else {
-                on_error('Ambiguous direction.');
+                on_error('Ambiguous audio direction.');
+                return;
             }
-        } else if (track === 'video' && video) {
+        }
+        if ((track === 'av' || track === 'video') && video) {
             if (dir === 'in' && videoFrameConstructor) {
                 videoFrameConstructor.enable(action === 'on');
-                on_ok();
             } else if (dir === 'out' && videoFramePacketizer) {
                 videoFramePacketizer.enable(action === 'on');
-                on_ok();
             } else {
-                on_error('Ambiguous direction.');
+                on_error('Ambiguous video direction.');
+                return;
             }
-        } else {
-            on_error('Invalid track.');
         }
+        on_ok();
     };
 
     that.addDestination = function (track, dest) {

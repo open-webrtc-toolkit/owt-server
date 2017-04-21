@@ -763,7 +763,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
         return safeCall(callback, 'error', 'no stream ID');
       }
 
-      if (options.track !== 'video' && options.track !== 'audio') {
+      if (['video', 'audio', 'av'].indexOf(options.track) < 0) {
         return safeCall(callback, 'error', `invalid track ${options.track}`);
       }
 
@@ -786,7 +786,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
         return safeCall(callback, 'error', 'no stream ID');
       }
 
-      if (options.track !== 'video' && options.track !== 'audio') {
+      if (['video', 'audio', 'av'].indexOf(options.track) < 0) {
         return safeCall(callback, 'error', `invalid track ${options.track}`);
       }
 
