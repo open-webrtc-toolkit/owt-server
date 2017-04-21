@@ -177,6 +177,17 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
     }
   };
 
+  const getErrorMessage = function (err) {
+    if (typeof err === 'string') {
+      return err;
+    } else if (err && err.message) {
+      return err.message;
+    } else {
+      log.debug('Unknown error:', err);
+      return 'Unknown';
+    }
+  };
+
   that.listen = function() {
     // Join portal. It returns room info.
     const joinPortal = function(participant_id, token){
@@ -204,7 +215,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
     };
 
     const joinPortalFailed = function(err, callback){
-      const err_message = (typeof err === 'string' ? err: err.message);
+      const err_message = getErrorMessage(err);
       safeCall(callback, 'error', err_message);
       log.info('Participant', participant_id, 'join portal failed, reason:', err_message);
       socket.disconnect();
@@ -336,7 +347,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
       }, unmix).then(function(connectionLocality) {
         log.debug('portal.publish succeeded, connection locality:', connectionLocality);
       }).catch(function(err) {
-        var err_message = (typeof err === 'string' ? err: err.message);
+        const err_message = getErrorMessage(err);
         log.info('portal.publish failed:', err_message);
         if (has_responded) {
           send_msg('connection_failed', {streamId: stream_id});
@@ -355,7 +366,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
       .then(function() {
         safeCall(callback, 'success');
       }).catch(function(err) {
-        var err_message = (typeof err === 'string' ? err: err.message);
+        const err_message = getErrorMessage(err);
         log.info('portal.unpublish failed:', err_message);
         safeCall(callback, 'error', err_message);
       });
@@ -373,7 +384,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
       .then(function() {
         safeCall(callback, 'success');
       }).catch(function(err) {
-        var err_message = (typeof err === 'string' ? err: err.message);
+        const err_message = getErrorMessage(err);
         log.info('portal.mix failed:', err_message);
         safeCall(callback, 'error', err_message);
       });
@@ -391,7 +402,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
       .then(function() {
         safeCall(callback, 'success');
       }).catch(function(err) {
-        var err_message = (typeof err === 'string' ? err: err.message);
+        const err_message = getErrorMessage(err);
         log.info('portal.unmix failed:', err_message);
         safeCall(callback, 'error', err_message);
       });
@@ -413,7 +424,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
       .then(function() {
         safeCall(callback, 'success');
       }).catch(function(err) {
-        var err_message = (typeof err === 'string' ? err: err.message);
+        const err_message = getErrorMessage(err);
         log.info('portal.mix failed:', err_message);
         safeCall(callback, 'error', err_message);
       });
@@ -435,7 +446,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
       .then(function() {
         safeCall(callback, 'success');
       }).catch(function(err) {
-        var err_message = (typeof err === 'string' ? err: err.message);
+        const err_message = getErrorMessage(err);
         log.info('portal.unmix failed:', err_message);
         safeCall(callback, 'error', err_message);
       });
@@ -450,7 +461,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
       .then(function() {
         safeCall(callback, 'success');
       }).catch(function(err) {
-        var err_message = (typeof err === 'string' ? err: err.message);
+        const err_message = getErrorMessage(err);
         log.info('portal.setVideoBitrate failed:', err_message);
         safeCall(callback, 'error', err_message);
       });
@@ -488,7 +499,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
       }).then(function(connectionLocality) {
         log.debug('portal.subscribe succeeded, connection locality:', connectionLocality);
       }).catch(function(err) {
-        var err_message = (typeof err === 'string' ? err: err.message);
+        const err_message = getErrorMessage(err);
         log.info('portal.subscribe failed:', err_message);
         safeCall(callback, 'error', err_message);
       });
@@ -504,7 +515,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
       .then(function() {
         safeCall(callback, 'success');
       }).catch(function(err) {
-        var err_message = (typeof err === 'string' ? err: err.message);
+        const err_message = getErrorMessage(err);
         log.info('portal.unsubscribe failed:', err_message);
         safeCall(callback, 'error', err_message);
       });
@@ -554,7 +565,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
       }).then(function(connectionLocality) {
         log.debug('portal.subscribe succeeded, connection locality:', connectionLocality);
       }).catch(function(err) {
-        var err_message = (typeof err === 'string' ? err: err.message);
+        const err_message = getErrorMessage(err);
         log.info('portal.subscribe failed:', err_message);
         safeCall(callback, 'error', err_message);
       });
@@ -600,7 +611,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
         });
       }).then(function(subscriptionId) {
       }).catch(function(err) {
-        var err_message = (typeof err === 'string' ? err: err.message);
+        const err_message = getErrorMessage(err);
         log.info('portal.unsubscribe/subscribe exception:', err_message);
         safeCall(callback, 'error', err_message);
       });
@@ -621,11 +632,11 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
       .then(function() {
         safeCall(callback, 'success', {url: options.url});
       }, function(err) {
-        var err_message = (typeof err === 'string' ? err: err.message);
+        const err_message = getErrorMessage(err);
         log.info('portal.unsubscribe failed:', err_message);
         safeCall(callback, 'error', 'Invalid RTSP/RTMP server url');
       }).catch(function(err) {
-        var err_message = (typeof err === 'string' ? err: err.message);
+        const err_message = getErrorMessage(err);
         log.info('portal.unsubscribe failed:', err_message);
         safeCall(callback, 'error', err_message);
       });
@@ -686,7 +697,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
         log.debug('portal.subscribe succeeded, connection locality:', connectionLocality);
         recording_file = path.join(options.path || '', 'room_' + that.inRoom + '-' + subscription_id + '.mkv' );
       }).catch(function(err) {
-        var err_message = (typeof err === 'string' ? err: err.message);
+        const err_message = getErrorMessage(err);
         log.info('portal.subscribe failed:', err_message);
         safeCall(callback, 'error', err_message);
       });
@@ -706,7 +717,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
       .then(function() {
         safeCall(callback, 'success', {recorderId: options.recorderId, host: 'unknown'});
       }).catch(function(err) {
-        var err_message = (typeof err === 'string' ? err: err.message);
+        const err_message = getErrorMessage(err);
         log.info('portal.unsubscribe failed:', err_message);
         safeCall(callback, 'error', err_message);
       });
@@ -725,7 +736,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
       .then(function(regionId) {
         safeCall(callback, 'success', {region: regionId});
       }).catch(function(err) {
-        var err_message = (typeof err === 'string' ? err: err.message);
+        const err_message = getErrorMessage(err);
         log.info('portal.getRegion failed:', err_message);
         safeCall(callback, 'error', err_message);
       });
@@ -748,7 +759,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
       .then(function() {
         safeCall(callback, 'success');
       }).catch(function(err) {
-        var err_message = (typeof err === 'string' ? err: err.message);
+        const err_message = getErrorMessage(err);
         log.info('portal.setRegion failed:', err_message);
         safeCall(callback, 'error', err_message);
       });
@@ -771,7 +782,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
       .then(function() {
           safeCall(callback, 'success');
         }).catch(function(err) {
-          var err_message = (typeof err === 'string' ? err: err.message);
+          const err_message = getErrorMessage(err);
           log.info('portal.setMute failed:', err_message);
           safeCall(callback, 'error', err_message);
         });
@@ -794,7 +805,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
       .then(function() {
           safeCall(callback, 'success');
         }).catch(function(err) {
-          var err_message = (typeof err === 'string' ? err: err.message);
+          const err_message = getErrorMessage(err);
           log.info('portal.setMute failed:', err_message);
           safeCall(callback, 'error', err_message);
         });
@@ -817,7 +828,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
       .then(function() {
         safeCall(callback, 'success');
       }).catch(function(err) {
-        var err_message = (typeof err === 'string' ? err: err.message);
+        const err_message = getErrorMessage(err);
         log.info('portal.setPermission failed:', err_message);
         safeCall(callback, 'error', err_message);
       });
@@ -838,7 +849,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
             .then(function() {
               safeCall(callback, 'success');
             }).catch(function(err) {
-              var err_message = (typeof err === 'string' ? err: err.message);
+              const err_message = getErrorMessage(err);
               log.info('portal.text failed:', err_message);
               safeCall(callback, 'error', err_message);
             });
@@ -864,7 +875,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
             .then(function() {
               safeCall(callback, 'success');
             }).catch(function(err) {
-              var err_message = (typeof err === 'string' ? err: err.message);
+              const err_message = getErrorMessage(err);
               log.info('portal.mediaOnOff failed:', err_message);
               safeCall(callback, 'error', err_message);
             });
@@ -891,7 +902,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
       leavePortal().then(function() {
         safeCall(callback, 'success');
       }).catch(function(err) {
-        const err_message = (typeof err === 'string' ? err: err.message);
+        const err_message = getErrorMessage(err);
         // Expect client does not response to this error and disconnect soon.
         safeCall(callback, 'error', err_message);
       });
