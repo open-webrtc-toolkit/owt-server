@@ -20,6 +20,7 @@ module.exports = function (spec, on_status) {
         // preferredVideoCodecs = spec.preferred_video_codecs,
         privateRegexp = spec.private_ip_regexp,
         publicIP = spec.public_ip,
+        networkInterface = spec.network_interface,
         audio = spec.audio || false,
         video = spec.video || false,
         audioFrameConstructor,
@@ -332,7 +333,8 @@ module.exports = function (spec, on_status) {
                 global.config.webrtc.keystorePath,
                 global.config.webrtc.keystorePath,
                 passphrase,
-                true, true,true, true, false);
+                true, true,true, true, false,
+                networkInterface);
 
             if (direction === 'in') {
                 bindFrameConstructors();

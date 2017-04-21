@@ -34,11 +34,11 @@ void WebRtcConnection::Init(Local<Object> exports) {
 void WebRtcConnection::New(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
-  if (args.Length() < 15) {
+  if (args.Length() < 16) {
     isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Wrong number of arguments")));
     return;
   }
-  //	webrtcconnection(bool audioEnabled, bool videoEnabled, const std::string &stunServer, int stunPort, int minPort, int maxPort);
+  //   webrtcconnection(bool audioEnabled, bool videoEnabled, const std::string &stunServer, int stunPort, int minPort, int maxPort);
 
   bool a = (args[0]->ToBoolean())->BooleanValue();
   bool v = (args[1]->ToBoolean())->BooleanValue();
@@ -67,8 +67,11 @@ void WebRtcConnection::New(const FunctionCallbackInfo<Value>& args) {
 
   bool t = (args[14]->ToBoolean())->BooleanValue();
 
+  String::Utf8Value args15(args[15]->ToString());
+  std::string networkInterface = std::string(*args15);
+
   WebRtcConnection* obj = new WebRtcConnection();
-  obj->me = new erizo::WebRtcConnection(a, v, h, stunServer,stunPort,minPort,maxPort, certFile, keyFile, privatePass, qos, t, obj);
+  obj->me = new erizo::WebRtcConnection(a, v, h, stunServer,stunPort,minPort,maxPort, certFile, keyFile, privatePass, qos, t, networkInterface, obj);
   obj->Wrap(args.This());
   args.GetReturnValue().Set(args.This());
 }
