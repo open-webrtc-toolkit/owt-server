@@ -129,7 +129,7 @@ var launchErizoJS = function() {
     var id = myId + '.' + erizo_index++;
     var out = fs.openSync('../logs/' + id + '.log', 'a');
     var err = fs.openSync('../logs/' + id + '.log', 'a');
-    var child = spawn('node', ['./erizoJS.js', id, myPurpose, privateIP, publicIP, clusterIP, myId], {
+    var child = spawn('node', ['./erizoJS.js', id, myPurpose, global.config.webrtc.network_interface, privateIP, publicIP, clusterIP, myId], {
         detached: true,
         stdio: [ 'ignore', out, err, 'ipc' ]
     });
