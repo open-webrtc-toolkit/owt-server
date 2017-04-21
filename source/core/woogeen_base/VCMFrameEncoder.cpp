@@ -325,16 +325,17 @@ void VCMFrameEncoder::doEncoding()
 void VCMFrameEncoder::encodeLoop()
 {
     while (true) {
-        boost::mutex::scoped_lock lock(m_encMutex);
-        while (m_running && m_incomingFrameCount == 0) {
-            m_encCond.wait(lock);
+        {
+            boost::mutex::scoped_lock lock(m_encMutex);
+            while (m_running && m_incomingFrameCount == 0) {
+                m_encCond.wait(lock);
+            }
+
+            if (!m_running)
+                break;
+
+            m_incomingFrameCount--;
         }
-
-        if (!m_running)
-            break;
-
-        m_incomingFrameCount--;
-        m_encMutex.unlock();
 
         doEncoding();
     }
