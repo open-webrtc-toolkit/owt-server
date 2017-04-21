@@ -72,6 +72,17 @@ var Client = function(clientId, inRoom, queryInterval, portal, on_loss) {
       subscribed = {},
       notifications = [];
 
+  const getErrorMessage = function (err) {
+    if (typeof err === 'string') {
+      return err;
+    } else if (err && err.message) {
+      return err.message;
+    } else {
+      log.debug('Unknown error:', err);
+      return 'Unknown';
+    }
+  };
+
   that.query = function(on_result) {
     absent_count = 0;
     on_result({published: published, subscribed: subscribed, notifications: notifications});
@@ -121,7 +132,7 @@ var Client = function(clientId, inRoom, queryInterval, portal, on_loss) {
       on_ok(stream_id);
       once_ok = true;
     }).catch(function(err) {
-      var err_message = (typeof err === 'string' ? err: err.message);
+      const err_message = getErrorMessage(err);
       log.info('portal.publish failed:', err_message);
       published[stream_id] && (delete published[stream_id]);
       on_failure(err_message);
@@ -134,7 +145,7 @@ var Client = function(clientId, inRoom, queryInterval, portal, on_loss) {
       delete published[streamId];
       on_ok();
     }).catch(function(err) {
-      var err_message = (typeof err === 'string' ? err: err.message);
+      const err_message = getErrorMessage(err);
       log.info('portal.unpublish failed:', err_message);
       delete published[streamId];
       on_failure(err_message);
@@ -253,7 +264,7 @@ var Client = function(clientId, inRoom, queryInterval, portal, on_loss) {
       on_ok(subscription_id);
       once_ok = true;
     }).catch(function(err) {
-      var err_message = (typeof err === 'string' ? err: err.message);
+      const err_message = getErrorMessage(err);
       log.info('portal.subscribe failed:', err_message);
       subscribed[subscription_id] && (delete subscribed[subscription_id]);
       on_failure(err_message);
@@ -266,7 +277,7 @@ var Client = function(clientId, inRoom, queryInterval, portal, on_loss) {
       delete subscribed[subscriptionId];
       on_ok();
     }).catch(function(err) {
-      var err_message = (typeof err === 'string' ? err: err.message);
+      const err_message = getErrorMessage(err);
       log.info('portal.unsubscribe failed:', err_message);
       delete subscribed[subscriptionId];
       on_failure(err_message);
@@ -323,7 +334,7 @@ var RestServer = function(spec, portal, observer) {
           clients: result.participants};
         res.send(joinResult);
       }, function(err) {
-        var err_message = (typeof err === 'string' ? err: err.message);
+        const err_message = getErrorMessage(err);
         res.status(404).send({reason: err_message});
       });
   };
@@ -380,7 +391,7 @@ var RestServer = function(spec, portal, observer) {
       .then(function() {
         res.send();
       }, function(err) {
-        var err_message = (typeof err === 'string' ? err: err.message);
+        const err_message = getErrorMessage(err);
         log.debug('updating stream failed:', err_message);
         res.status(404).send({reason: err_message});
       });
@@ -459,8 +470,7 @@ var RestServer = function(spec, portal, observer) {
             server = require('https').createServer({pfx: require('fs').readFileSync(keystorePath), passphrase: passphrase}, app).listen(port);
             resolve('ok');
           } catch (e) {
-            err = e;
-            reject(typeof err === 'string' ? err : err.message);
+            reject(getErrorMessage(e));
           }
         } else {
           log.warn('Failed to setup secured server:', err);
