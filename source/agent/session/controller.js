@@ -1575,6 +1575,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         if (streams[streamId]) {
             let terminal = terminals[streams[streamId].owner];
             makeRPC(
+                rpcClient,
                 terminal.locality.node,
                 'mediaOnOff',
                 [streamId, track, 'in', onOff],
