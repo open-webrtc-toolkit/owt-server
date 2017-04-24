@@ -16,7 +16,7 @@ using namespace dtls;
 DEFINE_LOGGER(DtlsTransport, "DtlsTransport");
 DEFINE_LOGGER(Resender, "Resender");
 
-Resender::Resender(boost::shared_ptr<NiceConnection> nice, unsigned int comp, const unsigned char* data, unsigned int len) :
+Resender::Resender(boost::shared_ptr<NiceConnection> nice, unsigned int comp, const unsigned char* data, unsigned int len) : 
   nice_(nice), comp_(comp), data_(data),len_(len), timer(service) {
   sent_ = 0;
 }
@@ -57,12 +57,12 @@ int Resender::getStatus() {
   return sent_;
 }
 
-void Resender::resend(const boost::system::error_code& ec) {
+void Resender::resend(const boost::system::error_code& ec) {  
   if (ec == boost::asio::error::operation_aborted) {
     ELOG_DEBUG("%s - Cancelled", nice_->transportName->c_str());
     return;
   }
-
+  
   if (nice_ != NULL) {
     ELOG_WARN("%s - Resending DTLS message to %d", nice_->transportName->c_str(), comp_);
     int val = nice_->sendData(comp_, data_, len_);
@@ -74,7 +74,7 @@ void Resender::resend(const boost::system::error_code& ec) {
   }
 }
 
-DtlsTransport::DtlsTransport(MediaType med, const std::string &transport_name, bool bundle, bool rtcp_mux, TransportListener *transportListener, const std::string &stunServer, int stunPort, int minPort, int maxPort, const std::string& certFile, const std::string& keyFile, const std::string& privatePasswd, std::string username, std::string password, const std::string& networkInterface):Transport(med, transport_name, bundle, rtcp_mux, transportListener, stunServer, stunPort, minPort, maxPort),
+DtlsTransport::DtlsTransport(MediaType med, const std::string &transport_name, bool bundle, bool rtcp_mux, TransportListener *transportListener, const std::string &stunServer, int stunPort, int minPort, int maxPort, const std::string& certFile, const std::string& keyFile, const std::string& privatePasswd, std::string username, std::string password):Transport(med, transport_name, bundle, rtcp_mux, transportListener, stunServer, stunPort, minPort, maxPort),
   readyRtp(false), readyRtcp(false), running_(false) {
   ELOG_DEBUG( "Initializing DtlsTransport" );
 
@@ -91,7 +91,7 @@ DtlsTransport::DtlsTransport(MediaType med, const std::string &transport_name, b
     dtlsFactory_->createClient(dtlsRtcp);
     dtlsRtcp->setDtlsReceiver(this);
   }
-  nice_.reset(new NiceConnection(med, transport_name, this, comps, stunServer, stunPort, minPort, maxPort, username, password, networkInterface));
+  nice_.reset(new NiceConnection(med, transport_name, this, comps, stunServer, stunPort, minPort, maxPort, username, password));
 }
 
 DtlsTransport::~DtlsTransport() {
@@ -144,8 +144,8 @@ void DtlsTransport::onNiceData(unsigned int component_id, char* data, int len, N
     if (srtp != NULL){
       RTCPHeader *chead = reinterpret_cast<RTCPHeader*> (unprotectBuf_);
       uint8_t packetType = chead->getPacketType();
-      if (packetType == RTCP_Sender_PT ||
-          packetType == RTCP_Receiver_PT ||
+      if (packetType == RTCP_Sender_PT || 
+          packetType == RTCP_Receiver_PT || 
           packetType == RTCP_PS_Feedback_PT||
           packetType == RTCP_RTP_Feedback_PT){
         if(srtp->unprotectRtcp(unprotectBuf_, &length)<0){
@@ -171,7 +171,7 @@ void DtlsTransport::onNiceData(unsigned int component_id, char* data, int len, N
 void DtlsTransport::onCandidate(const CandidateInfo &candidate, NiceConnection *conn) {
   getTransportListener()->onCandidate(candidate, this);
 }
-
+  
 
 
 void DtlsTransport::write(char* data, int len) {
@@ -320,7 +320,7 @@ void DtlsTransport::getNiceDataLoop(){
     if (p_->length > 0) {
         this->onNiceData(p_->comp, p_->data, p_->length, NULL);
     }
-    if (p_->length == -1){
+    if (p_->length == -1){    
       running_=false;
       return;
     }

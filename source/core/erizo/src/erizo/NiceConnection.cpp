@@ -78,7 +78,7 @@ namespace erizo {
   }
 
   NiceConnection::NiceConnection(MediaType med, const std::string &transport_name,NiceConnectionListener* listener,
-      unsigned int iceComponents, const std::string& stunServer, int stunPort, int minPort, int maxPort, std::string username, std::string password, const std::string& networkInterface)
+      unsigned int iceComponents, const std::string& stunServer, int stunPort, int minPort, int maxPort, std::string username, std::string password)
      : mediaType(med), agent_(NULL), listener_(listener), candsDelivered_(0), context_(NULL), iceState_(NICE_INITIAL), iceComponents_(iceComponents), generation_(0) {
 
     localCandidates.reset(new std::vector<CandidateInfo>());
@@ -166,17 +166,6 @@ namespace erizo {
               "",      // Pass
               NICE_RELAY_TYPE_TURN_UDP);
         }
-    }
-
-    if (networkInterface.size() > 0) {
-      NiceAddress addr;
-      gchar* networkInterfaceChar = g_strdup(networkInterface.c_str());
-      gchar* ip = nice_interfaces_get_ip_for_interface(networkInterfaceChar);
-      g_free(networkInterfaceChar);
-      if (ip == nullptr || !nice_address_set_from_string(&addr, ip) || !nice_agent_add_local_address(agent_, &addr)) {
-        ELOG_ERROR("Failed to use specific network interface for PeerConnection, will collect candidate on all network interfaces..");
-      }
-      g_free(ip);
     }
 
     if(agent_){
