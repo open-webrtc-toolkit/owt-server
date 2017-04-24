@@ -21,7 +21,6 @@
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
 
-#include <WebRTCTransport.h>
 #include <webrtc/system_wrappers/interface/trace.h>
 
 #include "VideoTranscoder.h"
@@ -32,7 +31,6 @@
 
 using namespace webrtc;
 using namespace woogeen_base;
-using namespace erizo;
 
 namespace mcu {
 

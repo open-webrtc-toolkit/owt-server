@@ -845,11 +845,12 @@ bool MsdkVideoCompositor::commitLayout()
     }
 
     m_vppLayout.clear();
+    int i = 0;
     for (auto& l : m_currentLayout) {
-        fillVppStream(&m_vppLayout[l.input], m_rootSize, l.region);
+        fillVppStream(&m_vppLayout[i++], m_rootSize, l.region);
     }
 
-    int i = 0;
+    i = 0;
     m_compInputStreams.resize(m_vppLayout.size());
     for (auto& l : m_vppLayout) {
         m_compInputStreams[i++] = l.second;
@@ -974,19 +975,18 @@ retry:
 void MsdkVideoCompositor::applyAspectRatio()
 {
     bool isChanged = false;
+    int size = m_frameQueue.size();
 
-    if (m_frameQueue.size() != m_extVppComp->NumInputStream) {
-        ELOG_ERROR("Num of frames(%lu) is not equal w/ input streams(%d)", m_frameQueue.size(), m_extVppComp->NumInputStream);
+    if (size != m_extVppComp->NumInputStream) {
+        ELOG_ERROR("Num of frames(%lu) is not equal w/ input streams(%d)", size, m_extVppComp->NumInputStream);
         return;
     }
 
-    int i = 0;
-    for (auto& l : m_currentLayout) {
+    for (int i = 0; i < size; i++) {
         boost::shared_ptr<MsdkFrame> frame = m_frameQueue[i];
-        mfxVPPCompInputStream *layoutRect = &m_vppLayout[l.input];
+        mfxVPPCompInputStream *layoutRect = &m_vppLayout[i];
         mfxVPPCompInputStream *vppRect = &m_extVppComp->InputStream[i];
 
-        i++;
         if (frame == m_defaultInputFrame)
             continue;
 
