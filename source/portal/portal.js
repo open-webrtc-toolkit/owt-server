@@ -607,21 +607,32 @@ var Portal = function(spec, rpcReq) {
           return Promise.reject(reason);
         };
 
+        var in_session = participants[participantId].in_session;
+        var connect_options = constructConnectOptions(connection_id, connectionType, 'out', subscriptionDescription, in_session);
         var connection = participants[participantId].connections[connection_id];
         if (connection) {
           if (connection.state === 'connected') {
-              rpcReq.unsub2Session(participants[participantId].controller, participantId, connection_id);
-              setTimeout(function() {
-                locality = connection.locality;
-                onConnectionReady({type: 'ready', audio_codecs: connection.audio_codecs, video_codecs: connection.video_codecs});
-              }, 0);
-              connection.state === 'connecting';
+            if (connectionType === 'recording') {
+              if ((connect_options.audio && connection.audio_codecs.length === 0)
+                  || (!connect_options.audio && connection.audio_codecs.length > 0)
+                  || (connect_options.audio && connection.audio_codecs.length > 0 && connect_options.audio.codecs[0] !== connection.audio_codecs[0])) {
+                return Promise.reject('Can not continue the current recording with a different audio codec.');
+              } else if ((connect_options.video && connection.video_codecs.length === 0)
+                  || (!connect_options.video && connection.video_codecs.length > 0)
+                  || (connect_options.video && connection.video_codecs.length > 0 && connect_options.video.codecs[0] !== connection.video_codecs[0])) {
+                return Promise.reject('Can not continue the current recording with a different video codec.');
+              }
+            }
+            rpcReq.unsub2Session(participants[participantId].controller, participantId, connection_id);
+            setTimeout(function() {
+              locality = connection.locality;
+              onConnectionReady({type: 'ready', audio_codecs: connection.audio_codecs, video_codecs: connection.video_codecs});
+            }, 0);
+            connection.state === 'connecting';
           }
-          //TODO: notify user about 'recorder-continued'? Does it really neccesary?
           return Promise.resolve(connection.locality);
         } else {
-          var connection_observer = connectionObserver(onConnectionStatus, onConnectionReady, onConnectionFailed),
-            in_session = participants[participantId].in_session;
+          var connection_observer = connectionObserver(onConnectionStatus, onConnectionReady, onConnectionFailed);
 
           participants[participantId].connections[connection_id] = {type: connectionType,
                                                                     direction: 'out',
@@ -640,7 +651,6 @@ var Portal = function(spec, rpcReq) {
                 return Promise.reject('subscribing is aborted because of early leave');
               }
               participants[participantId].connections[connection_id].locality = locality;
-              var connect_options = constructConnectOptions(connection_id, connectionType, 'out', subscriptionDescription, in_session);
               return rpcReq.subscribe(locality.node,
                                          connection_id,
                                          connectionType,

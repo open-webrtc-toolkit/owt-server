@@ -1816,6 +1816,98 @@ describe('portal.subscribe/portal.unsubscribe/portal.mediaOnOff: Participants su
         });
     });
 
+    it('Subscribing streams with the same subscription-id but different audio codec with the previous one and with type of recording should fail.', function() {
+      mockrpcReq.getAccessNode = sinon.stub();
+      mockrpcReq.subscribe = sinon.stub();
+      mockrpcReq.onConnectionSignalling = sinon.stub();
+      mockrpcReq.sub2Session = sinon.stub();
+      mockrpcReq.unsub2Session = sinon.stub();
+
+      mockrpcReq.getAccessNode.resolves({agent: 'rpcIdOfAccessAgent', node: 'rpcIdOfAccessNode'});
+      mockrpcReq.subscribe.resolves('ok');
+      mockrpcReq.onConnectionSignalling.resolves('ok');
+      mockrpcReq.sub2Session.resolves('ok');
+      mockrpcReq.unsub2Session.resolves('ok');
+
+      var on_connection_status;
+      var testRecorderId = '2016082415322905';
+      var spyConnectionObserver = sinon.spy();
+      var spyConnectionObserver1 = sinon.spy();
+
+      return portal.subscribe(testParticipantId,
+                              testRecorderId,
+                             'recording',
+                             {audio: {fromStream: 'targetStreamId1', codecs: ['pcmu']}, video: {fromStream: 'targetStreamId2', codecs: ['vp8']}, path: 'path-of-recording', interval: -1},
+                             spyConnectionObserver)
+        .then(function(connectionLocality) {
+          on_connection_status = mockrpcReq.subscribe.getCall(0).args[4];
+          return on_connection_status({type: 'initializing'});
+        })
+        .then(function(statusResult) {
+          expect(statusResult).to.equal('initializing');
+          return on_connection_status({type: 'ready', audio_codecs: ['pcmu'], video_codecs: ['vp8']});
+        })
+        .then(function(result) {
+          expect(result).to.equal('ok');
+          return portal.subscribe(testParticipantId,
+                                  testRecorderId,
+                                 'recording',
+                                 {audio: {fromStream: 'targetStreamId3', codecs: ['opus']}, video: {fromStream: 'targetStreamId4', codecs: ['vp8']}, path: 'path-of-recording', interval: -1},
+                                 spyConnectionObserver1);
+        })
+        .then(function(runToHere) {
+          expect(runToHere).to.be.false;
+        }, function(reason) {
+          expect(reason).to.equal('Can not continue the current recording with a different audio codec.');
+        });
+    });
+
+    it('Subscribing streams with the same subscription-id but different video codec with the previous one and with type of recording should fail.', function() {
+      mockrpcReq.getAccessNode = sinon.stub();
+      mockrpcReq.subscribe = sinon.stub();
+      mockrpcReq.onConnectionSignalling = sinon.stub();
+      mockrpcReq.sub2Session = sinon.stub();
+      mockrpcReq.unsub2Session = sinon.stub();
+
+      mockrpcReq.getAccessNode.resolves({agent: 'rpcIdOfAccessAgent', node: 'rpcIdOfAccessNode'});
+      mockrpcReq.subscribe.resolves('ok');
+      mockrpcReq.onConnectionSignalling.resolves('ok');
+      mockrpcReq.sub2Session.resolves('ok');
+      mockrpcReq.unsub2Session.resolves('ok');
+
+      var on_connection_status;
+      var testRecorderId = '2016082415322905';
+      var spyConnectionObserver = sinon.spy();
+      var spyConnectionObserver1 = sinon.spy();
+
+      return portal.subscribe(testParticipantId,
+                              testRecorderId,
+                             'recording',
+                             {audio: {fromStream: 'targetStreamId1', codecs: ['pcmu']}, video: {fromStream: 'targetStreamId2', codecs: ['vp8']}, path: 'path-of-recording', interval: -1},
+                             spyConnectionObserver)
+        .then(function(connectionLocality) {
+          on_connection_status = mockrpcReq.subscribe.getCall(0).args[4];
+          return on_connection_status({type: 'initializing'});
+        })
+        .then(function(statusResult) {
+          expect(statusResult).to.equal('initializing');
+          return on_connection_status({type: 'ready', audio_codecs: ['pcmu'], video_codecs: ['vp8']});
+        })
+        .then(function(result) {
+          expect(result).to.equal('ok');
+          return portal.subscribe(testParticipantId,
+                                  testRecorderId,
+                                 'recording',
+                                 {audio: {fromStream: 'targetStreamId3', codecs: ['pcmu']}, video: {fromStream: 'targetStreamId4', codecs: ['h264']}, path: 'path-of-recording', interval: -1},
+                                 spyConnectionObserver1);
+        })
+        .then(function(runToHere) {
+          expect(runToHere).to.be.false;
+        }, function(reason) {
+          expect(reason).to.equal('Can not continue the current recording with a different video codec.');
+        });
+    });
+
     it('Subscribing streams with the same subscription-id with the previous one but not with type of recording should fail.', function() {
       mockrpcReq.getAccessNode = sinon.stub();
       mockrpcReq.subscribe = sinon.stub();
