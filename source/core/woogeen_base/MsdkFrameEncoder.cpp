@@ -420,8 +420,8 @@ protected:
         m_encExtHevcParam.reset(new mfxExtHEVCParam);
         memset(m_encExtHevcParam.get(), 0, sizeof(mfxExtHEVCParam));
 
-        //m_encExtParams.push_back(reinterpret_cast<mfxExtBuffer *>(m_encExtCodingOpt.get()));
-        //m_encExtParams.push_back(reinterpret_cast<mfxExtBuffer *>(m_encExtCodingOpt2.get()));
+        m_encExtParams.push_back(reinterpret_cast<mfxExtBuffer *>(m_encExtCodingOpt.get()));
+        m_encExtParams.push_back(reinterpret_cast<mfxExtBuffer *>(m_encExtCodingOpt2.get()));
 
         // FrameInfo
         m_encParam->mfx.FrameInfo.FourCC          = MFX_FOURCC_NV12;
@@ -449,8 +449,8 @@ protected:
         m_encParam->AsyncDepth                    = 1;
         m_encParam->IOPattern                     = MFX_IOPATTERN_IN_VIDEO_MEMORY;
 
-        //m_encParam->ExtParam                    = &m_encExtParams.front(); // vector is stored linearly in memory
-        //m_encParam->NumExtParam                 = m_encExtParams.size();
+        m_encParam->ExtParam                    = &m_encExtParams.front(); // vector is stored linearly in memory
+        m_encParam->NumExtParam                 = m_encExtParams.size();
 
         // mfx
         m_encParam->mfx.LowPower                  = 0;
@@ -479,19 +479,20 @@ protected:
         // MFX_EXTBUFF_CODING_OPTION
         m_encExtCodingOpt->Header.BufferId             = MFX_EXTBUFF_CODING_OPTION;
         m_encExtCodingOpt->Header.BufferSz             = sizeof(*m_encExtCodingOpt);
-        m_encExtCodingOpt->MaxDecFrameBuffering        = m_encParam->mfx.NumRefFrame;
-        m_encExtCodingOpt->AUDelimiter                 = MFX_CODINGOPTION_OFF;//No AUD
-        m_encExtCodingOpt->RecoveryPointSEI            = MFX_CODINGOPTION_OFF;//No SEI
+        //m_encExtCodingOpt->MaxDecFrameBuffering        = m_encParam->mfx.NumRefFrame;
+        //m_encExtCodingOpt->AUDelimiter                 = MFX_CODINGOPTION_OFF;//No AUD
+        //m_encExtCodingOpt->RecoveryPointSEI            = MFX_CODINGOPTION_OFF;//No SEI
         m_encExtCodingOpt->PicTimingSEI                = MFX_CODINGOPTION_OFF;
         m_encExtCodingOpt->VuiNalHrdParameters         = MFX_CODINGOPTION_OFF;
+        //m_encExtCodingOpt->VuiVclHrdParameters         = MFX_CODINGOPTION_OFF;
 
         // MFX_EXTBUFF_CODING_OPTION2
         m_encExtCodingOpt2->Header.BufferId            = MFX_EXTBUFF_CODING_OPTION2;
         m_encExtCodingOpt2->Header.BufferSz            = sizeof(*m_encExtCodingOpt2);
         m_encExtCodingOpt2->RepeatPPS                  = MFX_CODINGOPTION_OFF;//No repeat pps
-        m_encExtCodingOpt2->MBBRC                      = 0;//Disable
-        m_encExtCodingOpt2->LookAheadDepth             = 0;//For MFX_RATECONTROL_LA
-        m_encExtCodingOpt2->MaxSliceSize               = 0;
+        //m_encExtCodingOpt2->MBBRC                      = 0;//Disable
+        //m_encExtCodingOpt2->LookAheadDepth             = 0;//For MFX_RATECONTROL_LA
+        //m_encExtCodingOpt2->MaxSliceSize               = 0;
     }
 
     void updateParam()
