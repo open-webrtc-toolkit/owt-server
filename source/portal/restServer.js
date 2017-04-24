@@ -62,6 +62,17 @@ function isValidIdString(str) {
   return (typeof str === 'string') && idPattern.test(str);
 }
 
+const getErrorMessage = function (err) {
+  if (typeof err === 'string') {
+    return err;
+  } else if (err && err.message) {
+    return err.message;
+  } else {
+    log.debug('Unknown error:', err);
+    return 'Unknown';
+  }
+};
+
 var Client = function(clientId, inRoom, queryInterval, portal, on_loss) {
   var that = {inRoom: inRoom};
   var client_id = clientId;
@@ -71,17 +82,6 @@ var Client = function(clientId, inRoom, queryInterval, portal, on_loss) {
       published = {},
       subscribed = {},
       notifications = [];
-
-  const getErrorMessage = function (err) {
-    if (typeof err === 'string') {
-      return err;
-    } else if (err && err.message) {
-      return err.message;
-    } else {
-      log.debug('Unknown error:', err);
-      return 'Unknown';
-    }
-  };
 
   that.query = function(on_result) {
     absent_count = 0;
