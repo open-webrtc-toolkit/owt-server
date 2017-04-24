@@ -978,7 +978,7 @@ void MsdkVideoCompositor::applyAspectRatio()
     int size = m_frameQueue.size();
 
     if (size != m_extVppComp->NumInputStream) {
-        ELOG_ERROR("Num of frames(%lu) is not equal w/ input streams(%d)", size, m_extVppComp->NumInputStream);
+        ELOG_ERROR("Num of frames(%d) is not equal w/ input streams(%d)", size, m_extVppComp->NumInputStream);
         return;
     }
 

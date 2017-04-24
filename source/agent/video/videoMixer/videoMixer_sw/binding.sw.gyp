@@ -15,7 +15,6 @@
     'cflags_cc': ['-DWEBRTC_POSIX', '-DWEBRTC_LINUX'],
     'include_dirs': [ '../../src',
                       '$(CORE_HOME)/common',
-                      '$(CORE_HOME)/erizo/src/erizo',
                       '$(CORE_HOME)/woogeen_base',
                       '$(CORE_HOME)/../../third_party/webrtc/src'],
     'libraries': [
