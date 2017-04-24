@@ -23,7 +23,6 @@
 #include "VideoFrameMixerImpl.h"
 #include "VideoLayoutProcessor.h"
 #include "VideoFrameMixer.h"
-#include <WebRTCTransport.h>
 #include <webrtc/system_wrappers/interface/trace.h>
 
 #include <boost/property_tree/json_parser.hpp>
@@ -31,7 +30,6 @@
 
 using namespace webrtc;
 using namespace woogeen_base;
-using namespace erizo;
 
 namespace mcu {
 
