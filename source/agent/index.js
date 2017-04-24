@@ -129,7 +129,7 @@ var launchErizoJS = function() {
     var id = myId + '.' + erizo_index++;
     var out = fs.openSync('../logs/' + id + '.log', 'a');
     var err = fs.openSync('../logs/' + id + '.log', 'a');
-    var child = spawn('node', ['./erizoJS.js', id, myPurpose, externalInterface, privateIP, publicIP, clusterIP, myId], {
+    var child = spawn('node', ['./erizoJS.js', id, myPurpose, privateIP, publicIP, clusterIP, myId], {
         detached: true,
         stdio: [ 'ignore', out, err, 'ipc' ]
     });
@@ -318,7 +318,6 @@ var api = function (worker) {
 };
 
 var privateIP, publicIP, clusterIP;
-// externalInterface is the network interface that PeerConnection will be established through.
 var externalInterface, clusterInterface;
 function collectIPs () {
     var interfaces = require('os').networkInterfaces(),
@@ -326,9 +325,7 @@ function collectIPs () {
         clusterAddress,
         k,
         k2,
-        address,
-        firstInterface,
-        firstAddress;
+        address;
 
     for (k in interfaces) {
         if (interfaces.hasOwnProperty(k)) {
@@ -336,8 +333,6 @@ function collectIPs () {
                 if (interfaces[k].hasOwnProperty(k2)) {
                     address = interfaces[k][k2];
                     if (address.family === 'IPv4' && !address.internal) {
-                        firstInterface = firstInterface || k;
-                        firstAddress = firstAddress || address.address;
                         if (!externalInterface && (k === global.config.webrtc.network_interface || !global.config.webrtc.network_interface)) {
                             externalInterface = k;
                             externalAddress = address.address;
@@ -351,10 +346,6 @@ function collectIPs () {
             }
         }
     }
-
-    // If configuration file specified a wrong interface, using first interface and it's associated IP address.
-    externalInterface = externalInterface || firstInterface;
-    externalAddress = externalAddress || firstAddress;
 
     privateIP = externalAddress;
 

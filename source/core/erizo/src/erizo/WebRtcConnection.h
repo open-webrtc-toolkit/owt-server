@@ -55,7 +55,7 @@ public:
      * Constructor.
      * Constructs an empty WebRTCConnection without any configuration.
      */
-    WebRtcConnection(bool audioEnabled, bool videoEnabled, bool h264Enabled, const std::string &stunServer, int stunPort, int minPort, int maxPort, const std::string& certFile, const std::string& keyFile, const std::string& privatePasswd, uint32_t qos, bool trickleEnabled, const std::string& networkInterfaces, EventRegistry*);
+    WebRtcConnection(bool audioEnabled, bool videoEnabled, bool h264Enabled, const std::string &stunServer, int stunPort, int minPort, int maxPort, const std::string& certFile, const std::string& keyFile, const std::string& privatePasswd, uint32_t qos, bool trickleEnabled, EventRegistry*);
     /**
      * Destructor.
      */
@@ -192,9 +192,6 @@ private:
     // Remote ICE username fragment.
     std::string remoteUfrag_;
     int localSdpGeneration_;
-    // PeerConnection only collects candidates on specific network interface.
-    // If it is an empty string, collecting candidate on all network interfaces.
-    std::string networkInterface_;
 };
 
 } /* namespace erizo */
