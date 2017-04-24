@@ -22,7 +22,6 @@
     'cflags_cc': ['-DWEBRTC_POSIX', '-DWEBRTC_LINUX', '-DENABLE_MSDK', '-msse4', '-DMFX_DISPATCHER_EXPOSED_PREFIX'],
     'include_dirs': [ '../../src',
                       '$(CORE_HOME)/common',
-                      '$(CORE_HOME)/erizo/src/erizo',
                       '$(CORE_HOME)/woogeen_base',
                       '/opt/intel/mediasdk/include',
                       '$(CORE_HOME)/../../third_party/webrtc/src',
