@@ -371,8 +371,8 @@ void AcmmFrameMixer::NewMixedAudio(int32_t id,
 
 void AcmmFrameMixer::VADPositiveParticipants(const int32_t id, const ParticipantStatistics* participantStatistics, const uint32_t size)
 {
-    if (!m_asyncHandle || !m_vadEnabled || size < 2) {
-        ELOG_TRACE("VADPositiveParticipants, asyncHandle(%p), enabled(%d), size(%d)", m_asyncHandle, m_vadEnabled, size);
+    if (!m_asyncHandle || !m_vadEnabled || size < 1) {
+        ELOG_TRACE("VAD skipped, asyncHandle(%p), enabled(%d), size(%d)", m_asyncHandle, m_vadEnabled, size);
         return;
     }
 
