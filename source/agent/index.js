@@ -187,9 +187,10 @@ var dropErizoJS = function(id) {
     }
 };
 
-var dropAll = function() {
+var dropAll = function(quietly) {
     Object.keys(processes).map(function (k) {
         dropErizoJS(k);
+        !quietly && monitoringTarget && monitoringTarget.notify('abnormal', {purpose: myPurpose, id: k, type: 'node'});
     });
 };
 
@@ -377,12 +378,19 @@ var joinCluster = function (on_ok) {
 
     var loss = function () {
         log.info(myPurpose, 'agent lost.');
-        dropAll();
+        dropAll(false);
         fillErizos();
     };
 
     var recovery = function () {
         log.info(myPurpose, 'agent recovered.');
+    };
+
+    var overload = function () {
+        log.warn(myPurpose, 'agent overloaded!');
+        if (myPurpose === 'recording') {
+            dropAll(false);
+        }
     };
 
     worker = clusterWorker({
@@ -401,6 +409,7 @@ var joinCluster = function (on_ok) {
         onJoinFailed: joinFailed,
         onLoss: loss,
         onRecovery: recovery,
+        onOverload: overload,
         loadCollection: load_collection
     });
 };
@@ -514,7 +523,7 @@ amqper.connect(global.config.rabbit, function () {
 });
 
 process.on('exit', function () {
-    dropAll();
+    dropAll(true);
     worker && worker.quit();
     amqper.disconnect();
 });

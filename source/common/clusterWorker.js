@@ -41,7 +41,8 @@ module.exports = function (spec) {
         on_join_ok = spec.onJoinOK || function () {log.debug('Join cluster successfully.');},
         on_join_failed = spec.onJoinFailed || function (reason) {log.debug('Join cluster failed. reason:', reason);},
         on_loss = spec.onLoss || function () {log.debug('Lost connection with cluster manager');},
-        on_recovery = spec.onRecovery || function () {log.debug('Rejoin cluster successfully.');};
+        on_recovery = spec.onRecovery || function () {log.debug('Rejoin cluster successfully.');},
+        on_overload = spec.onOverload || function () {log.debug('Overloaded!!');};;
 
     var previous_load = 0.99;
     var reportLoad = function (load) {
@@ -54,6 +55,10 @@ module.exports = function (spec) {
                 cluster_name,
                 'reportLoad',
                 [id, load]);
+        }
+
+        if (load > 0.98/*FIXME: Introduce a configuration item to specify the overload threshold here.*/) {
+           on_overload();
         }
     };
 
