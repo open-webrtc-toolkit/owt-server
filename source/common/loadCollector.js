@@ -48,7 +48,7 @@ var diskCollector = function (period, drive, on_load) {
 
                 total = disk_info[1];
                 free = disk_info[3];
-                on_load(1.0 - free / total);
+                on_load(Math.round((1.0 - free / total) * 1000) / 1000);
             }
         });
     }, period);
