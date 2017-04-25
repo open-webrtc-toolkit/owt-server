@@ -218,7 +218,10 @@ var rpcPublic = {
     callback('callback', 'ok');
   },
   notify: function(participantId, event, data, callback) {
-    var notifyFail = (err) => log.warn('notify fail:', err);
+    // The "notify" is called on both socket.io and rest servers,
+    // but one client ID should not be exists in both servers,
+    // there must be one failure, ignore this notify error here.
+    var notifyFail = (err) => {};
     socketio_server && socketio_server.notify(participantId, event, data).catch(notifyFail);
     rest_server && rest_server.notify(participantId, event, data).catch(notifyFail);
     callback('callback', 'ok');
