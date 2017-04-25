@@ -317,7 +317,7 @@ void RawTransport<prot>::readHandler(const boost::system::error_code& ec, std::s
 
             m_receivedBytes += bytes;
             if (4 > m_receivedBytes) {
-                ELOG_INFO("Incomplete header, continue receiving %u bytes", 4 - m_receivedBytes);
+                ELOG_DEBUG("Incomplete header, continue receiving %u bytes", 4 - m_receivedBytes);
                 m_socket.tcp.socket->async_read_some(boost::asio::buffer(m_readHeader + m_receivedBytes, 4 - m_receivedBytes),
                         boost::bind(&RawTransport::readHandler, this,
                             boost::asio::placeholders::error,
@@ -376,8 +376,8 @@ void RawTransport<prot>::readPacketHandler(const boost::system::error_code& ec, 
         case TCP:
             m_receivedBytes += bytes;
             if (expectedLen > m_receivedBytes) {
-                ELOG_WARN("Expect to receive %u bytes, but actually received %zu bytes.", expectedLen, bytes);
-                ELOG_INFO("Continue receiving %u bytes.", expectedLen - m_receivedBytes);
+                ELOG_DEBUG("Expect to receive %u bytes, but actually received %zu bytes.", expectedLen, bytes);
+                ELOG_DEBUG("Continue receiving %u bytes.", expectedLen - m_receivedBytes);
                 m_socket.tcp.socket->async_read_some(boost::asio::buffer(m_receiveData.buffer.get() + m_receivedBytes, expectedLen - m_receivedBytes),
                         boost::bind(&RawTransport::readPacketHandler, this,
                             boost::asio::placeholders::error,
