@@ -1729,7 +1729,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             }
         }
 
-        log.debug('rebuildVideoMixer, vmixerId:', vmixerId);
+        log.debug('rebuildVideoMixer, vmixerId:', vmixerId, 'view:', view);
         for (var sub_id in terminals[vmixerId].subscribed) {
             var vst_id = terminals[vmixerId].subscribed[sub_id].video;
             inputs.push(vst_id);
@@ -1772,7 +1772,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 return Promise.all(outputs.map(function (old_st) {
                     log.debug('Resuming video mixer output:', old_st);
                     return new Promise(function (resolve, reject) {
-                        getMixedVideo(getViewOfMixStream(old_st.old_stream_id), old_st.video.codec, old_st.video.resolution, old_st.video.quality_level, function(stream_id) {
+                        getMixedVideo(view, old_st.video.codec, old_st.video.resolution, old_st.video.quality_level, function(stream_id) {
                             log.debug('Got new stream:', stream_id);
                             return Promise.all(old_st.spread.map(function(target_node) {
                                 return new Promise(function (res, rej) {
@@ -1988,9 +1988,9 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             })
             .then(function () {
                 return Promise.all(outputs.map(function (old_st) {
-                    log.debug('Resuming audio mixer output:', old_st);
+                    log.debug('Resuming audio mixer output:', old_st, 'view:', view);
                     return new Promise(function (resolve, reject) {
-                        getMixedAudio(getViewOfMixStream(old_st.old_stream_id), old_st.for_whom, old_st.audio.codec, function(stream_id) {
+                        getMixedAudio(view, old_st.for_whom, old_st.audio.codec, function(stream_id) {
                             log.debug('Got new stream:', stream_id);
                             return Promise.all(old_st.spread.map(function(target_node) {
                                     return new Promise(function (res, rej) {
