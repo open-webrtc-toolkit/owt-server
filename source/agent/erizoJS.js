@@ -118,7 +118,7 @@ rpc.connect(global.config.rabbit, function () {
     rpc.asRpcClient(function(rpcClient) {
         var purpose = process.argv[3];
         var rpcID = process.argv[2];
-        var clusterIP = process.argv[7];
+        var clusterIP = process.argv[5];
 
         switch (purpose) {
         case 'session':
@@ -148,14 +148,19 @@ rpc.connect(global.config.rabbit, function () {
             return;
         }
 
-        controller.networkInterface = process.argv[4] || [];
-        controller.privateRegexp = new RegExp(process.argv[5], 'g');
-        controller.publicIP = process.argv[6];
-        controller.clusterIP = process.argv[7];
-        controller.agentID = process.argv[8];
+        var argv4=JSON.parse(process.argv[4]);
+        controller.networkInterfaces = Array.isArray(argv4) ? argv4 : [];
+        controller.clusterIP = process.argv[5];
+        controller.agentID = process.argv[6];
         controller.keepAlive = function (callback) {
             callback('callback', true);
         };
+
+        controller.networkInterfaces.forEach((i) => {
+            if (i.ip_address) {
+              i.private_ip_match_pattern = new RegExp(i.ip_address, 'g');
+            }
+        });
 
         rpc.asRpcServer(rpcID, controller, function(rpcServer) {
             log.info(rpcID + ' as rpc server ready');
