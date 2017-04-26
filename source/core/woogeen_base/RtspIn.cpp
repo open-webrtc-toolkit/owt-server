@@ -38,6 +38,8 @@
      (((const uint8_t*)(x))[2] <<  8) |    \
      ((const uint8_t*)(x))[3])
 
+#define MAX_NALS_PER_FRAME 128
+
 using namespace erizo;
 
 static inline int64_t timeRescale(uint32_t time, AVRational in, AVRational out)
@@ -808,7 +810,7 @@ void RtspIn::receiveLoop()
                     m_avPacket.pts += m_audioEncTimestamp - m_audioFifoTimeBegin;
                     ELOG_TRACE_T("Audio transcoder offset %ld", m_audioEncTimestamp - m_audioFifoTimeBegin);
                 }
-
+                filterSEI(&m_avPacket);
                 if (m_videoJitterBuffer)
                     m_videoJitterBuffer->insert(m_avPacket);
                 else
@@ -884,6 +886,60 @@ void RtspIn::checkVideoBitstream(AVStream *st, const AVPacket *pkt)
     ELOG_INFO_T("%s video bitstream filter", m_needApplyVBSF ? "Apply" : "Not apply");
 }
 
+void RtspIn::filterSEI(AVPacket *pkt) {
+    // After the annex-b bitstream is generated, remove SEI NALs from the stream
+    // as chrome-58 does not accept pic-timing-sei.
+    if (pkt == nullptr)
+         return;
+    uint8_t *origin_pkt_data = reinterpret_cast<uint8_t*>(pkt->data);
+    int origin_pkt_length = pkt->size;
+    uint8_t *head = origin_pkt_data;
+
+    std::vector<int> nal_offset;
+    std::vector<bool> nal_type_is_sei;
+    std::vector<int> nal_size;
+    bool is_sei = false, has_sei = false;
+
+    int sc_positions_length = 0;
+    int sc_position = 0;
+    while (sc_positions_length < MAX_NALS_PER_FRAME) {
+         int nalu_position = getNextNaluPosition(origin_pkt_data + sc_position,
+              origin_pkt_length - sc_position, is_sei);
+         if (nalu_position < 0) {
+             break;
+         }
+         sc_position += nalu_position;
+         nal_offset.push_back(sc_position); //include start code.
+         sc_position += 4;
+         sc_positions_length++;
+         if (is_sei) {
+             has_sei = true;
+             nal_type_is_sei.push_back(true);
+         } else {
+             nal_type_is_sei.push_back(false);
+         }
+    }
+    if (sc_positions_length == 0 || !has_sei)
+        return;
+    // Calculate size of each NALs
+    for (unsigned int count = 0; count < nal_offset.size(); count++) {
+       if (count + 1 == nal_offset.size()) {
+           nal_size.push_back(origin_pkt_length - nal_offset[count]);
+       } else {
+           nal_size.push_back(nal_offset[count+1] - nal_offset[count]);
+       }
+    }
+    // remove in place the SEI NALs
+    int new_size = 0;
+    for (unsigned int i = 0; i < nal_offset.size(); i++) {
+       if (!nal_type_is_sei[i]) {
+           memcpy(head + new_size, head + nal_offset[i], nal_size[i]);
+           new_size += nal_size[i];
+       }
+    }
+    av_shrink_packet(pkt, new_size);
+}
+
 bool RtspIn::filterVBS(AVStream *st, AVPacket *pkt) {
     int ret;
 
@@ -907,6 +963,39 @@ bool RtspIn::filterVBS(AVStream *st, AVPacket *pkt) {
     }
 
     return true;
+}
+
+// Returns the offset of next NALU(including SC) from provided buffer.
+int RtspIn::getNextNaluPosition(uint8_t *buffer, int buffer_size, bool &is_sei) {
+    if (buffer_size < 4) {
+        return -1;
+    }
+    is_sei = false;
+    uint8_t *head = buffer;
+    uint8_t *end = buffer + buffer_size - 4;
+    while (head < end) {
+        if (head[0]) {
+            head++;
+            continue;
+        }
+        if (head[1]) {
+            head +=2;
+            continue;
+        }
+        if (head[2]) {
+            head +=3;
+            continue;
+        }
+        if (head[3] != 0x01) {
+            head++;
+            continue;
+        }
+        if ((head[4] & 0x1F) == 6) {
+            is_sei = true;
+        }
+        return static_cast<int>(head - buffer);
+    }
+    return -1;
 }
 
 bool RtspIn::initAudioDecoder(AVCodecID codec) {

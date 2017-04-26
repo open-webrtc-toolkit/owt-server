@@ -257,6 +257,8 @@ private:
 
     void checkVideoBitstream(AVStream *st, const AVPacket *pkt);
     bool filterVBS(AVStream *st, AVPacket *pkt);
+    void filterSEI(AVPacket *pkt);
+    int  getNextNaluPosition(uint8_t *buffer, int buffer_size, bool &is_sei);
 
     bool initAudioDecoder(AVCodecID codec);
     bool initAudioTranscoder(AVCodecID inCodec, AVCodecID outCodec);
