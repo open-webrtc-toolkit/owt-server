@@ -16,7 +16,7 @@ namespace erizo {
   class DtlsTransport : dtls::DtlsReceiver, public Transport {
     DECLARE_LOGGER();
     public:
-    DtlsTransport(MediaType med, const std::string &transport_name, bool bundle, bool rtcp_mux, TransportListener *transportListener, const std::string &stunServer, int stunPort, int minPort, int maxPort, const std::string& certFile, const std::string& keyFile, const std::string& privatePasswd, std::string username, std::string password, const std::string& networkInterface);
+    DtlsTransport(MediaType med, const std::string &transport_name, bool bundle, bool rtcp_mux, TransportListener *transportListener, const std::string &stunServer, int stunPort, int minPort, int maxPort, const std::string& certFile, const std::string& keyFile, const std::string& privatePasswd, std::string username, std::string password, const std::vector<std::string>& ipAddresses);
     virtual ~DtlsTransport();
     void connectionStateChanged(IceState newState);
     std::string getMyFingerprint();

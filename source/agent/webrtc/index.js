@@ -20,9 +20,7 @@ module.exports = function () {
             direction: direction,
             audio: options.audio,
             video: options.video,
-            private_ip_regexp: that.privateRegexp,
-            public_ip: that.publicIP,
-            network_interface: that.networkInterface
+            network_interfaces: that.networkInterfaces
         }, function (response) {
             callback('onStatus', response);
         });

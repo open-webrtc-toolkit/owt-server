@@ -129,7 +129,7 @@ var launchErizoJS = function() {
     var id = myId + '.' + erizo_index++;
     var out = fs.openSync('../logs/' + id + '.log', 'a');
     var err = fs.openSync('../logs/' + id + '.log', 'a');
-    var child = spawn('node', ['./erizoJS.js', id, myPurpose, global.config.webrtc.network_interface, privateIP, publicIP, clusterIP, myId], {
+    var child = spawn('node', ['./erizoJS.js', id, myPurpose, JSON.stringify(webrtcInterfaces), clusterIP, myId], {
         detached: true,
         stdio: [ 'ignore', out, err, 'ipc' ]
     });
@@ -318,11 +318,11 @@ var api = function (worker) {
     };
 };
 
-var privateIP, publicIP, clusterIP;
-var externalInterface, clusterInterface;
+var clusterIP, clusterInterface;
+// It has three properties: name for interface's name, replaced_ip_address for replaced IP address, and ip_address for interface's IP address.
+var webrtcInterfaces = global.config.webrtc.network_interfaces || [];
 function collectIPs () {
     var interfaces = require('os').networkInterfaces(),
-        externalAddress,
         clusterAddress,
         k,
         k2,
@@ -334,9 +334,9 @@ function collectIPs () {
                 if (interfaces[k].hasOwnProperty(k2)) {
                     address = interfaces[k][k2];
                     if (address.family === 'IPv4' && !address.internal) {
-                        if (!externalInterface && (k === global.config.webrtc.network_interface || !global.config.webrtc.network_interface)) {
-                            externalInterface = k;
-                            externalAddress = address.address;
+                        var webrtcInterface = webrtcInterfaces.find((i) => {return i.name === k;});
+                        if (webrtcInterface) {
+                            webrtcInterface.ip_address = address.address;
                         }
                         if (!clusterInterface && (k === global.config.cluster.network_interface || !global.config.cluster.network_interface)) {
                             clusterInterface = k;
@@ -346,14 +346,6 @@ function collectIPs () {
                 }
             }
         }
-    }
-
-    privateIP = externalAddress;
-
-    if (global.config.webrtc.ip_address === '' || global.config.webrtc.ip_address === undefined){
-        publicIP = externalAddress;
-    } else {
-        publicIP = global.config.webrtc.ip_address;
     }
 
     if (global.config.cluster.ip_address === '' || global.config.cluster.ip_address === undefined) {
@@ -424,7 +416,7 @@ var joinCluster = function (on_ok) {
             global.config.capacity.isps = global.config.capacity.isps || [];
             global.config.capacity.regions = global.config.capacity.regions || [];
         case 'avstream':
-            var concernedInterface = externalInterface || clusterInterface;
+            var concernedInterface = clusterInterface;
             if (!concernedInterface) {
                 var interfaces = require('os').networkInterfaces();
                 for (var i in interfaces) {

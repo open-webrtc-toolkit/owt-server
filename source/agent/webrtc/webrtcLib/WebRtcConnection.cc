@@ -67,11 +67,19 @@ void WebRtcConnection::New(const FunctionCallbackInfo<Value>& args) {
 
   bool t = (args[14]->ToBoolean())->BooleanValue();
 
-  String::Utf8Value args15(args[15]->ToString());
-  std::string networkInterface = std::string(*args15);
+  if (!args[15]->IsArray()) {
+    isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(
+        isolate, "Network interfaces should be an array.")));
+    return;
+  }
+  std::vector<std::string> ipAddresses;
+  Local<Array> args15 = Local<Array>::Cast(args[15]);
+  for (unsigned int i = 0; i < args15->Length(); i++) {
+    ipAddresses.push_back(std::string(*String::Utf8Value(args15->Get(i)->ToString())));
+  }
 
   WebRtcConnection* obj = new WebRtcConnection();
-  obj->me = new erizo::WebRtcConnection(a, v, h, stunServer,stunPort,minPort,maxPort, certFile, keyFile, privatePass, qos, t, networkInterface, obj);
+  obj->me = new erizo::WebRtcConnection(a, v, h, stunServer,stunPort,minPort,maxPort, certFile, keyFile, privatePass, qos, t, ipAddresses, obj);
   obj->Wrap(args.This());
   args.GetReturnValue().Set(args.This());
 }

@@ -18,8 +18,7 @@ module.exports = function (spec, on_status) {
         direction = spec.direction,
         // preferredAudioCodecs = spec.preferred_audio_codecs,
         // preferredVideoCodecs = spec.preferred_video_codecs,
-        privateRegexp = spec.private_ip_regexp,
-        publicIP = spec.public_ip,
+        networkInterfaces = spec.network_interfaces,
         audio = spec.audio || false,
         video = spec.video || false,
         audioFrameConstructor,
@@ -104,14 +103,22 @@ module.exports = function (spec, on_status) {
             case CONN_SDP:
             case CONN_GATHERED:
               log.debug('Sending SDP', message);
-              message = message.replace(privateRegexp, publicIP);
+              networkInterfaces.forEach((i) => {
+                if (i.private_ip_match_pattern && i.replaced_ip_address) {
+                  message = message.replace(i.private_ip_match_pattern, i.replaced_ip_address);
+                }
+              });
               audio_codec_list_in_answer = getAudioCodecList(message);
               video_codec_list_in_answer = getVideoCodecList(message);
               on_status({type: 'answer', sdp: message});
               break;
 
             case CONN_CANDIDATE:
-              message = message.replace(privateRegexp, publicIP);
+              networkInterfaces.forEach((i) => {
+                if (i.private_ip_match_pattern && i.replaced_ip_address) {
+                  message = message.replace(i.private_ip_match_pattern, i.replaced_ip_address);
+                }
+              });
               on_status({type: 'candidate', candidate: message});
               break;
 
@@ -322,6 +329,13 @@ module.exports = function (spec, on_status) {
     var keystore = path.resolve(path.dirname(global.config.webrtc.keystorePath), '.woogeen.keystore');
     cipher.unlock(cipher.k, keystore, function cb (err, passphrase) {
         if (!err) {
+            // Libnice collects candidates on |ipAddresses| only.
+            var ipAddresses=[];
+            networkInterfaces.forEach((i) => {
+              if (i.ip_address) {
+                ipAddresses.push(i.ip_address);
+              }
+            });
             wrtc = new WebRtcConnection(
                 !!audio, !!video,
                 true/*FIXME: hash264:hard coded*/,
@@ -333,7 +347,7 @@ module.exports = function (spec, on_status) {
                 global.config.webrtc.keystorePath,
                 passphrase,
                 true, true,true, true, false,
-                global.config.webrtc.network_interface);
+                ipAddresses);
 
             if (direction === 'in') {
                 bindFrameConstructors();
