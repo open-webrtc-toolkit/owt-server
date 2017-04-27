@@ -93,7 +93,7 @@ bool VideoFrameConstructor::init()
     // There're 3 options of Intra frame requests: PLI, FIR in RTCP and FIR in RTP (RFC 2032).
     // Since currently our MCU only claims FIR support in SDP, we choose FirRtcp for now.
     m_rtpRtcp->SetKeyFrameRequestMethod(kKeyFrameReqFirRtcp);
-
+    m_rtpRtcp->SetREMBStatus(true);
     m_videoReceiver->SetRtpRtcpModule(m_rtpRtcp.get());
 
     // Register codec.
@@ -190,7 +190,6 @@ bool VideoFrameConstructor::setBitrate(uint32_t kbps)
 {
     if (!m_ssrc)
         return false;
-
     m_rtpRtcp->SetREMBStatus(true);
     std::vector<uint32_t> ssrcs;
     ssrcs.push_back(m_ssrc);
