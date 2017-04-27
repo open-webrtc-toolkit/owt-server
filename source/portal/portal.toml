@@ -9,6 +9,10 @@ rest_port = 8081 #default: 8081
 ssl = true #default: true
 #The network inferface the socket.io will be bound to in case portal.ip_address (the 'ip_address' item above) is not specified or equal to "".
 # networkInterface = "eth1"
+# How many seconds before Socket.IO client sending a new ping packet. This value might be overwrote by client side.
+# ping_interval = 25 #default: undefined
+# How many seconds without a pong packet to consider the Socket.IO connection closed. This value might be overwrote by client side.
+# ping_timeout = 60 #default: undefined
 # Life time for reconnection ticket. Unit: second.
 reconnection_ticket_lifetime = 600 #default: 600
 # Client will leave conference if it cannot reconnect to Socket.IO server after |reconnection_timeout| seconds.
@@ -27,7 +31,7 @@ report_load_interval = 1000 #default: 1000, unit: millisecond
 max_load = 0.85 #default: 0.85
 
 [capacity]
-#The ISP list this portal tends to handle 
+#The ISP list this portal tends to handle
 isps = [] #default: [], which means all ISPs.
 #The region list this portal tends to handle
 regions = [] #default: [], which means all regions.

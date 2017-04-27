@@ -179,7 +179,9 @@ var startServers = function(id, tokenKey) {
                                                  ssl: config.portal.ssl,
                                                  keystorePath: config.portal.keystorePath,
                                                  reconnectionTicketLifetime: config.portal.reconnection_ticket_lifetime,
-                                                 reconnectionTimeout: config.portal.reconnection_timeout},
+                                                 reconnectionTimeout: config.portal.reconnection_timeout,
+                                                 pingInterval: config.portal.ping_interval,
+                                                 pingTimeout: config.portal.ping_timeout},
                                                  portal,
                                                  serviceObserver);
   rest_server = require('./restServer')({port: config.portal.rest_port,

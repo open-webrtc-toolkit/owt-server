@@ -972,10 +972,17 @@ var SocketIOServer = function(spec, portal, observer) {
   var clients = {};
   // A Socket.IO server has a unique reconnection key. Client cannot reconnect to another Socket.IO server in the cluster.
   var reconnection_key = require('crypto').randomBytes(64).toString('hex');
+  var sioOptions = {};
+  if (spec.pingInterval) {
+    sioOptions.pingInterval = spec.pingInterval * 1000;
+  }
+  if (spec.pingTimeout) {
+    sioOptions.pingTimeout = spec.pingTimeout * 1000;
+  }
 
   var startInsecure = function(port) {
     var server = require('http').createServer().listen(port);
-    io = require('socket.io').listen(server);
+    io = require('socket.io').listen(server, sioOptions);
     run();
     return Promise.resolve('ok');
   };
@@ -987,7 +994,7 @@ var SocketIOServer = function(spec, portal, observer) {
       cipher.unlock(cipher.k, keystore, function(err, passphrase) {
         if (!err) {
           var server = require('https').createServer({pfx: require('fs').readFileSync(keystorePath), passphrase: passphrase}).listen(port);
-          io = require('socket.io').listen(server);
+          io = require('socket.io').listen(server, sioOptions);
           run();
           resolve('ok');
         } else {
