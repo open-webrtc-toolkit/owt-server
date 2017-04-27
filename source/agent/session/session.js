@@ -164,23 +164,27 @@ module.exports = function (rpcClient, selfRpcId) {
     }
   };
 
+  var sendMsgTo = function(to, msg, data) {
+    if (participants[to]) {
+      rpcReq.sendMsg(participants[to].portal, to, msg, data);
+    } else {
+      log.warn('Can not send message to:', to);
+    }
+  };
+
   var sendMsg = function(from, to, msg, data) {
     if (to === 'all') {
       for (var participant_id in participants) {
-        sendMsg(from, participant_id, msg, data);
+        sendMsgTo(participant_id, msg, data);
       }
     } else if (to === 'others') {
       for (var participant_id in participants) {
         if (participant_id !== from) {
-          sendMsg(from, participant_id, msg, data);
+          sendMsgTo(participant_id, msg, data);
         }
       }
     } else {
-      if (participants[to]) {
-        rpcReq.sendMsg(participants[to].portal, to, msg, data);
-      } else {
-        log.warn('Can not send message to:', to);
-      }
+      sendMsgTo(to, msg, data);
     }
   };
 
