@@ -3,6 +3,7 @@ dist/
 third_party/node-v*
 third_party/libyami/
 third_party/usrsctp/
+node_modules/
 *.o
 *.d
 *.a
