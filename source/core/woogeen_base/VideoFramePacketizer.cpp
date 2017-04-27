@@ -249,6 +249,7 @@ bool VideoFramePacketizer::init(bool enableRed, bool enableUlpfec)
     uint8_t red_pl_type = enableRed? RED_90000_PT : 0;
     uint8_t ulpfec_pl_type = enableUlpfec? ULP_90000_PT : 0;
     m_rtpRtcp->SetGenericFECStatus(false, red_pl_type, ulpfec_pl_type);
+    m_rtpRtcp->SetREMBStatus(true);
 
     // Enable NACK.
     // TODO: the parameters should be dynamically adjustable.
