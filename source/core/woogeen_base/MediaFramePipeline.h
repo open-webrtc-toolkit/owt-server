@@ -130,6 +130,7 @@ inline const char *getFormatStr(const FrameFormat &format) {
 inline bool isAudioFrame(const Frame& frame) {
     return frame.format == FRAME_FORMAT_PCM_RAW
           || frame.format == FRAME_FORMAT_PCMU
+          || frame.format == FRAME_FORMAT_PCMA
           || frame.format == FRAME_FORMAT_OPUS
           || frame.format == FRAME_FORMAT_ISAC16
           || frame.format == FRAME_FORMAT_ISAC32;

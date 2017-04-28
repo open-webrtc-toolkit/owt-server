@@ -24,6 +24,8 @@
 #include "MediaFramePipeline.h"
 #include "WebRTCTransport.h"
 
+#include <logger.h>
+
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/shared_mutex.hpp>
@@ -42,6 +44,8 @@ class AudioFramePacketizer : public FrameDestination,
                              public erizo::MediaSource,
                              public erizo::FeedbackSink,
                              public erizo::RTPDataReceiver {
+    DECLARE_LOGGER();
+
 public:
     AudioFramePacketizer();
     ~AudioFramePacketizer();

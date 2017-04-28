@@ -219,7 +219,6 @@ module.exports = function (spec, on_status) {
         if (wrtc) {
             processSignalling();
         } else {
-            log.warn('wrtc is not ready to process signallings');
             var count = 0,
                 interval = setInterval(function() {
                     if (wrtc) {
@@ -227,7 +226,7 @@ module.exports = function (spec, on_status) {
                         clearInterval(interval);
                     } else {
                         if (count > 200) {
-                            log.error('wrtc has not got ready in 10s, drop signalling:', msg);
+                            log.info('wrtc has not got ready in 10s, will drop a ignalling, type:', msg.type);
                             clearInterval(interval);
                         } else {
                             count = count + 1;
