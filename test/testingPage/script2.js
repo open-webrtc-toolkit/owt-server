@@ -1,6 +1,6 @@
 var conference = Woogeen.ConferenceClient.create();
 var conference2 = Woogeen.ConferenceClient.create();
-var localStream, remoteStream = [], mixStream,
+var localStream, remoteStream = [], mixStream, mixStreams = [],
   localStream2;
 var Mix = false;
 var Forward = true;
@@ -82,7 +82,7 @@ function setWH(ele, percent, parentEleId) {
   ele.style.width = w + 'px';
   ele.style.height = 0.75 * w + 'px';
   setInterval(function() {
-    if (w != ele.parentNode.offsetWidth * percent) {
+    if (ele && ele.parentNode && w != ele.parentNode.offsetWidth * percent) {
       w = ele.parentNode.offsetWidth * percent;
       ele.style.width = w + 'px';
       ele.style.height = 0.75 * w + 'px';
@@ -108,6 +108,7 @@ function displayStream(stream) {
     document.getElementById('container-video').appendChild(div);
   } else {
     div = document.getElementById('test' + stream.id());
+    div.style.display = "block";
   }
 
 
@@ -129,7 +130,12 @@ function displayStream(stream) {
     attachRemoteMediaStream(canvas, ieStream, stream.pcid);
   }
 }
-
+function hiddenStream(id){
+  var streamId = id;
+  console.log('stream id is : ', id);
+  var videoView = document.getElementById('test' + streamId);
+  videoView.style.display = "none";
+}
 function recreateLocal(hasVideo, hasAudio) {
   console.log('recreateLocal');
   localStream.close();
@@ -554,6 +560,8 @@ function subs(st, codec) {
   var subForwAudio = document.getElementById('subForwAudio').checked;
   var xResolution = document.getElementById('selectedresolution').innerText;
   var qualityLevel = document.getElementById('selectedqualitylevel').innerText || 'Standard';
+  var view = document.getElementById('selectedview').innerText;
+  view = view.indexOf('select') != -1 ? 'common': view;
   var wh = [];
   if(xResolution.indexOf('x') != -1){
      subMixVideo = {qualityLevel: qualityLevel};
@@ -569,7 +577,7 @@ function subs(st, codec) {
       for (var i in conference.remoteStreams) {
         var stream = conference.remoteStreams[i];
         if (!localStream || localStream.id() !== stream.id()) {
-          if (stream.isMixed()) {
+          if (stream.isMixed() && stream.id().match(view)) {
 
             L.Logger.info('mix is true');
             L.Logger.info('*****************************************************************subscribe API mix with codec:', codec);
@@ -681,13 +689,17 @@ function getMixResolutions (){
     child.innerText = resolutions[j].height + 'x' + resolutions[j].width;
     mixResolutionsD.appendChild(child);
   }
-   children = mixResolutionsD.children
-   for(var i = 0; i < children.length; i++){
-     children[i].onclick = function(){
+  var select = function(){
        selectedResolution.innerText = this.innerText;
        mixResolutionsD.style.display = 'none';
+       selectedResolution.onclick = getMixResolutions;
      }
-  }
+
+   children = mixResolutionsD.children
+   for(var i = 0; i < children.length; i++){
+     children[i].onclick = select;
+   }
+   selectedResolution.onclick = select;
 }
 function getQualityLevels (){
   var selectedQualityLevel = document.getElementById('selectedqualitylevel');
@@ -703,13 +715,49 @@ function getQualityLevels (){
     child.innerText = qualityLevels[j];
     qualityLevelsD.appendChild(child);
   }
-   children = qualityLevelsD.children
-   for(var i = 0; i < children.length; i++){
-     children[i].onclick = function(){
+   var select =function(){
        selectedQualityLevel.innerText = this.innerText;
        qualityLevelsD.style.display = 'none';
+       selectedQualityLevel.onclick = getQualityLevels;
+     }
+ 
+   children = qualityLevelsD.children
+   for(var i = 0; i < children.length; i++){
+     children[i].onclick = select; 
+   }
+   selectedQualityLevel.onclick = select;
+}
+function getViews (){
+  var selectedView = document.getElementById('selectedview');
+  var views = [];
+  var remoteStreams = conference.remoteStreams;
+  var mixViewsD = document.getElementById('mixviews');
+  mixViewsD.style.display =  'inline-block';
+  var children = mixViewsD.children;
+  for(var streamId in remoteStreams){
+     var stream = remoteStreams[streamId];
+     if(stream.isMixed()){
+       views.push(streamId.split('-')[1]);
      }
   }
+  while (children[0]){
+    mixViewsD.removeChild(children[0]);
+  }
+  for(var j = 0; j < views.length; j++){
+    var child = document.createElement('li');
+    child.innerText = views[j];
+    mixViewsD.appendChild(child);
+  }
+  var select = function(){
+       selectedView.innerText = this.innerText;
+       mixViewsD.style.display = 'none';
+       selectedView.onclick = getViews;
+     }
+   children = mixViewsD.children
+   for(var i = 0; i < children.length; i++){
+     children[i].onclick = select;
+   } 
+   selectedView.onclick = select;
 }
 
 function unsub(st) {
@@ -729,13 +777,16 @@ function unsub(st) {
       for (var i in conference.remoteStreams) {
         var stream = conference.remoteStreams[i];
         if (conference.remoteStreams[i].isMixed()) {
+         (function(id){
           conference.unsubscribe(stream, function(et) {
             recordActionResulte(true);
-            L.Logger.info(stream.id(), 'unsubscribe stream');
+            L.Logger.info(id, 'unsubscribe stream');
+            hiddenStream(id);
           }, function(err) {
             recordActionResulte(false);
             L.Logger.error(stream.id(), 'unsubscribe failed:', err);
           });
+         })(i);
         }
       }
     } else if (st == 'shareScreen') {
@@ -858,7 +909,7 @@ var recording;
 
 function setVideoBitrate() {
   var bitrate = document.getElementById("bitrate").value;
-  var id = document.getElementById("setVideo").value;
+  var id = document.getElementById("setvideo").value;
 
   console.log("=====Set bitrate to:", bitrate);
   var options = {
@@ -876,12 +927,14 @@ function setVideoBitrate() {
 }
 
 function setRegion() {
-  var region = document.getElementById("regionId").value;
-  var clientId = document.getElementById("setVideo").value;
+  var region = document.getElementById("regionid").value;
+  var clientId = document.getElementById("setvideo").value;
+  var regionViewId = document.getElementById("regionviewid").value;
 
   var options = {
     id: clientId,
-    region: region
+    region: region,
+    mixedStreamId: regionViewId
   };
 
   console.log("User id is:", clientId);
@@ -898,9 +951,11 @@ function setRegion() {
 }
 
 function getRegion() {
-  var clientId = document.getElementById("setVideo").value;
+  var clientId = document.getElementById("setvideo").value;
+  var regionViewId = document.getElementById("regionviewid").value;
   var options = {
-    id: clientId
+    id: clientId,
+    mixedStreamId: regionViewId
   };
 
   console.log("User id is:", clientId);
@@ -915,12 +970,22 @@ function getRegion() {
 }
 
 function getConnectStats(){
-   var streamId = document.getElementById("setVideo").value;
+   var streamId = document.getElementById("setvideo").value;
    var stream = conference.remoteStreams[streamId];
    conference.getConnectionStats(stream, function(stat){
      console.log('stream ', streamId, 'stat is : ', stat);
    }, function(err){
      console.log('getConnectionstats has err: ', err);
+  });
+}
+
+function updateChildren(parents, newChildrens){
+  oldChildren = [].slice.call(parents.children, 0);
+  oldChildren.forEach(function(ele, index){
+    parents.removeChild(ele);
+  });
+  newChildrens.forEach(function(ele, index){
+    parents.appendChild(ele);
   });
 }
 
@@ -936,18 +1001,100 @@ function mixLocal() {
   }
 }
 
-function unmixLocal() {
-  if (conference !== undefined) {
-    console.log("local stream is:", localStream);
-    console.log("Remote stream is:", conference.remoteStreams);
-    conference.unmix(localStream, function(str) {
-      recordActionResulte(true);
-      console.log("Unmix local stream succeed:", str);
-    }, function(err) {
-      recordActionResulte(false);
-      console.log("Unmix local stream failed:", err);
-    });
-  }
+
+
+function unmixStreams() {
+   var unmixOperation = document.getElementById('unmixoperation');
+   var allRemoteStreamsDom = document.getElementById('allremotestreams');
+   var allViewsDom = document.getElementById('allviews');
+   var unmixRun = document.getElementById('unmixrun');
+   var mixRun = document.getElementById('mixrun');
+   var mixClose = document.getElementById('mixclose');
+   var allRemoteStreamsObj = conference.remoteStreams;
+   var mixViewsList = [], ul1NewChildren = [], ul2NewChildren = [], needUnmixStreams = [], fromViews = [];
+   mixStreams.forEach(function(ele, index){
+     mixViewsList.push(ele.id().split('-')[1]);
+   });
+
+   function liClick (dataArray, domNode){
+     return function(){
+              var id = domNode.innerText;
+              if(dataArray.indexOf(id) == -1){
+                dataArray.push(id);
+                domNode.style.backgroundColor = "#40ec63";
+             }else{
+                dataArray.splice(needUnmixStreams.indexOf(id), 1);
+                domNode.style.backgroundColor = "#777";
+             }
+           }
+
+   }
+   for(var id in allRemoteStreamsObj){
+     var liDom = document.createElement('li');
+     liDom.innerText = id.slice(id.length-6);
+     liDom.onclick = liClick(needUnmixStreams, liDom);
+     ul1NewChildren.push(liDom);
+   }
+   updateChildren(allRemoteStreamsDom, ul1NewChildren);
+   mixViewsList.forEach(function(ele, index){
+     var liDom = document.createElement('li');
+     liDom.innerText = ele;
+     liDom.onclick = liClick(fromViews, liDom);
+     ul2NewChildren.push(liDom);
+   });
+   updateChildren(allViewsDom, ul2NewChildren);
+   
+   unmixOperation.style.display = "inline-block";
+
+   function getOperationObj(){
+     var fromStreams = [], targetStreams = []
+     for(var streamId in allRemoteStreamsObj){
+        fromViews.forEach(function(ele){
+          if(streamId.indexOf(ele) != -1){
+             fromStreams.push(allRemoteStreamsObj[streamId]);
+          }
+        });
+     }
+     needUnmixStreams.forEach(function(ele){
+       for(var id in allRemoteStreamsObj){
+         if(id.indexOf(ele) != -1){
+           targetStreams.push(allRemoteStreamsObj[id]);
+         }
+       }
+     });
+     return {
+            from: fromStreams,
+            target: targetStreams
+          }
+   }
+   unmixRun.onclick = function(){
+     var operationObj = getOperationObj();
+     var from = operationObj.from;
+     var target = operationObj.target;
+     target.forEach(function(stream){
+           conference.unmix(stream, from, function(resp){
+             console.log('unmix success: ', resp);
+           }, function(err){
+             console.log('unmix failed: ', err);
+           });
+     });
+   }
+   mixRun.onclick = function(){
+     var operationObj = getOperationObj();
+     var from = operationObj.from;
+     var target = operationObj.target;
+     target.forEach(function(stream){
+           conference.mix(stream, from, function(resp){
+             console.log('mix success: ', resp);
+           }, function(err){
+             console.log('mix failed: ', err);
+           });
+     });
+   }
+   mixClose.onclick = function(){
+     unmixOperation.style.display = "none";
+   }
+   
 }
 
 function unmix_mix() {
@@ -1351,7 +1498,7 @@ conference.on('stream-removed', function(event) {
   if (id !== undefined) {
     var element = document.getElementById(id);
     if (element) {
-      // document.getElementById('container-video').removeChild(element);
+      document.getElementById('container-video').removeChild(element);
     }
   }
 });
@@ -1562,7 +1709,7 @@ if(!maxVideoBW){
             if (!onlyJoin) {
               conference.publish(localStream, {
                 unmix: !!unmix,
-            //    maxVideoBW: maxVideoBW,
+                maxVideoBW: maxVideoBW,
             //    maxAudioBW: maxAudioBW,
                 videoCodec: videoCodec,
                 audioCodec: audioCodec
@@ -1643,6 +1790,9 @@ if(!maxVideoBW){
       streams.map(function(stream) {
         L.Logger.info('stream in conference:', stream.id());
         L.Logger.info('subscribing:', stream.id());
+        if(stream.isMixed()){
+          mixStreams.push(stream);
+        }
         if (isSubscribe == 'true' || isSubscribe == "") {
           subscribe(stream);
         };
