@@ -335,7 +335,7 @@ module.exports = function() {
         log.debug('Connecting to rabbitMQ server:', hostPort);
         var conn = amqp.createConnection(hostPort);
         conn.on('ready', function() {
-            log.info('Connecting to rabbitMQ server ' + hostPort + ' OK');
+            log.info('Connecting to rabbitMQ server OK, hostPort:', hostPort);
             connection = conn;
             on_ok();
         });

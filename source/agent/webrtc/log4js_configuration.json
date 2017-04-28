@@ -15,6 +15,7 @@
     "AmqpClient": "INFO",
     "ErizoJS": "INFO",
     "WebrtcNode": "INFO",
+    "WrtcConnection": "INFO",
     "ErizoAgent": "INFO",
     "Connections": "INFO",
     "InternalConnectionFactory": "INFO"

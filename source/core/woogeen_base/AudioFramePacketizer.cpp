@@ -28,6 +28,8 @@ using namespace erizo;
 
 namespace woogeen_base {
 
+DEFINE_LOGGER(AudioFramePacketizer, "woogeen.AudioFramePacketizer");
+
 AudioFramePacketizer::AudioFramePacketizer()
     : m_enabled(true)
     , m_frameFormat(FRAME_FORMAT_UNKNOWN)
@@ -129,6 +131,7 @@ void AudioFramePacketizer::onFrame(const Frame& frame)
     default:
         return;
     }
+
     boost::shared_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
     // FIXME: The frame type information is lost. We treat every frame a kAudioFrameSpeech frame for now.
     m_rtpRtcp->SendOutgoingData(webrtc::kAudioFrameSpeech, payloadType, frame.timeStamp, -1, frame.payload, frame.length /*, RTPFragementationHeader* */);
@@ -160,6 +163,14 @@ bool AudioFramePacketizer::setSendCodec(FrameFormat format)
     case FRAME_FORMAT_PCMU:
         strcpy(codec.plname, "PCMU");
         codec.pltype = PCMU_8000_PT;
+        codec.plfreq = 8000;
+        codec.pacsize = 160;
+        codec.channels = 1;
+        codec.rate = 64000;
+        break;
+    case FRAME_FORMAT_PCMA:
+        strcpy(codec.plname, "PCMA");
+        codec.pltype = PCMA_8000_PT;
         codec.plfreq = 8000;
         codec.pacsize = 160;
         codec.channels = 1;
