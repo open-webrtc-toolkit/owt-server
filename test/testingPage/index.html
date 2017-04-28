@@ -203,7 +203,7 @@
 			display: none;
 		}
                 /*select mix resolution*/
-                #mixresolutions, #mixqualitylevels{
+                #mixresolutions, #mixqualitylevels, #mixviews{
                   display: none;
                   position: absolute;
                   list-style: none;
@@ -211,7 +211,38 @@
                   background: #777;
                   margin-top: 1px;
                 }
-                #mixresolutions > li, #mixqualitylevels > li{
+
+                #unmixoperation {
+                  display:none;
+                  width: 240px;
+                  overflow: auto;
+                  height: 120px;
+                  margin-top: -96px;
+                  position: absolute;
+                  background: #777;
+                }
+                #allremotestreams {
+                  float: left;
+                  padding: 0 10px;
+                  margin: 2px;
+                }
+                #allviews {
+                  float: right;
+                  padding: 0 10px;
+                  margin: 2px;
+                }
+                #unmixoperation > .direction {
+                  margin-top: 18%;
+                }
+                #run {
+                  width: 80%;
+                  display: inline-block;
+                }
+                #unmixrun, #mixrun, #mixclose{
+                  width: 30%;
+                  margin-bottom: 5px;
+                }
+                #mixresolutions > li, #mixqualitylevels > li, #mixviews > li, #unmixoperation li{
                   border-bottom: 1px solid #e6cfcf;
                   height: 23px;
                   line-height:23px;
@@ -283,6 +314,9 @@
 					<li><a href="javascript:void(0)" onclick="getQualityLevels()" id="selectedqualitylevel">select qualityLevel</a><ul id="mixqualitylevels">
                                         </ul>
                                         </li>
+					<li><a href="javascript:void(0)" onclick="getViews()" id="selectedview">select view</a><ul id="mixviews">
+                                        </ul>
+                                        </li>
 					<li><a href="javascript:void(0)" onclick="unsub('mix')">unsub mix</a></li>
 					<li><a href="javascript:void(0)" onclick="subs('mix','vp8')">sub mix vp8</a></li>
 					<li><a href="javascript:void(0)" onclick="subs('mix','vp9')">sub mix vp9</a></li>
@@ -298,8 +332,20 @@
 					<li><a href="javascript:void(0)" onclick="subs('shareScreen','vp9')">sub share screen vp9</a></li>
 					<li><a href="javascript:void(0)" onclick="subs('shareScreen','h264')">sub share screen h264</a></li>
 					<li><a href="javascript:void(0)" onclick="subs('shareScreen','h265')">sub share screen h265</a></li>
-					<li><a href="javascript:void(0)" onclick="unmixLocal()">unmix local</a></li>
-					<li><a href="javascript:void(0)" onclick="mixLocal()">mix local</a></li>
+					<li><a href="javascript:void(0)" onclick="unmixStreams()">unmix/mix</a><div id="unmixoperation">
+                                           <ul id="allremotestreams">
+                                           </ul>
+                                           <span class="direction" style="display: inline-block">From/To</span>
+                                           <ul id="allviews">
+                                           </ul>
+                                           <div id="run">
+                                             <button id="unmixrun">Unmix</button> 
+                                             <button id="mixrun">Mix</button>
+                                             <button id="mixclose">Close</button>
+                                           </div>
+                                        </div></li>
+				<!--	<li><a href="javascript:void(0)" onclick="mixLocal()">mix local</a></li>
+                               -->
 					<li><a href="javascript:void(0)" onclick="sendd()">send message</a></li>
 				</ul>
 
@@ -361,15 +407,17 @@
 			<div id='test-3'>
 				<h3>Other</h3>
 					<div id='other'>
-						<label>Set:<input type="text" id='setVideo'></label>
+						<label>Set:<input type="text" id='setvideo'></label>
 						<label>videoBitrate to: <input type="text" id='bitrate'>
 							<button onclick="setVideoBitrate()">Set bitrate</button>
 						</label>
 
-						<label>region to: <input type="text" id='regionId'>
+						<label>region to: <input type="text" id='regionid'>
+						</label>
+						<label>in view: <input type="text" id='regionviewid'>
+						</label>
 							<button type="button" id="region" onclick="setRegion()">Set region</button>
 							<button type="button" onclick="getRegion()">Get region</button>
-						</label>
                                                 <button onclick="getConnectStats()"> getConnectionStats</button>
                                                 <hr/>
 						<br/>
