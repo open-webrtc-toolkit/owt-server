@@ -105,6 +105,6 @@ exports.represent = function (req, res) {
         res.status(404).send('Service not found');
         return;
     }
-    log.info('Representing rooms for service ', currentService._id);
+    log.debug('Representing rooms for service ', currentService._id);
     res.send(currentService.rooms);
 };

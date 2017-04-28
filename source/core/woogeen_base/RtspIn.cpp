@@ -185,7 +185,7 @@ void JitterBuffer::stop()
 
 void JitterBuffer::drain()
 {
-    ELOG_INFO_T("(%s)drain jitter buffer size(%d)", m_name.c_str(), m_buffer.size());
+    ELOG_DEBUG_T("(%s)drain jitter buffer size(%d)", m_name.c_str(), m_buffer.size());
 
     while(m_buffer.size() > 0) {
         ELOG_DEBUG_T("(%s)drain jitter buffer, size(%d) ...", m_name.c_str(), m_buffer.size());
@@ -211,7 +211,7 @@ void JitterBuffer::setSyncTime(int64_t &syncTimestamp, boost::posix_time::ptime 
 {
     boost::mutex::scoped_lock lock(m_syncMutex);
 
-    ELOG_INFO_T("(%s)set sync timestamp %ld -> %ld", m_name.c_str(), m_syncTimestamp, syncTimestamp);
+    ELOG_DEBUG_T("(%s)set sync timestamp %ld -> %ld", m_name.c_str(), m_syncTimestamp, syncTimestamp);
 
     m_syncTimestamp = syncTimestamp;
     m_syncLocalTime.reset(new boost::posix_time::ptime(syncLocalTime));
@@ -239,11 +239,11 @@ int64_t JitterBuffer::getNextTime(AVPacket *pkt)
 
     diff = nextTimestamp - timestamp;
     if (diff < 0 || diff > 2000) { // revised
-        ELOG_INFO_T("(%s)timestamp rollback, %ld -> %ld", m_name.c_str(), timestamp, nextTimestamp);
+        ELOG_DEBUG_T("(%s)timestamp rollback, %ld -> %ld", m_name.c_str(), timestamp, nextTimestamp);
         if (m_syncMode == SYNC_MODE_MASTER)
             m_listener->onSyncTimeChanged(this, nextTimestamp);
 
-        ELOG_INFO_T("(%s)reset first timestamp %ld -> %ld", m_name.c_str(), m_firstTimestamp, nextTimestamp);
+        ELOG_DEBUG_T("(%s)reset first timestamp %ld -> %ld", m_name.c_str(), m_firstTimestamp, nextTimestamp);
         m_firstTimestamp = nextTimestamp;
         m_firstLocalTime.reset(new boost::posix_time::ptime(boost::posix_time::microsec_clock::local_time() + boost::posix_time::milliseconds(interval)));
         return interval;
@@ -252,7 +252,7 @@ int64_t JitterBuffer::getNextTime(AVPacket *pkt)
     {
         boost::mutex::scoped_lock lock(m_syncMutex);
         if (m_isFirstFramePacket) {
-            ELOG_INFO_T("(%s)set first timestamp %ld -> %ld", m_name.c_str(), m_firstTimestamp, timestamp);
+            ELOG_DEBUG_T("(%s)set first timestamp %ld -> %ld", m_name.c_str(), m_firstTimestamp, timestamp);
             m_firstTimestamp = timestamp;
             m_firstLocalTime.reset(new boost::posix_time::ptime(boost::posix_time::microsec_clock::local_time()));
 
@@ -269,7 +269,7 @@ int64_t JitterBuffer::getNextTime(AVPacket *pkt)
         if (m_syncTimestamp != AV_NOPTS_VALUE) {
             // sync timestamp changed
             if (nextTimestamp < m_syncTimestamp) {
-                ELOG_INFO_T("(%s)timestamp(%ld) is behind sync timestamp(%ld), diff %ld!"
+                ELOG_DEBUG_T("(%s)timestamp(%ld) is behind sync timestamp(%ld), diff %ld!"
                         , m_name.c_str(), nextTimestamp, m_syncTimestamp, nextTimestamp - m_syncTimestamp);
                 interval = diff;
             }
@@ -495,7 +495,7 @@ bool RtspIn::connect()
     //m_context->max_analyze_duration = 3 * AV_TIME_BASE;
 
     m_timeoutHandler->reset(30000);
-    ELOG_INFO_T("Opening input");
+    ELOG_DEBUG_T("Opening input");
     res = avformat_open_input(&m_context, m_url.c_str(), nullptr, &m_options);
     if (res != 0) {
         ELOG_ERROR_T("Error opening input %s", ff_err2str(res));
@@ -506,7 +506,7 @@ bool RtspIn::connect()
     }
 
     m_timeoutHandler->reset(10000);
-    ELOG_INFO_T("Finding stream info");
+    ELOG_DEBUG_T("Finding stream info");
     res = avformat_find_stream_info(m_context, nullptr);
     if (res < 0) {
         ELOG_ERROR_T("Error finding stream info %s", ff_err2str(res));
@@ -516,7 +516,7 @@ bool RtspIn::connect()
         return false;
     }
 
-    ELOG_INFO_T("Dump format");
+    ELOG_DEBUG_T("Dump format");
     av_dump_format(m_context, 0, nullptr, 0);
 
     m_AsyncEvent.str("");
@@ -690,7 +690,7 @@ bool RtspIn::reconnect()
     //m_context->max_analyze_duration = 3 * AV_TIME_BASE;
 
     m_timeoutHandler->reset(60000);
-    ELOG_INFO_T("Opening input");
+    ELOG_DEBUG_T("Opening input");
     res = avformat_open_input(&m_context, m_url.c_str(), nullptr, &m_options);
     if (res != 0) {
         ELOG_ERROR_T("Error opening input %s", ff_err2str(res));
@@ -698,14 +698,14 @@ bool RtspIn::reconnect()
     }
 
     m_timeoutHandler->reset(10000);
-    ELOG_INFO_T("Finding stream info");
+    ELOG_DEBUG_T("Finding stream info");
     res = avformat_find_stream_info(m_context, nullptr);
     if (res < 0) {
         ELOG_ERROR_T("Error find stream info %s", ff_err2str(res));
         return false;
     }
 
-    ELOG_INFO_T("Dump format");
+    ELOG_DEBUG_T("Dump format");
     av_dump_format(m_context, 0, nullptr, 0);
 
     if (m_needVideo) {
@@ -883,7 +883,7 @@ void RtspIn::checkVideoBitstream(AVStream *st, const AVPacket *pkt)
             break;
     }
     m_needCheckVBS = false;
-    ELOG_INFO_T("%s video bitstream filter", m_needApplyVBSF ? "Apply" : "Not apply");
+    ELOG_DEBUG_T("%s video bitstream filter", m_needApplyVBSF ? "Apply" : "Not apply");
 }
 
 void RtspIn::filterSEI(AVPacket *pkt) {
@@ -1372,7 +1372,7 @@ bool RtspIn::encAudioFrame(AVPacket *packet) {
 void RtspIn::onSyncTimeChanged(JitterBuffer *jitterBuffer, int64_t syncTimestamp)
 {
     if (m_audioJitterBuffer.get() == jitterBuffer) {
-        ELOG_INFO_T("onSyncTimeChanged audio, timestamp %ld ", syncTimestamp);
+        ELOG_DEBUG_T("onSyncTimeChanged audio, timestamp %ld ", syncTimestamp);
 
         //rtsp audio/video time base is different, it will lost sync after roll back
         if(!isRtsp()) {
@@ -1384,7 +1384,7 @@ void RtspIn::onSyncTimeChanged(JitterBuffer *jitterBuffer, int64_t syncTimestamp
         }
     }
     else if (m_videoJitterBuffer.get() == jitterBuffer) {
-        ELOG_INFO_T("onSyncTimeChanged video, timestamp %ld ", syncTimestamp);
+        ELOG_DEBUG_T("onSyncTimeChanged video, timestamp %ld ", syncTimestamp);
     } else {
         ELOG_ERROR_T("Invalid JitterBuffer onSyncTimeChanged event!");
     }

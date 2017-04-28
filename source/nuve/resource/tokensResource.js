@@ -171,7 +171,7 @@ exports.create = function (req, res) {
                 res.status(401).send('CloudHandler does not respond');
                 return;
             }
-            log.info('Created token for room ', currentRoom._id, 'and service ', authData.service._id);
+            log.debug('Created token for room ', currentRoom._id, 'and service ', authData.service._id);
             res.send(tokenS);
         });
     });

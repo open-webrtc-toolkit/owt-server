@@ -95,7 +95,7 @@ DtlsTransport::DtlsTransport(MediaType med, const std::string &transport_name, b
 }
 
 DtlsTransport::~DtlsTransport() {
-  ELOG_INFO("DtlsTransport destructor");
+  ELOG_DEBUG("DtlsTransport destructor");
   running_ = false;
   nice_->close();
 
@@ -106,7 +106,7 @@ DtlsTransport::~DtlsTransport() {
     dtlsRtp->stop();
   if (dtlsRtcp != NULL)
     dtlsRtcp->stop();
-  ELOG_INFO("DTLSTransport destructor END");
+  ELOG_DEBUG("DTLSTransport destructor END");
 }
 
 void DtlsTransport::start() {

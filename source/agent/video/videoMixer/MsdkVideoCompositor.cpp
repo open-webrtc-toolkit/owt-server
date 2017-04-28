@@ -1075,7 +1075,7 @@ void MsdkVideoCompositor::applyAspectRatio()
     if (!isChanged)
         return;
 
-    ELOG_INFO("apply new aspect ratio");
+    ELOG_DEBUG("apply new aspect ratio");
     resetVpp();
 }
 

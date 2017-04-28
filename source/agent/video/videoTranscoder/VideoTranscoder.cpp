@@ -57,7 +57,7 @@ VideoTranscoder::VideoTranscoder(const std::string& configStr)
     for (size_t i = 0; i < m_maxInputCount; ++i)
         m_freeInputIndexes.push_back(true);
 
-    ELOG_INFO("Init");
+    ELOG_DEBUG("Init");
 
     m_taskRunner.reset(new woogeen_base::WebRTCTaskRunner());
     m_frameTranscoder.reset(new VideoFrameTranscoderImpl(m_taskRunner));

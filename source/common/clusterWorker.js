@@ -83,7 +83,7 @@ module.exports = function (spec) {
         var countDown = attempt;
 
         var tryJoin = function (countDown) {
-            log.info('Try joining cluster', cluster_name, ', retry count:', attempt - countDown);
+            log.debug('Try joining cluster', cluster_name, ', retry count:', attempt - countDown);
             join(function (result) {
                 on_join_ok(id);
                 log.info('Join cluster', cluster_name, 'OK.');

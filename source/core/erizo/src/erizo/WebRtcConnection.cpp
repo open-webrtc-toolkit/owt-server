@@ -44,7 +44,7 @@ namespace erizo {
       int maxPort, const std::string& certFile, const std::string& keyFile, const std::string& privatePasswd, uint32_t qos, bool trickleEnabled, const std::vector<std::string>& ipAddresses, EventRegistry* handle)
   : asyncHandle_{handle} {
 
-    ELOG_INFO("WebRtcConnection constructor stunserver %s stunPort %d minPort %d maxPort %d\n", stunServer.c_str(), stunPort, minPort, maxPort);
+    ELOG_DEBUG("WebRtcConnection constructor stunserver %s stunPort %d minPort %d maxPort %d\n", stunServer.c_str(), stunPort, minPort, maxPort);
     sequenceNumberFIR_ = 0;
     bundle_ = false;
     this->setVideoSinkSSRC(55543);
@@ -87,11 +87,11 @@ namespace erizo {
     iceRestarting_ = false;
     localSdpGeneration_ = 0;
     ipAddresses_ = ipAddresses;
-    ELOG_INFO("WebRtcConnection constructor Done");
+    ELOG_DEBUG("WebRtcConnection constructor Done");
   }
 
   WebRtcConnection::~WebRtcConnection() {
-    ELOG_INFO("WebRtcConnection Destructor");
+    ELOG_DEBUG("WebRtcConnection Destructor");
 
     // TODO: Verify if the feedback sink is me.
     FeedbackSource* fbSource = nullptr;
@@ -129,7 +129,7 @@ namespace erizo {
     videoTransport_ = nullptr;
     delete audioTransport_;
     audioTransport_ = nullptr;
-    ELOG_INFO("WebRtcConnection Destructed");
+    ELOG_DEBUG("WebRtcConnection Destructed");
   }
 
   bool WebRtcConnection::init() {
@@ -600,7 +600,7 @@ namespace erizo {
     boost::lock_guard<boost::mutex> lock(updateStateMutex_);
     WebRTCEvent temp = globalState_;
     std::string msg = "";
-    ELOG_INFO("Update Transport State %s to %d", transport->transport_name.c_str(), state);
+    ELOG_DEBUG("Update Transport State %s to %d", transport->transport_name.c_str(), state);
     if (!audioTransport_ && !videoTransport_) {
       ELOG_ERROR("Update Transport State with Transport NULL, this should not happen!");
       return;
@@ -648,11 +648,11 @@ namespace erizo {
     }
 
     if (temp == CONN_READY && globalState_ != temp) {
-      ELOG_INFO("Ready to send and receive media");
+      ELOG_DEBUG("Ready to send and receive media");
     }
 
     if (audioTransport_ && videoTransport_) {
-      ELOG_INFO("%s - Update Transport State end, %d - %d, %d - %d, %d - %d",
+      ELOG_DEBUG("%s - Update Transport State end, %d - %d, %d - %d, %d - %d",
         transport->transport_name.c_str(),
         (int)audioTransport_->getTransportState(),
         (int)videoTransport_->getTransportState(),

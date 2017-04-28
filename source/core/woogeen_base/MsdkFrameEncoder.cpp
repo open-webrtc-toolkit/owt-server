@@ -244,7 +244,7 @@ public:
 
         if (m_mode == ENCODER_MODE_AUTO) {
             if(m_width != frame.additionalInfo.video.width || m_height != frame.additionalInfo.video.height) {
-                ELOG_INFO("(%p)Encoder resolution changed, %dx%d -> %dx%d", this
+                ELOG_DEBUG("(%p)Encoder resolution changed, %dx%d -> %dx%d", this
                         , m_width, m_height
                         , frame.additionalInfo.video.width, frame.additionalInfo.video.height
                         );
@@ -258,14 +258,14 @@ public:
         }
 
         if (!m_ready) {
-            ELOG_INFO("(%p)Encoder not ready!", this);
+            ELOG_DEBUG("(%p)Encoder not ready!", this);
             return;
         }
 
         boost::shared_ptr<MsdkFrame> inFrame = convert(frame);
 
         if (m_setBitRateFlag) {
-            ELOG_INFO("(%p)Do set bitrate!", this);
+            ELOG_DEBUG("(%p)Do set bitrate!", this);
 
             updateParam();
             resetEnc();
@@ -273,7 +273,7 @@ public:
         }
 
         if (m_requestKeyFrameFlag) {
-            ELOG_INFO("(%p)Do requeset key frame!", this);
+            ELOG_DEBUG("(%p)Do requeset key frame!", this);
 
             ctrl.reset(new mfxEncodeCtrl);
 

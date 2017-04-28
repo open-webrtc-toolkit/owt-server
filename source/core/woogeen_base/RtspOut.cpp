@@ -123,8 +123,6 @@ void RtspOut::close()
         avformat_free_context(m_context);
         m_context = NULL;
     }
-
-    ELOG_INFO("closed");
 }
 
 bool RtspOut::checkCodec(AVOptions &audioOptions, AVOptions &videoOptions)
@@ -167,7 +165,7 @@ void RtspOut::sendLoop()
             notifyAsyncEvent("fatal", "No a/v options specified");
             goto exit;
         }
-        ELOG_INFO("Wait for av options available, hasAudio %d(rcv %d), hasVideo %d(rcv %d), retry %d"
+        ELOG_DEBUG("Wait for av options available, hasAudio %d(rcv %d), hasVideo %d(rcv %d), retry %d"
                 , hasAudio(), m_audioReceived, hasAudio(), m_videoReceived, i);
         usleep(20000);
     }
@@ -188,7 +186,7 @@ void RtspOut::sendLoop()
 
     m_status = AVStreamOut::Context_READY;
 
-    ELOG_INFO("Request video key frame");
+    ELOG_DEBUG("Request video key frame");
     deliverFeedbackMsg(FeedbackMsg{.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME});
 
     ELOG_DEBUG("Start sending");
@@ -278,7 +276,7 @@ bool RtspOut::reconnect()
         return false;
     }
 
-    ELOG_INFO("Request video key frame");
+    ELOG_DEBUG("Request video key frame");
     deliverFeedbackMsg(FeedbackMsg{.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME});
 
     return true;
@@ -489,9 +487,9 @@ void RtspOut::onFrame(const woogeen_base::Frame& frame)
 
             if (!m_videoReceived) {
                 if (!isH264KeyFrame(frame.payload, frame.length)) {
-                    ELOG_INFO("Not video key frame, %d", frame.length);
+                    ELOG_DEBUG("Not video key frame, %d", frame.length);
 
-                    ELOG_INFO("Request video key frame");
+                    ELOG_DEBUG("Request video key frame");
                     deliverFeedbackMsg(FeedbackMsg{.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME});
                     return;
                 }
