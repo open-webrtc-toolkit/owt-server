@@ -195,9 +195,9 @@ namespace erizo {
 }
 
   NiceConnection::~NiceConnection() {
-    ELOG_INFO("NiceConnection Destructor");
+    ELOG_DEBUG("NiceConnection Destructor");
     this->close();
-    ELOG_INFO("NiceConnection Destructor END");
+    ELOG_DEBUG("NiceConnection Destructor END");
   }
 
   packetPtr NiceConnection::getPacket(){
@@ -502,7 +502,7 @@ namespace erizo {
     if(iceState_==state)
       return;
 
-    ELOG_INFO("%s - NICE State Changing from %u to %u %p", transportName->c_str(), this->iceState_, state, this);
+    ELOG_DEBUG("%s - NICE State Changing from %u to %u %p", transportName->c_str(), this->iceState_, state, this);
     this->iceState_ = state;
     switch( iceState_) {
       case NICE_FINISHED:
@@ -532,18 +532,18 @@ namespace erizo {
     nice_address_to_string(&local->addr, ipaddr);
     selectedPair.erizoCandidateIp = std::string(ipaddr);
     selectedPair.erizoCandidatePort = nice_address_get_port(&local->addr);
-    ELOG_INFO("Selected pair:\nlocal candidate addr: %s:%d",ipaddr, nice_address_get_port(&local->addr));
+    ELOG_DEBUG("Selected pair:\nlocal candidate addr: %s:%d",ipaddr, nice_address_get_port(&local->addr));
     nice_address_to_string(&remote->addr, ipaddr);
     selectedPair.clientCandidateIp = std::string(ipaddr);
     selectedPair.clientCandidatePort = nice_address_get_port(&remote->addr);
-    ELOG_INFO("remote candidate addr: %s:%d",ipaddr, nice_address_get_port(&remote->addr));
+    ELOG_DEBUG("remote candidate addr: %s:%d",ipaddr, nice_address_get_port(&remote->addr));
     return selectedPair;
 
   }
 
   StunCredential NiceConnection::restart(const std::string username,
                                          const std::string password) {
-    ELOG_INFO("ICE restart.");
+    ELOG_DEBUG("ICE restart.");
     nice_agent_restart(agent_);
     gchar *ufrag = NULL, *upass = NULL;
     nice_agent_get_local_credentials(agent_, 1, &ufrag, &upass);

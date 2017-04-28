@@ -479,7 +479,7 @@ var joinCluster = function (on_ok) {
 })();
 
 amqper.connect(global.config.rabbit, function () {
-    log.info('Adding agent to cloudhandler, purpose:', myPurpose);
+    log.debug('Adding agent to cloudhandler, purpose:', myPurpose);
     amqper.asRpcClient(function(rpcClnt) {
         rpcClient = rpcClnt;
         joinCluster(function (rpcID) {

@@ -422,7 +422,7 @@ var runAsCandidate = function(topicChannel, manager) {
 
     var selfRecommend = function () {
         interval = setInterval(function () {
-            log.info('Send self recommendation..');
+            log.debug('Send self recommendation..');
             topicChannel.publish('clusterManager.candidate', {type: 'selfRecommend', data: manager.id});
         }, 30);
     };

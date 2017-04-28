@@ -65,7 +65,7 @@ VideoMixer::VideoMixer(const std::string& configStr)
     YUVColor bgColor;
     m_layoutProcessor->getBgColor(bgColor);
 
-    ELOG_INFO("Init maxInput(%u), rootSize(%u, %u), bgColor(%u, %u, %u)", m_maxInputCount, rootSize.width, rootSize.height, bgColor.y, bgColor.cb, bgColor.cr);
+    ELOG_DEBUG("Init maxInput(%u), rootSize(%u, %u), bgColor(%u, %u, %u)", m_maxInputCount, rootSize.width, rootSize.height, bgColor.y, bgColor.cb, bgColor.cr);
 
     m_taskRunner.reset(new woogeen_base::WebRTCTaskRunner());
 

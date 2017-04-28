@@ -207,24 +207,24 @@ void SctpTransport::handleAssociationChangeEvent(struct sctp_assoc_change *sac)
     ELOG_DEBUG("Association change ");
     switch (sac->sac_state) {
     case SCTP_COMM_UP:
-        ELOG_INFO("SCTP_COMM_UP");
+        ELOG_DEBUG("SCTP_COMM_UP");
         changeReadyState(true);
         break;
     case SCTP_COMM_LOST:
-        ELOG_INFO("SCTP_COMM_LOST");
+        ELOG_DEBUG("SCTP_COMM_LOST");
         break;
     case SCTP_RESTART:
-        ELOG_INFO("SCTP_RESTART");
+        ELOG_DEBUG("SCTP_RESTART");
         changeReadyState(true);
         break;
     case SCTP_SHUTDOWN_COMP:
-        ELOG_INFO("SCTP_SHUTDOWN_COMP");
+        ELOG_DEBUG("SCTP_SHUTDOWN_COMP");
         break;
     case SCTP_CANT_STR_ASSOC:
-        ELOG_INFO("SCTP_CANT_STR_ASSOC");
+        ELOG_DEBUG("SCTP_CANT_STR_ASSOC");
         break;
     default:
-        ELOG_INFO("UNKNOWN");
+        ELOG_INFO("sctp association change state: UNKNOWN");
         break;
     }
 
@@ -719,7 +719,7 @@ void SctpTransport::sendData(const char* header, int headerLength, const char* d
             int intlen = sizeof(int);
             if (usrsctp_getsockopt(m_sctpSocket, SOL_SOCKET, SO_SNDBUF, &sndbufsize,
                                    (socklen_t *)&intlen) < 0) {
-                ELOG_INFO("Can not get SNDBUF");
+                ELOG_INFO("usrsctp_getsockopt: Can not get SNDBUF");
             } else {
                 ELOG_DEBUG("Send buffer size origin: %d", sndbufsize);
                 if (sndbufsize < MAX_MSGSIZE * 16) {

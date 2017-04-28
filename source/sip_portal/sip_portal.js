@@ -40,7 +40,7 @@ var api = {
 	//define rpc calls to receive sip info change from nuve
     handleSipUpdate : function(update) {
         // Argument update: {type: (create|update|delete), room_id:room-id, sipInfo:updated-sipInfo}
-        log.info("receivied api called, args", update);
+        log.debug("on handleSipUpdate, update:", update);
         var room_id = update.room_id;
         var sipInfo = update.sipInfo;
         // Update the room sip info
@@ -78,7 +78,7 @@ var rebuildErizo = function(erizo_id) {
 };
 
 function initSipRooms() {
-    log.info('Start to get SIP rooms');
+    log.debug('Start to get SIP rooms');
 
     if (!helper) {
         helper = sipErizoHelper({
@@ -111,6 +111,7 @@ function initSipRooms() {
                 roomInfo[room_id] = sipInfo;
                 createSipConnectivity(room_id, sipInfo.sipServer, sipInfo.username, sipInfo.password);
             }
+            log.info('initSipRooms ok');
         });
 }
 
@@ -124,7 +125,7 @@ function createSipConnectivity(room_id, sip_server, sip_user, sip_passwd) {
 
         return new Promise((resolve, reject) => {
             helper.allocateSipErizo({session: room_id, consumer: room_id}, function(erizo) {
-                log.info('allocateSipErizo', erizo);
+                log.debug('allocateSipErizo', erizo);
                 makeRPC(
                     rpcClient,
                     erizo.id,
@@ -136,7 +137,7 @@ function createSipConnectivity(room_id, sip_server, sip_user, sip_passwd) {
                         sip_passwd: sip_passwd
                     }],
                     function(result) {
-                        log.info("Sip node init successfully.");
+                        log.debug("Sip node init successfully.");
                         erizos[room_id] = erizo.id;
                         resolve(erizo.id);
                     }, function(reason) {
@@ -167,7 +168,7 @@ function deleteSipConnectivity(room_id) {
     roomPromises[room_id] = roomPromises[room_id].then(() => {
         if (erizos[room_id]) {
             return new Promise((resolve, reject) => {
-                log.info('deallocateSipErizo', erizos[room_id]);
+                log.debug('deallocateSipErizo', erizos[room_id]);
                 makeRPC(
                     rpcClient,
                     erizos[room_id],

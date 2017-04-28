@@ -287,7 +287,7 @@ int32_t VideoFrameConstructor::Decode(const webrtc::EncodedImage& encodedImage,
         };
 
         if (resolutionChanged) {
-            ELOG_INFO("received video resolution has changed to %ux%u", m_width, m_height);
+            ELOG_DEBUG("received video resolution has changed to %ux%u", m_width, m_height);
             //TODO: Notify the controlling layer about the resolution change.
         }
 

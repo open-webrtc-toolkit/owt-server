@@ -326,7 +326,7 @@ void RawTransport<prot>::readHandler(const boost::system::error_code& ec, std::s
                 payloadlen = ntohl(*(reinterpret_cast<uint32_t*>(m_readHeader)));
                 if (payloadlen > m_bufferSize) {
                     m_bufferSize = ((payloadlen * BUFFER_EXPANSION_MULTIPLIER + BUFFER_ALIGNMENT - 1) / BUFFER_ALIGNMENT) * BUFFER_ALIGNMENT;
-                    ELOG_INFO("Increasing the buffer size: %zu", m_bufferSize);
+                    ELOG_DEBUG("Increasing the buffer size: %zu", m_bufferSize);
                     m_receiveData.buffer.reset(new char[m_bufferSize]);
                 }
                 ELOG_DEBUG("readHandler(%zu):[%x,%x,%x,%x], payloadlen:%u", bytes, m_readHeader[0], m_readHeader[1], (unsigned char)m_readHeader[2], (unsigned char)m_readHeader[3], payloadlen);

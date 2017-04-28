@@ -8,7 +8,7 @@ var REMOVAL_TIMEOUT = 7 * 24 * 3600 * 1000;
 var declareExchange = function(conn, name, type, autoDelete, on_ok, on_failure) {
     var ok = false;
     var exc = conn.exchange(name, {type: type, autoDelete: autoDelete}, function (exchange) {
-        log.info('Exchange ' + exchange.name + ' is open');
+        log.debug('Exchange ' + exchange.name + ' is open');
         ok = true;
         on_ok(exc);
     });
@@ -40,7 +40,7 @@ var rpcClient = function(bus, conn, on_ready, on_failure) {
         }, 2000);
 
         reply_q = conn.queue('', function (q) {
-            log.info('Reply queue for rpc client ' + q.name + ' is open');
+            log.debug('Reply queue for rpc client ' + q.name + ' is open');
 
             reply_q.bind(exc.name, reply_q.name, function () {
                 reply_q.subscribe(function (message) {
@@ -130,7 +130,7 @@ var rpcServer = function(bus, conn, id, methods, on_ready, on_failure) {
         }, 2000);
 
         request_q = conn.queue(id, function (queueCreated) {
-            log.info('Request queue for rpc server ' + queueCreated.name + ' is open');
+            log.debug('Request queue for rpc server ' + queueCreated.name + ' is open');
 
             request_q.bind(exc.name, id, function() {
                 request_q.subscribe(function (message) {
@@ -181,7 +181,7 @@ var topicParticipant = function(bus, conn, excName, on_ready, on_failure) {
         }, 2000);
 
         msg_q = conn.queue('', function (queueCreated) {
-            log.info('Message queue for topic participant is open:', queueCreated.name);
+            log.debug('Message queue for topic participant is open:', queueCreated.name);
             ready = true;
             clearTimeout(timer);
             on_ready();
@@ -249,7 +249,7 @@ var faultMonitor = function(bus, conn, on_message, on_ready, on_failure) {
         }, 2000);
 
         msg_q = conn.queue('', function (queueCreated) {
-            log.info('Message queue for monitoring is open:', queueCreated.name);
+            log.debug('Message queue for monitoring is open:', queueCreated.name);
             ready = true;
             clearTimeout(timer);
 
@@ -332,10 +332,10 @@ module.exports = function() {
     };
 
     that.connect = function(hostPort, on_ok, on_failure) {
-        log.info('Connecting to rabbitMQ server:', hostPort);
+        log.debug('Connecting to rabbitMQ server:', hostPort);
         var conn = amqp.createConnection(hostPort);
         conn.on('ready', function() {
-            log.info('Connecting to rabbitMQ server OK');
+            log.info('Connecting to rabbitMQ server ' + hostPort + ' OK');
             connection = conn;
             on_ok();
         });

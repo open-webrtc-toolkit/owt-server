@@ -60,11 +60,11 @@ AudioMixer::AudioMixer(const std::string& configStr)
 
     if (mixerImplName == "VOE") {
         m_mixer.reset(new VoeFrameMixer());
-        ELOG_INFO("Create VoeFrameMixer(%s)", mixerImplName.c_str());
+        ELOG_DEBUG("Create VoeFrameMixer(%s)", mixerImplName.c_str());
     } else {
         // default
         m_mixer.reset(new AcmmFrameMixer());
-        ELOG_INFO("Create AcmmFrameMixer(%s)", mixerImplName.c_str());
+        ELOG_DEBUG("Create AcmmFrameMixer(%s)", mixerImplName.c_str());
     }
 
     if (ELOG_IS_TRACE_ENABLED()) {

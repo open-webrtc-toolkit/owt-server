@@ -236,7 +236,7 @@ function VMixer(rpcClient, clusterIP) {
 
         supported_resolutions = calculateResolutions(videoConfig.resolution, videoConfig.multistreaming);
 
-        log.info('Video engine init OK');
+        log.debug('Video engine init OK');
         callback('callback', {codecs: supported_codecs, resolutions: supported_resolutions});
     };
 
@@ -589,7 +589,7 @@ function VTranscoder(rpcClient, clusterIP) {
             supported_codecs.push('h265');
         }
 
-        log.info('Video transcoding engine init OK');
+        log.debug('Video transcoding engine init OK');
         callback('callback', {codecs: supported_codecs});
     };
 

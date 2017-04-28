@@ -922,9 +922,9 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
           on_disconnect();
         }, reconnection_spec.reconnectionTimeout*1000);
       } else {
-        log.info(participant_id+' is going to leave portal');
+        log.debug(participant_id+' is going to leave portal');
         leavePortal().catch(function(err) {
-          log.warn('LeavePortal:', err);
+          //log.warn('LeavePortal:', err);
         });
         disconnected = true;
         on_disconnect();

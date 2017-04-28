@@ -89,7 +89,7 @@ module.exports = function (spec, on_status) {
           var status = info.status;
           var message = info.message;
 
-          log.info('connection status:', status, message);
+          log.debug('connection status:', status, message);
 
           switch (status) {
             case CONN_FINISHED:

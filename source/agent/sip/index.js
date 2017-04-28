@@ -144,7 +144,7 @@ var getSessionControllerForRoom = function (roomId, on_ok, on_error) {
             return on_error('Timeout to fetech controller');
         }
 
-        log.info('Send controller schedule RPC request to ', cluster_name, ' for room ', roomId);
+        log.debug('Send controller schedule RPC request to ', cluster_name, ' for room ', roomId);
 
         makeRPC(rpcClient, cluster_name, 'schedule', ['session', roomId, 'preference'/*FIXME:should fill-in actual preference*/, 60 * 1000],
             function (result) {
@@ -366,7 +366,7 @@ module.exports = function (rpcC, spec) {
     };
 
     var handleCallEstablished = function (info) {
-        log.info('CallEstablished:', info.peerURI, 'audio='+info.audio, 'video='+info.video,
+        log.debug('CallEstablished:', info.peerURI, 'audio='+info.audio, 'video='+info.video,
                  (info.audio ? (' audio codec:' + info.audio_codec + ' audio dir: ' + info.audio_dir) : ''),
                  (info.video ? (' video codec: ' + info.video_codec + ' video dir: ' + info.video_dir) : ''));
         var client_id = info.peerURI;
@@ -386,7 +386,7 @@ module.exports = function (rpcC, spec) {
     };
 
     var handleCallUpdated = function (info) {
-        log.info('CallUpdated:', info, calls);
+        log.debug('CallUpdated:', info, calls);
 
         var client_id = info.peerURI;
         var support_red = info.video? info.support_red : false;
@@ -460,7 +460,7 @@ module.exports = function (rpcC, spec) {
 
             if (calls[client_id].latestInfo) {
                 // Process saved latest update request
-                log.info('Received call update request during updating');
+                log.debug('Received call update request during updating');
                 var latestInfo = calls[client_id].latestInfo;
                 calls[client_id].latestInfo = undefined;
 
@@ -474,7 +474,7 @@ module.exports = function (rpcC, spec) {
     var handleCallClosed = function (peerURI) {
         var client_id = peerURI;
 
-        log.info('CallClosed:', client_id);
+        log.debug('CallClosed:', client_id);
         if (calls[client_id]) {
             teardownCall(client_id);
             calls[client_id].conn && calls[client_id].conn.close({input: true, output: true});
@@ -510,11 +510,11 @@ module.exports = function (rpcC, spec) {
         }
 
         gateway.addEventListener('IncomingCall', function(peerURI) {
-            log.info('IncommingCall: ', peerURI);
+            log.debug('IncommingCall: ', peerURI);
             if (calls[peerURI] === undefined) {
                 if (!recycling_mode) {
                     handleIncomingCall(peerURI, function () {
-                        log.info('Accept call');
+                        log.debug('Accept call');
                         gateway.accept(peerURI);
                     }, function (reason) {
                         log.error('reject call error: ', reason);
