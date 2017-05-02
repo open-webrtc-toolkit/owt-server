@@ -105,7 +105,7 @@ function initSipRooms() {
             // Argument rooms: [{room_id:room-id, sipInfo:room's-sipInfo}...]
             log.debug('SIP rooms', rooms);
             for (var index in rooms) {
-                var room_id = rooms[index].room_id;
+                var room_id = rooms[index].roomId;
                 var sipInfo = rooms[index].sipInfo;
                 // Save the room sip info
                 roomInfo[room_id] = sipInfo;

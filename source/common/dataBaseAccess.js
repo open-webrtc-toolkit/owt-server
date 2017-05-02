@@ -404,7 +404,10 @@ function getSipRooms() {
             if (err || !rooms) {
                 reject(err);
             } else {
-                resolve(rooms);
+                var result = rooms.map((room) => {
+                    return {roomId: room._id.toString(), sipInfo: room.sipInfo};
+                });
+                resolve(result);
             }
         });
     });
