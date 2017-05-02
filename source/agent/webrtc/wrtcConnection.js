@@ -242,6 +242,7 @@ module.exports = function (spec, on_status) {
             return;
         }
 
+        var trackUpdate = false;
         if ((track === 'av' || track === 'audio') && audio) {
             if (dir === 'in' && audioFrameConstructor) {
                 audioFrameConstructor.enable(action === 'on');
@@ -251,6 +252,7 @@ module.exports = function (spec, on_status) {
                 on_error('Ambiguous audio direction.');
                 return;
             }
+            trackUpdate = true;
         }
         if ((track === 'av' || track === 'video') && video) {
             if (dir === 'in' && videoFrameConstructor) {
@@ -261,8 +263,14 @@ module.exports = function (spec, on_status) {
                 on_error('Ambiguous video direction.');
                 return;
             }
+            trackUpdate = true;
         }
-        on_ok();
+
+        if (trackUpdate) {
+            on_ok();
+        } else {
+            on_error('No track found');
+        }
     };
 
     that.addDestination = function (track, dest) {
