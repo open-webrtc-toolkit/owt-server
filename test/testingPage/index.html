@@ -274,10 +274,10 @@
 				<h3>Local</h3>
 				<ul>
 					<li><a href="javascript:void(0)" onclick="fullScreen()">full screen</a></li>
-					<li><a href="javascript:void(0)" onclick="shareScreen()">share screen vp8</a></li>
-					<li><a href="javascript:void(0)" onclick="shareScreen('vp9')">share screen vp9</a></li>
-					<li><a href="javascript:void(0)" onclick="shareScreen('h264')">share screen h264</a></li>
-					<li><a href="javascript:void(0)" onclick="shareScreen('h265')">share screen h265</a></li>
+					<li><a href="javascript:void(0)" onclick="shareScreen()">screen vp8</a></li>
+					<li><a href="javascript:void(0)" onclick="shareScreen('vp9','opus')">screen vp9-opus</a></li>
+					<li><a href="javascript:void(0)" onclick="shareScreen('h264', 'pcmu')">screen h264-pcmu</a></li>
+					<li><a href="javascript:void(0)" onclick="shareScreen('h265', 'pcma')">screen h265-pcma</a></li>
 					<li><a href="javascript:void(0)" onclick="showv('localVideo')">show local</a></li>
 					<li><a href="javascript:void(0)" onclick="hidev('localVideo')">hide local</a></li>
 					<li><a href="javascript:void(0)" onclick="stoplocal()">stop local</a></li>
@@ -339,7 +339,7 @@
                                            <ul id="allviews">
                                            </ul>
                                            <div id="run">
-                                             <button id="unmixrun">Unmix</button> 
+                                             <button id="unmixrun">Unmix</button>
                                              <button id="mixrun">Mix</button>
                                              <button id="mixclose">Close</button>
                                            </div>
