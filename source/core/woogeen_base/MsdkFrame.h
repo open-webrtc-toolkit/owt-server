@@ -113,6 +113,8 @@ public:
     boost::shared_ptr<MsdkFrame> getFreeFrame();
     boost::shared_ptr<MsdkFrame> getFrame(mfxFrameSurface1 *pSurface);
 
+    void dumpInfo();
+
 private:
     boost::shared_ptr<mfxFrameAllocator> m_allocator;
     mfxFrameAllocResponse m_response;

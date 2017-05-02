@@ -91,18 +91,22 @@ bool MsdkFrameDecoder::allocateFrames(void)
 {
     mfxStatus sts = MFX_ERR_NONE;
 
+    m_videoParam->IOPattern  = MFX_IOPATTERN_OUT_VIDEO_MEMORY;
+    m_videoParam->AsyncDepth = 1 + MAX_DECODED_FRAME_IN_RENDERING;
+    m_dec->Query(m_videoParam.get(), m_videoParam.get());
+
     mfxFrameAllocRequest Request;
     memset(&Request, 0, sizeof(mfxFrameAllocRequest));
 
     sts = m_dec->QueryIOSurf(m_videoParam.get(), &Request);
     if (sts > 0) {
-        ELOG_TRACE("(%p)Ignore mfx warning, ret %d", this, sts);
+        ELOG_TRACE_T("Ignore mfx warning, ret %d", sts);
     } else if (sts != MFX_ERR_NONE) {
-        ELOG_ERROR("(%p)mfx QueryIOSurf() failed, ret %d", this, sts);
+        ELOG_ERROR_T("mfx QueryIOSurf() failed, ret %d", sts);
         return false;
     }
 
-    ELOG_TRACE("(%p)mfx QueryIOSurf: Suggested(%d), Min(%d)", this, Request.NumFrameSuggested, Request.NumFrameMin);
+    ELOG_TRACE_T("mfx QueryIOSurf: Suggested(%d), Min(%d)", Request.NumFrameSuggested, Request.NumFrameMin);
 
     m_framePool2 = m_framePool;
     m_framePool.reset(new MsdkFramePool(Request, m_allocator));
@@ -133,7 +137,7 @@ void MsdkFrameDecoder::flushOutput(void)
 
 bool MsdkFrameDecoder::resetDecoder(void)
 {
-    ELOG_TRACE("(%p)resetDecoder", this);
+    ELOG_TRACE_T("resetDecoder");
 
     //flushOutput();
 
@@ -148,7 +152,7 @@ bool MsdkFrameDecoder::resetDecoder(void)
 
         if (previousCropW != m_videoParam->mfx.FrameInfo.CropW
                 || previousCropH != m_videoParam->mfx.FrameInfo.CropH) {
-            ELOG_DEBUG("(%p)Reset reason - resolution changed %dx%d(crop %dx%d) -> %dx%d(crop %dx%d)", this
+            ELOG_DEBUG_T("Reset reason - resolution changed %dx%d(crop %dx%d) -> %dx%d(crop %dx%d)"
                     , previousWidth, previousHeight
                     , previousCropW, previousCropH
                     , m_videoParam->mfx.FrameInfo.Width, m_videoParam->mfx.FrameInfo.Height
@@ -156,13 +160,13 @@ bool MsdkFrameDecoder::resetDecoder(void)
                     );
         }
         else {
-            ELOG_DEBUG("(%p)Reset reason - unknown", this)
+            ELOG_DEBUG_T("Reset reason - unknown")
         }
 
 #if 0
         sts = m_dec->Reset(m_videoParam.get());
         if (sts >= MFX_ERR_NONE) {
-            ELOG_DEBUG("(%p)Reset decoder successfully!", this);
+            ELOG_DEBUG_T("Reset decoder successfully!");
 
             return true;
         }
@@ -176,12 +180,12 @@ bool MsdkFrameDecoder::resetDecoder(void)
 
     m_dec = new MFXVideoDECODE(*m_session);
     if (!m_dec) {
-        ELOG_ERROR("(%p)Create decode failed", this);
+        ELOG_ERROR_T("Create decode failed");
 
         return false;
     }
 
-    ELOG_DEBUG("(%p)Re-create decoder successfully!", this);
+    ELOG_DEBUG_T("Re-create decoder successfully!");
     return true;
 }
 
@@ -190,54 +194,54 @@ bool MsdkFrameDecoder::init(FrameFormat format)
     switch (format) {
         case FRAME_FORMAT_H264:
             m_videoParam->mfx.CodecId = MFX_CODEC_AVC;
-            ELOG_DEBUG("(%p)Created H.264 decoder.", this);
             break;
 
         case FRAME_FORMAT_H265:
             m_videoParam->mfx.CodecId = MFX_CODEC_HEVC;
-            ELOG_DEBUG("(%p)Created H.265 decoder.", this);
             break;
 
         case FRAME_FORMAT_VP8:
         default:
-            ELOG_ERROR("(%p)Unspported video frame format %d", this, format);
+            ELOG_ERROR_T("Unspported video frame format %s(%d)", getFormatStr(format), format);
             return false;
     }
+
+    ELOG_DEBUG_T("Created %s decoder.", getFormatStr(format));
 
     mfxStatus sts = MFX_ERR_NONE;
 
     MsdkBase *msdkBase = MsdkBase::get();
     if(msdkBase == NULL) {
-        ELOG_ERROR("(%p)Get MSDK failed.", this);
+        ELOG_ERROR_T("Get MSDK failed.");
         return false;
     }
 
     m_session = msdkBase->createSession();
     if (!m_session ) {
-        ELOG_ERROR("(%p)Create session failed.", this);
+        ELOG_ERROR_T("Create session failed.");
         return false;
     }
 
     if (!msdkBase->loadDecoderPlugin(m_videoParam->mfx.CodecId, m_session, &m_pluginID)) {
-        ELOG_ERROR("(%p)Load plugin failed.", this);
+        ELOG_ERROR_T("Load plugin failed.");
         return false;
     }
 
     m_allocator = msdkBase->createFrameAllocator();
     if (!m_allocator) {
-        ELOG_ERROR("(%p)Create frame allocator failed.", this);
+        ELOG_ERROR_T("Create frame allocator failed.");
         return false;
     }
 
     sts = m_session->SetFrameAllocator(m_allocator.get());
     if (sts != MFX_ERR_NONE) {
-        ELOG_ERROR("(%p)Set frame allocator failed.", this);
+        ELOG_ERROR_T("Set frame allocator failed.");
         return false;
     }
 
     m_dec = new MFXVideoDECODE(*m_session);
     if (!m_dec) {
-        ELOG_ERROR("(%p)Create decode failed", this);
+        ELOG_ERROR_T("Create decode failed");
 
         return false;
     }
@@ -251,11 +255,10 @@ bool MsdkFrameDecoder::decHeader(mfxBitstream *pBitstream)
 
     sts = m_dec->DecodeHeader(pBitstream, m_videoParam.get());
     if (sts != MFX_ERR_NONE) {
-        ELOG_TRACE("(%p)More data needed by DecodeHeader", this);
+        ELOG_TRACE_T("More data needed by DecodeHeader");
 
-        if (!(m_statDetectHeaderFrameCount++ % 5))
-        {
-            ELOG_DEBUG("(%p)No header in last %d frames, request key frame!", this, m_statDetectHeaderFrameCount);
+        if (!(m_statDetectHeaderFrameCount++ % 5)) {
+            ELOG_DEBUG_T("No header in last %d frames, request key frame!", m_statDetectHeaderFrameCount);
 
             FeedbackMsg msg {.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME};
             deliverFeedbackMsg(msg);
@@ -264,23 +267,19 @@ bool MsdkFrameDecoder::decHeader(mfxBitstream *pBitstream)
         return false;
     }
 
-    ELOG_DEBUG("(%p)Decode header successed after %d frames!", this, m_statDetectHeaderFrameCount);
+    ELOG_DEBUG_T("Decode header successed after %d frames!", m_statDetectHeaderFrameCount);
     m_statDetectHeaderFrameCount = 0;
 
-    m_videoParam->IOPattern  = MFX_IOPATTERN_OUT_VIDEO_MEMORY;
-    m_videoParam->AsyncDepth = 1 + MAX_DECODED_FRAME_IN_RENDERING;
-
     if (!allocateFrames()) {
-        ELOG_ERROR("Failed to allocate frames for decoder.");
+        ELOG_ERROR_T("Failed to allocate frames for decoder.");
         return false;
     }
 
     sts = m_dec->Init(m_videoParam.get());
     if (sts > 0) {
-        ELOG_TRACE("(%p)Ignore mfx warning, ret %d", this, sts);
-    }
-    else if (sts != MFX_ERR_NONE) {
-        ELOG_ERROR("(%p)mfx init failed, ret %d", this, sts);
+        ELOG_TRACE_T("Ignore mfx warning, ret %d", sts);
+    } else if (sts != MFX_ERR_NONE) {
+        ELOG_ERROR_T("mfx init failed, ret %d", sts);
 
         MsdkBase::printfVideoParam(m_videoParam.get(), MFX_DEC);
         return false;
@@ -305,7 +304,7 @@ void MsdkFrameDecoder::decFrame(mfxBitstream *pBitstream)
 more_surface:
         boost::shared_ptr<MsdkFrame> workFrame = m_framePool->getFreeFrame();
         if (!workFrame) {
-            ELOG_WARN("(%p)No WorkSurface available", this);
+            ELOG_WARN_T("No WorkSurface available");
             return;
         }
 
@@ -313,37 +312,32 @@ retry:
 
 //reserved for debug
 #if 0
-        ELOG_TRACE("(%p)***bitstream buffer offset %d, dataLength %d, maxLength %d",
-            this, pBitstream->DataOffset, pBitstream->DataLength, pBitstream->MaxLength);
+        ELOG_TRACE_T("***bitstream buffer offset %d, dataLength %d, maxLength %d",
+            pBitstream->DataOffset, pBitstream->DataLength, pBitstream->MaxLength);
 #endif
 
         m_decBsOffset = pBitstream->DataOffset;
 
-        // no always to set worksurface, right?
         sts = m_dec->DecodeFrameAsync(pBitstream, workFrame->getSurface(), &pOutSurface, &syncP);
         if (sts == MFX_WRN_DEVICE_BUSY) {
-            ELOG_TRACE("(%p)Device busy, retry!", this);
+            ELOG_TRACE_T("Device busy, retry!");
 
             usleep(1000); //1ms
             goto retry;
-        }
-        else if (sts == MFX_ERR_MORE_SURFACE) {
-            ELOG_TRACE("(%p)Require more surface!", this);
+        } else if (sts == MFX_ERR_MORE_SURFACE) {
+            ELOG_TRACE_T("Require more surface!");
 
             goto more_surface;
-        }
-        else if (sts == MFX_WRN_VIDEO_PARAM_CHANGED) { //ignore
-            ELOG_TRACE("(%p)New sequence header!", this);
+        } else if (sts == MFX_WRN_VIDEO_PARAM_CHANGED) { //ignore
+            ELOG_TRACE_T("New sequence header!");
 
             goto retry;
-        }
-        else if (sts == MFX_ERR_MORE_DATA) {
-            ELOG_TRACE("(%p)Require more data!", this);
+        } else if (sts == MFX_ERR_MORE_DATA) {
+            ELOG_TRACE_T("Require more data!");
 
             return;
-        }
-        else if (sts != MFX_ERR_NONE) {
-            ELOG_INFO("(%p)mfx decode error, ret %d(%s)", this, sts, mfxStatusToStr(sts));
+        } else if (sts != MFX_ERR_NONE) {
+            ELOG_INFO_T("mfx decode error, ret %d(%s)", sts, mfxStatusToStr(sts));
 
             workFrame.reset();
 
@@ -366,7 +360,7 @@ retry:
         sts = m_session->SyncOperation(syncP, MFX_INFINITE);
         if(sts != MFX_ERR_NONE)
         {
-            ELOG_ERROR("(%p)SyncOperation failed, ret %d", this, sts);
+            ELOG_ERROR_T("SyncOperation failed, ret %d", sts);
         }
 #endif
 
@@ -393,7 +387,7 @@ retry:
             frame.timeStamp = m_timeStamps.front();
             m_timeStamps.pop_front();
         } else {
-            ELOG_ERROR("No timeStamp available in queue");
+            ELOG_ERROR_T("No timeStamp available in queue");
         }
 
         deliverFrame(frame);
@@ -402,8 +396,7 @@ retry:
 
 void MsdkFrameDecoder::updateBitstream(const Frame& frame)
 {
-    if(!m_bitstream)
-    {
+    if(!m_bitstream) {
         int size = frame.additionalInfo.video.width * frame.additionalInfo.video.height * 3 / 2;
 
         if (!size)
@@ -417,28 +410,25 @@ void MsdkFrameDecoder::updateBitstream(const Frame& frame)
         m_bitstream->DataOffset   = 0;
         m_bitstream->DataLength   = 0;
 
-        ELOG_TRACE("(%p)Init bistream buffer, size %d (%dx%d).",
-                this,
+        ELOG_TRACE_T("Init bistream buffer, size %d (%dx%d).",
                 size,
                 frame.additionalInfo.video.width,
                 frame.additionalInfo.video.height
                 );
     }
 
-    ELOG_TRACE("(%p)+++bitstream buffer offset %d, dataLength %d, maxLength %d",
-            this, m_bitstream->DataOffset, m_bitstream->DataLength, m_bitstream->MaxLength);
+    ELOG_TRACE_T("+++bitstream buffer offset %d, dataLength %d, maxLength %d",
+            m_bitstream->DataOffset, m_bitstream->DataLength, m_bitstream->MaxLength);
 
-    ELOG_TRACE("(%p)Incoming frame length: %d", this, frame.length);
+    ELOG_TRACE_T("Incoming frame length: %d", frame.length);
 
-    if(m_bitstream->MaxLength < m_bitstream->DataLength + frame.length)
-    {
+    if(m_bitstream->MaxLength < m_bitstream->DataLength + frame.length) {
         uint32_t newSize = m_bitstream->MaxLength * 2;
 
         while (newSize < m_bitstream->DataLength + frame.length)
             newSize *= 2;
 
-        ELOG_WARN("(%p)bitstream buffer need to remalloc %d -> %d"
-                , this
+        ELOG_WARN_T("bitstream buffer need to remalloc %d -> %d"
                 , m_bitstream->MaxLength
                 , newSize
                 );
@@ -452,25 +442,24 @@ void MsdkFrameDecoder::updateBitstream(const Frame& frame)
         m_bitstream->MaxLength    = newSize;
     }
 
-    if(m_bitstream->DataOffset + m_bitstream->DataLength + frame.length > m_bitstream->MaxLength)
-    {
+    if(m_bitstream->DataOffset + m_bitstream->DataLength + frame.length > m_bitstream->MaxLength) {
         memmove(m_bitstream->Data, m_bitstream->Data + m_bitstream->DataOffset, m_bitstream->DataLength);
         m_bitstream->DataOffset = 0;
-        ELOG_TRACE("(%p)Move bitstream buffer offset", this);
+        ELOG_TRACE_T("Move bitstream buffer offset");
     }
 
     memcpy(m_bitstream->Data + m_bitstream->DataOffset + m_bitstream->DataLength, frame.payload, frame.length);
     m_bitstream->DataLength += frame.length;
 
-    ELOG_TRACE("(%p)---bitstream buffer offset %d, dataLength %d, maxLength %d",
-            this, m_bitstream->DataOffset, m_bitstream->DataLength, m_bitstream->MaxLength);
+    ELOG_TRACE_T("bitstream buffer offset %d, dataLength %d, maxLength %d",
+            m_bitstream->DataOffset, m_bitstream->DataLength, m_bitstream->MaxLength);
 }
 
 void MsdkFrameDecoder::onFrame(const Frame& frame)
 {
     printfFuncEnter;
 
-    if (frame.payload == 0 || frame.length == 0) {
+    if (frame.payload == NULL || frame.length == 0) {
         ELOG_DEBUG_T("Null frame, request key frame");
         FeedbackMsg msg {.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME};
         deliverFeedbackMsg(msg);

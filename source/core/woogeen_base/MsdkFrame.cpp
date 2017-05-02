@@ -648,6 +648,18 @@ boost::shared_ptr<MsdkFrame> MsdkFramePool::getFrame(mfxFrameSurface1 *pSurface)
     return NULL;
 }
 
+void MsdkFramePool::dumpInfo()
+{
+    boost::unique_lock<boost::shared_mutex> lock(m_mutex);
+    int i;
+
+    i = 0;
+    for (auto& it : m_framePool) {
+        ELOG_DEBUG("Frame(%d), use_count(%ld), isFree(%d)"
+                , i, it.use_count(), it->isFree());
+        i++;
+    }
+}
 
 }//namespace woogeen_base
 
