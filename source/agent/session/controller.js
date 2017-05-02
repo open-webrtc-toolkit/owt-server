@@ -1581,6 +1581,8 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 [streamId, track, 'in', onOff],
                 onOk,
                 onError);
+        } else {
+            onError('Invalid stream');
         }
     };
 
@@ -1603,6 +1605,8 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 [stream_id],
                 on_ok,
                 on_error);
+        } else {
+            on_error('Invalid mix stream ID');
         }
     };
 
@@ -1627,6 +1631,8 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                     on_ok(data);
                     resetVAD(view);
                 }, on_error);
+        } else {
+            on_error('Invalid mix stream ID');
         }
     };
 
