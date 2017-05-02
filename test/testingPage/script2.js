@@ -519,14 +519,23 @@ function pub(codec) {
   }
 }
 
-function shareScreen(codec) {
-  //shareScreen will be added here
-  conference.shareScreen({
-	videoCodec: codec || 'vp8'
-}, function(stream) {
-    recordActionResulte(true);
-    // document.getElementById('screenVideo').setAttribute('style', 'width:320px; height: 240px;');
-    if (window.navigator.appVersion.indexOf("Trident") < 0) {
+function shareScreen(videoCodec, audioCodec) {
+  Woogeen.LocalStream.create({
+        audio:true,
+        video:{
+          device: 'screen'
+        }
+ }, function(err, stream) {
+    if(err){
+      console.log('share screen failed: ', err);
+      recordActionResulte(false);
+      return
+    }
+    conference.publish(stream, {
+       audioCodec: audioCodec,
+       videoCodec: videoCodec
+    }, function(){
+       if (window.navigator.appVersion.indexOf("Trident") < 0) {
       stream.show('screenVideo');
     }
     if (window.navigator.appVersion.indexOf("Trident") > -1) {
@@ -537,9 +546,10 @@ function shareScreen(codec) {
       document.getElementById("screenVideo").appendChild(canvas);
       attachMediaStream(canvas, stream.mediaStream);
     }
-  }, function(err) {
-    recordActionResulte(false);
-    L.Logger.error('share screen failed:', err);
+    }, function(err){
+       console.log('Publish screen failed: ', err)
+   });
+      recordActionResulte(true);
   });
 }
 
@@ -720,10 +730,10 @@ function getQualityLevels (){
        qualityLevelsD.style.display = 'none';
        selectedQualityLevel.onclick = getQualityLevels;
      }
- 
+
    children = qualityLevelsD.children
    for(var i = 0; i < children.length; i++){
-     children[i].onclick = select; 
+     children[i].onclick = select;
    }
    selectedQualityLevel.onclick = select;
 }
@@ -756,7 +766,7 @@ function getViews (){
    children = mixViewsD.children
    for(var i = 0; i < children.length; i++){
      children[i].onclick = select;
-   } 
+   }
    selectedView.onclick = select;
 }
 
@@ -1013,7 +1023,7 @@ function unmixStreams() {
    var allRemoteStreamsObj = conference.remoteStreams;
    var mixViewsList = [], ul1NewChildren = [], ul2NewChildren = [], needUnmixStreams = [], fromViews = [];
    mixStreams.forEach(function(ele, index){
-     mixViewsList.push(ele.id().split('-')[1]);
+     mixViewsList.push(ele.id().slice(ele.id().length-6));
    });
 
    function liClick (dataArray, domNode){
@@ -1043,7 +1053,7 @@ function unmixStreams() {
      ul2NewChildren.push(liDom);
    });
    updateChildren(allViewsDom, ul2NewChildren);
-   
+
    unmixOperation.style.display = "inline-block";
 
    function getOperationObj(){
@@ -1094,7 +1104,7 @@ function unmixStreams() {
    mixClose.onclick = function(){
      unmixOperation.style.display = "none";
    }
-   
+
 }
 
 function unmix_mix() {
@@ -1104,9 +1114,9 @@ function unmix_mix() {
   var interval1 = setInterval(function() {
     x++;
     if (conference !== undefined) {
-      conference.unmix(localStream, function(str) {
+      conference.unmix(localStream, mixStreams, function(str) {
         console.log("unmix local stream succeed:", str);
-        conference.mix(localStream, function(str) {
+        conference.mix(localStream,mixStreams, function(str) {
           console.log("mix local stream succeed:", str);
         }, function(err) {
           console.log("mix local stream failed:", err);
@@ -1594,12 +1604,6 @@ if(!maxVideoBW){
   conference.on('stream-added', function(event) {
     var stream = event.stream;
     L.Logger.info('stream added:', stream.id());
-    if (stream.isMixed()) {
-      mixStream = stream;
-      stream.on('VideoLayoutChanged', function() {
-        L.Logger.info('stream', stream.id(), 'VideoLayoutChanged');
-      });
-    };
 
     stream.on("VideoEnabled", function() {
       L.Logger.info('@@@@@@@@@@@@@Video enabled event triggered!');
@@ -1792,7 +1796,27 @@ if(!maxVideoBW){
         L.Logger.info('subscribing:', stream.id());
         if(stream.isMixed()){
           mixStreams.push(stream);
+          mixStream = stream;
+          stream.on('VideoLayoutChanged', function() {
+            L.Logger.info('stream', stream.id(), 'VideoLayoutChanged');
+          });
         }
+        stream.on("VideoEnabled", function() {
+          L.Logger.info('@@@@@@@@@@@@@Video enabled event triggered!');
+        });
+
+        stream.on("VideoDisabled", function() {
+         L.Logger.info('@@@@@@@@@@@@@Video disabled event triggered!');
+    });
+
+    stream.on("AudioEnabled", function() {
+      L.Logger.info('@@@@@@@@@@@@@Audio enabled event triggered!');
+    });
+
+    stream.on("AudioDisabled", function() {
+      L.Logger.info('@@@@@@@@@@@@@Audio disabled event triggered!');
+    });
+
         if (isSubscribe == 'true' || isSubscribe == "") {
           subscribe(stream);
         };
