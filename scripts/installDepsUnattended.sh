@@ -94,11 +94,11 @@ fi
 
 ${NO_INTERNAL} || install_webrtc
 
-if [ "$ENABLE_YAMI" = "true" ]; then
-  install_libva
-  install_libva_driver
-  install_libyami
-fi
+#if [ "$ENABLE_YAMI" = "true" ]; then
+#  install_libva
+#  install_libva_driver
+#  install_libyami
+#fi
 
 if [ "$CLEANUP" = "true" ]; then
   echo "Cleaning up..."
