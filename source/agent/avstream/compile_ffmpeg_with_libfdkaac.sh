@@ -70,12 +70,12 @@ install_build_deps() {
   if [[ "$OS" =~ .*centos.* ]]
   then
     echo -e "\x1b[32mInstalling dependent components and libraries via yum...\x1b[0m"
-    sudo -E yum install gcc gcc-c++ nasm yasm -y
+    sudo -E yum install gcc gcc-c++ nasm yasm SDL2-devel -y
   elif [[ "$OS" =~ .*ubuntu.* ]]
   then
     echo -e "\x1b[32mInstalling dependent components and libraries via apt-get...\x1b[0m"
     sudo apt-get update
-    sudo -E apt-get install make gcc g++ nasm yasm
+    sudo -E apt-get install make gcc g++ nasm yasm libsdl1.2-dev
   else
     echo -e "\x1b[32mUnsupported platform...\x1b[0m"
   fi
@@ -117,11 +117,11 @@ install_fdkaac(){
 }
 
 install_ffmpeg(){
-  local VERSION="3.1.2"
+  local VERSION="3.2.4"
   local DIR="ffmpeg-${VERSION}"
   local SRC="${DIR}.tar.bz2"
   local SRC_URL="http://ffmpeg.org/releases/${SRC}"
-  local SRC_MD5SUM="8095acdc8d5428b2a9861cb82187ea73"
+  local SRC_MD5SUM="d3ebaacfa36c6e8145373785824265b4"
 
   echo "Downloading ffmpeg-${VERSION}"
   [[ ! -s ${SRC} ]] && wget -c ${SRC_URL}
@@ -134,7 +134,7 @@ install_ffmpeg(){
 
   echo "Building ffmpeg-${VERSION}"
   pushd ${DIR}
-  PKG_CONFIG_PATH=${DOWNLOAD_DIR}/lib/pkgconfig CFLAGS=-fPIC ./configure --prefix=${DOWNLOAD_DIR} --enable-shared --disable-libvpx --disable-vaapi --enable-libopus --enable-libfdk-aac --enable-nonfree && \
+  PKG_CONFIG_PATH=${DOWNLOAD_DIR}/lib/pkgconfig CFLAGS=-fPIC ./configure --prefix=${DOWNLOAD_DIR} --enable-shared --disable-static --disable-libvpx --disable-vaapi --enable-libopus --enable-libfdk-aac --enable-nonfree && \
   make -j4 -s V=0 && make install
   popd
 }
