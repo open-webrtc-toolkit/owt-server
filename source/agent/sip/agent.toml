@@ -17,6 +17,13 @@ max_load = 0.85 #default: 0.85
 #Network max scale to calculate network usage percentage
 network_max_scale = 1000 #unit: Mbps
 
+
+[rabbit]
+host = "localhost" #default: "localhost"
+port = 5672 #default: 5672
+
+
+[internal]
 #The IP for in-cluster media spreading
 #Use "" to automatically get IP from the network-interface configured in 'network_interface'
 ip_address = "" #default: ""
@@ -24,12 +31,6 @@ ip_address = "" #default: ""
 #Use the first enumerated network-interface in the system if being set to undefined.
 # network_interface = "eth0" # default: undefined
 
-
-[rabbit]
-host = "localhost" #default: "localhost"
-port = 5672 #default: 5672
-
-[internal]
 # The internal listening port range, only works for TCP now
 maxport = 0 #default: 0
 minport = 0 #default: 0

@@ -27,8 +27,9 @@ global.config.cluster.join_retry = global.config.cluster.join_retry || 60;
 global.config.cluster.report_load_interval = global.config.cluster.report_load_interval || 1000;
 global.config.cluster.max_load = global.config.cluster.max_load || 0.85;
 global.config.cluster.network_max_scale = global.config.cluster.network_max_scale || 1000;
-global.config.cluster.ip_address = global.config.cluster.ip_address || '';
-global.config.cluster.network_interface = global.config.cluster.network_interface || undefined;
+
+global.config.internal.ip_address = global.config.internal.ip_address || '';
+global.config.internal.network_interface = global.config.internal.network_interface || undefined;
 
 global.config.capacity = global.config.capacity || {};
 
@@ -338,7 +339,7 @@ function collectIPs () {
                         if (webrtcInterface) {
                             webrtcInterface.ip_address = address.address;
                         }
-                        if (!clusterInterface && (k === global.config.cluster.network_interface || !global.config.cluster.network_interface)) {
+                        if (!clusterInterface && (k === global.config.internal.network_interface || !global.config.internal.network_interface)) {
                             clusterInterface = k;
                             clusterAddress = address.address;
                         }
@@ -348,10 +349,10 @@ function collectIPs () {
         }
     }
 
-    if (global.config.cluster.ip_address === '' || global.config.cluster.ip_address === undefined) {
+    if (global.config.internal.ip_address === '' || global.config.internal.ip_address === undefined) {
         clusterIP = clusterAddress;
     } else {
-        clusterIP = global.config.cluster.ip_address;
+        clusterIP = global.config.internal.ip_address;
     }
 }
 

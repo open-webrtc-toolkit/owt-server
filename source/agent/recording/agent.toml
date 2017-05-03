@@ -21,23 +21,23 @@ max_load = 0.85 #default: 0.85
 #Network max scale to calculate network usage percentage
 network_max_scale = 1000 #unit: Mbps
 
-#The IP address used for internal-cluster media spreading. Will use the IP got from the 'network_interface' item if 'ip_address' is not specified or equal to "".
-ip_address = "" #default: ""
-
-#The network interface used for internal-cluster media spreading. The first enumerated network interface in the system will be adopted if this item is not specified.
-# network_interface = "eth0" # default: undefined
-
 
 [rabbit]
 host = "localhost" #default: "localhost"
 port = 5672 #default: 5672
 
 [internal]
+#The IP address used for internal-cluster media spreading. Will use the IP got from the 'network_interface' item if 'ip_address' is not specified or equal to "".
+ip_address = "" #default: ""
+
+#The network interface used for internal-cluster media spreading. The first enumerated network interface in the system will be adopted if this item is not specified.
+# network_interface = "eth0" # default: undefined
+
 # The internal listening port range, only works for TCP now
 maxport = 0 #default: 0
 minport = 0 #default: 0
 
-#########################################################################################
+
 #The storage availability of the recording path needs to be guaranteed when using media recording.
 [recording]
 path = "/tmp"
