@@ -1033,7 +1033,7 @@ function unmixStreams() {
                 dataArray.push(id);
                 domNode.style.backgroundColor = "#40ec63";
              }else{
-                dataArray.splice(needUnmixStreams.indexOf(id), 1);
+                dataArray.splice(dataArray.indexOf(id), 1);
                 domNode.style.backgroundColor = "#777";
              }
            }
@@ -1571,6 +1571,7 @@ if(!maxVideoBW){
       break;
     case 'hd1080p':
       maxVideoBW = 4000;
+      break;
     default:
       maxVideoBW = 1500;
       break;
