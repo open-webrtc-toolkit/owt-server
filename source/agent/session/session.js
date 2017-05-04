@@ -461,7 +461,7 @@ module.exports = function (rpcClient, selfRpcId) {
     controller.setMute(streamId, track, muted,
       function() {
         // Make the input inactive in mix video stream
-        controller.updateStream(streamId, track, 'inactive');
+        controller.updateStream(streamId, track, (muted? 'inactive' : 'active'));
         callback('callback', 'ok');
       },
       function(reason) {
