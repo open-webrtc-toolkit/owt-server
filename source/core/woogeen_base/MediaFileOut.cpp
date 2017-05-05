@@ -27,7 +27,7 @@ extern "C" {
 #include <libavutil/channel_layout.h>
 }
 
-#define KEYFRAME_REQ_INTERVAL (1 * 1000) // 1 seconds
+#define KEYFRAME_REQ_INTERVAL (6 * 1000) // 6 seconds
 
 namespace woogeen_base {
 
