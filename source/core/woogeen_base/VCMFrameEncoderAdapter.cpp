@@ -62,7 +62,7 @@ int32_t VCMFrameEncoderAdapter::generateStream(uint32_t width, uint32_t height, 
     m_dest      = dest;
 
     if (m_width == 0 || m_height == 0) {
-        ELOG_ERROR("Generate adaptive encoder stream");
+        ELOG_DEBUG("Generate adaptive encoder stream");
         m_streamId = 0;
         return m_streamId;
     }

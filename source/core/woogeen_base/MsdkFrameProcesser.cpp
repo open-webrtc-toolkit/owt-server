@@ -57,8 +57,22 @@ bool MsdkFrameProcesser::init(FrameFormat format)
     return true;
 }
 
+bool MsdkFrameProcesser::filterFrame(const Frame& frame)
+{
+    if (frame.format == FRAME_FORMAT_MSDK) {
+        MsdkFrameHolder *holder = (MsdkFrameHolder *)frame.payload;
+        if (holder->cmd != MsdkCmd_NONE)
+            return true;
+    }
+
+    return false;
+}
+
 void MsdkFrameProcesser::onFrame(const Frame& frame)
 {
+    if (filterFrame(frame))
+        return;
+
     ELOG_TRACE("onFrame, format(%s), resolution(%dx%d), timestamp(%u)"
             , getFormatStr(frame.format)
             , frame.additionalInfo.video.width
@@ -119,11 +133,6 @@ void MsdkFrameProcesser::onFrame(const Frame& frame)
 
         deliverFrame(outFrame);
     } else if (frame.format == FRAME_FORMAT_MSDK && m_format == FRAME_FORMAT_I420) {
-        MsdkFrameHolder *holder = (MsdkFrameHolder *)frame.payload;
-
-        if (holder->cmd != MsdkCmd_NONE)
-            return;
-
         deliverFrame(frame);
         return;
 #if 0

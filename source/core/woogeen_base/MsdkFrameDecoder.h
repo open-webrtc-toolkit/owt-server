@@ -74,7 +74,6 @@ private:
     uint32_t m_decBsOffset;
 
     boost::shared_ptr<MsdkFramePool> m_framePool;
-    boost::shared_ptr<MsdkFramePool> m_framePool2;
 
     uint8_t m_statDetectHeaderFrameCount;
 

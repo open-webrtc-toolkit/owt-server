@@ -482,9 +482,9 @@ bool RtspIn::connect()
     if (ELOG_IS_TRACE_ENABLED())
         av_log_set_level(AV_LOG_DEBUG);
     else if (ELOG_IS_DEBUG_ENABLED())
-        av_log_set_level(AV_LOG_DEBUG);
-    else
         av_log_set_level(AV_LOG_INFO);
+    else
+        av_log_set_level(AV_LOG_ERROR);
 
     srand((unsigned)time(0));
 
