@@ -142,7 +142,7 @@ private:
     boost::mutex writeMutex_, receiveMediaMutex_, updateStateMutex_;
     boost::thread send_Thread_;
     std::queue<dataPacket> sendQueue_;
-    Transport *videoTransport_, *audioTransport_;
+    boost::scoped_ptr<Transport> videoTransport_, audioTransport_;
     boost::scoped_array<char> deliverMediaBuffer_;
 
     volatile bool sending_, closed_;

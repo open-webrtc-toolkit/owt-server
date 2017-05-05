@@ -55,8 +55,6 @@ namespace erizo {
     sourcefbSink_ = this;
     sinkfbSource_ = this;
     globalState_ = CONN_INITIAL;
-    videoTransport_ = nullptr;
-    audioTransport_ = nullptr;
 
     audioEnabled_ = audioEnabled;
     videoEnabled_ = videoEnabled;
@@ -117,6 +115,12 @@ namespace erizo {
       cond_.notify_one();
     }
     send_Thread_.join();
+    if (videoTransport_.get()){
+        videoTransport_->close();
+    }
+    if (audioTransport_.get()){
+        audioTransport_->close();
+    }
 
     globalState_ = CONN_FINISHED;
     // Prompt this event notification because we want the listener
@@ -125,10 +129,6 @@ namespace erizo {
     notifyAsyncEventInEmergency(asyncHandle_, CONN_FINISHED, "");
     asyncHandle_ = nullptr;
     globalState_ = CONN_FINISHED;
-    delete videoTransport_;
-    videoTransport_ = nullptr;
-    delete audioTransport_;
-    audioTransport_ = nullptr;
     ELOG_DEBUG("WebRtcConnection Destructed");
   }
 
@@ -136,9 +136,9 @@ namespace erizo {
     // In case both audio and video transports are needed, we need to start
     // the transports after they are both created because the WebRtcConnection
     // state update needs information from both.
-    if (videoTransport_)
+    if (videoTransport_.get())
       videoTransport_->start();
-    if (audioTransport_)
+    if (audioTransport_.get())
       audioTransport_->start();
 
     if (trickleEnabled_)
@@ -193,15 +193,15 @@ namespace erizo {
     if (remoteSdp_.profile == SAVPF) {
       if (remoteSdp_.isFingerprint) {
         // DTLS-SRTP
-        if (videoTransportNeeded && !videoTransport_) {
+        if (videoTransportNeeded && !videoTransport_.get()) {
           std::string username, password;
           remoteSdp_.getCredentials(username, password, VIDEO_TYPE);
-          videoTransport_ = new DtlsTransport(VIDEO_TYPE, "video", bundle_, remoteSdp_.isRtcpMux, this, stunServer_, stunPort_, minPort_, maxPort_, certFile_, keyFile_, privatePasswd_, username, password, ipAddresses_);
+          videoTransport_.reset(new DtlsTransport(VIDEO_TYPE, "video", bundle_, remoteSdp_.isRtcpMux, this, stunServer_, stunPort_, minPort_, maxPort_, certFile_, keyFile_, privatePasswd_, username, password, ipAddresses_));
         }
-        if (audioTransportNeeded && !audioTransport_) {
+        if (audioTransportNeeded && !audioTransport_.get()) {
           std::string username, password;
           remoteSdp_.getCredentials(username, password, AUDIO_TYPE);
-          audioTransport_ = new DtlsTransport(AUDIO_TYPE, "audio", false, remoteSdp_.isRtcpMux, this, stunServer_, stunPort_, minPort_, maxPort_, certFile_, keyFile_, privatePasswd_, username, password, ipAddresses_);
+          audioTransport_.reset(new DtlsTransport(AUDIO_TYPE, "audio", false, remoteSdp_.isRtcpMux, this, stunServer_, stunPort_, minPort_, maxPort_, certFile_, keyFile_, privatePasswd_, username, password, ipAddresses_));
         }
       }
     }
@@ -232,10 +232,10 @@ namespace erizo {
                                         candidateInfos.end());
       } else {
         ELOG_DEBUG("Setting remote candidates.");
-        if (videoTransport_) {
+        if (videoTransport_.get()) {
           videoTransport_->setRemoteCandidates(remoteSdp_.getCandidateInfos(), bundle_);
         }
-        if (audioTransport_) {
+        if (audioTransport_.get()) {
           audioTransport_->setRemoteCandidates(remoteSdp_.getCandidateInfos(), bundle_);
         }
       }
@@ -245,7 +245,7 @@ namespace erizo {
     if (iceRestarting_) {
       ELOG_DEBUG("Handle ICE restart");
       localSdpGeneration_++;
-      if (videoTransport_) {
+      if (videoTransport_.get()) {
         auto newCredential = videoTransport_->restart(username, password);
         ELOG_DEBUG("Update credentials for audio and video transport channel.");
         localSdp_.setCredentials(newCredential.username, newCredential.password,
@@ -253,7 +253,7 @@ namespace erizo {
         localSdp_.setCredentials(newCredential.username, newCredential.password,
                                  AUDIO_TYPE);
       }
-      if (!bundle_ && audioTransport_) {
+      if (!bundle_ && audioTransport_.get()) {
         auto newCredential = audioTransport_->restart(username, password);
         ELOG_DEBUG("Update credentials for audio transport channel.");
         localSdp_.setCredentials(newCredential.username, newCredential.password,
@@ -297,10 +297,10 @@ namespace erizo {
       }
       if (theType == VIDEO_TYPE||bundle_){
         ELOG_DEBUG("Setting VIDEO CANDIDATE" );
-        res = videoTransport_->setRemoteCandidates(tempSdp.getCandidateInfos(), bundle_);
+        res = (videoTransport_.get() ? videoTransport_->setRemoteCandidates(tempSdp.getCandidateInfos(), bundle_) : false);
       } else if (theType==AUDIO_TYPE){
         ELOG_DEBUG("Setting AUDIO CANDIDATE");
-        res = audioTransport_->setRemoteCandidates(tempSdp.getCandidateInfos(), bundle_);
+        res = (audioTransport_.get() ? audioTransport_->setRemoteCandidates(tempSdp.getCandidateInfos(), bundle_) : false);
       }else{
         ELOG_ERROR("Cannot add remote candidate with no Media (video or audio)");
       }
@@ -322,11 +322,11 @@ namespace erizo {
     localSdp_.audioSsrc = this->getAudioSinkSSRC();
 
     ELOG_DEBUG("Getting SDP");
-    if (videoTransport_) {
+    if (videoTransport_.get()) {
       videoTransport_->processLocalSdp(&localSdp_);
     }
     ELOG_DEBUG("Video SDP done.");
-    if (!bundle_ && audioTransport_) {
+    if (!bundle_ && audioTransport_.get()) {
       audioTransport_->processLocalSdp(&localSdp_);
     }
     ELOG_DEBUG("Audio SDP done.");
@@ -397,14 +397,14 @@ namespace erizo {
   int WebRtcConnection::deliverAudioData(char* buf, int len) {
     writeSsrc(buf, len, this->getAudioSinkSSRC());
     if (bundle_){
-      if (videoTransport_) {
+      if (videoTransport_.get()) {
         if (audioEnabled_ == true) {
-          this->queueData(0, buf, len, videoTransport_, AUDIO_PACKET);
+          this->queueData(0, buf, len, videoTransport_.get(), AUDIO_PACKET);
         }
       }
-    } else if (audioTransport_) {
+    } else if (audioTransport_.get()) {
       if (audioEnabled_ == true) {
-        this->queueData(0, buf, len, audioTransport_, AUDIO_PACKET);
+        this->queueData(0, buf, len, audioTransport_.get(), AUDIO_PACKET);
       }
     }
     return len;
@@ -413,7 +413,7 @@ namespace erizo {
   int WebRtcConnection::deliverVideoData(char* buf, int len) {
     RTPHeader* head = (RTPHeader*) buf;
     writeSsrc(buf, len, this->getVideoSinkSSRC());
-    if (videoTransport_) {
+    if (videoTransport_.get()) {
       if (videoEnabled_ == true) {
 
         if (head->getPayloadType() == RED_90000_PT) {
@@ -442,7 +442,7 @@ namespace erizo {
             len = len - 1 - totalLength + rtpHeaderLength;
           }
         }
-        this->queueData(0, buf, len, videoTransport_, VIDEO_PACKET);
+        this->queueData(0, buf, len, videoTransport_.get(), VIDEO_PACKET);
       }
     }
     return len;
@@ -459,16 +459,16 @@ namespace erizo {
       chead->getRTCPHeader().getPacketType(), chead->getRTCPHeader().getSSRC(), sourceSsrc);
     if (sourceSsrc == getAudioSinkSSRC() || sourceSsrc == getAudioSourceSSRC()) {
       writeSsrc(buf, len, this->getAudioSinkSSRC());
-      if (audioTransport_)
-        this->queueData(0, buf, len, audioTransport_, OTHER_PACKET);
+      if (audioTransport_.get())
+        this->queueData(0, buf, len, audioTransport_.get(), OTHER_PACKET);
       else {
-        assert(bundle_ && videoTransport_ != nullptr);
-        this->queueData(0, buf, len, videoTransport_, OTHER_PACKET);
+        assert(bundle_ && videoTransport_.get());
+        this->queueData(0, buf, len, videoTransport_.get(), OTHER_PACKET);
       }
     } else if (sourceSsrc == getVideoSinkSSRC() || sourceSsrc == getVideoSourceSSRC()) {
       writeSsrc(buf, len, this->getVideoSinkSSRC());
-      assert(videoTransport_ != nullptr);
-      this->queueData(0, buf, len, videoTransport_, OTHER_PACKET);
+      assert(videoTransport_.get());
+      this->queueData(0, buf, len, videoTransport_.get(), OTHER_PACKET);
     } else {
       ELOG_WARN("Bad source SSRC in RTCP feedback packet: %u", sourceSsrc);
     }
@@ -489,6 +489,8 @@ namespace erizo {
 
   void WebRtcConnection::onTransportData(char* buf, int len, Transport *transport) {
     if (!audioSink_ && !videoSink_ && !fbSink_)
+      return;
+    if (getCurrentState() != CONN_READY)
       return;
 
     int length = len;
@@ -589,7 +591,7 @@ namespace erizo {
     rtcpPacket[pos++] = (uint8_t) 0;
     rtcpPacket[pos++] = (uint8_t) 0;
 
-    if (videoTransport_) {
+    if (videoTransport_.get()) {
       videoTransport_->write((char*)rtcpPacket, pos);
     }
 
@@ -601,7 +603,7 @@ namespace erizo {
     WebRTCEvent temp = globalState_;
     std::string msg = "";
     ELOG_DEBUG("Update Transport State %s to %d", transport->transport_name.c_str(), state);
-    if (!audioTransport_ && !videoTransport_) {
+    if (audioTransport_.get() == NULL && videoTransport_.get() == NULL) {
       ELOG_ERROR("Update Transport State with Transport NULL, this should not happen!");
       return;
     }
@@ -622,14 +624,14 @@ namespace erizo {
     }
 
     if (state == TRANSPORT_STARTED &&
-        (!audioTransport_ || audioTransport_->getTransportState() == TRANSPORT_STARTED) &&
-        (!videoTransport_ || videoTransport_->getTransportState() == TRANSPORT_STARTED)) {
+        (audioTransport_.get() == NULL || audioTransport_->getTransportState() == TRANSPORT_STARTED) &&
+        (videoTransport_.get() == NULL || videoTransport_->getTransportState() == TRANSPORT_STARTED)) {
       temp = CONN_STARTED;
     }
 
     if (state == TRANSPORT_GATHERED &&
-        (!audioTransport_ || audioTransport_->getTransportState() == TRANSPORT_GATHERED) &&
-        (!videoTransport_ || videoTransport_->getTransportState() == TRANSPORT_GATHERED)) {
+        (audioTransport_.get() == NULL || audioTransport_->getTransportState() == TRANSPORT_GATHERED) &&
+        (videoTransport_.get() == NULL || videoTransport_->getTransportState() == TRANSPORT_GATHERED)) {
       if(!trickleEnabled_){
         temp = CONN_GATHERED;
         msg = this->getLocalSdp();
@@ -637,8 +639,8 @@ namespace erizo {
     }
 
     if (state == TRANSPORT_READY &&
-        (!audioTransport_ || audioTransport_->getTransportState() == TRANSPORT_READY) &&
-        (!videoTransport_ || videoTransport_->getTransportState() == TRANSPORT_READY) &&
+        (audioTransport_.get() == NULL || audioTransport_->getTransportState() == TRANSPORT_READY) &&
+        (videoTransport_.get() == NULL || videoTransport_->getTransportState() == TRANSPORT_READY) &&
         (remoteSdp_.audioDirection <= RECVONLY || this->getAudioSourceSSRC() != 0) &&
         (remoteSdp_.videoDirection <= RECVONLY || this->getVideoSourceSSRC() != 0)) {
         // WebRTCConnection will be ready only when all channels are ready,
@@ -651,7 +653,7 @@ namespace erizo {
       ELOG_DEBUG("Ready to send and receive media");
     }
 
-    if (audioTransport_ && videoTransport_) {
+    if (audioTransport_.get() && videoTransport_.get()) {
       ELOG_DEBUG("%s - Update Transport State end, %d - %d, %d - %d, %d - %d",
         transport->transport_name.c_str(),
         (int)audioTransport_->getTransportState(),
@@ -826,6 +828,10 @@ namespace erizo {
                   }
                   cond_.wait(lock);
               }
+
+              if (getCurrentState() != CONN_READY)
+                  return;
+
               if (sendQueue_.front().comp ==-1) {
                   sending_ = false;
                   ELOG_DEBUG("Finishing send Thread, packet -1");

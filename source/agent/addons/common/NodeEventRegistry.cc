@@ -19,6 +19,7 @@
  */
 
 #include "NodeEventRegistry.h"
+#include <list>
 
 using namespace v8;
 
@@ -56,9 +57,11 @@ NodeEventRegistry::NodeEventRegistry(Isolate* isolate, const Local<Function>& f)
 
 NodeEventRegistry::~NodeEventRegistry()
 {
+    std::lock_guard<std::mutex> lock(m_lock);
     m_store.Reset();
     if (m_uvHandle && !uv_is_closing(reinterpret_cast<uv_handle_t*>(m_uvHandle)))
         uv_close(reinterpret_cast<uv_handle_t*>(m_uvHandle), closeCallback);
+    m_uvHandle->data = nullptr;
 }
 
 void NodeEventRegistry::process(const Data& data)
@@ -93,16 +96,26 @@ void NodeEventRegistry::process(const Data& data)
     }
 }
 
-// main thread
 void NodeEventRegistry::process()
 {
-    while (!m_buffer.empty()) {
-        {
-            std::lock_guard<std::mutex> lock(m_lock);
-            m_data = m_buffer.front();
-            m_buffer.pop_front();
+    std::list<Data> datas;
+    {
+        std::lock_guard<std::mutex> lock(m_lock);
+        while (true) {
+            Data data;
+            {
+                if (!m_buffer.empty()) {
+                    data = m_buffer.front();
+                    m_buffer.pop_front();
+                } else {
+                    break;
+                }
+            }
+            datas.push_back(data);
         }
-        process(m_data);
+    }
+    for (std::list<Data>::iterator it = datas.begin(); it != datas.end(); ++it) {
+        process(*it);
     }
 }
 
@@ -137,12 +150,16 @@ bool NodeEventRegistry::notifyAsyncEventInEmergency(const std::string& event, co
 void NodeEventRegistry::closeCallback(uv_handle_t* handle)
 {
     free(handle);
+    handle = nullptr;
 }
 
 void NodeEventRegistry::callback(uv_async_t* handle)
 {
-    NodeEventRegistry* registry = reinterpret_cast<NodeEventRegistry*>(handle->data);
-    registry->process();
+    if (handle && uv_is_active(reinterpret_cast<uv_handle_t*>(handle)) && handle->data) {
+        NodeEventRegistry* registry = reinterpret_cast<NodeEventRegistry*>(handle->data);
+        if (registry)
+            registry->process();
+    }
 }
 
 NodeEventedObjectWrap::NodeEventedObjectWrap()

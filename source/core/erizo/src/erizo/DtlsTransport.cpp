@@ -96,16 +96,8 @@ DtlsTransport::DtlsTransport(MediaType med, const std::string &transport_name, b
 
 DtlsTransport::~DtlsTransport() {
   ELOG_DEBUG("DtlsTransport destructor");
-  running_ = false;
-  nice_->close();
-
-  ELOG_DEBUG("Join thread getNice");
-  getNice_Thread_.join();
-
-  if (dtlsRtp != NULL)
-    dtlsRtp->stop();
-  if (dtlsRtcp != NULL)
-    dtlsRtcp->stop();
+  if (this->getTransportState() != TRANSPORT_FINISHED)
+    this->close();
   ELOG_DEBUG("DTLSTransport destructor END");
 }
 
@@ -118,6 +110,25 @@ void DtlsTransport::start() {
 
 }
 
+void DtlsTransport::close() {
+  ELOG_DEBUG("Closing DTLSTransport");
+  running_ = false;
+  nice_->setNiceListener(NULL);
+  nice_->close();
+  this->updateTransportState(TRANSPORT_FINISHED);
+  getNice_Thread_.join();
+
+  if (dtlsRtp.get() != NULL)
+    dtlsRtp->stop();
+  if (dtlsRtcp.get() != NULL)
+    dtlsRtcp->stop();
+  if (rtpResender.get() != NULL)
+    rtpResender->cancel();
+  if (rtcpResender.get() != NULL)
+    rtcpResender->cancel();
+  ELOG_DEBUG("Finished closing DtlsTransport");
+}
+
 void DtlsTransport::onNiceData(unsigned int component_id, char* data, int len, NiceConnection* nice) {
   int length = len;
   SrtpChannel *srtp = srtp_.get();
@@ -127,12 +138,14 @@ void DtlsTransport::onNiceData(unsigned int component_id, char* data, int len, N
       if (rtpResender.get()!=NULL) {
         rtpResender->cancel();
       }
-      dtlsRtp->read(reinterpret_cast<unsigned char*>(data), len);
+      if (dtlsRtp.get())
+        dtlsRtp->read(reinterpret_cast<unsigned char*>(data), len);
     } else {
       if (rtcpResender.get()!=NULL) {
         rtcpResender->cancel();
       }
-      dtlsRtcp->read(reinterpret_cast<unsigned char*>(data), len);
+      if (dtlsRtcp.get())
+        dtlsRtcp->read(reinterpret_cast<unsigned char*>(data), len);
     }
     return;
   } else if (this->getTransportState() == TRANSPORT_READY) {
@@ -190,7 +203,7 @@ void DtlsTransport::write(char* data, int len) {
       if (!rtcp_mux_) {
         comp = 2;
       }
-      if (dtlsRtcp != NULL) {
+      if (dtlsRtcp.get() != NULL) {
         srtp = srtcp_.get();
       }
       if (srtp && nice_->checkIceState() == NICE_READY) {
@@ -243,7 +256,7 @@ void DtlsTransport::onHandshakeCompleted(DtlsSocketContext *ctx, std::string cli
     } else {
       updateTransportState(TRANSPORT_FAILED);
     }
-    if (dtlsRtcp == NULL) {
+    if (dtlsRtcp.get() == NULL) {
       readyRtcp = true;
     }
   }
@@ -265,7 +278,7 @@ void DtlsTransport::onHandshakeCompleted(DtlsSocketContext *ctx, std::string cli
 }
 
 std::string DtlsTransport::getMyFingerprint() {
-  return dtlsRtp->getFingerprint();
+  return dtlsRtp.get() ? dtlsRtp->getFingerprint() : "";
 }
 
 void DtlsTransport::updateIceState(IceState state, NiceConnection *conn) {
@@ -283,11 +296,11 @@ void DtlsTransport::updateIceState(IceState state, NiceConnection *conn) {
   }
   else if (state == NICE_READY) {
     ELOG_DEBUG("%s - Nice ready", transport_name.c_str());
-    if (dtlsRtp && (!dtlsRtp->started || rtpResender->getStatus() < 0)) {
+    if (dtlsRtp.get() != NULL && (!dtlsRtp->started || rtpResender->getStatus() < 0)) {
       ELOG_DEBUG("%s - DTLSRTP Start", transport_name.c_str());
       dtlsRtp->start();
     }
-    if (dtlsRtcp != NULL && (!dtlsRtcp->started || rtcpResender->getStatus() < 0)) {
+    if (dtlsRtcp.get() != NULL && (!dtlsRtcp->started || rtcpResender->getStatus() < 0)) {
       ELOG_DEBUG("%s - DTLSRTCP Start", transport_name.c_str());
       dtlsRtcp->start();
     }
