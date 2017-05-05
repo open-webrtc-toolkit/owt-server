@@ -76,11 +76,11 @@ MediaFileOut::MediaFileOut(const std::string& url, const AVOptions* audio, const
     setEventRegistry(handle);
 
     if (ELOG_IS_TRACE_ENABLED())
-        av_log_set_level(AV_LOG_TRACE);
-    else if (ELOG_IS_DEBUG_ENABLED())
         av_log_set_level(AV_LOG_DEBUG);
-    else
+    else if (ELOG_IS_DEBUG_ENABLED())
         av_log_set_level(AV_LOG_INFO);
+    else
+        av_log_set_level(AV_LOG_ERROR);
 
     m_context = avformat_alloc_context();
     if (!m_context) {

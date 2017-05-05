@@ -47,7 +47,7 @@ MsdkFrameDecoder::~MsdkFrameDecoder()
 {
     printfFuncEnter;
 
-    //flushOutput();
+    flushOutput();
 
     if (m_dec) {
         m_dec->Close();
@@ -73,7 +73,6 @@ MsdkFrameDecoder::~MsdkFrameDecoder()
     }
     m_bitstream.reset();
 
-    m_framePool2.reset();
     m_framePool.reset();
 
     m_timeStamps.clear();
@@ -90,6 +89,8 @@ void MsdkFrameDecoder::initDefaultParam(void)
 bool MsdkFrameDecoder::allocateFrames(void)
 {
     mfxStatus sts = MFX_ERR_NONE;
+
+    m_framePool.reset();
 
     m_videoParam->IOPattern  = MFX_IOPATTERN_OUT_VIDEO_MEMORY;
     m_videoParam->AsyncDepth = 1 + MAX_DECODED_FRAME_IN_RENDERING;
@@ -108,7 +109,6 @@ bool MsdkFrameDecoder::allocateFrames(void)
 
     ELOG_TRACE_T("mfx QueryIOSurf: Suggested(%d), Min(%d)", Request.NumFrameSuggested, Request.NumFrameMin);
 
-    m_framePool2 = m_framePool;
     m_framePool.reset(new MsdkFramePool(Request, m_allocator));
     return true;
 }
@@ -139,7 +139,7 @@ bool MsdkFrameDecoder::resetDecoder(void)
 {
     ELOG_TRACE_T("resetDecoder");
 
-    //flushOutput();
+    flushOutput();
 
     if (m_dec) {
         int previousWidth   = m_videoParam->mfx.FrameInfo.Width;
@@ -152,15 +152,12 @@ bool MsdkFrameDecoder::resetDecoder(void)
 
         if (previousCropW != m_videoParam->mfx.FrameInfo.CropW
                 || previousCropH != m_videoParam->mfx.FrameInfo.CropH) {
-            ELOG_DEBUG_T("Reset reason - resolution changed %dx%d(crop %dx%d) -> %dx%d(crop %dx%d)"
+            ELOG_INFO_T("Resolution changed %dx%d(crop %dx%d) -> %dx%d(crop %dx%d)"
                     , previousWidth, previousHeight
                     , previousCropW, previousCropH
                     , m_videoParam->mfx.FrameInfo.Width, m_videoParam->mfx.FrameInfo.Height
                     , m_videoParam->mfx.FrameInfo.CropW, m_videoParam->mfx.FrameInfo.CropH
                     );
-        }
-        else {
-            ELOG_DEBUG_T("Reset reason - unknown")
         }
 
 #if 0

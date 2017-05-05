@@ -47,6 +47,7 @@ public:
     bool init(FrameFormat format);
 
 protected:
+    bool filterFrame(const Frame& frame);
 
 private:
     uint32_t m_lastWidth;

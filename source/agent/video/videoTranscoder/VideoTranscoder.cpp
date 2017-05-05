@@ -107,8 +107,6 @@ bool VideoTranscoder::setInput(const std::string& inStreamID, const std::string&
     auto it = m_inputs.find(inStreamID);
     if (it == m_inputs.end() || !it->second) {
         int index = useAFreeInputIndex();
-        ELOG_DEBUG("addSource - assigned input index is %d", index);
-
         if (m_frameTranscoder->setInput(index, format, source)) {
             boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
             m_inputs[inStreamID] = index;

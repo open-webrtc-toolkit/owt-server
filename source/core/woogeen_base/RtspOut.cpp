@@ -68,9 +68,9 @@ RtspOut::RtspOut(const std::string& url, const AVOptions* audio, const AVOptions
     if (ELOG_IS_TRACE_ENABLED())
         av_log_set_level(AV_LOG_DEBUG);
     else if (ELOG_IS_DEBUG_ENABLED())
-        av_log_set_level(AV_LOG_DEBUG);
-    else
         av_log_set_level(AV_LOG_INFO);
+    else
+        av_log_set_level(AV_LOG_ERROR);
 
     avcodec_register_all();
 

@@ -272,8 +272,10 @@ void VCMFrameEncoder::onFrame(const Frame& frame)
 
         I420VideoFrame rawFrame;
         YamiVideoFrame yamiFrame = *(reinterpret_cast<YamiVideoFrame*>(frame.payload));
-        if (!yamiFrame.convertToI420VideoFrame(rawFrame))
+        if (!yamiFrame.convertToI420VideoFrame(rawFrame)) {
+            m_bufferManager->releaseBuffer(freeFrame);
             return;
+        }
 
         freeFrame->CopyFrame(rawFrame);
         break;
@@ -285,8 +287,11 @@ void VCMFrameEncoder::onFrame(const Frame& frame)
             return;
 
         MsdkFrameHolder *holder = (MsdkFrameHolder *)frame.payload;
-        if (!holder->frame->convertTo(*freeFrame))
+        if (!holder->frame->convertTo(*freeFrame)) {
+            ELOG_ERROR_T("MSDK frame convert to video frame failed");
+            m_bufferManager->releaseBuffer(freeFrame);
             return;
+        }
 
         freeFrame->set_timestamp(frame.timeStamp);
         break;
