@@ -90,6 +90,7 @@ function VMixer(rpcClient, clusterIP) {
         /*{StreamID : InternalIn}*/
         inputs = {},
         maxInputNum = 0,
+        primary = undefined,
 
         /*{ConnectionID: {video: StreamID | undefined,
                           connection: InternalOut}
@@ -429,9 +430,12 @@ function VMixer(rpcClient, clusterIP) {
     that.setPrimary = function (stream_id, callback) {
         //TODO: implement the layout processor in node.js layer.
         if (inputs[stream_id]) {
-            engine.setPrimary(stream_id);
+            if (primary !== stream_id) {
+                engine.setPrimary(stream_id);
+                notifyLayoutChange();
+                primary = stream_id;
+            }
             callback('callback', 'ok');
-            notifyLayoutChange();
         } else {
             callback('callback', 'error', 'Invalid input stream_id.');
         }
