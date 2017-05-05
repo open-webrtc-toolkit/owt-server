@@ -163,12 +163,15 @@ private:
 	GMainContext* context_;
 	boost::thread m_Thread_;
 	IceState iceState_;
-	boost::mutex queueMutex_, stateMutex_;
+	boost::mutex queueMutex_, stateMutex_, closeMutex_;
 	boost::condition_variable cond_;
 	unsigned int iceComponents_;
 	std::map <unsigned int, IceState> comp_state_list_;
 	bool running_;
-	std::string ufrag_, upass_;
+  std::string stunServer_;
+  int stunPort_, minPort_, maxPort_;
+	std::string ufrag_, upass_, username_, password_;
+  std::vector<std::string> ipAddresses_;
 	unsigned int generation_;
 };
 

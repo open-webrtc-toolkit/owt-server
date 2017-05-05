@@ -25,14 +25,18 @@ module.exports = function Connections () {
                     if (connections[connection_id].audioFrom === connectionId) {
                         log.debug('remove audio subscription:', connections[connection_id].audioFrom);
                         var dest = connections[connection_id].connection.receiver('audio');
-                        connections[connectionId].connection.removeDestination('audio', dest);
+                        if (dest) {
+                            connections[connectionId].connection.removeDestination('audio', dest);
+                        }
                         connections[connection_id].audioFrom = undefined;
                     }
 
                     if (connections[connection_id].videoFrom === connectionId) {
                         log.debug('remove video subscription:', connections[connection_id].videoFrom);
                         var dest = connections[connection_id].connection.receiver('video');
-                        connections[connectionId].connection.removeDestination('video', dest);
+                        if (dest) {
+                            connections[connectionId].connection.removeDestination('video', dest);
+                        }
                         connections[connection_id].videoFrom = undefined;
                     }
                 }
@@ -120,14 +124,22 @@ module.exports = function Connections () {
 
         if (audioFrom) {
             var dest = conn.connection.receiver('audio');
-            connections[audioFrom].connection.addDestination('audio', dest);
-            connections[connectionId].audioFrom = audioFrom;
+            if (dest) {
+                connections[audioFrom].connection.addDestination('audio', dest);
+                connections[connectionId].audioFrom = audioFrom;
+            } else {
+                return Promise.reject({type: 'failed', reason: 'Destination connection(audio) is not ready'});
+            }
         }
 
         if (videoFrom) {
             var dest = conn.connection.receiver('video');
-            connections[videoFrom].connection.addDestination('video', dest);
-            connections[connectionId].videoFrom = videoFrom;
+            if (dest) {
+                connections[videoFrom].connection.addDestination('video', dest);
+                connections[connectionId].videoFrom = videoFrom;
+            } else {
+                return Promise.reject({type: 'failed', reason: 'Destination connection(video) is not ready'});
+            }
         }
 
         return Promise.resolve('ok');

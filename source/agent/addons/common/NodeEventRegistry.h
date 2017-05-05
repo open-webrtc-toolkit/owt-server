@@ -44,16 +44,15 @@ protected:
     explicit NodeEventRegistry();
     explicit NodeEventRegistry(v8::Isolate*, const v8::Local<v8::Function>&);
 
-    typedef struct {
+    struct Data {
         std::string event, message;
-    } Data;
+    };
     v8::Persistent<v8::Object> m_store;
 
 private:
     uv_async_t* m_uvHandle;
     std::mutex m_lock;
     std::deque<Data> m_buffer;
-    Data m_data;
     void process();
     void process(const Data& data);
     static void closeCallback(uv_handle_t*);
