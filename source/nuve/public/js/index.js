@@ -405,6 +405,26 @@ function tableHandlerRoom(rooms) {
       return result;
     };
 
+  var viewModal = {create: false, delete: true};
+  $('#addview').editable({
+      validate: function(value) {
+        var reg = /^[a-zA-Z\-0-9]+$/;
+        var newLabel = value
+        if (!reg.test(newLabel)) {
+          return "Input not valid, only a-z0-9- allowed.";
+        } else if (viewModal && viewModal.data[newLabel]) {
+          return "Label already exist";
+        } else {
+          viewModal.create = true;
+          $("#myTab").append('<li><a href="#"><button class="close closeTab" type="button" >×</button><span>' + newLabel + '</span></a></li>');
+          $("#myTab li a span").last().click();
+        }
+      },
+      display: function(value, sourceData) {
+        $(this).text('Add New View');
+      }
+  });
+
   var mediaSettingFn = function() {
     if (this.parentNode.children[0].innerText === "") return;
     $('#mediaMixingModal').modal('toggle');
@@ -418,66 +438,35 @@ function tableHandlerRoom(rooms) {
 
     // Setup view tabs
     var views = (deepClone(room.views) || { "common": { mediaMixing: room.mediaMixing } });
+    viewModal.data = views;
+    var tabContent = {};
+
     $("#myTab").empty();
     for (var label in views) {
       $("#myTab").append('<li><a href="#"><button class="close closeTab" type="button" >×</button><span>' + label + '</span></a></li>');
     }
-    $("#myTab").append('<li class="bottom-align-text" id="addNew"><button class="btn btn-primary" type="button">+ New View</button></li>');
 
-    $("#addNew button").off("click");
-    $("#addNew button").click(function(e) {
-      $("#inputViewLabel").val("Enter your view label");
-      $('#newViewModal').modal('toggle');
-    });
-
-    $(".closeTab").off("click");
-    $(".closeTab").click(function () {
-      //there are multiple elements which has .closeTab icon so close the tab whose close icon is clicked
-      var deleteView = $(this).parent().find("span").html();
-      if (views[deleteView]) {
-        delete views[deleteView];
+    var generateViewTable = function(viewLabel) {
+      var videoSetting = null;
+      if (!views[viewLabel]) {
+        views[viewLabel] = {mediaMixing: {video: {
+          resolution: 'vga',
+          quality_level: 'standard',
+          bkColor: {r: 0, g: 0, b: 0},
+          avCoordinated: false,
+          multistreaming: 0,
+          maxInput: 16,
+          crop: false,
+          layout: {
+            base: 'fluid',
+            custom: []
+          }
+        }}};
       }
-      $(this).parent().parent().remove(); //remove li of tab
-      $("#myTab li a").first().click();
-    });
 
-    $("#viewLabelBtn").off("click");
-    $("#viewLabelBtn").click(function(e) {
-      var reg = /^[a-zA-Z\-0-9]+$/;
-      var newLabel = $("#inputViewLabel").val();
-      if (!reg.test(newLabel)) {
-        notify("error", "Input not valid, only a-z0-9- allowed.", newLabel);
-      } else if (views[newLabel]) {
-        notify("error", "Label already exist", newLabel);
-      } else {
-        views[newLabel] = { mediaMixing: {} };
-        $("#addNew").before('<li><a href="#"><button class="close closeTab" type="button" >×</button><span>' + newLabel + '</span></a></li>');
-      }
-    });
+      videoSetting = views[viewLabel].mediaMixing.video;
 
-    var videoSetting = null;
-    var renderTable = function(viewLabel) {
-      if (videoSetting && typeof videoSetting.bkColor === 'string')
-        videoSetting.bkColor = changeRGBA2RGB(videoSetting.bkColor);
-
-      var view = views[viewLabel];
-      videoSetting = (view.mediaMixing || {}).video || {
-        resolution: 'vga',
-        quality_level: 'Standard',
-        bkColor: 'black',
-        avCoordinated: false,
-        multistreaming: 0,
-        maxInput: 16,
-        crop: false,
-        layout: {
-          base: 'fluid',
-          custom: []
-        }
-      };
-
-      videoSetting.bkColor = changeObj2RGB(videoSetting.bkColor);
-
-      var view = Mustache.render('<tr>\
+      var viewHtml = Mustache.render('<tr>\
           <td rowspan="9">video</td>\
           <td colspan="2">resolution</td>\
           <td id="resolution" class="value-num-edit" data-value={{resolution}}></td>\
@@ -488,7 +477,7 @@ function tableHandlerRoom(rooms) {
         </tr>\
         <tr>\
           <td colspan="2">bkColor</td>\
-          <td id="bkColor" class="value-num-edit" data-value={{bkColor}}><input id="color" style="border: 0px; outline: 0px;"></td>\
+          <td id="bkColor" class="value-num-edit"><input id="color" style="border: 0px; outline: 0px;"></td>\
         </tr>\
         <tr>\
           <td colspan="2">maxInput</td>\
@@ -520,56 +509,127 @@ function tableHandlerRoom(rooms) {
           <td colspan="3" class="text-muted"><em>NOT SUPPORTED NOW</em></td>\
         </tr>', videoSetting);
 
-      $('#mediaMixingModal #inRoomTable tbody').html(view);
-      enabledMixing(videoSetting);
+        //videoSetting.bkColor = changeObj2RGB(videoSetting.bkColor);
 
-      $('#mediaMixingModal tbody td#bkColor input#color').val(changeRGBA(videoSetting.bkColor));
+      return {
+        data: videoSetting,
+        html: $(viewHtml)
+      };
+    };
+
+    var unsaveView = {};
+    var currentLabel = null;
+
+    var switchView = function(viewLabel) {
+      if (!tabContent[viewLabel]) {
+        tabContent[viewLabel] = generateViewTable(viewLabel);
+      }
+
+      var viewTable = tabContent[viewLabel];
+
+      $('#mediaMixingModal #inRoomTable tbody').empty().append(viewTable.html);
+      enabledMixing(viewTable.data);
+
+      var modalColor = (tabContent[viewLabel].updateColor || viewTable.data.bkColor);
+      modalColor = changeRGBA(changeObj2RGB(modalColor));
 
       $('#mediaMixingModal tbody td#bkColor input#color').ColorPickerSliders({
-        color: "rgb(255, 255, 255)",
+        color: modalColor,
         flat: false,
         sliders: false,
         swatches: false,
-        hsvpanel: true
+        hsvpanel: true,
+        onchange: function(container, color) {
+          if (tabContent[viewLabel]) {
+            tabContent[viewLabel].updateColor = {r: color.rgba.r, g: color.rgba.g, b: color.rgba.b};
+          }
+        }
       });
     };
 
-    var currentLabel = null;
     $("#myTab").off("click", "a");
     $("#myTab").on("click", "a", function (e) {
-        e.preventDefault();
-        $(this).tab('show');
-        currentLabel = $(this).find("span").html();
-        renderTable(currentLabel);
+      e.preventDefault();
+      $(this).children("span").first().click();
+    });
+    $("#myTab").on("click", "a span", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      $(this).parent().tab('show');
+      currentLabel = $(this).html();
+      switchView(currentLabel);
+    });
+    $("#myTab").on("click", "a button", function (e) {
+      e.preventDefault();
+      var dlabel = $(this).parent().find("span").html();
+      if ($("#myTab li a").length === 1) {
+        // won't delete
+        return;
+      }
+      //there are multiple elements which has .closeTab icon so close the tab whose close icon is clicked
+      if (views[dlabel]) {
+        delete views[dlabel];
+        delete tabContent[dlabel];
+        viewModal.delete = true;
+      }
+      $(this).parent().parent().remove(); //remove li of tab
     });
 
     // Chose the first
-    $("#myTab li a").first().click();
+    $("#myTab li a span").first().click();
 
     $('#mediaMixingModal .modal-footer').html('<button type="button" class="btn btn-primary" data-dismiss="modal"><i class="glyphicon glyphicon-ok"></i></button>\
         <button type="button" class="btn btn-default" data-dismiss="modal"><i class="glyphicon glyphicon-remove"></i></button>');
 
+    var parseValue = function(id, str) {
+      var val;
+      switch (id) {
+        case 'maxInput':
+          val = Number(str);
+          break;
+        case 'avCoordinated':
+        case 'multistreaming':
+        case 'crop':
+          val = (str === 'true')? 1 : 0;
+          break;
+        default:
+          val = str;
+      }
+      return val;
+    };
+
     // <audio not supported now>
     $('#mediaMixingModal .modal-footer button:first').click(function() {
-      var unsaved = $('#mediaMixingModal tbody .editable-unsaved');
-      if (unsaved.length === 0 && $('#mediaMixingModal tbody td#bkColor input#color').val() === lastColor) return;
-      unsaved.map(function(index, each) {
-        var id = $(each).attr('id');
-        var val = $(each).editable('getValue')[id];
-        setVal(videoSetting, id, val);
-      });
+      var content;
+      var needUpdate = false;
+      var viewLabel;
+      for (viewLabel in tabContent) {
+        var unsaved = tabContent[viewLabel].html.find('.editable-unsaved');
 
-      if ($('#mediaMixingModal tbody td#bkColor input#color').val() !== lastColor) {
-        lastColor = $('#mediaMixingModal tbody td#bkColor input#color').val();
+        if (unsaved.length > 0) {
+          needUpdate = true;
+          unsaved.map(function(index, each) {
+            var id = $(each).attr('id');
+            var text = $(each).html();
+            var val = parseValue(id, text);
+            setVal(views[viewLabel].mediaMixing.video, id, val);
+          });
+        }
+
+        if (tabContent[viewLabel].updateColor) {
+          needUpdate = true;
+          setVal(views[viewLabel].mediaMixing.video, 'bkColor', tabContent[viewLabel].updateColor);
+        }
+
+        if (!room.views || !room.views[viewLabel]) {
+          needUpdate = true;
+        }
       }
-      setVal(videoSetting, "bkColor", changeRGBA2RGB(lastColor));
 
-      room.views = views || {};
-      room.views[currentLabel] = room.views[currentLabel] || {};
-      room.views[currentLabel].mediaMixing = room.views[currentLabel].mediaMixing || {};
-      room.views[currentLabel].mediaMixing.video = videoSetting;
+      if (!needUpdate && !viewModal.create && !viewModal.delete) return;
+
       p.addClass('editable-unsaved');
-      p.editable('setValue', room.views);
+      p.editable('setValue', views);
       p.text('object');
     });
   };
