@@ -173,6 +173,8 @@ private:
 	std::string ufrag_, upass_, username_, password_;
   std::vector<std::string> ipAddresses_;
 	unsigned int generation_;
+  unsigned long candidateGatheringDoneHandler_, componentStateChangedHandler_,
+      newSelectedPairHandler_, newCandidateHandler_;
 };
 
 } /* namespace erizo */
