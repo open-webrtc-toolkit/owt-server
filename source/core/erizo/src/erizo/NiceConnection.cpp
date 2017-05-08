@@ -151,6 +151,16 @@ namespace erizo {
     cond_.notify_one();
     listener_ = NULL;
 
+    // Disconnect the signals
+    g_signal_handler_disconnect( G_OBJECT( agent_ ), candidateGatheringDoneHandler_);
+    g_signal_handler_disconnect( G_OBJECT( agent_ ), componentStateChangedHandler_);
+    g_signal_handler_disconnect( G_OBJECT( agent_ ), newSelectedPairHandler_);
+    g_signal_handler_disconnect( G_OBJECT( agent_ ), newCandidateHandler_);
+    candidateGatheringDoneHandler_ = 0;
+    componentStateChangedHandler_ = 0;
+    newSelectedPairHandler_ = 0;
+    newCandidateHandler_ = 0;
+
     ELOG_DEBUG("m_thread join %p", this);
     boost::system_time const timeout = boost::get_system_time() + boost::posix_time::milliseconds(5);
     if (!m_Thread_.timed_join(timeout)) {
@@ -211,14 +221,17 @@ namespace erizo {
     }
 
     // Connect the signals
-    g_signal_connect( G_OBJECT( agent_ ), "candidate-gathering-done",
-        G_CALLBACK( cb_candidate_gathering_done ), this);
-    g_signal_connect( G_OBJECT( agent_ ), "component-state-changed",
-        G_CALLBACK( cb_component_state_changed ), this);
-    g_signal_connect( G_OBJECT( agent_ ), "new-selected-pair",
-        G_CALLBACK( cb_new_selected_pair ), this);
-    g_signal_connect( G_OBJECT( agent_ ), "new-candidate",
-        G_CALLBACK( cb_new_candidate ), this);
+    candidateGatheringDoneHandler_ =
+        g_signal_connect(G_OBJECT(agent_), "candidate-gathering-done",
+                         G_CALLBACK(cb_candidate_gathering_done), this);
+    componentStateChangedHandler_ =
+        g_signal_connect(G_OBJECT(agent_), "component-state-changed",
+                         G_CALLBACK(cb_component_state_changed), this);
+    newSelectedPairHandler_ =
+        g_signal_connect(G_OBJECT(agent_), "new-selected-pair",
+                         G_CALLBACK(cb_new_selected_pair), this);
+    newCandidateHandler_ = g_signal_connect(G_OBJECT(agent_), "new-candidate",
+                                            G_CALLBACK(cb_new_candidate), this);
 
     // Create a new stream and start gathering candidates
     ELOG_DEBUG("Adding Stream... Number of components %d", iceComponents_);
