@@ -496,7 +496,8 @@ namespace erizo {
               << rtp.clockRate <<"\n";
           if (rtp.encodingName == "VP8" || rtp.encodingName == "H264" || rtp.encodingName == "H265" || rtp.encodingName == "VP9") {
             if (rtp.encodingName == "H264") {
-              sdp << "a=fmtp:"<< payloadType<<" profile-level-id=42e01f;packetization-mode=1\n";
+              sdp << "a=fmtp:"<< payloadType<<" level-asymmetry-allowed=1;profile-level-id=42e033;packetization-mode=1\n";
+              //sdp << "a=fmtp:"<< payloadType<<" level-asymmetry-allowed=1;profile-level-id=640029;packetization-mode=1\n";
             }
             sdp << "a=rtcp-fb:"<< payloadType<<" ccm fir\n";
             if (nackEnabled) {
@@ -505,15 +506,16 @@ namespace erizo {
             sdp << "a=rtcp-fb:"<< rtp.payloadType<<" goog-remb\n";
           }
 
-          for (std::map<std::string, std::string>::const_iterator theIt = rtp.formatParameters.begin();
-              theIt != rtp.formatParameters.end(); theIt++){
-            if (theIt->first.compare("none")){
-              sdp << "a=fmtp:" << payloadType << " " << theIt->first << "=" << theIt->second << endl;
-            }else{
-              sdp << "a=fmtp:" << payloadType << " " << theIt->second << endl;
+          if (rtp.encodingName != "H264") {
+            for (std::map<std::string, std::string>::const_iterator theIt = rtp.formatParameters.begin();
+                theIt != rtp.formatParameters.end(); theIt++){
+              if (theIt->first.compare("none")){
+                sdp << "a=fmtp:" << payloadType << " " << theIt->first << "=" << theIt->second << endl;
+              }else{
+                sdp << "a=fmtp:" << payloadType << " " << theIt->second << endl;
+              }
             }
           }
-
         }
       }
       if (videoSsrc == 0) {
