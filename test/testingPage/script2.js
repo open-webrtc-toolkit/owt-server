@@ -520,10 +520,20 @@ function pub(codec) {
 }
 
 function shareScreen(videoCodec, audioCodec) {
+  var extensionId = document.getElementById('extensionid').value;
+  if(!extensionId){
+    console.warn('Please input the extension ID!');
+    return
+  };
   Woogeen.LocalStream.create({
         audio:true,
         video:{
-          device: 'screen'
+          device: 'screen',
+          resolution:{
+            width: screen.width,
+            height: screen.height
+          },
+          extensionId: extensionId
         }
  }, function(err, stream) {
     if(err){

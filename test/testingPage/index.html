@@ -111,6 +111,12 @@
 		input[type='button']:hover, button:hover{
 			background-color: #AD3490;
 		}
+                .labelinput {
+                  background-color: #94B8E9;
+                }
+                #extensionid {
+                  width: 120px;
+                }
 
 		#recorder, #other, .rtmp{
 			background-color: #DED8D8;
@@ -273,7 +279,7 @@
 				<h2>Function</h2>
 				<h3>Local</h3>
 				<ul>
-					<li><a href="javascript:void(0)" onclick="fullScreen()">full screen</a></li>
+					<li><label class='labelinput'>ID: <input type='text' id='extensionid' placeholder='input extension id' /></label></li>
 					<li><a href="javascript:void(0)" onclick="shareScreen()">screen vp8</a></li>
 					<li><a href="javascript:void(0)" onclick="shareScreen('vp9','opus')">screen vp9-opus</a></li>
 					<li><a href="javascript:void(0)" onclick="shareScreen('h264', 'pcmu')">screen h264-pcmu</a></li>
