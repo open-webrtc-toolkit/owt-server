@@ -166,7 +166,10 @@ module.exports = function (rpcClient, selfRpcId) {
 
   var sendMsgTo = function(to, msg, data) {
     if (participants[to]) {
-      rpcReq.sendMsg(participants[to].portal, to, msg, data);
+      rpcReq.sendMsg(participants[to].portal, to, msg, data)
+        .catch(function(reason) {
+          log.debug('sendMsg fail:', reason);
+        });
     } else {
       log.warn('Can not send message to:', to);
     }
@@ -559,7 +562,10 @@ module.exports = function (rpcClient, selfRpcId) {
     for (var participant_id in participants) {
       if (participant_id === user) {
         deleted = participants[participant_id];
-        rpcReq.dropUser(participants[participant_id].portal, participant_id, session_id);
+        rpcReq.dropUser(participants[participant_id].portal, participant_id, session_id)
+          .catch(function(reason) {
+            log.debug('dropUser fail:', reason);
+          });
         this.leave(participant_id, function(){});
         break;
       }
