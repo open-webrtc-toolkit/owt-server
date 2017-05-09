@@ -146,7 +146,7 @@ function createSipConnectivity(room_id, sip_server, sip_user, sip_passwd) {
                         resolve();
                     });
             }, function(error_reson) {
-                log.error("Allocate sip Erizo fail: ", error_reson);
+                log.warn("Allocate sip Erizo fail: ", error_reson);
                 log.info("Try to allocate after", AllocateInterval / 1000, "s.");
                 reject(error_reson);
             });
