@@ -25,7 +25,9 @@
                       '$(CORE_HOME)/woogeen_base',
                       '/opt/intel/mediasdk/include',
                       '$(CORE_HOME)/../../third_party/webrtc/src',
-                      '$(CORE_HOME)/../../third_party/mediasdk/samples/sample_common/include' ],
+                      '$(CORE_HOME)/../../third_party/mediasdk/samples/sample_common/include',
+                      '$(CORE_HOME)/../../build/libdeps/build/include'
+    ],
     'libraries': [
       '-lboost_thread',
       '-llog4cxx',

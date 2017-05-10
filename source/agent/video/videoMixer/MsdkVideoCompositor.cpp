@@ -976,14 +976,14 @@ void MsdkVideoCompositor::applyAspectRatio()
     bool isChanged = false;
     int size = m_frameQueue.size();
 
-    if (size != m_extVppComp->NumInputStream) {
-        ELOG_ERROR("Num of frames(%d) is not equal w/ input streams(%d)", size, m_extVppComp->NumInputStream);
+    if (size != m_extVppComp->NumInputStream - 1) {
+        ELOG_ERROR("Num of frames(%d) is not equal w/ input streams(%d)", size, m_extVppComp->NumInputStream - 1);
         return;
     }
 
     for (int i = 0; i < size; i++) {
         boost::shared_ptr<MsdkFrame> frame = m_frameQueue[i];
-        mfxVPPCompInputStream *layoutRect = &m_vppLayout[i + 1];
+        mfxVPPCompInputStream *layoutRect = &m_vppLayout[i];
         mfxVPPCompInputStream *vppRect = &m_extVppComp->InputStream[i + 1];
 
         if (frame == m_defaultInputFrame)
