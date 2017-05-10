@@ -26,6 +26,10 @@
 #include <webrtc/system_wrappers/interface/clock.h>
 #include <webrtc/system_wrappers/interface/tick_util.h>
 
+extern "C" {
+#include <libavutil/log.h>
+}
+
 using namespace webrtc;
 
 namespace woogeen_base {
@@ -60,6 +64,13 @@ bool VCMFrameDecoder::init(FrameFormat format)
         m_decoder.reset(VP9Decoder::Create());
         break;
     case FRAME_FORMAT_H264:
+    if (ELOG_IS_TRACE_ENABLED())
+        av_log_set_level(AV_LOG_DEBUG);
+    else if (ELOG_IS_DEBUG_ENABLED())
+        av_log_set_level(AV_LOG_INFO);
+    else
+        av_log_set_level(AV_LOG_QUIET);
+
         codecType = VideoCodecType::kVideoCodecH264;
         m_decoder.reset(H264Decoder::Create());
         break;

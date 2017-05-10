@@ -16,7 +16,9 @@
     'include_dirs': [ '../../src',
                       '$(CORE_HOME)/common',
                       '$(CORE_HOME)/woogeen_base',
-                      '$(CORE_HOME)/../../third_party/webrtc/src'],
+                      '$(CORE_HOME)/../../third_party/webrtc/src',
+                      '$(CORE_HOME)/../../build/libdeps/build/include'
+    ],
     'libraries': [
       '-lboost_thread',
       '-llog4cxx',
