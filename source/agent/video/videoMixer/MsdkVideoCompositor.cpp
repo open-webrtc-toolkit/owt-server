@@ -556,32 +556,6 @@ void MsdkVideoCompositor::updateVppParam(void)
     m_extVppComp->Y                 = m_bgColor.y;
     m_extVppComp->U                 = m_bgColor.cb;
     m_extVppComp->V                 = m_bgColor.cr;
-
-    {
-        // workaroung 16.4.4 msdk's bug, swap r and b
-        int C = m_bgColor.y - 16;
-        int D = m_bgColor.cb - 128;
-        int E = m_bgColor.cr - 128;
-
-        int r = ( 298 * C           + 409 * E + 128) >> 8;
-        int g = ( 298 * C - 100 * D - 208 * E + 128) >> 8;
-        int b = ( 298 * C + 516 * D           + 128) >> 8;
-
-        int t;
-
-        t = r;
-        r = b;
-        b = t;
-
-        m_extVppComp->Y = ( (  66 * r + 129 * g +  25 * b + 128) >> 8) +  16;
-        m_extVppComp->U = ( ( -38 * r -  74 * g + 112 * b + 128) >> 8) + 128;
-        m_extVppComp->V = ( ( 112 * r -  94 * g -  18 * b + 128) >> 8) + 128;
-
-        ELOG_TRACE("swap r <-> b, yuv 0x%x, 0x%x, 0x%x -> 0x%x, 0x%x, 0x%x"
-                , m_bgColor.y, m_bgColor.cb, m_bgColor.cr
-                , m_extVppComp->Y, m_extVppComp->U, m_extVppComp->V
-                );
-    }
 }
 
 bool MsdkVideoCompositor::isValidVppParam(void)
@@ -626,17 +600,6 @@ void MsdkVideoCompositor::initVpp(void)
         return;
     }
 
-    m_defaultInputFrame.reset(new MsdkFrame(16, 16, m_allocator));
-    if (!m_defaultInputFrame->init()) {
-        ELOG_ERROR("Default input frame init failed");
-        m_defaultInputFrame.reset();
-        return;
-    }
-    m_defaultInputFrame->fillFrame(16, 128, 128);//black
-    //m_defaultInputFrame->fillFrame(235, 128, 128);//white
-    //m_defaultInputFrame->fillFrame(82, 90, 240);//red
-    //m_defaultInputFrame->fillFrame(144, 54, 34);//green
-    //m_defaultInputFrame->fillFrame(41, 240, 110);//blue
 }
 
 bool MsdkVideoCompositor::resetVpp()
@@ -705,7 +668,19 @@ bool MsdkVideoCompositor::resetVpp()
             m_vppReady = false;
             return false;
         }
-        m_defaultRootFrame->fillFrame(16, 128, 128);//black
+        m_defaultRootFrame->fillFrame(m_bgColor.y, m_bgColor.cb, m_bgColor.cr);
+    }
+
+    if (!m_defaultInputFrame) {
+        m_defaultInputFrame.reset(new MsdkFrame(16, 16, m_allocator));
+        if (!m_defaultInputFrame->init()) {
+            ELOG_ERROR("Default input frame init failed");
+            m_defaultInputFrame.reset();
+
+            m_vppReady = false;
+            return false;
+        }
+        m_defaultInputFrame->fillFrame(m_bgColor.y, m_bgColor.cb, m_bgColor.cr);
     }
 
     m_vppReady = true;
@@ -850,14 +825,26 @@ bool MsdkVideoCompositor::commitLayout()
         fillVppStream(&m_vppLayout[i++], m_rootSize, l.region);
     }
 
-    i = 0;
-    m_compInputStreams.resize(m_vppLayout.size());
-    for (auto& l : m_vppLayout) {
-        m_compInputStreams[i++] = l.second;
+    if (m_vppLayout.size() > 0) {
+        m_compInputStreams.resize(m_vppLayout.size() + 1);
+
+        Region rootRegion;
+        rootRegion.left = 0.0;
+        rootRegion.top = 0.0;
+        rootRegion.relativeSize = 1.0;
+        fillVppStream(&m_compInputStreams[0], m_rootSize, rootRegion);
+
+        i = 1;
+        for (auto& l : m_vppLayout) {
+            m_compInputStreams[i++] = l.second;
+        }
+        m_extVppComp->NumInputStream = m_compInputStreams.size();
+        m_extVppComp->InputStream = &m_compInputStreams.front();
+        m_videoParam->NumExtParam = m_extVppComp->NumInputStream > 0 ? 1 : 0;
+    } else {
+        m_compInputStreams.clear();
+        m_videoParam->NumExtParam = 0;
     }
-    m_extVppComp->NumInputStream = m_compInputStreams.size();
-    m_extVppComp->InputStream = &m_compInputStreams.front();
-    m_videoParam->NumExtParam = m_extVppComp->NumInputStream > 0 ? 1 : 0;
 
     updateVppParam();
     resetVpp();
@@ -924,6 +911,18 @@ boost::shared_ptr<MsdkFrame> MsdkVideoCompositor::customLayout()
 
     applyAspectRatio();
 
+    while (true) {
+        sts = m_vpp->RunFrameVPPAsync(m_defaultRootFrame->getSurface(), dst->getSurface(), NULL, &syncP);
+        if (sts == MFX_WRN_DEVICE_BUSY) {
+            ELOG_TRACE("Device busy, retry!");
+
+            usleep(1000); //1ms
+            continue;
+        }
+
+        break;
+    }
+
     int i = 0;
     for (auto& l : m_currentLayout) {
         boost::shared_ptr<MsdkFrame> src = m_frameQueue[i++];
@@ -984,8 +983,8 @@ void MsdkVideoCompositor::applyAspectRatio()
 
     for (int i = 0; i < size; i++) {
         boost::shared_ptr<MsdkFrame> frame = m_frameQueue[i];
-        mfxVPPCompInputStream *layoutRect = &m_vppLayout[i];
-        mfxVPPCompInputStream *vppRect = &m_extVppComp->InputStream[i];
+        mfxVPPCompInputStream *layoutRect = &m_vppLayout[i + 1];
+        mfxVPPCompInputStream *vppRect = &m_extVppComp->InputStream[i + 1];
 
         if (frame == m_defaultInputFrame)
             continue;
