@@ -1497,8 +1497,8 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
 
     that.updateStream = function (stream_id, track, status) {
         log.debug('updateStream, stream_id:', stream_id, 'track', track, 'status:', status);
-        if (track === 'video' && (status === 'active' || status === 'inactive')) {
-            if (streams[stream_id] && config.enableMixing) {
+        if ((track === 'video' || track === 'av') && (status === 'active' || status === 'inactive')) {
+            if (streams[stream_id] && streams[stream_id].video && config.enableMixing) {
                 for (var view in mix_views) {
                     var video_mixer = mix_views[view].video.mixer;
                     if (streams[stream_id].video && video_mixer && terminals[video_mixer]) {
