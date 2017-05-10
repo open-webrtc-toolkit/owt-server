@@ -434,6 +434,28 @@ function remotedisableaudio() {
   }
 }
 
+function mute_unmute(operation, track){
+   track = track || undefined;
+   var remoteStreams = conference.remoteStreams;
+   for(var id in remoteStreams){
+     var ele = remoteStreams[id];
+     if(operation === 'mute'){
+       conference.mute(ele, track, function(){
+         console.log('mute success');
+       }, function(err){
+         console.log('mute failed: ', err);
+       })
+     }else{
+       conference.unmute(ele, track, function(){
+         console.log('unmute success');
+       }, function(err){
+         console.log('unmute failed: ', err);
+       })
+
+     }
+   }
+}
+
 function sendd() {
   if (isValid(conference)) {
     console.log("clientid is ", ClientId);
@@ -907,13 +929,14 @@ function subscribe(stream) {
 }
 // var localStream;
 
-function createToken(room, userName, role, callback) {
+function createToken(room, userName, role, preference, callback) {
   var req = new XMLHttpRequest();
   var url = '/createToken/';
   var body = {
     room: room,
     username: userName,
-    role: role
+    role: role,
+    preference: preference
   };
   req.onreadystatechange = function() {
     if (req.readyState === 4) {
@@ -1568,6 +1591,9 @@ window.onload = function() {
   var audio = getParameterByName("audio") || 'all';
   var unmix = getParameterByName("unmix") || false;
   var onlyJoin = getParameterByName("onlyJoin") || false;
+  var isp = getParameterByName('isp') || 'isp';
+  var region = getParameterByName('region') || 'region';
+
 if(!maxVideoBW){
   switch (resolution){
     case 'sif':
@@ -1658,7 +1684,11 @@ if(!maxVideoBW){
       subscribe(stream);
     }
   });
-  createToken(myRoom, 'user', myrole, function(response) {
+  var preference = {
+    isp: isp,
+    region: region
+  }
+  createToken(myRoom, 'user', myrole, preference, function(response) {
     var token = response;
     conference.join(token, function(resp) {
       mixStreamID = Object.keys(conference.remoteStreams)[0]
