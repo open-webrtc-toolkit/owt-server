@@ -38,6 +38,16 @@ app.set('view options', {
     layout: false
 });
 
+app.use(function(req, res, next) {
+    try {
+        decodeURIComponent(req.path);
+        next();
+    } catch (e) {
+        log.warn('URI Error:', req.path);
+        res.status(404).send('URI Error');
+    }
+});
+
 app.use(function (req, res, next) {
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS, DELETE');
