@@ -1309,29 +1309,22 @@ describe('portal.setVideoBitrate/portal.mediaOnOff: Participants manipulate stre
     });
 
     it('Should succeed if rpcReq.setVideoBitrate/rpcReq.mediaOnOff succeeds.', function() {
-      // mockrpcReq.mix = sinon.stub();
-      // mockrpcReq.unmix = sinon.stub();
       mockrpcReq.setVideoBitrate = sinon.stub();
       mockrpcReq.mediaOnOff = sinon.stub();
       mockrpcReq.updateStream = sinon.stub();
 
-      // mockrpcReq.mix.resolves('ok');
-      // mockrpcReq.unmix.resolves('ok');
       mockrpcReq.setVideoBitrate.resolves('ok');
+      mockrpcReq.updateStream.resolves('ok');
       mockrpcReq.mediaOnOff.resolves('ok');
 
       var setVideoBitrate = portal.setVideoBitrate(testParticipantId, testStreamId, 500),
           mediaOnOff = portal.mediaOnOff(testParticipantId, testStreamId, 'video', 'in', 'off');
 
       return Promise.all([
-        // expect(mix).to.become('ok'),
-        // expect(unmix).to.become('ok'),
         expect(setVideoBitrate).to.become('ok'),
         expect(mediaOnOff).to.become('ok')
         ])
         .then(function() {
-          // expect(mockrpcReq.mix.getCall(0).args).to.deep.equal(['rpcIdOfController', testParticipantId, testStreamId, ['mixStream1', 'mixStream2']]);
-          // expect(mockrpcReq.unmix.getCall(0).args).to.deep.equal(['rpcIdOfController', testParticipantId, testStreamId, ['mixStream1', 'mixStream2']]);
           expect(mockrpcReq.setVideoBitrate.getCall(0).args).to.deep.equal(['rpcIdOfAccessNode', testStreamId, 500]);
           expect(mockrpcReq.mediaOnOff.getCall(0).args).to.deep.equal(['rpcIdOfAccessNode', testStreamId, 'video', 'in', 'off']);
         });
@@ -1342,8 +1335,7 @@ describe('portal.setVideoBitrate/portal.mediaOnOff: Participants manipulate stre
       mockrpcReq.mediaOnOff = sinon.stub();
       mockrpcReq.updateStream = sinon.stub();
 
-      // mockrpcReq.mix.rejects('timeout or error');
-      // mockrpcReq.unmix.rejects('timeout or error');
+      mockrpcReq.updateStream.rejects('timeout or error');
       mockrpcReq.setVideoBitrate.rejects('timeout or error');
       mockrpcReq.mediaOnOff.rejects('timeout or error');
 
