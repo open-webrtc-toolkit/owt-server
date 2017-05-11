@@ -379,19 +379,19 @@ void AcmmFrameMixer::VADPositiveParticipants(const int32_t id, const Participant
     const ParticipantStatistics* active = NULL;
     const ParticipantStatistics* p = participantStatistics;
     for(uint32_t i = 0; i < size; i++, p++) {
-        ELOG_TRACE("%d, participant(%d), level(%u)", i, p->participant, p->level);
+        ELOG_TRACE("%d, vad participant(%d), level(%u)", i, p->participant, p->level);
         if (!active || p->level > active->level) {
             active = p;
         }
     }
 
     if (m_mostActiveChannel != active->participant) {
-        ELOG_TRACE("active participant, %d -> %d", m_mostActiveChannel, active->participant);
+        ELOG_TRACE("active vad participant, %d -> %d", m_mostActiveChannel, active->participant);
 
         m_mostActiveChannel = active->participant;
         for (auto it = m_ids.begin(); it != m_ids.end(); ++it) {
             if (it->second == m_mostActiveChannel) {
-                ELOG_DEBUG("mostActiveParticipant now is :%s", it->first.c_str());
+                ELOG_DEBUG("vad mostActiveParticipant now is :%s", it->first.c_str());
                 m_asyncHandle->notifyAsyncEvent("vad", it->first.c_str());
                 break;
             }

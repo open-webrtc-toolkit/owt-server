@@ -103,15 +103,16 @@ void AcmmParticipant::unsetOutput()
 
 MixerParticipant::AudioFrameInfo AcmmParticipant::GetAudioFrameWithMuted(int32_t id, AudioFrame* audio_frame)
 {
-    ELOG_TRACE_T("GetAudioFrame, id(%d), sample_rate(%d), channels(%d), samples_per_channel(%d)",
-            m_id, audio_frame->sample_rate_hz_, audio_frame->num_channels_, audio_frame->samples_per_channel_);
-
     if (!m_input || !m_input->getAudioFrame(audio_frame)) {
         ELOG_DEBUG_T("Error GetAudioFrame");
         return MixerParticipant::AudioFrameInfo::kError;
     }
 
     audio_frame->id_ = m_id;
+
+    ELOG_TRACE_T("GetAudioFrame, id(%d), sample_rate(%d), channels(%d), samples_per_channel(%d)",
+            m_id, audio_frame->sample_rate_hz_, audio_frame->num_channels_, audio_frame->samples_per_channel_);
+
     return MixerParticipant::AudioFrameInfo::kNormal;
 }
 
