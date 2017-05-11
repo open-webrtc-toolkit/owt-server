@@ -276,7 +276,9 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
         safeCall(callback, 'error', error);
       }).then(function(){
         for(let message of pending_messages){
-          notify(message.event, message.data);
+          if (message && message.event) {
+            that.notify(message.event, message.data);
+          }
         }
         pending_messages=[];
       });

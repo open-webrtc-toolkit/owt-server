@@ -41,6 +41,7 @@ app.set('view options', {
 app.use(function(error, req, res, next) {
     if (error instanceof SyntaxError) {
         log.warn('SyntaxError:', error.message);
+        res.status(404).send('JSON body SyntaxError');
     } else {
         try {
             decodeURIComponent(req.path);

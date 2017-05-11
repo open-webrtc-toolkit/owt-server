@@ -13,17 +13,26 @@ var testStream = '573eab78111478bb3526421a-common';
 var clientInfo = {sdk:{version: '3.3', type: 'JavaScript'}, runtime: {name: 'Chrome', version: '53.0.0.0'}, os:{name:'Linux (Ubuntu)', version:'14.04'}};
 // JavaScript SDK 3.3 does not support reconnection. So use iOS UA info for reconnection tests.
 var reconnectionClientInfo = {sdk:{version: '3.3', type: 'Objective-C'}, runtime: {name: 'WebRTC', version: '54'}, os:{name:'iPhone OS', version:'10.2'}};
-var insecureSocketIOServerConfig = {port: 3001, ssl: false, reconnectionTicketLifetime: 100, reconnectionTimeout: 300};
+
+var testServerPort = 3100;
+var insecureSocketIOServerConfig = () => {
+  return {
+    port: testServerPort,
+    ssl: false,
+    reconnectionTicketLifetime: 100,
+    reconnectionTimeout: 300
+  };
+};
 
 describe('Clients connect to socket.io server.', function() {
   it('Connecting to an insecure socket.io server should succeed.', function(done) {
-    var server = socketIOServer({port: 3005, ssl: false, reconnectionTicketLifetime: 100, reconnectionTimeout: 300});
+    var server = socketIOServer({port: 3001, ssl: false, reconnectionTicketLifetime: 100, reconnectionTimeout: 300});
 
     return server.start()
       .then(function(result) {
         expect(result).to.equal('ok');
 
-        var client = sioClient.connect('http://localhost:3005', {reconnect: false, secure: false, 'force new connection': true});
+        var client = sioClient.connect('http://localhost:3001', {reconnect: false, secure: false, 'force new connection': true});
         client.on('connect', function() {
           expect(true).to.be.true;
           server.stop();
@@ -33,7 +42,7 @@ describe('Clients connect to socket.io server.', function() {
   });
 
   it('Connecting to a secured socket.io server should succeed.', function(done) {
-    var server = socketIOServer({port: 3004, ssl: true, keystorePath: './cert/certificate.pfx'});
+    var server = socketIOServer({port: 3005, ssl: true, keystorePath: './cert/certificate.pfx'});
 
     return server.start()
       .then(function(result) {
@@ -41,7 +50,7 @@ describe('Clients connect to socket.io server.', function() {
 
         var https = require('https');
         https.globalAgent.options.rejectUnauthorized = false;
-        var client = sioClient.connect('https://localhost:3004', {reconnect: false, secure: true, 'force new connection': true, agent: https.globalAgent});
+        var client = sioClient.connect('https://localhost:3005', {reconnect: false, secure: true, 'force new connection': true, agent: https.globalAgent});
         client.on('connect', function() {
           expect(true).to.be.true;
           server.stop();
@@ -57,7 +66,8 @@ describe('Clients connect to socket.io server.', function() {
 describe('Logining and Relogining.', function() {
   var mockPortal = sinon.createStubInstance(portal);
   var mockServiceObserver = {onJoin: sinon.spy(), onLeave: sinon.spy()};
-  var server = socketIOServer(insecureSocketIOServerConfig, mockPortal, mockServiceObserver);
+  var server = socketIOServer(insecureSocketIOServerConfig(), mockPortal, mockServiceObserver);
+  var serverUrl = 'http://localhost:' + (testServerPort++);
   var client;
 
   before('Start the server.', function(done) {
@@ -83,7 +93,7 @@ describe('Logining and Relogining.', function() {
 
   describe('on: token (deprecated)', function() {
     beforeEach('Clients connect to the server.', function(done) {
-      client = sioClient.connect('http://localhost:3001', {reconnect: false, secure: false, 'force new connection': true});
+      client = sioClient.connect(serverUrl, {reconnect: false, secure: false, 'force new connection': true});
       done();
     });
 
@@ -141,7 +151,7 @@ describe('Logining and Relogining.', function() {
   describe('on: login', function(){
     "use strict";
     beforeEach('Clients connect to the server.', function(done) {
-      client = sioClient.connect('http://localhost:3001', {reconnect: false, secure: false, 'force new connection': true});
+      client = sioClient.connect(serverUrl, {reconnect: false, secure: false, 'force new connection': true});
       done();
     });
 
@@ -288,7 +298,7 @@ describe('Logining and Relogining.', function() {
     'use strict';
     var reconnection_client;
     beforeEach('Clients connect to the server.', function(done) {
-      reconnection_client = sioClient.connect('http://localhost:3001', {reconnect: true, secure: false, 'force new connection': true});
+      reconnection_client = sioClient.connect(serverUrl, {reconnect: true, secure: false, 'force new connection': true});
       done();
     });
 
@@ -318,7 +328,7 @@ describe('Logining and Relogining.', function() {
       };
       const reconnection=function(){
         return new Promise(function(resolve){
-          reconnection_client.connect('http://localhost:3001', {reconnect: false, secure: false, 'force new connection': false});
+          reconnection_client.connect(serverUrl, {reconnect: false, secure: false, 'force new connection': false});
           resolve();
         });
       };
@@ -353,7 +363,7 @@ describe('Logining and Relogining.', function() {
       };
       const reconnection=function(){
         return new Promise(function(resolve){
-          reconnection_client.connect('http://localhost:3001', {reconnect: false, secure: false, 'force new connection': false});
+          reconnection_client.connect(serverUrl, {reconnect: false, secure: false, 'force new connection': false});
           resolve();
         });
       };
@@ -389,7 +399,7 @@ describe('Logining and Relogining.', function() {
       };
       const reconnection=function(){
         return new Promise(function(resolve){
-          reconnection_client.connect('http://localhost:3001', {reconnect: false, secure: false, 'force new connection': false});
+          reconnection_client.connect(serverUrl, {reconnect: false, secure: false, 'force new connection': false});
           resolve();
         });
       };
@@ -411,7 +421,7 @@ describe('Logining and Relogining.', function() {
 
     it('Dropped user cannot be reconnected.', function(done){
       'use strict';
-      let client = sioClient.connect('http://localhost:3001', {reconnection: true, secure: false, 'force new connection': false});
+      let client = sioClient.connect(serverUrl, {reconnection: true, secure: false, 'force new connection': false});
       let ticket;
 
       client.on('connect', function() {
@@ -434,7 +444,7 @@ describe('Logining and Relogining.', function() {
         });
       });
       client.on('disconnect', function(){
-        client = sioClient.connect('http://localhost:3001', {reconnection: true, secure: false, 'force new connection': false});
+        client = sioClient.connect(serverUrl, {reconnection: true, secure: false, 'force new connection': false});
         client.emit('relogin', ticket, function(status, resp){
           expect(status).to.equal('error');
           done();
@@ -445,7 +455,7 @@ describe('Logining and Relogining.', function() {
     // Socket.IO server may detect network error slower than client does.
     it('Reconnect before original socket is disconnected is allowed.', function(done){
       'use strict';
-      let client1 = sioClient.connect('http://localhost:3001', {reconnection: true, secure: false, 'force new connection': false});
+      let client1 = sioClient.connect(serverUrl, {reconnection: true, secure: false, 'force new connection': false});
       client1.on('connect', function() {
         mockPortal.join = sinon.stub();
         const join_result = {user: 'Jack',
@@ -457,7 +467,7 @@ describe('Logining and Relogining.', function() {
 
         client1.emit('login', someValidLoginInfo, function(status, resp) {
           expect(status).to.equal('success');
-          let client2 = sioClient.connect('http://localhost:3001', {reconnection: true, secure: false, 'force new connection': false});
+          let client2 = sioClient.connect(serverUrl, {reconnection: true, secure: false, 'force new connection': false});
           client2.emit('relogin', resp.reconnectionTicket, function(status, resp){
             expect(status).to.equal('success');
             done();
@@ -478,7 +488,7 @@ describe('Logining and Relogining.', function() {
       mockPortal.onConnectionSignalling = sinon.stub();
       mockPortal.onConnectionSignalling.resolves('ok');
 
-      let client1 = sioClient.connect('http://localhost:3001', {reconnection: true, secure: false, 'force new connection': false});
+      let client1 = sioClient.connect(serverUrl, {reconnection: true, secure: false, 'force new connection': false});
       client1.on('connect', function() {
         mockPortal.join = sinon.stub();
         const join_result = {user: 'Jack',
@@ -494,7 +504,7 @@ describe('Logining and Relogining.', function() {
           client1.emit('publish', options, undefined, function(status, id) {
             console.log('publish done');
             expect(status).to.equal('initializing');
-            let client2 = sioClient.connect('http://localhost:3001', {reconnection: true, secure: false, 'force new connection': false});
+            let client2 = sioClient.connect(serverUrl, {reconnection: true, secure: false, 'force new connection': false});
             client2.on('signaling_message_erizo', function(){
               done();
             });
@@ -514,7 +524,7 @@ describe('Logining and Relogining.', function() {
     const someValidLoginInfo = {token: (new Buffer(JSON.stringify('someInvalidToken'))).toString('base64'), userAgent: reconnectionClientInfo};
 
     beforeEach('Clients connect to the server.', function(done) {
-      client = sioClient.connect('http://localhost:3001', {reconnect: false, secure: false, 'force new connection': true});
+      client = sioClient.connect(serverUrl, {reconnect: false, secure: false, 'force new connection': true});
       done();
     });
 
@@ -548,7 +558,7 @@ describe('Logining and Relogining.', function() {
   describe('on: refreshReconnectionTicket', function(){
     'use strict';
     beforeEach('Clients connect to the server.', function(done) {
-      client = sioClient.connect('http://localhost:3001', {reconnect: false, secure: false, 'force new connection': true});
+      client = sioClient.connect(serverUrl, {reconnect: false, secure: false, 'force new connection': true});
       done();
     });
 
@@ -583,7 +593,7 @@ describe('Logining and Relogining.', function() {
   describe('on: disconnect', function() {
     'use strict';
     beforeEach('Clients connect to the server.', function(done) {
-      client = sioClient.connect('http://localhost:3001', {reconnect: false, secure: false, 'force new connection': true});
+      client = sioClient.connect(serverUrl, {reconnect: false, secure: false, 'force new connection': true});
       done();
     });
 
@@ -643,7 +653,8 @@ describe('Logining and Relogining.', function() {
 describe('Notifying events to clients.', function() {
   var mockPortal = sinon.createStubInstance(portal);
   var mockServiceObserver = {onJoin: sinon.spy(), onLeave: sinon.spy()};
-  var server = socketIOServer(insecureSocketIOServerConfig, mockPortal, mockServiceObserver);
+  var server = socketIOServer(insecureSocketIOServerConfig(), mockPortal, mockServiceObserver);
+  var serverUrl = 'http://localhost:' + (testServerPort++);
   var client;
 
   before('Start the server.', function(done) {
@@ -665,7 +676,7 @@ describe('Notifying events to clients.', function() {
   });
 
   it('Notifying the joined clients should succeed.', function(done) {
-    var client = sioClient.connect('http://localhost:3001', {reconnect: false, secure: false, 'force new connection': true});
+    var client = sioClient.connect(serverUrl, {reconnect: false, secure: false, 'force new connection': true});
 
     client.on('add_stream', function(data) {
       expect(data).to.deep.equal({audio: true, video: {resolution: 'vga', device: 'camera'}});
@@ -683,6 +694,7 @@ describe('Notifying events to clients.', function() {
       mockPortal.join.resolves(join_result);
 
       client.emit('token', 'someValidToken', function(status, resp) {
+        mockPortal.join = null;
         expect(status).to.equal('success');
         return expect(server.notify(client.id, 'add_stream', {audio: true, video: {resolution: 'vga', device: 'camera'}})).to.become('ok');
       });
@@ -696,7 +708,8 @@ describe('Drop users from sessions.', function() {
   mockPortal.leave.resolves('ok');
 
   var mockServiceObserver = {onJoin: sinon.spy(), onLeave: sinon.spy()};
-  var server = socketIOServer(insecureSocketIOServerConfig, mockPortal, mockServiceObserver);
+  var server = socketIOServer(insecureSocketIOServerConfig(), mockPortal, mockServiceObserver);
+  var serverUrl = 'http://localhost:' + (testServerPort++);
   var client;
 
   before('Start the server.', function(done) {
@@ -716,7 +729,7 @@ describe('Drop users from sessions.', function() {
   });
 
   it('Dropping users from rooms they are not in should fail.', function(done) {
-    var client = sioClient.connect('http://localhost:3001', {reconnect: false, secure: false, 'force new connection': true});
+    var client = sioClient.connect(serverUrl, {reconnect: false, secure: false, 'force new connection': true});
 
     client.on('connect', function() {
       mockPortal.join = sinon.stub();
@@ -737,7 +750,7 @@ describe('Drop users from sessions.', function() {
   });
 
   it('Dropping users from rooms they are in should succeed.', function(done) {
-    var client = sioClient.connect('http://localhost:3001', {reconnect: false, secure: false, 'force new connection': true});
+    var client = sioClient.connect(serverUrl, {reconnect: false, secure: false, 'force new connection': true});
 
     client.on('connect', function() {
       mockPortal.join = sinon.stub();
@@ -762,7 +775,7 @@ describe('Drop users from sessions.', function() {
   });
 
   it('Dropping users from all rooms they are in should succeed.', function(done) {
-    var client = sioClient.connect('http://localhost:3001', {reconnect: false, secure: false, 'force new connection': true});
+    var client = sioClient.connect(serverUrl, {reconnect: false, secure: false, 'force new connection': true});
 
     client.on('connect', function() {
       mockPortal.join = sinon.stub();
@@ -787,7 +800,7 @@ describe('Drop users from sessions.', function() {
   });
 
   it('Dropping all users should cause all users leaving.', function(done) {
-    var client = sioClient.connect('http://localhost:3001', {reconnect: false, secure: false, 'force new connection': true});
+    var client = sioClient.connect(serverUrl, {reconnect: false, secure: false, 'force new connection': true});
 
     client.on('connect', function() {
       mockPortal.join = sinon.stub();
@@ -815,7 +828,8 @@ describe('Drop users from sessions.', function() {
 describe('Responding to clients.', function() {
   var mockPortal = sinon.createStubInstance(portal);
   var mockServiceObserver = {onJoin: sinon.spy(), onLeave: sinon.spy()};
-  var server = socketIOServer(insecureSocketIOServerConfig, mockPortal, mockServiceObserver);
+  var server = socketIOServer(insecureSocketIOServerConfig(), mockPortal, mockServiceObserver);
+  var serverUrl = 'http://localhost:' + (testServerPort++);
   var client;
 
   before('Start the server.', function(done) {
@@ -833,7 +847,7 @@ describe('Responding to clients.', function() {
   });
 
   beforeEach('Clients connect to the server.', function(done) {
-    client = sioClient.connect('http://localhost:3001', {reconnect: false, secure: false, 'force new connection': true});
+    client = sioClient.connect(serverUrl, {reconnect: false, secure: false, 'force new connection': true});
     done();
   });
 
