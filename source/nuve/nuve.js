@@ -38,13 +38,17 @@ app.set('view options', {
     layout: false
 });
 
-app.use(function(req, res, next) {
-    try {
-        decodeURIComponent(req.path);
-        next();
-    } catch (e) {
-        log.warn('URI Error:', req.path);
-        res.status(404).send('URI Error');
+app.use(function(error, req, res, next) {
+    if (error instanceof SyntaxError) {
+        log.warn('SyntaxError:', error.message);
+    } else {
+        try {
+            decodeURIComponent(req.path);
+            next();
+        } catch (e) {
+            log.warn('URI Error:', req.path);
+            res.status(404).send('URI Error');
+        }
     }
 });
 
