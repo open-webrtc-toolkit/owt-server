@@ -810,7 +810,9 @@ void RtspIn::receiveLoop()
                     m_avPacket.pts += m_audioEncTimestamp - m_audioFifoTimeBegin;
                     ELOG_TRACE_T("Audio transcoder offset %ld", m_audioEncTimestamp - m_audioFifoTimeBegin);
                 }
-                filterSEI(&m_avPacket);
+                // filtering SEI will cause SW h.264 decoder failing to decode, though it partially reslove
+                // issues on decoding forward stream in Chrome58
+                // filterSEI(&m_avPacket);
                 if (m_videoJitterBuffer)
                     m_videoJitterBuffer->insert(m_avPacket);
                 else
