@@ -839,7 +839,7 @@ var Portal = function(spec, rpcReq) {
 
     return getUserPermission(participantId)
       .then((userPermission) => {
-        if (onOff === 'on' && !isPermitted(userPermission, 'publish', track)) {
+        if (onOff === 'on' && direction === 'in' && !isPermitted(userPermission, 'publish', track)) {
           return Promise.reject('start stream permission denied');
         }
 
