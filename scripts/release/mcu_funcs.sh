@@ -68,7 +68,6 @@ pack_agents() {
   for AGENT in ${WOOGEEN_AGENTS}; do
     mkdir -p ${WOOGEEN_DIST}/${AGENT}_agent/${AGENT}
     find ${AGENT} -type f -name "*.js" -exec cp '{}' "${WOOGEEN_DIST}/${AGENT}_agent/{}" \;
-    find ${AGENT} -type f -name "*.yuv" -exec cp '{}' "${WOOGEEN_DIST}/${AGENT}_agent/{}" \;
     find . -maxdepth 1 -type f -not -name "*.log" -exec cp '{}' "${WOOGEEN_DIST}/${AGENT}_agent/{}" \;
     cp -av ${AGENT}/agent.toml ${WOOGEEN_DIST}/${AGENT}_agent/
     cp -av ${AGENT}/*.json ${WOOGEEN_DIST}/${AGENT}_agent/
@@ -77,6 +76,7 @@ pack_agents() {
     cp -av ${ROOT}/scripts/detectOS.sh ${WOOGEEN_DIST}/${AGENT}_agent/detectOS.sh
   done
 
+  cp -av video/*.yuv ${WOOGEEN_DIST}/video_agent/
   # Only cert directory in webrtc agent
   mkdir -p ${WOOGEEN_DIST}/webrtc_agent/cert
   # Because Edge cannot accept a large cert, we do not copy the pfx into webrtc agent.
