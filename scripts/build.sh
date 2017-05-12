@@ -179,10 +179,14 @@ build_runtime() {
   local CCOMPILER=${DEPS_ROOT}/bin/gcc
   local CXXCOMPILER=${DEPS_ROOT}/bin/g++
   local OPTIMIZATION_LEVEL="0"
+  local LOG_LEVEL="--loglevel=error"
+  local BUILD_ARGS="-j 8"
   if [[ ${BUILDTYPE} == "Release" ]] ; then
       OPTIMIZATION_LEVEL="3"
       export CFLAGS=${CFLAGS}" -D_FORTIFY_SOURCE=2"
       export CXXFLAGS=${CFLAGS}
+  else
+      BUILD_ARGS="--debug $BUILD_ARGS"
   fi
 
   # runtime addon
@@ -198,17 +202,17 @@ build_runtime() {
       pushd ${ADDON} >/dev/null
       if [[ -x ${CCOMPILER} && -x ${CXXCOMPILER} ]]; then
         if ${REBUILD} ; then
-          CORE_HOME="${CORE_HOME}" OPTIMIZATION_LEVEL=${OPTIMIZATION_LEVEL} PKG_CONFIG_PATH=${DEPS_ROOT}/lib/pkgconfig:${PKG_CONFIG_PATH} CC=${CCOMPILER} CXX=${CXXCOMPILER} node-gyp rebuild --loglevel=error
+          CORE_HOME="${CORE_HOME}" OPTIMIZATION_LEVEL=${OPTIMIZATION_LEVEL} PKG_CONFIG_PATH=${DEPS_ROOT}/lib/pkgconfig:${PKG_CONFIG_PATH} CC=${CCOMPILER} CXX=${CXXCOMPILER} node-gyp rebuild ${BUILD_ARGS} ${LOG_LEVEL}
         else
-          CORE_HOME="${CORE_HOME}" OPTIMIZATION_LEVEL=${OPTIMIZATION_LEVEL} PKG_CONFIG_PATH=${DEPS_ROOT}/lib/pkgconfig:${PKG_CONFIG_PATH} CC=${CCOMPILER} CXX=${CXXCOMPILER} node-gyp configure --loglevel=error
-          CORE_HOME="${CORE_HOME}" OPTIMIZATION_LEVEL=${OPTIMIZATION_LEVEL} CC=${CCOMPILER} CXX=${CXXCOMPILER} node-gyp build --loglevel=error
+          CORE_HOME="${CORE_HOME}" OPTIMIZATION_LEVEL=${OPTIMIZATION_LEVEL} PKG_CONFIG_PATH=${DEPS_ROOT}/lib/pkgconfig:${PKG_CONFIG_PATH} CC=${CCOMPILER} CXX=${CXXCOMPILER} node-gyp configure ${LOG_LEVEL}
+          CORE_HOME="${CORE_HOME}" OPTIMIZATION_LEVEL=${OPTIMIZATION_LEVEL} CC=${CCOMPILER} CXX=${CXXCOMPILER} node-gyp build ${BUILD_ARGS} ${LOG_LEVEL}
         fi
       else
         if ${REBUILD} ; then
-          CORE_HOME="${CORE_HOME}" OPTIMIZATION_LEVEL=${OPTIMIZATION_LEVEL} PKG_CONFIG_PATH=${DEPS_ROOT}/lib/pkgconfig:${PKG_CONFIG_PATH} node-gyp rebuild --loglevel=error
+          CORE_HOME="${CORE_HOME}" OPTIMIZATION_LEVEL=${OPTIMIZATION_LEVEL} PKG_CONFIG_PATH=${DEPS_ROOT}/lib/pkgconfig:${PKG_CONFIG_PATH} node-gyp rebuild ${BUILD_ARGS} ${LOG_LEVEL}
         else
-          CORE_HOME="${CORE_HOME}" OPTIMIZATION_LEVEL=${OPTIMIZATION_LEVEL} PKG_CONFIG_PATH=${DEPS_ROOT}/lib/pkgconfig:${PKG_CONFIG_PATH} node-gyp configure --loglevel=error
-          CORE_HOME="${CORE_HOME}" OPTIMIZATION_LEVEL=${OPTIMIZATION_LEVEL} node-gyp build --loglevel=error
+          CORE_HOME="${CORE_HOME}" OPTIMIZATION_LEVEL=${OPTIMIZATION_LEVEL} PKG_CONFIG_PATH=${DEPS_ROOT}/lib/pkgconfig:${PKG_CONFIG_PATH} node-gyp configure ${LOG_LEVEL}
+          CORE_HOME="${CORE_HOME}" OPTIMIZATION_LEVEL=${OPTIMIZATION_LEVEL} node-gyp build ${BUILD_ARGS} ${LOG_LEVEL}
         fi
       fi
       popd >/dev/null
