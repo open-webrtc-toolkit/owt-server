@@ -53,5 +53,5 @@ openh264Enabled = false
 enableBetterHEVCQuality = false
 
 [avatar]
-#widthxheight in the location indicates the image size
-location = "avatar.180x180.yuv"
+#widthxheight between the two dot ("180x180" between the "avatar." and ".yuv" in the default) in the location indicates the image size
+location = "avatar_blue.180x180.yuv"
