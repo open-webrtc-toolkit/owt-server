@@ -1410,6 +1410,31 @@ describe('Responding to clients.', function() {
         });
     });
 
+    it('Subscribing streams should fail if error occurs during communicating.', function(done) {
+      mockPortal.subscribe = sinon.stub();
+      mockPortal.onConnectionSignalling = sinon.stub();
+
+      mockPortal.subscribe.resolves({agent: 'agentId', node: 'nodeId'});
+      mockPortal.onConnectionSignalling.resolves('ok');
+
+      return joinFirstly()
+        .then(function(result) {
+          expect(result).to.equal('ok');
+          var options = {streamId: 'targetStreamId', audio: true, video: {resolution: {width: 640, height: 480}, quality_level: 'standard'}};
+          simulateStubResponse(mockPortal.subscribe, 0, 4, {type: 'initializing'});
+          client.emit('subscribe', options, undefined, function(status, id) {
+            expect(status).to.equal('initializing');
+            expect(id).to.be.a('string');
+            simulateStubResponse(mockPortal.subscribe, 0, 4, {type: 'failed', reason: 'some-reason'});
+          });
+
+          client.on('connection_failed', function(arg) {
+            expect(arg.streamId).to.equal(options.streamId);
+            done();
+          });
+        });
+    });
+
   });
 
   describe('on: unsubscribe', function() {
@@ -1545,6 +1570,31 @@ describe('Responding to clients.', function() {
           });
         });
     });
+
+    it('Starting pulling out rtsp/rtmp streams should fail if error occurs during communicating.', function(done) {
+      mockPortal.subscribe = sinon.stub();
+      mockPortal.subscribe.resolves({agent: 'agentId', node: 'nodeId'});
+
+      return joinFirstly()
+        .then(function(result) {
+          expect(result).to.equal('ok');
+          simulateStubResponse(mockPortal.subscribe, 0, 4, {type: 'ready', audio_codecs: ['pcm_raw'], video_codecs: ['h264']});
+          var options = {streamId: 'targetStreamId', resolution: {width: 640, height: 480}, url: 'rtsp://target.host'};
+          client.emit('addExternalOutput', options, function(status, data) {
+            expect(status).to.equal('success');
+            expect(data.url).to.equal('rtsp://target.host');
+
+            simulateStubResponse(mockPortal.subscribe, 0, 4, {type: 'failed', reason: 'some-reason'});
+          });
+
+          client.on('connection_failed', function(arg) {
+            expect(arg.url).to.equal(options.url);
+            done();
+          });
+
+        });
+    });
+
   });
 
   describe('on: updateExternalOutput', function() {
@@ -1620,6 +1670,35 @@ describe('Responding to clients.', function() {
               expect(mockPortal.unsubscribe.getCall(0).args).to.deep.equal([client.id, 'rtsp://target.host']);
               done();
             });
+          });
+        });
+    });
+
+    it('Updating pulling out rtsp/rtmp streams should fail if error occurs during communicating.', function(done) {
+      mockPortal.unsubscribe = sinon.stub();
+      mockPortal.unsubscribe.resolves('ok');
+      mockPortal.subscribe = sinon.stub();
+      mockPortal.subscribe.resolves({agent: 'agentId', node: 'nodeId'});
+
+      return joinFirstly()
+        .then(function(result) {
+          expect(result).to.equal('ok');
+          var options = {url: 'rtsp://target.host'};
+          simulateStubResponse(mockPortal.subscribe, 0, 4, {type: 'ready', audio_codecs: ['pcm_raw'], video_codecs: ['h264']});
+          client.emit('addExternalOutput', options, function(status, data) {
+            expect(status).to.equal('success');
+            expect(data.url).to.equal('rtsp://target.host');
+            simulateStubResponse(mockPortal.subscribe, 1, 4, {type: 'ready', audio_codecs: ['pcm_raw'], video_codecs: ['h264']});
+            client.emit('updateExternalOutput', options, function(status, data) {
+              expect(status).to.equal('success');
+              expect(data.url).to.equal('rtsp://target.host');
+              simulateStubResponse(mockPortal.subscribe, 1, 4, {type: 'failed', reason: 'some-reason'});
+            });
+          });
+
+          client.on('connection_failed', function(arg) {
+            expect(arg.url).to.equal(options.url);
+            done();
           });
         });
     });
@@ -2406,4 +2485,3 @@ describe('Responding to clients.', function() {
     });
   });
 });
-
