@@ -490,11 +490,19 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
       var subscription_id = participant_id + '-sub-' + ((subscription_description.audio && subscription_description.audio.fromStream) ||
                                                         (subscription_description.video && subscription_description.video.fromStream));
 
+      var has_responded = false;
       return portal.subscribe(participant_id, subscription_id, 'webrtc', subscription_description, function(status) {
         if (status.type === 'failed') {
-          safeCall(callback, 'error', status.reason);
+          if (has_responded) {
+            log.info('emitted connection_failed, reason:', status.reason);
+            send_msg('connection_failed', {streamId: options.streamId});
+          } else {
+            safeCall(callback, 'error', status.reason);
+            has_responded = true;
+          }
         } else if (status.type === 'initializing') {
           safeCall(callback, 'initializing', options.streamId/*FIXME -a */);
+          has_responded = true;
         } else {
           send_msg('signaling_message_erizo', {peerId: options.streamId/*FIXME -a */, mess: status});
         }
@@ -504,6 +512,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
         const err_message = getErrorMessage(err);
         log.info('portal.subscribe failed:', err_message);
         safeCall(callback, 'error', err_message);
+        has_responded = true;
       });
     });
 
@@ -557,12 +566,20 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
       subscription_description.url = parsed_url.format();
 
       var subscription_id = subscription_description.url;
+      var has_responded = false;
       return portal.subscribe(participant_id, subscription_id, 'avstream', subscription_description, function(status) {
         if (status.type === 'failed') {
-          log.info('addExternalOutput onConnection error:', status.reason);
-          safeCall(callback, 'error', status.reason);
+          if (has_responded) {
+            log.info('emitted connection_failed, reason:', status.reason);
+            send_msg('connection_failed', {url: subscription_description.url});
+          } else {
+            log.info('addExternalOutput onConnection error:', status.reason);
+            safeCall(callback, 'error', status.reason);
+            has_responded = true;
+          }
         } else if (status.type === 'ready') {
           safeCall(callback, 'success', {url: subscription_description.url});
+          has_responded = true;
         }
       }).then(function(connectionLocality) {
         log.debug('portal.subscribe succeeded, connection locality:', connectionLocality);
@@ -570,6 +587,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
         const err_message = getErrorMessage(err);
         log.info('portal.subscribe failed:', err_message);
         safeCall(callback, 'error', err_message);
+        has_responded = true;
       });
     });
 
@@ -601,14 +619,22 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
       (subscription_description.video && (typeof options.resolution === 'string')) && (subscription_description.video.resolution = options.resolution);
       subscription_description.url = parsed_url.format();
 
+      var has_responded = false;
       return portal.unsubscribe(participant_id, options.url)
       .then(function() {
         return portal.subscribe(participant_id, options.url, 'avstream', subscription_description, function(status) {
           if (status.type === 'failed') {
-            log.info('updateExternalOutput onConnection error:', status.reason);
-            safeCall(callback, 'error', status.reason);
+            if (has_responded) {
+              log.info('emitted connection_failed, reason:', status.reason);
+              send_msg('connection_failed', {url: subscription_description.url});
+            } else {
+              log.info('updateExternalOutput onConnection error:', status.reason);
+              safeCall(callback, 'error', status.reason);
+              has_responded = true;
+            }
           } else if (status.type === 'ready') {
             safeCall(callback, 'success', {url: subscription_description.url});
+            has_responded = true;
           }
         });
       }).then(function(subscriptionId) {
@@ -616,6 +642,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
         const err_message = getErrorMessage(err);
         log.info('portal.unsubscribe/subscribe exception:', err_message);
         safeCall(callback, 'error', err_message);
+        has_responded = true;
       });
     });
 
