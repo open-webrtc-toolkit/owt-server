@@ -20,7 +20,7 @@ config.portal.port = config.portal.port || 8080;
 config.portal.rest_port = config.portal.rest_port || 8081;
 config.portal.ssl = config.portal.ssl || false;
 config.portal.reconnection_ticket_lifetime = config.portal.reconnection_ticket_lifetime || 600;
-config.portal.reconnection_timeout = config.portal.reconnection_timeout || 120;
+config.portal.reconnection_timeout = Number.isInteger(config.portal.reconnection_timeout) ? config.portal.reconnection_timeout : 120;
 
 config.cluster = config.cluster || {};
 config.cluster.name = config.cluster.name || 'woogeen-cluster';
