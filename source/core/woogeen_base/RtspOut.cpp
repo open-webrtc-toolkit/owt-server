@@ -21,7 +21,7 @@
 #include "RtspOut.h"
 #include "MediaUtilities.h"
 
-#define KEYFRAME_REQ_INTERVAL (10 * 1000) // 10 seconds
+#define KEYFRAME_REQ_INTERVAL (2 * 1000) // 2 seconds
 
 static inline const char* getShortName(std::string& url)
 {
