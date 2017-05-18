@@ -60,6 +60,8 @@ public:
         , m_pluginID()
         , m_vppSession(NULL)
         , m_vpp(NULL)
+        , m_enableBsDump(false)
+        , m_bsDumpfp(NULL)
     {
         initDefaultParam();
     }
@@ -99,6 +101,10 @@ public:
         m_bitstream.reset();
 
         closeVpp();
+
+        if (m_bsDumpfp) {
+            fclose(m_bsDumpfp);
+        }
 
         printfFuncExit;
     }
@@ -198,6 +204,18 @@ public:
         m_bitstream->DataLength   = 0;
 
         resetEnc();
+
+        if (m_enableBsDump) {
+            char dumpFileName[128];
+
+            snprintf(dumpFileName, 128, "/tmp/msdkFrameEncoder-%p.%s", this, getFormatStr(m_format));
+            m_bsDumpfp = fopen(dumpFileName, "wb");
+            if (m_bsDumpfp) {
+                ELOG_DEBUG("Enable bitstream dump, %s", dumpFileName);
+            } else {
+                ELOG_DEBUG("Can not open dump file, %s", dumpFileName);
+            }
+        }
 
         return true;
     }
@@ -351,7 +369,7 @@ retry:
 
         //ELOG_TRACE("timeStamp %u", frame.timeStamp);
 
-        //dump(outFrame.payload, outFrame.length);
+        dump(outFrame.payload, outFrame.length);
 
         deliverFrame(outFrame);
 
@@ -460,7 +478,7 @@ protected:
 
         // mfx Enc
         m_encParam->mfx.TargetUsage               = 0;
-        m_encParam->mfx.GopPicSize                = 24;
+        m_encParam->mfx.GopPicSize                = 300;
         m_encParam->mfx.GopRefDist                = 0;
         m_encParam->mfx.GopOptFlag                = 0;
         m_encParam->mfx.IdrInterval               = 0;
@@ -568,15 +586,8 @@ protected:
 
     void dump(uint8_t *buf, int len)
     {
-        static const char dumpFile[] = "/tmp/webrtc-msdk-dump.h264";
-
-        FILE *fp = fopen(dumpFile, "ab");
-        if (fp) {
-            fwrite(buf, 1, len, fp);
-            fclose(fp);
-            ELOG_DEBUG("Dump bitstream into %s, len %d", dumpFile, len);
-        } else {
-            ELOG_DEBUG("Dump failed, can not open file %s", dumpFile);
+        if (m_bsDumpfp) {
+            fwrite(buf, 1, len, m_bsDumpfp);
         }
     }
 
@@ -826,6 +837,9 @@ private:
     boost::shared_ptr<mfxFrameAllocator> m_vppAllocator;
     boost::scoped_ptr<mfxVideoParam> m_vppParam;
     boost::scoped_ptr<MsdkFramePool> m_vppFramePool;
+
+    bool m_enableBsDump;
+    FILE *m_bsDumpfp;
 };
 
 DEFINE_LOGGER(StreamEncoder, "woogeen.StreamEncoder");
