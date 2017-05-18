@@ -520,6 +520,20 @@ function tableHandlerRoom(rooms) {
     var unsaveView = {};
     var currentLabel = null;
 
+    var saveCurrentView = function() {
+      if (currentLabel && tabContent[currentLabel]) {
+        var unsaved = tabContent[currentLabel].html.find('.editable-unsaved');
+        if (unsaved.length > 0) {
+          tabContent[currentLabel].unsave = true;
+          unsaved.map(function(index, each) {
+            var id = $(each).attr('id');
+            var val = $(each).editable('getValue')[id];
+            setVal(tabContent[currentLabel].data, id, val);
+          });
+        }
+      }
+    };
+
     var switchView = function(viewLabel) {
       if (!tabContent[viewLabel]) {
         tabContent[viewLabel] = generateViewTable(viewLabel);
@@ -552,13 +566,16 @@ function tableHandlerRoom(rooms) {
       e.preventDefault();
       $(this).children("span").first().click();
     });
+    $("#myTab").off("click", "a span");
     $("#myTab").on("click", "a span", function (e) {
       e.preventDefault();
       e.stopPropagation();
       $(this).parent().tab('show');
+      saveCurrentView();
       currentLabel = $(this).html();
       switchView(currentLabel);
     });
+    $("#myTab").off("click", "a button");
     $("#myTab").on("click", "a button", function (e) {
       e.preventDefault();
       var dlabel = $(this).parent().find("span").html();
@@ -573,6 +590,8 @@ function tableHandlerRoom(rooms) {
         viewModal.delete = true;
       }
       $(this).parent().parent().remove(); //remove li of tab
+      currentLabel = null;
+      $("#myTab li a span").first().click();
     });
 
     // Chose the first
@@ -581,39 +600,16 @@ function tableHandlerRoom(rooms) {
     $('#mediaMixingModal .modal-footer').html('<button type="button" class="btn btn-primary" data-dismiss="modal"><i class="glyphicon glyphicon-ok"></i></button>\
         <button type="button" class="btn btn-default" data-dismiss="modal"><i class="glyphicon glyphicon-remove"></i></button>');
 
-    var parseValue = function(id, str) {
-      var val;
-      switch (id) {
-        case 'maxInput':
-          val = Number(str);
-          break;
-        case 'avCoordinated':
-        case 'multistreaming':
-        case 'crop':
-          val = (str === 'true')? 1 : 0;
-          break;
-        default:
-          val = str;
-      }
-      return val;
-    };
-
     // <audio not supported now>
     $('#mediaMixingModal .modal-footer button:first').click(function() {
       var content;
       var needUpdate = false;
       var viewLabel;
-      for (viewLabel in tabContent) {
-        var unsaved = tabContent[viewLabel].html.find('.editable-unsaved');
 
-        if (unsaved.length > 0) {
+      saveCurrentView();
+      for (viewLabel in tabContent) {
+        if (tabContent[viewLabel].unsave) {
           needUpdate = true;
-          unsaved.map(function(index, each) {
-            var id = $(each).attr('id');
-            var text = $(each).html();
-            var val = parseValue(id, text);
-            setVal(views[viewLabel].mediaMixing.video, id, val);
-          });
         }
 
         if (tabContent[viewLabel].updateColor) {
