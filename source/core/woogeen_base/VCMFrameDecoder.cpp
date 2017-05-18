@@ -80,6 +80,7 @@ bool VCMFrameDecoder::init(FrameFormat format)
     }
 
     VideoCodec codecSettings;
+    memset(&codecSettings, 0, sizeof(codecSettings));
     codecSettings.codecType = codecType;
 
     if (m_decoder->InitDecode(&codecSettings, 0) != 0) {
