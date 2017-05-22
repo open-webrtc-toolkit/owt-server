@@ -53,13 +53,15 @@ function do_join(session_ctl, user, room, selfPortal, ok, err) {
         'join',
         [room, {id: user, name: user, role: 'presenter', portal: selfPortal}], function(joinResult) {
             log.debug('join ok');
+            var mixStream = null;
             for(var index in joinResult.streams){
                 if(joinResult.streams[index].video.device === 'mcu'){
-                    safeCall(ok, joinResult.streams[index]);
-                    return;
+                    if (joinResult.streams[index].view === 'common' || !mixStream) {
+                        mixStream = joinResult.streams[index];
+                    }
                 }
             }
-            safeCall(ok);
+            safeCall(ok, mixStream);
         }, function (reason) {
             safeCall(err,reason);
         });
