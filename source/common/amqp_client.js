@@ -142,7 +142,14 @@ var rpcServer = function(bus, conn, id, methods, on_ready, on_failure) {
                                 exc.publish(message.replyTo, {data: result, corrID: message.corrID, type: type, err: err});
                             });
                         }
-                        methods[message.method].apply(methods, message.args);
+                        if (typeof methods[message.method] === 'function') {
+                            methods[message.method].apply(methods, message.args);
+                        } else {
+                            log.warn('RPC server does not support this method:', message.method);
+                            if (message.replyTo && message.corrID !== undefined) {
+                                exc.publish(message.replyTo, {data: 'error', corrID: message.corrID, type: 'callback', err: 'Not support method'});
+                            }
+                        }
                     } catch (error) {
                         log.error('message:', message);
                         log.error('Error processing call: ', error);
