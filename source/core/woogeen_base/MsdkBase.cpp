@@ -130,10 +130,26 @@ MsdkBase *MsdkBase::get(void)
     return sSingleton;
 }
 
-void MsdkBase::setConfig(bool hevcEncoderGaccPlugin)
+void MsdkBase::setConfigHevcEncoderGaccPlugin(bool hevcEncoderGaccPlugin)
 {
     ELOG_DEBUG("Set hevcEncoderGaccPlugin(%d)", hevcEncoderGaccPlugin);
     m_configHevcEncoderGaccPlugin = hevcEncoderGaccPlugin;
+}
+
+bool MsdkBase::getConfigHevcEncoderGaccPlugin()
+{
+    return m_configHevcEncoderGaccPlugin;
+}
+
+void MsdkBase::setConfigEnableBackgroundColorSurface(bool enableBackgroundColorSurface)
+{
+    ELOG_DEBUG("Set enableBackgroundColorSurface(%d)", enableBackgroundColorSurface);
+    m_configEnableBackgroundColorSurface = enableBackgroundColorSurface;
+}
+
+bool MsdkBase::getConfigEnableBackgroundColorSurface()
+{
+    return m_configEnableBackgroundColorSurface;
 }
 
 MFXVideoSession *MsdkBase::createSession_internal(void)

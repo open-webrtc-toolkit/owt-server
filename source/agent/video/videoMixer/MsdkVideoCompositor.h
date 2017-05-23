@@ -116,6 +116,8 @@ protected:
     void applyAspectRatio();
 
 private:
+    bool m_enbaleBgColorSurface;
+
     uint32_t m_maxInput;
     bool m_crop;
 
