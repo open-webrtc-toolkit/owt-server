@@ -37,11 +37,6 @@ if (!process.env.MODULE_TEST) {
           }
         } catch (e) {
           console.log('[FAIL]', path.basename(module), e);
-          require('child_process').exec('c++filt ' + e, function(error, stdout, stderr) {
-            if (!error) {
-              console.log(stdout);
-            }
-          });
         }
       });
     }

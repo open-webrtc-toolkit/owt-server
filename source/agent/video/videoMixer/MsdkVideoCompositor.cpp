@@ -413,7 +413,8 @@ DEFINE_LOGGER(VppInput, "mcu.media.VppInput");
 DEFINE_LOGGER(MsdkVideoCompositor, "mcu.media.MsdkVideoCompositor");
 
 MsdkVideoCompositor::MsdkVideoCompositor(uint32_t maxInput, VideoSize rootSize, YUVColor bgColor, bool crop)
-    : m_maxInput(maxInput)
+    : m_enbaleBgColorSurface(false)
+    , m_maxInput(maxInput)
     , m_crop(crop)
     , m_rootSize({0, 0})
     , m_newRootSize(rootSize)
@@ -431,6 +432,11 @@ MsdkVideoCompositor::MsdkVideoCompositor(uint32_t maxInput, VideoSize rootSize, 
             );
 
     m_ntpDelta = Clock::GetRealTimeClock()->CurrentNtpInMilliseconds() - TickTime::MillisecondTimestamp();
+
+    MsdkBase *msdkBase = MsdkBase::get();
+    if(msdkBase != NULL) {
+        m_enbaleBgColorSurface = msdkBase->getConfigEnableBackgroundColorSurface();
+    }
 
     initDefaultVppParam();
     initVpp();
@@ -556,6 +562,32 @@ void MsdkVideoCompositor::updateVppParam(void)
     m_extVppComp->Y                 = m_bgColor.y;
     m_extVppComp->U                 = m_bgColor.cb;
     m_extVppComp->V                 = m_bgColor.cr;
+
+    if (!m_enbaleBgColorSurface) {
+        // workaroung 16.4.4 msdk's bug, swap r and b
+        int C = m_bgColor.y - 16;
+        int D = m_bgColor.cb - 128;
+        int E = m_bgColor.cr - 128;
+
+        int r = ( 298 * C           + 409 * E + 128) >> 8;
+        int g = ( 298 * C - 100 * D - 208 * E + 128) >> 8;
+        int b = ( 298 * C + 516 * D           + 128) >> 8;
+
+        int t;
+
+        t = r;
+        r = b;
+        b = t;
+
+        m_extVppComp->Y = ( (  66 * r + 129 * g +  25 * b + 128) >> 8) +  16;
+        m_extVppComp->U = ( ( -38 * r -  74 * g + 112 * b + 128) >> 8) + 128;
+        m_extVppComp->V = ( ( 112 * r -  94 * g -  18 * b + 128) >> 8) + 128;
+
+        ELOG_TRACE("swap r <-> b, yuv 0x%x, 0x%x, 0x%x -> 0x%x, 0x%x, 0x%x"
+                , m_bgColor.y, m_bgColor.cb, m_bgColor.cr
+                , m_extVppComp->Y, m_extVppComp->U, m_extVppComp->V
+                );
+    }
 }
 
 bool MsdkVideoCompositor::isValidVppParam(void)
@@ -826,15 +858,20 @@ bool MsdkVideoCompositor::commitLayout()
     }
 
     if (m_vppLayout.size() > 0) {
-        m_compInputStreams.resize(m_vppLayout.size() + 1);
+        if (m_enbaleBgColorSurface) {
+            m_compInputStreams.resize(m_vppLayout.size() + 1);
 
-        Region rootRegion;
-        rootRegion.left = 0.0;
-        rootRegion.top = 0.0;
-        rootRegion.relativeSize = 1.0;
-        fillVppStream(&m_compInputStreams[0], m_rootSize, rootRegion);
+            Region rootRegion;
+            rootRegion.left = 0.0;
+            rootRegion.top = 0.0;
+            rootRegion.relativeSize = 1.0;
+            fillVppStream(&m_compInputStreams[0], m_rootSize, rootRegion);
 
-        i = 1;
+            i = 1;
+        } else {
+            m_compInputStreams.resize(m_vppLayout.size());
+            i = 0;
+        }
         for (auto& l : m_vppLayout) {
             m_compInputStreams[i++] = l.second;
         }
@@ -911,16 +948,18 @@ boost::shared_ptr<MsdkFrame> MsdkVideoCompositor::customLayout()
 
     applyAspectRatio();
 
-    while (true) {
-        sts = m_vpp->RunFrameVPPAsync(m_defaultRootFrame->getSurface(), dst->getSurface(), NULL, &syncP);
-        if (sts == MFX_WRN_DEVICE_BUSY) {
-            ELOG_TRACE("Device busy, retry!");
+    if (m_enbaleBgColorSurface) {
+        while (true) {
+            sts = m_vpp->RunFrameVPPAsync(m_defaultRootFrame->getSurface(), dst->getSurface(), NULL, &syncP);
+            if (sts == MFX_WRN_DEVICE_BUSY) {
+                ELOG_TRACE("Device busy, retry!");
 
-            usleep(1000); //1ms
-            continue;
+                usleep(1000); //1ms
+                continue;
+            }
+
+            break;
         }
-
-        break;
     }
 
     int i = 0;
@@ -973,18 +1012,20 @@ retry:
 
 void MsdkVideoCompositor::applyAspectRatio()
 {
-    bool isChanged = false;
-    int size = m_frameQueue.size();
+    uint32_t size = m_frameQueue.size();
 
-    if (size != m_extVppComp->NumInputStream - 1) {
-        ELOG_ERROR("Num of frames(%d) is not equal w/ input streams(%d)", size, m_extVppComp->NumInputStream - 1);
+    if (size != m_vppLayout.size()) {
+        ELOG_ERROR("Num of frames(%d) is not equal w/ input streams", size);
         return;
     }
 
-    for (int i = 0; i < size; i++) {
+    bool isChanged = false;
+    const uint32_t vppCompInputStreamOffset = m_enbaleBgColorSurface ? 1: 0;
+
+    for (uint32_t i = 0; i < size; i++) {
         boost::shared_ptr<MsdkFrame> frame = m_frameQueue[i];
         mfxVPPCompInputStream *layoutRect = &m_vppLayout[i];
-        mfxVPPCompInputStream *vppRect = &m_extVppComp->InputStream[i + 1];
+        mfxVPPCompInputStream *vppRect = &m_extVppComp->InputStream[i + vppCompInputStreamOffset];
 
         if (frame == m_defaultInputFrame)
             continue;

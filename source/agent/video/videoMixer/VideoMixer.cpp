@@ -53,9 +53,12 @@ VideoMixer::VideoMixer(const std::string& configStr)
 
 #ifdef ENABLE_MSDK
     bool useGacc = config.get<bool>("gaccplugin", false);
+    bool enableBgColorSurface = config.get<bool>("enableMsdkBackgroundColorSurface", false);
+
     MsdkBase *msdkBase = MsdkBase::get();
     if(msdkBase != NULL) {
-        msdkBase->setConfig(useGacc);
+        msdkBase->setConfigHevcEncoderGaccPlugin(useGacc);
+        msdkBase->setConfigEnableBackgroundColorSurface(enableBgColorSurface);
     }
 #endif
 

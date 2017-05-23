@@ -52,7 +52,11 @@ public:
 
     static MsdkBase *get(void);
 
-    void setConfig(bool hevcEncoderGaccPlugin);
+    void setConfigHevcEncoderGaccPlugin(bool hevcEncoderGaccPlugin);
+    bool getConfigHevcEncoderGaccPlugin();
+
+    void setConfigEnableBackgroundColorSurface(bool enableBackgroundColorSurface);
+    bool getConfigEnableBackgroundColorSurface();
 
     MFXVideoSession *createSession();
     void destroySession(MFXVideoSession *pSession);
@@ -86,6 +90,7 @@ private:
     MFXVideoSession *m_mainSession;
 
     bool m_configHevcEncoderGaccPlugin;
+    bool m_configEnableBackgroundColorSurface;
 };
 
 } /* namespace woogeen_base */

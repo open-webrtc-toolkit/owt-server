@@ -72,6 +72,13 @@ public:
     //set frame crop to resize
     bool setCrop(uint32_t cropX, uint32_t cropY, uint32_t cropW, uint32_t cropH);
 
+    /*
+    (16,    128,    128)    //black
+    (235,   128,    128)    //white
+    (82,    90,     240)    //red
+    (144,   54,     34)     //green
+    (41,    240,    110)    //blue
+    */
     bool fillFrame(uint8_t y, uint8_t u, uint8_t v);
 
     bool convertFrom(webrtc::I420VideoFrame& frame);

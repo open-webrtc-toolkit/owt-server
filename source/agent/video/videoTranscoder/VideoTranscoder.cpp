@@ -49,7 +49,7 @@ VideoTranscoder::VideoTranscoder(const std::string& configStr)
     bool useGacc = config.get<bool>("gaccplugin", false);
     MsdkBase *msdkBase = MsdkBase::get();
     if(msdkBase != NULL) {
-        msdkBase->setConfig(useGacc);
+        msdkBase->setConfigHevcEncoderGaccPlugin(useGacc);
     }
 #endif
 
