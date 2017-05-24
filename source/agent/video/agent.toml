@@ -57,4 +57,4 @@ enableMsdkBackgroundColorSurface = false
 
 [avatar]
 #widthxheight between the two dot ("180x180" between the "avatar." and ".yuv" in the default) in the location indicates the image size
-location = "avatar_blue.180x180.yuv"
+location = "avatars/avatar_blue.180x180.yuv"
