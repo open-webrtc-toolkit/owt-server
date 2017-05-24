@@ -76,7 +76,7 @@ pack_agents() {
     cp -av ${ROOT}/scripts/detectOS.sh ${WOOGEEN_DIST}/${AGENT}_agent/detectOS.sh
   done
 
-  cp -av video/*.yuv ${WOOGEEN_DIST}/video_agent/
+  cp -av video/avatars ${WOOGEEN_DIST}/video_agent/
   # Only cert directory in webrtc agent
   mkdir -p ${WOOGEEN_DIST}/webrtc_agent/cert
   # Because Edge cannot accept a large cert, we do not copy the pfx into webrtc agent.

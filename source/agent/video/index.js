@@ -16,7 +16,8 @@ var internalConnFactory = new InternalConnectionFactory;
 var useHardware = global.config.video.hardwareAccelerated,
     openh264Enabled = global.config.video.openh264Enabled,
     yamiEnabled = global.config.video.yamiEnabled,
-    gaccPluginEnabled = global.config.video.enableBetterHEVCQuality;
+    gaccPluginEnabled = global.config.video.enableBetterHEVCQuality,
+    msdkBackgroundColorEnabled = global.config.video.enableMsdkBackgroundColorSurface;
 
 var VideoMixer, VideoTranscoder;
 try {
@@ -214,7 +215,8 @@ function VMixer(rpcClient, clusterIP) {
             'layout': videoConfig.layout,
             'simulcast': videoConfig.multistreaming,
             'crop': videoConfig.crop,
-            'gaccplugin': gaccPluginEnabled
+            'gaccplugin': gaccPluginEnabled,
+            'enableMsdkBackgroundColorSurface': msdkBackgroundColorEnabled
         };
 
         engine = new VideoMixer(JSON.stringify(config));
