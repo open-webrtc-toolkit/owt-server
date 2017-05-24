@@ -348,7 +348,7 @@ namespace erizo {
 
   }
 
-  bool NiceConnection::setRemoteCandidates(std::vector<CandidateInfo> &candidates, bool isBundle) {
+  bool NiceConnection::setRemoteCandidates(const std::vector<CandidateInfo> &candidates, bool isBundle) {
     if(agent_==NULL){
       running_=false;
       return false;

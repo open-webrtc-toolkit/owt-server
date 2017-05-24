@@ -60,7 +60,7 @@ namespace erizo {
       void writeOnNice(int comp, void* buf, int len) {
         nice_->sendData(comp, buf, len);
       }
-      bool setRemoteCandidates(std::vector<CandidateInfo> &candidates, bool isBundle) {
+      bool setRemoteCandidates(const std::vector<CandidateInfo> &candidates, bool isBundle) {
         return nice_->setRemoteCandidates(candidates, isBundle);
       }
       StunCredential restart(const std::string username, const std::string password) {
