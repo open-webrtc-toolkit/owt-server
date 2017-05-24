@@ -102,6 +102,7 @@ protected:
     void doEncoding();
     void encodeLoop();
     void encodeOneFrame();
+    void dump(uint8_t *buf, int len);
 
 private:
     struct OutStream {
@@ -127,6 +128,9 @@ private:
     boost::condition_variable m_encCond;
 
     uint32_t m_incomingFrameCount;
+
+    bool m_enableBsDump;
+    FILE *m_bsDumpfp;
 };
 
 } /* namespace woogeen_base */

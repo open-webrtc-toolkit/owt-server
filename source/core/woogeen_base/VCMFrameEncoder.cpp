@@ -44,6 +44,8 @@ VCMFrameEncoder::VCMFrameEncoder(FrameFormat format, boost::shared_ptr<WebRTCTas
     , m_taskRunner(taskRunner)
     , m_running(false)
     , m_incomingFrameCount(0)
+    , m_enableBsDump(false)
+    , m_bsDumpfp(NULL)
 {
     webrtc::VP8EncoderFactoryConfig::set_use_simulcast_adapter(useSimulcast);
     m_vcm->InitializeSender();
@@ -73,6 +75,10 @@ VCMFrameEncoder::~VCMFrameEncoder()
     VideoCodingModule::Destroy(m_vcm);
     m_vcm = nullptr;
     m_streamId = 0;
+
+    if (m_bsDumpfp) {
+        fclose(m_bsDumpfp);
+    }
 }
 
 bool VCMFrameEncoder::canSimulcast(FrameFormat format, uint32_t width, uint32_t height)
@@ -205,6 +211,19 @@ int32_t VCMFrameEncoder::generateStream(uint32_t width, uint32_t height, uint32_
     OutStream stream = {.width = width, .height = height, .simulcastId = simulcastId, .encodeOut = encodeOut};
     m_streams[m_streamId] = stream;
     ELOG_DEBUG_T("generateStream: {.width=%d, .height=%d, .bitrateKbps=%d}, simulcastId=%d", width, height, bitrateKbps, simulcastId);
+
+    if (m_enableBsDump) {
+        char dumpFileName[128];
+
+        snprintf(dumpFileName, 128, "/tmp/vcmFrameEncoder-%p-%d.%s", this, simulcastId, getFormatStr(m_encodeFormat));
+        m_bsDumpfp = fopen(dumpFileName, "wb");
+        if (m_bsDumpfp) {
+            ELOG_DEBUG("Enable bitstream dump, %s", dumpFileName);
+        } else {
+            ELOG_DEBUG("Can not open dump file, %s", dumpFileName);
+        }
+    }
+
     return m_streamId++;
 }
 
@@ -389,6 +408,8 @@ int32_t VCMFrameEncoder::SendData(
                 frame.additionalInfo.video.height ,
                 frame.length);
 
+        dump(frame.payload, frame.length);
+
         auto it = m_streams.begin();
         for (; it != m_streams.end(); ++it) {
             if (it->second.encodeOut.get() && it->second.simulcastId == rtpVideoHdr->simulcastIdx)
@@ -398,6 +419,13 @@ int32_t VCMFrameEncoder::SendData(
     }
 
     return -1;
+}
+
+void VCMFrameEncoder::dump(uint8_t *buf, int len)
+{
+    if (m_bsDumpfp) {
+        fwrite(buf, 1, len, m_bsDumpfp);
+    }
 }
 
 } // namespace woogeen_base
