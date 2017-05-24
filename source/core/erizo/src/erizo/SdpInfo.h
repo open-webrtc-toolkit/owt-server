@@ -6,6 +6,8 @@
 #define SDPINFO_H_
 
 #include <list>
+#include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
 #include <map>
@@ -115,6 +117,7 @@ enum StreamDirection {
 /**
  * Contains the information of a single SDP.
  * Used to parse and generate SDPs
+ * SdpInfo is thread safe.
  */
 class SdpInfo {
     DECLARE_LOGGER();
@@ -144,17 +147,22 @@ public:
      * Gets the candidates.
      * @return A vector containing the current candidates.
      */
-    std::vector<CandidateInfo>& getCandidateInfos();
+    std::vector<CandidateInfo> getCandidateInfos() const;
     /**
      * Gets the SRTP information.
      * @return A vector containing the CryptoInfo objects with the SRTP information.
      */
-    std::vector<CryptoInfo>& getCryptoInfos();
+    std::vector<CryptoInfo> getCryptoInfos() const;
     /**
     * Gets the payloadType information
     * @return A vector containing the PT-codec information
     */
-    std::list<RtpMap>& getPayloadInfos();
+    std::list<RtpMap> getPayloadInfos() const;
+    /**
+     * Sets the payloadType information.
+     * @param info A vector containing the PT-codec information
+     */
+    void setPayloadInfos(const std::list<RtpMap>& info);
     /**
      * Gets the actual SDP.
      * @return The SDP in string format.
@@ -189,7 +197,7 @@ public:
 
     void getCredentials(std::string& username, std::string& password, MediaType media);
 
-    RtpMap* getCodecByName(const std::string codecName, const unsigned int clockRate);
+    std::unique_ptr<RtpMap> getCodecByName(const std::string codecName, const unsigned int clockRate);
 
     bool supportCodecByName(const std::string codecName, const unsigned int clockRate);
 
@@ -242,7 +250,7 @@ public:
     * Is there rtcp muxing
     */
     bool isRtcpMux;
-    
+
     /**
     * RTP Profile type
     */
@@ -277,9 +285,13 @@ private:
     std::string stringifyCandidate(const CandidateInfo & candidate);
     void gen_random(char* s, int len);
     std::vector<CandidateInfo> candidateVector_;
+    mutable std::mutex candidateVectorMutex_;
     std::vector<CryptoInfo> cryptoVector_;
+    mutable std::mutex cryptoVectorMutex_;
     std::list<RtpMap> payloadVector_;
+    mutable std::mutex payloadVectorMutex_;
     std::vector<RtpMap> internalPayloadVector_;
+    mutable std::mutex internalPayloadVectorMutex_;
     std::string iceVideoUsername_, iceAudioUsername_;
     std::string iceVideoPassword_, iceAudioPassword_;
     char msid[11];

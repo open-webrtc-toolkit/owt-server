@@ -222,7 +222,10 @@ namespace erizo {
     return processSdp(sdp, media);
   }
   std::string SdpInfo::addCandidate(const CandidateInfo& info) {
-    candidateVector_.push_back(info);
+    {
+      std::lock_guard<std::mutex> lock(candidateVectorMutex_);
+      candidateVector_.push_back(info);
+    }
     return stringifyCandidate(info);
   }
 
@@ -264,6 +267,7 @@ namespace erizo {
   }
 
   void SdpInfo::addCrypto(const CryptoInfo& info) {
+    std::lock_guard<std::mutex> lock(cryptoVectorMutex_);
     cryptoVector_.push_back(info);
   }
 
@@ -331,11 +335,16 @@ namespace erizo {
     if (printedAudio && this->hasAudio) {
       sdp << "m=audio 1 RTP/" << (profile==SAVPF?"SAVPF ":"AVPF ");// << "103 104 0 8 106 105 13 126\n"
       int codecCounter=0;
-      for (std::list<RtpMap>::iterator it = payloadVector_.begin(); it != payloadVector_.end(); ++it){
-        const RtpMap& payload_info = *it;
-        if (payload_info.mediaType == AUDIO_TYPE && payload_info.enable) {
-          codecCounter++;
-          sdp << payload_info.payloadType <<((codecCounter<audioCodecs)?" ":"");
+      {
+        std::lock_guard<std::mutex> lock(payloadVectorMutex_);
+        for (std::list<RtpMap>::iterator it = payloadVector_.begin();
+             it != payloadVector_.end(); ++it) {
+          const RtpMap& payload_info = *it;
+          if (payload_info.mediaType == AUDIO_TYPE && payload_info.enable) {
+            codecCounter++;
+            sdp << payload_info.payloadType
+                << ((codecCounter < audioCodecs) ? " " : "");
+          }
         }
       }
       sdp << "\n"
@@ -343,9 +352,12 @@ namespace erizo {
       if (isRtcpMux) {
         sdp << "a=rtcp:1 IN IP4 0.0.0.0" << endl;
       }
-      for (unsigned int it = 0; it < candidateVector_.size(); it++) {
-          if(candidateVector_[it].mediaType == AUDIO_TYPE || isBundle)
+      {
+        std::lock_guard<std::mutex> lock(candidateVectorMutex_);
+        for (unsigned int it = 0; it < candidateVector_.size(); it++) {
+          if (candidateVector_[it].mediaType == AUDIO_TYPE || isBundle)
             sdp << this->stringifyCandidate(candidateVector_[it]) << endl;
+        }
       }
       if(iceAudioUsername_.size()>0){
         sdp << "a=ice-ufrag:" << iceAudioUsername_ << endl;
@@ -382,34 +394,41 @@ namespace erizo {
       sdp << "a=extmap:1 urn:ietf:params:rtp-hdrext:ssrc-audio-level" << endl;
       if (isRtcpMux)
         sdp << "a=rtcp-mux\n";
-      for (unsigned int it = 0; it < cryptoVector_.size(); it++) {
-        const CryptoInfo& cryp_info = cryptoVector_[it];
-        if (cryp_info.mediaType == AUDIO_TYPE) {
-          sdp << "a=crypto:" << cryp_info.tag << " "
-            << cryp_info.cipherSuite << " " << "inline:"
-            << cryp_info.keyParams << endl;
+      {
+        std::lock_guard<std::mutex> lock(cryptoVectorMutex_);
+        for (unsigned int it = 0; it < cryptoVector_.size(); it++) {
+          const CryptoInfo& cryp_info = cryptoVector_[it];
+          if (cryp_info.mediaType == AUDIO_TYPE) {
+            sdp << "a=crypto:" << cryp_info.tag << " " << cryp_info.cipherSuite
+                << " "
+                << "inline:" << cryp_info.keyParams << endl;
+          }
         }
       }
-
-      for (std::list<RtpMap>::iterator it = payloadVector_.begin(); it != payloadVector_.end(); ++it){
-        const RtpMap& rtp = *it;
-        if (rtp.mediaType==AUDIO_TYPE && rtp.enable) {
-          int payloadType = rtp.payloadType;
-          if (rtp.channels>1) {
-            sdp << "a=rtpmap:"<<payloadType << " " << rtp.encodingName << "/"
-              << rtp.clockRate << "/" << rtp.channels << endl;
-          } else {
-            sdp << "a=rtpmap:"<<payloadType << " " << rtp.encodingName << "/"
-              << rtp.clockRate << endl;
-          }
-          for (std::map<std::string, std::string>::const_iterator theIt = rtp.formatParameters.begin();
-              theIt != rtp.formatParameters.end(); theIt++){
-            if (theIt->first.compare("none")){
-              sdp << "a=fmtp:" << payloadType << " " << theIt->first << "=" << theIt->second << endl;
-            }else{
-              sdp << "a=fmtp:" << payloadType << " " << theIt->second << endl;
+      {
+        std::lock_guard<std::mutex> lock(payloadVectorMutex_);
+        for (std::list<RtpMap>::iterator it = payloadVector_.begin();
+             it != payloadVector_.end(); ++it) {
+          const RtpMap& rtp = *it;
+          if (rtp.mediaType == AUDIO_TYPE && rtp.enable) {
+            int payloadType = rtp.payloadType;
+            if (rtp.channels > 1) {
+              sdp << "a=rtpmap:" << payloadType << " " << rtp.encodingName
+                  << "/" << rtp.clockRate << "/" << rtp.channels << endl;
+            } else {
+              sdp << "a=rtpmap:" << payloadType << " " << rtp.encodingName
+                  << "/" << rtp.clockRate << endl;
             }
-
+            for (std::map<std::string, std::string>::const_iterator theIt =
+                     rtp.formatParameters.begin();
+                 theIt != rtp.formatParameters.end(); theIt++) {
+              if (theIt->first.compare("none")) {
+                sdp << "a=fmtp:" << payloadType << " " << theIt->first << "="
+                    << theIt->second << endl;
+              } else {
+                sdp << "a=fmtp:" << payloadType << " " << theIt->second << endl;
+              }
+            }
           }
         }
       }
@@ -428,11 +447,16 @@ namespace erizo {
       sdp << "m=video 1 RTP/" << (profile==SAVPF?"SAVPF ":"AVPF "); //<<  "100 101 102 103\n"
 
       int codecCounter = 0;
-      for (std::list<RtpMap>::iterator it = payloadVector_.begin(); it != payloadVector_.end(); ++it){
-        const RtpMap& payload_info = *it;
-        if (payload_info.mediaType == VIDEO_TYPE && payload_info.enable) {
-          codecCounter++;
-          sdp << payload_info.payloadType <<((codecCounter<videoCodecs)?" ":"");
+      {
+        std::lock_guard<std::mutex> lock(payloadVectorMutex_);
+        for (std::list<RtpMap>::iterator it = payloadVector_.begin();
+             it != payloadVector_.end(); ++it) {
+          const RtpMap& payload_info = *it;
+          if (payload_info.mediaType == VIDEO_TYPE && payload_info.enable) {
+            codecCounter++;
+            sdp << payload_info.payloadType
+                << ((codecCounter < videoCodecs) ? " " : "");
+          }
         }
       }
 
@@ -440,11 +464,13 @@ namespace erizo {
       if (isRtcpMux) {
         sdp << "a=rtcp:1 IN IP4 0.0.0.0" << endl;
       }
-      for (unsigned int it = 0; it < candidateVector_.size(); it++) {
-          if(candidateVector_[it].mediaType == VIDEO_TYPE)
+      {
+        std::lock_guard<std::mutex> lock(candidateVectorMutex_);
+        for (unsigned int it = 0; it < candidateVector_.size(); it++) {
+          if (candidateVector_[it].mediaType == VIDEO_TYPE)
             sdp << this->stringifyCandidate(candidateVector_[it]) << endl;
+        }
       }
-
       sdp << "a=ice-ufrag:" << iceVideoUsername_ << endl;
       sdp << "a=ice-pwd:" << iceVideoPassword_ << endl;
       //sdp << "a=ice-options:google-ice" << endl;
@@ -478,41 +504,54 @@ namespace erizo {
       }
       if (isRtcpMux)
         sdp << "a=rtcp-mux\n";
-      for (unsigned int it = 0; it < cryptoVector_.size(); it++) {
-        const CryptoInfo& cryp_info = cryptoVector_[it];
-        if (cryp_info.mediaType == VIDEO_TYPE) {
-          sdp << "a=crypto:" << cryp_info.tag << " "
-            << cryp_info.cipherSuite << " " << "inline:"
-            << cryp_info.keyParams << endl;
+      {
+        std::lock_guard<std::mutex> lock(cryptoVectorMutex_);
+        for (unsigned int it = 0; it < cryptoVector_.size(); it++) {
+          const CryptoInfo& cryp_info = cryptoVector_[it];
+          if (cryp_info.mediaType == VIDEO_TYPE) {
+            sdp << "a=crypto:" << cryp_info.tag << " " << cryp_info.cipherSuite
+                << " "
+                << "inline:" << cryp_info.keyParams << endl;
+          }
         }
       }
 
-      for (std::list<RtpMap>::iterator it = payloadVector_.begin(); it != payloadVector_.end(); ++it){
-        const RtpMap& rtp = *it;
-        if (rtp.mediaType==VIDEO_TYPE && rtp.enable)
-        {
-          int payloadType = rtp.payloadType;
-          sdp << "a=rtpmap:"<<payloadType << " " << rtp.encodingName << "/"
-              << rtp.clockRate <<"\n";
-          if (rtp.encodingName == "VP8" || rtp.encodingName == "H264" || rtp.encodingName == "H265" || rtp.encodingName == "VP9") {
-            if (rtp.encodingName == "H264") {
-              sdp << "a=fmtp:"<< payloadType<<" level-asymmetry-allowed=1;profile-level-id=42e033;packetization-mode=1\n";
-              //sdp << "a=fmtp:"<< payloadType<<" level-asymmetry-allowed=1;profile-level-id=640029;packetization-mode=1\n";
+      {
+        std::lock_guard<std::mutex> lock(payloadVectorMutex_);
+        for (std::list<RtpMap>::iterator it = payloadVector_.begin();
+             it != payloadVector_.end(); ++it) {
+          const RtpMap& rtp = *it;
+          if (rtp.mediaType == VIDEO_TYPE && rtp.enable) {
+            int payloadType = rtp.payloadType;
+            sdp << "a=rtpmap:" << payloadType << " " << rtp.encodingName << "/"
+                << rtp.clockRate << "\n";
+            if (rtp.encodingName == "VP8" || rtp.encodingName == "H264" ||
+                rtp.encodingName == "H265" || rtp.encodingName == "VP9") {
+              if (rtp.encodingName == "H264") {
+                sdp << "a=fmtp:" << payloadType << " level-asymmetry-allowed=1;"
+                                                   "profile-level-id=42e033;"
+                                                   "packetization-mode=1\n";
+                // sdp << "a=fmtp:"<< payloadType<<"
+                // level-asymmetry-allowed=1;profile-level-id=640029;packetization-mode=1\n";
+              }
+              sdp << "a=rtcp-fb:" << payloadType << " ccm fir\n";
+              if (nackEnabled) {
+                sdp << "a=rtcp-fb:" << payloadType << " nack\n";
+              }
+              sdp << "a=rtcp-fb:" << rtp.payloadType << " goog-remb\n";
             }
-            sdp << "a=rtcp-fb:"<< payloadType<<" ccm fir\n";
-            if (nackEnabled) {
-              sdp << "a=rtcp-fb:"<< payloadType<<" nack\n";
-            }
-            sdp << "a=rtcp-fb:"<< rtp.payloadType<<" goog-remb\n";
-          }
 
-          if (rtp.encodingName != "H264") {
-            for (std::map<std::string, std::string>::const_iterator theIt = rtp.formatParameters.begin();
-                theIt != rtp.formatParameters.end(); theIt++){
-              if (theIt->first.compare("none")){
-                sdp << "a=fmtp:" << payloadType << " " << theIt->first << "=" << theIt->second << endl;
-              }else{
-                sdp << "a=fmtp:" << payloadType << " " << theIt->second << endl;
+            if (rtp.encodingName != "H264") {
+              for (std::map<std::string, std::string>::const_iterator theIt =
+                       rtp.formatParameters.begin();
+                   theIt != rtp.formatParameters.end(); theIt++) {
+                if (theIt->first.compare("none")) {
+                  sdp << "a=fmtp:" << payloadType << " " << theIt->first << "="
+                      << theIt->second << endl;
+                } else {
+                  sdp << "a=fmtp:" << payloadType << " " << theIt->second
+                      << endl;
+                }
               }
             }
           }
@@ -536,18 +575,20 @@ namespace erizo {
     return sdp.str();
   }
 
-  RtpMap* SdpInfo::getCodecByName(const std::string codecName, const unsigned int clockRate) {
+  std::unique_ptr<RtpMap> SdpInfo::getCodecByName(const std::string codecName, const unsigned int clockRate) {
+    std::lock_guard<std::mutex> lock(internalPayloadVectorMutex_);
     for (unsigned int it = 0; it < internalPayloadVector_.size(); it++) {
       RtpMap& rtp = internalPayloadVector_[it];
       if (rtp.encodingName == codecName && rtp.clockRate == clockRate) {
-        return &rtp;
+        std::unique_ptr<RtpMap> rtpMap(new RtpMap(rtp));
+        return std::move(rtpMap);
       }
     }
     return NULL;
   }
 
   bool SdpInfo::supportCodecByName(const std::string codecName, const unsigned int clockRate) {
-    RtpMap* rtp = getCodecByName(codecName, clockRate);
+    std::unique_ptr<RtpMap> rtp = getCodecByName(codecName, clockRate);
     if (rtp != NULL && rtp->enable) {
       return supportPayloadType(rtp->payloadType);
     }
@@ -556,6 +597,7 @@ namespace erizo {
 
   int SdpInfo::forceCodecSupportByName(const std::string codecName, const unsigned int clockRate, MediaType mediaType) {
     int ret = INVALID_PT;
+    std::lock_guard<std::mutex> lock(internalPayloadVectorMutex_);
     for (unsigned int it = 0; it < internalPayloadVector_.size(); it++) {
       RtpMap& rtp = internalPayloadVector_[it];
       if (rtp.mediaType == mediaType) {
@@ -572,6 +614,7 @@ namespace erizo {
 
   bool SdpInfo::supportPayloadType(const int payloadType) {
     if (inOutPTMap.count(payloadType) > 0) {
+      std::lock_guard<std::mutex> lock(payloadVectorMutex_);
       for (std::list<RtpMap>::iterator it = payloadVector_.begin(); it != payloadVector_.end(); ++it){
         const RtpMap& rtp = *it;
         if (outInPTMap[rtp.payloadType] == payloadType) {
@@ -584,6 +627,7 @@ namespace erizo {
 
   bool SdpInfo::removePayloadSupport(unsigned int payloadType) {
     bool found = false;
+    std::lock_guard<std::mutex> lock(internalPayloadVectorMutex_);
     for (unsigned int it = 0; it < internalPayloadVector_.size(); it++) {
       RtpMap& rtp = internalPayloadVector_[it];
       if (rtp.payloadType == payloadType) {
@@ -639,6 +683,7 @@ namespace erizo {
 
   bool SdpInfo::setREDSupport(bool enable) {
     bool found = false;
+    std::lock_guard<std::mutex> lock(internalPayloadVectorMutex_);
     for (unsigned int it = 0; it < internalPayloadVector_.size(); it++) {
       RtpMap& rtp = internalPayloadVector_[it];
       if (rtp.payloadType == RED_90000_PT) {
@@ -651,6 +696,7 @@ namespace erizo {
 
   bool SdpInfo::setFECSupport(bool enable) {
     bool found = false;
+    std::lock_guard<std::mutex> lock(internalPayloadVectorMutex_);
     for (unsigned int it = 0; it < internalPayloadVector_.size(); it++) {
       RtpMap& rtp = internalPayloadVector_[it];
       if (rtp.payloadType == ULP_90000_PT) {
@@ -790,7 +836,10 @@ namespace erizo {
         crypinfo.cipherSuite = cryptopiece[2];
         crypinfo.keyParams = cryptopiece[4];
         crypinfo.mediaType = mtype;
-        cryptoVector_.push_back(crypinfo);
+        {
+          std::lock_guard<std::mutex> lock(cryptoVectorMutex_);
+          cryptoVector_.push_back(crypinfo);
+        }
         ELOG_DEBUG("Crypto Info: %s %s %d", crypinfo.cipherSuite.c_str(),
                    crypinfo.keyParams.c_str(),
                    crypinfo.mediaType);
@@ -914,17 +963,24 @@ namespace erizo {
         }
 
         bool found = false;
-        for (unsigned int it = 0; it < internalPayloadVector_.size(); it++) {
-          const RtpMap& rtp = internalPayloadVector_[it];
-          if (rtp.mediaType == mtype && rtp.encodingName == codecname && rtp.clockRate == clock && rtp.enable) {
-            std::map<const int, int>::iterator mapIt = inOutPTMap.find(rtp.payloadType);
-            if (mapIt == inOutPTMap.end()) {
-              outInPTMap[PT] = rtp.payloadType;
-              inOutPTMap[rtp.payloadType] = PT;
-              found = true;
-              ELOG_DEBUG("Mapping %s/%d:%d to %s/%d:%d", codecname.c_str(), clock, PT, rtp.encodingName.c_str(), rtp.clockRate, rtp.payloadType);
+        {
+          std::lock_guard<std::mutex> lock(internalPayloadVectorMutex_);
+          for (unsigned int it = 0; it < internalPayloadVector_.size(); it++) {
+            const RtpMap& rtp = internalPayloadVector_[it];
+            if (rtp.mediaType == mtype && rtp.encodingName == codecname &&
+                rtp.clockRate == clock && rtp.enable) {
+              std::map<const int, int>::iterator mapIt =
+                  inOutPTMap.find(rtp.payloadType);
+              if (mapIt == inOutPTMap.end()) {
+                outInPTMap[PT] = rtp.payloadType;
+                inOutPTMap[rtp.payloadType] = PT;
+                found = true;
+                ELOG_DEBUG("Mapping %s/%d:%d to %s/%d:%d", codecname.c_str(),
+                           clock, PT, rtp.encodingName.c_str(), rtp.clockRate,
+                           rtp.payloadType);
+              }
+              break;
             }
-            break;
           }
         }
         if (found) {
@@ -933,6 +989,7 @@ namespace erizo {
           else
             audioCodecs++;
 
+          std::lock_guard<std::mutex> lock(payloadVectorMutex_);
           std::list<RtpMap>::reverse_iterator rit;
           for (rit = payloadVector_.rbegin(); rit != payloadVector_.rend(); ++rit) {
             if (rit->mediaType != mtype
@@ -959,6 +1016,7 @@ namespace erizo {
             value = parts[4].c_str();
           }
           ELOG_DEBUG("Parsing fmtp to PT %u, option %s, value %s", PT, option.c_str(), value.c_str());
+          std::lock_guard<std::mutex> lock(payloadVectorMutex_);
           std::list<RtpMap>::iterator it = payloadVector_.begin();
           for (; it != payloadVector_.end(); ++it) {
             RtpMap& rtp = *it;
@@ -987,31 +1045,42 @@ namespace erizo {
       iceAudioPassword_ = iceVideoPassword_;
     }
 
-    for (unsigned int i = 0; i < candidateVector_.size(); i++) {
+    {
+      std::lock_guard<std::mutex> lock(candidateVectorMutex_);
+      for (unsigned int i = 0; i < candidateVector_.size(); i++) {
         CandidateInfo& c = candidateVector_[i];
         c.isBundle = isBundle;
-        if (c.mediaType == VIDEO_TYPE){
+        if (c.mediaType == VIDEO_TYPE) {
           c.username = iceVideoUsername_;
           c.password = iceVideoPassword_;
-        }else{
+        } else {
           c.username = iceAudioUsername_;
           c.password = iceAudioPassword_;
         }
+      }
     }
 
     return true;
   }
 
-  std::vector<CandidateInfo>& SdpInfo::getCandidateInfos() {
+  std::vector<CandidateInfo> SdpInfo::getCandidateInfos() const {
+    std::lock_guard<std::mutex> lock(candidateVectorMutex_);
     return candidateVector_;
   }
 
-  std::vector<CryptoInfo>& SdpInfo::getCryptoInfos() {
+  std::vector<CryptoInfo> SdpInfo::getCryptoInfos() const {
+    std::lock_guard<std::mutex> lock(cryptoVectorMutex_);
     return cryptoVector_;
   }
 
-  std::list<RtpMap>& SdpInfo::getPayloadInfos(){
+  std::list<RtpMap> SdpInfo::getPayloadInfos() const {
+    std::lock_guard<std::mutex> lock(payloadVectorMutex_);
     return payloadVector_;
+  }
+
+  void SdpInfo::setPayloadInfos(const std::list<RtpMap>& info) {
+    std::lock_guard<std::mutex> lock(payloadVectorMutex_);
+    payloadVector_ = info;
   }
 
   int SdpInfo::getAudioInternalPT(int externalPT) {
@@ -1049,6 +1118,7 @@ namespace erizo {
   }
 
   int SdpInfo::preferredPayloadType(MediaType mediaType) {
+    std::lock_guard<std::mutex> lock(payloadVectorMutex_);
     std::list<RtpMap>::iterator it = payloadVector_.begin();
     for (; it != payloadVector_.end(); ++it) {
       const RtpMap& rtp = *it;
