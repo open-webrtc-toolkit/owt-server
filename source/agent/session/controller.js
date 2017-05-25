@@ -431,7 +431,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                         reject
                     );
                 }).catch(function(err) {
-                    log.error("Publish internal failed.");
+                    log.error('Publish internal failed:', err);
                     pubFail = true;
                 }),
                 new Promise(function(resolve, reject) {
@@ -448,7 +448,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                         reject
                     );
                 }).catch(function(err) {
-                    log.error("Subscribe internal failed.");
+                    log.error('Subscribe internal failed:', err);
                     subFail = true;
                 })
             ]).then(function(ret) {
