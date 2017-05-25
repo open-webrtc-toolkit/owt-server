@@ -128,9 +128,9 @@ var gpuCollector = function (period, on_load) {
                    old = blitters.shift();
                blitters.push(blitter);
                blitter_sum = blitter_sum - old + blitter;
-               load = (Math.floor(Math.max(render_sum, bitstream_sum, blitter_sum) / 10)) / 100;
            }
        });
+       load = (Math.floor(Math.max(render_sum, bitstream_sum, blitter_sum) / 10)) / 100;
     });
 
     var interval = setInterval(function () {

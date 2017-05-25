@@ -34,8 +34,10 @@ DEFINE_LOGGER(VideoFramePacketizer, "woogeen.VideoFramePacketizer");
 
 VideoFramePacketizer::VideoFramePacketizer(bool enableRed, bool enableUlpfec)
     : m_enabled(true)
+    , m_keyFrameArrived(false)
     , m_frameFormat(FRAME_FORMAT_UNKNOWN)
-    , m_mediaSpecInfo({0, 0})
+    , m_frameWidth(0)
+    , m_frameHeight(0)
 {
     videoSink_ = nullptr;
     m_videoTransport.reset(new WebRTCTransport<erizo::VIDEO>(this, nullptr));
@@ -132,6 +134,7 @@ bool VideoFramePacketizer::setSendCodec(FrameFormat frameFormat, unsigned int wi
 
 void VideoFramePacketizer::OnReceivedIntraFrameRequest(uint32_t ssrc)
 {
+    ELOG_DEBUG("onReceivedIntraFrameRequest.");
     FeedbackMsg feedback = {.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME};
     deliverFeedbackMsg(feedback);
 }
@@ -165,15 +168,26 @@ void VideoFramePacketizer::onFrame(const Frame& frame)
         return;
     }
 
+    if (!m_keyFrameArrived) {
+        if (!frame.additionalInfo.video.isKeyFrame) {
+            ELOG_DEBUG("Key frame has not arrived, send key-frame-request.");
+            FeedbackMsg feedback = {.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME};
+            deliverFeedbackMsg(feedback);
+            return;
+        } else {
+            m_keyFrameArrived = true;
+        }
+    }
+
     webrtc::RTPVideoHeader h;
 
     if (frame.format != m_frameFormat
-        || frame.additionalInfo.video.width != m_mediaSpecInfo.video.width
-        || frame.additionalInfo.video.height != m_mediaSpecInfo.video.height) {
+        || frame.additionalInfo.video.width != m_frameWidth
+        || frame.additionalInfo.video.height != m_frameHeight) {
         m_frameFormat = frame.format;
-        m_mediaSpecInfo.video.width = frame.additionalInfo.video.width;
-        m_mediaSpecInfo.video.height = frame.additionalInfo.video.height;
-        setSendCodec(m_frameFormat, m_mediaSpecInfo.video.width, m_mediaSpecInfo.video.height);
+        m_frameWidth = frame.additionalInfo.video.width;
+        m_frameHeight = frame.additionalInfo.video.height;
+        setSendCodec(m_frameFormat, m_frameWidth, m_frameHeight);
     }
 
     if (frame.format == FRAME_FORMAT_VP8) {

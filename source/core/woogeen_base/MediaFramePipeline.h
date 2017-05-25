@@ -55,6 +55,7 @@ enum FrameFormat {
 struct VideoFrameSpecificInfo {
     uint16_t width;
     uint16_t height;
+    bool isKeyFrame;
 };
 
 struct AudioFrameSpecificInfo {

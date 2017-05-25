@@ -400,12 +400,14 @@ int32_t VCMFrameEncoder::SendData(
         frame.timeStamp = encoded_image._timeStamp;
         frame.additionalInfo.video.width = encoded_image._encodedWidth;
         frame.additionalInfo.video.height = encoded_image._encodedHeight;
+        frame.additionalInfo.video.isKeyFrame = (encoded_image._frameType == webrtc::kKeyFrame);
 
-        ELOG_TRACE_T("SendData(%d), %s, %dx%d, length(%d)",
+        ELOG_TRACE_T("SendData(%d), %s, %dx%d(k:%s), length(%d)",
                 rtpVideoHdr->simulcastIdx,
                 getFormatStr(frame.format),
                 frame.additionalInfo.video.width,
-                frame.additionalInfo.video.height ,
+                frame.additionalInfo.video.height,
+                frame.additionalInfo.video.isKeyFrame ? "true" : "false",
                 frame.length);
 
         dump(frame.payload, frame.length);
