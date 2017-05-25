@@ -18,7 +18,12 @@ var RpcChannel = function(amqpClient) {
           }
          }
       };
-      onStatus && (callbacks.onStatus = onStatus);
+
+      if (onStatus) {
+        callbacks.onStatus = function (status) {
+          onStatus(status).catch((e) => {});
+        };
+      }
 
       amqp_client.remoteCall(
         node,
