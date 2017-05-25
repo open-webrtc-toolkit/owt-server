@@ -254,6 +254,11 @@ public:
         m_ready = true;
     }
 
+    bool isKeyFrame(uint32_t FrameType)
+    {
+        return (FrameType & MFX_FRAMETYPE_IDR) || (FrameType & MFX_FRAMETYPE_xIDR);
+    }
+
     void onFrame(const woogeen_base::Frame& frame)
     {
         mfxStatus sts = MFX_ERR_NONE;
@@ -364,10 +369,15 @@ retry:
         outFrame.length = m_bitstream->DataLength;
         outFrame.additionalInfo.video.width = m_width;
         outFrame.additionalInfo.video.height = m_height;
-
+        outFrame.additionalInfo.video.isKeyFrame = isKeyFrame(m_bitstream->FrameType);
         outFrame.timeStamp = (m_frameCount++) * 1000 / 30 * 90;
 
-        //ELOG_TRACE("timeStamp %u", frame.timeStamp);
+        ELOG_TRACE_T("deliverFrame, %s, %dx%d(%s), length(%d)",
+                getFormatStr(outFrame.format),
+                outFrame.additionalInfo.video.width,
+                outFrame.additionalInfo.video.height,
+                outFrame.additionalInfo.video.isKeyFrame ? "key" : "delta",
+                outFrame.length);
 
         dump(outFrame.payload, outFrame.length);
 
