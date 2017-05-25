@@ -18,6 +18,7 @@ reconnection_ticket_lifetime = 600 #default: 600
 # Client will leave conference if it cannot reconnect to Socket.IO server after |reconnection_timeout| seconds.
 reconnection_timeout = 120 #default: 120
 
+
 [cluster]
 name = "woogeen-cluster"
 
@@ -27,8 +28,9 @@ join_retry = 60 #default: 60
 #The interval of reporting the work load
 report_load_interval = 1000 #default: 1000, unit: millisecond
 
-#The max work load this worker can carry.
+#The max CPU load under which this worker can taks new tasks.
 max_load = 0.85 #default: 0.85
+
 
 [capacity]
 #The ISP list this portal tends to handle
@@ -36,9 +38,11 @@ isps = [] #default: [], which means all ISPs.
 #The region list this portal tends to handle
 regions = [] #default: [], which means all regions.
 
+
 [rabbit]
 host = "localhost" #default: "localhost"
 port = 5672 #default: 5672
+
 
 [nuve]
 dataBaseURL = "localhost/nuvedb" #default: "localhost/nuvedb"
