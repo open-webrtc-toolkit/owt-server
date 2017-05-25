@@ -402,12 +402,12 @@ int32_t VCMFrameEncoder::SendData(
         frame.additionalInfo.video.height = encoded_image._encodedHeight;
         frame.additionalInfo.video.isKeyFrame = (encoded_image._frameType == webrtc::kKeyFrame);
 
-        ELOG_TRACE_T("SendData(%d), %s, %dx%d(k:%s), length(%d)",
+        ELOG_TRACE_T("SendData(%d), %s, %dx%d(%s), length(%d)",
                 rtpVideoHdr->simulcastIdx,
                 getFormatStr(frame.format),
                 frame.additionalInfo.video.width,
                 frame.additionalInfo.video.height,
-                frame.additionalInfo.video.isKeyFrame ? "true" : "false",
+                frame.additionalInfo.video.isKeyFrame ? "key" : "delta",
                 frame.length);
 
         dump(frame.payload, frame.length);
