@@ -120,6 +120,11 @@ void RtspOut::close()
     // output context
     if (m_context) {
         av_write_trailer(m_context);
+
+        if (!(m_context->oformat->flags & AVFMT_NOFILE)) {
+            avio_close(m_context->pb);
+        }
+
         avformat_free_context(m_context);
         m_context = NULL;
     }
