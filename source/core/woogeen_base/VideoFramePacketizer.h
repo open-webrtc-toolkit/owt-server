@@ -83,6 +83,7 @@ private:
     bool setSendCodec(FrameFormat, unsigned int width, unsigned int height);
 
     bool m_enabled;
+    bool m_keyFrameArrived;
     boost::scoped_ptr<webrtc::BitrateController> m_bitrateController;
     boost::scoped_ptr<webrtc::RtcpBandwidthObserver> m_bandwidthObserver;
     boost::scoped_ptr<webrtc::RtpRtcp> m_rtpRtcp;
@@ -91,7 +92,8 @@ private:
     boost::shared_ptr<webrtc::Transport> m_videoTransport;
     boost::shared_ptr<WebRTCTaskRunner> m_taskRunner;
     FrameFormat m_frameFormat;
-    MediaSpecInfo m_mediaSpecInfo;
+    uint16_t m_frameWidth;
+    uint16_t m_frameHeight;
 
     boost::shared_mutex m_transport_mutex;
 };

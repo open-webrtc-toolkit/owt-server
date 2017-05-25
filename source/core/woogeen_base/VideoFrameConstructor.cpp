@@ -303,6 +303,7 @@ int32_t VideoFrameConstructor::Decode(const webrtc::EncodedImage& encodedImage,
         frame.timeStamp = encodedImage._timeStamp;
         frame.additionalInfo.video.width = m_width;
         frame.additionalInfo.video.height = m_height;
+        frame.additionalInfo.video.isKeyFrame = (encodedImage._frameType == webrtc::kKeyFrame);
 
         if (m_enabled) {
             deliverFrame(frame);
