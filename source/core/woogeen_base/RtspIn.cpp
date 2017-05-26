@@ -1414,6 +1414,7 @@ void RtspIn::deliverVideoFrame(AVPacket *pkt)
     frame.timeStamp = timeRescale(pkt->dts, m_msTimeBase, m_videoTimeBase);
     frame.additionalInfo.video.width = m_videoSize.width;
     frame.additionalInfo.video.height = m_videoSize.height;
+    frame.additionalInfo.video.isKeyFrame = (pkt->flags & AV_PKT_FLAG_KEY);
     deliverFrame(frame);
 
     ELOG_DEBUG_T("deliver video frame, timestamp %ld(%ld), size %4d, %s"
