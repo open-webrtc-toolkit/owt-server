@@ -12,13 +12,6 @@ var declareExchange = function(conn, name, type, autoDelete, on_ok, on_failure) 
         ok = true;
         on_ok(exc);
     });
-
-    setTimeout(function() {
-        if (!ok) {
-            log.error('Declare exchange [name: ' + name + ', type: ' + type + '] failed.');
-            on_failure('Declare exchange [name: ' + name + ', type: ' + type + '] failed.');
-        }
-    }, 3000);
 };
 
 var rpcClient = function(bus, conn, on_ready, on_failure) {
@@ -30,19 +23,20 @@ var rpcClient = function(bus, conn, on_ready, on_failure) {
         reply_q,
         exc;
 
+    // Because reply queue name would change after rabbitmq reconnected
+    // if empty string '' is used, but queue's binding won't, we need to
+    // save its first binding name to avoid lost when reconnecting.
+    var queueBindingName;
+
     declareExchange(conn, 'woogeenRpc', 'direct', true, function (exc_got) {
         exc = exc_got;
-        var timer = setTimeout(function () {
-            if (!ready) {
-                exc.destroy(true);
-                on_failure('Declare reply queue or rpc-client failed.');
-            }
-        }, 2000);
 
         reply_q = conn.queue('', function (q) {
             log.debug('Reply queue for rpc client ' + q.name + ' is open');
+            // Save queueBindingName once.
+            queueBindingName = q.name;
 
-            reply_q.bind(exc.name, reply_q.name, function () {
+            reply_q.bind(exc.name, queueBindingName, function () {
                 reply_q.subscribe(function (message) {
                     try {
                         log.debug('New message received', message);
@@ -88,7 +82,7 @@ var rpcClient = function(bus, conn, on_ready, on_failure) {
                 }
             }, timeout || TIMEOUT);
 
-            exc.publish(to, {method: method, args: args, corrID: corr_id, replyTo: reply_q.name});
+            exc.publish(to, {method: method, args: args, corrID: corr_id, replyTo: queueBindingName});
         } else {
             for (var i in callbacks) {
                 (typeof callbacks[i] === 'function' ) && callbacks[i]('error', 'rpc client is not ready');
@@ -122,12 +116,6 @@ var rpcServer = function(bus, conn, id, methods, on_ready, on_failure) {
     declareExchange(conn, 'woogeenRpc', 'direct', true, function (exc_got) {
         exc = exc_got;
         var ready = false;
-        var timer = setTimeout(function () {
-            if (!ready) {
-                exc.destroy(true);
-                on_failure('Declare request queue or rpc-server failed.');
-            }
-        }, 2000);
 
         request_q = conn.queue(id, function (queueCreated) {
             log.debug('Request queue for rpc server ' + queueCreated.name + ' is open');
@@ -180,17 +168,10 @@ var topicParticipant = function(bus, conn, excName, on_ready, on_failure) {
     declareExchange(conn, excName, 'topic', false, function (exc_got) {
         exc = exc_got;
         var ready = false;
-        var timer = setTimeout(function () {
-            if (!ready) {
-                exc.destroy(true);
-                on_failure('Declare queue for topic[' + excName + '] failed.');
-            }
-        }, 2000);
 
         msg_q = conn.queue('', function (queueCreated) {
             log.debug('Message queue for topic participant is open:', queueCreated.name);
             ready = true;
-            clearTimeout(timer);
             on_ready();
         });
 
@@ -248,17 +229,10 @@ var faultMonitor = function(bus, conn, on_message, on_ready, on_failure) {
     declareExchange(conn, 'woogeenMonitoring', 'topic', false, function (exc_got) {
         exc = exc_got;
         var ready = false;
-        var timer = setTimeout(function () {
-            if (!ready) {
-                exc.destroy(true);
-                on_failure('Declare queue for monitoring failed.');
-            }
-        }, 2000);
 
         msg_q = conn.queue('', function (queueCreated) {
             log.debug('Message queue for monitoring is open:', queueCreated.name);
             ready = true;
-            clearTimeout(timer);
 
             msg_q.bind(exc.name, 'exit.#', function() {
                 log.debug('Monitoring queue bind ok.');
@@ -340,18 +314,58 @@ module.exports = function() {
 
     that.connect = function(hostPort, on_ok, on_failure) {
         log.debug('Connecting to rabbitMQ server:', hostPort);
+
+        /*
+         * `amqp.createConnection([options, [implOptions]])` takes two options
+         * objects as parameters.  The first options object has these defaults:
+         *
+         *     { host: 'localhost'
+         *     , port: 5672
+         *     , login: 'guest'
+         *     , password: 'guest'
+         *     , connectionTimeout: 10000
+         *     , authMechanism: 'AMQPLAIN'
+         *     , vhost: '/'
+         *     , noDelay: true
+         *     , ssl: { enabled : false
+         *            }
+         *     }
+         *
+         * The second options are specific to the node AMQP implementation. It has
+         * the default values:
+         *
+         *     { defaultExchangeName: ''
+         *     , reconnect: true
+         *     , reconnectBackoffStrategy: 'linear'
+         *     , reconnectExponentialLimit: 120000
+         *     , reconnectBackoffTime: 1000
+         *     }
+         */
+        // Note that we use the default option.
+        // So the reconnect is enabled, and reconnect strategy is
+        // 'linear', which means the broken connection will try to
+        // recover after every 'reconnectBackoffTime' which is
+        // 1000ms by default.
         var conn = amqp.createConnection(hostPort);
+        var connected = false;
         conn.on('ready', function() {
             log.info('Connecting to rabbitMQ server OK, hostPort:', hostPort);
             connection = conn;
-            on_ok();
+
+            // The 'ready' event will be triggered each time
+            // the connection is OK. So just invoke the success
+            // callback once to avoid the duplicate logic when
+            // reconnecting is done.
+            if (!connected) {
+                connected = true;
+                on_ok();
+            }
         });
 
         conn.on('error', function(e) {
-            close();
-            connection = undefined;
+            // The amqp client will try to reconnect by
+            // the default option, so just notify something here.
             log.info('Connection to rabbitMQ server error', e);
-            on_failure('amqp connection error');
         });
 
         conn.on('disconnect', function() {
