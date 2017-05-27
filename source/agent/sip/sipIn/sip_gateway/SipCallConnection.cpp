@@ -162,6 +162,7 @@ void SipCallConnection::onSipAudioData(char* data, int len)
 
 void SipCallConnection::onSipVideoData(char* data, int len)
 {
+    //ELOG_DEBUG("SipCallConnection::onSipVideoData");
     if (running) {
         if (videoSink_ == NULL)
             return;
