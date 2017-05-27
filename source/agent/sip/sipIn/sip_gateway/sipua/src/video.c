@@ -523,10 +523,8 @@ int video_alloc(struct video **vp, const struct config *cfg,
 
 	/* RFC 4585 */
 	/*TODO intel webrtc */
-	/*
 	err |= sdp_media_set_lattr(stream_sdpmedia(v->strm), true,
-				   "rtcp-fb", "* nack pli");
-	*/
+				   "rtcp-fb", "* ccm fir");
 
 	/* RFC 4796 */
 	if (content) {

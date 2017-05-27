@@ -209,6 +209,7 @@ module.exports = function (spec, on_status) {
     that.onSignalling = function (msg) {
         var processSignalling = function() {
             if (msg.type === 'offer') {
+                log.debug('on offer:', msg.sdp);
                 wrtc.setRemoteSdp(msg.sdp);
                 wrtc.start();
             } else if (msg.type === 'candidate') {

@@ -178,7 +178,8 @@ void SipGateway::onSipVideoFmt(const std::string &peer, const std::string& codec
 {
     ELOG_DEBUG("onSipVideoFmt:%s-%u[%s]", codecName.c_str(), rtpClock, fmtp.c_str());
     if ((codecName == "VP8" && rtpClock == 90000)
-    || (codecName == "H264" && rtpClock == 90000)) {
+    || (codecName == "H264" && rtpClock == 90000)
+    || (codecName == "H265" && rtpClock == 90000)) {
         insertOrUpdateCallInfoByPeerURI(peer, codecName, rtpClock, fmtp);
     } else {
       ELOG_ERROR("not support video fmt");

@@ -323,7 +323,7 @@ static void call_event_handler(struct call *call, enum call_event ev,
 	case CALL_EVENT_UPDATE:
 		if (call_get_owner(call)) {
 			//Now Sip call upate requires server stream connection reset
-			call_connection_closed(call_get_owner(call));
+			//call_connection_closed(call_get_owner(call));
 			ep_call_updated(ua->owner->ep, peeruri, call_audio_dir(call), call_video_dir(call));
 	    }
 	    break;

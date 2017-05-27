@@ -4,6 +4,8 @@
  * Copyright (C) 2010 Creytiv.com
  */
 
+#include <string.h>
+
 #include <re.h>
 #include <baresip.h>
 #include "vp8.h"
@@ -223,15 +225,99 @@ static uint32_t packetization_mode(const char *fmtp)
 	return 0;
 }
 
+static const char* profile(const char *fmtp) {
+	struct pl pl, data;
+        uint32_t profile_level_id, profile_idc, profile_iop;
+
+	if (!fmtp)
+		return "unspecified";
+
+	pl_set_str(&pl, fmtp);
+
+	if (fmt_param_get(&pl, "profile-level-id", &data)) {
+                profile_level_id = pl_x32(&data);
+                profile_idc = (profile_level_id >> 16) & 0xff;
+                profile_iop = (profile_level_id >> 8) & 0xff;
+
+                /*info("profile: fmtp:%s profile_level_id:%x\n", fmtp, profile_level_id);*/
+                //According to rfc6481 section 8.1
+                if (profile_idc == 0x42 && (profile_iop & 0x4f)) {
+                        return "CB";
+                } else if (profile_idc == 0x4d && (profile_iop & 0x8f)) {
+                        return "CB";
+                } else if (profile_idc == 0x58 && (profile_iop & 0xcf)) {
+                        return "CB";
+                } else if (profile_idc == 0x42 && !(profile_iop & 0x4f)) {
+                        return "B";
+                } else if (profile_idc == 0x58 && ((profile_iop & 0xcf) == 0x80)) {
+                        return "B";
+                } else if (profile_idc == 0x4d && !(profile_iop & 0xaf)) {
+                        return "M";
+                } else if (profile_idc == 0x58 && !(profile_iop & 0xcf)) {
+                        return "E";
+                } else if (profile_idc == 0x64 && !(profile_iop & 0xff)) {
+                        return "H";
+                } else if (profile_idc == 0x6e && (profile_iop & 0xff)) {
+                        return "H10";
+                } else if (profile_idc == 0x7a && (profile_iop & 0xff)) {
+                        return "H42";
+                } else if (profile_idc == 0xf4 && (profile_iop & 0xff)) {
+                        return "H44";
+                } else if (profile_idc == 0x6e && ((profile_iop & 0xff) == 0x10)) {
+                        return "H10I";
+                } else if (profile_idc == 0x7a && ((profile_iop & 0xff) == 0x10)) {
+                        return "H42I";
+                } else if (profile_idc == 0xf4 && ((profile_iop & 0xff) == 0x10)) {
+                        return "H44I";
+                } else if (profile_idc == 0x2c && ((profile_iop & 0xff) == 0x10)) {
+                        return "C44I";
+                } else {
+                        return "invalid";
+                }
+        }
+
+        return "unspecified";
+}
 
 static bool h264_fmtp_cmp(const char *fmtp1, const char *fmtp2, void *data)
 {
+        const char *profile1;
+        const char *profile2;
+        profile1 = profile(fmtp1);
+        profile2 = profile(fmtp2);
 	(void)data;
 
-	return packetization_mode(fmtp1) == packetization_mode(fmtp2);
+        /*info("h264_fmtp_cmp: fmtp1:%s fmtp2:%s, profile1:%s, profile2:%s\n", fmtp1, fmtp2, profile1, profile2);*/
+	return packetization_mode(fmtp1) == packetization_mode(fmtp2) && !strcmp(profile1, profile2) && strcmp(profile1, "invalid");
 }
 
-static struct vidcodec h264_mode0 = {
+static struct vidcodec h264_constrained_baseline_mode0 = {
+	.name      = "H264",
+	.variant   = "packetization-mode=0",
+	.encupdh   = NULL,
+	.ench      = NULL,
+	.decupdh   = NULL,
+	.dech      = NULL,
+	/*.fmtp_ench = h264_fmtp_enc_mode0,*/
+	.fmtp_ench = NULL,
+	.fmtp = "packetization-mode=0;profile-level-id=42E01F;in-band-parameter-sets=1",
+	.fmtp_cmph = h264_fmtp_cmp,
+};
+
+static struct vidcodec h264_constrained_baseline_mode1 = {
+	.name      = "H264",
+	.variant   = "packetization-mode=1",
+	.encupdh   = NULL,
+	.ench      = NULL,
+	.decupdh   = NULL,
+	.dech      = NULL,
+	/*.fmtp_ench = h264_fmtp_enc_mode1,*/
+	.fmtp_ench = NULL,
+	.fmtp = "packetization-mode=1;profile-level-id=42E01F;in-band-parameter-sets=1",
+	.fmtp_cmph = h264_fmtp_cmp,
+};
+
+static struct vidcodec h264_baseline_mode0 = {
 	.name      = "H264",
 	.variant   = "packetization-mode=0",
 	.encupdh   = NULL,
@@ -244,7 +330,7 @@ static struct vidcodec h264_mode0 = {
 	.fmtp_cmph = h264_fmtp_cmp,
 };
 
-static struct vidcodec h264_mode1 = {
+static struct vidcodec h264_baseline_mode1 = {
 	.name      = "H264",
 	.variant   = "packetization-mode=1",
 	.encupdh   = NULL,
@@ -257,9 +343,49 @@ static struct vidcodec h264_mode1 = {
 	.fmtp_cmph = h264_fmtp_cmp,
 };
 
+static int32_t get_parameter(const char *fmtp, const char *paraname)
+{
+	struct pl pl, paraval;
+
+	if (!fmtp)
+		return -1;
+
+	pl_set_str(&pl, fmtp);
+
+	if (fmt_param_get(&pl, paraname, &paraval))
+		return pl_u32(&paraval);
+
+	return -1;
+}
+
+
+static bool h265_fmtp_cmp(const char *fmtp1, const char *fmtp2, void *data)
+{
+	(void)data;
+
+        info("h265_fmtp_cmp: fmtp1:%s fmtp2:%s\n", fmtp1, fmtp2);
+	return get_parameter(fmtp1, "profile-id") == get_parameter(fmtp2, "profile-id");
+}
+
+static struct vidcodec h265_profile_id_1 = {
+	.name      = "H265",
+	.variant   = "profile-id=1",
+	.encupdh   = NULL,
+	.ench      = NULL,
+	.decupdh   = NULL,
+	.dech      = NULL,
+	.fmtp_ench = NULL,
+	//.fmtp = "profile-id=1;tier-flag=0;level-id=120",
+	.fmtp = "tier-flag=0;level-id=120",
+	.fmtp_cmph = h265_fmtp_cmp,
+};
+
 void register_video_codecs(void)
 {
-	vidcodec_register((struct vidcodec *)&vpx);
-	vidcodec_register(&h264_mode0);
-	vidcodec_register(&h264_mode1);
+	/*vidcodec_register((struct vidcodec *)&vpx);*/
+	vidcodec_register(&h265_profile_id_1);
+	vidcodec_register(&h264_constrained_baseline_mode1);
+	vidcodec_register(&h264_baseline_mode1);
+	/*vidcodec_register(&h264_constrained_baseline_mode0);
+	vidcodec_register(&h264_baseline_mode0);*/
 }
