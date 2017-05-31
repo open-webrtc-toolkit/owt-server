@@ -51,8 +51,8 @@ RtspOut::RtspOut(const std::string& url, const AVOptions* audio, const AVOptions
     , m_audioEncodingFrame{ nullptr }
 {
     if (!audio && !video) {
-        ELOG_ERROR("NULL a/v AVOptions");
-        notifyAsyncEvent("init", "NULL a/v AVOptions");
+        ELOG_ERROR("NULL a/v AVOptions params");
+        notifyAsyncEvent("init", "NULL a/v AVOptions params");
         return;
     }
 
@@ -120,11 +120,9 @@ void RtspOut::close()
     // output context
     if (m_context) {
         av_write_trailer(m_context);
-
         if (!(m_context->oformat->flags & AVFMT_NOFILE)) {
             avio_close(m_context->pb);
         }
-
         avformat_free_context(m_context);
         m_context = NULL;
     }
@@ -166,8 +164,8 @@ void RtspOut::sendLoop()
             goto exit;
 
         if (i++ >= 100) {
-            ELOG_ERROR("No a/v options specified");
-            notifyAsyncEvent("fatal", "No a/v options specified");
+            ELOG_ERROR("No a/v frames");
+            notifyAsyncEvent("fatal", "No a/v frames");
             goto exit;
         }
         ELOG_DEBUG("Wait for av options available, hasAudio %d(rcv %d), hasVideo %d(rcv %d), retry %d"
@@ -250,6 +248,9 @@ bool RtspOut::connect()
 
 fail:
     if (m_context) {
+        if (!(m_context->oformat->flags & AVFMT_NOFILE)) {
+            avio_close(m_context->pb);
+        }
         avformat_free_context(m_context);
         m_context = NULL;
     }
@@ -259,7 +260,11 @@ fail:
 bool RtspOut::reconnect()
 {
     av_write_trailer(m_context);
+    if (!(m_context->oformat->flags & AVFMT_NOFILE)) {
+        avio_close(m_context->pb);
+    }
     avformat_free_context(m_context);
+
     m_context = NULL;
     m_audioStream = NULL;
     m_videoStream = NULL;
