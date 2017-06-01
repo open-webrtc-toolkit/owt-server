@@ -3,10 +3,11 @@
 
 global.config = global.config || {};
 global.config.nuve = global.config.nuve || {};
-global.config.nuve.dataBaseURL = global.config.nuve.dataBaseURL || 'localhost/nuvedb';
 global.config.nuve.superserviceID = global.config.nuve.superserviceID || '';
+global.config.mongo = global.config.mongo || {};
+global.config.mongo.dataBaseURL = global.config.mongo.dataBaseURL || 'localhost/nuvedb';
 
-var databaseUrl = global.config.nuve.dataBaseURL;
+var databaseUrl = global.config.mongo.dataBaseURL;
 
 /*
  * Data base collections and its fields are:

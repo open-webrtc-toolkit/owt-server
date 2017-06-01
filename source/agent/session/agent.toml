@@ -5,9 +5,6 @@ maxProcesses = 13 #default: 13
 #Number of precesses that agent runs when it starts. 1 <= prerunProcesses <= maxProcesses.
 prerunProcesses = 2 #default: 2
 
-[nuve]
-dataBaseURL = "localhost/nuvedb" #default: "localhost/nuvedb"
-
 #Roles defined in services
 # NOTE: Each of the roles is defined in a tree-level structure and must comply with the following rules:
 # 1) the ROLE level, are key-value pairs representing the role name and its operation scope, in which the keys must be strings such as the 'admin'/'presenter'/'viewer'... demonstrated as follow, and the values must be the OPERATION level objects.
@@ -60,6 +57,8 @@ max_load = 0.85 #default: 0.85
 host = "localhost" #default: "localhost"
 port = 5672 #default: 5672
 
+[mongo]
+dataBaseURL = "localhost/nuvedb" #default: "localhost/nuvedb"
 
 [internal]
 # tcp/sctp available, tcp is default

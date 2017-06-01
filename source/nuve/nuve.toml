@@ -1,5 +1,4 @@
 [nuve]
-dataBaseURL = "localhost/nuvedb" #default: "localhost/nuvedb"
 keystorePath = "./cert/certificate.pfx"
 superserviceID = "_auto_generated_ID_" #default: ""
 ssl = false #default: false
@@ -12,3 +11,6 @@ name = "woogeen-cluster"
 [rabbit]
 host = "localhost" #default: "localhost"
 port = 5672 #default: 5672
+
+[mongo]
+dataBaseURL = "localhost/nuvedb" #default: "localhost/nuvedb"

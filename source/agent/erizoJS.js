@@ -41,9 +41,6 @@ global.config.internal.protocol = global.config.internal.protocol || 'sctp';
 global.config.internal.minport = global.config.internal.minport || 0;
 global.config.internal.maxport = global.config.internal.maxport || 0;
 
-global.config.nuve = global.config.nuve || {};
-global.config.nuve.dataBaseURL = global.config.nuve.dataBaseURL || 'localhost/nuvedb';
-
 global.config.session = global.config.session || {};
 global.config.session.roles =
     global.config.session.roles ||
