@@ -38,9 +38,6 @@ config.rabbit = config.rabbit || {};
 config.rabbit.host = config.rabbit.host || 'localhost';
 config.rabbit.port = config.rabbit.port || 5672;
 
-config.nuve = config.nuve || {};
-config.nuve.dataBaseURL = config.nuve.dataBaseURL || 'localhost/nuvedb';
-
 global.config = config;
 
 
