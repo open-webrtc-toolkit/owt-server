@@ -109,7 +109,7 @@ bool VideoMixer::addInput(const std::string& inStreamID, const std::string& code
     auto it = m_inputs.find(inStreamID);
     if (it == m_inputs.end() || !it->second) {
         int index = useAFreeInputIndex();
-        ELOG_DEBUG("addSource - assigned input index is %d", index);
+        ELOG_DEBUG("addInput - assigned input(%s) index: %d", inStreamID.c_str(), index);
 
         if (m_frameMixer->addInput(index, format, source, avatar)) {
             m_layoutProcessor->addInput(index);
@@ -120,7 +120,7 @@ bool VideoMixer::addInput(const std::string& inStreamID, const std::string& code
         return true;
     }
 
-    assert("new source added with InputProcessor still available");    // should not go there
+    ELOG_WARN("addInput for an existing inStreamID:%s", inStreamID.c_str());
     return false;
 }
 
@@ -136,6 +136,7 @@ void VideoMixer::removeInput(const std::string& inStreamID)
     lock.unlock();
 
     if (index >= 0) {
+        ELOG_DEBUG("removeInput - recycle input(%s) index: %d", inStreamID.c_str(), index);
         m_frameMixer->removeInput(index);
         m_layoutProcessor->removeInput(index);
         m_freeInputIndexes[index] = true;

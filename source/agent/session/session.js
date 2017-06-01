@@ -280,7 +280,7 @@ module.exports = function (rpcClient, selfRpcId) {
                 sendMsg('room', 'all', 'add_stream', st.getPublicStream());
                 callback('callback', 'ok');
               } else {
-                controller && controller.unpublish(streamId);
+                controller && controller.unpublish(participantId, streamId);
                 log.info('Participant ' + participantId + ' early left while publishing stream ' + streamId);
                 callback('callback', 'error', 'Participant ' + participantId + ' early left while publishing stream ' + streamId);
               }

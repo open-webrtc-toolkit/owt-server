@@ -1254,7 +1254,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             || streams[streamId].owner !== terminal_id
             || terminals[terminal_id] === undefined
             || terminals[terminal_id].published.indexOf(streamId) === -1) {
-            log.info('unpublish a rogue stream');
+            log.info('unpublish a rogue stream:', streamId);
         }
 
         if (streams[streamId]) {
