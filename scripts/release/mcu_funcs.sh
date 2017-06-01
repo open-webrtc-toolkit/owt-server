@@ -93,7 +93,13 @@ pack_addons() {
   local ADDON_LIST=$(find ${SOURCE}/agent -type f -name "*.node" | grep -v "obj\.target")
   for ADDON_FULLPATH in ${ADDON_LIST}; do
     ADDON=$(basename ${ADDON_FULLPATH} .node)
-    ADDON_DEST_DIR=$(echo ${ADDON_FULLPATH} | sed 's/.*\/\(\w*\/build\/Release\)\/.*\.node/\1/g')
+    ${PACK_DEBUG} && ADDON_DEST_DIR=$(echo ${ADDON_FULLPATH} | sed 's/.*\/\(\w*\/build\/\)Debug\/.*\.node/\1Release/g') ||\
+      ADDON_DEST_DIR=$(echo ${ADDON_FULLPATH} | sed 's/.*\/\(\w*\/build\/Release\)\/.*\.node/\1/g')
+
+    if [ "$ADDON_FULLPATH" = "$ADDON_DEST_DIR" ]; then
+      continue
+    fi;
+
     if grep -RInqs "require.*\b${ADDON}\b'" ${DIST_ADDON_DIR}; then
       mkdir -p ${DIST_ADDON_DIR}/${ADDON_DEST_DIR} && \
       cp -av ${ADDON_FULLPATH} ${DIST_ADDON_DIR}/${ADDON_DEST_DIR}/${ADDON}.node && \
