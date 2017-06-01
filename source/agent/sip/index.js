@@ -192,11 +192,14 @@ module.exports = function (rpcC, spec) {
             var session_controller = result;
             calls[client_id] = {session_controller : session_controller};
             do_join(session_controller, client_id, room_id, erizo.id, function(mixedStream) {
-                if(mixedStream !== undefined){
+                if(mixedStream){
                     mixed_stream_id = mixedStream.id;
                     mixed_stream_resolutions = mixedStream.video.resolutions;
+                    on_ok();
+                } else {
+                    do_leave(session_controller, client_id);
+                    on_error('No mixed stream in room.');
                 }
-                on_ok();
             }, function (err) {
                 on_error(err);
             });
