@@ -676,7 +676,7 @@ var Portal = function(spec, rpcReq) {
         var in_session = participants[participantId].in_session;
         var connect_options = constructConnectOptions(connection_id, connectionType, 'out', subscriptionDescription, in_session);
         var connection = participants[participantId].connections[connection_id];
-        if (connection) {
+        if (connection && connection.locality) {
           if (connection.state === 'connected') {
             if (connectionType === 'recording') {
               if ((connect_options.audio && connection.audio_codecs.length === 0)
