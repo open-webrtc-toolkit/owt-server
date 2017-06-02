@@ -75,6 +75,7 @@ module.exports = function (spec) {
             function (result) {
                 state = 'registered';
                 on_ok(result);
+                previous_load = 0.99;
                 keepAlive();
             }, on_failed);
     };
