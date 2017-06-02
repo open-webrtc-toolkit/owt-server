@@ -141,6 +141,7 @@ void AcmmFrameMixer::disableVAD()
     ELOG_DEBUG("disableVAD");
 
     m_vadEnabled = false;
+    m_mostActiveChannel = -1;
     m_mixerModule->UnRegisterMixerStatusCallback();
 }
 
@@ -157,7 +158,7 @@ bool AcmmFrameMixer::addInput(const std::string& participant, const FrameFormat 
     boost::shared_ptr<AcmmParticipant> acmmParticipant = getParticipant(participant);
     int ret;
 
-    ELOG_TRACE("setInput %s+++", participant.c_str());
+    ELOG_DEBUG("setInput %s+++", participant.c_str());
 
     if (!acmmParticipant) {
         int32_t id = addParticipant(participant);
@@ -167,7 +168,7 @@ bool AcmmFrameMixer::addInput(const std::string& participant, const FrameFormat 
     }
 
     if (acmmParticipant->hasInput()) {
-        ELOG_TRACE("Update previous input");
+        ELOG_DEBUG("Update previous input");
 
         if(!acmmParticipant->setInput(format, source)) {
             ELOG_ERROR("Fail to set participant input");
@@ -195,7 +196,7 @@ bool AcmmFrameMixer::addInput(const std::string& participant, const FrameFormat 
         m_inputs++;
     }
 
-    ELOG_TRACE("setInput %s---", participant.c_str());
+    ELOG_DEBUG("setInput %s---", participant.c_str());
     return true;
 }
 
@@ -204,7 +205,7 @@ void AcmmFrameMixer::removeInput(const std::string& participant)
     boost::unique_lock<boost::shared_mutex> lock(m_mutex);
     boost::shared_ptr<AcmmParticipant> acmmParticipant = getParticipant(participant);
 
-    ELOG_TRACE("removeInput %s+++", participant.c_str());
+    ELOG_DEBUG("removeInput %s+++", participant.c_str());
 
     if (acmmParticipant && acmmParticipant->hasInput()) {
         int ret;
@@ -223,7 +224,9 @@ void AcmmFrameMixer::removeInput(const std::string& participant)
         m_inputs--;
     }
 
-    ELOG_TRACE("removeInput %s---", participant.c_str());
+    m_mostActiveChannel = -1;
+
+    ELOG_DEBUG("removeInput %s---", participant.c_str());
     return;
 }
 
@@ -233,7 +236,7 @@ bool AcmmFrameMixer::addOutput(const std::string& participant, const FrameFormat
     boost::shared_ptr<AcmmParticipant> acmmParticipant = getParticipant(participant);
     int ret;
 
-    ELOG_TRACE("setOutput %s, %d+++", participant.c_str(), format);
+    ELOG_DEBUG("setOutput %s, %d+++", participant.c_str(), format);
 
     if (!acmmParticipant) {
         int32_t id = addParticipant(participant);
@@ -243,7 +246,7 @@ bool AcmmFrameMixer::addOutput(const std::string& participant, const FrameFormat
     }
 
     if (acmmParticipant->hasOutput()) {
-        ELOG_TRACE("Update previous output");
+        ELOG_DEBUG("Update previous output");
 
         if(!acmmParticipant->setOutput(format, destination)) {
             ELOG_ERROR("Fail to set participant output");
@@ -266,7 +269,7 @@ bool AcmmFrameMixer::addOutput(const std::string& participant, const FrameFormat
     }
     updateFrequency();
 
-    ELOG_TRACE("setOutput %s, %d---", participant.c_str(), format);
+    ELOG_DEBUG("setOutput %s, %d---", participant.c_str(), format);
     return true;
 }
 
@@ -275,7 +278,7 @@ void AcmmFrameMixer::removeOutput(const std::string& participant)
     boost::unique_lock<boost::shared_mutex> lock(m_mutex);
     boost::shared_ptr<AcmmParticipant> acmmParticipant = getParticipant(participant);
 
-    ELOG_TRACE("removeOutput %s+++", participant.c_str());
+    ELOG_DEBUG("removeOutput %s+++", participant.c_str());
 
     if (acmmParticipant && acmmParticipant->hasOutput()) {
         if (acmmParticipant->hasInput()) {
@@ -298,7 +301,7 @@ void AcmmFrameMixer::removeOutput(const std::string& participant)
         m_outputs--;
     }
 
-    ELOG_TRACE("removeOutput %s---", participant.c_str());
+    ELOG_DEBUG("removeOutput %s---", participant.c_str());
     return;
 }
 
