@@ -60,6 +60,7 @@ pack_session_agent() {
   cp -av index.js ${WOOGEEN_DIST}/session_agent/
   cp -av ${ROOT}/scripts/detectOS.sh ${WOOGEEN_DIST}/session_agent/detectOS.sh
   cp -av session/*.json ${WOOGEEN_DIST}/session_agent/
+  ${ENCRYPT} && rm -rf ${WOOGEEN_DIST}/session_agent/test
   popd >/dev/null
 }
 
@@ -171,6 +172,9 @@ pack_nuve() {
   cp -av ${ROOT}/cert/{*.pfx,.woogeen.keystore} ${WOOGEEN_DIST}/nuve/cert/
   cp -av {${this},${WOOGEEN_DIST}/nuve}/initcert.js && chmod +x ${WOOGEEN_DIST}/nuve/initcert.js
   cp -av ${ROOT}/scripts/detectOS.sh ${WOOGEEN_DIST}/nuve/detectOS.sh
+
+  ${ENCRYPT} && rm -rf ${WOOGEEN_DIST}/nuve/public/test
+  ${ENCRYPT} && rm -rf ${WOOGEEN_DIST}/nuve/views/test.ejs
 }
 
 pack_scripts() {
