@@ -21,7 +21,9 @@ var RpcRequest = function(rpcChannel) {
   };
 
   that.leave = function(controller, participantId) {
-    rpcChannel.makeRPC(controller, 'leave', [participantId]);
+    rpcChannel.makeRPC(controller, 'leave', [participantId])
+      .catch((err) => {
+      });
     return Promise.resolve('ok');
   };
 
@@ -36,7 +38,9 @@ var RpcRequest = function(rpcChannel) {
   };
 
   that.recycleAccessNode = function(accessAgent, accessNode, forWhom) {
-    rpcChannel.makeRPC(accessAgent, 'recycleNode', [accessNode, {session: forWhom.session, task: forWhom.task}]);
+    rpcChannel.makeRPC(accessAgent, 'recycleNode', [accessNode, {session: forWhom.session, task: forWhom.task}])
+    . catch((err) => {
+      });
     return Promise.resolve('ok');
   };
 
@@ -45,7 +49,9 @@ var RpcRequest = function(rpcChannel) {
   };
 
   that.unpublish = function(accessNode, connectionId) {
-    rpcChannel.makeRPC(accessNode, 'unpublish', [connectionId]);
+    rpcChannel.makeRPC(accessNode, 'unpublish', [connectionId])
+      .catch((err) => {
+      });
     return Promise.resolve('ok');
   };
 
@@ -54,7 +60,9 @@ var RpcRequest = function(rpcChannel) {
   };
 
   that.unsubscribe = function(accessNode, connectionId) {
-    rpcChannel.makeRPC(accessNode, 'unsubscribe', [connectionId]);
+    rpcChannel.makeRPC(accessNode, 'unsubscribe', [connectionId])
+      .catch((err) => {
+      });
     return Promise.resolve('ok');
   };
 
@@ -67,7 +75,9 @@ var RpcRequest = function(rpcChannel) {
   };
 
   that.unpub2Session = function(controller, participantId, streamId) {
-    rpcChannel.makeRPC(controller, 'unpublish', [participantId, streamId]);
+    rpcChannel.makeRPC(controller, 'unpublish', [participantId, streamId])
+      .catch((err) => {
+      });
     return Promise.resolve('ok');
   };
 
@@ -76,7 +86,9 @@ var RpcRequest = function(rpcChannel) {
   };
 
   that.unsub2Session = function(controller, participantId, subscriptionId) {
-    rpcChannel.makeRPC(controller, 'unsubscribe', [participantId, subscriptionId]);
+    rpcChannel.makeRPC(controller, 'unsubscribe', [participantId, subscriptionId])
+      .catch((err) => {
+      });
     return Promise.resolve('ok');
   };
 
