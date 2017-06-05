@@ -29,7 +29,6 @@
 #include <vector>
 
 #include "MediaFramePipeline.h"
-#include "WebRTCTaskRunner.h"
 #include "VideoLayoutProcessor.h"
 
 namespace webrtc {
@@ -81,7 +80,6 @@ private:
     uint32_t m_maxInputCount;
 
     boost::shared_ptr<VideoFrameMixer> m_frameMixer;
-    boost::shared_ptr<woogeen_base::WebRTCTaskRunner> m_taskRunner;
 
     boost::shared_mutex m_inputsMutex;
     std::map<std::string, int> m_inputs;

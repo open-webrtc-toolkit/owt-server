@@ -294,7 +294,7 @@ bool MsdkFrame::fillFrame(uint8_t y, uint8_t u, uint8_t v)
     return ret;
 }
 
-bool MsdkFrame::convertFrom(webrtc::I420VideoFrame& frame)
+bool MsdkFrame::convertFrom(webrtc::VideoFrameBuffer *buffer)
 {
     bool ret = false;
     mfxStatus sts = MFX_ERR_NONE;
@@ -307,22 +307,16 @@ bool MsdkFrame::convertFrom(webrtc::I420VideoFrame& frame)
     mfxU8 *ptr;
     mfxU32 i, j;
 
-    uint32_t srcW, srcH;
-    uint32_t srcStrideY, srcStrideU, srcStrideV;
-    uint8_t *pSrcY, *pSrcU, *pSrcV;
+    uint32_t srcW = buffer->width();
+    uint32_t srcH = buffer->height();
 
-    //dumpI420VideoFrameInfo(frame);
+    uint32_t srcStrideY = buffer->StrideY();
+    uint32_t srcStrideU = buffer->StrideU();;
+    uint32_t srcStrideV = buffer->StrideV();;
 
-    srcW = frame.width();
-    srcH = frame.height();
-
-    srcStrideY = frame.stride(webrtc::kYPlane);
-    srcStrideU = frame.stride(webrtc::kUPlane);
-    srcStrideV = frame.stride(webrtc::kVPlane);
-
-    pSrcY = frame.buffer(webrtc::kYPlane);
-    pSrcU = frame.buffer(webrtc::kUPlane);
-    pSrcV = frame.buffer(webrtc::kVPlane);
+    const uint8_t *pSrcY = buffer->DataY();;
+    const uint8_t *pSrcU = buffer->DataU();;
+    const uint8_t *pSrcV = buffer->DataV();;
 
     // supports only NV12 mfx surfaces for code transparency,
     // other formats may be added if application requires such functionality
@@ -352,7 +346,7 @@ bool MsdkFrame::convertFrom(webrtc::I420VideoFrame& frame)
     }
 
     if (w != srcW || h != srcH) {
-        ELOG_WARN("Not support scale/crop src I420VideoFrame(%dx%d) into dst msdk surface(%dx%d)!",
+        ELOG_WARN("Not support scale/crop src VideoFrame(%dx%d) into dst msdk surface(%dx%d)!",
                 srcW, srcH, w, h);
         return false;
     }
@@ -414,7 +408,7 @@ bool MsdkFrame::convertFrom(webrtc::I420VideoFrame& frame)
     return ret;
 }
 
-bool MsdkFrame::nv12ConvertTo(mfxFrameInfo& pInfo, mfxFrameData& pData, webrtc::I420VideoFrame& frame)
+bool MsdkFrame::nv12ConvertTo(mfxFrameInfo& pInfo, mfxFrameData& pData, webrtc::I420Buffer *buffer)
 {
     uint32_t w = getCropW();
     uint32_t h = getCropH();
@@ -430,20 +424,20 @@ bool MsdkFrame::nv12ConvertTo(mfxFrameInfo& pInfo, mfxFrameData& pData, webrtc::
         m_nv12TBufferSize = h * pData.Pitch * 3 / 2;
     }
 
+    memcpy_from_uswc_sse4(m_nv12TBuffer, pData.Y, h * pData.Pitch);
+    memcpy_from_uswc_sse4(m_nv12TBuffer + h * pData.Pitch, pData.UV, h * pData.Pitch / 2);
+
     //uint32_t dstW, dstH;
     uint32_t dstStrideY, dstStrideU, dstStrideV;
     uint8_t *pDstY, *pDstU, *pDstV;
 
-    dstStrideY = frame.stride(webrtc::kYPlane);
-    dstStrideU = frame.stride(webrtc::kUPlane);
-    dstStrideV = frame.stride(webrtc::kVPlane);
+    dstStrideY = buffer->StrideY();
+    dstStrideU = buffer->StrideU();
+    dstStrideV = buffer->StrideV();
 
-    pDstY = frame.buffer(webrtc::kYPlane);
-    pDstU = frame.buffer(webrtc::kUPlane);
-    pDstV = frame.buffer(webrtc::kVPlane);
-
-    memcpy_from_uswc_sse4(m_nv12TBuffer, pData.Y, h * pData.Pitch);
-    memcpy_from_uswc_sse4(m_nv12TBuffer + h * pData.Pitch, pData.UV, h * pData.Pitch / 2);
+    pDstY = buffer->MutableDataY();
+    pDstU = buffer->MutableDataU();
+    pDstV = buffer->MutableDataV();
 
     uint8_t *ptrY;
     uint8_t *ptrUV;
@@ -471,10 +465,8 @@ bool MsdkFrame::nv12ConvertTo(mfxFrameInfo& pInfo, mfxFrameData& pData, webrtc::
     return true;
 }
 
-bool MsdkFrame::convertTo(webrtc::I420VideoFrame& frame)
+bool MsdkFrame::convertTo(webrtc::I420Buffer *buffer)
 {
-    bool ret = false;
-
     mfxStatus sts = MFX_ERR_NONE;
 
     mfxFrameSurface1 *pSurface = &m_surface;
@@ -494,21 +486,15 @@ bool MsdkFrame::convertTo(webrtc::I420VideoFrame& frame)
 
     if (pInfo.CropX != 0 || pInfo.CropY != 0) {
         ELOG_ERROR("Dont support set x, y crop: %d-%d", pInfo.CropX, pInfo.CropY);
+
         return false;
     }
 
-    uint32_t w = getCropW();
-    uint32_t h = getCropH();
-
-    frame.CreateEmptyFrame(
-            w,
-            h,
-            w,
-            w / 2,
-            w / 2
-            );
-
-    //dumpI420VideoFrameInfo(frame);
+    if (m_surface.Info.CropW != buffer->width() || m_surface.Info.CropH != buffer->height()) {
+        ELOG_WARN("Dont support scale/crop msdk frame(%dx%d) into to i420 buffer(%dx%d)!",
+                m_surface.Info.CropW, m_surface.Info.CropH, buffer->width(), buffer->height());
+        return false;
+    }
 
     sync();
 
@@ -519,10 +505,11 @@ bool MsdkFrame::convertTo(webrtc::I420VideoFrame& frame)
         return false;
     }
 
+    int ret;
     switch (pSurface->Info.FourCC)
     {
         case MFX_FOURCC_NV12:
-            ret = nv12ConvertTo(pInfo, pData, frame);
+            ret = nv12ConvertTo(pInfo, pData, buffer);
             break;
 
         default:
@@ -532,7 +519,6 @@ bool MsdkFrame::convertTo(webrtc::I420VideoFrame& frame)
                     (pInfo.FourCC >> 16) & 0xff,
                     (pInfo.FourCC >> 24) & 0xff
                     );
-
             ret = false;
             break;
     }
@@ -545,30 +531,6 @@ bool MsdkFrame::convertTo(webrtc::I420VideoFrame& frame)
     }
 
     return ret;
-}
-
-void MsdkFrame::dumpI420VideoFrameInfo(webrtc::I420VideoFrame& frame)
-{
-    uint32_t srcW, srcH;
-    uint32_t srcStrideY, srcStrideU, srcStrideV;
-    //uint8_t *pSrcY, *pSrcU, *pSrcV;
-
-    srcW = frame.width();
-    srcH = frame.height();
-
-    srcStrideY = frame.stride(webrtc::kYPlane);
-    srcStrideU = frame.stride(webrtc::kUPlane);
-    srcStrideV = frame.stride(webrtc::kVPlane);
-
-    //pSrcY = frame.buffer(webrtc::kYPlane);
-    //pSrcU = frame.buffer(webrtc::kUPlane);
-    //pSrcV = frame.buffer(webrtc::kVPlane);
-
-    ELOG_DEBUG("I420VideoFrame: %dx%d, stride %d-%d-%d, timestamp %d"
-            , srcW, srcH
-            , srcStrideY, srcStrideU, srcStrideV
-            , frame.timestamp()
-            );
 }
 
 DEFINE_LOGGER(MsdkFramePool, "woogeen.MsdkFramePool");

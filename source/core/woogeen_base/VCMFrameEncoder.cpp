@@ -18,10 +18,16 @@
  * and approved by Intel in writing.
  */
 
+#include <libyuv/convert.h>
+#include <libyuv/planar_functions.h>
+#include <libyuv/scale.h>
+
+#include <webrtc/system_wrappers/include/cpu_info.h>
+#include <webrtc/modules/video_coding/codec_database.h>
+
 #include "VCMFrameEncoder.h"
 
 #include "MediaUtilities.h"
-#include <webrtc/modules/video_coding/codecs/vp8/vp8_factory.h>
 
 #ifdef ENABLE_YAMI
 #include "YamiVideoFrame.h"
@@ -37,25 +43,18 @@ namespace woogeen_base {
 
 DEFINE_LOGGER(VCMFrameEncoder, "woogeen.VCMFrameEncoder");
 
-VCMFrameEncoder::VCMFrameEncoder(FrameFormat format, boost::shared_ptr<WebRTCTaskRunner> taskRunner, bool useSimulcast)
+VCMFrameEncoder::VCMFrameEncoder(FrameFormat format, bool useSimulcast)
     : m_streamId(0)
-    , m_vcm(VideoCodingModule::Create())
     , m_encodeFormat(format)
-    , m_taskRunner(taskRunner)
     , m_running(false)
     , m_incomingFrameCount(0)
+    , m_requestKeyFrame(false)
+    , m_width(0)
+    , m_height(0)
     , m_enableBsDump(false)
     , m_bsDumpfp(NULL)
 {
-    webrtc::VP8EncoderFactoryConfig::set_use_simulcast_adapter(useSimulcast);
-    m_vcm->InitializeSender();
-    m_vcm->RegisterTransportCallback(this);
-    m_vcm->EnableFrameDropper(false);
-    if (m_taskRunner)
-        m_taskRunner->RegisterModule(m_vcm);
-
-    //m_jobTimer.reset(new JobTimer(30, this));
-    //m_jobTimer->start();
+    m_bufferManager.reset(new I420BufferManager(2));
 
     m_running = true;
     m_thread = boost::thread(&VCMFrameEncoder::encodeLoop, this);
@@ -63,18 +62,16 @@ VCMFrameEncoder::VCMFrameEncoder(FrameFormat format, boost::shared_ptr<WebRTCTas
 
 VCMFrameEncoder::~VCMFrameEncoder()
 {
-    //m_jobTimer->stop();
-
     m_running = false;
     m_encCond.notify_one();
     m_thread.join();
 
-    if (m_taskRunner)
-        m_taskRunner->DeRegisterModule(m_vcm);
-
-    VideoCodingModule::Destroy(m_vcm);
-    m_vcm = nullptr;
     m_streamId = 0;
+
+    if(m_encoder) {
+        m_encoder->Release();
+        m_encoder.reset();
+    }
 
     if (m_bsDumpfp) {
         fclose(m_bsDumpfp);
@@ -83,12 +80,15 @@ VCMFrameEncoder::~VCMFrameEncoder()
 
 bool VCMFrameEncoder::canSimulcast(FrameFormat format, uint32_t width, uint32_t height)
 {
+#if 0
     VideoCodec videoCodec;
     videoCodec = m_vcm->GetSendCodec();
     return false
            &&webrtc::VP8EncoderFactoryConfig::use_simulcast_adapter()
            && m_encodeFormat == format
            && videoCodec.width * height == videoCodec.height * width;
+#endif
+    return false;
 }
 
 bool VCMFrameEncoder::isIdle()
@@ -100,9 +100,14 @@ bool VCMFrameEncoder::isIdle()
 int32_t VCMFrameEncoder::generateStream(uint32_t width, uint32_t height, uint32_t bitrateKbps, woogeen_base::FrameDestination* dest)
 {
     boost::upgrade_lock<boost::shared_mutex> lock(m_mutex);
+    //uint32_t targetKbps = bitrateKbps * (m_encodeFormat == FRAME_FORMAT_VP8 ? 0.9 : 1);
+    uint32_t targetKbps = bitrateKbps;
 
-    VideoCodec videoCodec;
+    VideoCodec codecSettings;
     uint8_t simulcastId {0};
+    int ret;
+
+#if 0
     if (m_streams.size() > 0) {
         videoCodec = m_vcm->GetSendCodec();
         for (int i = 0; i < videoCodec.numberOfSimulcastStreams; ++i) {
@@ -120,36 +125,55 @@ int32_t VCMFrameEncoder::generateStream(uint32_t width, uint32_t height, uint32_
         if (videoCodec.numberOfSimulcastStreams >= kMaxSimulcastStreams)
             return -1;
     } else {
+#endif
+    {
         ELOG_DEBUG_T("Create encoder(%s)", getFormatStr(m_encodeFormat));
         switch (m_encodeFormat) {
         case FRAME_FORMAT_VP8:
-            if (VideoCodingModule::Codec(kVideoCodecVP8, &videoCodec) != VCM_OK) {
-                ELOG_ERROR_T("Error create encoder(%s)", getFormatStr(m_encodeFormat));
-                return -1;
-            }
+            m_encoder.reset(VP8Encoder::Create());
+
+            VCMCodecDataBase::Codec(kVideoCodecVP8, &codecSettings);
+            codecSettings.VP8()->resilience = kResilienceOff;
+            codecSettings.VP8()->denoisingOn = false;
+            codecSettings.VP8()->automaticResizeOn = false;
+            codecSettings.VP8()->frameDroppingOn = false;
+            codecSettings.VP8()->tl_factory = &tl_factory_;
             break;
         case FRAME_FORMAT_VP9:
-            if (VideoCodingModule::Codec(kVideoCodecVP9, &videoCodec) != VCM_OK) {
-                ELOG_ERROR_T("Error create encoder(%s)", getFormatStr(m_encodeFormat));
-                return -1;
-            }
+            m_encoder.reset(VP9Encoder::Create());
+
+            VCMCodecDataBase::Codec(kVideoCodecVP9, &codecSettings);
+            codecSettings.VP9()->numberOfTemporalLayers = 1;
+            codecSettings.VP9()->numberOfSpatialLayers = 1;
             break;
         case FRAME_FORMAT_H264:
-            if (VideoCodingModule::Codec(kVideoCodecH264, &videoCodec) != VCM_OK) {
-                ELOG_ERROR_T("Error create encoder(%s)", getFormatStr(m_encodeFormat));
-                return -1;
-            }
+            m_encoder.reset(H264Encoder::Create(cricket::VideoCodec(cricket::kH264CodecName)));
+
+            VCMCodecDataBase::Codec(kVideoCodecH264, &codecSettings);
+            codecSettings.H264()->frameDroppingOn = true;
             break;
-        case FRAME_FORMAT_I420:
         default:
             ELOG_ERROR_T("Invalid encoder(%s)", getFormatStr(m_encodeFormat));
             return -1;
         }
     }
 
-    VideoCodec fbVideoCodec = videoCodec;
-    uint32_t targetKbps = bitrateKbps * (m_encodeFormat == FRAME_FORMAT_VP8 ? 0.9 : 1);
+    codecSettings.startBitrate  = targetKbps;
+    codecSettings.targetBitrate = targetKbps;
+    codecSettings.maxBitrate    = targetKbps;
+    codecSettings.maxFramerate  = 30;
+    codecSettings.width         = width;
+    codecSettings.height        = height;
 
+    ret = m_encoder->InitEncode(&codecSettings, webrtc::CpuInfo::DetectNumberOfCores(), 0);
+    if (ret) {
+        printf("Video encoder init faild.\n");
+        return -1;
+    }
+
+    m_encoder->RegisterEncodeCompleteCallback(this);
+
+#if 0
     for (; simulcastId < videoCodec.numberOfSimulcastStreams; ++simulcastId) {
         if (videoCodec.simulcastStream[simulcastId].width > width)
             break;
@@ -205,12 +229,16 @@ int32_t VCMFrameEncoder::generateStream(uint32_t width, uint32_t height, uint32_
             }
         }
     }
+#endif
 
     boost::shared_ptr<EncodeOut> encodeOut;
     encodeOut.reset(new EncodeOut(m_streamId, this, dest));
     OutStream stream = {.width = width, .height = height, .simulcastId = simulcastId, .encodeOut = encodeOut};
     m_streams[m_streamId] = stream;
     ELOG_DEBUG_T("generateStream: {.width=%d, .height=%d, .bitrateKbps=%d}, simulcastId=%d", width, height, bitrateKbps, simulcastId);
+
+    m_width = width;
+    m_height = height;
 
     if (m_enableBsDump) {
         char dumpFileName[128];
@@ -241,9 +269,11 @@ void VCMFrameEncoder::degenerateStream(int32_t streamId)
 
 void VCMFrameEncoder::setBitrate(unsigned short kbps, int32_t streamId)
 {
+#if 0 //todo
     int bps = kbps * 1000;
     // TODO: Notify VCM about the packet lost and rtt information.
     m_vcm->SetChannelParameters(bps, 0, 0);
+#endif
 }
 
 void VCMFrameEncoder::requestKeyFrame(int32_t streamId)
@@ -253,35 +283,54 @@ void VCMFrameEncoder::requestKeyFrame(int32_t streamId)
 
     auto it = m_streams.find(streamId);
     if (it != m_streams.end()) {
-        m_vcm->IntraFrameRequest(it->second.simulcastId);
+        m_requestKeyFrame = true;
     }
 }
 
 void VCMFrameEncoder::onFrame(const Frame& frame)
 {
-    if (!m_bufferManager && isVideoFrame(frame)) {
-        m_bufferManager.reset(new BufferManager(1, frame.additionalInfo.video.width, frame.additionalInfo.video.height));
-        m_bufferManager->setActive(0, true);
-    }
-
-    I420VideoFrame* freeFrame = m_bufferManager ? m_bufferManager->getFreeBuffer() : nullptr;
-    if (!freeFrame)
+    if (m_width == 0 || m_height == 0)
         return;
 
-    I420VideoFrame* busyFrame = nullptr;
+    rtc::scoped_refptr<webrtc::I420Buffer> rawBuffer = m_bufferManager->getFreeBuffer(m_width, m_height);
+    if (!rawBuffer) {
+        ELOG_ERROR("No valid buffer");
+        return;
+    }
+
+    boost::shared_ptr<webrtc::VideoFrame> busyFrame;
 
     switch (frame.format) {
     case FRAME_FORMAT_I420: {
         if (m_encodeFormat == FRAME_FORMAT_UNKNOWN)
             return;
-        // Currently we should only receive I420 format frame.
-        I420VideoFrame* rawFrame = reinterpret_cast<I420VideoFrame*>(frame.payload);
-        const int kMsToRtpTimestamp = 90;
-        const uint32_t time_stamp =
-            kMsToRtpTimestamp *
-            static_cast<uint32_t>(rawFrame->render_time_ms());
-        rawFrame->set_timestamp(time_stamp);
-        freeFrame->CopyFrame(*rawFrame);
+
+        VideoFrame *inputFrame = reinterpret_cast<VideoFrame*>(frame.payload);
+        rtc::scoped_refptr<webrtc::VideoFrameBuffer> inputBuffer = inputFrame->video_frame_buffer();
+
+        if (m_width == inputBuffer->width() && m_height == inputBuffer->height()) {
+            libyuv::I420Copy(
+                    inputBuffer->DataY(), inputBuffer->StrideY(),
+                    inputBuffer->DataU(), inputBuffer->StrideU(),
+                    inputBuffer->DataV(), inputBuffer->StrideV(),
+                    rawBuffer->MutableDataY(), rawBuffer->StrideY(),
+                    rawBuffer->MutableDataU(), rawBuffer->StrideU(),
+                    rawBuffer->MutableDataV(), rawBuffer->StrideV(),
+                    inputBuffer->width(), inputBuffer->height());
+        } else {
+            libyuv::I420Scale(
+                    inputBuffer->DataY(),   inputBuffer->StrideY(),
+                    inputBuffer->DataU(),   inputBuffer->StrideU(),
+                    inputBuffer->DataV(),   inputBuffer->StrideV(),
+                    inputBuffer->width(),   inputBuffer->height(),
+                    rawBuffer->MutableDataY(),  rawBuffer->StrideY(),
+                    rawBuffer->MutableDataU(),  rawBuffer->StrideU(),
+                    rawBuffer->MutableDataV(),  rawBuffer->StrideV(),
+                    rawBuffer->width(),         rawBuffer->height(),
+                    libyuv::kFilterBox);
+        }
+
+        busyFrame.reset(new VideoFrame(rawBuffer, inputFrame->timestamp(), 0, webrtc::kVideoRotation_0));
         break;
     }
 #ifdef ENABLE_YAMI
@@ -306,44 +355,61 @@ void VCMFrameEncoder::onFrame(const Frame& frame)
             return;
 
         MsdkFrameHolder *holder = (MsdkFrameHolder *)frame.payload;
-        if (!holder->frame->convertTo(*freeFrame)) {
-            ELOG_ERROR_T("MSDK frame convert to video frame failed");
-            m_bufferManager->releaseBuffer(freeFrame);
-            return;
+        boost::shared_ptr<MsdkFrame> msdkFrame = holder->frame;
+        if (msdkFrame->getCropW() == (uint32_t)m_width && msdkFrame->getCropH() == (uint32_t)m_height) {
+            if (!msdkFrame->convertTo(rawBuffer)) {
+                ELOG_ERROR("error convert msdk to I420Buffer");
+                return;
+            }
+        } else {
+            rtc::scoped_refptr<webrtc::I420Buffer> copyBuffer = m_bufferManager->getFreeBuffer(msdkFrame->getCropW(), msdkFrame->getCropH());
+            if (!msdkFrame->convertTo(copyBuffer)) {
+                ELOG_ERROR("error convert msdk to I420Buffer");
+                return;
+            }
+
+            libyuv::I420Scale(
+                    copyBuffer->DataY(),   copyBuffer->StrideY(),
+                    copyBuffer->DataU(),   copyBuffer->StrideU(),
+                    copyBuffer->DataV(),   copyBuffer->StrideV(),
+                    copyBuffer->width(),   copyBuffer->height(),
+                    rawBuffer->MutableDataY(),  rawBuffer->StrideY(),
+                    rawBuffer->MutableDataU(),  rawBuffer->StrideU(),
+                    rawBuffer->MutableDataV(),  rawBuffer->StrideV(),
+                    rawBuffer->width(),         rawBuffer->height(),
+                    libyuv::kFilterBox);
         }
 
-        freeFrame->set_timestamp(frame.timeStamp);
+        busyFrame.reset(new VideoFrame(rawBuffer, frame.timeStamp, 0, webrtc::kVideoRotation_0));
         break;
     }
 #endif
-    case FRAME_FORMAT_VP8:
-    case FRAME_FORMAT_VP9:
-    case FRAME_FORMAT_H264:
-        assert(false);
     default:
-        m_bufferManager->releaseBuffer(freeFrame);
+        assert(false);
         return;
     }
 
-    busyFrame = m_bufferManager->postFreeBuffer(freeFrame, 0);
-    if (busyFrame)
-        m_bufferManager->releaseBuffer(busyFrame);
-
+    m_bufferManager->putBusyFrame(busyFrame);
     encodeOneFrame();
 }
 
 void VCMFrameEncoder::doEncoding()
 {
-    if (!m_bufferManager)
+    boost::shared_ptr<webrtc::VideoFrame> frame = m_bufferManager->getBusyFrame();
+    if (!frame)
         return;
 
-    webrtc::I420VideoFrame* rawFrame = m_bufferManager->getBusyBuffer(0);
-    if (!rawFrame)
-        return;
+    int ret;
+    std::vector<FrameType> types;
+    if (m_requestKeyFrame) {
+        types.push_back(kVideoFrameKey);
+        m_requestKeyFrame = false;
+    }
 
-    m_vcm->AddVideoFrame(*rawFrame);
-
-    m_bufferManager->releaseBuffer(rawFrame);
+    ret = m_encoder->Encode(*frame.get(), NULL, types.size() ? &types : NULL);
+    if (ret != 0) {
+        ELOG_ERROR("Encode frame error: %d", ret);
+    }
 }
 
 void VCMFrameEncoder::encodeLoop()
@@ -378,49 +444,41 @@ void VCMFrameEncoder::encodeOneFrame()
         ELOG_WARN_T("Too many pending frames(%d)", m_incomingFrameCount);
 }
 
-void VCMFrameEncoder::onTimeout()
+webrtc::EncodedImageCallback::Result VCMFrameEncoder::OnEncodedImage(const EncodedImage& encoded_frame,
+        const CodecSpecificInfo* codec_specific_info,
+        const RTPFragmentationHeader* fragmentation)
 {
-    encodeOneFrame();
-}
-
-int32_t VCMFrameEncoder::SendData(
-    uint8_t payloadType,
-    const webrtc::EncodedImage& encoded_image,
-    const RTPFragmentationHeader& fragmentationHeader,
-    const RTPVideoHeader* rtpVideoHdr)
-{
-    // New encoded data, hand over to the frame consumer.
     boost::shared_lock<boost::shared_mutex> lock(m_mutex);
     if (!m_streams.empty()) {
         Frame frame;
         memset(&frame, 0, sizeof(frame));
         frame.format = m_encodeFormat;
-        frame.payload = encoded_image._buffer;
-        frame.length = encoded_image._length;
-        frame.timeStamp = encoded_image._timeStamp;
-        frame.additionalInfo.video.width = encoded_image._encodedWidth;
-        frame.additionalInfo.video.height = encoded_image._encodedHeight;
-        frame.additionalInfo.video.isKeyFrame = (encoded_image._frameType == webrtc::kKeyFrame);
+        frame.payload = encoded_frame._buffer;
+        frame.length = encoded_frame._length;
+        frame.timeStamp = encoded_frame._timeStamp;
+        frame.additionalInfo.video.width = encoded_frame._encodedWidth;
+        frame.additionalInfo.video.height = encoded_frame._encodedHeight;
+        frame.additionalInfo.video.isKeyFrame = (encoded_frame._frameType == kVideoFrameKey);
 
-        ELOG_TRACE_T("SendData(%d), %s, %dx%d(%s), length(%d)",
-                rtpVideoHdr->simulcastIdx,
+        ELOG_TRACE_T("SendData, %s, %dx%d, %s, length(%d), timestamp %d",
                 getFormatStr(frame.format),
                 frame.additionalInfo.video.width,
                 frame.additionalInfo.video.height,
                 frame.additionalInfo.video.isKeyFrame ? "key" : "delta",
-                frame.length);
+                frame.length,
+                frame.timeStamp / 90
+                );
 
         dump(frame.payload, frame.length);
 
         auto it = m_streams.begin();
         for (; it != m_streams.end(); ++it) {
-            if (it->second.encodeOut.get() && it->second.simulcastId == rtpVideoHdr->simulcastIdx)
+            if (it->second.encodeOut.get() && it->second.simulcastId == 0)
                 it->second.encodeOut->onEncoded(frame);
         }
-        return 0;
     }
 
-    return -1;
+    return webrtc::EncodedImageCallback::Result(webrtc::EncodedImageCallback::Result::OK);
 }
 
 void VCMFrameEncoder::dump(uint8_t *buf, int len)

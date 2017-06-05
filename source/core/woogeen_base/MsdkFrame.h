@@ -23,15 +23,16 @@
 
 #ifdef ENABLE_MSDK
 
-#include <boost/thread/shared_mutex.hpp>
 #include <list>
-#include <logger.h>
 
-#include <webrtc/video_frame.h>
+#include <boost/thread/shared_mutex.hpp>
 
-#include "MediaFramePipeline.h"
+#include <webrtc/api/video/i420_buffer.h>
 
 #include <mfxvideo++.h>
+
+#include "logger.h"
+#include "MediaFramePipeline.h"
 
 namespace woogeen_base {
 
@@ -81,15 +82,13 @@ public:
     */
     bool fillFrame(uint8_t y, uint8_t u, uint8_t v);
 
-    bool convertFrom(webrtc::I420VideoFrame& frame);
-    bool convertTo(webrtc::I420VideoFrame& frame);
+    bool convertFrom(webrtc::VideoFrameBuffer *buffer);
+    bool convertTo(webrtc::I420Buffer *buffer);
 
 protected:
     void sync(void);
 
-    bool nv12ConvertTo(mfxFrameInfo& pInfo, mfxFrameData& pData, webrtc::I420VideoFrame& frame);
-
-    void dumpI420VideoFrameInfo(webrtc::I420VideoFrame& frame);
+    bool nv12ConvertTo(mfxFrameInfo& pInfo, mfxFrameData& pData, webrtc::I420Buffer *buffer);
 
 private:
     mfxFrameAllocRequest m_request;

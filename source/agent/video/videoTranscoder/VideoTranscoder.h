@@ -26,7 +26,6 @@
 #include <boost/scoped_ptr.hpp>
 #include <logger.h>
 
-#include "WebRTCTaskRunner.h"
 #include "MediaFramePipeline.h"
 #include "VideoFrameTranscoder.h"
 
@@ -57,8 +56,6 @@ private:
     uint32_t m_inputCount;
     uint32_t m_maxInputCount;
     uint32_t m_nextOutputIndex;
-
-    boost::shared_ptr<woogeen_base::WebRTCTaskRunner> m_taskRunner;
 
     boost::shared_mutex m_inputsMutex;
     std::map<std::string, int> m_inputs;

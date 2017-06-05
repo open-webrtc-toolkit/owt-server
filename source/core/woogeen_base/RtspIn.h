@@ -200,6 +200,8 @@ public:
     }
 
 private:
+    bool m_enableTranscoding;
+
     std::string m_url;
     bool m_needAudio;
     bool m_needVideo;
@@ -223,6 +225,7 @@ private:
     FrameFormat m_audioFormat;
     bool m_needAudioTranscoder;
     AVCodecID m_audioDecId;
+    AVCodecContext *m_audioDecCtx;
     AVFrame *m_audioDecFrame;
     AVCodecContext *m_audioEncCtx;
     struct SwrContext *m_audioSwrCtx;
@@ -238,6 +241,9 @@ private:
     AVRational m_msTimeBase;
     AVRational m_videoTimeBase;
     AVRational m_audioTimeBase;
+
+    uint32_t m_audioSampleRate;
+    uint32_t m_audioChannels;
 
     boost::shared_ptr<JitterBuffer> m_videoJitterBuffer;
     boost::shared_ptr<JitterBuffer> m_audioJitterBuffer;

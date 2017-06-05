@@ -23,8 +23,8 @@
 #include <webrtc/modules/video_coding/codecs/h264/include/h264.h>
 #include <webrtc/modules/video_coding/codecs/vp8/include/vp8.h>
 #include <webrtc/modules/video_coding/codecs/vp9/include/vp9.h>
-#include <webrtc/system_wrappers/interface/clock.h>
-#include <webrtc/system_wrappers/interface/tick_util.h>
+
+#include <webrtc/system_wrappers/include/cpu_info.h>
 
 extern "C" {
 #include <libavutil/log.h>
@@ -38,15 +38,17 @@ DEFINE_LOGGER(VCMFrameDecoder, "woogeen.VCMFrameDecoder");
 
 VCMFrameDecoder::VCMFrameDecoder(FrameFormat format)
     : m_needDecode(false)
-    , m_ntpDelta(Clock::GetRealTimeClock()->CurrentNtpInMilliseconds() - TickTime::MillisecondTimestamp())
 {
+    memset(&m_codecInfo, 0, sizeof(m_codecInfo));
 }
 
 VCMFrameDecoder::~VCMFrameDecoder()
 {
     m_needDecode = false;
-    if (m_decoder)
+    if (m_decoder) {
         m_decoder->RegisterDecodeCompleteCallback(nullptr);
+        m_decoder->Release();
+    }
 }
 
 bool VCMFrameDecoder::init(FrameFormat format)
@@ -83,7 +85,7 @@ bool VCMFrameDecoder::init(FrameFormat format)
     memset(&codecSettings, 0, sizeof(codecSettings));
     codecSettings.codecType = codecType;
 
-    if (m_decoder->InitDecode(&codecSettings, 0) != 0) {
+    if (m_decoder->InitDecode(&codecSettings, webrtc::CpuInfo::DetectNumberOfCores()) != 0) {
         ELOG_ERROR_T("Video decoder init faild.");
         return false;
     }
@@ -95,10 +97,8 @@ bool VCMFrameDecoder::init(FrameFormat format)
     return true;
 }
 
-int32_t VCMFrameDecoder::Decoded(I420VideoFrame& decodedImage)
+int32_t VCMFrameDecoder::Decoded(VideoFrame& decodedImage)
 {
-    decodedImage.set_render_time_ms(TickTime::MillisecondTimestamp() + m_ntpDelta);
-
     Frame frame;
     memset(&frame, 0, sizeof(frame));
     frame.format = FRAME_FORMAT_I420;
@@ -134,8 +134,21 @@ void VCMFrameDecoder::onFrame(const Frame& frame)
             frame.length
             );
 
-    EncodedImage image(reinterpret_cast<uint8_t*>(frame.payload), frame.length, 0);
-    image._frameType = VideoFrameType::kKeyFrame;
+    uint8_t *payload    = NULL;
+    size_t length       = frame.length;
+    size_t padding      = EncodedImage::GetBufferPaddingBytes(m_codecInfo.codecType);
+    size_t size         = length + padding;
+
+    if (padding > 0) {
+        payload = (uint8_t *)malloc(size);
+        memcpy(payload, frame.payload, length);
+        memset(payload + length, 0, padding);
+    } else {
+        payload = frame.payload;
+    }
+
+    EncodedImage image(payload, length, size);
+    image._frameType = frame.additionalInfo.video.isKeyFrame ? kVideoFrameKey : kVideoFrameDelta;
     image._completeFrame = true;
     image._timeStamp = frame.timeStamp;
     int ret = m_decoder->Decode(image, false, nullptr, &m_codecInfo);
@@ -144,6 +157,9 @@ void VCMFrameDecoder::onFrame(const Frame& frame)
         FeedbackMsg msg {.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME};
         deliverFeedbackMsg(msg);
     }
+
+    if (padding > 0)
+        free(payload);
 }
 
 }

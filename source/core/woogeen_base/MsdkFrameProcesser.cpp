@@ -112,8 +112,8 @@ void MsdkFrameProcesser::onFrame(const Frame& frame)
         if (m_msdkFrame->getVideoWidth() != width || m_msdkFrame->getVideoHeight() != height)
             m_msdkFrame->setCrop(0, 0, width, height);
 
-        I420VideoFrame *i420Frame = (reinterpret_cast<I420VideoFrame *>(frame.payload));
-        if (!m_msdkFrame->convertFrom(*i420Frame)) {
+        VideoFrame *Frame = (reinterpret_cast<VideoFrame *>(frame.payload));
+        if (!m_msdkFrame->convertFrom(Frame->video_frame_buffer())) {
             ELOG_ERROR("(%p)Failed to convert I420 frame", this);
             return;
         }

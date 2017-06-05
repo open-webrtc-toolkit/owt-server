@@ -22,10 +22,9 @@
 
 #include <iostream>
 #include <fstream>
-
 #include <deque>
-#include <webrtc/system_wrappers/interface/clock.h>
-#include <webrtc/system_wrappers/interface/tick_util.h>
+
+#include <webrtc/api/video/video_frame.h>
 
 #include "MsdkBase.h"
 #include "MsdkVideoCompositor.h"
@@ -136,27 +135,20 @@ boost::shared_ptr<woogeen_base::MsdkFrame> MsdkAvatarManager::loadImage(const st
     in.read (image, size);
     in.close();
 
-    boost::shared_ptr<webrtc::I420VideoFrame> i420Frame(new webrtc::I420VideoFrame());
-    i420Frame->CreateFrame(
-            width * height,
-            (uint8_t *)image,
-            width * height / 4,
-            (uint8_t *)image + width * height,
-            width * height / 4,
-            (uint8_t *)image + width * height * 5 / 4,
-            width,
-            height,
-            width,
-            width / 2,
-            width / 2
+    rtc::scoped_refptr<I420Buffer> i420Buffer = I420Buffer::Copy(
+            width, height,
+            reinterpret_cast<const uint8_t *>(image), width,
+            reinterpret_cast<const uint8_t *>(image + width * height), width / 2,
+            reinterpret_cast<const uint8_t *>(image + width * height * 5 / 4), width / 2
             );
+
     delete image;
 
     boost::shared_ptr<woogeen_base::MsdkFrame> frame(new woogeen_base::MsdkFrame(width, height, m_allocator));
     if(!frame->init())
         return NULL;
 
-    frame->convertFrom(*i420Frame.get());
+    frame->convertFrom(i420Buffer.get());
     return frame;
 }
 
@@ -382,8 +374,8 @@ protected:
             if (dst->getVideoWidth() != video.width || dst->getVideoHeight() != video.height)
                 dst->setCrop(0, 0, video.width, video.height);
 
-            I420VideoFrame *i420Frame = (reinterpret_cast<I420VideoFrame *>(frame.payload));
-            if (!dst->convertFrom(*i420Frame))
+            VideoFrame *i420Frame = (reinterpret_cast<VideoFrame *>(frame.payload));
+            if (!dst->convertFrom(i420Frame->video_frame_buffer().get()))
             {
                 ELOG_ERROR("(%p)Failed to convert I420 frame", this);
                 return NULL;
@@ -414,6 +406,7 @@ DEFINE_LOGGER(MsdkVideoCompositor, "mcu.media.MsdkVideoCompositor");
 
 MsdkVideoCompositor::MsdkVideoCompositor(uint32_t maxInput, VideoSize rootSize, YUVColor bgColor, bool crop)
     : m_enbaleBgColorSurface(false)
+    , m_clock(Clock::GetRealTimeClock())
     , m_maxInput(maxInput)
     , m_crop(crop)
     , m_rootSize({0, 0})
@@ -430,8 +423,6 @@ MsdkVideoCompositor::MsdkVideoCompositor(uint32_t maxInput, VideoSize rootSize, 
             , bgColor.y, bgColor.cb, bgColor.cr
             , crop
             );
-
-    m_ntpDelta = Clock::GetRealTimeClock()->CurrentNtpInMilliseconds() - TickTime::MillisecondTimestamp();
 
     MsdkBase *msdkBase = MsdkBase::get();
     if(msdkBase != NULL) {
@@ -819,8 +810,6 @@ void MsdkVideoCompositor::generateFrame()
     holder.frame = compositeFrame;
     holder.cmd = MsdkCmd_NONE;
 
-    const int kMsToRtpTimestamp = 90;
-
     woogeen_base::Frame frame;
     memset(&frame, 0, sizeof(frame));
     frame.format = woogeen_base::FRAME_FORMAT_MSDK;
@@ -828,13 +817,11 @@ void MsdkVideoCompositor::generateFrame()
     frame.length = 0; // unused.
     frame.additionalInfo.video.width = compositeFrame->getVideoWidth();
     frame.additionalInfo.video.height = compositeFrame->getVideoHeight();
-    frame.timeStamp = kMsToRtpTimestamp *
-        (TickTime::MillisecondTimestamp() + m_ntpDelta);
+    frame.timeStamp = kMsToRtpTimestamp * m_clock->TimeInMilliseconds();
 
-    //ELOG_TRACE("timeStamp %u", frame.timeStamp);
-    ELOG_TRACE("+++deliverFrame");
+    //ELOG_ERROR("+++deliverFrame %d", frame.timeStamp / 90);
     deliverFrame(frame);
-    ELOG_TRACE("---deliverFrame");
+    //ELOG_TRACE("---deliverFrame");
 }
 
 bool MsdkVideoCompositor::commitLayout()

@@ -21,19 +21,25 @@
 #ifndef VCMFrameEncoder_h
 #define VCMFrameEncoder_h
 
-#include "BufferManager.h"
-#include "MediaFramePipeline.h"
-#include "WebRTCTaskRunner.h"
+#include <map>
+#include <atomic>
 
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
-#include <boost/thread/shared_mutex.hpp>
 #include <boost/thread.hpp>
-#include <JobTimer.h>
-#include <logger.h>
-#include <map>
-#include <tuple>
-#include <webrtc/modules/video_coding/main/interface/video_coding.h>
+#include <boost/thread/shared_mutex.hpp>
+
+#include <webrtc/modules/video_coding/codecs/h264/include/h264.h>
+#include <webrtc/modules/video_coding/codecs/vp8/include/vp8.h>
+#include <webrtc/modules/video_coding/codecs/vp8/temporal_layers.h>
+#include <webrtc/modules/video_coding/codecs/vp9/include/vp9.h>
+#include <webrtc/modules/video_coding/codecs/i420/include/i420.h>
+
+#include "logger.h"
+#include "I420BufferManager.h"
+#include "MediaFramePipeline.h"
+
+using namespace webrtc;
 
 namespace woogeen_base {
 
@@ -70,14 +76,19 @@ private:
 /**
  * This is the class to accept the raw frame and encode it to the given format.
  */
-class VCMFrameEncoder : public VideoFrameEncoder, public webrtc::VCMPacketizationCallback, public JobTimerListener {
+class VCMFrameEncoder : public VideoFrameEncoder, public webrtc::EncodedImageCallback {
     DECLARE_LOGGER();
 
 public:
-    VCMFrameEncoder(FrameFormat format, boost::shared_ptr<WebRTCTaskRunner>, bool useSimulcast = false);
+    VCMFrameEncoder(FrameFormat format, bool useSimulcast = false);
     ~VCMFrameEncoder();
 
     FrameFormat getInputFormat() {return FRAME_FORMAT_I420;}
+
+    // Implements DecodedImageCallback.
+    webrtc::EncodedImageCallback::Result OnEncodedImage(const EncodedImage& encoded_frame,
+            const CodecSpecificInfo* codec_specific_info,
+            const RTPFragmentationHeader* fragmentation) override;
 
     // Implements VideoFrameEncoder.
     void onFrame(const Frame&);
@@ -87,16 +98,6 @@ public:
     void degenerateStream(int32_t streamId);
     void setBitrate(unsigned short kbps, int32_t streamId);
     void requestKeyFrame(int32_t streamId);
-
-    // Implements VCMPacketizationCallback.
-    virtual int32_t SendData(
-        uint8_t payloadType,
-        const webrtc::EncodedImage& encoded_image,
-        const webrtc::RTPFragmentationHeader& fragmentationHeader,
-        const webrtc::RTPVideoHeader* rtpVideoHdr);
-
-    // Implements JobTimerListener
-    void onTimeout();
 
 protected:
     void doEncoding();
@@ -113,12 +114,12 @@ private:
     };
 
     int32_t m_streamId;
-    webrtc::VideoCodingModule* m_vcm;
-    FrameFormat m_encodeFormat;
-    boost::shared_ptr<WebRTCTaskRunner> m_taskRunner;
 
-    boost::scoped_ptr<BufferManager> m_bufferManager;
-    //boost::scoped_ptr<JobTimer> m_jobTimer;
+    FrameFormat m_encodeFormat;
+    boost::scoped_ptr<webrtc::VideoEncoder> m_encoder;
+    webrtc::TemporalLayersFactory tl_factory_;
+
+    boost::scoped_ptr<I420BufferManager> m_bufferManager;
     std::map<int32_t/*streamId*/, OutStream> m_streams;
     boost::shared_mutex m_mutex;
 
@@ -128,6 +129,12 @@ private:
     boost::condition_variable m_encCond;
 
     uint32_t m_incomingFrameCount;
+
+    std::atomic<bool> m_requestKeyFrame;
+
+    // workaround for simulcast
+    int32_t m_width;
+    int32_t m_height;
 
     bool m_enableBsDump;
     FILE *m_bsDumpfp;

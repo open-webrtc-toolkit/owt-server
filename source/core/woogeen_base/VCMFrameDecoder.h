@@ -25,7 +25,8 @@
 
 #include <boost/scoped_ptr.hpp>
 #include <logger.h>
-#include <webrtc/modules/video_coding/codecs/interface/video_codec_interface.h>
+
+#include <webrtc/modules/video_coding/include/video_codec_interface.h>
 #include <webrtc/video_decoder.h>
 
 namespace woogeen_base {
@@ -40,11 +41,10 @@ public:
     bool init(FrameFormat format);
 
     void onFrame(const Frame&);
-    int32_t Decoded(webrtc::I420VideoFrame& decodedImage);
+    int32_t Decoded(webrtc::VideoFrame& decodedImage);
 
 private:
     bool m_needDecode;
-    int64_t m_ntpDelta;
     webrtc::CodecSpecificInfo m_codecInfo;
     boost::scoped_ptr<webrtc::VideoDecoder> m_decoder;
 };

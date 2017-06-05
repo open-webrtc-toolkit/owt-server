@@ -18,47 +18,40 @@
  * and approved by Intel in writing.
  */
 
-#ifndef VCMFrameEncoderAdapter_h
-#define VCMFrameEncoderAdapter_h
+#ifndef I420BufferManager_h
+#define I420BufferManager_h
 
-#include "MediaFramePipeline.h"
+#include <vector>
 
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/shared_mutex.hpp>
-#include <logger.h>
 
-#include "VCMFrameEncoder.h"
+#include <webrtc/common_video/include/i420_buffer_pool.h>
+#include <webrtc/api/video/video_frame.h>
+
+#include "logger.h"
 
 namespace woogeen_base {
 
-class VCMFrameEncoderAdapter : public VideoFrameEncoder {
+class I420BufferManager {
     DECLARE_LOGGER();
 
 public:
-    VCMFrameEncoderAdapter(FrameFormat format);
-    ~VCMFrameEncoderAdapter();
+    I420BufferManager(uint32_t maxFrames);
+    ~I420BufferManager();
 
-    FrameFormat getInputFormat() {return FRAME_FORMAT_I420;}
+    rtc::scoped_refptr<webrtc::I420Buffer> getFreeBuffer(uint32_t width, uint32_t height);
 
-    // Implements VideoFrameEncoder.
-    void onFrame(const Frame&);
-    bool canSimulcast(FrameFormat format, uint32_t width, uint32_t height);
-    bool isIdle();
-    int32_t generateStream(uint32_t width, uint32_t height, uint32_t bitrateKbps, FrameDestination* dest);
-    void degenerateStream(int32_t streamId);
-    void setBitrate(unsigned short kbps, int32_t streamId);
-    void requestKeyFrame(int32_t streamId);
+    void putBusyFrame(boost::shared_ptr<webrtc::VideoFrame> frame);
+    boost::shared_ptr<webrtc::VideoFrame> getBusyFrame();
 
 private:
-    boost::scoped_ptr<VCMFrameEncoder> m_encoder;
-    int32_t m_streamId;
-    int32_t m_encoderStreamId;
-    uint32_t m_width;
-    uint32_t m_height;
-    uint32_t m_kbps;
-    FrameDestination *m_dest;
+    boost::scoped_ptr<webrtc::I420BufferPool> m_bufferPool;
+
+    boost::shared_ptr<webrtc::VideoFrame> m_busyFrame;
+    boost::mutex m_mutex;
 };
 
-} /* namespace woogeen_base */
-#endif /* VCMFrameEncoderAdapter_h */
+}
+#endif /* I420BufferManager_h */

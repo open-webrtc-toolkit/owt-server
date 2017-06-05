@@ -50,6 +50,10 @@ enum FrameFormat {
     FRAME_FORMAT_OPUS,
     FRAME_FORMAT_ISAC16,
     FRAME_FORMAT_ISAC32,
+
+    FRAME_FORMAT_AAC,
+    FRAME_FORMAT_AC3,
+    FRAME_FORMAT_NELLYMOSER,
 };
 
 struct VideoFrameSpecificInfo {
@@ -88,6 +92,24 @@ inline FrameFormat getFormat(const std::string& codec) {
         return woogeen_base::FRAME_FORMAT_VP9;
     } else if (codec == "h265") {
         return woogeen_base::FRAME_FORMAT_H265;
+    } else if (codec == "pcm_raw") {
+        return woogeen_base::FRAME_FORMAT_PCM_RAW;
+    } else if (codec == "pcmu") {
+        return woogeen_base::FRAME_FORMAT_PCMU;
+    } else if (codec == "pcma") {
+        return woogeen_base::FRAME_FORMAT_PCMA;
+    } else if (codec == "isac_16000") {
+        return woogeen_base::FRAME_FORMAT_ISAC16;
+    } else if (codec == "isac_32000") {
+        return woogeen_base::FRAME_FORMAT_ISAC32;
+    } else if (codec == "opus_48000_2") {
+        return woogeen_base::FRAME_FORMAT_OPUS;
+    } else if (codec == "aac") {
+        return woogeen_base::FRAME_FORMAT_AAC;
+    } else if (codec == "ac3") {
+        return woogeen_base::FRAME_FORMAT_AC3;
+    } else if (codec == "nellymoser") {
+        return woogeen_base::FRAME_FORMAT_NELLYMOSER;
     } else {
         return woogeen_base::FRAME_FORMAT_UNKNOWN;
     }
@@ -123,6 +145,12 @@ inline const char *getFormatStr(const FrameFormat &format) {
             return "ISAC16";
         case FRAME_FORMAT_ISAC32:
             return "ISAC32";
+        case FRAME_FORMAT_AAC:
+            return "AAC";
+        case FRAME_FORMAT_AC3:
+            return "AC3";
+        case FRAME_FORMAT_NELLYMOSER:
+            return "NELLYMOSER";
         default:
             return "INVALID";
     }
@@ -134,7 +162,10 @@ inline bool isAudioFrame(const Frame& frame) {
           || frame.format == FRAME_FORMAT_PCMA
           || frame.format == FRAME_FORMAT_OPUS
           || frame.format == FRAME_FORMAT_ISAC16
-          || frame.format == FRAME_FORMAT_ISAC32;
+          || frame.format == FRAME_FORMAT_ISAC32
+          || frame.format == FRAME_FORMAT_AAC
+          || frame.format == FRAME_FORMAT_AC3
+          || frame.format == FRAME_FORMAT_NELLYMOSER;
 }
 
 inline bool isVideoFrame(const Frame& frame) {

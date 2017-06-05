@@ -18,50 +18,46 @@
  * and approved by Intel in writing.
  */
 
-#ifndef MsdkFrameProcesser_h
-#define MsdkFrameProcesser_h
-
-#ifdef ENABLE_MSDK
-
-#include <boost/scoped_ptr.hpp>
-#include <boost/shared_ptr.hpp>
-#include <logger.h>
-
-#include <webrtc/api/video/video_frame.h>
-
-#include "MediaFramePipeline.h"
-
-#include "MsdkFrame.h"
-#include "MsdkBase.h"
+#include "I420BufferManager.h"
 
 namespace woogeen_base {
 
-class MsdkFrameProcesser : public VideoFrameProcesser {
-    DECLARE_LOGGER();
+DEFINE_LOGGER(I420BufferManager, "woogeen.I420BufferManager");
 
-public:
-    MsdkFrameProcesser();
-    ~MsdkFrameProcesser();
+I420BufferManager::I420BufferManager(uint32_t maxFrames)
+{
+    m_bufferPool.reset(new webrtc::I420BufferPool(false, maxFrames));
+}
 
-    void onFrame(const Frame&);
-    bool init(FrameFormat format);
+I420BufferManager::~I420BufferManager()
+{
+    m_busyFrame.reset();
+    m_bufferPool->Release();
+}
 
-protected:
-    bool filterFrame(const Frame& frame);
+rtc::scoped_refptr<webrtc::I420Buffer> I420BufferManager::getFreeBuffer(uint32_t width, uint32_t height)
+{
+    rtc::scoped_refptr<webrtc::I420Buffer> buffer = m_bufferPool->CreateBuffer(width, height);
+    if (!buffer.get()) {
+        return NULL;
+    }
 
-private:
-    uint32_t m_lastWidth;
-    uint32_t m_lastHeight;
-    FrameFormat m_format;
+    return buffer;
+}
 
-    boost::shared_ptr<mfxFrameAllocator> m_allocator;
-    boost::shared_ptr<woogeen_base::MsdkFrame> m_msdkFrame;
+void I420BufferManager::putBusyFrame(boost::shared_ptr<webrtc::VideoFrame> frame)
+{
+    boost::mutex::scoped_lock lock(m_mutex);
 
-    boost::shared_ptr<webrtc::VideoFrame> m_i420Frame;
-};
+    m_busyFrame = frame;
+    return;
+}
+
+boost::shared_ptr<webrtc::VideoFrame> I420BufferManager::getBusyFrame()
+{
+    boost::mutex::scoped_lock lock(m_mutex);
+
+    return m_busyFrame;
+}
 
 } /* namespace woogeen_base */
-
-#endif /* ENABLE_MSDK */
-#endif /* MsdkFrameProcesser_h */
-

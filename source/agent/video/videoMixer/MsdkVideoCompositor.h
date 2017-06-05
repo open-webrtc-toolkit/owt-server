@@ -23,18 +23,20 @@
 
 #ifdef ENABLE_MSDK
 
+#include <vector>
+
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/shared_mutex.hpp>
-#include <vector>
-#include <JobTimer.h>
+
 #include <logger.h>
+#include <JobTimer.h>
+
+#include <webrtc/system_wrappers/include/clock.h>
 
 #include "VideoFrameMixer.h"
 #include "VideoLayout.h"
-
 #include "MediaFramePipeline.h"
-
 #include "MsdkFrame.h"
 
 namespace mcu {
@@ -78,6 +80,7 @@ class MsdkVideoCompositor : public VideoFrameCompositor,
     friend class VppInput;
 
     enum LayoutSolutionState{UN_INITIALIZED = 0, CHANGING, IN_WORK};
+    const uint32_t kMsToRtpTimestamp = 90;
 
 public:
     MsdkVideoCompositor(uint32_t maxInput, woogeen_base::VideoSize rootSize, woogeen_base::YUVColor bgColor, bool crop);
@@ -118,6 +121,8 @@ protected:
 private:
     bool m_enbaleBgColorSurface;
 
+    const webrtc::Clock *m_clock;
+
     uint32_t m_maxInput;
     bool m_crop;
 
@@ -128,9 +133,6 @@ private:
     LayoutSolution m_currentLayout;
     LayoutSolution m_newLayout;
     LayoutSolutionState m_solutionState;
-
-    // Delta used for translating between NTP and internal timestamps.
-    int64_t m_ntpDelta;
 
     boost::scoped_ptr<mfxVideoParam> m_videoParam;
     boost::scoped_ptr<mfxExtVPPComposite> m_extVppComp;

@@ -20,10 +20,9 @@
 
 #include "SoftVideoCompositor.h"
 
-#include <webrtc/common_video/interface/i420_video_frame.h>
-#include <webrtc/modules/video_processing/main/interface/video_processing.h>
-#include <webrtc/system_wrappers/interface/clock.h>
-#include <webrtc/system_wrappers/interface/tick_util.h>
+#include "libyuv/convert.h"
+#include "libyuv/planar_functions.h"
+#include "libyuv/scale.h"
 
 #include <iostream>
 #include <fstream>
@@ -32,40 +31,6 @@ using namespace webrtc;
 using namespace woogeen_base;
 
 namespace mcu {
-
-VPMPool::VPMPool(unsigned int size)
-    : m_size(size)
-{
-    m_vpms = new VideoProcessingModule*[size];
-    for (unsigned int i = 0; i < m_size; i++) {
-        VideoProcessingModule* vpm = VideoProcessingModule::Create(i);
-        vpm->SetInputFrameResampleMode(webrtc::kFastRescaling);
-        m_vpms[i] = vpm;
-    }
-}
-
-VPMPool::~VPMPool()
-{
-    for (unsigned int i = 0; i < m_size; i++) {
-        if (m_vpms[i])
-            VideoProcessingModule::Destroy(m_vpms[i]);
-    }
-    delete[] m_vpms;
-}
-
-VideoProcessingModule* VPMPool::get(unsigned int input)
-{
-    assert (input < m_size);
-    return m_vpms[input];
-}
-
-void VPMPool::update(unsigned int input, VideoSize& videoSize)
-{
-    // FIXME: Get rid of the hard coded fps here.
-    // Also it may need to be associated with the layout timer interval configured in VideoCompositor.
-    if (m_vpms[input])
-        m_vpms[input]->SetTargetResolution(videoSize.width, videoSize.height, 30);
-}
 
 DEFINE_LOGGER(AvatarManager, "mcu.media.SoftVideoCompositor.AvatarManager");
 
@@ -122,7 +87,7 @@ bool AvatarManager::getImageSize(const std::string &url, uint32_t *pWidth, uint3
     return true;
 }
 
-boost::shared_ptr<webrtc::I420VideoFrame> AvatarManager::loadImage(const std::string &url)
+boost::shared_ptr<webrtc::VideoFrame> AvatarManager::loadImage(const std::string &url)
 {
     uint32_t width, height;
 
@@ -130,7 +95,6 @@ boost::shared_ptr<webrtc::I420VideoFrame> AvatarManager::loadImage(const std::st
         return NULL;
 
     std::ifstream in(url, std::ios::in | std::ios::binary);
-    boost::shared_ptr<webrtc::I420VideoFrame> frame;
 
     in.seekg (0, in.end);
     uint32_t size = in.tellg();
@@ -146,20 +110,15 @@ boost::shared_ptr<webrtc::I420VideoFrame> AvatarManager::loadImage(const std::st
     in.read (image, size);
     in.close();
 
-    frame.reset(new webrtc::I420VideoFrame());
-    frame->CreateFrame(
-            width * height,
-            (uint8_t *)image,
-            width * height / 4,
-            (uint8_t *)image + width * height,
-            width * height / 4,
-            (uint8_t *)image + width * height * 5 / 4,
-            width,
-            height,
-            width,
-            width / 2,
-            width / 2
+    rtc::scoped_refptr<I420Buffer> i420Buffer = I420Buffer::Copy(
+            width, height,
+            reinterpret_cast<const uint8_t *>(image), width,
+            reinterpret_cast<const uint8_t *>(image + width * height), width / 2,
+            reinterpret_cast<const uint8_t *>(image + width * height * 5 / 4), width / 2
             );
+
+    boost::shared_ptr<webrtc::VideoFrame> frame(new webrtc::VideoFrame(i420Buffer, webrtc::kVideoRotation_0, 0));
+
     delete image;
 
     return frame;
@@ -212,7 +171,7 @@ bool AvatarManager::unsetAvatar(uint8_t index)
     return true;
 }
 
-boost::shared_ptr<webrtc::I420VideoFrame> AvatarManager::getAvatarFrame(uint8_t index)
+boost::shared_ptr<webrtc::VideoFrame> AvatarManager::getAvatarFrame(uint8_t index)
 {
     boost::unique_lock<boost::shared_mutex> lock(m_mutex);
 
@@ -226,26 +185,97 @@ boost::shared_ptr<webrtc::I420VideoFrame> AvatarManager::getAvatarFrame(uint8_t 
         return it2->second;
     }
 
-    boost::shared_ptr<webrtc::I420VideoFrame> frame = loadImage(it->second);
+    boost::shared_ptr<webrtc::VideoFrame> frame = loadImage(it->second);
     m_frames[it->second] = frame;
     return frame;
+}
+
+DEFINE_LOGGER(SwInput, "mcu.media.SwInput");
+
+SwInput::SwInput()
+    : m_active(false)
+    , m_busyFrame(-1)
+{
+    m_frames.resize(2);
+}
+
+SwInput::~SwInput()
+{
+
+}
+
+void SwInput::setActive(bool active)
+{
+    m_active = active;
+}
+
+void SwInput::pushInput(webrtc::VideoFrame *videoFrame)
+{
+    int ret;
+    int index = (m_busyFrame + 1) % 2;
+    rtc::scoped_refptr<webrtc::VideoFrameBuffer> srcI420Buffer;
+    boost::shared_ptr<webrtc::VideoFrame> dstFrame;
+    webrtc::I420Buffer *dstI420Buffer;
+    int width = videoFrame->width();
+    int height = videoFrame->height();
+
+    if (m_frames[index] == NULL
+            || m_frames[index]->width() != width
+            || m_frames[index]->height() != height) {
+        m_frames[index].reset(new webrtc::VideoFrame(
+                webrtc::I420Buffer::Create(width, height),
+                webrtc::kVideoRotation_0,
+                0));
+    }
+
+    dstFrame = m_frames[index];
+    dstI420Buffer = static_cast<webrtc::I420Buffer *>(dstFrame->video_frame_buffer().get());
+    srcI420Buffer = videoFrame->video_frame_buffer();
+
+    ret = libyuv::I420Copy(
+                srcI420Buffer->DataY(), srcI420Buffer->StrideY(),
+                srcI420Buffer->DataU(), srcI420Buffer->StrideU(),
+                srcI420Buffer->DataV(), srcI420Buffer->StrideV(),
+                dstI420Buffer->MutableDataY(), dstI420Buffer->StrideY(),
+                dstI420Buffer->MutableDataU(), dstI420Buffer->StrideU(),
+                dstI420Buffer->MutableDataV(), dstI420Buffer->StrideV(),
+                width, height);
+    if (ret != 0) {
+        ELOG_ERROR("I420Copy failed, ret %d", ret);
+        return;
+    }
+
+    m_busyFrame = index;
+}
+
+boost::shared_ptr<VideoFrame> SwInput::popInput()
+{
+    if(m_busyFrame == -1)
+        return NULL;
+
+    return m_frames[m_busyFrame];
 }
 
 DEFINE_LOGGER(SoftVideoCompositor, "mcu.media.SoftVideoCompositor");
 
 SoftVideoCompositor::SoftVideoCompositor(uint32_t maxInput, VideoSize rootSize, YUVColor bgColor, bool crop)
-    : m_compositeSize(rootSize)
+    : m_clock(Clock::GetRealTimeClock())
+    , m_maxInput(maxInput)
+    , m_compositeSize(rootSize)
     , m_bgColor(bgColor)
     , m_solutionState(UN_INITIALIZED)
     , m_crop(crop)
 {
-    m_ntpDelta = Clock::GetRealTimeClock()->CurrentNtpInMilliseconds() - TickTime::MillisecondTimestamp();
-    m_vpmPool.reset(new VPMPool(maxInput));
+    m_compositeBuffer = webrtc::I420Buffer::Create(m_compositeSize.width, m_compositeSize.height);
+    m_compositeFrame.reset(new webrtc::VideoFrame(
+                m_compositeBuffer,
+                webrtc::kVideoRotation_0,
+                0));
 
-    // Initialize frame buffer and buffer manager for video composition
-    m_compositeFrame.reset(new webrtc::I420VideoFrame());
-    m_compositeFrame->CreateEmptyFrame(m_compositeSize.width, m_compositeSize.height, m_compositeSize.width, m_compositeSize.width / 2, m_compositeSize.width / 2);
-    m_bufferManager.reset(new woogeen_base::BufferManager(maxInput, m_compositeSize.width, m_compositeSize.height));
+    m_inputs.resize(m_maxInput);
+    for (auto& input : m_inputs) {
+        input.reset(new SwInput());
+    }
 
     m_avatarManager.reset(new AvatarManager(maxInput));
 
@@ -279,18 +309,13 @@ void SoftVideoCompositor::updateLayoutSolution(LayoutSolution& solution)
 
 bool SoftVideoCompositor::activateInput(int input)
 {
-    m_bufferManager->setActive(input, true);
+    m_inputs[input]->setActive(true);
     return true;
 }
 
 void SoftVideoCompositor::deActivateInput(int input)
 {
-    m_bufferManager->setActive(input, false);
-
-    // Clean-up the last frame in this slot.
-    I420VideoFrame* busyFrame = m_bufferManager->postFreeBuffer(nullptr, input);
-    if (busyFrame)
-        m_bufferManager->releaseBuffer(busyFrame);
+    m_inputs[input]->setActive(false);
 }
 
 bool SoftVideoCompositor::setAvatar(int input, const std::string& avatar)
@@ -306,15 +331,9 @@ bool SoftVideoCompositor::unsetAvatar(int input)
 void SoftVideoCompositor::pushInput(int input, const Frame& frame)
 {
     assert(frame.format == woogeen_base::FRAME_FORMAT_I420);
-    webrtc::I420VideoFrame* i420Frame = reinterpret_cast<webrtc::I420VideoFrame*>(frame.payload);
+    webrtc::VideoFrame* i420Frame = reinterpret_cast<webrtc::VideoFrame*>(frame.payload);
 
-    I420VideoFrame* freeFrame = m_bufferManager->getFreeBuffer();
-    if (freeFrame) {
-        freeFrame->CopyFrame(*i420Frame);
-        I420VideoFrame* busyFrame = m_bufferManager->postFreeBuffer(freeFrame, input);
-        if (busyFrame)
-            m_bufferManager->releaseBuffer(busyFrame);
-    }
+    m_inputs[input]->pushInput(i420Frame);
 }
 
 void SoftVideoCompositor::onTimeout()
@@ -324,8 +343,7 @@ void SoftVideoCompositor::onTimeout()
 
 void SoftVideoCompositor::generateFrame()
 {
-    I420VideoFrame* compositeFrame = layout();
-    compositeFrame->set_render_time_ms(TickTime::MillisecondTimestamp() + m_ntpDelta);
+    VideoFrame* compositeFrame = layout();
 
     woogeen_base::Frame frame;
     memset(&frame, 0, sizeof(frame));
@@ -341,11 +359,14 @@ void SoftVideoCompositor::generateFrame()
 
 void SoftVideoCompositor::setBackgroundColor()
 {
-    if (m_compositeFrame) {
+    if (m_compositeBuffer) {
         // Set the background color
-        memset(m_compositeFrame->buffer(webrtc::kYPlane), m_bgColor.y, m_compositeFrame->allocated_size(webrtc::kYPlane));
-        memset(m_compositeFrame->buffer(webrtc::kUPlane), m_bgColor.cb, m_compositeFrame->allocated_size(webrtc::kUPlane));
-        memset(m_compositeFrame->buffer(webrtc::kVPlane), m_bgColor.cr, m_compositeFrame->allocated_size(webrtc::kVPlane));
+        libyuv::I420Rect(
+                m_compositeBuffer->MutableDataY(), m_compositeBuffer->StrideY(),
+                m_compositeBuffer->MutableDataU(), m_compositeBuffer->StrideU(),
+                m_compositeBuffer->MutableDataV(), m_compositeBuffer->StrideV(),
+                0, 0, m_compositeBuffer->width(), m_compositeBuffer->height(),
+                m_bgColor.y, m_bgColor.cb, m_bgColor.cr);
     }
 }
 
@@ -361,7 +382,7 @@ bool SoftVideoCompositor::commitLayout()
     return true;
 }
 
-webrtc::I420VideoFrame* SoftVideoCompositor::layout()
+webrtc::VideoFrame* SoftVideoCompositor::layout()
 {
     if (m_solutionState == CHANGING)
         commitLayout();
@@ -371,93 +392,66 @@ webrtc::I420VideoFrame* SoftVideoCompositor::layout()
     return customLayout();
 }
 
-webrtc::I420VideoFrame* SoftVideoCompositor::customLayout()
+webrtc::VideoFrame* SoftVideoCompositor::customLayout()
 {
-    webrtc::I420VideoFrame* target = m_compositeFrame.get();
     for (LayoutSolution::iterator it = m_currentLayout.begin(); it != m_currentLayout.end(); ++it) {
         int index = it->input;
+
+        boost::shared_ptr<webrtc::VideoFrame> sub_image;
+        if (m_inputs[index]->isActive()) {
+            sub_image = m_inputs[index]->popInput();
+        } else {
+            sub_image = m_avatarManager->getAvatarFrame(index);
+        }
+
+        if (sub_image == NULL) {
+            continue;
+        }
+
+        rtc::scoped_refptr<webrtc::VideoFrameBuffer> i420Buffer = sub_image->video_frame_buffer();
 
         Region region = it->region;
         assert(!(region.relativeSize < 0.0 || region.relativeSize > 1.0)
             && !(region.left < 0.0 || region.left > 1.0)
             && !(region.top < 0.0 || region.top > 1.0));
 
-        unsigned int sub_width = (unsigned int)(m_compositeSize.width * region.relativeSize);
-        unsigned int sub_height = (unsigned int)(m_compositeSize.height * region.relativeSize);
-        unsigned int offset_width = (unsigned int)(m_compositeSize.width * region.left);
-        unsigned int offset_height = (unsigned int)(m_compositeSize.height * region.top);
+        uint32_t sub_width      = (uint32_t)(m_compositeSize.width * region.relativeSize);
+        uint32_t sub_height     = (uint32_t)(m_compositeSize.height * region.relativeSize);
+        uint32_t offset_width   = (uint32_t)(m_compositeSize.width * region.left);
+        uint32_t offset_height  = (uint32_t)(m_compositeSize.height * region.top);
         if (offset_width + sub_width > m_compositeSize.width)
             sub_width = m_compositeSize.width - offset_width;
 
         if (offset_height + sub_height > m_compositeSize.height)
             sub_height = m_compositeSize.height - offset_height;
 
-        webrtc::I420VideoFrame* sub_image = NULL;
-        boost::shared_ptr<webrtc::I420VideoFrame> avatarFrame;
-
-        if (m_bufferManager->isActive(index)) {
-            sub_image = m_bufferManager->getBusyBuffer((uint32_t)index);
-        } else {
-            avatarFrame = m_avatarManager->getAvatarFrame(index);
+        uint32_t cropped_sub_width = sub_width;
+        uint32_t cropped_sub_height = sub_height;
+        if (!m_crop) {
+            // If we are *not* required to crop the video input to fit in its region,
+            // we need to adjust the region to be filled to match the input's width/height.
+            cropped_sub_width = std::min(sub_width, i420Buffer->width() * sub_height / i420Buffer->height());
+            cropped_sub_height = std::min(sub_height, i420Buffer->height() * sub_width / i420Buffer->width());
         }
+        offset_width += ((sub_width - cropped_sub_width) / 2) & ~1;
+        offset_height += ((sub_height - cropped_sub_height) / 2) & ~1;
 
-        if (!sub_image && !avatarFrame) {
-            for (unsigned int i = 0; i < sub_height; i++) {
-                memset(target->buffer(webrtc::kYPlane) + (i+offset_height) * target->stride(webrtc::kYPlane) + offset_width,
-                        0,
-                        sub_width);
-            }
-
-            for (unsigned int i = 0; i < sub_height/2; i++) {
-                memset(target->buffer(webrtc::kUPlane) + (i+offset_height/2) * target->stride(webrtc::kUPlane) + offset_width/2,
-                        128,
-                        sub_width/2);
-                memset(target->buffer(webrtc::kVPlane) + (i+offset_height/2) * target->stride(webrtc::kVPlane) + offset_width/2,
-                        128,
-                        sub_width/2);
-            }
-        } else {
-            webrtc::I420VideoFrame* image = sub_image != NULL ? sub_image : avatarFrame.get();
-            uint32_t cropped_sub_width = sub_width;
-            uint32_t cropped_sub_height = sub_height;
-            if (!m_crop) {
-                // If we are *not* required to crop the video input to fit in its region,
-                // we need to adjust the region to be filled to match the input's width/height.
-                cropped_sub_width = std::min(sub_width, image->width() * sub_height / image->height());
-                cropped_sub_height = std::min(sub_height, image->height() * sub_width / image->width());
-            }
-            offset_width += ((sub_width - cropped_sub_width) / 2) & ~1;
-            offset_height += ((sub_height - cropped_sub_height) / 2) & ~1;
-            VideoSize sub_size {cropped_sub_width, cropped_sub_height};
-            m_vpmPool->update(index, sub_size);
-            I420VideoFrame* processedFrame = nullptr;
-            int ret = m_vpmPool->get((unsigned int)index)->PreprocessFrame(*image, &processedFrame);
-            if (ret == VPM_OK) {
-                if (!processedFrame)
-                    processedFrame = image;
-
-                for (unsigned int i = 0; i < cropped_sub_height; i++) {
-                    memcpy(target->buffer(webrtc::kYPlane) + (i+offset_height) * target->stride(webrtc::kYPlane) + offset_width,
-                        processedFrame->buffer(webrtc::kYPlane) + i * processedFrame->stride(webrtc::kYPlane),
-                        cropped_sub_width);
-                }
-
-                for (unsigned int i = 0; i < cropped_sub_height/2; i++) {
-                    memcpy(target->buffer(webrtc::kUPlane) + (i+offset_height/2) * target->stride(webrtc::kUPlane) + offset_width/2,
-                        processedFrame->buffer(webrtc::kUPlane) + i * processedFrame->stride(webrtc::kUPlane),
-                        cropped_sub_width/2);
-                    memcpy(target->buffer(webrtc::kVPlane) + (i+offset_height/2) * target->stride(webrtc::kVPlane) + offset_width/2,
-                        processedFrame->buffer(webrtc::kVPlane) + i * processedFrame->stride(webrtc::kVPlane),
-                        cropped_sub_width/2);
-                }
-            }
-            // if return busy frame failed, which means a new busy frame has been posted
-            // simply release the busy frame
-            if (sub_image && m_bufferManager->returnBusyBuffer(sub_image, (uint32_t)index))
-                m_bufferManager->releaseBuffer(sub_image);
-        }
+        int ret = libyuv::I420Scale(
+                i420Buffer->DataY(), i420Buffer->StrideY(),
+                i420Buffer->DataU(), i420Buffer->StrideU(),
+                i420Buffer->DataV(), i420Buffer->StrideV(),
+                i420Buffer->width(), i420Buffer->height(),
+                m_compositeBuffer->MutableDataY() + offset_height * m_compositeBuffer->StrideY() + offset_width, m_compositeBuffer->StrideY(),
+                m_compositeBuffer->MutableDataU() + (offset_height * m_compositeBuffer->StrideU() + offset_width) / 2, m_compositeBuffer->StrideU(),
+                m_compositeBuffer->MutableDataV() + (offset_height * m_compositeBuffer->StrideV() + offset_width) / 2, m_compositeBuffer->StrideV(),
+                cropped_sub_width, cropped_sub_height,
+                libyuv::kFilterBox);
+        if (ret != 0)
+            ELOG_ERROR("I420Scale failed, ret %d", ret);
     }
 
+    m_compositeFrame->set_timestamp_us(m_clock->TimeInMilliseconds());
+    m_compositeFrame->set_timestamp(m_compositeFrame->timestamp_us() * kMsToRtpTimestamp);
     return m_compositeFrame.get();
 }
 
