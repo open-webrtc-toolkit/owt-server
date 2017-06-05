@@ -45,7 +45,7 @@ namespace mcu {
 
 class VideoFrameTranscoderImpl : public VideoFrameTranscoder, public woogeen_base::FrameSource, public woogeen_base::FrameDestination {
 public:
-    VideoFrameTranscoderImpl(boost::shared_ptr<woogeen_base::WebRTCTaskRunner>);
+    VideoFrameTranscoderImpl();
     ~VideoFrameTranscoderImpl();
 
     bool setInput(int input, woogeen_base::FrameFormat, woogeen_base::FrameSource*);
@@ -79,12 +79,9 @@ private:
 
     std::map<int, Output> m_outputs;
     boost::shared_mutex m_outputMutex;
-
-    boost::shared_ptr<woogeen_base::WebRTCTaskRunner> m_taskRunner;
 };
 
-VideoFrameTranscoderImpl::VideoFrameTranscoderImpl(boost::shared_ptr<woogeen_base::WebRTCTaskRunner> taskRunner)
-    : m_taskRunner(taskRunner)
+VideoFrameTranscoderImpl::VideoFrameTranscoderImpl()
 {
 
 }
@@ -175,7 +172,7 @@ inline bool VideoFrameTranscoderImpl::addOutput(int output,
     }
 #endif
     if (!encoder) {
-        encoder.reset(new woogeen_base::VCMFrameEncoderAdapter(format, m_taskRunner));
+        encoder.reset(new woogeen_base::VCMFrameEncoderAdapter(format));
     }
 
     streamId = encoder->generateStream(0, 0, bitrateKbps, dest);

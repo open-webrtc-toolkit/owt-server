@@ -28,11 +28,11 @@ namespace woogeen_base {
 
 DEFINE_LOGGER(VCMFrameEncoderAdapter, "woogeen.VCMFrameEncoderAdapter");
 
-VCMFrameEncoderAdapter::VCMFrameEncoderAdapter(FrameFormat format, boost::shared_ptr<WebRTCTaskRunner> taskRunner)
+VCMFrameEncoderAdapter::VCMFrameEncoderAdapter(FrameFormat format)
     : m_streamId(-1)
     , m_encoderStreamId(-1)
 {
-    m_encoder.reset(new VCMFrameEncoder(format, taskRunner, true));
+    m_encoder.reset(new VCMFrameEncoder(format, true));
 }
 
 VCMFrameEncoderAdapter::~VCMFrameEncoderAdapter()

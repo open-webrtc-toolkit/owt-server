@@ -21,7 +21,7 @@
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
 
-#include <webrtc/system_wrappers/interface/trace.h>
+#include <webrtc/system_wrappers/include/trace.h>
 
 #include "VideoTranscoder.h"
 #include "VideoFrameTranscoderImpl.h"
@@ -59,27 +59,26 @@ VideoTranscoder::VideoTranscoder(const std::string& configStr)
 
     ELOG_DEBUG("Init");
 
-    m_taskRunner.reset(new woogeen_base::WebRTCTaskRunner());
-    m_frameTranscoder.reset(new VideoFrameTranscoderImpl(m_taskRunner));
+    m_frameTranscoder.reset(new VideoFrameTranscoderImpl());
 
-    m_taskRunner->Start();
-
+#if 0
     if (ELOG_IS_TRACE_ENABLED()) {
         webrtc::Trace::CreateTrace();
         webrtc::Trace::SetTraceFile("webrtc_trace_VideoTranscoder.txt");
         webrtc::Trace::set_level_filter(webrtc::kTraceAll);
     }
+#endif
 }
 
 VideoTranscoder::~VideoTranscoder()
 {
     closeAll();
 
-    m_taskRunner->Stop();
-
+#if 0
     if (ELOG_IS_TRACE_ENABLED()) {
         webrtc::Trace::ReturnTrace();
     }
+#endif
 }
 
 int VideoTranscoder::useAFreeInputIndex()

@@ -21,40 +21,24 @@
 #ifndef SoftVideoCompositor_h
 #define SoftVideoCompositor_h
 
-#include "VideoFrameMixer.h"
-#include "VideoLayout.h"
+#include <vector>
+#include <atomic>
 
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/shared_mutex.hpp>
-#include <BufferManager.h>
-#include <JobTimer.h>
-#include <logger.h>
-#include <MediaFramePipeline.h>
-#include <vector>
 
-namespace webrtc {
-class I420VideoFrame;
-class VideoProcessingModule;
-}
+#include <webrtc/system_wrappers/include/clock.h>
+#include <webrtc/api/video/video_frame.h>
+#include <webrtc/api/video/i420_buffer.h>
+
+#include "logger.h"
+#include "JobTimer.h"
+#include "MediaFramePipeline.h"
+#include "VideoFrameMixer.h"
+#include "VideoLayout.h"
 
 namespace mcu {
-
-/**
- * manages a pool of VPM for preprocessing the incoming I420 frame
- */
-class VPMPool {
-public:
-    VPMPool(unsigned int size);
-    ~VPMPool();
-    webrtc::VideoProcessingModule* get(unsigned int input);
-    void update(unsigned int input, woogeen_base::VideoSize&);
-    unsigned int size() { return m_size; }
-
-private:
-    webrtc::VideoProcessingModule** m_vpms;
-    unsigned int m_size;    // total pool capacity
-};
 
 class AvatarManager {
     DECLARE_LOGGER();
@@ -65,19 +49,38 @@ public:
     bool setAvatar(uint8_t index, const std::string &url);
     bool unsetAvatar(uint8_t index);
 
-    boost::shared_ptr<webrtc::I420VideoFrame> getAvatarFrame(uint8_t index);
+    boost::shared_ptr<webrtc::VideoFrame> getAvatarFrame(uint8_t index);
 
 protected:
     bool getImageSize(const std::string &url, uint32_t *pWidth, uint32_t *pHeight);
-    boost::shared_ptr<webrtc::I420VideoFrame> loadImage(const std::string &url);
+    boost::shared_ptr<webrtc::VideoFrame> loadImage(const std::string &url);
 
 private:
     uint8_t m_size;
 
     std::map<uint8_t, std::string> m_inputs;
-    std::map<std::string, boost::shared_ptr<webrtc::I420VideoFrame>> m_frames;
+    std::map<std::string, boost::shared_ptr<webrtc::VideoFrame>> m_frames;
 
     boost::shared_mutex m_mutex;
+};
+
+class SwInput {
+    DECLARE_LOGGER();
+
+public:
+    SwInput();
+    ~SwInput();
+
+    void setActive(bool active);
+    bool isActive(void) {return m_active;}
+
+    void pushInput(webrtc::VideoFrame *videoFrame);
+    boost::shared_ptr<webrtc::VideoFrame> popInput();
+
+private:
+    std::atomic<bool> m_active;
+    std::atomic<int8_t> m_busyFrame;
+    std::vector<boost::shared_ptr<webrtc::VideoFrame>> m_frames;
 };
 
 /**
@@ -89,7 +92,10 @@ private:
 class SoftVideoCompositor : public VideoFrameCompositor,
                             public JobTimerListener {
     DECLARE_LOGGER();
+
     enum LayoutSolutionState{UN_INITIALIZED = 0, CHANGING, IN_WORK};
+    const uint32_t kMsToRtpTimestamp = 90;
+
 public:
     SoftVideoCompositor(uint32_t maxInput, woogeen_base::VideoSize rootSize, woogeen_base::YUVColor bgColor, bool crop);
     ~SoftVideoCompositor();
@@ -106,17 +112,17 @@ public:
 
     void onTimeout();
 
-private:
-    webrtc::I420VideoFrame* layout();
-    webrtc::I420VideoFrame* customLayout();
+protected:
+    webrtc::VideoFrame* layout();
+    webrtc::VideoFrame* customLayout();
     void generateFrame();
-    bool commitLayout(); // Commit the new layout config.
+    bool commitLayout();
     void setBackgroundColor();
-    // Delta used for translating between NTP and internal timestamps.
-    int64_t m_ntpDelta;
-    boost::scoped_ptr<VPMPool> m_vpmPool;
-    boost::scoped_ptr<woogeen_base::BufferManager> m_bufferManager;
-    boost::scoped_ptr<webrtc::I420VideoFrame> m_compositeFrame;
+
+private:
+    const webrtc::Clock *m_clock;
+
+    uint32_t m_maxInput;
     woogeen_base::VideoSize m_compositeSize;
     woogeen_base::VideoSize m_newCompositeSize;
     woogeen_base::YUVColor m_bgColor;
@@ -125,11 +131,12 @@ private:
     LayoutSolutionState m_solutionState;
     bool m_crop;
 
+    rtc::scoped_refptr<webrtc::I420Buffer> m_compositeBuffer;
+    boost::shared_ptr<webrtc::VideoFrame> m_compositeFrame;
+    std::vector<boost::shared_ptr<SwInput>> m_inputs;
+
     boost::scoped_ptr<AvatarManager> m_avatarManager;
-    /*
-     * Each incoming channel will store the decoded frame in this array, and the composition
-     * thread will scan this array and composite the frames into one frame.
-     */
+
     boost::scoped_ptr<JobTimer> m_jobTimer;
 };
 

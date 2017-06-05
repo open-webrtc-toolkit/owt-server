@@ -23,7 +23,6 @@
 #include "VideoFrameMixerImpl.h"
 #include "VideoLayoutProcessor.h"
 #include "VideoFrameMixer.h"
-#include <webrtc/system_wrappers/interface/trace.h>
 
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
@@ -70,30 +69,29 @@ VideoMixer::VideoMixer(const std::string& configStr)
 
     ELOG_DEBUG("Init maxInput(%u), rootSize(%u, %u), bgColor(%u, %u, %u)", m_maxInputCount, rootSize.width, rootSize.height, bgColor.y, bgColor.cb, bgColor.cr);
 
-    m_taskRunner.reset(new woogeen_base::WebRTCTaskRunner());
-
-    m_frameMixer.reset(new VideoFrameMixerImpl(m_maxInputCount, rootSize, bgColor, m_taskRunner, true, cropVideo));
+    m_frameMixer.reset(new VideoFrameMixerImpl(m_maxInputCount, rootSize, bgColor, true, cropVideo));
     m_layoutProcessor->registerConsumer(m_frameMixer);
 
-    m_taskRunner->Start();
-
+#if 0
     if (ELOG_IS_TRACE_ENABLED()) {
         webrtc::Trace::CreateTrace();
         webrtc::Trace::SetTraceFile("webrtc_trace_videoMixer.txt");
         webrtc::Trace::set_level_filter(webrtc::kTraceAll);
     }
+#endif
 }
 
 VideoMixer::~VideoMixer()
 {
     closeAll();
 
-    m_taskRunner->Stop();
     m_layoutProcessor->deregisterConsumer(m_frameMixer);
 
+#if 0
     if (ELOG_IS_TRACE_ENABLED()) {
         webrtc::Trace::ReturnTrace();
     }
+#endif
 }
 
 bool VideoMixer::addInput(const std::string& inStreamID, const std::string& codec, woogeen_base::FrameSource* source, const std::string& avatar)
