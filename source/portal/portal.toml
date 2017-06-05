@@ -16,7 +16,7 @@ ssl = true #default: true
 # Life time for reconnection ticket. Unit: second.
 reconnection_ticket_lifetime = 600 #default: 600
 # Client will leave conference if it cannot reconnect to Socket.IO server after |reconnection_timeout| seconds.
-reconnection_timeout = 120 #default: 120
+reconnection_timeout = 60 #default: 60
 
 
 [cluster]
