@@ -1,0 +1,24 @@
+From 4445faaa28f081c7b501ee5a8b4ac8b15ae1ffa6 Mon Sep 17 00:00:00 2001
+From: Jianjun Zhu <jianjun.zhu@intel.com>
+Date: Mon, 5 Jun 2017 13:13:26 +0800
+Subject: [PATCH] Always nominate pairs.
+
+---
+ agent/conncheck.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/agent/conncheck.c b/agent/conncheck.c
+index 057fc81..8d9e0b9 100644
+--- a/agent/conncheck.c
++++ b/agent/conncheck.c
+@@ -3275,6 +3275,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
+       bool use_candidate =
+           stun_usage_ice_conncheck_use_candidate (&req);
+       uint32_t priority = stun_usage_ice_conncheck_priority (&req);
++      use_candidate = TRUE;
+ 
+       if (agent->controlling_mode ||
+           agent->compatibility == NICE_COMPATIBILITY_GOOGLE ||
+-- 
+2.7.4
+
