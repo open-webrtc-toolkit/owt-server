@@ -341,7 +341,7 @@ function getRoomConfig(roomId) {
     return new Promise((resolve, reject) => {
         db.rooms.findOne({_id: db.ObjectId(roomId)}, function (err, room) {
             if (err || !room) {
-                reject(err);
+                reject(err || `No Room Configuration ${roomId}`);
             } else {
                 resolve(genConfig(room));
             }
