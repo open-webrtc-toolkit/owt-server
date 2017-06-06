@@ -26,6 +26,8 @@ config.rabbit.port = config.rabbit.port || 5672;
 config.cluster = config.cluster || {};
 config.cluster.name = config.cluster.name || 'woogeen-cluster';
 
+global.config = config;
+
 // Use promise to make the update on the same room execute in order.
 var roomPromises = {};
 
