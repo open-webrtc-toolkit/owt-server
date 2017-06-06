@@ -451,6 +451,10 @@ function VMixer(rpcClient, clusterIP) {
                 callback('callback', 'ok');
             } else if (engine.setRegion(stream_id, region_id)) {
                 callback('callback', 'ok');
+                //FIXME: Primary region would NOT always be region '1'
+                if (region_id === '1') {
+                    primary = stream_id;
+                }
                 notifyLayoutChange();
             } else {
                 callback('callback', 'error', 'Invalid region_id.');
