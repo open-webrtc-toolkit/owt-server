@@ -2,7 +2,7 @@
 host = "localhost" #default: "localhost"
 port = 5672 #default: 5672
 
-[nuve]
+[mongo]
 dataBaseURL = "localhost/nuvedb" #default: "localhost/nuvedb"
 
 [cluster]
