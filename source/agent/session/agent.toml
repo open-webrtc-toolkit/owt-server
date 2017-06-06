@@ -15,7 +15,7 @@ publish = true
 record = true
 subscribe = true
 addExternalOutput = true
-# The 'manage' operation includes mute/unmute users and change users' permissions in same room
+# The 'manage' operation includes mute/unmute users.
 manage = true
 
 [session.roles.presenter]
