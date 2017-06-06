@@ -382,10 +382,10 @@ static struct vidcodec h265_profile_id_1 = {
 
 void register_video_codecs(void)
 {
-	/*vidcodec_register((struct vidcodec *)&vpx);*/
 	vidcodec_register(&h265_profile_id_1);
 	vidcodec_register(&h264_constrained_baseline_mode1);
 	vidcodec_register(&h264_baseline_mode1);
 	/*vidcodec_register(&h264_constrained_baseline_mode0);
 	vidcodec_register(&h264_baseline_mode0);*/
+	vidcodec_register((struct vidcodec *)&vpx);
 }
