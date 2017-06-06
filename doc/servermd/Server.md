@@ -50,7 +50,7 @@ For more information, visit the following Web pages:
     2. https://software.intel.com/en-us/forums/webrtc
     3. https://software.intel.com/zh-cn/forums/webrtc
  - Intel<sup>®</sup> Visual Compute Accelerator
-    1. www.intel.com/content/www/us/en/servers/media-and-graphics/visual-compute-accelerator.html
+    1. https://www.intel.com/content/www/us/en/servers/media-and-graphics/visual-compute-accelerator.html
     2. https://www-ssl.intel.com/content/www/us/en/cloud-computing/visual-cloud.html
  - The Internet Engineering Task Force (IETF<sup>®</sup>) Working Group
     1. https://tools.ietf.org/wg/rtcweb/
@@ -80,7 +80,7 @@ If you want to set up video conference service with H.264 codec support powered 
 
 If you want to set up video conference service powered by GPU-accelerated MCU server through Intel® Media Server Studio, please follow the below instructions to install server side SDK on CentOS* 7.2 where the video-agents run.
 
-If you are working on the following platforms with the integrated graphics, please install Intel® Media Server Studio for Linux* 2017 R1.
+If you are working on the following platforms with the integrated graphics, please install Intel® Media Server Studio for Linux* 2017 R2.
 
  - Intel® Xeon® E3-1200 v4 Family with C226 chipset
  - Intel® Xeon® E3-1200 and E3-1500 v5 Family with C236 chipset
@@ -97,7 +97,7 @@ Either Professional Edition or Community Edition is applicable. For download or 
 The external stream output (rtsp/rtmp) feature relies on AAC encoder libfdk_aac support in ffmpeg library, please see [Compile and deploy ffmpeg with libfdk_aac](#Conferencesection2_3_5) section for detailed instructions.
 
  **Table 2-2. Client compatibility**
-Application Name|Google Chrome* 59|Mozilla Firefox* 51|Microsoft Edge* 40.15063|Intel CS for WebRTC Client SDK for Android | Intel CS for WebRTC Client SDK for iOS | Intel CS for WebRTC Client SDK for Windows
+Application Name|Google Chrome* 59|Mozilla Firefox* 53|Microsoft Edge* 40.15063|Intel CS for WebRTC Client SDK for Android | Intel CS for WebRTC Client SDK for iOS | Intel CS for WebRTC Client SDK for Windows
 --------|--------|--------|--------|--------|--------|--------
 MCU Client|YES|YES|YES|YES|YES|YES
 Management Console|YES|YES|YES|N/A|N/A|N/A
@@ -226,7 +226,6 @@ To launch the MCU server on one machine, follow steps below:
     If you want to enable GPU-acceleration through Intel Media Server Studio, use following command:
 
         bin/init-all.sh [--deps] --hardware
-
    > **Note**: If you have already installed the required system libraries, then --deps is not required.
 
 2. Run the following commands to start the MCU:
@@ -629,7 +628,8 @@ All workers including portals, session-agents, webrtc-agents, avstream-agents, r
 3. most-used: If more than 1 worker with the specified purpose are alive and available, the one with the heavist work-load will be scheduled.
 4. round-robin: If more than 1 worker with the specified purpose are alive and available, they will be scheduled one by one circularly.
 5. randomly-pick: If more than 1 worker with the specified purpose are alive and available, they will be scheduled randomly.
-For portal and webrtc-agent workers, fined-grained scheduling strategy with "isp" and "region" preferences is also provided. If "isp" or "region" capability is specified in portal and webrtc-agent workers, then cluster-manager will only schedule the corresponding worker nodes to the client requests with matched "isp" and "region" preferences.
+
+For portal and webrtc-agent workers, fine-grained scheduling strategy with "isp" and "region" preferences is also provided. If "isp" or "region" capability is specified in portal and webrtc-agent workers, then cluster-manager will only schedule the corresponding worker nodes to the client requests with matched "isp" and "region" preferences.
 
 ## 3.7 Runtime Configuration {#Conferencesection3_7}
 Only super service user can access runtime configuration. Current management console implementation just provides the MCU cluster runtime configuration viewer.
