@@ -10,7 +10,6 @@ var log = require('./logger').logger.getLogger('SipPortal');
 var sipErizoHelper = require('./sipErizoHelper');
 var helper;
 var config;
-var dbAccess = require('./dataBaseAccess');
 
 try {
   config = toml.parse(fs.readFileSync('./sip_portal.toml'));
@@ -27,6 +26,8 @@ config.cluster = config.cluster || {};
 config.cluster.name = config.cluster.name || 'woogeen-cluster';
 
 global.config = config;
+
+var dbAccess = require('./dataBaseAccess');
 
 // Use promise to make the update on the same room execute in order.
 var roomPromises = {};
