@@ -162,6 +162,102 @@ void VideoFramePacketizer::OnNetworkChanged(const uint32_t target_bitrate, const
     // sender because sender may adjust sending bitrate for a specific receiver.
 }
 
+
+static int getNextNaluPosition(uint8_t *buffer, int buffer_size, bool &is_aud) {
+    if (buffer_size < 4) {
+        return -1;
+    }
+    is_aud = false;
+    uint8_t *head = buffer;
+    uint8_t *end = buffer + buffer_size - 4;
+    while (head < end) {
+        if (head[0]) {
+            head++;
+            continue;
+        }
+        if (head[1]) {
+            head +=2;
+            continue;
+        }
+        if (head[2]) {
+            head +=3;
+            continue;
+        }
+        if (head[3] != 0x01) {
+            head++;
+            continue;
+        }
+        if ((head[4] & 0x1F) == 9) {
+            is_aud = true;
+        }
+        return static_cast<int>(head - buffer);
+    }
+    return -1;
+}
+
+#define MAX_NALS_PER_FRAME 128
+static int dropAUD(uint8_t* framePayload, int frameLength) {
+    uint8_t *origin_pkt_data = framePayload;
+    int origin_pkt_length = frameLength;
+    uint8_t *head = origin_pkt_data;
+
+    std::vector<int> nal_offset;
+    std::vector<bool> nal_type_is_aud;
+    std::vector<int> nal_size;
+    bool is_aud = false, has_aud = false;
+
+    int sc_positions_length = 0;
+    int sc_position = 0;
+    while (sc_positions_length < MAX_NALS_PER_FRAME) {
+         int nalu_position = getNextNaluPosition(origin_pkt_data + sc_position,
+              origin_pkt_length - sc_position, is_aud);
+         if (nalu_position < 0) {
+             break;
+         }
+         sc_position += nalu_position;
+         nal_offset.push_back(sc_position); //include start code.
+         sc_position += 4;
+         sc_positions_length++;
+         if (is_aud) {
+             has_aud = true;
+             nal_type_is_aud.push_back(true);
+         } else {
+             nal_type_is_aud.push_back(false);
+         }
+    }
+    if (sc_positions_length == 0 || !has_aud)
+        return frameLength;
+    // Calculate size of each NALs
+    for (unsigned int count = 0; count < nal_offset.size(); count++) {
+       if (count + 1 == nal_offset.size()) {
+           nal_size.push_back(origin_pkt_length - nal_offset[count]);
+       } else {
+           nal_size.push_back(nal_offset[count+1] - nal_offset[count]);
+       }
+    }
+    // remove in place the AUD NALs
+    int new_size = 0;
+    for (unsigned int i = 0; i < nal_offset.size(); i++) {
+       if (!nal_type_is_aud[i]) {
+           memmove(head + new_size, head + nal_offset[i], nal_size[i]);
+           new_size += nal_size[i];
+       }
+    }
+    return new_size;
+}
+
+static void dump(void* index, FrameFormat format, uint8_t* buf, int len)
+{
+    char dumpFileName[128];
+
+    snprintf(dumpFileName, 128, "/tmp/prePacketizer-%p.%s", index, getFormatStr(format));
+    FILE* bsDumpfp = fopen(dumpFileName, "ab");
+    if (bsDumpfp) {
+        fwrite(buf, 1, len, bsDumpfp);
+        fclose(bsDumpfp);
+    }
+}
+
 void VideoFramePacketizer::onFrame(const Frame& frame)
 {
     if (!m_enabled) {
@@ -201,12 +297,21 @@ void VideoFramePacketizer::onFrame(const Frame& frame)
         boost::shared_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
         m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, VP9_90000_PT, frame.timeStamp, frame.timeStamp / 90, frame.payload, frame.length, nullptr, &h);
     } else if (frame.format == FRAME_FORMAT_H264 || frame.format == FRAME_FORMAT_H265) {
+        int frame_length = frame.length;
+        //dump(this, frame.format, frame.payload, frame_length);
+        //FIXME: temporarily filter out AUD because chrome M59 could NOT handle it correctly.
+        if (frame.format == FRAME_FORMAT_H264) {
+            frame_length = dropAUD(frame.payload, frame_length);
+        }
+        //dump(this+4, frame.format, frame.payload, frame_length);
+
         int nalu_found_length = 0;
         uint8_t* buffer_start = frame.payload;
-        int buffer_length = frame.length;
+        int buffer_length = frame_length;
         int nalu_start_offset = 0;
         int nalu_end_offset = 0;
         RTPFragmentationHeader frag_info;
+
 
         h.codec = (frame.format == FRAME_FORMAT_H264)?(webrtc::kRtpVideoH264):(webrtc::kRtpVideoH265);
         while (buffer_length > 0) {
@@ -227,9 +332,9 @@ void VideoFramePacketizer::onFrame(const Frame& frame)
 
         boost::shared_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
         if (frame.format == FRAME_FORMAT_H264) {
-          m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, H264_90000_PT, frame.timeStamp, frame.timeStamp / 90, frame.payload, frame.length, &frag_info, &h);
+          m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, H264_90000_PT, frame.timeStamp, frame.timeStamp / 90, frame.payload, frame_length, &frag_info, &h);
         } else {
-          m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, H265_90000_PT, frame.timeStamp, frame.timeStamp / 90, frame.payload, frame.length, &frag_info, &h);
+          m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, H265_90000_PT, frame.timeStamp, frame.timeStamp / 90, frame.payload, frame_length, &frag_info, &h);
         }
     }
 }

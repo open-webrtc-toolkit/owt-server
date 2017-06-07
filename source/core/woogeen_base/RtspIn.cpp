@@ -935,7 +935,7 @@ void RtspIn::filterSEI(AVPacket *pkt) {
     int new_size = 0;
     for (unsigned int i = 0; i < nal_offset.size(); i++) {
        if (!nal_type_is_sei[i]) {
-           memcpy(head + new_size, head + nal_offset[i], nal_size[i]);
+           memmove(head + new_size, head + nal_offset[i], nal_size[i]);
            new_size += nal_size[i];
        }
     }
