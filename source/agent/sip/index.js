@@ -236,7 +236,7 @@ module.exports = function (rpcC, spec) {
             streams[stream_id] = {type: 'sip', connection: calls[client_id].conn};
             calls[client_id].stream_id = stream_id;
 
-            var pubInfo = {};
+            var pubInfo = {type: 'sip'};
             if (info.audio && info.audio_dir !== 'sendonly') {
                 pubInfo.audio = audio_info;
             }else {
