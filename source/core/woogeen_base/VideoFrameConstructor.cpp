@@ -249,6 +249,18 @@ int32_t VideoFrameConstructor::InitDecode(const webrtc::VideoCodec* codecSetting
     return 0;
 }
 
+static void dump(void* index, FrameFormat format, uint8_t* buf, int len)
+{
+    char dumpFileName[128];
+
+    snprintf(dumpFileName, 128, "/tmp/postConstructor-%p.%s", index, getFormatStr(format));
+    FILE* bsDumpfp = fopen(dumpFileName, "ab");
+    if (bsDumpfp) {
+        fwrite(buf, 1, len, bsDumpfp);
+        fclose(bsDumpfp);
+    }
+}
+
 int32_t VideoFrameConstructor::Decode(const webrtc::EncodedImage& encodedImage,
                        bool missingFrames,
                        const webrtc::RTPFragmentationHeader* fragmentation,
@@ -308,6 +320,10 @@ int32_t VideoFrameConstructor::Decode(const webrtc::EncodedImage& encodedImage,
         if (m_enabled) {
             deliverFrame(frame);
         }
+
+        //if (frame.format == FRAME_FORMAT_H264 || frame.format == FRAME_FORMAT_H265) {
+        //    dump(this, frame.format, frame.payload, frame.length);
+        //}
     }
     return 0;
 }

@@ -508,7 +508,7 @@ protected:
         m_encExtCodingOpt->Header.BufferId             = MFX_EXTBUFF_CODING_OPTION;
         m_encExtCodingOpt->Header.BufferSz             = sizeof(*m_encExtCodingOpt);
         //m_encExtCodingOpt->MaxDecFrameBuffering        = m_encParam->mfx.NumRefFrame;
-        //m_encExtCodingOpt->AUDelimiter                 = MFX_CODINGOPTION_OFF;//No AUD
+        m_encExtCodingOpt->AUDelimiter                 = MFX_CODINGOPTION_OFF;//No AUD
         //m_encExtCodingOpt->RecoveryPointSEI            = MFX_CODINGOPTION_OFF;//No SEI
         m_encExtCodingOpt->PicTimingSEI                = MFX_CODINGOPTION_OFF;
         m_encExtCodingOpt->VuiNalHrdParameters         = MFX_CODINGOPTION_OFF;
