@@ -454,6 +454,8 @@ function VMixer(rpcClient, clusterIP) {
                 //FIXME: Primary region would NOT always be region '1'
                 if (region_id === '1') {
                     primary = stream_id;
+                } else if (stream_id === primary) {
+                    primary = undefined;
                 }
                 notifyLayoutChange();
             } else {
