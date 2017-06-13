@@ -202,6 +202,15 @@ install_webrtc(){
   mv libwebrtc.a ../
   popd
   popd
+
+  #m59
+  mkdir -p ${ROOT}/third_party/webrtc-m59
+  pushd ${ROOT}/third_party/webrtc-m59
+  rm -rf src
+  git clone -b 59-mcu ssh://git-ccr-1.devtools.intel.com:29418/webrtc-webrtcstack src
+  ./src/tools-woogeen/install.sh
+  ./src/tools-woogeen/build.sh
+  popd
 }
 
 install_oovoosdk(){
