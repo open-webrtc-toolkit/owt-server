@@ -115,6 +115,22 @@ boost::shared_ptr<FramePacket> FramePacketBuffer::frontPacket(bool noWait)
     return packet;
 }
 
+boost::shared_ptr<FramePacket> FramePacketBuffer::backPacket(bool noWait)
+{
+    boost::mutex::scoped_lock lock(m_queueMutex);
+    boost::shared_ptr<FramePacket> packet;
+
+    while (!noWait && m_queue.empty()) {
+        m_queueCond.wait(lock);
+    }
+
+    if (!m_queue.empty()) {
+        packet = m_queue.back();
+    }
+
+    return packet;
+}
+
 uint32_t FramePacketBuffer::size()
 {
     boost::mutex::scoped_lock lock(m_queueMutex);
@@ -130,7 +146,7 @@ void FramePacketBuffer::clear()
 
 DEFINE_LOGGER(JitterBuffer, "woogeen.RtspIn.JitterBuffer");
 
-JitterBuffer::JitterBuffer(std::string name, SyncMode syncMode, JitterBufferListener *listener)
+JitterBuffer::JitterBuffer(std::string name, SyncMode syncMode, JitterBufferListener *listener, int64_t maxBufferingMs)
     : m_name(name)
     , m_syncMode(syncMode)
     , m_isClosing(false)
@@ -140,6 +156,7 @@ JitterBuffer::JitterBuffer(std::string name, SyncMode syncMode, JitterBufferList
     , m_listener(listener)
     , m_syncTimestamp(AV_NOPTS_VALUE)
     , m_firstTimestamp(AV_NOPTS_VALUE)
+    , m_maxBufferingMs(maxBufferingMs)
 {
 }
 
@@ -310,9 +327,43 @@ int64_t JitterBuffer::getNextTime(AVPacket *pkt)
 
 void JitterBuffer::handleJob()
 {
+    boost::shared_ptr<FramePacket> framePacket;
+
+    // if buffering frames exceed maxBufferingMs, do seek to maxBufferingMs / 2
+    boost::shared_ptr<FramePacket> frontPacket = m_buffer.frontPacket();
+    boost::shared_ptr<FramePacket> backPacket = m_buffer.backPacket();
+    if (frontPacket && backPacket) {
+        int64_t bufferingMs = backPacket->getAVPacket()->dts - frontPacket->getAVPacket()->dts;
+        if (bufferingMs > m_maxBufferingMs) {
+            ELOG_DEBUG_T("(%s)Do seek, bufferingMs(%ld), maxBufferingMs(%ld), QueueSize(%d)+++", m_name.c_str(), bufferingMs, m_maxBufferingMs, m_buffer.size());
+
+            int64_t seekMs = backPacket->getAVPacket()->dts - m_maxBufferingMs / 2;
+            while(true) {
+                framePacket = m_buffer.frontPacket();
+                if (!framePacket || framePacket->getAVPacket()->dts > seekMs)
+                    break;
+
+                m_listener->onDeliverFrame(this, framePacket->getAVPacket());
+                m_buffer.popPacket();
+            }
+
+            if (m_syncMode == SYNC_MODE_MASTER) {
+                m_syncMutex.lock();
+                m_firstTimestamp = seekMs;
+                m_firstLocalTime.reset(new boost::posix_time::ptime(boost::posix_time::microsec_clock::local_time()));
+                m_syncMutex.unlock();
+
+                m_listener->onSyncTimeChanged(this, seekMs);
+            }
+
+            ELOG_DEBUG_T("(%s)After seek, QueueSize(%d)+++", m_name.c_str(), m_buffer.size());
+        }
+    }
+
+    // next frame
     uint32_t interval;
 
-    boost::shared_ptr<FramePacket> framePacket = m_buffer.popPacket();
+    framePacket = m_buffer.popPacket();
     AVPacket *pkt = framePacket != NULL ? framePacket->getAVPacket() : NULL;
 
     interval = getNextTime(pkt);
