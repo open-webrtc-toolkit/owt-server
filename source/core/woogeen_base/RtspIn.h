@@ -97,9 +97,13 @@ public:
 
     void pushPacket(boost::shared_ptr<FramePacket> &FramePacket);
     boost::shared_ptr<FramePacket> popPacket(bool noWait = true);
+
     boost::shared_ptr<FramePacket> frontPacket(bool noWait = true);
+    boost::shared_ptr<FramePacket> backPacket(bool noWait = true);
+
     uint32_t size();
     void clear();
+
 private:
     boost::mutex m_queueMutex;
     boost::condition_variable m_queueCond;
@@ -120,7 +124,7 @@ public:
         SYNC_MODE_SLAVE,
     };
 
-    JitterBuffer (std::string name, SyncMode syncMode, JitterBufferListener *listener);
+    JitterBuffer (std::string name, SyncMode syncMode, JitterBufferListener *listener, int64_t maxBufferingMs = 500);
     virtual ~JitterBuffer ();
 
     void start(uint32_t delay = 0);
@@ -156,6 +160,8 @@ private:
     boost::scoped_ptr<boost::posix_time::ptime> m_firstLocalTime;
     int64_t m_firstTimestamp;
     boost::mutex m_syncMutex;
+
+    int64_t m_maxBufferingMs;
 };
 
 class RtspIn : public FrameSource, public JitterBufferListener {
