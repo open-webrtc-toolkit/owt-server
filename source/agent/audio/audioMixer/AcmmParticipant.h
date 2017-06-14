@@ -58,7 +58,7 @@ public:
     void NewMixedAudio(const AudioFrame* audioFrame);
 
     // Implements MixerParticipant
-    MixerParticipant::AudioFrameInfo GetAudioFrameWithMuted(int32_t id, AudioFrame* audioFrame) override;
+    int32_t GetAudioFrame(int32_t id, AudioFrame* audioFrame) override;
     int32_t NeededFrequency(int32_t id) const override;
 
 private:
