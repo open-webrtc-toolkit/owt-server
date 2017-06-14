@@ -181,8 +181,6 @@ install_libyami(){
 
 install_webrtc(){
   export GIT_SSL_NO_VERIFY=1
-  pushd ${ROOT}/third_party/webrtc
-  rm -rf src #TODO: git-update
   local GIT_ACCOUNT="lab_webrtctest"
   local WOOGEEN_GIT_URL=`git config --get remote.origin.url`
   if [ ! -z "$WOOGEEN_GIT_URL" ]; then
@@ -192,12 +190,12 @@ install_webrtc(){
       GIT_ACCOUNT=`whoami`
     fi
   fi
-  # git clone --recursive -b 42-mcu ssh://${GIT_ACCOUNT}@git-ccr-1.devtools.intel.com:29418/webrtc-webrtcstack src
+
+  #m53
+  pushd ${ROOT}/third_party/webrtc
+  rm -rf src
   git clone -b 53-mcu-new ssh://${GIT_ACCOUNT}@git-ccr-1.devtools.intel.com:29418/webrtc-webrtcstack src
   pushd src
-  #sed -i 's/lab_webrtctest/'${GIT_ACCOUNT}'/g' .gitmodules
-  #git submodule init
-  #git submodule update
   ./build.sh
   mv libwebrtc.a ../
   popd
@@ -207,7 +205,7 @@ install_webrtc(){
   mkdir -p ${ROOT}/third_party/webrtc-m59
   pushd ${ROOT}/third_party/webrtc-m59
   rm -rf src
-  git clone -b 59-mcu ssh://git-ccr-1.devtools.intel.com:29418/webrtc-webrtcstack src
+  git clone -b 59-mcu ssh://${GIT_ACCOUNT}@git-ccr-1.devtools.intel.com:29418/webrtc-webrtcstack src
   ./src/tools-woogeen/install.sh
   ./src/tools-woogeen/build.sh
   popd
