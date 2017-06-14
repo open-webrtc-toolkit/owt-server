@@ -128,7 +128,7 @@ static inline int32_t getSampleRate(const woogeen_base::FrameFormat format) {
     }
 }
 
-static inline int32_t getChannels(const woogeen_base::FrameFormat format) {
+static inline uint32_t getChannels(const woogeen_base::FrameFormat format) {
     switch (format) {
         case woogeen_base::FRAME_FORMAT_PCM_RAW:
         case woogeen_base::FRAME_FORMAT_OPUS:

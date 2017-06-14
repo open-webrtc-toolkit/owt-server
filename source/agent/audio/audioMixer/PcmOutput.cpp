@@ -74,7 +74,7 @@ bool PcmOutput::addAudioFrame(const AudioFrame* audioFrame)
 
     if (audioFrame->sample_rate_hz_ != getSampleRate(m_format) ||
             audioFrame->num_channels_ != getChannels(m_format)) {
-        ELOG_ERROR_T("Invalid audio frame, %s(%d-%d), want(%d-%d)",
+        ELOG_ERROR_T("Invalid audio frame, %s(%d-%ld), want(%d-%d)",
                 getFormatStr(m_format),
                 audioFrame->sample_rate_hz_,
                 audioFrame->num_channels_,
@@ -84,8 +84,7 @@ bool PcmOutput::addAudioFrame(const AudioFrame* audioFrame)
         return false;
     }
 
-
-    ELOG_TRACE_T("NewMixedAudio, id(%d), sample_rate(%d), channels(%d), samples_per_channel(%d), timestamp(%d)",
+    ELOG_TRACE_T("NewMixedAudio, id(%d), sample_rate(%d), channels(%ld), samples_per_channel(%ld), timestamp(%d)",
             audioFrame->id_,
             audioFrame->sample_rate_hz_,
             audioFrame->num_channels_,

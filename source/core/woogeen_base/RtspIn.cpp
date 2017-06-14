@@ -1531,12 +1531,6 @@ void RtspIn::deliverAudioFrame(AVPacket *pkt)
     frame.additionalInfo.audio.nbSamples = frame.length / frame.additionalInfo.audio.channels /2;
     deliverFrame(frame);
 
-    ELOG_ERROR_T("deliver audio, nbsamples(%d), sample_rate(%d), channels(%d)"
-            , frame.additionalInfo.audio.nbSamples
-            , frame.additionalInfo.audio.sampleRate
-            , frame.additionalInfo.audio.channels
-            );
-
     ELOG_DEBUG_T("deliver audio frame, timestamp %ld(%ld), size %4d"
             , timeRescale(frame.timeStamp, m_audioTimeBase, m_msTimeBase)
             , pkt->dts

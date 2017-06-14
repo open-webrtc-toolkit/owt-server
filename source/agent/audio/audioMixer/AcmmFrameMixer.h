@@ -40,12 +40,11 @@ namespace mcu {
 class AcmmFrameMixer : public AudioFrameMixer,
                        public JobTimerListener,
                        public AudioMixerOutputReceiver,
-                       public AudioMixerStatusReceiver {
+                       public AudioMixerVadReceiver {
     DECLARE_LOGGER();
 
     static const int32_t MAX_PARTICIPANTS = 128;
     static const int32_t MIXER_FREQUENCY = 100;
-    static const int32_t MAX_SAMPLE_RATE = 48000;
 
 public:
     AcmmFrameMixer();
@@ -73,20 +72,10 @@ public:
             const AudioFrame** uniqueAudioFrames,
             uint32_t size) override;
 
-    // Implements AudioMixerStatusReceiver
-    virtual void MixedParticipants(
-            const int32_t id,
-            const ParticipantStatistics* participantStatistics,
+    // Implements AudioMixerVadReceiver
+    virtual void VadParticipants(
+            const ParticipantVadStatistics *statistics,
             const uint32_t size) override;
-
-    virtual void VADPositiveParticipants(
-            const int32_t id,
-            const ParticipantStatistics* participantStatistics,
-            const uint32_t size) override;
-
-    virtual void MixedAudioLevel(
-            const int32_t id,
-            const uint32_t level) override;
 
 protected:
     void performMix();
@@ -110,8 +99,6 @@ private:
     uint32_t m_inputs;
     uint32_t m_outputs;
     boost::shared_mutex m_mutex;
-
-    AudioFrame mutedAudioFrame;
 
     bool m_vadEnabled;
     int32_t m_mostActiveChannel;

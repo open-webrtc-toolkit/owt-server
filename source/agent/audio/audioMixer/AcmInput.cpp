@@ -110,7 +110,7 @@ bool AcmInput::getAudioFrame(AudioFrame* audioFrame)
     }
 
     if (muted) {
-        audioFrame->Mute();
+        return false;
     }
 
     return true;

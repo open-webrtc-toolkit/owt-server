@@ -59,9 +59,6 @@ AcmmFrameMixer::AcmmFrameMixer()
     for (size_t i = 0; i < MAX_PARTICIPANTS; ++i)
         m_freeIds[i] = true;
 
-    mutedAudioFrame.UpdateFrame(-1, 0, NULL, MAX_SAMPLE_RATE / MIXER_FREQUENCY, MAX_SAMPLE_RATE,
-                            AudioFrame::kNormalSpeech, AudioFrame::kVadUnknown, 2);
-
     m_jobTimer.reset(new JobTimer(MIXER_FREQUENCY, this));
 }
 
@@ -74,7 +71,7 @@ AcmmFrameMixer::~AcmmFrameMixer()
     m_mixerModule->UnRegisterMixedStreamCallback();
 
     if (m_vadEnabled) {
-        m_mixerModule->UnRegisterMixerStatusCallback();
+        m_mixerModule->UnRegisterMixerVadCallback();
         m_vadEnabled = false;
     }
 }
@@ -132,7 +129,7 @@ void AcmmFrameMixer::enableVAD(uint32_t period)
 
     m_vadEnabled = true;
     m_mostActiveChannel = -1;
-    m_mixerModule->RegisterMixerStatusCallback(this, period / 10);
+    m_mixerModule->RegisterMixerVadCallback(this, period / 10);
 }
 
 void AcmmFrameMixer::disableVAD()
@@ -142,7 +139,7 @@ void AcmmFrameMixer::disableVAD()
 
     m_vadEnabled = false;
     m_mostActiveChannel = -1;
-    m_mixerModule->UnRegisterMixerStatusCallback();
+    m_mixerModule->UnRegisterMixerVadCallback();
 }
 
 void AcmmFrameMixer::resetVAD()
@@ -338,12 +335,7 @@ void AcmmFrameMixer::onTimeout()
 void AcmmFrameMixer::performMix()
 {
     boost::upgrade_lock<boost::shared_mutex> lock(m_mutex);
-    if (m_inputs) {
-        m_mixerModule->Process();
-    } else if (m_outputs) {
-        ELOG_TRACE_T("Generate muted frame");
-        NewMixedAudio(0, mutedAudioFrame, NULL, 0);
-    }
+    m_mixerModule->Process();
 }
 
 void AcmmFrameMixer::NewMixedAudio(int32_t id,
@@ -372,26 +364,26 @@ void AcmmFrameMixer::NewMixedAudio(int32_t id,
     }
 }
 
-void AcmmFrameMixer::VADPositiveParticipants(const int32_t id, const ParticipantStatistics* participantStatistics, const uint32_t size)
+void AcmmFrameMixer::VadParticipants(const ParticipantVadStatistics *statistics, const uint32_t size)
 {
     if (!m_asyncHandle || !m_vadEnabled || size < 1) {
         ELOG_TRACE("VAD skipped, asyncHandle(%p), enabled(%d), size(%d)", m_asyncHandle, m_vadEnabled, size);
         return;
     }
 
-    const ParticipantStatistics* active = NULL;
-    const ParticipantStatistics* p = participantStatistics;
+    const ParticipantVadStatistics* active = NULL;
+    const ParticipantVadStatistics* p = statistics;
     for(uint32_t i = 0; i < size; i++, p++) {
-        ELOG_TRACE("%d, vad participant(%d), level(%u)", i, p->participant, p->level);
-        if (!active || p->level > active->level) {
+        ELOG_TRACE("%d, vad participant(%d), energy(%u)", i, p->id, p->energy);
+        if (!active || p->energy > active->energy) {
             active = p;
         }
     }
 
-    if (m_mostActiveChannel != active->participant) {
-        ELOG_TRACE("active vad participant, %d -> %d", m_mostActiveChannel, active->participant);
+    if (m_mostActiveChannel != active->id) {
+        ELOG_TRACE("active vad participant, %d -> %d", m_mostActiveChannel, active->id);
 
-        m_mostActiveChannel = active->participant;
+        m_mostActiveChannel = active->id;
         for (auto it = m_ids.begin(); it != m_ids.end(); ++it) {
             if (it->second == m_mostActiveChannel) {
                 ELOG_DEBUG("vad mostActiveParticipant now is :%s", it->first.c_str());
@@ -400,14 +392,6 @@ void AcmmFrameMixer::VADPositiveParticipants(const int32_t id, const Participant
             }
         }
     }
-}
-
-void AcmmFrameMixer::MixedParticipants(const int32_t id, const ParticipantStatistics* participantStatistics, const uint32_t size)
-{
-}
-
-void AcmmFrameMixer::MixedAudioLevel(const int32_t id, const uint32_t level)
-{
 }
 
 } /* namespace mcu */

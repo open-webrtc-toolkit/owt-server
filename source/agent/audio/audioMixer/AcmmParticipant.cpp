@@ -101,19 +101,19 @@ void AcmmParticipant::unsetOutput()
     m_srcFormat = FRAME_FORMAT_UNKNOWN;
 }
 
-MixerParticipant::AudioFrameInfo AcmmParticipant::GetAudioFrameWithMuted(int32_t id, AudioFrame* audio_frame)
+int32_t AcmmParticipant::GetAudioFrame(int32_t id, AudioFrame* audio_frame)
 {
     if (!m_input || !m_input->getAudioFrame(audio_frame)) {
         ELOG_DEBUG_T("Error GetAudioFrame");
-        return MixerParticipant::AudioFrameInfo::kError;
+        return -1;
     }
 
     audio_frame->id_ = m_id;
 
-    ELOG_TRACE_T("GetAudioFrame, id(%d), sample_rate(%d), channels(%d), samples_per_channel(%d)",
+    ELOG_TRACE_T("GetAudioFrame, id(%d), sample_rate(%d), channels(%ld), samples_per_channel(%ld)",
             m_id, audio_frame->sample_rate_hz_, audio_frame->num_channels_, audio_frame->samples_per_channel_);
 
-    return MixerParticipant::AudioFrameInfo::kNormal;
+    return 0;
 }
 
 int32_t AcmmParticipant::NeededFrequency(int32_t id) const
@@ -123,7 +123,7 @@ int32_t AcmmParticipant::NeededFrequency(int32_t id) const
 
 void AcmmParticipant::NewMixedAudio(const AudioFrame* audioFrame)
 {
-    ELOG_TRACE_T("NewMixedAudio, id(%d), m_id(%d), sample_rate(%d), channels(%d), samples_per_channel(%d), timestamp(%d)",
+    ELOG_TRACE_T("NewMixedAudio, id(%d), m_id(%d), sample_rate(%d), channels(%ld), samples_per_channel(%ld), timestamp(%d)",
             audioFrame->id_, m_id,
             audioFrame->sample_rate_hz_,
             audioFrame->num_channels_,

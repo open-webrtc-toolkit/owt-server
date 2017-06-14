@@ -95,7 +95,7 @@ bool AcmOutput::addAudioFrame(const AudioFrame* audioFrame)
     if (!m_valid)
         return false;
 
-    ELOG_TRACE_T("NewMixedAudio, id(%d), sample_rate(%d), channels(%d), samples_per_channel(%d), timestamp(%d)",
+    ELOG_TRACE_T("NewMixedAudio, id(%d), sample_rate(%d), channels(%ld), samples_per_channel(%ld), timestamp(%d)",
             audioFrame->id_,
             audioFrame->sample_rate_hz_,
             audioFrame->num_channels_,
