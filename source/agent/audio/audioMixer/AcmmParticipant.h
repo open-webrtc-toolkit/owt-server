@@ -65,7 +65,10 @@ private:
     int32_t m_id;
 
     FrameFormat m_srcFormat;
+    FrameSource *m_source;
+
     FrameFormat m_dstFormat;
+    FrameDestination *m_destination;
 
     boost::shared_ptr<AudioInput> m_input;
     boost::shared_ptr<AudioOutput> m_output;

@@ -40,7 +40,7 @@ class AcmOutput : public AudioOutput,
     DECLARE_LOGGER();
 
 public:
-    AcmOutput(const FrameFormat format, FrameDestination *destination);
+    AcmOutput(const FrameFormat format);
     ~AcmOutput();
 
     bool init() override;
@@ -57,7 +57,6 @@ public:
 private:
     boost::shared_ptr<AudioCodingModule> m_audioCodingModule;
     FrameFormat m_format;
-    FrameDestination *m_destination;
 
     uint32_t m_timestampOffset;
     bool m_valid;

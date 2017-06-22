@@ -70,7 +70,7 @@ RtspOut::RtspOut(const std::string& url, const AVOptions* audio, const AVOptions
     else if (ELOG_IS_DEBUG_ENABLED())
         av_log_set_level(AV_LOG_INFO);
     else
-        av_log_set_level(AV_LOG_ERROR);
+        av_log_set_level(AV_LOG_WARNING);
 
     avcodec_register_all();
 
@@ -363,7 +363,7 @@ bool RtspOut::openAudioEncoder(AVOptions &options)
     }
 
     ELOG_DEBUG("Audio encoder frame_size %d, sample_rate %d, channels %d",
-            m_audioEnc->frame_size, m_audioEnc->sample_rate, nbChannels);
+            m_audioEnc->frame_size, m_audioEnc->sample_rate, m_audioEnc->channels);
     return true;
 
 fail:
@@ -379,7 +379,7 @@ fail:
 
     if (m_audioEnc) {
         avcodec_close(m_audioEnc);
-        codec = NULL;
+        m_audioEnc = NULL;
     }
 
     return false;
@@ -463,16 +463,19 @@ bool RtspOut::addVideoStream(AVOptions &options)
 void RtspOut::onFrame(const woogeen_base::Frame& frame)
 {
     switch (frame.format) {
-        case woogeen_base::FRAME_FORMAT_PCM_RAW:
+        case woogeen_base::FRAME_FORMAT_PCM_48000_2:
+        case woogeen_base::FRAME_FORMAT_AAC_48000_2:
             if (!hasAudio())
                 return;
 
             if (!m_audioReceived) {
-                ELOG_INFO("Initial audio options channels %d, sample rate: %d"
-                        , frame.additionalInfo.audio.channels, frame.additionalInfo.audio.sampleRate);
+                ELOG_INFO("Initial audio options format(%s), sample rate(%d), channels(%d)"
+                        , getFormatStr(frame.format)
+                        , frame.additionalInfo.audio.sampleRate
+                        , frame.additionalInfo.audio.channels);
 
-                m_audioOptions.spec.audio.channels = frame.additionalInfo.audio.channels;
                 m_audioOptions.spec.audio.sampleRate = frame.additionalInfo.audio.sampleRate;
+                m_audioOptions.spec.audio.channels = frame.additionalInfo.audio.channels;
                 m_audioReceived = true;
             }
 
@@ -487,7 +490,11 @@ void RtspOut::onFrame(const woogeen_base::Frame& frame)
                 notifyAsyncEvent("fatal", "Invalid audio frame channels or sample rate");
                 return;
             }
-            addAudioFrame(frame.payload, frame.additionalInfo.audio.nbSamples);
+
+            if (frame.format == woogeen_base::FRAME_FORMAT_AAC_48000_2)
+                m_frameQueue->pushFrame(frame.payload, frame.length);
+            else
+                addAudioFrame(frame.payload, frame.additionalInfo.audio.nbSamples);
 
             break;
 
@@ -504,7 +511,8 @@ void RtspOut::onFrame(const woogeen_base::Frame& frame)
                     return;
                 }
 
-                ELOG_INFO("Initial video options: %dx%d",
+                ELOG_INFO("Initial video options: format(%s), %dx%d",
+                        getFormatStr(frame.format),
                         frame.additionalInfo.video.width, frame.additionalInfo.video.height);
 
                 m_videoKeyFrame.reset(new EncodedFrame(frame.payload, frame.length, 0, frame.format));

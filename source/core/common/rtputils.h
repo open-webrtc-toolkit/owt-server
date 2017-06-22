@@ -82,6 +82,8 @@ struct redheader {
 #define CN_48000_PT         107 // CN Audio Codec
 #define TEL_8000_PT         126 // Tel Audio Events
 
+#define L16_48000_PT        83  // PCM 48khz Stereo
+
 #define INVALID_PT          -1  // Not a valid PT
 
 static const bool ENABLE_RTP_TRANSMISSION_TIME_OFFSET_EXTENSION = 0;

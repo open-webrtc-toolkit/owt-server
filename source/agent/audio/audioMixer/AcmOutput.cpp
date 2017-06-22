@@ -30,9 +30,8 @@ using namespace woogeen_base;
 
 DEFINE_LOGGER(AcmOutput, "mcu.media.AcmOutput");
 
-AcmOutput::AcmOutput(const FrameFormat format, FrameDestination *destination)
+AcmOutput::AcmOutput(const FrameFormat format)
     : m_format(format)
-    , m_destination(destination)
     , m_timestampOffset(0)
     , m_valid(false)
 {
@@ -47,8 +46,6 @@ AcmOutput::~AcmOutput()
     if (!m_valid)
         return;
 
-    this->removeAudioDestination(m_destination);
-    m_destination = nullptr;
     m_format = FRAME_FORMAT_UNKNOWN;
 
     ret = m_audioCodingModule->RegisterTransportCallback(NULL);
@@ -63,7 +60,7 @@ bool AcmOutput::init()
     int ret;
     struct CodecInst codec = CodecInst();
 
-    if (!fillAudioCodec(m_format, codec)) {
+    if (!getAudioCodecInst(m_format, codec)) {
         ELOG_ERROR_T("Error fillAudioCodec(%s)", getFormatStr(m_format));
         return false;
     }
@@ -79,8 +76,6 @@ bool AcmOutput::init()
         ELOG_ERROR_T("Error RegisterTransportCallback");
         return false;
     }
-
-    this->addAudioDestination(m_destination);
 
     m_timestampOffset = currentTimeMs();
     m_valid = true;
@@ -122,46 +117,21 @@ int32_t AcmOutput::SendData(FrameType frame_type,
     if (!m_valid)
         return -1;
 
-    if (!payload_data || payload_len_bytes <= 0 || !m_destination) {
-        ELOG_ERROR_T("SendData, invalid param");
+    if (!payload_data || payload_len_bytes <= 0) {
+        ELOG_ERROR_T("SendData, invalid data");
         return -1;
     }
 
-    FrameFormat format = FRAME_FORMAT_UNKNOWN;
-    woogeen_base::Frame frame;
-    memset(&frame, 0, sizeof(frame));
-    switch (payload_type) {
-        case PCMU_8000_PT:
-            format = FRAME_FORMAT_PCMU;
-            frame.additionalInfo.audio.channels = 1;
-            frame.additionalInfo.audio.sampleRate = 8000;
-            break;
-        case PCMA_8000_PT:
-            format = FRAME_FORMAT_PCMA;
-            frame.additionalInfo.audio.channels = 1;
-            frame.additionalInfo.audio.sampleRate = 8000;
-            break;
-        case ISAC_16000_PT:
-            format = FRAME_FORMAT_ISAC16;
-            frame.additionalInfo.audio.channels = 1;
-            frame.additionalInfo.audio.sampleRate = 16000;
-            break;
-        case ISAC_32000_PT:
-            format = FRAME_FORMAT_ISAC32;
-            frame.additionalInfo.audio.channels = 1;
-            frame.additionalInfo.audio.sampleRate = 32000;
-            break;
-        case OPUS_48000_PT:
-            format = FRAME_FORMAT_OPUS;
-            frame.additionalInfo.audio.channels = 2;
-            frame.additionalInfo.audio.sampleRate = 48000;
-            break;
-        default:
-            ELOG_ERROR_T("SendData, invalid playload(%d)", payload_type);
-            return -1;
+    if (payload_type != getAudioPltype(m_format)) {
+        ELOG_ERROR_T("SendData, invalid payload type(%d)", payload_type);
+        return -1;
     }
 
-    frame.format = format;
+    woogeen_base::Frame frame;
+    memset(&frame, 0, sizeof(frame));
+    frame.format = m_format;
+    frame.additionalInfo.audio.sampleRate = getAudioSampleRate(frame.format);
+    frame.additionalInfo.audio.channels = getAudioChannels(frame.format);
     frame.payload = const_cast<uint8_t*>(payload_data);
     frame.length = payload_len_bytes;
     frame.timeStamp = (currentTimeMs() - m_timestampOffset) * frame.additionalInfo.audio.sampleRate / 1000;

@@ -25,8 +25,10 @@
 #include "AudioUtilities.h"
 #include "AcmmParticipant.h"
 #include "AcmInput.h"
+#include "FfInput.h"
 #include "AcmOutput.h"
 #include "PcmOutput.h"
+#include "FfOutput.h"
 
 namespace mcu {
 
@@ -38,7 +40,9 @@ DEFINE_LOGGER(AcmmParticipant, "mcu.media.AcmmParticipant");
 AcmmParticipant::AcmmParticipant(int32_t id)
     : m_id(id)
     , m_srcFormat(FRAME_FORMAT_UNKNOWN)
+    , m_source(NULL)
     , m_dstFormat(FRAME_FORMAT_UNKNOWN)
+    , m_destination(NULL)
 {
     ELOG_DEBUG_T("AcmmParticipant");
 }
@@ -52,13 +56,26 @@ bool AcmmParticipant::setInput(FrameFormat format, FrameSource* source)
 {
     ELOG_DEBUG_T("setInput, format(%s)", getFormatStr(format));
 
-    m_input.reset(new AcmInput(format, source));
+    switch(format) {
+        case FRAME_FORMAT_AAC:
+        case FRAME_FORMAT_AAC_48000_2:
+        case FRAME_FORMAT_AC3:
+        case FRAME_FORMAT_NELLYMOSER:
+            m_input.reset(new FfInput(format));
+            break;
+        default:
+            m_input.reset(new AcmInput(format));
+            break;
+    }
+
     if (!m_input->init()) {
         m_input.reset();
         return false;
     }
 
+    source->addAudioDestination(m_input.get());
     m_srcFormat = format;
+    m_source = source;
     return true;
 }
 
@@ -66,8 +83,10 @@ void AcmmParticipant::unsetInput()
 {
     ELOG_DEBUG_T("unsetInput");
 
-    m_input.reset();
+    m_source->removeAudioDestination(m_input.get());
+    m_source = NULL;
     m_srcFormat = FRAME_FORMAT_UNKNOWN;
+    m_input.reset();
 }
 
 bool AcmmParticipant::setOutput(FrameFormat format, FrameDestination* destination)
@@ -75,12 +94,15 @@ bool AcmmParticipant::setOutput(FrameFormat format, FrameDestination* destinatio
     ELOG_DEBUG_T("setOutput, format(%s)", getFormatStr(format));
 
     switch(format) {
-        case FRAME_FORMAT_PCM_RAW:
-            m_output.reset(new PcmOutput(format, destination));
+        case FRAME_FORMAT_PCM_48000_2:
+            m_output.reset(new FfOutput(FRAME_FORMAT_AAC_48000_2));
+            //m_output.reset(new PcmOutput(format));
             break;
-
+        case FRAME_FORMAT_AAC_48000_2:
+            m_output.reset(new FfOutput(format));
+            break;
         default:
-            m_output.reset(new AcmOutput(format, destination));
+            m_output.reset(new AcmOutput(format));
             break;
     }
 
@@ -89,7 +111,9 @@ bool AcmmParticipant::setOutput(FrameFormat format, FrameDestination* destinatio
         return false;
     }
 
+    m_output->addAudioDestination(destination);
     m_dstFormat = format;
+    m_destination = destination;
     return true;
 }
 
@@ -97,8 +121,10 @@ void AcmmParticipant::unsetOutput()
 {
     ELOG_DEBUG_T("unsetOutput");
 
+    m_output->removeAudioDestination(m_destination);
+    m_destination = NULL;
+    m_dstFormat = FRAME_FORMAT_UNKNOWN;
     m_output.reset();
-    m_srcFormat = FRAME_FORMAT_UNKNOWN;
 }
 
 int32_t AcmmParticipant::GetAudioFrame(int32_t id, AudioFrame* audio_frame)
@@ -118,7 +144,7 @@ int32_t AcmmParticipant::GetAudioFrame(int32_t id, AudioFrame* audio_frame)
 
 int32_t AcmmParticipant::NeededFrequency(int32_t id) const
 {
-    return getSampleRate(m_dstFormat);
+    return getAudioSampleRate(m_dstFormat);
 }
 
 void AcmmParticipant::NewMixedAudio(const AudioFrame* audioFrame)
