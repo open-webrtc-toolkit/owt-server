@@ -30,9 +30,8 @@ using namespace woogeen_base;
 
 DEFINE_LOGGER(AcmInput, "mcu.media.AcmInput");
 
-AcmInput::AcmInput(const FrameFormat format, FrameSource *source)
+AcmInput::AcmInput(const FrameFormat format)
     : m_format(format)
-    , m_source(source)
     , m_ssrc(0)
     , m_seqNumber(0)
     , m_valid(false)
@@ -49,10 +48,7 @@ AcmInput::~AcmInput()
     if (!m_valid)
         return;
 
-    m_source->removeAudioDestination(this);
-    m_source = nullptr;
-
-    ret = m_audioCodingModule->UnregisterReceiveCodec(frameFormat2PTC(m_format));
+    ret = m_audioCodingModule->UnregisterReceiveCodec(getAudioPltype(m_format));
     if (ret != 0) {
         ELOG_ERROR_T("Error RegisterReceiveCodec");
         return;
@@ -73,7 +69,7 @@ bool AcmInput::init()
         return false;
     }
 
-    if (!fillAudioCodec(m_format, codec)) {
+    if (!getAudioCodecInst(m_format, codec)) {
         ELOG_ERROR_T("Error fillAudioCodec(%s)", getFormatStr(m_format));
         return false;
     }
@@ -83,8 +79,6 @@ bool AcmInput::init()
         ELOG_ERROR_T("Error RegisterReceiveCodec(%s)", getFormatStr(m_format));
         return false;
     }
-
-    m_source->addAudioDestination(this);
 
     srand((unsigned)time(0));
     m_ssrc = rand();
@@ -124,8 +118,10 @@ void AcmInput::onFrame(const Frame& frame)
     size_t length = 0;
     int ret;
 
-    if (!m_valid)
+    if (!m_valid) {
+        ELOG_ERROR_T("Not valid");
         return;
+    }
 
     memset(&rtp_header, 0, sizeof(WebRtcRTPHeader));
     rtp_header.frameType = kAudioFrameSpeech;
@@ -147,7 +143,7 @@ void AcmInput::onFrame(const Frame& frame)
         length = frame.length - head->getHeaderLength();
     } else {
         rtp_header.header.markerBit                 = false;
-        rtp_header.header.payloadType               = frameFormat2PTC(frame.format);
+        rtp_header.header.payloadType               = getAudioPltype(frame.format);
         rtp_header.header.sequenceNumber            = m_seqNumber++;
         rtp_header.header.timestamp                 = frame.timeStamp;
         rtp_header.header.ssrc                      = m_ssrc;

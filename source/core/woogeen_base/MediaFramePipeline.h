@@ -43,7 +43,7 @@ enum FrameFormat {
 
     FRAME_FORMAT_YAMI       = 400,
 
-    FRAME_FORMAT_PCM_RAW    = 800,
+    FRAME_FORMAT_PCM_48000_2    = 800,
 
     FRAME_FORMAT_PCMU       = 900,
     FRAME_FORMAT_PCMA,
@@ -51,7 +51,9 @@ enum FrameFormat {
     FRAME_FORMAT_ISAC16,
     FRAME_FORMAT_ISAC32,
 
-    FRAME_FORMAT_AAC,
+    FRAME_FORMAT_AAC,           // ignore sample rate and channels for decoder, default is 48000_2
+    FRAME_FORMAT_AAC_48000_2,   // specify sample rate and channels for encoder
+
     FRAME_FORMAT_AC3,
     FRAME_FORMAT_NELLYMOSER,
 };
@@ -92,8 +94,8 @@ inline FrameFormat getFormat(const std::string& codec) {
         return woogeen_base::FRAME_FORMAT_VP9;
     } else if (codec == "h265") {
         return woogeen_base::FRAME_FORMAT_H265;
-    } else if (codec == "pcm_raw") {
-        return woogeen_base::FRAME_FORMAT_PCM_RAW;
+    } else if (codec == "pcm_48000_2" || codec == "pcm_raw") {
+        return woogeen_base::FRAME_FORMAT_PCM_48000_2;
     } else if (codec == "pcmu") {
         return woogeen_base::FRAME_FORMAT_PCMU;
     } else if (codec == "pcma") {
@@ -104,11 +106,14 @@ inline FrameFormat getFormat(const std::string& codec) {
         return woogeen_base::FRAME_FORMAT_ISAC32;
     } else if (codec == "opus_48000_2") {
         return woogeen_base::FRAME_FORMAT_OPUS;
-    } else if (codec == "aac") {
-        return woogeen_base::FRAME_FORMAT_AAC;
-    } else if (codec == "ac3") {
+    } else if (codec.compare(0, 3, "aac") == 0) {
+        if (codec == "aac_48000_2")
+            return woogeen_base::FRAME_FORMAT_AAC_48000_2;
+        else
+            return woogeen_base::FRAME_FORMAT_AAC;
+    } else if (codec.compare(0, 3, "ac3") == 0) {
         return woogeen_base::FRAME_FORMAT_AC3;
-    } else if (codec == "nellymoser") {
+    } else if (codec.compare(0, 10, "nellymoser") == 0) {
         return woogeen_base::FRAME_FORMAT_NELLYMOSER;
     } else {
         return woogeen_base::FRAME_FORMAT_UNKNOWN;
@@ -133,8 +138,8 @@ inline const char *getFormatStr(const FrameFormat &format) {
             return "H264";
         case FRAME_FORMAT_H265:
             return "H265";
-        case FRAME_FORMAT_PCM_RAW:
-            return "PCM_RAW";
+        case FRAME_FORMAT_PCM_48000_2:
+            return "PCM_48000_2";
         case FRAME_FORMAT_PCMU:
             return "PCMU";
         case FRAME_FORMAT_PCMA:
@@ -147,6 +152,8 @@ inline const char *getFormatStr(const FrameFormat &format) {
             return "ISAC32";
         case FRAME_FORMAT_AAC:
             return "AAC";
+        case FRAME_FORMAT_AAC_48000_2:
+            return "AAC_48000_2";
         case FRAME_FORMAT_AC3:
             return "AC3";
         case FRAME_FORMAT_NELLYMOSER:
@@ -157,13 +164,14 @@ inline const char *getFormatStr(const FrameFormat &format) {
 }
 
 inline bool isAudioFrame(const Frame& frame) {
-    return frame.format == FRAME_FORMAT_PCM_RAW
+    return frame.format == FRAME_FORMAT_PCM_48000_2
           || frame.format == FRAME_FORMAT_PCMU
           || frame.format == FRAME_FORMAT_PCMA
           || frame.format == FRAME_FORMAT_OPUS
           || frame.format == FRAME_FORMAT_ISAC16
           || frame.format == FRAME_FORMAT_ISAC32
           || frame.format == FRAME_FORMAT_AAC
+          || frame.format == FRAME_FORMAT_AAC_48000_2
           || frame.format == FRAME_FORMAT_AC3
           || frame.format == FRAME_FORMAT_NELLYMOSER;
 }

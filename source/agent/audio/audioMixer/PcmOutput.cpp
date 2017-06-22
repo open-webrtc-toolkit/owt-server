@@ -30,9 +30,8 @@ using namespace woogeen_base;
 
 DEFINE_LOGGER(PcmOutput, "mcu.media.PcmOutput");
 
-PcmOutput::PcmOutput(const FrameFormat format, FrameDestination *destination)
+PcmOutput::PcmOutput(const FrameFormat format)
     : m_format(format)
-    , m_destination(destination)
     , m_timestampOffset(0)
     , m_valid(false)
 {
@@ -43,19 +42,15 @@ PcmOutput::~PcmOutput()
     if (!m_valid)
         return;
 
-    this->removeAudioDestination(m_destination);
-    m_destination = nullptr;
     m_format = FRAME_FORMAT_UNKNOWN;
 }
 
 bool PcmOutput::init()
 {
-    if (m_format != FRAME_FORMAT_PCM_RAW || getSampleRate(m_format) != 48000) {
-        ELOG_ERROR_T("Error invalid format, %s(%d)", getFormatStr(m_format), getSampleRate(m_format));
+    if (m_format != FRAME_FORMAT_PCM_48000_2) {
+        ELOG_ERROR_T("Error invalid format, %s(%d)", getFormatStr(m_format), m_format);
         return false;
     }
-
-    this->addAudioDestination(m_destination);
 
     m_timestampOffset = currentTimeMs();
     m_valid = true;
@@ -72,14 +67,14 @@ bool PcmOutput::addAudioFrame(const AudioFrame* audioFrame)
         return false;
     }
 
-    if (audioFrame->sample_rate_hz_ != getSampleRate(m_format) ||
-            audioFrame->num_channels_ != getChannels(m_format)) {
+    if (audioFrame->sample_rate_hz_ != getAudioSampleRate(m_format) ||
+            audioFrame->num_channels_ != getAudioChannels(m_format)) {
         ELOG_ERROR_T("Invalid audio frame, %s(%d-%ld), want(%d-%d)",
                 getFormatStr(m_format),
                 audioFrame->sample_rate_hz_,
                 audioFrame->num_channels_,
-                getSampleRate(m_format),
-                getChannels(m_format)
+                getAudioSampleRate(m_format),
+                getAudioChannels(m_format)
                 );
         return false;
     }
@@ -94,7 +89,7 @@ bool PcmOutput::addAudioFrame(const AudioFrame* audioFrame)
 
     woogeen_base::Frame frame;
     memset(&frame, 0, sizeof(frame));
-    frame.format = woogeen_base::FRAME_FORMAT_PCM_RAW;
+    frame.format = woogeen_base::FRAME_FORMAT_PCM_48000_2;
     frame.payload = const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(audioFrame->data_));
     frame.length = audioFrame->samples_per_channel_ * audioFrame->num_channels_ * sizeof(int16_t);
     frame.additionalInfo.audio.nbSamples = audioFrame->samples_per_channel_;

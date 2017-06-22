@@ -335,7 +335,7 @@ void JitterBuffer::handleJob()
     if (frontPacket && backPacket) {
         int64_t bufferingMs = backPacket->getAVPacket()->dts - frontPacket->getAVPacket()->dts;
         if (bufferingMs > m_maxBufferingMs) {
-            ELOG_DEBUG_T("(%s)Do seek, bufferingMs(%ld), maxBufferingMs(%ld), QueueSize(%d)+++", m_name.c_str(), bufferingMs, m_maxBufferingMs, m_buffer.size());
+            ELOG_DEBUG_T("(%s)Do seek, bufferingMs(%ld), maxBufferingMs(%ld), QueueSize(%d)", m_name.c_str(), bufferingMs, m_maxBufferingMs, m_buffer.size());
 
             int64_t seekMs = backPacket->getAVPacket()->dts - m_maxBufferingMs / 2;
             while(true) {
@@ -356,7 +356,7 @@ void JitterBuffer::handleJob()
                 m_listener->onSyncTimeChanged(this, seekMs);
             }
 
-            ELOG_DEBUG_T("(%s)After seek, QueueSize(%d)+++", m_name.c_str(), m_buffer.size());
+            ELOG_DEBUG_T("(%s)After seek, QueueSize(%d)", m_name.c_str(), m_buffer.size());
         }
     }
 
@@ -382,7 +382,7 @@ void JitterBuffer::handleJob()
 DEFINE_LOGGER(RtspIn, "woogeen.RtspIn");
 
 RtspIn::RtspIn(const Options& options, EventRegistry* handle)
-    : m_enableTranscoding(true)
+    : m_enableTranscoding(false)
     , m_url(options.url)
     , m_needAudio(options.enableAudio)
     , m_needVideo(options.enableVideo)
@@ -542,7 +542,7 @@ bool RtspIn::connect()
     else if (ELOG_IS_DEBUG_ENABLED())
         av_log_set_level(AV_LOG_INFO);
     else
-        av_log_set_level(AV_LOG_ERROR);
+        av_log_set_level(AV_LOG_WARNING);
 
     srand((unsigned)time(0));
 
@@ -592,11 +592,13 @@ bool RtspIn::connect()
         }
         m_videoStreamIndex = streamNo;
         st = m_context->streams[streamNo];
-        ELOG_INFO_T("Has video, video stream number %d. time base = %d / %d, codec type = %s ",
+        ELOG_INFO_T("Has video, video stream number(%d), codec(%s), %s, %dx%d",
                 m_videoStreamIndex,
-                st->time_base.num,
-                st->time_base.den,
-                avcodec_get_name(st->codec->codec_id));
+                avcodec_get_name(st->codecpar->codec_id),
+                avcodec_profile_name(st->codecpar->codec_id, st->codecpar->profile),
+                st->codecpar->width,
+                st->codecpar->height
+                );
 
         AVCodecID videoCodecId = st->codec->codec_id;
         switch (videoCodecId) {
@@ -646,11 +648,12 @@ bool RtspIn::connect()
         }
         m_audioStreamIndex = audioStreamNo;
         audio_st = m_context->streams[m_audioStreamIndex];
-        ELOG_INFO_T("Has audio, audio stream number %d. time base = %d / %d, codec type = %s ",
+        ELOG_INFO_T("Has audio, audio stream number(%d), codec(%s), %d-%d",
                 m_audioStreamIndex,
-                audio_st->time_base.num,
-                audio_st->time_base.den,
-                avcodec_get_name(audio_st->codec->codec_id));
+                avcodec_get_name(audio_st->codecpar->codec_id),
+                audio_st->codecpar->sample_rate,
+                audio_st->codecpar->channels
+                );
 
         AVCodecID audioCodecId = audio_st->codec->codec_id;
         switch(audioCodecId) {

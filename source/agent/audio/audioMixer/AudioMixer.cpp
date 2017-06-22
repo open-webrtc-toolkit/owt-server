@@ -18,6 +18,9 @@
  * and approved by Intel in writing.
  */
 
+#include <webrtc/base/logging.h>
+#include <webrtc/system_wrappers/include/trace.h>
+
 #include "AudioMixer.h"
 #include "AcmmFrameMixer.h"
 
@@ -29,6 +32,27 @@ DEFINE_LOGGER(AudioMixer, "mcu.media.AudioMixer");
 
 AudioMixer::AudioMixer(const std::string& configStr)
 {
+    if (ELOG_IS_TRACE_ENABLED()) {
+        rtc::LogMessage::LogToDebug(rtc::LS_VERBOSE);
+        rtc::LogMessage::LogTimestamps(true);
+
+        webrtc::Trace::CreateTrace();
+        webrtc::Trace::SetTraceFile(NULL, false);
+        webrtc::Trace::set_level_filter(webrtc::kTraceAll);
+    } else if (ELOG_IS_DEBUG_ENABLED()) {
+        rtc::LogMessage::LogToDebug(rtc::LS_INFO);
+        rtc::LogMessage::LogTimestamps(true);
+
+        const int kTraceFilter = webrtc::kTraceNone | webrtc::kTraceTerseInfo |
+            webrtc::kTraceWarning | webrtc::kTraceError |
+            webrtc::kTraceCritical | webrtc::kTraceDebug |
+            webrtc::kTraceInfo;
+
+        webrtc::Trace::CreateTrace();
+        webrtc::Trace::SetTraceFile(NULL, false);
+        webrtc::Trace::set_level_filter(kTraceFilter);
+    }
+
     m_mixer.reset(new AcmmFrameMixer());
 }
 

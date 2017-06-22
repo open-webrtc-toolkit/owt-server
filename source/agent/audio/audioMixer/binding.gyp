@@ -8,8 +8,11 @@
       'AcmmFrameMixer.cpp',
       'AcmmParticipant.cpp',
       'AcmInput.cpp',
+      'FfInput.cpp',
       'AcmOutput.cpp',
       'PcmOutput.cpp',
+      'FfOutput.cpp',
+      'AudioUtilities.cpp',
       '../../addons/common/NodeEventRegistry.cc',
       '../../../core/woogeen_base/MediaFramePipeline.cpp',
     ],
@@ -34,6 +37,9 @@
       '-L$(CORE_HOME)/../../third_party/webrtc-m59', '-lwebrtc',
       '-lboost_thread',
       '-llog4cxx',
+      '<!@(pkg-config --libs libavcodec)',
+      '<!@(pkg-config --libs libavformat)',
+      '<!@(pkg-config --libs libavutil)',
     ],
   }]
 }
