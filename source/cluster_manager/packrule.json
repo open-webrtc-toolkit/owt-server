@@ -1,0 +1,19 @@
+{
+    "name": "cluster-manager",
+    "dest": "cluster_manager",
+    "common": {
+        "package": "package.json",
+        "files": [
+            "clusterManager.js",
+            "cluster_manager.toml",
+            "index.js",
+            "log4js_configuration.json",
+            "matcher.js",
+            "scheduler.js",
+            "strategy.js",
+            "../common/amqp_client.js",
+            "../common/logger.js"
+        ]
+    },
+    "start": "node ."
+}

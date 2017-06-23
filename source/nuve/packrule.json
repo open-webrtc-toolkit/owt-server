@@ -1,0 +1,21 @@
+{
+    "name": "nuve",
+    "dest": "nuve",
+    "common": {
+        "package": "package.json",
+        "files": [
+            "./*",
+            "../common/logger.js",
+            "../common/cipher.js",
+            "../../scripts/release/initcert.js",
+            "../../scripts/detectOS.sh"
+        ],
+        "folders": {
+            "cert": [
+                "../../cert/*.pfx",
+                "../../cert/.woogeen.keystore"
+            ]
+        }
+    },
+    "start": "node nuve.js"
+}

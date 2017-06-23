@@ -1,5 +1,6 @@
 /*global require, exports, GLOBAL*/
 'use strict';
+require = require('module')._load('./AgentLoader');
 var woogeenSipGateway = require('./sipIn/build/Release/sipIn');
 var AudioFrameConstructor = woogeenSipGateway.AudioFrameConstructor;
 var VideoFrameConstructor = woogeenSipGateway.VideoFrameConstructor;

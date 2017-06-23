@@ -1,6 +1,6 @@
 /*global require, module*/
 'use strict';
-
+require = require('module')._load('./AgentLoader');
 var internalIO = require('./internalIO/build/Release/internalIO');
 var InternalIn = internalIO.In;
 var InternalOut = internalIO.Out;

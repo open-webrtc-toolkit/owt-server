@@ -1,0 +1,43 @@
+{
+    "name": "portal",
+    "dest": "portal",
+    "common": {
+        "package": "package.json",
+        "files": [
+            "index.js",
+            "log4js_configuration.json",
+            "portal.js",
+            "portal.toml",
+            "restServer.js",
+            "rpcRequest.js",
+            "socketIOServer.js",
+            "../common/amqp_client.js",
+            "../common/cipher.js",
+            "../common/clusterWorker.js",
+            "../common/loadCollector.js",
+            "../common/logger.js",
+            "../common/makeRPC.js",
+            "../common/rpcChannel.js",
+            "../common/dataBaseAccess.js",
+            "../../scripts/release/initcert.js",
+            "../../scripts/detectOS.sh"
+        ],
+        "folders": {
+            "cert": [
+                "../../cert/certificate.pfx",
+                "../../cert/.woogeen.keystore"
+            ]
+        }
+    },
+    "debug": {
+        "folders": {
+            "test": [
+                "test/portal_test.js",
+                "test/restServer_test.js",
+                "test/rpcRequest_test.js",
+                "test/socketIOServer_test.js"
+            ]
+        }
+    },
+    "start": "node ."
+}

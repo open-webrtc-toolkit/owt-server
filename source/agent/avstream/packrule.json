@@ -1,0 +1,47 @@
+{
+    "name": "avstream-agent",
+    "dest": "avstream_agent",
+    "node": {
+        "bin": "woogeen_avstream",
+        "entry": "../erizoJS.js",
+        "libpath": "avstream",
+        "libfiles": [
+            "index.js",
+            "../connections.js",
+            "../InternalConnectionFactory.js"
+        ]
+    },
+    "common": {
+        "package": "../package.json",
+        "files": [
+            "../AgentLoader.js",
+            "agent.toml",
+            "log4js_configuration.json",
+            "compile_ffmpeg_with_libfdkaac.sh",
+            "../index.js",
+            "../log4cxx.properties",
+            "../../common/amqp_client.js",
+            "../../common/cipher.js",
+            "../../common/clusterWorker.js",
+            "../../common/loadCollector.js",
+            "../../common/logger.js",
+            "../../common/makeRPC.js",
+            "../../common/rpcChannel.js",
+            "../../../scripts/release/initcert.js"
+        ]
+    },
+    "natives": {
+        "libdist": "lib",
+        "addons": [
+            {
+                "folder": "../addons/avstreamLib",
+                "name": "avstream"
+            },
+            {
+                "folder": "../addons/internalIO",
+                "name": "internalIO"
+            }
+        ]
+    },
+    "start": "node . -U avstream"
+}

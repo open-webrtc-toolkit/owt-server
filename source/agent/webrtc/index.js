@@ -1,15 +1,16 @@
 /*global require, module, global*/
 'use strict';
+require = require('module')._load('./AgentLoader');
+var path = require('path');
 
 var WrtcConnection = require('./wrtcConnection');
-var logger = require('./logger').logger;
-var path = require('path');
 var Connections = require('./connections');
-
 var InternalConnectionFactory = require('./InternalConnectionFactory');
+var logger = require('./logger').logger;
 
 // Logger
 var log = logger.getLogger('WebrtcNode');
+
 module.exports = function () {
     var that = {};
     var connections = new Connections;

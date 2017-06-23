@@ -1,0 +1,50 @@
+{
+    "name": "audio-agent",
+    "dest": "audio_agent",
+    "node": {
+        "bin": "woogeen_audio",
+        "entry": "../erizoJS.js",
+        "libpath": "audio",
+        "libfiles": [
+            "index.js",
+            "../connections.js",
+            "../InternalConnectionFactory.js"
+        ]
+    },
+    "common": {
+        "package": "../package.json",
+        "files": [
+            "../AgentLoader.js",
+            "agent.toml",
+            "log4js_configuration.json",
+            "../index.js",
+            "../log4cxx.properties",
+            "../../common/amqp_client.js",
+            "../../common/cipher.js",
+            "../../common/clusterWorker.js",
+            "../../common/loadCollector.js",
+            "../../common/logger.js",
+            "../../common/makeRPC.js",
+            "../../common/rpcChannel.js",
+            "../../../scripts/release/initcert.js"
+        ]
+    },
+    "natives": {
+        "libdist": "lib",
+        "addons": [
+            {
+                "folder": "audioMixer",
+                "name": "audioMixer"
+            },
+            {
+                "folder": "../addons/mediaFrameMulticaster",
+                "name": "mediaFrameMulticaster"
+            },
+            {
+                "folder": "../addons/internalIO",
+                "name": "internalIO"
+            }
+        ]
+    },
+    "start": "node . -U audio"
+}

@@ -140,7 +140,6 @@ case $startStop in
       webrtc-agent )
         cd ${WOOGEEN_HOME}/webrtc_agent
         export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:./lib
-        export NODE_PATH=./node_modules
         nohup nice -n ${WOOGEEN_NICENESS} node . -U webrtc\
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
@@ -148,7 +147,6 @@ case $startStop in
       avstream-agent )
         cd ${WOOGEEN_HOME}/avstream_agent
         export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:./lib
-        export NODE_PATH=./node_modules
         nohup nice -n ${WOOGEEN_NICENESS} node . -U avstream\
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
@@ -156,7 +154,6 @@ case $startStop in
       recording-agent )
         cd ${WOOGEEN_HOME}/recording_agent
         export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:./lib
-        export NODE_PATH=./node_modules
         nohup nice -n ${WOOGEEN_NICENESS} node . -U recording\
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
@@ -164,7 +161,6 @@ case $startStop in
       sip-agent )
         cd ${WOOGEEN_HOME}/sip_agent
         export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:./lib
-        export NODE_PATH=./node_modules
         nohup nice -n ${WOOGEEN_NICENESS} node . -U sip\
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
@@ -178,7 +174,6 @@ case $startStop in
       audio-agent )
         cd ${WOOGEEN_HOME}/audio_agent
         export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:./lib
-        export NODE_PATH=./node_modules
         nohup nice -n ${WOOGEEN_NICENESS} node . -U audio\
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
@@ -186,7 +181,6 @@ case $startStop in
       video-agent )
         cd ${WOOGEEN_HOME}/video_agent
         export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:./lib
-        export NODE_PATH=./node_modules
         nohup nice -n ${WOOGEEN_NICENESS} node . -U video\
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
