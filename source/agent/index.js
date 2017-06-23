@@ -14,6 +14,13 @@ try {
   process.exit(1);
 }
 
+var loadConfig = {};
+try {
+  loadConfig = require('./loader.json');
+} catch (e) {
+  log.info('No loader.json found.');
+}
+
 // Configuration default values
 global.config = config || {};
 
@@ -128,9 +135,16 @@ function cleanupErizoJS (id) {
 
 var launchErizoJS = function() {
     var id = myId + '.' + erizo_index++;
+    if (!fs.existsSync('../logs')){
+        fs.mkdirSync('../logs');
+    }
     var out = fs.openSync('../logs/' + id + '.log', 'a');
     var err = fs.openSync('../logs/' + id + '.log', 'a');
-    var child = spawn('node', ['./erizoJS.js', id, myPurpose, JSON.stringify(webrtcInterfaces), clusterIP, myId], {
+    var execName = 'node';
+    if (!process.env.NODE_DEBUG_ERIZO && loadConfig.bin) {
+        execName = './' + loadConfig.bin;
+    }
+    var child = spawn(execName, ['./erizoJS.js', id, myPurpose, JSON.stringify(webrtcInterfaces), clusterIP, myId], {
         detached: true,
         stdio: [ 'ignore', out, err, 'ipc' ]
     });

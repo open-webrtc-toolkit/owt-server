@@ -1,7 +1,8 @@
 /*global require, global, process*/
 'use strict';
-var Getopt = require('node-getopt');
+require = require('module')._load('./AgentLoader');
 var fs = require('fs');
+var Getopt = require('node-getopt');
 var toml = require('toml');
 var log = require('./logger').logger.getLogger('ErizoJS');
 
@@ -12,7 +13,6 @@ try {
   log.error('Parsing config error on line ' + e.line + ', column ' + e.column + ': ' + e.message);
   process.exit(1);
 }
-
 
 global.config = config || {};
 global.config.webrtc = global.config.webrtc || {};
@@ -129,16 +129,16 @@ rpc.connect(global.config.rabbit, function () {
             controller = require('./video')(rpcClient, clusterIP);
             break;
         case 'webrtc':
-            controller = require('woogeen/webrtc/index')();
+            controller = require('./webrtc')();
             break;
         case 'avstream':
-            controller = require('woogeen/avstream/index')();
+            controller = require('./avstream')();
             break;
         case 'recording':
-            controller = require('woogeen/recording/index')();
+            controller = require('./recording')();
             break;
         case 'sip':
-            controller = require('woogeen/sip/index')(rpcClient, {id:rpcID, addr:clusterIP});
+            controller = require('./sip')(rpcClient, {id:rpcID, addr:clusterIP});
             break;
         default:
             log.error('Ambiguous purpose:', purpose);

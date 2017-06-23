@@ -1,0 +1,18 @@
+{
+    "name": "sip-portal",
+    "dest": "sip_portal",
+    "common": {
+        "package": "package.json",
+        "files": [
+            "log4js_configuration.json",
+            "sipErizoHelper.js",
+            "sip_portal.js",
+            "sip_portal.toml",
+            "../common/amqp_client.js",
+            "../common/dataBaseAccess.js",
+            "../common/logger.js",
+            "../common/makeRPC.js"
+        ]
+    },
+    "start": "node sip_portal.js"
+}

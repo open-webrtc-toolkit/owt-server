@@ -1,0 +1,46 @@
+{
+    "name": "sip-agent",
+    "dest": "sip_agent",
+    "node": {
+        "bin": "woogeen_sip",
+        "entry": "../erizoJS.js",
+        "libpath": "sip",
+        "libfiles": [
+            "index.js",
+            "sipCallConnection.js",
+            "../connections.js",
+            "../InternalConnectionFactory.js"
+        ]
+    },
+    "common": {
+        "package": "../package.json",
+        "files": [
+            "../AgentLoader.js",
+            "agent.toml",
+            "log4js_configuration.json",
+            "../index.js",
+            "../log4cxx.properties",
+            "../../common/amqp_client.js",
+            "../../common/cipher.js",
+            "../../common/clusterWorker.js",
+            "../../common/loadCollector.js",
+            "../../common/logger.js",
+            "../../common/makeRPC.js",
+            "../../common/rpcChannel.js"
+        ]
+    },
+    "natives": {
+        "libdist": "lib",
+        "addons": [
+            {
+                "folder": "sipIn",
+                "name": "sipIn"
+            },
+            {
+                "folder": "../addons/internalIO",
+                "name": "internalIO"
+            }
+        ]
+    },
+    "start": "node . -U sip"
+}

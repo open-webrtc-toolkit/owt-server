@@ -1,6 +1,7 @@
 /*global require, module, GLOBAL*/
 'use strict';
 
+require = require('module')._load('./AgentLoader');
 var logger = require('./logger').logger;
 // Logger
 var log = logger.getLogger('Connections');

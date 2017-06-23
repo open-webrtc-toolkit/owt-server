@@ -1,4 +1,5 @@
 'use strict';
+require = require('module')._load('./AgentLoader');
 var internalIO = require('./internalIO/build/Release/internalIO');
 var SctpIn = internalIO.SctpIn;
 var SctpOut = internalIO.SctpOut;

@@ -1,0 +1,34 @@
+{
+    "name": "session-agent",
+    "dest": "session_agent",
+    "common": {
+        "package": "package.json",
+        "files": [
+            "../AgentLoader.js",
+            "../erizoJS.js",
+            "Stream.js",
+            "agent.toml",
+            "controller.js",
+            "log4js_configuration.json",
+            "rpcRequest.js",
+            "session.js",
+            "../index.js",
+            "../../common/amqp_client.js",
+            "../../common/cipher.js",
+            "../../common/clusterWorker.js",
+            "../../common/loadCollector.js",
+            "../../common/logger.js",
+            "../../common/makeRPC.js",
+            "../../common/rpcChannel.js",
+            "../../common/dataBaseAccess.js"
+        ]
+    },
+    "debug": {
+        "folders": {
+            "test": [
+                "test/controller_test.js"
+            ]
+        }
+    },
+    "start": "node . -U session"
+}

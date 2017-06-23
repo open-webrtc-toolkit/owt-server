@@ -16,7 +16,12 @@
 
 ### Package
 
-- `scripts/release/pack.sh --mcu --src-sample-path=${webrtc-javascript-sdk}/dist/samples/conference`
+- release: `scripts/pack.js --full --sample-path ${webrtc-javascript-sdk}/dist/samples/conference`
+- release alias: `scripts/pack.js --target all --repack --install-module --sample-path ${webrtc-javascript-sdk}/dist/samples/conference`
+- without repack, node modules and sample: `scripts/pack.js --target (or -t) all`
+- debug: `scripts/pack.js --target all --debug`
+- pack specified target: `scripts/pack.js --target ${target-name} [ --target ${target-name} ]`
+- use help option for details: `scripts/pack.js --help`
 
 ### Run
 
