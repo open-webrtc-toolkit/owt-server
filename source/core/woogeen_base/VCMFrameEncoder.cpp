@@ -54,7 +54,7 @@ VCMFrameEncoder::VCMFrameEncoder(FrameFormat format, bool useSimulcast)
     , m_enableBsDump(false)
     , m_bsDumpfp(NULL)
 {
-    m_bufferManager.reset(new I420BufferManager(2));
+    m_bufferManager.reset(new I420BufferManager(3));
 
     m_running = true;
     m_thread = boost::thread(&VCMFrameEncoder::encodeLoop, this);
