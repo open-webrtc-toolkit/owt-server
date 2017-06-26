@@ -18,14 +18,16 @@
  * and approved by Intel in writing.
  */
 
-#include "VideoMixer.h"
+#include <boost/property_tree/json_parser.hpp>
+#include <boost/property_tree/ptree.hpp>
 
+#include <webrtc/base/logging.h>
+#include <webrtc/system_wrappers/include/trace.h>
+
+#include "VideoMixer.h"
 #include "VideoFrameMixerImpl.h"
 #include "VideoLayoutProcessor.h"
 #include "VideoFrameMixer.h"
-
-#include <boost/property_tree/json_parser.hpp>
-#include <boost/property_tree/ptree.hpp>
 
 using namespace webrtc;
 using namespace woogeen_base;
@@ -39,6 +41,27 @@ VideoMixer::VideoMixer(const std::string& configStr)
     , m_inputCount(0)
     , m_maxInputCount(0)
 {
+    if (ELOG_IS_TRACE_ENABLED()) {
+        rtc::LogMessage::LogToDebug(rtc::LS_VERBOSE);
+        rtc::LogMessage::LogTimestamps(true);
+
+        webrtc::Trace::CreateTrace();
+        webrtc::Trace::SetTraceFile(NULL, false);
+        webrtc::Trace::set_level_filter(webrtc::kTraceAll);
+    } else if (ELOG_IS_DEBUG_ENABLED()) {
+        rtc::LogMessage::LogToDebug(rtc::LS_INFO);
+        rtc::LogMessage::LogTimestamps(true);
+
+        const int kTraceFilter = webrtc::kTraceNone | webrtc::kTraceTerseInfo |
+            webrtc::kTraceWarning | webrtc::kTraceError |
+            webrtc::kTraceCritical | webrtc::kTraceDebug |
+            webrtc::kTraceInfo;
+
+        webrtc::Trace::CreateTrace();
+        webrtc::Trace::SetTraceFile(NULL, false);
+        webrtc::Trace::set_level_filter(kTraceFilter);
+    }
+
     boost::property_tree::ptree config;
     std::istringstream is(configStr);
     boost::property_tree::read_json(is, config);
@@ -71,14 +94,6 @@ VideoMixer::VideoMixer(const std::string& configStr)
 
     m_frameMixer.reset(new VideoFrameMixerImpl(m_maxInputCount, rootSize, bgColor, true, cropVideo));
     m_layoutProcessor->registerConsumer(m_frameMixer);
-
-#if 0
-    if (ELOG_IS_TRACE_ENABLED()) {
-        webrtc::Trace::CreateTrace();
-        webrtc::Trace::SetTraceFile("webrtc_trace_videoMixer.txt");
-        webrtc::Trace::set_level_filter(webrtc::kTraceAll);
-    }
-#endif
 }
 
 VideoMixer::~VideoMixer()
@@ -86,12 +101,6 @@ VideoMixer::~VideoMixer()
     closeAll();
 
     m_layoutProcessor->deregisterConsumer(m_frameMixer);
-
-#if 0
-    if (ELOG_IS_TRACE_ENABLED()) {
-        webrtc::Trace::ReturnTrace();
-    }
-#endif
 }
 
 bool VideoMixer::addInput(const std::string& inStreamID, const std::string& codec, woogeen_base::FrameSource* source, const std::string& avatar)
