@@ -8,8 +8,6 @@ var dbAccess = require('./dataBaseAccess');
 
 var Portal = function(spec, rpcReq) {
   var that = {},
-    token_key = spec.tokenKey,
-    token_server = spec.tokenServer,
     cluster_name = spec.clusterName,
     self_rpc_id = spec.selfRpcId,
     permission_map = spec.permissionMap;
@@ -144,35 +142,12 @@ var Portal = function(spec, rpcReq) {
     return Promise.all(impacted_connections);
   };
 
-  that.updateTokenKey = function(tokenKey) {
-    token_key = tokenKey;
-  };
 
   that.join = function(participantId, token) {
     log.debug('participant[', participantId, '] join with token:', JSON.stringify(token));
-    var calculateSignature = function (token) {
-      var toSign = token.tokenId + ',' + token.host,
-        signed = crypto.createHmac('sha256', token_key).update(toSign).digest('hex');
-      return (new Buffer(signed)).toString('base64');
-    };
-
-    var validateToken = function (token) {
-      var signature = calculateSignature(token);
-
-      if (signature !== token.signature) {
-        return Promise.reject('Invalid token signature');
-      } else {
-        return Promise.resolve(token);
-      }
-    };
-
     var tokenCode, userName, role, origin, session, session_controller;
 
-    return validateToken(token)
-      .then(function(validToken) {
-        log.debug('token validation ok.');
-        return dbAccess.deleteToken(validToken.tokenId);
-      })
+    return dbAccess.deleteToken(token.tokenId)
       .then(function(loginResult) {
         log.debug('login ok.', loginResult);
         tokenCode = loginResult.code;
