@@ -1,6 +1,7 @@
 /* global require */
 'use strict';
 
+var crypto = require('crypto');
 var path = require('path');
 var url = require('url');
 var log = require('./logger').logger.getLogger('RestServer');
@@ -303,21 +304,41 @@ var Client = function(clientId, inRoom, queryInterval, portal, on_loss) {
   return that;
 };
 
-var RestServer = function(spec, portal, observer) {
+var RestServer = function(spec, tokenKey, portal, observer) {
   var that = {};
+  var token_key = tokenKey;
   var express = require('express');
   var bodyParser = require('body-parser');
   var app = express();
   var server;
   var clients = {};
 
+  const calculateSignature = function (token) {
+    var toSign = token.tokenId + ',' + token.host,
+      signed = crypto.createHmac('sha256', token_key).update(toSign).digest('hex');
+    return (new Buffer(signed)).toString('base64');
+  };
+
+  const validateToken = function (token) {
+    var signature = calculateSignature(token);
+
+    if (signature !== token.signature) {
+      return Promise.reject('Invalid token signature');
+    } else {
+      return Promise.resolve(token);
+    }
+  };
+
   var clientJoin = function(req, res) {
     var client_id = Math.round(Math.random() * 100000000000000000) + '',
         token = req.body.token,
         query_interval = req.body.queryInterval;
 
-    return portal.join(client_id, token)
-      .then(function(result) {
+    return validateToken(token)
+      .then(function(token) {
+        log.info('validation ok');
+        return portal.join(client_id, token)
+      }).then(function(result) {
         observer.onJoin(result.tokenCode);
         var commonViewStream = result.streams.filter((st) => (st.view === 'common'))[0];
         clients[client_id] = new Client(client_id, commonViewStream, query_interval, portal, function() {
@@ -516,6 +537,10 @@ var RestServer = function(spec, portal, observer) {
     } else {
       return Promise.reject('user not in room');
     }
+  };
+
+  that.updateTokenKey = function(tokenKey) {
+    token_key = tokenKey;
   };
 
   setup();

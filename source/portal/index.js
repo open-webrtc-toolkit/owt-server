@@ -142,7 +142,8 @@ var refreshTokenKey = function(id, portal, tokenKey) {
       (socketio_server === undefined) && clearInterval(interval);
       if (newTokenKey !== tokenKey) {
         log.info('Token key updated!');
-        portal.updateTokenKey(newTokenKey);
+        socketio_server && socketio_server.updateTokenKey(newTokenKey);
+        rest_server && rest_server.updateTokenKey(newTokenKey);
         tokenKey = newTokenKey;
       }
     }, function() {
@@ -165,9 +166,7 @@ var startServers = function(id, tokenKey) {
   var rpcChannel = require('./rpcChannel')(rpcClient);
   var rpcReq = require('./rpcRequest')(rpcChannel);
 
-  portal = require('./portal')({tokenKey: tokenKey,
-                                tokenServer: 'nuve',
-                                clusterName: config.cluster.name,
+  portal = require('./portal')({clusterName: config.cluster.name,
                                 selfRpcId: id},
                                 rpcReq);
   socketio_server = require('./socketIOServer')({port: config.portal.port,
@@ -177,11 +176,13 @@ var startServers = function(id, tokenKey) {
                                                  reconnectionTimeout: config.portal.reconnection_timeout,
                                                  pingInterval: config.portal.ping_interval,
                                                  pingTimeout: config.portal.ping_timeout},
+                                                 tokenKey,
                                                  portal,
                                                  serviceObserver);
   rest_server = require('./restServer')({port: config.portal.rest_port,
                                          ssl: config.portal.ssl,
                                          keystorePath: config.portal.keystorePath},
+                                         tokenKey,
                                          portal,
                                          serviceObserver);
   return socketio_server.start()
