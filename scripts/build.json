@@ -1,0 +1,72 @@
+{
+    "mcu" : {
+        "include" : [
+            "video-mixer-sw",
+            "video-transcoder-sw",
+            "internal-io",
+            "media-frame-multicaster",
+            "audio",
+            "webrtc",
+            "avstream",
+            "sip"
+        ]
+    },
+    "mcu-msdk" : {
+        "include" : [
+            "video-mixer-msdk",
+            "video-transcoder-msdk",
+            "internal-io",
+            "media-frame-multicaster",
+            "audio",
+            "webrtc",
+            "avstream",
+            "sip"
+        ]
+    },
+    "mcu-all" : {
+        "include" : [
+            "mcu",
+            "video-mixer-msdk",
+            "video-transcoder-msdk"
+        ]
+    },
+    "video-mixer-sw" : {
+        "path" : "source/agent/video/videoMixer/videoMixer_sw",
+        "gyp" : "binding.sw.gyp"
+    },
+    "video-transcoder-sw": {
+        "path" : "source/agent/video/videoTranscoder/videoTranscoder_sw",
+        "gyp" : "binding.sw.gyp"
+    },
+    "video-mixer-msdk" : {
+        "path" : "source/agent/video/videoMixer/videoMixer_msdk",
+        "gyp" : "binding.msdk.gyp"
+    },
+    "video-transcoder-msdk": {
+        "path" : "source/agent/video/videoTranscoder/videoTranscoder_msdk",
+        "gyp" : "binding.msdk.gyp"
+    },
+    "video-yami" : {
+        "path" : "source/agent/video/videoMixer/yami",
+        "gyp" : "binding.hw.yami.gyp"
+    },
+    "internal-io" : {
+        "path" : "source/agent/addons/internalIO"
+    },
+    "avstream" : {
+        "path" : "source/agent/addons/avstreamLib"
+    },
+    "media-frame-multicaster" : {
+        "path" : "source/agent/addons/mediaFrameMulticaster"
+    },
+    "audio" : {
+        "path" : "source/agent/audio/audioMixer"
+    },
+    "webrtc" : {
+        "path" : "source/agent/webrtc/webrtcLib"
+    },
+    "sip" : {
+        "path" : "source/agent/sip/sipIn",
+        "gyp" : "binding.sip.gyp"
+    }
+}
