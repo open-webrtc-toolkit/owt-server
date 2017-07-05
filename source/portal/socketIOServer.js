@@ -97,10 +97,8 @@ function safeCall () {
   }
 }
 
-var Client = function(participant_id, socket, tokenKey, portal, observer, reconnection_spec, on_disconnect) {
+var Client = function(participant_id, socket, portal, observer, reconnection_spec, on_disconnect) {
   var that = {};
-
-  let token_key = tokenKey;
   // If reconnection is enabled, server will keep session for |reconnectionTimeout| seconds after client is disconnected. Client should send "logout" before leaving.
   let reconnection_enabled = false;
   let reconnection_ticket_id;
@@ -223,35 +221,17 @@ var Client = function(participant_id, socket, tokenKey, portal, observer, reconn
       socket.disconnect();
     };
 
-    const calculateSignature = function (token) {
-      var toSign = token.tokenId + ',' + token.host,
-        signed = crypto.createHmac('sha256', token_key).update(toSign).digest('hex');
-      return (new Buffer(signed)).toString('base64');
-    };
-
-    const validateToken = function (token) {
-      var signature = calculateSignature(token);
-
-      if (signature !== token.signature) {
-        return Promise.reject('Invalid token signature');
-      } else {
-        return Promise.resolve(token);
-      }
-    };
-
     socket.on('login', function(login_info, callback) {
-      new Promise(function(resolve, reject){
-        if(checkClientAbility(login_info.userAgent)){
-          resolve('client ability ok');
-        } else {
-          reject('User agent info is incorrect.');
-        }
-      }).then(function(ClientAbilityOK) {
-        return new Promise(function (resolve) {
-          resolve(JSON.parse((new Buffer(login_info.token, 'base64')).toString()));
+      new Promise(function(resolve){
+        resolve(JSON.parse((new Buffer(login_info.token, 'base64')).toString()));
+      }).then(function(token){
+        return new Promise(function(resolve, reject){
+          if(checkClientAbility(login_info.userAgent)){
+            resolve(token);
+          } else {
+            reject('User agent info is incorrect.');
+          }
         });
-      }).then(function (token) {
-        return validateToken(token);
       }).then(function(token){
         return joinPortal(participant_id, token);
       }).then(function(room_info) {
@@ -260,6 +240,15 @@ var Client = function(participant_id, socket, tokenKey, portal, observer, reconn
         }
         safeCall(callback, 'success', room_info);
       }).catch(function(error) {
+        joinPortalFailed(error, callback);
+      });
+    });
+
+    // "token" event is deprecated. It has been replace with "login". All clients use "token" will be treated as legacy version (<3.3).
+    socket.on('token', function(token, callback) {
+      joinPortal(participant_id, token).then(function(room_info){
+        safeCall(callback, 'success', room_info);
+      }).catch(function(error){
         joinPortalFailed(error, callback);
       });
     });
@@ -1002,15 +991,11 @@ var Client = function(participant_id, socket, tokenKey, portal, observer, reconn
     socket = newSocket;
   }
 
-  that.updateTokenKey = function(tokenKey) {
-    token_key = tokenKey;
-  };
-
   return that;
 };
 
 
-var SocketIOServer = function(spec, tokenKey, portal, observer) {
+var SocketIOServer = function(spec, portal, observer) {
   var that = {};
   var io;
   var clients = {};
@@ -1078,7 +1063,7 @@ var SocketIOServer = function(spec, tokenKey, portal, observer) {
         reconnectionKey: reconnection_key,
         reconnectionCallback: reconnection_callback
       };
-      clients[participant_id] = Client(participant_id, socket, tokenKey, portal, observer, reconnection_spec, function() {
+      clients[participant_id] = Client(participant_id, socket, portal, observer, reconnection_spec, function() {
         delete clients[participant_id];
       });
       clients[participant_id].listen();
@@ -1120,12 +1105,6 @@ var SocketIOServer = function(spec, tokenKey, portal, observer) {
       return Promise.resolve('ok');
     } else {
       return Promise.reject('user not in room');
-    }
-  };
-
-  that.updateTokenKey = function(tokenKey) {
-    for (var pid in clients) {
-      clients[pid].updateTokenKey(tokenKey);
     }
   };
 

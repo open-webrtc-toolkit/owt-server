@@ -59,6 +59,46 @@ var testParticipantId = '/#gpMeAEuPeMMDT0daAAAA';
 var testSession = '573eab78111478bb3526421a';
 
 
+describe('portal.updateTokenKey: update the token key.', function() {
+  it('Joining with a valid token will fail if the token key is out of time, and success when token key is updated', function() {
+    var mockrpcReq = sinon.createStubInstance(rpcReq);
+    dbAccess.deleteToken = sinon.stub();
+    mockrpcReq.getController = sinon.stub();
+    mockrpcReq.join = sinon.stub();
+
+    var portalSpecWithOldTokenKey = {tokenKey: 'OldTokenKey',
+                                     tokenServer: testTokenServer,
+                                     clusterName: testClusterName,
+                                     selfRpcId: testSelfRpcId,
+                                     permissionMap: {'presenter': {publish: true, subscribe: true}}};
+
+    var portal = Portal(portalSpecWithOldTokenKey, mockrpcReq);
+
+    var login_result = {code: 'tokenCode', userName: 'Jack', role: 'presenter', origin: {isp: 'isp', region: 'region'}, room: testSession};
+    dbAccess.deleteToken.resolves(login_result);
+
+    mockrpcReq.getController.resolves('rpcIdOfController');
+
+    var join_result = {participants: [],
+                       streams: []};
+    mockrpcReq.join.resolves(join_result);
+
+    var final_result = {tokenCode: login_result.code, user: login_result.userName, role: login_result.role, session_id: login_result.room, participants: join_result.participants, streams: join_result.streams};
+
+    return portal.join(testParticipantId, testToken).then(function(runInHere) {
+        expect(runInHere).to.be.false;
+      }, function(reason) {
+        expect(reason).to.have.string('Invalid token signature');
+        portal.updateTokenKey(testTokenKey);
+        return portal.join(testParticipantId, testToken).then(function(result) {
+          expect(result).to.deep.equal(final_result);
+          expect(mockrpcReq.getController.getCall(0).args).to.deep.equal(['woogeen-cluster', testSession]);
+          expect(mockrpcReq.join.getCall(0).args).to.deep.equal(['rpcIdOfController', testSession, {id: testParticipantId, name: 'Jack', role: 'presenter', portal: testSelfRpcId}]);
+        });
+      });
+  });
+});
+
 describe('portal.join: Participants join.', function() {
   it('Joining with valid token should succeed.', function() {
     var mockrpcReq = sinon.createStubInstance(rpcReq);
@@ -84,6 +124,20 @@ describe('portal.join: Participants join.', function() {
       expect(mockrpcReq.getController.getCall(0).args).to.deep.equal(['woogeen-cluster', testSession]);
       expect(mockrpcReq.join.getCall(0).args).to.deep.equal(['rpcIdOfController', testSession, {id: testParticipantId, name: 'Jack', role: 'presenter', portal: testSelfRpcId}]);
     });
+  });
+
+  it('Tokens with incorect signature should fail joining.', function() {
+    var mockrpcReq = sinon.createStubInstance(rpcReq);
+    dbAccess.deleteToken = sinon.stub();
+    mockrpcReq.getController = sinon.stub();
+    mockrpcReq.join = sinon.stub();
+    var portal = Portal(testPortalSpec, mockrpcReq);
+
+    var tokenWithInvalidSignature = { tokenId: '573eab88111478bb3526421b',
+                                      host: '10.239.158.161:8080',
+                                      secure: true,
+                                      signature: 'AStringAsInvalidSignature' };
+    return expect(portal.join(testParticipantId, tokenWithInvalidSignature)).to.be.rejectedWith('Invalid token signature');//Note: The error message is not strictly equality checked, instead it will be fullfiled when the actual error message includes the given string here. That is the inherint behavor of 'rejectedWith'.
   });
 
   it('deleteToken timeout or error should fail joining.', function() {
