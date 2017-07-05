@@ -1,0 +1,164 @@
+#!/usr/bin/env node
+
+// building script
+const fs = require('fs');
+const path = require('path');
+const { chdir, cwd } = process;
+const { execSync } = require('child_process');
+const { OptParser, exec } = require('./util');
+const buildTargets = require('./build.json');
+
+const optParser = new OptParser();
+optParser.addOption('l', 'list', 'boolean', 'List avaliable build targets');
+optParser.addOption('t', 'target', 'list', 'Specify target to build');
+optParser.addOption('d', 'debug', 'boolean', 'Whether build debug addon');
+optParser.addOption('r', 'rebuild', 'boolean', 'Whether clean before build');
+optParser.addOption('c', 'check', 'boolean', 'Whether check after build');
+
+const options = optParser.parseArgs(process.argv);
+
+const rootDir = path.join(path.dirname(module.filename), '..');
+const depsDir = path.join(rootDir, 'build/libdeps/build');
+const originCwd = cwd();
+
+// Detect OS script
+const osScript = path.join(rootDir, 'scripts/detectOS.sh');
+const osType = execSync(`. ${osScript}`).toString().toLowerCase();
+
+function getTargets() {
+  var buildSet = new Set();
+  const getIncludings = (includes) => {
+    var childIncludes;
+    for (const name of includes) {
+      if (!buildTargets[name] || buildSet.has(name)) continue;
+
+      if (buildTargets[name].include) {
+        getIncludings(buildTargets[name].include);
+      } else {
+        buildSet.add(name);
+      }
+    }
+  };
+
+  getIncludings(options.target);
+  return [...buildSet];
+}
+
+function listPrint() {
+  console.log('Avaliable builds:');
+  var outputs = [];
+  for (const name in buildTargets) {
+    let desc = '';
+    if (buildTargets[name].description) {
+      desc = '- ' + buildTargets[name].description;
+    }
+    outputs.push(`  ${name} ${desc}`);
+  }
+  outputs.sort();
+  for (const line of outputs) {
+    console.log(line);
+  }
+}
+
+function constructBuildEnv() {
+  var env = process.env;
+  env['CFLAGS'] = '-fstack-protector -Wformat -Wformat-security';
+  env['CXXFLAGS'] = env['CFLAGS'];
+  env['LDFLAGS'] = '-z noexecstack -z relro';
+  env['CORE_HOME'] = path.join(rootDir, 'source/core');
+  env['PKG_CONFIG_PATH'] = path.join(depsDir, 'lib/pkgconfig') + ':' + (env['PKG_CONFIG_PATH'] || '');
+  usergcc = path.join(depsDir, 'bin/gcc');
+  usergxx = path.join(depsDir, 'bin/g++');
+  // Use user compiler if exists
+  if (fs.existsSync(usergcc) && fs.existsSync(usergxx)) {
+    env['CC'] = usergcc;
+    env['CXX'] = usergxx;
+  }
+
+  if (options.debug) {
+    env['OPTIMIZATION_LEVEL'] = '0';
+  } else {
+    env['OPTIMIZATION_LEVEL'] = '3';
+    env['CFLAGS'] = env['CFLAGS'] + ' -D_FORTIFY_SOURCE=2';
+    env['CXXFLAGS'] = env['CFLAGS'];
+  }
+
+  console.log(env['PKG_CONFIG_PATH']);
+
+  return env;
+}
+
+// Common build commands
+rebuildArgs = ['node-gyp', 'rebuild', '-j 8', '--loglevel=error'];
+configureArgs = ['node-gyp', 'configure', '--loglevel=error'];
+buildArgs = ['node-gyp', 'build', '-j 8', '--loglevel=error'];
+
+if (options.debug) {
+  rebuildArgs.push('--debug');
+  configureArgs.push('--debug');
+  buildArgs.push('--debug');
+}
+
+// Build single target
+function buildTarget(name) {
+  console.log('\x1b[32mBuilding addon\x1b[0m -', name);
+  const target = buildTargets[name];
+  if (!target.path) {
+    console.log('\x1b[31mNo binding.gyp:', name, '\x1b[0m');
+    return;
+  }
+
+  const buildPath = path.join(rootDir, target.path);
+  var copyGyp = (target.gyp && target.gyp !== 'binding.gyp') ? true : false;
+
+  chdir(buildPath);
+  if (copyGyp) execSync(`cp ${target.gyp} binding.gyp`);
+
+  var ret;
+  if (options.rebuild) {
+    ret = exec(rebuildArgs.join(' '));
+  } else {
+    execSync(configureArgs.join(' '));
+    ret = exec(buildArgs.join(' '));
+  }
+
+  return ret.then((stdout, stderr) => {
+    console.log('\x1b[32mFinish addon\x1b[0m -', name);
+    console.log('Output:');
+    console.log(stdout);
+    if (copyGyp) {
+      execSync(`rm ${path.join(rootDir, target.path, 'binding.gyp')}`);
+    }
+  });
+}
+
+if (options.list) {
+  listPrint();
+  process.exit(0);
+}
+
+if (!options.target || !options.target.length) {
+  optParser.printHelp();
+  process.exit(0);
+}
+
+constructBuildEnv();
+var buildList = getTargets();
+console.log('\x1b[32mFollowing targets will be built:\x1b[0m');
+for (const name of buildList) {
+  console.log('', name, '');
+}
+var works = buildList.map((name) => {
+  return buildTarget(name);
+});
+
+Promise.all(works)
+  .then(() => {
+    if (options.check) {
+      moduleTestScript = path.join(rootDir, 'scripts/module_test.js');
+      runtimeAddonDir = path.join(rootDir, 'source/agent');
+      console.log('* Checking modules...');
+      let checkOutput = execSync(`node ${moduleTestScript} ${runtimeAddonDir}`).toString();
+      console.log(checkOutput);
+    }
+  });

@@ -10,9 +10,11 @@
 
 ### Build
 
-- without msdk: `scripts/build.sh --mcu`
-- with msdk: `scripts/build.sh --mcu-hardware`
-- both: `scripts/build.sh --mcu-all`
+- without msdk: `scripts/build.js -t mcu`
+- with msdk: `scripts/build.js -t mcu-msdk`
+- specified target: `scripts/build.sh -t ${name}`
+- check after build: `scripts/build.js -t mcu --check`
+- rebuild (add this option if libraries update): `scripts/build.js -t mcu --rebuild`
 
 ### Package
 
