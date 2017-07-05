@@ -7,20 +7,13 @@ var restServer = require('../restServer');
 var portal = require('../portal');
 
 var testRoom = '573eab78111478bb3526421a';
-var testTokenKey = '6d96729ffd07202e7a65ac81278c43a2c87fc6367736431e614607e9d3ceee201f9680cdfcb88df508829e9810c46aaf02c9cc8dcf46369de122ee5b22ec963c';
-var testToken = {tokenId: '573eab88111478bb3526421b',
-                 host: '10.239.158.161:8080',
-                 secure: true,
-                 signature: 'ZTIwZTI0YzYyMDFmMTQ1OTc3ZTBkZTdhMDMyZTJhYTkwMTJiZjNhY2E5OTZjNzA1Y2ZiZGU1ODhjMDY3MmFkYw=='
-                };
-
 
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
 describe('Responding to https requests.', function() {
   var mockPortal = sinon.createStubInstance(portal);
   var mockServiceObserver = {onJoin: sinon.spy(), onLeave: sinon.spy()};
-  var server = restServer({port: 3003, ssl: true, keystorePath: './cert/certificate.pfx'}, testTokenKey, mockPortal, mockServiceObserver);
+  var server = restServer({port: 3003, ssl: true, keystorePath: './cert/certificate.pfx'}, mockPortal, mockServiceObserver);
   var testQueryInterval = 60 * 1000;
   var request = require('request');
 
@@ -58,13 +51,13 @@ describe('Responding to https requests.', function() {
     var transformed_streams = [{id: testRoom, audio: true, video: {device: 'mcu', resolutions: [{width: 640, height: 480}, {width: 1280, height: 720}]}, from: ''}];
     var options = {uri: 'https://localhost:3003/clients',
                    method: 'POST',
-                   json: {token: testToken, queryInterval: testQueryInterval}};
+                   json: {token: 'someValidToken', queryInterval: testQueryInterval}};
     request(options, function(error, response, body) {
       expect(error).to.equal(null);
       expect(response.statusCode).to.equal(200);
       var client_id = mockPortal.join.getCall(0).args[0];
       expect(client_id).to.be.a('string');
-      expect(mockPortal.join.getCall(0).args[1]).to.deep.equal(testToken);
+      expect(mockPortal.join.getCall(0).args[1]).to.equal('someValidToken');
       expect(mockServiceObserver.onJoin.getCall(0).args).to.deep.equal(['tokenCode']);
       expect(body).to.deep.equal({id: client_id, streams: transformed_streams, clients: join_result.participants});
       done();
@@ -76,7 +69,7 @@ describe('Responding to https requests.', function() {
 describe('Responding to http requests.', function() {
   var mockPortal = sinon.createStubInstance(portal);
   var mockServiceObserver = {onJoin: sinon.spy(), onLeave: sinon.spy()};
-  var server = restServer({port: 3002, ssl: false}, testTokenKey, mockPortal, mockServiceObserver);
+  var server = restServer({port: 3002, ssl: false}, mockPortal, mockServiceObserver);
   var testQueryInterval = 60 * 1000;
   var request = require('request');
 
@@ -113,7 +106,7 @@ describe('Responding to http requests.', function() {
 
       var options = {uri: 'http://localhost:3002/clients',
                      method: 'POST',
-                     json: {token: testToken, queryInterval: queryInterval || testQueryInterval}};
+                     json: {token: 'someValidToken', queryInterval: queryInterval || testQueryInterval}};
       request(options, function(error, response, body) {
         expect(response.statusCode).to.equal(200);
         resolve(body.id);
@@ -152,36 +145,15 @@ describe('Responding to http requests.', function() {
 
       var options = {uri: 'http://localhost:3002/clients',
                      method: 'POST',
-                     json: {token: testToken, queryInterval: testQueryInterval}};
+                     json: {token: 'someValidToken', queryInterval: testQueryInterval}};
       request(options, function(error, response, body) {
         expect(error).to.equal(null);
         expect(response.statusCode).to.equal(200);
         var client_id = mockPortal.join.getCall(0).args[0];
         expect(client_id).to.be.a('string');
-        expect(mockPortal.join.getCall(0).args[1]).to.deep.equal(testToken);
+        expect(mockPortal.join.getCall(0).args[1]).to.equal('someValidToken');
         expect(mockServiceObserver.onJoin.getCall(0).args).to.deep.equal(['tokenCode']);
         expect(body).to.deep.equal({id: client_id, streams: transformed_streams, clients: join_result.participants});
-        done();
-      });
-    });
-
-    it('Joining with invalid token should fail.', function(done) {
-      mockPortal.join = sinon.stub();
-      mockServiceObserver.onJoin = sinon.spy();
-      mockPortal.join.resolves('should not be called');
-
-      var tokenWithInvalidSignature = { tokenId: '573eab88111478bb3526421b',
-                                        host: '10.239.158.161:8080',
-                                        secure: true,
-                                        signature: 'AStringAsInvalidSignature' };
-      var options = {uri: 'http://localhost:3002/clients',
-                     method: 'POST',
-                     json: {token: tokenWithInvalidSignature, queryInterval: testQueryInterval}};
-      request(options, function(error, response, body) {
-        expect(error).to.equal(null);
-        expect(response.statusCode).to.equal(404);
-        expect(mockPortal.join.called).to.be.false;
-        expect(body.reason).to.have.string('Invalid token');
         done();
       });
     });
@@ -192,7 +164,7 @@ describe('Responding to http requests.', function() {
 
       var options = {uri: 'http://localhost:3002/clients',
                      method: 'POST',
-                     json: {token: testToken, queryInterval: testQueryInterval}};
+                     json: {token: 'someValidOrInvalidToken', queryInterval: testQueryInterval}};
       request(options, function(error, response, body) {
         expect(error).to.equal(null);
         expect(response.statusCode).to.equal(404);

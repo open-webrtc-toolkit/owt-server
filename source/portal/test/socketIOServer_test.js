@@ -10,17 +10,9 @@ var portal = require('../portal');
 var testRoom = '573eab78111478bb3526421a';
 var testStream = '573eab78111478bb3526421a-common';
 
-var testTokenKey = '6d96729ffd07202e7a65ac81278c43a2c87fc6367736431e614607e9d3ceee201f9680cdfcb88df508829e9810c46aaf02c9cc8dcf46369de122ee5b22ec963c';
-var testToken = Buffer.from(JSON.stringify({tokenId: '573eab88111478bb3526421b',
-                 host: '10.239.158.161:8080',
-                 secure: true,
-                 signature: 'ZTIwZTI0YzYyMDFmMTQ1OTc3ZTBkZTdhMDMyZTJhYTkwMTJiZjNhY2E5OTZjNzA1Y2ZiZGU1ODhjMDY3MmFkYw=='
-                })).toString('base64');
-
 var clientInfo = {sdk:{version: '3.3', type: 'JavaScript'}, runtime: {name: 'Chrome', version: '53.0.0.0'}, os:{name:'Linux (Ubuntu)', version:'14.04'}};
 // JavaScript SDK 3.3 does not support reconnection. So use iOS UA info for reconnection tests.
 var reconnectionClientInfo = {sdk:{version: '3.3', type: 'Objective-C'}, runtime: {name: 'WebRTC', version: '54'}, os:{name:'iPhone OS', version:'10.2'}};
-const jsLoginInfo = {token: testToken, userAgent: clientInfo};
 
 var testServerPort = 3100;
 var insecureSocketIOServerConfig = () => {
@@ -74,7 +66,7 @@ describe('Clients connect to socket.io server.', function() {
 describe('Logining and Relogining.', function() {
   var mockPortal = sinon.createStubInstance(portal);
   var mockServiceObserver = {onJoin: sinon.spy(), onLeave: sinon.spy()};
-  var server = socketIOServer(insecureSocketIOServerConfig(), testTokenKey, mockPortal, mockServiceObserver);
+  var server = socketIOServer(insecureSocketIOServerConfig(), mockPortal, mockServiceObserver);
   var serverUrl = 'http://localhost:' + (testServerPort++);
   var client;
 
@@ -99,12 +91,71 @@ describe('Logining and Relogining.', function() {
     client = undefined;
   });
 
+  describe('on: token (deprecated)', function() {
+    beforeEach('Clients connect to the server.', function(done) {
+      client = sioClient.connect(serverUrl, {reconnect: false, secure: false, 'force new connection': true});
+      done();
+    });
+
+    it('Joining with valid tokens should succeed.', function(done) {
+      mockPortal.join = sinon.stub();
+      mockServiceObserver.onJoin = sinon.spy();
+
+      var join_result = {tokenCode: 'tokenCode',
+                         user: 'Jack',
+                         role: 'presenter',
+                         session_id: testRoom,
+                         participants: [],
+                         streams: [{id: testStream, view: 'common', audio: true, video: {device: 'mcu', resolutions: ['vga', 'hd720p']}, from: '', socket: ''}]};
+      mockPortal.join.resolves(join_result);
+
+      var transformed_streams = [{id: testStream, view: 'common', audio: true, video: {device: 'mcu', resolutions: [{width: 640, height: 480}, {width: 1280, height: 720}]}, from: '', socket: ''}];
+
+      client.emit('token', 'someValidToken', function(status, resp) {
+        expect(status).to.equal('success');
+        // portal.join requires base64 encoded token which is the same as nuve issued. Legacy client sends base64 decoded token.
+        expect(mockPortal.join.getCall(0).args).to.deep.equal([client.id, 'someValidToken']);
+        expect(mockServiceObserver.onJoin.getCall(0).args).to.deep.equal(['tokenCode']);
+        expect(resp).to.deep.equal({id: join_result.session_id, clientId: client.id, streams: transformed_streams, users: join_result.participants});
+        done();
+      });
+    });
+
+    it('Joining with invalid tokens should fail and cause disconnection.', function(done) {
+      "use strict";
+      mockPortal.join = sinon.stub();
+      mockPortal.join.rejects('invalid token');
+
+      let resolveDisconnect, resolveToken;
+      Promise.all([new Promise(function(resolve){
+        resolveDisconnect=resolve;
+      }), new Promise(function(resolve){
+        resolveToken=resolve;
+      })]).then(function(){
+        done();
+      });
+
+      client.on('disconnect', function() {
+        resolveDisconnect();
+      });
+
+      client.emit('token', 'someInvalidToken', function(status, resp) {
+        expect(status).to.equal('error');
+        expect(resp).to.have.string('invalid token');
+        resolveToken();
+      });
+    });
+
+  });
+
   describe('on: login', function(){
     "use strict";
     beforeEach('Clients connect to the server.', function(done) {
       client = sioClient.connect(serverUrl, {reconnect: false, secure: false, 'force new connection': true});
       done();
     });
+
+    let someValidToken = (new Buffer(JSON.stringify('someValidToken'))).toString('base64');
 
     it('Joining with valid token and UA info should succeed.', function(done) {
       mockPortal.join = sinon.stub();
@@ -120,9 +171,9 @@ describe('Logining and Relogining.', function() {
 
       var transformed_streams = [{id: testStream, view: 'common', audio: true, video: {device: 'mcu', resolutions: [{width: 640, height: 480}, {width: 1280, height: 720}]}, from: '', socket: ''}];
 
-      client.emit('login', {token: testToken, userAgent:reconnectionClientInfo}, function(status, resp) {
+      client.emit('login', {token: someValidToken, userAgent:reconnectionClientInfo}, function(status, resp) {
         expect(status).to.equal('success');
-        expect(mockPortal.join.getCall(0).args).to.deep.equal([client.id, JSON.parse((new Buffer(testToken, 'base64')).toString())]);
+        expect(mockPortal.join.getCall(0).args).to.deep.equal([client.id, 'someValidToken']);
         expect(mockServiceObserver.onJoin.getCall(0).args).to.deep.equal(['tokenCode']);
         expect(resp.id).to.equal(join_result.session_id);
         expect(resp.clientId).to.equal(client.id);
@@ -154,7 +205,7 @@ describe('Logining and Relogining.', function() {
 
       client.emit('login', {token: (new Buffer(JSON.stringify('someInvalidToken'))).toString('base64'), userAgent: clientInfo}, function(status, resp) {
         expect(status).to.equal('error');
-        expect(resp).to.have.string('Invalid token');
+        expect(resp).to.have.string('invalid token');
         resolveJoin();
       });
     });
@@ -176,43 +227,9 @@ describe('Logining and Relogining.', function() {
         resolveDisconnect();
       });
 
-      client.emit('login', {token: 'notBase64EncodedString', userAgent: clientInfo}, function(status, resp) {
+      client.emit('login', {token: 'someInvalidToken', userAgent: clientInfo}, function(status, resp) {
         expect(status).to.equal('error');
         expect(mockPortal.join.called).to.be.false;
-        expect(resp).to.have.string('Unexpected token');
-        resolveJoin();
-      });
-    });
-
-    it('Joining with token which is incorrectly signated should fail and cause disconnection.', function(done) {
-      mockPortal.join = sinon.stub();
-      mockPortal.join.rejects('invalid token');
-
-      let resolveDisconnect, resolveJoin;
-      Promise.all([new Promise(function(resolve){
-        resolveDisconnect=resolve;
-      }), new Promise(function(resolve){
-        resolveJoin=resolve;
-      })]).then(function(){
-        done();
-      });
-
-      client.on('disconnect', function() {
-        resolveDisconnect();
-      });
-
-      var tokenWithInvalidSignature = Buffer.from(JSON.stringify(
-                                        { tokenId: '573eab88111478bb3526421b',
-                                          host: '10.239.158.161:8080',
-                                          secure: true,
-                                          signature: 'AStringAsInvalidSignature'
-                                        }
-                                      )).toString('base64');
-      client.emit('login', {token: tokenWithInvalidSignature, userAgent: clientInfo}, function(status, resp) {
-        expect(status).to.equal('error');
-        expect(mockPortal.join.called).to.be.false;
-        console.log('resp:', resp);
-        expect(resp).to.have.string('Invalid token');
         resolveJoin();
       });
     });
@@ -240,7 +257,7 @@ describe('Logining and Relogining.', function() {
         resolveDisconnect();
       });
 
-      client.emit('login', {token: testToken, userAgent: 'invalidUserAgent'}, function(status, resp) {
+      client.emit('login', {token: someValidToken, userAgent: 'invalidUserAgent'}, function(status, resp) {
         expect(status).to.equal('error');
         expect(resp).to.have.string('User agent info is incorrect.');
         resolveToken();
@@ -263,9 +280,9 @@ describe('Logining and Relogining.', function() {
 
       var transformed_streams = [{id: testStream, view: 'common', audio: true, video: {device: 'mcu', resolutions: [{width: 640, height: 480}, {width: 1280, height: 720}]}, from: '', socket: ''}];
 
-      client.emit('login', {token: testToken, userAgent:clientInfo}, function(status, resp) {
+      client.emit('login', {token: someValidToken, userAgent:clientInfo}, function(status, resp) {
         expect(status).to.equal('success');
-        expect(mockPortal.join.getCall(0).args).to.deep.equal([client.id, JSON.parse((new Buffer(testToken, 'base64')).toString())]);
+        expect(mockPortal.join.getCall(0).args).to.deep.equal([client.id, 'someValidToken']);
         expect(mockServiceObserver.onJoin.getCall(0).args).to.deep.equal(['tokenCode']);
         expect(resp.id).to.equal(join_result.session_id);
         expect(resp.clientId).to.equal(client.id);
@@ -291,7 +308,7 @@ describe('Logining and Relogining.', function() {
       done();
     });
 
-    const someValidLoginInfo = {token: testToken, userAgent: reconnectionClientInfo};
+    const someValidLoginInfo = {token: (new Buffer(JSON.stringify('someInvalidToken'))).toString('base64'), userAgent: reconnectionClientInfo};
 
     it('Relogin with correct ticket should success.', function(done){
       const joinResult = {user: 'Jack',
@@ -504,7 +521,7 @@ describe('Logining and Relogining.', function() {
 
   describe('on: logout', function() {
     'use strict';
-    const someValidLoginInfo = {token: testToken, userAgent: reconnectionClientInfo};
+    const someValidLoginInfo = {token: (new Buffer(JSON.stringify('someInvalidToken'))).toString('base64'), userAgent: reconnectionClientInfo};
 
     beforeEach('Clients connect to the server.', function(done) {
       client = sioClient.connect(serverUrl, {reconnect: false, secure: false, 'force new connection': true});
@@ -553,7 +570,7 @@ describe('Logining and Relogining.', function() {
     });
 
     it('Refresh reconnection ticket after login should get new ticket.', function(done){
-      const someValidLoginInfo = {token: testToken, userAgent: reconnectionClientInfo};
+      const someValidLoginInfo = {token: (new Buffer(JSON.stringify('someInvalidToken'))).toString('base64'), userAgent: reconnectionClientInfo};
       mockPortal.join = sinon.stub();
       const joinResult = {user: 'Jack',
                          role: 'presenter',
@@ -601,10 +618,10 @@ describe('Logining and Relogining.', function() {
           expect(mockPortal.leave.getCall(0).args).to.deep.equal([participant_id]);
           expect(mockServiceObserver.onLeave.getCall(0).args).to.deep.equal(['tokenCode']);
           done();
-        }, 100);
+        }, 500);
       });
 
-      client.emit('login', jsLoginInfo, function(status, resp) {
+      client.emit('token', 'someValidToken', function(status, resp) {
         participant_id = client.id;
         expect(status).to.equal('success');
         client.disconnect();
@@ -633,48 +650,10 @@ describe('Logining and Relogining.', function() {
   });
 });
 
-describe('Update the token key.', function() {
-  it('Joining with a valid token will fail if the token key is out of time, and success when token key is updated', function() {
-    var mockPortal = sinon.createStubInstance(portal);
-    var mockServiceObserver = {onJoin: sinon.spy(), onLeave: sinon.spy()};
-    var server = socketIOServer(insecureSocketIOServerConfig(), 'invalidTokenKey', mockPortal, mockServiceObserver);
-    var serverUrl = 'http://localhost:' + (testServerPort++);
-    var client;
-
-    mockPortal.join = sinon.stub();
-    mockServiceObserver.onJoin = sinon.spy();
-
-    var join_result = {tokenCode: 'tokenCode',
-                       user: 'Jack',
-                       role: 'presenter',
-                       session_id: testRoom,
-                       participants: [],
-                       streams: [{id: testStream, view: 'common', audio: true, video: {device: 'mcu', resolutions: ['vga', 'hd720p']}, from: '', socket: ''}]};
-    mockPortal.join.resolves(join_result);
-
-    return server.start()
-      .then(function(result) {
-        client = sioClient.connect(serverUrl, {reconnect: false, secure: false, 'force new connection': true});
-      }).then(function(result) {
-        client.emit('login', {token: testToken, userAgent:reconnectionClientInfo}, function(status, resp) {
-          expect(status).to.equal('error');
-          expect(resp).to.have.string('Invalid token');
-          server.updateTokenKey(testTokenKey);
-          client = sioClient.connect(serverUrl, {reconnect: false, secure: false, 'force new connection': true});
-          client.emit('login', {token: testToken, userAgent:reconnectionClientInfo}, function(status, resp) {
-            expect(status).to.equal('success');
-            expect(mockPortal.join.getCall(0).args).to.deep.equal([client.id, testToken]);
-            done();
-          });
-        });
-      });
-  });
-});
-
 describe('Notifying events to clients.', function() {
   var mockPortal = sinon.createStubInstance(portal);
   var mockServiceObserver = {onJoin: sinon.spy(), onLeave: sinon.spy()};
-  var server = socketIOServer(insecureSocketIOServerConfig(), testTokenKey, mockPortal, mockServiceObserver);
+  var server = socketIOServer(insecureSocketIOServerConfig(), mockPortal, mockServiceObserver);
   var serverUrl = 'http://localhost:' + (testServerPort++);
   var client;
 
@@ -714,7 +693,7 @@ describe('Notifying events to clients.', function() {
                          streams: []};
       mockPortal.join.resolves(join_result);
 
-      client.emit('login', jsLoginInfo, function(status, resp) {
+      client.emit('token', 'someValidToken', function(status, resp) {
         mockPortal.join = null;
         expect(status).to.equal('success');
         return expect(server.notify(client.id, 'add_stream', {audio: true, video: {resolution: 'vga', device: 'camera'}})).to.become('ok');
@@ -729,7 +708,7 @@ describe('Drop users from sessions.', function() {
   mockPortal.leave.resolves('ok');
 
   var mockServiceObserver = {onJoin: sinon.spy(), onLeave: sinon.spy()};
-  var server = socketIOServer(insecureSocketIOServerConfig(), testTokenKey, mockPortal, mockServiceObserver);
+  var server = socketIOServer(insecureSocketIOServerConfig(), mockPortal, mockServiceObserver);
   var serverUrl = 'http://localhost:' + (testServerPort++);
   var client;
 
@@ -757,7 +736,7 @@ describe('Drop users from sessions.', function() {
       mockPortal.join.rejects('user not in room');
       mockServiceObserver.onLeave = sinon.spy();
 
-      client.emit('login', jsLoginInfo, function(status, resp) {
+      client.emit('token', 'someValidToken', function(status, resp) {
         return server.drop('Jack', 'someOtherRoomJackNotIn')
           .then(function(runInHere) {
             expect(runInHere).to.be.false;
@@ -784,7 +763,7 @@ describe('Drop users from sessions.', function() {
       mockPortal.join.resolves(join_result);
       mockServiceObserver.onLeave = sinon.spy();
 
-      client.emit('login', jsLoginInfo, function(status, resp) {
+      client.emit('token', 'someValidToken', function(status, resp) {
         return server.drop(client.id, testRoom)
           .then(function(result) {
             expect(result).to.equal('ok');
@@ -809,7 +788,7 @@ describe('Drop users from sessions.', function() {
       mockPortal.join.resolves(join_result);
       mockServiceObserver.onLeave = sinon.spy();
 
-      client.emit('login', jsLoginInfo, function(status, resp) {
+      client.emit('token', 'someValidToken', function(status, resp) {
         return server.drop(client.id)
           .then(function(result) {
             expect(result).to.equal('ok');
@@ -834,7 +813,7 @@ describe('Drop users from sessions.', function() {
       mockPortal.join.resolves(join_result);
       mockServiceObserver.onLeave = sinon.spy();
 
-      client.emit('login', jsLoginInfo, function(status, resp) {
+      client.emit('token', 'someValidToken', function(status, resp) {
         return server.drop('all')
           .then(function(result) {
             expect(result).to.equal('ok');
@@ -849,7 +828,7 @@ describe('Drop users from sessions.', function() {
 describe('Responding to clients.', function() {
   var mockPortal = sinon.createStubInstance(portal);
   var mockServiceObserver = {onJoin: sinon.spy(), onLeave: sinon.spy()};
-  var server = socketIOServer(insecureSocketIOServerConfig(), testTokenKey, mockPortal, mockServiceObserver);
+  var server = socketIOServer(insecureSocketIOServerConfig(), mockPortal, mockServiceObserver);
   var serverUrl = 'http://localhost:' + (testServerPort++);
   var client;
 
@@ -890,7 +869,7 @@ describe('Responding to clients.', function() {
                          streams: [{id: testStream, view: 'common', audio: true, video: {device: 'mcu', resolutions: ['vga', 'hd720p']}, from: '', socket: ''}]};
       mockPortal.join.resolves(join_result);
 
-      client.emit('login', jsLoginInfo, function(status, resp) {
+      client.emit('token', 'someValidToken', function(status, resp) {
         expect(status).to.equal('success');
         resolve('ok');
       });
