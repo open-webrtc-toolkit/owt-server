@@ -244,15 +244,6 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
       });
     });
 
-    // "token" event is deprecated. It has been replace with "login". All clients use "token" will be treated as legacy version (<3.3).
-    socket.on('token', function(token, callback) {
-      joinPortal(participant_id, token).then(function(room_info){
-        safeCall(callback, 'success', room_info);
-      }).catch(function(error){
-        joinPortalFailed(error, callback);
-      });
-    });
-
     // Login after reconnection.
     socket.on('relogin', function(reconnection_ticket, callback) {
       new Promise(function(resolve){
