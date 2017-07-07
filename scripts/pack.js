@@ -334,7 +334,11 @@ function packCommon(target) {
         execSync(`mv ${packageJson} ${packageJson}.${target.rules.name}`);
       } else {
         chdir(installDist);
-        npmInstall = exec('npm install');
+        npmInstall = exec('npm install')
+          .then((stdout, stderr) => {
+            console.log(stdout);
+            console.log(stderr);
+          });
       }
     }
   }

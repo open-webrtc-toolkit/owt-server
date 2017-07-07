@@ -114,22 +114,16 @@ function buildTarget(name) {
   chdir(buildPath);
   if (copyGyp) execSync(`cp ${target.gyp} binding.gyp`);
 
-  var ret;
+  var stdio = [null, process.stdout, process.stderr];
   if (options.rebuild) {
-    ret = exec(rebuildArgs.join(' '));
+    execSync(rebuildArgs.join(' '), { stdio });
   } else {
-    execSync(configureArgs.join(' '));
-    ret = exec(buildArgs.join(' '));
+    execSync(configureArgs.join(' '), { stdio });
+    execSync(buildArgs.join(' '), { stdio });
   }
 
-  return ret.then((stdout, stderr) => {
-    console.log('\x1b[32mFinish addon\x1b[0m -', name);
-    console.log('Output:');
-    console.log(stdout);
-    if (copyGyp) {
-      execSync(`rm ${path.join(rootDir, target.path, 'binding.gyp')}`);
-    }
-  });
+  if (copyGyp) execSync(`rm ${path.join(rootDir, target.path, 'binding.gyp')}`);
+  console.log('\x1b[32mFinish addon\x1b[0m -', name);
 }
 
 if (options.list) {
