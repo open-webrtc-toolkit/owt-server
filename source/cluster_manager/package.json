@@ -3,7 +3,7 @@
   "version":"3.4.0",
   "dependencies": {
     "amqp": "*",
-    "log4js": "*",
+    "log4js": "^1.1.1",
     "toml": "*"
   }
 }
