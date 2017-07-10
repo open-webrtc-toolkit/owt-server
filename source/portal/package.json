@@ -6,7 +6,7 @@
     "express": "*",
     "body-parser": "*",
     "socket.io": "^1.6.0",
-    "log4js": "*",
+    "log4js": "^1.1.1",
     "toml": "*",
     "sprintf-js": "^1.0.3",
     "mongojs": ""
