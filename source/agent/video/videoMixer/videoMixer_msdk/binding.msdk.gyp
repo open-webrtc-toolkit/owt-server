@@ -5,7 +5,6 @@
       '../addon.cc',
       '../VideoMixerWrapper.cc',
       '../MsdkVideoCompositor.cpp',
-      '../VideoLayoutProcessor.cpp',
       '../VideoMixer.cpp',
       '../../../../core/woogeen_base/I420BufferManager.cpp',
       '../../../../core/woogeen_base/MediaFramePipeline.cpp',

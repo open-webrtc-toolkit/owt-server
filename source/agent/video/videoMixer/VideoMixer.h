@@ -26,10 +26,11 @@
 #include <boost/scoped_ptr.hpp>
 #include <logger.h>
 #include <map>
+#include <set>
 #include <vector>
 
 #include "MediaFramePipeline.h"
-#include "VideoLayoutProcessor.h"
+#include "VideoLayout.h"
 
 namespace webrtc {
 class VoEVideoSync;
@@ -37,7 +38,6 @@ class VoEVideoSync;
 
 namespace mcu {
 
-class VideoLayoutProcessor;
 class VideoFrameMixer;
 
 class VideoMixer {
@@ -47,13 +47,9 @@ public:
     VideoMixer(const std::string& config);
     virtual ~VideoMixer();
 
-    bool addInput(const std::string& inStreamID, const std::string& codec, woogeen_base::FrameSource* source, const std::string& avatar);
-    void removeInput(const std::string& inStreamID);
-    void setInputActive(const std::string& inStreamID, bool active);
-    bool setRegion(const std::string& inStreamID, const std::string& regionID);
-    std::string getRegion(const std::string& inStreamID);
-    void setPrimary(const std::string& inStreamID);
-
+    bool addInput(const int inputIndex, const std::string& codec, woogeen_base::FrameSource* source, const std::string& avatar);
+    void removeInput(const int inputIndex);
+    void setInputActive(const int inputIndex, bool active);
     bool addOutput(const std::string& outStreamID
             , const std::string& codec
             , const std::string& resolution
@@ -66,26 +62,18 @@ public:
         //TODO: Establish another data path to guarantee the a/v sync of input streams.
         return -1;
     }
-
-    // Current layout { streamID : region } map
-    boost::shared_ptr<std::map<std::string, mcu::Region>> getCurrentRegions();
+    // Update Layout solution
+    void updateLayoutSolution(LayoutSolution& solution);
 
 private:
-    int useAFreeInputIndex();
     void closeAll();
 
     int m_nextOutputIndex;
 
-    uint32_t m_inputCount;
-    uint32_t m_maxInputCount;
-
     boost::shared_ptr<VideoFrameMixer> m_frameMixer;
 
-    boost::shared_mutex m_inputsMutex;
-    std::map<std::string, int> m_inputs;
-    std::vector<bool> m_freeInputIndexes;
-
-    boost::scoped_ptr<VideoLayoutProcessor> m_layoutProcessor;
+    uint32_t m_maxInputCount;
+    std::set<int> m_inputs;
 
     boost::shared_mutex m_outputsMutex;
     std::map<std::string, int32_t> m_outputs;

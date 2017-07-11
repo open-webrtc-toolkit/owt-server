@@ -1,9 +1,7 @@
 /*global require, module, global, process*/
 'use strict';
 require = require('module')._load('./AgentLoader');
-var internalIO = require('./internalIO/build/Release/internalIO');
-var InternalIn = internalIO.In;
-var InternalOut = internalIO.Out;
+
 var MediaFrameMulticaster = require('./mediaFrameMulticaster/build/Release/mediaFrameMulticaster');
 
 var logger = require('./logger').logger;
@@ -12,6 +10,8 @@ var logger = require('./logger').logger;
 var log = logger.getLogger('VideoNode');
 var InternalConnectionFactory = require('./InternalConnectionFactory');
 var internalConnFactory = new InternalConnectionFactory;
+
+const { LayoutProcessor } = require('./layout');
 
 var useHardware = global.config.video.hardwareAccelerated,
     openh264Enabled = global.config.video.openh264Enabled,
@@ -62,9 +62,72 @@ function calculateResolutions(rootResolution, useMultistreaming) {
     });
 }
 
+// String(streamId) - Number(inputId) Map
+class StreamMap {
+    constructor(maxInput) {
+        this.map = {};
+        this.freeIndex = [];
+        // Default to 100 if not specified
+        if (typeof maxInput !== 'number' || maxInput <= 0) maxInput = 100;
+        for (let i = 0; i < maxInput; i++) {
+            this.freeIndex.push(i);
+        }
+        this.freeIndex.reverse();
+    }
+
+    // Has the streamId
+    has(streamId) {
+        return (this.map[streamId] !== undefined);
+    }
+
+    // Get input from stream
+    get(streamId) {
+        if (this.map[streamId] === undefined) return -1;
+        return this.map[streamId];
+    }
+
+    // Given String streamId, return Number inputId
+    add(streamId) {
+        if (this.map[streamId] !== undefined) {
+            return -1;
+        }
+        if (this.freeIndex.length > 0) {
+            this.map[streamId] = this.freeIndex.pop();
+        }
+        return this.map[streamId];
+    }
+
+    // Remove streamId, return Number inputId
+    remove(streamId) {
+        var inputId = this.map[streamId]
+        if (inputId !== undefined) {
+            this.freeIndex.push(inputId);
+            delete this.map[streamId];
+            return -1;
+        }
+        return inputId;
+    }
+
+    // Return all the streams
+    streams() {
+        return Object.keys(this.map);
+    }
+
+    // Get stream from input
+    getStreamFromInput(inputId) {
+        for (let streamId in this.map) {
+            if (this.map[streamId] === inputId) {
+                return streamId;
+            }
+        }
+        return null;
+    }
+}
+
 function VMixer(rpcClient, clusterIP) {
     var that = {},
         engine,
+        layoutProcessor,
         belong_to,
         controller,
         view,
@@ -91,7 +154,6 @@ function VMixer(rpcClient, clusterIP) {
         /*{StreamID : InternalIn}*/
         inputs = {},
         maxInputNum = 0,
-        primary = undefined,
 
         /*{ConnectionID: {video: StreamID | undefined,
                           connection: InternalOut}
@@ -99,6 +161,9 @@ function VMixer(rpcClient, clusterIP) {
          }
          */
         connections = {};
+
+    // Map streamID {string} to {number}
+    var streamMap;
 
     var addInput = function (stream_id, codec, options, avatar, on_ok, on_error) {
         if (engine) {
@@ -114,11 +179,12 @@ function VMixer(rpcClient, clusterIP) {
 
                 // Use default avatar if it is not set
                 avatar = avatar || global.config.avatar.location;
-                if (engine.addInput(stream_id, codec, conn, avatar)) {
+                let inputId = streamMap.add(stream_id);
+                if (inputId >= 0 && engine.addInput(inputId, codec, conn, avatar)) {
+                    layoutProcessor.addInput(inputId);
                     inputs[stream_id] = conn;
                     log.debug('addInput ok, stream_id:', stream_id, 'codec:', codec, 'options:', options);
                     on_ok(stream_id);
-                    notifyLayoutChange();
                 } else {
                     internalConnFactory.destroy(stream_id, 'in');
                     on_error('Failed in adding input to video-engine.');
@@ -130,12 +196,12 @@ function VMixer(rpcClient, clusterIP) {
     };
 
     var removeInput = function (stream_id) {
-        if (inputs[stream_id]) {
-            engine.removeInput(stream_id);
+        if (inputs[stream_id] && streamMap.has(stream_id)) {
+            let inputId = streamMap.remove(stream_id);
+            engine.removeInput(inputId);
+            layoutProcessor.removeInput(inputId);
             internalConnFactory.destroy(stream_id, 'in');
             delete inputs[stream_id];
-
-            notifyLayoutChange();
         }
     };
 
@@ -184,27 +250,6 @@ function VMixer(rpcClient, clusterIP) {
         }
     };
 
-    var getSortedRegions = function () {
-        // TODO: implement the layout processor in node.js layer.
-        var regions = (engine.getCurrentRegions() || []);
-        // Sort by region ID to save work with overlap in client side.
-        regions.sort(function(regionA, regionB) {
-            return regionA.id.localeCompare(regionB.id);
-        });
-
-        return regions;
-    };
-
-    var notifyLayoutChange = function () {
-        if (controller) {
-            var regions = getSortedRegions();
-            rpcClient.remoteCall(
-                controller,
-                'onVideoLayoutChange',
-                [belong_to, regions, view]);
-        }
-    };
-
     that.initialize = function (videoConfig, belongTo, layoutcontroller, mixView, callback) {
         log.debug('initEngine, videoConfig:', videoConfig);
         var config = {
@@ -219,7 +264,32 @@ function VMixer(rpcClient, clusterIP) {
             'enableMsdkBackgroundColorSurface': msdkBackgroundColorEnabled
         };
 
+        streamMap = new StreamMap(videoConfig.maxInput);
         engine = new VideoMixer(JSON.stringify(config));
+        layoutProcessor = new LayoutProcessor(videoConfig.layout);
+        layoutProcessor.on('error', function (e) {
+            log.warn('layout error:', e);
+        });
+        layoutProcessor.on('layoutChange', function (layoutSolution) {
+            log.debug('layoutChange', layoutSolution);
+            if (typeof engine.updateLayoutSolution === 'function') {
+               engine.updateLayoutSolution(layoutSolution);
+            } else {
+                log.warn('No native method: updateLayoutSolution');
+            }
+
+            var streamRegions = layoutSolution.map((inputRegion) => {
+                return {
+                    streamID: streamMap.getStreamFromInput(inputRegion.input),
+                    id: inputRegion.region.id,
+                    left: inputRegion.region.left,
+                    top: inputRegion.region.top,
+                    relativeSize: inputRegion.region.relativeSize
+                };
+            });
+            var layoutChangeArgs = [belong_to, streamRegions, view];
+            rpcClient.remoteCall(controller, 'onVideoLayoutChange', layoutChangeArgs);
+        });
         belong_to = belongTo;
         controller = layoutcontroller;
         maxInputNum = videoConfig.maxInput;
@@ -326,8 +396,9 @@ function VMixer(rpcClient, clusterIP) {
 
     that.setInputActive = function (stream_id, active, callback) {
         log.debug('setInputActive, stream_id:', stream_id, 'active:', active);
-        if (inputs[stream_id]) {
-            engine.setInputActive(stream_id, !!active);
+        if (inputs[stream_id] && streamMap.has(stream_id)) {
+            let inputId = streamMap.get(stream_id);
+            engine.setInputActive(inputId, !!active);
             callback('callback', 'ok');
         } else {
             callback('callback', 'error', 'No stream:' + stream_id);
@@ -430,13 +501,10 @@ function VMixer(rpcClient, clusterIP) {
     };
 
     that.setPrimary = function (stream_id, callback) {
-        //TODO: implement the layout processor in node.js layer.
-        if (inputs[stream_id]) {
-            if (primary !== stream_id) {
-                engine.setPrimary(stream_id);
-                notifyLayoutChange();
-                primary = stream_id;
-            }
+        if (inputs[stream_id] && streamMap.has(stream_id)) {
+            let inputId = streamMap.get(stream_id);
+            //TODO: re-implement the setPrimary method
+            layoutProcessor.setPrimary(inputId);
             callback('callback', 'ok');
         } else {
             callback('callback', 'error', 'Invalid input stream_id.');
@@ -445,19 +513,10 @@ function VMixer(rpcClient, clusterIP) {
 
     that.setRegion = function (stream_id, region_id, callback) {
         //TODO: implement the layout processor in node.js layer.
-        if (inputs[stream_id]) {
-            var old_region_id = engine.getRegion(stream_id);
-            if (old_region_id !== '' && (old_region_id === region_id)) {
+        if (inputs[stream_id] && streamMap.has(stream_id)) {
+            let inputId = streamMap.get(stream_id);
+            if (layoutProcessor.specifyInputRegion(inputId, region_id)) {
                 callback('callback', 'ok');
-            } else if (engine.setRegion(stream_id, region_id)) {
-                callback('callback', 'ok');
-                //FIXME: Primary region would NOT always be region '1'
-                if (region_id === '1') {
-                    primary = stream_id;
-                } else if (stream_id === primary) {
-                    primary = undefined;
-                }
-                notifyLayoutChange();
             } else {
                 callback('callback', 'error', 'Invalid region_id.');
             }
@@ -468,9 +527,11 @@ function VMixer(rpcClient, clusterIP) {
 
     that.getRegion = function (stream_id, callback) {
         //TODO: implement the layout processor in node.js layer.
-        if (inputs[stream_id]) {
-            var region_id = engine.getRegion(stream_id);
-            callback('callback', region_id);
+        if (inputs[stream_id] && streamMap.has(stream_id)) {
+            let inputId = streamMap.get(stream_id);
+            let region = layoutProcessor.getRegion(inputId);
+            let regionId = region ? region.id : '';
+            callback('callback', regionId);
         } else {
             callback('callback', 'error', 'Invalid input stream_id.');
         }

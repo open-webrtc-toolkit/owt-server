@@ -49,11 +49,7 @@ class VideoMixer : public node::ObjectWrap {
   static void addOutput(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void removeOutput(const v8::FunctionCallbackInfo<v8::Value>& args);
 
-  static void setRegion(const v8::FunctionCallbackInfo<v8::Value>& args);
-  static void getRegion(const v8::FunctionCallbackInfo<v8::Value>& args);
-  static void setPrimary(const v8::FunctionCallbackInfo<v8::Value>& args);
-
-  static void getCurrentRegions(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void updateLayoutSolution(const v8::FunctionCallbackInfo<v8::Value>& args);
 };
 
 #endif
