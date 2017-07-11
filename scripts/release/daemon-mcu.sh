@@ -117,7 +117,6 @@ case $startStop in
         nohup nice -n ${WOOGEEN_NICENESS} node nuve.js \
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
-        sleep 5
         ;;
       cluster-manager )
         cd ${WOOGEEN_HOME}/cluster_manager
