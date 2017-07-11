@@ -26,7 +26,6 @@
 
 #include "VideoMixer.h"
 #include "VideoFrameMixerImpl.h"
-#include "VideoLayoutProcessor.h"
 #include "VideoFrameMixer.h"
 
 using namespace webrtc;
@@ -38,7 +37,6 @@ DEFINE_LOGGER(VideoMixer, "mcu.media.VideoMixer");
 
 VideoMixer::VideoMixer(const std::string& configStr)
     : m_nextOutputIndex(0)
-    , m_inputCount(0)
     , m_maxInputCount(0)
 {
     if (ELOG_IS_TRACE_ENABLED()) {
@@ -67,9 +65,6 @@ VideoMixer::VideoMixer(const std::string& configStr)
     boost::property_tree::read_json(is, config);
 
     m_maxInputCount = config.get<uint32_t>("maxinput", 16);
-    m_freeInputIndexes.reserve(m_maxInputCount);
-    for (size_t i = 0; i < m_maxInputCount; ++i)
-        m_freeInputIndexes.push_back(true);
 
     bool cropVideo = config.get<bool>("crop");
 
@@ -84,138 +79,78 @@ VideoMixer::VideoMixer(const std::string& configStr)
     }
 #endif
 
-    m_layoutProcessor.reset(new VideoLayoutProcessor(config));
     VideoSize rootSize;
-    m_layoutProcessor->getRootSize(rootSize);
+    std::string resolution = config.get<std::string>("resolution");
+    if (!VideoResolutionHelper::getVideoSize(resolution, rootSize)) {
+        ELOG_WARN("configured resolution is invalid!");
+        VideoResolutionHelper::getVideoSize("vga", rootSize);
+    }
+
     YUVColor bgColor;
-    m_layoutProcessor->getBgColor(bgColor);
+    std::string color = config.get<std::string>("backgroundcolor");
+    if (!VideoColorHelper::getVideoColor(color, bgColor)) {
+        // Try the RGB configuration mode
+        boost::property_tree::ptree pt = config.get_child("backgroundcolor");
+        int r = pt.get<int>("r", -1);
+        int g = pt.get<int>("g", -1);
+        int b = pt.get<int>("b", -1);
+
+        if (!VideoColorHelper::getVideoColor(r, g, b, bgColor)) {
+            ELOG_WARN("configured background color is invalid!");
+            VideoColorHelper::getVideoColor("black", bgColor);
+        }
+    }
 
     ELOG_DEBUG("Init maxInput(%u), rootSize(%u, %u), bgColor(%u, %u, %u)", m_maxInputCount, rootSize.width, rootSize.height, bgColor.y, bgColor.cb, bgColor.cr);
 
     m_frameMixer.reset(new VideoFrameMixerImpl(m_maxInputCount, rootSize, bgColor, true, cropVideo));
-    m_layoutProcessor->registerConsumer(m_frameMixer);
 }
 
 VideoMixer::~VideoMixer()
 {
     closeAll();
-
-    m_layoutProcessor->deregisterConsumer(m_frameMixer);
 }
 
-bool VideoMixer::addInput(const std::string& inStreamID, const std::string& codec, woogeen_base::FrameSource* source, const std::string& avatar)
+bool VideoMixer::addInput(const int inputIndex, const std::string& codec, woogeen_base::FrameSource* source, const std::string& avatar)
 {
-    if (m_inputCount == m_maxInputCount) {
-        ELOG_WARN("Exceeding maximum number of sources (%u), ignoring the addSource request", m_maxInputCount);
+    if (m_inputs.find(inputIndex) != m_inputs.end()) {
+        ELOG_WARN("addInput already exist:%d", inputIndex);
+        return false;
+    }
+    if (m_inputs.size() >= m_maxInputCount) {
+        ELOG_WARN("addInput reach max input");
         return false;
     }
 
     woogeen_base::FrameFormat format = getFormat(codec);
 
-    boost::upgrade_lock<boost::shared_mutex> lock(m_inputsMutex);
-    auto it = m_inputs.find(inStreamID);
-    if (it == m_inputs.end() || !it->second) {
-        int index = useAFreeInputIndex();
-        ELOG_DEBUG("addInput - assigned input(%s) index: %d", inStreamID.c_str(), index);
-
-        if (m_frameMixer->addInput(index, format, source, avatar)) {
-            m_layoutProcessor->addInput(index);
-            boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
-            m_inputs[inStreamID] = index;
-        }
-        ++m_inputCount;
+    if (m_frameMixer->addInput(inputIndex, format, source, avatar)) {
+        m_inputs.insert(inputIndex);
         return true;
     }
-
-    ELOG_WARN("addInput for an existing inStreamID:%s", inStreamID.c_str());
+    ELOG_WARN("addInput fail for inputIndex:%d", inputIndex);
     return false;
 }
 
-void VideoMixer::removeInput(const std::string& inStreamID)
+void VideoMixer::removeInput(const int inputIndex)
 {
-    int index = -1;
-    boost::unique_lock<boost::shared_mutex> lock(m_inputsMutex);
-    auto it = m_inputs.find(inStreamID);
-    if (it != m_inputs.end()) {
-        index = it->second;
-        m_inputs.erase(it);
+    if (m_inputs.find(inputIndex) == m_inputs.end()) {
+        ELOG_WARN("removeInput no such input:%d", inputIndex);
+        return;
     }
-    lock.unlock();
 
-    if (index >= 0) {
-        ELOG_DEBUG("removeInput - recycle input(%s) index: %d", inStreamID.c_str(), index);
-        m_frameMixer->removeInput(index);
-        m_layoutProcessor->removeInput(index);
-        m_freeInputIndexes[index] = true;
-        --m_inputCount;
-    }
+    m_inputs.erase(inputIndex);
+    ELOG_DEBUG("removeInput - recycle input(%d)", inputIndex);
+    m_frameMixer->removeInput(inputIndex);
 }
 
-void VideoMixer::setInputActive(const std::string& inStreamID, bool active)
+void VideoMixer::setInputActive(const int inputIndex, bool active)
 {
-    int index = -1;
-    boost::unique_lock<boost::shared_mutex> lock(m_inputsMutex);
-    auto it = m_inputs.find(inStreamID);
-    if (it != m_inputs.end()) {
-        index = it->second;
+    if (m_inputs.find(inputIndex) != m_inputs.end()) {
+        m_frameMixer->setInputActive(inputIndex, active);
+    } else {
+        ELOG_WARN("setInputActive no such input:%d", inputIndex);
     }
-    lock.unlock();
-
-    if (index >= 0) {
-        m_frameMixer->setInputActive(index, active);
-    }
-}
-
-bool VideoMixer::setRegion(const std::string& inStreamID, const std::string& regionID)
-{
-    int index = -1;
-
-    boost::shared_lock<boost::shared_mutex> lock(m_inputsMutex);
-    auto it = m_inputs.find(inStreamID);
-    if (it != m_inputs.end()) {
-        index = it->second;
-    }
-    lock.unlock();
-
-    if (index >= 0) {
-        return m_layoutProcessor->specifyInputRegion(index, regionID);
-    }
-
-    ELOG_ERROR("specifySourceRegion - no such an input stream: %s", inStreamID.c_str());
-    return false;
-}
-
-std::string VideoMixer::getRegion(const std::string& inStreamID)
-{
-    int index = -1;
-
-    boost::shared_lock<boost::shared_mutex> lock(m_inputsMutex);
-    auto it = m_inputs.find(inStreamID);
-    if (it != m_inputs.end()) {
-        index = it->second;
-    }
-    lock.unlock();
-
-    if (index >= 0)
-        return m_layoutProcessor->getInputRegion(index);
-
-    ELOG_ERROR("getSourceRegion - no such an input stream: %s", inStreamID.c_str());
-    return "";
-}
-
-void VideoMixer::setPrimary(const std::string& inStreamID)
-{
-    std::vector<int> inputs;
-
-    boost::shared_lock<boost::shared_mutex> lock(m_inputsMutex);
-    auto it = m_inputs.find(inStreamID);
-    if (it != m_inputs.end()) {
-        inputs.push_back(it->second);
-    }
-    lock.unlock();
-
-    if (inputs.size() > 0)
-        m_layoutProcessor->promoteInputs(inputs);
 }
 
 bool VideoMixer::addOutput(const std::string& outStreamID, const std::string& codec, const std::string& resolution, woogeen_base::QualityLevel qualityLevel, woogeen_base::FrameDestination* dest)
@@ -247,49 +182,20 @@ void VideoMixer::removeOutput(const std::string& outStreamID)
     }
 }
 
-boost::shared_ptr<std::map<std::string, mcu::Region>> VideoMixer::getCurrentRegions()
-{
-    boost::shared_ptr<std::map<std::string, Region>> layoutMap(new std::map<std::string, Region>);
-
-    for (auto it = m_inputs.begin(); it != m_inputs.end(); it++) {
-        std::string streamID = it->first;
-        int index = it->second;
-        (*layoutMap)[streamID] = m_layoutProcessor->getRegionDetail(index);
-    }
-
-    return layoutMap;
-}
-
-int VideoMixer::useAFreeInputIndex()
-{
-    for (size_t i = 0; i < m_freeInputIndexes.size(); ++i) {
-        if (m_freeInputIndexes[i]) {
-            m_freeInputIndexes[i] = false;
-            return i;
-        }
-    }
-
-    return -1;
+void VideoMixer::updateLayoutSolution(LayoutSolution& solution) {
+    m_frameMixer->updateLayoutSolution(solution);
 }
 
 void VideoMixer::closeAll()
 {
     ELOG_DEBUG("closeAll");
-    {
-        boost::upgrade_lock<boost::shared_mutex> inputLock(m_inputsMutex);
-        auto it = m_inputs.begin();
-        while (it != m_inputs.end()) {
-            int index = it->second;
-            m_frameMixer->removeInput(index);
-            m_layoutProcessor->removeInput(index);
-        }
-        boost::upgrade_to_unique_lock<boost::shared_mutex> inputLock1(inputLock);
-        m_inputs.clear();
-
-        m_inputCount = 0;
+    auto it = m_inputs.begin();
+    while (it != m_inputs.end()) {
+        m_frameMixer->removeInput(*it);
     }
+    m_inputs.clear();
 
-    {    
+    {
         boost::upgrade_lock<boost::shared_mutex> outputLock(m_outputsMutex);
         auto it = m_outputs.begin();
         while (it != m_outputs.end()) {
@@ -302,5 +208,6 @@ void VideoMixer::closeAll()
 
     ELOG_DEBUG("Closed all media in this Mixer");
 }
+
 
 }/* namespace mcu */

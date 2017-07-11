@@ -5,7 +5,6 @@
       '../videoMixer/addon.cc',
       '../videoMixer/VideoMixerWrapper.cc',
       '../videoMixer/SoftVideoCompositor.cpp',
-      '../videoMixer/VideoLayoutProcessor.cpp',
       '../videoMixer/VideoMixer.cpp',
       '../videoMixer/YamiVideoCompositor.cpp',
       '../../../../third_party/webrtc/src/webrtc/video_engine/payload_router.cc',

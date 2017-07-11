@@ -23,6 +23,7 @@
 #endif
 
 #include "VideoMixerWrapper.h"
+#include "VideoLayout.h"
 
 using namespace v8;
 
@@ -43,10 +44,7 @@ void VideoMixer::Init(Handle<Object> exports, Handle<Object> module) {
   NODE_SET_PROTOTYPE_METHOD(tpl, "setInputActive", setInputActive);
   NODE_SET_PROTOTYPE_METHOD(tpl, "addOutput", addOutput);
   NODE_SET_PROTOTYPE_METHOD(tpl, "removeOutput", removeOutput);
-  NODE_SET_PROTOTYPE_METHOD(tpl, "setRegion", setRegion);
-  NODE_SET_PROTOTYPE_METHOD(tpl, "getRegion", getRegion);
-  NODE_SET_PROTOTYPE_METHOD(tpl, "setPrimary", setPrimary);
-  NODE_SET_PROTOTYPE_METHOD(tpl, "getCurrentRegions", getCurrentRegions);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "updateLayoutSolution", updateLayoutSolution);
 
   constructor.Reset(isolate, tpl->GetFunction());
   module->Set(String::NewFromUtf8(isolate, "exports"), tpl->GetFunction());
@@ -84,8 +82,7 @@ void VideoMixer::addInput(const v8::FunctionCallbackInfo<v8::Value>& args) {
   VideoMixer* obj = ObjectWrap::Unwrap<VideoMixer>(args.Holder());
   mcu::VideoMixer* me = obj->me;
 
-  String::Utf8Value param0(args[0]->ToString());
-  std::string inStreamID = std::string(*param0);
+  int inputIndex = args[0]->Int32Value();
   String::Utf8Value param1(args[1]->ToString());
   std::string codec = std::string(*param1);
   FrameSource* param2 = ObjectWrap::Unwrap<FrameSource>(args[2]->ToObject());
@@ -95,9 +92,9 @@ void VideoMixer::addInput(const v8::FunctionCallbackInfo<v8::Value>& args) {
   String::Utf8Value param3(args[3]->ToString());
   std::string avatarData = std::string(*param3);
 
-  bool r = me->addInput(inStreamID, codec, src, avatarData);
+  int r = me->addInput(inputIndex, codec, src, avatarData);
 
-  args.GetReturnValue().Set(Boolean::New(isolate, r));
+  args.GetReturnValue().Set(Number::New(isolate, r));
 }
 
 void VideoMixer::removeInput(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -107,10 +104,8 @@ void VideoMixer::removeInput(const v8::FunctionCallbackInfo<v8::Value>& args) {
   VideoMixer* obj = ObjectWrap::Unwrap<VideoMixer>(args.Holder());
   mcu::VideoMixer* me = obj->me;
 
-  String::Utf8Value param0(args[0]->ToString());
-  std::string inStreamID = std::string(*param0);
-
-  me->removeInput(inStreamID);
+  int inputIndex = args[0]->Int32Value();
+  me->removeInput(inputIndex);
 }
 
 void VideoMixer::setInputActive(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -120,12 +115,10 @@ void VideoMixer::setInputActive(const v8::FunctionCallbackInfo<v8::Value>& args)
   VideoMixer* obj = ObjectWrap::Unwrap<VideoMixer>(args.Holder());
   mcu::VideoMixer* me = obj->me;
 
-  String::Utf8Value param0(args[0]->ToString());
-  std::string inStreamID = std::string(*param0);
-
+  int inputIndex = args[0]->Int32Value();
   bool active = args[1]->ToBoolean()->Value();
 
-  me->setInputActive(inStreamID, active);
+  me->setInputActive(inputIndex, active);
 }
 
 void VideoMixer::addOutput(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -164,78 +157,40 @@ void VideoMixer::removeOutput(const v8::FunctionCallbackInfo<v8::Value>& args) {
   me->removeOutput(outStreamID);
 }
 
-void VideoMixer::setRegion(const v8::FunctionCallbackInfo<v8::Value>& args) {
-  Isolate* isolate = Isolate::GetCurrent();
-  HandleScope scope(isolate);
-
-  VideoMixer* obj = ObjectWrap::Unwrap<VideoMixer>(args.Holder());
-  mcu::VideoMixer* me = obj->me;
-
-  String::Utf8Value param0(args[0]->ToString());
-  std::string inStreamID = std::string(*param0);
-
-  String::Utf8Value param1(args[1]->ToString());
-  std::string regionID = std::string(*param1);
-
-  bool r = me->setRegion(inStreamID, regionID);
-
-  args.GetReturnValue().Set(Boolean::New(isolate, r));
-}
-
-void VideoMixer::getRegion(const v8::FunctionCallbackInfo<v8::Value>& args) {
-  Isolate* isolate = Isolate::GetCurrent();
-  HandleScope scope(isolate);
-
-  VideoMixer* obj = ObjectWrap::Unwrap<VideoMixer>(args.Holder());
-  mcu::VideoMixer* me = obj->me;
-
-  String::Utf8Value param0(args[0]->ToString());
-  std::string inStreamID = std::string(*param0);
-
-  std::string regionID = me->getRegion(inStreamID);
-
-  args.GetReturnValue().Set(String::NewFromUtf8(isolate, regionID.c_str()));
-}
-
-void VideoMixer::setPrimary(const v8::FunctionCallbackInfo<v8::Value>& args) {
-  Isolate* isolate = Isolate::GetCurrent();
-  HandleScope scope(isolate);
-
-  VideoMixer* obj = ObjectWrap::Unwrap<VideoMixer>(args.Holder());
-  mcu::VideoMixer* me = obj->me;
-
-  String::Utf8Value param0(args[0]->ToString());
-  std::string inStreamID = std::string(*param0);
-
-  me->setPrimary(inStreamID);
-}
-
-void VideoMixer::getCurrentRegions(const v8::FunctionCallbackInfo<v8::Value>& args) {
+void VideoMixer::updateLayoutSolution(const v8::FunctionCallbackInfo<v8::Value>& args) {
   Isolate* isolate = Isolate::GetCurrent();
 
   VideoMixer* obj = ObjectWrap::Unwrap<VideoMixer>(args.Holder());
   mcu::VideoMixer* me = obj->me;
 
-  boost::shared_ptr<std::map<std::string, mcu::Region>> currentRegions = me->getCurrentRegions();
-  if (currentRegions && currentRegions->size()) {
-    // Construct a js array
-    Local<Array> regionArray = Array::New(isolate, currentRegions->size());
+  if (args.Length() < 1 || !args[0]->IsObject()) {
+    args.GetReturnValue().Set(Boolean::New(isolate, false));
+    return;
+  }
 
-    int arrayPos = 0;
-    for (std::map<std::string, mcu::Region>::iterator it = currentRegions->begin(); it != currentRegions->end(); it++) {
-      Local<Object> region = Object::New(isolate);
-      region->Set(String::NewFromUtf8(isolate, "streamID"), String::NewFromUtf8(isolate, it->first.c_str()));
-      region->Set(String::NewFromUtf8(isolate, "id"), String::NewFromUtf8(isolate, it->second.id.c_str()));
-      region->Set(String::NewFromUtf8(isolate, "left"), Number::New(isolate, it->second.left));
-      region->Set(String::NewFromUtf8(isolate, "top"), Number::New(isolate, it->second.top));
-      region->Set(String::NewFromUtf8(isolate, "relativeSize"), Number::New(isolate, it->second.relativeSize));
+  Local<Object> jsSolution = args[0]->ToObject();
+  if (jsSolution->IsArray()) {
+    mcu::LayoutSolution solution;
+    int length = jsSolution->Get(String::NewFromUtf8(isolate, "length"))->ToObject()->Uint32Value();
+    for (int i = 0; i < length; i++) {
+      Local<Object> jsInputRegion = jsSolution->Get(i)->ToObject();
+      int input = jsInputRegion->Get(String::NewFromUtf8(isolate, "input"))->NumberValue();
+      Local<Object> regObj = jsInputRegion->Get(String::NewFromUtf8(isolate, "region"))->ToObject();
 
-      regionArray->Set(arrayPos, region);
-      arrayPos++;
+      mcu::Region region;
+      String::Utf8Value s(regObj->Get(String::NewFromUtf8(isolate, "id"))->ToString());
+      region.id = std::string(*s);
+      region.left = regObj->Get(String::NewFromUtf8(isolate, "left"))->NumberValue();
+      region.top = regObj->Get(String::NewFromUtf8(isolate, "top"))->NumberValue();
+      region.relativeSize = regObj->Get(String::NewFromUtf8(isolate, "relativeSize"))->NumberValue();
+
+
+      mcu::InputRegion inputRegion = { input, region };
+      solution.push_back(inputRegion);
     }
-
-    args.GetReturnValue().Set(regionArray);
+    me->updateLayoutSolution(solution);
+    args.GetReturnValue().Set(Boolean::New(isolate, true));
   } else {
-    args.GetReturnValue().Set(v8::Null(isolate));
+    args.GetReturnValue().Set(Boolean::New(isolate, false));
   }
 }
