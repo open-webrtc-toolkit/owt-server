@@ -386,7 +386,7 @@ function packAddon(target) {
     .then((libsOk) => {
       // Replace openh264 if needed
       let libOpenh264 = path.join(libDist, 'libopenh264.so.3');
-      if (fs.existsSync(libOpenh264)) {
+      if (options['archive'] && fs.existsSync(libOpenh264)) {
         let dummyOpenh264 = path.join(rootDir, 'third_party/openh264/pseudo-openh264.so');
         execSync(`cp -av ${dummyOpenh264} ${libOpenh264}`);
       }
@@ -454,7 +454,7 @@ function filterLib(libSrc) {
   // Remove libav/ffmpeg if aac
   if (libName.indexOf('libav') === 0 || libName.indexOf('libsw') === 0) {
     let output = execSync(`ldd ${libSrc}`).toString();
-    if (output.indexOf('aac') >= 0) {
+    if (options['archive'] && output.indexOf('aac') >= 0) {
       return false;
     }
   }
@@ -549,7 +549,7 @@ function packScripts() {
 
   if (options.debug) {
     // Add debug variable
-    execSync(`sed -i "/ROOT=/aNODE_DEBUG_ERIZO=1" ${binDir}/daemon.sh`)
+    execSync(`sed -i "/ROOT=/aexport NODE_DEBUG_ERIZO=1" ${binDir}/daemon.sh`)
   }
 
   const startScript = `${binDir}/start-all.sh`;
