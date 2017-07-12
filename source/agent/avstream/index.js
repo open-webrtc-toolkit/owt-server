@@ -40,6 +40,9 @@ module.exports = function () {
     };
 
     var createAVStreamOut = function (options, callback) {
+        if (options.audio && options.audio.codecs[0] === 'aac') {
+            options.audio.codecs = ['pcm_raw'];
+        }
         var avstream_options = {type: 'avstream',
                                 require_audio: !!options.audio,
                                 require_video: !!options.video,
@@ -48,12 +51,13 @@ module.exports = function () {
                                 video_resolution: (options.video ? options.video.resolution : undefined),
                                 url: options.url};
 
+        var audio_codec = ((avstream_options.audio_codec && avstream_options.audio_codec === 'aac' ? 'pcm_raw' : avstream_options.audio_codec));
         var connection = new AVStreamOut(avstream_options, function (error) {
             if (error) {
                 log.error('avstream-out init error:', error);
                 callback('onStatus', {type: 'failed', reason: error});
             } else {
-                callback('onStatus', {type: 'ready', audio_codecs: options.audio.codecs, video_codecs: options.video ? options.video.codecs : []});
+                callback('onStatus', {type: 'ready', audio_codecs: options.audio ? [audio_codec] : [], video_codecs: options.video ? options.video.codecs : []});
             }
         });
         connection.addEventListener('fatal', function (error) {
