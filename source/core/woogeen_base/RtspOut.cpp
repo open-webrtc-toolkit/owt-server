@@ -135,13 +135,14 @@ bool RtspOut::checkCodec(AVOptions &audioOptions, AVOptions &videoOptions)
     //audio disabled, dont check
     if (audioOptions.codec.empty())
         return true;
-
+#if 0
     if (audioOptions.codec.compare("pcm_raw") != 0) {
         m_AsyncEvent.str("");
         m_AsyncEvent << "Invalid audio codec (" << audioOptions.codec << "), want(pcm_raw)";
         ELOG_ERROR("Invalid audio codec(%s), want(%s)", audioOptions.codec.c_str(), "pcm_raw");
         return false;
     }
+#endif
 
     codec = avcodec_find_encoder_by_name("libfdk_aac");
     if (!codec) {
@@ -299,11 +300,6 @@ bool RtspOut::openAudioEncoder(AVOptions &options)
     int nbChannels = options.spec.audio.channels;
     int sampleRate = options.spec.audio.sampleRate;
 
-    if (options.codec.compare("pcm_raw") != 0) {
-        ELOG_ERROR("Invalid audio codec, %s", options.codec.c_str());
-        return false;
-    }
-
     codec = avcodec_find_encoder_by_name("libfdk_aac");
     if (!codec) {
         ELOG_ERROR("Can not find audio encoder %s, please check if ffmpeg/libfdk_aac installed", "libfdk_aac");
@@ -389,11 +385,6 @@ bool RtspOut::addAudioStream(AVOptions &options)
 {
     int ret;
 
-    if (options.codec.compare("pcm_raw") != 0) {
-        ELOG_ERROR("Invalid audio codec, %s", options.codec.c_str());
-        return false;
-    }
-
     m_audioStream = avformat_new_stream(m_context, m_audioEnc->codec);
     if (!m_audioStream) {
         ELOG_ERROR("Cannot add audio stream");
@@ -464,6 +455,7 @@ void RtspOut::onFrame(const woogeen_base::Frame& frame)
 {
     switch (frame.format) {
         case woogeen_base::FRAME_FORMAT_PCM_48000_2:
+        case woogeen_base::FRAME_FORMAT_AAC:
         case woogeen_base::FRAME_FORMAT_AAC_48000_2:
             if (!hasAudio())
                 return;
@@ -491,10 +483,10 @@ void RtspOut::onFrame(const woogeen_base::Frame& frame)
                 return;
             }
 
-            if (frame.format == woogeen_base::FRAME_FORMAT_AAC_48000_2)
-                m_frameQueue->pushFrame(frame.payload, frame.length);
-            else
+            if (frame.format == woogeen_base::FRAME_FORMAT_PCM_48000_2)
                 addAudioFrame(frame.payload, frame.additionalInfo.audio.nbSamples);
+            else
+                m_frameQueue->pushFrame(frame.payload, frame.length);
 
             break;
 
