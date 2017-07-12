@@ -106,7 +106,11 @@ var Portal = function(spec, rpcReq) {
 
     if (connectionType === 'recording') {
       description.path && (options.path = description.path);
-      options.filename = 'room_' + sessionId + '-' + connectionId + '.mkv';
+      if (typeof description.audio === 'object' && description.audio.codecs && (description.audio.codecs.indexOf('aac_48000_2') > -1)) {
+        options.filename = 'room_' + sessionId + '-' + connectionId + '.mp4';
+      } else {
+        options.filename = 'room_' + sessionId + '-' + connectionId + '.mkv';
+      }
       options.interval = description.interval;
     }
 
