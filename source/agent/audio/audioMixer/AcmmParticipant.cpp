@@ -63,9 +63,17 @@ bool AcmmParticipant::setInput(FrameFormat format, FrameSource* source)
         case FRAME_FORMAT_NELLYMOSER:
             m_input.reset(new FfInput(format));
             break;
-        default:
+        case FRAME_FORMAT_PCM_48000_2:
+        case FRAME_FORMAT_PCMU:
+        case FRAME_FORMAT_PCMA:
+        case FRAME_FORMAT_OPUS:
+        case FRAME_FORMAT_ISAC16:
+        case FRAME_FORMAT_ISAC32:
             m_input.reset(new AcmInput(format));
             break;
+        default:
+            ELOG_ERROR_T("Unsupported format(%s), %d", getFormatStr(format), format);
+            return false;
     }
 
     if (!m_input->init()) {
@@ -95,15 +103,22 @@ bool AcmmParticipant::setOutput(FrameFormat format, FrameDestination* destinatio
 
     switch(format) {
         case FRAME_FORMAT_PCM_48000_2:
-            m_output.reset(new FfOutput(FRAME_FORMAT_AAC_48000_2));
-            //m_output.reset(new PcmOutput(format));
+            m_output.reset(new PcmOutput(format));
             break;
+        case FRAME_FORMAT_AAC:
         case FRAME_FORMAT_AAC_48000_2:
-            m_output.reset(new FfOutput(format));
+            m_output.reset(new FfOutput(FRAME_FORMAT_AAC_48000_2));
             break;
-        default:
+        case FRAME_FORMAT_PCMU:
+        case FRAME_FORMAT_PCMA:
+        case FRAME_FORMAT_OPUS:
+        case FRAME_FORMAT_ISAC16:
+        case FRAME_FORMAT_ISAC32:
             m_output.reset(new AcmOutput(format));
             break;
+        default:
+            ELOG_ERROR_T("Unsupported format(%s), %d", getFormatStr(format), format);
+            return false;
     }
 
     if (!m_output->init()) {
