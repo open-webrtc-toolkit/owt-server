@@ -681,7 +681,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
 
       var unspecifiedStreamIds = (options.audioStreamId === undefined && options.videoStreamId === undefined);
 
-      if ((options.audioStreamId || unspecifiedStreamIds) && (options.audioCodec !== undefined) && (['pcmu', 'opus'].indexOf(options.audioCodec) < 0)) {
+      if ((options.audioStreamId || unspecifiedStreamIds) && (options.audioCodec !== undefined) && (['pcmu', 'opus', 'aac'].indexOf(options.audioCodec) < 0)) {
         return safeCall(callback, 'error', 'Invalid audio codec');
       }
 
@@ -692,7 +692,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
       var subscription_description = {audio: false, video: false};
       (options.audioStreamId || unspecifiedStreamIds) && (subscription_description.audio = {fromStream: options.audioStreamId || that.commonViewStream});
       (subscription_description.audio && (typeof options.audioCodec === 'string')) && (subscription_description.audio.codecs = [options.audioCodec]);
-      subscription_description.audio && (subscription_description.audio.codecs = (subscription_description.audio.codecs || ['opus']).map(function(c) {return (c === 'opus' ? 'opus_48000_2' : c);}));
+      subscription_description.audio && (subscription_description.audio.codecs = (subscription_description.audio.codecs || ['opus', 'aac']).map(function(c) {return (c === 'opus' ? 'opus_48000_2' : (c === 'aac' ? 'aac_48000_2' : c));}));
       (options.videoStreamId || unspecifiedStreamIds) && (subscription_description.video = {fromStream: options.videoStreamId || that.commonViewStream});
       (subscription_description.video && (typeof options.videoCodec === 'string')) && (subscription_description.video.codecs = [options.videoCodec]);
       subscription_description.video && (subscription_description.video.codecs = subscription_description.video.codecs || ['vp8']);
@@ -715,7 +715,11 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
         }
       }).then(function(connectionLocality) {
         log.debug('portal.subscribe succeeded, connection locality:', connectionLocality);
-        recording_file = path.join(options.path || '', 'room_' + that.inRoom + '-' + subscription_id + '.mkv' );
+        if (typeof options.audioCodec === 'string' && (options.audioCodec.indexOf('aac') > -1)) {
+          recording_file = path.join(options.path || '', 'room_' + that.inRoom + '-' + subscription_id + '.mp4' );
+        } else {
+          recording_file = path.join(options.path || '', 'room_' + that.inRoom + '-' + subscription_id + '.mkv' );
+        }
       }).catch(function(err) {
         const err_message = getErrorMessage(err);
         log.info('portal.subscribe failed:', err_message);

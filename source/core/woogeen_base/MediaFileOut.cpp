@@ -54,6 +54,9 @@ inline AVCodecID frameFormat2AudioCodecID(int frameFormat)
         return AV_CODEC_ID_PCM_ALAW;
     case FRAME_FORMAT_OPUS:
         return AV_CODEC_ID_OPUS;
+    case FRAME_FORMAT_AAC:
+    case FRAME_FORMAT_AAC_48000_2:
+        return AV_CODEC_ID_AAC;
     default:
         return AV_CODEC_ID_PCM_MULAW;
     }
@@ -153,8 +156,11 @@ bool MediaFileOut::init(const AVOptions* audio, const AVOptions* video)
             m_expectedAudio = AV_CODEC_ID_PCM_ALAW;
         } else if (audio->codec.compare("opus_48000_2") == 0) {
             m_expectedAudio = AV_CODEC_ID_OPUS;
+        } else if (audio->codec.compare("aac_48000_2") == 0) {
+            m_expectedAudio = AV_CODEC_ID_AAC;
         } else {
             notifyAsyncEvent("init", "invalid audio codec");
+            ELOG_INFO("invalid audio codec:%s", audio->codec.c_str());
             return false;
         }
         ELOG_DEBUG("expected audio codec:(%d, %s)", m_expectedAudio, audio->codec.c_str());
@@ -233,6 +239,8 @@ void MediaFileOut::onFrame(const Frame& frame)
         break;
     case FRAME_FORMAT_PCMU:
     case FRAME_FORMAT_PCMA:
+    case FRAME_FORMAT_AAC:
+    case FRAME_FORMAT_AAC_48000_2:
     case FRAME_FORMAT_OPUS: {
         if (m_expectedAudio == frameFormat2AudioCodecID(frame.format)) {
             bool addStreamOK = true;
