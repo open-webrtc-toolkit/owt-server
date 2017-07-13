@@ -377,7 +377,7 @@ function packAddon(target) {
     let packLib = getAddonLibs(path.join(addonDist, `${addon.name}.node`))
       .then((libs) => {
         for (let libsrc of libs) {
-          execSync(`cp -Lv ${libsrc} ${libDist}`);
+          execSync(`cp -Lv ${libsrc} ${libDist}`, { stdio: 'inherit' });
         }
       });
     packLibs.push(packLib);
