@@ -18,48 +18,52 @@ var log = logger.getLogger('AvstreamNode');
 
 var InternalConnectionFactory = require('./InternalConnectionFactory');
 
-module.exports = function () {
+module.exports = function (rpcClient) {
     var that = {};
     var connections = new Connections;
     var internalConnFactory = new InternalConnectionFactory;
 
-    var createAVStreamIn = function (options, callback) {
+    var notifyStatus = (controller, sessionId, direction, status) => {
+        rpcClient.remoteCast(controller, 'onSessionProgress', [sessionId, direction, status]);
+    };
+
+    var createAVStreamIn = function (sessionId, options) {
         var avstream_options = {type: 'avstream',
-                                has_audio: !!options.audio,
-                                has_video: !!options.video,
-                                transport: options.transport,
-                                buffer_size: options.buffer_size,
-                                url: options.url};
+                                has_audio: !!options.media.audio,//FIXME: maybe 'auto'
+                                has_video: !!options.media.video,//FIXME: maybe 'auto'
+                                transport: options.connection.transportProtocol,
+                                buffer_size: options.connection.bufferSize,
+                                url: options.connection.url};
 
         var connection = new AVStreamIn(avstream_options, function (message) {
             log.debug('avstream-in status message:', message);
-            callback('onStatus', JSON.parse(message));
+            notifyStatus(options.controller, sessionId, 'in', JSON.parse(message));
         });
 
         return connection;
     };
 
-    var createAVStreamOut = function (options, callback) {
+    var createAVStreamOut = function (connectionId, options) {
         var avstream_options = {type: 'avstream',
-                                require_audio: !!options.audio,
-                                require_video: !!options.video,
-                                audio_codec: (options.audio ? options.audio.codecs[0] : undefined),
-                                video_codec: (options.video ? options.video.codecs[0] : undefined),
-                                video_resolution: (options.video ? options.video.resolution : undefined),
-                                url: options.url};
+                                require_audio: !!options.media.audio,
+                                require_video: !!options.media.video,
+                                audio_codec: 'aac'/*FIXME:hard coded*/,
+                                video_codec: 'h264'/*FIXME: hard coded*/,
+                                video_resolution: 'vga'/*FIXME: hard coded*/,
+                                url: options.connection.url};
 
         var connection = new AVStreamOut(avstream_options, function (error) {
             if (error) {
                 log.error('avstream-out init error:', error);
-                callback('onStatus', {type: 'failed', reason: error});
+                notifyStatus(options.controller, connectionId, 'out', {type: 'failed', reason: error});
             } else {
-                callback('onStatus', {type: 'ready', audio_codecs: options.audio.codecs, video_codecs: options.video ? options.video.codecs : []});
+                notifyStatus(options.controller, connectionId, 'out', {type: 'ready'});
             }
         });
         connection.addEventListener('fatal', function (error) {
             if (error) {
                 log.error('avstream-out fatal error:', error);
-                callback('onStatus', {type: 'failed', reason: 'avstream_out fatal error: ' + error});
+                notifyStatus(options.controller, connectionId, 'out', {type: 'failed', reason: 'avstream_out fatal error: ' + error});
             }
         });
 
@@ -110,18 +114,18 @@ module.exports = function () {
                 if (conn)
                     conn.connect(options);
                 break;
-            case 'avstream':
-                conn = createAVStreamIn(options, callback);
+            case 'streaming':
+                conn = createAVStreamIn(connectionId, options);
                 break;
             default:
                 log.error('Connection type invalid:' + connectionType);
         }
         if (!conn) {
-            log.error('Create connection failed', connectionId, connectionType);
+            log.error('Create connection failed', connectionId);
             return callback('callback', {type: 'failed', reason: 'Create Connection failed'});
         }
 
-        connections.addConnection(connectionId, connectionType, options.controller, conn, 'in')
+        return connections.addConnection(connectionId, connectionType, options.controller, conn, 'in')
         .then(onSuccess(callback), onError(callback));
     };
 
@@ -152,7 +156,7 @@ module.exports = function () {
                     conn.connect(options);
                 break;
             case 'avstream':
-                conn = createAVStreamOut(options, callback);
+                conn = createAVStreamOut(connectionId, options);
                 break;
             default:
                 log.error('Connection type invalid:' + connectionType);

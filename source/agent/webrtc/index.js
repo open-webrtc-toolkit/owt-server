@@ -11,19 +11,23 @@ var logger = require('./logger').logger;
 // Logger
 var log = logger.getLogger('WebrtcNode');
 
-module.exports = function () {
+module.exports = function (rpcClient) {
     var that = {};
     var connections = new Connections;
     var internalConnFactory = new InternalConnectionFactory;
 
-    var createWebRTCConnection = function (direction, options, callback) {
+    var notifyStatus = (controller, sessionId, direction, status) => {
+        rpcClient.remoteCast(controller, 'onSessionProgress', [sessionId, direction, status]);
+    };
+
+    var createWebRTCConnection = function (connectionId, direction, options, callback) {
         var connection = new WrtcConnection({
             direction: direction,
-            audio: options.audio,
-            video: options.video,
+            audio: !!options.media.audio,
+            video: !!options.media.video,
             network_interfaces: that.networkInterfaces
-        }, function (response) {
-            callback('onStatus', response);
+        }, function (status) {
+            notifyStatus(options.controller, connectionId, direction, status);
         });
 
         return connection;
@@ -72,7 +76,7 @@ module.exports = function () {
                     conn.connect(options);
                 break;
             case 'webrtc':
-                conn = createWebRTCConnection('in', options, callback);
+                conn = createWebRTCConnection(connectionId, 'in', options, callback);
                 break;
             default:
                 log.error('Connection type invalid:' + connectionType);
@@ -113,7 +117,7 @@ module.exports = function () {
                     conn.connect(options);
                 break;
             case 'webrtc':
-                conn = createWebRTCConnection('out', options, callback);
+                conn = createWebRTCConnection(connectionId, 'out', options, callback);
                 break;
             default:
                 log.error('Connection type invalid:' + connectionType);
@@ -148,8 +152,8 @@ module.exports = function () {
         connections.cutoffConnection(connectionId).then(onSuccess(callback), onError(callback));
     };
 
-    that.onConnectionSignalling = function (connectionId, msg, callback) {
-        log.debug('onConnectionSignalling, connection id:', connectionId, 'msg:', msg);
+    that.onSessionSignaling = function (connectionId, msg, callback) {
+        log.debug('onSessionSignaling, connection id:', connectionId, 'msg:', msg);
         var conn = connections.getConnection(connectionId);
         if (conn) {
             if (conn.type === 'webrtc') {//NOTE: Only webrtc connection supports signaling.

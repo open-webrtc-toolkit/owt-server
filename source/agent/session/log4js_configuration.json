@@ -14,8 +14,9 @@
     "LoadCollector": "INFO",
     "AmqpClient": "INFO",
     "ErizoJS": "INFO",
-    "Session": "INFO",
-    "Controller": "INFO",
+    "Conference": "INFO",
+    "AccessController": "INFO",
+    "RoomController": "INFO",
     "ErizoAgent": "INFO",
     "Connections": "INFO",
     "InternalConnectionFactory": "INFO"

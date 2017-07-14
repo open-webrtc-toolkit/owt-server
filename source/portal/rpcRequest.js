@@ -4,128 +4,55 @@
 var RpcRequest = function(rpcChannel) {
   var that = {};
 
-  that.tokenLogin = function(nuve, tokenId) {
-    // Reserve for tests, should not be called.
-    return rpcChannel.makeRPC(nuve, 'deleteToken', tokenId);
-  };
-
-  that.getController = function(clusterManager, sessionId) {
-    return rpcChannel.makeRPC(clusterManager, 'schedule', ['session', sessionId, 'preference'/*TODO: specify preference*/, 30 * 1000])
+  that.getController = function(clusterManager, roomId) {
+    return rpcChannel.makeRPC(clusterManager, 'schedule', ['conference', roomId, 'preference'/*TODO: specify preference*/, 30 * 1000])
       .then(function(controllerAgent) {
-        return rpcChannel.makeRPC(controllerAgent.id, 'getNode', [{session: sessionId, task: sessionId}]);
+        return rpcChannel.makeRPC(controllerAgent.id, 'getNode', [{room: roomId, task: roomId}]);
       });
   };
 
-  that.join = function(controller, sessionId, participant) {
-    return rpcChannel.makeRPC(controller, 'join', [sessionId, participant], 6000);
+  that.join = function(controller, roomId, participant) {
+    return rpcChannel.makeRPC(controller, 'join', [roomId, participant], 6000);
   };
 
   that.leave = function(controller, participantId) {
-    rpcChannel.makeRPC(controller, 'leave', [participantId])
-      .catch((err) => {
-      });
-    return Promise.resolve('ok');
-  };
-
-  that.getAccessNode = function(clusterManager, purpose, forWhom, preference) {
-    return rpcChannel.makeRPC(clusterManager, 'schedule', [purpose, forWhom.task, preference, 30 * 1000])
-      .then(function(accessAgent) {
-        return rpcChannel.makeRPC(accessAgent.id, 'getNode', [forWhom])
-          .then(function(accessNode) {
-            return {agent: accessAgent.id, node: accessNode};
-          });
-      });
-  };
-
-  that.recycleAccessNode = function(accessAgent, accessNode, forWhom) {
-    rpcChannel.makeRPC(accessAgent, 'recycleNode', [accessNode, {session: forWhom.session, task: forWhom.task}])
-    . catch((err) => {
-      });
-    return Promise.resolve('ok');
-  };
-
-  that.publish = function(accessNode, connectionId, connectionType, Options, onConnectionStatus) {
-    return rpcChannel.makeRPC(accessNode, 'publish', [connectionId, connectionType, Options], undefined, onConnectionStatus);
-  };
-
-  that.unpublish = function(accessNode, connectionId) {
-    rpcChannel.makeRPC(accessNode, 'unpublish', [connectionId])
-      .catch((err) => {
-      });
-    return Promise.resolve('ok');
-  };
-
-  that.subscribe = function(accessNode, connectionId, connectionType, Options, onConnectionStatus) {
-    return rpcChannel.makeRPC(accessNode, 'subscribe', [connectionId, connectionType, Options], undefined, onConnectionStatus);
-  };
-
-  that.unsubscribe = function(accessNode, connectionId) {
-    rpcChannel.makeRPC(accessNode, 'unsubscribe', [connectionId])
-      .catch((err) => {
-      });
-    return Promise.resolve('ok');
-  };
-
-  that.onConnectionSignalling = function(accessNode, connectionId, signaling) {
-    return rpcChannel.makeRPC(accessNode, 'onConnectionSignalling', [connectionId, signaling]);
-  };
-
-  that.pub2Session = function(controller, participantId, streamId, accessNode, streamDescription, notMix) {
-    return rpcChannel.makeRPC(controller, 'publish', [participantId, streamId, accessNode, streamDescription, !!notMix], 6000);
-  };
-
-  that.unpub2Session = function(controller, participantId, streamId) {
-    rpcChannel.makeRPC(controller, 'unpublish', [participantId, streamId])
-      .catch((err) => {
-      });
-    return Promise.resolve('ok');
-  };
-
-  that.sub2Session = function(controller, participantId, subscriptionId, accessNode, subscriptionDescription) {
-    return rpcChannel.makeRPC(controller, 'subscribe', [participantId, subscriptionId, accessNode, subscriptionDescription], 6000);
-  };
-
-  that.unsub2Session = function(controller, participantId, subscriptionId) {
-    rpcChannel.makeRPC(controller, 'unsubscribe', [participantId, subscriptionId])
-      .catch((err) => {
-      });
-    return Promise.resolve('ok');
-  };
-
-  that.mix = function(controller, participantId, streamId, mixStreams) {
-    return rpcChannel.makeRPC(controller, 'mix', [participantId, streamId, mixStreams], 4000);
-  };
-
-  that.unmix = function(controller, participantId, streamId, mixStreams) {
-    return rpcChannel.makeRPC(controller, 'unmix', [participantId, streamId, mixStreams], 4000);
-  };
-
-  that.updateStream = function(controller, streamId, track, status) {
-    return rpcChannel.makeRPC(controller, 'updateStream', [streamId, track, status], 4000);
-  };
-
-  that.setVideoBitrate = function(accessNode, connectionId, bitrate) {
-    return rpcChannel.makeRPC(accessNode, 'setVideoBitrate', [connectionId, bitrate]);
-  };
-
-  that.mediaOnOff = function(accessNode, connectionId, track, direction, onOff) {
-    return rpcChannel.makeRPC(accessNode, 'mediaOnOff', [connectionId, track, direction, onOff]);
-  };
-
-  that.setMute = function(controller, streamId, track, muted) {
-    return rpcChannel.makeRPC(controller, 'setMute', [streamId, track, muted], 4000);
-  };
-
-  that.getRegion = function(controller, subStreamId, mixStreamId) {
-    return rpcChannel.makeRPC(controller, 'getRegion', [subStreamId, mixStreamId], 4000);
-  };
-
-  that.setRegion = function(controller, subStreamId, regionId, mixStreamId) {
-    return rpcChannel.makeRPC(controller, 'setRegion', [subStreamId, regionId, mixStreamId], 4000);
+    return rpcChannel.makeRPC(controller, 'leave', [participantId]);
   };
 
   that.text = function(controller, fromWhom, toWhom, message) {
     return rpcChannel.makeRPC(controller, 'text', [fromWhom, toWhom, message], 4000);
+  };
+
+  that.setPermission = function(controller, participantId, anotherParticipantId, authorities) {
+    return rpcChannel.makeRPC(controller, 'setPermission', [participantId, anotherParticipantId, authorities]);
+  };
+
+  that.publish = function(controller, participantId, streamId, Options) {
+    return rpcChannel.makeRPC(controller, 'publish', [participantId, streamId, Options]);
+  };
+
+  that.unpublish = function(controller, participantId, streamId) {
+    return rpcChannel.makeRPC(controller, 'unpublish', [participantId, streamId]);
+  };
+
+  that.streamControl = function(controller, participantId, streamId, command) {
+    return rpcChannel.makeRPC(controller, 'streamControl', [participantId, streamId, command], 4000);
+  };
+
+  that.subscribe = function(controller, participantId, subscriptionId, Options) {
+    return rpcChannel.makeRPC(controller, 'subscribe', [participantId, subscriptionId, Options]);
+  };
+
+  that.unsubscribe = function(controller, participantId, subscriptionId) {
+    return rpcChannel.makeRPC(controller, 'unsubscribe', [participantId, subscriptionId]);
+  };
+
+  that.subscriptionControl = function(controller, participantId, subscriptionId, command) {
+    return rpcChannel.makeRPC(controller, 'subscriptionControl', [participantId, subscriptionId, command]);
+  };
+
+  that.onSessionSignaling = function(controller, sessionId, signaling) {
+    return rpcChannel.makeRPC(controller, 'onSessionSignaling', [sessionId, signaling]);
   };
 
   return that;

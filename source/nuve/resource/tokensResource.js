@@ -61,7 +61,7 @@ var generateToken = function (currentRoom, authData, type, origin, callback) {
     }
 
     token = {};
-    token.userName = user;
+    token.user = user;
     token.room = currentRoom._id;
     token.role = role;
     token.service = currentService._id;

@@ -18,10 +18,14 @@ var log = logger.getLogger('RecordingNode');
 
 var InternalConnectionFactory = require('./InternalConnectionFactory');
 
-module.exports = function () {
+module.exports = function (rpcClient) {
     var that = {};
     var connections = new Connections;
     var internalConnFactory = new InternalConnectionFactory;
+
+    var notifyStatus = (controller, sessionId, direction, status) => {
+        rpcClient.remoteCast(controller, 'onSessionProgress', [sessionId, direction, status]);
+    };
 
     var createFileIn = function (options, callback) {
         var avstream_options = {type: 'file',
@@ -35,27 +39,27 @@ module.exports = function () {
         return connection;
     };
 
-    var createFileOut = function (options, callback) {
-        var recordingPath = options.path ? options.path : global.config.recording.path;
+    var createFileOut = function (connectionId, options) {
+        var recording_path = global.config.recording.path;
         var avstream_options = {type: 'file',
-                                require_audio: !!options.audio,
-                                require_video: !!options.video,
-                                audio_codec: (options.audio ? options.audio.codecs[0] : undefined),
-                                video_codec: (options.video ? options.video.codecs[0] : undefined),
-                                url: path.join(recordingPath, options.filename),
-                                interval: options.interval};
+                                require_audio: !!options.media.audio,
+                                require_video: !!options.media.video,
+                                audio_codec: 'opus_48000_2'/*FIXME: should be removed later*/,
+                                video_codec: 'h264'/*FIXME: should be removed later*/,
+                                url: path.join(recording_path, connectionId + '.' + options.connection.container),
+                                interval: 1000/*FIXME: should be removed later*/};
 
         var connection = new AVStreamOut(avstream_options, function (error) {
             if (error) {
                 log.error('media recording init error:', error);
-                callback('onStatus', {type: 'failed', reason: error});
+                notifyStatus(options.controller, connectionId, 'out', {type: 'failed', reason: error});
             } else {
-                callback('onStatus', {type: 'ready', audio_codecs: (options.audio ? options.audio.codecs : []), video_codecs: (options.video ? options.video.codecs : [])});
+                notifyStatus(options.controller, connectionId, 'out', {type: 'ready'});
             }
         });
         connection.addEventListener('fatal', function (error) {
             log.error('media recording error:', error);
-            callback('onStatus', {type: 'failed', reason: 'media recording error: ' + error});
+            notifyStatus(options.controller, connectionId, 'out', {type: 'failed', reason: 'recording fatal error: ' + error});
         });
 
         connection.receiver = function(type) {
@@ -147,7 +151,7 @@ module.exports = function () {
                     conn.connect(options);
                 break;
             case 'recording':
-                conn = createFileOut(options, callback);
+                conn = createFileOut(connectionId, options);
                 break;
             default:
                 log.error('Connection type invalid:' + connectionType);

@@ -35,30 +35,32 @@ try {
     process.exit(-2);
 }
 
-var VideoResolutionMap = { // definition adopted from VideoLayout.h
-    cif:      ['cif'],
-    vga:      ['vga', 'sif'],
-    svga:     ['svga', 'sif'],
-    xga:      ['xga', 'sif'],
-    r640x360: ['r640x360'],
-    hd720p:   ['hd720p', 'vga', 'r640x360'],
-    sif:      ['sif'],
-    hvga:     ['hvga'],
-    r480x360: ['r480x360', 'sif'],
-    qcif:     ['qcif'],
-    r192x144: ['r192x144'],
-    hd1080p:  ['hd1080p', 'hd720p', 'svga', 'vga', 'r640x360'],
-    uhd_4k:   ['uhd_4k', 'hd1080p', 'hd720p', 'svga', 'vga', 'r640x360'],
-    r720x720: ['r720x720', 'r480x480', 'r360x360']
+var resolutionValue2Name = {
+    'r352x288': 'cif',
+    'r640x480': 'vga',
+    'r800x600': 'svga',
+    'r1024x768': 'xga',
+    'r640x360': 'r640x360',
+    'r1280x720': 'hd720p',
+    'r320x240': 'sif',
+    'r480x320': 'hvga',
+    'r480x360': 'r480x360',
+    'r176x144': 'qcif',
+    'r192x144': 'r192x144',
+    'r1920x1080': 'hd1080p',
+    'r3840x2160': 'uhd_4k',
+    'r360x360': 'r360x360',
+    'r480x480': 'r480x480',
+    'r720x720': 'r720x720'
 };
 
-function calculateResolutions(rootResolution, useMultistreaming) {
-    var base = VideoResolutionMap[rootResolution.toLowerCase()];
-    if (!base) return [];
-    if (!useMultistreaming) return [base[0]];
-    return base.map(function (r) {
-        return r;
-    });
+var resolution2String = (r) => {
+  var k = 'r' + r.width + 'x' + r.height;
+  return resolutionValue2Name[k] ? resolutionValue2Name[k] : k;
+};
+
+function isResolutionEqual(r1, r2) {
+  return (r1.width === r2.width) && (r1.height === r2.height);
 }
 
 // String(streamId) - Number(inputId) Map
@@ -133,7 +135,7 @@ function VMixer(rpcClient, clusterIP) {
         defaultQuality,
 
         supported_codecs = [],
-        supported_resolutions = [],
+        default_resolution = {width: 640, height: 480},
         // Map to enum QualityLevel defined in MediaFramePipeline.h
         supported_qualities = {
             bestquality: 0,
@@ -144,7 +146,7 @@ function VMixer(rpcClient, clusterIP) {
         },
 
         /*{StreamID : {codec: 'vp8' | 'h264' |...,
-                       resolution: 'cif' | 'vga' | 'svga' | 'xga' | 'hd720p' | 'sif' | 'hvga' | 'r640x360' | 'r480x360' | 'qcif' | 'r192x144' | 'hd1080p' | 'uhd_4k' | 'r720x720' ...,
+                       resolution: {width: Number(Width), height: Number(Height)},
                        framerate: Number(1~120) | undefined,
                        dispatcher: Dispather,
                        }}*/
@@ -209,7 +211,7 @@ function VMixer(rpcClient, clusterIP) {
     var addOutput = function (codec, resolution, quality, on_ok, on_error) {
         if (engine) {
             for (var id in outputs) {
-                if (outputs[id].codec === codec && outputs[id].resolution === resolution && outputs[id].quality === quality) {
+                if (outputs[id].codec === codec && isResolutionEqual(outputs[id].resolution, resolution) && outputs[id].quality === quality) {
                     return on_ok(id);
                 }
             }
@@ -219,7 +221,7 @@ function VMixer(rpcClient, clusterIP) {
             var stream_id = Math.random() * 1000000000000000000 + '';
             var dispatcher = new MediaFrameMulticaster();
             if (engine.addOutput(stream_id, codec,
-                                 ((!resolution || resolution === 'unspecified' || supported_resolutions.indexOf(resolution) < 0) ? supported_resolutions[0] : resolution),
+                                 resolution2String((!resolution || resolution === 'unspecified') ? default_resolution : resolution),
                                  quality,
                                  dispatcher)) {
                 outputs[stream_id] = {codec: codec,
@@ -252,21 +254,20 @@ function VMixer(rpcClient, clusterIP) {
     };
 
     that.initialize = function (videoConfig, belongTo, layoutcontroller, mixView, callback) {
-        log.debug('initEngine, videoConfig:', videoConfig);
+        //log.debug('initEngine, videoConfig:', JSON.stringify(videoConfig));
         var config = {
             'hardware': useHardware,
             'maxinput': videoConfig.maxInput,
-            'resolution': videoConfig.resolution,
-            'backgroundcolor': videoConfig.bkColor,
-            'layout': videoConfig.layout,
-            'simulcast': videoConfig.multistreaming,
-            'crop': videoConfig.crop,
+            'resolution': resolution2String(videoConfig.parameters.resolution),
+            'backgroundcolor': videoConfig.bgColor,
+            'layout': videoConfig.layout.templates,
+            'crop': videoConfig.layout.crop,
             'gaccplugin': gaccPluginEnabled,
         };
 
         streamMap = new StreamMap(videoConfig.maxInput);
         engine = new VideoMixer(JSON.stringify(config));
-        layoutProcessor = new LayoutProcessor(videoConfig.layout);
+        layoutProcessor = new LayoutProcessor(videoConfig.layout.templates);
         layoutProcessor.on('error', function (e) {
             log.warn('layout error:', e);
         });
@@ -280,11 +281,8 @@ function VMixer(rpcClient, clusterIP) {
 
             var streamRegions = layoutSolution.map((inputRegion) => {
                 return {
-                    streamID: streamMap.getStreamFromInput(inputRegion.input),
-                    id: inputRegion.region.id,
-                    left: inputRegion.region.left,
-                    top: inputRegion.region.top,
-                    relativeSize: inputRegion.region.relativeSize
+                    stream: streamMap.getStreamFromInput(inputRegion.input),
+                    region: inputRegion.region
                 };
             });
             var layoutChangeArgs = [belong_to, streamRegions, view];
@@ -299,6 +297,7 @@ function VMixer(rpcClient, clusterIP) {
         // FIXME: The supported codec list should be a sub-list of those querried from the engine
         // and filterred out according to config.
         supported_codecs = ['vp8', 'vp9'];
+        default_resolution = (videoConfig.parameters.resolution || {width: 640, height: 480});
         if (useHardware || openh264Enabled) {
             supported_codecs.push('h264');
         }
@@ -307,10 +306,8 @@ function VMixer(rpcClient, clusterIP) {
             supported_codecs.push('h265');
         }
 
-        supported_resolutions = calculateResolutions(videoConfig.resolution, videoConfig.multistreaming);
-
         log.debug('Video engine init OK');
-        callback('callback', {codecs: supported_codecs, resolutions: supported_resolutions});
+        callback('callback', {codecs: supported_codecs});
     };
 
     that.deinit = function () {
@@ -335,10 +332,10 @@ function VMixer(rpcClient, clusterIP) {
     };
 
     that.onFaultDetected = function (message) {
-        if (message.purpose === 'session' && controller) {
+        if (message.purpose === 'conference' && controller) {
             if ((message.type === 'node' && message.id === controller) ||
                 (message.type === 'worker' && controller.startsWith(message.id))) {
-                log.error('Session controller (type:', message.type, 'id:', message.id, ') fault is detected, exit.');
+                log.error('Conference controller (type:', message.type, 'id:', message.id, ') fault is detected, exit.');
                 that.deinit();
                 process.exit();
             }
@@ -361,8 +358,7 @@ function VMixer(rpcClient, clusterIP) {
         log.debug('generate, codec:', codec, 'resolution:', resolution, 'qualityLevel:', quality);
         codec = codec || supported_codecs[0];
         codec = codec.toLowerCase();
-        resolution = ((!resolution || resolution === 'unspecified' || supported_resolutions.indexOf(resolution) < 0) ? supported_resolutions[0] : resolution);
-        resolution = resolution.toLowerCase();
+        resolution = ((!resolution || resolution === 'unspecified') ? default_resolution : resolution);
 
         // Map to qualityLevel enum
         if (quality === 'unspecified') quality = defaultQuality;
@@ -374,16 +370,16 @@ function VMixer(rpcClient, clusterIP) {
 
         for (var stream_id in outputs) {
             if (outputs[stream_id].codec === codec &&
-                outputs[stream_id].resolution === resolution &&
+                isResolutionEqual(outputs[stream_id].resolution, resolution) &&
                 outputs[stream_id].quality === qualityLevel) {
                 callback('callback', stream_id);
                 return;
             }
         }
 
-        if (supported_codecs.indexOf(codec) === -1 || supported_resolutions.indexOf(resolution) === -1) {
-            log.error('Not supported codec or resolution:'+codec+', '+resolution);
-            callback('callback', 'error', 'Not supported codec or resolution.');
+        if (supported_codecs.indexOf(codec) === -1) {
+            log.error('Not supported codec: '+codec);
+            callback('callback', 'error', 'Not supported codec.');
             return;
         }
 
@@ -691,10 +687,10 @@ function VTranscoder(rpcClient, clusterIP) {
     };
 
     that.onFaultDetected = function (message) {
-        if (message.purpose === 'session' && controller) {
+        if (message.purpose === 'conference' && controller) {
             if ((message.type === 'node' && message.id === controller) ||
                 (message.type === 'worker' && controller.startsWith(message.id))) {
-                log.error('Session controller (type:', message.type, 'id:', message.id, ') fault is detected, exit.');
+                log.error('Conference controller (type:', message.type, 'id:', message.id, ') fault is detected, exit.');
                 that.deinit();
                 process.exit();
             }

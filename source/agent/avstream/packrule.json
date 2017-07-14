@@ -43,5 +43,5 @@
             }
         ]
     },
-    "start": "node . -U avstream"
+    "start": "node . -U streaming"
 }

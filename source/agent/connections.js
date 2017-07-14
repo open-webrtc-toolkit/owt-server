@@ -156,7 +156,7 @@ module.exports = function Connections () {
             }
             return Promise.resolve('ok');
         } else {
-            log.info('Connection does NOT exist:' + connectionId);
+            log.debug('Connection does NOT exist:' + connectionId);
             return Promise.reject('Connection does NOT exist:' + connectionId);
         }
     };
@@ -170,14 +170,9 @@ module.exports = function Connections () {
     };
 
     that.onFaultDetected = function (message) {
-        if (message.purpose === 'session' || message.purpose === 'portal') {
+        if (message.purpose === 'conference') {
             for (var conn_id in connections) {
-                if ((message.purpose === 'session' &&
-                     connections[conn_id].type === 'internal' &&
-                     ((message.type === 'node' && message.id === connections[conn_id].controller) || (message.type === 'worker' && connections[conn_id].controller.startsWith(message.id)))) ||
-                    (message.purpose === 'portal' &&
-                     message.type === 'worker' &&
-                     connections[conn_id].controller === message.id)){
+                if ((message.type === 'node' && message.id === connections[conn_id].controller) || (message.type === 'worker' && connections[conn_id].controller.startsWith(message.id))) {
                     log.error('Fault detected on controller (type:', message.type, 'id:', message.id, ') of connection:', conn_id , 'and remove it');
                     that.removeConnection(conn_id);
                 }

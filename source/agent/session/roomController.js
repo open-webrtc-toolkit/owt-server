@@ -6,7 +6,11 @@ var logger = require('./logger').logger;
 var makeRPC = require('./makeRPC').makeRPC;
 
 // Logger
-var log = logger.getLogger('Controller');
+var log = logger.getLogger('RoomController');
+
+function isResolutionEqual(r1, r2) {
+  return (r1.width === r2.width) && (r1.height === r2.height);
+}
 
 module.exports.create = function (spec, on_init_ok, on_init_failed) {
 
@@ -18,8 +22,8 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         config = spec.config,
         room_id = spec.room,
         selfRpcId = spec.selfRpcId,
-        enable_audio_transcoding = config.enableAudioTranscoding,
-        enable_video_transcoding = config.enableVideoTranscoding,
+        enable_audio_transcoding = config.transcoding && !!config.transcoding.audio,
+        enable_video_transcoding = config.transcoding && !!config.transcoding.video,
         internal_conn_protocol = config.internalConnProtocol;
 
     /*
@@ -32,7 +36,6 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             video: {
                 mixer: 'TerminalID',
                 supported_codecs: ['h264', 'vp8', 'h265', 'vp9', ...],
-                supported_resolutions: ['hd1080p', 'vga', ...],
             },
         }
     }
@@ -99,8 +102,10 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
     };
 
     var getViewMixingConfig = function(view) {
-        if (config.views && config.views[view])
-            return config.views[view].mediaMixing;
+        var f = config.views.filter((v) => {return v.label === view;});
+        if (f.length > 0) {
+          return f[0];
+        }
         return {};
     };
 
@@ -111,23 +116,24 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
 
         var audio_mixer = mix_views[view].audio.mixer;
         var video_mixer = mix_views[view].video.mixer;
-        if (config.enableMixing && audio_mixer && video_mixer) {
+        var view_config = getViewMixingConfig(view);
+        if (audio_mixer && video_mixer && view_config && view_config.audio && view_config.audio.vad) {
             makeRPC(
                 rpcClient,
                 terminals[audio_mixer].locality.node,
                 'enableVAD',
-                [1000]);
+                [view_config.audio.vad.detectInterval]);
         }
     };
 
     var resetVAD = function (view) {
         log.debug('resetVAD', view);
-        if (!mix_views[view] || !config.enableMixing)
+        if (!mix_views[view])
             return;
 
         var audio_mixer = mix_views[view].audio.mixer;
-        var video_mixer = mix_views[view].video.mixer;
-        if (audio_mixer && video_mixer && config.views[view].mediaMixing.video.avCoordinated) {
+        var view_config = getViewMixingConfig(view);
+        if (audio_mixer && video_mixer && view_config && view_config.audio && view_config.audio.vad) {
             makeRPC(
                 rpcClient,
                 terminals[audio_mixer].locality.node,
@@ -136,7 +142,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         }
     };
 
-    var initMixView = function (view, mediaMixingConfig, onInitOk, onInitError) {
+    var initView = function (view, viewSettings, onInitOk, onInitError) {
         if (!mix_views[view]) {
             onInitError('Mix view does not exist');
             return;
@@ -166,7 +172,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
 
         // Initialize audio
         var audio_mixer = randomId();
-        initMixer(audio_mixer, 'amixer', mediaMixingConfig.audio).then(
+        initMixer(audio_mixer, 'amixer', viewSettings.audio).then(
             function onAudioReady(supportedAudio) {
                 // Save supported info
                 mix_views[view].audio = {
@@ -176,19 +182,16 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
 
                 // Initialize video
                 var video_mixer = randomId();
-                initMixer(video_mixer, 'vmixer', mediaMixingConfig.video).then(
+                initMixer(video_mixer, 'vmixer', viewSettings.video).then(
                     function onVideoReady(supportedVideo) {
                         // Save supported info
                         mix_views[view].video = {
                             mixer: video_mixer,
-                            supported_codecs: supportedVideo.codecs,
-                            supported_resolutions: supportedVideo.resolutions
+                            supported_codecs: supportedVideo.codecs
                         };
 
                         // Enable AV coordination if specified
-                        if (mediaMixingConfig.video.avCoordinated) {
-                            enableAVCoordination(view);
-                        }
+                        enableAVCoordination(view);
                         onInitOk();
                     },
                     function onVideoFail(reason) {
@@ -208,18 +211,18 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         log.debug('initialize room', room_id);
 
         // Mix stream ID is room ID followed by view index
-        if (config.enableMixing) {
-            if (typeof config.views === 'object' && config.views !== null) {
+        if (config.views.length > 0) {
                 // Mutiple views configuration
                 var viewProcessed = [];
 
-                Object.keys(config.views).forEach(function(viewLabel, index) {
+                config.views.forEach(function(viewSettings) {
+                    var viewLabel = viewSettings.label;
                     // Initialize mixer engine for each view
                     mix_views[viewLabel] = {};
 
                     // Save view init promises
                     viewProcessed.push(new Promise(function(resolve, reject) {
-                        initMixView(viewLabel, config.views[viewLabel].mediaMixing,
+                        initView(viewLabel, viewSettings,
                             function onOk() {
                                 log.debug('init ok for view:', viewLabel);
                                 resolve(viewLabel);
@@ -245,10 +248,6 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                     log.error("Error initialize views:", reason);
                     on_error(reason);
                 });
-            } else {
-                log.error('Bad room views config - no mediaMixing item when mixing enabled');
-                on_error('Bad mixing config');
-            }
         } else {
             log.debug('Room disable mixing init ok');
             on_ok(that);
@@ -288,7 +287,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                               : ((terminal_type === 'amixer' || terminal_type === 'axcoder') ? 'audio' : 'unknown');
 
                 var nodeLocality = (preAssignedNode ? Promise.resolve(preAssignedNode)
-                                               : rpcReq.getMediaNode(cluster, purpose, {session: room_id, task: terminal_id}));
+                                               : rpcReq.getWorkerNode(cluster, purpose, {room: room_id, task: terminal_id}, 'preference'));
 
                 return nodeLocality
                     .then(function(locality) {
@@ -300,7 +299,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                             subscribed: {}};
                         on_ok();
                     }, function(err) {
-                        on_error(err.message);
+                        on_error(err.message? err.message : err);
                     });
         } else {
             on_ok();
@@ -314,7 +313,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 || terminals[terminal_id].type === 'axcoder'
                 || terminals[terminal_id].type === 'vmixer'
                 || terminals[terminal_id].type === 'vxcoder') {
-                rpcReq.recycleMediaNode(terminals[terminal_id].locality.agent, terminals[terminal_id].locality.node, {session: room_id, task: terminal_id})
+                rpcReq.recycleWorkerNode(terminals[terminal_id].locality.agent, terminals[terminal_id].locality.node, {session: room_id, task: terminal_id})
                 .catch(function(reason) {
                     // Catch the error to avoid the UnhandledPromiseRejectionWarning in node v6,
                     // The current code can reach here due to recycle an already recycled node.
@@ -726,7 +725,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 return streams[stream_id].owner === video_mixer &&
                        streams[stream_id].video &&
                        streams[stream_id].video.codec === video_codec &&
-                       streams[stream_id].video.resolution === video_resolution &&
+                       isResolutionEqual(streams[stream_id].video.resolution, video_resolution) &&
                        streams[stream_id].video.quality_level === video_quality;
             });
         if (candidates.length > 0) {
@@ -975,12 +974,9 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
 
     var getMixedCodec = function (subMedia, supportedMixCodecs) {
         var codec = 'unavailable';
-        if (subMedia.codecs instanceof Array && subMedia.codecs.length > 0) {
-            for (var i = 0; i < subMedia.codecs.length; i++) {
-                if (supportedMixCodecs.indexOf(subMedia.codecs[i]) !== -1) {
-                    codec = subMedia.codecs[i];
-                    break;
-                }
+        if (subMedia.spec && subMedia.spec.codec) {
+            if (supportedMixCodecs.indexOf(subMedia.spec.codec) !== -1) {
+                codec = subMedia.spec.codec;
             }
         } else {
             codec = supportedMixCodecs[0];
@@ -990,45 +986,14 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
 
     var getForwardCodec = function (subMedia, originalCodec, transcodingEnabled) {
         var codec = 'unavailable';
-        if (subMedia.codecs instanceof Array && subMedia.codecs.length > 0) {
-            var i = 0;
-            for (; i < subMedia.codecs.length; i++) {
-                if (subMedia.codecs[i] === originalCodec) {
-                    codec = subMedia.codecs[i];
-                    break;
-                }
-            }
-            if (i === subMedia.codecs.length && transcodingEnabled) {
-                codec = subMedia.codecs[0];
+        if (subMedia.spec && subMedia.spec.codec && (subMedia.spec.codec !== originalCodec)) {
+            if (transcodingEnabled) {
+                codec = subMedia.spec.codec;
             }
         } else {
             codec = originalCodec;
         }
         return codec;
-    };
-
-    var getMixedResolution = function (subMedia, supportedMixResolutions) {
-        var resolution = 'unavailable';
-        if (subMedia.resolution) {
-            if (supportedMixResolutions.indexOf(subMedia.resolution) !== -1) {
-                resolution = subMedia.resolution;
-            }
-        } else {
-            resolution = supportedMixResolutions[0];
-        }
-        return resolution;
-    };
-
-    var getForwardResolution = function (subMedia, originalResolution, transcodingEnabled) {
-        var resolution = 'unavailable';
-        if (subMedia.resolution) {
-            if (subMedia.resolution === originalResolution || transcodingEnabled) {
-                resolution = subMedia.resolution;
-            }
-        } else {
-            resolution = originalResolution;
-        }
-        return resolution;
     };
 
     var getAudioStream = function (participant_id, stream_id, audio_codec, on_ok, on_error) {
@@ -1068,7 +1033,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             if (streams[stream_id].video) {
                 // We do not check the quality_level for transcoding forward stream here
                 if (streams[stream_id].video.codec === video_codec &&
-                    (video_resolution === 'unspecified' || streams[stream_id].video.resolution === video_resolution)) {
+                    (video_resolution === 'unspecified' || isResolutionEqual(streams[stream_id].video.resolution, video_resolution))) {
                     on_ok(stream_id);
                 } else {
                     getTranscodedVideo(video_codec, video_resolution, video_quality, stream_id, function (streamID) {
@@ -1092,7 +1057,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
 
             var i = terminals[terminal_id].published.indexOf(stream_id);
             if (i !== -1) {
-                if (config.enableMixing) {
+                if (config.views.length > 0) {
                     // Unmix on every mix engine
                     for (var view in mix_views) {
                         unmixStream(stream_id, view);
@@ -1195,7 +1160,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         deinitialize();
     };
 
-    that.publish = function (participantId, streamId, accessNode, streamInfo, unmix, on_ok, on_error) {
+    that.publish = function (participantId, streamId, accessNode, streamInfo, on_ok, on_error) {
         log.debug('publish, participantId: ', participantId, 'streamId:', streamId, 'accessNode:', accessNode.node, 'streamInfo:', JSON.stringify(streamInfo));
         if (streams[streamId] === undefined) {
             var currentPublisherCount = publisherCount();
@@ -1213,28 +1178,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                                          spread: []
                                          };
                     terminals[terminal_id].published.push(streamId);
-
-                    if (!unmix && config.enableMixing) {
-                        // Try mix on "common" view
-                        var mixId = getMixStreamOfView("common");
-                        if (mix_views["common"]) {
-                            mixStream(streamId, "common", function () {
-                                log.debug('Mix stream[' + streamId + '] successfully.');
-                                on_ok();
-                            }, function (error_reason) {
-                                log.error('Mix stream[' + streamId + '] failed, reason: ' + error_reason);
-                                unpublishStream(streamId);
-                                deleteTerminal(terminal_id);
-                                on_error(error_reason);
-                            });
-                        } else {
-                            log.warn('Mix stream[' + streamId + '] to no view.');
-                            on_ok();
-                        }
-                    } else {
-                        log.debug('will not mix stream:', streamId);
-                        on_ok();
-                    }
+                    on_ok();
                 }, function (error_reason) {
                     on_error(error_reason);
                 });
@@ -1266,12 +1210,12 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
 
     that.subscribe = function(participantId, subscriptionId, accessNode, subInfo, on_ok, on_error) {
         log.debug('subscribe, participantId:', participantId, 'subscriptionId:', subscriptionId, 'accessNode:', accessNode.node, 'subInfo:', JSON.stringify(subInfo));
-        if ((!subInfo.audio || (streams[subInfo.audio.fromStream] && streams[subInfo.audio.fromStream].audio) || getViewOfMixStream(subInfo.audio.fromStream))
-            && (!subInfo.video || (streams[subInfo.video.fromStream] && streams[subInfo.video.fromStream].video) || getViewOfMixStream(subInfo.video.fromStream))) {
+        if ((!subInfo.audio || (streams[subInfo.audio.from] && streams[subInfo.audio.from].audio) || getViewOfMixStream(subInfo.audio.from))
+            && (!subInfo.video || (streams[subInfo.video.from] && streams[subInfo.video.from].video) || getViewOfMixStream(subInfo.video.from))) {
 
             var audio_codec = undefined;
             if (subInfo.audio) {
-                var subAudioStream = subInfo.audio.fromStream;
+                var subAudioStream = subInfo.audio.from;
                 var subView = getViewOfMixStream(subAudioStream);
                 var isMixStream = !!subView;
                 audio_codec = isMixStream? getMixedCodec(subInfo.audio, mix_views[subView].audio.supported_codecs)
@@ -1288,22 +1232,19 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             var video_resolution = undefined;
             var video_quality = 'unspecified';
             if (subInfo.video) {
-                var subVideoStream = subInfo.video.fromStream;
+                var subVideoStream = subInfo.video.from;
                 var subView = getViewOfMixStream(subVideoStream);
                 var isMixStream = !!subView;
 
                 if (isMixStream) {
                     // Is mix stream
                     video_codec = getMixedCodec(subInfo.video, mix_views[subView].video.supported_codecs);
-                    video_resolution = getMixedResolution(subInfo.video, mix_views[subView].video.supported_resolutions);
-                    var mixVideoConfig = config.views[subView].mediaMixing;
-                    video_quality = (subInfo.video.quality_level || (mixVideoConfig && mixVideoConfig.quality_level) || 'unspecified');
+                    video_resolution = (subInfo.video && subInfo.video.spec && subInfo.video.spec.resolution ? subInfo.video.spec.resolution : 'unspecified');
+                    video_quality = 'standard'/*(subInfo.video.quality_level || (mixVideoConfig && mixVideoConfig.quality_level) || 'unspecified')*/;
                 } else {
                     // Is forward stream
                     video_codec = getForwardCodec(subInfo.video, streams[subVideoStream].video.codec, enable_video_transcoding);
-                    video_resolution = subInfo.video.resolution
-                        ? getForwardResolution(subInfo.video, streams[subVideoStream].video.resolution, enable_video_transcoding)
-                        : 'unspecified';
+                    video_resolution = (subInfo.video && subInfo.video.spec && subInfo.video.spec.resolution ? subInfo.video.spec.resolution : 'unspecified');
                     video_quality = 'standard'/*(subInfo.video.quality_level || 'unspecified')*/;
                 }
 
@@ -1311,13 +1252,6 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                     log.error('No available video codec');
                     log.debug('subInfo.video:', subInfo.video, 'targetStream.video:', streams[subVideoStream] ? streams[subVideoStream].video : 'mixed_stream', 'enable_video_transcoding:', enable_video_transcoding);
                     return on_error('No available video codec');
-                }
-
-                if (video_resolution === 'unavailable') {
-                    log.error('No available video resolution');
-                    var supported_video_resolutions = mix_views[subView].video.supported_resolutions;
-                    log.debug('subInfo.video:', subInfo.video, 'targetStream.video:', streams[subVideoStream] ? streams[subVideoStream].video : 'mixed_stream, supported_resolutions: ' + supported_video_resolutions, 'enable_video_transcoding:', enable_video_transcoding);
-                    return on_error('No available video resolution');
                 }
             }
 
@@ -1429,13 +1363,13 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             var doSubscribe = function () {
                 var audio_stream, video_stream;
                 if (subInfo.audio) {
-                    log.debug('require audio track of stream:', subInfo.audio.fromStream);
-                    getAudioStream(terminals[terminal_id].owner, subInfo.audio.fromStream, audio_codec, function (streamID) {
+                    log.debug('require audio track of stream:', subInfo.audio.from);
+                    getAudioStream(terminals[terminal_id].owner, subInfo.audio.from, audio_codec, function (streamID) {
                         audio_stream = streamID;
                         log.debug('Got audio stream:', audio_stream);
                         if (subInfo.video) {
-                            log.debug('require video track of stream:', subInfo.video.fromStream);
-                            getVideoStream(subInfo.video.fromStream, video_codec, video_resolution, video_quality, function (streamID) {
+                            log.debug('require video track of stream:', subInfo.video.from);
+                            getVideoStream(subInfo.video.from, video_codec, video_resolution, video_quality, function (streamID) {
                                 video_stream = streamID;
                                 log.debug('Got video stream:', video_stream);
                                 spread2LocalNode(audio_stream, video_stream, function () {
@@ -1459,8 +1393,8 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                         }
                     }, finaly_error);
                 } else if (subInfo.video) {
-                    log.debug('require video track of stream:', subInfo.video.fromStream);
-                    getVideoStream(subInfo.video.fromStream, video_codec, video_resolution, video_quality, function (streamID) {
+                    log.debug('require video track of stream:', subInfo.video.from);
+                    getVideoStream(subInfo.video.from, video_codec, video_resolution, video_quality, function (streamID) {
                         video_stream = streamID;
                         spread2LocalNode(undefined, video_stream, function () {
                             linkup(undefined, video_stream);
@@ -1498,7 +1432,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
     that.updateStream = function (stream_id, track, status) {
         log.debug('updateStream, stream_id:', stream_id, 'track', track, 'status:', status);
         if ((track === 'video' || track === 'av') && (status === 'active' || status === 'inactive')) {
-            if (streams[stream_id] && streams[stream_id].video && config.enableMixing) {
+            if (streams[stream_id] && streams[stream_id].video && config.views.length > 0) {
                 for (var view in mix_views) {
                     var video_mixer = mix_views[view].video.mixer;
                     if (streams[stream_id].video && video_mixer && terminals[video_mixer]) {
@@ -1517,73 +1451,20 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         }
     };
 
-    that.mix = function (stream_id, mixstream_list, on_ok, on_error) {
-        log.debug('mix, stream_id:', stream_id, 'mixstream_list', mixstream_list);
-        if (!Array.isArray(mixstream_list)) {
-            if (!mix_views['common']) {
-                on_error('No common view found when mix stream not specified');
-                return;
-            } else {
-                mixstream_list = [getMixStreamOfView('common')];
-            }
+    that.mix = function (stream_id, toView, on_ok, on_error) {
+        log.debug('mix, stream_id:', stream_id, 'to view:', toView);
+        if (!mix_views[toView]) {
+            return on_error('Invalid view');
         }
-        if (streams[stream_id] && config.enableMixing) {
-            Promise.all(mixstream_list.map(function(mixStreamId) {
-                return new Promise(function(resolve, reject) {
-                    mixStream(stream_id, getViewOfMixStream(mixStreamId),
-                        function() {
-                            resolve(true);
-                        },
-                        function() {
-                            resolve(false);
-                        }
-                    );
-                });
-            })).then(function(results) {
-                on_ok();
-            }).catch(function(reason) {
-                on_error(reason);
-            });
-        } else {
-            on_error('Stream does not exist:'+stream_id);
-        }
+        mixStream(stream_id, toView, on_ok, on_error);
     };
 
-    that.unmix = function (stream_id, mixstream_list, on_ok, on_error) {
-        log.debug('unmix, stream_id:', stream_id, 'mixstream_list', mixstream_list);
-        if (!Array.isArray(mixstream_list)) {
-            if (!mix_views['common']) {
-                on_error('No common view found when mix stream not specified');
-                return;
-            } else {
-                mixstream_list = [getMixStreamOfView('common')];
-            }
+    that.unmix = function (stream_id, fromView, on_ok, on_error) {
+        log.debug('unmix, stream_id:', stream_id, 'from view:', fromView);
+        if (!mix_views[fromView]) {
+            return on_error('Invalid view');
         }
-        if (streams[stream_id] && config.enableMixing) {
-            mixstream_list.forEach(function(mixStreamId) {
-                unmixStream(stream_id, getViewOfMixStream(mixStreamId));
-            });
-            on_ok();
-        } else {
-            on_error('Stream does not exist:'+stream_id);
-        }
-    };
-
-    that.setMute = function (streamId, track, muted, onOk, onError) {
-        log.debug('mute, streamId:', streamId, 'track:', track);
-        let onOff = muted? 'off' : 'on';
-        if (streams[streamId]) {
-            let terminal = terminals[streams[streamId].owner];
-            makeRPC(
-                rpcClient,
-                terminal.locality.node,
-                'mediaOnOff',
-                [streamId, track, 'in', onOff],
-                onOk,
-                onError);
-        } else {
-            onError('Invalid stream');
-        }
+        unmixStream(stream_id, fromView, on_ok, on_error);
     };
 
     that.getRegion = function (stream_id, mixstream_id, on_ok, on_error) {
@@ -1666,8 +1547,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             log.debug('mix stream id:', getMixStreamOfView(view));
             return {
                 streamId: getMixStreamOfView(view),
-                view: view,
-                resolutions: mix_views[view].video.supported_resolutions,
+                view: view
             };
         });
     };
@@ -1681,7 +1561,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
     };
 
     var allocateMediaProcessingNode  = function (forWhom, usage) {
-        return  rpcReq.getMediaNode(cluster, purpose, {session: room_id, task: terminal_id});
+        return  rpcReq.getWorkerNode(cluster, purpose, {room: room_id, task: terminal_id}, 'preference'/*FIXME: should take codecs and usage specification into preference*/);
     };
 
     var initMediaProcessor = function (terminal_id, parameters) {
@@ -1708,15 +1588,12 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 if (mix_views[view]) {
                     mix_views[view].video = {
                         mixer: vmixerId,
-                        supported_codecs: supportedVideo.codecs,
-                        supported_resolutions: supportedVideo.resolutions
+                        supported_codecs: supportedVideo.codecs
                     };
                 }
 
                 // Enable AV coordination if specified
-                if (videoMixingConfig && videoMixingConfig.avCoordinated) {
-                    enableAVCoordination(view);
-                }
+                enableAVCoordination(view);
                 return supportedVideo.resolutions;
             }, function (error_reason) {
                 log.error('Init video_mixer failed. room_id:', room_id, 'reason:', error_reason);
@@ -1760,7 +1637,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         });
         terminals[vmixerId].published = [];
 
-        return rpcReq.getMediaNode(cluster, 'video', {session: room_id, task: vmixerId})
+        return rpcReq.getWorkerNode(cluster, 'video', {room: room_id, task: vmixerId}, 'preference')
             .then(function (locality) {
                 log.debug('Got new video mixer node:', locality);
                 terminals[vmixerId].locality = locality;
@@ -1931,10 +1808,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 }
 
                 // Enable AV coordination if specified
-                var videoMixingConfig = getViewMixingConfig(view).video;
-                if (videoMixingConfig && videoMixingConfig.avCoordinated) {
-                    enableAVCoordination(view);
-                }
+                enableAVCoordination(view);
                 return 'ok';
             }, function (error_reason) {
                 log.error('Init audio_mixer failed. room_id:', room_id, 'reason:', error_reason);
@@ -1978,7 +1852,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         });
         terminals[amixerId].published = [];
 
-        return rpcReq.getMediaNode(cluster, 'audio', {session: room_id, task: amixerId})
+        return rpcReq.getWorkerNode(cluster, 'audio', {room: room_id, task: amixerId}, 'preference')
             .then(function (locality) {
                 log.debug('Got new audio mixer node:', locality);
                 terminals[amixerId].locality = locality;

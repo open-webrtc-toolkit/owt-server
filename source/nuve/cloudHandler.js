@@ -29,16 +29,16 @@ exports.schedulePortal = function (tokenCode, origin, callback) {
 };
 
 exports.getUsersInRoom = function (roomId, callback) {
-    rpc.callRpc(cluster_name, 'getScheduled', ['session', roomId], {callback: function (r) {
+    rpc.callRpc(cluster_name, 'getScheduled', ['conference', roomId], {callback: function (r) {
         if (r === 'timeout' || r === 'error') {
             callback([]);
         } else {
-            log.info('getUsersInRoom:', roomId, 'session agent:', r);
+            log.info('getUsersInRoom:', roomId, 'conference agent:', r);
             rpc.callRpc(r, 'queryNode', [roomId], {callback: function(r1) {
                 if (r1 === 'timeout' || r1 === 'error') {
                     callback([]);
                 } else {
-                    log.info('getUsersInRoom:', roomId, 'session node:', r1);
+                    log.info('getUsersInRoom:', roomId, 'conference node:', r1);
                     rpc.callRpc(r1, 'getUsers', [], {callback: function (users) {
                         log.info('got users:', users);
                         if (users === 'timeout' || users === 'error') {
@@ -54,7 +54,7 @@ exports.getUsersInRoom = function (roomId, callback) {
 };
 
 exports.deleteRoom = function (roomId, callback) {
-    rpc.callRpc(cluster_name, 'getScheduled', ['session', roomId], {callback: function (r) {
+    rpc.callRpc(cluster_name, 'getScheduled', ['conference', roomId], {callback: function (r) {
         if (r === 'timeout' || r === 'error') {
             callback([]);
         } else {
@@ -72,7 +72,7 @@ exports.deleteRoom = function (roomId, callback) {
 };
 
 exports.deleteUser = function (user, roomId, callback) {
-    rpc.callRpc(cluster_name, 'getScheduled', ['session', roomId], {callback: function (r) {
+    rpc.callRpc(cluster_name, 'getScheduled', ['conference', roomId], {callback: function (r) {
         if (r === 'timeout' || r === 'error') {
             callback([]);
         } else {

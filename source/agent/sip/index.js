@@ -46,12 +46,12 @@ function safeCall () {
   }
 }
 
-function do_join(session_ctl, user, room, selfPortal, ok, err) {
+function do_join(conference_ctl, user, room, selfPortal, ok, err) {
     makeRPC(
         rpcClient,
-        session_ctl,
+        conference_ctl,
         'join',
-        [room, {id: user, name: user, role: 'presenter', portal: selfPortal}], function(joinResult) {
+        [room, {id: user, user: {id: user, name: user}, role: 'sip', portal: selfPortal}], function(joinResult) {
             log.debug('join ok');
             var mixStream = null;
             for(var index in joinResult.streams){
@@ -67,10 +67,10 @@ function do_join(session_ctl, user, room, selfPortal, ok, err) {
         });
 }
 
-function do_leave(session_ctl, user) {
+function do_leave(conference_ctl, user) {
     makeRPC(
         rpcClient,
-        session_ctl,
+        conference_ctl,
         'leave',
         [user],
         function() {
@@ -78,10 +78,10 @@ function do_leave(session_ctl, user) {
         });
 
 }
-function do_query(session_ctl, user, room, ok, err) {
+function do_query(conference_ctl, user, room, ok, err) {
     makeRPC(
         rpcClient,
-        session_ctl,
+        conference_ctl,
         'query',
         [user, room], function(streams) {
             safeCall(ok, streams);
@@ -90,23 +90,33 @@ function do_query(session_ctl, user, room, ok, err) {
         });
 }
 
-function do_publish(session_ctl, user, stream_id, accessNode, stream_info) {
+function do_publish(conference_ctl, user, stream_id, stream_info) {
     return new Promise(function(resolve, reject) {
         makeRPC(
             rpcClient,
-            session_ctl,
+            conference_ctl,
             'publish',
-            [user, stream_id, accessNode, stream_info, false],
+            [user, stream_id, stream_info],
             resolve,
             reject);
+    }).then((result) => {
+      return new Promise(function(resolve, reject) {
+        makeRPC(
+            rpcClient,
+            conference_ctl,
+            'streamControl',
+            [user, {id: stream_id, operation: 'mix', data: 'common'}],
+            resolve,
+            reject);
+      });
     });
 }
 
-function do_subscribe(session_ctl, user, subscription_id, accessNode, subInfo) {
+function do_subscribe(conference_ctl, user, subscription_id, accessNode, subInfo) {
     return new Promise(function(resolve, reject) {
         makeRPC(
             rpcClient,
-            session_ctl,
+            conference_ctl,
             'subscribe',
             [user, subscription_id, accessNode, subInfo],
             resolve,
@@ -114,11 +124,11 @@ function do_subscribe(session_ctl, user, subscription_id, accessNode, subInfo) {
     });
 }
 
-function do_unpublish(session_ctl, user, stream_id) {
+function do_unpublish(conference_ctl, user, stream_id) {
     return new Promise(function(resolve, reject) {
         makeRPC(
             rpcClient,
-            session_ctl,
+            conference_ctl,
             'unpublish',
             [user, stream_id],
             resolve,
@@ -126,11 +136,11 @@ function do_unpublish(session_ctl, user, stream_id) {
     });
 }
 
-function do_unsubscribe(session_ctl, user, subscription_id) {
+function do_unsubscribe(conference_ctl, user, subscription_id) {
     return new Promise(function(resolve, reject) {
         makeRPC(
             rpcClient,
-            session_ctl,
+            conference_ctl,
             'unsubscribe',
             [user, subscription_id],
             resolve,
@@ -138,36 +148,36 @@ function do_unsubscribe(session_ctl, user, subscription_id) {
     });
 }
 
-var getSessionControllerForRoom = function (roomId, on_ok, on_error) {
+var getConferenceControllerForRoom = function (roomId, on_ok, on_error) {
     var keepTrying = true;
 
-    var tryFetchingSessionController = function (attempts) {
+    var tryFetchingConferenceController = function (attempts) {
         if (attempts <= 0) {
             return on_error('Timeout to fetech controller');
         }
 
         log.debug('Send controller schedule RPC request to ', cluster_name, ' for room ', roomId);
 
-        makeRPC(rpcClient, cluster_name, 'schedule', ['session', roomId, 'preference'/*FIXME:should fill-in actual preference*/, 60 * 1000],
+        makeRPC(rpcClient, cluster_name, 'schedule', ['conference', roomId, 'preference'/*FIXME:should fill-in actual preference*/, 60 * 1000],
             function (result) {
-                makeRPC(rpcClient, result.id, 'getNode', [{session: roomId, consumer: roomId}], function (sessionController) {
-                    on_ok(sessionController);
+                makeRPC(rpcClient, result.id, 'getNode', [{room: roomId, task: roomId}], function (ConferenceController) {
+                    on_ok(ConferenceController);
                     keepTrying = false;
                 }, function(reason) {
                     if (keepTrying) {
                         log.warn('Failed on get node for', roomId, ', keep trying.');
-                        setTimeout(function () {tryFetchingSessionController(attempts - (reason === 'timeout' ? 4 : 1));}, 1000);
+                        setTimeout(function () {tryFetchingConferenceController(attempts - (reason === 'timeout' ? 4 : 1));}, 1000);
                     }
                 });
             }, function (reason) {
                 if (keepTrying) {
-                    log.warn('Failed on scheduling session for', roomId, ', keep trying.');
-                    setTimeout(function () {tryFetchingSessionController(attempts - (reason === 'timeout' ? 4 : 1));}, 1000);
+                    log.warn('Failed on scheduling conference controller for', roomId, ', keep trying.');
+                    setTimeout(function () {tryFetchingConferenceController(attempts - (reason === 'timeout' ? 4 : 1));}, 1000);
                 }
             });
     };
 
-    tryFetchingSessionController(25);
+    tryFetchingConferenceController(25);
 };
 
 module.exports = function (rpcC, spec) {
@@ -188,16 +198,16 @@ module.exports = function (rpcC, spec) {
     var handleIncomingCall = function (peerURI, on_ok, on_error) {
         var client_id = peerURI;
 
-        getSessionControllerForRoom(room_id, function(result) {
-            var session_controller = result;
-            calls[client_id] = {session_controller : session_controller};
-            do_join(session_controller, client_id, room_id, erizo.id, function(mixedStream) {
+        getConferenceControllerForRoom(room_id, function(result) {
+            var conference_controller = result;
+            calls[client_id] = {conference_controller : conference_controller};
+            do_join(conference_controller, client_id, room_id, erizo.id, function(mixedStream) {
                 if(mixedStream){
                     mixed_stream_id = mixedStream.id;
                     mixed_stream_resolutions = mixedStream.video.resolutions;
                     on_ok();
                 } else {
-                    do_leave(session_controller, client_id);
+                    do_leave(conference_controller, client_id);
                     on_error('No mixed stream in room.');
                 }
             }, function (err) {
@@ -208,7 +218,7 @@ module.exports = function (rpcC, spec) {
 
     //TODO: should complete the following procedure to protect against the unexpected situations such as partial failure.
     var setupCall = function (client_id, info) {
-        var session_controller = calls[client_id].session_controller;
+        var conference_controller = calls[client_id].conference_controller;
 
         var published = Promise.resolve('ok');
         var subscribed = Promise.resolve('ok');
@@ -217,15 +227,22 @@ module.exports = function (rpcC, spec) {
         if (info.audio) {
             var tmp;
             if (info.audio_codec === 'opus') {
-               tmp = 'opus_48000_2';
+               tmp = {codec: 'opus', sampleRate: 48000, channelNum: 2};
             } else if (info.audio_codec === 'PCMU') {
-               tmp = 'pcmu';
+               tmp = {codec: 'pcmu'};
             }
-            audio_info = {codec:tmp};
+            audio_info = {format: tmp};
         }
         if (info.video) {
             //TODO: device:camera, we may need to differentiate with screen sharing in the furture
-            video_info = {codec:info.video_codec.toLowerCase(), resolution:'vga', framerate:30, device:'camera'};
+            var codec = info.video_codec.toLowerCase();
+            var tmp;
+            if (codec === 'h264') {
+              tmp = {codec: codec/*, profile: 'baseline'*/};
+            } else {
+              tmp = {codec: codec};
+            }
+            video_info = {format: tmp};
         }
 
         // publish stream to controller
@@ -236,22 +253,21 @@ module.exports = function (rpcC, spec) {
             streams[stream_id] = {type: 'sip', connection: calls[client_id].conn};
             calls[client_id].stream_id = stream_id;
 
-            var pubInfo = {type: 'sip'};
+            var pubInfo = {type: 'sip', media: {}, locality: {agent:that.agentID, node: erizo.id}};
             if (info.audio && info.audio_dir !== 'sendonly') {
-                pubInfo.audio = audio_info;
+                pubInfo.media.audio = audio_info;
             }else {
-                pubInfo.audio = false;
+                pubInfo.media.audio = false;
             }
             if (info.video && info.video_dir !== 'sendonly') {
-                pubInfo.video = video_info;
+                pubInfo.media.video = video_info;
             }else {
-                pubInfo.video = false;
+                pubInfo.media.video = false;
             }
 
-            published = do_publish(calls[client_id].session_controller,
+            published = do_publish(calls[client_id].conference_controller,
                                    client_id,
                                    stream_id,
-                                   {agent:that.agentID, node: erizo.id},
                                    pubInfo);
         }
 
@@ -300,7 +316,7 @@ module.exports = function (rpcC, spec) {
                                             video: undefined,
                                             connection: calls[client_id].conn};
 
-                subscribed = do_subscribe(calls[client_id].session_controller,
+                subscribed = do_subscribe(calls[client_id].conference_controller,
                                           client_id,
                                           client_id,
                                           {agent:that.agentID, node: erizo.id},
@@ -397,7 +413,7 @@ module.exports = function (rpcC, spec) {
         var support_red = info.video? info.support_red : false;
         var support_ulpfec = info.video? info.support_ulpfec : false;
 
-        if(calls[client_id] === undefined || calls[client_id].session_controller === undefined || calls[client_id].currentInfo === undefined) {
+        if(calls[client_id] === undefined || calls[client_id].conference_controller === undefined || calls[client_id].currentInfo === undefined) {
             log.warn('Call ' + client_id + ' not established, ignore it');
             return;
         }
@@ -431,17 +447,17 @@ module.exports = function (rpcC, spec) {
 
         calls[client_id].updating = true;
 
-        var session_controller = calls[client_id].session_controller;
+        var conference_controller = calls[client_id].conference_controller;
         var old_stream_id = calls[client_id].stream_id;
 
         // Ignore unpublish/unsubscribe failure for send-only/receive-only clients
-        var unpublished = do_unpublish(session_controller, client_id, old_stream_id)
+        var unpublished = do_unpublish(conference_controller, client_id, old_stream_id)
             .then(function(ok) {
                 return ok;
             }).catch(function(err) {
                 return err;
             });
-        var unsubscribed = do_unsubscribe(session_controller, client_id, client_id).then(
+        var unsubscribed = do_unsubscribe(conference_controller, client_id, client_id).then(
             function(ok) {
                 return ok;
             }).catch(function(err) {
@@ -483,7 +499,7 @@ module.exports = function (rpcC, spec) {
         if (calls[client_id]) {
             teardownCall(client_id);
             calls[client_id].conn && calls[client_id].conn.close({input: true, output: true});
-            do_leave(calls[client_id].session_controller, client_id);
+            do_leave(calls[client_id].conference_controller, client_id);
             delete calls[client_id];
         }
     };
@@ -558,7 +574,7 @@ module.exports = function (rpcC, spec) {
             gateway.hangup(client_id);
             teardownCall(client_id);
             calls[client_id].conn && calls[client_id].conn.close({input: true, output: true});
-            do_leave(calls[client_id].session_controller, client_id);
+            do_leave(calls[client_id].conference_controller, client_id);
             delete calls[client_id];
         }
         gateway.close();
@@ -766,12 +782,11 @@ module.exports = function (rpcC, spec) {
     };
 
     that.onFaultDetected = function (message) {
-        if (message.purpose === 'session') {
+        if (message.purpose === 'conference') {
             for (var client_id in calls) {
-                if (message.purpose === 'session' &&
-                    calls[client_id].session_controller &&
-                    ((message.type === 'node' && message.id === calls[client_id].session_controller) || (message.type === 'worker' && calls[client_id].session_controller.startsWith(message.id)))){
-                    log.error('Fault detected on session_controller:', message.id, 'of call:', client_id , ', terminate it');
+                if (calls[client_id].conference_controller &&
+                    ((message.type === 'node' && message.id === calls[client_id].conference_controller) || (message.type === 'worker' && calls[client_id].conference_controller.startsWith(message.id)))){
+                    log.error('Fault detected on conference_controller:', message.id, 'of call:', client_id , ', terminate it');
                     gateway.hangup(client_id);
                     teardownCall(client_id);
                     calls[client_id].conn && calls[client_id].conn.close({input: true, output: true});

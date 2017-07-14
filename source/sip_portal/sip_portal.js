@@ -127,7 +127,7 @@ function createSipConnectivity(room_id, sip_server, sip_user, sip_passwd) {
         }
 
         return new Promise((resolve, reject) => {
-            helper.allocateSipErizo({session: room_id, consumer: room_id}, function(erizo) {
+            helper.allocateSipErizo({room: room_id, task: room_id}, function(erizo) {
                 log.debug('allocateSipErizo', erizo);
                 makeRPC(
                     rpcClient,

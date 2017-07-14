@@ -10,7 +10,7 @@ prerunProcesses = 2 #default: 2
 # 1) the ROLE level, are key-value pairs representing the role name and its operation scope, in which the keys must be strings such as the 'admin'/'presenter'/'viewer'... demonstrated as follow, and the values must be the OPERATION level objects.
 # 2) the OPERATION level, are key-value pairs representing the operation set the role is allowed to perform, in which the keys must be among the list of ['publish', 'subscribe', 'record', 'text'], and the values must be either literally true, false or OBJECT level objects. The default value is false for 'publish', 'subscribe' and 'record', and true for 'text' if not specified.
 # 3) the OBJECT level, are key-value pairs representing the media the operation can be performed upon, in which the keys must be in the list of ['audio', 'video', 'screen'], and the values must be either literally true or false. The default value is false if not specified.
-[session.roles.admin]
+[conference.roles.admin]
 publish = true
 record = true
 subscribe = true
@@ -18,24 +18,24 @@ addExternalOutput = true
 # The 'manage' operation includes mute/unmute users.
 manage = true
 
-[session.roles.presenter]
+[conference.roles.presenter]
 publish = true
 record = true
 subscribe = true
 addExternalOutput = true
 
-[session.roles.audio_only_presenter.publish]
+[conference.roles.audio_only_presenter.publish]
 audio = true
-[session.roles.audio_only_presenter.subscribe]
+[conference.roles.audio_only_presenter.subscribe]
 audio = true
 
-[session.roles.viewer]
+[conference.roles.viewer]
 subscribe = true
 
-[session.roles.video_only_viewer.subscribe]
+[conference.roles.video_only_viewer.subscribe]
 video = true
 
-[session.roles.no_text_viewer]
+[conference.roles.no_text_viewer]
 subscribe = true
 text = false
 

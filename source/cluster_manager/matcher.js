@@ -78,13 +78,13 @@ exports.create = function (purpose) {
     switch (purpose) {
         case 'portal':
             return new portalMatcher();
-        case 'session':
+        case 'conference':
             return new generalMatcher();
         case 'webrtc':
             return new webrtcMatcher();
         case 'recording':
             return new generalMatcher();
-        case 'avstream':
+        case 'streaming':
             return new generalMatcher();
         case 'sip':
             return new generalMatcher();

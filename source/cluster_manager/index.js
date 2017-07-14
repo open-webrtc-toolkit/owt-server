@@ -24,10 +24,10 @@ config.manager.schedule_reserve_time = config.manager.schedule_reserve_time || 6
 config.strategy = config.strategy || {};
 config.strategy.general = config.strategy.general || 'round-robin';
 config.strategy.portal = config.strategy.portal || 'last-used';
-config.strategy.session = config.strategy.session || 'last-used';
+config.strategy.conference = config.strategy.conference || 'last-used';
 config.strategy.webrtc = config.strategy.webrtc || 'last-used';
 config.strategy.sip = config.strategy.sip || 'round-robin';
-config.strategy.avstream = config.strategy.avstream || 'round-robin';
+config.strategy.streaming = config.strategy.streaming || 'round-robin';
 config.strategy.recording = config.strategy.recording || 'randomly-pick';
 config.strategy.audio = config.strategy.audio || 'most-used';
 config.strategy.video = config.strategy.video || 'least-used';
@@ -45,10 +45,10 @@ function startup () {
                     scheduleKeepTime: config.manager.schedule_reserve_time,
                     generalStrategy: config.strategy.general,
                     portalStrategy: config.strategy.portal,
-                    sessionStrategy: config.strategy.session,
+                    conferenceStrategy: config.strategy.conference,
                     webrtcStrategy: config.strategy.webrtc,
                     sipStrategy: config.strategy.sip,
-                    avstreamStrategy: config.strategy.avstream,
+                    streamingStrategy: config.strategy.streaming,
                     recordingStrategy: config.strategy.recording,
                     audioStrategy: config.strategy.audio,
                     videoStrategy: config.strategy.video

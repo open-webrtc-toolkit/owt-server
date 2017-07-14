@@ -132,7 +132,7 @@ case $startStop in
         ;;
       session-agent )
         cd ${WOOGEEN_HOME}/session_agent
-        nohup nice -n ${WOOGEEN_NICENESS} node . -U session\
+        nohup nice -n ${WOOGEEN_NICENESS} node . -U conference\
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
@@ -146,7 +146,7 @@ case $startStop in
       avstream-agent )
         cd ${WOOGEEN_HOME}/avstream_agent
         export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:./lib
-        nohup nice -n ${WOOGEEN_NICENESS} node . -U avstream\
+        nohup nice -n ${WOOGEEN_NICENESS} node . -U streaming\
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
